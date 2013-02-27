@@ -73,7 +73,7 @@ private	void	prefix(sccs *s,
 private	int	sccs_meta(char *m, sccs *s, ser_t parent,
 		    char *init, int fixDates);
 private	int	misc(sccs *s);
-private	char	*bin_heapfile(sccs *s);
+private	char	*bin_heapfile(sccs *s, int name);
 private	int	bin_deltaTable(sccs *s);
 private	off_t	bin_data(char *header);
 private	ser_t	*scompressGraph(sccs *s);
@@ -1977,15 +1977,15 @@ sccs_nextdata(sccs *s)
 	char	*buf;
 	size_t	i;
 	char	*dkey;
-	u32	off;
+	u32	rkoff;
 
 	if (s->rdweave && BWEAVE(s)) {
 		buf = s->w_buf;
 		if (s->w_off) {
-			if (off = HEAP_U32LOAD(s->heap.buf + s->w_off)) {
-				dkey = s->heap.buf + s->w_off + sizeof(u32);
-				sprintf(buf, "%s %s", s->heap.buf + off, dkey);
-				s->w_off += sizeof(u32) + strlen(dkey) + 1;
+			if (rkoff = RKOFF(s, s->w_off)) {
+				dkey = KEYSTR(s, s->w_off);
+				sprintf(buf, "%s %s", KEYSTR(s, rkoff), dkey);
+				s->w_off = NEXTKEY(s, s->w_off);
 			} else {
 				sprintf(buf, "\001E %d", s->w_d);
 				--s->w_d;
@@ -2024,7 +2024,7 @@ sccs_nextdata(sccs *s)
 
 /*
  * An alternative to sccs_nextdata() to use for the ChangeSet weave.
- * When used with the binary weave cset this routine faster because
+ * When used with the binary weave cset this routine is faster because
  * we don't need to construct a fake weave.
  * This does the parsing on the ascii weave a returns rootkey/deltakey pairs
  * for each serial.  Then returns a serial==0 at EOF.
@@ -2060,11 +2060,10 @@ cset_rdweavePair(sccs *s, u32 flags, char **rkey, char **dkey)
 				/* skip tags and empty csets */
 				continue;
 			}
-			if (roff = HEAP_U32LOAD(HEAP(s, s->w_off))) {
-				*rkey = HEAP(s, roff);
-				s->w_off += sizeof(u32);
-				*dkey = HEAP(s, s->w_off);
-				s->w_off += strlen(*dkey) + 1;
+			if (roff = RKOFF(s, s->w_off)) {
+				*rkey = KEYSTR(s, roff);
+				*dkey = KEYSTR(s, s->w_off);
+				s->w_off = NEXTKEY(s, s->w_off);
 				s->w_d = d;
 				return (d);
 			}
@@ -2168,17 +2167,7 @@ sccs_startWrite(sccs *s)
 			    (TABLE(s) + 1) * (sizeof(d1_t) + sizeof(d2_t));
 			if (HAS_GFILE(s)) est_size += size(s->gfile);
 		}
-		/*
-		 * These are stacked so closing the final 'sfile' will
-		 * close and free all 3 FILE*'s.
-		 */
-		if (sfile = fopen(xfile, "w")) {
-			if (fpush(&sfile, fopen_crc(sfile, "w", est_size)) ||
-			    fpush(&sfile, fopen_vzip(sfile, "w"))) {
-				fclose(sfile);
-				sfile = 0;
-			}
-		}
+		sfile = fopen_bkfile(xfile, "w", est_size);
 	} else if (s->mem_out) {
 		unless(s->outfh) s->outfh = fmem();
 		assert(s->outfh);
@@ -2293,7 +2282,8 @@ sccs_finishWrite(sccs *s)
 		if (CSET(s)) {
 			cset_savetip(s);
 			if (!BKFILE_OUT(s) && BKFILE(s)) {
-				unlink(sccs_Xfile(s, 'h')); /* careful */
+				unlink(sccs_Xfile(s, '1')); /* careful */
+				unlink(sccs_Xfile(s, '2')); /* careful */
 			}
 		}
 	}
@@ -3261,7 +3251,7 @@ bin_header(char *header, u32 *off_h, u32 *heapsz,
 	    !(((header[0] == 'B') &&
 		(sscanf(header, "B %x/%x %x/%x %x/%x",
 		    off_h, heapsz, off_d, deltasz, off_s, symsz) == 6)) ||
- 		((header[0] == 'C' &&
+		((header[0] == 'C' &&
 		    (sscanf(header, "C %x/%x %x/%x",
 			off_d, deltasz, off_s, symsz) == 4))))) {
 		fprintf(stderr, "%s: failed to parse: %s\n", prog, header);
@@ -3319,8 +3309,8 @@ bin_mkgraph(sccs *s)
 	int	line = 1, len;
 	char	*perfile, *header;
 	ser_t	d;
-	int	didpage = 0, pageheap = 0;
-	FILE	*f;
+	int	didpage = 0, pageheap;
+	FILE	*f1, *f2;
 
 	s->pagefh = s->fh;
 	header = fgetline(s->fh);
@@ -3330,12 +3320,12 @@ bin_mkgraph(sccs *s)
 	len = (off_h ? off_h : off_d) - strlen(header) - 1;
 	perfile = malloc(len);
 	fread(perfile, 1, len, s->fh);
-	f = fmem_buf(perfile, len);
-	unless (sccs_getperfile(s, f, &line)) {
+	f1 = fmem_buf(perfile, len);
+	unless (sccs_getperfile(s, f1, &line)) {
 		fprintf(stderr, "%s: failed to load %s\n", prog, s->sfile);
 		exit(1);
 	}
-	fclose(f);
+	fclose(f1);
 	free(perfile);
 	s->bitkeeper = 1;
 
@@ -3343,33 +3333,55 @@ bin_mkgraph(sccs *s)
 		if (CSET(s)) T_PERF("read old-style cset file");
 		s->heap_loadsz = 0; /* need to write whole heap on update */
 		s->heap.len = s->heap.size = heapsz;
-		s->heap.buf =
-		    datamap("heap", 1, heapsz, s->pagefh, off_h, 0, &didpage);
+		s->heap.buf = dataAlloc(1, heapsz);
+		datamap("heap", s->heap.buf, heapsz,
+		    s->pagefh, off_h, 0, &didpage);
 		assert(s->heap.buf);
 	} else {
 		assert(CSET(s));
-		/* load heap from SCCS/h.ChangeSet */
-		f = fopen(bin_heapfile(s), "r");
-		assert(f);
-		if (fpush(&f, fopen_crc(f, "r", 0))) assert(0);
-		if (fpush(&f, fopen_vzip(f, "r"))) assert(0);
-		fseek(f, 0, SEEK_END);
-		heapsz = ftell(f);
-		s->heap_loadsz = s->heap.len = s->heap.size = heapsz;
-		s->heap.buf = datamap("eheap", 1, heapsz, f, 0, 0, &pageheap);
-		assert(s->heap.buf);
-		if (pageheap) {
-			s->heapfh = f;
-		} else {
-			fclose(f);
+		/* load heap from SCCS/[12].ChangeSet */
+		f1 = fopen_bkfile(bin_heapfile(s, '1'), "r", 0);
+		assert(f1);
+		fseek(f1, 0, SEEK_END);
+		heapsz = s->heapsz1 = ftell(f1);
+		TRACE("heapfile1 = %d", heapsz);
+
+		if (f2 = fopen_bkfile(bin_heapfile(s, '2'), "r", 0)) {
+			fseek(f2, 0, SEEK_END);
+			heapsz += ftell(f2);
+			TRACE("heapfile2 = %d", heapsz - s->heapsz1);
 		}
+
+		s->heap_loadsz = s->heap.len = s->heap.size = heapsz;
+		s->heap.buf = dataAlloc(1, heapsz);
+		pageheap = 0;
+		datamap("eheap1", s->heap.buf, s->heapsz1, f1, 0, 0, &pageheap);
+		if (pageheap) {
+			s->heapfh[1] = f1;
+		} else {
+			fclose(f1);
+		}
+		if (f2) {
+			pageheap = 0;
+			datamap("eheap2",
+			    s->heap.buf + s->heapsz1, heapsz - s->heapsz1,
+			    f2, 0, 0, &pageheap);
+			if (pageheap) {
+				s->heapfh[2] = f2;
+			} else {
+				fclose(f2);
+			}
+		}
+		assert(s->heap.buf);
 	}
 
 	deltas = deltasz / (sizeof(d1_t) + sizeof(d2_t));
-	s->slist1 = datamap("delta1", sizeof(d1_t), deltas,
+	s->slist1 = dataAlloc(sizeof(d1_t), deltas);
+	datamap("delta1", &s->slist1[1], sizeof(d1_t) * deltas,
 	    s->pagefh, off_d, 1, &didpage);
 	assert(s->slist1);
-	s->slist2 = datamap("delta2", sizeof(d2_t), deltas,
+	s->slist2 = dataAlloc(sizeof(d2_t), deltas);
+	datamap("delta2", &s->slist2[1], sizeof(d2_t) * deltas,
 	    s->pagefh, off_d + deltas*sizeof(d1_t), 1, &didpage);
 	assert(s->slist2);
 
@@ -3377,8 +3389,9 @@ bin_mkgraph(sccs *s)
 	TABLE_SET(s, deltas);
 
 	if (symsz) {
-		s->symlist = datamap("symbol",
-		    sizeof(symbol), symsz/sizeof(symbol),
+		s->symlist = dataAlloc(sizeof(symbol), symsz/sizeof(symbol));
+		datamap("symbol", &s->symlist[1],
+		    sizeof(symbol) * symsz/sizeof(symbol),
 		    s->pagefh, off_s, 1, &didpage);
 	}
 	d = TABLE(s);
@@ -4810,14 +4823,7 @@ sccs_open(sccs *s)
 	} else {
 		/* binary file */
 		rewind(f);
-		if (fpush(&f, fopen_crc(f, "r", 0))) {
-			fclose(f);
-			return (-1);
-		}
-		if (fpush(&f, fopen_vzip(f, "r"))) {
-			fclose(f);
-			return (-1);
-		}
+		unless (f = fdopen_bkfile(f, "r", 0)) return (-1);
 		s->encoding_in |= E_BK;
 	}
 	s->fh = f;
@@ -4843,7 +4849,7 @@ sccs_close(sccs *s)
 		s->fh = 0;
 	}
 	/*
-	 * Note, this does NOT close s->heapfh.  If the heapfile needs
+	 * Note, this does NOT close s->heapfh[12].  If the heapfile needs
 	 * to be overwritten then that will have to be closed as well.
 	 */
 }
@@ -4870,7 +4876,6 @@ sccs_writeHere(sccs *s, char *new)
 	s->gfile = sccs2name(s->sfile);
 	free(s->pfile);
 	s->pfile = strdup(sccs_Xfile(s, 'p'));
-	s->heap_loadsz = 0;	/* force heap to be rewritten */
 	s->state &= ~(S_PFILE|S_GFILE);
 	/* NOTE: we leave S_SFILE set, but no sfile there */
 }
@@ -4925,6 +4930,7 @@ void
 sccs_free(sccs *s)
 {
 	char	*relpath = 0, *fullpath;
+	int	i;
 
 	unless (s) return;
 	if (s->io_error && !s->io_warned) {
@@ -4988,10 +4994,13 @@ sccs_free(sccs *s)
 		fclose(s->pagefh);
 		s->pagefh = 0;
 	}
-	if (s->heapfh) {
-		dataunmap(s->heapfh, 0); // unprotect all memory, but leave blank
-		fclose(s->heapfh);
-		s->heapfh = 0;
+	for (i = 1; i <= 2; i++) {
+		if (s->heapfh[i]) {
+			// unprotect all memory, but leave blank
+			dataunmap(s->heapfh[i], 0);
+			fclose(s->heapfh[i]);
+			s->heapfh[i] = 0;
+		}
 	}
 	if (s->fh) {
 		assert(!s->mem_in); /* don't want to lose data */
@@ -8442,7 +8451,7 @@ SCCS:
 }
 
 private char *
-bin_heapfile(sccs *s)
+bin_heapfile(sccs *s, int name)
 {
 	char	*t;
 	char	dir[MAXPATH];
@@ -8452,7 +8461,7 @@ bin_heapfile(sccs *s)
 	fullname(s->sfile, dir);
 	str_subst(dir, "/RESYNC/", "/", dir);
 	t = strrchr(dir, '/');
-	t[1] = 'h';
+	t[1] = name;
 	free(ret);
 	ret = strdup(dir);
 	strcpy(dir, s->sfile);
@@ -8482,138 +8491,6 @@ bin_deltaSum(sccs *s, ser_t d)
 	u32	val = htole32(SUM(s, d));
 
 	return (fwrite(&val, sizeof(u32), 1, s->outfh) != 1);
-}
-
-/*
- * reorder the data heap in memory to atempt to reduce the number of pages
- * that are needed for common operations.
- */
-private void
-bin_sortHeap(sccs *s)
-{
-	int	i, old;
-	ser_t	d, ds;
-	i32	*p;
-	u32	off, rkey, nrkey;
-	char	**rkeys = 0;
-	hash	*rkeyoff;
-	DATA	oldheap = s->heap;
-	char	lsort[256];
-
-	/* clean old data */
-	memset(&s->heap, 0, sizeof(s->heap));
-	if (s->uniqheap) hash_free(s->uniqheap);
-	s->uniqheap = hash_new(HASH_MEMHASH);
-	s->uniqdeltas = 1;
-	s->uniqkeys = 1;
-
-	/* add a reminder of when we sorted last */
-	sprintf(lsort, "lastsort %d", TABLE(s));
-	sccs_addStr(s, lsort);
-
-#define	OLDHEAP(x)	(oldheap.buf + x)
-
-#define FIELD(x) \
-	if (old = s->slist2[d].x) \
-	    s->slist2[d].x = sccs_addStr(s, OLDHEAP(old))
-#define UFIELD(x) \
-	if (old = s->slist2[d].x) \
-	    s->slist2[d].x = sccs_addUniqStr(s, OLDHEAP(old))
-
-	/* put one paging block of deltas together (about 500) */
-	for (d = TABLE(s); d >= TREE(s); d--) {
-		if (s->heap.len > swapsz) break; // sz from dataheap.c
-		FIELD(cludes);
-		unless (CSET(s)) FIELD(bamhash);
-		FIELD(random);
-		UFIELD(userhost);
-		UFIELD(pathname);
-		UFIELD(sortPath);
-		UFIELD(zone);
-		UFIELD(symlink);
-		UFIELD(csetFile);
-		FIELD(comments);
-	}
-	ds = d;
-	/* put the rest sorted by field (stuff for keysync first) */
-	for (d = ds; d >= TREE(s); d--) FIELD(random);
-	for (d = ds; d >= TREE(s); d--) UFIELD(pathname);
-	for (d = ds; d >= TREE(s); d--) UFIELD(sortPath);
-	for (d = ds; d >= TREE(s); d--) UFIELD(zone);
-	for (d = ds; d >= TREE(s); d--) UFIELD(symlink);
-	for (d = ds; d >= TREE(s); d--) UFIELD(csetFile);
-	for (d = ds; d >= TREE(s); d--) UFIELD(userhost);
-	for (d = ds; d >= TREE(s); d--) FIELD(cludes);
-	unless (CSET(s)) {
-		for (d = ds; d >= TREE(s); d--) FIELD(bamhash);
-	}
-
-	/* add symbols */
-	EACH(s->symlist) {
-		s->symlist[i].symname =
-		    sccs_addUniqStr(s, OLDHEAP(s->symlist[i].symname));
-	}
-
-	/* then comments */
-	for (d = ds; d >= TREE(s); d--) FIELD(comments);
-
-#undef FIELD
-#undef UFIELD
-
-	/* now the rootkeys from the weave */
-	for (off = RKHEAD(s); off; off = HEAP_U32LOAD(OLDHEAP(off))) {
-		// RKSTR() but of the old data
-		rkeys = addLine(rkeys, OLDHEAP(off + sizeof(u32)));
-	}
-	RKHEAD(s) = s->heap.len;
-	sortLines(rkeys, key_sort);
-	rkeyoff = hash_new(HASH_MEMHASH);
-	EACH(rkeys) {
-		p = hash_insertStrI32(rkeyoff,
-		    rkeys[i], htole32(s->heap.len + 4));
-		assert(p);
-		/*
-		 * Linked list order flipped (for perf reasons?)
-		 * new keys will be added to the end, but will point
-		 * to the beginning.
-		 */
-		if (i < nLines(rkeys)) {
-			off = htole32(s->heap.len + 4 + strlen(rkeys[i]) + 1);
-		} else {
-			off = 0;
-		}
-		data_append(&s->heap, &off, sizeof(off));
-		sccs_addStr(s, rkeys[i]);
-	}
-	freeLines(rkeys, 0);
-
-	/* finally the cset content */
-	if (BWEAVE_OUT(s)) {
-		for (d = TABLE(s); d >= TREE(s); d--) {
-			unless (WEAVE_INDEX(s, d)) continue;
-			off = WEAVE_INDEX(s, d);
-			assert(off < oldheap.len);
-			WEAVE_SET(s, d, s->heap.len);
-			while (rkey = HEAP_U32LOAD(OLDHEAP(off))) {
-				assert(rkey < oldheap.len);
-				nrkey =
-				    hash_fetchStrI32(rkeyoff, OLDHEAP(rkey));
-				assert(nrkey);
-				data_append(&s->heap, &nrkey, sizeof(nrkey));
-				off += 4;	/* point to dkey */
-				sccs_addStr(s, OLDHEAP(off));
-				off += strlen(OLDHEAP(off)) + 1;
-				assert(off < oldheap.len);
-			}
-			data_append(&s->heap, &rkey, sizeof(rkey));
-		}
-	}
-	hash_free(rkeyoff);
-
-	/* now free the old data */
-	free(oldheap.buf);
-
-	T_PERF("pack %d -> %d", oldheap.len, s->heap.len);
 }
 
 /*
@@ -8656,30 +8533,15 @@ bin_deltaTable(sccs *s)
 {
 	u32	off_h, off_d, off_s;
 	ser_t	d;
-	int	i, lastsorted = 0;
-	char	*file;
+	int	i;
+	char	*file, *tmp;
 	FILE	*out = s->outfh; /* cache of s->outfh */
 	FILE	*perfile, *f;
 
 	if ((TABLE(s) > 1) && !BWEAVE(s) && BWEAVE_OUT(s)) cvt2bweave(s);
 
-	if (strneq(s->heap.buf+1, "lastsort ", 9)) {
-		lastsorted = atoi(s->heap.buf + 10);
-	}
-	/*
-	 * repack heap to optimize performance if:
-	 *  * _BK_SORTHEAP is in enviroment
-	 *  * loading from ascii sfile
-	 *  * it is more than 100 deltas after the last repack
-	 */
-	if (!proj_isResync(s->proj) &&
-	    (getenv("_BK_SORTHEAP") ||
-	     !BKFILE(s) ||
-	     ((s->heap.len > swapsz) && (lastsorted + 100 < TABLE(s)))) &&
-	    !strstr(proj_root(s->proj), "/RESYNC/")) {   /* prod/RESYNC/comp */
-		bin_sortHeap(s);
-		s->heap_loadsz = 0;
-	 }
+	if (!CSET(s) && bin_needHeapRepack(s)) bin_heapRepack(s);
+
 	perfile = fmem();
 	sccs_perfile(s, perfile);
 
@@ -8706,66 +8568,93 @@ bin_deltaTable(sccs *s)
 
 	/* write heap */
 	if (BWEAVE_OUT(s)) {
-		file = bin_heapfile(s);
+		file = bin_heapfile(s, '2');
 		// heap goes in external file
 		if (s->heap_loadsz == s->heap.len) {
 			// nothing new, skip heap
+		} else if (s->heap_loadsz && !exists(file)) {
+			assert(s->heap_loadsz == s->heapsz1);
+			assert(s->heap_loadsz < s->heap.len);
+			f = fopen_bkfile(file, "w", (s->heap.len / 10));
+			assert(f);
+			fwrite(s->heap.buf + s->heapsz1,
+			    1, s->heap.len - s->heapsz1, f);
+			fclose(f);
+			TRACE("write %d bytes to new heap2", s->heap.len - s->heap_loadsz);
 		} else if (s->heap_loadsz && onelink(file)) {
 			/*
 			 * OK this is a bit tricky.  If we are paging
-			 * then s->heapfh contains a read-only handle
+			 * then s->heapfh[2] contains a read-only handle
 			 * to the existing heapfile and we are about
 			 * to append more information to the end of
 			 * that file.  This will be fine since we
 			 * won't need to read any of the new data with
-			 * s->heapfh, but we don't want the EOF sanity
+			 * s->heapfh[2], but we don't want the EOF sanity
 			 * checks to trigger because it thinks the
 			 * file is short.
 			 *
 			 * fseeko() because fseek() won't pass a negative
 			 * with SEEK_SET.
 			 */
-			if (s->heapfh) fseeko(s->heapfh, -1, SEEK_SET);
+			if (s->heapfh[2]) fseeko(s->heapfh[2], -1, SEEK_SET);
 
 			assert(s->heap_loadsz < s->heap.len);
 			// append new data to heap
-			f = fopen(file, "r+");
-			if (fpush(&f, fopen_crc(f, "r+", s->heap.len))) {
-				assert(0);
-			}
-			if (fpush(&f, fopen_vzip(f, "a"))) assert(0);
+			f = fopen_bkfile(file, "a", 0);
 			assert(f);
-			//fseek(f, 0, SEEK_END);
 			fwrite(s->heap.buf + s->heap_loadsz,
 			    1, s->heap.len - s->heap_loadsz, f);
 			fclose(f);
-		} else {
-			// write entire heap, often to break hardlink
-			T_PERF("rewrite whole heap, loadsz=%d onelink=%d", s->heap_loadsz, onelink(file));
-			if (s->heapfh) {
+			TRACE("append %d bytes to new heap2", s->heap.len - s->heap_loadsz);
+		} else if (s->heap_loadsz) {
+			// rewrite just heap2 to break the hardlink
+			if (s->heapfh[2]) {
                                /*
                                 * We need to load entire heap in memory
                                 * first.
                                 */
-				dataunmap(s->heapfh, 1);
-				fclose(s->heapfh);
-				s->heapfh = 0;
+				dataunmap(s->heapfh[2], 1);
+				fclose(s->heapfh[2]);
+				s->heapfh[2] = 0;
 			}
-			unlink(file); /* XXX .tmp and rename? */
-			f = fopen(file, "w");
+			tmp = aprintf("%s.tmp", file);
+			f = fopen_bkfile(tmp, "w", (s->heap.len / 10));
 			assert(f);
-			if (fpush(&f, fopen_crc(f, "w", s->heap.len))) {
-				assert(0);
+			fwrite(s->heap.buf + s->heapsz1,
+			    1, s->heap.len - s->heapsz1, f);
+			if (fclose(f) || rename(tmp, file)) assert(0);
+			free(tmp);
+		} else {
+			// write entire heap, often to break hardlink
+			T_PERF("rewrite whole heap, loadsz=%d onelink=%d", s->heap_loadsz, onelink(file));
+			for (i = 1; i <= 2; i++) {
+				if (s->heapfh[i]) {
+					/*
+					 * We need to load entire heap
+					 * in memory first.
+					 */
+					dataunmap(s->heapfh[i], 1);
+					fclose(s->heapfh[i]);
+					s->heapfh[i] = 0;
+				}
 			}
-			if (fpush(&f, fopen_vzip(f, "w"))) assert(0);
+			file = bin_heapfile(s, '1');
+			tmp = aprintf("%s.tmp", file);
+			f = fopen_bkfile(tmp, "w", s->heap.len);
+			assert(f);
 			fwrite(s->heap.buf, 1, s->heap.len, f);
-			fclose(f);
+			if (fclose(f) || rename(tmp, file)) assert(0);
+			free(tmp);
+			s->heapsz1 = s->heap.len;
+			file = bin_heapfile(s, '2');
+			unlink(file);
 		}
 	} else {
 		// write heap in sfile
 		fwrite(s->heap.buf, 1, s->heap.len, out);
 		fflush(out);		/* force new gzip block */
 	}
+	s->heap_loadsz = s->heap.len;
 
 	/* write delta table */
 	for (d = TREE(s); d <= TABLE(s); d++) {
@@ -16593,8 +16482,8 @@ sccs_perfile(sccs *s, FILE *out)
 	}
 	enc &= ~E_ALWAYS;
 	if (enc) fprintf(out, "f e %d\n", enc);
-	if (RKHEAD(s) && (enc & E_BWEAVE)) {
-		fprintf(out, "f w %u\n", RKHEAD(s));
+	if (s->rkeyHead && (enc & E_BWEAVE)) {
+		fprintf(out, "f w %u\n", s->rkeyHead);
 	}
 	EACH(s->text) fprintf(out, "T %s\n", s->text[i]);
 	if (s->version) fprintf(out, "V %u\n", s->version);
@@ -16639,7 +16528,7 @@ err:			fprintf(stderr,
 		unless (buf = fgetline(in)) goto err; (*lp)++;
 	}
 	if (FLAG('w')) {
-		RKHEAD(s) = atoi(&buf[4]);
+		s->rkeyHead = atoi(&buf[4]);
 		unless (buf = fgetline(in)) goto err; (*lp)++;
 	}
 	while (strneq(buf, "T ", 2)) {

@@ -1,13 +1,18 @@
 #include "system.h"
 
 void
-data_resize(DATA *d, int newlen)
+data_resize(DATA *d, u32 newlen)
 {
-	int	size;
+	u32	size;
 
 	if (d->size < newlen) {
-		size = 64;
-		while (size < newlen) size *= 2;
+		assert(newlen < (3 << 30));	// 3G max
+		if (newlen > (2 << 30)) {
+			size = (3 << 30);
+		} else {
+			size = 64;
+			while (size < newlen) size *= 2;
+		}
 
 		/* buf is uninitialized */
 		d->buf = realloc(d->buf, size);
@@ -18,7 +23,7 @@ data_resize(DATA *d, int newlen)
 void
 data_append(DATA *d, void *data, int len)
 {
-	int	newlen = d->len + len;
+	u32	newlen = d->len + len;
 
 	data_resize(d, newlen + 1);
 	memcpy(d->buf + d->len, data, len);

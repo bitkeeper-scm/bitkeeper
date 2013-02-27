@@ -691,8 +691,10 @@ add_to_winfo(winfo *wi, char *file, int sccs)
 	if (sccs && pathneq("s.", file, 2)) {
 		wi->sfiles = addLine(wi->sfiles, strdup(file));
 	}
-	/* ignore the heap file */
-	if (sccs && pathneq("h.", file, 2)) return;
+	if (sccs && (file[1] == '.') &&
+	    ((file[0] == '1') || (file[0] == '2'))) {
+		return;		/* ignore the heap files */
+	}
 	mdbm_store_str((sccs ? wi->sDB : wi->gDB), file, "", MDBM_INSERT);
 }
 
@@ -1666,7 +1668,8 @@ sfiles_clone_main(int ac, char **av)
 
 	rc = walkdir("./BitKeeper/etc", findsfiles, &si);
 	if (mark2) puts("||");
-	if (exists(CHANGESET_H)) puts(CHANGESET_H);
+	if (exists(CHANGESET_H1)) puts(CHANGESET_H1);
+	if (exists(CHANGESET_H2)) puts(CHANGESET_H2);
 	puts(CHANGESET);
 	si.skip_etc = 1;
 	unless (rc) rc = walkdir(".", findsfiles, &si);

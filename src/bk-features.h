@@ -49,7 +49,7 @@
 	X(10, bSFILEv1, "bSFILEv1", 1, 1)	\
 	X(11, POLY, "POLY", 1, 0)		\
 	X(12, BKFILE, "BKFILE", 1, 0)		\
-	X(13, BWEAVE, "BWEAVE", 1, 0)		\
+	X(13, BWEAVE, "BWEAVEv2", 1, 0)		\
 
 enum {
 #define X(a, b, c, d, e) FEAT_ ## b = (1 << a),

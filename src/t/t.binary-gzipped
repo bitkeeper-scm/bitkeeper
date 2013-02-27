@@ -74,18 +74,6 @@ echo $N Verify /home/bk/test_data/binformat3 ........................$NL
 cd "$HERE"
 # prove we can read all files in this repository
 bk clone $Q --checkout=get "$TESTDATA/binformat3" || fail
-cd binformat3
-perl -e 'exit(pack("L", 1) eq pack("N", 1))' && {
-    # only on little-endian hosts...
-
-    # now prove we can recreate them
-    bk admin $Q -Bnone file.* || fail
-    for fmt in VZ0 ZIP LZ4
-    do  _BK_VZIP_FMT=$fmt bk admin -B file.$fmt || fail
-        f=.bk/SCCS/file.$fmt,s
-	cmp -s $f "$TESTDATA"/binformat3/$f || fail
-    done
-}
 echo OK
 }
 

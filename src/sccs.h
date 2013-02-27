@@ -362,7 +362,8 @@ typedef	enum {
 #define	CSETS_OUT	"BitKeeper/etc/csets-out"
 #define	IGNOREPOLY	"BitKeeper/etc/ignore-poly"
 #define	CHANGESET	"SCCS/s.ChangeSet"
-#define	CHANGESET_H	"SCCS/h.ChangeSet"
+#define	CHANGESET_H1	"SCCS/1.ChangeSet"
+#define	CHANGESET_H2	"SCCS/2.ChangeSet"
 #define	CCHANGESET	"SCCS/c.ChangeSet"
 #define	GCHANGESET	"ChangeSet"
 #define	getIDCACHE(p)	(proj_hasOldSCCS(p) ? \
@@ -453,7 +454,11 @@ typedef struct delta {
 	/* unique heap data */
 	u32	cludes;			/* include/exclude list */
 	u32	comments;		/* delta comments (\n sep string) */
-	u32	bamhash;		/* hash of gfile for BAM */
+	u32	bamhash;		/* hash of gfile for BAM.
+					 * Also reused for weave in
+					 * ChangeSet file. See
+					 * WEAVE_INDEX.
+					 */
 	u32	random;			/* random bits for file ID */
 
 	/* collapsible heap data */
@@ -665,14 +670,19 @@ struct sccs {
 	symbol	*symlist;	/* array of symbols, oldest first */
 	KIDS	*kidlist;	/* optional kid/sibling data */
 	char	*defbranch;	/* defbranch, if set */
-	off_t	size;		/* size of mapping */
+
+	/* struct heap / BKFILE (in essence) */
+	off_t	size;		/* size of sfile at sccs_init time */
 	DATA	heap;		/* all strings in delta structs */
 	u32	heap_loadsz;	/* size of heap at load time */
+	u32	heapsz1;	/* size of SCCS/1.ChangeSet */
 	hash	*uniqheap;	/* help collapse unique strings in hash */
 	u32	rkeyHead;	/* head of linked list of rootkeys in heap */
 	u32	*mg_symname;	/* symbol list use by mkgraph() */
 	FILE	*pagefh;	/* fh for paging from sfile */
-	FILE	*heapfh;	/* fh for paging dataheap */
+	FILE	*heapfh[3];	/* fh for paging dataheap[12] (0 unused) */
+	/* Plus some bit fields at the end of this struct - search /heap */
+
 	FILE	*fh;		/* current input file handle (may be stacked) */
 	FILE	*outfh;		/* fh for writing x.file (may be stacked) */
 	char	*sfile;		/* SCCS/s.foo.c */
@@ -749,6 +759,7 @@ struct sccs {
 	u32	rdweave:1;	/* currently reading weave */
 	u32	wrweave:1;	/* currently writing weave */
 	u32	ckwrap:1;	/* running with fopen_cksum */
+	/* heap releated bit fields */
 	u32	uniqkeys:1;	/* rkeys loaded in uniqheap */
 	u32	uniqdeltas:1;	/* deltas loaded in uniqheap */
 };
@@ -960,10 +971,12 @@ typedef struct {
 #endif
 u32	_heap_u32load(void *ptr);
 
-#define	RKHEAD(s)	((s)->rkeyHead)
-#define	RKNEXT(s, off)	(HEAP_U32LOAD((s)->heap.buf + (off)))
-#define	RKSTR(s, off)	((s)->heap.buf + (off) + sizeof(u32))
 #define	HEAP(s, off)	((s)->heap.buf + (off))
+#define	RKOFF(s, off)	(HEAP_U32LOAD(HEAP(s, off)))
+#define	RKNEXT(s, off)	RKOFF(s, off)
+#define	KEYSTR(s, off)	(HEAP(s, off) + sizeof(u32))
+/* Given an offset, skip to the next consecutive key */
+#define	NEXTKEY(s, off)	(off + sizeof(u32) + strlen(KEYSTR(s, off)) + 1)
 
 int	sccs_admin(sccs *sc, ser_t d, u32 flgs,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
@@ -1066,6 +1079,9 @@ void	sccs_resetuser(void);
 void	sccs_resethost(void);
 char	*sccs_realuser(void);
 char	*sccs_user(void);
+
+int	bin_needHeapRepack(sccs *s);
+void	bin_heapRepack(sccs *s);
 
 char	*delta_rev(sccs *s, ser_t d);
 char	*delta_user(sccs *s, ser_t d);
@@ -1512,9 +1528,12 @@ void	sccs_appendStr(sccs *s, char *str);
 u32	sccs_addUniqStr(sccs *s, char *str);
 u32	sccs_addUniqKey(sccs *s, char *key);
 typedef	struct MAP MAP;
-void	*datamap(char *name, u32 esize, u32 nmemb,
+void	*dataAlloc(u32 esize, u32 nmemb);
+void	datamap(char *name, void *start, int len,
     FILE *f, long off, int byteswap, int *didpage);
 void	dataunmap(FILE *f, int keep);
+FILE	*fopen_bkfile(char *file, char *mode, u64 size);
+FILE	*fdopen_bkfile(FILE *f, char *mode, u64 size);
 
 #define	RGCA_ALL	0x1000
 #define	RGCA_STANDALONE	0x2000

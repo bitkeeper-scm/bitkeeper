@@ -461,7 +461,7 @@ clean_up()
 	# Win32 have no core file
 	if [ "$PLATFORM" = "UNIX" ]
 	then
-		bk _find "$BK_REGRESSION" -name core > "$BK_REGRESSION/cores"
+		bk _find "$BK_REGRESSION" -name '*core' > "$BK_REGRESSION/cores"
 		if [ -s "$BK_REGRESSION/cores" ]
 		then	 # ls -l `cat "$BK_REGRESSION/cores"`
 			cat "$BK_REGRESSION/cores" | 
@@ -791,7 +791,7 @@ I hope your testing experience was positive! :-)
 		fi
 		test $KEEP_GOING = NO && {
 			test $PLATFORM = WIN32 && win32_regRestore
-			bk _find "$BK_REGRESSION" -name core			
+			bk _find "$BK_REGRESSION" -name '*core'
 			exit $EXIT
 		}
 		FAILED="$i $FAILED"

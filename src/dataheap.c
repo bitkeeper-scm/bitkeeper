@@ -112,7 +112,7 @@ u32
 sccs_addUniqKey(sccs *s, char *key)
 {
 	hash	*h;
-	u32	off, old;
+	u32	off, le32;
 
 	unless (h = s->uniqheap) h = s->uniqheap = hash_new(HASH_MEMHASH);
 	unless (s->uniqkeys) {
@@ -123,8 +123,8 @@ sccs_addUniqKey(sccs *s, char *key)
 		 * we need to walk the list of existing rootkeys and
 		 * add them to the uniq hash
 		 */
-		for (off = RKHEAD(s); off; off = RKNEXT(s, off)) {
-			hash_insertStrI32(h, RKSTR(s, off), off + sizeof(off));
+		for (off = s->rkeyHead; off; off = RKNEXT(s, off)) {
+			hash_insertStrI32(h, KEYSTR(s, off), off);
 		}
 		T_PERF("done rootkey data");
 	}
@@ -133,17 +133,18 @@ sccs_addUniqKey(sccs *s, char *key)
 
 		// update rkey list
 		off = s->heap.len;
-		old = htole32(RKHEAD(s));
-		data_append(&s->heap, &old, sizeof(old));
-		RKHEAD(s) = off;
-
+		le32 = htole32(s->rkeyHead);
+		data_append(&s->heap, &le32, sizeof(le32));
+		s->rkeyHead = off;
 		// add string to heap
-		off = sccs_addStr(s, h->kptr);
+		sccs_addStr(s, h->kptr);
 		*(i32 *)h->vptr = off;
 
-		TRACE("add(%s) = %s(%d)", key, s->heap.buf + off, off);
+		TRACE("add(%s) = %s(%d)", key, KEYSTR(s, off), off);
+	} else {
+		/* already exists */
+		off = *(i32 *)h->vptr;
 	}
-	off = *(i32 *)h->vptr;
 	return (off);
 }
 
@@ -157,21 +158,21 @@ void
 weave_set(sccs *s, ser_t d, char **keys)
 {
 	int	i;
-	u32	off;
+	u32	le32;
 	DATA	w = {0};
 
 	/* All dkeys need to be concatenated; write all rkeys to heap first */
 	EACH(keys) {
- 		off = htole32(sccs_addUniqKey(s, keys[i]));
- 		data_append(&w, &off, sizeof(off));
- 		data_append(&w, keys[i+1], strlen(keys[i+1]) + 1);
+		le32 = htole32(sccs_addUniqKey(s, keys[i]));
+		data_append(&w, &le32, sizeof(le32));
+		data_append(&w, keys[i+1], strlen(keys[i+1]) + 1);
 		++i;
 	}
 	WEAVE_SET(s, d, s->heap.len);
- 	data_append(&s->heap, w.buf, w.len);
- 	free(w.buf);
- 	off = 0;
- 	data_append(&s->heap, &off, sizeof(off));
+	data_append(&s->heap, w.buf, w.len);
+	free(w.buf);
+	le32 = 0;
+	data_append(&s->heap, &le32, sizeof(le32));
 }
 
 private void
@@ -225,7 +226,7 @@ map_block(MAP *map)
 	if (mprotect(map->startp, map->endp - map->startp + PAGESZ,
 		PROT_READ|PROT_WRITE)) {
 		perror("mprotect");
-		exit(1);
+		return (-1);
 	}
 	if (fseek(map->f, map->off, SEEK_SET)) {
 		perror("fseek");
@@ -386,19 +387,39 @@ dataunmap(FILE *f, int keep)
 #endif
 
 /*
- * Allocate memory and load 'nmemb' blocks of 'esize' from 'off' of
- * s->sfile.
- *
+ * Allocate memory, either as a block of bytes (element size 1)
+ * or as a bk array.  In both cases, align allocation on a block boundary.
+ */
+void *
+dataAlloc(u32 esize, u32 nmemb)
+{
+#ifdef	PAGING
+	unless (pagesz) {
+		pagesz = sysconf(_SC_PAGESIZE);
+		/* non-zero power of 2? */
+		assert(pagesz && !(pagesz & (pagesz-1)));
+	}
+#endif
+	if (esize == 1) {
+		int	size = 1024;
+
+		while (size < nmemb) size *= 2;
+		return (allocPage(size));
+	} else {
+		return (allocArray(nmemb, esize, allocPage));
+	}
+}
+
+/*
+ * Load 'len' bytes at 'addr' from 'off' of s->sfile.
  * If the data range is large then the data will be mapped into memory
  * but only loaded on demand as needed.
  */
-void *
-datamap(char *name, u32 esize, u32 nmemb,
+void
+datamap(char *name, void *addr, int len,
     FILE *f, long off, int byteswap, int *didpage)
 {
-	u8	*start;		/* address of data from file */
-	u8	*mstart;	/* address to be returned */
-	u32	len;
+	u8	*start = addr;
 	int	paging = 1;
 	char	*p;
 #ifdef	PAGING
@@ -409,12 +430,6 @@ datamap(char *name, u32 esize, u32 nmemb,
 	int	i;
 
 	struct	sigaction sa;
-
-	unless (pagesz) {
-		pagesz = sysconf(_SC_PAGESIZE);
-		/* non-zero power of 2? */
-		assert(pagesz && !(pagesz & (pagesz-1)));
-	}
 #else
 	paging = 0;
 #endif
@@ -436,20 +451,10 @@ datamap(char *name, u32 esize, u32 nmemb,
 		}
 	}
 	if (IS_LITTLE_ENDIAN()) byteswap = 0;
-	len = nmemb * esize;
 	if (!paging ||
 	    (!getenv("_BK_FORCE_PAGING") && (len < 4*swapsz))) {
 		/* too small to mess with */
 		paging = 0;
-	}
-	if (esize == 1) {
-		int	size = 1024;
-		while (size < len) size *= 2;
-		mstart = paging ? allocPage(size) : malloc(size);
-		start = mstart;
-	} else {
-		mstart = allocArray(nmemb, esize, paging ? allocPage : 0);
-		start = mstart + esize;
 	}
 	unless (paging) {
 #ifdef PAGING
@@ -458,10 +463,11 @@ nopage:
 		fseek(f, off, SEEK_SET);
 		fread(start, 1, len, f);
 		if (byteswap) swaparray(start, len);
-		return (mstart);
+		return;
 	}
 #ifdef PAGING
 	*didpage = 1;
+	assert(pagesz);
 	if (mprotect(PAGEDOWN(start),
 	    PAGEDOWN(start + len - 1) - PAGEDOWN(start) + PAGESZ,
 	    PROT_NONE)) {
@@ -515,7 +521,6 @@ nopage:
 	free(lens);
 	sortArray(maps, MAPcmp); /* sort by start address */
 #endif
-	return (mstart);
 }
 
 /*
@@ -548,4 +553,273 @@ _heap_u32load(void *ptr)
 	memcpy(&ret, ptr, sizeof(ret));
 #endif
 	return (le32toh(ret));
+}
+
+/*
+ * Look at the current file and decide if the heap should be resorted.
+ */
+int
+bin_needHeapRepack(sccs *s)
+{
+	project	*prod;
+	char	*t;
+	int	heapsz_orig;
+
+	/* only makes since for BK sfiles */
+	unless (BKFILE(s)) return (0);
+
+	/* no repacking in RESYNC */
+	if (proj_isResync(s->proj)) return (0);
+	if ((prod = proj_product(s->proj)) && proj_isResync(prod)) return (0);
+
+	/* no repacking if we have a RESYNC (which shares the heap) */
+	if (CSET(s) && isdir(proj_fullpath(s->proj, ROOT2RESYNC))) return (0);
+
+	/* always repack if forced */
+	if (getenv("_BK_FORCE_REPACK")) return (1);
+
+	/* read old heap len */
+	if (t = strstr(s->heap.buf + 1, "LEN=")) {
+		heapsz_orig = strtoul(t + 4, 0, 16);
+		assert(heapsz_orig <= s->heap.len);
+
+		/* if new stuff has grown larger than 10% of heap */
+		if (10 * (s->heap.len - heapsz_orig) > s->heap.len) return (1);
+	} else {
+		/* the data is from an old version of bk */
+		return (1);
+	}
+
+	/* default is no */
+	return (0);
+}
+
+
+/*
+ * reorder the data heap in memory to atempt to reduce the number of pages
+ * that are needed for common operations.
+ */
+void
+bin_heapRepack(sccs *s)
+{
+	int	i, old;
+	ser_t	d, ds;
+	i32	*p;
+	u32	off, le32, rkey, nrkey;
+	char	**rkeys = 0;
+	hash	*rkeyle32;
+	DATA	oldheap;
+	hash	*meta;
+	char	*t;
+	char	buf[MAXLINE];
+
+/* Local versions of sccs.h macros for a copy of the heap */
+#define	OLDHEAP(x)	(oldheap.buf + (x))
+#define	OLDRKOFF(x)	HEAP_U32LOAD(OLDHEAP(x))
+#define	OLDRKNEXT(x)	OLDRKOFF(x)
+#define	OLDKEYSTR(x)	(OLDHEAP(x) + sizeof(u32))
+#define	OLDNEXTKEY(x)	((x) + sizeof(u32) + strlen(OLDKEYSTR(x)) + 1)
+
+	/* read old metadata */
+	meta = hash_new(HASH_MEMHASH);
+	if (strneq(HEAP(s, 1), "GEN=", 4)) hash_fromStr(meta, HEAP(s, 1));
+
+	/* remember the tip when we last repacked */
+	sccs_sdelta(s, sccs_top(s), buf);
+	hash_storeStr(meta, "TIP", buf);
+
+	/* placeholder for the heap size after the last repack */
+	sprintf(buf, "%08x", 0);
+	hash_storeStr(meta, "LEN", buf);
+
+	/* generational number */
+	hash_storeStrNum(meta, "GEN", hash_fetchStrNum(meta, "GEN") + 1);
+
+	/* version */
+	hash_storeStr(meta, "VER", "1");
+
+	/* clean old data */
+	oldheap = s->heap;
+	memset(&s->heap, 0, sizeof(s->heap));
+	if (s->uniqheap) hash_free(s->uniqheap);
+	s->uniqheap = hash_new(HASH_MEMHASH);
+	s->uniqdeltas = 1;
+	s->uniqkeys = 1;
+
+
+	/* write header to heap */
+	t = hash_toStr(meta);
+	sccs_addStr(s, t);
+	free(t);
+
+#define FIELD(x) \
+	if (old = s->slist2[d].x) \
+	    s->slist2[d].x = sccs_addStr(s, OLDHEAP(old))
+#define UFIELD(x) \
+	if (old = s->slist2[d].x) \
+	    s->slist2[d].x = sccs_addUniqStr(s, OLDHEAP(old))
+
+	/* put one paging block of deltas together (about 500) */
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		if (s->heap.len > swapsz) break; // sz from dataheap.c
+		FIELD(cludes);
+		unless (CSET(s)) FIELD(bamhash);
+		FIELD(random);
+		UFIELD(userhost);
+		UFIELD(pathname);
+		UFIELD(sortPath);
+		UFIELD(zone);
+		UFIELD(symlink);
+		UFIELD(csetFile);
+		FIELD(comments);
+	}
+	ds = d;
+	/* put the rest sorted by field (stuff for keysync first) */
+	for (d = ds; d >= TREE(s); d--) FIELD(random);
+	for (d = ds; d >= TREE(s); d--) UFIELD(pathname);
+	for (d = ds; d >= TREE(s); d--) UFIELD(sortPath);
+	for (d = ds; d >= TREE(s); d--) UFIELD(zone);
+	for (d = ds; d >= TREE(s); d--) UFIELD(symlink);
+	for (d = ds; d >= TREE(s); d--) UFIELD(csetFile);
+	for (d = ds; d >= TREE(s); d--) UFIELD(userhost);
+	for (d = ds; d >= TREE(s); d--) FIELD(cludes);
+	unless (CSET(s)) {
+		for (d = ds; d >= TREE(s); d--) FIELD(bamhash);
+	}
+
+	/* add symbols */
+	EACH(s->symlist) {
+		s->symlist[i].symname =
+		    sccs_addUniqStr(s, OLDHEAP(s->symlist[i].symname));
+	}
+
+	/* then comments */
+	for (d = ds; d >= TREE(s); d--) FIELD(comments);
+
+#undef FIELD
+#undef UFIELD
+
+	/* finally the cset content */
+	if (BWEAVE(s)) {
+		/* now the rootkeys from the weave */
+		for (off = s->rkeyHead; off; off = OLDRKNEXT(off)) {
+			rkeys = addLine(rkeys, OLDKEYSTR(off));
+		}
+		s->rkeyHead = s->heap.len;
+		sortLines(rkeys, key_sort);
+		rkeyle32 = hash_new(HASH_MEMHASH);
+		EACH(rkeys) {
+			p = hash_insertStrI32(rkeyle32,
+			    rkeys[i], htole32(s->heap.len));
+			assert(p);
+			/*
+			 * Linked list order flipped (for perf reasons?)
+			 * new keys will be added to the end, but will point
+			 * to the beginning.
+			 */
+			if (i < nLines(rkeys)) {
+				le32 = htole32(s->heap.len + sizeof(u32) +
+				    strlen(rkeys[i]) + 1);
+			} else {
+				le32 = 0;
+			}
+			data_append(&s->heap, &le32, sizeof(le32));
+			sccs_addStr(s, rkeys[i]);
+		}
+		freeLines(rkeys, 0);
+
+		for (d = TABLE(s); d >= TREE(s); d--) {
+			unless (WEAVE_INDEX(s, d)) continue;
+			off = WEAVE_INDEX(s, d);
+			assert(off < oldheap.len);
+			WEAVE_SET(s, d, s->heap.len);
+			while (rkey = OLDRKOFF(off)) {
+				assert(rkey < oldheap.len);
+				nrkey = hash_fetchStrI32(rkeyle32,
+				    OLDKEYSTR(rkey));
+				assert(nrkey);
+				data_append(&s->heap, &nrkey, sizeof(nrkey));
+				sccs_addStr(s, OLDKEYSTR(off));
+				off = OLDNEXTKEY(off);
+				assert(off < oldheap.len);
+			}
+			data_append(&s->heap, &rkey, sizeof(rkey));
+		}
+		hash_free(rkeyle32);
+	}
+
+	/* now update the header at the top of the heap */
+	sprintf(buf, "%08x", s->heap.len);
+	hash_storeStr(meta, "LEN", buf);
+
+	t = hash_toStr(meta);
+	assert(strneq(t, "GEN=", 4));
+	strcpy(HEAP(s, 1), t);
+	free(t);
+	hash_free(meta);
+
+#undef	OLDHEAP
+#undef	OLDRKNEXT
+#undef	OLDRKOFF
+#undef	OLDKEYSTR
+#undef	OLDNEXTKEY
+
+	/* now free the old data, have to unmap first */
+	for (i = 1; i <= 2; i++) {
+		if (s->heapfh[i]) {
+			// unprotect all memory, but leave blank
+			dataunmap(s->heapfh[i], 0);
+			fclose(s->heapfh[i]);
+			s->heapfh[i] = 0;
+		}
+	}
+	free(oldheap.buf);
+
+	s->heap_loadsz = 0;	/* flag heap to be rewritten */
+	T_PERF("pack %d -> %d", oldheap.len, s->heap.len);
+}
+
+/*
+ * Adds the CRC/VZIP stdio layers like we use for BK sfiles.
+ *
+ * mode can be "r", "w" or "a".
+ * size is the estimated file size and is only used for "w"
+ *
+ * the layers are stacked so a fclose() will free everything.
+ *
+ * Returns 0 on failure.
+ */
+FILE *
+fdopen_bkfile(FILE *f, char *mode, u64 size)
+{
+	assert(mode[1] == 0);
+	if (fpush(&f, fopen_crc(f, (mode[0] == 'a') ? "r+" : mode, size))) {
+		perror(mode);
+err:		fclose(f);
+		return (0);
+	}
+	if (fpush(&f, fopen_vzip(f, mode))) {
+		perror(mode);
+		goto err;
+	}
+	return (f);
+}
+
+/*
+ * Open a file on disk with the CRC/VZIP stdio layers like we use
+ * for BK sfiles.
+ *
+ * mode can be "r", "w" or "a".
+ * size is the estimated file size and is only used for "w"
+ *
+ * Returns 0 on failure.
+ */
+FILE *
+fopen_bkfile(char *file, char *mode, u64 size)
+{
+	FILE	*f;
+
+	unless (f = fopen(file, (mode[0] == 'a') ? "r+": mode)) return (0);
+
+	return (fdopen_bkfile(f, mode, size));
 }

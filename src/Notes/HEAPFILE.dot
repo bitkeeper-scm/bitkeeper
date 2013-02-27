@@ -1,0 +1,108 @@
+digraph g {
+	graph [
+	       compound=true
+	       rankdir = "LR"
+	       ];
+	node [
+	      fontsize = "16"
+	      shape = "record"
+	      ];
+	edge [headport=w];
+
+subgraph cluster_5 {
+	label = "struct sccs";
+	style = "dashed";
+	
+"sccs" [
+	label = "tip| ... | <rkey>RKHEAD(s) | <h>heap | <d1>slist1 | <d2>slist2 | symlist"
+	];
+};
+
+
+subgraph cluster_3 {
+	label = "struct d1_t";
+	style = "dashed";
+	
+"delta1" [
+	  label = " { <d0>0: | NULL } | { <d1>1: | <p1>parent | merge | date | flags } | { <d2>2: | <p2>parent | merge | date | flags } | { <d3>3: | <p3>parent | merge | date | flags } | { <d4>4: | <p3>parent | merge | date | flags }"
+	  ];
+};
+
+
+subgraph cluster_4 {
+	label = "struct d2_t";
+	style = "dashed";
+	
+"delta2" [
+	  label = " { <d0>0: | NULL } | { <d1>1: | user | path | comment | <w1>ckeys } | { <d2>2: | user | path | comment | <w2>ckeys } | { <d3>3: | user | path | comment | <w3>ckeys } | { <d4>4: | user | path | comment | <w4>ckeys }"
+	  ];
+};
+
+
+sccs:d1 -> delta1 [headport="nw"];
+
+#delta1:p3 -> delta1:d2;
+#delta1:p2 -> delta1:d1;
+#delta1:p1 -> delta1:d0;
+
+subgraph cluster_0 {
+	label = "heap";
+
+subgraph cluster_1 {
+	label = "";
+	style = "invis";
+	
+	"ckeys1" [
+		  label = " { <w11> rk3 | dkey  |  0 }"
+		  ];
+	"ckeys2" [
+		  label = " { <w21> rk1 | dkey | <w22> rk2 | dkey | 0 }"
+		  ];
+
+	"ckeys3" [
+		  label = " { <w31> rk2 | dkey | <w32> rk4 | dkey | 0 }"
+		  ];
+	};
+	
+subgraph cluster_2 {
+	label = "";
+	style = "invis";
+	
+	"rk1" [
+	       label = " { <off> next | rkey1 } "
+	       ];
+
+	"rk2" [
+	       label = " { <off> next_off | rkey2 } "
+	       ];
+	"rk3" [
+	       label = " { <off> next_off | rkey3 } "
+	       ];
+	"rk4" [
+	       label = " { <off> 0 | rkey4 } "
+	       ];
+	};
+	
+};
+
+// line to the edit of the cluster
+sccs:h -> ckeys3 [lhead=cluster_0];
+
+sccs:d2 -> delta2 [headport="nw"] ;
+
+delta2:w2 -> ckeys1;
+delta2:w3 -> ckeys2;
+delta2:w4 -> ckeys3;
+
+sccs:rkey -> rk1:off [headport="sw"];
+rk1:off -> rk2;
+rk2:off -> rk3;
+rk3:off -> rk4;
+
+ckeys1:w11 -> rk3;
+ckeys2:w21 -> rk1;
+ckeys2:w22 -> rk2;
+ckeys3:w31 -> rk2;
+ckeys3:w32 -> rk4;
+
+}

@@ -802,19 +802,13 @@ commitSnapshot(void)
 	char	save[MAXPATH];
 
 	/*
-	 * XXX
+	 * We don't save a backup of the ChangeSet heaps in
+	 * [12].ChangeSet.  Since we will only append to these files
+	 * if we rollback the s.ChangeSet file everything will still
+	 * work.
 	 *
-	 * We need a plan for saving a backup of the heap file in case
-	 * commit fails and needs to be reverted.  In the normal case
-	 * I don't really have to do anything.  Any new stuff added to
-	 * the end of the heap will be ignored.  And for extra credit
-	 * I could remember the size of the heap and truncate the
-	 * extra stuff off the end.  But if the heap gets resorted as
-	 * part of the commit then the restored ChangeSet file will
-	 * point at all the wrong offsets.
-	 *
-	 * Just hardlinking the file doesn't work because then we can't
-	 * append to the end.
+	 * Saving a hardlink back wouldn't work because bk would copy
+	 * the file when it need to append new data to the end.
 	 */
 	for (i = 0; ext[i]; i++) {
 		sprintf(file, "SCCS/%c.ChangeSet", ext[i]);
@@ -827,7 +821,7 @@ commitSnapshot(void)
 }
 
 /*
- * If rc!=0, then commit failed and we need to store the state saved by
+ * If rc!=0, then commit failed and we need to restore the state saved by
  * commitSnapshot().  Otherwise delete that state.
  */
 private void

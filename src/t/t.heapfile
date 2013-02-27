@@ -1,0 +1,15 @@
+
+echo $N Demonstrate commit restoring cset after repack ..............$NL
+commercial project
+echo hi > foo
+bk new $Q foo
+
+# create a 2M comment
+perl -e 'print ((("x" x 79) . "\n") x 30000)' > C
+bk _mv BitKeeper/etc/SCCS/s.config SAVE
+bk commit $Q -YC 2>ERR && fail -f ERR expect failure
+bk _mv SAVE BitKeeper/etc/SCCS/s.config
+bk _test -f SCCS/2.ChangeSet || fail should have second heap
+bk repocheck $Q || fail
+bk _test -f SCCS/2.ChangeSet && fail should have repacked
+echo OK

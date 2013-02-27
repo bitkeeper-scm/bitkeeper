@@ -794,16 +794,33 @@ clone(char **av, remote *r, char *local, char **envVar)
 		if (opts->bkfile != -1) {
 			features_set(0,
 			    FEAT_BKFILE|FEAT_BWEAVE, opts->bkfile);
+
+			/*
+			 * If the user does --compat or --upgrade-repo
+			 * then require a full check.  This will also
+			 * repack the heap after it gets converted.
+			 */
+			bk_setConfig("partial_check", "0");
 		}
 	}
 	if ((features_test(0, FEAT_BKFILE) != 0)
 	    != ((rmt_features & (FEAT_BKFILE|FEAT_bSFILEv1)) != 0)) {
 		p = features_fromBits(features_bits(0));
+		/* switch to (or from) binary */
 		T_PERF("switch binary to %s", p);
 		free(p);
 		systemf("bk -?BK_NO_REPO_LOCK=YES -r admin -Zsame");
 	}
-
+	if (features_test(0, FEAT_BWEAVE) &&
+	    ((rmt_features & (FEAT_BKFILE|FEAT_bSFILEv1)) != 0) &&
+	    !(rmt_features & FEAT_BWEAVE)) {
+		/*
+		 * If we cloned a BK repo without BWEAVE, but we need
+		 * to enable BWEAVE.  Just rewrite the ChangeSet file
+		 * to create the BWEAVE.
+		 */
+		systemf("bk -?BK_NO_REPO_LOCK=YES admin -Zsame ChangeSet");
+	}
 	if (opts->link) lclone(getenv("BKD_ROOT"));
 	nested_check();
 

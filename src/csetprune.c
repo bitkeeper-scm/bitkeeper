@@ -263,6 +263,7 @@ private	int
 csetprune(Opts *opts)
 {
 	int	empty_nodes = 0, ret = 1;
+	int	i;
 	int	status;
 	ser_t	d = 0;
 	char	*partition_key = 0;
@@ -283,8 +284,17 @@ csetprune(Opts *opts)
 			    "%s: linking cset file failed\n", prog);
 			goto err;
 		}
-		// ignore errors
-		fileCopy(proj_fullpath(opts->refProj, CHANGESET_H), CHANGESET_H);
+		// cp CHANGESET_H1 & CHANGESET_H2
+		strcpy(buf, proj_root(opts->refProj));
+		p = buf + strlen(buf);
+		*p++ = '/';
+		for (i = 1; i <= 2; i++) {
+			sprintf(p, "SCCS/%d.ChangeSet", i);
+			if (exists(buf) && fileCopy(buf, p)) {
+				perror(buf);
+				goto err;
+			}
+		}
 
 		strcpy(buf, "BitKeeper/log/features");
 		p = proj_fullpath(opts->refProj, "BitKeeper/log/features");

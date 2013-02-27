@@ -8,7 +8,8 @@ checkbk()
 	grep -q BKFILE "$FEAT" || fail $FEAT missing BKFILE
 	ENC=`bk prs -hnd:ENCODING: -r+ "$1"/ChangeSet`
 	test X"$ENC" = XBK,bweave || fail "$1" not BKfile $ENC
-	bk _test -f "$1"/SCCS/h.ChangeSet || fail no heap @ $1
+	bk _test -f "$1"/SCCS/1.ChangeSet || fail no heap @ $1
+	test -d "$1"/.bk/SCCS || fail $1 no remap
 
 	# call recursively for all components
 	bk repotype -q "$1" && {
@@ -27,7 +28,8 @@ checkascii()
 	grep -q BKFILE "$FEAT" && fail $FEAT has BKFILE
 	ENC=`bk prs -hnd:ENCODING: -r+ "$1"/ChangeSet`
 	test X"$ENC" = Xascii,gzip || fail "$1" is BKfile $ENC
-	bk _test -f "$1"/SCCS/h.ChangeSet && fail heap @ $1
+	bk _test -f "$1"/SCCS/1.ChangeSet && fail heap @ $1
+	test -d "$1"/SCCS || fail $1 not SCCS
 
 	# call recursively for all components
 	bk repotype -q "$1" && {
@@ -140,4 +142,32 @@ for h in ascii bk; do
 	_BK_DEVELOPER= bk repocheck $Q || fail
 	bk repocheck $Q || fail should pass now
 done
+echo OK
+
+echo $N Do a clone --upgrade-repo from an non-bweave BK repo ........$NL
+cd "$HERE"
+bk clone $Q nest.ascii nest.oldbk || fail
+cd nest.oldbk
+
+# fake upgrade ascii repo to use BK sfiles (still with SCCS dirs)
+echo BKFILE >> BitKeeper/log/features
+_BK_DEVELOPER= bk repocheck $Q || fail
+
+bk -e --headers prs -hnd:ENCODING: -r+ ChangeSet > GOT || fail
+cat <<EOF > WANT
+#### 1/4 comp.ascii.ascii ####
+BK
+#### 2/4 comp.ascii.bk ####
+BK
+#### 3/4 newcomp ####
+BK
+#### 4/4 . ####
+BK
+EOF
+cmpfiles GOT WANT
+cd ..
+
+# show --upgrade-repo switches to remap and bweave
+bk clone $Q --upgrade-repo nest.oldbk nest.bin2bweave || fail
+checkbk nest.bin2bweave
 echo OK

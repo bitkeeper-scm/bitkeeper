@@ -187,7 +187,7 @@ dumpStats(sccs *s)
 {
 	int	size;
 	int	i, len, cnt;
-	u32	off;
+	u32	off, off2;
 	char	*t;
 	ser_t	d;
 	char	*names[] = {
@@ -211,10 +211,10 @@ dumpStats(sccs *s)
 			unless (off = *(&CLUDES_INDEX(s, d) + i)) continue;
 			if ((i == 2) && BWEAVE(s)) {
 				/* encoded cset weave */
-				while (HEAP_U32LOAD(s->heap.buf + off)) {
-					len = strlen(s->heap.buf + off + 4) + 1;
-					htotal[i] += 4 + len;
-					off += 4 + len;
+				while (RKOFF(s, off)) {
+					off2 = NEXTKEY(s, off);
+					htotal[i] += (off2 - off);
+					off = off2;
 				}
 				htotal[i] += 4;
 				++hcnt[i];
@@ -251,9 +251,10 @@ dumpStats(sccs *s)
 
 	if (BWEAVE(s)) {
 		cnt = len = 0;
-		for (off = RKHEAD(s); off; off = RKNEXT(s, off)) {
+		for (off = s->rkeyHead; off; off = RKNEXT(s, off)) {
 			++cnt;
-			len += sizeof(off) + strlen(RKSTR(s, off)) + 1;
+			off2 = NEXTKEY(s, off);
+			len += (off2 - off);
 		}
 		printf(wfmt,
 		    "rootkeys", psize(len),  (100.0 * len) / s->heap.len,

@@ -492,8 +492,6 @@ check_main(int ac, char **av)
 		}
 	}
 	repos_update(cset);
-	sccs_free(cset);
-	cset = 0;
 	if (errors && fix) {
 		// LMXXX - how lame is this?
 		// We could keep track of a fixnames, fixxflags, etc
@@ -539,8 +537,18 @@ check_main(int ac, char **av)
 				features_set(0, FEAT_POLY, 0);
 			}
 		}
+		if (all &&
+		    !(flags & INIT_NOCKSUM) && bin_needHeapRepack(cset)) {
+			bin_heapRepack(cset);
+			if (sccs_newchksum(cset)) {
+				perror(CHANGESET);
+				errors++;
+			}
+		}
 	}
-out:
+out:	sccs_free(cset);
+	cset = 0;
+
 	if (doMarks) {
 		if (errors) undoDoMarks();
 		freeLines(doMarks, free);
@@ -1314,6 +1322,12 @@ fetch_changeset(int forceCsetFetch)
 			exit(1);
 		}
 	}
+	/*
+	 * save any existing heapfiles
+	 */
+	if (exists(CHANGESET_H1)) rename(CHANGESET_H1, CHANGESET_H1 ".save");
+	if (exists(CHANGESET_H2)) rename(CHANGESET_H2, CHANGESET_H2 ".save");
+
 	f = sfiocmd(0, i);
 	fprintf(f, "%s\n", proj_rootkey(0));
 	if (pclose(f) != 0) {

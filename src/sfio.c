@@ -268,6 +268,7 @@ nextfile(char *buf)
 		eof = 1;
 	}
 	unless (opts->more && (i <= nLines(opts->more))) return (0);
+	opts->key2path = 0;
 	sprintf(buf, "%s\n", opts->more[i++]);
 	return (buf);
 }
@@ -324,6 +325,16 @@ sfio_out(void)
 			free(sfile);
 			free(gfile);
 			if (lstat(buf, &sb)) continue;
+			if (streq(buf, CHANGESET)) {
+				if (exists(CHANGESET_H1)) {
+					opts->more = addLine(opts->more,
+					    strdup(CHANGESET_H1));
+				}
+				if (exists(CHANGESET_H2)) {
+					opts->more = addLine(opts->more,
+					    strdup(CHANGESET_H2));
+				}
+			}
 		} else {
 			if (lstat(buf, &sb)) {
 				perror(buf);
