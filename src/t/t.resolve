@@ -165,10 +165,15 @@ echo OK
 
 echon Test listing of files in conflict ...........................
 cd "$HERE"
+cd proj
+echo foo > uuencode
+bk new $Q -Euuencode uuencode
+bk commit -yuuencode $Q || exit 1
+cd ..
 bk clone $Q proj copy3 || exit 1
 for d in proj copy3; do
 	cd "$HERE"/$d
-	for f in file dir1/ff dir2/gg "dir2/space file" ; do
+	for f in uuencode file dir1/ff dir2/gg "dir2/space file" ; do
 		bk edit $Q "$f"
 		echo $d >> "$f"
 		BK_USER=$d bk delta $Q -y"$d side" "$f" || exit 1
@@ -189,6 +194,7 @@ dir1/ff
 dir2/gg
 dir2/space file
 file (renamed) LOCAL=file.copy3 REMOTE=file.proj
+uuencode (binary)
 EOF
 bk conflicts > GOT
 test $? = 1 || fail
@@ -216,6 +222,7 @@ BitKeeper/RENAMES/1 has 1 conflict block
     GCA path:     file
     Local path:   file.copy3
     Remote path:  file.proj
+uuencode (binary)
 EOF
 bk conflicts -v > GOT
 test $? = 1 || fail
@@ -239,6 +246,7 @@ BitKeeper/RENAMES/1 has 1 conflict block
     GCA path:     file
     Local path:   file.copy3
     Remote path:  file.proj
+uuencode (binary)
 EOF
 bk conflicts -vv > GOT
 test $? = 1 || fail
@@ -252,11 +260,15 @@ dir2/space file
 EOF
 # l - resolves file.copy3 rename conflict
 # ul - resolves file.copy3 content conflict
+# ul - resolves uuencode content conflict
 # S - skips dir1/ff
 # ul - resolves dir2/gg content conflict
 # q - leaves 'dir2/space file' unresolved
 bk resolve -l << EOF > OUT 2>&1
 l
+ul
+this is the comment
+.
 ul
 this is the comment
 .
@@ -293,6 +305,7 @@ file.proj has 1 conflict block
     GCA path:     file
     Local path:   file.copy3
     Remote path:  file.proj
+uuencode (binary)
 EOF
 bk conflicts -v > GOT
 test $? = 1 || fail
@@ -309,6 +322,7 @@ cat <<EOF > WANT
 dir1/ff has 1 conflict block
 dir2/space file has 1 conflict block
 file.copy3 has 1 conflict block
+uuencode (binary)
 EOF
 bk conflicts -v > GOT
 test $? = 1 || fail
@@ -324,7 +338,7 @@ bk abort -f
 bk pull -R $Q
 # l - resolves file.copy3 rename conflict
 # ul - resolves dir2/gg content conflict
-bk resolve -d -l -x'*/ff' -x'dir2/s*' -x'f*' <<EOF > OUT 2>&1
+bk resolve -d -l -x'*/ff' -x'dir2/s*' -x'f*' -x'u*' <<EOF > OUT 2>&1
 l
 ul
 this is the comment
@@ -334,6 +348,7 @@ cat <<EOF > WANT
 dir1/ff has 1 conflict block
 dir2/space file has 1 conflict block
 file.copy3 has 1 conflict block
+uuencode (binary)
 EOF
 bk conflicts -v > GOT
 test $? = 1 || fail
@@ -359,6 +374,7 @@ cat <<EOF > WANT
 dir1/ff has 1 conflict block
 dir2/gg has 1 conflict block
 dir2/space file has 1 conflict block
+uuencode (binary)
 EOF
 bk conflicts -v > GOT
 test $? = 1 || fail
@@ -386,6 +402,7 @@ cat <<EOF > WANT
 dir1/ff has 1 conflict block
 dir2/gg has 1 conflict block
 dir2/space file has 1 conflict block
+uuencode (binary)
 EOF
 bk conflicts -v > GOT
 test $? = 1 || fail
@@ -872,7 +889,7 @@ bk _rm -f 'SCCS/r.space file'
 cd ..
 bk get $Q -eM -g ChangeSet
 bk commit $Q -R -c 2>ERR && fail -f ERR
-grep -q 'check: ChangeSet 1.17 is a merge but is missing a required merge delta' ERR || fail -f ERR wrong error
+grep -q 'check: ChangeSet 1.18 is a merge but is missing a required merge delta' ERR || fail -f ERR wrong error
 echo OK
 
 echo $N Automerge a trigger after automerging gone ..................$NL

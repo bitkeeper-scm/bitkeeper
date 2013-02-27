@@ -16,6 +16,24 @@ bk changes
    is undocumented because we find it unlikely anyone wanted the old
    behavior).
 ============================================================================
+Release notes for BitKeeper version 5.4.5 (released Feb 27, 2013)
+
+Minor bugfix release to fix a problem in bk commit, conflicts and ignore.
+
+Bug fixes:
+
+  - When a user incorrectly removes a component from a nested collection
+    with 'rm -rf',  a subsequent commit was leaving the repository in
+    an incorrect state.  Now a error message is generated and the commit
+    is aborted.
+
+  - When using the "dir -prune" form of bk ignore, if "dir" was at the root
+    of the repository it would not get ignored.  
+
+  - bk conflicts no longer tries to treat binaries as files that may be
+    automerged, it lists them as "filename (binary)".
+
+============================================================================
 Release notes for BitKeeper version 5.4.4 (released Dec 7, 2012)
 
 This is a bugfix release - the main fix is the failed commit problem
