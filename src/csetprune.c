@@ -277,12 +277,15 @@ csetprune(Opts *opts)
 		// Note: no config file but valid lease so things work
 		verbose((stderr, "Processing all files...\n"));
 		sccs_mkroot(".");
-		strcpy(buf, CHANGESET);
-		if (fileLink(proj_fullpath(opts->refProj, CHANGESET), buf)) {
+		if (fileLink(proj_fullpath(opts->refProj, CHANGESET),
+		    CHANGESET)) {
 			fprintf(stderr,
 			    "%s: linking cset file failed\n", prog);
 			goto err;
 		}
+		// ignore errors
+		fileCopy(proj_fullpath(opts->refProj, CHANGESET_H), CHANGESET_H);
+
 		strcpy(buf, "BitKeeper/log/features");
 		p = proj_fullpath(opts->refProj, "BitKeeper/log/features");
 		if (exists(p) && fileCopy(p, buf)) {

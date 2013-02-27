@@ -101,7 +101,7 @@ _make_repo() {
 		bk setup -C -a -f gcc
 		bk setup -C -a -f gdb
 		bk alias set -C DEFAULT ALL
-		bk commit -q -y"attach gcc, gdb"
+		bk commit -S -q -y"attach gcc, gdb"
 		touch gcc/BitKeeper/tmp/saveme
 		touch gdb/BitKeeper/tmp/saveme
 
@@ -250,7 +250,8 @@ mvcomp() {
 	 test "BitKeeper/log/PRODUCT" || exit 1
 	 mv "$1" "$2"
 	 bk edit $Q "$2"/ChangeSet || exit 2
-	 _BK_MV_OK=1 bk delta -f $Q -y"Rename $1 -> $2" "$2"/ChangeSet || exit 3
+	 bk --cd="$2" commit $Q -S -Fy"Rename $1 -> $2" "$2"/ChangeSet - \
+	     < /dev/null || fail 3
 	 echo "$2" > "$2"/BitKeeper/log/COMPONENT
 	 bk idcache -q
 }

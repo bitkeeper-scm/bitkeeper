@@ -939,7 +939,10 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		s->heap = fake->heap;
 		FREE(fake);
 		s->bitkeeper = 1;
-		if (perfile) sccscopy(s, perfile);
+		if (perfile) {
+			sccscopy(s, perfile);
+			s->encoding_in = sccs_encoding(s, 0, 0);
+		}
 	}
 	/* serial is not stable */
 	if (top = sccs_top(s)) {

@@ -2285,6 +2285,10 @@ bam_convert_main(int ac, char **av)
 	}
 	ERROR((stderr, "redoing ChangeSet entries ...\n"));
 	s = sccs_csetInit(INIT_MUSTEXIST);
+
+	/* force new cset file to be written in SCCS format */
+	s->encoding_out = sccs_encoding(s, 0, 0);
+	s->encoding_out &= ~(E_BK|E_BWEAVE);
 	sccs_startWrite(s);
 	delta_table(s, 0);
 	sccs_rdweaveInit(s);
@@ -2319,6 +2323,8 @@ bam_convert_main(int ac, char **av)
 	sccs_wrweaveDone(s);
 	sccs_rdweaveDone(s);
 	sccs_finishWrite(s);
+	/* now need to convert it back to BK format */
+	if (BKFILE(s)) sccs_newchksum(s);
 	sccs_free(s);
 	fprintf(stderr, "\n");
 	if (nLines(keys)) {

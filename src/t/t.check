@@ -835,13 +835,12 @@ echo OK
 
 echo $N Test multi tip commit .......................................$NL
 cd "$HERE/project.noremap"
+bk pull $Q -R ../proj4 || fail
+bk _cp RESYNC/SCCS/s.ChangeSet SAVE
+bk resolve $Q || fail
 bk repocheck -q || fail
-bk _get -e -r1.6 $Q ChangeSet
-bk delta -f $Q -ywhatever ChangeSet
-bk edit $Q foobar
-echo foo >> foobar
-bk delta $Q -ywhatever foobar
-bk commit $Q -ywhatever > ERR 2>&1 && fail
+bk _cp SAVE SCCS/s.ChangeSet
+bk repocheck $Q 2> ERR && fail -f ERR should fail
 grep -q "unmerged leaf" ERR || fail
 echo OK
 

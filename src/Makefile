@@ -168,7 +168,7 @@ OBJ =	bkver.o cmd.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o \
-	help.o here.o here_check.o hostme.o http.o \
+	heapdump.o help.o here.o here_check.o hostme.o http.o \
 	idcache.o isascii.o info.o inskeys.o \
 	key2rev.o key2path.o kill.o kv.o \
 	lease.o \

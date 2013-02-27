@@ -4,7 +4,7 @@ echo foo > foo
 bk delta -i -l -ywhatever $Q foo
 
 if [ X"$_BKFILE_REGRESSIONS" = Xyes ]
-then	DEFAULT=BKFILE,SAMv3
+then	DEFAULT=BKFILE,BWEAVE,SAMv3
 else	DEFAULT=SAMv3
 fi
 

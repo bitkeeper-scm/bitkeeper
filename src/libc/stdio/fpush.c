@@ -11,6 +11,7 @@ fpush(FILE **fp, FILE *new)
 {
 	if (!new) return (-1);
 	assert(*fp != new);	/* avoid loop */
+	assert(!new->_prevfh);
 	new->_prevfh = *fp;
 	*fp = new;
 	return (0);

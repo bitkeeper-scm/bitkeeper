@@ -21,7 +21,7 @@ scat_main(int ac, char **av)
 		return (1);
 	}
 	s->encoding_out = sccs_encoding(s, 0, 0);
-	s->encoding_out &= ~(E_BK|E_COMP);
+	s->encoding_out &= ~(E_BK|E_BWEAVE|E_COMP);
 	catSfile(s);
 	sccs_free(s);
 	return (0);

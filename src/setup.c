@@ -139,8 +139,10 @@ setup_main(int ac, char **av)
 		/* add local features file until the product file takes over */
 		features_set(0, FEAT_BKFILE,
 		    features_test(in_prod, FEAT_BKFILE));
+		features_set(0, FEAT_BWEAVE,
+		    features_test(in_prod, FEAT_BWEAVE));
 	} else {
-		features_set(0, FEAT_BKFILE, !sccs_compat);
+		features_set(0, FEAT_BKFILE|FEAT_BWEAVE, !sccs_compat);
 	}
 
 	if (exists(s_config)) {
@@ -247,6 +249,7 @@ err:			unlink("BitKeeper/etc/config");
 		unless (Fprintf("BitKeeper/log/COMPONENT", "%s\n", relpath)) {
 			perror("BitKeeper/log/COMPONENT");
 		}
+		proj_reset(0);
 	}
 
 	features_set(0, FEAT_REMAP, !proj_hasOldSCCS(0));

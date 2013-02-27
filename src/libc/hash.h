@@ -331,6 +331,25 @@ hash_fetchStrMem(hash *h, char *key)
 	return (h->ops->fetch(h, key, strlen(key) + 1));
 }
 
+private inline i32
+hash_fetchStrI32(hash *h, char *key)
+{
+	unless (h) {
+		errno = EINVAL;
+		return (0);
+	}
+	if (h->ops->fetch(h, key, strlen(key) + 1)) {
+		return (*(i32 *)h->vptr);
+	} else {
+		/*
+		 * Return 0 when the key isn't found.  The user can
+		 * test h->kptr to distingush from a real 0 stored in
+		 * the hash.
+		 */
+		return (0);
+	}
+}
+
 private inline u32
 hash_fetchStrU32(hash *h, char *key)
 {

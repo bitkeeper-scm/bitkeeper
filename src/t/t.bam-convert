@@ -61,7 +61,7 @@ echo "BAM:on" >> BitKeeper/etc/config
 bk delta $Q -yBAM BitKeeper/etc/config
 bk commit $Q -yBAM 
 # Compressed cset files had a bug, make sure it doesn't come back.
-bk admin -Zgzip ChangeSet
+bk admin -Zgzip ChangeSet || fail
 bk bam convert 16k > OUT 2>&1 || {
 	echo failed
 	cat OUT
@@ -79,7 +79,7 @@ test -f busted && {
 echo OK
 
 echo $N Make sure that it actually converted data ...................$NL
-bk encoding data > GOT
+bk prs -hnd':GFILE: :ENC:' -r+ data > GOT
 echo data BAM > WANT
 cmpfiles WANT GOT
 echo OK
@@ -118,7 +118,7 @@ bk bam convert 8192 > OUT 2>&1 || {
 echo OK
 
 echo $N Make sure that it actually converted data2 ..................$NL
-bk encoding data2 > GOT
+bk prs -hnd':GFILE: :ENC:' -r+ data2 > GOT
 echo data2 BAM > WANT
 cmpfiles WANT GOT
 echo OK

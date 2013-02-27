@@ -122,7 +122,7 @@ cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 	int	i, error, sign, added = 0;
 	ser_t	d, e, p;
 	ser_t	serial = 0; /* serial number for 'd' */ 
-	char	*t;
+	char	*t, *dkey;
 	char	**syms = 0;
 	char	key[MAXKEY];
 	int	keep;
@@ -282,7 +282,24 @@ done:
 	 */
 	assert(s->iloc < s->nloc);
 	s->locs[s->iloc].serial = serial;
-	if (s->locs[s->iloc].dF = dF) {
+	if (!fast && dF && BWEAVE(s)) {
+		char	**keys = 0;
+
+		//assert(!fast);
+		while (t = fgetline(dF)) {
+			if (streq(t, "0a0")) continue;
+			++added;
+			assert(strneq(t, "> ", 2));
+			t += 2;
+			dkey = separator(t);
+			*dkey++ = 0;
+			keys = addLine(keys, strdup(t));
+			keys = addLine(keys, strdup(dkey));
+		}
+		ADDED_SET(s, d, added);
+		weave_set(s, d, keys);
+		freeLines(keys, free);
+	} else if (s->locs[s->iloc].dF = dF) {
 		unless (fast) {
 			/*
 			 * Fix up ADDED(s, d)
@@ -333,7 +350,7 @@ cset_write(sccs *s, int spinners, int fast)
 			perror("table");
 			goto err;
 		}
-		if (sccs_csetPatchWeave(s)) goto err;
+		if (!BWEAVE_OUT(s) && sccs_csetPatchWeave(s)) goto err;
 	}
 	if (sccs_finishWrite(s)) goto err;
 	return (0);
@@ -410,16 +427,54 @@ fastWeave(sccs *s)
 			index++;
 		}
 	}
+	i = s->iloc - 1; /* set index to final element in array */
+	assert(i > 0); /* base 1 data structure */
+
+	if (BWEAVE_OUT(s) && lp[i].dF) {
+		char	*t;
+		int	added = 0;
+		char	*rkey, *dkey;
+		char	**keys = 0;
+
+		while (t = fgetline(lp[i].dF)) {
+			if (t[0] == 'I') {
+				/*
+				 * d = 0 - skipkeys
+				 * ! d & D_REMOTE - delta already here
+				 */
+				d = lp[atoi(t+1)].serial;
+				unless (d && (FLAGS(s, d) & D_REMOTE)) d = 0;
+				added = 0;
+			} else if (t[0] == '>') {
+				unless (d) continue;
+				++added;
+				rkey = t+1;
+				dkey = separator(rkey);
+				*dkey++ = 0;
+				keys = addLine(keys, strdup(rkey));
+				keys = addLine(keys, strdup(dkey));
+			} else if (t[0] == 'E') {
+				unless (d) continue;
+				assert(!WEAVE_INDEX(s, d));
+				ADDED_SET(s, d, added);
+				weave_set(s, d, keys);
+				freeLines(keys, free);
+				keys = 0;
+			}
+		}
+	}
+
 	if (delta_table(s, 0)) {
 		perror("table");
 		goto err;
 	}
 
-	i = s->iloc - 1; /* set index to final element in array */
-	assert(i > 0); /* base 1 data structure */
-
 	/* doit */
-	rc = sccs_fastWeave(s, weavemap, patchmap, lp[i].dF);
+	if (BWEAVE_OUT(s)) {
+		rc = 0;
+	} else {
+		rc = sccs_fastWeave(s, weavemap, patchmap, lp[i].dF);
+	}
 err:	free(patchmap);
 	if (weavemap) free(weavemap);
 	return (rc);

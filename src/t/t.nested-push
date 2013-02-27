@@ -529,9 +529,7 @@ cd "$HERE"
 bk _rm -fr project copy
 nested project
 bk clone $Q . ../copy
-mv gcc gcc4
-bk edit $Q gcc4/ChangeSet
-_BK_MV_OK=1 bk delta $Q -y'rename' gcc4/ChangeSet
+mvcomp gcc gcc4
 bk commit $Q -S -y'rename component' || fail
 bk push $Q ../copy 2> ERR && {
 	echo fix test

@@ -170,7 +170,7 @@ _mode() {		# /* undoc? 2.0 */
 
 # shorthand
 _encoding() {		# /* undoc? 2.0 */
-	bk prs -hr+ -nd':GFILE: :ENC:' "$@"
+	bk prs -hr+ -nd':GFILE: :ENCODING:' "$@"
 }
 
 # shorthand

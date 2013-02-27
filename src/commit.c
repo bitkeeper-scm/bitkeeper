@@ -473,7 +473,7 @@ done:	if (unlink(pendingFiles)) perror(pendingFiles);
  * Read in sfile and extend the cset weave
  */
 private int
-getfilekey(char *sfile, char *rev, sccs *cset, ser_t cset_d, FILE *weave)
+getfilekey(char *sfile, char *rev, sccs *cset, ser_t cset_d, char ***keys)
 {
 	sccs	*s;
 	u8	*v, *p;
@@ -494,7 +494,7 @@ getfilekey(char *sfile, char *rev, sccs *cset, ser_t cset_d, FILE *weave)
 		return (0);
 	}
 	unless (d = sccs_findrev(s, rev)) {
-		fprintf(stderr, "cset: can't find %s in %s\n", rev, buf);
+		fprintf(stderr, "cset: can't find %s in %s\n", rev, sfile);
 		return (1);
 	}
 	assert(!(FLAGS(s, d) & D_CSET));
@@ -505,7 +505,7 @@ getfilekey(char *sfile, char *rev, sccs *cset, ser_t cset_d, FILE *weave)
 	 * marked delta key and use that.
 	 */
 	sccs_sdelta(s, sccs_ino(s), buf);
-	fputs(buf, weave);
+	*keys = addLine(*keys, strdup(buf));
 	if (v = mdbm_fetch_str(cset->mdbm, buf)) {
 		/* subtract off old value */
 		for (p = v; *p; sum -= *p++);
@@ -515,7 +515,7 @@ getfilekey(char *sfile, char *rev, sccs *cset, ser_t cset_d, FILE *weave)
 		sum += ' ' + '\n';
 	}
 	sccs_sdelta(s, d, buf);
-	fprintf(weave, " %s\n", buf);
+	*keys = addLine(*keys, strdup(buf));
 	for (p = buf; *p; p++) sum += *p; /* sum of new deltakey */
 	sccs_free(s);
 
@@ -533,7 +533,7 @@ getfilekey(char *sfile, char *rev, sccs *cset, ser_t cset_d, FILE *weave)
  * Close the cset sccs* when done.
  */
 private ser_t
-mkChangeSet(sccs *cset, char *files, FILE *weave)
+mkChangeSet(sccs *cset, char *files, char ***keys)
 {
 	ser_t	d, p;
 	char	*line, *rev, *t;
@@ -639,7 +639,7 @@ mkChangeSet(sccs *cset, char *files, FILE *weave)
 		while (line = fgetline(f)) {
 			rev = strrchr(line, '|');
 			*rev++ = 0;
-			getfilekey(line, rev, cset, d, weave);
+			getfilekey(line, rev, cset, d, keys);
 		}
 		fclose(f);
 	}
@@ -684,7 +684,7 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	int	i, error = 0;
 	int	fd0;
 	char	*line;
-	FILE	*weave;
+	char	**keys = 0;
 	FILE	*out;
 
 	T_PERF("csetCreate");
@@ -694,11 +694,9 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 		exit(1);
 	}
 
-	weave = fmem();
-
 	/* write change set to diffs */
-	unless (d = mkChangeSet(cset, files, weave)) {
-		fclose(weave);
+	unless (d = mkChangeSet(cset, files, &keys)) {
+		freeLines(keys, free);
 		return (-1);
 	}
 
@@ -735,29 +733,31 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	sccs_insertdelta(cset, d, d);
 	sccs_renumber(cset, 0);
 	sccs_startWrite(cset);
+	if (BWEAVE_OUT(cset)) weave_set(cset, d, keys);
 	EACH (syms) addsym(cset, d, 1, syms[i]);
 	if (delta_table(cset, 0)) {
 		perror("table");
 		error = -1;
 		goto out;
 	}
-	out = sccs_wrweaveInit(cset);
-	/*
-	 * to prune all empty: if (ftell(weave))
-	 * to prune empty but leave 1.0, add "|| (d == TREE(cset))"
-	 */
-	fprintf(out, "\001I %d\n", d);
-	fputs(fmem_peek(weave, 0), out);
-	fprintf(out, "\001E %d\n", d);
-	unless (flags & DELTA_EMPTY) {
-		sccs_rdweaveInit(cset);
-		while (line = sccs_nextdata(cset)) {
-			fputs(line, out);
-			fputc('\n', out);
+	unless (BWEAVE_OUT(cset)) {
+		out = sccs_wrweaveInit(cset);
+		fprintf(out, "\001I %d\n", d);
+		EACH(keys) {
+			fprintf(out, "%s %s\n", keys[i], keys[i+1]);
+			i++;
 		}
-		sccs_rdweaveDone(cset);
+		fprintf(out, "\001E %d\n", d);
+		unless (flags & DELTA_EMPTY) {
+			sccs_rdweaveInit(cset);
+			while (line = sccs_nextdata(cset)) {
+				fputs(line, out);
+				fputc('\n', out);
+			}
+			sccs_rdweaveDone(cset);
+		}
+		sccs_wrweaveDone(cset);
 	}
-	sccs_wrweaveDone(cset);
 	if (sccs_finishWrite(cset)) {
 		error = -1;
 		goto out;
@@ -767,7 +767,7 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	unlink(cset->pfile);
 	cset->state &= ~(S_GFILE|S_PFILE);
 
-out:	fclose(weave);
+out:	freeLines(keys, free);
 	comments_done();
 	return (error);
 }
@@ -801,6 +801,21 @@ commitSnapshot(void)
 	char	file[MAXPATH];
 	char	save[MAXPATH];
 
+	/*
+	 * XXX
+	 *
+	 * We need a plan for saving a backup of the heap file in case
+	 * commit fails and needs to be reverted.  In the normal case
+	 * I don't really have to do anything.  Any new stuff added to
+	 * the end of the heap will be ignored.  And for extra credit
+	 * I could remember the size of the heap and truncate the
+	 * extra stuff off the end.  But if the heap gets resorted as
+	 * part of the commit then the restored ChangeSet file will
+	 * point at all the wrong offsets.
+	 *
+	 * Just hardlinking the file doesn't work because then we can't
+	 * append to the end.
+	 */
 	for (i = 0; ext[i]; i++) {
 		sprintf(file, "SCCS/%c.ChangeSet", ext[i]);
 		if (exists(file)) {

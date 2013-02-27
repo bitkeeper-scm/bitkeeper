@@ -341,13 +341,8 @@ err:				if (revsDB) mdbm_close(revsDB);
 	 */
 
 	sccs_rdweaveInit(cset);
-	d = 0;
 	/* t = root, v = deltakey */
-	while (d = cset_rdweavePair(cset, &t, &v)) {
-		unless (isData(t)) {
-			if (t[1] == 'I') d = atoi(&t[3]);
-			continue;
-		}
+	while (d = cset_rdweavePair(cset, 0, &t, &v)) {
 		unless (componentKey(v)) continue;
 		unless (c = nested_findKey(n, t)) {
 			c = new(comp);
@@ -479,7 +474,6 @@ err:				if (revsDB) mdbm_close(revsDB);
 				}
 			}
 		}
-		v[-1] = ' ';	/* restore possibly in mem weave */
 	}
 	if (poly) hash_free(poly);
 	sccs_rdweaveDone(cset);

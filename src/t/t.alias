@@ -67,11 +67,12 @@ echo OK
 
 echo $N Show that changing an alias in HERE will populate ...........$NL
 cd "$HERE"
-bk clone -l $Q project copy3
+bk clone -l $Q project copy3 || fail
 cd copy3
-bk alias new $Q STUFF gdb
+bk alias new $Q STUFF gdb || fail
 test -d gcc || fail
-bk alias set $Q DEFAULT STUFF
+bk repocheck $Q || fail
+bk alias set $Q DEFAULT STUFF || fail
 test -d gcc && fail
 echo OK
 

@@ -222,7 +222,7 @@ r2c(char *file, RANGE *rarg)
 	/* Stick the non-poly prod csets in the answer */
 	d = 0;
 	sccs_rdweaveInit(cset);
-	while (d = cset_rdweavePair(cset, &rkey, &dkey)) {
+	while (d = cset_rdweavePair(cset, 0, &rkey, &dkey)) {
 		unless (hash_deleteStr(keys, dkey)) {
 			serlist = addSerial(serlist, d);
 			unless (hash_count(keys)) break;

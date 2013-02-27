@@ -996,10 +996,10 @@ loadcset(sccs *cset)
 	}
 	db = hash_new(HASH_MEMHASH);
 	sccs_rdweaveInit(cset);
+	if (BWEAVE(cset)) cset_firstPair(cset, cset->rstop);
 	last = 0;
-	while (d = cset_rdweavePair(cset, &rkey, &dkey)) {
+	while (d = cset_rdweavePair(cset, RWP_DSET, &rkey, &dkey)) {
 		if (d < cset->rstart) break;
-		unless (FLAGS(cset, d) & D_SET) continue;
 		if (d != last) {
 			if (keylist) {
 				cstate	cs = { keylist, files, inc, exc };
@@ -1184,9 +1184,16 @@ cset(hash *state, sccs *sc, char *compKey, char *pkey, FILE *f, char *dspec)
 			 * with -u and -/re/ patterns: the product
 			 * cset && the component cset need to pass
 			 * the want() test.  Is anding useful?
+			 * Set the range to be used in loadcset();
 			 */
+			sc->rstop = 0;
+			sc->rstart = 0;
 			for (e = TABLE(sc); e >= TREE(sc); e--) {
-				if (want(sc, e)) FLAGS(sc, e) |= D_SET;
+				if (want(sc, e)) {
+					FLAGS(sc, e) |= D_SET;
+					unless (sc->rstop) sc->rstop = e;
+					sc->rstart = e;
+				}
 			}
 		}
 		/*
@@ -1207,7 +1214,7 @@ cset(hash *state, sccs *sc, char *compKey, char *pkey, FILE *f, char *dspec)
 			assert(rstate->csetDB);
 		}
 		if (compKey) {
-			for (e = TABLE(sc); e >= TREE(sc); e--) {
+			for (e = sc->rstop; e >= sc->rstart; e--) {
 				FLAGS(sc, e) &= ~D_SET;
 			}
 		}
@@ -1215,7 +1222,7 @@ cset(hash *state, sccs *sc, char *compKey, char *pkey, FILE *f, char *dspec)
 	if (compKey) {
 		d = sccs_findKey(sc, compKey);
 		assert(d && pkey);
-		poly_range(sc, d, pkey);
+		poly_range(sc, d, pkey);	/* sets rstop and rstart */
 	}
 
 	/*

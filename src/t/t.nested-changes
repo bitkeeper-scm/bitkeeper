@@ -691,12 +691,7 @@ cd ../gdb
 bk mv file3 moveit3
 bk commit -S $Q -ymvfiles
 cd ..
-mv gcc newcc
-bk edit $Q newcc/ChangeSet
-_BK_MV_OK=1 bk ci $Q -ymoved newcc/ChangeSet
-cd newcc
-bk commit -S $Q -ymvfiles
-cd ..
+mvcomp gcc newcc
 bk commit -S $Q -yallmv
 bk changes -vrTAG > AFTER
 cmpfiles BEFORE AFTER
@@ -910,7 +905,6 @@ bk changes -qSR -nd:COMPONENT::DPN:@:REV: "$HERE"/project/newcc > OUT || {
 	fail -f OUT
 }
 cat <<EOF > WANT
-newcc/ChangeSet@1.5
 newcc/ChangeSet@1.4
 newcc/ChangeSet@1.3
 newcc/ChangeSet@1.2

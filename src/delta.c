@@ -302,6 +302,13 @@ delta_main(int ac, char **av)
 			errors |= 1;
 			continue;
 		}
+		if (CSET(s)) {
+			unless (dash) {
+				fprintf(stderr, "%s: skipping ChangeSet\n",
+				    prog);
+			}
+			goto next;
+		}
 		if (mode) d = sccs_parseArg(s, d, 'O', mode, 0);
 		lease_check(s->proj, O_WRONLY, s);
 		if (df & DELTA_AUTO) {

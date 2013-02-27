@@ -49,6 +49,10 @@ echo OK
 
 echo $N Create a copy of the project using send / receive ...........$NL
 cd "$HERE/project"
+# this dance removes the empty 1.0 weave entry
+bk admin -B ChangeSet
+bk admin -Bnone ChangeSet
+
 bk send $Q -  > ../bkpatch
 cd ..
 bk receive -iaT copy2 < bkpatch || fail

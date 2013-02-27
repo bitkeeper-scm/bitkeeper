@@ -1,7 +1,5 @@
 #include "sccs.h"
 
-private	void	dumpStats(sccs *s);
-
 /*
  * We require the 3 argument sa_sigaction handler for signals instead of
  * the older 1 argument sa_handler.
@@ -37,7 +35,7 @@ sccs_addStr(sccs *s, char *str)
 	old = s->heap.buf;
 	data_append(&s->heap, str, strlen(str)+1);
 	if (CSET(s) && (s->heap.buf != old)) {
-		T_PERF("%s: did realloc() of heap", s->gfile);
+		T_PERF("%s: did realloc() of heap adding %s", s->gfile, str);
 	}
 	return (off);
 }
@@ -68,8 +66,9 @@ sccs_addUniqStr(sccs *s, char *str)
 	symbol	*sym;
 
 	unless (str) return (0);
-	unless (h = s->uniqheap) {
-		h = s->uniqheap = hash_new(HASH_MEMHASH);
+	unless (h = s->uniqheap) h = s->uniqheap = hash_new(HASH_MEMHASH);
+	unless (s->uniqdeltas) {
+		s->uniqdeltas = 1;
 
 		if (CSET(s)) {
 			T_PERF("%s: loading existing uniqheap data", s->gfile);
@@ -105,6 +104,76 @@ sccs_addUniqStr(sccs *s, char *str)
 	return (off);
 }
 
+/*
+ * Used for rootkeys in the weave, add the key to the heap and collapse
+ * duplicates together.
+ */
+u32
+sccs_addUniqKey(sccs *s, char *key)
+{
+	hash	*h;
+	u32	off, old;
+
+	unless (h = s->uniqheap) h = s->uniqheap = hash_new(HASH_MEMHASH);
+	unless (s->uniqkeys) {
+		s->uniqkeys = 1;
+		T_PERF("%s: loading existing rootkey data", s->gfile);
+		/*
+		 * This is the first time we have added a rootkey so
+		 * we need to walk the list of existing rootkeys and
+		 * add them to the uniq hash
+		 */
+		for (off = RKHEAD(s); off; off = RKNEXT(s, off)) {
+			hash_insertStrI32(h, RKSTR(s, off), off + sizeof(off));
+		}
+		T_PERF("done rootkey data");
+	}
+	if (hash_insertStrI32(h, key, 0)) {
+		/* new string */
+
+		// update rkey list
+		off = s->heap.len;
+		old = htole32(RKHEAD(s));
+		data_append(&s->heap, &old, sizeof(old));
+		RKHEAD(s) = off;
+
+		// add string to heap
+		off = sccs_addStr(s, h->kptr);
+		*(i32 *)h->vptr = off;
+
+		TRACE("add(%s) = %s(%d)", key, s->heap.buf + off, off);
+	}
+	off = *(i32 *)h->vptr;
+	return (off);
+}
+
+/*
+ * New weave entry for d.  The 'keys' array alternates root and delta
+ * keys.  Write _all_ the rootkeys first as the delta keys for a cset
+ * need to be written concatenated.  It wouldn't work if rootkeys and
+ * delta keys were written interleaved.
+ */
+void
+weave_set(sccs *s, ser_t d, char **keys)
+{
+	int	i;
+	u32	off;
+	DATA	w = {0};
+
+	/* All dkeys need to be concatenated; write all rkeys to heap first */
+	EACH(keys) {
+ 		off = htole32(sccs_addUniqKey(s, keys[i]));
+ 		data_append(&w, &off, sizeof(off));
+ 		data_append(&w, keys[i+1], strlen(keys[i+1]) + 1);
+		++i;
+	}
+	WEAVE_SET(s, d, s->heap.len);
+ 	data_append(&s->heap, w.buf, w.len);
+ 	free(w.buf);
+ 	off = 0;
+ 	data_append(&s->heap, &off, sizeof(off));
+}
+
 private void
 swaparray(void *data, int len)
 {
@@ -116,20 +185,19 @@ swaparray(void *data, int len)
 	for (i = 0; i < len; i++) p[i] = le32toh(p[i]);
 }
 
-/* default paging size */
-#define	       BLOCKSZ		(256<<10)
+u32	swapsz;			/* size bk swaps data from file */
 
 #ifdef	PAGING
 
 // assumed OS page size
-#define        PAGESZ		(pagesz)
+#define        PAGESZ		((long)pagesz)
 // round 'a' up to next next multiple of PAGESZ
 #define        PAGEUP(a)	((((unsigned long)(a) - 1) | (PAGESZ-1)) + 1)
 // round 'a' down to the start of the current page
 #define        PAGEDOWN(a)	((u8 *)((unsigned long)(a) & ~(PAGESZ-1)))
 
 struct	MAP {
-	sccs	*s;
+	FILE	*f;
 	char	*name;
 	u8	*bstart;	/* start of whole block */
 	int	blen;		/* length of whole block */
@@ -143,7 +211,7 @@ struct	MAP {
 	u8	*endp;		/* page containing last byte in range */
 };
 private	MAP	**maps;
-private	long	pagesz;
+private	u32	pagesz;		/* size of system's page tables */
 
 private	void *
 allocPage(size_t size)
@@ -159,11 +227,11 @@ map_block(MAP *map)
 		perror("mprotect");
 		exit(1);
 	}
-	if (fseek(map->s->pagefh, map->off, SEEK_SET)) {
+	if (fseek(map->f, map->off, SEEK_SET)) {
 		perror("fseek");
 		return (-1);
 	}
-	if (fread(map->start, 1, map->len, map->s->pagefh) != map->len) {
+	if (fread(map->start, 1, map->len, map->f) != map->len) {
 		perror("fread");
 		return (-1);
 	}
@@ -216,8 +284,8 @@ faulthandler(int sig, siginfo_t *si, void *unused)
 			perror("map_block");
 			exit(1);
 		}
-		T_O1("fault in %s-%s load %dK at %.1f%%",
-		    map->s->gfile, map->name,
+		T_O1("fault in %s load %dK at %.1f%%",
+		    map->name,
 		    map->len / 1024,
 		    (100.0 * (addr - map->bstart))/map->blen);
 		if ((i > 1) &&
@@ -269,17 +337,20 @@ faulthandler(int sig, siginfo_t *si, void *unused)
  * if keep==1 then map in any remaining data
  */
 void
-dataunmap(sccs *s, int keep)
+dataunmap(FILE *f, int keep)
 {
 	int	i;
 	MAP	*m;
+	int	cnt = 0;
+	char	*name = 0;
 
-	unless (s->pagefh) return;
 	EACH_STRUCT(maps, m, i) {
-		if (m->s != s) continue;
+		if (m->f != f) continue;
 
 		if (keep) {
 			map_block(m);
+			++cnt;
+			name = m->name;
 		} else {
 			if (mprotect(m->startp,
 				m->endp - m->startp + PAGESZ,
@@ -296,6 +367,7 @@ dataunmap(sccs *s, int keep)
 		freeLines((char **)maps, 0);
 		maps = 0;
 	}
+	if (cnt) T_PERF("dataunmap loaded %d blocks from %s", cnt, name);
 }
 
 #else // no PAGING apis available
@@ -307,7 +379,7 @@ allocPage(size_t size)
 }
 
 void
-dataunmap(sccs *s, int keep)
+dataunmap(FILE *f, int keep)
 {
 	return;
 }
@@ -321,7 +393,8 @@ dataunmap(sccs *s, int keep)
  * but only loaded on demand as needed.
  */
 void *
-datamap(sccs *s, char *name, u32 esize, u32 nmemb, long off, int byteswap)
+datamap(char *name, u32 esize, u32 nmemb,
+    FILE *f, long off, int byteswap, int *didpage)
 {
 	u8	*start;		/* address of data from file */
 	u8	*mstart;	/* address to be returned */
@@ -337,30 +410,35 @@ datamap(sccs *s, char *name, u32 esize, u32 nmemb, long off, int byteswap)
 
 	struct	sigaction sa;
 
-	unless (pagesz) pagesz = sysconf(_SC_PAGESIZE);
-	assert(pagesz && !(pagesz & (pagesz-1))); /* non-zero power of 2 */
+	unless (pagesz) {
+		pagesz = sysconf(_SC_PAGESIZE);
+		/* non-zero power of 2? */
+		assert(pagesz && !(pagesz & (pagesz-1)));
+	}
 #else
 	paging = 0;
 #endif
 	if (getenv("_BK_NO_PAGING")) paging = 0;
-	/* NOTE: set pagesz even if not paging: it is used in bin_sortHeap() */
-	if (p = getenv("_BK_PAGING_PAGESZ")) {
-		s->pagesz = strtoul(p, &p, 10);
-		switch(*p) {
-		    case 'k': case 'K':
-			s->pagesz *= 1024;
-			break;
-		    case 'm': case 'M':
-			s->pagesz *= 1024 * 1024;
-			break;
+	/* NOTE: set swapsz even if not paging: it is used in bin_sortHeap() */
+	unless (swapsz) {
+		if (p = getenv("_BK_PAGING_PAGESZ")) {
+			swapsz = strtoul(p, &p, 10);
+			switch(*p) {
+			    case 'k': case 'K':
+				swapsz *= 1024;
+				break;
+			    case 'm': case 'M':
+				swapsz *= 1024 * 1024;
+				break;
+			}
+		} else {
+			swapsz = (256<<10); /* default paging size */
 		}
-	} else {
-		s->pagesz = BLOCKSZ;
 	}
 	if (IS_LITTLE_ENDIAN()) byteswap = 0;
 	len = nmemb * esize;
 	if (!paging ||
-	    (!getenv("_BK_FORCE_PAGING") && (len < 4*s->pagesz))) {
+	    (!getenv("_BK_FORCE_PAGING") && (len < 4*swapsz))) {
 		/* too small to mess with */
 		paging = 0;
 	}
@@ -374,13 +452,16 @@ datamap(sccs *s, char *name, u32 esize, u32 nmemb, long off, int byteswap)
 		start = mstart + esize;
 	}
 	unless (paging) {
-nopage:		fseek(s->fh, off, SEEK_SET);
-		fread(start, 1, len, s->fh);
+#ifdef PAGING
+nopage:
+#endif
+		fseek(f, off, SEEK_SET);
+		fread(start, 1, len, f);
 		if (byteswap) swaparray(start, len);
 		return (mstart);
 	}
 #ifdef PAGING
-
+	*didpage = 1;
 	if (mprotect(PAGEDOWN(start),
 	    PAGEDOWN(start + len - 1) - PAGEDOWN(start) + PAGESZ,
 	    PROT_NONE)) {
@@ -389,17 +470,7 @@ nopage:		fseek(s->fh, off, SEEK_SET);
 		goto nopage;
 	}
 
-	/*
-	 * save s->fh in s->pagefh, and eventually clear s->fh (bin_mkgraph)
-	 * so slib.c will open new filehandle for weave
-	 */
-	if (s->pagefh) {
-		assert(s->pagefh == s->fh);
-	} else {
-		s->pagefh = s->fh;
-	}
-
-	T_DEBUG("map %s:%s %p-%p", s->gfile, name, start, start+len);
+	T_DEBUG("map %s %p-%p", name, start, start+len);
 
 	unless (maps) {
 		sa.sa_flags = SA_SIGINFO;
@@ -412,12 +483,12 @@ nopage:		fseek(s->fh, off, SEEK_SET);
 			perror("sigaction");
 		}
 	}
-	if (vzip_findSeek(s->pagefh, off, len, s->pagesz, &lens)) {
+	if (vzip_findSeek(f, off, len, swapsz, &lens)) {
 		/* fgzip failed so we assume it wasn't using fgzip... */
 		rlen = len;
-		while (rlen > s->pagesz) {
-			addArray(&lens, &s->pagesz);
-			rlen -= s->pagesz;
+		while (rlen > swapsz) {
+			addArray(&lens, &swapsz);
+			rlen -= swapsz;
 		}
 		addArray(&lens, &rlen);
 	}
@@ -426,7 +497,7 @@ nopage:		fseek(s->fh, off, SEEK_SET);
 		rlen = lens[i];
 		assert(rlen > 0);
 		map = new(MAP);
-		map->s = s;
+		map->f = f;
 		map->name = name;
 		map->bstart = start;
 		map->blen = len;
@@ -447,242 +518,34 @@ nopage:		fseek(s->fh, off, SEEK_SET);
 	return (mstart);
 }
 
-int
-heapdump_main(int ac, char **av)
-{
-	int	c;
-	int	stats = 0;
-	char	*name;
-	sccs	*s;
-	ser_t	d;
-	char	*t;
-	symbol	*sym;
-
-	while ((c = getopt(ac, av, "s", 0)) != -1) {
-		switch (c) {
-		    case 's': stats = 1; break;
-		    default: bk_badArg(c, av);
-		}
-	}
-
-	for (name = sfileFirst(av[0], &av[optind], 0);
-	     name; name = sfileNext()) {
-
-		s = sccs_init(name, INIT_MUSTEXIST);
-		unless (s) continue;
-
-		if (stats) {
-			dumpStats(s);
-			printf("\n");
-			sccs_free(s);
-			continue;
-		}
-
-		for (d = TABLE(s); d >= TREE(s); d--) {
-			delta_print(s, d);
-			printf("\n");
-		}
-
-		if (s->symlink) printf("symlist:\n");
-		EACHP(s->symlist, sym) {
-			if (sym->symname) {
-				printf("symname: %s\n", SYMNAME(s, sym));
-			}
-			if (sym->ser) {
-				printf("ser: %d (%s)\n",
-				    sym->ser, REV(s, sym->ser));
-			}
-			if (sym->meta_ser) {
-				printf("meta_rev: %d (%s)\n",
-				    sym->meta_ser,
-				    REV(s, sym->meta_ser));
-			}
-			printf("\n");
-		}
-
-		printf("weave:\n");
-		sccs_rdweaveInit(s);
-		while (t = sccs_nextdata(s)) {
-			if (*t == '\001') {
-				printf("^A");
-				++t;
-			}
-			printf("%s\n", t);
-		}
-		sccs_rdweaveDone(s);
-
-		sccs_free(s);
-	}
-	return (0);
-}
-
-const char *delta_flagNames[] = {
-	"INARRAY",		/* 0 */
-	"NONEWLINE",		/* 1 */
-	0,			/* 2 */
-	0,			/* 3 */
-	"META",			/* 4 */
-	"SYMBOLS",		/* 5 */
-	0,			/* 6 */
-	"DANGLING",		/* 7 */
-	"TAG",			/* 8 */
-	"SYMGRAPH",		/* 9 */
-	"SYMLEAF",		/* 10 */
-	0,			/* 11 */
-	"CSET",			/* 12 */
-	0,			/* 13 */
-	0,			/* 14 */
-	0,			/* 15 */
-	0,			/* 16 */
-	0,			/* 17 */
-	0,			/* 18 */
-	0,			/* 19 */
-	0,			/* 20 */
-	0,			/* 21 */
-	0,			/* 22 */
-	"REMOTE",		/* 22 */
-	"LOCAL",		/* 23 */
-	"ERROR",		/* 24 */
-	"BADFORM",		/* 25 */
-	"BADREV",		/* 26 */
-	"RED",			/* 27 */
-	"GONE",			/* 28 */
-	"BLUE",			/* 29 */
-	"ICKSUM",		/* 30 */
-	"SET"			/* 31 */
-};
-
 /*
- * A print routine that can be used to examine the fields in a delta*
- * This is useful in gdb with 'call delta_print(s, d)
+ * Load a 32-bit number that is stored on the heap in little-endian
+ * format.  On x86 this is just '*(u32 *)ptr'.  The ptr is not aligned
+ * on a 32-bit boundry so on machines that fault with unaligned loads
+ * we need to either do a byte-wise load or we need to use the native
+ * unaligned load instructions.  Also on big-endian machines we have
+ * to byte-swap this number after loading.  Notice the two transforms
+ * are independant and a given machine can use either one.
  */
-void
-delta_print(sccs *s, ser_t d)
+u32
+_heap_u32load(void *ptr)
 {
-	int	i, c;
+	u32	ret;
+#ifdef	__GNUC__
+	/*
+	 * This is an efficient way to tell GCC that a 32-bit value is
+	 * stored unaligned and needs to be loaded.  It will used
+	 * native unaligned load instructions if they exist in the
+	 * current architecture.
+	 */
+	struct u32_u {
+		u32 v;
+	} __attribute__((__packed__));
 
-	// XXX: Not supposed to be able to be unused 
-	unless (FLAGS(s, d)) {
-		printf("serial %d unused\n", d);
-		return;
-	}
-
-	printf("serial: %d (%s)\n", d, REV(s, d));
-
-	/* serial print */
-#define SPRINT(f) if (f(s, d)) \
-		printf(#f ": %d (%s)\n", \
-		f(s, d), REV(s, f(s, d)))
-	SPRINT(PARENT);
-	SPRINT(MERGE);
-	SPRINT(PTAG);
-	SPRINT(MTAG);
-#undef	SPRINT
-
-	printf("a/d/s: %d/%d/%d\n", ADDED(s, d), DELETED(s, d), SAME(s, d));
-	printf("sum: %u\n", SUM(s, d));
-
-	printf("date: %u", (u32)DATE(s, d));
-	if (DATE_FUDGE(s, d)) printf("-%d", (u32)DATE_FUDGE(s, d));
-	printf(" (%s)\n", delta_sdate(s, d));
-
-	if (MODE(s, d)) printf("mode: %o\n", MODE(s, d));
-	if (XFLAGS(s, d)) {
-		printf("xflags: %x (%s)\n", XFLAGS(s, d), xflags2a(XFLAGS(s, d)));
-	}
-	printf("flags: %x (", FLAGS(s, d));
-	c = 0;
-	for (i = 1; i < 32; i++) { /* skip INARRAY */
-		if (FLAGS(s, d) & (1 << i)) {
-			if (c) printf(",");
-			c = 1;
-			if (delta_flagNames[i]) {
-				printf("%s", delta_flagNames[i]);
-			} else {
-				printf("0x%x", (1 << i));
-			}
-		}
-	}
-	printf(")\n");
-
-	/* heap print */
-#define HPRINT(f) \
-    if (f##_INDEX(s, d)) printf(#f ": %s\n", f(s, d))
-	HPRINT(CLUDES);
-	HPRINT(BAMHASH);
-	HPRINT(RANDOM);
-	HPRINT(USERHOST);
-	HPRINT(PATHNAME);
-	HPRINT(SORTPATH);
-	HPRINT(ZONE);
-	HPRINT(SYMLINK);
-	HPRINT(CSETFILE);
-#undef	HPRINT
-	if (HAS_COMMENTS(s, d)) printf("comments: %s", COMMENTS(s, d));
-}
-
-private void
-dumpStats(sccs *s)
-{
-	int	size;
-	int	i, off, sym;
-	char	*t;
-	ser_t	d;
-	char	*names[] = {
-		"cludes", "comments", "bamhash", "random",
-		"userhost", "pathname", "sortPath", "zone",
-		"symlink", "csetFile"
-	};
-	int	htotal[10] = {0};
-	hash	*seen = hash_new(HASH_MEMHASH);
-
-	printf("file: %s\n", s->sfile);
-	printf("filesize: %7s\n", psize(s->size));
-	printf("    heap: %7s\n", psize(s->heap.len));
-
-	for (d = TREE(s); d <= TABLE(s); d++) {
-		for (i = 0; i < 10; i++) {
-			unless (off = *(&CLUDES_INDEX(s, d) + i)) continue;
-			if (hash_insert(seen, &off, sizeof(off), 0, 0)) {
-				htotal[i] += strlen(s->heap.buf + off) + 1;
-			}
-		}
-	}
-	size = 0;
-	for (i = 0; i < 10; i++) {
-		unless (htotal[i]) continue;
-		printf("%10s: %7s %4.1f%%\n",
-		    names[i], psize(htotal[i]),
-		    (100.0 * htotal[i]) / s->heap.len);
-		size += htotal[i];
-	}
-	size = s->heap.len - size;
-	sym = 0;
-	EACH(s->symlist) {
-		unless (off = s->symlist[i].symname) continue;
-		if (hash_insert(seen, &off, sizeof(off), 0, 0)) {
-			sym += strlen(s->heap.buf + off) + 1;
-		}
-	}
-	printf("%10s: %7s %4.1f%%\n",
-	    "symnames", psize(sym),  (100.0 * sym) / s->heap.len);
-	size -= sym;
-	if (size) {
-		printf("%10s: %7s %4.1f%%\n",
-		    "unused", psize(size),
-		    (100.0 * size) / s->heap.len);
-	}
-	printf("  table1: %7s\n", psize(sizeof(d1_t) * (TABLE(s) + 1)));
-	printf("  table2: %7s\n", psize(sizeof(d2_t) * (TABLE(s) + 1)));
-	if (nLines(s->symlist)) {
-		printf(" symlist: %7s\n",
-		    psize(nLines(s->symlist) * sizeof(symbol)));
-	}
-	size = 0;
-	sccs_rdweaveInit(s);
-	while (t = sccs_nextdata(s)) {
-		size += strlen(t)+1;
-	}
-	sccs_rdweaveDone(s);
-	printf("   weave: %7s\n", psize(size));
+	ret = ((struct u32_u *)ptr)->v;
+#else
+	/* this is a slow portable way to load an unaligned value */
+	memcpy(&ret, ptr, sizeof(ret));
+#endif
+	return (le32toh(ret));
 }

@@ -1037,19 +1037,15 @@ cset_diffs(cset_t *cs, ser_t ser)
 char **
 cset_mkList(sccs *cset)
 {
-	char	**list;
-	char	cat[MAXPATH];
+	ser_t	d;
+	char	*rkey, *dkey;
+	char	**list = 0;
 
-	bktmp(cat, "catZ");
-	/*
-	 * Get the list of key tuples in a lines array
-	 */
-	if (sccs_cat(cset, GET_SERIAL|GET_NOHASH|PRINT, cat)) {
-		sccs_whynot("cset", cset);
-		unlink(cat);
-		return ((char **)-1);
+	sccs_rdweaveInit(cset);
+	while (d = cset_rdweavePair(cset, RWP_DSET, &rkey, &dkey)) {
+		list = addLine(list,
+		    aprintf("%d\t%s %s", d, rkey, dkey));
 	}
-	list = file2Lines(0, cat);
-	unlink(cat);
+	sccs_rdweaveDone(cset);
 	return (list);
 }

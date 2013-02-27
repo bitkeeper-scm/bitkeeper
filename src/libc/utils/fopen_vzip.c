@@ -468,7 +468,7 @@ zipSeek(void *cookie, fpos_t offset, int whence)
 		assert(whence == SEEK_SET);
 	}
 	if (offset < 0) {
-		fseek(fz->fin, offset, SEEK_SET);
+		fseeko(fz->fin, offset, SEEK_SET);
 		fz->szp = 0;
 		FREE(fz->szarr);
 err:		errno = EINVAL;

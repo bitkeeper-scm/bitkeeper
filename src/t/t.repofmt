@@ -7,7 +7,8 @@ checkbk()
 
 	grep -q BKFILE "$FEAT" || fail $FEAT missing BKFILE
 	ENC=`bk prs -hnd:ENCODING: -r+ "$1"/ChangeSet`
-	test X"$ENC" = XBK || fail "$1" not BKfile $ENC
+	test X"$ENC" = XBK,bweave || fail "$1" not BKfile $ENC
+	bk _test -f "$1"/SCCS/h.ChangeSet || fail no heap @ $1
 
 	# call recursively for all components
 	bk repotype -q "$1" && {
@@ -26,6 +27,7 @@ checkascii()
 	grep -q BKFILE "$FEAT" && fail $FEAT has BKFILE
 	ENC=`bk prs -hnd:ENCODING: -r+ "$1"/ChangeSet`
 	test X"$ENC" = Xascii,gzip || fail "$1" is BKfile $ENC
+	bk _test -f "$1"/SCCS/h.ChangeSet && fail heap @ $1
 
 	# call recursively for all components
 	bk repotype -q "$1" && {
@@ -133,7 +135,7 @@ for h in ascii bk; do
 		bk admin -B file2
 	fi
 	bk repocheck -q 2>ERR && fail -f ERR should fail
-	test `wc -l < ERR` -eq 1 || fail
+	test `wc -l < ERR` -eq 1 || fail -f ERR
 	grep -q "format wrong file1" ERR || fail
 	_BK_DEVELOPER= bk repocheck $Q || fail
 	bk repocheck $Q || fail should pass now

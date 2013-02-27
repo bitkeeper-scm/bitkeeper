@@ -427,7 +427,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 
 	/* build up weave data structure */
 	sccs_rdweaveInit(s);
-	while (ins_ser = cset_rdweavePair(s, &rkey, &dkey)) {
+	while (ins_ser = cset_rdweavePair(s, 0, &rkey, &dkey)) {
 		sum = 0;
 		for (e = rkey; *e; e++) sum += *e;
 		for (e = dkey; *e; e++) sum += *e;

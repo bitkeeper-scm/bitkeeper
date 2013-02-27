@@ -220,11 +220,12 @@ int	checking_rmdir(char *dir);
 #define E_DATAENC	0x3
 #define E_COMP		0x4
 
-#define	E_ASCII		0		/* no encoding */
-#define	E_UUENCODE	1		/* uuenecode it (traditional) */
-#define	E_BAM		2		/* store data in BAM pool */
-#define	E_GZIP		4		/* gzip the data */
-#define	E_BK		8		/* new binary sfile format */
+#define	E_ASCII		0x00		/* no encoding */
+#define	E_UUENCODE	0x01		/* uuenecode it (traditional) */
+#define	E_BAM		0x02		/* store data in BAM pool */
+#define	E_GZIP		0x04		/* gzip the data */
+#define	E_BK		0x08		/* new binary sfile format */
+#define	E_BWEAVE	0x10		/* binary weave encoding */
 
 #define	HAS_GFILE(s)	((s)->state & S_GFILE)
 #define	HAS_PFILE(s)	((s)->state & S_PFILE)
@@ -241,6 +242,8 @@ int	checking_rmdir(char *dir);
 #define	GZIP_OUT(s)	(((s)->encoding_out & E_COMP) == E_GZIP)
 #define	BKFILE(s)	(((s)->encoding_in & E_BK) != 0)
 #define	BKFILE_OUT(s)	(((s)->encoding_out & E_BK) != 0)
+#define	BWEAVE(s)	(((s)->encoding_in & E_BWEAVE) != 0)
+#define	BWEAVE_OUT(s)	(((s)->encoding_out & E_BWEAVE) != 0)
 #define	CSET(s)		((s)->state & S_CSET)
 #define	CONFIG(s)	((s)->state & S_CONFIG)
 #define	READ_ONLY(s)	((s)->state & S_READ_ONLY)
@@ -359,6 +362,7 @@ typedef	enum {
 #define	CSETS_OUT	"BitKeeper/etc/csets-out"
 #define	IGNOREPOLY	"BitKeeper/etc/ignore-poly"
 #define	CHANGESET	"SCCS/s.ChangeSet"
+#define	CHANGESET_H	"SCCS/h.ChangeSet"
 #define	CCHANGESET	"SCCS/c.ChangeSet"
 #define	GCHANGESET	"ChangeSet"
 #define	getIDCACHE(p)	(proj_hasOldSCCS(p) ? \
@@ -500,7 +504,8 @@ typedef struct delta {
 
 #define	HAS_CLUDES(s, d)	((s)->slist2[d].cludes != 0)
 #define	HAS_COMMENTS(s, d)	((s)->slist2[d].comments != 0)
-#define	HAS_BAMHASH(s, d)	((s)->slist2[d].bamhash != 0)
+#define	HAS_BAMHASH(s, d)	(!CSET(s) && ((s)->slist2[d].bamhash != 0))
+#define	HAS_WEAVE(s, d)		(CSET(s) && ((s)->slist2[d].bamhash != 0))
 #define	HAS_RANDOM(s, d)	((s)->slist2[d].random != 0)
 #define	HAS_USERHOST(s, d)	((s)->slist2[d].userhost != 0)
 #define	HAS_PATHNAME(s, d)	((s)->slist2[d].pathname != 0)
@@ -512,6 +517,7 @@ typedef struct delta {
 #define	CLUDES_INDEX(s, d)	((s)->slist2[d].cludes)
 #define	COMMENTS_INDEX(s, d)	((s)->slist2[d].comments)
 #define	BAMHASH_INDEX(s, d)	((s)->slist2[d].bamhash)
+#define	WEAVE_INDEX(s, d)	BAMHASH_INDEX(s, d)
 #define	RANDOM_INDEX(s, d)	((s)->slist2[d].random)
 #define	USERHOST_INDEX(s, d)	((s)->slist2[d].userhost)
 #define	PATHNAME_INDEX(s, d)	((s)->slist2[d].pathname)
@@ -523,6 +529,7 @@ typedef struct delta {
 #define	CLUDES_SET(s, d, val)	(CLUDES_INDEX(s, d) = sccs_addStr((s), val))
 #define	COMMENTS_SET(s, d, val)	(COMMENTS_INDEX(s, d) = sccs_addStr((s), val))
 #define	BAMHASH_SET(s, d, val)	(BAMHASH_INDEX(s, d) = sccs_addStr((s), val))
+#define	WEAVE_SET(s, d, val)	(BAMHASH_INDEX(s, d) = val)
 #define	RANDOM_SET(s, d, val)	(RANDOM_INDEX(s, d) = sccs_addStr((s), val))
 #define	USERHOST_SET(s, d, val)	(USERHOST_INDEX(s, d) = sccs_addUniqStr((s), val))
 #define	PATHNAME_SET(s, d, val)	(PATHNAME_INDEX(s, d) = sccs_addUniqStr((s), val))
@@ -553,6 +560,7 @@ typedef struct {
 #define	REV(s, d)	delta_rev(s, d)
 #define	CLUDES(s, d)	((s)->heap.buf + CLUDES_INDEX(s, d))
 #define	BAMHASH(s, d)	((s)->heap.buf + BAMHASH_INDEX(s, d))
+#define	WEAVE(s, d)	BAMHASH(s, d)
 #define	COMMENTS(s, d)	((s)->heap.buf + COMMENTS_INDEX(s, d))
 #define	RANDOM(s, d)	((s)->heap.buf + RANDOM_INDEX(s, d))
 
@@ -659,10 +667,12 @@ struct sccs {
 	char	*defbranch;	/* defbranch, if set */
 	off_t	size;		/* size of mapping */
 	DATA	heap;		/* all strings in delta structs */
+	u32	heap_loadsz;	/* size of heap at load time */
 	hash	*uniqheap;	/* help collapse unique strings in hash */
-	u32	pagesz;		/* size of paging blocks */
+	u32	rkeyHead;	/* head of linked list of rootkeys in heap */
 	u32	*mg_symname;	/* symbol list use by mkgraph() */
-	FILE	*pagefh;	/* fh for paging dataheap */
+	FILE	*pagefh;	/* fh for paging from sfile */
+	FILE	*heapfh;	/* fh for paging dataheap */
 	FILE	*fh;		/* current input file handle (may be stacked) */
 	FILE	*outfh;		/* fh for writing x.file (may be stacked) */
 	char	*sfile;		/* SCCS/s.foo.c */
@@ -685,6 +695,8 @@ struct sccs {
 	ser_t	local;		/* sccs_resolveFiles() sets this */
 	ser_t	*remap;		/* scompress remap old ser to new ser */
 	ser_t	w_d;		/* current d for cset_rdweavePair() */
+	u32	w_off;		/* next weave line for sccs_nextdata() */
+	char	*w_buf;		/* buf for weave line in sccs_nextdata() */
 	sum_t	 cksum;		/* SCCS chksum */
 	sum_t	 dsum;		/* SCCS delta chksum */
 	u32	added;		/* lines added by this delta (u32!) */
@@ -737,6 +749,8 @@ struct sccs {
 	u32	rdweave:1;	/* currently reading weave */
 	u32	wrweave:1;	/* currently writing weave */
 	u32	ckwrap:1;	/* running with fopen_cksum */
+	u32	uniqkeys:1;	/* rkeys loaded in uniqheap */
+	u32	uniqdeltas:1;	/* deltas loaded in uniqheap */
 };
 
 typedef struct {
@@ -939,6 +953,18 @@ typedef struct {
 	u32	out_diffstat:1;		/* print diffstat output */
 } df_opt;
 
+#if	defined(__x86_64__) || defined(__i386__)
+#define	HEAP_U32LOAD(ptr)	(*(u32 *)(ptr))
+#else
+#define	HEAP_U32LOAD(ptr)	_heap_u32load(ptr)
+#endif
+u32	_heap_u32load(void *ptr);
+
+#define	RKHEAD(s)	((s)->rkeyHead)
+#define	RKNEXT(s, off)	(HEAP_U32LOAD((s)->heap.buf + (off)))
+#define	RKSTR(s, off)	((s)->heap.buf + (off) + sizeof(u32))
+#define	HEAP(s, off)	((s)->heap.buf + (off))
+
 int	sccs_admin(sccs *sc, ser_t d, u32 flgs,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_adminFlag(sccs *sc, u32 flags);
@@ -1011,6 +1037,7 @@ char	**cset_mkList(sccs *cset);
 int	cset_bykeys(const void *a, const void *b);
 int	cset_byserials(const void *a, const void *b);
 int	sccs_newchksum(sccs *s);
+ser_t	getCksumDelta(sccs *s, ser_t d);
 ser_t	*addSerial(ser_t *space, ser_t s);
 void	sccs_perfile(sccs *, FILE *);
 sccs	*sccs_getperfile(sccs *, FILE *, int *);
@@ -1252,6 +1279,7 @@ ser_t	cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast);
 int	cset_write(sccs *s, int spinners, int fast);
 sccs	*cset_fixLinuxKernelChecksum(sccs *s);
 int	cweave_init(sccs *s, int extras);
+void	weave_set(sccs *s, ser_t d, char **keys);
 int	isNullFile(char *rev, char *file);
 unsigned long	ns_sock_host2ip(char *host, int trace);
 unsigned long	host2ip(char *host, int trace);
@@ -1410,7 +1438,11 @@ void	cset_updatetip(void);
 void	clearCsets(sccs *s);
 void	sccs_rdweaveInit(sccs *s);
 char	*sccs_nextdata(sccs *s);
-ser_t	cset_rdweavePair(sccs *s, char **rkey, char **dkey);
+
+#define	RWP_DSET	0x00000001 /* only walk D_SET deltas */
+#define	RWP_ONE		0x00000002 /* stop at end of current delta */
+ser_t	cset_rdweavePair(sccs *s, u32 flags, char **rkey, char **dkey);
+void	cset_firstPair(sccs *s, ser_t first);
 int	sccs_rdweaveDone(sccs *s);
 FILE	*sccs_wrweaveInit(sccs *s);
 FILE	*sccs_wrweaveDone(sccs *s);
@@ -1478,10 +1510,11 @@ void	bk_setConfig(char *key, char *val);
 u32	sccs_addStr(sccs *s, char *str);
 void	sccs_appendStr(sccs *s, char *str);
 u32	sccs_addUniqStr(sccs *s, char *str);
+u32	sccs_addUniqKey(sccs *s, char *key);
 typedef	struct MAP MAP;
-void	*datamap(sccs *s, char *name, u32 len, u32 nmemb,
-    long off, int byteswap);
-void	dataunmap(sccs *s, int keep);
+void	*datamap(char *name, u32 esize, u32 nmemb,
+    FILE *f, long off, int byteswap, int *didpage);
+void	dataunmap(FILE *f, int keep);
 
 #define	RGCA_ALL	0x1000
 #define	RGCA_STANDALONE	0x2000
@@ -1508,6 +1541,7 @@ extern	int	test_release;
 extern	char	*prog;
 extern	char	*title;
 extern	char	*log_versions;
+extern	u32	swapsz;		/* paging blocksize */
 
 #define	componentKey(k) (strstr(k, "/ChangeSet|") != (char*)0)
 #define	changesetKey(k) (strstr(k, "|ChangeSet|") != (char*)0)

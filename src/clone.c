@@ -792,7 +792,8 @@ clone(char **av, remote *r, char *local, char **envVar)
 		features_setAll(0, rmt_features);
 		features_set(0, FEAT_REMAP, !proj_hasOldSCCS(0));
 		if (opts->bkfile != -1) {
-			features_set(0, FEAT_BKFILE, opts->bkfile);
+			features_set(0,
+			    FEAT_BKFILE|FEAT_BWEAVE, opts->bkfile);
 		}
 	}
 	if ((features_test(0, FEAT_BKFILE) != 0)
