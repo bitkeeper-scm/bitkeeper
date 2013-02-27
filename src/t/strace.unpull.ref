@@ -10,7 +10,7 @@ lstat 490
 mkdir 17
 open 231
 read 246
-rename 13
+rename 14
 rmdir 4
 stat 14
 unlink 42
