@@ -135,7 +135,7 @@ trace_msg(char *file, int line,
 	sprintf(buf, "%*s", indent(), "");
 	strcat(prefix, buf);
 	unless (bits & TR_CMD) {
-		sprintf(buf, "[%s:%s:%d] ", prog, function, line);
+		sprintf(buf, "[%s:%d] ", function, line);
 		strcat(prefix, buf);
 	}
 	fmt = aprintf("%s%s\n", prefix, format);

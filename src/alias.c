@@ -150,7 +150,7 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 	char	*p, *alias = 0;
 	char	*cmtfile = 0;
 	FILE	*fcmt = 0;
-	char	**aliases = 0, *nlid = 0;
+	char	**aliases = 0;
 	int	c, i;
 	int	reserved = 0, rc = 1, needunedit = 0;
 	int	ac = 0;
@@ -173,13 +173,7 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 		usage();
 	}
 	/* lock */
-	unless (nested_mine(0, getenv("_BK_NESTED_LOCK"), 1)) {
-		unless (nlid = nested_wrlock(0)) {
-			error("%s", nested_errmsg());
-			return (1);
-		}
-		safe_putenv("_BK_NESTED_LOCK=%s", nlid);
-	}
+	cmdlog_lock(CMD_WRLOCK|CMD_NESTED_WRLOCK);
 
 	/* get the nest */
 	unless (n = nested_init(0, 0, 0, NESTED_PENDING)) goto err;
@@ -317,14 +311,6 @@ write:
 err:
 	if (fcmt) fclose(fcmt);
 	if (cmtfile) unlink(cmtfile);
-	if (nlid) {
-		if (nested_unlock(0, nlid)) {
-			error("%s", nested_errmsg());
-			rc = 1;
-		}
-		free(nlid);
-		putenv("_BK_NESTED_LOCK=");
-	}
 	if (rc && needunedit) {
 		/* revert any local edits to the aliases file */
 		system("bk unedit -q " ALIASES);
@@ -564,7 +550,7 @@ dbWrite(nested *n, hash *aliasdb, char *comment, int commit)
 	hash_toFile(aliasdb, ALIASES);
 	sprintf(buf, "bk -P clean -q %s", ALIASES);
 	unless (ret = system(buf)) return (0); // if clean, okay
-	sprintf(buf, "bk -P delta -aqY'%s' %s", comment, ALIASES);
+	sprintf(buf, "bk -?BK_NO_REPO_LOCK=YES -P delta -aqY'%s' %s", comment, ALIASES);
 	if (ret = system(buf)) return (ret);
 	if (commit) {
 		tmpfile = bktmp(0, "cmt");
@@ -575,7 +561,7 @@ dbWrite(nested *n, hash *aliasdb, char *comment, int commit)
 		if (ret = system(buf)) return (ret);
 		sprintf(buf,
 		    "bk -P sfiles -pC %s |"
-		    "bk -P commit -S -qfY'%s' -", ALIASES, tmpfile);
+		    "bk -?BK_NO_REPO_LOCK=YES -P commit -S -qfY'%s' -", ALIASES, tmpfile);
 		ret = system(buf);
 		unlink(tmpfile);
 		free(tmpfile);

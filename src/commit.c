@@ -181,7 +181,7 @@ commit_main(int ac, char **av)
 		return (rc);
 	}
 
-	cmdlog_lock(CMD_WRLOCK|CMD_NESTED_WRLOCK);
+	unless (opts.resync) cmdlog_lock(CMD_WRLOCK|CMD_NESTED_WRLOCK);
 
 	if (pendingFiles[0] && do_stdin) {
 		fprintf(stderr, "commit: can't use -l when using \"-\"\n");
@@ -405,7 +405,8 @@ do_commit(char **av,
 		fprintf(f, CHANGESET "\n");
 		fclose(f);
 		if (sysio(pendingFiles, 0, 0,
-		    "bk", "check", opts.resync ? "-cMR" : "-cM", "-", SYS)) {
+		    "bk", "-?BK_NO_REPO_LOCK=YES", "check",
+		    opts.resync ? "-cMR" : "-cM", "-", SYS)) {
 			rc = 1;
 		}
 	}

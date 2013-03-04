@@ -24,7 +24,8 @@ restore_backup(char *backup, int overwrite)
 	}
 	getMsg("restore_checking", 0, 0, stderr);
 	tmpfile = bktmp(0, 0);
-	if (rc = systemf("bk -r check -ac >'%s' 2>&1", tmpfile)) {
+	if (rc = systemf("bk -?BK_NO_REPO_LOCK=YES -r check -ac >'%s' 2>&1",
+	    tmpfile)) {
 		if (proj_isProduct(0) && isdir("RESYNC")) {
 			fprintf(stderr, "\nThere were errors during check.\n");
 			getMsg("pull_in_progress", 0, 0, stderr);

@@ -1222,7 +1222,7 @@ clone_finish(remote *r, retrc status, char **envVar)
 	assert(f);
 	sendEnv(f, envVar, r, 0);
 	if (r->type == ADDR_HTTP) add_cd_command(f, r);
-	fprintf(f, "nested %s\n", status ? "abort" : "unlock");
+	fprintf(f, "nested unlock\n");
 	fclose(f);
 	if (send_file(r, buf, 0)) return (RET_ERROR);
 	unlink(buf);

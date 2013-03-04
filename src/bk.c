@@ -1006,9 +1006,7 @@ private	struct {
 	{"license", CMD_NOREPO},
 	{"pull", CMD_REPOLOG|CMD_BYTES}, /* real locks in pull.c */
 	{"push", CMD_REPOLOG|CMD_BYTES}, /* real locks in push.c */
-	{"remote abort",
-	     CMD_REPOLOG|CMD_COMPAT_NOSI|CMD_WRLOCK|CMD_NESTED_WRLOCK|
-	     CMD_IGNORE_RESYNC},
+	{"remote abort", CMD_REPOLOG|CMD_COMPAT_NOSI|CMD_IGNORE_RESYNC},
 	{"remote changes part1", CMD_REPOLOG|CMD_RDLOCK},
 	{"remote changes part2", CMD_REPOLOG},	// unlocked internally
 	{"remote clone", CMD_REPOLOG|CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
@@ -1026,6 +1024,7 @@ private	struct {
 	{"remote rdlock", CMD_RDLOCK},
 	{"remote wrlock", CMD_WRLOCK},
 	{"resolve", CMD_REPOLOG},
+	{"sccs2bk", CMD_WRLOCK},
 	{"stripdel", CMD_WRLOCK},
 	{"synckeys", CMD_RDLOCK},
 	{"tagmerge", CMD_WRLOCK|CMD_NESTED_WRLOCK},
@@ -1175,11 +1174,20 @@ cmdlog_lock(int flags)
 
 		if (p && streq(p, "YES")) {
 			T_LOCK("Skipping locking due to BK_NO_REPO_LOCK");
+#if 0
+			{
+				int	i;
+				i = repository_hasLocks(0, WRITER_LOCK_DIR);
+				unless (i) T_LOCK("NO WRLOCK, ASSERTING");
+				assert(i);
+			}
+#endif
 			putenv("BK_NO_REPO_LOCK=");
 			do_lock = 0;
 		}
 	}
 
+	T_LOCK("do_lock = %d:%x", do_lock, cmdlog_flags);
 	if ((cmdlog_flags & CMD_BKD_CMD) &&
 	    (cmdlog_flags & (CMD_WRLOCK|CMD_RDLOCK)) &&
 	    (repo1 = getenv("BK_REPO_ID")) && (repo2 = proj_repoID(proj))) {

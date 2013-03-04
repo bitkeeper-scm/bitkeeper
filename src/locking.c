@@ -136,8 +136,11 @@ global_wrlock(void)
 {
 	char	*p;
 
-	unless (p = getenv("BK_WRITE_LOCK")) p = "/etc/BitKeeper/locks/wrlock";
-	T_LOCK("global_lock=%s", p);
+	if (p = getenv("BK_WRITE_LOCK")) {
+		T_LOCK("global_wrlock=%s", p);
+	} else {
+		p = "/etc/BitKeeper/locks/wrlock";
+	}
 	return (p);
 }
 
@@ -146,8 +149,11 @@ global_rdlock(void)
 {
 	char	*p;
 
-	unless (p = getenv("BK_READ_LOCK")) p = "/etc/BitKeeper/locks/rdlock";
-	T_LOCK("global_lock=%s", p);
+	if (p = getenv("BK_READ_LOCK")) {
+		T_LOCK("global_rdlock=%s", p);
+	} else {
+		p = "/etc/BitKeeper/locks/rdlock";
+	}
 	return (p);
 }
 
@@ -156,7 +162,7 @@ global_rdlocked(void)
 {
 	int	ret = exists(global_rdlock());
 
-	T_LOCK("global_rdlocked=%s", ret ? "YES" : "NO");
+	if (ret) T_LOCK("global_rdlocked=%s", ret ? "YES" : "NO");
 	return (ret);
 }
 
@@ -165,7 +171,7 @@ global_wrlocked(void)
 {
 	int	ret = exists(global_wrlock());
 
-	T_LOCK("global_wrlocked=%s", ret ? "YES" : "NO");
+	if (ret) T_LOCK("global_wrlocked=%s", ret ? "YES" : "NO");
 	return (ret);
 }
 
@@ -174,7 +180,7 @@ global_locked(void)
 {
 	int	ret = exists(global_wrlock()) || exists(global_rdlock());
 
-	T_LOCK("global_locked=%s", ret ? "YES" : "NO");
+	if (ret) T_LOCK("global_locked=%s", ret ? "YES" : "NO");
 	return (ret);
 }
 
@@ -1027,8 +1033,21 @@ out:	free(file);
 private void
 unlockResync(project *p)
 {
+	char	*rdir;
+	char	**files = 0;
+
 	unlink(proj_fullpath(p, "RESYNC/.bk_nl"));
-	rmdir(proj_fullpath(p, "RESYNC")); /* this may fail */
+	rdir = proj_fullpath(p, "RESYNC");
+	/* No unlocking RESYNC while we're sitting in it */
+	assert(!streq(rdir, proj_cwd()));
+	/*
+	 * If RESYNC is empty, then delete it.
+	 */
+	files = getdir(rdir);
+	if (files && (nLines(files) == 0)) {
+		if (rmdir(rdir)) perror(rdir);
+	}
+	freeLines(files, free);
 }
 
 /*

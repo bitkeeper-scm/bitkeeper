@@ -587,7 +587,7 @@ undo_ensemble_rollback(nested *n, options *opts, char **comp_list)
 			return;
 		}
 		unless (opts->verbose) progress_nlneeded();
-		if (rc = systemf("bk -?FROM_PULLPUSH=YES "
+		if (rc = systemf("bk -Lw -?FROM_PULLPUSH=YES "
 		    "takepatch %s -af'%s'", opt, opts->patch)) {
 			fprintf(stderr, "undo: restoring backup patch in %s "
 			    "failed\n", c->path);

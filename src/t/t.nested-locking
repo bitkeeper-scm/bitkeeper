@@ -171,7 +171,7 @@ echo OK
 echo $N Pulling should fail..........................................$NL
 cd "$HERE/clone"
 bk pull  "$HERE/clone2" >ERR 2>&1 && fail
-grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
 # Attach in clone.
@@ -188,7 +188,7 @@ echo OK
 echo $N Here should fail.............................................$NL
 cd "$HERE/clone"
 bk here set all >ERR 2>&1 && fail
-grep -q "Could not lock product" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update." ERR || fail -f ERR wrong error
 echo OK
 
 # Push into clone.
@@ -274,7 +274,7 @@ echo OK
 echo $N Pulling should fail..........................................$NL
 cd "$HERE/clone"
 bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
-grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
 # Attach in clone.
@@ -290,7 +290,7 @@ echo OK
 echo $N Here should fail.............................................$NL
 cd "$HERE/clone"
 bk here set all >ERR 2>&1 && fail
-grep -q "Could not lock product" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update." ERR || fail -f ERR wrong error
 echo OK
 
 # Push into clone.
@@ -371,7 +371,7 @@ echo OK
 echo $N Pulling should fail..........................................$NL
 cd "$HERE/clone"
 bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
-grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
 # Attach in clone.
@@ -387,7 +387,7 @@ echo OK
 echo $N Here should fail.............................................$NL
 cd "$HERE/clone"
 bk here set all >ERR 2>&1 && fail
-grep -q "Could not lock product" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update." ERR || fail -f ERR wrong error
 echo OK
 
 # Push into clone.
@@ -473,7 +473,7 @@ echo OK
 echo $N Pulling should fail..........................................$NL
 cd "$HERE/clone"
 bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
-grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
 # Attach in clone.
@@ -489,7 +489,7 @@ echo OK
 echo $N Here should fail.............................................$NL
 cd "$HERE/clone"
 bk here set all >ERR 2>&1 && fail
-grep -q "Could not lock product" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update." ERR || fail -f ERR wrong error
 echo OK
 
 # Push into clone.
@@ -572,7 +572,7 @@ echo OK
 echo $N Pulling should fail..........................................$NL
 cd "$HERE/clone"
 bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
-grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
 # Attach in clone.
@@ -588,7 +588,7 @@ echo OK
 echo $N Here should fail.............................................$NL
 cd "$HERE/clone"
 bk here set all >ERR 2>&1 && fail
-grep -q "Could not lock product" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update." ERR || fail -f ERR wrong error
 echo OK
 
 # Push into clone.
@@ -668,7 +668,7 @@ echo OK
 echo $N Pulling should fail..........................................$NL
 cd "$HERE/clone"
 bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
-grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
 # Attach in clone.
@@ -684,7 +684,7 @@ echo OK
 echo $N Here should fail.............................................$NL
 cd "$HERE/clone"
 bk here set all >ERR 2>&1 && fail
-grep -q "Could not lock product" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update." ERR || fail -f ERR wrong error
 echo OK
 
 # Push into clone.
@@ -766,7 +766,7 @@ echo OK
 echo $N Pulling should fail..........................................$NL
 cd "$HERE/clone"
 bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
-grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
 # Attach in clone.
@@ -782,7 +782,7 @@ echo OK
 echo $N Here should fail.............................................$NL
 cd "$HERE/clone"
 bk here set all >ERR 2>&1 && fail
-grep -q "Could not lock product" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update." ERR || fail -f ERR wrong error
 echo OK
 
 # Push into clone.
@@ -864,7 +864,7 @@ echo OK
 echo $N Pulling should fail..........................................$NL
 cd "$HERE/clone"
 bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
-grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
 # Attach in clone.
@@ -880,7 +880,7 @@ echo OK
 echo $N Here should fail.............................................$NL
 cd "$HERE/clone"
 bk here set all >ERR 2>&1 && fail
-grep -q "Could not lock product" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update." ERR || fail -f ERR wrong error
 echo OK
 
 # Push into clone.
@@ -954,7 +954,7 @@ echo OK
 echo $N Pulling should fail..........................................$NL
 cd "$HERE/clone"
 bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail should have failed
-grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
 # Attach in clone.
@@ -970,7 +970,7 @@ echo OK
 echo $N Here should fail.............................................$NL
 cd "$HERE/clone"
 bk here set all >ERR 2>&1 && fail
-grep -q "Could not lock product" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update." ERR || fail -f ERR wrong error
 echo OK
 
 # Push into clone.

@@ -123,17 +123,12 @@ bk clone $Q server clone5
 cd clone5
 bk $Q bam server $Q .
 echo junk > file1
-bk new $Q -b file1 || exit
-bk commit $Q -ybam2 || exit 1
+bk new $Q -b file1 || fail
+bk commit $Q -ybam2 || fail
 cd "$HERE"
-bk bkd -q -d -aPORT -ikill || exit 1
+bk bkd -q -d -aPORT -ikill || fail
 P=`cat PORT`
+trap "bk _kill bk://localhost:$P" 0
 cd clone5
-bk push $Q http://localhost:$P/server 2>&1 > OUT || {
-	echo failed
-	cat OUT
-	bk _kill bk://localhost:$P
-	exit 1
-}
-bk _kill bk://localhost:$P
+bk push $Q http://localhost:$P/server 2>&1 > OUT || fail -f OUT
 echo OK

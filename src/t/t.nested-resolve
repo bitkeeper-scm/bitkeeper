@@ -79,9 +79,9 @@ C
 .
 EOF
 grep -q "FORCED FAILURE" OUT || fail -f OUT wrong failure
-test -d RESYNC && fail left comp RESYNC
+test -d RESYNC && fail -f OUT left comp RESYNC
 cd ..
-test -d RESYNC && fail left prod RESYNC
+test -d RESYNC && fail -f OUT left prod RESYNC
 echo OK
 
 echo $N Again, but leaving RESYNC....................................$NL

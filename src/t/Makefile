@@ -13,7 +13,7 @@ endif
 
 # The test t.bkd-svc cannot be run in parallel with any other
 # tests or it will fail
-TESTS = $(wildcard t.*)
+TESTS = $(filter-out %~, $(wildcard t.*))
 SERIAL_TESTS = t.bkd-svc t.installer t.proxy-win32 t.uniq
 PARALLEL_TESTS = $(filter-out $(SERIAL_TESTS),$(TESTS))
 

@@ -180,8 +180,7 @@ pull_main(int ac, char **av)
 			opts.autoPopulate = 1;
 		}
 	}
-	cmdlog_lock((opts.port && opts.portNoCommit) ?
-	    CMD_WRLOCK : CMD_WRLOCK|CMD_NESTED_WRLOCK);
+	unless (opts.port && opts.portNoCommit) cmdlog_lock(CMD_NESTED_WRLOCK);
 	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "pull: failed to accept license, aborting.\n");
 		exit(1);
@@ -1173,9 +1172,14 @@ pull(char **av, remote *r, char **envVar)
 	int	got_patch;
 	char	key_list[MAXPATH];
 
+	if (repository_wrlock(0)) {
+		fprintf(stderr, "%s: can't lock repository\n", prog);
+		return (-1);
+	}
+
 	assert(r);
 	putenv("BK_STATUS=");
-	if (rc = pull_part1(av, r, key_list, envVar)) return (rc);
+	if (rc = pull_part1(av, r, key_list, envVar)) goto out;
 	rc = pull_part2(av, r, key_list, envVar, &conflicts);
 	got_patch = ((p = getenv("BK_STATUS")) && streq(p, "OK"));
 	marker = bp_hasBAM();
@@ -1275,6 +1279,7 @@ done:	freeLines(conflicts, free);
 		/* we run a post trigger only if we didn't call resolve */
 		trigger(av[0], "post");
 	}
+out:	repository_unlock(0, 0);
 	return (rc);
 }
 
@@ -1295,7 +1300,7 @@ again:	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) return (1);
 	 * We use the exit code of the remote bkd to determine the
 	 * exit code of the local pull.
 	 */
-	fprintf(f, "nested %s\n", status ? "abort" : "unlock");
+	fprintf(f, "nested unlock\n");
 	fclose(f);
 	if (send_file(r, buf, 0)) return (1);
 	unlink(buf);

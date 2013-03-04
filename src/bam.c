@@ -2348,7 +2348,7 @@ bam_convert_main(int ac, char **av)
 		exit(1);
 	}
 	ERROR((stderr, "running final integrity check ...\n"));
-	if (system("bk -r check -accv")) {
+	if (system("bk -?BK_NO_REPO_LOCK=YES -r check -accv")) {
 		ERROR((stderr, "failed\n"));
 		exit(1);
 	} else {

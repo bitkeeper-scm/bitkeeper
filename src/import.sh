@@ -766,7 +766,7 @@ explain_tag_problem ()
 import_SCCS () {
 	mycd "$TO"
 	msg Converting SCCS files...
-	bk sccs2bk $QUIET $VERIFY `test X$VERBOSE = X && echo -v` \
+	bk -?BK_NO_REPO_LOCK=YES sccs2bk $QUIET $VERIFY `test X$VERBOSE = X && echo -v` \
 	    -c`bk prs -hr+ -nd:ROOTKEY: ChangeSet` - < "${TMP}import$$" ||
 	    Done 1
 	$RM -f "${TMP}cmp$$"
@@ -806,7 +806,7 @@ import_finish () {
 			bk -r _findcset -t$GAP $SKIP_OPT $tag || Done 1
 		fi
 	fi
-	bk -r check -ac || Done 1
+	bk -?BK_NO_REPO_LOCK=YES -r check -ac || Done 1
 	unset BK_CONFIG
 	o=`bk config checkout`
 	test X$o = Xedit && bk -Ur edit -q

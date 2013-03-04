@@ -1546,11 +1546,13 @@ again:
 	}
 	progress_pauseDelayed();
 	if (!flist || full_check()) {
-		ret = sys("bk", "-r", "check", "-ac", opts, SYS);
+		ret = sys("bk", "-?BK_NO_REPO_LOCK=YES",
+		    "-r", "check", "-ac", opts, SYS);
 		if (did_partial) *did_partial = 0;
 	} else {
 		/* For possible progress bar, pass in # files. */
-		cmd = aprintf("bk check -c -N%d '%s' -", nLines(flist), opts);
+		cmd = aprintf("bk -?BK_NO_REPO_LOCK=YES check -c -N%d '%s' -",
+		    nLines(flist), opts);
 		p = popen(cmd, "w");
 		free(cmd);
 		EACH(flist) fprintf(p, "%s\n", flist[i]);

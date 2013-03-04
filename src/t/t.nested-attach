@@ -737,7 +737,6 @@ cat <<EOF > WANT
 pull: ./gcc/pre/src not empty
 pull: ./gcc/pre/src/deep not empty
 pull: problem populating components.
-ERROR-Could not lock product, repository not mine
 EOF
 cmpfiles WANT ERR
 echo OK

@@ -293,8 +293,9 @@ passes(opts *opts)
 		fprintf(stderr, "%s: Unresolved components.\n", prog);
 		resolve_cleanup(opts, 0);
 	}
-	unless (opts->from_pullpush || 
-	    (sys("bk", "-r", "check", "-acR", SYS) == 0)) {
+	unless (opts->from_pullpush ||
+	    (sys("bk", "-?BK_NO_REPO_LOCK=YES",
+		"-r", "check", "-acR", SYS) == 0)) {
 		syserr("failed.  Resolve not even started.\n");
 		/* XXX - better help message */
 		resolve_cleanup(opts, 0);
@@ -2621,7 +2622,6 @@ commit(opts *opts)
 	char	*cmds[12], *cmt = 0;
 
 	cmds[i = 0] = "bk";
-	cmds[++i] = "-?BK_NO_REPO_LOCK=YES";
 	cmds[++i] = "commit";
 	cmds[++i] = "-S";
 	cmds[++i] = "-R";

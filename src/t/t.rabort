@@ -116,8 +116,8 @@ cd copy
 LOCKURL=`bk lock -rt`
 trap "bk _kill bk://localhost:$P; bk _kill $LOCKURL" 0
 cd "$HERE/project"
-bk abort bk://localhost:$P/"$HERE/copy" 2> ERR && fail bk:// abort did not fail
-grep -q "Unable to lock repository for update" ERR || fail -f ERR
+bk abort bk://localhost:$P/"$HERE/copy" > ERR && fail bk:// abort did not fail
+grep -q "RESYNC directory" ERR || fail -f ERR
 cd "$HERE/copy"
 test -d RESYNC || fail
 bk lock -s && fail
@@ -125,10 +125,10 @@ echo OK
 
 echo $N rabort via http:// in a locked repo .........................$NL
 cd "$HERE/project"
-bk abort http://localhost:$P/"$HERE/copy" 2> ERR && {
+bk abort http://localhost:$P/"$HERE/copy" > ERR && {
 	fail http:// abort did not fail
 }
-grep -q "Unable to lock repository for update" ERR || fail -f ERR
+grep -q "RESYNC directory" ERR || fail -f ERR
 cd "$HERE/copy"
 test -d RESYNC || fail
 bk lock -s && fail
@@ -136,24 +136,24 @@ echo OK
 
 echo $N rabort via file:// in a locked repo .........................$NL
 cd "$HERE/project"
-bk abort file://"$HERE/copy" 2> ERR && fail file:// abort did not fail
-grep -q "Unable to lock repository for update" ERR || fail -f ERR
+bk abort file://"$HERE/copy" > ERR && fail file:// abort did not fail
+grep -q "RESYNC directory" ERR || fail -f ERR
 cd "$HERE/copy"
 test -d RESYNC || fail
 bk lock -s && fail
 echo OK
 
 echo $N rabort via file:// in a locked repo from same repo ..........$NL
-bk abort file://"$HERE/copy" 2> ERR && fail file:// abort did not fail
-grep -q "Unable to lock repository for update" ERR || fail -f ERR
+bk abort file://"$HERE/copy" > ERR && fail file:// abort did not fail
+grep -q "RESYNC directory" ERR || fail -f ERR
 test -d RESYNC || fail
 bk lock -s && fail
 echo OK
 
 echo $N rabort via file:// in a locked repo from no repo ............$NL
 cd "$HERE"
-bk abort file://"$HERE/copy" 2> ERR && fail file:// abort did not fail
-grep -q "Unable to lock repository for update" ERR || fail -f ERR
+bk abort file://"$HERE/copy" > ERR && fail file:// abort did not fail
+grep -q "RESYNC directory" ERR || fail -f ERR
 cd "$HERE/copy"
 test -d RESYNC || fail
 bk lock -s && fail

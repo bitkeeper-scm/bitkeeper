@@ -334,7 +334,7 @@ abortComponents(options *opts, int *which, int *num)
 			 * XXX what makes sure the user hasn't added new
 			 * csets after the pull that failed?
 			 */
-			if (systemf("bk -?BK_NO_REPO_LOCK=YES "
+			if (systemf("bk "
 			    "--title='%u/%u %s' undo -%sSsfa'%s'",
 				(*which)++, *num, c->path,
 			    opts->quiet ? "q" : "", c->lowerkey)) {
@@ -357,7 +357,7 @@ out:	if (n) nested_free(n);
 	 * components, removed some, etc. We restore sanity by
 	 * trusting the HERE file.
 	 */
-	if (system("bk here set --unsafe -q here")) {
+	if (system("bk -?BK_NO_REPO_LOCK=YES here set --unsafe -q here")) {
 		error("abort: bk here failed\n");
 		errors++;
 	}

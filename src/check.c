@@ -73,6 +73,7 @@ private	int	pathConflictError(
 private	int	tipdata_sort(const void *a, const void *b);
 private	void	undoDoMarks(void);
 private	int	polyChk(sccs *cset, ser_t trunk, ser_t branch, hash *deltas);
+private	void	getlock(void);
 
 private	int	verbose;
 private	int	details;	/* if set, show more information */
@@ -255,6 +256,7 @@ check_main(int ac, char **av)
 	goneDB = loadDB(GONE, 0, DB_GONE);
 	buildKeys(idDB);
 	if (all) {
+		//getlock();	/* uncomment for testing */
 		/*
 		 * Going to build a new idcache so start from scratch.
 		 * As check may be running under a read lock, wait until
@@ -270,7 +272,6 @@ check_main(int ac, char **av)
 	unless (streq(proj_configval(0, "monotonic"), "allow")) {
 		check_monotonic = 1;
 	}
-
 	if (verbose == 1) {
 		progress_delayStderr();
 		if (!title && (name = getenv("_BK_TITLE"))) title = name;
@@ -337,6 +338,7 @@ check_main(int ac, char **av)
 		}
 		if (((BKFILE(s) && !bkfile) || (!BKFILE(s) && bkfile))
 		    && !getenv("_BK_MIXED_FORMAT")) {
+			getlock();
 			if (getenv("_BK_DEVELOPER")) {
 				fprintf(stderr,
 				    "sfile format wrong %s, %d %d\n",
@@ -539,6 +541,7 @@ check_main(int ac, char **av)
 		}
 		if (all &&
 		    !(flags & INIT_NOCKSUM) && bin_needHeapRepack(cset)) {
+			getlock();
 			bin_heapRepack(cset);
 			if (sccs_newchksum(cset)) {
 				perror(CHANGESET);
@@ -591,6 +594,32 @@ out:	sccs_free(cset);
 		getMsg("pull_in_progress", 0, 0, stderr);
 	}
 	return (errors);
+}
+
+/*
+ * Check is about to write a sfile so we need to make sure we have a
+ * write lock.
+ */
+private void
+getlock(void)
+{
+	static	int	checked = 0;
+	char	*t;
+
+	if (checked) return;
+	checked = 1;
+	if (resync) return;	/* we can write in RESYNC */
+
+	if ((t = getenv("BK_NO_REPO_LOCK")) && streq(t, "YES")) {
+		/*
+		 * If the user told us not to bother to get a
+		 * repository write lock then they must already have a
+		 * write lock. Since we can't test ownership, at
+		 * least assert there is a writelock.
+		 */
+		assert(repository_hasLocks(0, WRITER_LOCK_DIR));
+	}
+	cmdlog_lock(CMD_WRLOCK);
 }
 
 /*
@@ -1247,7 +1276,8 @@ repair(hash *db)
 	}
 	freeLines(sorted, 0);
 	if (pclose(f) != 0) return (n);
-	if (system("bk sfiles BitKeeper/repair | bk check -s -") != 0) {
+	if (system("bk sfiles BitKeeper/repair |"
+	    "bk -?BK_NO_REPO_LOCK=YES check -s -") != 0) {
 		fprintf(stderr, "check: stripdel pass failed, aborting.\n");
 		goto out;
 	}
@@ -1256,7 +1286,7 @@ repair(hash *db)
 		goto out;
 	}
 	if (verbose) fprintf(stderr, "Rerunning check...\n");
-	if (system("bk -r check -acf") != 0) {
+	if (system("bk -?BK_NO_REPO_LOCK=YES -r check -acf") != 0) {
 		fprintf(stderr, "Repository is not fully repaired.\n");
 		goto out;
 	}
@@ -2059,6 +2089,7 @@ check(sccs *s, MDBM *idDB)
 		errors += polyChk(s, trunk, branch, deltas);
 	}
 	if (writefile) {
+		getlock();
 		if ((writefile == 1) && getenv("_BK_DEVELOPER")) {
 			fprintf(stderr,
 			    "%s: adding and/or removing missing csetmarks\n",
@@ -2425,7 +2456,9 @@ repair_main(int ac, char **av)
 	};
 	char	*nav[20];
 
+	getlock();
 	nav[i=0] = "bk";
+	nav[++i] = "-?BK_NO_REPO_LOCK=YES";
 	nav[++i] = "-r";
 	nav[++i] = "check";
 	nav[++i] = "-acffv";

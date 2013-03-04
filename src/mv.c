@@ -170,7 +170,9 @@ err:		unless (skip_lock) repository_wrunlock(0, 0);
 		return (1);
 	}
 	unlink(tempfile);
-	if (sys("bk", "-r", "check", "-a", SYS)) return (1);
+	if (sys("bk", "-?BK_NO_REPO_LOCK=YES", "-r", "check", "-a", SYS)) {
+		return (1);
+	}
 
 	p = strrchr(to, '/');
 	if (p && (p != to)) {
@@ -239,7 +241,9 @@ err:		unless (skip_lock) repository_wrunlock(0, 0);
 	if (sccs_reCache(1))  {
 		fprintf(stderr, "mvdir: cannot update idcache\n");
 	}
-	if (sys("bk", "-r", "check", "-a", SYS)) return (1);
+	if (sys("bk", "-?BK_NO_REPO_LOCK=YES", "-r", "check", "-a", SYS)) {
+		return (1);
+	}
 	unless (skip_lock) repository_wrunlock(0, 0);
 	return (0);
 }
