@@ -487,8 +487,8 @@ echo "hi" > foo
 bk new $Q foo
 bk commit $Q -yfoo
 bk _cp SCCS/s.foo SCCS/s.foo2
-bk -r check -afc 2> "$HERE/out"
-grep -q "Is one of these files copied?" "$HERE/out" || fail -f "$HERE/out"
+bk -r check -ac 2> "$HERE/out"
+grep -q "Are one of these files copied?" "$HERE/out" || fail -f "$HERE/out"
 echo OK
 
 echo $N bk check with partial_check should notice path conflicts ....$NL
@@ -508,6 +508,17 @@ bk commit -q -ycomment2 2> ERR && {
 	exit 1
 }
 cat <<EOF > WANT
+===============================================================================
+File/directory conflict: foo
+The name above is both a directory and a revision controlled file.
+The revision controlled file can not be checked out because the directory
+is where the file wants to be.  To correct this, either 
+    move the directory to a different name
+or
+    remove the revision controlled file foo with "bk rm"
+or
+    move the revision controlled file to someplace else with "bk mv".
+===============================================================================
 A path-conflict was found while trying to commit
   ./foo/bar|1.1
 conflicts with existing:
@@ -527,11 +538,7 @@ bk new $Q -ycomment foo || exit 1
 bk commit $Q -ycomment || exit 1
 echo 1 > BitKeeper/log/checked
 bk admin -pbusted foo
-bk -r check -ac 2>ERR && {
-	echo check should have failed
-	cat ERR
-	exit 1
-}
+bk -r check -ac 2>ERR && fail -f ERR should fail
 # checked file should be gone
 test -f BitKeeper/log/checked && fail
 echo OK
@@ -685,7 +692,7 @@ echo $N Try to create a cset with a path conflict ...................$NL
 cd ../project
 bk mv d2/a foo2 || fail
 bk mv d2/b d2/a || fail
-echo 'd2/SCCS/s.a|+' | bk commit -q -ybad - 2> ERR && fail -f ERR
+echo 'd2/SCCS/s.a|+' | bk commit -q -ybad - 2> ERR && fail -f ERR should fail
 cat <<EOF > WANT
 A path-conflict was found while trying to commit
   ./d2/a|1.6
@@ -724,7 +731,7 @@ bk rm foo
 bk commit $Q -yno-foo
 bk _rm -fr BitKeeper/deleted
 bk -r check -ag | bk gone $Q -
-bk commit $Q -yno-foo
+bk commit $Q -yno-foo || fail
 bk pull $Q || fail
 echo OK
 
@@ -765,13 +772,16 @@ bk _cp SCCS/s.foo no-mark
 bk commit $Q -yfoo
 bk _cp no-mark SCCS/s.foo
 # Okay, what's check say?
-bk -r check -ac 2> ERR || fail -f ERR
+bk -r check -ac 2> ERR && fail -f ERR
 cat << EOF > WANT
+===============================================================================
+check: foo has pending deltas but no d.file, repairing.
+===============================================================================
 foo: adding and/or removing missing csetmarks
 EOF
 cmpfiles WANT ERR
 # All fixed
-bk -r check -acf || fail
+bk -r check -ac || fail
 echo OK
 
 # sgi doesn't do the waits correctly
@@ -897,11 +907,16 @@ bk pull $Q -R
 # echo "delta $KEY missing?" > WANT
 # cmpfiles WANT GOT
 rm BitKeeper/etc/ignore-poly
-bk --cd=RESYNC -r check -aR 2> GOT || fail
+# Check passes because it is incremental and the duplicated key in the
+# changeset file is for bar, and bar is not in resync, so not seen.
+bk --cd=RESYNC -r check -aR || fail
+bk --config='partial_check:yes' resolve $Q || fail
+# Full check hits warning
+bk repocheck -q 2> GOT
 cat <<EOF > WANT
 Warning: Duplicate delta found in ChangeSet
 	Rev: 1.1  Key: $KEY
-	Both keys in file $HERE/has-dups/SCCS/s.bar
+	Both keys in file SCCS/s.bar
 	Same key found in ChangeSet:1.1.1.2,1.1.1.1
 Please write support@bitmover.com with the above
 warning about duplicate deltas

@@ -40,7 +40,8 @@ echo OK
 
 echo $N Manually populate component and try commit ..................$NL
 cd "$HERE"
-bk clone $Q -sPRODUCT prod prod-clone2
+# compat so the s.ChangeSet file can be hacked in
+bk clone $Q --compat -sPRODUCT prod prod-clone2
 cd prod-clone2
 bk populate $Q gcc
 # Manually populate
@@ -56,4 +57,34 @@ rm -rf gdb
 # the check in the commit should have cleaned up the
 # cset mark in the gcc component
 bk repocheck >OUT 2>&1 || fail -f OUT
+echo OK
+
+echo $N Have a two-tipped component cset file in the prod RESYNC ....$NL
+cd "$HERE"/prod-clone
+bk commit $Q -ymake-cset
+cd ../prod-clone2
+bk edit $Q gcc/bar
+bk delta $Q -fyempty gcc/bar
+bk commit $Q -y'local work'
+bk pull $Q -R ../prod-clone
+cd gcc
+bk _cp RESYNC/SCCS/s.ChangeSet twoTip
+bk resolve $Q -S
+bk _cp SCCS/s.ChangeSet oneTip
+bk _cp twoTip SCCS/s.ChangeSet
+bk _cp twoTip ../RESYNC/gcc/SCCS/s.ChangeSet
+cd ..
+bk resolve $Q 2> GOT && fail -f GOT
+cat <<EOF > WANT
+check: component cset file not single tipped: 1.3 not under 1.1.1.2
+{bk} {-?BK_NO_REPO_LOCK=YES} {-r} {check} {-acR} failed.  Resolve not even started.
+resolve: RESYNC directory left intact.
+====================================================
+EOF
+cmpfiles WANT GOT
+cd gcc
+bk _cp oneTip SCCS/s.ChangeSet
+bk _cp oneTip ../RESYNC/gcc/SCCS/s.ChangeSet
+cd ..
+bk resolve $Q || fail
 echo OK

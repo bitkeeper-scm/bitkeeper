@@ -33,9 +33,24 @@
 #define	RK_BOTH		(RK_PARENT|RK_MERGE)
 
 typedef	struct	rkdata {
-	hash	*deltas;
+	DATA	kbuf;		/* list of deltakeys for this rootkey */
+	u32	*keys;		/* array of offsets in kbuf */
+	u8	*dmasks;	/* array of u8 mask for each dkey */
+	int	curr;		/* position in keys */
+	char	*pathname;	/* s->gfile */
+	char	**missing;	/* list of missing deltas */
+	char	**poly;		/* poly component cset keys */
+	int	*gca;		/* list of gca nodes when poly checking */
+	u32	*gcamask;	/* corresponding mask (addArray min is u32) */
+	int	fake;		/* index to keys array for unmarked comp */
+	u32	keycnt;		/* number of keys in 'keys' */
+	u32	unmarked;	/* number of keys not matched to cset */
 	u8	mask;
 } rkdata;
+#define	KEY(rkd, i)	((rkd)->kbuf.buf + (rkd)->keys[i])
+
+/* map from rootkeys to the rkdata struct above */
+private	hash	*r2deltas;
 
 /* information from non-gone deltas in tip cset (for path_conflict checks) */
 typedef	struct	tipdata {
@@ -45,17 +60,17 @@ typedef	struct	tipdata {
 	u8	incommit:1;	/* is included in the new committed cset? */
 } tipdata;
 
-private	void	buildKeys(MDBM *idDB);
+private	int	buildKeys(MDBM *idDB);
 private	int	processDups(char *rkey, char *dkey, u8 prev, u8 cur,
 		    MDBM *idDB);
-private	char	*csetFind(char *key);
 private	int	check(sccs *s, MDBM *idDB);
 private	char	*getRev(char *root, char *key, MDBM *idDB);
 private	char	*getFile(char *root, MDBM *idDB);
-private	int	checkAll(hash *keys);
+private	int	missingDelta(rkdata *rkd);
+private	int	isGone(sccs *s, char *key);
 private	void	listFound(hash *db);
 private	void	listCsetRevs(char *key);
-private int	checkKeys(sccs *s, char *root);
+private int	checkKeys(sccs *s);
 private int	chk_gfile(sccs *s, MDBM *pathDB, int checkout);
 private int	chk_dfile(sccs *s);
 private int	chk_BAM(sccs *, char ***missing);
@@ -65,14 +80,16 @@ private int	no_gfile(sccs *s);
 private int	chk_eoln(sccs *s, int eoln_unix);
 private int	chk_monotonic(sccs *s);
 private int	chk_merges(sccs *s);
-private	int	update_idcache(MDBM *idDB, hash *keys);
+private	int	update_idcache(MDBM *idDB);
 private	void	fetch_changeset(int forceCsetFetch);
 private	int	repair(hash *db);
 private	int	pathConflictError(
 		    MDBM *goneDB, MDBM *idDB, tipdata *td1, tipdata *td2);
 private	int	tipdata_sort(const void *a, const void *b);
 private	void	undoDoMarks(void);
-private	int	polyChk(sccs *cset, ser_t trunk, ser_t branch, hash *deltas);
+private	int	polyChk(char *rkey, rkdata *rkd, hash *newpoly);
+private	int	stripdelFile(sccs *s, rkdata *rkd, char *tip);
+private	int	keyFind(rkdata *rkd, char *key);
 private	void	getlock(void);
 
 private	int	verbose;
@@ -100,21 +117,6 @@ private	char	**bp_getFiles;
 private	int	bp_fullcheck;	/* do bam CRC */
 private	char	**subrepos = 0;
 
-/*
- * The following data structure holds the mappings from rootkeys to
- * deltakeys from the ChangeSet file so that the ChangeSet file
- * doesn't need to be opened for every file processed.  Since the
- * ChangeSet file can get so big this hash is a bit clever to save
- * memory.
- *
- * r2deltas is a hash that maps all delta keys in the ChangeSet file to
- * another hash that contains all the delta keys for that rootkey.
- * The nested hash doesn't store any data. In this way we can walk all
- * rootkeys and all deltakeys for a given rootkey.
- */
-private	hash	*r2deltas;
-private	hash	*newpoly;
-
 int
 check_main(int ac, char **av)
 {
@@ -123,7 +125,6 @@ check_main(int ac, char **av)
 	FILE	*f;
 	MDBM	*idDB;
 	MDBM	*pathDB = mdbm_mem();
-	hash	*keys = hash_new(HASH_MEMHASH);
 	sccs	*s;
 	int	ferr, errors = 0, eoln_native = 1;
 	int	i, e;
@@ -254,7 +255,7 @@ check_main(int ac, char **av)
 	}
 	/* This can legitimately return NULL */
 	goneDB = loadDB(GONE, 0, DB_GONE);
-	buildKeys(idDB);
+	r2deltas = hash_new(HASH_MEMHASH);
 	if (all) {
 		//getlock();	/* uncomment for testing */
 		/*
@@ -371,32 +372,14 @@ check_main(int ac, char **av)
 			ferr++, errors |= 0x08;
 		}
 
-		/*
-		 * Store the root keys. We want all of them to be unique.
-		 */
-		sccs_sdelta(s, sccs_ino(s), buf);
-		unless (hash_insertStr(keys, buf, s->gfile)) {
-			char *gfile, *sfile;
-
-			gfile = hash_fetchStr(keys, buf);
-			sfile = name2sccs(gfile);
-			if (sameFiles(sfile, s->sfile)) {
-				fprintf(stderr,
-				    "%s and %s are identical. "
-				    "Is one of these files copied?\n",
-				    s->sfile, sfile);
-			} else {
-				fprintf(stderr,
-				    "Same key %s used by\n\t%s\n\t%s\n",
-				    buf, s->gfile, gfile);
-			}
-			free(sfile);
-			gotDupKey = 1;
-			errors |= 1;
-			ferr++;
-		}
 		if (noDups) graph_checkdups(s);
-		if (e = check(s, idDB)) ferr++, errors |= 0x40;
+		if (check(s, idDB)) ferr++, errors |= 0x40;
+
+		/*
+		 * Remember all the marked file deltas so we can verify they
+		 * exist when we process the ChangeSet file at the end.
+		 */
+		if (checkKeys(s)) ferr++, errors |= 0x01;
 		if (!resync && chk_dfile(s)) ferr++, errors |= 0x10;
 		unless (ferr) {
 			if (verbose>1) fprintf(stderr, "%s is OK\n", s->gfile);
@@ -407,6 +390,7 @@ check_main(int ac, char **av)
 		errors++;
 		goto out;
 	}
+	if (buildKeys(idDB)) errors |= 0x40;
 	if (BAM) {
 		unless (exists(BAM_MARKER)) {
 			if (touch(BAM_MARKER, 0664)) perror(BAM_MARKER);
@@ -417,7 +401,7 @@ check_main(int ac, char **av)
 			if (unlink(BAM_MARKER)) perror(BAM_MARKER);
 		}
 	}
-	if (all || update_idcache(idDB, keys)) {
+	if (all || update_idcache(idDB)) {
 		idcache_write(0, idDB);
 		mdbm_close(idDB);
 
@@ -427,10 +411,7 @@ check_main(int ac, char **av)
 		    "BitKeeper/etc/SCCS/x.id_cache");
 	}
 	freeLines(subrepos, free);
-	/* note: checkAll can mangle r2deltas */
-	if (all && checkAll(keys)) errors |= 0x40;
 	mdbm_close(pathDB);
-	hash_free(keys);
 	if (bp_missing) {
 		if (bp_check_findMissing(!verbose, bp_missing)) errors |= 0x40;
 		freeLines(bp_missing, free);
@@ -513,12 +494,19 @@ check_main(int ac, char **av)
 			goto out;
 		}
 	}
-	EACH_HASH(r2deltas) hash_free(*(hash **)r2deltas->vptr);
-	hash_free(r2deltas);
-	if (newpoly) {
-		hash_free(newpoly);
-		newpoly = 0;
+	EACH_HASH(r2deltas) {
+		rkdata	*rkd = r2deltas->vptr;
+
+		free(rkd->keys);
+		free(rkd->kbuf.buf);
+		free(rkd->dmasks);
+		freeLines(rkd->missing, free);
+		free(rkd->pathname);
+		free(rkd->gca);
+		free(rkd->gcamask);
+		freeLines(rkd->poly, free);
 	}
+	hash_free(r2deltas);
 
 	if (resync) {
 		chdir(RESYNC2ROOT);
@@ -1039,75 +1027,6 @@ chk_eoln(sccs *s, int eoln_native)
 	return (0);
 }
 
-/*
- * Look at the list handed in and make sure that we checked everything that
- * is in the ChangeSet file.  This will always fail if you are doing a partial
- * check.
- *
- * Updated for RESYNC checks.  Only check keys if they are not in repository
- * already.
- */
-private int
-checkAll(hash *keys)
-{
-	char	*t, *rkey;
-	hash	*warned = hash_new(HASH_MEMHASH);
-	hash	*weavekeys = 0;
-	int	found = 0;
-	char	buf[MAXPATH*3];
-
-	/*
-	 * If we are doing the resync tree, we only require that the
-	 * RESYNC tree contain the files updated in the patch.  To do
-	 * this we remove all deltas from the toplevel ChangeSet file
-	 * from r2deltas.
-	 * This is somewhat expensive.
-	 */
-	if (resync) {
-		FILE	*f;
-		char	*tipkey;
-		char	*line;
-		project	*repo;
-
-		sprintf(buf, "%s/%s", RESYNC2ROOT, CHANGESET);
-		if (exists(buf)) {
-			repo = proj_isResync(cset->proj);
-			assert(repo);
-			unless (tipkey = proj_tipkey(repo)) tipkey = "";
-			sprintf(buf,
-			    "bk annotate -R'%s'.. -h ChangeSet", tipkey);
-			f = popen(buf, "r");
-			weavekeys = hash_new(HASH_MEMHASH);
-			while (line = fgetline(f)) {
-				t = separator(line);
-				assert(t);
-				*t++ = 0;
-				hash_insertStr(weavekeys, line, 0);
-			}
-			pclose(f);
-		}
-	}
-	unless (weavekeys) weavekeys = r2deltas;
-	EACH_HASH(weavekeys) {
-		rkey = weavekeys->kptr;
-		if (hash_fetchStr(keys, rkey)) continue;
-		if (gone(rkey, goneDB)) continue;
-
-		hash_storeStr(warned, rkey, 0);
-		found++;
-	}
-	if (found) {
-		if (fix > 1) {
-			found = repair(warned);
-		} else {
-			listFound(warned);
-		}
-	}
-	hash_free(warned);
-	if (weavekeys != r2deltas) hash_free(weavekeys);
-	return (found != 0);
-}
-
 private void
 listFound(hash *db)
 {
@@ -1431,25 +1350,234 @@ flags2mask(u32 flags)
 }
 
 /*
+ * Save all the D_CSET marked keys for checking with the cset weave later.
+ * If a component cset in the product, save info to help with poly checking.
+ */
+private int
+checkKeys(sccs *s)
+{
+	ser_t	tip = 0, d, p;
+	rkdata	*rkd;
+	DATA	*kbufp;
+	char	*sfile;
+	int	i, len, idx, fake;
+	int	errors = 0, doGca = 0;
+	ser_t	*branches = 0;
+	u32	color;
+	char	key[MAXKEY];
+
+	if (s == cset) return (0);
+
+	/*
+	 * Store the root keys. We want all of them to be unique.
+	 */
+	sccs_sdelta(s, sccs_ino(s), key);
+	unless (rkd = hash_insertStrMem(r2deltas, key, 0, sizeof(rkdata))) {
+		rkd = r2deltas->vptr;
+		sfile = name2sccs(rkd->pathname);
+		if (sameFiles(sfile, s->sfile)) {
+			fprintf(stderr,
+			    "%s and %s are identical. "
+			    "Are one of these files copied?\n",
+			    s->sfile, sfile);
+		} else {
+			fprintf(stderr,
+			    "Same key %s used by\n\t%s\n\t%s\n",
+			    key, s->gfile, rkd->pathname);
+		}
+		gotDupKey = 1;
+		free(sfile);
+		return (1);
+	}
+	if (CSET(s) && MONOTONIC(s)) {
+		fprintf(stderr, "%s: component cset file is MONOTONIC\n%s\n",
+		    prog, key);
+		errors++;
+	}
+	/*
+	 * rkd->kbuf is an array of all delta keys in this file, in
+	 * time order.  It is just one large buffer with the
+	 * null-terminated delta keys stored one after another.
+	 * rkd->keys is an array of offsets into kbuf that can be
+	 * easily indexed.
+	 *
+	 * Preallocate enough room for all the delta keys in this
+	 * file.  Just guessing here, but it helps a couple percent not
+	 * to reallocate as the data is added.
+	 * So for each deltas we assume:
+	 *    32-bytes for user@host
+	 *    strlen(s->gfile) for the pathname
+	 *    22-bytes for ||date|sum
+	 *    1 for null
+	 * We also aim 50% high.  The extra data is released after the
+	 * array is finished.
+	 *
+	 * When 's' is a cset (therefore a component), and the tip is a
+	 * merge with cset marks on both sides of the merge, compute the
+	 * gca for helping with the poly check in buildKeys().
+	 */
+	kbufp = &rkd->kbuf;
+	data_resize(kbufp,
+	    (TABLE(s) + TABLE(s)/2)  * (32 + strlen(s->gfile) + 22 + 1));
+	kbufp->len = 1;		/* skip first so all offsets are non-zero */
+	rkd->keys = calloc(TABLE(s)+1, sizeof(u32));
+	i = 1;
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		if (TAG(s, d)) continue;
+		if (color = (FLAGS(s, d) & (D_RED|D_BLUE))) {
+			FLAGS(s, d) &= ~color;
+		}
+		fake = 0;
+		if (CSET(s)) {
+			unless (tip) {
+				tip = d;
+				color |= D_BLUE;
+				if (MERGE(s, d)) doGca = 1;
+				/* see fake in poly.c -- it's unmarked */
+				if (resync) {
+					fake = ((FLAGS(s, d) & D_CSET) == 0);
+				}
+			}
+			// single tip: all are under BLUE
+			if (!errors && !(color & D_BLUE)) {
+				fprintf(stderr, "%s: component cset file "
+				    "not single tipped: %s not under %s\n",
+				    prog, REV(s, d), REV(s, tip));
+				errors++;
+			}
+		}
+		unless (fake || (FLAGS(s, d) & D_CSET)) goto next;
+		if (MONOTONIC(s) && DANGLING(s, d)) goto next;
+		if (kbufp->len + MAXKEY >= kbufp->size) {
+			data_resize(kbufp, kbufp->len + MAXKEY);
+		}
+		if (fake) rkd->fake = i;
+		rkd->keys[i++] = kbufp->len;
+		len = sccs_sdelta(s, d, kbufp->buf + kbufp->len);
+		kbufp->len += len + 1;
+		if (doGca && !(color & D_RED) && (d != tip)) {
+			// looking for branch tips under merge tip.
+			assert(tip);
+			addArray(&branches, &d);
+			color |= D_RED;
+		}
+
+next:		if (color) {
+			if (p = PARENT(s, d)) FLAGS(s, p) |= color;
+			if (p = MERGE(s, d)) FLAGS(s, p) |= color;
+		}
+	}
+	/* Now return any unused data to the system */
+	data_setSize(kbufp, kbufp->len);
+	rkd->keycnt = i-1;
+	rkd->unmarked = i-1;
+	rkd->dmasks = calloc(i, 1);
+	rkd->curr = 1;
+	rkd->pathname = strdup(s->gfile);
+	if (branches) {
+		if (nLines(branches) == 1) {
+			/* poly detector okay with this; do nothing */
+		} else if (nLines(branches) == 2) {
+			ser_t	*gcalist = 0;
+
+			range_walkrevs(s, branches[1], 0, branches[2],
+			    WR_GCA, walkrevs_addSer, &gcalist);
+			EACH(gcalist) {
+				d = gcalist[i];
+				sccs_sdelta(s, d, key);
+				if (FLAGS(s, d) & D_CSET) {
+					if (idx = keyFind(rkd, key)) {
+						addArray(&rkd->gca, &idx);
+						addArray(&rkd->gcamask, 0);
+					}
+				} else {
+					/* gca unmarked - must be poly */
+					rkd->poly =
+					    addLine(rkd->poly, strdup(key));
+				}
+			}
+			free(gcalist);
+		} else {
+			assert(0);
+		}
+		free(branches);
+	}
+	return (errors);
+}
+
+private char *
+keyDate(char *key)
+{
+	char	*p = strchr(key, '|') + 1;
+
+	return (strchr(p, '|') + 1);
+}
+
+/*
+ * Find a match for key in rkd->keys and return the index of that key.
+ * Assumes it is somewhere near rkd->curr.
+ * returns 0 if that key date doesn't exist.
+ */
+private int
+keyFind(rkdata *rkd, char *key)
+{
+	char	*dkey;
+	char	*dp;
+	int	cmp;
+	int	p = rkd->curr;
+
+	unless (p) p = 1;
+	dkey = keyDate(key);
+
+	/*
+	 * Walk backwards to the first key with a date newer than
+	 * the search key.
+	 */
+	do {
+		// prev key
+		unless (--p) break; /* hit start of keys array */
+		dp = keyDate(KEY(rkd, p));
+	} while (strncmp(dp, dkey, 14) <= 0);
+
+	/*
+	 * Now walk forward to the first key that matches date and exit
+	 * if we walk past
+	 */
+	do {
+		++p;
+		if (p > rkd->keycnt) break; /* end of keys */
+		dp = keyDate(KEY(rkd, p));
+		unless (cmp = strncmp(dp, dkey, 14)) {
+			if (streq(KEY(rkd, p), key)) return (p);
+		}
+	} while (cmp >= 0);
+	return (0);
+}
+
+/*
  * Open up the ChangeSet file and get every key ever added.  Build the
  * r2deltas hash which is described at the top f the file.  We'll use
  * this later for making sure that all the keys in a file are there.
  */
-private void
+private int
 buildKeys(MDBM *idDB)
 {
-	char	*s, *t;
+	char	*s, *p;
+	int	idx;
 	int	e = 0;
 	ser_t	d, twotips;
 	char	**pathnames = 0; /* lines array of tipdata*'s */
 	tipdata	*td1, *td2;
 	int	i;
 	u8	mask = 0;
+	hash	*warned = 0;
+	int	found = 0;
 	ser_t	oldest = 0, ser = 0;
 	rkdata	*rkd;
-	int	dupdelta;
 	char	*rkey, *dkey;
-	char	key[MAXKEY];
+	hash	*csets_in = 0;
+	hash	*newpoly = 0;
+	FILE	*f;
 
 	// In RESYNC, r.ChangeSet is move out of the way, can't test for it
 	if (resync) {
@@ -1457,21 +1585,25 @@ buildKeys(MDBM *idDB)
 			fprintf(stderr, "Commit must result in single tip\n");
 			e++;
 		}
+		/* in RESYNC remember the new serials in changeset file */
+		if (f = fopen(CSETS_IN, "r")) {
+			csets_in = hash_new(HASH_MEMHASH);
+			while (p = fgetline(f)) {
+				ser = sccs_findKey(cset, p);
+				hash_store(csets_in, &ser, sizeof(ser), 0, 0);
+			}
+			fclose(f);
+		}
 	} else {
 		d = sccs_top(cset);
 		twotips = 0;
 	}
-	if (twotips || MERGE(cset, d)) {
-		if (!resync && proj_isProduct(cset->proj)) {
-			newpoly = hash_new(HASH_MEMHASH);
-		}
+	if (!twotips && MERGE(cset, d) && proj_isProduct(cset->proj)) {
+		/* resync or main repo; after tips are closed */
+		newpoly = hash_new(HASH_MEMHASH);
 	}
 	oldest = color_merge(cset, d, twotips);
 
-	unless (r2deltas = hash_new(HASH_MEMHASH)) {
-		perror("buildkeys");
-		exit(1);
-	}
 	sccs_rdweaveInit(cset);
 	while (s = sccs_nextdata(cset)) {
 		if (*s == '\001') {
@@ -1486,15 +1618,13 @@ buildKeys(MDBM *idDB)
 				 * failed to include a merge delta.
 				 */
 				unless (twotips) EACH_HASH(r2deltas) {
-					rkdata	*rk;
-
-					rk = r2deltas->vptr;
+					rkd = r2deltas->vptr;
 					unless (RK_BOTH ==
-					    (rk->mask & (RK_BOTH|RK_INTIP))) {
+					    (rkd->mask & (RK_BOTH|RK_INTIP))) {
 						continue;
 					}
-					if (mdbm_fetch_str(goneDB,
-					    (char *)r2deltas->kptr)) {
+					rkey = r2deltas->kptr;
+					if (mdbm_fetch_str(goneDB, rkey)) {
 						continue;
 					}
 					/* problem found */
@@ -1503,9 +1633,8 @@ buildKeys(MDBM *idDB)
 					    "but is missing a required merge "
 					    "delta for this rootkey\n",
 					    REV(cset, sccs_top(cset)));
-					fprintf(stderr, "\t%s\n",
-					    (char *)r2deltas->kptr);
-					exit(1);
+					fprintf(stderr, "\t%s\n", rkey);
+					return (1);
 				}
 				oldest = 0;
 			}
@@ -1517,28 +1646,26 @@ buildKeys(MDBM *idDB)
 			}
 			continue;
 		}
-		t = separator(s);
-		*t++ = 0;
-		hash_insert(r2deltas, s, t-s, 0, sizeof(rkdata));
+		dkey = separator(s);
+		*dkey++ = 0;
+		if (hash_insertStrMem(r2deltas, s, 0, sizeof(rkdata))) {
+			if (all &&
+			    (!resync ||
+			     hash_fetch(csets_in, &ser, sizeof(ser))) &&
+			    !componentKey(dkey) && !mdbm_fetch_str(goneDB, s)) {
+				unless(warned) warned = hash_new(HASH_MEMHASH);
+				hash_storeStr(warned, s, 0);
+				++found;
+			}
+		}
 		rkey = r2deltas->kptr;
-		rkd = (rkdata *)r2deltas->vptr;
-		unless (rkd->deltas) rkd->deltas = hash_new(HASH_MEMHASH);
+		rkd = r2deltas->vptr;
 		if (oldest) rkd->mask |= mask;
-
-		dupdelta = !hash_insertStrMem(rkd->deltas, t, 0, sizeof(mask));
-		dkey = rkd->deltas->kptr; /* delta key */
 
 		/*
 		 * For each serial in the tip cset remember the pathname
 		 * where each rootkey should live on the disk.
 		 * Later we will check for conflicts.
-		 * LMXXX - if the file is marked gone but present isn't this
-		 * code incorrect?
-		 * Answer: it's a delta key that's missing, and yeah, if
-		 * the deltakey is really there, it is incorrect.  And the
-		 * right answer according to poly is to duplicate the key
-		 * that is there in the merge tip, and then this special case
-		 * isn't needed.  That's a better answer.
 		 */
 		if (!twotips &&
 		    !(rkd->mask & RK_TIP) && !mdbm_fetch_str(goneDB, dkey)) {
@@ -1553,36 +1680,92 @@ buildKeys(MDBM *idDB)
 				/* base of a poly db file is md5 rootkey */
 				hash_storeStr(newpoly, base, 0);
 			}
+
 			/* strip /ChangeSet from components */
 			if (streq(base, "ChangeSet")) dirname(path);
 			td1 = new(tipdata);
 			td1->path = path;
 			td1->rkey = rkey;
-			td1->dkey = dkey;
+			td1->dkey = strdup(dkey);
 			if (doMarks && (ser == TABLE(cset))) {
 				td1->incommit = 1;
 			}
 			pathnames = addLine(pathnames, td1);
 		}
-		/*
-		 * If dup, there are a number of cases to consider.
-		 * This may output an message and return if this case
-		 * should be considered an error.
-		 */
-		if (dupdelta) {
-			u8	prevmask = *(u8 *)rkd->deltas->vptr;
-			
-			if (processDups(rkey, dkey, prevmask, mask, idDB)) {
-				e++;
+		if (rkd->keys) {
+			if (rkd->curr && streq(dkey, KEY(rkd, rkd->curr))) {
+found:				if (rkd->dmasks[rkd->curr]) {
+					if (processDups(rkey, dkey,
+					    rkd->dmasks[rkd->curr],
+					    mask, idDB)) {
+						e++;
+					}
+				} else {
+					/* first time mark key as used */
+					rkd->unmarked--;
+				}
+				rkd->dmasks[rkd->curr] |= mask;
+				/* key on tip and either side */
+				if (newpoly && (mask & RK_BOTH) &&
+				    (rkd->dmasks[rkd->curr] & RK_INTIP) &&
+				    changesetKey(rkey)) {
+					rkd->poly =
+					    addLine(rkd->poly, strdup(dkey));
+				}
+				if (newpoly && rkd->gca) {
+					EACH(rkd->gca) {
+						if (rkd->gca[i] == rkd->curr) {
+				    			rkd->gcamask[i] |= mask;
+							break;
+						}
+					}
+				}
+				if (rkd->curr < rkd->keycnt) {
+					++rkd->curr;
+				} else {
+					rkd->curr = 0;
+				}
+			} else {
+				/*
+				 * This path is taken when the
+				 * ChangeSet file has deltas out of
+				 * time order.  With a full check in
+				 * the linux kernel this path was
+				 * taken 0.5% of the time, so
+				 * performance is not critical.
+				 */
+				if (idx = keyFind(rkd, dkey)) {
+					rkd->curr = idx;
+					goto found;
+				}
+				// missing delta
+				rkd->missing = addLine(rkd->missing,
+				    aprintf("%d|%s", ser, dkey));
 			}
 		}
-		if (mask) *(u8 *)rkd->deltas->vptr |= mask;
 	}
 	if (sccs_rdweaveDone(cset)) {
 		fprintf(stderr, "check: failed to read cset weave\n");
-		exit(1);
+		return (1);
+	}
+	if (csets_in) hash_free(csets_in);
+	if (found) {
+		if (fix > 1) {
+			found = repair(warned);
+		} else {
+			listFound(warned);
+		}
+		hash_free(warned);
+		if (found) e += found;
 	}
 
+	/* now look for committed deltakeys that don't appear in cset file */
+	EACH_HASH(r2deltas) {
+		rkd = r2deltas->vptr;
+		rkey = r2deltas->kptr;
+		if (!e && changesetKey(rkey)) e+= polyChk(rkey, rkd, newpoly);
+		if (rkd->missing || rkd->unmarked) e += missingDelta(rkd);
+	}
 	if (goneKey) goto finish; /* skip name collision */
 
 	if (proj_isComponent(cset->proj)) {
@@ -1602,39 +1785,21 @@ buildKeys(MDBM *idDB)
 		td1 = (tipdata *)pathnames[i-1];
 		td2 = (tipdata *)pathnames[i];
 		if (paths_overlap(td1->path, td2->path)) {
-			if (pathConflictError(goneDB, idDB, td1, td2)) exit(1);
+			if (pathConflictError(goneDB, idDB, td1, td2)) {
+				return (1);
+			}
 		}
 	}
 finish:
 	EACH(pathnames) {
 		td1 = (tipdata *)pathnames[i];
 		free(td1->path);
+		free(td1->dkey);
 		free(td1);
 	}
 	freeLines(pathnames, 0);
-	/* Add in ChangeSet keys */
-	sccs_sdelta(cset, sccs_ino(cset), key);
-	hash_storeStrMem(r2deltas, key, 0, sizeof(rkdata));
-	rkd = (rkdata *)r2deltas->vptr;
-	rkd->deltas = hash_new(HASH_MEMHASH);
-	for (d = TABLE(cset); d >= TREE(cset); d--) {
-		unless (!TAG(cset, d) && (FLAGS(cset, d) & D_CSET)) {
-			FLAGS(cset, d) &= ~(D_RED|D_BLUE);
-			continue;
-		}
-		sccs_sdelta(cset, d, key);
-		unless (hash_insertStrMem(rkd->deltas, key, 0, sizeof(mask))) {
-			// Not really poly, but duplicate deltakeys
-			// XXX: No off switch: always error (new with poly).
-			fprintf(stderr,
-			    "check: key %s replicated in ChangeSet.\n", key);
-			e++;
-		}
-		mask = flags2mask(FLAGS(cset, d));
-		if (mask) *(u8 *)rkd->deltas->vptr |= mask;
-		FLAGS(cset, d) &= ~(D_RED|D_BLUE);
-	}
-	if (e) exit(1);
+	if (newpoly) hash_free(newpoly);
+	return (e);
 }
 
 /*
@@ -1674,7 +1839,7 @@ again:	unless (ignore) return (0);
  *    Even if allowed, block commit poly when not in resync.
  * Commit Policy - Always fail any poly being created by commit
  *    (except for testing, and component poly in resync)
- * Policy for files 
+ * Policy for files
  *  - Fail if pull creates new poly, but allow if dkey in ignore-poly file
  *    Note: this breaks r2c working correctly.
  *  - Always print warnings for poly unless in ignore-poly file
@@ -1940,44 +2105,169 @@ getRev(char *root, char *key, MDBM *idDB)
 	return (t);
 }
 
+private int
+stripdelFile(sccs *s, rkdata *rkd, char *tip)
+{
+	int	i;
+	int	errors;
+
+	assert(s);
+	range_gone(s, sccs_findKey(s, tip), D_SET);
+	(void)stripdel_fixTable(s, &i);
+	if (verbose > 2) {
+		fprintf(stderr, "Rolling back %d deltas in %s\n", i, s->gfile);
+	}
+	errors = sccs_stripdel(s, "check");
+	return (errors);
+}
+
+private int
+missingDelta(rkdata *rkd)
+{
+	ser_t	dcset;
+	char	*dkey;
+	int	i;
+	int	writefile = 0;
+	sccs	*s;
+	ser_t	d;
+	int	errors = 0;
+	char	*sfile;
+
+	sfile = name2sccs(rkd->pathname);
+	s = sccs_init(sfile, INIT_MUSTEXIST|INIT_NOCKSUM);
+	assert(s);
+	EACH(rkd->missing) {
+		dcset = strtoul(rkd->missing[i], &dkey, 10);
+		dkey++;
+		if (!resync && (d = sccs_findKey(s, dkey))) {
+			assert(!(FLAGS(s, d) & D_CSET));
+			/* auto fix except in resync */
+			FLAGS(s, d) |= D_CSET;
+			writefile = 1;
+		} else {
+			/* skip if the delta is marked as being OK to be gone */
+			if (isGone(s, dkey)) continue;
+
+			/* Spit out key to be gone-ed */
+			if (goneKey & 2) {
+				printf("%s\n", dkey);
+				continue;
+			}
+			/* don't want noisy messages in this mode */
+			if (goneKey) continue;
+
+			/* let them know if they need to delete the file */
+			if (isGone(s, 0)) {
+				fprintf(stderr,
+				    "Marked gone (bk help chk1): %s\n",
+				    s->gfile);
+				continue;
+			} else {
+				errors++;
+			}
+			fprintf(stderr,
+			    "Missing delta (bk help chk2) in %s\n", s->gfile);
+			if (details) {
+				fprintf(stderr,
+				    "\tkey: %s in ChangeSet|%s\n",
+				    dkey, REV(cset, dcset));
+			}
+		}
+	}
+	if (rkd->unmarked) {
+		int	matched = 0;
+		char	*found = 0, *tip = 0;
+
+		for (i = 1; i <= rkd->keycnt; i++) {
+			if (rkd->dmasks[i]) {
+				matched++;
+				unless (tip) tip = KEY(rkd, i);
+			} else unless (rkd->fake == i) {
+				if (undoMarks && CSET(s)) {
+					d = sccs_findKey(s, KEY(rkd, i));
+					assert(d);
+					FLAGS(s, d) &= ~D_CSET;
+					writefile = 1;
+				} else {
+					unless (found) found = KEY(rkd, i);
+				}
+			}
+		}
+		if (matched && stripdel) {
+			getlock();
+			errors += stripdelFile(s, rkd, tip);
+			writefile = 0;
+		} else if (matched) {
+			if (found) {
+				fprintf(stderr,
+				    "%s: marked delta should be in ChangeSet "
+				    "but is not.\n\t%s\n",
+				    rkd->pathname, found);
+				++errors;
+			}
+		} else {
+			fprintf(stderr,
+			    "%s: File %s doesn't have any data that matches "
+			    "the local ChangeSet file.\n"
+			    "This file was likely copied from "
+			    "another repository\n",
+			    prog, rkd->pathname);
+			++errors;
+		}
+	}
+	if (writefile) {
+		getlock();
+		if (getenv("_BK_DEVELOPER")) {
+			fprintf(stderr,
+			    "%s: adding and/or removing missing csetmarks\n",
+			    s->gfile);
+		}
+		if (sccs_newchksum(s)) {
+			fprintf(stderr, "Could not mark %s. Perhaps it "
+			    "is locked by some other process?\n",
+			    s->gfile);
+			errors++;
+		}
+	}
+	sccs_free(s);
+	return (errors);
+}
+
+
 /*
  * check to see if there is poly in this comp, and either an error
  * if blocking poly or a check to see that poly was recorded in the product.
- * Note: Cunning Plan - poly on 1.0 is silently allowed.
  *
  * Poly test - in gca and: D_CSET marked as being unique to trunk or branch,
  * or D_CSET unmarked and not root node.
  */
 private	int
-polyChk(sccs *s, ser_t trunk, ser_t branch, hash *deltas)
+polyChk(char *rkey, rkdata *rkd, hash *newpoly)
 {
-	ser_t	*gca = 0;
-	u8	*mask;
 	int	i, errors = 0;
-	int	isFile = !CSET(s);
+	u8	mask;
 	char	buf[MAXKEY];
 
-	unless (newpoly || polyErr || isFile) return (0);
-
-	range_walkrevs(s, trunk, 0, branch, WR_GCA, walkrevs_addSer, &gca);
-	EACH(gca) {
-		sccs_sdelta(s, gca[i], buf);
-		unless (((mask = hash_fetchStrMem(deltas, buf)) &&
-		    ((*mask & (RK_PARENT|RK_MERGE)) && !(*mask & RK_GCA))) ||
-    		    (!(FLAGS(s, gca[i]) & D_CSET) &&
-		    (gca[i] != TREE(s)))) {
-			continue;
+	/* post process gca list masks to see if poly conditions met */
+	EACH(rkd->gca) {
+		mask = rkd->gcamask[i];
+		if ((rkd->mask & RK_INTIP) &&
+		    (mask & RK_BOTH) && !(mask & RK_GCA)) {
+			rkd->poly = addLine(rkd->poly,
+			    strdup(KEY(rkd, rkd->gca[i])));
 		}
-		if (isFile && ignorepoly(buf)) continue;
-		if (isFile || polyErr) {
-			fprintf(stderr, "%s: poly on key %s\n", prog, buf);
+	}
+	EACH(rkd->poly) {
+		if (polyErr) {
+			fprintf(stderr,
+			    "%s: poly on key %s\n", prog, rkd->poly[i]);
 			errors++;
-		} else if (!isFile && newpoly) {
-			sccs_md5delta(s, sccs_ino(s), buf);
-			if (hash_deleteStr(newpoly, buf)) {
+		} else if (newpoly) {
+			sccs_key2md5(rkey, buf);
+			unless (hash_fetchStr(newpoly, buf)) {
 				fprintf(stderr,
 				    "%s: poly not captured in %s for %s\n",
-				    prog, buf, s->gfile);
+				    prog, buf, rkd->pathname);
 				errors++;
 			}
 		}
@@ -1988,7 +2278,6 @@ polyChk(sccs *s, ser_t trunk, ser_t branch, hash *deltas)
 		    "Please write support@bitmover.com with the above\n"
 		    "information about poly on key\n");
 	}
-	free(gca);
 	return (errors);
 }
 
@@ -2009,34 +2298,33 @@ polyChk(sccs *s, ser_t trunk, ser_t branch, hash *deltas)
 private int
 check(sccs *s, MDBM *idDB)
 {
-	ser_t	trunk = 0, branch = 0;
-	ser_t	d, ino, tip = 0;
-	int	errors = 0, goodkeys;
-	int	i, writefile = 0;
+	ser_t	d, ino;
+	int	errors = 0;
+	int	i;
 	char	*t, *x;
-	hash	*deltas;
 	char	**lines = 0;
-	rkdata	*rk;
 	char	buf[MAXKEY];
 
-	sccs_sdelta(s, sccs_ino(s), buf);
-	if (rk = hash_fetchStrMem(r2deltas, buf)) {
-		deltas = rk->deltas;
-	} else {
-		deltas = 0;	/* new pending file? */
-	}
 	/*
 	 * Make sure that all marked deltas are found in the ChangeSet
 	 */
 	if (doMarks && (t = sfileRev())) {
 		d = sccs_findrev(s, t);
 		FLAGS(s, d) |= D_CSET;
-		writefile = 2;
+		if (sccs_newchksum(s)) {
+			fprintf(stderr, "Could not mark %s. Perhaps it "
+				"is locked by some other process?\n",
+				s->gfile);
+			errors++;
+		} else {
+			doMarks = addLine(doMarks,
+			    aprintf("%s|%s", s->sfile, REV(s, d)));
+		}
+		sccs_restart(s);
 		if (d == sccs_top(s)) unlink(sccs_Xfile(s, 'd'));
 		doMarks = addLine(doMarks,
 		    aprintf("%s|%s", s->sfile, REV(s, d)));
 	}
-	goodkeys = 0;
 	for (d = TABLE(s); d >= TREE(s); d--) {
 		if (verbose > 3) {
 			fprintf(stderr, "Check %s@%s\n", s->gfile, REV(s, d));
@@ -2048,85 +2336,8 @@ check(sccs *s, MDBM *idDB)
 			    "Obsolete LOD data(bk help chk4): %s|%s\n",
 	    		    s->gfile, REV(s, d));
 		}
-
-		sccs_sdelta(s, d, buf);
-		unless (deltas && (t = hash_fetchStr(deltas, buf))) {
-			unless (FLAGS(s, d) & D_CSET) continue;
-			if (MONOTONIC(s) && DANGLING(s, d)) continue;
-			if (undoMarks && CSET(s)) {
-				FLAGS(s, d) &= ~D_CSET;
-				writefile = 1;
-				continue;
-			}
-			errors++;
-			if (stripdel) continue;
-
-			fprintf(stderr,
-			    "%s: marked delta %s should be "
-			    "in ChangeSet but is not.\n",
-			    s->gfile, REV(s, d));
-			sccs_sdelta(s, d, buf);
-			fprintf(stderr, "\t%s -> %s\n", REV(s, d), buf);
-		} else {
-			if (!resync && !(FLAGS(s, d) & D_CSET)) {
-				/* auto fix except in resync */
-				FLAGS(s, d) |= D_CSET;
-				writefile = 1;
-			}
-			if (*t) {
-				if (!trunk && (*t & RK_PARENT)) trunk = d;
-				if (!branch && (*t & RK_MERGE)) branch = d;
-			}
-			++goodkeys;
-			unless (tip) tip = d;
-			if (verbose > 2) {
-				fprintf(stderr, "%s: found %s in ChangeSet\n",
-				    s->gfile, buf);
-			}
-		}
 	}
-	if (trunk && branch) {
-		errors += polyChk(s, trunk, branch, deltas);
-	}
-	if (writefile) {
-		getlock();
-		if ((writefile == 1) && getenv("_BK_DEVELOPER")) {
-			fprintf(stderr,
-			    "%s: adding and/or removing missing csetmarks\n",
-			    s->gfile);
-		}
-		if (sccs_newchksum(s)) {
-			fprintf(stderr, "Could not mark %s. Perhaps it "
-				"is locked by some other process?\n",
-				s->gfile);
-			errors++;
-		}
-		sccs_restart(s);
-	}
-	if (errors && !goodkeys) {
-		fprintf(stderr,
-		    "%s: File %s doesn't have any data that matches the "
-		    "local ChangeSet file.\n"
-		    "This file was likely copied from another repository\n",
-		    prog, s->gfile);
-		return (errors);
-	}
-
-	if (stripdel) {
-		if (CSET(s)) {
-			fprintf(stderr, "check: can't do ChangeSet files.\n");
-			return (1);
-		}
-		unless (errors) return (0);
-		range_gone(s, tip, D_SET);
-		(void)stripdel_fixTable(s, &i);
-		if (verbose > 2) {
-			fprintf(stderr,
-			    "Rolling back %d deltas in %s\n", i, s->gfile);
-		}
-		errors = sccs_stripdel(s, "check");
-		return (errors);
-	}
+	if (stripdel) return (errors);
 
 	/*
 	 * The location recorded and the location found should match.
@@ -2217,14 +2428,6 @@ check(sccs *s, MDBM *idDB)
 		sccs_adminFlag(s, FL);
 	    	errors++;
 	}
-
-	/*
-	 * Go through all the deltas that were found in the ChangeSet
-	 * hash and belong to this file.
-	 * Make sure we can find the deltas in this file.
-	 */
-	errors += checkKeys(s, buf);
-
 	return (errors);
 }
 
@@ -2260,137 +2463,7 @@ isGone(sccs *s, char *key)
 	return (mdbm_fetch_str(goneDB, buf) != 0);
 }
 
-private int
-checkKeys(sccs *s, char *root)
-{
-	int	errors = 0;
-	char	*a, *dkey;
-	ser_t	d;
-	char	*p;
-	hash	*findkey;
-	hash	*deltas;
-	char	key[MAXKEY];
-
-	unless (p = hash_fetchStr(r2deltas, root)) return (0);
-	deltas = *(hash **)p;
-
-	findkey = hash_new(HASH_MEMHASH);
-	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d) & D_CSET) continue;
-		sccs_sdelta(s, d, key);
-		unless (hash_insert(findkey, key, strlen(key)+1, &d, sizeof(d))) {
-			fprintf(stderr, "check: insert error for %s\n", key);
-			hash_free(findkey);
-			return (1);
-		}
-	}
-	EACH_HASH(deltas) {
-		dkey = (char *)deltas->kptr;
-		/*
-		 * We should find the delta key in the s.file if it is
-		 * in the ChangeSet file.
-		 */
-		unless ((p = hash_fetchStr(findkey, dkey)) &&
-		    (d = *(ser_t *)p)) {
-			/* skip if the delta is marked as being OK to be gone */
-			if (isGone(s, dkey)) continue;
-
-			/* Spit out key to be gone-ed */
-			if (goneKey & 2) {
-				printf("%s\n", dkey);
-				continue;
-			}
-
-			/* don't want noisy messages in this mode */
-			if (goneKey) continue;
-
-			if (resync && CSET(s)) {
-				sccs_sdelta(s, sccs_top(s), key);
-				if (streq(key, dkey) &&
-				    exists(sccs_Xfile(s, 'd'))) {
-				    	continue; /* OK: poly fixup */
-				}
-			}
-			/* let them know if they need to delete the file */
-			if (isGone(s, 0)) {
-				fprintf(stderr,
-				    "Marked gone (bk help chk1): %s\n",
-				    s->gfile);
-				continue;
-			} else {
-				errors++;
-			}
-
-			/*
-			 * XXX - this is a place where we don't do repair
-			 * properly.  We know we have marked deltas which
-			 * means the ChangeSet file is behind.  So we should
-			 * go get the ChangeSet file from our parent and see
-			 * if that fixes it.
-			 * But we also need to not lose any other local csets
-			 * we might have in the local ChangeSet file.
-			if (fix > 1) {
-				assert("extra" == 0);
-			}
-			 */
-
-			/*
-			 * If we get here we have the key in the ChangeSet
-			 * file, we have the s.file, it's not marked gone,
-			 * so complain about it.
-			 */
-			fprintf(stderr,
-			    "Missing delta (bk help chk2) in %s\n", s->gfile);
-			unless (details) continue;
-			a = csetFind(dkey);
-			fprintf(stderr,
-			    "\tkey: %s in ChangeSet|%s\n", dkey, a);
-			free(a);
-		} else unless (FLAGS(s, d) & D_CSET) {
-			fprintf(stderr,
-			    "%s@%s is in ChangeSet but not marked\n",
-			    s->gfile, REV(s, d));
-			errors++;
-		} else if (verbose > 2) {
-			fprintf(stderr, "%s: found %s from ChangeSet\n",
-			    s->gfile, REV(s, d));
-		}
-	}
-
-	hash_free(findkey);
-	return (errors);
-}
-
-private char	*
-csetFind(char *key)
-{
-	char	buf[MAXPATH*2];
-	FILE	*p;
-	char	*s;
-
-	char *k, *r =0;
-
-	sprintf(buf, "bk annotate -R -ar -h ChangeSet");
-	unless (p = popen(buf, "r")) return (strdup("[popen failed]"));
-	while (fnext(buf, p)) {
-		if (r) continue;
-		chop(buf);				/* remove '\n' */
-		for (s = buf; *s && !isspace(*s); s++); /* skip rev */
-		for (k = s; *k && isspace(*k); k++);	/* skip space */
-		for (; *k && !isspace(*k); k++);	/* skip root key */
-		for (; *k && isspace(*k); k++);		/* skip space */
-		unless (*k) return (strdup("[bad data]"));
-		if (streq(key, k)) {
-			*s = 0;
-			r = strdup(buf);
-		}
-	}
-	pclose(p);
-	unless (r) return (strdup("[not found]"));
-	return (r);
-}
-
-/*
+ /*
  * This function is called when we are doing a partial check after all
  * the files have been read.  The idcache is in 'idDB', and the
  * current pathnames to the checked files are in the 'keys' DB.  Look
@@ -2404,41 +2477,46 @@ csetFind(char *key)
  * XXX Code to manipulate the id_cache should be moved to idcache.c in 4.0
  */
 private int
-update_idcache(MDBM *idDB, hash *keys)
+update_idcache(MDBM *idDB)
 {
 	kvpair	kv;
+	rkdata	*rkd;
 	int	updated = 0;
+	char	*rkey;
 	char	*p, *e;
 	char	*cached;	/* idcache idea of where the file is */
 	char	*found;		/* where we found the gfile */
 	int	inkeyloc;	/* is gfile in inode location? */
 
-	EACH_HASH(keys) {
-		p = strchr(keys->kptr, '|');
+	EACH_HASH(r2deltas) {
+		rkd = r2deltas->vptr;
+		unless (rkd->keys) continue;  // only files actually read
+		rkey = r2deltas->kptr;
+		p = strchr(rkey, '|');
 		assert(p);
 		p++;
 		e = strchr(p, '|');
 		assert(e);
 		*e = 0;
-		found = keys->vptr;
+		found = rkd->pathname;
 		inkeyloc = streq(p, found);
 		*e = '|';
-		cached = mdbm_fetch_str(idDB, keys->kptr);
+		cached = mdbm_fetch_str(idDB, rkey);
 		/* FIXUP idDB if it is wrong */
 		if (inkeyloc) {
 			if (cached) {
 				unless(streq(cached, found)) updated = 1;
-				kv.key.dptr = keys->kptr;
-				kv.key.dsize = keys->klen;
+				kv.key.dptr = r2deltas->kptr;
+				kv.key.dsize = r2deltas->klen;
 				mdbm_delete(idDB, kv.key);
 			}
 		} else {
 			if (!cached || !streq(cached, found)) {
 				updated = 1;
-				kv.key.dptr = keys->kptr;
-				kv.key.dsize = keys->klen;
-				kv.val.dptr = keys->vptr;
-				kv.val.dsize = keys->vlen;
+				kv.key.dptr = r2deltas->kptr;
+				kv.key.dsize = r2deltas->klen;
+				kv.val.dptr = rkd->pathname;
+				kv.val.dsize = strlen(rkd->pathname)+1;
 				mdbm_store(idDB, kv.key, kv.val, MDBM_REPLACE);
 			}
 		}

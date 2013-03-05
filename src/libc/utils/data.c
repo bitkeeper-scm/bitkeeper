@@ -1,5 +1,21 @@
 #include "system.h"
 
+/*
+ * Set the data region to a given size
+ */
+void
+data_setSize(DATA *d, u32 size)
+{
+	assert(d->len <= size);
+	/* buf is uninitialized */
+	d->buf = realloc(d->buf, size);
+	d->size = size;
+}
+
+/*
+ * make data region at least big enough for newlen data,
+ * grows the region logarithmically.
+ */
 void
 data_resize(DATA *d, u32 newlen)
 {
@@ -14,9 +30,7 @@ data_resize(DATA *d, u32 newlen)
 			while (size < newlen) size *= 2;
 		}
 
-		/* buf is uninitialized */
-		d->buf = realloc(d->buf, size);
-		d->size = size;
+		data_setSize(d, size);
 	}
 }
 

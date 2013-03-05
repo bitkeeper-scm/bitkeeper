@@ -108,7 +108,7 @@ bk pull -R $Q || exit 1
 check_cnt
 echo OK
 
-CNT=11
+CNT=10
 echo $N "Count the inits for a 'bk resolve' ($CNT)......................"$NL
 rm "$FILE"
 bk resolve $Q || exit 1

@@ -107,6 +107,7 @@ typedef struct {
 	u32	size;		/* malloc'ed size */
 } DATA;
 
+void	data_setSize(DATA *d, u32 size);
 void	data_resize(DATA *d, u32 newlen);
 void	data_append(DATA *d, void *data, int len);
 #define	data_appendStr(f, s)       data_append(f, (s), strlen(s))

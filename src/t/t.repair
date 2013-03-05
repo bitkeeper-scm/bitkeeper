@@ -98,22 +98,14 @@ do	bk edit $Q $i
 done
 bk commit $Q -yahead || exit 1
 bk _mv SCCS/s.foo save.foo
-bk repair > OUT 2>&1 && {
-	echo failed
-	cat OUT
-	exit 1
-}
-grep -q 'Missing delta (bk help chk2) in foo' OUT || {
-	echo failed
-	cat OUT
-	exit 1
-}
+bk repair > OUT 2>&1 && fail -f OUT should fail
+grep -q 'Missing delta (bk help chk2) in BitKeeper/repair/foo' OUT || fail -f OUT
 test -d BitKeeper/repair && {
 	echo failed to clean up repair directory
 	exit 1
 }
 bk _mv save.foo SCCS/s.foo 
-bk -r check -ac || exit 1
+bk -r check -ac || fail
 bk changes -r`head -1 BitKeeper/log/TIP` > /dev/null || exit 1
 echo OK
 

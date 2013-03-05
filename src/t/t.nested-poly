@@ -425,17 +425,11 @@ echo OK
 
 echo $N re-pull -R, resolve -S comp, poly: off ......................$NL
 bk --config=poly:on pull $Q -R || fail
-# The component check can see the poly since the poly is unmarked
-bk --cd=comp/RESYNC -r check -R -p 2> GOT && fail -f GOT
-sanitize GOT
-cat <<EOF > WANT
-check: poly on key <comp/ChangeSet>
-Please write support@bitmover.com with the above
-information about poly on key
-EOF
-cmpfiles WANT GOT
-# failure leaves prod as manual merges may have happened.
-test -d RESYNC -a -d comp/RESYNC || fail RESYNC directories wrong
+# The component check now passes because the check doesn't run checkKeys()
+# on the main cset, so this partial poly check isn't run.  As seen in
+# the next steps, that's okay, because in reality, the previous pull would
+# have caught it, and if it gets to here, the product checks will get it.
+bk --cd=comp/RESYNC -r check -R -p
 echo OK
 
 echo $N resolve -S comp, poly: on ...................................$NL

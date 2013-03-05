@@ -29,12 +29,6 @@ echo 'SCCS/s.foo|+' | bk commit $Q -y'foo' - || fail
 bk pull -q 2> GOT && fail -f GOT
 sanitize GOT
 cat <<EOF > WANT
-Duplicate delta found in ChangeSet
-	Rev: 1.2  Key: <foo>
-	Both keys in file $HERE/duplicate/SCCS/s.foo
-	Same key found in ChangeSet:1.2.1.1,1.3
-Please write support@bitmover.com with the above
-error about duplicate deltas
 check: ChangeSet 1.4 is a merge but is missing a required merge delta for this rootkey
 	<foo>
 The commit is aborted.
