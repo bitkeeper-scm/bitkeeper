@@ -578,6 +578,11 @@ port/startmenu.o: port/startmenu.c $(HDRS)
 depend: $(SRCS)
 	$(CC) -MM -MG -D_DEPEND $(SRCS) > depends
 
+# for system.h we need to actually run libc's makefile because it includes
+# calculated header files
+libc/system.h: FORCE
+	$(MAKE) -C libc system.h
+
 $(OBJ) bk.o: $(HDRS)
 
 tclkey.h: genkeys.pl
