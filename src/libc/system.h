@@ -112,6 +112,15 @@ void	data_resize(DATA *d, u32 newlen);
 void	data_append(DATA *d, void *data, int len);
 #define	data_appendStr(f, s)       data_append(f, (s), strlen(s))
 
+/* die.c */
+#define	die(fmt, args...)  diefn(1, __FILE__, __LINE__, fmt, ##args)
+#define	warn(fmt, args...)  diefn(0, __FILE__, __LINE__, fmt, ##args)
+void	diefn(int seppuku, char *file, int line, char *fmt, ...)
+#ifdef	__GNUC__
+	__attribute__((format (__printf__, 4, 5)))
+#endif
+	;
+
 /* dirname.c */
 char	*dirname(char *path);
 char	*dirname_alloc(char *path);
