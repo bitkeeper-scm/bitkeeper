@@ -171,3 +171,28 @@ cd ..
 bk clone $Q --upgrade-repo nest.oldbk nest.bin2bweave || fail
 checkbk nest.bin2bweave
 echo OK
+
+echo $N Show that bSFILEv1 is removed when formats change ...........$NL
+cd "$HERE"
+bk clone $Q repo.ascii repo.bsfile || fail
+
+# repo old bSFILEv1 repo
+cd repo.bsfile
+echo bSFILEv1 >> BitKeeper/log/features
+_BK_DEVELOPER= bk repocheck $Q || fail
+
+# simple clone keeps old feature
+bk clone $Q . ../repo.bsfile-copy ||fail
+grep -q bSFILEv1 ../repo.bsfile-copy/BitKeeper/log/features || fail
+
+# --upgrade-repo upgrades to BKFILE
+bk clone $Q --upgrade-repo . ../repo.bsfile-upgrade-repo || fail
+checkbk ../repo.bsfile-upgrade-repo
+grep -q bSFILEv1 ../repo.bsfile-upgrade-repo/BitKeeper/log/features && fail
+
+# --compat clears feature
+bk clone $Q --compat . ../repo.bsfile-compat || fail
+checkascii ../repo.bsfile-compat
+grep -q bSFILEv1 ../repo.bsfile-compat/BitKeeper/log/features && fail
+echo OK
+

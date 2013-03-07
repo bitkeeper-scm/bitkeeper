@@ -31,10 +31,38 @@ FEATURES
 int
 features_main(int ac, char **av)
 {
-	int	i, comma;
+	int	i, c, comma;
 	char	*here;
+	longopt	lopts[] = {
+		{ "all", 'a' },
+		{ "old", 'o' },
+		{ 0, 0 }
+	};
 
-	unless (av[1]) {
+	while ((c = getopt(ac, av, "ao", lopts)) != -1) {
+		switch (c) {
+		    case 'a':
+			comma = 0;
+			for (i = 1; i <= NFEATURES; i++) {
+				if (flist[i].old) continue;
+				if (comma++) printf(",");
+				printf("%s", flist[i].name);
+			}
+			printf("\n");
+			return (0);
+		    case 'o':
+			comma = 0;
+			for (i = 1; i <= NFEATURES; i++) {
+				unless (flist[i].old) continue;
+				if (comma++) printf(",");
+				printf("%s", flist[i].name);
+			}
+			printf("\n");
+			return (0);
+		    default: bk_badArg(c, av);
+		}
+	}
+	unless (av[optind]) {
 		bk_nested2root(1);
 		if (here = features_fromBits(features_bits(0))) {
 			printf("%s\n", here);
@@ -44,33 +72,10 @@ features_main(int ac, char **av)
 			return (1);
 		}
 	}
-
-	if (streq(av[1], "--all")) {
-		comma = 0;
-		for (i = 1; i <= NFEATURES; i++) {
-			if (flist[i].old) continue;
-			if (comma++) printf(",");
-			printf("%s", flist[i].name);
-		}
-		printf("\n");
-		return (0);
-	}
-
-	if (streq(av[1], "--old")) {
-		comma = 0;
-		for (i = 1; i <= NFEATURES; i++) {
-			unless (flist[i].old) continue;
-			if (comma++) printf(",");
-			printf("%s", flist[i].name);
-		}
-		printf("\n");
-		return (0);
-	}
-
-	if (av[2]) usage();
+	if (av[optind + 1]) usage();
 
 	for (i = 1; i <= NFEATURES; i++) {
-		if (streq(av[1], flist[i].name)) return (0);
+		if (streq(av[optind], flist[i].name)) return (0);
 	}
 	return (1);
 }
@@ -241,7 +246,7 @@ features_set(project *p, int feature, int on)
 	u32	mask = feature;
 
 	/* if we are changing BKFILE then clear bSFILEv1 */
-	if (feature == FEAT_BKFILE) mask |= FEAT_bSFILEv1;
+	if (feature & FEAT_BKFILE) mask |= FEAT_bSFILEv1;
 	features_setMask(p, set, mask);
 }
 
