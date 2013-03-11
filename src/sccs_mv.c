@@ -80,7 +80,7 @@ err:		if (sname) free(sname);
 	}
 	t = destfile = name2sccs(buf);
 
-	unless (proj_samerepo(sname, destfile)) goto err;
+	unless (proj_samerepo(sname, destfile, 0)) goto err;
 
 	sfile = strdup(t);
 	gfile = sccs2name(t);

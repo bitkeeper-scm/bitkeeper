@@ -37,26 +37,31 @@ cp(char *from, char *to, int force)
 	int	err;
 
 	assert(from && to);
-	unless (proj_samerepo(from, to) || force) {
+	unless (proj_samerepo(from, to, 1) || force) {
 		fprintf(stderr, "bk cp: must be in same repo or use cp -f.\n");
 		return (1);
 	}
 	sfile = name2sccs(from);
 	unless (s = sccs_init(sfile, 0)) return (1);
-	unless (HASGRAPH(s) && s->cksumok) return (1);
+	unless (HASGRAPH(s) && s->cksumok) {
+err:		sccs_free(s);
+		return (1);
+	}
+	if (BAM(s) && !force) {
+		fprintf(stderr, "%s: cannot copy BAM files\n", prog);
+		goto err;
+	}
 	free(sfile);
 	sfile = name2sccs(to);
 	mkdirf(sfile);
 	gfile = sccs2name(sfile);
 	if (exists(sfile)) {
 		fprintf(stderr, "%s: file exists\n", sfile);
-		sccs_free(s);
-		return (1);
+		goto err;
 	}
 	if (exists(gfile)) {
 		fprintf(stderr, "%s: file exists\n", gfile);
-		sccs_free(s);
-		return (1);
+		goto err;
 	}
 
 	/*
