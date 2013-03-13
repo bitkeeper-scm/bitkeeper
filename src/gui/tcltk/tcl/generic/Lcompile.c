@@ -6761,14 +6761,14 @@ Tcl_Obj *
 L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 	Tcl_Obj *limobj, Expr_f flags)
 {
-	int		chlen, i, leading, len, lim, matches, off, ret, wlen;
+	int		chlen, i, leading, len, lim, matches, off, ret;
 	int		trim = (flags & L_EXPR_RE_T);
 	int		delimlen = 0, onspace = 0;
 	int		start = 0, end = 0;
 	Tcl_RegExp	regExpr = NULL;
 	Tcl_RegExpInfo	info;
 	Tcl_Obj		**elems, *resultPtr, *objPtr, *listPtr;
-	Tcl_UniChar	ch, *wstr;
+	Tcl_UniChar	ch;
 	char		*delimstr = NULL, *str;
 
 	if (limobj) {
@@ -6857,13 +6857,11 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 		listPtr = NULL;
 		goto done;
 	}
-	wstr = Tcl_GetUnicodeFromObj(objPtr, &wlen);
-	while ((off < wlen) && (matches < lim)) {
-		ret = Tcl_RegExpExecObj(interp, regExpr, objPtr, off,
-					10 /* matches */,
-					((off>0 &&
-					  (wstr[off-1]!=(Tcl_UniChar)'\n'))
-					 ? TCL_REG_NOTBOL : 0));
+	while ((off < len) && (matches < lim)) {
+		int	flags = TCL_REG_BYTEOFFSET;
+
+		if ((off > 0) && (str[off-1] != '\n')) flags |= TCL_REG_NOTBOL;
+		ret = Tcl_RegExpExecObj(interp, regExpr, objPtr, off, 1, flags);
 		if (ret < 0) goto done;
 		if (ret == 0) break;
 		Tcl_RegExpGetInfo(regExpr, &info);
@@ -6884,10 +6882,10 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 		}
 		if (start == end) {
 			ASSERT(start == 0);
-			resultPtr = Tcl_NewUnicodeObj(wstr+off, 1);
+			resultPtr = Tcl_NewStringObj(str+off, 1);
 			++off;
 		} else {
-			resultPtr = Tcl_NewUnicodeObj(wstr+off, start);
+			resultPtr = Tcl_NewStringObj(str+off, start);
 		}
 		leading = 0;
 		Tcl_ListObjAppendElement(NULL, listPtr, resultPtr);
@@ -6897,8 +6895,8 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 	 * Copy to the result list the portion of the source string after
 	 * the last match, unless we matched the last char.
 	 */
-	if (off < wlen) {
-		resultPtr = Tcl_NewUnicodeObj(wstr+off, wlen-off);
+	if (off < len) {
+		resultPtr = Tcl_NewStringObj(str+off, len-off);
 		Tcl_ListObjAppendElement(NULL, listPtr, resultPtr);
 	}
 
