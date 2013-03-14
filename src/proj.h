@@ -52,7 +52,7 @@ char*		proj_relpath(project *p, char *path);
 void		proj_reset(project *p);
 char*		proj_root(project *p);
 char*		proj_rootkey(project *p);
-int		proj_samerepo(char *source, char *dest);
+int		proj_samerepo(char *source, char *dest, int quiet);
 project*	proj_init(char *dir);
 project*	proj_fakenew(void);
 void		proj_saveCO(sccs *s);

@@ -68,7 +68,7 @@ bk cp file1 ../copy/file2 2>ERR && {
 	echo should have failed
 	exit 1
 }
-grep -q "are not in the same BitKeeper repository" ERR || {
+grep -q "bk cp: must be in same repo or use cp -f." ERR || {
 	echo wrong error message
 	cat ERR
 	exit 1
@@ -83,7 +83,7 @@ bk cp file1 ../clone/file2 2>ERR && {
 	echo should have failed
 	exit 1
 }
-grep -q "are not in the same BitKeeper repository" ERR || {
+grep -q "bk cp: must be in same repo or use cp -f." ERR || {
 	echo wrong error message
 	cat ERR
 	exit 1
@@ -125,4 +125,41 @@ bk cp B C 2>ERR || {
 	cat ERR
 	exit 1
 }
+echo OK
+
+echo $N Test that copying a BAM file fails ..........................$NL
+cd "$HERE"
+commercial proj3
+BK="`bk bin`/bk"
+test $PLATFORM = WIN32 && BK=${BK}.exe
+DATA="$HERE"/data
+perl -e 'sysread(STDIN, $buf, 81920);
+syswrite(STDOUT, $buf, 81920);' < $BK > "$DATA"
+cp "$DATA" data
+bk new $Q data || exit 1
+perl -e 'printf "Hi there\x0\n";' > small
+BK_CONFIG='BAM:1k!' bk new $Q small
+test -d BitKeeper/BAM || exit 1
+bk cp data data-copy >OUT 2>&1
+grep -q 'cannot copy BAM files' OUT || fail -f OUT wrong error message
+echo OK
+
+echo $N Test that cp -f a BAM file \"works\" ..........................$NL
+bk cp -f data data-copy >OUT 2>&1
+grep -q 'failed to fetch BAM data' OUT || fail -f OUT wrong error message
+echo OK
+
+echo $N Test that cp -f on a BAM file to another repo \"works\" .......$NL
+cd "$HERE"
+commercial proj4
+(
+	cd ../proj3
+	bk cp -f data ../proj4/data-copy
+	cd ../proj4
+	bk repocheck # fixes the missing d-file
+	find ../proj3/BitKeeper/BAM | bk bam reattach -
+) > OUT 2>&1
+bk repocheck $Q || fail -f OUT
+# If you want to see the scary output, uncomment below
+#cat OUT
 echo OK
