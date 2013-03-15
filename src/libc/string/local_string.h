@@ -6,7 +6,9 @@
 #include <string.h>
 #include <strings.h>	// BSD funcs
 
+#ifndef	MK_STR_CFG
 #include "string/str.cfg"
+#endif
 
 #ifdef	BK_STR_MEMMEM
 char *memmem(char *data, int datalen, char *sub, int sublen);

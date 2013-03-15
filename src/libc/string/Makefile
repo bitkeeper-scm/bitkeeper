@@ -11,3 +11,5 @@ string: $(STRING_OBJS)
 
 string/str.cfg: string/mk_str_cfg.pl
 	cd string && perl mk_str_cfg.pl
+
+JUNK += string/str.cfg
