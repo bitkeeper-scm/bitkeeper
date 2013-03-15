@@ -185,10 +185,11 @@ delta_print(sccs *s, ser_t d)
 private void
 dumpStats(sccs *s)
 {
-	int	size;
+	int	tsize;
 	int	i, len, cnt;
 	u32	off, off2;
 	char	*t;
+	FILE	*f;
 	ser_t	d;
 	char	*names[] = {
 		"cludes", "comments", "bamhash", "random",
@@ -200,9 +201,28 @@ dumpStats(sccs *s)
 	const	char *wfmt = "%10s: %7s %4.1f%% %6d %5.1f\n";
 	hash	*seen = hash_new(HASH_MEMHASH);
 
-	printf("file: %s\n", s->sfile);
-	printf("filesize: %7s\n", psize(s->size));
-	printf("    heap: %7s\n", psize(s->heap.len));
+	unless (f = s->fh) f = s->pagefh;
+	assert(f);
+	fseek(f, 0, SEEK_END);
+	printf("%s\n", s->sfile);
+	printf("sfile: %s", psize(s->size));
+	if (abs(s->size - ftell(f)) > 100) {
+		printf("->%s", psize(ftell(f)));
+	} else if (s->encoding_in & E_GZIP) {
+		printf(" (gzip)");
+	}
+	printf("\n");
+	if (s->heapsz1) {
+		assert(CSET(s));
+		printf("heap1: %s->%s\n",
+		    psize(size(sccs_Xfile(s, '1'))), psize(s->heapsz1));
+		if (i = size(sccs_Xfile(s, '2'))) {
+			printf("heap2: %s->%s\n",
+			    psize(i), psize(s->heap_loadsz - s->heapsz1));
+		}
+	} else {
+		printf("heap: %5s (contained in sfile)\n", psize(s->heap.len));
+	}
 
 	if (BWEAVE(s)) names[2] = "weave";
 
@@ -226,14 +246,16 @@ dumpStats(sccs *s)
 			}
 		}
 	}
-	size = s->heap.len;
+	tsize = s->heap.len;
 	for (i = 0; i < 10; i++) {
 		unless (htotal[i]) continue;
 		printf(wfmt,
-		    names[i], psize(htotal[i]),
-		    (100.0 * htotal[i]) / s->heap.len,
-		    hcnt[i], (double)htotal[i]/hcnt[i]);
-		size -= htotal[i];
+		    names[i],					// name
+		    psize(htotal[i]),				// size
+		    (100.0 * htotal[i]) / s->heap.len,		// percent
+		    hcnt[i],					// # items
+		    (double)htotal[i]/hcnt[i]);			// avg size/item
+		tsize -= htotal[i];
 	}
 
 	cnt = len = 0;
@@ -247,7 +269,7 @@ dumpStats(sccs *s)
 	printf(wfmt,
 	    "symnames", psize(len),  (100.0 * len) / s->heap.len,
 	    cnt, (double)len/cnt);
-	size -= len;
+	tsize -= len;
 
 	if (BWEAVE(s)) {
 		cnt = len = 0;
@@ -259,12 +281,12 @@ dumpStats(sccs *s)
 		printf(wfmt,
 		    "rootkeys", psize(len),  (100.0 * len) / s->heap.len,
 		    cnt, (double)len/cnt);
-		size -= len;
+		tsize -= len;
 	}
-	if (size) {
+	if (tsize) {
 		printf("%10s: %7s %4.1f%%\n",
-		    "unused", psize(size),
-		    (100.0 * size) / s->heap.len);
+		    "unused", psize(tsize),
+		    (100.0 * tsize) / s->heap.len);
 	}
 	printf("  table1: %7s\n", psize(sizeof(d1_t) * (TABLE(s) + 1)));
 	printf("  table2: %7s\n", psize(sizeof(d2_t) * (TABLE(s) + 1)));
@@ -272,13 +294,13 @@ dumpStats(sccs *s)
 		printf(" symlist: %7s\n",
 		    psize(nLines(s->symlist) * sizeof(symbol)));
 	}
-	size = 0;
+	tsize = 0;
 	unless (BWEAVE(s)) {
 		sccs_rdweaveInit(s);
 		while (t = sccs_nextdata(s)) {
-			size += strlen(t)+1;
+			tsize += strlen(t)+1;
 		}
 		sccs_rdweaveDone(s);
-		printf("   weave: %7s\n", psize(size));
+		printf("   weave: %7s\n", psize(tsize));
 	}
 }
