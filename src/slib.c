@@ -76,6 +76,8 @@ private	int	misc(sccs *s);
 private	char	*bin_heapfile(sccs *s, int name);
 private	int	bin_deltaTable(sccs *s);
 private	off_t	bin_data(char *header);
+private	void	fileRestore(char **save, int rc);
+private	int	bin_writeHeap(sccs *s, char ***save);
 private	ser_t	*scompressGraph(sccs *s);
 private	void	sccs_md5deltaCompat(sccs *s, ser_t d, char *b64);
 
@@ -2221,6 +2223,7 @@ sccs_finishWrite(sccs *s)
 	char	*xfile = sccsXfile(s, 'x');
 	int	rc;
  	FILE	*tmp;
+	char	**save = 0;
 
 	assert(!s->wrweave);
 	T_SCCS("file=%s", s->gfile);
@@ -2252,6 +2255,7 @@ sccs_finishWrite(sccs *s)
 	} else {
 		if (fclose(s->outfh)) rc = -1;
 		s->outfh = 0;
+		if (!rc && BWEAVE_OUT(s)) rc = bin_writeHeap(s, &save);
 		if (rc) {
 			perror(xfile);
 			unlink(xfile);
@@ -2289,6 +2293,10 @@ sccs_finishWrite(sccs *s)
 	}
 out:	s->encoding_in = s->encoding_out;
 	// idea: delta_table could save new s->data (only useful for ascii)
+	if (save) {
+		fileRestore(save, rc);
+		freeLines(save, free);
+	}
 	s->data = 0;		/* force rescanning for weave */
 	FREE(s->remap);
 	return (rc);
@@ -8464,7 +8472,6 @@ bin_heapfile(sccs *s, int name)
 	t[1] = name;
 	free(ret);
 	ret = strdup(dir);
-	strcpy(dir, s->sfile);
 	return (ret);
 }
 
@@ -8528,15 +8535,147 @@ cvt2bweave(sccs *s)
 	sccs_rdweaveDone(s);
 }
 
+/*
+ * Move 'file' off to the side to be saved and
+ * add to the 'save' list.
+ */
+private void
+fileSave(char *file, char ***save)
+{
+	char	*tmp;
+
+	assert(save);
+
+	if (exists(file)) {
+		tmp = aprintf("%s.save-%u", file, (u32)getpid());
+		fileMove(file, tmp);
+		*save = addLine(*save, tmp);
+	}
+}
+
+/*
+ * Commit the save list, if rc==0 then delete the backups, otherwise
+ * restore them.
+ */
+private void
+fileRestore(char **save, int rc)
+{
+	int	i;
+	char	*t;
+	char	buf[MAXPATH];
+
+	EACH(save) {
+		if (rc) {
+			// restore backups
+			strcpy(buf, save[i]);
+			t = strrchr(buf, '.');
+			assert(strneq(t, ".save-", 6));
+			*t = 0;
+			fileMove(save[i], buf);
+		} else {
+			unlink(save[i]);
+		}
+	}
+}
+
+private int
+bin_writeHeap(sccs *s, char ***save)
+{
+	char	*file, *tmp;
+	FILE	*f;
+	u32	off;
+	int	rc = 0;
+
+	assert(save && (*save == 0));
+
+	file = bin_heapfile(s, '2');
+	// heap goes in external file
+	if (s->heap_loadsz == s->heap.len) {
+		// nothing new, skip heap
+	} else if (s->heap_loadsz && onelink(file)) {
+		// append new data to heap2
+		/*
+		 * OK this is a bit tricky.  If we are paging then
+		 * s->heapfh[2] contains a read-only handle to the
+		 * existing heapfile and we are about to append more
+		 * information to the end of that file.  This will be
+		 * fine since we won't need to read any of the new
+		 * data with s->heapfh[2], but we don't want the EOF
+		 * sanity checks to trigger because it thinks the file
+		 * is short.
+		 *
+		 * fseeko() because fseek() won't pass a negative with
+		 * SEEK_SET.
+		 */
+		if (s->heapfh[2]) fseeko(s->heapfh[2], -1, SEEK_SET);
+
+		assert(s->heap_loadsz < s->heap.len);
+		if (f = fopen_bkfile(file, "a", 0)) {
+			fwrite(s->heap.buf + s->heap_loadsz,
+			    1, s->heap.len - s->heap_loadsz, f);
+			rc = fclose(f);
+			TRACE("append %d bytes to new heap2",
+			    s->heap.len - s->heap_loadsz);
+		} else {
+			perror(file);
+			rc = 1;
+		}
+	} else {
+		// need to rewrite whole file
+		if (s->heap_loadsz) {
+			// only rewrite heap2 to break hardlink
+			off = s->heapsz1;
+			if (s->heapfh[2]) {
+				/*
+				 * We need to load entire heap in
+				 * memory first.
+				 */
+				dataunmap(s->heapfh[2], 1);
+				fclose(s->heapfh[2]);
+				s->heapfh[2] = 0;
+			}
+		} else {
+			T_PERF("rewrite whole heap");
+			assert(!s->heapfh[1] && !s->heapfh[2]);
+			file = bin_heapfile(s, '1');
+			off = 0;
+		}
+		fileSave(file, save);
+		tmp = aprintf("%s.tmp", file);
+		if (f = fopen_bkfile(tmp, "w", s->heap.len)) {
+			fwrite(s->heap.buf + off, 1, s->heap.len - off, f);
+			if (fclose(f) || rename(tmp, file)) {
+				perror(file);
+				rc = 1;
+			}
+		} else {
+			perror(file);
+			rc = 1;
+		}
+		free(tmp);
+		unless (rc || s->heap_loadsz) {
+			s->heapsz1 = s->heap.len;
+			fileSave(bin_heapfile(s, '2'), save);
+		}
+	}
+	if (rc) {
+		fileRestore(*save, 1); /* restore backups */
+		freeLines(*save, free);
+		*save = 0;
+	} else {
+		s->heap_loadsz = s->heap.len;
+	}
+	return (rc);
+}
+
 private	int
 bin_deltaTable(sccs *s)
 {
 	u32	off_h, off_d, off_s;
 	ser_t	d;
 	int	i;
-	char	*file, *tmp;
 	FILE	*out = s->outfh; /* cache of s->outfh */
-	FILE	*perfile, *f;
+	FILE	*perfile;
 
 	if ((TABLE(s) > 1) && !BWEAVE(s) && BWEAVE_OUT(s)) cvt2bweave(s);
 
@@ -8567,94 +8706,11 @@ bin_deltaTable(sccs *s)
 	fflush(out);		/* force new gzip block */
 
 	/* write heap */
-	if (BWEAVE_OUT(s)) {
-		file = bin_heapfile(s, '2');
-		// heap goes in external file
-		if (s->heap_loadsz == s->heap.len) {
-			// nothing new, skip heap
-		} else if (s->heap_loadsz && !exists(file)) {
-			assert(s->heap_loadsz == s->heapsz1);
-			assert(s->heap_loadsz < s->heap.len);
-			f = fopen_bkfile(file, "w", (s->heap.len / 10));
-			assert(f);
-			fwrite(s->heap.buf + s->heapsz1,
-			    1, s->heap.len - s->heapsz1, f);
-			fclose(f);
-			TRACE("write %d bytes to new heap2", s->heap.len - s->heap_loadsz);
-		} else if (s->heap_loadsz && onelink(file)) {
-			/*
-			 * OK this is a bit tricky.  If we are paging
-			 * then s->heapfh[2] contains a read-only handle
-			 * to the existing heapfile and we are about
-			 * to append more information to the end of
-			 * that file.  This will be fine since we
-			 * won't need to read any of the new data with
-			 * s->heapfh[2], but we don't want the EOF sanity
-			 * checks to trigger because it thinks the
-			 * file is short.
-			 *
-			 * fseeko() because fseek() won't pass a negative
-			 * with SEEK_SET.
-			 */
-			if (s->heapfh[2]) fseeko(s->heapfh[2], -1, SEEK_SET);
-
-			assert(s->heap_loadsz < s->heap.len);
-			// append new data to heap
-			f = fopen_bkfile(file, "a", 0);
-			assert(f);
-			fwrite(s->heap.buf + s->heap_loadsz,
-			    1, s->heap.len - s->heap_loadsz, f);
-			fclose(f);
-			TRACE("append %d bytes to new heap2", s->heap.len - s->heap_loadsz);
-		} else if (s->heap_loadsz) {
-			// rewrite just heap2 to break the hardlink
-			if (s->heapfh[2]) {
-                               /*
-                                * We need to load entire heap in memory
-                                * first.
-                                */
-				dataunmap(s->heapfh[2], 1);
-				fclose(s->heapfh[2]);
-				s->heapfh[2] = 0;
-			}
-			tmp = aprintf("%s.tmp", file);
-			f = fopen_bkfile(tmp, "w", (s->heap.len / 10));
-			assert(f);
-			fwrite(s->heap.buf + s->heapsz1,
-			    1, s->heap.len - s->heapsz1, f);
-			if (fclose(f) || rename(tmp, file)) assert(0);
-			free(tmp);
-		} else {
-			// write entire heap, often to break hardlink
-			T_PERF("rewrite whole heap, loadsz=%d onelink=%d", s->heap_loadsz, onelink(file));
-			for (i = 1; i <= 2; i++) {
-				if (s->heapfh[i]) {
-					/*
-					 * We need to load entire heap
-					 * in memory first.
-					 */
-					dataunmap(s->heapfh[i], 1);
-					fclose(s->heapfh[i]);
-					s->heapfh[i] = 0;
-				}
-			}
-			file = bin_heapfile(s, '1');
-			tmp = aprintf("%s.tmp", file);
-			f = fopen_bkfile(tmp, "w", s->heap.len);
-			assert(f);
-			fwrite(s->heap.buf, 1, s->heap.len, f);
-			if (fclose(f) || rename(tmp, file)) assert(0);
-			free(tmp);
-			s->heapsz1 = s->heap.len;
-			file = bin_heapfile(s, '2');
-			unlink(file);
-		}
-	} else {
+	unless (BWEAVE_OUT(s)) {
 		// write heap in sfile
 		fwrite(s->heap.buf, 1, s->heap.len, out);
 		fflush(out);		/* force new gzip block */
 	}
-	s->heap_loadsz = s->heap.len;
 
 	/* write delta table */
 	for (d = TREE(s); d <= TABLE(s); d++) {
