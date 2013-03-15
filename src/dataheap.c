@@ -765,12 +765,21 @@ bin_heapRepack(sccs *s)
 #undef	OLDNEXTKEY
 
 	/* now free the old data, have to unmap first */
-	for (i = 1; i <= 2; i++) {
-		if (s->heapfh[i]) {
-			// unprotect all memory, but leave blank
-			dataunmap(s->heapfh[i], 0);
-			fclose(s->heapfh[i]);
-			s->heapfh[i] = 0;
+	if (BWEAVE(s)) {
+		for (i = 1; i <= 2; i++) {
+			if (s->heapfh[i]) {
+				// unprotect all memory, but leave blank
+				dataunmap(s->heapfh[i], 0);
+				fclose(s->heapfh[i]);
+				s->heapfh[i] = 0;
+			}
+		}
+	} else {
+		if (s->pagefh) {
+			// need to keep all non-heap sfile data
+			dataunmap(s->pagefh, 1);
+			fclose(s->pagefh);
+			s->pagefh = 0;
 		}
 	}
 	free(oldheap.buf);

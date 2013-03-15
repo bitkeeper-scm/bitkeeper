@@ -93,8 +93,6 @@ ftrunc(FILE *f, off_t offset)
 	FMEM	*fm;
 	int	rc;
 
-	T_DEBUG("ftrunc(%p, %d)", f, (int)offset);
-
 	unless (f->_flags & __SWR) {
 		errno = EBADF;
 		return (-1);
