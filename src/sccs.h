@@ -759,6 +759,7 @@ struct sccs {
 	u32	rdweave:1;	/* currently reading weave */
 	u32	wrweave:1;	/* currently writing weave */
 	u32	ckwrap:1;	/* running with fopen_cksum */
+	u32	w_reverse:1;	/* csetPair walk in reverse order */
 	/* heap releated bit fields */
 	u32	uniqkeys:1;	/* rkeys loaded in uniqheap */
 	u32	uniqdeltas:1;	/* deltas loaded in uniqheap */
@@ -998,6 +999,7 @@ int	sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out);
 int	sccs_prsdelta(sccs *s, ser_t d, int flags, char *dspec, FILE *out);
 char	*sccs_prsbuf(sccs *s, ser_t d, int flags, char *dspec);
 ser_t	sccs_findDate(sccs *s, char *date, int roundup);
+ser_t	sccs_date2delta(sccs *s, time_t date);
 int	sccs_patheq(char *file1, char *file2);
 ser_t	sccs_findDelta(sccs *s, ser_t d);
 sccs	*sccs_init(char *filename, u32 flags);
@@ -1459,6 +1461,7 @@ char	*sccs_nextdata(sccs *s);
 #define	RWP_ONE		0x00000002 /* stop at end of current delta */
 ser_t	cset_rdweavePair(sccs *s, u32 flags, char **rkey, char **dkey);
 void	cset_firstPair(sccs *s, ser_t first);
+void	cset_firstPairReverse(sccs *s, ser_t first);
 int	sccs_rdweaveDone(sccs *s);
 FILE	*sccs_wrweaveInit(sccs *s);
 FILE	*sccs_wrweaveDone(sccs *s);

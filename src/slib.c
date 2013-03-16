@@ -1913,6 +1913,7 @@ sccs_rdweaveInit(sccs *s)
 		s->w_d = TABLE(s);
 		s->w_off = 0;
 		s->w_buf = malloc(2*MAXKEY + 64);
+		s->w_reverse = 0;
 		return;
 	}
 	unless (s->fh) {
@@ -2053,7 +2054,9 @@ cset_rdweavePair(sccs *s, u32 flags, char **rkey, char **dkey)
 		ser_t	d;
 		u32	roff;
 
-		for (d = s->w_d; d >= TREE(s); d--) {
+		for (d = s->w_d;
+		    (s->w_reverse ? (d <= TABLE(s)) : (d >= TREE(s)));
+		    (s->w_reverse ? d++ : d--)) {
 			if ((flags & RWP_DSET) && !(FLAGS(s, d) & D_SET)) {
 				assert(!s->w_off);
 				continue;
@@ -2071,12 +2074,13 @@ cset_rdweavePair(sccs *s, u32 flags, char **rkey, char **dkey)
 			}
 			s->w_off = 0;
 			if (flags & RWP_ONE) {
-				s->w_d = --d;
+				s->w_d = s->w_reverse ? ++d : --d;
 				return (0);
 			}
 		}
 		s->w_d = 0;
 		s->w_off = 0;
+		s->w_reverse = 0;
 		s->rdweaveEOF = 1;
 		return (0);
 	}
@@ -2115,9 +2119,22 @@ eof:		s->rdweaveEOF = 1;
  * Setter to hide the magic.
  */
 void
+cset_firstPairReverse(sccs *s, ser_t first)
+{
+	assert(BWEAVE(s));
+	s->w_d = first;
+	s->w_reverse = 1;
+}
+
+/*
+ * set the first item to read with rdweavePair()
+ * Setter to hide the magic.
+ */
+void
 cset_firstPair(sccs *s, ser_t first)
 {
 	s->w_d = first;
+	s->w_reverse = 0;
 }
 
 /*
@@ -17069,34 +17086,35 @@ sccs_istagkey(char *key)
 	return (0);
 }
 
-/* compare for bsearch() in sccs_findKey() */
-private int
-fk_datecmp(const void *a, const void *b)
+/*
+ * Binary search to find a delta with a time.  If delta exists with that
+ * time, return the oldest one.  Otherwise, return the newest delta that
+ * is older, or the oldest delta that is newer (if whole thing is newer).
+ * Always return something.
+ */
+ser_t
+sccs_date2delta(sccs *s, time_t date)
 {
-	int	dd = p2int(a);
-	d1_t	*dp = (d1_t *)b;
+	ser_t	d, lo, hi;
 
-	/* assume missing deltas have date of earlier delta */
-	while (!dp->flags) --dp; /* 1.0 always has ->flags */
+	hi = TABLE(s);
+	lo = TREE(s);
+	if (DATE(s, lo) >= date) return (lo);
+	if (DATE(s, hi) < date) return (hi);
 
-	return (dd - dp->date);
-}
+	/* do full lg N getting down to 2 final nodes */
+	while ((d = (hi + lo) / 2) > lo) {
+		if (date > DATE(s, d)) {
+			lo = d;
+		} else {
+			hi = d;
+		}
+	}
+	assert(lo + 1 == hi);		/* next to each other */
+	assert(DATE(s, hi) >= date);	/* hi on one side */
+	assert(DATE(s, lo) < date);	/* lo on the other */
 
-private ser_t
-date2delta(sccs *s, u32 dd)
-{
-	d1_t	*dp;
-	ser_t	d, n;
-
-	dp = bsearch(int2p(dd),
-	    s->slist1 + TREE(s), TABLE(s), sizeof(d1_t),
-	    fk_datecmp);
-	unless (dp) return (0);
-	d = (dp - s->slist1);
-
-	/* find first match */
-	while ((n = sccs_prev(s, d)) && (dd == DATE(s, n))) d = n;
-	return (d);
+	return ((date == DATE(s, hi)) ? hi : lo);
 }
 
 /*
@@ -17114,7 +17132,7 @@ sccs_findMD5(sccs *s, char *md5)
 	strncpy(dkey, md5, 8);
 	dkey[8] = 0;
 	dd = strtoul(dkey, 0, 16);
-	for (d = date2delta(s, dd);
+	for (d = sccs_date2delta(s, dd);
 	     d && (d <= TABLE(s)) && (dd == DATE(s, d)); ++d) {
 		sccs_md5delta(s, d, dkey);
 		if (streq(md5, dkey)) return (d);
@@ -17178,7 +17196,7 @@ sccs_findKey(sccs *s, char *key)
 	unless (strchr(key, '|')) return (sccs_findMD5(s, key));
 
 	dd = key2date(key);
-	for (d = date2delta(s, dd);
+	for (d = sccs_date2delta(s, dd);
 	     d && (d <= TABLE(s)) && (dd == DATE(s, d)); ++d) {
 		sccs_sdelta(s, d, dkey);
 		if (CSET(s)) {
@@ -17204,7 +17222,7 @@ sccs_findSortKey(sccs *s, char *sortkey)
 	debug((stderr, "findsortkey(%s)\n", sortkey));
 
 	dd = key2date(sortkey);
-	for (d = date2delta(s, dd);
+	for (d = sccs_date2delta(s, dd);
 	     d && (d <= TABLE(s)) && (dd == DATE(s, d)); ++d) {
 		sccs_sortkey(s, d, dkey);
 		if (streq(sortkey, dkey)) return (d);

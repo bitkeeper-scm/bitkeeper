@@ -155,12 +155,14 @@ private char **
 r2c(char *file, RANGE *rarg)
 {
 	char	*name;
-	ser_t	d;
+	ser_t	d, e;
 	sccs	*s = 0, *cset = 0;
 	char	**ret = 0, **polykeys = 0;
 	ser_t	*serlist = 0;
 	hash	*keys = 0;
 	int	i;
+	int	redo = 0;
+	time_t	oldest, candidate;
 	char	*rkey, *dkey;
 	char	buf[MAXKEY*2];
 
@@ -198,8 +200,12 @@ r2c(char *file, RANGE *rarg)
 	}
 	/* Look for non poly nodes in prod weave; need a key hash */
 	keys = hash_new(HASH_MEMHASH);
+	oldest = 0;
 	EACH(serlist) {
-		sccs_sdelta(s, serlist[i], buf);
+		d = serlist[i];
+		candidate = DATE(s, d) - DATE_FUDGE(s, d);
+		if (!oldest || (oldest > candidate)) oldest = candidate;
+		sccs_sdelta(s, d, buf);
 		hash_insertStrSet(keys, buf);
 	}
 	FREE(serlist);
@@ -220,8 +226,28 @@ r2c(char *file, RANGE *rarg)
 	unless (hash_count(keys)) goto done;	/* just polykeys or nothing */
 
 	/* Stick the non-poly prod csets in the answer */
-	d = 0;
-	sccs_rdweaveInit(cset);
+again:	sccs_rdweaveInit(cset);
+	if (!redo && BWEAVE(cset)) { /* Perf: limit cset content read */
+		char	*skewstr = getenv("BK_R2C_CLOCKSKEW");
+		int	skew = skewstr ? atoi(skewstr) : HOUR;
+
+		assert(oldest);
+		if (oldest > skew) oldest -= skew; // some time skew
+
+		d = sccs_date2delta(cset, oldest);
+		while (d && TAG(cset, d)) d--;
+		assert(d);
+		/* tune to be real time not fudged time */
+		for (e = d; e <= TABLE(cset); e++) {
+			if (TAG(cset, e)) continue;
+			if (oldest <=
+			    (DATE(cset, e) - DATE_FUDGE(cset, e))) {
+				break;
+			}
+			d = e;
+		}
+		cset_firstPairReverse(cset, d); /* old to new */
+	}
 	while (d = cset_rdweavePair(cset, 0, &rkey, &dkey)) {
 		unless (hash_deleteStr(keys, dkey)) {
 			serlist = addSerial(serlist, d);
@@ -229,6 +255,10 @@ r2c(char *file, RANGE *rarg)
 		}
 	}
 	sccs_rdweaveDone(cset);
+	if (hash_count(keys) && !redo && BWEAVE(cset)) {
+		redo = 1;
+		goto again;	/* full weave this time */
+	}
 done:
 	/* addSerial sorts, but leaves dups; so filter dups here */
 	d = 0;
