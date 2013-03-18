@@ -75,7 +75,7 @@ push_main(int ac, char **av)
 	char	**envVar = 0;
 	char	**urls = 0;
 	remote	*r;
-	int	gzip = Z_BEST_SPEED;
+	int	gzip = bk_gzipLevel();
 	longopt	lopts[] = {
 		{ "standalone", 'S'},
 		{ 0, 0 }

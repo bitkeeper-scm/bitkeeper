@@ -2050,3 +2050,13 @@ formatBits(u32 bits, ...)
 	if (extra) free(extra);
 	return (ret);
 }
+
+int
+bk_gzipLevel(void)
+{
+	int	level = 0;	/* default to no compression; */
+	char	*t;
+
+	if (t = proj_configval(0, "bkd_gzip")) level = atoi(t);
+	return (level);
+}

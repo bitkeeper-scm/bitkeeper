@@ -33,7 +33,7 @@ int
 rclone_main(int ac, char **av)
 {
 	int	c, rc, isLocal;
-	int	gzip = Z_BEST_SPEED;
+	int	gzip = -1;
 	char	*url;
 	char    **envVar = 0;
 	remote	*l, *r;
@@ -136,6 +136,7 @@ rclone_main(int ac, char **av)
 		    "clone: %s needs a path component.\n", av[optind + 1]);
 		exit(1);
 	}
+	if (gzip == -1) gzip = bk_gzipLevel();
 	r->gzip_in = gzip;
 
 	/*

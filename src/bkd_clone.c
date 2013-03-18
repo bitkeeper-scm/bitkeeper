@@ -11,7 +11,7 @@ int
 cmd_clone(int ac, char **av)
 {
 	int	c, rc = 1;
-	int	attach = 0, detach = 0, gzip = 0, delay = -1, lclone = 0;
+	int	attach = 0, detach = 0, gzip, delay = -1, lclone = 0;
 	int	nlid = 0;
 	char	*p, *rev = 0;
 	int	quiet = 0;
@@ -22,6 +22,7 @@ cmd_clone(int ac, char **av)
 		out("@END@\n");
 		goto out;
 	}
+	gzip = bk_gzipLevel();
 	while ((c = getopt(ac, av, "ADlNqr;w;z|", 0)) != -1) {
 		switch (c) {
 		    case 'A':

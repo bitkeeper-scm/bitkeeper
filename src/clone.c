@@ -63,7 +63,7 @@ clone_main(int ac, char **av)
 {
 	int	c;
 	retrc	retrc = 0;
-	int	gzip = Z_BEST_SPEED;
+	int	gzip;
 	char	**envVar = 0;
 	remote 	*r = 0, *l = 0;
 	char	*check_out = 0;		/* --checkout=none|get|edit */
@@ -99,6 +99,7 @@ clone_main(int ac, char **av)
 	if (streq(prog, "attach")) opts->attach = 1;
 	if (streq(prog, "detach")) opts->detach = 1;
 	unless (win32()) opts->link = 1;	    /* try lclone by default */
+	gzip = -1;
 	while ((c = getopt(ac, av, "@;B;CdE:j;lNpP;qr;Ss;vw|z|", lopts)) != -1) {
 		switch (c) {
 		    case '@':
@@ -537,7 +538,7 @@ send_clone_msg(remote *r, char **envVar)
 	sendEnv(f, envVar, r, SENDENV_NOREPO);
 	add_cd_command(f, r);
 	fprintf(f, "clone");
-	fprintf(f, " -z%d", r->gzip);
+	if (r->gzip != -1) fprintf(f, " -z%d", r->gzip);
 	if (opts->rev) fprintf(f, " '-r%s'", opts->rev);
 	if (opts->delay) fprintf(f, " -w%d", opts->delay);
 	if (opts->attach) fprintf(f, " -A");
@@ -1354,7 +1355,7 @@ sfio(remote *r, char *prefix)
 	fclose(f);
 	waitpid(pid, &status, 0);
 	if (opts->verbose) {
-		if (r->gzip) {
+		if ((double)opts->out/opts->in > 1.2) {
 			fprintf(stderr, "%s uncompressed to %s, ",
 			    psize(opts->in), psize(opts->out));
 			fprintf(stderr,

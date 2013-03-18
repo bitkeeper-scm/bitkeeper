@@ -875,7 +875,6 @@ bk _cp bu SCCS/s.bar
 bk sfiles -P bar > remark
 # verify that we get an error on commit
 bk commit -q -ynewfile-again 2> GOT && fail -f GOT
-cp GOT ~/p
 cat <<EOF > WANT
 Duplicate delta found in ChangeSet
 	Rev: 1.1  Key: $KEY

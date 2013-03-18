@@ -469,7 +469,7 @@ bkd(remote *r)
 		} else {
 			/* use rsh if told, or preferred or no ssh */
 			remsh = "ssh";
-			remopts = r->gzip ? "-C" : 0;
+			remopts = (r->gzip > 0) ? "-C" : 0;
 			if ((r->type == ADDR_RSH) ||
 			    ((r->type == ADDR_NFS) &&
 			    (t = getenv("PREFER_RSH")) && streq(t, "YES")) ||

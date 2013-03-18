@@ -1544,6 +1544,7 @@ int	repogca(char **urls, char *dspec, u32 flags, FILE *out);
 
 u64	maxrss(void);
 char	*formatBits(u32 bits, ...);
+int	bk_gzipLevel(void);
 
 extern	char	*editor;
 extern	char	*bin;

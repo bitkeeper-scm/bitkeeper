@@ -51,7 +51,7 @@ pull_main(int ac, char **av)
 	int	c, i, j = 1;
 	int	try = -1; /* retry forever */
 	int	rc = 0;
-	int	gzip = Z_BEST_SPEED;
+	int	gzip = bk_gzipLevel();
 	int	print_title = 0;
 	remote	*r;
 	char	*p, *prog;
