@@ -733,6 +733,7 @@ struct sccs {
 	u32	initFlags;	/* how we were opened */
 	char	*comppath;	/* used by changes for historic paths for comps*/
 	hash	*saveStr;	/* saved strings from sccs_saveStr() */
+	u32	prs_nrevs;	/* stop after printing the first n revs */
 	u32	cksumok:1;	/* check sum was ok */
 	u32	cksumdone:1;	/* check sum was checked */
 	u32	grafted:1;	/* file has grafts */
@@ -742,7 +743,6 @@ struct sccs {
 	u32	bitkeeper:1;	/* bitkeeper file */
 	u32	prs_output:1;	/* prs printed something */
 	u32	prs_odd:1;	/* for :ODD: :EVEN: in dspecs */
-	u32	prs_one:1;	/* stop printing after printing the first one */
 	u32	prs_join:1;	/* for joining together items in dspecs */
 	u32	prs_all:1;	/* including tag deltas in prs output */
 	u32	prs_indentC:1;	/* extra space for components in :INDENT: ? */

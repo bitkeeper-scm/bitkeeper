@@ -16743,10 +16743,11 @@ private void
 prs_reverse(sccs *s, int flags, char *dspec, FILE *out)
 {
 	ser_t	d;
-	
+
 	for (d = s->rstart; (d >= TREE(s)) && (d <= s->rstop); d++) {
 		unless (FLAGS(s, d) & D_SET) continue;
-		if (sccs_prsdelta(s, d, flags, dspec, out) && s->prs_one) {
+		if (sccs_prsdelta(s, d, flags, dspec, out) &&
+		    !--s->prs_nrevs) {
 			return;
 		}
 	}
@@ -16759,7 +16760,8 @@ prs_forward(sccs *s, int flags, char *dspec, FILE *out)
 
 	for (d = s->rstop; (d >= TREE(s)) && (d >= s->rstart); --d) {
 		unless (FLAGS(s, d) & D_SET) continue;
-		if (sccs_prsdelta(s, d, flags, dspec, out) && s->prs_one) {
+		if (sccs_prsdelta(s, d, flags, dspec, out) &&
+		    !--s->prs_nrevs) {
 			return;
 		}
 	}

@@ -18,7 +18,7 @@ log_main(int ac, char **av)
 	int	reverse = 0, doheader = !log;
 	int	init_flags = INIT_NOCKSUM;
 	int	rflags = SILENT|RANGE_SET;
-	int	flags = 0, sf_flags = 0, rc = 0, one = 0;
+	int	flags = 0, sf_flags = 0, rc = 0, n_revs = 0;
 	int	c;
 	char	*name;
 	char	*cset = 0, *tip = 0;
@@ -31,9 +31,14 @@ log_main(int ac, char **av)
 		{ 0, 0 }
 	};
 
-	while ((c = getopt(ac, av, "@|1abc;C;d:DfhMnopr;Y", lopts)) != -1) {
+	while ((c = getopt(ac, av, "@|0123456789abc;C;d:DfhMnopr;Y",
+		    lopts)) != -1) {
 		switch (c) {
-		    case '1': one = 1; doheader = 0; break;
+		    case '0': case '1': case '2': case '3': case '4':
+		    case '5': case '6': case '7': case '8': case '9':
+			doheader = 0;
+			n_revs = n_revs * 10 + (c - '0');
+			break;
 		    case 'a':					/* doc 2.0 */
 			flags |= PRS_ALL;
 			break;
@@ -156,7 +161,7 @@ log_main(int ac, char **av)
 			}
 			printf("========\n");
 		}
-		s->prs_one = one;
+		s->prs_nrevs = n_revs;
 		sccs_prs(s, flags, reverse, dspec, stdout);
 		sccs_free(s);
 		continue;
