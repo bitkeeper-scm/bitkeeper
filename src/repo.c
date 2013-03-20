@@ -8,7 +8,13 @@
 #include "sccs.h"
 #include "nested.h"
 
-private	int	nfiles(void);
+typedef struct {
+	u32	standalone:1;	/* -S - standalone */
+	u32	nested:1;	/* nested */
+	char	**aliases;	/* -s limit count to aliases */
+} Opts;
+
+private u32	nfiles(char **aliases);
 
 /*
  * bk nfiles - print the approximate number of files in the repo
@@ -17,29 +23,34 @@ private	int	nfiles(void);
 int
 nfiles_main(int ac, char **av)
 {
+	Opts	*opts;
 	int	c;
-	int	recurse = 0;
+	u32	n;
 
-	while ((c = getopt(ac, av, "r", 0)) != -1) {
+	opts = new(Opts);
+	while ((c = getopt(ac, av, "rSs;", 0)) != -1) {
 		switch (c) {
-		    case 'r':
-			recurse = 1;
+		    case 'r':	// backward compat
+			break;
+		    case 'S':
+			opts->standalone = 1;
+			break;
+		    case 's':
+			opts->aliases = addLine(opts->aliases, strdup(optarg));
 			break;
 		    default: bk_badArg(c, av);
 		}
 	}
 	if (av[optind]) usage();
+	if (opts->standalone && opts->aliases) usage();
+	opts->nested = bk_nested2root(opts->standalone);
 
-	if (proj_cd2root()) {
-		fprintf(stderr, "%s: not in a repo.\n", av[0]);
-		return (1);
-	}
-
-	if (recurse) {
-		proj_cd2product(); /* ignore error */
-		printf("%u\n", nfiles());
+	if (opts->aliases || opts->nested) {
+		unless (n = nfiles(opts->aliases)) return (1);
+		printf("%u\n", n);
 	} else {
-		printf("%u\n", repo_nfiles(0,0));
+		unless (n = repo_nfiles(0, 0)) return (1);
+		printf("%u\n", n);
 	}
 	return (0);
 }
@@ -56,15 +67,35 @@ nfiles_main(int ac, char **av)
 int
 repo_nfiles(project *p, filecnt *fc)
 {
-	hash	*h;
+	hash	*h = 0;
 	FILE	*f;
 	filecnt	junk;
 	char	*cmd, *t;
+	char	*rk, *numstr;
+	project	*prod;
+	char	**nums;
 
 	unless (fc) fc = &junk;
 	fc->tot = -1;
 	fc->usr = -1;
-	if (h = hash_fromFile(0, proj_fullpath(p, "BitKeeper/log/NFILES"))) {
+
+	rk = proj_rootkey(p);
+	prod = proj_product(p);
+
+	if (prod &&
+	    (h = hash_fromFile(0,
+		proj_fullpath(prod, "BitKeeper/log/NFILES_PRODUCT")))) {
+
+		if (numstr = hash_fetchStr(h, rk)) {
+			nums = splitLine(numstr, "\r\n", 0);
+			fc->tot = atoi(nums[1]);
+			fc->usr = atoi(nums[2]);
+			freeLines(nums, free);
+		}
+		hash_free(h);
+	} else if (h = hash_fromFile(0,
+		proj_fullpath(p, "BitKeeper/log/NFILES"))) {
+
 		unless ((fc->tot = hash_fetchStrNum(h, TOTFILES)) || h->kptr) {
 			fc->tot = -1;
 		}
@@ -76,12 +107,17 @@ repo_nfiles(project *p, filecnt *fc)
 	if ((fc->tot == -1) || (fc->usr == -1)) {
 		/*
 		 * The NFILES file is missing one or both fields.  We
-		 * will run 'bk sfiles' to regenerate the file and
-		 * count the data ourselves in case some permissions
-		 * problem prevents sfiles from updating the cache.
+		 * will run 'bk sfiles -s' to count the data
+		 * ourselves.  The -s prevents using the 'fast' sfiles
+		 * code which would also write NFILES, this is to
+		 * prevent races with multiple writers of a single
+		 * file.
+		 *
+		 * ex: bk -r check -a
+		 *     check_main calls repo_nfiles() and spawns a new sfiles.
 		 */
 		fc->tot = fc->usr = 0;
-		cmd = aprintf("bk --cd='%s' sfiles 2> " DEVNULL_WR,
+		cmd = aprintf("bk --cd='%s' sfiles -s 2> " DEVNULL_WR,
 		    proj_root(p));
 		f = popen(cmd, "r");
 		free(cmd);
@@ -95,52 +131,106 @@ repo_nfiles(project *p, filecnt *fc)
 }
 
 /*
- * Write a new NFILES file, if it changed.
+ * Write a new NFILES caches, if they changed.
  */
 void
 repo_nfilesUpdate(filecnt *nf)
 {
-	char	*n = proj_fullpath(0, "BitKeeper/log/NFILES");
 	hash	*h;
-	FILE	*f;
+	char	*n, *rk, *s, *nfstr;
+	char	**nums = 0;
 	char	ntmp[MAXPATH];
 
+	n = strdup(proj_fullpath(0, "BitKeeper/log/NFILES"));
+	rk = strdup(proj_rootkey(0));
 	h = hash_fromFile(hash_new(HASH_MEMHASH), n);
 	if ((nf->tot != hash_fetchStrNum(h, TOTFILES)) ||
 	    (nf->usr != hash_fetchStrNum(h, USRFILES))) {
 		hash_storeStrNum(h, TOTFILES, nf->tot);
 		hash_storeStrNum(h, USRFILES, nf->usr);
 		sprintf(ntmp, "%s.new.%u", n, (u32)getpid());
-		f = fopen(ntmp, "w");
-		hash_toStream(h, f);
-		fclose(f);
-		if (rename(ntmp, n)) perror(n);
+		if (hash_toFile(h, ntmp)) {
+			perror(ntmp);
+		} else if (rename(ntmp, n)) {
+			perror(n);
+		}
 	}
 	hash_free(h);
+	free(n);
+
+	unless (proj_isComponent(0) || proj_isProduct(0)) goto out2;
+	proj_cd2product();
+	n = strdup(proj_fullpath(0, "BitKeeper/log/NFILES_PRODUCT"));
+	h = hash_fromFile(hash_new(HASH_MEMHASH), n);
+	if (s = hash_fetchStr(h, rk)) {
+		nums = splitLine(s, "\r\n", 0);
+		if ((atoi(nums[1]) == nf->tot) && (atoi(nums[2]) == nf->usr)) {
+			freeLines(nums, free);
+			goto out;
+		}
+		freeLines(nums, free);
+	}
+	nfstr = aprintf("%d\n%d", nf->tot, nf->usr);
+	hash_storeStr(h, rk, nfstr);
+	free(nfstr);
+	sprintf(ntmp, "%s.new.%u", n, (u32)getpid());
+	if (hash_toFile(h, ntmp)) {
+		perror(ntmp);
+	} else if (rename(ntmp, n)) {
+		perror(n);
+	}
+out:
+	hash_free(h);
+	free(n);
+out2:
+	free(rk);
 }
 
 /*
  * Return the approximate number of files in a repo or nested collection.
+ * Return zero on failure.
  */
-private	int
-nfiles(void)
+private u32
+nfiles(char **aliases)
 {
+	char	*nfn, *numstr;
 	comp	*c;
 	nested	*n;
 	int	i;
-	u32	nfiles = 0;
+	u32	total = 0;
+	hash	*h = 0;
+	project	*p;
 
-	unless (proj_product(0)) return (repo_nfiles(0,0));
-	if (proj_cd2product()) return (0);
-
-	n = nested_init(0, 0, 0, NESTED_PENDING);
-	assert(n);
+	unless (n = nested_init(0, 0, 0, NESTED_PENDING)) {
+		fprintf(stderr, "%s: nested_init failed\n", prog);
+		return (0);
+	}
+	if (aliases && nested_aliases(n, 0, &aliases, start_cwd, 1)) {
+		goto out;
+	}
+	nfn = proj_fullpath(0, "BitKeeper/log/NFILES_PRODUCT");
+	h = hash_fromFile(0, nfn);
 	EACH_STRUCT(n->comps, c, i) {
 		unless (c->present) continue;
-		if (chdir(c->path)) assert(0);
-		nfiles += repo_nfiles(0,0);
-		proj_cd2product();
+		if (aliases) unless (c->alias) continue;
+		if (h && (numstr = hash_fetchStr(h, c->rootkey))) {
+			total += strtoul(numstr, 0, 10);
+		} else {
+			/*
+			 * Backwards compat:
+			 *  In an "old" repo, we may not have an
+			 *  NFILES_PRODUCT (h is NULL) so do it the
+			 *  old way (hopfully use the per component
+			 *  NFILES)
+			 */
+			if (p = proj_init(c->path)) {
+				total += repo_nfiles(p, 0);
+				proj_free(p);
+			}
+		}
 	}
+	hash_free(h);	// can cope with null h
+out:
 	nested_free(n);
-	return (nfiles);
+	return (total);
 }

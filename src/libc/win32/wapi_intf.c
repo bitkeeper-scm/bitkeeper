@@ -1440,7 +1440,18 @@ nt_unlink(const char *file)
 		error = GetLastError();
 
 		attribs = GetFileAttributes(file);
-		if (attribs == INVALID_FILE_ATTRIBUTES) return (-1);
+		if (attribs == INVALID_FILE_ATTRIBUTES) {
+			/*
+			 * between CreateFile() and
+			 * GetFileAttributes() it is possible that
+			 * file has been removed by another process.
+			 * Experimentally, we determined that
+			 * situation ends up here, so grab the error
+			 * (expecting ENOENT) and return
+			 */
+			GetLastError();
+			return (-1);
+		}
 		if (attribs & FILE_ATTRIBUTE_DIRECTORY) {
 			errno = EISDIR;
 			return (-1);

@@ -1,0 +1,42 @@
+echo $N Check nfiles on a standalone repo ...........................$NL
+commercial proj
+CNT=`bk nfiles`
+test $CNT -eq 6 || fail wrong count
+echo OK
+
+echo $N Check nfiles on a nested collection .........................$NL
+cd "$HERE"
+nested prod
+CNT=`bk nfiles`
+test $CNT -eq 21 || fail wrong count
+echo OK
+
+echo $N Check nfiles -S .............................................$NL
+CNT=`bk nfiles -S`
+test $CNT -eq 9 || fail wrong count
+echo OK
+
+echo $N Check nfiles -sgcc ..........................................$NL
+CNT=`bk nfiles -sgcc`
+test $CNT -eq 6 || fail wrong count
+echo OK
+
+echo $N Check nfiles -sgcc -sgdb ....................................$NL
+CNT=`bk nfiles -sgcc -sgdb`
+test $CNT -eq 12 || fail wrong count
+echo OK
+
+echo $N Check nfiles -sBOGUS ........................................$NL
+bk nfiles -sBOGUS 2> OUT && fail -f OUT should have failed
+echo OK
+
+echo $N Check that nfiles works with no NFILES_PRODUCT ..............$NL
+rm BitKeeper/log/NFILES_PRODUCT
+CNT=`bk nfiles`
+test $CNT -eq 21 || fail wrong count
+echo OK
+
+echo $N Make sure repocheck recreates NFILES_PRODUCT ................$NL
+bk repocheck $Q
+test -f BitKeeper/log/NFILES_PRODUCT || fail
+echo OK

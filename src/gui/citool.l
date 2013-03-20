@@ -135,26 +135,7 @@ joinpath(...args)
 int
 getNumFiles(string opts)
 {
-	FILE	fp;
-	STATUS	st;
-	string	line, data;
-	int	n = 0;
-	string	cmd = "bk --each-repo ${opts} nfiles 2>@1";
-
-	setStatus("Getting file count...");
-	update();
-
-	fp = popen(cmd, "r");
-	read(fp, &data, -1);
-	pclose(fp, &st);
-
-	if (st.exit == 0) {
-		foreach (line in split(/\n/, data)) {
-			n += (int)line;
-		}
-	}
-
-	return (n);
+	return ((int)`bk nfiles ${opts}`);
 }
 
 int
