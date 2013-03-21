@@ -405,13 +405,11 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 	} else if (getenv("_BK_TRANSACTION") &&
 	    (strneq(buf, "ERROR-cannot use key", 20 ) ||
 	     strneq(buf, "ERROR-cannot cd to ", 19))) {
-		/* nested pull doesn't need to propagate error message */
-		// XXX fromTo() is still called
-		exit(1);
+		return (-1);
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
 		disconnect(r);
-		exit(1);
+		return (-1);
 	}
 	if ((p = getenv("BKD_LEVEL")) && (atoi(p) > getlevel())) {
 	    	fprintf(stderr, "pull: cannot pull to lower level "
@@ -475,8 +473,7 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 	}
 	if (getenv("_BK_TRANSACTION") &&
 	    strneq(buf, "ERROR-Can't find revision ", 26)) {
-		/* nested pull doesn't need to propagate error message */
-		exit(1);
+		return (-1);
 	}
 	if (get_ok(r, buf, 1)) {
 		disconnect(r);
@@ -1196,7 +1193,7 @@ pull(char **av, remote *r, char **envVar)
 		if (rc) {
 			fprintf(stderr, "BAM fetch failed, aborting pull.\n");
 			system("bk -?BK_NO_REPO_LOCK=YES abort -f");
-			exit(1);
+			goto out;
 		}
 	}
 

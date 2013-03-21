@@ -63,3 +63,9 @@ bk -r check -aR 2>ERR && {
 }
 grep -q "Missing delta.*foo5" ERR || exit 1
 echo OK
+
+echo $N Pull from a non-existent source..............................$NL
+bk pull bk://work/this_repo_does_not_exist >OUT 2>&1 && fail -f should have failed
+grep -q WARNING: OUT && fail -f OUT locking problems
+echo OK
+
