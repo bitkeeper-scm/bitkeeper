@@ -417,7 +417,6 @@ check_main(int ac, char **av)
 		freeLines(bp_missing, free);
 	}
 	if (goneDB) mdbm_close(goneDB);
-	unless (errors) cset_savetip(cset);
 	/* The _BK_TRANSACTION check is necessary to avoid checking the
 	 * aliases in the middle of a multi-clone */
 	if (!proj_isResync(0) &&
@@ -536,6 +535,7 @@ check_main(int ac, char **av)
 				errors++;
 			}
 		}
+		cset_savetip(cset);
 	}
 out:	sccs_free(cset);
 	cset = 0;

@@ -1080,6 +1080,9 @@ sccs_setStime(sccs *s, time_t newest)
 	/* If we have no deltas we don't know what time it is */
 	unless (s && TABLE(s)) return (0);
 
+	/* we don't move timestamps in remapped trees */
+	unless (proj_hasOldSCCS(s->proj)) return (0);
+
 	/*
 	 * To prevent the "make" command from doing a "get" due to 
 	 * sfile's newer modification time, and then fail due to the
@@ -4664,7 +4667,7 @@ sccs_init(char *name, u32 flags)
 		 * Catch any case where we would cause make to barf to
 		 * fail if we are BK folks, otherwise fix it.
 		 */
-		if ((flags & INIT_CHK_STIME) &&
+		if ((flags & INIT_CHK_STIME) && proj_hasOldSCCS(s->proj) &&
 		    s->gtime && (sbuf.st_mtime > s->gtime)) {
 			if ((t = getenv("_BK_DEVELOPER")) && *t) {
 				fprintf(stderr,
@@ -8826,6 +8829,8 @@ cset_savetip(sccs *s)
 	if (rename(tmp, tip)) perror(tmp);
 	free(tmp);
 	free(tip);
+
+	T_SCCS("save tip %s", s->gfile);
 }
 
 /*
@@ -9689,7 +9694,7 @@ reget:		if (unlinkGfile(s)) return (1);
 		 * in t.bam-convert as a case when unedit in one repo
 		 * causes push to fail in a different repo.
 		 */
-		utime(s->sfile, 0);
+		if (proj_hasOldSCCS(s->proj)) utime(s->sfile, 0);
 	}
 	unlink(s->pfile);
 	s->state &= ~S_PFILE;

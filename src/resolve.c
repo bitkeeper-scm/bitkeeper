@@ -2951,6 +2951,8 @@ err:			unapply(applied);
 	if (exists("RESYNC/SCCS/d.ChangeSet")) touch("SCCS/d.ChangeSet", 0644);
 	if (exists("RESYNC/BitKeeper/log/TIP")) {
 		fileLink("RESYNC/BitKeeper/log/TIP", "BitKeeper/log/TIP");
+	} else {
+		unlink("BitKeeper/log/TIP");
 	}
 
 	/*
@@ -3373,7 +3375,11 @@ moveupComponent(void)
 		    cpath);
 		free(to);
 		to = aprintf("%s/BitKeeper/log/TIP", cpath);
-		if (exists(from)) fileLink(from, to);
+		if (exists(from)) {
+			fileLink(from, to);
+		} else {
+			unlink(to);
+		}
 	}
 	free(dfile_from);
 	free(dfile_to);

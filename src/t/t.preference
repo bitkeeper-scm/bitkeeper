@@ -12,7 +12,7 @@
 # %K%
 
 echo $N Create initial repository ...................................$NL
-commercial project
+fresh_commercial --compat project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -446,13 +446,16 @@ if bk _test ! -f "$HERE/edit_2/src/SCCS/p.foo1.c"; then echo failed; exit 1; fi
 echo OK
 
 cd "$HERE"
-# Use _BK_FSLAYER_SKIP to have .bk/ sort first, so sfiles will
-# be written to disk before gfiles when this is unpacked.
+# We want to arrange the order of the files in the SFIO so that
+# all SCCS files are written before the gfiles when the sfio is
+# unpacked.
 # This keeps the timestamp checker in sccs_init happy.
 # When unpacking, also need to use the _BK_FSLAYER_SKIP env var.
 # Note: tar does not work in a crank because of too long of pathname.
-find edit_1/.bk edit_1/* edit_2/.bk edit_2/* -type f |
-	_BK_FSLAYER_SKIP=1 bk sfio -qom > SFIO
+find edit_1 edit_2 -type f > L
+grep SCCS L > L1
+grep -v SCCS L >> L1
+_BK_FSLAYER_SKIP=1 bk sfio -qom <L1 > SFIO
 echo $N checkout:EDIT w resolve automerge and autorename change .....$NL
 cd "$HERE/edit_1/src"
 echo new3 >> foo1.c

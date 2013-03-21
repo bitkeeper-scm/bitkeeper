@@ -59,9 +59,6 @@ if bk _test ! -f A/SCCS/s.file3; then echo failed 5; exit 1; fi
 # XXX - I think this is right but am not sure.
 DPATH=`bk prs -hr1.5 -d:DPN: B/file1`
 if [ ${DPATH}X != "B/file1"X ]; then echo failed 5; exit 1; fi
-gdate=`bk _stat B/file1 | awk -F\| '{ print $10 }'`
-sdate=`bk _stat B/SCCS/s.file1 | awk -F\| '{ print $10 }'`
-if [ $gdate -lt $sdate ]; then echo failed 6; exit 1; fi
 # Now check it in so later tests aren't confused.
 bk ci $Q -yrename B/file1
 bk -r check -a || { echo check exits $?; exit 1; }

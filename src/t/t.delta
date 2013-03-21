@@ -323,7 +323,11 @@ if writable low.c; then echo failed; exit 1; fi
 echo OK
 
 echo $N Make sure checkout:last preserves modtime if no keyword .....$NL
-cp config.sav BitKeeper/etc/config
+bk commit $Q -ysnap || fail
+bk clone --compat $Q . ../compat || fail
+bk fix -c || fail
+cd "$HERE"/compat
+bk edit $Q BitKeeper/etc/config
 echo "checkout:last" >> BitKeeper/etc/config
 bk admin -FSCCS mid.c 
 bk edit $Q mid.c low.c
@@ -352,10 +356,10 @@ test $gdate -ge $sdate || {
 	bk _find SCCS | grep '^SCCS/s.mid.c'
 	exit 1
 }
-cp config.sav BitKeeper/etc/config
 echo OK
 
 echo $N Make sure "bk new -b" forces binary encoding for text file ....$NL
+cd "$HERE/project"
 echo "this is text" > text
 bk new $Q -b text
 ENC=`bk prs -hr+ -d:ENC: text`

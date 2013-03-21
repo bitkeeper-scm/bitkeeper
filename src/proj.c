@@ -1543,19 +1543,28 @@ proj_tipkey(project *p)
 	 * 1 line - md5key (4.x)
 	 * 3 lines - md5key, deltakey, rev (bk-5.0-beta3)
 	 * 5 lines - md5key, deltakey, rev, mtime, size (bk-5.4.1)
+	 *
+	 * We don't compare the ChangeSet file timestamp because the
+	 * TIP file is transferred on clone, but sfio doesn't set the
+	 * s.ChangeSet timestamp to match the time on the remote side.
 	 */
+	sb.st_size = 0;
 	if ((nLines(lines) < 5) ||
 	    lstat(buf, &sb) ||
-	    (sb.st_mtime != strtoul(lines[4], 0, 0)) ||
+	    /* (sb.st_mtime != strtoul(lines[4], 0, 0)) || */
 	    (sb.st_size != strtoul(lines[5], 0, 0))) {
 		/* regenerate TIP file */
-#if 0
-		fprintf(stderr, "buf=%s\nmtime=%d/%s size=%d/%s\n",
-		    buf, (u32)sb.st_mtime, lines[4],
-		    (u32)sb.st_size, lines[5]);
-		//assert(0);
-		//fprintf(stderr, "Regenerting TIP file\n");
-#endif
+		T_SCCS("regen TIP %s n=%d", p->root, nLines(lines));
+
+		/*
+		 * In regressions we should never have to recreate the
+		 * TIP file because the cached file size is wrong.
+		 * This indicates we are not maintaining this cache
+		 * correctly.  This can happen in real life when
+		 * switching between different versions of bk.
+		 */
+		if (sb.st_size && getenv("_BK_REGRESSION")) assert(0);
+
 		// should only happen when talking to older bks
 		if (s = sccs_init(buf, SILENT|INIT_NOCKSUM|INIT_MUSTEXIST)) {
 			cset_savetip(s);

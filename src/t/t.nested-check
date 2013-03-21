@@ -72,6 +72,7 @@ bk _cp RESYNC/SCCS/s.ChangeSet twoTip
 bk resolve $Q -S
 bk _cp SCCS/s.ChangeSet oneTip
 bk _cp twoTip SCCS/s.ChangeSet
+rm BitKeeper/log/TIP
 bk _cp twoTip ../RESYNC/gcc/SCCS/s.ChangeSet
 cd ..
 bk resolve $Q 2> GOT && fail -f GOT
@@ -85,6 +86,7 @@ cmpfiles WANT GOT
 cd gcc
 bk _cp oneTip SCCS/s.ChangeSet
 bk _cp oneTip ../RESYNC/gcc/SCCS/s.ChangeSet
+rm BitKeeper/log/TIP
 cd ..
 bk resolve $Q || fail
 echo OK

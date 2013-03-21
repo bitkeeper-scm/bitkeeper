@@ -2104,7 +2104,7 @@ bam_timestamps_main(int ac, char **av)
 	char	*name, *dfile;
 	int	c;
 	int	dryrun = 0, errors = 0;
-	time_t	got, want, sfile;
+	time_t	got, want, sfile = 0;
 	struct	utimbuf ut;
 
 #undef	ERROR
@@ -2128,19 +2128,24 @@ bam_timestamps_main(int ac, char **av)
 			errors |= 1;
 			continue;
 		}
-		/*
-		 * Fix up the sfile first, it has to be older than the first
-		 * delta.
-		 */
-		sfile = mtime(s->sfile);
 		d = sccs_top(s);
-		unless (sfile <= (DATE(s, d) - (DATE_FUDGE(s, d) + 2))) {
-			if (dryrun) {
-				printf("Would fix sfile %s\n", s->sfile);
-			} else {
-				ut.actime = time(0);
-				ut.modtime = (DATE(s, d) - (DATE_FUDGE(s, d) + 2));
-				if (utime(s->sfile, &ut)) errors |= 2;
+		if (proj_hasOldSCCS(s->proj)) {
+			/*
+			 * Fix up the sfile first, it has to be older
+			 * than the first delta.
+			 */
+			sfile = mtime(s->sfile);
+			unless (sfile <=
+			    (DATE(s, d) - (DATE_FUDGE(s, d) + 2))) {
+				if (dryrun) {
+					printf("Would fix sfile %s\n",
+					    s->sfile);
+				} else {
+					ut.actime = time(0);
+					ut.modtime = (DATE(s, d) -
+					    (DATE_FUDGE(s, d) + 2));
+					if (utime(s->sfile, &ut)) errors |= 2;
+				}
 			}
 		}
 		if (dfile = bp_lookup(s, d)) {
@@ -2155,7 +2160,10 @@ bam_timestamps_main(int ac, char **av)
 #define	CT(d)	ctime(&d) + 4
 					printf("\tdfile: %s", CT(got));
 					printf("\tdelta: %s", CT(want));
-					printf("\tsfile: %s", CT(sfile));
+					if (sfile) {
+						printf("\tsfile: %s",
+						    CT(sfile));
+					}
 				} else if (utime(dfile, &ut)) {
 					errors |= 4;
 				}

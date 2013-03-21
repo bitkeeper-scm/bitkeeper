@@ -27,7 +27,7 @@ DTZ32="22/02/08 09:42:27+00:00"
 # use D_TIME limited to now
 
 echo $N Create a repo for timestamp investigation ...................$NL
-commercial project
+fresh_commercial --compat project
 bk _touch now
 # Make 3 files: keyword, nokeyword, deltatime
 echo %'K'% > keyword

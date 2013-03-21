@@ -22,6 +22,7 @@ restore_backup(char *backup, int overwrite)
 		getMsg("restore_failed", backup, '!', stderr);
 		return (1);
 	}
+	unlink("BitKeeper/log/TIP");
 	getMsg("restore_checking", 0, 0, stderr);
 	tmpfile = bktmp(0, 0);
 	if (rc = systemf("bk -?BK_NO_REPO_LOCK=YES -r check -ac >'%s' 2>&1",
