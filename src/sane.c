@@ -50,6 +50,9 @@ sane(int readonly, int resync)
 	if (chk_host()) errors++;
 	if (chk_user()) errors++;
 	if (proj_cd2root() == 0) {
+		if (!readonly && chk_permissions()) {
+			errors++;
+		}
 		unless (readonly || win32()) {
 			a = aprintf("BitKeeper/tmp/a%d", getpid());
 			b = aprintf("BitKeeper/tmp/b%d", getpid());
@@ -70,9 +73,6 @@ sane(int readonly, int resync)
 			free(a);
 			free(b);
 			if (errors) goto out;
-		}
-		if (!readonly && chk_permissions()) {
-			errors++;
 		}
 #define	_exists(f)	(exists(f) || (resync && exists(RESYNC2ROOT "/" f)))
 #define	_size(f)	(size(f) || (resync && size(RESYNC2ROOT "/" f)))

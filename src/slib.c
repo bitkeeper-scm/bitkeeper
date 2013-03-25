@@ -4584,7 +4584,7 @@ sccs_init(char *name, u32 flags)
 	sccs	*s;
 	struct	stat sbuf;
 	char	*t;
-	int	lstat_rc;
+	int	lstat_rc, lstat_errno;
 	ser_t	d;
 	int	fixstime = 0;
 	static	int _YEAR4;
@@ -4613,6 +4613,7 @@ sccs_init(char *name, u32 flags)
 		return (0);
 	}
 	lstat_rc = lstat(name, &sbuf);
+	lstat_errno = lstat_rc ? errno : 0;
 	if (lstat_rc && (flags & INIT_MUSTEXIST)) return (0);
 	s = new(sccs);
 	s->sfile = strdup(name);
@@ -4704,7 +4705,8 @@ sccs_init(char *name, u32 flags)
 		if (isreg(s->pfile)) s->state |= S_PFILE;
 	}
 	debug((stderr, "init(%s) -> %s, %s\n", s->gfile, s->sfile, s->gfile));
-	if (sccs_open(s)) {
+	if (lstat_rc || sccs_open(s)) {
+		errno = lstat_rc ? lstat_errno : errno;
 		if ((errno == ENOENT) || (errno == ENOTDIR)) {
 			/* Not an error if the file doesn't exist yet.  */
 			debug((stderr, "%s doesn't exist\n", s->sfile));

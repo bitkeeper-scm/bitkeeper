@@ -39,6 +39,7 @@ private int	launch_L(char *script, char **av);
 #define	MAXARGS	1024
 #define	MAXPROCDEPTH	30	/* fallsafe, don't recurse deeper than this */
 
+#ifdef	PROFILE
 private void
 save_gmon(void)
 {
@@ -46,10 +47,11 @@ save_gmon(void)
 	int	i = 0;
 
 	do {
-		sprintf(buf, "gmon.%d", i++);
+		sprintf(buf, "gmon-%s.%d", prog, i++);
 	} while (exists(buf));
 	rename("gmon.out", buf);
 }
+#endif
 
 #if GCC_VERSION >= 40600
 #pragma	GCC diagnostic push
@@ -660,7 +662,9 @@ run:	trace_init(prog);	/* again 'cause we changed prog */
 	 */
 	if (dashr) nested_check();
 	getoptReset();
+#ifdef	PROFILE
 	if (exists("gmon.out")) save_gmon();
+#endif
 
 #ifdef	WIN32
 	/* This gets rid of an annoying message when sfiles is killed */
@@ -1735,7 +1739,7 @@ log_rotate(char *path)
 
 	if (stat(path, &sb)) return;
 
-	if (sb.st_mode != 0666) chmod(path, 0666);
+	if ((sb.st_mode & 0666) != 0666) chmod(path, 0666);
 	if (streq(basenm(path), "cmd_log")) size = 5*1024*1024;
 	if (sb.st_size > size) {
 		sprintf(old, "%s.old", path);
