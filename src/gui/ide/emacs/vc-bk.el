@@ -4,7 +4,7 @@
 ;; to your .emacs file:
 ;;
 ;;     (let ((bin (replace-regexp-in-string "[\n\r]+$" ""
-;;     				     (shell-command-to-string "bk bin") nil)))
+;;				     (shell-command-to-string "bk bin") nil)))
 ;;       (load-file (concat bin "/contrib/vc-bk.el"))
 ;;       (add-to-list 'vc-handled-backends 'Bk))
 ;;
@@ -135,7 +135,16 @@
 
 (defun vc-bk-print-log (files buffer &optional shortlog start-revision limit)
   "Get change log associated with FILES."
-  (vc-bk-command buffer 0 files "log"))
+  (vc-setup-buffer buffer)
+  (let ((inhibit-read-only t))
+    (with-current-buffer
+	buffer
+      (apply 'vc-bk-command buffer 0 files
+	     (nconc (if (string-equal (substring (car files) -1 nil) "/")
+			(list "changes" "-S")
+		      (list "log"))
+		    (list (format "-%d" (if limit limit 0))))))))
+
 
 
 (defun vc-bk-diff-tree (dir &optional rev1 rev2)
