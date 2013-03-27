@@ -11,10 +11,11 @@
 typedef struct {
 	u32	standalone:1;	/* -S - standalone */
 	u32	nested:1;	/* nested */
+	u32	use_scancomp:1;	/* don't count extras */
 	char	**aliases;	/* -s limit count to aliases */
 } Opts;
 
-private u32	nfiles(char **aliases);
+private u32	nfiles(Opts *opts);
 
 /*
  * bk nfiles - print the approximate number of files in the repo
@@ -25,10 +26,13 @@ nfiles_main(int ac, char **av)
 {
 	Opts	*opts;
 	int	c;
-	u32	n;
+	longopt	lopts[] = {
+		{ "use-scancomp", 310 },		/* don't count extras */
+		{0, 0}
+	};
 
 	opts = new(Opts);
-	while ((c = getopt(ac, av, "rSs;", 0)) != -1) {
+	while ((c = getopt(ac, av, "rSs;", lopts)) != -1) {
 		switch (c) {
 		    case 'r':	// backward compat
 			break;
@@ -38,6 +42,10 @@ nfiles_main(int ac, char **av)
 		    case 's':
 			opts->aliases = addLine(opts->aliases, strdup(optarg));
 			break;
+		    case 310:	/* --use-scancomp */
+			unless (features_test(0, FEAT_BKFILE)) usage();
+			opts->use_scancomp = 1;
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -46,11 +54,9 @@ nfiles_main(int ac, char **av)
 	opts->nested = bk_nested2root(opts->standalone);
 
 	if (opts->aliases || opts->nested) {
-		unless (n = nfiles(opts->aliases)) return (1);
-		printf("%u\n", n);
+		printf("%u\n", nfiles(opts));
 	} else {
-		unless (n = repo_nfiles(0, 0)) return (1);
-		printf("%u\n", n);
+		printf("%u\n", repo_nfiles(0, 0));
 	}
 	return (0);
 }
@@ -191,15 +197,16 @@ out2:
  * Return zero on failure.
  */
 private u32
-nfiles(char **aliases)
+nfiles(Opts *opts)
 {
-	char	*nfn, *numstr;
+	char	*numstr;
 	comp	*c;
 	nested	*n;
 	int	i;
 	u32	total = 0;
-	hash	*h = 0;
+	hash	*h = 0, *mods = 0;
 	project	*p;
+	char	**aliases = opts->aliases;
 
 	unless (n = nested_init(0, 0, 0, NESTED_PENDING)) {
 		fprintf(stderr, "%s: nested_init failed\n", prog);
@@ -208,11 +215,16 @@ nfiles(char **aliases)
 	if (aliases && nested_aliases(n, 0, &aliases, start_cwd, 1)) {
 		goto out;
 	}
-	nfn = proj_fullpath(0, "BitKeeper/log/NFILES_PRODUCT");
-	h = hash_fromFile(0, nfn);
+	if (opts->use_scancomp) {
+		mods = hash_fromFile(0,
+		    proj_fullpath(proj_product(0), "BitKeeper/log/scancomps"));
+	}
+	h = hash_fromFile(0, proj_fullpath(0, "BitKeeper/log/NFILES_PRODUCT"));
 	EACH_STRUCT(n->comps, c, i) {
 		unless (c->present) continue;
-		if (aliases) unless (c->alias) continue;
+		if (aliases && !c->alias) continue;
+		if (mods && !c->product &&
+		    !hash_fetchStr(mods, c->path)) continue;
 		if (h && (numstr = hash_fetchStr(h, c->rootkey))) {
 			total += strtoul(numstr, 0, 10);
 		} else {
@@ -229,7 +241,8 @@ nfiles(char **aliases)
 			}
 		}
 	}
-	hash_free(h);	// can cope with null h
+	hash_free(h);
+	hash_free(mods);
 out:
 	nested_free(n);
 	return (total);

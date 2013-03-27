@@ -27,7 +27,7 @@ test $CNT -eq 12 || fail wrong count
 echo OK
 
 echo $N Check nfiles -sBOGUS ........................................$NL
-bk nfiles -sBOGUS 2> OUT && fail -f OUT should have failed
+bk nfiles -sBOGUS > OUT 2>&1 || fail -f OUT should not have failed
 echo OK
 
 echo $N Check that nfiles works with no NFILES_PRODUCT ..............$NL

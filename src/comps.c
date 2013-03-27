@@ -1,18 +1,19 @@
 #include "sccs.h"
 
-private	int	comps_citool(char **av, int haveAliases);
+private	int	comps_citool(char **av, int haveAliases, int no_extras);
 
 int
 comps_main(int ac, char **av)
 {
 	int	c;
-	int	citool = 0, haveAliases = 0;
+	int	citool = 0, haveAliases = 0, no_extras = 0;
 	int	rc;
 	char	**nav = 0;
 	char	**aliases = 0;
 	longopt	lopts[] = {
 		{ "here", 'h' },
 		{ "missing", 'm' },
+		{ "no-extras", 310 }, /* only list comps we know have pending */
 		{ 0, 0 }
 	};
 
@@ -27,6 +28,10 @@ comps_main(int ac, char **av)
 			      haveAliases = 1;
 			      aliases = addLine(aliases, optarg);
 			      break;
+		    case 310:	/* --no-extras */
+			unless (features_test(0, FEAT_BKFILE)) usage();
+			no_extras = 1;
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -44,7 +49,7 @@ comps_main(int ac, char **av)
 	if (citool) {
 		nav = unshiftLine(nav, "bk");
 		nav = addLine(nav, 0);	/* guarantee array termination */
-		rc = comps_citool(nav+1, haveAliases);
+		rc = comps_citool(nav+1, haveAliases, no_extras);
 	} else {
 		getoptReset();
 		rc = alias_main(nLines(nav), nav+1);
@@ -65,14 +70,23 @@ components_main(int ac, char **av)
 }
 
 private int
-comps_citool(char **av, int haveAliases)
+comps_citool(char **av, int haveAliases, int no_extras)
 {
 	FILE	*f;
 	char	*t;
 	char	*first = 0;
 	int	status;
+	hash	*mods;
+	char	**next = 0;
+	int	i, rc = 1;
 
-	unless (f = popenvp(av, "r")) return (1);
+	/*
+	 * If run in a nested repository, list only the components
+	 * that contain modified data.
+	 */
+	t = proj_fullpath(proj_product(0), "BitKeeper/log/scancomps");
+	mods = hash_fromFile(hash_new(HASH_MEMHASH), t);
+	unless (f = popenvp(av, "r")) goto out;
 
 	if (!haveAliases && proj_isComponent(0)) {
 		first = strdup(proj_comppath(0));
@@ -87,9 +101,22 @@ comps_citool(char **av, int haveAliases)
 			first = 0;
 			continue;
 		}
-		puts(t);
+		if (hash_fetchStr(mods, t)) {
+			puts(t);
+		} else {
+			/*
+			 * components with only extras get scanned
+			 * later (unless we were told not to do them
+			 * at all)
+			 */
+			unless (no_extras) next = addLine(next, strdup(t));
+		}
 	}
 	status = pclose(f);
-	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (1);
-	return (0);
+	EACH(next) puts(next[i]);
+	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) goto out;
+	rc = 0;
+out:	freeLines(next, free);
+	hash_free(mods);
+	return (rc);
 }

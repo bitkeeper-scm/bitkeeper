@@ -46,6 +46,7 @@ struct {
 	string	cwd;		    // current directory
 	string	root;		    // root directory of the repo
 	string	dotbk;		    // dotbk directory
+	int	no_extras;	    // don't scan whole tree
 	int	resolve;	    // is this commit from the resolver
 	int	partial;	    // is this a partial commit from resolve
 	int	nfiles;		    // number of files in repo
@@ -490,9 +491,11 @@ addFiles(string files[])
 {
 	FILE	fd;
 	string	tmp, file, lines[];
+	string	opts = "";
 
 	tmp = tmpfile("citool");
-	fd = popen("bk sfiles -cgvxypA -o'${tmp}' -", "r+");
+	unless (self.no_extras) opts = "-x";
+	fd = popen("bk sfiles -cgvypA ${opts} -o'${tmp}' -", "r+");
 	puts(fd, join("\n", files));
 	pclose(fd);
 
@@ -620,8 +623,9 @@ findFiles()
 		self.sfiles_component = comp;
 		self.showPending{comp} = 0;
 		cmd = "bk sfiles ${opts} --relpath='${self.root}'";
-		unless (self.resolve) {
+		unless (self.resolve || self.no_extras) {
 			// Look for extra files when we're not in the resolver.
+			// or the user explicitly asked not to look for them
 			cmd .= " -x";
 		}
 		cmd .= " 2>@1";
@@ -652,8 +656,9 @@ getCommentedFiles(string comps[], int &files{string})
 	foreach (comp in comps) {
 		chdir(comp);
 		cmd = "bk sfiles ${opts} --relpath='${self.root}'";
-		unless (self.resolve) {
+		unless (self.resolve || self.no_extras) {
 			// Look for extra files when we're not in the resolver.
+			// or the user explicitly asked not to look for them
 			cmd .= " -x";
 		}
 		fd = popen(cmd, "r");
@@ -2646,6 +2651,7 @@ main(_argused int argc, string argv[])
 
 	self.partial = 0;
 	self.resolve = 0;
+	self.no_extras = 0;
 	foreach (arg in argv[1..END]) {
 		if (arg == "-R") {
 			self.resolve = 1;
@@ -2656,15 +2662,19 @@ main(_argused int argc, string argv[])
 			if ($1 == "^PRODUCT") includeProduct = 0;
 			compscmd .= " " . arg;
 			nfilesOpts .= " " . arg;
+		} else if (arg == "--no-extras") {
+			unless (`bk features` =~ /BKFILE/) {
+				bk_dieError("--no-extras can only be used "
+				    "in a repository cloned with the "
+				    "--upgrade-repo option.", 1);
+			}
+			nfilesOpts .= " --use-scancomp";
+			compscmd .= " --no-extras";
+			self.no_extras++;
 		} else {
 			push(&files, arg);
 			self.argv[END+1] = arg;
 		}
-	}
-
-	if (self.dashs && includeProduct) {
-		compscmd .= " -sPRODUCT";
-		nfilesOpts .= " -sPRODUCT";
 	}
 
 	self.nested = 0;
@@ -2722,13 +2732,9 @@ main(_argused int argc, string argv[])
 	gui();
 
 	if (self.nested) {
-		includeProduct = 0;
 		f = popen(compscmd, "r");
 		while (defined(arg = fgetline(f))) {
-			if (arg == ".") {
-				includeProduct = 1;
-				continue;
-			}
+			if (arg == ".") continue;
 			arg = joinpath(self.root, arg);
 			self.allComponents[END+1] = arg;
 		}
