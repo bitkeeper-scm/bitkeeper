@@ -318,53 +318,6 @@ do_chksum(int fd, int off, int *sump)
 	return (0);
 }
 
-typedef struct serset {
-	ser_t	num, size, last;
-	struct _sse {
-		ser_t	ser;
-		u16	sum;
-	} data[0];
-} serset;
-
-#define	SS_SIZE  sizeof(serset)
-#define	SSE_SIZE sizeof(struct _sse)
-
-private void
-add_ins(MDBM *h, char *root, int len, ser_t ser, u16 sum)
-{
-	serset	*ss, *tmp;
-	datum	k, v;
-
-	k.dptr = root;
-	k.dsize = len;
-	v = mdbm_fetch(h, k);
-	ss = v.dptr ? *(serset **)v.dptr : 0;
-	unless (ss) {
-		/* new entry */
-		ss = malloc(SS_SIZE + 4*SSE_SIZE);
-		ss->num = 0;
-		ss->size = 4;
-		ss->last = 0;
-		v.dptr = (void *)&ss;
-		v.dsize = sizeof(serset *);
-		mdbm_store(h, k, v, MDBM_INSERT);
-	} else if (ss->num == (ss->size - 1)) {
-		/* realloc 2X */
-		tmp = malloc(SS_SIZE + (2 * ss->size)*SSE_SIZE);
-		memcpy(tmp, ss, SS_SIZE + ss->size*SSE_SIZE);
-		free(ss);
-		ss = tmp;
-		ss->size *= 2;
-		v.dptr = (void *)&ss;
-		v.dsize = sizeof(serset *);
-		mdbm_store(h, k, v, MDBM_REPLACE);
-	}
-	ss->data[ss->num].ser = ser;
-	ss->data[ss->num].sum = sum;
-	++ss->num;
-	ss->data[ss->num].ser = 0;
-}
-
 private	int
 setOrder(sccs *s, ser_t d, void *token)
 {
@@ -380,41 +333,42 @@ setOrder(sccs *s, ser_t d, void *token)
 	return (0);
 }
 
-private int
-sortSets(const void *a, const void *b)
-{
-	serset *sa = *(serset **)a;
-	serset *sb = *(serset **)b;
-	int	na, nb;
+typedef	struct {
+	ser_t	ser;		/* which cset serial */
+	u16	sum;		/* sum of that cset line */
+} Sse;
 
-	na = (sa->num > 0) ? sa->data[0].ser : 0;
-	nb = (sb->num > 0) ? sb->data[0].ser : 0;
-	return (nb - na);
-}
+typedef	struct {		/* data remembered per-rootkey */
+	Sse	*sse;		/* list of csets which changed this file */
+	ser_t	last;		/* the last index in sse match for this rk */
+	ser_t	lastseen;	/* the last cset serial matched for this rk */
+} rkdata;
 
 /* same semantics as sccs_resum() except one call for all deltas */
 int
 cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 {
-	MDBM	*root2map = mdbm_mem();
-	ser_t	ins_ser = 0;
+	hash	*root2id = hash_new(HASH_MEMHASH);
+	int	rkid;		/* rkid = root2id{rkey} */
+	rkdata	*rkarray = 0;	/* rkarray[rkid] = per-rk-stuff */
+	Sse	snew;
+	u32	**csetlist = 0;	/* csetlist[d] = list{ rkid's touched by d } */
+	ser_t	start;
 	char	*rkey, *dkey;
 	u8	*e;
 	u16	sum;
-	int	cnt, i, added, orderIndex;
-	serset	**map;
+	int	bits, cnt, i, added, orderIndex;
+	rkdata	*item;
 	u8	*slist = 0;
+	u8	*symdiff = 0;
 	ser_t	*order = 0;
-	struct	_sse *sse;
 	ser_t	d, prev;
 	int	found = 0;
 	int	n = 0;
-	kvpair	kv;
+	u32	index;
 	ticker	*tick = 0;
 
 	T_SCCS("file=%s", s->gfile);
-	mdbm_set_alignment(root2map,
-	    (sizeof(void *) == 8) ? _MDBM_ALGN64 : _MDBM_ALGN32);
 
 	if (spinners) {
 		if (takepatch) {
@@ -427,30 +381,32 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 
 	/* build up weave data structure */
 	sccs_rdweaveInit(s);
-	while (ins_ser = cset_rdweavePair(s, 0, &rkey, &dkey)) {
+	cnt = 1;
+	growArray(&csetlist, TABLE(s));
+	while (d = cset_rdweavePair(s, 0, &rkey, &dkey)) {
+		if (hash_insertStrU32(root2id, rkey, cnt)) {
+			addArray(&rkarray, 0);
+			cnt++;
+		}
+		rkid = *(u32 *)root2id->vptr;
 		sum = 0;
 		for (e = rkey; *e; e++) sum += *e;
 		for (e = dkey; *e; e++) sum += *e;
 		sum += ' ' + '\n';
-		add_ins(root2map, rkey, strlen(rkey), ins_ser, sum);
+		snew.ser = d;
+		snew.sum = sum;
+		addArray(&rkarray[rkid].sse, &snew);
+		addArray(&csetlist[d], &rkid);
 	}
+	hash_free(root2id);
 	if (sccs_rdweaveDone(s)) {
 		fprintf(stderr, "checksum: failed to read cset weave\n");
 		exit(1);
 	}
-
-	cnt = 0;
-	EACH_KV(root2map) ++cnt;
-	map = malloc(cnt * sizeof(serset *));
-	cnt = 0;
-	EACH_KV(root2map) {
-		map[cnt] = *(serset **)kv.val.dptr;
-		++cnt;
+	EACH(rkarray) {
+		/* initially no files active */
+		rkarray[i].last = nLines(rkarray[i].sse) + 1;
 	}
-	/* order array for better cache footprint */
-	qsort(map, cnt, sizeof(serset *), sortSets);
-
-	/* the above is very fast, no need to optimize further */
 
 	/* foreach delta in an optimized order */
 	graph_kidwalk(s, setOrder, 0, &order);
@@ -460,35 +416,57 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	}
 
 	slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
+	symdiff = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
 	prev = 0;
 	n = 0;
+	sum = 0;
 	EACH_INDEX(order, orderIndex) {
 		d = order[orderIndex];
 
-		/* incremental serialmap */
-		graph_symdiff(s, d, prev, 0, slist, 0, -1, 0);
-		prev = d;
+		/* serialmap[i] = slist[i] ^ symdiff[i] */
+		bits = graph_symdiff(s, d, prev, 0, symdiff, 0, -1, 0);
+		start = (d > prev) ? d : prev;
 
 		if (tick) progress(tick, ++n);
-		sum = 0;
 		added = 0;
-		for (i = 0; i < cnt; i++) {
-			ser_t	ser;
-			ser_t	want = d;
+		for (i = start; bits; i--) {
+			unless (symdiff[i]) continue;
+			slist[i] ^= 1;	/* transition slist from prev to d */
+			symdiff[i] = 0;
+			bits--;
 
-			sse = map[i]->data + map[i]->last;
-			while ((sse > map[i]->data) && (sse[-1].ser <= want)) {
-				--sse;
-			}
-			for (; (ser = sse->ser); ++sse) {
-				if ((ser <= want) && slist[ser]) {
-					sum += sse->sum;
-					if (ser == want) ++added;
-					break;
+			/* get list of files changed by serial 'i' */
+			EACH_INDEX(csetlist[i], index) {
+				ser_t	ser;
+				int	j;
+				int	num;
+
+				item = &rkarray[csetlist[i][index]];
+				if (item->lastseen == d) continue;
+				item->lastseen = d;
+
+				num = nLines(item->sse);
+				j = item->last;
+				if (j <= num) {
+					/* remove this file in 'prev' */
+					sum -= item->sse[j].sum;
 				}
+				while ((j > 1) && (item->sse[j-1].ser <= d)) {
+					--j;
+				}
+				for (; j <= num; ++j) {
+					ser = item->sse[j].ser;
+					if ((ser <= d) &&
+					    (slist[ser] ^ symdiff[ser])) {
+						sum += item->sse[j].sum;
+						if (ser == d) ++added;
+						break;
+					}
+				}
+				item->last = j;
 			}
-			map[i]->last = (sse - map[i]->data);
 		}
+		prev = d;
 
 		if ((ADDED(s, d) != added) || DELETED(s, d) || (SAME(s, d) != 1)) {
 			/*
@@ -522,12 +500,14 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 		}
 	}
 	if (slist) free(slist);
+	if (symdiff) free(symdiff);
 	if (order) free(order);
 	if (tick) progress_done(tick, 0);
 	if (spinners && !takepatch) fputc('\n', stderr);
 	s->state &= ~S_SET;	/* if set, then done with it: clean up */
-	for (i = 0; i < cnt; i++) free(map[i]);
-	free(map);
-	mdbm_close(root2map);
+	EACH(rkarray) free(rkarray[i].sse);
+	free(rkarray);
+	EACH(csetlist) free(csetlist[i]);
+	free(csetlist);
 	return (found);
 }
