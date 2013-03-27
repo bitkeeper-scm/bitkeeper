@@ -50,6 +50,7 @@ char*		proj_md5rootkey(project *p);
 char*		proj_repoID(project *p);
 char*		proj_relpath(project *p, char *path);
 void		proj_reset(project *p);
+void		proj_flush(project *p);
 char*		proj_root(project *p);
 char*		proj_rootkey(project *p);
 int		proj_samerepo(char *source, char *dest, int quiet);
@@ -70,6 +71,8 @@ char*		proj_cset2key(project *p, char *csetrev, char *rootkey);
 char*		proj_tipkey(project *p);
 char*		proj_tipmd5key(project *p);
 char*		proj_tiprev(project *p);
+void		proj_touchfile(project *p, char *file);
+void		proj_set_scancomp(project *p, int mod);
 
 #define		chdir	proj_chdir
 

@@ -68,6 +68,7 @@ typedef struct {
 	u32	xdirs:1;		/* -D: list directories w/ no BK */
 	u32	skip_comps:1;		/* -h: skip comp csets in prod */
 	u32	atRoot:1;		/* running at root of repo? */
+	u32	saw_mods:1;		/* saw a pfile somewhere? */
 
 	char	*relpath;		/* --replath: print relative paths */
 	FILE	*out;			/* -o<file>: send output here */
@@ -322,6 +323,14 @@ sfiles_main(int ac, char **av)
 	if (opts.out != stdout) fclose(opts.out);
 	if (opts.progress) uprogress();
 	if (opts.relpath) free(opts.relpath);
+	if (opts.atRoot && !opts.onelevel && !opts.recurse && opts.pending) {
+		/*
+		 * This was a normal sfiles that walked the entire
+		 * repo.  So we can set or clear the modified flag for
+		 * this component if pfiles were found.
+		 */
+		proj_set_scancomp(0, opts.saw_mods);
+	}
 	free_project();
 	return (0);
 }
@@ -1216,10 +1225,14 @@ do_print(STATE buf, char *gfile, char *rev)
 		unless (match_one(p, opts.glob, 0)) return;
 	}
 
-	if (state[PSTATE] == 'p') p_count++;
+	if (state[PSTATE] == 'p') {
+		opts.saw_mods = 1;
+		p_count++;
+	}
 	if (state[NSTATE] == 'n') n_count++;
 	if (state[GSTATE] == 'G') C_count++;
     	if (state[CSTATE] == 'c') c_count++; 
+	if (state[LSTATE] == 'l') opts.saw_mods = 1;
 
 	switch (state[TSTATE]) {
 	    case 'j': break;

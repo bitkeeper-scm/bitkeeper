@@ -44,6 +44,8 @@ struct project {
 	char	*tipkey;	/* key/md5key/rev of tip cset rev */
 	char	*tipmd5key;
 	char	*tiprev;
+	hash	*scancomps;	/* prod/BitKeeper/log/scancomps */
+	u32	scancomps_dirty:1;
 
 	/* checkout state */
 	u32	co;		/* cache of proj_checkout() return */
@@ -760,6 +762,7 @@ proj_reset(project *p)
 		proj_free(p2);
 	}
 	if (p) {
+		proj_flush(p);
 		FREE(p->rootkey);
 		FREE(p->md5rootkey);
 		FREE(p->comppath);
@@ -787,6 +790,10 @@ proj_reset(project *p)
 		if (p->idxsock) {
 			closesocket(p->idxsock);
 			p->idxsock = 0;
+		}
+		if (p->scancomps) {
+			hash_free(p->scancomps);
+			p->scancomps = 0;
 		}
 		unless (p->product) p->product = INVALID;
 
@@ -823,6 +830,21 @@ proj_reset(project *p)
 		}
 		EACH_HASH(h) proj_reset(*(project **)h->kptr);
 		hash_free(h);
+	}
+}
+
+/*
+ * write out modified state that is cached in the proj struct
+ */
+void
+proj_flush(project *p)
+{
+	if (p) {
+		if (p->scancomps_dirty) proj_set_scancomp(p, -1);
+	} else {
+		EACH_HASH(proj.cache) {
+			proj_flush(*(project **)proj.cache->vptr);
+		}
 	}
 }
 
@@ -1604,6 +1626,69 @@ proj_tipmd5key(project *p)
 
 	unless (p->tipmd5key) proj_tipkey(p);
 	return (p->tipmd5key);
+}
+
+/*
+ * Called whenever an sfile is modified or a pfile is created
+ * this function is intended to allow a product in a nested collection
+ * to track which components contain modifications.
+ */
+void
+proj_touchfile(project *p, char *file)
+{
+	proj_set_scancomp(p, 1);
+}
+
+
+/*
+ * Indicate if the current component should be considered modified or
+ * not.  Components that are "modified" will be listed in the
+ * prod/BitKeeper/log/scancomps file.
+ */
+void
+proj_set_scancomp(project *p, int mod)
+{
+	project	*prod;
+	char	*dbf, *t;
+
+	/*
+	 * Changes in RESYNC won't leave files pending or modified for
+	 * citool to need to look at them.
+	 */
+	if (proj_isResync(p)) return;
+
+	unless (prod = proj_product(p)) return; /* not nested */
+
+	if (mod == -1) {
+		/* flush cache */
+		if (prod->scancomps_dirty) {
+			dbf = proj_fullpath(prod, "BitKeeper/log/scancomps");
+			t = aprintf("%s.tmp-%u", dbf, (int)getpid());
+			if (hash_toFile(prod->scancomps, t)) {
+				perror(t);
+			} else if (rename(t, dbf)) {
+				perror(dbf);
+			}
+			free(t);
+			prod->scancomps_dirty = 0;
+		}
+		return;
+	}
+	unless (prod->scancomps) {
+		dbf = proj_fullpath(prod, "BitKeeper/log/scancomps");
+		prod->scancomps = hash_fromFile(hash_new(HASH_MEMHASH), dbf);
+	}
+	t = proj_isComponent(p) ? proj_comppath(p) : ".";
+	assert(t);
+	if (mod) {
+		if (hash_insertStrSet(prod->scancomps, t)) {
+			prod->scancomps_dirty = 1;
+		}
+	} else {
+		unless (hash_deleteStr(prod->scancomps, t)) {
+			prod->scancomps_dirty = 1;
+		}
+	}
 }
 
 p_feat *

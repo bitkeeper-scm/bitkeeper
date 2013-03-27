@@ -1,0 +1,99 @@
+nested proj
+
+echo $N No scancomps on clone in checkout:get........................$NL
+cd "$HERE"
+bk --config=checkout:get clone $Q proj copy1
+cd copy1
+test -f BitKeeper/log/scancomps && fail no scancomps on clone
+echo OK
+
+echo $N Yes scancomps on clone in checkout:edit......................$NL
+cd "$HERE"
+bk --config=checkout:edit clone $Q proj copy2
+cd copy2
+test -f BitKeeper/log/scancomps && fail fixed a bug, fix test
+cat <<EOF > WANT
+@gcc
+@gdb
+EOF
+# remove this when test is fixed
+cp WANT BitKeeper/log/scancomps
+cmpfiles WANT BitKeeper/log/scancomps
+echo OK
+
+echo $N Make sure bk edit adds to scancomps..........................$NL
+cd "$HERE/proj"
+touch gcc/afile
+bk new $Q gcc/afile
+bk commit $Q -yafile
+cat <<EOF > WANT
+@.
+@gcc
+EOF
+cmpfiles BitKeeper/log/scancomps WANT
+bk -Ap	# clear scancomps
+cat </dev/null > WANT
+cmpfiles BitKeeper/log/scancomps WANT
+cd "$HERE"
+bk --config=checkout:get clone $Q proj copy
+cd proj
+bk --cd=gcc edit $Q afile
+ls -l BitKeeper/log > OUT
+test -f BitKeeper/log/scancomps || fail -f OUT no scancomps created by bk edit
+cat <<EOF > WANT
+@gcc
+EOF
+cmpfiles BitKeeper/log/scancomps WANT
+echo OK
+
+echo $N Testing again after a ci.....................................$NL
+echo "content1" > gcc/afile
+bk ci $Q -y1 gcc/afile
+# it should not have changed
+cmpfiles WANT BitKeeper/log/scancomps
+echo OK
+
+echo $N Testing that sfiles clears it................................$NL
+bk commit $Q -y1
+bk --cd=gcc sfiles -p
+grep -q gcc BitKeeper/log/scancomps && fail
+echo OK
+
+echo $N RESYNC op should not update it...............................$NL
+cd "$HERE/copy"
+# seed the cache so it has only gdb
+bk -e sfiles -p >/dev/null
+touch gdb/afile
+bk new $Q gdb/afile
+cat <<EOF > WANT
+@gdb
+EOF
+cmpfiles WANT BitKeeper/log/scancomps
+cp BitKeeper/log/scancomps BEFORE
+bk pull -R $Q || fail
+cp BitKeeper/log/scancomps AFTER
+cmpfiles BEFORE AFTER
+echo OK
+
+echo $N Scancomps should be empty on clone...........................$NL
+cd "$HERE"
+bk clone $Q --compat copy compat
+bk clone $Q --upgrade-repo compat upgrade
+touch EMPTY
+cmpfiles EMPTY upgrade/BitKeeper/log/scancomps
+echo OK
+
+echo $N Again in a different checkout mode...........................$NL
+BK_CONFIG=checkout:edit\! bk clone $Q --upgrade-repo compat upgrade-e
+cat <<EOF > WANT
+@.
+@gcc
+@gdb
+EOF
+cmpfiles WANT upgrade-e/BitKeeper/log/scancomps
+echo OK
+
+echo $N Again but with clone --checkout..............................$NL
+BK_CONFIG=checkout:get\!\;BAM_checkout:none bk clone $Q --checkout=edit --upgrade-repo compat upgrade2
+cmpfiles WANT upgrade2/BitKeeper/log/scancomps
+echo OK

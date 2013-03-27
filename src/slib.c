@@ -2310,6 +2310,7 @@ sccs_finishWrite(sccs *s)
 				unlink(sccs_Xfile(s, '2')); /* careful */
 			}
 		}
+		proj_touchfile(s->proj, s->sfile);
 	}
 out:	s->encoding_in = s->encoding_out;
 	// idea: delta_table could save new s->data (only useful for ascii)
@@ -4891,12 +4892,17 @@ void
 sccs_writeHere(sccs *s, char *new)
 {
 	char	*spath = name2sccs(new);
+	char	*t;
 
 	/* must have old file open before we change pathnames */
 	unless (s->fh) sccs_open(s);
 	if (s->sfile != s->fullsfile) free(s->fullsfile);
 	free(s->sfile);
 	s->sfile = spath;
+	t = strchr(spath, '/');
+	*t = 0;
+	s->proj = proj_init(spath);
+	*t = '/';
 	if (IsFullPath(s->sfile)) {
 		s->fullsfile = s->sfile;
 	} else {
@@ -6224,6 +6230,7 @@ write_pfile(sccs *s, int flags, ser_t d,
 	write(fd, tmp, strlen(tmp));
 	close(fd);
 	free(tmp);
+	proj_touchfile(s->proj, s->sfile);
 	s->state |= S_PFILE;
 	return (0);
 }

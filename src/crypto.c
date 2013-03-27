@@ -770,6 +770,12 @@ bk_preSpawnHook(int flags, char *av[])
 	unless (streq(av[0], "diff")) {
 		uniq_close();
 	}
+
+	/*
+	 * Flush anything cached in proj structs before running
+	 * another process.
+	 */
+	proj_flush(0);
 }
 
 
