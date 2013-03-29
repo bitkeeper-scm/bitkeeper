@@ -349,24 +349,6 @@ err:				if (revsDB) mdbm_close(revsDB);
 			c->n = n;
 			c->rootkey = strdup(t);
 			c->new = 1; /* new by default */
-			/*
-			 * Set c->path to the current pending location
-			 * from the idcache for present components or
-			 * to the latest deltakey for non-present
-			 * components.  Can get replaced below in the
-			 * pull case with local tip.
-			 */
-			if (c->path = mdbm_fetch_str(idDB, c->rootkey)) {
-				c->path = strdup(c->path);
-				inCache = 1;
-			} else {
-				c->path = key2path(v, 0, 0, 0);
-				inCache = 0;
-			}
-			dirname(c->path); /* strip /ChangeSet */
-
-			/* mark present components */
-			compCheckPresent(n, c, !inCache);
 
 			/* add to list */
 			hash_store(n->compdb, c->rootkey, strlen(c->rootkey)+1,
@@ -401,12 +383,6 @@ err:				if (revsDB) mdbm_close(revsDB);
 			c->localchanges = 1;
 			c->new = 0;
 
-			/* c->path is local path */
-			unless (c->present) {
-				free(c->path);
-				c->path = key2path(v, 0, 0, 0);
-				dirname(c->path);
-			}
 			assert(!c->lowerkey);
 			c->lowerkey = strdup(v);
 		}
@@ -464,15 +440,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 			unless (c->deltakey) c->deltakey = strdup(v);
 
 			/* If we haven't see a LOCAL delta yet then we won't. */
-			unless (c->lowerkey) {
-				c->lowerkey = strdup(v);
-				/* c->path is local path */
-				unless (c->present) {
-					free(c->path);
-					c->path = key2path(v, 0, 0, 0);
-					dirname(c->path);
-				}
-			}
+			unless (c->lowerkey) c->lowerkey = strdup(v);
 		}
 	}
 	if (poly) hash_free(poly);
@@ -513,36 +481,63 @@ pending:
 				c->included = 1;
 				c->pending = 1;
 
-				inCache = 1;	/* by def */
-				c->path = strdup(v);
-				dirname(c->path); /* strip /ChangeSet */
-
-				/* mark present components */
-				compCheckPresent(n, c, !inCache);
-
-				unless (c->present) {
-					/* extra crud in idcache */
-					free(c->rootkey);
-					free(c->path);
-					free(c);
-					continue;
-				}
-
 				/* add to list */
 				hash_store(n->compdb,
 				    c->rootkey, strlen(c->rootkey)+1,
 				    &c, sizeof(comp *));
 				n->comps = addLine(n->comps, c);
 			}
-			if (c->product) continue;
-			/* check pending */
-			compMarkPending(n, c);
 		}
 	} else if (flags & NESTED_MARKPENDING) {
 		n->pending = 1;
-		EACH_STRUCT(n->comps, c, i) {
-			if (c->product) continue;
-			unless (c->present) continue;
+	}
+
+	/* set c->path & c->present */
+	EACH_STRUCT(n->comps, c, i) {
+		if (c->product) {
+			assert(!c->path);
+			c->path = strdup(".");
+			c->present = 1;
+			continue;
+		}
+
+		/*
+		 * Set c->path to the current pending location from
+		 * the idcache for present components or to the latest
+		 * deltakey for non-present components.
+		 */
+		if (c->path = mdbm_fetch_str(idDB, c->rootkey)) {
+			c->path = strdup(c->path);
+			inCache = 1;
+		} else {
+			/*
+			 * Not in the idcache so it probably isn't
+			 * present for a pull we want c->path to be
+			 * the pathname on the local side.
+			 */
+			if ((flags & NESTED_PULL) && !c->new) {
+				/* c->path is local path */
+				assert(c->lowerkey);
+				c->path = key2path(c->lowerkey, 0, 0, 0);
+			} else {
+				c->path = key2path(c->deltakey, 0, 0, 0);
+			}
+			inCache = 0;
+		}
+		dirname(c->path); /* strip /ChangeSet */
+
+		/* mark present components */
+		compCheckPresent(n, c, !inCache);
+
+		if (c->new && c->pending && !c->present) {
+			assert(flags & NESTED_PENDING);
+			// extra junk in idcache
+			removeLineN(n->comps, i, compFree);
+			--i;
+			continue;
+		}
+		if (c->present
+		    && (flags & (NESTED_PENDING|NESTED_MARKPENDING))) {
 			compMarkPending(n, c);
 		}
 	}
@@ -582,13 +577,18 @@ private void
 compCheckPresent(nested *n, comp *c, int idcache_wrong)
 {
 	project	*proj;
-	int	prodlen = strlen(proj_root(0)) + 1;
+	int	prodlen;
 
 	/* mark present components */
+	unless (idcache_wrong) {
+		if (exists(c->path)) c->present = 1;
+		return;
+	}
 	if (exists(c->path) && (proj = proj_init(c->path))) {
 		char	*path = proj_root(proj);
 		char	*rootkey = proj_rootkey(proj);
 
+		prodlen = strlen(proj_root(0)) + 1;
 		if (!path || !rootkey) {
 			/* rootkey can be null for an interrupted clone */
 			fprintf(stderr,
@@ -597,14 +597,12 @@ compCheckPresent(nested *n, comp *c, int idcache_wrong)
 		    streq(path + prodlen, c->path) &&
 		    streq(rootkey, c->rootkey)) {
 			c->present = 1;
-			if (idcache_wrong) {
-				unless (n->fix_idDB) {
-					fprintf(stderr,
-					    "%s: idcache missing component "
-					    "%s, fixing\n", prog, c->path);
-				}
-				nested_updateIdcache(proj);
+			unless (n->fix_idDB) {
+				fprintf(stderr,
+				    "%s: idcache missing component "
+				    "%s, fixing\n", prog, c->path);
 			}
+			nested_updateIdcache(proj);
 		}
 		proj_free(proj);
 	}
@@ -615,7 +613,6 @@ nestedLoadCache(nested *n, MDBM *idDB)
 {
 	comp	*c;
 	char	*s, *t;
-	int	inCache;
 	FILE	*f;
 
 	if (proj_isResync(n->proj)) return (1);
@@ -636,19 +633,6 @@ nestedLoadCache(nested *n, MDBM *idDB)
 		c->included = 1;
 		c->rootkey = strdup(t);
 		c->deltakey = strdup(s);
-
-		/* dup'ed code from above */
-		if (c->path = mdbm_fetch_str(idDB, c->rootkey)) {
-			c->path = strdup(c->path);
-			inCache = 1;
-		} else {
-			c->path = key2path(c->deltakey, 0, 0, 0);
-			inCache = 0;
-		}
-		dirname(c->path); /* strip /ChangeSet */
-
-		/* mark present components */
-		unless (c->product) compCheckPresent(n, c, !inCache);
 
 		/* add to list */
 		hash_store(n->compdb, c->rootkey, strlen(c->rootkey)+1,

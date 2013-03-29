@@ -13,7 +13,7 @@ touch gcc/foo
 bk new $Q gcc/foo
 bk commit $Q -f
 cd ../prod
-printf "rr\ny\n" | bk pull -q --auto-populate ../all 2> ERR || fail
+printf "rr\ny\n" | bk pull -q --auto-populate ../all 2> ERR || fail -f ERR
 grep -q "(create/sfile conflict) foo>>" ERR || fail -f ERR
 cd "$HERE"
 echo OK
