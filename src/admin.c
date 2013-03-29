@@ -2,6 +2,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "logging.h"
+#include "progress.h"
 
 #define	OP(W, V, F) if (next##W < A_SZ-1) { \
 			W[next##W].thing = V; \
@@ -23,7 +24,7 @@ admin_main(int ac, char **av)
 	int	flags = 0;
 	int	init_flags = 0;
 	char	*rev = 0;
-	int	c;
+	int	c, nfiles = 0;
 	admin	f[A_SZ], u[A_SZ], s[A_SZ];
 	int	nextf = 0, nextu = 0, nexts = 0, nextp = 0;
 	char	*comment = 0, *text = 0, *newfile = 0;
@@ -32,12 +33,14 @@ admin_main(int ac, char **av)
 	int	error = 0;
 	int	addCsets = 0, dopath = 0, rmCsets = 0, newCset = 0;
 	int	doDates = 0, touchGfile = 0;
+	u64	n = 0;
 	char	*m = 0;
 	char	*csetFile = 0;
 	char	*obscure = 0;
 	ser_t	d = 0;
 	int 	was_edited = 0, new_delta = 0;
 	pfile	pf = {0};
+	ticker	*tick = 0;
 	longopt	lopt[] = {
 		{ "text;", 310 },
 		{ 0, 0 }
@@ -47,7 +50,7 @@ admin_main(int ac, char **av)
 	bzero(u, sizeof(u));
 	bzero(s, sizeof(s));
 	while ((c =
-	    getopt(ac, av, "a;AB|C|d;e;E;f;F;i|M;m;O;p|P|r;S;y|Z|0DhHnqsuz",
+	    getopt(ac, av, "a;AB|C|d;e;E;f;F;i|M;m;N;O;p|P|r;S;y|Z|0DhHnqsuz",
 		lopt)) != -1) {
 		switch (c) {
 		/* user|group */
@@ -118,6 +121,8 @@ admin_main(int ac, char **av)
 		    case 'H':	/* obsolete, remove in 2009 */
 				flags |= ADMIN_FORMAT|ADMIN_BK|ADMIN_TIME;
 				break;
+		    case 'N':	nfiles = atoi(optarg);
+				break;
 		    case 's':					/* undoc? 2.0 */
 		    case 'q':	flags |= SILENT; break;		/* doc 2.0 */
 		    case 'u':					/* undoc */
@@ -132,6 +137,9 @@ admin_main(int ac, char **av)
 			break;
 		    default: bk_badArg(c, av);
 		}
+	}
+	if (!(flags & SILENT) && (nfiles > 0)) {
+		tick = progress_start(PROGRESS_BAR, nfiles);
 	}
 	if ((flags & ADMIN_FORMAT) && ((flags & ~(ADMIN_CHECKS|SILENT)) ||
 	    nextf || nextu || nexts || nextp || comment || path || newCset ||
@@ -199,6 +207,7 @@ admin_main(int ac, char **av)
 	}
 
 	while (name) {
+		if (tick) progress(tick, ++n);
 		if (flags & NEWFILE) {
 			if (do_checkin(name,
 			    flags&(SILENT|NEWFILE), rev, newfile, comment)) {
@@ -311,6 +320,7 @@ next:		sccs_free(sc);
 		name = sfileNext();
 	}
 	if (sfileDone()) error = 1;
+	if (tick) progress_done(tick, error ? "FAILED":"OK");
 	return (error);
 }
 

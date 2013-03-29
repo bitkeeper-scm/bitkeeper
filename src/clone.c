@@ -69,7 +69,8 @@ clone_main(int ac, char **av)
 	char	*check_out = 0;		/* --checkout=none|get|edit */
 	longopt	lopts[] = {
 		{ "compat", 310},
-		{ "upgrade-repo", 311},
+		{ "upgrade", 311},
+		{ "upgrade-repo", 311},		// alias
 
 		/* remap */
 		{ "sccsdirs", 300 },		/* 4.x compat, w/ SCCS/ */
@@ -810,7 +811,15 @@ clone(char **av, remote *r, char *local, char **envVar)
 		/* switch to (or from) binary */
 		T_PERF("switch binary to %s", p);
 		free(p);
-		systemf("bk -?BK_NO_REPO_LOCK=YES -r admin -Zsame");
+		unless (opts->quiet) {
+			p = features_test(0, FEAT_BKFILE)
+			    ? "upgrade repo" : "downgrade repo";
+			systemf("bk -?BK_NO_REPO_LOCK=YES "
+			    "--title='%s' -r admin -Zsame -N%d",
+			    p, repo_nfiles(0, 0));
+		} else {
+			systemf("bk -?BK_NO_REPO_LOCK=YES -r admin -Zsame");
+		}
 	}
 	if (features_test(0, FEAT_BWEAVE) &&
 	    ((rmt_features & (FEAT_BKFILE|FEAT_bSFILEv1)) != 0) &&
