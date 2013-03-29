@@ -242,7 +242,8 @@ readBlock(fcrc *fc, char *buf)
 		crc2 = CRC(crc2, &len, 2);
 	}
 	if (fread(&crc, 4, 1, fc->f) != 1) {
-		fprintf(stderr, "crc read: early eof @ %ld\n", fc->offset);
+		fprintf(stderr,
+		    "crc read: early eof @ %lld\n", (u64)fc->offset);
 		errno = EIO;
 		return (-1);
 	}
