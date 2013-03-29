@@ -69,6 +69,7 @@ clone_main(int ac, char **av)
 	char	*check_out = 0;		/* --checkout=none|get|edit */
 	longopt	lopts[] = {
 		{ "compat", 310},
+		{ "downgrade", 310},		// alias
 		{ "upgrade", 311},
 		{ "upgrade-repo", 311},		// alias
 
