@@ -11,11 +11,12 @@
 typedef struct {
 	u32	standalone:1;	/* -S - standalone */
 	u32	nested:1;	/* nested */
+	u32	cache_only:1;	/* only use the cache */
 	u32	use_scancomp:1;	/* don't count extras */
 	char	**aliases;	/* -s limit count to aliases */
 } Opts;
 
-private u32	nfiles(Opts *opts);
+private int	nfiles(Opts *opts);
 
 /*
  * bk nfiles - print the approximate number of files in the repo
@@ -25,10 +26,11 @@ int
 nfiles_main(int ac, char **av)
 {
 	Opts	*opts;
-	int	c;
+	int	c, n;
 	longopt	lopts[] = {
-		{ "use-scancomp", 310 },		/* don't count extras */
-		{0, 0}
+		{ "cache-only", 310 },		/* only use the cache */
+		{ "use-scancomp", 320 },	/* don't count extras */
+		{ 0, 0 }
 	};
 
 	opts = new(Opts);
@@ -42,7 +44,10 @@ nfiles_main(int ac, char **av)
 		    case 's':
 			opts->aliases = addLine(opts->aliases, strdup(optarg));
 			break;
-		    case 310:	/* --use-scancomp */
+		    case 310:	/* --cache-only */
+			opts->cache_only = 1;
+			break;
+		    case 320:	/* --use-scancomp */
 			unless (features_test(0, FEAT_BKFILE)) usage();
 			opts->use_scancomp = 1;
 			break;
@@ -54,7 +59,8 @@ nfiles_main(int ac, char **av)
 	opts->nested = bk_nested2root(opts->standalone);
 
 	if (opts->aliases || opts->nested) {
-		printf("%u\n", nfiles(opts));
+		if ((n = nfiles(opts)) < 0) return (1);
+		printf("%u\n", n);
 	} else {
 		printf("%u\n", repo_nfiles(0, 0));
 	}
@@ -196,7 +202,7 @@ out2:
  * Return the approximate number of files in a repo or nested collection.
  * Return zero on failure.
  */
-private u32
+private int
 nfiles(Opts *opts)
 {
 	char	*numstr;
@@ -208,6 +214,10 @@ nfiles(Opts *opts)
 	project	*p;
 	char	**aliases = opts->aliases;
 
+	unless (h = hash_fromFile(0,
+	    proj_fullpath(0, "BitKeeper/log/NFILES_PRODUCT"))) {
+		if (opts->cache_only) return (-1);
+	}
 	unless (n = nested_init(0, 0, 0, NESTED_PENDING)) {
 		fprintf(stderr, "%s: nested_init failed\n", prog);
 		return (0);
@@ -235,15 +245,16 @@ nfiles(Opts *opts)
 			 *  old way (hopfully use the per component
 			 *  NFILES)
 			 */
+			if (opts->cache_only) return (-1);
 			if (p = proj_init(c->path)) {
 				total += repo_nfiles(p, 0);
 				proj_free(p);
 			}
 		}
 	}
+out:
 	hash_free(h);
 	hash_free(mods);
-out:
 	nested_free(n);
 	return (total);
 }

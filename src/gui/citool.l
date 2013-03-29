@@ -13,6 +13,13 @@ edit_busy = 0;
 private int	_done = 0;
 private string	_quit = "";
 
+private	string	_ignore_dir;
+private	string	_ignore_type;
+private	string	_ignore_action;
+private	string	_ignore_pattern;
+private	string	_ignore_dirpattern;
+private	string	_ignore_types[] = {"file", "dirpattern", "pattern", "dirprune"};
+
 typedef	struct	sfile {
 	string	node;		// node ID within the listbox
 	string	file;		// full path to the file
@@ -21,14 +28,9 @@ typedef	struct	sfile {
 	string	icon;		// new, modified, excluded, done
 	string	rev;		// rev of a pending file
 	string	component;	// component this file belongs to
-	int	ignored;	// file is ignored or not?
 	int	excluded;	// file is hard excluded by the user or not?
 	int	inProduct;	// Is this file part of the product?
-	int	commented;	// Whether this file had comments on startup.
-				// This variable is not used outside of the
-				// initial population of the list, as we want
-				// to trust what is on disk more than what we
-				// have in memory.
+	int	commented;	// Whether this file has comments
 } sfile;
 
 string  msgs{string};	    // standard messages
@@ -68,6 +70,9 @@ struct {
 	int	sfiles_reading;	    // lock variable for reading sfiles output
 	int	sfiles_scanning;    // are we currently scanning for files?
 	string	sfiles_component;   // component currently being scanned
+	int	sfiles_insertIdx;   // listbox index for inserting new files
+	int	sfiles_ndone;	    // how many components have we scanned
+	int	sfiles_total;	    // how many components we have total
 	string  templates{string};  // template comments
 	sfile	files{string};	    // a hash of files by name
 	string[] filelist;	    // list of files from the command line
@@ -95,8 +100,8 @@ struct {
 				    // signaling that we're ready to commit
 	int	doDiscard;	    // switch to require clicking discard twice
 	int	committing;	    // true if we're in the middle of committing
+	int	progressbar;	    // progress bar is running
 	int	selecting;	    // true if we are changing file selection
-	string	afterId;	    // store an after event ID
 	string	selected;	    // the selected file node
 	widget	w_top;		    // toplevel window widget
 	widget	w_upperF;	    // upper frame widget
@@ -110,21 +115,75 @@ struct {
 	widget	w_statusF;	    // status bar frame
 	widget	w_status;	    // status label on the bottom of the window
 	widget	w_progress;	    // progress bar on the status bar
+	widget	w_ignoreDlg;	    // ignore dialog
+	string	ignore_dir;	    // subdirectory for the current ignore file
 	string	font_normal;	    // Normal font for the file list
 	string{string} font_underline;  // An underlined font for the file list
 	string{string} font_overstrike; // A striked-out  font for the file list
+
+	// Keep a hash of components and info about them.  We use this
+	// as a quick lookup to know if a component has some files with
+	// comments or whether it has been commented itself.  We also
+	// store the comments of each components (once we fetch them)
+	// for fast lookups from other components.
+	struct	component {
+		int	product;	// Is this the product component?
+		string	comments;	// The comments for this component
+		int	commented;	// Does the component have a comment?
+		int	commentedFiles;	// Number of files with comments
+		string	csetfile;	// Path to the cset file for this comp
+	} compinfo{string};
 } self;
 
-string
-bk(string cmdline)
-{
-	FILE	fd;
-	string	result;
+typedef	void &bk_callback(string line);
 
-	fd = popen("bk ${cmdline}", "r");
-	read(fd, &result, -1);
-	catch("close ${fd}");
-	return(trim(result));
+private string	_bk_output{FILE};
+
+// Call out to BK in a way that doesn't block the GUI and wait for
+// a result.  If a callback function is passed, that callback will
+// be called for every line as they are output.  Otherwise, we buffer
+// up the output of the command and return it all as a string.
+string
+bk(string cmdline, _optional bk_callback callback)
+{
+	FILE	pipe;
+	int	progress;
+	string	res, cb[];
+
+	progress = startProgressBar(1000);// Start a progress bar after a second
+	pipe = popen("bk --sigpipe ${cmdline}", "r");
+
+	cb = {"readBK", pipe};
+	if (callback) {
+		push(&cb, (string)callback);
+	} else {
+		_bk_output{pipe} = undef;
+	}
+
+	fileevent(pipe, "readable", cb);
+	fconfigure(pipe, blocking: 0, buffering: "line");
+	vwait("::_bk_done(${pipe})"); // Have to use a Tcl array here.
+
+	if (progress) stopProgressBar();
+	unless (callback) res = trim(_bk_output{pipe});
+	return(res);
+}
+
+void
+readBK(FILE pipe, _optional bk_callback callback)
+{
+	string	line;
+
+	unless (line = <pipe>) {
+		pclose(pipe);
+		set("::_bk_done(${pipe})", 1);
+		return;
+	}
+	if (callback) {
+		callback(line);
+	} else {
+		_bk_output{pipe} .= line . "\n";
+	}
 }
 
 string
@@ -136,7 +195,11 @@ joinpath(...args)
 int
 getNumFiles(string opts)
 {
-	return ((int)`bk nfiles ${opts}`);
+	string	res;
+
+	res = bk("nfiles ${opts} --cache-only");
+	if (res == "") return (0);
+	return ((int)res);
 }
 
 int
@@ -164,7 +227,7 @@ getSelectedFile()
 {
 	string	node;
 	string	file;
-	
+
 	node = getSelectedNode();
 	unless (defined(node)) return (undef);
 
@@ -200,15 +263,7 @@ getRelativePath(string path, string root)
 int
 componentHasComments(string component)
 {
-	string	file;
-	sfile	sf;
-
-	foreach (file in self.components{component}) {
-		sf = self.files{file};
-		if (sf.type == "cset") continue;
-		if (isCommented(sf)) return (1);
-	}
-	return (0);
+	return (self.compinfo{component}.commentedFiles > 0);
 }
 
 void
@@ -236,7 +291,12 @@ insertFile(sfile sf)
 	}
 
 	unless (sf.type == "pending") {
-		sf.node = ListBox_itemInsert(self.o_files, "end",
+		poly	idx = "end";
+
+		if (defined(self.sfiles_insertIdx)) {
+			idx = self.sfiles_insertIdx++;
+		}
+		sf.node = ListBox_itemInsert(self.o_files, idx,
 		    text: sf.name, data: sf.name);
 		configureFile(sf);
 	}
@@ -244,6 +304,7 @@ insertFile(sfile sf)
 	++self.sfiles_found;
 	self.files{sf.name} = sf;
 	self.components{sf.component}[END+1] = sf.name;
+	if (sf.commented) ++self.compinfo{sf.component}.commentedFiles;
 
 	if (!defined(getSelectedNode())
 	    && (sf.type == "modified") && !isCommented(sf)) {
@@ -253,7 +314,7 @@ insertFile(sfile sf)
 }
 
 void
-removeFile(sfile sf)
+removeFile(sfile sf, int removeCset)
 {
 	int	i = 0;
 	string	file, component;
@@ -277,6 +338,7 @@ removeFile(sfile sf)
 		updateStatus();
 	}
 	deleteCommentFile(sf.file);
+	if (sf.commented) --self.compinfo{sf.component}.commentedFiles;
 	foreach (file in self.components{component}) {
 		if (file == sf.name) {
 			undef(self.components{component}[i]);
@@ -289,7 +351,8 @@ removeFile(sfile sf)
 	ListBox_select(self.o_files, self.selected);
 
 	undef(self.files{sf.name});
-	if (!sf.inProduct && length(self.components{component}) <= 1) {
+	if (removeCset
+	    && !sf.inProduct && length(self.components{component}) <= 1) {
 		sfile	cset = getCsetFile(component);
 
 		undef(self.files{cset.name});
@@ -327,17 +390,11 @@ configureFile(sfile sf)
 	ListBox_itemconfigure(self.o_files, node, foreground: "black",
 	    font: self.font_normal);
 
-	if (sf.excluded || sf.ignored) {
-		// Excluded or ignored.  Mark it with a red X.
+	if (sf.excluded) {
+		// Excluded.  Mark it with a red X.
 		++self.cnt_excluded;
-		ListBox_itemconfigure(self.o_files, node, image: img_exclude);
-		if (sf.ignored) {
-			ListBox_itemconfigure(self.o_files, node,
-			    foreground: "gray");
-		} else {
-			ListBox_itemconfigure(self.o_files, node,
-			    font: self.font_overstrike);
-		}
+		ListBox_itemconfigure(self.o_files, node,
+		    image: img_exclude, font: self.font_overstrike);
 		return;
 	}
 
@@ -399,19 +456,8 @@ configureFile(sfile sf)
 }
 
 void
-readSfiles(FILE fd)
+readSfiles(string line)
 {
-	string	line;
-
-	if (eof(fd)) {
-		fclose(fd);
-		self.sfiles_last = 0;
-		_done = 1;
-		return;
-	}
-
-	unless (defined(line = fgetline(fd))) return;
-
 	if (line[0] == "F") {
 		addSfilesLines({line[2..END]});
 	} else if (line[0] == "P") {
@@ -438,6 +484,31 @@ updateGUI()
 	}
 }
 
+int
+startProgressBar(_optional int afterWhen)
+{
+	if (self.progressbar) return (0);
+
+	if (afterWhen) {
+		after(afterWhen, "startProgressBar");
+	} else {
+		self.progressbar = 1;
+		Progressbar_configure(self.w_progress,
+		    mode: "indeterminate", value: 0);
+		Progressbar_start(self.w_progress, 10);
+	}
+	return (1);
+}
+
+void
+stopProgressBar()
+{
+	self.progressbar = 0;
+	After_cancel("startProgressBar");
+	Progressbar_stop(self.w_progress);
+	Progressbar_configure(self.w_progress, mode: "determinate", value: 0);
+}
+
 void
 addSfilesLines(string lines[])
 {
@@ -454,10 +525,20 @@ addSfilesLines(string lines[])
 		hasComments = line[6] == "y";
 		sf.file = self.root . "/" . file;
 		sf.name = file;
-		sf.ignored = 0;
 		sf.excluded = 0;
 		sf.inProduct = 0;
 		sf.commented = hasComments;
+
+		if (file == "ChangeSet") {
+			// ChangeSet files only show up when a comment
+			// has been saved on disk for them.  Mark the
+			// current component as having a comment and
+			// move on.
+			string	comp = self.sfiles_component;
+
+			self.compinfo{comp}.commented = hasComments;
+			continue;
+		}
 
 		if (pending) {
 			sf.type = "pending";
@@ -466,11 +547,18 @@ addSfilesLines(string lines[])
 			sf.file = self.root . "/" . $1;
 			sf.rev  = $2;
 			sf.name = $1 . "@" . $2;
+			sf.commented = 1; // pending files are always commented
 			insertFile(sf);
 
 			if (!modified || defined(self.files{$1})) continue;
+
+			// We have a file that is both pending and modified.
+			// Reset a few of the sfile values and fall through
+			// to the rest of the code to add another entry for
+			// the modified file.
 			sf.name = $1;
 			sf.rev  = undef;
+			sf.commented = hasComments;
 		}
 		if (modified) {
 			sf.type = "modified";
@@ -515,6 +603,9 @@ insertCsetFile(string comp)
 {
 	sfile	sf;
 
+	// Don't insert a second cset file.
+	if (self.compinfo{comp}.csetfile) return;
+
 	if (comp == self.root) {
 		sf.inProduct = 1;
 		sf.name = "ChangeSet";
@@ -527,18 +618,28 @@ insertCsetFile(string comp)
 	sf.file = joinpath(comp, "ChangeSet");
 	sf.icon = img_cset;
 	sf.component = comp;
-	sf.ignored = 0;
 	sf.excluded = 0;
-	sf.commented = -1;
+
+	sf.commented = 0;
+	if (self.compinfo{comp}.commented) {
+		// We may have found comments for this ChangeSet file
+		// when reading the initial sfiles run.
+		sf.commented = self.compinfo{comp}.commented;
+	}
 
 	insertFile(sf);
+	self.compinfo{comp}.csetfile = sf.file;
 }
 
 void
 insertPendingNode(string comp)
 {
 	string	txt;
+	poly	idx = "end";
 	string	img = img_done;
+
+	// Don't insert a second pending node.
+	if (defined(self.pendingNodes{comp})) return;
 
 	txt = "Show ${self.sfiles_pending} pending delta";
 	if (self.sfiles_pending != 1) txt .= "s";
@@ -550,9 +651,12 @@ insertPendingNode(string comp)
 			txt .= getRelativePath(comp,"");
 		}
 	}
-	self.showPending{comp} = 0;
+
+	unless (self.showPending{comp}) self.showPending{comp} = 0;
+
+	if (defined(self.sfiles_insertIdx)) idx = self.sfiles_insertIdx++;
 	self.pendingNodes{comp} =
-	    ListBox_itemInsert(self.o_files, "end",
+	    ListBox_itemInsert(self.o_files, idx,
 		id: "pending-${comp}",
 		image: img, data: comp,
 		font: self.font_underline,
@@ -564,8 +668,16 @@ processFiles(string files[])
 {
 	self.sfiles_scanning = 1;
 	self.sfiles_component = self.root;
-	updateStatus();
+	setStatus("Scanning for files...");
 	updateButtons();
+
+	// If nfiles gave us nothing, start the indeterminate progress
+	// bar so we can show the user we're still alive.
+	if (self.nfiles <= 0) {
+		startProgressBar();
+	} else {
+		self.progressbar = 1; // We'll do progress ourselves
+	}
 
 	if (length(files) > 0) {
 		addFiles(files);
@@ -596,7 +708,12 @@ processFiles(string files[])
 		}
 	}
 
-	Progressbar_configure(self.w_progress, value: 100);
+	if (self.nfiles <= 0) {
+		stopProgressBar();
+	} else {
+		self.progressbar = 0;
+		Progressbar_configure(self.w_progress, value: 100);
+	}
 	StatusBar_remove(self.w_statusF, self.w_progress, background: gc("BG"));
 	configureCsetNodes();
 	updateStatus();
@@ -606,68 +723,120 @@ processFiles(string files[])
 void
 findFiles()
 {
-	FILE	fd;
-	string	comp, cmd;
+	string	comp;
+
+	self.sfiles_ndone = 0;
+	self.sfiles_total = length(self.allComponents);
+	foreach (comp in self.allComponents) {
+		++self.sfiles_ndone;
+		self.sfiles_last = 0;
+		scanComponent(comp);
+	}
+	chdir(self.root);
+	self.sfiles_ndone = undef;
+}
+
+void
+scanComponent(string comp)
+{
+	string	cmd;
 	string	opts = "--gui -vgcypA";
 
 	// Don't recurse if a directory is named on the command line
-	if (defined(self.dir)) opts .= " -1";
-	foreach (comp in self.allComponents) {
-		if (defined(self.dir)) {
-			chdir(self.dir);
-		} else {
-			chdir(comp);
-		}
-		self.sfiles_found = 0;
-		self.sfiles_pending = 0;
-		self.sfiles_component = comp;
-		self.showPending{comp} = 0;
-		cmd = "bk sfiles ${opts} --relpath='${self.root}'";
-		unless (self.resolve || self.no_extras) {
-			// Look for extra files when we're not in the resolver.
-			// or the user explicitly asked not to look for them
-			cmd .= " -x";
-		}
-		cmd .= " 2>@1";
-		fd = popen(cmd, "r");
-		fconfigure(fd, blocking: 0, buffering: "line");
-		fileevent(fd, "readable", {"readSfiles", fd});
-		vwait(&_done);
+	if (self.dir) {
+		opts .= " -1";
+		chdir(self.dir);
+	} else {
+		chdir(comp);
+	}
 
-		if (self.sfiles_pending) insertPendingNode(comp);
-		if (self.sfiles_found || (comp == self.root)) {
-			insertCsetFile(comp);
-		}
+	self.sfiles_found = 0;
+	self.sfiles_pending = 0;
+	self.sfiles_component = comp;
+	updateStatus();
 
-		if (!self.sfiles_found && (comp != self.root)) {
-			undef(self.components{comp});
-		}
-		chdir(self.root);
+	cmd = "bk sfiles ${opts} --relpath='${self.root}'";
+	unless (self.resolve || self.no_extras) {
+		// Look for extra files when we're not in the resolver.
+		cmd .= " -x";
+	}
+	cmd .= " 2>@1";
+	bk(cmd, &readSfiles);
+
+	if (self.sfiles_pending) {
+		insertPendingNode(comp);
+	}
+
+	if (self.sfiles_found || (comp == self.root)) {
+		insertCsetFile(comp);
+	}
+
+	if (!self.sfiles_found && (comp != self.root)) {
+		undef(self.components{comp});
 	}
 }
 
 void
-getCommentedFiles(string comps[], int &files{string})
+rescanComponent(string comp)
 {
-	FILE	fd;
-	string	cmd, comp, line, file;
-	string	opts = "-vgcypA";
+	int	idx;
+	sfile	sf, cset;
+	string	file, node, nodes[];
 
-	foreach (comp in comps) {
-		chdir(comp);
-		cmd = "bk sfiles ${opts} --relpath='${self.root}'";
-		unless (self.resolve || self.no_extras) {
-			// Look for extra files when we're not in the resolver.
-			// or the user explicitly asked not to look for them
-			cmd .= " -x";
+	idx = ListBox_index(self.o_files, getSelectedFile().node);
+
+	// Delete all files in this component from our hash and
+	// build a list of nodes to pass the listbox for deletion.
+	foreach (file in self.components{comp}) {
+		sf = self.files{file};
+
+		// Don't erase the cset file.
+		if (sf.type == "cset") {
+			cset = sf;
+			continue;
 		}
-		fd = popen(cmd, "r");
-		while (defined(line = fgetline(fd))) {
-			file = join(" ", split(/ /, line)[1..END]);
-			if (line[6] == "y") files{file} = 1;
-		}
-		fclose(fd);
+
+		push(&nodes, sf.node);
+		undef(self.files{file});
 	}
+
+	// If this component has a pending node in the list, delete
+	// that too.  It will be re-added on rescan if necessary.
+	if (self.pendingNodes{comp}) {
+		push(&nodes, self.pendingNodes{comp});
+		undef(self.pendingNodes{comp});
+	}
+
+	undef(self.components{comp});
+	ListBox_itemDelete(self.o_files, (expand)nodes);
+
+	self.compinfo{comp}.commented = 0;
+	self.compinfo{comp}.comments = undef;
+	self.compinfo{comp}.commentedFiles = 0;
+	self.sfiles_insertIdx = ListBox_index(self.o_files, cset.node);
+	scanComponent(comp);
+
+	if (self.sfiles_found || (comp == self.root)) {
+		// Found something on the scan.  Push our old
+		// cset file back onto the end of the list.
+		// We never removed it from the listbox.
+		push(&self.components{comp}, cset.name);
+	} else {
+		// We came up empty on rescan, so we want to remove
+		// the old component cset file.  This shouldn't really
+		// ever happen since, in theory, the ignore file now
+		// has changes, so let's be good little programmers and
+		// check for it anyway.
+		undef(self.compinfo{comp});
+		undef(self.components{comp});
+		undef(self.files{cset.name});
+		ListBox_itemDelete(self.o_files, cset.node);
+	}
+
+	node = ListBox_item(self.o_files, idx);
+	unless (node) node = cset.node;
+	unless (node) node = ListBox_item(self.o_files, 0);
+	selectFile(node);
 }
 
 void
@@ -760,7 +929,7 @@ gui()
 
 	toplevel(top);
 	wm("withdraw", top);
-	wm("title", top, "Check In Tool - ${self.root}");
+	wm("title", top, "Check In Tool");
 	wm("minsize", top, 500, 480);
 
 	entry("${top}.x11buffer");
@@ -823,13 +992,13 @@ gui()
 	pack("${self.w_buttons}.edit", side: "top", fill: "x");
 	menu("${self.w_buttons}.edit.menu", tearoff: 0);
 	Menu_add((widget)"${self.w_buttons}.edit.menu", "command",
-	    label: "Fmtool", command: "launchFmtool");
+	    label: "Fmtool", command: "launchEditor fmtool");
 	Menu_add((widget)"${self.w_buttons}.edit.menu", "command",
-	    label: "TK editor", command: "launchTkEditor");
+	    label: "TK editor", command: "launchEditor gui");
 	if (gc("x11")) {
 		Menu_add((widget)"${self.w_buttons}.edit.menu",
 		    "command", label: "Xterm editor",
-		    command: "launchXtermEditor");
+		    command: "launchEditor xterm");
 	}
 	addButton("history", "History", "launchRevtool");
 	addButton("difftool", "Diff tool", "launchDifftool");
@@ -876,6 +1045,7 @@ gui()
 	bind("BK", "<Control-Shift-t>", "toggleAllNewFiles; break");
 	bind("BK", "<Control-Shift-T>", "toggleAllNewFiles; break");
 	bind("BK", "<Control-Return>", "doCommit; break");
+	bind("BK", "<Control-i>", "ignoreSelectedFile; break");
 
 	// Navigation bindings.
 	w = self.w_diffs;
@@ -944,7 +1114,6 @@ selectFile(string node)
 	self.selecting = 1;
 	saveComments();
 	saveX11Buffer();
-	filename = file;
 	self.doDiscard = 0;
 	self.commitSwitch = 0;
 	self.selected = undef;
@@ -959,12 +1128,11 @@ selectFile(string node)
 	Update_idletasks();
 
 	sf = self.files{file};
-	self.comments = getComments(sf);
-	self.commented = 0;
-	if ((self.comments != "")
-	    && !isTemplateComment(sf, self.comments)) {
-		self.commented = 1;
-	}
+	self.comments = getComments(sf); // get comments from disk
+
+	// Update commented state of this file based on what we just got.
+	self.commented = setComments(sf, self.comments);
+
 	self.selected = node;
 	configureFile(sel); // redraw the previous file's icon
 	showFile(sf);
@@ -985,29 +1153,25 @@ refreshSelectedFile()
 	Text_yview(self.w_diffs, "moveto", y);
 }
 
+/* commentChanged()
+ *
+ * Called when the actual contents of the comment text widget changes.
+ * This means every time there's a keypress or a paste.
+ */
 void
 commentChanged()
 {
-	int	modified = 0;
 	sfile	sf = getSelectedFile();
 	string	comments;
 
-	After_cancel(self.afterId);
 	unless (defined(sf)) return;
 	if (self.commitSwitch) return;
 	if (sf.type == "pending") return;
 
 	comments = getCurrentComments();
-	if ((comments == "") && self.commented) {
-		modified = 1;
-		self.commented = 0;
-		deleteCommentFile(sf.file);
-	} else if ((comments != "") && !self.commented) {
-		modified = 1;
-		self.commented = 1;
-	}
-
-	if (modified) {
+	if (((comments == "") && sf.commented)
+	    || ((comments != "") && !sf.commented)) {
+		setComments(sf, comments);
 		redrawFile(sf.node);
 		configureCsetNodes();
 	}
@@ -1062,7 +1226,7 @@ void
 redrawFile(string node)
 {
 	string	file;
-	
+
 	if (node == "") return;
 	file = ListBox_itemcget(self.o_files, node, data:);
 	configureFile(self.files{file});
@@ -1125,10 +1289,10 @@ toggleFile(string node)
 		string	comment = "New BitKeeper file ``${sf.name}''";
 
 		if (node == getSelectedNode()) {
-			self.commented = 1;
 			self.comments  = comment;
 			insertTopText(comment, 1);
 		}
+		setComments(sf, comment);
 		writeComments(sf, comment);
 	} else {
 		self.files{file}.excluded = !sf.excluded;
@@ -1255,11 +1419,7 @@ updateButtons()
 		} else if (sf.type == "new") {
 			configureButton("difftool", state: "disabled");
 			configureButton("history", text: "Ignore",
-			    command: "ignoreFile");
-		}
-		if (sf.ignored) {
-			configureButton("history", text: "Unignore",
-			    command: "unignoreFile");
+			    command: "ignoreDialog");
 		}
 		if (sf.type == "pending" && !commit) {
 			configureButton("checkin", state: "disabled");
@@ -1296,7 +1456,17 @@ updateStatus()
 	unless (self.sfiles_component == "") {
 		string	comp;
 
-		comp = getRelativePath(self.sfiles_component, self.root);
+		if (self.sfiles_component == self.root) {
+			comp = "product";
+		} else {
+			comp = getRelativePath(self.sfiles_component,
+			    self.root);
+		}
+
+		if (self.sfiles_ndone) {
+			comp .= " (${self.sfiles_ndone}/${self.sfiles_total})";
+		}
+
 		setStatus("Scanning ${comp}...");
 		return;
 	}
@@ -1319,8 +1489,8 @@ isProductCsetComment(sfile sf, string comment)
 		sfile   cset = self.files{"ChangeSet"};
 		return (comment == getComments(cset));
 	}
-	return (0);                                           
-}                                                             
+	return (0);
+}
 
 int
 isTemplateComment(sfile sf, string comment)
@@ -1328,6 +1498,14 @@ isTemplateComment(sfile sf, string comment)
 	if (comment == "") return (0);
 	unless (defined(self.templates{sf.name})) return (0);
 	return (comment == self.templates{sf.name});
+}
+
+int
+isRealComment(sfile sf, string comment)
+{
+	return ((comment != "")
+	    && !isTemplateComment(sf, comment)
+	    && !isProductCsetComment(sf, comment));
 }
 
 void
@@ -1356,7 +1534,7 @@ writeComments(sfile sf, string comments)
 	self.changed = 1;
 	fd = popen("bk cfile save '${sf.file}'", "w");
 	puts(fd, comments);
-	fclose(fd);
+	pclose(fd);
 }
 
 void
@@ -1369,10 +1547,9 @@ saveComments()
 	if (Text_cget(self.w_comments, state:) != "normal") return;
 
 	comments = getCurrentComments();
-	if (comments == ""
-	    || isTemplateComment(sf, comments)
-	    || isProductCsetComment(sf, comments)) {
-		deleteCommentFile(sf.file);
+
+	unless (setComments(sf, comments)) {
+		if (self.commented) deleteCommentFile(sf.file);
 	} else {
 		foreach (key => msg in msgs) {
 			if (comments == msg) return;
@@ -1468,8 +1645,7 @@ quit()
 	int	x, y;
 	widget	top = ".c";
 	string	bg = gc("ci.saveBG");
-	string	file, image;
-	sfile	sf;
+	string	image;
 
 	saveComments();
 	if (self.changed) {
@@ -1522,19 +1698,6 @@ quit()
 		}
 	}
 
-	// Add any ignored files to the ignore file but don't
-	// delta the changes.
-	foreach (file => sf in self.files) {
-		if (sf.ignored) {
-			string	comp, path;
-
-			comp = sf.component;
-			if (comp == "") comp = self.root;
-			path = getRelativePath(sf.file, comp);
-			chdir(comp);
-			exec("bk", "ignore", "-c", path);
-		}
-	}
 	bk_exit();
 }
 
@@ -1560,6 +1723,12 @@ getComments(sfile sf)
 {
 	string	comments;
 
+	// If this is a cset file and we have the comments cached, just
+	// return those.
+	if ((sf.type == "cset") && self.compinfo{sf.component}.comments) {
+		return (self.compinfo{sf.component}.comments);
+	}
+
 	if (sf.type == "pending") {
 		FILE	fd;
 		string	line;
@@ -1569,7 +1738,7 @@ getComments(sfile sf)
 		while (defined(line = fgetline(fd))) {
 			append(&comments, line[2..END], "\n");
 		}
-		fclose(fd);
+		pclose(fd);
 		return (comments);
 	}
 
@@ -1580,15 +1749,27 @@ getComments(sfile sf)
 	}
 
 	if (comments == "") {
+		// If we have a template for this file name, plug in
+		// the template comments.  This is currently only
+		// supported for ChangeSet files.
 		if (defined(self.templates{sf.name})) {
 			comments = self.templates{sf.name};
 		}
 
+		// If this is a component cset file, and the component
+		// has commented files but no comment itself, plug in
+		// the comments from the product cset.
 		if (self.nested
 		    && (sf.type == "cset") && !sf.inProduct
 		    && componentHasComments(sf.component)) {
 			comments = getComments(self.files{"ChangeSet"});
 		}
+	}
+
+	if ((sf.type == "cset") && isRealComment(sf, comments)) {
+		// If we have a real comment and this is a cset file,
+		// cache those comments for fast lookup later.
+		self.compinfo{sf.component}.comments = comments;
 	}
 	return (comments);
 }
@@ -1596,17 +1777,42 @@ getComments(sfile sf)
 int
 isCommented(sfile sf)
 {
-	string	comments;
+	if (sf.commented) return (1);
 
-	if (sf.type == "pending") return (1);
-	if (self.sfiles_scanning && sf.commented > -1) {
-		self.files{sf.name}.commented = -1;
-		return (sf.commented);
-	}
-	comments = getComments(sf);
-	if (sf.node == getSelectedNode()) comments = getCurrentComments();
-	if ((comments != "") && !isTemplateComment(sf, comments)) return (1);
+	// A cset file can be commented without actually being marked so
+	// because it can inherit the comments from the product ChangeSet
+	// if they exist.  If this is a cset, return the commented status
+	// of the product.
+	if (sf.type == "cset" && self.files{"ChangeSet"}.commented) return (1);
 	return (0);
+}
+
+/* setComments()
+ *
+ * Update the commented state for a file.  We don't actually store comments
+ * in memory for files, but we do save them for csets.  If the file is not
+ * a cset file, update the count of commented files for the file's component
+ * as well.
+ */
+int
+setComments(sfile sf, string comments)
+{
+	string	comp = sf.component;
+	int	commented = isRealComment(sf, comments);
+
+	self.files{sf.name}.commented = commented;
+	if ((sf.type == "cset")) {
+		self.compinfo{comp}.comments = commented ? comments : undef;
+	} else {
+		// Only modify the count if the previous state is changed.
+		if (commented && !sf.commented) {
+			++self.compinfo{comp}.commentedFiles;
+		} else if (!commented && sf.commented) {
+			--self.compinfo{comp}.commentedFiles;
+		}
+	}
+
+	return (commented);
 }
 
 int
@@ -1624,8 +1830,8 @@ clearComments()
 	string	state = Text_cget(self.w_comments, state:);
 
 	enableComments();
-	self.commented = 0;
 	self.comments = undef;
+	self.commented = 0;
 	Text_delete(self.w_comments, 1.0, "end");
 	Text_configure(self.w_comments, state: state);
 }
@@ -1643,7 +1849,7 @@ showFileContents(sfile sf)
 
 	unless (exists(sf.file)) {
 		puts("Removing non-existent file \"${sf.name}\" from list box");
-		removeFile(sf);
+		removeFile(sf, 1);
 		return;
 	}
 
@@ -1688,7 +1894,6 @@ showCsetContents(sfile sf)
 	string	file, comp, comments;
 	string	comps[], lines[];
 	widget	textBox = self.w_diffs;
-	int	cfiles{string};
 
 	if (sf.inProduct && self.cnt_commented == 0) {
 		// Product ChangeSet file and no comments at all.
@@ -1720,10 +1925,6 @@ showCsetContents(sfile sf)
 		comps = {sf.component};
 	}
 
-	bottomMessage("Loading change summary...", "");
-	update();
-	getCommentedFiles(comps, &cfiles);
-
 	bottomMessage(msgs{"changeset"}, "notice");
 	Text_insert(textBox, "end", "\n");
 
@@ -1737,16 +1938,19 @@ showCsetContents(sfile sf)
 			sp2 = "    ";
 			cset = getCsetFile(comp);
 			if (isExcluded(cset)) continue;
+			unless (componentHasComments(comp)) continue;
+			unless ((cset.file == sf.file)
+				|| isCommented(cset)) continue;
+
+			comments = getComments(cset);
+			if ((cset.file != sf.file) && ((comments == "")
+			    || isTemplateComment(cset, comments))) continue;
 
 			Text_insert(textBox, "end", "${cset.name}\n");
-			comments = getComments(cset);
-			if (comments != ""
-			    && !isTemplateComment(cset, comments)) {
-				lines = split(/\n/, comments);
-				foreach (line in lines) {
-					Text_insert(textBox, "end",
-					    "  ${line}\n");
-				}
+			lines = split(/\n/, comments);
+			foreach (line in lines) {
+				Text_insert(textBox, "end",
+				    "  ${line}\n");
 			}
 			Text_insert(textBox, "end", "\n");
 		}
@@ -1755,11 +1959,11 @@ showCsetContents(sfile sf)
 			s = self.files{file};
 			if (s.excluded) continue;
 			if (s.type == "cset") continue;
-			if (!defined(cfiles{file}) && (s.type != "pending")) {
-				continue;
-			}
+			unless (isCommented(s)) continue;
+
 			comments = getComments(s);
 			if (comments == "") continue;
+
 			Text_insert(textBox, "end", sp1);
 			Text_insert(textBox, "end", s.name);
 			Text_insert(textBox, "end", "\n");
@@ -1785,8 +1989,11 @@ showCheckinContents()
 	foreach (file => sf in self.files) {
 		if (sf.excluded) continue;
 		if (sf.type == "cset") continue;
+		unless (isCommented(sf)) continue;
+
 		comments = getComments(sf);
 		if (comments == "") continue;
+
 		Text_insert(self.w_diffs, "end", sf.name);
 		Text_insert(self.w_diffs, "end", "\n");
 		lines = split(/\n/, comments);
@@ -1859,7 +2066,7 @@ showFile(sfile sf)
 		}
 		Text_insert(self.w_diffs, "end", "${line}\n", tag);
 	}
-	fclose(fd);
+	pclose(fd);
 	highlightStacked(self.w_diffs, "1.0", "end", 1);
 }
 
@@ -1927,21 +2134,18 @@ launchRevtool()
 }
 
 void
-launchFmtool()
+launchEditor(string which)
 {
-	cmd_edit("fmtool");
-}
+	sfile	sf = getSelectedFile();
 
-void
-launchTkEditor()
-{
-	cmd_edit("gui");
-}
+	// Set the external filename variable for the editor.
+	filename = sf.file;
 
-void
-launchXtermEditor()
-{
-	cmd_edit("xterm");
+	cmd_edit(which);
+
+	if (sf.file =~ /BitKeeper\/etc\/ignore$/) {
+		rescanComponent(sf.component);
+	}
 }
 
 void
@@ -2034,7 +2238,7 @@ commitComponent(string comp)
 	sfile	sf, cset;
 	int	csetExcluded, csetCommented;
 	string	file, comments;
-	string	ignore[], checkin[], commit[];
+	string	checkin[], commit[];
 
 	if (comp == self.root) commit = self.cset_commit;
 
@@ -2052,21 +2256,10 @@ commitComponent(string comp)
 		sf = self.files{file};
 		if (sf.excluded) continue;
 		if (sf.type == "cset") continue;
-		if (sf.ignored) {
-			ignore[END+1] = getRelativePath(sf.file, comp);
-			continue;
-		}
 		if (isCommented(sf)) {
 			unless (csetExcluded) commit[END+1] = sf.file;
 			if (sf.type != "pending") checkin[END+1] = sf.file;
 		}
-	}
-
-	if (length(ignore)) {
-		foreach (file in ignore) {
-			exec("bk", "ignore", file);
-		}
-		commit[END+1] = "BitKeeper/etc/ignore";
 	}
 
 	if (length(checkin)) {
@@ -2166,6 +2359,7 @@ commitComponent(string comp)
 			}
 			message .= "\n";
 
+
 			if (bgExecInfo("stderr") != "") {
 				message .= trim(bgExecInfo("stderr"));
 				if (bgExecInfo("stdout") != "") {
@@ -2221,15 +2415,10 @@ void
 deleteAllComments()
 {
 	sfile	sf;
-	string	file, comps[];
-	int	cfiles{string};
-
-	comps = keys(self.components);
-	getCommentedFiles(comps, &cfiles);
+	string	file;
 
 	foreach (file => sf in self.files) {
-		if (!defined(cfiles{file}) && (sf.type != "cset")) continue;
-		deleteCommentFile(sf.file);
+		if (isCommented(sf)) deleteCommentFile(sf.file);
 	}
 }
 
@@ -2247,23 +2436,262 @@ deletePendingComments()
 }
 
 void
-ignoreFile()
+ignoreDialog()
 {
+	string	which, subdir, opts[];
+	widget	dialog;
+	int	w, h, x, y;
+	int	row = 0;
 	sfile	sf = getSelectedFile();
+	string	padx = "10 0", pady = "1";
 
-	self.files{sf.name}.ignored = 1;
-	redrawFile(sf.node);
-	moveNext();
+	dialog = toplevel("${self.w_top}.__dialog", borderwidth: 5);
+	self.w_ignoreDlg = dialog;
+	Wm_withdraw((string)dialog);
+	Wm_protocol((string)dialog, "WM_DELETE_WINDOW", "ignoreDone cancel");
+	Wm_title((string)dialog, "Ignore What?");
+	Wm_resizable((string)dialog, 0, 0);
+	Wm_transient((string)dialog, self.w_top);
+	bind(dialog, "<Control-i>", "ignoreSelectedFile");
+	bind(dialog, "<Return>", "ignoreDone apply");
+	bind(dialog, "<Escape>", "ignoreDone cancel");
+	Grid_columnconfigure((string)dialog, 0, weight: 1);
+
+	_ignore_type = "file";
+	_ignore_pattern  = "*" . File_extension(sf.name);
+	_ignore_dirpattern  = "*" . File_extension(sf.name);
+	self.ignore_dir = dirname("${self.root}/${sf.name}");
+	self.ignore_dir =~ s/^${sf.component}//g;
+	self.ignore_dir =~ s/^\///g;
+	_ignore_dir = self.ignore_dir . "/";
+
+	if (sf.component == self.root) {
+		subdir = "";
+	} else {
+		subdir = getRelativePath(sf.component, self.root) . "/";
+	}
+
+	ttk::label("${dialog}.l", text: "Ignore");
+	grid("${dialog}.l", row: row, column: 0, sticky: "ew");
+
+	++row;
+	which = "file";
+	ttk::radiobutton("${dialog}.r_${which}",
+	    variable: &_ignore_type, value: which,
+	    text: "this file only (Shortcut: Ctrl-i)",
+	    command: &ignoreSelect);
+	grid("${dialog}.r_${which}", row: row, column: 0, sticky: "w",
+	    padx: padx, pady: pady);
+
+	if (self.ignore_dir != "") {
+		++row;
+		which = "dirpattern";
+		ttk::frame("${dialog}.f_${which}");
+		grid("${dialog}.f_${which}", row: row, column: 0, sticky: "ew",
+		    padx: padx, pady: pady);
+		ttk::radiobutton("${dialog}.r_${which}",
+		    variable: &_ignore_type, value: which,
+		    text: "glob pattern like", command: &ignoreSelect);
+		pack("${dialog}.r_${which}", in: "${dialog}.f_${which}",
+		    side: "left");
+		ttk::entry("${dialog}.e_${which}", width: 10, state: "disabled",
+		    textvariable: &_ignore_dirpattern);
+		bind("${dialog}.e_${which}", "<1>", "ignoreClickLine ${which}");
+		pack("${dialog}.e_${which}", in: "${dialog}.f_${which}",
+		    side: "left", expand: 1, fill: "x");
+		ttk::label("${dialog}.l_${which}", text: "in this directory");
+		bind("${dialog}.l_${which}", "<1>", "ignoreClickLine ${which}");
+		pack("${dialog}.l_${which}", in: "${dialog}.f_${which}",
+		    side: "left");
+	}
+
+	++row;
+	which = "pattern";
+	ttk::frame("${dialog}.f_${which}");
+	grid("${dialog}.f_${which}", row: row, column: 0, sticky: "ew",
+	    padx: padx, pady: pady);
+	ttk::radiobutton("${dialog}.r_${which}",
+	    variable: &_ignore_type, value: which,
+	    text: "glob pattern like", command: &ignoreSelect);
+	pack("${dialog}.r_${which}", in: "${dialog}.f_${which}", side: "left");
+	ttk::entry("${dialog}.e_${which}", width: 10, state: "disabled",
+	    textvariable: &_ignore_pattern);
+	bind("${dialog}.e_${which}", "<1>", "ignoreClickLine ${which}");
+	pack("${dialog}.e_${which}", in: "${dialog}.f_${which}",
+	    side: "left", expand: 1, fill: "x");
+	ttk::label("${dialog}.l_${which}",
+	    text: "in *all* directories in this component");
+	bind("${dialog}.l_${which}", "<1>", "ignoreClickLine ${which}");
+	pack("${dialog}.l_${which}", in: "${dialog}.f_${which}", side: "left");
+
+	if (self.ignore_dir != "") {
+		++row;
+		which = "dirprune";
+		ttk::frame("${dialog}.f_${which}");
+		grid("${dialog}.f_${which}", row: row, column: 0, sticky: "ew",
+		    padx: padx, pady: pady);
+		ttk::radiobutton("${dialog}.r_${which}",
+		    variable: &_ignore_type, value: which,
+		    text: subdir, command: &ignoreSelect);
+		pack("${dialog}.r_${which}", in: "${dialog}.f_${which}",
+		    side: "left");
+		ttk::entry("${dialog}.e_${which}", state: "disabled",
+		    width: 10, textvariable: &_ignore_dir);
+		bind("${dialog}.e_${which}", "<1>", "ignoreClickLine ${which}");
+		pack("${dialog}.e_${which}", in: "${dialog}.f_${which}",
+		    side: "left", expand: 1, fill: "x");
+		ttk::label("${dialog}.l_${which}",
+		    text: "and all directories below it");
+		bind("${dialog}.l_${which}", "<1>", "ignoreClickLine ${which}");
+		pack("${dialog}.l_${which}", in: "${dialog}.f_${which}",
+		    side: "left");
+	}
+
+	++row;
+	ttk::frame("${dialog}.buttons");
+	grid("${dialog}.buttons", row: row, column: 0,
+	    sticky: "e", pady: "10 5");
+	ttk::button("${dialog}.buttons.apply", text: "Apply",
+	    command: "ignoreDone apply");
+	pack("${dialog}.buttons.apply", side: "left", padx: 5);
+	ttk::button("${dialog}.buttons.cancel", text: "Cancel",
+	    command: "ignoreDone cancel");
+	pack("${dialog}.buttons.cancel", side: "left", padx: 5);
+
+	update();
+	w = Winfo_width((string)self.w_top);
+	h = Winfo_reqheight((string)dialog);
+	x = Winfo_rootx((string)self.w_files);
+	y = Winfo_rooty((string)self.w_files)
+	    + Winfo_height((string)self.w_files);
+	Wm_geometry((string)dialog, "${w}x${h}+${x}+${y}");
+	Wm_deiconify((string)dialog);
+	while (1) {
+		Grab_set((string)dialog);
+		Tkwait_variable(&_ignore_action);
+		Grab_release((string)dialog);
+
+		if (_ignore_action == "cancel") break;
+		if (_ignore_type != "dirprune") break;
+
+		// Check for sfiles beneath the given directory.  If we find
+		// any, tell them they can't do that and drop back to
+		// the dialog.
+
+		chdir(sf.component);
+		which = trim(`bk --sigpipe sfiles '${_ignore_dir}' | head -1`);
+
+		unless (which == "") {
+			tk_messageBox(parent: dialog, title: "Not allowed",
+			    message: "You cannot prune a directory that"
+				" contains version-controlled files");
+			continue;
+		}
+
+		break;
+	}
+
+	destroy(dialog);
+
+	if (_ignore_action == "cancel") return;
+
+	if (_ignore_type == "pattern") {
+		push(&opts, _ignore_pattern);
+	} else if (_ignore_type == "dirpattern") {
+		push(&opts, self.ignore_dir, _ignore_dirpattern);
+	} else if (_ignore_type == "dirprune") {
+		push(&opts, _ignore_dir);
+	}
+	appendIgnoreLine(_ignore_type, sf, (expand)opts);
 }
 
 void
-unignoreFile()
+appendIgnoreLine(string type, sfile sf, ...args)
+{
+	FILE	fp = openIgnoreFile(sf.component);
+
+	if (type == "pattern") {
+		puts(fp, args[0]);
+	} else if (type == "dirpattern") {
+		puts(fp, "${args[0]}/${args[1]}");
+	} else if (type == "file") {
+		string	file = "${self.root}/${sf.name}";
+
+		file =~ s/^${sf.component}\///g;
+		puts(fp, file);
+	} else if (type == "dirprune") {
+		string	dir = trim(String_trim(args[0], "/"));
+		unless (dir == "") {
+			puts(fp, "${dir} -prune");
+		}
+	}
+	fclose(fp);
+	rescanComponent(sf.component);
+}
+
+void
+ignoreClickLine(string which)
+{
+	widget	radio = "${self.w_ignoreDlg}.r_${which}";
+
+	unless (Radiobutton_instate(radio, "selected")) {
+		Radiobutton_invoke(radio);
+	}
+}
+
+void
+ignoreDone(string which)
+{
+	_ignore_action = which;
+}
+
+void
+ignoreSelect()
+{
+	widget	w, e;
+
+	// Disable the entry boxes of other radiobuttons.
+	foreach (w in getAllWidgets(self.w_ignoreDlg)) {
+		unless (Winfo_class((string)w) == "TEntry") continue;
+		w =~ /e_(.*)$/;
+		if ($1 == _ignore_type) {
+			e = w;
+			Entry_configure(w, state: "normal");
+		} else {
+			Entry_configure(w, state: "disabled");
+		}
+	}
+
+	if (e) {
+		focus(e);
+		Entry_icursor(e, "end");
+		Entry_selectionRange(e, 0, "end");
+	}
+}
+
+void
+ignoreSelectedFile()
 {
 	sfile	sf = getSelectedFile();
 
-	self.files{sf.name}.ignored = 0;
-	redrawFile(sf.node);
-	moveNext();
+	if (Winfo_exists((string)self.w_ignoreDlg)) {
+		destroy(self.w_ignoreDlg);
+	}
+
+	appendIgnoreLine("file", sf);
+}
+
+FILE
+openIgnoreFile(string comp)
+{
+	string	ignoreFile = joinpath(comp, "BitKeeper/etc/ignore");
+
+	unless (defined(system("bk edit -q '${ignoreFile}'"))) {
+		tk_messageBox(parent: self.w_top, title: "Error",
+		    message: "Could not edit ignore file");
+		return undef;
+	}
+	return (fopen(ignoreFile, "a+"));
 }
 
 void
@@ -2284,7 +2712,16 @@ discardChanges()
 	}
 
 	self.doDiscard = 0;
-	removeFile(sf);
+
+	// If it's an ignore file, remove the file but don't delete
+	// the cset file.  The component rescan will remove the cset
+	// file if it's necessary.
+	if (sf.name =~ /BitKeeper\/etc\/ignore$/) {
+		removeFile(sf, 0);
+		rescanComponent(sf.component);
+	} else {
+		removeFile(sf, 1);
+	}
 }
 
 int
@@ -2316,14 +2753,17 @@ rescan()
 	saveComments();
 	init();
 	self.files = undef;
+	self.compinfo = undef;
 	self.components = undef;
 	self.pendingNodes = undef;
 	foreach (comp in self.allComponents) {
 		int	n;
 
 		chdir(comp);
-		n = (int)`bk nfiles`;
+		n = (int)bk("nfiles");
 		if (String_isInteger(strict: n)) self.nfiles += n;
+		self.compinfo{comp}.commented = 0;
+		self.compinfo{comp}.commentedFiles = 0;
 	}
 
 	ListBox_configure(self.o_files, state: "normal");
@@ -2601,12 +3041,54 @@ test_selectComment(string idx1, string idx2)
 }
 
 void
+test_discardFile(string file)
+{
+	sfile	sf;
+	string	node = test_findFileInList(file, &sf);
+
+	unless (defined(node)) test_fileIsInList(file);
+	selectFile(node);
+	discardChanges();
+	discardChanges();
+}
+
+void
+test_ignoreFile(string file)
+{
+	sfile	sf;
+	string	node = test_findFileInList(file, &sf);
+
+	unless (defined(node)) test_fileIsInList(file);
+	selectFile(node);
+	appendIgnoreLine("file", sf);
+}
+
+void
+test_ignoreDir(string dir, _optional string pattern)
+{
+	sfile	sf = getSelectedFile();
+
+	if (pattern) {
+		appendIgnoreLine("dirpattern", sf, dir, pattern);
+	} else {
+		appendIgnoreLine("dirprune", sf, dir);
+	}
+}
+
+void
+test_ignorePattern(string pattern)
+{
+	sfile	sf = getSelectedFile();
+
+	appendIgnoreLine("pattern", sf, pattern);
+}
+
+void
 init()
 {
 	self.dashs = 0;
 	self.nfiles = 0;
 	self.changed = 0;
-	self.commented = 0;
 	self.last_update = 0;
 	self.sfiles_last = 0;
 	self.sfiles_done = 0;
@@ -2630,24 +3112,24 @@ void
 main(_argused int argc, string argv[])
 {
 	string	arg, file, files[];
-	FILE	f;
 	string	nfilesOpts = "";
-	string	compscmd = "bk comps -ch";
+	string	compscmd = "comps -ch";
 	int	includeProduct = 1;
-
-	arg = bk("sane 2>@1");
-	if (arg != "") bk_dieError(arg, 1);
-
 	require("BWidget");
 	Widget::theme(1);
 
 	debug_init(getenv("BK_DEBUG_CITOOL"));
 
 	bk_init();
+	gui();
+	update();
+
+	arg = bk("sane 2>@1");
+	if (arg != "") bk_dieError(arg, 1);
 
 	init();
 	self.cwd = pwd();
-	self.dotbk = `bk dotbk`;
+	self.dotbk = bk("dotbk");
 
 	self.partial = 0;
 	self.resolve = 0;
@@ -2682,7 +3164,7 @@ main(_argused int argc, string argv[])
 		// If no files or directory were passed on the command-line, we
 		// check to see if we're in a nested component or product and
 		// make the root product our directory.
-		self.root = `bk root`;
+		self.root = bk("root");
 		self.nested = nested();
 	} else if ((length(files) == 1) && isdir(files[0])) {
 		self.dir = File_normalize(files[0]);
@@ -2690,7 +3172,7 @@ main(_argused int argc, string argv[])
 			bk_dieError("Cannot specify -s together with a"
 			    " directory", 1);
 		}
-		self.root = `bk root -R "${files[0]}"`;
+		self.root = bk("root -R '${files[0]}'");
 		files = undef;
 	} else if ((length(files) == 1) && files[0] == "-") {
 		if (nested()) {
@@ -2705,7 +3187,7 @@ main(_argused int argc, string argv[])
 			if (isdir(file)) bk_usage();
 			push(&files, file);
 		}
-		self.root = `bk root`;
+		self.root = bk("root");
 	} else {
 		string	filelist[] = files;
 
@@ -2717,36 +3199,43 @@ main(_argused int argc, string argv[])
 			if (isdir(file)) bk_usage();
 			push(&files, File_normalize(file));
 		}
-		self.root = `bk root -R`;
+		self.root = bk("root -R");
 	}
 
 	self.filelist = files;
 
 	if (self.resolve) {
-		self.root = `bk pwd`;
+		self.root = bk("pwd");
 		self.nested = 0;
 	}
 
 	self.root = File_normalize(self.root);
 
-	gui();
-
 	if (self.nested) {
-		f = popen(compscmd, "r");
-		while (defined(arg = fgetline(f))) {
-			if (arg == ".") continue;
-			arg = joinpath(self.root, arg);
-			self.allComponents[END+1] = arg;
+		string	comp, compdata;
+
+		setStatus("Getting component list...");
+		compdata = bk(compscmd);
+		foreach (comp in split(/\n/, compdata)) {
+			if (comp == ".") continue;
+			comp = joinpath(self.root, comp);
+			self.allComponents[END+1] = comp;
+			self.compinfo{comp}.product = 0;
+			self.compinfo{comp}.commented = 0;
+			self.compinfo{comp}.commentedFiles = 0;
 		}
-		pclose(f);
 	}
 
 	if (includeProduct) {
 		self.allComponents[END+1] = self.root;
+		self.compinfo{self.root}.product = 1;
+		self.compinfo{self.root}.commented = 0;
+		self.compinfo{self.root}.commentedFiles = 0;
 	}
 
 	if (isdir(self.root)) chdir(self.root);
 
+	setStatus("Getting file counts...");
 	self.nfiles = getNumFiles(nfilesOpts);
 
 	// Initialize the ChangeSet template if it exists.

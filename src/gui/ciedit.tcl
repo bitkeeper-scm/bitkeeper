@@ -24,6 +24,9 @@ proc cmd_edit {which} \
 		if {$which == "gui"} {
 			edit_widgets
 			edit_file
+			grab .edit
+			tkwait variable ::edit_busy
+			grab release .edit
 		} elseif {$which == "fmtool"} {
 			set old [tmpfile ciedit]
 			catch [list exec bk get -qkp $filename > $old] err

@@ -1,0 +1,12 @@
+echo $N Demo a bug in citool.........................................$NL
+commercial repo
+mkdir adir
+i=0
+while [ $i -lt 1000 ];
+do
+	touch adir/afile$i
+	i=`expr $i + 1`
+done
+BK_SHOWPROC=1 \
+bk citool
+echo OK

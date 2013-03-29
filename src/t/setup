@@ -353,5 +353,23 @@ fail() {
 	}
 	exit 1
 }
+
+test_gui_result() {
+	rc_got=$1
+	rc_expect=$2
+	OUT="$3"
+
+	test $rc_got -ne $rc_expect -o -s "$OUT" && {
+		echo "failed"
+		test $rc_got -ne $rc_expect && {
+			echo "exited $rc_got; expected $rc_expect"
+		}
+		test -s "$OUT" && {
+			cat "$OUT"
+		}
+		exit 1
+	}
+	echo "OK"
+}
 # this next line needs to be last, it's line zero of the script (see doit)
 BOS=$LINENO

@@ -1,0 +1,160 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2004 Larry McVoy
+
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
+OUT="$HERE/out"
+
+doFiles() {
+	for f in file1 file2 file3 file4 file5 ; do
+		echo "this is $f" > $f
+		bk ci $Q -i -y'new file' $f || exit 1
+	done
+	bk commit $Q -y'initial checkin' || exit 1
+}
+
+echo $N Create a nested repo ........................................$NL
+fresh_nested project
+cd "$HERE/project"
+doFiles
+cd "$HERE/project/gcc"
+doFiles
+cd "$HERE/project/gdb"
+doFiles
+cd "$HERE/project"
+bk commit $Q -y'commit components' || exit 1
+
+## All the ignore stuff really only deals with extra file, so we need
+## to create new some extras for these tests.
+cd "$HERE/project"
+echo FOO > foo
+echo FOO > bar
+cd "$HERE/project/gcc"
+mkdir foo
+echo FOO > foo.foo
+echo FOO > bar.foo
+echo FOO > foo.bar
+echo FOO > bar.bar
+echo FOO > foo/foo.foo
+echo FOO > foo/bar.foo
+echo FOO > foo/foo.bar
+echo FOO > foo/bar.bar
+cd "$HERE/project/gdb"
+echo FOO > foo.foo
+echo FOO > bar.foo
+echo FOO > foo.bar
+echo FOO > bar.bar
+echo OK
+
+cd "$HERE/project"
+echo $N ignore a single file with the Control-i shortcut.............$NL
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile foo
+	test_inputComment "^i" ; ## Control-i to ignore a file.
+	test_fileIsNotInList "foo"
+	test_buttonPress Quit then "Quit without saving*"
+EOF
+test_gui_result $? 0 "$OUT"
+
+echo $N discarding the ignore file should bring the file back........$NL
+cd "$HERE/project"
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	## foo should still be ignored on startup.
+	test_fileIsNotInList "foo"
+
+	test_discardFile "BitKeeper/etc/ignore"
+
+	## foo should be back in the list now
+	test_fileIsInList "foo"
+
+	test_buttonPress Quit then "Quit without saving*"
+EOF
+test_gui_result $? 0 "$OUT"
+
+echo $N ignore a single file.........................................$NL
+cd "$HERE/project"
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_fileIsInList "foo"
+
+	test_ignoreFile "foo"
+
+	test_discardFile "BitKeeper/etc/ignore"
+
+	## foo should be back in the list now
+	test_fileIsInList "foo"
+
+	test_buttonPress Quit then "Quit without saving*"
+EOF
+test_gui_result $? 0 "$OUT"
+
+echo $N ignore *.foo in a component..................................$NL
+cd "$HERE/project"
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "gcc/foo.foo"
+	test_ignorePattern "*.foo"
+
+	test_fileIsInList "gcc/foo.bar"
+	test_fileIsInList "gcc/bar.bar"
+	test_fileIsNotInList "gcc/foo.foo"
+	test_fileIsNotInList "gcc/bar.foo"
+
+	test_discardFile "gcc/BitKeeper/etc/ignore"
+
+	test_fileIsInList "gcc/foo.foo"
+	test_fileIsInList "gcc/bar.foo"
+
+	test_buttonPress Quit then "Quit without saving*"
+EOF
+test_gui_result $? 0 "$OUT"
+
+echo $N ignore *.foo in a subdirectory...............................$NL
+cd "$HERE/project"
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_fileIsInList "gcc/foo/foo.foo"
+	test_fileIsInList "gcc/foo/bar.foo"
+
+	test_selectFile "gcc/foo/foo.foo"
+	test_ignoreDir "foo" "*.foo" ; ## Ignore *.foo in the foo/ subdirectory
+
+	test_fileIsNotInList "gcc/foo/foo.foo"
+	test_fileIsNotInList "gcc/foo/bar.foo"
+
+	test_discardFile "gcc/BitKeeper/etc/ignore"
+
+	test_fileIsInList "gcc/foo/foo.foo"
+	test_fileIsInList "gcc/foo/bar.foo"
+
+	test_buttonPress Quit then "Quit without saving*"
+EOF
+test_gui_result $? 0 "$OUT"
+
+echo $N ignore a subdirectory and prune it out.......................$NL
+cd "$HERE/project"
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_fileIsInList "gcc/foo/foo.foo"
+	test_fileIsInList "gcc/foo/bar.foo"
+
+	test_selectFile "gcc/foo/foo.foo"
+	test_ignoreDir "foo" ; ## Ignore the foo/ subdirectory
+
+	test_fileIsNotInList "gcc/foo/foo.foo"
+	test_fileIsNotInList "gcc/foo/bar.foo"
+
+	test_discardFile "gcc/BitKeeper/etc/ignore"
+
+	test_fileIsInList "gcc/foo/foo.foo"
+	test_fileIsInList "gcc/foo/bar.foo"
+
+	test_buttonPress Quit then "Quit without saving*"
+EOF
+test_gui_result $? 0 "$OUT"
