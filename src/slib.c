@@ -75,7 +75,7 @@ private	int	sccs_meta(char *m, sccs *s, ser_t parent,
 private	int	misc(sccs *s);
 private	char	*bin_heapfile(sccs *s, int name);
 private	int	bin_deltaTable(sccs *s);
-private	off_t	bin_data(char *header);
+private	off_t	bin_data(sccs *s, char *header);
 private	void	fileRestore(char **save, int rc);
 private	int	bin_writeHeap(sccs *s, char ***save);
 private	ser_t	*scompressGraph(sccs *s);
@@ -1929,7 +1929,7 @@ sccs_rdweaveInit(sccs *s)
 		unless (s->data) {
 			// set s->data == 0 whenever a file is written
 			if (BKFILE(s)) {
-				s->data = bin_data(fgetline(s->fh));
+				s->data = bin_data(s, fgetline(s->fh));
 			} else {
 				/* XXX need data-offset in header */
 				while (t = fgetline(s->fh)) {
@@ -2156,6 +2156,8 @@ sccs_rdweaveDone(sccs *s)
 		FREE(s->w_buf);
 		s->w_d = 0;
 		s->w_off = 0;
+	} else {
+		ret = ferror(s->fh);
 	}
 	if (GZIP(s)) ret = fpop(&s->fh);
 	TRACE("ret=%d GZIP=%d BWEAVE=%d",
@@ -3275,13 +3277,16 @@ sccs_next(sccs *s, ser_t d)
 }
 
 private	void
-bin_header(char *header, u32 *off_h, u32 *heapsz,
+bin_header(sccs *s, char *header, u32 *off_h, u32 *heapsz,
     u32 *off_d, u32 *deltasz, u32 *off_s, u32 *symsz)
 {
 	*off_h = *heapsz = 0;
 
-	if (!header ||
-	    !(((header[0] == 'B') &&
+	unless (header) {
+		perror(s->sfile);
+		exit(1);
+	}
+	if (!(((header[0] == 'B') &&
 		(sscanf(header, "B %x/%x %x/%x %x/%x",
 		    off_h, heapsz, off_d, deltasz, off_s, symsz) == 6)) ||
 		((header[0] == 'C' &&
@@ -3293,11 +3298,11 @@ bin_header(char *header, u32 *off_h, u32 *heapsz,
 }
 
 private	off_t
-bin_data(char *header)
+bin_data(sccs *s, char *header)
 {
 	u32	ignore, off_s, symsz;
 
-	bin_header(header,
+	bin_header(s, header,
 	    &ignore, &ignore, &ignore, &ignore, &off_s, &symsz);
 
 	return (off_s + symsz);	/* weave after sym table */
@@ -3338,7 +3343,7 @@ bin_mkgraph(sccs *s)
 {
 	u32	heapsz, deltasz, symsz;
 	u32	off_h, off_d, off_s;
-	int	deltas, rc;
+	int	deltas;
 	int	line = 1, len;
 	char	*perfile, *header;
 	ser_t	d;
@@ -3347,7 +3352,7 @@ bin_mkgraph(sccs *s)
 
 	s->pagefh = s->fh;
 	header = fgetline(s->fh);
-	bin_header(header, &off_h, &heapsz, &off_d, &deltasz, &off_s, &symsz);
+	bin_header(s, header, &off_h, &heapsz, &off_d, &deltasz, &off_s, &symsz);
 	s->data = off_s + symsz;	/* weave after sym table */
 
 	len = (off_h ? off_h : off_d) - strlen(header) - 1;
@@ -3427,14 +3432,18 @@ bin_mkgraph(sccs *s)
 		    sizeof(symbol) * symsz/sizeof(symbol),
 		    s->pagefh, off_s, 1, &didpage);
 	}
+	/* catch any errors flagged while loading above */
+	if (ferror(s->pagefh)) {
+err:		fprintf(stderr, "%s: failed to load %s\n", prog, s->sfile);
+		exit(1);
+	}
+
 	d = TABLE(s);
 	if (FLAGS(s, d) & D_FIXUPS) {
 		u32	tmp[4];
 		/* fixups at end of file */
-		rc = fseek(s->fh, -4*sizeof(u32), SEEK_END);
-		assert(rc == 0);
-		rc = fread(tmp, sizeof(u32), 4, s->fh);
-		assert(rc == 4);
+		if(fseek(s->fh, -4*sizeof(u32), SEEK_END)) goto err;
+		if (fread(tmp, sizeof(u32), 4, s->fh) != 4) goto err;
 		ADDED_SET(s, d, le32toh(tmp[0]));
 		DELETED_SET(s, d, le32toh(tmp[1]));
 		SAME_SET(s, d, le32toh(tmp[2]));

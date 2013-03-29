@@ -80,7 +80,7 @@ typedef struct {
 
 	u8	*rbuf;		/* Last full block read */
 	off_t	rbuf_off;	/* file offset of rbuf (always ->boff) */
-	u32	rlen;		/* len of rbuf */
+	int	rlen;		/* len of rbuf */
 
 	u8	*xor;		/* xor's of written data */
 } fcrc;
@@ -92,7 +92,7 @@ private	int	crcClose(void *cookie);
 
 private	int	best_datasz(u64 est_size);
 private	int	crcCheckVerify(fcrc *fc);
-private void	fileSize(fcrc *fc);
+private int	fileSize(fcrc *fc);
 
 #define	HDRSZ	(8)	/* CRC %3d\n */
 #define PER_BLK	(2 + 4)	/* len & crc */
@@ -188,6 +188,7 @@ seekBlock(fcrc *fc)
  * Returns the number of bytes written
  * 'buf' is assumed to be at least fc->datasz bytes.
  * If returning 0 (at EOF), then also process xor block
+ * Returns -1 on error
  */
 private int
 readBlock(fcrc *fc, char *buf)
@@ -240,9 +241,15 @@ readBlock(fcrc *fc, char *buf)
 		}
 		crc2 = CRC(crc2, &len, 2);
 	}
-	if ((fread(&crc, 4, 1, fc->f) != 1) || (crc2 != le32toh(crc))) {
+	if (fread(&crc, 4, 1, fc->f) != 1) {
+		fprintf(stderr, "crc read: early eof @ %ld\n", fc->offset);
+		errno = EIO;
+		return (-1);
+	}
+	if (crc2 != le32toh(crc)) {
 		crcCheckVerify(fc);
-		exit(1);
+		errno = EIO;
+		return (-1);
 	}
 	if (fc->doXor) assert(xor == XORSZ(fc));
 
@@ -256,7 +263,10 @@ readBlock(fcrc *fc, char *buf)
 				fc->filesz = fc->boff - bsize + len;
 				T_FS("filesz = %lld", (long long)fc->filesz);
 			}
-			unless (len) readBlock(fc, buf); // process xor block
+			unless (len) {
+				// process xor block
+				if (readBlock(fc, buf) < 0) return (-1);
+			}
 		}
 	}
 	//fprintf(stderr, "readBlock() ret %d (sz=%d)\n", len, fc->filesz);
@@ -281,7 +291,7 @@ readAfterSeek(fcrc *fc)
 	memset(fc->xor, 0, XORSZ(fc));
 }
 
-private	void
+private	int
 writeAfterSeek(fcrc *fc)
 {
 	int	len;
@@ -295,11 +305,11 @@ writeAfterSeek(fcrc *fc)
 	unless (fc->xor) fc->xor = calloc(1, XORSZ(fc));
 
 	seekBlock(fc);
-	if (fc->boff == fc->offset) return;
+	if (fc->boff == fc->offset) return (0);
 
 	/* read rewind write the partial block that remains */
 	fc->rbuf_off = fc->boff;
-	fc->rlen = readBlock(fc, fc->rbuf);
+	if ((fc->rlen = readBlock(fc, fc->rbuf)) < 0) return (-1);
 	seekBlock(fc);
 
 	len = fc->offset - fc->rbuf_off;
@@ -307,6 +317,7 @@ writeAfterSeek(fcrc *fc)
 	fc->offset = fc->boff;
 	T_FS("keep old partial %d", len);
 	crcWrite(fc, fc->rbuf, len);
+	return (0);
 }
 
 private int
@@ -345,6 +356,7 @@ crcRead(void *cookie, char *buf, int len)
 		if ((fc->offset == fc->boff) && (len >= fc->datasz)) {
 			T_FS("direct");
 			unless (n = readBlock(fc, buf)) break;
+			if (n < 0) return (-1);
 			fc->offset += n;
 			ret += n;
 			len -= n;
@@ -353,6 +365,7 @@ crcRead(void *cookie, char *buf, int len)
 
 		fc->rbuf_off = fc->boff;
 		unless (fc->rlen = readBlock(fc, fc->rbuf)) break;
+		if (fc->rlen < 0) return (-1);
 	}
 	T_FS("= %d", ret);
 	return (ret);
@@ -375,7 +388,9 @@ crcWrite(void *cookie, const char *buf, int len)
 	char	hdr[HDRSZ+1];
 
 	T_FS("cookie %p, buf %p, len %d", fc, buf, len);
-	if (fc->didseek) writeAfterSeek(fc);
+	if (fc->didseek) {
+		if (writeAfterSeek(fc) < 0) return (-1);
+	}
 
 	fc->didwrite = 1;
 
@@ -439,7 +454,7 @@ crcWrite(void *cookie, const char *buf, int len)
 /*
  * Determine the size of the data in this file.
  */
-private void
+private int
 fileSize(fcrc *fc)
 {
 	int	n;
@@ -452,7 +467,7 @@ fileSize(fcrc *fc)
 	/* find size of file */
 	if (fseek(fc->f, 0, SEEK_END) || ((size = ftell(fc->f)) < 0)) {
 		perror("crcSeek");
-		exit(1);
+		return (-1);
 	}
 	assert((size % bsize) == 0);
 	n = size / bsize;
@@ -463,8 +478,11 @@ fileSize(fcrc *fc)
 	fc->boff = n ? n * fc->datasz - HDRSZ : 0;
 	fc->rbuf_off = fc->boff;
 	fc->rlen = readBlock(fc, fc->rbuf);
+	if (fc->rlen < 0) return (-1);
 	T_FS("= %lld", (long long)fc->filesz);
+	if (fc->filesz < 0) return (-1);
 	assert(fc->filesz >= 0);
+	return (0);
 }
 
 private fpos_t
@@ -496,7 +514,9 @@ crcSeek(void *cookie, fpos_t offset, int whence)
 	 * the file size and only if we are seeking within the last
 	 * block do we need to read a block.
 	 */
-	if (fc->filesz < 0) fileSize(fc);
+	if (fc->filesz < 0) {
+		if (fileSize(fc) < 0) return (-1);
+	}
 	if (whence == SEEK_END) {
 		offset += fc->filesz;
 	} else {
@@ -555,13 +575,14 @@ crcClose(void *cookie)
 		fwrite(&crc, 4, 1, fc->f);
 	} else if ((fc->filesz >= 0) && (fc->boff > fc->filesz)) {
 		n = readBlock(fc, fc->rbuf);	/* read xor block or NOP */
+		if (n < 0) return (-1);
 		assert(!n);
 		if (fc->doXor && !fc->seekoff) {	/* xor'd whole file */
 			for (n = 0; n < XORSZ(fc); n++) {
 				if (fc->xor[n]) {
 					fprintf(stderr,
 					    "non-zero crc %d\n", n);
-					exit(1);
+					return (-1);
 				}
 			}
 			T_FS("xor passed!");
@@ -571,8 +592,7 @@ crcClose(void *cookie)
 			fprintf(stderr,
 			    "crc file ends at offset %ld, junk follows\n",
 			    ftell(fc->f) - 1);
-			abort();
-			exit(1);
+			return (-1);
 		}
 	}
 	free(fc->rbuf);

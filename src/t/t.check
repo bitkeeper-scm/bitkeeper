@@ -353,6 +353,7 @@ $/ = "\n";
 $bad = 0;
 foreach $i (8 .. length($ff)-1) {
 	$new = $ff;
+	next if substr($new, $i, 1) eq "X";
 	substr($new, $i, 1) = "X";
 	open(F, "> .bk/SCCS/ff,s");
 	binmode(F);
@@ -360,11 +361,12 @@ foreach $i (8 .. length($ff)-1) {
 	close(f);
      	open(C, "bk check -c ff 2>&1 |");
 	$s = '';
+	$cnt = 0;
 	while (<C>) {
 	      $s .= $_;
-	      $bad = 1 unless /^(checksum error found|crc error |correctable|offset $i was 58 should)/;
+	      $cnt++ if /^(crc error found|crc error block|correctable|offset $i was 58 should)/;
 	}
-	if ($bad) {
+	if ($cnt < 3) {
 	   	print "bad output at $i\n";
 		print $s;
 		exit 1;
