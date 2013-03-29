@@ -2174,12 +2174,24 @@ sccs_startWrite(sccs *s)
 	FILE	*sfile;
 	char	*xfile;
 	u64	est_size;
+	int	fd;
 
 	T_SCCS("file=%s", s->gfile);
 	unless (s->encoding_out) {
 		s->encoding_out = sccs_encoding(s, 0, 0);
 	}
 	xfile = sccsXfile(s, 'x');
+	if (s->mem_out) {
+		assert(!BKFILE_OUT(s)); /* for now */
+		unless(s->outfh) s->outfh = fmem();
+		sfile = s->outfh;
+		goto chksum;
+	}
+	if ((fd = open(xfile, O_CREAT|O_TRUNC|O_WRONLY, 0444)) < 0) {
+		sfile = 0;
+		goto out;
+	}
+	unless (sfile = fdopen(fd, "w")) goto out;
 	if (BKFILE_OUT(s)) {
 		assert(!s->mem_out); /* for now */
 		if (s->size) {
@@ -2189,16 +2201,9 @@ sccs_startWrite(sccs *s)
 			    (TABLE(s) + 1) * (sizeof(d1_t) + sizeof(d2_t));
 			if (HAS_GFILE(s)) est_size += size(s->gfile);
 		}
-		sfile = fopen_bkfile(xfile, "w", est_size);
-	} else if (s->mem_out) {
-		unless(s->outfh) s->outfh = fmem();
-		assert(s->outfh);
-		sfile = s->outfh;
+		sfile = fdopen_bkfile(sfile, "w", est_size);
 	} else {
-		sfile = fopen(xfile, "w");
-	}
-	if (sfile && !BKFILE_OUT(s)) {
-		s->cksum = 0;
+chksum:		s->cksum = 0;
 		assert(!s->ckwrap);
 		if (fpush(&sfile, fopen_cksum(sfile, "w", &s->cksum))) {
 			fclose(sfile);
@@ -2206,7 +2211,7 @@ sccs_startWrite(sccs *s)
 		}
 		s->ckwrap = 1;
 	}
-	s->outfh = sfile;
+out:	s->outfh = sfile;
 	unless (sfile) perror(xfile);
 	return (sfile);
 }
@@ -2302,7 +2307,6 @@ sccs_finishWrite(sccs *s)
 		assert(size(s->sfile) > 0);
 		/* Always set the time on the s.file behind the g.file or now */
 		if (sccs_setStime(s, 0)) perror(s->sfile);
-		if (chmod(s->sfile, 0444)) perror(s->sfile);
 		if (CSET(s)) {
 			cset_savetip(s);
 			if (!BKFILE_OUT(s) && BKFILE(s)) {
