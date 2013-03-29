@@ -1013,7 +1013,8 @@ private	struct {
 	{"remote abort", CMD_REPOLOG|CMD_COMPAT_NOSI|CMD_IGNORE_RESYNC},
 	{"remote changes part1", CMD_REPOLOG|CMD_RDLOCK},
 	{"remote changes part2", CMD_REPOLOG},	// unlocked internally
-	{"remote clone", CMD_REPOLOG|CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
+	{"remote clone",
+	     CMD_REPOLOG|CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK|CMD_SENDFMT},
 	{"remote pull part1",
 	     CMD_REPOLOG|CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
 	{"remote pull part2", CMD_REPOLOG|CMD_BYTES|CMD_RDLOCK},
@@ -1130,7 +1131,7 @@ cmdlog_start(char **av, int bkd_cmd)
 		 * talking to and either send the error before or
 		 * after the serverInfo block
 		 */
-		if (sendServerInfo((cmdlog_flags & CMD_NOREPO))) {
+		if (sendServerInfo(cmdlog_flags)) {
 			drain();
 			repository_unlock(0, 0);
 			exit(1);

@@ -46,6 +46,7 @@ rclone_main(int ac, char **av)
 	};
 
 	bzero(&opts, sizeof(opts));
+	opts.sendenv_flags = SENDENV_SENDFMT;
 	if (streq(av[0], "_rclone_detach")) {
 		opts.detach = 1;
 		av[0] = "_rclone";

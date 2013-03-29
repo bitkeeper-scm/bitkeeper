@@ -905,7 +905,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	if (t = getenv("_BK_TESTFEAT")) {
 		t = strdup(t);
 	} else {
-		t = features_list(0, 1); /* all supported features */
+		t = features_list(0); /* all supported features */
 	}
 	fprintf(f, "putenv BK_FEATURES=%s\n", t);
 	free(t);
@@ -913,7 +913,13 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		if (t = getenv("_BK_TEST_REQUIRED")) {
 			t = strdup(t);
 		} else {
-			t = features_list(0, 0); /* only required features */
+			u32	bits = features_bits(0);
+
+			bits &= ~FEAT_REMAP;
+			unless (flags & SENDENV_SENDFMT) {
+				bits &= ~(FEAT_BKFILE|FEAT_BWEAVE);
+			}
+			t = features_fromBits(bits);
 		}
 		fprintf(f, "putenv BK_FEATURES_REQUIRED=%s\n", t);
 		free(t);
@@ -1037,10 +1043,11 @@ getServerInfo(remote *r, hash *bkdEnv)
  *  Send server env from bkd to client
  */
 int
-sendServerInfo(int no_repo)
+sendServerInfo(u32 cmdlog_flags)
 {
 	char	*repoid, *rootkey, *p, *errs = 0;
 	project	*prod = 0;	/* product project* (if we have a product) */
+	int	no_repo = (cmdlog_flags & CMD_NOREPO);
 	char	buf[MAXPATH];
 	char	bp[MAXLINE];
 
@@ -1143,7 +1150,7 @@ sendServerInfo(int no_repo)
 	if (p = getenv("_BKD_TESTFEAT")) {
 		p = strdup(p);
 	} else {
-		p = features_list(0, 1); /* all supported features */
+		p = features_list(0); /* all supported features */
 	}
 	out("\nFEATURES=");
 	out(p);
@@ -1151,7 +1158,13 @@ sendServerInfo(int no_repo)
 	if (p = getenv("_BKD_TEST_REQUIRED")) {
 		p = strdup(p);
 	} else {
-		p = features_list(0, 0); /* only required features */
+		u32	bits = features_bits(0);
+
+		bits &= ~FEAT_REMAP;
+		unless (cmdlog_flags & CMD_SENDFMT) {
+			bits &= ~(FEAT_BKFILE|FEAT_BWEAVE);
+		}
+		p = features_fromBits(bits);
 	}
 	out("\nFEATURES_REQUIRED=");
 	out(p);

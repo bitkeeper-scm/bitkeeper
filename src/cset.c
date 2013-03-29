@@ -944,7 +944,7 @@ sccs_patch(sccs *s, cset_t *cs)
 			printf("== %s ==\n", gfile);
 			if (newfile) {
 				printf("New file: %s\n", PATHNAME(s, d));
-				sccs_perfile(s, stdout);
+				sccs_perfile(s, stdout, 1);
 			}
 			s->rstop = s->rstart = TREE(s);
 			if (copts.csetkey && CSET(s)) {

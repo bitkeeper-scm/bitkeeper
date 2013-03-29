@@ -8715,7 +8715,7 @@ bin_deltaTable(sccs *s)
 	if (!CSET(s) && bin_needHeapRepack(s)) bin_heapRepack(s);
 
 	perfile = fmem();
-	sccs_perfile(s, perfile);
+	sccs_perfile(s, perfile, 0);
 
 	off_d = off_h = 2 + (BWEAVE_OUT(s) ? 2 : 3) * 18 + ftell(perfile);
 	if (BWEAVE_OUT(s)) {
@@ -16561,7 +16561,7 @@ sccs_prsbuf(sccs *s, ser_t d, int flags, char *dspec)
  *	...
  */
 void
-sccs_perfile(sccs *s, FILE *out)
+sccs_perfile(sccs *s, FILE *out, int patch)
 {
 	int	i;
 	int	enc;
@@ -16572,8 +16572,9 @@ sccs_perfile(sccs *s, FILE *out)
 		enc = sccs_encoding(s, 0, 0);
 	}
 	enc &= ~E_ALWAYS;
+	if (patch) enc &= ~(E_BK|E_BWEAVE);
 	if (enc) fprintf(out, "f e %d\n", enc);
-	if (s->rkeyHead && (enc & E_BWEAVE)) {
+	if (!patch && s->rkeyHead && (enc & E_BWEAVE)) {
 		fprintf(out, "f w %u\n", s->rkeyHead);
 	}
 	EACH(s->text) fprintf(out, "T %s\n", s->text[i]);

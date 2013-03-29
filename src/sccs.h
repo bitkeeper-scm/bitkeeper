@@ -1054,7 +1054,7 @@ int	cset_byserials(const void *a, const void *b);
 int	sccs_newchksum(sccs *s);
 ser_t	getCksumDelta(sccs *s, ser_t d);
 ser_t	*addSerial(ser_t *space, ser_t s);
-void	sccs_perfile(sccs *, FILE *);
+void	sccs_perfile(sccs *s, FILE *out, int patch);
 sccs	*sccs_getperfile(sccs *, FILE *, int *);
 char	*sccs_gethost(void);
 char	*sccs_realhost(void);
@@ -1585,6 +1585,7 @@ extern	u32	swapsz;		/* paging blocksize */
 #define	CMD_RDUNLOCK		0x00001000	/* unlock a previous READ */
 #define	CMD_BKD_CMD		0x00002000	/* command comes from bkd.c */
 #define	CMD_NOLOG		0x00004000	/* don't log command */
+#define	CMD_SENDFMT		0x00008000	/* send sfile FMT in features */
 
 #define	LOGVER			1		/* dflt idx into log_versions */
 

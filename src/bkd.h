@@ -146,7 +146,7 @@ int	bkd_connect(remote *r, int opts);
 void	disconnect(remote *r);
 void	drain(void);
 char	**getClientInfoBlock(void);
-int	sendServerInfo(int no_repo);
+int	sendServerInfo(u32 cmdlog_flags);
 int	probekey(sccs *s, char *rev, int syncroot, FILE *f);
 int	synckeys(remote *r, sccs *s, int flags, FILE *fout);
 int	prunekey(sccs *, remote *, hash *, int, int, int, int *, int *, int *);
@@ -160,6 +160,7 @@ char	*vpath_translate(char *path);
 #define	SENDENV_NOLICENSE  2 /* don't send BK_LICENSE, in lease code */
 #define	SENDENV_FORCEREMAP 4 /* send BK_REMAP even if not true */
 #define	SENDENV_FORCENOREMAP 8 /* don't send BK_REMAP even if true */
+#define	SENDENV_SENDFMT	   0x10 /* send sfile format */
 void	sendEnv(FILE *f, char **envVar, remote *r, u32 flags);
 
 void	setLocalEnv(int in_out);

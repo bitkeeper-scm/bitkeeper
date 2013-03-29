@@ -2,12 +2,6 @@ echo $N Verify that clone fails with unknown feature ................$NL
 commercial project
 echo foo > foo
 bk delta -i -l -ywhatever $Q foo
-
-if [ X"$_BKFILE_REGRESSIONS" = Xyes ]
-then	DEFAULT=BKFILE,BWEAVEv2,SAMv3
-else	DEFAULT=SAMv3
-fi
-
 echo wizbang >> BitKeeper/log/features
 cd ..
 bk clone -q project copy 2>ERR && exit 1
@@ -48,7 +42,7 @@ nested nest
 bk clone $Q . ../nestcopy
 cd ../nestcopy
 _BK_TESTFEAT='HORSE' bk pull $Q 2>ERR && fail -f ERR
-bk getmsg -= bk_missing_feature $DEFAULT > WANT
+bk getmsg -= bk_missing_feature SAMv3 > WANT
 cmpfiles ERR WANT
 _BK_TEST_REQUIRED='HORSE' bk pull $Q 2>ERR && fail -f ERR
 bk getmsg -= bkd_missing_feature HORSE > WANT
@@ -63,7 +57,7 @@ echo OK
 echo $N Here what bkd has and output message ........................$NL
 cd ../nestcopy
 _BKD_TESTFEAT='HORSE' bk pull $Q 2>ERR && fail -f ERR
-bk getmsg -= bkd_missing_feature $DEFAULT > WANT
+bk getmsg -= bkd_missing_feature SAMv3 > WANT
 cmpfiles ERR WANT
 _BKD_TEST_REQUIRED='HORSE' bk pull $Q 2>ERR && fail -f ERR
 bk getmsg -= bk_missing_feature HORSE > WANT

@@ -85,41 +85,19 @@ features_main(int ac, char **av)
  * Generate a comma separated list of "feature" strings to sent over the wire
  * to the remote bk.  The same list is use for bk->bkd connections and
  * the bkd->bk response.
- *
- * When all==1 then all codes understood by this binary are returned,
- * otherwise only the codes required by this repository are sent.
  */
 char *
-features_list(project *p, int all)
+features_list(project *p)
 {
 	char	*ret;
-	u32	bits;
 
-	if (all) {
 #define	X(a, b, c, d, e) c ","
-	        ret = strdup(FEATURES);
+	ret = strdup(FEATURES);
 #undef	X
-		if (getenv("_BK_NO_PATCHSFIO")) {
-			str_subst(ret, "pSFIO,", "", ret);
-		}
-		if (getenv("_BK_NO_FASTPATCH")) {
-			str_subst(ret, "fastpatch,", "", ret);
-		}
-		chop(ret);	/* remove trailing , */
-	} else {
-		/* just return features required for current repo */
-		bits = features_bits(p);
-
-		/*
-		 * Don't send REMAP in FEATURES_REQUIRED, it doesn't matter
-		 * over the protocol.
-		 */
-		TRACE("bits=%x", bits);
-		bits &= ~FEAT_REMAP;
-
-		ret = features_fromBits(bits);
-		TRACE("bits=%x(%s)", bits, ret);
+	if (getenv("_BK_NO_FASTPATCH")) {
+		str_subst(ret, "fastpatch,", "", ret);
 	}
+	chop(ret);	/* remove trailing , */
 	return (ret);
 }
 
@@ -289,7 +267,7 @@ features_bkdCheck(int bkd, int no_repo)
 	/* check BitKeeper/log/features against BK[D]_FEATURES */
 	features = features_bits(0);
 	/* remap doesn't matter over protocol */
-	features &= ~FEAT_REMAP;
+	features &= ~(FEAT_REMAP|FEAT_BKFILE|FEAT_BWEAVE);
 	features &= ~rmt_features;
 
 	/*

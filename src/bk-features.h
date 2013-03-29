@@ -13,7 +13,6 @@
  *   SAMv3	nested support
  *   mSFIO	will accept modes with sfio.
  *   pull-r	pull -r is parsed correctly
- *   pSFIO	send whole sfiles in SFIO attached to patches
  *   fastpatch	support fastpatch mode
  *   remap	repository is remapped
  *   sortkey	repository uses sortkey metadata
@@ -42,14 +41,13 @@
 	X( 3, SAMv3, "SAMv3", 1, 0)		\
 	X( 4, mSFIO, "mSFIO", 0, 0)		\
 	X( 5, pull_r, "pull-r", 0, 0)		\
-	X( 6, pSFIO, "pSFIO", 0, 0)		\
-	X( 7, FAST, "fastpatch", 0, 0)		\
-	X( 8, REMAP, "remap", 1, 0)		\
-	X( 9, SORTKEY, "sortkey", 1, 0)		\
-	X(10, bSFILEv1, "bSFILEv1", 1, 1)	\
-	X(11, POLY, "POLY", 1, 0)		\
-	X(12, BKFILE, "BKFILE", 1, 0)		\
-	X(13, BWEAVE, "BWEAVEv2", 1, 0)		\
+	X( 6, FAST, "fastpatch", 0, 0)		\
+	X( 7, REMAP, "remap", 1, 0)		\
+	X( 8, SORTKEY, "sortkey", 1, 0)		\
+	X( 9, bSFILEv1, "bSFILEv1", 1, 1)	\
+	X(10, POLY, "POLY", 1, 0)		\
+	X(11, BKFILE, "BKFILE", 1, 0)		\
+	X(12, BWEAVE, "BWEAVEv2", 1, 0)		\
 
 enum {
 #define X(a, b, c, d, e) FEAT_ ## b = (1 << a),
@@ -65,7 +63,7 @@ int	features_test(project *p, int feature);
 void	features_set(project *p, int feature, int on);
 void	features_setAll(project *p, u32 bits);
 
-char	*features_list(project *p, int all);
+char	*features_list(project *p);
 int	features_bkdCheck(int in_bkd, int no_repo);
 u32	features_toBits(char *features, char *bad);
 char	*features_fromBits(u32 bits);
