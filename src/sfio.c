@@ -80,6 +80,7 @@ private	struct {
 	u32	mark_no_dfiles:1;
 	u32	checkout:1;	/* --checkout: do sccs checkouts in parallel */
 	u32	seen_config:1;	/* Have we unpacked BitKeeper/etc/config yet? */
+	u32	takepatch:1;	/* called from takepatch */
 	int	mode;		/* M_IN, M_OUT, M_LIST */
 	char	**more;		/* additional list of files to send */
 	char	*prefix;	/* dir prefix to put on the file listing */
@@ -107,6 +108,7 @@ sfio_main(int ac, char **av)
 		{ "checkout", 310 },
 		{ "mark-no-dfiles", 320 },
 		{ "Nway", 330 },
+		{ "takepatch", 340 },
 		{ 0, 0 }
 	};
 
@@ -173,6 +175,9 @@ sfio_main(int ac, char **av)
 		    case 330:	/* --Nway */
 			opts->seen_config = 1; /* don't wait for config file */
 			break;
+		    case 340:	/* --takepatch */
+			opts->takepatch = 1;
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -205,7 +210,7 @@ sfio_main(int ac, char **av)
 	}
 #endif
 
-	prog = opts->bp_tuple ? "BAM xfer" : "file xfer";
+	prog = (opts->bp_tuple && !opts->takepatch) ? "BAM xfer" : "file xfer";
 	if (opts->quiet) {
 	} else if (opts->todo) {
 		opts->tick = progress_start(PROGRESS_BAR, opts->todo);

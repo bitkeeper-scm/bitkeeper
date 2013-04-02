@@ -620,6 +620,8 @@ bin_heapRepack(sccs *s)
 #define	OLDKEYSTR(x)	(OLDHEAP(x) + sizeof(u32))
 #define	OLDNEXTKEY(x)	((x) + sizeof(u32) + strlen(OLDKEYSTR(x)) + 1)
 
+	if (getenv("BK_HEAP_NOREPACK")) return;	// safety net and for testing
+
 	/* read old metadata */
 	meta = hash_new(HASH_MEMHASH);
 	if (strneq(HEAP(s, 1), "GEN=", 4)) hash_fromStr(meta, HEAP(s, 1));

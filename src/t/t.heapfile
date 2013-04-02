@@ -13,3 +13,24 @@ bk _test -f SCCS/2.ChangeSet || fail should have second heap
 bk repocheck $Q || fail
 bk _test -f SCCS/2.ChangeSet && fail should have repacked
 echo OK
+
+echo $N Takepatch does not add to unused heap .......................$NL
+bk commit $Q -ysave-foo
+bk clone $Q . ../copy
+bk admin -fMONOTONIC BitKeeper/etc/config
+bk commit $Q -y"One copy of this comment"
+cd ../copy
+echo '/unused:\s+(\d+)/ && print "$1\n"' > prog
+bk _heapdump -s ChangeSet | perl -n prog > WANT
+BK_HEAP_NOREPACK=1 bk pull $Q
+bk _heapdump -s ChangeSet | perl -n prog > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N cweave_insert with DANGLING should not add extra heap .......$NL
+bk unpull -qsf
+bk _heapdump -s BitKeeper/etc/config | perl -n prog > WANT
+BK_HEAP_NOREPACK=1 bk pull $Q
+bk _heapdump -s BitKeeper/etc/config | perl -n prog > GOT
+cmp -s WANT GOT && fail expected WANT and GOT to be different
+echo "failed (bug "

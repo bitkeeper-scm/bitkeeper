@@ -39,7 +39,8 @@
 private	ser_t	getRecord(sccs *s, FILE *f);
 private void	errorMsg(char *msg, char *arg1, char *arg2);
 private	int	extractPatch(char *name, FILE *p);
-private	int	extractDelta(char *name, sccs *s, int newFile, FILE *f, int*);
+private	int	extractDelta(char *name, sccs *sreal, sccs *scratch,
+		    int newFile, FILE *f, hash *countFiles, int *np);
 private	int	applyPatch(char *local, sccs *perfile);
 private	int	applyCsetPatch(sccs *s, int *nfound, sccs *perfile);
 private	int	getLocals(sccs *s, char *name);
@@ -54,29 +55,8 @@ private	void	badpath(sccs *s, ser_t tot);
 private	int	skipPatch(FILE *p);
 private	void	getChangeSet(void);
 private	void	loadskips(void);
-private int	sfio(FILE *m);
+private	int	sfio(FILE *m, int files);
 private	int	parseFeatures(char *next);
-
-private	int	echo = 0;	/* verbose level, more means more diagnostics */
-private	int	line;		/* line number in the patch file */
-private	int	fileNum;	/* counter for the Nth init/diff file */
-private	patch	*patchList = 0;	/* patches for a file, list len == fileNum */
-private	int	conflicts;	/* number of conflicts over all files */
-private	int	newProject;	/* command line opt to create a new repo */
-private	int	saveDirs;	/* save directories even if errors */
-private	MDBM	*idDB;		/* key to pathname db, set by init or rebuilt */
-private	MDBM	*goneDB;	/* key to gone database */
-private	char	*tableGCA;	/* key of predecessor to the oldest delta found
-				 * in the patch */
-private	int	noConflicts;	/* if set, abort on conflicts */
-private	char	pendingFile[MAXPATH];
-private	char	*input;		/* input file name,
-				 * either "-" or a patch file */
-private	char	*comments;	/* -y'comments', pass to resolve. */
-private	char	**errfiles;	/* files had errors during apply */
-private	char	**edited;	/* files that were in modified state */
-
-private	sccs	*fake;
 
 typedef struct {
 	/* command line options */
@@ -90,6 +70,31 @@ typedef struct {
 	/* modes enabled in patch */
 	u8	fast;		/* Fast patch mode */
 	u8	port;		/* patch created with 'bk port' */
+
+	/* The patch from stdin or file */
+	FILE 	*p;
+
+	/* old globals */
+	int	echo;		/* verbose level, more means more diagnostics */
+	int	line;		/* line number in the patch file */
+	int	fileNum;	/* counter for the Nth init/diff file */
+	patch	*patchList;	/* patches for a file, list len == fileNum */
+	int	conflicts;	/* number of conflicts over all files */
+	int	newProject;	/* command line opt to create a new repo */
+	int	saveDirs;	/* save directories even if errors */
+	MDBM	*idDB;		/* key to pathname db, set by init or rebuilt */
+	MDBM	*goneDB;	/* key to gone database */
+	char	*tableGCA;	/* key of predecessor to the oldest delta found
+				 * in the patch */
+	int	noConflicts;	/* if set, abort on conflicts */
+	char	pendingFile[MAXPATH];
+	char	*input;		/* input file name,
+				 * either "-" or a patch file */
+	char	*comments;	/* -y'comments', pass to resolve. */
+	char	**errfiles;	/* files had errors during apply */
+	char	**edited;	/* files that were in modified state */
+
+	sccs	*fake;
 } Opts;
 private Opts *opts;
 
@@ -120,7 +125,6 @@ takepatch_main(int ac, char **av)
 {
 	FILE 	*f;
 	char	*buf;
-	FILE	*p;
 	int	c;
 	int	files = 0;
 	char	*t;
@@ -135,51 +139,56 @@ takepatch_main(int ac, char **av)
 	};
 
 	setmode(0, O_BINARY); /* for win32 */
-	input = "-";
 	opts = new(Opts);
+	opts->input = "-";
 	while ((c = getopt(ac, av, "acDFf:iLmqsStTvy;", lopts)) != -1) {
 		switch (c) {
 		    case 'q':					/* undoc 2.0 */
 		    case 's':					/* undoc 2.0 */
-			echo = opts->pbars = 0;
+			opts->echo = opts->pbars = 0;
 			break;
 		    case 'a': resolve++; break;			/* doc 2.0 */
-		    case 'c': noConflicts++; break;		/* doc 2.0 */
+		    case 'c': opts->noConflicts++; break;	/* doc 2.0 */
 		    case 'D': opts->collapsedups++; break;
 		    case 'F': break;				/* obsolete */
 		    case 'f':					/* doc 2.0 */
-			    input = optarg;
+			    opts->input = optarg;
 			    break;
-		    case 'i': newProject++; break;		/* doc 2.0 */
+		    case 'i': opts->newProject++; break;	/* doc 2.0 */
 		    case 'm': opts->mkpatch++; break;		/* doc 2.0 */
-		    case 'S': saveDirs++; break;		/* doc 2.0 */
+		    case 'S': opts->saveDirs++; break;		/* doc 2.0 */
 		    case 'T': textOnly++; break;		/* doc 2.0 */
-		    case 'v': opts->pbars = 0; echo++; break;	/* doc 2.0 */
-		    case 'y': comments = optarg; break;
+		    case 'v':					/* doc 2.0 */
+		        opts->pbars = 0;
+			opts->echo++;
+			break;
+		    case 'y': opts->comments = optarg; break;
 		    case 300: opts->pbars = 1; break;
 		    default: bk_badArg(c, av);
 		}
 	}
-	if (getenv("TAKEPATCH_SAVEDIRS")) saveDirs++;
-	if ((t = getenv("BK_NOTTY")) && *t && (echo == 3)) echo = 2;
+	if (getenv("TAKEPATCH_SAVEDIRS")) opts->saveDirs++;
+	if ((t = getenv("BK_NOTTY")) && *t && (opts->echo == 3)) {
+		opts->echo = 2;
+	}
 	if (av[optind]) usage();
-	p = init(input);
-	if (newProject) putenv("_BK_NEWPROJECT=YES");
+	opts->p = init(opts->input);
+	if (opts->newProject) putenv("_BK_NEWPROJECT=YES");
 	if (sane(0, 0)) exit(1);
 
-	if (newProject) {
-		unless (idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
+	if (opts->newProject) {
+		unless (opts->idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
 			perror("mdbm_open");
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
 	} else {
 
 		/* OK if this returns NULL */
-		goneDB = loadDB(GONE, 0, DB_GONE);
+		opts->goneDB = loadDB(GONE, 0, DB_GONE);
 
 		loadskips();
 
-		unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
+		unless (opts->idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
 			perror("SCCS/x.id_cache");
 			exit(1);
 		}
@@ -188,13 +197,12 @@ takepatch_main(int ac, char **av)
 	/*
 	 * Find a file and go do it.
 	 */
-	if (opts->pbars) tick = progress_start(PROGRESS_BAR, opts->N);
-	while (buf = fgetline(p)) {
+	while (buf = fgetline(opts->p)) {
 		int	rc;
 
-		++line;
+		++opts->line;
 		unless (strncmp(buf, "== ", 3) == 0) {
-			if (echo > 7) {
+			if (opts->echo > 7) {
 				fprintf(stderr, "skipping: %s", buf);
 			}
 			continue;
@@ -205,20 +213,30 @@ takepatch_main(int ac, char **av)
 		 * We'll fall through to sfio to unpack.
 		 */
 		if (streq(buf, "== @SFIO@ ==")) {
-			if (rc = sfio(p)) error = -1;
+			if (tick) {
+				progress_done(tick,
+				    error < 0 ? "FAILED" : "OK");
+				tick = 0;
+			}
+			if (rc = sfio(opts->p, (int)(opts->N - files))) {
+				error = -1;
+			}
 			break;
 		}
-		if (echo>4) fprintf(stderr, "%s\n", buf);
+		if (opts->echo>4) fprintf(stderr, "%s\n", buf);
 		unless ((t = strrchr(buf, ' ')) && streq(t, " ==")) {
 			SHOUT();
 			fprintf(stderr, "Bad patch: %s\n", buf);
 			cleanup(CLEAN_RESYNC);
 		}
 		*t = 0;
-		files++;
 		t = name2sccs(&buf[3]);
-		rc = extractPatch(t, p);
+		rc = extractPatch(t, opts->p);
 		free(t);
+		if (!files && opts->pbars) {
+			tick = progress_start(PROGRESS_BAR, opts->N);
+		}
+		files++;
 		if (tick) progress(tick, files);
 		if (rc < 0) {
 			error = rc;
@@ -226,9 +244,14 @@ takepatch_main(int ac, char **av)
 		}
 		remote += rc;
 	}
-	fclose(p);
-	if (idDB) { mdbm_close(idDB); idDB = 0; }
-	if (goneDB) { mdbm_close(goneDB); goneDB = 0; }
+	if (fclose(opts->p)) {
+		perror(opts->input);
+		opts->p = 0;	/* don't try to close again */
+		cleanup(CLEAN_RESYNC);
+	}
+	opts->p = 0;
+	if (opts->idDB) { mdbm_close(opts->idDB); opts->idDB = 0; }
+	if (opts->goneDB) { mdbm_close(opts->goneDB); opts->goneDB = 0; }
 	if (tick) progress_done(tick, error < 0 ? "FAILED" : "OK");
 	if (error < 0) {
 		/* XXX: Save?  Purge? */
@@ -237,33 +260,27 @@ takepatch_main(int ac, char **av)
 #ifdef	SIGXFSZ
 	if (getenv("_BK_SUICIDE")) kill(getpid(), SIGXFSZ);
 #endif
-	if (echo || opts->pbars) {
+	if (opts->echo || opts->pbars) {
 		files = 0;
 		if (f = popen("bk sfiles RESYNC", "r")) {
 			while (t = fgetline(f)) ++files;
 			pclose(f);
 		}
 		if (opts->pbars) {
-			t = conflicts ?
-			    aprintf("%3d", conflicts) : strdup(" no");
+			t = opts->conflicts ?
+			    aprintf("%3d", opts->conflicts) : strdup(" no");
 			Fprintf("BitKeeper/log/progress-sum",
 			    "%3d changeset%s %s merge%s in %3d file%s\n",
 			    remote, remote == 1 ? ", " : "s,",
-			    t, conflicts == 1 ? " " : "s",
+			    t, opts->conflicts == 1 ? " " : "s",
 			    files, files == 1 ? "" : "s");
 		} else {
 			fprintf(stderr,
 			    "takepatch: "
 			    "%d new changeset%s, %d conflicts in %d files\n",
-			    remote, remote == 1 ? "" : "s", conflicts, files);
+			    remote, remote == 1 ? "" : "s",
+			    opts->conflicts, files);
 		}
-	}
-
-	/* save byte count for logs */
-	f = fopen("BitKeeper/log/byte_count", "w");
-	if (f) {
-		fprintf(f, "%lu\n", (unsigned long)size(pendingFile));
-		fclose(f);
 	}
 
 	unless (remote) {
@@ -285,7 +302,7 @@ takepatch_main(int ac, char **av)
 	 * particular file.  The converge code will make sure all of the
 	 * inodes are present.
 	 */
-	if (conflicts) converge_hash_files();
+	if (opts->conflicts) converge_hash_files();
 
 	/*
 	 * There are instances (contrived) where the ChangeSet
@@ -299,14 +316,16 @@ takepatch_main(int ac, char **av)
 		char	*resolve[] = {"bk", "resolve", "-S", 0, 0, 0, 0, 0, 0};
 		int	i = 2;
 
-		if (echo) {
+		if (opts->echo) {
 			fprintf(stderr,
 			    "Running resolve to apply new work...\n");
 		}
-		unless (echo) resolve[++i] = "-q";
+		unless (opts->echo) resolve[++i] = "-q";
 		if (textOnly) resolve[++i] = "-T";
-		if (noConflicts) resolve[++i] = "-c";
-		if (comments) resolve[++i] = aprintf("-y%s", comments);
+		if (opts->noConflicts) resolve[++i] = "-c";
+		if (opts->comments) {
+			resolve[++i] = aprintf("-y%s", opts->comments);
+		}
 		i = spawnvp(_P_WAIT, resolve[0], resolve);
 		unless (WIFEXITED(i)) return (-1);
 		error = WEXITSTATUS(i);
@@ -361,7 +380,7 @@ getRecord(sccs *s, FILE *f)
 	d = sccs_getInit(s, 0, f, DELTA_PATCH|DELTA_TAKEPATCH, &e, 0, 0);
 	if (!d || e) {
 		fprintf(stderr,
-		    "takepatch: bad delta record near line %d\n", line);
+		    "takepatch: bad delta record near line %d\n", opts->line);
 		exit(1);
 	}
 	return (d);
@@ -386,12 +405,13 @@ private	int
 extractPatch(char *name, FILE *p)
 {
 	ser_t	tmp;
-	sccs	*s = 0;
+	sccs	*s = 0, *scratch = 0;
 	sccs	*perfile = 0;
 	int	newFile = 0;
 	int	cset;
 	char	*gfile = 0;
 	int	nfound = 0, rc;
+	hash	*countFiles = 0; /* hash of rootkeys seen in cset patches */
 	char	*t;
 
 	/*
@@ -417,22 +437,22 @@ extractPatch(char *name, FILE *p)
 	 * {same as above, no perfile.}
 	 */
 	t = fgetline(p);
-	line++;
+	opts->line++;
 	if (strneq("New file: ", t, 10)) {
 		newFile = 1;
-		perfile = sccs_getperfile(0, p, &line);
+		perfile = sccs_getperfile(0, p, &opts->line);
 		t = fgetline(p);
-		line++;
+		opts->line++;
 	}
 	if (strneq("Grafted file: ", t, 14)) {
 		t = fgetline(p);
-		line++;
+		opts->line++;
 	}
-	if (newProject && !newFile) errorMsg("tp_notfirst", 0, 0);
+	if (opts->newProject && !newFile) errorMsg("tp_notfirst", 0, 0);
 
 	t = strdup(t);
-	if (echo>4) fprintf(stderr, "%s\n", t);
-	s = sccs_keyinit(0, t, SILENT, idDB);
+	if (opts->echo>4) fprintf(stderr, "%s\n", t);
+	s = sccs_keyinit(0, t, SILENT, opts->idDB);
 	if (s && !s->cksumok) goto error;
 	/*
 	 * Unless it is a brand new workspace, or a new file,
@@ -445,8 +465,8 @@ extractPatch(char *name, FILE *p)
 	 * b) move the file and send a new file over and make sure it finds
 	 *    it.
 	 */
-	unless (s || newProject || newFile) {
-		if (gone(t, goneDB)) {
+	unless (s || opts->newProject || newFile) {
+		if (gone(t, opts->goneDB)) {
 			if (getenv("BK_GONE_OK")) {
 				skipPatch(p);
 				return (0);
@@ -461,7 +481,7 @@ error:		if (perfile) sccs_free(perfile);
 		if (gfile) free(gfile);
 		free(t);
 		if (s) sccs_free(s);
-		errfiles = addLine(errfiles, sccs2name(name));
+		opts->errfiles = addLine(opts->errfiles, sccs2name(name));
 		return (-1);
 	}
 
@@ -470,11 +490,11 @@ error:		if (perfile) sccs_free(perfile);
 	 * new file.  But if we have a match, we want to use it.
 	 */
 	if (s) {
-		if (newFile && (echo > 4)) {
+		if (newFile && (opts->echo > 4)) {
 			fprintf(stderr,
 			    "takepatch: new file %s already exists.\n", name);
 		}
-		if (echo > 7) {
+		if (opts->echo > 7) {
 			fprintf(stderr, "takepatch: file %s found.\n",
 			s->sfile);
 		}
@@ -482,7 +502,8 @@ error:		if (perfile) sccs_free(perfile);
 			int cleanflags = SILENT|CLEAN_SHUTUP|CLEAN_CHECKONLY;
 
 			if (sccs_clean(s, cleanflags)) {
-				edited = addLine(edited, sccs2name(s->sfile));
+				opts->edited =
+				    addLine(opts->edited, sccs2name(s->sfile));
 				sccs_free(s);
 				s = 0;
 				goto error;
@@ -532,22 +553,33 @@ error:		if (perfile) sccs_free(perfile);
 		    exists("SCCS/s.ChangeSet")) {
 			errorMsg("tp_changeset_exists", 0, 0);
 		}
-		if (echo > 3) {
+		if (opts->echo > 3) {
 			fprintf(stderr,
 			    "takepatch: new file %s\n", t);
 		}
 	}
-	tableGCA = 0;
+	opts->tableGCA = 0;
 	unless (s) {
-		fake = new(sccs);
-		s = fake;
+		opts->fake = new(sccs);
+		s = opts->fake;
 		if (streq(name, CHANGESET)) s->state |= S_CSET;
 	}
-	while (extractDelta(name, s, newFile, p, &nfound)) {
+	if (opts->pbars && CSET(s)) {
+		countFiles = hash_new(HASH_MEMHASH);
+		opts->N++;	/* count the cset file */
+	}
+	scratch = new(sccs);
+	while (extractDelta(
+	    name, s, scratch, newFile, p, countFiles, &nfound)) {
 		if (newFile) newFile = 2;
 	}
+	sccs_free(scratch);
+	if (countFiles) {
+		hash_free(countFiles);
+		countFiles = 0;
+	}
 	gfile = sccs2name(name);
-	if (echo > 1) fprintf(stderr, "Updating %s", gfile);
+	if (opts->echo > 1) fprintf(stderr, "Updating %s", gfile);
 
 	cset = s ? CSET(s) : streq(name, CHANGESET);
 	if (opts->fast || cset) {
@@ -555,14 +587,17 @@ error:		if (perfile) sccs_free(perfile);
 		s = 0;		/* applyCsetPatch calls sccs_free */
 		unless (cset) nfound = 0;	/* only count csets */
 	} else {
-		if (s == fake) s = 0;
-		if (patchList && tableGCA) getLocals(s, name);
+		if (s == opts->fake) s = 0;
+		if (opts->patchList && opts->tableGCA) getLocals(s, name);
 		rc = applyPatch(s ? s->sfile : 0, perfile);
-		if (rc < 0) errfiles = addLine(errfiles, sccs2name(name));
+		if (rc < 0) {
+			opts->errfiles =
+			    addLine(opts->errfiles, sccs2name(name));
+		}
 		nfound = 0;	/* only count csets */
 	}
-	FREE(tableGCA);
-	if (echo > 1) fputc('\n', stderr);
+	FREE(opts->tableGCA);
+	if (opts->echo > 1) fputc('\n', stderr);
 	if (perfile) sccs_free(perfile);
 	if (streq(gfile, "BitKeeper/etc/config")) {
 		/*
@@ -665,13 +700,14 @@ skipkey(sccs *s, char *dkey)
  * Deltas end on the first blank line.
  */
 private	int
-extractDelta(char *name, sccs *s, int newFile, FILE *f, int *np)
+extractDelta(char *name, sccs *sreal, sccs *scratch,
+    int newFile, FILE *f, hash *countFiles, int *np)
 {
 	ser_t	d, parent = 0, tmp;
 	char	buf[MAXPATH];
-	char	*b;
+	char	*b, *sep;
 	char	*pid = 0;
-	int	c;
+	int	c, i;
 	int	skip = 0;
 	int	ignore = 0;
 	patch	*p;
@@ -679,8 +715,8 @@ extractDelta(char *name, sccs *s, int newFile, FILE *f, int *np)
 
 	if (newFile == 1) goto delta1;
 
-	b = fgetline(f); line++;
-	if (echo>4) fprintf(stderr, "%s\n", b);
+	b = fgetline(f); opts->line++;
+	if (opts->echo>4) fprintf(stderr, "%s\n", b);
 	if (strneq(b, "# Patch checksum=", 17)) return 0;
 	pid = strdup(b);
 	/*
@@ -691,8 +727,8 @@ extractDelta(char *name, sccs *s, int newFile, FILE *f, int *np)
 	 * isn't used by current code (fastpatch+sfio), so this is good
 	 * enough.
 	 */
-	if (parent = sccs_findKey(s, b)) {
-		unless (tableGCA) tableGCA = strdup(b);
+	if (parent = sccs_findKey(sreal, b)) {
+		unless (opts->tableGCA) opts->tableGCA = strdup(b);
 	}
 
 	/* buffer the required init block */
@@ -700,19 +736,19 @@ delta1:	while ((b = fgetline(f)) && *b) {
 		unless (init) init = fmem();
 		fputs(b, init);
 		fputc('\n', init);
-		line++;
-		if (echo>4) fprintf(stderr, "%s\n", b);
+		opts->line++;
+		if (opts->echo>4) fprintf(stderr, "%s\n", b);
 	}
-	if (b) line++;
+	if (b) opts->line++;
 	assert(init);
 	rewind(init);
 
 	/* go get the delta table entry for this delta */
-	d = getRecord(s, init);
+	d = getRecord(scratch, init);
 	rewind(init);
-	sccs_sdelta(s, d, buf);
+	sccs_sdelta(scratch, d, buf);
 	if (opts->fast) {
-		if (skipkey(s, buf)) ignore = 1;
+		if (skipkey(sreal, buf)) ignore = 1;
 		goto save;
 	}
 	/*
@@ -722,22 +758,22 @@ delta1:	while ((b = fgetline(f)) && *b) {
 	 * applying the patch will clear the flag and the code paths
 	 * are all happier this way.
 	 */
-	if ((tmp = sccs_findKey(s, buf)) && !DANGLING(s, tmp)) {
-		if (echo > 3) {
+	if ((tmp = sccs_findKey(sreal, buf)) && !DANGLING(sreal, tmp)) {
+		if (opts->echo > 3) {
 			fprintf(stderr,
 			    "takepatch: delta %s already in %s, skipping it.\n",
-			    REV(s, tmp), s->sfile);
+			    REV(sreal, tmp), sreal->sfile);
 		}
 		skip++;
-	} else if (skipkey(s, buf)) {
-		if (echo>6) {
+	} else if (skipkey(sreal, buf)) {
+		if (opts->echo>6) {
 			fprintf(stderr,
 			    "takepatch: skipping marked delta in %s\n",
-			    s->sfile);
+			    sreal->sfile);
 		}
 		skip++;
 	} else {
-		fileNum++;
+		opts->fileNum++;
 	}
 save:
 	if (skip) {
@@ -745,8 +781,8 @@ save:
 		fclose(init);
 		init = 0;
 		/* Eat diffs */
-		while ((b = fgetline(f)) && *b) line++;
-		line++;
+		while ((b = fgetline(f)) && *b) opts->line++;
+		opts->line++;
 	} else {
 		if (ignore) {
 			/* fastpatch - ignore init block, keep diffs */
@@ -756,42 +792,54 @@ save:
 		p = new(patch);
 		p->initMem = init;
 		init = 0;
-		if (echo>5) fprintf(stderr, "\n");
+		if (opts->echo>5) fprintf(stderr, "\n");
 		p->remote = 1;
 		p->pid = pid;
-		sccs_sdelta(s, d, buf);
+		sccs_sdelta(scratch, d, buf);
 		p->me = strdup(buf);
-		sccs_sortkey(s, d, buf);
+		sccs_sortkey(scratch, d, buf);
 		p->sortkey = strdup(buf);
-		p->localFile = (s && (s != fake)) ? strdup(s->sfile) : 0;
+		p->localFile = (sreal && (sreal != opts->fake)) ?
+		    strdup(sreal->sfile) : 0;
 		sprintf(buf, "RESYNC/%s", name);
 		p->resyncFile = strdup(buf);
-		p->order = parent == d ? 0 : DATE(s, d);
-		if (echo>6) fprintf(stderr, "REM: %s %s %lu\n",
-		    REV(s, d), p->me, p->order);
-		c = line;
+		p->order = DATE(scratch, d);
+		if (opts->echo>6) fprintf(stderr, "REM: %s %s %lu\n",
+		    REV(sreal, d), p->me, p->order);
+		c = opts->line;
 		while ((b = fgetline(f)) && *b) {
 			unless (p->diffMem) p->diffMem = fmem();
+			if (countFiles && (*b == '>')) {
+				i = opts->fast ? 1 : 2;
+				sep = separator(&b[i]);
+				assert(sep);
+				*sep = 0;
+				if (!changesetKey(&b[1]) &&
+				    hash_insertStr(countFiles, &b[i], 0)) {
+					opts->N++;  /* for progress bar */
+				}
+				*sep = ' ';
+			}
 			fputs(b, p->diffMem);
 			fputc('\n', p->diffMem);
-			line++;
-			if (echo>5) fprintf(stderr, "%s\n", b);
+			opts->line++;
+			if (opts->echo>5) fprintf(stderr, "%s\n", b);
 		}
 		if (p->diffMem) rewind(p->diffMem);
 		if (opts->fast) {
 			/* header and diff are not connected */
-			if (FLAGS(s, d) & D_META) p->meta = 1;
-		} else if (FLAGS(s, d) & D_META) {
+			if (FLAGS(scratch, d) & D_META) p->meta = 1;
+		} else if (FLAGS(scratch, d) & D_META) {
 			p->meta = 1;
-			assert(c == line);
+			assert(c == opts->line);
 			assert(!p->diffMem);
 		}
-		line++;
-		if (echo>5) fprintf(stderr, "\n");
+		opts->line++;
+		if (opts->echo>5) fprintf(stderr, "\n");
 		(*np)++;
 		insertPatch(p, 1);
 	}
-	sccs_freedelta(s, d);
+	sccs_freedelta(scratch, d);
 	if ((c = getc(f)) != EOF) {
 		ungetc(c, f);
 		return (c != '=');
@@ -810,14 +858,14 @@ skipPatch(FILE *p)
 	int	c;
 
 	do {
-		b = fgetline(p); line++;
+		b = fgetline(p); opts->line++;
 		if (strneq(b, "# Patch checksum=", 17)) return 0;
 		/* Eat metadata */
-		while ((b = fgetline(p)) && *b) line++;
-		line++;
+		while ((b = fgetline(p)) && *b) opts->line++;
+		opts->line++;
 		/* Eat diffs */
-		while ((b = fgetline(p)) && *b) line++;
-		line++;
+		while ((b = fgetline(p)) && *b) opts->line++;
+		opts->line++;
 		if ((c = getc(p)) == EOF) return (0);
 		ungetc(c, p);
 	} while (c != '=');
@@ -843,7 +891,7 @@ private	void
 badXsum(int a, int b)
 {
 	SHOUT();
-	if (echo > 3) {
+	if (opts->echo > 3) {
 		char	*p = aprintf(" (%x != %x)", a, b);
 
 		getMsg("tp_badXsum", p, 0, stderr);
@@ -891,9 +939,9 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	char	buf[MAXKEY];
 
 	reversePatch();
-	unless (p = patchList) return (0);
+	unless (p = opts->patchList) return (0);
 
-	if (echo > 7) {
+	if (opts->echo > 7) {
 		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",
 		    p->localFile, p->resyncFile, p->pid, p->me);
 	}
@@ -908,7 +956,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			return (-1);
 		}
 	}
-	if (s && (s != fake) && getenv("_BK_COPY_SFILE")) {
+	if (s && (s != opts->fake) && getenv("_BK_COPY_SFILE")) {
 		if (fileCopy(s->sfile, p->resyncFile)) {
 			fprintf(stderr, "Copy of %s to %s failed",
 			    s->sfile, p->resyncFile);
@@ -927,7 +975,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			cmdlog_addnote(
 			    "_BK_COPY_SFILE", getenv("_BK_COPY_SFILE"));
 		}
-	} else if (s && (s != fake)) {
+	} else if (s && (s != opts->fake)) {
 		sccs_writeHere(s, p->resyncFile);
 	} else {
 		unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
@@ -936,8 +984,8 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			    "takepatch: can't create %s\n", p->resyncFile);
 			goto err;
 		}
-		s->heap = fake->heap;
-		FREE(fake);
+		s->heap = opts->fake->heap;
+		FREE(opts->fake);
 		s->bitkeeper = 1;
 		if (perfile) {
 			sccscopy(s, perfile);
@@ -955,7 +1003,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	*nfound = 0;
 	while (p) {
 		n++;
-		if (echo>9) {
+		if (opts->echo>9) {
 			fprintf(stderr, "PID: %s\nME:  %s\n",
 			    p->pid ? p->pid : "none", p->me);
 		}
@@ -971,14 +1019,14 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		d = 0;	/* in this case, parent */
 		if (iF && p->pid) {
 			unless (d = sccs_findKey(s, p->pid)) {
-				if ((echo == 2) || (echo == 3)) {
+				if ((opts->echo == 2) || (opts->echo == 3)) {
 					fprintf(stderr, " \n");
 				}
 				errorMsg("tp_ahead", p->pid, s->sfile);
 				/*NOTREACHED*/
 			}
 		}
-		if (echo>9) {
+		if (opts->echo>9) {
 			fprintf(stderr, "Child of %s", d ? REV(s, d) : "none");
 			if (p->meta) {
 				fprintf(stderr, " meta\n");
@@ -1032,7 +1080,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		char	*path;
 
 		assert(topkey);	// no porting a new component; use attach
-		for (d = 0, p = patchList; p; p = p->next) {
+		for (d = 0, p = opts->patchList; p; p = p->next) {
 			d = p->serial;
 			unless (d && (FLAGS(s, d) & D_REMOTE)) continue;
 			unless (PARENT(s, d)) continue;	/* rootkey untouched */
@@ -1068,7 +1116,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		if (portLocal) {	/* illegal to port local */
 			reversePatch();	/* new to old */
 			SHOUT();
-			for (d = 0, p = patchList; p; p = p->next) {
+			for (d = 0, p = opts->patchList; p; p = p->next) {
 				unless ((d = p->serial) &&
 				    (FLAGS(s, d) & D_REMOTE) && !TAG(s, d)) {
 					continue;
@@ -1099,8 +1147,8 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			/*NOTREACHED*/
 		}
 	}
-	if (CSET(s) && (echo == 3)) fputs(", ", stderr);
-	if (cset_write(s, (echo == 3), opts->fast)) {
+	if (CSET(s) && (opts->echo == 3)) fputs(", ", stderr);
+	if (cset_write(s, (opts->echo == 3), opts->fast)) {
 		SHOUT();
 		fprintf(stderr, "takepatch: can't update %s\n", s->sfile);
 		goto err;
@@ -1111,7 +1159,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	unless (CSET(s)) goto markup;
 
 	if (cdb = loadCollapsed()) {
-		for (p = patchList; p; p = p->next) {
+		for (p = opts->patchList; p; p = p->next) {
 			d = p->serial;
 			unless (d && (FLAGS(s, d) & D_REMOTE)) continue;
 			sccs_md5delta(s, d, buf);
@@ -1134,7 +1182,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	 * pending deltas
 	 */
 	if (proj_isProduct(0)) {
-		for (p = patchList; p; p = p->next) {
+		for (p = opts->patchList; p; p = p->next) {
 			char	*t, *s;
 			char	key[MAXKEY];
 
@@ -1150,7 +1198,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 
 				unless (changesetKey(key)) continue;
 
-				t = key2path(key, idDB, goneDB, 0);
+				t = key2path(key, opts->idDB, opts->goneDB, 0);
 				if (sccs_isPending(t)) {
 					dirname(t); /* strip /ChangeSet */
 					getMsg("tp_uncommitted",
@@ -1165,7 +1213,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	sprintf(csets_in, "%s/%s", ROOT2RESYNC, CSETS_IN);
 	csets = fopen(csets_in, "w");
 	assert(csets);
-	for (p = patchList; p; p = p->next) {
+	for (p = opts->patchList; p; p = p->next) {
 		d = p->serial;
 		unless (d && (FLAGS(s, d) & D_REMOTE)) continue;
 		sccs_sdelta(s, d, buf);
@@ -1177,7 +1225,7 @@ markup:
 	 * D_REMOTE used in sccs_resolveFiles()
 	 * D_SET used in cset_resum()
 	 */
-	for (d = 0, p = patchList; p; p = p->next) {
+	for (d = 0, p = opts->patchList; p; p = p->next) {
 		/*
 		 * In fastpatch, diffMem is not related to initMem, so
 		 * just clear all of them.
@@ -1210,12 +1258,12 @@ markup:
 	 */
 	s->state |= S_SET;
 	if (CSET(s)) {
-		if (echo == 3) fputs(", ", stderr);
-		if (cset_resum(s, 0, 0, echo == 3, 1)) {
+		if (opts->echo == 3) fputs(", ", stderr);
+		if (cset_resum(s, 0, 0, opts->echo == 3, 1)) {
 			getMsg("takepatch-chksum", 0, '=', stderr);
 			goto err;
 		}
-		if (echo == 3) progress_nldone();
+		if (opts->echo == 3) progress_nldone();
 	} else if (!BAM(s)) {
 		for (d = TABLE(s); d >= TREE(s); d--) {
 			unless ((FLAGS(s, d) & D_SET) && !TAG(s, d)) continue;
@@ -1233,18 +1281,20 @@ markup:
 	    	confThisFile++;
 		/* yeah, the count is slightly off if there were conflicts */
 	}
-	conflicts += confThisFile;
+	opts->conflicts += confThisFile;
 	if (BAM(s) && !bp_hasBAM()) {
 		/* this shouldn't be needed... */
 		if (touch(BAM_MARKER, 0664)) perror(BAM_MARKER);
 	}
 done:	sccs_free(s);
 	s = 0;
-	if (noConflicts && conflicts) errorMsg("tp_noconflicts", 0, 0);
+	if (opts->noConflicts && opts->conflicts) {
+		errorMsg("tp_noconflicts", 0, 0);
+	}
 	freePatchList();
 	if (topkey) free(topkey);
-	patchList = 0;
-	fileNum = 0;
+	opts->patchList = 0;
+	opts->fileNum = 0;
 	return (0);
 err:
 	if (topkey) free(topkey);
@@ -1294,7 +1344,7 @@ noupdates(char *localPath)
 		d = sccs_findKey(s, p);
 		assert(d);
 		if (FLAGS(s, d) & D_CSET) continue;
-		if (echo > 4) {
+		if (opts->echo > 4) {
 			fprintf(stderr,"MARK(%s|%s)\n", s->gfile, REV(s, d));
 		}
 		FLAGS(s, d) |= D_CSET;
@@ -1332,15 +1382,15 @@ applyPatch(char *localPath, sccs *perfile)
 	int	n = 0;
 	int	nump;
 	int	confThisFile;
-	int	flags = echo ? 0 : SILENT;
+	int	flags = opts->echo ? 0 : SILENT;
 	ticker	*tick = 0;
 
 	nump = reversePatch();
-	p = patchList;
+	p = opts->patchList;
 	if (!p && localPath) return (noupdates(localPath));
-	if (echo == 3) tick = progress_start(PROGRESS_MINI, nump);
+	if (opts->echo == 3) tick = progress_start(PROGRESS_MINI, nump);
 
-	if (echo > 7) {
+	if (opts->echo > 7) {
 		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",
 		    p->localFile, p->resyncFile, p->pid, p->me);
 	}
@@ -1373,18 +1423,18 @@ applyPatch(char *localPath, sccs *perfile)
 	assert(!CSET(s));
 	/* convert to uncompressed, it's faster, we saved the mode above */
 	unless (s) return (-1);
-	unless (tableGCA) goto apply;
-	if (echo > 6) {
+	unless (opts->tableGCA) goto apply;
+	if (opts->echo > 6) {
 		fprintf(stderr,
-		    "stripdel %s from %s\n", tableGCA, s->sfile);
+		    "stripdel %s from %s\n", opts->tableGCA, s->sfile);
 	}
-	if (d = sccs_next(s, sccs_findKey(s, tableGCA))) {
+	if (d = sccs_next(s, sccs_findKey(s, opts->tableGCA))) {
 		ser_t	e;
 
 		for (e = TABLE(s); e >= TREE(s); e--) {
 			FLAGS(s, e) |= D_SET;
 			MK_GONE(s, e);
-		    	if (echo>7) {
+		    	if (opts->echo>7) {
 				char	k[MAXKEY];
 
 				sccs_sdelta(s, e, k);
@@ -1416,7 +1466,7 @@ applyPatch(char *localPath, sccs *perfile)
 	}
 apply:
 
-	p = patchList;
+	p = opts->patchList;
 	if (p && !p->pid) {
 		/* initial file create */
 		n++;
@@ -1429,8 +1479,8 @@ apply:
 			    p->resyncFile);
 			return -1;
 		}
-		s->heap = fake->heap;
-		FREE(fake);
+		s->heap = opts->fake->heap;
+		FREE(opts->fake);
 		s->bitkeeper = 1;
 		if (perfile) {
 			sccscopy(s, perfile);
@@ -1450,7 +1500,7 @@ apply:
 		}
 		d = 0;
 		newflags = NEWFILE|DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
-		if (echo <= 3) newflags |= SILENT;
+		if (opts->echo <= 3) newflags |= SILENT;
 		if (sccs_delta(s, newflags, d, iF, dF, 0)) {
 			unless (s->io_error) perror("delta");
 			return -1;
@@ -1466,7 +1516,7 @@ apply:
 		n++;
 		if (tick) progress(tick, n);
 		assert(s);
-		if (echo > 9) {
+		if (opts->echo > 9) {
 			fprintf(stderr,
 			    "------------- %s delta ---------\n"
 			    "PID: %s\nME:  %s\n",
@@ -1474,17 +1524,17 @@ apply:
 			    p->pid, p->me);
 		}
 		unless (d = sccs_findKey(s, p->pid)) {
-			if ((echo == 2) || (echo == 3)) {
+			if ((opts->echo == 2) || (opts->echo == 3)) {
 				fprintf(stderr, " \n");
 			}
 			errorMsg("tp_ahead", p->pid, s->sfile);
 			/*NOTREACHED*/
 		}
 		unless (sccs_restart(s)) { perror("restart"); exit(1); }
-		if (echo > 9) fprintf(stderr, "Child of %s\n", REV(s, d));
+		if (opts->echo > 9) fprintf(stderr, "Child of %s\n", REV(s, d));
 		assert(!p->meta); /* this is not the cset file */
 		newflags = GET_FORCE|GET_SKIPGET|GET_EDIT;
-		unless (echo > 6) newflags |= SILENT;
+		unless (opts->echo > 6) newflags |= SILENT;
 		if (sccs_get(s, REV(s, d), 0, 0, 0, newflags, "-")) {
 			perror("get");
 			return (-1);
@@ -1503,7 +1553,7 @@ apply:
 			unless (dF) dF = fmem();
 		}
 		newflags = DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
-		if (echo <= 3) newflags |= SILENT;
+		if (opts->echo <= 3) newflags |= SILENT;
 		if (sccs_delta(s, newflags, 0, iF, dF, 0)) {
 			unless (s->io_error) perror("delta");
 			return (-1);
@@ -1513,10 +1563,10 @@ apply:
 		p = p->next;
 	}
 	sccs_free(s);
-	s = sccs_init(patchList->resyncFile, SILENT);
+	s = sccs_init(opts->patchList->resyncFile, SILENT);
 	assert(s);
 
-	for (d = 0, p = patchList; p; p = p->next) {
+	for (d = 0, p = opts->patchList; p; p = p->next) {
 		assert(p->me);
 		d = sccs_findKey(s, p->me);
 		/*
@@ -1548,7 +1598,7 @@ apply:
 	    	confThisFile++;
 		/* yeah, the count is slightly off if there were conflicts */
 	}
-	conflicts += confThisFile;
+	opts->conflicts += confThisFile;
 	if (BAM(s) && !bp_hasBAM()) {
 		/* this shouldn't be needed... */
 		if (touch(BAM_MARKER, 0664)) perror(BAM_MARKER);
@@ -1558,10 +1608,12 @@ apply:
 		progress_done(tick, 0);
 		progress_nldone();  /* don't inject \n later */
 	}
-	if (noConflicts && conflicts) errorMsg("tp_noconflicts", 0, 0);
+	if (opts->noConflicts && opts->conflicts) {
+		errorMsg("tp_noconflicts", 0, 0);
+	}
 	freePatchList();
-	patchList = 0;
-	fileNum = 0;
+	opts->patchList = 0;
+	opts->fileNum = 0;
 	return (0);
 }
 
@@ -1571,7 +1623,7 @@ apply:
 private	int
 getLocals(sccs *s, char *name)
 {
-	ser_t	g = sccs_findKey(s, tableGCA);
+	ser_t	g = sccs_findKey(s, opts->tableGCA);
 	FILE	*t;
 	patch	*p;
 	ser_t	d;
@@ -1580,7 +1632,7 @@ getLocals(sccs *s, char *name)
 
 	assert(!CSET(s));
 	assert(g);
-	if (echo > 6) {
+	if (opts->echo > 6) {
 		fprintf(stderr, "getlocals(%s, %s, %s)\n",
 		    s->gfile, REV(s, g), name);
 	}
@@ -1599,13 +1651,14 @@ getLocals(sccs *s, char *name)
 			char	key[MAXPATH];
 
 			sccs_sdelta(s, d, key);
-			for (p = patchList; p; p = p->next) {
+			for (p = opts->patchList; p; p = p->next) {
 				if (streq(key, p->me)) break;
 			}
 			if (p) continue;
 		}
 		assert(d);
-		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-init", ++fileNum);
+		sprintf(tmpf,
+		    "RESYNC/BitKeeper/tmp/%03d-init", ++opts->fileNum);
 		unless (t = fopen(tmpf, "w")) {
 			perror(tmpf);
 			exit(1);
@@ -1625,7 +1678,7 @@ getLocals(sccs *s, char *name)
 		p->localFile = strdup(name);
 		sprintf(tmpf, "RESYNC/%s", name);
 		p->resyncFile = strdup(tmpf);
-		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-diffs", fileNum);
+		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-diffs", opts->fileNum);
 		unless (FLAGS(s, d) & D_META) {
 			p->diffFile = strdup(tmpf);
 			sccs_restart(s);
@@ -1644,7 +1697,7 @@ getLocals(sccs *s, char *name)
 		sccs_sortkey(s, d, tmpf);
 		p->sortkey = strdup(tmpf);
 		p->order = DATE(s, d);
-		if (echo>6) {
+		if (opts->echo>6) {
 			fprintf(stderr,
 			    "LOCAL: %s %s %lu\n", REV(s, d), p->me, p->order);
 		}
@@ -1681,20 +1734,20 @@ insertPatch(patch *p, int strictOrder)
 {
 	patch	*t;
 
-	if (!patchList || earlierPatch(patchList, p)) {
-		p->next = patchList;
-		patchList = p;
+	if (!opts->patchList || earlierPatch(opts->patchList, p)) {
+		p->next = opts->patchList;
+		opts->patchList = p;
 		return;
 	} else if (strictOrder) {
 		fprintf(stderr,
 		    "%s: patch not in old to new order:\n%s\n%s\n",
-		    prog, patchList->me, p->me);
+		    prog, opts->patchList->me, p->me);
 		cleanup(CLEAN_RESYNC);
 	}
 	/*
 	 * We know that t is pointing to a node that is younger than us.
 	 */
-	for (t = patchList; t->next; t = t->next) {
+	for (t = opts->patchList; t->next; t = t->next) {
 		if (earlierPatch(t->next, p)) {
 			p->next = t->next;
 			t->next = p;
@@ -1721,15 +1774,15 @@ reversePatch(void)
 	/* t - temp; f - forward; p - previous */
 	patch	*t, *f, *p;
 
-	if (!patchList) return (n);
-	for (p = 0, t = patchList; t; t = f) {
+	if (!opts->patchList) return (n);
+	for (p = 0, t = opts->patchList; t; t = f) {
 		f = t->next;
 		t->next = p;
 		p = t;
 		++n;
 	}
 	assert(p);
-	patchList = p;
+	opts->patchList = p;
 	return (n);
 }
 
@@ -1738,7 +1791,7 @@ freePatchList(void)
 {
 	patch	*p;
 
-	for (p = patchList; p; ) {
+	for (p = opts->patchList; p; ) {
 		patch	*next = p->next;
 
 		if (p->initFile) {
@@ -1822,7 +1875,7 @@ resync_lock(void)
  * Next line is patch checksum, then SFIO data follows.
  */
 private int
-sfio(FILE *m)
+sfio(FILE *m, int files)
 {
 	char	*t;
 	FILE	*f = 0;
@@ -1841,8 +1894,14 @@ sfio(FILE *m)
 	}
 
 	flist = bktmp(0, "sfio_filelist");
-	sprintf(buf, "bk sfio -eigB %s - > '%s'",
-	    (echo > 1) ? "-P'Updating '" : "-q", flist);
+	if (opts->pbars && (files > 0)) {
+		sprintf(key, "-N%d --takepatch", files);
+	} else if (opts->echo > 1) {
+		sprintf(key, "-P'Updating '");
+	} else {
+		sprintf(key, "-q");
+	}
+	sprintf(buf, "bk sfio -eigB %s - > '%s'", key, flist);
 
 	fflush(stdout);
 	chdir(ROOT2RESYNC);
@@ -1855,7 +1914,7 @@ sfio(FILE *m)
 	while ((n = fread(buf, 1, sizeof(buf), m)) > 0) {
 		fwrite(buf, 1, n, f);
 	}
-	if (echo > 1) progress_nldone();
+	if (opts->echo > 1) progress_nldone();
 	if (pclose(f)) {
 		fprintf(stderr, "takepatch: BAM sfio -i failed.\n");
 		f = 0;
@@ -1884,7 +1943,7 @@ sfio(FILE *m)
 		sccs_sdelta(sr, sccs_ino(sr), key); /* rootkey */
 
 		/* Check the original version of this file */
-		unless (s = sccs_keyinit(0, key, INIT_NOCKSUM, idDB)) {
+		unless (s = sccs_keyinit(0, key, INIT_NOCKSUM, opts->idDB)) {
 			/* must be new file? */
 			sccs_free(sr);
 			sr = 0;
@@ -1894,7 +1953,8 @@ sfio(FILE *m)
 
 		/* local diffs are bad */
 		if (sccs_clean(s, SILENT|CLEAN_SHUTUP|CLEAN_CHECKONLY)) {
-			edited = addLine(edited, sccs2name(s->sfile));
+			opts->edited =
+			    addLine(opts->edited, sccs2name(s->sfile));
 			goto err;
 		}
 		if (DANGLING(s, TABLE(s))) {
@@ -1950,6 +2010,325 @@ err:	if (f) fclose(f);
 }
 
 /*
+ * The verifier engine from the old init.  It used to be a bubble
+ * in the pipeline to read and verify the stdin, then takepatch it.
+ * Now it is is done in parallel though I/O layering.
+ *
+ * Init builds it up and gets it going.  fclose() tears it down.
+ * Note: need to fclose this stuff.  Also think about checksumming
+ * in a different thread or in this one.
+ *
+ * The I/O layer has some braindeadness to make it easier to read.
+ * We are reading and parsing lines, which might not fit into the
+ * buffer handed to us to fill.  Save in a 'leftover' fmem, and
+ * the next readPatch call, only return what is in that buffer until
+ * it is empty, then fclose the fmem().  We could keep the fmem open,
+ * but this easier to know it works: if fmem, return it, else read
+ * new data.  In reality, fmem never used.
+ */
+
+typedef struct {
+	FILE	*leftover;	/* fmem of extra crud for next time */
+	FILE	*pending;	/* fmem of extra crud for next time */
+	FILE	*fin;		/* the file it is sitting on */
+	long	bytecount;	/* size of pending file for logs */
+	uLong	sumC, sumR;	/* The computed and real checksum */
+	u32	buffering;	/* remember how often we use leftover */
+
+	/* state bits */
+	u32	longline:1;	/* a continuation of earlier line */
+	u32	newline:1;	/* current line is a newline */
+	u32	preamble_nl:1;	/* previous line was a newline */
+	u32	preamble:1;	/* looking for patch version */
+	u32	version:1;	/* previous line was Patch vers: ... */
+	u32	type:1;		/* looking for patch type */
+	u32	versionblank:1;	/* previous line was \n after vers */
+	u32	filename:1;	/* previous line was == file == */
+	u32	first:1;	/* previous line was == file == */
+	u32	perfile:1;	/* previous line was perfile stuff */
+	u32	perblank:1;	/* previous line was per blank */
+	u32	metadata:1;	/* previous line was meta data block */
+	u32	metaline:1;	/* previous line was 48x- */
+	u32	metablank:1;	/* previous line was \n after meta */
+	u32	diffs:1;	/* previous line was diffs */
+	u32	diffsblank:1;	/* previous line was \n after diffs */
+	u32	sfiopatch:1;	/* previous line was == @SFIO == */
+	u32	sfiopending:1;	/* saw SFIO, but wait until checksum */
+	u32	sfio:1;		/* parse the sfio */
+	u32	nosum:1;	/* turn off checksumming */
+} pstate;
+
+private	int
+patchRead(void *cookie, char *outbuf, int outlen)
+{
+	pstate	*st = (pstate *)cookie;
+	char	*p;
+	size_t	left = outlen, len = 0, count = 0;
+	char	buf[MAXLINE];
+
+	if (st->leftover &&
+	   (p = fmem_peek(st->leftover, &len)) && len) {
+		/* If we have overflow from last time, just return it */
+		count = min(len, left);
+		memcpy(outbuf, p, count);
+		outbuf += count;
+		left -= count;
+		if (len -= count) {
+			memmove(p, &p[count], len);
+			ftrunc(st->leftover, len);
+		} else {
+			fclose(st->leftover);
+			st->leftover = 0;
+		}
+		return (outlen - left);
+	}
+	if (st->sfio) {
+		len = fread(outbuf, 1, left, st->fin);
+		left -= len;
+		st->bytecount += len;
+		if (st->pending &&
+		    (len != fwrite(outbuf, 1, len, st->pending))) {
+			// XXX: die or keep going with no pending file?
+			fprintf(stderr, "error saving patch\n");
+			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+		}
+		return (outlen - left);
+	}
+again:	assert(left);
+	unless (fnext(buf, st->fin)) {
+		if (st->preamble) errorMsg("tp_nothingtodo", 0, 0);
+		return (outlen - left);
+	}
+	st->newline = (!st->longline && streq("\n", buf));
+	if (opts->echo > 10) {
+		fprintf(stderr, "ST: ");
+		if (st->newline) fprintf(stderr, "nl ");
+		if (st->longline) fprintf(stderr, "ll ");
+		if (st->preamble_nl) fprintf(stderr, "p_nl ");
+		if (st->preamble) fprintf(stderr, "p ");
+		if (st->version) fprintf(stderr, "v ");
+		if (st->versionblank) fprintf(stderr, "vb ");
+		if (st->filename) fprintf(stderr, "f ");
+		if (st->first) fprintf(stderr, "1 ");
+		if (st->perfile) fprintf(stderr, "pf ");
+		if (st->perblank) fprintf(stderr, "pb ");
+		if (st->metadata) fprintf(stderr, "m ");
+		if (st->metaline) fprintf(stderr, "ml ");
+		if (st->metablank) fprintf(stderr, "mb ");
+		if (st->diffs) fprintf(stderr, "d ");
+		if (st->diffsblank) fprintf(stderr, "db ");
+		if (st->sfiopatch) fprintf(stderr, "patch ");
+		if (st->sfiopending) fprintf(stderr, "psfio ");
+		if (st->sfio) fprintf(stderr, "sfio ");
+		fputs(buf, stderr);
+	}
+	if (opts->echo > 7) fprintf(stderr, "P: %s", buf);
+	
+	if (st->longline) {
+		/* do nothing but pass through the rest of the line */
+	} else if (st->preamble) {
+		if (st->newline) {
+			st->preamble_nl = 1;
+		}
+		if (st->preamble_nl) {
+			if (streq(buf, PATCH_CURRENT) ||
+			    (opts->fast = streq(buf, PATCH_FAST))) {
+				st->type = 1;
+				st->preamble = 0;
+				st->preamble_nl = 0;
+			}
+		}
+	} else if (st->type) {
+		if (strneq(buf, PATCH_FEATURES, strsz(PATCH_FEATURES))) {
+			st->type = 0;
+			st->version = 1;
+		} else if (streq(buf, PATCH_REGULAR)) {
+			st->type = 0;
+			st->version = 1;
+		} else {
+			fprintf(stderr, "Expected type\n");
+			goto error;
+		}
+	} else if (st->version) {
+		if (st->newline) {
+			st->version = 0;
+			st->versionblank = 1;
+		} else {	/* false alarm */
+			if (st->pending) rewind(st->pending);
+			st->preamble = 1;
+			st->version = 0;
+		}
+	} else if (st->versionblank) {
+		if (strneq("== ", buf, 3)) {
+			st->versionblank = 0;
+			st->filename = 1;
+			st->first = 1;
+		} else if (strneq(buf, "# Patch checksum=", 17)) {
+			goto dosum;
+		} else {
+			fprintf(stderr, "Expected '== f =='\n");
+error:			fprintf(stderr, "GOT: %s", buf);
+			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+		}
+	} else if (st->filename) {
+		if (st->newline) {
+			fprintf(stderr, "Expected metadata\n");
+			goto error;
+		} else if (strneq(buf, "New file: ", 10)) {
+			st->perfile = 1;
+		} else {
+			st->metadata = 1;
+		}
+		st->filename = 0;
+	} else if (st->perfile) {
+		if (st->newline) {
+			st->perfile = 0;
+			st->perblank = 1;
+		}
+	} else if (st->perblank) {
+		if (st->newline) {
+			fprintf(stderr, "Expected metadata\n");
+			goto error;
+		}
+		st->metadata = 1;
+		st->perblank = 0;
+	} else if (st->metadata) {
+#define	DIVIDER	"------------------------------------------------\n"
+		if (st->newline) {
+			fprintf(stderr, "Expected metadata\n");
+			goto error;
+		} else if (streq(buf, DIVIDER)) {
+			st->metadata = 0;
+			st->metaline = 1;
+		}
+	} else if (st->metaline) {
+		if (st->newline) {
+			st->metaline = 0;
+			st->metablank = 1;
+		} else {
+			fprintf(stderr, "Expected metablank\n");
+			goto error;
+		}
+	} else if (st->metablank) {
+		st->metablank = 0;
+		if (st->newline) {	/* no diffs */
+			st->diffsblank = 1;
+		} else {
+			st->diffs = 1;
+		}
+	} else if (st->diffs || st->sfiopatch) {
+		if (st->newline) {
+			st->sfiopatch = st->diffs = 0;
+			st->diffsblank = 1;
+		} else if (st->sfiopatch) {
+			fprintf(stderr, "Expected newline after @SFIO@\n");
+			goto error;
+		}
+	} else if (st->diffsblank) {
+		if (strneq("== @SFIO@ ==", buf, 12)) {
+			st->sfiopatch = st->sfiopending = 1;
+			st->diffsblank = 0;
+		} else if (strneq("== ", buf, 3)) {
+			st->diffsblank = 0;
+			st->filename = 1;
+			st->first = 0;
+		} else if (strneq(buf, "# Patch checksum=", 17)) {
+dosum:			st->sumR = strtoul(buf+17, 0, 16);
+			assert(st->sumR != 0);
+			st->nosum = 1;
+			st->diffsblank = 0;
+			if (st->sfiopending) {
+				st->sfiopending = 0;
+				st->sfio = 1;
+			}
+		} else if (st->newline) {
+			fprintf(stderr, "Expected '== f ==' or key\n");
+		    	goto error;
+		} else {
+			st->diffsblank = 0;
+			st->metadata = 1;
+		}
+	}
+	st->longline = (strchr(buf, '\n') == 0);
+	if (st->preamble) goto again;
+
+	if (st->pending) {
+		if (fputs(buf, st->pending) == EOF) {
+			perror("fputs on patch");
+			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+		}
+	}
+	// write buf to outbuf and overflow to the fmembuf
+	len = strlen(buf);
+	st->bytecount += len;
+	unless (st->nosum) st->sumC = adler32(st->sumC, buf, len);
+	count = min(len, left);
+	memcpy(outbuf, buf, count);
+	outbuf += count;
+	left -= count;
+	if (len -= count) {
+		st->buffering++;	// trace that this happened
+		unless (st->leftover) st->leftover = fmem();
+		fwrite(&buf[count], 1, len, st->leftover);
+	}
+
+	return (outlen - left);
+}
+
+private	int
+patchClose(void *cookie)
+{
+	pstate	*st = (pstate *)cookie;
+	char	*note, incoming[MAXPATH];
+	int	rc = 0;
+
+	opts->p = 0;	/* XXX: Hack: block recursive close badXsum/cleanup */
+
+	/* save byte count for logs */
+	Fprintf("BitKeeper/log/byte_count", "%lu\n", st->bytecount);
+	if (st->pending) {
+		assert(st->fin == stdin);
+		fclose(st->pending);
+		note = aprintf("%u", (u32)st->bytecount);
+		cmdlog_addnote("psize", note);
+		free(note);
+		// and do the rename stuff if all is okay.
+		strcpy(incoming, opts->pendingFile);
+		unless (savefile("PENDING", 0, opts->pendingFile)) {
+			SHOUT();
+			perror("PENDING");
+			cleanup(CLEAN_RESYNC);
+		}
+		rename(incoming, opts->pendingFile);
+		if (Fprintf(
+		    "RESYNC/BitKeeper/tmp/patch", "%s\n", opts->pendingFile)
+		    < 0) {
+			perror("RESYNC/BitKeeper/tmp/patch");
+			exit(1);
+		}
+		if (opts->echo) {
+			NOTICE();
+			fprintf(stderr,
+			    "takepatch: saved entire patch in %s\n",
+			    opts->pendingFile);
+			NOTICE();
+		}
+	} else {
+		rc = fclose(st->fin);
+	}
+	if (st->buffering && getenv("_BK_DEVELOPER")) {
+		fprintf(stderr,
+		    "Leftover buffering %u times\n", st->buffering);
+	}
+
+	unless (st->sumR == st->sumC) badXsum(st->sumR, st->sumC);
+
+	if (st->leftover) fclose(st->leftover);
+	free(st);
+	return (rc);
+}
+
+/*
  * Go find the change set file and do this relative to that.
  * Create the RESYNC dir or bail out if it exists.
  * Put our pid in that dir so that we can figure out if
@@ -1963,35 +2342,10 @@ init(char *inputFile)
 {
 	char	buf[BUFSIZ];		/* used ONLY for input I/O */
 	char	*root, *t;
-	int	i, len;
-	FILE	*f, *g;
-	FILE	*m = 0;
-	uLong	sumC = 0, sumR = 0;
-	int	sfiopatch = 0;
-	struct	{
-		u32	newline:1;	/* current line is a newline */
-		u32	preamble_nl:1;	/* previous line was a newline */
-		u32	preamble:1;	/* looking for patch version */
-		u32	version:1;	/* previous line was Patch vers: ... */
-		u32	type:1;		/* looking for patch type */
-		u32	versionblank:1;	/* previous line was \n after vers */
-		u32	filename:1;	/* previous line was == file == */
-		u32	first:1;	/* previous line was == file == */
-		u32	perfile:1;	/* previous line was perfile stuff */
-		u32	perblank:1;	/* previous line was per blank */
-		u32	metadata:1;	/* previous line was meta data block */
-		u32	metaline:1;	/* previous line was 48x- */
-		u32	metablank:1;	/* previous line was \n after meta */
-		u32	diffs:1;	/* previous line was diffs */
-		u32	diffsblank:1;	/* previous line was \n after diffs */
-		u32	sfiopatch:1;	/* previous line was SFIO marker */
-	}	st;
-	char	*note;
-	ticker	*tick = 0;
-	char	incoming[MAXPATH];
-
-	bzero(&st, sizeof(st));
-	st.preamble = 1;
+	char	*saveFile;
+	int	i;
+	FILE	*f = 0;
+	pstate	*patch;
 
 	/*
 	 * If we are reading from stdin and we get ERROR/Nothing,
@@ -2001,15 +2355,16 @@ init(char *inputFile)
 		if (fnext(buf, stdin)) {
 			if (streq(buf, "ERROR\n")) exit(1);
 			if (streq(buf, "OK-Nothing to resync.\n")) {
-				if (echo) fputs(buf, stderr);
+				if (opts->echo) fputs(buf, stderr);
 				exit(0);
 			}
+			for (i = strlen(buf); i; i--) ungetc(buf[i-1], stdin);
 		} else {
 			errorMsg("tp_nothingtodo", 0, 0);
 		}
 	}
 
-	if (newProject) {
+	if (opts->newProject) {
 		initProject();
 	} else {
 		root = proj_root(0);
@@ -2017,12 +2372,12 @@ init(char *inputFile)
 			/* If we are invoked in an empty directory,
 			 * assume they meant -i.
 			 */
-			if (echo > 0) {
+			if (opts->echo > 0) {
 				fputs("takepatch: creating new repository.\n",
 				      stderr);
 			}
 			initProject();
-			newProject = 1;
+			opts->newProject = 1;
 		} else if (proj_cd2root()) {
 			SHOUT();
 			fputs("takepatch: can't find package root.\n", stderr);
@@ -2030,298 +2385,58 @@ init(char *inputFile)
 			exit(1);
 		}
 	}
+	resync_lock();
+	patch = new(pstate);
+	patch->preamble = 1;
 	if (streq(inputFile, "-")) {
-		if (echo && opts->mkpatch) {
-			fprintf(stderr, "Receiving patch ...");
-			tick = progress_start(PROGRESS_SPIN, 0);
-		}
-
+		patch->fin = stdin;
 		/*
 		 * Save the patch in the pending dir
 		 * and record we're working on it.  We use a .incoming
 		 * file and then rename it later.
 		 */
-		unless (savefile("PENDING", ".incoming", pendingFile)) {
+		unless (savefile("PENDING", ".incoming", opts->pendingFile)) {
 			SHOUT();
 			perror("PENDING");
 			cleanup(CLEAN_RESYNC);
 		}
-		f = fopen(pendingFile, "wb+");
-		assert(f);
-		resync_lock();
-		for (;;) {
-			st.newline = streq("\n", buf);
-			if (echo > 10) {
-				fprintf(stderr, "ST: ");
-				if (st.newline) fprintf(stderr, "nl ");
-				if (st.preamble_nl) fprintf(stderr, "p_nl ");
-				if (st.preamble) fprintf(stderr, "p ");
-				if (st.version) fprintf(stderr, "v ");
-				if (st.versionblank) fprintf(stderr, "vb ");
-				if (st.filename) fprintf(stderr, "f ");
-				if (st.first) fprintf(stderr, "1 ");
-				if (st.perfile) fprintf(stderr, "pf ");
-				if (st.perblank) fprintf(stderr, "pb ");
-				if (st.metadata) fprintf(stderr, "m ");
-				if (st.metaline) fprintf(stderr, "ml ");
-				if (st.metablank) fprintf(stderr, "mb ");
-				if (st.diffs) fprintf(stderr, "d ");
-				if (st.diffsblank) fprintf(stderr, "db ");
-				if (st.sfiopatch) fprintf(stderr, "sfio ");
-			}
-			if (echo > 7) fprintf(stderr, "P: %s", buf);
-	
-			if (st.preamble) {
-				if (st.newline) {
-					st.preamble_nl = 1;
-				}
-				if (st.preamble_nl) {
-					if (streq(buf, PATCH_CURRENT) ||
-					    (opts->fast = streq(buf, PATCH_FAST))) {
-						st.type = 1;
-						st.preamble = 0;
-						st.preamble_nl = 0;
-					}
-				}
-			} else if (st.type) {
-				if (strneq(buf, PATCH_FEATURES, strsz(PATCH_FEATURES))) {
-					if (parseFeatures(buf +
-						strsz(PATCH_FEATURES))) {
-						goto error;
-					}
-					st.type = 0;
-					st.version = 1;
-				} else if (streq(buf, PATCH_REGULAR)) {
-					st.type = 0;
-					st.version = 1;
-				} else {
-					fprintf(stderr, "Expected type\n");
-					goto error;
-				}
-			} else if (st.version) {
-				if (st.newline) {
-					st.version = 0;
-					st.versionblank = 1;
-				} else {	/* false alarm */
-					rewind(f);
-					st.preamble = 1;
-					st.version = 0;
-				}
-			} else if (st.versionblank) {
-				if (strneq("== ", buf, 3)) {
-					st.versionblank = 0;
-					st.filename = 1;
-					st.first = 1;
-				} else if (strneq(buf,
-				    "# Patch checksum=", 17)) {
-					sumR = strtoul(buf+17, 0, 16);
-					assert(sumR != 0);
-					fputs(buf, f);
-					break;
-				} else {
-					fprintf(stderr, "Expected '== f =='\n");
-error:					fprintf(stderr, "GOT: %s", buf);
-					cleanup(CLEAN_PENDING|CLEAN_RESYNC);
-				}
-			} else if (st.filename) {
-				if (tick) progress(tick, 0);
-				opts->N++;
-				if (st.newline) {
-					fprintf(stderr, "Expected metadata\n");
-					goto error;
-				} else if (strneq(buf, "New file: ", 10)) {
-					st.perfile = 1;
-				} else {
-					st.metadata = 1;
-				}
-				st.filename = 0;
-			} else if (st.perfile) {
-				if (st.newline) {
-					st.perfile = 0;
-					st.perblank = 1;
-				}
-			} else if (st.perblank) {
-				if (st.newline) {
-					fprintf(stderr, "Expected metadata\n");
-					goto error;
-				}
-				st.metadata = 1;
-				st.perblank = 0;
-			} else if (st.metadata) {
-#define	DIVIDER	"------------------------------------------------\n"
-				if (st.newline) {
-					fprintf(stderr, "Expected metadata\n");
-					goto error;
-				} else if (streq(buf, DIVIDER)) {
-					st.metadata = 0;
-					st.metaline = 1;
-				}
-			} else if (st.metaline) {
-				if (st.newline) {
-					st.metaline = 0;
-					st.metablank = 1;
-				} else {
-					fprintf(stderr, "Expected metablank\n");
-					goto error;
-				}
-			} else if (st.metablank) {
-				st.metablank = 0;
-				if (st.newline) {	/* no diffs */
-					st.diffsblank = 1;
-				} else {
-					st.diffs = 1;
-				}
-			} else if (st.diffs || st.sfiopatch) {
-				if (st.newline) {
-					st.sfiopatch = st.diffs = 0;
-					st.diffsblank = 1;
-				} else if (st.sfiopatch) {
-					fprintf(stderr,
-					    "Expected newline after @SFIO@\n");
-					goto error;
-				}
-			} else if (st.diffsblank) {
-				if (strneq("== @SFIO@ ==", buf, 12)) {
-					sfiopatch = st.sfiopatch = 1;
-					st.diffsblank = 0;
-				} else if (strneq("== ", buf, 3)) {
-					st.diffsblank = 0;
-					st.filename = 1;
-					st.first = 0;
-				} else if (strneq(buf,
-				    "# Patch checksum=", 17)) {
-					sumR = strtoul(buf+17, 0, 16);
-					assert(sumR != 0);
-					fputs(buf, f);
-					break;
-				} else if (st.newline) {
-					fprintf(stderr,
-					    "Expected '== f ==' or key\n");
-				    	goto error;
-				} else {
-					st.diffsblank = 0;
-					st.metadata = 1;
-				}
-			}
-
-			unless (st.preamble) {
-				for (;;) {
-					if (fputs(buf, f) == EOF) {
-						perror("fputs on patch");
-						cleanup(
-						    CLEAN_PENDING|CLEAN_RESYNC);
-					}
-					len = strlen(buf);
-					sumC = adler32(sumC, buf, len);
-					if (strchr(buf, '\n')) break;
-					unless (fnext(buf, stdin)) {
-						perror("fnext");
-						goto missing;
-					}
-				}
-			}
-			unless (fnext(buf, stdin)) {
-				perror("fnext");
-				goto missing;
-			}
-		}
-		if (st.preamble) errorMsg("tp_nothingtodo", 0, 0);
-		if (sfiopatch) {
-			while (len = fread(buf, 1, sizeof(buf), stdin)) {
-				fwrite(buf, 1, len, f);
-				if (tick) progress(tick, 0);
-			}
-		}
-		if (fclose(f)) {
-			perror("fclose on patch");
-			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
-		}
-		strcpy(incoming, pendingFile);
-		unless (savefile("PENDING", 0, pendingFile)) {
-			SHOUT();
-			perror("PENDING");
-			cleanup(CLEAN_RESYNC);
-		}
-		note = aprintf("%u", (u32)size(incoming));
-		cmdlog_addnote("psize", note);
-		free(note);
-		rename(incoming, pendingFile);
-		if (echo) {
-			if (tick) progress_done(tick, "done.");
-			NOTICE();
-			fprintf(stderr,
-			    "takepatch: saved entire patch in %s\n",
-			    pendingFile);
-			NOTICE();
-		}
-		unless (m = fopen(pendingFile, "r")) {
-			perror(pendingFile);
-			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
-		}
-		unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "w")) {
-			perror("RESYNC/BitKeeper/tmp/patch");
-			exit(1);
-		}
-		fprintf(g, "%s\n", pendingFile);
-		fclose(g);
+		saveFile = opts->pendingFile;
+		patch->pending = fopen(opts->pendingFile, "wb");
+		assert(patch->pending);
 	} else {
-		resync_lock();
-		unless (m = fopen(inputFile, "r")) {
+		patch->preamble_nl = 1;	/* end of pre-amble */
+		unless (patch->fin = fopen(inputFile, "r")) {
 			perror(inputFile);
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
-		unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "w")) {
-			perror("RESYNC/BitKeeper/tmp/patch");
-			exit(1);
-		}
-		fprintf(g, "%s\n", inputFile);
-		fclose(g);
-
-		i = 0;
-		while (t = fgetline(m)) {
-			if (strneq(t, PATCH_CURRENT, strsz(PATCH_CURRENT)-1) ||
-			    (opts->fast = strneq(t, PATCH_FAST, strsz(PATCH_FAST)-1))) {
-				len = strlen(t);
-				sumC = adler32(sumC, t, len);
-				sumC = adler32(sumC, "\n", 1);
-				t = fgetline(m);
-				i++;
-				break;
-			}
-		}
-		unless (i) errorMsg("tp_noversline", input, 0);
-		if (strneq(t, PATCH_FEATURES, strsz(PATCH_FEATURES))) {
-			if (parseFeatures(t + strsz(PATCH_FEATURES))) {
-				cleanup(CLEAN_PENDING|CLEAN_RESYNC);
-			}
-		}
-		do {
-			if (strneq("== ", t, 3)) ++opts->N;
-			len = strlen(t);
-			sumC = adler32(sumC, t, len);
-			sumC = adler32(sumC, "\n", 1);
-			unless (t = fgetline(m)) break;
-		} while (!strneq(t, "# Patch checksum=", 17));
-		unless (t && strneq(t, "# Patch checksum=", 17)) {
-			goto missing;
-		}
-		sumR = strtoul(t+17, 0, 16);
-		assert(sumR != 0);
+		saveFile = inputFile;
 	}
-
-	unless (sumR) {
-missing:	
-		SHOUT();
-		fputs("takepatch: missing checksum line in patch, aborting.\n",
-		      stderr);
+	if (Fprintf("RESYNC/BitKeeper/tmp/patch", "%s\n", saveFile) < 0) {
+		perror("RESYNC/BitKeeper/tmp/patch");
+		exit(1);
+	}
+	unless (f = funopen(patch, patchRead, 0, 0, patchClose)) {
+		perror("funopen patch");
+		exit(1);
+	}
+	while (t = fgetline(f)) {
+		if (strneq(t, PATCH_CURRENT, strsz(PATCH_CURRENT)-1) ||
+		    (opts->fast = strneq(t, PATCH_FAST, strsz(PATCH_FAST)-1))) {
+			break;
+		}
+	}
+	unless (t) errorMsg("tp_noversline", opts->input, 0);
+	unless (t = fgetline(f)) {
 		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 	}
-	if (sumR != sumC) badXsum(sumR, sumC);
-
-	rewind(m);
-	fgetline(m);		/* skip version number */
-
-	return (m);
+	if (strneq(t, PATCH_FEATURES, strsz(PATCH_FEATURES))) {
+		if (parseFeatures(t + strsz(PATCH_FEATURES))) {
+			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+		}
+	} else unless (strneq(t, PATCH_REGULAR, strsz(PATCH_REGULAR)-1)) {
+		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+	}
+	return (f);
 }
 
 private	void
@@ -2336,10 +2451,17 @@ cleanup(int what)
 {
 	int	i, rc = 1;
 
-	if (patchList) freePatchList();
-	if (idDB) mdbm_close(idDB);
-	if (goneDB) mdbm_close(goneDB);
-	if (saveDirs) {
+	if (opts->p) {
+		if (fclose(opts->p)) {
+			fprintf(stderr,
+			    "takepatch: failed closing input stream.\n");
+		}
+		opts->p = 0;
+	}
+	if (opts->patchList) freePatchList();
+	if (opts->idDB) mdbm_close(opts->idDB);
+	if (opts->goneDB) mdbm_close(opts->goneDB);
+	if (opts->saveDirs) {
 		fprintf(stderr, "takepatch: neither directory removed.\n");
 		goto done;
 	}
@@ -2349,9 +2471,9 @@ cleanup(int what)
 	} else {
 		fprintf(stderr, "takepatch: RESYNC directory left intact.\n");
 	}
-	unless (streq(input, "-")) goto done;
+	unless (streq(opts->input, "-")) goto done;
 	if (what & CLEAN_PENDING) {
-		unlink(pendingFile);
+		unlink(opts->pendingFile);
 		if (emptyDir("PENDING")) {
 			rmdir("PENDING");
 		} else {
@@ -2359,31 +2481,35 @@ cleanup(int what)
 			    "takepatch: other patches left in PENDING\n");
 		}
 	} else {
-		if (exists(pendingFile)) {
+		if (exists(opts->pendingFile)) {
 			fprintf(stderr, "takepatch: patch left in %s\n",
-			    pendingFile);
+			    opts->pendingFile);
 		}
 	}
 done:
 	if (what & CLEAN_OK) {
 		rc = 0;
 	} else {
-		if (edited) {
+		if (opts->edited) {
 			shout();
 			fprintf(stderr,
 			    "The following files are modified locally and "
 			    "in the patch:\n");
-			EACH(edited) fprintf(stderr, "\t%s\n", edited[i]);
+			EACH(opts->edited) {
+				fprintf(stderr, "\t%s\n", opts->edited[i]);
+			}
 			fprintf(stderr,
 			    "For more information run \"bk help tp1\"\n");
 		}
 		SHOUT2();
-		if (errfiles) {
+		if (opts->errfiles) {
 			fprintf(stderr,
 			    "Errors during update of the following files:\n");
-			EACH(errfiles) fprintf(stderr, "%s\n", errfiles[i]);
+			EACH(opts->errfiles) {
+				fprintf(stderr, "%s\n", opts->errfiles[i]);
+			}
 			SHOUT2();
-			freeLines(errfiles, free);
+			freeLines(opts->errfiles, free);
 		}
 	}
 	exit(rc);

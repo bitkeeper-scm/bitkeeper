@@ -187,7 +187,6 @@ EOF
 cmpfiles WANT LOG-v
 #
 cat <<EOF > WANT
-Receiving patch ... done.
 ---------------------------------------------------------------------------
 takepatch: saved entire patch in $PENDING
 ---------------------------------------------------------------------------
@@ -196,55 +195,53 @@ EOF
 cmpfiles WANT LOG-m-v-filt
 #
 cat <<EOF > WANT
----------------------------------------------------------------------------
-takepatch: saved entire patch in $PENDING
----------------------------------------------------------------------------
 Updating ChangeSet
 Updating send-as-deltas
 Updating BAM
 Updating newfile
 Updating send-as-sfile
+---------------------------------------------------------------------------
+takepatch: saved entire patch in $PENDING
+---------------------------------------------------------------------------
 takepatch: 2 new changesets, 0 conflicts in 5 files
 EOF
 cmpfiles WANT LOG-vv
 #
 cat <<EOF > WANT
-Receiving patch ... done.
----------------------------------------------------------------------------
-takepatch: saved entire patch in $PENDING
----------------------------------------------------------------------------
 Updating ChangeSet
 Updating send-as-deltas
 Updating BAM
 Updating newfile
 Updating send-as-sfile
+---------------------------------------------------------------------------
+takepatch: saved entire patch in $PENDING
+---------------------------------------------------------------------------
 takepatch: 2 new changesets, 0 conflicts in 5 files
 EOF
 cmpfiles WANT LOG-m-vv-filt
 
 cat <<EOF > WANT
----------------------------------------------------------------------------
-takepatch: saved entire patch in $PENDING
----------------------------------------------------------------------------
 Updating ChangeSet, renumbering, checking checksums
 Updating send-as-deltas
 Updating BAM
 Updating newfile
 Updating send-as-sfile
+---------------------------------------------------------------------------
+takepatch: saved entire patch in $PENDING
+---------------------------------------------------------------------------
 takepatch: 2 new changesets, 0 conflicts in 5 files
 EOF
 cmpfiles WANT LOG-vvv-filt
 
 cat <<EOF > WANT
-Receiving patch ... done.
----------------------------------------------------------------------------
-takepatch: saved entire patch in $PENDING
----------------------------------------------------------------------------
 Updating ChangeSet, renumbering, checking checksums
 Updating send-as-deltas
 Updating BAM
 Updating newfile
 Updating send-as-sfile
+---------------------------------------------------------------------------
+takepatch: saved entire patch in $PENDING
+---------------------------------------------------------------------------
 takepatch: 2 new changesets, 0 conflicts in 5 files
 EOF
 cmpfiles WANT LOG-m-vvv-filt

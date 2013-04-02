@@ -116,7 +116,8 @@ bk undos X > long1.ref
 cmp -s long1 long1.ref
 if [ $? -ne 0 ]; then echo failed; diff long1 long1.ref; exit 1; fi
 bk commit $S -yCset
-bk send $Q -r1.3 - | (cd "$HERE/copy"; bk takepatch) 
+# takepatch buffering message triggered by long line; disable env
+bk send $Q -r1.3 - | (cd "$HERE/copy"; bk -?_BK_DEVELOPER= takepatch) 
 cd "$HERE/copy/src"
 bk resolve $Q
 bk co $Q long1
