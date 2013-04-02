@@ -35,13 +35,15 @@ cmd_nested(int ac, char **av)
 			}
 		}
 		if (resolve) bkd_doResolve(av[0], quiet, verbose);
-		if (nested_unlock(0, nlid)) {
+		if (nested_unlock(0, nlid) &&
+		    (nl_errno != NL_LOCK_FILE_NOT_FOUND)) {
 			error("%s", nested_errmsg());
 			return (1);
 		}
 		out("@OK@\n");
 	} else if (streq(av[1], "abort")) {
-		if (nested_abort(0, nlid)) {
+		if (nested_abort(0, nlid) &&
+		    (nl_errno != NL_LOCK_FILE_NOT_FOUND)) {
 			error("%s", nested_errmsg());
 			return (1);
 		}
