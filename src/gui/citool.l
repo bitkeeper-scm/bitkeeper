@@ -1123,17 +1123,17 @@ selectFile(string node)
 		goto done;
 	}
 
+	self.selected = node;
 	ListBox_select(self.o_files, node);
 	ListBox_see(self.o_files, node);
 	Update_idletasks();
 
 	sf = self.files{file};
-	self.comments = getComments(sf); // get comments from disk
+	self.comments = getCommentsFromDisk(sf);
 
 	// Update commented state of this file based on what we just got.
 	self.commented = setComments(sf, self.comments);
 
-	self.selected = node;
 	configureFile(sel); // redraw the previous file's icon
 	showFile(sf);
 	updateButtons();
@@ -1721,6 +1721,16 @@ createImages()
 string
 getComments(sfile sf)
 {
+	if (defined(sf.node) && (sf.node == getSelectedNode())) {
+		return (getCurrentComments());
+	} else {
+		return (getCommentsFromDisk(sf));
+	}
+}
+
+string
+getCommentsFromDisk(sfile sf)
+{
 	string	comments;
 
 	// If this is a cset file and we have the comments cached, just
@@ -1742,12 +1752,7 @@ getComments(sfile sf)
 		return (comments);
 	}
 
-	if (defined(sf.node) && (sf.node == getSelectedNode())) {
-		comments = getCurrentComments();
-	} else {
-		comments = bk("cfile print '${sf.file}'");
-	}
-
+	comments = bk("cfile print '${sf.file}'");
 	if (comments == "") {
 		// If we have a template for this file name, plug in
 		// the template comments.  This is currently only
