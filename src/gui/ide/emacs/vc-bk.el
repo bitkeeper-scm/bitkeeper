@@ -198,6 +198,19 @@
   "Return string for placement into the modeline for FILE."
     (vc-default-mode-line-string 'Bk file))
 
+(defun vc-bk-revert (file &optional contents-done)
+  "Revert FILE to the version it was based on. If FILE is a directory,
+revert all subfiles."
+  (if (file-directory-p file)
+      (mapc 'vc-sccs-revert (vc-expand-dirs (list file)))
+    (vc-bk-command nil 0 file "unedit")
+    (let ((editable (eq (vc-bk-checkout-model buffer-file-name) 'implicit)))
+      (vc-checkout buffer-file-name editable)
+      (vc-state-refresh buffer-file-name 'bk)
+      (vc-mode-line buffer-file-name)
+      (setq buffer-read-only (not editable)))
+    (vc-file-setprop file 'vc-working-revision nil)))
+
 (defun vc-bk-find-file-hook ()
   "If you're loading an unchecked out file, then get it first"
   ;;(message "vc-bk-find-file-hook: %s" buffer-file-name)
