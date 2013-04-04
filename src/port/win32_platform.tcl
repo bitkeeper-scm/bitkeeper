@@ -9,7 +9,7 @@ proc bk_initPlatform {} \
 	global file_start_stop file_stop line_rev bk_fs file_old_new keytmp
 
 	# init for WIN32 env
-	set sdiffw [list "diff" "-W" "1" "-y" ]
+	set sdiffw [list "bk" "ndiff" "--sdiff=1"]
 	set dev_null "nul"
 	set tmp_dir $env(TEMP)
 	if {[info exists env(TMPDIR)] && [file writable $env(TMPDIR)]} {

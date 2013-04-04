@@ -53,6 +53,21 @@ typedef void (*df_puts)(void *a, int alen,
  */
 typedef void (*df_hdr)(int lno, void *extra, FILE *out);
 
+#define	DF_COMMON_START	0x00000001
+#define	DF_COMMON_END	0x00000002
+#define	DF_LEFT_START	0x00000004
+#define	DF_LEFT_END	0x00000008
+#define	DF_RIGHT_START	0x00000010
+#define	DF_RIGHT_END	0x00000020
+#define	DF_MOD_START	0x00000040
+#define	DF_MOD_END	0x00000080
+
+/*
+ * For printing decorations around file.
+ * where is one of the previously defined flags.
+ */
+typedef void (*df_deco)(u32 where, void *extra, FILE *out);
+
 /*
  * Boolean function that returns true if this a good alignment point
  * for the diffs. E.g. to align on whitespace for text diffs.
@@ -95,7 +110,7 @@ void	diff_printRCS(df_ctx *dc, df_puts pfn, FILE *out);
 void	diff_printUnified(df_ctx *dc, char *nameA, time_t *timeA,
     char *nameB, time_t *timeB, int context,
     df_puts pfn, df_hdr phdr, FILE *out);
-void	diff_printIfDef(df_ctx *dc, char *defstr, df_puts pfn, FILE *out);
+void	diff_printDecorated(df_ctx *dc, df_puts pfn, df_deco dfn, FILE *out);
 
 /*
  * Walking the diffs by hand.

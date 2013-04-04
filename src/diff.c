@@ -866,7 +866,7 @@ diff_printRCS(df_ctx *dc, df_puts pfn, FILE *out)
 }
 
 void
-diff_printIfDef(df_ctx *dc, char *defstr, df_puts pfn, FILE *out)
+diff_printDecorated(df_ctx *dc, df_puts pfn, df_deco dfn, FILE *out)
 {
 	int	i;
 	int	x, y;
@@ -881,27 +881,32 @@ diff_printIfDef(df_ctx *dc, char *defstr, df_puts pfn, FILE *out)
 	x = 1;
 	y = 1;
 	EACH_INDEX(h, i) {
-		/* common */
-		for (; x < h[i].li; x++) {
-			pfn(dc->things[0][x].data,
-			    dc->things[0][x].len,
-			    LEFT, x == n, dc->extra,
-			    out);
+		if (x < h[i].li) {
+			dfn(DF_COMMON_START, dc->extra, out);
+			for (; x < h[i].li; x++) {
+				pfn(dc->things[0][x].data,
+				    dc->things[0][x].len,
+				    LEFT, x == n, dc->extra,
+				    out);
+			}
+			dfn(DF_COMMON_END, dc->extra, out);
 		}
-		if (h[i].ll) fprintf(out, "#ifndef %s\n", defstr);
-		/* change */
-		for (; x < (h[i].li + h[i].ll); x++) {
-			pfn(dc->things[0][x].data,
-			    dc->things[0][x].len,
-			    LEFT, x == n, dc->extra,
-			    out);
+		if (h[i].ll && h[i].rl) dfn(DF_MOD_START, dc->extra, out);
+		if (h[i].ll) {
+			dfn(DF_LEFT_START, dc->extra, out);
+			for (; x < (h[i].li + h[i].ll); x++) {
+				pfn(dc->things[0][x].data,
+				    dc->things[0][x].len,
+				    LEFT, x == n, dc->extra,
+				    out);
+			}
 		}
 		if (h[i].ll && h[i].rl) {
-			fprintf(out, "#else /* %s */\n", defstr);
+			dfn(DF_LEFT_END|DF_RIGHT_START, dc->extra, out);
 		} else if (h[i].ll) {
-			fprintf(out, "#endif /* ! %s */\n", defstr);
+			dfn(DF_LEFT_END, dc->extra, out);
 		} else if (h[i].rl) {
-			fprintf(out, "#ifdef %s\n", defstr);
+			dfn(DF_RIGHT_START, dc->extra, out);
 		}
 		for (y = h[i].ri; y < (h[i].ri + h[i].rl); y++) {
 			pfn(dc->things[1][y].data,
@@ -909,13 +914,18 @@ diff_printIfDef(df_ctx *dc, char *defstr, df_puts pfn, FILE *out)
 			    RIGHT, y == m, dc->extra,
 			    out);
 		}
-		if (h[i].rl) fprintf(out, "#endif /* %s */\n", defstr);
+		if (h[i].rl) dfn(DF_RIGHT_END, dc->extra, out);
+		if (h[i].ll && h[i].rl) dfn(DF_MOD_END, dc->extra, out);
 	}
-	for (; y <= m; y++) {
+	if (y <= m) {
+		dfn(DF_COMMON_START, dc->extra, out);
+		for (; y <= m; y++) {
 			pfn(dc->things[1][y].data,
 			    dc->things[1][y].len,
 			    RIGHT, y == m, dc->extra,
 			    out);
+		}
+		dfn(DF_COMMON_END, dc->extra, out);
 	}
 }
 

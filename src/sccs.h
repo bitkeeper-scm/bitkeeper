@@ -943,13 +943,13 @@ typedef struct {
 } filecnt;
 
 typedef struct {
-	int	sdiff;			/* diff kind (transitional) */
 	int	flags;			/* flags (transitional) */
 	int	adds, dels, mods;	/* lines added/deleted/modified */
 	char	*out_define;		/* diff -D */
 	regex	*pattern;		/* compiled pattern for diff -p */
 	int	context;		/* context for unified output
 					 * (-1 means 0) see delta comments */
+	u32	out_sdiff;		/* sdiff output (value is # of cols) */
 	u32	ignore_all_ws:1;	/* ignore all whitespace */
 	u32	ignore_ws_chg:1;	/* ignore changes in white space */
 	u32	minimal:1;		/* find minimal diffs */

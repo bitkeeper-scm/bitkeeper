@@ -13,7 +13,7 @@ proc bk_initPlatform {} \
 		exit 1
 	}
 
-	set sdiffw [list "sdiff" "-w1" ]
+	set sdiffw [list "bk" "ndiff" "--sdiff=1"]
 	set dev_null "/dev/null"
 	set wish "wish"
 	set tmp_dir  "/tmp"
