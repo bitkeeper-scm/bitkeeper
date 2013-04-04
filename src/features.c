@@ -65,7 +65,7 @@ features_main(int ac, char **av)
 	unless (av[optind]) {
 		bk_nested2root(1);
 		if (here = features_fromBits(features_bits(0))) {
-			printf("%s\n", here);
+			if (strlen(here) > 0) printf("%s\n", here);
 			free(here);
 			return (0);
 		} else {
@@ -177,7 +177,7 @@ features_setMask(project *p, u32 bits, u32 mask)
 
 	ffile = proj_fullpath(p, "BitKeeper/log/features");
 	assert(ffile);
-	if (nbits) {
+	if (nbits & ~FEAT_ALWAYS) {
 		sprintf(ftmp, "%s.new.%u", ffile, getpid());
 		t = features_fromBits(nbits);
 		for (q = t; *q; q++) if (*q == ',') *q = '\n';
@@ -206,7 +206,7 @@ features_setMask(project *p, u32 bits, u32 mask)
 			if (c->product || !c->present) continue;
 
 			sprintf(t, "%s/BitKeeper/log/features", c->path);
-			if (nbits) {
+			if (nbits & ~FEAT_ALWAYS) {
 				fileCopy(ffile, ftmp);
 			} else {
 				unlink(ftmp);
@@ -377,7 +377,7 @@ features_toBits(char *features, char *bad)
 	char	**list;
 	char	**missing = 0;
 	char	*t;
-	u32	ret = 1;
+	u32	ret = FEAT_ALWAYS;
 	static	hash	*namemap;
 
 	unless (namemap) {
@@ -414,7 +414,7 @@ features_fromBits(u32 bits)
 	char	**list = 0;
 	char	*ret;
 
-	bits &= ~1;
+	bits &= ~FEAT_ALWAYS;
 
 	for (i = 1; bits && (i <= NFEATURES); i++) {
 		if (bits & (1 << i)) {

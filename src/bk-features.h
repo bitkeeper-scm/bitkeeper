@@ -50,6 +50,7 @@
 	X(12, BWEAVE, "BWEAVEv2", 1, 0)		\
 
 enum {
+	FEAT_ALWAYS = 1,		/* bit0 is always set */
 #define X(a, b, c, d, e) FEAT_ ## b = (1 << a),
 	FEATURES
 #undef X

@@ -106,3 +106,12 @@ remap
 EOF
 cmpfiles WANT ../without-bin/BitKeeper/log/features
 echo OK
+
+echo $N Test that bk features with none prints nothing ..............$NL
+cd "$HERE"
+bk clone $Q --compat project compat
+cd compat
+touch WANT
+bk features > GOT
+cmpfiles WANT GOT
+echo OK

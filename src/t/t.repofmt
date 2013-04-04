@@ -193,6 +193,7 @@ grep -q bSFILEv1 ../repo.bsfile-upgrade-repo/BitKeeper/log/features && fail
 # --compat clears feature
 bk clone $Q --compat . ../repo.bsfile-compat || fail
 checkascii ../repo.bsfile-compat
-grep -q bSFILEv1 ../repo.bsfile-compat/BitKeeper/log/features && fail
+# the file should be gone
+test -f ../repo.bsfile-compat/BitKeeper/log/features && fail
 echo OK
 
