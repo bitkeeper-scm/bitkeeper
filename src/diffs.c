@@ -76,7 +76,7 @@ diffs_main(int ac, char **av)
 
 	dop.out_header = 1;
 	while ((c = getopt(ac, av,
-		    "@|a;A;bBcC|d;efhHl|nNpr;R|su|vw", lopts)) != -1) {
+		    "@|a;A;bBcC|d;efhHl|nNpr;R|s|u|vw", lopts)) != -1) {
 		switch (c) {
 		    case 'A':
 			flags |= GET_ALIGN;
@@ -98,7 +98,15 @@ diffs_main(int ac, char **av)
 		    case 'N': dop.new_is_null = 1; break;
 		    case 'p': dop.out_show_c_func = 1; break;	/* doc 2.0 */
 		    case 'R': unless (Rev = optarg) Rev = "-"; break;
-		    case 's': dop.sdiff = 1; break;		/* doc 2.0 */
+		    case 's':
+			if (optarg) {
+				dop.out_sdiff = strtoul(optarg, 0, 10);
+			} else if (p = getenv("COLUMNS")) {
+				dop.out_sdiff = strtoul(p, 0, 10);
+			} else {
+				dop.out_sdiff = 80;
+			}
+			break;		/* doc 2.0 */
 		    case 'u':
 			dop.out_unified = 1;
 			if (optarg && isdigit(optarg[0])) {
@@ -137,7 +145,7 @@ diffs_main(int ac, char **av)
 	}
 
 	if (diffstat_only && (dop.out_unified || !dop.out_header ||
-		dop.out_comments || dop.out_rcs || dop.sdiff)) {
+		dop.out_comments || dop.out_rcs || dop.out_sdiff)) {
 		fprintf(stderr, "%s: --stats-only should be alone\n", av[0]);
 		return (1);
 	}

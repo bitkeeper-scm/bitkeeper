@@ -1355,11 +1355,7 @@ proc sfile {} \
 
 	busy 1
 	set sfile [exec bk sfiles $file]
-	catch {exec bk prs -hn -d:COMPRESSION: -r+ $sfile} compression
-	if {$compression == "gzip"} { 
-		catch {exec bk admin -Znone $sfile} err
-	}
-	set f [open "|[list bk _cat $sfile]"]
+	set f [open "|[list bk _scat $sfile]"]
 	set ttype "sccs"
 	filltext $w(aptext) $f 1 "No sfile data"
 }

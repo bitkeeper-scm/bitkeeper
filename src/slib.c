@@ -14322,44 +14322,40 @@ doDiff(sccs *s, df_opt *dop, char *leftf, char *rightf,
 	char	spaces[80];
 	int	first = 1;
 	char	*error = "";
+	df_ctx	*dc = 0;
+	hunk	*hunks, *h;
 	df_opt	dop2 = {0};
 
 	unless (dop) dop = &dop2;
-	if (dop->sdiff) {
-		int	i, c;
-		char	*columns = 0;
+	if (dop->out_sdiff) {
+		int	i = 0;
 
-		unless (columns = getenv("COLUMNS")) columns = "80";
-		c = atoi(columns);
-		for (i = 0; i < c/2 - 18; ) spaces[i++] = '=';
-		spaces[i] = 0;
-		sprintf(buf, "bk sdiff -w%s '%s' '%s'", columns, leftf, rightf);
-		diffs = popen(buf, "r");
-		if (!diffs) return (-1);
-		diffFile[0] = 0;
-	} else {
-		df_ctx	*dc = 0;
-		hunk	*hunks, *h;
-
-		strcpy(spaces, "=====");
-		unless (bktmp(diffFile, "diffs")) return (-1);
-		dop->ignore_trailing_cr = 1;
-		diff_files(leftf, rightf, dop, &dc, diffFile);
-		if (dop->out_diffstat) {
-			hunks = diff_hunks(dc);
-			dop->adds = dop->dels = dop->mods = 0;
-			EACHP(hunks, h) {
-				if (h->ll == h->rl) {
-					dop->mods += h->ll;
-				} else {
-					dop->adds += h->rl;
-					dop->dels += h->ll;
-				}
+		if (dop->out_sdiff > 36) {
+			for (i = 0; i < dop->out_sdiff/2 - 18; ) {
+				spaces[i++] = '=';
 			}
 		}
-		diff_free(dc);
-		diffs = fopen(diffFile, "rt");
+		spaces[i] = 0;
+	} else {
+		strcpy(spaces, "=====");
 	}
+	unless (bktmp(diffFile, "diffs")) return (-1);
+	dop->ignore_trailing_cr = 1;
+	diff_files(leftf, rightf, dop, &dc, diffFile);
+	if (dop->out_diffstat) {
+		hunks = diff_hunks(dc);
+		dop->adds = dop->dels = dop->mods = 0;
+		EACHP(hunks, h) {
+			if (h->ll == h->rl) {
+				dop->mods += h->ll;
+			} else {
+				dop->adds += h->rl;
+				dop->dels += h->ll;
+			}
+		}
+	}
+	diff_free(dc);
+	diffs = fopen(diffFile, "rt");
 	if (WRITABLE(s) && !EDITED(s)) {
 		error = " (writable without lock!) ";
 	}
@@ -14385,12 +14381,8 @@ doDiff(sccs *s, df_opt *dop, char *leftf, char *rightf,
 	if (dop->out_comments && !first) {
 		fprintf(out, "\n");
 	}
-	if (dop->sdiff) {
-		pclose(diffs);
-	} else {
-		fclose(diffs);
-		unlink(diffFile);
-	}
+	fclose(diffs);
+	unlink(diffFile);
 	return (0);
 }
 
