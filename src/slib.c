@@ -10593,7 +10593,7 @@ checkOpenBranch(sccs *s, int flags)
 		 * check for bad R delta even if it is marked gone so we warn,
 		 * then skip the rest if they are GONE.
 		 */
-		if (streq(REV(s, d), "1.0")) continue;
+		if (d == TREE(s)) continue;
 		if (CSET(s)) {
 			if (!ADDED(s, d) && !DELETED(s, d) && !SAME(s, d) &&
 			    !(FLAGS(s, d) & D_SYMBOLS) && !SYMGRAPH(s, d)) {

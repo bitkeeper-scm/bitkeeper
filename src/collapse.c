@@ -443,7 +443,7 @@ do_file(char *file, char *tiprev)
 	d = sccs_findrev(s, "+");
 	tipd = tiprev ? sccs_findrev(s, tiprev) : parent_of_tip(s);
 	unless (tipd) goto done;
-	if (streq(REV(s, tipd), "1.0")) tipd = 0;
+	if (tipd == TREE(s)) tipd = 0;
 	/* tipd is not the delta that will be the new tip */
 	if (tipd == d) {
 		rc = 0;
@@ -665,7 +665,7 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 	EACH (rmdeltas) {
 		d = rmdeltas[i];
 
-		if (streq(REV(s, d), "1.0")) continue;
+		if (d == TREE(d)) continue;
 		unless (HAS_COMMENTS(s, d)) continue;
 
 		/*
