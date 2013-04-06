@@ -82,7 +82,7 @@ _repocheck() {
 			exit 1
 		}
 		cd "$1" || exit 1
-		_feature_test
+		__feature_test
 	}
 	# check output goes to stderr, so put this to stderr too
 	test "X$V" != X && echo === Checking `bk $P pwd` === 1>&2
@@ -636,7 +636,7 @@ _extras() {		# /* doc 2.0 */
 	}
 	if [ "X$1" != X -a -d "$1" ]
 	then	cd "$1"
-		_feature_test
+		__feature_test
 		shift
 		bk sfiles -x $A "$@"
 	else	bk -R sfiles -x $A "$@"
