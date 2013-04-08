@@ -124,6 +124,15 @@ Clone nomally uses hard links whenever it can.  This option will
 prevent this and is useful to create an archive of a repository that
 copies every file.
 .tp
+.B \-\-parents
+Instead of setting the parent to the 
+.ARG from
+url, use 
+.ARG from's 
+parents.
+Useful when you want to pull from/push to the same places as
+.ARG from .
+.tp
 .B \-q
 Run quietly.
 .tp

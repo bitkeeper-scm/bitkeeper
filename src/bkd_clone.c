@@ -159,9 +159,10 @@ compressed(int level, int lclone)
 	char	*sfiocmd;
 	char	*larg = (lclone ? "-L" : "");
 	char	*marg = (bk_hasFeature(FEAT_mSFIO) ? "-m2" : "");
+	char	*parg = (bk_hasFeature(FEAT_PARENTS) ? "-p" : "");
 
-	sfiocmd = aprintf("bk _sfiles_clone %s %s | bk sfio -oq %s %s",
-	    larg, marg, larg, marg);
+	sfiocmd = aprintf("bk _sfiles_clone %s %s %s | bk sfio -oq %s %s",
+	    larg, marg, parg, larg, marg);
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
 	fd = fileno(fh);

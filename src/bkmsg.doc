@@ -1444,6 +1444,17 @@ the '#BKARG#' feature[s].
 
 In general, a "bk upgrade" should be sufficient.
 $
+#remote_bk_missing_feature
+The remote BitKeeper binary is missing a feature that the local 
+BitKeeper or repository requires.  The missing feature is:
+
+	#BKARG#
+
+and you will need to upgrade the remote BitKeeper in order to 
+complete the current operation.
+
+In general, a "bk upgrade" should be sufficient.
+$
 #bkd_missing_feature
 The current repository has a feature that is not supported by
 the remote bkd.  This repository requires:

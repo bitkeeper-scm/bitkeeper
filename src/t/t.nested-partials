@@ -104,7 +104,7 @@ bk clone $Q -s. bk://localhost:$P/gcc-only gcc-neturl || fail 2
 cd gcc-neturl
 bk here check -av ./gcc >GOT 2>&1
 printf "here: searching `bk parent -l`...ok\n" >WANT
-printf "here: searching bk://localhost:$P/$HERE/project...repo gone\n" >> WANT
+printf "here: searching bk://`bk gethost -r`:$P/$HERE/project...repo gone\n" >> WANT
 printf "gcc:\n	`bk parent -l`\n" >>WANT
 grep -v 'connect failure' GOT > GOT2
 cmpfiles WANT GOT2

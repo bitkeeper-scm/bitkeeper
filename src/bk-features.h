@@ -20,6 +20,7 @@
  *   BKFILE	repo uses BK format sfiles
  *   POLY	at least one comp cset was ported in twice (polyDB exists)
  *   BWEAVE	store cset weave in separate heap file
+ *   PARENTS	bkd knows how to send parent files
  */
 
 
@@ -48,6 +49,7 @@
 	X(10, POLY, "POLY", 1, 0)		\
 	X(11, BKFILE, "BKFILE", 1, 0)		\
 	X(12, BWEAVE, "BWEAVEv2", 1, 0)		\
+	X(13, PARENTS, "PARENTS", 0, 0)		\
 
 enum {
 	FEAT_ALWAYS = 1,		/* bit0 is always set */

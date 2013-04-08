@@ -252,6 +252,12 @@ NEWP=`cat PORT`
 trap "bk _kill bk://localhost:$OLDP; bk _kill bk://localhost:$NEWP" 0
 echo OK
 
+echo $N Demo clone --parents error message ..........................$NL
+bk clone --parents bk://localhost:$OLDP/copy.noremap parents > GOT 2>&1
+grep -q 'The remote BitKeeper binary is missing a feature that the local' GOT ||
+    fail
+echo OK
+
 echo $N Push old server new client ..................................$NL
 cd project || fail
 bk push $Q bk://localhost:$OLDP/copy.noremap || fail

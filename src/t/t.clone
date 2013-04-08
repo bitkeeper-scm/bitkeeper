@@ -429,3 +429,42 @@ test -f nomark/BitKeeper/log/checked || fail
 # remote not marked
 test -f project/BitKeeper/log/checked && fail shouldnt be good
 echo OK
+
+echo $N Show that we can clone a repo and with it\'s parents .........$NL
+cd "$HERE"
+commercial parent
+bk parent $Q -r
+bk parent $Q bk://some-server
+bk parent > ../WANT
+cd ..
+bk clone $Q --parents parent parents
+cd parents 
+bk parent > ../GOT
+cd ..
+cmpfiles WANT GOT
+echo OK
+
+echo $N Same thing with multiple parents ............................$NL
+cd "$HERE/parent"
+bk parent $Q -r
+bk parent $Q bk://some-server
+bk parent $Q -ai bk://some-server/incoming
+bk parent $Q -ao bk://some-server/outgoing
+bk parent > ../WANT
+cd ..
+rm -rf parents
+bk clone $Q --parents parent parents
+cd parents 
+bk parent > ../GOT
+cd ..
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test clone -p for no-parents ................................$NL
+#bk clone $Q -p --parents parents no-parents 2>ERR && fail both should fail
+bk clone $Q -p parents no-parents || fail
+bk --cd=no-parents parent > GOT && fail
+echo "This repository has no parent." > WANT
+cmpfiles WANT GOT
+echo OK
+

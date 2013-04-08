@@ -21,6 +21,7 @@ private	struct {
 	u32	link:1;			/* lclone-mode */
 	u32	product:1;		/* is product? */
 	u32	identical:1;		/* --identical */
+	u32	parents:1;		/* --parents */
 	int	delay;			/* wait for (ssh) to drain */
 	int	remap;			/* force remapping? */
 	int	bkfile;			/* force binary sfiles? */
@@ -88,8 +89,10 @@ clone_main(int ac, char **av)
 		{ "force", 304 },		/* force attach dups */
 		{ "identical", 305 },		/* aliases as of commit */
 		{ "checkout:", 306, },		/* --checkout=none|get|edit */
+		{ "parents", 307 },		/* --parents */
 
 		/* aliases */
+		{ "no-parent", 'p'},
 		{ "subset;" , 's' },
 		{ "standalone", 'S'},
 		{ 0, 0 }
@@ -176,6 +179,9 @@ clone_main(int ac, char **av)
 		    case 306: /* --checkout=none|get|edit */
 			check_out = optarg;
 			break;
+		    case 307: /* --parents */
+			opts->parents = 1;
+			break;
 		    case 310: /* --compat */
 			opts->no_lclone = 1;
 			opts->remap = 0;
@@ -234,6 +240,7 @@ clone_main(int ac, char **av)
 	if (av[optind+1]) localName2bkName(av[optind+1], av[optind+1]);
 	unless (av[optind]) usage();
 	opts->from = strdup(av[optind]);
+	if (opts->parents && opts->no_parent) usage();
 	if (av[optind + 1]) {
 		if (av[optind + 2]) usage();
 		if (opts->attach_only) {
@@ -653,6 +660,10 @@ clone(char **av, remote *r, char *local, char **envVar)
 		drainErrorMsg(r, buf, sizeof(buf));
 		return (RET_ERROR);
 	}
+	if (opts->parents && !bkd_hasFeature(FEAT_PARENTS)) {
+		getMsg("remote_bk_missing_feature", "PARENTS", '=', stderr);
+		return (RET_ERROR);
+	}
 	if (trans && strneq(buf, "ERROR-rev ", 10)) {
 		/* populate doesn't need to propagate error message */
 		return (RET_BADREV);
@@ -837,6 +848,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 
 	do_part2 = ((p = getenv("BKD_BAM")) && streq(p, "YES")) || bp_hasBAM();
 	if (do_part2 && !bkd_hasFeature(FEAT_BAMv2)) {
+		// getMsg("remote_bk_missing_feature", "BAMv2", '=', stderr);
 		fprintf(stderr,
 		    "clone: please upgrade the remote bkd to a "
 		    "BAMv2 aware version (4.1.1 or later).\n"
@@ -964,9 +976,16 @@ clone2(remote *r)
 		return (RET_ERROR);
 	}
 
-	unless (opts->no_parent) {
+	if (proj_isComponent(0) || opts->no_parent) {
+		// can't use 'bk parent -rq', it changes product
+		unlink("BitKeeper/log/parent");
+		unlink("BitKeeper/log/push-parent");
+		unlink("BitKeeper/log/pull-parent");
+	} else if (opts->parents) {
+		/* keep what the bkd sent */
+	} else {
 		parent = remote_unparse(r);
-		sys("bk", "parent", "-q", parent, SYS);
+		sys("bk", "parent", "-sq", parent, SYS);
 		free(parent);
 	}
 	(void)proj_repoID(0);		/* generate repoID */
@@ -1032,16 +1051,16 @@ clone2(remote *r)
 		}
 
 		/*
-		 * Special knowledge: at this time in a clone the parent
-		 * will only have one entry in it -- the clone source.
-		 *
-		 * XXX: parent.c defines PARENT -- could move to a .h
-		 * Could possibly make use of one of the interfaces in 
-		 * parent.c which returns an addLines? I didn't dig there.
+		 * Use the parent we pulled from, not anything else.
+		 * clone --parents uses the parent's parent.
+		 * Normalize localhost to realhost, other tests expect
+		 * this.
 		 */
-		parent = loadfile("BitKeeper/log/parent", 0);
-		chomp(parent);
-
+		if (r->host && isLocalHost(r->host)) {
+			free(r->host);
+			r->host = strdup(sccs_realhost());
+		}
+		parent = remote_unparse(r);
 		unless (n = nested_init(0, 0, 0, NESTED_MARKPENDING)) {
 			fprintf(stderr, "%s: nested_init failed\n", prog);
 			free(parent);

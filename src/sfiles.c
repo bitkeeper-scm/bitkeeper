@@ -1630,6 +1630,7 @@ sfiles_clone_main(int ac, char **av)
 	int	modes = 0;	/* sfio sets modes so more stuff is ok */
 	int	mark2 = 0;	/* stick a || between BK files and the rest */
 	int	rc = 2;
+	int	do_parents = 0;	/* if set, send parent files */
 	sinfo	si = {0};
 	char	buf[MAXPATH];
 	char	*logfiles[] = {	/* files from BitKeeper/log to ship */
@@ -1641,12 +1642,18 @@ sfiles_clone_main(int ac, char **av)
 		"checked",
 		"HERE"		// unlinked or renamed RMT_HERE in (r)clone
 	};
+	char	*parents[] = {
+		"parent",
+		"pull-parent",
+		"push-parent",
+	};
 
-	while ((c = getopt(ac, av, "2Lm", 0)) != -1) {
+	while ((c = getopt(ac, av, "2Lmp", 0)) != -1) {
 		switch (c) {
 		    case '2': mark2 = 1; break;
 		    case 'L': lclone = 1; break;
 		    case 'm': modes = 1; break;
+		    case 'p': do_parents = 1; break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -1664,6 +1671,11 @@ sfiles_clone_main(int ac, char **av)
 		concat_path(buf, "BitKeeper/log", logfiles[i]);
 		if (exists(buf)) puts(buf);
 	}
+	for (i = 0; do_parents && (i < sizeof(parents)/sizeof(char *)); i++) {
+		concat_path(buf, "BitKeeper/log", parents[i]);
+		if (exists(buf)) puts(buf);
+	}
+
 	/* just send whatever IDCACHE is local
 	 * (may be BitKeeper/log or BitKeeper/etc)
 	 */

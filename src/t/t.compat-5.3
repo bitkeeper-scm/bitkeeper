@@ -164,6 +164,12 @@ test $? = 0 && fail
 grep -q "does not understand -j" OUT || fail
 echo OK
 
+echo $N Demo clone --parents error message ..........................$NL
+bk clone --parents bk://localhost:$OLDP/sccsdirs parents > GOT 2>&1
+grep -q 'The remote BitKeeper binary is missing a feature that the local' GOT ||
+    fail
+echo OK
+
 echo $N Try a pull urllist to see if the hacks work .................$NL
 # old bkds fail bkd_nested call, so hackery in place to work anyway
 cd "$HERE"
