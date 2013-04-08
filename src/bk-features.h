@@ -45,11 +45,10 @@
 	X( 6, FAST, "fastpatch", 0, 0)		\
 	X( 7, REMAP, "remap", 1, 0)		\
 	X( 8, SORTKEY, "sortkey", 1, 0)		\
-	X( 9, bSFILEv1, "bSFILEv1", 1, 1)	\
-	X(10, POLY, "POLY", 1, 0)		\
-	X(11, BKFILE, "BKFILE", 1, 0)		\
-	X(12, BWEAVE, "BWEAVEv2", 1, 0)		\
-	X(13, PARENTS, "PARENTS", 0, 0)		\
+	X( 9, POLY, "POLY", 1, 0)		\
+	X(10, BKFILE, "BKFILE", 1, 0)		\
+	X(11, BWEAVE, "BWEAVEv2", 1, 0)		\
+	X(12, PARENTS, "PARENTS", 0, 0)		\
 
 enum {
 	FEAT_ALWAYS = 1,		/* bit0 is always set */

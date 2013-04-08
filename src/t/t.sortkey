@@ -11,7 +11,7 @@ export _BK_NO_ATTR
 
 echo $N Order check in cset checksum and file path ..................$NL
 # do not use cache, as we want predictable repo
-fresh_commercial project
+fresh_commercial --compat project
 # two files, one 'del' will get move to a component and partitioned.
 # from the product, it will look deleted.  The keep file is kept.
 echo line > keep
@@ -99,9 +99,7 @@ perl -pe 's/cK00059/cK00059|00059/' < Y | bk undos > X
 cmp -s X Y && fail should be different
 chmod 444 X
 bk _mv X SCCS/s.del
-# Keep this admin -Bnone -- as it testing ascii path
-# Need to translate whole repo or repocheck will fail
-bk -r admin -z -Znone -Bnone
+bk admin -z -Znone del
 bk _cp SCCS/s.del X
 cmpfiles X Y
 echo OK
@@ -114,7 +112,7 @@ echo $N Test that sortkeys are now set by bk cp .....................$NL
 cd "$HERE/copy"
 touch a
 bk new $Q a
-bk commit $Q -ya
+bk commit $Q -ya || fail
 bk push $Q
 bk mv a b
 cd ..
@@ -125,7 +123,7 @@ bk --cd=project commit $Q -ya
 bk --cd=copy commit $Q -yb
 cd copy
 bk pull $Q
-grep -q sortkey BitKeeper/log/features && fail has sortkey
+test -f Bitkeeper/log/features && fail has features
 bk cp b c 2>ERR
 grep -q sortkey BitKeeper/log/features || fail no sortkey
 bk check c || fail

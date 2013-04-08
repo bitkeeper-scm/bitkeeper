@@ -139,7 +139,7 @@ check_main(int ac, char **av)
 	int	forceCsetFetch = 0;
 	int	noDups = 0;
 	ticker	*tick = 0;
-	int	bkfile = 0;
+	u32	repo_feat, file_feat;
 	int	sawPOLY = 0;
 	longopt	lopts[] = {
 		{ "use-older-changeset", 300 },
@@ -216,7 +216,6 @@ check_main(int ac, char **av)
 	if (sane(0, resync)) return (1);
 
 	checkout = proj_checkout(0);
-	bkfile = features_test(0, FEAT_BKFILE);
 
 	/* revtool: the code below is restored from a previous version */
 	unless ((cset = sccs_csetInit(flags)) && HASGRAPH(cset)) {
@@ -337,13 +336,21 @@ check_main(int ac, char **av)
 			BAM = 1;
 			if (chk_BAM(s, &bp_missing)) ferr++, errors |= 0x04;
 		}
-		if (((BKFILE(s) && !bkfile) || (!BKFILE(s) && bkfile))
-		    && !getenv("_BK_MIXED_FORMAT")) {
+		/* set BKFILE & BWEAVE according to repository feature file */
+		repo_feat = features_bits(0) & (FEAT_BKFILE|FEAT_BWEAVE);
+		unless (CSET(s)) repo_feat &= ~FEAT_BWEAVE;
+
+		/* set BKFILE & BWEAVE accord to file encoding */
+		file_feat = (BKFILE(s) ? FEAT_BKFILE : 0) |
+		    (BWEAVE(s) ? FEAT_BWEAVE : 0);
+
+		/* fix if they differ */
+		if ((repo_feat != file_feat) && !getenv("_BK_MIXED_FORMAT")) {
 			getlock();
 			if (getenv("_BK_DEVELOPER")) {
 				fprintf(stderr,
-				    "sfile format wrong %s, %d %d\n",
-				    s->gfile, bkfile, BKFILE(s));
+				    "sfile format wrong %s, %x %x\n",
+				    s->gfile, repo_feat, file_feat);
 				ferr++, errors |= 0x08;
 			} else if (sccs_newchksum(s)) {
 				fprintf(stderr,

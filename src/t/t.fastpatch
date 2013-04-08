@@ -33,7 +33,7 @@ chopfile() {
 	    | bk undos > temp4324
 	bk _mv temp4324 $2
 	bk _chmod 444 $2
-	bk admin -z -Bnone $2
+	bk admin -z $2
 }
 
 patchdump() {

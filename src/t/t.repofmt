@@ -8,6 +8,8 @@ checkbk()
 	grep -q BKFILE "$FEAT" || fail $FEAT missing BKFILE
 	ENC=`bk prs -hnd:ENCODING: -r+ "$1"/ChangeSet`
 	test X"$ENC" = XBK,bweave || fail "$1" not BKfile $ENC
+	ENC=`bk prs -hnd:ENCODING: -r+ "$1"/BitKeeper/etc/config`
+	test X"$ENC" = XBK || fail "$1/.../config" not BKfile $ENC
 	bk _test -f "$1"/SCCS/1.ChangeSet || fail no heap @ $1
 	test -d "$1"/.bk/SCCS || fail $1 no remap
 
@@ -28,6 +30,8 @@ checkascii()
 	grep -q BKFILE "$FEAT" && fail $FEAT has BKFILE
 	ENC=`bk prs -hnd:ENCODING: -r+ "$1"/ChangeSet`
 	test X"$ENC" = Xascii,gzip || fail "$1" is BKfile $ENC
+	ENC=`bk prs -hnd:ENCODING: -r+ "$1"/BitKeeper/etc/config`
+	test X"$ENC" = Xascii,gzip || fail "$1/.../config" is BKfile $ENC
 	bk _test -f "$1"/SCCS/1.ChangeSet && fail heap @ $1
 	test -d "$1"/SCCS || fail $1 not SCCS
 
@@ -55,16 +59,20 @@ for f in ascii bk; do
 		bk clone $Q $t repo.$f clone.$f$t || fail
 	done
 done
+bk clone $Q repo.ascii repo.bk/clone.ascii || fail
+bk clone $Q repo.bk repo.ascii/clone.bk || fail
 
 # all of these are ascii
 checkascii clone.ascii
 checkascii clone.ascii--compat
 checkascii clone.bk--compat
+checkascii repo.bk/clone.ascii
 
 # all of these are BK
 checkbk clone.bk
 checkbk clone.ascii--upgrade-repo
 checkbk clone.bk--upgrade-repo
+checkbk repo.ascii/clone.bk
 
 echo OK
 
@@ -79,18 +87,30 @@ cd "$HERE"
 for NEST in bk ascii; do
 	bk setup -f nest.$NEST/newcomp || fail
 	for C in bk ascii; do
+		# For more testing, add -C here, then commit later
+		# The commit "fixes" the ChangeSet file
 		bk attach $Q "$HERE"/repo.$C nest.$NEST/comp.$NEST.$C || fail
 	done
 done
+# And toss in a few standalones living under a product
+bk clone $Q repo.ascii nest.bk/clone.ascii || fail
+bk clone $Q repo.bk nest.ascii/clone.bk || fail
 
 checkascii nest.ascii
+# XXX standalone under nested will match remap of nested tree.
+#checkascii nest.bk/clone.ascii
 checkbk nest.bk
+#checkbk nest.ascii/clone.bk
 echo OK
 
 echo $N Setup a mixed/broken nested repository ......................$NL
 bk clone $Q nest.ascii nest.ascii.mixed || fail
 cd nest.ascii.mixed/newcomp
-bk -r admin -B || fail
+#replace product features
+(echo BKFILE; echo BWEAVEv2; echo SAMv3) > ../BitKeeper/log/features
+bk -r admin -Zsame
+#restore
+echo SAMv3 > ../BitKeeper/log/features
 cd ..
 bk repocheck $Q 2>ERR && fail should fail
 cd ..
@@ -130,11 +150,12 @@ for h in ascii bk; do
 	echo bye > file2
 	bk new $Q file1 file2
 	if [ $h = ascii ]
-	then	bk admin -B file1 file2
-		bk admin -Bnone file2
-	else
-		bk admin -Bnone file1 file2
-		bk admin -B file2
+	then	echo BKFILE > BitKeeper/log/features
+		_BK_DEVELOPER= bk check file1
+		rm -f BitKeeper/log/features
+	else	mv BitKeeper/log/features SAVE.feat
+		_BK_DEVELOPER= bk check file1
+		mv SAVE.feat BitKeeper/log/features
 	fi
 	bk repocheck -q 2>ERR && fail -f ERR should fail
 	test `wc -l < ERR` -eq 1 || fail -f ERR
@@ -181,9 +202,9 @@ cd repo.bsfile
 echo bSFILEv1 >> BitKeeper/log/features
 _BK_DEVELOPER= bk repocheck $Q || fail
 
-# simple clone keeps old feature
+# simple clone replaces bSFILEv1 with BKFILE
 bk clone $Q . ../repo.bsfile-copy ||fail
-grep -q bSFILEv1 ../repo.bsfile-copy/BitKeeper/log/features || fail
+grep -q BKFILE ../repo.bsfile-copy/BitKeeper/log/features || fail
 
 # --upgrade-repo upgrades to BKFILE
 bk clone $Q --upgrade-repo . ../repo.bsfile-upgrade-repo || fail
@@ -197,3 +218,35 @@ checkascii ../repo.bsfile-compat
 test -f ../repo.bsfile-compat/BitKeeper/log/features && fail
 echo OK
 
+echo $N Show that --upgrade-repo on upgraded runs no check ..........$NL
+cd "$HERE"
+bk clone $Q --upgrade-repo repo.bsfile-upgrade-repo repo.also-upgraded || fail
+grep -q ' check' repo.also-upgraded/BitKeeper/log/cmd_log && fail full check
+echo OK
+
+echo $N Show that --compat on compat runs no check ..................$NL
+bk clone $Q --compat repo.ascii repo.also-ascii || fail
+grep -q ' check' repo.also-ascii/BitKeeper/log/cmd_log && fail full check
+echo OK
+
+cat <<EOF > script
+#!/bin/sh
+grep -q ' check' BitKeeper/log/cmd_log && exit 1
+exit 0
+EOF
+chmod +x script
+
+echo $N Show that --upgrade-repo on same works in nested ............$NL
+# This clone has a full check in newcomp and product
+bk clone $Q --upgrade-repo nest.bk nest.also-upgraded || fail
+grep -q ' check' nest.also-upgraded/BitKeeper/log/cmd_log || fail
+grep -q ' check' nest.also-upgraded/newcomp/BitKeeper/log/cmd_log || fail
+# But do the same thing again and all the checking is cleaned up
+bk clone $Q --upgrade-repo nest.bk nest.also-upgraded-2 || fail
+bk --cd=nest.also-upgraded-2 -e sh -c "'$PWD/script'" || fail
+echo OK
+
+echo $N Show that --compat on same works in nested ..................$NL
+bk clone $Q --compat nest.ascii nest.also-ascii || fail
+bk --cd=nest.also-upgraded-2 -e sh -c "'$PWD/script'" || fail
+echo OK

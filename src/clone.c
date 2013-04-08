@@ -800,6 +800,12 @@ clone(char **av, remote *r, char *local, char **envVar)
 		if (rmt_features & FEAT_SORTKEY) {
 			features_set(0, FEAT_SORTKEY, 1);
 		}
+	} else if (opts->attach) {
+		/*
+		 * when doing an attach we need to use the same features
+		 * as the product
+		 */
+		features_setAll(0, features_bits(proj_findProduct(0)));
 	} else {
 		TRACE("%x %d %d",
 		    rmt_features, !proj_hasOldSCCS(0), opts->bkfile);
@@ -808,40 +814,29 @@ clone(char **av, remote *r, char *local, char **envVar)
 		if (opts->bkfile != -1) {
 			features_set(0,
 			    FEAT_BKFILE|FEAT_BWEAVE, opts->bkfile);
-
-			/*
-			 * If the user does --compat or --upgrade-repo
-			 * then require a full check.  This will also
-			 * repack the heap after it gets converted.
-			 */
-			bk_setConfig("partial_check", "0");
 		}
 	}
-	if ((features_test(0, FEAT_BKFILE) != 0)
-	    != ((rmt_features & (FEAT_BKFILE|FEAT_bSFILEv1)) != 0)) {
+	/*
+	 * Above we set the sfile format features for this repository
+	 * to what we want them to be:
+	 *   - components match product regardless
+	 *   - others copy remote unless overridden by cmd line
+	 *
+	 * Now the local features are what we want and rmt_features are what
+	 * is actually on the disk.  So if they differ we need to fix it.
+	 * Note: for rmt we consider BKFILE and bSFILEv1 equivalent.
+	 *
+	 * Now check fixes sfile format mismatches automatically so all
+	 * we need to do is to disable partial_check and the repository
+	 * will become the correct format.
+	 */
+	if ((features_bits(0) & (FEAT_BKFILE|FEAT_BWEAVE)) !=
+	    (rmt_features & (FEAT_BKFILE|FEAT_BWEAVE))) {
 		p = features_fromBits(features_bits(0));
 		/* switch to (or from) binary */
-		T_PERF("switch binary to %s", p);
+		T_PERF("switch sfile formats to %s", p);
 		free(p);
-		unless (opts->quiet) {
-			p = features_test(0, FEAT_BKFILE)
-			    ? "upgrade repo" : "downgrade repo";
-			systemf("bk -?BK_NO_REPO_LOCK=YES "
-			    "--title='%s' -r admin -Zsame -N%d",
-			    p, repo_nfiles(0, 0));
-		} else {
-			systemf("bk -?BK_NO_REPO_LOCK=YES -r admin -Zsame");
-		}
-	}
-	if (features_test(0, FEAT_BWEAVE) &&
-	    ((rmt_features & (FEAT_BKFILE|FEAT_bSFILEv1)) != 0) &&
-	    !(rmt_features & FEAT_BWEAVE)) {
-		/*
-		 * If we cloned a BK repo without BWEAVE, but we need
-		 * to enable BWEAVE.  Just rewrite the ChangeSet file
-		 * to create the BWEAVE.
-		 */
-		systemf("bk -?BK_NO_REPO_LOCK=YES admin -Zsame ChangeSet");
+		bk_setConfig("partial_check", "0");
 	}
 	if (opts->link) lclone(getenv("BKD_ROOT"));
 	nested_check();
@@ -1857,6 +1852,7 @@ attach(void)
 	char	*tmp;
 	char	*nlid = 0;
 	char	*save;
+	u32	orig_features, new_features;
 	char	buf[MAXLINE];
 	char	relpath[MAXPATH];
 	project	*prod;
@@ -1873,6 +1869,7 @@ attach(void)
 		fprintf(stderr, "attach: %s is already a component\n", relpath);
 		return (RET_ERROR);
 	}
+	orig_features = features_bits(0) & (FEAT_BKFILE|FEAT_BWEAVE);
 	/* remove any existing parent */
 	system("bk parent -qr");
 
@@ -1942,6 +1939,16 @@ attach(void)
 	}
 	nested_check();
 	nested_updateIdcache(0);
+
+	if (opts->attach_only) {
+		/*
+		 * An in-place attach potentially has the sfile
+		 * formats wrong.  If so we need to rewrite all files
+		 * to make sure they are in the correct format.
+		 */
+		new_features = features_bits(0) & (FEAT_BKFILE|FEAT_BWEAVE);
+		if (orig_features != new_features) system("bk -r admin -Zsame");
+	}
 	unless (opts->nocommit) {
 		sprintf(buf,
 			"bk -P commit -S -y'Attach ./%s' %s -",

@@ -211,7 +211,7 @@ if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 
 echo $N Make it gzipped again .......................................$NL
-bk admin -Bnone -Z gzipped || fail
+bk admin -Z gzipped || fail
 ENC=`bk prs -hnr+ -d:COMPRESSION:,:ENC: gzipped`
 if [ X$ENC != X"gzip,ascii" ]
 then	echo Wrong encoding. $ENC

@@ -119,7 +119,6 @@ has_feature(char *bk, int f)
 		free(p);
 	}
 	if (bits & f) return (1);
-	if ((f == FEAT_BKFILE) && (bits & FEAT_bSFILEv1)) return (1);
 	return (0);
 }
 
@@ -223,8 +222,6 @@ features_set(project *p, int feature, int on)
 	u32	set = (on != 0) * feature;
 	u32	mask = feature;
 
-	/* if we are changing BKFILE then clear bSFILEv1 */
-	if (feature & FEAT_BKFILE) mask |= FEAT_bSFILEv1;
 	features_setMask(p, set, mask);
 }
 
@@ -358,7 +355,6 @@ features_test(project *p, int feature)
 	assert(!(feature & (feature - 1))); // is pow2
 	assert(feature & repomask);
 
-	if (feature == FEAT_BKFILE) feature |= FEAT_bSFILEv1; /* test either */
 	return (features_bits(p) & feature);
 }
 
@@ -383,13 +379,14 @@ features_toBits(char *features, char *bad)
 	unless (namemap) {
 		namemap = hash_new(HASH_MEMHASH);
 		for (i = 1; i <= NFEATURES; i++) {
-			hash_insertStrU32(namemap, flist[i].name, i);
+			hash_insertStrU32(namemap, flist[i].name, (1<<i));
 		}
+		hash_insertStrU32(namemap, "bSFILEv1", FEAT_BKFILE);
 	}
 	list = splitLine(features, " ,\r\n", 0);
 	EACH(list) {
 		if (j = hash_fetchStrU32(namemap, list[i])) {
-			ret |= (1 << j);
+			ret |= j;
 		} else if (bad) {
 			missing = addLine(missing, list[i]);
 		}

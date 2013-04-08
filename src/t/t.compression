@@ -14,9 +14,7 @@
 # Can gzip other files
 # Can ungzip other files
 echo $N Create commercial repository and check gzip on ChangeSet ....$NL
-commercial project
-bk admin -Znone ChangeSet
-bk admin -Zgzip -Bnone ChangeSet
+fresh_commercial --compat project
 test "`bk compression ChangeSet`" = "ChangeSet gzip" || {
 	echo should have compressed the ChangeSet file
 	exit 1
@@ -25,7 +23,7 @@ echo OK
 
 echo $N Make sure we can gzip other files ...........................$NL
 cd BitKeeper/etc
-bk admin -Zgzip -Bnone config
+bk admin -Zgzip config
 test "`bk compression config`" = "config gzip" || {
 	echo should have compressed the config file
 	bk compression config
