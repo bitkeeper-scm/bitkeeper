@@ -101,7 +101,7 @@ struct {
 	int	doDiscard;	    // switch to require clicking discard twice
 	int	committing;	    // true if we're in the middle of committing
 	int	progressbar;	    // progress bar is running
-	int	selecting;	    // true if we are changing file selection
+	string	selecting;	    // node we are in the process of selecting
 	string	selected;	    // the selected file node
 	widget	w_top;		    // toplevel window widget
 	widget	w_upperF;	    // upper frame widget
@@ -222,6 +222,12 @@ getSelectedNode()
 	return (self.selected);
 }
 
+int
+haveSelection()
+{
+	return (self.selected || self.selecting);
+}
+
 sfile
 getSelectedFile()
 {
@@ -306,8 +312,7 @@ insertFile(sfile sf)
 	self.components{sf.component}[END+1] = sf.name;
 	if (sf.commented) ++self.compinfo{sf.component}.commentedFiles;
 
-	if (!defined(getSelectedNode())
-	    && (sf.type == "modified") && !isCommented(sf)) {
+	if (!haveSelection() && (sf.type == "modified") && !isCommented(sf)) {
 		selectFile(sf.node);
 	}
 	updateGUI();
@@ -1111,7 +1116,7 @@ selectFile(string node)
 	unless (ListBox_exists(self.o_files, node)) return (0);
 	file = ListBox_itemcget(self.o_files, node, data:);
 
-	self.selecting = 1;
+	self.selecting = node;
 	saveComments();
 	saveX11Buffer();
 	self.doDiscard = 0;
@@ -1123,7 +1128,6 @@ selectFile(string node)
 		goto done;
 	}
 
-	self.selected = node;
 	ListBox_select(self.o_files, node);
 	ListBox_see(self.o_files, node);
 	Update_idletasks();
@@ -1134,11 +1138,12 @@ selectFile(string node)
 	// Update commented state of this file based on what we just got.
 	self.commented = setComments(sf, self.comments);
 
+	self.selected = node;
 	configureFile(sel); // redraw the previous file's icon
 	showFile(sf);
 	updateButtons();
 done:
-	self.selecting = 0;
+	self.selecting = undef;
 	return (1);
 }
 
