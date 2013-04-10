@@ -288,16 +288,17 @@ proc doDiff {{difftool 0}} \
 	orderSelectedNodes $rev1 $rev2
 	busy 1
 
+	if {$difftool} {
+		difftool $file $rev1 $rev2
+		return
+	}
+
 	set base [file tail $file]
 
-	if {$base == "ChangeSet"} {
+	if {$base eq "ChangeSet"} {
 		csetdiff2
 	} else {
-		if {$difftool} {
-			difftool $file $rev1 $rev2
-		} else {
-			displayDiff $rev1 $rev2
-		}
+		displayDiff $rev1 $rev2
 	}
 
 	return
@@ -1412,7 +1413,11 @@ proc selectNode { type {val {}}} \
 
 proc difftool {file r1 r2} \
 {
-	catch {exec bk difftool -r$r1 -r$r2 $file &} err
+	if {$file eq "ChangeSet"} {
+		catch {exec bk difftool -r@@$r1 -r@@$r2 &} err
+	} else {
+		catch {exec bk difftool -r$r1 -r$r2 $file &} err
+	}
 	busy 0
 }
 
@@ -1868,15 +1873,9 @@ proc widgets {} \
 		$gc(fmenu) add cascade -label "Current Changeset" \
 		    -menu $gc(current)
 		menu $gc(current) 
-	    if {"$fname" == "ChangeSet"} {
-		    #.menus.cset configure -command csettool
-		    pack .menus.quit .menus.help .menus.mb .menus.cset \
-			.menus.fmb -side left -fill y -padx 1
-	    } else {
-		    pack .menus.quit .menus.help .menus.difftool \
-			.menus.mb .menus.cset .menus.fmb \
-			-side left -fill y -padx 1
-	    }
+		pack .menus.quit .menus.help .menus.difftool \
+		    .menus.mb .menus.cset .menus.fmb \
+		    -side left -fill y -padx 1
 
 	ttk::panedwindow .p
 	    ttk::frame .p.top
@@ -2209,12 +2208,6 @@ proc revtool {lfname {R {}}} \
 
 	set bad 0
 	set file [exec bk sfiles -g $lfname 2>$dev_null]
-	if {$lfname == "ChangeSet"} {
-		pack forget .menus.difftool
-	} else {
-		pack configure .menus.difftool -before .menus.mb \
-		    -side left
-	}
 	if {"$file" == ""} {
 		displayMessage "No such file \"$lfname\" rev=($R) \nPlease \
 select a new file to view"
