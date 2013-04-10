@@ -1873,9 +1873,10 @@ proc widgets {} \
 		$gc(fmenu) add cascade -label "Current Changeset" \
 		    -menu $gc(current)
 		menu $gc(current) 
-		pack .menus.quit .menus.help .menus.difftool \
-		    .menus.mb .menus.cset .menus.fmb \
+		pack .menus.quit .menus.fmb .menus.mb \
+		    .menus.difftool .menus.cset \
 		    -side left -fill y -padx 1
+		pack .menus.help -side right -fill y -padx 1
 
 	ttk::panedwindow .p
 	    ttk::frame .p.top
