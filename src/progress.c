@@ -120,7 +120,7 @@ progress_startCommon(ticker *t, int style, u64 max)
 	t->always = (getenv("_BK_PROGRESS_ALWAYS") != 0);
 	t->debug  = (getenv("_BK_PROGRESS_DEBUG") != 0);
 	if (s = getenv("_BK_PROGRESS_INHERIT")) {
-		t->style = PROGRESS_BAR;
+		t->style = max ? PROGRESS_BAR : PROGRESS_BAR_I;
 		q = strchr(s, ',');
 		if (t->name) free(t->name);
 		t->name = strndup(s, q-s);
@@ -133,9 +133,7 @@ progress_startCommon(ticker *t, int style, u64 max)
 	t->style = style;
 	t->name = progress_title();
 	gettimeofday(&tv, 0);
-	t->start = tv.tv_sec;
-	t->start *= 1000;
-	t->start += tv.tv_usec / 1000;
+	t->start = (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
 	switch (t->style) {
 	    case PROGRESS_SPIN:
 		fputc(' ', stderr);
@@ -144,9 +142,11 @@ progress_startCommon(ticker *t, int style, u64 max)
 		break;
 	    case PROGRESS_BAR:
 		break;
+	    case PROGRESS_BAR_I:
+		break;
 	}
-	t->rate = 333;
-	t->m = 100.0/max;	// slope
+	t->rate = 100;
+	t->m = 100.0/t->max;	// slope
 	t->b = 0.0;		// y intercept
 	t->multi = (getenv("_BK_PROGRESS_MULTI") != 0);
 	progress_startMulti();
@@ -159,6 +159,7 @@ progress_start(int style, u64 max)
 {
 	ticker	*t = new(ticker);
 	t->scale = 1.0;
+	if ((style == PROGRESS_BAR) && !max) style = PROGRESS_BAR_I;
 	return (progress_startCommon(t, style, max));
 }
 
@@ -204,13 +205,11 @@ progress(ticker *t, u64 n)
 	unless (t) return;
 	t->cur = t->base + n*t->scale;
 
-	if (t->style == PROGRESS_SPIN) {
+	if ((t->style == PROGRESS_SPIN) || (t->style == PROGRESS_BAR_I)) {
 		gettimeofday(&tv, 0);
-		now = tv.tv_sec;
-		now *= 1000;
-		now += tv.tv_usec / 1000;
-
-		if ((n > 1) && (now - t->start) < t->rate) return;
+		now = (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
+		if ((n > 1) && ((now - t->last) < t->rate)) return;
+		t->last = now;
 	}
 
 	percent = t->m*t->cur + t->b;
@@ -238,6 +237,26 @@ progress(ticker *t, u64 n)
 				getpid(), n, t->scale, (u64)(n*t->scale),
 				t->base, t->cur, t->max);
 		}
+		fprintf(stderr, "|\r");
+		break;
+	    case PROGRESS_BAR_I:
+		fprintf(stderr, "\r%-*.*s      ", TLEN, TLEN, t->name);
+		fputc('|', stderr);
+		if (t->direction) {
+			unless (want = --t->i % BARLEN) {
+				want = 1; // for continuity
+				t->direction = !t->direction;
+			}
+		} else {
+			unless (want = ++t->i % BARLEN) {
+				want = BARLEN-1; // for continuity
+				t->direction = !t->direction;
+			}
+		}
+		for (i = 1; i < want-1; ++i) fputc(' ', stderr);
+		fprintf(stderr, "<=>");
+		i += 3;
+		for (; i <= BARLEN; ++i) fputc(' ', stderr);
 		fprintf(stderr, "|\r");
 		break;
 	}
@@ -304,6 +323,7 @@ progress_done(ticker *t, char *msg)
 		fputs("    \b\b\b\b", stderr);
 		break;
 	    case PROGRESS_BAR:
+	    case PROGRESS_BAR_I:
 		fprintf(stderr, "\r%-*.*s 100%% |", TLEN, TLEN, t->name);
 		for (i = 1; i <= BARLEN; ++i) fputc('=', stderr);
 		fprintf(stderr, "|\r");
@@ -340,7 +360,7 @@ progress_end(u32 style, char *msg, u32 action)
 		free(m);
 		goto done;
 	}
-	if (style == PROGRESS_BAR) {
+	if ((style == PROGRESS_BAR) || (style == PROGRESS_BAR_I)) {
 		name = progress_title();
 		fprintf(stderr, "\r%-*.*s 100%% |", TLEN, TLEN, name);
 		for (i = 1; i <= BARLEN; ++i) fputc('=', stderr);
@@ -351,7 +371,7 @@ progress_end(u32 style, char *msg, u32 action)
 		fprintf(stderr, " %s\n", msg);
 		progress_nldone();
 	} else {
-		if (style == PROGRESS_BAR) {
+		if ((style == PROGRESS_BAR) || (style == PROGRESS_BAR_I)) {
 			fputc('\n', stderr);
 			progress_nldone();
 		} else {

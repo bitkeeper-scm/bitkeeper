@@ -1540,12 +1540,22 @@ full_check(void)
 /*
  * If they hand us a partial list use that if we can.
  * Otherwise do a full check.
+ *
+ * quiet and verbose arguments together control how check
+ * is to run WRT verbosity:
+ *
+ *  Q	V	RESULT
+ *  0	0	progress bar
+ *  0	1	very verbose
+ *  1	0	silent
+ *  1	1	silent
+ *
  */
 int
-run_check(int verbose, char **flist, char *opts, int *did_partial)
+run_check(int quiet, int verbose, char **flist, char *opts, int *did_partial)
 {
 	int	i, j, ret;
-	char	*cmd;
+	char	*cmd, *verbosity = "";
 	char	buf[20];
 	char	pwd[MAXPATH];
 	FILE	*p;
@@ -1556,16 +1566,20 @@ again:
 	if (verbose) {
 		strcpy(pwd, proj_cwd());
 		fprintf(stderr, "Running consistency check in %s ...\n", pwd);
+		unless (quiet) verbosity = "-vv";
+	} else {
+		unless (quiet) verbosity = "-v";
 	}
 	progress_pauseDelayed();
 	if (!flist || full_check()) {
-		ret = sys("bk", "-?BK_NO_REPO_LOCK=YES",
-		    "-r", "check", "-ac", opts, SYS);
+		ret = systemf("bk -?BK_NO_REPO_LOCK=YES -r check -ac %s %s",
+		    verbosity, opts);
 		if (did_partial) *did_partial = 0;
 	} else {
 		/* For possible progress bar, pass in # files. */
-		cmd = aprintf("bk -?BK_NO_REPO_LOCK=YES check -c -N%d '%s' -",
-		    nLines(flist), opts);
+		cmd = aprintf("bk -?BK_NO_REPO_LOCK=YES "
+		    "check -c -N%d %s '%s' -",
+		    nLines(flist), verbosity, opts);
 		p = popen(cmd, "w");
 		free(cmd);
 		EACH(flist) fprintf(p, "%s\n", flist[i]);

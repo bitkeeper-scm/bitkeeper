@@ -40,6 +40,7 @@ typedef struct {
 	u32	noconflicts:1;	/* do not handle conflicts */
 	u32	errors:1;	/* set if there are errors, don't apply */
 	u32	quiet:1;	/* no output except for errors or progress */
+	u32	verbose:1;	/* all output, no progress */
 	u32	progress:1;	/* output progress bars */
 	u32	textOnly:1;	/* no GUI tools allowed */
 	u32	remerge:1;	/* redo already merged content conflicts */

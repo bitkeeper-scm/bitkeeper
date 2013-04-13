@@ -618,7 +618,7 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 			fnull = fopen(DEVNULL_WR, "w");
 			assert(fnull);
 			m = send_BAM_sfio(fnull, bp_keys, bpsz, r->gzip,
-				opts.quiet);
+			    opts.quiet, opts.verbose);
 			fclose(fnull);
 			assert(m > 0);
 			extra = m + 6 + 6;
@@ -633,7 +633,8 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	if (extra > 0) {
 		writen(r->wfd, "@BAM@\n", 6);
 		f = fdopen(dup(r->wfd), "wb");
-		n = send_BAM_sfio(f, bp_keys, bpsz, r->gzip, opts.quiet);
+		n = send_BAM_sfio(f, bp_keys, bpsz, r->gzip,
+		    opts.quiet, opts.verbose);
 		if ((r->type == ADDR_HTTP) && (m != n)) {
 			fprintf(stderr,
 			    "Error: patch has changed size from %d to %d\n",

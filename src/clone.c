@@ -346,7 +346,7 @@ clone_main(int ac, char **av)
 	}
 	if (opts->debug) r->trace = 1;
 
-	unless (opts->quiet) progress_startMulti();
+	unless (opts->quiet || opts->verbose) progress_startMulti();
 	if (check_out) bk_setConfig("checkout", check_out);
 	if (opts->attach) {
 		char	*dir;
@@ -414,8 +414,10 @@ clone_main(int ac, char **av)
 			    opts->comps, opts->comps, PRODUCT);
 		}
 		if (opts->comppath) title = opts->comppath;
-		progress_end(PROGRESS_BAR, retrc ? "FAILED" : "OK",
-			     PROGRESS_MSG);
+		unless (opts->verbose) {
+			progress_end(PROGRESS_BAR, retrc ? "FAILED" : "OK",
+			    PROGRESS_MSG);
+		}
 		if (opts->product) {
 			free(title);
 			title = "";
@@ -1040,7 +1042,7 @@ clone2(remote *r)
 		nested	*n;
 		comp	*cp;
 
-		unless (opts->quiet) {
+		unless (opts->quiet || opts->verbose) {
 			title = PRODUCT;
 			progress_end(PROGRESS_BAR, "OK", PROGRESS_MSG);
 		}
@@ -1170,9 +1172,9 @@ nested_err:		fprintf(stderr, "clone: component fetch failed, "
 	}
 	if (!didcheck && (checkfiles || full_check())) {
 		/* undo already runs check so we only need this case */
-		p = opts->quiet ? "-fT" : "-vfT";
-		rc = run_check(opts->verbose, checkfiles, p, &partial);
-		unless (opts->quiet) {
+		rc = run_check(opts->quiet, opts->verbose,
+		    checkfiles, "-fT", &partial);
+		unless (opts->quiet || opts->verbose) {
 			if (rc) {
 				progress_nldone();
 			} else {
@@ -1363,7 +1365,9 @@ sfio(remote *r, char *prefix)
 	if (opts->quiet) {
 		cmds[++n] = "-q";
 	} else {
-		unless (opts->verbose) {
+		if (opts->verbose) {
+			cmds[++n] = "-v";
+		} else {
 			if (p = getenv("BKD_NFILES")) {
 				cmds[++n] = dashN = aprintf("-N%u", atoi(p));
 				progress_nlneeded();

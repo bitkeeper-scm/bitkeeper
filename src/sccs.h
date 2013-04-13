@@ -400,6 +400,13 @@ typedef	enum {
 #define	UNKNOWN_USER	"anon"
 #define	UNKNOWN_HOST	"nowhere"
 
+/*
+ * initial values for setup.c to stuff in the nfiles caches
+ */
+#define	NFILES_SA	5
+#define NFILES_COMP	6
+#define NFILES_PROD	7
+
 #define	CNTLA_ESCAPE	'\001'	/* escape character for ^A is also a ^A */
 #define	isData(buf)	((buf[0] != '\001') || \
 			    ((buf[0] == CNTLA_ESCAPE) && (buf[1] == '\001')))
@@ -1194,7 +1201,7 @@ int	repository_wrlock(project *p);
 int	repository_wrunlock(project *p, int all);
 int	repository_hasLocks(project *p, char *dir);
 void	repository_lockcleanup(project *p);
-int	repo_nfiles(project *proj, filecnt *nf);
+u32	repo_nfiles(project *proj, filecnt *nf);
 void	repo_nfilesUpdate(filecnt *nf);
 int	comments_save(char *s);
 int	comments_savefile(char *s);
@@ -1329,7 +1336,7 @@ int	comments_readcfile(sccs *s, int prompt, ser_t d);
 int	comments_prompt(char *file);
 void	saveEnviroment(char *patch);
 void	restoreEnviroment(char *patch);
-int	run_check(int quiet, char **flist, char *opts, int *did_partial);
+int	run_check(int quiet, int verbose, char **flist, char *opts, int *did_partial);
 int	full_check(void);
 char	*key2path(char *key, MDBM *idDB, MDBM *done, MDBM **m2k);
 int	check_licensesig(char *key, char *sign, int version);
@@ -1442,7 +1449,7 @@ char	*bp_serverID(char *out, int notme);
 char	*bp_serverURL2ID(char *url);
 void	bp_setBAMserver(char *path, char *url, char *repoid);
 int	bp_hasBAM(void);
-u32	send_BAM_sfio(FILE *wf, char *bp_keys, u64 bpsz, int gzip, int quiet);
+u32	send_BAM_sfio(FILE *wf, char *bp_keys, u64 bpsz, int gzip, int quiet, int verbose);
 int	bkd_BAM_part3(remote *r, char **env, int quiet, char *range);
 int	bp_sendkeys(FILE *f, char *range, u64 *bytes, int gzip);
 int	detach(int quiet, int verbose);

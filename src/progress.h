@@ -3,6 +3,7 @@
 
 typedef struct {
 	u64	start;		/* start time_t in milliseconds */
+	u64	last;		/* last time we updated in milliseconds */
 	u64	base;		/* base to start counting from */
 	u64	cur;		/* current ticker count */
 	u64	max;		/* max ticker count; cur/max = % done */
@@ -10,10 +11,11 @@ typedef struct {
 	float	b;		/* y intercept of trajectory line */
 	float	scale;		/* tick scale factor */
 	char	*name;		/* prefix */
-	u32	rate;		/* spinner update rate in milliseconds */
+	u64	rate;		/* spinner update rate in milliseconds */
 	u8	i;		/* spin cycle */
 	u8	percent;	/* so we don't print unless it changed */
 	u8	style;		/* output style */
+	u8	direction:1;	/* whether we're going forward or backwards */
 	u8	multi:1;	/* 1 if part of multiple progress bars */
 	u8	inherited:1;	/* 1 if inheriting state from parent */
 	u8	always:1;	/* always update progress bar */
@@ -24,6 +26,7 @@ typedef struct {
 #define	PROGRESS_SPIN	0
 #define	PROGRESS_MINI	1
 #define	PROGRESS_BAR	2
+#define	PROGRESS_BAR_I	3
 
 /* For action arg to progress_end(). */
 #define PROGRESS_MSG	0	/* append given msg arg to progress bar */

@@ -1,5 +1,6 @@
 echo $N Check nfiles on a standalone repo ...........................$NL
 commercial proj
+bk sfiles >$DEV_NULL
 CNT=`bk nfiles`
 test $CNT -eq 6 || fail wrong count
 echo OK

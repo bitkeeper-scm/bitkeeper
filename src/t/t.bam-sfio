@@ -14,7 +14,7 @@ $cwd/BitKeeper/BAM/$RK/$ENTRY
 BitKeeper/BAM/$RK/$ENTRY
 EOF
 dspec='$if(:BAMHASH:){:BAMHASH: :KEY: :MD5KEY|1.0:}'
-bk log -r+ -nd"$dspec" bar foo | bk sfio -oB - > out 2> GOT
+bk log -r+ -nd"$dspec" bar foo | bk sfio -v -oB - > out 2> GOT
 checkfiles WANT GOT
 echo OK
 
@@ -33,6 +33,6 @@ $cwd/BitKeeper/BAM/$RK/$ENTRY
 BitKeeper/BAM/$RK/$ENTRY
 EOF
 dspec='$if(:BAMHASH:){:BAMHASH: :KEY: :MD5KEY|1.0:}'
-bk log -r+ -nd"$dspec" bar foo | bk sfio -oB - > out 2> GOT
+bk log -r+ -nd"$dspec" bar foo | bk sfio -v -oB - > out 2> GOT
 checkfiles WANT GOT
 echo OK

@@ -293,6 +293,7 @@ bkd_doResolve(char *me, int quiet, int verbose)
 	printf("@RESOLVE INFO@\n");
 	if (verbose) {
 		printf("Running resolve to apply new work...\n");
+		resolve[resolve_opt++] = "-v";
 	} else {
 		/*
 		 * NOTE: -q is selected by !verbose,
@@ -300,7 +301,7 @@ bkd_doResolve(char *me, int quiet, int verbose)
 		 */
 		resolve[resolve_opt++] = "-q";
 	}
-	unless (quiet || verbose) resolve[resolve_opt++] = "--progress";
+
 	resolve[resolve_opt] = 0;
 	fflush(stdout);
 	/* Arrange to have stderr go to stdout */

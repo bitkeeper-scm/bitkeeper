@@ -1897,7 +1897,7 @@ sfio(FILE *m, int files)
 	if (opts->pbars && (files > 0)) {
 		sprintf(key, "-N%d --takepatch", files);
 	} else if (opts->echo > 1) {
-		sprintf(key, "-P'Updating '");
+		sprintf(key, "-v -P'Updating '");
 	} else {
 		sprintf(key, "-q");
 	}

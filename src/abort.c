@@ -345,7 +345,7 @@ abortComponents(options *opts, int *which, int *num)
 	}
 	/* Possibly fix (unpoly-ize) cset marks in product */
 	proj_cd2product();
-	run_check(0, list, opts->quiet ? "-u" : "-vu", 0);
+	run_check(opts->quiet, 0, list, "-u", 0);
 
 out:	if (n) nested_free(n);
 	if (s) sccs_free(s);

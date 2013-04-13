@@ -83,7 +83,7 @@ resolve_main(int ac, char **av)
 	nticks = 0;
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 	setmode(0, _O_TEXT);
-	while ((c = getopt(ac, av, "l|y|m;aAcdFi;qrSs|tTx;1234", lopts)) != -1) {
+	while ((c = getopt(ac, av, "l|y|m;aAcdFi;qrSs|tTx;1234v", lopts)) != -1) {
 		unless ((c == 's') || (c == 'S')) {
 			opts.nav = bk_saveArg(opts.nav, av, c);
 		}
@@ -130,6 +130,7 @@ resolve_main(int ac, char **av)
 		    case '2': opts.pass2 = 0; break;		/* doc 2.0 */
 		    case '3': opts.pass3 = 0; break;		/* doc 2.0 */
 		    case '4': opts.pass4 = 0; break;		/* doc 2.0 */
+		    case 'v': opts.verbose = 1; break;
 		    case 305: // --auto-only
 			opts.autoOnly = 1;
 			break;
@@ -141,7 +142,7 @@ resolve_main(int ac, char **av)
 			break;
 		    default: bk_badArg(c, av);
 		}
-    	}
+	}
 	trigger_setQuiet(opts.quiet);
 	/*
 	 * It is the responsibility of the calling code to set this env
@@ -150,6 +151,9 @@ resolve_main(int ac, char **av)
 	 */
 	if (getenv("FROM_PULLPUSH") && streq(getenv("FROM_PULLPUSH"), "YES")) {
 		opts.from_pullpush = 1;
+	}
+	if (opts.progress && !opts.verbose) {
+		opts.quiet = 1;
 	}
 	unless (opts.mergeprog) opts.mergeprog = getenv("BK_RESOLVE_MERGEPROG");
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind++]);
@@ -2991,8 +2995,8 @@ err:			unapply(applied);
 		 */
 		sync();
 	}
-	if (run_check(!opts->quiet, applied,
-		(opts->quiet && !opts->progress) ? 0 : "-v", 0)) {
+	if (run_check(opts->quiet && !opts->progress,
+		opts->verbose && !opts->progress, applied, 0, 0)) {
 		fprintf(stderr, "Check failed.  Resolve not completed.\n");
 		/*
 		 * Clean up any gfiles we may have pulled out to run check.

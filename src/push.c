@@ -136,7 +136,7 @@ push_main(int ac, char **av)
 		opts.verbose = 0;
 	}
 	trigger_setQuiet(opts.quiet);
-	unless (opts.quiet) progress_startMulti();
+	unless (opts.quiet || opts.verbose) progress_startMulti();
 
 	/*
 	 * Get push parent(s)
@@ -338,7 +338,9 @@ out:	wait_eof(r, opts.debug); /* wait for remote to disconnect */
 				freeme = title = strdup("push");
 			}
 		}
-		progress_end(PROGRESS_BAR, "OK", PROGRESS_MSG);
+		unless (opts.verbose) {
+			progress_end(PROGRESS_BAR, "OK", PROGRESS_MSG);
+		}
 		if (freeme) free(freeme);
 		title = 0;
 	}
@@ -537,17 +539,17 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 				title = 0;
 			}
 		}
-		progress_nldone();
+		unless (opts.quiet || opts.verbose) progress_nldone();
 	}
-        unless (rc || opts.rev) {
-                /*
+	unless (rc || opts.rev) {
+		/*
                  * successful push so if we are pushing tip we
                  * can save this URL
                  * XXX pending csets in component
                  */
 		urlinfo_setFromEnv(n, url);
 		urlinfo_write(n);
-        }
+	}
 	STOP_TRANSACTION();
 out:
 	if (cwd) {
@@ -1161,22 +1163,27 @@ send_patch_msg(remote *r, char rev_list[], char **envVar)
 // XXX - always recurses even when it shouldn't
 // XXX - needs to be u64
 u32
-send_BAM_sfio(FILE *wf, char *bp_keys, u64 bpsz, int gzip, int quiet)
+send_BAM_sfio(FILE *wf, char *bp_keys, u64 bpsz, int gzip, int quiet, int verbose)
 {
 	u32	n;
 	int	fd0, fd, rfd, status;
 	pid_t	pid;
 	char	*sfio[10] = {"bk", "sfio", "-oB", 0, "-", 0};
-	char	buf[64];
+	char	buf[64] = {0};
 
 	if (quiet) {
 		strcpy(buf, "-q");
-	} else {
+	} else unless (verbose) {
 		/* enable a progress bar in sfio */
 		snprintf(buf, sizeof(buf), "-b%s", psize(bpsz));
 		progress_nlneeded();
 	}
-	sfio[3] = buf;
+	if (buf[0]) {
+		sfio[3] = buf;
+	} else {
+		sfio[3] = sfio[4];
+		sfio[4] = 0;
+	}
 
 	/*
 	 * What we want is: bp_keys => bk sfio => gzip => remote
@@ -1238,7 +1245,7 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 			fnull = fopen(DEVNULL_WR, "w");
 			assert(fnull);
 			m = send_BAM_sfio(fnull, bp_keys, bpsz, r->gzip,
-					  opts.quiet);
+			    opts.quiet, opts.verbose);
 			fclose(fnull);
 			assert(m > 0);
 			extra = m + 6 + 6;
@@ -1253,7 +1260,8 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	if (extra > 0) {
 		f = fdopen(dup(r->wfd), "wb");
 		fprintf(f, "@BAM@\n");
-		n = send_BAM_sfio(f, bp_keys, bpsz, r->gzip, opts.quiet);
+		n = send_BAM_sfio(f, bp_keys, bpsz, r->gzip,
+		    opts.quiet, opts.verbose);
 		if ((r->type == ADDR_HTTP) && (m != n)) {
 			fprintf(stderr,
 			    "Error: patch has changed size from %d to %d\n",

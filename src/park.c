@@ -1131,7 +1131,7 @@ err:		if (sfio_list[0]) unlink(sfio_list);
 	touch("SCCS/" BKSKIP, 0777);
 
 	rc = sysio((id == -1) ? NULL : parkfile,
-				NULL, sfio_list, "bk", "sfio", "-i", SYS);
+	    NULL, sfio_list, "bk", "sfio", "-i", "-v", SYS);
 	if (rc) {
 		fprintf(stderr, "sfio errored, unpark failed\n");
 		goto err;

@@ -60,7 +60,7 @@ undo_main(int ac,  char **av)
 	char	*must_have = 0;
 	char	**nav = 0;
 	options	*opts;
-	filecnt	nf;
+	u32	nf = 0;
 	longopt	lopts[] = {
 		{ "force-unpopulate", 310 },
 
@@ -127,9 +127,9 @@ undo_main(int ac,  char **av)
 		 *   bk names: sfiles that exist
 		 * Guess each at # files in repo then adjust as we go along.
 		 */
-		repo_nfiles(0, &nf);
+		nf = repo_nfiles(0, 0);
 		opts->tick_cur = 0;
-		opts->tick = progress_start(PROGRESS_BAR, nf.usr*(5+save));
+		opts->tick = progress_start(PROGRESS_BAR, nf*(5+save));
 	}
 	/*
 	 * Get a list of <file>|<key> entries, one per delta,
@@ -175,7 +175,7 @@ undo_main(int ac,  char **av)
 	 * adjust down the progress bar max accordingly.
 	 */
 	if (opts->tick) {
-		progress_adjustMax(opts->tick, (i64)(5+save)*nf.usr -
+		progress_adjustMax(opts->tick, (i64)(5+save)*nf -
 		    (2*nLines(filesNrevs) + 3*nLines(sfiles) +
 		     (save ? ncsetrevs : 0)));
 	}
@@ -338,12 +338,8 @@ prod:
 		nested_free(n);
 		n = 0;
 	}
-	if (opts->fromclone) {
-		p = opts->quiet ? "-fuT" : "-fuvT";
-	} else {
-		p = opts->quiet ? "-fu" : "-fuv";
-	}
-	rc = run_check(opts->verbose, checkfiles, p, 0);
+	rc = run_check(opts->quiet, opts->verbose, checkfiles,
+	    opts->fromclone ? "-fuT" : "-fu", 0);
 	freeLines(checkfiles, free);
 
 	unlink(undo_list);

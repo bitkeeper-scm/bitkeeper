@@ -1430,7 +1430,8 @@ resolve(void)
 
 	cmd[i = 0] = "resolve";
 	if (opts.transaction || opts.port) cmd[++i] = "-S";
-	unless (opts.verbose) cmd[++i] = "-q";
+	if (opts.verbose) cmd[++i] = "-v";
+	if (opts.quiet) cmd[++i] = "-q";
 	if (opts.textOnly) cmd[++i] = "-T";
 	if (opts.autoOnly) cmd[++i] = "--batch";
 	if (opts.transaction) cmd[++i] = "--auto-only";

@@ -120,7 +120,7 @@ private	char	**subrepos = 0;
 int
 check_main(int ac, char **av)
 {
-	int	c, nfiles = -1;
+	int	c, nfiles = 0;
 	u64	n;
 	FILE	*f;
 	MDBM	*idDB;
@@ -222,9 +222,15 @@ check_main(int ac, char **av)
 		fprintf(stderr, "Can't init ChangeSet\n");
 		return (1);
 	}
-	if (all || (nfiles == -1)) nfiles = repo_nfiles(0, 0);
+	if ((all || nfiles) && verbose) nfiles = repo_nfiles(0, 0);
 	if (verbose > 1) {
-		fprintf(stderr, "Preparing to check %u files...\n", nfiles);
+		if (nfiles) {
+			fprintf(stderr,
+			    "Preparing to check %u files...\n", nfiles);
+		} else {
+			fprintf(stderr,
+			    "Preparing to run check...\n");
+		}
 	}
 	/* force -B if no BAM server */
 	if (doBAM || !bp_serverID(buf, 1)) {

@@ -1637,6 +1637,7 @@ sfiles_clone_main(int ac, char **av)
 		"COMPONENT",
 		"urllist",
 		"NFILES",  // only with -m from here down
+		"NFILES_PRODUCT",
 		"ROOTKEY",
 		"TIP",
 		"checked",

@@ -68,6 +68,7 @@ private	void	perfile(char *path);
 
 private	struct {
 	u32	quiet:1;	/* suppress normal verbose output */
+	u32	verbose:1;	/* clone -v set this */
 	u32	doModes:1;	/* vm1.4 - sends permissions */
 	u32	echo:1;		/* echo files to stdout as they are written */
 	u32	force:1;	/* overwrite existing files */
@@ -116,7 +117,7 @@ sfio_main(int ac, char **av)
 	opts->recurse = 1;
 	opts->prefix = "";
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "2a;A;b;BefgHIij;KLlmN;opP;qr", lopts)) != -1) {
+	while ((c = getopt(ac, av, "2a;A;b;BefgHIij;KLlmN;opP;qrv", lopts)) != -1) {
 		switch (c) {
 		    case '2': break;	/* eat arg used by sfiles_clone */
 		    case 'a':
@@ -166,6 +167,7 @@ sfio_main(int ac, char **av)
 		    case 'P': opts->prefix = optarg; break;
 		    case 'm': opts->doModes = 1; break; 	/* doc 2.0 */
 		    case 'q': opts->quiet = 1; break; 		/* doc 2.0 */
+		    case 'v': opts->verbose = 1; break;
 		    case 310:	/* --checkout */
 		    	opts->checkout = 1;
 			break;
@@ -214,7 +216,7 @@ sfio_main(int ac, char **av)
 	if (opts->quiet) {
 	} else if (opts->todo) {
 		opts->tick = progress_start(PROGRESS_BAR, opts->todo);
-	} else if (opts->nfiles) {
+	} else unless (opts->verbose) {
 		opts->tick = progress_start(PROGRESS_BAR, opts->nfiles);
 	}
 	if (opts->mode == M_OUT) {
@@ -1077,7 +1079,7 @@ print_status(char *file, u32 sz)
 // ttyprintf("todo=%llu done=%llu max=%llu\n", opts->todo, opts->done, opts->tick->max);
 		progress(opts->tick, opts->done);
 		return;
-	} else if (opts->nfiles) {
+	} else if (opts->tick) {
 		progress(opts->tick, ++n);
 		return;
 	}
@@ -1160,9 +1162,10 @@ sfio_in_Nway(int n)
 
 	f = calloc(n, sizeof(FILE *));
 	sent = calloc(n, sizeof(int));
-	cmd = aprintf("bk sfio -i%s --Nway %s",
-		(opts->quiet || opts->todo || opts->nfiles)? "q" : "",
-		opts->checkout ? "--checkout" : "");
+	cmd = aprintf("bk sfio -i%s%s --Nway %s",
+	    (opts->quiet || opts->todo || opts->tick)? "q" : "",
+	    opts->verbose ? "v" : "",
+	    opts->checkout ? "--checkout" : "");
 	for (i = 0; i < n; i++) {
 		f[i] = popen(cmd, "w");
 	}
@@ -1293,7 +1296,7 @@ header:
 		}
 		if (opts->todo) {
 			progress(opts->tick, opts->done);
-		} else if (opts->nfiles) {
+		} else if (opts->tick) {
 			progress(opts->tick, ++nticks);
 		}
 		fflush(f[cur]);

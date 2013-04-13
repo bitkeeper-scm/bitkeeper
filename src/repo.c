@@ -62,7 +62,8 @@ nfiles_main(int ac, char **av)
 		if ((n = nfiles(opts)) < 0) return (1);
 		printf("%u\n", n);
 	} else {
-		printf("%u\n", repo_nfiles(0, 0));
+		unless (n = repo_nfiles(0, 0)) return (1);
+		printf("%u\n", n);
 	}
 	return (0);
 }
@@ -75,21 +76,21 @@ nfiles_main(int ac, char **av)
  * Return the approximate number of files in a repository, both the
  * total number and the number not under BitKeeper/.
  * The counts are updated whenever 'bk -R sfiles' is run.
+ * A return of zero, though unlikely, is an error (corrupt/missing hash?)
  */
-int
+u32
 repo_nfiles(project *p, filecnt *fc)
 {
 	hash	*h = 0;
-	FILE	*f;
 	filecnt	junk;
-	char	*cmd, *t;
 	char	*rk, *numstr;
 	project	*prod;
 	char	**nums;
+	sccs	*s;
 
 	unless (fc) fc = &junk;
-	fc->tot = -1;
-	fc->usr = -1;
+	fc->tot = 0;
+	fc->usr = 0;
 
 	rk = proj_rootkey(p);
 	prod = proj_product(p);
@@ -108,36 +109,23 @@ repo_nfiles(project *p, filecnt *fc)
 	} else if (h = hash_fromFile(0,
 		proj_fullpath(p, "BitKeeper/log/NFILES"))) {
 
-		unless ((fc->tot = hash_fetchStrNum(h, TOTFILES)) || h->kptr) {
-			fc->tot = -1;
-		}
-		unless ((fc->usr = hash_fetchStrNum(h, USRFILES)) || h->kptr) {
-			fc->usr = -1;
-		}
+		fc->tot = hash_fetchStrNum(h, TOTFILES);
+		fc->usr = hash_fetchStrNum(h, USRFILES);
 		hash_free(h);
 	}
-	if ((fc->tot == -1) || (fc->usr == -1)) {
-		/*
-		 * The NFILES file is missing one or both fields.  We
-		 * will run 'bk sfiles -s' to count the data
-		 * ourselves.  The -s prevents using the 'fast' sfiles
-		 * code which would also write NFILES, this is to
-		 * prevent races with multiple writers of a single
-		 * file.
-		 *
-		 * ex: bk -r check -a
-		 *     check_main calls repo_nfiles() and spawns a new sfiles.
-		 */
-		fc->tot = fc->usr = 0;
-		cmd = aprintf("bk --cd='%s' sfiles -s 2> " DEVNULL_WR,
-		    proj_root(p));
-		f = popen(cmd, "r");
-		free(cmd);
-		while (t = fgetline(f)) {
-			++fc->tot;
-			unless (strneq(t, "BitKeeper/", 10)) ++fc->usr;
-		}
-		pclose(f);
+	/*
+	 * If we could not find a cached tot field AND we were called
+	 * with a null fc argument (implying that the caller can't
+	 * possibly care about the usr member) then we can count keys
+	 * in ChangeSet as a failsafe
+	 */
+	if ((fc->tot == 0) && (fc == &junk)) {
+		TRACE("%s: counting keys in %s\n", prog, proj_root(p));
+		s = sccs_init(proj_fullpath(p, CHANGESET),
+		    SILENT|INIT_MUSTEXIST);
+		assert(s);
+		fc->tot = sccs_hashcount(s) + 1;
+		sccs_free(s);
 	}
 	return (fc->tot);
 }

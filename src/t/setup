@@ -351,7 +351,7 @@ fail() {
 		echo "pwd is `pwd`"
 		sleep 100000
 	}
-	exit 1
+	test x$BK_REGRESSION_NOFAIL == x && exit 1
 }
 
 test_gui_result() {

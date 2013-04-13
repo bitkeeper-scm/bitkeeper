@@ -243,8 +243,7 @@ nested_populate(nested *n, popts *ops)
 	/* do consistency check at end */
 	unless (ops->leaveHERE) nested_writeHere(n);
 	if (ops->runcheck) {
-		rc |= run_check(ops->verbose,
-		    checkfiles, ops->quiet ? "-u" : "-uv", 0);
+		rc |= run_check(ops->quiet, ops->verbose, checkfiles, "-u", 0);
 		freeLines(checkfiles, free);
 	}
 out:	proj_reset(0);

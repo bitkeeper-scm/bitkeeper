@@ -28,6 +28,7 @@ setup_main(int ac, char **av)
 	int	product = 0;
 	int	noCommit = 0;
 	int	sccs_compat = 0;
+	filecnt	nf;
 	longopt	lopts[] = {
 		{ "sccs-compat", 300 }, /* old compat option */
 		{ "compat", 300 },	/* create compatible repo */
@@ -276,6 +277,8 @@ err:			unlink("BitKeeper/etc/config");
         }
 	enableFastPendingScan();
 	logChangeSet();
+	nf.tot = product ? NFILES_PROD : NFILES_SA;
+	nf.usr = 1;
 	if (in_prod) {		/* we are a new component, attach ourself */
 		unlink("BitKeeper/log/COMPONENT");
 		status = sys("bk", "attach",
@@ -284,7 +287,10 @@ err:			unlink("BitKeeper/etc/config");
 			fprintf(stderr, "setup: bk attach failed.\n");
 			return (1);
 		}
+		nf.tot = NFILES_COMP;
 	}
+	proj_reset(0);
+	repo_nfilesUpdate(&nf);	/* update product level nfiles */
 	if (config_path) free(config_path);
 	return (0);
 }

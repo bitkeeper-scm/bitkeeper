@@ -420,8 +420,8 @@ rclone_end(opts *opts)
 	} else {
 docheck:	/* undo already runs check so we only need this case */
 		if (checkfiles || full_check()) {
-			rc = run_check(
-			    0, checkfiles, quiet? "-fT" : "-fvT", &partial);
+			rc = run_check(quiet,
+			    0, checkfiles, "-fT", &partial);
 		}
 	}
 	freeLines(checkfiles, free);
