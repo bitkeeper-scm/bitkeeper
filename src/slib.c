@@ -1574,7 +1574,7 @@ findrev(sccs *s, char *rev)
 	/* 1.0 == TREE(s) even if TREE(s) is 1.1 */
 	if (streq(rev, "1.0")) return (TREE(s));
 
-	if (*rev == '=') {
+	if ((*rev == '=') && isdigit(rev[1])) {
 		e = atoi(++rev);
 		unless ((e >= TREE(s)) && (e <= TABLE(s))) {
 			fprintf(stderr, "Serial %s not found\n", rev);
