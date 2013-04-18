@@ -120,6 +120,11 @@ struct {
 	string	font_normal;	    // Normal font for the file list
 	string{string} font_underline;  // An underlined font for the file list
 	string{string} font_overstrike; // A striked-out  font for the file list
+	string	cfiles[];	    // a list of cfiles to dump
+	int	cfiles_idx;	    // current cfile
+	FILE	cfiles_pipe;	    // open pipe for the current cfile operation
+	int	cfiles_prefix;	    // number of spaces to prefix
+	string	cfile_comments;	    // comments on the current cfile
 
 	// Keep a hash of components and info about them.  We use this
 	// as a quick lookup to know if a component has some files with
@@ -135,61 +140,82 @@ struct {
 	} compinfo{string};
 } self;
 
-typedef	void &bk_callback(string line);
+typedef	void &bk_callback(FILE pipe);
 
 private string	_bk_output{FILE};
 
 // Call out to BK in a way that doesn't block the GUI and wait for
-// a result.  If a callback function is passed, that callback will
-// be called for every line as they are output.  Otherwise, we buffer
-// up the output of the command and return it all as a string.
+// a result.
 string
-bk(string cmdline, _optional bk_callback callback)
+bk(string cmdline, _optional string mode)
 {
 	FILE	pipe;
 	int	progress;
-	string	res, cb[];
 
 	progress = startProgressBar(1000);// Start a progress bar after a second
-	pipe = popen("bk --sigpipe ${cmdline}", "r");
-
-	cb = {"readBK", pipe};
-	if (callback) {
-		push(&cb, (string)callback);
-	} else {
-		_bk_output{pipe} = undef;
-	}
-
-	fileevent(pipe, "readable", cb);
-	fconfigure(pipe, blocking: 0, buffering: "line");
-	vwait("::_bk_done(${pipe})"); // Have to use a Tcl array here.
-
+	pipe = openBK(cmdline, &readBK, mode);
+	_bk_output{pipe} = undef;
+	waitForBK(pipe);
 	if (progress) stopProgressBar();
-	unless (callback) res = trim(_bk_output{pipe});
-	return(res);
+	return (trim(_bk_output{pipe}));
+}
+
+FILE
+openBK(string cmdline, bk_callback callback, _optional string mode)
+{
+	FILE	pipe;
+
+	unless (mode) mode = "r";
+	pipe = popen("bk --sigpipe ${cmdline}", mode);
+
+	fileevent(pipe, "readable", {callback, pipe});
+	fconfigure(pipe, blocking: 0, buffering: "line");
+	return (pipe);
 }
 
 void
-readBK(FILE pipe, _optional bk_callback callback)
+waitForBK(FILE pipe)
 {
-	string	line;
+	vwait("::_bk_done(${pipe})"); // Have to use a Tcl array here.
+}
 
-	unless (line = <pipe>) {
+void
+closeBK(FILE pipe)
+{
+	if (pipe) {
 		pclose(pipe);
 		set("::_bk_done(${pipe})", 1);
+	}
+}
+
+void
+readBK(FILE pipe)
+{
+	string	data;
+
+	if (eof(pipe)) {
+		closeBK(pipe);
 		return;
 	}
-	if (callback) {
-		callback(line);
-	} else {
-		_bk_output{pipe} .= line . "\n";
-	}
+
+	read(pipe, &data);
+	_bk_output{pipe} .= data;
 }
 
 string
 joinpath(...args)
 {
 	return(file("join", (expand)args));
+}
+
+string
+trimright(string s, _optional string p)
+{
+	if (p) {
+		return (String_trimright(s, p));
+	} else {
+		return (String_trimright(s));
+	}
 }
 
 int
@@ -342,7 +368,7 @@ removeFile(sfile sf, int removeCset)
 		moveNext();
 		updateStatus();
 	}
-	deleteCommentFile(sf.file);
+	deleteCommentFile(sf);
 	if (sf.commented) --self.compinfo{sf.component}.commentedFiles;
 	foreach (file in self.components{component}) {
 		if (file == sf.name) {
@@ -461,8 +487,15 @@ configureFile(sfile sf)
 }
 
 void
-readSfiles(string line)
+readSfiles(FILE pipe)
 {
+	string	line;
+
+	unless (line = <pipe>) {
+		closeBK(pipe);
+		return;
+	}
+
 	if (line[0] == "F") {
 		addSfilesLines({line[2..END]});
 	} else if (line[0] == "P") {
@@ -534,7 +567,7 @@ addSfilesLines(string lines[])
 		sf.inProduct = 0;
 		sf.commented = hasComments;
 
-		if (file == "ChangeSet") {
+		if (file =~ /ChangeSet$/) {
 			// ChangeSet files only show up when a comment
 			// has been saved on disk for them.  Mark the
 			// current component as having a comment and
@@ -718,11 +751,12 @@ processFiles(string files[])
 	} else {
 		self.progressbar = 0;
 		Progressbar_configure(self.w_progress, value: 100);
+		update();
 	}
-	StatusBar_remove(self.w_statusF, self.w_progress, background: gc("BG"));
 	configureCsetNodes();
 	updateStatus();
 	updateButtons();
+	Progressbar_configure(self.w_progress, value: 0);
 }
 
 void
@@ -744,7 +778,9 @@ findFiles()
 void
 scanComponent(string comp)
 {
+	FILE	pipe;
 	string	cmd;
+	int	progress;
 	string	opts = "--gui -vgcypA";
 
 	// Don't recurse if a directory is named on the command line
@@ -766,7 +802,10 @@ scanComponent(string comp)
 		cmd .= " -x";
 	}
 	cmd .= " 2>@1";
-	bk(cmd, &readSfiles);
+	progress = startProgressBar();
+	pipe = openBK(cmd, &readSfiles);
+	waitForBK(pipe);
+	if (progress) stopProgressBar();
 
 	if (self.sfiles_pending) {
 		insertPendingNode(comp);
@@ -1119,6 +1158,7 @@ selectFile(string node)
 	self.selecting = node;
 	saveComments();
 	saveX11Buffer();
+	stopCfileComments();
 	self.doDiscard = 0;
 	self.commitSwitch = 0;
 	self.selected = undef;
@@ -1514,9 +1554,14 @@ isRealComment(sfile sf, string comment)
 }
 
 void
-deleteCommentFile(string file)
+deleteCommentFile(sfile sf)
 {
+	string	file = sf.file;
+
+	if (sf.type == "pending") append(&file, "@" . sf.rev);
 	bk("cfile rm '${file}'");
+
+	if (sf.type == "cset") self.compinfo{sf.component}.commented = 0;
 }
 
 void
@@ -1540,6 +1585,8 @@ writeComments(sfile sf, string comments)
 	fd = popen("bk cfile save '${sf.file}'", "w");
 	puts(fd, comments);
 	pclose(fd);
+
+	if (sf.type == "cset") self.compinfo{sf.component}.commented = 1;
 }
 
 void
@@ -1554,7 +1601,7 @@ saveComments()
 	comments = getCurrentComments();
 
 	unless (setComments(sf, comments)) {
-		if (self.commented) deleteCommentFile(sf.file);
+		if (self.commented) deleteCommentFile(sf);
 	} else {
 		foreach (key => msg in msgs) {
 			if (comments == msg) return;
@@ -1734,52 +1781,47 @@ getComments(sfile sf)
 }
 
 string
-getCommentsFromDisk(sfile sf)
+getCommentsFromDisk(sfile sf, _optional int prefix)
 {
 	string	comments;
 
-	// If this is a cset file and we have the comments cached, just
-	// return those.
 	if ((sf.type == "cset") && self.compinfo{sf.component}.comments) {
-		return (self.compinfo{sf.component}.comments);
-	}
+		// We have cached comments for this cset file.
+		comments = self.compinfo{sf.component}.comments;
+	} else if (sf.type == "pending") {
+		comments = bk("prs -hd'$each(:C:){(:C:)\n}' "
+		    "-r${sf.rev} '${sf.file}'");
+	} else {
+		comments = bk("cfile print '${sf.file}'");
+		if (comments == "") {
+			// If we have a template for this file name, plug in
+			// the template comments.  This is currently only
+			// supported for ChangeSet files.
+			if (defined(self.templates{sf.name})) {
+				comments = self.templates{sf.name};
+			}
 
-	if (sf.type == "pending") {
-		FILE	fd;
-		string	line;
-
-		fd = popen("bk prs -hd:COMMENTS: -r${sf.rev} '${sf.file}'",
-		    "r");
-		while (defined(line = fgetline(fd))) {
-			append(&comments, line[2..END], "\n");
+			// If this is a component cset file, and the component
+			// has commented files but no comment itself, plug in
+			// the comments from the product cset.
+			if (self.nested
+			    && (sf.type == "cset") && !sf.inProduct
+			    && componentHasComments(sf.component)) {
+				comments = getComments(self.files{"ChangeSet"});
+			}
 		}
-		pclose(fd);
-		return (comments);
-	}
 
-	comments = bk("cfile print '${sf.file}'");
-	if (comments == "") {
-		// If we have a template for this file name, plug in
-		// the template comments.  This is currently only
-		// supported for ChangeSet files.
-		if (defined(self.templates{sf.name})) {
-			comments = self.templates{sf.name};
-		}
-
-		// If this is a component cset file, and the component
-		// has commented files but no comment itself, plug in
-		// the comments from the product cset.
-		if (self.nested
-		    && (sf.type == "cset") && !sf.inProduct
-		    && componentHasComments(sf.component)) {
-			comments = getComments(self.files{"ChangeSet"});
+		if ((sf.type == "cset") && isRealComment(sf, comments)) {
+			// If we have a real comment and this is a cset file,
+			// cache those comments for fast lookup later.
+			self.compinfo{sf.component}.comments = comments;
 		}
 	}
 
-	if ((sf.type == "cset") && isRealComment(sf, comments)) {
-		// If we have a real comment and this is a cset file,
-		// cache those comments for fast lookup later.
-		self.compinfo{sf.component}.comments = comments;
+	if (prefix) {
+		string	p = sprintf("%${prefix}s", "");
+
+		comments = p . String_map({"\n", "\n" . p}, comments);
 	}
 	return (comments);
 }
@@ -1900,10 +1942,7 @@ showFileContents(sfile sf)
 void
 showCsetContents(sfile sf)
 {
-	sfile	s, cset;
-	string	file, comp, comments;
-	string	comps[], lines[];
-	widget	textBox = self.w_diffs;
+	string	comp, file, comments, files[], comps[];
 
 	if (sf.inProduct && self.cnt_commented == 0) {
 		// Product ChangeSet file and no comments at all.
@@ -1936,84 +1975,157 @@ showCsetContents(sfile sf)
 	}
 
 	bottomMessage(msgs{"changeset"}, "notice");
-	Text_insert(textBox, "end", "\n");
 
+	self.cfiles = undef;
 	foreach (comp in comps) {
-		string	line;
-		string	sp1 = "";
-		string	sp2 = "  ";
+		sfile	s = getCsetFile(comp);
 
-		if (sf.inProduct) {
-			sp1 = "  ";
-			sp2 = "    ";
-			cset = getCsetFile(comp);
-			if (isExcluded(cset)) continue;
-			unless (componentHasComments(comp)) continue;
-			unless ((cset.file == sf.file)
-				|| isCommented(cset)) continue;
-
-			comments = getComments(cset);
-			if ((cset.file != sf.file) && ((comments == "")
-			    || isTemplateComment(cset, comments))) continue;
-
-			Text_insert(textBox, "end", "${cset.name}\n");
-			lines = split(/\n/, comments);
-			foreach (line in lines) {
-				Text_insert(textBox, "end",
-				    "  ${line}\n");
-			}
-			Text_insert(textBox, "end", "\n");
-		}
+		if (isExcluded(s)) continue;
+		unless (componentHasComments(comp)) continue;
+		unless ((s.file == sf.file) || isCommented(s)) continue;
+		push(&files, s.name);
 
 		foreach (file in self.components{comp}) {
 			s = self.files{file};
 			if (s.excluded) continue;
 			if (s.type == "cset") continue;
 			unless (isCommented(s)) continue;
-
-			comments = getComments(s);
-			if (comments == "") continue;
-
-			Text_insert(textBox, "end", sp1);
-			Text_insert(textBox, "end", s.name);
-			Text_insert(textBox, "end", "\n");
-			lines = split(/\n/, comments);
-			foreach (line in lines) {
-				Text_insert(textBox, "end", sp2);
-				Text_insert(textBox, "end", line);
-				Text_insert(textBox, "end", "\n");
-			}
-			Text_insert(textBox, "end", "\n");
+			push(&files, s.name);
 		}
 	}
+
+	getCfileComments(files, 2);
+}
+
+/* getCfileComments
+ *
+ * Take a list of files and open up `bk cfiles dump` to dump all of the
+ * comments for those files.  We open the pipe and then setup a file event
+ * to read the output lines.  This function DOES wait for all of the files
+ * to complete, but it DOES NOT block the GUI while running.
+ */
+void
+getCfileComments(string files[], int prefix)
+{
+	FILE	pipe;
+	int	progress;
+
+	unless (length(files)) return;
+
+	self.cfiles = files;
+	self.cfiles_idx = 0;
+	self.cfiles_prefix = prefix;
+
+	chdir(self.root);
+	pipe = openBK("cfile dump --prefix=${prefix}", &fillComments, "r+");
+	unless (pipe) return;
+
+	self.cfiles_pipe = pipe;
+
+	progress = startProgressBar();
+	fillComments(pipe); // call the first time to get the ball rolling
+	if (self.cfiles_pipe) waitForBK(pipe);
+	if (progress) stopProgressBar();
+}
+
+/* fillComments
+ *
+ * Read a single line from the pipe and process it.  A blank line indicates
+ * one file is done, and `bk cfiles dump` is ready for the next file.  Note
+ * that we handle ChangeSet files internally because they are a special case.
+ */
+void
+fillComments(FILE pipe)
+{
+	sfile	sf;
+	string	file, data, comments;
+
+	read(pipe, &data);
+	if (length(data)) {
+		// Got some data.  Append it to our current string.
+		self.cfile_comments .= data;
+
+		// Not to the end of the data yet, so bail.
+		unless ((data =~ /\n\n$/)) return;
+
+		comments = trimright(self.cfile_comments);
+		if (length(comments)) {
+			Text_insert(self.w_diffs, "end", comments);
+			Text_insert(self.w_diffs, "end", "\n\n");
+		}
+
+		self.cfile_comments = "";
+	}
+
+	// We finished the previous file.  Grab the next file
+	// off the stack and see what we need to do.  We handle
+	// pending and ChangeSet files ourselves and pass everything
+	// else off to cfiles on the pipe.
+
+	while (1) {
+		file = self.cfiles[self.cfiles_idx++];
+		sf = self.files{file};
+
+		unless (file && self.cfiles_pipe) {
+			// No files left, close the pipe.
+			stopCfileComments();
+			return;
+		}
+
+		// We handle ChangeSet and pending files ourselves
+		// since they can have comments that don't live on disk
+		// and are therefore unknown to bk cfile.
+		if ((sf.type == "cset") || (sf.type == "pending")) {
+			int	p1, p2;
+
+			p1  = (sf.type == "cset") ? 0 : self.cfiles_prefix;
+			p2 = p1 + 2;
+
+			comments = trimright(getCommentsFromDisk(sf, p2));
+			Text_insert(self.w_diffs, "end", sprintf("%${p1}s",""));
+			Text_insert(self.w_diffs, "end", file . "\n");
+			Text_insert(self.w_diffs, "end", comments);
+			Text_insert(self.w_diffs, "end", "\n\n");
+			continue;
+		}
+
+		// Tell bk cfiles to do the next file.
+		puts(pipe, file);
+		flush(pipe);
+		break;
+	}
+}
+
+/* stopCfileComments
+ *
+ * Stop any running `bk cfile dump` operation and close the pipe.
+ */
+void
+stopCfileComments()
+{
+	unless (self.cfiles_pipe) return;
+
+	// Close the pipe and signal that we're done so that the vwait
+	// in showCsetContents() will release and finish.
+	closeBK(self.cfiles_pipe);
+	self.cfiles_pipe = undef;
 }
 
 void
 showCheckinContents()
 {
 	sfile	sf;
-	string	lines[];
-	string	line, file, comments;
+	string	file, files[];
 
 	Text_delete(self.w_diffs, 1.0, "end");
 	foreach (file => sf in self.files) {
 		if (sf.excluded) continue;
 		if (sf.type == "cset") continue;
 		unless (isCommented(sf)) continue;
-
-		comments = getComments(sf);
-		if (comments == "") continue;
-
-		Text_insert(self.w_diffs, "end", sf.name);
-		Text_insert(self.w_diffs, "end", "\n");
-		lines = split(/\n/, comments);
-		foreach (line in lines) {
-			Text_insert(self.w_diffs, "end", "  ");
-			Text_insert(self.w_diffs, "end", line);
-			Text_insert(self.w_diffs, "end", "\n");
-		}
-		Text_insert(self.w_diffs, "end", "\n");
+		push(&files, sf.name);
 	}
+
+	getCfileComments(files, 0);
 }
 
 void
@@ -2164,6 +2276,8 @@ doCommit()
 	string	comp;
 	sfile	cset = self.files{"ChangeSet"};
 
+	stopCfileComments();
+
 	saveComments();
 	if (isRepoLocked()) {
 		popupMessage(E: msgs{"repoLocked"});
@@ -2196,8 +2310,8 @@ doCommit()
 			showCsetContents(self.files{"ChangeSet"});
 			topMessage(msgs{"gotCset"}, "message");
 		} else {
-			showCheckinContents();
 			topMessage(msgs{"noCset"}, "message");
+			showCheckinContents();
 		}
 		return;
 	}
@@ -2389,7 +2503,7 @@ commitComponent(string comp)
 			}
 		}
 
-		if (res) deleteCommentFile(cset.file);
+		if (res) deleteCommentFile(cset);
 	}
 	chdir(self.root);
 	return (res);
@@ -2428,7 +2542,7 @@ deleteAllComments()
 	string	file;
 
 	foreach (file => sf in self.files) {
-		if (isCommented(sf)) deleteCommentFile(sf.file);
+		if (isCommented(sf)) deleteCommentFile(sf);
 	}
 }
 
@@ -2441,7 +2555,7 @@ deletePendingComments()
 	foreach (file => sf in self.files) {
 		unless (sf.type == "pending") continue;
 		append(&file, "@", sf.rev);
-		deleteCommentFile(file);
+		deleteCommentFile(sf);
 	}
 }
 

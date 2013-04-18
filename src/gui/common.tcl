@@ -1232,6 +1232,7 @@ debug_enter(string cmd, string op)
 	op = op;
 	debug{cmd} = Clock_microseconds();
 	fprintf(debugf, "ENTER ${cmd}\n");
+	flush(debugf);
 }
 
 void
@@ -1252,6 +1253,7 @@ debug_leave(string cmd, int code, string result, string op)
 	} else {
 		fprintf(debugf, "LEAVE ${cmd}\n");
 	}
+	flush(debugf);
 }
 
 void
