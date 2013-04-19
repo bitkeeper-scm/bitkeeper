@@ -459,7 +459,7 @@ check_main(int ac, char **av)
 			}
 			EACH_STRUCT(comps, c, j) {
 				c->alias = 1;
-				unless (c->present) {
+				unless (C_PRESENT(c)) {
 					fprintf(stderr,
 					    "check: error expanding alias '%s' "
 					    "because '%s' is not present\n",
@@ -471,7 +471,7 @@ check_main(int ac, char **av)
 		}
 		EACH_STRUCT(n->comps, c, i) {
 			if (c->product) continue;
-			if (!c->alias && c->present) {
+			if (!c->alias && C_PRESENT(c)) {
 				fprintf(stderr,
 				    "check: comp '%s' is present and "
 				    "not included in current aliases.\n",

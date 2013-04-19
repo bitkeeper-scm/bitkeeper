@@ -471,7 +471,7 @@ checkPresent(sccs *s, char **inc, char **exc)
 	}
 	/* check for globs that don't have dir */
 	EACH_STRUCT(n->comps, c, k) {
-		if (c->present) continue;
+		if (C_PRESENT(c)) continue;
 		for (i = 0; i < 2; i++) {
 			EACH_INDEX(list[i], j) {
 				if (!streq("ChangeSet", basenm(list[i][j]))

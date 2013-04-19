@@ -54,27 +54,50 @@ extern	unsigned int turnTransOff;
 
 #define	PRODUCT			"."		/* for titles */
 
+#define	C_PRESENT(c)	({		\
+	if ((c)->_present == -1) {	\
+		compCheckPresent(c);	\
+	}				\
+	(c)->_present;			\
+})
+
+#define	C_PENDING(c)	({		\
+	if ((c)->_pending == -1) {	\
+		compMarkPending(c);	\
+	}				\
+	c->_pending;			\
+})
+
+#define	C_DELTAKEY(c)	({		\
+	if ((c)->_pending == -1) {	\
+		compMarkPending(c);	\
+	}				\
+	(c)->_deltakey;			\
+})
+
 typedef struct nested nested;
 
 typedef struct {
 	nested	*n;			// backpointer
 	char	*rootkey;		// rootkey of the repo
-	char	*deltakey;		// deltakey of repo as of rev
+	char	*_deltakey;		// deltakey of repo as of rev
 	char	*lowerkey;		// in pull, local tip
 	char	**poly;			// info needed for poly
 	char	*path;			// actual path: like GFILE, not DPN
 
 	void	*data;			// scratchpad for applications
-
+	int	_present;		// if set, the repo is actually here
+					// -1 means it hasn't been stated
+	int	_pending;		// has pending csets not in product
+					// -1 means it hasn't been checked
 	// bits
 	u32	alias:1;		// in the latest alias
 	u32	included:1;		// component modified in 'revs'
+	u32	inCache:1;		// comp in idcache
 	u32	localchanges:1;		// component modified outside 'revs'
 	u32	new:1;			// if set, the undo will remove this
-	u32	present:1;		// if set, the repo is actually here
 	u32	product:1;		// this is the product
 	u32	remotePresent:1;	// scratch for remote present bit
-	u32	pending:1;		// has pending csets not in product
 	u32	useLowerKey:1;		// tell populate to use lowerkey
 	u32	savedGate:1;		// wrote gate to urllist for this comp?
 	u32	gca:1;			// seen something in gca
@@ -248,6 +271,9 @@ void	nested_updateIdcache(project *comp);
 int	nested_isPortal(project *comp);
 int	nested_isGate(project *comp);
 void	freeNlock(void *nl);
+void	compCheckPresent(comp *c);
+void	compMarkPending(comp *c);
+
 
 /* populate.c */
 int	nested_populate(nested *n, popts *ops);

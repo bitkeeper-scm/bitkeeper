@@ -286,7 +286,7 @@ write:
 	/* see if the HERE still matches the present bits */
 	if (aliasdb_tag(n, aliasdb, n->here)) goto err;
 	EACH_STRUCT(n->comps, cp, i) {
-		if (cp->present != cp->alias) {
+		if (C_PRESENT(cp) != cp->alias) {
 			urlinfo_urlArgs(n, opts->urls);
 
 			bzero(&ops, sizeof(ops));
@@ -991,7 +991,7 @@ dbPrint(nested *n, hash *aliasdb, char **items, int indent, aopts *op)
 			sawall = 1;
 			comps = aliasdb_expandOne(n, aliasdb, val);
 			EACH_STRUCT(comps, c, j) {
-				unless (c->present) {
+				unless (C_PRESENT(c)) {
 					sawall = 0;
 					break;
 				}
@@ -1064,8 +1064,8 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char ***paliases, aopts *op)
 		}
 
 		EACH_STRUCT(n->comps, c, i) {
-			if ((op->missing && c->present) ||
-			    (op->here && !c->present)) {
+			if ((op->missing && C_PRESENT(c)) ||
+			    (op->here && !C_PRESENT(c))) {
 				continue;
 			}
 			if (n->alias ? !c->alias : c->product) continue;

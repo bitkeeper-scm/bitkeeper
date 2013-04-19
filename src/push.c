@@ -433,7 +433,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 			/* this component is included in push */
 			if (c->alias) {
 				/* The remote will need this component */
-				if (!c->present) {
+				if (!C_PRESENT(c)) {
 					/* we don't have the data to send */
 					fprintf(stderr,
 					    "push: "
@@ -444,7 +444,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 					/* they don't have it currently */
 					unless (c->new) c->new = 1;
 				}
-			} else if (c->present) {
+			} else if (C_PRESENT(c)) {
 				/*
 				 * Remote doesn't have it, we do, push
 				 * disallowed because a rm of the nested
@@ -458,7 +458,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 			/* not included in push */
 			if (c->alias && !c->remotePresent) {
 				/* remote doesn't have it, but needs it */
-				if (c->present) {
+				if (C_PRESENT(c)) {
 					/* we do, so force a clone */
 					c->new = 1;
 					c->included = 1;
@@ -490,13 +490,13 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	proj_cd2product();
 	EACH_STRUCT(n->comps, c, i) {
 		/* skip cases with nothing to do */
-		if (!c->included || !c->present || !c->alias) continue;
+		if (!c->included || !c->alias || !C_PRESENT(c)) continue;
 		if (c->product) continue;
 		opts.n++;
 	}
 	EACH_STRUCT(n->comps, c, i) {
 		/* skip cases with nothing to do */
-		if (!c->included || !c->present || !c->alias) continue;
+		if (!c->included || !c->alias || !C_PRESENT(c)) continue;
 		if (c->product) continue;
 		chdir(c->path);
 		vp = addLine(0, strdup("bk"));
@@ -514,7 +514,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 				vp = addLine(vp, strdup(opts.av_push[j]));
 			}
 		}
-		vp = addLine(vp, aprintf("-r%s", c->deltakey));
+		vp = addLine(vp, aprintf("-r%s", C_DELTAKEY(c)));
 		if (c->new) vp = addLine(vp, strdup("."));
 		vp = addLine(vp, aprintf("%s/%s", url, c->path));
 		vp = addLine(vp, 0);

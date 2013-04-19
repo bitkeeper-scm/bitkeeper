@@ -501,7 +501,7 @@ chkAttach(char *dir)
 		goto err;
 	}
 	EACH_STRUCT(n->comps, cp, i) {
-		unless (cp->present) {
+		unless (C_PRESENT(cp)) {
 			fprintf(stderr, "Product needs to be fully "
 			    "populated. Run 'bk here set all' to fix.\n");
 			goto err;

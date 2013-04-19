@@ -80,14 +80,14 @@ here_check_main(int ac, char **av)
 	maxlen = 0;
 	unless (opts->all) EACH_STRUCT(n->comps, cp, i) {
 		unless (cp->alias) continue;
-		if (cp->present && opts->missing) continue;
+		if (opts->missing && C_PRESENT(cp)) continue;
 
 		if (strlen(cp->path) > maxlen) maxlen = strlen(cp->path);
 	}
 
 	EACH_STRUCT(n->comps, cp, i) {
 		unless (cp->alias) continue;
-		if (cp->present && opts->missing) continue;
+		if (opts->missing && C_PRESENT(cp)) continue;
 		if (cp->product) continue;
 
 		if (opts->noconnect) {
@@ -125,7 +125,7 @@ here_check_main(int ac, char **av)
 			    "%-*s:%sno valid urls found (%s)\n",
 			    maxlen, cp->path,
 			    opts->all? "\n\t" : " ",
-			    cp->present ? "present" : "missing");
+			    C_PRESENT(cp) ? "present" : "missing");
 			rc = 1;
 		}
 	}

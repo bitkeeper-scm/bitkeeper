@@ -7,8 +7,6 @@ private	int	compSort(const void *a, const void *b);
 private	void	compFree(void *x);
 private	int	compRemove(char *path, struct stat *statbuf, void *data);
 private	int	empty(char *path, struct stat *statbuf, void *data);
-private void	compCheckPresent(nested *n, comp *c, int idcache_wrong);
-private	void	compMarkPending(nested *n, comp *c);
 private	int	nestedLoadCache(nested *n, MDBM *idDB);
 private	void	nestedSaveCache(nested *n);
 
@@ -135,22 +133,23 @@ nested_main(int ac, char **av)
 		if (undo && cp->new && !(want & L_NEW)) {
 			continue;
 		}
-		if (here && !cp->present) continue;
-		if (missing && cp->present) continue;
+		if (here && !C_PRESENT(cp)) continue;
+		if (missing && C_PRESENT(cp)) continue;
 		p = "";
 		if (want & L_PATH) {
 			printf("%s", cp->path);
 			p = "|";
 		}
 		if (want & L_DELTA) {
-			printf("%s%s", p, undo ? cp->lowerkey : cp->deltakey);
+			printf("%s%s",
+			    p, undo ? cp->lowerkey : C_DELTAKEY(cp));
 			p = "|";
 		}
 		if (want & L_ROOT) {
 			printf("%s%s", p, cp->rootkey);
 			p = "|";
 		}
-		if ((want & L_MISSING) && !cp->present)  {
+		if ((want & L_MISSING) && !C_PRESENT(cp))  {
 			printf("%s(missing)", p);
 			p = "|";
 		}
@@ -158,7 +157,7 @@ nested_main(int ac, char **av)
 			printf("%s(new)", p);
 			p = "|";
 		}
-		if ((want & L_PRESENT) && cp->present)  {
+		if ((want & L_PRESENT) && C_PRESENT(cp))  {
 			printf("%s(present)", p);
 			p = "|";
 		}
@@ -212,7 +211,6 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	comp	*c = 0;
 	ser_t	d, left, right;
 	int	i;
-	int	inCache;
 	char	*t, *v;
 	kvpair	kv;
 	MDBM	*idDB = 0, *revsDB = 0;
@@ -256,7 +254,8 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	c->product = 1;
 	c->rootkey = strdup(proj_rootkey(n->proj));
 	c->path = strdup(".");
-	c->present = 1;
+	c->_present = 1;
+	c->_pending = 0;
 	c->included = 1;
 	// c->deltakey set below
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
@@ -327,7 +326,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 
 	sccs_sdelta(cset, right, buf);
 	n->tip = strdup(buf);
-	n->product->deltakey = strdup(buf);
+	n->product->_deltakey = strdup(buf);
 
 	if (left) {
 		n->oldtip = strdup(REV(cset, left));
@@ -349,6 +348,8 @@ err:				if (revsDB) mdbm_close(revsDB);
 			c->n = n;
 			c->rootkey = strdup(t);
 			c->new = 1; /* new by default */
+			c->_present = -1;
+			c->_pending = 0;
 
 			/* add to list */
 			hash_store(n->compdb, c->rootkey, strlen(c->rootkey)+1,
@@ -375,8 +376,8 @@ err:				if (revsDB) mdbm_close(revsDB);
 		if (!c->included && IN_REMOTE(d)) {
 			/* lastest delta included in revs or under tip */
 			c->included = 1;
-			assert(!c->deltakey);
-			c->deltakey = strdup(v);
+			assert(!c->_deltakey);
+			c->_deltakey = strdup(v);
 		}
 		if (!c->localchanges && (flags & NESTED_PULL) && IN_LOCAL(d)) {
 			/* in local region of pull */
@@ -437,7 +438,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 			c->new = 0;
 
 			/* If we haven't seen a REMOTE delta, then we won't. */
-			unless (c->deltakey) c->deltakey = strdup(v);
+			unless (c->_deltakey) c->_deltakey = strdup(v);
 
 			/* If we haven't see a LOCAL delta yet then we won't. */
 			unless (c->lowerkey) c->lowerkey = strdup(v);
@@ -472,14 +473,15 @@ pending:
 			unless (changesetKey(t)) continue;
 			v = kv.val.dptr;	/* path/to/ChangeSet */
 
-			unless (c = nested_findKey(n, t)) {
+			unless (nested_findKey(n, t)) {
 				/* non-attached component */
 				c = new(comp);
 				c->n = n;
 				c->rootkey = strdup(t);
 				c->new = 1;
 				c->included = 1;
-				c->pending = 1;
+				c->_pending = 1;
+				c->_present = -1;
 
 				/* add to list */
 				hash_store(n->compdb,
@@ -492,12 +494,12 @@ pending:
 		n->pending = 1;
 	}
 
-	/* set c->path & c->present */
+	/* set c->path */
 	EACH_STRUCT(n->comps, c, i) {
 		if (c->product) {
 			assert(!c->path);
 			c->path = strdup(".");
-			c->present = 1;
+			c->_present = 1;
 			continue;
 		}
 
@@ -508,7 +510,7 @@ pending:
 		 */
 		if (c->path = mdbm_fetch_str(idDB, c->rootkey)) {
 			c->path = strdup(c->path);
-			inCache = 1;
+			c->inCache = 1;
 		} else {
 			/*
 			 * Not in the idcache so it probably isn't
@@ -520,25 +522,27 @@ pending:
 				assert(c->lowerkey);
 				c->path = key2path(c->lowerkey, 0, 0, 0);
 			} else {
-				c->path = key2path(c->deltakey, 0, 0, 0);
+				/*
+				 * Because it's not in the idcache, this
+				 * can't be pending.
+				 */
+				c->path = key2path(c->_deltakey, 0, 0, 0);
 			}
-			inCache = 0;
+			c->inCache = 0;
 		}
 		dirname(c->path); /* strip /ChangeSet */
 
-		/* mark present components */
-		compCheckPresent(n, c, !inCache);
+		if (flags & NESTED_FIXIDCACHE) compCheckPresent(c);
 
-		if (c->new && c->pending && !c->present) {
+		if (c->new && (c->_pending == 1) && !C_PRESENT(c)) {
 			assert(flags & NESTED_PENDING);
 			// extra junk in idcache
 			removeLineN(n->comps, i, compFree);
 			--i;
 			continue;
 		}
-		if (c->present
-		    && (flags & (NESTED_PENDING|NESTED_MARKPENDING))) {
-			compMarkPending(n, c);
+		if (flags & (NESTED_PENDING|NESTED_MARKPENDING)) {
+			c->_pending = -1;
 		}
 	}
 	mdbm_close(idDB);
@@ -557,34 +561,44 @@ prod:
 	return (n);
 }
 
-private void
-compMarkPending(nested *n, comp *c)
+void
+compMarkPending(comp *c)
 {
 	project	*proj;
 	char	buf[MAXPATH];
 
-	concat_path(buf, c->path, "SCCS/d.ChangeSet");
-	if (exists(buf)) {
+	c->_pending = 0;
+	unless (proj = proj_isResync(c->n->proj)) proj = c->n->proj;
+	sprintf(buf, "%s/%s/SCCS/d.ChangeSet", proj_root(proj), c->path);
+	if (C_PRESENT(c) && exists(buf)) {
+		/*
+		 * c->path came from idcache in case of rename
+		 * so we can trust it.
+		 */
 		proj = proj_init(c->path);
-		c->pending = 1;
-		if (c->deltakey) free(c->deltakey);
-		c->deltakey = strdup(proj_tipkey(proj));
+		c->_pending = 1;
+		if (c->_deltakey) free(c->_deltakey);
+		c->_deltakey = strdup(proj_tipkey(proj));
 		proj_free(proj);
 	}
 }
 
-private void
-compCheckPresent(nested *n, comp *c, int idcache_wrong)
+void
+compCheckPresent(comp *c)
 {
 	project	*proj;
 	int	prodlen;
+	char	buf[MAXPATH];
 
 	/* mark present components */
-	unless (idcache_wrong) {
-		if (exists(c->path)) c->present = 1;
+	c->_present = 0;
+	unless (proj = proj_isResync(c->n->proj)) proj = c->n->proj;
+	concat_path(buf, proj_root(proj), c->path);
+	if (c->inCache && exists(buf)) {
+		c->_present = 1;
 		return;
 	}
-	if (exists(c->path) && (proj = proj_init(c->path))) {
+	if (exists(buf) && (proj = proj_init(buf))) {
 		char	*path = proj_root(proj);
 		char	*rootkey = proj_rootkey(proj);
 
@@ -596,8 +610,8 @@ compCheckPresent(nested *n, comp *c, int idcache_wrong)
 		} else if ((strlen(path) > prodlen) &&
 		    streq(path + prodlen, c->path) &&
 		    streq(rootkey, c->rootkey)) {
-			c->present = 1;
-			unless (n->fix_idDB) {
+			c->_present = 1;
+			unless (c->n->fix_idDB) {
 				fprintf(stderr,
 				    "%s: idcache missing component "
 				    "%s, fixing\n", prog, c->path);
@@ -623,7 +637,7 @@ nestedLoadCache(nested *n, MDBM *idDB)
 		return (1);
 	}
 	n->tip = strdup(proj_tipkey(n->proj));
-	n->product->deltakey = strdup(proj_tipkey(n->proj));
+	n->product->_deltakey = strdup(proj_tipkey(n->proj));
 	while (t = fgetline(f)) {
 		s = separator(t);
 		*s++ = 0;
@@ -632,7 +646,9 @@ nestedLoadCache(nested *n, MDBM *idDB)
 		c->n = n;
 		c->included = 1;
 		c->rootkey = strdup(t);
-		c->deltakey = strdup(s);
+		c->_deltakey = strdup(s);
+		c->_present = -1;
+		c->_pending = 0;
 
 		/* add to list */
 		hash_store(n->compdb, c->rootkey, strlen(c->rootkey)+1,
@@ -662,7 +678,7 @@ nestedSaveCache(nested *n)
 	if (f = fopen(tmp, "w")) {
 		fprintf(f, "%s\n", proj_tipkey(n->proj));
 		EACH_STRUCT(n->comps, c, i) {
-			fprintf(f, "%s %s\n", c->rootkey, c->deltakey);
+			fprintf(f, "%s %s\n", c->rootkey, c->_deltakey);
 		}
 		fclose(f);
 		rename(tmp, NESTED_CACHE);
@@ -801,7 +817,7 @@ compFree(void *x)
 	comp	*c = (comp *)x;
 
 	FREE(c->rootkey);
-	FREE(c->deltakey);
+	FREE(c->_deltakey);
 	FREE(c->lowerkey);
 	FREE(c->path);
 	if (c->poly) freeLines(c->poly, free);
@@ -861,11 +877,13 @@ nested_each(int quiet, char **av, char **aliases)
 		errors = 1;
 		goto err;
 	}
+	EACH(aliases) TRACE("S: %s", aliases[i]);
 	assert(n->alias);
 	EACH_STRUCT(n->comps, cp, i) {
 		unless (cp->alias) continue;
+		TRACE("%s: %d", cp->path, cp->alias);
 		total++;
-		unless (cp->present) {
+		unless (C_PRESENT(cp)) {
 			fprintf(stderr,
 			    "%s: Not populated: %s\n", prog, cp->path);
 			errors = 1;
@@ -874,7 +892,7 @@ nested_each(int quiet, char **av, char **aliases)
 	if (errors) goto err;
 
 	EACH_STRUCT(n->comps, cp, i) {
-		unless (cp->alias && cp->present) continue;
+		unless (cp->alias && C_PRESENT(cp)) continue;
 		count++;
 		if (errors && cp->product && !getenv("_BK_PRODUCT_ALWAYS")) {
 			break;
@@ -1006,7 +1024,7 @@ nested_deep(nested *nin, char *path, int present_only)
 	assert(path);
 	len = strlen(path);
 	EACH_STRUCT(n->comps, c, i) {
-		if (present_only && !c->present) continue;
+		if (present_only && !C_PRESENT(c)) continue;
 		unless (strneq(c->path, path, len) && (c->path[len] == '/')) {
 			continue;
 		}
@@ -1143,7 +1161,7 @@ nested_rmcomp(nested *n, comp *c)
 	char	buf[MAXPATH];
 
 	unless (ret = nestedWalkdir(n, c->path, 1, compRemove)) {
-		c->present = 0;
+		c->_present = 0;
 	}
 	proj_reset(0);
 

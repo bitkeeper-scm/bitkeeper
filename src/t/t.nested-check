@@ -72,7 +72,6 @@ bk _cp RESYNC/SCCS/s.ChangeSet twoTip
 bk resolve $Q -S
 bk _cp SCCS/s.ChangeSet oneTip
 bk _cp twoTip SCCS/s.ChangeSet
-rm BitKeeper/log/TIP
 bk _cp twoTip ../RESYNC/gcc/SCCS/s.ChangeSet
 cd ..
 bk resolve $Q 2> GOT && fail -f GOT

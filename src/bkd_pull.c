@@ -387,7 +387,7 @@ checkAlias(sccs *cset, char *rev, char ***comps)
 		EACH_STRUCT(n->comps, c, i) {
 			// included == existed at the time of $REV
 			// present == here now
-			hereRev = (c->included & c->present);
+			hereRev = (c->included & C_PRESENT(c));
 			if ((hereRev && !c->alias) || (!hereRev && c->alias)) {
 				failed = 1;
 				break;
@@ -402,7 +402,7 @@ checkAlias(sccs *cset, char *rev, char ***comps)
 		freeLines(*comps, free);
 		*comps = 0;
 		EACH_STRUCT(n->comps, c, i) {
-			if (c->included && c->present) {
+			if (c->included && C_PRESENT(c)) {
 				*comps = addLine(*comps, strdup(c->rootkey));
 			}
 		}

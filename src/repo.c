@@ -219,7 +219,7 @@ nfiles(Opts *opts)
 	}
 	h = hash_fromFile(0, proj_fullpath(0, "BitKeeper/log/NFILES_PRODUCT"));
 	EACH_STRUCT(n->comps, c, i) {
-		unless (c->present) continue;
+		unless (C_PRESENT(c)) continue;
 		if (aliases && !c->alias) continue;
 		if (mods && !c->product &&
 		    !hash_fetchStr(mods, c->path)) continue;

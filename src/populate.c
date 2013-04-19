@@ -35,7 +35,7 @@ nested_populate(nested *n, popts *ops)
 	 */
 	rc = 0;
 	EACH_STRUCT(n->comps, cp, j) {
-		if (cp->present && !cp->alias) {
+		if (!cp->alias && C_PRESENT(cp)) {
 			if (nested_isPortal(0) && !transaction) {
 				fprintf(stderr,
 				    "Cannot remove components in a portal.\n");
@@ -49,8 +49,8 @@ nested_populate(nested *n, popts *ops)
 				break;
 			}
 		}
-		if (!ops->force && cp->present && !cp->alias) {
-			if (cp->pending) {
+		if (!ops->force && !cp->alias && C_PRESENT(cp)) {
+			if (C_PENDING(cp)) {
 				fprintf(stderr,
 				    "%s: unable to remove ./%s, it contains "
 				    "csets not committed in product.\n",
@@ -62,7 +62,7 @@ nested_populate(nested *n, popts *ops)
 				++rc;
 			}
 		}
-		if (!cp->present && cp->alias) {
+		if (cp->alias && !C_PRESENT(cp)) {
 			/* see if the namespace is not taken */
 			if (exists(cp->path) && !nested_emptyDir(n, cp->path)){
 				fprintf(stderr, "%s: ./%s not empty\n",
@@ -80,7 +80,7 @@ nested_populate(nested *n, popts *ops)
 	 */
 	list = 0;		/* repos added */
 	EACH_STRUCT(n->comps, cp, j) {
-		unless (!cp->present && cp->alias) continue;
+		unless (cp->alias && !C_PRESENT(cp)) continue;
 		k = 0;
 		while (url = urllist_find(n, cp, flags, &k)) {
 			unless (flags & SILENT) {
@@ -111,7 +111,7 @@ nested_populate(nested *n, popts *ops)
 			vp = addLine(vp, aprintf("-j%d", ops->parallel));
 			vp = addLine(vp,
 			    aprintf("-r%s", cp->useLowerKey ?
-				cp->lowerkey : cp->deltakey));
+				cp->lowerkey : C_DELTAKEY(cp)));
 			vp = addLine(vp,
 			    aprintf("-P%u/%u %s", done, ops->comps, cp->path));
 			vp = addLine(vp, remote_unparse(r));
@@ -123,7 +123,7 @@ nested_populate(nested *n, popts *ops)
 			if (retrc == 0) {
 				done++;
 				list = addLine(list, cp);
-				cp->present = 1;
+				cp->_present = 1;
 				if (ops->runcheck) {
 					checkfiles = addLine(checkfiles,
 					    aprintf("%s/ChangeSet", cp->path));
@@ -166,7 +166,7 @@ nested_populate(nested *n, popts *ops)
 			// failed to clone
 			unless (url) break;
 		}
-		if (cp->present) {
+		if (C_PRESENT(cp)) {
 			/*
 			 * If populating this component made another
 			 * component deeply nested, then I need to update
@@ -180,7 +180,7 @@ nested_populate(nested *n, popts *ops)
 				    cp->path, t->path, strlen(cp->path))) {
 					break;
 				}
-				if (t->present &&
+				if (C_PRESENT(t) &&
 				    t->path[strlen(cp->path)] == '/') {
 					dn = fopen("BitKeeper/log/deep-nests",
 					    "a");
@@ -197,7 +197,7 @@ nested_populate(nested *n, popts *ops)
 			 * status and remove other repos we cloned.
 			 */
 			EACH_STRUCT(list, cj, j) {
-				if (cj->present) nested_rmcomp(n, cj);
+				if (C_PRESENT(cj)) nested_rmcomp(n, cj);
 			}
 			rc = 1;
 			break;
@@ -214,7 +214,7 @@ nested_populate(nested *n, popts *ops)
 	/* deeply nested first */
 	EACH_REVERSE(n->comps) {
 		cp = (comp *)n->comps[i];
-		if (cp->present && !cp->alias) {
+		if (C_PRESENT(cp) && !cp->alias) {
 			verbose((stderr, "%s: removing ./%s...",
 				prog, cp->path));
 			if (nested_rmcomp(n, cp)) {
@@ -226,14 +226,14 @@ nested_populate(nested *n, popts *ops)
 				break;
 			}
 			verbose((stderr, "done\n"));
-			cp->present = 0;
+			cp->_present = 0;
 		}
 	}
 	if (rc) goto out;
 
 	EACH_STRUCT(n->comps, cp, i) {
 		/* just check that the code above all worked */
-		if (cp->present) {
+		if (C_PRESENT(cp)) {
 			assert(cp->alias);
 		} else {
 			assert(!cp->alias);
@@ -273,7 +273,7 @@ unpopulate_check(popts *ops, comp *c)
 	    !getenv("_BK_TRANSACTION")) {
 		return (-1);
 	}
-	if (c->pending) return (-1);
+	if (C_PENDING(c)) return (-1);
 	if (chdir(c->path)) {
 		perror(c->path);
 		goto out;

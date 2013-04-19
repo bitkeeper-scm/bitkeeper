@@ -196,7 +196,7 @@ rclone_ensemble(remote *r)
 	errs = 0;
 	EACH_STRUCT(n->comps, c, i) {
 		c->remotePresent = c->alias;	/* used in setFromEnv() */
-		if (c->alias && !c->present) {
+		if (c->alias && !C_PRESENT(c)) {
 			fprintf(stderr,
 			    "%s: component %s not present.\n",
 			    prog, c->path);
@@ -229,7 +229,7 @@ rclone_ensemble(remote *r)
 			    which, k, c->path));
 		}
 		EACH(opts.av) vp = addLine(vp, strdup(opts.av[i]));
-		vp = addLine(vp, aprintf("-r%s", c->deltakey));
+		vp = addLine(vp, aprintf("-r%s", C_DELTAKEY(c)));
 		if (c->product) {
 			EACH(opts.aliases) {
 				vp = addLine(vp,
@@ -241,7 +241,7 @@ rclone_ensemble(remote *r)
 		} else {
 			name = c->path;
 			vp = addLine(vp, strdup(c->path));
-			dstpath = key2path(c->deltakey, 0, 0, 0);
+			dstpath = key2path(C_DELTAKEY(c), 0, 0, 0);
 			vp = addLine(vp, aprintf("%s/%s", url,
 				dirname(dstpath)));
 			free(dstpath);

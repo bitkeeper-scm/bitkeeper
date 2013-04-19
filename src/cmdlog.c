@@ -83,7 +83,7 @@ cmdlog_main(int ac, char **av)
 	n = nested_init(0, 0, 0, NESTED_PENDING);
 	assert(n);
 	EACH_STRUCT(n->comps, cp, i) {
-		unless (cp->present) continue;
+		unless (C_PRESENT(cp)) continue;
 		lmp = new(logmux);
 		lmp->prefix = strdup(cp->path);
 		c = strlen(cp->path);

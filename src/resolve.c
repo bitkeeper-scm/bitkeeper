@@ -544,13 +544,13 @@ resolve_components(opts *opts)
 
 	EACH_STRUCT(n->comps, c, i) {
 		proj_cd2product();
-		if (c->alias && !c->present) {
+		if (c->alias && !C_PRESENT(c)) {
 missing:		fprintf(stderr, "%s: component %s is missing!\n", prog,
 			    c->path);
 			++errors;
 			break;
 		}
-		if (!c->present || c->product || !c->included) continue;
+		if (c->product || !c->included || !C_PRESENT(c)) continue;
 		FREE(compCset);
 		compCset = aprintf(ROOT2RESYNC "/%s/" CHANGESET, c->path);
 		FREE(resync);
@@ -643,9 +643,9 @@ missing:		fprintf(stderr, "%s: component %s is missing!\n", prog,
 			assert(cs);
 			sccs_sdelta(cs, sccs_top(cs), buf);
 			sccs_free(cs);
-			unless (streq(buf, c->deltakey)) {
+			unless (streq(buf, C_DELTAKEY(c))) {
 				fprintf(stderr, "KEY MISMATCH for %s:\nwanted: %s\n   got: %s\n",
-				    c->path, c->deltakey, buf);
+				    c->path, C_DELTAKEY(c), buf);
 				++errors;
 				break;
 			}

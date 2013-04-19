@@ -202,7 +202,7 @@ features_setMask(project *p, u32 bits, u32 mask)
 		t = ftmp + sprintf(ftmp, "%s/", proj_root(p));
 		n = nested_init(0, 0, 0, NESTED_PENDING);
 		EACH_STRUCT(n->comps, c, i) {
-			if (c->product || !c->present) continue;
+			if (c->product || !C_PRESENT(c)) continue;
 
 			sprintf(t, "%s/BitKeeper/log/features", c->path);
 			if (nbits & ~FEAT_ALWAYS) {

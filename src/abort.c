@@ -259,7 +259,7 @@ abortComponents(options *opts, int *which, int *num)
 	}
 
 	EACH_STRUCT(n->comps, c, i) {
-		if (!c->present || !c->included) continue;
+		if (!c->included || !C_PRESENT(c)) continue;
 		proj_cd2product();
 		if (chdir(c->path)) continue;
 		/* not part of this pull */
@@ -269,8 +269,8 @@ abortComponents(options *opts, int *which, int *num)
 
 	EACH_STRUCT(n->comps, c, i) {
 		T_NESTED("check(%s) p%d i%d\n",
-		    c->path, c->present, c->included);
-		if (c->product || !c->present || !c->included) continue;
+		    c->path, C_PRESENT(c), c->included);
+		if (c->product || !c->included || !C_PRESENT(c)) continue;
 
 		proj_cd2product();
 		if (chdir(c->path)) {

@@ -145,7 +145,7 @@ rset_main(int ac, char **av)
 		}
 		c = 0;
 		EACH_STRUCT(opts->n->comps, cp, i) {
-			if (cp->alias && !cp->present) {
+			if (cp->alias && !C_PRESENT(cp)) {
 				unless (c) {
 					c = 1;
 					fprintf(stderr,

@@ -455,7 +455,7 @@ urlinfo_probeURL(nested *n, char *url, FILE *out)
 	fin = fmem();
 	EACH_STRUCT(n->comps, c, i) {
 		fprintf(fin, "%s %s\n", c->rootkey,
-		    c->useLowerKey ? c->lowerkey: c->deltakey);
+		    c->useLowerKey ? c->lowerkey: C_DELTAKEY(c));
 	}
 	rewind(fin);
 	fout = fmem();

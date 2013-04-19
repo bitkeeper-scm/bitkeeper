@@ -413,7 +413,7 @@ undo_ensemble1(nested *n, options *opts,
 	errs = 0;
 	EACH_STRUCT(n->comps, c, i) {
 		/* handle changing aliases */
-		if (c->included && c->pending) {
+		if (c->included && C_PENDING(c)) {
 			fprintf(stderr,
 			    "%s: The component %s includes pending "
 			    "csets that cannot be undone.\n",
@@ -421,12 +421,12 @@ undo_ensemble1(nested *n, options *opts,
 			++errs;
 		}
 		/* foreach populate */
-		if (c->alias && !c->present) which++;
+		if (c->alias && !C_PRESENT(c)) which++;
 
 		/* count number of calls to undo needed */
-		if (c->present && c->included && !c->new) num++;
+		if (c->included && !c->new && C_PRESENT(c)) num++;
 
-		unless (c->new && c->included && c->present) continue;
+		unless (c->new && c->included && C_PRESENT(c)) continue;
 
 		/* foreach repo to be deleted... */
 
@@ -465,7 +465,7 @@ undo_ensemble1(nested *n, options *opts,
 	errs = 0;
 	EACH_STRUCT(n->comps, c, j) {
 		if (c->product || c->new) continue;
-		unless (c->present && c->included) continue;
+		unless (c->included && C_PRESENT(c)) continue;
 		vp = addLine(0, strdup("bk"));
 		unless (opts->quiet || opts->verbose) {
 			vp = addLine(vp, aprintf("--title=%u/%u %s",
@@ -527,7 +527,7 @@ undo_ensemble2(nested *n, options *opts)
 	FILE	*f;
 
 	EACH_STRUCT(n->comps, c, i) {
-		if (c->new && c->included && c->present) {
+		if (c->new && c->included && C_PRESENT(c)) {
 			rmtree(c->path);
 		}
 	}

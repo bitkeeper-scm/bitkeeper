@@ -293,7 +293,7 @@ do_cset(sccs *s, char *rev, char **nav)
 		if (n->cset) sccs_close(n->cset);
 		freeLines(keys, free);
 		EACH_STRUCT(n->comps, c, i) {
-			if (c->included && !c->present) {
+			if (c->included && !C_PRESENT(c)) {
 				fprintf(stderr,
 				    "%s: component %s needed, "
 				    "but not populated.\n", me, c->path);
@@ -359,7 +359,7 @@ do_cset(sccs *s, char *rev, char **nav)
 		EACH_STRUCT(n->comps, c, i) {
 			if (c->product) continue;
 			unless (c->included) continue;
-			assert(c->present);
+			assert(C_PRESENT(c));
 			if (c->new) {
 				/*
 				 * We are rolling back to before the

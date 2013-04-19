@@ -940,10 +940,10 @@ pull_ensemble(remote *r, char **rmt_aliases,
 		if (c->product) continue;
 
 		/* what happens to this comp?  Can be both pull and clone. */
-		clone = (c->alias && !c->present);
+		clone = (c->alias && !C_PRESENT(c));
 		pull = (c->alias && c->included &&
-		    (c->present || c->localchanges));
-		unpopulate = (!c->alias && c->present);
+		    (c->localchanges || C_PRESENT(c)));
+		unpopulate = (!c->alias && C_PRESENT(c));
 
 		if (pull) opts.n++;
 		if (clone) {
@@ -1065,7 +1065,7 @@ pull_ensemble(remote *r, char **rmt_aliases,
 			lines2File(c->poly, tmpfile);
 			vp = addLine(vp, aprintf("-M%s", tmpfile));
 		}
-		vp = addLine(vp, aprintf("-r%s", c->deltakey));
+		vp = addLine(vp, aprintf("-r%s", C_DELTAKEY(c)));
 		/* start the urllist loop looking for where to pull from */
 		rc = 1;		/* assume it'll fail */
 		k = 0;
