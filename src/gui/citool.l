@@ -277,6 +277,16 @@ getCsetFile(string comp)
 	return (self.files{file});
 }
 
+sfile
+getIgnoreFile(string comp)
+{
+	string	file = "BitKeeper/etc/ignore";
+
+	if (comp != self.root) file = getRelativePath(comp, "") . "/${file}";
+	unless (defined(self.files{file})) return (undef);
+	return (self.files{file});
+}
+
 string
 getRelativePath(string path, string root)
 {
@@ -324,18 +334,21 @@ insertFile(sfile sf)
 
 	unless (sf.type == "pending") {
 		poly	idx = "end";
+		hash	opts;
 
 		if (defined(self.sfiles_insertIdx)) {
 			idx = self.sfiles_insertIdx++;
 		}
-		sf.node = ListBox_itemInsert(self.o_files, idx,
-		    text: sf.name, data: sf.name);
+		opts{"-text"} = sf.name;
+		opts{"-data"} = sf.name;
+		if (sf.type == "cset") opts{"-background"} = gc("ci.csetBG");
+		sf.node = ListBox_itemInsert(self.o_files, idx, (expand)opts);
 		configureFile(sf);
 	}
 
 	++self.sfiles_found;
 	self.files{sf.name} = sf;
-	self.components{sf.component}[END+1] = sf.name;
+	push(&self.components{sf.component}, sf.name);
 	if (sf.commented) ++self.compinfo{sf.component}.commentedFiles;
 
 	if (!haveSelection() && (sf.type == "modified") && !isCommented(sf)) {
@@ -390,6 +403,33 @@ removeFile(sfile sf, int removeCset)
 		undef(self.components{component});
 		ListBox_itemDelete(self.o_files, cset.node);
 		moveNext();
+	}
+}
+
+void
+deleteFileFromList(sfile sf)
+{
+	int	idx;
+	sfile	sel = getSelectedFile();
+
+	--self.cnt_total;
+	if (sf.type == "new") {
+		--self.cnt_new;
+	} else if (sf.type == "modified") {
+		--self.cnt_modified;
+	}
+	updateStatus();
+
+	idx = ListBox_index(self.o_files, sf.node);
+	ListBox_itemDelete(self.o_files, sf.node);
+	if (sf.file == sel.file) {
+		string	node = ListBox_item(self.o_files, idx);
+
+		if (node == "") {
+			moveNext();
+		} else {
+			selectFile(node);
+		}
 	}
 }
 
@@ -670,6 +710,32 @@ insertCsetFile(string comp)
 }
 
 void
+insertIgnoreFile(string comp)
+{
+	sfile	sf;
+
+	sf.name = "BitKeeper/etc/ignore";
+	if (comp == self.root) {
+		sf.inProduct = 1;
+	} else {
+		sf.inProduct = 0;
+		sf.name = joinpath(getRelativePath(comp, ""), sf.name);
+	}
+
+	sf.type = "modified";
+	sf.file = joinpath(comp, "BitKeeper/etc/ignore");
+	sf.icon = img_modified;
+	sf.component = comp;
+	sf.excluded = 0;
+	sf.commented = 0;
+
+	// Insert the ignore file just above the cset file.
+	self.sfiles_insertIdx = ListBox_index(self.o_files,
+	    getCsetFile(comp).node);
+	insertFile(sf);
+}
+
+void
 insertPendingNode(string comp)
 {
 	string	txt;
@@ -723,7 +789,7 @@ processFiles(string files[])
 		findFiles();
 	}
 
-	self.sfiles_component = "";
+	self.sfiles_component = undef;
 	self.sfiles_scanning = 0;
 
 	if (self.cnt_total == 0) {
@@ -806,6 +872,8 @@ scanComponent(string comp)
 	pipe = openBK(cmd, &readSfiles);
 	waitForBK(pipe);
 	if (progress) stopProgressBar();
+	self.sfiles_component = undef;
+	updateStatus();
 
 	if (self.sfiles_pending) {
 		insertPendingNode(comp);
@@ -1498,7 +1566,7 @@ updateStatus()
 {
 	string	status;
 
-	unless (self.sfiles_component == "") {
+	if (self.sfiles_component) {
 		string	comp;
 
 		if (self.sfiles_component == self.root) {
@@ -2750,7 +2818,16 @@ appendIgnoreLine(string type, sfile sf, ...args)
 		}
 	}
 	fclose(fp);
-	rescanComponent(sf.component);
+	if (type == "file") {
+		string	comp;
+
+		sf = getSelectedFile();
+		comp = sf.component;
+		unless (getIgnoreFile(comp)) insertIgnoreFile(comp);
+		deleteFileFromList(sf);
+	} else {
+		rescanComponent(sf.component);
+	}
 }
 
 void
@@ -2797,6 +2874,8 @@ void
 ignoreSelectedFile()
 {
 	sfile	sf = getSelectedFile();
+
+	unless (sf.type == "new") return;
 
 	if (Winfo_exists((string)self.w_ignoreDlg)) {
 		destroy(self.w_ignoreDlg);

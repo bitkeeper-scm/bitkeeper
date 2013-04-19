@@ -113,6 +113,7 @@ proc getConfig {prog} \
 	set _d(ci.diffHeight) 30	;# number of lines in the diff window
 	set _d(ci.rescan) 0		;# Do a second scan to see if anything
 					;# changed. Values 0 - off 1 - on
+	set _d(ci.csetBG) $GRAY94
 
 	set _d(cset.listHeight) 12
 	set _d(cset.annotation) ""   ;# annotation options (eg: "-aum")

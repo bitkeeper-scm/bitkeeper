@@ -3,6 +3,9 @@ class ListBox {
 typedef struct {
 	string	text;
 	string	image;
+	string	bg;
+	string	fg;
+	string	font;
 	poly	data;
 	int	redraw;
 } item;
@@ -45,7 +48,6 @@ ListBox_init(widget pathName, ...args)
 	    resizeborders: "none", titlerows: 0, state: "disabled",
 	    highlightthickness: 0, command: "ListBox_GetText ${self} %r %c",
 	    exportselection: 0, 
-	    rowtagcommand: "ListBox_DrawRow ${self}",
 	    xscrollcommand: {w_hscroll, "set"},
 	    yscrollcommand: {w_vscroll, "set"});
 	if (length(args)) ListBox_configure(self, (expand)opts);
@@ -131,7 +133,7 @@ ListBox_itemDelete(ListBox self, ...args)
 		}
 	}
 	ListBox_RedrawRows(low);
-	if (self->redraw) ListBox_redraw(self);
+	ListBox_Redraw();
 }
 
 public int
@@ -155,6 +157,8 @@ ListBox_itemInsert(ListBox self, string idx, ...args)
 
 	id = "item" . (string)++self->rowCount;
 	if (defined(opts{"-id"})) id = opts{"-id"};
+	i.bg     = opts{"-background"};
+	i.fg     = opts{"-foreground"};
 	i.text   = opts{"-text"};
 	i.data   = opts{"-data"};
 	i.image  = opts{"-image"};
@@ -167,7 +171,7 @@ ListBox_itemInsert(ListBox self, string idx, ...args)
 		ListBox_RedrawRows((int)idx);
 	}
 	self->items{id} = i;
-	if (self->redraw) ListBox_redraw(self);
+	ListBox_Redraw();
 	return (id);
 }
 
@@ -203,6 +207,7 @@ ListBox_itemcget(ListBox self, string itemName, string option)
 public string
 ListBox_itemconfigure(ListBox self, string itemName, ...args)
 {
+	int	redrawRow = 0;
 	string	option, value;
 
 	unless (defined(self->items{itemName})) return (undef);
@@ -213,12 +218,25 @@ ListBox_itemconfigure(ListBox self, string itemName, ...args)
 		} else if (option == "-text") {
 			self->items{itemName}.text = value;
 		} else if (option == "-image") {
+			redrawRow = 1;
 			self->items{itemName}.image  = value;
-			self->items{itemName}.redraw = 1;
-			ListBox_DrawRow(self, ListBox_index(self, itemName));
+		} else if (option == "-font") {
+			redrawRow = 1;
+			self->items{itemName}.font  = value;
+		} else if (option == "-background") {
+			redrawRow = 1;
+			self->items{itemName}.bg = value;
+		} else if (option == "-foreground") {
+			redrawRow = 1;
+			self->items{itemName}.fg = value;
 		} else {
 			return (undef);
 		}
+	}
+
+	if (redrawRow) {
+		self->items{itemName}.redraw = 1;
+		ListBox_Redraw();
 	}
 	return (args[END]);
 }
@@ -307,26 +325,6 @@ ListBox_Click(ListBox self, int x, int y)
 	}
 }
 
-// ListBox_DrawRow
-//
-//	Called by Tktable when it wants to draw a row.  Technically, it's
-//	looking for the name of a tag to apply to our row, but we're going
-//	to use it as a cue to draw the image for our row.
-//
-public string
-ListBox_DrawRow(ListBox self, int row)
-{
-	string	tag;
-	string	itemName = ListBox_item(self, row);
-
-	if (defined(self->items{itemName}) && self->items{itemName}.redraw) {
-		tag = ListBox_ImageTag(self->items{itemName}.image);
-		Table_tagCell(self->w_table, tag, "${row},0");
-		self->items{itemName}.redraw = 0;
-	}
-	return("");
-}
-
 // ListBox_GetText
 //
 //	Called when Tktable wants to get the text value of a cell.  Since
@@ -338,8 +336,20 @@ ListBox_GetText(ListBox self, int row, int col)
 	string	itemName;
 
 	unless (col == 1) return("");
+
 	itemName = ListBox_item(self, row);
-	unless (defined(self->items{itemName})) return("");
+	unless (itemName && self->items{itemName}) return("");
+
+	if (self->items{itemName}.redraw) {
+		string	tag;
+
+		self->items{itemName}.redraw = 0;
+		tag = ListBox_ImageTag(self->items{itemName});
+		if (tag) Table_tagCell(self->w_table, tag, "${row},0");
+
+		tag = ListBox_GetRowTag(self->items{itemName});
+		if (tag) Table_tagRow(self->w_table, tag, row);
+	}
 	return (self->items{itemName}.text);
 }
 
@@ -374,14 +384,40 @@ ListBox_GetCell(int row, string option)
 }
 
 private string
-ListBox_ImageTag(string image)
+ListBox_ImageTag(item i)
 {
-	string	tag = "image-${image}";
+	string	tag;
+	
+	unless (i.image) return (undef);
 
+	tag = "image-${i.image}";
 	unless (Table_tagExists(self->w_table, tag)) {
-		Table_tagConfigure(self->w_table, tag, image: image);
+		Table_tagConfigure(self->w_table, tag, image: i.image);
 	}
 	return (tag);
+}
+
+private string
+ListBox_GetRowTag(item i)
+{
+	string	tag = "row";
+
+	unless (i.bg || i.fg || i.font) return (undef);
+
+	if (i.bg) tag .= "-${i.bg}";
+	if (i.fg) tag .= "-${i.fg}";
+	if (i.font) tag .= "-${i.font}";
+	unless (Table_tagExists(self->w_table, tag)) {
+		Table_tagConfigure(self->w_table, tag,
+		    font: i.font, background: i.bg, foreground: i.fg);
+	}
+	return (tag);
+}
+
+private void
+ListBox_Redraw()
+{
+	if (self->redraw) ListBox_redraw(self);
 }
 
 } /* class ListBox */
