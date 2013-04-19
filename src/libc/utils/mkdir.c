@@ -6,20 +6,41 @@
 int
 mkdirp(char *dir)
 {
-	char	*t;
-	int	ret;
+	char	*t = 0;
+	int	more;
 
-	if (mkdir(dir, 0777) == 0) return (0);
-	for (t = dir; *t; t++) {
-		if ((*t != '/') || (t == dir)) continue;
-		*t = 0;
-		if (ret = mkdir(dir, 0777)) {
-			*t = '/';
-			return (ret);
+	while (1) {
+		unless (mkdir(dir, 0777)) break;
+		if (errno != ENOENT) return (-1);
+
+		/*
+		 * some component in the pathname doesn't exist
+		 * go back one at a time until we find it
+		 * for any other errno, we can just quit
+		 */
+		if (t) {
+			*t-- = '/';
+			while ((t > dir) && (*t != '/')) --t;
+			if (t == dir) return (-1);
+		} else {
+			unless ((t = strrchr(dir, '/')) && (t > dir)) {
+				return (-1);
+			}
 		}
-		*t = '/';
+		*t = 0;
 	}
-	return (mkdir(dir, 0777));
+	/*
+	 * Now if we had to go back to make a one of the component
+	 * directories, we walk forward and build the path in order
+	 */
+	while (t) {
+		*t++ = '/';
+		while (*t && (*t != '/')) t++;
+		if (more = *t) *t = 0;
+		if (mkdir(dir, 0777)) return (-1);
+		unless (more) t = 0;
+	}
+	return (0);
 }
 
 /*
