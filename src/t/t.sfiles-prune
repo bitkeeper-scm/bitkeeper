@@ -7,6 +7,11 @@ mkdir dir/dir2
 echo foo > dir/dir2/foo
 bk new -q dir/dir2/foo
 bk ignore 'dir -prune'
+bk sfiles -p > GOT
+cat > WANT << EOF
+BitKeeper/etc/SCCS/s.ignore
+EOF
+cmpfiles WANT GOT
 bk commit $Q -ywhatever
 cd ..
 bk clone $Q --sccs-compat project repo

@@ -71,8 +71,12 @@ char*		proj_cset2key(project *p, char *csetrev, char *rootkey);
 char*		proj_tipkey(project *p);
 char*		proj_tipmd5key(project *p);
 char*		proj_tiprev(project *p);
-void		proj_touchfile(project *p, char *file);
-void		proj_set_scancomp(project *p, int mod);
+
+#define	DS_PENDING	1
+#define	DS_EDITED	2
+void		proj_dirstate(project *p, char *dir, u32 state, int set);
+char		**proj_scanDirs(project *p, u32 state);
+char		**proj_scanComps(project *p, u32 state);
 
 #define		chdir	proj_chdir
 

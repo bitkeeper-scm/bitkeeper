@@ -913,6 +913,7 @@ typedef struct {
 	u16	need_exdone:1;	/* need call to send_file_extra_done() */
 	u16	notUrl:1;	/* addr was a file path (had no URL scheme) */
 	u16	noLocalRepo:1;	/* local repo not related to connection */
+	u16	isClone:1;	/* this connection was for clone */
 	int	rfd;		/* read fd for the remote channel */
 	FILE	*rf;		/* optional stream handle for remote channel */
 	int	wfd;		/* write fd for the remote channel */

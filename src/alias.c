@@ -555,7 +555,7 @@ dbWrite(nested *n, hash *aliasdb, char *comment, int commit)
 	if (commit) {
 		tmpfile = bktmp(0, "cmt");
 		sprintf(buf,
-		    "bk -P sfiles -pAC %s |"
+		    "bk -P sfiles -pA %s |"
 		    "bk -P sccslog -A -f -d'$each(:C:){(:C:)\n}' - >'%s'",
 		    ALIASES, tmpfile);
 		if (ret = system(buf)) return (ret);

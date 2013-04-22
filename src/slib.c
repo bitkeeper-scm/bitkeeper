@@ -2316,7 +2316,6 @@ sccs_finishWrite(sccs *s)
 				unlink(sccs_Xfile(s, '2')); /* careful */
 			}
 		}
-		proj_touchfile(s->proj, s->sfile);
 	}
 out:	s->encoding_in = s->encoding_out;
 	// idea: delta_table could save new s->data (only useful for ascii)
@@ -6166,6 +6165,7 @@ write_pfile(sccs *s, int flags, ser_t d,
 {
 	int	fd, len;
 	char	*tmp, *tmp2;
+	char	*path, *dir;
 
 	if (WRITABLE_REG(s) && HAS_PFILE(s) && (iLst || i2 || xLst)) {
 		/* going from plain edit to -i/-x -- need to clean first */
@@ -6243,7 +6243,13 @@ write_pfile(sccs *s, int flags, ser_t d,
 	write(fd, tmp, strlen(tmp));
 	close(fd);
 	free(tmp);
-	proj_touchfile(s->proj, s->sfile);
+
+	if (s->proj) {
+		path = proj_relpath(s->proj, s->sfile);
+		dir = dirname(dirname(path)); /* strip SCCS/s.file */
+		proj_dirstate(s->proj, dir, DS_EDITED, 1);
+		free(path);
+	}
 	s->state |= S_PFILE;
 	return (0);
 }
@@ -8200,7 +8206,8 @@ delta_table(sccs *s, int willfix)
 		 * don't change the ascii format.  (BKFILE is so _scat works)
 		 */
 		if (features_bits(s->proj) &
-		    ~(FEAT_BKFILE|FEAT_BWEAVE|FEAT_REMAP|FEAT_SAMv3|1)) {
+		    ~(FEAT_BKFILE|FEAT_BWEAVE|FEAT_REMAP|FEAT_SAMv3|
+		      FEAT_SCANDIRS|FEAT_ALWAYS)) {
 			fputs(BKID_STR "\n", out);
 		}
 	}
@@ -10069,8 +10076,20 @@ updMode(sccs *s, ser_t d, ser_t dParent)
 void
 updatePending(sccs *s)
 {
+	char	*path, *dir;
+
 	if (CSET(s) && !proj_isComponent(s->proj)) return;
 	touch(sccsXfile(s, 'd'),  GROUP_MODE);
+
+	if (proj_isResync(s->proj)) return;
+
+	/*
+	 * Use s->sfile, s->gfile can be invalid.
+	 */
+	path = proj_relpath(s->proj, s->sfile);
+	dir = dirname(dirname(path)); /* strip SCCS/s.file */
+	proj_dirstate(s->proj, dir, DS_PENDING, 1);
+	free(path);
 }
 
 /*

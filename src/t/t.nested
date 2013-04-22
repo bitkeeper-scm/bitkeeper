@@ -51,6 +51,9 @@ gdb/SCCS/s.ChangeSet
 EOF
 cmpfiles WANT GOT
 bk commit $Q -y'gcc & gdb' || exit 1
+bk sfiles -p > PENDING
+test -s PENDING && fail
+rm -f PENDING
 cd gcc
 test "`bk repotype`" = "component" || {
 	echo failed to make it a component
@@ -82,19 +85,12 @@ echo OK
 
 echo $N New component should be pending .............................$NL
 cd ..
-test X`bk gfiles -p` = Xnew-comp/ChangeSet || {
-	echo failed
-	bk gfiles -P
-	exit 1
-}
+test X`bk gfiles -p` = Xnew-comp/ChangeSet || fail
 test `cat new-comp/BitKeeper/log/COMPONENT` = new-comp || {
 	echo failed to leave pointer
 	exit 1
 }
-bk pending | grep -q "new-comp/ChangeSet@1.1" || {
-	echo wrong output
-	exit 1
-}
+bk pending | grep -q "new-comp/ChangeSet@1.1" || fail
 echo OK
 
 bk here rm $Q new-comp || fail
@@ -375,16 +371,9 @@ bk edit $Q name
 echo him mom > name
 bk delta $Q -yxxx name
 bk commit -S -yxxx $Q
-bk _test -f SCCS/d.ChangeSet || {
-	echo failed to leave d.file
-	exit 1
-}
+bk _test -f SCCS/d.ChangeSet || fail failed to leave d.file
 cd "$HERE/project"
-test "`bk sfiles -p`" = "gcc/SCCS/s.ChangeSet" || {
-	echo failed
-	bk sfiles -p
-	exit 1
-}
+test "`bk sfiles -p`" = "gcc/SCCS/s.ChangeSet" || fail
 echo OK
 
 echo $N Check sfiles -pC ............................................$NL

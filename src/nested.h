@@ -200,6 +200,7 @@ char	**nested_here(project *p);
 char	**nested_fixHere(char **aliases);
 void	nested_writeHere(nested *n);
 char	**nested_complist(nested *n, project *p);
+char	**modified_pending(u32 flags);
 
 /* alias.h */
 

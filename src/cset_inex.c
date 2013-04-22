@@ -226,7 +226,7 @@ undoit(MDBM *m)
 	    "\n!!! Cset operation failed.  Undoing changes... !!!\n\n");
 	av[i=0] = "bk";
 	av[++i] = "sfiles";
-	av[++i] = "-gpAC";
+	av[++i] = "-gpA";
 	av[++i] = 0;
 	unless (f = popenvp(av, "r")) {
 		perror("popenvp");

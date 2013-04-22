@@ -21,6 +21,7 @@
  *   POLY	at least one comp cset was ported in twice (polyDB exists)
  *   BWEAVE	store cset weave in separate heap file
  *   PARENTS	bkd knows how to send parent files
+ *   SCANDIRS   maintains the scancomps/scandirs files
  */
 
 
@@ -49,6 +50,7 @@
 	X(10, BKFILE, "BKFILE", 1, 0)		\
 	X(11, BWEAVE, "BWEAVEv2", 1, 0)		\
 	X(12, PARENTS, "PARENTS", 0, 0)		\
+	X(13, SCANDIRS, "SCANDIRS", 1, 0)	\
 
 enum {
 	FEAT_ALWAYS = 1,		/* bit0 is always set */
@@ -66,6 +68,6 @@ void	features_set(project *p, int feature, int on);
 void	features_setAll(project *p, u32 bits);
 
 char	*features_list(project *p);
-int	features_bkdCheck(int in_bkd, int no_repo);
+int	features_bkdCheck(int in_bkd, int no_repo, int isClone);
 u32	features_toBits(char *features, char *bad);
 char	*features_fromBits(u32 bits);

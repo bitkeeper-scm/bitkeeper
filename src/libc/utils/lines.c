@@ -409,21 +409,16 @@ lines2File(char **space, char *file)
 {
 	FILE	*f;
 	int	i;
-	struct	stat sbuf;
+	char	*tmp;
+	int	rc = -1;
 
 	unless (file) return (-1);
-	unless (f = fopen(file, "w")) {
-		if (stat(file, &sbuf)) return (-1);
-		sbuf.st_mode |= 0664;
-		chmod(file, sbuf.st_mode);
-		f = fopen(file, "w");
-	}
-	unless (f) return (-1);
-	EACH(space) {
-		fprintf(f, "%s\n", space[i]);
-	}
-	if (fclose(f)) return (-1);
-	return (0);
+	tmp = aprintf("%s.tmp.%u", file, (int)getpid());
+	unless (f = fopen(tmp, "w")) goto out;
+	EACH(space) fprintf(f, "%s\n", space[i]);
+	if (fclose(f) || (rc = rename(tmp, file))) unlink(tmp);
+out:	free(tmp);
+	return (rc);
 }
 
 /*

@@ -34,6 +34,7 @@ private void	load_ignore(project *p);
 private	void	ignore_file(char *file);
 private	void	print_components(char *frompath);
 private	void	walk_deepComponents(char *path, walkfn fn, void *data);
+private	int	fastWalk(char **dirs);
 
 typedef struct {
 	u32	Aflg:1;			/* -pA: show all pending deltas */
@@ -68,7 +69,8 @@ typedef struct {
 	u32	xdirs:1;		/* -D: list directories w/ no BK */
 	u32	skip_comps:1;		/* -h: skip comp csets in prod */
 	u32	atRoot:1;		/* running at root of repo? */
-	u32	saw_mods:1;		/* saw a pfile somewhere? */
+	u32	saw_locked:1;		/* saw a pfile somewhere? */
+	u32	saw_pending:1;		/* saw a dfile somewhere? */
 
 	char	*relpath;		/* --replath: print relative paths */
 	FILE	*out;			/* -o<file>: send output here */
@@ -138,11 +140,15 @@ sfiles_main(int ac, char **av)
 	int	c, i;
 	int	not = 0;
 	filecnt	fc;
+	int	rc;
+	int	no_cache = 0;		/* don't use fast path */
+	int	did_fast = 0;		/* did fast sfiles walk? */
 	char	*path, *s, buf[MAXPATH];
 	longopt	lopts[] = {
 		{ "relpath:", 300 },
 		{ "gui", 301 },
 		{ "no-progress", 302 },	// use after --gui for no P|
+		{ "no-cache", 310 },
 		{ 0, 0 },
 	};
 
@@ -231,19 +237,15 @@ sfiles_main(int ac, char **av)
 		    case 302: /* --no-progress */
 		        opts.progress = 0;
 			break;
+		    case 310: /* --no-cache */
+			no_cache = 1;
+			break;
 		    default: bk_badArg(c, av);
 		}
 		if (not && (c != '^')) {
 			fprintf(stderr, "%s: no ^ form of -%c\n", prog, c);
 			usage();
 		}
-	}
-
-	/* backwards compat, remove in 4.0 */
-	if (getenv("BK_NO_TIMESTAMPS")) {
-		fprintf(stderr,
-		    "Use bk sfiles -C instead of BK_NO_TIMESTAMPS\n");
-		opts.timestamps = 0;
 	}
 
 	unless (opts.out) opts.out = stdout;
@@ -277,9 +279,35 @@ sfiles_main(int ac, char **av)
 		}
 	}
 	unless (av[optind]) {
+		char	**dirs;
+		u32	state;
+
 		path = ".";
 		/* flag running at the root of repo */
 		opts.atRoot = isdir(BKROOT);
+
+		/*
+		 * We we are only needing pending, changed or edited
+		 * sfiles then we can use the scandirs file to only walk
+		 * part of the repository.
+		 */
+		if (opts.atRoot && !no_cache &&
+		    !(opts.sfiles || opts.onelevel || opts.dirs ||
+			opts.xdirs || opts.cfiles || opts.extras ||
+			opts.gotten || opts.notgotten || opts.ignored ||
+			opts.junk || opts.names || opts.subrepos ||
+			opts.unlocked || opts.fixdfile) &&
+		    !proj_isResync(0)) {
+			state = 0;
+			if (opts.pending) state |= DS_PENDING;
+			if (opts.locked || opts.changed) state |= DS_EDITED;
+			if (state && (dirs = proj_scanDirs(0, state))) {
+				rc = fastWalk(dirs);
+				freeLines(dirs, 0);
+				did_fast = 1;
+				goto out;
+			}
+		}
 		walk(path);
 	} else if (streq("-", av[optind])) {
 		setmode(0, _O_TEXT); /* read file list in text mode */
@@ -320,18 +348,80 @@ sfiles_main(int ac, char **av)
                         }
                 }
 	}
+	rc = 0;
+out:
 	if (opts.out != stdout) fclose(opts.out);
 	if (opts.progress) uprogress();
 	if (opts.relpath) free(opts.relpath);
-	if (opts.atRoot && !opts.onelevel && !opts.recurse && opts.pending) {
+	if (opts.atRoot && !opts.onelevel && !opts.recurse) {
+		u32	state = 0;
 		/*
 		 * This was a normal sfiles that walked the entire
 		 * repo.  So we can set or clear the modified flag for
 		 * this component if pfiles were found.
 		 */
-		proj_set_scancomp(0, opts.saw_mods);
+		if (opts.pending && !opts.saw_pending) state |= DS_PENDING;
+		if ((!did_fast || opts.locked || opts.changed) &&
+		    !opts.saw_locked) {
+			state |= DS_EDITED;
+		}
+
+		if (did_fast && (state & DS_PENDING) && proj_isComponent(0) &&
+		    exists("SCCS/d.ChangeSet")) {
+			/*
+			 * The component cset file has a dfile so it
+			 * is pending in the product so we don't want
+			 * to clear the pending marks for this
+			 * component yet.
+			 */
+			state &= ~DS_PENDING;
+			proj_dirstate(0, ".", DS_PENDING, 1);
+		}
+		opts.saw_pending = 1;
+		if (state) proj_dirstate(0, "*", state, 0);
 	}
 	free_project();
+	return (rc);
+}
+
+private	int
+fastWalk(char **dirs)
+{
+	int	i;
+	char	*t, *dir, *m;
+	char	**comps;
+	char	buf[MAXPATH];
+
+	load_project(".");
+	opts.onelevel = 1;
+	buf[0] = '/';		/* prune patterns start with '/' */
+	dir = buf+1;
+	EACH(dirs) {
+		strcpy(dir, dirs[i]);
+		unless (exists(dir)) continue;
+
+		/*
+		 * Handle any prune patterns in the directories
+		 * leading up to the current directory.
+		 */
+		for (t = strchr(dir, '/'); t; t = strchr(t+1, '/')) {
+			*t = 0;
+			m = match_globs(buf, prunedirs, 0);
+			*t = '/';
+			if (m) break;
+		}
+		unless (t) walk(dir);
+	}
+	opts.onelevel = 0;
+	if (proj_isProduct(0) && opts.pending) {
+		free_project();
+		comps = proj_scanComps(0, DS_PENDING);
+		EACH(comps) {
+			if (streq(comps[i], ".")) continue;
+			concat_path(buf, comps[i], GCHANGESET);
+			file(buf);
+		}
+	}
 	return (0);
 }
 
@@ -516,15 +606,16 @@ out:	unless (printed) do_print(state, gfile, 0);
 	/*
 	 * Do not sccs_free() if it is passed in from outside
 	 */
-	if (local_s) sccs_free(s);
 	assert(dfile);
-	/* No pending delta, remove redundant d.file */
-	unless (state[PSTATE] == 'p') unlink(dfile);
-	if (opts.fixdfile) {
+	if (state[PSTATE] == 'p') {
 		/* add missing dfile */
-		if (state[PSTATE] == 'p') touch(dfile, 0666);
+		if (opts.fixdfile) updatePending(s);
+	} else {
+		/* No pending delta, remove redundant d.file */
+		unlink(dfile);
 	}
 	free(dfile);
+	if (local_s) sccs_free(s);
 }
 
 /*
@@ -600,7 +691,7 @@ file(char *f)
 		free(sfile);
 		strcpy(buf, f);
 	}
-	if (sc && (sc->proj != proj)) {
+	if (proj && sc && (sc->proj != proj)) {
 		fprintf(stderr,
 		    "sfiles: error file %s is from a different repository\n"
 		    "than other files. %s vs %s\n",
@@ -781,7 +872,7 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 		if (proj) {
 			concat_path(buf, wi->proj_prefix,
 			    p ? (file + wi->rootlen + 1) : "");
-			if (match_globs(buf, prunedirs, 0) != 0) {
+			if (match_globs(buf, prunedirs, 0)) {
 				return (-1);
 			}
 		}
@@ -1225,14 +1316,10 @@ do_print(STATE buf, char *gfile, char *rev)
 		unless (match_one(p, opts.glob, 0)) return;
 	}
 
-	if (state[PSTATE] == 'p') {
-		opts.saw_mods = 1;
-		p_count++;
-	}
+	if (state[PSTATE] == 'p') p_count++;
 	if (state[NSTATE] == 'n') n_count++;
 	if (state[GSTATE] == 'G') C_count++;
     	if (state[CSTATE] == 'c') c_count++; 
-	if (state[LSTATE] == 'l') opts.saw_mods = 1;
 
 	switch (state[TSTATE]) {
 	    case 'j': break;
@@ -1302,6 +1389,8 @@ sccsdir(winfo *wi)
 	sccs	*s = 0;
 	ser_t	d;
 	int	i;
+	int	saw_locked = 0;
+	int	saw_pending = 0;
 	char	buf[MAXPATH];
 	char	buf1[MAXPATH];
 
@@ -1342,6 +1431,7 @@ sccsdir(winfo *wi)
 			char *sfile;
 
 			state[LSTATE] = 'l';
+			saw_locked = 1;
 			file[0] = 's';
 			concat_path(buf, dir, "SCCS");
 			concat_path(buf, buf, file);
@@ -1406,6 +1496,7 @@ sccsdir(winfo *wi)
 			 * check for pending deltas
 			 */
 			chk_pending(s, buf, state, sDB, gDB);
+			if (state[PSTATE] == 'p') saw_pending = 1;
 		} else {
 			state[PSTATE] = ' ';
 			do_print(state, buf, 0);
@@ -1474,6 +1565,17 @@ sccsdir(winfo *wi)
 			}
 		}
 		freeLines(gfiles, 0);
+	}
+
+	/* maintain dirstate */
+	if (opts.atRoot) {
+		if (strneq(dir, "./", 2)) dir += 2;
+		proj_dirstate(0, dir, DS_EDITED, saw_locked);
+		if (opts.pending || opts.verbose) {
+			proj_dirstate(0, dir, DS_PENDING, saw_pending);
+		}
+		opts.saw_locked |= saw_locked;
+		opts.saw_pending |= saw_pending;
 	}
 	winfo_free(wi);
 }

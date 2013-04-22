@@ -76,16 +76,19 @@ comps_citool(char **av, int haveAliases, int no_extras)
 	char	*t;
 	char	*first = 0;
 	int	status;
-	hash	*mods;
+	hash	*mods = hash_new(HASH_MEMHASH);
 	char	**next = 0;
 	int	i, rc = 1;
+	char	**dirs;
 
 	/*
 	 * If run in a nested repository, list only the components
 	 * that contain modified data.
 	 */
-	t = proj_fullpath(proj_product(0), "BitKeeper/log/scancomps");
-	mods = hash_fromFile(hash_new(HASH_MEMHASH), t);
+	if (dirs = proj_scanComps(0, DS_PENDING|DS_EDITED)) {
+		EACH(dirs) hash_insertStr(mods, dirs[i], 0);
+		freeLines(dirs, 0);
+	}
 	unless (f = popenvp(av, "r")) goto out;
 
 	if (!haveAliases && proj_isComponent(0)) {

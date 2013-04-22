@@ -43,7 +43,7 @@ licsign2:
 licsign3: 
 autofix: yes
 BAM: off
-checkout: edit
+checkout: get
 clock_skew: on
 compression: gzip
 partial_check: on
@@ -60,7 +60,7 @@ description:
 email: 
 autofix: yes
 BAM: on
-checkout: edit
+checkout: get
 clock_skew: on
 compression: gzip
 partial_check: on

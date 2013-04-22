@@ -11,6 +11,7 @@ typedef struct {
 	u32	quiet:1;
 	u32	resync:1;
 	u32	standalone:1;
+	u32	clean_PENDING:1;	// if successful, clean PENDING marks
 } c_opts;
 
 
@@ -171,12 +172,13 @@ commit_main(int ac, char **av)
 		nav = unshiftLine(nav, strdup("commit"));
 		nav = unshiftLine(nav, strdup("bk"));
 
+		unless (aliases) aliases = modified_pending(DS_PENDING);
 		rc = nested_each(opts.quiet, nav, aliases);
 		freeLines(aliases, free);
 		freeLines(nav, free);
 		if (rc) {
-			fprintf(stderr, "%s: failed to commit some components\n",
-			    prog);
+			fprintf(stderr,
+			    "%s: failed to commit some components\n", prog);
 		}
 		return (rc);
 	}
@@ -222,6 +224,7 @@ commit_main(int ac, char **av)
 				getMsg("duplicate_IDs", 0, 0, stdout);
 				return (1);
 			}
+			opts.clean_PENDING = 1;
 		}
 	}
 	if (!force && (size(pendingFiles) == 0)) {
@@ -294,6 +297,49 @@ commit_main(int ac, char **av)
 	T_PERF("before do_commit");
 	return (do_commit(av, opts, sym, pendingFiles, dflags));
 }
+
+/*
+ * Return the md5keys for all of the components that have 'flags'
+ * set in the scanComps file.
+ */
+char **
+modified_pending(u32 flags)
+{
+	int	i;
+	int	product = 0;
+	char	**dirs;
+	project	*p;
+	char	**aliases = 0;
+
+	unless (dirs = proj_scanComps(0, flags)) return (0);
+	unless (nLines(dirs)) dirs = addLine(dirs, "PRODUCT");
+	EACH(dirs) {
+		unless (p = proj_init(dirs[i])) {
+			unless (getenv("_BK_DEVELOPER")) continue;
+			die("%s should be a repo", dirs[i]);
+		}
+		// Ah, I see.  If we have a standalone don't
+		// add it.
+		unless (proj_isEnsemble(p)) {
+			if (getenv("_BK_DEVELOPER")) {
+				die("standalone %s\n", dirs[i]);
+			}
+			proj_free(p);
+			continue;
+		}
+		if (proj_isProduct(p)) product = 1;
+		aliases = addLine(aliases, strdup(proj_md5rootkey(p)));
+		T_NESTED("SCAN %s", dirs[i]);
+		proj_free(p);
+	}
+	if (aliases && !product) {
+		aliases = addLine(aliases, strdup("PRODUCT"));
+		T_NESTED("SCAN PRODUCT");
+	}
+	freeLines(dirs, 0);
+	return (aliases);
+}
+
 
 private int
 do_commit(char **av,
@@ -444,6 +490,12 @@ do_commit(char **av,
 	if (rc) {
 		fprintf(stderr, "The commit is aborted.\n");
 		putenv("BK_STATUS=FAILED");
+	} else if (opts.clean_PENDING) {
+		proj_dirstate(0, "*", DS_PENDING, 0);
+		if (proj_isComponent(0)) {
+			/* this component is still pending */
+			proj_dirstate(0, ".", DS_PENDING, 1);
+		}
 	}
 	trigger(opts.resync ? "merge" : av[0], "post");
 done:	if (unlink(pendingFiles)) perror(pendingFiles);

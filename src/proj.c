@@ -45,7 +45,7 @@ struct project {
 	char	*tipmd5key;
 	char	*tiprev;
 	hash	*scancomps;	/* prod/BitKeeper/log/scancomps */
-	u32	scancomps_dirty:1;
+	hash	*scandirs;	/* comp/BitKeeper/log/scandirs */
 
 	/* checkout state */
 	u32	co;		/* cache of proj_checkout() return */
@@ -795,6 +795,10 @@ proj_reset(project *p)
 			hash_free(p->scancomps);
 			p->scancomps = 0;
 		}
+		if (p->scandirs) {
+			hash_free(p->scandirs);
+			p->scandirs = 0;
+		}
 		unless (p->product) p->product = INVALID;
 
 		/*
@@ -840,7 +844,7 @@ void
 proj_flush(project *p)
 {
 	if (p) {
-		if (p->scancomps_dirty) proj_set_scancomp(p, -1);
+		if (p->scancomps || p->scandirs) proj_dirstate(p, 0, 0, -1);
 	} else {
 		EACH_HASH(proj.cache) {
 			proj_flush(*(project **)proj.cache->vptr);
@@ -1628,28 +1632,90 @@ proj_tipmd5key(project *p)
 	return (p->tipmd5key);
 }
 
-/*
- * Called whenever an sfile is modified or a pfile is created
- * this function is intended to allow a product in a nested collection
- * to track which components contain modifications.
- */
-void
-proj_touchfile(project *p, char *file)
+private u32
+scanToBits(char *t)
 {
-	proj_set_scancomp(p, 1);
+	u32	ret = 0;
+
+	unless (t && *t) return (ret);
+	while (*t) {
+		switch (*t) {
+		    case 'e': ret |= DS_EDITED; break;
+		    case 'p': ret |= DS_PENDING; break;
+		}
+		t++;
+	}
+	return (ret);
 }
 
+private void
+scanFromBits(u32 bits, char *out)
+{
+	if (bits & DS_PENDING) *out++ = 'p';
+	if (bits & DS_EDITED) *out++ = 'e';
+	*out = 0;
+}
 
 /*
- * Indicate if the current component should be considered modified or
- * not.  Components that are "modified" will be listed in the
- * prod/BitKeeper/log/scancomps file.
+ * helper function for proj_dirstate() below.
+ *
+ * it loads the hash file at 'file' into *h and updates 'dir'
+ */
+private void
+scanfUpdate(project *p, char *file, hash **h, char *dir, u32 state, int set)
+{
+	u32	ostate, nstate;
+	char	buf[16];
+
+	if (set == -1) {
+		/* flush cache */
+		if (*h && !hash_deleteStr(*h, "DIRTY")) {
+			if (hash_toFile(*h, file)) {
+				perror(file);
+			}
+		}
+	} else {
+		unless (*h) *h = hash_fromFile(hash_new(HASH_MEMHASH), file);
+		if (set && (ostate = scanToBits(hash_fetchStr(*h, "*")))) {
+			/*
+			 * if we already have "*" for the same bits, then
+			 * we don't need a new entry
+			 */
+			if ((ostate | state) == ostate) return;
+		}
+		ostate = scanToBits(hash_fetchStr(*h, dir));
+		nstate = (ostate & ~state) | (set * state);
+		if (ostate != nstate) {
+			if (nstate) {
+				scanFromBits(nstate, buf);
+				hash_storeStr(*h, dir, buf);
+			} else {
+				hash_deleteStr(*h, dir);
+			}
+			hash_insertStr(*h, "DIRTY", 0);
+		}
+	}
+}
+
+/*
+ * Remember modified/pending state for a directory
+ *
+ * - if dir == "*", then we are talking about all dirs in component
+ * - state is a mask and more than one state can be changed
+ * - set==-1 means flush any saved state
  */
 void
-proj_set_scancomp(project *p, int mod)
+proj_dirstate(project *p, char *dir, u32 state, int set)
 {
 	project	*prod;
-	char	*dbf, *t;
+	char	*file;
+	char	*t;
+	char	**dirs;
+	int	i;
+	int	isStar;
+
+	unless (p || (p = curr_proj())) return;
+	unless (features_test(p, FEAT_SCANDIRS)) return;
 
 	/*
 	 * Changes in RESYNC won't leave files pending or modified for
@@ -1657,38 +1723,91 @@ proj_set_scancomp(project *p, int mod)
 	 */
 	if (proj_isResync(p)) return;
 
-	unless (prod = proj_product(p)) return; /* not nested */
+	isStar = (dir && streq(dir, "*"));
+	if ((set || isStar) && (prod = proj_product(p))) {
+		/* nested so handle scancomps file */
 
-	if (mod == -1) {
-		/* flush cache */
-		if (prod->scancomps_dirty) {
-			dbf = proj_fullpath(prod, "BitKeeper/log/scancomps");
-			t = aprintf("%s.tmp-%u", dbf, (int)getpid());
-			if (hash_toFile(prod->scancomps, t)) {
-				perror(t);
-			} else if (rename(t, dbf)) {
-				perror(dbf);
-			}
-			free(t);
-			prod->scancomps_dirty = 0;
-		}
-		return;
+		file = proj_fullpath(prod, "BitKeeper/log/scancomps");
+		t = (p == prod) ? "." : proj_comppath(p);
+		scanfUpdate(prod, file, &prod->scancomps, t, state, set);
 	}
-	unless (prod->scancomps) {
-		dbf = proj_fullpath(prod, "BitKeeper/log/scancomps");
-		prod->scancomps = hash_fromFile(hash_new(HASH_MEMHASH), dbf);
-	}
-	t = proj_isComponent(p) ? proj_comppath(p) : ".";
-	assert(t);
-	if (mod) {
-		if (hash_insertStrSet(prod->scancomps, t)) {
-			prod->scancomps_dirty = 1;
+
+	/* now update the local file */
+	file = proj_fullpath(p, "BitKeeper/log/scandirs");
+	if (isStar) {
+		assert(state);
+		dirs = 0;
+		EACH_HASH(p->scandirs) {
+			dirs = addLine(dirs, p->scandirs->kptr);
 		}
+		/* clear bits for all existing dirs */
+		EACH(dirs) {
+			scanfUpdate(p, file, &p->scandirs, dirs[i], state, 0);
+		}
+		freeLines(dirs, 0);
+		/* and set "*" entry ... */
+		if (set) goto set;
 	} else {
-		unless (hash_deleteStr(prod->scancomps, t)) {
-			prod->scancomps_dirty = 1;
+set:		scanfUpdate(p, file, &p->scandirs, dir, state, set);
+	}
+}
+
+/*
+ * Returns the list of directories that might have any of the 'state'
+ * bits set.  Returns 0, if we don't know or not enabled.
+ */
+char **
+proj_scanDirs(project *p, u32 state)
+{
+	char	**ret;
+	char	*file;
+
+	unless (p || (p = curr_proj())) return (0);
+	unless (features_test(p, FEAT_SCANDIRS)) return (0);
+	unless (p->scandirs) {
+		file = proj_fullpath(p, "BitKeeper/log/scandirs");
+		p->scandirs =  hash_fromFile(hash_new(HASH_MEMHASH), file);
+	}
+	/* any overlap with * then we scan everything */
+	if (state & scanToBits(hash_fetchStr(p->scandirs, "*"))) return (0);
+
+	ret = allocLines(16);  // must return non-zero
+	EACH_HASH(p->scandirs) {
+		if (state & scanToBits(p->scandirs->vptr)) {
+			ret = addLine(ret, p->scandirs->kptr);
 		}
 	}
+	sortLines(ret, 0);
+	return (ret);
+}
+
+/*
+ * Returns the list of components that might have the 'state' bits
+ * set.
+ * Returns 0, if we don't know or not enabled.
+ */
+char **
+proj_scanComps(project *p, u32 state)
+{
+	char	**ret;
+	char	*file;
+
+	unless (p || (p = curr_proj())) return (0);
+	unless (features_test(p, FEAT_SCANDIRS)) return (0);
+	unless (p = proj_product(p)) return (0);
+
+	unless (p->scancomps) {
+		file = proj_fullpath(p, "BitKeeper/log/scancomps");
+		p->scancomps =  hash_fromFile(hash_new(HASH_MEMHASH), file);
+	}
+	ret = allocLines(4);
+	EACH_HASH(p->scancomps) {
+		if (state & scanToBits(p->scancomps->vptr)) {
+			ret = addLine(ret, p->scancomps->kptr);
+		}
+	}
+	sortLines(ret, 0);
+	return (ret);
 }
 
 p_feat *

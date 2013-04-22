@@ -847,7 +847,7 @@ scanComponent(string comp)
 	FILE	pipe;
 	string	cmd;
 	int	progress;
-	string	opts = "--gui -vgcypA";
+	string	opts = "--gui -vgcpA";
 
 	// Don't recurse if a directory is named on the command line
 	if (self.dir) {

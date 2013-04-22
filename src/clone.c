@@ -188,7 +188,8 @@ clone_main(int ac, char **av)
 			opts->bkfile = 0;
 			break;
 		    case 311: /* --upgrade-repo */
-			opts->no_lclone = 1;
+			// done below if we decide to rewrite files
+			// opts->no_lclone = 1;
 			opts->remap = 1;
 			opts->bkfile = 1;
 			break;
@@ -266,6 +267,7 @@ clone_main(int ac, char **av)
 	 */
 	unless (r = remote_parse(opts->from, REMOTE_BKDURL)) usage();
 	r->gzip_in = gzip;
+	r->isClone = 1;
 	if (r->host) {
 		if (opts->detach || opts->attach_only) {
 			fprintf(stderr, "%s: source must be local\n", av[0]);
@@ -792,8 +794,18 @@ clone(char **av, remote *r, char *local, char **envVar)
 	}
 	proj_reset(0);
 	rmt_features = 0;
-	if (p = getenv("BKD_FEATURES_REQUIRED")) {
-		rmt_features = features_toBits(p, 0);
+	if ((p = getenv("BKD_FEATURES_USED")) ||
+	    (p = getenv("BKD_FEATURES_REQUIRED"))) {
+		/*
+		 * The REQUIRED list has already been validated in
+		 * getServerInfo() so we just want to pick the set of
+		 * features to use for the new repo.  We want
+		 * everything in USED we understand.  If USED is
+		 * missing, then we use the REQUIRED list.
+		 */
+		p = strdup(p);
+		rmt_features = features_toBits(p, p);
+		free(p);
 	}
 	if (proj_isComponent(0)) {
 		/* components use product's features, but a component
@@ -815,7 +827,8 @@ clone(char **av, remote *r, char *local, char **envVar)
 		features_set(0, FEAT_REMAP, !proj_hasOldSCCS(0));
 		if (opts->bkfile != -1) {
 			features_set(0,
-			    FEAT_BKFILE|FEAT_BWEAVE, opts->bkfile);
+			    FEAT_BKFILE|FEAT_BWEAVE|FEAT_SCANDIRS,
+			    opts->bkfile);
 		}
 	}
 	/*
@@ -839,6 +852,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		T_PERF("switch sfile formats to %s", p);
 		free(p);
 		bk_setConfig("partial_check", "0");
+		opts->no_lclone = 1;
 	}
 	if (opts->link) lclone(getenv("BKD_ROOT"));
 	nested_check();
@@ -1193,9 +1207,9 @@ nested_err:		fprintf(stderr, "clone: component fetch failed, "
 	}
 	freeLines(checkfiles, free);
 
-	/* we just cloned, so we're clean */
-	unless (proj_checkout(0) & (CO_EDIT|CO_BAM_EDIT)) {
-		proj_set_scancomp(0, 0);
+	if (proj_checkout(0) & (CO_EDIT|CO_BAM_EDIT)) {
+		/* checkout:edit can't assume we're clean */
+		proj_dirstate(0, "*", DS_EDITED, 1);
 	}
 
 	if (partial && bp_hasBAM() &&
@@ -1430,9 +1444,11 @@ sccs_rmUncommitted(int quiet, char ***stripped)
 	/*
 	 * "sfile -p" should run in "fast scan" mode because sfio
 	 * copied over the d.file and x.dfile
+	 * but we didn't copy over the scandirs so --no-cache prevents
+	 * trying to depend on that file
 	 */
-	unless (in = popen("bk sfiles -pAC", "r")) {
-		perror("popen of bk sfiles -pAC");
+	unless (in = popen("bk sfiles -pA --no-cache", "r")) {
+		perror("popen of bk sfiles -pA");
 		exit(1);
 	}
 	sprintf(buf, "bk -?BK_NO_REPO_LOCK=YES stripdel -d %s -", (quiet ? "-q" : ""));
@@ -1843,10 +1859,15 @@ attach_cleanup(char *path)
 		return;
 	}
 	// blow away the clone, ...
-	if (proj_cd2product()) goto err;
-	rmtree(path);	/* Careful: unlink just cloned repo */
+	if (proj_cd2product()) return;
 
-err:	return;
+	chdir(path);
+	unless (isdir(BKROOT) && exists("BitKeeper/log/OK2RM")) {
+		fprintf(stderr, "Internal BK error, attach not marked.\n");
+	} else {
+		if (proj_cd2product()) return;
+		rmtree(path);	/* Careful: unlink just cloned repo */
+	}
 }
 
 private retrc
@@ -1861,6 +1882,7 @@ attach(void)
 	char	relpath[MAXPATH];
 	project	*prod;
 	FILE	*f;
+	sccs	*cset;
 
 	unless (isdir(BKROOT)) {
 		fprintf(stderr, "attach: not a BitKeeper repository\n");
@@ -1884,7 +1906,14 @@ attach(void)
 	*tmp = 0;
 	unlink(REPO_ID);
 	(void)proj_repoID(0);
+	touch("BitKeeper/log/OK2RM", 0666);
 
+	/*
+	 * From here on down relpath MUST not be touched, it will be removed
+	 * on any error in attach_cleanup().  Do not return, set rc and goto
+	 * end.  If for some reason you don't want to clean up the clone, 
+	 * then return.
+	 */
 	rc = systemf("bk newroot %s %s %s -y'attach %s'",
 		     opts->quiet ? "-q":"",
 		     opts->verbose ? "-v":"",
@@ -1911,22 +1940,23 @@ attach(void)
 	}
 	free(tmp);
 
-	touch("SCCS/d.ChangeSet", 0664);
-
 	if (rc) {
 		fprintf(stderr, "attach failed\n");
-		return (RET_ERROR);
+		rc = RET_ERROR;
+		goto end;
 	}
 	unless (Fprintf("BitKeeper/log/COMPONENT", "%s\n", relpath)) {
 		fprintf(stderr, "attach: failed to write COMPONENT file\n");
-		return (RET_ERROR);
+		rc = RET_ERROR;
+		goto end;
 	}
 
 	proj_reset(0);	/* to reset proj_isComponent() */
 	unless (nested_mine(0, getenv("_BK_NESTED_LOCK"), 1)) {
 		unless (nlid = nested_wrlock(0)) {
 			fprintf(stderr, "%s\n", nested_errmsg());
-			return (RET_ERROR);
+			rc = RET_ERROR;
+			goto end;
 		}
 		safe_putenv("_BK_NESTED_LOCK=%s", nlid);
 	}
@@ -1953,7 +1983,11 @@ attach(void)
 		new_features = features_bits(0) & (FEAT_BKFILE|FEAT_BWEAVE);
 		if (orig_features != new_features) system("bk -r admin -Zsame");
 	}
-	unless (opts->nocommit) {
+	if (opts->nocommit) {
+		cset = sccs_csetInit(INIT_MUSTEXIST|INIT_NOCKSUM);
+		updatePending(cset);
+		sccs_free(cset);
+	} else {
 		sprintf(buf,
 			"bk -P commit -S -y'Attach ./%s' %s -",
 			relpath,
@@ -1965,7 +1999,6 @@ attach(void)
 			strcpy(buf, save);
 			buf[strlen(save)-4] = 0;
 			fileMove(save, buf);
-			attach_cleanup(relpath);
 		}
 	}
 	unlink(save);
@@ -1977,7 +2010,12 @@ attach(void)
 		}
 		free(nlid);
 	}
-end:	return (rc);
+end:	if (rc) {
+		attach_cleanup(relpath);
+	} else {
+		unlink("BitKeeper/log/OK2RM");
+	}
+	return (rc);
 }
 
 int

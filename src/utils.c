@@ -910,12 +910,21 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	fprintf(f, "putenv BK_FEATURES=%s\n", t);
 	free(t);
 	unless (flags & SENDENV_NOREPO) {
+		u32	bits = features_bits(0);
+
+		t = features_fromBits(bits);
+		fprintf(f, "putenv BK_FEATURES_USED=%s\n", t);
+		free(t);
+
 		if (t = getenv("_BK_TEST_REQUIRED")) {
 			t = strdup(t);
 		} else {
-			u32	bits = features_bits(0);
+			/* remove local-only features */
+			bits &= ~(FEAT_REMAP|FEAT_SCANDIRS);
 
-			bits &= ~FEAT_REMAP;
+			/* only clone needs these since the patch format
+			 * can encode them
+			 */
 			unless (flags & SENDENV_SENDFMT) {
 				bits &= ~(FEAT_BKFILE|FEAT_BWEAVE);
 			}
@@ -1009,7 +1018,7 @@ getServerInfo(remote *r, hash *bkdEnv)
 	r->seed = newseed;
 	if (ret) {
 		fprintf(stderr, "%s: premature disconnect\n", prog);
-	} else if (features_bkdCheck(0, r->noLocalRepo)) {
+	} else if (features_bkdCheck(0, r->noLocalRepo, r->isClone)) {
 		/* cleanup stale nested lock */
 		if ((bkdEnv && hash_fetchStr(bkdEnv, "BKD_NESTED_LOCK")) ||
 		    getenv("BKD_NESTED_LOCK")) {
@@ -1048,13 +1057,16 @@ sendServerInfo(u32 cmdlog_flags)
 	char	*repoid, *rootkey, *p, *errs = 0;
 	project	*prod = 0;	/* product project* (if we have a product) */
 	int	no_repo = (cmdlog_flags & CMD_NOREPO);
+	u32	bits;
 	char	buf[MAXPATH];
 	char	bp[MAXLINE];
 
 	unless (no_repo || isdir(BKROOT)) no_repo = 1;
 
 	out("@SERVER INFO@\n");
-	if (features_bkdCheck(1, no_repo)) return (1);
+	if (features_bkdCheck(1, no_repo, (cmdlog_flags & CMD_SENDFMT))) {
+		return (1);
+	}
 	unless (no_repo) {
 		if (p = lease_bkl(0, &errs)) {
 			free(p);
@@ -1155,12 +1167,16 @@ sendServerInfo(u32 cmdlog_flags)
 	out("\nFEATURES=");
 	out(p);
 	free(p);
+	bits = features_bits(0);
+	out("\nFEATURES_USED=");
+	p = features_fromBits(bits);
+	out(p);
+	free(p);
 	if (p = getenv("_BKD_TEST_REQUIRED")) {
 		p = strdup(p);
 	} else {
-		u32	bits = features_bits(0);
-
-		bits &= ~FEAT_REMAP;
+		/* remove local-only features */
+		bits &= ~(FEAT_REMAP|FEAT_SCANDIRS);
 		unless (cmdlog_flags & CMD_SENDFMT) {
 			bits &= ~(FEAT_BKFILE|FEAT_BWEAVE);
 		}

@@ -1,24 +1,47 @@
 nested proj
+echo 1 > gcc/a
+bk new $Q gcc/a
+echo 2 > aa
+bk new $Q aa
+bk commit -y'base' $Q || fail
+
+echo $N Check for scancomps feature .................................$NL
+bk features > ../SRC
+cd ..
+grep -q SCANDIRS SRC || fail
+echo OK
 
 echo $N No scancomps on clone in checkout:get........................$NL
-cd "$HERE"
 bk --config=checkout:get clone $Q proj copy1
 cd copy1
 test -f BitKeeper/log/scancomps && fail no scancomps on clone
+echo OK
+
+echo $N Check for scancomps feature in clone ........................$NL
+bk features > ../SRC
+cd ..
+grep -q SCANDIRS SRC || fail
 echo OK
 
 echo $N Yes scancomps on clone in checkout:edit......................$NL
 cd "$HERE"
 bk --config=checkout:edit clone $Q proj copy2
 cd copy2
-test -f BitKeeper/log/scancomps && fail fixed a bug, fix test
 cat <<EOF > WANT
+@.
+e
 @gcc
+e
 @gdb
+e
 EOF
-# remove this when test is fixed
-cp WANT BitKeeper/log/scancomps
 cmpfiles WANT BitKeeper/log/scancomps
+echo OK
+
+echo $N Check for scancomps feature in clone ........................$NL
+bk features > ../SRC
+cd ..
+grep -q SCANDIRS SRC || fail
 echo OK
 
 echo $N Make sure bk edit adds to scancomps..........................$NL
@@ -28,10 +51,12 @@ bk new $Q gcc/afile
 bk commit $Q -yafile
 cat <<EOF > WANT
 @.
+e
 @gcc
+pe
 EOF
 cmpfiles BitKeeper/log/scancomps WANT
-bk -Ap	# clear scancomps
+bk -Apc	# clear scancomps
 cat </dev/null > WANT
 cmpfiles BitKeeper/log/scancomps WANT
 cd "$HERE"
@@ -42,6 +67,7 @@ ls -l BitKeeper/log > OUT
 test -f BitKeeper/log/scancomps || fail -f OUT no scancomps created by bk edit
 cat <<EOF > WANT
 @gcc
+e
 EOF
 cmpfiles BitKeeper/log/scancomps WANT
 echo OK
@@ -49,14 +75,22 @@ echo OK
 echo $N Testing again after a ci.....................................$NL
 echo "content1" > gcc/afile
 bk ci $Q -y1 gcc/afile
-# it should not have changed
+# it should now show an edit
+cat <<EOF > WANT
+@gcc
+pe
+EOF
 cmpfiles WANT BitKeeper/log/scancomps
 echo OK
 
 echo $N Testing that sfiles clears it................................$NL
 bk commit $Q -y1
-bk --cd=gcc sfiles -p
-grep -q gcc BitKeeper/log/scancomps && fail
+bk --cd=gcc sfiles -p -c
+cat <<EOF > WANT
+@.
+e
+EOF
+cmpfiles BitKeeper/log/scancomps WANT
 echo OK
 
 echo $N RESYNC op should not update it...............................$NL
@@ -67,6 +101,7 @@ touch gdb/afile
 bk new $Q gdb/afile
 cat <<EOF > WANT
 @gdb
+p
 EOF
 cmpfiles WANT BitKeeper/log/scancomps
 cp BitKeeper/log/scancomps BEFORE
@@ -79,16 +114,25 @@ echo $N Scancomps should be empty on clone...........................$NL
 cd "$HERE"
 bk clone $Q --compat copy compat
 bk clone $Q --upgrade-repo compat upgrade
-touch EMPTY
-cmpfiles EMPTY upgrade/BitKeeper/log/scancomps
+test -f upgrade/BitKeeper/log/scancomps && fail
+echo OK
+
+echo $N Check for scancomps feature in downgrade ....................$NL
+cd compat
+bk features > ../SRC
+cd ..
+grep -q SCANDIRS SRC && fail
 echo OK
 
 echo $N Again in a different checkout mode...........................$NL
 BK_CONFIG=checkout:edit\! bk clone $Q --upgrade-repo compat upgrade-e
 cat <<EOF > WANT
 @.
+e
 @gcc
+e
 @gdb
+e
 EOF
 cmpfiles WANT upgrade-e/BitKeeper/log/scancomps
 echo OK
@@ -96,4 +140,55 @@ echo OK
 echo $N Again but with clone --checkout..............................$NL
 BK_CONFIG=checkout:get\!\;BAM_checkout:none bk clone $Q --checkout=edit --upgrade-repo compat upgrade2
 cmpfiles WANT upgrade2/BitKeeper/log/scancomps
+echo OK
+
+echo $N Make sure sfiles -p does not clear edit entries in scandirs .$NL
+cd upgrade2/gcc
+bk unedit afile
+bk edit $Q afile
+echo foo >> afile
+cat BitKeeper/log/scandirs > WANT
+bk sfiles -p
+cat BitKeeper/log/scandirs > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Make sure sfiles -c does not clear edit entries in scandirs .$NL
+echo foo > foo
+bk new $Q foo
+# put back the scandirs
+bk sfiles -p -c > XXX
+test -s BitKeeper/log/scandirs || fail
+cat BitKeeper/log/scandirs > WANT
+bk sfiles -c > XXX
+cat BitKeeper/log/scandirs > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N See if bk -cU skips uneditted comps .........................$NL
+cd ..
+bk -A unedit
+bk -A clean
+bk -Acp > ${DEV_NULL}
+BK_SHOWPROC="$PWD/SP" bk -cU > GOT
+touch WANT
+cmpfiles WANT GOT
+grep -q gcc SP && fail SP
+grep -q gdb SP && fail SP
+echo OK
+
+echo $N See if bk -cU diffs skips uneditted comps ...................$NL
+BK_SHOWPROC="$PWD/SP" bk -cU diffs > GOT
+touch WANT
+cmpfiles WANT GOT
+grep -q gcc SP && fail SP
+grep -q gdb SP && fail SP
+echo OK
+
+echo $N See if bk -pU skips comps with no pending ...................$NL
+BK_SHOWPROC="$PWD/SP" bk -pU > GOT
+echo gcc/foo > WANT
+cmpfiles WANT GOT
+grep -q gcc SP || fail SP
+grep -q gdb SP && fail SP
 echo OK

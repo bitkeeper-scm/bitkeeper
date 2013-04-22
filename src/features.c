@@ -245,7 +245,7 @@ features_setAll(project *p, u32 bits)
  * function returns non-zero.
  */
 int
-features_bkdCheck(int bkd, int no_repo)
+features_bkdCheck(int bkd, int no_repo, int isClone)
 {
 	char	*t;
 	u32	rmt_features = 0, features = 0;
@@ -263,8 +263,9 @@ features_bkdCheck(int bkd, int no_repo)
 
 	/* check BitKeeper/log/features against BK[D]_FEATURES */
 	features = features_bits(0);
-	/* remap doesn't matter over protocol */
-	features &= ~(FEAT_REMAP|FEAT_BKFILE|FEAT_BWEAVE);
+	/* remove local-only features */
+	features &= ~(FEAT_REMAP|FEAT_SCANDIRS);
+	unless (isClone) features &= ~(FEAT_BKFILE|FEAT_BWEAVE);
 	features &= ~rmt_features;
 
 	/*
@@ -381,7 +382,9 @@ features_toBits(char *features, char *bad)
 		for (i = 1; i <= NFEATURES; i++) {
 			hash_insertStrU32(namemap, flist[i].name, (1<<i));
 		}
+		/* aliases for old names */
 		hash_insertStrU32(namemap, "bSFILEv1", FEAT_BKFILE);
+		hash_insertStrU32(namemap, "SCANCOMPS", FEAT_SCANDIRS);
 	}
 	list = splitLine(features, " ,\r\n", 0);
 	EACH(list) {

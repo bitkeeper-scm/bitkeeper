@@ -143,7 +143,8 @@ setup_main(int ac, char **av)
 		features_set(0, FEAT_BWEAVE,
 		    features_test(in_prod, FEAT_BWEAVE));
 	} else {
-		features_set(0, FEAT_BKFILE|FEAT_BWEAVE, !sccs_compat);
+		features_set(0,
+		    FEAT_BKFILE|FEAT_BWEAVE|FEAT_SCANDIRS, !sccs_compat);
 	}
 
 	if (exists(s_config)) {
@@ -470,7 +471,7 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 	val = flist ? mdbm_fetch_str(flist, "checkout") : 0;
 	/* force checkout to default edit */
 	unless (val && *val) {
-		char fld[] =  "checkout=edit";
+		char fld[] =  "checkout=get";
 		flist = addField(flist, fld);
 	}
 

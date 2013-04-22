@@ -647,7 +647,7 @@ private int
 chk_dfile(sccs *s)
 {
 	ser_t	d;
-	char	*p, *dfile;
+	char	*dfile;
 	int	hasdfile;
 	int	rc = 0;
 
@@ -664,9 +664,7 @@ chk_dfile(sccs *s)
 	 * as a special case.
 	 */
 
-	dfile = s->sfile;
-	p = basenm(dfile);
-	*p = 'd';
+	dfile = sccs_Xfile(s, 'd');
 	hasdfile = exists(dfile);
 	if (FLAGS(s, d) & D_CSET) {
 		/* nothing pending, cleanup any extra dfiles */
@@ -681,7 +679,6 @@ chk_dfile(sccs *s)
 			updatePending(s);
 		}
 	}
-	*p = 's';
 	return (rc);
 
 }

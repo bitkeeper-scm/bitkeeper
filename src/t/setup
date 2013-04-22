@@ -249,10 +249,10 @@ create_test_files() {
 mvcomp() {
 	 test "BitKeeper/log/PRODUCT" || exit 1
 	 mv "$1" "$2"
+	 echo "$2" > "$2"/BitKeeper/log/COMPONENT
 	 bk edit $Q "$2"/ChangeSet || exit 2
 	 bk --cd="$2" commit $Q -S -Fy"Rename $1 -> $2" "$2"/ChangeSet - \
 	     < /dev/null || fail 3
-	 echo "$2" > "$2"/BitKeeper/log/COMPONENT
 	 bk idcache -q
 }
 

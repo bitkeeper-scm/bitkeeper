@@ -63,7 +63,7 @@ main(int volatile ac, char **av, char **env)
 	int	i, c, ret;
 	int	is_bk = 0, dashr = 0, remote = 0;
 	int	dashA = 0, dashU = 0, headers = 0;
-	int	each_repo = 0, dashrdir = 0;
+	int	each_repo = 0, dashrdir = 0, fast_ok = 1, mp = 0;
 	int	buf_stdin = 0;	/* -Bstdin */
 	int	from_iterator = 0;
 	char	*p, *locking = 0;
@@ -240,14 +240,22 @@ main(int volatile ac, char **av, char **env)
 			    /* sfiles stuff */
 			    case 'U':
 				dashU = 1; /* nested -U mode */
-				/*FALLTHROUGH*/
+				sopts = bk_saveArg(sopts, av, c);
+				break;
 			    case '1': case 'a': case 'c': case 'd':
 			    case 'D': case 'g': case 'G': case 'j': case 'l':
-			    case 'n': case 'p': case 'u': case 'x':
-			    case 'h': case '^':
+			    case 'n': case 'p': case 'u': case 'x': case '^':
+				if (c == 'c') {
+					mp |= DS_EDITED;
+				} else if ((c == 'p') || (c == 'l')) {
+					mp |= DS_PENDING;
+				} else unless (c == 'g') {
+					fast_ok = 0;
+				}
 				sopts = bk_saveArg(sopts, av, c);
 				break;
 			    case 306: // --sfiles-opts=cvg
+				fast_ok = 0;
 				sopts = addLine(sopts, aprintf("-%s", optarg));
 				break;
 			    case '?': envargs = optarg; break;
@@ -383,6 +391,7 @@ baddir:						fprintf(stderr,
 			    default: bk_badArg(c, av);
 			}
 		}
+		unless (mp) fast_ok = 0;
 		trace_init(av[0]);
 		if (unlikely(bk_trace)) {
 			char	**lines = 0;
@@ -544,6 +553,7 @@ baddir:						fprintf(stderr,
 				nav = addLine(nav, strdup(av[i]));
 			}
 			callstack_push(0);
+			if (!aliases && fast_ok) aliases = modified_pending(mp);
 			ret = nested_each(!headers, nav, aliases);
 			freeLines(aliases, free);
 			callstack_pop();
@@ -608,6 +618,9 @@ bad_locking:				fprintf(stderr,
 				sopts = addLine(sopts,
 				    aprintf("--relpath=%s", start_cwd));
 				callstack_push(0);
+				if (!aliases && fast_ok) {
+					aliases = modified_pending(mp);
+				}
 				ret = nested_each(!headers, sopts, aliases);
 				freeLines(aliases, free);
 				callstack_pop();

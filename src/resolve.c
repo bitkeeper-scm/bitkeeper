@@ -2952,7 +2952,10 @@ err:			unapply(applied);
 	}
 	fclose(f);
 
-	if (exists("RESYNC/SCCS/d.ChangeSet")) touch("SCCS/d.ChangeSet", 0644);
+	if (exists("RESYNC/SCCS/d.ChangeSet")) {
+		touch("SCCS/d.ChangeSet", 0644);
+		proj_dirstate(0, ".", DS_PENDING, 1);
+	}
 	if (exists("RESYNC/BitKeeper/log/TIP")) {
 		fileLink("RESYNC/BitKeeper/log/TIP", "BitKeeper/log/TIP");
 	} else {
@@ -3373,7 +3376,10 @@ moveupComponent(void)
 		    "'%s'\n", from, to);
 		rc = 1;
 	} else {
-		if (exists(dfile_from)) touch(dfile_to, 0644);
+		if (exists(dfile_from)) {
+			touch(dfile_to, GROUP_MODE);
+			proj_dirstate(comp, ".", DS_PENDING, 1);
+		}
 		free(from);
 		from = aprintf("%s/%s/BitKeeper/log/TIP", RESYNC2ROOT,
 		    cpath);

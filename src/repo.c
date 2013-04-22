@@ -48,7 +48,7 @@ nfiles_main(int ac, char **av)
 			opts->cache_only = 1;
 			break;
 		    case 320:	/* --use-scancomp */
-			unless (features_test(0, FEAT_BKFILE)) usage();
+			unless (features_test(0, FEAT_SCANDIRS)) usage();
 			opts->use_scancomp = 1;
 			break;
 		    default: bk_badArg(c, av);
@@ -200,6 +200,7 @@ nfiles(Opts *opts)
 	u32	total = 0;
 	hash	*h = 0, *mods = 0;
 	project	*p;
+	char	**dirs;
 	char	**aliases = opts->aliases;
 
 	unless (h = hash_fromFile(0,
@@ -213,16 +214,18 @@ nfiles(Opts *opts)
 	if (aliases && nested_aliases(n, 0, &aliases, start_cwd, 1)) {
 		goto out;
 	}
-	if (opts->use_scancomp) {
-		mods = hash_fromFile(0,
-		    proj_fullpath(proj_product(0), "BitKeeper/log/scancomps"));
+	if (opts->use_scancomp &&
+	    (dirs = proj_scanComps(0, DS_PENDING|DS_EDITED))) {
+		mods = hash_new(HASH_MEMHASH);
+		EACH(dirs) hash_insertStr(mods, dirs[i], 0);
+		freeLines(dirs, 0);
 	}
 	h = hash_fromFile(0, proj_fullpath(0, "BitKeeper/log/NFILES_PRODUCT"));
 	EACH_STRUCT(n->comps, c, i) {
-		unless (C_PRESENT(c)) continue;
 		if (aliases && !c->alias) continue;
 		if (mods && !c->product &&
 		    !hash_fetchStr(mods, c->path)) continue;
+		unless (C_PRESENT(c)) continue;
 		if (h && (numstr = hash_fetchStr(h, c->rootkey))) {
 			total += strtoul(numstr, 0, 10);
 		} else {
