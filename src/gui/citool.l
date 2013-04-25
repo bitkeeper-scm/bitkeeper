@@ -44,7 +44,6 @@ string	img_checkoff;	    // Tk image for not included (no checkmark)
 string	img_notincluded;    // Tk image for files soft-excluded
 
 struct {
-	string	argv[];		    // argv from the command line
 	string	cwd;		    // current directory
 	string	root;		    // root directory of the repo
 	string	dotbk;		    // dotbk directory
@@ -3299,6 +3298,8 @@ main(_argused int argc, string argv[])
 	string	compscmd = "comps -ch";
 	int	quit = 0;
 	int	includeProduct = 1;
+	string	lopts[] = {"no-extras", "quit"};
+
 	require("BWidget");
 	Widget::theme(1);
 
@@ -3318,27 +3319,34 @@ main(_argused int argc, string argv[])
 	self.partial = 0;
 	self.resolve = 0;
 	self.no_extras = 0;
-	foreach (arg in argv[1..END]) {
-		if (arg == "-R") {
-			self.resolve = 1;
-		} else if (arg == "-P") {
+	while (arg = getopt(argv, "PRs;", lopts)) {
+		switch (arg) {
+		    case "P":
 			self.partial = 1;
-		} else if (arg =~ /^-s(.*)/) {
+			break;
+		    case "R":
+			self.resolve = 1;
+			break;
+		    case "s":
 			self.dashs = 1;
-			if ($1 == "^PRODUCT") includeProduct = 0;
-			compscmd .= " " . arg;
-			nfilesOpts .= " " . arg;
-		} else if (arg == "--no-extras") {
-			nfilesOpts .= " --use-scancomp";
-			compscmd .= " --no-extras";
+			if (optarg == "^PRODUCT") includeProduct = 0;
+			compscmd .= " -s${optarg}";
+			nfilesOpts .= " -s${optarg}";
+			break;
+		    case "no-extras":
 			self.no_extras++;
-		} else if (arg == "--quit") {
+			compscmd .= " --no-extras";
+			nfilesOpts .= " --use-scancomp";
+			break;
+		    case "quit":
 			quit = 1;
-		} else {
-			push(&files, arg);
-			self.argv[END+1] = arg;
+			break;
+		    case "":
+			bk_usage();
+			break;
 		}
 	}
+	files = argv[optind..END];
 
 	self.nested = 0;
 	if (llength(files) == 0) {
