@@ -134,7 +134,6 @@ struct {
 	struct	component {
 		int	product;	// Is this the product component?
 		string	comments;	// The comments for this component
-		int	commented;	// Does the component have a comment?
 		int	commentedFiles;	// Number of files with comments
 		string	csetfile;	// Path to the cset file for this comp
 	} compinfo{string};
@@ -154,7 +153,7 @@ bk(string cmdline, _optional string mode)
 
 	progress = startProgressBar(1000);// Start a progress bar after a second
 	pipe = openBK(cmdline, &readBK, mode);
-	_bk_output{pipe} = undef;
+	_bk_output{pipe} = "";
 	waitForBK(pipe);
 	if (progress) stopProgressBar();
 	return (trim(_bk_output{pipe}));
@@ -167,9 +166,10 @@ openBK(string cmdline, bk_callback callback, _optional string mode)
 
 	unless (mode) mode = "r";
 	pipe = popen("bk --sigpipe ${cmdline}", mode);
+	unless (pipe) return (undef);
 
-	fileevent(pipe, "readable", {callback, pipe});
 	fconfigure(pipe, blocking: 0, buffering: "line");
+	fileevent(pipe, "readable", {callback, pipe});
 	return (pipe);
 }
 
@@ -191,7 +191,7 @@ closeBK(FILE pipe)
 void
 readBK(FILE pipe)
 {
-	string	data;
+	string	data = "";
 
 	if (eof(pipe)) {
 		closeBK(pipe);
@@ -607,17 +607,6 @@ addSfilesLines(string lines[])
 		sf.inProduct = 0;
 		sf.commented = hasComments;
 
-		if (file =~ /ChangeSet$/) {
-			// ChangeSet files only show up when a comment
-			// has been saved on disk for them.  Mark the
-			// current component as having a comment and
-			// move on.
-			string	comp = self.sfiles_component;
-
-			self.compinfo{comp}.commented = hasComments;
-			continue;
-		}
-
 		if (pending) {
 			sf.type = "pending";
 			sf.icon = img_done;
@@ -680,6 +669,7 @@ void
 insertCsetFile(string comp)
 {
 	sfile	sf;
+	string	comments;
 
 	// Don't insert a second cset file.
 	if (self.compinfo{comp}.csetfile) return;
@@ -698,12 +688,9 @@ insertCsetFile(string comp)
 	sf.component = comp;
 	sf.excluded = 0;
 
-	sf.commented = 0;
-	if (self.compinfo{comp}.commented) {
-		// We may have found comments for this ChangeSet file
-		// when reading the initial sfiles run.
-		sf.commented = self.compinfo{comp}.commented;
-	}
+	comments = getCommentsFromDisk(sf);
+	sf.commented = isRealComment(sf, comments);
+	if (sf.commented) self.compinfo{comp}.comments = comments;
 
 	insertFile(sf);
 	self.compinfo{comp}.csetfile = sf.file;
@@ -862,12 +849,11 @@ scanComponent(string comp)
 	self.sfiles_component = comp;
 	updateStatus();
 
-	cmd = "bk sfiles ${opts} --relpath='${self.root}'";
 	unless (self.resolve || self.no_extras) {
 		// Look for extra files when we're not in the resolver.
-		cmd .= " -x";
+		opts .= " -x";
 	}
-	cmd .= " 2>@1";
+	cmd = "sfiles ${opts} --relpath='${self.root}' 2>@1";
 	progress = startProgressBar();
 	pipe = openBK(cmd, &readSfiles);
 	waitForBK(pipe);
@@ -922,7 +908,6 @@ rescanComponent(string comp)
 	undef(self.components{comp});
 	ListBox_itemDelete(self.o_files, (expand)nodes);
 
-	self.compinfo{comp}.commented = 0;
 	self.compinfo{comp}.comments = undef;
 	self.compinfo{comp}.commentedFiles = 0;
 	self.sfiles_insertIdx = ListBox_index(self.o_files, cset.node);
@@ -1628,8 +1613,6 @@ deleteCommentFile(sfile sf)
 
 	if (sf.type == "pending") append(&file, "@" . sf.rev);
 	bk("cfile rm '${file}'");
-
-	if (sf.type == "cset") self.compinfo{sf.component}.commented = 0;
 }
 
 void
@@ -1653,8 +1636,6 @@ writeComments(sfile sf, string comments)
 	fd = popen("bk cfile save '${sf.file}'", "w");
 	puts(fd, comments);
 	pclose(fd);
-
-	if (sf.type == "cset") self.compinfo{sf.component}.commented = 1;
 }
 
 void
@@ -2960,12 +2941,11 @@ rescan()
 	self.components = undef;
 	self.pendingNodes = undef;
 	foreach (comp in self.allComponents) {
-		int	n;
+		string	n;
 
 		chdir(comp);
-		n = (int)bk("nfiles");
-		if (String_isInteger(strict: n)) self.nfiles += n;
-		self.compinfo{comp}.commented = 0;
+		n = bk("nfiles");
+		if (String_isInteger(strict: n)) self.nfiles += (int)n;
 		self.compinfo{comp}.commentedFiles = 0;
 	}
 
@@ -3317,6 +3297,7 @@ main(_argused int argc, string argv[])
 	string	arg, file, files[];
 	string	nfilesOpts = "";
 	string	compscmd = "comps -ch";
+	int	quit = 0;
 	int	includeProduct = 1;
 	require("BWidget");
 	Widget::theme(1);
@@ -3348,14 +3329,11 @@ main(_argused int argc, string argv[])
 			compscmd .= " " . arg;
 			nfilesOpts .= " " . arg;
 		} else if (arg == "--no-extras") {
-			unless (`bk features` =~ /BKFILE/) {
-				bk_dieError("--no-extras can only be used "
-				    "in a repository cloned with the "
-				    "--upgrade-repo option.", 1);
-			}
 			nfilesOpts .= " --use-scancomp";
 			compscmd .= " --no-extras";
 			self.no_extras++;
+		} else if (arg == "--quit") {
+			quit = 1;
 		} else {
 			push(&files, arg);
 			self.argv[END+1] = arg;
@@ -3424,7 +3402,6 @@ main(_argused int argc, string argv[])
 			comp = joinpath(self.root, comp);
 			self.allComponents[END+1] = comp;
 			self.compinfo{comp}.product = 0;
-			self.compinfo{comp}.commented = 0;
 			self.compinfo{comp}.commentedFiles = 0;
 		}
 	}
@@ -3432,7 +3409,6 @@ main(_argused int argc, string argv[])
 	if (includeProduct) {
 		self.allComponents[END+1] = self.root;
 		self.compinfo{self.root}.product = 1;
-		self.compinfo{self.root}.commented = 0;
 		self.compinfo{self.root}.commentedFiles = 0;
 	}
 
@@ -3450,5 +3426,6 @@ main(_argused int argc, string argv[])
 	initMsgs();
 	createImages();
 	processFiles(self.filelist);
+	if (quit) exit();
 	readBackupComments();
 }

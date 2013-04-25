@@ -48,7 +48,6 @@ nfiles_main(int ac, char **av)
 			opts->cache_only = 1;
 			break;
 		    case 320:	/* --use-scancomp */
-			unless (features_test(0, FEAT_SCANDIRS)) usage();
 			opts->use_scancomp = 1;
 			break;
 		    default: bk_badArg(c, av);
