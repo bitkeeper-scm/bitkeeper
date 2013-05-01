@@ -56,7 +56,7 @@ private void	sdPrint(void *data, int len, int side, int last,
 private void	sdState(u32 where, void *extra, FILE *out);
 
 /* other functions */
-private int	algn_ws(void *data, int len, void *extra);
+private u32	align(void *data, int len, int pos, void *extra);
 
 private	int	external_diff(char *lfile, char *rfile, df_opt *dop, char *out);
 
@@ -267,7 +267,7 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 		dhash = hash_identical;
 	}
 
-	dc = diff_new(dcmp, dhash, algn_ws, o);
+	dc = diff_new(dcmp, dhash, align, o);
 
 	re = o->dop->pattern;
 
@@ -447,19 +447,53 @@ external_diff(char *lfile, char *rfile, df_opt *dop, char *out)
 	return (ret);
 }
 
-/*
- * Is this string just whitespace?
- */
-private int
-algn_ws(void *data, int len, void *extra)
+private u32
+align(void *data, int len, int pos, void *extra)
 {
-	int	i;
-	char	*s = (char *)data;
+	char	*line = data;
+	int	i, j, c;
+	int	price;
+	struct {
+		char	*match;		/* pattern to match */
+		int	len;		/* size of match */
+		int	price[3];	/* price for BEG, END, MID */
+	} menu[] = {
+		{"", 0, {2, 1, 3}},	/* empty line */
+		{"/*", 2, {1, 2, 3}},	/* start comment */
+		{"*/", 2, {2, 1, 3}},	/* end comment */
+		{"{", 1, {1, 2, 3}},	/* start block */
+		{"}", 1, {2, 1, 3}},	/* end block */
+		{0, 0, {0, 0, 0}}
+	};
+	/* remove final newline */
+	if ((len > 0) && (line[len-1] == '\n')) --len;
 
+	/* skip whitespace at start of line */
 	for (i = 0; i < len; i++) {
-		unless (isspace(s[i])) return (0);
+		unless ((line[i] == ' ') || (line[i] == '\t')) break;
 	}
-	return (1);
+
+	/* handle blank line case */
+	if (i == len) return (menu[0].price[pos]);
+
+	/* look for other cases */
+	price = 0;
+	for (j = 1; menu[j].match; j++) {
+		c = menu[j].len;
+		if (((len - i) >= c) && strneq(line+i, menu[j].match, c)) {
+			price = menu[j].price[pos];
+			i += c;
+			break;
+		}
+	}
+	if (price) {
+		/* make sure all that's left is whitespace */
+		for (/* i */; i < len; i++) {
+			unless ((line[i] == ' ') || (line[i] == '\t')) break;
+		}
+		if (i == len) return (price);
+	}
+	return (0);
 }
 
 /* Comparison functions for the various diff options */

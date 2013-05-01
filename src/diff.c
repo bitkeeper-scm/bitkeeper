@@ -659,7 +659,7 @@ shrink_gaps(df_ctx *dc, int side)
 }
 
 /*
- * Move any remaining diff blocks align to whitespace boundaries if
+ * Move any remaining diff blocks align to better boundaries if
  * possible. Adapted from code by wscott in another RTI.
  */
 private void
@@ -711,27 +711,27 @@ align_blocks(df_ctx *dc, int side)
 			for (i = -up; i <= down; i++) {
 				int	a1 = a + i;
 				int	b1 = b + i;
+				int	price;
 				int	cost = 0;
 
-				/* whitespace at the beginning costs 2 */
-				while (a1 < b1 && algn(t[a1].data,
-				    t[a1].len,  dc->extra)) {
-					cost += 2;
+				while ((a1 < b1) &&
+				    (price = algn(t[a1].data, t[a1].len,
+				    DF_START, dc->extra))) {
+					cost += price;
 					++a1;
 				}
 
-				/* whitespace at the end costs only 1 */
-				while (b1 > a1 && algn(t[b1-1].data,
-				    t[b1-1].len, dc->extra)) {
-					cost += 1;
+				while ((b1 > a1) &&
+				    (price = algn(t[b1-1].data, t[b1-1].len,
+				    DF_END, dc->extra))) {
+					cost += price;
 					--b1;
 				}
-				/* Any whitespace in the middle costs 3 */
+
 				while (a1 < b1) {
-					if (algn(t[a1].data,
-					    t[a1].len, dc->extra)) {
-						cost += 3;
-					}
+					/* algn returns 0 for invalid */
+					cost += algn(t[a1].data, t[a1].len,
+					    DF_MIDDLE, dc->extra);
 					++a1;
 				}
 				/*

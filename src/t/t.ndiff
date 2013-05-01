@@ -522,3 +522,308 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
+echo $N Test C function alignment....................................$NL
+cat <<EOF > A
+int
+main(int ac, char **av)
+{
+	printf("This is main\n");
+}
+
+int
+afunc(int a)
+{
+	printf("this is afunc\n");
+}
+EOF
+cat <<EOF > B
+int
+main(int ac, char **av)
+{
+	printf("This is main\n");
+}
+
+int
+bfunc(int b)
+{
+	printf("This is bfunc\n");
+}
+
+int
+afunc(int a)
+{
+	printf("this is afunc\n");
+}
+EOF
+cat <<EOF > WANT
+6a7,12
+> int
+> bfunc(int b)
+> {
+> 	printf("This is bfunc\n");
+> }
+> 
+EOF
+bk ndiff A B > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test adding a function with no space below...................$NL
+cat <<EOF > A
+int
+main(int ac, char **av)
+{
+	printf("This is main\n");
+}
+
+int
+afunc(int a)
+{
+	printf("this is afunc\n");
+}
+EOF
+cat <<EOF > B
+int
+main(int ac, char **av)
+{
+	printf("This is main\n");
+}
+
+int
+bfunc(int b)
+{
+	printf("This is bfunc\n");
+}
+int
+afunc(int a)
+{
+	printf("this is afunc\n");
+}
+EOF
+cat <<EOF > WANT
+6a7,11
+> int
+> bfunc(int b)
+> {
+> 	printf("This is bfunc\n");
+> }
+EOF
+bk ndiff A B > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test adding a function with no space above...................$NL
+cat <<EOF > A
+int
+main(int ac, char **av)
+{
+	printf("This is main\n");
+}
+
+int
+afunc(int a)
+{
+	printf("this is afunc\n");
+}
+EOF
+cat <<EOF > B
+int
+main(int ac, char **av)
+{
+	printf("This is main\n");
+}
+int
+bfunc(int b)
+{
+	printf("This is bfunc\n");
+}
+
+int
+afunc(int a)
+{
+	printf("this is afunc\n");
+}
+EOF
+cat <<EOF > WANT
+5a6,10
+> int
+> bfunc(int b)
+> {
+> 	printf("This is bfunc\n");
+> }
+EOF
+bk ndiff A B > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Add a function that overlaps in comments.....................$NL
+cat <<EOF > A
+int
+main(int ac, char **av)
+{
+	printf("This is main\n");
+}
+
+/*
+ * this is function afunc
+ */
+int
+afunc(int a)
+{
+	printf("this is afunc\n");
+}
+EOF
+cat <<EOF > B
+int
+main(int ac, char **av)
+{
+	printf("This is main\n");
+}
+
+/*
+ * this is function bfunc
+ */
+int
+bfunc(int b)
+{
+	printf("This is bfunc\n");
+}
+
+/*
+ * this is function afunc
+ */
+int
+afunc(int a)
+{
+	printf("this is afunc\n");
+}
+EOF
+cat <<EOF > WANT
+6a7,15
+> /*
+>  * this is function bfunc
+>  */
+> int
+> bfunc(int b)
+> {
+> 	printf("This is bfunc\n");
+> }
+> 
+EOF
+bk ndiff A B > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Add a function with comments, no space.......................$NL
+cat <<EOF > A
+int
+main(int ac, char **av)
+{
+	printf("This is main\n");
+}
+
+/*
+ * this is function afunc
+ */
+int
+afunc(int a)
+{
+	printf("this is afunc\n");
+}
+EOF
+cat <<EOF > B
+int
+main(int ac, char **av)
+{
+	printf("This is main\n");
+}
+
+/*
+ * this is function bfunc
+ */
+int
+bfunc(int b)
+{
+	printf("This is bfunc\n");
+}
+/*
+ * this is function afunc
+ */
+int
+afunc(int a)
+{
+	printf("this is afunc\n");
+}
+EOF
+cat <<EOF > WANT
+6a7,14
+> /*
+>  * this is function bfunc
+>  */
+> int
+> bfunc(int b)
+> {
+> 	printf("This is bfunc\n");
+> }
+EOF
+bk ndiff A B > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Add a line at end of function and a new function.............$NL
+cat <<EOF > A
+int
+main(int ac, char **av)
+{
+	printf("This is main\n");
+}
+
+int
+afunc(int a)
+{
+	printf("this is afunc\n");
+}
+EOF
+cat <<EOF > B
+int
+main(int ac, char **av)
+{
+	printf("This is main\n");
+	return (0);
+}
+
+void
+newfunc(void)
+{
+	printf("new function\n");
+}
+
+int
+afunc(int a)
+{
+	printf("this is afunc\n");
+}
+EOF
+# Desire something like:
+# 4a5,6
+# > 	return (0);
+# > 6a8,13
+# > void
+# > newfunc(void)
+# > {
+# >  	printf("new function\n");
+# > }
+# > 
+cat <<EOF > WANT
+4a5,11
+> 	return (0);
+> }
+> 
+> void
+> newfunc(void)
+> {
+> 	printf("new function\n");
+EOF
+bk ndiff A B > GOT
+cmpfiles WANT GOT
+echo failed \(bug align\)

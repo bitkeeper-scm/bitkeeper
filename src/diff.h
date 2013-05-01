@@ -69,10 +69,22 @@ typedef void (*df_hdr)(int lno, void *extra, FILE *out);
 typedef void (*df_deco)(u32 where, void *extra, FILE *out);
 
 /*
- * Boolean function that returns true if this a good alignment point
- * for the diffs. E.g. to align on whitespace for text diffs.
+ * Function that returns a price for aligning the diffs at this
+ * line.
+ *
+ * The pos argument indicates where the alignment line is found
+ * in the diff block.
+ *
+ * XXX: why out of order?
  */
-typedef int (*df_align)(void *a, int alen, void *extra);
+#define	DF_START	0 /* Line at start of diff block */
+#define	DF_END		1 /* Line at end of diff block */
+#define	DF_MIDDLE	2 /* Line somewhere inside diff block */
+/*
+ * If the price is 0, this is not a valid alignment so this line
+ * will not count.
+ */
+typedef u32 (*df_align)(void *a, int alen, int pos, void *extra);
 
 /*******************************************/
 /*                Public API.              */
