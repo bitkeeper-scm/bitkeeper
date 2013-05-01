@@ -89,7 +89,7 @@ email: nobody@nowhere.bk
 keyword: none
 compression: gzip
 autofix: yes
-checkout: edit
+checkout: get
 clock_skew: on
 partial_check: on
 license: $BKL_ACADEMIC
@@ -157,7 +157,7 @@ email: nobody@nowhere.bk
 keyword: none
 compression: gzip
 autofix: yes
-checkout: edit
+checkout: get
 clock_skew: on
 partial_check: on
 license: $BKL_BASIC
@@ -225,7 +225,7 @@ email: nobody@nowhere.bk
 keyword: none
 compression: gzip
 autofix: yes
-checkout: edit
+checkout: get
 clock_skew: on
 partial_check: on
 license: $BKL_PRO
@@ -293,7 +293,7 @@ email: nobody@nowhere.bk
 keyword: none
 compression: gzip
 autofix: yes
-checkout: edit
+checkout: get
 clock_skew: on
 partial_check: on
 license: $BKL_ENTERPRISE
