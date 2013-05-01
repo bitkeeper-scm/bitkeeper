@@ -397,13 +397,49 @@ islink(string path)
 int
 isspace(string buf)
 {
-	return (String_isSpace(buf));
+	return (String_isSpace(strict:, buf));
 }
 
 string
 lc(string s)
 {
 	return (String_tolower(s));
+}
+
+int
+isalpha(string buf)
+{
+	return (String_isAlpha(strict:, buf));
+}
+
+int
+isalnum(string buf)
+{
+	return (String_isAlnum(strict:, buf));
+}
+
+int
+islower(string buf)
+{
+	return (String_isLower(strict:, buf));
+}
+
+int
+isupper(string buf)
+{
+	return (String_isUpper(strict:, buf));
+}
+
+int
+isdigit(string buf)
+{
+	return (String_isDigit(strict:, buf));
+}
+
+int
+iswordchar(string buf)
+{
+	return (String_isWordchar(strict:, buf));
 }
 
 int

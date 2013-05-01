@@ -1,0 +1,35 @@
+echo $N Testing subline highlightning................................$NL
+cat <<EOF > LEFT
+1
+change of "quotes" should just highlight quotes
+2
+changing every other char should not be choppy
+3
+but changing a few should highlight
+4
+--adding --options --should --line --up
+5
+same.o as.o lists.o of.o object.o files.o
+6
+whitespace	only	   changes	  should be orange
+7
+"clist" and "keystate" should highlight the whole word (BUG)
+EOF
+cat <<EOF > RIGHT
+1
+change of 'quotes' should just highlight quotes
+2
+ChAnGiNg EvErY OtHeR ChAr ShUlD NoT Be ChOpPy
+3
+But Changing a Few Should Highlight
+4
+--adding --more --options --should --line --up
+5
+same.o as.o lists.o of.o more.o object.o files.o
+6
+whitespace	only     changes 	should be orange
+7
+"keystate" and "clist" should highlight the whole word (BUG)
+EOF
+bk difftool LEFT RIGHT
+echo OK

@@ -81,6 +81,7 @@ proc getConfig {prog} \
 	set _d(compat_4x) 0		;# maintain compatibility with 4x
 					;# quirky bindings
 	set _d(highlight) $YELLOW2	;# subline highlight color in diffs
+	set _d(highlightsp) $ORANGE	;# subline highlight color in diffs
 	set _d(topMargin) 2		;# top margin for diffs in a diff view
 	set _d(diffColor) #ededed	;# color of diff lines
 	set _d(activeDiffColor) $BKGREEN1 ;# active diff color

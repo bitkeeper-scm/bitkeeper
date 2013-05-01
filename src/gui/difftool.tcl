@@ -40,6 +40,8 @@ proc widgets {} \
 	    }
 	    ttk::button .menu.whitespace -text $ws_text \
 	    -command whitespace -takefocus 0
+	    ttk::button .menu.reread -text "Reread" -command reread \
+		-takefocus 0
 	    ttk::button .menu.help -text "Help" -takefocus 0 -command {
 		exec bk helptool difftool &
 	    }

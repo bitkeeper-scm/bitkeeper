@@ -1039,73 +1039,472 @@ proc ::tk_textPaste {w} \
 
 
 #lang L
-string[]
-highlightLine(string l, string r, int lline, int rline)
+typedef struct hunk {
+	int	li, ri;		/* left/right indices */
+	int	ll, rl;		/* left/right lengths */
+} hunk;
+
+
+/*
+ *    chg   index
+ *    0
+ *    0
+ *    1 <--- a
+ *    1
+ *    1
+ *    0 <--- b
+ *    0
+ *    0 <--- c
+ *    1
+ *    1
+ *    1 <--- d
+ *    0
+ */
+void
+shrink_gaps(string S, int &chg[])
 {
-	int	i, llen, rlen, lmin, si, sl, sr, el, er;
+	int	i, n;
+	int	a, b, c, d;
+	int	a1, b1, c1, d1;
 
-	llen = length(l);
-	rlen = length(r);
-	lmin = tcl::mathfunc::min(llen, rlen);
-	for (i = 0; i < lmin; ++i) {
-		if (l[i] != r[i]) break;
+	n = length(chg);
+	i = 0;
+	/* Find find non-zero line for 'a' */
+	while ((i < n) && (chg[i] == 0)) i++;
+	if (i == n) return;
+	a = i;
+	/* Find next zero line for 'b' */
+	while ((i < n) && (chg[i] == 1)) i++;
+	if (i == n) return;
+	b = i;
+
+	while (1) {
+		/* The line before the next 1 is 'c' */
+		while ((i < n) && (chg[i] == 0)) i++;
+		if (i == n) return;
+		c = i - 1;
+
+		/* The last '1' is 'd' */
+		while ((i < n) && (chg[i] == 1)) i++;
+		/* hitting the end here is OK */
+		d = i - 1;
+
+	again:
+		/* try to close gap between b and c */
+		a1 = a; b1 = b; c1 = c; d1 = d;
+		while ((b1 <= c1) && (S[a1] == S[b1])) {
+			a1++;
+			b1++;
+		}
+		while ((b1 <= c1) && (S[c1] == S[d1])) {
+			c1--;
+			d1--;
+		}
+
+		if (b1 > c1) {
+			/* Bingo! commit it */
+			while (a < b) chg[a++] = 0;  /* erase old block */
+			a = a1;
+			while (a < b1) chg[a++] = 1;  /* write new block */
+			a = a1;
+			b = b1;
+			while (d > c) chg[d--] = 0;
+			d = d1;
+			while (d > c1) chg[d--] = 1;
+			c = c1;
+			d = d1;
+
+			/*
+			 * now search back for previous block and start over.
+			 * The last gap "might" be closable now.
+			 */
+			--a;
+			c = a;
+			while ((a > 0) && (chg[a] == 0)) --a;
+			if (chg[a] == 1) {
+				/* found a previous block */
+				b = a+1;
+				while ((a > 0) && (chg[a] == 1)) --a;
+				if (chg[a] == 0) ++a;
+				/*
+				 * a,b nows points at the previous block
+				 * and c,d points at the newly merged block
+				 */
+				goto again;
+			} else {
+				/*
+				 * We were already in the first block so just 
+				 * go on.
+				 */
+				a = a1;
+				b = d+1;
+			}
+		} else {
+			a = c+1;
+			b = d+1;
+		}
 	}
-	si = i;
 
-	for (i = 0; i < (lmin - si); ++i) {
-		if (l[END-i] != r[END-i]) break;
+}
+
+/*
+ * Move any remaining diff blocks align to whitespace boundaries if
+ * possible. Adapted from code by wscott in another RTI.
+ */
+void
+align_blocks(string S, int &chg[])
+{
+	int	a, b;
+	int	n;
+
+	n = length(chg);
+	a = 0;
+	while (1) {
+		int	up, down;
+
+		/*
+		 * Find a sections of 1's bounded by 'a' and 'b'
+		 */
+		while ((a < n) && (chg[a] == 0)) a++;
+		if (a >= n) return;
+		b = a;
+		while ((b < n) && (chg[b] == 1)) b++;
+		/* b 'might' be at end of file */
+
+		/* Find the maximum distance it can be shifted up */
+		up = 0;
+		while ((a-up > 0) && (S[a-1-up] == S[b-1-up]) &&
+		    (chg[a-1-up] == 0)) {
+			++up;
+		}
+		/* Find the maximum distance it can be shifted down */
+		down = 0;
+		while ((b+down < n) && (S[a+down] == S[b+down]) &&
+		    (chg[b+down] == 0)) {
+			++down;
+		}
+		if (up + down > 0) {
+			int	best = 65535;
+			int	bestalign = 0;
+			int	i;
+
+			/* for all possible alignments ... */
+			for (i = -up; i <= down; i++) {
+				int	a1 = a + i;
+				int	b1 = b + i;
+				int	cost = 0;
+
+				/* whitespace at the beginning costs 2 */
+				while (a1 < b1 && isspace(S[a1])) {
+					cost += 2;
+					++a1;
+				}
+
+				/* whitespace at the end costs only 1 */
+				while (b1 > a1 && isspace(S[b1-1])) {
+					cost += 1;
+					--b1;
+				}
+				/* Any whitespace in the middle costs 3 */
+				while (a1 < b1) {
+					if (isspace(S[a1])) {
+						cost += 3;
+					}
+					++a1;
+				}
+				/*
+				 * Find the alignment with the lowest cost and
+				 * if all things are equal shift down as far as
+				 * possible.
+				 */
+				if (cost <= best) {
+					best = cost;
+					bestalign = i;
+				}
+			}
+			if (bestalign != 0) {
+				int	a1 = a + bestalign;
+				int	b1 = b + bestalign;
+
+				/* remove old marks */
+				while (a < b) chg[a++] = 0;
+				/* add new marks */
+				while (a1 < b1) chg[a1++] = 1;
+				b = b1;
+			}
+		}
+		a = b;
+	}
+}
+
+/*
+ * Align the hunks such that if we find one char in common between
+ * changed regions that are longer than one char, we mark the single
+ * char as changed even thou it didn't. This prevents the sl highlight
+ * to match stuff like foo|b|ar to a|b|alone #the b is common.
+ */
+hunk[]
+align_hunks(hunk[] hunks)
+{
+	hunk	h, h1, nhunks[];
+	int	x, y, lastrl, lastll;
+
+	x = y = lastll = lastrl = 0;
+	foreach (h in hunks) {
+		if ((((h.li - x) == 1) && ((h.ll > 1) || (lastll > 1))) ||
+		    (((h.ri - y) == 1) && ((h.rl > 1) || (lastrl > 1)))) {
+			h1.li = x;
+			h1.ri = y;
+			h1.ll = (h.li - x) + h.ll;
+			h1.rl = (h.ri - y) + h.rl;
+		} else {
+			h1.li = h.li;
+			h1.ri = h.ri;
+			h1.ll = h.ll;
+			h1.rl = h.rl;
+		}
+		lastll = h1.ll;
+		lastrl = h1.rl;
+		x = h.li + h.ll;
+		y = h.ri + h.rl;
+		push(&nhunks, h1);
+	}
+	return (nhunks);
+}
+
+/*
+ * Compute the shortest edit distance using the algorithm from
+ * "An O(NP) Sequence Comparison Algorithm" by Wu, Manber, and Myers.
+ */
+hunk[]
+diff(string A, string B)
+{
+	int	M = length(A);
+	int	N = length(B);
+	int	D;
+	int	reverse = (M > N) ? 1: 0;
+	int	fp[], path[];
+	struct {
+		int	x;
+		int	y;
+		int	k;
+	}	pc[];
+	struct {
+		int	x;
+		int	y;
+	}	e[];
+	int	x, y, ya, yb;
+	int	ix, iy;
+	int	i, k, m, p, r;
+	int	chgA[], chgB[], itmp[];
+	string	tmp;
+	hunk	hunks[], h;
+
+	if (reverse) {
+		tmp = A;
+		A = B;
+		B = tmp;
+		M = length(A);
+		N = length(B);
 	}
 
-	// sl = start left, sr = start right
-	// el = end left, er = end right
-	sl = sr = si;
-	el = llen - i;
-	er = rlen - i;
+	p = -1;
+	fp = lrepeat(M+N+3, -1);
+	path = lrepeat(M+N+3, -1);
+	m = M + 1;
+	D = N - M;
 
-	// Skip it if it highlights more than half the total line.
-	// and it's not just spaces
-
-	if (((el - si) > (llen / 2)) && !isspace(l[si..el-1])) return (undef);
-	if (((er - si) > (rlen / 2)) && !isspace(r[si..er-1])) return (undef);
-
-	// Fix a problem where if we match "const char *" vs "char *"
-	// we'll highlight "const c|char *" rather than
-	// "|const |char *"
-	while ((sl > 0) && l[sl-1] == l[el-1]) {
-		--sl;
-		--el;
+	do {
+		p++;
+		for (k = -p; k <= (D - 1); k++) {
+			ya = fp[m+k-1] + 1;
+			yb = fp[m+k+1];
+			if (ya > yb) {
+				fp[m+k] = y = snake(A, B, k, ya);
+				r = path[m+k-1];
+			} else {
+				fp[m+k] = y = snake(A, B, k, yb);
+				r = path[m+k+1];
+			}
+			path[m+k] = length(pc);
+			push(&pc, {y - k, y, r});
+		}
+		for (k = D + p; k >= (D + 1); k--) {
+			ya = fp[m+k-1] + 1;
+			yb = fp[m+k+1];
+			if (ya > yb) {
+				fp[m+k] = y = snake(A, B, k, ya);
+				r = path[m+k-1];
+			} else {
+				fp[m+k] = y = snake(A, B, k, yb);
+				r = path[m+k+1];
+			}
+			path[m+k] = length(pc);
+			push(&pc, {y - k, y, r});
+		}
+		ya = fp[m+D-1] + 1;
+		yb = fp[m+D+1];
+		if (ya > yb) {
+			fp[m+D] = y = snake(A, B, D, ya);
+			r = path[m+D-1];
+		} else {
+			fp[m+D] = y = snake(A, B, D, yb);
+			r = path[m+D+1];
+		}
+		path[m+D] = length(pc);
+		push(&pc, {y - D, y, r});
+	} while (fp[m+D] < N);
+	r = path[m+D];
+	e = {};
+	while (r != -1) {
+		push(&e, {pc[r].x, pc[r].y});
+		r = pc[r].k;
 	}
-	while ((sr > 0) && r[sr-1] == r[er-1]) {
-		--sr;
-		--er;
-	}
 
-	return({"${lline}.${sl}", "${lline}.${el}",
-		"${rline}.${sr}", "${rline}.${er}"});
+	ix = iy = 0;
+	x = y = 0;
+	chgA = lrepeat(M, 0);
+	chgB = lrepeat(N, 0);
+	for (i = length(e)-1; i >= 0; i--) {
+		while (ix < e[i].x || iy < e[i].y) {
+			if (e[i].y - e[i].x > y - x) {
+				chgB[iy] = 1;
+				iy++; y++;
+			} else if (e[i].y - e[i].x < y - x) {
+				chgA[ix] = 1;
+				ix++; x++;
+			} else {
+				ix++; x++; iy++; y++;
+			}
+		}
+	}
+	if (reverse) {
+		tmp = A;
+		A = B;
+		B = tmp;
+		itmp = chgA;
+		chgA = chgB;
+		chgB = itmp;
+	}
+	M = length(A);
+	N = length(B);
+
+	/* Now we need to minimize the changes by closing gaps */
+	shrink_gaps(A, &chgA);
+	shrink_gaps(B, &chgB);
+	align_blocks(A, &chgA);
+	align_blocks(B, &chgB);
+
+	/* edit script length: D + 2 * p */
+	for (x = 0, y = 0; (x < M) || (y < N); x++, y++) {
+		if (((x < M) && chgA[x]) || ((y < N) && chgB[y])) {
+			h.li = x;
+			h.ri = y;
+			for (; (x < M) && chgA[x]; x++);
+			for (; (y < N) && chgB[y]; y++);
+			h.ll = x - h.li;
+			h.rl = y - h.ri;
+			push(&hunks, h);
+		}
+	}
+	hunks = align_hunks(hunks);
+	return(hunks);
+}
+
+int
+snake(string A, string B, int k, int y)
+{
+	int	x;
+	int	M = length(A);
+	int	N = length(B);
+
+	x = y - k;
+	while ((x < M) && (y < N) && (A[x] == B[y])) {
+		x++;
+		y++;
+	}
+	return (y);
 }
 
 // Do subline highlighting on two side-by-side diff widgets.
 void
-highlightSideBySide(widget left, widget right,
-    string start, string stop, int prefix)
+highlightSideBySide(widget left, widget right, string start, string stop, int prefix)
 {
 	int	i, line;
 	string	llines[] = split(/\n/, (string)Text_get(left, start, stop));
 	string	rlines[] = split(/\n/, (string)Text_get(right, start, stop));
-	string	idxs[];
+	hunk	hunks[], h;
+	int	llen, rlen;
+	float	hlfactor = 1.0/2.0; /* if the subline highlight is more
+				     * than this fraction of the line length,
+				     * skip it. */
+	float	chopfactor = 1.0/2.0; /* if the choppiness is more
+				       * than this fraction of line
+				       * lenght, skip it. */
+	int	allspace;
+	string	sl, sr;
 
 	line = idx2line(start);
 	for (i = 0; i < length(llines); ++i, ++line) {
-		idxs = highlightLine(llines[i][prefix..END],
-		    rlines[i][prefix..END], line, line);
-		unless (defined(idxs)) continue;
-		unless (Text_tagNames(right, "${line}.0") =~ /empty/) {
-			Text_tagAdd(left,  "highlight","${idxs[0]}+${prefix}c",
-			    "${idxs[1]}+${prefix}c");
+		if ((llines[i][0..prefix] == " ") ||
+		    (rlines[i][0..prefix] == " ")) continue;
+		hunks = diff(llines[i][prefix..END], rlines[i][prefix..END]);
+		unless (defined(hunks)) continue;
+		llen = rlen = 0;
+		allspace = 1;
+		foreach (h in hunks) {
+			llen += h.ll;
+			rlen += h.rl;
+			sl = llines[i][prefix+h.li..prefix+h.li+h.ll-1];
+			sr = rlines[i][prefix+h.ri..prefix+h.ri+h.rl-1];
+			if (sl != "") allspace = allspace && isspace(sl);
+			if (sr != "") allspace = allspace && isspace(sr);
 		}
-		unless (Text_tagNames(left, "${line}.0") =~ /empty/) {
-			Text_tagAdd(right, "highlight","${idxs[2]}+${prefix}c",
-			    "${idxs[3]}+${prefix}c");
+		unless (allspace) {
+			/*
+			 * Highlighting too much? too choppy? Don't bother.
+			 */
+			if (llen > (hlfactor*length(llines[i])) ||
+			    (length(hunks) > (chopfactor*length(llines[i])))) {
+				continue;
+			}
+			if (rlen > (hlfactor*length(rlines[i])) ||
+			    (length(hunks) > (chopfactor*length(rlines[i])))) {
+				continue;
+			}
+			foreach (h in hunks) {
+				Text_tagAdd(left, "highlight",
+				    "${line}.${prefix + h.li}",
+				    "${line}.${prefix + h.li + h.ll}");
+				Text_tagAdd(right, "highlight",
+				    "${line}.${prefix + h.ri}",
+				    "${line}.${prefix + h.ri + h.rl}");
+			}
+		} else {
+			foreach (h in hunks) {
+				sl = Text_get(left,
+				    "${line}.${prefix + h.li}",
+				    "${line}.${prefix + h.li + h.ll}");
+				sl = String_map({" ", "␣"}, sl);
+				Text_replace(left,
+				    "${line}.${prefix + h.li}",
+				    "${line}.${prefix + h.li + h.ll}",
+				    sl);
+				Text_tagAdd(left, "highlightsp",
+				    "${line}.${prefix + h.li}",
+				    "${line}.${prefix + h.li + h.ll}");
+				sr = Text_get(right,
+				    "${line}.${prefix + h.ri}",
+				    "${line}.${prefix + h.ri + h.rl}");
+				sr = String_map({" ", "␣"}, sr);
+				Text_replace(right,
+				    "${line}.${prefix + h.ri}",
+				    "${line}.${prefix + h.ri + h.rl}",
+				    sr);
+				Text_tagAdd(right, "highlightsp",
+				    "${line}.${prefix + h.ri}",
+				    "${line}.${prefix + h.ri + h.rl}");
+			}
 		}
 	}
 }
@@ -1115,42 +1514,80 @@ void
 highlightStacked(widget w, string start, string stop, int prefix)
 {
 	string	line;
+	string	lines[];
 	int	l = 0, hunkstart = 0;
 	string	addlines[], sublines[];
+	float	hlfactor = 1.0/2.0; /* if the subline highlight is more
+				     * than this fraction of the line length,
+				     * skip it. */
+	float	chopfactor = 1.0/2.0; /* if the choppiness is more
+				       * than this fraction of line
+				       * lenght, skip it. */
 
-	foreach (line in split(/\n/, (string)Text_get(w, start, stop))) {
+	lines = split(/\n/, (string)Text_get(w, start, stop));
+	/*
+	 * Since the diffs are stacked, we don't want to highlight regions
+	 * that are too big.
+	 */
+	//	if (length(lines) > 17) return;
+	foreach (line in lines) {
 		++l;
 		if (line[0] == "+") {
 			push(&addlines, line[prefix..END]);
-			unless (hunkstart) hunkstart = l;
-		} else if (line[0] == "-") {
+			if (!hunkstart) hunkstart = l;
+			continue;
+		}
+		if (line[0] == "-") {
 			push(&sublines, line[prefix..END]);
-			unless (hunkstart) hunkstart = l;
-		} else {
-			if (defined(addlines) && defined(sublines)) {
-				int	i = 0;
-				string	idx1, idx2, idxs[];
+			if (!hunkstart) hunkstart = l;
+			continue;
+		}
+		if (defined(addlines) && defined(sublines)) {
+			int	i = 0;
+			hunk	h, hunks[];
+			int	lineA, lineB;
+			int	llen, rlen;
 
-				for (; hunkstart < l; ++hunkstart) {
-					unless (defined(addlines[i])) break;
-					unless (defined(sublines[i])) break;
-					idxs = highlightLine(sublines[i],
-					    addlines[i], hunkstart,
-					    hunkstart + length(sublines));
-					++i;
-					unless (defined(idxs)) continue;
+			for (; hunkstart < l; ++hunkstart, ++i) {
+				unless (defined(addlines[i])) break;
+				unless (defined(sublines[i])) break;
+				hunks = diff(sublines[i], addlines[i]);
+				lineA = hunkstart;
+				lineB = hunkstart + length(sublines);
+				unless (defined(hunks)) continue;
+				llen = rlen = 0;
+				foreach (h in hunks) {
+					llen += h.ll;
+					rlen += h.rl;
+				}
+				/*
+				 * Highlighting too much? too
+				 * choppy? Don't bother.
+				 */
 
-					foreach (idx1, idx2 in idxs) {
-						Text_tagAdd(w, "highlight",
-						    "${idx1}+${prefix}c",
-						    "${idx2}+${prefix}c");
-					}
+				if (llen > (hlfactor * length(sublines[i])) ||
+				    (length(hunks) >
+					(chopfactor * length(sublines[i])))) {
+					continue;
+				}
+				if (rlen > (hlfactor * length(addlines[i])) ||
+				    (length(hunks) >
+					(chopfactor * length(addlines[i])))) {
+					continue;
+				}
+				foreach (h in hunks) {
+					Text_tagAdd(w, "highlight",
+					    "${lineA}.${h.li+prefix}",
+					    "${lineA}.${h.li + h.ll +prefix}");
+					Text_tagAdd(w, "highlight",
+					    "${lineB}.${h.ri + prefix}",
+					    "${lineB}.${h.ri + h.rl +prefix}");
 				}
 			}
-			hunkstart = 0;
-			addlines = undef;
-			sublines = undef;
 		}
+		hunkstart = 0;
+		addlines = undef;
+		sublines = undef;
 	}
 }
 
@@ -1198,6 +1635,8 @@ configureDiffWidget(string app, widget w, ...args)
 	// Highlighting tags.
 	Text_tagConfigure(w, "select", background: gc("${app}.selectColor"));
 	Text_tagConfigure(w, "highlight", background: gc("${app}.highlight"));
+	Text_tagConfigure(w, "highlightsp",
+	    background: gc("${app}.highlightsp"));
 
 	// Message tags.
 	Text_tagConfigure(w, "warning", background: gc("${app}.warnColor"));
@@ -1220,6 +1659,7 @@ configureDiffWidget(string app, widget w, ...args)
 	}
 
 	Text_tagRaise(w, "highlight");
+	Text_tagRaise(w, "highlightsp");
 	Text_tagRaise(w, "sel");
 }
 

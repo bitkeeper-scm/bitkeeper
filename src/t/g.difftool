@@ -373,25 +373,6 @@ test -s "$OUT" && fail -f "$OUT"
 test $err -ne 0 && fail
 echo "OK"
 
-echo $N "Testing subline highlighting ................................$NL"
-bk guitest difftool long1 long2 >"$OUT" 2>&1 <<'EOF'
-	## Test to see if the proper strings are highlighted in the
-	## diffs.  We pass a list of strings that should be highlighted,
-	## in order, and they are compared against the highlighted
-	## strings in the text widget.
-	test_sublineHighlight left  {"\t"}
-	test_sublineHighlight right {
-	    "        "
-	    " const"
-	    "ing"
-	}
-	test_buttonPress Quit
-EOF
-err=$?
-test -s "$OUT" && fail -f "$OUT"
-test $err -ne 0 && fail
-echo "OK"
-
 if [ "$PLATFORM" = "WIN32" ]; then
 	echo $N Testing windows path in command line.........................$NL
 	cd "$HERE"/project
