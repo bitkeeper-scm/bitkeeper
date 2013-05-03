@@ -178,7 +178,7 @@ push_main(int ac, char **av)
 
 	if (opts.verbose) {
 		print_title = 1;
-	} else if (!opts.quiet && proj_isProduct(0)) {
+	} else if (!opts.quiet && !proj_isComponent(0)) {
 		print_title = 1;
 	}
 
@@ -682,7 +682,7 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 {
 	FILE	*zin;
 	FILE	*f = 0;
-	char	*line, *p;
+	char	*line, *p, *url;
 	u32	bytes;
 	int	i;
 	int	n;
@@ -733,9 +733,11 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 				if (opts.quiet) {
 					fputs(fmem_peek(f, 0), stderr);
 				}
+				url = remote_unparse(r);
 				fprintf(stderr,
-				    "Push failed: remote takepatch exited %d\n",
-				    remote_rc);
+				    "Push failed: remote takepatch (%s) exited %d\n",
+				    url, remote_rc);
+				free(url);
 			}
 		}
 		if (opts.quiet) fclose(f);

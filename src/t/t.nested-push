@@ -113,7 +113,7 @@ For more information run "bk help tp1"
 Errors during update of the following files:
 file1
 ==============================================================================
-Push failed: remote takepatch exited 1
+Push failed: remote takepatch (file://$HERE/pp1/gcc) exited 1
 Pushing gcc failed
 EOF
 cmpfiles WANT GOT

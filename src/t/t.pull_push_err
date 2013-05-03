@@ -30,7 +30,7 @@ echo $N Make sure push print error if takepatch failed ..............$NL
 cd "$HERE/copy"
 rm -f "$HERE/out"
 bk push "$HERE/proj" > "$HERE/out" 2>&1
-grep -q "takepatch exited 1" "$HERE/out" || {
+grep -q "takepatch (.*) exited 1" "$HERE/out" || {
 	echo failed; exit 1; }
 echo OK
 

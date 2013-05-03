@@ -279,7 +279,7 @@ bk gone $Q "$KEY" || exit 1
 echo new > lose_this
 bk new $Q lose_this || exit 1
 bk commit $Q -ynew || exit 1
-echo q | bk push ../copy 2>ERR && {
+echo q | bk push ../copy 2>ERR >OUT && {
 	echo should have failed
 	exit 1
 }
