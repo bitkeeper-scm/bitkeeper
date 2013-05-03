@@ -1277,7 +1277,7 @@ char	*globalroot(void);
 void	sccs_touch(sccs *s);
 int	setlevel(int);
 void	sccs_rmUncommitted(int quiet, char ***chkfiles);
-void	rmEmptyDirs(int quiet);
+void	rmEmptyDirs(hash *empty);
 int	after(int quiet, int verbose, char *rev);
 int	consistency(int quiet);
 int	diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile);

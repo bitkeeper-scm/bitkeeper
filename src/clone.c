@@ -1553,41 +1553,6 @@ after(int quiet, int verbose, char *rev)
 	return (WEXITSTATUS(i));
 }
 
-void
-rmEmptyDirs(int quiet)
-{
-	FILE	*f;
-	int	i;
-	char	*p, **dirs = 0;
-	char	buf[MAXPATH];
-
-	unless (quiet) {
-		fprintf(stderr, "Removing any directories left empty ...\n");
-	}
-	f = popen("bk sfiles -D", "r");
-	while (fnext(buf, f)) {
-		chomp(buf);
-		if (p = strchr(buf, '/')) {
-			*p = 0;
-			/* skip the directories under <root>/BitKeeper */
-			if (streq("BitKeeper", buf)) continue;
-			*p = '/';
-		}
-		/* remove any SCCS dir */
-		p = buf + strlen(buf);
-		strcpy(p, "/SCCS");
-		rmdir(buf);
-		*p = 0;
-		dirs = addLine(dirs, strdup(buf));
-	}
-	pclose(f);
-	reverseLines(dirs);	/* nested dirs first */
-	EACH(dirs) {
-		if (emptyDir(dirs[i])) rmdir(dirs[i]);
-	}
-	freeLines(dirs, free);
-}
-
 /*
  * Fixup links after a lclone
  */

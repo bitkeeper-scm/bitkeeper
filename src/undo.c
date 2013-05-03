@@ -18,12 +18,13 @@ typedef struct {
 	int	tick_cur;
 	ticker	*tick;
 	char	*patch;
+	hash	*empty;		/* dirs that may need to be deleted */
 } options;
 
 private char	**getrev(options *opts, char *rev, int aflg);
 private int	clean_file(char **);
 private	int	moveAndSave(options *opts, char **fileList);
-private int	move_file(char ***checkfiles);
+private int	move_file(options *opts, char ***checkfiles);
 private int	renumber_rename(options *opts, char **sfiles);
 private int	check_patch(char *patch);
 private int	doit(options *opts, char **filesNrevs, char **sfiles,
@@ -109,7 +110,7 @@ undo_main(int ac,  char **av)
 			goto err;
 		}
 	}
-
+	opts->empty = hash_new(HASH_MEMHASH);
 	trigger_setQuiet(opts->quiet);
 	cmdlog_lock(CMD_WRLOCK|CMD_NESTED_WRLOCK);
 	if (undoLimit(&must_have)) limitwarning = 1;
@@ -317,7 +318,8 @@ prod:
 	}
 	chdir(RESYNC2ROOT);
 
-	rmEmptyDirs(!opts->verbose);
+	rmEmptyDirs(opts->empty);
+	hash_free(opts->empty);
 	if (opts->verbose && save) {
 		printf("Backup patch left in \"%s\".\n", opts->patch);
 	}
@@ -645,7 +647,7 @@ doit(options *opts, char **filesNrevs, char **sfiles, char ***checkfiles)
 		return (-1);
 	}
 	/* mv from RESYNC to user tree */
-	if (move_file(checkfiles)) return (-1);
+	if (move_file(opts, checkfiles)) return (-1);
 	return (0);
 }
 
@@ -856,6 +858,11 @@ moveAndSave(options *opts, char **sfiles)
 		} else {
 			/* Important: save a copy only if mv is successful */
 			fprintf(f, "%s\n", sfiles[i]);
+
+			/* remember dirs we emptied */
+			strcpy(tmp, sfiles[i]);
+			dirname(tmp);
+			hash_insertStrSet(opts->empty, tmp);
 		}
 	}
 	pclose(f);
@@ -867,13 +874,15 @@ moveAndSave(options *opts, char **sfiles)
  * Move file from RESYNC tree to the user tree
  */
 private int
-move_file(char ***checkfiles)
+move_file(options *opts, char ***checkfiles)
 {
-	char	from[MAXPATH], to[MAXPATH];
+	char	*from;
 	FILE	*f;
 	int	rc = 0;
 	int	sync = proj_sync(0);
-	int	fd;
+	int	i, fd;
+	char	**files = 0;
+	char	to[MAXPATH];
 
 	/*
 	 * Cannot trust fileList, because file may be renamed
@@ -881,8 +890,7 @@ move_file(char ***checkfiles)
 	 * Paranoid, check for name conflict before we throw it over the wall
 	 */
 	f = popen("bk sfiles", "r");
-	while (fnext(from, f)) {
-		chop(from);
+	while (from = fgetline(f)) {
 		sprintf(to, "../%s", from);
 		/*
 		 * This should never happen if the repo is in a sane state
@@ -892,6 +900,7 @@ move_file(char ***checkfiles)
 			rc = -1;
 			break;
 		}
+		files = addLine(files, strdup(from));
 	}
 	pclose(f);
 	if (rc) return (rc); /* if error, abort */
@@ -899,10 +908,9 @@ move_file(char ***checkfiles)
 	/*
 	 * Throw the file "over the wall"
 	 */
-	f = popen("bk sfiles", "r");
-	while (fnext(from, f)) {
-		chop(from);
-		*checkfiles = addLine(*checkfiles, strdup(from));
+	EACH(files) {
+		from = files[i];
+		*checkfiles = addLine(*checkfiles, from);
 		sprintf(to, "%s/%s", RESYNC2ROOT, from);
 		if (fileMove(from, to)) {
 			fprintf(stderr,
@@ -915,8 +923,12 @@ move_file(char ***checkfiles)
 			fsync(fd);
 			close(fd);
 		}
+
+		/* we know this directory is not empty */
+		dirname(to);
+		hash_deleteStr(opts->empty, to + strsz(RESYNC2ROOT));
 	}
-	pclose(f);
+	freeLines(files, 0);
 	if (exists("BitKeeper/log/TIP")) {
 		fileMove("BitKeeper/log/TIP", RESYNC2ROOT "/BitKeeper/log/TIP");
 	}
@@ -950,6 +962,26 @@ undoLimit(char **limit)
 	}
 	sccs_free(s);
 	return (ret);
+}
+
+void
+rmEmptyDirs(hash *empty)
+{
+	char	*t;
+	char	buf[MAXPATH];
+
+	/*
+	 * These directories have had something removed, and so
+	 * _may_ be empty.  If rmdir() succeeds then it must have been.
+	 * if so keep walking up to root.
+	 */
+	EACH_HASH(empty) {
+		strcpy(buf, empty->kptr);
+		while (!rmdir(buf)) {
+			t = dirname(buf);
+			if (streq(t, ".")) break;
+		}
+	}
 }
 
 private	int	valid_marker;

@@ -89,10 +89,10 @@ int
 emptyDir(char *dir)
 {
 	char	**d;
-	int	i, n = 0;
+	int	n;
 
 	unless (d = getdir(dir)) return (0);
-	EACH (d) n++;
+	n = nLines(d);
 	freeLines(d, free);
 	return (n == 0);
 }
