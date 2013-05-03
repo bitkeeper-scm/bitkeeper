@@ -460,10 +460,10 @@ baddir:						fprintf(stderr,
 			}
 		}
 
-		/* Trial versions of bk will expire in 2 weeks. */
+		/* Trial versions of bk will expire in 3 weeks. */
 		if (test_release && !streq(prog, "upgrade") &&
 		    (getenv("_BK_EXPIRED_TRIAL") ||
-			(time(0) > (time_t)bk_build_timet + 2*WEEK))) {
+			(time(0) > (time_t)bk_build_timet + 3*WEEK))) {
 			char	*nav[] = {"version", 0};
 
 			version_main(1, nav);
