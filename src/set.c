@@ -57,6 +57,7 @@ private	struct {
 	u32	tags:1;		/* list only tags */
 	u32	name:1;		/* prefix the name */
 	u32	read_stdin:1;	/* one set is there */
+	u32	standalone:1;	/* --standalone/-S */
 } opts;
 
 int
@@ -65,10 +66,14 @@ set_main(int ac, char **av)
 	sccs	*s;
 	int	c;
 	char	*name, *r1 = 0, *r2 = 0;
+	longopt	lopts[] = {
+		{ "standalone", 'S' },
+		{ 0, 0 }
+	};
 
 	bzero(&opts, sizeof(opts));
 	opts.format = REV;
-	while ((c = getopt(ac, av, "adeklnor;st|x", 0)) != -1) {
+	while ((c = getopt(ac, av, "adeklnor;sSt|x", lopts)) != -1) {
 		switch (c) {
 		    case 'a': if (opts.op) usage(); opts.op = AND; break;
 		    case 'd': if (opts.op) usage(); opts.op = AND_NOT; break;
@@ -76,6 +81,7 @@ set_main(int ac, char **av)
 		    case 'l': if (opts.op) usage(); opts.op = LIST; break;
 		    case 'o': if (opts.op) usage(); opts.op = OR; break;
 		    case 's': if (opts.op) usage(); opts.op = SET; break;
+		    case 'S': opts.standalone = 1; break;
 		    case 'x': if (opts.op) usage(); opts.op = XOR; break;
 		    case 'k': opts.format = KEY; break;
 		    case 'n': opts.name = 1; break;
@@ -118,10 +124,7 @@ set_main(int ac, char **av)
 	} else {
 		char	cset[] = CHANGESET;
 
-		if (proj_cd2root()) {
-			fprintf(stderr, "set: cannot find project root\n");
-			exit(1);
-		}
+		bk_nested2root(opts.standalone);
 		s = sccs_init(cset, INIT_NOCKSUM);
 	}
 	unless (s && HASGRAPH(s)) {

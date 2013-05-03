@@ -1,4 +1,12 @@
 ============================================================================
+Release notes for BitKeeper version 6.0-pre2 (released XXX, 2013)
+
+bk set
+    Change the default behavior to perform set operations on the
+    product changeset file.  Added a --standalone / -S option to
+    limit the operation to the current component.
+
+============================================================================
 Release notes for BitKeeper version 6.0-pre1 (released XXX, 2013)
 
     This is a pre-release of changes that are destined to be included in
