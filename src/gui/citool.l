@@ -51,6 +51,7 @@ struct {
 	int	nfiles;		    // number of files in repo
 	int	nested;		    // are we dealing with a nested repo?
 	int	dashs;		    // did we get a -sALIAS on the command line?
+	int	extras;		    // look for extras or not
 	string	dir;		    // dir passed on the command line
 	int	changed;	    // has anything changed where we need to
 				    // prompt the user on quit?
@@ -502,10 +503,11 @@ void
 addFiles(string files[])
 {
 	FILE	fd;
-	string	tmp, file, lines[];
+	string	x, tmp, file, lines[];
 
+	x = self.extras ? "x" : "";
 	tmp = tmpfile("citool");
-	fd = popen("bk sfiles -cgvxypA {-o${tmp}} -", "r+");
+	fd = popen("bk sfiles -cgv${x}ypA {-o${tmp}} -", "r+");
 	puts(fd, join("\n", files));
 	pclose(fd);
 
@@ -633,7 +635,7 @@ findFiles()
 		self.sfiles_component = comp;
 		self.showPending{comp} = 0;
 		cmd = "bk sfiles ${opts} {--relpath=${self.root}}";
-		unless (self.resolve) {
+		if (self.extras && !self.resolve) {
 			// Look for extra files when we're not in the resolver.
 			cmd .= " -x";
 		}
@@ -664,7 +666,7 @@ getCommentedFiles(string comps[], int &files{string})
 	foreach (comp in comps) {
 		chdir(comp);
 		cmd = "bk sfiles ${opts} {--relpath=${self.root}}";
-		unless (self.resolve) {
+		if (self.extras && !self.resolve) {
 			// Look for extra files when we're not in the resolver.
 			cmd .= " -x";
 		}
@@ -2560,6 +2562,7 @@ void
 init()
 {
 	self.dashs = 0;
+	self.extras = 1;
 	self.nfiles = 0;
 	self.changed = 0;
 	self.commented = 0;
@@ -2617,7 +2620,12 @@ main(_unused int argc, string argv[])
 			if ($1 eq "^PRODUCT") includeProduct = 0;
 			compscmd .= " " . arg;
 			nfilesOpts .= " " . arg;
+		} else if (arg eq "--no-extras") {
+			self.extras = 0;
 		} else {
+			unless ((arg eq "-") || exists(arg)) {
+				bk_dieError("citool: ${arg} does not exist", 1);
+			}
 			push(&files, arg);
 			self.argv[END+1] = arg;
 		}
