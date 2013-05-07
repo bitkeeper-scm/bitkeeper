@@ -215,16 +215,16 @@ proj_free(project *p)
 	assert(p != proj.curr);
 	EACH(proj.recent) assert(p != (project *)proj.recent[i]);
 
+	projcache_delete(p);	/* subtle: See SHORTCUT in proj_reset() */
+	proj_reset(p);		/* subtle: do before p->prod due to flush */
 	if (p->rparent) {
 		proj_free(p->rparent);
 		p->rparent = 0;
 	}
 	if (p->product && (p->product != INVALID) && (p->product != p)) {
 		proj_free(p->product);
-		p->product = 0;
+		p->product = INVALID;
 	}
-	projcache_delete(p);	/* subtle: See SHORTCUT in proj_reset() */
-	proj_reset(p);
 	if (p->coDB) {
 		mdbm_close(p->coDB);
 		p->coDB = 0;
@@ -1715,7 +1715,10 @@ proj_dirstate(project *p, char *dir, u32 state, int set)
 	int	isStar;
 
 	unless (p || (p = curr_proj())) return;
-	unless (features_test(p, FEAT_SCANDIRS)) return;
+	unless (features_test(p, FEAT_SCANDIRS)) {
+		assert(!(p->scancomps || p->scandirs));
+		return;
+	}
 
 	/*
 	 * Changes in RESYNC won't leave files pending or modified for
