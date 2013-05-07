@@ -63,13 +63,30 @@ cd "$HERE"
 bk --config=checkout:get clone $Q proj copy
 cd proj
 bk --cd=gcc edit $Q afile
-ls -l BitKeeper/log > OUT
-test -f BitKeeper/log/scancomps || fail -f OUT no scancomps created by bk edit
+test -f BitKeeper/log/scancomps || {
+     ls -l BitKeeper/log > OUT
+     fail -f OUT no scancomps created by bk edit
+}
 cat <<EOF > WANT
 @gcc
 e
 EOF
 cmpfiles BitKeeper/log/scancomps WANT
+echo OK
+
+echo $N Test scandirs in a component ................................$NL
+cd gdb
+rm BitKeeper/log/features   # bk used to read the wrong 'features' file
+bk edit $Q BitKeeper/etc/gone || fail
+cat <<EOF > WANT
+@BitKeeper/etc
+e
+EOF
+cmpfiles BitKeeper/log/scandirs WANT
+bk unedit $Q BitKeeper/etc/gone
+bk sfiles -l	# clear this change from scandirs
+test -f BitKeeper/log/scandirs || fail
+cd ..
 echo OK
 
 echo $N Testing again after a ci.....................................$NL

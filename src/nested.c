@@ -1118,16 +1118,18 @@ nestedWalkdir(nested *n, char *dir, int present_only, walkfn fn)
 {
 	char	*relpath;
 	int	ret;
-	project	*p;
+	project	*p, *p2;
 	char	**list;
 	char	*cwd;
 
 	cwd = strdup(proj_cwd());
-	p = proj_product(proj_init(dir));
+	p2 = proj_init(dir);
+	p = proj_product(p2);
 	assert(p);		/* fails on something outside a nested tree */
 	chdir(proj_root(p));
 	relpath = proj_relpath(p, dir);
 	assert(relpath);
+	proj_free(p2);
 	list = nested_deep(n, relpath, present_only);
 
 	ret = walkdir(relpath, fn, list);
