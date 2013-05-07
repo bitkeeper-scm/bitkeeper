@@ -11,7 +11,7 @@ mkdir 11
 open 215
 read 231
 rename 14
-rmdir 2
+rmdir 4
 stat 14
 unlink 42
 write 76

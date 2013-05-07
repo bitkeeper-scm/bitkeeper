@@ -16,6 +16,8 @@ while (<T>) {
 close(T);
 
 if ($ENV{STRACE_CNT_SAVE}) {
+    chdir("/tmp");  # workaround RESYNC locking bug
+
     system("bk edit -q '$baseline'");
     open(B, ">$baseline") || die "Can't write $baseline,";
     print B "# baseline data for t.strace-cnt\n";
@@ -23,10 +25,15 @@ if ($ENV{STRACE_CNT_SAVE}) {
 	print B "$_ $new{$_}\n";
     }
     close(B);
-    $baseline =~ s,/t/,/t/SCCS/c.,;
-    open(C, ">$baseline");  # write c.file
-    print C "new baseline\n";
-    close(C);
+    system("bk ci -qa -ynew-baseline '$baseline'");
+
+    # save full trace
+    chomp($baseline = `bk bin`);
+    $baseline .= "/t/strace.$name.ref.full";
+    system("bk edit -q '$baseline'");
+    system("cp '$trace' '$baseline'");
+    system("bk ci -qa -ynew-baseline '$baseline'");
+    
     exit(0);
 }
 
