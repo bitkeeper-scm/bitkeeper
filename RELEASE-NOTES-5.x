@@ -1,4 +1,17 @@
 ============================================================================
+Release notes for BitKeeper version 5.4.6 (released May 6, 2013)
+
+Minor release with one change, bk citool now has a --no-extras option
+which means show only pending and/or modified files, do not scan for
+or show any extra (untracked) files.
+
+Using this option means two things:
+    - you must tell BK about new files with "bk new some-file"; without
+      that "some-file" may exist but citool will not display it.
+    - you no longer have to manage the ignore file since --no-extras
+      implies all non-versioned files are ignored.
+
+============================================================================
 Release notes for BitKeeper version 5.4.5 (released Feb 27, 2013)
 
 Minor bugfix release to fix a problem in bk commit, conflicts and ignore.
