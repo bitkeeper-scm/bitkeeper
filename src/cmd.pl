@@ -479,3 +479,4 @@ sdiff cprog
 
 # L scripts
 hello lscript
+pull-size lscript
