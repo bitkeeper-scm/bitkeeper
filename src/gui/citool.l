@@ -614,6 +614,8 @@ addSfilesLines(string lines[])
 			sf.rev  = $2;
 			sf.name = $1 . "@" . $2;
 			sf.commented = 1; // pending files are always commented
+
+			if (sf.rev == "1.0") continue;
 			insertFile(sf);
 
 			if (!modified || defined(self.files{$1})) continue;
@@ -1489,8 +1491,12 @@ updateButtons()
 	}
 	if (self.committing) return;
 
-	if (self.clipboard == "") {
+	unless (length(self.clipboard)) {
 		configureButton("paste", state: "disabled");
+	}
+
+	unless (length(getCurrentComments())) {
+		configureButton("cut", state: "disabled");
 	}
 
 	if (self.resolve) {
@@ -2261,6 +2267,8 @@ pasteComments()
 	string	node, file;
 	string	sel = getSelectedNode();
 	int	idx = ListBox_index(self.o_files, sel);
+
+	unless (length(self.clipboard)) return;
 
 	if (Text_cget(self.w_comments, state:) == "normal") {
 		insertTopText(self.clipboard, 1);
