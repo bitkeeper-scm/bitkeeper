@@ -1771,6 +1771,24 @@ If C<index> is -1 or larger than or equal to the number of elements in
 the array, the elements are inserted at the end; this is what C<push> does.
 You can insert single elements or arrays of elements.
 
+=proto int isalpha(string s)
+
+Return 1 if the given string contains only alphabetic characters, else
+return 0.
+An empty string also returns 0.
+
+=proto int isalnum(string s)
+
+Return 1 if the given string contains only alphabetic or digit characters, else
+return 0.
+An empty string also returns 0.
+
+=proto int isdigit(string s)
+
+Return 1 if the given string contains only digit characters, else
+return 0.
+An empty string also returns 0.
+
 =proto int isdir(string path)
 
 Return 1 if the given path exists and is a directory, else return 0.
@@ -1779,13 +1797,33 @@ Return 1 if the given path exists and is a directory, else return 0.
 
 Return 1 if the given path exists and is a link, else return 0.
 
+=proto int islower(string s)
+
+Return 1 if the given string contains only lower-case alphabetic characters, else
+return 0.
+An empty string also returns 0.
+
 =proto int isreg(string path)
 
 Return 1 if the given path exists and is a regular file, else return 0.
 
 =proto int isspace(string buf)
 
-Return 1 if all characters in the argument are space characters.
+Return 1 if all characters in the argument are space characters, else
+return 0.
+An empty string also returns 0.
+
+=proto int isupper(string s)
+
+Return 1 if the given string contains only upper-case alphabetic characters, else
+return 0.
+An empty string also returns 0.
+
+=proto int iswordchar(string s)
+
+Return 1 if the given string contains only alphanumeric or connector
+punctuation characters (such as underscore), else return 0.
+An empty string also returns 0.
 
 =proto string join(string sep, type array[])
 

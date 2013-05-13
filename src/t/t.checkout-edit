@@ -76,6 +76,28 @@ test -w get/src/foo.c && {
 	ls -l get/src/foo.c
 	exit 1
 }
+bk clone $Q --checkout:get project get2
+test -f get2/src/foo.c || {
+	echo "foo.c should be checked out"
+	exit 1
+}
+test -w get2/src/foo.c && {
+	echo "foo.c should not be read-write"
+	ls -l get2/src/foo.c
+	exit 1
+}
+bk clone $Q --checkout:none project none2
+test -f none2/src/foo.c && {
+	echo "foo.c should not be checked out"
+	exit 1
+}
+cd none2
+test `bk config checkout` = none || {
+	echo failed to make mode sticky
+	bk config -v
+	exit 1
+}
+cd ..
 echo OK
 
 echo $N Test only the product is set ................................$NL

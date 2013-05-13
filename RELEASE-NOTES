@@ -104,8 +104,8 @@ Performance improvements:
     new files to the history, then citool can use the fastscan feature
     to find modified/pending files very quickly:
 
-	bk5 citool:	       15.4 seconds bk6 citool --no-extras:
-	1.0 seconds
+	bk5 citool:	       15.4 seconds
+	bk6 citool --no-extras: 1.0 seconds
 
     Even when citool is told to scan for extras in a nested repo, it will
     appear to run faster because it uses the fastscan cache to find the

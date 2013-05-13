@@ -7,7 +7,9 @@ bk citool \- \*(BK graphical check-in tool
 [\c
 .ARG dir
 | 
-.ARGc file_list
+.ARG file_list
+|
+.B --no-extras
 .if \n[NESTED] \{\
 \ |
 .OPTreq \-s alias \c
@@ -20,6 +22,11 @@ application is a graphical interface for checking in new, modified,
 and pending files.  When called with no arguments,
 .B citool
 examines the current repository for files requiring checkin. 
+If called with 
+.BR --no-extras ,
+.B citool
+will look only for modified and/or pending files (a performance win
+repositories in checkout:get or checkout:none mode).
 .if \n[NESTED] \{\
 If called with
 .OPTreq \-s alias
@@ -27,9 +34,6 @@ in a nested collection
 .B citool
 will restrict the repositories searched to those implied by
 .ARG alias .
-A fairly common usage is 
-.B "bk citool -s."
-which means restrict the search to current component.
 .\}
 Otherwise,
 .B citool

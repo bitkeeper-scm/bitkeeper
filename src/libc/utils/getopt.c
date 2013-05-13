@@ -13,6 +13,7 @@
  *	-abcr<arg>
  *	-r<arg> -R<arg>, etc.
  *	--long
+ *	--long:<arg>
  *	--long=<arg>
  *	--long <arg>
  *
@@ -179,8 +180,9 @@ err:		n = 1;
 	}
 	/* len of option without =value part */
 	s = av[optind] + 2;
-	len1 = (t = strchr(s, '=')) ? (t - s) : strlen(s);
-	for (; t = lopts->name; lopts++) {
+	unless (t = strchr(s, '=')) t = strchr(s, ':');
+	len1 = t ? (t - s) : strlen(s);
+	for (; (t = lopts->name); lopts++) {
 		s = av[optind] + 2;
 		/* len of lopts array without suffix */
 		len2 = strlen(t);
@@ -198,14 +200,15 @@ err:		n = 1;
 	 * If it isn't one that takes an option, just advance and return.
 	 */
 	unless (*t) {
-		if (*s == '=') goto err; /* got option anyway */
+		/* got option anyway */
+		if ((*s == '=') || (*s == ':')) goto err;
 		optind++;
 		n = 1;
 		return (lopts->ret);
 	}
 
 	/* got one with an option, see if it is cozied up to the flag */
-	if (*s == '=') {
+	if ((*s == '=') || (*s == ':')) {
 		optarg = s + 1;
 		optind++;
 		n = 1;
