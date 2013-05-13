@@ -187,37 +187,34 @@ remap_mkdir(project *proj, char *dir, mode_t mode)
 int
 remap_rmdir(project *proj, char *dir)
 {
-	int	idf = 0;
+	int	ret;
+	char	*t;
 	char	buf[MAXPATH], buf2[MAXPATH];
 
-	if (!isSCCS(dir) && !streq(dir, ".")) {
+	if (fullRemapPath(buf, proj, dir)) {
+		if (ret = rmdir(buf)) return (ret);
+
+		/* remove any empty directories above */
+		t = buf + strlen(buf);
+		while (1) {
+			while (*t != '/') --t;
+			*t = 0;
+			if (streq(t, "/.bk")) break;
+			if (rmdir(buf)) break;
+		}
+		return (0);
+	} else {
 		/*
 		 * Can't remove a directory with a SCCS subdir, and
 		 * need to keep .bk directories in sync
 		 */
-		sprintf(buf2, "%s/.bk/%s", proj_root(proj), dir);
+		sprintf(buf2, "%s/.bk/%s/SCCS", proj_root(proj), dir);
 		if (isdir(buf2)) {
-			unless (emptyDir(buf2)) {
-				errno = ENOTEMPTY;
-				return (-1);
-			}
-			rmdir(buf2);
+			errno = ENOTEMPTY;
+			return (-1);
 		}
+		return (rmdir(buf));
 	}
-	fullRemapPath(buf, proj, dir);
-
-	/*
-	 * Being called with "." means we are deleting the whole repository
-	 * so make sure we delete .bk as well.
-	 */
-	if (streq(dir, ".")) {
-		concat_path(buf2, buf, ".bk");
-		idf = isdir(buf2);
-		assert(idf);
-		rmdir(buf2);
-	}
-
-	return (rmdir(buf));
 }
 
 char **
