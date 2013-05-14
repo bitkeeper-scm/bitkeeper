@@ -38,6 +38,17 @@ EOF
 cmpfiles WANT BitKeeper/log/scancomps
 echo OK
 
+echo $N Show the \'bk -Uc\' works in a subdirectory ...................$NL
+echo hi >> gcc/a
+mkdir t
+cd t
+bk -Uc > GOT
+cat <<EOF > WANT
+../gcc/a
+EOF
+cmpfiles GOT WANT
+echo OK
+
 echo $N Check for scancomps feature in clone ........................$NL
 bk features > ../SRC
 cd ..

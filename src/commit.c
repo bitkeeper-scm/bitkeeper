@@ -310,11 +310,12 @@ modified_pending(u32 flags)
 	char	**dirs;
 	project	*p;
 	char	**aliases = 0;
+	char	buf[MAXPATH];
 
 	unless (dirs = proj_scanComps(0, flags)) return (0);
-	unless (nLines(dirs)) dirs = addLine(dirs, "PRODUCT");
 	EACH(dirs) {
-		unless (p = proj_init(dirs[i])) {
+		concat_path(buf, proj_root(proj_product(0)), dirs[i]);
+		unless (p = proj_init(buf)) {
 			unless (getenv("_BK_DEVELOPER")) continue;
 			die("%s should be a repo", dirs[i]);
 		}
@@ -332,7 +333,7 @@ modified_pending(u32 flags)
 		T_NESTED("SCAN %s", dirs[i]);
 		proj_free(p);
 	}
-	if (aliases && !product) {
+	unless (product) {
 		aliases = addLine(aliases, strdup("PRODUCT"));
 		T_NESTED("SCAN PRODUCT");
 	}
