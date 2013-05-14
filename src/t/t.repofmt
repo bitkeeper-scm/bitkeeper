@@ -250,3 +250,13 @@ echo $N Show that --compat on same works in nested ..................$NL
 bk clone $Q --compat nest.ascii nest.also-ascii || fail
 bk --cd=nest.also-upgraded-2 -e sh -c "'$PWD/script'" || fail
 echo OK
+
+echo $N Run comps --no-extras on a binary repo ......................$NL
+cd "$HERE"/nest.bk
+bk comps -ch --no-extras >OUT || fail
+echo OK
+
+echo $N Run citool --no-extras on a compat repo .....................$NL
+cd ../nest.ascii
+bk comps -ch --no-extras || fail
+echo OK

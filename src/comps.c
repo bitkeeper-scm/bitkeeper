@@ -29,7 +29,6 @@ comps_main(int ac, char **av)
 			      aliases = addLine(aliases, optarg);
 			      break;
 		    case 310:	/* --no-extras */
-			unless (features_test(0, FEAT_BKFILE)) usage();
 			no_extras = 1;
 			break;
 		    default: bk_badArg(c, av);
