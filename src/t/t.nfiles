@@ -41,3 +41,44 @@ echo $N Make sure repocheck recreates NFILES_PRODUCT ................$NL
 bk repocheck $Q
 test -f BitKeeper/log/NFILES_PRODUCT || fail
 echo OK
+
+echo $N Make sure that nfiles are accurate after new files ..........$NL
+cd "$HERE/prod"
+WANT=`bk nfiles`
+WANT=`expr $WANT + 2`
+touch foo bar
+bk new $Q foo bar
+bk commit $Q -f
+GOT=`bk nfiles`
+test $WANT -eq $GOT && fail fix test
+echo "failed (bug - commit does not update nfiles cache)"
+
+echo $N Make sure that nfiles are accurate after a clone ............$NL
+cd "$HERE/prod"
+bk -e sfiles > $DEV_NULL # fix nfiles cache
+WANT=`bk nfiles`
+bk clone $Q . ../prod-clone
+cd ../prod-clone
+GOT=`bk nfiles`
+test $WANT -eq $GOT || fail clone had $GOT, expected $WANT
+echo OK
+
+echo $N Make sure that nfiles are accurate after a pull .............$NL
+cd "$HERE/prod"
+touch baz
+bk new $Q baz
+bk commit $Q -f
+bk -e sfiles > $DEV_NULL # fix nfiles cache
+WANT=`bk nfiles`
+cd "$HERE/prod-clone"
+bk pull $Q
+GOT=`bk nfiles`
+test $WANT -eq $GOT || fail pull had $GOT, expected $WANT
+echo OK
+
+echo $N Make sure that nfiles are accurate after an undo ............$NL
+bk unpull $Q -f
+WANT=`expr $WANT - 1`
+GOT=`bk nfiles`
+test $WANT -eq $GOT || fail unpull had $GOT, expected $WANT
+echo OK

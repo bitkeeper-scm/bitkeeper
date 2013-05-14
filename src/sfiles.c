@@ -156,7 +156,7 @@ sfiles_main(int ac, char **av)
 		opts.sfiles = 1;
 		memset(&fc, 0, sizeof(fc));
 		walksfiles(".", fastprint, &fc);
-		if (isdir(BKROOT)) repo_nfilesUpdate(&fc);
+		if (isdir(BKROOT) && !proj_isResync(0)) repo_nfilesUpdate(&fc);
 		return (0);
 	}
 
