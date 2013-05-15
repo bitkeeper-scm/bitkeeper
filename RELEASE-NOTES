@@ -6,8 +6,15 @@ bk set
     product changeset file.  Added a --standalone / -S option to
     limit the operation to the current component.
 
+Bug Fixes
+
+  bk clone -r
+    Fix clone -r such that when and if it is checking out files, it
+    does so with the timestamp of the most recent delta (which is what
+    it does in the absence of the -r option).
+
 ============================================================================
-Release notes for BitKeeper version 6.0-pre1 (released XXX, 2013)
+Release notes for BitKeeper version 6.0-pre1 (released April 26, 2013)
 
     This is a pre-release of changes that are destined to be included in
     the 6.0 release of BitKeeper.  

@@ -2023,7 +2023,7 @@ err:		unless (opts->autoOnly) {
 		sccs_unlockfile(RESOLVE_LOCK);
 		rc = spawnvp(P_WAIT, "bk", nav);
 		for (i = 0; nav[i]; i++) free(nav[i]);
-		proj_restoreAllCO(0, opts->idDB, 0);
+		proj_restoreAllCO(0, opts->idDB, 0, 0);
 		rc = WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
 		longjmp(cleanup_jmp, 1000+rc); /* exit resolve_main() */
 	}
@@ -2987,7 +2987,7 @@ err:			unapply(applied);
 		fprintf(stderr,
 		    "resolve: applied %d files in pass 4\n", opts->applied);
 	}
-	proj_restoreAllCO(0, opts->idDB, tick);
+	proj_restoreAllCO(0, opts->idDB, tick, 0);
 	if (proj_sync(0)) {
 		/*
 		 * It's worth pointing out that we still call this when we
@@ -3225,7 +3225,7 @@ resolve_cleanup(opts *opts, int what)
 	/* XXX - shouldn't this be below the CLEAN_OK?
 	 * And maybe claused on opts->pass4?
 	 */
-	proj_restoreAllCO(0, opts->idDB, 0);
+	proj_restoreAllCO(0, opts->idDB, 0, 0);
 
 	freeStuff(opts);
 	unless (what & CLEAN_OK) {

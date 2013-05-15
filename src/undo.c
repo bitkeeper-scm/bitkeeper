@@ -22,7 +22,7 @@ typedef struct {
 } options;
 
 private char	**getrev(options *opts, char *rev, int aflg);
-private int	clean_file(char **);
+private int	clean_file(char **, options *opts);
 private	int	moveAndSave(options *opts, char **fileList);
 private int	move_file(options *opts, char ***checkfiles);
 private int	renumber_rename(options *opts, char **sfiles);
@@ -300,7 +300,7 @@ prod:
 	 * chdir RESYNC won't free it.
 	 */
 	proj = proj_init(".");
-	if (clean_file(sfiles)) goto err;
+	if (clean_file(sfiles, opts)) goto err;
 
 	/*
 	 * Move file to RESYNC and save a copy in a sfio backup file
@@ -325,7 +325,7 @@ prod:
 	}
 
 	idcache_update(checkfiles);
-	proj_restoreAllCO(proj, 0, 0);
+	proj_restoreAllCO(proj, 0, 0, opts->fromclone);
 
 	rmtree("RESYNC");
 
@@ -764,7 +764,7 @@ out:	unlink(flist);
 }
 
 private int
-clean_file(char **sfiles)
+clean_file(char **sfiles, options *opts)
 {
 	sccs	*s;
 	char	*name;
@@ -801,7 +801,7 @@ clean_file(char **sfiles)
 			fprintf(stderr,
 			    "Cannot clean %s, undo aborted\n", s->gfile);
 			sccs_free(s);
-			proj_restoreAllCO(0, 0, 0);
+			proj_restoreAllCO(0, 0, 0, opts->fromclone);
 			return (-1);
 		}
 		sccs_free(s);

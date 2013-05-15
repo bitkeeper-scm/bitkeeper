@@ -1067,9 +1067,9 @@ proj_saveCOkey(project *p, char *key, int co)
 }
 
 private int
-restoreCO(sccs *s, int co)
+restoreCO(sccs *s, int co, int dtime)
 {
-	int	getFlags = 0;
+	int	getFlags = dtime ? GET_DTIME : 0;
 
 	if (CSET(s) || strneq("BitKeeper/", s->gfile, 10)) return (0);
 
@@ -1078,9 +1078,9 @@ restoreCO(sccs *s, int co)
 
 	switch (co) {
 	    case CO_EDIT:
-		unless (HAS_PFILE(s)) getFlags = GET_EDIT; break;
+		unless (HAS_PFILE(s)) getFlags |= GET_EDIT; break;
 	    case CO_GET:
-		unless (HAS_GFILE(s)) getFlags = GET_EXPAND; break;
+		unless (HAS_GFILE(s)) getFlags |= GET_EXPAND; break;
 	    default:
 		fprintf(stderr, "co=0x%x\n", co);
 		assert(0);
@@ -1107,7 +1107,7 @@ restoreCO(sccs *s, int co)
  * we might have touched and restore the gfile if needed.
  */
 int
-proj_restoreAllCO(project *p, MDBM *idDB, ticker *tick)
+proj_restoreAllCO(project *p, MDBM *idDB, ticker *tick, int dtime)
 {
 	sccs	*s;
 	kvpair	kv;
@@ -1138,7 +1138,7 @@ proj_restoreAllCO(project *p, MDBM *idDB, ticker *tick)
 			    INIT_NOCKSUM|SILENT, idDB);
 			unless (s) continue;
 			assert(p == s->proj);
-			if (restoreCO(s, co)) errs++;
+			if (restoreCO(s, co, dtime)) errs++;
 			sccs_free(s);
 		}
 	}

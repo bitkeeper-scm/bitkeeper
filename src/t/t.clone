@@ -25,6 +25,17 @@ bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c CHANGESET
 if bk _test ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR'; then echo failed to create history; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+# setup for a later clone -r test
+cat > INITX <<EOF
+D 1.1 97/05/28 23:49:57 joe_user@joes_hostname 0 0 0/0/0
+c This is revision 1.1
+P src/oldfile
+------------------------------------------------
+EOF
+ls > oldfile
+bk delta $Q -i -IINITX oldfile
+bk get $Q -T oldfile
+bk mtime oldfile > "$HERE/MTIME"  # used in a later test
 echo OK
 
 echo $N Clone with all pending deltas................................$NL
@@ -316,6 +327,19 @@ BK_CONFIG='checkout:edit!;partial_check:yes!' \
 cd checkout
 test -w src/bar.c || fail
 test -w src/CHANGESET || fail
+echo OK
+
+echo $N Test clone -r retains timestamps ............................$NL
+cd "$HERE/project"
+bk edit $Q src/oldfile
+bk delta $Q -fytouch src/oldfile
+bk commit $Q -f
+cd ..
+BK_CONFIG='checkout:edit!;partial_check:yes!' \
+	bk clone -r1.5 $Q project checkout2 || fail
+cd checkout2
+bk mtime src/oldfile > GOT
+cmpfiles "$HERE/MTIME" GOT
 echo OK
 
 echo $N Show that a partial_check clone transfers id_cache ..........$NL
