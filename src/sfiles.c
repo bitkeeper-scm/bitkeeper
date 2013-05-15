@@ -1877,16 +1877,14 @@ done:
 private void
 walk_deepComponents(char *path, walkfn fn, void *data)
 {
-	int	i, cwd_len;
-	char	*p, *cwd;
+	int	i, x;
+	char	*p;
 	project	*comp;
 	char	buf[MAXPATH];
 	char	frompath[MAXPATH];
 	char	gfile[MAXPATH];
 
 	fullname(path, frompath);
-	cwd = frompath;
-	cwd_len = strlen(cwd);
 	unless (components) {
 		components = file2Lines(0,
 		    proj_fullpath(prodproj, "BitKeeper/log/deep-nests"));
@@ -1894,10 +1892,11 @@ walk_deepComponents(char *path, walkfn fn, void *data)
 	}
 	EACH(components) {
 		p = proj_fullpath(prodproj, components[i]);
-		unless ((strlen(p) > cwd_len) && pathneq(p, cwd, cwd_len)) {
-			continue; /* only look at components under path */
+		unless ((x = paths_overlap(frompath, p)) &&
+		    (frompath[x] == 0) && (p[x] != 0)) {
+			continue;
 		}
-		p += cwd_len + 1;
+		p += x + 1;
 		sprintf(gfile, "%s/%s", path, p);
 		concat_path(buf, gfile, CHANGESET);
 		unless (exists(buf)) continue;

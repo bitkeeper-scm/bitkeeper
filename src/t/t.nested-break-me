@@ -1,0 +1,33 @@
+# Weird tests that deliberately attempt to break
+# repositories.  Inspired by customer pilot-error
+
+echo $N Make a broken repo ..........................................$NL
+nested prod
+bk setup -f comp
+cd comp
+touch foo
+bk new $Q foo
+bk commit $Q -fS
+cd ..
+bk setup -f comp2
+cd "$HERE"
+bk clone $Q prod prod-clone
+cd prod/comp
+touch bar
+bk new $Q bar
+cd ../comp2
+touch foo
+bk new $Q foo
+bk commit $Q -f
+cd "$HERE/prod-clone"
+echo foo >> comp2/foo
+echo q | bk pull $Q >OUT 2>&1
+rm -rf RESYNC
+#bk repocheck	# repository is broken here, below should repair
+bk cset -C 
+bk repocheck >OUT 2>&1
+bk repocheck -q || fail
+# before the fix, the above repocheck would output a line like so:
+#   comp/SCCS/s.ChangeSet and comp/SCCS/s.ChangeSet are identical. Is
+#   one of these files copied?
+echo OK
