@@ -11,6 +11,7 @@ The
 .B bk diffs
 command is typically used to show changes to working files relative to the
 previously checked in version.
+Unified diffs are produced by default.
 .LP
 The 
 .B bk diffs
@@ -18,17 +19,16 @@ command supports context, unified, procedural, and side-by-side diffs.
 All of the above can be optionally annotated with filename,
 author, date, and/or revision numbers.
 .LP
-To view changes you have made to all of the files in a directory
-since checking the files out, type:
+To view changes you have made to all of the files in the current directory:
 .DS
 $ bk diffs
 .DE
-To see the changes for all files in your tree as unified diffs:
+To see the changes for all files in your tree:
 .DS
-$ bk \-U diffs -up
+$ bk \-U diffs
 .DE
 .SH OPTIONS
-.TP \-A\*<bdpru\*>n
+.TP \-stats-only\ 
 .OPTreq \-A bdpru
 Align prefix output in a human readable form.
 The set of annotations will be followed by a vertical bar and a space
@@ -68,7 +68,7 @@ Ignore changes in amount of white space.
 Ignore  changes  that  just  insert or delete blank lines.
 .tp
 .B \-c
-Do context diffs.
+Do old-style context diffs.
 .tp
 .OPTreq \-d date
 Instead of using revision[s] as the versions to diff, use the revision[s]
@@ -101,6 +101,10 @@ bk changes -i\*<file\*> -vvr\*<rev\*>
 .tp
 .B \-n
 Do RCS style diffs.
+.tp
+.B \--normal
+Instead of unified diffs (the default) print less verbose diffs like those
+produced by diff(1).
 .tp
 .B \-N
 If a specified file is not under revision control treat it as if it were under
@@ -135,13 +139,10 @@ Display side-by-side diffs.  The total width is controlled by
 the COLUMNS environment variable, and defaults to 80.
 .tp
 .B \-\-stats
-Print statistics like diffstat in addition to the normal diff output.
+Print a statistics header like diffstat in addition to the normal diff output.
 .tp
 .B \-\-stats\-only
-Print statistics like diffstat and suppress the normal diff output.
-.tp
-.B \-u
-Do unified diffs.
+Print a statistics header like diffstat and suppress the normal diff output.
 .tp
 .B \-v
 Be verbose about non-matching ranges.
@@ -174,17 +175,17 @@ bk changes -i\*<file\*> -vvr\*<alpha1\*>
 .DE
 To create a patch which captures all content changes as well as all new files:
 .DS
-bk -Axc diffs -Nu
+bk -Axc diffs -N
 .DE
 You can use bk diffs to diff your entire tree, including edits against an
 existing changeset revision or tag in your repository.  
 .DS
-$ bk -A diffs -u
-$ bk -A diffs -u -r@\*<rev\*>
+$ bk -A diffs 
+$ bk -A diffs -r@\*<rev\*>
 .DE
 To see the diffs in the local tree from the new baseline cset in the parent:
 .DS
-$ bk -U diffs -up -@
+$ bk -U diffs -p -@
 .DE
 .SH BUGS
 This command does not currently handle displaying differences for binary files.

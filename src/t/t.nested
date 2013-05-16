@@ -1286,7 +1286,7 @@ echo OK
 
 echo $N Try removing alias recursion ................................$NL
 bk alias rm -C recursion || exit 1
-bk diffs -h -R+ BitKeeper/etc/aliases | grep '< ' > GOT
+bk diffs --no-unified -h -R+ BitKeeper/etc/aliases | grep '< ' > GOT
 (
 echo '< @recursion'
 echo '< see_recursion'
@@ -1296,7 +1296,7 @@ echo OK
 
 echo $N Try removing alias see_recursion ............................$NL
 bk alias rm -C see_recursion || exit 1
-bk diffs -h -R+ BitKeeper/etc/aliases | grep '< ' > GOT
+bk diffs --no-unified -h -R+ BitKeeper/etc/aliases | grep '< ' > GOT
 (
 echo '< @see_recursion'
 echo '< recursion'

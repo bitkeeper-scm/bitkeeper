@@ -74,14 +74,8 @@ cat > DIFFS <<EOF
 8a9
 > foo
 EOF
-bk diffs C > CMP1
-diff CMP1 DIFFS > EMPTY
-if [ -s EMPTY ]
-then	echo failed to leave C alone
-	bk diffs C  > CMP1
-	diff CMP1 DIFFS 
-	exit 1
-fi
+bk diffs --no-unified C > CMP1
+cmpfiles CMP1 DIFFS
 if [ `bk prs -hd:I: -r+ A` != 1.3 ]
 then	echo failed to remove exclude delta from A
 	bk prs A

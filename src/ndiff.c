@@ -28,7 +28,6 @@ typedef struct {
 	df_opt	*dop;		/* copy of diff opts */
 } filedf;
 
-private	int	cleanOpts(df_opt *opts);
 
 /* comparison funcs */
 private	int	cmp_identical(void *a, int lena,
@@ -144,8 +143,8 @@ out:	if (opts.out_define) FREE(opts.out_define);
 	return (rc);
 }
 
-private	int
-cleanOpts(df_opt *opts)
+int
+diff_cleanOpts(df_opt *opts)
 {
 	/*
 	 * Make sure we don't have conflicting output styles
@@ -203,7 +202,7 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 		return (external_diff(file1, file2, dop, out));
 	}
 
-	unless (cleanOpts(dop)) return (2);
+	unless (diff_cleanOpts(dop)) return (2);
 
 	if (out) {
 		fout = (streq(out, "-")) ? stdout : fopen(out, "w");

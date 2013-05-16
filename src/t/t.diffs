@@ -29,7 +29,7 @@ done
 echo $N Checking diff against edited file ...........................$NL
 bk co $Q -l Mydiffs
 echo foo >> Mydiffs
-bk diffs Mydiffs > D || exit 1
+bk diffs --normal Mydiffs > D || exit 1
 bk undos > W <<EOF
 ===== Mydiffs 1.10 vs edited =====
 11a12
@@ -40,7 +40,7 @@ if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
 
 echo $N Checking diff -r1.8 against edited file .....................$NL
-bk diffs -r1.8 Mydiffs > D || fail -f D
+bk diffs --normal -r1.8 Mydiffs > D || fail -f D
 bk undos > W <<EOF
 ===== Mydiffs 1.8 vs edited =====
 9a10,12
@@ -52,7 +52,7 @@ cmpfiles D W
 echo OK
 
 echo $N Checking diff filename\|1.8..1.9 with edited gfile ...........$NL
-bk diffs 'Mydiffs|1.8..1.9' > D || exit 1
+bk diffs --normal 'Mydiffs|1.8..1.9' > D || exit 1
 bk undos > W <<EOF
 ===== Mydiffs 1.8 vs 1.9 =====
 9a10
@@ -62,14 +62,14 @@ cmpfiles D W
 echo OK
 
 echo $N Checking diff -R - with edited gfile ........................$NL
-echo 'Mydiffs|1.9' | bk diffs -R - > D || exit 1
+echo 'Mydiffs|1.9' | bk diffs --normal -R - > D || exit 1
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
 
 echo $N Checking diff -r1.8 w/ no file ..............................$NL
 bk unedit Mydiffs
-bk diffs -r1.8 Mydiffs > D || fail
+bk diffs --normal -r1.8 Mydiffs > D || fail
 bk undos > W <<EOF
 ===== Mydiffs 1.8 vs 1.10 =====
 9a10,11
@@ -81,7 +81,7 @@ echo OK
 
 echo $N Checking diff -R1.8 w/ no file ..............................$NL
 bk unedit Mydiffs
-bk diffs -R1.8 Mydiffs > D || exit 1
+bk diffs --normal -R1.8 Mydiffs > D || exit 1
 bk undos > W <<EOF
 ===== Mydiffs 1.7 vs 1.8 =====
 8a9
@@ -92,7 +92,7 @@ if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
 
 echo $N Checking diff -r1.8 -r1.9 ...................................$NL
-bk diffs -r1.8 -r1.9 Mydiffs > D || exit 1
+bk diffs --normal -r1.8 -r1.9 Mydiffs > D || exit 1
 bk undos > W <<EOF
 ===== Mydiffs 1.8 vs 1.9 =====
 9a10
@@ -103,7 +103,7 @@ if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
 
 echo $N Checking diff filename\|1.8..1.9 .............................$NL
-bk diffs 'Mydiffs|1.8..1.9' > D || exit 1
+bk diffs --normal 'Mydiffs|1.8..1.9' > D || exit 1
 bk undos > W <<EOF
 ===== Mydiffs 1.8 vs 1.9 =====
 9a10
@@ -113,7 +113,7 @@ cmpfiles D W
 echo OK
 
 echo $N Checking diff -r1.7 -r1.9 with no gfile .....................$NL
-bk diffs -r1.7 -r1.9 Mydiffs > D || exit 1
+bk diffs --normal -r1.7 -r1.9 Mydiffs > D || exit 1
 bk undos > W <<EOF
 ===== Mydiffs 1.7 vs 1.9 =====
 8a9,10
@@ -126,7 +126,7 @@ echo OK
 
 echo $N Checking diff -r1.7 -r1.9 with wrong gfile ..................$NL
 bk _get $Q -r1.1 Mydiffs || exit 1
-bk diffs -r1.7 -r1.9 Mydiffs > D || exit 1
+bk diffs --normal -r1.7 -r1.9 Mydiffs > D || exit 1
 bk undos > W <<EOF
 ===== Mydiffs 1.7 vs 1.9 =====
 8a9,10
@@ -140,7 +140,7 @@ echo OK
 echo $N Checking diff -r1.7 -r1.9 with edited gfile .................$NL
 bk edit $Q Mydiffs || exit 1
 echo foo >> Mydiffs
-bk diffs -r1.7 -r1.9 Mydiffs > D || exit 1
+bk diffs --normal -r1.7 -r1.9 Mydiffs > D || exit 1
 bk undos > W <<EOF
 ===== Mydiffs 1.7 vs 1.9 =====
 8a9,10
@@ -152,7 +152,7 @@ if [ $? -ne 0 ]; then echo Failed to get correct diffs.; diff D W; exit 1; fi
 echo OK
 
 echo $N Checking diff -R1.7 .........................................$NL
-bk diffs -R1.7 Mydiffs > D || exit 1
+bk diffs --normal -R1.7 Mydiffs > D || exit 1
 bk undos > W <<EOF
 ===== Mydiffs 1.6 vs 1.7 =====
 7a8
@@ -178,7 +178,7 @@ echo OK
 
 echo $N Checking diffs -r1.8 with readonly wrong gfile ..............$NL
 bk _get $Q -r1.1 Mydiffs || exit 1
-bk diffs -r1.8 Mydiffs > D || exit 1
+bk diffs --normal -r1.8 Mydiffs > D || exit 1
 bk undos > W <<EOF
 ===== Mydiffs 1.8 vs 1.10 =====
 9a10,11
@@ -197,7 +197,7 @@ echo OK
 
 echo $N Checking diffs -r+ with readonly wrong gfile ................$NL
 bk _get $Q -kr1.1 Mydiffs || exit 1
-bk diffs -r+ Mydiffs > D || exit 1
+bk diffs --normal -r+ Mydiffs > D || exit 1
 bk undos > W <<EOF
 ===== Mydiffs 1.10 vs ? =====
 3,11d2
@@ -231,7 +231,7 @@ test -s D && {
 echo OK
 
 echo $N Checking diffs -f with readonly wrong gfile - should work ...$NL
-bk diffs -f Mydiffs > D || exit 1
+bk diffs --normal -f Mydiffs > D || exit 1
 test -s D || {
 	echo should have produced output
 	exit 1
@@ -259,7 +259,7 @@ echo OK
 echo $N Checking diffs -r+ with edited gfile ........................$NL
 bk edit $Q Mydiffs || exit 1
 echo foo >> Mydiffs
-bk diffs -r+ Mydiffs > D || exit 1
+bk diffs --normal -r+ Mydiffs > D || exit 1
 bk undos > W <<EOF
 ===== Mydiffs 1.10 vs edited =====
 11a12
@@ -421,7 +421,7 @@ DATE="98/05/20 16:23:17"
 bk edit $Q foo
 echo bar > foo
 TZ=GMT BK_DATE_TIME_ZONE=$DATE bk delta -fydate $Q foo
-TZ=GMT bk diffs -uR1.2 foo > GOT
+TZ=GMT bk diffs -R1.2 foo > GOT
 cat - <<'EOF' > WANT
 ===== foo 1.1 vs 1.2 =====
 --- 1.1/date/foo	1997-05-20 18:48:02 +00:00
@@ -451,15 +451,15 @@ bk edit $Q file
 echo Some new stuff >> file
 # Should be something like
 #     +++ edited/sub/dir/file
-bk diffs -u -N | fgrep '+++ edited/file' > /dev/null && {
+bk diffs -N | fgrep '+++ edited/file' > /dev/null && {
 	echo failed
-	bk diffs -u -N
+	bk diffs -N
 	exit 1
 }
 echo OK
 
 echo $N Demonstrate diffs -@repo ....................................$NL
-bk -U diffs -@"$HERE"/copy > OUT || fail
+bk -U diffs --normal -@"$HERE"/copy > OUT || fail
 cat <<EOF > WANT
 ===== ../../junk 1.0 vs 1.1 =====
 0a1
@@ -508,7 +508,7 @@ echo bye > foo
 bk ci -u -yy $Q foo
 chmod +w foo
 echo goodbye > foo
-bk diffs foo > GOT
+bk diffs --normal foo > GOT
 cat <<EOF > WANT
 ===== foo 1.2 vs ? (writable without lock!)  =====
 1c1
@@ -517,9 +517,9 @@ cat <<EOF > WANT
 > goodbye
 EOF
 cmpfiles WANT GOT
-bk diffs -r+ foo > GOT
+bk diffs --normal -r+ foo > GOT
 cmpfiles WANT GOT
-bk diffs -r1.1 foo > GOT
+bk diffs --normal -r1.1 foo > GOT
 cat <<EOF > WANT
 ===== foo 1.1 vs ? (writable without lock!)  =====
 1c1
@@ -536,7 +536,7 @@ echo $N Replacing an edited file with a symlink should work .........$NL
 cd "$HERE"/project/sub/dir
 rm file
 ln -s /nonexistant file
-bk diffs file > DIFFS || exit 1
+bk diffs --normal file > DIFFS || exit 1
 cat <<EOF > WANT
 ===== file 1.1 vs edited =====
 1c1

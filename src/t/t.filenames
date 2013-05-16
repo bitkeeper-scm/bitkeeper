@@ -48,7 +48,7 @@ echo OK
 echo $N Make some changes and check the diffs .......................$NL
 bk edit $Q 'I am foo.c'
 echo DIFFS >> 'I am foo.c'
-bk diffs 'I am foo.c' > DIFFS
+bk diffs --no-unified 'I am foo.c' > DIFFS
 cat >X <<EOF
 ===== I am foo.c 1.1 vs edited =====
 1a2

@@ -6,6 +6,10 @@ bk set
     product changeset file.  Added a --standalone / -S option to
     limit the operation to the current component.
 
+bk diffs
+   The diffs command now defaults to showing unified diffs.
+   Use bk diffs --normal to get old style diffs.
+
 Bug Fixes
 
   bk clone -r
@@ -14,7 +18,7 @@ Bug Fixes
     it does in the absence of the -r option).
 
 ============================================================================
-Release notes for BitKeeper version 6.0-pre1 (released April 26, 2013)
+Release notes for BitKeeper version 6.0-pre1 (released Apr 26, 2013)
 
     This is a pre-release of changes that are destined to be included in
     the 6.0 release of BitKeeper.  

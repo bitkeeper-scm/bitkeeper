@@ -55,7 +55,7 @@ echo OK
 echo $N Check diffs in EOLN_NATIVE mode .............................$NL
 # in EOLN_NATIVE mode the diffs output is still LF terminated
 echo new_stuff > data
-bk diffs -h data > diffs.out
+bk diffs --no-unified -h data > diffs.out
 bk undos > diffs.ref << EOF
 
 1c1

@@ -884,7 +884,7 @@ sed 's/printf(/fprintf(stderr, /' < FILE > XXX
 mv XXX FILE
 bk delta $Q -ywhatever FILE
 bk prs -r+ -h -d:DIFFS: FILE > GOT
-bk diffs -R+ -h FILE > WANT
+bk diffs --no-unified -R+ -h FILE > WANT
 checkfiles WANT GOT
 echo OK
 

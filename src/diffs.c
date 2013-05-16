@@ -68,12 +68,15 @@ diffs_main(int ac, char **av)
 	dstat	*diffstats = 0, *ds;
 	int	diffstat_only = 0;
 	longopt	lopts[] = {
+		{ "normal", 300 },	// like diff(1)'s default
+		{ "no-unified", 300 },	// alias
 		{ "stats", 330 },	 /* show diffstat output */
 		{ "stats-only", 340 },	 /* show only diffstat output */
 		{ 0, 0 }
 	};
 	RANGE	rargs = {0};
 
+	unless (getenv("_BK_OLDSTYLE_DIFFS")) dop.out_unified = 1;
 	dop.out_header = 1;
 	while ((c = getopt(ac, av,
 		    "@|a;A;bBcC|d;efhHl|nNpr;R|s|u|vw", lopts)) != -1) {
@@ -94,7 +97,10 @@ diffs_main(int ac, char **av)
 		    case 'h': dop.out_header = 0; break;	/* doc 2.0 */
 		    case 'H': dop.out_comments = 1; break;
 		    case 'l': boundaries = optarg; break;	/* doc 2.0 */
-		    case 'n': dop.out_rcs = 1;	break;		/* doc 2.0 */
+		    case 'n':
+		    	dop.out_rcs = 1;
+			dop.out_unified = 0;
+			break;	
 		    case 'N': dop.new_is_null = 1; break;
 		    case 'p': dop.out_show_c_func = 1; break;	/* doc 2.0 */
 		    case 'R': unless (Rev = optarg) Rev = "-"; break;
@@ -128,6 +134,10 @@ diffs_main(int ac, char **av)
 		    case '@':
 			if (range_urlArg(&rargs, optarg)) return (1);
 			break;
+		    case 300: // --normal
+			dop.out_unified = 0;
+			dop.out_rcs = 0;
+			break;
 		    case 340:	/* --stats-only */
 			diffstat_only = 1;
 			/* fallthrough */
@@ -139,12 +149,14 @@ diffs_main(int ac, char **av)
 		}
 	}
 
+	unless (diff_cleanOpts(&dop)) usage();
+
 	if ((rargs.rstart && (boundaries || Rev)) || (boundaries && Rev)) {
 		fprintf(stderr, "%s: -R must be alone\n", av[0]);
 		return (1);
 	}
 
-	if (diffstat_only && (dop.out_unified || !dop.out_header ||
+	if (diffstat_only && (!dop.out_header ||
 		dop.out_comments || dop.out_rcs || dop.out_sdiff)) {
 		fprintf(stderr, "%s: --stats-only should be alone\n", av[0]);
 		return (1);

@@ -144,7 +144,7 @@ cd "$HERE/copy3/src"
 echo OK
 echo $N Check diffs with long line ..................................$NL
 cd "$HERE/project/src"
-bk diffs -h -r1.1 -r1.2 long1 > diff
+bk diffs -h --no-unified -r1.1 -r1.2 long1 > diff
 echo > diff.ref
 diff long1_1.1.sav long1_1.2.sav >> diff.ref
 diff diff diff.ref  

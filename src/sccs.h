@@ -1384,6 +1384,7 @@ int	crypto_symDecrypt(char *key, FILE *fin, FILE *fout);
 int	inskeys(char *image, char *keys);
 void	lockfile_cleanup(void);
 
+int	diff_cleanOpts(df_opt *opts);
 int	diff_files(char *file1, char *file2, df_opt *opts, df_ctx **dc, char *out);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),

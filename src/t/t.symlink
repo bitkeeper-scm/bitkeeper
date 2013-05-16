@@ -166,7 +166,7 @@ cat > CMP1 << EOF
 ---
 > SYMLINK -> file2
 EOF
-bk diffs -r1.1 -r1.2 symlink > CMP2
+bk diffs --no-unified -r1.1 -r1.2 symlink > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -211,7 +211,7 @@ echo $N Check diff of edited symlinks ...............................$NL
 bk edit $Q symlink
 rm symlink
 ln -s junk symlink
-bk diffs symlink > GOT || exit 1
+bk diffs --no-unified symlink > GOT || exit 1
 cat > WANT << EOF
 ===== symlink 1.5 vs edited =====
 1c1
