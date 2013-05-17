@@ -63,7 +63,7 @@ again:
 		}
 		unless (chomp(buf)) {
 			/* handle truncated buffer from sfiles being killed */
-			if (feof(flist) && sfilesDied(0)) return (0);
+			if (feof(flist) && sfilesDied(0, 0)) return (0);
 		}
 		localName2bkName(buf, buf);
 		cleanPath(buf, buf);
@@ -162,7 +162,7 @@ sfiles_glob(char *glob)
 char *
 sfileFirst(char *cmd, char **Av, int Flags)
 {
-	if (sfilesDied(0)) return (0);
+	if (sfilesDied(0, 0)) return (0);
 	rev[0] = 0;
 	lprog = cmd;
 	flags = Flags;
@@ -239,8 +239,6 @@ sfileFirst(char *cmd, char **Av, int Flags)
 int
 sfileDone(void)
 {
-	int	ret;
-
 	if (av) {
 		av = 0;
 		ac = 0;
@@ -254,11 +252,8 @@ sfileDone(void)
 	if (glob) free(glob);
 	glob = 0;
 	lprog = "";
-	if (ret = sfilesDied(0)) {
-		return (ret);
-	}
-	sfilesDied(1); /* kill sfiles */
-	return (0);
+	/* wait for sfiles to exit, kill() if needed */
+	return (sfilesDied(1, 1));
 }
 
 int
@@ -284,19 +279,21 @@ sfiles(char **av)
 }
 
 int
-sfilesDied(int killit)
+sfilesDied(int wait, int killit)
 {
 	int	ret, opt;
-	static	int sfilesRet = 0;
+	static	int sfilesRet;
 
 	if (spid > 0) {
-		opt = WNOHANG;
+		opt = (wait || killit) ? 0 : WNOHANG;
+		if (wait && (spid == waitpid(spid, &ret, 0))) goto err;
 		if (killit) {
-			if (kill(spid, SIGTERM)) kill(spid, SIGKILL);
-			opt = 0;
+			if (kill(spid, SIGTERM) && (errno != ESRCH)) {
+				kill(spid, SIGKILL);
+			}
 		}
 		if (spid == waitpid(spid, &ret, opt)) {
-			if (WIFEXITED(ret)) {
+err:			if (WIFEXITED(ret)) {
 		    		sfilesRet = WEXITSTATUS(ret);
 			} else if (WIFSIGNALED(ret)) {
 				sfilesRet = WTERMSIG(ret);

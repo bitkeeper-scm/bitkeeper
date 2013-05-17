@@ -753,3 +753,66 @@ allocArray(int len, int esize, void *(*allocate)(size_t size))
 	*(u32 *)ret = (c << LBITS) | len;
 	return (ret);
 }
+
+/*
+ * Given two arrays in sorted order, walk the arrays in parallel and
+ * call the supplied 'walk' call back on each it item found in either
+ * array.  The walk callback is called with a pointer to the data in
+ * each array, if an item appear only in on array then the point for
+ * the other array will be 0.
+ *
+ * example:
+ *   a = { "a", "b", "c" }
+ *   b = { "b", "d" };
+ *  will make the following callbacks:
+ *   walk(t, "a", 0);
+ *   walk(t, "b", "b");
+ *   walk(t, "c", 0);
+ *   walk(t, "0, "d");
+ *
+ * 'compar' is the comparison function is set to string_sort if null
+ * If walk() returns a positive number then that number is accumulated
+ * and returned from parallelLines().  If the return from walk() is
+ * negative the tranversal is aborted and that number is returned
+ * immediately.
+ */
+int
+parallelLines(char **a, char **b,
+    int (*compar)(const void *, const void *),
+    int (*walk)(void *token, char *a, char *b),
+    void *token)
+{
+	int	i, j;
+	int	cmp, r;
+	int	sum = 0;
+	int	na, nb;
+	char	*aa, *bb;
+
+	unless (compar) compar = string_sort;
+	na = nLines(a);
+	nb = nLines(b);
+
+	i = j = 1;
+	while ((i <= na) || (j <= nb)) {
+		if (i > na) {
+			cmp = 1;
+		} else if (j > nb) {
+			cmp = -1;
+		} else {
+			cmp = compar(a+i, b+j);
+		}
+		if (cmp < 0) {
+			aa = a[i++];
+			bb = 0;
+		} else if (cmp > 0) {
+			aa = 0;
+			bb = b[j++];
+		} else {
+			aa = a[i++];
+			bb = b[j++];
+		}
+		if ((r = walk(token, aa, bb)) < 0) return (r);
+		sum += r;
+	}
+	return (sum);
+}

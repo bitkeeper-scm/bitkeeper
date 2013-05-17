@@ -82,6 +82,8 @@ private	struct {
 	u32	checkout:1;	/* --checkout: do sccs checkouts in parallel */
 	u32	seen_config:1;	/* Have we unpacked BitKeeper/etc/config yet? */
 	u32	takepatch:1;	/* called from takepatch */
+	u32	clone:1;	/* --clone: use 'bk _sfiles_clone' */
+	u32	parents:1;	/* --parents */
 	int	mode;		/* M_IN, M_OUT, M_LIST */
 	char	**more;		/* additional list of files to send */
 	char	*prefix;	/* dir prefix to put on the file listing */
@@ -107,8 +109,10 @@ sfio_main(int ac, char **av)
 	int	parallel = 0;
 	longopt	lopts[] = {
 		{ "checkout", 310 },
+		{ "clone", 315 },
 		{ "mark-no-dfiles", 320 },
 		{ "Nway", 330 },
+		{ "parents", 335 },
 		{ "takepatch", 340 },
 		{ 0, 0 }
 	};
@@ -171,11 +175,17 @@ sfio_main(int ac, char **av)
 		    case 310:	/* --checkout */
 		    	opts->checkout = 1;
 			break;
+		    case 315:	/* --clone */
+			opts->clone = 1;
+			break;
 		    case 320:	/* --mark-no-dfiles */
 			opts->mark_no_dfiles = 1;
 			break;
 		    case 330:	/* --Nway */
 			opts->seen_config = 1; /* don't wait for config file */
+			break;
+		    case 335:	/* --parents */
+			opts->parents = 1;
 			break;
 		    case 340:	/* --takepatch */
 			opts->takepatch = 1;
@@ -290,11 +300,28 @@ sfio_out(void)
 	struct	stat sb;
 	off_t	byte_count = 0;
 	int	n;
+	pid_t	clone_pid = 0;
+	int	status;
 	char	*gfile, *sfile, *t;
 	hash	*links = 0;
 	MDBM	*idDB = 0;
 	MDBM	*goneDB = 0;
+	int	fout;
+	char	**av = 0;
 	char	ln[32];
+
+	if (opts->clone) {
+		av = addLine(av, "bk");
+		av = addLine(av, "_sfiles_clone");
+		if (opts->lclone) av = addLine(av, "-L");
+		if (opts->doModes) av = addLine(av, "-m2");
+		if (opts->parents) av = addLine(av, "-p");
+		av = addLine(av, 0);
+		clone_pid = spawnvpio(0, &fout, 0, av+1);
+		dup2(fout, 0);
+		close(fout);
+		freeLines(av, 0);
+	}
 
 	setmode(0, _O_TEXT); /* read file list in text mode */
 	fputs(SFIO_VERS(opts->doModes), stdout);
@@ -405,6 +432,10 @@ reg:			if (n = out_file(buf, &sb, &byte_count, 0, 0)) {
 	if (opts->missing) {
 		missing(&byte_count);
 		freeLines(opts->missing, free);
+	} else if (opts->clone) {
+		waitpid(clone_pid, &status, 0);
+		close(0);
+		send_eof(status ? SFIO_SFILES : 0);
 	} else {
 		send_eof(0);
 	}
@@ -686,6 +717,10 @@ eof:			if (co) {
 					break;
 				    case SFIO_LOOKUP:
 					fprintf(stderr, "BAM lookup failed\n");
+					break;
+				    case SFIO_SFILES:
+					fprintf(stderr,
+					    "sfiles returned errror\n");
 					break;
 				    default:
 					fprintf(stderr,
@@ -1232,6 +1267,10 @@ header:
 					break;
 				    case SFIO_LOOKUP:
 					fprintf(stderr, "BAM lookup failed\n");
+					break;
+				    case SFIO_SFILES:
+					fprintf(stderr,
+					    "sfiles returned errror\n");
 					break;
 				    default:
 					fprintf(stderr,

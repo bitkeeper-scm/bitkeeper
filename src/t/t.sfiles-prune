@@ -14,11 +14,18 @@ EOF
 cmpfiles WANT GOT
 bk commit $Q -ywhatever
 cd ..
-bk clone $Q --sccs-compat project repo
-cd repo
+bk clone -q --sccs-compat project repo 2>ERR && fail -f ERR should fail
+cat <<EOF > WANT
+sfiles: -prune dir when .bk/dir exists
+Incomplete archive: sfiles returned errror
+sfio errored
+EOF
+cmpfiles ERR WANT
+rm -rf repo  # XXX should that be there?
 echo OK
 
-echo $N sfiles should not find any files in dir/ ....................$NL
-bk sfiles > OUT
-grep -q dir/SCCS OUT && fail -f OUT
-echo OK
+echo $N Attempt to create a new in a prune\'d directory...............$NL
+cd project
+(echo 'dir/dir2/SCCS/s.foo|+') | bk commit -ybad $Q - || fail
+bk repocheck -q 2> ERR && fail -f ERR should fail
+echo 'failed (bug - can still create illegal cset)'

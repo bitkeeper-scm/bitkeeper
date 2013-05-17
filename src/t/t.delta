@@ -423,6 +423,7 @@ echo $N Make sure we disallow .bk_skip file  .........................$NL
 touch .bk_skip
 bk new .bk_skip 2> new.out && fail -f new.out should fail
 grep -q "new: illegal filename: .bk_skip" new.out || fail -f new.out wrong message
+rm -f .bk_skip
 echo OK
 
 if [ X$PLATFORM != X"WIN32" ]

@@ -1076,7 +1076,7 @@ char	*sfileRev(void);
 char	*sfileFirst(char *cmd, char **Av, int Flags);
 int	sfileDone(void);
 int	sfiles(char **av);
-int	sfilesDied(int killit);
+int	sfilesDied(int wait, int killit);
 ser_t	sccs_findrev(sccs *, char *);
 ser_t	sccs_top(sccs *);
 ser_t	sccs_findKey(sccs *, char *);

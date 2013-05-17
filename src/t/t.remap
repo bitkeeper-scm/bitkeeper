@@ -9,6 +9,13 @@ test ! -f SCCS/s.ChangeSet && {
 	echo failed
 	exit 1
 }
+mkdir -p dir/subdir
+touch dir/subdir/foo
+bk new $Q dir/subdir/foo
+mkdir -p dir/subdir2
+touch dir/subdir2/foo
+bk new $Q dir/subdir2/foo
+bk commit $Q -y'add some files'
 echo OK
 
 echo $N Check that a frankenstein product checks ok .................$NL
@@ -81,6 +88,21 @@ test -d remap/SCCS && {
 }
 echo OK
 
+bk _getdir remap | grep -q '|?' || {
+echo $N Verify check flags a file where a directory should be .......$NL
+cd remap
+rm -rf dir/subdir dir/subdir2
+echo file > dir/subdir
+echo file > dir/subdir2
+bk repocheck > OUT 2>&1 && fail
+grep -q "file 'dir/subdir' masks a directory with history" OUT || fail
+# BUG: this one is not displayed, we die on the first
+# grep -q "file 'dir/subdir2' masks a directory with history" OUT || fail
+rm -rf dir/subdir dir/subdir2
+echo OK
+}
+
+cd "$HERE"
 echo $N Verify that a clone of noremap stays not remapped ...........$NL
 bk clone $Q noremap noremap2 || fail
 test -d noremap2/SCCS || fail

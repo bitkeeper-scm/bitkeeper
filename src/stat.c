@@ -147,3 +147,30 @@ usage:		fprintf(stderr, "usage: bk _access <file> [r|w|x]\n");
 		return (1);
 	}
 }
+
+/*
+ * debug routine to access the internal getdir()
+ */
+int
+getdir_main(int ac, char **av)
+{
+	char	**dir;
+	int	c, i;
+
+	while ((c = getopt(ac, av, "", 0)) != -1) {
+		switch(c) {
+		    default: bk_badArg(c, av);
+		}
+	}
+	if (!av[optind] || av[optind+1]) usage();
+
+	unless (dir = getdir(av[optind])) {
+		fprintf(stderr, "%s: %s %s\n",
+		    prog, av[optind], strerror(errno));
+		return (1);
+	}
+	EACH(dir) {
+		printf("%s|%s\n", dir[i], dir[i] + strlen(dir[i]) + 1);
+	}
+	return (0);
+}

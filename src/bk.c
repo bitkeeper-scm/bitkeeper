@@ -634,9 +634,6 @@ bad_locking:				fprintf(stderr,
 		}
 		for (ac = 0; av[ac] = av[optind++]; ac++);
 		if ((dashr || dashA) && !streq(prog, "sfiles")) {
-			if (streq(prog, "check")) {
-				putenv("_BK_CREATE_MISSING_DIRS=1");
-			}
 			if (dashr) {
 				sopts = unshiftLine(sopts, strdup("sfiles"));
 				if (dashA) sopts = unshiftLine(sopts,
@@ -657,9 +654,6 @@ bad_locking:				fprintf(stderr,
 				goto out;
 			}
 			callstack_pop();
-			if (streq(prog, "check")) {
-				putenv("_BK_CREATE_MISSING_DIRS=");
-			}
 			/* we have bk [-r...] cmd [opts] ... */
 			/* we want cmd [opts] ... - */
 			av[ac++] = "-";
@@ -725,7 +719,7 @@ out:
 	close(0);
 
 	/* belt and suspenders */
-	sfilesDied(1);
+	sfilesDied(0, 1);	/* kill process, don't wait first */
 
 	if (ret < 0) ret = 1;	/* win32 MUST have a positive return */
 	return (ret);

@@ -123,6 +123,24 @@ where <url> is the BK url to that repository.
 
 Your repository should be unchanged.
 $
+#shadow
+If a repository is remapped (no SCCS dirs visible), it is possible to 
+hide a sub directory by 
+
+	rm -rf subdir
+	touch subdir
+
+and BK will appear to "lose" all the revision history below "subdir".
+The history is still there, BK has been been blocked from seeing the
+subtree by the creation of a file where there should be a directory.
+
+You need to go examine the file at
+
+	#BKARG# 
+
+and remove it or move it to the side in order to restore the "lost"
+history.
+$
 #cset1
 An attempt was made to include or exclude a merge changeset.
 This is not currently supported.

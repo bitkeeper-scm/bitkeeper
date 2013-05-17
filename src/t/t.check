@@ -21,6 +21,26 @@ P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
 
+bk _getdir . | grep -q '|?' || {
+echo $N Demo bug of in a mergesort like alg .........................$NL
+mkdir a
+touch a/f
+bk new $Q a/f
+rmdir a
+touch a
+# Need to use lower case err to sort after 'a' to tickle the ex-coding err
+bk -r check 2> err && fail -f err
+cat <<EOF > WANT
+file './a' masks a directory with history,
+more details: bk getmsg shadow ./a
+EOF
+cmpfiles err WANT
+rm a err
+bk -r check || fail
+test -d a || fail not fixed
+echo OK
+}
+
 echo $N Create some data ............................................$NL
 for dir in d1 d2 d3 d1/sub1 d2/sub1 d3/sub d3/sub2
 do	mkdir $dir
@@ -415,7 +435,7 @@ bk clone $Q project clone || exit 1
 cd clone
 # this one should print a warning
 touch d1/sub1/.bk_skip
-bk -r check -a >OUT 2>ERRS && exit 1
+bk -r check -a >OUT 2>ERRS && fail
 rm d1/sub1/.bk_skip
 [ -s ERRS ] || {
 	echo ".bk_skip didn't cause a warning; output was"
@@ -423,13 +443,11 @@ rm d1/sub1/.bk_skip
 	echo "error output was empty!"
 	exit 1
 }
-grep "^Missing" ERRS > /dev/null || {
-	echo "Wrong errors; output was"
-	cat OUT
-	echo "error output was"
-	cat ERRS
-	exit 1
-}
+grep -v 'sfiles: d1/sub1/.bk_skip when .bk/d1/sub1 exists' ERRS |
+     grep -v '^Missing file' |
+     grep -v 'At least some of the chk3' |
+     grep -v 'or a .bk_skip file' > ERRS2
+test -s ERRS2 && fail -f ERR2 wrong error messages
 echo OK
 
 test -d $TESTDATA/cset-gzipped && {
@@ -471,20 +489,36 @@ echo $N Make sure .bk_skip and SCCS/.bk_skip works ..................$NL
 # missing files
 cd "$HERE/clone"
 bk _touch d1/sub1/SCCS/.bk_skip
-bk -r check -a >OUT 2>ERRS
-grep -v 'Missing file' ERRS > E2
-test -s E2 && {
-	echo "Unexpected error output from check; output was"
-	cat OUT
-	echo "error output was"
-	cat ERRS
-	exit 1
+bk -r check -a >OUT 2>ERRS && fail
+grep -q 'sfiles: d1/sub1/SCCS/.bk_skip when .bk/d1/sub1/SCCS exists' ERRS || {
+     fail -f ERRS
 }
+grep -v 'sfiles: d1/sub1/SCCS/.bk_skip when .bk/d1/sub1/SCCS exists' ERRS |
+     grep -v '^Missing file' |
+     grep -v 'At least some of the chk3' |
+     grep -v 'or a .bk_skip file' > ERRS2
+test -s ERRS2 && fail -f ERRS2 wrong error messages
+echo OK
+
+echo $N bk check should detect new sfiles in a .bk_skip or -prune ...$NL
+# In a remapped repo, there should be no .bk/path/to if -f path/to/.bk_skip
+# But that code is not there yet, so this test fails.
+cd "$HERE"
+commercial proj2
+mkdir tmp
+touch tmp/.bk_skip
+touch tmp/foo
+bk new $Q tmp/foo
+bk -r check -a 2>ERR && fail -f ERR
+grep -v '^Missing file' ERR |
+     grep -v 'At least some of the chk3' |
+     grep -v 'or a .bk_skip file' > ERRS2
+echo sfiles: tmp/.bk_skip when .bk/tmp exists > WANT
+cmpfiles ERRS2 WANT
+rm tmp/.bk_skip
 echo OK
 
 echo $N bk check should detect copied sfile .........................$NL
-cd "$HERE"
-commercial proj2
 echo "hi" > foo
 bk new $Q foo
 bk commit $Q -yfoo

@@ -242,6 +242,7 @@ _fslrm
 _rm => _fslrm
 gca
 get
+_getdir
 gethelp
 gethost
 _getkv

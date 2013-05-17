@@ -1040,6 +1040,12 @@ chk_eoln(sccs *s, int eoln_native)
 private void
 listFound(hash *db)
 {
+	hash	*h;
+	FILE	*f;
+	char	*t;
+	sccs	*s;
+	char	key[MAXKEY];
+
 	if (goneKey & 1) { /* -g option => key only, no header */
 		EACH_HASH(db) printf("%s\n", (char *)db->kptr);
 		return;
@@ -1052,6 +1058,32 @@ listFound(hash *db)
 		fprintf(stderr,
 		    "Missing file (bk help chk3) %s\n", (char *)db->kptr);
 	}
+	/* see if .bk_skip or a -prune ignore pattern is to blame */
+	h = hash_new(HASH_MEMHASH);
+	f = popen("bk sfiles -a --no-bkskip", "r");
+	assert(f);
+	while (t = fgetline(f)) hash_insertStrSet(h, t);
+	pclose(f);
+
+	f = popen("bk sfiles", "r");
+	assert(f);
+	while (t = fgetline(f)) hash_deleteStr(h, t);
+	pclose(f);
+
+	EACH_HASH(h) {
+		if (s = sccs_init(h->kptr, SILENT|INIT_MUSTEXIST)) {
+			sccs_sdelta(s, sccs_ino(s), key);
+			sccs_free(s);
+			if (hash_fetchStr(db, key)) {
+				fprintf(stderr,
+				    "At least some of the chk3 errors above "
+				    "are caused by a -prune ignore pattern\n"
+				    "or a .bk_skip file.\n");
+				break;
+			}
+		}
+	}
+	hash_free(h);
 }
 
 private	char *

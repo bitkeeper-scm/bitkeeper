@@ -102,6 +102,11 @@ int	pruneLines(char **space, char **remove,
 int	sameLines(char **p, char **p2);
 char	*shellquote(char *in);
 
+int	parallelLines(char **a, char **b,
+    int (*compar)(const void *, const void *),
+    int (*walk)(void *token, char *a, char *b),
+    void *token);
+
 /* arrays of arbitrary sized data */
 
 /* TYPE *growArray(TYPE **space, int n) */

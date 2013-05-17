@@ -11,6 +11,7 @@
 #define SFIO_SIZE       5
 #define SFIO_LOOKUP     6
 #define SFIO_MORE       7       /* another sfio follows */
+#define SFIO_SFILES	8
 
 #define M_IN    1
 #define M_OUT   2

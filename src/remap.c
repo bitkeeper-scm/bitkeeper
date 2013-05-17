@@ -217,44 +217,78 @@ remap_rmdir(project *proj, char *dir)
 	}
 }
 
+struct getdirMerge {
+	project	*proj;
+	char	*dir;
+	char	**add;
+};
+
+/*
+ * Note: all dotbk entries will either be freed or copied to add.
+ * The gfile holds a file or dir from the gfile namespace.
+ * The dotbk holds a shadow .bk dir that matches a gfile dir
+ */
+private int
+getdirMerge(void *token, char *gfile, char *dotbk)
+{
+	struct	getdirMerge *opts = token;
+	char	buf[MAXPATH];
+
+	unless (dotbk) return (0);	/* okay for gfile to not match .bk */
+
+	if (dotbk[strlen(dotbk)+1] == 'f') {
+		die("file in %s/.bk/%s/%s",
+		    proj_root(opts->proj), opts->dir, dotbk);
+	}
+	if (gfile) {
+		if (gfile[strlen(gfile)+1] == 'f') {
+			warn("file '%s/%s' masks a directory with history,\n",
+			    opts->dir, gfile);
+			// XXX - die?  What if more than one?
+			die("more details: bk getmsg shadow %s/%s\n",
+			    opts->dir, gfile);
+		}
+		free(dotbk);
+	} else {
+		/* ret missing something from mapdir */
+		unless (streq(dotbk, "SCCS")) {
+			sprintf(buf, "%s/%s/%s",
+			    proj_root(opts->proj), opts->dir, dotbk);
+			mkdir(buf, 0777);
+		}
+		opts->add = addLine(opts->add, dotbk);
+	}
+	return (0);
+}
+
 char **
 remap_getdir(project *proj, char *dir)
 {
 	int	i, sccs;
-	char	**ret, *t;
+	char	**ret;
 	char	**mapdir;
-	char	tmp[MAXPATH];
+	struct	getdirMerge opts;
 	char	buf[MAXPATH];
 
 	sccs = fullRemapPath(buf, proj, dir);
 	ret = getdir(buf);
 	if (sccs) {
 		EACH(ret) unremap_name(ret[i]);
-	} else {
+	} else if (proj) {
 		if (streq(dir, ".")) removeLine(ret, ".bk", free);
-		if (proj && getenv("_BK_CREATE_MISSING_DIRS")) {
-			sprintf(tmp, "%s/.bk/%s", proj_root(proj), dir);
-			mapdir = getdir(tmp);
-			/* remove items from mapdir already in 'ret' */
-			pruneLines(mapdir, ret, 0, free);
-			EACH(mapdir) {
-				unless (streq(mapdir[i], "SCCS")) {
-					concat_path(tmp, buf, mapdir[i]);
-					mkdir(tmp, 0777);
-				}
-				ret = addLine(ret, mapdir[i]);
-			}
-			freeLines(mapdir, 0); /* copied all to ret */
+		sprintf(buf, "%s/.bk/%s", proj_root(proj), dir);
+		mapdir = getdir(buf);
+
+		opts.proj = proj;
+		opts.dir = dir;
+		opts.add = 0;
+		parallelLines(ret, mapdir, 0, getdirMerge, &opts);
+		freeLines(mapdir, 0);
+
+		if (opts.add) {
+			ret = catLines(ret, opts.add);
+			freeLines(opts.add, 0);
 			uniqLines(ret, free);
-		} else {
-			concat_path(tmp, dir, "SCCS");
-			fullRemapPath(buf, proj, tmp);
-			if (isdir(buf)) {
-				t = malloc(7);
-				memcpy(t, "SCCS\0d", 7);
-				ret = addLine(ret, t);
-				uniqLines(ret, free);
-			}
 		}
 	}
 	return (ret);

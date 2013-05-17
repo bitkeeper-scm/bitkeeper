@@ -71,6 +71,7 @@ typedef struct {
 	u32	atRoot:1;		/* running at root of repo? */
 	u32	saw_locked:1;		/* saw a pfile somewhere? */
 	u32	saw_pending:1;		/* saw a dfile somewhere? */
+	u32	no_bkskip:1;		/* ignore .bk_skip */
 
 	char	*relpath;		/* --replath: print relative paths */
 	FILE	*out;			/* -o<file>: send output here */
@@ -148,6 +149,7 @@ sfiles_main(int ac, char **av)
 		{ "relpath:", 300 },
 		{ "gui", 301 },
 		{ "no-progress", 302 },	// use after --gui for no P|
+		{ "no-bkskip", 305 },
 		{ "no-cache", 310 },
 		{ 0, 0 },
 	};
@@ -236,6 +238,9 @@ sfiles_main(int ac, char **av)
 			break;
 		    case 302: /* --no-progress */
 		        opts.progress = 0;
+			break;
+		    case 305: /* --no-bkskip */
+			opts.no_bkskip = 1;
 			break;
 		    case 310: /* --no-cache */
 			no_cache = 1;
@@ -384,35 +389,48 @@ out:
 	return (rc);
 }
 
+private int
+isPathPruned(char *dir, hash *checked)
+{
+	char	buf[MAXPATH];
+
+	buf[0] = '/';		/* prune patterns start with '/' */
+	strcpy(buf+1, dir);
+	dir = buf+1;
+
+	do {
+		if (hash_fetchStrSet(checked, dir)) return (0);
+
+		if (match_globs(buf, prunedirs, 0)) return (1);
+		strcat(dir, "/.bk_skip");
+		if (exists(dir)) return (1);
+		dirname(dir);	/* remove .bk_skip */
+		hash_insertStrSet(checked, dir);
+		dir = dirname(dir); /* remove one directory */
+	} while (!streq(dir, "."));
+	return (0);
+}
+
 private	int
 fastWalk(char **dirs)
 {
 	int	i;
-	char	*t, *dir, *m;
 	char	**comps;
+	hash	*checked;
 	char	buf[MAXPATH];
 
 	load_project(".");
 	opts.onelevel = 1;
-	buf[0] = '/';		/* prune patterns start with '/' */
-	dir = buf+1;
+	checked = hash_new(HASH_MEMHASH);
 	EACH(dirs) {
-		strcpy(dir, dirs[i]);
-		unless (exists(dir)) continue;
+		unless (isdir(dirs[i])) continue;
+		if (isPathPruned(dirs[i], checked)) continue;
 
-		/*
-		 * Handle any prune patterns in the directories
-		 * leading up to the current directory.
-		 */
-		for (t = strchr(dir, '/'); t; t = strchr(t+1, '/')) {
-			*t = 0;
-			m = match_globs(buf, prunedirs, 0);
-			*t = '/';
-			if (m) break;
-		}
-		unless (t) walk(dir);
+		walk(dirs[i]);
 	}
 	opts.onelevel = 0;
+	hash_free(checked);
+
 	if (proj_isProduct(0) && opts.pending) {
 		free_project();
 		comps = proj_scanComps(0, DS_PENDING);
@@ -873,6 +891,7 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 			concat_path(buf, wi->proj_prefix,
 			    p ? (file + wi->rootlen + 1) : "");
 			if (match_globs(buf, prunedirs, 0)) {
+				// if remap and dir exists in .bk, trouble?
 				return (-1);
 			}
 		}
@@ -900,8 +919,9 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 			wi->seenfirst = 1;
 		}
 	} else {
-		if (patheq(p, BKSKIP)) {
+		if (!opts.no_bkskip && patheq(p, BKSKIP)) {
 			/* abort current dir */
+			// if remap and dir exists in .bk, trouble?
 			winfo_free(wi);
 			return (-2);
 		}
@@ -1611,6 +1631,7 @@ findsfiles(char *file, struct stat *sb, void *data)
 	char	*p = strrchr(file, '/');
 	sinfo	*si = (sinfo *)data;
 	char	buf[MAXPATH];
+	char	tmp[MAXPATH];
 
 	unless (p) return (0);
 	if (S_ISDIR(sb->st_mode)) {
@@ -1645,13 +1666,25 @@ findsfiles(char *file, struct stat *sb, void *data)
 				return (-2);
 			}
 		}
-		if (si->is_clone && si->skip_etc && streq(file + 2, "BitKeeper/etc")) {
+		if (si->is_clone && si->skip_etc &&
+		    streq(file + 2, "BitKeeper/etc")) {
 			return (-1);
 		}
 		if (prunedirs) {
 			concat_path(buf, si->proj_prefix,
 			    file + si->rootlen + 1);
-			if (match_globs(buf, prunedirs, 0)) return (-1);
+			if (match_globs(buf, prunedirs, 0)) {
+				sprintf(tmp, "%s/.bk%s%s",
+				    proj_root(0), si->proj_prefix,
+				    file + si->rootlen + 1);
+				/* we allow BKTMP for park */
+				if (isdir(tmp) && !streq(buf+1, BKTMP)) {
+					die("sfiles: -prune %s when %s exists\n",
+					    buf + 1,
+					    tmp + strlen(proj_root(0)) + 1);
+				}
+				return (-1);
+			}
 		}
 	} else {
 		if ((p - file >= 6) && pathneq(p - 5, "/SCCS/s.", 8)) {
@@ -1677,10 +1710,19 @@ findsfiles(char *file, struct stat *sb, void *data)
 			 */
 			unless(si->dfiles) si->dfiles = hash_new(HASH_MEMHASH);
 			hash_storeStr(si->dfiles, p+3, 0);
-		} else if (patheq(p+1, BKSKIP)) {
+		} else if (!opts.no_bkskip && patheq(p+1, BKSKIP)) {
 			/*
 			 * Skip directory containing a .bk_skip file
 			 */
+			*p = 0;	/* file == just directory */
+			sprintf(tmp, "%s/.bk%s",
+			    proj_root(0), si->proj_prefix);
+			concat_path(tmp, tmp, file + si->rootlen);
+			if (isdir(tmp)) {
+				die("sfiles: %s/.bk_skip when %s exists\n",
+				    tmp + strlen(proj_root(0)) + strlen("/.bk/"),
+				    tmp + strlen(proj_root(0)) + 1);
+			}
 			return (-2);
 		} else if (si->is_clone &&
 		    pathneq(file+2, BAM_ROOT, strlen(BAM_ROOT))) {
