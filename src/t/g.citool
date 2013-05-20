@@ -848,10 +848,6 @@ bk guitest citool pending-new >"$OUT" 2>&1 <<'EOF'
 	test_togglePending
 	set txt [test_getFiles]
 	set rc 0
-	if {![regexp -- {pending-new@1.0\n} $txt]} {
-		puts stderr "Did not find initial delta for pending-new"
-		set rc 1
-	}
 	if {![regexp -- {pending-new@1.1\n} $txt]} {
 		puts stderr "Did not find pending delta for pending-new"
 		set rc 1

@@ -128,6 +128,6 @@ cat >WANT <<EOF
 4a5
 > remote line 2  (3. alt-click me)
 EOF
-bk diffs afile > GOT
+bk diffs --normal afile > GOT
 cmpfiles WANT GOT
 echo OK
