@@ -1341,6 +1341,28 @@ out:
 	}
 }
 
+void
+cmdlog_unlock(int flags)
+{
+	unless (cmdlog_locks & flags) return;
+	if (flags & cmdlog_locks & (CMD_NESTED_WRLOCK|CMD_NESTED_RDLOCK)) {
+		char	*nlid;
+
+		nlid = getenv("_BK_NESTED_LOCK");
+		assert(nlid);
+		T_NUM(TR_LOCK|TR_NESTED, "nlid = %s", nlid);
+		if (nested_unlock(0, nlid)) {
+			error("%s", nested_errmsg());
+		}
+		cmdlog_locks &= ~(CMD_NESTED_WRLOCK|CMD_NESTED_RDLOCK);
+	}
+	if (flags & cmdlog_locks & (CMD_WRLOCK|CMD_RDLOCK)) {
+		T_LOCK("UNLOCK %s", proj_cwd());
+		repository_unlock(0, 0);
+		cmdlog_locks &= ~(CMD_WRLOCK|CMD_RDLOCK);
+	}
+}
+
 private	MDBM	*notes = 0;
 
 void
@@ -1451,24 +1473,10 @@ cmdlog_end(int ret, int bkd_cmd)
 		}
 	}
 	free(log);
-	if ((!bkd_cmd || (bkd_cmd && ret )) &&
-	    (cmdlog_locks & (CMD_NESTED_WRLOCK|CMD_NESTED_RDLOCK))) {
-		char	*nlid;
-
-		nlid = getenv("_BK_NESTED_LOCK");
-		assert(nlid);
-		T_NUM(TR_LOCK|TR_NESTED, "nlid = %s", nlid);
-		if (nested_unlock(0, nlid)) {
-			error("%s", nested_errmsg());
-			// XXX we need to fail command here
-			//     *ret = 1;  ?
-		}
+	if ((!bkd_cmd || (bkd_cmd && ret ))) {
+		cmdlog_unlock(CMD_NESTED_WRLOCK|CMD_NESTED_RDLOCK);
 	}
-
-	if (!bkd_cmd && (cmdlog_locks & (CMD_WRLOCK|CMD_RDLOCK))) {
-		T_LOCK("UNLOCK %s", proj_cwd());
-		repository_unlock(0, 0);
-	}
+	unless (bkd_cmd) cmdlog_unlock((CMD_WRLOCK|CMD_RDLOCK));
 out:
 	cmdlog_buffer[0] = 0;
 	cmdlog_flags = 0;

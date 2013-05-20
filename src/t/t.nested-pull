@@ -11,6 +11,78 @@
 
 set -e
 
+echo $N Two consecutive pulls should not reuse RESYNC................$NL
+nested proj
+touch afile ; bk new $Q afile ; bk commit $Q -y'afile'
+cd "$HERE"
+bk clone $Q proj copy
+cd proj
+bk mv afile bfile ; echo foo > afile ; bk new $Q afile ; bk commit $Q -y'new afile'
+cd ../copy
+bk mv afile bfile ; echo foo > afile ; bk new $Q afile ; bk commit $Q -y'new afile'
+echo q | bk pull $Q 2>ERR && fail should have failed
+bk pull $Q 2>ERR && fail should have failed
+perl -pe 's|$HERE||; s|(\s*Write locker:).*|\1|' < ERR > GOT
+cat <<EOF > WANT
+Unable to lock repository for update.
+EOF
+cmpfiles WANT GOT
+echo OK
+
+TAGGED=`perl -e 'if (\`bk version -s\` =~ /^[0-9]+$/) { print "NO" ;} else { print "YES";}'`
+if [ $TAGGED = NO ] ; then
+	echo $N Counting number of locks	....................................$NL
+	cd "$HERE"
+	bk --cd=copy parent -qr
+	bk --cd=copy abort -qf
+	bk --cd=copy undo -qsfr+
+	for i in 1 2 3;
+	do
+  		bk clone $Q proj parent$i
+  		cd parent$i
+  		touch p$i; bk new $Q p$i; bk commit $Q -y"p$i"
+  		cd ..
+  		bk --cd=copy parent -qa -i ../parent$i
+	done
+	cd copy
+	mkdir BitKeeper/triggers
+	cat <<EOF > BitKeeper/triggers/post-incoming
+#!/bin/sh
+exec 2>> "$HERE/locks-read"
+set -x
+test -d RESYNC && ls -al RESYNC 1>&2
+bk lock -Sl
+exit 0
+EOF
+	chmod +x BitKeeper/triggers/post-incoming
+	cat <<EOF > BitKeeper/triggers/pre-incoming
+#!/bin/sh
+exec 2>> "$HERE/locks-write"
+set -x
+test -d RESYNC && ls -al RESYNC 1>&2
+bk lock -Sl
+exit 0
+EOF
+	chmod +x BitKeeper/triggers/pre-incoming
+	bk --trace=locking,cmd --trace-file="$HERE/OUT" pull $Q
+	NLOCKS=`egrep "WRLOCK [0-9]+" "$HERE/OUT" | wc -l`
+	test $NLOCKS -eq 5 || fail -f "$HERE/OUT" wanted 5 WRLOCKs, got $NLOCKS
+	# bk ci locks in RESYNC so we get 1 WRLOCK per component + 1 WRLOCK
+	# in RESYNC for the file
+	grep -q -i write ../locks-read && fail -f ../locks-read write locks
+	grep -q -i read ../locks-read || fail -f ../locks-read read locks
+	grep -q -i read ../locks-write && fail -f ../locks-write read locks
+	grep -q -i write ../locks-write || fail -f ../locks-write write locks
+	KEEPNL=`grep bk_nl ../locks-write | wc -l`
+	test $KEEPNL -eq 3 || \
+	    fail -f "$HERE/locks-write" wanted 3 .bk_nl, got $KEEPNL
+	# bk ci locks in RESYNC so we get 1 WRLOCK per component + 1 WRLOCK
+	echo OK
+fi
+
+cd "$HERE"
+rm -rf proj copy parent1 parent2
+
 echo $N Set up component collisions and abort .......................$NL
 nested bing
 touch gcc/foo gdb/bar

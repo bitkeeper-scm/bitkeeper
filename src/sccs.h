@@ -1232,6 +1232,7 @@ void	cmdlog_start(char **av, int bkd_mode);
 void	cmdlog_addnote(const char *key, const char *val);
 int	cmdlog_end(int ret, int bkd_mode);
 void	cmdlog_lock(int flags);
+void	cmdlog_unlock(int flags);
 void	callstack_push(int remote);
 void	callstack_pop(void);
 int	write_log(char *file, char *format, ...)

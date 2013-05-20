@@ -25,10 +25,11 @@ lock_main(int ac, char **av)
 	int	what = 0, silent = 0, keepOpen = 0, tcp = 0;
 	int	lockclient = -1;
 	int	printStale = 0;
+	int	standalone = 0;
 	char	*file = 0, *nlid = 0, *pidfile = 0;
 	HANDLE	h = 0;
 
-	while ((c = getopt(ac, av, "f;klP;qRrstwWLUv", 0)) != -1) {
+	while ((c = getopt(ac, av, "f;klP;qRrSstwWLUv", 0)) != -1) {
 		switch (c) {
 		    case 'P': pidfile = strdup(optarg);
 		    case 'q': /* fall thru */			/* doc 2.0 */
@@ -39,6 +40,7 @@ lock_main(int ac, char **av)
 			if (file) usage();
 			file = optarg;
 			break;
+		    case 'S': standalone = 1; break;
 		    case 'v': printStale = 1; break;
 		    /* One of .. or fall through to error */
 		    case 'l':					/* doc 2.0 */
@@ -244,7 +246,7 @@ lock_main(int ac, char **av)
 		exit (0);
 	    case 'l':	/* list lockers / exit status */
 		unless (silent) {
-			if (proj_isEnsemble(0)) {
+			if (!standalone && proj_isEnsemble(0)) {
 				/*
 				 * If we are printing stale locks, don't
 				 * remove them.

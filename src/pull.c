@@ -180,7 +180,6 @@ pull_main(int ac, char **av)
 			opts.autoPopulate = 1;
 		}
 	}
-	unless (opts.port && opts.portNoCommit) cmdlog_lock(CMD_NESTED_WRLOCK);
 	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "pull: failed to accept license, aborting.\n");
 		exit(1);
@@ -233,6 +232,8 @@ err:		freeLines(envVar, free);
 		 * be put so that bugs don't need to be found one at a
 		 * time?
 		 */
+		cmdlog_lock((opts.port && opts.portNoCommit) ?
+		    CMD_WRLOCK : CMD_WRLOCK|CMD_NESTED_WRLOCK);
 		unless (opts.transaction) putenv("BKD_NESTED_LOCK=");
 
 		r = remote_parse(urls[i], REMOTE_BKDURL);
@@ -259,6 +260,17 @@ err:		freeLines(envVar, free);
 			assert(r->pid == 0);
 			sleep(min((j++ * 2), 10));
 		}
+		/*
+		 * After each parent pull, the triggers downgrade the
+		 * lock to a read lock. If we want to prevent pulling
+		 * under a readlock we need to reaquire the write
+		 * lock. Note we drop the nested writelock since structures
+		 * that it wants (RESYNC/.bk_nl) are removed by resolve
+		 * pass4.
+		 * This means that someone could steal the lock from us.
+		 * But it would happen at a completed pull boundary.
+		 */
+		cmdlog_unlock(CMD_NESTED_WRLOCK|CMD_WRLOCK);
 		remote_free(r);
 		if ((rc == 2) && opts.local && !opts.quiet) {
 			sys("bk", "changes", "-aL", urls[i], SYS);
@@ -1169,11 +1181,6 @@ pull(char **av, remote *r, char **envVar)
 	int	got_patch;
 	char	key_list[MAXPATH];
 
-	if (repository_wrlock(0)) {
-		fprintf(stderr, "%s: can't lock repository\n", prog);
-		return (-1);
-	}
-
 	assert(r);
 	putenv("BK_STATUS=");
 	if (rc = pull_part1(av, r, key_list, envVar)) goto out;
@@ -1276,8 +1283,7 @@ done:	freeLines(conflicts, free);
 		/* we run a post trigger only if we didn't call resolve */
 		trigger(av[0], "post");
 	}
-out:	repository_unlock(0, 0);
-	return (rc);
+out:	return (rc);
 }
 
 private int
