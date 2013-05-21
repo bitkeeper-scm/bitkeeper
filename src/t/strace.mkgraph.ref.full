@@ -203,5 +203,5 @@ lseek(4, 0, 2) = 18589
 write(4, buf, 68) = 68
 close(4) = 0
 stat(/build/.regression wscott/sandbox/copy/BitKeeper/log/cmd_log, {mode=100666, size=18657}) = 0
-lstat(/build/.regression wscott/sandbox/copy/BitKeeper/readers/16774@debian40.bitmover.com.lock, {}) = -1
+lstat(/build/.regression wscott/sandbox/copy/BitKeeper/readers/21401@debian40.bitmover.com.lock, {}) = -1
 open(/build/.regression wscott/sandbox/copy/BitKeeper/writer/lock, 0, 0) = -1
