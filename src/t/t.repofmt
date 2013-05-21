@@ -3,9 +3,7 @@ export BK_CONFIG
 
 checkbk()
 {
-	FEAT="$1"/BitKeeper/log/features
-
-	grep -q BKFILE "$FEAT" || fail $FEAT missing BKFILE
+	bk --cd="$1" features | grep -q BKFILE || fail  missing BKFILE
 	ENC=`bk prs -hnd:ENCODING: -r+ "$1"/ChangeSet`
 	test X"$ENC" = XBK,bweave || fail "$1" not BKfile $ENC
 	ENC=`bk prs -hnd:ENCODING: -r+ "$1"/BitKeeper/etc/config`
@@ -17,6 +15,7 @@ checkbk()
 	bk repotype -q "$1" && {
 		for c in `bk --cd="$1" comps -h`
 		do    checkbk "$1"/"$c"
+		      test -f "$1"/BitKeeper/log/features || fail
 		done
 	}
 	true

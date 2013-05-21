@@ -666,6 +666,9 @@ proj_product(project *p)
  * Return the project* for any product at or above the current repository.
  * Unlike proj_product this one still works when the current repo is
  * standalone.
+ *
+ * Note: this is not setting the refcnt on the returned project* so it
+ *       is relying on the recent projects cache.  Be careful.
  */
 project *
 proj_findProduct(project *p)

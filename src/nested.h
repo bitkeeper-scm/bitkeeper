@@ -271,6 +271,7 @@ void	nested_printLockers(project *p,
 void	nested_updateIdcache(project *comp);
 int	nested_isPortal(project *comp);
 int	nested_isGate(project *comp);
+int	nested_makeComponent(char *dir);
 void	freeNlock(void *nl);
 void	compCheckPresent(comp *c);
 void	compMarkPending(comp *c);

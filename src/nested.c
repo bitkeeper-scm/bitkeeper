@@ -1290,3 +1290,29 @@ nested_complist(nested *n, project *p)
 	free(cp);
 	return (comps);
 }
+
+/*
+ * Make the respository at 'dir' a component by writing the
+ * BitKeeper/log/COMPONENT file.  It figures out the product and
+ * relative path for itself.
+ */
+int
+nested_makeComponent(char *dir)
+{
+	project	*p, *prod;
+	char	*rel, *t;
+	int	rc = 0;
+
+	p = proj_init(dir);
+	prod = proj_findProduct(p);
+	assert(p != prod);
+	rel = proj_root(p) + strlen(proj_root(prod)) + 1;
+	t = proj_fullpath(p, "BitKeeper/log/COMPONENT");
+	unless (Fprintf(t, "%s\n", rel)) {
+		perror(t);
+		rc = -1;
+	}
+	proj_reset(p);
+	proj_free(p);
+	return (rc);
+}

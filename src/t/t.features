@@ -84,7 +84,7 @@ echo OK
 echo $N Test new nested comp does not set sortkey ...................$NL
 cd "$HERE/nest"
 bk setup -f comp
-grep -q sortkey comp/BitKeeper/log/features && fail comp has sortkey
+bk --cd=comp features | grep -q sortkey && fail comp has sortkey
 echo OK
 
 echo $N Test that bk features with none prints nothing ..............$NL

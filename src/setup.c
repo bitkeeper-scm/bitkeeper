@@ -233,9 +233,6 @@ err:			unlink("BitKeeper/etc/config");
 	 * disconnected with a valid write lease already.
 	 */
 	if (in_prod) {
-		char	*tmp;
-		char	relpath[MAXPATH];
-
 		chdir(proj_root(in_prod));
 		sys("bk", "lease", "renew", "-qw", SYS);
 		chdir(here);
@@ -245,13 +242,10 @@ err:			unlink("BitKeeper/etc/config");
 		 * make this appear to be a component from the start
 		 * so the initial ChangeSet path will be correct
 		 */
-		tmp = proj_relpath(in_prod, ".");
-		getRealName(tmp, 0, relpath);
-		free(tmp);
-		unless (Fprintf("BitKeeper/log/COMPONENT", "%s\n", relpath)) {
-			perror("BitKeeper/log/COMPONENT");
+		nested_makeComponent(".");
+		if (features_test(0, FEAT_BKFILE)) {
+			unlink("BitKeeper/log/features");
 		}
-		proj_reset(0);
 	}
 
 	features_set(0, FEAT_REMAP, !proj_hasOldSCCS(0));

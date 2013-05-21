@@ -385,7 +385,7 @@ clone_main(int ac, char **av)
 	if (check_out && !proj_isComponent(0)) {
 		Fprintf("BitKeeper/log/config", "checkout:%s!\n", check_out);
 	}
-	if (proj_isComponent(0)) {
+	if (proj_isComponent(0) && !features_test(0, FEAT_BKFILE)) {
 		/*
 		 * For compat we keep the component features file
 		 * as a copy of the product.
@@ -734,6 +734,44 @@ clone(char **av, remote *r, char *local, char **envVar)
 	}
 	after_create = 1;
 
+	rmt_features = 0;
+	if ((p = getenv("BKD_FEATURES_USED")) ||
+	    (p = getenv("BKD_FEATURES_REQUIRED"))) {
+		/*
+		 * The REQUIRED list has already been validated in
+		 * getServerInfo() so we just want to pick the set of
+		 * features to use for the new repo.  We want
+		 * everything in USED we understand.  If USED is
+		 * missing, then we use the REQUIRED list.
+		 */
+		p = strdup(p);
+		rmt_features = features_toBits(p, p);
+		free(p);
+	}
+	if (proj_isComponent(0)) {
+		/* components use product's features, but a component
+		 * may add some features.
+		 */
+		if (rmt_features & FEAT_SORTKEY) {
+			features_set(0, FEAT_SORTKEY, 1);
+		}
+	} else if (opts->attach) {
+		/*
+		 * when doing an attach we need to use the same features
+		 * as the product
+		 */
+		features_setAll(0, features_bits(proj_findProduct(0)));
+	} else {
+		TRACE("%x %d %d",
+		    rmt_features, !proj_hasOldSCCS(0), opts->bkfile);
+		features_setAll(0, rmt_features);
+		features_set(0, FEAT_REMAP, !proj_hasOldSCCS(0));
+		if (opts->bkfile != -1) {
+			features_set(0,
+			    FEAT_BKFILE|FEAT_BWEAVE|FEAT_SCANDIRS, opts->bkfile);
+		}
+	}
+
 	if (opts->parallel == 0) opts->parallel = parallel(".");
 	retrc = RET_ERROR;
 
@@ -793,44 +831,6 @@ clone(char **av, remote *r, char *local, char **envVar)
 		free(nlid);
 	}
 	proj_reset(0);
-	rmt_features = 0;
-	if ((p = getenv("BKD_FEATURES_USED")) ||
-	    (p = getenv("BKD_FEATURES_REQUIRED"))) {
-		/*
-		 * The REQUIRED list has already been validated in
-		 * getServerInfo() so we just want to pick the set of
-		 * features to use for the new repo.  We want
-		 * everything in USED we understand.  If USED is
-		 * missing, then we use the REQUIRED list.
-		 */
-		p = strdup(p);
-		rmt_features = features_toBits(p, p);
-		free(p);
-	}
-	if (proj_isComponent(0)) {
-		/* components use product's features, but a component
-		 * may add some features.
-		 */
-		if (rmt_features & FEAT_SORTKEY) {
-			features_set(0, FEAT_SORTKEY, 1);
-		}
-	} else if (opts->attach) {
-		/*
-		 * when doing an attach we need to use the same features
-		 * as the product
-		 */
-		features_setAll(0, features_bits(proj_findProduct(0)));
-	} else {
-		TRACE("%x %d %d",
-		    rmt_features, !proj_hasOldSCCS(0), opts->bkfile);
-		features_setAll(0, rmt_features);
-		features_set(0, FEAT_REMAP, !proj_hasOldSCCS(0));
-		if (opts->bkfile != -1) {
-			features_set(0,
-			    FEAT_BKFILE|FEAT_BWEAVE|FEAT_SCANDIRS,
-			    opts->bkfile);
-		}
-	}
 	/*
 	 * Above we set the sfile format features for this repository
 	 * to what we want them to be:
@@ -1309,6 +1309,15 @@ initProject(char *root, remote *r)
 	/* XXX - this function exits and that means the bkd is left hanging */
 	sccs_mkroot(root);
 	chdir(root);
+	if (getenv("_BK_TRANSACTION")) {
+		/*
+		 * We need to mark this repo has a component early so
+		 * config and features will evaluate correctly.
+		 */
+		nested_makeComponent(".");
+		assert(proj_isComponent(0));
+	}
+
 
 	putenv("_BK_NEWPROJECT=YES");
 	if (sane(0, 0)) return (-1);
@@ -1390,6 +1399,8 @@ sfio(remote *r, char *prefix)
 		cmds[++n] = freeme = aprintf("-P%s/", prefix);
 	}
 	cmds[++n] = 0;
+	// sfio will replace this
+	if (proj_isComponent(0)) unlink("BitKeeper/log/COMPONENT");
 	pid = spawnvpio(&pfd, 0, 0, cmds);
 	if (pid == -1) {
 		fprintf(stderr, "Cannot spawn %s %s\n", cmds[0], cmds[1]);
@@ -1910,7 +1921,7 @@ attach(void)
 		rc = RET_ERROR;
 		goto end;
 	}
-	unless (Fprintf("BitKeeper/log/COMPONENT", "%s\n", relpath)) {
+	if (nested_makeComponent(".")) {
 		fprintf(stderr, "attach: failed to write COMPONENT file\n");
 		rc = RET_ERROR;
 		goto end;

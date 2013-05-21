@@ -87,7 +87,7 @@ echo OK
 
 echo $N Test scandirs in a component ................................$NL
 cd gdb
-rm BitKeeper/log/features   # bk used to read the wrong 'features' file
+rm -f BitKeeper/log/features   # bk used to read the wrong 'features' file
 bk edit $Q BitKeeper/etc/gone || fail
 cat <<EOF > WANT
 @BitKeeper/etc
