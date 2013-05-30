@@ -134,7 +134,14 @@ lock_main(int ac, char **av)
 		exit(0);
 
 	    case 'r':	/* read lock the repository */
-		if (repository_rdlock(0)) {
+		nlid = 0;
+		if (!standalone && proj_isEnsemble(0)) {
+			unless (nlid = nested_rdlock(0)) {
+				fprintf(stderr, "nested read lock failed.\n%s\n",
+				    nested_errmsg());
+				return (1);
+			}
+		} else if (repository_rdlock(0)) {
 			fprintf(stderr, "read lock failed.\n");
 			repository_lockers(0);
 			exit(1);
@@ -143,7 +150,13 @@ lock_main(int ac, char **av)
 		if (tcp) {
 			tcpHandshake(lockclient, tcp);
 			nsock = tcp_accept(tcp);
-			repository_rdunlock(0, 0);
+			if (nlid && nested_unlock(0, nlid)) {
+				fprintf(stderr, "nested unlock failed:\n%s\n",
+				    nested_errmsg());
+				return (1);
+			} else {
+				repository_rdunlock(0, 0);
+			}
 			chdir("/");
 			write(nsock, &c, 1);
 			closesocket(nsock);
@@ -189,7 +202,14 @@ lock_main(int ac, char **av)
 		exit (0);
 	    case 'w':	/* write lock the repository */
 		putenv("_BK_LOCK_INTERACTIVE=1");
-		if (repository_wrlock(0)) {
+		nlid = 0;
+		if (!standalone && proj_isEnsemble(0)) {
+			unless (nlid = nested_wrlock(0)) {
+				fprintf(stderr, "nested write lock failed.\n%s\n",
+				    nested_errmsg());
+				return (1);
+			}
+		} else if (repository_wrlock(0)) {
 			fprintf(stderr, "write lock failed.\n");
 			repository_lockers(0);
 			exit(1);
@@ -198,7 +218,13 @@ lock_main(int ac, char **av)
 		if (tcp) {
 			tcpHandshake(lockclient, tcp);
 			nsock = tcp_accept(tcp);
-			repository_wrunlock(0, 0);
+			if (nlid && nested_unlock(0, nlid)) {
+				fprintf(stderr, "nested unlock failed:\n%s\n",
+				    nested_errmsg());
+				return (1);
+			} else {
+				repository_wrunlock(0, 0);
+			}
 			chdir("/");
 			write(nsock, &c, 1);
 			closesocket(nsock);

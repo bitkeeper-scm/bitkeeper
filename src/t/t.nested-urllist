@@ -685,7 +685,7 @@ cd "$HERE"
 bk clone $Q product bkd_parent
 bk clone $Q product locked
 cd locked
-L=`bk lock -wt`
+L=`bk lock -Swt`
 cd "$HERE"/product
 bk alias new TRACK ./gcc
 bk clone $Q -s. . ../copy4 || fail
