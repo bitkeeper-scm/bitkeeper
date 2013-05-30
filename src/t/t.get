@@ -198,7 +198,7 @@ echo $N Get -eg should remove readonly gfile ........................$NL
 bk get $S -eg date
 if [ -f "date" ]; then echo failed, did not remove file; exit 1; fi
 if writable date; then echo failed, added writable file; exit 1; fi
-bk unlock -p date
+bk _rm "SCCS/p.date"
 echo OK
 
 echo $N Get -er will roll back to rev r .............................$NL

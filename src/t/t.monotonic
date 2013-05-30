@@ -189,7 +189,7 @@ test `bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l` -eq 0 && {
 }
 bk edit $Q BitKeeper/etc/config
 echo whatever >> BitKeeper/etc/config
-bk unlock -f -p BitKeeper/etc/config
+bk _rm BitKeeper/etc/SCCS/p.config
 REV=`bk prs -hnd'$unless(:DANGLING:){:I:}' BitKeeper/etc/config | tail -1`
 bk _get $Q -ger$REV BitKeeper/etc/config
 bk delta $Q -yaddition BitKeeper/etc/config || exit 1

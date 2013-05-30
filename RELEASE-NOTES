@@ -10,6 +10,14 @@ bk diffs
    The diffs command now defaults to showing unified diffs.
    Use bk diffs --normal to get old style diffs.
 
+bk unlock
+   The unlock command can no longer be called on a revision controlled
+   file.  This usage was from SCCS and never makes sense in a bk
+   repository.  Use 'bk unedit FILE' instead.
+
+   Also the usage of 'bk unlock -r REPO' is no longer supported.
+   The command 'bk --cd=REPO unlock -r' can be used instead.
+
 Bug Fixes
 
   bk clone -r

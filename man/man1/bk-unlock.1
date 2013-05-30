@@ -2,29 +2,19 @@
 .TH "bk unlock" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .\"    =============== Discarding lock files ===============
 .SH NAME
-bk unlock \- remove \*(BK file or repository locks
+bk unlock \- remove \*(BK repository locks
 .SH SYNOPSIS
 .B bk unlock
 .[B] \-rsw
-.[ARG] directory
-.br
-.B bk unlock
-.[B] \-fpxz
 .FILES
 .SH DESCRIPTION
 .LP
 The unlock command can be used to remove locks which have been left behind
 for some reason.  In general, you shouldn't need this command, if you do
-it indicates that either you are removing files without unediting them
-or it indicates that \*(BK is leaving lock files that it should not.
-If it is the second case, please tell
+it indicates that \*(BK is leaving lock files that it should not.
+In that case, please tell
 .B support@bitmover.com
 so we can fix that problem.
-.LP
-There are two sorts of locks in
-\*[BK], file locks and repository locks.
-The unlock command can unlock both kinds.
-.SH "REPOSITORY UNLOCKING"
 .LP
 The unlock command can be used to remove repository level locks.  This can
 be necessary if a remote process has left behind a lock (local stale locks
@@ -41,7 +31,7 @@ imply removing the
 directory, see
 .B bk help abort
 for that.
-.SH "REPOSITORY UNLOCK OPTIONS"
+.SH "OPTIONS"
 .TP
 .B \-r
 Remove all read locks, stale or not.
@@ -51,65 +41,7 @@ Remove both read and write locks, but only if they are stale.
 .tp
 .B \-w
 Remove the write lock, stale or not.  Does not remove the RESYNC directory.
-.SH "FILE UNLOCKING"
-.LP
-Sometimes you need to explicitly unlock files.  The most common reason for
-wanting to do this comes from doing the following:
-.DS
-$ bk edit user.c
-$ rm user.c
-$ bk edit user.c
-get: can't plock user.c
-get of SCCS/s.user.c failed, skipping it.
-.DE
-.LP
-In other words, the checked out file has been removed but the lock file
-still exists.  See the clean and unedit commands for ways to avoid this
-in the future.
-.LP
-The unlock command will fix the problem described above by removing what
-is called the \*(lqp.file,\*(rq in this case
-.BR SCCS/p.user.c .
-.LP
-The options listed above explain how to use the
-.B bk unlock
-command to remove other kinds of locks as well.
-.LP
-By default,
-.B bk unlock
-removes the p.file lock.  The z.file will normally
-time out and be discarded unless it was created on a different host
-(via NFS or SMB).
-.LP
-The default behavior of
-.B bk unlock
-is to remove the p.file only if the checked
-out file does not exist, i.e., like the scenario described above.
-.SH "FILE UNLOCK OPTIONS"
-.TP
-.B \-f
-Force the unlink of the p.file even if the checked out file exists.
-.tp
-.B \-p
-Removes the p.file lock which is created by bk edit.
-.tp
-.B \-x
-Removes the x.file lock which is created during a check-in. x.file
-contains the new s.file.  Use with care, the presence of this file 
-means that an update in progress failed.
-.tp
-.B \-z
-Removes the z.file lock which is created to prevent check-in and
-edit races.
-.SH BUGS
-.LP
-The
-.B bk unlock
-interface is overload for both file level and repository level
-operations and that is confusing.
 .SH "SEE ALSO"
-.SA unedit
-.SA clean
 .SA lock
 .SA abort
 .\" help://Repository/locks

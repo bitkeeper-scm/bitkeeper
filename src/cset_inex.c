@@ -128,14 +128,7 @@ clean(char *file)
 private void
 unedit(void)
 {
-	int	i;
-	char	*av[20];
-
-	av[i = 0] = "bk";
-	av[++i] = "unlock";
-	av[++i] = CHANGESET;
-	av[++i] = 0;
-	spawnvp(_P_WAIT, "bk", av);
+	unlink("SCCS/p.ChangeSet");
 }
 
 private	char **

@@ -47,14 +47,7 @@ do	if bk _test ! -f SCCS/p.$i -o ! -w $i
 	fi
 done
 echo OK
-echo $N unlock should not autoexpand file names .....................$NL
-bk unlock 2>/dev/null
-for i in R S T U V
-do	if bk _test ! -f SCCS/p.$i -o ! -w $i
-	then	echo failed on $i; exit 1
-	fi
-done
-echo OK
+
 echo $N clean should autoexpand file names ..........................$NL
 bk clean 2>/dev/null
 for i in R S T U V
@@ -62,33 +55,6 @@ do	if bk _test -f SCCS/p.$i -o -w $i
 	then	echo failed on $i; exit 1
 	fi
 done
-echo OK
-echo $N unlock should fail if gfile is there ........................$NL
-bk get $Q -e X
-echo more text >>X
-bk unlock X 2>/dev/null
-if [ $? != 1 ]; then echo failed to exit 1; exit 1; fi
-if bk _test ! -f SCCS/p.X; then echo failed to leave p.file; exit 1; fi
-echo OK
-echo $N unlock -x should work .......................................$NL
-touch x.X z.X b.X
-bk _mv x.X SCCS/x.X
-bk _mv z.X SCCS/z.X
-bk _mv b.X SCCS/b.X
-bk unlock -x X  2> /dev/null
-if [ ! -f X ]; then echo failed; exit 1; fi
-if bk _test -f SCCS/x.X; then echo failed - left x; exit 1; fi
-if bk _test ! -f SCCS/b.X -o ! -f SCCS/z.X -o ! -f SCCS/p.X
-then echo failed - deleted other lock files; ls SCCS/?.X; exit 1; fi
-echo OK
-
-echo $N unlock -fpx should work .....................................$NL
-bk _touch SCCS/x.X
-bk unlock -fpx X 2>/dev/null
-if [ ! -f X ]; then echo failed; exit 1; fi
-if bk _test ! -f SCCS/s.X; then echo failed; exit 1; fi
-if bk _test -f SCCS/x.X -o -f SCCS/p.X
-then echo failed - left lock files; exit 1; fi
 echo OK
 
 bk _rm -f CMP1 CMP2 X Y SCCS/s.X SCCS/s.Y

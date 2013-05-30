@@ -495,12 +495,6 @@ echo OK
 
 echo $N Check that unlock command warns if outside a repository .....$NL
 cd "$HERE"
-bk unlock -r 2> ERR || {
-	echo failed
-	exit 1
-}
-grep -q "Not in a repository" ERR || {
-	echo failed
-	exit 1
-}
+bk unlock -r 2> ERR && fail -f ERR failed to fail
+grep -q "Not in a repository" ERR || fail -f ERR
 echo OK

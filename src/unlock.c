@@ -3,118 +3,41 @@
 #include "sccs.h"
 #include "nested.h"
 
-#undef	PLOCK
-#define	PLOCK	0x0002
-#define	XLOCK	0x0004
 #define	RLOCK	0x0010
 #define	STALE	0x0020
 #define	WLOCK	0x0040
 
-#define	REPO	(RLOCK|STALE|WLOCK)
-
-private	int	doit(sccs *s, char which);
 private int	repo(u32 flags, char *match);
-private void	dont(sccs *s, char c);
 
 int
 unlock_main(int ac, char **av)
 {
-	char	*name;
 	char	*match = 0;
-	int	c, force = 0, flags = 0, after = 0;
-	sccs	*s = 0;
+	int	c, flags = 0, after = 0;
 	longopt	lopts[] = {
 		{ "after:", 300 },
 		{ "match:", 301 },
 		{ 0, 0 }
 	};
 
-	while ((c = getopt(ac, av, "fprswxz", lopts)) != -1) {
+	while ((c = getopt(ac, av, "rsw", lopts)) != -1) {
 		switch (c) {
-		    case 'f': force = 1; break;		/* doc 2.0 */
-		    case 'p': flags |= PLOCK; break;	/* doc 2.0 */
 		    case 'r': flags |= RLOCK; break;	/* doc 2.0 */
 		    case 's': flags |= STALE; break;	/* doc 2.0 */
 		    case 'w': flags |= WLOCK; break;	/* doc 2.0 */
-		    case 'x': flags |= XLOCK; break;	/* doc 2.0 */
 		    case 300: after = atoi(optarg); break;
 		    case 301: match = optarg; break;
 			break;
 		    default: bk_badArg(c, av);
 		}
 	}
-	unless (flags) flags = PLOCK;
-	
-	if ((flags & REPO) && (flags & ~REPO)) {
-		fprintf(stderr,
-		    "unlock: may not mix file and repository unlocks.\n");
-		usage();
-	}
-
-	if (after) sleep(after);
-	if (flags & REPO) {
-		if (av[optind]) {
-                        chdir(av[optind]);
-                }
-                if (proj_cd2root() < 0) {
-			fprintf(stderr, "unlock: Not in a repository.\n");
-			return (0);
-		};
-		return (repo(flags, match));
-	}
-
-	/*
-	 * Too dangerous to unlock everything automagically,
-	 * make 'em spell it out.
-	 */
-	unless (name = sfileFirst("unlock", &av[optind], SF_NODIREXPAND)) {
-		fprintf(stderr,
-		    "unlock: must have explicit list when discarding locks.\n");
-		usage();
-	}
-	c = 0;
-	while (name) {
-		s = sccs_init(name, SILENT|INIT_NOCKSUM);
-		if (s) {
-			if (flags & PLOCK) {
-				if (!force && HAS_GFILE(s)) {
-					fprintf(stderr,
-					"unlock: %s exists, not  unlocking.\n",
-					s->gfile);
-					c = 1;
-				} else {
-					c |= doit(s, 'p');
-				}
-			}
-			if (flags & XLOCK) c |= doit(s, 'x'); else dont(s, 'x');
-			sccs_free(s);
-		}
-		name = sfileNext();
-	}
-	if (sfileDone()) c = 1;
-	return (c);
-}
-
-private void 
-dont(sccs *s, char c)
-{
-	char	*lock = sccs_Xfile(s, c);
-
-	if (exists(lock)) {
-		fprintf(stderr, "Warning: %c-lock still on %s\n", c, s->gfile);
-	}
-}
-
-private int
-doit(sccs *s, char which)
-{
-	char	*lock = sccs_Xfile(s, which);
-
-	if (unlink(lock) && (errno != ENOENT)) {
-    		perror(lock);
+	if (av[optind] || !flags) usage();
+	if (proj_cd2root() < 0) {
+		fprintf(stderr, "unlock: Not in a repository.\n");
 		return (1);
-	}
-	return (0);
+	};
+	if (after) sleep(after);
+	return (repo(flags, match));
 }
 
 private int
