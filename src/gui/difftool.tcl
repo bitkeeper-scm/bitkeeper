@@ -121,7 +121,7 @@ proc keyboard_bindings {} \
 		.diffs.left yview -pickplace end
 		.diffs.right yview -pickplace end
 	}
-	bind .	<$gc(diff.quit)>	exit
+	bind all <$gc(diff.quit)>	exit
 	bind .	<N>			nextFile
 	bind .	<P>			prevFile
 	bind .	<Control-n>		nextFile
@@ -133,6 +133,7 @@ proc keyboard_bindings {} \
 	bind .	<p>			prev
 	bind .  <bracketleft>		prev
 	bind .	<period>		dot
+	bind all <w>			toggleComments
 	if {$gc(aqua)} {
 		bind all <Command-q> exit
 		bind all <Command-w> exit
@@ -254,6 +255,7 @@ proc getFiles {} \
 		} else {
 			## bk difftool <dir>
 			cd [lindex $argv 0]
+			set ::PWD [pwd]
 			set fd [open "|bk -Ur. --sfiles-opts=cgv"]
 		}
 		# Sample output from 'bk sfiles -gcvU'
@@ -457,7 +459,13 @@ proc selectFile {{file ""}} {
 		.menu.revtool configure -state disabled
 		.menu.discard configure -state disabled
 	}
-	after idle [list focus -force .]
+	
+	set focus .
+	if {[commentsVisible]} {
+		set focus .comments
+		fillComments $selected
+	}
+	after idle [list focus -force $focus]
 
 	if {[info exists ::readfp]} {
 		fileevent $::readfp readable [list readInput $::readfp]
@@ -654,6 +662,109 @@ proc configureFilesCombo {} \
 	set cb .menu.files
 	$cb selection clear
 	$cb set "Files ([llength [dict keys $fileInfo]])"
+}
+
+proc showComments {} \
+{
+	place [commentsWindow] -in .diffs -x 0 -y 2
+	focus -force [commentsTextWidget]
+}
+
+proc hideComments {} \
+{
+	place forget [commentsWindow]
+	focus -force .diffs
+}
+
+proc commentsVisible {} \
+{
+	return [winfo viewable [commentsWindow]]
+}
+
+proc commentsWindow {} \
+{
+	global	app
+
+	set top .comments
+	if {![winfo exists $top]} {
+		ttk::frame $top 
+
+		ttk::label $top.l
+		grid $top.l -row 0 -column 0 -sticky ew
+
+		ttk::button $top.close -width 3 -text X -command hideComments
+		grid $top.close -row 0 -column 1 -sticky e
+
+		ttk::frame $top.f
+		grid $top.f -row 1 -column 0 -columnspan 2 -sticky nesw
+
+		text $top.f.t -relief flat -borderwidth 0 \
+		    -highlightthickness 1 -insertwidth 0 \
+		    -xscrollcommand [list $top.f.hs set] \
+		    -yscrollcommand [list $top.f.vs set]
+		bindtags $top.f.t [list $top.t ReadonlyText $top all]
+		configureDiffWidget $app $top.f.t new
+		grid $top.f.t -row 1 -column 0 -sticky nesw
+
+		ttk::scrollbar $top.f.vs -orient vertical \
+		    -command [list $top.f.t yview]
+		grid $top.f.vs -row 1 -column 1 -sticky ns
+
+		ttk::scrollbar $top.f.hs -orient horizontal \
+		    -command [list $top.f.t xview]
+		grid $top.f.hs -row 2 -column 0 -sticky ew
+
+		grid rowconfigure    $top $top.f -weight 1
+		grid columnconfigure $top $top.f -weight 1
+
+		grid rowconfigure    $top.f $top.f.t -weight 1
+		grid columnconfigure $top.f $top.f.t -weight 1
+	}
+	return $top
+}
+
+proc commentsTextWidget {} \
+{
+	return [commentsWindow].f.t
+}
+
+proc toggleComments {} \
+{
+        global  selected
+
+	if {[commentsVisible]} {
+		hideComments
+        } else {
+		commentsWindow
+		fillComments $selected
+		showComments
+        }
+}
+
+proc setCommentsTitle {title} \
+{
+	.comments.l configure -text $title
+}
+
+proc fillComments {file} \
+{
+	global	fileInfo
+
+	set top .comments
+	lassign [dict get $fileInfo $file] lfile rfile fname lr rr
+	if {[catch {exec bk log -r$lr..$rr $fname} c]} {
+		set c "No comments"
+	}
+	if {[catch {exec bk r2c -r$lr..$rr $fname} crevs] == 0} {
+		if {[catch {exec bk changes -m -r$crevs} cset_comments] == 0} {
+			append cset_comments \n
+			append cset_comments $c
+			set c $cset_comments
+		}
+	}
+
+	$top.f.t delete 1.0 end
+	$top.f.t insert end $c
 }
 
 proc test_diffCount {n} \
