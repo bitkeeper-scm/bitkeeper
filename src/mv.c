@@ -15,17 +15,16 @@ mv_main(int ac, char **av)
 	char	*dest;
 	int	isDir;
 	int	isUnDelete = 0;
-	int	rc = 0, skip_lock = 0;
+	int	rc = 0;
 	int	dofree = 0;
 	int	force = 0;
 	int	i;
 	int	c;
 
 	has_proj("mv");
-	while ((c = getopt(ac, av, "ful", 0)) != -1) {
+	while ((c = getopt(ac, av, "fu", 0)) != -1) {
 		switch (c) {
 		    case 'f':	force = 1; break;
-		    case 'l':	skip_lock = 1; break;
 		    case 'u':	isUnDelete = 1; break;
 		    default: bk_badArg(c, av);
 		}
@@ -56,11 +55,6 @@ mv_main(int ac, char **av)
 	}
 	av[ac-1] = 0;
 
-	if (!skip_lock && repository_wrlock(0)) {
-                fprintf(stderr, "mv: unable to write-lock repository\n");
-                return (1);
-        }
-
 	/*
 	 * Five cases
 	 * 1) File -> File
@@ -73,22 +67,20 @@ mv_main(int ac, char **av)
 	for (i = optind; i < (ac - 1); i++) {
 		localName2bkName(av[i], av[i]);
 		if (isdir(av[i])) {
-			rc |= sys("bk", "mvdir", "-l", av[i], dest,
-			    SYS) ? 1 : 0;
+			rc |= sys("bk", "-?BK_NO_REPO_LOCK=YES",
+			    "mvdir", av[i], dest, SYS) ? 1 : 0;
 		} else {
 			rc |= sccs_mv(av[i], dest, isDir, 0, isUnDelete,
 			    force) ? 1 : 0;
 		}
 	}
 	if (dofree) free(dest);
-	unless (skip_lock) repository_wrunlock(0, 0);
 	return (rc);
 }
 
 int
 mvdir_main(int ac, char **av)
 {
-	int	skip_lock = 0;
 	int	c, fix_pfile;
 	char	*freeme = NULL;
 	char	*cmd, *p, *rev, *from, *to;
@@ -97,9 +89,8 @@ mvdir_main(int ac, char **av)
 	sccs	*s = NULL;
 	pfile   pf;
 
-	while ((c = getopt(ac, av, "l", 0)) != -1) {
+	while ((c = getopt(ac, av, "", 0)) != -1) {
 		switch (c) {
-		    case 'l':	skip_lock = 1; break; /* internal interface */
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -129,11 +120,6 @@ mvdir_main(int ac, char **av)
 		fprintf(stderr, "%s exists and is not a directory\n", to);
 		return (1);
 	}
-
-	if (!skip_lock && repository_wrlock(0)) {
-                fprintf(stderr, "mv: unable to write lock repository\n");
-                return (1);
-        }
 
 	if (streq(basenm(from), "SCCS")) {
 		fprintf(stderr, "mvdir: %s is not a movable directory\n", from);
@@ -165,8 +151,7 @@ mvdir_main(int ac, char **av)
 		fprintf(stderr,
 		    "Moving directories with BitKeeper files not allowed\n");
 		unlink(tempfile);
-err:		unless (skip_lock) repository_wrunlock(0, 0);
-		if (s) sccs_free(s);
+err:		if (s) sccs_free(s);
 		return (1);
 	}
 	unlink(tempfile);
@@ -244,6 +229,5 @@ err:		unless (skip_lock) repository_wrunlock(0, 0);
 	if (sys("bk", "-?BK_NO_REPO_LOCK=YES", "-r", "check", "-a", SYS)) {
 		return (1);
 	}
-	unless (skip_lock) repository_wrunlock(0, 0);
 	return (0);
 }

@@ -10,6 +10,7 @@
 
 #define	BK "bk"
 
+int	bk_no_repo_lock = 0;	/* BK_NO_REPO_LOCK is set, used in wrlocked() */
 char	*editor = 0, *bin = 0;
 char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
 char	**bk_environ;
@@ -1004,19 +1005,23 @@ private	struct {
 	{"bk", CMD_COMPAT_NOSI}, /* bk-remote */
 	{"check", CMD_COMPAT_NOSI},
 	/* checksum is handled in checksum.c */
-	/* collapse has CMD_NESTED_WRLOCK|CMD_WRLOCK) in collapse.c */
-	/* commit has CMD_NESTED_WRLOCK|CMD_WRLOCK in commit.c */
-	/* delta has CMD_WRLOCK in delta.c */
 	{"clone", CMD_REPOLOG},		/* locking handled in clone.c */
 	{"cmdlog", CMD_NOLOG},
-	{"collapse", CMD_REPOLOG},
-	{"commit", CMD_REPOLOG},
+	{"collapse", CMD_REPOLOG},	/* real locks in collapse.c */
+	{"commit", CMD_REPOLOG},	/* real locks in commit.c */
+	{"cp", CMD_WRLOCK},
+	{"cset", CMD_REPOLOG|CMD_WRLOCK},
+	{"csetprune", CMD_WRLOCK},
+	/* ci/delta locking handled in delta.c */
+	{"_findcset", CMD_WRLOCK},
 	{"fix", CMD_REPOLOG},
 	{"get", CMD_COMPAT_NOSI},
 	{"kill", CMD_NOREPO|CMD_COMPAT_NOSI},
 	{"license", CMD_NOREPO},
+	{"newroot", CMD_WRLOCK},
 	{"pull", CMD_REPOLOG|CMD_BYTES}, /* real locks in pull.c */
 	{"push", CMD_REPOLOG|CMD_BYTES}, /* real locks in push.c */
+	{"rcs2bk", CMD_WRLOCK},
 	{"remote abort", CMD_REPOLOG|CMD_COMPAT_NOSI|CMD_IGNORE_RESYNC},
 	{"remote changes part1", CMD_REPOLOG|CMD_RDLOCK},
 	{"remote changes part2", CMD_REPOLOG},	// unlocked internally
@@ -1035,13 +1040,21 @@ private	struct {
 	{"remote quit", CMD_NOREPO|CMD_QUIT},
 	{"remote rdlock", CMD_RDLOCK},
 	{"remote wrlock", CMD_WRLOCK},
+	{"renumber", CMD_WRLOCK},
 	{"resolve", CMD_REPOLOG},
+	{"rm", CMD_WRLOCK},
+	// {"rmdir", CMD_WRLOCK}, // rmdir is a script in bk.sh
+	{"mv", CMD_WRLOCK},
+	{"mvdir", CMD_WRLOCK},
 	{"sccs2bk", CMD_WRLOCK},
 	{"stripdel", CMD_WRLOCK},
 	{"synckeys", CMD_RDLOCK},
 	{"tagmerge", CMD_WRLOCK|CMD_NESTED_WRLOCK},
+	// takepatch locking is handled in takepatch.c
+	{"_unbk", CMD_WRLOCK},
 	{"undo", CMD_REPOLOG},  /* actual WRLOCK in undo.c */
 	{"unpull", CMD_REPOLOG},
+	{"xflags", CMD_WRLOCK},
 	{ 0, 0 },
 };
 
@@ -1158,9 +1171,20 @@ void
 cmdlog_lock(int flags)
 {
 	int	i, do_lock = 1;
-	char	*repo1, *repo2, *nlid = 0;
+	char	*p, *repo1, *repo2, *nlid = 0;
 	project	*proj = 0;
 	char	*error_msg = 0;
+
+	p = getenv("BK_NO_REPO_LOCK");
+	if ((p && streq(p, "YES")) || bk_no_repo_lock) {
+		/*
+		 * We unset the env var here but set
+		 * a flag var which gets checked by
+		 * wrlocked() in slib.c
+		 */
+		bk_no_repo_lock = 1;
+		putenv("BK_NO_REPO_LOCK=");
+	}
 
 	cmdlog_flags = flags;
 
@@ -1180,23 +1204,20 @@ cmdlog_lock(int flags)
 	 * Locking protocol is that BK_NO_REPO_LOCK=YES means we are already
 	 * locked, skip it, but clear it to avoid inheritance.
 	 */
-	if (cmdlog_flags &
-	    (CMD_WRLOCK|CMD_RDLOCK|CMD_NESTED_WRLOCK|CMD_NESTED_RDLOCK)) {
-		char	*p = getenv("BK_NO_REPO_LOCK");
+	if (bk_no_repo_lock &&
+	    (cmdlog_flags &
+	    (CMD_WRLOCK|CMD_RDLOCK|CMD_NESTED_WRLOCK|CMD_NESTED_RDLOCK))) {
 
-		if (p && streq(p, "YES")) {
-			T_LOCK("Skipping locking due to BK_NO_REPO_LOCK");
+		T_LOCK("Skipping locking due to BK_NO_REPO_LOCK");
 #if 0
-			{
-				int	i;
-				i = repository_hasLocks(0, WRITER_LOCK_DIR);
-				unless (i) T_LOCK("NO WRLOCK, ASSERTING");
-				assert(i);
-			}
-#endif
-			putenv("BK_NO_REPO_LOCK=");
-			do_lock = 0;
+		{
+			int	i;
+			i = repository_hasLocks(0, WRITER_LOCK_DIR);
+			unless (i) T_LOCK("NO WRLOCK, ASSERTING");
+			assert(i);
 		}
+#endif
+		do_lock = 0;
 	}
 
 	T_LOCK("do_lock = %d:%x", do_lock, cmdlog_flags);
@@ -1321,13 +1342,6 @@ again:		if (nlid = getenv("_BK_NESTED_LOCK")) {
 		} else {
 			/* fail? */
 		}
-	}
-	if ((cmdlog_locks & CMD_RDLOCK) && (cmdlog_flags & CMD_RDUNLOCK)) {
-		/*
-		 * We are holding a read lock and we need to drop it.
-		 */
-		repository_unlock(0, 0);
-		cmdlog_locks &= ~CMD_RDLOCK;
 	}
 out:
 	if (error_msg) {

@@ -273,15 +273,17 @@ sccs_mylock(char *file)
 	char	*host;
 	pid_t	pid;
 	time_t	t;
+	int	ret = 0;
 
 	if (sccs_readlockf(file, &pid, &host, &t) == -1) return (0);
 	if ((getpid() == pid) &&
 	    streq(host, sccs_realhost()) && !isLocalHost(host)) {
-	    	free(host);
-		return (1);
+		ret = 1;
 	}
+	T_LOCK("ret: %d, pid: %d, getpid: %d, host: %s, realhost: %s, !isLocalhost(host): %d",
+	    ret, pid, getpid(), host, sccs_realhost(), !isLocalHost(host));
 	free(host);
-	return (0);
+	return (ret);
 }
 
 int
@@ -429,6 +431,12 @@ lockfile_cleanup(void)
 		if (exists(lockfiles[i])) {
 			fprintf(stderr, "WARNING: "
 			    "deleting orphan lock file %s\n", lockfiles[i]);
+			if (getenv("_BK_DEVELOPER")) {
+				fprintf(stderr, "_BK_CALLSTACK=%s\n"
+				    "pid: %d\n",
+				    getenv("_BK_CALLSTACK"), getpid());
+				systemf("cat \"%s\"", lockfiles[i]);
+			}
 			unlink(lockfiles[i]);
 		}
 	}

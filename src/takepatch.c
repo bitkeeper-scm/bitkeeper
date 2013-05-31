@@ -95,6 +95,7 @@ typedef struct {
 	char	**edited;	/* files that were in modified state */
 
 	sccs	*fake;
+	int	needlock;	/* we're top-level, grab a lock */
 } Opts;
 private Opts *opts;
 
@@ -172,6 +173,10 @@ takepatch_main(int ac, char **av)
 		opts->echo = 2;
 	}
 	if (av[optind]) usage();
+
+	/* we're takepatch on the cmdline, we need a lock */
+	if (streq(getenv("_BK_CALLSTACK"), "takepatch")) opts->needlock = 1;
+
 	opts->p = init(opts->input);
 	if (opts->newProject) putenv("_BK_NEWPROJECT=YES");
 	if (sane(0, 0)) exit(1);
@@ -313,8 +318,9 @@ takepatch_main(int ac, char **av)
 	getChangeSet();
 
 	if (resolve) {
-		char	*resolve[] = {"bk", "resolve", "-S", 0, 0, 0, 0, 0, 0};
-		int	i = 2;
+		char	*resolve[] = {"bk", "-?BK_NO_REPO_LOCK=YES", "resolve",
+				      "-S", 0, 0, 0, 0, 0, 0};
+		int	i = 3;
 
 		if (opts->echo) {
 			fprintf(stderr,
@@ -1837,6 +1843,8 @@ private void
 resync_lock(void)
 {
 	FILE	*f;
+
+	if (opts->needlock) cmdlog_lock(CMD_WRLOCK);
 
 	/*
 	 * See if we can lock the tree.

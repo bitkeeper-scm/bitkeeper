@@ -2350,7 +2350,8 @@ bam_convert_main(int ac, char **av)
 	/* The proj_reset() is to close BAM_DB so newroot can rename dir */
 	proj_reset(0);
 	sprintf(buf,
-	    "bk newroot -y'bam convert B:%x:' -kB:%x:", bam_size, bam_size);
+	    "bk -?BK_NO_REPO_LOCK=YES newroot -y'bam convert B:%x:' -kB:%x:",
+	    bam_size, bam_size);
 	if (system(buf) || errors) {
 		ERROR((stderr, "failed\n"));
 		exit(1);

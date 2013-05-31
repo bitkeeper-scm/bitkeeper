@@ -407,6 +407,7 @@ wrlock(project *p)
 	}
 	write_log("cmd_log", "obtain write lock (%u)", getpid());
 	T_LOCK("WRLOCK %u", getpid());
+	safe_putenv("_BK_WR_LOCKED=%u", getpid());
 	return (0);
 }
 
@@ -455,6 +456,7 @@ repository_downgrade(project *p)
 	}
 	repository_wrunlock(p, 0);
 	write_log("cmd_log", "downgrade write lock (%u)", getpid());
+	putenv("_BK_WR_LOCKED=");
 	return (0);
 }
 
@@ -524,10 +526,11 @@ repository_wrunlock(project *p, int all)
 	if (sccs_mylock(path) && (sccs_unlockfile(path) == 0)) {
 		write_log("cmd_log", "write unlock (%u)", getpid());
 		T_LOCK("WRUNLOCK %u", getpid());
+		putenv("_BK_WR_LOCKED=");
 		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 		rmdir(path);
 	} else {
-		T_LOCK("WRUNLOCK %u FAILED", getpid());
+		T_LOCK("WRUNLOCK %u FAILED (%s)", getpid(), path);
 		error = -1;
 	}
 	return (error);
@@ -937,7 +940,12 @@ nested_wrlock(project *p)
 	proj_reset(p);		/* Since we might have created a RESYNC */
 out:	if (unlock) repository_wrunlock(p, 0);
 	(void)nlock_release(p);
-	T_LOCK("nested_wrlock: %s", t);
+	if (t) {
+		T_LOCK("nested_wrlock: %s", t);
+		safe_putenv("_BK_NESTED_LOCK=%s", t);
+	} else {
+		T_LOCK("nested_wrlock fails: %s", nested_errmsg());
+	}
 	return (t);
 }
 
@@ -1252,7 +1260,7 @@ nested_unlock(project *p, char *nlid)
 		free(tfile);
 		goto out;
 	}
-	T_LOCK("nested_unlocked: %s '%s'", tfile, nlid);
+	T_LOCK("nested_unlock: %s '%s'", tfile, nlid);
 	free(tfile);
 	if (lockers = nested_lockers(p, 0, 1)) {
 		freeLines(lockers, freeNlock);
@@ -1271,6 +1279,7 @@ out:	if (unlock) {
 			repository_rdunlock(p, 0);
 		}
 	}
+	putenv("_BK_NESTED_LOCK=");
 	return (rc);
 }
 

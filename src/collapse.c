@@ -371,6 +371,7 @@ do_cset(sccs *s, char *rev, char **nav)
 				goto out;
 			}
 			vp = addLine(0, strdup("bk"));
+			vp = addLine(vp, strdup("-?BK_NO_REPO_LOCK=YES"));
 			vp = addLine(vp, strdup("collapse"));
 			EACH_INDEX(nav, j) vp = addLine(vp, strdup(nav[j]));
 			vp = addLine(vp, aprintf("-Sa%s", c->lowerkey));
@@ -432,6 +433,7 @@ do_file(char *file, char *tiprev)
 	char	*sfile = 0, *gfile = 0, *pfile = 0;
 	time_t	gtime = 0;
 
+	cmdlog_lock(CMD_WRLOCK);
 	sfile = name2sccs(file);
 	s = sccs_init(sfile, 0);
 	unless (s && HASGRAPH(s)) {
@@ -534,7 +536,7 @@ do_file(char *file, char *tiprev)
 			goto done;
 		}
 		/* branch might be tip */
-		sys("bk", "renumber", "-q", file, SYS);
+		sys("bk", "-?BK_NO_REPO_LOCK=YES", "renumber", "-q", file, SYS);
 
 		/* restore mode, path, xflags */
 		tipd = sccs_findrev((s = sccs_reopen(s)), "+");

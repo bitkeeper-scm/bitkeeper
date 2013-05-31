@@ -507,6 +507,7 @@ mkComps(Opts *opts)
 	char	**cmd = 0;
 	char	repo[MAXPATH];
 
+	cmdlog_lock(CMD_WRLOCK|CMD_NESTED_WRLOCK);
 	ret = 0;
 	running = 0;
 	EACH(opts->comps) {
@@ -547,6 +548,7 @@ mkComps(Opts *opts)
 			break;
 		}
 		cmd = addLine(0, strdup("bk"));
+		cmd = addLine(cmd, strdup("-?BK_NO_REPO_LOCK=YES"));
 		cmd = addLine(cmd, aprintf("--cd=%s", repo));
 		cmd = addLine(cmd, strdup("csetprune"));
 		cmd = addLine(cmd, aprintf("--version=%s", opts->pver));
@@ -592,6 +594,7 @@ mkComps(Opts *opts)
 			ret = 1;
 		}
 	}
+	cmdlog_unlock(CMD_WRLOCK|CMD_NESTED_WRLOCK);
 	return (ret);
 }
 
@@ -620,6 +623,7 @@ moveComps(Opts *opts)
 		goto err;
 	}
 	prod = proj_init(".");
+	cmdlog_lock(CMD_WRLOCK|CMD_NESTED_WRLOCK);
 
 	/*
 	 * for each:
@@ -722,6 +726,7 @@ moveComps(Opts *opts)
 	prodweave = 0;
 	ret = 0;
 err:
+	cmdlog_unlock(CMD_WRLOCK|CMD_NESTED_WRLOCK);
 	if (here) free(here);
 	if (prod) proj_free(prod);
 	if (cset) sccs_free(cset);
@@ -899,9 +904,10 @@ firstPrune(Opts *opts)
 	char	tmpf[MAXPATH];
 	char	buf[MAXPATH];
 
+	cmdlog_lock(CMD_WRLOCK|CMD_NESTED_WRLOCK);
 	bktmp(tmpf, "revfile");
 	sprintf(buf,
-	    "bk csetprune --version=%s -aSK%s -r'%s' --revfile='%s' -CCOMPS -",
+	    "bk -?BK_NO_REPO_LOCK=YES csetprune --version=%s -aSK%s -r'%s' --revfile='%s' -CCOMPS -",
 	    opts->pver, opts->quiet, opts->tip, tmpf);
 	f = popen(buf, "w");
 	EACH(opts->prune) fprintf(f, "%s\n", opts->prune[i]);

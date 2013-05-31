@@ -35,6 +35,7 @@ cset_inex(int flags, char *op, char *revs)
 	char	*revbuf, **rlist = 0;
 
 	av[i = 0] = "bk";
+	av[++i] = "-?BK_NO_REPO_LOCK=YES";
 	av[++i] = "cset";
 	revarg = aprintf("-r%s", revs);
 	av[++i] = revarg;
@@ -187,6 +188,7 @@ commit(int quiet, char **cmts)
 	fclose(f);
 	comment = aprintf("-Y%s", tmp);
 	cmds[i=0] = "bk";
+	cmds[++i] = "-?BK_NO_REPO_LOCK=YES";
 	cmds[++i] = "commit";
 	cmds[++i] = "-dF";
 	cmds[++i] = "-S";
@@ -232,6 +234,7 @@ undoit(MDBM *m)
 		*t = 0;
 		unless (mdbm_fetch_str(m, buf)) continue;
 		av[i=0] = "bk";
+		av[++i] = "-?BK_NO_REPO_LOCK=YES";
 		av[++i] = "stripdel";
 		sprintf(rev, "-r%s", &t[1]);
 		av[++i] = rev;

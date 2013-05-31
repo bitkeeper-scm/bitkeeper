@@ -1592,7 +1592,6 @@ extern	u32	swapsz;		/* paging blocksize */
 #define	CMD_NESTED_RDLOCK	0x00000080	/* nested read lock */
 #define	CMD_COMPAT_NOSI		0x00000200	/* compat, no server info */
 #define	CMD_IGNORE_RESYNC	0x00000400	/* ignore resync lock */
-#define	CMD_RDUNLOCK		0x00001000	/* unlock a previous READ */
 #define	CMD_BKD_CMD		0x00002000	/* command comes from bkd.c */
 #define	CMD_NOLOG		0x00004000	/* don't log command */
 #define	CMD_SENDFMT		0x00008000	/* send sfile FMT in features */

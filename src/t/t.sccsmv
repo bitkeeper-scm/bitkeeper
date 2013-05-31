@@ -81,8 +81,6 @@ bk mv C/SCCS/file3 B/file2 2> ERR && fail
 sed 's/orphan lock file .*/orphan lock file/' ERR > GOT
 cat <<EOF > WANT
 mv: invalid file name C/SCCS/file3
-WARNING: deleting orphan lock file
-WARNING: deleting orphan lock file
 EOF
 cmpfiles WANT GOT
 rm WANT GOT ERR

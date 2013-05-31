@@ -90,7 +90,7 @@ newroot(char *ranbits, int bk4, char *comments, char *who, int xor)
 		 * bam data on any remote BAM server.  So all BAM data needs
 		 * to be made local.
 		 */
-		if (system("bk bam server -rq")) {
+		if (system("bk -?BK_NO_REPO_LOCK=YES bam server -rq")) {
 			fprintf(stderr, "%s: failed to make BAM data local\n",
 			    prog);
 			return (1);
@@ -147,7 +147,7 @@ newroot(char *ranbits, int bk4, char *comments, char *who, int xor)
 	}
 	free(oldbamdir);
 	if (bk4) {
-		if (systemf("bk -r admin -C'%s'", key)) {
+		if (systemf("bk -r -?BK_NO_REPO_LOCK=YES admin -C'%s'", key)) {
 			fprintf(stderr,
 			    "%s: admin -C failed\n", prog);
 			rc = 1;

@@ -307,7 +307,7 @@ csetprune(Opts *opts)
 		verbose((stderr, "Processing ChangeSet file...\n"));
 	}
 	if (flags & PRUNE_NO_TAG_GRAPH) {
-		if (sys("bk", "stripdel",
+		if (sys("bk", "-?BK_NO_REPO_LOCK=YES", "stripdel",
 		    "-q", "--strip-tags", "ChangeSet", SYS)) {
 			fprintf(stderr, "%s: failed stripping tags\n", prog);
 			goto err;
@@ -394,7 +394,7 @@ finish:
 	// sometimes want to skip this to save another sfile write/walk.
 	unless (flags & PRUNE_NO_NEWROOT) {
 		verbose((stderr, "Regenerating ChangeSet file checksums...\n"));
-		sys("bk", "checksum",
+		sys("bk", "-?BK_NO_REPO_LOCK=YES", "checksum",
 		    opts->bk4 ? "-f4" : "-f", "ChangeSet", SYS);
 		unless (opts->ranbits) {
 			randomBits(buf);
@@ -437,7 +437,7 @@ finish:
 		}
 		verbose((stderr,
 		    "Generating a new root key ...\n"));
-		if (sys("bk", "newroot", p, p1,
+		if (sys("bk", "-?BK_NO_REPO_LOCK=YES", "newroot", p, p1,
 		    (opts->bk4 ? "-4k" : "-k"), opts->ranbits, SYS)) {
 			free(p);
 			free(p1);
@@ -457,7 +457,8 @@ finish:
 	/* Find any missing keys and make a delta about them. */
 	if (opts->comppath || opts->newgone) {
 		verbose((stderr, "Running a check...\n"));
-		status = system("bk -r check -aggg | bk gone -q -");
+		status = system("bk -?BK_NO_REPO_LOCK=YES -r check -aggg | "
+		    "bk -?BK_NO_REPO_LOCK=YES gone -q -");
 statuschk:	unless (WIFEXITED(status)) goto err;
 		if (WEXITSTATUS(status) == 0x40) {
 			verbose((stderr, "Updating gone...\n"));
@@ -466,7 +467,8 @@ statuschk:	unless (WIFEXITED(status)) goto err;
 
 				verbose((stderr, "Committing gone...\n"));
 				sprintf(buf,
-				    "bk commit -%sy'log new gone keys' -",
+				    "bk -?BK_NO_REPO_LOCK=YES commit "
+				    "-%sy'log new gone keys' -",
 				    (flags&SILENT) ? "q" : "");
 				f = popen(buf, "w");
 				fprintf(f, "%s|+", SGONE);
@@ -481,11 +483,11 @@ statuschk:	unless (WIFEXITED(status)) goto err;
 	} else if (flags & PRUNE_NO_NEWROOT) {
 		/* Hack - 4 g's is same as ignore gone */
 		verbose((stderr, "Running a check...\n"));
-		status = system("bk -r check -agggg");
+		status = system("bk -?BK_NO_REPO_LOCK=YES -r check -agggg");
 		goto statuschk;
 	} else {
 		verbose((stderr, "Running a check -ac...\n"));
-		if (system("bk -r check -ac")) goto err;
+		if (system("bk -?BK_NO_REPO_LOCK=YES -r check -ac")) goto err;
 	}
 	system("bk parent -qr");	/* parent no longer valid */
 	verbose((stderr, "All operations completed.\n"));
@@ -797,7 +799,7 @@ newFile(char *path, char *comp, int ser)
 
 	cmt = aprintf("-yNew %s", path);
 	assert(cmt);
-	if (sys("bk", "new", cmt, "-qPp", path, SYS)) {
+	if (sys("bk", "-?BK_NO_REPO_LOCK=YES", "new", cmt, "-qPp", path, SYS)) {
 		perror("new");
 		goto err;
 	}

@@ -81,6 +81,54 @@ private	int	bin_writeHeap(sccs *s, char ***save);
 private	ser_t	*scompressGraph(sccs *s);
 private	void	sccs_md5deltaCompat(sccs *s, ser_t d, char *b64);
 
+private int
+wrlocked(sccs *s)
+{
+	int		ret;
+	extern int	bk_no_repo_lock;
+
+	T_LOCK("wrlocked: %s", s->gfile);
+
+	// SCCS has no proj
+	unless (s->proj) {
+		T_LOCK("wrlocked: skipping because no proj");
+		return (1);
+	}
+	if (bk_no_repo_lock) {
+		T_LOCK("wrlocked: skipping because bk_no_repo_lock");
+		return (1);
+	}
+
+	/*
+	 * we're in the resync directory, so presumably we're locked
+	 * the second check shouldn't be necessary but in practice
+	 * I have observed that it is
+	 */
+	if (proj_isResync(s->proj) ||
+	    streq(strrchr(proj_cwd(), '/'), "/RESYNC")) {
+		T_LOCK("wrlocked: skipping because in RESYNC");
+		return (1);
+	}
+
+	// for sub processes
+	if (getenv("_BK_NESTED_LOCK") || getenv("_BK_WR_LOCKED")) {
+		T_LOCK("wrlocked: skipping because _BK_ lock var set");
+		return (1);
+	}
+
+	// for me
+	ret = repository_mine(s->proj, 'w');
+	unless (ret) {
+		fprintf(stderr, "%s: wrlock assertion fail.  Callstack: %s\n"
+		    "Pwd: %s\n",
+		    prog, getenv("_BK_CALLSTACK"), proj_cwd());
+
+		/* only trigger assert in regressions */
+		unless (getenv("BK_REGRESSION")) ret = 0;
+	}
+	return (ret);
+}
+
 /*
  * returns 1 if dir is a directory that is not empty
  * 0 for empty or non-directories
@@ -2189,6 +2237,8 @@ sccs_startWrite(sccs *s)
 		sfile = s->outfh;
 		goto chksum;
 	}
+	// better be write locked if we are writing xfile
+	assert(wrlocked(s));
 	if ((fd = open(xfile, O_CREAT|O_TRUNC|O_WRONLY, 0444)) < 0) {
 		sfile = 0;
 		goto out;
@@ -13919,6 +13969,8 @@ out:
 		    "delta: entire file %s is dangling, abort.\n", s->gfile);
 		OUT;
 	}
+
+	assert(wrlocked(s));
 
 	/*
 	 * OK, checking done, start the delta.

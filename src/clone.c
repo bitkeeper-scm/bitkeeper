@@ -478,7 +478,7 @@ chkAttach(char *dir)
 	 */
 	unless (opts->force) {
 		p = aprintf(
-		   "bk changes -qnd':SYNCROOT:' -r1.0 '%s'", opts->from);
+		   "bk -?BK_NO_REPO_LOCK=YES changes -qnd':SYNCROOT:' -r1.0 '%s'", opts->from);
 		syncroot = backtick(p, 0);
 		free(p);
 		unless (syncroot && isKey(syncroot)) goto err;
@@ -920,7 +920,6 @@ done:	disconnect(r);
 			retrc = RET_ERROR;
 		}
 		unless (retrc) rmtree(ROOT2RESYNC);
-		putenv("_BK_NESTED_LOCK=");
 	}
 	repository_unlock(0, 0);
 	return (retrc);
@@ -1878,6 +1877,7 @@ attach(void)
 	/* fix up path and repoid */
 	tmp = relpath + strlen(relpath);
 	concat_path(relpath, relpath, "ChangeSet");
+	cmdlog_lock(CMD_WRLOCK|CMD_NESTED_WRLOCK);
 	attach_name(0, relpath, 0);
 	*tmp = 0;
 	unlink(REPO_ID);
@@ -1890,7 +1890,7 @@ attach(void)
 	 * end.  If for some reason you don't want to clean up the clone, 
 	 * then return.
 	 */
-	rc = systemf("bk newroot %s %s %s -y'attach %s'",
+	rc = systemf("bk -?BK_NO_REPO_LOCK=YES newroot %s %s %s -y'attach %s'",
 		     opts->quiet ? "-q":"",
 		     opts->verbose ? "-v":"",
 		     opts->force ? "" : "-X",	/* -X: repeatable rootkey */
@@ -1957,7 +1957,9 @@ attach(void)
 		 * to make sure they are in the correct format.
 		 */
 		new_features = features_bits(0) & (FEAT_BKFILE|FEAT_BWEAVE);
-		if (orig_features != new_features) system("bk -r admin -Zsame");
+		if (orig_features != new_features) {
+			system("bk -?BK_NO_REPO_LOCK=YES -r admin -Zsame");
+		}
 	}
 	if (opts->nocommit) {
 		cset = sccs_csetInit(INIT_MUSTEXIST|INIT_NOCKSUM);
@@ -1965,7 +1967,8 @@ attach(void)
 		sccs_free(cset);
 	} else {
 		sprintf(buf,
-			"bk -P commit -S -y'Attach ./%s' %s -",
+			"bk -P -?BK_NO_REPO_LOCK=YES commit -S "
+			"-y'Attach ./%s' %s -",
 			relpath,
 			opts->verbose ? "" : "-q");
 		if (f = popen(buf, "w")) {
@@ -1998,7 +2001,7 @@ int
 detach(int quiet, int verbose)
 {
 	assert(isdir(BKROOT));
-	if (systemf("bk newroot %s %s -y'detach'",
+	if (systemf("bk -?BK_NO_REPO_LOCK=YES newroot %s %s -y'detach'",
 	    verbose ? "-v" : "", quiet ? "-q" : "")) {
 		fprintf(stderr, "detach: failed to newroot\n");
 		return (-1);

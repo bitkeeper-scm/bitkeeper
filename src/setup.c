@@ -131,6 +131,11 @@ setup_main(int ac, char **av)
 		perror(package_path);
 		exit(1);
 	}
+	/*
+	 * work around wrlock assert since we don't have a repo to
+	 * lock yet
+	 */
+	safe_putenv("_BK_WR_LOCKED=%u", getpid());
 	sccs_mkroot(package_path);
 	if (chdir(package_path) != 0) {
 		perror(package_path);

@@ -172,7 +172,7 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 		    prog, alias);
 		usage();
 	}
-	/* lock */
+
 	cmdlog_lock(CMD_WRLOCK|CMD_NESTED_WRLOCK);
 
 	/* get the nest */
@@ -279,7 +279,7 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 	 * Write aliases file now before we try populating so that
 	 * consistancy checks will work when reading the file.
 	 */
-	(void)system("bk edit -q " ALIASES);
+	(void)system("bk -?BK_NO_REPO_LOCK=YES edit -q " ALIASES);
 	hash_toFile(aliasdb, ALIASES);
 	needunedit = 1;
 write:
@@ -313,7 +313,7 @@ err:
 	if (cmtfile) unlink(cmtfile);
 	if (rc && needunedit) {
 		/* revert any local edits to the aliases file */
-		system("bk unedit -q " ALIASES);
+		system("bk -?BK_NO_REPO_LOCK=YES unedit -q " ALIASES);
 	}
 	nested_free(n);
 	aliasdb_free(aliasdb);

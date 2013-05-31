@@ -227,6 +227,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 	unless (force) {
 		for (i = 0; i<79; ++i) putchar('-'); putchar('\n');
 		fflush(stdout);
+		// LMXXX - if changes ever locks this breaks
 		f = popen(opts->verbose ?
 		    "bk changes -Sav -" : "bk changes -Sa -", "w");
 		EACH (csetrevs) fprintf(f, "%s\n", csetrevs[i]);
@@ -271,10 +272,12 @@ prod:
 		unless (isdir(BKTMP)) mkdirp(BKTMP);
 		/* like bk makepatch but skips over missing files/keys */
 		if (opts->quiet || opts->verbose) {
-			cmd = aprintf("bk cset -Bfm - > '%s'", opts->patch);
+			cmd = aprintf("bk -?BK_NO_REPO_LOCK=YES "
+			    "cset -Bfm - > '%s'", opts->patch);
 		} else {
-			cmd = aprintf("bk cset -Bfm -N%d - > '%s'",
-				      ncsetrevs, opts->patch);
+			cmd = aprintf("bk -?BK_NO_REPO_LOCK=YES "
+			    "cset -Bfm -N%d - > '%s'",
+			    ncsetrevs, opts->patch);
 			progress_inherit(opts->tick);
 			progress_nlneeded();
 		}

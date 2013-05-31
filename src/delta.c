@@ -141,6 +141,8 @@ delta_main(int ac, char **av)
 	pfile	pf = {0};
 	int	dash, dbsort = 1, errors = 0, fire, dangling;
 	off_t	sz;
+	project	*locked_proj = 0;
+	char	here[MAXPATH];
 
 	prog = strrchr(av[0], '/');
 	if (prog) prog++;
@@ -286,8 +288,7 @@ delta_main(int ac, char **av)
 		return (1);
 	}
 	if (fire = (getenv("_IN_DELTA") == 0)) putenv("_IN_DELTA=YES");
-
-	if (fire && proj_root(0)) cmdlog_lock(CMD_WRLOCK);
+	strcpy(here, proj_cwd());
 	
 	while (name) {
 		ser_t	d = 0;
@@ -365,6 +366,18 @@ delta_main(int ac, char **av)
 				errors |= 1;
 				break;
 			}
+		}
+		if (fire && proj_root(s->proj) &&
+		    (locked_proj != s->proj)) {
+			if (locked_proj) {
+				chdir(proj_root(locked_proj));
+				cmdlog_unlock(CMD_WRLOCK);
+				proj_free(locked_proj);
+			}
+			chdir(proj_root(s->proj));
+			cmdlog_lock(CMD_WRLOCK);
+			locked_proj = proj_init(proj_root(s->proj));;
+			chdir(here);
 		}
 		if (fire && proj_hasDeltaTriggers(s->proj)) {
 			win32_close(s);
@@ -470,6 +483,12 @@ next:		if (init) fclose(init);
 		name = sfileNext();
 	}
 	if (sfileDone()) errors |= 64;
+	if (locked_proj) {
+		chdir(proj_root(locked_proj));
+		cmdlog_unlock(CMD_WRLOCK);
+		proj_free(locked_proj);
+		chdir(here);
+	}
 	comments_done();
 	return (errors);
 }

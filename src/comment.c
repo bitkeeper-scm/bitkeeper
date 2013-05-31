@@ -96,7 +96,7 @@ comments_main(int ac, char **av)
 			goto cset;
 		}
 	}
-	bktmp(tmp, "cmt");
+	bktmp(tmp, "comment");
 	unless (tf = fopen(tmp, "w")) {
 		perror(tmp);
 		return (1);
@@ -274,6 +274,7 @@ change_comments(char *file, char *rev, char **comments)
 	int	i;
 	int	rc = 1;
 
+	cmdlog_lock(CMD_WRLOCK);
 	sfile = name2sccs(file);
 	s = sccs_init(sfile, 0);
 	unless (s && HASGRAPH(s) && (d = sccs_findrev(s, rev))) {

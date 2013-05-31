@@ -590,7 +590,7 @@ import_patch() {
 		if [ -s "${TMP}deletes$$" ]
 		then
 			msg Removing `wc -l < "${TMP}deletes$$"` files
-			bk rm -f - < "${TMP}deletes$$"
+			BK_NO_REPO_LOCK=YES bk rm -f - < "${TMP}deletes$$"
 		fi
 		if [ -s "${TMP}creates$$" ]
 		then
@@ -732,7 +732,7 @@ import_RCS () {
 	fi    
 	ARGS="$BRANCH $UNDOS $CUTOFF $VERIFY $QUIET"
 	if [ $PARALLEL -eq 1 ]
-	then	bk rcs2bk $ARGS - < "${TMP}import$$" ||
+	then	bk -?BK_NO_REPO_LOCK=YES rcs2bk $ARGS - < "${TMP}import$$" ||
 		{
 		    echo rcs2bk exited with an error code, aborting
 		    Done 1
@@ -745,7 +745,7 @@ import_RCS () {
 	test $LINES -eq 0 && LINES=1
 	split -$LINES "${TMP}import$$" "${TMP}split$$"
 	for i in "${TMP}split$$"*
-	do	bk rcs2bk $ARGS -q - < $i &
+	do	bk -?BK_NO_REPO_LOCK=YES rcs2bk $ARGS -q - < $i &
 	done
 	wait
 	bk _unlink - < "${TMP}import$$"
@@ -792,7 +792,7 @@ import_finish () {
 	then	if [ X$QUIET = X ]
 		then echo "Creating initial changeset (should be +$NFILES)"
 		fi
-		BK_NO_REPO_LOCK=YES bk commit \
+		bk -?BK_NO_REPO_LOCK=YES commit \
 		    $QUIET $SYMBOL -y'Import changeset'
 	else	
 		tag=
@@ -801,9 +801,9 @@ import_finish () {
 		fi
 		if [ X$QUIET = X ]
 		then	echo "Looking for changeset boundaries.."
-			bk -r _findcset -v -t$GAP $SKIP_OPT $tag || Done 1
+			bk -?BK_NO_REPO_LOCK=YES -r _findcset -v -t$GAP $SKIP_OPT $tag || Done 1
 		else
-			bk -r _findcset -t$GAP $SKIP_OPT $tag || Done 1
+			bk -?BK_NO_REPO_LOCK=YES -r _findcset -t$GAP $SKIP_OPT $tag || Done 1
 		fi
 	fi
 	bk -?BK_NO_REPO_LOCK=YES -r check -ac || Done 1

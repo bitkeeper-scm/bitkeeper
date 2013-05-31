@@ -206,9 +206,9 @@ check_main(int ac, char **av)
 		if (verbose) {
 			fprintf(stderr,
 			    "Restarting a full repository check.\n");
-			return (system("bk -r check -acvff"));
+			return (system("bk -?BK_NO_REPO_LOCK=YES -r check -acvff"));
 		} else {
-			return (system("bk -r check -acff"));
+			return (system("bk -?BK_NO_REPO_LOCK=YES -r check -acff"));
 		}
 	}
 
@@ -1349,7 +1349,7 @@ fetch_changeset(int forceCsetFetch)
 		exit(0x40);
 	}
 	sccs_free(s);
-	if (system("bk renumber -q ChangeSet") != 0) {
+	if (system("bk -?BK_NO_REPO_LOCK=YES renumber -q ChangeSet") != 0) {
 		fprintf(stderr, "Giving up, sorry.\n");
 		exit(0x40);
 	}
