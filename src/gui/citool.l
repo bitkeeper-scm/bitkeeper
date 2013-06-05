@@ -2562,7 +2562,6 @@ void
 init()
 {
 	self.dashs = 0;
-	self.extras = 1;
 	self.nfiles = 0;
 	self.changed = 0;
 	self.commented = 0;
@@ -2608,6 +2607,7 @@ main(_unused int argc, string argv[])
 	self.cwd = pwd();
 	self.dotbk = `bk dotbk`;
 
+	self.extras = 1;
 	self.partial = 0;
 	self.resolve = 0;
 	foreach (arg in argv) {
