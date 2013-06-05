@@ -206,6 +206,13 @@ echo 1.5 jane project with spaces > WANT
 checkfiles WANT GOT
 bk changes -R '-/project with spaces/' -qd':I: :P: :C:' > GOT
 checkfiles WANT GOT
+cat <<EOF >WANT
+1.5
+jane
+project with spaces
+EOF
+bk changes -R '-/project with spaces/' -qd':I:\n:P:\n:C:' "$HERE/project" > GOT
+checkfiles WANT GOT
 echo OK
 
 echo $N Check changes -LR ...........................................$NL
