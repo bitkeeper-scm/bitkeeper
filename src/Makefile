@@ -504,7 +504,8 @@ installdir: utils/registry.tcl
 	@true
 
 trial_image trial-image:
-	$(MAKE) trial _image
+	$(MAKE) trial
+	$(MAKE) _image
 
 image:
 	$(MAKE) p

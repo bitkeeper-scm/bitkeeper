@@ -91,7 +91,7 @@ case $CMD in
 	./build install || failed
 	test $CMD = trial && {
 		# Note: install non-trial bits in case we
-		# don't crank for 2 weeks!  Then build the trial image:
+		# don't crank for 3 weeks!  Then build the trial image:
 		./build trial-image || failed
 	}
 	# save some diskspace for tight machines
