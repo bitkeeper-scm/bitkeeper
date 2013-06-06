@@ -95,8 +95,8 @@ Performance improvements:
     repository history.
 
   - Changed files.  Fastscan remembers where you locked a file (bk edit)
-    (bk edit) or where it became pending (bk ci).  Using this information
-    speeds up searching for modified files:
+    or where it became pending (bk ci).  Using this information speeds
+    up searching for modified files:
 
 	bk5 -cU diffs: 27.9 seconds
 	bk6 -cU diffs:  1.3 seconds
