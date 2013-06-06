@@ -146,6 +146,7 @@ EOF
 err=$?
 test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
 test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+bk unedit $Q file1
 echo OK
 
 echo $N change in a component creates a component cset file .........$NL
@@ -170,6 +171,7 @@ EOF
 err=$?
 test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
 test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+bk unedit $Q gui/lib/file1
 echo OK
 
 echo $N component changeset contains file comments ..................$NL
@@ -189,6 +191,7 @@ EOF
 err=$?
 test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
 test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+bk unedit $Q gui/lib/file1
 echo OK
 
 echo $N product changeset contains file and component cset comments .$NL
@@ -214,6 +217,7 @@ EOF
 err=$?
 test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
 test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+bk unedit $Q gui/lib/file1
 echo OK
 
 echo $N sfiles failing on a component gives sensible error...........$NL
@@ -316,4 +320,27 @@ EOF
 err=$?
 test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
 test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK
+
+echo $N Test rescan picks up new component changes ..................$NL
+bk edit $Q gcc/file1
+echo "foo" >> gcc/file1
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_fileIsInList "gcc/file1"
+	test_fileIsNotInList "gdb/file1"
+
+	exec bk edit -q gdb/file1
+	set fp [open gdb/file1 a+]
+	puts $fp "FOO"
+	close $fp
+
+	test_buttonPress "Rescan"
+	test_fileIsInList "gdb/file1"
+
+	test_buttonPress "Quit" then "Quit without saving*"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+bk unedit $Q gcc/file1 gdb/file1
 echo OK

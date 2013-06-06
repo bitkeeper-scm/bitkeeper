@@ -47,6 +47,9 @@ struct {
 	string	cwd;		    // current directory
 	string	root;		    // root directory of the repo
 	string	dotbk;		    // dotbk directory
+	string	compsOpts;	    // options for bk comps
+	string	nfilesOpts;	    // options for bk nfiles
+	int	includeProduct;     // include the PRODUCT
 	int	no_extras;	    // don't scan whole tree
 	int	resolve;	    // is this commit from the resolver
 	int	partial;	    // is this a partial commit from resolve
@@ -218,12 +221,12 @@ trimright(string s, _optional string p)
 }
 
 int
-getNumFiles(string opts)
+nfiles(string opts)
 {
 	string	res;
 
-	res = bk("nfiles ${opts} --cache-only");
-	if (res == "") return (0);
+	res = bk("nfiles ${opts}");
+	unless (String_isInteger(strict: res)) return (0);
 	return ((int)res);
 }
 
@@ -753,6 +756,38 @@ insertPendingNode(string comp)
 		image: img, data: comp,
 		font: self.font_underline,
 		fill: "blue", text: txt);
+}
+
+void
+getComponentList()
+{
+	if (self.nested) {
+		string	comp, compdata;
+
+		setStatus("Getting component list...");
+		compdata = bk("comps ${self.compsOpts}");
+		foreach (comp in split(/\n/, compdata)) {
+			if (comp == ".") continue;
+			comp = joinpath(self.root, comp);
+			self.allComponents[END+1] = comp;
+			self.compinfo{comp}.product = 0;
+			self.compinfo{comp}.commentedFiles = 0;
+		}
+	}
+
+	if (self.includeProduct) {
+		self.allComponents[END+1] = self.root;
+		self.compinfo{self.root}.product = 1;
+		self.compinfo{self.root}.commentedFiles = 0;
+	}
+
+}
+
+void
+getNumFiles()
+{
+	setStatus("Getting file counts...");
+	self.nfiles = nfiles(self.nfilesOpts);
 }
 
 void
@@ -2939,22 +2974,8 @@ setQuit(string value)
 void
 rescan()
 {
-	string	comp;
-
 	saveComments();
 	init();
-	self.files = undef;
-	self.compinfo = undef;
-	self.components = undef;
-	self.pendingNodes = undef;
-	foreach (comp in self.allComponents) {
-		string	n;
-
-		chdir(comp);
-		n = bk("nfiles");
-		if (String_isInteger(strict: n)) self.nfiles += (int)n;
-		self.compinfo{comp}.commentedFiles = 0;
-	}
 
 	ListBox_configure(self.o_files, state: "normal");
 	ListBox_itemDelete(self.o_files, (expand)getAllNodes());
@@ -2962,6 +2983,9 @@ rescan()
 	StatusBar_add(self.w_statusF, self.w_progress,
 	    separator: 0, sticky: "e");
 	update();
+
+	getComponentList();
+	getNumFiles();
 	processFiles(self.filelist);
 }
 
@@ -3296,16 +3320,22 @@ init()
 	self.cnt_modified = 0;
 	self.cnt_modifiedC = 0;
 	self.cnt_commented = 0;
+	self.compsOpts = "-ch";
+	self.nfilesOpts = "--cache-only";
+	self.includeProduct = 1;
+	self.selected = undef;
+	self.files = undef;
+	self.compinfo = undef;
+	self.components = undef;
+	self.pendingNodes = undef;
+	self.allComponents = undef;
 }
 
 void
 main(_argused int argc, string argv[])
 {
 	string	arg, file, files[];
-	string	nfilesOpts = "";
-	string	compscmd = "comps -ch";
 	int	quit = 0;
-	int	includeProduct = 1;
 	string	lopts[] = {"no-extras", "quit"};
 
 	require("BWidget");
@@ -3337,14 +3367,14 @@ main(_argused int argc, string argv[])
 			break;
 		    case "s":
 			self.dashs = 1;
-			if (optarg == "^PRODUCT") includeProduct = 0;
-			compscmd .= " -s${optarg}";
-			nfilesOpts .= " -s${optarg}";
+			if (optarg == "^PRODUCT") self.includeProduct = 0;
+			self.compsOpts .= " -s${optarg}";
+			self.nfilesOpts .= " -s${optarg}";
 			break;
 		    case "no-extras":
 			self.no_extras++;
-			compscmd .= " --no-extras";
-			nfilesOpts .= " --use-scancomp";
+			self.compsOpts .= " --no-extras";
+			self.nfilesOpts .= " --use-scancomp";
 			break;
 		    case "quit":
 			quit = 1;
@@ -3407,31 +3437,10 @@ main(_argused int argc, string argv[])
 	}
 
 	self.root = File_normalize(self.root);
-
-	if (self.nested) {
-		string	comp, compdata;
-
-		setStatus("Getting component list...");
-		compdata = bk(compscmd);
-		foreach (comp in split(/\n/, compdata)) {
-			if (comp == ".") continue;
-			comp = joinpath(self.root, comp);
-			self.allComponents[END+1] = comp;
-			self.compinfo{comp}.product = 0;
-			self.compinfo{comp}.commentedFiles = 0;
-		}
-	}
-
-	if (includeProduct) {
-		self.allComponents[END+1] = self.root;
-		self.compinfo{self.root}.product = 1;
-		self.compinfo{self.root}.commentedFiles = 0;
-	}
-
 	if (isdir(self.root)) chdir(self.root);
 
-	setStatus("Getting file counts...");
-	self.nfiles = getNumFiles(nfilesOpts);
+	getComponentList();
+	getNumFiles();
 
 	// Initialize the ChangeSet template if it exists.
 	self.templates{"ChangeSet"} = bk("-R cat BitKeeper/templates/commit");
