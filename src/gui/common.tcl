@@ -1,6 +1,3 @@
-set ::PWD [pwd]
-lappend ::auto_path [file join ::env(BK_BIN) gui lib]
-
 if {[info exists ::env(BK_DEBUG_GUI)]} {
 	proc InCommand {} {
 		uplevel {puts "[string repeat { } [expr {[info level] - 1}]][info level 0]"}
@@ -118,7 +115,6 @@ proc cd2root { {startpath {}} } \
 		set path [file join $dir BitKeeper etc]
 		if {[file isdirectory $path]} {
 			cd $dir
-			set ::PWD $dir
 			return
 		}
 		set dir [file join $dir ..]
@@ -134,7 +130,6 @@ proc cd2product {{path ""}} {
 		puts "Could not change directory to product root."
 		exit 1
 	}
-	set ::PWD [pwd]
 }
 
 proc resolveSymlink {filename} {
@@ -871,14 +866,12 @@ proc setScrollbar {sb w first last} \
 	## Grab the current coordinates for the primary widget being scrolled.
 	set x [lindex [$w xview] 0]
 	set y [lindex [$w yview] 0]
-	event generate $w <<YScroll>>
 
 	## Move all widgets that aren't the primary widget to the same point.
 	foreach widg [dict get $gc(scrollbar.widgets) $sb] {
 		if {$widg eq $w} { continue }
 		$widg xview moveto $x
 		$widg yview moveto $y
-		event generate $widg <<YScroll>>
 	}
 }
 

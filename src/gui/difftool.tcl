@@ -255,7 +255,6 @@ proc getFiles {} \
 		} else {
 			## bk difftool <dir>
 			cd [lindex $argv 0]
-			set ::PWD [pwd]
 			set fd [open "|bk -Ur. --sfiles-opts=cgv"]
 		}
 		# Sample output from 'bk sfiles -gcvU'
