@@ -547,6 +547,7 @@ getav(FILE *f, int *acp, char ***avp)
 	remote	r;
 	int	i, inspace, inQuote;
 	int	ac;
+	FILE	*ftmp;
 
 	bzero(&r, sizeof (remote));
 	r.wfd = 1;
@@ -568,18 +569,22 @@ nextline:
 	for (i = 0; buf[i]; i++) {
 		if (inQuote) {
 			if (QUOTE(buf[i])) {
-				buf[i] = 0;
-				if (s) {
-					av = addLine(av, strdup(s));
-					s = 0;
-				}
+				av = addLine(av, fmem_close(ftmp, 0));
+				ftmp = 0;
 				inQuote = 0;
+				s = 0;
+			} else {
+				/* a backslash inside a quoted string
+				 * escapes the next character.
+				 */
+				if (buf[i] == '\\') ++i;
+				fputc(buf[i], ftmp);
 			}
 			continue;
 		}
 		if (QUOTE(buf[i])) {
 			assert(!QUOTE(buf[i+1])); /* no null args */
-			s = buf + i + 1;
+			ftmp = fmem();
 			inQuote = 1;
 			continue;
 		}
