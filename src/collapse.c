@@ -268,7 +268,7 @@ do_cset(sccs *s, char *rev, char **nav)
 		goto out;
 	}
 	sccs_md5delta(s, d, buf);
-	csetrev = aprintf("@%s", buf);
+	csetrev = aprintf("@@%s", buf);
 
 	/* BK_CSETLIST=/file/of/cset/keys */
 	csetfile = bktmp(0, "collapse-csets");

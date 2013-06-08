@@ -1,4 +1,19 @@
 ============================================================================
+Release notes for BitKeeper version 6.0-pre3 (released XXXXXXXXXX)
+
+-r@<rev>
+    In this release the meaning of -r@<rev> changes in a nested
+    repository.  In bk-5.x when in a component -r@<rev> for a file
+    would expand to the revision in that file for <rev> on this
+    component. And then -r@@<rev> would find the file as of a given
+    product <rev>.   In bk-6.0 this is reversed so that -r@<rev> will
+    also lookup the rev of a file for a cset in the product.  This
+    makes the behavior of -r@<rev> in nested and a standalone
+    repository have similar behavior.  The -r@@<rev> syntax will allow
+    lookups using a components cset file, but that will rarely be
+    needed.
+
+============================================================================
 Release notes for BitKeeper version 6.0-pre2 (released Jun 6, 2013)
 
 bk set

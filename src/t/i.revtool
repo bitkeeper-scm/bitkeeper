@@ -30,3 +30,17 @@ echo 'set gc(rev.annotate) "-Abdnpru"' > "`bk dotbk`/config-gui"
 bk revtool get.c
 rm "`bk dotbk`/config-gui"
 echo OK
+
+echo $N After revtool starts, pick newest and launch difftool .......$NL
+cd "$HERE"
+nested project
+cd gcc
+echo stuff> foo
+bk new $Q foo
+bk commit $Q -y'new gcc/foo'
+bk revtool -S
+echo OK
+
+echo $N After revtool starts, pick newest and launch difftool .......$NL
+bk revtool
+echo OK

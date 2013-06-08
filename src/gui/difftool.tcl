@@ -294,9 +294,9 @@ proc getFiles {} \
 		if {[regexp -- {-r(.*)} $a junk rev1]} {
 			if {[regexp -- {-r(.*)} $b - rev2]} {
 				## bk difftool -r<rev> -r<rev>
-				cd2product
+				cd2root
 				set ::readfp \
-				    [open "|bk rset --elide -r$rev1..$rev2"]
+				    [open "|bk rset --below --elide -r$rev1..$rev2"]
 			} else {
 				## bk difftool -r<rev> <file>
 				set filepath [lindex $argv 1]

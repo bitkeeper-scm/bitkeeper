@@ -1735,24 +1735,36 @@ sccs_patheq(char *file1, char *file2)
 	return (ret);
 }
 
+enum {PLAINREV, REPOREV, PRODREV};
+
 ser_t
 sccs_findrev(sccs *s, char *rev)
 {
 	ser_t	d;
+	int	revtype;
 	project	*proj;
 	char	*dk, *csetdk = 0;
 	char	rk[MAXKEY];
 
 	unless (rev && *rev) return (findrev(s, 0));
-again:	if (rev[0] == '@') {
-		if (rev[1] == '@') {
-			if (rev[2] == '@') return (0);
+	/* -r@rev - look in product ; -r@@rev - look in this repo */
+	revtype = PLAINREV;
+	if (*rev == '@') {
+		++rev;
+		revtype = PRODREV;
+		if (*rev == '@') {
+			++rev;
+			revtype = REPOREV;
+			if (*rev == '@') return (0);
+		}
+	}
+again:	if (revtype != PLAINREV) {
+		if (revtype == PRODREV) {
 			unless (proj_isComponent(s->proj)) {
-				rev = rev+1;
+				revtype = REPOREV;
 				goto again;
 			}
 			proj = proj_product(s->proj);
-			rev += 2;
 			if (CSET(s)) goto atrev;
 			rev = csetdk = proj_cset2key(proj,
 			    rev, proj_rootkey(s->proj));
@@ -1763,12 +1775,11 @@ again:	if (rev[0] == '@') {
 				d = 0;
 			}
 		} else if (CSET(s) && !s->file) {
-			++rev;
+			revtype = PLAINREV;
 			goto again;
 		} else {
 			proj = s->proj;
 			if (CSET(s) && s->file) proj = proj_product(proj);
-			++rev;
 atrev:			sccs_sdelta(s, sccs_ino(s), rk);
 			if (dk = proj_cset2key(proj, rev, rk)) {
 				d = sccs_findKey(s, dk);
@@ -1783,9 +1794,9 @@ atrev:			sccs_sdelta(s, sccs_ino(s), rk);
 	} else if (!isalpha(rev[0])) {
 		d = findrev(s, rev);
 	} else if (!CSET(s) || proj_isComponent(s->proj)) {
-		/* likely a tag, assume @@tag */
-		sprintf(rk, "@@%s", rev);
-		d = sccs_findrev(s, rk);
+		/* likely a tag, look in product or standalone root */
+		revtype = PRODREV;
+		goto again;
 	} else {
 		d = findrev(s, rev);
 	}
@@ -16576,7 +16587,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		 */
 		sccs_sdelta(s, d, buf);
 		sprintf(cmd,
-		    "bk -R get -qp -r@'%s' " ATTR "| bk _getkv - %.*s",
+		    "bk -R get -qp -r@@'%s' " ATTR "| bk _getkv - %.*s",
 		    buf, len - 5, kw + 5);	// yuck - strlen(ATTR)
 		cnt = 0;
 		if (f = popen(cmd, "r")) {

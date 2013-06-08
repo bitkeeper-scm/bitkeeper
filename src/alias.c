@@ -403,7 +403,8 @@ aliasdb_init(nested *n, project *p, char *rev, int pending, int no_diffs)
 		if (pending) {
 			assert(!rev);
 		} else {
-			csetrev = aprintf("@%s", rev ? rev : "+");
+			/* While we want product, currently in product so @@ */
+			csetrev = aprintf("@@%s", rev ? rev : "+");
 		}
 		if (pending && HAS_GFILE(s)) {
 			if (no_diffs && sccs_hasDiffs(s, SILENT, 1)) {

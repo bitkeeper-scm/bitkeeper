@@ -45,6 +45,7 @@ rset_main(int ac, char **av)
 	int	rc = 1;
 	Opts	*opts;
 	longopt	lopts[] = {
+		{ "below", 302},
 		{ "elide", 305},
 		{ "hide-bk", 310 },
 		{ "prefix0;", 320 },
@@ -90,6 +91,8 @@ rset_main(int ac, char **av)
 		case 's':	opts->aliases = addLine(opts->aliases,
 					strdup(optarg));
 				break;
+		case 302:  // --below
+	        		opts->standalone = !proj_isProduct(0); break;
 		case 305:  // --elide
 				opts->elide = 1; break;
 		case 310:  // --hide-bk

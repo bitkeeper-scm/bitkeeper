@@ -1414,7 +1414,7 @@ proc selectNode { type {val {}}} \
 proc difftool {file r1 r2} \
 {
 	if {$file eq "ChangeSet"} {
-		catch {exec bk difftool -r@@$r1 -r@@$r2 &} err
+		catch {exec bk difftool -r$r1 -r$r2 &} err
 	} else {
 		catch {exec bk difftool -r$r1 -r$r2 $file &} err
 	}

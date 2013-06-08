@@ -109,7 +109,7 @@ range_urlArg(RANGE *rargs, char *url)
 	f = fmem();
 	if (repogca(urls, ":REV:\\n", RGCA_ALL, f)) goto out;
 	rewind(f);
-	rev = aprintf("@@%s", fgetline(f)); /* intentional leak (see above) */
+	rev = aprintf("@%s", fgetline(f)); /* intentional leak (see above) */
 	if (fgetline(f)) {
 		fprintf(stderr, "%s: non-unique baseline revision\n", prog);
 		free(rev);
