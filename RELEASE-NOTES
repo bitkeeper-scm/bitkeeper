@@ -1,5 +1,5 @@
 ============================================================================
-Release notes for BitKeeper version 6.0-pre3 (released XXXXXXXXXX)
+Release notes for BitKeeper version 6.0-pre3 (released Jun 13, 2013)
 
 -r@<rev>
     In this release the meaning of -r@<rev> changes in a nested
@@ -21,6 +21,9 @@ Release notes for BitKeeper version 6.0-pre3 (released XXXXXXXXXX)
     see what would be pushed (assuming that you check in and commit
     any modifications; all except csettool include pending deltas and
     diffs/difftool will list any modifications).
+
+    We find this useful for reviewing local work or what was just 
+    pulled.
 
     If no url is provided then the the repository parent is used to
     find a baseline for local work.  If there are multiple parents,
