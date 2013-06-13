@@ -13,6 +13,44 @@ Release notes for BitKeeper version 6.0-pre3 (released XXXXXXXXXX)
     lookups using a components cset file, but that will rarely be
     needed.
 
+-L[url]
+    This release adds -L[url] (local work, somewhat like bk changes -L)
+    to bk csettool, bk diffs, bk difftool, bk log, and bk sccslog.
+
+    These commands give you a way to look over local changes, you can
+    see what would be pushed (assuming that you check in and commit
+    any modifications; all except csettool include pending deltas and
+    diffs/difftool will list any modifications).
+
+    If no url is provided then the the repository parent is used to
+    find a baseline for local work.  If there are multiple parents,
+    the outgoing parent is used.  If there are multiple outgoing
+    parents you must specify which one you want.
+
+    -L changes the behavior of some commands when no other arguments
+    are provided; without -L the default is to process the list of
+    files in the current working directory.  -L changes the implied
+    default to be the entire repository (or nested collection).  To
+    get the old behavior run:
+
+    bk diffs -L .
+
+    which will limit it to files in the current working directory.
+
+    Common idioms:
+
+    bk difftool -L		# walk all diffs in all files
+    bk diffs -L			# same thing in a terminal
+    bk diffs -L sfiles.c	# show the local diffs in the specified file
+    bk log -L dir		# show the local checkin comments in dir
+
+bk csets
+    -D added to use difftool/diffs instead of csettool/changes to view
+    the changes from the last pull.
+
+bk diffs
+   The new -L option replaces the old -@ which was semi-documented.
+
 ============================================================================
 Release notes for BitKeeper version 6.0-pre2 (released Jun 6, 2013)
 

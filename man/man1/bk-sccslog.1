@@ -7,6 +7,7 @@ bk sccslog \- list deltas sorted by date across all files
 .[B] \-bDfn
 .[OPTreq] \-c dates
 .[OPTreq] \-d dspec
+.[OPTopt] \-L url
 .[OPTreq] \-r r
 .BKARGS
 .SH DESCRIPTION
@@ -73,6 +74,16 @@ default is backwards order.
 .\" Indent output by 
 .\" .ARG d
 .\" spaces.
+.tp
+.OPTopt \-L url
+Show all deltas unique to this repository relative to the (outgoing) parent or
+.ARG url
+if one was specified.
+May not be combined with
+.BR \-c ,
+.BR \-C ,
+or
+.BR \-r .
 .tp
 .B \-n
 Add  a newline to each printed record (sometimes useful with

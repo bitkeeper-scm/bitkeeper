@@ -2,6 +2,8 @@
 #include "sccs.h"
 #include "range.h"
 
+private	int	unrange(int ac, char **av);
+
 int
 range_main(int ac, char **av)
 {
@@ -12,9 +14,10 @@ range_main(int ac, char **av)
 	int	quiet = 0;
 	int	all = 0;
 	int	c;
+	int	endpoints = 0;
 	RANGE	rargs = {0};
 
-	while ((c = getopt(ac, av, "@|aec;qr;", 0)) != -1) {
+	while ((c = getopt(ac, av, "aec;L|qr;u", 0)) != -1) {
 		switch (c) {
 		    case 'a': all++; break;
 		    case 'e': expand++; break;
@@ -22,15 +25,21 @@ range_main(int ac, char **av)
 		    case 'c':
 			if (range_addArg(&rargs, optarg, 1)) usage();
 			break;
+		    case 'L':
+			if (range_urlArg(&rargs, optarg) ||
+			    range_addArg(&rargs, "+", 0)) {
+				usage();
+			}
+			break;
 		    case 'r':
 			if (range_addArg(&rargs, optarg, 0)) usage();
 			break;
-		    case '@':
-			if (range_urlArg(&rargs, optarg)) usage();
-			break;
+		    case 'u': endpoints = 1; break;	// undoc
 		    default: bk_badArg(c, av);
 		}
 	}
+	if (endpoints) return (unrange(ac, av));
+
 	for (name = sfileFirst("range", &av[optind], 0);
 	    name; name = sfileNext()) {
 		if (s && (streq(s->gfile, name) || streq(s->sfile, name))) {
@@ -72,3 +81,45 @@ next:		;
 	return (0);
 }
 
+private	int
+unrange(int ac, char **av)
+{
+	sccs	*s = 0;
+	ser_t	d, left, right;
+	int	ret = 1;
+	FILE	*f = 0;
+	char	*p;
+
+	unless (s = sccs_csetInit(INIT_MUSTEXIST)) {
+		fprintf(stderr, "%s: can't find ChangeSet\n", prog);
+		goto err;
+	}
+	if (av[optind] && streq(av[optind], "-")) {
+		f = stdin;
+	} else {
+		if (proj_cd2product()) {
+			fprintf(stderr, "%s: not in repo\n", prog);
+			goto err;
+		}
+		unless (f = fopen("BitKeeper/etc/csets-in", "r")) {
+			fprintf(stderr, "%s: no csets-in\n", prog);
+			goto err;
+		}
+	}
+	while (p = fgetline(f)) {
+		unless (d = sccs_findrev(s, p)) {
+			fprintf(stderr, "%s: can't find %s\n", prog, p);
+			goto err;
+		}
+		FLAGS(s, d) |= D_SET;
+	}
+	left = right = 0;
+	range_unrange(s, &left, &right, 0);
+	unless (left && right) goto err;
+	printf("%s..%s\n", REV(s, left), REV(s, right));
+	ret = 0;
+
+err:	sccs_free(s);
+	if (f && (f != stdin)) fclose(f);
+	return (ret);
+}

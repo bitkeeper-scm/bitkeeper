@@ -18,7 +18,8 @@ log_main(int ac, char **av)
 	int	reverse = 0, doheader = !log;
 	int	init_flags = INIT_NOCKSUM;
 	int	rflags = SILENT|RANGE_SET;
-	int	flags = 0, sf_flags = 0, rc = 0, n_revs = 0;
+	int	flags = 0, rc = 0, n_revs = 0;
+	int	local = 0;
 	int	c;
 	char	*name;
 	char	*cset = 0, *tip = 0;
@@ -31,7 +32,7 @@ log_main(int ac, char **av)
 		{ 0, 0 }
 	};
 
-	while ((c = getopt(ac, av, "@|0123456789abc;C;d:DfhMnopr;Y",
+	while ((c = getopt(ac, av, "0123456789abc;C;d:DfhL|Mnopr;Y",
 		    lopts)) != -1) {
 		switch (c) {
 		    case '0': case '1': case '2': case '3': case '4':
@@ -51,10 +52,17 @@ log_main(int ac, char **av)
 			dspec = strdup(optarg);
 			break;
 		    case 'h': doheader = 0; break;		/* doc 2.0 */
+		    case 'L':
+			local = 1;
+			if (range_urlArg(&rargs, optarg) ||
+			    range_addArg(&rargs, "+", 0)) {
+				usage();
+			}
+			break;
 		    case 'M': 	/* for backward compat, undoc 2.0 */
 			      break;
 		    case 'n': flags |= PRS_LF; break;		/* doc 2.0 */
-		    case 'o': 
+		    case 'o':
 			 fprintf(stderr,
 			     "%s: the -o option has been removed\n", av[0]);
 			 usage();
@@ -69,9 +77,6 @@ log_main(int ac, char **av)
 			break;
 		    case 'r':
 			if (range_addArg(&rargs, optarg, 0)) usage();
-			break;
-		    case '@':
-			if (range_urlArg(&rargs, optarg)) usage();
 			break;
 		    case 300:	/* --dspecf */
 			if (dspec) usage();
@@ -111,8 +116,12 @@ log_main(int ac, char **av)
 		exit(1);
 	}
 	if (log) pid = mkpager();
-	for (name = sfileFirst(av[0], &av[optind], sf_flags);
-	    name; name = sfileNext()) {
+	if (local && !av[optind]) {
+		name = sfiles_local(rargs.rstart, "rm");
+	} else {
+		name = sfileFirst(av[0], &av[optind], 0);
+	}
+	for (; name; name = sfileNext()) {
 		unless (s = sccs_init(name, init_flags)) continue;
 		unless (HASGRAPH(s)) goto next;
 		if (cset) {

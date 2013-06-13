@@ -21,6 +21,9 @@ bk csettool \- \*(BK graphical changeset browser
 .Bc |
 .ARGc rev
 ]
+.br
+.B bk csettool
+.OPTopt \-L url
 .SH DESCRIPTION
 .LP
 .B bk csettool
@@ -100,6 +103,16 @@ option is given,
 defaults to
 .QR \-r+ ,
 i.e. the most recent changeset.
+.tp
+.OPTopt \-L url
+Show all changesets unique to this repository relative to the (outgoing)
+parent or 
+.ARG url
+if one was specified.
+Very similar to:
+.DS
+bk csettool -r@`bk repogca [\*<url\*>]`..
+.DE
 .tp
 .B \-S
 By default,

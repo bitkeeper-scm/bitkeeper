@@ -12,6 +12,7 @@ bk log \- print file revision history and/or metadata
 .if n .ds r r
 .[OPTreq] \-c \*d
 .[OPTreq] \-C \*r
+.[OPTopt] \-L url
 .[OPTreq] \-r \*r
 .if n .ll
 .BKARGS
@@ -73,6 +74,15 @@ Print the changes in forward (oldest to newest) order.  The default is backward.
 .\" .tp
 .\" .B \-M
 .\" Do not include branch deltas which are not merged.
+.tp
+.OPTopt \-L url
+Show all deltas unique to this repository relative to the (outgoing) parent or
+.ARG url
+if one was specified.
+May not be combined with
+.BR \-c 
+or
+.BR \-r .
 .tp
 .B \-n
 Add a newline to each printed record.
@@ -623,7 +633,7 @@ Count up lines inserted by a particular user in all non-merge deltas:
 bk -Ur log -nd'$if(:USER: = joe && !:MERGE:){:LI:}' |
 awk '{ lines += $1 } END { print lines }'
 .DE
-Note that the preceeding example uses new features in the 
+Note that the preceding example uses new features in the 
 .I dspec 
 language.
 The following will work in older bk-4.x releases:

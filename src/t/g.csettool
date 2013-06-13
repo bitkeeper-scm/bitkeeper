@@ -123,3 +123,45 @@ EOF
 if [ $? -ne 0 ]; then echo failed; cat "$OUT"; exit 1; fi
 if [ -s "$OUT" ] ; then echo failed; cat "$OUT"; exit 1; fi
 echo OK
+
+echo $N Test -L option ..............................................$NL
+cd "$HERE"
+bk clone $Q project clone
+mkdir clone/dir
+cd clone/dir
+echo foo > foo
+echo bar > bar
+echo baz > baz
+bk new $Q foo bar baz
+bk commit $Q -f
+bk guitest csettool -L >"$OUT" 2>&1 <<EOF
+	test_buttonPress "Quit"
+EOF
+test $? -eq 0 || fail -f "$OUT"
+test -s "$OUT" && fail -f "$OUT"
+echo OK
+
+echo $N Test -LURL option ...........................................$NL
+bk guitest csettool -L"file://$HERE/project" >"$OUT" 2>&1 <<EOF
+	test_buttonPress "Quit"
+EOF
+test $? -eq 0 || fail -f "$OUT"
+test -s "$OUT" && fail -f "$OUT"
+echo OK
+
+echo $N Test -L when there are multiple parents .....................$NL
+cd "$HERE"
+bk clone $Q clone clone2
+cd clone2
+bk parent $Q -ao "$HERE/project"
+bk guitest csettool -L >"$OUT" 2>&1 <<EOF
+	test_buttonPress "Quit"
+EOF
+test $? -eq 0 && fail -f "$OUT" should fail
+cat <<EOF > WANT
+Could not get repo GCA:
+repogca: multiple parents, -L requires a url
+
+EOF
+cmpfiles "$OUT" WANT
+echo OK

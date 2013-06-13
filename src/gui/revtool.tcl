@@ -1413,8 +1413,12 @@ proc selectNode { type {val {}}} \
 
 proc difftool {file r1 r2} \
 {
+	global	dashs
+
 	if {$file eq "ChangeSet"} {
-		catch {exec bk difftool -r$r1 -r$r2 &} err
+		set here ""
+		if {$dashs} { set here "-S" }
+		catch {exec bk difftool {*}$here -r$r1 -r$r2 &} err
 	} else {
 		catch {exec bk difftool -r$r1 -r$r2 $file &} err
 	}

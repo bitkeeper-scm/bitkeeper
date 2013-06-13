@@ -280,9 +280,8 @@ proc getFiles {revs {file_rev {}}} \
 	}
 	catch { close $r }
 	if {$revs ne "-" && !$fileCount} {
-		displayMessage "This ChangeSet is a merge ChangeSet and does\
-		    not contain any files."
-		exit
+		message "This ChangeSet is a merge ChangeSet and does\
+		    not contain any files." -exit 0
 	}
 	if {($tags > 0) && ($csets == 0)} {
 		global	env
@@ -633,6 +632,7 @@ proc main {} \
 	global argv0 argv argc app showAnnotations gc dashs
 
 	wm title . "Cset Tool"
+	bk_init
 
 	# Set 'app' so that the difflib code knows which global config
 	# vars to read
@@ -641,25 +641,36 @@ proc main {} \
 	set file_rev ""
 	set dashs 0
 	set stdin 0
+	set local 0
+	set opts 0
 
 	while {$argindex < $argc} {
 		set arg [lindex $argv $argindex]
-		switch -regexp -- $arg {
+		switch -regexp -matchvar match -- $arg {
 		    "^-f.*" {
+			incr opts
 			set ftmp [lindex $argv $argindex]
 		   	regexp {^[ \t]*-f(.*)} $ftmp dummy file_rev
 		    }
 		    "^-r.*" {
+			incr opts
 			set rev [lindex $argv $argindex]
 		   	regexp {^[ \t]*-r(.*)} $rev dummy revs
 			# make sure we don't get an empty revision
 			if {$revs eq ""} { usage }
 		    }
 		    "^-S$" {
+			incr opts
 			set dashs 1
 		    }
 		    "^-$" {
+			incr opts
 			set stdin 1
+		    }
+		    "^-L(.*|)$" {
+			incr opts
+			set local 1
+			set localUrl [lindex $match 1]
 		    }
 
 		    default {
@@ -670,6 +681,9 @@ proc main {} \
 		}
 		incr argindex
 	}
+	if {($local == 1) && ($opts > 1)} {
+		displayMessage "-L cannot be specified with any other option" 1
+	}
 	if {(($revs != "") || ($file_rev != "")) && $stdin} {
 		wm withdraw .
 		displayMessage "Can't use '-' option with any other options"
@@ -679,7 +693,6 @@ proc main {} \
 		set revs "+"
 	}
 	#displayMessage "csetttool: revs=($revs) file=($file_rev)"
-	bk_init
 
 	if {$dashs} {
 		if {[cd2root [file dirname $file_rev]] == -1} {
@@ -701,6 +714,13 @@ proc main {} \
 	if {$stdin == 1} {
 		getFiles "-"
 	} else {
+		if {$local} {
+			set gca [bk_repogca $localUrl err]
+			if {![string length $gca]} {
+				message "Could not get repo GCA:\n$err" -exit 1
+			}
+			set revs @$gca..
+		}
 		getFiles $revs $file_rev
 	}
 

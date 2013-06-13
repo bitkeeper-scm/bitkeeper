@@ -1948,3 +1948,72 @@ walk_deepComponents(char *path, walkfn fn, void *data)
 		proj_free(comp);
 	}
 }
+
+int
+sfiles_local_main(int ac, char **av)
+{
+	char	*rev = 0;
+	int	c;
+	char	*t, *p;
+	FILE	*f;
+	int	standalone = 0, norev = 0, nomods = 0;
+	hash	*seen;
+	int	rc = 1;
+	char	buf[MAXLINE];
+	longopt	lopts[] = {
+		{ "no-mods", 300 },
+		{ "no-revs", 310 },
+		{ 0, 0 }
+	};
+
+	while ((c = getopt(ac, av, "r;S", lopts)) != -1) {
+		switch (c) {
+		    case 'r': rev = optarg; break;
+		    case 'S': standalone = 1; break;
+		    case 300: nomods = 1; break;
+		    case 310: norev = 1; break;
+		    default: bk_badArg(c, av);
+		}
+	}
+	bk_nested2root(standalone);
+
+	seen = hash_new(HASH_MEMHASH);
+	if (rev) {
+		sprintf(buf, "bk rset -%sH --elide -r'%s'..",
+		    (standalone ? "S" : ""), rev);
+		f = popen(buf, "r");
+		while (t = fgetline(f)) {
+			p = strchr(t, '|');
+			*p = 0;
+			hash_storeStrSet(seen, t); /* just filename */
+			unless (norev) {
+				*p++ = '|';
+				p = strstr(p, "..");
+				*p = 0;	/* only keep first rev */
+			}
+			puts(t);
+		}
+		if (pclose(f)) {
+			fprintf(stderr, "%s: rset -r%s failed\n", prog, rev);
+			goto out;
+		}
+	}
+	sprintf(buf, "bk -%spU%s",
+	    (nomods ? "" : "c"),
+	    (standalone ? "r" : ""));
+	f = popen(buf, "r");
+	while (t = fgetline(f)) {
+		unless (hash_fetchStr(seen, t)) {
+			fputs(t, stdout);
+			unless (norev) fputs("|@+", stdout);
+			putchar('\n');
+		}
+	}
+	if (pclose(f)) {
+		fprintf(stderr, "%s: bk -Ucp failed\n", prog);
+		goto out;
+	}
+	rc = 0;
+out:	hash_free(seen);
+	return (rc);
+}

@@ -8,6 +8,12 @@ proc widgets {} \
 	global	scroll wish search gc d app
 	global State env
 
+	bind . <Destroy> {
+		if {[string match %W "."]} {
+			saveState diff
+		}
+	}
+
 	set gc(bw) 1
 	if {$gc(windows)} {
 		set gc(py) -2; set gc(px) 1
@@ -185,17 +191,6 @@ proc whitespace {} \
 	selectFile $selected
 }
 
-proc usage {} \
-{
-	puts "usage:\tbk difftool"
-	puts "\tbk difftool file"
-	puts "\tbk difftool -r<rev> file"
-	puts "\tbk difftool -r<rev> -r<rev2> file"
-	puts "\tbk difftool file file2"
-	puts "\tbk difftool -"
-	exit
-}
-
 proc readInput {fp} \
 {
 	if {[gets $fp line] == -1} {
@@ -203,7 +198,7 @@ proc readInput {fp} \
 			puts $err
 			exit 1
 		}
-		unset ::readfp
+		set ::read_done 1
 	}
 
 	if {$line eq ""} { return }
@@ -220,6 +215,15 @@ proc readInput {fp} \
 		set file  [normalizePath $fn]
 		set lfile [getRev $fn $rev1 0]
 		set rfile [getRev $fn $rev2 0]
+	} elseif {[regexp {(.*)\|(.*)} $line -> fn rev1]} {
+		set file  [normalizePath $fn]
+		set lfile [getRev $fn $rev1 0]
+	        set rev2 "+"
+	        if {![file writable $fn]} {
+		    set rfile [getRev $fn $rev2 0]
+		} else {
+		    set rfile $file
+		}
 	} else {
 		# not rset, must be just a modified file
 		set file  [normalizePath $line]
@@ -231,138 +235,6 @@ proc readInput {fp} \
 
 	if {[checkFiles $lfile $rfile]} {
 		addFile $lfile $rfile $file $rev1 $rev2
-	}
-}
-
-proc getFiles {} \
-{
-	global argv argc dev_null lfile rfile unique
-	global gc rev1 rev2 Diffs DiffsEnd filepath
-	global	fileInfo files
-
-	if {$argc > 3} { usage }
-	set files [list]
-	set rev1 ""
-	set rev2 ""
-	set Diffs(0) 1.0
-	set DiffsEnd(0) 1.0
-	set unique 0
-
-	if {$argc == 0 || ($argc == 1 && [file isdir [lindex $argv 0]])} {
-		if {$argc == 0} {
-			## bk difftool
-			set fd [open "|bk -U --sfiles-opts=cgv"]
-		} else {
-			## bk difftool <dir>
-			cd [lindex $argv 0]
-			set fd [open "|bk -Ur. --sfiles-opts=cgv"]
-		}
-		# Sample output from 'bk sfiles -gcvU'
-		# lc---- Makefile
-		# lc---- annotate.c
-		while {[gets $fd str] >= 0} {
-			set index [expr {1 + [string first " " $str]}]
-			set fname [string range $str $index end]
-			set rfile $fname
-			set lfile [getRev $rfile "+" 1]
-			addFile $lfile $rfile $fname + checked_out
-		}
-		close $fd
-	} elseif {$argc == 1} {
-		if {$argv == "-"} {
-			## bk difftool -
-			## Typically files from an sfiles or rset pipe.
-			set ::readfp stdin
-		} elseif {[regexp -- {-r(@.*)..(@.*)} $argv - - -]} {
-			## bk diffool -r@<rev>..@<rev>
-			cd2product
-			set ::readfp [open "| bk rset --elide $argv" r]
-		} else {
-			## bk difftool <file>
-			set filepath [lindex $argv 0]
-			set rfile [normalizePath $filepath]
-			set lfile [getRev $rfile "+" 1]
-			set rev1 "+"
-
-			if {[checkFiles $lfile $rfile]} {
-				addFile $lfile $rfile $rfile + checked_out
-			}
-		}
-	} elseif {$argc == 2} { ;# bk difftool -r<rev> <file>
-		set a [lindex $argv 0]
-		set b [lindex $argv 1]
-		if {[regexp -- {-r(.*)} $a junk rev1]} {
-			if {[regexp -- {-r(.*)} $b - rev2]} {
-				## bk difftool -r<rev> -r<rev>
-				cd2root
-				set ::readfp \
-				    [open "|bk rset --below --elide -r$rev1..$rev2"]
-			} else {
-				## bk difftool -r<rev> <file>
-				set filepath [lindex $argv 1]
-				set rfile [normalizePath $filepath]
-				set lfile [getRev $rfile $rev1 0]
-				# If bk file and not checked out, check it out
-				if {[exec bk sfiles -g "$rfile"] != ""} {
-					if {![file exists $rfile]} {
-						catch {exec bk get "$rfile"} err
-					}
-				}
-				if {[checkFiles $lfile $rfile]} {
-					addFile $lfile $rfile $rfile $rev1
-				}
-				if {[file exists $rfile] != 1} { usage }
-			}
-		} else {
-			## bk difftool <file1> <file2>
-			set lfile [normalizePath [lindex $argv 0]]
-			set rfile [normalizePath [lindex $argv 1]]
-
-			if {[file isdirectory $rfile]} {
-				set tfile [file tail $lfile]
-				#set rfile [file join $rfile $lfile]
-				set rfile [file join $rfile $tfile]
-				# XXX: Should be a real predicate type func
-				if {![file exists $rfile]} {
-					catch {exec bk co $rfile} err
-				}
-			}
-			if {[checkFiles $lfile $rfile]} {
-				addFile $lfile $rfile $lfile
-			}
-		}
-	} else {
-		## bk difftool -r<rev> -r<rev2> <file>
-		set filepath [lindex $argv 2]
-		set file [normalizePath $filepath]
-		set a [lindex $argv 0]
-		if {![regexp -- {-r(.*)} $a junk rev1]} { usage }
-		set lfile [getRev $file $rev1 0]
-		set a [lindex $argv 1]
-		if {![regexp -- {-r(.*)} $a junk rev2]} { usage }
-		set rfile [getRev $file $rev2 0]
-		if {[checkFiles $lfile $rfile]} {
-			addFile $lfile $rfile $file $rev1 $rev2
-		}
-	}
-
-	if {[info exists ::readfp]} {
-		fconfigure $::readfp -blocking 0 -buffering line
-		fileevent  $::readfp readable [list readInput $::readfp]
-		vwait ::readfp
-	}
-
-	if {[llength $files] == 0} {
-		# didn't find any valid arguments or there weren't any
-		# files that needed diffing...
-		if {$gc(windows)} {
-			tk_messageBox -parent . -type ok -icon info \
-			    -title "No differences found" -message \
-			    "There were no files found with differences"
-	    	} else {
-			puts stderr "There were no files available to diff"
-		}
-		exit
 	}
 }
 
@@ -814,38 +686,183 @@ proc test_sublineHighlight {which strings} {
 	}
 }
 
-proc main {} \
+proc init {} \
 {
-	global	fileInfo
+	global	rev1 rev2 Diffs DiffsEnd files fileInfo unique
 
-	wm title . "Diff Tool - Looking for Changes..."
+	set rev1 ""
+	set rev2 ""
+	set Diffs(0) 1.0
+	set DiffsEnd(0) 1.0
+	set unique 0
+	set files [list]
+}
 
-	bk_init
+#lang L
+extern string	lfile;
+extern string	rfile;
+extern string	files[];
+extern int	read_done;
 
-	loadState diff
-	getConfig diff
-	widgets
-	restoreGeometry diff
+void
+main(int argc, string argv[])
+{
+	FILE	fp;
+	string	rsetOpts = "-H --elide";
+	string	arg, rev1, rev2, path1, path2, localUrl;
+	int	dashs = 0;
 
-	# if the user is on a slow box and just does "bk difftool", it 
-	# can take a long time to fire up. On my slow VirtualPC box it
-	# can take up to 15 seconds. This at least gives a minimal 
-	# clue that someting is happening...
-	.diffs.status.middle configure -text "Looking for Changes..."
+	if (argc > 4) bk_usage();
 
-	wm deiconify .
-	update 
+	Wm_title(".", "Diff Tool - Looking for Changes...");
 
-	bind . <Destroy> {
-		if {[string match %W "."]} {
-			saveState diff
+	bk_init();
+
+	init();
+	loadState("diff");
+	getConfig("diff");
+	widgets();
+	restoreGeometry("diff");
+
+	Label_configure((widget)".diffs.status.middle",
+	    text: "Looking for Changes...");
+
+	Wm_deiconify(".");
+	update();
+
+	while (arg = getopt(argv, "L|r;S", {})) {
+		switch (arg) {
+		    case "L":
+			if (rev1 || rev2) bk_usage();
+			rev1 = "";
+			rev2 = "";
+			localUrl = optarg ? optarg : "";
+			break;
+		    case "r":
+			if (rev2) bk_usage();
+			if (optarg =~ /(.*)\.\.(.*)/) {
+				if (rev1) bk_usage();
+				rev1 = $1;
+				rev2 = $2;
+			} else unless (rev1) {
+				rev1 = optarg;
+			} else {
+				rev2 = optarg;
+			}
+			break;
+		    case "S":
+			dashs = 1;
+			rsetOpts .= " -S";
+			break;
+		    case "":
+			bk_usage();
+			break;
+		}
+	}
+	path1 = argv[optind];
+	path2 = argv[++optind];
+
+	if (path1 && path2) {
+		// bk difftool <file1> <file2>
+		if (rev1) bk_usage();
+		lfile = normalizePath(path1);
+		rfile = normalizePath(path2);
+		if (isdir(path2)) {
+			// bk difftool <path/to/file1> <dir>
+			rfile = File_join(rfile, basename(lfile));
+			unless (exists(rfile)) {
+				system("bk co '${rfile}'");
+			}
+		}
+		if (checkFiles(lfile, rfile)) {
+			addFile(lfile, rfile, lfile);
+		}
+	} else if (path1) {
+		if (path1 == "-") {
+			// bk difftool -
+			if (rev1) bk_usage();
+			fp = stdin;
+		} else if (rev1 && rev2) {
+			// bk difftool -r<rev1> -r<rev2> <file>
+			string	file = normalizePath(path1);
+
+			lfile = getRev(file, rev1, 0);
+			rfile = getRev(file, rev2, 0);
+			if (checkFiles(lfile, rfile)) {
+				addFile(lfile, rfile, file, rev1, rev2);
+			}
+		} else if (rev1) {
+			// bk difftool -r<rev> <file>
+			string	file = normalizePath(path1);
+
+			lfile = getRev(file, rev1, 0);
+			rfile = file;
+
+			// If this is a BK file, and it's not checked out,
+			// check it out.
+			if (`bk gfiles '${file}'` != "" && !exists(file)) {
+				system("bk get '${file}'", undef, undef, undef);
+			}
+			if (checkFiles(lfile, rfile)) {
+				addFile(lfile, rfile, file, rev1);
+			}
+			unless (exists(file)) bk_usage();
+		} else if (isdir(path1)) {
+			// bk difftool <dir>
+			chdir(path1);
+			fp = popen("bk -Ur. --sfiles-opts=cg", "r");
+		} else {
+			// bk difftool <file>
+			string	file = normalizePath(path1);
+
+			lfile = getRev(file, "+", 1);
+			rfile = file;
+			if (checkFiles(lfile, rfile)) {
+				addFile(lfile, rfile, file, "+", "checked_out");
+			}
+		}
+	} else {
+		if (localUrl) {
+			// bk difftool -L[<URL>]
+			string	err;
+
+			if (dashs) {  // revtool_cd2root()
+				cd2root();
+			} else {
+				cd2product();
+			}
+			rev1 = bk_repogca(localUrl, &err);
+			unless (rev1) {
+				message("Could not get repo GCA:\n${err}",
+				    exit: 1);
+			}
+			fp = popen("bk _sfiles_local -r${rev1}", "r");
+		} else if (rev1) {
+			// bk difftool -r<@cset1> -r<@cset2>
+			unless (rev2) bk_usage();
+			if (dashs) {  // revtool_cd2root()
+				cd2root();
+			} else {
+				cd2product();
+			}
+			rsetOpts .= " -r${rev1}..${rev2}";
+			fp = popen("bk rset ${rsetOpts}", "r");
+		} else {
+			// bk difftool
+			fp = popen("bk -U --sfiles-opts=cg", "r");
 		}
 	}
 
-	after idle [list focus -force .]
-	getFiles
+	if (fp) {
+		fconfigure(fp, blocking: 0, buffering: "line");
+		fileevent(fp, "readable", {"readInput", fp});
+		vwait(&read_done);
+	}
 
-	wm title . "Diff Tool"
+	if (length(files) == 0) {
+		message("No files found with differences", exit: 0);
+	}
+
+	Wm_title(".", "Diff Tool");
 }
-
-main
+#lang tcl

@@ -129,51 +129,6 @@ bk_exit(...args)
 	exit(exitCode);
 }
 
-void
-bk_message(string title, string message)
-{
-	if ((Tk_windowingsystem() == "win32")
-	    && (getenv("BK_REGRESSION") == "")) {
-		tk_messageBox(title: title, message: message);
-	} else {
-		puts("stdout", message);
-	}
-}
-
-void
-bk_error(string title, string message)
-{
-	if ((Tk_windowingsystem() == "win32")
-	    && (getenv("BK_REGRESSION") == "")) {
-		tk_messageBox(title: title, message: message);
-	} else {
-		puts("stderr", message);
-	}
-}
-
-void
-bk_die(string message, int exitCode)
-{
-	bk_message("BitKeeper", message);
-	exit(exitCode);
-}
-
-void
-bk_dieError(string message, int exitCode)
-{
-	bk_error("BitKeeper Error", message);
-	exit(exitCode);
-}
-
-void
-bk_usage()
-{
-	string	usage;
-
-	catch("exec bk help -s ${_bk.tool}tool", &usage);
-	bk_dieError(usage, 1);
-}
-
 string[]
 getAllWidgets(string top)
 {

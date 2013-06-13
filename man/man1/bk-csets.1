@@ -4,7 +4,7 @@
 bk csets \- run changes or csettool on last set of incoming changes
 .SH SYNOPSIS
 .B bk csets
-.[B] \-Tv
+.[B] \-DTv
 .SH DESCRIPTION
 .LP
 The
@@ -19,6 +19,16 @@ or
 This is useful for tracking down problems and/or doing a quick review.
 .SH OPTIONS
 .TP
+.B \-D
+Use 
+.B bk difftool
+(gui mode) or
+.B bk diffs -pu
+(text mode) to display the changesets.
+If there were many pulled in, perhaps with changes added and then deleted
+as part of a review, viewing the difference between the start and the end
+points may be less "noisy".
+.tp
 .B \-T
 Use 
 .B bk changes
