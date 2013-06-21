@@ -99,6 +99,17 @@ Similar to
 bk changes -i\*<file\*> -vvr\*<rev\*>
 .DE
 .tp
+.OPTopt \-L url
+Show all the changes unique to this repository relative to the (outgoing)
+parent or 
+.ARG url
+if one was specified.
+In this context, "changes" means committed, pending, and/or modified files.
+Very similar to:
+.DS
+bk -A diffs -r@`bk repogca [\*<url\*>]`
+.DE
+.tp
 .B \-n
 Do RCS style diffs.
 .tp
@@ -183,9 +194,10 @@ existing changeset revision or tag in your repository.
 $ bk -A diffs 
 $ bk -A diffs -r@\*<rev\*>
 .DE
-To see the diffs in the local tree from the new baseline cset in the parent:
+To see the diffs in the local tree from the new baseline cset in the parent
+(-L changes the diffs behavior to look at the whole tree):
 .DS
-$ bk -U diffs -p -@
+$ bk diffs -L
 .DE
 .SH BUGS
 This command does not currently handle displaying differences for binary files.

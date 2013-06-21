@@ -41,10 +41,15 @@ test -s OUT && {
 }
 echo OK
 
-# might as well use some real-world data
+# might as well use some real-world data range with two revs
 echo $N Starting difftool in \`bk bin\`\; you must quit manually........$NL
 cd "`bk bin`"
 bk difftool -r1.2 -r1.3 t/g.difftool
+echo OK
+
+# might as well use some real-world data range with ..
+echo $N Starting difftool in \`bk bin\`\; you must quit manually........$NL
+bk difftool -r1.2..1.3 t/g.difftool
 echo OK
 
 echo $N Testing Japanese.............................................$NL

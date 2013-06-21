@@ -11,6 +11,7 @@ repogca_main(int ac, char **av)
 	int	flags = 0;
 	longopt	lopts[] = {
 		{ "dspecf;", 310 },
+		{ "only-one", 320 },
 
 		/* aliases */
 		{ "standalone", 'S' }, /* treat comp as standalone */
@@ -41,6 +42,9 @@ repogca_main(int ac, char **av)
 				return (1);
 			}
 			break;
+		    case 320: // --only-one
+			flags |= RGCA_ONLYONE;
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -62,6 +66,7 @@ repogca(char **urls, char *dspec, u32 flags, FILE *out)
 	char	**nav;
 	char	*key;
 	char	*begin = 0, *end = 0;
+	int	cnt = 0;
 	char	buf[MAXPATH];
 
 	if (dspec) dspec = strdup(dspec);
@@ -79,6 +84,13 @@ repogca(char **urls, char *dspec, u32 flags, FILE *out)
 				goto out;
 			}
 			nav = addLine(nav, strdup(urls[i]));
+		}
+	} else if (flags & RGCA_ONLYONE) {
+		urls = parent_pushp();
+		if (nLines(urls) > 1) {
+			verbose((stderr,
+			    "%s: multiple parents, -L requires a url\n", prog));
+			goto out;
 		}
 	} else {
 		urls = parent_pullp();
@@ -125,7 +137,15 @@ repogca(char **urls, char *dspec, u32 flags, FILE *out)
 			lastd = d;
 			sccs_prsdelta(s, d, 0, dspec, out);
 			rc = 0;
-			unless (flags & RGCA_ALL) break;
+			unless (flags & (RGCA_ALL|RGCA_ONLYONE)) break;
+			++cnt;
+			if ((cnt > 1) && (flags & RGCA_ONLYONE)) {
+				verbose((stderr,
+					"%s: non-unique baseline revision\n",
+					prog));
+				rc = 1;
+				goto out;
+			}
 			FLAGS(s, d) |= D_BLUE;
 		}
 		if (FLAGS(s, d) & D_BLUE) {

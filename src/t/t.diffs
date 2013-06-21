@@ -458,8 +458,8 @@ bk diffs -N | fgrep '+++ edited/file' > /dev/null && {
 }
 echo OK
 
-echo $N Demonstrate diffs -@repo ....................................$NL
-bk -U diffs --normal -@"$HERE"/copy > OUT || fail
+echo $N Demonstrate diffs -Lrepo ....................................$NL
+bk -U diffs --normal -L"$HERE"/copy > OUT || fail
 cat <<EOF > WANT
 ===== ../../junk 1.0 vs 1.1 =====
 0a1
@@ -472,18 +472,16 @@ EOF
 cmpfiles OUT WANT
 echo OK
 
-echo $N Check -@ error messages .....................................$NL
-bk -U diffs -@../junk 2>ERR && fail -f ERR should fail
-sed 's/cd to .*\/junk/cd to PATH\/junk/' ERR > ERR2
+echo $N Check -L error messages .....................................$NL
+bk -U diffs -L../junk 2>ERR && fail -f ERR should fail
 cat <<EOF > WANT
-ERROR-cannot cd to PATH/junk (illegal, nonexistent, or not package root)
-diffs: connection to parent failed
+diffs: invalid url ../junk
 EOF
-cmpfiles ERR2 WANT
+cmpfiles ERR WANT
 
 # not perfect, but OK
 bk parent $Q -r || fail
-bk -U diffs -@ 2> ERR && fail -f ERR should fail
+bk -U diffs -L 2> ERR && fail -f ERR should fail
 cat <<EOF > WANT
 This repository has no parent.  You must set a parent with "bk parent" or
 specify a repository on the command line for this command to work.
@@ -492,9 +490,20 @@ EOF
 cmpfiles ERR WANT
 
 cd "$HERE"
-bk diffs -@ copy/junk 2>ERR && fail -f ERR should fail
+bk diffs -L copy/junk 2>ERR && fail -f ERR should fail
 cat <<EOF > WANT
 diffs: must be run in a repository
+EOF
+cmpfiles ERR WANT
+
+cd "$HERE"
+bk clone $Q copy copy2
+cd copy
+bk parent $Q -ao ../project
+bk parent $Q -a ../copy
+bk diffs -L 2>ERR && fail -f ERR should fail
+cat <<EOF >WANT
+diffs: multiple parents, -L requires a url
 EOF
 cmpfiles ERR WANT
 echo OK

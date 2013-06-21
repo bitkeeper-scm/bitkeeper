@@ -60,6 +60,7 @@ diffs_main(int ac, char **av)
 {
 	int	rc, c, i;
 	int	verbose = 0, empty = 0, errors = 0, force = 0;
+	int	local = 0;
 	u32	flags = SILENT;
 	df_opt	dop = {0};
 	FILE	*fout = stdout;
@@ -79,7 +80,7 @@ diffs_main(int ac, char **av)
 	unless (getenv("_BK_OLDSTYLE_DIFFS")) dop.out_unified = 1;
 	dop.out_header = 1;
 	while ((c = getopt(ac, av,
-		    "@|a;A;bBcC|d;efhHl|nNpr;R|s|u|vw", lopts)) != -1) {
+		    "@|a;A;bBcC|d;efhHL|l|nNpr;R|s|u|vw", lopts)) != -1) {
 		switch (c) {
 		    case 'A':
 			flags |= GET_ALIGN;
@@ -97,10 +98,15 @@ diffs_main(int ac, char **av)
 		    case 'h': dop.out_header = 0; break;	/* doc 2.0 */
 		    case 'H': dop.out_comments = 1; break;
 		    case 'l': boundaries = optarg; break;	/* doc 2.0 */
+		    case 'L': case '@':
+			if (rargs.rstart) usage();
+			local = 1;
+			if (range_urlArg(&rargs, optarg)) return (1);
+			break;
 		    case 'n':
 		    	dop.out_rcs = 1;
 			dop.out_unified = 0;
-			break;	
+			break;
 		    case 'N': dop.new_is_null = 1; break;
 		    case 'p': dop.out_show_c_func = 1; break;	/* doc 2.0 */
 		    case 'R': unless (Rev = optarg) Rev = "-"; break;
@@ -126,13 +132,12 @@ diffs_main(int ac, char **av)
 		    case 'v': verbose = 1; break;		/* doc 2.0 */
 		    case 'w': dop.ignore_all_ws = 1; break;	/* doc 2.0 */
 		    case 'd':
+			if (local) usage();
 			if (range_addArg(&rargs, optarg, 1)) usage();
 			break;
 		    case 'r':
+			if (local) usage();
 			if (range_addArg(&rargs, optarg, 0)) usage();
-			break;
-		    case '@':
-			if (range_urlArg(&rargs, optarg)) return (1);
 			break;
 		    case 300: // --normal
 			dop.out_unified = 0;
@@ -177,7 +182,11 @@ diffs_main(int ac, char **av)
 		return (1);
 	}
 
-	name = sfileFirst("diffs", &av[optind], 0);
+	if (local && !av[optind]) {
+		name = sfiles_local(rargs.rstart, "r");
+	} else {
+		name = sfileFirst("diffs", &av[optind], 0);
+	}
 	while (name) {
 		sccs	*s = 0;
 		ser_t	d;
@@ -352,6 +361,37 @@ next:		if (s) {
 	}
 out:	if (sfileDone()) errors |= 4;
 	return (errors);
+}
+
+/*
+ * -L without args, use _sfiles_local and list whole repository
+ */
+char *
+sfiles_local(char *rev, char *opts)
+{
+	char    *freeme = 0, *nav[10];
+	int     i, fd;
+
+	bk_nested2root(0);
+	nav[i=0] = "bk";
+	nav[++i] = "_sfiles_local";
+	nav[++i] = freeme = aprintf("-r%s", rev);
+	while (opts && *opts) {
+		switch (*opts++) {
+		    case 'm': nav[++i] = "--no-mods"; break;
+		    case 'r': nav[++i] = "--no-revs"; break;
+		    default: assert(0 == "nr");
+		}
+    	}
+	nav[++i] = 0;
+	spawnvpio(0, &fd, 0, nav);
+	free(freeme);
+	dup2(fd, 0);
+	close(fd);
+	nav[0] = "-";
+	nav[1] = 0;
+	// XXX - flags?
+	return (sfileFirst(prog, &nav[0], 0));
 }
 
 private int

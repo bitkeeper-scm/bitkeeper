@@ -361,6 +361,7 @@ setup
 sfiles
 _sfiles_bam
 _sfiles_clone
+_sfiles_local
 sfio remote
 _shellSplit_test
 shrink

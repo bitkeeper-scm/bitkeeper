@@ -32,6 +32,9 @@ bk difftool \- \*(BK graphical differences viewer
 .B bk difftool
 .OPTreq \-r @cset1
 .OPTreq \-r @cset2
+.br
+.B bk difftool
+.OPTopt \-L url
 .SH DESCRIPTION
 .LP
 The
@@ -121,6 +124,18 @@ If a file has been renamed, difftool will show the difference in contents
 as well as the change in the name.
 Note that this format works in nested repositories as well as standalone
 repositories.
+.LP
+If the \-L option is given, show all the changes unique to this repository
+relative to the (outgoing) parent or 
+.ARG url
+if one was specified.
+This is similar to:
+.DS
+bk difftool -r@`bk repogca [\*<url\*>]` -r@+
+.DE
+but not identical in that the -L option will also show any work in
+progress, such as files that are modified or have pending deltas (not
+yet committed to a changeset).
 .SH "DISCARDING FILES"
 When a file that is being viewed is in the checked out state, a button
 labelled
@@ -185,14 +200,6 @@ Go to then next file
 .tp
 .B Control-p
 Go to the previous file
-.SH EXAMPLES
-To see all the changes that are present in the local repository but
-not present in the parent:
-.DS
-bk difftool -r@`bk repogca` -r@+
-.DE
-That form can be useful to "collapse" multiple changesets that may have
-added and then deleted content to the same file[s].
 .SH SEE ALSO
 .LP
 .SA config-gui

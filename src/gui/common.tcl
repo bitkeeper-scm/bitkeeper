@@ -160,6 +160,29 @@ proc displayMessage {msg {exit {}}} \
 	}
 }
 
+proc message {message args} \
+{
+	if {[dict exists $args -exit]} {
+		set exit [dict get $args -exit]
+		dict unset args -exit
+	}
+
+	if {![dict exists $args -parent]} {
+		dict set args -parent "."
+	}
+
+	if {[info exists ::env(BK_TEST_HOME)]} {
+		## Send messages to stderr in test mode.
+		puts stderr $message
+	} else {
+		tk_messageBox {*}$args -message $message
+	}
+
+	if {[info exists exit]} {
+		exit $exit
+	}
+}
+
 # usage: centerWindow pathName ?width height?
 #
 # If width and height are supplied the window will be set to
@@ -1724,5 +1747,65 @@ debug_init(string var)
 		Trace_addExec(proc, "enter", &debug_enter);
 		Trace_addExec(proc, "leave", &debug_leave);
 	}
+}
+
+string
+bk_repogca(string url, string &err)
+{
+	string	gca;
+	string	opts = "--only-one";
+
+	if (url && length(url)) opts .= " '${url}'";
+	if (system("bk repogca ${opts}", undef, &gca, &err) != 0) {
+		return (undef);
+	}
+	return (trim(gca));
+}
+
+void
+bk_message(string title, string message)
+{
+	if ((Tk_windowingsystem() == "win32")
+	    && (getenv("BK_REGRESSION") == "")) {
+		tk_messageBox(title: title, message: message);
+	} else {
+		puts("stdout", message);
+	}
+}
+
+void
+bk_error(string title, string message)
+{
+	if ((Tk_windowingsystem() == "win32")
+	    && (getenv("BK_REGRESSION") == "")) {
+		tk_messageBox(title: title, message: message);
+	} else {
+		puts("stderr", message);
+	}
+}
+
+void
+bk_die(string message, int exitCode)
+{
+	bk_message("BitKeeper", message);
+	exit(exitCode);
+}
+
+void
+bk_dieError(string message, int exitCode)
+{
+	bk_error("BitKeeper Error", message);
+	exit(exitCode);
+}
+
+void
+bk_usage()
+{
+	string	usage;
+	string	tool = basename(Info_script());
+
+	catch("exec bk help -s ${tool}", &usage);
+	puts(usage);
+	exit(1);
 }
 #lang tcl

@@ -51,6 +51,7 @@ sccslog_main(int ac, char **av)
 	sccs	*s;
 	char	*name;
 	int	errors = 0;
+	int	local = 0;
 	int	c, flags = SILENT;
 	RANGE	rargs = {0};
 	longopt	lopts[] = {
@@ -60,7 +61,7 @@ sccslog_main(int ac, char **av)
 
 	opts.prs_flags = PRS_ALL;
 	setmode(1, _O_TEXT);
-	while ((c = getopt(ac, av, "AbCc;d|Dfi;nr|s", lopts)) != -1) {
+	while ((c = getopt(ac, av, "AbCc;d|Dfi;L|nr|s", lopts)) != -1) {
 		switch (c) {
 		    case 'A': opts.uncommitted = 1; break;	/* doc 2.0 */
 		    case 'b': opts.basenames = 1; break;	/* doc 2.0 */
@@ -74,6 +75,13 @@ sccslog_main(int ac, char **av)
 		    case 'i':					/* doc 2.0 */
 			opts.indent = atoi(optarg);
 			opts.indentOpt = 1;
+			break;
+		    case 'L':
+			local = 0;
+			if (range_urlArg(&rargs, optarg) ||
+			    range_addArg(&rargs, "+", 0)) {
+				usage();
+			}
 			break;
 		    case 'n': opts.prs_flags |= PRS_LF; break;
 		    case 's': opts.sort = 1; break;		/* doc 2.0 */
@@ -95,8 +103,14 @@ sccslog_main(int ac, char **av)
 		    default: bk_badArg(c, av);
 		}
 	}
+	if (local && opts.changeset) usage();
 	if (opts.dspec) dspec_collapse(&opts.dspec, 0, 0);
-	for (name = sfileFirst("sccslog", &av[optind], 0); name; ) {
+	if (local && !av[optind]) {
+		name = sfiles_local(rargs.rstart, "rm");
+	} else {
+		name = sfileFirst(av[0], &av[optind], 0);
+	}
+	while (name) {
 		unless ((s = sccs_init(name, INIT_NOCKSUM|flags)) &&
 		    HASGRAPH(s)) {
 next:			sccs_free(s);

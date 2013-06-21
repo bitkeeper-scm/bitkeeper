@@ -1076,6 +1076,7 @@ char	*sfileRev(void);
 char	*sfileFirst(char *cmd, char **Av, int Flags);
 int	sfileDone(void);
 int	sfiles(char **av);
+char	*sfiles_local(char *rev, char *opts);
 int	sfilesDied(int wait, int killit);
 ser_t	sccs_findrev(sccs *, char *);
 ser_t	sccs_top(sccs *);
@@ -1550,6 +1551,7 @@ FILE	*fdopen_bkfile(FILE *f, char *mode, u64 size);
 
 #define	RGCA_ALL	0x1000
 #define	RGCA_STANDALONE	0x2000
+#define	RGCA_ONLYONE	0x4000
 int	repogca(char **urls, char *dspec, u32 flags, FILE *out);
 
 u64	maxrss(void);

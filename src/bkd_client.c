@@ -90,9 +90,17 @@ int
 remote_valid(char *url)
 {
 	remote	*r = remote_parse(url, 0);
-	int	rc = r ? 1 : 0;
+	int	rc = 0;
+	char	buf[MAXPATH];
 
-	if (r) remote_free(r);
+	if (r) {
+		rc = 1;
+		if (r->notUrl) {
+			concat_path(buf, r->path, BKROOT);
+			unless (isdir(buf)) rc = 0;
+		}
+		remote_free(r);
+	}
 	return (rc);
 }
 

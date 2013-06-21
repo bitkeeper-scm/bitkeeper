@@ -587,8 +587,10 @@ _csets() {		# /* doc 2.0 */
 	}
 	COPTS=
 	GUI=YES
-	while getopts Tv opt
+	DIFFS=
+	while getopts DTv opt
 	do	case "$opt" in
+		D) DIFFS=YES;;
 		T) GUI=NO;;
 		v) GUI=NO; COPTS="$COPTS -v";;
 		*) bk help -s csets; exit 1;;
@@ -596,6 +598,15 @@ _csets() {		# /* doc 2.0 */
 	done
 	shift `expr $OPTIND - 1`
 	__cd2product
+	if [ "X$DIFFS" != X ]
+	then	RANGE=`bk range -u`
+		test $? -ne 0 && exit 1
+		if [ $GUI = YES ]
+		then	bk difftool -r"$RANGE"
+		else	bk rset --elide -Hr"$RANGE" | bk diffs -pu -
+		fi
+		exit $?
+	fi
 	if [ -f RESYNC/BitKeeper/etc/csets-in ]
 	then	if [ $GUI = YES ]
 		then	echo Viewing RESYNC/BitKeeper/etc/csets-in

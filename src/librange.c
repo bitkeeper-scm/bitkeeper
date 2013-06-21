@@ -105,16 +105,11 @@ range_urlArg(RANGE *rargs, char *url)
 	int	rc = -1;
 	char	**urls = 0;
 
-	if (url) urls = addLine(urls, url);
 	f = fmem();
-	if (repogca(urls, ":REV:\\n", RGCA_ALL, f)) goto out;
+	if (url) urls = addLine(urls, url);
+	if (repogca(urls, ":REV:\\n", RGCA_ONLYONE, f)) goto out;
 	rewind(f);
 	rev = aprintf("@%s", fgetline(f)); /* intentional leak (see above) */
-	if (fgetline(f)) {
-		fprintf(stderr, "%s: non-unique baseline revision\n", prog);
-		free(rev);
-		goto out;
-	}
 	rc = range_addArg(rargs, rev, 0);
 out:	fclose(f);
 	freeLines(urls, 0);

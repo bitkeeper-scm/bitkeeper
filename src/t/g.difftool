@@ -29,7 +29,7 @@ bk guitest difftool >"$OUT" 2>&1 <<'EOF'
 EOF
 err=$?
 test "X$PLATFORM" != XWIN32 && {
-	expected='There were no files available to diff' 
+	expected='No files found with differences'
 	grep -q "$expected" "$OUT" || {
 		echo failed
 		echo "expected: '$expected'"
@@ -372,6 +372,63 @@ err=$?
 test -s "$OUT" && fail -f "$OUT"
 test $err -ne 0 && fail
 echo "OK"
+
+echo $N Test -L option ..............................................$NL
+cd "$HERE"
+bk clone $Q project clone
+mkdir clone/dir
+cd clone/dir
+echo foo > foo
+echo bar > bar
+echo baz > baz
+bk new $Q foo bar baz
+bk commit $Q -f
+bk edit $Q bar baz
+echo bar >> bar
+echo baz >> baz
+bk ci $Q -ybar bar
+bk guitest difftool -L >"$OUT" 2>&1 <<EOF
+	test_currentFile "dir/bar"
+	test_inputString "N"
+	test_currentFile "dir/baz"
+	test_inputString "N"
+	test_currentFile "dir/foo"
+	test_buttonPress Quit
+EOF
+test $? -eq 0 || fail -f "$OUT"
+echo OK
+
+echo $N Test -LURL option ...........................................$NL
+# As above but with the URL on the command line
+bk guitest difftool -L"file://$HERE/project" >"$OUT" 2>&1 <<EOF
+	test_currentFile "dir/bar"
+	test_inputString "N"
+	test_currentFile "dir/baz"
+	test_inputString "N"
+	test_currentFile "dir/foo"
+	test_buttonPress Quit
+EOF
+test $? -eq 0 || fail -f "$OUT"
+echo OK
+
+echo $N Test -L when there are multiple parents .....................$NL
+cd "$HERE"
+bk clone $Q clone clone2
+cd clone2
+bk edit $Q dir/foo
+echo foo >> foo
+bk parent $Q -ao "$HERE/project"
+bk guitest difftool -L >"$OUT" 2>&1 <<EOF
+	test_buttonPress Quit
+EOF
+test $? -eq 0 && fail -f "$OUT" should fail
+cat <<EOF > WANT
+Could not get repo GCA:
+repogca: multiple parents, -L requires a url
+
+EOF
+cmpfiles "$OUT" WANT
+echo OK
 
 if [ "$PLATFORM" = "WIN32" ]; then
 	echo $N Testing windows path in command line.........................$NL
