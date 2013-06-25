@@ -603,7 +603,7 @@ _csets() {		# /* doc 2.0 */
 		test $? -ne 0 && exit 1
 		if [ $GUI = YES ]
 		then	bk difftool -r"$RANGE"
-		else	bk rset --elide -Hr"$RANGE" | bk diffs -pu -
+		else	bk rset --elide -Hr"$RANGE" | bk diffs -Hpu -
 		fi
 		exit $?
 	fi

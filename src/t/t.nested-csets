@@ -3,7 +3,7 @@ echo $N Test bk csets run from a component runs in a product ........$NL
 nested project
 bk clone $Q . ../copy
 bk detach $Q gcc ../gcc.standalone
-touch gcc/foo
+echo work of art > gcc/foo
 bk new $Q gcc/foo
 bk commit $Q -yfoo || fail
 cd ../copy
@@ -17,13 +17,32 @@ ChangeSet@1.3
   gcc/ChangeSet@1.2
     foo
 
-    gcc/foo@1.1 +0 -0
+    gcc/foo@1.1 +1 -0
       BitKeeper file X/project/gcc/foo
 
     gcc/foo@1.0 +0 -0
 
 EOF
 cmpfiles GOT WANT
+echo OK
+
+echo $N Test bk csets -DT shows comments and diff ...................$NL
+# cut out user and date to give predictable answer
+bk csets -DT | \
+   sed -e "s?$HERE?X?" -e 's/,.*//' \
+   -e 's/	.*//' -e 's/^2.* bk/DATE bk/'> GOT
+cat <<EOF > WANT
+===== gcc/foo 1.0 vs 1.1 =====
+DATE bk@bk_regression.bk 1.1 +1 -0
+   BitKeeper file X/project/gcc/foo
+
+--- /dev/null
++++ 1.1/gcc/foo
+@@ -0
++work of art
+
+EOF
+cmpfiles WANT GOT
 echo OK
 
 echo $N Test bk csets run from a standalone runs okay ...............$NL
