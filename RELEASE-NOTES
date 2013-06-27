@@ -270,10 +270,6 @@ Changes in bk commands
        bk -P patch -p1 -g1 < SAVED
      and it works, even in nested.
 
-  bk help config-etc
-     Add a new POLY option to support using multiple portals in a
-     product line.
-
   bk log
      -<number> can limit output to only that number of items.
 
@@ -327,9 +323,3 @@ Other changes
      option in bk changes and bk log.
 
      See `bk bin`/contrib/vc-bk.el
-
-   - Multiple portals.  When porting changes between components in
-     different products, BitMover recommends having one portal per
-     product to act as the sole destination in porting the changes into a
-     product.  For some workflows, that is too restrictive.  See 'bk help
-     config-etc' in the POLY section for how to enable multiple portals.

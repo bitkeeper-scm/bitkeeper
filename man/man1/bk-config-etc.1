@@ -374,6 +374,7 @@ BitKeeper to perform full integrity checks on every update
 .DS
 partial_check: off
 .DE
+.if \n[NESTED_NOT_YET] \{
 .SS POLY
 This controls how you can use
 .B bk port
@@ -419,6 +420,7 @@ This will allow the pull to succeed and will let
 .B bk r2c
 return a list of product csets when used with a component cset that
 has been ported into the product multiple times.
+.\}
 .SS SYNC
 In some environments it may be safer to have
 BitKeeper do an fsync(2) after each update of a history file.
