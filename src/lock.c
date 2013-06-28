@@ -26,12 +26,16 @@ lock_main(int ac, char **av)
 	int	lockclient = -1;
 	int	printStale = 0;
 	int	standalone = 0;
-	int	nested = 0;
+	int	foundLocks = 0, nested = 0;
 	int	locked, rc;
 	char	*file = 0, *nlid = 0, *pidfile = 0;
 	HANDLE	h = 0;
+	longopt	lopts[] = {
+		{ "name:", 310 }, /* set the name of the lock */
+		{ 0, 0 }
+	};
 
-	while ((c = getopt(ac, av, "f;klP;qRrSstwWLUv", 0)) != -1) {
+	while ((c = getopt(ac, av, "f;klP;qRrSstwWLUv", lopts)) != -1) {
 		switch (c) {
 		    case 'P': pidfile = strdup(optarg);
 		    case 'q': /* fall thru */			/* doc 2.0 */
@@ -44,6 +48,9 @@ lock_main(int ac, char **av)
 			break;
 		    case 'S': standalone = 1; break;
 		    case 'v': printStale = 1; break;
+		    case 310: /* --name */
+			prog = optarg;
+			break;
 		    /* One of .. or fall through to error */
 		    case 'l':					/* doc 2.0 */
 		    case 'r':					/* doc 2.0 */
@@ -293,10 +300,11 @@ lock_main(int ac, char **av)
 				 * If we are printing stale locks, don't
 				 * remove them.
 				 */
-				nested_printLockers(0,
+				foundLocks = nested_printLockers(0,
 				    printStale, !printStale, stderr);
-			} else {
-				repository_lockers(0);
+			}
+			unless (foundLocks) {
+				foundLocks += repository_lockers(0);
 			}
 		}
 		while (repository_locked(0)) {
@@ -305,7 +313,7 @@ lock_main(int ac, char **av)
 			usleep(uslp);
 			uslp <<= 1;
 		}
-		unless (silent) {
+		if (!silent && !foundLocks) {
 			fprintf(stderr, "No active lock in repository\n");
 		}
 		exit(0);

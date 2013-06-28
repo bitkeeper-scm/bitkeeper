@@ -266,7 +266,7 @@ int	nested_abort(project *p, char *t);
 char	*nested_errmsg(void);
 /* nested_lockers returns nlock *'s in the addLines */
 char	**nested_lockers(project *p, int listStale, int removeStale);
-void	nested_printLockers(project *p,
+int	nested_printLockers(project *p,
     int listStale, int removeStale, FILE *out);
 void	nested_updateIdcache(project *comp);
 int	nested_isPortal(project *comp);

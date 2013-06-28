@@ -2370,10 +2370,6 @@ doCommit()
 	stopCfileComments();
 
 	saveComments();
-	if (isRepoLocked()) {
-		popupMessage(E: msgs{"repoLocked"});
-		exit(1);
-	}
 
 	unless (self.cnt_commented) {
 		bottomMessage(msgs{"noFileComments"}, "warning");
@@ -2404,6 +2400,19 @@ doCommit()
 			topMessage(msgs{"noCset"}, "message");
 			showCheckinContents();
 		}
+		return;
+	}
+
+	// If we return an error, make them hit Commit twice again.
+	self.commitSwitch = 0;
+
+	/* release our lock */
+	bk_unlock();
+
+	// See if someone else has a lock.
+	if (isRepoLocked()) {
+		popupMessage(E: bk_locklist() . "\n" . msgs{"repoLocked"});
+		bk_lock();
 		return;
 	}
 
@@ -3057,7 +3066,6 @@ initMsgs()
 " That means that you can not modify these comments, and that this delta\n"
 " will be included in the ChangeSet when you next create a ChangeSet.";
 	msgs{"repoLocked"} =
-"This repository is locked.\n"
 "A checkin cannot be made at this time.\n"
 "Try again later.";
 	msgs{"resolveAllComments"} =
@@ -3427,6 +3435,10 @@ main(_argused int argc, string argv[])
 			push(&files, File_normalize(file));
 		}
 		self.root = bk("root -R");
+	}
+
+	unless (bk_lock()) {
+		displayMessage("Could not obtain a read lock for this repo", 1);
 	}
 
 	self.filelist = files;

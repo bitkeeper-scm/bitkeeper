@@ -12,6 +12,15 @@ if {[info exists ::env(BK_DEBUG_GUI)]} {
 	rename newproc proc
 }
 
+proc bk_toolname {} {
+	return [file tail [info script]]
+}
+
+proc bk_toplevel {} {
+	if {[bk_toolname] eq "citool"} { return ".citool" }
+	return "."
+}
+
 proc bk_initTheme {} \
 {
 	switch -- [tk windowingsystem] {
@@ -152,7 +161,8 @@ proc displayMessage {msg {exit {}}} \
 		set title "Info"
 		set icon "info"
 	}
-	tk_messageBox -title $title -type ok -icon $icon -message $msg
+	tk_messageBox -title $title -type ok -icon $icon -message $msg \
+	    -parent [bk_toplevel]
 	if {$exit == 1} {
 		exit 1
 	} else {

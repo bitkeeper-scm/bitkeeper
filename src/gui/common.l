@@ -129,6 +129,42 @@ bk_exit(...args)
 	exit(exitCode);
 }
 
+private	string	_lockurl;
+int
+bk_lock()
+{
+	string	out, err;
+
+	if (_lockurl) return (1); // Don't lock if we're already locked.
+	system("bk lock -r -t --name=${_bk.tool}tool", undef, &out, &err);
+	if (length(err)) return (0);
+	_lockurl = trim(out);
+	return (1);
+}
+
+void
+bk_unlock()
+{
+	if (_lockurl) system("bk _kill '${_lockurl}'");
+	_lockurl = undef;
+}
+
+string
+bk_locklist()
+{
+	string	out;
+
+	system("bk lock -l", undef, undef, &out);
+	return (out);
+}
+
+void
+unlockOnExit(_argused ...args)
+{
+	bk_unlock();
+}
+Trace_addExec("exit", "enter", &unlockOnExit);
+
 string[]
 getAllWidgets(string top)
 {

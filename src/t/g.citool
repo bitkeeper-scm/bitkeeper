@@ -41,6 +41,12 @@ grep -q "$expected" "$OUT" || {
 	echo "  actual: '`cat "$OUT"`'"
 	exit 1
 }
+bk lock -l 2> GOT
+cat <<EOF > WANT
+No active lock in repository
+EOF
+cmpfiles WANT GOT
+rm -f GOT WANT
 echo OK
 
 echo $N Simple startup and exit with modified files .................$NL

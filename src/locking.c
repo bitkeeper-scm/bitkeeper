@@ -1375,11 +1375,12 @@ nested_errmsg(void)
 	return (msg);
 }
 
-void
+int
 nested_printLockers(project *p, int listStale, int removeStale, FILE *out)
 {
 	char	**lockers = 0, **plockers = 0;
 	int	i;
+	int	n = 0;
 
 	lockers = nested_lockers(p, listStale, removeStale);
 	EACH(lockers) {
@@ -1389,5 +1390,7 @@ nested_printLockers(project *p, int listStale, int removeStale, FILE *out)
 	EACH (plockers) {
 		fprintf(out, "%s\n", plockers[i]);
 	}
+	n = nLines(plockers);
 	freeLines(plockers, free);
+	return (n);
 }
