@@ -26,6 +26,8 @@ lock_main(int ac, char **av)
 	int	lockclient = -1;
 	int	printStale = 0;
 	int	standalone = 0;
+	int	nested = 0;
+	int	locked, rc;
 	char	*file = 0, *nlid = 0, *pidfile = 0;
 	HANDLE	h = 0;
 
@@ -99,6 +101,7 @@ lock_main(int ac, char **av)
 		}
 		putenv("_BK_LOCK_CLIENT=");
 	}
+	nested = !standalone && proj_isEnsemble(0);
 	switch (what) {
 	    case 'f':	/* lock using the specified file */
 		unless (file) exit(1);
@@ -135,7 +138,7 @@ lock_main(int ac, char **av)
 
 	    case 'r':	/* read lock the repository */
 		nlid = 0;
-		if (!standalone && proj_isEnsemble(0)) {
+		if (nested) {
 			unless (nlid = nested_rdlock(0)) {
 				fprintf(stderr, "nested read lock failed.\n%s\n",
 				    nested_errmsg());
@@ -144,13 +147,13 @@ lock_main(int ac, char **av)
 		} else if (repository_rdlock(0)) {
 			fprintf(stderr, "read lock failed.\n");
 			repository_lockers(0);
-			exit(1);
+			return (1);
 		}
 		/* make ourselves go when told */
 		if (tcp) {
 			tcpHandshake(lockclient, tcp);
 			nsock = tcp_accept(tcp);
-			if (nlid && nested_unlock(0, nlid)) {
+			if (nested && nested_unlock(0, nlid)) {
 				fprintf(stderr, "nested unlock failed:\n%s\n",
 				    nested_errmsg());
 				return (1);
@@ -161,14 +164,22 @@ lock_main(int ac, char **av)
 			write(nsock, &c, 1);
 			closesocket(nsock);
 			closesocket(tcp);
-			exit(0);
+			return (0);
 		}
 		/* make ourselves go away after the lock is gone */
 		do {
 			usleep(500000);
-		} while (repository_mine(0, 'r') && !caught);
-		if (caught) repository_rdunlock(0, 0);
-		exit(0);
+			locked = nested
+				? nested_mine(0, nlid, 0)
+				: repository_mine(0, 'r');
+		} while (locked && !caught);
+		rc = 0;
+		if (caught) {
+			rc = nested
+				? nested_unlock(0, nlid)
+				: repository_rdunlock(0, 0);
+		}
+		return (rc);
 	    case 'R':	/* nested_rdlock() the repository */
 		unless (nlid = nested_rdlock(0)) {
 			fprintf(stderr, "nested read lock failed.\n%s\n",
@@ -203,7 +214,7 @@ lock_main(int ac, char **av)
 	    case 'w':	/* write lock the repository */
 		putenv("_BK_LOCK_INTERACTIVE=1");
 		nlid = 0;
-		if (!standalone && proj_isEnsemble(0)) {
+		if (nested) {
 			unless (nlid = nested_wrlock(0)) {
 				fprintf(stderr, "nested write lock failed.\n%s\n",
 				    nested_errmsg());
@@ -218,7 +229,7 @@ lock_main(int ac, char **av)
 		if (tcp) {
 			tcpHandshake(lockclient, tcp);
 			nsock = tcp_accept(tcp);
-			if (nlid && nested_unlock(0, nlid)) {
+			if (nested && nested_unlock(0, nlid)) {
 				fprintf(stderr, "nested unlock failed:\n%s\n",
 				    nested_errmsg());
 				return (1);
@@ -234,9 +245,14 @@ lock_main(int ac, char **av)
 		/* make ourselves go away after the lock is gone */
 		do {
 			usleep(500000);
-		} while (repository_mine(0, 'w') && !caught);
-		repository_wrunlock(0, 0);
-		exit(0);
+			locked = nested
+				? nested_mine(0, nlid, 0)
+				: repository_mine(0, 'r');
+		} while (locked && !caught);
+		rc = nested
+			? nested_unlock(0, nlid)
+			: repository_wrunlock(0, 0);
+		return (rc);
 
 	    case 'W':	/* nested_wrlock() the repository */
 		putenv("_BK_LOCK_INTERACTIVE=1");
@@ -272,7 +288,7 @@ lock_main(int ac, char **av)
 		exit (0);
 	    case 'l':	/* list lockers / exit status */
 		unless (silent) {
-			if (!standalone && proj_isEnsemble(0)) {
+			if (nested) {
 				/*
 				 * If we are printing stale locks, don't
 				 * remove them.
