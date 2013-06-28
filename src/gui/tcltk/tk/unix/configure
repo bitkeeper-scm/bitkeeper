@@ -10577,7 +10577,7 @@ echo "${ECHO_T}$enable_xft" >&6
 	if test "$found_xft" = "no" ; then
 	    found_xft=yes
 	    XFT_CFLAGS=`pkg-config --cflags xft 2>/dev/null` || found_xft="no"
-	    XFT_LIBS=`pkg-config --libs xft 2>/dev/null` || found_xft="no"
+	    XFT_LIBS=`pkg-config --libs xft fontconfig 2>/dev/null` || found_xft="no"
 	fi
 	echo "$as_me:$LINENO: result: $found_xft" >&5
 echo "${ECHO_T}$found_xft" >&6
