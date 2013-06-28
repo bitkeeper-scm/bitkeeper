@@ -94,3 +94,43 @@ bk clone $Q --compat project compat
 cd compat
 test "`bk features`" && fail
 echo OK
+
+echo "----- Test features -m"
+echo $N standalone ..................................................$NL
+cd "$HERE"
+commercial sa
+bk features -m > OUT
+grep -q "compatible with bk-6.x and later" OUT || fail -f OUT wrong message
+grep -q 'BKFILE, BWEAVEv2, SCANDIRS$' OUT || fail -f OUT wrong message
+echo OK
+
+echo $N downgrade ...................................................$NL
+bk clone --downgrade . ../sa-downgrade >OUT 2>&1 || fail
+cd ../sa-downgrade
+bk features -m > OUT
+grep -q "compatible with bk-4.x and later" OUT || fail -f OUT wrong message
+echo OK
+
+echo $N nested ......................................................$NL
+cd "$HERE"
+nested nest2
+bk features -m > OUT
+grep -q "compatible with bk-6.x and later" OUT || fail -f OUT wrong message
+grep -q 'BKFILE, BWEAVEv2, SCANDIRS$' OUT || fail -f OUT wrong message
+echo OK
+
+echo $N downgrade ...................................................$NL
+bk clone --downgrade . ../nest2-downgrade >OUT 2>&1 || fail
+cd ../nest2-downgrade
+bk features -m > OUT
+grep -q "compatible with bk-5.x and later" OUT || fail -f OUT wrong message
+grep -q 'SAMv3$' OUT || fail -f OUT wrong message
+echo OK
+
+echo $N add poly ....................................................$NL
+# this is a contrived case, a "real" test for this is in t.nested-poly
+echo POLY >> BitKeeper/log/features
+bk features -m > OUT
+grep -q "compatible with bk-6.x and later" OUT || fail -f OUT wrong message
+grep -q 'POLY$' OUT || fail -f OUT wrong message
+echo OK

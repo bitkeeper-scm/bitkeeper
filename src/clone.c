@@ -22,6 +22,7 @@ private	struct {
 	u32	product:1;		/* is product? */
 	u32	identical:1;		/* --identical */
 	u32	parents:1;		/* --parents */
+	u32	downgrade:1;		/* --downgrade */
 	int	delay;			/* wait for (ssh) to drain */
 	int	remap;			/* force remapping? */
 	int	bkfile;			/* force binary sfiles? */
@@ -186,6 +187,7 @@ clone_main(int ac, char **av)
 			opts->no_lclone = 1;
 			opts->remap = 0;
 			opts->bkfile = 0;
+			opts->downgrade = 1;
 			break;
 		    case 311: /* --upgrade-repo */
 			// done below if we decide to rewrite files
@@ -423,6 +425,7 @@ clone_main(int ac, char **av)
 		if (opts->product) {
 			free(title);
 			title = "";
+			if (opts->downgrade) features_minrelease();
 		}
 	}
 	FREE(opts->pull_fromlev);

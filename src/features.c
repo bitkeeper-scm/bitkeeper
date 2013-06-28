@@ -9,7 +9,7 @@ static struct {
 	int	old;		/* true if feature has been superceded */
 } flist[] = {
 	{0, 0, 0},			/* element 0 unused */
-#define X(a, b, c, d, e)	{ c, d, e },
+#define X(a, b, c, d, e, f)	{ c, d, e },
 FEATURES
 #undef X
 };
@@ -17,7 +17,7 @@ FEATURES
 
 // mask of feature bits allowed in features file
 const u32	repomask = 1
-#define X(a, b, c, d,e)	| (d * (1 << a))
+#define X(a, b, c, d, e, f) | (d * (1 << a))
 FEATURES
 #undef X
     ;
@@ -36,10 +36,11 @@ features_main(int ac, char **av)
 	longopt	lopts[] = {
 		{ "all", 'a' },
 		{ "old", 'o' },
+		{ "min", 'm' },
 		{ 0, 0 }
 	};
 
-	while ((c = getopt(ac, av, "ao", lopts)) != -1) {
+	while ((c = getopt(ac, av, "amo", lopts)) != -1) {
 		switch (c) {
 		    case 'a':
 			comma = 0;
@@ -49,6 +50,9 @@ features_main(int ac, char **av)
 				printf("%s", flist[i].name);
 			}
 			printf("\n");
+			return (0);
+		    case 'm':
+			features_minrelease();
 			return (0);
 		    case 'o':
 			comma = 0;
@@ -91,7 +95,7 @@ features_list(project *p)
 {
 	char	*ret;
 
-#define	X(a, b, c, d, e) c ","
+#define	X(a, b, c, d, e, f) c ","
 	ret = strdup(FEATURES);
 #undef	X
 	if (getenv("_BK_NO_FASTPATCH")) {
@@ -427,4 +431,51 @@ features_fromBits(u32 bits)
 	unless (ret = joinLines(",", list)) ret = strdup("");
 	freeLines(list, 0);
 	return (ret);
+}
+
+void
+features_minrelease(void)
+{
+	int	minrel = 4;
+	u32	repof;
+	int	i;
+	char	**list = 0;
+	struct {
+		u32	mask;
+		int	ver;
+		char	*name;
+	} bits[] = {
+#define	X(a, b, c, d, e, f) { (1 << (a)), (f), c },
+		FEATURES
+#undef	X
+		{ 0, 0, 0 }
+	};
+
+	/*
+	 * Return the per-repo features from BitKeeper/log/features
+	 * and find the minimum version of bk needed to use that
+	 * feature.  Note it looks like we test all features in the
+	 * table from bk-features.h, but really only the lines where
+	 * d==1 are tested.
+	 */
+	repof = features_bits(0);
+	for (i = 0; repof && bits[i].mask; i++) {
+		if (repof & bits[i].mask) {
+			if (bits[i].ver > minrel) {
+				minrel = bits[i].ver;
+				truncLines(list, 0);
+			}
+			if (bits[i].ver == minrel) {
+				list = addLine(list, bits[i].name);
+			}
+			repof &= ~bits[i].mask;
+		}
+	}
+	printf("This repository is compatible with bk-%d.x and later", minrel);
+	unless (minrel == 4) {
+		printf(" because of features:\n\t");
+		EACH(list) printf("%s%s", ((i == 1) ? "" : ", "), list[i]);
+	}
+	putchar('\n');
+	freeLines(list, 0);
 }

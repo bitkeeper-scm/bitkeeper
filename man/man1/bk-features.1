@@ -6,6 +6,9 @@ bk features \- display features used or known
 .B bk features
 .[B] \--all
 .[ARG] feature
+.br
+.B bk features
+.[B] \-m
 .SH DESCRIPTION
 This command either lists the optional features used by the current 
 repository,
@@ -14,6 +17,9 @@ or, with
 lists all optional features known by this version of \*[BK],
 or, with a single specified feature, uses exit status to indicate if the
 feature is known to this version of \*[BK].
+.LP
+Run with the \-m option, this command will print the minimum (earliest)
+\*[BK] release that will be able to operate on the current repository.
 .SH EXIT STATUS
 When run with no arguments, returns 1 if not run in a repository.
 .br

@@ -36,25 +36,26 @@
  *	Only used by "bk features"
  *	bk features --all : doesn't list
  *	bk features --old : only lists superceded
+ *   f) version of bk that introduced feature (5 == bk-5.x)
  */
 #define	FEATURES \
-	X( 1, LKEY1, "lkey:1", 0, 0)		\
-	X( 2, BAMv2, "BAMv2", 0, 0)		\
-	X( 3, SAMv3, "SAMv3", 1, 0)		\
-	X( 4, mSFIO, "mSFIO", 0, 0)		\
-	X( 5, pull_r, "pull-r", 0, 0)		\
-	X( 6, FAST, "fastpatch", 0, 0)		\
-	X( 7, REMAP, "remap", 1, 0)		\
-	X( 8, SORTKEY, "sortkey", 1, 0)		\
-	X( 9, POLY, "POLY", 1, 0)		\
-	X(10, BKFILE, "BKFILE", 1, 0)		\
-	X(11, BWEAVE, "BWEAVEv2", 1, 0)		\
-	X(12, PARENTS, "PARENTS", 0, 0)		\
-	X(13, SCANDIRS, "SCANDIRS", 1, 0)	\
+	X( 1, LKEY1, "lkey:1", 0, 0, 4)		\
+	X( 2, BAMv2, "BAMv2", 0, 0, 4)		\
+	X( 3, SAMv3, "SAMv3", 1, 0, 5)		\
+	X( 4, mSFIO, "mSFIO", 0, 0, 4)		\
+	X( 5, pull_r, "pull-r", 0, 0, 4)	\
+	X( 6, FAST, "fastpatch", 0, 0, 4)	\
+	X( 7, REMAP, "remap", 1, 0, 5)		\
+	X( 8, SORTKEY, "sortkey", 1, 0, 5)	\
+	X( 9, POLY, "POLY", 1, 0, 6)		\
+	X(10, BKFILE, "BKFILE", 1, 0, 6)	\
+	X(11, BWEAVE, "BWEAVEv2", 1, 0, 6)	\
+	X(12, PARENTS, "PARENTS", 0, 0, 6)	\
+	X(13, SCANDIRS, "SCANDIRS", 1, 0, 6)	\
 
 enum {
 	FEAT_ALWAYS = 1,		/* bit0 is always set */
-#define X(a, b, c, d, e) FEAT_ ## b = (1 << a),
+#define X(a, b, c, d, e, f) FEAT_ ## b = (1 << a),
 	FEATURES
 #undef X
 };
@@ -71,3 +72,4 @@ char	*features_list(project *p);
 int	features_bkdCheck(int in_bkd, int no_repo, int isClone);
 u32	features_toBits(char *features, char *bad);
 char	*features_fromBits(u32 bits);
+void	features_minrelease(void);
