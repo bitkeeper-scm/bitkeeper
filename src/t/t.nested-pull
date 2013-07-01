@@ -24,6 +24,10 @@ echo q | bk pull $Q 2>ERR && fail should have failed
 bk pull $Q 2>ERR && fail should have failed
 perl -pe 's|$HERE||; s|(\s*Write locker:).*|\1|' < ERR > GOT
 cat <<EOF > WANT
+	RESYNC directory.
+
+	Usually the RESYNC directory indicates a push/pull in progress.
+	Use bk resolve/bk abort as appropriate.
 Unable to lock repository for update.
 EOF
 cmpfiles WANT GOT

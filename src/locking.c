@@ -1381,7 +1381,15 @@ nested_printLockers(project *p, int listStale, int removeStale, FILE *out)
 	char	**lockers = 0, **plockers = 0;
 	int	i;
 	int	n = 0;
+	char	path[MAXPATH];
 
+	concat_path(path, proj_root(p), ROOT2RESYNC "/" BKROOT);
+	if (isdir(path)) {
+		fprintf(out, "\tRESYNC directory.\n");
+		fprintf(out, "\n\tUsually the RESYNC directory indicates a "
+		    "push/pull in progress.\n"
+		    "\tUse bk resolve/bk abort as appropriate.\n");
+	}
 	lockers = nested_lockers(p, listStale, removeStale);
 	EACH(lockers) {
 		plockers = addLine(plockers, prettyNlock((nlock *)lockers[i]));
