@@ -3437,7 +3437,7 @@ main(_argused int argc, string argv[])
 		self.root = bk("root -R");
 	}
 
-	unless (bk_lock()) {
+	if (!self.resolve && !bk_lock()) {
 		displayMessage("Could not obtain a read lock for this repo", 1);
 	}
 
