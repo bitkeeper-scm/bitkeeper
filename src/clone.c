@@ -22,6 +22,7 @@ private	struct {
 	u32	product:1;		/* is product? */
 	u32	identical:1;		/* --identical */
 	u32	parents:1;		/* --parents */
+	u32	did_progress:1;		/* error handling */
 	u32	downgrade:1;		/* --downgrade */
 	int	delay;			/* wait for (ssh) to drain */
 	int	remap;			/* force remapping? */
@@ -418,7 +419,7 @@ clone_main(int ac, char **av)
 			    opts->comps, opts->comps, PRODUCT);
 		}
 		if (opts->comppath) title = opts->comppath;
-		unless (opts->verbose) {
+		if (opts->did_progress && !opts->verbose) {
 			progress_end(PROGRESS_BAR, retrc ? "FAILED" : "OK",
 			    PROGRESS_MSG);
 		}
@@ -782,6 +783,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	unless (p = getenv("_BK_REPO_PREFIX")) {
 		p = basenm(local);
 	}
+	opts->did_progress = 1;
 	if (sfio(r, p) != 0) {
 		fprintf(stderr, "sfio errored\n");
 		disconnect(r);

@@ -626,14 +626,6 @@ proc fillComments {file} \
 	if {[catch {exec bk log -r$lr..$rr $fname} c]} {
 		set c "No comments"
 	}
-	if {[catch {exec bk r2c -r$lr..$rr $fname} crevs] == 0} {
-		if {[catch {exec bk changes -m -r$crevs} cset_comments] == 0} {
-			append cset_comments \n
-			append cset_comments $c
-			set c $cset_comments
-		}
-	}
-
 	$top.f.t delete 1.0 end
 	$top.f.t insert end $c
 }
@@ -826,15 +818,15 @@ main(int argc, string argv[])
 			// bk difftool -L[<URL>]
 			string	err;
 
-			if (dashs) {  // revtool_cd2root()
-				cd2root();
-			} else {
-				cd2product();
-			}
 			rev1 = bk_repogca(localUrl, &err);
 			unless (rev1) {
 				message("Could not get repo GCA:\n${err}",
 				    exit: 1);
+			}
+			if (dashs) {  // revtool_cd2root()
+				cd2root();
+			} else {
+				cd2product();
 			}
 			fp = popen("bk _sfiles_local -r${rev1}", "r");
 		} else if (rev1) {
