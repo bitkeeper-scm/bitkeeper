@@ -40,7 +40,7 @@ node() {
 
 sanitize() {
 	# filter out the file name from the key
-	perl -i.old -pe 's? bk/[^|]*\|([^|]*)\S+\d\b? <$1>?' $1
+	perl -i.old -pe 'last if /^-/; s? bk/[^|]*\|([^|]*)\S+\d\b? <$1>?' $1
 	rm -f $1.old
 }
 
@@ -69,12 +69,28 @@ bk setup -P -fcc remote
 cd remote
 bk gate $Q -r
 # XXX: the comp repo is not attached when sfio happens, so gets checkout wrong.
-bk attach $Q ../standalone comp
+bk attach $Q -C ../standalone comp
 test -f comp/foo && fail fix test as attach now works
 bk --cd=comp -Ur checkout $Q
 bk --cd=comp prs -r1.0 -hnd:RANDOM: ChangeSet > comp.rand
 # See that hex is in lower case
 grep -q '[A-F]' comp.rand && fail -f comp.rand upper case in id
+# Add in a set of triggers for bug tickling
+mkdir BitKeeper/triggers
+cd BitKeeper/triggers
+cat <<EOF > t
+#!/bin/sh
+exit 0
+EOF
+chmod +x t
+for t in pre-resolve pre-incoming post-incoming pre-apply post-commit
+do
+	cp t $t
+	bk new $Q $t
+done
+rm t
+cd ../..
+bk commit $Q -y'attach comp and add trigger'
 # set up a start off the remote repo used in all the tests
 bk clone $Q . ../local
 bk portal $Q .
@@ -114,9 +130,20 @@ bk port $Q -rSHARED ../../standalone
 # Pull into local where SHARED is unmarked
 cd "$HERE"/local
 bk pull -q 2> GOT && fail -f GOT
-sanitize GOT
+# Test the error message with trailing instructions once:
+perl -i.old -pe 's? bk/[^|]*\|([^|]*)\S+\d\b? <$1>?' GOT
 cat <<EOF > WANT
 pull: poly on key <comp/ChangeSet> marked in remote
+-----------------------------------------------------------------
+The pull includes component csets that are already in your
+repository as part of a different product cset.
+
+This can happen when more than one portal is used to port from
+other projects.
+
+BitMover recommends that you only use one portal to avoid this
+error.  Please write support@bitmover.com for assistance.
+-----------------------------------------------------------------
 EOF
 cmpfiles WANT GOT
 # failure means no RESYNC in prod or comp - no manual merges happened

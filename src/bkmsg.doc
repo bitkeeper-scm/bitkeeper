@@ -1294,6 +1294,18 @@ Try running 'bk resolve' to finish the pull, or a 'bk abort' to
 cancel it.
 -----------------------------------------------------------------
 $
+#pull_poly
+-----------------------------------------------------------------
+The pull includes component csets that are already in your
+repository as part of a different product cset.
+
+This can happen when more than one portal is used to port from
+other projects.
+
+BitMover recommends that you only use one portal to avoid this
+error.  Please write support@bitmover.com for assistance.
+-----------------------------------------------------------------
+$
 #no_pull_part1
 Remote does not understand "pull_part1" command.  There are two
 possible causes:
