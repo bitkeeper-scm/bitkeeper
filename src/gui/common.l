@@ -145,17 +145,17 @@ bk_lock()
 void
 bk_unlock()
 {
-	if (_lockurl) system("bk _kill '${_lockurl}'");
+	if (_lockurl) bk_system("bk _kill '${_lockurl}'");
 	_lockurl = undef;
 }
 
 string
 bk_locklist()
 {
-	string	out;
+	string	out, err;
 
-	system("bk lock -l", undef, undef, &out);
-	return (out);
+	system("bk lock -l", undef, &out, &err);
+	return (err);
 }
 
 void

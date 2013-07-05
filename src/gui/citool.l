@@ -2927,7 +2927,7 @@ openIgnoreFile(string comp)
 {
 	string	ignoreFile = joinpath(comp, "BitKeeper/etc/ignore");
 
-	unless (defined(system("bk edit -q '${ignoreFile}'"))) {
+	unless (defined(bk_system("bk edit -q '${ignoreFile}'"))) {
 		tk_messageBox(parent: self.w_top, title: "Error",
 		    message: "Could not edit ignore file");
 		return undef;

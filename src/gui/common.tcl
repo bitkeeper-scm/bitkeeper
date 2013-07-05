@@ -1635,6 +1635,41 @@ highlightStacked(widget w, string start, string stop, int prefix)
 }
 
 /*
+ * Windows gui doesn't have a stdout and stderr.
+ * A straight system("foo") won't run foo because of this.
+ * So put in a string and let the user know it happened.
+ */
+int
+bk_system(string cmd)
+{
+	string	out, err;
+	int	rc;
+
+	if (!defined(rc = system(cmd, undef, &out, &err))) {
+		tk_messageBox(title: "bk system",
+			      message: "command: ${cmd}\n" . stdio_lasterr);
+		return (undef);
+	}
+	if ((defined(out) && (out != "")) ||
+	    (defined(err) && (err != ""))) {
+		if (defined(out)) out = "stdout:\n" . out;
+		if (defined(err)) err = "stderr:\n" . err;
+		if (rc) {
+			bk_error("bk system",
+				 "command:\n${cmd}\n"
+				 "${out}"
+				 "${err}");
+		} else {
+			bk_message("bk system",
+				 "command:\n${cmd}\n"
+				 "${out}"
+				 "${err}");
+		}
+	}
+	return (rc);
+}
+
+/*
  * given "line.col" return just line
  */
 int
@@ -1775,22 +1810,20 @@ bk_repogca(string url, string &err)
 void
 bk_message(string title, string message)
 {
-	if ((Tk_windowingsystem() == "win32")
-	    && (getenv("BK_REGRESSION") == "")) {
-		tk_messageBox(title: title, message: message);
-	} else {
+	if (defined(getenv("BK_REGRESSION"))) {
 		puts("stdout", message);
+	} else {
+		tk_messageBox(title: title, message: message);
 	}
 }
 
 void
 bk_error(string title, string message)
 {
-	if ((Tk_windowingsystem() == "win32")
-	    && (getenv("BK_REGRESSION") == "")) {
-		tk_messageBox(title: title, message: message);
-	} else {
+	if (defined(getenv("BK_REGRESSION"))) {
 		puts("stderr", message);
+	} else {
+		tk_messageBox(title: title, message: message);
 	}
 }
 

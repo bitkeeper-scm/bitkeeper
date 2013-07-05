@@ -763,7 +763,7 @@ main(int argc, string argv[])
 			// bk difftool <path/to/file1> <dir>
 			rfile = File_join(rfile, basename(lfile));
 			unless (exists(rfile)) {
-				system("bk co '${rfile}'");
+				bk_system("bk get -q '${rfile}'");
 			}
 		}
 		if (checkFiles(lfile, rfile)) {
@@ -793,7 +793,7 @@ main(int argc, string argv[])
 			// If this is a BK file, and it's not checked out,
 			// check it out.
 			if (`bk gfiles '${file}'` != "" && !exists(file)) {
-				system("bk get '${file}'", undef, undef, undef);
+				bk_system("bk get -q '${file}'");
 			}
 			if (checkFiles(lfile, rfile)) {
 				addFile(lfile, rfile, file, rev1);
