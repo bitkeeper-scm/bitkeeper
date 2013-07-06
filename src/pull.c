@@ -45,6 +45,8 @@ private void	resolve_comments(remote *r);
 private	int	resolve(void);
 private	int	takepatch(remote *r);
 
+#define	PULL_NO_MORE	71	/* local prob; don't look elsewhere */
+
 int
 pull_main(int ac, char **av)
 {
@@ -665,7 +667,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar,
 			fprintf(stderr,
 			    "Pull failed: takepatch exited %d.\n", i);
 			putenv("BK_STATUS=TAKEPATCH FAILED");
-			rc = 1;
+			rc = PULL_NO_MORE;
 			goto done;
 		}
 		if (opts.port) {
@@ -1102,7 +1104,10 @@ pull_ensemble(remote *r, char **rmt_aliases,
 			status = spawnvp(_P_WAIT, "bk", &vp[1]);
 			removeLineN(vp, nLines(vp), free); /* pop url */
 			rc = WIFEXITED(status) ? WEXITSTATUS(status) : 100;
-			if (!rc || (rc == 71) || isdir(ROOT2RESYNC)) break;
+			if (!rc ||
+			    (rc == PULL_NO_MORE) || isdir(ROOT2RESYNC)) {
+				break;
+			}
 		}
 		freeLines(vp, free);
 		if (c->localchanges) {
@@ -1116,12 +1121,12 @@ pull_ensemble(remote *r, char **rmt_aliases,
 			 * check for a RESYNC here.
 			 */
 			if (WIFEXITED(rc)) rc = WEXITSTATUS(rc);
-			if ((rc == 71) || !isdir(ROOT2RESYNC)) {
+			if ((rc == PULL_NO_MORE) || !isdir(ROOT2RESYNC)) {
 				/*
 				 * Pull really failed, who knows why
-				 * 71 == poly which already printed error
+				 * skip poly or takepatch; they failed with msg
 				 */
-				unless (rc == 71) {
+				unless (rc == PULL_NO_MORE) {
 					fprintf(stderr,
 					    "Pulling %s failed %d\n",
 					    c->path, rc);
@@ -1229,7 +1234,7 @@ pull(char **av, remote *r, char **envVar)
 		if (poly_pull(got_patch, opts.mergefile)) {
 			putenv("BK_STATUS=POLY");
 			got_patch = 0;	/* post triggers */
-			rc = 71;	/* XXX: hack to talk to pull */
+			rc = PULL_NO_MORE; /* talk back to pull */
 			goto done;
 		}
 		got_patch = 1;

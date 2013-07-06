@@ -2486,7 +2486,7 @@ cd "$HERE/clone1/comp1"
 bk edit $Q for-edit-q
 echo edit2 >for-edit-q || fail
 bk pull -q "$HERE/product1" >OUT 2>&1 && fail -f OUT
-[ `cat OUT | wc -l` = 13 ] || fail -f OUT
+[ `cat OUT | wc -l` = 11 ] || fail -f OUT
 chknumbars OUT 0 || fail $msg
 cd ../..
 bk _rm -rf clone1
