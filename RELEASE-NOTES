@@ -1,105 +1,14 @@
 ============================================================================
-Release notes for BitKeeper version 6.0-pre3 (released Jun 13, 2013)
+Release notes for BitKeeper version 6.0 (released Jul 05, 2013)
 
--r@<rev>
-    In this release the meaning of -r@<rev> changes in a nested
-    repository.  In bk-5.x when in a component -r@<rev> for a file
-    would expand to the revision in that file for <rev> on this
-    component. And then -r@@<rev> would find the file as of a given
-    product <rev>.   In bk-6.0 this is reversed so that -r@<rev> will
-    also lookup the rev of a file for a cset in the product.  This
-    makes the behavior of -r@<rev> in nested and a standalone
-    repository have similar behavior.  The -r@@<rev> syntax will allow
-    lookups using a components cset file, but that will rarely be
-    needed.
-
--L[url]
-    This release adds -L[url] (local work, somewhat like bk changes -L)
-    to bk csettool, bk diffs, bk difftool, bk log, and bk sccslog.
-
-    These commands give you a way to look over local changes, you can
-    see what would be pushed (assuming that you check in and commit
-    any modifications; all except csettool include pending deltas and
-    diffs/difftool will list any modifications).
-
-    We find this useful for reviewing local work or what was just 
-    pulled.
-
-    If no url is provided then the the repository parent is used to
-    find a baseline for local work.  If there are multiple parents,
-    the outgoing parent is used.  If there are multiple outgoing
-    parents you must specify which one you want.
-
-    -L changes the behavior of some commands when no other arguments
-    are provided; without -L the default is to process the list of
-    files in the current working directory.  -L changes the implied
-    default to be the entire repository (or nested collection).  To
-    get the old behavior run:
-
-    bk diffs -L .
-
-    which will limit it to files in the current working directory.
-
-    Common idioms:
-
-    bk difftool -L		# walk all diffs in all files
-    bk diffs -L			# same thing in a terminal
-    bk diffs -L sfiles.c	# show the local diffs in the specified file
-    bk log -L dir		# show the local checkin comments in dir
-
-bk csets
-    -D added to use difftool/diffs instead of csettool/changes to view
-    the changes from the last pull.
-
-bk diffs
-   The new -L option replaces the old -@ which was semi-documented.
-
-============================================================================
-Release notes for BitKeeper version 6.0-pre2 (released Jun 6, 2013)
-
-bk set
-    Change the default behavior to perform set operations on the
-    product changeset file.  Added a --standalone / -S option to
-    limit the operation to the current component.
-
-bk diffs
-   The diffs command now defaults to showing unified diffs.
-   Use bk diffs --normal to get old style diffs.
-
-bk unlock
-   The unlock command can no longer be called on a revision controlled
-   file.  This usage was from SCCS and never makes sense in a bk
-   repository.  Use 'bk unedit FILE' instead.
-
-   Also the usage of 'bk unlock -r REPO' is no longer supported.
-   The command 'bk --cd=REPO unlock -r' can be used instead.
-
-Bug Fixes
-
-  bk clone -r
-    Fix clone -r such that when and if it is checking out files, it
-    does so with the timestamp of the most recent delta (which is what
-    it does in the absence of the -r option).
-
-============================================================================
-Release notes for BitKeeper version 6.0-pre1 (released Apr 26, 2013)
-
-    This is a pre-release of changes that are destined to be included in
-    the 6.0 release of BitKeeper.  
-
-    The primary focus of the 6.0 effort was performance improvements.
+    The primary focus of the 6.0 effort is performance improvements.
 
 New repository format for performance
-    BK6 has a new file format designed for performance.  We're still
-    working on it -- bk clone needs more work, as does pull -- but as
-    is shown below, we've made significant improvements and would like
-    some customer feedback.
+    BK6 has a new file format designed for performance.
 
     The new repository format cannot be read by bk-5.x releases
-    of BitKeeper (but see below).  It is intended for future bk-6.x
-    releases to be able to read and write repositories created by this
-    pre-release, but further on-disk changes are likely to be included
-    in later releases.
+    of BitKeeper, but clone can convert a new repository to a bk-5.x
+    readable repository.
 
 Compatibility
     New file formats are a cause for concern but we've done the extra
@@ -182,10 +91,10 @@ Performance improvements:
 	bk5 citool:	       15.4 seconds
 	bk6 citool --no-extras: 1.0 seconds
 
-    Even when citool is told to scan for extras in a nested repo, it will
-    appear to run faster because it uses the fastscan cache to find the
-    modified/pending files first, then scans the rest of the repository
-    for extras.
+    Even when citool is told to scan for extras in a BK/nested repo,
+    it will appear to run faster because it uses the fastscan cache to
+    find the modified/pending files first, then scans the rest of the
+    repository for extras.
 
   - citool ignore handling.  Ignoring files in BK/nested is onerous 
     because each component has its own ignore file (so things continue
@@ -203,7 +112,7 @@ Performance improvements:
   - revtool -> csettool.  If you use revtool to look at a file history
     and you want to pop up csettool to see the changeset, under the covers
     BK is doing a bk r2c on the rev in the file.  That has to open up the
-    changeset file (and in nested it also has to look at the product's
+    changeset file (and in BK/nested it also has to look at the product's
     changeset file).  The binary file format makes this much faster:
 
 	bk5 r2c: 4.5 second
@@ -224,102 +133,180 @@ Performance improvements:
 
 Changes in bk commands
 
+  -r@<rev>
+    In bk-6.x, the meaning of -r@<rev> changes in a BK/nested repository.
+    In bk-5.x when in a component -r@<rev> for a file expands to
+    the revision in that file for <rev> on this component.  And then
+    -r@@<rev> finds the file as of a given product <rev>.  In
+    bk-6.0 this is reversed so that -r@<rev> will also lookup the rev
+    of a file for a cset in the product.  This makes similar the behavior
+    of -r@<rev> in nested and a standalone repository.
+    The -r@@<rev> syntax will allow lookups using a component's cset file,
+    but that will rarely be needed. 
+
+  -L[url]
+    This release adds -L[url] (local work, somewhat like bk changes -L)
+    to bk csettool, bk diffs, bk difftool, bk log, and bk sccslog.
+
+    These commands give you a way to look over local changes.  You can
+    see what would be pushed (assuming that you check in and commit
+    any modifications; all except csettool include pending deltas and
+    diffs/difftool will list any modifications).
+
+    We find this useful for reviewing local work or what was just 
+    pulled.
+
+    If no url is provided then the the repository parent is used to
+    find a baseline for local work.  If there are multiple parents,
+    the outgoing parent is used.  If there are multiple outgoing
+    parents you must specify which one you want.
+
+    -L changes the behavior of some commands when no other arguments
+    are provided; without -L the default is to process the list of files
+    in the current working directory.  -L changes the implied default
+    to be the entire repository (or BK/nested collection).  To get the
+    old behavior run
+
+      bk diffs -L .
+
+    which will limit it to files in the current working directory.
+
+    Common idioms:
+
+    bk difftool -L		# walk all diffs in all files
+    bk diffs -L			# same thing in a terminal
+    bk diffs -L sfiles.c	# show the local diffs in the specified file
+    bk log -L dir		# show the local checkin comments in dir
+
   bk annotate
-     -c<date> is now bk annotate -c<date_range>; the old usage is no
-     longer supported (but see the docs for how to work around it).
-     -R[<range>] now has default annotations (-aur).  To get previous
-     behavior, use -anone.
+    -c<date> is now bk annotate -c<date_range>; the old usage is no
+    longer supported (but see the docs for how to work around it).
+    -R[<range>] now has default annotations (-aur).  To get previous
+    behavior, use -anone.
 
   bk changes
-     Fixed bugs with include/exclude patterns that matched components'
-     ChangetSet files.
+    Fixed bugs with include/exclude patterns that matched components'
+    ChangeSet files.
 
-     The -i/-x options now act as selectors, printing only changesets
-     that match a given pattern, but printing all information about
-     the changeset (use --filter for the old behavior; --filter is
-     undocumented because we feel it is unlikely anyone wanted the
-     old behavior).
+    The -i/-x options now act as selectors, printing only changesets
+    that match a given pattern, but printing all information about
+    the changeset (use --filter for the old behavior; --filter is
+    undocumented because we feel it is unlikely anyone wanted the
+    old behavior).
 
-     -<number> can limit output to only that number of items.
+    -<number> can limit output to only that number of items.
 
   bk citool
-     Keep a copy of the X11 selection buffer between file changes in
-     citool.  Without this fix, selecting something in X11 and then
-     changing files would delete the X selection and a paste event
-     to another file would fail.
+    Keep a copy of the X11 selection buffer between file changes in
+    citool.  Without this fix, selecting something in X11 and then
+    changing files would delete the X selection and a paste event
+    to another file would fail.
 
-     Add --no-extras to skip scanning for new files not under revision
-     control.  This requires that you use 'bk new' to add new files, but
-     can be much faster in nested repositories if the new BK repository
-     format is used.
+    Add --no-extras to skip scanning for new files not under revision
+    control.  This requires that you use 'bk new' to add new files, but
+    can be much faster in large repositories if the new BK repository
+    format is used.
+  
+    The operation now holds a readlock.  This was needed as part of
+    improving performance.
 
   bk clone
-     Add the --upgrade and --downgrade options to enable performance
-     or compatibility.
+    Add the --upgrade and --downgrade options to enable performance
+    or compatibility.  The --downgrade additionally causes clone to
+    output the oldest version of bk that can support the features
+    used by the repository.  For example, a BK/nested repository that
+    after a downgrade will have an oldest version of bk-5.x because
+    a version of bk that supports BK/nested is needed, and bk-4.x does
+    not support BK/nested.
+    See bk features below.
+
+    Add --parents option to set the parent[s] of the new clone to be
+    the same as the parents of the repository being cloned.
 
   bk cp
-     Will now refuse to copy BAM files without a -f (before this could
-     create broken repositories).
+    Will now refuse to copy BAM files without a -f (before this could
+    create broken repositories).
+
+  bk csets
+    -D added to use difftool/diffs instead of csettool/changes to view
+    the changes from the last pull.
 
   bk diffs
-     Add --stats to output a diffstat-like summary of changes.
+    The diffs command now defaults to showing unified diffs.
+    Use bk diffs --normal to get old-style diffs.
+    Add --stats to output a diffstat-like summary of changes.
+    The new -L option replaces the old -@ which was semi-documented.
 
-     Fix paths in bk diffs so that you can do
+    Fix paths in bk diffs so that you can do
        bk -Uc diffs -up > SAVED
        bk -Uc unedit
        bk -P patch -p1 -g1 < SAVED
-     and it works, even in nested.
+    and it works, even in BK/nested collections.
+
+  bk features
+    Add a -m option to list minimum major revision of bk that
+    supports the features used in the repository.
 
   bk log
-     -<number> can limit output to only that number of items.
-
-  bk r2c
-     Add range support. Now you can do
-       bk r2c -r<low>..<high> <file>
-     and get back a list of ChangeSet revisions separated
-     by commas. E.g., "1.5,1.4,1.3"
-
-  bk rset
-     Add --elide to 'bk rset -rREV1..REV2' to skip files with no
-     actual content changes.
+    -<number> can limit output to only that number of items.
 
   bk prs
-     The default prs output has been changed in the case where BK_HOST
-     has been set.  The original DSUMMARY (which is part of the default
-     prs output) used user@host/realhost. Now it outputs user@host.
+    The default prs output has been changed in the case where BK_HOST
+    has been set.  The original DSUMMARY (which is part of the default
+    prs output) used user@host/realhost. Now it outputs user@host.
 
   bk pull
-     In a nested repository when a new component needs to be populated,
-     it can now come from any saved location for that component instead
-     of only the source URL.
+    In a BK/nested repository when a new component needs to be populated,
+    it can now come from any saved location for that component instead
+    of only the source URL.
+
+  bk set
+    Change the default behavior to perform set operations on the
+    product changeset file.  Added a --standalone / -S option to
+    limit the operation to the current component.
+
+  bk unlock
+    The unlock command can no longer be called on a revision-controlled
+    file.  This usage was from SCCS and never makes sense in a bk
+    repository.  Use 'bk unedit FILE' instead.
+
+    Also the usage of 'bk unlock -r REPO' is no longer supported.
+    The command 'bk --cd=REPO unlock -r' can be used instead.
 
   bk unrm
-     The unrm command has been rewritten to fix several problems in the
-     old version.
-     - can restore a file that has been deleted in the
+    The unrm command has been rewritten to fix several problems in the
+    old version.
+    - can restore a file that has been deleted in the
        deleted directory (even if a merge occurred in the
        deleted directory)
-     - can restore triggers
-     - can handle files containing spaces
+    - can restore triggers
+    - can handle files containing spaces
+
+Bug Fixes
+
+  bk clone -r
+    Fix clone -r such that when and if it is checking out files, it
+    does so with the timestamp of the most recent delta (which is what
+    it does in the absence of the -r option).
 
 Other changes
 
-   - MD5KEYs for any rev other than 1.0 have changed; they are now
-     stable across any transformation that does not change history
-     (so attach, detach, port, newroot are all stable but csetprune and
-     partition will change the keys).
+  - MD5KEYs for any rev other than 1.0 have changed; they are now
+    stable across any transformation that does not change history
+    (so attach, detach, port, newroot are all stable but csetprune and
+    partition will change the keys).
 
-     To remain compatible with bk5, any bk5-generated key will work and
-     find the same revision when handed to bk6.  However, bk6-generated
-     keys will not work when handed to bk5.
+    To remain compatible with bk5, any bk5-generated key will work and
+    find the same revision when handed to bk6.  However, bk6-generated
+    keys will not work when handed to bk5.
 
-   - vc-bk.el updates and bug fixes
-     Add a working revert function (C-x v u). Previously it could
-     do the wrong thing with keywords, if any.
+  - vc-bk.el updates and bug fixes
+    Add a working revert function (C-x v u). Previously it could
+    do the wrong thing with keywords, if any.
       
-     C-x v L now runs "bk changes".
+    C-x v L now runs "bk changes".
       
-     Honor vc-log-show-limit by passing the limit variable to the -%d
-     option in bk changes and bk log.
+    Honor vc-log-show-limit by passing the limit variable to the -%d
+    option in bk changes and bk log.
 
-     See `bk bin`/contrib/vc-bk.el
+    See `bk bin`/contrib/vc-bk.el
