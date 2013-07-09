@@ -1807,7 +1807,7 @@ compile_pop_shift(Expr *expr)
 	if (!strcmp(opNm, "pop")) {
 		toDelete = mkId("END");
 	} else {
-		toDelete = ast_mkConst(L_int, "0", loc, loc);
+		toDelete = ast_mkConst(L_int, ckstrdup("0"), loc, loc);
 	}
 	arg = ast_mkBinOp(L_OP_ARRAY_INDEX,
 			  expr->b->a,
@@ -1847,7 +1847,7 @@ compile_insert_unshift(Expr *expr)
 	 */
 	if (!strcmp(opNm, "unshift")) {
 		if (expr->b) {
-			arg = ast_mkConst(L_int, "0", expr->node.loc,
+			arg = ast_mkConst(L_int, ckstrdup("0"), expr->node.loc,
 					  expr->node.loc);
 			arg->next = expr->b->next;
 			expr->b->next = arg;
@@ -7266,7 +7266,7 @@ Tcl_LAngleReadObjCmd(
 		return (TCL_ERROR);
 	}
 	unless (L->global->script_argc) {
-		Tcl_Obj	*objv[1];
+		Tcl_Obj	*objv[2];
 
 		objv[0] = Tcl_NewStringObj("angle_read_", -1);
 		objv[1] = Tcl_NewStringObj("::stdin", -1);
