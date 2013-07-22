@@ -1,0 +1,19 @@
+echo $N Show fix/collapse in gate bug ...............................$NL
+nested nest
+touch gcc/foo
+bk new $Q gcc/foo
+touch gdb/bar
+bk new $Q gdb/bar
+bk commit $Q -f
+# Show that fix will "open" the product changeset while preventing
+# the opening of the component changesets
+bk fix $Q -c 2>GOT && fail -f GOT should have failed
+cat <<EOF > WANT
+fix: not allowed in a gate
+EOF
+cmpfiles WANT GOT
+bk pending > GOT
+rm -f WANT
+touch WANT
+cmpfiles WANT GOT
+echo OK

@@ -31,6 +31,7 @@ private	char	**fix_genlist(char *rev);
 private	int	fix_savesfio(char **flist, char *file);
 private	int	fix_setupcomments(sccs *s, ser_t *rmdeltas);
 private	int	update_collapsed_file(char *newcsets);
+private	int	gateCheck(void);
 
 private	int	flags;		/* global to pass to callbacks */
 private	char	*me;		/* name of command */
@@ -96,19 +97,7 @@ collapse_main(int ac, char **av)
 	}
 	if (av[optind]) usage();
 	bk_nested2root(standalone);
-	if (proj_isComponent(0)) {
-		if (nested_isGate(0)) {
-gaterr:			fprintf(stderr, "collapse: not allowed in a gate\n");
-			goto out;
-		}
-	} else if (proj_isProduct(0)) {
-		if (nested_isGate(0)) goto gaterr;
-		if (nested_isPortal(0)) {
-			fprintf(stderr, "collapse: "
-			    "not allowed for a product in a portal\n");
-			goto out;
-		}
-	}
+	if (gateCheck()) goto out;
 	if (merge && (after || revlist || fromurl)) {
 		fprintf(stderr, "%s: cannot combine -m with -r or -a\n", me);
 		goto out;
@@ -220,6 +209,7 @@ fix_main(int ac,  char **av)
 		}
 	}
 	/* collapse needs -e */
+	if (gateCheck()) goto out;
 	nav = addLine(nav, strdup("-e"));
 	if (cset) {
 		if (after) usage(); /* use collapse instead */
@@ -231,8 +221,27 @@ fix_main(int ac,  char **av)
 			if (rc = do_file(av[i], after)) break;
 		}
 	}
-	freeLines(nav, free);
+out:	freeLines(nav, free);
 	return (rc);
+}
+
+private int
+gateCheck(void)
+{
+	if (proj_isComponent(0)) {
+		if (nested_isGate(0)) {
+gaterr:			fprintf(stderr, "%s: not allowed in a gate\n", prog);
+			return (1);
+		}
+	} else if (proj_isProduct(0)) {
+		if (nested_isGate(0)) goto gaterr;
+		if (nested_isPortal(0)) {
+			fprintf(stderr, "%s: "
+			    "not allowed for a product in a portal\n", prog);
+			return (1);
+		}
+	}
+	return (0);
 }
 
 /*
