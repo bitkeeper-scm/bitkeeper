@@ -821,7 +821,11 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	unlink(cset->pfile);
 	cset->state &= ~(S_GFILE|S_PFILE);
 
-out:	freeLines(keys, free);
+out:	unless (error || (flags & SILENT)) {
+		fprintf(stderr, "ChangeSet revision %s: +%d\n",
+		    REV(cset, cset->tip), nLines(keys));
+	}
+	freeLines(keys, free);
 	comments_done();
 	return (error);
 }
