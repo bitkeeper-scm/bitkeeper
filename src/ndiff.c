@@ -378,7 +378,7 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 		diff_print(dc, printLine, fout);
 	}
 	if (o->dop->out_show_c_func) o->dop->pattern = 0;
-out:	if (fout) fclose(fout);
+out:	if (fout && (fout != stdout)) fclose(fout);
 	FREE(data[0]);
 	FREE(data[1]);
 	FREE(o->dop);

@@ -556,3 +556,23 @@ EOF
 cmpfiles DIFFS WANT
 echo OK
 fi
+
+echo $N Check that all extra files fed in on stdin get diffed .......$NL
+cd "$HERE"
+commercial proj2
+mkdir dir
+echo stuff > dir/extra1
+echo stuff > dir/extra2
+echo stuff > dir/extra3
+bk sfiles -cxg dir | bk diffs -u -N - > ../GOT
+GOT=`wc -l < ../GOT`
+WANT=15
+test $GOT -eq $WANT || fail -f ../GOT wrong output
+echo OK
+
+echo $N Show the same thing a different way .........................$NL
+bk -Ucx diffs -N > ../GOT
+GOT=`wc -l < ../GOT`
+WANT=15
+test $GOT -eq $WANT || fail -f ../GOT wrong output
+echo OK
