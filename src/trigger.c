@@ -463,11 +463,12 @@ trigger_env(char *prefix, char *event, char *what)
 		FILE    *f = fopen("BitKeeper/tmp/patch", "r");
 		char    *p;
 
+		buf[0] = 0;
 		if (f) {
-			buf[0] = 0;
 			fnext(buf, f);
 			fclose(f);
-			assert(buf[0]);
+		}
+		if (buf[0]) {	/* if not null patch like poly_pull() */
 			chomp(buf);
 			chdir(RESYNC2ROOT);
 			strcpy(pwd, proj_cwd());

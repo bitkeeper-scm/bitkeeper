@@ -1,0 +1,55 @@
+echo $N Make sure nested lockign parsing is right....................$NL
+nested proj
+T=`bk lock -t -r`
+bk --trace-file="$HERE/GOT" --funcs=explodeNLID lock -l > OUT 2>&1
+cd "$HERE"
+cat <<EOF > EXCLUDES
+created
+explodeNLID
+pid
+random
+EOF
+sort -u GOT | grep -v -f EXCLUDES > GOT1
+cat <<EOF >WANT
+
+host: `bk gethost -r`
+http: n
+kind: r
+prog: lock
+rhost: `bk gethost -r`
+ruser: `bk getuser -r`
+user: `bk getuser -r`
+EOF
+bk _kill $T
+cmpfiles WANT GOT1
+echo OK
+
+echo $N Again but with stuff at the end..............................$NL
+cd "$HERE/proj"
+T=`bk lock -t -r`
+NLF=`ls BitKeeper/readers/`
+LID=`cat BitKeeper/readers/$NLF`
+echo "$LID|extra stuff|more extra stuff|123" > BitKeeper/readers/$NLF
+bk --trace-file="$HERE/GOT" --funcs=explodeNLID lock -l > OUT 2>&1
+cd "$HERE"
+cat <<EOF > EXCLUDES
+created
+explodeNLID
+pid
+random
+EOF
+sort -u GOT | grep -v -f EXCLUDES > GOT1
+cat <<EOF >WANT
+
+host: `bk gethost -r`
+http: n
+kind: r
+prog: lock
+rhost: `bk gethost -r`
+ruser: `bk getuser -r`
+user: `bk getuser -r`
+EOF
+bk _kill $T
+cmpfiles WANT GOT1
+echo OK
+

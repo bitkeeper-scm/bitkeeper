@@ -24,6 +24,10 @@ echo q | bk pull $Q 2>ERR && fail should have failed
 bk pull $Q 2>ERR && fail should have failed
 perl -pe 's|$HERE||; s|(\s*Write locker:).*|\1|' < ERR > GOT
 cat <<EOF > WANT
+	RESYNC directory.
+
+	Usually the RESYNC directory indicates a push/pull in progress.
+	Use bk resolve/bk abort as appropriate.
 Unable to lock repository for update.
 EOF
 cmpfiles WANT GOT
@@ -1475,13 +1479,34 @@ grep -q "modified locally and in the patch" GOT || fail -f GOT
 grep -q gdb GOT && fail -f GOT should have no gdb
 echo OK
 
+echo $N Ensure pull abort due to edited file does not check urllist..$NL
+cd "$HERE"
+nested nest
+bk clone $Q . ../one
+cd ../one
+touch gcc/foo
+bk new $Q gcc/foo
+bk commit $Q -yfoo
+bk clone $Q . ../two
+bk edit $Q gcc/foo
+bk delta $Q -fynull gcc/foo
+bk commit $Q -yfoo
+bk push $Q
+cd ../two
+bk edit $Q gcc/foo
+echo x > gcc/foo
+bk pull >OUT 2>&1 && fail -f OUT should have failed
+grep -q "pull: No other sources for ./gcc known" OUT && \
+	fail -f OUT wrong message
+echo OK
+
 # Belt and suspenders:
 # This test should be last
 # Some of the above tests involve pull failing and PENDING
 # dirs being left behind is OK.  Any more than that warrants
 # investigation.
 echo $N Ensure that most of the above tests cleaned up PENDING dirs .$NL
-WANT=6
+WANT=7
 cd "$HERE"
 bk find . -name PENDING > OUT
 GOT=`wc -l < OUT`

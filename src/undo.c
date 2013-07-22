@@ -237,7 +237,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) {
 			unlink(undo_list);
 			rc = UNDO_ERR;
-			goto out2;
+			goto out;
 		}
 	}
 

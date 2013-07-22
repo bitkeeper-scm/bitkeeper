@@ -2070,8 +2070,10 @@ showCsetContents(sfile sf)
 		sfile	s = getCsetFile(comp);
 
 		if (isExcluded(s)) continue;
-		unless (componentHasComments(comp)) continue;
-		unless ((s.file == sf.file) || isCommented(s)) continue;
+		unless (sf.inProduct) {
+			unless (componentHasComments(comp)) continue;
+			unless ((s.file == sf.file) || isCommented(s)) continue;
+		}
 		push(&files, s.name);
 
 		foreach (file in self.components{comp}) {
@@ -2173,8 +2175,12 @@ fillComments(FILE pipe)
 			comments = trimright(getCommentsFromDisk(sf, p2));
 			Text_insert(self.w_diffs, "end", sprintf("%${p1}s",""));
 			Text_insert(self.w_diffs, "end", file . "\n");
-			Text_insert(self.w_diffs, "end", comments);
-			Text_insert(self.w_diffs, "end", "\n\n");
+			if ((sf.type == "cset") && length(comments) == 0) {
+				Text_insert(self.w_diffs, "end", "\n");
+			} else {
+				Text_insert(self.w_diffs, "end", comments);
+				Text_insert(self.w_diffs, "end", "\n\n");
+			}
 			continue;
 		}
 
@@ -2921,7 +2927,7 @@ openIgnoreFile(string comp)
 {
 	string	ignoreFile = joinpath(comp, "BitKeeper/etc/ignore");
 
-	unless (defined(system("bk edit -q '${ignoreFile}'"))) {
+	unless (defined(bk_system("bk edit -q '${ignoreFile}'"))) {
 		tk_messageBox(parent: self.w_top, title: "Error",
 		    message: "Could not edit ignore file");
 		return undef;
@@ -3437,7 +3443,7 @@ main(_argused int argc, string argv[])
 		self.root = bk("root -R");
 	}
 
-	unless (bk_lock()) {
+	if (!self.resolve && !bk_lock()) {
 		displayMessage("Could not obtain a read lock for this repo", 1);
 	}
 

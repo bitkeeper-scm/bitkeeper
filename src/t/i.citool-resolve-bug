@@ -1,0 +1,20 @@
+echo $N Test citool from resolve: please comment and commit..........$NL
+nested proj
+echo "stuff" > afile
+bk new $Q afile
+bk commit $Q -yafile
+cd "$HERE"
+bk clone $Q proj copy
+cd "$HERE/proj"
+bk edit $Q afile
+echo "one side" > afile
+bk ci $Q -yleft afile
+bk commit $Q -yleft
+cd "$HERE/copy"
+bk edit $Q afile
+echo "right side" > afile
+bk ci $Q -yright afile
+bk commit $Q -yright
+(echo "ul" | bk pull $Q) > "$HERE/OUT" 2>&1
+test x`bk changes -nd:MPARENT: -r+` = x && fail -f "$HERE/OUT"
+echo OK

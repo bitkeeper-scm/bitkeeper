@@ -219,6 +219,20 @@ echo $N Make sure pull works with existing read lock in source \#2 ...$NL
 cd "$HERE/clone2"
 bk pull -R  > XXX 2>&1
 if [ ! -d RESYNC ]; then echo pull failed; cat XXX; exit 1; fi
+echo OK
+
+echo $N Show that pulling again gives correct message ...............$NL
+bk pull $Q 2>ERR && fail -f ERR
+cat <<EOF > WANT
+$HERE/clone2
+Entire repository is locked by:
+	RESYNC directory.
+
+	Usually the RESYNC directory indicates a push/pull in progress.
+	Use bk resolve/bk abort as appropriate.
+Unable to lock repository for update.
+EOF
+cmpfiles ERR WANT
 bk resolve $Q
 echo OK
 

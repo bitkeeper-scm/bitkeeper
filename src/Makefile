@@ -586,9 +586,8 @@ libc/system.h: FORCE
 
 $(OBJ) bk.o: $(HDRS)
 
-tclkey.h: genkeys.pl
-	$(Q)bk _test ! -f tclkey.h -o ../SCCS/s.ChangeSet -nt tclkey.h && \
-	    perl genkeys.pl > tclkey.h
+tclkey.h: genkeys.pl ../BitKeeper/log/TIP
+	perl genkeys.pl > tclkey.h
 
 tclwrap: blowfish.o tclwrap.o libc/libc.a
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ tclwrap.o blowfish.o libc/libc.a $(XLIBS)

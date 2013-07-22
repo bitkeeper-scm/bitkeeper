@@ -2265,10 +2265,18 @@ void system3()
 	if (defined(status.signal)) puts("bad 1.3");
 
 	/* Writing to stderr is NOT an error, unlike with Tcl's exec cmd. */
-	ret = system("perl -e 'print STDERR \"err\"'",
+
+	stdio_lasterr = undef;
+	ret = system("perl -e 'print STDERR \"err\"; exit(0)'",
 		     undef, &out, &err, &status);
 	unless (ret == 0) puts("bad 2.1");
 	unless (status.exit == 0) puts("bad 2.2");
+	if (stdio_lasterr) puts("bad 2.3");
+
+	ret = system("perl -e 'print STDERR \"err\"; exit(123)'",
+		     undef, &out, &err, &status);
+	unless (ret == 123) puts("bad 2.4");
+	unless (status.exit == 123) puts("bad 2.5");
 
 	/*
 	 * This is a poor test, but to check the name and path members
@@ -2988,6 +2996,34 @@ void system8()
 	unlink("in");
 }
 system8();
+} -output {}
+
+test system-9 {test that unredirected stderr output causes no error} -setup {
+	makeFile {
+		int main() {
+			int	ret;
+
+			stdio_lasterr = undef;
+			ret = system("perl -e 'print STDERR \"err9\";exit(0)'");
+			unless (defined(ret) && (ret == 0)) puts("bad 1");
+			if (stdio_lasterr) puts("bad 3");
+			return (0);
+		}
+	} system-9.l .
+} -body {
+#lang L
+void system9()
+{
+	int	ret;
+	string	err, out;
+	string	tclsh = eval("interpreter");
+
+	ret = system({tclsh, "system-9.l"}, undef, &out, &err);
+	if (ret) puts("bad 1.1 ret=${ret}");
+	if (out) puts("bad 1.2");
+	unless (err == "err9") puts("bad 1.3 err='${err}'");
+}
+system9();
 } -output {}
 
 test symlink-1 {test symlink} -setup {

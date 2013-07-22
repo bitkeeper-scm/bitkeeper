@@ -637,7 +637,7 @@ stderr_gui_cb_(_argused string cmd, FILE fd)
 
 	/* Make sure the error is not obscured by other windows. */
 	After_idle("raise ${top}");
-	Text_insertEnd(t, data);
+	Text_insertEnd(t, "cmd: ${cmd}\n" . data);
 	Update_idletasks();
 }
 

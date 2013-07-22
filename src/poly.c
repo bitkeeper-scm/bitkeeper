@@ -580,7 +580,7 @@ polyFlush(void)
 					assert(1);
 				}
 			} else {
-				dflags |= NEWFILE;
+				dflags |= NEWFILE | DELTA_DB;
 			}
 			rc = sccs_delta(s, dflags, 0, 0, 0, 0);
 			if (rc == -2) {
@@ -687,6 +687,7 @@ findPoly(sccs *s, ser_t local, ser_t remote, ser_t fake)
 		/* if new poly and not allowed - error */
 		unless (proj_configbool(0, "poly")) {
 			free(gcalist);
+		        getMsg("pull_poly", 0, 0, stderr);
 			return (INVALID);
 		}
 

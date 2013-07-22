@@ -641,51 +641,34 @@ private struct nlid_s	*
 explodeNLID(char *nlid)
 {
 	struct nlid_s	*nl = 0;
-	char	*p, *freeme = 0;
+	char	**fields = 0;
 
 	assert(nlid);
+	unless (fields = splitLine(nlid, "|", 0)) return (0);
 	nl = new(struct nlid_s);
-	freeme = p = strdup(nlid);
-	nl->kind = p[0];
-	unless ((nl->kind == 'r') || (nl->kind == 'w')) {
-err:		if (freeme) free(freeme);
-		if (nl) freeNLID(nl);
+	if (nLines(fields) < 10) {
+err:		freeLines(fields, free);
 		return (0);
 	}
-	nl->http = p[2];
+	nl->kind = fields[1][0];
+	unless ((nl->kind == 'r') || (nl->kind == 'w')) goto err;
+	nl->http = fields[2][0];
 	unless ((nl->http == 'h') || (nl->http == 'n')) goto err;
-	p = &p[3];
-	unless (*p++ == '|') goto err;
-	nl->user = p;
-	unless (p = strchr(p, '|')) goto err;
-	*p++ = 0;
-	nl->user = strdup(nl->user);
-	nl->host = p;
-	unless (p = strchr(p, '|')) goto err;
-	*p++ = 0;
-	nl->host = strdup(nl->host);
-	nl->prog = p;
-	unless (p = strchr(p, '|')) goto err;
-	*p = 0;
-	nl->prog = strdup(nl->prog);
-	/* created and pid fields can't be 0 */
-	unless (nl->created = strtol(++p, 0, 10)) goto err;
-	unless (p = strchr(p, '|')) goto err;
-	unless (nl->pid = strtol(++p, 0, 10)) goto err;
-	unless (p = strchr(p, '|')) goto err;
-	/* random could be zero... fat chance! */
-	nl->random = strtol(++p, 0, 10);
-	if (p = strchr(p, '|')) {
-		nl->ruser = strdup(++p);
-		unless (p = strchr(p, '|')) goto err;
-		*p++ = 0;
-		nl->rhost = strdup(p);
-	} else {
-		/* bk-5.0-beta6 or before, don't stale locks */
-		nl->ruser = strdup("");
-		nl->rhost = strdup("");
-	}
-	free(freeme);
+	nl->user = strdup(fields[3]);
+	nl->host = strdup(fields[4]);
+	nl->prog = strdup(fields[5]);
+	unless (nl->created = strtol(fields[6], 0, 10)) goto err;
+	unless (nl->pid = strtol(fields[7], 0, 10)) goto err;
+	nl->random = strtol(fields[8], 0, 10);
+	nl->ruser = strdup(fields[9]);
+	nl->rhost = strdup(fields[10]);
+
+	freeLines(fields, free);
+	T_SHIP("\nkind: %c\nhttp: %c\nuser: %s\nhost: %s\n"
+	    "ruser: %s\nrhost: %s\nprog: %s\ncreated: %u\n"
+	    "pid: %u\nrandom: %u\n", nl->kind, nl->http,
+	    nl->user, nl->host,	nl->ruser, nl->rhost, nl->prog,
+	    (unsigned int)nl->created, nl->pid, nl->random);
 	return (nl);
 }
 
@@ -1381,7 +1364,15 @@ nested_printLockers(project *p, int listStale, int removeStale, FILE *out)
 	char	**lockers = 0, **plockers = 0;
 	int	i;
 	int	n = 0;
+	char	path[MAXPATH];
 
+	concat_path(path, proj_root(p), ROOT2RESYNC "/" BKROOT);
+	if (isdir(path)) {
+		fprintf(out, "\tRESYNC directory.\n");
+		fprintf(out, "\n\tUsually the RESYNC directory indicates a "
+		    "push/pull in progress.\n"
+		    "\tUse bk resolve/bk abort as appropriate.\n");
+	}
 	lockers = nested_lockers(p, listStale, removeStale);
 	EACH(lockers) {
 		plockers = addLine(plockers, prettyNlock((nlock *)lockers[i]));

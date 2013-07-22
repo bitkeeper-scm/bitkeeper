@@ -462,7 +462,9 @@ baddir:						fprintf(stderr,
 		}
 
 		/* Trial versions of bk will expire in 3 weeks. */
-		if (test_release && !streq(prog, "upgrade") &&
+		if (test_release && !bk_isSubCmd && !streq(prog, "upgrade") &&
+		    !streq(prog, "bin") &&
+		    !streq(prog, "pwd") &&
 		    (getenv("_BK_EXPIRED_TRIAL") ||
 			(time(0) > (time_t)bk_build_timet + 3*WEEK))) {
 			char	*nav[] = {"version", 0};
