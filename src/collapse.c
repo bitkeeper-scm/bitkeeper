@@ -439,7 +439,7 @@ do_file(char *file, char *tiprev)
 	int	rc = 1;
 	ser_t	*rmdeltas = 0;
 	int	i;
-	char	*sfile = 0, *gfile = 0, *pfile = 0;
+	char	*sfile = 0, *gfile = 0, *pfile = 0, *dfile = 0;
 	time_t	gtime = 0;
 
 	cmdlog_lock(CMD_WRLOCK);
@@ -451,6 +451,7 @@ do_file(char *file, char *tiprev)
 	}
 	gfile = strdup(s->gfile);
 	pfile = strdup(s->pfile);
+	dfile = strdup(sccs_Xfile(s, 'd'));
 	d = sccs_findrev(s, "+");
 	tipd = tiprev ? sccs_findrev(s, tiprev) : parent_of_tip(s);
 	unless (tipd) goto done;
@@ -529,6 +530,7 @@ do_file(char *file, char *tiprev)
 		}
 		/* remove p.file */
 		unlink(pfile);
+		unlink(dfile);
 		s->state &= ~S_PFILE;
 
 		/* mark deltas to remove. */
@@ -602,6 +604,7 @@ do_file(char *file, char *tiprev)
 	} else {
 		/* delete the entire sfile */
 		unlink(pfile);
+		unlink(dfile);
 		sccs_free(s);
 		s = 0;
 		unlink(sfile);
@@ -617,6 +620,7 @@ do_file(char *file, char *tiprev)
 	free(sfile);
 	free(gfile);
 	free(pfile);
+	free(dfile);
 	return (rc);
 }
 

@@ -1,0 +1,13 @@
+echo $N Pending component commit during a pull ......................$NL
+nested project
+bk clone $Q . ../copy
+touch gcc/proj
+bk new $Q gcc/proj
+bk commit $Q -ygcc/proj
+cd ../copy
+touch gcc/copy
+bk new $Q gcc/copy
+bk commit $Q -ycopy
+bk fix $Q -c
+bk pull $Q 2>ERR || fail -f ERR should have worked
+echo OK
