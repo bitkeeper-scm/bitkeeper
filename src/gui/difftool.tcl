@@ -155,7 +155,7 @@ proc getRev {file rev checkMods} \
 	set gfile ""
 	set f [open "| bk sfiles -g \"$file\"" r]
 	if { ([gets $f dummy] <= 0)} {
-		puts stderr "$file is not under revision control."
+		message "$file is not under revision control."
 		exit 1
 	}
 	catch {close $f}
@@ -269,17 +269,16 @@ proc checkFiles {lfile rfile} \
 		return 1
 	}
 	if {![file isfile $lfile]} {
-		puts stderr \
-		    "File \"$lfile\" does not exist or is not a regular file"
-		return 0
+		message \
+		    "File \"$lfile\" does not exist or is not a regular file" \
+		    -exit 0
 	}
 	if {![file isfile $rfile]} {
-		puts stderr \
-		    "File \"$rfile\" does not exist or is not a regular file"
-		return 0
+		message \
+		    "File \"$rfile\" does not exist or is not a regular file" \
+		    -exit 0
 	}
-	puts stderr "Shouldn't get here"
-	return 0
+	message "Shouldn't get here" -exit 0
 }
 
 ## Called when a file is selected from the combobox.
