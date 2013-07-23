@@ -240,7 +240,7 @@ commit_main(int ac, char **av)
 		if (size("SCCS/c.ChangeSet") > 0) {
 			bktmp_local(buf, "cfile");
 			fileCopy("SCCS/c.ChangeSet", buf);
-			if (comments_prompt(buf)) {
+			if (!doit && comments_prompt(buf)) {
 				fprintf(stderr, "Commit aborted.\n");
 				return (1);
 			}
