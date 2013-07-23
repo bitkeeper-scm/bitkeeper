@@ -13,7 +13,7 @@ proc bk_initPlatform {} \
 		exit 1
 	}
 
-	set sdiffw [list "bk" "ndiff" "--sdiff=1"]
+	set sdiffw [list "bk" "ndiff" "--sdiff=1" "--ignore-trailing-cr"]
 	set dev_null "/dev/null"
 	set wish "wish"
 	set tmp_dir  "/tmp"

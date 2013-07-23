@@ -273,57 +273,15 @@ proc syncTextWidgets {master args} \
 	}
 }
 
-# Get the sdiff output. Make sure it contains no \r's from fucking DOS.
 proc sdiff {L R} \
 {
-	global	rmList sdiffw gc
+	global	sdiffw gc
 
-	set rmList ""
 	set ignore_ws ""
-
 	if {$gc(ignoreWhitespace) == 1} {
 		set ignore_ws "-b"
 	}
-
-	# On windows, our diff always read in text mode
-	# (and write in binary mode). So no need to call bk undos
-	# and no need to incure the overhead of calling "grep".
-	# cygwin "grep" seems to run in text mode, so it cannot
-	# detect CRLF sequence in file anyway.
-	#
-	# XXX For some reason, Larry's diff --ignore-trailing-cr option
-	# XXX have no effect when used in sdiff, need to figure out why.
-	if {$gc(windows)} {
-		return [open "| $sdiffw $ignore_ws -- \"$L\" \"$R\"" r]
-	}
-
-	set a [open "| grep {\r$} \"$L\"" r]
-	set b [open "| grep {\r$} \"$R\"" r]
-	if { ([gets $a dummy] < 0) && ([gets $b dummy] < 0)} {
-		catch { close $a }
-		catch { close $b }
-		return [open "| $sdiffw $ignore_ws -- \"$L\" \"$R\"" r]
-	}
-	catch { close $a }
-	catch { close $b }
-	set dir [file dirname $L]
-	if {"$dir" == ""} {
-		set dotL .$L
-	} else {
-		set tail [file tail $L]
-		set dotL [file join $dir .$tail]
-	}
-	catch {exec bk undos $L > $dotL}
-	set dir [file dirname $R]
-	if {"$dir" == ""} {
-		set dotR .$R
-	} else {
-		set tail [file tail $R]
-		set dotR [file join $dir .$tail]
-	}
-	catch {exec bk undos $R > $dotR}
-	set rmList [list $dotL $dotR]
-	return [open "| $sdiffw $ignore_ws -- \"$dotL\" \"$dotR\""]
+	return [open "| $sdiffw $ignore_ws -- \"$L\" \"$R\"" r]
 }
 
 # Displays the flags, modes, and path for files so that the
@@ -418,7 +376,7 @@ proc md52rev {file md5} \
 proc readFiles {L R {O {}}} \
 {
 	global  lname rname finfo app gc
-	global	diffCount lastDiff rmList
+	global	diffCount lastDiff
 	global	Diffs DiffsEnd diffInfo
 
 	if {![file exists $L]} {
@@ -541,12 +499,6 @@ proc readFiles {L R {O {}}} \
 
 	catch {close $r}
 	catch {close $l}
-
-	if {[llength $rmList]} {
-		foreach rm $rmList {
-			catch {file delete $rm}
-		}
-	}
 
 	. configure -cursor left_ptr
 	.diffs.left configure -cursor left_ptr

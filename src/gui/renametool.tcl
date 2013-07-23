@@ -183,41 +183,11 @@ proc right {r l n} \
 	.diffs.r insert end "$rc\n" diff
 }
 
-# Get the sdiff, making sure it has no \r's from fucking dos in it.
 proc sdiff {L R} \
 {
-	global	rmList sdiffw
+	global	sdiffw
 
-	set rmList ""
-	# we need the extra quote arounf $R $L
-	# because win32 path may have space in it
-	set a [open "| grep {\r$} \"$L\"" r]
-	set b [open "| grep {\r$} \"$R\"" r]
-	if { ([gets $a dummy] < 0) && ([gets $b dummy] < 0)} {
-		catch { close $a }
-		catch { close $b }
-		return [open "| $sdiffw \"$L\" \"$R\"" r]
-	}
-	catch { close $a }
-	catch { close $b }
-	set dir [file dirname $L]
-	if {"$dir" == ""} {
-		set dotL .$L
-	} else {
-		set tail [file tail $L]
-		set dotL [file join $dir .$tail]
-	}
-	exec bk undos $L > $dotL
-	set dir [file dirname $R]
-	if {"$dir" == ""} {
-		set dotR .$R
-	} else {
-		set tail [file tail $R]
-		set dotR [file join $dir .$tail]
-	}
-	exec bk undos $R > $dotR
-	set rmList [list $dotL $dotR]
-	return [open "| $sdiffw $dotL $dotR"]
+	return [open "| $sdiffw \"$L\" \"$R\"" r]
 }
 
 proc clear {state} \
@@ -235,7 +205,7 @@ proc clear {state} \
 
 proc diffFiles {L R} \
 {
-	global	Diffs DiffsEnd diffCount nextDiff lastDiff dev_null rmList
+	global	Diffs DiffsEnd diffCount nextDiff lastDiff dev_null
 
 	clear normal
 	.diffs.status.l configure -text "$L"
@@ -297,11 +267,6 @@ proc diffFiles {L R} \
 	catch { close $r }
 	catch { close $l }
 	catch { close $d }
-	if {"$rmList" != ""} {
-		foreach rm $rmList {
-			catch {file delete $rm} err
-		}
-	}
 	.diffs.l configure -state disabled
 	.diffs.r configure -state disabled
 	if {$diffCount > 0} {

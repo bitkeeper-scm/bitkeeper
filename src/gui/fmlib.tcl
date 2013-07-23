@@ -5,7 +5,7 @@
 #
 proc readFiles {L R {O {}}} \
 {
-	global	Diffs DiffsEnd diffCount nextDiff lastDiff dev_null rmList
+	global	Diffs DiffsEnd diffCount nextDiff lastDiff dev_null
 	global  lname rname finfo app gc
 	global  rBoth rDiff rSame nextBoth nextSame maxBoth maxDiff maxSame
 	global  types saved done Marks nextMark outputFile
@@ -128,11 +128,6 @@ proc readFiles {L R {O {}}} \
 	catch {close $r}
 	catch {close $l}
 	catch {close $d}
-	if {"$rmList" != ""} {
-		foreach rm $rmList {
-			catch {file delete $rm}
-		}
-	}
 	set nextSame 0
 	set nextDiff 0
 	set nextBoth 0

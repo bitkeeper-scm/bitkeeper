@@ -74,3 +74,20 @@ EOF
 bk difftool jp.txt
 echo OK
 
+echo $N Test a file with ^M..........................................$NL
+cat <<EOF > A
+common line
+modified line in A
+common line
+only control M (should not be a diff)
+common line
+EOF
+cat <<EOF > B
+common line
+modified line in B
+common line
+only control M (should not be a diff)
+common line
+EOF
+bk difftool A B
+echo OK
