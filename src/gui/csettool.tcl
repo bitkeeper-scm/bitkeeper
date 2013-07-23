@@ -212,7 +212,7 @@ proc getFiles {revs {file_rev {}}} \
 {
 	global	fileCount lastFile Files line2File
 	global  RealFiles fmenu file_old_new bk_fs
-	global	dashs
+	global	dashs local
 
 	busy 1
 
@@ -280,8 +280,13 @@ proc getFiles {revs {file_rev {}}} \
 	}
 	catch { close $r }
 	if {$revs ne "-" && !$fileCount} {
-		message "This ChangeSet is a merge ChangeSet and does\
-		    not contain any files." -exit 0
+		if {$local} {
+			message "No local ChangeSets found." -exit 0
+		} else {
+			message "This ChangeSet is a merge\
+				ChangeSet and does\
+				not contain any files." -exit 0
+		}
 	}
 	if {($tags > 0) && ($csets == 0)} {
 		global	env
@@ -629,7 +634,7 @@ proc usage {} \
 
 proc main {} \
 {
-	global argv0 argv argc app showAnnotations gc dashs
+	global argv0 argv argc app showAnnotations gc dashs local
 
 	wm title . "Cset Tool"
 	bk_init
