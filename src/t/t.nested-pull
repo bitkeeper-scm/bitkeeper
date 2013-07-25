@@ -862,8 +862,16 @@ touch gcc-file
 bk new $Q gcc-file
 bk commit -S $Q -ygcc || exit 3
 cd ..
-bk pull -u > OUT 2>&1 && fail -f OUT should have failed
-grep -q 'gcc has uncommitted changes' OUT || fail -f OUT bad message
+bk pull -q -u > OUT 2>&1 && fail -f OUT should have failed
+cat <<EOF > WANT
+takepatch: gcc has uncommitted changes.
+Please commit pending changes with "bk commit" and reapply the patch.
+takepatch: patch left in PENDING
+==============================================================================
+Pull failed: takepatch exited 1.
+EOF
+sed 's/PENDING.*/PENDING/g' < OUT > GOT
+cmpfiles WANT GOT
 echo OK
 
 # # XXX - we should check that the repo is cleaned up but we need the nested
