@@ -259,6 +259,8 @@ proc addFile {lfile rfile file {rev1 ""} {rev2 ""}} \
 
 		## Select the first file we get.
 		selectFile $file
+	} elseif {[.menu.fileNext cget -state] == "disabled"} {
+		.menu.fileNext configure -state normal
 	}
 	update idletasks
 }
