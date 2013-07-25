@@ -2288,7 +2288,7 @@ patchClose(void *cookie)
 {
 	pstate	*st = (pstate *)cookie;
 	char	*note, incoming[MAXPATH];
-	int	rc = 0;
+	int	rc = !feof(st->fin);
 
 	opts->p = 0;	/* XXX: Hack: block recursive close badXsum/cleanup */
 
@@ -2296,7 +2296,7 @@ patchClose(void *cookie)
 	Fprintf("BitKeeper/log/byte_count", "%lu\n", st->bytecount);
 	if (st->pending) {
 		assert(st->fin == stdin);
-		fclose(st->pending);
+		rc |= fclose(st->pending);
 		note = aprintf("%u", (u32)st->bytecount);
 		cmdlog_addnote("psize", note);
 		free(note);
@@ -2322,14 +2322,14 @@ patchClose(void *cookie)
 			NOTICE();
 		}
 	} else {
-		rc = fclose(st->fin);
+		rc |= fclose(st->fin);
 	}
 	if (st->buffering && getenv("_BK_DEVELOPER")) {
 		fprintf(stderr,
 		    "Leftover buffering %u times\n", st->buffering);
 	}
 
-	unless (st->sumR == st->sumC) badXsum(st->sumR, st->sumC);
+	unless (rc || (st->sumR == st->sumC)) badXsum(st->sumR, st->sumC);
 
 	if (st->leftover) fclose(st->leftover);
 	free(st);

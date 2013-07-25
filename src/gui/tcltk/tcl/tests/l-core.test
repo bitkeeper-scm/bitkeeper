@@ -455,7 +455,17 @@ poly Parse14Pattern_*(int a, ...rest)
 test parse-1.5 {test handling of illegal character} -body {
 #lang L
 @
-} -returnCodes error -match regexp -result {.*1: L Error: illegal character '\@'
+} -returnCodes error -match glob -result {*1: L Error: illegal character
+@
+^
+}
+
+test parse-1.5.1 {test handling of illegal character in string interpolation} -body {
+#lang L
+"${3@}";
+} -returnCodes error -match glob -result {*1: L Error: illegal character
+"$\{3@
+    ^
 }
 
 test parse-1.6 {test syntax error message 1} -body {

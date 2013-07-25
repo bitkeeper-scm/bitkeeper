@@ -715,6 +715,9 @@ canonical_num(char *num)
 					return T_RBRACE;
 				}
 			}
+	.	{
+		L_synerr("illegal character");
+	}
 }
 
 <str_double>{
@@ -969,7 +972,7 @@ canonical_num(char *num)
 
 	.		{
 				/* This rule matches a char if no other does. */
-				L_err("illegal character '%c'", *yytext);
+				L_synerr("illegal character");
 				yyterminate();
 			}
 	<<EOF>>		{
