@@ -617,7 +617,17 @@ bad_locking:				fprintf(stderr,
 			} else if (dashA) {
 				/* bk -U [opts] => bk -s sfiles -U [opts] -g */
 				sopts = unshiftLine(sopts, strdup("bk"));
-				sopts = addLine(sopts, strdup("-h"));
+				unless (mp & DS_PENDING) {
+					/*
+					 * With -p we want the
+					 * component csets to be
+					 * tested in the product.  All
+					 * other cases we supress them
+					 * so components are not
+					 * listed twice.
+					 */
+					sopts = addLine(sopts, strdup("-h"));
+				}
 				sopts = addLine(sopts,
 				    aprintf("--relpath=%s", start_cwd));
 				callstack_push(0);

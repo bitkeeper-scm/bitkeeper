@@ -1,0 +1,25 @@
+echo $N Test bk -Ap with scandirs....................................$NL
+nested proj
+cd gcc
+touch afile
+bk new $Q afile
+bk commit -S -y. $Q
+cd ..
+bk features | grep -q SCANDIRS || fail
+bk -Ap > GOT
+echo gcc/ChangeSet > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test bk -Ap without scandirs.................................$NL
+nested proj2
+perl -i.bak -ne 'print unless /SCANDIRS/' BitKeeper/log/features
+cd gcc
+touch afile
+bk new $Q afile
+bk commit -S -y. $Q
+cd ..
+bk -Ap > GOT
+echo gcc/ChangeSet > WANT
+cmpfiles WANT GOT
+echo OK
