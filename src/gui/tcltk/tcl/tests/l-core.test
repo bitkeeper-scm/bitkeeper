@@ -7141,6 +7141,27 @@ void switch_1_1()
 	unless (i == 2) puts("bad 11.2");
 
 	/*
+	 * Test goto out of the switch to check that the run-time
+	 * stack remains balanced.  This used to crash due to a bug.
+	 * However, it's difficult to see the regression as a crash in
+	 * a release build.  If we have the loop below iterate only a few
+	 * times, the Tcl bytecode engine seems to happily scribble
+	 * memory but on some platforms it is in a region where
+	 * it does not cause a crash.  I'm hesitant to have the loop
+	 * iterate too many times since Larry already doesn't like how
+	 * long the L tests take.  But it can easily be seen in a Tcl
+	 * debug build.
+	 */
+
+	for (i = 1; i < 1000; ++i) {
+		switch (i) {
+		    case i:
+			goto sw_1_1_next;
+		}
+	sw_1_1_next:
+	}
+
+	/*
 	 * Test id: at end of case expression.  At one point this used
 	 * to cause a syntax error.
 	 */

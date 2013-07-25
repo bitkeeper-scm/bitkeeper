@@ -4546,11 +4546,11 @@ compile_switch(Switch *sw)
 /*
  * Generate if-then-else code like the following for a switch statement.
  *
- *	<switch expression>
+ *	local_tmp = <switch expression>
  * # The following is generated for each case except the default case.
  * # All jmps are forward jmps.
  * next-test:
- *	dup
+ *	load local_tmp
  *	<case expression>
  *	<appropriate compare opcode>
  *	jmp-false next-test
@@ -4579,12 +4579,17 @@ compile_switch_slow(Switch *sw)
 	int	start_off;
 	Jmp	*break_jmps;
 	Jmp	*next_body_jmp = NULL, *next_test_jmp = NULL, *undef_jmp = NULL;
+	Tmp	*tmp;
 
 	compile_expr(e, L_PUSH_VAL);
+	tmp = tmp_get(TMP_REUSE);
+	emit_store_scalar(tmp->idx);
+	emit_pop();
 	unless (istype(e, L_INT|L_STRING|L_WIDGET|L_POLY)) {
 		L_errf(e, "switch expression must be int or string");
 		return;
 	}
+
 	frame_push(sw, NULL, SWITCH|SEARCH);
 	/*
 	 * If there's a case undef, check that first, because if the
@@ -4594,7 +4599,7 @@ compile_switch_slow(Switch *sw)
 	for (c = sw->cases; c; c = c->next) {
 		if (c->expr && isid(c->expr, "undef")) {
 			start_off = currOffset(L->frame->envPtr);
-			TclEmitOpcode(INST_DUP, L->frame->envPtr);
+			emit_load_scalar(tmp->idx);
 			TclEmitOpcode(INST_L_DEFINED, L->frame->envPtr);
 			undef_jmp = emit_jmp_fwd(INST_JUMP_FALSE4, NULL);
 			track_cmd(start_off, c->expr);
@@ -4608,7 +4613,7 @@ compile_switch_slow(Switch *sw)
 			fixup_jmps(&undef_jmp);
 		} else if (c->expr) {
 			fixup_jmps(&next_test_jmp);
-			TclEmitOpcode(INST_DUP, L->frame->envPtr);
+			emit_load_scalar(tmp->idx);
 			if (isregexp(c->expr)) {
 				compile_reMatch(c->expr);
 			} else if (isint(e)) {
@@ -4643,7 +4648,7 @@ compile_switch_slow(Switch *sw)
 	break_jmps = L->frame->break_jumps;
 	frame_pop();
 	fixup_jmps(&break_jmps);
-	emit_pop();
+	tmp_free(tmp);
 }
 
 /*
