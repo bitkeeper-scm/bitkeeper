@@ -1,0 +1,19 @@
+echo $N Test a change that was reverted..............................$NL
+commercial proj
+echo foobar > afile
+bk new $Q afile
+bk commit $Q -yafile
+cd "$HERE"
+bk clone $Q proj copy
+cd copy
+bk edit $Q afile
+echo a change > afile
+bk ci -y. $Q afile
+bk commit $Q -yafile
+bk edit $Q afile
+echo foobar > afile
+bk ci -y. $Q afile
+bk commit $Q -yafile
+bk difftool -L
+
+echo OK

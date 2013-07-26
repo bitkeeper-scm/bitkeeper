@@ -1954,15 +1954,17 @@ sfiles_local_main(int ac, char **av)
 {
 	char	*rev = 0;
 	int	c;
-	char	*t, *p;
-	FILE	*f;
-	int	standalone = 0, norev = 0, nomods = 0;
+	char	*t, *p, *r, *t1;
+	FILE	*f, *f1;
+	int	standalone = 0, norev = 0, nomods = 0, elide = 0;
 	hash	*seen;
-	int	rc = 1;
+	char	**out = 0;
+	int	i, rc = 1;
 	char	buf[MAXLINE];
 	longopt	lopts[] = {
-		{ "no-mods", 300 },
-		{ "no-revs", 310 },
+		{ "elide",   310 },
+		{ "no-mods", 320 },
+		{ "no-revs", 330 },
 		{ 0, 0 }
 	};
 
@@ -1970,50 +1972,83 @@ sfiles_local_main(int ac, char **av)
 		switch (c) {
 		    case 'r': rev = optarg; break;
 		    case 'S': standalone = 1; break;
-		    case 300: nomods = 1; break;
-		    case 310: norev = 1; break;
+		    case 310: elide = 1; break;
+		    case 320: nomods = 1; break;
+		    case 330: norev = 1; break;
 		    default: bk_badArg(c, av);
 		}
 	}
 	bk_nested2root(standalone);
 
 	seen = hash_new(HASH_MEMHASH);
+	/* do pending first */
+	p = nomods ? "p" : "cp";
+	if (standalone) {
+		sprintf(buf, "bk sfiles -g%s", p);
+	} else {
+		sprintf(buf, "bk -A%s", p);
+	}
+	f = popen(buf, "r");
+	while (t = fgetline(f)) {
+		if (streq(basenm(t), "ChangeSet")) {
+			/* component is pending */
+			char	*cmd, *dir, *file;
+
+			dir = dirname(t);
+			cmd = aprintf("bk --cd='%s' rset %s -SHr@+..",
+			    dir, elide ? "--elide": "");
+			f1 = popen(cmd, "r");
+			while (t1 = fgetline(f1)) {
+				p = strchr(t1, '|');
+				*p = 0;
+				file = aprintf("%s/%s", dir, t1);
+				r = p + 1;
+				if (p = strstr(r, "..")) *p = 0;
+				/* stomp any mods, or simple pending */
+				hash_storeStrStr(seen, file, r);
+				free(file);
+			}
+			free(cmd);
+			if (pclose(f1)) {
+				fprintf(stderr, "%s: '%s' failed\n", prog, cmd);
+				goto out;
+			}
+			continue;
+		}
+		hash_insertStrStr(seen, t, "@+");
+	}
+	if (pclose(f)) {
+		fprintf(stderr, "%s: %s failed\n", prog, buf);
+		goto out;
+	}
 	if (rev) {
-		sprintf(buf, "bk rset -%sH --elide -r'%s'..",
+		/* now override with rset output */
+		sprintf(buf, "bk rset %s -%sHr'%s'..", elide ? "--elide" : "",
 		    (standalone ? "S" : ""), rev);
 		f = popen(buf, "r");
 		while (t = fgetline(f)) {
 			p = strchr(t, '|');
 			*p = 0;
-			hash_storeStrSet(seen, t); /* just filename */
-			unless (norev) {
-				*p++ = '|';
-				p = strstr(p, "..");
-				*p = 0;	/* only keep first rev */
-			}
-			puts(t);
+			r = p + 1;
+			if (p = strstr(r, "..")) *p = 0;
+			hash_storeStrStr(seen, t, r);
 		}
 		if (pclose(f)) {
 			fprintf(stderr, "%s: rset -r%s failed\n", prog, rev);
 			goto out;
 		}
 	}
-	sprintf(buf, "bk -%spU%s",
-	    (nomods ? "" : "c"),
-	    (standalone ? "r" : ""));
-	f = popen(buf, "r");
-	while (t = fgetline(f)) {
-		unless (hash_fetchStr(seen, t)) {
-			fputs(t, stdout);
-			unless (norev) fputs("|@+", stdout);
-			putchar('\n');
-		}
+	EACH_HASH(seen) {
+		char	*file = (char *)seen->kptr;
+		char	*rev  = (char *)seen->vptr;
+
+		p = norev ? strdup(file) : aprintf("%s|%s", file, rev);
+		out = addLine(out, p);
 	}
-	if (pclose(f)) {
-		fprintf(stderr, "%s: bk -Ucp failed\n", prog);
-		goto out;
-	}
+	sortLines(out, 0);
+	EACH(out) puts(out[i]);
 	rc = 0;
-out:	hash_free(seen);
+out:	freeLines(out, free);
+	hash_free(seen);
 	return (rc);
 }

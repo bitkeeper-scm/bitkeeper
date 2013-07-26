@@ -720,7 +720,7 @@ proc main {} \
 		getFiles "-"
 	} else {
 		if {$local} {
-			set gca [bk_repogca $localUrl err]
+			set gca [bk_repogca $dashs $localUrl err]
 			if {![string length $gca]} {
 				message "Could not get repo GCA:\n$err" -exit 1
 			}

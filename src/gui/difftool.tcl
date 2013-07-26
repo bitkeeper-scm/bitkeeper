@@ -817,19 +817,21 @@ main(int argc, string argv[])
 	} else {
 		if (localUrl) {
 			// bk difftool -L[<URL>]
-			string	err;
+			string	err, S = "";
 
-			rev1 = bk_repogca(localUrl, &err);
+			rev1 = bk_repogca(dashs, localUrl, &err);
 			unless (rev1) {
 				message("Could not get repo GCA:\n${err}",
 				    exit: 1);
 			}
 			if (dashs) {  // revtool_cd2root()
 				cd2root();
+				S = "-S";
 			} else {
 				cd2product();
 			}
-			fp = popen("bk _sfiles_local -r${rev1}", "r");
+			fp = popen("bk _sfiles_local "
+				   "--elide ${S} -r${rev1}", "r");
 		} else if (rev1) {
 			// bk difftool -r<@cset1> -r<@cset2>
 			unless (rev2) bk_usage();

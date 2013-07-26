@@ -1795,11 +1795,12 @@ debug_init(string var)
 }
 
 string
-bk_repogca(string url, string &err)
+bk_repogca(int standalone, string url, string &err)
 {
 	string	gca;
 	string	opts = "--only-one";
 
+	if (standalone) opts .= " -S";
 	if (url && length(url)) opts .= " '${url}'";
 	if (system("bk repogca ${opts}", undef, &gca, &err) != 0) {
 		return (undef);

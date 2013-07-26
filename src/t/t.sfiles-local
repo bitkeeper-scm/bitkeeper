@@ -1,0 +1,145 @@
+echo $N Create a couple of test repos................................$NL
+commercial proj
+touch afile ; bk new $Q afile ; bk commit $Q -yafile
+cd ..
+bk clone $Q proj mono
+nested product
+touch afile gcc/afile gdb/afile
+echo foobar > bfile ; bk new $Q bfile ; bk commit $Q -ybfile
+bk new $Q afile gcc/afile gdb/afile
+bk commit $Q -yfiles
+cd ..
+bk clone $Q product nested
+echo OK
+
+echo "----- Monolithic repo tests"
+cd "$HERE/mono"
+GCA=`bk repogca`
+echo $N Test modified files..........................................$NL
+bk edit $Q afile
+echo stuff > afile
+R=`bk repogca`
+bk _sfiles_local -r$GCA > GOT
+cat <<EOF > WANT
+afile|@+
+EOF
+cmpfiles WANT GOT
+bk _sfiles_local -r$GCA --no-mods > GOT
+true > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test pending files...........................................$NL
+R=`bk log -nd:REV: -r+ afile`
+bk ci $Q -yafile afile
+bk _sfiles_local -r$GCA > GOT
+cat <<EOF > WANT
+afile|@+
+EOF
+cmpfiles WANT GOT
+bk _sfiles_local -r$GCA --no-mods > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test pending files with mods.................................$NL
+bk edit $Q afile
+echo more stuff >> afile
+bk _sfiles_local -r$GCA > GOT
+cat <<EOF > WANT
+afile|@+
+EOF
+cmpfiles WANT GOT
+bk _sfiles_local -r$GCA --no-mods > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo "----- Nested repo tests"
+cd "$HERE/nested"
+GCA=`bk repogca`
+echo $N Test modified files in the product...........................$NL
+bk edit $Q afile
+echo stuff > afile
+bk _sfiles_local -r$GCA > GOT
+cat <<EOF > WANT
+afile|@+
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test pending files in the product............................$NL
+R=`bk log -nd:REV: -r+ afile`
+bk ci $Q -yafile afile
+bk _sfiles_local -r$GCA > GOT
+cat <<EOF > WANT
+afile|@+
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test modified files in a component...........................$NL
+bk edit $Q gcc/afile
+echo stuff > gcc/afile
+bk _sfiles_local -r$GCA > GOT
+cat <<EOF > WANT
+afile|@+
+gcc/afile|@+
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test pending files in a component............................$NL
+R=`bk --cd=gcc log -d:MD5KEY: -r+ afile`
+bk ci -y. $Q gcc/afile
+bk _sfiles_local -r$GCA > GOT
+cat <<EOF > WANT
+afile|@+
+gcc/afile|@+
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test pending ChangeSets in a component.......................$NL
+touch zfile
+bk new $Q zfile
+bk --cd=gcc commit $Q -y. -S
+bk _sfiles_local -r$GCA > GOT
+cat <<EOF > WANT
+afile|@+
+gcc/afile|$R
+zfile|@+
+EOF
+cmpfiles WANT GOT
+bk _sfiles_local -r$GCA --no-revs > GOT
+cat <<EOF > WANT2
+afile
+gcc/afile
+zfile
+EOF
+cmpfiles WANT2 GOT
+echo OK
+
+echo $N Now add modified files to the pending component..............$NL
+bk edit $Q gcc/afile
+echo mods > gcc/afile
+bk _sfiles_local -r$GCA > GOT
+cmpfiles WANT GOT
+bk _sfiles_local -r$GCA --no-mods > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Make sure sfiles-local does not show a reverted change.......$NL
+bk edit $Q bfile
+cp bfile bfile.saved
+echo mods > bfile
+bk ci -y. $Q bfile
+echo 'SCCS/s.bfile|+' | bk commit $Q -S -y. -
+bk edit $Q bfile
+cp bfile.saved bfile
+bk ci -y. $Q bfile
+echo 'SCCS/s.bfile|+' | bk commit $Q -S -y. -
+# comment out the next line and run with ./doit -g
+# to see an empty diff to bfile
+# bk difftool -L
+bk _sfiles_local --elide -r$GCA > GOT
+cmpfiles WANT GOT
+echo OK
