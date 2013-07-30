@@ -755,22 +755,23 @@ keywords. This helps avoid conflicts with printf statements or other
 code that may contain strings that look like keywords.
 $
 #setuptool_step_CheckoutMode
-By default, working files will not be visible in a repository until they
-are checked out by you.  You can modify this behavior by defining the
-checkout mode.
+BitKeeper supports check out modes of "none", "get", or "edit".
+These modes control how the files will appear (or not appear) in your
+repository after a clone or a commit.
 
-A value of "get" will cause a "bk co <file>" command to be executed
-automatically after each checkin, causing the file to be checked out in
-read-only mode.  Use this mode if you depend on expanded keywords.
+If you depend on expanded keywords ($Author$ or %P% being expanded to
+the user who made the most recent checkin) or if you anticipate a large
+(more than 50,000) number of files then use "get".  This mode expands
+keywords and can perform better at the cost of users needing to run
+"bk edit" to change a file from read-only to read-write.
 
-A value of "edit" will prevent a checkin from removing the editable
-version of the file so that there is always an editable version of
-the file.  Note that keywords are not expanded in this mode.
+If keywords and/or performance are not a concern and you want the
+convenience of all files being writable all the time then use "edit".
 
 A value of "none" will clear the working file from the repository after a
 "bk ci".   Use this mode if your repository has some files which do not
-need to be checked out all the time, or if you use make(1) to build your
-tree, make will check out the files for you as needed.
+need to be checked out all the time (this value is rarely used, it is
+for advanced users).
 $
 #setuptool_step_Clock_Skew
 Because you have chosen to run in checkout:edit mode we suggest that you

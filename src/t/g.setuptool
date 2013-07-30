@@ -65,8 +65,6 @@ bk guitest setuptool >"$OUT" 2>&1 <<EOF
     test_inputString nobody@nowhere.bk
     test_buttonPress "Next >"  ;# takes us to keyword expansion
     test_buttonPress "Next >"  ;# takes us to checkout mode
-    test_buttonPress "Next >"  ;# takes us to compression mode
-    test_buttonPress "Next >"  ;# takes us to timestamp db options
     test_buttonPress "Next >"  ;# takes us to partial check options
     test_buttonPress "Next >"  ;# takes us to last step
     test_buttonPress "Finish"  ;# do it!
@@ -87,7 +85,6 @@ cat > "$OUT" <<EOF
 description: this is the description
 email: nobody@nowhere.bk
 keyword: none
-compression: gzip
 autofix: yes
 checkout: get
 clock_skew: on
@@ -133,8 +130,6 @@ bk guitest setuptool >"$OUT" 2>&1 <<EOF
     test_inputString nobody@nowhere.bk
     test_buttonPress "Next >"  ;# takes us to keyword expansion
     test_buttonPress "Next >"  ;# takes us to checkout mode
-    test_buttonPress "Next >"  ;# takes us to compression mode
-    test_buttonPress "Next >"  ;# takes us to timestamp db options
     test_buttonPress "Next >"  ;# takes us to partial check options
     test_buttonPress "Next >"  ;# takes us to last step
     test_buttonPress "Finish"  ;# do it!
@@ -155,7 +150,6 @@ cat > "$OUT" <<EOF
 description: this is the description
 email: nobody@nowhere.bk
 keyword: none
-compression: gzip
 autofix: yes
 checkout: get
 clock_skew: on
@@ -201,8 +195,6 @@ bk guitest setuptool >"$OUT" 2>&1 <<EOF
     test_inputString nobody@nowhere.bk
     test_buttonPress "Next >"  ;# takes us to keyword expansion
     test_buttonPress "Next >"  ;# takes us to checkout mode
-    test_buttonPress "Next >"  ;# takes us to compression mode
-    test_buttonPress "Next >"  ;# takes us to timestamp db options
     test_buttonPress "Next >"  ;# takes us to partial check options
     test_buttonPress "Next >"  ;# takes us to last step
     test_buttonPress "Finish"  ;# do it!
@@ -223,7 +215,6 @@ cat > "$OUT" <<EOF
 description: this is the description
 email: nobody@nowhere.bk
 keyword: none
-compression: gzip
 autofix: yes
 checkout: get
 clock_skew: on
@@ -269,8 +260,6 @@ bk guitest setuptool >"$OUT" 2>&1 <<EOF
     test_inputString nobody@nowhere.bk
     test_buttonPress "Next >"  ;# takes us to keyword expansion
     test_buttonPress "Next >"  ;# takes us to checkout mode
-    test_buttonPress "Next >"  ;# takes us to compression mode
-    test_buttonPress "Next >"  ;# takes us to timestamp db options
     test_buttonPress "Next >"  ;# takes us to partial check options
     test_buttonPress "Next >"  ;# takes us to last step
     test_buttonPress "Finish"  ;# do it!
@@ -291,7 +280,6 @@ cat > "$OUT" <<EOF
 description: this is the description
 email: nobody@nowhere.bk
 keyword: none
-compression: gzip
 autofix: yes
 checkout: get
 clock_skew: on

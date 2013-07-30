@@ -182,7 +182,6 @@ proc app_init {} \
 		clock_skew    "on"
 		partial_check "on"
 		closeOnCreate 1
-		compression   "gzip"
 		keyword,sccs  0
 		keyword,rcs   0
 		keyword,expand1 0
@@ -206,7 +205,7 @@ proc app_init {} \
 	# some are allowed is simply that I haven't found the time to
 	# disable the particular widgets or steps for the other
 	# options.
-	set allowedRO {checkout repository compression}
+	set allowedRO {checkout repository}
 
 	# process command line args, which may also override some of
 	# the defaults. Note that -F and -S aren't presently
@@ -367,16 +366,12 @@ proc widgets {} \
 	set common {
 		RepoInfo
 		KeywordExpansion CheckoutMode Partial_Check
-		Compression Finish
+		Finish
 	}
 	
 	# remove readonly steps
 	if {[info exists readonly(checkout)]} {
 		set i [lsearch -exact $common "CheckoutMode"]
-		set common [lreplace $common $i $i]
-	}
-	if {[info exists readonly(compression)]} {
-		set i [lsearch -exact $common "Compression"]
 		set common [lreplace $common $i $i]
 	}
 	set ::paths(commercial) [concat Begin $common]
@@ -749,36 +744,6 @@ proc widgets {} \
 	}
 
 	#-----------------------------------------------------------------------
-	. add step Compression \
-	    -title "Compression Mode" \
-	    -description [wrap [getmsg setuptool_step_Compression]]
-
-	. stepconfigure Compression -body {
-		global widgets
-		set w [$this info workarea]
-		set widgets(Compression) $w
-
-		$this configure -defaultbutton next
-
-		ttk::label $w.compressionLabel -text "Compression Mode:"
-		ttk::combobox $w.compressionOptionMenu -state readonly \
-		    -width 10 -textvariable wizData(compression) \
-		    -values {none gzip}
-		ttk::button $w.compressionMoreInfo \
-		    -text "More info" \
-		    -command [list moreInfo compression COMPRESSION]
-
-		grid $w.compressionLabel      -row 0 -column 0 -sticky e
-		grid $w.compressionOptionMenu -row 0 -column 1 -sticky w
-		grid $w.compressionMoreInfo   -row 0 -column 2 -sticky w 
-
-		grid rowconfigure $w 0 -weight 0
-		grid rowconfigure $w 1 -weight 1
-		grid columnconfigure $w 0 -weight 0
-		grid columnconfigure $w 1 -weight 1
-	}
-
-	#-----------------------------------------------------------------------
 	# See the binding to <<WizFinish>> to see where the repo is
 	# actually created...
 	. add step Finish \
@@ -928,7 +893,7 @@ proc createConfigData {} \
 
 	foreach key {
 		description email
-		keyword compression autofix checkout clock_skew partial_check
+		keyword autofix checkout clock_skew partial_check
 	} {
 		append configData "$key: $wizData($key)\n"
 	}
