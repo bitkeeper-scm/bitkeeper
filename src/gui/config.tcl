@@ -209,6 +209,7 @@ proc getConfig {prog} \
 	switch -exact -- [tk windowingsystem] {
 	    win32 {
 		set _d(windows) 1
+		set _d(handCursor) "hand2"
 		set _d(cset.leftWidth) 40
 		set _d(cset.rightWidth) 80
 		set _d(ci.filesHeight) 8
@@ -228,6 +229,7 @@ proc getConfig {prog} \
 	    } 
 	    aqua {
 		set _d(aqua) 1
+		set _d(handCursor) "pointinghand"
 		set _d(cset.leftWidth) 40
 		set _d(cset.rightWidth) 80
 		set _d(search.width) 4
@@ -251,6 +253,7 @@ proc getConfig {prog} \
 		set _d(x11) 1
 
 		option add *Scrollbar.borderWidth 1 100
+		set _d(handCursor) "hand2"
 		set _d(cset.leftWidth) 55
 		set _d(cset.rightWidth) 80
 		set _d(scrollWidth) 12		;# scrollbar width

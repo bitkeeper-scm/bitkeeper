@@ -112,6 +112,21 @@ shows only those lines
 by the specified revision[s], but in the 
 .Q \-r
 case, the entire contents of the specified version is annotated.
+.if 0 \{
+.tp
+.OPTopt \-w rev
+Change the format of the
+.QR r
+annotation from
+.QR rev
+to
+.QR rev\-d\<rev\>
+in the case where the line is deleted from the rev passed as the
+argument, and/or
+.QR rev-x\<rev\>
+in the case where the line has been excluded.
+If no argument is given, the tip revision is used.
+\}
 .SH EXAMPLES
 Annotate the latest revision of a file:
 .DS

@@ -20,6 +20,7 @@ annotate_main(int ac, char **av)
 	int	def_anno = GET_REVNUMS|GET_USER;
 	int	c;
 	char	*t, *name, *Rev = 0, *rev = 0, *cdate = 0;
+	char	*whodel = 0;
 	int	range = 0;
 	RANGE	rargs = {0};
 
@@ -33,7 +34,7 @@ annotate_main(int ac, char **av)
 			return (1);
 		}
 	}
-	while ((c = getopt(ac, av, "A;a;Bc;hkr;R|", 0)) != -1) {
+	while ((c = getopt(ac, av, "A;a;Bc;hkr;R|w|", 0)) != -1) {
 		switch (c) {
 		    case 'A':
 			flags |= GET_ALIGN;
@@ -69,6 +70,7 @@ annotate_main(int ac, char **av)
 			}
 			flags &= ~GET_EXPAND;
 			break;
+		    case 'w': whodel = optarg ? optarg : "+"; break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -107,6 +109,14 @@ err:			errors = 1;
 			printf("|FILE|%s|CRC|%lu\n", s->gfile,
 			    adler32(0, s->gfile, strlen(s->gfile)));
 		}
+		if (whodel) {
+			unless (s->whodel = sccs_findrev(s, whodel)) {
+				fprintf(stderr,
+				    "%s: No such rev %s\n", prog, whodel);
+				errors++;
+				goto next;
+			}
+		}
 		if (range) {
 			c = sccs_cat(s, flags, "-");
 		} else {
@@ -120,7 +130,7 @@ err:			errors = 1;
 			}
 			errors = 1;
 		}
-		sccs_free(s);
+next:		sccs_free(s);
 		s = 0;
 	}
 	if (sfileDone()) errors = 1;

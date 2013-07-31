@@ -60,7 +60,7 @@ diffs_main(int ac, char **av)
 {
 	int	rc, c, i;
 	int	verbose = 0, empty = 0, errors = 0, force = 0;
-	int	local = 0;
+	int	local = 0, whodel = 0;
 	u32	flags = SILENT;
 	df_opt	dop = {0};
 	FILE	*fout = stdout;
@@ -73,6 +73,7 @@ diffs_main(int ac, char **av)
 		{ "no-unified", 300 },	// alias
 		{ "stats", 330 },	 /* show diffstat output */
 		{ "stats-only", 340 },	 /* show only diffstat output */
+		{ "who-deleted", 350 },	 /* show who deleted info */
 		{ 0, 0 }
 	};
 	RANGE	rargs = {0};
@@ -149,6 +150,9 @@ diffs_main(int ac, char **av)
 		    case 330:	/* --stats */
 			dop.out_diffstat = 1;
 			fout = fmem();
+			break;
+		    case 350:	/* --who-deleted */
+			whodel = 1;
 			break;
 		    default: bk_badArg(c, av);
 		}
@@ -318,6 +322,7 @@ diffs_main(int ac, char **av)
 		 * XXX - need to catch a request for annotations w/o 2 revs.
 		 */
 		dop.adds = dop.dels = dop.mods = 0;
+		if (whodel) s->whodel = sccs_findrev(s, r2);
 		rc = sccs_diffs(s, r1, r2, &dop, fout);
 		if (dop.out_diffstat && (dop.adds || dop.dels || dop.mods)) {
 			ds = addArray(&diffstats, 0);

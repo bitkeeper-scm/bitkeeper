@@ -729,6 +729,7 @@ struct sccs {
 	MDBM	*idDB;		/* id cache used in the get_reg() setup */
 	u32	*fastsum;	/* Cache a lines array of the weave sums */
 	project	*proj;		/* If in BK mode, pointer to project */
+	ser_t	whodel;		/* reference rev when doing who deleted */
 	void	*rrevs;		/* If has conflicts, revs in conflict */
 				/* Actually is of type "name *" in resolve.h */
 	u16	version;	/* file format version */
