@@ -2220,15 +2220,16 @@ compile_min_max(Expr *expr)
 private int
 compile_sort(Expr *expr)
 {
-	int	i, n;
-	Expr	*l;
+	int	custom_compar = 0, i, n;
+	Expr	*e, *l;
 	Type	*t;
 
 	/*
 	 * Do some gymnastics to get this on the run-time stack:
 	 * ::lsort
 	 * <all args except last one>
-	 * -integer, -real, or -ascii depending on list type
+	 * -integer, -real, or -ascii depending on list type, unless
+	 *    the -compare option was given
 	 * <last arg (the thing to be sorted)>
 	 */
 
@@ -2239,8 +2240,20 @@ compile_sort(Expr *expr)
 		expr->type = L_poly;
 		return (0);  // stack effect
 	}
-	/* Last argument to sort must be an array, list, or poly. */
-	for (i = 0, l = expr->b; i < (n-1); ++i) l = l->next;
+	/* See if there's a "-command" argument. */
+	for (i = 0, l = expr->b; i < (n-1); ++i, l = l->next) {
+		unless (isconst(l) && l->str && !strcmp(l->str, "-command")) {
+			continue;
+		}
+		/* Type check the arg to -command. */
+		e = l->next;
+		unless (e && (e->type->kind == L_NAMEOF) &&
+			(e->type->base_type->kind == L_FUNCTION)) {
+			L_errf(e, "'command:' arg to sort must be &function");
+		}
+		custom_compar = 1;
+	}
+	/* The last argument to sort must be an array, list, or poly. */
 	if (isarray(l) || islist(l)) {
 		t = l->type->base_type;
 	} else if (ispoly(l)) {
@@ -2250,20 +2263,23 @@ compile_sort(Expr *expr)
 		expr->type = L_poly;
 		return (0);  // stack effect
 	}
-	switch (t->kind) {
-	    case L_INT:
-		push_lit("-integer");
-		break;
-	    case L_FLOAT:
-		push_lit("-real");
-		break;
-	    default:
-		push_lit("-ascii");
-		break;
+	unless (custom_compar) {
+		switch (t->kind) {
+		    case L_INT:
+			push_lit("-integer");
+			break;
+		    case L_FLOAT:
+			push_lit("-real");
+			break;
+		    default:
+			push_lit("-ascii");
+			break;
+		}
+		TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
+		++n;
 	}
-	TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
 	if (n > 255) L_errf(expr, "sort cannot have >255 args");
-	emit_invoke(n+2);
+	emit_invoke(n+1);
 	expr->type = type_mkArray(0, t);
 	return (1);  // stack effect
 }

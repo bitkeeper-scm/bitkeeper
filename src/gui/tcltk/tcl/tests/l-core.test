@@ -16581,7 +16581,7 @@ void builtin_5()
 	string	ss[];
 	float	uf[] = {3.1, 1.0, 9.2, -1.0, 5.5};
 	float	sf[];
-	string	uc[] = {"1", "11111", "111", "11", "1111"};
+	string	uc[] = {"1", "22222", "333", "44", "5555"};
 	string	sc[];
 
 	ss = sort(us);
@@ -16611,17 +16611,20 @@ void builtin_5()
 	unless ((ss[1] eq "t") && (ss[0] eq "u")) puts("bad 4.4");
 
 	sc = sort(command: &builtin_5_compar, uc);
-	unless ((sc[0] eq "1")   && (sc[1] eq "11")) puts("bad 5.1");
-	unless ((sc[2] eq "111") && (sc[3] eq "1111")) puts("bad 5.2");
-	unless (sc[4] eq "11111") puts("bad 5.3");
+	unless ((sc[0] eq "1")   && (sc[1] eq "44")) puts("bad 5.1");
+	unless ((sc[2] eq "333") && (sc[3] eq "5555")) puts("bad 5.2");
+	unless (sc[4] eq "22222") puts("bad 5.3");
 }
 builtin_5();
 } -output {}
 
 test builtin-6 {check sort built-in errors} -body {
 #lang L
+int builtin_6_compar(string a, string b) { return (0); }
 void builtin_6()
 {
+	string	s;
+
 	sort();
 	sort(1);
 	/*
@@ -16630,9 +16633,20 @@ void builtin_6()
 	 */
 	sort() + 1;
 	sort(1) + 1;
+
+	sort(command: builtin_6_compar, {});
+	sort(command: &s, {});
+	sort(command:, {});
+	sort(command:);
 }
-} -returnCodes {error} -match regexp -result {.*3: L Error: incorrect # args to sort
-.*4: L Error: last arg to sort not an array or list
+} -returnCodes {error} -match regexp -result {.*6: L Error: incorrect # args to sort
+.*7: L Error: last arg to sort not an array or list
+.*12: L Error: incorrect # args to sort
+.*13: L Error: last arg to sort not an array or list
+.*15: L Error: \'command:\' arg to sort must be \&function
+.*16: L Error: \'command:\' arg to sort must be \&function
+.*17: L Error: \'command:\' arg to sort must be \&function
+.*18: L Error: last arg to sort not an array or list
 }
 
 test builtin-7 {check join built-in} -body {
