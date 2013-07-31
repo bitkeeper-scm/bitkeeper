@@ -1980,6 +1980,17 @@ var_1_5
 } -returnCodes error -match regexp -result {.*7: L Error: 'printfvar' is declared but not as a function
 }
 
+test var-2 {test taking value of a function name} -body {
+#lang L
+void var_2()
+{
+	/* This used to cause a crash. */
+	puts(printf);
+}
+var_2();
+} -returnCodes error -match regexp -result {.*4: L Error: cannot use a function name as a value
+}
+
 test lang-1.0 {Test lang parsing} -body {
 # These are some Tcl Comments
 #lang L
@@ -16583,7 +16594,7 @@ void builtin_5()
 	unless ((ss[3] eq "r") && (ss[2] eq "s")) puts("bad 4.3");
 	unless ((ss[1] eq "t") && (ss[0] eq "u")) puts("bad 4.4");
 
-	sc = sort(command: builtin_5_compar, uc);
+	sc = sort(command: &builtin_5_compar, uc);
 	unless ((sc[0] eq "1")   && (sc[1] eq "11")) puts("bad 5.1");
 	unless ((sc[2] eq "111") && (sc[3] eq "1111")) puts("bad 5.2");
 	unless (sc[4] eq "11111") puts("bad 5.3");

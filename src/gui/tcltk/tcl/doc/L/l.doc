@@ -2041,7 +2041,7 @@ get sub-second sleeps.
 
 =proto type[] sort([integer: | real: | ascii:], type[] array)
 
-=proto type[] sort(command: compar, type[] array)
+=proto type[] sort(command: &compar, type[] array)
 
 Sort the array C<array> and return a new array of sorted elements.
 The first variation sorts the elements into ascending order, and does

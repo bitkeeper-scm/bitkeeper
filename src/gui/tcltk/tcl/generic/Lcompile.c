@@ -3119,7 +3119,11 @@ compile_var(Expr *expr, Expr_f flags)
 	}
 	expr->type = sym->type;
 	if (flags & L_PUSH_VAL) {
-		emit_load_scalar(sym->idx);
+		if (sym->kind & L_SYM_FN) {
+			L_errf(expr, "cannot use a function name as a value");
+		} else {
+			emit_load_scalar(sym->idx);
+		}
 		return (1);
 	} else if (flags & L_PUSH_NAME) {
 		switch (canDeref(sym)) {
