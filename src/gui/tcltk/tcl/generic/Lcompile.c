@@ -7278,7 +7278,7 @@ Tcl_LAngleReadObjCmd(
 		Tcl_Obj	*objv[2];
 
 		objv[0] = Tcl_NewStringObj("angle_read_", -1);
-		objv[1] = Tcl_NewStringObj("::stdin", -1);
+		objv[1] = Tcl_NewStringObj("stdin", -1);
 		res = Tcl_FGetlineObjCmd(dummy, interp, 2, objv);
 		Tcl_DecrRefCount(objv[0]);
 		Tcl_DecrRefCount(objv[1]);

@@ -109,6 +109,48 @@ linea1
 >
 }
 
+test angle-2.1 {test <> reading stdin} -setup {
+	makeFile {
+		void main()
+		{
+			string	s;
+			while (s = <>) puts("<${s}>");
+		}
+	} angle-2.1-1.l .
+	makeFile {
+		void main()
+		{
+			string	s;
+			while (s = <stdin>) puts("<${s}>");
+		}
+	} angle-2.1-2.l .
+} -body {
+#lang L
+void angle_2_1()
+{
+	int	ret;
+	string	err, in[], out[];
+	string	tclsh = eval("interpreter");
+
+	in = { "line1", "line2", "line3" };
+	ret = system({tclsh, "angle-2.1-1.l"}, in, &out, &err);
+	if (ret) puts("bad 1.1");
+	unless (eq(out, {"<line1>","<line2>","<line3>"})) {
+		puts("bad 1.2 got '${out}'");
+	}
+	if (err) puts("bad 1.3");
+
+	in = { "line1", "line2", "line3" };
+	ret = system({tclsh, "angle-2.1-2.l"}, in, &out, &err);
+	if (ret) puts("bad 2.1");
+	unless (eq(out, {"<line1>","<line2>","<line3>"})) {
+		puts("bad 2.2 got '${out}'");
+	}
+	if (err) puts("bad 2.3");
+}
+angle_2_1();
+} -output {}
+
 test angle-3 {test <f> errors} -body {
 #lang L
 void angle3()
