@@ -67,7 +67,7 @@ proc bk_initTheme {} \
 }
 
 proc bk_init {} {
-	set tool [file tail [info script]]
+	set tool [bk_toolname]
 
 	bk_initPlatform
 
@@ -937,24 +937,21 @@ proc isBinary { filename } \
     return [regexp {[\x00-\x08\x0b\x0e-\x1f]} $x]
 }
 
-proc displayTextSize {top w h x y} \
+proc displayTextSize {top w h} \
 {
 	if {![info exists ::textWidgets($top)]} { return }
 
-	if {$x != $::textWidgets($top,x) || $y != $::textWidgets($top,y)} {
-		## Window is moving, not resizing.
-		set ::textWidgets($top,x) $x
-		set ::textWidgets($top,y) $y
-		return
-	}
+	set oldW $::textWidgets($top,w)
+	set oldH $::textWidgets($top,h)
 
-	if {$w == $::textWidgets($top,w) && $h == $::textWidgets($top,h)} {
-		## Nothing has been resized.
-		return
-	}
+	## Check to see if size has changed.
+	if {$w == $oldW && $h == $oldH} { return }
 
 	set ::textWidgets($top,w) $w
 	set ::textWidgets($top,h) $h
+
+	## Don't do anything on the initial draw.
+	if {$oldW == 0 || $oldH == 0} { return }
 
 	update idletasks
 
@@ -1015,24 +1012,20 @@ proc configureTextWidgets {} \
 {
 	## We don't want to figure widgets for all of our tools, only
 	## specific ones.
-	set tool [file tail [info script]]
-	if {$tool in "csettool difftool fm3tool fmtool revtool"} {
-		set top .
-	} elseif {$tool eq "citool"} {
-		set top .citool
-	} else {
+	set tool [bk_toolname]
+	if {$tool ni {csettool difftool fm3tool fmtool revtool citool}} {
 		return
 	}
+
+	set top [bk_toplevel]
 
 	set ::textWidgets($top)   {}
 	set ::textWidgets($top,w) 0
 	set ::textWidgets($top,h) 0
-	set ::textWidgets($top,x) 0
-	set ::textWidgets($top,y) 0
 
 	bind Toplevel <Map> {
 		bind Toplevel <Map> {}
-		bind Toplevel <Configure> "displayTextSize %%W %%w %%h %%x %%y"
+		bind Toplevel <Configure> "displayTextSize %%W %%w %%h"
 	}
 }
 configureTextWidgets
