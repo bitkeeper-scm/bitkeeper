@@ -3179,6 +3179,7 @@ void op_1_3_3()
 	int	ai1[], ai2[];
 	string	hs1{string}, hs2{string};
 	int	hi1{string}, hi2{string};
+	string{string}	ahs1[], ahs2[];
 	struct {
 		string	a;
 		string	b;
@@ -3256,6 +3257,21 @@ void op_1_3_3()
 	/* Check that a numeric compare is done. */
 	sti2 = (poly)"01 002";
 	unless (eq(sti1,sti2)) puts("bad 21.3");
+
+	/*
+	 * More cases (prompted by bugs):
+	 * - hash w/underlying dict elements added in different order
+	 */
+
+	hs1 = { "k1"=>"v1", "k2"=>"v2" };
+	hs2 = { "k2"=>"v2", "k1"=>"v1" };
+	unless (eq(hs1,hs2)) puts("bad 22.1");
+
+	push(&ahs1, hs1);
+	push(&ahs1, hs2);
+	push(&ahs2, hs1);
+	push(&ahs2, hs2);
+	unless (eq(ahs1,ahs2)) puts("bad 23.1");
 }
 op_1_3_3();
 } -output {}

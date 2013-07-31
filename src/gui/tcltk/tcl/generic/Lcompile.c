@@ -153,7 +153,6 @@ char *L_attrs_pragma[] = {
 extern void	*L__scan_bytes (const char *bytes, int len);
 extern void	L__delete_buffer(void *buf);
 
-private int	any_nums(Type *type);
 private int	ast_compile(void *ast);
 private void	ast_free(Ast *ast_list);
 private char	*basenm(char *s);
@@ -1971,29 +1970,6 @@ compile_insert_unshift(Expr *expr)
 	return (0);  // stack effect
 }
 
-/* Return 1 if a type has an int or float anywhere inside it. */
-private int
-any_nums(Type *type)
-{
-	VarDecl	*v;
-
-	switch (type->kind) {
-	    case L_INT:
-	    case L_FLOAT:
-		return (1);
-	    case L_ARRAY:
-	    case L_HASH:
-		return (any_nums(type->base_type));
-	    case L_STRUCT:
-		for (v = type->u.struc.members; v; v = v->next) {
-			if (any_nums(v->type)) return (1);
-		}
-		return (0);
-	    default:
-		return (0);
-	}
-}
-
 private void
 compile_eq_stack(Expr *expr, Type *type)
 {
@@ -2006,18 +1982,6 @@ compile_eq_stack(Expr *expr, Type *type)
 	unless (type->kind & (L_ARRAY|L_STRUCT|L_HASH)) {
 		/* Scalar -- just need a single bytecode. */
 		emit_instrForLOp(expr, type);
-		return;
-	}
-
-	/*
-	 * If there are no ints or floats anywhere in the type, a
-	 * string compare of their string reps suffices.  Otherwise,
-	 * we have to compare any sub-types with numerics element by
-	 * element.
-	 */
-	ASSERT(expr->op == L_OP_EQUALEQUAL);
-	unless (any_nums(type)) {
-		TclEmitOpcode(INST_STR_EQ, L->frame->envPtr);
 		return;
 	}
 
@@ -6019,19 +5983,8 @@ tmp_get(TmpKind kind)
 	for (tmp = L->frame->tmps; tmp; tmp = tmp->next) {
 		if (tmp->free) break;
 	}
-	if (tmp) {
-		/*
-		 * Sometimes we need a tmp var that is not set to
-		 * anything.  For example, to create an upvar or
-		 * to use the INST_DICT_* bytecodes.
-		 */
-		if (kind == TMP_UNSET) {
-			TclEmitInstInt4(INST_UNSET_LOCAL, tmp->idx,
-					L->frame->envPtr);
-		}
-	} else {
+	unless (tmp) {
 		tmp = (Tmp *)ckalloc(sizeof(*tmp));
-		tmp->idx  = -1;
 		tmp->next = L->frame->tmps;
 		L->frame->tmps = tmp;
 		tmp->name = cksprintf("=temp%d", L->tmpnum++);
@@ -6039,6 +5992,14 @@ tmp_get(TmpKind kind)
 						 1, L->frame->envPtr);
 	}
 	tmp->free = 0;
+	/*
+	 * Sometimes we need a tmp var that is not set to anything.
+	 * For example, to create an upvar or to use the INST_DICT_*
+	 * bytecodes.
+	 */
+	if (kind == TMP_UNSET) {
+		TclEmitInstInt4(INST_UNSET_LOCAL, tmp->idx, L->frame->envPtr);
+	}
 	return (tmp);
 }
 

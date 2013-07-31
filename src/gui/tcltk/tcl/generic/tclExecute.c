@@ -8226,12 +8226,23 @@ TclExecuteByteCode(
     case INST_UNSET_LOCAL: {
 	unsigned int opnd = TclGetUInt4AtPtr(pc+1);
 	Var *varPtr = &compiledLocals[opnd];
+	Var *linkPtr;
 
 	/*
 	 * This is intended to delete L's local temp variables, which are
 	 * always scalars and never traced.
 	 */
-	unless (TclIsVarUndefined(varPtr)) {
+	if (TclIsVarLink(varPtr)) {
+	    linkPtr = varPtr->value.linkPtr;
+	    if (TclIsVarInHash(linkPtr)) {
+		VarHashRefCount(linkPtr)--;
+		if (TclIsVarUndefined(linkPtr)) {
+		    TclCleanupVar(linkPtr, NULL);
+		}
+	    }
+	    TclSetVarScalar(varPtr);
+	    varPtr->value.linkPtr = NULL;
+	} else unless (TclIsVarUndefined(varPtr)) {
 	    TclDecrRefCount(varPtr->value.objPtr);
 	    TclSetVarUndefined(varPtr);
 	}
