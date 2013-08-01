@@ -12,6 +12,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test bk -Ap without scandirs.................................$NL
+cd ..
 nested proj2
 perl -i.bak -ne 'print unless /SCANDIRS/' BitKeeper/log/features
 cd gcc
@@ -22,4 +23,23 @@ cd ..
 bk -Ap > GOT
 echo gcc/ChangeSet > WANT
 cmpfiles WANT GOT
+echo OK
+
+echo $N Show sfiles won\'t clear pending bit for components...........$NL
+cd ../proj
+bk edit $Q gcc/afile
+cd gdb
+echo hi > foo
+bk new $Q foo
+bk commit -S -y. $Q || fail
+cd ..
+cat <<EOF > WANT
+gcc/ChangeSet
+gdb/ChangeSet
+EOF
+bk -Ap > GOT
+cmpfiles GOT WANT
+bk --cd=gdb sfiles -xp  # this used to clear gdb in scancomps
+bk -Ap > GOT
+cmpfiles GOT WANT
 echo OK

@@ -371,7 +371,7 @@ out:
 			state |= DS_EDITED;
 		}
 
-		if (did_fast && (state & DS_PENDING) && proj_isComponent(0) &&
+		if ((state & DS_PENDING) && proj_isComponent(0) &&
 		    exists("SCCS/d.ChangeSet")) {
 			/*
 			 * The component cset file has a dfile so it
@@ -382,7 +382,6 @@ out:
 			state &= ~DS_PENDING;
 			proj_dirstate(0, ".", DS_PENDING, 1);
 		}
-		opts.saw_pending = 1;
 		if (state) proj_dirstate(0, "*", state, 0);
 	}
 	free_project();
