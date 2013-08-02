@@ -356,10 +356,14 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 	# display comment window if we are in annotated file output
 	switch -regexp -- $ttype {
 	    "^annotated$" {
-	    	if {![regexp {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} \
-		    $line match fname rev]} {
+	    	if {![regexp {^(.*)[ \t]+([0-9]+\.[0-9.]+)(.*)\|} \
+		    $line match fname rev the_rest]} {
 			busy 0
 			return
+		}
+		set deleted ""
+		if {[regexp {^-[dx]([^ \t]+)} $the_rest match deleted]} {
+			set rev $deleted
 		}
 		# set global rev1 so that r2c and csettool know which rev
 		# to view when a line is selected. Line has precedence over
@@ -1257,20 +1261,61 @@ proc getRev {type {id {}} } \
 #
 proc filltext {win f clear {msg {}}} \
 {
-	global search w file
-	#puts stderr "filltext win=($win) f=($f) clear=($clear) msg=($msg)"
+	global	search w file ttype displaying
+
+	set diffs 0
+	if {$displaying eq "diffs"} {
+		set diffs 1
+	}
+
+	set annotated 0
+	if {$ttype eq "annotated"} {
+		set annotated 1
+		set apatt {^(.+?\s+)([0-9dx.-]+)(\s+)\|(.*)$}
+		set dpatt {([0-9.]+)(-[dx])([0-9.]+)}
+	}
 
 	if {$clear == 1} { $win delete 1.0 end }
-	set noOutput 1
 	while { [gets $f str] >= 0 } {
-		$win insert end "$str\n"
-		set noOutput 0
+		set line $str
+
+		set tag ""
+		if {$diffs && [string index $str 0] eq "+"} {
+			set tag "newDiff"
+		} elseif {$diffs && [string index $str 0] eq "-"} {
+			set tag "oldDiff"
+		}
+
+		if {$annotated && [regexp $apatt $str -> user rev sp rest]} {
+			if {[set del [regexp $dpatt $rev -> r1 mk r2]]} {
+				set tag "oldDiff"
+			}
+			$win insert end $user $tag
+
+			if {$del} {
+				$win insert end \
+				    $r1 "$tag link link-[incr i]" \
+				    $mk $tag \
+				    $r2 "$tag link link-[incr i]"
+			} else {
+				$win insert end $rev "$tag link link-[incr i]"
+			}
+			set str "$sp|$rest"
+		}
+		$win insert end "$str\n" $tag
 	}
 	catch {close $f} ignore
-	if {$clear == 1 && $noOutput} {
-		$win insert end $msg
+	if {[info exists line]} {
+		if {$diffs} {
+			set x [string first "|" $line]
+			highlightStacked $win 1.0 end [incr x]
+		}
+	} else {
+		if {$clear && $msg ne ""} {
+			$win insert end $msg
+		}
 	}
-	if {$clear == 1 } { busy 0 }
+	if {$clear == 1} { busy 0 }
 	searchreset
 	set search(prompt) "Welcome"
 }
@@ -1366,11 +1411,12 @@ proc sfile {} \
 #
 proc annotate {} \
 {
-	global file w ttype gc
+	global	file w ttype gc displaying
 
 	busy 1
-	set fd [open "| bk annotate -R $gc(rev.annotate) \"$file\"" r]
+	set fd [open "| bk annotate -w -R $gc(rev.annotate) \"$file\"" r]
 	set ttype "annotated"
+	set displaying "annotations"
 	filltext $w(aptext) $fd 1 "No annotate data"
 }
 
@@ -1465,25 +1511,15 @@ proc diff2 {difftool {id {}} } \
 # Display the difference text between two revisions. 
 proc displayDiff {rev1 rev2} \
 {
-	global file w dev_null Opts ttype gc
+	global file w dev_null ttype gc
 
 	# We get no rev1 when rev2 is 1.1
 	if {$rev1 == ""} { set rev1 "1.0" }
-	set r1 [tmpfile revtool]
 	set Aur $gc(rev.annotate)
-	catch { exec bk get $Aur -kPr$rev1 $file >$r1}
-	set r2 [tmpfile revtool]
-	catch {exec bk get $Aur -kPr$rev2 $file >$r2}
-	set diffs [open "| diff $Opts(diff) $r1 $r2"]
-	set l 3
-	$w(aptext) delete 1.0 end
-	$w(aptext) insert end "- $file version $rev1\n"
-	$w(aptext) insert end "+ $file version $rev2\n\n"
-	$w(aptext) tag add "oldDiff" 1.0 "1.0 lineend + 1 char"
-	$w(aptext) tag add "newDiff" 2.0 "2.0 lineend + 1 char"
-	diffs $diffs $l
+	set diffs [open "| bk diffs --who-deleted -h $Aur \
+		-r$rev1 -r$rev2 $file"]
+	diffs $diffs
 	searchreset
-	file delete -force $r1 $r2
 	busy 0
 	set ttype "annotated"
 }
@@ -1701,39 +1737,13 @@ proc r2c {} \
 	busy 0
 }
 
-proc diffs {diffs l} \
+proc diffs {diffs} \
 {
-	global	Opts w
+	global	ttype displaying w
 
-	if {"$Opts(diff)" == "-u"} {
-		set lexp {^\+}
-		set rexp {^-}
-		gets $diffs str
-		gets $diffs str
-	} else {
-		set lexp {^>}
-		set rexp {^<}
-	}
-	set line ""
-	while { [gets $diffs str] >= 0 } {
-		$w(aptext) insert end "$str\n"
-		incr l
-		if {[regexp $lexp $str]} {
-			$w(aptext) tag \
-			    add "newDiff" $l.0 "$l.0 lineend + 1 char"
-		}
-		if {[regexp $rexp $str]} {
-			$w(aptext) tag \
-			    add "oldDiff" $l.0 "$l.0 lineend + 1 char"
-		}
-		set line $str
-	}
-	catch { close $diffs; }
-
-	if {[info exists line]} {
-		set x [string first "|" $line]
-		highlightStacked $w(aptext) 1.0 end [incr x]
-	}
+	set ttype "annotated"
+	set displaying "diffs"
+	filltext $w(aptext) $diffs 1
 }
 
 proc done {} \
@@ -1784,7 +1794,6 @@ proc widgets {} \
 	# history depend on this (see selectTag)
 	set chgdspec \
 "-d\$if(:DPN:!=ChangeSet){  }:DPN:\\n    :I: :Dy:/:Dm:/:Dd: :T: :P:\$if(:HT:){@:HT:} +:LI: -:LD: \\n\$each(:C:){    (:C:)\\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\\n"
-	set Opts(diff) "-u"
 	set Opts(line) "-u -t"
 	set yspace 20
 	# graph		- graph canvas window
@@ -1924,7 +1933,7 @@ proc widgets {} \
 		grid rowconfigure    .p.c .p.c.t -weight 1
 		grid columnconfigure .p.c .p.c.t -weight 1
 	    label $w(cclose) -background $gc(rev.commentBG) \
-		-image iconClose -cursor ""
+		-image iconClose -cursor $gc(handCursor)
 	    bind $w(cclose) <1> "commentsWindow hide"
 	    bind .p.c <Enter> "commentsWindow showButton"
 	    bind .p.c <Leave> "commentsWindow hideButton"
@@ -1958,6 +1967,10 @@ proc widgets {} \
 	search_widgets .cmd $w(aptext)
 	# Make graph the default window to have the focus
 	set search(focus) $w(graph)
+
+	$w(aptext) tag configure "link" -foreground blue -underline 1
+	$w(aptext) tag bind "link" <ButtonRelease-1> "click_rev %W"
+	bind $w(aptext) <Motion> "mouse_motion %W"
 
 	grid .menus -row 0 -column 0 -sticky ew -pady 2
 	grid .p -row 1 -column 0 -sticky ewns
@@ -2080,6 +2093,7 @@ proc widgets {} \
 
 proc textButtonPress1 {w x y} \
 {
+	set ::clicked_rev 0
 	set ::selection [$w tag ranges sel]
 }
 
@@ -2092,6 +2106,8 @@ proc textButtonRelease1 {w x y} \
 	## accidentally firing our button event and pulling the rug out
 	## from under them.
 	if {[info exists ::selection] && [llength $::selection]} { return }
+
+	if {$::clicked_rev} { return }
 
 	## If they selected any text, don't fire the click event.
 	if {[llength [$w tag ranges sel]]} { return }
@@ -2146,6 +2162,85 @@ proc selectFile {} \
 	}
 	catch {close $f}
 	return $fname
+}
+
+proc mouse_motion {win} {
+	global	gc redrev
+
+	set tags [$win tag names current]
+	set tag  [lindex $tags end]
+	if {[info exists redrev] && $tag ne $redrev} {
+		$win tag configure $redrev -foreground blue
+		unset redrev
+	}
+
+	if {"link" in $tags} {
+		set redrev $tag
+		$win configure -cursor $gc(handCursor)
+		$win tag configure $redrev -foreground red
+	} else {
+		$win configure -cursor ""
+	}
+}
+
+proc click_rev {win} {
+	set ::clicked_rev 1
+	set_curLine current
+	set tag [lindex [$win tag names current] end]
+	set rev [$win get $tag.first $tag.last]
+	jump_to_rev $rev
+}
+
+proc set_curLine {index} \
+{
+	global	w curLine
+
+	set curLine [$w(aptext) index "$index linestart"]
+	$w(aptext) tag remove "select" 1.0 end
+	$w(aptext) tag add "select" "$curLine" "$curLine lineend + 1 char"
+}
+
+proc jump_to_rev {rev} \
+{
+	global	gc w dspec dev_null file rev1 curLine rev2rev_name
+
+	if {![info exists rev2rev_name($rev)]} {
+		global	file firstnode
+
+		## The given rev is not in our current graph.
+		## Get it and jump to it.
+
+		set parent [exec bk prs -d:PARENT: -hr${rev} $file]
+		set prev [expr {($parent == 0) ? $rev : $parent}]
+		listRevs "-c${prev}.." $file
+		revMap $file
+		dateSeparate
+		setScrollRegion
+		$w(graph) xview moveto 0 
+	}
+
+	if {![info exists rev2rev_name($rev)]} { return }
+
+	set rev1 $rev
+	set revname $rev2rev_name($rev)
+	centerRev $revname
+	set id [$w(graph) gettag $revname]
+	if {$id ne ""} { getLeftRev $id }
+
+	$w(aptext) configure -height 15
+	$w(ctext) configure -height $gc(rev.commentHeight) 
+	$w(aptext) configure -height 50
+	set comments_mapped [winfo ismapped $w(ctext)]
+	commentsWindow show
+	set prs [open [list |bk prs $dspec -hr$rev $file 2>$dev_null]]
+	filltext $w(ctext) $prs 1 "No comments found."
+
+	set wht [winfo height $w(cframe)]
+	set cht [font metrics $gc(rev.graphFont) -linespace]
+	set adjust [expr {int($wht) / $cht}]
+	if {($curLine > $adjust) && ($comments_mapped == 0)} {
+		$w(aptext) yview scroll $adjust units
+	}
 }
 
 proc openChangesetHistory {} \
@@ -2452,6 +2547,9 @@ proc startup {} \
 	global file merge diffpair dfile
 	global percent preferredGraphSize
 	global startingLineNumber searchString
+	global	displaying
+
+	set displaying ""
 
 	if {$gca != ""} {
 		set merge(G) $gca

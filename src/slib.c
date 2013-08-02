@@ -26,6 +26,7 @@ private char	*sccsXfile(sccs *sccs, char type);
 private int	badcksum(sccs *s, int flags);
 private int	printstate(ser_t *state, u8 *slist);
 private int	delstate(ser_t ser, ser_t *state, u8 *slist);
+private int	whodelstate(ser_t *state, u8 *slist);
 private int	whatstate(ser_t *state);
 private int	visitedstate(ser_t *state, u8 *slist);
 private ser_t	*changestate(ser_t *state, char type, ser_t serial);
@@ -68,8 +69,8 @@ private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private	void	parseConfig(char *buf, MDBM *db);
 private	void	taguncolor(sccs *s, ser_t d);
-private	void	prefix(sccs *s,
-		    ser_t d, u32 flags, int lines, char *name, FILE *out);
+private	void	prefix(sccs *s, ser_t d, int whodel,
+		    u32 flags, int lines, char *name, FILE *out);
 private	int	sccs_meta(char *m, sccs *s, ser_t parent,
 		    char *init, int fixDates);
 private	int	misc(sccs *s);
@@ -5826,6 +5827,23 @@ topstate(ser_t *state)
 }
 
 private int
+whodelstate(ser_t *state, u8 *slist)
+{
+	int	i;
+	int	delrev = 0;
+
+	EACH_REVERSE(state) {
+		if (SL_INS(state[i])) {
+			/* if Active I, return oldest active delete */
+			return (slist[SL_SER(state[i])] ? delrev : 0);
+		}
+		/* this will get the first/oldest deletion */
+		if (slist[SL_SER(state[i])]) delrev = SL_SER(state[i]);
+	}
+	return (0);
+}
+
+private int
 delstate(ser_t ser, ser_t *state, u8 *slist)
 {
 	int	ok = 0;
@@ -6768,15 +6786,61 @@ fastsum(sccs *s, u8 *slist, int this)
 	return (0);
 }
 
+typedef struct {
+	u8	*slist;
+	ser_t	base;
+} wd;
+
+private	int
+_whodisabled(sccs *s, ser_t d, void *token)
+{
+	wd	*who = (wd *)token;
+
+	if (MERGE(s, d)) return (0);
+	graph_symdiff(s, d, PARENT(s, d), 0, who->slist, 0, -1, 0);
+	if (who->slist[who->base]) {
+		who->base = d;
+		return (1);
+	}
+	return (0);
+}
+
+/*
+ * "serial" is not active in the current view. Find a reason why.
+ * Assumptions: merge nodes can't exclude.  There are some bizarre
+ * cases which it can, but then there is an exclude on one of the branches.
+ * Anyway, find the most recent non merge node to toggle the state of
+ * the "serial".
+
+ * Maybe hash/cache this as recomputing each time could get expensive
+ */
+private	ser_t
+whodisabled(sccs *s, ser_t tip, ser_t serial, u8 *slist)
+{
+	wd	who;
+
+	if ((tip < serial) || !isReachable(s, serial, tip)) return (0);
+	who.base = serial;
+	who.slist = calloc(TABLE(s) + 1, 1);
+	if (range_walkrevs(s, serial, 0, tip, 0, _whodisabled, &who)) {
+		free(who.slist);
+		return (who.base);
+	}
+	free(who.slist);
+	return (serial);	/* not really an answer -- it -x itself? */
+}
+
 private int
 get_reg(sccs *s, char *printOut, int flags, ser_t d,
 		int *ln, char *iLst, char *xLst)
 {
 	u32	*state = 0;
 	u8	*slist = 0;
+	u8	*blist = 0;
 	int	lines = 0, print = 0, error = 0;
 	int	seq;
 	int	encoding = (flags&GET_ASCII) ? E_ASCII : s->encoding_in;
+	int	whodel = 0;
 	unsigned int sum;
 	u32	same, added, deleted, other, *counter;
 	FILE 	*out = 0;
@@ -6827,6 +6891,8 @@ get_reg(sccs *s, char *printOut, int flags, ser_t d,
 		s->state |= S_WARNED;
 		return 1;
 	}
+	if (s->whodel) blist = serialmap(s, s->whodel, 0, 0, &error);
+	assert(!error);	/* errors are only for iLst and xLst */
 	if (flags & GET_SUM) {
 		flags |= NEWCKSUM;
 	} else if (d && BITKEEPER(s) && !iLst && !xLst) {
@@ -6910,7 +6976,10 @@ get_reg(sccs *s, char *printOut, int flags, ser_t d,
 		if (flags&(GET_MODNAME|GET_RELPATH)) len += strlen(name) + 1;
 		if (flags&GET_PREFIXDATE) len += YEAR4(s) ? 11 : 9;
 		if (flags&GET_USER) len += s->userLen + 1;
-		if (flags&GET_REVNUMS) len += s->revLen + 1;
+		if (flags&GET_REVNUMS) {
+			if (blist) s->revLen += s->revLen + 2;
+			len += s->revLen + 1;
+		}
 		if (flags&GET_LINENUM) len += 7;
 		if (flags&GET_LINENAME) len += 37;
 		if (flags&GET_SERIAL) len += 7;
@@ -6925,6 +6994,7 @@ get_reg(sccs *s, char *printOut, int flags, ser_t d,
 		gfile = d ? setupOutput(s, printOut, flags, d) : printOut;
 		if ((gfile == (char *) 0) || (gfile == (char *)-1)) {
 out:			if (slist) free(slist);
+			if (blist) free(blist);
 			if (state) free(state);
 			if (DB && (s->mdbm != DB)) mdbm_close(DB);
 			/*
@@ -6995,7 +7065,8 @@ out:			if (slist) free(slist);
 			if (flags & GET_PREFIX) {
 				char	*p = 0;
 
-				prefix(s, print, flags, lines, name, out);
+				prefix(
+				    s, print, whodel, flags, lines, name, out);
 
 				/* GET_LINENAME must be last for mdiff */
 				if (flags & GET_LINENAME) {
@@ -7125,6 +7196,15 @@ write:
 		else {
 			print = visitedstate(state, slist);
 		}
+		if (print && blist) {
+			whodel = 0;
+			unless (printstate(state, blist)) {
+				unless (whodel = whodelstate(state, blist)) {
+					whodel = - whodisabled(s, s->whodel,
+					    print, blist);
+				}
+			}
+		}
 	}
 	if (hash) getKey(s, DB, 0, hashFlags|flags, &dbstate);
 
@@ -7199,6 +7279,7 @@ write:
 #endif
 	*ln = lines;
 	if (slist) free(slist);
+	if (blist) free(blist);
 	if (state) free(state);
 	if (namedb) mdbm_close(namedb);
 	if (lnum) free(lnum);
@@ -7335,7 +7416,7 @@ get_link(sccs *s, char *printOut, int flags, ser_t d, int *ln)
 			assert(HAS_PATHNAME(s, d));
 			if (flags & GET_MODNAME) name = basenm(PATHNAME(s, d));
 			if (flags & GET_RELPATH) name = PATHNAME(s, d);
-			prefix(s, d, flags, 1, name, out);
+			prefix(s, d, 0, flags, 1, name, out);
 			if (flags & GET_ALIGN) {
 				int	len = 0;
 
@@ -7621,7 +7702,8 @@ skip_get:
  * we are displaying, not the full set.
  */
 private void
-prefix(sccs *s, ser_t d, u32 flags, int lines, char *name, FILE *out)
+prefix(sccs *s, ser_t d, int whodel, u32 flags, int lines, char *name,
+    FILE *out)
 {
 	char	buf[32];
 
@@ -7636,7 +7718,14 @@ prefix(sccs *s, ser_t d, u32 flags, int lines, char *name, FILE *out)
 			fprintf(out, "%-*s ", s->userLen, USER(s, d));
 		}
 		if (flags&GET_REVNUMS) {
-			fprintf(out, "%-*s ", s->revLen, REV(s, d));
+			int	len = fprintf(out, "%s", REV(s, d));
+
+			if (whodel > 0) {
+				len += fprintf(out, "-d%s", REV(s, whodel));
+			} else if (whodel < 0) {
+				len += fprintf(out, "-x%s", REV(s, -whodel));
+			}
+			fprintf(out, "%-*s ", s->revLen - len, "");
 		}
 		if (flags&GET_LINENUM) fprintf(out, "%6d ", lines);
 		if (flags&GET_SERIAL) fprintf(out, "%6d ", d);
@@ -7650,7 +7739,15 @@ prefix(sccs *s, ser_t d, u32 flags, int lines, char *name, FILE *out)
 			fputs(buf, out);
 		}
 		if (flags&GET_USER) fprintf(out, "%s\t", USER(s, d));
-		if (flags&GET_REVNUMS) fprintf(out, "%s\t", REV(s, d));
+		if (flags&GET_REVNUMS) {
+			fputs(REV(s, d), out);
+			if (whodel > 0) {
+				fprintf(out, "-d%s", REV(s, whodel));
+			} else if (whodel < 0) {
+				fprintf(out, "-x%s", REV(s, -whodel));
+			}
+			fputc('\t', out);
+		}
 		if (flags&GET_LINENUM) fprintf(out, "%d\t", lines);
 #if 0
 		if (flags&GET_MD5KEY) {

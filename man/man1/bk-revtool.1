@@ -71,12 +71,24 @@ will be displayed in the lower text window.  You can right click on
 another revision and diff again.  The default diff format is
 .Q \-u
 (unified diffs).
+The text shown for the file is
+annotated with the user name, the latest revision that modified
+the line and the revision (if any) that deleted or excluded
+the line in the other version.
+.if 0 \{
+The file text is generated with the
+.Q bk annotate \-Aur \-r$thisRev \-w$otherRev
+command.
+That will show which revision added the line and which revision (if any)
+deleted or excluded the line.
+\}
+This helps to isolate which revision in a range removed a line.
 .LP
 To see the contents of a file, double click the left mouse button
 on the revision node in the graph.  The text shown for the file is
 annotated with the user name and the latest revision that modified
 the line. The file text is generated with the
-.Q bk co \-Aur
+.Q bk annotate \-Aur
 command.
 .LP
 Once the annotated file listing is shown, you can then click on
@@ -188,6 +200,8 @@ Show an annotated listing of all versions of the file.
 The data shown is the union of all lines ever added to the file
 in any version, deletes are ignored.  Lines which were created at
 a particular spot in the file tend to be grouped together.
+If the line is not in the tip revision, this will also list which
+revision deleted or exclude the line.
 .tp
 .B d
 Show the differences between the selected item and its parent. If
