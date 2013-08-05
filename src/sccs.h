@@ -913,7 +913,6 @@ typedef struct {
 	u16	need_exdone:1;	/* need call to send_file_extra_done() */
 	u16	notUrl:1;	/* addr was a file path (had no URL scheme) */
 	u16	noLocalRepo:1;	/* local repo not related to connection */
-	u16	isClone:1;	/* this connection was for clone */
 	int	rfd;		/* read fd for the remote channel */
 	FILE	*rf;		/* optional stream handle for remote channel */
 	int	wfd;		/* write fd for the remote channel */
@@ -991,6 +990,7 @@ int	sccs_admin(sccs *sc, ser_t d, u32 flgs,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_adminFlag(sccs *sc, u32 flags);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
+char	*sccs_scat(sccs *s, size_t *len);
 int	sccs_delta(sccs *s, u32 flags, ser_t d, FILE *init, FILE *diffs,
 		   char **syms);
 int	sccs_diffs(sccs *s, char *r1, char *r2, df_opt *dop, FILE *)
@@ -1596,7 +1596,6 @@ extern	u32	swapsz;		/* paging blocksize */
 #define	CMD_IGNORE_RESYNC	0x00000400	/* ignore resync lock */
 #define	CMD_BKD_CMD		0x00002000	/* command comes from bkd.c */
 #define	CMD_NOLOG		0x00004000	/* don't log command */
-#define	CMD_SENDFMT		0x00008000	/* send sfile FMT in features */
 
 #define	LOGVER			1		/* dflt idx into log_versions */
 

@@ -1038,7 +1038,7 @@ private	struct {
 	{"remote changes part1", CMD_REPOLOG|CMD_RDLOCK},
 	{"remote changes part2", CMD_REPOLOG},	// unlocked internally
 	{"remote clone",
-	     CMD_REPOLOG|CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK|CMD_SENDFMT},
+	     CMD_REPOLOG|CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
 	{"remote pull part1",
 	     CMD_REPOLOG|CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
 	{"remote pull part2", CMD_REPOLOG|CMD_BYTES|CMD_RDLOCK},

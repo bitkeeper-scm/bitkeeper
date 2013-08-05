@@ -345,44 +345,14 @@ test -d save-this && fail created bad repo
 # XXX it does fail, but with no messages - fix goes in 5.x bugfix
 echo OK
 
-echo $N Clone from bk6/bkfile with bk5 - should fail ................$NL
-$OLDBK/bk clone -q bk://localhost:$NEWP/bkfile save-this 2> OUT && fail -f OUT
-test -d save-this && fail created bad repo
-cat <<EOF > BKFILE-REMOTE
-===============================================================================
-The remote repository has a feature that is not supported by this
-BitKeeper release.  That repository requires:
-
-	BKFILE,BWEAVEv2
-
-and you will need to upgrade to a BitKeeper version which supports
-the 'BKFILE,BWEAVEv2' feature[s].
-
-In general, a "bk upgrade" should be sufficient.
-===============================================================================
-EOF
-cmpfiles BKFILE-REMOTE OUT
-# wait for any locks
-bk lock -U bkfile
+echo $N Clone from bk6/bkfile with bk5 - now passes .................$NL
+$OLDBK/bk clone -q bk://localhost:$NEWP/bkfile save-this || fail
+mv save-this saved-clone
 echo OK
 
-echo $N Rclone with bk6/bkfile to bk5 - should fail .................$NL
-bk clone -q bkfile bk://localhost:$OLDP/save-this 2> OUT && fail -f OUT
-test -d save-this && fail created bad repo
-cat <<EOF > BKFILE-LOCAL
-===============================================================================
-The current repository has a feature that is not supported by
-the remote bkd.  This repository requires:
-
-	BKFILE,BWEAVEv2
-
-and you will need to upgrade the remote BitKeeper to a version which
-supports the 'BKFILE,BWEAVEv2' feature[s].
-
-In general, a "bk upgrade" should be sufficient.
-===============================================================================
-EOF
-cmpfiles BKFILE-LOCAL OUT
+echo $N Rclone with bk6/bkfile to bk5 - now passes ..................$NL
+bk clone $Q bkfile bk://localhost:$OLDP/save-this || fail
+mv save-this saved-rclone
 echo OK
 
 echo $N Rclone with bk5/bkfile to bk6 - should fail / bad msg .......$NL
@@ -444,11 +414,14 @@ cd "$HERE"
 bk clone $Q --upgrade-repo bk://localhost:$OLDP/nest bkfile.nest || fail
 echo OK
 
-echo $N Attach from bk6/bkfile to bk5/compat - fails ................$NL
+echo $N Attach from bk6/bkfile to bk5/compat - now works ............$NL
 cd nest
-$OLDBK/bk attach -q bk://localhost:$NEWP/bkfile newrepo 2> OUT && fail -f OUT
-test -d newrepo && fail newrepo comp created
-cmpfiles ../BKFILE-REMOTE OUT
+$OLDBK/bk attach $Q bk://localhost:$NEWP/bkfile newrepo || fail
+bk gate -qr
+bk portal -qr
+bk undo -qsfr+
+bk gate -q .
+bk portal -q .
 echo OK
 
 echo $N Detach from bk5/compat to bk6/bkfile - works ................$NL
@@ -463,24 +436,15 @@ bk attach $Q bk://localhost:$OLDP/newrepo bkfile || fail
 # XXX test to see that it is in bkfile format
 echo OK
 
-echo $N Push to bk5/compat which will clone bkfile comp - fails .....$NL
-bk push -q bk://localhost:$OLDP/nest 2> OUT && fail -f OUT
-echo Pushing bkfile failed | cat ../BKFILE-LOCAL - > WANT
-cmpfiles WANT OUT
+echo $N Push to bk5/compat which will clone bkfile comp - works .....$NL
+bk push $Q bk://localhost:$OLDP/nest || fail
 echo OK
 
-echo $N Pull from bk6/bkfile to bk5/compat - lost nested lock .......$NL
+echo $N Pull from bk6/bkfile to bk5/compat - now works ..............$NL
 # XXX See the additional lines on the test below: problem with nested lock?
 # It's from the bk-5.3 binary.  If we want to improve it, add RTI to bugfix
 cd ../nest
-$OLDBK/bk pull -q bk://localhost:$NEWP/bkfile.nest 2> OUT && fail -f OUT
-sed 's/bk:.*:/bk:<source>:/' OUT > GOT
-cat << EOF | cat ../BKFILE-REMOTE - > WANT
-pull: failed to fetch component ./bkfile from bk:<source>: unknown failure
-pull: No other sources for ./bkfile known
-pull: problem populating components.
-EOF
-cmpfiles WANT GOT
+$OLDBK/bk pull -q bk://localhost:$NEWP/bkfile.nest || fail
 cd ../bkfile.nest
 echo OK
 
@@ -490,10 +454,8 @@ bk push $Q bk://localhost:$NEWP/nest || fail
 $OLDBK/bk --cd="$HERE/nest" repocheck $Q || fail
 echo OK
 
-echo $N Detach from bk6/bkfile to bk5/compat - fails ................$NL
-bk detach $Q gcc bk://localhost:$OLDP/gcc.bk5 2> OUT && fail -f OUT
-test -d "$HERE/gcc.bk5" && fail created gcc.bk5 detached repo
-cmpfiles ../BKFILE-LOCAL OUT
+echo $N Detach from bk6/bkfile to bk5/compat - now works ............$NL
+bk detach $Q gcc bk://localhost:$OLDP/gcc.bk5 || fail
 echo OK
 
 echo $N Port from bk6/bkfile to bk5/compat ..........................$NL

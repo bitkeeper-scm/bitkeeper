@@ -95,6 +95,7 @@ private	struct {
 	u64	done;		/* file bytes we've moved so far */
 	u32	nfiles;		/* -N%d - number of files we'll move */
 	int	prevlen;	/* length of previously printed line */
+	u32	compat;		/* send sfile in compat form */
 	ticker	*tick;		/* progress bar */
 } *opts;
 
@@ -121,7 +122,7 @@ sfio_main(int ac, char **av)
 	opts->recurse = 1;
 	opts->prefix = "";
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "2a;A;b;BefgHIij;KLlmN;opP;qrv", lopts)) != -1) {
+	while ((c = getopt(ac, av, "2a;A;b;BCefgHIij;KLlmN;opP;qrv", lopts)) != -1) {
 		switch (c) {
 		    case '2': break;	/* eat arg used by sfiles_clone */
 		    case 'a':
@@ -134,6 +135,7 @@ sfio_main(int ac, char **av)
 		    	opts->todo = scansize(optarg);
 			break;
 		    case 'B': opts->bp_tuple = 1; break;
+		    case 'C': opts->compat = 1; break;		/* undoc */
 		    case 'e': opts->echo = 1; break;		/* doc 2.3 */
 		    case 'f': opts->force = 1; break;		/* doc */
 		    case 'g': opts->sfile2gfile = 1; break;	/* undoc */
@@ -498,40 +500,66 @@ private int
 out_file(char *file, struct stat *sp, off_t *byte_count, int useDsum, u32 dsum)
 {
 	char	buf[SFIO_BSIZ];
-	int	fd = open(file, 0, 0);
+	int	fd;
 	int	n, nread = 0;
 	u32	sum = 0, sz = (u32)sp->st_size;
 
-	if (fd == -1) {
-		perror(file);
-		return (SFIO_OPEN);
-	}
+	if (opts->compat && (sccs_filetype(file) == 's')) {
+		size_t	len;
+		sccs	*s;
+		char	*data;
 
-	setmode(fd, _O_BINARY);
-	*byte_count += printf("%010u", (unsigned int)sp->st_size);
-	while ((n = readn(fd, buf, sizeof(buf))) > 0) {
-		nread += n;
-		opts->done += n;
-		unless (useDsum) sum = adler32(sum, buf, n);
-		if (fwrite(buf, 1, n, stdout) != n) {
+		assert(!useDsum);
+		unless (s = sccs_init(file, INIT_MUSTEXIST)) {
+			perror(file);
+			return (SFIO_OPEN);
+		}
+		s->encoding_out = sccs_encoding(s, 0, 0);
+		s->encoding_out &= ~(E_BK|E_BWEAVE|E_COMP);
+		data = sccs_scat(s, &len);
+		sz = (u32)len;
+		*byte_count += printf("%010u", sz);
+		sum = adler32(sum, data, sz);
+		if (fwrite(data, 1, len, stdout) != len) {
 			if ((errno != EPIPE) || getenv("BK_SHOWPROC")) {
 				perror(file);
 			}
-			close(fd);
+			sccs_free(s);
 			return (1);
 		}
-		*byte_count += n;
-	}
-	if (nread != sp->st_size) {
-		fprintf(stderr, "Size mismatch on %s %u:%u\n\n", 
-		    file, nread, (unsigned int)sp->st_size);
+		*byte_count += len;
+		sccs_free(s);
+	} else {
+		if ((fd = open(file, 0, 0)) == -1) {
+			perror(file);
+			return (SFIO_OPEN);
+		}
+		*byte_count += printf("%010u", sz);
+		setmode(fd, _O_BINARY);
+		while ((n = readn(fd, buf, sizeof(buf))) > 0) {
+			nread += n;
+			opts->done += n;
+			unless (useDsum) sum = adler32(sum, buf, n);
+			if (fwrite(buf, 1, n, stdout) != n) {
+				if ((errno != EPIPE) || getenv("BK_SHOWPROC")) {
+					perror(file);
+				}
+				close(fd);
+				return (1);
+			}
+			*byte_count += n;
+		}
+		if (nread != sz) {
+			fprintf(stderr, "Size mismatch on %s %u:%u\n\n", 
+			    file, nread, (unsigned int)sp->st_size);
+			close(fd);
+			return (SFIO_SIZE);
+		}
 		close(fd);
-		return (SFIO_SIZE);
 	}
 	if (useDsum) sum = dsum;
 	*byte_count += printf("%010u", sum);
 	if (opts->doModes) *byte_count += printf("%03o", sp->st_mode & 0777);
-	close(fd);
 	print_status(file, sz);
 	return (0);
 }

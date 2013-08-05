@@ -270,7 +270,6 @@ clone_main(int ac, char **av)
 	 */
 	unless (r = remote_parse(opts->from, REMOTE_BKDURL)) usage();
 	r->gzip_in = gzip;
-	r->isClone = 1;
 	if (r->host) {
 		if (opts->detach || opts->attach_only) {
 			fprintf(stderr, "%s: source must be local\n", av[0]);

@@ -249,7 +249,7 @@ features_setAll(project *p, u32 bits)
  * function returns non-zero.
  */
 int
-features_bkdCheck(int bkd, int no_repo, int isClone)
+features_bkdCheck(int bkd, int no_repo)
 {
 	char	*t;
 	u32	rmt_features = 0, features = 0;
@@ -269,7 +269,7 @@ features_bkdCheck(int bkd, int no_repo, int isClone)
 	features = features_bits(0);
 	/* remove local-only features */
 	features &= ~(FEAT_REMAP|FEAT_SCANDIRS);
-	unless (isClone) features &= ~(FEAT_BKFILE|FEAT_BWEAVE);
+	features &= ~(FEAT_BKFILE|FEAT_BWEAVE);
 	features &= ~rmt_features;
 
 	/*
