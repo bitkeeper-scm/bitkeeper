@@ -1767,6 +1767,7 @@ proc busy {busy} \
 	# busy state; becoming "unbusy" will take care of itself
 	# when the GUI goes idle. Another subtle performance boost.
 	if {$busy} {update idletasks}
+	focus $w(graph)
 }
 
 proc widgets {} \
