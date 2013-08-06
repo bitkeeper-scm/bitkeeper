@@ -40,12 +40,15 @@ proc widgets {} \
 	    }
 	    ttk::button .menu.quit -text "Quit" -command exit \
 		-takefocus 0
-	    set ws_text "Ignore Whitespace"
-	    if ($gc(ignoreWhitespace)) {
-		    set ws_text "Honor Whitespace"
-	    }
-	    ttk::button .menu.whitespace -text $ws_text \
-	    -command whitespace -takefocus 0
+
+	    set m .menu.whitespace.m
+	    ttk::menubutton .menu.whitespace -text "White Space" \
+		-menu $m -takefocus 0
+		menu .menu.whitespace.m -tearoff 0
+		$m add check -label "Ignore all white space" \
+		    -variable ::gc(ignoreAllWhitespace) -command refreshFile
+		$m add check -label "Ignore changes in amount of white space" \
+		    -variable ::gc(ignoreWhitespace) -command refreshFile
 	    ttk::button .menu.reread -text "Reread" -command reread \
 		-takefocus 0
 	    ttk::button .menu.help -text "Help" -takefocus 0 -command {
@@ -175,19 +178,10 @@ proc getRev {file rev checkMods} \
 	return $tmp
 }
 
-proc whitespace {} \
+proc refreshFile {} \
 {
-	global	selected gc
+	global	selected
 
-	# selectFile respects gc(ignoreWhitespace) and the value
-	# has already been toggled by the checkbutton.
-	if {$gc(ignoreWhitespace)} {
-		set gc(ignoreWhitespace) 0
-		.menu.whitespace configure -text "Ignore Whitespace"
-	} else {
-		set gc(ignoreWhitespace) 1
-		.menu.whitespace configure -text "Honor Whitespace"
-	}
 	selectFile $selected
 }
 
@@ -723,8 +717,11 @@ main(int argc, string argv[])
 	Wm_deiconify(".");
 	update();
 
-	while (arg = getopt(argv, "L|r;S", {})) {
+	while (arg = getopt(argv, "bwL|r;S", {})) {
 		switch (arg) {
+		    case "b":
+			gc("ignoreWhitespace", 1);
+			break;
 		    case "L":
 			if (rev1 || rev2) bk_usage();
 			rev1 = "";
@@ -746,6 +743,9 @@ main(int argc, string argv[])
 		    case "S":
 			dashs = 1;
 			rsetOpts .= " -S";
+			break;
+		    case "w":
+			gc("ignoreAllWhitespace", 1);
 			break;
 		    case "":
 			bk_usage();
