@@ -1,7 +1,5 @@
 #include "sccs.h"
 
-private	int	catSfile(sccs *s);
-
 /*
  * This works even if there isn't a gfile.
  */
@@ -10,6 +8,8 @@ scat_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*sfile;
+	size_t	len;
+	char	*buf;
 
 	unless (av[1] && !av[2]) {
 		fprintf(stderr, "usage: %s sfile\n", prog);
@@ -22,17 +22,15 @@ scat_main(int ac, char **av)
 	}
 	s->encoding_out = sccs_encoding(s, 0, 0);
 	s->encoding_out &= ~(E_BK|E_BWEAVE|E_COMP);
-	catSfile(s);
+	buf = sccs_scat(s, &len);
+	fwrite(buf, 1, len, stdout);
 	sccs_free(s);
 	return (0);
 }
 
-private	int
-catSfile(sccs *s)
+char *
+sccs_scat(sccs *s, size_t *len)
 {
-	size_t	len;
-	char	*buf;
-
 	assert (!s->mem_in && !s->mem_out);
 
 	sccs_encoding(s, 0, 0);
@@ -44,9 +42,5 @@ catSfile(sccs *s)
 	fclose(s->outfh);
 	s->outfh = 0;
 
-	buf = fmem_close(s->fh, &len);
-	s->fh = 0;
-	fwrite(buf, 1, len, stdout);
-	free(buf);
-	return (0);
+	return (fmem_peek(s->fh, len));
 }

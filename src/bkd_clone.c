@@ -151,6 +151,22 @@ out:	if (delay > 0) sleep(delay);
 	return (rc);
 }
 
+/*
+ * Options to sfio to turn on compat mode if needed
+ */
+char *
+clone_sfioMode(int bkd)
+{
+	u32	bits = features_bits(0);
+	int	compat;
+
+#define	NOT_THERE(x) \
+	((bits & (x)) && !(bkd ? bk_hasFeature((x)) : bkd_hasFeature((x))))
+	
+	compat = (NOT_THERE(FEAT_BKFILE) || NOT_THERE(FEAT_BWEAVE));
+	return (compat ? "-C" : "");
+}
+
 private int
 compressed(int level, int lclone)
 {
@@ -160,9 +176,10 @@ compressed(int level, int lclone)
 	char	*larg = (lclone ? "-L" : "");
 	char	*marg = (bk_hasFeature(FEAT_mSFIO) ? "-m" : "");
 	char	*parg = (bk_hasFeature(FEAT_PARENTS) ? "--parents" : "");
+	char	*compat = clone_sfioMode(1);
 
-	sfiocmd = aprintf("bk sfio --clone -oq %s %s %s",
-	    larg, marg, parg);
+	sfiocmd = aprintf("bk sfio --clone -oq %s %s %s %s",
+	    larg, marg, parg, compat);
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
 	fd = fileno(fh);

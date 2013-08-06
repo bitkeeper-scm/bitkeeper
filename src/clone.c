@@ -270,7 +270,6 @@ clone_main(int ac, char **av)
 	 */
 	unless (r = remote_parse(opts->from, REMOTE_BKDURL)) usage();
 	r->gzip_in = gzip;
-	r->isClone = 1;
 	if (r->host) {
 		if (opts->detach || opts->attach_only) {
 			fprintf(stderr, "%s: source must be local\n", av[0]);
@@ -2151,12 +2150,13 @@ clonemod_part2(char **envVar)
 	av = addLine(av, strdup("-?BK_NO_TRIGGERS=1"));
 	av = addLine(av, strdup("pull"));
 	av = addLine(av, strdup("--unsafe"));
+	av = addLine(av, strdup("--clone@"));
 	av = addLine(av, strdup("-u"));
 	if (opts->quiet) av = addLine(av, strdup("-q"));
 	if (opts->verbose) av = addLine(av, strdup("-v"));
 	if (opts->debug) av = addLine(av, strdup("-d"));
 	if (opts->pull_rev) {
-		av = addLine(av, aprintf("-r%s", strdup(opts->pull_rev)));
+		av = addLine(av, aprintf("-r%s", opts->pull_rev));
 	}
 	// XXX -z?
 	EACH(envVar) av = addLine(av, aprintf("-E%s", strdup(envVar[i])));

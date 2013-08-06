@@ -100,8 +100,28 @@ cmpfiles ERR WANT
 echo OK
 
 echo $N Show that repogca --only-one does the same thing ............$NL
-bk repogca --only-one ../b >OUT 2>ERR && fail -f ERR should fail
+bk repogca --only-one ../b >ERR 2>&1 && fail -f ERR should fail
 echo repogca: non-unique baseline revision > WANT
-cmpfiles ERR WANT
+cmpfiles WANT ERR
 echo OK
 
+echo $N Demo a repogca with a single GCA across multiple parents.....$NL
+cd "$HERE"
+commercial parent
+cd "$HERE"
+bk clone $Q parent c1 ; (cd c1 ; touch c1; bk new $Q c1; bk commit $Q -y.)
+bk clone $Q parent c2 ; (cd c2 ; touch c2; bk new $Q c2; bk commit $Q -y.)
+bk clone $Q parent c3 ; (cd c3 ; touch c3; bk new $Q c3; bk commit $Q -y.)
+cd c3
+bk repogca ../c1 > GCAS
+bk repogca ../c2 >> GCAS
+uniq < GCAS > WANT
+rm -f GCAS
+test "`wc -l <WANT`" -eq "1" || fail -f WANT too many gcas
+rm -f GCAS
+bk parent $Q -r
+bk parent $Q -a -o ../c1
+bk parent $Q -a -o ../c2
+bk repogca --only-one > GOT 2>ERR
+cmp -s WANT GOT && fail "you fixed repogca"
+echo failed \(bug \)

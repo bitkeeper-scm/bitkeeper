@@ -27,6 +27,7 @@ private struct {
 	u32	local:1;		/* set if we find local work */
 	u32	autoPopulate:1;		/* automatically populate missing comps */
 	u32	unlockRemote:1;		/* nested unlock remote when done */
+	u32	clonemod:1;		/* --clone@ called from clone */
 	int	safe;			/* require all involved comps to be here */
 	int	n;			/* number of components */
 	int	delay;			/* -w<delay> */
@@ -63,6 +64,7 @@ pull_main(int ac, char **av)
 	int	portCsets = 0;
 	longopt	lopts[] = {
 		{ "batch", 310},	/* pass -s to resolve */
+		{ "clone@", 315},
 		{ "safe", 320 },	/* require all comps to be here */
 		{ "unsafe", 330 },	/* turn off safe above */
 		{ "auto-populate", 340},/* just work */
@@ -124,6 +126,9 @@ pull_main(int ac, char **av)
 		    case 'z':					/* doc 2.0 */
 			if (optarg) gzip = atoi(optarg);
 			if ((gzip < 0) || (gzip > 9)) gzip = Z_BEST_SPEED;
+			break;
+		    case 315:	/* --clone@ */
+			opts.clonemod = 1;
 			break;
 		    case 320:	/* --safe */
 			opts.safe = 1;
@@ -708,6 +713,11 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar,
 	}  else if (streq(buf, "@NOTHING TO SEND@")) {
 		unless (opts.quiet) {
 			fprintf(stderr, "Nothing to pull.\n");
+		}
+		if (opts.product && opts.clonemod) {
+			rc = systemf(
+				"bk -?BK_NO_REPO_LOCK=YES here set %s HERE",
+				opts.quiet ? "-q" : "");
 		}
 		putenv("BK_STATUS=NOTHING");
 		rc = 0;

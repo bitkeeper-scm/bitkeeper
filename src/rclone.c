@@ -46,7 +46,6 @@ rclone_main(int ac, char **av)
 	};
 
 	bzero(&opts, sizeof(opts));
-	opts.sendenv_flags = SENDENV_SENDFMT;
 	if (streq(av[0], "_rclone_detach")) {
 		opts.detach = 1;
 		av[0] = "_rclone";
@@ -722,6 +721,8 @@ send_sfio(remote *r, int gzip)
 	FILE	*fout;
 	char	title[MAXPATH];
 	char	*marg = (bkd_hasFeature(FEAT_mSFIO) ? "-m2" : "");
+	u32	bits = features_bits(0);
+	char	*compat = clone_sfioMode(0);
 	char	buf[200] = { "" };
 
 	tmpf = bktmp(0, "rclone_sfiles");
@@ -742,13 +743,13 @@ send_sfio(remote *r, int gzip)
 	if (r && r->path) {
 		b = basenm(r->path);
 		sfiocmd = aprintf(
-		    "bk%s sfio -P'%s/' -o%s %s < '%s'",
-		    title, b, buf, marg, tmpf);
+		    "bk%s sfio %s -P'%s/' -o%s %s < '%s'",
+		    title, compat, b, buf, marg, tmpf);
 		fout = fdopen(dup(r->wfd), "wb");
 	} else {
 		fout = fopen(DEVNULL_WR, "w");
-		sfiocmd = aprintf("bk%s sfio -o%s %s < '%s'",
-		    title, buf, marg, tmpf);
+		sfiocmd = aprintf("bk%s sfio %s -o%s %s < '%s'",
+		    title, compat, buf, marg, tmpf);
 	}
 	assert(fout);
 	fh = popen(sfiocmd, "r");

@@ -69,7 +69,7 @@ void	features_set(project *p, int feature, int on);
 void	features_setAll(project *p, u32 bits);
 
 char	*features_list(project *p);
-int	features_bkdCheck(int in_bkd, int no_repo, int isClone);
+int	features_bkdCheck(int in_bkd, int no_repo);
 u32	features_toBits(char *features, char *bad);
 char	*features_fromBits(u32 bits);
 void	features_minrelease(void);

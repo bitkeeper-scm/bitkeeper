@@ -921,13 +921,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		} else {
 			/* remove local-only features */
 			bits &= ~(FEAT_REMAP|FEAT_SCANDIRS);
-
-			/* only clone needs these since the patch format
-			 * can encode them
-			 */
-			unless (flags & SENDENV_SENDFMT) {
-				bits &= ~(FEAT_BKFILE|FEAT_BWEAVE);
-			}
+			bits &= ~(FEAT_BKFILE|FEAT_BWEAVE);
 			t = features_fromBits(bits);
 		}
 		fprintf(f, "putenv BK_FEATURES_REQUIRED=%s\n", t);
@@ -1018,7 +1012,7 @@ getServerInfo(remote *r, hash *bkdEnv)
 	r->seed = newseed;
 	if (ret) {
 		fprintf(stderr, "%s: premature disconnect\n", prog);
-	} else if (features_bkdCheck(0, r->noLocalRepo, r->isClone)) {
+	} else if (features_bkdCheck(0, r->noLocalRepo)) {
 		/* cleanup stale nested lock */
 		if ((bkdEnv && hash_fetchStr(bkdEnv, "BKD_NESTED_LOCK")) ||
 		    getenv("BKD_NESTED_LOCK")) {
@@ -1064,7 +1058,7 @@ sendServerInfo(u32 cmdlog_flags)
 	unless (no_repo || isdir(BKROOT)) no_repo = 1;
 
 	out("@SERVER INFO@\n");
-	if (features_bkdCheck(1, no_repo, (cmdlog_flags & CMD_SENDFMT))) {
+	if (features_bkdCheck(1, no_repo)) {
 		return (1);
 	}
 	unless (no_repo) {
@@ -1177,9 +1171,7 @@ sendServerInfo(u32 cmdlog_flags)
 	} else {
 		/* remove local-only features */
 		bits &= ~(FEAT_REMAP|FEAT_SCANDIRS);
-		unless (cmdlog_flags & CMD_SENDFMT) {
-			bits &= ~(FEAT_BKFILE|FEAT_BWEAVE);
-		}
+		bits &= ~(FEAT_BKFILE|FEAT_BWEAVE);
 		p = features_fromBits(bits);
 	}
 	out("\nFEATURES_REQUIRED=");

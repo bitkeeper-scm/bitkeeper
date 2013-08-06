@@ -1,0 +1,14 @@
+echo $N Demo a bug in clone -@.......................................$NL
+nested product
+bk clone $Q . ../copy
+cd "$HERE"
+bk clone $Q -@product copy copy2
+cd copy2
+bk comps -h > GOT
+cat <<EOF >WANT
+./gcc
+./gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+

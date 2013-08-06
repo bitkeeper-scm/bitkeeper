@@ -60,16 +60,15 @@ repogca(char **urls, char *dspec, u32 flags, FILE *out)
 {
 	sccs	*s = 0;
 	ser_t	d, p, lastd;
+	ser_t	*gcalist = 0;
 	FILE	*f;
 	int	i, status;
 	int	rc = 1;
 	char	**nav;
 	char	*key;
 	char	*begin = 0, *end = 0;
-	int	cnt = 0;
 	char	buf[MAXPATH];
 
-	if (dspec) dspec = strdup(dspec);
 	nav = addLine(0, strdup("bk"));
 	nav = addLine(nav, strdup("changes"));
 	if (flags & RGCA_STANDALONE) nav = addLine(nav, strdup("-S"));
@@ -86,6 +85,15 @@ repogca(char **urls, char *dspec, u32 flags, FILE *out)
 			nav = addLine(nav, strdup(urls[i]));
 		}
 	} else if (flags & RGCA_ONLYONE) {
+		/*
+		 * This is used for "bk diffs -L" and "bk difftool -L"
+		 * which is why --only-one implies push parents if
+		 * there are no URLs.
+		 *
+		 * Also, having multiple parents doesn't necessarily
+		 * imply there are multiple GCAs. See t.regpoca for a
+		 * regression.
+		 */
 		urls = parent_pushp();
 		if (nLines(urls) > 1) {
 			verbose((stderr,
@@ -124,22 +132,11 @@ repogca(char **urls, char *dspec, u32 flags, FILE *out)
 		rc = 2;
 		goto out;
 	}
-	unless (dspec) dspec = strdup("#dv2\n:JOIN::REV:\n$end{\\n}");
-	dspec_collapse(&dspec, &begin, &end);
-	lastd = TABLE(s);
 	for (d = TABLE(s); d >= TREE(s); d--) {
 		if (!TAG(s, d) && !(FLAGS(s, d) & (D_RED|D_BLUE))) {
-			if (begin) {
-				sccs_prsdelta(s, d, 0, begin, out);
-				free(begin);
-				begin = 0;
-			}
-			lastd = d;
-			sccs_prsdelta(s, d, 0, dspec, out);
-			rc = 0;
+			addArray(&gcalist, &d);
 			unless (flags & (RGCA_ALL|RGCA_ONLYONE)) break;
-			++cnt;
-			if ((cnt > 1) && (flags & RGCA_ONLYONE)) {
+			if ((flags & RGCA_ONLYONE) && (nLines(gcalist) > 1)) {
 				verbose((stderr,
 					"%s: non-unique baseline revision\n",
 					prog));
@@ -153,12 +150,32 @@ repogca(char **urls, char *dspec, u32 flags, FILE *out)
 			if (p = MERGE(s, d)) FLAGS(s, p) |= D_BLUE;
 		}
 	}
+	if (dspec) {
+		dspec = strdup(dspec);
+	} else {
+		dspec = strdup("#dv2\n:JOIN::REV:\n$end{\\n}");
+	}
+	dspec_collapse(&dspec, &begin, &end);
+	lastd = TABLE(s);
+	EACH(gcalist) {
+		d = gcalist[i];
+		if (begin) {
+			sccs_prsdelta(s, d, 0, begin, out);
+			free(begin);
+			begin = 0;
+		}
+		lastd = d;
+		sccs_prsdelta(s, d, 0, dspec, out);
+		rc = 0;
+	}
 	if (end) {
 		sccs_prsdelta(s, lastd, 0, end, out);
 		free(end);
 	}
-out:	FREE(dspec);
+	free(dspec);
+out:
 	freeLines(nav, free);
+	free(gcalist);
 	if (s) sccs_free(s);
 	return (rc);
 }
