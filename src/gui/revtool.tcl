@@ -2149,6 +2149,58 @@ proc selectFile {} \
 	return $fname
 }
 
+proc get_line_rev {lineno} \
+{
+	global	w
+	set line [$w(aptext) get $lineno.0 $lineno.end]
+	if {[regexp {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} $line -> user rev]} {
+		return $rev
+	}
+}
+
+proc jump_to_rev {rev} \
+{
+	global	gc w dspec dev_null file rev1 curLine rev2rev_name
+
+	if {![info exists rev2rev_name($rev)]} {
+		global	file firstnode
+
+		## The given rev is not in our current graph.
+		## Get it and jump to it.
+
+		set parent [exec bk prs -d:PARENT: -hr${rev} $file]
+		set prev [expr {($parent == 0) ? $rev : $parent}]
+		listRevs "-c${prev}.." $file
+		revMap $file
+		dateSeparate
+		setScrollRegion
+		$w(graph) xview moveto 0 
+	}
+
+	if {![info exists rev2rev_name($rev)]} { return }
+
+	set rev1 $rev
+	set revname $rev2rev_name($rev)
+	centerRev $revname
+	set id [$w(graph) gettag $revname]
+	if {$id ne ""} { getLeftRev $id }
+
+	$w(aptext) configure -height 15
+	$w(ctext) configure -height $gc(rev.commentHeight) 
+	$w(aptext) configure -height 50
+	set comments_mapped [winfo ismapped $w(ctext)]
+	commentsWindow show
+	set prs [open [list |bk prs $dspec -hr$rev $file 2>$dev_null]]
+	filltext $w(ctext) $prs 1 "No comments found."
+
+	set wht [winfo height $w(cframe)]
+	set cht [font metrics $gc(rev.graphFont) -linespace]
+	set adjust [expr {int($wht) / $cht}]
+	if {($curLine > $adjust) && ($comments_mapped == 0)} {
+		$w(aptext) yview scroll $adjust units
+	}
+}
+
 proc openChangesetHistory {} \
 {
 	global diffpair
@@ -2453,6 +2505,7 @@ proc startup {} \
 	global file merge diffpair dfile
 	global percent preferredGraphSize
 	global startingLineNumber searchString
+	global	curLine
 
 	if {$gca != ""} {
 		set merge(G) $gca
@@ -2485,8 +2538,10 @@ proc startup {} \
 			if {![info exists searchString]} {
 				searchnew : $startingLineNumber
 			}
-			set index $startingLineNumber.0
-			centerTextLine $w(aptext) $index
+			set curLine $startingLineNumber.0
+			centerTextLine $w(aptext) $curLine
+			set rev [get_line_rev $startingLineNumber]
+			jump_to_rev $rev
 		} else {
 			set index 1.0
 		}
