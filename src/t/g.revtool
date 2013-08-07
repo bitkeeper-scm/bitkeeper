@@ -103,7 +103,7 @@ echo OK
 
 echo $N Annotations test.............................................$NL
 cd "$HERE/project/src"
-bk annotate -R -Aur file1 > WANT
+bk annotate -R -Aur -w+ file1 > WANT
 bk guitest revtool file1 > GOT 2>&1 <<'EOF'
 	global w
 	test_inputString "c"
@@ -118,7 +118,7 @@ echo OK
 
 echo $N Annotations with preferences.................................$NL
 cd "$HERE/project/src"
-bk annotate -R -Abdnpru file1 > WANT
+bk annotate -R -Abdnpru -w+ file1 > WANT
 echo 'set gc(rev.annotate) "-Abdnpru"' > "`bk dotbk`/config-gui"
 bk guitest revtool file1 > GOT 2>&1 <<'EOF'
 	global w
