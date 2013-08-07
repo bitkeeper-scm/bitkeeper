@@ -4,6 +4,7 @@
 bk csets \- run changes or csettool on last set of incoming changes
 .SH SYNOPSIS
 .B bk csets
+.[B] \-\-stats
 .[B] \-DTv
 .SH DESCRIPTION
 .LP
@@ -18,7 +19,7 @@ or
 .BR bk\ push .
 This is useful for tracking down problems and/or doing a quick review.
 .SH OPTIONS
-.TP
+.TP \-\-stats
 .B \-D
 Use 
 .B bk difftool
@@ -28,6 +29,9 @@ Use
 If there were many pulled in, perhaps with changes added and then deleted
 as part of a review, viewing the difference between the start and the end
 points may be less "noisy".
+.tp
+.B \-\-stats
+Print a statistics header like diffstat.
 .tp
 .B \-T
 Use 

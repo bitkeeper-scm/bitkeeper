@@ -206,6 +206,7 @@ partition
 create
 crypto
 cset
+csets
 csetprune pro
 dbexplode
 dbimplode

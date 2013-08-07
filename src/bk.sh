@@ -579,60 +579,6 @@ _clear() {
 	eval $CLEAR
 }
 
-# Run csettool on the list of csets, if any
-_csets() {		# /* doc 2.0 */
-	test X$1 = X"--help" && {
-		bk help -s csets
-		exit 0
-	}
-	COPTS=
-	GUI=YES
-	DIFFS=
-	while getopts DTv opt
-	do	case "$opt" in
-		D) DIFFS=YES;;
-		T) GUI=NO;;
-		v) GUI=NO; COPTS="$COPTS -v";;
-		*) bk help -s csets; exit 1;;
-		esac
-	done
-	shift `expr $OPTIND - 1`
-	__cd2product
-	if [ "X$DIFFS" != X ]
-	then	RANGE=`bk range -u`
-		test $? -ne 0 && exit 1
-		if [ $GUI = YES ]
-		then	bk difftool -r"$RANGE"
-		else	bk rset --elide -Hr"$RANGE" | bk diffs -Hpu -
-		fi
-		exit $?
-	fi
-	if [ -f RESYNC/BitKeeper/etc/csets-in ]
-	then	if [ $GUI = YES ]
-		then	echo Viewing RESYNC/BitKeeper/etc/csets-in
-			cd RESYNC
-			bk changes -nd:I: - < BitKeeper/etc/csets-in |
-			    bk csettool "$@" -
-			exit 0
-		else
-			bk changes $COPTS - < BitKeeper/etc/csets-in
-			exit 0
-		fi
-	fi
-	if [ -f BitKeeper/etc/csets-in ]
-	then	if [ $GUI = YES ]
-		then	echo Viewing BitKeeper/etc/csets-in
-			bk changes -nd:I: - < BitKeeper/etc/csets-in |
-			    bk csettool "$@" -
-			exit 0
-		else
-			bk changes $COPTS - < BitKeeper/etc/csets-in
-			exit 0
-		fi
-	fi
-	echo "Cannot find csets to view." 1>&2
-	exit 1
-}
 
 _extra() {		# /* doc 2.0 as extras */
 	_extras "$@"

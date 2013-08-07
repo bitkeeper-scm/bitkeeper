@@ -45,6 +45,16 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
+echo $N Test bk csets --stats shows diffstat output..................$NL
+bk csets --stats > GOT
+cat <<EOF > WANT
+gcc/foo | 1 +
+1 files changed, 1 insertions(+)
+
+EOF
+cmpfiles WANT GOT
+echo OK
+
 echo $N Test bk csets run from a standalone runs okay ...............$NL
 cd "$HERE"/gcc.standalone
 bk port $Q ../project/gcc
