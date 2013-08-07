@@ -1777,6 +1777,7 @@ proc busy {busy} \
 	# busy state; becoming "unbusy" will take care of itself
 	# when the GUI goes idle. Another subtle performance boost.
 	if {$busy} {update idletasks}
+	focus $w(graph)
 }
 
 proc widgets {} \
@@ -2164,6 +2165,15 @@ proc selectFile {} \
 	return $fname
 }
 
+proc get_line_rev {lineno} \
+{
+	global	w
+	set line [$w(aptext) get $lineno.0 $lineno.end]
+	if {[regexp {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} $line -> user rev]} {
+		return $rev
+	}
+}
+
 proc mouse_motion {win} {
 	global	gc redrev
 
@@ -2547,6 +2557,7 @@ proc startup {} \
 	global file merge diffpair dfile
 	global percent preferredGraphSize
 	global startingLineNumber searchString
+	global	curLine
 	global	displaying
 
 	set displaying ""
@@ -2582,8 +2593,10 @@ proc startup {} \
 			if {![info exists searchString]} {
 				searchnew : $startingLineNumber
 			}
-			set index $startingLineNumber.0
-			centerTextLine $w(aptext) $index
+			set curLine $startingLineNumber.0
+			centerTextLine $w(aptext) $curLine
+			set rev [get_line_rev $startingLineNumber]
+			jump_to_rev $rev
 		} else {
 			set index 1.0
 		}

@@ -40,12 +40,15 @@ proc widgets {} \
 	    }
 	    ttk::button .menu.quit -text "Quit" -command exit \
 		-takefocus 0
-	    set ws_text "Ignore Whitespace"
-	    if ($gc(ignoreWhitespace)) {
-		    set ws_text "Honor Whitespace"
-	    }
-	    ttk::button .menu.whitespace -text $ws_text \
-	    -command whitespace -takefocus 0
+
+	    set m .menu.whitespace.m
+	    ttk::menubutton .menu.whitespace -text "White Space" \
+		-menu $m -takefocus 0
+		menu .menu.whitespace.m -tearoff 0
+		$m add check -label "Ignore all white space" \
+		    -variable ::gc(ignoreAllWhitespace) -command refreshFile
+		$m add check -label "Ignore changes in amount of white space" \
+		    -variable ::gc(ignoreWhitespace) -command refreshFile
 	    ttk::button .menu.reread -text "Reread" -command reread \
 		-takefocus 0
 	    ttk::button .menu.help -text "Help" -takefocus 0 -command {
@@ -61,13 +64,9 @@ proc widgets {} \
 	    ttk::button .menu.revtool -text "Revtool" -command { revtool } \
 		-takefocus 0
 	        
-	    ttk::combobox .menu.files -text "Files" -width 10 -state readonly \
+	    ttk::combobox .menu.files -text "Files" -width 15 -state readonly \
 		-postcommand postFilesCombo
 	    bind .menu.files <<ComboboxSelected>> "selectFile"
-
-	    ## Configure the combobox to add some width so that it's
-	    ## actually bigger than the entry when it posts.
-	    ttk::style configure TCombobox -postoffset {0 0 100 0}
 
 	    pack .menu.quit -side left -padx 1
 	    pack .menu.help -side left -padx 1
@@ -175,19 +174,10 @@ proc getRev {file rev checkMods} \
 	return $tmp
 }
 
-proc whitespace {} \
+proc refreshFile {} \
 {
-	global	selected gc
+	global	selected
 
-	# selectFile respects gc(ignoreWhitespace) and the value
-	# has already been toggled by the checkbutton.
-	if {$gc(ignoreWhitespace)} {
-		set gc(ignoreWhitespace) 0
-		.menu.whitespace configure -text "Ignore Whitespace"
-	} else {
-		set gc(ignoreWhitespace) 1
-		.menu.whitespace configure -text "Honor Whitespace"
-	}
 	selectFile $selected
 }
 
@@ -240,14 +230,17 @@ proc readInput {fp} \
 
 proc addFile {lfile rfile file {rev1 ""} {rev2 ""}} \
 {
-	global	files fileInfo
+	global	files fileInfo longestFile
 
 	set info [list $lfile $rfile $file $rev1 $rev2]
 
+	if {[string length $file] > [string length $longestFile]} {
+		set longestFile $file
+	}
+
 	lappend files $file
 	dict set fileInfo $file $info
-
-	.menu.files set "Files ([llength $files])"
+	configureFilesCombo
 	.menu.files configure -values $files \
 	    -height [expr {min(20,[llength $files])}]
 
@@ -297,6 +290,7 @@ proc selectFile {{file ""}} {
 	if {![dict exists $fileInfo $file]} { return }
 	lassign [dict get $fileInfo $file] lfile rfile fname lr rr
 	set selected $fname
+	configureFilesCombo
 
 	if {[getNextFile] ne ""} {
 		.menu.fileNext configure -state normal
@@ -519,21 +513,34 @@ proc revtool {} \
 
 proc postFilesCombo {} \
 {
-	global	selected
+	global	selected longestFile
+
+	set cb .menu.files
+	set pad [font measure [$cb cget -font] $longestFile]
+	set pad [expr {($pad - [winfo width $cb]) + 30}]
+	ttk::style configure TCombobox -postoffset [list 0 0 $pad 0]
 
 	if {[info exists selected]} {
 		set cb .menu.files
 		$cb set $selected
+		after idle configureFilesCombo
 	}
 }
 
 proc configureFilesCombo {} \
 {
-	global	fileInfo
+	global	files selected
 
 	set cb .menu.files
+	if {[info exists selected]} {
+		set x [lsearch -exact $files $selected]
+		incr x
+		set text "Files ($x of [llength $files])"
+	} else {
+		set text "Files ([llength $files])"
+	}
 	$cb selection clear
-	$cb set "Files ([llength [dict keys $fileInfo]])"
+	$cb set $text
 }
 
 proc showComments {} \
@@ -682,6 +689,7 @@ proc test_sublineHighlight {which strings} {
 proc init {} \
 {
 	global	rev1 rev2 Diffs DiffsEnd files fileInfo unique
+	global	longestFile
 
 	set rev1 ""
 	set rev2 ""
@@ -689,6 +697,7 @@ proc init {} \
 	set DiffsEnd(0) 1.0
 	set unique 0
 	set files [list]
+	set longestFile ""
 }
 
 #lang L
@@ -723,8 +732,11 @@ main(int argc, string argv[])
 	Wm_deiconify(".");
 	update();
 
-	while (arg = getopt(argv, "L|r;S", {})) {
+	while (arg = getopt(argv, "bwL|r;S", {})) {
 		switch (arg) {
+		    case "b":
+			gc("ignoreWhitespace", 1);
+			break;
 		    case "L":
 			if (rev1 || rev2) bk_usage();
 			rev1 = "";
@@ -746,6 +758,9 @@ main(int argc, string argv[])
 		    case "S":
 			dashs = 1;
 			rsetOpts .= " -S";
+			break;
+		    case "w":
+			gc("ignoreAllWhitespace", 1);
 			break;
 		    case "":
 			bk_usage();

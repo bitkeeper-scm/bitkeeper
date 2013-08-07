@@ -937,98 +937,61 @@ proc isBinary { filename } \
     return [regexp {[\x00-\x08\x0b\x0e-\x1f]} $x]
 }
 
-proc displayTextSize {top w h} \
+proc displayTextSize {text w h} \
 {
-	if {![info exists ::textWidgets($top)]} { return }
+	if {![info exists ::textWidgets($text,w)]} { return }
 
-	set oldW $::textWidgets($top,w)
-	set oldH $::textWidgets($top,h)
+	set oldW $::textWidgets($text,w)
+	set oldH $::textWidgets($text,h)
 
 	## Check to see if size has changed.
 	if {$w == $oldW && $h == $oldH} { return }
 
-	set ::textWidgets($top,w) $w
-	set ::textWidgets($top,h) $h
+	set ::textWidgets($text,w) $w
+	set ::textWidgets($text,h) $h
 
 	## Don't do anything on the initial draw.
-	if {$oldW == 0 || $oldH == 0} { return }
+	if {$oldW == 0 && $oldH == 0} { return }
 
-	update idletasks
-
-	foreach text $::textWidgets($top) {
-		if {[info exists ::textSize($text)]} {
-			after cancel $::textSize($text)
-		}
-		set w [winfo width $text]
-		set h [winfo height $text]
-
-		if {$w <= 1 && $h <= 1} { continue }
-
-		set font  [$text cget -font]
-		set fontW [font measure $font 0]
-		set fontH [dict get [font metrics $font] -linespace]
-
-		set cwidth  [expr {$w / $fontW}]
-		set cheight [expr {$h / $fontH}]
-
-		if {$cwidth <= 1 || $cheight <= 1} { continue }
-
-		set label $text.__size
-		if {![winfo exists $label]} {
-			label $text.__size -relief solid \
-			    -borderwidth 1 -background #FEFFE6
-		}
-		place $label -x 0 -y 0
-		$label configure -text "${cwidth}x${cheight}"
-
-		set ::textSize($text) \
-		    [after 2000 [list hideTextDisplaySize $text]]
+	if {[info exists ::textSize($text)]} {
+		after cancel $::textSize($text)
 	}
 
-	update idletasks
+	if {$w <= 1 && $h <= 1} { return }
+
+	set font  [$text cget -font]
+	set fontW [font measure $font 0]
+	set fontH [dict get [font metrics $font] -linespace]
+
+	set cwidth  [expr {$w / $fontW}]
+	set cheight [expr {$h / $fontH}]
+
+	if {$cwidth <= 1 || $cheight <= 1} { return }
+
+	set label $text.__size
+	place $label -x 0 -y 0
+	$label configure -text "${cwidth}x${cheight}"
+
+	set ::textSize($text) [after 2000 [list hideTextDisplaySize $text]]
 }
 
 proc hideTextDisplaySize {w} \
 {
-	destroy $w.__size
+	place forget $w.__size
 }
 
 ## Trace the text command to grab new text widgets as they are
-## created and add them to a list for their toplevel if the
-## toplevel has been bound to show text widget dimensions.
+## created and add bind their <Configure> event to show text
+## size when they are changed.
 proc traceTextWidget {cmd code widget event} \
 {
-	set top [winfo toplevel $widget]
-	if {[info exists ::textWidgets($top)]} {
-		lappend ::textWidgets($top) $widget
-	}
+	set ::textWidgets($widget,w) 0
+	set ::textWidgets($widget,h) 0
+	bind $widget <Configure> "displayTextSize %W %w %h"
+	label $widget.__size -relief solid -borderwidth 1 -background #FEFFE6
 }
 trace add exec text leave traceTextWidget
 
-## Configure toplevel widgets to display their text widget
-## dimensions as the toplevel is resized.  We do this for
-## . and .citool for now.
-proc configureTextWidgets {} \
-{
-	## We don't want to figure widgets for all of our tools, only
-	## specific ones.
-	set tool [bk_toolname]
-	if {$tool ni {csettool difftool fm3tool fmtool revtool citool}} {
-		return
-	}
-
-	set top [bk_toplevel]
-
-	set ::textWidgets($top)   {}
-	set ::textWidgets($top,w) 0
-	set ::textWidgets($top,h) 0
-
-	bind Toplevel <Map> {
-		bind Toplevel <Map> {}
-		bind Toplevel <Configure> "displayTextSize %%W %%w %%h"
-	}
-}
-configureTextWidgets
 
 ## This is actually overriding a core Tk proc that is called whenever
 ## the X11 paste selection code is called.  Where that code moves the

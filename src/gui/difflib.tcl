@@ -277,11 +277,14 @@ proc sdiff {L R} \
 {
 	global	sdiffw gc
 
-	set ignore_ws ""
-	if {$gc(ignoreWhitespace) == 1} {
-		set ignore_ws "-b"
+	set opts $gc(diffOpts)
+	if {[string is true -strict $gc(ignoreWhitespace)]} {
+		append opts " -b"
 	}
-	return [open "| $sdiffw $ignore_ws -- \"$L\" \"$R\"" r]
+	if {[string is true -strict $gc(ignoreAllWhitespace)]} {
+		append opts " -w"
+	}
+	return [open "|$sdiffw $opts -- \"$L\" \"$R\"" r]
 }
 
 # Displays the flags, modes, and path for files so that the

@@ -1,5 +1,6 @@
-proc gc {var} \
+proc gc {var {newValue ""}} \
 {
+	if {[llength [info level 0]] == 3} { set ::gc($var) $newValue }
 	return $::gc($var)
 }
 
@@ -51,6 +52,7 @@ proc getConfig {prog} \
 	set _d(tabwidth) 8		;# default width of a tab
 	set _d(backup) ""		;# Make backups in ciedit: XXX NOTDOC 
 	set _d(buttonColor) $SYSTEMBUTTONFACE	;# menu buttons
+	set _d(diffOpts) ""		;# options to pass to diff
 	set _d(diffHeight) 30		;# height of a diff window
 	set _d(diffWidth) 65		;# width of side by side diffs
 	set _d(geometry) ""		;# default size/location
@@ -201,6 +203,7 @@ proc getConfig {prog} \
 	set _d(search.buttonWidth)	15
 
 	set _d(ignoreWhitespace)	0
+	set _d(ignoreAllWhitespace)	0
 
 	set _d(windows) 0
 	set _d(aqua) 0

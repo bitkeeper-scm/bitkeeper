@@ -3,37 +3,37 @@
 .SH NAME
 bk difftool \- \*(BK graphical differences viewer
 .SH SYNOPSIS
-.B bk difftool
+.B bk difftool [<opts>]
 .br
-.B bk difftool \*<dir\*>
+.B bk difftool [<opts>] \*<dir\*>
 .br
-.B bk difftool \-
+.B bk difftool [<opts>] \-
 .br
-.B bk difftool
+.B bk difftool [<opts>]
 .ARG file
 .br
-.B bk difftool 
+.B bk difftool  [<opts>]
 .OPTreq \-r rev
 .ARG file
 .br
-.B bk difftool
+.B bk difftool [<opts>]
 .OPTreq \-r rev1
 .OPTreq \-r rev2
 .ARG file
 .br
-.B bk difftool
+.B bk difftool [<opts>]
 .ARG file1
 .ARG file2
 .br
-.B bk difftool
+.B bk difftool [<opts>]
 .ARG path/to/file1
 .ARG dir
 .br
-.B bk difftool
+.B bk difftool [<opts>]
 .OPTreq \-r @cset1
 .OPTreq \-r @cset2
 .br
-.B bk difftool
+.B bk difftool [<opts>]
 .OPTopt \-L url
 .SH DESCRIPTION
 .LP
@@ -44,6 +44,15 @@ being compared in separate windows. The differences are color coded,
 but as you move to a new diff, that diff becomes highlighted in a
 bold font.  You can move back and forth through the diffs using the
 keys described below.
+
+.SH "OPTIONS"
+.tp
+.B \-b
+Ignore changes in amount of white space.
+.tp
+.B \-w
+Ignore white space when comparing lines.
+
 .SH ARGUMENTS
 .LP
 If no arguments are given, 
@@ -154,6 +163,8 @@ button, or wait 10 seconds, the discard will be cancelled.
 Once a file has been discarded, it's corresponding entry in the
 .Q Files
 menu will be disabled. 
+
+
 .SH "KEY BINDINGS"
 .TP 16
 .B Home
