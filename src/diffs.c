@@ -429,7 +429,9 @@ printHistogram(dstat *diffstats)
 			maxdiffs = ds->adds + ds->dels + ds->mods;
 		}
 	}
-
+	/*
+	 * Format is: filename, | ,num,bar\n
+	 */
 	maxbar = 80 - maxlen - strlen(" | ") - DIGITS(maxdiffs) - 1;
 	if (maxdiffs < maxbar) {
 		factor = 1.0;
@@ -445,7 +447,7 @@ printHistogram(dstat *diffstats)
 		m = (int)((double)ds->dels * factor);
 		for (i = 0; i < m; i++) hist[n++] = '-';
 		hist[n] = 0;
-		printf(" %-*.*s | %*d %s\n", maxlen, maxlen,
+		printf("%-*.*s | %*d %s\n", maxlen, maxlen,
 		    ds->name,
 		    DIGITS(maxdiffs),
 		    ds->adds + ds->dels + ds->mods, hist);
@@ -456,7 +458,7 @@ printHistogram(dstat *diffstats)
 		FREE(ds->name);
 	}
 	FREE(diffstats);
-	printf(" %d files changed", files);
+	printf("%d files changed", files);
 	if (adds) printf(", %d insertions(+)", adds);
 	if (mods) printf(", %d modifications(~)", mods);
 	if (dels) printf(", %d deletions(-)", dels);

@@ -1,0 +1,234 @@
+echo $N Setup test environment.......................................$NL
+commercial mono
+echo foo > afile
+echo bar > bfile
+bk new $Q afile bfile
+bk commit $Q -yfiles
+bk clone $Q . ../mono-copy
+bk edit $Q afile
+echo stuff > afile
+bk edit $Q bfile
+echo more stuff > bfile
+bk ci $Q -ychanges afile bfile
+bk commit $Q -ychanges
+# Nested
+cd "$HERE"
+nested nested
+echo foo > afile
+echo foo > gcc/afile
+echo foo > gdb/afile
+bk new $Q afile gcc/afile gdb/afile
+bk commit $Q -yfiles
+bk clone $Q . ../nested-copy
+bk edit $Q afile gcc/afile gdb/afile
+echo stuff > afile
+echo more stuff > gcc/afile
+echo even more stuff > gdb/afile
+bk ci $Q -ychanges afile gcc/afile gdb/afile
+bk commit $Q -ychanges
+echo OK
+
+echo $N Test pull -R --stats ........................................$NL
+cd "$HERE/mono-copy"
+bk pull -R --stats 2>ERR && fail -f ERR should fail
+echo 'pull: --stats not allowed with -R.'> WANT
+cmpfiles ERR WANT
+echo OK
+
+echo $N Test simple pull --stats.....................................$NL
+bk pull --stats > OUT 2>&1 || fail
+perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT > GOT
+cat <<EOF > WANT
+Pull file://ROOT/mono
+  -> file://ROOT/mono-copy
+pull                                 1 changeset,   no merges in   3 files
+afile | 1 ~
+bfile | 1 ~
+2 files changed, 2 modifications(~)
+
+EOF
+cmpfiles WANT GOT
+bk unpull -qf || fail
+cd "$HERE/nested-copy"
+bk pull --stats > OUT 2>&1 || fail
+perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT > GOT
+cat <<EOF > WANT
+Pull file://ROOT/nested
+  -> file://ROOT/nested-copy
+.                                  100% |==============================| OK
+1/3 gcc                              1 changeset,   no merges in   2 files
+2/3 gdb                              1 changeset,   no merges in   2 files
+3/3 .                                1 changeset,   no merges in   2 files
+afile     | 1 ~
+gcc/afile | 1 ~
+gdb/afile | 1 ~
+3 files changed, 3 modifications(~)
+
+EOF
+cmpfiles WANT GOT
+bk unpull -qf || fail
+echo OK
+
+echo $N Test again but using config variable.........................$NL
+cd "$HERE/mono-copy"
+bk --config=stats_after_pull:on pull > OUT 2>&1 || fail
+perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT > GOT
+cat <<EOF > WANT
+Pull file://ROOT/mono
+  -> file://ROOT/mono-copy
+pull                                 1 changeset,   no merges in   3 files
+afile | 1 ~
+bfile | 1 ~
+2 files changed, 2 modifications(~)
+
+EOF
+cmpfiles WANT GOT
+bk unpull -qf || fail
+cd "$HERE/nested-copy"
+bk --config=stats_after_pull:on pull > OUT 2>&1 || fail
+perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT > GOT
+cat <<EOF > WANT
+Pull file://ROOT/nested
+  -> file://ROOT/nested-copy
+.                                  100% |==============================| OK
+1/3 gcc                              1 changeset,   no merges in   2 files
+2/3 gdb                              1 changeset,   no merges in   2 files
+3/3 .                                1 changeset,   no merges in   2 files
+afile     | 1 ~
+gcc/afile | 1 ~
+gdb/afile | 1 ~
+3 files changed, 3 modifications(~)
+
+EOF
+cmpfiles WANT GOT
+bk unpull -qf || fail
+echo OK
+
+echo $N Test that pull --stats -q is silent..........................$NL
+cd "$HERE/mono-copy"
+bk pull --stats -q > OUT 2>&1 || fail
+perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT > GOT
+cat <<EOF > WANT
+EOF
+cmpfiles WANT GOT
+bk unpull -qf || fail
+cd "$HERE/nested-copy"
+bk pull --stats -q > OUT 2>&1 || fail
+perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT > GOT
+cat <<EOF > WANT
+EOF
+cmpfiles WANT GOT
+bk unpull -qf || fail
+echo OK
+
+echo $N Test that pull -q with config option for stats is silent.....$NL
+cd "$HERE/mono-copy"
+bk --config=stats_after_pull:on pull -q > OUT 2>&1 || fail
+perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT > GOT
+cat <<EOF > WANT
+EOF
+cmpfiles WANT GOT
+bk unpull -qf || fail
+cd "$HERE/nested-copy"
+bk --config=stats_after_pull:on pull -q > OUT 2>&1 || fail
+perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT > GOT
+cat <<EOF > WANT
+EOF
+cmpfiles WANT GOT
+bk unpull -qf || fail
+echo OK
+
+
+echo $N Test pulling from multiple parents aggregates................$NL
+cd "$HERE"
+bk clone $Q mono mono-copy2
+cd mono-copy2
+echo foobar >  cfile
+bk new $Q cfile
+bk commit $Q -ycfile
+cd ../mono-copy
+TIP=`bk changes -kr+`
+bk parent -q -r
+bk parent -q -a -i ../mono
+bk parent -q -a -i ../mono-copy2
+bk pull --stats > OUT 2>&1 || fail
+perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT > GOT
+cat <<EOF > WANT
+Pull file://ROOT/mono
+  -> file://ROOT/mono-copy
+pull                                 1 changeset,   no merges in   3 files
+
+Pull file://ROOT/mono-copy2
+  -> file://ROOT/mono-copy
+pull                                 1 changeset,   no merges in   2 files
+afile | 1 ~
+bfile | 1 ~
+cfile | 1 +
+3 files changed, 1 insertions(+), 2 modifications(~)
+
+EOF
+cmpfiles WANT GOT
+bk undo -qsfa"$TIP"
+# Now nested
+cd "$HERE"
+bk clone $Q nested nested-copy2
+cd nested-copy2
+echo foo > bfile
+echo bar > gcc/bfile
+bk new $Q bfile gcc/bfile
+bk commit $Q -ybfile
+cd ../nested-copy
+TIP=`bk changes -kr+`
+bk parent -q -r
+bk parent -q -a -i ../nested
+bk parent -q -a -i ../nested-copy2
+bk pull --stats > OUT 2>&1 || fail
+perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT > GOT
+cat <<EOF > WANT
+Pull file://ROOT/nested
+  -> file://ROOT/nested-copy
+.                                  100% |==============================| OK
+1/3 gcc                              1 changeset,   no merges in   2 files
+2/3 gdb                              1 changeset,   no merges in   2 files
+3/3 .                                1 changeset,   no merges in   2 files
+
+Pull file://ROOT/nested-copy2
+  -> file://ROOT/nested-copy
+.                                  100% |==============================| OK
+1/2 gcc                              1 changeset,   no merges in   2 files
+2/2 .                                1 changeset,   no merges in   3 files
+afile     | 1 ~
+bfile     | 1 +
+gcc/afile | 1 ~
+gcc/bfile | 1 +
+gdb/afile | 1 ~
+5 files changed, 2 insertions(+), 3 modifications(~)
+
+EOF
+cmpfiles WANT GOT
+# test a null pull
+bk pull --stats > OUT 2>&1 || fail
+perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT > GOT
+cat <<EOF > WANT
+Pull file://ROOT/nested
+  -> file://ROOT/nested-copy
+Nothing to pull.
+
+Pull file://ROOT/nested-copy2
+  -> file://ROOT/nested-copy
+Nothing to pull.
+EOF
+cmpfiles WANT GOT
+bk undo -qsfa"$TIP"
+echo OK
+
+echo $N Test pull -R with multiple parents fails.....................$NL
+cd "$HERE/mono-copy"
+TIP=`bk changes -kr+`
+bk pull -R > OUT 2> ERR && fail should have failed
+cat <<EOF > WANT
+pull: -R only allowed with one URL
+usage:	bk pull [-iqRsTuv] [-c<n>] [-r<rev>] [<parent> ...]
+EOF
+cmpfiles WANT ERR
+echo OK

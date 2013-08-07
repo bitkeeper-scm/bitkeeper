@@ -1,3 +1,13 @@
+
+bk pull
+
+    - New option --stats that prints difffstat output after finishing
+      the pull. It can also be permanently enabled by setting the
+      config variable stats_after_pull to true.
+
+    - Fix a bug where pull was not disallowing the -R option with
+      multiple parents or URLs.
+
 ============================================================================
 Release notes for BitKeeper version 6.0 (released Jul 05, 2013)
 

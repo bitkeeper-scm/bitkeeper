@@ -9,10 +9,10 @@ do
 done
 bk -Uc diffs --stats-only >GOT
 cat <<EOF >WANT
- gcc/afile | 1 +
- gdb/afile | 1 +
- afile     | 1 +
- 3 files changed, 3 insertions(+)
+gcc/afile | 1 +
+gdb/afile | 1 +
+afile     | 1 +
+3 files changed, 3 insertions(+)
 
 EOF
 cmpfiles WANT GOT

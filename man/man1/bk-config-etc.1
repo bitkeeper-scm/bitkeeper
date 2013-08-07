@@ -421,6 +421,16 @@ This will allow the pull to succeed and will let
 return a list of product csets when used with a component cset that
 has been ported into the product multiple times.
 .\}
+.SS PULL STATISTICS
+It is possible to make pull print statistics in a format compatible
+with diffstats by adding this to your configuration:
+.DS
+stats_after_pull: on
+.DE
+Note that gathering the statistics needs another pass over the data so
+if you are very performance sensitive, you might want to keep this
+option off.
+.LP
 .SS SYNC
 In some environments it may be safer to have
 BitKeeper do an fsync(2) after each update of a history file.

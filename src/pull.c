@@ -28,6 +28,7 @@ private struct {
 	u32	autoPopulate:1;		/* automatically populate missing comps */
 	u32	unlockRemote:1;		/* nested unlock remote when done */
 	u32	clonemod:1;		/* --clone@ called from clone */
+	u32	stats:1;		/* print diffstats after pull */
 	int	safe;			/* require all involved comps to be here */
 	int	n;			/* number of components */
 	int	delay;			/* -w<delay> */
@@ -56,6 +57,7 @@ pull_main(int ac, char **av)
 	int	rc = 0;
 	int	gzip = bk_gzipLevel();
 	int	print_title = 0;
+	char	*pstats_beforeTIP = 0;
 	remote	*r;
 	char	*p, *prog;
 	char	**envVar = 0, **urls = 0;
@@ -66,6 +68,7 @@ pull_main(int ac, char **av)
 		{ "batch", 310},	/* pass -s to resolve */
 		{ "clone@", 315},
 		{ "safe", 320 },	/* require all comps to be here */
+		{ "stats", 325},	/* print diffstats after pull */
 		{ "unsafe", 330 },	/* turn off safe above */
 		{ "auto-populate", 340},/* just work */
 
@@ -133,6 +136,9 @@ pull_main(int ac, char **av)
 		    case 320:	/* --safe */
 			opts.safe = 1;
 			break;
+		    case 325:	/* --stats */
+			opts.stats = 1;
+			break;
 		    case 330:	/* --unsafe */
 			opts.safe = 0;
 			break;
@@ -165,7 +171,10 @@ pull_main(int ac, char **av)
 			return (1);
 		}
 	}
-
+	if (opts.noresolve && opts.stats) {
+		fprintf(stderr, "%s: --stats not allowed with -R.\n", prog);
+		return (1);
+	}
 	if (opts.port && bk_notLicensed(0, LIC_PL, 1)) {
 		fprintf(stderr,
 		    "%s: port is not enabled by the current license.\n", prog);
@@ -205,10 +214,16 @@ pull_main(int ac, char **av)
 
 	unless (urls) {
 err:		freeLines(envVar, free);
+		free(pstats_beforeTIP);
 		usage();
 		return (1);
 	}
 
+	if (opts.noresolve && (nLines(urls) > 1)) {
+		fprintf(stderr, "%s: -R only allowed with one URL\n", prog);
+		freeLines(urls, free);
+		goto err;
+	}
 	if (opts.port && proj_isComponent(0)) {
 		p = aprintf("%s/BitKeeper/log/PORTAL",
 		    proj_root(proj_product(0)));
@@ -228,6 +243,11 @@ err:		freeLines(envVar, free);
 		print_title = 1;
 	} else if (!opts.quiet && !opts.transaction) {
 		print_title = 1;
+	}
+
+	if (!opts.transaction && !opts.quiet && !opts.noresolve &&
+	    (opts.stats || proj_configbool(0, "stats_after_pull"))) {
+		pstats_beforeTIP = strdup(proj_tipmd5key(0));
 	}
 
 	/*
@@ -343,7 +363,15 @@ err:		freeLines(envVar, free);
 		}
 		unlink(tmpfile);
 	}
+	if (!rc && pstats_beforeTIP) {
+		proj_reset(0);
+		unless (streq(pstats_beforeTIP, proj_tipmd5key(0))) {
+			systemf("bk rset -Hr%s..+ | bk diffs --stats-only -",
+			    pstats_beforeTIP);
+		}
+	}
 done:	freeLines(envVar, free);
+	free(pstats_beforeTIP);
 	return (rc);
 }
 
