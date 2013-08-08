@@ -33,4 +33,16 @@ bk _heapdump -s BitKeeper/etc/config | perl -n prog > WANT
 BK_HEAP_NOREPACK=1 bk pull $Q
 bk _heapdump -s BitKeeper/etc/config | perl -n prog > GOT
 cmp -s WANT GOT && fail expected WANT and GOT to be different
-echo "failed (bug "
+echo "failed (bug )"
+
+echo $N should be able to commit with read-only 2.ChangeSet .........$NL
+echo 1 > jj
+bk new $Q jj
+bk commit $Q -yjj || fail
+echo 2 > yy
+bk new $Q yy
+chmod -w .bk/SCCS/ChangeSet,2
+bk commit $Q -yyy 2>ERR && fail -f ERR should fail
+_BK_DEVELOPER= bk commit $Q -yyy || fail
+bk _test -w SCCS/2.ChangeSet || fail
+echo OK

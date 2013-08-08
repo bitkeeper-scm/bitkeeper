@@ -5122,14 +5122,6 @@ sccs_free(sccs *s)
 	if (s->sfile) free(s->sfile);
 	if (s->gfile) free(s->gfile);
 	if (s->pfile) free(s->pfile);
-	if (s->state & S_CHMOD) {
-		struct	stat sbuf;
-
-		if (fstat(fileno(s->fh), &sbuf) == 0) {
-			sbuf.st_mode &= ~0200;
-			chmod(s->sfile, sbuf.st_mode & 0777);
-		}
-	}
 	if (s->defbranch) free(s->defbranch);
 	freeLines(s->usersgroups, free);
 	freeLines(s->flags, free);

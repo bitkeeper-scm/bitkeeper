@@ -141,6 +141,7 @@ echo $N Force fetch of remote ChangeSet even if behind ..............$NL
 bk repair --use-older-changeset -@bk://localhost:$PORT/repair1 > OUT 2>&1 && \
     fail -f OUT
 grep -q 'The repair was NOT complete.' OUT || fail -f OUT wrong error
+bk _test -w SCCS/1.ChangeSet || fail should be writable
 echo OK
 
 echo $N Make sure we can repair with a different parent .............$NL

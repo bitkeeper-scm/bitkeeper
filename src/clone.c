@@ -364,7 +364,6 @@ clone_main(int ac, char **av)
 		if (chkAttach(dir)) return (RET_ERROR);
 	}
 	if (opts->attach_only) {
-		putenv("_BK_DEVELOPER="); /* need autofix */
 		assert(r->path);
 		if (chdir(r->path)) {
 			fprintf(stderr, "attach: not a BitKeeper repository\n");
