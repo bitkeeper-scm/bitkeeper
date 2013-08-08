@@ -156,7 +156,6 @@ int	checking_rmdir(char *dir);
 #define S_EDITED	(S_SFILE|S_PFILE|S_GFILE)
 #define S_LOCKED	(S_SFILE|S_PFILE)
 #define	S_WARNED	0x00000020	/* error message already sent */
-#define	S_CHMOD		0x00000040	/* change the file back to 0444 mode */
 #define	S_BADREVS	0x00000080	/* has corrupted revisions */
 #define	S_available	0x00000100	/* OLD: make the landing pad big */
 #define	S_CSET		0x00000200	/* this is a changeset file */

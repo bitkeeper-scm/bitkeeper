@@ -1,4 +1,12 @@
 ============================================================================
+Release notes for BitKeeper version 6.0.1 (released Aug xx, 2013)
+
+Bugfixes
+
+   Fixed a case where 'bk repair' can leave the modes on SCCS/2.ChangeSet
+   set incorrectly.  Added code to repair permissions.
+
+============================================================================
 Release notes for BitKeeper version 6.0 (released Jul 05, 2013)
 
     The primary focus of the 6.0 effort is performance improvements.

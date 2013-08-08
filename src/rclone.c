@@ -721,7 +721,6 @@ send_sfio(remote *r, int gzip)
 	FILE	*fout;
 	char	title[MAXPATH];
 	char	*marg = (bkd_hasFeature(FEAT_mSFIO) ? "-m2" : "");
-	u32	bits = features_bits(0);
 	char	*compat = clone_sfioMode(0);
 	char	buf[200] = { "" };
 

@@ -686,9 +686,8 @@ chk_dfile(sccs *s)
 private int
 chk_gfile(sccs *s, MDBM *pathDB, int checkout)
 {
-	char	*type, *p;
+	char	*type;
 	char	*sfile;
-	int	force = 0;
 	u32	flags;
 	char	buf[MAXPATH];
 
@@ -713,18 +712,11 @@ chk_gfile(sccs *s, MDBM *pathDB, int checkout)
 	}
 	if (streq(s->gfile, "BitKeeper/etc/config")) {
 		checkout = CO_GET;
-		force = 1;
 	}
 	if (((checkout == CO_EDIT) && !EDITED(s)) ||
 	     ((checkout == CO_GET) && !HAS_GFILE(s))) {
 		if (win32() && S_ISLNK(MODE(s, sccs_top(s)))) {
 			/* do nothing, no symlinks on windows */
-		} else if (!force && (p = getenv("_BK_DEVELOPER"))) {
-			// flags both missing and ro when we want rw
-			fprintf(stderr,
-			    "check: '%s' checkout CO=0x%x BAM=%s\n",
-			    s->gfile, checkout, BAM(s) ? "yes" : "no");
-			return (1);
 		} else {
 			flags = (checkout == CO_EDIT) ? GET_EDIT : GET_EXPAND;
 			if (sccs_get(s, 0, 0, 0, 0,
@@ -1118,7 +1110,7 @@ sfiocmd(int in_repair, int index)
 		EACH(parent) vp = addLine(vp, fix_parent(parent[i]));
 	}
 	vp = addLine(vp,
-	    aprintf("sfio -Kqo - | bk sfio -i%s", verbose ? "" : "q"));
+	    aprintf("sfio -Kqmo - | bk sfio -im%s", verbose ? "" : "q"));
 	buf = joinLines(" ", vp);
 	freeLines(vp, free);
 
