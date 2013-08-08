@@ -1577,8 +1577,8 @@ Return 0 on success, -1 on error.
 =proto void die(string fmt, ...args)
 
 Output a printf-like message to stderr and exit 1.
-If message does not have a trailing newline, append " in <filename>
-line <linenum>\n".
+If fmt does not end with a newline, append
+" in <filename> at line <linenum>.\n"
 
 =proto string dirname(string path)
 
@@ -2304,10 +2304,11 @@ If C<nohang> is non-zero, returns -1 if the process does not exist or other
 error, returns 0 if the process exists and has not exited, and
 returns C<pid> and updates C<status> if the process has exited.
 
-=proto void warn(string message)
+=proto void warn(string fmt, ...args)
 
 Output a printf-like message to stderr.
-If message does not have a trailing newline, append " in <filename>:<linenum>\n".
+If fmt does not end with a newline, append
+" in <filename> at line <linenum>.\n"
 
 =proto int write(FILE f, string buffer, int numBytes)
 

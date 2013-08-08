@@ -523,12 +523,16 @@ void die1()
 	ret = system({tclsh, "die1-3.l"}, undef, &out, &err);
 	unless (ret == 1) puts("bad 3.1");
 	if (out) puts("bad 3.2");
-	unless (err =~ /die: s1 in \d+%l_toplevel:2\n/) puts("bad 3.3");
+	unless (err =~ /die: s1 at die1-3.l line 2.\n/) {
+		puts("bad 3.3 ${err}");
+	}
 
 	ret = system({tclsh, "die1-4.l"}, undef, &out, &err);
 	unless (ret == 1) puts("bad 4.1");
 	if (out) puts("bad 4.2");
-	unless (err =~ /die: s1 s2 in \d+%l_toplevel:2\n/) puts("bad 4.3");
+	unless (err =~ /die: s1 s2 at die1-4.l line 2.\n/) {
+		puts("bad 4.3 ${err}");
+	}
 }
 die1();
 } -output {}
@@ -3365,10 +3369,10 @@ void warn1()
 	warn("warning: %s %s", s1, s2);
 }
 warn1();
-} -errorOutput {warning: s1
+} -match regexp -errorOutput {warning: s1
 warning: s1 s2
-warning: s1 in warn1:10
-warning: s1 s2 in warn1:11
+warning: s1 at .*.test line 10.
+warning: s1 s2 at .*.test line 11.
 } -output {}
 
 test warn-2 {test warn errors} -body {

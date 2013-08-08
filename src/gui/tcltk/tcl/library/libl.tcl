@@ -1294,12 +1294,12 @@ waitpid(int pid, STATUS &status, int nohang)
 }
 
 void
-warn_(string func, int line, FMT fmt, ...args)
+warn_(string file, int line, FMT fmt, ...args)
 {
 	string	out = format(fmt, (expand)args);
 
 	unless (length(out) && (out[END] == "\n")) {
-		out .= " in ${func}:${line}\n";
+		out .= " at ${file} line ${line}.\n";
 	}
 	puts(nonewline:, stderr, out);
 	flush(stderr);
