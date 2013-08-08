@@ -10903,6 +10903,22 @@ void defined_1_15()
 defined_1_15();
 } -output {}
 
+test defined-1.16 {check calling defined proc from Tcl code} -body {
+#lang L
+void defined_1_16()
+{
+	string	d = "this is defined";
+	string	u;  // this is not
+
+	if (defined(u)) puts("bad 1.1");
+	eval('if [defined $u] {puts "bad 1.2"}');
+
+	unless (defined(d)) puts("bad 2.1");
+	eval('if ![defined $d] {puts "bad 2.2"}');
+}
+defined_1_16();
+} -output {}
+
 test undef-1 {check undef built-in} -body {
 #lang L
 void undef_1()
@@ -16533,6 +16549,14 @@ void builtin_3()
 	unless (length(p) == 6) puts("bad 4");
 	unless (length(h) == 3) puts("bad 5");
 	unless (length(w) == 5) puts("bad 6");
+
+	/*
+	 * length() of anything undef should return 0.
+	 */
+	unless (length((string)undef) == 0) puts("bad 10.1");
+	unless (length((string[])undef) == 0) puts("bad 10.2");
+	unless (length((string{string})undef) == 0) puts("bad 10.3");
+	unless (length((poly)undef) == 0) puts("bad 10.4");
 }
 builtin_3();
 } -output {}

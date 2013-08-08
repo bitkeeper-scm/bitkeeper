@@ -1840,15 +1840,22 @@ return type depends on the argument type.
 
 Return a copy of the string that is in all lower case.
 
+=proto int length(string s)
+
+Return the number of characters in the given string.
+Returns 0 if the argument is C<undef>.
+
 =proto int length(type array[])
 
 Return the number of elements in the given array.
+Returns 0 if the argument is C<undef>.
 
 	for (i = 0; i < length(array); i++)
 
 =proto int length(valType hash{keyType})
 
-Return the number of key/value pairs the given hash.
+Return the number of key/value pairs in the given hash.
+Returns 0 if the argument is C<undef>.
 
 =proto int link(string sourcePath, string targetPath)
 
