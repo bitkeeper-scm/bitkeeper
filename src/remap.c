@@ -90,6 +90,15 @@ remap_utime(project *proj, char *rel, const struct utimbuf *utb)
 }
 
 int
+remap_linkcount(project *proj, char *rel, struct stat *sb)
+{
+	char	buf[MAXPATH];
+
+	fullRemapPath(buf, proj, rel);
+	return (linkcount(buf, sb));
+}
+
+int
 remap_lstat(project *proj, char *rel, struct stat *sb)
 {
 	char	buf[MAXPATH];

@@ -15,6 +15,7 @@ int	nt_rename(const char *, const char *);
 int	nt_access(const char *, int);
 int	nt_chmod(const char *, int);
 int	nt_stat(const char *, struct stat *);
+int	nt_linkcount(const char *, struct stat *);
 int	nt_mkdir(char *dirname);
 int	nt_chdir(char *dirname);
 int	nt_utime(const char *file, const struct utimbuf *ut);

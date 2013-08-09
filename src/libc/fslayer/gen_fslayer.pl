@@ -91,6 +91,7 @@ ssize_t	fslayer_read(int fd, void *buf, size_t count);
 ssize_t	fslayer_write(int fd, const void *buf, size_t count);
 off_t	fslayer_lseek(int fildes, off_t offset, int whence);
 int	fslayer_lstat(const char *path, struct stat *buf);
+int	fslayer_linkcount(const char *path, struct stat *buf);
 int	fslayer_fstat(int fd, struct stat *buf);
 int	fslayer_stat(const char *path, struct stat *buf);
 int	fslayer_unlink(const char *path);

@@ -1496,6 +1496,7 @@ int	isSCCS(const char *path);
 int	fslayer_enable(int en);
 int	remap_open(project *proj, char *rel, int flags, mode_t mode);
 int	remap_utime(project *proj, char *rel, const struct utimbuf *utb);
+int	remap_linkcount(project *proj, char *rel, struct stat *sb);
 int	remap_lstat(project *proj, char *rel, struct stat *sb);
 int	remap_unlink(project *proj, char *rel);
 int	remap_rename(project *proj1, char *old, project *proj2, char *new);
