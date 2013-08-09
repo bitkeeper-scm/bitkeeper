@@ -200,9 +200,9 @@ OBJ =	bkver.o cmd.o \
 	randombits.o range.o rcheck.o rclone.o \
 	rcs2bk.o rcsparse.o \
 	receive.o redblack.o regex.o registry.o renumber.o \
-	repo.o repos.o repogca.o resolve.o \
-	remap.o repotype.o \
-	remote.o resolve_binaries.o resolve_contents.o \
+	remap.o	remote.o \
+	repo.o repos.o repogca.o repostats.o repotype.o \
+	resolve.o resolve_binaries.o resolve_contents.o \
 	resolve_create.o resolve_filetypes.o \
 	resolve_flags.o resolve_generic.o resolve_modes.o \
 	resolve_renames.o resolve_tags.o restore.o review.o \

@@ -340,6 +340,7 @@ _registry
 renumber
 repair
 repogca
+repostats
 repotype
 relink
 resolve

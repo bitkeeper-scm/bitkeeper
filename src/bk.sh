@@ -882,7 +882,7 @@ _links() {		# /* doc 3.0 */
 	if [ "X$2" != X ]
 	then	BK="$1"
 		BIN="$2"
-	else	BK="`bk bin`"
+	else	BK="$BK_BIN"
 		BIN="$1"
 	fi
 	test -f "$BK/bkhelp.txt" || {
@@ -1284,7 +1284,7 @@ __install()
 	test X"$BK_REGRESSION" != X && CRANKTURN=YES
 
 	DEST="$1"
-	SRC=`bk bin`
+	SRC=$BK_BIN
 
 	bk _eula -p || {
 		echo "Installation aborted." 1>&2
@@ -1454,7 +1454,7 @@ __sortmerge()
 }
 
 _tclsh() {
-	TCLSH=`bk bin`/gui/bin/tclsh
+	TCLSH=$BK_BIN/gui/bin/tclsh
 	test "X$OSTYPE" = "Xmsys" && TCLSH=`win2msys "$TCLSH"`
 	exec "$TCLSH" "$@"
 }
@@ -1464,16 +1464,16 @@ _L() {
 }
 
 _wish() {
-	AQUAWISH="`bk bin`/gui/bin/BitKeeper.app/Contents/MacOS/BitKeeper"
+	AQUAWISH="$BK_BIN/gui/bin/BitKeeper.app/Contents/MacOS/BitKeeper"
 	if [ \( -z "$DISPLAY" -o "`echo $DISPLAY | cut -c1-11`" = "/tmp/launch" \) \
 	    -a -x "$AQUAWISH" ] ; then
 		WISH="$AQUAWISH"
 	else
-		TCL_LIBRARY=`bk bin`/gui/lib/tcl8.5
+		TCL_LIBRARY=$BK_BIN/gui/lib/tcl8.5
 		export TCL_LIBRARY
-		TK_LIBRARY=`bk bin`/gui/lib/tk8.5
+		TK_LIBRARY=$BK_BIN/gui/lib/tk8.5
 		export TK_LIBRARY
-		WISH="`bk bin`/gui/bin/bkgui"
+		WISH="$BK_BIN/gui/bin/bkgui"
 	fi
 	test "X$OSTYPE" = "Xmsys" && WISH=`win2msys "$WISH"`
 	exec "$WISH" "$@"
@@ -1552,8 +1552,7 @@ _service()
 			error BitKeeper Service "$NAME" is already installed.
 			exit 1
 		}
-		BIN=`bk bin`
-		BIN=`bk pwd "$BIN"`
+		BIN=`bk pwd "$BK_BIN"`
 		BK="$BIN/bk.exe"
 		SVC="$BIN/svcmgr"
 		EV="-EBKD_SERVICE=YES"
@@ -1797,7 +1796,7 @@ _latest() {
 }
 
 _catcomments() {
-	bk tclsh "`bk bin`/gui/lib/catcomments.l"
+	bk tclsh "$BK_BIN/gui/lib/catcomments.l"
 }
 
 _changed_files() {
