@@ -132,3 +132,33 @@ trap "bk _kill bk://localhost:$P" 0
 cd clone5
 bk push $Q http://localhost:$P/server 2>&1 > OUT || fail -f OUT
 echo OK
+
+echo $N Pull with missing bam server ................................$NL
+cd ../clone
+bk bam server $Q -fr || fail
+cd gcc
+echo 4 > file3
+bk new -b $Q file3 || fail
+cd ../gdb
+echo 4 > file3
+bk new -b $Q file3 || fail
+bk commit $Q -y3 || fail
+cd ../..
+bk clone $Q clone clone.copy
+cd clone3
+bk here check -@../clone.copy
+bk bam server $Q ../clone4 || fail
+rm -rf ../clone4
+bk pull $Q ../clone 2>ERR && fail -f ERR should fail
+bk repocheck $Q || fail
+find . -name RESYNC > OUT
+touch WANT
+cmpfiles OUT WANT
+cat <<EOF > WANT
+##### file://$HERE/clone4 #####
+Repository doesn't exist.
+havekeys: server error
+BAM fetch failed, aborting pull.
+EOF
+cmpfiles ERR WANT
+echo OK
