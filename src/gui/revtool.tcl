@@ -2178,7 +2178,7 @@ proc mouse_motion {win} {
 	global	gc redrev
 
 	set tags [$win tag names current]
-	set tag  [lindex $tags end]
+	set tag  [lsearch -inline [$win tag names current] link-*]
 	if {[info exists redrev] && $tag ne $redrev} {
 		$win tag configure $redrev -foreground blue
 		unset redrev
@@ -2196,7 +2196,7 @@ proc mouse_motion {win} {
 proc click_rev {win} {
 	set ::clicked_rev 1
 	set_curLine current
-	set tag [lindex [$win tag names current] end]
+	set tag [lsearch -inline [$win tag names current] link-*]
 	set rev [$win get $tag.first $tag.last]
 	jump_to_rev $rev
 }
