@@ -2337,6 +2337,7 @@ The file $lfname was last modified ($ago) ago."
 			centerRev $rev1
 			setAnchor $rev1
 			highlight $rev1 "old"
+			getLeftRev $rev1
 		}
 		if {[info exists diffpair(right)] && ($diffpair(right) != "")} {
 			set rev2 [lineOpts $diffpair(right)]
