@@ -17960,6 +17960,7 @@ stripDeltas(sccs *s, ser_t *remap)
 	int	ser;
 	FILE	*out;
 
+	assert(!BWEAVE(s));
 	sccs_rdweaveInit(s);
 	out = sccs_wrweaveInit(s);
 	while (buf = sccs_nextdata(s)) {
@@ -17983,7 +17984,6 @@ stripDeltas(sccs *s, ser_t *remap)
 		prune = (!d || (FLAGS(s, d) & D_SET));
 	}
 	free(state);
-	free(remap);
 	sccs_wrweaveDone(s);
 	out = 0;
 	if (sccs_rdweaveDone(s)) return (1);
@@ -18007,6 +18007,14 @@ sccs_stripdel(sccs *s, char *who)
 	do { error = -1; s->state |= S_WARNED; goto out; } while (0)
 
 	assert(s && HASGRAPH(s));
+
+	/* Unsupported: compress and switch format at the same time */
+	unless (s->encoding_out) s->encoding_out = sccs_encoding(s, 0, 0);
+	if (BWEAVE(s) != BWEAVE_OUT(s)) {
+		fprintf(stderr, "%s: format conversion %s\n", who, s->sfile);
+		OUT;
+	}
+
 	T_SCCS("file=%s", s->gfile);
 	if (HAS_PFILE(s) && sccs_clean(s, SILENT)) return (-1);
 	debug((stderr, "stripdel %s %s\n", s->gfile, who));
@@ -18056,6 +18064,7 @@ sccs_stripdel(sccs *s, char *who)
 #undef	OUT
 
 out:
+	free(remap);
 	if (error) sccs_abortWrite(s);
 	debug((stderr, "stripdel returns %d\n", error));
 	return (error);

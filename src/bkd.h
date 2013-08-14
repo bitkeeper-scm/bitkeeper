@@ -160,6 +160,7 @@ char	*vpath_translate(char *path);
 #define	SENDENV_NOLICENSE  2 /* don't send BK_LICENSE, in lease code */
 #define	SENDENV_FORCEREMAP 4 /* send BK_REMAP even if not true */
 #define	SENDENV_FORCENOREMAP 8 /* don't send BK_REMAP even if true */
+#define	SENDENV_SENDFMT	   0x10 /* send sfile format */
 void	sendEnv(FILE *f, char **envVar, remote *r, u32 flags);
 
 void	setLocalEnv(int in_out);
@@ -173,7 +174,7 @@ int	unsafe_cd(char *path);
 int	bkd_seed(char *oldseed, char *newval, char **newout);
 void	bkd_saveSeed(char *repoid, char *seed);
 char	*bkd_restoreSeed(char *repoid);
-char	*clone_sfioMode(int bkd);
+int	clone_sfioCompat(int bkd);
 
 int	bkd_doResolve(char *me, int quiet, int verbose);
 

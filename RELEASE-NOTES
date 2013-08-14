@@ -8,6 +8,11 @@ Bugfixes
   bk clone
     - 'bk clone -@' wasn't populating comps when the remote repository
       was a subset of the local baseline.
+    - 'bk clone -r<rev> [--upgrade|--downgrade] repo localcopy' could
+      fail in some cases, and has been fixed.
+    - 'bk clone -r<rev> bk://host/repo localcopy' will now fail if the
+      BK client version is bk-6.0 and the bkd is bk-6.0.1 or later.
+      The solution is to upgrade the client.
 
   bk commit
     - 'bk commit -f' was still prompting for comments.

@@ -96,19 +96,24 @@ cmd_clone(int ac, char **av)
 	/* moved down here because we're caching the sccs* */
 	if (rev) {
 		sccs	*s = sccs_csetInit(SILENT);
-		ser_t	d;
+		ser_t	d, top;
 
 		assert(s && HASGRAPH(s));
-		if (rev) {
-			d = sccs_findrev(s, rev);
-			unless (d) {
-				out("ERROR-rev ");
-				out(rev);
-				out(" doesn't exist\n");
-				goto out;
-			}
-		}
+		d = sccs_findrev(s, rev);
+		top = sccs_top(s);
 		sccs_free(s);
+		unless (d) {
+			out("ERROR-rev ");
+			out(rev);
+			out(" doesn't exist\n");
+			goto out;
+		}
+		if ((d != top) &&
+		    (p = getenv("BK_VERSION")) && streq(p, "bk-6.0")) {
+			out("ERROR-clone -r cannot be used by a bk-6.0 client."
+			    " Please upgrade.\n");
+			goto out;
+		}
 	}
 
 	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
@@ -154,8 +159,8 @@ out:	if (delay > 0) sleep(delay);
 /*
  * Options to sfio to turn on compat mode if needed
  */
-char *
-clone_sfioMode(int bkd)
+int
+clone_sfioCompat(int bkd)
 {
 	u32	bits = features_bits(0);
 	int	compat;
@@ -164,7 +169,7 @@ clone_sfioMode(int bkd)
 	((bits & (x)) && !(bkd ? bk_hasFeature((x)) : bkd_hasFeature((x))))
 	
 	compat = (NOT_THERE(FEAT_BKFILE) || NOT_THERE(FEAT_BWEAVE));
-	return (compat ? "-C" : "");
+	return (compat != 0);
 }
 
 private int
@@ -176,7 +181,7 @@ compressed(int level, int lclone)
 	char	*larg = (lclone ? "-L" : "");
 	char	*marg = (bk_hasFeature(FEAT_mSFIO) ? "-m" : "");
 	char	*parg = (bk_hasFeature(FEAT_PARENTS) ? "--parents" : "");
-	char	*compat = clone_sfioMode(1);
+	char	*compat = clone_sfioCompat(1) ? "-C" : "";
 
 	sfiocmd = aprintf("bk sfio --clone -oq %s %s %s %s",
 	    larg, marg, parg, compat);
