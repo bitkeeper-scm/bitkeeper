@@ -59,6 +59,11 @@ Bugfixes
       wrong and cause bk to fail.  The known case has been fixed and
       the problem is now repaired automatically.
 
+    - In another permissions failure, when a user didn't have write
+      permissions on the repository, commit would fail with an
+      unhelpful error message.  The problem is now reported more
+      clearly.
+
   Graphical tools
     - When resizing graphical tools quickly, the resize labels could
       get out of sync; they update more frequently now.
