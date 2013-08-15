@@ -4147,7 +4147,12 @@ TclExecuteByteCode(
 
 	valuePtr = OBJ_AT_TOS;
 
-	result = TclListObjLength(interp, valuePtr, &length);
+	if (valuePtr->undef) {
+	    length = 0;
+	    result = TCL_OK;
+	} else {
+	    result = TclListObjLength(interp, valuePtr, &length);
+	}
 	if (result == TCL_OK) {
 	    TclNewIntObj(objResultPtr, length);
 	    TRACE(("%.20s => %d\n", O2S(valuePtr), length));
@@ -4736,7 +4741,11 @@ TclExecuteByteCode(
 
 	valuePtr = OBJ_AT_TOS;
 
-	length = Tcl_GetCharLength(valuePtr);
+	if (valuePtr->undef) {
+	    length = 0;
+	} else {
+	    length = Tcl_GetCharLength(valuePtr);
+	}
 	TclNewIntObj(objResultPtr, length);
 	TRACE(("%.20s => %d\n", O2S(valuePtr), length));
 	NEXT_INST_F(1, 1, 1);

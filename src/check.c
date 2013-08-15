@@ -175,6 +175,12 @@ check_main(int ac, char **av)
 		    default: bk_badArg(c, av);
 		}
 	}
+	if (all && !(flags & INIT_NOCKSUM)) {
+		/* with -ac verify consistancy of entire bk sfile */
+		flags |= INIT_CHKXOR;
+		/* This slows things down for big ChangeSet files: */
+		// putenv("_BK_NO_PAGING=1");
+	}
 	if (getenv("BK_NOTTY") && (verbose == 1)) verbose = 0;
 
 	if (goneKey && badWritable) {
@@ -397,7 +403,9 @@ check_main(int ac, char **av)
 		unless (ferr) {
 			if (verbose>1) fprintf(stderr, "%s is OK\n", s->gfile);
 		}
-		unless (s == cset) sccs_free(s);
+		if ((s != cset) && sccs_free(s)) {
+			ferr++, errors |= 0x01;
+		}
 	}
 	if (e = sfileDone()) {
 		errors++;
@@ -550,7 +558,9 @@ check_main(int ac, char **av)
 		}
 		cset_savetip(cset);
 	}
-out:	sccs_free(cset);
+out:	if (sccs_free(cset)) {
+		ferr++, errors |= 0x01;
+	}
 	cset = 0;
 
 	if (doMarks) {
@@ -686,9 +696,8 @@ chk_dfile(sccs *s)
 private int
 chk_gfile(sccs *s, MDBM *pathDB, int checkout)
 {
-	char	*type, *p;
+	char	*type;
 	char	*sfile;
-	int	force = 0;
 	u32	flags;
 	char	buf[MAXPATH];
 
@@ -713,18 +722,11 @@ chk_gfile(sccs *s, MDBM *pathDB, int checkout)
 	}
 	if (streq(s->gfile, "BitKeeper/etc/config")) {
 		checkout = CO_GET;
-		force = 1;
 	}
 	if (((checkout == CO_EDIT) && !EDITED(s)) ||
 	     ((checkout == CO_GET) && !HAS_GFILE(s))) {
 		if (win32() && S_ISLNK(MODE(s, sccs_top(s)))) {
 			/* do nothing, no symlinks on windows */
-		} else if (!force && (p = getenv("_BK_DEVELOPER"))) {
-			// flags both missing and ro when we want rw
-			fprintf(stderr,
-			    "check: '%s' checkout CO=0x%x BAM=%s\n",
-			    s->gfile, checkout, BAM(s) ? "yes" : "no");
-			return (1);
 		} else {
 			flags = (checkout == CO_EDIT) ? GET_EDIT : GET_EXPAND;
 			if (sccs_get(s, 0, 0, 0, 0,
@@ -1118,7 +1120,7 @@ sfiocmd(int in_repair, int index)
 		EACH(parent) vp = addLine(vp, fix_parent(parent[i]));
 	}
 	vp = addLine(vp,
-	    aprintf("sfio -Kqo - | bk sfio -i%s", verbose ? "" : "q"));
+	    aprintf("sfio -Kqmo - | bk sfio -im%s", verbose ? "" : "q"));
 	buf = joinLines(" ", vp);
 	freeLines(vp, free);
 

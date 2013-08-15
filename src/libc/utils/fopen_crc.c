@@ -68,6 +68,8 @@ typedef struct {
 	u32	writepartial:1;	/* have written incomplete block to fc->f */
 	u32	doXor:1;	/* while reading, compute XOR */
 	u32	didseek:1;	/* did a seek (before a read or write) */
+	u32	chkxor:1;	/* verify all crc and xor block */
+	u32	xorchkd:1;	/* set when we have done all the crc and xor */
 	u32	datasz;		/* size of data in blocks1 through N, not BLK0*/
 	u8	bits;		/* log2(datasz + PER_BLK) => number of bits */
 
@@ -103,7 +105,7 @@ private int	fileSize(fcrc *fc);
 #define	XORSZ(fc)	((fc)->datasz + 2)	// length(<data> + <len>)
 
 FILE *
-fopen_crc(FILE *f, char *mode, u64 est_size)
+fopen_crc(FILE *f, char *mode, u64 est_size, int chkxor)
 {
 	fcrc	*fc = new(fcrc);
 	int	bits;
@@ -139,6 +141,7 @@ fopen_crc(FILE *f, char *mode, u64 est_size)
 	} else {
 		assert(0);
 	}
+	fc->chkxor = chkxor;
 	fc->fme = funopen(fc,
 	    fc->read ? crcRead : 0,
 	    fc->write ? crcWrite : 0,
@@ -276,6 +279,18 @@ readBlock(fcrc *fc, char *buf)
 }
 
 private	void
+corruptXor(fcrc *fc)
+{
+	char	*filt = getenv("_BK_BAD_XOR");
+	char	*name = fname(fc->f, 0);
+
+	assert(name);
+	if (filt && (streq(filt, "ALL") || streq(filt, basenm(name)))) {
+		fc->xor[7] ^= 0x8;
+	}
+}
+
+private	void
 readAfterSeek(fcrc *fc)
 {
 	T_FS("cookie %p", fc);
@@ -285,9 +300,9 @@ readAfterSeek(fcrc *fc)
 	seekBlock(fc);
 
 	/* if read-only, only xor if reading whole file */
-	unless (fc->doXor = (fc->write || !fc->offset)) return;
+	unless (fc->doXor = (fc->write || !fc->boff)) return;
 
-	fc->seekoff = fc->offset;
+	fc->seekoff = fc->boff;
 	unless (fc->xor) fc->xor = malloc(XORSZ(fc));
 	memset(fc->xor, 0, XORSZ(fc));
 }
@@ -299,13 +314,13 @@ writeAfterSeek(fcrc *fc)
 
 	T_FS("cookie %p", fc);
 	assert(!fc->didwrite);
-	assert(!fc->read || (fc->seekoff == fc->offset));
 	fc->didseek = 0;
 	fc->doXor = 0;
 
 	unless (fc->xor) fc->xor = calloc(1, XORSZ(fc));
 
 	seekBlock(fc);
+	assert(!fc->read ? !fc->offset : (fc->seekoff == fc->boff));
 	if (fc->boff == fc->offset) return (0);
 
 	/* read rewind write the partial block that remains */
@@ -367,6 +382,21 @@ crcRead(void *cookie, char *buf, int len)
 		fc->rbuf_off = fc->boff;
 		unless (fc->rlen = readBlock(fc, fc->rbuf)) break;
 		if (fc->rlen < 0) return (-1);
+	}
+	if (!ret && fc->doXor && !fc->seekoff) {	/* xor'd whole file */
+		fc->xorchkd = 1;	/* ran the check */
+		for (n = 0; n < XORSZ(fc); n++) {
+			if (fc->xor[n] &&
+			    !getenv("_BK_BAD_XOR") && !getenv("_BK_XOR_OK")) {
+				T_FS("bad xor [%d] %x", n, fc->xor[n]);
+				errno = EIO;
+				fprintf(stderr,
+				    "%s: non-zero xor in byte %d\n",
+				    fname(fc->f, 0), n);
+				return (-1);
+			}
+		}
+		T_FS("xor passed! %s", fname(fc->f, 0));
 	}
 	T_FS("= %d", ret);
 	return (ret);
@@ -549,6 +579,7 @@ crcClose(void *cookie)
 	u32	crc;
 	u16	olen;
 	int	n, len;
+	int	rc = -1;
 
 	T_FS("crcClose %p", fc);
 	//fprintf(stderr, "%p: crcClose()\n", fc->fme);
@@ -571,35 +602,26 @@ crcClose(void *cookie)
 		crc = htole32(crc);
 		fwrite(&crc, 4, 1, fc->f);
 		/* end up with writing xor data out */
+		corruptXor(fc);
 		fwrite(fc->xor, 1, XORSZ(fc), fc->f);
 		crc = htole32(CRC(0, fc->xor, XORSZ(fc)));
 		fwrite(&crc, 4, 1, fc->f);
-	} else if ((fc->filesz >= 0) && (fc->boff > fc->filesz)) {
-		n = readBlock(fc, fc->rbuf);	/* read xor block or NOP */
-		if (n < 0) return (-1);
-		assert(!n);
-		if (fc->doXor && !fc->seekoff) {	/* xor'd whole file */
-			for (n = 0; n < XORSZ(fc); n++) {
-				if (fc->xor[n]) {
-					fprintf(stderr,
-					    "non-zero crc %d\n", n);
-					return (-1);
-				}
-			}
-			T_FS("xor passed!");
-		}
-		// and expect nothing else
-		if (fgetc(fc->f) != EOF) {
-			fprintf(stderr,
-			    "crc file ends at offset %ld, junk follows\n",
-			    ftell(fc->f) - 1);
-			return (-1);
-		}
+	} else if (fc->chkxor && !fc->xorchkd) {
+		char	buf[fc->datasz];
+
+		T_FS("xor close %s", fname(fc->f, 0));
+		if (crcSeek(fc, 0, SEEK_SET)) goto err;
+		fc->filesz = -1;	/* read whole file; even if changed */
+		while ((n = crcRead(fc, buf, fc->datasz)) > 0) /* eat data */;
+		if (n < 0) goto err;
+		assert(fc->xorchkd);
 	}
+	rc = 0;
+err:
 	free(fc->rbuf);
 	free(fc->xor);
 	free(fc);
- 	return (0);
+ 	return (rc);
 }
 
 /*
@@ -645,7 +667,8 @@ crcCheckVerify(fcrc *fc)
 	u8	buf[bsize];
 
 	T_FS("cookie %p", fc);
-	fprintf(stderr, "crc error found, scanning file\n");
+	fprintf(stderr,
+	    "crc error found in %s\nscanning file\n", fname(fc->f, 0));
 
 	/* find size of file */
 	if (fseek(fc->f, 0, SEEK_END) || ((size = ftell(fc->f)) < 0)) {
@@ -660,7 +683,8 @@ crcCheckVerify(fcrc *fc)
 		fprintf(stderr, "seek failed, can't repair\n");
 		return (-1);
 	}
-	fc->xor = calloc(1, bsize);
+	unless (fc->xor) fc->xor = malloc(bsize);
+	memset(fc->xor, 0, bsize);
 
 	for (c = 0; c < n; c++) {
 		fread(buf, 1, bsize, fc->f);

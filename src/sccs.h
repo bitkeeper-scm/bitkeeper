@@ -59,6 +59,7 @@ int	checking_rmdir(char *dir);
 #define	INIT_CHK_STIME	0x00010000	/* check that s.file <= gfile */
 #define	INIT_WACKGRAPH	0x00020000	/* we're wacking the graph, no errors */
 #define	INIT_MUSTEXIST	0x00040000	/* the sfile must exist or we fail */
+#define	INIT_CHKXOR	0x00040000	/* verify crc and xor of sfile */
 
 /* shared across get/diffs/getdiffs */
 #define	GET_EDIT	0x10000000	/* get -e: get for editting */
@@ -156,7 +157,6 @@ int	checking_rmdir(char *dir);
 #define S_EDITED	(S_SFILE|S_PFILE|S_GFILE)
 #define S_LOCKED	(S_SFILE|S_PFILE)
 #define	S_WARNED	0x00000020	/* error message already sent */
-#define	S_CHMOD		0x00000040	/* change the file back to 0444 mode */
 #define	S_BADREVS	0x00000080	/* has corrupted revisions */
 #define	S_available	0x00000100	/* OLD: make the landing pad big */
 #define	S_CSET		0x00000200	/* this is a changeset file */
@@ -1015,7 +1015,7 @@ sccs	*sccs_init(char *filename, u32 flags);
 sccs	*sccs_restart(sccs *s);
 sccs	*sccs_reopen(sccs *s);
 int	sccs_open(sccs *s);
-void	sccs_free(sccs *);
+int	sccs_free(sccs *);
 ser_t	sccs_newdelta(sccs *s);
 void	sccs_freedelta(sccs *s, ser_t d);
 ser_t	sccs_insertdelta(sccs *s, ser_t d, ser_t serial);
@@ -1498,6 +1498,7 @@ int	isSCCS(const char *path);
 int	fslayer_enable(int en);
 int	remap_open(project *proj, char *rel, int flags, mode_t mode);
 int	remap_utime(project *proj, char *rel, const struct utimbuf *utb);
+int	remap_linkcount(project *proj, char *rel, struct stat *sb);
 int	remap_lstat(project *proj, char *rel, struct stat *sb);
 int	remap_unlink(project *proj, char *rel);
 int	remap_rename(project *proj1, char *old, project *proj2, char *new);
@@ -1547,8 +1548,8 @@ void	*dataAlloc(u32 esize, u32 nmemb);
 void	datamap(char *name, void *start, int len,
     FILE *f, long off, int byteswap, int *didpage);
 void	dataunmap(FILE *f, int keep);
-FILE	*fopen_bkfile(char *file, char *mode, u64 size);
-FILE	*fdopen_bkfile(FILE *f, char *mode, u64 size);
+FILE	*fopen_bkfile(char *file, char *mode, u64 size, int chkxor);
+FILE	*fdopen_bkfile(FILE *f, char *mode, u64 size, int chkxor);
 
 #define	RGCA_ALL	0x1000
 #define	RGCA_STANDALONE	0x2000

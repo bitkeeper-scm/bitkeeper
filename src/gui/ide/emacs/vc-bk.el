@@ -68,15 +68,15 @@
       (progn
 	(setq status (substring status 0 7))
 	(cond
-	 ((string-match "su-.-.-" status) 'missing)	; clean (get it)
-	 ((string-match "su-.G.-" status) 'up-to-date)
+	 ((string-match "su-.-.." status) 'missing)	; clean (get it)
+	 ((string-match "su-.G.." status) 'up-to-date)
 	  ;; (if (vc-workfile-unchanged-p file)
 	  ;;     'up-to-date
 	  ;;   'unlocked-changes))  ; get
-	 ((string-match "sl-.G.-" status) 'up-to-date)	; edit, no diffs
-	 ((string-match "slc.G.-" status) 'edited)      ; diffs
-	 ((string-match "x--.---" status) 'unregistered); extra
-	 ((string-match "i--.---" status) 'ignored)	; ignored
+	 ((string-match "sl-.G.." status) 'up-to-date)	; edit, no diffs
+	 ((string-match "slc.G.." status) 'edited)      ; diffs
+	 ((string-match "x--.--." status) 'unregistered); extra
+	 ((string-match "i--.--." status) 'ignored)	; ignored
 	 ;; still missing, new files and deleted files...
 	 nil)))))
 

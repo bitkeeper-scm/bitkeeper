@@ -100,6 +100,7 @@ fopen(file, mode)
 	 */
 	if (oflags & O_APPEND)
 		(void) __sseek((void *)fp, (fpos_t)0, SEEK_END);
+	fp->_filename = strdup(file);
 	return (fp);
 release:
 	fp->_flags = 0;			/* release */

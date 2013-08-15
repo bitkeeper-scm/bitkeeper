@@ -116,6 +116,7 @@ typedef	struct __sFILE {
 
 	/* stacked file handles */
 	struct	__sFILE *_prevfh;
+	char	*_filename;
 
 	/* file extension */
 	struct	__sbuf _ext;
@@ -282,6 +283,7 @@ int	rename(const char *src, const char *dst);
  */
 int	fpush(FILE **fp, FILE *new);
 int	fpop(FILE **fp);
+char	*fname(FILE *fp, char *name);
 
 /*
  * IEEE Std 1003.1-90

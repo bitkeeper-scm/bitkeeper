@@ -528,11 +528,13 @@ send_sfio_msg(remote *r, char **envVar)
 	FILE	*f;
 	int	i, rc;
 	u32	m = 0, n, extra = 0;
+	u32	flags = opts.sendenv_flags |
+		    (clone_sfioCompat(0) ? 0 : SENDENV_SENDFMT);
 
 	bktmp(buf, "rclone");
 	f = fopen(buf, "w");
 	assert(f);
-	sendEnv(f, envVar, r, opts.sendenv_flags);
+	sendEnv(f, envVar, r, flags);
 	fprintf(f, "rclone_part2");
 	if (proj_isProduct(0)) fprintf(f, " -P");
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev); 
@@ -721,8 +723,7 @@ send_sfio(remote *r, int gzip)
 	FILE	*fout;
 	char	title[MAXPATH];
 	char	*marg = (bkd_hasFeature(FEAT_mSFIO) ? "-m2" : "");
-	u32	bits = features_bits(0);
-	char	*compat = clone_sfioMode(0);
+	char	*compat = clone_sfioCompat(0) ? "-C" : "";
 	char	buf[200] = { "" };
 
 	tmpf = bktmp(0, "rclone_sfiles");

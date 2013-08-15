@@ -197,35 +197,16 @@ size(char *s)
 
 /*
  * This function returns true if the file has exactly one link
- * Used by the locking code
+ * Used by the locking code and 2.ChangeSet.
  */
-#ifdef WIN32
-int
-onelink(char *s)
-{
-	HANDLE	f;
-	BY_HANDLE_FILE_INFORMATION	inf;
-	int	rc = 0;
-
-	f = CreateFile(s, 0, FILE_SHARE_READ, 0,
-	    OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
-	if (f == INVALID_HANDLE_VALUE) goto END;
-	unless (GetFileInformationByHandle(f, &inf)) goto END;
-
-	if (inf.nNumberOfLinks == 1) rc = 1;
-END:	if (f) CloseHandle(f);
-	return (rc);
-}
-#else
 int
 onelink(char *s)
 {
 	struct stat sbuf;
 
-	if ((stat(s, &sbuf) == 0) && (sbuf.st_nlink == 1)) return (1);
+	if ((stat(s, &sbuf) == 0) && (linkcount(s, &sbuf) == 1)) return (1);
 	return (0);
 }
-#endif
 
 
 #ifdef WIN32

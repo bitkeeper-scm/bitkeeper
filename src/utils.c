@@ -921,7 +921,13 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		} else {
 			/* remove local-only features */
 			bits &= ~(FEAT_REMAP|FEAT_SCANDIRS);
-			bits &= ~(FEAT_BKFILE|FEAT_BWEAVE);
+
+			/* only clone needs these since the patch format
+			 * can encode them
+			 */
+			unless (flags & SENDENV_SENDFMT) {
+				bits &= ~(FEAT_BKFILE|FEAT_BWEAVE);
+			}
 			t = features_fromBits(bits);
 		}
 		fprintf(f, "putenv BK_FEATURES_REQUIRED=%s\n", t);

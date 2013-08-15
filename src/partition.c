@@ -202,9 +202,9 @@ partition_main(int ac, char **av)
 	if (doAttach(opts)) goto err;
 	if (commitPending(opts)) goto err;
 
-	/* final big check also restores checkout mode (hence, override) */
+	/* final big check also restores checkout mode */
 	restoreEnv(opts);
-	if (systemf("bk -?_BK_DEVELOPER= -%se -r check -%sacfT",
+	if (systemf("bk -%se -r check -%sacfT",
 	    opts->quiet, *opts->quiet ? "" : "v")) {
 		goto err;
 	}

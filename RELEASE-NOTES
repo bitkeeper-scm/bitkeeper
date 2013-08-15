@@ -1,4 +1,3 @@
-
 bk pull
 
     - New option --stats that prints difffstat output after finishing
@@ -7,6 +6,89 @@ bk pull
 
     - Fix a bug where pull was not disallowing the -R option with
       multiple parents or URLs.
+
+============================================================================
+Release notes for BitKeeper version 6.0.1 (released Aug 9, 2013)
+
+    This is a bugfix release (a few features snuck in).
+
+Bugfixes
+
+  bk clone
+    - 'bk clone -@' wasn't populating comps when the remote repository
+      was a subset of the local baseline.
+    - 'bk clone -r<rev> [--upgrade|--downgrade] repo localcopy' could
+      fail in some cases, and has been fixed.
+    - 'bk clone -r<rev> bk://host/repo localcopy' will now fail if the
+      BK client version is bk-6.0 and the bkd is bk-6.0.1 or later.
+      The solution is to upgrade the client.
+
+  bk commit
+    - 'bk commit -f' was still prompting for comments.
+    - 'bk commit' had lost some status reporting; that has been
+      restored.
+
+  bk collapse
+    - 'bk collapse' would leave components marked as pending; this caused
+      pull to error with a "KEY MISMATCH" message.
+    - 'bk fix/collapse' in a gate was only partially disabled, it would
+      collapse in the product but would refuse to collapse in
+      components.
+
+  bk diffs
+    - 'bk -Ucx diffs -N' would only print diffs for one new file;
+      fixed to print diffs for all new files
+
+  bk difftool
+    - The file listing box on difftool resizes itself to be as large
+      as the longest pathname shown (it used to truncate).
+    - 'bk difftool -S -Lpath/to/component' is now supported.
+      (-S == scan only the current component)
+    - The 'next' button in bk difftool didn't come up highlighted when
+      there was more than one file.
+    - Better error reporting with -L when a single GCA doesn't exist.
+
+  bk pull
+    - A pull from a remote repository served by a bk version 5.x could fail
+      if a component clone was part of the operation.  It works now.
+
+  bk push
+    - A push from a local repository served by a bk version 5.x to a remote
+      repository that uses new storage format of bk-6 could fail if a component
+      clone was part of the operation.  It works now.
+
+  bk revtool
+    - A particular sequence of clicks and launching difftool could
+      make revtool unresponsive.
+
+    - When launching revtool with a line number (bk revtoo +lno),
+      the comments for the revision that added that line were not being shown.
+
+  bk sfiles
+    - In rare cases, a pending component would not be seen as pending
+      ('bk -pA' did not list them but it does now).
+
+  Misc
+    - In rare cases, permissions in the .bk/SCCS directory could be set
+      wrong and cause bk to fail.  The known case has been fixed and
+      the problem is now repaired automatically.
+
+    - In another permissions failure, when a user didn't have write
+      permissions on the repository, commit would fail with an
+      unhelpful error message.  The problem is now reported more
+      clearly.
+
+  Graphical tools
+    - When resizing graphical tools quickly, the resize labels could
+      get out of sync; they update more frequently now.
+
+Features
+    - bk difftool now supports -w/-b to ignore white space changes
+      like 'bk diffs'.  There is toolbar control of this feature as
+      well.
+
+    - BitKeeper versions prior to 6.0 may now clone repositories in the new
+      format; they will automatically be downgraded to a compatible format.
 
 ============================================================================
 Release notes for BitKeeper version 6.0 (released Jul 05, 2013)

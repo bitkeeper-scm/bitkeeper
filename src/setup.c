@@ -315,7 +315,7 @@ defaultFiles(int product)
 		system("bk gate -q .");
 		proj_reset(0);		/* created product */
 	}
-	attr_update();
+	attr_update();	/* XXX: if < 0, failed, but just smile and go on */
 	unless (getenv("_BK_SETUP_NOGONE")) {
 		f = fopen("BitKeeper/etc/gone", "w");
 		fprintf(f, "\n");

@@ -364,7 +364,6 @@ clone_main(int ac, char **av)
 		if (chkAttach(dir)) return (RET_ERROR);
 	}
 	if (opts->attach_only) {
-		putenv("_BK_DEVELOPER="); /* need autofix */
 		assert(r->path);
 		if (chdir(r->path)) {
 			fprintf(stderr, "attach: not a BitKeeper repository\n");
@@ -1044,6 +1043,13 @@ clone2(remote *r)
 	if (do_after) {
 		/* only product in HERE */
 		/* remove any later stuff */
+		if (((exists(CHANGESET_H1) != 0) !=
+		    (features_test(0, FEAT_BWEAVE) != 0)) &&
+		    systemf("bk -?BK_NO_REPO_LOCK=YES admin -Zsame ChangeSet"))
+		    {
+			fprintf(stderr, "Convert ChangeSet failed\n");
+			return (UNDO_ERR);
+		}
 		unless (undorc = after(opts->quiet, opts->verbose, opts->rev)) {
 			didcheck = 1;
 			partial = 1; /* can't know if it was full or not */

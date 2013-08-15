@@ -31,7 +31,7 @@ nt_stat(const char *file, struct stat *sb)
 }
 
 int
-linkcount(char *file, struct stat *sb)
+nt_linkcount(const char *file, struct stat *sb)
 {
 	int	n = -1;
 

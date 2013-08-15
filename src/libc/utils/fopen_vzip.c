@@ -59,6 +59,7 @@ typedef struct {
 	FILE	*fin;		/* file we are reading/writing */
 	u32	read:1;		/* opened in read mode */
 	u32	write:1;	/* opened in write mode */
+	u32	nonlinear:1;	/* read blocks are not sequential */
 
 	off_t	offset;		/* current offset in uncompressed stream */
 	u32	zoffset;	/* current offset in compressed stream */
@@ -275,7 +276,7 @@ load_szArray(fgzip *fz)
 	T_FS("cookie %p", fz);
 	/* need to load offset table */
 	if (fseek(fz->fin, -sizeof(u32), SEEK_END)) return (-1);
-	fread(&tmp, sizeof(u32), 1, fz->fin);
+	if (fread(&tmp, sizeof(u32), 1, fz->fin) != 1) return (-1);
 	blocks = le32toh(tmp);
 
 	if (fseek(fz->fin,
@@ -306,6 +307,8 @@ load_szArray(fgzip *fz)
 		fprintf(stderr,
 		    "vzip file ends at offset %ld, junk follows\n",
 		    ftell(fz->fin) - 1);
+		return (-1);
+	} else if (ferror(fz->fin)) { /* EOF returned for EOF and error */
 		return (-1);
 	}
 	fz->zoffset = 0;	/* force a seek on next read */
@@ -363,14 +366,14 @@ zipRead(void *cookie, char *buf, int len)
 {
 	fgzip	*fz = cookie;
 	u32	cnt;
+	size_t	n;
 	char	data[MAXZIPBLOCK];
 
 	T_FS("cookie %p, len %d", fz, len);
 again:
 	if (fz->szarr) {
 		if (!fz->szp || (fz->szp > fz->szarr + nLines(fz->szarr))) {
-			/* eof */
-			return (0);
+			goto eof;
 		}
 		if (fz->zoffset != fz->szp->off) {
 			if (fseek(fz->fin, fz->szp->off, SEEK_SET) < 0) {
@@ -378,12 +381,16 @@ again:
 				return (-1);
 			}
 			fz->zoffset = fz->szp->off;
+			fz->nonlinear = (fz->offset != 0);
 		}
 		++fz->szp;	   /* next block */
 	}
 
 	/* read compressed length */
-	if (fread(&cnt, sizeof(u32), 1, fz->fin) != 1) return (-1);
+	if ((n = fread(&cnt, sizeof(u32), 1, fz->fin)) != 1) {
+		if (!n && fz->nonlinear) return (0); /* for repeating eof's */
+		return (-1);
+	}
 	cnt = le32toh(cnt);
 
 	if (cnt & 0x80000000) {
@@ -407,8 +414,16 @@ again:
 		cnt &= ~0x80000000;
 	}
 	unless (cnt) {
-		/* eof */
+eof:		/* eof */
 		T_FS("return eof cookie %p, len %d", fz, len);
+		unless (fz->nonlinear) {
+			fz->nonlinear = 1;
+			while (sizeof(data) ==
+			    fread(data, 1, sizeof(data), fz->fin)) {
+				/* drain */
+			}
+			if (ferror(fz->fin)) return (-1);
+		}
 		return (0);
 	}
 	assert(cnt < sizeof(data)-1);

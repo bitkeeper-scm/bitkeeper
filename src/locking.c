@@ -591,7 +591,7 @@ private	char	*errMsgs[] = {
 	/* NL_MISMATCH */
 		"Current nested lock does not match this lock",
 	/* NL_COULD_NOT_LOCK_RESYNC */
-		"Could not lock product, locked by RESYNC",
+		"Could not lock product, cannot create RESYNC/.bk_nl",
 	/* NL_COULD_NOT_LOCK_NOT_MINE */
 		"Could not lock product, repository not mine",
 	/* NL_COULD_NOT_UNLOCK */
@@ -1011,9 +1011,7 @@ lockResync(project *p)
 
 	resync = proj_fullpath(p, ROOT2RESYNC);
 	file = aprintf("%s/.bk_nl", resync);
-	unless (exists(resync)) {
-		if (mkdirp(resync)) goto out;
-	}
+	mkdir(resync, 0777);	/* ignore failures */
 	if (touch(file, 0666)) goto out;
 	rc = 0;
 	T_LOCK("RESYNC: %s", file);

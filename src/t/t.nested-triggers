@@ -401,3 +401,45 @@ source-post-undo
 EOF
 cmpfiles WANT "$TRIGS.client"
 echo OK
+
+# pre-resolve returning 2 means to keep PENDING directory around.
+# This only makes sense in a standalone repo, where a patch represents
+# an atomic state transition.  In nested, it is part of a collection,
+# and doesn't make sense standalone, so skip out on the support calls
+# and treat it like a return code of 1.
+echo $N Test pre-resolve returning 2 in comp and prod ...............$NL
+cd "$HERE"
+nested pre-resolve-exit-2
+cd BitKeeper
+mkdir triggers
+cd triggers
+cat <<EOF > pre-resolve
+#!/bin/sh
+exit 2
+EOF
+chmod +x pre-resolve
+bk new $Q pre-resolve
+cd ../..
+bk commit $Q -ynew-trigger
+bk clone $Q . ../pre-resolve-copy
+bk parent $Q ../pre-resolve-copy
+touch gcc/foo
+bk new $Q gcc/foo
+bk commit $Q -ynewfoo
+cd ../pre-resolve-copy
+echo '>> Trigger "pre-resolve" (exit status was 2)' > ../WANT
+bk pull -q 2> ERR
+RC=$?
+test "$RC" = 1 || fail bad $RC not 1
+test -d gcc/PENDING && fail component PENDING directory
+cmpfiles ../WANT ERR
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+cd ../pre-resolve-exit-2
+bk pull -q  2> ERR
+RC=$?
+test "$RC" = 1 || fail bad $RC not 1
+test -d PENDING && fail product PENDING directory
+cmpfiles ../WANT ERR
+echo OK

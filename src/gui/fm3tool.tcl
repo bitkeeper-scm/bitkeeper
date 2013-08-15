@@ -1719,17 +1719,7 @@ proc keyboard_bindings {} \
 	dobind .	<c>				{ edit_clear }
 	dobind .	<a>				{ edit_restore a }
 	dobind .	<m>				{ edit_restore m }
-	dobind .	<s>				{
-	    global conf_todo nowrite
-
-	    if {$nowrite} break
-	    if {$conf_todo} {
-	    	displayMessage \
-		    "Need to resolve $conf_todo more conf_todo first" 0
-	    } else {
-	    	save
-	    }
-	}
+	dobind .	<s>				{ save }
 	dobind .	<u>				{ undo }
 	dobind .	<period>			{ dot; break }
 	dobind .	<e>				{ edit_merge }
@@ -1873,9 +1863,17 @@ proc edit_done {} \
 
 proc save {} \
 {
-	global	filename force nowrite outfile
+	global	filename force nowrite outfile conf_todo
 
 	if {$nowrite} {exit}
+
+	if {$conf_todo} {
+		set c conflict[expr {($conf_todo == 1) ? "" : "s"}]
+	    	displayMessage \
+		    "Need to resolve $conf_todo more $c" 0
+		return
+	}
+
 	if {[info exists outfile]} {
 		# user specified "-o filename" on the command line...
 		if {$force == 0 && [file exists $outfile]} {

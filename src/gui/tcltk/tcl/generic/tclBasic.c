@@ -237,6 +237,7 @@ static const CmdInfo builtInCmds[] = {
     {"Lread_",		Tcl_LReadCmd,		NULL,		NULL, 1},
     {"Lwrite_",		Tcl_LWriteCmd,		NULL,		NULL, 1},
     {"Lrefcnt",		Tcl_LRefCnt,		NULL,		NULL, 1},
+    {"defined",		Tcl_LDefined,		NULL,		NULL, 1},
 
     /*
      * Commands in the OS-interface. Note that many of these are unsafe.

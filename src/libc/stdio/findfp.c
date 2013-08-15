@@ -57,8 +57,8 @@ int	__sdidinit;
 #define	std(flags, file) \
 /*	  p     r  w  flags  file  bf     lfbsize  cookie       close */ \
 	{ NULL, 0, 0, flags, file, { NULL, 0 }, 0, __sF + file, __sclose, \
-/*	  read      seek     write     prevfh ext                              up */ \
-	  __sread,  __sseek, __swrite, 0,     { (void *)(__sFext + file), 0 }, NULL, \
+/*	  read      seek     write     prevfh filename ext                              up */ \
+	  __sread,  __sseek, __swrite, 0, 0,   { (void *)(__sFext + file), 0 }, NULL, \
 /*	  ur ubuf,                 nbuf      lb     blksize  offset */ \
 	  0, { '\0', '\0', '\0' }, { '\0' }, { NULL, 0 }, 0, (fpos_t)0 }
 
@@ -151,6 +151,7 @@ found:
 	fp->_p = NULL;		/* no current pointer */
 	fp->_w = 0;		/* nothing to read or write */
 	fp->_r = 0;
+	fp->_filename = 0;
 	fp->_bf._base = NULL;	/* no buffer */
 	fp->_bf._size = 0;
 	fp->_lbfsize = 0;	/* not line buffered */

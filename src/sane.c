@@ -263,7 +263,9 @@ again:	unless (exists(path)) {
 int
 chk_permissions(void)
 {
-	return (write_chkdir("BitKeeper", 1) |
+	return (write_chkdir(".", 1) |
+	    write_chkdir("RESYNC", 0) |
+	    write_chkdir("BitKeeper", 1) |
 	    write_chkdir("BitKeeper/etc", 1) |
 	    write_chkdir("BitKeeper/etc/SCCS", 1) |
 	    write_chkdir("BitKeeper/tmp", 1) |

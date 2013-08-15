@@ -337,6 +337,10 @@ sfio_out(void)
 	byte_count = 10;
 	while (nextfile(buf)) {
 		chomp(buf);
+		if (opts->compat && 
+		    (streq(buf, CHANGESET_H1) || streq(buf, CHANGESET_H2))) {
+			continue;
+		}
 		if (streq(buf, "||")) {
 			/*
 			 * Insert a sfio separator and skip this file.
@@ -361,7 +365,7 @@ sfio_out(void)
 			free(sfile);
 			free(gfile);
 			if (lstat(buf, &sb)) continue;
-			if (streq(buf, CHANGESET)) {
+			if (!opts->compat && streq(buf, CHANGESET)) {
 				if (exists(CHANGESET_H1)) {
 					opts->more = addLine(opts->more,
 					    strdup(CHANGESET_H1));

@@ -3361,7 +3361,7 @@ main(_argused int argc, string argv[])
 	gui();
 	update();
 
-	arg = bk("sane 2>@1");
+	arg = bk("-P sane 2>@1");
 	if (arg != "") bk_dieError(arg, 1);
 
 	init();

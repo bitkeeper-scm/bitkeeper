@@ -809,3 +809,15 @@ cmp -s project/BitKeeper/log/HERE just_product/BitKeeper/log/HERE && {
 	exit 1
 }
 echo OK
+
+echo $N Check that compat clones work in nested with -r .............$NL
+cd copy
+touch gcc/foo
+bk new $Q gcc/foo
+bk commit $Q --tag=NEWER -yfoo
+bk pull $Q || fail
+bk clone $Q --compat -rNEWER . ../compat-clone-r || fail compat clone dash r
+bk clone $Q --compat . ../whole-compat || fail
+cd ../whole-compat
+bk clone $Q --upgrade -rNEWER . ../upgrade-clone-r || fail upgrade clone dash r
+echo OK

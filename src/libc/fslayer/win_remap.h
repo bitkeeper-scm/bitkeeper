@@ -11,6 +11,7 @@
 #define stat(f, b)              nt_stat(f, b)
 #define	link(f1, f2)		nt_link(f1, f2)
 #define lstat(f, b)		nt_stat(f, b)
+#define	linkcount(f, b)		nt_linkcount(f, b)
 #define	utime(a, b)		nt_utime(a, b)
 #define	rmdir(d)		nt_rmdir(d)
 #endif

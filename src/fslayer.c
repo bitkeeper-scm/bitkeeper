@@ -119,6 +119,31 @@ fslayer_lseek(int fildes, off_t offset, int whence)
 }
 
 int
+fslayer_linkcount(const char *path, struct stat *buf)
+{
+	int	ret;
+	char	*rel;
+	project	*proj;
+
+	if (noloop) {
+		ret = linkcount(path, buf);
+	} else {
+		noloop = 1;
+		if (proj = findpath(path, &rel, 1)) {
+			ret = remap_linkcount(proj, rel, buf);
+			proj_free(proj);
+		} else {
+			ret = linkcount(path, buf);
+		}
+		if (strace) {
+			fprintf(strace, "linkcount(%s) = %d", path, ret);
+		}
+		noloop = 0;
+	}
+	return (ret);
+}
+
+int
 fslayer_lstat(const char *path, struct stat *buf)
 {
 	int	ret;

@@ -358,12 +358,13 @@ do_commit(char **av,
 
 	cset = sccs_csetInit(0);
 	if (enforceLicense(cset)) {
-		rc = 1;
+err:		rc = 1;
 		goto done;
 	}
 	(void)sccs_defRootlog(cset);	/* if no rootlog, make one */
 	commitSnapshot();
-	if (!opts.resync && attr_update()) {
+	if (!opts.resync && (rc = attr_update())) {
+		if (rc < 0) goto err;
 		bktmp(pendingFiles2, "pending2");
 		f = fopen(pendingFiles, "r");
 		f2 = fopen(pendingFiles2, "w");

@@ -2169,6 +2169,7 @@ private int
 compile_length(Expr *expr)
 {
 	int	n;
+	Jmp	*jmp1, *jmp2;
 
 	expr->type = L_int;
 
@@ -2178,19 +2179,33 @@ compile_length(Expr *expr)
 		return (0);  // stack effect
 	}
 	if (isstring(expr->b) || iswidget(expr->b)) {
-		push_lit("::string");
-		push_lit("length");
-		TclEmitInstInt1(INST_ROT, 2, L->frame->envPtr);
-		emit_invoke(3);
+		TclEmitOpcode(INST_STR_LEN,  L->frame->envPtr);
 	} else if (isarray(expr->b) || islist(expr->b) || ispoly(expr->b)) {
-		push_lit("::llength");
-		TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
-		emit_invoke(2);
+		TclEmitOpcode(INST_LIST_LENGTH, L->frame->envPtr);
 	} else if (ishash(expr->b)) {
+		/*
+		 *    <arg is on stack from above compile_exprs>
+		 *    dup
+		 *    l_defined
+		 *    jmpFalse 1
+		 *    ::dict size (rot arg into place before the invoke)
+		 *    jmp 2
+		 * 1: pop
+		 *    push 0
+		 * 2:
+		 */
+		TclEmitOpcode(INST_DUP, L->frame->envPtr);
+		TclEmitOpcode(INST_L_DEFINED, L->frame->envPtr);
+		jmp1 = emit_jmp_fwd(INST_JUMP_FALSE1, NULL);
 		push_lit("::dict");
 		push_lit("size");
 		TclEmitInstInt1(INST_ROT, 2, L->frame->envPtr);
 		emit_invoke(3);
+		jmp2 = emit_jmp_fwd(INST_JUMP1, NULL);
+		fixup_jmps(&jmp1);
+		emit_pop();
+		push_lit("0");
+		fixup_jmps(&jmp2);
 	} else {
 		L_errf(expr, "arg to length has illegal type");
 	}
@@ -7391,5 +7406,25 @@ Tcl_LRefCnt(
 		return (TCL_ERROR);
 	}
 	Tcl_SetObjResult(interp, Tcl_NewIntObj(objv[1]->refCount));
+	return (TCL_OK);
+}
+
+/*
+ * This defines a defined() proc even though it also is a compiler
+ * built-in.  When L code uses defined(), it gets the built-in.
+ * Having the proc allows access to this functionality from Tcl code.
+ */
+int
+Tcl_LDefined(
+    ClientData dummy,		/* Not used. */
+    Tcl_Interp *interp,		/* Current interpreter. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])	/* Argument objects. */
+{
+	if (objc != 2) {
+		Tcl_WrongNumArgs(interp, 1, objv, "object");
+		return (TCL_ERROR);
+	}
+	Tcl_SetObjResult(interp, Tcl_NewIntObj(objv[1]->undef ? 0 : 1));
 	return (TCL_OK);
 }

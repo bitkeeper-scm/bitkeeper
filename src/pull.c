@@ -1242,7 +1242,12 @@ pull(char **av, remote *r, char **envVar)
 		chdir(RESYNC2ROOT);
 		if (rc) {
 			fprintf(stderr, "BAM fetch failed, aborting pull.\n");
-			system("bk -?BK_NO_REPO_LOCK=YES abort -f");
+			if (opts.transaction) {
+				rc = PULL_NO_MORE;	/* tell upper layer */
+			} else {
+				systemf("bk -?BK_NO_REPO_LOCK=YES abort -f%s",
+				    opts.port ? "S" : "");
+			}
 			goto out;
 		}
 	}
@@ -1286,10 +1291,15 @@ pull(char **av, remote *r, char **envVar)
 		if ((i = trigger("resolve", "pre"))) {
 			putenv("BK_STATUS=LOCAL TRIGGER FAILURE");
 			rc = 2;
-			if (i == 2) {
-				system("bk -?BK_NO_REPO_LOCK=YES abort -fp");
+			if ((i == 2) && proj_product(0)) rc = i = 1;
+			if (opts.transaction) {
+				rc = PULL_NO_MORE;
 			} else {
-				system("bk -?BK_NO_REPO_LOCK=YES abort -f");
+				systemf("bk -?BK_NO_REPO_LOCK=YES "
+				    "abort -f%s%s%s",
+				    opts.quiet ? "q" : "",
+				    (i == 2) ? "p" : "",
+				    opts.port ? "S" : "");
 			}
 			goto done;
 		}

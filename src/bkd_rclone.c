@@ -409,7 +409,7 @@ rclone_end(opts *opts)
 		putenv("BK_ROOTKEY=");
 		if (detach(quiet, 0)) return (-1);
 	}
-	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
+	putenv("_BK_DEVELOPER="); /* don't whine about fixing formats */
 	/* remove any later stuff */
 	if (opts->rev) {
 		rc = after(quiet, 0, opts->rev);

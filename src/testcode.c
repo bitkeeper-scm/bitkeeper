@@ -451,12 +451,16 @@ fgzip_main(int ac, char **av)
 	setmode(0, _O_BINARY);
 	if (expand) {
 		if (append) usage();
-		f = av[optind] ? fopen(av[optind], "r") : stdin;
-		unless (f) {
-			perror(av[optind]);
-			exit(1);
+		if (av[optind]) {
+			unless (f = fopen(av[optind], "r")) {
+				perror(av[optind]);
+				exit(1);
+			}
+		} else {
+			f = stdin;
+			fname(f, "stdin");
 		}
-		if (chksums) fpush(&f, fopen_crc(f, "r", 0));
+		if (chksums) fpush(&f, fopen_crc(f, "r", 0, 0));
 		if (gzip) fpush(&f, fopen_vzip(f, "r"));
 		if (fsize) {
 			c = fseek(f, 0, SEEK_END);
@@ -475,12 +479,16 @@ fgzip_main(int ac, char **av)
 		if (fsize) usage();
 		mode = "w";
 		if (append) mode = "r+";
-		f = av[optind] ? fopen(av[optind], mode) : stdout;
-		unless (f) {
-			perror(av[optind]);
-			exit(1);
+		if (av[optind]) {
+			unless (f = fopen(av[optind], mode)) {
+				perror(av[optind]);
+				exit(1);
+			}
+		} else {
+			f = stdout;
+			fname(f, "stdout");
 		}
-		if (chksums) fpush(&f, fopen_crc(f, mode, est_size));
+		if (chksums) fpush(&f, fopen_crc(f, mode, est_size, 0));
 		if (gzip) fpush(&f, fopen_vzip(f, append ? "a" : "w"));
 		if (appendoff || (append && !gzip)) {
 			if (appendoff > 0) {
