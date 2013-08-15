@@ -76,8 +76,12 @@ fclose(fp)
 		 * If opened on top of another fh then close that one
 		 * too.  Pass up errors from lower levels.
 		 */
+		assert(fp->_filename == fp->_prevfh->_filename);
 		if (r2 = fclose(fp->_prevfh)) r = r2;
 		fp->_prevfh = 0;
+	} else if (fp->_filename) {
+		free(fp->_filename);
+		fp->_filename = 0;
 	}
 	fp->_flags = 0;		/* Release this FILE for reuse. */
 	return (r);

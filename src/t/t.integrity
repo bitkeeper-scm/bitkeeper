@@ -1,0 +1,133 @@
+
+echo $N Test crc err detection in xor block in files ................$NL
+commercial project
+echo x > seek
+echo y > noseek
+echo binary > seek.bam
+echo binary > noseek.bam
+bk new $Q seek noseek
+bk new $Q -b seek.bam noseek.bam
+bk admin -z noseek noseek.bam
+# Before corrupting, run a verify that 'seek' files do 'xor close' pass:
+bk --trace=fs --trace-file="$HERE/OUT" -r check -ac
+sed -n 's?.*xor \([pc][^ ]*\).*/\(.*\)?\1 \2?p' ../OUT > GOT
+cp GOT ~/p
+cat <<EOF > WANT
+passed! 1.ChangeSet
+passed! 2.ChangeSet
+passed! s.ChangeSet
+passed! s.noseek
+passed! s.noseek.bam
+close s.seek
+passed! s.seek
+close s.seek.bam
+passed! s.seek.bam
+passed! s.attr
+passed! s.collapsed
+passed! s.config
+passed! s.gone
+passed! s.ignore
+EOF
+cmpfiles WANT GOT
+# Corrupt the xor block, but not the crc for the block. Get a crc error
+for f in seek noseek seek.bam noseek.bam
+do	bk _cp SCCS/s.$f orig.$f
+	perl -e 'local($/,$\); binmode STDIN; binmode STDOUT; $in = <>;
+	    substr($in, -6, 1) ^= chr(5); print $in;' \
+	    < orig.$f > hack
+	bk _cp hack SCCS/s.$f
+	bk get -q $f 2> ERR && fail -f ERR $f
+	grep -q "crc error block" ERR || fail -f ERR $f
+	bk _cp orig.$f SCCS/s.$f
+done
+echo OK
+
+echo $N Test crc err detection in xor block in cset sfile and heap ..$NL
+# create heap2 by commiting
+bk commit $Q -yfiles || fail
+for pre in s 1 2
+do	bk _cp SCCS/$pre.ChangeSet cset.$pre
+	perl -e 'local($/,$\); binmode STDIN; binmode STDOUT; $in = <>;
+	    substr($in, -6, 1) ^= chr(5); print $in;' \
+	    < cset.$pre > hack
+	bk _cp hack SCCS/$pre.ChangeSet
+	bk get -q ChangeSet 2> ERR && fail -f ERR $pre
+	grep -q "crc error block" ERR || fail -f ERR $pre
+	bk _cp cset.$pre SCCS/$pre.ChangeSet
+done
+echo OK
+
+echo $N Test xor err in the absence of crc error in files ...........$NL
+# Delta leaves a fixup at end, requiring seek on next read
+bk edit $Q seek seek.bam
+_BK_BAD_XOR=ALL bk delta $Q -fyempty seek seek.bam
+# Just re-write these with a corruption in xor data but not crc
+_BK_BAD_XOR=ALL bk admin -z noseek noseek.bam
+# Should flag it in noseek cases.
+for f in noseek noseek.bam
+do	bk get -q $f 2> ERR && fail -f ERR $f
+	grep -q "non-zero xor in byte 7" ERR || fail -f ERR $f
+done
+# If there is a seek, then no xor detection
+for f in seek seek.bam
+do	bk get $Q $f || fail $f
+done
+bk repocheck -q 2> ERR && fail -f ERR
+# Now, bin_mkgraph() is void as mkgraph is void, so when the error
+# is seen at sccs_init(), the process exits.  The first error below
+# is in noseek, which passes sccs_init and fails in get (checksum test).
+# The second file, noseek.bam, fails in bin_mkgraph during the fgets() test.
+# So it prints the "failed to load" message and exits, leaving our other
+# to files untested...
+cat <<EOF > WANT
+$HERE/project/SCCS/s.noseek: non-zero xor in byte 7
+get of noseek:1.1 failed, skipping it.
+$HERE/project/SCCS/s.noseek.bam: non-zero xor in byte 7
+check: failed to load SCCS/s.noseek.bam
+EOF
+cmpfiles WANT ERR
+# ... so we clean up the noseek.bam problem and try again.
+# Note: the noseek version fails in get_reg() so it prints get failed.
+# The ones with seek don't xor check until fclose().
+# Remember, xor check was moved from close to read because the append
+# path keeps a read file handle open while writing goes on.  So this
+# difference is on purpose.  The new fclose test re-reads the whole
+# file as it now exits, post update.  But this doesn't check that,
+# because append is only used for 2.ChangeSet.  That's the next test.
+_BK_XOR_OK=1 bk admin -z noseek.bam
+bk -r check -ac 2> ERR && fail -f ERR
+cat <<EOF > WANT
+$HERE/project/SCCS/s.noseek: non-zero xor in byte 7
+get of noseek:1.1 failed, skipping it.
+$HERE/project/SCCS/s.seek: non-zero xor in byte 7
+$HERE/project/SCCS/s.seek.bam: non-zero xor in byte 7
+EOF
+cmpfiles WANT ERR
+for f in noseek seek seek.bam
+do	_BK_XOR_OK=1 bk admin -z $f
+done
+echo OK
+
+echo $N Test xor err in the absence of crc error in ChangeSet .......$NL
+bk -r check -a
+for pre in s 2
+do
+	bk _cp SCCS/$pre.ChangeSet cset.$pre || echo no file
+	if [ "$pre" = s ]
+	then	file=x
+	else	file=$pre
+	fi
+	_BK_BAD_XOR=$file.ChangeSet bk comments -ybad-xor.$pre -r+ ChangeSet
+	bk _cp SCCS/$pre.ChangeSet cset.test.$pre || echo no file
+	cmp -s cset.$pre cset.test.$pre && fail $pre do not differ
+	bk get -q ChangeSet 2> ERR && fail -f ERR $pre.ChangeSet
+	grep -q "non-zero xor in byte 7" ERR || fail -f ERR $f
+	bk _cp cset.$pre SCCS/$pre.ChangeSet
+done
+bk -r check -a || fail
+_BK_FORCE_REPACK=1 _BK_BAD_XOR=1.ChangeSet.tmp bk -r check -ac || fail
+bk get -q ChangeSet 2> ERR && fail -f ERR 1.ChangeSet
+grep -q "non-zero xor in byte 7" ERR || fail -f ERR $f
+_BK_FORCE_REPACK=1 _BK_XOR_OK=1 bk -r check -ac || fail
+bk -r check -a || fail
+echo OK

@@ -59,6 +59,7 @@ int	checking_rmdir(char *dir);
 #define	INIT_CHK_STIME	0x00010000	/* check that s.file <= gfile */
 #define	INIT_WACKGRAPH	0x00020000	/* we're wacking the graph, no errors */
 #define	INIT_MUSTEXIST	0x00040000	/* the sfile must exist or we fail */
+#define	INIT_CHKXOR	0x00040000	/* verify crc and xor of sfile */
 
 /* shared across get/diffs/getdiffs */
 #define	GET_EDIT	0x10000000	/* get -e: get for editting */
@@ -1013,7 +1014,7 @@ sccs	*sccs_init(char *filename, u32 flags);
 sccs	*sccs_restart(sccs *s);
 sccs	*sccs_reopen(sccs *s);
 int	sccs_open(sccs *s);
-void	sccs_free(sccs *);
+int	sccs_free(sccs *);
 ser_t	sccs_newdelta(sccs *s);
 void	sccs_freedelta(sccs *s, ser_t d);
 ser_t	sccs_insertdelta(sccs *s, ser_t d, ser_t serial);
@@ -1546,8 +1547,8 @@ void	*dataAlloc(u32 esize, u32 nmemb);
 void	datamap(char *name, void *start, int len,
     FILE *f, long off, int byteswap, int *didpage);
 void	dataunmap(FILE *f, int keep);
-FILE	*fopen_bkfile(char *file, char *mode, u64 size);
-FILE	*fdopen_bkfile(FILE *f, char *mode, u64 size);
+FILE	*fopen_bkfile(char *file, char *mode, u64 size, int chkxor);
+FILE	*fdopen_bkfile(FILE *f, char *mode, u64 size, int chkxor);
 
 #define	RGCA_ALL	0x1000
 #define	RGCA_STANDALONE	0x2000

@@ -801,10 +801,11 @@ bin_heapRepack(sccs *s)
  * Returns 0 on failure.
  */
 FILE *
-fdopen_bkfile(FILE *f, char *mode, u64 size)
+fdopen_bkfile(FILE *f, char *mode, u64 size, int chkxor)
 {
 	assert(mode[1] == 0);
-	if (fpush(&f, fopen_crc(f, (mode[0] == 'a') ? "r+" : mode, size))) {
+	if (fpush(&f,
+	   fopen_crc(f, (mode[0] == 'a') ? "r+" : mode, size, chkxor))) {
 		perror(mode);
 err:		fclose(f);
 		return (0);
@@ -826,7 +827,7 @@ err:		fclose(f);
  * Returns 0 on failure.
  */
 FILE *
-fopen_bkfile(char *file, char *mode, u64 size)
+fopen_bkfile(char *file, char *mode, u64 size, int chkxor)
 {
 	FILE	*f;
 	struct	stat	sb;
@@ -847,5 +848,5 @@ fopen_bkfile(char *file, char *mode, u64 size)
 			return (0);
 		}
 	}
-	return (fdopen_bkfile(f, mode, size));
+	return (fdopen_bkfile(f, mode, size, chkxor));
 }

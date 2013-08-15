@@ -181,7 +181,7 @@ int	ftrunc(FILE *f, off_t offset);
 FILE	*fopen_cksum(FILE *f, char *mode, u16 *cksump);
 
 /* fopen_crc.c */
-FILE	*fopen_crc(FILE *f, char *mode, u64 est_size);
+FILE	*fopen_crc(FILE *f, char *mode, u64 est_size, int chkxor);
 
 /* fopen_vzip.c */
 FILE	*fopen_vzip(FILE *fin, char *mode);

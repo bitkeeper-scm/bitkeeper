@@ -13,6 +13,7 @@ fpush(FILE **fp, FILE *new)
 	assert(*fp != new);	/* avoid loop */
 	assert(!new->_prevfh);
 	new->_prevfh = *fp;
+	new->_filename = (*fp)->_filename;
 	*fp = new;
 	return (0);
 }
@@ -33,6 +34,7 @@ fpop(FILE **fp)
 		prev = (*fp)->_prevfh;
 
 		(*fp)->_prevfh = 0;
+		(*fp)->_filename = 0;
 		ret = fclose(*fp);
 		*fp = prev;
 	} else {
@@ -40,4 +42,11 @@ fpop(FILE **fp)
 		ret = -1;
 	}
 	return (ret);
+}
+
+char *
+fname(FILE *fp, char *name)
+{
+	if (name && !fp->_filename) fp->_filename = strdup(name);
+	return (fp->_filename);
 }

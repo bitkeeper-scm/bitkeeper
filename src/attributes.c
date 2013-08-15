@@ -5,6 +5,8 @@
  * Update the BitKeeper/etc/attr file with information for the current
  * repository.
  * If something changed, then return 1
+ * If an error, then return -1
+ * If unchanged: return 0.
  */
 int
 attr_update(void)
@@ -33,16 +35,21 @@ attr_update(void)
 			//assert(rc == 0);
 		}
 	} else {
-		dflags |= NEWFILE;
+		dflags |= NEWFILE;  /* XXX: like poly, should add |DELTA_DB; */
 	}
 	rc = sccs_delta(s, dflags, 0, 0, 0, 0);
 	if (rc == -2) {
 		/* no delta if no diffs in file */
 		unlink(s->pfile);
 		unlink(s->gfile);
+		rc = 0;
+	} else if (rc) {
+		rc = -1;	/* fold all other errors */
+	} else {
+		rc = 1;
 	}
 	sccs_free(s);
-	return (!rc);
+	return (rc);
 }
 
 /*

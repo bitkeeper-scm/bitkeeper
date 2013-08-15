@@ -2255,6 +2255,7 @@ sccs_startWrite(sccs *s)
 		goto out;
 	}
 	unless (sfile = fdopen(fd, "w")) goto out;
+	fname(sfile, xfile);
 	if (BKFILE_OUT(s)) {
 		assert(!s->mem_out); /* for now */
 		if (s->size) {
@@ -2264,7 +2265,7 @@ sccs_startWrite(sccs *s)
 			    (TABLE(s) + 1) * (sizeof(d1_t) + sizeof(d2_t));
 			if (HAS_GFILE(s)) est_size += size(s->gfile);
 		}
-		sfile = fdopen_bkfile(sfile, "w", est_size);
+		sfile = fdopen_bkfile(sfile, "w", est_size, 0);
 	} else {
 chksum:		s->cksum = 0;
 		assert(!s->ckwrap);
@@ -3436,16 +3437,28 @@ bin_mkgraph(sccs *s)
 		    s->pagefh, off_h, 0, &didpage);
 		assert(s->heap.buf);
 	} else {
+		int	chkxor = ((s->initFlags & INIT_CHKXOR) != 0);
+
 		assert(CSET(s));
 		/* load heap from SCCS/[12].ChangeSet */
-		f1 = fopen_bkfile(bin_heapfile(s, '1'), "r", 0);
+		f1 = fopen_bkfile(bin_heapfile(s, '1'), "r", 0, chkxor);
 		assert(f1);
-		fseek(f1, 0, SEEK_END);
+		if (fseek(f1, 0, SEEK_END)) {
+			/* XXX seek errors don't show up in ferror()? */
+			assert(!ferror(f1));
+			fclose(f1);
+			goto err;
+		}
 		heapsz = s->heapsz1 = ftell(f1);
 		TRACE("heapfile1 = %d", heapsz);
 
-		if (f2 = fopen_bkfile(bin_heapfile(s, '2'), "r", 0)) {
-			fseek(f2, 0, SEEK_END);
+		if (f2 = fopen_bkfile(bin_heapfile(s, '2'), "r", 0, chkxor)) {
+			if (fseek(f2, 0, SEEK_END)) {
+				/* XXX seek errors don't show up in ferror()? */
+				assert(!ferror(f2));
+				fclose(f2);
+				goto err;
+			}
 			heapsz += ftell(f2);
 			TRACE("heapfile2 = %d", heapsz - s->heapsz1);
 		}
@@ -3457,6 +3470,13 @@ bin_mkgraph(sccs *s)
 		if (pageheap) {
 			s->heapfh[1] = f1;
 		} else {
+			if (((len = fgetc(f1)) != EOF) || ferror(f1)) {
+				if (len != EOF) {
+					fprintf(stderr, "heap1 not at EOF\n");
+				}
+				fclose(f1);
+				goto err;
+			}
 			fclose(f1);
 		}
 		if (f2) {
@@ -3467,6 +3487,14 @@ bin_mkgraph(sccs *s)
 			if (pageheap) {
 				s->heapfh[2] = f2;
 			} else {
+				if (((len = fgetc(f2)) != EOF) || ferror(f2)) {
+					if (len != EOF) {
+						fprintf(stderr,
+						    "heap2 not at EOF\n");
+					}
+					fclose(f2);
+					goto err;
+				}
 				fclose(f2);
 			}
 		}
@@ -3515,6 +3543,14 @@ err:		fprintf(stderr, "%s: failed to load %s\n", prog, s->sfile);
 		s->fh = 0; /* we can't use that handle anymore */
 	} else {
 		s->pagefh = 0;	/* we didn't need this handle */
+		if ((CSET(s) ? BWEAVE(s) : BAM(s)) &&
+		    (((len = fgetc(s->fh)) != EOF) || ferror(s->fh))) {
+			/* need to read last byte to crc check the xor block */
+			if (len != EOF) {
+				fprintf(stderr, "Not at EOF %s\n", s->gfile);
+			}
+			goto err;
+		}
 	}
 }
 
@@ -4919,6 +4955,7 @@ int
 sccs_open(sccs *s)
 {
 	FILE	*f;
+	int	chkxor;
 
 	assert(!s->fh);
 	unless (f = fopen(s->fullsfile, "r")) return (-1);
@@ -4926,8 +4963,9 @@ sccs_open(sccs *s)
 		s->encoding_in &= ~E_BK;
 	} else {
 		/* binary file */
+		chkxor = ((s->initFlags & INIT_CHKXOR) != 0);
 		rewind(f);
-		unless (f = fdopen_bkfile(f, "r", 0)) return (-1);
+		unless (f = fdopen_bkfile(f, "r", 0, chkxor)) return (-1);
 		s->encoding_in |= E_BK;
 	}
 	s->fh = f;
@@ -5035,13 +5073,14 @@ chk_gmode(sccs *s)
  * Free up all resources associated with the file.
  * This is the last thing you do.
  */
-void
+int
 sccs_free(sccs *s)
 {
 	char	*relpath = 0, *fullpath;
+	int	rc = 0;
 	int	i;
 
-	unless (s) return;
+	unless (s) return (0);
 	if (s->io_error && !s->io_warned) {
 		fprintf(stderr, "%s: unreported I/O error\n", s->sfile);
 	}
@@ -5107,13 +5146,13 @@ sccs_free(sccs *s)
 		if (s->heapfh[i]) {
 			// unprotect all memory, but leave blank
 			dataunmap(s->heapfh[i], 0);
-			fclose(s->heapfh[i]);
+			rc |= fclose(s->heapfh[i]);
 			s->heapfh[i] = 0;
 		}
 	}
 	if (s->fh) {
 		assert(!s->mem_in); /* don't want to lose data */
-  		fclose(s->fh);
+  		rc |= fclose(s->fh);
 		s->fh = 0;
 	}
 	free(s->symlist);
@@ -5138,6 +5177,7 @@ sccs_free(sccs *s)
 	if (s->remap) free(s->remap);
 	bzero(s, sizeof(*s));
 	free(s);
+	return (rc);
 }
 
 /*
@@ -8696,23 +8736,8 @@ bin_writeHeap(sccs *s, char ***save)
 		// nothing new, skip heap
 	} else if (s->heap_loadsz && onelink(file)) {
 		// append new data to heap2
-		/*
-		 * OK this is a bit tricky.  If we are paging then
-		 * s->heapfh[2] contains a read-only handle to the
-		 * existing heapfile and we are about to append more
-		 * information to the end of that file.  This will be
-		 * fine since we won't need to read any of the new
-		 * data with s->heapfh[2], but we don't want the EOF
-		 * sanity checks to trigger because it thinks the file
-		 * is short.
-		 *
-		 * fseeko() because fseek() won't pass a negative with
-		 * SEEK_SET.
-		 */
-		if (s->heapfh[2]) fseeko(s->heapfh[2], -1, SEEK_SET);
-
 		assert(s->heap_loadsz < s->heap.len);
-		if (f = fopen_bkfile(file, "a", 0)) {
+		if (f = fopen_bkfile(file, "a", 0, 0)) {
 			fwrite(s->heap.buf + s->heap_loadsz,
 			    1, s->heap.len - s->heap_loadsz, f);
 			rc = fclose(f);
@@ -8744,7 +8769,7 @@ bin_writeHeap(sccs *s, char ***save)
 		}
 		fileSave(file, save);
 		tmp = aprintf("%s.tmp", file);
-		if (f = fopen_bkfile(tmp, "w", s->heap.len)) {
+		if (f = fopen_bkfile(tmp, "w", s->heap.len, 0)) {
 			fwrite(s->heap.buf + off, 1, s->heap.len - off, f);
 			if (fclose(f) || rename(tmp, file)) {
 				perror(file);

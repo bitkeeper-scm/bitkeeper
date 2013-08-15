@@ -175,6 +175,12 @@ check_main(int ac, char **av)
 		    default: bk_badArg(c, av);
 		}
 	}
+	if (all && !(flags & INIT_NOCKSUM)) {
+		/* with -ac verify consistancy of entire bk sfile */
+		flags |= INIT_CHKXOR;
+		/* This slows things down for big ChangeSet files: */
+		// putenv("_BK_NO_PAGING=1");
+	}
 	if (getenv("BK_NOTTY") && (verbose == 1)) verbose = 0;
 
 	if (goneKey && badWritable) {
@@ -397,7 +403,9 @@ check_main(int ac, char **av)
 		unless (ferr) {
 			if (verbose>1) fprintf(stderr, "%s is OK\n", s->gfile);
 		}
-		unless (s == cset) sccs_free(s);
+		if ((s != cset) && sccs_free(s)) {
+			ferr++, errors |= 0x01;
+		}
 	}
 	if (e = sfileDone()) {
 		errors++;
@@ -550,7 +558,9 @@ check_main(int ac, char **av)
 		}
 		cset_savetip(cset);
 	}
-out:	sccs_free(cset);
+out:	if (sccs_free(cset)) {
+		ferr++, errors |= 0x01;
+	}
 	cset = 0;
 
 	if (doMarks) {
