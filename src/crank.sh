@@ -58,7 +58,7 @@ do
 		/bin/bash /build/.$REPO.$U $@"
 	    remote status > .s.$host
 	    printf \
-		"%-10s took %s and %s\n" $host `cat .t.$host` "`cat .s.$host`"
+		"%-10s took %s and %s\n" $host `sed 's/\.[0-9][0-9]$//' < .t.$host` "`cat .s.$host`"
 	    rm -f 
 	) &
 done

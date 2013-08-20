@@ -13,6 +13,24 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
+# XXX Compat crud, simplify after _timestamp and _sec2hms
+#     are integrated
+bk _timestamp >/dev/null 2>&1
+if [ $? -eq 0 ]
+then
+	TS="bk _timestamp"
+	ET="bk _sec2hms "
+else
+	TS="date +%s"
+	ET='TZ=GMT date +%T --date=@'
+fi
+
+update_elapsed() {
+	eval $TS > $END
+	END_TS=`cat $END`
+	eval ${ET}$((END_TS - BEGIN_TS)) > $ELAPSED
+}
+
 win32_common_setup()
 {
 	RM=rm
@@ -454,6 +472,11 @@ EOF
 
 	# clear OLDPATH in case bk ran doit
 	unset BK_OLDPATH
+
+	START=/build/.start-$USER
+	END=/build/.end-$USER
+	ELAPSED=/build/.elapsed-$USER
+	trap "rm -f $START $END" 0 
 }
 
 clean_up()
@@ -568,6 +591,7 @@ init_main_loop()
 #
 # Options processing:
 # Usage: doit [-t] [-v] [-x] [test...]
+# -f #  do not exit if a test fails, but do exit after # test failures
 # -i	do not exit if a test fails, remember it and list it at the end
 # -g	run GUI regression
 # -j#	run regressions in parallel
@@ -592,6 +616,13 @@ get_options()
 		    -g) GUI_TEST=YES;;
 		    -p) PAUSE=YES;;
 		    -i) KEEP_GOING=YES;;
+		    -f) KEEP_GOING=YES;
+			if [ X$2 = X ]
+			then echo "-f option requires one argument";
+				exit 1;
+			fi
+			FAILTHRES=$2;
+			shift;;
 		    -r) export PREFER_RSH=YES;;
 		    -t) if [ X$2 = X ]
 			then	echo "-t option requires one argument";
@@ -623,8 +654,6 @@ get_options()
 		N=
 	fi
 }
-
-
 
 get_options $@
 
@@ -660,12 +689,22 @@ fi
 
 if [ -z "$list" ]
 then	if [ "$GUI_TEST" = YES ]
-	then	list=`ls -1 g.* | egrep -v '.swp|~'`
-	else	list=`ls -1 t.* | egrep -v '.swp|~'`
+	then	list=`ls -t1 g.* | egrep -v '.swp|~'`
+	else	list=`ls -t1 t.* | egrep -v '.swp|~'`
 	fi
 fi
 
 setup_env
+
+if [ -f $START ]
+then
+	# Created by remote.sh
+	BEGIN_TS=`cat $START`
+else
+	# we are being run via direct, ie. make test
+	eval $TS > $START
+	BEGIN_TS=`cat $START`
+fi
 
 if [ "$GUI_TEST" = YES ]
 then	echo 'exit' | bk wish >OUT 2>&1
@@ -681,6 +720,7 @@ test $PLATFORM = WIN32 && bk bkd -R
 
 # Main Loop #
 FAILED=
+FAILCNT=0
 for i in $list
 do
 	test -f /build/die && {
@@ -786,8 +826,16 @@ I hope your testing experience was positive! :-)
 	then
 		if [ $EXIT -ne 0 ]
 		then	echo ERROR: Test ${i#t.} failed with error $EXIT
+			update_elapsed
+			FAILCNT=`expr $FAILCNT + 1`
 		else	echo ERROR: Test ${i#t.} failed with unexpected output
 			EXIT=2
+			update_elapsed
+			FAILCNT=`expr $FAILCNT + 1`
+		fi
+		if [ $FAILCNT -ge $FAILTHRES ]; then
+			echo "ERROR: Regressions ended early (-f $FAILTHRES)."
+			KEEP_GOING=NO
 		fi
 		test $KEEP_GOING = NO && {
 			test $PLATFORM = WIN32 && win32_regRestore

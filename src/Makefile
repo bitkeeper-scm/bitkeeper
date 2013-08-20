@@ -208,12 +208,12 @@ OBJ =	bkver.o cmd.o \
 	resolve_renames.o resolve_tags.o restore.o review.o \
 	rm.o rmdel.o \
 	root.o rset.o sane.o scat.o sccs.o sccs2bk.o \
-	sccslog.o sccs_mv.o send.o sendbug.o \
+	sccslog.o sccs_mv.o sec2hms.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfio.o shellcmd.o shrink.o sinfo.o \
 	slib.o smerge.o sort.o startmenu.o \
 	stat.o stattest.o status.o stripdel.o synckeys.o \
 	tagmerge.o testcode.o tclsh.o takepatch.o \
-	testdates.o time.o touch.o trigger.o \
+	testdates.o time.o timestamp.o touch.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o uninstall.o unlink.o unlock.o unpull.o unrm.o unwrap.o upgrade.o \
 	urlinfo.o \
@@ -374,8 +374,8 @@ nonet nonet_test localtest:
 realtest: $(ALL) t/doit
 	-cd gui/tcltk && $(MAKE) clobber
 	-bk get -qS t/setup t/win32/win32_common
-	bk -rt get -qS 't.*'
-	cd t && ./doit -i
+	bk -rt get -qTS 't.*'
+	cd t && ./doit -f 5
 
 guitest: $(ALL) t/doit
 	-bk get -qS t/SCCS/s.g.* t/setup t/win32/win32_common t/guitest.tcl
