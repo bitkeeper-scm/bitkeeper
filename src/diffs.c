@@ -183,7 +183,9 @@ diffs_main(int ac, char **av)
 	}
 
 	if (local && !av[optind]) {
-		name = sfiles_local(rargs.rstart, "r");
+		p = aprintf("r%s", dop.new_is_null ? "x" : "");
+		name = sfiles_local(rargs.rstart, p);
+		free(p);
 	} else {
 		name = sfileFirst("diffs", &av[optind], 0);
 	}
@@ -380,9 +382,10 @@ sfiles_local(char *rev, char *opts)
 		switch (*opts++) {
 		    case 'm': nav[++i] = "--no-mods"; break;
 		    case 'r': nav[++i] = "--no-revs"; break;
+		    case 'x': nav[++i] = "--extras" ; break;
 		    default: assert(0 == "nr");
 		}
-    	}
+	}
 	nav[++i] = 0;
 	spawnvpio(0, &fd, 0, nav);
 	free(freeme);

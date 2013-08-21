@@ -1955,13 +1955,14 @@ sfiles_local_main(int ac, char **av)
 	int	c;
 	char	*t, *p, *r, *t1;
 	FILE	*f, *f1;
-	int	standalone = 0, norev = 0, nomods = 0, elide = 0;
+	int	standalone = 0, norev = 0, nomods = 0, elide = 0, extras = 0;
 	hash	*seen;
 	char	**out = 0;
 	int	i, rc = 1;
 	char	buf[MAXLINE];
 	longopt	lopts[] = {
 		{ "elide",   310 },
+		{ "extras",  315 },
 		{ "no-mods", 320 },
 		{ "no-revs", 330 },
 		{ 0, 0 }
@@ -1972,6 +1973,7 @@ sfiles_local_main(int ac, char **av)
 		    case 'r': rev = optarg; break;
 		    case 'S': standalone = 1; break;
 		    case 310: elide = 1; break;
+		    case 315: extras = 1; break;
 		    case 320: nomods = 1; break;
 		    case 330: norev = 1; break;
 		    default: bk_badArg(c, av);
@@ -1981,12 +1983,10 @@ sfiles_local_main(int ac, char **av)
 
 	seen = hash_new(HASH_MEMHASH);
 	/* do pending first */
-	p = nomods ? "p" : "cp";
-	if (standalone) {
-		sprintf(buf, "bk sfiles -g%s", p);
-	} else {
-		sprintf(buf, "bk -A%s", p);
-	}
+	sprintf(buf, "bk %s%s%s",
+	    standalone ? "sfiles -g" : "-A",
+	    nomods ? "p" : "cp",
+	    extras ? "x" : "");
 	f = popen(buf, "r");
 	while (t = fgetline(f)) {
 		if (streq(basenm(t), "ChangeSet")) {
