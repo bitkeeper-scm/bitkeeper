@@ -14319,34 +14319,37 @@ Breaks up citool
 	return (0);
 }
 
-private void
-mkTag(char *rev, char *revM, pfile *pf, char *path, char tag[])
+private char *
+mkTag(char *rev, char *revM, pfile *pf, char *path)
 {
+	FILE	*tag = fmem();
+
 	/*
 	 * 1.0 => create (or reverse create in a reverse pacth )
 	 * /dev/null => delete (i.e. sccsrm)
 	 */
 	if (streq(rev, "1.0") || streq(path, DEVNULL_RD)) {
-		sprintf(tag, "%s", "/dev/null");
+		fprintf(tag, "%s", "/dev/null");
 	} else {
-		strcpy(tag, rev);
-		if (revM) { 
-			strcat(tag, "+");
-			strcat(tag, revM);
+		fputs(rev, tag);
+		if (revM) {
+			fputc('+', tag);
+			fputs(revM, tag);
 		}
 		if (pf) {
 			if (pf->iLst) {
-				strcat(tag, "+");
-				strcat(tag, pf->iLst);
+				fputc('+', tag);
+				fputs(pf->iLst, tag);
 			}
 			if (pf->xLst) {
-				strcat(tag, "-");
-				strcat(tag, pf->xLst);
+				fputc('-', tag);
+				fputs(pf->xLst, tag);
 			}
 		}
-		strcat(tag, "/");
-		strcat(tag, path);
+		fputc('/', tag);
+		fputs(path, tag);
 	}
+	return (fmem_close(tag, 0));
 }
 
 
@@ -14616,8 +14619,8 @@ normal_diff(sccs *s, char *lrev, char *lrevM,
 {
 	char	*lpath = 0, *rpath = 0;
 	int	rc = -1;
+	char	*ltag, *rtag;
 	char	lfile[MAXPATH], rfile[MAXPATH];
-	char	ltag[MAXPATH],	rtag[MAXPATH];
 
 	/*
 	 * Create the lfile & rfile for diff
@@ -14637,13 +14640,15 @@ normal_diff(sccs *s, char *lrev, char *lrevM,
 	 *
 	 * +++ bk.sh 1.34  Thu Jun 10 21:22:08 1999
 	 */
-	mkTag(lrev, lrevM, pf, lpath, ltag);
-	mkTag(rrev, NULL, NULL, rpath, rtag);
+	ltag = mkTag(lrev, lrevM, pf, lpath);
+	rtag = mkTag(rrev, NULL, NULL, rpath);
 
 	/*
 	 * Now diff the lfile & rfile
 	 */
 	rc = doDiff(s, dop, lfile, rfile, out, lrev, rrev, ltag, rtag);
+	free(ltag);
+	free(rtag);
 done:	unless (streq(lfile, DEVNULL_RD)) unlink(lfile);
 	unless (streq(rfile, s->gfile) || streq(rfile, DEVNULL_RD)) unlink(rfile);
 	if (lpath) free(lpath);
