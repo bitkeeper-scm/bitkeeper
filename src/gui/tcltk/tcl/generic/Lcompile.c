@@ -165,6 +165,7 @@ private void	compile_assignFromStack(Expr *lhs, Type *rhs_type, Expr *expr,
 private int	compile_binOp(Expr *expr, Expr_f flags);
 private void	compile_block(Block *block);
 private void	compile_break(Stmt *stmt);
+private int	compile_cast(Expr *expr, Expr_f flags);
 private void	compile_clsDecl(ClsDecl *class);
 private int	compile_clsDeref(Expr *expr, Expr_f flags);
 private int	compile_clsInstDeref(Expr *expr, Expr_f flags);
@@ -3554,28 +3555,7 @@ compile_binOp(Expr *expr, Expr_f flags)
 		expr->type = expr->b->type;
 		return (1);
 	    case L_OP_CAST:
-		type = (Type *)expr->a;
-		flags &= ~L_DISCARD;
-		if (flags & L_LVALUE) {
-			compile_expr(expr->b, flags);
-		} else {
-			if (type->kind == L_INT) {
-				push_lit("::tcl::mathfunc::int");
-				compile_expr(expr->b, flags);
-				emit_invoke(2);
-			} else if (type->kind == L_FLOAT) {
-				push_lit("::tcl::mathfunc::double");
-				compile_expr(expr->b, flags);
-				emit_invoke(2);
-			} else {
-				compile_expr(expr->b, flags);
-			}
-		}
-		L_typeck_deny(L_VOID|L_FUNCTION, expr->b);
-		expr->sym   = expr->b->sym;
-		expr->flags = expr->b->flags;
-		expr->type  = type;
-		return (1);
+		return (compile_cast(expr, flags));
 	    case L_OP_CONCAT:
 		compile_expr(expr->a, L_PUSH_VAL);
 		compile_expr(expr->b, L_PUSH_VAL);
@@ -3590,6 +3570,48 @@ compile_binOp(Expr *expr, Expr_f flags)
 		L_bomb("compile_binOp: malformed AST");
 		return (1);
 	}
+}
+
+private int
+compile_cast(Expr *expr, Expr_f flags)
+{
+	int	range;
+	Jmp	*jmp;
+	Type	*type = (Type *)expr->a;
+
+	flags &= ~L_DISCARD;
+	if (flags & L_LVALUE) {
+		compile_expr(expr->b, flags);
+	} else if ((type->kind == L_INT) || (type->kind == L_FLOAT)) {
+		range = DeclareExceptionRange(L->frame->envPtr,
+					      CATCH_EXCEPTION_RANGE);
+		TclEmitInstInt4(INST_BEGIN_CATCH4, range, L->frame->envPtr);
+		ExceptionRangeStarts(L->frame->envPtr, range);
+		if (type->kind == L_INT) {
+			push_lit("::tcl::mathfunc::int");
+			compile_expr(expr->b, flags);
+			emit_invoke(2);
+		} else if (type->kind == L_FLOAT) {
+			push_lit("::tcl::mathfunc::double");
+			compile_expr(expr->b, flags);
+			emit_invoke(2);
+		}
+		ExceptionRangeEnds(L->frame->envPtr, range);
+		jmp = emit_jmp_fwd(INST_JUMP4, 0);
+		/* error case */
+		ExceptionRangeTarget(L->frame->envPtr, range, catchOffset);
+		TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
+		/* out */
+		fixup_jmps(&jmp);
+		TclEmitOpcode(INST_END_CATCH, L->frame->envPtr);
+	} else {
+		compile_expr(expr->b, flags);
+	}
+	L_typeck_deny(L_VOID|L_FUNCTION, expr->b);
+	expr->sym   = expr->b->sym;
+	expr->flags = expr->b->flags;
+	expr->type  = type;
+	return (1);
 }
 
 private int

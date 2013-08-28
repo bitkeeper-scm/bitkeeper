@@ -3960,23 +3960,15 @@ void cast_1_0() {
 cast_1_0
 } -output "1\n5.000000\n"
 
-test cast-1.1 { Invalid cast from string to int } -body {
+test cast-1.1 {invalid casts from string to int or float} -body {
 #lang L
-void cast_1_1() {
-    printf("%d\n", (int)"asdf");
+void cast_1_1()
+{
+	if (defined((int)"asdf")) puts("bad 1");
+	if (defined((float)"asdf")) puts("bad 2");
 }
-#lang tcl
-cast_1_1
-} -returnCodes {error} -result {expected number but got "asdf"}
-
-test cast-1.2 { Invalid cast from string to float } -body {
-#lang L
-void cast_1_2() {
-    printf("%f\n", (float)"asdf");
-}
-#lang tcl
-cast_1_2
-} -returnCodes {error} -result {expected floating-point number but got "asdf"}
+cast_1_1();
+} -output {}
 
 test cast-1.3 { Cast to string } -body {
 #lang L

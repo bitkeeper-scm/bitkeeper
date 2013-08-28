@@ -578,4 +578,22 @@ extern YYLTYPE L_lloc;
 #define ASSERT(c)  do {} while(0)
 #endif
 
+/*
+ * Taken from tclCompCmds.c and used for compiling L's try/catch.
+ */
+
+#define DeclareExceptionRange(envPtr, type) \
+    (TclCreateExceptRange((type), (envPtr)))
+#define ExceptionRangeStarts(envPtr, index) \
+    (((envPtr)->exceptDepth++), \
+    ((envPtr)->maxExceptDepth = \
+	    TclMax((envPtr)->exceptDepth, (envPtr)->maxExceptDepth)), \
+    ((envPtr)->exceptArrayPtr[(index)].codeOffset = currOffset(envPtr)))
+#define ExceptionRangeEnds(envPtr, index) \
+    (((envPtr)->exceptDepth--), \
+    ((envPtr)->exceptArrayPtr[(index)].numCodeBytes = \
+	currOffset(envPtr) - (envPtr)->exceptArrayPtr[(index)].codeOffset))
+#define ExceptionRangeTarget(envPtr, index, targetType) \
+    ((envPtr)->exceptArrayPtr[(index)].targetType = currOffset(envPtr))
+
 #endif /* L_COMPILE_H */

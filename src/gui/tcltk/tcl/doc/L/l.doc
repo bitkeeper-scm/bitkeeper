@@ -598,9 +598,8 @@ type with a type cast like in C:
 
     string_var = (string)13;
 
-If the thing being cast cannot be converted to the requested type, you
-may not receive an error until you later you use it and the run-time
-engine discovers that conversion is impossible.
+If the thing being cast cannot be converted to the requested type, the
+result of the cast is C<undef>.
 
 =item Typedefs
 
