@@ -7916,6 +7916,29 @@ void switch_4()
 .*48: L Error: switch expression must be int or string
 }
 
+test switch-5 {test break as a label in switch stmt} -body {
+#lang L
+void switch_5()
+{
+	/*
+	 * Check that break: is an error.  This used to be allowed
+	 * and was the source of a very hard-to-find bug.
+	 */
+	switch (1) {
+	    case 1:
+		break:
+	    case 2:
+		break;
+	}
+
+	/* It's illegal anywhere, not just in a switch. */
+	break:
+}
+switch_5();
+} -returnCodes error -match regexp -result {.*9: L Error: break is not a legal label
+.*15: L Error: break is not a legal label
+}
+
 test struct-1.0 {structs} -body {
 #lang L
 struct struct_1_0_point {

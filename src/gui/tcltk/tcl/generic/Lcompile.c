@@ -5550,6 +5550,9 @@ compile_label(Stmt *stmt)
 {
 	Label	*label;
 
+	if (!strcmp(stmt->u.label, "break")) {
+		L_errf(stmt, "break is not a legal label");
+	}
 	label = label_lookup(stmt, LABEL_DEF);
 	fixup_jmps(&label->fixups);
 	label->fixups = NULL;
