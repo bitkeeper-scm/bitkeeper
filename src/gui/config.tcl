@@ -39,6 +39,7 @@ proc getConfig {prog} \
 	option add *Label.borderWidth 1 100
 	option add *Button.borderWidth 1 100
 	option add *Menubutton.borderWidth 1 100
+	option add *Menu.tearOff 0 widgetDefault
 	option add *Menu.borderWidth 1 widgetDefault
 	option add *Menu.highlightThickness 1 widgetDefault
 	option add *Menu.activeBorderWidth 1 widgetDefault

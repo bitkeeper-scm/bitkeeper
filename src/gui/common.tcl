@@ -181,7 +181,7 @@ proc message {message args} \
 		dict set args -parent "."
 	}
 
-	if {[info exists ::env(BK_TEST_HOME)]} {
+	if {[info exists ::env(BK_REGRESSION)]} {
 		## Send messages to stderr in test mode.
 		puts stderr $message
 	} else {
@@ -676,7 +676,7 @@ proc popupMessage {args} \
 
 	# hopefully someday we'll turn the msgtool code into a library
 	# so we don't have to exec. For now, though, exec works just fine.
-	if {[info exists ::env(BK_TEST_HOME)]} {
+	if {[info exists ::env(BK_REGRESSION)]} {
 		# we are running in test mode; spew to stderr
 		puts stderr $message
 	} else {
@@ -987,7 +987,16 @@ proc traceTextWidget {cmd code widget event} \
 {
 	set ::textWidgets($widget,w) 0
 	set ::textWidgets($widget,h) 0
-	bind $widget <Configure> "displayTextSize %W %w %h"
+
+	## Bind the <Map> event so that the first time the text widget
+	## is drawn, we configure our display text size popups.  Note
+	## that the reason we do this is so that we don't display the
+	## text size popups on the initial draw of the widget but only
+	## after they've been resized at some point by the user.
+	bind $widget <Map> {
+	    bind %W <Map> ""
+	    bind %W <Configure> "displayTextSize %%W %%w %%h"
+	}
 	label $widget.__size -relief solid -borderwidth 1 -background #FEFFE6
 }
 trace add exec text leave traceTextWidget
