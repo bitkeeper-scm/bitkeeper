@@ -355,6 +355,7 @@ sane
 sccs2bk
 _scat
 sccslog
+_sec2hms
 send pro
 sendbug
 set
@@ -385,6 +386,7 @@ _testlines
 test
 testdates
 time
+_timestamp
 tmpdir
 _touch
 _unbk

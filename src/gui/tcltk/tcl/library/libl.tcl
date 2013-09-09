@@ -91,7 +91,7 @@ struct	stat {
 };
 
 typedef struct {
-	string	name;	// name of the exe as passed in
+	string	argv[];	// args passed in
 	string	path;	// if defined, this is the path to the exe
 			// if not defined, the executable was not found
 	int	exit;	// if defined, the process exited with this val
@@ -915,6 +915,7 @@ extern int	SYSTEM_BACKGROUND__;
 private struct {
 	FILE	chIn;
 	FILE	chOut;
+	FILE	chErr;
 	string	nmIn;
 	int	flags;
 	STATUS	status;
@@ -934,12 +935,13 @@ spawn_checker_(FILE f)
 	string	res;
 	int	mypid = pid(f)[END];
 	int	flags = spawn_handles{mypid}.flags;
+	FILE	chIn  = spawn_handles{mypid}.chIn;
 	FILE	chOut = spawn_handles{mypid}.chOut;
 
 	// Can't happen?  But be paranoid.
 	unless (defined(chOut)) return;
 
-	puts(nonewline: chOut, ::read(f));
+	catch("puts -nonewline $chOut [read $f]");
 
 	if (eof(f)) {
 		spawn_handles{mypid}.chOut = undef;
@@ -963,14 +965,20 @@ spawn_checker_(FILE f)
 		} else {
 			spawn_handles{mypid}.status.exit = 0;
 		}
-		if (flags & (SYSTEM_OUT_FILENAME__ | SYSTEM_OUT_HANDLE__)) {
+		if (flags & SYSTEM_OUT_FILENAME__) {
 			close(chOut);
 		}
-		if (flags & (SYSTEM_IN_ARRAY__ | SYSTEM_IN_STRING__)) {
-			close(spawn_handles{mypid}.chIn);
+		if (flags & SYSTEM_ERR_FILENAME__) {
+			close(spawn_handles{mypid}.chErr);
+		}
+		if (flags & SYSTEM_IN_FILENAME__) {
+			close(chIn);
+		} else if (flags & (SYSTEM_IN_ARRAY__ | SYSTEM_IN_STRING__)) {
+			close(chIn);
 			unlink(spawn_handles{mypid}.nmIn);
 		}
 		set("::%L_pid${mypid}_done", 1);  // waitpid() vwaits on this
+		set("::%L_zombies", 1);		  // and this
 	}
 }
 
@@ -1002,7 +1010,7 @@ system_(poly argv, poly in, poly &out_ref, poly &err_ref, STATUS &status_ref,
 			goto out;
 		}
 	}
-	status.name   = argv[0];
+	status.argv   = argv;
 	status.exit   = undef;
 	status.signal = undef;
 	if (length(path = auto_execok(argv[0]))) {
@@ -1111,6 +1119,7 @@ system_(poly argv, poly in, poly &out_ref, poly &err_ref, STATUS &status_ref,
 			spawn_handles{mypid}.chIn   = chIn;
 			spawn_handles{mypid}.nmIn   = nmIn;
 			spawn_handles{mypid}.chOut  = chOut;
+			spawn_handles{mypid}.chErr  = chErr;
 			spawn_handles{mypid}.status = status;
 			spawn_handles{mypid}.flags  = flags;
 			spawn_handles{mypid}.started = 1;
@@ -1223,7 +1232,7 @@ backtick_(_argused string cmd)
 		return (undef);
 	}
 
-	stdio_status.name = argv[0];
+	stdio_status.argv = argv;
 	if (length(path = auto_execok(argv[0]))) {
 		stdio_status.path = path;
 	}
@@ -1277,11 +1286,35 @@ uc(string s)
 int
 waitpid(int pid, STATUS &status, int nohang)
 {
+	int	p, running;
+
 	// If we don't call vwait, Tcl will never enter the
 	// event loop and call the rest of our code, so we
 	// want to force an update of the event loop before
 	// we do our checks.
 	if (nohang) update();
+
+	// If no pid, go find the first unreaped one.
+	while (pid == -1) {
+		running = 0;
+		foreach (p in keys(spawn_handles)) {
+			unless (defined(spawn_handles{p}.started)) {
+				continue;
+			}
+			if (Info_exists("::%L_pid${p}_done")) {
+				pid = p;
+				break;
+			} else {
+				running++;
+			}
+		}
+		if (pid >= 0) break;
+		if (nohang || !running) {
+			return (-1);
+		} else {
+			vwait("::%L_zombies");
+		}
+	}
 
 	unless (defined(spawn_handles{pid}.started)) return (-1);
 	unless (Info_exists("::%L_pid${pid}_done")) {
@@ -1290,7 +1323,14 @@ waitpid(int pid, STATUS &status, int nohang)
 	}
 	stdio_status = spawn_handles{pid}.status;
 	if (defined(&status)) status = stdio_status;
+	undef(spawn_handles{pid});
 	return (pid);
+}
+
+int
+wait(STATUS &status)
+{
+	return (waitpid(-1, &status, 0));
 }
 
 void

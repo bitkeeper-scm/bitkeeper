@@ -2072,6 +2072,14 @@ second in the sort order, +1 if the first comes after the second, and
 
 =proto int spawn(cmd | argv[], FILE in, FILE out, FILE err, STATUS &s);
 
+=proto int spawn(cmd | argv[], string in, FILE out, FILE err);
+
+=proto int spawn(cmd | argv[], string in, FILE out, FILE err, STATUS &s);
+
+=proto int spawn(cmd | argv[], string[] in, FILE out, FILE err);
+
+=proto int spawn(cmd | argv[], string[] in, FILE out, FILE err, STATUS &s);
+
 =proto int spawn(cmd | argv[], "input", "${outf}", "errors")
 
 =proto int spawn(cmd | argv[], "input", "${outf}", "errors", STATUS &s)
@@ -2305,10 +2313,16 @@ You can insert single elements or arrays of elements.
 
 Given a pid returned by spawn(), wait for it, and place the exit information
 in the (optional) STATUS struct.
-Returns C<pid> or -1 on error.
+If C<pid> is -1, return any process that has exited or return -1 if
+no more child processes exist;
+otherwise return C<pid> or -1 on error.
 If C<nohang> is non-zero, returns -1 if the process does not exist or other
 error, returns 0 if the process exists and has not exited, and
 returns C<pid> and updates C<status> if the process has exited.
+
+=proto int wait(STATUS &status)
+
+Same as C<waitpid(-1, &status, 0)>.
 
 =proto void warn(string fmt, ...args)
 

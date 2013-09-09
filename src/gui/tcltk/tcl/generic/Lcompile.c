@@ -2665,7 +2665,7 @@ typeck_spawn(Expr *in, Expr *out, Expr *err)
 		flags |= SYSTEM_IN_FILENAME;
 	} else if (isstring(in) || ispoly(in)) {
 		flags |= SYSTEM_IN_STRING;
-	} else if (isarrayof(in, L_STRING | L_POLY)) {
+	} else if (isarrayof(in, L_STRING | L_POLY) || islist(in)) {
 		flags |= SYSTEM_IN_ARRAY;
 	} else {
 		L_errf(in, "second arg must be FILE, or "

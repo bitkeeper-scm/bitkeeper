@@ -86,15 +86,16 @@ private int
 do_sdiff(resolve *rs, char *left, char *right, int wait)
 {
 	char	tmp[MAXPATH];
-	char	cols[10];
+	int	cols = 0;
 
-	strcpy(cols, "80");
 	if (tty_init()) {
-		sprintf(cols, "%d", tty_cols());
+		cols = tty_cols();
 		tty_done();
 	}
+	if (cols <= 0) cols = 80;
 	bktmp(tmp, "sdiff");
-	sysio(0, tmp, 0, "bk", "sdiff", "-w", cols, left, right, SYS);
+	systemf("bk ndiff --sdiff=%d '%s' '%s' > '%s'",
+	    cols, left, right, tmp);
 	more(rs, tmp);
 	unlink(tmp);
 	return (0);

@@ -20,6 +20,20 @@ BKDIR=${REPO}-${BK_USER}
 CMD=$1
 test X$CMD = X && CMD=build
 
+host=`uname -n | sed 's/\.bitmover\.com//'`
+START="/build/.start-$BK_USER"
+ELAPSED="/build/.elapsed-$BK_USER"
+
+# XXX Compat crud, simplify after _timestamp and _sec2hms
+#     are integrated and installed on the cluster
+bk _timestamp >/dev/null 2>&1
+if [ $? -eq 0 ]
+then
+	TS="bk _timestamp"
+else
+	TS="date +%s"
+fi
+
 failed() {
 	echo '*****************'
 	echo '!!!! Failed! !!!!'
@@ -29,6 +43,8 @@ failed() {
 
 case $CMD in
     build|save|release|trial)
+	eval $TS > $START
+	exec 3>&2
 	exec > /build/$LOG 2>&1
 	set -e
 	rm -rf /build/$BKDIR
@@ -82,10 +98,8 @@ case $CMD in
 		test -d /cygdrive/c/build/obj && rm -rf /cygdrive/c/build/obj/*
 		test -d /cygdrive/r/build/obj && rm -rf /cygdrive/r/build/obj/*
 	}
-	bk get -S Makefile build.sh
-	test -d SCCS || {
-		bk -U get -qS || true
-	}
+	bk get -ST Makefile build.sh
+	bk -U get -qST || true
 	make build || failed
 	./build image || failed
 	./build install || failed
@@ -97,7 +111,25 @@ case $CMD in
 	# save some diskspace for tight machines
 	(cd gui/tcltk; ../../build clean)
 	# run tests
-	./build test || failed
+	{ ./build test 2>&1 || failed; } | \
+		while read line
+		do
+			echo "$line"
+			TEST=`echo "$line" | sed -n 's/ERROR: Test \(.*\) failed with.*/\1/p'`
+			if [ -n "$TEST" ]
+			then
+				(
+				printf "%-14s failed %-10s" $host $TEST
+				if [ -s "$ELAPSED" ]
+				then
+					printf " %s elapsed\n" \
+						`cat "$ELAPSED"`
+				else
+					echo
+				fi
+				) 1>&3
+			fi
+		done
 
 	# this should never match because it will cause build to exit
 	# non-zero

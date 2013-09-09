@@ -1893,7 +1893,7 @@ void spawn2()
 
 	/*
 	 * Possible errors:
-	 * error parsing bash quoting in argv[] command
+	 * error parsing shell quoting in argv[] command
 	 * command not found
 	 * cannot open input file
 	 * cannot open output file
@@ -1942,6 +1942,60 @@ void spawn3()
 	unlink("spawn3-out");
 }
 spawn3();
+} -output {}
+
+test spawn4 {test spawn output options} -body {
+#lang L
+void spawn4()
+{
+	/*
+	 * Test some cases that were omitted elsewhere.
+	 */
+
+	int	pid;
+	FILE	fe, fo;
+	string	cmd, in;
+
+	// Test that file handles for stdout and stderr are not closed.
+
+	unless (fo = fopen("spawn4-out", "w")) puts("bad 1.1");
+	unless (fe = fopen("spawn4-err", "w")) puts("bad 1.2");
+	cmd = "perl -e 'while (<>) { print uc $_; print STDERR lc $_; }'";
+	in  = "LinE1\n";
+	pid = spawn(cmd, in, fo, fe);
+	unless (defined(pid)) puts("bad 1.3 ${stdio_lasterr}");
+	unless (waitpid(pid, undef, 0) == pid) puts("bad 1.4");
+	if (fprintf(fo, "line2\n")) puts("bad 1.5");
+	if (fprintf(fe, "line3\n")) puts("bad 1.6");
+	fclose(fo);
+	fclose(fe);
+	unless (fo = fopen("spawn4-out", "r")) puts("bad 1.7");
+	unless (fe = fopen("spawn4-err", "r")) puts("bad 1.8");
+	unless ((<fo> == "LINE1") && (<fo> == "line2") && !<fo>) {
+		puts("bad 1.9");
+	}
+	unless ((<fe> == "line1") && (<fe> == "line3") && !<fe>) {
+		puts("bad 1.10");
+	}
+	fclose(fo);
+	fclose(fe);
+
+	// Test that a list of strings is OK for the stdin arg.
+
+	cmd = "perl -e 'print uc $_ while (<>)'";
+	pid = spawn(cmd, {"line1","line2"}, "spawn4-out", undef);
+	unless (defined(pid)) puts("bad 1.1 ${stdio_lasterr}");
+	unless (waitpid(pid, undef, 0) == pid) puts("bad 2.2");
+	unless (fo = fopen("spawn4-out", "r")) puts("bad 2.3");
+	unless ((<fo> == "LINE1") && (<fo> == "LINE2") && !<fo>) {
+		puts("bad 2.4");
+	}
+	fclose(fo);
+
+	unlink("spawn4-out");
+	unlink("spawn4-err");
+}
+spawn4();
 } -output {}
 
 test sprintf-1 {test sprintf} -body {
@@ -2332,7 +2386,7 @@ void system3()
 	 */
 	ret = system("perl -e ''", undef, &out, &err, &status);
 	unless (ret == 0) puts("bad 3.1");
-	unless (status.name eq "perl") puts("bad 3.2");
+	unless (status.argv[0] eq "perl") puts("bad 3.2");
 	unless (status.path =~ /.+perl(.exe)?$/i) puts("bad 3.3");
 
 	/* Check that the path comes back undef if executable not found. */
@@ -2340,7 +2394,7 @@ void system3()
 	if (defined(ret)) puts("bad 4.1");
 	if (defined(status.path)) puts("bad 4.2");
 
-	/* Error parsing bash quoting in argv[] command. */
+	/* Error parsing shell quoting in argv[] command. */
 	ret = system("'bad quoting");
 	if (defined(ret)) puts("bad 5.1");
 
@@ -3126,7 +3180,7 @@ test backtick-2 {test backtick stderr} -setup {
 
 		ret = `perl -e 'print "to out"; print STDERR "to err";'`;
 		unless (ret eq "to out") puts("bad stdout ${ret}");
-		unless (stdio_status.name eq "perl") puts("bad 10");
+		unless (stdio_status.argv[0] eq "perl") puts("bad 10");
 		unless (stdio_status.path =~ /.+perl(.exe)?$/i) puts("bad 11");
 		unless (stdio_status.exit == 0) puts("bad 12");
 		if (defined(stdio_status.signal)) puts("bad 13");
@@ -3159,7 +3213,7 @@ test backtick-3 {test backtick stderr} -setup {
 
 		ret = `perl -e 'print "to out"; print STDERR "to err";exit 3'`;
 		unless (ret eq "to out") puts("bad stdout ${ret}");
-		unless (stdio_status.name eq "perl") puts("bad 10");
+		unless (stdio_status.argv[0] eq "perl") puts("bad 10");
 		unless (stdio_status.path =~ /.+perl(.exe)?$/i) puts("bad 11");
 		unless (stdio_status.exit == 3) puts("bad 12");
 		if (defined(stdio_status.signal)) puts("bad 13");
@@ -3253,7 +3307,7 @@ void wpDoit(int exit_status)
 
 	/* Poll waitpid every 1/4 second up to secs+1 seconds. */
 	reaped = 0;
-	for (i = 0; i < (secs+1)*4; ++i) {
+	for (i = 0; !reaped && (i < (secs+1)*4); ++i) {
 		ret = waitpid(pid, &st, 1);
 		switch (ret) {
 		    case 0:	// process still running
@@ -3299,6 +3353,8 @@ void waitpid2()
 	unless (pid > 0) puts("bad 1.1");
 	sleep(1);
 	unless (waitpid(pid, undef, 0) == pid) puts("bad 1.2");
+	// check that if you call again, you get -1
+	unless (waitpid(pid, undef, 0) == -1) puts("bad 1.2.1");
 	unless (f = fopen("outp2", "r")) puts("bad 1.3");
 	unless (<f> eq "waitpid2") puts("bad 1.4");
 	fclose(f);
@@ -3331,6 +3387,10 @@ void waitpid3(int n, int parallel)
 				reaped++;
 				bg--;
 				undef(pids{pid});
+				// check that if you call again, you get -1
+				unless (waitpid(pid, undef, 1) == -1) {
+					puts("bad 1.4");
+				}
 				break;
 			}
 			if (reaped) break;
@@ -3348,10 +3408,52 @@ void waitpid3(int n, int parallel)
 	}
 	foreach (pid in keys(pids)) {
 		unless (waitpid(pid, &st, 0) == pid) puts("bad 2.1");
+		unless (waitpid(pid, &st, 0) == -1) puts("bad 2.1.1");
 		unless (st.exit == 0) puts("bad 2.2");
 	}
 }
 waitpid3(10, 5);
+} -output {}
+
+test waitpid-4 {test waitpid with multiple procs, wait on any} -body {
+#lang L
+/* This test is from Larry. */
+void
+waitpid4(void)
+{
+	int	i, pid;
+	string	cmd, pids{int};
+
+	for (i = 0; i < 5; i++) {
+		cmd = "bk _usleep ${i * 100000}";
+		pid = spawn(cmd);
+		unless (defined(pid)) puts("spawn err ${cmd}");
+		pids{pid} = cmd;
+	}
+	for (i = 0; i < 5; i++) {
+		if (i < 3) {
+			pid = waitpid(-1, undef, 0);
+		} else {
+			pid = wait(undef);
+		}
+		if (pids{pid}) {
+			cmd = join(" ", stdio_status.argv);
+			unless(cmd == pids{pid}) {
+				puts("bad argv: want ${cmd} got ${pids{pid}}");
+			}
+			undef(pids{pid});
+		} else {
+			puts("${i} waitpid error ${pid}");
+		}
+	}
+	unless ((pid = waitpid(-1, undef, 0)) == -1) {
+		puts("waitpid w/ no processes=${pid}");
+	}
+	unless ((pid = wait(undef)) == -1) {
+		puts("wait w/ no processes=${pid}");
+	}
+}
+waitpid4();
 } -output {}
 
 test warn-1 {test warn} -body {

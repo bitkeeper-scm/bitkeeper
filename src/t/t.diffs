@@ -560,6 +560,7 @@ fi
 echo $N Check that all extra files fed in on stdin get diffed .......$NL
 cd "$HERE"
 commercial proj2
+bk clone $Q . ../proj2-copy
 mkdir dir
 echo stuff > dir/extra1
 echo stuff > dir/extra2
@@ -575,4 +576,30 @@ bk -Ucx diffs -N > ../GOT
 GOT=`wc -l < ../GOT`
 WANT=15
 test $GOT -eq $WANT || fail -f ../GOT wrong output
+echo OK
+
+echo $N Test bk diffs -NL............................................$NL
+rm -f ../WANT ; touch ../WANT
+bk diffs -L../proj2-copy > ../GOT
+cmpfiles ../WANT ../GOT
+bk diffs -NL../proj2-copy > ../OUT
+perl -pe "s,^---.*,--- /dev/null,g ; s,^\+\+\+ ([a-z0-9/]+).*,+++ \\1,g" < ../OUT > ../GOT
+cat <<EOF > ../WANT
+===== New file: dir/extra1 =====
+--- /dev/null
++++ proj2/dir/extra1
+@@ -0,0 +1 @@
++stuff
+===== New file: dir/extra2 =====
+--- /dev/null
++++ proj2/dir/extra2
+@@ -0,0 +1 @@
++stuff
+===== New file: dir/extra3 =====
+--- /dev/null
++++ proj2/dir/extra3
+@@ -0,0 +1 @@
++stuff
+EOF
+cmpfiles ../WANT ../GOT
 echo OK
