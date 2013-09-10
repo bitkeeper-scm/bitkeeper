@@ -12,6 +12,12 @@ if {[info exists ::env(BK_DEBUG_GUI)]} {
 	rename newproc proc
 }
 
+if {![info exists ::env(BK_GUI_LEVEL)]
+    || ![string is integer -strict $::env(BK_GUI_LEVEL)]} {
+	set ::env(BK_GUI_LEVEL) 0
+}
+incr ::env(BK_GUI_LEVEL)
+
 proc bk_toolname {} {
 	return [file tail [info script]]
 }
@@ -181,8 +187,13 @@ proc message {message args} \
 		dict set args -parent "."
 	}
 
-	if {[info exists ::env(BK_REGRESSION)]} {
-		## Send messages to stderr in test mode.
+	if {[info exists ::env(BK_REGRESSION)]
+	    || ($::env(BK_GUI_LEVEL) == 1
+		&& $::tcl_platform(platform) ne "windows")} {
+		if {[info exists ::env(BK_REGRESSION)]
+		    && $::env(BK_GUI_LEVEL) > 1} {
+			append message " (LEVEL: $::env(BK_GUI_LEVEL))"
+		}
 		puts stderr $message
 	} else {
 		tk_messageBox {*}$args -message $message

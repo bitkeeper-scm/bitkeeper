@@ -14,6 +14,7 @@ bk edit $Q afile
 echo foobar > afile
 bk ci -y. $Q afile
 bk commit $Q -yafile
-bk difftool -L
-
+bk difftool -L 2> GOT
+echo "No files found with differences" > WANT
+cmpfiles WANT GOT
 echo OK

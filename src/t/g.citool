@@ -558,12 +558,12 @@ EOF
 err=$?
 test $err -ne 1 && { echo failed; echo "exited $err; expected 1"; exit 1; }
 MSG=`cat "$OUT"`
-test "$MSG" = "sane: not in a BitKeeper repository" || {
+test "$MSG" = "bk: Cannot find product root." || {
 	echo failed
 	echo "did not get a sane error message"
 	echo
 	echo "wanted:"
-	echo "sane: not in a BitKeeper repository"
+	echo "bk: Cannot find product root."
 	echo
 	echo "got:"
 	cat "$OUT"

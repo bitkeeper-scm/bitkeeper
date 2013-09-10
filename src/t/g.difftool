@@ -65,6 +65,34 @@ test -s "$OUT" && fail -f "$OUT"
 test $err -ne 0 && fail
 echo "OK"
 
+echo $N Test BK_GUI_LEVEL handling messages correctly ...............$NL
+bk guitest difftool file1 file2 >"$OUT" 2>&1 <<'EOF'
+	if {$::env(BK_GUI_LEVEL) != 1} {
+		puts "BK_GUI_LEVEL should be 1, but it's $::env(BK_GUI_LEVEL)"
+		exit 1
+	}
+
+	## Call difftool with no diffs, which should end in
+	## an error message being output.  In regression tests,
+	## an error message with a BK_GUI_LEVEL > 1 should append
+	## the level to the output that we can check.
+	set msg [exec bk difftool 2>@1]
+
+	## We should be 2 levels deep in the GUIs.
+	if {![regexp {LEVEL: ([0-9]+)} $msg -> lvl] || $lvl != 2} {
+		puts "Invalid BK_GUI_LEVEL"
+		if {[info exists lvl]} {
+			puts "Expected level 2 but got $lvl"
+		}
+		exit 1
+	}
+	test_buttonPress Quit
+EOF
+err=$?
+test -s "$OUT" && fail -f "$OUT"
+test $err -ne 0 && fail
+echo "OK"
+
 ## Create two revisions for testing and make a local change to test out the
 ## various command-line options for difftool.
 echo "foo" > foo
