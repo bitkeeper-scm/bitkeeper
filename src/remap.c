@@ -245,12 +245,10 @@ getdirMerge(void *token, char *gfile, char *dotbk)
 
 	unless (dotbk) return (0);	/* okay for gfile to not match .bk */
 
-	if (dotbk[strlen(dotbk)+1] == 'f') {
-		die("file in %s/.bk/%s/%s",
-		    proj_root(opts->proj), opts->dir, dotbk);
-	}
 	if (gfile) {
-		if (gfile[strlen(gfile)+1] == 'f') {
+		/* both gfile and dotbk contain the same file */
+		if ((gfile[strlen(gfile)+1] == 'f') &&
+		    (dotbk[strlen(dotbk)+1] == 'd')) {
 			warn("file '%s/%s' masks a directory with history,\n",
 			    opts->dir, gfile);
 			// XXX - die?  What if more than one?
@@ -259,13 +257,22 @@ getdirMerge(void *token, char *gfile, char *dotbk)
 		}
 		free(dotbk);
 	} else {
-		/* ret missing something from mapdir */
-		unless (streq(dotbk, "SCCS")) {
+		/* dotbk contains something not in gfile space */
+		if (streq(dotbk, "SCCS")) {
+			opts->add = addLine(opts->add, dotbk);
+		} else if ((dotbk[strlen(dotbk)+1] == 'd') ||
+		    (sprintf(buf, "%s/.bk/%s/%s",
+			proj_root(opts->proj), opts->dir, dotbk) &&
+		     isdir(buf))) {
+			/* repair missing directory in gfile space */
 			sprintf(buf, "%s/%s/%s",
 			    proj_root(opts->proj), opts->dir, dotbk);
 			mkdir(buf, 0777);
+			opts->add = addLine(opts->add, dotbk);
+		} else {
+			/* we ignore files, but don't expect them */
+			free(dotbk);
 		}
-		opts->add = addLine(opts->add, dotbk);
 	}
 	return (0);
 }
@@ -292,7 +299,7 @@ remap_getdir(project *proj, char *dir)
 		opts.dir = dir;
 		opts.add = 0;
 		parallelLines(ret, mapdir, 0, getdirMerge, &opts);
-		freeLines(mapdir, 0);
+		freeLines(mapdir, 0);	/* mapdir items freed in getdirMerge */
 
 		if (opts.add) {
 			ret = catLines(ret, opts.add);
