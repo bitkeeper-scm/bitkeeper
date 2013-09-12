@@ -187,7 +187,7 @@ echo $N Test key given in command line...............................$NL
 REV=`bk prs -hnd:KEY: -r1.1 "name with  spaces"`
 bk guitest revtool -r"$REV" "name with  spaces" >"$OUT" 2>&1 <<'EOF'
 	global anchor
-	if {$anchor ne "1.1-bk"} {
+	if {$anchor ne "1.1"} {
 		puts stderr "Revision 1.1 specified in command line, \
 		    but not selected in GUI"
 		exit 1

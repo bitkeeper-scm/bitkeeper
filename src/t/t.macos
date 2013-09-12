@@ -31,3 +31,14 @@ grep -q 'exists, skipping it.' ERR && {
 	exit 1
 }
 echo OK
+
+echo $N Make sure a .DS_Store in .bk does not make bk assert.........$NL
+commercial proj
+bk clone $Q . ../proj-copy
+touch afile
+bk new $Q afile
+bk commit $Q -yafile
+cd ../proj-copy
+touch .bk/.DS_Store
+bk pull $Q || fail
+echo OK
