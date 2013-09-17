@@ -115,6 +115,22 @@ string	optarg, optopt;
 extern string	getopt(string av[], string opts, string lopts[]);
 extern void	getoptReset(void);
 
+/* These are pre-defined identifiers set by the compiler. */
+extern int	SYSTEM_ARGV__;
+extern int	SYSTEM_IN_STRING__;
+extern int	SYSTEM_IN_ARRAY__;
+extern int	SYSTEM_IN_FILENAME__;
+extern int	SYSTEM_IN_HANDLE__;
+extern int	SYSTEM_OUT_STRING__;
+extern int	SYSTEM_OUT_ARRAY__;
+extern int	SYSTEM_OUT_FILENAME__;
+extern int	SYSTEM_OUT_HANDLE__;
+extern int	SYSTEM_ERR_STRING__;
+extern int	SYSTEM_ERR_ARRAY__;
+extern int	SYSTEM_ERR_FILENAME__;
+extern int	SYSTEM_ERR_HANDLE__;
+extern int	SYSTEM_BACKGROUND__;
+
 /* Used internally by popen() and pclose() for stderr callbacks. */
 typedef struct {
 	FILE	pipe;
@@ -643,10 +659,10 @@ stderr_gui_cb_(_argused string cmd, FILE fd)
 }
 
 FILE
-popen(string cmd, string mode, _optional void &stderr_cb(string cmd, FILE f))
+popen_(poly cmd, string mode, void &stderr_cb(string cmd, FILE f), int flags)
 {
 	int		v = 0;
-	int		redir, numargs;
+	int		redir;
 	FILE		f, rdPipe, wrPipe;
 	string		arg, argv[], err;
 	stderr_ctxt_t	ctxt;
@@ -656,7 +672,10 @@ popen(string cmd, string mode, _optional void &stderr_cb(string cmd, FILE f))
 		v = 1;
 	}
 
-	if (catch("set argv [shsplit $cmd]", &err)) {
+	if (flags & SYSTEM_ARGV__) {
+		argv = (string[])cmd;
+		cmd = join(" ", argv);
+	} else if (catch("set argv [shsplit $cmd]", &err)) {
 		stdio_lasterr = err;
 		return (undef);
 	}
@@ -673,14 +692,9 @@ popen(string cmd, string mode, _optional void &stderr_cb(string cmd, FILE f))
 		}
 	}
 
-	/*
-	 * Info_level(0) will return a list like {"popen", "arg1", "arg2"}
-	 */
-	numargs = length(Info_level(0)) - 1;
-
 	unless (redir) {
 		/* Caller did not redirect stderr */
-		if (numargs < 3) {
+		unless (flags & SYSTEM_OUT_HANDLE__) {
 			/* or give us a callback */
 			if (tk_loaded_()) {
 				stderr_cb = &stderr_gui_cb_;
@@ -896,22 +910,6 @@ signame_to_num(string signame)
 	    default:		return (undef);
 	}
 }
-
-/* These are pre-defined identifiers set by the compiler. */
-extern int	SYSTEM_ARGV__;
-extern int	SYSTEM_IN_STRING__;
-extern int	SYSTEM_IN_ARRAY__;
-extern int	SYSTEM_IN_FILENAME__;
-extern int	SYSTEM_IN_HANDLE__;
-extern int	SYSTEM_OUT_STRING__;
-extern int	SYSTEM_OUT_ARRAY__;
-extern int	SYSTEM_OUT_FILENAME__;
-extern int	SYSTEM_OUT_HANDLE__;
-extern int	SYSTEM_ERR_STRING__;
-extern int	SYSTEM_ERR_ARRAY__;
-extern int	SYSTEM_ERR_FILENAME__;
-extern int	SYSTEM_ERR_HANDLE__;
-extern int	SYSTEM_BACKGROUND__;
 
 private struct {
 	FILE	chIn;

@@ -1949,12 +1949,13 @@ with a ": ".
 Remove an element from the end of C<array>.
 Return undef if the array is already empty.
 
-=proto FILE popen(string cmd, string mode)
+=proto FILE popen(string cmd | argv[], string mode)
 
-=proto FILE popen(string cmd, string mode, void &stderr_callback(string cmd, FILE f))
+=proto FILE popen(string cmd | argv[], string mode, void &stderr_callback(string cmd, FILE f))
 
-Open a pipe to the command C<cmd>.
-The command string undergoes bash-style quoting instead of Tcl quoting.
+Open a file handle to a process running the command specified in 
+C<argv[]> or C<cmd>.  In the C<cmd> case, the command is split into
+arguments respecting Bourne shell style quoting.
 The returned FILE handle may be
 used to write to the command's input pipe or read from its output
 pipe, depending on the value of C<mode>.  If write-only access is used

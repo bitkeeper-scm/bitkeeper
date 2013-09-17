@@ -199,6 +199,7 @@ private int	compile_length(Expr *expr);
 private void	compile_loop(Loop *loop);
 private int	compile_min_max(Expr *expr);
 private int	compile_fnParms(VarDecl *decl);
+private int	compile_popen(Expr *expr);
 private int	compile_pop_shift(Expr *expr);
 private int	compile_push(Expr *expr);
 private void	compile_reMatch(Expr *re);
@@ -295,6 +296,7 @@ static struct {
 	{ "length",	compile_length },
 	{ "max",	compile_min_max },
 	{ "min",	compile_min_max },
+	{ "popen",	compile_popen },
 	{ "pop",	compile_pop_shift },
 	{ "push",	compile_push },
 	{ "read",	compile_read },
@@ -2737,6 +2739,56 @@ typeck_system(Expr *in, Expr *out, Expr *err)
 	}
 
 	return (flags);
+}
+
+private int
+compile_popen(Expr *expr)
+{
+	int	flags = 0, n;
+	Expr	*cb, *cmd, *mode;
+	VarDecl	*args;
+	Type	*want;
+	YYLTYPE	loc = { 0 };
+
+	push_lit("popen_");
+	expr->type = L_poly;
+
+	n = compile_exprs(expr->b, L_PUSH_VAL);
+	unless ((n == 2) || (n == 3)) {
+		L_errf(expr, "incorrect # args to popen");
+		return (0);
+	}
+	cmd  = expr->b;
+	mode = cmd->next;
+	cb   = mode->next;
+
+	if (isarrayof(cmd, L_STRING | L_POLY) || islist(cmd)) {
+		flags |= SYSTEM_ARGV;
+	} else unless (isstring(cmd) || ispoly(cmd)) {
+		L_errf(cmd, "first arg to popen must be string or string array");
+	}
+
+	L_typeck_expect(L_STRING, mode, "in second arg to popen");
+
+	// To typecheck the optional stderr-callback arg, build a
+	// type descriptor and let L_typeck_same() do the work.
+	if (cb) {
+		args = ast_mkVarDecl(L_string, NULL, loc, loc);
+		args->next = ast_mkVarDecl(L_string, NULL, loc, loc);
+		want = type_mkNameOf(type_mkFunc(L_void, args));
+		unless (L_typeck_same(want, cb->type)) {
+			L_errf(cb, "illegal type for stderr callback");
+		}
+		flags |= SYSTEM_OUT_HANDLE;
+	} else {
+		TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
+	}
+
+	push_litf("0x%x", flags);
+	emit_invoke(5);
+	expr->type = L_typedef_lookup("FILE");
+	ASSERT(expr->type);
+	return (1);
 }
 
 /*

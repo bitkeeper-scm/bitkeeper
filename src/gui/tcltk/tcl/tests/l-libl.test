@@ -1324,6 +1324,20 @@ void popen1()
 	/* Check error case. */
 	f = popen("what-the-heck bad-command", "r");
 	if (defined(f)) puts("bad 10");
+
+	/* Check passing the command as an argv[]. */
+
+	f = popen({"cat","popen_file"}, "r");
+	unless (defined(f)) puts("bad 11");
+	i = 1;
+	while (defined(buf = <f>)) {
+		unless (buf eq "line${i}") printf("bad 2 i=%d\n", i);
+		++i;
+	}
+	unless (i == 4) puts("bad 12");
+
+	unless (pclose(f, &st) == 0) puts("bad 13.1");
+	unless (st.exit == 0) puts("bad 13.2");
 }
 popen1();
 } -output {}
@@ -1540,6 +1554,42 @@ void popen6()
 }
 popen6();
 } -output {}
+
+test popen-7 {test popen type checking} -body {
+#lang L
+void popen7_bad1();
+void popen7_bad2(string cmd);
+void popen7_bad3(FILE f);
+int popen7_bad4(string cmd, FILE f);
+int popen7_bad5(string cmd, string f);
+void popen7_good(string cmd, string f);
+void popen_7()
+{
+	popen("cmd", "r", popen7_bad1);
+	popen("cmd", "r", popen7_bad2);
+	popen("cmd", "r", popen7_bad3);
+	popen("cmd", "r", popen7_bad4);
+	popen("cmd", "r", popen7_bad5);
+
+	popen();
+	popen("cmd", "mode", popen7_good, "too many");
+
+	popen(123, "mode");
+	popen("cmd", 123);
+	popen("cmd", 123, popen7_good);
+}
+popen_7();
+} -returnCodes error -match regexp -result {.*9: L Error: illegal type for stderr callback
+.*10: L Error: illegal type for stderr callback
+.*11: L Error: illegal type for stderr callback
+.*12: L Error: illegal type for stderr callback
+.*13: L Error: illegal type for stderr callback
+.*15: L Error: incorrect # args to popen
+.*16: L Error: incorrect # args to popen
+.*18: L Error: first arg to popen must be string or string array
+.*19: L Error: expected type string but got int in second arg to popen
+.*20: L Error: expected type string but got int in second arg to popen
+}
 
 test printf-1 {test printf} -body {
 #lang L
