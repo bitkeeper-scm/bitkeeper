@@ -1021,7 +1021,7 @@ running tclsh exists:
     /usr/include/L
 
 When the file name is in quotes (like "myglobals.l"), L searches only
-the current working directory.
+the directory containing the script that did the #include.
 
 L also remembers which files have been included and will not include a file
 more than once, allowing you to have #include files that include each

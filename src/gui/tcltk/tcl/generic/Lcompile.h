@@ -113,6 +113,7 @@ typedef struct {
 	void	*ast;		// ptr to AST root, set by parser
 	Tcl_Obj	*errs;
 	int	err;		// =1 if there was any compile error
+	char	*dir;		// absolute path to dir containing L->file
 	char	*file;
 	int	line;
 	int	prev_token_len;
@@ -191,6 +192,7 @@ extern void	getoptReset(void);
 extern void	L_bomb(const char *format, ...);
 extern void	L_compile_attributes(Tcl_Obj *hash, Expr *expr,
 				     char *allowed[]);
+extern char	*L_dirname(char *path);
 extern void	L_err(const char *s, ...);
 extern void	L_errf(void *node, const char *format, ...);
 extern int	L_isUndef(Tcl_Obj *o);

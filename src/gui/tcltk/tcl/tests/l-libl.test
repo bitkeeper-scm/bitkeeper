@@ -1040,7 +1040,7 @@ test here-3 {test here with #includes} -setup {
 	set fname1 [makeFile {here();
 #include "here3b.l"
 here();
-	} here3a.l]
+	} here3a.l [file dirname [info script]]]
 	set fname2 [makeFile {here();
 #include "here3c.l"
 here();

@@ -559,8 +559,12 @@ parse_script(char *str, Ast **ast_p, Tcl_Obj *nameObj)
 
 	if (nameObj) {
 		L->file = ckstrdup(Tcl_GetString(nameObj));
+		L->dir  = L_dirname(L->file);
 	} else {
+		char *cwd = getcwd(NULL, 0);
 		L->file = ckstrdup("<stdin>");
+		L->dir  = ckstrdup(cwd);
+		free(cwd);
 	}
 
 	L->line		  = 1;
@@ -6815,6 +6819,27 @@ basenm(char *s)
 	} while (*t != '/' && t > s);
 	if (*t == '/') t++;
 	return (t);
+}
+
+/*
+ * Return the dirname of a path.  The caller must ckfree() it.
+ */
+char *
+L_dirname(char *path)
+{
+	Tcl_Obj	*pathObj = Tcl_NewStringObj(path, -1);
+	Tcl_Obj	*dirObj, *tmpObj;
+	char	*ret = NULL;
+
+	Tcl_IncrRefCount(pathObj);
+	tmpObj = Tcl_FSGetNormalizedPath(NULL, pathObj);
+	if (tmpObj == NULL) goto err;
+	dirObj = TclPathPart(L->interp, tmpObj, TCL_PATH_DIRNAME);
+	if (dirObj == NULL) goto err;
+	ret = ckstrdup(Tcl_GetString(dirObj));
+	Tcl_DecrRefCount(dirObj);
+ err:	Tcl_DecrRefCount(pathObj);
+	return (ret);
 }
 
 /*

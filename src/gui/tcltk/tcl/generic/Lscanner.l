@@ -28,7 +28,7 @@ HEX	[a-fA-F0-9]
 
 private int	include_pop();
 private int	include_push(FILE *f, char *name);
-private FILE *	include_search(char *file, char **path, int pwdOnly);
+private FILE *	include_search(char *file, char **path, int cwdOnly);
 private FILE *	include_try(Tcl_Obj *fileObj, int *found);
 private void	inject(char *s);
 private void	interpol_lbrace();
@@ -46,6 +46,7 @@ private void	tally_newlines(char *s, int len, int tally);
 typedef struct {
 	FILE	*file;
 	char	*name;
+	char	*dir;
 	int	line;
 	YY_BUFFER_STATE	buf;
 } Include;
@@ -189,14 +190,21 @@ include_try(Tcl_Obj *fileObj, int *found)
 	Tcl_Obj	*pathObj;
 	Tcl_HashEntry *hPtr;
 
-	/* See if the normalized path has been included before. */
-	if ((pathObj = Tcl_FSGetNormalizedPath(NULL, fileObj)) == NULL) {
-		L_err("unable to normalize include file %s", file);
-		return (NULL);
+	/*
+	 * See if the normalized path has been included before.  If the path
+	 * isn't absolute, consider it to be relative to where L->file is.
+	 */
+	if (Tcl_FSGetPathType(fileObj) == TCL_PATH_ABSOLUTE) {
+		if ((pathObj = Tcl_FSGetNormalizedPath(NULL, fileObj)) == NULL){
+			L_err("unable to normalize include file %s", file);
+			return (NULL);
+		}
+	} else {
+		pathObj = Tcl_ObjPrintf("%s/%s", L->dir, file);
 	}
+
 	path = Tcl_GetString(pathObj);
 	hPtr = Tcl_CreateHashEntry(include_table, path, &new);
-
 	if (new) {
 		f = fopen(path, "r");
 		*found = (f != NULL);
@@ -209,14 +217,15 @@ include_try(Tcl_Obj *fileObj, int *found)
 
 /*
  * Search for an include file.  If the path is absolute, use it.
- * Else, for #include <file> (pwdOnly == 0) try
+ * Else, for #include <file> (cwdOnly == 0) try
  *    $BIN/include  (where BIN is where the running tclsh lives)
  *    /usr/local/include/L
  *    /usr/include/L
- * For #include "file" (pwdOnly == 1) look only in the cwd.
+ * For #include "file" (cwdOnly == 1) look only in the directory
+ * where the script doing the #include resides.
  */
 private FILE *
-include_search(char *file, char **path, int pwdOnly)
+include_search(char *file, char **path, int cwdOnly)
 {
 	int	found, len;
 	FILE	*f = NULL;
@@ -224,16 +233,13 @@ include_search(char *file, char **path, int pwdOnly)
 	Tcl_Obj *fileObj;
 
 	unless (include_table) {
-		/*
-		 * REVIEW: Who deletes include_table?  Is the state per interp?
-		 */
 		include_table = (Tcl_HashTable *)ckalloc(sizeof(Tcl_HashTable));
 		Tcl_InitHashTable(include_table, TCL_STRING_KEYS);
 	}
 
 	fileObj = Tcl_NewStringObj(file, -1);
 	Tcl_IncrRefCount(fileObj);
-	if ((Tcl_FSGetPathType(fileObj) == TCL_PATH_ABSOLUTE) || pwdOnly) {
+	if ((Tcl_FSGetPathType(fileObj) == TCL_PATH_ABSOLUTE) || cwdOnly) {
 		f = include_try(fileObj, &found);
 	} else {
 		/* Try $BIN/include */
@@ -283,10 +289,12 @@ include_push(FILE *f, char *name)
 		++include_top;
 		include_stk[include_top].file = f;
 		include_stk[include_top].name = L->file;
+		include_stk[include_top].dir  = L->dir;
 		include_stk[include_top].line = L->line;
 		include_stk[include_top].buf = YY_CURRENT_BUFFER;
 		yy_switch_to_buffer(buf);
 		L->file = name;
+		L->dir  = L_dirname(L->file);
 		L->line = 1;
 		inject("#line 1\n");
 		return (1);
@@ -300,6 +308,7 @@ include_pop()
 
 	if (include_top >= 0) {
 		L->file = include_stk[include_top].name;
+		L->dir  = include_stk[include_top].dir;
 		L->line = include_stk[include_top].line;
 		fclose(include_stk[include_top].file);
 		yy_delete_buffer(YY_CURRENT_BUFFER);

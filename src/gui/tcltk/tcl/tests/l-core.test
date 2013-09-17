@@ -1091,7 +1091,7 @@ test scan-2.2 {test #line directive with include files} -setup {
 			++scan_2_2;
 			unless (basename(__FILE__) eq "foo.l") puts("bad 1");
 			unless (__LINE__ == 3) puts("bad 2");
-		   } scan-2.2.l .]
+		   } scan-2.2.l [file dirname [info script]]]
 } -body {
 #lang L
 int scan_2_2 = 0;
@@ -1122,7 +1122,7 @@ test scan-2.3 {test #line directive with nested include files} -setup {
 #include "scan-2.3-2.l"
 unless (basename(__FILE__) eq "foo1.l") puts("bad 1");
 unless (__LINE__ == 3) puts("bad 2 ${__LINE__}");
-} scan-2.3-1.l .]
+} scan-2.3-1.l [file dirname [info script]]]
 	set fname2 [makeFile {#line 1 "foo2.l"
 int scan_2_3a = 3;
 unless (basename(__FILE__) eq "foo2.l") puts("bad 3");
@@ -14067,7 +14067,7 @@ test include-1.0 {include files} -setup {
 			++include_1_0;
 			unless (basename(__FILE__) eq "foo-1.0.l") puts("bad 1");
 			unless (__LINE__ == 4) puts("bad 2");
-		   } foo-1.0.l .]
+		   } foo-1.0.l [file dirname [info script]]]
 } -body {
 #lang L
 int include_1_0 = 0;
@@ -14097,7 +14097,7 @@ test include-1.1 {nested include files} -setup {
 	set fname1 [makeFile {#include "foo-1.1-2.l"
 unless (basename(__FILE__) eq "foo-1.1-1.l") puts("bad 1.1");
 unless (__LINE__ == 3) puts("bad 1.2 ${__LINE__}");
-} foo-1.1-1.l .]
+} foo-1.1-1.l [file dirname [info script]]]
 	set fname2 [makeFile {unless (__LINE__ == 1) puts("bad 2.1");
 int include_1_1a = 3;
 unless (basename(__FILE__) eq "foo-1.1-2.l") puts("bad 2.2");
@@ -14136,7 +14136,7 @@ test include-1.2 {malformed includes} -body {
 
 test include-1.3 {test line number tracking with include files} -setup {
 	set fname1 [makeFile {int include_1_3a = "bad1";
-#include "foo-1.3-2.l"} foo-1.3-1.l .]
+#include "foo-1.3-2.l"} foo-1.3-1.l [file dirname [info script]]]
 	set fname2 [makeFile {int include_1_3b = "bad2";
 #include "foo-1.3-3.l"
 int include_1_3c = "bad3";} foo-1.3-2.l .]
@@ -14243,7 +14243,7 @@ test include-1.8 {test include <file> search path 1} -setup {
 } -result {good}
 
 test include-2.1 {nested include files almost nested too deeply} -setup {
-	set fname1  [makeFile {#include "f-1.2.l"}  f-1.1.l .]
+	set fname1  [makeFile {#include "f-1.2.l"}  f-1.1.l [file dirname [info script]]]
 	set fname2  [makeFile {#include "f-1.3.l"}  f-1.2.l .]
 	set fname3  [makeFile {#include "f-1.4.l"}  f-1.3.l .]
 	set fname4  [makeFile {#include "f-1.5.l"}  f-1.4.l .]
@@ -14260,7 +14260,7 @@ test include-2.1 {nested include files almost nested too deeply} -setup {
 } -output {ok}
 
 test include-2.2 {nested include files nested too deeply} -setup {
-	set fname1  [makeFile {#include "f-2.2.l"}  f-2.1.l .]
+	set fname1  [makeFile {#include "f-2.2.l"}  f-2.1.l [file dirname [info script]]]
 	set fname2  [makeFile {#include "f-2.3.l"}  f-2.2.l .]
 	set fname3  [makeFile {#include "f-2.4.l"}  f-2.3.l .]
 	set fname4  [makeFile {#include "f-2.5.l"}  f-2.4.l .]
@@ -15201,7 +15201,7 @@ void src_mappings_4_foo1()
 	}
 }
 #include "foo-sm4-2.l"
-} foo-sm4-1.l .]
+} foo-sm4-1.l [file dirname [info script]]]
 	set fname2 [makeFile {
 void src_mappings_4_foo2()
 {
