@@ -3602,6 +3602,7 @@ compile_binOp(Expr *expr, Expr_f flags)
 		expr->type = type_mkHash(expr->a->type, expr->b->type);
 		return (n);
 	    case L_OP_EQTWID:
+	    case L_OP_BANGTWID:
 		compile_twiddle(expr);
 		expr->type = L_int;
 		return (1);
@@ -3867,7 +3868,12 @@ compile_twiddle(Expr *expr)
 {
 	compile_expr(expr->a, L_PUSH_VAL);
 	compile_reMatch(expr->b);
-	L_typeck_expect(L_STRING|L_WIDGET, expr->a, "in =~");
+	if (expr->op == L_OP_BANGTWID) {
+		TclEmitOpcode(INST_LNOT, L->frame->envPtr);
+		L_typeck_expect(L_STRING|L_WIDGET, expr->a, "in !~");
+	} else {
+		L_typeck_expect(L_STRING|L_WIDGET, expr->a, "in =~");
+	}
 }
 
 /*

@@ -9289,10 +9289,12 @@ void regexp_1_0() {
         string s = "string";
         puts(s =~ /ring/);
         puts(s =~ /bob/);
+        puts(s !~ /ring/);
+        puts(s !~ /bob/);
 }
 #lang tcl
 regexp_1_0
-} -output "1\n0\n"
+} -output "1\n0\n0\n1\n"
 
 test regexp-1.1 {magic submatch variables ($1, $2, ...)} -body {
 #lang L

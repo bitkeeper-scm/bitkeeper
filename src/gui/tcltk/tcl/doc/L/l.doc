@@ -1280,6 +1280,7 @@ hash element.
 =item String comparison
 
     =~  regexp match or substitute
+    !~  negated regexp match
 
 =item Comparison of composite types (array, hash, struct)
 
@@ -1332,7 +1333,7 @@ hash element.
     + - . (string concatenation) (left)
     << >> (left)
     < <= > >= (left)
-    == != =~ (left)
+    == != =~ !~ (left)
     & (left)
     ^ (left)
     | (left)
@@ -2440,9 +2441,10 @@ L<http://www.pcre.org/pcre.txt>.
 =item Simple matching
 
     if (s =~ /foo/) { ... }  // true if s contains "foo"
+    if (s !~ /foo/) { ... }  // false if s contains "foo"
 
-The C<//> matching operator must be used in conjunction with C<=~> to
-tell L what variable to look at.
+The C<//> matching operator must be used in conjunction with C<=~> and
+C<!~> to tell L what variable to look at.
 
 =item Simple substitution
 

@@ -77,6 +77,7 @@ extern int	L_lex (void);
 %token T_ARROW "=>"
 %token T_ATTRIBUTE "_attribute"
 %token T_BANG "!"
+%token T_BANGTWID "!~"
 %token T_BITAND "&"
 %token T_BITOR "|"
 %token T_BITNOT "~"
@@ -203,7 +204,7 @@ extern int	L_lex (void);
 %left T_BITOR
 %left T_BITXOR
 %left T_BITAND
-%left T_EQ T_NE T_EQUALEQUAL T_NOTEQUAL T_EQTWID
+%left T_EQ T_NE T_EQUALEQUAL T_NOTEQUAL T_EQTWID T_BANGTWID
 %left T_GT T_GE T_LT T_LE T_GREATER T_GREATEREQ T_LESSTHAN T_LESSTHANEQ
 %left T_LSHIFT T_RSHIFT
 %left T_PLUS T_MINUS T_STRCAT
@@ -982,6 +983,10 @@ expr:
 	| expr T_EQTWID regexp_literal_mod
 	{
 		$$ = ast_mkBinOp(L_OP_EQTWID, $1, $3, @1, @3);
+	}
+	| expr T_BANGTWID regexp_literal_mod
+	{
+		$$ = ast_mkBinOp(L_OP_BANGTWID, $1, $3, @1, @3);
 	}
 	| expr T_EQTWID regexp_literal subst_literal T_RE_MODIFIER
 	{

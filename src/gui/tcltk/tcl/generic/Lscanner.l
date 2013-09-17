@@ -613,22 +613,22 @@ canonical_num(char *num)
 	\'		yy_push_state(str_single); STRBUF_START(L->token_off);
 	\`		yy_push_state(str_backtick); STRBUF_START(L->token_off);
 	"/*"		yy_push_state(comment);
-	"=~"[ \t\r\n]*"m".	{
+	[!=]~[ \t\r\n]*"m".	{
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
 		STRBUF_START(L_lloc.end - 2);	// next token starts at the "m"
 		re_quote_char = *(yytext + yyleng - 1);
 		L_lloc.end = L_lloc.beg + 2;	// this token spans the "=~"
-		return T_EQTWID;
+		return ((yytext[0] == '=') ? T_EQTWID : T_BANGTWID);
 	}
 	/* if / is used to delimit the regexp, the m can be omitted */
-	"=~"[ \t\r\n]*"/"	{
+	[!=]~[ \t\r\n]*"/"	{
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
 		STRBUF_START(L_lloc.end - 1);	// next token starts at the "/"
 		re_quote_char = '/';
 		L_lloc.end = L_lloc.beg + 2;	// this token spans the "=~"
-		return T_EQTWID;
+		return ((yytext[0] == '=') ? T_EQTWID : T_BANGTWID);
 	}
 	/* a substitution pattern */
 	"=~"[ \t\r\n]*"s".	{
