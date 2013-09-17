@@ -962,6 +962,39 @@ void getopt1()
 getopt1();
 } -output {}
 
+test getopt-2 {test getopt optind} -body {
+#lang L
+void getopt2()
+{
+	string	av[], c, s;
+
+	av = { "prog", "-a", "-b", "-c" };
+	s = "";
+
+	/* This tests that changing optind works as expected. */
+
+	getoptReset();
+	if (optind) puts("bad 0.1");
+	unless (optopt == "") puts("bad 0.2");
+	unless (optarg == "") puts("bad 0.3");
+
+	while (c = getopt(av, "abc", undef)) {
+		switch (c) {
+		    case "a":
+			++optind;
+			s .= c;
+			break;
+		    case /[bc]/:
+			s .= c;
+			break;
+		}
+	}
+	unless (s == "ac") puts("bad 1.1 '${s}'");
+	unless (optind == 4) puts("bad 1.2");
+}
+getopt2();
+} -output {}
+
 test getpid-1 {test getpid} -body {
 #lang L
 void getpid1()

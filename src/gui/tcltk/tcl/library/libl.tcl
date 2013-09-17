@@ -108,8 +108,9 @@ STATUS	stdio_status;
 extern	string	::argv[];
 extern	int	::argc;
 extern	string	errorCode[];
-extern	int	optind;
-extern	string	optarg, optopt;
+
+int	optind = 0;
+string	optarg, optopt;
 
 extern string	getopt(string av[], string opts, string lopts[]);
 extern void	getoptReset(void);
