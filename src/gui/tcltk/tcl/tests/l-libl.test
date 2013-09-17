@@ -2503,6 +2503,27 @@ void system3()
 system3();
 } -output {}
 
+test system-3.1 {test system return value when process exits from signal} -constraints unix -body {
+#lang L
+void system3_1()
+{
+	int	ret;
+	string	err, out;
+	STATUS	status;
+
+	ret = system("perl -e '$pid=$$; print \"out\n\"; system(\"kill $pid\");'",
+		     undef, &out, &err, &status);
+	if (defined(ret)) puts("bad 1: ${ret}");
+	if (out) puts("bad 2: ${out}");
+	if (err) puts("bad 3: ${err}");
+	unless (stdio_status.signal == 15) puts("bad 4: ${stdio_status.signal}");
+	unless (status.signal == 15) puts("bad 5: ${status.signal}");
+	if (defined(stdio_status.exit)) puts("bad 6");
+	if (defined(status.exit)) puts("bad 7");
+}
+system3_1();
+} -output {}
+
 test system-4 {test system and spawn I/O} -body {
 #lang L
 // Write lines[] to file fname w/open file handle f, then re-open.
@@ -2641,13 +2662,16 @@ void system4()
 	inf = tstwriteh(inf, inNm, { "this is line 1", "and line 2", "line 3" });
 	ret  = system(av, inf, outf, errf);
 	unless (ret == 0) puts("bad 4.1");
+	// Verify that the handles are still open by writing some more.
+	fprintf(outf, "AND 4\n");
+	fprintf(errf, "only one\n");
 	fclose(inf);
 	fclose(outf);
 	fclose(errf);
-	if (tstreadf(outNm, {"THIS IS LINE 1", "AND LINE 2", "LINE 3"})) {
+	if (tstreadf(outNm, {"THIS IS LINE 1", "AND LINE 2", "LINE 3", "AND 4"})) {
 		puts("bad 4.2");
 	}
-	if (tstreadf(errNm, {})) {
+	if (tstreadf(errNm, {"only one"})) {
 		puts("bad 4.3");
 	}
 	unlink(inNm);
@@ -2761,13 +2785,16 @@ void system4()
 	inf = tstwriteh(inf, inNm, { "this is line 1", "and line 2", "line 3" });
 	ret  = system(av, inf, outf, errf);
 	unless (ret == 0) puts("bad 13.1");
+	// Verify that the handles are still open by writing some more.
+	fprintf(outf, "only one\n");
+	fprintf(errf, "AND 4\n");
 	fclose(inf);
 	fclose(outf);
 	fclose(errf);
-	if (tstreadf(outNm, {})) {
+	if (tstreadf(outNm, {"only one"})) {
 		puts("bad 13.2");
 	}
-	if (tstreadf(errNm, {"THIS IS LINE 1", "AND LINE 2", "LINE 3"})) {
+	if (tstreadf(errNm, {"THIS IS LINE 1", "AND LINE 2", "LINE 3", "AND 4"})) {
 		puts("bad 13.3");
 	}
 	unlink(inNm);
@@ -2884,13 +2911,16 @@ void system4()
 	inf = tstwriteh(inf, inNm, { "this is line 1", "and line 2", "line 3" });
 	ret  = system(av, inf, outf, errf);
 	unless (ret == 0) puts("bad 23.1");
+	// Verify that the handles are still open by writing some more.
+	fprintf(outf, "and 4\n");
+	fprintf(errf, "AND 4\n");
 	fclose(inf);
 	fclose(outf);
 	fclose(errf);
-	if (tstreadf(outNm, {"this is line 1", "and line 2", "line 3"})) {
+	if (tstreadf(outNm, {"this is line 1", "and line 2", "line 3", "and 4"})) {
 		puts("bad 23.2");
 	}
-	if (tstreadf(errNm, {"THIS IS LINE 1", "AND LINE 2", "LINE 3"})) {
+	if (tstreadf(errNm, {"THIS IS LINE 1", "AND LINE 2", "LINE 3", "AND 4"})) {
 		puts("bad 23.3");
 	}
 	unlink(inNm);

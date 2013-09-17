@@ -1138,7 +1138,8 @@ system_(poly argv, poly in, poly &out_ref, poly &err_ref, STATUS &status_ref,
 				break;
 			    case "CHILDKILLED":
 				status.signal = signame_to_num(errorCode[2]);
-				break;
+				ret = undef;
+				goto out;
 			    default:
 				ret = undef;
 				goto out;

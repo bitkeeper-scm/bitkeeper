@@ -2223,7 +2223,9 @@ The global variable C<stdio_status> is also set.
 If the the command is a pipeline and a process in that pipeline fails,
 the returned status is for the first process that failed.
 
-Upon error, undef is returned, otherwise the return value is the
+If there is an error executing the command, or if the process
+is killed by a signal, undef is returned;
+otherwise, the return value is the
 process exit status (for a pipeline, the status of the first process
 that exited with error).
 
