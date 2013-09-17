@@ -5621,7 +5621,7 @@ emit_globalUpvar(Sym *sym)
 	    ((Interp *)L->interp)->varFramePtr) {
 		ASSERT(!(decl->flags & (DECL_CLASS_VAR | DECL_CLASS_INST_VAR)));
 		frame_resumePrologue();
-		push_lit("1");
+		push_lit("#0");
 		push_lit(id);
 		TclEmitInstInt4(INST_UPVAR, sym->idx, L->frame->envPtr);
 		emit_pop();

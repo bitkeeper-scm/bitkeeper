@@ -767,7 +767,7 @@ test scan-1.8 {test here documents 2} -body {
 string scan_1_8a;
 void scan_1_8()
 {
-	string	s, scan_1_8a;
+	string	s;
 	string	foo = "foo";
 
 	/* Check string interpolation. */
@@ -855,20 +855,20 @@ END
 	 */
 	// x\<newline>
 	// y
-	eval("#lang L\nscan_1_8a = <<END\nx\\\ny\nEND\n");
+	L("scan_1_8a = <<END\nx\\\ny\nEND\n");
 	unless (scan_1_8a eq "xy\n") puts("bad 9.3 ${scan_1_8a}");
-	eval("#lang L\nscan_1_8a = <<'END'\nx\\\ny\nEND\n");
+	L("scan_1_8a = <<'END'\nx\\\ny\nEND\n");
 	unless (scan_1_8a eq "x\\\ny\n") puts("bad 9.4");
 	// x\<newline>
 	// y\<newline>
-	eval("#lang L\nscan_1_8a = <<END\nx\\\ny\\\nEND\n");
+	L("scan_1_8a = <<END\nx\\\ny\\\nEND\n");
 	unless (scan_1_8a eq "xy") puts("bad 9.5");
-	eval("#lang L\nscan_1_8a = <<'END'\nx\\\ny\\\nEND\n");
+	L("scan_1_8a = <<'END'\nx\\\ny\\\nEND\n");
 	unless (scan_1_8a eq "x\\\ny\\\n") puts("bad 9.6");
 	// \<newline>
-	eval("#lang L\nscan_1_8a = <<END\n\\\nEND\n");
+	L("scan_1_8a = <<END\n\\\nEND\n");
 	unless (scan_1_8a eq "") puts("bad 9.7");
-	eval("#lang L\nscan_1_8a = <<'END'\n\\\nEND\n");
+	L("scan_1_8a = <<'END'\n\\\nEND\n");
 	unless (scan_1_8a eq "\\\n") puts("bad 9.8");
 
 	/* Check `cmd` inside interpolated here document. */
@@ -11465,7 +11465,7 @@ proc toplevel_1_1 {} {
 }
 toplevel_1_1
 } -output {Accent on helpful side of your nature.  Drain the moat.
-Sphenic numbers always have exactly eight divisors.
+2
 }
 
 test typecheck-1.0 {L typechecking} -body {
