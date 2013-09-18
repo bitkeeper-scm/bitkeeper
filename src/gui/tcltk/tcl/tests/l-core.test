@@ -1150,6 +1150,21 @@ unless (scan_2_3b == 4) puts("bad 10.4");
 	removeFile $fname3
 } -output {}
 
+test scan-3.1 {test 'and','or','xor','not' unimplemented reserved words} -body {
+#lang L
+void scan_3_1()
+{
+	if (1 and 2) {}
+	if (1 or 2) {}
+	if (1 or (2 and 3)) {}
+	if (not 1 xor 2) {}
+}
+} -returnCodes error -match regexp -result {.*3: L Error: 'and','or','xor','not' are unimplemented reserved words
+.*4: L Error: 'and','or','xor','not' are unimplemented reserved words
+.*5: L Error: 'and','or','xor','not' are unimplemented reserved words
+.*6: L Error: 'and','or','xor','not' are unimplemented reserved words
+}
+
 test unicode-1 {test unicode in string constants and here documents} -body {
 #lang L
 void unicode_1()

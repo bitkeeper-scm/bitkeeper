@@ -447,6 +447,26 @@ canonical_num(char *num)
 	"->"		return T_POINTS;
 	":"		return T_COLON;
 	"?"		return T_QUESTION;
+	"and"		{
+				L_err("'and','or','xor','not' are "
+				      "unimplemented reserved words");
+				return T_ANDAND;
+	}
+	"not"		{
+				L_err("'and','or','xor','not' are "
+				      "unimplemented reserved words");
+				return T_BANG;
+	}
+	"or"		{
+				L_err("'and','or','xor','not' are "
+				      "unimplemented reserved words");
+				return T_OROR;
+	}
+	"xor"		{
+				L_err("'and','or','xor','not' are "
+				      "unimplemented reserved words");
+				return T_BITXOR;
+	}
 	{ID}		{
 				Type *t = L_typedef_lookup(yytext);
 				if (t) {
