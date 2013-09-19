@@ -2091,7 +2091,8 @@ FsMaybeWrapInLLang(
     if (((len >= 2) && (path[len-2] == '.') && (path[len-1] == 'l')) ||
 	(L && L->global->forceL)) {
 	Tcl_Obj *newContents = Tcl_ObjPrintf(
-	      "#lang L\n%s\n#lang tcl", Tcl_GetString(fileContents));
+	      "#lang L --lineadj=-1\n%s\n#lang tcl",
+	      Tcl_GetString(fileContents));
 	Tcl_DecrRefCount(fileContents);
 	Tcl_IncrRefCount(newContents);
 	fileContents = newContents;

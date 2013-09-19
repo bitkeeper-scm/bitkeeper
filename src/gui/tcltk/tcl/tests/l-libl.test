@@ -25,7 +25,7 @@ test angle-1 {test <f>} -setup {
 	set fname2 [makeFile "lineb1\nlineb2\n" angle2 .]
 	set fname3 [makeFile "linec1\nlinec2\nlinec3\n" angle3 .]
 } -body {
-#lang L
+#lang L --line=1
 void angle1()
 {
 	int	i;
@@ -152,7 +152,7 @@ angle_2_1();
 } -output {}
 
 test angle-3 {test <f> errors} -body {
-#lang L
+#lang L --line=1
 void angle3()
 {
 	FILE	f;
@@ -164,7 +164,7 @@ angle3();
 } -output {}
 
 test angle-4 {test <> type errors} -body {
-#lang L
+#lang L --line=1
 void angle4()
 {
 	string	arr[];
@@ -224,7 +224,7 @@ test angle-6 {test <"filename"> and <"cmd|">} -setup {
 	makeFile "angle1\nangle2\nangle3\n" angle6-1.txt .
 	makeFile "angle4\nangle5\nangle6\n" angle6-2.txt .
 } -body {
-#lang L
+#lang L --line=1
 void angle6()
 {
 	int	i;
@@ -276,7 +276,7 @@ angle6();
 } -output {}
 
 test angle-7 {test <"filename"> and <"cmd|"> errors} -body {
-#lang L
+#lang L --line=1
 void angle7()
 {
 	stdio_lasterr = "";
@@ -310,7 +310,7 @@ test assert-1 {test assert} -setup {
 		assert(i > 0);
 	} assert1.l]
 } -body {
-#lang L
+#lang L --line=1
 /*
  * Some contortions here to run tclsh on assert1.l (above) which
  * prints to stderr and then exits(1), so we can capture stderr and
@@ -334,7 +334,7 @@ assert1();
 } -output {}
 
 test basename-1 {test basename} -body {
-#lang L
+#lang L --line=1
 void basename1()
 {
 	unless (basename("x") eq "x") puts("bad 1");
@@ -356,7 +356,7 @@ test chdir-1 {test chdir} -setup {
 	if {!$_windows} {file mkdir {testdir "'4}}
 	# '"
 } -body {
-#lang L
+#lang L --line=1
 void chdir1()
 {
 	unless (chdir("testdir1") == 0) puts("bad 1.1");
@@ -389,7 +389,7 @@ chdir1();
 } -output {}
 
 test caller-1 {test caller} -body {
-#lang L
+#lang L --line=1
 void caller1_foo()
 {
 	unless (caller(0) eq "caller1_foo") puts("bad 2.1");
@@ -409,7 +409,7 @@ test chmod-1 {test chmod} -constraints tempNotWin -setup {
 	set fname3 [makeFile {test} chmodtest\{3\} .]
 	set fname4 [makeFile {test} {chmod test \"\'4} .]
 } -body {
-#lang L
+#lang L --line=1
 void chmod1(string nm)
 {
 	FILE	f;
@@ -445,7 +445,7 @@ test chown-1 {test chown} -constraints tempNotWin -setup {
 	set fname3 [makeFile {test} chowntest\{3\} .]
 	set fname4 [makeFile {test} {chown test \"\'4} .]
 } -body {
-#lang L
+#lang L --line=1
 /*
  * This isn't the greatest test, because we can't be sure which users
  * or groups are available on the test machine.  So we create some
@@ -503,7 +503,7 @@ test die-1 {test die} -setup {
 	} die1-4.l
 
 } -body {
-#lang L
+#lang L --line=1
 void die1()
 {
 	int	ret;
@@ -538,7 +538,7 @@ die1();
 } -output {}
 
 test die-2 {test die errors} -body {
-#lang L
+#lang L --line=1
 void die2()
 {
 	die("%s");
@@ -550,7 +550,7 @@ die2();
 }
 
 test dirname-1 {test dirname} -body {
-#lang L
+#lang L --line=1
 void dirname1()
 {
 	unless (dirname("x") eq ".") puts("bad 1");
@@ -572,7 +572,7 @@ dirname1();
 } -output {}
 
 test env-1 {getenv and putenv} -body {
-#lang L
+#lang L --line=1
 void env1()
 {
 	unless (putenv("LIBLTEST=123") eq "123") puts("bad 0");
@@ -614,7 +614,7 @@ test exists-1 {test exists} -setup {
 	set fname3 [makeFile {test} existstest\{3\} .]
 	if {!$_windows} {set fname4 [makeFile {test} {exists test \"\'4} .]}
 } -body {
-#lang L
+#lang L --line=1
 void exists1(string nm)
 {
 	unless (exists(nm)) puts("bad 1");
@@ -634,7 +634,7 @@ if {!$_windows} {exists1 $fname4}
 } -output {}
 
 test fclose-1 {test fclose errors} -body {
-#lang L
+#lang L --line=1
 void fclose1()
 {
 	FILE	f = "bad";
@@ -648,7 +648,7 @@ fclose1();
 } -output {}
 
 test fclose-2 {test fclose type errors} -body {
-#lang L
+#lang L --line=1
 void fclose2()
 {
 	fclose("not a FILE");
@@ -657,7 +657,7 @@ void fclose2()
 }
 
 test file-1 {test fopen/fclose/fprintf} -body {
-#lang L
+#lang L --line=1
 void file1(string nm)
 {
 	FILE	f;
@@ -678,7 +678,7 @@ unless (platform() eq "windows") file1("file test \"4\'");
 test file-2 {test fopen/fclose/fprintf errors} -setup {
 	file delete -force "does not exist"
 } -body {
-#lang L
+#lang L --line=1
 void file2()
 {
 	FILE	f;
@@ -692,7 +692,7 @@ file2();
 } -output {}
 
 test file-3 {test fprintf type errors} -body {
-#lang L
+#lang L --line=1
 void file3()
 {
 	fprintf("not a FILE", "%s", "bad");
@@ -701,7 +701,7 @@ void file3()
 }
 
 test fopen-1 {test fopen errors} -body {
-#lang L
+#lang L --line=1
 void fopen1()
 {
 	if (defined(fopen("bad1", "r"))) puts("bad 1");
@@ -717,7 +717,7 @@ fopen(bad3, r) = couldn't open "bad3": no such file or directory
 } -output {}
 
 test fprintf-1 {test fprintf errors} -body {
-#lang L
+#lang L --line=1
 void fprintf1()
 {
 	fprintf(stderr, "%s");
@@ -729,7 +729,7 @@ fprintf1();
 }
 
 test Fprintf-1 {test Fprintf} -body {
-#lang L
+#lang L --line=1
 void Fprintf1()
 {
 	FILE	f;
@@ -756,7 +756,7 @@ Fprintf1();
 } -output {}
 
 test Fprintf-2 {test Fprintf errors} -body {
-#lang L
+#lang L --line=1
 void Fprintf2()
 {
 	Fprintf("fname", "%s");
@@ -782,7 +782,7 @@ test ftype-1 {test ftpye} -setup {
 	file mkdir $fdirname3
 	if {!$_windows} {file mkdir $fdirname4}
 } -body {
-#lang L
+#lang L --line=1
 void ftype1(string nm, string t)
 {
 	unless (ftype(nm) eq t) puts("bad 1");
@@ -810,7 +810,7 @@ if {!$_windows} {ftype1 $fdirname4 directory}
 test ftype-2 {test ftype errors} -setup {
 	file delete -force "does not exist"
 } -body {
-#lang L
+#lang L --line=1
 void ftype2()
 {
 	if (defined(ftype("does not exist"))) puts("bad 1");
@@ -825,7 +825,7 @@ test getdir-1 {test getdir} -setup {
 	set fname3 [makeFile {test3} f3 getdirtest]
 	file delete -force "does not exist"
 } -body {
-#lang L
+#lang L --line=1
 void getdir1()
 {
 	string	dirs[];
@@ -873,7 +873,7 @@ getdir1();
 } -output {}
 
 test getopt-1 {test getopt} -body {
-#lang L
+#lang L --line=1
 private string doit(string av[], string opts, string lopts[])
 {
 	string	c, s = "";
@@ -996,7 +996,7 @@ getopt2();
 } -output {}
 
 test getpid-1 {test getpid} -body {
-#lang L
+#lang L --line=1
 void getpid1()
 {
 	unless (getpid() == pid()) puts("bad");
@@ -1005,7 +1005,7 @@ getpid1();
 } -output {}
 
 test here-1 {test here} -body {
-#lang L
+#lang L --line=1
 void here1func() {
 	here();
 }
@@ -1028,7 +1028,7 @@ here1\(\) in l-libl.test:10
 } -output {}
 
 test here-2 {test here errors} -body {
-#lang L
+#lang L --line=1
 void here2()
 {
 	here("bad");
@@ -1048,7 +1048,7 @@ here();
 	set fname3 [makeFile {here();
 	} here3c.l]
 } -body {
-#lang L
+#lang L --line=1
 #include "here3a.l"
 void here3()
 {
@@ -1095,7 +1095,7 @@ test is-1 {test isdir/isreg/islink} -setup {
 	}
 	file delete -force "does not exist"
 } -body {
-#lang L
+#lang L --line=1
 void is1(string dirnm, string filenm, string linknm)
 {
 	unless (isdir(dirnm)) puts("bad 3.1");
@@ -1126,7 +1126,7 @@ if {!$_windows} {is1 $fdirname4 $fname4 $flink4}
 } -output {}
 
 test lc-1 {test lc} -body {
-#lang L
+#lang L --line=1
 void lc1()
 {
 	unless (lc("abcde") eq "abcde") puts("bad 1");
@@ -1141,7 +1141,7 @@ test link-1 {test link} -setup {
 	set fname [makeFile {123456} linktest .]
 	file delete -force linktest2
 } -body {
-#lang L
+#lang L --line=1
 void link1()
 {
 	/* Error if target does not exist. */
@@ -1164,7 +1164,7 @@ link1();
 test mkdir-1 {test mkdir} -setup {
 	set fname [makeFile {test} mkdir_file .]
 } -body {
-#lang L
+#lang L --line=1
 void mkdir1()
 {
 	string	f1 = "mkdir1";
@@ -1216,7 +1216,7 @@ test mtime-1 {test mtime} -setup {
 	set fname [makeFile {test} mtime_file .]
 	file delete -force "does not exist"
 } -body {
-#lang L
+#lang L --line=1
 void mtime1()
 {
 	/*
@@ -1234,7 +1234,7 @@ mtime1();
 } -output {}
 
 test normalize-1 {test normalize} -body {
-#lang L
+#lang L --line=1
 void normalize1()
 {
 	unless (normalize("") eq "") puts("bad 1");
@@ -1244,7 +1244,7 @@ normalize1();
 } -output {}
 
 test ord-1 {test ord} -body {
-#lang L
+#lang L --line=1
 void ord1()
 {
 	string	s;
@@ -1259,7 +1259,7 @@ ord1();
  } -output {}
 
 test pclose-1 {test pclose errors} -body {
-#lang L
+#lang L --line=1
 void pclose1()
 {
 	FILE	fd;
@@ -1277,7 +1277,7 @@ void pclose1()
 }
 
 test pclose-2 {test pclose with errors} -body {
-#lang L
+#lang L --line=1
 void pclose2()
 {
 	FILE	fd;
@@ -1298,7 +1298,7 @@ pclose2();
 test popen-1 {test popen/pclose} -setup {
 	set fname [makeFile "line1\nline2\nline3\n" popen_file .]
 } -body {
-#lang L
+#lang L --line=1
 void popen1()
 {
 	int	i;
@@ -1343,7 +1343,7 @@ popen1();
 } -output {}
 
 test popen-2 {test popen errors} -body {
-#lang L
+#lang L --line=1
 void popen2()
 {
 	if (defined(popen("bad-cmd1", "r"))) puts("bad 1");
@@ -1371,7 +1371,7 @@ test popen-3 {test popen stderr} -setup {
 		pclose(f);
 	} popen3.l]
 } -body {
-#lang L
+#lang L --line=1
 /*
  * Some contortions here to run tclsh on popen3.l (above) which prints
  * to stderr, so we can capture stderr and check it.  Otherwise,
@@ -1392,7 +1392,7 @@ popen3();
 } -output {}
 
 test popen-4 {test popen stderr re-direction} -body {
-#lang L
+#lang L --line=1
 void popen4()
 {
 	string	cmd;
@@ -1416,7 +1416,7 @@ popen4();
 } -output {}
 
 test popen-5.1 {test popen stderr callback 1} -body {
-#lang L
+#lang L --line=1
 string p51cmd = <<'END'
 perl -e 'print STDERR "to err1\n";
 	 print "to out\n";
@@ -1473,7 +1473,7 @@ popen5_1();
 } -output {}
 
 test popen-5.2 {test popen stderr callback 2} -body {
-#lang L
+#lang L --line=1
 string p52cmd = <<'END'
 perl -e 'print STDERR "to err1\n";
 	 print "to out\n";
@@ -1537,7 +1537,7 @@ test popen-6 {test popen stderr ignore} -setup {
 		pclose(f);
 	} popen6.l]
 } -body {
-#lang L
+#lang L --line=1
 /*
  * This is like popen3() but stderr should be ignored.
  */
@@ -1556,7 +1556,7 @@ popen6();
 } -output {}
 
 test popen-7 {test popen type checking} -body {
-#lang L
+#lang L --line=1
 void popen7_bad1();
 void popen7_bad2(string cmd);
 void popen7_bad3(FILE f);
@@ -1592,7 +1592,7 @@ popen_7();
 }
 
 test printf-1 {test printf} -body {
-#lang L
+#lang L --line=1
 void printf1()
 {
 	printf("Test1\n");
@@ -1610,7 +1610,7 @@ test printf-2 {test that we exit silently on broken stdout pipe} -setup {
 		while (1) puts("printf2 test");
 	} printf2.l]
 } -body {
-#lang L
+#lang L --line=1
 void printf2()
 {
 	int	ret;
@@ -1633,7 +1633,7 @@ printf2();
 } -output {}
 
 test printf-3 {test printf errors} -body {
-#lang L
+#lang L --line=1
 void printf3()
 {
 	printf("%s");
@@ -1645,7 +1645,7 @@ printf3();
 }
 
 test putenv-1 {test putenv errors} -body {
-#lang L
+#lang L --line=1
 void putenv1()
 {
 	putenv("BAD=%s");
@@ -1659,7 +1659,7 @@ putenv1();
 test read-1 {test read} -setup {
 	set fname [makeFile "012345678901234567\n" read_test .]
 } -body {
-#lang L
+#lang L --line=1
 void read1()
 {
 	int	n;
@@ -1722,7 +1722,7 @@ read1();
 } -output {}
 
 test read-2 {test read type errors} -body {
-#lang L
+#lang L --line=1
 void read2()
 {
 	FILE	f;
@@ -1749,7 +1749,7 @@ test rename-1 {test rename} -setup {
 	set fname3 [makeFile {test} renametest\{3\} .]
 	if {!$_windows} {set fname4 [makeFile {test} {rename test \"\'4} .]}
 } -body {
-#lang L
+#lang L --line=1
 void rename1(string old)
 {
 	FILE	f;
@@ -1776,7 +1776,7 @@ if {!$_windows} {rename1 $fname4}
 test rename-2 {test rename errors} -setup {
 	file delete -force "does not exist"
 } -body {
-#lang L
+#lang L --line=1
 void rename2()
 {
 	unless (rename("does not exist", "bad") == -1) puts("bad 1");
@@ -1785,7 +1785,7 @@ rename2();
 } -output {}
 
 test require-1 {test require errors} -body {
-#lang L
+#lang L --line=1
 void require1()
 {
 	if (defined(require("non-existent package for sure"))) puts("bad");
@@ -1808,7 +1808,7 @@ test rmdir-1 {test rmdir} -setup {
 	file delete -force "does not exist"
 	set fname [makeFile {test} file rmdir_nonempty]
 } -body {
-#lang L
+#lang L --line=1
 void rmdir1a(string nm)
 {
 	unless (rmdir(nm) == 0) puts("bad 1");
@@ -1839,7 +1839,7 @@ test size-1 {test size} -setup {
 	# '"
 	file delete -force "does not exist"
 } -body {
-#lang L
+#lang L --line=1
 void size1(string nm)
 {
 	unless (size(nm) == 7) printf("bad 1 for '%s'\n", nm);
@@ -1856,7 +1856,7 @@ if {!$_windows} {size1 $fname4}
 } -output {}
 
 test sleep-1 {test sleep} -body {
-#lang L
+#lang L --line=1
 void sleep1()
 {
 	/*
@@ -1889,7 +1889,7 @@ sleep1();
 } -output {}
 
 test spawn1 {test spawn type errors} -body {
-#lang L
+#lang L --line=1
 void spawn1()
 {
 	int	iarr[];
@@ -1969,7 +1969,7 @@ void spawn1()
 }
 
 test spawn2 {test spawn error return values} -body {
-#lang L
+#lang L --line=1
 void spawn2()
 {
 	int	pid;
@@ -2002,7 +2002,7 @@ spawn2();
 } -output {}
 
 test spawn3 {test spawn pid return value} -body {
-#lang L
+#lang L --line=1
 void spawn3()
 {
 	int	pid;
@@ -2082,7 +2082,7 @@ spawn4();
 } -output {}
 
 test sprintf-1 {test sprintf} -body {
-#lang L
+#lang L --line=1
 void sprintf1()
 {
 	string	s;
@@ -2100,7 +2100,7 @@ sprintf1();
 } -output {}
 
 test sprintf-2 {test sprintf errors} -body {
-#lang L
+#lang L --line=1
 void sprintf2()
 {
 	sprintf("%s");
@@ -2121,7 +2121,7 @@ test stat-1 {test lstat and stat} -setup {
 	}
 	file delete -force "does not exist"
 } -body {
-#lang L
+#lang L --line=1
 void stat1(string target)
 {
 	string	lnk = target . "_link";
@@ -2158,7 +2158,7 @@ if {!$_windows} {stat1 $fname4}
 } -output {}
 
 test strchr-1 {test strchr} -body {
-#lang L
+#lang L --line=1
 void strchr1()
 {
 	unless (strchr("abcabc", "a") == 0) puts("bad 1");
@@ -2170,7 +2170,7 @@ strchr1();
 } -output {}
 
 test streq-1 {test streq} -body {
-#lang L
+#lang L --line=1
 void streq1()
 {
 	unless (streq("abc", "abc") == 1) puts("bad 1");
@@ -2180,7 +2180,7 @@ streq1();
 } -output {}
 
 test strlen-1 {test strlen} -body {
-#lang L
+#lang L --line=1
 void strlen1()
 {
 	int	i;
@@ -2196,7 +2196,7 @@ strlen1();
 } -output {}
 
 test strneq-1 {test strneq} -body {
-#lang L
+#lang L --line=1
 void strneq1()
 {
 	unless (strneq("abc", "abc", 10) == 1) puts("bad 1");
@@ -2214,7 +2214,7 @@ strneq1();
 } -output {}
 
 test strrchr-1 {test strrchr} -body {
-#lang L
+#lang L --line=1
 void strrchr1()
 {
 	unless (strrchr("abcabc", "a") == 3) puts("bad 1");
@@ -2226,7 +2226,7 @@ strrchr1();
 } -output {}
 
 test system-1 {test system and popen shell quoting} -body {
-#lang L
+#lang L --line=1
 private string do_popen(string cmd)
 {
 	FILE	f;
@@ -2365,7 +2365,7 @@ system1();
 } -output {}
 
 test system-2 {test system type errors} -body {
-#lang L
+#lang L --line=1
 void system2()
 {
 	int	iarr[];
@@ -2435,7 +2435,7 @@ void system2()
 }
 
 test system-3 {test system return values} -body {
-#lang L
+#lang L --line=1
 void system3()
 {
 	int	ret;
@@ -2525,7 +2525,7 @@ system3_1();
 } -output {}
 
 test system-4 {test system and spawn I/O} -body {
-#lang L
+#lang L --line=1
 // Write lines[] to file fname w/open file handle f, then re-open.
 private FILE tstwriteh(FILE f, string fname, string lines[])
 {
@@ -2953,7 +2953,7 @@ system4();
 } -output {}
 
 test system-5 {test system quoting some more} -body {
-#lang L
+#lang L --line=1
 void system5()
 {
 	string	t;
@@ -3002,7 +3002,7 @@ system5();
 } -output {}
 
 test system6 {test system and spawn chomping} -body {
-#lang L
+#lang L --line=1
 int s6chk(string fname, string contents)
 {
 	FILE	f;
@@ -3079,7 +3079,7 @@ system6();
 } -output {}
 
 test system7 {misc system and spawn tests} -body {
-#lang L
+#lang L --line=1
 void system7()
 {
 	int	ret;
@@ -3126,7 +3126,7 @@ system7();
 } -output {}
 
 test system-8 {test system output re-direction} -body {
-#lang L
+#lang L --line=1
 string sys8_file(string filename)
 {
 	string	ret;
@@ -3245,7 +3245,7 @@ test symlink-1 {test symlink} -setup {
 	set fname [makeFile {test} linktest .]
 	file delete -force linktest2
 } -body {
-#lang L
+#lang L --line=1
 void symlink1()
 {
 	/* Error if target does not exist. */
@@ -3268,7 +3268,7 @@ symlink1();
 test backtick-1 {test backtick} -setup {
 	set fname [makeFile "line1\nline2\nline3\n" system_file .]
 } -body {
-#lang L
+#lang L --line=1
 void backtick1()
 {
 	string	s;
@@ -3299,7 +3299,7 @@ test backtick-2 {test backtick stderr} -setup {
 		if (defined(stdio_status.signal)) puts("bad 13");
 	} backtick2.l]
 } -body {
-#lang L
+#lang L --line=1
 /*
  * Some contortions here to run tclsh on backtick2.l (above) which
  * prints to stderr, so we can capture stderr and check it.
@@ -3332,7 +3332,7 @@ test backtick-3 {test backtick stderr} -setup {
 		if (defined(stdio_status.signal)) puts("bad 13");
 	} backtick3.l]
 } -body {
-#lang L
+#lang L --line=1
 /*
  * Same as backtick2() above except with non-zero exit status.
  */
@@ -3351,7 +3351,7 @@ backtick3();
 } -output {}
 
 test trim-1 {test trim} -body {
-#lang L
+#lang L --line=1
 void trim1()
 {
 	unless (trim("") eq "") puts("bad 1");
@@ -3377,7 +3377,7 @@ test unlink-1 {test lunlink and unlink} -setup {
 	if {!$_windows} {set fname4 [makeFile {test} {unlink file \"\' 4} .]}
 	file delete -force "does not exist"
 } -body {
-#lang L
+#lang L --line=1
 void unlink1(string nm)
 {
 	unless (unlink(nm) == 0) puts("bad 1");
@@ -3394,7 +3394,7 @@ if {!$_windows} {unlink1 $fname4}
 } -output {}
 
 test uc-1 {test uc} -body {
-#lang L
+#lang L --line=1
 void uc1()
 {
 	unless (uc("abcde") eq "ABCDE") puts("bad 1");
@@ -3406,7 +3406,7 @@ uc1();
 } -output {}
 
 test waitpid-1 {test waitpid, nohang} -body {
-#lang L
+#lang L --line=1
 void wpDoit(int exit_status)
 {
 	int	i, pid, ret, reaped, secs;
@@ -3453,7 +3453,7 @@ waitpid1();
 } -output {}
 
 test waitpid-2 {test waitpid on exited process} -body {
-#lang L
+#lang L --line=1
 void waitpid2()
 {
 	int	pid;
@@ -3477,7 +3477,7 @@ waitpid2();
 } -output {}
 
 test waitpid-3 {test waitpid with multiple procs} -body {
-#lang L
+#lang L --line=1
 /* This test is from Larry. */
 void waitpid3(int n, int parallel)
 {
@@ -3570,7 +3570,7 @@ waitpid4();
 } -output {}
 
 test warn-1 {test warn} -body {
-#lang L
+#lang L --line=1
 void warn1()
 {
 	string	s1 = "s1", s2 = "s2";
@@ -3591,7 +3591,7 @@ warning: s1 s2 at .*.test line 11.
 } -output {}
 
 test warn-2 {test warn errors} -body {
-#lang L
+#lang L --line=1
 void warn2()
 {
 	warn("%s");
@@ -3603,7 +3603,7 @@ warn2();
 }
 
 test write-1 {test write} -body {
-#lang L
+#lang L --line=1
 void write1()
 {
 	int	n;
@@ -3636,7 +3636,7 @@ write1();
 } -output {}
 
 test write-2 {test write type errors} -body {
-#lang L
+#lang L --line=1
 void write2()
 {
 	FILE	f;
@@ -3660,7 +3660,7 @@ void write2()
 }
 
 test write-3 {test write run-time errors} -body {
-#lang L
+#lang L --line=1
 void write3()
 {
 	string	s;
@@ -3681,7 +3681,7 @@ write3();
 } -output {}
 
 test write-4 {test write with binary data} -body {
-#lang L
+#lang L --line=1
 void write4()
 {
 	/*

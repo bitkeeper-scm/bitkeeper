@@ -36,7 +36,7 @@ L { puts("this should not be run"); }
 set ::env(_L_TEST) 1
 
 test no-eq-ops-1 {test that old eq ops are now errors} -body {
-#lang L
+#lang L --line=1
 "s" eq "s";
 "s" ne "s";
 "s" lt "s";
@@ -111,7 +111,7 @@ proc main {} { puts "bad 1" }
 } -output {}
 
 test lfile-1.5 {Test that L mains in multiple interps get invoked} -body {
-#lang L
+#lang L --line=1
 void lfile_1_5()
 {
 	// Touch files instead of puts'ing since the slave interps seem
@@ -141,7 +141,7 @@ lfile_1_5();
 test lfile-1.6 {Test a Tcl file sourced from an L file} -setup {
 	set fname [makeFile {puts "in Tcl"} lfile-1.6.tcl]
 } -body {
-#lang L
+#lang L --line=1
 source("lfile-1.6.tcl");
 void lfile_1_6()
 {
@@ -155,11 +155,11 @@ in L
 }
 
 test parse-1.0 {Test parsing an empty L script} -body {
-#lang L
+#lang L --line=1
 }
 
 test parse-1.1 {Test parsing an L script that is just white space} -body {
-#lang L
+#lang L --line=1
 	
 
 
@@ -314,7 +314,7 @@ test opts-8 {test -poly command-line option} -setup {
 test opts-8.1 {test -version command-line option} -setup {
 	set fname [makeFile { puts("bad"); } opts8.1.l .]
 } -body {
-#lang L
+#lang L --line=1
 void opts_8_1()
 {
 	int	ret;
@@ -405,7 +405,7 @@ test opts-11 {test bad command-line option} -setup {
 			void main() {}
 		} opts11.l . ]
 } -body {
-#lang L
+#lang L --line=1
 void opts_11()
 {
 	int	ret;
@@ -444,7 +444,7 @@ test parse-1.3 {Test parsing an L file that just has whitespace} -setup {
 } -result {}
 
 test parse-1.4 {parse an L function named by a pattern} -body {
-#lang L
+#lang L --line=1
 poly Parse14Pattern_*(int a, ...rest)
 {
 	puts("${$1}${a}${rest}");
@@ -453,7 +453,7 @@ poly Parse14Pattern_*(int a, ...rest)
 } -result {}
 
 test parse-1.5 {test handling of illegal character} -body {
-#lang L
+#lang L --line=1
 @
 } -returnCodes error -match glob -result {*1: L Error: illegal character
 @
@@ -461,7 +461,7 @@ test parse-1.5 {test handling of illegal character} -body {
 }
 
 test parse-1.5.1 {test handling of illegal character in string interpolation} -body {
-#lang L
+#lang L --line=1
 "${3@}";
 } -returnCodes error -match glob -result {*1: L Error: illegal character
 "$\{3@
@@ -469,7 +469,7 @@ test parse-1.5.1 {test handling of illegal character in string interpolation} -b
 }
 
 test parse-1.6 {test syntax error message 1} -body {
-#lang L
+#lang L --line=1
 void parse_1_6()
 {
 // Test that the err msg indenting is correct.
@@ -482,7 +482,7 @@ for()
 }
 
 test parse-1.7 {test syntax error message 2} -body {
-#lang L
+#lang L --line=1
 void parse_1_7()
 {
 	// Test that the err msg indenting is correct.
@@ -495,7 +495,7 @@ void parse_1_7()
 }
 
 test parse-1.8 {test syntax error message 3} -body {
-#lang L
+#lang L --line=1
 void parse_1_8()
 {
 	// Test that the err msg indenting is correct.
@@ -508,7 +508,7 @@ void parse_1_8()
 }
 
 test parse-1.9 {test syntax error message 4} -body {
-#lang L
+#lang L --line=1
 void parse_1_9()
 {
 	// Test that the err msg indenting is correct.
@@ -521,7 +521,7 @@ void parse_1_9()
 }
 
 test parse-1.10 {test syntax error message 5} -body {
-#lang L
+#lang L --line=1
 void parse_1_10()
 {
 	// Test that the err msg indenting is correct.
@@ -534,7 +534,7 @@ void parse_1_10()
 }
 
 test parse-1.11 {test syntax error message for error on line 1} -body {
-#lang L
+#lang L --line=1
 void parse_1_11() { for() }  // syntax error on line 1
 } -returnCodes error -match glob -result {*1: L Error: syntax error, unexpected )
 void parse_1_11() \{ for()
@@ -542,7 +542,7 @@ void parse_1_11() \{ for()
 }
 
 test scan-1.1 {test detection of run-away string 1} -body {
-#lang L
+#lang L --line=1
 void scan_1_1()
 {
 	string	s = "This is bad
@@ -552,7 +552,7 @@ void scan_1_1()
 } -returnCodes {error} -match regexp -result {.*missing string terminator \"\n}
 
 test scan-1.2 {test detection of run-away string 2} -body {
-#lang L
+#lang L --line=1
 void scan_1_2()
 {
 	string	s = "This is bad
@@ -561,7 +561,7 @@ void scan_1_2()
 } -returnCodes {error} -match regexp -result {.*missing string terminator \"\n}
 
 test scan-1.3 {test detection of run-away string 3} -body {
-#lang L
+#lang L --line=1
 void scan_1_3()
 {
 	string	s = 'This is bad
@@ -571,7 +571,7 @@ void scan_1_3()
 } -returnCodes {error} -match regexp -result {.*missing string terminator \'\n}
 
 test scan-1.4 {test detection of run-away string 4} -body {
-#lang L
+#lang L --line=1
 void scan_1_4()
 {
 	string	s = 'This is bad
@@ -580,7 +580,7 @@ void scan_1_4()
 } -returnCodes {error} -match regexp -result {.*missing string terminator \'\n}
 
 test scan-1.4.2 {test detection of run-away string 5} -body {
-#lang L
+#lang L --line=1
 void scan_1_4_2()
 {
 	string	s = `echo this is bad
@@ -588,7 +588,7 @@ void scan_1_4_2()
 } -returnCodes {error} -match regexp -result {.*missing string terminator `\n}
 
 test scan-1.4.3 {test detection of run-away string 5} -body {
-#lang L
+#lang L --line=1
 void scan_1_4_3()
 {
 	string	s = `echo this is bad
@@ -597,7 +597,7 @@ void scan_1_4_3()
 } -returnCodes {error} -match regexp -result {.*missing string terminator `\n}
 
 test scan-1.4.4 {test detection of run-away regexp 1} -body {
-#lang L
+#lang L --line=1
 void scan_1_4_4()
 {
 	string	s = "x";
@@ -607,7 +607,7 @@ void scan_1_4_4()
 } -returnCodes {error} -match regexp -result {.*run-away regular expression\n}
 
 test scan-1.4.5 {test detection of run-away regexp 2} -body {
-#lang L
+#lang L --line=1
 void scan_1_4_5()
 {
 	string	s = "x";
@@ -617,7 +617,7 @@ void scan_1_4_5()
 } -returnCodes {error} -match regexp -result {.*run-away regular expression\n}
 
 test scan-1.4.6 {test detection of run-away regexp 3} -body {
-#lang L
+#lang L --line=1
 void scan_1_4_6()
 {
 	string	s = "x";
@@ -627,7 +627,7 @@ void scan_1_4_6()
 } -returnCodes {error} -match regexp -result {.*run-away regular expression\n}
 
 test scan-1.5 {check escapes in single-quoted strings} -body {
-#lang L
+#lang L --line=1
 void scan_1_5()
 {
 	string	s;
@@ -656,7 +656,7 @@ scan_1_5();
 } -output {}
 
 test scan-1.6 {check escapes in double-quoted strings} -body {
-#lang L
+#lang L --line=1
 void scan_1_6()
 {
 	string	s;
@@ -679,7 +679,7 @@ scan_1_6();
 } -output {}
 
 test scan-1.7 {test here documents 1} -body {
-#lang L
+#lang L --line=1
 void scan_1_7()
 {
 	/* Vary the whitespace. */
@@ -763,7 +763,7 @@ scan_1_7();
 } -output {}
 
 test scan-1.8 {test here documents 2} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 string scan_1_8a;
 void scan_1_8()
 {
@@ -899,7 +899,7 @@ scan_1_8();
 } -output {}
 
 test scan-1.9 {test here document error 1} -body {
-#lang L
+#lang L --line=1
 void
 scan_1_9()
 {
@@ -915,7 +915,7 @@ scan_1_9();
 }
 
 test scan-1.10 {test here document error 2} -body {
-#lang L
+#lang L --line=1
 void
 scan_1_10()
 {
@@ -931,7 +931,7 @@ scan_1_10();
 }
 
 test scan-1.11 {test nested here documents error} -body {
-#lang L
+#lang L --line=1
 void
 scan_1_11()
 {
@@ -946,7 +946,7 @@ scan_1_11();
 } -returnCodes {error} -match regexp -result ".*nested here documents illegal.*"
 
 test scan-1.12 {test here documents semicolon error 1} -body {
-#lang L
+#lang L --line=1
 void
 scan_1_12()
 {
@@ -958,7 +958,7 @@ scan_1_12();
 } -returnCodes {error} -match regexp -result ".*illegal ; after here document."
 
 test scan-1.13 {test here documents semicolon error 2} -body {
-#lang L
+#lang L --line=1
 void
 scan_1_13()
 {
@@ -970,7 +970,7 @@ scan_1_13();
 } -returnCodes {error} -match regexp -result ".*illegal ; after here document."
 
 test scan-1.14 {test here documents semicolon error 3} -body {
-#lang L
+#lang L --line=1
 void
 scan_1_14()
 {
@@ -982,7 +982,7 @@ scan_1_14();
 } -returnCodes {error} -match regexp -result ".*illegal ; after here document."
 
 test scan-1.15 {test here documents semicolon error 4} -body {
-#lang L
+#lang L --line=1
 void
 scan_1_15()
 {
@@ -994,7 +994,7 @@ scan_1_15();
 } -returnCodes {error} -match regexp -result ".*illegal ; after here document."
 
 test scan-1.16 {check auto string concatenation} -body {
-#lang L
+#lang L --line=1
 void scan_1_16()
 {
 	string	s;
@@ -1023,7 +1023,7 @@ scan_1_16();
 } -output {}
 
 test scan-1.17 {check \u escapes in strings} -body {
-#lang L
+#lang L --line=1
 void scan_1_17()
 {
 	string	s;
@@ -1057,7 +1057,7 @@ scan_1_17();
 } -output {}
 
 test scan-2.1 {test #line directive} -body {
-#lang L
+#lang L --line=1
 #line 1 "scan2-1.l"
 void scan_2_a()
 {
@@ -1093,17 +1093,24 @@ test scan-2.2 {test #line directive with include files} -setup {
 			unless (__LINE__ == 3) puts("bad 2");
 		   } scan-2.2.l [file dirname [info script]]]
 } -body {
-#lang L
+#lang L --line=1
+unless (__LINE__ == 1) puts("bad 1.1");
 int scan_2_2 = 0;
 puts(scan_2_2);
+unless (__LINE__ == 4) puts("bad 1.2");
 #include "scan-2.2.l"
+unless (__LINE__ == 6) puts("bad 1.3");
 puts(scan_2_2);
 // Check variations in spacing and punctation.
 // The compiler should include scan-2.2.l only once.
 #include "scan-2.2.l"
+unless (__LINE__ == 11) puts("bad 1.4");
 #include  "scan-2.2.l"
+unless (__LINE__ == 13) puts("bad 1.5");
 #include  "scan-2.2.l" 
+unless (__LINE__ == 15) puts("bad 1.6");
 #include"scan-2.2.l"
+unless (__LINE__ == 17) puts("bad 1.7");
 puts(scan_2_2);
 } -cleanup {
 	removeFile $fname
@@ -1139,8 +1146,10 @@ unless (__LINE__ == 3) puts("bad 8");
 } -body {
 #lang L
 #line 1 "foo4.l"
+unless (__LINE__ == 1) puts("bad 10.0");
 unless (__FILE__ eq "foo4.l") puts("bad 10.1");
 #include "scan-2.3-1.l"
+unless (__LINE__ == 4) puts("bad 10.1.2");
 unless (__FILE__ eq "foo4.l") puts("bad 10.2");
 unless (scan_2_3a == 3) puts("bad 10.3");
 unless (scan_2_3b == 4) puts("bad 10.4");
@@ -1150,9 +1159,280 @@ unless (scan_2_3b == 4) puts("bad 10.4");
 	removeFile $fname3
 } -output {}
 
-test scan-3.1 {test 'and','or','xor','not' unimplemented reserved words} -body {
+test scan-2.4 {test malformed #line directives} -body {
+#lang L --line=1
+#line 0
+#line
+#line xyx
+} -returnCodes error -match regexp -result {.*1: L Error: malformed #line
+.*2: L Error: malformed #line
+.*3: L Error: malformed #line
+}
+
+test scan-3.1 {test line numbers in compile- and run-time messages, .l file} -setup {
+
+# This test creates three .l files.  One is given to L, and the other two are
+# brought in via #include or source().  Several things are tested with the same
+# code.  First, line #s in type errors which the compiler will complain about
+# unless compiling with --poly.  Second, line #s in run-time errors which
+# selectively can be hit by setting the SCAN31 environment variable.
+# Third, __LINE__.
+
+#####################################################
+# scan-3.1-1.l
+	set fname1 [makeFile {
+string g = getenv("SCAN31");
+unless (__LINE__ == 3) puts("bad 1.1");
+if ("${basename(__FILE__)}:${__LINE__}" == g) g + 1;  // line 4
+#include "scan-3.1-2.l"
+source("scan-3.1-3.l");
+unless (__LINE__ == 7) puts("bad 1.2");
+void main()
+{
+	f1();
+	f2();
+
+	if ("${basename(__FILE__)}:${__LINE__}" == g) g + 1;  // line 13
+}
+puts("test ran");
+} scan-3.1-1.l .]
+
+#####################################################
+# scan-3.1-2.l
+	set fname2 [makeFile {
+/*
+ * This code conditionally causes a run-time error.
+ */
+unless (__LINE__ == 5) puts("bad 2.1");
+void f1() {
+	if ("${basename(__FILE__)}:${__LINE__}" == g) g + 1;  // line 7
+}
+unless (__LINE__ == 9) puts("bad 2.2");
+} scan-3.1-2.l .]
+
+#####################################################
+# scan-3.1-3.l
+	set fname3 [makeFile {
+/*
+ * This code conditionally causes a run-time error.
+ */
+extern string ::g;
+unless (__LINE__ == 6) puts("bad 3.1");
+void f2() {
+	if ("${basename(__FILE__)}:${__LINE__}" == ::g) ::g + 1;  // line 8
+}
+unless (__LINE__ == 10) puts("bad 3.2");
+} scan-3.1-3.l .]
+
+} -body {
 #lang L
+void scan31_chk(string cmd[], string expected{string}[])
+{
+	int	bad, ret;
+	string	err, exs[], k, out, s;
+
+	foreach (k=>exs in expected) {
+		putenv("SCAN31=%s", k);
+		ret = system(cmd, undef, &out, &err);
+		unless (ret == 1) puts("bad 2.1");
+		bad = 0;
+		foreach (s in exs) {
+			unless (err =~ /${s}/) {
+				puts("bad 2.2: expected '${s}'");
+				++bad;
+			}
+		}
+		if (bad) {
+			puts("Got:");
+			puts("-----------------------------------------------");
+			puts(err);
+			puts("-----------------------------------------------");
+		}
+	}
+}
 void scan_3_1()
+{
+	int	ret;
+	string	err, out;
+	string	expected{string}[];
+	string	tclsh = interpreter();
+
+	/*
+	 * The first run gets the compiler error messages.
+	 */
+	expected = {
+		"0" => {
+			'scan-3.1-1.l:4: L Error: expected type int',
+			'scan-3.1-2.l:7: L Error: expected type int',
+			'scan-3.1-1.l:13: L Error: expected type int',
+		},
+	};
+	scan31_chk({tclsh, "scan-3.1-1.l"}, expected);
+
+	/*
+	 * The next run gets the run-time error messages.
+	 * Use --poly so the type errors in the test code do not
+	 * prevent compilation.  Run several times and pass in the
+	 * necessary cmd-line options so the code hits each of its
+	 * various possible run-time errors.
+	 */
+	expected = {
+		"scan-3.1-1.l:4" => {
+			'use non-numeric string as operand of "\+"',
+			'procedure "\d+%l_toplevel" line 4',
+		},
+		"scan-3.1-1.l:13" => {
+			'use non-numeric string as operand of "\+"',
+			'procedure "main" line 13',
+		},
+		"scan-3.1-2.l:7" => {
+			'use non-numeric string as operand of "\+"',
+			'procedure "f1" line 7',
+			'procedure "main" line 10',
+		},
+		"scan-3.1-3.l:8" => {
+			'use non-numeric string as operand of "\+"',
+			'procedure "f2" line 8',
+			'procedure "main" line 11',
+		},
+	};
+	scan31_chk({tclsh, "--poly", "scan-3.1-1.l"}, expected);
+
+	/*
+	 * Finally, let the code run without any errors so that the
+	 * checks of __LINE__ in it are run.
+	 */
+	putenv("SCAN31=0");
+	ret = system({tclsh, "--poly", "scan-3.1-1.l"}, undef, &out, &err);
+	if (ret) puts("bad 3.1");
+	unless (out == "test ran\n") puts("bad 3.2");
+}
+scan_3_1();
+} -output {}
+
+test scan-3.2 {test line numbers in compile- and run-time messages, .tcl file} -setup {
+
+# This test is like scan-3.1 but with .tcl files instead of .l files.
+
+#####################################################
+# scan-3.2-1.tcl
+	set fname1 [makeFile {
+#lang L
+string g = getenv("SCAN31");
+unless (__LINE__ == 4) puts("bad 1.1");
+if ("${basename(__FILE__)}:${__LINE__}" == g) g + 1;  // line 5
+#lang tcl
+# more Tcl code
+source scan-3.2-2.tcl
+#lang L
+unless (__LINE__ == 10) puts("bad 1.2");
+if ("${basename(__FILE__)}:${__LINE__}" == g) g + 1;  // line 11
+f1();
+puts("test ran");
+} scan-3.2-1.tcl .]
+
+#####################################################
+# scan-3.2-2.tcl
+	set fname2 [makeFile {
+#lang L
+unless (__LINE__ == 3) puts("bad 2.1");
+if ("${basename(__FILE__)}:${__LINE__}" == g) g + 1;  // line 4
+void f1() {
+	if ("${basename(__FILE__)}:${__LINE__}" == g) g + 1;  // line 6
+}
+unless (__LINE__ == 8) puts("bad 2.2");
+} scan-3.2-2.tcl .]
+
+} -body {
+#lang L --nowarn
+void scan_3_2()
+{
+	int	ret;
+	string	err, out;
+	string	expected{string}[];
+	string	tclsh = interpreter();
+
+	/*
+	 * The first run gets the compiler error messages in the
+	 * first block of L code.
+	 */
+	expected = {
+		"0" => {
+			'scan-3.2-1.tcl:5: L Error: expected type int',
+		},
+	};
+	scan31_chk({tclsh, "scan-3.2-1.tcl"}, expected);
+
+	/*
+	 * The next run gets the run-time error messages.
+	 * Use --poly so the type errors in the test code do not
+	 * prevent compilation.  Run several times and pass in the
+	 * necessary cmd-line options so the code hits each of its
+	 * various possible run-time errors.
+	 */
+	expected = {
+		"scan-3.2-1.tcl:5" => {
+			'use non-numeric string as operand of "\+"',
+			'procedure "\d+%l_toplevel" line 5',
+		},
+		"scan-3.2-1.tcl:11" => {
+			'use non-numeric string as operand of "\+"',
+			'procedure "\d+%l_toplevel" line 11',
+		},
+		"scan-3.2-2.tcl:4" => {
+			'use non-numeric string as operand of "\+"',
+			'procedure "\d+%l_toplevel" line 4',
+		},
+		"scan-3.2-2.tcl:6" => {
+			'use non-numeric string as operand of "\+"',
+			'procedure "f1" line 6',
+			'procedure "\d+%l_toplevel" line 12',
+		},
+	};
+	scan31_chk({tclsh, "--poly", "scan-3.2-1.tcl"}, expected);
+
+	/*
+	 * Finally, let the code run without any errors so that the
+	 * checks of __LINE__ in it are run.
+	 */
+	putenv("SCAN31=0");
+	ret = system({tclsh, "--poly", "scan-3.2-1.tcl"}, undef, &out, &err);
+	if (ret) puts("bad 3.1");
+	unless (out == "test ran\n") puts("bad 3.2");
+}
+scan_3_2();
+} -output {}
+
+test scan-4 {check for regression if "L" passed as an arg} -body {
+#lang L
+string scan_4f(...args)
+{
+	return (join(" ", args));
+}
+void scan_4()
+{
+	unless (eval("scan_4f a b") == "a b") puts("bad 1");
+	unless (eval("scan_4f L") == "L") puts("bad 2");
+	unless (eval("scan_4f L L") == "L L") puts("bad 3");
+	unless (eval("scan_4f a L") == "a L") puts("bad 4");
+	unless (eval("scan_4f L b") == "L b") puts("bad 5");
+	unless (eval("scan_4f a L b") == "a L b") puts("bad 6");
+}
+scan_4();
+} -output {}
+
+test scan-5 {check that trailing newline is scanned} -body {
+#lang L
+// The L-compiler scanner requires comments to end in a newline.
+#lang tcl
+# But a past compiler bug would eat them, causing syntax errors.
+#lang L
+// This test checks that case.
+} -output {}
+
+test scan-6 {test 'and','or','xor','not' unimplemented reserved words} -body {
+#lang L --line=1
+void scan_6()
 {
 	if (1 and 2) {}
 	if (1 or 2) {}
@@ -1166,7 +1446,7 @@ void scan_3_1()
 }
 
 test unicode-1 {test unicode in string constants and here documents} -body {
-#lang L
+#lang L --line=1
 void unicode_1()
 {
 	string	h, j, s;
@@ -1260,7 +1540,7 @@ unicode_1();
 } -output {}
 
 test unicode-2 {test manipulation of unicode strings} -body {
-#lang L
+#lang L --line=1
 void unicode_2()
 {
 	string	h = "זו השפה שלנו";
@@ -1319,7 +1599,7 @@ unicode_2();
 } -output {}
 
 test unicode-3 {test unicode strings in regexp and substitution} -body {
-#lang L
+#lang L --line=1
 void unicode_3()
 {
 	string	h = "זו השפה שלנו";
@@ -1371,7 +1651,7 @@ unicode_3();
 } -output {}
 
 test unicode-4 {test file I/O with unicode strings} -body {
-#lang L
+#lang L --line=1
 void unicode_4()
 {
 	string	h = "זו השפה שלנו";
@@ -1426,7 +1706,7 @@ unicode_4();
 } -output {}
 
 test unicode-5 {test split built-in with unicode strings} -body {
-#lang L
+#lang L --line=1
 void unicode_5()
 {
 	string	a[];
@@ -1462,54 +1742,8 @@ void unicode_5()
 unicode_5();
 } -output {}
 
-test scan-2.4 {test malformed #line directives} -body {
-#lang L
-#line 0
-#line
-#line xyx
-} -returnCodes error -match regexp -result {.*1: L Error: malformed #line
-.*2: L Error: malformed #line
-.*3: L Error: malformed #line
-}
-
-test scan-3.1 {test that run-time err msgs honor #line directive} -setup {
-	set fname1 [makeFile {void scan_3_1_foo()
-			{
-				int	i;
-				i = (poly)"";
-				puts(__LINE__); ++i;  // line 5 scan_3_1_foo()
-			}
-	} scan-3.1-foo.l .]
-	set fname2 [makeFile {#include "scan-3.1-foo.l"
-			void main()
-			{
-				scan_3_1_foo();
-			}
-	} scan-3.1.l .]
-} -body {
-#lang L
-void scan_3_1()
-{
-	int	ret;
-	string	err[], out;
-	string	tclsh = eval("interpreter");
-
-	ret = system({tclsh, "scan-3.1.l"}, undef, &out, &err);
-	unless (ret == 1) puts("bad 1.1");
-	unless (out == "5\n") puts("bad 2.1");
-	unless (err[0] == 'expected integer but got ""') puts("bad 3.1");
-	unless (err[1] =~ /\s*while executing/) puts("bad 3.2");
-	unless (err[2] == '"++i"') puts("bad 3.3");
-	unless (err[3] =~ /\s*\(procedure "scan_3_1_foo" line 5\)/) {
-		puts("bad 3.4");
-	}
-	unless (err[6] =~ /\s*\(procedure "main" line 4\)/) puts("bad 3.5");
-}
-scan_3_1();
-} -output {}
-
 test cmdsubst-1 {test command substitution} -body {
-#lang L
+#lang L --line=1
 void cmdsubst_1()
 {
 	string	cmd, s1, s2;
@@ -1559,7 +1793,7 @@ void cmdsubst_1()
 	 * \x            for anything else, does not get escaped
 	 *
 	 * These are a bit confusing.  Once escaped by backtick
-	 * processing, the command string undergoes bash-style
+	 * processing, the command string undergoes Bourne-shell-style
 	 * quoting.  And because tcltest parsing messes with a
 	 * \<newline> in the source, we can't simply write one of
 	 * those here, so create strings of L code and eval those.
@@ -1570,7 +1804,7 @@ void cmdsubst_1()
 	unless (s1 eq "rnta$x$\\ `backquote`") puts("bad 10.1");
 	`rm -f foo.txt`;
 
-	eval("#lang L\n`${cmd} x\\\ny >foo.txt`;\n");
+	L("`${cmd} x\\\ny >foo.txt`;\n");
 	s1 = `cat foo.txt`;
 	unless (s1 eq "xy") puts("bad 10.2");
 	`rm -f foo.txt`;
@@ -1579,7 +1813,7 @@ cmdsubst_1();
 } -output {}
 
 test cmdsubst-2 {test command substitution errors} -body {
-#lang L
+#lang L --line=1
 void cmdsubst_2()
 {
 	string	s = `a-nonexistent-command arg`;
@@ -1589,7 +1823,7 @@ cmdsubst_2();
 } -output {}
 
 test proc-1.0 {Test L function definition.} -body {
-#lang L
+#lang L --line=1
 void proc_1_0(void) {
         puts("foo");
 }
@@ -1599,7 +1833,7 @@ proc_1_0
 
 
 test proc-1.1 {Test L function returns.} -body {
-#lang L
+#lang L --line=1
 void proc_1_1_f1() {
         puts("whiz");
 }
@@ -1621,7 +1855,7 @@ proc_1_1
 } -output "whiz\n\nbang\nfoo\n\n"
 
 test proc-1.2 {Test L function parameters.} -body {
-#lang L
+#lang L --line=1
 void proc_1_2(string arg1, string arg2) {
         puts(arg1);
         puts(arg2);
@@ -1631,7 +1865,7 @@ proc_1_2 "val1" "val2"
 } -output "val1\nval2\n"
 
 test proc-1.3 {Test variable arity functions} -body {
-#lang L
+#lang L --line=1
 void proc_1_3_foo(...stuff) {
 	int i;
 	for (i=0; defined(stuff[i]); i++) {
@@ -1654,7 +1888,7 @@ proc_1_3
 } -output "a b c d \n\n1\n2 3 4\n1\n\n"
 
 test proc-1.4 {Ensure rest parameter comes last} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 void proc_1_4(int a, ...b, int c) {
 	puts("oops");
 }
@@ -1663,7 +1897,7 @@ proc_1_4
 } -returnCodes {error} -match glob -result "*:1: L Error: Rest parameter must be last\n"
 
 test proc-1.5 {test parameter multiple declaration} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 void proc_1_5_1(int a, int a) {}
 void proc_1_5_2(int a, int a, int a) {}
 } -returnCodes error -match regexp -result {.*1: L Error: multiple declaration of local a
@@ -1672,7 +1906,7 @@ void proc_1_5_2(int a, int a, int a) {}
 }
 
 test proc-1.6 {check ignored function return value} -body {
-#lang L
+#lang L --line=1
 int proc_1_6_foo() { return (1); }
 void proc_1_6()
 {
@@ -1695,14 +1929,14 @@ proc_1_6();
 test proc-1.7 {check extern functions} -setup {
 	proc proc_1_7 {} { puts "good" }
 } -body {
-#lang L
+#lang L --line=1
 	extern void proc_1_7();
 	proc_1_7();
 } -output {good
 }
 
 test proc-1.8 {test (expand)} -body {
-#lang L
+#lang L --line=1
 string proc_1_8_concat(...args)
 {
 	poly	p;
@@ -1804,7 +2038,7 @@ proc_1_8();
 } -output {}
 
 test proc-1.9 {test (expand) errors} -body {
-#lang L --nowarn
+#lang L --line=1 --nowarn
 private int foo(...args) { return (0); }
 void proc_1_9()
 {
@@ -1830,7 +2064,7 @@ void proc_1_9()
 }
 
 test var-1.0 {Test L variable assignment and reference} -body {
-#lang L
+#lang L --line=1
 void var_1_0(void)
 {
 	string s;
@@ -1842,7 +2076,7 @@ var_1_0
 } -output "Hello\n"
 
 test var-1.1 {L global variables} -body {
-#lang L
+#lang L --line=1
 int lglobal1_1 = 1;
 void var_1_1(void)
 {
@@ -1854,7 +2088,7 @@ var_1_1
 
 
 test var-1.2 {L global variables, harder} -body {
-#lang L
+#lang L --line=1
 int lglobal1_2 = 3;
 void var_1_2(void)
 {
@@ -1874,7 +2108,7 @@ var_1_2
 } -output "3\n4\n5\n"
 
 test var-1.2.2 {L global variable access from inside function} -body {
-#lang L
+#lang L --line=1
 private int g = 123;
 void var_1_2_2()
 {
@@ -1891,7 +2125,7 @@ var_1_2_2();
 } -output {}
 
 test var-1.2.3 {L global variable access from inside class} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 /*
  * Like the above test (var-1.2.2) but with class variables as well.
  */
@@ -1927,7 +2161,7 @@ var_1_2_3();
 } -output {}
 
 test var-1.3 {A global array of structs} -body {
-#lang L
+#lang L --line=1
 
 struct var_1_3_point { int x, y; };
 struct var_1_3_point lglobal1_3[5];
@@ -1965,7 +2199,7 @@ set var_1_4_v2 "extern test 2"
 namespace eval var_1_4_ns {
 	variable foo "extern test 3"
 }
-#lang L
+#lang L --line=1
 extern string var_1_4_v1;
 extern string ::var_1_4_v2;
 extern string var_1_4_ns::foo;
@@ -1981,7 +2215,7 @@ var_1_4();
 } -output {}
 
 test var-1.5 {Variable function names} -body {
-#lang L
+#lang L --line=1
 void var_1_5() {
   /*
    * This used to be supported but is no longer (2/24/09).
@@ -1996,7 +2230,7 @@ var_1_5
 }
 
 test var-2 {test taking value of a function name} -body {
-#lang L
+#lang L --line=1
 void var_2()
 {
 	/* This used to cause a crash. */
@@ -2008,7 +2242,7 @@ var_2();
 
 test lang-1.0 {Test lang parsing} -body {
 # These are some Tcl Comments
-#lang L
+#lang L --line=1
 void lang_1_0(void)
 {
 	puts("worked");
@@ -2039,7 +2273,7 @@ lang_2_0
 
 # no output because we're not calling any functions
 test lang-3.0 {Test not switching back to Tcl} -body {
-#lang L
+#lang L --line=1
 void lang_3_0(void)
 {
 	puts("worked");
@@ -2047,13 +2281,13 @@ void lang_3_0(void)
 }
 
 test pragma-1 {test bad #pragma} -body {
-#lang L
+#lang L --line=1
 #pragma bad
 } -returnCodes error -match regexp -result {.*1: L Error: illegal attribute 'bad'
 }
 
 test decl-1.0 {Variable and parameter declaration syntax} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 void decl_1_0_fun1() { }
 void decl_1_0_fun2(void) { }
 void decl_1_0_fun3() { }
@@ -2079,7 +2313,7 @@ decl_1_0_fun8
 } -output "om\n";
 
 test decl-1.1 {Hairy literal hash syntax in initializers} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 void initmewoo() {
         hash h = { "key" => "val", "key2" => "val" };
 }
@@ -2087,7 +2321,7 @@ void initmewoo() {
 }
 
 test decl-1.2 {Undeclared variable error} -body {
-#lang L
+#lang L --line=1
 void decl_1_2_undecl() {
         foo = "bar";
         puts(cheese);
@@ -2099,7 +2333,7 @@ decl_1_2_undecl
 }
 
 test decl-1.3 {Variable shadowing} -body {
-#lang L
+#lang L --line=1
 void decl_1_3_shadow() {
         int foo = 1;
         if (1) {
@@ -2114,7 +2348,7 @@ decl_1_3_shadow
 }
 
 test decl-1.3.1 {test variable shadowing warnings} -body {
-#lang L
+#lang L --line=1
 string decl_1_3_1g;
 private string decl_1_3_1gp;
 class decl_1_3_1cl
@@ -2145,7 +2379,7 @@ void decl_1_3_1()
 }
 
 test decl-1.4 {Single dimensional initializers actually initialize} -body {
-#lang L
+#lang L --line=1
 void decl_1_4 () {
   int foo[] = {4, 5, 6};
   hash bar = {"foo" => 4, "bar" => 5, "baz" => 6};
@@ -2162,7 +2396,7 @@ decl_1_4
 # Test decl-1.5 removed.
 
 test decl-1.6 {Check scoping rule errors for globals and externs} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 /*
  * The L scoping rules are as follows:
  *
@@ -2217,7 +2451,7 @@ void decl_1_6_bad()
 }
 
 test decl-1.7 {Check scoping rules for globals and externs} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 /*
  * This test checks the non-error cases of the scoping rules described
  * above.
@@ -2256,7 +2490,7 @@ decl_1_7
 
 test decl-1.7.5 {check legal multiple extern variable declarations} -body {
 set decl_1_7_5_var "extern test"
-#lang L
+#lang L --line=1
 extern string decl_1_7_5_var;
 extern string decl_1_7_5_var;  // legal -- has same type as prior declaration
 void decl_1_7_5()
@@ -2267,14 +2501,14 @@ decl_1_7_5();
 } -output {}
 
 test decl-1.7.6 {check illegal multiple extern variable declarations} -body {
-#lang L
+#lang L --line=1
 extern string decl_1_7_6_var;
 extern int decl_1_7_6_var;  // err -- not the same type
 } -returnCodes error -match regexp -result {.*2: L Error: extern re-declaration type does not match other declaration
 }
 
 test decl-1.8 {Check illegal variable names} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 void _decl_1_8()  // err -- function names cannot begin with _
 {
 	int	_bad;  // err -- locals cannot begin with _
@@ -2284,7 +2518,7 @@ void _decl_1_8()  // err -- function names cannot begin with _
 }
 
 test decl-1.9 {Check mixing types on single decl line} -body {
-#lang L
+#lang L --line=1
 void decl_1_9() {
 	/*
 	 * This is a regression test.  L used to get the types wrong.
@@ -2306,7 +2540,7 @@ decl_1_9
 } -output {}
 
 test decl-1.10 {multiple declaration of main in same script disallowed} -body {
-#lang L
+#lang L --line=1
 void main()
 {
 }
@@ -2321,7 +2555,7 @@ void main()
 }
 
 test decl-1.11.1 {private globals 1} -body {
-#lang L
+#lang L --line=1
 private string priv_global = "test 1";
 private void priv_global_test_fn()
 {
@@ -2336,7 +2570,7 @@ decl_1_11_1();
 } -output "test 1\n"
 
 test decl-1.11.2 {private globals 2} -body {
-#lang L
+#lang L --line=1
 /*
  * This test declares the same (private) names as the previous test.
  * They should not clash.
@@ -2355,7 +2589,7 @@ decl_1_11_1();
 } -output "test 2\n"
 
 test decl-1.11.3 {test public/private global declaration errors} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 private int decl_1_11_3_priv_first;
 int decl_1_11_3_priv_first;
 
@@ -2384,7 +2618,7 @@ void decl_1_11_3()
 }
 
 test decl-1.12.1 {public globals 1} -body {
-#lang L
+#lang L --line=1
 /*
  * This simply tests that the "public" qualifier on a global
  * declaration acts like a no-op.
@@ -2398,7 +2632,7 @@ decl_1_12_1();
 } -output "public decl test\n"
 
 test decl-1.12.1 {public globals 2} -body {
-#lang L
+#lang L --line=1
 /* This is the second half of the test above. */
 public void decl_1_12_2()
 {
@@ -2408,7 +2642,7 @@ decl_1_12_2();
 } -output "public decl test\n"
 
 test if-1.0 {If statements} -body {
-#lang L
+#lang L --line=1
 void if_1_0() {
         if (1) puts("0 working");
         if (0) {
@@ -2425,7 +2659,7 @@ if_1_0
 
 
 test if-1.1 {If statements with else clauses and multistatement bodies} -body {
-#lang L
+#lang L --line=1
 void if_1_1() {
         if (1) {
                 puts("1 working");
@@ -2451,7 +2685,7 @@ if_1_1
 
 
 test if-1.2 {"else if" clauses} -body {
-#lang L
+#lang L --line=1
 void if_1_2() {
         if (0) {
                 puts("1 broken");
@@ -2474,7 +2708,7 @@ if_1_2
 } -output "1 working\nbetween\n2 working\n"
 
 test if-1.3 {nested if statements} -body {
-#lang L
+#lang L --line=1
 void if_1_3() {
         if (1) {
                 puts("1 before");
@@ -2494,7 +2728,7 @@ if_1_3
 } -output "1 before\n1 working\n1 after\n1 done\n"
 
 test if-1.4 {else is only allowed with curly braces} -body {
-#lang L
+#lang L --line=1
 void if_1_4(void)
 {
 	if (0) puts("1 broken"); else puts("1 even more broken");
@@ -2506,7 +2740,7 @@ void if_1_4(void)
 }
 
 test unless-1.0 {unless statements} -body {
-#lang L
+#lang L --line=1
 void unless_1_0() {
         unless(0) puts("0 working");
         unless(0) {
@@ -2530,7 +2764,7 @@ unless_1_0
 } -output "0 working\n1 working\n2 working\n3 working\n"
 
 test unless-1.1 {unless and if statements mixed} -body {
-#lang L
+#lang L --line=1
 void unless_1_1() {
         unless(1) {
                 puts("1 broken");
@@ -2546,27 +2780,27 @@ unless_1_1
 } -output "1 working\ndone\n"
 
 test return-1.1 {return from void function allowed} -body {
-#lang L
+#lang L --line=1
 void return_1_1() { return; }
 } -returnCodes normal
 
 test return-1.2 {returning int from void function disallowed} -body {
-#lang L
+#lang L --line=1
 void return_1_2() { return 0; }
 } -returnCodes error -match regexp -result ".*void function cannot return value"
 
 test return-1.3 {returning string from void function disallowed} -body {
-#lang L
+#lang L --line=1
 void return_1_3() { return "str"; }
 } -returnCodes error -match regexp -result ".*void function cannot return value"
 
 test return-1.4 {returning float from void function disallowed} -body {
-#lang L
+#lang L --line=1
 void return_1_4() { return 2.99792458; }
 } -returnCodes error -match regexp -result ".*void function cannot return value"
 
 test return-1.5 {returning array from void function disallowed} -body {
-#lang L
+#lang L --line=1
 void return_1_5() {
 	int	a[3];
 	return a;
@@ -2574,7 +2808,7 @@ void return_1_5() {
 } -returnCodes error -match regexp -result ".*void function cannot return value"
 
 test return-1.6 {returning hash from void function disallowed} -body {
-#lang L
+#lang L --line=1
 void return_1_6() {
 	hash	h;
 	return h;
@@ -2582,7 +2816,7 @@ void return_1_6() {
 } -returnCodes error -match regexp -result ".*void function cannot return value"
 
 test return-1.7 {returning struct from void function disallowed} -body {
-#lang L
+#lang L --line=1
 void return_1_7() {
 	struct { int x,y; } s;
 	return s;
@@ -2590,7 +2824,7 @@ void return_1_7() {
 } -returnCodes error -match regexp -result ".*void function cannot return value"
 
 test return-1.8 {returning poly from void function disallowed} -body {
-#lang L
+#lang L --line=1
 void return_1_8() {
 	poly	p;
 	return p;
@@ -2598,40 +2832,40 @@ void return_1_8() {
 } -returnCodes error -match regexp -result ".*void function cannot return value"
 
 test return-1.9.1 {return from global scope 1} -body {
-#lang L
+#lang L --line=1
 return;
 } -output {}
 
 test return-1.9.2 {return from global scope 2} -body {
-#lang L
+#lang L --line=1
 return(1);
 } -result {1} -output {}
 
 test return-1.9.3 {return from global scope 3} -body {
-#lang L
+#lang L --line=1
 return("ret");
 } -result {ret} -output {}
 
 test return-2.1 {int return value from int function allowed} -body {
-#lang L
+#lang L --line=1
 int return_2_1_f() { return 123; }
 unless (return_2_1_f() == 123) printf("BAD\n");
 } -output ""
 
 test return-2.2 {float return value from float function allowed} -body {
-#lang L
+#lang L --line=1
 float return_2_2_f() { return 123.456; }
 unless (return_2_2_f() == 123.456) printf("BAD\n");
 } -output ""
 
 test return-2.3 {string return value from string function allowed} -body {
-#lang L
+#lang L --line=1
 string return_2_3_f() { return "str"; }
 unless (return_2_3_f() eq "str") printf("BAD\n");
 } -output ""
 
 test return-2.4 {array return value from array function allowed} -body {
-#lang L
+#lang L --line=1
 int[] return_2_4_f()
 {
 	int	a[3] = {2,3,5};
@@ -2649,7 +2883,7 @@ return_2_4
 } -output ""
 
 test return-2.5 {hash return value from hash function allowed} -body {
-#lang L
+#lang L --line=1
 hash return_2_5_f()
 {
 	hash	h;
@@ -2670,7 +2904,7 @@ return_2_5
 } -output ""
 
 test return-2.6 {struct return value from struct function allowed} -body {
-#lang L
+#lang L --line=1
 struct return_2_6_s {
 	int x, y, z;
 };
@@ -2695,27 +2929,27 @@ return_2_6
 # type checking is being done.  Do not check all possible permutations.
 
 test return-3.1 {int return value from string function disallowed} -body {
-#lang L
+#lang L --line=1
 string return_3_1() { return 1; }
 } -returnCodes error -match regexp -result ".*incompatible return type"
 
 test return-3.2 {float return value from string function disallowed} -body {
-#lang L
+#lang L --line=1
 string return_3_2() { return 1.2; }
 } -returnCodes error -match regexp -result ".*incompatible return type"
 
 test return-3.3 {int return value from hash function disallowed} -body {
-#lang L
+#lang L --line=1
 hash return_3_3() { return 1; }
 } -returnCodes error -match regexp -result ".*incompatible return type"
 
 test return-3.4 {array return value from hash function disallowed} -body {
-#lang L
+#lang L --line=1
 hash return_3_4() { int a[3]; return a; }
 } -returnCodes error -match regexp -result ".*incompatible return type"
 
 test return-3.5 {int return value from struct function disallowed} -body {
-#lang L
+#lang L --line=1
 struct s35 {
 	int x, y;
 };
@@ -2723,7 +2957,7 @@ struct s35 return_3_5() { return 1; }
 } -returnCodes error -match regexp -result ".*incompatible return type"
 
 test return-3.6 {hash return value from struct function disallowed} -body {
-#lang L
+#lang L --line=1
 struct s36 {
 	int x, y;
 };
@@ -2731,12 +2965,12 @@ struct s36 return_3_6() { hash h; return h; }
 } -returnCodes error -match regexp -result ".*incompatible return type"
 
 test return-3.7 {int return value from array function disallowed} -body {
-#lang L
+#lang L --line=1
 int[] return_3_7() { return 1; }
 } -returnCodes error -match regexp -result ".*incompatible return type"
 
 test return-3.8 {struct return value from array function disallowed} -body {
-#lang L
+#lang L --line=1
 struct s38 {
 	int x, y;
 };
@@ -2744,17 +2978,17 @@ int[] return_3_8() { struct s38 s; return s; }
 } -returnCodes error -match regexp -result ".*incompatible return type"
 
 test return-3.9 {hash return value from array function disallowed} -body {
-#lang L
+#lang L --line=1
 int[] return_3_9() { hash h; return h; }
 } -returnCodes error -match regexp -result ".*incompatible return type"
 
 test return-3.10 {void return value from non-void function disallowed} -body {
-#lang L
+#lang L --line=1
 int return_3_10_int() { return; }
 } -returnCodes error -match regexp -result ".*must specify return value"
 
 test return-3.11 {check not returning a value from functon error} -body {
-#lang L
+#lang L --line=1
 private string f()
 {
 	if (0) return ("not taken");
@@ -2767,7 +3001,7 @@ return_3_10();
 } -returnCodes error -match regexp -result {no value returned from function}
 
 test syntax-1.0 {single-line comments a la C++} -body {
-#lang L
+#lang L --line=1
 # this kind of comment valid only on line 1
 void syntax_1_0() {
         // single-line comments are 
@@ -2780,7 +3014,7 @@ syntax_1_0
 } -output "working\n" 
 
 test syntax-1.0.1 {hash-comment errors} -body {
-#lang L
+#lang L --line=1
  # err -- starts on column 2
 void syntax_1_0_1()
 {
@@ -2793,7 +3027,7 @@ void syntax_1_0_1()
 }
 
 test syntax-1.1 {structure syntax} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 
 struct syntax_1_1_point {
         int x, y;
@@ -2815,7 +3049,7 @@ syntax_1_1
 } -output "didn't crash\n"
 
 test syntax-1.2 {interpolated strings} -body {
-#lang L
+#lang L --line=1
 void syntax_1_2()
 {
 	string	s = "xxx";
@@ -2870,7 +3104,7 @@ syntax_1_2();
 } -output {}
 
 test syntax-1.2.1 {check string interpolations nested too deeply} -body {
-#lang L
+#lang L --line=1
 void syntax_1_2_1()
 {
 	"1${"2${"3${"4${"5${"6${"7${"8${"9${"10${"11${12}"}"}"}"}"}"}"}"}"}"}";
@@ -2879,7 +3113,7 @@ void syntax_1_2_1()
 }
 
 test syntax-1.3 {tcl options short-cut} -body {
-#lang L
+#lang L --line=1
 private string args(...args)
 {
 	return(join(" ", args));
@@ -2945,7 +3179,7 @@ syntax_1_3();
 } -output {}
 
 test syntax-1.4 {string appendation} -body {
-#lang L
+#lang L --line=1
 void syntax_1_4() {
 	printf("these" "strings"
 	    "stick" "together.\n");
@@ -2955,7 +3189,7 @@ syntax_1_4
 } -output "thesestringssticktogether.\n"
 
 test errmsg-1 {check cascading err msg avoidance, local var} -body {
-#lang L
+#lang L --line=1
 void errmsg_1()
 {
 	errmsg_1_i = 0;
@@ -2968,7 +3202,7 @@ int errmsg_1_i;  // should *not* produce a multiply declared variable err
 \s*$}
 
 test errmsg-2 {check cascading err msg avoidance, global var} -body {
-#lang L
+#lang L --line=1
 ++errmsg_2_g;
 ++errmsg_2_g;
 ++errmsg_2_g;
@@ -2977,7 +3211,7 @@ int errmsg_2_g;  // should *not* produce a multiply declared variable err
 \s*$}
 
 test errmsg-3 {check cascading err msg avoidance, class var} -body {
-#lang L
+#lang L --line=1
 class errmsg_3
 {
 	private	int	v1 = errmsg_3_undecl1+1;
@@ -2996,7 +3230,7 @@ int errmsg_3_undecl2;
 \s*$}
 
 test errmsg-4 {check cascading err msg avoidance, class instance var} -body {
-#lang L
+#lang L --line=1
 class errmsg_4
 {
 	instance {
@@ -3017,7 +3251,7 @@ int errmsg_4_undecl2;
 \s*$}
 
 test op-1.0 {increment and decrement operators} -body {
-#lang L
+#lang L --line=1
 void op_1_0() {
         int i = 1;
 
@@ -3046,7 +3280,7 @@ op_1_0
 } -output "pre:\n1\n2\n3\n2\n1\npost:\n1\n2\n2\n3\n2\n2\n1\n"
 
 test op-1.0.1 {increment and decrement operator side effects} -body {
-#lang L
+#lang L --line=1
 class op_1_0_1_cls
 {
 	instance { public int n; }
@@ -3090,7 +3324,7 @@ op_1_0_1();
 } -output {}
 
 test op-1.1 {plus, minus, multiply, divide, and modulus operators} -body {
-#lang L
+#lang L --line=1
 void op_1_1() {
         int i = 2;
         puts(i + 5);
@@ -3107,7 +3341,7 @@ op_1_1
 } -output "7\n-48\n1000\n1\n0.5\n1\n3\n"
 
 test op-1.2 {unary plus and minus} -body {
-#lang L
+#lang L --line=1
 void op_1_2() {
         int i = -2;
         int j = +2;
@@ -3129,7 +3363,7 @@ op_1_2
 } -output "-2\n-102\n306\n-6\n2\n102\n306\n6\n"
 
 test op-1.3.1 {numeric comparison operators} -body {
-#lang L
+#lang L --line=1
 void op_1_3_1()
 {
 	unless (-1 < 1) puts("bad 1.1");
@@ -3161,7 +3395,7 @@ op_1_3_1();
 } -output {}
 
 test op-1.3.2 {string comparison operators} -body {
-#lang L
+#lang L --line=1
 void op_1_3_2()
 {
 	if ("0" == "00") puts("bad 1.1");
@@ -3187,7 +3421,7 @@ op_1_3_2();
 } -output {}
 
 test op-1.3.3 {composite equality operator} -body {
-#lang L
+#lang L --line=1
 void op_1_3_3()
 {
 	string	as1[], as2[];
@@ -3292,7 +3526,7 @@ op_1_3_3();
 } -output {}
 
 test op-1.3.4 {composite equality operator 2} -body {
-#lang L
+#lang L --line=1
 void op_1_3_4()
 {
 	/*
@@ -3331,7 +3565,7 @@ op_1_3_4();
 } -output {}
 
 test op-1.3.5 {composite comparison errors} -body {
-#lang L
+#lang L --line=1
 void op_1_3_5()
 {
 	string	sa[];
@@ -3376,7 +3610,7 @@ void op_1_3_5()
 }
 
 test op-1.4 {lexicographic comparison operators} -body {
-#lang L
+#lang L --line=1
 void op_1_4() {
 	// These operators are now obsolete, but with the _L_ALLOW_EQ_OPS env
 	// variable set, the compiler will allow them.
@@ -3415,7 +3649,7 @@ op_1_4
 
 
 test op-1.5 {boolean operators} -body {
-#lang L
+#lang L --line=1
 void op_1_5() {
         int true = 1, false = 0;
         if (true && true)       { puts("1okay"); } else { puts("1broken"); }
@@ -3437,7 +3671,7 @@ op_1_5
 
 
 test op-1.6 {bitwise operators} -body {
-#lang L
+#lang L --line=1
 void op_1_6(){
         int bits = 715827882;
 
@@ -3458,7 +3692,7 @@ op_1_6
 
 
 test op-1.7 {logical operator short-circuiting} -body {
-#lang L
+#lang L --line=1
 int
 puts_int(string str) {
         puts(str);
@@ -3475,7 +3709,7 @@ op_1_7
 } -output "0\n2\n9\n3\n9\n1\n"
 
 test op-1.8 {compound assignment operators, simple lvalues} -body {
-#lang L
+#lang L --line=1
 void op_1_8() {
   int foo = 0;
 
@@ -3506,7 +3740,7 @@ op_1_8
 } -output "2\n2\n-1\n-1\n-4\n-4\n2\n2\n3\n3\n11\n11\n8\n8\n1\n1\n8\n8\n2\n2\n"
 
 test op-1.9 {compound assignment operators, array lvalues} -body {
-#lang L
+#lang L --line=1
 void op_1_9() {
   int foo[4] = {0,0,0,0};
 
@@ -3538,7 +3772,7 @@ op_1_9
 } -output "2\n2\n-1\n-1\n-4\n-4\n2\n2\n3\n3\n11\n11\n8\n8\n1\n1\n8\n8\n2\n2\n0 0 2 0\n"
 
 test op-1.10 {short-circuit conditionals} -body {
-#lang L
+#lang L --line=1
 void op_1_10()
 {
 	/*
@@ -3560,7 +3794,7 @@ op_1_10
 } -output {}
 
 test op-1.11 {comma operator} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 int op_1_11_f(int a, int b, int c) { return (b); }
 string op_1_11_s(string a, string b, string c, string d)
 {
@@ -3625,7 +3859,7 @@ op_1_11
 } -output {}
 
 test op-1.12 {test string concat operator} -body {
-#lang L
+#lang L --line=1
 void op_1_12()
 {
 	string	a, b, c;
@@ -3728,7 +3962,7 @@ op_1_12();
 } -output {}
 
 test op-1.13 {test string concat type errors} -body {
-#lang L
+#lang L --line=1
 void op_1_13()
 {
 	int	i, j;
@@ -3759,7 +3993,7 @@ void op_1_13()
 }
 
 test op-1.14 {test "." and "->" as struct selection operators} -body {
-#lang L
+#lang L --line=1
 struct op14 {
 	int	i, j;
 	struct {
@@ -3795,7 +4029,7 @@ op_1_14();
 } -output {}
 
 test op-1.15 {check "." and "->" usage errors} -body {
-#lang L
+#lang L --line=1
 struct op15 {
 	int	i, j;
 	struct {
@@ -3824,7 +4058,7 @@ void op_1_15()
 }
 
 test op-1.16 {check ? : operator} -body {
-#lang L
+#lang L --line=1
 string op_1_16_f(...args) { return (join("", args)); }
 void op_1_16()
 {
@@ -3933,7 +4167,7 @@ op_1_16();
 } -output {}
 
 test op-1.17 {check type errors in ? : operator} -body {
-#lang L
+#lang L --line=1
 void op_1_17()
 {
 	int	i;
@@ -3964,7 +4198,7 @@ void op_1_17()
 }
 
 test cast-1.0 { Casts to integer and float } -body {
-#lang L
+#lang L --line=1
 void cast_1_0() {
     printf("%d\n", (int)1.9);
     printf("%f\n", (float)5);
@@ -3976,7 +4210,7 @@ cast_1_0
 } -output "1\n5.000000\n"
 
 test cast-1.1 {invalid casts from string to int or float} -body {
-#lang L
+#lang L --line=1
 void cast_1_1()
 {
 	if (defined((int)"asdf")) puts("bad 1");
@@ -3986,7 +4220,7 @@ cast_1_1();
 } -output {}
 
 test cast-1.3 { Cast to string } -body {
-#lang L
+#lang L --line=1
 void cast_1_3()
 {
 	string	s;
@@ -4027,7 +4261,7 @@ cast_1_3
 } -output {}
 
 test cast-1.4 { Invalid cast from function } -body {
-#lang L
+#lang L --line=1
 void cast_1_4()
 {
 	int	i;
@@ -4054,7 +4288,7 @@ cast_1_4
 }
 
 test cast-1.5 {cast to hash} -body {
-#lang L
+#lang L --line=1
 void cast_1_5()
 {
 	int	n = 0;
@@ -4074,7 +4308,7 @@ cast_1_5
 } -output {}
 
 test cast-1.6 {cast to various structured types} -body {
-#lang L
+#lang L --line=1
 struct s {
 	int	i;
 	string	s;
@@ -4150,7 +4384,7 @@ cast_1_6
 } -output {}
 
 test cast-1.7 {cast an lvalue} -body {
-#lang L
+#lang L --line=1
 typedef struct {
 	string	type;
 	poly	val;
@@ -4196,7 +4430,7 @@ cast_1_7();
 } -output {}
 
 test array-1.0 { Single-dimensional array creation and indexing } -body {
-#lang L
+#lang L --line=1
 void array_1_0() {
     int array[3];
 
@@ -4210,7 +4444,7 @@ array_1_0
 } -output "3\n"
 
 test array-1.1 { Multi-dimensional array creation and indexing } -body {
-#lang L
+#lang L --line=1
 void array_1_1() {
     int array[4][3][2];
 
@@ -4228,7 +4462,7 @@ array_1_1
 
 
 test array-1.2 {increment and decrement on array elements} -body {
-#lang L
+#lang L --line=1
 void array_1_2() {
   int foo[5] = {0,0,0,0,0};
 
@@ -4262,7 +4496,7 @@ array_1_2
 } -output "0 0 0 5 0\npre:\n5\n6\n7\n6\n5\npost:\n5\n6\n6\n7\n6\n6\n5\n0 0 0 5 0\n"
 
 test array-1.3 {1d arrays with no length auto-extend by one at a time} -body {
-#lang L
+#lang L --line=1
 void array_1_3() {
   int foo[];
 
@@ -4276,7 +4510,7 @@ array_1_3
 } -output "4 5 6\n"
 
 test array-1.4 {extend arrays using push and pop} -body {
-#lang L
+#lang L --line=1
 void array_1_4() {
   int foo[];
 
@@ -4298,7 +4532,7 @@ array_1_4
 } -output "1 2 3\n3\n1 2\n2\n1\n1\n\n\n\n"
 
 test strindex-1 {string indexing} -body {
-#lang L
+#lang L --line=1
 void strindex_1()
 {
 	int	i;
@@ -4435,7 +4669,7 @@ strindex_1();
 } -output {}
 
 test strindex-2 {string indexing errors 1} -body {
-#lang L
+#lang L --line=1
 void strindex_2()
 {
 	string	s = "bad";
@@ -4445,7 +4679,7 @@ strindex_2();
 } -returnCodes error -result {negative string index illegal}
 
 test strindex-3 {string indexing errors 2} -body {
-#lang L
+#lang L --line=1
 void strindex_3()
 {
 	string	s = "bad";
@@ -4455,7 +4689,7 @@ strindex_3();
 } -returnCodes error -result {negative string index illegal}
 
 test strindex-4 {string indexing errors 3} -body {
-#lang L
+#lang L --line=1
 void strindex_4()
 {
 	string	s = "bad";
@@ -4465,7 +4699,7 @@ strindex_4();
 } -returnCodes error -result {negative string index illegal}
 
 test strindex-5 {string indexing index using comma expression} -body {
-#lang L
+#lang L --line=1
 void strindex_5()
 {
 	/*
@@ -4483,7 +4717,7 @@ strindex_5();
 } -output {}
 
 test strindex-6 {writing to a string index beyond end of string} -body {
-#lang L
+#lang L --line=1
 void strindex_6()
 {
 	string	s = "good";
@@ -4493,7 +4727,7 @@ strindex_6();
 } -returnCodes error -result {index is more than one past end of string}
 
 test slice-1 {string slicing} -body {
-#lang L
+#lang L --line=1
 string slice_1_f(string s) { return (s); }
 void slice_1()
 {
@@ -4555,7 +4789,7 @@ slice_1();
 } -output {}
 
 test slice-2 {array slicing} -body {
-#lang L
+#lang L --line=1
 string slice_2_tostr(int a[])
 {
 	int	i;
@@ -4614,7 +4848,7 @@ slice_2();
 } -output {}
 
 test slice-2.1 {array slicing 2} -body {
-#lang L
+#lang L --line=1
 void slice_2_1()
 {
 	/*
@@ -4639,7 +4873,7 @@ slice_2_1();
 } -output {}
 
 test slice-3 {array slice errors} -body {
-#lang L
+#lang L --line=1
 void slice_3()
 {
 	int	i;
@@ -4661,7 +4895,7 @@ void slice_3()
 }
 
 test slice-4 {array slice index errors} -body {
-#lang L
+#lang L --line=1
 void slice_4()
 {
 	int	a[], i;
@@ -4691,7 +4925,7 @@ void slice_4()
 }
 
 test end-1 {test END keyword for string indices} -body {
-#lang L
+#lang L --line=1
 int end_1_f(int end) {
 	unless ("abc"[END] eq "c") puts("bad f.1");
 	return (end);
@@ -4746,7 +4980,7 @@ end_1();
 } -output {}
 
 test end-2 {test END keyword for arrays} -body {
-#lang L
+#lang L --line=1
 int end_2_f(int end) {
 	unless ({7,8,9}[END] == 9) puts("bad f.1");
 	return (end);
@@ -4812,7 +5046,7 @@ end_2();
 } -output {}
 
 test end-3 {test END usage for string append} -body {
-#lang L
+#lang L --line=1
 void end_3()
 {
 	int	i;
@@ -4833,7 +5067,7 @@ end_3();
 } -output {}
 
 test end-4 {test END usage for array append} -body {
-#lang L
+#lang L --line=1
 void end_4()
 {
 	int	e1, e2, i;
@@ -4871,7 +5105,7 @@ end_4();
 } -output {}
 
 test end-5 {test END with recursion} -body {
-#lang L
+#lang L --line=1
 int end_5_f(int lim, int n)
 {
 	int	a[], e, i;
@@ -4898,7 +5132,7 @@ end_5();
 } -output {}
 
 test end-6 {test END errors} -body {
-#lang L
+#lang L --line=1
 int END;  // err -- cannot declare global w/name "END"
 void END() {}  // err -- cannot declare function w/name "END"
 void end_6()
@@ -4917,7 +5151,7 @@ void end_6()
 }
 
 test end-7 {test END in string slices} -body {
-#lang L
+#lang L --line=1
 void end_7()
 {
 	string	s;
@@ -4936,7 +5170,7 @@ end_7();
 } -output {}
 
 test end-8 {test END in array slices} -body {
-#lang L
+#lang L --line=1
 void end_8()
 {
 	string	a[];
@@ -4954,7 +5188,7 @@ end_8();
 } -output {}
 
 test end-10 {check END ignored in comma expression} -body {
-#lang L
+#lang L --line=1
 void end_10()
 {
 	int	i;
@@ -4970,7 +5204,7 @@ end_10();
 } -output {}
 
 test loop-1.0 {while loops} -body {
-#lang L
+#lang L --line=1
 void loop_1_0() {
         int i = 0;
         while (i++ < 5) puts (i);
@@ -4983,7 +5217,7 @@ void loop_1_0() {
 loop_1_0
 } -output "1\n2\n3\n4\n5\n6\n5\n4\n3\n2\n1\n"
 test loop-1.1 {for loops} -body {
-#lang L
+#lang L --line=1
 void loop_1_1() {
         int i;
         for (i=1; i<7; i++) {
@@ -4999,7 +5233,7 @@ loop_1_1
 } -output "1\n2\n3\n4\n5\n6\n-*-\n7\n6\n5\n4\n3\n2\n1\n"
 
 test loop-1.2 {do loops} -body {
-#lang L
+#lang L --line=1
 void loop_1_2()
 {
 	int	i;
@@ -5022,7 +5256,7 @@ loop_1_2
 } -output "1\n2\n3\n4\n"
 
 test loop-1.2.0 {simple foreach loops} -body {
-#lang L
+#lang L --line=1
 struct sl120 {
 	int	i;
 	int	j;
@@ -5186,7 +5420,7 @@ end
 "
 
 test loop-1.2.1 {foreach loops over arrays of arrays} -body {
-#lang L
+#lang L --line=1
 void
 loop_121_fill2(int d1, int d2, int &a[][])
 {
@@ -5321,7 +5555,7 @@ end
 "
 
 test loop-1.2.2 {foreach with int variable lists} -body {
-#lang L
+#lang L --line=1
 void
 loop_1_2_2()
 {
@@ -5394,7 +5628,7 @@ end
 "
 
 test loop-1.2.3 {foreach with string variable lists} -body {
-#lang L
+#lang L --line=1
 void
 loop_1_2_3()
 {
@@ -5626,7 +5860,7 @@ end
 "
 
 test loop-1.2.4 {foreach loops with large loop body (>127 bytes of bytecode)} -body {
-#lang L
+#lang L --line=1
 void
 loop_1_2_4()
 {
@@ -5733,7 +5967,7 @@ end
 "
 
 test loop-1.2.5 {check hash foreach type checking} -body {
-#lang L
+#lang L --line=1
 void loop_1_2_5()
 {
 	int	i1, i2;
@@ -5752,7 +5986,7 @@ void loop_1_2_5()
 }
 
 test loop-1.2.6 {test foreach over string} -body {
-#lang L
+#lang L --line=1
 void loop_1_2_6()
 {
 	int	i;
@@ -5811,7 +6045,7 @@ loop_1_2_6();
 } -output {}
 
 test loop-1.2.7 {test foreach over string type errors} -body {
-#lang L
+#lang L --line=1
 class loop_1_2_7_class {}
 void loop_1_2_7()
 {
@@ -5838,7 +6072,7 @@ void loop_1_2_7()
 }
 
 test loop-1.2.7.1 {test foreach over <> error} -body {
-#lang L
+#lang L --line=1
 void loop_1_2_7_1()
 {
 	string	s;
@@ -5853,7 +6087,7 @@ loop_1_2_7_1();
 }
 
 test loop-1.2.8 {test foreach type errors} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 void loop_1_2_8()
 {
 	int	i;
@@ -5886,7 +6120,7 @@ void loop_1_2_8()
 }
 
 test loop-1.2.9 {test foreach syntax errors} -body {
-#lang L
+#lang L --line=1
 void loop_1_2_9()
 {
 	string	k, v;
@@ -5907,7 +6141,7 @@ void loop_1_2_9()
 }
 
 test loop-1.2.10 {test foreach syntax errors} -body {
-#lang L
+#lang L --line=1
 void loop_1_2_10()
 {
 	string	k, v;
@@ -5926,7 +6160,7 @@ void loop_1_2_10()
 }
 
 test loop-1.2.10.1 {test foreach usage errors} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 void loop_1_2_10_1()
 {
 	string	k, s, v;
@@ -5942,7 +6176,7 @@ void loop_1_2_10_1()
 }
 
 test loop-1.2.11 {test that "in" is not reserved} -body {
-#lang L
+#lang L --line=1
 void loop_1_2_11()
 {
 	/*
@@ -5956,7 +6190,7 @@ loop_1_2_11();
 } -output {}
 
 test loop-1.2.12 {check that loop counter is undef on foreach loop fall-through} -body {
-#lang L
+#lang L --line=1
 void loop_1_2_12()
 {
 	int	i;
@@ -6016,7 +6250,7 @@ loop_1_2_12();
 } -output {}
 
 test loop-1.2.13 {test foreach over a list type} -body {
-#lang L
+#lang L --line=1
 private int equals(poly a[], poly b[])
 {
 	unless (length(a) == length(b)) return (0);
@@ -6143,7 +6377,7 @@ loop_1_2_13();
 } -output {}
 
 test loop-1.2.14 {test empty condition in for statement} -body {
-#lang L
+#lang L --line=1
 void loop_1_2_14()
 {
 	int	i = 0;
@@ -6164,7 +6398,7 @@ loop_1_2_14();
 } -output {}
 
 test loop-1.3 {continue statements} -body {
-#lang L
+#lang L --line=1
 void loop_1_3_for_continue()
 {
 	int	i;
@@ -6281,7 +6515,7 @@ while test
 }
 
 test loop-1.4 {break statements} -body {
-#lang L
+#lang L --line=1
 void loop_1_4_foreach_break()
 {
 	string	k, l, v;
@@ -6373,7 +6607,7 @@ while i = 3
 }
 
 test loop-1.5 {continues in nested foreach loops} -body {
-#lang L
+#lang L --line=1
 void
 loop_1_5_fill3(int d1, int d2, int d3, int &a[][][])
 {
@@ -6560,7 +6794,7 @@ end
 "
 
 test loop-1.6 {breaks in nested foreach loops} -body {
-#lang L
+#lang L --line=1
 void
 loop_1_6_fill3(int d1, int d2, int d3, int &a[][][])
 {
@@ -6665,7 +6899,7 @@ end
 "
 
 test loop-1.6.1 {test break and continue errors} -body {
-#lang L
+#lang L --line=1
 /*
  * Try a break and continue in various (non-loop) constructs
  * that open up a new scope in the compiler.  All of these
@@ -6707,7 +6941,7 @@ continue;
 }
 
 test loop-1.7 {test loop condition with regexp captures} -body {
-#lang L
+#lang L --line=1
 void loop_1_7()
 {
 	/*
@@ -6744,7 +6978,7 @@ loop_1_7();
 } -output {}
 
 test switch-1.1 {check switch statement, if-then-else code} -body {
-#lang L
+#lang L --line=1
 /*
  * This test exercises the case of non-constant case expressions in
  * switch statements, for which the compiler generates if-then-else
@@ -7359,7 +7593,7 @@ switch_1_1();
 } -output {}
 
 test switch-1.2 {check switch statement, jump-table code} -body {
-#lang L
+#lang L --line=1
 /*
  * This test exercises the case of constant case expressions in switch
  * statements, for which the compiler generates a jump table.  This is
@@ -7775,7 +8009,7 @@ switch_1_2();
 } -output {}
 
 test switch-2 {test multiple-default-clause error in switch stmt} -body {
-#lang L
+#lang L --line=1
 void switch_2()
 {
 	switch (0) {
@@ -7817,7 +8051,7 @@ void switch_2()
 }
 
 test switch-3.1 {test type errors in switch stmt} -body {
-#lang L
+#lang L --line=1
 void switch_3_1()
 {
 	switch (0) {
@@ -7832,7 +8066,7 @@ void switch_3_1()
 }
 
 test switch-3.2 {test other errors in switch stmt} -body {
-#lang L
+#lang L --line=1
 void switch_3_2()
 {
 	switch ("string") {
@@ -7845,7 +8079,7 @@ void switch_3_2()
 }
 
 test switch-3.3 {test duplicate case values in switch stmt} -body {
-#lang L
+#lang L --line=1
 void switch_3_3()
 {
 	switch ((poly)0) {
@@ -7865,7 +8099,7 @@ void switch_3_3()
 }
 
 test switch-4 {test illegal types in switch stmt} -body {
-#lang L
+#lang L --line=1
 void switch_4_v() {}
 class switch_4_c {}
 void switch_4()
@@ -7932,7 +8166,7 @@ void switch_4()
 }
 
 test switch-5 {test break as a label in switch stmt} -body {
-#lang L
+#lang L --line=1
 void switch_5()
 {
 	/*
@@ -7955,7 +8189,7 @@ switch_5();
 }
 
 test struct-1.0 {structs} -body {
-#lang L
+#lang L --line=1
 struct struct_1_0_point {
         int x, y;
         string label;
@@ -7989,7 +8223,7 @@ p2 is:
 "
 
 test struct-1.1 {struct allocation and arrays of structs} -body {
-#lang L
+#lang L --line=1
 struct struct_1_1_point {
         int x, y;
         string label;
@@ -8024,7 +8258,7 @@ struct_1_1
 "
 
 test struct-1.2 {arrays of structs containing arrays} -body {
-#lang L
+#lang L --line=1
 struct struct_1_2_point {
         int x, y;
         string label;
@@ -8061,7 +8295,7 @@ struct_1_2
 "
 
 test struct-1.3 {increment and decrement on struct fields} -body {
-#lang L
+#lang L --line=1
 struct foo {
   int i;
 };
@@ -8098,7 +8332,7 @@ struct_1_3
 } -output "5\npre:\n5\n6\n7\n6\n5\npost:\n5\n6\n6\n7\n6\n6\n5\n"
 
 test struct-1.4 {check struct type declarations} -body {
-#lang L
+#lang L --line=1
 struct struct_1_4_1 {
 	int	i;
 	int	j;
@@ -8143,7 +8377,7 @@ struct_1_4
 } -output {}
 
 test struct-1.5 {check multiple struct type declarations} -body {
-#lang L
+#lang L --line=1
 struct struct_1_5_1 { int i,j; };
 struct struct_1_5_1 { int i,j; };
 struct struct_1_5_2 { int i,j; };
@@ -8156,7 +8390,7 @@ void struct_1_5_1()
 }
 
 test struct-1.6 {check struct member errors} -body {
-#lang L
+#lang L --line=1
 void struct_1_6()
 {
 	struct struct_1_6 { string s; } st;
@@ -8166,7 +8400,7 @@ void struct_1_6()
 }
 
 test hash-1.0 {basic hashtable support} -body {
-#lang L
+#lang L --line=1
 void hash_1_0() {
   hash foo;
   foo{"key"} = "value";
@@ -8177,7 +8411,7 @@ hash_1_0
 } -output "value\n"
 
 test hash-1.1 {array of hashtables} -body {
-#lang L
+#lang L --line=1
 void hash_1_1() {
   hash foo[10];
   foo[5]{"key"} = "value";
@@ -8190,7 +8424,7 @@ hash_1_1
 } -output "value\n\n"
 
 test hash-1.2 {increment and decrement on hash elements} -body {
-#lang L -poly
+#lang L --line=1 -poly
 void hash_1_2() {
   hash foo;
 
@@ -8226,7 +8460,7 @@ hash_1_2
 # test hash-1.3 removed
 
 test hash-1.4 {basic hash element types} -body {
-#lang L
+#lang L --line=1
 struct sh14 {
 	int	x;
 	int	y;
@@ -8483,7 +8717,7 @@ end
 "
 
 test hash-1.5 {hashes of hashes and arrays} -body {
-#lang L
+#lang L --line=1
 void
 hash_1_5()
 {
@@ -8580,7 +8814,7 @@ end
 "
 
 test deep-1.1 {deep dive 1} -body {
-#lang L
+#lang L --line=1
 struct xy {
 	string		x;
 	string		y;
@@ -8644,7 +8878,7 @@ end
 "
 
 test deep-1.2 {deep dive with consecutive hash indices} -body {
-#lang L
+#lang L --line=1
 void
 deep_1_2()
 {
@@ -8740,7 +8974,7 @@ end
 "
 
 test deep-1.3 {deep dive with consecutive array indices} -body {
-#lang L
+#lang L --line=1
 void
 deep_1_3()
 {
@@ -8827,7 +9061,7 @@ end
 "
 
 test deep-1.4 {deep dive with alternating hash and array indices} -body {
-#lang L
+#lang L --line=1
 void
 deep_1_4()
 {
@@ -9044,7 +9278,7 @@ end
 }
 
 test deep-2.1 {deep dive array auto-extend} -body {
-#lang L
+#lang L --line=1
 void
 deep_2_1()
 {
@@ -9132,7 +9366,7 @@ deep_2_1
 } -output ""
 
 test deep-2.2 {check that a negative array index is an error} -body {
-#lang L
+#lang L --line=1
 void
 deep_2_2()
 {
@@ -9144,7 +9378,7 @@ deep_2_2
 } -returnCodes error -match regexp -result {cannot write to negative array index}
 
 test deep-2.3 {check deep-dive element create/read} -body {
-#lang L
+#lang L --line=1
 void
 deep_2_3()
 {
@@ -9169,7 +9403,7 @@ deep_2_3
 } -output {}
 
 test deep-3.1 {check reading an undefined array index} -body {
-#lang L
+#lang L --line=1
 void
 deep_3_1()
 {
@@ -9186,7 +9420,7 @@ deep_3_1();
 } -output {}
 
 test deep-3.2 {check writing an undefined array index} -body {
-#lang L
+#lang L --line=1
 void
 deep_3_2()
 {
@@ -9203,7 +9437,7 @@ deep_3_2();
 } -returnCodes error -match regexp -result {cannot write to undefined array index}
 
 test deep-3.3 {check reading an undefined string index} -body {
-#lang L
+#lang L --line=1
 void
 deep_3_3()
 {
@@ -9220,7 +9454,7 @@ deep_3_3();
 } -output {}
 
 test deep-3.4 {check writing an undefined array index} -body {
-#lang L
+#lang L --line=1
 void
 deep_3_4()
 {
@@ -9237,7 +9471,7 @@ deep_3_4();
 } -returnCodes error -match regexp -result {cannot write to undefined string index}
 
 test deep-4.0 {check hash and array indexing of a poly} -body {
-#lang L
+#lang L --line=1
 void deep_4_0()
 {
 	poly	p;
@@ -9258,7 +9492,7 @@ deep_4_0();
 } -output {}
 
 test deep-5.1 {check deep-dive object sharing} -body {
-#lang L
+#lang L --line=1
 typedef struct block {
 	string	line;
 } block;
@@ -9299,7 +9533,7 @@ deep_5_1();
 } -output {}
 
 test regexp-1.0 {regular expression support} -body {
-#lang L
+#lang L --line=1
 void regexp_1_0() {
         string s = "string";
         puts(s =~ /ring/);
@@ -9312,7 +9546,7 @@ regexp_1_0
 } -output "1\n0\n0\n1\n"
 
 test regexp-1.1 {magic submatch variables ($1, $2, ...)} -body {
-#lang L
+#lang L --line=1
 void regexp_1_1() {
         string s = "Go not to the elves for counsel, for they will say both yes and no.";
 
@@ -9330,7 +9564,7 @@ Go not to the elves\nGo\nelves\n"
 
 
 test regexp-1.2 {magic submatch variables with interpolation} -body {
-#lang L
+#lang L --line=1
 void regexp_1_2() {
         string s = "Go not to the elves for counsel, for they will say both yes and no.";
         string interp = "elves";
@@ -9348,7 +9582,7 @@ regexp_1_2
 Go not to the elves\nGo\nelves\n"
 
 test regexp-1.3 {regexp substitution} -body {
-#lang L -poly
+#lang L --line=1 -poly
 void regexp_1_3() {
         string s = "string";
 	string s1[] = {"a", "b", "coochie"};
@@ -9374,7 +9608,7 @@ regexp_1_3
 } -output "1\n0\n--------\n1\nstling\n--------\n1\na b foochie\n--------\n{a string} {m {not a string}}\n{a string} {m {probably a string}}\n"
 
 test regexp-1.4 {regexp modifiers i and g} -body {
-#lang L -poly
+#lang L --line=1 -poly
 void regexp_1_4() {
 	string foo = "aaa";
 	foo =~ s/a/b/;
@@ -9399,7 +9633,7 @@ regexp_1_4
 } -output "baa\nbbb\nbbb\nabb\naaa\nworks\n"
 
 test regexp-1.5 {regexp quoting} -body {
-#lang L
+#lang L --line=1
 void
 regexp_1_5()
 {
@@ -9570,7 +9804,7 @@ regexp_1_5
 } -output ""
 
 test regexp-1.6 {regexp capture variables in interpolated regexp} -body {
-#lang L
+#lang L --line=1
 void regexp_1_6()
 {
 	string	r1 = "(1)";
@@ -9596,7 +9830,7 @@ regexp_1_6();
 } -output {}
 
 test regexp-1.7 {check number of regexp capture variables available} -body {
-#lang L
+#lang L --line=1
 void regexp_1_7()
 {
 	/*
@@ -9619,7 +9853,7 @@ void regexp_1_7()
 }
 
 test regexp-1.8 {check matching of different regexp kinds} -body {
-#lang L
+#lang L --line=1
 /*
  * The compiler generates four different kinds of code for regexp
  * matching.  This test checks each kind:
@@ -9670,7 +9904,7 @@ regexp_1_8();
 } -output {}
 
 test regexp-2 {test globs} -body {
-#lang L
+#lang L --line=1
 void regexp_2()
 {
 	unless ("x" =~ /?/l) puts("bad 1.1");
@@ -9682,7 +9916,7 @@ regexp_2();
 } -output {}
 
 test reference-1.1 {L references} -body {
-#lang L
+#lang L --line=1
 private int ref_11_g_private;
 int ref_11_g_public;
 struct reference_1_1_point {
@@ -9742,7 +9976,7 @@ reference_1_1();
 } -output {}
 
 test reference-1.2 {test deep-dive arguments (copy in/out)} -body {
-#lang L
+#lang L --line=1
 void r12set(string &s, string v) { s = v; }
 void reference_1_2()
 {
@@ -9793,7 +10027,7 @@ reference_1_2();
 } -output {}
 
 test reference-1.3 {test copy in/out semantics} -body {
-#lang L
+#lang L --line=1
 string g_ref13[];
 void r13(string &s, string v)
 {
@@ -9810,7 +10044,7 @@ reference_1_3();
 } -output {}
 
 test reference-1.4 {test multiple reference arguments} -body {
-#lang L
+#lang L --line=1
 void reference_1_4_foo1(string &s1, string &s2)
 {
 	s1 = s2;
@@ -9899,7 +10133,7 @@ reference_1_4();
 } -output {}
 
 test reference-1.5 {test parameter multiple declaration errs with references} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 void reference_1_5_1(string &arg1, string arg1)  {}
 void reference_1_5_2(string &arg2, string &arg2) {}
 void reference_1_5_3(string arg3,  string &arg3) {}
@@ -9916,7 +10150,7 @@ void reference_1_5_5(string &arg5, string arg5,  string &arg5) {}
 }
 
 test pointer-1 {check L pointers} -body {
-#lang L
+#lang L --line=1
 string	pointer_1_g_public;
 private	string	pointer_1_g_private;
 private string chk(_argused string opt, poly var)
@@ -9977,7 +10211,7 @@ pointer_1();
 } -output {}
 
 test pointer-2 {check L pointer identification} -body {
-#lang L
+#lang L --line=1
 string	pointer_2_g;
 private void chk(_argused string opt, poly arg, string varname)
 {
@@ -10030,7 +10264,7 @@ pointer_2();
 } -output {}
 
 test pointer-3 {check L pointer errors} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 class pointer_3_cls {}
 private void chk(_argused string opt, _argused poly arg) {}
 void pointer_3()
@@ -10069,7 +10303,7 @@ void pointer_3()
 }
 
 test typedef-1.0 {basic typedef support} -body {
-#lang L
+#lang L --line=1
 typedef int typedef_1_0_foot[5];
 typedef string typedef_1_0_nike;
 typedef struct typedef_1_0_point {
@@ -10101,7 +10335,7 @@ typedef_1_0
 } -output "1 2\n2\npegasus\npegasus\n"
 
 test typedef-1.1 {test redefining identical typedefs} -body {
-#lang L
+#lang L --line=1
 typedef int t1;
 typedef int t1;
 typedef int t1;
@@ -10155,7 +10389,7 @@ typedef h11_2a h11_2{int};
 } -output ""
 
 test typedef-1.2 {test redefining different typedefs} -body {
-#lang L
+#lang L --line=1
 typedef int t12;
 typedef float t12;
 typedef string t12;
@@ -10221,7 +10455,7 @@ typedef struct s6 { int x; } s12_6;
 }
 
 test typedef-1.3 {test some typedef cases} -body {
-#lang L
+#lang L --line=1
 /*
  * This is really a regression test.  These have caused errors in the past.
  */
@@ -10256,7 +10490,7 @@ typedef_1_3
 } -output {}
 
 test typedef-1.4 {test another typedef case} -body {
-#lang L
+#lang L --line=1
 /* Another regression test.  This used to fail. */
 typedef struct {
 	int x;
@@ -10283,7 +10517,7 @@ typedef_1_4
 
 
 test defined-1.0 {interesting defined form support} -body {
-#lang L
+#lang L --line=1
 void defined_1_0() {
   int arr[5][2], i, j;
   for (i = 0; defined(arr[i]); i++) {
@@ -10303,7 +10537,7 @@ defined_1_0
 "
 
 test defined-1.1 {defined works on hashes} -body {
-#lang L
+#lang L --line=1
 void defined_1_1() {
 	hash foo[5];
 
@@ -10402,7 +10636,7 @@ test main-3 {check that main() return value is tclsh exit status} -setup {
 			}
 	} main-3-void.l]
 } -body {
-#lang L
+#lang L --line=1
 void main3()
 {
 	int	ret;
@@ -10430,7 +10664,7 @@ main3();
 } -output {}
 
 test defined-1.2 {defined operator on scalars} -body {
-#lang L
+#lang L --line=1
 int d12_fint() { return 0; }
 float d12_ffloat() { return 0.0; }
 string d12_fstring() { return "0"; }
@@ -10467,7 +10701,7 @@ defined_1_2
 } -output ""
 
 test defined-1.3 {defined operator on auto-extended arrays} -body {
-#lang L
+#lang L --line=1
 void
 defined_1_3()
 {
@@ -10563,7 +10797,7 @@ defined_1_3
 } -output ""
 
 test defined-1.4 {check propagation of undefined values} -body {
-#lang L
+#lang L --line=1
 int
 d14(int i)
 {
@@ -10592,7 +10826,7 @@ defined_1_4
 } -output ""
 
 test defined-1.5 {check that tcl shimmering does not make undef defined} -body {
-#lang L
+#lang L --line=1
 void defined_1_5()
 {
 	/*
@@ -10623,7 +10857,7 @@ s = ''
 }
 
 test defined-1.6 {check undef constant} -body {
-#lang L
+#lang L --line=1
 string defined_1_6_foo(string arg)
 {
 	if (arg) {
@@ -10665,7 +10899,7 @@ i = ''
 }
 
 test defined-1.7 {check attempted assignment to undef} -body {
-#lang L
+#lang L --line=1
 void defined_1_7()
 {
 	undef = 1;
@@ -10682,7 +10916,7 @@ void defined_1_7()
 }
 
 test defined-1.8 {check attempted declaration of undef} -body {
-#lang L
+#lang L --line=1
 void undef() {}
 int undef;
 void defined_1_8()
@@ -10695,7 +10929,7 @@ void defined_1_8()
 }
 
 test defined-1.9 {check that undef has type poly} -body {
-#lang L
+#lang L --line=1
 class defined_1_9_cls {}
 void defined_1_9()
 {
@@ -10732,7 +10966,7 @@ defined_1_9();
 } -output {}
 
 test defined-1.10 {check undef as a reference parameter} -body {
-#lang L
+#lang L --line=1
 void defined_1_10_foo(int &arg) { arg = 0; }
 void defined_1_10()
 {
@@ -10743,7 +10977,7 @@ defined_1_10();
 }
 
 test defined-1.11 {check that assignment to part of an obj makes it defined} -body {
-#lang L
+#lang L --line=1
 void defined_1_11()
 {
 	string	s;
@@ -10778,7 +11012,7 @@ defined_1_11();
 } -output {}
 
 test defined-1.12 {check defined(&var)} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 string def1_12_f1(string &a)
 {
 	return ((string)defined(&a));
@@ -10825,7 +11059,7 @@ defined_1_12();
 } -output {}
 
 test defined-1.13 {check errors with defined(&var)} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 private string not_a_ref_parm1;
 string not_a_ref_parm2;
 class def_1_13_cls
@@ -10861,7 +11095,7 @@ defined_1_13();
 }
 
 test defined-1.14 {check that undef is false} -body {
-#lang L
+#lang L --line=1
 string defined_1_14fn(_argused string &s)
 {
 	if (&s) {
@@ -10901,7 +11135,7 @@ defined_1_14();
 } -output {}
 
 test defined-1.15 {check that undef != anything defined} -body {
-#lang L
+#lang L --line=1
 void defined_1_15()
 {
 	int	i;
@@ -10952,7 +11186,7 @@ defined_1_16();
 } -output {}
 
 test undef-1 {check undef built-in} -body {
-#lang L
+#lang L --line=1
 void undef_1()
 {
 	string	s;
@@ -11030,7 +11264,7 @@ undef_1();
 } -output {}
 
 test undef-2 {check undef built-in on nested arrays and hashes} -body {
-#lang L
+#lang L --line=1
 void undef_2()
 {
 	int	a[][] = { {1,2,3}, {4,5,6}, {7,8,9} };
@@ -11078,7 +11312,7 @@ undef_2();
 } -output {}
 
 test undef-3 {check undef built-in on class variables} -body {
-#lang L
+#lang L --line=1
 class undef_3_cls {
 	public	string hcls{string};
 	public	string acls[];
@@ -11153,7 +11387,7 @@ undef_3();
 } -output {}
 
 test undef-4 {check undef built-in errors} -body {
-#lang L
+#lang L --line=1
 private string[] foo() { return {"x"}; }
 void undef_4()
 {
@@ -11177,7 +11411,7 @@ undef_4();
 }
 
 test undef-5 {check that undefined list goes to defined} -body {
-#lang L
+#lang L --line=1
 void undef_5()
 {
 	string	a[] = {"x"};
@@ -11211,7 +11445,7 @@ undef_5();
 } -output {}
 
 test undef-6 {check comparison errors against undef} -body {
-#lang L
+#lang L --line=1
 void undef_6()
 {
 	int	i;
@@ -11295,7 +11529,7 @@ void undef_6()
 }
 
 test undef-7 {check for bug with undef object ref count} -body {
-#lang L
+#lang L --line=1
 void undef_7()
 {
 	string	a[];
@@ -11324,7 +11558,7 @@ undef_7();
 } -output {}
 
 test undef-8 {check for another bug with undef object ref count} -body {
-#lang L
+#lang L --line=1
 #pragma nowarn
 void undef_8()
 {
@@ -11457,7 +11691,7 @@ undef_8();
 } -output {}
 
 test toplevel-1.0 {Toplevel code in L} -body {
-#lang L
+#lang L --line=1
 int toplevel_1_0_i = 2;
 printf("at the toplevel, i is: %d\n", toplevel_1_0_i);
 
@@ -11486,7 +11720,7 @@ toplevel_1_1
 }
 
 test typecheck-1.0 {L typechecking} -body {
-#lang L
+#lang L --line=1
 string typecheck_1_0_foo() {
 	return "string";
 }
@@ -11500,7 +11734,7 @@ typecheck_1_0
 -result "*:6: L Error: expected type int or float but got string*\n"
 
 test typecheck-1.1 {arity check} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 void typecheck_1_1_foo() {}
 void typecheck_1_1_bar(int a, int b) {}
 void typecheck_1_1() {
@@ -11513,7 +11747,7 @@ void typecheck_1_1() {
 *:5: L Error: not enough arguments for function typecheck_1_1_bar\n"
 
 test typecheck-1.2 {check functions returning int arrays of arrays} -body {
-#lang L
+#lang L --line=1
 int[]
 typecheck_1_2_int()
 {
@@ -11589,7 +11823,7 @@ typecheck_1_2();
 } -output {}
 
 test typecheck-1.3 {check functions returning float arrays of arrays} -body {
-#lang L
+#lang L --line=1
 float[]
 typecheck_1_3_float()
 {
@@ -11673,7 +11907,7 @@ typecheck_1_3();
 } -output {}
 
 test typecheck-1.4 {check functions returning string arrays of arrays} -body {
-#lang L
+#lang L --line=1
 string[]
 typecheck_1_4_string()
 {
@@ -11752,13 +11986,13 @@ typecheck_1_4();
 } -output {}
 
 test typecheck-1.5 {check functions returning void arrays are illegal} -body {
-#lang L
+#lang L --line=1
 void[] typecheck_1_5() { return; }
 } -returnCodes error -match regexp -result {.*1: L Error: type void illegal.*
 }
 
 test typecheck-2.1 {check int-to-float casts and coercions} -body {
-#lang L
+#lang L --line=1
 float
 typecheck_2_1_return_float(float f)
 {
@@ -11899,7 +12133,7 @@ typecheck_2_1();
 } -output ""
 
 test typecheck-3.1 {void illegal in if-stmt conditional} -body {
-#lang L
+#lang L --line=1
 void typecheck_3_1_v() { return; }
 void
 typecheck_3_1()
@@ -11909,7 +12143,7 @@ typecheck_3_1()
 } -returnCodes error -match regexp -result {void type illegal in predicate}
 
 test typecheck-3.2 {void illegal in unless-stmt conditional} -body {
-#lang L
+#lang L --line=1
 void typecheck_3_2_v() { return; }
 void
 typecheck_3_2()
@@ -11919,7 +12153,7 @@ typecheck_3_2()
 } -returnCodes error -match regexp -result {void type illegal in predicate}
 
 test typecheck-3.3 {void illegal in while-loop conditional} -body {
-#lang L
+#lang L --line=1
 void typecheck_3_3_v() { return; }
 void
 typecheck_3_3()
@@ -11929,7 +12163,7 @@ typecheck_3_3()
 } -returnCodes error -match regexp -result {void type illegal in predicate}
 
 test typecheck-3.4 {void illegal in do-loop conditional} -body {
-#lang L
+#lang L --line=1
 void typecheck_3_4_v() { return; }
 void
 typecheck_3_4()
@@ -11941,7 +12175,7 @@ typecheck_3_4()
 } -returnCodes error -match regexp -result {void type illegal in predicate}
 
 test typecheck-3.5 {void illegal in for-loop conditional} -body {
-#lang L
+#lang L --line=1
 void typecheck_3_5_v() { return; }
 void
 typecheck_3_5()
@@ -11951,7 +12185,7 @@ typecheck_3_5()
 } -returnCodes error -match regexp -result {void type illegal in predicate}
 
 test typecheck-3.6 {void illegal in abbreviated-for-loop conditional} -body {
-#lang L
+#lang L --line=1
 void typecheck_3_6_v() { return; }
 void
 typecheck_3_6()
@@ -11961,7 +12195,7 @@ typecheck_3_6()
 } -returnCodes error -match regexp -result {void type illegal in predicate}
 
 test typecheck-3.10 {void illegal in binary operators} -body {
-#lang L
+#lang L --line=1
 void t310v() { return; }
 void
 typecheck_3_10()
@@ -12070,7 +12304,7 @@ typecheck_3_10()
 }
 
 test typecheck-3.10.2 {void illegal in binary operators 2} -body {
-#lang L
+#lang L --line=1
 void t310_2v() { return; }
 void
 typecheck_3_10_2()
@@ -12138,7 +12372,7 @@ typecheck_3_10_2()
 }
 
 test typecheck-3.11 {void illegal in casts and unary operators} -body {
-#lang L
+#lang L --line=1
 void t311v() { return; }
 void
 typecheck_3_11()
@@ -12168,7 +12402,7 @@ typecheck_3_11()
 }
 
 test typecheck-3.12 {void illegal in assignments} -body {
-#lang L
+#lang L --line=1
 void t312v() { return; }
 int takes_int(int i) { return i; }
 void
@@ -12204,7 +12438,7 @@ typecheck_3_12()
 }
 
 test typecheck-3.13 {void illegal as foreach expr} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 void t313v() { return; }
 void
 typecheck_3_13()
@@ -12216,7 +12450,7 @@ typecheck_3_13()
 } -returnCodes error -match regexp -result {.*foreach expression must be array, hash, or string}
 
 test typecheck-4.1 {type errors in foreach} -body {
-#lang L
+#lang L --line=1
 void
 typecheck_4_1()
 {
@@ -12244,7 +12478,7 @@ typecheck_4_1()
 }
 
 test typecheck-4.2 {type errors in foreach with multiple variables} -body {
-#lang L
+#lang L --line=1
 void
 typecheck_4_2()
 {
@@ -12286,7 +12520,7 @@ typecheck_4_2()
 }
 
 test typecheck-4.4 {scalars as condition expressions} -body {
-#lang L
+#lang L --line=1
 void
 typecheck_4_4()
 {
@@ -12317,7 +12551,7 @@ typecheck_4_4();
 } -output {}
 
 test typecheck-5.1 {type errors in hash elements} -body {
-#lang L
+#lang L --line=1
 struct st51 {
 	int	x;
 	int	y;
@@ -12577,7 +12811,7 @@ typecheck_5_1
 }
 
 test typecheck-6.1 {type check errors with push built-in} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 class typecheck_6_1_cls {}
 void
 typecheck_6_1()
@@ -12641,7 +12875,7 @@ typecheck_6_1
 }
 
 test typecheck-6.2 {type check errors with push built-in 2} -body {
-#lang L
+#lang L --line=1
 void typecheck_6_2_v() { }
 void
 typecheck_6_2()
@@ -12723,7 +12957,7 @@ typecheck_6_2();
 }
 
 test typecheck-6.3 {type check push built-in} -body {
-#lang L
+#lang L --line=1
 void
 typecheck_6_3()
 {
@@ -12782,7 +13016,7 @@ typecheck_6_3
 } -output {}
 
 test typecheck-7.1 {test type checking of reference parameters} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 void typecheck_7_1_foo(int &a) {}
 void typecheck_7_1()
 {
@@ -12795,7 +13029,7 @@ typecheck_7_1();
 }
 
 test typecheck-8.1 {widget and string type compatibility} -body {
-#lang L
+#lang L --line=1
 void typecheck_8_1()
 {
 	poly	p = "p";
@@ -12839,7 +13073,7 @@ typecheck_8_1
 } -output {}
 
 test typecheck-9.1 {illegal types in function prototype declarations} -body {
-#lang L
+#lang L --line=1
 void typecheck_9_1_1(void, void);
 void typecheck_9_1_2(void, void, void);
 void typecheck_9_1_3(int, void);
@@ -12874,7 +13108,7 @@ int{void} typecheck_9_1_14();
 }
 
 test typecheck-9.2 {illegal types in function pointer args} -body {
-#lang L
+#lang L --line=1
 void typecheck_9_2_1(void &bad(void, void));
 void typecheck_9_2_2(void &bad(void, void, void));
 void typecheck_9_2_3(void &bad(int, void));
@@ -12909,7 +13143,7 @@ void typecheck_9_2_14(int{void} &bad());
 }
 
 test typecheck-9.3 {illegal types in variable declarations 1} -body {
-#lang L
+#lang L --line=1
 void typecheck_9_3()
 {
 	void	bad1;
@@ -12946,7 +13180,7 @@ void typecheck_9_3()
 }
 
 test typecheck-9.3.1 {illegal types in variable declarations 2} -body {
-#lang L
+#lang L --line=1
 void typecheck_9_3_1()
 {
 	void	bad1, bad2[], bad3[][],	bad4{int}, bad5{int}{int};
@@ -12972,7 +13206,7 @@ void typecheck_9_3_1()
 }
 
 test typecheck-9.3.2 {illegal types in variable declarations 3} -body {
-#lang L
+#lang L --line=1
 typedef void &t932();
 void typecheck_9_3_2()
 {
@@ -13010,7 +13244,7 @@ void typecheck_9_3_2()
 }
 
 test typecheck-9.4 {illegal types in struct declarations 1} -body {
-#lang L
+#lang L --line=1
 struct {
 	void	bad1;
 	void	bad2[];
@@ -13046,7 +13280,7 @@ struct {
 }
 
 test typecheck-9.4.1 {illegal types in struct declarations 2} -body {
-#lang L
+#lang L --line=1
 struct {
 	void	bad1, bad2[], bad3[][], bad4{int}, bad5{int}{int};
 	void	bad6[]{int}, bad7{int}[], bad8{void};
@@ -13071,7 +13305,7 @@ struct {
 }
 
 test typecheck-9.4.2 {illegal types in struct declarations 3} -body {
-#lang L
+#lang L --line=1
 typedef void &t942();
 struct {
 	t942	bad1;
@@ -13108,7 +13342,7 @@ struct {
 }
 
 test typecheck-9.4.3 {call-by-name type errors} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 typedef int arr_t[];
 typedef int hash_t{int};
 typedef struct { int i,j; } struc_t;
@@ -13146,7 +13380,7 @@ void typecheck_9_4_3()
 }
 
 test typecheck-10.1 {check type errors in op=} -body {
-#lang L
+#lang L --line=1
 void typecheck_10_1()
 {
 	int	i1, i2;
@@ -13197,7 +13431,7 @@ void typecheck_10_1()
 }
 
 test typecheck-10.2 {check type errors in comparison operators} -body {
-#lang L
+#lang L --line=1
 void typecheck_10_2()
 {
 	int	i;
@@ -13272,7 +13506,7 @@ void typecheck_10_2()
 }
 
 test typecheck-10.3 {check type names in type-error messages} -body {
-#lang L
+#lang L --line=1
 class typecheck_10_3_cls {}
 void typecheck_10_3()
 {
@@ -13305,7 +13539,7 @@ void typecheck_10_3()
 }
 
 test typecheck-11.1 {check FMT errors} -body {
-#lang L
+#lang L --line=1
 void typeck_11_1_foo0(_argused FMT fmt, _argused ...args) {}
 void typeck_11_1_foo1(_argused int a, _argused FMT fmt, _argused ...args) {}
 void typeck_11_1_foo2(_argused int a, _argused int b, _argused FMT fmt,
@@ -13361,7 +13595,7 @@ typecheck_11_1();
 }
 
 test typecheck-11.2 {check FMT errors 2} -body {
-#lang L
+#lang L --line=1
 void typeck_11_2_foo0(_argused FMT fmt, _argused int bad) {}
 void typeck_11_2_foo1(_argused FMT fmt) {}
 } -returnCodes error -match regexp -result {.*1: L Error: rest argument must follow FMT
@@ -13369,7 +13603,7 @@ void typeck_11_2_foo1(_argused FMT fmt) {}
 }
 
 test typecheck-11.3 {check FMT cases where compile-time checks cannot be done} -body {
-#lang L
+#lang L --line=1
 void typeck_11_3_foo0(_argused FMT fmt, _argused ...args) {}
 void typecheck_11_3()
 {
@@ -13382,7 +13616,7 @@ typecheck_11_3();
 } -output {}
 
 test typecheck-11.4 {check that unicode does not confuse FMT checking} -body {
-#lang L
+#lang L --line=1
 void typecheck_11_4()
 {
 	string	s;
@@ -13394,7 +13628,7 @@ typecheck_11_4();
 } -output {}
 
 test fnptr-1 {function pointers 1} -body {
-#lang L
+#lang L --line=1
 typedef string &fnptr1_t(int);
 
 string fnptr1_doit(int x)
@@ -13419,7 +13653,7 @@ fnptr_1
 } -output {}
 
 test fnptr-2 {function pointers 2} -body {
-#lang L
+#lang L --line=1
 typedef int &fnptr2_t(poly,poly);
 
 /* Integer comparison. */
@@ -13483,7 +13717,7 @@ fnptr_2
 } -output {}
 
 test fnptr-3 {function pointer type errors} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 typedef void &fp3_v_v_t(void);
 typedef void &fp3_v_i_t(int);
 typedef int  &fp3_i_v_t(void);
@@ -13570,7 +13804,7 @@ void fnptr_3()
 }
 
 test assign-1 {check assignment statement value and type} -body {
-#lang L
+#lang L --line=1
 void
 assign_1()
 {
@@ -13677,7 +13911,7 @@ main()
 } -returnCodes {error} -match regexp -result {.*line 4.*line 9.*line 15}
 
 test pattern-1.0 {L pattern functions} -body {
-#lang L
+#lang L --line=1
 string Pattern1_()
 {
 	// This is NOT a pattern function (because the _ is trailing).
@@ -13811,7 +14045,7 @@ pattern_1_0();
 } -output {}
 
 test pattern-1.2 {check pattern function argument type checking} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 void Pattern120_*() {}
 void Pattern121_*(int a) {}
 void Pattern122_*(int a, int b) {}
@@ -13834,7 +14068,7 @@ pattern_1_2();
 }
 
 test pattern-1.3 {check pattern function call with (expand) args} -body {
-#lang L
+#lang L --line=1
 string pattern13(...args)
 {
 	poly	p;
@@ -14086,7 +14320,7 @@ test include-1.0 {include files} -setup {
 			unless (__LINE__ == 4) puts("bad 2");
 		   } foo-1.0.l [file dirname [info script]]]
 } -body {
-#lang L
+#lang L --line=1
 int include_1_0 = 0;
 puts(include_1_0);
 #include "foo-1.0.l"
@@ -14129,7 +14363,7 @@ unless (basename(__FILE__) eq "foo-1.1-3.l") puts("bad 3.1");
 unless (__LINE__ == 4) puts("bad 3.2");
 } foo-1.1-3.l .]
 } -body {
-#lang L
+#lang L --line=1
 #include "foo-1.1-1.l"
 unless (include_1_1a == 3) puts("bad 10.1");
 unless (include_1_1b == 4) puts("bad 10.2");
@@ -14140,7 +14374,7 @@ unless (include_1_1b == 4) puts("bad 10.2");
 } -output {}
 
 test include-1.2 {malformed includes} -body {
-#lang L
+#lang L --line=1
 #include "
 #include <
 #include ""
@@ -14159,7 +14393,7 @@ test include-1.3 {test line number tracking with include files} -setup {
 int include_1_3c = "bad3";} foo-1.3-2.l .]
 	set fname3 [makeFile {int include_1_3d = "bad4";} foo-1.3-3.l .]
 } -body {
-#lang L
+#lang L --line=1
 int include_1_3 = "bad0";
 #include "foo-1.3-1.l"
 int include_1_3last = "badn";
@@ -14176,7 +14410,7 @@ int include_1_3last = "badn";
 }
 
 test include-1.4 {test missing include file} -body {
-#lang L
+#lang L --line=1
 #include "does-not-exist.l"
 } -returnCodes {error} -match regexp -result {.*1: L Error: cannot find include file does-not-exist.l
 }
@@ -14272,7 +14506,7 @@ test include-2.1 {nested include files almost nested too deeply} -setup {
 	set fname10 [makeFile {#include "f-1.11.l"} f-1.10.l .]
 	set fname11 [makeFile {printf("ok");}	    f-1.11.l .]
 } -body {
-#lang L
+#lang L --line=1
 #include "f-1.1.l"
 } -output {ok}
 
@@ -14290,7 +14524,7 @@ test include-2.2 {nested include files nested too deeply} -setup {
 	set fname11 [makeFile {#include "f-2.12.l"} f-2.11.l .]
 	set fname12 [makeFile {printf("ok");}	    f-2.12.l .]
 } -body {
-#lang L
+#lang L --line=1
 #include "f-2.1.l"
 } -returnCodes {error} -match regexp -result {f-2.11.l:1: L Error: include file nesting too deep -- aborting
 }
@@ -14301,20 +14535,20 @@ test include-2.2 {nested include files nested too deeply} -setup {
 # should be no multiple-declaration errors.
 
 test interp-1 {test per-interp global state} -body {
-#lang L
+#lang L --line=1
 int interp_1_g;
 void interp_1_foo() {}
 
 #lang tcl
 interp create interp_1_1
 interp eval interp_1_1 {
-#lang L
+#lang L --line=1
 int interp_1_g;
 void interp_1_foo() {}
 }
 interp create interp_1_2
 interp eval interp_1_2 {
-#lang L
+#lang L --line=1
 int interp_1_g;
 void interp_1_foo() {}
 }
@@ -14323,7 +14557,7 @@ interp delete interp_1_1
 } -output {}
 
 test split-1.0 {test split function} -body {
-#lang L
+#lang L --line=1
 void
 split_1_0()
 {
@@ -14625,7 +14859,7 @@ split_1_0();
 } -output {}
 
 test split-2 {test split errors} -body {
-#lang L
+#lang L --line=1
 void split_2()
 {
 	split(/re/i, "bad");
@@ -14638,7 +14872,7 @@ void split_2()
 }
 
 test split-3 {test split errors 2} -body {
-#lang L
+#lang L --line=1
 void split_3()
 {
 	/*
@@ -14652,7 +14886,7 @@ void split_3()
 }
 
 test split-4 {test split errors 3} -body {
-#lang L
+#lang L --line=1
 void split_4()
 {
 	split(/delim/, "str", 0, 0);
@@ -14669,7 +14903,7 @@ void split_4()
 }
 
 test split-5 {test split errors 4 -- bad regexp} -body {
-#lang L
+#lang L --line=1
 void split_5()
 {
 	split(/+/, "str");
@@ -14679,7 +14913,7 @@ split_5();
 #'
 
 test consts-1.0 {test constants function} -body {
-#lang L
+#lang L --line=1
 void
 constants_1_0()
 {
@@ -14743,7 +14977,7 @@ constants_1_0();
 # at the mappings easily for testing.
 
 test src-mappings-1 {test bytecode <-> source-file-offset mappings 1} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 struct sm1 {
 	int	i;
 };
@@ -14897,7 +15131,7 @@ src_mappings_1
 }
 
 test src-mappings-2 {test bytecode <-> source-file-offset mappings 2} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 int f0() { return (0); }
 int f1(int i) { return (1); }
 int f2(int i, int j) { return (2); }
@@ -15119,7 +15353,7 @@ src_mappings_2
 }
 
 test src-mappings-3 {test bytecode <-> source-file-offset mappings 3} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 int
 f()
 {
@@ -15227,7 +15461,7 @@ void src_mappings_4_foo2()
 }
 } foo-sm4-2.l .]
 } -body {
-#lang L
+#lang L --line=1
 #include "foo-sm4-1.l"
 void src_mappings_4()
 {
@@ -15260,7 +15494,7 @@ src_mappings_4();
 }
 
 test src-mappings-5 {test bytecode <-> source-file-offset mappings w/here docs} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 void src_mappings_5()
 {
 	string s1 = <<END
@@ -15278,7 +15512,7 @@ src_mappings_5();
 }
 
 test src-mappings-6 {test bytecode <-> source-file-offset mapping for variable} -body {
-#lang L
+#lang L --line=1
 void src_mappings_6()
 {
 	string	s = "";
@@ -15292,7 +15526,7 @@ src_mappings_6();
 }
 
 test function-1.0 {check function call rules} -body {
-#lang L
+#lang L --line=1
 void function_1_0_foo() { puts("foo"); }
 void function_1_0_f()   { puts("f"); }
 void
@@ -15321,7 +15555,7 @@ f
 }
 
 test function-1.1 {check function call rules error cases} -body {
-#lang L
+#lang L --line=1
 int function_1_1_f1;
 int function_1_1_f1() { return (0); }	// err -- already declared as variable
 int function_1_1_f2() { return (0); }
@@ -15357,7 +15591,7 @@ function_1_1
 }
 
 test function-1.2 {check function prototypes} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 int function_1_2_f1();
 int function_1_2_f1() { return (1); }
 
@@ -15436,7 +15670,7 @@ int function_1_2_sum_cow(int a[])
 } -output {}
 
 test function-1.3 {check function prototypes 2} -body {
-#lang L
+#lang L --line=1
 void
 function_1_3()
 {
@@ -15451,7 +15685,7 @@ function_1_3
 } -output {}
 
 test function-1.3.2 {check function prototypes 3} -body {
-#lang L
+#lang L --line=1
 /*
  * Check that a void formal-parameter list is treated exactly like no
  * parameters.
@@ -15480,7 +15714,7 @@ f4
 }
 
 test function-1.4 {check function prototype errors} -body {
-#lang L
+#lang L --line=1
 void
 function_1_4()
 {
@@ -15498,7 +15732,7 @@ function_1_4()
 }
 
 test function-1.5 {check function prototype errors 2} -body {
-#lang L
+#lang L --line=1
 void function_1_5_f1();
 int function_1_5_f1() { return (0); }
 
@@ -15537,7 +15771,7 @@ string function_1_5_f9(string b, ...rest){ return (b); }
 }
 
 test function-1.6 {check function prototype errors 3} -body {
-#lang L
+#lang L --line=1
 void function_1_6()
 {
 	/*
@@ -15585,7 +15819,7 @@ L Warning: function Fn2_\* not defined
 }
 
 test function-2.1 {check _optional formal-parameter attribute} -body {
-#lang L
+#lang L --line=1
 string fn21_foo1(_optional string arg1)
 {
 	if (arg1) {
@@ -15625,7 +15859,7 @@ function_2_1();
 } -output {}
 
 test function-2.2 {check _optional formal-parameter attribute errors} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 void fn22_err1(_optional string arg1, _optional string arg2) {}
 void fn22_err2(_optional string arg1, string arg2) {}
 void fn22_err3(string arg0, _optional string arg1, string arg2) {}
@@ -15639,13 +15873,13 @@ void fn22_err5(_optional string arg1, ...args) {}
 }
 
 test function-3 {check _attribute error} -body {
-#lang L
+#lang L --line=1
 void function3() _attribute (bad) {}
 } -returnCodes {error} -match regexp -result {.*1: L Error: illegal attribute 'bad'
 }
 
 test initializers-1 {check variable initializer error cases} -body {
-#lang L
+#lang L --line=1
 extern int g = 0;
 void initializers_1() {
 	/*
@@ -15659,7 +15893,7 @@ void initializers_1() {
 }
 
 test initializers-2 {check variable initializers} -body {
-#lang L
+#lang L --line=1
 struct initializers_2_s1 {
 	int	i;
 	int	j, k;
@@ -15738,7 +15972,7 @@ initializers_2
 } -output {}
 
 test initializers-3 {check variable initializer type errors} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 struct initializers_3_s1 {
 	int	i;
 	int	j, k;
@@ -15776,7 +16010,7 @@ void initializers_3()
 }
 
 test initializers-4 {check expressions in variable initializers} -body {
-#lang L
+#lang L --line=1
 int init_4_g = 33;
 void initializers_4()
 {
@@ -15798,7 +16032,7 @@ initializers_4
 } -output {}
 
 test initializers-5 {check order of variable initializers} -body {
-#lang L
+#lang L --line=1
 void initializers_5()
 {
 	/*
@@ -15817,7 +16051,7 @@ initializers_5();
 } -output {}
 
 test initializers-6 {check blank initial values} -body {
-#lang L
+#lang L --line=1
 void initializers_6()
 {
 	int	i;
@@ -15846,7 +16080,7 @@ initializers_6();
 } -output {}
 
 test composite-1 {check composite values in expressions 1} -body {
-#lang L
+#lang L --line=1
 struct composite_1_s1 {
 	int	i;
 	int	j, k;
@@ -15923,7 +16157,7 @@ composite_1
 } -output {}
 
 test composite-2 {check composite values in expressions 2} -body {
-#lang L
+#lang L --line=1
 string composite_2_join(string[] a)
 {
 	string	s;
@@ -15962,7 +16196,7 @@ composite_2
 } -output {}
 
 test composite-2.2 {check hash of array of composite constants} -body {
-#lang L
+#lang L --line=1
 void composite_2_2()
 {
 	/*
@@ -15989,7 +16223,7 @@ composite_2_2();
 } -output {}
 
 test composite-2.3 {check list type compatibility in assignment} -body {
-#lang L
+#lang L --line=1
 void composite_2_3()
 {
 	float	af[];
@@ -16010,7 +16244,7 @@ composite_2_3();
 } -output {}
 
 test composite-3 {check type errors with composite values} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 void composite_3_as(string[] a) {}
 void composite_3_ai(int[] a) {}
 void composite_3_his(int{string} a) {}
@@ -16045,7 +16279,7 @@ void composite_3()
 }
 
 test composite-4 {check composite l-values} -body {
-#lang L
+#lang L --line=1
 class composite_4
 {
 	public	string c;
@@ -16173,7 +16407,7 @@ composite_4_main();
 } -output {}
 
 test composite-4.1 {check composite l-values with non-constant rhs} -body {
-#lang L
+#lang L --line=1
 void composite_4_1()
 {
 	int	ai[], i, j, k;
@@ -16230,7 +16464,7 @@ composite_4_1();
 } -output {}
 
 test composite-5 {check composite l-value errors} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 int composite_5_f() { return (0); }
 void composite_5()
 {
@@ -16273,7 +16507,7 @@ void composite_5()
 }
 
 test composite-6 {test composite l-value type errors} -body {
-#lang L
+#lang L --line=1
 void composite_6()
 {
 	string	as[], a, b;
@@ -16306,7 +16540,7 @@ void composite_6()
 }
 
 test lvalue-1 {check indexing hash/struct/array expressions} -body {
-#lang L
+#lang L --line=1
 void lvalue_1()
 {
 	/*
@@ -16339,7 +16573,7 @@ lvalue_1
 } -output {}
 
 test lvalue-2 {illegal l-value in deep-dive assignments} -body {
-#lang L
+#lang L --line=1
 int[] lvalue_2_ints()
 {
 	int	a[] = { 1, 2, 3 };
@@ -16377,7 +16611,7 @@ lvalue_2
 }
 
 test lvalue-3 {invalid l-value in inc/dec operators} -body {
-#lang L
+#lang L --line=1
 void lvalue_3()
 {
 	int	i = 0;
@@ -16428,7 +16662,7 @@ lvalue_3
 }
 
 test lvalue-4 {invalid l-value in assignments} -body {
-#lang L
+#lang L --line=1
 int lvalue_4_foo() { return (1); }
 void lvalue_4()
 {
@@ -16464,7 +16698,7 @@ lvalue_4
 }
 
 test lvalue-5 {invalid l-value in & operator} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 int lvalue_5_foo() { return (1); }
 void lvalue_5_bar(int &i) {}
 void lvalue_5()
@@ -16493,7 +16727,7 @@ lvalue_5
 }
 
 test builtin-1 {check keys built-in} -body {
-#lang L
+#lang L --line=1
 int[]
 builtin_1_isort(int a[])
 {
@@ -16546,7 +16780,7 @@ builtin_1();
 } -output {}
 
 test builtin-2 {check errors with keys built-in} -body {
-#lang L
+#lang L --line=1
 void builtin_2()
 {
 	int	h{int};
@@ -16568,7 +16802,7 @@ void builtin_2()
 }
 
 test builtin-3 {check length built-in} -body {
-#lang L
+#lang L --line=1
 void builtin_3()
 {
 	int	a[] = {1,2,3,4};
@@ -16594,7 +16828,7 @@ builtin_3();
 } -output {}
 
 test builtin-4 {check errors with length built-in} -body {
-#lang L
+#lang L --line=1
 void builtin_4_f() {}
 void builtin_4()
 {
@@ -16615,7 +16849,7 @@ void builtin_4()
 }
 
 test builtin-5 {check sort built-in} -body {
-#lang L
+#lang L --line=1
 int builtin_5_compar(string a, string b)
 {
 	int	la = length(a);
@@ -16675,7 +16909,7 @@ builtin_5();
 } -output {}
 
 test builtin-6 {check sort built-in errors} -body {
-#lang L
+#lang L --line=1
 int builtin_6_compar(string a, string b) { return (0); }
 void builtin_6()
 {
@@ -16706,7 +16940,7 @@ void builtin_6()
 }
 
 test builtin-7 {check join built-in} -body {
-#lang L
+#lang L --line=1
 void builtin_7()
 {
 	int	ai[] = {1,2,3};
@@ -16727,7 +16961,7 @@ builtin_7();
 } -output {}
 
 test builtin-8 {check join built-in errors} -body {
-#lang L
+#lang L --line=1
 void builtin_8()
 {
 	int	ai[];
@@ -16757,7 +16991,7 @@ void builtin_8()
 }
 
 test builtin-9 {check re-declaration of built-ins} -body {
-#lang L
+#lang L --line=1
 void abs() {}
 void assert() {}
 void die() {}
@@ -16785,7 +17019,7 @@ void warn() {}
 }
 
 test builtin-10 {check built-ins stack integrity} -body {
-#lang L
+#lang L --line=1
 void builtin_10()
 {
 	/*
@@ -16816,7 +17050,7 @@ builtin_10();
 } -output {}
 
 test builtin-11 {check push onto class and instance variables} -body {
-#lang L
+#lang L --line=1
 class builtin_11
 {
 	public	int apubl[];
@@ -16850,7 +17084,7 @@ builtin_11_main();
 } -output {}
 
 test builtin-11.2 {check push and pop built-in} -body {
-#lang L
+#lang L --line=1
 void builtin_11_2()
 {
 	string	aa[][], s;
@@ -16993,7 +17227,7 @@ builtin_11_2();
 } -output {}
 
 test builtin-11.3 {check push built-in with multiple args} -body {
-#lang L
+#lang L --line=1
 void builtin_11_3()
 {
 	int	i;
@@ -17023,7 +17257,7 @@ builtin_11_3();
 } -output {}
 
 test builtin-11.4 {check push built-in with list args} -body {
-#lang L
+#lang L --line=1
 void builtin_11_4()
 {
 	int	a[], aa[][], aaa[][][];
@@ -17145,7 +17379,7 @@ builtin_11_4();
 } -output {}
 
 test builtin-11.5 {check insert built-in} -body {
-#lang L
+#lang L --line=1
 void builtin_11_5()
 {
 	int	a[];
@@ -17209,7 +17443,7 @@ builtin_11_5();
 } -output {}
 
 test builtin-11.6 {check unshift built-in} -body {
-#lang L
+#lang L --line=1
 void builtin_11_6()
 {
 	int	a[];
@@ -17273,7 +17507,7 @@ void builtin_11_6()
 
 
 test builtin-11.7 {check shift built-in} -body {
-#lang L
+#lang L --line=1
 void builtin_11_7()
 {
 	int	a[];
@@ -17317,7 +17551,7 @@ builtin_11_7();
 } -output {}
 
 test builtin-14 {check errors in push and pop built-ins} -body {
-#lang L
+#lang L --line=1
 int[] builtin_14_array() { return {1,2,3}; }
 void builtin_14()
 {
@@ -17349,7 +17583,7 @@ void builtin_14()
 }
 
 test builtin-14.2 {check errors in insert built-in} -body {
-#lang L
+#lang L --line=1
 int[] builtin_14_2_array() { return {1,2,3}; }
 void builtin_14_2()
 {
@@ -17387,7 +17621,7 @@ void builtin_14_2()
 }
 
 test builtin-14_3 {check errors in unshift built-in} -body {
-#lang L
+#lang L --line=1
 int[] builtin_14_3_array() { return {1,2,3}; }
 void builtin_14_3()
 {
@@ -17421,7 +17655,7 @@ void builtin_14_3()
 }
 
 test builtin-14_4 {check errors in shift built-in} -body {
-#lang L
+#lang L --line=1
 int[] builtin_14_4_array() { return {1,2,3}; }
 void builtin_14_4()
 {
@@ -17451,7 +17685,7 @@ void builtin_14_4()
 }
 
 test builtin-15 {check abs built-in} -body {
-#lang L
+#lang L --line=1
 void builtin_15()
 {
 	poly	p;
@@ -17473,7 +17707,7 @@ builtin_15();
 } -output {}
 
 test builtin-16 {check abs built-in errors} -body {
-#lang L
+#lang L --line=1
 void builtin_16()
 {
 	abs();
@@ -17493,7 +17727,7 @@ void builtin_16()
 }
 
 test builtin-17 {check typeof built-in} -body {
-#lang L
+#lang L --line=1
 class builtin_17_cls {}
 typedef int builtin_17_type1;
 typedef builtin_17_type1 builtin_17_type2;
@@ -17526,7 +17760,7 @@ builtin_17();
 } -output {}
 
 test builtin-18 {check typeof built-in errors} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 void builtin_18()
 {
 	int	i = 0;
@@ -17541,7 +17775,7 @@ void builtin_18()
 }
 
 test builtin-19.1 {check min/max built-ins} -body {
-#lang L
+#lang L --line=1
 void builtin_19_1()
 {
 	unless (min(-1, 1) == -1) puts("bad 1");
@@ -17554,7 +17788,7 @@ builtin_19_1();
 } -output {}
 
 test builtin-19.2 {check min/max built-in errors} -body {
-#lang L
+#lang L --line=1
 void builtin_19_2()
 {
 	min();
@@ -17577,7 +17811,7 @@ void builtin_19_2()
 }
 
 test line-file-1 {test __LINE__ and __FILE__} -body {
-#lang L
+#lang L --line=1
 void line_file_1()
 {
 	unless(basename(__FILE__) eq "l-core.test") puts("bad 1.1");
@@ -17590,7 +17824,7 @@ line_file_1();
 } -output {}
 
 test line-file-2 {test __LINE__, __FILE__, and __FUNC__ errors} -body {
-#lang L
+#lang L --line=1
 void line_file_2_s(string &s) { s = "bad"; }
 void line_file_2_i(int &i) { i = 1; }
 void line_file_2()
@@ -17611,7 +17845,7 @@ void line_file_2()
 }
 
 test line-file-3 {test __FUNC__} -body {
-#lang L
+#lang L --line=1
 unless (__FUNC__ =~ /\d+%l_toplevel/) puts("bad 10.1");
 void line_file_3b()
 {
@@ -17627,7 +17861,7 @@ line_file_3();
 } -output {}
 
 test lregex-1 {test a trivial regex} -body {
-#lang L
+#lang L --line=1
 int lregex_1(void) {
 	if ("x" =~ /x+/) { return(1); } else { return(0); }
 }
@@ -17636,7 +17870,7 @@ lregex_1;
 } -result {1}
 
 test class-1.1 {test basic class functionality} -body {
-#lang L
+#lang L --line=1
 int	class_1_1_inits = 0;
 int	class_1_1_frees = 0;
 int	class_1_1_foos  = 0;
@@ -17721,7 +17955,7 @@ class_1_1_main();
 } -output {}
 
 test class-1.2 {test multiple object instances} -body {
-#lang L
+#lang L --line=1
 class class_1_2
 {
 	instance {
@@ -17756,7 +17990,7 @@ class_1_2_main();
 } -output {}
 
 test class-1.3 {test class variables} -body {
-#lang L
+#lang L --line=1
 class class_1_3
 {
 	public	string cls_var = "first";
@@ -17805,7 +18039,7 @@ class_1_3_main();
 } -output {}
 
 test class-1.4 {test no class instance variables} -body {
-#lang L
+#lang L --line=1
 class class_1_4
 {
 	public	int cvar = 123;
@@ -17827,7 +18061,7 @@ class_1_4_main();
 } -output {}
 
 test class-1.5 {test no class variables} -body {
-#lang L
+#lang L --line=1
 class class_1_5
 {
 	instance {
@@ -17851,7 +18085,7 @@ class_1_5_main();
 } -output {}
 
 test class-1.6 {test "->" as member variable selection} -body {
-#lang L
+#lang L --line=1
 class class_1_6
 {
 	public	string cvar = "cvar";
@@ -17874,7 +18108,7 @@ class_1_6_main();
 } -output {}
 
 test class-1.7 {test indexing errors on class instance variables} -body {
-#lang L
+#lang L --line=1
 class class_1_7
 {
 	public	string cvar = "cvar";
@@ -17898,7 +18132,7 @@ void class_1_7_main()
 }
 
 test class-1.8 {check calling private member functions} -body {
-#lang L
+#lang L --line=1
 /*
  * Check that private member functions can be called from the
  * constructor and destructor, whether they are declared before or
@@ -17942,7 +18176,7 @@ class_1_8_main();
 } -output {}
 
 test class-1.9 {check calling class member fns before they are declared} -body {
-#lang L
+#lang L --line=1
 /*
  * Check the error cases to make sure that the proto is being
  * processed before the call site even though it comes after.
@@ -17975,7 +18209,7 @@ class class_1_9
 }
 
 test class-1.10 {check forward class declarations} -body {
-#lang L
+#lang L --line=1
 class class_1_10a
 {
 	constructor class_1_10a_new() {}
@@ -17998,7 +18232,7 @@ class_1_10_main();
 } -output {}
 
 test class-1.11 {check forward class declaration errors} -body {
-#lang L
+#lang L --line=1
 class class_1_11a {}
 class class_1_11a {}  // error -- already declared
 typedef int class_1_11_t;
@@ -18008,7 +18242,7 @@ class class_1_11_t;  // error -- not a class type
 }
 
 test class-1.12 {check returns from class destructor} -body {
-#lang L
+#lang L --line=1
 /*
  * Check that an explicit return from with the class destructor does
  * not bypass the code to delete the namespace instance.
@@ -18037,7 +18271,7 @@ class_1_12_main();
 } -output {}
 
 test class-2.1 {check missing class constructor} -body {
-#lang L
+#lang L --line=1
 class class_2_1
 {
 	instance {
@@ -18057,7 +18291,7 @@ class_2_1_main();
 } -output {}
 
 test class-2.2 {check class missing destructor} -body {
-#lang L
+#lang L --line=1
 class class_2_2
 {
 	instance {
@@ -18077,7 +18311,7 @@ class_2_2_main();
 } -output {}
 
 test class-2.2.1 {check class missing constructor and destructor} -body {
-#lang L
+#lang L --line=1
 class class_2_2_1
 {
 	instance {
@@ -18095,7 +18329,7 @@ class_2_2_1_main();
 } -output {}
 
 test class-2.3 {check multiple class constructors and destructors} -body {
-#lang L
+#lang L --line=1
 class class_2_3
 {
 	public	int n = 0;
@@ -18140,7 +18374,7 @@ class_2_3_main();
 } -output {}
 
 test class-2.5 {check missing self argument in class destructor 1} -body {
-#lang L
+#lang L --line=1
 class class_2_5
 {
 	constructor class_2_5_init() {}
@@ -18150,7 +18384,7 @@ class class_2_5
 }
 
 test class-2.6 {check missing self argument in class destructor 2} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 class class_2_6
 {
 	constructor class_2_6_init() {}
@@ -18160,7 +18394,7 @@ class class_2_6
 }
 
 test class-2.7 {check missing self argument in class destructor 3} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 class class_2_7
 {
 	constructor class_2_7_init() {}
@@ -18170,7 +18404,7 @@ class class_2_7
 }
 
 test class-2.8 {check missing self argument in public class member fn} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 class class_2_8
 {
 	constructor class_2_8_init() {}
@@ -18185,7 +18419,7 @@ class class_2_8
 }
 
 test class-2.9 {check use of self argument in class member fn} -body {
-#lang L
+#lang L --line=1
 class class_2_9
 {
 	constructor class_2_9_init() {}
@@ -18199,7 +18433,7 @@ class class_2_9
 }
 
 test class-2.10 {check declaration of local named self in class} -body {
-#lang L
+#lang L --line=1
 class class_2_10
 {
 	constructor class_2_10_init()
@@ -18226,7 +18460,7 @@ class class_2_10
 }
 
 test class-2.11 {check return stmt in class destructor 1} -body {
-#lang L
+#lang L --line=1
 class class_2_11
 {
 	destructor class_2_11_delete(class_2_11 self)
@@ -18243,7 +18477,7 @@ class_2_11_main();
 } -output {}
 
 test class-2.12 {check return stmt in class destructor 2} -body {
-#lang L
+#lang L --line=1
 class class_2_12
 {
 	destructor class_2_12_delete(class_2_12 self)
@@ -18255,7 +18489,7 @@ class class_2_12
 }
 
 test class-2.12.1 {check return stmt in class constructor 1} -body {
-#lang L
+#lang L --line=1
 class class_2_12_1
 {
 	instance { public int inst = 123; }
@@ -18275,7 +18509,7 @@ class_2_12_1_main();
 } -output {}
 
 test class-2.12.2 {check return stmt in class constructor 2} -body {
-#lang L
+#lang L --line=1
 class class_2_12_2
 {
 	constructor class_2_12_2_new()
@@ -18287,7 +18521,7 @@ class class_2_12_2
 }
 
 test class-2.13 {check name clash with class constructor 1} -body {
-#lang L
+#lang L --line=1
 class class_2_13
 {
 	constructor class_2_13_new() {}
@@ -18299,7 +18533,7 @@ class class_2_13
 }
 
 test class-2.14 {check name clash with class constructor 2} -body {
-#lang L
+#lang L --line=1
 class class_2_14
 {
 	void class_2_14_new(class_2_14 self) {}  // err
@@ -18310,7 +18544,7 @@ class class_2_14
 }
 
 test class-2.15 {check name clash with class destructor 1} -body {
-#lang L
+#lang L --line=1
 class class_2_15
 {
 	destructor class_2_15_delete(class_2_15 self) {}
@@ -18322,7 +18556,7 @@ class class_2_15
 }
 
 test class-2.16 {check name clash with class destructor 2} -body {
-#lang L
+#lang L --line=1
 class class_2_16
 {
 	void class_2_16_delete(class_2_16 self) {}  // err
@@ -18333,7 +18567,7 @@ class class_2_16
 }
 
 test class-2.17 {check illegal self parameter in class constructor 1} -body {
-#lang L
+#lang L --line=1
 class class_2_17
 {
 	constructor class_2_17_new(class_2_17 self) {}
@@ -18342,7 +18576,7 @@ class class_2_17
 }
 
 test class-2.18 {check illegal self parameter in class constructor 2} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 class class_2_18
 {
 	constructor class_2_18_new(int a, class_2_17 self) {}
@@ -18351,7 +18585,7 @@ class class_2_18
 }
 
 test class-2.20 {check class public member fn with arg without name} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 class class_2_20
 {
 	/*
@@ -18364,7 +18598,7 @@ class class_2_20
 }
 
 test class-2.21 {check class member function use before declare} -body {
-#lang L
+#lang L --line=1
 class class_2_21
 {
 	public int class_2_21_foo(class_2_21 self, int arg)
@@ -18391,7 +18625,7 @@ class_2_21_main();
 } -output {}
 
 test class-2.22 {check self in private member function} -body {
-#lang L
+#lang L --line=1
 class class_2_22 {
 	constructor class_2_22_init() {
 		some_method(self);
@@ -18404,7 +18638,7 @@ class class_2_22 {
 }
 
 test class-3.1 {check scoping of class vars and class instance vars 1} -body {
-#lang L
+#lang L --line=1
 class class_3_1
 {
 	/*
@@ -18428,7 +18662,7 @@ class class_3_1
 }
 
 test class-3.2 {check scoping of class vars and class instance vars 2} -body {
-#lang L
+#lang L --line=1
 class class_3_2
 {
 	/*
@@ -18451,7 +18685,7 @@ class class_3_2
 }
 
 test class-3.3 {check empty class instance variable section} -body {
-#lang L
+#lang L --line=1
 class class_3_3
 {
 	instance {}
@@ -18459,7 +18693,7 @@ class class_3_3
 } -result {}
 
 test class-3.3.1 {check completely empty class declaration} -body {
-#lang L
+#lang L --line=1
 class class_3_3_1 {}
 void class_3_3_1_main()
 {
@@ -18470,7 +18704,7 @@ class_3_3_1_main();
 } -output {}
 
 test class-3.4 {check scoping of class vars and class instance vars 4} -body {
-#lang L
+#lang L --line=1
 class class_3_4
 {
 	/*
@@ -18493,7 +18727,7 @@ class class_3_4
 }
 
 test class-3.5 {check scoping of class vars and class instance vars 5} -body {
-#lang L
+#lang L --line=1
 class class_3_5
 {
 	/*
@@ -18523,7 +18757,7 @@ class class_3_5
 }
 
 test class-3.6 {check scoping of class vars and class instance vars 6} -body {
-#lang L
+#lang L --line=1
 class class_3_6
 {
 	/*
@@ -18549,7 +18783,7 @@ class class_3_6
 }
 
 test class-3.7 {check variable visibility in class member functions} -body {
-#lang L
+#lang L --line=1
 /*
  * Ensure class and instance variables are visible and work
  * inside of all class member functions.
@@ -18602,7 +18836,7 @@ class_3_7_main();
 } -output {}
 
 test class-3.8 {check missing public/private qualifiers on class vars} -body {
-#lang L
+#lang L --line=1
 class class_3_8
 {
 	int	bad1, bad2;
@@ -18621,7 +18855,7 @@ class class_3_8
 }
 
 test class-3.9 {check expressions in class and instance variable intializers} -body {
-#lang L
+#lang L --line=1
 class class_3_9
 {
 	/*
@@ -18654,7 +18888,7 @@ class_3_9_main();
 } -output {}
 
 test class-4.1 {check scoping of private names in classes} -body {
-#lang L
+#lang L --line=1
 /*
  * Check that per-class variables are defined in the class scope,
  * meaning that two classes can have the same variable names and the
@@ -18709,7 +18943,7 @@ class_4_1();
 } -output {}
 
 test class-4.2 {check typedef and struct type scoping in classes 1} -body {
-#lang L
+#lang L --line=1
 /*
  * Check that typedef and struct names declared inside a class get
  * defined at the global scope, not at the class scope.  This test
@@ -18739,7 +18973,7 @@ class class_4_2
 }
 
 test class-4.3 {check typedef and struct type scoping in classes 2} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 /*
  * Check that typedef and struct names declared inside a class get
  * defined at the global scope, not at the class scope.  This test
@@ -18791,7 +19025,7 @@ class_4_3_main();
 } -output {}
 
 test class-5.1 {check class object type checking} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 class class_5_1_1
 {
 	constructor class_5_1_1_init() {}
@@ -18826,7 +19060,7 @@ void class_5_1()
 }
 
 test class-5.2 {check wrong object type in class member fn declarations} -body {
-#lang L
+#lang L --line=1
 class class_5_2_1
 {
 	constructor class_5_2_1_init() {}
@@ -18844,7 +19078,7 @@ class class_5_2_2
 }
 
 test class-5.3 {check that class member fn args get type checked 1} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 /*
  * This test checks that class member function arguments are
  * type checked.  There should be no type errors in this example.
@@ -18870,7 +19104,7 @@ class_5_3_main();
 } -output {}
 
 test class-5.4 {check that class member fn args get type checked 2} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 /*
  * This test checks that class member function arguments are
  * type checked.  This example has type errors.
@@ -18906,7 +19140,7 @@ class_5_4_main();
 }
 
 test class-6.1 {check class variable access from outside class} -body {
-#lang L
+#lang L --line=1
 void class_6_1_str(string &s, string new)
 {
 	s = new;
@@ -18987,7 +19221,7 @@ class_6_1_main();
 } -output {}
 
 test class-6.2 {check class variable access errors from outside class} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 class class_6_2
 {
 	private	string s = "cvar";
@@ -19000,7 +19234,7 @@ void class_6_2_main()
 }
 
 test class-6.3 {check class variable access from inside class} -body {
-#lang L
+#lang L --line=1
 class class_6_3
 {
 	public	string cpubl = "publ-cvar";
@@ -19037,7 +19271,7 @@ class_6_3_main();
 } -output {}
 
 test class-6.4 {check erroneous class instance var access via class name} -body {
-#lang L
+#lang L --line=1
 class class_6_4
 {
 	instance {
@@ -19069,7 +19303,7 @@ class_6_4_main();
 }
 
 test class-6.5 {check class instance var access from outside class} -body {
-#lang L
+#lang L --line=1
 class class_6_5
 {
 	instance {
@@ -19103,7 +19337,7 @@ class_6_5_main();
 } -output {}
 
 test class-6.6 {check class instance var access errs from outside class} -body {
-#lang L
+#lang L --line=1
 class class_6_6
 {
 	instance {
@@ -19122,7 +19356,7 @@ void class_6_6_main()
 }
 
 test class-6.7 {check class instance var access from inside class} -body {
-#lang L
+#lang L --line=1
 class class_6_7
 {
 	instance {
@@ -19176,7 +19410,7 @@ class_6_7_main();
 } -output {}
 
 test class-6.8 {check class variable access errors} -body {
-#lang L
+#lang L --line=1
 class class_6_8
 {
 	public	string cpubl;
@@ -19195,7 +19429,7 @@ void class_6_8_main()
 }
 
 test class-7.1 {check object erroneously declared with same name as class} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 class class_7_1 {}
 void class_7_1_main()
 {
@@ -19205,7 +19439,7 @@ void class_7_1_main()
 }
 
 test class-8.1 {check class variables as l-values} -body {
-#lang L
+#lang L --line=1
 class class_8_1
 {
 	public	string	s;
@@ -19278,7 +19512,7 @@ class_8_1_main();
 } -output {}
 
 test class-8.1.5 {check class and class instance variables used in nested scopes} -body {
-#lang L
+#lang L --line=1
 class class_8_1_5
 {
 	private	int n = 0;
@@ -19326,7 +19560,7 @@ class_8_1_5_main();
 } -output {}
 
 test class-8.2 {check class instance variables as l-values} -body {
-#lang L
+#lang L --line=1
 class class_8_2
 {
 	instance {
@@ -19426,7 +19660,7 @@ class_8_2_main();
 } -output {}
 
 test class-8.3 {check class instance variables as reference parameters} -body {
-#lang L
+#lang L --line=1
 void class_8_3_str(string &s, string new)
 {
 	s = new;
@@ -19512,7 +19746,7 @@ class_8_3_main();
 } -output {}
 
 test class-8.4 {check objects in complex variables} -body {
-#lang L
+#lang L --line=1
 class class_8_4_1
 {
 	instance {
@@ -19583,7 +19817,7 @@ class_8_4_main();
 } -output {}
 
 test class-8.5 {check objects as reference parameters} -body {
-#lang L
+#lang L --line=1
 class class_8_5
 {
 	private int n = 0;
@@ -19628,7 +19862,7 @@ class_8_5_main();
 } -output {}
 
 test class-9.1 {check class and instance variables in comma expression} -body {
-#lang L
+#lang L --line=1
 class class_9_1
 {
 	public	string cvar = "cvar";
@@ -19659,7 +19893,7 @@ class_9_1_main();
 } -output {}
 
 test goto-1 {check goto statement} -body {
-#lang L
+#lang L --line=1
 /*
  * Test gotos at global scope.  None of these labels should clash with
  * those in goto_1a() or goto_1b() below.
@@ -19835,7 +20069,7 @@ L1
 }
 
 test goto-2 {check gotos with labels in enclosing scopes} -body {
-#lang L
+#lang L --line=1
 goto L1;
 L2: puts("global L2");
 return;
@@ -19853,7 +20087,7 @@ global L2
 }
 
 test goto-3 {check goto statement errors} -body {
-#lang L
+#lang L --line=1
 void goto_3()
 {
 	goto L1;
@@ -19882,7 +20116,7 @@ L6:
 }
 
 test goto-4 {check goto with label on first statement in the scope} -body {
-#lang L
+#lang L --line=1
 void goto_4()
 {
 	int	i = 0;
@@ -19902,7 +20136,7 @@ goto_4();
 } -output {}
 
 test fntrace-1 {check function tracing, pragma syntax} -body {
-#lang L
+#lang L --line=1
 // These are all legal syntax.
 #pragma fntrace=on
 unless (__LINE__ == 3) puts("bad 1");
@@ -19920,7 +20154,7 @@ unless (__LINE__ == 13) puts("bad 6");
 } -output {}
 
 test fntrace-2 {check function trace, default hooks} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 #pragma fntrace=on
 string fntrace_2_3(string a1, string a2)
 {
@@ -19964,7 +20198,7 @@ in fntrace_2 after
 }
 
 test fntrace-3.1 {check function trace, private user hook fn} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 #pragma fntrace=on, fnhook=fn31_myhook
 private void fn31_myhook(int pre, string av[], string ret)
 {
@@ -20021,7 +20255,7 @@ myhook post: fntrace_3_1 0 args: ret: ''
 }
 
 test fntrace-3.2 {check function trace, public user hook fn} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 #pragma fntrace=on, fnhook=fntr32_myhook
 void fntr32_myhook(int pre, string av[], string ret)
 {
@@ -20078,7 +20312,7 @@ myhook post: fntrace_3_2 0 args: ret: ''
 }
 
 test fntrace-4 {check pragma errors} -body {
-#lang L
+#lang L --line=1
 #pragma unknown1=on
 #pragma unknown2
 } -returnCodes error -match regexp -result {.*1: L Error: illegal attribute 'unknown1'
@@ -20086,7 +20320,7 @@ test fntrace-4 {check pragma errors} -body {
 }
 
 test fntrace-5 {check switching hooks and enabling/disabling fntrace} -body {
-#lang L
+#lang L --line=1
 #pragma fntrace=off
 void myhook5(int pre, string av[], string ret)
 {
@@ -20147,7 +20381,7 @@ in fntrace_5 after
 }
 
 test fntrace-6 {check that tracing does not munge function return value} -body {
-#lang L
+#lang L --line=1
 #pragma fntrace=on
 private int myfunc(int a)
 {
@@ -20161,7 +20395,7 @@ fntrace_6();
 } -output {}
 
 test fntrace-7 {test function tracing in classes} -body {
-#lang L
+#lang L --line=1
 #pragma fntrace=off
 class fntrace_7_cls
 {
@@ -20207,7 +20441,7 @@ not_traced
 }
 
 test fntrace-8 {test max depth in function tracing} -body {
-#lang L
+#lang L --line=1
 #pragma fntrace=on, trace_depth=3
 int fn8_d = 0;
 void fn8(int max)
@@ -20245,7 +20479,7 @@ fntrace_8();
 }
 
 test fntrace-9 {test entry only or exit only function tracing hooks} -body {
-#lang L
+#lang L --line=1
 #pragma fntrace=entry
 void fntrace_9_entry() {}
 #pragma fntrace=exit
@@ -20269,7 +20503,7 @@ test fntrace-10.1 {test L_TRACE environment variable, output to file} -setup {
 		void main() {}
 	} fntrace101.l]
 } -body {
-#lang L
+#lang L --line=1
 void fntrace_10_1()
 {
 	int	ret;
@@ -20319,7 +20553,7 @@ test fntrace-10.2 {test L_TRACE environment variable, output to socket} -setup {
 		}
 	} fntrace102_server.l]
 } -body {
-#lang L
+#lang L --line=1
 void fntrace_10_2()
 {
 	int	port, ret;
@@ -20364,7 +20598,7 @@ test fntrace-10.3 {test L_TRACE_FILES and --trace-files} -setup {
 		}
 	} fntrace_10_3_c.l]
 } -body {
-#lang L
+#lang L --line=1
 void fntrace_10_3()
 {
 	int	ret;
@@ -20502,7 +20736,7 @@ test fntrace-10.4 {test L_TRACE_FUNCS and --trace-funcs} -setup {
 			fntrace_10_4();
 	} fntrace_10_4.l]
 } -body {
-#lang L
+#lang L --line=1
 void fntrace_10_4()
 {
 	int	ret;
@@ -20651,7 +20885,7 @@ test fntrace-10.5 {test L_TRACE_SCRIPT and --trace-script, script} -setup {
 		}
 	} fntrace_10_5.l]
 } -body {
-#lang L
+#lang L --line=1
 void fntrace_10_5()
 {
 	int	ret;
@@ -20726,7 +20960,7 @@ test fntrace-10.6 {test L_TRACE_SCRIPT and --trace-script, file} -setup {
 		}
 	} fntrace_10_6_hooks.l]
 } -body {
-#lang L
+#lang L --line=1
 void fntrace_10_6()
 {
 	int	ret;
@@ -20785,7 +21019,7 @@ test fntrace-10.7 {test L_TRACE_SCRIPT and --trace-script errors} -setup {
 		void main() {}
 	} fntrace_10_7.l]
 } -body {
-#lang L
+#lang L --line=1
 void fntrace_10_7()
 {
 	int	ret;
@@ -20816,7 +21050,7 @@ fntrace_10_7();
 } -output {}
 
 test fntrace-11 {test that a hook fn does not get traced} -body {
-#lang L
+#lang L --line=1
 #pragma fntrace=on, fnhook=fntrace_11_hook
 void fntrace_11_hook(int pre, _argused poly av[], _argused poly ret)
 {
@@ -20831,7 +21065,7 @@ exit fntrace_11
 }
 
 test fntrace-12.1 {test fn _attributes for tracing} -body {
-#lang L
+#lang L --line=1
 void fntrace_12_1_f1() _attribute (fntrace=on) {}
 void fntrace_12_1_f2() {}
 void fntrace_12_1_f3() _attribute (fntrace=off) {}
@@ -20847,7 +21081,7 @@ fntrace_12_1();
 }
 
 test fntrace-12.2 {test more fn _attributes for tracing} -body {
-#lang L --trace-out=stdout
+#lang L --line=1 --trace-out=stdout
 #pragma fnhook=def
 void fntrace_12_2_hook(int pre, _argused poly av[], _argused poly ret)
 {
@@ -20872,7 +21106,7 @@ exit fntrace_12_2_f1
 }
 
 test fntrace-13.1 {test run-time function tracing control} -body {
-#lang L
+#lang L --line=1
 #pragma fntrace=off
 int fn13_d = 0;
 void fn13(int max)
@@ -20917,7 +21151,7 @@ fntrace_13_1();
 }
 
 test fntrace-13.2 {test run-time disabling of entry or exit traces} -body {
-#lang L
+#lang L --line=1
 #pragma fntrace=on
 void fntrace_13_2_f(poly arg)
 {

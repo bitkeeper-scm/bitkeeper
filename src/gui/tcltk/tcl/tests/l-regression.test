@@ -14,7 +14,7 @@ set ::env(_L_TEST) 1
 set ::env(_L_ALLOW_EQ_OPS) 1
 
 test empty-1.0 {empty code blocks} -body {
-#lang L
+#lang L --line=1
 void empty_1_0() {
 } 
 #lang tcl
@@ -22,7 +22,7 @@ empty_1_0
 } 
 
 test empty-1.1 {empty code blocks with some control flow} -body {
-#lang L
+#lang L --line=1
 void empty_1_1() {
         /* note that none of these conditions is true, 
            so no code is executed */
@@ -39,7 +39,7 @@ empty_1_1
 } 
 
 test values-1.0 {the values of struct increment and assignment} -body {
-#lang L
+#lang L --line=1
 struct values_1_0 {
   int clicks;
   string value;
@@ -58,7 +58,7 @@ values_1_0
 test multi-dimensional-1.0 {move[state][read_symbol] was being evaluated as
 move[state][state[read_symbol]][read_symbol], or thereabouts, because the AST
 was built in an ambiguous way.} -body {
-#lang L
+#lang L --line=1
 string dump_tape(int tape[]);
 void turing(int step, int state, int tape[], int pos) {
     int write_symbol[5][2], move[5][2], new_state[5][2], read_symbol;
@@ -128,7 +128,7 @@ multi_dimensional_1_0
 }
 
 test initializers-1.0 {initialize a whole array at once} -body {
-#lang L
+#lang L --line=1
 void initializers_1_1() {
   string foo[] = initializers_1_1_returnarray();
 
@@ -144,7 +144,7 @@ initializers_1_1
 } -output "foo\[0\] is foo\nfoo\[1\] is bar\n"
 
 test cast-1.0 {don't segfault when casting to a string} -body {
-#lang L
+#lang L --line=1
 void cast_1_0() {
 	puts((string)"asdf");
 }
@@ -154,7 +154,7 @@ cast_1_0
 
 
 test typecheck-1.0 {typechecker segfaults on unop check that must be queued} -body {
-#lang L
+#lang L --line=1
 int typecheck_1_0_bar() {
 	return 22;
 }
@@ -171,7 +171,7 @@ typecheck_1_0
     "*:9: L Error: parameter 1 has incompatible type\n"
 
 test decl-1.0 {don't drop array dimensions from typedef when declaring multiple variables} -body {
-#lang L
+#lang L --line=1
 typedef int atype[2];
 void decl_1_0() {
 	atype foo[3], bar;
@@ -185,7 +185,7 @@ decl_1_0
 } -output "{} {} {{} 0}\n{} 0\n"
 
 test if-1.0 {jump target is wrong when else block gets too big} -body {
-#lang L -nowarn
+#lang L --line=1 -nowarn
 void if_1_0() {
 	string w = ".asdf";
 	string btm = "${w}.btm", e = "${w}.e";
@@ -217,7 +217,7 @@ if_1_0
 }
 
 test scope-1.0 {if a global is first used as a reference, it gets erroneously created twice} -body {
-#lang L
+#lang L --line=1
 string avar = "foo";
 void frob(string &str) {
 	str = "bar";
@@ -231,7 +231,7 @@ scope_1_0
 } -output "bar\n";
 
 test scope-1.1 {a block introduces a new scope} -body {
-#lang L
+#lang L --line=1
 void scope_1_1() {
 	{
 		int a;
@@ -244,7 +244,7 @@ scope_1_1
 } -returnCodes {error} -match glob -result "*:6: L Error: undeclared variable: a\n"
 
 test regexp-1.0 {regexps might start with a dash, so call regex/regsub with -- before the regexp} -body {
-#lang L
+#lang L --line=1
 void regexp_1_0() {
 	string v = "a-b-c";
 	v =~ s/-/\&ndash;/g;
@@ -255,7 +255,7 @@ regexp_1_0
 } -output "a&ndash;b&ndash;c\n"
 
 test errors-1.0 {don't run L code if there were compilation errors} -body {
-#lang L
+#lang L --line=1
 void errors_1_0() {
 	int argc;
 	// we want "this is text" to _not_ print
@@ -268,7 +268,7 @@ errors_1_0();
 -output {}
 
 test break-1.0 {breaks break when loop jump instructions grow because the loop body is big} -body {
-#lang L
+#lang L --line=1
 void break_1_0() {
         int     i;
 
@@ -286,14 +286,14 @@ break_1_0();
 } -output {00000}
 
 test typedef-1.0 {L redeclaring types is allowed for same types} -body {
-#lang L
+#lang L --line=1
 typedef string typedef_1_0_FOO;
 typedef string typedef_1_0_FOO;
 #lang tcl
 } -output ""
 
 test typedef-1.1 {L redefining types is not allowed} -body {
-#lang L
+#lang L --line=1
 typedef string typedef_1_1_BAR;
 typedef int typedef_1_1_BAR;
 #lang tcl
@@ -301,7 +301,7 @@ typedef int typedef_1_1_BAR;
 	"*:2: L Error: Cannot redefine type typedef_1_1_BAR*"
 
 test crash-1.1 {crashing in some interim versions} -body {
-#lang L
+#lang L --line=1
 struct c11xy { int x,y; };
 void
 crash_1_1()
@@ -315,7 +315,7 @@ crash_1_1();
 
 
 test pattern-1.2 {L widget pattern functions} -body {
-#lang L
+#lang L --line=1
 void pattern_1_2_foo(...args)
 {
 	puts(args);
@@ -331,7 +331,7 @@ pattern_1_2();
 } -output "insert end FOO\n"
 
 test empty-stmt {empty stmt crashed in parser} -body {
-#lang L
+#lang L --line=1
 void empty_stmt()
 {
 	printf("Should be OK now.\n");;  // Note the two semicolons.
@@ -341,7 +341,7 @@ empty_stmt
 } -output "Should be OK now.\n"
 
 test struct-typedef-1.1 {check struct typedef bug} -body {
-#lang L
+#lang L --line=1
 typedef struct {
 	int x;
 	int y;
@@ -366,7 +366,7 @@ struct_typedef_1_1
 } -output "X = 66\nFOO {66 63}\n"
 
 test list-1 {check list creation bug} -body {
-#lang L
+#lang L --line=1
 void list_1()
 {
 	/* This used to trip an assert. */

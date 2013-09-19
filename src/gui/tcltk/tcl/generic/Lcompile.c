@@ -125,6 +125,8 @@ char *L_attrs_cmdLine[] = {
 	"dis",
 	"fnhook",
 	"fntrace",
+	"line",
+	"lineadj",
 	"norun",
 	"nowarn",
 	"poly",
@@ -141,6 +143,8 @@ char *L_attrs_pragma[] = {
 	"dis",
 	"fnhook",
 	"fntrace",
+	"line",
+	"lineadj",
 	"norun",
 	"nowarn",
 	"poly",
@@ -553,6 +557,7 @@ parse_options(int objc, Tcl_Obj **objv, char *allowed[])
 private int
 parse_script(char *str, Ast **ast_p, Tcl_Obj *nameObj)
 {
+	char	*s;
 	void	*lex_buffer;
 
 	L_typeck_init();
@@ -567,7 +572,27 @@ parse_script(char *str, Ast **ast_p, Tcl_Obj *nameObj)
 		free(cwd);
 	}
 
-	L->line		  = 1;
+	/*
+	 * Calculate the starting line # from the --line and --lineadj
+	 * cmd-line options and inject a #line directive at the start
+	 * of the source code.  This communicates the file-relative
+	 * line # to code elsewhere that prints run-time error
+	 * messages.
+	 */
+	if ((s = getenv("_L_LINE"))) {
+		L->line = strtoul(s, NULL, 10);
+	} else {
+		if ((s = hash_get(L->options, "line"))) {
+			L->line = atoi(s);
+		} else {
+			L->line = 1;
+		}
+		if ((s = hash_get(L->options, "lineadj"))) {
+			L->line += atoi(s);
+		}
+	}
+	str = cksprintf("#line %d\n%s", L->line, str);
+
 	L->token_off      = 0;
 	L->prev_token_off = 0;
 	L->prev_token_len = 0;
@@ -580,6 +605,7 @@ parse_script(char *str, Ast **ast_p, Tcl_Obj *nameObj)
 	*ast_p = L->ast;
 
 	L__delete_buffer(lex_buffer);
+	ckfree(str);
 
 	if (L->errs) {
 		Tcl_SetObjResult(L->interp, L->errs);

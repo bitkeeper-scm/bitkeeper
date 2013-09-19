@@ -1209,7 +1209,7 @@ TclCompileScript(
     Tcl_DString ds;
     /* TIP #280 */
     ExtCmdLoc *eclPtr = envPtr->extCmdMapPtr;
-    int *wlines, wlineat, cmdLine;
+    int *wlines, wlineat, cmdLine, adjust;
     Tcl_Parse *parsePtr = (Tcl_Parse *)
 	    TclStackAlloc(interp, sizeof(Tcl_Parse));
 
@@ -1251,6 +1251,7 @@ TclCompileScript(
 	    break;
 	}
 	gotParse = 1;
+	adjust = 0;
 	if (parsePtr->numWords > 0) {
 	    int expand = 0;	/* Set if there are dynamic expansions to
 				 * handle */
@@ -1523,7 +1524,32 @@ TclCompileScript(
 		    }
 		}
 		TclEmitPush(objIndex, envPtr);
+		/*
+		 * If this is the L command and we just processed the first
+		 * command word (i.e., the "L"), push the argument --line=%d
+		 * to it now.  This communicates the source line # to the L
+		 * compiler.
+		 */
+		if (!wordIdx && !strncmp("L", tokenPtr->start, tokenPtr->size)) {
+		    char *s;
+		    Tcl_Obj *obj;
+
+		    obj = Tcl_ObjPrintf("--line=%d", eclPtr->loc[wlineat].line[0]+1);
+		    Tcl_IncrRefCount(obj);
+		    s = TclGetString(obj);
+		    adjust = TclRegisterNewLiteral(envPtr, s, strlen(s));
+		    Tcl_DecrRefCount(obj);
+		    TclEmitPush(adjust, envPtr);
+		}
 	    } /* for loop */
+
+	    /*
+	     * Possible adjust for L-command argument injection (see comment
+	     * above).
+	     */
+	    if (adjust) {
+		++wordIdx;
+	    }
 
 	    /*
 	     * Emit an invoke instruction for the command. We skip this if a

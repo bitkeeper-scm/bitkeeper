@@ -5098,6 +5098,20 @@ TclEvalEx(
 		    expand[objectsUsed] = 0;
 		    objectsNeeded++;
 		}
+		/*
+		 * If this is the L command and we just processed the first
+		 * command word (i.e., the "L"), inject an argument --line=%d
+		 * before the next command word.  This communicates the source
+		 * line # to the L compiler.
+		 */
+		if (!objectsUsed && !strcmp("L", TclGetString(objv[0]))) {
+		    ++numWords;
+		    ++objectsUsed;
+		    ++objectsNeeded;
+		    objv[objectsUsed] = Tcl_ObjPrintf("--line=%d", lines[0]+1);
+		    Tcl_IncrRefCount(objv[objectsUsed]);
+		    expand[objectsUsed] = 0;
+		}
 	    } /* for loop */
 	    iPtr->cmdFramePtr = eeFramePtr;
 	    if (code != TCL_OK) {

@@ -257,7 +257,7 @@ ParseLang(
 	tokenPtr = &parsePtr->tokenPtr[wordIdx];
 	tokenPtr->type = TCL_TOKEN_SIMPLE_WORD;
 	tokenPtr->start = eol;
-	tokenPtr->size = end - tokenPtr->start;
+	tokenPtr->size = end - tokenPtr->start + 1;
 	tokenPtr->numComponents = 1;
 	parsePtr->numTokens++;
 	parsePtr->numWords++;

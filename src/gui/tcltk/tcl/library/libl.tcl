@@ -61,8 +61,6 @@ if {[file exists [file join $::tcl_library Lver.tcl]]} {
 }
 
 #lang L
-// !!! Keep this #line current with the actual line number in this file !!!
-#line 66 "libl.tcl"
 #pragma fntrace=off
 /*
  * Types for compatibility with older versions of the compiler.
