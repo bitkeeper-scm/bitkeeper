@@ -1704,7 +1704,7 @@ compile_split(Expr *expr)
 			L_errf(sep, "split delimiter must be a "
 			       "regular expression");
 		}
-		if (sep->flags && !(sep->flags & L_EXPR_RE_T)) {
+		if (sep->flags & ~(L_EXPR_RE_T | L_EXPR_RE_I)) {
 			L_errf(sep, "illegal regular expression modifier");
 		}
 		flags |= L_SPLIT_RE | sep->flags;
@@ -6896,7 +6896,7 @@ Tcl_Obj *
 L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 	Tcl_Obj *limobj, Expr_f flags)
 {
-	int		chlen, i, leading, len, lim, matches, off, ret;
+	int		chlen, i, leading, len, lim, matches, nocase, off, ret;
 	int		trim = (flags & L_EXPR_RE_T);
 	int		delimlen = 0, onspace = 0;
 	int		start = 0, end = 0;
@@ -6986,8 +6986,9 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 	/*
 	 * Split on a regular expression.
 	 */
+	nocase = (flags & L_EXPR_RE_I) ? TCL_REG_NOCASE : 0;
 	regExpr = Tcl_GetRegExpFromObj(interp, delimobj,
-				       TCL_REG_ADVANCED | TCL_REG_PCRE);
+				       TCL_REG_ADVANCED | TCL_REG_PCRE | nocase);
 	unless (regExpr) {  // bad regexp
 		listPtr = NULL;
 		goto done;

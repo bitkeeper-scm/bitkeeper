@@ -130,6 +130,7 @@ extern int	L_lex (void);
 %token T_LBRACKET "["
 %token T_LE "le"
 %token <s> T_LEFT_INTERPOL "${"
+%token <s> T_LEFT_INTERPOL_RE "${ (in re)"
 %token <s> T_START_BACKTICK "backtick"
 %token T_LESSTHAN "<"
 %token T_LESSTHANEQ "<="
@@ -156,6 +157,7 @@ extern int	L_lex (void);
 %token <s> T_RE_MODIFIER "regexp modifier"
 %token T_RETURN "return"
 %token T_RIGHT_INTERPOL "} (end of interpolation)"
+%token T_RIGHT_INTERPOL_RE "} (end of interpolation in re)"
 %token T_RPAREN ")"
 %token T_RSHIFT ">>"
 %token T_SEMI ";"
@@ -226,8 +228,8 @@ extern int	L_lex (void);
 %type <Expr> expr expression_stmt argument_expr_list pragma_expr_list
 %type <Expr> id id_list string_literal cmdsubst_literal dotted_id
 %type <Expr> regexp_literal regexp_literal_mod subst_literal interpolated_expr
-%type <Expr> list list_element case_expr option_arg here_doc_backtick
-%type <Expr> opt_attribute pragma
+%type <Expr> interpolated_expr_re list list_element case_expr option_arg
+%type <Expr> here_doc_backtick opt_attribute pragma
 %type <VarDecl> parameter_list parameter_decl_list parameter_decl
 %type <VarDecl> declaration_list declaration declaration2
 %type <VarDecl> init_declarator_list declarator_list init_declarator
@@ -712,11 +714,10 @@ switch_cases:
 	;
 
 switch_case:
-	  "case" { L_lex_begReArg(); } case_expr { L_lex_endReArg(); }
-	  ":" opt_stmt_list
+	  "case" re_start_case case_expr ":" opt_stmt_list
 	{
-		REVERSE(Stmt, next, $6);
-		$$ = ast_mkCase($3, $6, @1, @6);
+		REVERSE(Stmt, next, $5);
+		$$ = ast_mkCase($3, $5, @1, @5);
 	}
 	| "default" ":" opt_stmt_list
 	{
@@ -1121,18 +1122,25 @@ expr:
 		REVERSE(Expr, next, $3);
 		$$ = ast_mkFnCall(id, $3, @1, @4);
 	}
-	| T_SPLIT "(" regexp_literal_mod "," argument_expr_list ")"
+	| T_SPLIT "(" re_start_split regexp_literal_mod "," argument_expr_list ")"
 	{
 		Expr *id = ast_mkId("split", @1, @1);
-		REVERSE(Expr, next, $5);
-		$3->next = $5;
-		$$ = ast_mkFnCall(id, $3, @1, @6);
+		REVERSE(Expr, next, $6);
+		$4->next = $6;
+		$$ = ast_mkFnCall(id, $4, @1, @7);
 	}
-	| T_SPLIT "(" argument_expr_list ")"
+	/*
+	 * Even though there is no regexp arg in this form, the
+	 * re_start_split is necessary to be able to scan either a
+	 * regexp or a non-regexp first argument.  The scanner makes
+	 * that decision based on the first one or two characters and
+	 * then returns appropriate tokens.
+	 */
+	| T_SPLIT "(" re_start_split argument_expr_list ")"
 	{
 		Expr *id = ast_mkId("split", @1, @1);
-		REVERSE(Expr, next, $3);
-		$$ = ast_mkFnCall(id, $3, @1, @4);
+		REVERSE(Expr, next, $4);
+		$$ = ast_mkFnCall(id, $4, @1, @5);
 	}
 	/* this is to allow calling Tk widget functions */
 	| dotted_id "(" argument_expr_list ")"
@@ -1265,6 +1273,14 @@ expr:
 	{
 		$$ = ast_mkUnOp(L_OP_FILE, NULL, @1, @2);
 	}
+	;
+
+re_start_split:
+		{ L_lex_begReArg(0); }
+	;
+
+re_start_case:
+		{ L_lex_begReArg(1); }
 	;
 
 id:
@@ -1604,7 +1620,7 @@ regexp_literal:
 	{
 		$$ = ast_mkRegexp($1, @1, @1);
 	}
-	| interpolated_expr T_RE
+	| interpolated_expr_re T_RE
 	{
 		Expr *right = ast_mkConst(L_string, $2, @2, @2);
 		$$ = ast_mkBinOp(L_OP_INTERP_RE, $1, right, @1, @2);
@@ -1629,7 +1645,7 @@ subst_literal:
 	{
 		$$ = ast_mkConst(L_string, $1, @1, @1);
 	}
-	| interpolated_expr T_SUBST
+	| interpolated_expr_re T_SUBST
 	{
 		Expr *right = ast_mkConst(L_string, $2, @2, @2);
 		$$ = ast_mkBinOp(L_OP_INTERP_RE, $1, right, @1, @2);
@@ -1643,6 +1659,19 @@ interpolated_expr:
 		$$ = ast_mkBinOp(L_OP_INTERP_STRING, left, $2, @1, @3);
 	}
 	| interpolated_expr T_LEFT_INTERPOL expr T_RIGHT_INTERPOL
+	{
+		Expr *middle = ast_mkConst(L_string, $2, @2, @2);
+		$$ = ast_mkTrinOp(L_OP_INTERP_STRING, $1, middle, $3, @1, @4);
+	}
+	;
+
+interpolated_expr_re:
+	  T_LEFT_INTERPOL_RE expr T_RIGHT_INTERPOL_RE
+	{
+		Expr *left = ast_mkConst(L_string, $1, @1, @1);
+		$$ = ast_mkBinOp(L_OP_INTERP_STRING, left, $2, @1, @3);
+	}
+	| interpolated_expr_re T_LEFT_INTERPOL_RE expr T_RIGHT_INTERPOL_RE
 	{
 		Expr *middle = ast_mkConst(L_string, $2, @2, @2);
 		$$ = ast_mkTrinOp(L_OP_INTERP_STRING, $1, middle, $3, @1, @4);

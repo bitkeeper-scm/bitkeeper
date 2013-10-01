@@ -96,69 +96,71 @@
      T_LBRACKET = 312,
      T_LE = 313,
      T_LEFT_INTERPOL = 314,
-     T_START_BACKTICK = 315,
-     T_LESSTHAN = 316,
-     T_LESSTHANEQ = 317,
-     T_LPAREN = 318,
-     T_LSHIFT = 319,
-     T_LT = 320,
-     T_MINUS = 321,
-     T_MINUSMINUS = 322,
-     T_NE = 323,
-     T_NOTEQUAL = 324,
-     T_OROR = 325,
-     T_PATTERN = 326,
-     T_PERC = 327,
-     T_PLUS = 328,
-     T_PLUSPLUS = 329,
-     T_POINTS = 330,
-     T_POLY = 331,
-     T_PRIVATE = 332,
-     T_PUBLIC = 333,
-     T_QUESTION = 334,
-     T_RBRACE = 335,
-     T_RBRACKET = 336,
-     T_RE = 337,
-     T_RE_MODIFIER = 338,
-     T_RETURN = 339,
-     T_RIGHT_INTERPOL = 340,
-     T_RPAREN = 341,
-     T_RSHIFT = 342,
-     T_SEMI = 343,
-     T_SLASH = 344,
-     T_SPLIT = 345,
-     T_STAR = 346,
-     T_STR_BACKTICK = 347,
-     T_STR_LITERAL = 348,
-     T_STRCAT = 349,
-     T_STRING = 350,
-     T_STRUCT = 351,
-     T_SUBST = 352,
-     T_TYPE = 353,
-     T_TYPEDEF = 354,
-     T_UNLESS = 355,
-     T_ARGUSED = 356,
-     T_OPTIONAL = 357,
-     T_MUSTBETYPE = 358,
-     T_VOID = 359,
-     T_WIDGET = 360,
-     T_WHILE = 361,
-     T_PRAGMA = 362,
-     T_SWITCH = 363,
-     T_CASE = 364,
-     T_DEFAULT = 365,
-     LOWEST = 366,
-     ADDRESS = 367,
-     UMINUS = 368,
-     UPLUS = 369,
-     PREFIX_INCDEC = 370,
-     HIGHEST = 371
+     T_LEFT_INTERPOL_RE = 315,
+     T_START_BACKTICK = 316,
+     T_LESSTHAN = 317,
+     T_LESSTHANEQ = 318,
+     T_LPAREN = 319,
+     T_LSHIFT = 320,
+     T_LT = 321,
+     T_MINUS = 322,
+     T_MINUSMINUS = 323,
+     T_NE = 324,
+     T_NOTEQUAL = 325,
+     T_OROR = 326,
+     T_PATTERN = 327,
+     T_PERC = 328,
+     T_PLUS = 329,
+     T_PLUSPLUS = 330,
+     T_POINTS = 331,
+     T_POLY = 332,
+     T_PRIVATE = 333,
+     T_PUBLIC = 334,
+     T_QUESTION = 335,
+     T_RBRACE = 336,
+     T_RBRACKET = 337,
+     T_RE = 338,
+     T_RE_MODIFIER = 339,
+     T_RETURN = 340,
+     T_RIGHT_INTERPOL = 341,
+     T_RIGHT_INTERPOL_RE = 342,
+     T_RPAREN = 343,
+     T_RSHIFT = 344,
+     T_SEMI = 345,
+     T_SLASH = 346,
+     T_SPLIT = 347,
+     T_STAR = 348,
+     T_STR_BACKTICK = 349,
+     T_STR_LITERAL = 350,
+     T_STRCAT = 351,
+     T_STRING = 352,
+     T_STRUCT = 353,
+     T_SUBST = 354,
+     T_TYPE = 355,
+     T_TYPEDEF = 356,
+     T_UNLESS = 357,
+     T_ARGUSED = 358,
+     T_OPTIONAL = 359,
+     T_MUSTBETYPE = 360,
+     T_VOID = 361,
+     T_WIDGET = 362,
+     T_WHILE = 363,
+     T_PRAGMA = 364,
+     T_SWITCH = 365,
+     T_CASE = 366,
+     T_DEFAULT = 367,
+     LOWEST = 368,
+     ADDRESS = 369,
+     UMINUS = 370,
+     UPLUS = 371,
+     PREFIX_INCDEC = 372,
+     HIGHEST = 373
    };
 #endif
 
 
 /* Copy the first part of user declarations.  */
-#line 1 "/Users/rob/bk/stable-L-bang-twid/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1 "/Users/rob/bk/dev-L-split-regexp-variant/src/gui/tcltk/tcl/generic/Lgrammar.y"
 
 /*
  * Copyright (c) 2006-2008 BitMover, Inc.
@@ -175,7 +177,7 @@ extern int	L_lex (void);
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE 
-#line 53 "/Users/rob/bk/stable-L-bang-twid/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 53 "/Users/rob/bk/dev-L-split-regexp-variant/src/gui/tcltk/tcl/generic/Lgrammar.y"
 {
 	long	i;
 	char	*s;
@@ -199,7 +201,7 @@ typedef union YYSTYPE
 	} Typename;
 }
 /* Line 2616 of glr.c.  */
-#line 203 "Lgrammar.h"
+#line 205 "Lgrammar.h"
 	YYSTYPE;
 # define YYSTYPE_IS_DECLARED 1
 # define YYSTYPE_IS_TRIVIAL 1

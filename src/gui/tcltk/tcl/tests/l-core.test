@@ -467,6 +467,7 @@ test parse-1.5.1 {test handling of illegal character in string interpolation} -b
 "$\{3@
     ^
 }
+# "  sync up the quotes for emacs
 
 test parse-1.6 {test syntax error message 1} -body {
 #lang L --line=1
@@ -6990,7 +6991,7 @@ void switch_1_1()
 	int	a, b, c, d, i;
 	int	zero = 0;
 	int	ia[] = { 3, 1, 4, 1 };
-	string	s, s1, s2, s3, s4, s5;
+	string	m, mm, mvar, s, s1, s2, s3, s4, s5;
 	string	sa[] = { "abc", "def", "ghi", "JkL" };
 	widget	w;
 
@@ -7344,20 +7345,33 @@ void switch_1_1()
 
 	/* Test various whitespace around regexp, and regexp variations. */
 	s = "";
-	for (i = 0; i < length(sa); ++i) {
-		switch (sa[i]) {
-		    case	/abc/:  // tab between "case" and "/abc"
-			s .= "a";
-			break;
-		    case m|def|:
-			s .= "d";
-			break;
-		    case m#jkl#i:
-			s .= "j";
-			break;
+	m    = "nn";
+	mm   = "oo";
+	mvar = "pp";
+	foreach (s1 in {"aa","bb","cc","dd","ee","ff","gg","hh","ii",
+			"jj","kk","ll","mm","nn","oo","pp"}) {
+		switch (s1) {
+		    // the next line has a tab after the "case"
+		    case	/aa/:	s .= "1"; break;
+		    case m|bb|:		s .= "2"; break;
+		    case m|Cc|i:	s .= "3"; break;
+		    case m#dd#:		s .= "4"; break;
+		    case m#eE#i:	s .= "5"; break;
+		    case m)ff):		s .= "6"; break;
+		    case m)Gg)i:	s .= "7"; break;
+		    case m,hh,:		s .= "8"; break;
+		    case m,Ii,i:	s .= "9"; break;
+		    case m!jj!:		s .= "a"; break;
+		    case m!Kk!i:	s .= "b"; break;
+		    case m"ll":		s .= "c"; break;
+		    case m"Mm"i:	s .= "d"; break;
+		    // the next ones aren't regexps
+		    case m:		s .= "e"; break;  // variable m
+		    case mm:		s .= "f"; break;  // variable mm
+		    case mvar:		s .= "g"; break;  // variable mvar
 		}
 	}
-	unless (s eq "adj") puts("bad 8.1");
+	unless (s eq "123456789abcdefg") puts("bad 8.1");
 
 	/* Test interpolations in regexp's. */
 	s = "";
@@ -8049,6 +8063,52 @@ void switch_2()
 .*24: L Error: multiple default cases in switch statement
 .*30: L Error: multiple default cases in switch statement
 }
+
+test switch-3.0 {test case m() function call} -setup {
+	makeFile {
+		/*
+		 * Put this in its own file to avoid polluting
+		 * the global name space with a function m().
+		 */
+		string m(...args)
+		{
+			string	ret = "", s;
+
+			foreach (s in args) ret .= s;
+			return (ret);
+		}
+		void main()
+		{
+			string	s, t;
+
+			s = "";
+			foreach (t in {"","abc","def","ghi"}) {
+				/* Here m() is a function call not a regexp. */
+				switch (t) {
+				    case m(): s .= "1"; break;
+				    case m("abc"): s .= "2"; break;
+				    case m("de","f"): s .= "3"; break;
+				    case m("g","h","i"): s .= "4"; break;
+				}
+			}
+			unless (s == "1234") puts("bad 1: ${s}");
+		}
+	} switch-3.0.l
+} -body {
+#lang L
+void switch_3_0()
+{
+	int	ret;
+	string	tclsh = interpreter();
+	string	out, err;
+
+	ret = system({tclsh, "switch-3.0.l"}, undef, &out, &err);
+	unless (ret == 0) puts("bad 1.1");
+	if (out) puts("bad 1.2: ${out}");
+	if (err) puts("bad 1.3: ${err}");
+}
+switch_3_0();
+} -output {}
 
 test switch-3.1 {test type errors in switch stmt} -body {
 #lang L --line=1
@@ -9903,13 +9963,114 @@ void regexp_1_8()
 regexp_1_8();
 } -output {}
 
+test regexp-1.9 {check alternate regexp syntax} -body {
+#lang L
+void regexp_1_9()
+{
+	string	s;
+
+	unless ("Hello World" =~ m!World!) puts("bad 1.1");
+	unless ("Hello World" =~ m!world!i) puts("bad 1.2");
+
+	unless ("Hello World" =~ m,World,) puts("bad 1.3");
+	unless ("Hello World" =~ m,world,i) puts("bad 1.4");
+
+	unless ("Hello World" =~ m/World/) puts("bad 1.5");
+	unless ("Hello World" =~ m/world/i) puts("bad 1.6");
+
+	unless ("/usr/bin/perl" =~ m"/perl") puts("bad 1.7");
+	unless ("/usr/bin/perl" =~ m"/Perl"i) puts("bad 1.8");
+
+	/*
+	 * The following delims are special cases and must be matched
+	 * as shown.  Using the start delim as the end delim is an
+	 * error here, unlike all the other allowable delims.  This is
+	 * for Perl compatibility.
+	 */
+
+	unless ("Hello World" =~ m{World}) puts("bad 2.1");
+	unless ("Hello World" =~ m{world}i) puts("bad 2.2");
+
+	/* Test alternate syntax like s{regexp}{replace}. */
+
+	s = "xyzzy";
+	s =~ s{xy}{zz};
+	unless (s == "zzzzy") puts("bad 3.1");
+
+	s = "xyzzy";
+	s =~ s{XY}{zz}i;
+	unless (s == "zzzzy") puts("bad 3.2");
+
+	s = "xyzzy";
+	s =~ s{xy}/zz/;
+	unless (s == "zzzzy") puts("bad 3.3");
+
+	s = "xyzzy";
+	s =~ s{XY}/zz/i;
+	unless (s == "zzzzy") puts("bad 3.4");
+}
+regexp_1_9();
+} -output {}
+
+test regexp-1.10 {test alternate regexp lexical and syntax errors} -setup {
+	# This is a pain to test because tcltest cannot handle
+	# the unbalanced {} () that we need in the L code.
+	# Make the .l file using makeFile so we can quote those
+	# characters and keep tcltest happy.
+	makeFile "
+		void main()
+		{
+			string	s;
+
+			/*
+			 * This tests when the regexp start delim is different
+			 * than the end delim. The following are all errors,
+			 * because the start delim is not escaped inside the
+			 * regexp even though it is illegal to use it as
+			 * the end delim.  This rule comes from Perl.
+			 */
+			s =~ m\{\{\};
+			s =~ s\{\{\}\{\};
+
+			/*
+			 * Put this one last since it causes a syntax error.
+			 * Although s{regexp}{replace} is legal,
+			 * s/regexp//replace/ is not.
+			 */
+			s =~ s/regexp//replace/;
+		}
+	" regexp-1.10.l
+} -body {
+#lang L
+void regexp_1_10()
+{
+	int	ret;
+	string	tclsh = interpreter();
+	string	out, err[];
+
+	ret = system({tclsh, "regexp-1.10.l"}, undef, &out, &err);
+	unless (ret == 1) puts("bad 1.1");
+	if (out) puts("bad 1.2: ${out}");
+	unless (err[0] =~ /:13: L Error: regexp delimiter must be quoted/) {
+		puts("bad 1.3: ${err[0]}");
+	}
+	unless (err[1] =~ /:14: L Error: regexp delimiter must be quoted/) {
+		puts("bad 1.4: ${err[1]}");
+	}
+	unless (err[2] =~ /:21: L Error: syntax error/) {
+		puts("bad 1.5: ${err[2]}");
+	}
+}
+regexp_1_10();
+} -output {}
+
 test regexp-2 {test globs} -body {
 #lang L --line=1
 void regexp_2()
 {
 	unless ("x" =~ /?/l) puts("bad 1.1");
 	unless ("xy" =~ /??/l) puts("bad 1.2");
-	unless ("xy" =~ /*y/l) puts("bad 1.3");
+	unless ("xy" =~ /*y/l) puts("bad 1.3");  /* this comment is for emacs */
 	unless ("xy" =~ /[x-z]y/l) puts("bad 1.4");
 }
 regexp_2();
@@ -14858,17 +15019,99 @@ split_1_0()
 split_1_0();
 } -output {}
 
+test split-1.1 {test split regexp alternate delim syntax} -body {
+#lang L
+void split_1_1()
+{
+	string	m, mm, mvar, r[], re;
+
+	r = split(m|\n|, "l1\nl2\nl3\n");
+	unless (eq(r, {"l1","l2","l3"})) puts("bad 1.1");
+
+	r = split(m:\n:, "l1\nl2\nl3\n");
+	unless (eq(r, {"l1","l2","l3"})) puts("bad 1.2");
+
+	r = split(m,\n,, "l1\nl2\nl3\n");
+	unless (eq(r, {"l1","l2","l3"})) puts("bad 1.3");
+
+	r = split(m"\n", "l1\nl2\nl3\n");
+	unless (eq(r, {"l1","l2","l3"})) puts("bad 1.3.1");
+
+	r = split(m!\n!, "l1\nl2\nl3\n");
+	unless (eq(r, {"l1","l2","l3"})) puts("bad 1.3.2");
+
+	/* Test some interpolations inside the regexp. */
+
+	re = '\n';
+	r = split(m|${re}|, "l1\nl2\nl3\n");
+	unless (eq(r, {"l1","l2","l3"})) puts("bad 1.4");
+
+	re = '\n';
+	r = split(m$${re}$, "l1\nl2\nl3\n");
+	unless (eq(r, {"l1","l2","l3"})) puts("bad 1.5");
+
+	re = '\n';
+	r = split(m{${re}}, "l1\nl2\nl3\n");
+	unless (eq(r, {"l1","l2","l3"})) puts("bad 1.6");
+
+	re = "y";
+	r = split(m|x${re}|, "axybxyc");
+	unless (eq(r, {"a","b","c"})) puts("bad 1.8");
+
+	re = "x";
+	r = split(m|${re}y|, "axybxyc");
+	unless (eq(r, {"a","b","c"})) puts("bad 1.9");
+
+	re = "y";
+	r = split(m|x${re}z|, "axyzbxyzc");
+	unless (eq(r, {"a","b","c"})) puts("bad 1.10");
+
+	/* Test regexp modifiers. */
+
+	r = split(m|x|, "xaxbXcXdx");
+	unless (eq(r, {"","a","bXcXd"})) puts("bad 2.1 ${r}");
+
+	r = split(m|x|t, "xaxbXcXdx");
+	unless (eq(r, {"a","bXcXd"})) puts("bad 2.2 ${r}");
+
+	r = split(m|x|i, "xaxbXcXdx");
+	unless (eq(r, {"","a","b","c","d"})) puts("bad 2.3 ${r}");
+
+	r = split(m|x|it, "xaxbXcXdx");
+	unless (eq(r, {"a","b","c","d"})) puts("bad 2.4 ${r}");
+
+	r = split(m|x|ti, "xaxbXcXdx");
+	unless (eq(r, {"a","b","c","d"})) puts("bad 2.5 ${r}");
+
+	/*
+	 * Test splitting on a variable named "m" or whose name begins
+	 * with "m".
+	 */
+
+	m = "l1\nl2\nl3\n";
+	r = split(m);
+	unless (eq(r, {"l1","l2","l3"})) puts("bad 3.1");
+
+	mm = "l1\nl2\nl3\n";
+	r = split(mm);
+	unless (eq(r, {"l1","l2","l3"})) puts("bad 3.2");
+
+	mvar = "l1\nl2\nl3\n";
+	r = split(mvar);
+	unless (eq(r, {"l1","l2","l3"})) puts("bad 3.3");
+}
+split_1_1();
+} -output {}
+
 test split-2 {test split errors} -body {
 #lang L --line=1
 void split_2()
 {
-	split(/re/i, "bad");
 	split(/re/g, "bad");
 	split(/re/ig, "bad");
 }
 } -returnCodes error -match regexp -result {.*3: L Error: illegal regular expression modifier
 .*4: L Error: illegal regular expression modifier
-.*5: L Error: illegal regular expression modifier
 }
 
 test split-3 {test split errors 2} -body {
@@ -14877,7 +15120,7 @@ void split_3()
 {
 	/*
 	 * This is a syntax error because the grammar special-cases
-	 * split() because the 2nd arg can be a regexp or a string,
+	 * split() because the 1st arg can be a regexp or a string,
 	 * and does not allow no args.
 	 */
 	split();
@@ -14911,6 +15154,49 @@ void split_5()
 split_5();
 } -returnCodes error -result {couldn't compile pcre pattern: nothing to repeat}
 #'
+
+test split-8 {test m() as arg to split} -setup {
+	makeFile {
+		/*
+		 * Put this in its own file to avoid polluting
+		 * the global name space with a function m().
+		 */
+		string m(...args)
+		{
+			string	ret = "", s;
+
+			foreach (s in args) ret .= s;
+			return (ret);
+		}
+		void main()
+		{
+			string	s[];
+
+			s = split(m());
+			if (length(s)) puts("bad 1");
+
+			s = split(m("x"));
+			unless (eq(s, {"x"})) puts("bad 2");
+
+			s = split(m("x"," ","y"));
+			unless (eq(s, {"x","y"})) puts("bad 3");
+		}
+	} split-8.l
+} -body {
+#lang L
+void split_8()
+{
+	int	ret;
+	string	tclsh = interpreter();
+	string	out, err;
+
+	ret = system({tclsh, "split-8.l"}, undef, &out, &err);
+	unless (ret == 0) puts("bad 1.1");
+	if (out) puts("bad 1.2: ${out}");
+	if (err) puts("bad 1.3: ${err}");
+}
+split_8();
+} -output {}
 
 test consts-1.0 {test constants function} -body {
 #lang L --line=1

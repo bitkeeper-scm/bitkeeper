@@ -196,8 +196,7 @@ extern char	*L_dirname(char *path);
 extern void	L_err(const char *s, ...);
 extern void	L_errf(void *node, const char *format, ...);
 extern int	L_isUndef(Tcl_Obj *o);
-extern void	L_lex_begReArg();
-extern void	L_lex_endReArg();
+extern void	L_lex_begReArg(int kind);
 extern void	L_lex_start(void);
 extern int	L_parse(void);			// yyparse
 extern void	L_scope_enter();

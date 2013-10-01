@@ -967,6 +967,20 @@ which could be C<undef> to signal an error condition.
             break;
     }
 
+To avoid confusion, the alternate regular-expression-delimiter syntax
+is restricted:
+
+    switch (str) {
+        case m|x*y|:    // "|" and most other punctuation as the delim -- ok
+			// except ( and : -- error
+			// and any alphabetic character -- error
+            break;
+        case m:         // is the variable m (not a regexp) -- ok
+	    break;
+        case mvar:      // and variables starting with "m" -- ok
+	    break;
+    }
+
 =item break and continue
 
 L has C<break> and C<continue> statements that behave like C's.
@@ -2132,6 +2146,15 @@ If a C<limit> argument is given, at most C<limit> substrings are returned
 
     split(/ /, "a b c d e f", 3);  // returns {"a", "b", "c d e f"}
 
+To allow splitting on variables or function calls that start with
+C<m>, the alternate regular-expression-delimiter syntax
+is restricted:
+
+    split(m|/|, pathname);  // "|" and most other punctuation -- ok
+			    // but ( and ) as delimiters -- error
+    split(m);               // splits the variable "m" -- ok
+    split(m(arg));          // splits the result of m(arg) -- ok
+
 =proto string sprintf(string fmt, ...args)
 
 Format arguments and return a formatted string like sprintf(3).
@@ -2446,11 +2469,28 @@ L<http://www.pcre.org/pcre.txt>.
 The C<//> matching operator must be used in conjunction with C<=~> and
 C<!~> to tell L what variable to look at.
 
+If your regular expression contains forward slashes, you must
+escape them with a backslash, or you can use an alternate
+syntax where almost any punctuation becomes the delimiter:
+
+    if (s =~ m|/path/to/foo|) { ... }
+    if (s =~ m#/path/to/foo#) { ... }
+    if (s =~ m{/path/to/foo}) { ... }
+
+In the last case, note that the end delimiter } is different
+than the start delimiter { and you must escape all
+uses of either delimiter inside the regular expression.
+
 =item Simple substitution
 
     x =~ s/foo/bar/;         // replaces foo with bar in x
     x =~ s/foo/bar/g;        // replaces ALL INSTANCES of foo with bar in x
     x =~ s/foo/bar/i;        // does a case-insensitive search
+
+This form also has an alternate syntax:
+
+    x =~ s{foo}{bar};
+    x =~ s{foo}/bar/;
 
 =item More complex regular expressions
 
@@ -2504,7 +2544,7 @@ to interpolate those in a string the syntax is a little convoluted:
 C<"matched ${$1} and ${$2}">).  
 You can use up to nine captures ($1 - $9).
 
-    // A cheap and nasty way to break an e-mail address into parts.
+    // Break an e-mail address into parts.
     if (email =~ /([^@]+)@(.+)/) {
         printf("Username is %s\n", $1);
         printf("Hostname is %s\n", $2);

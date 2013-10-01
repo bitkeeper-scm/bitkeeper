@@ -1,8 +1,10 @@
 %option	noyywrap
 %option noyy_top_state
 %option stack
+%x re_delim
 %x re_modifier
-%s re_arg
+%x re_arg_split
+%x re_arg_case
 %x glob_re
 %x subst_re
 %x comment
@@ -26,6 +28,7 @@ HEX	[a-fA-F0-9]
 #include "Lgrammar.h"
 #include "tommath.h"
 
+private void	extract_re_delims(char c);
 private int	include_pop();
 private int	include_push(FILE *f, char *name);
 private FILE *	include_search(char *file, char **path, int cwdOnly);
@@ -51,7 +54,8 @@ typedef struct {
 	YY_BUFFER_STATE	buf;
 } Include;
 
-private char	re_quote_char;	// delim char that began the current regexp
+private char	re_start_delim;	// delimiters for m|regexp| form
+private char	re_end_delim;
 private Tcl_Obj	*str;		// string collection buffer
 private int	str_beg;	// source offset of string
 private char	*here_delim = NULL;
@@ -354,7 +358,7 @@ canonical_num(char *num)
 
 %}
 %%
-<INITIAL,interpol,re_arg>{
+<INITIAL,interpol>{
 	"("		return T_LPAREN;
 	")"		return T_RPAREN;
 	"{"		interpol_lbrace(); return T_LBRACE;
@@ -637,7 +641,7 @@ canonical_num(char *num)
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
 		STRBUF_START(L_lloc.end - 2);	// next token starts at the "m"
-		re_quote_char = *(yytext + yyleng - 1);
+		extract_re_delims(yytext[yyleng-1]);
 		L_lloc.end = L_lloc.beg + 2;	// this token spans the "=~"
 		return ((yytext[0] == '=') ? T_EQTWID : T_BANGTWID);
 	}
@@ -646,7 +650,7 @@ canonical_num(char *num)
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
 		STRBUF_START(L_lloc.end - 1);	// next token starts at the "/"
-		re_quote_char = '/';
+		extract_re_delims('/');
 		L_lloc.end = L_lloc.beg + 2;	// this token spans the "=~"
 		return ((yytext[0] == '=') ? T_EQTWID : T_BANGTWID);
 	}
@@ -656,17 +660,9 @@ canonical_num(char *num)
 		yy_push_state(subst_re);
 		yy_push_state(glob_re);
 		STRBUF_START(L_lloc.end - 2);	// next token starts at the "s"
-		re_quote_char = *(yytext + yyleng - 1);
+		extract_re_delims(yytext[yyleng-1]);
 		L_lloc.end = L_lloc.beg + 2;	// this token spans the "=~"
 		return T_EQTWID;
-	}
-	/* a regexp after an open paren, as in split(/re/,arg) */
-	"("[ \t\r\n]*"/"	{
-		yy_push_state(re_modifier);
-		yy_push_state(glob_re);
-		STRBUF_START(L_lloc.end - 1);	// next token starts at the "/"
-		re_quote_char = '/';
-		return T_LPAREN;
 	}
 	/* here document (interpolated), valid only on rhs of an assignment */
 	"="[ \t\r\n]*"<<"[a-zA-Z_][a-zA-Z_0-9]*"\n"		{
@@ -711,22 +707,69 @@ canonical_num(char *num)
 	}
 }
 
-<re_arg>{
+<re_arg_split>{
 	/*
-	 * A regexp used as a function argument (e.g., in the "split"
-	 * built-in).
+	 * A regexp in the context of the first arg to split().  If
+	 * it's not an RE, pop the start-condition stack and push it
+	 * back, so we can continue as normal.
 	 */
-	[ \t\r\n]*"/"	{
+	[ \t\r\n]*
+	/* / starts an RE */
+	"/"	{
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
 		STRBUF_START(L_lloc.end - 1);	// next token starts at the "/"
-		re_quote_char = '/';
+		extract_re_delims('/');
 	}
-	[ \t\r\n]*"m"[^a-zA-Z \t\r\n]	{
+	/*
+	 * m<punctuation> starts an RE, except for "m)" so that
+	 * "split(m)" works.
+	 */
+	"m"[^a-zA-Z() \t\r\n]	{
+		yy_push_state(re_modifier);
+		yy_push_state(glob_re);
+		STRBUF_START(L_lloc.end - 1);	// next token starts at the delim
+		extract_re_delims(yytext[yyleng-1]);
+	}
+	/* nothing else starts an RE */
+	.	{
+		unput(yytext[0]);
+		undo_yy_user_action();
+		yy_pop_state();
+	}
+}
+
+<re_arg_case>{
+	/*
+	 * A regexp in the context of a case statement.  If it's not
+	 * an RE, pop the start-condition stack and push it back, so
+	 * we can continue as normal.
+	 */
+	[ \t\r\n]*
+	/* / starts an RE */
+	"/"	{
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
 		STRBUF_START(L_lloc.end - 1);	// next token starts at the "/"
-		re_quote_char = *(yytext + yyleng - 1);
+		extract_re_delims('/');
+	}
+	/*
+	 * m<punctuation> starts an RE except for "m:" which we scan
+	 * as the variable m (so that "case m:" works) or "m(" which
+	 * is the start of a call to the function m (so that "case m():"
+	 * or "case m(arg):" etc work).
+	 */
+	m[^a-zA-Z:( \t\r\n]	{
+		yy_push_state(re_modifier);
+		yy_push_state(glob_re);
+		STRBUF_START(L_lloc.end - 1);	// next token starts at the delim
+		extract_re_delims(yytext[yyleng-1]);
+	}
+	/* nothing else starts an RE */
+	.	{
+		unput(yytext[0]);
+		undo_yy_user_action();
+		yy_pop_state();
 	}
 }
 
@@ -739,7 +782,12 @@ canonical_num(char *num)
 				if (interpol_rbrace()) {
 					STRBUF_START(L_lloc.end);
 					interpol_pop();
-					return T_RIGHT_INTERPOL;
+					if ((YYSTATE == glob_re) ||
+					    (YYSTATE == subst_re)) {
+						return T_RIGHT_INTERPOL_RE;
+					} else {
+						return T_RIGHT_INTERPOL;
+					}
 				} else {
 					return T_RBRACE;
 				}
@@ -944,10 +992,11 @@ canonical_num(char *num)
 				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
 				STRBUF_STOP(L_lloc.beg);
-				return T_LEFT_INTERPOL;
+				return T_LEFT_INTERPOL_RE;
 			}
 	\\.		{
-				if (yytext[1] == re_quote_char) {
+				if ((yytext[1] == re_end_delim) ||
+				    (yytext[1] == re_start_delim)) {
 					STRBUF_ADD(yytext+1, 1);
 				} else {
 					STRBUF_ADD(yytext, yyleng);
@@ -958,9 +1007,12 @@ canonical_num(char *num)
 				L_err("run-away regular expression");
 				++L->line;
 				STRBUF_ADD(yytext, yyleng);
+				yy_pop_state();
+				if (YYSTATE == re_modifier) yy_pop_state();
+				return T_RE;
 			}
 	.		{
-				if (*(yytext) == re_quote_char) {
+				if (*yytext == re_end_delim) {
 					L_lval.s = ckstrdup(STRBUF_STRING());
 					STRBUF_STOP(L_lloc.end);
 					if (YYSTATE == subst_re) {
@@ -970,15 +1022,39 @@ canonical_num(char *num)
 						yy_pop_state();
 						if (YYSTATE == subst_re) {
 							STRBUF_START(L_lloc.end);
+							if (re_start_delim !=
+							    re_end_delim) {
+								yy_push_state(
+								    re_delim);
+							}
 						}
 						return T_RE;
 					}
+				} else if (*yytext == re_start_delim) {
+					L_err("regexp delimiter must be quoted "
+					      "inside the regexp");
+					STRBUF_ADD(yytext+1, 1);
 				} else {
 					STRBUF_ADD(yytext, yyleng);
 				}
 			}
 
 }
+
+<re_delim>{
+	\n		{
+				--L->line;  // since \n already scanned
+				L_err("run-away regular expression");
+				++L->line;
+				STRBUF_ADD(yytext, yyleng);
+				yy_pop_state();
+			}
+	.		{
+				extract_re_delims(*yytext);
+				yy_pop_state();
+			}
+}
+
 <re_modifier>{
 	[iglt]+		{
 				L_lval.s = ckstrdup(yytext);
@@ -1009,15 +1085,29 @@ canonical_num(char *num)
 			}
 %%
 void
-L_lex_begReArg()
+L_lex_begReArg(int kind)
 {
-	yy_push_state(re_arg);
+	switch (kind) {
+	    case 0:
+		yy_push_state(re_arg_split);
+		break;
+	    case 1:
+		yy_push_state(re_arg_case);
+		break;
+	    default:
+		break;
+	}
 }
 
-void
-L_lex_endReArg()
+private void
+extract_re_delims(char c)
 {
-	yy_pop_state();
+	re_start_delim = c;
+	if (c == '{') {
+		re_end_delim = '}';
+	} else {
+		re_end_delim = c;
+	}
 }
 
 /*
