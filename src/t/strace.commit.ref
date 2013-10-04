@@ -6,8 +6,8 @@ close 80
 fstat 63
 link 4
 lseek 46
-lstat 224
-mkdir 1
+lstat 227
+mkdir 2
 open 92
 read 83
 rename 7

@@ -70,6 +70,7 @@ bk _rm copy/$IDCACHE
 rm -f project/BitKeeper/log/cmd copy/BitKeeper/log/cmd
 rm -f copy/BitKeeper/etc/csets-in
 rm -f project/BitKeeper/log/*
+bk _rm -r project/BitKeeper/tmp/SCCS
 rm -f copy/BitKeeper/log/*
 bk diff -r project copy > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi

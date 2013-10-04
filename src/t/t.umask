@@ -41,13 +41,10 @@ BitKeeper/etc
 BitKeeper/etc/SCCS
 BitKeeper/log
 BitKeeper/tmp
+BitKeeper/tmp/SCCS
 SCCS
 EOF
-diff WANT LIST
-if [ $? != 0 ]
-then	echo failed to set permissions properly
-	exit 1
-fi
+cmpfiles WANT LIST
 echo OK
 exit
 ##

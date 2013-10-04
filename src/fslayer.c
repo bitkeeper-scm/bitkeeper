@@ -1,9 +1,25 @@
 #define	FSLAYER_NODEFINES
 #include "sccs.h"
+#include "fsfuncs.h"
+#ifdef	WIN32
 #include "libc/fslayer/win_remap.h"
+#else
+#define	rename(a, b)	smartRename(a, b)
+#define	unlink(a)	smartUnlink(a)
+#endif
 
-private	project	*findpath(const char *path, char **rel, int sccsonly);
+typedef struct {
+	fsfuncs	*funcs;
+	project	*proj;		/* repo containing files */
+	char	*rel;		/* path from repo root */
+	int	isSCCS;		/* IS_FILE in SCCS or IS_DIR if .../SCCS */
+} Fp;
 
+#define	FP_SCCS	1		/* fail if path is not SCCS */
+#define	FP_DIR	2		/* assume path is a directory */
+#define	FP_FILE	3		/* assume path is a file */
+private	int	fp_find(const char *path, Fp *fp, int mode);
+inline	private	void	fp_free(Fp *fp);
 
 private	int	noloop = 1;
 private	FILE	*strace = 0;
@@ -34,14 +50,14 @@ int
 fslayer_open(const char *path, int flags, mode_t mode)
 {
 	int	ret;
-	project	*proj;
-	char	*rel;
+	Fp	fp;
 
 	if (noloop) return (open(path, flags, mode));
 	noloop = 1;
-	if (proj = findpath(path, &rel, 1)) {
-		ret = remap_open(proj, rel, flags, mode);
-		proj_free(proj);
+
+	if (fp_find(path, &fp, FP_SCCS)) {
+		ret = fp.funcs->_open(fp.proj, fp.rel, flags, mode);
+		fp_free(&fp);
 	} else {
 		ret = open(path, flags, mode);
 	}
@@ -122,16 +138,15 @@ int
 fslayer_linkcount(const char *path, struct stat *buf)
 {
 	int	ret;
-	char	*rel;
-	project	*proj;
+	Fp	fp;
 
 	if (noloop) {
 		ret = linkcount(path, buf);
 	} else {
 		noloop = 1;
-		if (proj = findpath(path, &rel, 1)) {
-			ret = remap_linkcount(proj, rel, buf);
-			proj_free(proj);
+		if (fp_find(path, &fp, FP_SCCS)) {
+			ret = fp.funcs->_linkcount(fp.proj, fp.rel, buf);
+			fp_free(&fp);
 		} else {
 			ret = linkcount(path, buf);
 		}
@@ -147,16 +162,21 @@ int
 fslayer_lstat(const char *path, struct stat *buf)
 {
 	int	ret;
-	char	*rel;
-	project	*proj;
+	Fp	fp;
 
 	if (noloop) {
 		ret = lstat(path, buf);
 	} else {
 		noloop = 1;
-		if (proj = findpath(path, &rel, 1)) {
-			ret = remap_lstat(proj, rel, buf);
-			proj_free(proj);
+		if (fp_find(path, &fp, FP_SCCS)) {
+			/*
+			 * For blob we only need to set:
+			 *   st_mode = S_IFREG | 0444;
+			 *   st_nlink = 1
+			 *   st_size = xxx
+			 */
+			ret = fp.funcs->_lstat(fp.proj, fp.rel, buf);
+			fp_free(&fp);
 		} else {
 			ret = lstat(path, buf);
 		}
@@ -180,16 +200,15 @@ int
 fslayer_stat(const char *path, struct stat *buf)
 {
 	int	ret;
-	project	*proj;
-	char	*rel;
+	Fp	fp;
 
 	if (noloop) {
 		ret = stat(path, buf);
 	} else {
 		noloop = 1;
-		if (proj = findpath(path, &rel, 1)) {
-			ret = remap_lstat(proj, rel, buf);
-			proj_free(proj);
+		if (fp_find(path, &fp, FP_SCCS)) {
+			ret = fp.funcs->_lstat(fp.proj, fp.rel, buf);
+			fp_free(&fp);
 		} else {
 			ret = stat(path, buf);
 		}
@@ -239,18 +258,17 @@ int
 fslayer_unlink(const char *path)
 {
 	int	ret;
-	project	*proj;
-	char	*rel;
+	Fp	fp;
 
 	if (noloop) {
-		ret = unlink(path);
+		ret = unlink((char *)path);
 	} else {
 		noloop = 1;
-		if (proj = findpath(path, &rel, 1)) {
-			ret = remap_unlink(proj, rel);
-			proj_free(proj);
+		if (fp_find(path, &fp, FP_SCCS)) {
+			ret = fp.funcs->_unlink(fp.proj, fp.rel);
+			fp_free(&fp);
 		} else {
-			ret = unlink(path);
+			ret = unlink((char *)path);
 		}
 		STRACE((strace, "unlink(%s) = %d\n", path, ret));
 		noloop = 0;
@@ -262,22 +280,38 @@ int
 fslayer_rename(const char *old, const char *new)
 {
 	int	ret;
-	project	*proj1 = 0;
-	project	*proj2 = 0;
-	char	*rel1, *rel2;
+	Fp	fp1, fp2;
 
 	if (noloop) {
-		ret = rename(old, new);
+		ret = rename((char *)old, (char *)new);
 	} else {
 		noloop  = 1;
-		proj1 = findpath(old, &rel1, 0);
-		if (rel1) rel1 = strdup(rel1);
-		proj2 = findpath(new, &rel2, 0);
 
-		ret = remap_rename(proj1, rel1, proj2, rel2);
-		if (rel1) free(rel1);
-		if (proj1) proj_free(proj1);
-		if (proj2) proj_free(proj2);
+		fp_find(old, &fp1, FP_FILE);
+		fp_find(new, &fp2, FP_FILE);
+
+		/* we never rename SCCS dirs */
+		assert((fp1.isSCCS != IS_DIR) && (fp2.isSCCS != IS_DIR));
+
+		/*
+		 * This one is a bit of a pain.
+		 * We really only need to call a fs plugin for renames
+		 * of files in SCCS directories or directory renames.
+		 * But unless we add an extra lstat() we don't know if
+		 * a rename("a/b", "a/c") is renaming a file or directory
+		 * so these are also used.
+		 * Currently we never rename between repos (other than RESYNC)
+		 * so there assert() is safe.
+		 */
+		if (fp1.proj && fp2.proj) {
+			assert(fp1.funcs == fp2.funcs);
+			ret = fp1.funcs->_rename(fp1.proj, fp1.rel,
+			    fp2.proj, fp2.rel);
+		} else {
+			ret = rename((char *)old, (char *)new);
+		}
+		fp_free(&fp1);
+		fp_free(&fp2);
 		STRACE((strace, "rename(%s, %s) = %d\n", old, new, ret));
 		noloop = 0;
 	}
@@ -288,16 +322,13 @@ int
 fslayer_chmod(const char *path, mode_t mode)
 {
 	int	ret;
-	project	*proj;
-	char	*rel;
 
 	if (noloop) {
 		ret = chmod(path, mode);
 	} else {
 		noloop = 1;
-		if (proj = findpath(path, &rel, 1)) {
-			ret = remap_chmod(proj, rel, mode);
-			proj_free(proj);
+		if (isSCCS(path)) {
+			ret = 0;  // XXX just ignore
 		} else {
 			ret = chmod(path, mode);
 		}
@@ -311,22 +342,43 @@ int
 fslayer_link(const char *old, const char *new)
 {
 	int	ret;
-	project	*proj1 = 0;
-	project	*proj2 = 0;
-	char	*rel1, *rel2;
+	Fp	fp1, fp2;
 
 	if (noloop) {
 		ret = link(old, new);
 	} else {
 		noloop = 1;
-		proj1 = findpath(old, &rel1, 0);
-		if (rel1) rel1 = strdup(rel1);
-		proj2 = findpath(new, &rel2, 0);
 
-		ret = remap_link(proj1, rel1, proj2, rel2);
-		if (rel1) free(rel1);
-		if (proj1) proj_free(proj1);
-		if (proj2) proj_free(proj2);
+		fp_find(old, &fp1, FP_FILE);
+		fp_find(new, &fp2, FP_FILE);
+
+		/* we never link SCCS dirs */
+		assert((fp1.isSCCS != IS_DIR) && (fp2.isSCCS != IS_DIR));
+
+		/*
+		 * Here we kind of have a hack.
+		 * It is possible to hardlink SCCS files between two
+		 * different repositories that are stored in a different
+		 * format.  However we can only pick one helper function.
+		 * At the moment we assume the two projects either match
+		 * or one side is an old SCCS repo.
+		 * Blob won't hardlink SCCS files so this seem OK for now.
+		 */
+		if (fp1.proj && fp2.proj) assert(fp1.funcs == fp2.funcs);
+		if (fp1.proj || fp2.proj) {
+			fsfuncs	*f = fp1.funcs;
+
+			unless (fp1.proj) {
+				f = fp2.funcs;
+				fp1.rel = strdup(old);
+			}
+			unless (fp2.proj) fp2.rel = strdup(new);
+			ret = f->_link(fp1.proj, fp1.rel, fp2.proj, fp2.rel);
+		} else {
+			ret = link(old, new);
+		}
+		fp_free(&fp1);
+		fp_free(&fp2);
 		STRACE((strace, "link(%s, %s) = %d\n", old, new, ret));
 		noloop = 0;
 	}
@@ -354,20 +406,25 @@ char **
 fslayer__getdir(char *dir, struct stat *sb)
 {
 	char	**ret;
-	project	*proj;
-	char	*rel;
+	Fp	fp;
 
 	if (noloop) {
 		ret = _getdir(dir, sb);
 	} else {
 		noloop = 1;
-		if (proj = findpath(dir, &rel, 0)) {
-			ret = remap_getdir(proj, rel);
-			proj_free(proj);
+
+		if (fp_find(dir, &fp, FP_DIR)) {
+			ret = fp.funcs->_getdir(fp.proj, fp.rel);
+			fp_free(&fp);
 		} else {
 			ret = _getdir(dir, sb);
 		}
-		STRACE((strace, "_getdir(%s, sb) = list\n", dir));
+		STRACE((strace, "_getdir(%s, sb) = ", dir));
+		if (ret) {
+			STRACE((strace, "list{%d}\n", nLines(ret)));
+		} else {
+			STRACE((strace, "0\n"));
+		}
 		noloop = 0;
 	}
 	return (ret);
@@ -376,16 +433,16 @@ fslayer__getdir(char *dir, struct stat *sb)
 char *
 fslayer_realBasename(const char *path, char *realname)
 {
-	char	*rel, *ret = 0;
-	project	*proj;
+	char	*ret = 0;
+	Fp	fp;
 
 	if (noloop) {
 		ret = realBasename(path, realname);
 	} else {
 		noloop = 1;
-		if (proj = findpath(path, &rel, 1)) {
- 			ret = remap_realBasename(proj, rel, realname);
-			proj_free(proj);
+		if (fp_find(path, &fp, FP_SCCS)) {
+			ret = fp.funcs->_realBasename(fp.proj, fp.rel, realname);
+			fp_free(&fp);
 		} else {
 			ret = realBasename(path, realname);
 		}
@@ -398,17 +455,16 @@ int
 fslayer_access(const char *path, int mode)
 {
 	int	ret;
-	project	*proj;
-	char	*rel;
+	Fp	fp;
 
 	if (noloop) {
 		ret = access(path, mode);
 	} else {
 		noloop = 1;
 
-		if (proj = findpath(path, &rel, 1)) {
-			ret = remap_access(proj, rel, mode);
-			proj_free(proj);
+		if (fp_find(path, &fp, FP_SCCS)) {
+			ret = fp.funcs->_access(fp.proj, fp.rel, mode);
+			fp_free(&fp);
 		} else {
 			ret = access(path, mode);
 		}
@@ -422,16 +478,14 @@ int
 fslayer_utime(const char *path, const struct utimbuf *buf)
 {
 	int	ret;
-	project	*proj;
-	char	*rel;
+	Fp	fp;
 
 	if (noloop) {
 		ret = utime(path, buf);
 	} else {
 		noloop = 1;
-		if (proj = findpath(path, &rel, 1)) {
-			ret = remap_utime(proj, rel, buf);
-			proj_free(proj);
+		if (fp_find(path, &fp, FP_SCCS)) {
+			assert(0); /* shouldn't happen */
 		} else {
 			ret = utime(path, buf);
 		}
@@ -445,18 +499,18 @@ int
 fslayer_mkdir(const char *path, mode_t mode)
 {
 	int	ret;
-	project	*proj;
-	char	*rel;
+	Fp	fp;
 
 	if (noloop) {
-		ret = mkdir(path, mode);
+		ret = smartMkdir((char *)path, mode);
 	} else {
 		noloop = 1;
-		if (proj = findpath(path, &rel, 0)) {
-			ret = remap_mkdir(proj, rel, mode);
-			proj_free(proj);
+		if ((isSCCS(path) == IS_DIR) &&
+		    fp_find(path, &fp, FP_SCCS)) {
+			ret = fp.funcs->_mkdir(fp.proj, fp.rel);
+			fp_free(&fp);
 		} else {
-			ret = mkdir(path, mode);
+			ret = smartMkdir((char *)path, mode);
 		}
 		STRACE((strace, "mkdir(%s, %o) = %d\n", path, mode, ret));
 		noloop = 0;
@@ -468,17 +522,33 @@ int
 fslayer_rmdir(const char *dir)
 {
 	int	ret;
-	project	*proj;
-	char	*rel;
+	Fp	fp;
+	char	buf[MAXPATH];
 
 	if (noloop) {
 		ret = rmdir(dir);
 	} else {
 		noloop = 1;
 
-		if (proj = findpath(dir, &rel, 0)) {
-			ret = remap_rmdir(proj, rel);
-			proj_free(proj);
+		if (fp_find(dir, &fp, FP_DIR)) {
+			if (fp.isSCCS == IS_DIR) {
+				ret = fp.funcs->_rmdir(fp.proj, fp.rel);
+			} else {
+				/* Can't remove a directory with a
+				 * SCCS subdir */
+				concat_path(buf, fp.rel, "SCCS");
+				if (fp.funcs->_isdir(fp.proj, buf)) {
+					errno = ENOTEMPTY;
+					ret = -1;
+				} else {
+#ifndef	NOPROC
+					ret = checking_rmdir((char *)dir);
+#else
+					ret = rmdir(dir);
+#endif
+				}
+			}
+			fp_free(&fp);
 		} else {
 #ifndef	NOPROC
 			ret = checking_rmdir((char *)dir);
@@ -555,9 +625,9 @@ isSCCS(const char *path)
 	}
 	unless (slash) slash = path - 1;
 	cnt = slash-path;
-	if ((cnt == 4) && strneq(path, "SCCS", 4)) return (1);
-	if ((cnt > 4) && strneq(slash-5, "/SCCS", 5)) return (1);
-	if (((p - slash) == 5) && streq(slash+1, "SCCS")) return (2);
+	if ((cnt == 4) && strneq(path, "SCCS", 4)) return (IS_FILE);
+	if ((cnt > 4) && strneq(slash-5, "/SCCS", 5)) return (IS_FILE);
+	if (((p - slash) == 5) && streq(slash+1, "SCCS")) return (IS_DIR);
 	return (0);
 }
 
@@ -565,49 +635,49 @@ isSCCS(const char *path)
  * Given a pathname return the project* containing that file
  * and the relative path from the repo root to this file.
  * Or return 0 (no proj) and the path name that was passed in unfiltered.
- *
- * sccsonly means don't bother if isn't inside a SCCS subdirectory.
- * This acts like no proj for all non SCCS paths.
  */
-private project *
-findpath(const char *path, char **relp, int sccsonly)
+private int
+fp_find(const char *path, Fp *fp, int mode)
 {
-	static	char	buf[MAXPATH];
-
-	char	*rel;
-	project	*proj;
 	char	*dn;		/* directory to pass to proj_init() */
 	int	c = isSCCS(path);
 	char	pbuf[MAXPATH];
 
+	fp->isSCCS = c;
 	strcpy(pbuf, path);
 	dn = dirname(pbuf);
-	if (c == 2) {
+	if (c == IS_DIR) {
 		/* dir/SCCS dn=dir*/
 	} else if (c) {
 		/* dir/SCCS/file	dn=dir */
 		dn = dirname(dn);
-	} else if (sccsonly) {
-noproj:		*relp = (char *)path;
+	} else if (mode == FP_SCCS) {
+noproj:		fp->proj = 0;
+		fp->rel = 0;
+		fp->funcs = 0;
 		return (0);
-	} else if (isdir((char *)path)) {
+	} else if (mode == FP_DIR) {
 		dn = (char *)path;
 	}
-	unless (proj = proj_init(dn)) goto noproj;
-	if (proj_hasOldSCCS(proj)) {
-		proj_free(proj);
+	unless (fp->proj = proj_init(dn)) goto noproj;
+	if (proj_hasOldSCCS(fp->proj)) {
+		proj_free(fp->proj);
 		goto noproj;
 	}
-	rel = proj_relpath(proj, (char *)path);
-	unless (rel) {
+	fp->rel = proj_relpath(fp->proj, (char *)path);
+	unless (fp->rel) {
 		fprintf(stderr, "error with file mapping\n"
 		    "dir %s proj %s cwd %s\n",
-		    path, proj_root(proj), proj_cwd());
+		    path, proj_root(fp->proj), proj_cwd());
 		exit(103);
 	}
-	assert(rel);
-	strcpy(buf, rel);
-	*relp = buf;
-	free(rel);
-	return (proj);
+	fp->funcs = &remap_funcs;
+	return (1);
+}
+
+inline private void
+fp_free(Fp *fp)
+{
+	if (fp->proj) proj_free(fp->proj);
+	if (fp->rel) free(fp->rel);
 }

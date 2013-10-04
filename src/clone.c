@@ -805,12 +805,14 @@ clone(char **av, remote *r, char *local, char **envVar)
 	if (proj_hasOldSCCS(0)) {
 		if (getenv("BKD_REMAP")) {
 			/* clone remapped -> non-remapped */
-			rename("BitKeeper/log/x.id_cache", IDCACHE);
+			fileCopy("BitKeeper/log/x.id_cache", IDCACHE);
+			unlink("BitKeeper/log/x.id_cache");
 		}
 	} else {
 		unless (getenv("BKD_REMAP")) {
 			/* clone non-remapped -> remapped */
-			rename("BitKeeper/etc/SCCS/x.id_cache", IDCACHE);
+			fileCopy("BitKeeper/etc/SCCS/x.id_cache", IDCACHE);
+			unlink("BitKeeper/etc/SCCS/x.id_cache");
 		}
 	}
 	if (opts->detach) {

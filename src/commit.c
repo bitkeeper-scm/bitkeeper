@@ -244,7 +244,8 @@ commit_main(int ac, char **av)
 				fprintf(stderr, "Commit aborted.\n");
 				return (1);
 			}
-			rename(buf, "SCCS/c.ChangeSet");
+			fileCopy(buf, "SCCS/c.ChangeSet");
+			unlink(buf);
 			dflags |= DELTA_CFILE;
 		}
 	}
@@ -846,7 +847,7 @@ cset_setup(int flags)
 	return (rc);
 }
 
-#define	CSET_BACKUP	"BitKeeper/tmp/commit.cset.backup"
+#define	CSET_BACKUP	"BitKeeper/tmp/SCCS/commit.cset.backup"
 
 /*
  * Save SCCS/?.ChangeSet files so we can restore them later if commit
@@ -869,6 +870,7 @@ commitSnapshot(void)
 	 * Saving a hardlink back wouldn't work because bk would copy
 	 * the file when it need to append new data to the end.
 	 */
+	mkdir("BitKeeper/tmp/SCCS", 0777);
 	for (i = 0; ext[i]; i++) {
 		sprintf(file, "SCCS/%c.ChangeSet", ext[i]);
 		if (exists(file)) {

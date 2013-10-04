@@ -390,6 +390,7 @@ _timestamp
 tmpdir
 _touch
 _unbk
+_uncat
 undo
 undos
 unedit

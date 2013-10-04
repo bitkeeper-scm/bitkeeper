@@ -7,7 +7,7 @@ fstat 65
 link 12
 lseek 32
 lstat 212
-mkdir 12
+mkdir 14
 open 122
 read 1789
 rename 3

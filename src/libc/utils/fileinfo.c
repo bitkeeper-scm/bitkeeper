@@ -195,20 +195,6 @@ size(char *s)
 	return (sbuf.st_size);
 }
 
-/*
- * This function returns true if the file has exactly one link
- * Used by the locking code and 2.ChangeSet.
- */
-int
-onelink(char *s)
-{
-	struct stat sbuf;
-
-	if ((stat(s, &sbuf) == 0) && (linkcount(s, &sbuf) == 1)) return (1);
-	return (0);
-}
-
-
 #ifdef WIN32
 /*
  * Return true if basename is a reserve name

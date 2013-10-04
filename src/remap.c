@@ -1,4 +1,5 @@
 #include "sccs.h"
+#include "fsfuncs.h"
 
 
 /*
@@ -10,13 +11,14 @@ private	int
 fullRemapPath(char *buf, project *proj, char *rel)
 {
 	char	*p;
-	int	suffix, ret = 0;
+	int	suffix, ret;
 	char    newrel[MAXPATH];
 
 	unless (proj) {
 		strcpy(buf, rel);
-		return (ret);
+		return (0);
 	}
+	assert(!strneq(rel, ".bk/", 4));
 	if (ret = isSCCS(rel)) {
 		concat_path(newrel, ".bk", rel);
 
@@ -62,34 +64,24 @@ unremap_name(char *name)
 	//name[l] = 0;
 }
 
-
 /*
- * open a file
- *
- * return
- *   -1 failure
+ * Open a file in a SCCS directory.
+ * return -1 if that file doesn't exist
  */
-int
+private int
 remap_open(project *proj, char *rel, int flags, mode_t mode)
 {
+	int	sccs;
 	int	ret;
 	char	buf[MAXPATH];
 
-	fullRemapPath(buf, proj, rel);
+	sccs = fullRemapPath(buf, proj, rel);
+	assert(sccs);
 	ret = open(buf, flags, mode);
 	return (ret);
 }
 
-int
-remap_utime(project *proj, char *rel, const struct utimbuf *utb)
-{
-	char	buf[MAXPATH];
-
-	fullRemapPath(buf, proj, rel);
-	return (utime(buf, utb));
-}
-
-int
+private int
 remap_linkcount(project *proj, char *rel, struct stat *sb)
 {
 	char	buf[MAXPATH];
@@ -98,16 +90,21 @@ remap_linkcount(project *proj, char *rel, struct stat *sb)
 	return (linkcount(buf, sb));
 }
 
-int
+/*
+ * Only called for files in SCCS directories
+ */
+private int
 remap_lstat(project *proj, char *rel, struct stat *sb)
 {
+	int	sccs;
 	char	buf[MAXPATH];
 
-	fullRemapPath(buf, proj, rel);
+	sccs = fullRemapPath(buf, proj, rel);
+	assert(sccs);
 	return (lstat(buf, sb));
 }
 
-char *
+private char *
 remap_realBasename(project *proj, char *rel, char *realname)
 {
 	char	*ret;
@@ -120,26 +117,33 @@ remap_realBasename(project *proj, char *rel, char *realname)
 	return (ret);
 }
 
-int
+/*
+ * remove something from a SCCS directory
+ */
+private int
 remap_unlink(project *proj, char *rel)
 {
+	int	sccs;
 	char	buf[MAXPATH];
 
-	fullRemapPath(buf, proj, rel);
+	sccs = fullRemapPath(buf, proj, rel);
+	assert(sccs);
 	return (unlink(buf));
 }
 
-int
+private int
 remap_rename(project *proj1, char *old, project *proj2, char *new)
 {
+	int	s1;
 	int	rc;
 	char	buf1[MAXPATH];
 	char	buf2[MAXPATH];
 
-	fullRemapPath(buf1, proj1, old);
+	s1 = fullRemapPath(buf1, proj1, old);
 	fullRemapPath(buf2, proj2, new);
+
 	if (!(rc = rename(buf1, buf2)) &&
-	    proj1 && (proj1 == proj2) && !isSCCS(old)) {
+	    proj1 && (proj1 == proj2) && !s1) {
 		/*
 		 * maybe we just did:
 		 *    mv old new
@@ -159,7 +163,7 @@ remap_rename(project *proj1, char *old, project *proj2, char *new)
 	return (rc);
 }
 
-int
+private int
 remap_link(project *proj1, char *old, project *proj2, char *new)
 {
 	char	buf1[MAXPATH];
@@ -170,60 +174,58 @@ remap_link(project *proj1, char *old, project *proj2, char *new)
 	return (link(buf1, buf2));
 }
 
-int
-remap_chmod(project *proj, char *rel, mode_t mode)
+/*
+ * Called for xxx/SCCS directories only
+ */
+private int
+remap_mkdir(project *p, char *rel)
 {
-	u8	buf[MAXPATH];
+	int	sccs, ret;
+	char	buf[MAXPATH];
 
-	fullRemapPath(buf, proj, rel);
-	return (chmod(buf, mode));
-}
-
-int
-remap_mkdir(project *proj, char *dir, mode_t mode)
-{
-	u8	buf[MAXPATH];
-
-	if (fullRemapPath(buf, proj, dir)) {
-		mkdirp(buf);
-		fullRemapPath(buf, proj, dirname(dir));
-		return (mkdirp(buf));
-	} else {
-		return (mkdir(buf, mode));
+	assert(p);
+	/*
+	 * We auto create directories as needed to create SCCS, but
+	 * first we have to verify the that the matching gfile
+	 * directory exists
+	 */
+	concat_path(buf, proj_root(p), rel);
+	dirname(buf);		/* strip SCCS */
+	unless (isdir(buf)) {
+		errno = ENOENT;
+		return (-1);
 	}
+	sccs = fullRemapPath(buf, p, rel);
+	assert(sccs == 2);
+	ret = mkdirp(buf);
+	return (ret);
 }
 
-int
+/*
+ * Called for xxx/SCCS directories only
+ * we need to prune up to root as needed
+ */
+private int
 remap_rmdir(project *proj, char *dir)
 {
-	int	ret;
 	char	*t;
-	char	buf[MAXPATH], buf2[MAXPATH];
+	int	sccs;
+	int	ret;
+	char	buf[MAXPATH];
 
-	if (fullRemapPath(buf, proj, dir)) {
-		if (ret = rmdir(buf)) return (ret);
+	sccs = fullRemapPath(buf, proj, dir);
+	assert(sccs == 2);
+	if (ret = rmdir(buf)) return (ret);
 
-		/* remove any empty directories above */
-		t = buf + strlen(buf);
-		while (1) {
-			while (*t != '/') --t;
-			*t = 0;
-			if (streq(t, "/.bk")) break;
-			if (rmdir(buf)) break;
-		}
-		return (0);
-	} else {
-		/*
-		 * Can't remove a directory with a SCCS subdir, and
-		 * need to keep .bk directories in sync
-		 */
-		sprintf(buf2, "%s/.bk/%s/SCCS", proj_root(proj), dir);
-		if (isdir(buf2)) {
-			errno = ENOTEMPTY;
-			return (-1);
-		}
-		return (rmdir(buf));
+	/* remove any empty directories above */
+	t = buf + strlen(buf);
+	while (1) {
+		while (*t != '/') --t;
+		*t = 0;
+		if (streq(t, "/.bk")) break;
+		if (rmdir(buf)) break;
 	}
+	return (0);
 }
 
 struct getdirMerge {
@@ -277,30 +279,33 @@ getdirMerge(void *token, char *gfile, char *dotbk)
 	return (0);
 }
 
-char **
-remap_getdir(project *proj, char *dir)
+/*
+ * Add directory information from the index.  In SCCS then everything
+ * is from index, outside the index just adds additional information.
+ */
+private char **
+remap_getdir(project *p, char *dir)
 {
-	int	i, sccs;
-	char	**ret;
-	char	**mapdir;
+	int	sccs, i;
+	char	**ret, **mapdir;
 	struct	getdirMerge opts;
 	char	buf[MAXPATH];
 
-	sccs = fullRemapPath(buf, proj, dir);
-	ret = getdir(buf);
+	sccs = fullRemapPath(buf, p, dir);
+	ret = _getdir(buf, 0);
 	if (sccs) {
 		EACH(ret) unremap_name(ret[i]);
-	} else if (proj) {
+	} else {
 		if (streq(dir, ".")) removeLine(ret, ".bk", free);
-		sprintf(buf, "%s/.bk/%s", proj_root(proj), dir);
-		mapdir = getdir(buf);
-
-		opts.proj = proj;
+		opts.proj = p;
 		opts.dir = dir;
 		opts.add = 0;
-		parallelLines(ret, mapdir, 0, getdirMerge, &opts);
-		freeLines(mapdir, 0);	/* mapdir items freed in getdirMerge */
 
+		sprintf(buf, "%s/.bk/%s", proj_root(p), dir);
+		if (mapdir = _getdir(buf, 0)) {
+			parallelLines(ret, mapdir, 0, getdirMerge, &opts);
+			freeLines(mapdir, 0); /* mapdir items freed in getdirMerge */
+		}
 		if (opts.add) {
 			ret = catLines(ret, opts.add);
 			freeLines(opts.add, 0);
@@ -310,7 +315,21 @@ remap_getdir(project *proj, char *dir)
 	return (ret);
 }
 
-int
+/*
+ * used for "xxx/SCCS" only
+ */
+private int
+remap_isdir(project *p, char *rel)
+{
+	int	sccs;
+	char	ret[MAXPATH];
+
+	sccs = fullRemapPath(ret, p, rel);
+	assert(sccs == 2);
+	return (isdir(ret));
+}
+
+private int
 remap_access(project *proj, char *rel, int mode)
 {
 	char	buf[MAXPATH];
@@ -318,3 +337,18 @@ remap_access(project *proj, char *rel, int mode)
 	fullRemapPath(buf, proj, rel);
 	return (access(buf, mode));
 }
+
+fsfuncs remap_funcs = {
+	._open = remap_open,
+	._lstat = remap_lstat,
+	._isdir = remap_isdir,
+	._linkcount = remap_linkcount,
+	._getdir = remap_getdir,
+	._link = remap_link,
+	._realBasename = remap_realBasename,
+	._unlink = remap_unlink,
+	._rename = remap_rename,
+	._mkdir = remap_mkdir,
+	._rmdir = remap_rmdir,
+	._access = remap_access,
+};

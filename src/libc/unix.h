@@ -50,8 +50,6 @@
 #define	mkpipe(p, size)	pipe(p)
 #define	setmode(a, b)
 
-#define	unlink(f)	smartUnlink((char *)f)
-#define	rename(o, n)	smartRename((char *)o, (char *)n)
 #define	closesocket(i)	close(i)
 #define	linkcount(a, b)	(b)->st_nlink
 

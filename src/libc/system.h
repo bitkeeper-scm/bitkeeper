@@ -156,7 +156,6 @@ int	perms(char *s);
 int	writable(char *s);
 off_t	fsize(int fd);
 off_t	size(char *s);
-int	onelink(char *s);
 
 /* fileutils.c */
 int	cat(char *file);
@@ -297,7 +296,6 @@ void	sig_default(void);
 int	smartUnlink(char *name);
 int	smartRename(char *old, char *new);
 int	smartMkdir(char *dir, mode_t mode);
-#define	mkdir(d, m)	smartMkdir((char *)d, m)
 
 /* spawn.c */
 #ifndef WIN32

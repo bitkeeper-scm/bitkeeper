@@ -25,7 +25,7 @@ usage_chmod(void)
 int
 fslcp_main(int ac, char **av)
 {
-	if (ac < 3) usage2(av[0]);
+	if (ac != 3) usage2(av[0]);
 	if (fileCopy(av[1], av[2])) return (1);
 	return (0);
 }
@@ -33,9 +33,18 @@ fslcp_main(int ac, char **av)
 int
 fslmv_main(int ac, char **av)
 {
-	if (ac < 3) usage2(av[0]);
+	int	rc;
+
+	if (ac != 3) usage2(av[0]);
 	unlink(av[2]);
-	return (rename(av[1], av[2]) ? 1 : 0);
+	if ((isSCCS(av[1]) == IS_FILE) || (isSCCS(av[2]) == IS_FILE)) {
+		/* can't rename from/to SCCS dirs */
+		rc = fileCopy(av[1], av[2]);
+		unlink(av[1]);
+	} else {
+		rc = rename(av[1], av[2]);
+	}
+	return (rc);
 }
 
 int
@@ -113,4 +122,29 @@ fslmkdir_main(int ac, char **av)
 		}
 	}
 	return (rc);
+}
+
+/*
+ * Write stdin to a file
+ * Used for scripts to write something via bk's fslayer
+ */
+int
+uncat_main(int ac, char **av)
+{
+	int	c;
+	int	fd;
+	char	buf[MAXLINE];
+
+	unless (av[1] && !av[2]) usage();
+
+	if ((fd = open(av[1], O_CREAT|O_WRONLY, 0666)) < 0) {
+		perror(av[1]);
+		return (-1);
+	}
+	while ((c = read(0, buf, sizeof(buf))) > 0) {
+		writen(fd, buf, c);
+	}
+	close(fd);
+
+	return (0);
 }

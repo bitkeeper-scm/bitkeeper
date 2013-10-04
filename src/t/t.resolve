@@ -141,13 +141,12 @@ echo OK
 
 echo $N What if you don\'t have permissions to delete a file..........$NL
 oldmode=`bk _stat dir2/SCCS | awk -F\| '{ print substr($3, 3) }'`
-bk _chmod 555 dir2/SCCS
+chmod 555 dir2/SCCS .bk/dir2/SCCS 2> /dev/null
 cd "$HERE/copy2"
 bk mv dir2/gg dir3/gg || exit 1
 bk commit -ymv $Q || exit 1
 bk push > OUT 2>&1
 status=$?
-bk _chmod $oldmode ../proj/dir2/SCCS dir2/SCCS dir3/SCCS
 test $status != 0 || {
 	echo push shouldn\'t have worked
 	cat OUT
@@ -159,6 +158,7 @@ grep 'No write permission: dir2' OUT > /dev/null || {
 	exit 1
 }
 cd "$HERE/proj"
+chmod $oldmode dir2/SCCS .bk/dir2/SCCS 2> /dev/null
 bk abort -f
 bk -r check -acf || exit 1
 echo OK

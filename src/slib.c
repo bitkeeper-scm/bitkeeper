@@ -8824,6 +8824,7 @@ bin_writeHeap(sccs *s, char ***save)
 	FILE	*f;
 	u32	off;
 	int	rc = 0;
+	struct	stat	sb;
 
 	assert(save && (*save == 0));
 
@@ -8831,7 +8832,11 @@ bin_writeHeap(sccs *s, char ***save)
 	// heap goes in external file
 	if (s->heap_loadsz == s->heap.len) {
 		// nothing new, skip heap
-	} else if (s->heap_loadsz && onelink(file)) {
+	} else if (s->heap_loadsz &&
+	    !lstat(file, &sb) &&	 /* 2.ChagneSet exists */
+	    S_ISREG(sb.st_mode) &&	 /* is a normal file */
+	    (sb.st_mode & 0222) &&	 /* is writable */
+	    (linkcount(file, &sb) == 1))  { /* and isn't hardlinked */
 		// append new data to heap2
 		assert(s->heap_loadsz < s->heap.len);
 		if (f = fopen_bkfile(file, "a", 0, 0)) {
@@ -8841,13 +8846,14 @@ bin_writeHeap(sccs *s, char ***save)
 			TRACE("append %d bytes to new heap2",
 			    s->heap.len - s->heap_loadsz);
 		} else {
+			if (access(file, W_OK)) goto whole;
 			perror(file);
 			rc = 1;
 		}
 	} else {
-		// need to rewrite whole file
+whole:		// need to rewrite whole file
 		if (s->heap_loadsz) {
-			// only rewrite heap2 to break hardlink
+			// only rewrite heap2 to break hardlink (or fix perms)
 			off = s->heapsz1;
 			if (s->heapfh[2]) {
 				/*

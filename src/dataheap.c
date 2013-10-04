@@ -830,23 +830,7 @@ FILE *
 fopen_bkfile(char *file, char *mode, u64 size, int chkxor)
 {
 	FILE	*f;
-	struct	stat	sb;
 
-	unless (f = fopen(file, (mode[0] == 'a') ? "r+": mode)) {
-		/*
-		 * Handle appending to read-only files.  This
-		 * shouldn't actually happen as bk doesn't change
-		 * permissions of [12].ChangeSet, but we add this just
-		 * for safety.
-		 */
-		/* add write perms to all places with read perms */
-		unless ((mode[0] == 'a') &&
-		    !getenv("_BK_DEVELOPER") &&
-		    !lstat(file, &sb) &&
-		    !chmod(file, sb.st_mode | ((sb.st_mode & 0444) >> 1)) &&
-		    (f = fopen(file, "r+"))) {
-			return (0);
-		}
-	}
+	unless (f = fopen(file, (mode[0] == 'a') ? "r+": mode)) return (0);
 	return (fdopen_bkfile(f, mode, size, chkxor));
 }

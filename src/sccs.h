@@ -1494,21 +1494,10 @@ char	*bk_searchFile(char *base);
 void	dspec_collapse(char **dspec, char **begin, char **end);
 void	fslayer_cleanup(void);
 void	updatePending(sccs *s);
+#define	IS_FILE	1
+#define	IS_DIR	2
 int	isSCCS(const char *path);
 int	fslayer_enable(int en);
-int	remap_open(project *proj, char *rel, int flags, mode_t mode);
-int	remap_utime(project *proj, char *rel, const struct utimbuf *utb);
-int	remap_linkcount(project *proj, char *rel, struct stat *sb);
-int	remap_lstat(project *proj, char *rel, struct stat *sb);
-int	remap_unlink(project *proj, char *rel);
-int	remap_rename(project *proj1, char *old, project *proj2, char *new);
-int	remap_link(project *proj1, char *old, project *proj2, char *new);
-int	remap_chmod(project *proj, char *rel, mode_t mode);
-int	remap_mkdir(project *proj, char *dir, mode_t mode);
-int	remap_rmdir(project *proj, char *dir);
-char	**remap_getdir(project *proj, char *dir);
-char	*remap_realBasename(project *proj, char *rel, char *realname);
-int	remap_access(project *proj, char *file, int mode);
 int	bk_urlArg(char ***urls, char *arg);
 char	**bk_saveArg(char **nav, char **av, int c);
 void	bk_badArg(int c, char **av)

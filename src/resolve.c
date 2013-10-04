@@ -2041,7 +2041,7 @@ err:		unless (opts->autoOnly) {
 		rs = resolve_init(opts, s);
 		edit(rs);
 		/* We may restore it if we bail early */
-		rename(sccs_Xfile(s, 'r'), "BitKeeper/tmp/r.ChangeSet");
+		fileMove(sccs_Xfile(s, 'r'), "BitKeeper/tmp/SCCS/r.ChangeSet");
 		resolve_free(rs);
 	} else if (exists("SCCS/p.ChangeSet")) {
 		/*
@@ -3203,7 +3203,7 @@ resolve_cleanup(opts *opts, int what)
 		if (exists(ROOT2RESYNC "/SCCS/p.ChangeSet")) {
 			assert(!exists("RESYNC/ChangeSet"));
 			unlink(ROOT2RESYNC "/SCCS/p.ChangeSet");
-			rename(ROOT2RESYNC "/BitKeeper/tmp/r.ChangeSet",
+			rename(ROOT2RESYNC "/BitKeeper/tmp/SCCS/r.ChangeSet",
 			    ROOT2RESYNC "/SCCS/r.ChangeSet");
 		}
 		unless (what & CLEAN_NOSHOUT) {

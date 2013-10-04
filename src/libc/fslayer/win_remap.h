@@ -13,5 +13,6 @@
 #define lstat(f, b)		nt_stat(f, b)
 #define	linkcount(f, b)		nt_linkcount(f, b)
 #define	utime(a, b)		nt_utime(a, b)
+#define	mkdir(d, m)		nt_mkdir(d)
 #define	rmdir(d)		nt_rmdir(d)
 #endif

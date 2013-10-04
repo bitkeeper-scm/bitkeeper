@@ -178,7 +178,7 @@ for partial_check in off on; do
             for pending in 1 0; do
 		bk -r check -ac
 		if [ $dfile = 1 ]
-		then	bk _touch BitKeeper/etc/SCCS/x.dfile
+		then	bk _uncat BitKeeper/etc/SCCS/x.dfile < /dev/null
 		else	bk _rm -f BitKeeper/etc/SCCS/x.dfile
 		fi
 	        test $pending = 1 && bk delta $Q -yboth foo bar

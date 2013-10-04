@@ -233,23 +233,26 @@ proj_free(project *p)
 	free(p);
 }
 
-private char *
-find_root(char *dir)
+/*
+ * like fullname() but it also expands if the final component of the
+ * pathname is a symlink to a directory
+ */
+private void
+fullname_expand(char *dir, char *buf)
 {
 	int	i;
-	char	*p, *first;
-	project	*proj;
-	char	buf[MAXPATH];
 	char	sym[MAXPATH];
 
 	while (1) {
 		/* convert dir to a full pathname and expand symlinks */
 		dir = fullname(dir, buf);
-		unless(isSymlnk(dir)) break;
+		unless (isSymlnk(dir) && isdir_follow(dir)) return;
 
 		/*
 		 * fullname() doesn't expand symlinks in the last
 		 * componant so fix that.
+		 * While isdir_follow will recurse until not symlink,
+		 * this will only go one level at a time, hence the loop.
 		 */
 		i = readlink(dir, sym, sizeof(sym));
 		sym[i] = 0;
@@ -259,6 +262,16 @@ find_root(char *dir)
 			concat_path(buf, dirname(dir), sym);
 		}
 	}
+}
+
+private char *
+find_root(char *dir)
+{
+	char	*p, *first;
+	project	*proj;
+	char	buf[MAXPATH];
+
+	fullname_expand(dir, buf);
 
 	/* This code assumes dir is a full pathname with nothing funny */
 	p = buf + strlen(buf);
@@ -370,7 +383,7 @@ proj_relpath(project *p, char *in_path)
 	char	path[MAXPATH];
 
 	assert(root);
-	fullname(in_path, path);
+	fullname_expand(in_path, path);
 	T_PROJ("in=%s, path=%s", in_path, path);
 	len = strlen(root);
 	if (pathneq(root, path, len)) {

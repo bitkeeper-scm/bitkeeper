@@ -9,7 +9,23 @@ concat_path(char *buf, char *first, char *second)
 {
 	int	len;
 
-	assert(buf != second);
+	if (buf == second) {
+		/*
+		 * insert first before buf
+		 * ex: unless (IsFullPath(foo)) concat_path(foo, proj_cwd(), foo)
+		 */
+		assert(buf != first);
+		unless (first && *first) return;
+		if (second && *second) {
+			len = strlen(first);
+			memmove(buf+len+1, buf, strlen(buf)+1);
+			memcpy(buf, first, len);
+			buf[len] = '/';
+		} else {
+			strcpy(buf, first);
+		}
+		return;
+	}
 
 	unless (first && *first) {
 		strcpy(buf, second);

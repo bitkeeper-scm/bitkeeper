@@ -1,17 +1,17 @@
 # baseline data for t.strace-cnt
-_getdir 72
+_getdir 73
 access 155
 chmod 12
 close 471
 fstat 314
 link 14
 lseek 221
-lstat 1022
-mkdir 13
+lstat 1035
+mkdir 15
 open 458
 read 5336
-rename 16
+rename 17
 rmdir 3
-stat 34
+stat 35
 unlink 97
 write 239
