@@ -25,6 +25,13 @@ else
 	ET='TZ=GMT date +%T --date=@'
 fi
 
+# Tell tests if we are a tagged cset, some tests use internal features
+# like --trace=fs
+test "`bk changes -r+ -d'$if(:SYMBOL:){1}'`" && {
+	BK_TAGGED=yes
+	export BK_TAGGED
+}
+
 update_elapsed() {
 	eval $TS > $END
 	END_TS=`cat $END`

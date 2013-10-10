@@ -1,3 +1,8 @@
+if [ X$BK_TAGGED != X ]
+then
+    echo For untagged csets only .....................................skipped
+    exit 0;
+fi
 
 echo $N Test crc err detection in xor block in files ................$NL
 commercial project
