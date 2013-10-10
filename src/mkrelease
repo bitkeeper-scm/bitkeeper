@@ -38,8 +38,12 @@ echo "Queuing mail to be sent next week to announce release"
 cat <<EOF > announce
 at -f announce next week
 echo "Could someone verify that BitKeeper $ver really shipped and send
-an announcement to customers? There's also a script that Amy runs that
-closes bugs fixed in this release.
+an announcement to customers?
+
+Also update http://www.bitkeeper.com/Support.Release.html
+
+And someday, go fix a script that Amy used to run that closes bugs
+fixed in this release.
 
 Thanks,
 
