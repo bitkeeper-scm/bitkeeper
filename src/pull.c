@@ -183,7 +183,8 @@ pull_main(int ac, char **av)
 
 	if (opts.product = bk_nested2root(opts.transaction || opts.port)) {
 		if (proj_configbool(0, "autopopulate") ||	// compat
-		    proj_configbool(0, "auto-populate")) {	// in docs
+		    proj_configbool(0, "auto-populate") ||	// compat
+		    proj_configbool(0, "auto_populate")) {      // in docs
 			opts.autoPopulate = 1;
 		}
 	}
