@@ -2244,18 +2244,18 @@ sccs_startWrite(sccs *s)
 	xfile = sccsXfile(s, 'x');
 	if (s->mem_out) {
 		assert(!BKFILE_OUT(s)); /* for now */
-		unless(s->outfh) s->outfh = fmem();
-		sfile = s->outfh;
-		goto chksum;
+		assert(!s->outfh);
+		sfile = s->outfh = fmem();
+	} else {
+		// better be write locked if we are writing xfile
+		assert(wrlocked(s));
+		if ((fd = open(xfile, O_CREAT|O_TRUNC|O_WRONLY, 0444)) < 0) {
+			sfile = 0;
+			goto out;
+		}
+		unless (sfile = fdopen(fd, "w")) goto out;
+		fname(sfile, xfile);
 	}
-	// better be write locked if we are writing xfile
-	assert(wrlocked(s));
-	if ((fd = open(xfile, O_CREAT|O_TRUNC|O_WRONLY, 0444)) < 0) {
-		sfile = 0;
-		goto out;
-	}
-	unless (sfile = fdopen(fd, "w")) goto out;
-	fname(sfile, xfile);
 	if (BKFILE_OUT(s)) {
 		assert(!s->mem_out); /* for now */
 		if (s->size) {
@@ -2267,7 +2267,7 @@ sccs_startWrite(sccs *s)
 		}
 		sfile = fdopen_bkfile(sfile, "w", est_size, 0);
 	} else {
-chksum:		s->cksum = 0;
+		s->cksum = 0;
 		assert(!s->ckwrap);
 		if (fpush(&sfile, fopen_cksum(sfile, "w", &s->cksum))) {
 			fclose(sfile);
@@ -2292,8 +2292,6 @@ sccs_abortWrite(sccs *s)
 	s->ckwrap = 0;		/* clear flag */
 	if (s->mem_out) {
 		assert(!BKFILE_OUT(s));
-		s->mem_in = 0;
-		s->mem_out = 0;
 	} else {
 		unlink(sccsXfile(s, 'x'));
 	}
@@ -2311,7 +2309,6 @@ sccs_finishWrite(sccs *s)
 {
 	char	*xfile = sccsXfile(s, 'x');
 	int	rc;
- 	FILE	*tmp;
 	char	**save = 0;
 
 	assert(!s->wrweave);
@@ -2329,18 +2326,6 @@ sccs_finishWrite(sccs *s)
 	rc = ferror(s->outfh);
 	if (s->mem_out) {
 		assert(!BKFILE_OUT(s));
-		assert(s->fh);
-		tmp = s->fh;
-		s->fh = s->outfh;
-		rewind(s->fh);
-		if (s->mem_in) {
-			s->outfh = tmp;
-			ftrunc(s->outfh, 0);
-		} else {
-			fclose(tmp);
-			s->outfh = fmem();
-			s->mem_in = 1;
-		}
 	} else {
 		if (fclose(s->outfh)) rc = -1;
 		s->outfh = 0;
@@ -4986,7 +4971,6 @@ sccs_close(sccs *s)
 	}
 	if (s->fh) {
 		if (s->rdweave) sccs_rdweaveDone(s);
-		assert(!s->mem_in); /* don't want to lose data */
 		fclose(s->fh);
 		s->fh = 0;
 	}
@@ -5084,34 +5068,7 @@ sccs_free(sccs *s)
 	if (s->io_error && !s->io_warned) {
 		fprintf(stderr, "%s: unreported I/O error\n", s->sfile);
 	}
-	if (s->mem_out) {
-		FILE	*f, *out;
-		size_t	len;
-		char	*buf;
-
-		/* the sfile is still in memory.  Write it out. */
-		assert(s->sfile);
-		if (s->mem_in) {
-			f = s->fh;
-			assert(f != s->outfh);
-			fclose(s->outfh);
-			s->fh = 0;
-		} else {
-			f = s->outfh;
-		}
-		s->outfh = 0;
-		s->mem_in = s->mem_out = 0;
-
-		buf = fmem_peek(f, &len);
-		out = sccs_startWrite(s);
-		assert(buf);
-		fwrite(buf, 1, len, out);
-		// XXX In this case sccs_free has transactional quality
-		// and has no back channel to let caller know transaction
-		// failed.
-		sccs_finishWrite(s);
-		fclose(f);
-	}
+	assert(!s->mem_out);	/* user needs to consume this first */
 	if (s->wrweave) {
 		fprintf(stderr, "%s: partial write of %s aborted.\n",
 		    prog, s->sfile);
@@ -5151,7 +5108,6 @@ sccs_free(sccs *s)
 		}
 	}
 	if (s->fh) {
-		assert(!s->mem_in); /* don't want to lose data */
   		rc |= fclose(s->fh);
 		s->fh = 0;
 	}

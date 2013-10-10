@@ -518,8 +518,6 @@ out_file(char *file, struct stat *sp, off_t *byte_count, int useDsum, u32 dsum)
 			perror(file);
 			return (SFIO_OPEN);
 		}
-		s->encoding_out = sccs_encoding(s, 0, 0);
-		s->encoding_out &= ~(E_BK|E_BWEAVE|E_COMP);
 		data = sccs_scat(s, &len);
 		sz = (u32)len;
 		*byte_count += printf("%010u", sz);

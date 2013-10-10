@@ -759,7 +759,6 @@ struct sccs {
 	u32	bamlink:1;	/* BAM gfile is hardlinked to the sfile */
 	u32	used_cfile:1;	/* comments_readcfile found one; for cleanup */
 	u32	modified:1;	/* set if we wrote the s.file */
-	u32	mem_in:1;	/* s->fh is in-memory FILE* */
 	u32	mem_out:1;	/* s->outfh is in-memory FILE* */
 	u32	file:1;		/* treat as a file in DSPECS */
 	u32	rdweaveEOF:1;	/* at EOF in rdWEAVE */
