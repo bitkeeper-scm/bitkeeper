@@ -119,6 +119,8 @@ typedef struct {
 	int	prev_token_len;
 	int	token_off;	// offset of curr token from start of input
 	int	prev_token_off;	// offset of prev token from start of input
+	int	scanned_chars;	// # chars consumed by the scanner/parser
+	int	scanned_lines;	// # newlines consumed by the scanner/parser
 	Tcl_Obj	*script;	// src of script being compiled
 	int	script_len;
 	Tcl_Obj	*options;	// hash of command-line options
@@ -196,6 +198,8 @@ extern char	*L_dirname(char *path);
 extern void	L_err(const char *s, ...);
 extern void	L_errf(void *node, const char *format, ...);
 extern int	L_isUndef(Tcl_Obj *o);
+extern void	L_lex_begLhtml();
+extern void	L_lex_endLhtml();
 extern void	L_lex_begReArg(int kind);
 extern void	L_lex_start(void);
 extern int	L_parse(void);			// yyparse

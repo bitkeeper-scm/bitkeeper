@@ -122,6 +122,7 @@ extern int	L_lex (void);
 %token T_GREATEREQ ">="
 %token T_GT "gt"
 %token <s> T_ID "id"
+%token T_LHTML_START "<?="
 %token T_IF "if"
 %token T_INSTANCE "instance"
 %token T_INT "int"
@@ -246,6 +247,17 @@ start:	  toplevel_code
 	{
 		REVERSE(TopLev, next, $1);
 		L->ast = $1;
+	}
+	| T_LHTML_START expr
+	{
+		// Wrap expr in a puts(-nonewline) call.
+		TopLev	*t = ast_mkTopLevel(L_TOPLEVEL_STMT, NULL, @2, @2);
+		Expr	*arg = ast_mkConst(L_string, "-nonewline", @1, @1);
+		t->u.stmt = ast_mkStmt(L_STMT_EXPR, NULL, @2, @2);
+		t->u.stmt->u.expr = ast_mkFnCall(ast_mkId("puts", @1, @1),
+						 arg, @2, @2);
+		arg->next = $2;
+		L->ast = t;
 	}
 	;
 

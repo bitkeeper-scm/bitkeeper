@@ -242,7 +242,8 @@ ParseLang(
 	*scanned = eol - src;
 	return TCL_BREAK;
     }
-    if (!strncmp("L", tokenPtr->start, tokenPtr->size)) {
+    if (!strncmp("L", tokenPtr->start, tokenPtr->size) ||
+	!strncmp("Lhtml", tokenPtr->start, tokenPtr->size)) {
 	/* it's L code, so do the parse again, but side-effect the parsePtr
 	 * this time */
 	Tcl_ParseCommand(interp, p, eol - p, 0, parsePtr);
@@ -250,7 +251,7 @@ ParseLang(
 	/* XXX strstr is not safe -- it expects a NULL on the end. */
 	end = strstr(eol, "\n#lang");
 	if (!end) {
-	    end = (char *)src + numBytes;
+	    end = (char *)src + numBytes - 1;
 	}
 	TclGrowParseTokenArray(parsePtr, 2);
 	wordIdx = parsePtr->numTokens;

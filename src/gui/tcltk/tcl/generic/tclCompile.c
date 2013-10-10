@@ -1530,7 +1530,9 @@ TclCompileScript(
 		 * to it now.  This communicates the source line # to the L
 		 * compiler.
 		 */
-		if (!wordIdx && !strncmp("L", tokenPtr->start, tokenPtr->size)) {
+		if (!wordIdx &&
+		    (!strncmp("L", tokenPtr->start, tokenPtr->size) ||
+		     !strncmp("Lhtml", tokenPtr->start, tokenPtr->size))) {
 		    char *s;
 		    Tcl_Obj *obj;
 

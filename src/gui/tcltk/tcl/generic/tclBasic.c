@@ -238,6 +238,7 @@ static const CmdInfo builtInCmds[] = {
     {"Lwrite_",		Tcl_LWriteCmd,		NULL,		NULL, 1},
     {"Lrefcnt",		Tcl_LRefCnt,		NULL,		NULL, 1},
     {"defined",		Tcl_LDefined,		NULL,		NULL, 1},
+    {"Lhtml",		Tcl_LHtmlObjCmd,	NULL,		NULL, 1},
 
     /*
      * Commands in the OS-interface. Note that many of these are unsafe.
@@ -5104,7 +5105,9 @@ TclEvalEx(
 		 * before the next command word.  This communicates the source
 		 * line # to the L compiler.
 		 */
-		if (!objectsUsed && !strcmp("L", TclGetString(objv[0]))) {
+		if (!objectsUsed &&
+		    (!strncmp("L", tokenPtr->start, tokenPtr->size) ||
+		     !strncmp("Lhtml", tokenPtr->start, tokenPtr->size))) {
 		    ++numWords;
 		    ++objectsUsed;
 		    ++objectsNeeded;

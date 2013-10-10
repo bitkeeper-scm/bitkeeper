@@ -185,6 +185,45 @@ in this contrived example:
 
     'Hi there. ${USER} is ' . "${USER} today";
 
+=head1 HTML WITH EMBEDDED L
+
+For building web-based applications, L has a mode where the input
+can be HTML with embedded L code (which we call C<Lhtml>).
+This works in a way similar to PHP.
+To invoke this mode, the input file must end in .lhtml:
+
+    L [options] home.lhtml
+
+All text in home.lhtml is passed through to stdout except
+that anything between <? and ?> is taken to be one or more
+L statements that are replaced by whatever that L code outputs,
+and anything between <?= and ?> is taken to be a single L
+expression that is replaced by its value.
+All L code is compiled at the global scope, so you can include L
+variable declarations early in the Lhtml document and reference them
+later.
+
+Here's an example that iterates over an array of key/value pairs
+and formats them into a rudimentary table:
+
+    <? key_value_pair row, rows[]; ?>
+    <html>
+    <body>
+    <p>This is a table of data</p>
+
+    <table>
+    <? rows = get_data();
+       foreach (row in rows) { ?>
+         <tr>
+	     <td><?= row.key ?></td>
+	     <td><?= row.value ?></td>
+         </tr>
+    <? } ?>
+    </table>
+
+    </body>
+    </html>
+
 =head1 NAME SCOPING
 
 Variables must be declared before use, or a compile-time error

@@ -2077,26 +2077,43 @@ EvalFileCallback(
     return result;
 }
 
-/* If the path ends in .l assume it's meant to contain L code, in which case
-   ensure that the file contents are preceded by #lang L.  Return a Tcl_Obj
-   containing the potentially wrapped string. */
+/*
+ * Handle L and html/L code.
+ *
+ * If the path ends in .l, precede the file contents with #lang L.
+ * If the path ends in .lhtml, with #lang Lhtml.
+ *
+ * Return a Tcl_Obj containing the potentially wrapped string.
+ */
 static Tcl_Obj *
 FsMaybeWrapInLLang(
     Tcl_Interp *interp,
     Tcl_Obj *fileContents,
     const char *path)
 {
-    int len = strlen(path);
+    int flen;
+    int plen = strlen(path);
+    char *s = Tcl_GetStringFromObj(fileContents, &flen);
+    char *append = "";
+    Tcl_Obj *newContents;
 
-    if (((len >= 2) && (path[len-2] == '.') && (path[len-1] == 'l')) ||
+    /* Append a newline if not already there. */
+    if (flen && (s[flen-1] != '\n')) append = "\n";
+
+    if (((plen >= 2) && (path[plen-2] == '.') && (path[plen-1] == 'l')) ||
 	(L && L->global->forceL)) {
-	Tcl_Obj *newContents = Tcl_ObjPrintf(
-	      "#lang L --lineadj=-1\n%s\n#lang tcl",
-	      Tcl_GetString(fileContents));
+	newContents = Tcl_ObjPrintf("#lang L --lineadj=-1\n%s%s#lang tcl",
+				    s, append);
 	Tcl_DecrRefCount(fileContents);
 	Tcl_IncrRefCount(newContents);
 	fileContents = newContents;
 	if (L) L->global->forceL = 0;
+    } else if ((plen >= 6) && !strcmp(path+plen-6, ".lhtml")) {
+	newContents = Tcl_ObjPrintf("#lang Lhtml --lineadj=-1\n%s%s#lang tcl",
+				    s, append);
+	Tcl_DecrRefCount(fileContents);
+	Tcl_IncrRefCount(newContents);
+	fileContents = newContents;
     }
     return fileContents;
 }

@@ -154,6 +154,114 @@ lfile_1_6();
 in L
 }
 
+test lhtml-1 {test lhtml in a .lhtml file} -setup {
+	set fname [makeFile {<?puts(nonewline: "line=${__LINE__} file=${__FILE__}");?>
+line2
+<?
+int lhtml1 = 4;
+?>
+line4
+<?unless (__LINE__ == 7) puts ("bad __LINE__=${__LINE__}");
+while (lhtml1--) puts(nonewline: "[${lhtml1}]");
+unless (__LINE__ == 9) puts ("bad __LINE__=${__LINE__}");
+?>
+this with <?= "an L string" ?> inline
+<?=__LINE__?>
+} lhtml-1.lhtml]
+} -body {
+#lang L
+void lhtml_1()
+{
+	int	ret;
+	string	got;
+	string	tclsh = interpreter();
+	string	want = <<'END'
+line=1 file=lhtml-1.lhtml
+line2
+
+line4
+[3][2][1][0]
+this with an L string inline
+12
+END
+	ret = system({tclsh, "lhtml-1.lhtml"}, undef, &got, undef);
+	unless (ret == 0) puts("bad 1");
+	unless (got == want) puts("bad 2 '${got}'");
+}
+lhtml_1();
+} -output {}
+
+test lhtml-2 {test #lang Lhtml} -body {
+#lang Lhtml --line=1
+line <?=__LINE__?> of Lhtml
+#lang tcl
+puts "tcl code"
+#lang Lhtml
+more Lhtml
+<?puts(nonewline: 1+2+3);?>
+} -output {line 1 of Lhtml
+tcl code
+more Lhtml
+6
+}
+
+test lhtml-3 {test errors in Lhtml document} -setup {
+	set fname [makeFile {<?puts(1+"bad1");?>
+<?puts(1+"bad2");
+puts(1+"bad3");
+?>
+line5
+<?
+puts(1+"bad4");
+?>
+} lhtml-3.lhtml]
+} -body {
+#lang L
+void lhtml_3()
+{
+	int	ret;
+	string	err, out;
+	string	tclsh = interpreter();
+	string	want = <<'END'
+lhtml-3.lhtml:1: L Error: expected type int or float but got string in arithmetic operator
+lhtml-3.lhtml:2: L Error: expected type int or float but got string in arithmetic operator
+lhtml-3.lhtml:3: L Error: expected type int or float but got string in arithmetic operator
+lhtml-3.lhtml:7: L Error: expected type int or float but got string in arithmetic operator
+END
+	ret = system({tclsh, "lhtml-3.lhtml"}, undef, &out, &err);
+	if (ret == 0) puts("bad 1");
+	unless (err =~ /${want}/) puts("bad 2 '${err}'");
+}
+lhtml_3();
+} -output {}
+
+test lhtml-4 {test lhtml document parsing} -body {
+# This test is from Oscar. Check that the Lhtml delims in the
+# embedded code are not mistaken for the real delims.
+#lang Lhtml
+<html>
+<head>
+<title>The TITLE</title>
+</head>
+<body>
+<h1>Header: <? printf("%s <? foo ?>", 2 + 2); ?></h1>
+</body>
+</html>
+} -output {<html>
+<head>
+<title>The TITLE</title>
+</head>
+<body>
+<h1>Header: 4 <? foo ?></h1>
+</body>
+</html>
+}
+
+test lhtml-5 {test premature EOF in lhtml document} -body {
+#lang Lhtml --line=1
+<? // no ending delim
+} -returnCodes error -result {premature EOF in Lhtml document}
+
 test parse-1.0 {Test parsing an empty L script} -body {
 #lang L --line=1
 }

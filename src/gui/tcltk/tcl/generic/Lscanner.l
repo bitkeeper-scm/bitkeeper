@@ -64,6 +64,7 @@ private Include	include_stk[INCLUDE_STACK_SZ+1];
 private Tcl_HashTable *include_table = NULL;
 private	int	interpol_top = -1;
 private	int	interpol_stk[INTERPOL_STACK_SZ+1];
+private int	in_lhtml = 0;	// Lhtml mode
 
 #define STRBUF_START(beg)			\
 	do {					\
@@ -451,6 +452,33 @@ canonical_num(char *num)
 	"->"		return T_POINTS;
 	":"		return T_COLON;
 	"?"		return T_QUESTION;
+	"<?"=?		{
+				/*
+				 * <? and <?= start a script or expr
+				 * inside of an lhtml document but is a
+				 * syntax error otherwise.
+				 */
+				unless (in_lhtml) {
+					undo_yy_user_action();
+					REJECT;
+				}
+				// Return a token for <?= but ignore <?
+				if (yyleng == 3) {
+					return T_LHTML_START;
+				}
+	}
+	"?>"		{
+				/*
+				 * ?> marks the end of a script or expr
+				 * inside of an lhtml document but is a
+				 * syntax error otherwise.
+				 */
+				unless (in_lhtml) {
+					undo_yy_user_action();
+					REJECT;
+				}
+				yyterminate();
+	}
 	"and"		{
 				L_err("'and','or','xor','not' are "
 				      "unimplemented reserved words");
@@ -1108,6 +1136,18 @@ extract_re_delims(char c)
 	} else {
 		re_end_delim = c;
 	}
+}
+
+void
+L_lex_begLhtml()
+{
+	in_lhtml = 1;
+}
+
+void
+L_lex_endLhtml()
+{
+	in_lhtml = 0;
 }
 
 /*
