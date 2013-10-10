@@ -96,7 +96,7 @@ cmd_pull_part2(int ac, char **av)
 	int	gzip = 0, verbose = 1, triggers_failed = 0;
 	int	rtags, update_only = 0, delay = -1;
 	char	*port = 0;
-	char	*keys = bktmp(0, "pullkey");
+	char	*keys = bktmp(0);
 	char	*makepatch[10] = { "bk", "makepatch", 0 };
 	char	*rev = 0;
 	char	*p;

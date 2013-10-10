@@ -1260,10 +1260,13 @@ int	stripdel_setMeta(sccs *s, int stripBranches, int *count);
 int     http_connect(remote *r);
 int	http_send(remote *, char *msg, size_t len, size_t ex, char *ua);
 int	http_fetch(remote *r, char *file);
-char	*bktmp(char *buf, const char *template);
+char	*_bktmp(char *file, int line, char *buf);
+char	*_bktmp_dir(char *file, int line, char *buf);
+char	*_bktmp_local(char *file, int line, char *buf);
+#define	bktmp(buf) _bktmp(__FILE__, __LINE__, buf)
+#define	bktmp_dir(buf) _bktmp_dir(__FILE__, __LINE__, buf)
+#define	bktmp_local(buf) _bktmp_local(__FILE__, __LINE__, buf)
 void	bktmpenv(void);
-char	*bktmpdir(char *buf, const char *template);
-char	*bktmp_local(char *buf, const char *template);
 void	bktmpcleanup(void);
 int	smallTree(int threshold);
 char	*strdup_tochar(const char *s, int c);

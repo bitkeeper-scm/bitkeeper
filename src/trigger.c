@@ -347,7 +347,7 @@ runTriggers(int remote, char *event, char *what, char *when, char **triggers)
 
 	if (proto) fputs("@TRIGGER INFO@\n", out);
 
-	bktmp(output, "trigger");
+	bktmp(output);
 	EACH(triggers) {
 		// XXX - warn them about permissions?
 		unless (executable(triggers[i])) continue;

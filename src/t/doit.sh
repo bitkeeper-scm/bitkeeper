@@ -330,7 +330,7 @@ setup_env()
 		case "`bk gethost`" in
 		    debian50.bitmover.com) _BKFILE_REGRESSIONS=no;;
 		    debian60-64.bitmover.com) _BKFILE_REGRESSIONS=no;;
-		    aix.bitmover.com) _BKFILE_REGRESSIONS=no;;
+		    aix5.bitmover.com) _BKFILE_REGRESSIONS=no;;
 		    win2008.bitmover.com) _BKFILE_REGRESSIONS=no;;
 		    *) _BKFILE_REGRESSIONS=yes;;
 		esac

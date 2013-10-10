@@ -626,7 +626,7 @@ missing(off_t *byte_count)
 err:		send_eof(SFIO_LOOKUP);
 		return;
 	}
-	tmpf = bktmp(0, "bp_missing");
+	tmpf = bktmp(0);
 	unless (f = fopen(tmpf, "w")) {
 		perror(tmpf);
 		free(tmpf);

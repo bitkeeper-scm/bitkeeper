@@ -116,6 +116,7 @@ print_title(char *r1, char *r2)
 int
 gnupatch_main(int ac, char **av)
 {
+	char here[MAXPATH];
 	char buf[MAXPATH * 3];
 	char tmpdir[MAXPATH];
 	char *path0, *path1, *rev1, *path2, *rev2;
@@ -123,8 +124,8 @@ gnupatch_main(int ac, char **av)
 	char *diff_style = "u";
 	char diff_opts[50] ;
 	char *diff_av[] = { "diff", diff_opts, "a", "b", 0 };
-	char *clean_av[] = { "rm", "-rf", tmpdir, 0 };
 	int  c, header = 1, fix_mod_time = 0, got_start_header = 0;
+	int  n = 0;
 	FILE *pipe;
 	MDBM *db;
 
@@ -147,16 +148,17 @@ gnupatch_main(int ac, char **av)
                 fprintf(stderr, "gnupatch: cannot find package root.\n");
                 exit(1);
         }
+	strcpy(here, proj_cwd());
 
-	bktmpdir(tmpdir, "patch");
+	bktmp_dir(tmpdir);
 	sprintf(buf, "%s/a", tmpdir);
 	if (mkdirp(buf)) {
-                fprintf(stderr, "gnupatch: cannot mkdir%s.\n", buf);
+                fprintf(stderr, "gnupatch: cannot mkdir %s.\n", buf);
 		exit(1);
 	}
 	sprintf(buf, "%s/b", tmpdir);
 	if (mkdirp(buf)) {
-                fprintf(stderr, "gnupatch: cannot mkdir%s.\n", buf);
+                fprintf(stderr, "gnupatch: cannot mkdir %s.\n", buf);
 		exit(1);
 	}
 	db = mdbm_open(NULL, 0, 0, GOOD_PSIZE); /* db for null file */
@@ -169,10 +171,12 @@ gnupatch_main(int ac, char **av)
 		path0 = buf;
 		path1 = strchr(buf, BK_FS);
 		unless (path1) {
-		err:
+err:
 			fprintf(stderr, 
 "gnupatch ERROR: bad input format expected: <cur>%c<start>%c<rev>%c<end>%c<rev>\n",
 			    BK_FS, BK_FS, BK_FS, BK_FS);
+			assert(isdir(tmpdir));
+			rmtree(tmpdir);
 			exit(1);
 		}
 		assert(path1);
@@ -197,6 +201,13 @@ gnupatch_main(int ac, char **av)
 		 */
 		process(path0, path1, rev1, path2, rev2, tmpdir,
 							fix_mod_time, db);
+		n++;
+	}
+
+	unless (n) {
+		fprintf(stderr, "%s: no revs on stdin\n", prog);
+		rmtree(tmpdir);
+		exit(1);
 	}
 
 	chdir(tmpdir);
@@ -228,7 +239,12 @@ gnupatch_main(int ac, char **av)
 	mdbm_close(db);
 	if (cset1) free(cset1);
 	if (cset2) free(cset2);
-	chdir("/");
-	spawnvp(_P_WAIT, "rm", clean_av);
+	/*
+	 * proj_cd2root() will get confused by the tmp tree so
+	 * use the saved location or we'll litter this tmpdir.
+	 */
+	chdir(here);
+	assert(isdir(tmpdir));
+	rmtree(tmpdir);
 	return (0);
 }

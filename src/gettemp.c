@@ -52,62 +52,76 @@ bktmpenv(void)
 	putenv(p);
 }
 
+/*
+ * Generate an unique tmpfile:
+ *    <dir>/bk-<srcfile>;<lineno>_XXXXXX
+ * ex: /tmp/bk_slib;3323_234643
+ *
+ * filename written to 'buf'
+ * returns -1 on failure
+ */
+private int
+getTempfile(char *dir, char *file, int line, char **buf)
+{
+	int	fd, len;
+	char	*freeme = 0;
+	char	bn[64];
+
+	strncpy(bn, basenm(file), sizeof(bn));
+	bn[sizeof(bn)-1] = 0;
+	len = strlen(bn);
+	if ((len > 2) && streq(bn+len-2, ".c")) bn[len-2] = 0;
+
+	if (*buf) {
+		sprintf(*buf, "%s/bk_%s;%d_XXXXXX", dir, bn, line);
+	} else {
+		*buf = freeme = aprintf("%s/bk_%s;%d_XXXXXX", dir, bn, line);
+	}
+	fd = mkstemp(*buf);
+	if (fd >= 0) {
+		close(fd);
+		tmpfiles = addLine(tmpfiles, strdup(*buf));
+		return (0);
+	} else {
+		*buf = 0;
+		FREE(freeme);
+		return (-1);
+	}
+}
+
+/*
+ * allocate a tmpfile is the default directory
+ */
 char *
-bktmp(char *buf, const char *template)
+_bktmp(char *file, int line, char *buf)
 {
 	int	i;
-	char	*tmp, *p;
 
 	unless (tmpdirs_len) setup_tmpdirs();
-	unless (template) template = "none";
-	tmp = strdup(template);
-	if (strlen(tmp) > 64) tmp[64] = 0;
-	while (p = strchr(tmp, '?')) *p = '_';
-	unless (buf) buf = malloc(tmpdirs_max + strlen(tmp) + 12);
-
 	for (i = 0; i < tmpdirs_len; i++) {
-		int	fd;
-		sprintf(buf, "%s/bk_%s_XXXXXX", tmpdirs[i], tmp);
-		fd  = mkstemp(buf);
-		if (fd != -1) {
-			tmpfiles = addLine(tmpfiles, strdup(buf));
-			close(fd);
-			free(tmp);
-			return(buf);
-		}
+		unless (getTempfile(tmpdirs[i], file, line, &buf)) return (buf);
 	}
-	perror("mkstemp() failed");
-	buf[0] = 0;
-	free(tmp);
+	fprintf(stderr, "_bktmp(%s, %d) failed", file, line);
 	return (0);
 }
 
+/*
+ * Allocate a temporary directory
+ */
 char *
-bktmpdir(char *buf, const char *template)
+_bktmp_dir(char *file, int line, char *buf)
 {
-	int	i, c, pid = getpid();
+	int	i;
 
 	unless (tmpdirs_len) setup_tmpdirs();
-	unless (template) template = "none";
-	unless (buf) buf = malloc(tmpdirs_max + strlen(template) + 12);
-
 	for (i = 0; i < tmpdirs_len; i++) {
-		for(c=0; c < INT_MAX; c++) {
-			sprintf(buf, "%s/bk_%s_%d%d",
-					tmpdirs[i], template, pid, c);
-			if (mkdir(buf, 0777) == -1) {
-				if (errno == EEXIST) {
-					continue;
-				} else {
-					break;
-				}
-			}
-			tmpfiles = addLine(tmpfiles, strdup(buf));
+		unless (getTempfile(tmpdirs[i], file, line, &buf)) {
+			unlink(buf);
+			if (mkdir(buf, 0777)) break;
 			return (buf);
 		}
 	}
-	perror("mkdir() failed");
-	buf[0] = 0;
+	fprintf(stderr, "_bktmp_dir(%s, %d) failed", file, line);
 	return (0);
 }
 
@@ -117,29 +131,11 @@ bktmpdir(char *buf, const char *template)
  * file and so MUST be in the bitkeeper tree.
  * Assumes we are in the project root.
  */
-char	*
-bktmp_local(char *buf, const char *template)
+char *
+_bktmp_local(char *file, int line, char *buf)
 {
-	int	fd;
-	char	*tmp;
-
-	unless (template) template = "none";
-	tmp = strdup(template);
-	if (strlen(tmp) > 64) tmp[64] = 0;
-	unless (buf) buf = malloc(strlen(BKTMP) + strlen(tmp) + 17);
-	sprintf(buf, BKTMP "/bklocal_%s_XXXXXX", tmp);
-	free(tmp);
-	fd = mkstemp(buf);
-	if (fd != -1) {
-		tmpfiles = addLine(tmpfiles, strdup(buf));
-		close(fd);
-		return (buf);
-	} else {
-		char	*buf;
-		buf = aprintf("bktmp_local(, %s), failed", template);
-		perror(buf);
-		free(buf);
-	}
+	unless (getTempfile(BKTMP, file, line, &buf)) return (buf);
+	fprintf(stderr, "_bktmp_local(%s, %d) failed", file, line);
 	return (0);
 }
 

@@ -309,7 +309,7 @@ passes(opts *opts)
 	 * Pass 1 - move files to RENAMES and/or build up rootDB
 	 */
 	opts->pass = 1;
-	bktmp(flist, "respass1");
+	bktmp(flist);
 	if (sysio(0, flist, 0, "bk", "sfiles", SYS)) {
 		perror("sfiles list");
 err:		if (p) fclose(p);

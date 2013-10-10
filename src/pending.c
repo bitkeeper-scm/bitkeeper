@@ -23,7 +23,7 @@ $each(:C:){  (:C:)\\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\\n";
 	}
 	if (av[optind]) chdir(av[optind]);
 	nested = bk_nested2root(standalone);
-	tmp = bktmp(0, "pending");
+	tmp = bktmp(0);
 	unless (nested) {
 		sysio(0, tmp, 0, "bk", "sfiles", "-pA", SYS);
 	} else {

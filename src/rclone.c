@@ -299,7 +299,7 @@ rclone(char **av, remote *r, char **envVar)
 	safe_putenv("BK_CSETS=%s", revs);
 	if (rc = trigger(av[0], "pre"))  goto done;
 	if (rc = rclone_part1(r, envVar))  goto done;
-	if (bp_hasBAM()) bp_keys = bktmp(0, "bpkeys");
+	if (bp_hasBAM()) bp_keys = bktmp(0);
 	rc = rclone_part2(av, r, envVar, bp_keys);
 	if (bp_keys) {
 		unless (rc) {
@@ -388,7 +388,7 @@ send_part1_msg(remote *r, char **envVar)
 	FILE	*f;
 	int	rc;
 
-	bktmp(buf, "rclone");
+	bktmp(buf);
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, envVar, r, opts.sendenv_flags);
@@ -531,7 +531,7 @@ send_sfio_msg(remote *r, char **envVar)
 	u32	flags = opts.sendenv_flags |
 		    (clone_sfioCompat(0) ? 0 : SENDENV_SENDFMT);
 
-	bktmp(buf, "rclone");
+	bktmp(buf);
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, envVar, r, flags);
@@ -585,7 +585,7 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	u32	extra = 1, m = 0, n;
 	char	msgfile[MAXPATH];
 
-	bktmp(msgfile, "pullbpmsg3");
+	bktmp(msgfile);
 	f = fopen(msgfile, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
@@ -726,7 +726,7 @@ send_sfio(remote *r, int gzip)
 	char	*compat = clone_sfioCompat(0) ? "-C" : "";
 	char	buf[200] = { "" };
 
-	tmpf = bktmp(0, "rclone_sfiles");
+	tmpf = bktmp(0);
 	status = systemf("bk _sfiles_clone %s > '%s'", marg, tmpf);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (0);
 

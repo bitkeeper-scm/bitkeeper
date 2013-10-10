@@ -61,6 +61,7 @@ dotest()
 		bk "$@" XYZ < /dev/null
 		bk "$@" "" <  /dev/null
 		bk "$@" --bad-long <  /dev/null
+		echo XYZ > .STDIN
 		bk "$@" - < .STDIN
 	) > OUT 2>&1
 	find . -type f -name 'core*' > XXX
@@ -81,7 +82,6 @@ dotest()
 BK_EDITOR=cat
 EDITOR=$BK_EDITOR
 export BK_EDITOR EDITOR
-echo XYZ > .STDIN
 nested .product
 while read i
 do

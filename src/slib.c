@@ -4248,7 +4248,7 @@ loadRepoConfig(MDBM *DB, char *root)
 	if (s = sccs_init(config, SILENT|INIT_MUSTEXIST|INIT_WACKGRAPH)) {
 		int	ret = 0;
 
-		tmpf = bktmp(0, 0);
+		tmpf = bktmp(0);
 		if (sccs_get(s, 0, 0, 0, 0, SILENT|PRINT|GET_EXPAND, tmpf)) {
 			perror(tmpf);
 			ret = 1;
@@ -7832,7 +7832,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		s->state |= S_WARNED;
 		return (-1);
 	}
-	tmpfile = bktmp(0, "getdiffs");
+	tmpfile = bktmp(0);
 	openOutput(s, encoding, printOut, &out);
 	setmode(fileno(out), O_BINARY); /* for win32 EOLN_NATIVE file */
 	unless (lbuf = fopen(tmpfile, "w+")) {
@@ -9003,7 +9003,7 @@ _hasDiffs(sccs *s, ser_t d, u32 flags, int inex, pfile *pf)
 	 */
 	if (UUENCODE(s)) {
 		tmpfile = 1;
-		unless (bktmp(sbuf, "getU")) RET(-1);
+		unless (bktmp(sbuf)) RET(-1);
 		name = strdup(sbuf);
 		if (uuexpand_gfile(s, name)) {
 			verbose((stderr, "can't open %s\n", s->gfile));
@@ -9350,7 +9350,7 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	 */
 	if (isRegularFile(s->mode)) {
 		if (UUENCODE(s)) {
-			unless (bktmp(new, "getU")) return (-1);
+			unless (bktmp(new)) return (-1);
 			if (uuexpand_gfile(s, new)) {
 				unlink(new);
 				return (-1);
@@ -9375,7 +9375,7 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	flags =  GET_ASCII|SILENT|PRINT;
 	if (expandKeyWord) flags |= GET_EXPAND;
 	if (isRegularFile(MODE(s, d)) && !BAM(s)) {
-		unless (bktmp(old, "get")) return (-1);
+		unless (bktmp(old)) return (-1);
 		if (sccs_get(s, pf->oldrev, pf->mRev, pf->iLst, pf->xLst,
 		    flags, old)) {
 			unlink(old);
@@ -9436,14 +9436,14 @@ diff_g(sccs *s, pfile *pf, char **tmpfile)
 	switch (diff_gmode(s, pf)) {
 	    case 0: 		/* no mode change */
 		if (!isRegularFile(s->mode)) return 1;
-		*tmpfile  = bktmp(tmpname, "diffg1");
+		*tmpfile  = bktmp(tmpname);
 		assert(*tmpfile);
 		return (diff_gfile(s, pf, 0, *tmpfile));
 	    case 2:		/* meta mode field changed */
 		return 0;
 	    case 3:		/* path changed */
 	    case 1:		/* file type changed */
-		*tmpfile  = bktmp(tmpname, "diffg2");
+		*tmpfile  = bktmp(tmpname);
 		assert(*tmpfile);
 		if (diff_gfile(s, pf, 0, *tmpfile) == -1) return (-1);
 		return 0;
@@ -9645,7 +9645,7 @@ sccs_clean(sccs *s, u32 flags)
 		return (2);
 	}
 
-	unless (bktmp(tmpfile, "diffg")) return (1);
+	unless (bktmp(tmpfile)) return (1);
 	/*
 	 * hasDiffs() is faster.
 	 */
@@ -14397,7 +14397,7 @@ doDiff(sccs *s, df_opt *dop, char *leftf, char *rightf,
 	} else {
 		strcpy(spaces, "=====");
 	}
-	unless (bktmp(diffFile, "diffs")) return (-1);
+	unless (bktmp(diffFile)) return (-1);
 	dop->ignore_trailing_cr = 1;
 	diff_files(leftf, rightf, dop, &dc, diffFile);
 	if (dop->out_diffstat) {
@@ -14542,7 +14542,7 @@ mkDiffTarget(sccs *s,
 		strcpy(target, DEVNULL_RD);
 		return (0);
 	}
-	bktmp(target, "mkDiffTarget");
+	bktmp(target);
 
 	if ((streq(rev, "edited") || streq(rev, "?")) && !findrev(s, rev)) {
 		assert(HAS_GFILE(s));

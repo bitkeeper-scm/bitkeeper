@@ -60,7 +60,7 @@ hostme_main(int ac, char **av)
 	public_key[i] = 0;
 	close(fd);
 
-	unless (hostme_info = bktmp(0, 0)) {
+	unless (hostme_info = bktmp(0)) {
 		fprintf(stderr, "Can't allocate temp file\n");
 		usage();
 	}

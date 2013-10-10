@@ -547,7 +547,7 @@ send_clone_msg(remote *r, char **envVar)
 	FILE    *f;
 	int	rc = 1;
 
-	bktmp(buf, "clone");
+	bktmp(buf);
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, envVar, r, SENDENV_NOREPO);
@@ -1272,7 +1272,7 @@ clone_finish(remote *r, retrc status, char **envVar)
 	char	buf[MAXPATH];
 
 	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) return (RET_ERROR);
-	bktmp(buf, "clone_finish");
+	bktmp(buf);
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
@@ -2044,7 +2044,7 @@ clonemod_part1(remote **r)
 		char	buf[MAXPATH];
 
 		if (bkd_connect(*r, 0)) return (RET_ERROR);
-		bktmp(buf, "clonebasenm");
+		bktmp(buf);
 		f = fopen(buf, "w");
 		assert(f);
 		sendEnv(f, 0, *r, SENDENV_NOREPO);

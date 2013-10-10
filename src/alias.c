@@ -223,7 +223,7 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 		goto write;
 
 	}
-	cmtfile = bktmp(0, "aliascmt");
+	cmtfile = bktmp(0);
 	fcmt = fopen(cmtfile, "wb");
 	assert(fcmt);
 	if (streq(cmd, "new") || streq(cmd, "set")) {
@@ -415,7 +415,7 @@ aliasdb_init(nested *n, project *p, char *rev, int pending, int no_diffs)
 			}
 			aliasdb = hash_fromFile(0, s->gfile);
 		} else {
-			bktmp(tmp, "aliasdb");
+			bktmp(tmp);
 			if (sccs_get(s, csetrev, 0,0,0, SILENT|PRINT, tmp)) {
 				error("%s: aliases get failed: rev %s\n",
 				    prog, csetrev ? csetrev : "+");
@@ -554,7 +554,7 @@ dbWrite(nested *n, hash *aliasdb, char *comment, int commit)
 	sprintf(buf, "bk -?BK_NO_REPO_LOCK=YES -P delta -aqY'%s' %s", comment, ALIASES);
 	if (ret = system(buf)) return (ret);
 	if (commit) {
-		tmpfile = bktmp(0, "cmt");
+		tmpfile = bktmp(0);
 		sprintf(buf,
 		    "bk -P sfiles -pA %s |"
 		    "bk -P sccslog -A -f -d'$each(:C:){(:C:)\n}' - >'%s'",

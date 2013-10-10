@@ -52,7 +52,7 @@ usage:		fprintf(stderr, "Usage: bk kill URL <or> bk kill -SIG PID\n");
 		fprintf(stderr, "kill: failed to connect to %s\n", av[1]);
 		return (1);
 	}
-	tmpf = bktmp(0, 0);
+	tmpf = bktmp(0);
 	f = fopen(tmpf, "w");
 	assert(f);
 	sendEnv(f, 0, r, SENDENV_NOREPO|SENDENV_NOLICENSE);
