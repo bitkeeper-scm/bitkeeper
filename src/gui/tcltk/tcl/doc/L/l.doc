@@ -2040,7 +2040,7 @@ with any output the command writes to stderr.
 
 Return the FILE handle on success, or undef on error.
 
-=proto void printf(string fmt, ...args)
+=proto int printf(string fmt, ...args)
 
 Format arguments and print to stdout, as in printf(3).
 Return 0 on success, -1 on error.

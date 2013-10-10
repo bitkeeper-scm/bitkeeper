@@ -13811,56 +13811,36 @@ test typecheck-11.1 {check FMT errors} -body {
 #lang L --line=1
 void typeck_11_1_foo0(_argused FMT fmt, _argused ...args) {}
 void typeck_11_1_foo1(_argused int a, _argused FMT fmt, _argused ...args) {}
-void typeck_11_1_foo2(_argused int a, _argused int b, _argused FMT fmt,
-		      _argused ...args) {}
 void typecheck_11_1()
 {
-	typeck_11_1_foo0("fmt", "bad");
-	typeck_11_1_foo0("fmt", "bad", "bad");
-
-	typeck_11_1_foo1(1, "fmt", "bad");
-	typeck_11_1_foo1(1, "fmt", "bad", "bad");
-
-	typeck_11_1_foo2(1, 2, "fmt", "bad");
-	typeck_11_1_foo2(1, 2, "fmt", "bad", "bad");
-	typeck_11_1_foo2(1, 2, "fmt", "bad", "bad", "bad");
-
 	typeck_11_1_foo0("%s");
-	typeck_11_1_foo0("%s", "bad", "bad");
-
 	typeck_11_1_foo0("%s %s");
 	typeck_11_1_foo0("%s %s", "bad");
-	typeck_11_1_foo0("%s %s", "bad", "bad", "bad");
-
-	typeck_11_1_foo0("%%s", "bad");
 	typeck_11_1_foo0("%%s %s");
-	typeck_11_1_foo0("%s %s", "bad");
-	typeck_11_1_foo0("%s %s", "bad", "bad", "bad");
+
+	typeck_11_1_foo1(1, "%s");
+	typeck_11_1_foo1(1, "%s %s");
+	typeck_11_1_foo1(1, "%s %s", "bad");
+	typeck_11_1_foo1(1, "%%s %s");
 
 	// With some unicode.
-	typeck_11_1_foo0("זו ה%%sשפה שלנו", "bad");
+	typeck_11_1_foo0("זו ה%sשפה שלנו");
 	typeck_11_1_foo0("%s זו ה%%sשפה שלנו");
 
+	typeck_11_1_foo0(1);  // format arg not a string
 }
 typecheck_11_1();
-} -returnCodes error -match regexp -result {.*7: L Warning: too many format specifiers
-.*8: L Warning: too many format specifiers
-.*10: L Warning: too many format specifiers
-.*11: L Warning: too many format specifiers
-.*13: L Warning: too many format specifiers
-.*14: L Warning: too many format specifiers
-.*15: L Warning: too many format specifiers
-.*17: L Warning: too few format specifiers
-.*18: L Warning: too many format specifiers
-.*20: L Warning: too few format specifiers
-.*21: L Warning: too few format specifiers
-.*22: L Warning: too many format specifiers
-.*24: L Warning: too many format specifiers
-.*25: L Warning: too few format specifiers
-.*26: L Warning: too few format specifiers
-.*27: L Warning: too many format specifiers
-.*30: L Warning: too many format specifiers
-.*31: L Warning: too few format specifiers
+} -returnCodes error -match regexp -result {.*5: L Warning: bad format specifier
+.*6: L Warning: bad format specifier
+.*7: L Warning: bad format specifier
+.*8: L Warning: bad format specifier
+.*10: L Warning: bad format specifier
+.*11: L Warning: bad format specifier
+.*12: L Warning: bad format specifier
+.*13: L Warning: bad format specifier
+.*16: L Warning: bad format specifier
+.*17: L Warning: bad format specifier
+.*19: L Error: parameter 1 has incompatible type
 }
 
 test typecheck-11.2 {check FMT errors 2} -body {
@@ -13894,6 +13874,34 @@ void typecheck_11_4()
 	unless (s == "זו הisשפה שלנו meaningless") puts("bad 1");
 }
 typecheck_11_4();
+} -output {}
+
+test typecheck-11.5 {check more legal FMT cases} -body {
+#lang L
+void typecheck_11_5()
+{
+	string	a[] = { "1", "2", "3" };
+
+	/*
+	 * These are legal cases where the number of %'s in the format
+	 * arg doesn't equal the number of subsequent args.
+	 */
+
+	unless (sprintf("%1$d %1$x", 16) == "16 10") puts("bad 1");
+	unless (sprintf("%*s", 6, "123") == "   123") puts("bad 2");
+	unless (sprintf("%.*s", 3, "1234567890") == "123") puts("bad 3");
+	unless (sprintf("%*.*s", 3, 5, "1234567890") == "12345") puts("bad 4");
+	unless (sprintf("%%s") == "%s") puts("bad 5");
+
+	/*
+	 * Here, the number of actuals isn't known at comile time so
+	 * no check should be done and therefore no compile-time error
+	 * should occur.
+	 */
+
+	unless (sprintf("%s %s %s", (expand)a) == "1 2 3") puts("bad 10");
+}
+typecheck_11_5();
 } -output {}
 
 test fnptr-1 {function pointers 1} -body {

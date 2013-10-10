@@ -171,36 +171,38 @@ L_typeck_fncall(VarDecl *formals, Expr *call)
  *    printf(FMT format, ...args)
  * by checking that the number of % format specifiers in "format" matches the
  * number of actuals in ...args.  We can do this only if "format" is a
- * string constant.
+ * string constant and there are no (expand) operators in the args list.
  */
 private void
 typeck_fmt(Expr *actuals)
 {
-	char	*s;
-	int	nargs = -1, nperc = 0;
+	int	i, nargs = 0;
 	Expr	*a;
+	Tcl_Obj	*obj, **objv;
 
 	unless (isconst(actuals) && isstring(actuals)) return;
 
-	for (s = actuals->str; *s; ++s) {
-		switch (*s) {
-		    case '%':
-			if (s[1] && (s[1] == '%')) {
-				++s;
-			} else {
-				++nperc;
-			}
-			break;
-		    default:
-			break;
-		}
+	for (a = actuals->next; a; a = a->next) {
+		if (a->op == L_OP_EXPAND) return;
+		++nargs;
 	}
-	for (a = actuals; a; a = a->next) ++nargs;
 
-	unless (nperc == nargs) {
-		L_warnf(actuals, "too %s format specifiers",
-			(nperc < nargs) ? "many" : "few");
+	obj  = Tcl_NewObj();
+	objv = (Tcl_Obj **)ckalloc(nargs * sizeof(Tcl_Obj *));
+	for (i = 0; i < nargs; ++i) {
+		objv[i] = Tcl_NewIntObj(1);
+		Tcl_IncrRefCount(objv[i]);
 	}
+	if (Tcl_AppendFormatToObj(L->interp, obj, actuals->str,
+				  nargs, objv) == TCL_ERROR) {
+		Tcl_ResetResult(L->interp);
+		L_warnf(actuals, "bad format specifier");
+	}
+	Tcl_DecrRefCount(obj);
+	for (i = 0; i < nargs; ++i) {
+		Tcl_DecrRefCount(objv[i]);
+	}
+	ckfree((char *)objv);
 }
 
 /*

@@ -731,10 +731,14 @@ popen_(poly cmd, string mode, void &stderr_cb(string cmd, FILE f), int flags)
 	}
 }
 
-void
-printf(FMT fmt, ...args)
+int
+printf(_argused FMT fmt, _argused ...args)
 {
-	puts(nonewline:, format(fmt, (expand)args));
+	if (catch("puts -nonewline [format $fmt {*}$args]")) {
+		return (-1);
+	} else {
+		return (0);
+	}
 }
 
 string
@@ -777,7 +781,7 @@ perror(...args)
 extern int ::L_putenv_bug;
 
 string
-putenv(FMT var_fmt, ...args)
+putenv(FMT var_fmt, _argused ...args)
 {
 	string	ret;
 
@@ -797,10 +801,14 @@ putenv(FMT var_fmt, ...args)
 		}
 	}
 	if (::L_putenv_bug && ($2[0] == "=")) {
-		ret = set("::env(${$1})", format("=${$2}", (expand)args));
+		if (catch("set ::env(${$1}) [format =${$2} {*}$args]", &ret)) {
+			return (undef);
+		}
 		undef(ret[0]);  // strip leading =
 	} else {
-		ret = set("::env(${$1})", format($2, (expand)args));
+		if (catch("set ::env(${$1}) [format {${$2}} {*}$args]", &ret)) {
+			return (undef);
+		}
 	}
 	return (ret);
 }
@@ -824,9 +832,15 @@ sleep(float seconds)
 }
 
 string
-sprintf(FMT fmt, ...args)
+sprintf(_argused FMT fmt, _argused ...args)
 {
-	return (format(fmt, (expand)args));
+	string	ret;
+
+	if (catch("format $fmt {*}$args", &ret)) {
+		return (undef);
+	} else {
+		return (ret);
+	}
 }
 
 int

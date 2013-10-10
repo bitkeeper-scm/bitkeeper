@@ -542,11 +542,9 @@ test die-2 {test die errors} -body {
 void die2()
 {
 	die("%s");
-	die("%s", "bad", "bad");
 }
 die2();
-} -returnCodes error -match regexp -result {.*3: L Warning: too few format specifiers
-.*4: L Warning: too many format specifiers
+} -returnCodes error -match regexp -result {.*3: L Warning: bad format specifier
 }
 
 test dirname-1 {test dirname} -body {
@@ -575,6 +573,8 @@ test env-1 {getenv and putenv} -body {
 #lang L --line=1
 void env1()
 {
+	string	fmt;
+
 	unless (putenv("LIBLTEST=123") eq "123") puts("bad 0");
 	unless (getenv("LIBLTEST") eq "123") puts("bad 1");
 	unless (putenv("LIBLTEST=") eq "") puts("bad 1.2");
@@ -604,6 +604,8 @@ void env1()
 	/* Check bad putenv format. */
 	if (defined(putenv("BAD"))) puts("bad 6.1");
 	if (defined(putenv(""))) puts("bad 6.2");
+	fmt = "BAD=%s";
+	if (defined(putenv(fmt))) puts("bad 6.3");
 }
 env1();
 } -output {}
@@ -675,21 +677,39 @@ file1("file test {3}");
 unless (platform() eq "windows") file1("file test \"4\'");
 } -output {}
 
-test file-2 {test fopen/fclose/fprintf errors} -setup {
+test file-2 {test fopen/fclose/fprintf run-time errors} -setup {
 	file delete -force "does not exist"
 } -body {
 #lang L --line=1
 void file2()
 {
 	FILE	f;
+	string	fmt;
 
 	if (defined(f = fopen("does not exist", "rw"))) puts("bad 1");
 
 	unless (fclose(f) == -1) puts("bad 2");
 	unless (fprintf(f, "bad") == -1) puts("bad 4");
+
+	unless (f = fopen("file2tst", "w")) puts("bad 4.1");
+	fmt = "%s";
+	unless (fprintf(f, fmt) == -1) puts("bad 4.2");
+	fclose(f);
 }
 file2();
 } -output {}
+
+test file-2.1 {test fprintf compile-time errors} -body {
+#lang L --line=1
+void file2_1()
+{
+	FILE	f;
+
+	fprintf(f, "%s");
+}
+file2_1();
+} -returnCodes error -match regexp -result {.*5: L Warning: bad format specifier
+}
 
 test file-3 {test fprintf type errors} -body {
 #lang L --line=1
@@ -716,17 +736,26 @@ fopen1();
 fopen(bad3, r) = couldn't open "bad3": no such file or directory
 } -output {}
 
-test fprintf-1 {test fprintf errors} -body {
+test fprintf-1 {test fprintf compile-time errors} -body {
 #lang L --line=1
 void fprintf1()
 {
 	fprintf(stderr, "%s");
-	fprintf(stderr, "%s", "bad", "bad");
 }
 fprintf1();
-} -returnCodes error -match regexp -result {.*3: L Warning: too few format specifiers
-.*4: L Warning: too many format specifiers
+} -returnCodes error -match regexp -result {.*3: L Warning: bad format specifier
 }
+
+test fprintf-2 {test fprintf run-time errors} -body {
+#lang L
+void fprintf2()
+{
+	string	fmt = "%s";
+
+	unless (fprintf(stderr, fmt) == -1) puts("bad 1");
+}
+fprintf2();
+} -output {}
 
 test Fprintf-1 {test Fprintf} -body {
 #lang L --line=1
@@ -755,17 +784,25 @@ void Fprintf1()
 Fprintf1();
 } -output {}
 
-test Fprintf-2 {test Fprintf errors} -body {
+test Fprintf-2 {test Fprintf compile-time errors} -body {
 #lang L --line=1
 void Fprintf2()
 {
 	Fprintf("fname", "%s");
-	Fprintf("fname", "%s", "bad", "bad");
 }
 Fprintf2();
-} -returnCodes error -match regexp -result {.*3: L Warning: too few format specifiers
-.*4: L Warning: too many format specifiers
+} -returnCodes error -match regexp -result {.*3: L Warning: bad format specifier
 }
+
+test Fprintf-2-1 {test Fprintf run-time errors} -body {
+#lang L
+void Fprintf2_1()
+{
+	string	fmt = "%s";
+	unless (Fprintf("fname", fmt) == -1) puts("bad 1");
+}
+Fprintf2_1();
+} -output {}
 
 test ftype-1 {test ftpye} -setup {
 	set fname1 [makeFile {test} ftype_test1 .]
@@ -1632,16 +1669,25 @@ void printf2()
 printf2();
 } -output {}
 
-test printf-3 {test printf errors} -body {
+test printf-3 {test printf run-time errors} -body {
 #lang L --line=1
 void printf3()
 {
-	printf("%s");
-	printf("%s", "bad", "bad");
+	string	fmt = "%s";
+
+	unless (printf(fmt) == -1) puts("bad 1");
 }
 printf3();
-} -returnCodes error -match regexp -result {.*3: L Warning: too few format specifiers
-.*4: L Warning: too many format specifiers
+} -output {}
+
+test printf-3.1 {test printf compile-time errors} -body {
+#lang L --line=1
+void printf3_1()
+{
+	printf("%s");
+}
+printf3_1();
+} -returnCodes error -match regexp -result {.*3: L Warning: bad format specifier
 }
 
 test putenv-1 {test putenv errors} -body {
@@ -1649,11 +1695,9 @@ test putenv-1 {test putenv errors} -body {
 void putenv1()
 {
 	putenv("BAD=%s");
-	putenv("BAD=%s", "bad", "bad");
 }
 putenv1();
-} -returnCodes error -match regexp -result {.*3: L Warning: too few format specifiers
-.*4: L Warning: too many format specifiers
+} -returnCodes error -match regexp -result {.*3: L Warning: bad format specifier
 }
 
 test read-1 {test read} -setup {
@@ -2099,16 +2143,25 @@ void sprintf1()
 sprintf1();
 } -output {}
 
-test sprintf-2 {test sprintf errors} -body {
+test sprintf-2 {test sprintf run-time errors} -body {
 #lang L --line=1
 void sprintf2()
 {
-	sprintf("%s");
-	sprintf("%s", "bad", "bad");
+	string	fmt = "%s";
+
+	if (sprintf(fmt)) puts("bad 1");
 }
 sprintf2();
-} -returnCodes error -match regexp -result {.*3: L Warning: too few format specifiers
-.*4: L Warning: too many format specifiers
+} -output {}
+
+test sprintf-2.1 {test sprintf compile-time errors} -body {
+#lang L --line=1
+void sprintf2_1()
+{
+	sprintf("%s");
+}
+sprintf2_1();
+} -returnCodes error -match regexp -result {.*3: L Warning: bad format specifier
 }
 
 test stat-1 {test lstat and stat} -setup {
@@ -3595,11 +3648,9 @@ test warn-2 {test warn errors} -body {
 void warn2()
 {
 	warn("%s");
-	warn("%s", "bad", "bad");
 }
 warn2();
-} -returnCodes error -match regexp -result {.*3: L Warning: too few format specifiers
-.*4: L Warning: too many format specifiers
+} -returnCodes error -match regexp -result {.*3: L Warning: bad format specifier
 }
 
 test write-1 {test write} -body {
