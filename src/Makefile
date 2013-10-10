@@ -546,7 +546,7 @@ crankrelease cranktrial: crank.sh remote.sh
 	    LOG=$(LOG) bash crank.sh $$TYPE ; \
 	bk -R get -qS RELEASE-NOTES ; \
 	cp ../RELEASE-NOTES $$DIR ; \
-	cd $$DIR ; \
+	cd $$DIR && chmod +rx bk-* ; \
 	rm -f MD5SUMS ; \
 	md5sum bk-* >> MD5SUMS ; \
 	echo "Your images are in $$DIR" ; \
