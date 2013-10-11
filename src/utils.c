@@ -395,7 +395,7 @@ prompt_main(int ac, char **av)
 	}
 	if (prog) {
 		assert(!file);
-		bktmp(msgtmp, "prompt");
+		bktmp(msgtmp);
 		file = msgtmp;
 		cmd = aprintf("%s > '%s'", prog, file);
 
@@ -1029,7 +1029,7 @@ getServerInfo(remote *r, hash *bkdEnv)
 				disconnect(r);
 				bkd_connect(r, 0);
 			}
-			bktmp(buf, "abort");
+			bktmp(buf);
 			f = fopen(buf, "w");
 			assert(f);
 			sendEnv(f, 0, r, SENDENV_NOREPO);

@@ -206,7 +206,7 @@ commit_main(int ac, char **av)
 			} else {
 				fin = stdin;
 			}
-			bktmp(pendingFiles, "list");
+			bktmp(pendingFiles);
 			setmode(0, _O_TEXT);
 			f = fopen(pendingFiles, "w");
 			assert(f);
@@ -216,7 +216,7 @@ commit_main(int ac, char **av)
 			fclose(f);
 			if (fin != stdin) fclose(fin);
 		} else {
-			bktmp(pendingFiles, "pending");
+			bktmp(pendingFiles);
 			sfopts = opts.resync ? "-rpC" : "-pC";
 			if (sysio(0,
 			    pendingFiles, 0, "bk", "sfiles", sfopts, SYS)) {
@@ -238,7 +238,7 @@ commit_main(int ac, char **av)
 	 */
 	unless (dflags & (DELTA_DONTASK|DELTA_CFILE)) {
 		if (size("SCCS/c.ChangeSet") > 0) {
-			bktmp_local(buf, "cfile");
+			bktmp_local(buf);
 			fileCopy("SCCS/c.ChangeSet", buf);
 			if (!doit && comments_prompt(buf)) {
 				fprintf(stderr, "Commit aborted.\n");
@@ -256,7 +256,7 @@ commit_main(int ac, char **av)
 		char	commentFile[MAXPATH];
 		char	buf[512];
 
-		bktmp(commentFile, "commit");
+		bktmp(commentFile);
 		f = popen("bk cat BitKeeper/templates/commit", "r");
 		assert(f);
 		if (fnext(buf, f)) {
@@ -366,7 +366,7 @@ err:		rc = 1;
 	commitSnapshot();
 	if (!opts.resync && (rc = attr_update())) {
 		if (rc < 0) goto err;
-		bktmp(pendingFiles2, "pending2");
+		bktmp(pendingFiles2);
 		f = fopen(pendingFiles, "r");
 		f2 = fopen(pendingFiles2, "w");
 		i = strlen(SATTR);
@@ -397,7 +397,7 @@ err:		rc = 1;
 			goto done;
 		}
 	} else {
-		bktmp(commentFile, "comments");
+		bktmp(commentFile);
 		comments_writefile(commentFile);
 	}
 	safe_putenv("BK_COMMENTFILE=%s", commentFile);

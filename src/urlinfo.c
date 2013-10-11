@@ -259,7 +259,7 @@ urlinfo_write(nested *n)
 		return (-1);
 	}
 
-	bktmp_local(tmpf, "urllist");
+	bktmp_local(tmpf);
 	unless (f = fopen(tmpf, "w")) {
 		perror(tmpf);
 		return (-1);

@@ -273,7 +273,7 @@ regen(sccs *s, int verbose, char *key)
 	for (i = 0; i < n; ++i) {
 		d = table[i];
 		a1 = aprintf("%s", rev(revs, s, d));
-		a2 = bktmp(0, "diffA");
+		a2 = bktmp(0);
 		assert(a2 && a2[0]);
 		if (sccs_get(s2, a1, 0, 0, 0, dest_flags, a2)) {
 			fprintf(stderr, "FAIL: get -kpr%s %s\n", a1, gfile);
@@ -282,7 +282,7 @@ regen(sccs *s, int verbose, char *key)
 
 		free(a1);
 		a1 = aprintf("=%d", d);
-		a3 = bktmp(0, "diffB");
+		a3 = bktmp(0);
 		assert(a3 && a3[0]);
 		if (sccs_get(sget, a1, 0, 0, 0, src_flags, a3)) {
 			fprintf(stderr, "FAIL: get -kPr%s %s\n", a1, gfile);
@@ -291,7 +291,7 @@ regen(sccs *s, int verbose, char *key)
 		unless (sameFiles(a2, a3)) {
 			/* check to see if only diff because of \r\n in orig */
 			free(a1);
-			a1 = bktmp(0, "diffC");
+			a1 = bktmp(0);
 			assert(a1 && a1[0]);
 			if (diff_files(a2, a3, 0, 0, a1)) {
 				fprintf(stderr, "\n%s@%s != orig@%s\n",

@@ -110,11 +110,11 @@ tmp_tests(void)
 	
 	for (i = 0; i < 480; i++) template[i] = 'B';
 	template[i] = 0;
-	p = bktmp(0, template);
+	p = bktmp(0);
 	assert(p);
 	free(p);
 	if (isdir(BKTMP)) {
-		    p = bktmp_local(0, template);
+		    p = bktmp_local(0);
 		    assert(p);
 		    free(p);
 	}

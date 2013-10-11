@@ -905,7 +905,7 @@ firstPrune(Opts *opts)
 	char	buf[MAXPATH];
 
 	cmdlog_lock(CMD_WRLOCK|CMD_NESTED_WRLOCK);
-	bktmp(tmpf, "revfile");
+	bktmp(tmpf);
 	sprintf(buf,
 	    "bk -?BK_NO_REPO_LOCK=YES csetprune --version=%s -aSK%s -r'%s' --revfile='%s' -CCOMPS -",
 	    opts->pver, opts->quiet, opts->tip, tmpf);

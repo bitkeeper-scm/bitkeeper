@@ -255,7 +255,7 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) {
 		return (-1);
 	}
-	bktmp(cmd_file, "BAMmsg");
+	bktmp(cmd_file);
 	f = fopen(cmd_file, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);

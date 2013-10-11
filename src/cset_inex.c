@@ -177,7 +177,7 @@ commit(int quiet, char **cmts)
 	int	i;
 	char	*comment = 0;
 	char	*cmds[20];
-	char	*tmp = bktmp(0, "commit");
+	char	*tmp = bktmp(0);
 	FILE	*f = fopen(tmp, "w");
 
 	EACH(cmts) {

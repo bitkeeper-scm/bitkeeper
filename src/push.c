@@ -287,7 +287,7 @@ push(char **av, remote *r, char **envVar)
 	}
 
 	if (bp_hasBAM() || ((p = getenv("BKD_BAM")) && streq(p, "YES"))) {
-		bp_keys = bktmp(0, "bpkeys");
+		bp_keys = bktmp(0);
 	}
 	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) {
 		ret = CONNECTION_FAILED;
@@ -629,7 +629,7 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 	 * What we want is: "remote => bk _prunekey => keys"
 	 */
 	if (opts.d) range_gone(s_cset, opts.d, D_RED);
-	bktmp_local(rev_list, "pushrev");
+	bktmp_local(rev_list);
 	fd = open(rev_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd >= 0);
 	ret = prunekey(s_cset, r, NULL, fd, PK_LKEY,
@@ -897,7 +897,7 @@ push_finish(remote *r, push_rc status, char **envVar)
 	push_rc rc = PUSH_OK;
 	char	buf[MAXPATH];
 
-	bktmp(buf, "push_finish");
+	bktmp(buf);
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
@@ -975,7 +975,7 @@ send_part1_msg(remote *r, char **envVar)
 	char	*probef;
 	char	buf[MAXPATH];
 
-	bktmp(buf, "push1");
+	bktmp(buf);
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
@@ -992,7 +992,7 @@ send_part1_msg(remote *r, char **envVar)
 	fputs("\n", f);
 	fclose(f);
 
-	probef = bktmp(0, 0);
+	probef = bktmp(0);
 	if (f = fopen(probef, "w")) {
 		rc = probekey(s_cset, opts.rev, 0, f);
 		fclose(f);
@@ -1060,7 +1060,7 @@ send_end_msg(remote *r, char *msg, char **envVar)
 	int	rc;
 	FILE	*f;
 
-	bktmp(msgfile, "push_send_end");
+	bktmp(msgfile);
 	f = fopen(msgfile, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
@@ -1091,7 +1091,7 @@ send_patch_msg(remote *r, char rev_list[], char **envVar)
 	int	rc;
 	u32	extra = 0, m = 0, n;
 
-	bktmp(msgfile, "pullmsg2");
+	bktmp(msgfile);
 	f = fopen(msgfile, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
@@ -1212,7 +1212,7 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	u32	extra = 1, m = 0, n;
 	char	msgfile[MAXPATH];
 
-	bktmp(msgfile, "pullbpmsg3");
+	bktmp(msgfile);
 	f = fopen(msgfile, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);

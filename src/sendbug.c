@@ -44,7 +44,7 @@ sendbug_main(int ac,  char **av)
 		return (launch_wish(buf, &av[optind]));
 	}
 
-	bktmp(bug, "bug");
+	bktmp(bug);
 	f = fopen(bug, "wt");
 	sprintf(buf, "%stemplate", key);
 	getMsg(buf, 0, 0, f);

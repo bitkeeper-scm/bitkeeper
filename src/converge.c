@@ -255,7 +255,7 @@ converge(State *g, char *gfile, char *opts)
 	srm = copy_to_resync(g, srm);
 
 	/* get contents of old version */
-	bktmp(tmp, "converge");
+	bktmp(tmp);
 	rc = sccs_get(srm, "+", 0, 0, 0, SILENT|PRINT, tmp);
 	assert(!rc);
 	sccs_free(srm);

@@ -143,7 +143,7 @@ do_setmerge(char *files[3])
 private char *
 getgfile(sccs *s, char *rev)
 {
-	char	*tmpf = bktmp(0, 0);
+	char	*tmpf = bktmp(0);
 	char	*inc = 0, *exc = 0;
 	int	flags = SILENT|PRINT;
 
@@ -250,14 +250,14 @@ merge_strings(Opts *opts, char *l, char *g, char *r)
 	int	fd1, i;
 	char	*out;
 
-	files[0] = bktmp(0, "merge_l");
+	files[0] = bktmp(0);
 	Fprintf(files[0], "%s", l);
-	files[1] = bktmp(0, "merge_g");
+	files[1] = bktmp(0);
 	if (g) Fprintf(files[1], "%s", g);
-	files[2] = bktmp(0, "merge_r");
+	files[2] = bktmp(0);
 	Fprintf(files[2], "%s", r);
 
-	of = bktmp(0, "merge_o");
+	of = bktmp(0);
 	fflush(stdout);
 	fd1 = dup(1);
 	close(1);

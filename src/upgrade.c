@@ -115,7 +115,7 @@ upgrade_main(int ac, char **av)
 		notice("upgrade-badperms", bin, "-e");
 		goto out;
 	}
-	indexfn = bktmp(0, "upgrade-idx");
+	indexfn = bktmp(0);
 	if (upgrade_fetch("INDEX", indexfn)) {
 		fprintf(stderr, "upgrade: unable to fetch INDEX\n");
 		free(indexfn);
@@ -273,7 +273,7 @@ next:				freeLines(data, free);
 	tmpbin = 0;
 
 	/* embed bk license, we know it is valid because we got a lease above */
-	licf = bktmp(0, 0);
+	licf = bktmp(0);
 	f = fopen(licf, "w");
 	if ((p = getenv("BK_LICENSEURL")) ||
 	    (p = mdbm_fetch_str(configDB, "licenseurl"))) {

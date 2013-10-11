@@ -2245,18 +2245,18 @@ sccs_startWrite(sccs *s)
 	xfile = sccsXfile(s, 'x');
 	if (s->mem_out) {
 		assert(!BKFILE_OUT(s)); /* for now */
-		unless(s->outfh) s->outfh = fmem();
-		sfile = s->outfh;
-		goto chksum;
+		assert(!s->outfh);
+		sfile = s->outfh = fmem();
+	} else {
+		// better be write locked if we are writing xfile
+		assert(wrlocked(s));
+		if ((fd = open(xfile, O_CREAT|O_TRUNC|O_WRONLY, 0444)) < 0) {
+			sfile = 0;
+			goto out;
+		}
+		unless (sfile = fdopen(fd, "w")) goto out;
+		fname(sfile, xfile);
 	}
-	// better be write locked if we are writing xfile
-	assert(wrlocked(s));
-	if ((fd = open(xfile, O_CREAT|O_TRUNC|O_WRONLY, 0444)) < 0) {
-		sfile = 0;
-		goto out;
-	}
-	unless (sfile = fdopen(fd, "w")) goto out;
-	fname(sfile, xfile);
 	if (BKFILE_OUT(s)) {
 		assert(!s->mem_out); /* for now */
 		if (s->size) {
@@ -2268,7 +2268,7 @@ sccs_startWrite(sccs *s)
 		}
 		sfile = fdopen_bkfile(sfile, "w", est_size, 0);
 	} else {
-chksum:		s->cksum = 0;
+		s->cksum = 0;
 		assert(!s->ckwrap);
 		if (fpush(&sfile, fopen_cksum(sfile, "w", &s->cksum))) {
 			fclose(sfile);
@@ -2293,8 +2293,6 @@ sccs_abortWrite(sccs *s)
 	s->ckwrap = 0;		/* clear flag */
 	if (s->mem_out) {
 		assert(!BKFILE_OUT(s));
-		s->mem_in = 0;
-		s->mem_out = 0;
 	} else {
 		unlink(sccsXfile(s, 'x'));
 	}
@@ -2312,7 +2310,6 @@ sccs_finishWrite(sccs *s)
 {
 	char	*xfile = sccsXfile(s, 'x');
 	int	rc;
- 	FILE	*tmp;
 	char	**save = 0;
 
 	assert(!s->wrweave);
@@ -2330,18 +2327,6 @@ sccs_finishWrite(sccs *s)
 	rc = ferror(s->outfh);
 	if (s->mem_out) {
 		assert(!BKFILE_OUT(s));
-		assert(s->fh);
-		tmp = s->fh;
-		s->fh = s->outfh;
-		rewind(s->fh);
-		if (s->mem_in) {
-			s->outfh = tmp;
-			ftrunc(s->outfh, 0);
-		} else {
-			fclose(tmp);
-			s->outfh = fmem();
-			s->mem_in = 1;
-		}
 	} else {
 		if (fclose(s->outfh)) rc = -1;
 		s->outfh = 0;
@@ -4264,7 +4249,7 @@ loadRepoConfig(MDBM *DB, char *root)
 	if (s = sccs_init(config, SILENT|INIT_MUSTEXIST|INIT_WACKGRAPH)) {
 		int	ret = 0;
 
-		tmpf = bktmp(0, 0);
+		tmpf = bktmp(0);
 		if (sccs_get(s, 0, 0, 0, 0, SILENT|PRINT|GET_EXPAND, tmpf)) {
 			perror(tmpf);
 			ret = 1;
@@ -4987,7 +4972,6 @@ sccs_close(sccs *s)
 	}
 	if (s->fh) {
 		if (s->rdweave) sccs_rdweaveDone(s);
-		assert(!s->mem_in); /* don't want to lose data */
 		fclose(s->fh);
 		s->fh = 0;
 	}
@@ -5085,34 +5069,7 @@ sccs_free(sccs *s)
 	if (s->io_error && !s->io_warned) {
 		fprintf(stderr, "%s: unreported I/O error\n", s->sfile);
 	}
-	if (s->mem_out) {
-		FILE	*f, *out;
-		size_t	len;
-		char	*buf;
-
-		/* the sfile is still in memory.  Write it out. */
-		assert(s->sfile);
-		if (s->mem_in) {
-			f = s->fh;
-			assert(f != s->outfh);
-			fclose(s->outfh);
-			s->fh = 0;
-		} else {
-			f = s->outfh;
-		}
-		s->outfh = 0;
-		s->mem_in = s->mem_out = 0;
-
-		buf = fmem_peek(f, &len);
-		out = sccs_startWrite(s);
-		assert(buf);
-		fwrite(buf, 1, len, out);
-		// XXX In this case sccs_free has transactional quality
-		// and has no back channel to let caller know transaction
-		// failed.
-		sccs_finishWrite(s);
-		fclose(f);
-	}
+	assert(!s->mem_out);	/* user needs to consume this first */
 	if (s->wrweave) {
 		fprintf(stderr, "%s: partial write of %s aborted.\n",
 		    prog, s->sfile);
@@ -5152,7 +5109,6 @@ sccs_free(sccs *s)
 		}
 	}
 	if (s->fh) {
-		assert(!s->mem_in); /* don't want to lose data */
   		rc |= fclose(s->fh);
 		s->fh = 0;
 	}
@@ -7973,7 +7929,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		s->state |= S_WARNED;
 		return (-1);
 	}
-	tmpfile = bktmp(0, "getdiffs");
+	tmpfile = bktmp(0);
 	openOutput(s, encoding, printOut, &out);
 	setmode(fileno(out), O_BINARY); /* for win32 EOLN_NATIVE file */
 	unless (lbuf = fopen(tmpfile, "w+")) {
@@ -9150,7 +9106,7 @@ _hasDiffs(sccs *s, ser_t d, u32 flags, int inex, pfile *pf)
 	 */
 	if (UUENCODE(s)) {
 		tmpfile = 1;
-		unless (bktmp(sbuf, "getU")) RET(-1);
+		unless (bktmp(sbuf)) RET(-1);
 		name = strdup(sbuf);
 		if (uuexpand_gfile(s, name)) {
 			verbose((stderr, "can't open %s\n", s->gfile));
@@ -9497,7 +9453,7 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	 */
 	if (isRegularFile(s->mode)) {
 		if (UUENCODE(s)) {
-			unless (bktmp(new, "getU")) return (-1);
+			unless (bktmp(new)) return (-1);
 			if (uuexpand_gfile(s, new)) {
 				unlink(new);
 				return (-1);
@@ -9522,7 +9478,7 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	flags =  GET_ASCII|SILENT|PRINT;
 	if (expandKeyWord) flags |= GET_EXPAND;
 	if (isRegularFile(MODE(s, d)) && !BAM(s)) {
-		unless (bktmp(old, "get")) return (-1);
+		unless (bktmp(old)) return (-1);
 		if (sccs_get(s, pf->oldrev, pf->mRev, pf->iLst, pf->xLst,
 		    flags, old)) {
 			unlink(old);
@@ -9583,14 +9539,14 @@ diff_g(sccs *s, pfile *pf, char **tmpfile)
 	switch (diff_gmode(s, pf)) {
 	    case 0: 		/* no mode change */
 		if (!isRegularFile(s->mode)) return 1;
-		*tmpfile  = bktmp(tmpname, "diffg1");
+		*tmpfile  = bktmp(tmpname);
 		assert(*tmpfile);
 		return (diff_gfile(s, pf, 0, *tmpfile));
 	    case 2:		/* meta mode field changed */
 		return 0;
 	    case 3:		/* path changed */
 	    case 1:		/* file type changed */
-		*tmpfile  = bktmp(tmpname, "diffg2");
+		*tmpfile  = bktmp(tmpname);
 		assert(*tmpfile);
 		if (diff_gfile(s, pf, 0, *tmpfile) == -1) return (-1);
 		return 0;
@@ -9792,7 +9748,7 @@ sccs_clean(sccs *s, u32 flags)
 		return (2);
 	}
 
-	unless (bktmp(tmpfile, "diffg")) return (1);
+	unless (bktmp(tmpfile)) return (1);
 	/*
 	 * hasDiffs() is faster.
 	 */
@@ -14544,7 +14500,7 @@ doDiff(sccs *s, df_opt *dop, char *leftf, char *rightf,
 	} else {
 		strcpy(spaces, "=====");
 	}
-	unless (bktmp(diffFile, "diffs")) return (-1);
+	unless (bktmp(diffFile)) return (-1);
 	dop->ignore_trailing_cr = 1;
 	diff_files(leftf, rightf, dop, &dc, diffFile);
 	if (dop->out_diffstat) {
@@ -14689,7 +14645,7 @@ mkDiffTarget(sccs *s,
 		strcpy(target, DEVNULL_RD);
 		return (0);
 	}
-	bktmp(target, "mkDiffTarget");
+	bktmp(target);
 
 	if ((streq(rev, "edited") || streq(rev, "?")) && !findrev(s, rev)) {
 		assert(HAS_GFILE(s));

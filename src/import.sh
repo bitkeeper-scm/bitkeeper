@@ -383,6 +383,7 @@ transfer() {
 	FROM="$1"
 	TO="$2"
 	NFILES=`wc -l < "${TMP}import$$" | sed 's/ //g'`
+	LISTFILE="${TMP}import$$"
 	if [ $FORCE = NO ]
 	then	echo
 		echo $N "Would you like to edit the list of $NFILES files to be imported? [No] " $NL
@@ -392,16 +393,23 @@ transfer() {
 			echo ""
 			case X"$x" in
 			    X[Yy]*)
+				if [ X$WINDOWS = XYES ]; then
+				    bk undos -r "$LISTFILE" > "${TMP}imp$$"
+				    LISTFILE="${TMP}imp$$"
+				fi
 				echo $N "Editor to use [$EDITOR] " $NL
 				read editor || exit 1
 				echo
 				if [ X$editor != X ]
-				then	eval $editor "${TMP}import$$"
-				else	eval $EDITOR "${TMP}import$$"
+				then	eval $editor "$LISTFILE"
+				else	eval $EDITOR "$LISTFILE"
 				fi
 				if [ $? -ne 0 ]; then
 				    echo ERROR: aborting...
 				    Done 1
+				fi
+				if [ X$WINDOWS = XYES ]; then
+				    bk undos "$LISTFILE" > "${TMP}import$$"
 				fi
 				NFILES=`wc -l < "${TMP}import$$" | sed 's/ //g'`
 				DONE=1

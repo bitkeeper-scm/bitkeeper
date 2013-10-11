@@ -96,7 +96,7 @@ comments_main(int ac, char **av)
 			goto cset;
 		}
 	}
-	bktmp(tmp, "comment");
+	bktmp(tmp);
 	unless (tf = fopen(tmp, "w")) {
 		perror(tmp);
 		return (1);

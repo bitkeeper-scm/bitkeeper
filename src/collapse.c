@@ -280,7 +280,7 @@ do_cset(sccs *s, char *rev, char **nav)
 	csetrev = aprintf("@@%s", buf);
 
 	/* BK_CSETLIST=/file/of/cset/keys */
-	csetfile = bktmp(0, "collapse-csets");
+	csetfile = bktmp(0);
 	f = fopen(csetfile, "w");
 	range_walkrevs(s, d, 0, 0, 0, walkrevs_printmd5key, f);
 	fclose(f);

@@ -237,7 +237,7 @@ file_init(char *file, char *rev, char *anno, file_t *f)
 
 	if (anno) flags = annotate_args(flags|GET_ALIGN, anno);
 
-	bktmp(tmp, "smerge");
+	bktmp(tmp);
 	f->tmpfile = strdup(tmp);
 	s = sccs_init(sfile, 0);
 	unless (s && TREE(s)) return (-1);

@@ -160,7 +160,8 @@ lock_main(int ac, char **av)
 		if (tcp) {
 			tcpHandshake(lockclient, tcp);
 			nsock = tcp_accept(tcp);
-			if (nested && nested_unlock(0, nlid)) {
+			if (getenv("_BK_LEAVE_LOCKED")) {
+			} else if (nested && nested_unlock(0, nlid)) {
 				fprintf(stderr, "nested unlock failed:\n%s\n",
 				    nested_errmsg());
 				return (1);
@@ -236,7 +237,8 @@ lock_main(int ac, char **av)
 		if (tcp) {
 			tcpHandshake(lockclient, tcp);
 			nsock = tcp_accept(tcp);
-			if (nested && nested_unlock(0, nlid)) {
+			if (getenv("_BK_LEAVE_LOCKED")) {
+			} else if (nested && nested_unlock(0, nlid)) {
 				fprintf(stderr, "nested unlock failed:\n%s\n",
 				    nested_errmsg());
 				return (1);

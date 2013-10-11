@@ -55,7 +55,7 @@ bkmail(char *url, char **to, char *subject, char *file)
 		char	*tmpf = 0;
 
 		if (streq(file, "-")) {
-			file = tmpf = bktmp(0, 0);
+			file = tmpf = bktmp(0);
 			f = fopen(file, "w");
 			while (len = fread(buf, 1, sizeof(buf), stdin)) {
 				fwrite(buf, 1, len, f);
@@ -74,7 +74,7 @@ bkmail(char *url, char **to, char *subject, char *file)
 	r = remote_parse(url, 0);
 	assert(r);
 	if (bkd_connect(r, 0)) return (1);
-	bkmsg = bktmp(0, "mail");
+	bkmsg = bktmp(0);
 	f = fopen(bkmsg, "w");
 	assert(f);
 	sendEnv(f, 0, r, SENDENV_NOREPO);

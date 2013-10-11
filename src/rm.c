@@ -183,7 +183,7 @@ gone_main(int ac, char **av)
 	}
 
 	if (streq("-", av[optind])) exit(sccs_gone(quiet, stdin));
-	unless (bktmp(tmpfile, "sccsrm")) exit(1);
+	unless (bktmp(tmpfile)) exit(1);
 	f = fopen(tmpfile, "w");
 	while (av[optind]) fprintf(f, "%s\n", av[optind++]);
 	fclose(f);
