@@ -1636,6 +1636,11 @@ kill(pid_t pid, int sig)
 	}
 	if (sig == SIGKILL) {
 		unless (TerminateProcess(hProc, 255)) rc = -1;
+	} else {
+		if (WaitForSingleObject(hProc, 0) != WAIT_TIMEOUT) {
+			errno = ESRCH;
+			rc = -1;
+		}
 	}
 	safeCloseHandle(hProc);
 	return (rc);
