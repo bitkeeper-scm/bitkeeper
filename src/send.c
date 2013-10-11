@@ -24,7 +24,7 @@ getNewRevs(char *to, char *rev, char *url)
 
 	unless (isdir(BK_LOG)) mkdirp(BK_LOG);
 	sprintf(x_sendlog, "%s/send-%s", BK_LOG, to);
-	bktmp(keysFile, "keys");
+	bktmp(keysFile);
 	touch(x_sendlog, 0660);
 
 	if (url) {
@@ -180,7 +180,7 @@ send_main(int ac,  char **av)
 		f = stdout;
 		out = "";
 	} else {
-		patch = bktmp(0, "patch");
+		patch = bktmp(0);
 		f = fopen(patch, "w");
 		assert(f);
 		out = aprintf(" >> '%s'", patch);

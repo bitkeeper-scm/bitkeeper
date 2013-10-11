@@ -153,7 +153,7 @@ send_abort_msg(remote *r)
 	FILE	*f;
 	int	rc;
 
-	bktmp(buf, "abort");
+	bktmp(buf);
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, 0, r, SENDENV_NOREPO);

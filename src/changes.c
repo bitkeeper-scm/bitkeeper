@@ -547,7 +547,7 @@ _doit_local(char **nav, char *url)
 	r = remote_parse(url, REMOTE_BKDURL | REMOTE_ROOTKEY);
 	assert(r);
 
-	bktmp(tmpf, 0);
+	bktmp(tmpf);
 	p = fopen(tmpf, "w");
 	rc = synckeys(r, s_cset, PK_LKEY|PK_SYNCROOT, p);
 	fclose(p);
@@ -1496,7 +1496,7 @@ send_part1_msg(remote *r, char **av)
 	char	*cmdf, *probef = 0;	/* tmpfiles */
 	char	buf[MAXLINE];
 
-	cmdf = bktmp(0, "changes");
+	cmdf = bktmp(0);
 	f = fopen(cmdf, "w");
 	assert(f);
 	sendEnv(f, 0, r, ((opts.remote || opts.local) ? 0 : SENDENV_NOREPO));
@@ -1519,7 +1519,7 @@ send_part1_msg(remote *r, char **av)
 	fclose(f);
 
 	if (opts.remote) {
-		probef = bktmp(0, 0);
+		probef = bktmp(0);
 		if (f = fopen(probef, "wb")) {
 			rc = probekey(s_cset, 0, 1, f);
 			fclose(f);
@@ -1551,7 +1551,7 @@ send_end_msg(remote *r, char *msg)
 	FILE	*f;
 	int	rc;
 
-	bktmp(msgfile, "changes_end");
+	bktmp(msgfile);
 	f = fopen(msgfile, "w");
 	assert(f);
 	sendEnv(f, 0, r, ((opts.remote || opts.local) ? 0 : SENDENV_NOREPO));
@@ -1578,7 +1578,7 @@ send_part2_msg(remote *r, char **av, char *key_list)
 	char	msgfile[MAXPATH], buf[MAXLINE];
 	FILE	*f;
 
-	bktmp(msgfile, "changes_msg");
+	bktmp(msgfile);
 	f = fopen(msgfile, "w");
 	assert(f);
 	sendEnv(f, 0, r, ((opts.remote || opts.local) ? 0 : SENDENV_NOREPO));
@@ -1657,7 +1657,7 @@ changes_part1(remote *r, char **av, char *key_list)
 	/*
 	 * What we want is: "remote => bk _prunekey => keylist"
 	 */
-	bktmp(key_list, "keylist");
+	bktmp(key_list);
 	fd = open(key_list, O_CREAT|O_WRONLY, 0644);
 	flags = PK_REVPREFIX|PK_RKEY|PK_SYNCROOT;
 	rc = prunekey(s_cset, r, seen, fd, flags, 0, NULL, &rcsets, &rtags);

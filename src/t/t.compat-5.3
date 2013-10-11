@@ -114,7 +114,7 @@ OLDP=`port 54500`
 # old bkd will have "No root for triggers!" ttyprintf
 $OLDBK/bk bkd -d -aPORT -ikill 2> OLDERR || fail -f OLDERR
 OLDP=`cat PORT`
-bk bkd -d -aPORT -ikill 2> NEWERR || fail -f NEWERR
+_BK_FORCE_PAGING=1 bk bkd -d -aPORT -ikill 2> NEWERR || fail -f NEWERR
 NEWP=`cat PORT`
 trap "bk _kill bk://localhost:$OLDP; bk _kill bk://localhost:$NEWP" 0
 echo OK

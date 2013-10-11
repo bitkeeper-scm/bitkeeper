@@ -24,7 +24,7 @@ help_main(int ac,  char **av)
 		    default: bk_badArg(c, av);
 		}
 	}
-	bktmp(out, "help");
+	bktmp(out);
 	if (av[i=optind] && 
 	    (streq(av[i], "bkl") ||
 	    streq(av[i], "bkcl") || streq(av[i], "license"))) {

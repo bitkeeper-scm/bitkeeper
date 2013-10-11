@@ -760,7 +760,6 @@ struct sccs {
 	u32	bamlink:1;	/* BAM gfile is hardlinked to the sfile */
 	u32	used_cfile:1;	/* comments_readcfile found one; for cleanup */
 	u32	modified:1;	/* set if we wrote the s.file */
-	u32	mem_in:1;	/* s->fh is in-memory FILE* */
 	u32	mem_out:1;	/* s->outfh is in-memory FILE* */
 	u32	file:1;		/* treat as a file in DSPECS */
 	u32	rdweaveEOF:1;	/* at EOF in rdWEAVE */
@@ -1262,10 +1261,13 @@ int	stripdel_setMeta(sccs *s, int stripBranches, int *count);
 int     http_connect(remote *r);
 int	http_send(remote *, char *msg, size_t len, size_t ex, char *ua);
 int	http_fetch(remote *r, char *file);
-char	*bktmp(char *buf, const char *template);
+char	*_bktmp(char *file, int line, char *buf);
+char	*_bktmp_dir(char *file, int line, char *buf);
+char	*_bktmp_local(char *file, int line, char *buf);
+#define	bktmp(buf) _bktmp(__FILE__, __LINE__, buf)
+#define	bktmp_dir(buf) _bktmp_dir(__FILE__, __LINE__, buf)
+#define	bktmp_local(buf) _bktmp_local(__FILE__, __LINE__, buf)
 void	bktmpenv(void);
-char	*bktmpdir(char *buf, const char *template);
-char	*bktmp_local(char *buf, const char *template);
 void	bktmpcleanup(void);
 int	smallTree(int threshold);
 char	*strdup_tochar(const char *s, int c);

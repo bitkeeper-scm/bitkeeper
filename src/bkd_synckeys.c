@@ -52,7 +52,7 @@ cmd_synckeys(int ac, char **av)
 		return (1);
 	}
 
-	lktmp = bktmp(0, "synckey");
+	lktmp = bktmp(0);
 	sprintf(cmd, "bk _listkey -r %s > '%s'", syncRoot?"-S":"", lktmp);
 	l = popen(cmd, "w");
 	while ((n = getline(0, buf, sizeof(buf))) > 0) {

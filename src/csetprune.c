@@ -1186,7 +1186,7 @@ mkRandom(char *input)
 	FILE	*f;
 	char	*tmpf = 0, *cmd = 0, *ret = 0;
 
-	tmpf = bktmp(0, "bkrandom");
+	tmpf = bktmp(0);
 	cmd = aprintf("bk undos -n | bk crypto -hX - > '%s'", tmpf);
 	unless (f = popen(cmd, "w")) {
 		perror(cmd);

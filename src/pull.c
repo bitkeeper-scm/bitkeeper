@@ -192,7 +192,8 @@ pull_main(int ac, char **av)
 
 	if (opts.product = bk_nested2root(opts.transaction || opts.port)) {
 		if (proj_configbool(0, "autopopulate") ||	// compat
-		    proj_configbool(0, "auto-populate")) {	// in docs
+		    proj_configbool(0, "auto-populate") ||	// compat
+		    proj_configbool(0, "auto_populate")) {      // in docs
 			opts.autoPopulate = 1;
 		}
 	}
@@ -233,7 +234,7 @@ err:		freeLines(envVar, free);
 			return (1);
 		}
 		free(p);
-		tmpfile = bktmp(0, "cmt");
+		tmpfile = bktmp(0);
 		tmpf = fopen(tmpfile, "w");
 		assert(tmpf);
 		fprintf(tmpf, "%s:\n", proj_comppath(0));
@@ -413,7 +414,7 @@ send_part1_msg(remote *r, char **envVar)
 	FILE    *f;
 	int	rc;
 
-	bktmp(buf, "pull1");
+	bktmp(buf);
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
@@ -530,7 +531,7 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 		disconnect(r);
 		return (1);
 	}
-	bktmp(probe_list, "pullprobe");
+	bktmp(probe_list);
 	f = fopen(probe_list, "w");
 	assert(f);
 	while (getline2(r, buf, sizeof(buf)) > 0) {
@@ -550,7 +551,7 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 	char	*t;
 	int	status, rc;
 
-	bktmp(msg_file, "pullmsg");
+	bktmp(msg_file);
 	f = fopen(msg_file, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
@@ -1113,7 +1114,7 @@ pull_ensemble(remote *r, char **rmt_aliases,
 			vp = addLine(vp, strdup(opts.av_pull[i]));
 		}
 		if (c->localchanges) {
-			tmpfile = bktmp(0, "mergekeys");
+			tmpfile = bktmp(0);
 			lines2File(c->poly, tmpfile);
 			vp = addLine(vp, aprintf("-M%s", tmpfile));
 		}
@@ -1347,7 +1348,7 @@ pull_finish(remote *r, int status, char **envVar)
 	char	buf[MAXPATH];
 
 again:	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) return (1);
-	bktmp(buf, "pull_finish");
+	bktmp(buf);
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);

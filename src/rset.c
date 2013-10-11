@@ -361,8 +361,8 @@ process(Opts *opts, char *root, char *start, char *end, MDBM *idDB)
 		s = sccs_init(spath0, INIT_MUSTEXIST|INIT_NOCKSUM);
 		assert(s);
 		/* get first rev */
-		file_a = bktmp(0, "rset");
-		file_b = bktmp(0, "rset");
+		file_a = bktmp(0);
+		file_b = bktmp(0);
 		if (sccs_get(s, start, 0, 0, 0, SILENT|PRINT, file_a)) {}
 		if (sccs_get(s, end, 0, 0, 0, SILENT|PRINT, file_b)) {}
 		dop.ignore_trailing_cr = 1;

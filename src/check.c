@@ -793,8 +793,8 @@ chk_BAM(sccs *s, char ***missing)
 private int
 keywords(sccs *s)
 {
-	char	*a = bktmp(0, "expanded");
-	char	*b = bktmp(0, "unexpanded");
+	char	*a = bktmp(0);
+	char	*b = bktmp(0);
 	int	same;
 
 	assert(a && b);

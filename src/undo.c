@@ -181,7 +181,7 @@ undo_main(int ac,  char **av)
 		     (save ? ncsetrevs : 0)));
 	}
 
-	bktmp(undo_list, "undo_list");
+	bktmp(undo_list);
 	cmd = aprintf("bk -?BK_NO_REPO_LOCK=YES stripdel -%sc - 2> '%s'",
 	    (proj_isComponent(0) && !getenv("_BK_TRANSACTION")) ? "" : "C",
 	    undo_list);
@@ -716,7 +716,7 @@ renumber_rename(options *opts, char **sfiles)
 	u32	nfiles = 0, notexist = 0;
 	char	*flist, *flag = "--";
 
-	flist = bktmp(0, "undorename");
+	flist = bktmp(0);
 	assert(flist);
 	f = fopen(flist, "w");
 	assert(f);

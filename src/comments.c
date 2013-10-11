@@ -162,7 +162,7 @@ comments_readcfile(sccs *s, int prompt, ser_t d)
 	char	tmp[MAXPATH];
 
 	unless (exists(cfile)) return (-1);
-	bktmp(tmp, "cfile");
+	bktmp(tmp);
 	if (fileCopy(cfile, tmp)) perror(tmp);
 	if (prompt && comments_prompt(tmp)) return (-2);
 	unless (f = fopen(tmp, "r")) return (-1);

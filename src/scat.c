@@ -20,8 +20,6 @@ scat_main(int ac, char **av)
 		fprintf(stderr, "%s: can't open sfile %s\n", prog, sfile);
 		return (1);
 	}
-	s->encoding_out = sccs_encoding(s, 0, 0);
-	s->encoding_out &= ~(E_BK|E_BWEAVE|E_COMP);
 	buf = sccs_scat(s, &len);
 	fwrite(buf, 1, len, stdout);
 	sccs_free(s);
@@ -31,16 +29,18 @@ scat_main(int ac, char **av)
 char *
 sccs_scat(sccs *s, size_t *len)
 {
-	assert (!s->mem_in && !s->mem_out);
+	char	*ret;
+	int	orig = s->encoding_out;
 
-	sccs_encoding(s, 0, 0);
+	assert(!s->mem_out);
+
+	s->encoding_out = sccs_encoding(s, 0, 0);
+	s->encoding_out &= ~(E_BK|E_BWEAVE|E_COMP);
 	s->mem_out = 1;
 	sccs_newchksum(s);
-
-	assert(s->mem_in);
-	s->mem_in = s->mem_out = 0;
-	fclose(s->outfh);
+	ret = fmem_close(s->outfh, len);
 	s->outfh = 0;
-
-	return (fmem_peek(s->fh, len));
+	s->mem_out = 0;
+	s->encoding_out = orig;
+	return (ret);
 }

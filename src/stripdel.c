@@ -229,7 +229,7 @@ strip_list(s_opts opts)
 	sccs	*s = 0;
 	ser_t	d;
 	int 	n = 0, rc = 1;
-	int	iflags = opts.iflags|SILENT;
+	int	iflags = opts.iflags|SILENT|INIT_MUSTEXIST;
 
 	if (opts.nfiles) {
 		progress_delayStderr();
@@ -241,13 +241,12 @@ strip_list(s_opts opts)
 		if (!s || !streq(s->sfile, name)) {
 			if (s && doit(s, opts)) goto fail;
 			if (s) sccs_free(s);
-			s = sccs_init(name, iflags);
-			s->rstart = s->rstop = 0;
-			unless (s && HASGRAPH(s)) {
+			unless (s = sccs_init(name, iflags)) {
 				fprintf(stderr,
-					    "stripdel: can't init %s\n", name);
+				    "stripdel: can't init %s\n", name);
 				goto fail;
 			}
+			s->rstart = s->rstop = 0;
 		}
 		rev = sfileRev(); assert(rev);
 		d = sccs_findrev(s, rev); 

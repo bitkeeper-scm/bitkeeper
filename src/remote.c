@@ -124,7 +124,7 @@ remote_cmd(char **av, char *url, FILE *in, FILE *out, FILE *err,
 	if (r->type == ADDR_HTTP) stream = 0;
 	if (bkd_connect(r, (opts & REMOTE_BKDERRS) ? 0: SILENT)) return (1<<3);
 	u = remote_unparse(r);
-	tmpf = bktmp(0, "rcmd");
+	tmpf = bktmp(0);
 	f = fopen(tmpf, "w");
 	assert(f);
 	sendEnv(f, NULL, r, proj_root(0) ? 0 : SENDENV_NOREPO);

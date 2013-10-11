@@ -515,7 +515,7 @@ progress_delayStderr(void)
 	_progress.real_stderr = dup(2);
 	close(2);
 
-	_progress.tmp = bktmp(0, "progress");
+	_progress.tmp = bktmp(0);
 	ret = open(_progress.tmp, O_WRONLY|O_CREAT, 0600);
 	assert(ret == 2);
 	_progress.delayed = 1;

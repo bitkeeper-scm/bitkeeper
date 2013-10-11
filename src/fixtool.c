@@ -74,9 +74,9 @@ fixtool(char *file, int ask, char *diffopts)
 		    default:  return (0);
 		}
 	}
-	prev = bktmp(0, "prev");
+	prev = bktmp(0);
 	sysio(0, prev, 0, "bk", "get", "-kqpr+", file, SYS);
-	merge = bktmp(0, "merge");
+	merge = bktmp(0);
 	sys("bk", "fmtool", prev, file, merge, SYS);
 	if (size(merge) == 0) {
 		unlink(prev);

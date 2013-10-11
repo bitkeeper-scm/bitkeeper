@@ -702,7 +702,7 @@ bp_updateServer(char *range, char *list, int quiet)
 	p = (p && *p) ? getenv("BK_REPO_ID") : getenv("BKD_REPO_ID");
 	if (p && streq(repoID, p)) return (0);
 
-	tmpkeys = bktmp(0, 0);
+	tmpkeys = bktmp(0);
 
 	if (!range && !list) {
 		unless (bp = proj_BAMindex(0, 0)) { /* no local data anyway */
@@ -749,7 +749,7 @@ bp_updateServer(char *range, char *list, int quiet)
 		free(tmpkeys);
 		return (0);
 	}
-	tmpkeys2 = bktmp(0, 0);
+	tmpkeys2 = bktmp(0);
 	/* For now, we are not recursing to a chained server */
 	url = bp_serverURL(0);
 	assert(url);
@@ -1448,7 +1448,7 @@ bp_check_findMissing(int quiet, char **missing)
 			    bp_serverURL(buf));
 		}
 
-		tmp = bktmp(0, 0);
+		tmp = bktmp(0);
 		/* no recursion, we are remoted to the server already */
 		p = aprintf("bk -q@'%s' -Lr -Bstdin havekeys -Bl - > '%s'",
 		    bp_serverURL(buf), tmp);

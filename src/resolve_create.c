@@ -35,7 +35,7 @@ res_diffCommon(resolve *rs,
 	if (rs->res_gcreate) {
 		char	right[MAXPATH];
 
-		bktmp(right, "right");
+		bktmp(right);
 		if (rs->revs) rev = rs->revs->remote;
 		if (sccs_get(rs->s, rev, 0, 0, 0, SILENT|PRINT, right)) {
 		    	fprintf(stderr, "get failed, can't diff.\n");
@@ -52,8 +52,8 @@ res_diffCommon(resolve *rs,
 		char	right[MAXPATH];
 		sccs	*s = (sccs*)rs->opaque;
 
-		bktmp(left, "left");
-		bktmp(right, "right");
+		bktmp(left);
+		bktmp(right);
 		if (rs->revs) rev = rs->revs->remote;
 		if (sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, left) ||
 		    sccs_get(rs->s, rev, 0, 0, 0, SILENT|PRINT, right)) {
@@ -75,7 +75,7 @@ do_diff(resolve *rs, char *left, char *right, int wait)
 {
 	char	tmp[MAXPATH];
 
-	bktmp(tmp, "diff");
+	bktmp(tmp);
 	sysio(0, tmp, 0, "bk", "diff", "-a", left, right, SYS);
 	more(rs, tmp);
 	unlink(tmp);
@@ -93,7 +93,7 @@ do_sdiff(resolve *rs, char *left, char *right, int wait)
 		tty_done();
 	}
 	if (cols <= 0) cols = 80;
-	bktmp(tmp, "sdiff");
+	bktmp(tmp);
 	systemf("bk ndiff --sdiff=%d '%s' '%s' > '%s'",
 	    cols, left, right, tmp);
 	more(rs, tmp);
@@ -222,7 +222,7 @@ res_vl(resolve *rs)
 		s = rs->s;
 		if (rs->revs) rev = rs->revs->local;
 	}
-	bktmp(left, "left");
+	bktmp(left);
 	if (sccs_get(s, rev, 0, 0, 0, SILENT|PRINT, left)) {
 		    fprintf(stderr, "get failed, can't view.\n");
 		return (0);
@@ -245,7 +245,7 @@ res_vr(resolve *rs)
 	}
 	sprintf(rev, "-r%s", rs->revs ? rs->revs->remote : "+");
 	if (rs->res_resync) name = rs->dname;
-	bktmp(tmp, "resvr");
+	bktmp(tmp);
 	sysio(0, tmp, 0, "bk", "get", "-qkp", rev, name, SYS);
 	more(rs, tmp);
 	unlink(tmp);
@@ -302,7 +302,7 @@ res_h(resolve *rs)
 	} else {
 		s = rs->s;
 	}
-	bktmp(tmp, "resh");
+	bktmp(tmp);
 	sysio(0, tmp, 0, "bk", "prs", s->gfile, SYS);
 	more(rs, tmp);
 	unlink(tmp);
@@ -329,7 +329,7 @@ res_hr(resolve *rs)
 		char	tmp[MAXPATH];
 		sccs	*s = (sccs*)rs->opaque;
 
-		bktmp(tmp, "reshr");
+		bktmp(tmp);
 		sysio(0, tmp, 0, "bk", "prs", s->gfile, SYS);
 		more(rs, tmp);
 		unlink(tmp);
@@ -352,7 +352,7 @@ prs_common(resolve *rs, sccs *s, char *a, char *b)
 		fprintf(stderr, "prs(%s, %s, %s) = %s\n", s->gfile, a, b, list);
 	}
 	sprintf(l2, "-r%s", list);
-	bktmp(tmp, "prs");
+	bktmp(tmp);
 	sysio(0, tmp, 0, "bk", "prs", l2, rs->s->gfile, SYS);
 	more(rs, tmp);
 	unlink(tmp);
@@ -546,7 +546,7 @@ gc_sameFiles(resolve *rs)
 	char	buf[MAXPATH];
 	int	same;
 
-	bktmp(buf, "right");
+	bktmp(buf);
 	if (sccs_get(rs->s, 0, 0, 0, 0, SILENT|PRINT, buf)) {
 		fprintf(stderr, "get failed, can't diff.\n");
 		return (0);

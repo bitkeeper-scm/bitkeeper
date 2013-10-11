@@ -564,7 +564,7 @@ send_sync_msg(remote *r, sccs *s, int flags)
 	int	rc;
 	char	buf[MAXPATH];
 
-	bktmp(buf, "synccmds");
+	bktmp(buf);
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, NULL, r, 0);

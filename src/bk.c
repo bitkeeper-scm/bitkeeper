@@ -697,7 +697,7 @@ run:	trace_init(prog);	/* again 'cause we changed prog */
 	callstack_push(0);
 
 	if (buf_stdin) {
-		buffer = bktmp(0, "stdin");
+		buffer = bktmp(0);
 		fd2file(0, buffer);
 		close(0);
 		open(buffer, O_RDONLY, 0);

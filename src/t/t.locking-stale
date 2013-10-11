@@ -1,0 +1,52 @@
+echo $N Setup a fake read lock in a traditional repo.................$NL
+commercial project
+mkdir BitKeeper/readers
+touch BitKeeper/readers/9999999@`bk gethost -r`.lock
+bk lock -lv 2> OUT || fail -f OUT
+echo 'No active lock in repository' > WANT
+cmpfiles WANT OUT
+echo OK
+
+echo $N Setup a stale read lock in a traditional repo................$NL
+LOCK=`bk -?_BK_LEAVE_LOCKED=1 lock -rt`
+bk lock -l 2> OUT && fail -f OUT
+bk _kill "$LOCK"
+bk _usleep 1000000
+bk lock -lv 2> OUT || fail -f OUT
+echo 'No active lock in repository' > WANT
+cmpfiles WANT OUT
+bk lock -l 2> OUT || fail -f OUT
+cmpfiles WANT OUT
+echo OK
+
+echo $N Setup a fake nested read lock................................$NL
+cd ..
+nested nest
+HOST=`bk gethost -r`
+echo "r|n|wscott|$HOST|lock|1377095453|9999999|1557483087|wscott|$HOST" > BitKeeper/readers/NLGQ95pRRO4jtLrV6BG9dj7g
+bk lock -lv 2> OUT || fail
+grep -q 'bk lock/9999999.*stale' OUT || fail -f OUT
+bk lock -l 2> OUT || fail
+echo 'No active lock in repository' > WANT
+cmpfiles WANT OUT
+echo OK
+
+echo $N Setup a stale nested read lock...............................$NL
+LOCK=`bk -?_BK_LEAVE_LOCKED=1 lock -rt`
+bk lock -l 2> OUT && fail -f OUT
+grep -q 'bk lock' OUT || fail -f OUT
+bk _kill "$LOCK"
+bk _usleep 1000000
+bk lock -lv 2> OUT && fail -f OUT
+grep -q 'Read locked.*stale' OUT || fail -f OUT
+bk lock -l 2> OUT && fail -f OUT
+echo "$HERE"/nest > WANT
+cat <<EOF >> WANT
+Entire repository is locked by:
+	RESYNC directory.
+
+	Usually the RESYNC directory indicates a push/pull in progress.
+	Use bk resolve/bk abort as appropriate.
+EOF
+cmpfiles WANT OUT
+echo 'failed (bug: fails to cleanup .bk_nl)'

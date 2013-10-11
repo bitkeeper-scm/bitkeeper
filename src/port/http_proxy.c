@@ -387,7 +387,7 @@ _get_http_autoproxyurl(char **proxies, char *host, char *WPAD_url)
 		}
 	}
 
-	unless (tmpf = bktmp(0, "proxy")) goto out;
+	unless (tmpf = bktmp(0)) goto out;
 	r = remote_parse(WPAD_url, 0);
 	unless (r && r->host) {
 		fprintf(stderr,

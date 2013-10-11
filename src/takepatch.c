@@ -1901,7 +1901,7 @@ sfio(FILE *m, int files)
 		return (-1);
 	}
 
-	flist = bktmp(0, "sfio_filelist");
+	flist = bktmp(0);
 	if (opts->pbars && (files > 0)) {
 		sprintf(key, "-N%d --takepatch", files);
 	} else if (opts->echo > 1) {

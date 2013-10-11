@@ -140,7 +140,7 @@ mvdir_main(int ac, char **av)
 	 * is located at the root of the tree, 
 	 * "bk mvdir project-root" => moving the BitKeeper sub-tree.
 	 */
-	bktmp(tempfile, "bk_mvdir");
+	bktmp(tempfile);
 	cmd = aprintf("bk sfiles \"%s\" | "
 			"bk prs -hr1.1 -nd:DPN: - | grep BitKeeper/ > '%s'",
 			from, tempfile);

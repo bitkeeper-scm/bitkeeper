@@ -619,7 +619,7 @@ struct nlid_s {
 	char	*prog;		/* av[0] of prog that got the lock
 				 * (e.g. 'remote clone') */
 	time_t	created;	/* time at which the nlid was created */
-	pid_t	pid;		/* process that created the nlid */
+	u32	pid;		/* process that created the nlid */
 	u32	random;		/* random bytes */
 };
 

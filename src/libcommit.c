@@ -64,7 +64,7 @@ status(int verbose, FILE *f)
 	}
 
 	if (verbose) {
-		bktmp(tmp_file, "status");
+		bktmp(tmp_file);
 		f1 = fopen(tmp_file, "w");
 		assert(f1);
 		bkusers(0, 0, f1);
