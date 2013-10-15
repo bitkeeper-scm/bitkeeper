@@ -2587,9 +2587,9 @@ Some brief examples:
 
 As well as grouping, parentheses serve a second purpose.  They can be
 used to capture the results of parts of the regexp match for later use.
-The results end up in C<$1>, C<$2> and so on (but note that if you want
-to interpolate those in a string the syntax is a little convoluted: 
-C<"matched ${$1} and ${$2}">).  
+The results end up in C<$1>, C<$2> and so on, and these capture
+variables are available in the substitution part of the operator
+as well as afterward.
 You can use up to nine captures ($1 - $9).
 
     // Break an e-mail address into parts.
@@ -2597,6 +2597,9 @@ You can use up to nine captures ($1 - $9).
         printf("Username is %s\n", $1);
         printf("Hostname is %s\n", $2);
     }
+
+    // Use $1,$2 in the substitution to swap two words.
+    str =~ s/(\w+) (\w+)/$2 $1/;
 
 Capturing has a limitation.  If you have more than one regexp with
 captures in an expression, the last one evaluated sets C<$1>, C<$2>,

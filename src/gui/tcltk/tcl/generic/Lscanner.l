@@ -1039,6 +1039,11 @@ canonical_num(char *num)
 				if (YYSTATE == re_modifier) yy_pop_state();
 				return T_RE;
 			}
+	"$"[0-9]	{
+				// Convert $3 to \3 (regexp capture reference).
+				STRBUF_ADD("\\", 1);
+				STRBUF_ADD(yytext+1, yyleng-1);
+			}
 	.		{
 				if (*yytext == re_end_delim) {
 					L_lval.s = ckstrdup(STRBUF_STRING());

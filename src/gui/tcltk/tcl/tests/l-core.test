@@ -10054,15 +10054,19 @@ regexp_1_5()
 	 *   & \0 \1 ... \9 get substituted with the re matches
 	 *   \a \e \f \n \r \t get expanded to control chars
 	 *   \x for anything else gets expanded to "x"
+	 *   $0-$9 are synonyms for \0-\9
 	 */
 
-	/* Check & and \0. */
+	/* Check &, \0, and $0. */
 	s = "abc";
 	s =~ s/b/x&y/;
 	unless (s eq "axbyc") puts("bad 9.1");
 	s = "abc";
 	s =~ s/b/x\0y/;
 	unless (s eq "axbyc") puts("bad 9.2");
+	s = "abc";
+	s =~ s/b/x$0y/;
+	unless (s eq "axbyc") puts("bad 9.2.1");
 
 	/* Check \1 through \9. */
 	s = "123456789abc";
@@ -10092,6 +10096,40 @@ regexp_1_5()
 	s = "123456789abc";
 	s =~ s/1(2)(3)(4)(5)(6)(7)(8)(9)a(b)c/123456789c\9a/;
 	unless (s eq "123456789cba") puts("bad 9.11");
+
+	/* Check $1 through $9. */
+	s = "123456789abc";
+	s =~ s/123456789a(b)c/123456789c$1a/;
+	unless (s eq "123456789cba") puts("bad 9.12");
+	s = "123456789abc";
+	s =~ s/12345678(9)a(b)c/123456789c$2a/;
+	unless (s eq "123456789cba") puts("bad 9.13");
+	s = "123456789abc";
+	s =~ s/1234567(8)(9)a(b)c/123456789c$3a/;
+	unless (s eq "123456789cba") puts("bad 9.14");
+	s = "123456789abc";
+	s =~ s/123456(7)(8)(9)a(b)c/123456789c$4a/;
+	unless (s eq "123456789cba") puts("bad 9.15");
+	s = "123456789abc";
+	s =~ s/12345(6)(7)(8)(9)a(b)c/123456789c$5a/;
+	unless (s eq "123456789cba") puts("bad 9.16");
+	s = "123456789abc";
+	s =~ s/1234(5)(6)(7)(8)(9)a(b)c/123456789c$6a/;
+	unless (s eq "123456789cba") puts("bad 9.17");
+	s = "123456789abc";
+	s =~ s/123(4)(5)(6)(7)(8)(9)a(b)c/123456789c$7a/;
+	unless (s eq "123456789cba") puts("bad 9.18");
+	s = "123456789abc";
+	s =~ s/12(3)(4)(5)(6)(7)(8)(9)a(b)c/123456789c$8a/;
+	unless (s eq "123456789cba") puts("bad 9.19");
+	s = "123456789abc";
+	s =~ s/1(2)(3)(4)(5)(6)(7)(8)(9)a(b)c/123456789c$9a/;
+	unless (s eq "123456789cba") puts("bad 9.19.1");
+
+	/* Make sure $a still works, where a != [0-9]. */
+	s = "123456789abc";
+	s =~ s/1(2)(3)(4)(5)(6)(7)(8)(9)a(b)c/123456789c$aa/;
+	unless (s eq "123456789c$aa") puts("bad 9.19.2");
 
 	/* Check \a \e \f \n \r \t. */
 	s = "a\nb\n\nc\n\nd\n";
