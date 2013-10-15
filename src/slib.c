@@ -17230,6 +17230,7 @@ int
 isKey(char *key)
 {
 	int	i;
+	int	bars;
 	int	len = strlen(key);
 
 	/*
@@ -17237,11 +17238,15 @@ isKey(char *key)
 	 * x@y|P|19990319224848|02682
 	 * 12345678901234567890123456
 	 */
-	if ((len >= 26) && strchr(key, '|')) return (1);
+	if (len >= 26) {
+		bars = strcnt(key, '|');
+		if ((bars == 3) || (bars == 4)) return (1);
+	}
 	if (isxdigit(key[0]) && (len == 30)) {
 		for (i = 1; i < 8; i++) unless (isxdigit(key[i])) return (0);
 		for (; i < 30; i++) {
-			unless (isalnum(key[i]) || (key[i] == '-') || (key[i] == '_')) {
+			unless (isalnum(key[i]) ||
+			    (key[i] == '-') || (key[i] == '_')) {
 				return (0);
 			}
 		}

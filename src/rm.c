@@ -215,6 +215,11 @@ sccs_gone(int quiet, FILE *f)
 	/* eat the keys first because check will complain if we edit the file */
 	i = 0;
 	while (fnext(key, f)) {
+		unless (isKey(key)) {
+			chomp(key);
+			fprintf(stderr, "gone: '%s' is not a key.\n", key);
+			return (1);
+	    	}
 		mdbm_store_str(db, key, "", MDBM_INSERT);
 		i++;
 	}
