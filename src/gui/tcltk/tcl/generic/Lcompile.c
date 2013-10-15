@@ -193,6 +193,7 @@ private int	compile_fnCall(Expr *expr);
 private void	compile_fnDecl(FnDecl *fun, Decl_f flags);
 private void	compile_fnDecls(FnDecl *fun, Decl_f flags);
 private void	compile_foreach(ForEach *loop);
+private void	compile_foreachAngle(ForEach *loop);
 private void	compile_foreachArray(ForEach *loop);
 private void	compile_foreachHash(ForEach *loop);
 private void	compile_foreachString(ForEach *loop);
@@ -4328,6 +4329,14 @@ fixup_jmps(Jmp **p)
 private void
 compile_foreach(ForEach *loop)
 {
+	/*
+	 * Handle foreach(s in <expr>).
+	 */
+	if (loop->expr->op == L_OP_FILE) {
+		compile_foreachAngle(loop);
+		return;
+	}
+
 	compile_expr(loop->expr, L_PUSH_VAL);
 
 	switch (loop->expr->type->kind) {
@@ -4567,13 +4576,6 @@ compile_foreachString(ForEach *loop)
 	Expr	*id;
 	Tmp	*itTmp, *lenTmp, *strTmp;
 
-	/* Outlaw foreach(s in <>). */
-	if (loop->expr->op == L_OP_FILE) {
-		L_warnf(loop->expr,
-			"this will get only one line from <F>, "
-			"did you mean while (buf = <F>)?");
-	}
-
 	/* The foreach(k=>v in expr) form is illegal in string iteration. */
 	if (loop->value) {
 		L_errf(loop, "=> illegal in foreach over strings");
@@ -4642,6 +4644,87 @@ compile_foreachString(ForEach *loop)
 	tmp_free(itTmp);
 	tmp_free(lenTmp);
 	tmp_free(strTmp);
+}
+
+private void
+compile_foreachAngle(ForEach *loop)
+{
+	Expr	*expr = loop->expr->a;
+	Expr	*id;
+	Tmp	*tmp;
+	Jmp	*break_jmps, *continue_jmps, *out_jmp;
+	int	top_off;
+
+	/* Outlaw foreach(s in <>). */
+	unless (expr) {
+		L_errf(loop, "this form is disallowed; did you mean "
+		       "while (buf = <>)?");
+		return;
+	}
+
+	/* The foreach(k=>v in expr) form is illegal in string iteration. */
+	if (loop->value) {
+		L_errf(loop, "=> illegal in foreach over strings");
+	}
+
+	push_lit("LgetNextLineInit_");
+	compile_expr(expr, L_PUSH_VAL);
+
+	/* Outlaw foreach(s in <a_FILE>). */
+	if (typeisf(expr, "FILE")) {
+		L_errf(loop->expr,
+		       "this form is disallowed; did you mean "
+		       "while (buf = <F>)?");
+		return;
+	}
+	unless (isstring(expr)) {
+		L_errf(expr, "in foreach, arg to <> must be a string");
+		return;
+	}
+
+	for (id = loop->key; id; id = id->next) {
+		unless (sym_lookup(id, 0)) return;  // undeclared var
+		unless (L_typeck_compat(id->type, L_string)) {
+			L_errf(id, "loop index %s not of string type", id->str);
+		}
+	}
+
+	/*
+	 *    tmp = LgetNextLineInit_(expr)
+	 * 1: s1 = LgetNextLine_(tmp)
+	 *    s2 = LgetNextLine_(tmp)
+	 *    ...
+	 *    s<n> = LgetNextLine_(tmp)
+	 *    if (s1 is undef) jmp 2
+	 *    <loop body>
+	 *    jmp 1
+	 * 2:
+	 */
+
+	tmp = tmp_get(TMP_REUSE);
+	emit_invoke(2);
+	emit_store_scalar(tmp->idx);
+	emit_pop();
+	top_off = currOffset(L->frame->envPtr);
+	for (id = loop->key; id; id = id->next) {
+		push_lit("LgetNextLine_");
+		emit_load_scalar(tmp->idx);
+		emit_invoke(2);
+		emit_store_scalar(id->sym->idx);
+		emit_pop();
+	}
+	emit_load_scalar(loop->key->sym->idx);
+	TclEmitOpcode(INST_L_DEFINED, L->frame->envPtr);
+	out_jmp = emit_jmp_fwd(INST_JUMP_FALSE4, NULL);
+	frame_push(loop, NULL, LOOP|SEARCH);
+	compile_stmts(loop->body);
+	break_jmps    = L->frame->break_jumps;
+	continue_jmps = L->frame->continue_jumps;
+	frame_pop();
+	fixup_jmps(&continue_jmps);
+	emit_jmp_back(TCL_UNCONDITIONAL_JUMP, top_off);
+	fixup_jmps(&break_jmps);
+	fixup_jmps(&out_jmp);
 }
 
 private void
@@ -7721,4 +7804,123 @@ Tcl_LHtmlObjCmd(
 	unless (ret == TCL_OK) Tcl_SetObjResult(interp, errs);
 	Tcl_DecrRefCount(errs);
 	return (ret);
+}
+
+/*
+ * A Tcl_Obj type to store a pointer into a string buffer that we can
+ * walk down over time.  The twpPtrValue internalrep is used, with the
+ * first ptr pointing to a ckalloc'd Bufptr struct (defined below) and
+ * the second ptr pointing to a copy of the buffer.
+ */
+static Tcl_ObjType L_bufPtrType = {
+    "l-bufPtrType",
+    NULL,			/* freeIntRepProc */
+    NULL,			/* dupIntRepProc */
+    NULL,			/* updateStringProc */
+    NULL			/* setFromAnyProc */
+};
+typedef struct {
+	char	*p;
+	char	*end;
+} Bufptr;
+
+int
+Tcl_LGetNextLineInit(
+    ClientData dummy,		/* Not used. */
+    Tcl_Interp *interp,		/* Current interpreter. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])	/* Argument objects. */
+{
+	int	len;
+	char	*beg, *s;
+	Tcl_Obj	*tmp;
+	Bufptr	*bufptr;
+
+	if (objc != 2) {
+		Tcl_WrongNumArgs(interp, 1, objv, "object");
+		return (TCL_ERROR);
+	}
+	if (objv[1]->undef) {
+		Tcl_SetObjResult(interp, *L_undefObjPtrPtr());
+		return (TCL_OK);
+	}
+
+	/*
+	 * Make a copy of the string whose lines we will walk.  Do
+	 * this instead of copying the Tcl_Obj to avoid problems with
+	 * possible shimmering (i.e., the Tcl_Obj's string-rep buffer is
+	 * not guaranteed to remain).
+	 */
+	s = Tcl_GetStringFromObj(objv[1], &len);
+	beg = ckalloc(len + 1);
+	memcpy(beg, s, len);
+	beg[len] = '\0';
+
+	/*
+	 * Stash the copied string and a Bufptr into it inside of a
+	 * tmp Tcl_Obj that will live for the duration of the walk.
+	 * Tcl_LGetNextLine() will process it.
+	 */
+	tmp = Tcl_NewObj();
+	tmp->typePtr = &L_bufPtrType;
+	bufptr = (Bufptr *)ckalloc(sizeof(Bufptr));
+	bufptr->p   = beg;
+	bufptr->end = beg + len;
+	tmp->internalRep.twoPtrValue.ptr1 = bufptr;
+	tmp->internalRep.twoPtrValue.ptr2 = beg;
+
+	Tcl_SetObjResult(interp, tmp);
+	return (TCL_OK);
+}
+
+int
+Tcl_LGetNextLine(
+    ClientData dummy,		/* Not used. */
+    Tcl_Interp *interp,		/* Current interpreter. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])	/* Argument objects. */
+{
+	Tcl_Obj	*ret, *tmp;
+	char	*beg, *p;
+	Bufptr	*bufptr;
+
+	if (objc != 2) {
+		Tcl_WrongNumArgs(interp, 1, objv, "tmp");
+		return (TCL_ERROR);
+	}
+	tmp = objv[1];
+	if (tmp->undef) goto nomore;
+	unless (tmp->typePtr == &L_bufPtrType) {
+		Tcl_SetObjResult(interp,
+				 Tcl_NewStringObj("invalid tmp object", -1));
+		return (TCL_ERROR);
+	}
+	bufptr = (Bufptr *)tmp->internalRep.twoPtrValue.ptr1;
+	unless (bufptr) goto nomore;
+
+	beg = bufptr->p;
+	if (beg >= bufptr->end) goto nomore;
+
+	for (p = beg; p < bufptr->end; ++p) {
+		if (p[0] == '\n') {
+			bufptr->p = p + 1;
+			break;
+		}
+		if (((p+1) < bufptr->end) && (p[0] == '\r') && (p[1] == '\n')) {
+			bufptr->p = p + 2;
+			break;
+		}
+	}
+	ret = Tcl_NewStringObj(beg, p - beg);
+	if (p == bufptr->end) {
+		ckfree(tmp->internalRep.twoPtrValue.ptr2);
+		ckfree((char *)bufptr);
+		tmp->internalRep.twoPtrValue.ptr1 = NULL;
+		tmp->internalRep.twoPtrValue.ptr2 = NULL;
+	}
+	Tcl_SetObjResult(interp, ret);
+	return (TCL_OK);
+ nomore:
+	Tcl_SetObjResult(interp, *L_undefObjPtrPtr());
+	return (TCL_OK);
 }

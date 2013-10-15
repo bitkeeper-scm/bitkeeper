@@ -953,15 +953,24 @@ array:
         printf("This char is %s\n", char);
     }
 
-If you want to stride through more than one array element or character in
-each iteration, just use a list of value variables instead of one:
+... or through the lines in a string:
+
+    int i = 0;
+    string s, lines;
+
+    foreach (s in <lines>) {
+        puts("line #${++i}: ${s}");
+    }
+
+If you want to stride through more than one array element, character,
+or line in each iteration, just use a list of value variables instead of one:
 
     foreach (e1,e2,e3 in myarray) {
         printf("Next three are %s:%s:%s\n", e1, e2, e3);
     }
 
-If the array or string length isn't a multiple of three, the
-stragglers get the value undef on the last iteration.  Strides
+If there isn't a multiple of three things to iterate through, the
+stragglers get undef on the last iteration.  Strides
 work only for arrays and strings, not hashes.
 
 After completing the loop and falling through, all loop counters

@@ -6180,19 +6180,29 @@ void loop_1_2_7()
 .*16: L Error: loop index not of string type
 }
 
-test loop-1.2.7.1 {test foreach over <> error} -body {
+test loop-1.2.7.1 {test foreach over <> errors} -body {
 #lang L --line=1
 void loop_1_2_7_1()
 {
+	int	i;
 	string	s;
 	FILE	f;
 
 	foreach(s in <>) {}
 	foreach(s in <f>) {}
+	foreach(s in <1>) {}
+	foreach(i in <s>) {}
+	foreach(s,i in <s>) {}
+	foreach(i,s in <s>) {}
+	foreach(s,i,s in <s>) {}
 }
 loop_1_2_7_1();
-} -returnCodes error -match regexp -result {.*6: L Warning: this will get only one line from <F>, did you mean while \(buf = <F>\)\?
-.*7: L Warning: this will get only one line from <F>, did you mean while \(buf = <F>\)\?
+} -returnCodes error -match regexp -result {.*7: L Error: this form is disallowed; did you mean while \(buf = <>\)\?
+.*8: L Error: this form is disallowed; did you mean while \(buf = <F>\)\?
+.*9: L Error: in foreach, arg to <> must be a string
+.*10: L Error: loop index i not of string type
+.*11: L Error: loop index i not of string type
+.*12: L Error: loop index i not of string type
 }
 
 test loop-1.2.8 {test foreach type errors} -body {
@@ -6505,6 +6515,205 @@ void loop_1_2_14()
 }
 loop_1_2_14();
 } -output {}
+
+test loop-1.2.15 {test foreach <string>} -body {
+#lang L
+string l1_2_15(string s)
+{
+	string	t, ret = "";
+
+	foreach (t in <s>) ret .= "<${t?t:'undef'}>";
+	if (t) puts("bad l1_2_15");
+	return (ret);
+}
+string l1_2_15_2(string s)
+{
+	string	t1, t2, ret = "";
+
+	foreach (t1,t2 in <s>) ret .= "<${t1?t1:'undef'}>[${t2?t2:'undef'}]";
+	if (t1 || t2) puts("bad l1_2_15_2");
+	return (ret);
+}
+string l1_2_15_3(string s)
+{
+	string	t1, t2, t3, ret = "";
+
+	foreach (t1,t2,t3 in <s>) {
+		ret .= "<${t1?t1:'undef'}>[${t2?t2:'undef'}]{${t3?t3:'undef'}}";
+	}
+	if (t1 || t2 || t3) puts("bad l1_2_15_3");
+	return (ret);
+}
+void loop_1_2_15()
+{
+	string	s, t;
+
+	/* Check a stride of 1, \n line endings. */
+
+	unless (l1_2_15(undef) == "") puts("bad 1.1");
+	unless (l1_2_15("") == "") puts("bad 1.2");
+
+	unless (l1_2_15("l1") == "<l1>") puts("bad 2.1");
+	unless (l1_2_15("l1\n") == "<l1>") puts("bad 2.2");
+
+	unless (l1_2_15("l1\nl2") == "<l1><l2>") puts("bad 3.1");
+	unless (l1_2_15("l1\nl2\n") == "<l1><l2>") puts("bad 3.2");
+
+	unless (l1_2_15("l1\nl2\nl3") == "<l1><l2><l3>") puts("bad 4.1");
+	unless (l1_2_15("l1\nl2\nl3\n") == "<l1><l2><l3>") puts("bad 4.2");
+
+	/* Check a stride of 1, \r\n line endings. */
+
+	unless (l1_2_15("l1\r\n") == "<l1>") puts("bad 5.1");
+
+	unless (l1_2_15("l1\r\nl2") == "<l1><l2>") puts("bad 6.1");
+	unless (l1_2_15("l1\r\nl2\r\n") == "<l1><l2>") puts("bad 6.2");
+
+	unless (l1_2_15("l1\r\nl2\r\nl3") == "<l1><l2><l3>") puts("bad 7.1");
+	unless (l1_2_15("l1\r\nl2\r\nl3\r\n") == "<l1><l2><l3>") puts("bad 7.2");
+
+	/* Check a stride of 2, \n line endings. */
+
+	unless (l1_2_15_2(undef) == "") puts("bad 10.1");
+	unless (l1_2_15_2("") == "") puts("bad 10.2");
+
+	unless (l1_2_15_2("l1") == "<l1>[undef]") puts("bad 11.1");
+	unless (l1_2_15_2("l1\n") == "<l1>[undef]") puts("bad 11.2");
+
+	unless (l1_2_15_2("l1\nl2") == "<l1>[l2]") puts("bad 12.1");
+	unless (l1_2_15_2("l1\nl2\n") == "<l1>[l2]") puts("bad 12.2");
+
+	unless (l1_2_15_2("l1\nl2\nl3") == "<l1>[l2]<l3>[undef]") {
+		puts("bad 13.1");
+	}
+	unless (l1_2_15_2("l1\nl2\nl3\n") == "<l1>[l2]<l3>[undef]") {
+		puts("bad 13.2");
+	}
+
+	unless (l1_2_15_2("l1\nl2\nl3\nl4") == "<l1>[l2]<l3>[l4]") {
+		puts("bad 14.1");
+	}
+	unless (l1_2_15_2("l1\nl2\nl3\nl4\n") == "<l1>[l2]<l3>[l4]") {
+		puts("bad 14.2");
+	}
+
+	/* Check a stride of 2, \r\n line endings. */
+
+	unless (l1_2_15_2("l1\r\n") == "<l1>[undef]") puts("bad 15.1");
+
+	unless (l1_2_15_2("l1\r\nl2") == "<l1>[l2]") puts("bad 16.1");
+	unless (l1_2_15_2("l1\r\nl2\r\n") == "<l1>[l2]") puts("bad 16.2");
+
+	unless (l1_2_15_2("l1\r\nl2\r\nl3") == "<l1>[l2]<l3>[undef]") {
+		puts("bad 17.1");
+	}
+	unless (l1_2_15_2("l1\r\nl2\r\nl3\r\n") == "<l1>[l2]<l3>[undef]") {
+		puts("bad 17.2");
+	}
+
+	unless (l1_2_15_2("l1\r\nl2\r\nl3\r\nl4") == "<l1>[l2]<l3>[l4]") {
+		puts("bad 18.1");
+	}
+	unless (l1_2_15_2("l1\r\nl2\r\nl3\r\nl4\r\n") == "<l1>[l2]<l3>[l4]") {
+		puts("bad 18.2");
+	}
+
+	/* Check a stride of 3, \n line endings. */
+
+	unless (l1_2_15_3(undef) == "") puts("bad 20.1");
+	unless (l1_2_15_3("") == "") puts("bad 20.2");
+
+	unless (l1_2_15_3("l1") == "<l1>[undef]{undef}") puts("bad 21.1");
+	unless (l1_2_15_3("l1\n") == "<l1>[undef]{undef}") puts("bad 21.2");
+
+	unless (l1_2_15_3("l1\nl2") == "<l1>[l2]{undef}") puts("bad 22.1");
+	unless (l1_2_15_3("l1\nl2\n") == "<l1>[l2]{undef}") puts("bad 22.2");
+
+	unless (l1_2_15_3("l1\nl2\nl3") == "<l1>[l2]{l3}") puts("bad 23.1");
+	unless (l1_2_15_3("l1\nl2\nl3\n") == "<l1>[l2]{l3}") puts("bad 23.2");
+
+	unless (l1_2_15_3("l1\nl2\nl3\nl4") == "<l1>[l2]{l3}<l4>[undef]{undef}") {
+		puts("bad 24.1");
+	}
+	unless (l1_2_15_3("l1\nl2\nl3\nl4\n") == "<l1>[l2]{l3}<l4>[undef]{undef}") {
+		puts("bad 24.2");
+	}
+
+	unless (l1_2_15_3("l1\nl2\nl3\nl4\nl5") == "<l1>[l2]{l3}<l4>[l5]{undef}") {
+		puts("bad 25.1");
+	}
+	unless (l1_2_15_3("l1\nl2\nl3\nl4\nl5\n") == "<l1>[l2]{l3}<l4>[l5]{undef}") {
+		puts("bad 25.2");
+	}
+
+	unless (l1_2_15_3("l1\nl2\nl3\nl4\nl5\nl6") == "<l1>[l2]{l3}<l4>[l5]{l6}") {
+		puts("bad 26.1");
+	}
+	unless (l1_2_15_3("l1\nl2\nl3\nl4\nl5\nl6\n") == "<l1>[l2]{l3}<l4>[l5]{l6}") {
+		puts("bad 26.2");
+	}
+
+	/* Check a stride of 3, \r\n line endings. */
+
+	unless (l1_2_15_3("l1\r\n") == "<l1>[undef]{undef}") puts("bad 27.1");
+
+	unless (l1_2_15_3("l1\r\nl2") == "<l1>[l2]{undef}") puts("bad 28.1");
+	unless (l1_2_15_3("l1\r\nl2\r\n") == "<l1>[l2]{undef}") puts("bad 28.2");
+
+	unless (l1_2_15_3("l1\r\nl2\r\nl3") == "<l1>[l2]{l3}") {
+		puts("bad 29.1");
+	}
+	unless (l1_2_15_3("l1\r\nl2\r\nl3\r\n") == "<l1>[l2]{l3}") {
+		puts("bad 29.2");
+	}
+
+	unless (l1_2_15_3("l1\r\nl2\r\nl3\r\nl4") == "<l1>[l2]{l3}<l4>[undef]{undef}") {
+		puts("bad 30.1");
+	}
+	unless (l1_2_15_3("l1\r\nl2\r\nl3\r\nl4\r\n") == "<l1>[l2]{l3}<l4>[undef]{undef}") {
+		puts("bad 30.2");
+	}
+
+	unless (l1_2_15_3("l1\r\nl2\r\nl3\r\nl4\r\nl5") == "<l1>[l2]{l3}<l4>[l5]{undef}") {
+		puts("bad 31.1");
+	}
+	unless (l1_2_15_3("l1\r\nl2\r\nl3\r\nl4\r\nl5\r\n") == "<l1>[l2]{l3}<l4>[l5]{undef}") {
+		puts("bad 31.2");
+	}
+
+	unless (l1_2_15_3("l1\r\nl2\r\nl3\r\nl4\r\nl5\r\nl6") == "<l1>[l2]{l3}<l4>[l5]{l6}") {
+		puts("bad 32.1");
+	}
+	unless (l1_2_15_3("l1\r\nl2\r\nl3\r\nl4\r\nl5\r\nl6\r\n") == "<l1>[l2]{l3}<l4>[l5]{l6}") {
+		puts("bad 32.2");
+	}
+
+	/* Check break and continue from inside the foreach. */
+
+	t = "";
+	foreach (s in <"l1\nl2\nl3\nl4\n">) {
+		t .= "b<${s}>";
+		if (s == "l1") continue;
+		if (s == "l2") break;
+		t .= "a<${s}>";
+	}
+	unless (t == "b<l1>b<l2>") puts("bad 50.1 ${t}");
+	unless (s == "l2") puts("bad 50.2");
+}
+loop_1_2_15();
+} -output {}
+
+test loop-1.2.15.1 {test foreach <string>} -body {
+#lang L
+void loop_1_2_15_1()
+{
+	string s = "1\n2\n\3\n4\n";
+	string k, v;
+
+	foreach (k => v in <s>) printf("%s,%s\n", k, v);
+}
+loop_1_2_15_1();
+} -returnCodes error -match regexp -result {.*: L Error: => illegal in foreach over strings}
 
 test loop-1.3 {continue statements} -body {
 #lang L --line=1
