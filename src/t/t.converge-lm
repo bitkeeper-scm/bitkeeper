@@ -394,7 +394,7 @@ F=BitKeeper/etc/ignore
 echo $N Duplicate line in the same file .............................$NL
 cd "$HERE"
 rm -rf project copy
-commercial project
+fresh_commercial project
 cd ..
 bk clone $Q project copy
 # for next test, make a second copy

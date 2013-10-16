@@ -182,6 +182,10 @@ _get_cached_repo() {
 commercial() {
 	CF="$BK_CACHE/commercial.config"
 	SFIO="$BK_CACHE/commercial.sfio"
+	test "$_BK_SETUP_NOGONE" && {
+		echo "no calling 'commercial' with _BK_SETUP_NOGONE" 1>&2
+		exit 1
+	}
 	test -f "$SFIO" || {
 		_commercial_config > "$CF"
 		_make_repo commercial "$CF" "$SFIO"
