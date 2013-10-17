@@ -7053,6 +7053,11 @@ Tcl_GetOptObjCmd(
 		Tcl_WrongNumArgs(interp, 1, objv, "av opts lopts");
 		return (TCL_ERROR);
 	}
+
+	/* Set the C optind variable from its L counterpart. */
+	s = (char *)Tcl_GetVar(interp, "optind", TCL_GLOBAL_ONLY);
+	if (s) optind = atoi(s);
+
 	if (Tcl_ListObjGetElements(interp, objv[1], &ac, &objs) != TCL_OK) {
 		return (TCL_ERROR);
 	}
@@ -7133,6 +7138,9 @@ Tcl_GetOptResetObjCmd(
 		return (TCL_ERROR);
 	}
 	getoptReset();
+	Tcl_SetVar(interp, "optind", "0", TCL_GLOBAL_ONLY);
+	Tcl_SetVar(interp, "optopt", "", TCL_GLOBAL_ONLY);
+	Tcl_SetVar(interp, "optarg", "", TCL_GLOBAL_ONLY);
 	return (TCL_OK);
 }
 
