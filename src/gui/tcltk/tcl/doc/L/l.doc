@@ -1098,12 +1098,13 @@ C<Here documents> help with that:
     This is the first line in s.
     This is the second.
     And the last.
-    END
+    END;
 
 Everything in the line starting after the initial <<END delimiter and
-before the final END delimiter get put into the variable C<s>.  You
+before the final END delimiter gets put into the variable C<s>.  You
 can use any identifier you want as the delimiter, it doesn't have
 to be END.
+A semicolon after the END is optional.
 
 The text inside the here document undergoes interpolation and escape
 processing.
@@ -1114,7 +1115,24 @@ quotes:
     None of this text is interpolated.
     So this ${xyz} appears literally as '${xyz}'.
     And so does \ and ' and " and anything else.
-    END
+    END;
+
+To help readability, you can indent your here document but have
+the indenting white space ignored.
+Put the initial delimiter on the next line and then
+whatever whitespace you put before it gets ignored:
+
+    string s =
+        <<END
+        This is the first line in s and gets no leading white space.
+         This line ends up with a single leading space.
+          And this ends up with two.
+        END;
+
+Exceptions to the indentation rule: 
+a blank line is processed as if it is indented,
+and the end delimiter can have any amount of leading white space
+so that you can indent it differently.
 
 =head1 WORKING WITH TCL/TK
 

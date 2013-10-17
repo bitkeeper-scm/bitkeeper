@@ -59,6 +59,7 @@ private char	re_end_delim;
 private Tcl_Obj	*str;		// string collection buffer
 private int	str_beg;	// source offset of string
 private char	*here_delim = NULL;
+private char	*here_pfx = NULL;
 private int	include_top;
 private Include	include_stk[INCLUDE_STACK_SZ+1];
 private Tcl_HashTable *include_table = NULL;
@@ -693,45 +694,66 @@ canonical_num(char *num)
 		return T_EQTWID;
 	}
 	/* here document (interpolated), valid only on rhs of an assignment */
-	"="[ \t\r\n]*"<<"[a-zA-Z_][a-zA-Z_0-9]*"\n"		{
-		int	len;
-		char	*p;
+	=[ \t\r\n]*<<[a-zA-Z_][a-zA-Z_0-9]*\n		{
+		char	*p, *q;
+
 		if (here_delim) {
 			L_err("nested here documents illegal");
 		}
-		/* point p at the here-document delimeter */
-		for (p = yytext+1; *p != '<'; ++p) ;
-		p += 2;  // now points one past the end of the <<
-		len = yyleng - (p - yytext) - 1;
-		here_delim = ckstrndup(p, len);
+		p = strchr(yytext, '<') + 2;  // the < is guaranteed to exist
+		for (q = p; (q > yytext) && (*q != '\n'); --q) ;
+		if ((q > yytext) && (*q == '\n')) {
+			// \n then <<; the in-between whitespace is the here_pfx
+			here_pfx = ckstrndup(q+1, p-q-3);
+		} else {
+			// non-indented here document
+			here_pfx = ckstrdup("");
+		}
+		here_delim = ckstrndup(p, yyleng - (p-yytext) - 1);
 		STRBUF_START(L->token_off);
 		L_lloc.end = L_lloc.beg + 1;
 		yy_push_state(here_doc_interp);
 		return T_EQUALS;
 	}
 	/* here document (uninterpolated), valid only on rhs of an assignment */
-	"="[ \t\r\n]*"<<\'"[a-zA-Z_][a-zA-Z_0-9]*"\'\n"		{
-		int	len;
-		char	*p;
+	=[ \t\r\n]*<<\'[a-zA-Z_][a-zA-Z_0-9]*\'\n		{
+		char	*p, *q;
+
 		if (here_delim) {
 			L_err("nested here documents illegal");
 		}
-		/* point p at the here-document delimeter */
-		for (p = yytext+1; *p != '<'; ++p) ;
-		p += 3;  // now points one past the end of the <<'
-		len = yyleng - (p - yytext) - 2;
-		here_delim = ckstrndup(p, len);
+		p = strchr(yytext, '<') + 2;  // the < is guaranteed to exist
+		for (q = p; (q > yytext) && (*q != '\n'); --q) ;
+		if ((q > yytext) && (*q == '\n')) {
+			// \n then <<; the in-between whitespace is the here_pfx
+			here_pfx = ckstrndup(q+1, p-q-3);
+		} else {
+			// non-indented here document
+			here_pfx = ckstrdup("");
+		}
+		here_delim = ckstrndup(p+1, yyleng - (p-yytext) - 3);
 		STRBUF_START(L->token_off);
 		L_lloc.end = L_lloc.beg + 1;
 		yy_push_state(here_doc_nointerp);
 		return T_EQUALS;
 	}
-	/* illegal here documents (white space after the end delim) */
-	"="[ \t\r\n]*"<<"[a-zA-Z_][a-zA-Z_0-9]*[^\n]		{
-		L_synerr("illegal here-document delimeter");
+	/* illegal here documents (bad stuff before or after the delim) */
+	=[ \t\r\n]*<<-[a-zA-Z_][a-zA-Z_0-9]*			|
+	=[ \t\r\n]*<<-\'[a-zA-Z_][a-zA-Z_0-9]*\'		{
+		L_synerr("<<- unsupported, use =\\n\\t<<END to strip one "
+			 "leading tab");
 	}
-	"="[ \t\r\n]*"<<\'"[a-zA-Z_][a-zA-Z_0-9]*\'[^\n]		{
-		L_synerr("illegal here-document delimeter");
+	=[ \t\r\n]*<<[a-zA-Z_][a-zA-Z_0-9]*[^\n]		{
+		L_synerr("illegal characters after here-document delimeter");
+	}
+	=[ \t\r\n]*<<[^a-zA-Z_][a-zA-Z_][a-zA-Z_0-9]*		{
+		L_synerr("illegal characters before here-document delimeter");
+	}
+	=[ \t\r\n]*<<\'[a-zA-Z_][a-zA-Z_0-9]*\'[^\n]		{
+		L_synerr("illegal characters after here-document delimeter");
+	}
+	=[ \t\r\n]*<<\'[^a-zA-Z_][a-zA-Z_][a-zA-Z_0-9]*\'	{
+		L_synerr("illegal characters before here-document delimeter");
 	}
 }
 
@@ -907,43 +929,50 @@ canonical_num(char *num)
 }
 
 <here_doc_nointerp>{
-	^[a-zA-Z_][a-zA-Z_0-9]*$	{
-				if (strcmp(yytext, here_delim)) {
-					STRBUF_ADD(yytext, yyleng);
-				} else {
+	^[ \t]*[a-zA-Z_][a-zA-Z_0-9]*;?$	{
+				int	len;
+				char	*p = yytext;
+
+				/*
+				 * Look for whitespace-prefixed here_delim.
+				 * Any amount of white space is allowed.
+				 */
+				while (isspace(*p)) ++p;
+				len = yyleng - (p - yytext);
+				if (p[len-1] == ';') --len;
+				if ((len == strlen(here_delim)) &&
+				    !strncmp(p, here_delim, len)) {
 					yy_pop_state();
-					unput(';');  // inject ; for the parser
+					unput(';');  // for the parser
 					L_lval.s = ckstrdup(STRBUF_STRING());
 					STRBUF_STOP(L_lloc.end);
 					ckfree(here_delim);
+					ckfree(here_pfx);
 					here_delim = NULL;
+					here_pfx = NULL;
 					return T_STR_LITERAL;
 				}
-			}
-	^[a-zA-Z_][a-zA-Z_0-9]*[ \t\n]*;[ \t]*$	{
 				/*
-				 * This is an error check -- look for a
-				 * trailing ; after end delimeter.
+				 * It's a data line.  It must begin with
+				 * here_pfx or else it's an error.
 				 */
-				int	len;
-				char	*p = &yytext[yyleng-1];
-				/* walk back over the ; to the delim end */
-				while (*p == ' ') --p;
-				--p;
-				while (*p == ' ') --p;
-				len = p - yytext;
-				if (strncmp(yytext, here_delim, len)) {
-					/* not the delim -- add to here doc */
-					STRBUF_ADD(yytext, yyleng);
+				p = strstr(yytext, here_pfx);
+				if (p == yytext) {
+					p += strlen(here_pfx);
 				} else {
-					/* delim w/trailing ; found -- error */
-					L_err("illegal ; after here document");
-					yy_pop_state();
-					L_lval.s = ckstrdup(STRBUF_STRING());
-					STRBUF_STOP(L_lloc.end);
-					ckfree(here_delim);
-					here_delim = NULL;
-					return T_STR_LITERAL;
+					L_err("bad here-document prefix");
+					p = yytext;
+				}
+				STRBUF_ADD(p, yyleng - (p - yytext));
+			}
+	^[ \t]+		{
+				char	*p = strstr(yytext, here_pfx);
+				if (p == yytext) {
+					p += strlen(here_pfx);
+					STRBUF_ADD(p, yyleng - (p - yytext));
+				} else {
+					L_err("bad here-document prefix");
+					p = yytext;
 				}
 			}
 	.|\n		STRBUF_ADD(yytext, 1);
@@ -967,43 +996,50 @@ canonical_num(char *num)
 				STRBUF_START(L->token_off);
 				return T_START_BACKTICK;
 			}
-	^[a-zA-Z_][a-zA-Z_0-9]*$	{
-				if (strcmp(yytext, here_delim)) {
-					STRBUF_ADD(yytext, yyleng);
-				} else {
+	^[ \t]*[a-zA-Z_][a-zA-Z_0-9]*;?$	{
+				int	len;
+				char	*p = yytext;
+
+				/*
+				 * Look for whitespace-prefixed here_delim.
+				 * Any amount of white space is allowed.
+				 */
+				while (isspace(*p)) ++p;
+				len = yyleng - (p - yytext);
+				if (p[len-1] == ';') --len;
+				if ((len == strlen(here_delim)) &&
+				    !strncmp(p, here_delim, len)) {
 					yy_pop_state();
-					unput(';');  // inject ; for the parser
+					unput(';');  // for the parser
 					L_lval.s = ckstrdup(STRBUF_STRING());
 					STRBUF_STOP(L_lloc.end);
 					ckfree(here_delim);
+					ckfree(here_pfx);
 					here_delim = NULL;
+					here_pfx = NULL;
 					return T_STR_LITERAL;
 				}
-			}
-	^[a-zA-Z_][a-zA-Z_0-9]*[ \t\n]*;[ \t]*$	{
 				/*
-				 * This is an error check -- look for a
-				 * trailing ; after ending delimeter.
+				 * It's a data line.  It must begin with
+				 * here_pfx or else it's an error.
 				 */
-				int	len;
-				char	*p = &yytext[yyleng-1];
-				/* walk back over the ; to the delim end */
-				while (*p == ' ') --p;
-				--p;
-				while (*p == ' ') --p;
-				len = p - yytext;
-				if (strncmp(yytext, here_delim, len)) {
-					/* not the delim -- add to here doc */
-					STRBUF_ADD(yytext, yyleng);
+				p = strstr(yytext, here_pfx);
+				if (p == yytext) {
+					p += strlen(here_pfx);
 				} else {
-					/* delim w/trailing ; found -- error */
-					L_err("illegal ; after here document");
-					yy_pop_state();
-					L_lval.s = ckstrdup(STRBUF_STRING());
-					STRBUF_STOP(L_lloc.end);
-					ckfree(here_delim);
-					here_delim = NULL;
-					return T_STR_LITERAL;
+					L_err("bad here-document prefix");
+					p = yytext;
+				}
+				STRBUF_ADD(p, yyleng - (p - yytext));
+			}
+	^[ \t]+		{
+				char	*p = strstr(yytext, here_pfx);
+				if (p == yytext) {
+					p += strlen(here_pfx);
+					STRBUF_ADD(p, yyleng - (p - yytext));
+				} else {
+					L_err("bad here-document prefix");
+					p = yytext;
 				}
 			}
 	.|\n		STRBUF_ADD(yytext, 1);

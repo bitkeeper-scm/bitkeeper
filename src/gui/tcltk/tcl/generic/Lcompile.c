@@ -6282,7 +6282,7 @@ L_synerr(const char *s)
 	int	i, off;
 	char	*beg = Tcl_GetString(L->script);
 	char	*end = beg + L->script_len;
-	char	*line;
+	char	*line, *stop;
 
 	unless (L->errs) {
 		L->errs = Tcl_NewObj();
@@ -6299,8 +6299,10 @@ L_synerr(const char *s)
 	off = beg+off - line;  // is now offset from start of offending line
 
 	/* Print the offending line with a ^ pointing to the current token. */
+	stop = line + off;
 	for (i = 1; (*line != '\n') && (line < end); ++i) {
-		if (*line == '\t') {  // adjust for tab printing >1 char
+		// adjust for tab printing >1 char
+		if ((*line == '\t') && (line <= stop)) {
 			off += 8 - i%8;
 			i += 7;
 		}

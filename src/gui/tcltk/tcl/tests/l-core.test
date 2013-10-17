@@ -793,7 +793,7 @@ void scan_1_7()
 {
 	/* Vary the whitespace. */
 
-	string	s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11;
+	string	s1,s2,s3,s4,s5,s6,s7,s8,s10,s11;
 
 	s1 = <<'E'
 str1
@@ -836,12 +836,6 @@ str8
 END
 	unless (s8 eq "str8\n") puts("bad 8");
 
-	s9 =
- <<'END'
-str9
-END
-	unless (s9 eq "str9\n") puts("bad 9");
-
 	/*
 	 * These test the patterns in the scanner that check for a ;
 	 * after the end delim.  Note that there are spaces after
@@ -867,13 +861,47 @@ END
 	unless (s11 eq "NOTEND;\nNOTEND ;\nNOTEND; \nNOTEND ; \n") {
 		puts("bad 11");
 	}
+
+	/* Semicolons are allowed after the delim now. */
+
+	s11 = <<END
+NOTEND;
+END;
+	unless (s11 == "NOTEND;\n") puts("bad 12");
+
+	s11 = <<'END'
+NOTEND;
+END;
+	unless (s11 == "NOTEND;\n") puts("bad 13");
+
+	/*
+	 * Test whitespace prefix.
+	 */
+
+	s11 =
+	<<END
+	line1
+
+	line2
+	ENDNOT
+	END;
+	unless (s11 == "line1\n\nline2\nENDNOT\n") puts("bad 19.1");
+
+	s11 =
+	<<'END'
+	line1
+
+	line2
+	ENDNOT
+	END;
+	unless (s11 == "line1\n\nline2\nENDNOT\n") puts("bad 19.2");
 }
 scan_1_7();
 } -output {}
 
 test scan-1.8 {test here documents 2} -body {
 #lang L --line=1 -nowarn
-string scan_1_8a;
+string ::scan_1_8a;
 void scan_1_8()
 {
 	string	s;
@@ -920,19 +948,19 @@ END
 EN
 EN D
 END 
- END
+ ENDx
 ENDEND
 END
-	unless (s eq "EN\nEN D\nEND \n END\nENDEND\n") puts("bad 5");
+	unless (s eq "EN\nEN D\nEND \n ENDx\nENDEND\n") puts("bad 5");
 
 	s = <<'END'
 EN
 EN D
 END 
- END
+ ENDx
 ENDEND
 END
-	unless (s eq "EN\nEN D\nEND \n END\nENDEND\n") puts("bad 6");
+	unless (s eq "EN\nEN D\nEND \n ENDx\nENDEND\n") puts("bad 6");
 
 	/*
 	 * Check escapes:
@@ -961,24 +989,28 @@ END
 	 * Checking \<newline> is tough since tcltest's parsing of
 	 * the test source won't let \<newline> through.  So create
 	 * strings of L code and eval those.
+	 *
+	 * Note: The :: in front of the global scan_1_8a works around
+	 * an L bug with global upvar shadows which will be fixed
+	 * soon in a different cset.
 	 */
 	// x\<newline>
 	// y
-	L("scan_1_8a = <<END\nx\\\ny\nEND\n");
-	unless (scan_1_8a eq "xy\n") puts("bad 9.3 ${scan_1_8a}");
-	L("scan_1_8a = <<'END'\nx\\\ny\nEND\n");
-	unless (scan_1_8a eq "x\\\ny\n") puts("bad 9.4");
+	L("::scan_1_8a = <<END\nx\\\ny\nEND\n");
+	unless (::scan_1_8a eq "xy\n") puts("bad 9.3 ${::scan_1_8a}");
+	L("::scan_1_8a = <<'END'\nx\\\ny\nEND\n");
+	unless (::scan_1_8a eq "x\\\ny\n") puts("bad 9.4");
 	// x\<newline>
 	// y\<newline>
-	L("scan_1_8a = <<END\nx\\\ny\\\nEND\n");
-	unless (scan_1_8a eq "xy") puts("bad 9.5");
-	L("scan_1_8a = <<'END'\nx\\\ny\\\nEND\n");
-	unless (scan_1_8a eq "x\\\ny\\\n") puts("bad 9.6");
+	L("::scan_1_8a = <<END\nx\\\ny\\\nEND\n");
+	unless (::scan_1_8a eq "xy") puts("bad 9.5");
+	L("::scan_1_8a = <<'END'\nx\\\ny\\\nEND\n");
+	unless (::scan_1_8a eq "x\\\ny\\\n") puts("bad 9.6");
 	// \<newline>
-	L("scan_1_8a = <<END\n\\\nEND\n");
-	unless (scan_1_8a eq "") puts("bad 9.7");
-	L("scan_1_8a = <<'END'\n\\\nEND\n");
-	unless (scan_1_8a eq "\\\n") puts("bad 9.8");
+	L("::scan_1_8a = <<END\n\\\nEND\n");
+	unless (::scan_1_8a eq "") puts("bad 9.7");
+	L("::scan_1_8a = <<'END'\n\\\nEND\n");
+	unless (::scan_1_8a eq "\\\n") puts("bad 9.8");
 
 	/* Check `cmd` inside interpolated here document. */
 	s = <<END
@@ -1020,7 +1052,7 @@ scan_1_9()
 END
 }
 scan_1_9();
-} -returnCodes {error} -match regexp -result {.*8: L Error: illegal here-document delimeter
+} -returnCodes {error} -match regexp -result {.*8: L Error: illegal characters after here-document delimeter
 }
 
 test scan-1.10 {test here document error 2} -body {
@@ -1036,7 +1068,7 @@ scan_1_10()
 END
 }
 scan_1_10();
-} -returnCodes {error} -match regexp -result {.*8: L Error: illegal here-document delimeter
+} -returnCodes {error} -match regexp -result {.*8: L Error: illegal characters after here-document delimeter
 }
 
 test scan-1.11 {test nested here documents error} -body {
@@ -1054,53 +1086,71 @@ END
 scan_1_11();
 } -returnCodes {error} -match regexp -result ".*nested here documents illegal.*"
 
-test scan-1.12 {test here documents semicolon error 1} -body {
+test scan-1.12 {test here document error 3} -body {
 #lang L --line=1
 void
 scan_1_12()
 {
-	string s = <<END
-should be error
-END;
+	/*
+	 * White space before or after the delim is illegal.
+	 */
+
+	string s = <<	END
+	END;
 }
 scan_1_12();
-} -returnCodes {error} -match regexp -result ".*illegal ; after here document."
+} -returnCodes {error} -match regexp -result {.*8: L Error: illegal characters before here-document delimeter
+}
 
-test scan-1.13 {test here documents semicolon error 2} -body {
+test scan-1.13 {test here document error 4} -body {
 #lang L --line=1
 void
 scan_1_13()
 {
-	string s = <<'END'
-should be error
-END;
+	/*
+	 * White space before or after the delim is illegal.
+	 */
+
+	string s = <<END  
+	END;
 }
 scan_1_13();
-} -returnCodes {error} -match regexp -result ".*illegal ; after here document."
+} -returnCodes {error} -match regexp -result {.*8: L Error: illegal characters after here-document delimeter
+}
 
-test scan-1.14 {test here documents semicolon error 3} -body {
+test scan-1.14 {test here document error 5} -body {
 #lang L --line=1
 void
 scan_1_14()
 {
-	string s = <<END
-should be error
-END ;
+	/*
+	 * <<-END as the delim works in the Bourne shell but is
+	 * an error in L.
+	 */
+
+	string s = <<-END
+	END;
 }
 scan_1_14();
-} -returnCodes {error} -match regexp -result ".*illegal ; after here document."
+} -returnCodes {error} -match regexp -result {.*9: L Error: <<- unsupported, use =\\n\\t<<END to strip one leading tab
+}
 
-test scan-1.15 {test here documents semicolon error 4} -body {
+test scan-1.15 {test here document error 6} -body {
 #lang L --line=1
 void
 scan_1_15()
 {
-	string s = <<'END'
-should be error
-END ;
+	/*
+	 * <<-'END' as the delim works in the Bourne shell but is
+	 * an error in L.
+	 */
+
+	string s = <<-'END'
+	END;
 }
 scan_1_15();
-} -returnCodes {error} -match regexp -result ".*illegal ; after here document."
+} -returnCodes {error} -match regexp -result {.*9: L Error: <<- unsupported, use =\\n\\t<<END to strip one leading tab
+}
 
 test scan-1.16 {check auto string concatenation} -body {
 #lang L --line=1
