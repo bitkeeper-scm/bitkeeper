@@ -30,8 +30,14 @@ cd "$HERE"
 bk clone $Q project copy
 echo OK
 
-echo $N Add some data, commit it, then remove the file ..............$NL
+echo $N Try to gone a file name .....................................$NL
 cd "$HERE/project"
+bk gone -q foo.c 2> GOT && fail -f GOT should have failed
+echo "gone: 'foo.c' is not a key." > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Add some data, commit it, then remove the file ..............$NL
 bk edit $Q foo.c
 echo foo >> foo.c
 bk ci $Q -ywhatever foo.c

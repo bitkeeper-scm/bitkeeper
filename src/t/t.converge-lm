@@ -113,11 +113,11 @@ fresh_commercial project
 cd ..
 bk clone $Q project copy
 cd project
-bk gone $Q fff
+bk gone $Q 'x@y|fff|19990319224848|02682'
 bk commit $Q -ywhatever2 || exit 1
 OLD=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 cd ../copy
-bk gone $Q copydd
+bk gone $Q 'x@y|copydd|19990319224848|02682'
 bk commit $Q -ywhatever2 || exit 1
 NEW=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 if [ "$NEW" = "$OLD" ]
@@ -155,14 +155,14 @@ cd ..
 bk clone $Q project copy
 cd project
 BK_USER=AAA
-bk gone $Q project33
+bk gone $Q 'x@y|project33|19990319224848|02682'
 echo y > ../Y
 bk commit $Q -ywhatever2 >/dev/null 2>&1 < ../Y
 DATE=`bk -R prs -hr1.0 '-dD :I: :D: :T:\n' BitKeeper/etc/gone`
 UTC=`bk -R prs -hr1.0 '-d:UTC:\n' BitKeeper/etc/gone`
 cd ../copy
 BK_USER=BBB
-bk gone $Q copy55
+bk gone $Q 'x@y|copy55|19990319224848|02682'
 bk commit $Q -ywhatever2 >/dev/null 2>&1 < ../Y
 JUNK=`bk -R prs -hr1.0 '-dD :I: :D: :T:\n' BitKeeper/etc/gone`
 J_UTC=`bk -R prs -hr1.0 '-d:UTC:\n' BitKeeper/etc/gone`
@@ -251,7 +251,7 @@ bk _scat ../../SCCS/s.ChangeSet | perl -ne 's,cPChangeSet,cPBitKeeper/etc/gone,;
 bk _mv X SCCS/s.gone
 bk admin -z gone
 bk stripdel $Q -r1.0.. gone
-bk gone $Q project44
+bk gone $Q 'x@y|project44|19990319224848|02682'
 bk commit $Q -ywhatever >/dev/null 2>&1 < "$HERE"/Y
 KEY=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 cd "$HERE"
@@ -263,7 +263,7 @@ cd project
 BK_USER=joe
 BK_HOST=blow.dork.bk_regression.bk
 export BK_USER BK_HOST
-bk gone $Q project34
+bk gone $Q 'x@y|project34|19990319224848|02682'
 bk commit $Q -ywhatever2 >/dev/null 2>&1 < ../Y
 KEY2=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 if [ "$KEY" != "$KEY2" ]
@@ -275,7 +275,7 @@ cd "$HERE/copy"
 BK_USER=jane
 BK_HOST=kick.dork.bk_regression.bk
 export BK_USER BK_HOST
-bk gone $Q copy34
+bk gone $Q 'x@y|copy34|19990319224848|02682'
 bk commit $Q -ywhatever2 >/dev/null 2>&1 < ../Y
 KEY2=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 if [ "$KEY" != "$KEY2" ]
@@ -292,9 +292,9 @@ then	echo failed to keep original gone file
 	exit 1
 fi
 sort <<EOF > X
-copy34
-project34
-project44
+x@y|copy34|19990319224848|02682
+x@y|project34|19990319224848|02682
+x@y|project44|19990319224848|02682
 EOF
 bk undos X > DATA
 bk get $Q BitKeeper/etc/gone
@@ -312,7 +312,7 @@ fresh_commercial project
 cd ..
 bk clone $Q project copy
 cd project
-bk gone $Q project34
+bk gone $Q 'x@y|project34|19990319224848|02682'
 BK_USER=jane
 BK_HOST=kick.dork.bk_regression.bk
 bk commit -yjane $Q > /dev/null 2>&1 < ../Y
@@ -325,7 +325,7 @@ test `bk sfiles -p | wc -l` -eq 0 || {
 cd "$HERE/copy"
 BK_USER=joe
 BK_HOST=blow.dork.bk_regression.bk
-bk gone $Q copy34
+bk gone $Q 'x@y|copy34|19990319224848|02682'
 bk commit -yjoe $Q > /dev/null 2>&1 < ../Y
 bk _test -f BitKeeper/etc/SCCS/s.gone || exit 1
 test `bk sfiles -p | wc -l` -eq 0 || {
@@ -357,7 +357,7 @@ then	echo wrong number of gone files in COPY
 	exit 1
 fi
 bk rm -f BitKeeper/etc/gone
-bk gone $Q copy44
+bk gone $Q 'x@y|copy44|19990319224848|02682'
 bk commit $Q -yrm-gone || exit 1
 NEW=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 if [ "$NEW" = "$OLD" ]
@@ -379,9 +379,9 @@ then	echo wrong number of gone files after pull
 	exit 1
 fi
 OK=`bk prs -hr1.0 '-d:TIME_T:\n' BitKeeper/etc/gone`
-cat <<EOF > DATA
-copy44
-project34
+sort <<EOF > DATA
+x@y|copy44|19990319224848|02682
+x@y|project34|19990319224848|02682
 EOF
 bk get -kp $Q BitKeeper/etc/gone | bk sort > GOT
 cmpfiles GOT DATA
@@ -394,7 +394,7 @@ F=BitKeeper/etc/ignore
 echo $N Duplicate line in the same file .............................$NL
 cd "$HERE"
 rm -rf project copy
-commercial project
+fresh_commercial project
 cd ..
 bk clone $Q project copy
 # for next test, make a second copy

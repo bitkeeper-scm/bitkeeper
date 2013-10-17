@@ -152,6 +152,11 @@ send_main(int ac,  char **av)
 		exit(1);
 	}
 
+	if (to && !streq(to, "-") && !strchr(to, '@')) {
+		fprintf(stderr, "send: bad address '%s'\n", to);
+		exit(1);
+	}
+
 	/*
 	 * Set up rev list for makepatch
 	 */
