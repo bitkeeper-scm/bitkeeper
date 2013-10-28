@@ -432,8 +432,6 @@ proc readFiles {L R {O {}}} \
 		.diffs.right insert end "Binary Files Differ\n" {warn junk}
 		. configure -cursor left_ptr
 		.diffs.status.middle configure -text "Differences"
-		.diffs.left configure -state disabled
-		.diffs.right configure -state disabled
 		return
 	}
 
