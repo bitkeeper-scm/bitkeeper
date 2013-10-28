@@ -5,6 +5,8 @@
 #include "system.h"
 #include "purify.h"
 #include "diff.h"
+#define	PCRE_STATIC		/* for win32 */
+#include "pcre.h"
 
 #define	mdbm_mem()	mdbm_open(NULL, 0, 0, GOOD_PSIZE)
 #define	EACH_KV(d)	for (kv = mdbm_first(d); \
@@ -953,7 +955,7 @@ typedef struct {
 	int	flags;			/* flags (transitional) */
 	int	adds, dels, mods;	/* lines added/deleted/modified */
 	char	*out_define;		/* diff -D */
-	regex	*pattern;		/* compiled pattern for diff -p */
+	pcre	*pattern;		/* compiled pattern for diff -p */
 	int	context;		/* context for unified output
 					 * (-1 means 0) see delta comments */
 	u32	out_sdiff;		/* sdiff output (value is # of cols) */

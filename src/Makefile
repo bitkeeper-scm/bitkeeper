@@ -585,7 +585,7 @@ depend: $(SRCS)
 libc/system.h: FORCE
 	$(MAKE) -C libc system.h
 
-pcre.o: PCRE
+sccs.h: PCRE
 .PHONY: PCRE
 PCRE:
 	$(MAKE) Q=$(Q) -Cgui/tcltk pcre

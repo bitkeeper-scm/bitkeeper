@@ -1,7 +1,5 @@
 #include "system.h"
 #include "sccs.h"
-#include "regex.h"
-
 
 /*
  * This struct is for diff -p, so we can save where
@@ -68,6 +66,8 @@ ndiff_main(int ac, char **av)
 {
 	int	c, i;
 	char	*p, *pattern = 0;
+	const	char *perr;
+	int	poff;
 	df_opt	opts;
 	longopt	lopts[] = {
 		{ "ignore-trailing-cr", 310 },
@@ -130,15 +130,15 @@ ndiff_main(int ac, char **av)
 		goto out;
 	}
 
-	if (pattern && !(opts.pattern = re_comp(pattern))) {
-		fprintf(stderr, "diff: bad regexp '%s': %s\n", pattern,
-		    re_lasterr());
+	if (pattern &&
+	    !(opts.pattern = pcre_compile(pattern, 0, &perr, &poff, 0))) {
+		fprintf(stderr, "diff: bad regexp '%s': %s\n", pattern, perr);
 		goto out;
 	}
 
 	rc = diff_files(av[optind], av[optind+1], &opts, 0, "-");
 out:	if (opts.out_define) FREE(opts.out_define);
-	if (opts.pattern) re_free(opts.pattern);
+	if (opts.pattern) free(opts.pattern);
 	if (pattern) FREE(pattern);
 	return (rc);
 }
@@ -146,6 +146,9 @@ out:	if (opts.out_define) FREE(opts.out_define);
 int
 diff_cleanOpts(df_opt *opts)
 {
+	const	char *perr;
+	int	poff;
+
 	/*
 	 * Make sure we don't have conflicting output styles
 	 */
@@ -160,7 +163,9 @@ diff_cleanOpts(df_opt *opts)
 	 * provide a default pattern if they didn't give us one.
 	 */
 	if (opts->out_show_c_func && !opts->pattern) {
-		opts->pattern = re_comp("^[A-Za-z_][A-Za-z0-9_]*[ \t]*(");
+		opts->pattern = pcre_compile(
+			"^([A-Za-z_]((::)?[A-Za-z0-9_]+)*[ \\t]*)+\\(",
+			0, &perr, &poff, 0);
 		assert(opts->pattern);
 	}
 
@@ -194,7 +199,7 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 	header	*fh;
 	df_ctx	*dc = 0;
 	filedf	*o;
-	regex	*re = 0;
+	pcre	*re = 0;
 	FILE	*fout = 0;
 	struct	stat sb[2];
 
@@ -288,7 +293,8 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 				diff_addItem(dc, i, s, e - s + 1);
 				lno[i]++;
 				if (re && (i == 0)) {
-					if (re_exec(re, s)) {
+					unless (pcre_exec(re, 0, s, strlen(s),
+						0, 0, 0, 0)) {
 						fh = addArray(&o->fn_defs,0);
 						fh->lno = lno[0];
 						fh->s = strndup(s, e - s + 1);
