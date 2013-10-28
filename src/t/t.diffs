@@ -539,6 +539,15 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
+echo $N Test diffs -s................................................$NL
+COLUMNS=46 bk diffs -s foo > GOT
+cat <<EOF > WANT
+===== foo 1.2 vs ? (writable without lock!)  =====
+bye                   | goodbye
+EOF
+cmpfiles WANT GOT
+echo OK
+
 if [ X$PLATFORM != XWIN32 ]
 then
 echo $N Replacing an edited file with a symlink should work .........$NL

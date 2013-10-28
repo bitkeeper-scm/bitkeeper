@@ -111,6 +111,7 @@ diffs_main(int ac, char **av)
 		    case 'p': dop.out_show_c_func = 1; break;	/* doc 2.0 */
 		    case 'R': unless (Rev = optarg) Rev = "-"; break;
 		    case 's':
+			dop.out_unified = 0;
 			if (optarg) {
 				dop.out_sdiff = strtoul(optarg, 0, 10);
 			} else if (p = getenv("COLUMNS")) {
