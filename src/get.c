@@ -465,7 +465,7 @@ annotate_args(int flags, char *args)
 	if (streq(args, "none")) return (flags);
 	while (*args) {
 		switch (*args) {
-		    //case '5': flags |= GET_MD5REV; break;
+		    case '5': flags |= GET_MD5KEY; break;
 		    case 'b': flags |= GET_MODNAME; break;
 		    case 'd': flags |= GET_PREFIXDATE; break;
 		    case 'p': flags |= GET_RELPATH; break;

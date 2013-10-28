@@ -6899,10 +6899,10 @@ get_reg(sccs *s, char *printOut, int flags, ser_t d,
 		if (flags&GET_PREFIXDATE) len += YEAR4(s) ? 11 : 9;
 		if (flags&GET_USER) len += s->userLen + 1;
 		if (flags&GET_REVNUMS) len += s->revLen + 1;
+		if (flags&GET_MD5KEY) len += MD5KEYLEN + 1;
 		if (flags&GET_LINENUM) len += 7;
 		if (flags&GET_LINENAME) len += 37;
 		if (flags&GET_SERIAL) len += 7;
-		/* XXX GET_MD5KEY */
 		len += 2;
 		align[0] = 0;
 		while (len++ % 8) strcat(align, " ");
@@ -7335,9 +7335,9 @@ get_link(sccs *s, char *printOut, int flags, ser_t d, int *ln)
 				}
 				if (flags&GET_USER) len += s->userLen + 1;
 				if (flags&GET_REVNUMS) len += s->revLen + 1;
+				if (flags&GET_MD5KEY) len += MD5KEYLEN + 1;
 				if (flags&GET_LINENUM) len += 7;
 				if (flags&GET_SERIAL) len += 7;
-				/* XXX GET_MD5KEY */
 				len += 2;
 				while (len++ % 8) fputc(' ', out);
 				fputs("| ", out);
@@ -7626,9 +7626,14 @@ prefix(sccs *s, ser_t d, u32 flags, int lines, char *name, FILE *out)
 		if (flags&GET_REVNUMS) {
 			fprintf(out, "%-*s ", s->revLen, REV(s, d));
 		}
+		if (flags&GET_MD5KEY) {
+			char	key[MD5KEYLEN + 1];
+
+			sccs_md5delta(s, d, key);
+			fprintf(out, "%s ", key);
+		}
 		if (flags&GET_LINENUM) fprintf(out, "%6d ", lines);
 		if (flags&GET_SERIAL) fprintf(out, "%6d ", d);
-		/* XXX GET_MD5KEY  */
 	} else {
 		/* tab style */
 		if (flags&(GET_MODNAME|GET_RELPATH)) fprintf(out, "%s\t",name);
@@ -7639,15 +7644,13 @@ prefix(sccs *s, ser_t d, u32 flags, int lines, char *name, FILE *out)
 		}
 		if (flags&GET_USER) fprintf(out, "%s\t", USER(s, d));
 		if (flags&GET_REVNUMS) fprintf(out, "%s\t", REV(s, d));
-		if (flags&GET_LINENUM) fprintf(out, "%d\t", lines);
-#if 0
 		if (flags&GET_MD5KEY) {
-			char	key[MD5LEN];
+			char	key[MD5KEYLEN + 1];
 
 			sccs_md5delta(s, d, key);
 			fprintf(out, "%s\t", key);
 		}
-#endif
+		if (flags&GET_LINENUM) fprintf(out, "%d\t", lines);
 		if (flags&GET_SERIAL) fprintf(out, "%d\t", d);
 	}
 }

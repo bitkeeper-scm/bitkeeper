@@ -76,7 +76,7 @@ int	checking_rmdir(char *dir);
 #define	GET_SHUTUP	0x00800000	/* quiet on certain errors */
 #define	GET_ALIGN	0x00010000	/* nicely align prefix output */
 #define	GET_FORCE	0x00020000	/* do it even with errors */
-#define	GET_HEADER	0x00040000	/* diff: print header */
+#define	GET_MD5KEY	0x00040000	/* get -5: prefix line with md5key */
 #define	GET_DTIME	0x00080000	/* gfile get delta's mode time */
 #define	GET_NOHASH	0x00001000	/* force regular file, ignore S_HASH */
 #define	GET_HASHONLY	0x00002000	/* skip the file */
@@ -92,7 +92,7 @@ int	checking_rmdir(char *dir);
 #define	GET_COMMENTS	0x00000080	/* diffs -H: prefix diffs with hist */
 #define	DIFF_COMMENTS	GET_COMMENTS
 #define	GET_PREFIX	\
-    (GET_REVNUMS|GET_USER|GET_LINENUM|GET_MODNAME|\
+    (GET_REVNUMS|GET_MD5KEY|GET_USER|GET_LINENUM|GET_MODNAME|\
      GET_RELPATH|GET_PREFIXDATE|GET_SEQ|GET_LINENAME|GET_SERIAL)
 
 #define CLEAN_SHUTUP	0x20000000	/* clean -Q: quiet mode */
@@ -344,7 +344,8 @@ typedef	enum {
 #define	DB_GONE		(DB_KEYSONLY)
 
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
-#define	MD5LEN	32	/* really 30: 8 hex time + 22 base-64 MD5 of key */
+#define	MD5LEN	32	/* storage for a hex-encoded 16-bit md5 checksum */
+#define	MD5KEYLEN 30	/* length of :MD5KEY: */
 
 #define	LEASE_URL	getenv("BK_LEASE_URL")
 #define	LEASE_URL2	getenv("BK_LEASE_URL2")

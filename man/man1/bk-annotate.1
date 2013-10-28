@@ -46,7 +46,7 @@ If no annotations are specified then the selected lines are shown
 without annotations.
 .SH OPTIONS
 .TP \-A\*<bdnpru\*>
-.OPTreq \-A dnpru
+.OPTreq \-A 5dnpru
 Align annotations in a human readable form.
 The set of annotations will be followed by a vertical bar and a space
 before the data from each line of the file starts.
@@ -69,18 +69,21 @@ Prefix each line with the date of last modification.
 Prefix each line with the name of the user who last modified it.
 .tp
 .B r
-Prefix each line with the revision of last modification.
+Prefix each line with the revision of the last modification.
+.tp
+.B 5
+Prefix each line with the MD5 key of the last modification.
 .tp
 .B n
 Prefix each line with its line number.
 .RE
 .tp
-.OPTreq \-a dnpru
+.OPTreq \-a 5dnpru
 Similar to
 .Q \-A 
 but without the alignment (each annotation is followed by a tab).
 The order of fields is fixed and is:
-pathname, date, user, revision, line number.
+pathname, date, user, revision, md5key, line number.
 .tp
 .OPTreq \-c dates
 annotate only the lines added by the specified range of dates.
