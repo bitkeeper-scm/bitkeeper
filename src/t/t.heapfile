@@ -42,7 +42,6 @@ bk commit $Q -yjj || fail
 echo 2 > yy
 bk new $Q yy
 chmod -w .bk/SCCS/ChangeSet,2
-bk commit $Q -yyy 2>ERR && fail -f ERR should fail
-_BK_DEVELOPER= bk commit $Q -yyy || fail
+bk commit $Q -yyy || fail
 bk _test -w SCCS/2.ChangeSet || fail
 echo OK
