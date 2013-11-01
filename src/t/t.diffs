@@ -39,6 +39,19 @@ cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
 
+echo $N Checking -F option to diffs..................................$NL
+bk diffs -F^1 Mydiffs | grep -v ^+++ | grep -v ^--- > GOT
+cat <<EOF > WANT
+===== Mydiffs 1.10 vs edited =====
+@@ -9,3 +9,4 @@ 1.10
+ 1.8
+ 1.9
+ 1.10
++foo
+EOF
+cmpfiles WANT GOT
+echo OK
+
 echo $N Checking diff -r1.8 against edited file .....................$NL
 bk diffs --normal -r1.8 Mydiffs > D || fail -f D
 bk undos > W <<EOF

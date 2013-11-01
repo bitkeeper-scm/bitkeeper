@@ -58,14 +58,15 @@ private	void	printHistogram(dstat *diffstats);
 int
 diffs_main(int ac, char **av)
 {
-	int	rc, c, i;
+	int	rc, c, i, poff;
 	int	verbose = 0, empty = 0, errors = 0, force = 0;
 	int	local = 0;
 	u32	flags = SILENT;
 	df_opt	dop = {0};
 	FILE	*fout = stdout;
 	char	*name, *p;
-	char	*Rev = 0, *boundaries = 0;
+	const	char *perr;
+	char	*Rev = 0, *boundaries = 0, *pattern = 0;
 	dstat	*diffstats = 0, *ds;
 	int	diffstat_only = 0;
 	longopt	lopts[] = {
@@ -80,7 +81,7 @@ diffs_main(int ac, char **av)
 	unless (getenv("_BK_OLDSTYLE_DIFFS")) dop.out_unified = 1;
 	dop.out_header = 1;
 	while ((c = getopt(ac, av,
-		    "@|a;A;bBcC|d;efhHL|l|nNpr;R|s|u|vw", lopts)) != -1) {
+		    "@|a;A;bBcC|d;eF:fhHL|l|nNpr;R|s|u|vw", lopts)) != -1) {
 		switch (c) {
 		    case 'A':
 			flags |= GET_ALIGN;
@@ -94,6 +95,7 @@ diffs_main(int ac, char **av)
 		    case 'c': dop.out_unified = 0;   break;	/* doc 2.0 */
 		    case 'C': getMsg("diffs_C", 0, 0, stdout); exit(0);
 		    case 'e': empty = 1; break;			/* don't doc */
+		    case 'F': pattern = strdup(optarg); break;
 		    case 'f': force = 1; break;
 		    case 'h': dop.out_header = 0; break;	/* doc 2.0 */
 		    case 'H': dop.out_comments = 1; break;
@@ -153,6 +155,19 @@ diffs_main(int ac, char **av)
 			break;
 		    default: bk_badArg(c, av);
 		}
+	}
+
+	if (dop.out_show_c_func && pattern) {
+		fprintf(stderr, "diffs: only one of -p or -F allowed\n");
+		FREE(pattern);
+		return (1);
+	}
+
+	if (pattern &&
+	    !(dop.pattern = pcre_compile(pattern, 0, &perr, &poff, 0))) {
+		fprintf(stderr, "diff: bad regexp '%s': %s\n", pattern, perr);
+		FREE(pattern);
+		return (1);
 	}
 
 	unless (diff_cleanOpts(&dop)) usage();

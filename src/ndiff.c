@@ -164,7 +164,8 @@ diff_cleanOpts(df_opt *opts)
 	 */
 	if (opts->out_show_c_func && !opts->pattern) {
 		opts->pattern = pcre_compile(
-			"^([A-Za-z_]((::)?[A-Za-z0-9_]+)*[ \\t]*)+\\(",
+			"^[A-Za-z_][A-Za-z0-9_]*"
+			"(?:(?:\\s+|::)[A-Za-z_][A-Za-z0-9_]*)*\\s*\\(",
 			0, &perr, &poff, 0);
 		assert(opts->pattern);
 	}
@@ -383,7 +384,6 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 	} else {
 		diff_print(dc, printLine, fout);
 	}
-	if (o->dop->out_show_c_func) o->dop->pattern = 0;
 out:	if (fout && (fout != stdout)) fclose(fout);
 	FREE(data[0]);
 	FREE(data[1]);

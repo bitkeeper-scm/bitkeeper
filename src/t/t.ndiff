@@ -530,6 +530,7 @@ run_test "static int findcmd(int ac, char **av)" "static int findcmd(int ac, cha
 run_test "void\nScan::complete (const Status scanStatus, const utf::SlightlyEmbarrassinglyButAlphanumericallyNamedString &errorString)" "Scan::complete (const Status scanStatus,"
 run_test "void Scan::complete (const Status scanStatus, const utf::SlightlyEmbarrassinglyButAlphanumericallyNamedString &errorString)" "void Scan::complete (const Status scanSt"
 run_test "static void Scan::complete (const Status scanStatus, const utf::SlightlyEmbarrassinglyButAlphanumericallyNamedString &errorString)" "static void Scan::complete (const Status"
+run_test "Region::element_iterator Region::element_begin()" "Region::element_iterator Region::element"
 # invalid ones should match main
 run_test "a::::::()" "main(int ac, char **av)"
 run_test "(void)funcall();" "main(int ac, char **av)"
