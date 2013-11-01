@@ -203,6 +203,21 @@ chown(string owner, string group, _argused string path)
 	}
 }
 
+int
+cpus(void)
+{
+	FILE	f = fopen("/proc/cpuinfo", "r");
+	int	n = 0;
+	string	buf;
+
+	unless (f) return (1);
+	while (buf = <f>) {
+		if (buf =~ /^processor\s/) n++;
+	}
+	fclose(f);
+	return (n);
+}
+
 void
 die_(string func, int line, FMT fmt, ...args)
 {

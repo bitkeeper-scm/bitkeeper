@@ -1654,6 +1654,10 @@ either owner or group is an empty string, the attribute will not be
 modified.
 Return 0 on success, -1 on error.
 
+=proto int cpus()
+
+Return the number of processors (if known).  Defaults to 1.
+
 =proto void die(string fmt, ...args)
 
 Output a printf-like message to stderr and exit 1.

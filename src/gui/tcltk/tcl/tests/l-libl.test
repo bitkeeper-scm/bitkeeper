@@ -488,6 +488,17 @@ chown1 $fname4
 	  removeFile $fname4
 } -output {}
 
+test cpus-1 {test cpus api} -body {
+#lang L
+void cpus1()
+{
+	if (exists("/proc/cpuinfo")) {
+		unless (cpus() > 0) puts("bad");
+	}
+}
+cpus1();
+} -output {}
+
 test die-1 {test die} -setup {
 	makeFile {
 		die("die: %s\n", "s1");
