@@ -3986,18 +3986,38 @@ compile_reMatch(Expr *re)
 private void
 compile_twiddleSubst(Expr *expr)
 {
-	Expr	*lhs = expr->a;
-	int	modCount;
+	Expr	*id, *lhs = expr->a;
+	int	i, modCount, submatchCount;
+	Sym	*s;
 	Tmp	*tmp = NULL;
+	Tcl_Obj	*varList;
 
 	push_lit("::regsub");
 	modCount = push_regexpModifiers(expr->b);
+	/* Submatch vars.  This loop always iterates at least once. */
+	push_lit("-submatches");
+	submatchCount = re_submatchCnt(expr->b);
+	varList = Tcl_NewObj();
+	Tcl_IncrRefCount(varList);
+	for (i = 0; i <= submatchCount; i++) {
+		char	buf[32];
+		snprintf(buf, sizeof(buf), "$%d", i);
+		id = mkId(buf);
+		unless (sym_lookup(id, L_NOWARN)) {
+			s = sym_mk(buf, L_string,
+				   SCOPE_LOCAL | DECL_LOCAL_VAR);
+			s->used_p = TRUE; // suppress unused var warning
+		}
+		Tcl_AppendPrintfToObj(varList, "$%d ", i);
+	}
+	push_lit(Tcl_GetString(varList));
+	Tcl_DecrRefCount(varList);
 	push_lit("-line");
 	push_lit("--");
 	compile_expr(expr->b, L_PUSH_VAL);
-	// ::regsub <mods> -line -- <re>
+	// ::regsub <mods> -submatches <varlist> -line -- <re>
 	compile_expr(expr->c, L_PUSH_VAL);
-	// ::regsub <mods> -line -- <re> <subst>
+	// ::regsub <mods> -submatches <varlist> -line -- <re> <subst>
 	compile_expr(lhs, L_PUSH_VALPTR | L_PUSH_VAL | L_LVALUE);
 	unless (lhs->sym) {
 		L_errf(expr, "invalid l-value in =~");
@@ -4005,21 +4025,28 @@ compile_twiddleSubst(Expr *expr)
 	}
 	if (isdeepdive(lhs)) {
 		tmp = tmp_get(TMP_REUSE);
-		// ::regsub <mods> -line -- <re> <subst> <lhs-val> <lhs-ptr>
-		TclEmitInstInt1(INST_ROT, -(6+modCount), L->frame->envPtr);
-		// <lhs-ptr> ::regsub <mods> -line -- <re> <subst> <lhs-val>
+		// ::regsub <mods> -submatches <varlist>
+		// -line -- <re> <subst> <lhs-val> <lhs-ptr>
+		TclEmitInstInt1(INST_ROT, -(8+modCount), L->frame->envPtr);
+		// <lhs-ptr> ::regsub <mods> -submatches <varlist>
+		// -line -- <re> <subst> <lhs-val>
 		TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
-		// <lhs-ptr> ::regsub <mods> -line -- <re> <lhs-val> <subst>
+		// <lhs-ptr> ::regsub <mods> -submatches <varlist>
+		// -line -- <re> <lhs-val> <subst>
 		push_lit(tmp->name);
-		// <lhs-ptr> ::regsub <mods> -line -- <re> <lhs-val> <subst> <tmp-name>
+		// <lhs-ptr> ::regsub <mods> -submatches <varlits>
+		// -line -- <re> <lhs-val> <subst> <tmp-name>
 	} else {
-		// ::regsub <mods> -line -- <re> <subst> <lhs-val>
+		// ::regsub <mods> -submatches <varlist>
+		// -line -- <re> <subst> <lhs-val>
 		TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
-		// ::regsub <mods> -line -- <re> <lhs-val> <subst>
+		// ::regsub <mods> -submatches <varlist>
+		// -line -- <re> <lhs-val> <subst>
 		push_lit(lhs->sym->tclname);
-		// ::regsub <mods> -line -- <re> <lhs-val> <subst> <lhs-name>
+		// ::regsub <mods> -submatches <varlist>
+		// -line -- <re> <lhs-val> <subst> <lhs-name>
 	}
-	emit_invoke(modCount + 7);
+	emit_invoke(modCount + 9);
 	if (isdeepdive(lhs)) {
 		// <lhs-ptr> <match>
 		emit_load_scalar(tmp->idx);

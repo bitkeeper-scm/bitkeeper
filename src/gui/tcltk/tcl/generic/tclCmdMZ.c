@@ -327,21 +327,23 @@ Tcl_RegsubObjCmd(
     Tcl_Obj *const objv[])	/* Argument objects. */
 {
     int idx, result, cflags, iflags, all, wlen, wsublen, numMatches, offset;
-    int start, end, subStart, subEnd, match, re_type;
+    int start, end, subStart, subEnd, match, re_type, prevOffset;
+    int subMatchVarsElemc = 0;
     Tcl_RegExp regExpr;
     Tcl_RegExpInfo info;
     Tcl_Obj *resultPtr, *subPtr, *objPtr, *startIndex = NULL;
+    Tcl_Obj **subMatchVarsElemv = NULL;
     Tcl_UniChar ch, *wsrc, *wfirstChar, *wstring, *wsubspec, *wend;
 
     static const char *const options[] = {
 	"-all",		"-nocase",	"-expanded",
 	"-line",	"-linestop",	"-lineanchor",	"-start",
-	"-type",	"--",		NULL
+	"-submatches",	"-type",	"--",		NULL
     };
     enum options {
 	REGSUB_ALL,	REGSUB_NOCASE,	REGSUB_EXPANDED,
 	REGSUB_LINE,	REGSUB_LINESTOP, REGSUB_LINEANCHOR,	REGSUB_START,
-	REGSUB_TYPE,	REGSUB_LAST
+	REGSUB_SUBMATCHES, REGSUB_TYPE,	REGSUB_LAST
     };
     static CONST char *re_type_opts[] = {
 	"classic",	"pcre",	NULL
@@ -358,6 +360,7 @@ Tcl_RegsubObjCmd(
     cflags = TCL_REG_ADVANCED;
     all = 0;
     offset = 0;
+    prevOffset = 0;
     resultPtr = NULL;
 
     for (idx = 1; idx < objc; idx++) {
@@ -418,6 +421,15 @@ Tcl_RegsubObjCmd(
 	case REGSUB_LAST:
 	    idx++;
 	    goto endOfForLoop;
+	case REGSUB_SUBMATCHES:
+	    if (++idx >= objc) {
+		goto endOfForLoop;
+	    }
+	    if (TclListObjGetElements(interp, objv[idx], &subMatchVarsElemc,
+				      &subMatchVarsElemv) != TCL_OK) {
+		goto optionError;
+	    }
+	    break;
 	}
     }
 
@@ -590,6 +602,7 @@ Tcl_RegsubObjCmd(
 	if (match == 0) {
 	    break;
 	}
+	prevOffset = offset;
 	if (numMatches == 0) {
 	    resultPtr = Tcl_NewUnicodeObj(wstring, 0);
 	    Tcl_IncrRefCount(resultPtr);
@@ -711,6 +724,25 @@ Tcl_RegsubObjCmd(
 	}
 	if (!all) {
 	    break;
+	}
+    }
+
+    /*
+     * Return the regexp submatches in the requested variables.
+     */
+    if (numMatches && subMatchVarsElemc) {
+	for (idx = 0; (idx <= info.nsubs) && (idx < subMatchVarsElemc); ++idx) {
+	    subStart = info.matches[idx].start;
+	    subEnd = info.matches[idx].end;
+	    Tcl_Obj *obj = Tcl_NewUnicodeObj(wstring + prevOffset + subStart,
+					     subEnd - subStart);
+	    Tcl_IncrRefCount(obj);
+	    if (Tcl_ObjSetVar2(interp, subMatchVarsElemv[idx], NULL, obj,
+			       TCL_LEAVE_ERR_MSG) == NULL) {
+		Tcl_DecrRefCount(obj);
+		return (TCL_ERROR);
+	    }
+	    Tcl_DecrRefCount(obj);
 	}
     }
 

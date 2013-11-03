@@ -10469,6 +10469,36 @@ void regexp_1_10()
 regexp_1_10();
 } -output {}
 
+test regexp-1.11 {test regexp submatch captures with subst operator} -body {
+#lang L --line=1
+void regexp_1_11()
+{
+	string	s;
+
+	/*
+	 * A single substitution.
+	 */
+	s = "abcd";
+	s =~ s/a(b)(c)d/a\2\1d/;
+	unless (s == "acbd") puts("bad 1.1 '${s}'");
+	unless ($0 == "abcd") puts("bad 1.2");
+	unless ($1 == "b") puts("bad 1.3");
+	unless ($2 == "c") puts("bad 1.4");
+
+	/*
+	 * Multiple substitutions. $0-$9 should reflect the last match.
+	 */
+	s = "abc1abc22abc333";
+	s =~ s/a(b)(c)(\d+)/\3\2\1/g;
+	unless (s == "1cb22cb333cb") puts("bad 2.1 '${s}'");
+	unless ($0 == "abc333") puts("bad 2.2");
+	unless ($1 == "b") puts("bad 2.3");
+	unless ($2 == "c") puts("bad 2.4");
+	unless ($3 == "333") puts("bad 2.5");
+}
+regexp_1_11();
+} -output {}
+
 test regexp-2 {test globs} -body {
 #lang L --line=1
 void regexp_2()
