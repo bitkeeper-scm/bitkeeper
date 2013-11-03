@@ -11572,6 +11572,46 @@ defined_1_10();
 } -returnCodes error -match regexp -result {.*4: L Error: illegal operand to &
 }
 
+test defined-1.10.2 {check undef as a reference parameter 2} -setup {
+	set fname1 [makeFile {
+		// The docs say this causes a run-time error in foo().
+		void foo(string &p)
+		{
+			puts(p);
+		}
+		void main()
+		{
+			foo(undef);
+		}
+	} defined-1-10-2-read.l .]
+	set fname2 [makeFile {
+		// The docs say this causes a run-time error in foo().
+		void foo(string &p)
+		{
+			p = "x";
+		}
+		void main()
+		{
+			foo(undef);
+		}
+	} defined-1-10-2-write.l .]
+} -body {
+#lang L
+void defined_1_10_2()
+{
+	int	ret;
+	string	err[];
+	string	tclsh = interpreter();
+
+	ret = system({tclsh, "defined-1-10-2-read.l"}, undef, undef, &err);
+	unless (ret) puts("bad 1");
+
+	ret = system({tclsh, "defined-1-10-2-write.l"}, undef, undef, &err);
+	unless (ret) puts("bad 2");
+}
+defined_1_10_2();
+} -output {}
+
 test defined-1.11 {check that assignment to part of an obj makes it defined} -body {
 #lang L --line=1
 void defined_1_11()
@@ -12284,6 +12324,125 @@ void undef_8()
 
 }
 undef_8();
+} -output {}
+
+test undef-9 {test read of an undef ref parm} -body {
+#lang L
+void undef_9f(string &arg)
+{
+	puts(arg);
+}
+void undef_9()
+{
+	undef_9f(undef);
+}
+undef_9();
+} -returnCodes error -match regexp -result {undefined reference parameter read}
+
+test undef-10 {test write of an undef ref parm} -body {
+#lang L
+void undef_10f(string &arg)
+{
+	arg = "bad";
+}
+void undef_10()
+{
+	undef_10f(undef);
+}
+undef_10();
+} -returnCodes error -match regexp -result {undefined reference parameter written}
+
+test undef-11 {test read of an _optional undef ref parm} -body {
+#lang L
+void undef_11f(_optional string &arg)
+{
+	puts(arg);
+}
+void undef_11()
+{
+	undef_11f();
+}
+undef_11();
+} -returnCodes error -match regexp -result {undefined reference parameter read}
+
+test undef-12 {test write of an _optional undef ref parm} -body {
+#lang L
+void undef_12f(_optional string &arg)
+{
+	arg = "bad";
+}
+void undef_12()
+{
+	undef_12f();
+}
+undef_12();
+} -returnCodes error -match regexp -result {undefined reference parameter written}
+
+test undef-13 {test definedness tests on ref parm} -body {
+#lang L
+string undef_13f(string &arg)
+{
+	string	ret;
+
+	ret = (string)defined(&arg);
+	if (defined(&arg)) ret .= (string)defined(arg);
+
+	return (ret);
+}
+string undef_13opt(_optional string &arg)
+{
+	string	ret;
+
+	ret = (string)defined(&arg);
+	if (defined(&arg)) ret .= (string)defined(arg);
+
+	return (ret);
+}
+void undef_13()
+{
+	string	p;
+
+	unless (undef_13f(undef) == "0") puts("bad 1.1");
+	unless (undef_13f(&p) == "10") puts("bad 1.2");
+	p = "ok";
+	unless (undef_13f(&p) == "11") puts("bad 1.3");
+
+	p = undef;
+	unless (undef_13opt() == "0") puts("bad 2.0");
+	unless (undef_13opt(undef) == "0") puts("bad 2.1");
+	unless (undef_13opt(&p) == "10") puts("bad 2.2");
+	p = "ok";
+	unless (undef_13opt(&p) == "11") puts("bad 2.3");
+}
+undef_13();
+} -output {}
+
+test undef-14 {test definedness tests on function-pointer parm} -body {
+#lang L
+/*
+ * Although function-pointer args look like ref parms because they
+ * have a &, they are not references and the rules for defined()
+ * tests are different.  You cannot say defined(&arg).
+ */
+string undef_14foo() { return ("x"); }
+string undef_14f(string &arg())
+{
+	return ((string)defined(arg));
+}
+string undef_14opt(_optional string &arg())
+{
+	return ((string)defined(arg));
+}
+void undef_14()
+{
+	unless (undef_14f(undef) == "0") puts("bad 1.1");
+	unless (undef_14f(&undef_14foo) == "1") puts("bad 1.2");
+
+	unless (undef_14opt() == "0") puts("bad 2.1");
+	unless (undef_14opt(undef) == "0") puts("bad 2.2");
+	unless (undef_14opt(&undef_14foo) == "1") puts("bad 2.3");
+}
+undef_14();
 } -output {}
 
 test toplevel-1.0 {Toplevel code in L} -body {

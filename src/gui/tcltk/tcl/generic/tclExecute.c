@@ -8116,6 +8116,11 @@ TclExecuteByteCode(
 	NEXT_INST_F(1, 1, 1);
     }
 
+    case INST_MARK_UNDEF: {
+	(OBJ_AT_TOS)->undef = 1;
+	NEXT_INST_F(1, 0, 0);
+    }
+
     case INST_L_PUSH_LIST_SIZE: {
 	int length;
 	Tcl_Obj *valuePtr;

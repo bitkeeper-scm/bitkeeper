@@ -1850,5 +1850,26 @@ tk_save_to_log_(widget t)
  */
 fconfigure(stdout, epipe: "exit");
 
+/*
+ * This catches accesses to an formal reference parameter when undef is
+ * passed in instead of a variable reference.  Throw a run-time error.
+ */
+void
+L_undef_ref_parm_accessed_(_argused string name1, _argused string name2,
+			   string op)
+{
+	string	msg;
+
+	switch (op) {
+	    case "read":  msg = "read"; break;
+	    case "write": msg = "written"; break;
+	    default: return;  // should be impossible
+	}
+	eval("return -code error -level 2 {undefined reference parameter ${msg}}");
+}
+string	L_undef_ref_parm_;
+Trace_addVariable("::L_undef_ref_parm_", {"read","write"},
+		  &L_undef_ref_parm_accessed_);
+
 #lang tcl
 set ::L_libl_done 1

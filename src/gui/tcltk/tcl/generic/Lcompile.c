@@ -1516,7 +1516,13 @@ proc_mkArg(Proc *proc, VarDecl *decl)
 	local->flags = VAR_ARGUMENT;
 	if (decl->flags & DECL_REST_ARG) local->flags |= VAR_IS_ARGS;
 	if (decl->flags & DECL_OPTIONAL) {
-		local->defValuePtr = *L_undefObjPtrPtr();
+		if (isnameoftype(decl->type)) {
+			local->defValuePtr =
+				Tcl_NewStringObj("::L_undef_ref_parm_", -1);
+			local->defValuePtr->undef = 1;
+		} else {
+			local->defValuePtr = *L_undefObjPtrPtr();
+		}
 		Tcl_IncrRefCount(local->defValuePtr);
 	}
 }
@@ -3170,7 +3176,6 @@ private int
 compile_var(Expr *expr, Expr_f flags)
 {
 	Sym	*self, *sym;
-	Jmp	*jmp1, *jmp2;
 
 	ASSERT(expr->kind == L_EXPR_ID);
 
@@ -3225,32 +3230,7 @@ compile_var(Expr *expr, Expr_f flags)
 			}
 			break;
 		    case DECL_LOCAL_VAR:
-			if (sym->decl->flags & DECL_REF) {
-				/*
-				 * To pass a call-by-ref parameter as a
-				 * reference, must check to see if it is
-				 * defined:
-				 *    load_scalar &var
-				 *    l_defined
-				 *    jmpFalse 1
-				 *    push "var"
-				 *    jmp 2
-				 * 1: push undef
-				 * 2:
-				 */
-				emit_load_scalar(sym->decl->refsym->idx);
-				TclEmitOpcode(INST_L_DEFINED,
-					      L->frame->envPtr);
-				jmp1 = emit_jmp_fwd(INST_JUMP_FALSE1, NULL);
-				push_lit(sym->tclname);
-				jmp2 = emit_jmp_fwd(INST_JUMP1, NULL);
-				fixup_jmps(&jmp1);
-				TclEmitOpcode(INST_L_PUSH_UNDEF,
-					      L->frame->envPtr);
-				fixup_jmps(&jmp2);
-			} else {
-				push_lit(sym->tclname);
-			}
+			push_lit(sym->tclname);
 			break;
 		    case DECL_FN:
 			push_lit(sym->tclname);
@@ -3299,6 +3279,11 @@ compile_exprs(Expr *expr, Expr_f flags)
  *   and then the name of "foo".  This is legal only for globals, class
  *   variables, and class instance variables.
  *
+ * - If undef is passed as a reference parameter, pass the name of the
+ *   special variable L_undef_ref_parm_.  Code in lib L sets read and
+ *   write traces on this variable as a way to cause a run-time error
+ *   upon access to it.
+ *
  * - For everything else, push the value or name as indicated by whether
  *   the parm has the & operator; compile_expr() handles that.  The type
  *   checker sorts out any mis-matches with the declared formals.
@@ -3311,9 +3296,27 @@ push_parms(Expr *actuals, VarDecl *formals)
 	int	strlen_of_variable = strlen("variable");
 	char	*s;
 	Expr	*a, *v;
+	Sym	*sym;
 
 	for (i = 0, a = actuals; a; a = a->next, ++i) {
-		compile_expr(a, L_PUSH_VAL);
+		if (isaddrof(a) && (a->a->kind == L_EXPR_ID) &&
+		    (sym = sym_lookup(a->a, L_NOWARN)) &&
+		    (sym->decl->flags & DECL_REF)) {
+			s = cksprintf("&%s", a->a->str);
+			v = mkId(s);
+			ckfree(s);
+			sym = sym_lookup(v, L_NOWARN);
+			ASSERT(sym);
+			emit_load_scalar(sym->idx);
+			a->type = type_mkNameOf(a->a->type);
+		} else if (isid(a, "undef") &&
+			   formals && isnameoftype(formals->type)) {
+			push_lit("::L_undef_ref_parm_");
+			TclEmitOpcode(INST_MARK_UNDEF, L->frame->envPtr);
+			a->type = L_poly;
+		} else {
+			compile_expr(a, L_PUSH_VAL);
+		}
 		if (widget_flag && isaddrof(a)) {
 			a->type = L_poly;
 			v = a->a;
