@@ -145,6 +145,7 @@ will be replaced with the specified string:
 \\r	Carriage return
 \\t	Tab
 \\123	3 digit octal value (pad with leading zeros)
+\\<c>	c for any other character "c"
 .LP
 .fi
 An example dspec 
@@ -261,6 +262,19 @@ true if
 .ARG str
 matches
 .ARG glob .
+.br
+.ARGc str
+.B =~\c
+.ARG /regexp/
+true if
+.ARG str
+matches the regular expression;
+/regexp/i does a case-insensitive match
+and /glob/g does a glob match.
+.br
+.BR Note :
+spaces immediately before and after the operator are ignored.
+To match against such a leading or trailing space, escape it.
 .tp
 .B numbers
 .ARGc lhs
@@ -289,7 +303,7 @@ equal or less than;
 less than.
 .br
 .BR Note :
-spaces 
+spaces are
 .B required
 on both sides of the operator.
 .SS COMPOUND EXPRESSIONS
@@ -297,6 +311,8 @@ As of \*[BK] release 4.1,
 .I dspecs
 support logical AND (A && B), logical OR (A || B),
 and parenthesized subexpressions ((A && B) || (C && D)).
+Note: spaces immediately before and after the operator are ignored.
+To match against such a leading or trailing space, escape it.
 .SS ITERATIVE OUTPUT
 .ad b
 Some fields, such as comments or tags, may be multi-line.  To print a prefix

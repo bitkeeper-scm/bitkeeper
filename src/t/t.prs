@@ -63,6 +63,10 @@ a\tb		# a	b
 a\$b		# a$b
 a\xb		# axb
 a\\\\b		# a\\b
+a b c		# a b c
+ a b c		#  a b c
+\ a b c		#  a b c
+\ a\ b\ c	#  a b c
 {xxx}		# {xxx}
 {}		# {}
 {		# {
@@ -181,8 +185,11 @@ $unless($9){false}		# false
 $each(:C:){x}			# x
 $each(:C:){(:C:)}		# c3
 $each(:C:){:each:}		# c3
-$if(:REV: = 1.4 ){t}		# t
-$if(:REV:\ = 1.4\ ){t}		# t
+$if(:REV:=1.4){t}		# t
+$if(:REV: = 1.4){t}		# t
+$if(:REV: = 1.4 ){t}$else{f}	# f
+$if(:REV:\ =1.4\ ){t}		# t
+$if(:REV:\  = 1.4\ ){t}		# t
 $if(e){x}$if(e){y}$if(e){z}	# xyz
 $if(e){x}$else{q}$if(e){y}$if(e){z}	# xyz
 $if(e){x}$if(e){y}$else{q}$if(e){z}	# xyz
@@ -224,12 +231,28 @@ $if((:REV:&&:C|1.0:)||  (:REV: && :C|1.0:)){t}$else{f}	# f
 $if((:REV: ||:C|1.0:)&& (:REV: ||:C|1.0:)){t}$else{f}	# t
 $if((:REV: = 1.4&&:C|1.0:) || (:REV: != 1.1 &&:C|1.0:)){t}$else{f}	# f
 $if((:REV:= 1.4&&:REV: != 1.1)||(:REV: != 1.1 &&:REV=1.4:)){t}$else{f}	# t
+$if( :REV: = \ 1.4){t}		# t
+$if(:REV:   = 1.4){t}		# t
+$if(:REV:\ = 1.4){t}$else{f}	# f
+$if(abc=~a?c){t}		# t
+$if(abc =~a?c){t}		# t
+$if(abc=~ a?c){t}		# t
+$if(abc =~ a?c){t}		# t
+$if(a c =~ a?c){t}		# t
+$if(a c =~ a c){t}		# t
+$if(a c =~ x c){t}$else{f}	# f
+$if(a c=a c){t}			# t
+$if(a c = a c){t}		# t
 $tcl{testing}		# {testing}
 $tcl{{}			# {\{}
 $tcl{\}}		# {\}}
 $tcl{[]$;' }		# {\[\]\$\;'\ }
 $tcl{\\x}		# {\\x}
 $tcl{$tcl{a} $tcl{b} $tcl{c}}	# {{a}\ {b}\ {c}}
+$if(x =~ /x/){t}		# t
+$if(xyz =~ /x.z/){t}		# t
+$if(xyz=~/x.z/){t}		# t
+$if(xyz =~ /x?z/g){t}		# t
 EOF
 cat cmds | perl -ne '
 	chomp;

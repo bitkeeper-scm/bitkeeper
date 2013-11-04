@@ -40,17 +40,26 @@ private struct {
 private	int	gindex;
 #define	g	(_g[gindex])
 
+/* Flags for lookFor(). */
+enum flags {
+	NEED_SPACES	= 0,
+	SPACES_OPTIONAL	= 1,
+};
+
 /* Globals for $0-$9 variables (using fmem). */
 private FILE	*fvars[10];
 
 private void	dollar(FILE *out);
 private void	err(char *msg);
+private char	escape(void);
 private void	evalId(FILE *out);
 private void	evalParenid(FILE *out, datum id);
 private int	expr(void);
 private int	expr2(op *next_tok);
 private char	*getnext(datum kw, nextln *state);
 private int	getParenid(datum *id);
+private int	lookFor(char *s, int len, enum flags flags);
+private int	match(char *s, char *pattern);
 private void	stmtList(FILE *out);
 private char	*string(FILE *out, op *next_tok);
 
@@ -82,11 +91,7 @@ dspec_eval(FILE * out, sccs *s, ser_t d, char *dspec)
  *	       -> $unless(<expr>){<stmt_list>}[[$else{<stmt_list>}]]
  *	       -> $each(:ID:){<stmt_list>}
  *	       -> ${<num>=<stmt_list>}
- *	       -> char
- *	       -> escaped_char
- *	       -> :ID:
- *	       -> (:ID:)
- *	       -> $<num>
+ *	       -> <atom>
  * <expr>      -> <expr2> {{ <logop> <expr2> }}
  * <expr2>     -> <str> <relop> <str>
  *	       -> <str>
@@ -99,7 +104,7 @@ dspec_eval(FILE * out, sccs *s, ser_t d, char *dspec)
  *	       -> (:ID:)
  *	       -> $<num>
  * <logop>     -> " && " | " || "
- * <relop>     -> "=" | "!=" | "=~" 
+ * <relop>     -> "=" | "!=" | "=~"
  *	       -> " -eq " | " -ne " | " -gt " | " -ge " | " -lt " | " -le "
  *
  * This grammar is ambiguous due to (:ID:) loooking like a
@@ -123,7 +128,6 @@ private void
 stmtList(FILE *out)
 {
 	char	c;
-	int	i;
 	datum	id;
 	static int	depth = 0;
 
@@ -146,21 +150,7 @@ stmtList(FILE *out)
 			}
 			break;
 		    case '\\':
-			if (octal(g.p[1]) && octal(g.p[2]) && octal(g.p[3])) {
-				sscanf(g.p, "\\%03o", &i);
-				c = i;
-				g.p += 4;
-			} else {
-				switch (g.p[1]) {
-				    case 'b': c = '\b'; break;
-				    case 'f': c = '\f'; break;
-				    case 'n': c = '\n'; break;
-				    case 'r': c = '\r'; break;
-				    case 't': c = '\t'; break;
-				    default:  c = g.p[1]; break;
-				}
-				g.p += 2;
-			}
+			c = escape();
 			show_s(g.s, out, &c, 1);
 			break;
 		    default:
@@ -174,6 +164,57 @@ stmtList(FILE *out)
 		}
 	}
 	--depth;
+}
+
+private char
+escape(void)
+{
+	char	c;
+	int	i;
+
+	if (octal(g.p[1]) && octal(g.p[2]) && octal(g.p[3])) {
+		sscanf(g.p, "\\%03o", &i);
+		c = i;
+		g.p += 4;
+	} else {
+		switch (g.p[1]) {
+		    case 'b': c = '\b'; break;
+		    case 'f': c = '\f'; break;
+		    case 'n': c = '\n'; break;
+		    case 'r': c = '\r'; break;
+		    case 't': c = '\t'; break;
+		    default:  c = g.p[1]; break;
+		}
+		g.p += 2;
+	}
+	return (c);
+}
+
+/*
+ * See if the string in s appears next, ignoring any leading and
+ * trailing whitespace.  If flags == SPACES_REQUIRED, at least one
+ * space before and after is required.  If there's a match, consume it
+ * and return 1.
+ */
+private int
+lookFor(char *s, int len, enum flags flags)
+{
+	int	sp = 0;
+	char	*p = g.p;
+
+	while (isspace(*p)) {
+		++p;
+		sp = 0x01;
+	}
+	unless (strneq(p, s, len)) return (0);
+	p += len;
+	while (isspace(*p)) {
+		++p;
+		sp |= 0x02;
+	}
+	if ((flags == NEED_SPACES) && (sp != 0x03)) return (0);
+	g.p = p;
+	return (1);
 }
 
 private void
@@ -334,9 +375,7 @@ expr2(op *next_tok)
 	int	ret;
 	char	*lhs, *rhs;
 
-	while (g.p[0] == ' ') ++g.p; /* skip whitespace */
-	if (g.p[0] == '!') {
-		g.p++;
+	if (lookFor("!", 1, SPACES_OPTIONAL)) {
 		return (!expr2(next_tok));
 	}
 	if ((g.p[0] == '(') && !getParenid(&id)) {
@@ -344,15 +383,12 @@ expr2(op *next_tok)
 		++g.p;	/* eat ( */
 		ret = expr();
 		++g.p;	/* eat ) */
-		while (g.p[0] == ' ') ++g.p; /* skip whitespace */
 		if (g.p[0] == ')') {
 			*next_tok = T_RPAREN;
-		} else if ((g.p[0] == '&') && (g.p[1] == '&')) {
+		} else if (lookFor("&&", 2, SPACES_OPTIONAL)) {
 			*next_tok = T_AND;
-			g.p += 2;
-		} else if ((g.p[0] == '|') && (g.p[1] == '|')) {
+		} else if (lookFor("||", 2, SPACES_OPTIONAL)) {
 			*next_tok = T_OR;
-			g.p += 2;
 		} else {
 			err("expected &&, ||, or )");
 		}
@@ -383,7 +419,7 @@ expr2(op *next_tok)
 		    case T_GE:		ret = atof(lhs) >= atof(rhs); break;
 		    case T_LT:		ret = atof(lhs) <  atof(rhs); break;
 		    case T_LE:		ret = atof(lhs) <= atof(rhs); break;
-		    case T_EQTWID:	ret =  match_one(lhs, rhs, 1); break;
+		    case T_EQTWID:	ret = match(lhs, rhs); break;
 		    default: assert(0); ret = 0; break;
 		}
 		return (ret);
@@ -404,6 +440,7 @@ expr2(op *next_tok)
 private char *
 string(FILE *f, op *next_tok)
 {
+	char	c;
 	int	num;
 	size_t	len;
 	char	*p;
@@ -420,56 +457,39 @@ string(FILE *f, op *next_tok)
 		} else if (g.p[0] == ')') {
 			*next_tok = T_RPAREN;
 			goto out;
-		} else if ((g.p[0] == '=') && (g.p[1] == '~')) {
+		} else if (lookFor("=~", 2, SPACES_OPTIONAL)) {
 			*next_tok = T_EQTWID;
-			g.p += 2;
 			goto out;
-		} else if (g.p[0] == '=') {
+		} else if (lookFor("=", 1, SPACES_OPTIONAL)) {
 			*next_tok = T_EQUALS;
-			++g.p;
 			goto out;
-		} else if ((g.p[0] == '!') && (g.p[1] == '=')) {
+		} else if (lookFor("!=", 2, SPACES_OPTIONAL)) {
 			*next_tok = T_NOTEQ;
-			g.p += 2;
 			goto out;
-		} else if ((g.p[0] == ' ') &&
-		    (g.p[1] == '-') && (g.p[4] == ' ')) {
-			if ((g.p[2] == 'e') && (g.p[3] == 'q')) {
-				*next_tok = T_EQ;
-				g.p += 5;
-				goto out;
-			} else if ((g.p[2] == 'n') && (g.p[3] == 'e')) {
-				*next_tok = T_NE;
-				g.p += 5;
-				goto out;
-			} else if ((g.p[2] == 'g') && (g.p[3] == 't')) {
-				*next_tok = T_GT;
-				g.p += 5;
-				goto out;
-			} else if ((g.p[2] == 'g') && (g.p[3] == 'e')) {
-				*next_tok = T_GE;
-				g.p += 5;
-				goto out;
-			} else if ((g.p[2] == 'l') && (g.p[3] == 't')) {
-				*next_tok = T_LT;
-				g.p += 5;
-				goto out;
-			} else if ((g.p[2] == 'l') && (g.p[3] == 'e')) {
-				*next_tok = T_LE;
-				g.p += 5;
-				goto out;
-			}
-		} else if ((g.p[0] == '&') && (g.p[1] == '&')) {
+		} else if (lookFor("&&", 2, SPACES_OPTIONAL)) {
 			*next_tok = T_AND;
-			g.p += 2;
 			goto out;
-		} else if ((g.p[0] == '|') && (g.p[1] == '|')) {
+		} else if (lookFor("||", 2, SPACES_OPTIONAL)) {
 			*next_tok = T_OR;
-			g.p += 2;
 			goto out;
-		} else if (g.p[0] == ' ') {
-			++g.p;
-			continue;
+		} else if (lookFor("-eq", 3, NEED_SPACES)) {
+			*next_tok = T_EQ;
+			goto out;
+		} else if (lookFor("-ne", 3, NEED_SPACES)) {
+			*next_tok = T_NE;
+			goto out;
+		} else if (lookFor("-gt", 3, NEED_SPACES)) {
+			*next_tok = T_GT;
+			goto out;
+		} else if (lookFor("-ge", 3, NEED_SPACES)) {
+			*next_tok = T_GE;
+			goto out;
+		} else if (lookFor("-lt", 3, NEED_SPACES)) {
+			*next_tok = T_LT;
+			goto out;
+		} else if (lookFor("-le", 3, NEED_SPACES)) {
+			*next_tok = T_LE;
+			goto out;
 		} else if ((g.p[0] == '$') && isdigit(g.p[1])) {
 			num = g.p[1] - '0';
 			g.p += 2;
@@ -477,6 +497,10 @@ string(FILE *f, op *next_tok)
 				p = fmem_peek(fvars[num], &len);
 				show_s(g.s, f, p, len);
 			}
+			continue;
+		} else if (g.p[0] == '\\') {
+			c = escape();
+			show_s(g.s, f, &c, 1);
 			continue;
 		}
 		show_s(g.s, f, g.p, 1);
@@ -555,6 +579,25 @@ evalId(FILE *out)
 	}
 	show_s(g.s, out, ":", 1);
 	++g.p;
+}
+
+private int
+match(char *s, char *pattern)
+{
+	int	ret;
+
+	/*
+	 * If pattern is like /xyzzy/ do a regexp match otherwise do a
+	 * glob match.
+	 */
+	if (pattern[0] == '/') {
+		search	search = search_parse(pattern+1);
+		ret = search_either(s, search);
+		search_free(search);
+	} else {
+		ret = match_one(s, pattern, 1);
+	}
+	return (ret);
 }
 
 private void
