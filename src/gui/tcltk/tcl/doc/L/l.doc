@@ -962,6 +962,10 @@ array:
         puts("line #${++i}: ${s}");
     }
 
+Inside the loop, the index variable(s) (C<element>, C<key>, C<val>, and
+C<char> above) get I<copies> of the iterated elements, so
+if you assign to them, the thing you're iterating over does not change.
+
 If you want to stride through more than one array element, character,
 or line in each iteration, just use a list of value variables instead of one:
 
