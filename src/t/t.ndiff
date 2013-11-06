@@ -469,18 +469,23 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test diff -p with function in context........................$NL
-cat <<EOF > A
+run_test() {
+	FUNCTION=$1
+	WANT=$2
+	cat <<EOF > A
 int
 main(int ac, char **av)
 {
 	printf("this is a line\n");
 }
 
-int
-findcmd(int ac, char **av)
+EOF
+	printf "$FUNCTION\n" >> A
+	cat <<EOF >> A
 {
 
 	if (ac == 0) return (-1);
+label:	function(args);
 	for (i = 0; cmds[i].name; ++i) {
 		if (strcasecmp(av[0], cmds[i].name) == 0) {
 			if (streq(av[0], "pull")) av[0] = "remote pull";
@@ -488,38 +493,47 @@ findcmd(int ac, char **av)
 	}
 }
 EOF
-cat <<EOF > B
+	cat <<EOF > B
 int
 main(int ac, char **av)
 {
 	printf("this is a line\n");
 }
 
-int
-findcmd(int ac, char **av)
+EOF
+	printf "$FUNCTION\n" >> B
+	cat <<EOF >> B
 {
+
+	if (ac == 0) return (-1);
+label:	function(args);
+	for (i = 0; cmds[i].name; ++i) {
+		if (strcasecmp(av[0], cmds[i].name) == 0) {
+			if (streq(av[0], "pull")) av[0] = "remote pull";
+		}
+	}
 	av0 = av[0];
-
-	if (ac == 0) return (-1);
-	for (i = 0; cmds[i].name; ++i) {
-		if (strcasecmp(av[0], cmds[i].name) == 0) {
-			if (streq(av[0], "pull")) av[0] = "remote pull";
-		}
-	}
 }
 EOF
-bk ndiff -up A B | grep -v ^--- | grep -v ^+++ > GOT
-cat <<EOF > WANT
-@@ -7,6 +7,7 @@ findcmd(int ac, char **av)
- int
- findcmd(int ac, char **av)
- {
+	bk ndiff -u0p A B | grep -v ^--- | grep -v ^+++ > GOT1
+	perl -ne 'if (/^@@.*@@ (.*)$/) {print "@@ $1\n";} else {print}' < GOT1 > GOT
+	cat <<EOF > WANT
+@@ $WANT
 +	av0 = av[0];
- 
- 	if (ac == 0) return (-1);
- 	for (i = 0; cmds[i].name; ++i) {
 EOF
-cmpfiles WANT GOT
+	cmpfiles WANT GOT
+}
+
+run_test "int\nfindcmd(int ac, char **av)" "findcmd(int ac, char **av)"
+run_test "int findcmd(int ac, char **av)" "int findcmd(int ac, char **av)"
+run_test "static int findcmd(int ac, char **av)" "static int findcmd(int ac, char **av)"
+run_test "void\nScan::complete (const Status scanStatus, const utf::SlightlyEmbarrassinglyButAlphanumericallyNamedString &errorString)" "Scan::complete (const Status scanStatus,"
+run_test "void Scan::complete (const Status scanStatus, const utf::SlightlyEmbarrassinglyButAlphanumericallyNamedString &errorString)" "void Scan::complete (const Status scanSt"
+run_test "static void Scan::complete (const Status scanStatus, const utf::SlightlyEmbarrassinglyButAlphanumericallyNamedString &errorString)" "static void Scan::complete (const Status"
+run_test "Region::element_iterator Region::element_begin()" "Region::element_iterator Region::element"
+# invalid ones should match main
+run_test "a::::::()" "main(int ac, char **av)"
+run_test "(void)funcall();" "main(int ac, char **av)"
 echo OK
 
 echo $N Test C function alignment....................................$NL

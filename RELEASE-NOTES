@@ -8,6 +8,44 @@ bk pull
       multiple parents or URLs.
 
 ============================================================================
+Release notes for BitKeeper version 6.0.2 (released Oct 29, 2013)
+
+    This is a bugfix release (one feature snuck in).
+
+Bugfixes
+
+  bk diffs
+    - Fixed a bug where 'bk diffs -NL' did not list extra files.
+    - bk diffs -s was not working because of the switch to -u as
+      the default.
+    - Function header matching in 'bk diffs -p' now works with C++
+      names.
+
+  bk difftool
+    - When looking at diffs over different types of files, a binary
+      file in the list would cause diffs for the next text file to not
+      be displayed.
+
+  bk gone
+    - People would try and run 'bk gone foo.c' which is incorrect, the
+      correct usage is:
+	bk gone `bk log -r+ -nd:ROOTKEY:`
+      bk gone now works harder to validate that the arguments passed
+      are actually keys.
+
+  Other bugfixes
+    - Fix a bug in the BK6->BK5 compat code where some files were not
+      converted correctly to the BK5 format.
+    - Stale locks on windows were not always being cleaned immediately.
+    - Ignore extra files in .bk which were causing problems in Mac OS.
+
+Features
+
+   bk annotate
+    - MD5 keys are now supported in the annotation options by running
+      either 'bk annotate -a5' or 'bk annotate -A5'.
+
+============================================================================
 Release notes for BitKeeper version 6.0.1 (released Aug 9, 2013)
 
     This is a bugfix release (a few features snuck in).

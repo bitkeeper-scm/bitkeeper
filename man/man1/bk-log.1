@@ -116,16 +116,43 @@ prints all deltas made in the last 24 hours; similarly for
 and
 .IR Y 
 for seconds,minutes, hours, days, months, and years.
-.SH OUTPUT FORMAT
-.LP
+.SH DEFAULT OUTPUT FORMAT
 The 
 .BR "bk changes" ,
 .BR "bk log" ,
 and 
-.B "bk sccslog" 
-commands have a default output format which can be overridden.  There are
-many different pieces of information in a \*(BK file and virtually all of
-them can be extracted using a non-default output format.
+.B "bk prs" 
+commands have a default output format which may be modified on a
+per user or per repository basis.
+The default formats are named as follows:
+.TP "dspec-changes-vv "
+dspec-changes
+Specifies the format for bk changes [-v] output (without -vv).
+.tp
+dspec-changes-vv
+Specifies the format for bk changes -vv output (verbose with diffs).
+.tp
+dspec-log
+Specifies the format for bk log output.
+.LP
+These files are searched for in the following places and the first one 
+found is used:  
+.RS
+<repo>/BitKeeper/etc/dspec-changes
+.br
+<product>/BitKeeper/etc/dspec-changes (\*(BK/Nested only)
+.br
+`bk dotbk`/dspec-changes
+.br
+/etc/BitKeeper/etc/dspec-changes
+.br
+`bk bin`/dspec-changes
+.RE
+.SH MODIFYING THE OUTPUT FORMAT
+There are many different pieces of information in a \*(BK file and
+virtually all of them can be extracted using a non-default output
+format.
+.LP
 To extract specific information, a \*(lqdspec\*(rq
 (data specification) string must be provided and should contain
 keywords surrounded by colons.

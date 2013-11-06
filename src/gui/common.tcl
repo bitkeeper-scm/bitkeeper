@@ -1259,19 +1259,21 @@ align_blocks(string S, int &chg[])
 /*
  * Align the hunks such that if we find one char in common between
  * changed regions that are longer than one char, we mark the single
- * char as changed even thou it didn't. This prevents the sl highlight
- * to match stuff like foo|b|ar to a|b|alone #the b is common.
+ * char as changed even though it didn't. This prevents the sl highlight
+ * from matching stuff like foo|b|ar to a|b|alone #the b is common.
  */
 hunk[]
-align_hunks(hunk[] hunks)
+align_hunks(string A, string B, hunk[] hunks)
 {
 	hunk	h, h1, nhunks[];
 	int	x, y, lastrl, lastll;
 
 	x = y = lastll = lastrl = 0;
 	foreach (h in hunks) {
-		if ((((h.li - x) == 1) && ((h.ll > 1) || (lastll > 1))) ||
-		    (((h.ri - y) == 1) && ((h.rl > 1) || (lastrl > 1)))) {
+		if ((((h.li - x) <= h.ll) && ((h.li - x) <= lastll) &&
+			isalpha(A[x..h.li - 1])) ||
+		    (((h.ri - y) <= h.rl) && ((h.ri - y) <= lastrl) &&
+			 isalpha(B[y..h.ri - 1]))) {
 			h1.li = x;
 			h1.ri = y;
 			h1.ll = (h.li - x) + h.ll;
@@ -1426,7 +1428,7 @@ diff(string A, string B)
 			push(&hunks, h);
 		}
 	}
-	hunks = align_hunks(hunks);
+	hunks = align_hunks(A, B, hunks);
 	return(hunks);
 }
 
@@ -1445,6 +1447,33 @@ snake(string A, string B, int k, int y)
 	return (y);
 }
 
+int
+slhSkip(hunk hunks[], int llen, string left, int rlen, string right)
+{
+	float	hlfactor = 1.0/2.0; /* if the subline highlight is more
+				     * than this fraction of the line length,
+				     * skip it. */
+	float	chopfactor = 1.0/2.0; /* if the choppiness is more
+				       * than this fraction of line
+				       * length, skip it. */
+
+	/*
+	 * Highlighting too much? Don't bother.
+	 */
+	if (llen > (hlfactor*length(left)) ||
+	    rlen > (hlfactor*length(right))) {
+		return (1);
+	}
+	/*
+	 * Too choppy? Don't bother
+	 */
+	if ((length(hunks) > (chopfactor*length(left))) ||
+	    (length(hunks) > (chopfactor*length(right)))) {
+		return (1);
+	}
+	return (0);
+}
+
 // Do subline highlighting on two side-by-side diff widgets.
 void
 highlightSideBySide(widget left, widget right, string start, string stop, int prefix)
@@ -1454,12 +1483,6 @@ highlightSideBySide(widget left, widget right, string start, string stop, int pr
 	string	rlines[] = split(/\n/, (string)Text_get(right, start, stop));
 	hunk	hunks[], h;
 	int	llen, rlen;
-	float	hlfactor = 1.0/2.0; /* if the subline highlight is more
-				     * than this fraction of the line length,
-				     * skip it. */
-	float	chopfactor = 1.0/2.0; /* if the choppiness is more
-				       * than this fraction of line
-				       * lenght, skip it. */
 	int	allspace;
 	string	sl, sr;
 
@@ -1480,17 +1503,8 @@ highlightSideBySide(widget left, widget right, string start, string stop, int pr
 			if (sr != "") allspace = allspace && isspace(sr);
 		}
 		unless (allspace) {
-			/*
-			 * Highlighting too much? too choppy? Don't bother.
-			 */
-			if (llen > (hlfactor*length(llines[i])) ||
-			    (length(hunks) > (chopfactor*length(llines[i])))) {
-				continue;
-			}
-			if (rlen > (hlfactor*length(rlines[i])) ||
-			    (length(hunks) > (chopfactor*length(rlines[i])))) {
-				continue;
-			}
+			if (slhSkip(hunks,
+			    llen, llines[i], rlen, rlines[i])) continue;
 			foreach (h in hunks) {
 				Text_tagAdd(left, "highlight",
 				    "${line}.${prefix + h.li}",
@@ -1536,12 +1550,6 @@ highlightStacked(widget w, string start, string stop, int prefix)
 	string	lines[];
 	int	l = 0, hunkstart = 0;
 	string	addlines[], sublines[];
-	float	hlfactor = 1.0/2.0; /* if the subline highlight is more
-				     * than this fraction of the line length,
-				     * skip it. */
-	float	chopfactor = 1.0/2.0; /* if the choppiness is more
-				       * than this fraction of line
-				       * lenght, skip it. */
 
 	lines = split(/\n/, (string)Text_get(w, start, stop));
 	/*
@@ -1579,21 +1587,12 @@ highlightStacked(widget w, string start, string stop, int prefix)
 					llen += h.ll;
 					rlen += h.rl;
 				}
-				/*
-				 * Highlighting too much? too
-				 * choppy? Don't bother.
-				 */
 
-				if (llen > (hlfactor * length(sublines[i])) ||
-				    (length(hunks) >
-					(chopfactor * length(sublines[i])))) {
+				if (slhSkip(hunks,
+				    llen, sublines[i], rlen, addlines[i])) {
 					continue;
 				}
-				if (rlen > (hlfactor * length(addlines[i])) ||
-				    (length(hunks) >
-					(chopfactor * length(addlines[i])))) {
-					continue;
-				}
+
 				foreach (h in hunks) {
 					Text_tagAdd(w, "highlight",
 					    "${lineA}.${h.li+prefix}",

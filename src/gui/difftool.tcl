@@ -686,6 +686,16 @@ proc test_sublineHighlight {which strings} {
 	}
 }
 
+proc test_getLeftDiffs {} {
+	set w .diffs.left
+	return [$w get 1.0 end]
+}
+
+proc test_getRightDiffs {} {
+	set w .diffs.right
+	return [$w get 1.0 end]
+}
+
 proc init {} \
 {
 	global	rev1 rev2 Diffs DiffsEnd files fileInfo unique

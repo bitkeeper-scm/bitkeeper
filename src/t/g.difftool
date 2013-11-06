@@ -458,6 +458,33 @@ EOF
 cmpfiles "$OUT" WANT
 echo OK
 
+echo $N Test binary and text files together .........................$NL
+## Make some binary files
+echo FOO > foo.txt
+perl -e 'printf "b\000b\n"' > foo.bin
+bk ci -a -y'checkin comment' foo.txt foo.bin 2>/dev/null
+bk commit $Q -y'commit comment' 2>/dev/null
+bk edit $Q foo.txt foo.bin
+echo FOO >> foo.txt
+echo FOO >> foo.bin
+bk guitest difftool >"$OUT" 2>&1 <<'EOF'
+	set diffs [test_getLeftDiffs]
+	if {![string match -nocase "*binary files differ*" $diffs]} {
+		puts "Should have gotten binary file message"
+		exit 1
+	}
+	test_inputString "N" ; ## Move to the next file
+	set diffs [test_getLeftDiffs]
+	if {[string match -nocase "*binary files differ*" $diffs]} {
+		puts "Should show file contents, but we got the binary message"
+		exit 1
+	}
+
+	test_buttonPress Quit
+EOF
+test $? -eq 0 || fail -f "$OUT"
+echo OK
+
 if [ "$PLATFORM" = "WIN32" ]; then
 	echo $N Testing windows path in command line.........................$NL
 	cd "$HERE"/project

@@ -85,6 +85,36 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
+echo $N Check bk annotate -a5........................................$NL
+MD5KEY1=`bk log -nd:MD5KEY: -r1.1 file`
+MD5KEY2=`bk log -nd:MD5KEY: -r1.2 file`
+bk annotate -a5 file > GOT
+cat <<EOF > WANT
+$MD5KEY1	line1
+$MD5KEY1	line2
+$MD5KEY1	line3
+$MD5KEY2	line4
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check bk annotate -A5........................................$NL
+MD5KEY1=`bk log -nd:MD5KEY: -r1.1 file`
+MD5KEY2=`bk log -nd:MD5KEY: -r1.2 file`
+bk annotate -A5 file > GOT
+cat <<EOF > WANT
+$MD5KEY1        | line1
+$MD5KEY1        | line2
+$MD5KEY1        | line3
+$MD5KEY2        | line4
+EOF
+cmpfiles WANT GOT
+# Does the data line up on a 8 char tab stop?  Tab stops are 8X + 1
+cut -c41- < GOT > WANT
+bk cat file > GOT
+cmpfiles WANT GOT
+echo OK
+
 echo $N Check bk annotate -ar -r1.1 .................................$NL
 bk annotate -ar -r1.1 file > GOT
 cat <<EOF > WANT

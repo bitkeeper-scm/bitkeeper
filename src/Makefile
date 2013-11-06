@@ -180,7 +180,7 @@ OBJ =	bkver.o cmd.o \
 	mailsplit.o mtime.o mv.o names.o ndiff.o nested.o newroot.o \
 	opark.o \
 	parent.o park.o partition.o \
-	pending.o preference.o proj.o \
+	pending.o pcre.o preference.o proj.o \
 	poly.o \
 	populate.o \
 	port/bkd_server.o \
@@ -232,6 +232,7 @@ LOCALSCR= build \
 PSCR	= t/doit t/guitest
 PROGS	= hidestring libc/mtst$(EXE)
 LIBS	= libc/libc.a tomcrypt/libtomcrypt.a tommath/libtommath.a
+PCRELIB = gui/tcltk/pcre/local/lib/libpcre.a
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
 	Academic.lic Essentials.lic Pro.lic Enterprise.lic MLA.lic bkcl.lic \
@@ -239,11 +240,11 @@ DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
 	dspec-changes dspec-changes-vv dspec-changes-h dspec-changes-hv \
 	dspec-changes-3.2 dspec-changes-4.0 dspec-prs dspec-log
 CONTRIB = gui/ide/emacs/vc-bk.el
-ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LSCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) \
+ALL	= PCRE $(LIBS) $(BINS) $(SCRIPTS) $(LSCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) \
 	$(PROGS) GUI
 
 CFLAGS	= $(CC_DEBUG)
-CPPFLAGS= -Ilibc -Itommath -Itomcrypt/src/headers
+CPPFLAGS= -Ilibc -Itommath -Itomcrypt/src/headers -Igui/tcltk/pcre/local/include
 # Override this if you don't have it.
 RANLIB	= ranlib
 
@@ -414,7 +415,7 @@ bk.ico: win32/data/bk.ico
 
 $(BK): $(LIBS) bk.o $(RESOURCE) $(OBJ)
 	$(if $(Q),@echo LINKING $(BK),)
-	$(Q)$(LD) $(LDFLAGS) -o $@ bk.o $(OBJ) $(RESOURCE) $(LIBS) $(XLIBS)
+	$(Q)$(LD) $(LDFLAGS) -o $@ bk.o $(OBJ) $(RESOURCE) $(LIBS) $(PCRELIB) $(XLIBS)
 
 inskeys$(EXE): inskeys.o inskeys_main.o $(LIBS)
 	$(LD) $(LDFLAGS) -o $@ inskeys.o inskeys_main.o $(LIBS) $(XLIBS)
@@ -468,7 +469,7 @@ import: import.sh port/$(SYS)_platform.sh
 
 # Quick and dirty target so we can make all the gui tools without the rest
 .PHONY: GUI
-GUI: tclwrap
+GUI: tclwrap PCRE
 	@$(MAKE) -Cgui Q=$(Q) gui
 
 gui-nowrap GUI-nowrap:
@@ -584,6 +585,11 @@ depend: $(SRCS)
 # calculated header files
 libc/system.h: FORCE
 	$(MAKE) -C libc system.h
+
+sccs.h: PCRE
+.PHONY: PCRE
+PCRE:
+	$(MAKE) Q=$(Q) -Cgui/tcltk pcre
 
 $(OBJ) bk.o: $(HDRS)
 

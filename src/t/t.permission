@@ -266,3 +266,36 @@ bk chmod 0140770 prog 2>ERR && {
 }
 grep -q "admin: prog: Illegal file mode" ERR || exit 1
 echo OK
+
+# Tests here are require a bkdcp command which is setuid version of cp
+# Needed to test having files owned by someone else.
+bk which -e bkdcp > /dev/null || {
+	echo "For platforms with user bkd and suid bkd command: bkdcp .....skipped"
+	exit 0;
+}
+
+echo $N Create repo with 'ChangeSet,[12]' 440 and owned by bkd ........$NL
+cd "$HERE"/project
+touch foo
+bk new $Q foo
+cd .bk
+cp -Rp SCCS "$HERE/orig.sccs"
+mv SCCS OLD
+chmod 444 OLD/ChangeSet,1 OLD/ChangeSet,2
+bkdcp -Rp OLD SCCS
+rm -fr OLD
+cd ..
+bk commit $Q -yfoo || fail
+echo OK
+
+echo $N Create repo with 'ChangeSet,[12]' 640 and owned by bkd ........$NL
+cd .bk
+rm -fr SCCS
+cp -Rp "$HERE/orig.sccs" OLD
+chmod 644 OLD/ChangeSet,1 OLD/ChangeSet,2
+bkdcp -Rp OLD SCCS
+rm -fr OLD
+cd ..
+bk mv foo bar
+bk commit $Q -yfoo2bar || fail
+echo OK

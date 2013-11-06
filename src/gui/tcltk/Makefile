@@ -116,6 +116,7 @@ all: version.sh ../../tclkey.h
 	if [ -n "$$TCLVER" -a -f "$$TCLVER" -a -z "$$FORCE_REBUILD" ]; \
 	then	gunzip < "$$TCLVER" | tar -xf -; true; \
 	else	unset CC LD CCXTRA CFLAGS MAKEFLAGS; \
+		$(MAKE) Q=$(Q) populate ; \
 		$(MAKE) Q=$(Q) bin/tclsh$(EXE) || exit 1; \
 		$(MAKE) Q=$(Q) bin/bkgui$(EXE) $(EXTENSIONS) || exit 1; \
 		test "X$(AQUA)" = X && exit 0; \
@@ -152,8 +153,6 @@ tk/$S/Makefile: tk/$S/configure Makefile
 	./configure $(QUIET) \
 	    $(ENABLE_64BIT) $(XSSSUPPORT) $(XFTSUPPORT) $(SHARED) $(SYMBOLS)
 
-# Use the <dir>/ChangeLog file as a marker that the file has been populated
-.PHONY: populate
 populate:
 	$(if $(Q), @echo Cloning TclTk repos,)
 	$(Q) BK_CONFIG='checkout:get!' bk here add $(QUIET) TCLTK || \
@@ -166,7 +165,6 @@ CHANGELOGS =  \
 	tktable/ChangeLog \
 	tktreectrl/ChangeLog \
 	bwidget/ChangeLog \
-	pcre/ChangeLog \
 	tkcon/ChangeLog
 
 $(CHANGELOGS): populate

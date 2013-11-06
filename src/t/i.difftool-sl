@@ -13,7 +13,9 @@ same.o as.o lists.o of.o object.o files.o
 6
 whitespace	only	   changes	  should be orange
 7
-"clist" and "keystate" should highlight the whole word (BUG)
+"clist" and "keystate" should highlight the whole word
+8
+	int foo[3];	// the ] should NOT be highlighted
 EOF
 cat <<EOF > RIGHT
 1
@@ -29,7 +31,9 @@ same.o as.o lists.o of.o more.o object.o files.o
 6
 whitespace	only     changes 	should be orange
 7
-"keystate" and "clist" should highlight the whole word (BUG)
+"keystate" and "clist" should highlight the whole word
+8
+	int foo[NFILES] = {0};	// the ] should NOT be highlighted
 EOF
 bk difftool LEFT RIGHT
 echo OK
