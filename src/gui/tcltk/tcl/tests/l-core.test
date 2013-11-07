@@ -2709,8 +2709,8 @@ void main()
 void main()
 {
 }
-} -returnCodes error -match regexp -result {.*4: L Error: redeclaration of main
-.*7: L Error: redeclaration of main
+} -returnCodes error -match regexp -result {.*4: L Error: function main already declared
+.*7: L Error: function main already declared
 }
 
 test decl-1.11.1 {private globals 1} -body {
@@ -11258,6 +11258,20 @@ void main3()
 }
 main3();
 } -output {}
+
+test main-4 {check main() type checking} -body {
+#lang L --line=1
+float main() { return (3.14159); }
+void main(float bad) {}
+void main(int ac, string bad) {}
+void main(int ac, string av[], string bad) {}
+void main(int bad1, string bad2[], string bad3{string}, string too_many) {}
+} -returnCodes error -match regexp -result {.*1: L Error: main must have int or void return type
+.*2: L Error: invalid parameter types for main\(\)
+.*3: L Error: invalid parameter types for main\(\)
+.*4: L Error: invalid parameter types for main\(\)
+.*5: L Error: too many formal parameters for main\(\)
+}
 
 test defined-1.2 {defined operator on scalars} -body {
 #lang L --line=1

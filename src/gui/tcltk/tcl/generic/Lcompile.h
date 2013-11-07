@@ -223,6 +223,7 @@ extern int	L_typeck_declType(VarDecl *decl);
 extern void	L_typeck_deny(Type_k deny, Expr *expr);
 extern void	L_typeck_expect(Type_k want, Expr *expr, char *msg);
 extern void	L_typeck_fncall(VarDecl *formals, Expr *call);
+extern void	L_typeck_main(VarDecl *decl);
 extern int	L_typeck_same(Type *a, Type *b);
 extern Type	*L_typedef_lookup(char *name);
 extern void	L_typedef_store(VarDecl *decl);
@@ -342,6 +343,11 @@ isfntype(Type *type)
 	return (type->kind == L_FUNCTION);
 }
 static inline int
+isinttype(Type *type)
+{
+	return (type->kind == L_INT);
+}
+static inline int
 isvoidtype(Type *type)
 {
 	return (type->kind == L_VOID);
@@ -355,6 +361,18 @@ static inline int
 isclasstype(Type *type)
 {
 	return (type->kind == L_CLASS);
+}
+static inline int
+isarrayoftype(Type *type, Type_k kind)
+{
+	return ((type->kind == L_ARRAY) && (type->base_type->kind & kind));
+}
+static inline int
+ishashoftype(Type *type, Type_k base, Type_k elt)
+{
+	return ((type->kind == L_HASH) &&
+		(type->base_type->kind & base) &&
+		(type->u.hash.idx_type->kind & elt));
 }
 static inline int
 isaddrof(Expr *expr)

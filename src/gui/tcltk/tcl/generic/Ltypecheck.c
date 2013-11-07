@@ -206,6 +206,56 @@ typeck_fmt(Expr *actuals)
 }
 
 /*
+ * Typecheck the declaration of main() against the allowable forms:
+ *
+ * void|int main()
+ * void|int main(void)
+ * void|int main(string av[])
+ * void|int main(int ac, string av[])
+ * void|int main(int ac, string av[], string env{string})
+ */
+void
+L_typeck_main(VarDecl *decl)
+{
+	int	n;
+	Type	*type = decl->type;
+	VarDecl	*v;
+
+	unless (isinttype(type->base_type) || isvoidtype(type->base_type)) {
+		L_errf(decl, "main must have int or void return type");
+	}
+
+	for (n = 0, v = type->u.func.formals; v; v = v->next) ++n;
+	v = type->u.func.formals;
+	switch (n) {
+	    case 0:
+		break;
+	    case 1:
+		unless (isvoidtype(v->type) ||
+			isarrayoftype(v->type, L_STRING)) {
+			L_errf(v, "invalid parameter types for main()");
+		}
+		break;
+	    case 2:
+		unless (isinttype(v->type) &&
+			isarrayoftype(v->next->type, L_STRING)) {
+			L_errf(v, "invalid parameter types for main()");
+		}
+		break;
+	    case 3:
+		unless (isinttype(v->type) &&
+			isarrayoftype(v->next->type, L_STRING) &&
+			ishashoftype(v->next->next->type, L_STRING, L_STRING)) {
+			L_errf(v, "invalid parameter types for main()");
+		}
+		break;
+	    default:
+		L_errf(v, "too many formal parameters for main()");
+		break;
+	}
+}
+
+/*
  * Check that a declaration uses legal types.  This basically checks
  * for voids and name-of anywhere in the type where they aren't allowed.
  */

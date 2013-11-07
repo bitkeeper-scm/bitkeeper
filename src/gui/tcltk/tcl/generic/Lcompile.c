@@ -858,7 +858,7 @@ compile_fnDecls(FnDecl *fun, Decl_f flags)
 private void
 compile_fnDecl(FnDecl *fun, Decl_f flags)
 {
-	int	i, ismain, num_parms;
+	int	i, num_parms;
 	VarDecl	*decl = fun->decl;
 	char	*name = decl->id->str;
 	char	*clsname = NULL;
@@ -867,7 +867,6 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 	Sym	*sym;
 
 	flags |= decl->flags;
-	ismain = !strcmp(name, "main");
 
 	ASSERT(fun && decl);
 	ASSERT(!(flags & SCOPE_LOCAL));
@@ -881,13 +880,13 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 	/*
 	 * Sort out the possible error cases:
 	 *
+	 * - main() declared with wrong types for formals
 	 * - name illegal
 	 * - name already declared as a variable
 	 * - proto already declared and doesn't match this decl
 	 * - this decl declares function body but body already declared
-	 *
-	 * with the exception that "main" is allowed to be re-declared.
 	 */
+	if (!strcmp(name, "main")) L_typeck_main(decl);
 	if (name[0] == '_') {
 		L_errf(decl->id, "function names cannot begin with _");
 	}
@@ -905,7 +904,7 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 		}
 	}
 	sym = sym_lookup(decl->id, L_NOWARN|L_NOTUSED);
-	if (sym && !ismain) {
+	if (sym) {
 		unless (sym->kind & L_SYM_FN) {
 			L_errf(fun, "%s already declared as a variable",name);
 			return;
@@ -917,7 +916,7 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 			       name);
 			return;
 		}
-	} else unless (ismain && (flags & FN_PROTO_ONLY)) {
+	} else {
 		sym = sym_store(decl);
 		unless (sym) return;
 	}
@@ -5959,19 +5958,7 @@ sym_store(VarDecl *decl)
 			frame = frame_find(SCRIPT);
 			hPtr = Tcl_FindHashEntry(frame->symtab, name);
 		}
-		/*
-		 * Special case for main: allow redeclaration but not within
-		 * the same script, determined by whether the current AST
-		 * root is the same one as when main was last declared.
-		 */
-		if (!strcmp(name, "main")) {
-			if (hPtr && (L->mains_ast == L->ast)) {
-				L_errf(decl->id, "redeclaration of main");
-				return (NULL);
-			}
-			if (hPtr) Tcl_DeleteHashEntry(hPtr);
-			L->mains_ast = L->ast;
-		} else if (hPtr) {
+		if (hPtr) {
 			sym2 = (Sym *)Tcl_GetHashValue(hPtr);
 			if (decl->flags & DECL_EXTERN) {
 				sym = (Sym *)Tcl_GetHashValue(hPtr);
