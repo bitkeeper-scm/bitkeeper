@@ -1558,42 +1558,6 @@ A trivial cat implementation:
         while (buf = <>) print(buf);
     }
 
-=proto string <"filename">
-
-=proto string <"command|">
-
-=proto string <string_expression>
-
-The first form gets the next line from "filenanme", opening it if
-not already open and closing it upon reading EOF.
-The second form gets the next line of output from running "command"
-instead of from a file.
-In the third form the file or command name is in a string variable or
-arbitrary string expression; in this form, you must not change the
-name while reading.
-In all forms, trailing newlines are removed, and
-undef is returned upon error or EOF.
-To distinguish between EOF and error, check
-the global variable C<stdio_status> (see system()).
-
-This loop
-
-    while (s = <"filename">) t .= s;
-
-is equivalent to
-
-    FILE f;
-    if (f = fopen("filename", "r")) {
-        while (s = <f>) t .= s;
-        fclose(f);
-    }
-
-You can read through the file more than once; it is re-opened, read,
-and re-closed each time.
-Because the compiler allocates a hidden file handle for
-each such <> operator, another <"filename"> later in
-the code does not pick up where a previous one left off.
-
 =item `command`
 
 Execute the command (the string enclosed within back-ticks) and

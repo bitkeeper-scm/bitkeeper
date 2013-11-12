@@ -3416,27 +3416,8 @@ compile_unOp(Expr *expr)
 			compile_expr(expr->a, L_PUSH_VAL);
 			if (typeisf(expr->a, "FILE")) {
 				emit_invoke(2);
-			} else if (isstring(expr->a) || ispoly(expr->a)) {
-				/*
-				 * For <"filename"> or <"cmd|">, alloc
-				 * a local tmp initialized to undef
-				 * for the FILE handle, and pass to
-				 * fgetline its name (so it can be set) and
-				 * value (so fgetline need not look it up in
-				 * its fast path).
-				 */
-				Tmp *tmp = tmp_get(TMP_REUSE);
-				frame_resumePrologue();
-				TclEmitOpcode(INST_L_PUSH_UNDEF,
-					      L->frame->envPtr);
-				emit_store_scalar(tmp->idx);
-				emit_pop();
-				frame_resumeBody();
-				push_lit(tmp->name);
-				emit_load_scalar(tmp->idx);
-				emit_invoke(4);
 			} else {
-				L_errf(expr->a, "expect FILE or string in <>");
+				L_errf(expr->a, "expect FILE in <>");
 			}
 		} else {
 			push_lit("angle_read_");
@@ -7431,22 +7412,6 @@ do_getline(Tcl_Interp *interp, Tcl_Channel chan)
 	return (ret);
 }
 
-private int
-fgetline_openClose(Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
-{
-	Tcl_Obj	*argv[3];
-	int	rc;
-
-	/* Call function in lib L with first two args. */
-	argv[0] = Tcl_NewStringObj("fgetlineOpenClose_", 18);
-	Tcl_IncrRefCount(argv[0]);
-	argv[1] = objv[1];
-	argv[2] = objv[2];
-	rc = Tcl_EvalObjv(interp, 3, argv, 0);
-	Tcl_DecrRefCount(argv[0]);
-	return (rc);
-}
-
 int
 Tcl_FGetlineObjCmd(
     ClientData dummy,		/* Not used. */
@@ -7455,54 +7420,31 @@ Tcl_FGetlineObjCmd(
     Tcl_Obj *const objv[])	/* Argument objects. */
 {
 	int		mode;
-	int		rc = TCL_OK;
 	Tcl_Channel	chan;
-	Tcl_Obj		*ret;
 
-	if ((objc != 2) && (objc != 4)) {
-		Tcl_WrongNumArgs(interp, 1, objv,
-				 "?fileOrCmdName ?channelIdVarName channelId");
+	if (objc != 2) {
+		Tcl_WrongNumArgs(interp, 1, objv, "channelId");
 		return (TCL_ERROR);
 	}
-	if (objc == 4) {
-		/*
-		 * Handle <"filename"> or <"cmd|">.  If the file
-		 * handle is not yet open, call into lib L, otherwise
-		 * fall through to the fast path.
-		 */
-		if (objv[3]->undef) {
-			return (fgetline_openClose(interp, objc, objv));
-		}
-		if (TclGetChannelFromObj(interp, objv[3], &chan,
-					 &mode, 0) != TCL_OK) {
-			goto err;
-		}
-	} else {
-		/* Handle <FILE_HANDLE>. */
-		if (TclGetChannelFromObj(interp, objv[1], &chan,
-					&mode, 0) != TCL_OK) {
-			goto err;
-		}
+	if (TclGetChannelFromObj(interp, objv[1], &chan,
+				 &mode, 0) != TCL_OK) {
+		goto err;
 	}
 	unless (mode & TCL_READABLE) {
 		Tcl_AppendResult(interp, "channel \"", TclGetString(objv[1]),
 				 "\" wasn't opened for reading", NULL);
 		goto err;
 	}
-	unless (ret = do_getline(interp, chan)) {
+	unless (do_getline(interp, chan)) {
 		goto err;
 	}
-	if ((objc == 4) && ret->undef) {
-		rc = fgetline_openClose(interp, objc, objv);
-	}
-	return (rc);
+	return (TCL_OK);
  err:
-	if (objc == 4) rc = fgetline_openClose(interp, objc, objv);
 	Tcl_SetVar2Ex(interp, "::stdio_lasterr", NULL,
 		      Tcl_GetObjResult(interp),
 		      TCL_GLOBAL_ONLY);
 	Tcl_SetObjResult(interp, *L_undefObjPtrPtr());
-	return (rc);
+	return (TCL_OK);
 }
 
 int

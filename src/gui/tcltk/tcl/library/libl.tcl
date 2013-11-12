@@ -252,31 +252,6 @@ fclose(_mustbetype FILE f)
 	}
 }
 
-/*
- * Handle the <"filename"> or <"cmd|"> slow-path cases where the file
- * handle hasn't yet been opened or is now at EOF.
- */
-string
-fgetlineOpenClose_(string arg, FILE &tmpf)
-{
-	unless (arg) return (undef);
-	unless (tmpf) {
-		if (arg[END] == "|") {
-			tmpf = popen(arg[0..END-1], "r");
-		} else {
-			tmpf = fopen(arg, "r");
-		}
-		return (tmpf ? <tmpf> : undef);
-	}
-	if (arg[END] == "|") {
-		pclose(tmpf);
-	} else {
-		fclose(tmpf);
-	}
-	tmpf = undef;
-	return (undef);
-}
-
 FILE
 fopen(string path, string mode)
 {
