@@ -9,6 +9,7 @@ export CC LD
 
 # The Tk version is tied to the Tcl version so you only need to change TCL
 TCLVERSION := 8.6
+TCLVERSIONNODOTS := 86
 
 # Machines on which we disable XFT
 NO_XFT := netbsd4.bitmover.com	\
@@ -74,16 +75,6 @@ ifdef	Q
 	QUIET=-q
 endif
 
-ifeq "$(TCLVERSION)" "8.4"
-DDEVERSION := 1.2
-REGVERSION := 1.1
-TCLBUILD := /build/tcl-$(USER)/Tcl.framework
-TKBUILD  := /build/tk-$(USER)/Tk.framework
-WISHPATH := /build/tk-$(USER)/BitKeeper.app
-EXTENSIONS :=
-AQUAEXTENSIONS :=
-else
-# For Tcl/Tk 8.5
 DDEVERSION := 1.3
 REGVERSION := 1.2
 TKTABLE := Tktable2.10
@@ -103,8 +94,12 @@ AQUAEXTENSIONS := $(BKAPP)/Contents/lib/$(TKTABLE)/$(LIBTKTABLE) \
 		  $(BKAPP)/Contents/lib/$(TREECTRL)/$(LIBTREECTRL) \
 		  $(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl \
 		  $(BKAPP)/Contents/lib/Tkcon/pkgIndex.tcl
-endif
 
+ifeq "$(OSTYPE)" "openbsd4.2"
+LIBTCL=$(BKROOT)/src/gui/tcltk/tcl/$S/libtcl$(TCLVERSIONNODOTS).a
+else
+LIBTCL=$(BKROOT)/src/gui/tcltk/tcl/$S/libtcl$(TCLVERSION).a
+endif
 LIBTOMCRYPT=$(BKROOT)/src/tomcrypt/libtomcrypt.a
 TOMMATH=$(BKROOT)/src/tommath
 LIBPCRE=$(BKROOT)/src/gui/tcltk/pcre/local/lib/libpcre.a
@@ -350,6 +345,7 @@ bin/bkgui$(EXE): tk/$S/Makefile bin/tclsh$(EXE)
 	cd tk/$S && \
 	$(MAKE) prefix= exec_prefix= INSTALL_ROOT=../.. \
 	    XLIBS="$(LIBTOMCRYPT) $(LIBPCRE)" \
+	    BK_TCL_LIB="$(LIBTCL)" \
 	    install-binaries install-libraries
 	rm -rf include usr lib/tk*/images
 	cd lib/tcl$(TCLVERSION)/encoding/; \
