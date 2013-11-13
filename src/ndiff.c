@@ -835,18 +835,23 @@ alignMods(filedf *o, char **A, char **B, FILE *out)
 		assert(k > 0);
 		lenA = strlen(A[i]);
 		lenB = strlen(B[j]);
+		if (score == (scoreUp + d)) {
+			algnA[k] = -1;
+			algnB[k] = j;
+			j--; k--;
+			continue;
+		}
+		if (score == (scoreLeft + d)) {
+			algnA[k] = i;
+			algnB[k] = -1;
+			i--; k--;
+			continue;
+		}
 		if (score == (scoreDiag + lcs(A[i], lenA, B[j], lenB))) {
 			algnA[k] = i;
 			algnB[k] = j;
 			i--; j--; k--;
-		} else if (score == (scoreLeft + d)) {
-			algnA[k] = i;
-			algnB[k] = -1;
-			i--; k--;
-		} else if (score == (scoreUp + d)) {
-			algnA[k] = -1;
-			algnB[k] = j;
-			j--; k--;
+			continue;
 		}
 	}
 	while (i > 0) {

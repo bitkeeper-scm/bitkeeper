@@ -37,3 +37,24 @@ whitespace	only     changes 	should be orange
 EOF
 bk difftool LEFT RIGHT
 echo OK
+
+echo $N Testing interblock alignment.................................$NL
+cat <<EOF > LEFT
+common start
+MATCH in the left side should be aligned with MATCH1, not MATCH2
+	MATCH
+common end
+EOF
+cat <<EOF > RIGHT
+common start
+MATCH in the left side should be aligned with MATCH1, not MATCH2
+	ADD1
+	MATCH1
+	ADD2
+	ADD3
+	MATCH2
+	ADD4
+common end
+EOF
+bk difftool LEFT RIGHT
+echo OK
