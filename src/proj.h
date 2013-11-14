@@ -11,6 +11,7 @@ int		proj_cd2root(void);
 int		proj_cd2product(void);
 int		proj_chdir(char *newdir);
 MDBM*		proj_config(project *p);
+int		proj_configint(project *p, char *key, int defval);
 char*		proj_configval(project *p, char *key);
 int		proj_configbool(project *p, char *key);
 u32		proj_configsize(project *p, char *key);

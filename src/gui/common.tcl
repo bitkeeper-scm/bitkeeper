@@ -1450,12 +1450,16 @@ snake(string A, string B, int k, int y)
 int
 slhSkip(hunk hunks[], int llen, string left, int rlen, string right)
 {
-	float	hlfactor = 1.0/2.0; /* if the subline highlight is more
-				     * than this fraction of the line length,
-				     * skip it. */
-	float	chopfactor = 1.0/2.0; /* if the choppiness is more
-				       * than this fraction of line
-				       * length, skip it. */
+	/* 
+	 * If the subline highlight is more than this fraction
+	 * of the line length, skip it. 
+	 */
+	float	hlfactor = gc("hlPercent");
+	/*
+	 * If the choppiness is more than this fraction of 
+	 * line length, skip it.
+	 */
+	float	chopfactor = gc("chopPercent");
 
 	/*
 	 * Highlighting too much? Don't bother.
@@ -1506,10 +1510,10 @@ highlightSideBySide(widget left, widget right, string start, string stop, int pr
 			if (slhSkip(hunks,
 			    llen, llines[i], rlen, rlines[i])) continue;
 			foreach (h in hunks) {
-				Text_tagAdd(left, "highlight",
+				Text_tagAdd(left, "highlightold",
 				    "${line}.${prefix + h.li}",
 				    "${line}.${prefix + h.li + h.ll}");
-				Text_tagAdd(right, "highlight",
+				Text_tagAdd(right, "highlightnew",
 				    "${line}.${prefix + h.ri}",
 				    "${line}.${prefix + h.ri + h.rl}");
 			}
@@ -1594,10 +1598,10 @@ highlightStacked(widget w, string start, string stop, int prefix)
 				}
 
 				foreach (h in hunks) {
-					Text_tagAdd(w, "highlight",
+					Text_tagAdd(w, "highlightold",
 					    "${lineA}.${h.li+prefix}",
 					    "${lineA}.${h.li + h.ll +prefix}");
-					Text_tagAdd(w, "highlight",
+					Text_tagAdd(w, "highlightnew",
 					    "${lineB}.${h.ri + prefix}",
 					    "${lineB}.${h.ri + h.rl +prefix}");
 				}
@@ -1687,7 +1691,10 @@ configureDiffWidget(string app, widget w, ...args)
 
 	// Highlighting tags.
 	Text_tagConfigure(w, "select", background: gc("${app}.selectColor"));
-	Text_tagConfigure(w, "highlight", background: gc("${app}.highlight"));
+	Text_tagConfigure(w, "highlightold",
+			  background: gc("${app}.highlightOld"));
+	Text_tagConfigure(w, "highlightnew",
+			  background: gc("${app}.highlightNew"));
 	Text_tagConfigure(w, "highlightsp",
 	    background: gc("${app}.highlightsp"));
 
@@ -1696,10 +1703,10 @@ configureDiffWidget(string app, widget w, ...args)
 	Text_tagConfigure(w, "notice", background: gc("${app}.noticeColor"));
 
 	// Various other diff tags.
-	Text_tagConfigure(w, "empty", background: "black");
-	Text_tagConfigure(w, "same", background: "white");
-	Text_tagConfigure(w, "space", background: "white");
-	Text_tagConfigure(w, "changed", background: "gray");
+	Text_tagConfigure(w, "empty", background: gc("${app}.emptyBG"));
+	Text_tagConfigure(w, "same", background: gc("${app}.sameBG"));
+	Text_tagConfigure(w, "space", background: gc("${app}.spaceBG"));
+	Text_tagConfigure(w, "changed", background: gc("${app}.changedBG"));
 
 	if (defined(which)) {
 		Text_tagConfigure(w, "minus",
@@ -1711,7 +1718,8 @@ configureDiffWidget(string app, widget w, ...args)
 		}
 	}
 
-	Text_tagRaise(w, "highlight");
+	Text_tagRaise(w, "highlightold");
+	Text_tagRaise(w, "highlightnew");
 	Text_tagRaise(w, "highlightsp");
 	Text_tagRaise(w, "sel");
 }

@@ -23,6 +23,7 @@ typedef struct {
 	header	*fn_defs;	/* function defs for diff -p */
 	char	**bl[2];	/* # of lines in left/right for sdiff */
 	int	state;		/* for sdiff */
+	int	diffgap;	/* gap value for sdiff */
 	df_opt	*dop;		/* copy of diff opts */
 } filedf;
 
@@ -218,6 +219,7 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 	o = new(filedf);
 	o->dop = new(df_opt);
 	*o->dop = *dop;
+	o->diffgap = proj_configint(0, "diffgap", 0);
 
 	for (i = 0; i < 2; i++) {
 		if (stat(files[i], &sb[i])) {
@@ -803,7 +805,7 @@ alignMods(filedf *o, char **A, char **B, FILE *out)
 	int	score, scoreDiag, scoreUp, scoreLeft;
 	int	lenA, lenB;
 	int	n = nLines(A), m = nLines(B);
-	int	d = 0;	/* gap penalty */
+	int	d = o->diffgap;	/* gap penalty */
 	int	F[n+1][m+1];
 	int	algnA[n+m+1];
 	int	algnB[n+m+1];

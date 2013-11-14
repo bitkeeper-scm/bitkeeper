@@ -1,7 +1,17 @@
 proc gc {var {newValue ""}} \
 {
-	if {[llength [info level 0]] == 3} { set ::gc($var) $newValue }
-	return $::gc($var)
+	global	gc app
+
+	## If we got a config var with no APP. prefix, check to see if
+	## we have an app-specific config option first and force them
+	## to use that if we do.
+	if {[info exists app]
+	    && ![string match "*.*" $var]
+	    && [info exists gc($app.$var)]} {
+		set var $app.$var
+	}
+	if {[llength [info level 0]] == 3} { set gc($var) $newValue }
+	return $gc($var)
 }
 
 ## An array of deprecated options and the warning to display to the
@@ -79,11 +89,16 @@ proc getConfig {prog} \
 	set _d(scrollColor) $GRAY85		;# scrollbar bars
 	set _d(troughColor) $LIGHTBLUE	;# scrollbar troughs
 	set _d(warnColor) yellow		;# error messages
+	set _d(emptyBG) black
+	set _d(sameBG) white
+	set _d(spaceBG) white
+	set _d(changedBG) gray
 
 	set _d(quit)	Control-q	;# binding to exit tool
 	set _d(compat_4x) 0		;# maintain compatibility with 4x
 					;# quirky bindings
-	set _d(highlight) $YELLOW2	;# subline highlight color in diffs
+	set _d(highlightOld) $YELLOW2	;# subline highlight color for old
+	set _d(highlightNew) $YELLOW2	;# subline highlight color for new
 	set _d(highlightsp) $ORANGE	;# subline highlight color in diffs
 	set _d(topMargin) 2		;# top margin for diffs in a diff view
 	set _d(diffColor) #ededed	;# color of diff lines
@@ -205,6 +220,9 @@ proc getConfig {prog} \
 
 	set _d(ignoreWhitespace)	0
 	set _d(ignoreAllWhitespace)	0
+
+	set _d(hlPercent)	0.5
+	set _d(chopPercent)	0.5
 
 	set _d(windows) 0
 	set _d(aqua) 0

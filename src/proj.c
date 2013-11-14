@@ -460,6 +460,17 @@ proj_configval(project *p, char *key)
 	return (ret ? ret : "");
 }
 
+int
+proj_configint(project *p, char *key, int defval)
+{
+	char	*val;
+	MDBM	*db = proj_config(p);
+
+	assert(db);
+	unless (val = mdbm_fetch_str(db, key)) return(defval);
+	return (strtol(val, 0, 10));
+}
+
 u32
 proj_configsize(project *p, char *key)
 {
