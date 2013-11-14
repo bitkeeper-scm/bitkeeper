@@ -411,6 +411,18 @@ EOF
 cmpfiles WANT OUT
 echo OK
 
+echo $N Run component level changes -icomp_file......................$NL
+cd ..
+bk --cd=gcc changes -S -ilocal1 -nd':INDENT::REV: :DPN: :C:' |
+    sed 's/BitKeeper file.*/new/' > OUT || exit 1
+cat <<EOF > WANT
+1.3 ChangeSet new
+1.2 ChangeSet addlocal
+EOF
+cmpfiles WANT OUT
+cd gcc
+echo OK
+
 echo $N Run project level changes -V -icomp_file.....................$NL
 bk -P changes  -igcc/local1 -V -nd':INDENT::REV: :DPN: :C:' |
     sed 's/BitKeeper file.*/new/' > OUT || exit 1

@@ -1550,14 +1550,8 @@ private void
 http_related(char *page)
 {
 	int	i;
-	FILE	*f;
-	int	count = 0;
-	ser_t	d;
-	sccs	*s = sccs_csetInit(INIT_NOCKSUM|INIT_NOSTAT);
-	char	buf[2048];
+	char	*path;
 	char    dspec[MAXPATH];
-
-	unless (s) http_error(500, "cannot initialize " CHANGESET);
 
 	hash_storeStr(qout, "PAGE", "cset");
 	mk_querystr();
@@ -1576,31 +1570,22 @@ http_related(char *page)
 	if (i == -1)
 		http_error(500, "buffer overflow in http_related");
 
-	sprintf(buf, "bk f2csets '%s'", fpath);
-	unless (f = popen(buf, "r"))
-		http_error(500, "%s: %s", buf, strerror(errno));
-
-	while (fnext(buf, f)) {
-		chomp(buf);
-		if (d = sccs_findrev(s, buf)) FLAGS(s, d) |= D_SET;
-		++count;
-	}
-	s->state |= S_SET;
-	pclose(f);
-
 	httphdr(".html");
 	header(COLOR, "Changesets that modify %s", 0, fpath);
 
-	if (count) {
-		puts(OUTER_TABLE INNER_TABLE
-		    "<tr bgcolor=#d0d0d0>\n"
-		    "<th>Age</th><th>Author</th><th>Rev</th>"
-		    "<th align=left>&nbsp;Comments</th></tr>\n");
-
-		sccs_prs(s, 0, 0, dspec, stdout);
-		puts(INNER_END OUTER_END);
+	puts(OUTER_TABLE INNER_TABLE
+	    "<tr bgcolor=#d0d0d0>\n"
+	    "<th>Age</th><th>Author</th><th>Rev</th>"
+	    "<th align=left>&nbsp;Comments</th></tr>\n");
+	fflush(stdout);
+	if (root && !streq(root, ".")) {
+		path = aprintf("%s/%s", root, fpath);
+	} else {
+		path = strdup(fpath);
 	}
-
+	systemf("bk changes -i'%s' -nd'%s'", path, dspec);
+	free(path);
+	puts(INNER_END OUTER_END);
 	trailer();
 }
 

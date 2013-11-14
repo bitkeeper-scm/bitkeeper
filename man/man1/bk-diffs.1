@@ -81,6 +81,13 @@ file (unless a revision was specified).
 This option forces bk diffs to ignore the read only hint and to do the
 diff against all specified files.
 .tp
+.tp
+.B \-F regex
+Only useful in unified diffs, the given regex will be matched with the
+lines before the diff block and, if a match is found, it will be
+printed after the '@@' at the start of the diff block. Typically used
+to match function declarations.
+.tp
 .B \-h
 Don't print headers.
 .tp
