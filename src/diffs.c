@@ -159,28 +159,27 @@ diffs_main(int ac, char **av)
 
 	if (dop.out_show_c_func && pattern) {
 		fprintf(stderr, "diffs: only one of -p or -F allowed\n");
-		FREE(pattern);
+err:		FREE(pattern);
 		return (1);
 	}
 
 	if (pattern &&
 	    !(dop.pattern = pcre_compile(pattern, 0, &perr, &poff, 0))) {
 		fprintf(stderr, "diff: bad regexp '%s': %s\n", pattern, perr);
-		FREE(pattern);
-		return (1);
+		goto err;
 	}
 
 	unless (diff_cleanOpts(&dop)) usage();
 
 	if ((rargs.rstart && (boundaries || Rev)) || (boundaries && Rev)) {
 		fprintf(stderr, "%s: -R must be alone\n", av[0]);
-		return (1);
+		goto err;
 	}
 
 	if (diffstat_only && (!dop.out_header ||
 		dop.out_comments || dop.out_rcs || dop.out_sdiff)) {
 		fprintf(stderr, "%s: --stats-only should be alone\n", av[0]);
-		return (1);
+		goto err;
 	}
 
 	dop.flags = flags;
@@ -195,7 +194,7 @@ diffs_main(int ac, char **av)
 	    !Rev && (!rargs.rstop || boundaries) && !streq("-", av[ac-1])) {
 		fprintf(stderr,
 		    "%s: must have both revisions with -A|U|M|O\n", av[0]);
-		return (1);
+		goto err;
 	}
 
 	if (local && !av[optind]) {
@@ -378,6 +377,7 @@ next:		if (s) {
 		FREE(data);
 	}
 out:	if (sfileDone()) errors |= 4;
+	FREE(pattern);
 	return (errors);
 }
 
