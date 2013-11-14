@@ -483,9 +483,9 @@ checkPresent(sccs *s, char **inc, char **exc)
 					    i ? 'x' : 'i', list[i][j]);
 					errors = 1;
 				}
+				if (is_glob(list[i][j])) missing++;
 			}
 		}
-		missing++;
 	}
 	nested_free(n);
 	if (missing) {
@@ -987,7 +987,7 @@ loadcset(sccs *cset)
 	/*
 	 * Get a list of csets marked D_SET
 	 */
-	if (t = proj_comppath(cset->proj)) {
+	if (!opts.standalone && (t = proj_comppath(cset->proj))) {
 		strcpy(path, t);
 		pathp = path + strlen(path);
 		*pathp++ = '/';
