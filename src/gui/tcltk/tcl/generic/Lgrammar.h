@@ -127,41 +127,42 @@
      T_RIGHT_INTERPOL_RE = 343,
      T_RPAREN = 344,
      T_RSHIFT = 345,
-     T_SEMI = 346,
-     T_SLASH = 347,
-     T_SPLIT = 348,
-     T_STAR = 349,
-     T_STR_BACKTICK = 350,
-     T_STR_LITERAL = 351,
-     T_STRCAT = 352,
-     T_STRING = 353,
-     T_STRUCT = 354,
-     T_SUBST = 355,
-     T_TYPE = 356,
-     T_TYPEDEF = 357,
-     T_UNLESS = 358,
-     T_ARGUSED = 359,
-     T_OPTIONAL = 360,
-     T_MUSTBETYPE = 361,
-     T_VOID = 362,
-     T_WIDGET = 363,
-     T_WHILE = 364,
-     T_PRAGMA = 365,
-     T_SWITCH = 366,
-     T_CASE = 367,
-     T_DEFAULT = 368,
-     LOWEST = 369,
-     ADDRESS = 370,
-     UMINUS = 371,
-     UPLUS = 372,
-     PREFIX_INCDEC = 373,
-     HIGHEST = 374
+     T_TRY = 346,
+     T_SEMI = 347,
+     T_SLASH = 348,
+     T_SPLIT = 349,
+     T_STAR = 350,
+     T_STR_BACKTICK = 351,
+     T_STR_LITERAL = 352,
+     T_STRCAT = 353,
+     T_STRING = 354,
+     T_STRUCT = 355,
+     T_SUBST = 356,
+     T_TYPE = 357,
+     T_TYPEDEF = 358,
+     T_UNLESS = 359,
+     T_ARGUSED = 360,
+     T_OPTIONAL = 361,
+     T_MUSTBETYPE = 362,
+     T_VOID = 363,
+     T_WIDGET = 364,
+     T_WHILE = 365,
+     T_PRAGMA = 366,
+     T_SWITCH = 367,
+     T_CASE = 368,
+     T_DEFAULT = 369,
+     LOWEST = 370,
+     ADDRESS = 371,
+     UMINUS = 372,
+     UPLUS = 373,
+     PREFIX_INCDEC = 374,
+     HIGHEST = 375
    };
 #endif
 
 
 /* Copy the first part of user declarations.  */
-#line 1 "/Users/rob/bk/dev-L-lhtml/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lgrammar.y"
 
 /*
  * Copyright (c) 2006-2008 BitMover, Inc.
@@ -178,7 +179,7 @@ extern int	L_lex (void);
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE 
-#line 53 "/Users/rob/bk/dev-L-lhtml/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 53 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lgrammar.y"
 {
 	long	i;
 	char	*s;
@@ -202,7 +203,7 @@ typedef union YYSTYPE
 	} Typename;
 }
 /* Line 2616 of glr.c.  */
-#line 206 "Lgrammar.h"
+#line 207 "Lgrammar.h"
 	YYSTYPE;
 # define YYSTYPE_IS_DECLARED 1
 # define YYSTYPE_IS_TRIVIAL 1

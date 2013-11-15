@@ -24,6 +24,7 @@ typedef struct Switch	Switch;
 typedef struct Case	Case;
 typedef struct Expr	Expr;
 typedef struct Type	Type;
+typedef struct Try	Try;
 typedef struct Sym	Sym;
 
 /*
@@ -58,6 +59,7 @@ typedef enum {
 	L_STMT_GOTO,
 	L_STMT_LABEL,
 	L_STMT_PRAGMA,
+	L_STMT_TRY,
 } Stmt_k;
 
 typedef enum {
@@ -354,6 +356,13 @@ struct Case {
 	Case	*next;
 };
 
+struct Try {
+	Ast	node;
+	Stmt	*try;
+	Stmt	*catch;
+	Expr	*msg;
+};
+
 struct Stmt {
 	Ast	node;
 	Stmt	*next;
@@ -367,6 +376,7 @@ struct Stmt {
 		Switch	*swich;  // not a typo -- illegal to call it "switch"
 		VarDecl	*decl;
 		char	*label;
+		Try	*try;
 	} u;
 };
 
@@ -460,6 +470,7 @@ extern TopLev	*ast_mkTopLevel(Toplv_k kind, TopLev *next, YYLTYPE beg,
 				YYLTYPE end);
 extern Expr	*ast_mkTrinOp(Op_k op, Expr *e1, Expr *e2, Expr *e3,
 			      YYLTYPE beg, YYLTYPE end);
+extern Try	*ast_mkTry(Stmt *try, Expr *msg, Stmt *catch);
 extern Expr	*ast_mkUnOp(Op_k op, Expr *e1, YYLTYPE beg, YYLTYPE end);
 extern VarDecl	*ast_mkVarDecl(Type *type, Expr *name, YYLTYPE beg,
 			       YYLTYPE end);

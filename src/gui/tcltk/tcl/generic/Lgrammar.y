@@ -161,6 +161,7 @@ extern int	L_lex (void);
 %token T_RIGHT_INTERPOL_RE "} (end of interpolation in re)"
 %token T_RPAREN ")"
 %token T_RSHIFT ">>"
+%token T_TRY "try"
 %token T_SEMI ";"
 %token T_SLASH "/"
 %token T_SPLIT "split"
@@ -196,7 +197,7 @@ extern int	L_lex (void);
 %nonassoc T_IF T_UNLESS T_RETURN T_ID T_STR_LITERAL T_LEFT_INTERPOL
 %nonassoc T_STR_BACKTICK T_INT_LITERAL T_FLOAT_LITERAL T_TYPE T_WHILE
 %nonassoc T_FOR T_DO T_DEFINED T_STRING T_FOREACH T_BREAK T_CONTINUE
-%nonassoc T_SPLIT T_GOTO T_WIDGET T_PRAGMA T_SWITCH T_START_BACKTICK
+%nonassoc T_SPLIT T_GOTO T_WIDGET T_PRAGMA T_SWITCH T_START_BACKTICK T_TRY
 %left T_COMMA
 %nonassoc T_ELSE T_SEMI
 %right T_EQUALS T_EQPLUS T_EQMINUS T_EQSTAR T_EQSLASH T_EQPERC
@@ -671,6 +672,23 @@ single_stmt:
 	{
 		$$ = ast_mkStmt(L_STMT_GOTO, NULL, @1, @3);
 		$$->u.label = $2;
+	}
+	| "try" compound_stmt T_ID "(" expr ")" compound_stmt
+	{
+		/*
+		 * We don't want to make "catch" a keyword since it's a Tcl
+		 * function name, so allow any ID here but check it.
+		 */
+		unless (!strcmp($3, "catch")) {
+			L_synerr2("syntax error -- expected 'catch'", @3.beg);
+		}
+		$$ = ast_mkStmt(L_STMT_TRY, NULL, @1, @7);
+		$$->u.try = ast_mkTry($2, $5, $7);
+	}
+	| "try" compound_stmt T_ID compound_stmt
+	{
+		$$ = ast_mkStmt(L_STMT_TRY, NULL, @1, @4);
+		$$->u.try = ast_mkTry($2, NULL, $4);
 	}
 	| ";"	{ $$ = NULL; }
 	;

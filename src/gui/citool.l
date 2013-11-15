@@ -1790,7 +1790,9 @@ quit()
 
 	saveComments();
 	if (self.changed) {
-		if (catch("toplevel ${top}")) return;
+		if (Winfo_exists((string)top)) return;
+
+		toplevel(top);
 		Wm_title((string)top, "Quit Citool?");
 		Wm_resizable((string)top, 0, 0);
 		Toplevel_configure(top, borderwidth: 0, background: bg);
@@ -2968,7 +2970,7 @@ discardChanges()
 int
 isRepoLocked()
 {
-	return(catch("exec bk lock -q"));
+	return (system("bk lock -q") == 1);
 }
 
 void

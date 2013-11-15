@@ -1831,7 +1831,7 @@ bk_usage()
 	string	usage;
 	string	tool = basename(Info_script());
 
-	catch("exec bk help -s ${tool}", &usage);
+	system("bk help -s ${tool}", undef, &usage, undef);
 	puts(usage);
 	exit(1);
 }

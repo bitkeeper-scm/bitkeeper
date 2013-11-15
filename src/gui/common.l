@@ -234,7 +234,7 @@ void
 scrollMouseWheel(string w, string dir, int x, int y, int delta)
 {
 	int	d = delta;
-	string	widg = Winfo_containing(x, y);
+	widget	widg = Winfo_containing(x, y);
 
 	if (widg == "") widg = w;
 	if (_bk.wm == "aqua") {
@@ -247,8 +247,20 @@ scrollMouseWheel(string w, string dir, int x, int y, int delta)
 	// If we fail to scroll the widget the mouse is
 	// over for some reason, just scroll the widget
 	// with focus.
-	if (catch("${widg} ${dir}view scroll ${d} units")) {
-		catch("${w} ${dir}view scroll ${d} units");
+	try {
+		if (dir == "x") {
+			Widget_xviewScroll(widg, d, "units");
+		} else {
+			Widget_yviewScroll(widg, d, "units");
+		}
+	} catch {
+		try {
+			if (dir == "x") {
+				Widget_xviewScroll(w, d, "units");
+			} else {
+				Widget_yviewScroll(w, d, "units");
+			}
+		} catch {}
 	}
 }
 

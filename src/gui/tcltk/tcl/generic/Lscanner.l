@@ -437,6 +437,7 @@ canonical_num(char *num)
 	"switch"	return T_SWITCH;
 	"case"		return T_CASE;
 	"default"	return T_DEFAULT;
+	"try"		return T_TRY;
 	"=>"		return T_ARROW;
 	"eq"		return T_EQ;
 	"ne"		return T_NE;

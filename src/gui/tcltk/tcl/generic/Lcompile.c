@@ -175,6 +175,7 @@ private int	compile_binOp(Expr *expr, Expr_f flags);
 private void	compile_block(Block *block);
 private void	compile_break(Stmt *stmt);
 private int	compile_cast(Expr *expr, Expr_f flags);
+private int	compile_catch(Expr *expr);
 private void	compile_clsDecl(ClsDecl *class);
 private int	compile_clsDeref(Expr *expr, Expr_f flags);
 private int	compile_clsInstDeref(Expr *expr, Expr_f flags);
@@ -228,6 +229,7 @@ private void	compile_switch_fast(Switch *sw);
 private void	compile_switch_slow(Switch *sw);
 private int	compile_trinOp(Expr *expr);
 private int	compile_trace_script(char *script);
+private void	compile_trycatch(Stmt *stmt);
 private void	compile_twiddle(Expr *expr);
 private void	compile_twiddleSubst(Expr *expr);
 private int	compile_typeof(Expr *expr);
@@ -298,6 +300,7 @@ static struct {
 } builtins[] = {
 	{ "abs",	compile_abs },
 	{ "assert",	compile_assert },
+	{ "catch",	compile_catch },
 	{ "die",	compile_die },
 	{ "here",	compile_here },
 	{ "insert",	compile_insert_unshift },
@@ -1417,6 +1420,9 @@ compile_stmt(Stmt *stmt)
 	    case L_STMT_GOTO:
 		compile_goto(stmt);
 		break;
+	    case L_STMT_TRY:
+		compile_trycatch(stmt);
+		break;
 	    default:
 		L_bomb("Malformed AST in compile_stmt");
 	}
@@ -1424,6 +1430,7 @@ compile_stmt(Stmt *stmt)
 	    case L_STMT_BLOCK:
 	    case L_STMT_COND:
 	    case L_STMT_EXPR:
+	    case L_STMT_TRY:
 		break;
 	    default:
 		track_cmd(start_off, stmt);
@@ -1437,6 +1444,59 @@ compile_stmts(Stmt *stmts)
 	for (; stmts; stmts = stmts->next) {
 		compile_stmt(stmts);
 	}
+}
+
+private void
+compile_trycatch(Stmt *stmt)
+{
+	int	range;
+	int	msg_idx = -1;
+	Jmp	*jmp;
+	Try	*try = stmt->u.try;
+	Expr	*msg = try->msg;
+
+	if (msg) {
+		unless (msg->op == L_OP_ADDROF) {
+			L_errf(msg, "expected catch(&variable)");
+			return;
+		}
+		compile_expr(msg, L_DISCARD);
+		if (msg->a->sym) {
+			msg_idx = msg->a->sym->idx;
+		} else {
+			L_errf(msg->a, "illegal operand to &");
+		}
+	}
+
+	range = DeclareExceptionRange(L->frame->envPtr, CATCH_EXCEPTION_RANGE);
+	TclEmitInstInt4(INST_BEGIN_CATCH4, range, L->frame->envPtr);
+
+	/*
+	 * Emit separate INST_END_CATCH's for the non-error and error
+	 * paths so that a return can be done inside of a catch()
+	 * clause -- the "try" is done when the body finishes without
+	 * error or by the time the catch() is entered.
+	 */
+
+	/* body */
+	ExceptionRangeStarts(L->frame->envPtr, range);
+	compile_stmts(try->try);
+	ExceptionRangeEnds(L->frame->envPtr, range);
+	TclEmitOpcode(INST_END_CATCH, L->frame->envPtr);
+	jmp = emit_jmp_fwd(INST_JUMP4, 0);
+
+	/* error case */
+	ExceptionRangeTarget(L->frame->envPtr, range, catchOffset);
+	if (msg_idx != -1) {
+		TclEmitOpcode(INST_PUSH_RESULT, L->frame->envPtr);
+		TclEmitInstInt4(INST_STORE_SCALAR4, msg_idx, L->frame->envPtr);
+		TclEmitOpcode(INST_POP, L->frame->envPtr);
+	}
+	TclEmitOpcode(INST_END_CATCH, L->frame->envPtr);
+	compile_stmts(try->catch);
+
+	/* out */
+	fixup_jmps(&jmp);
 }
 
 private void
@@ -2418,6 +2478,14 @@ compile_assert(Expr *expr)
 	ckfree(cond_txt);
 	fixup_jmps(&jmp);
 	return (0);  // stack effect
+}
+
+private int
+compile_catch(Expr *expr)
+{
+	L_errf(expr, "catch() is reserved for try/catch; "
+	       "use ::catch() for Tcl's catch");
+	return (0);
 }
 
 /*

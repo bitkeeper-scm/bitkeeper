@@ -126,7 +126,7 @@ searchGoto()
 		}
 	}
 
-	if (catch("${_bk.w_search} see \"${idx}\"")) {
+	if (::catch("${_bk.w_search} see \"${idx}\"")) {
 		Label_configure((widget)"${_bk.w_searchBar}.msg",
 		    text: "Bad line number");
 		return;
@@ -159,13 +159,13 @@ searchTypeAhead()
 	start = _bk.search_idx[1];
 	stop = "end";
 
-	catch("${_bk.w_search} search ${opts} \"${search}\" ${start} ${stop}",
+	::catch("${_bk.w_search} search ${opts} \"${search}\" ${start} ${stop}",
 	    &idx);
 
 	unless (String_is("double", strict:, idx)) {
 		start = 1.0;
 		wrapped = 1;
-		catch("${_bk.w_search} search ${opts} \"${search}\" "
+		::catch("${_bk.w_search} search ${opts} \"${search}\" "
 		    "${start} ${stop}", &idx);
 	}
 
@@ -217,7 +217,7 @@ searchSearch(int dir)
 	}
 	opts[i++] = "--";
 
-	catch("${_bk.w_search} search ${opts} \"${search}\" ${start} ${stop}",
+	::catch("${_bk.w_search} search ${opts} \"${search}\" ${start} ${stop}",
 	    &idx);
 
 	unless (String_is("double", strict:, idx)) {
@@ -227,7 +227,7 @@ searchSearch(int dir)
 		} else {
 			start = "1.0";
 		}
-		catch("${_bk.w_search} search ${opts} \"${search}\" "
+		::catch("${_bk.w_search} search ${opts} \"${search}\" "
 		    "${start} ${stop}", &idx);
 	}
 
@@ -268,7 +268,7 @@ searchToggleHighlight()
 	}
 	opts[i++] = "--";
 
-	catch("${_bk.w_search} search ${opts} \"${search}\" 1.0 end", &idxs);	
+	::catch("${_bk.w_search} search ${opts} \"${search}\" 1.0 end", &idxs);	
 
 	ilen = llength(idxs);
 	for (i = 0; i < ilen; ++i) {

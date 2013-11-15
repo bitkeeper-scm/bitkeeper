@@ -131,6 +131,17 @@ ast_mkCase(Expr *expr, Stmt *body, YYLTYPE beg, YYLTYPE end)
 	return (c);
 }
 
+Try *
+ast_mkTry(Stmt *try, Expr *msg, Stmt *catch)
+{
+	Try	*t = (Try *)ckalloc(sizeof(Try));
+	memset(t, 0, sizeof(Try));
+	t->try   = try;
+	t->msg   = msg;
+	t->catch = catch;
+	return (t);
+}
+
 Stmt *
 ast_mkStmt(Stmt_k kind, Stmt *next, YYLTYPE beg, YYLTYPE end)
 {
