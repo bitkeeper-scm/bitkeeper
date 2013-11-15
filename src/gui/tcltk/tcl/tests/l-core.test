@@ -10323,12 +10323,12 @@ test regexp-1.8 {check matching of different regexp kinds} -body {
  * The compiler generates four different kinds of code for regexp
  * matching.  This test checks each kind:
  * re is a string constant - INST_STR_EQ
- * re can be converted to a glob - INST_STR_MATCH
+ * re is a glob (/l modifier) - INST_STR_MATCH
  * re has no captures - INST_REGEXP
  * re has captures - ::regexp cmd
  */
 int regexp_1_8_streq()       { return("abc" =~ /^abc$/); }
-int regexp_1_8_strmatch()    { return("abc" =~ /abc/); }
+int regexp_1_8_strmatch()    { return("abc" =~ /abc/l); }
 int regexp_1_8_simple_re()   { return("abc" =~ /a*bc/); }
 int regexp_1_8_complex_re()  { return("abc" =~ /a*(b)c/); }
 int regexp_1_8_complex_re2() { return("abc" =~ /^${""}abc$/); }
@@ -10497,6 +10497,54 @@ void regexp_1_11()
 	unless ($3 == "333") puts("bad 2.5");
 }
 regexp_1_11();
+} -output {}
+
+test regexp-1.12 {check newline matching of . in regexp} -body {
+#lang L --line=1
+void regexp_1_12()
+{
+	/*
+	 * "." in a regexp should not match embedded newlines.
+	 */
+
+	string	s1 = "a\nb";
+	string	s2 = "a\n\nb";
+
+	/*
+	 * These used to compile to INST_STR_MATCH bytecodes.
+	 */
+
+	// s1 & s2 are Tcl_Obj's with no type yet
+	if (s1 =~ /a.b/) puts("bad 1.1");
+	if (s2 =~ /a.*b/) puts("bad 1.2");
+
+	// make them type bytearray
+	s1 = Binary_format("a*", s1);
+	s2 = Binary_format("a*", s2);
+	if (s1 =~ /a.b/) puts("bad 1.3");
+	if (s2 =~ /a.*b/) puts("bad 1.4");
+
+	// make them type string
+	s1 = sprintf("%s", s1);
+	s2 = sprintf("%s", s2);
+	if (s1 =~ /a.b/) puts("bad 1.5");
+	if (s2 =~ /a.*b/) puts("bad 1.6");
+
+	/*
+	 * These compile to INST_REGEXP bytecodes.
+	 */
+
+	if (s1 =~ /a.bc?/) puts("bad 2.1");
+	if (s2 =~ /a.*bc?/) puts("bad 2.2");
+
+	/*
+	 * These compile to calls to the ::regexp cmd.
+	 */
+
+	if (s1 =~ /a.(b)/) puts("bad 3.1");
+	if (s2 =~ /a.*(b)/) puts("bad 3.2");
+}
+regexp_1_12();
 } -output {}
 
 test regexp-2 {test globs} -body {

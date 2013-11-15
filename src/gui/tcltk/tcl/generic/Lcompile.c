@@ -3875,9 +3875,10 @@ re_kind(Expr *re, Tcl_DString *ds)
 		ret |= RE_NEEDS_EVAL | RE_COMPLEX;
 	} else if (isstring(re) &&
 		   (TclReToGlob(NULL, re->str, strlen(re->str),
-				ds, &exact) == TCL_OK)) {
+				ds, &exact) == TCL_OK) &&
+		   exact) {
 		if (ds == &myds) Tcl_DStringFree(&myds);
-		ret |= (exact ? RE_CONST : RE_GLOB);
+		ret |= RE_CONST;
 	} else {
 		ret |= RE_NEEDS_EVAL | RE_SIMPLE;
 	}
@@ -3932,7 +3933,8 @@ compile_reMatch(Expr *re)
 		break;
 	    case RE_SIMPLE:
 		TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
-		cflags = TCL_REG_ADVANCED | (nocase ? TCL_REG_NOCASE : 0);
+		cflags = TCL_REG_ADVANCED | TCL_REG_NLSTOP |
+			(nocase ? TCL_REG_NOCASE : 0);
 		TclEmitInstInt1(INST_REGEXP, cflags, L->frame->envPtr);
 		break;
 	    case RE_COMPLEX:
@@ -5516,6 +5518,8 @@ push_regexpModifiers(Expr *regexp)
 {
 	int	n = 0;
 
+	push_lit("-linestop");
+	n++;
 	if (regexp->flags & L_EXPR_RE_I) {
 		push_lit("-nocase");
 		n++;
