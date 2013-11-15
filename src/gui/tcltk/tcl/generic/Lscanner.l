@@ -1,6 +1,7 @@
 %option	noyywrap
 %option noyy_top_state
 %option stack
+%option noinput
 %x re_delim
 %x re_modifier
 %x re_arg_split
@@ -194,7 +195,6 @@ include_try(Tcl_Obj *fileObj, int *found)
 	char	*file = Tcl_GetString(fileObj);
 	char	*path;
 	Tcl_Obj	*pathObj;
-	Tcl_HashEntry *hPtr;
 
 	/*
 	 * See if the normalized path has been included before.  If the path
@@ -210,7 +210,7 @@ include_try(Tcl_Obj *fileObj, int *found)
 	}
 
 	path = Tcl_GetString(pathObj);
-	hPtr = Tcl_CreateHashEntry(include_table, path, &new);
+	Tcl_CreateHashEntry(include_table, path, &new);
 	if (new) {
 		f = fopen(path, "r");
 		*found = (f != NULL);

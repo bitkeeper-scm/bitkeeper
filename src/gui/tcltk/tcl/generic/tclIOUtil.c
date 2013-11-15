@@ -2023,7 +2023,7 @@ TclNREvalFile(
     iPtr->evalFlags |= TCL_EVAL_FILE;
 #ifdef BK
     TclNRAddCallback(interp, EvalFileCallback, oldScriptFile, pathPtr, objPtr,
-	    (void*)oldbk);
+	    INT2PTR(oldbk));
 #else
     TclNRAddCallback(interp, EvalFileCallback, oldScriptFile, pathPtr, objPtr,
 	    NULL);
@@ -2042,7 +2042,7 @@ EvalFileCallback(
     Tcl_Obj *pathPtr = data[1];
     Tcl_Obj *objPtr = data[2];
 #ifdef	BK
-    enable_secure_bk_calls = (int)data[3];
+    enable_secure_bk_calls = PTR2INT(data[3]);
 #endif
     /*
      * Now we have to be careful; the script may have changed the

@@ -25,20 +25,26 @@ L_typeck_init()
 	L_poly   = type_mkScalar(L_POLY);
 }
 
-private	char	type_buf[80];
-private int	notfirst;
+private	Tcl_Obj	*typenmObj = NULL;
 
 private void
 str_add(char *s)
 {
-	if (notfirst++) strncat(type_buf, " or ", sizeof(type_buf));
-	strncat(type_buf, s, sizeof(type_buf));
+	if (typenmObj) {
+		Tcl_AppendPrintfToObj(typenmObj, " or %s", s);
+	} else {
+		typenmObj = Tcl_NewStringObj(s, -1);
+		Tcl_IncrRefCount(typenmObj);
+	}
 }
 
 char *
 L_type_str(Type_k kind)
 {
-	notfirst = type_buf[0] = 0;
+	if (typenmObj) {
+		Tcl_DecrRefCount(typenmObj);
+		typenmObj = NULL;
+	}
 	if (kind & L_INT)      str_add("int");
 	if (kind & L_FLOAT)    str_add("float");
 	if (kind & L_STRING)   str_add("string");
@@ -52,25 +58,21 @@ L_type_str(Type_k kind)
 	if (kind & L_FUNCTION) str_add("function");
 	if (kind & L_NAMEOF)   str_add("nameof");
 	if (kind & L_CLASS )   str_add("class");
-	return (type_buf);
+	return (Tcl_GetString(typenmObj));
 }
 
 private void
 pr_err(Type_k got, Type_k want, char *bef, char *aft, void *node)
 {
-	char buf[128];
+	Tcl_Obj	*obj = Tcl_NewObj();
 
-	buf[0] = '\0';
-	if (bef) snprintf(buf, sizeof(buf), "%s, ", bef);
-	strncat(buf, "expected type ", sizeof(buf));
-	strncat(buf, L_type_str(want), sizeof(buf));
-	strncat(buf, " but got ", sizeof(buf));
-	strncat(buf, L_type_str(got), sizeof(buf));
-	if (aft) {
-		strncat(buf, " ", sizeof(buf));
-		strncat(buf, aft, sizeof(buf));
-	}
-	L_errf(node, buf);
+	Tcl_IncrRefCount(obj);
+	if (bef) Tcl_AppendPrintfToObj(obj, "%s, ", bef);
+	Tcl_AppendPrintfToObj(obj, "expected type %s", L_type_str(want));
+	Tcl_AppendPrintfToObj(obj, " but got %s", L_type_str(got));
+	if (aft) Tcl_AppendPrintfToObj(obj, " %s", aft);
+	L_errf(node, Tcl_GetString(obj));
+	Tcl_DecrRefCount(obj);
 }
 
 void

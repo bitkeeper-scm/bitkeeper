@@ -2715,7 +2715,7 @@ TclExecuteByteCode(
 	    result = TCL_ERROR;
 	    goto checkForCatch;
 	}
-	depth = CURR_DEPTH - (int)objPtr->internalRep.twoPtrValue.ptr1;
+	depth = CURR_DEPTH - PTR2INT(objPtr->internalRep.twoPtrValue.ptr1);
 	save = ckalloc(opnd * sizeof(Tcl_Obj *));
 	memmove(save, &OBJ_AT_DEPTH(opnd-1), opnd*sizeof(Tcl_Obj *));
 	memmove(&OBJ_AT_DEPTH(depth-opnd-1), &OBJ_AT_DEPTH(depth-1),
@@ -8054,7 +8054,7 @@ TclExecuteByteCode(
 	    case L_DISCARD:
 		/* Don't pop if L_DELETE b/c no rvalObj was on the stack. */
 		unless (flags & L_DELETE) {
-		    POP_OBJECT();
+		    (void)POP_OBJECT();
 		    Tcl_DecrRefCount(oldvalObj);
 		}
 		TRACE(("L_DISCARD =>\n"));
@@ -9824,6 +9824,8 @@ L_deepDiveHash(
 	Tcl_DecrRefCount(objPtr);
 #ifdef TCL_COMPILE_DEBUG
 	unless (result == TCL_OK) L_bomb("L deep-dive hash err");
+#else
+	(void)result;  // quiet compiler warning
 #endif
 	hPtr = Tcl_FindHashEntry(&dict->table, (char *)idxObj);
     }

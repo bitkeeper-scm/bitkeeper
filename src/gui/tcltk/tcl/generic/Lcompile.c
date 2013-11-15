@@ -271,7 +271,7 @@ private int	push_regexpModifiers(Expr *regexp);
 private ReKind	re_kind(Expr *re, Tcl_DString *ds);
 private int	re_submatchCnt(Expr *re);
 private VarDecl	*struct_lookupMember(Type *t, Expr *idx, int *offset);
-private Sym	*sym_mk(char *name, Type *t, Expr_f flags);
+private Sym	*sym_mk(char *name, Type *t, Decl_f flags);
 private Sym	*sym_lookup(Expr *id, Expr_f flags);
 private Sym	*sym_store(VarDecl *decl);
 private Tmp	*tmp_get(TmpKind kind);
@@ -861,7 +861,7 @@ compile_fnDecls(FnDecl *fun, Decl_f flags)
 private void
 compile_fnDecl(FnDecl *fun, Decl_f flags)
 {
-	int	i, num_parms;
+	int	i;
 	VarDecl	*decl = fun->decl;
 	char	*name = decl->id->str;
 	char	*clsname = NULL;
@@ -973,7 +973,7 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 	sym->kind |= L_SYM_FNBODY;
 	L->frame->block = (Ast *)fun;
 
-	num_parms = compile_fnParms(decl);
+	compile_fnParms(decl);
 
 	/* Gather class decl and name, for class member functions. */
 	clsdecl = fun->decl->clsdecl;
@@ -1802,7 +1802,7 @@ compile_split(Expr *expr)
 private int
 compile_push(Expr *expr)
 {
-	int	flags, i, idx;
+	int	flags = 0, i, idx;
 	Expr	*arg, *array;
 	Type	*base_type;
 	Tmp	*tmp;
@@ -3764,7 +3764,7 @@ private int
 compile_trinOp(Expr *expr)
 {
 	int	save, start_off;
-	int	i = 0, n = 0, n2 = 0;
+	int	i = 0, n = 0;
 	Jmp	*end_jmp, *false_jmp;
 
 	switch (expr->op) {
@@ -3831,10 +3831,9 @@ compile_trinOp(Expr *expr)
 		track_cmd(start_off, expr->b);
 		fixup_jmps(&false_jmp);
 		start_off = currOffset(L->frame->envPtr);
-		n2 = compile_expr(expr->c, L_PUSH_VAL);
+		compile_expr(expr->c, L_PUSH_VAL);
 		track_cmd(start_off, expr->c);
 		fixup_jmps(&end_jmp);
-		ASSERT(n == n2);
 		if (ispoly(expr->b) || ispoly(expr->c)) {
 			expr->type = L_poly;
 		} else if (L_typeck_same(expr->b->type, expr->c->type)) {
@@ -4998,8 +4997,8 @@ compile_switch_fast(Switch *sw)
 						   &new);
 			if (new) {
 				Tcl_SetHashValue(hPtr,
-				    (ClientData)(currOffset(L->frame->envPtr) -
-						 start_off));
+				    INT2PTR(currOffset(L->frame->envPtr) -
+					    start_off));
 			} else {
 				L_errf(c, "duplicate case value");
 			}
@@ -6273,7 +6272,7 @@ sym_lookup(Expr *id, Expr_f flags)
 }
 
 private Sym *
-sym_mk(char *name, Type *t, Expr_f flags)
+sym_mk(char *name, Type *t, Decl_f flags)
 {
 	YYLTYPE	loc = { 0 };
 	Expr	*id = mkId(name);
@@ -6980,7 +6979,7 @@ hash_get(Tcl_Obj *hash, char *key)
 	ASSERT(hash);
 	Tcl_IncrRefCount(keyObj);
 	ret = Tcl_DictObjGet(L->interp, hash, keyObj, &valObj);
-	ASSERT(ret == TCL_OK);
+	unless (ret == TCL_OK) return (NULL);
 	Tcl_DecrRefCount(keyObj);
 	if (valObj) {
 		return (Tcl_GetString(valObj));
@@ -7064,13 +7063,12 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 {
 	int		chlen, i, leading, len, lim, matches, nocase, off, ret;
 	int		trim = (flags & L_EXPR_RE_T);
-	int		delimlen = 0, onspace = 0;
 	int		start = 0, end = 0;
 	Tcl_RegExp	regExpr = NULL;
 	Tcl_RegExpInfo	info;
 	Tcl_Obj		**elems, *resultPtr, *objPtr, *listPtr;
 	Tcl_UniChar	ch;
-	char		*delimstr = NULL, *str;
+	char		*str;
 
 	if (limobj) {
 		Tcl_GetIntFromObj(interp, limobj, &lim);
@@ -7084,15 +7082,6 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 		}
 	} else {
 		lim = INT_MAX;
-	}
-
-	/*
-	 * Check for no delimiter (split on white space).
-	 */
-	if (delimobj) {
-		delimstr = TclGetStringFromObj(delimobj, &delimlen);
-	} else {
-		onspace = 1;
 	}
 
 	/*
@@ -7115,14 +7104,13 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 	/*
 	 * Split on white space if no delim was specified.
 	 */
-	if (onspace) {
-		int letters = 0, skip = 0;
+	unless (delimobj) {
+		int skip = 0;
 		for (start = 0; (off < len) && (matches < lim); off += chlen) {
 			chlen = TclUtfToUniChar(str+off, &ch);
 			if (skip) {
 				unless (Tcl_UniCharIsSpace(ch)) {
 					start   = off;
-					letters = 1;
 					skip    = 0;
 					++matches;
 				}
@@ -7139,7 +7127,7 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 								resultPtr);
 					}
 					skip = 1;
-				} else letters = 1;
+				}
 			}
 		}
 		unless (skip) {

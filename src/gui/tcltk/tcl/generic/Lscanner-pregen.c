@@ -1212,7 +1212,8 @@ goto find_rule; \
 #define YY_MORE_ADJ 0
 #define YY_RESTORE_YY_MORE_OFFSET
 char *L_text;
-#line 1 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
+#define YY_NO_INPUT 1
 
 
 
@@ -1227,7 +1228,7 @@ char *L_text;
 
 
 
-#line 21 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 22 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 /*
  * Copyright (c) 2006-2008 BitMover, Inc.
  */
@@ -1404,7 +1405,6 @@ include_try(Tcl_Obj *fileObj, int *found)
 	char	*file = Tcl_GetString(fileObj);
 	char	*path;
 	Tcl_Obj	*pathObj;
-	Tcl_HashEntry *hPtr;
 
 	/*
 	 * See if the normalized path has been included before.  If the path
@@ -1420,7 +1420,7 @@ include_try(Tcl_Obj *fileObj, int *found)
 	}
 
 	path = Tcl_GetString(pathObj);
-	hPtr = Tcl_CreateHashEntry(include_table, path, &new);
+	Tcl_CreateHashEntry(include_table, path, &new);
 	if (new) {
 		f = fopen(path, "r");
 		*found = (f != NULL);
@@ -1775,7 +1775,7 @@ YY_DECL
 	register char *yy_cp, *yy_bp;
 	register int yy_act;
     
-#line 362 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 362 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 #line 1781 "Lscanner.c"
 
@@ -1874,473 +1874,473 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 364 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 364 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LPAREN;
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 365 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 365 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_RPAREN;
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 366 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 366 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 interpol_lbrace(); return T_LBRACE;
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 367 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 367 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LBRACKET;
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 368 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 368 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_RBRACKET;
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 369 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 369 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_COMMA;
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 370 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 370 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BANG;
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 371 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 371 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PLUS;
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 372 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 372 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_MINUS;
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 373 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 373 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_STAR;
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 374 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 374 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_SLASH;
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 375 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 375 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PERC;
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 376 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 376 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQPLUS;
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 377 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 377 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQMINUS;
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 378 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 378 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQSTAR;
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 379 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 379 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQSLASH;
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 380 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 380 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQPERC;
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 381 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 381 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQBITAND;
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 382 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 382 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQBITOR;
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 383 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 383 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQBITXOR;
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 384 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 384 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQLSHIFT;
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 385 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 385 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQRSHIFT;
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 386 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 386 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQDOT;
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 387 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 387 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PLUSPLUS;
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 388 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 388 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_MINUSMINUS;
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 389 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 389 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ANDAND;
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 390 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 390 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_OROR;
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 391 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 391 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BITAND;
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 392 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 392 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BITOR;
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 393 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 393 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BITXOR;
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 394 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 394 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BITNOT;
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 395 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 395 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LSHIFT;
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 396 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 396 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_RSHIFT;
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 397 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 397 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQUALS;
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 398 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 398 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_SEMI;
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 399 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 399 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DOT;
 	YY_BREAK
 case 37:
 /* rule 37 can match eol */
 YY_RULE_SETUP
-#line 400 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 400 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_STRCAT;
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 401 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 401 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DOTDOT;
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 402 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 402 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ELLIPSIS;
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 403 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 403 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_CLASS;
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 404 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 404 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EXTERN;
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 405 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 405 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_RETURN;
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 406 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 406 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_VOID;
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 407 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 407 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_STRING;
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 408 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 408 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_WIDGET;
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 409 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 409 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_INT;
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 410 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 410 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_FLOAT;
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 411 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 411 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_POLY;
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
-#line 412 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 412 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_SPLIT;
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 413 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 413 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_IF;
 	YY_BREAK
 case 51:
 YY_RULE_SETUP
-#line 414 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 414 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ELSE;
 	YY_BREAK
 case 52:
 YY_RULE_SETUP
-#line 415 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 415 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_UNLESS;
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 416 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 416 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_WHILE;
 	YY_BREAK
 case 54:
 YY_RULE_SETUP
-#line 417 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 417 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DO;
 	YY_BREAK
 case 55:
 YY_RULE_SETUP
-#line 418 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 418 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_FOR;
 	YY_BREAK
 case 56:
 YY_RULE_SETUP
-#line 419 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 419 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_STRUCT;
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
-#line 420 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 420 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_TYPEDEF;
 	YY_BREAK
 case 58:
 YY_RULE_SETUP
-#line 421 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 421 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DEFINED;
 	YY_BREAK
 case 59:
 YY_RULE_SETUP
-#line 422 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 422 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_FOREACH;
 	YY_BREAK
 case 60:
 YY_RULE_SETUP
-#line 423 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 423 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BREAK;
 	YY_BREAK
 case 61:
 YY_RULE_SETUP
-#line 424 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 424 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_CONTINUE;
 	YY_BREAK
 case 62:
 YY_RULE_SETUP
-#line 425 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 425 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_INSTANCE;
 	YY_BREAK
 case 63:
 YY_RULE_SETUP
-#line 426 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 426 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PRIVATE;
 	YY_BREAK
 case 64:
 YY_RULE_SETUP
-#line 427 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 427 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PUBLIC;
 	YY_BREAK
 case 65:
 YY_RULE_SETUP
-#line 428 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 428 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_CONSTRUCTOR;
 	YY_BREAK
 case 66:
 YY_RULE_SETUP
-#line 429 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 429 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DESTRUCTOR;
 	YY_BREAK
 case 67:
 YY_RULE_SETUP
-#line 430 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 430 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EXPAND;
 	YY_BREAK
 case 68:
 YY_RULE_SETUP
-#line 431 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 431 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ARGUSED;
 	YY_BREAK
 case 69:
 YY_RULE_SETUP
-#line 432 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 432 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ATTRIBUTE;
 	YY_BREAK
 case 70:
 YY_RULE_SETUP
-#line 433 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 433 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ATTRIBUTE;
 	YY_BREAK
 case 71:
 YY_RULE_SETUP
-#line 434 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 434 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_OPTIONAL;
 	YY_BREAK
 case 72:
 YY_RULE_SETUP
-#line 435 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 435 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_MUSTBETYPE;
 	YY_BREAK
 case 73:
 YY_RULE_SETUP
-#line 436 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 436 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_GOTO;
 	YY_BREAK
 case 74:
 YY_RULE_SETUP
-#line 437 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 437 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_SWITCH;
 	YY_BREAK
 case 75:
 YY_RULE_SETUP
-#line 438 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 438 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_CASE;
 	YY_BREAK
 case 76:
 YY_RULE_SETUP
-#line 439 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 439 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DEFAULT;
 	YY_BREAK
 case 77:
 YY_RULE_SETUP
-#line 440 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 440 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_TRY;
 	YY_BREAK
 case 78:
 YY_RULE_SETUP
-#line 441 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 441 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ARROW;
 	YY_BREAK
 case 79:
 YY_RULE_SETUP
-#line 442 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 442 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQ;
 	YY_BREAK
 case 80:
 YY_RULE_SETUP
-#line 443 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 443 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_NE;
 	YY_BREAK
 case 81:
 YY_RULE_SETUP
-#line 444 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 444 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LT;
 	YY_BREAK
 case 82:
 YY_RULE_SETUP
-#line 445 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 445 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LE;
 	YY_BREAK
 case 83:
 YY_RULE_SETUP
-#line 446 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 446 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_GT;
 	YY_BREAK
 case 84:
 YY_RULE_SETUP
-#line 447 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 447 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_GE;
 	YY_BREAK
 case 85:
 YY_RULE_SETUP
-#line 448 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 448 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQUALEQUAL;
 	YY_BREAK
 case 86:
 YY_RULE_SETUP
-#line 449 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 449 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_NOTEQUAL;
 	YY_BREAK
 case 87:
 YY_RULE_SETUP
-#line 450 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 450 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_GREATER;
 	YY_BREAK
 case 88:
 YY_RULE_SETUP
-#line 451 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 451 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_GREATEREQ;
 	YY_BREAK
 case 89:
 YY_RULE_SETUP
-#line 452 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 452 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LESSTHAN;
 	YY_BREAK
 case 90:
 YY_RULE_SETUP
-#line 453 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 453 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LESSTHANEQ;
 	YY_BREAK
 case 91:
 YY_RULE_SETUP
-#line 454 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 454 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_POINTS;
 	YY_BREAK
 case 92:
 YY_RULE_SETUP
-#line 455 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 455 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_COLON;
 	YY_BREAK
 case 93:
 YY_RULE_SETUP
-#line 456 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 456 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_QUESTION;
 	YY_BREAK
 case 94:
 YY_RULE_SETUP
-#line 457 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 457 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/*
 				 * <? and <?= start a script or expr
@@ -2359,7 +2359,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 95:
 YY_RULE_SETUP
-#line 472 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 472 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/*
 				 * ?> marks the end of a script or expr
@@ -2375,7 +2375,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 96:
 YY_RULE_SETUP
-#line 484 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 484 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("'and','or','xor','not' are "
 				      "unimplemented reserved words");
@@ -2384,7 +2384,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 97:
 YY_RULE_SETUP
-#line 489 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 489 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("'and','or','xor','not' are "
 				      "unimplemented reserved words");
@@ -2393,7 +2393,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 98:
 YY_RULE_SETUP
-#line 494 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 494 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("'and','or','xor','not' are "
 				      "unimplemented reserved words");
@@ -2402,7 +2402,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 99:
 YY_RULE_SETUP
-#line 499 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 499 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("'and','or','xor','not' are "
 				      "unimplemented reserved words");
@@ -2411,7 +2411,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 100:
 YY_RULE_SETUP
-#line 504 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 504 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				Type *t = L_typedef_lookup(L_text);
 				if (t) {
@@ -2426,7 +2426,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 101:
 YY_RULE_SETUP
-#line 515 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 515 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/*
 				 * Push back the : and return a T_ID
@@ -2444,7 +2444,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 102:
 YY_RULE_SETUP
-#line 529 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 529 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_lval.s = ckstrdup(L_text);
 				return T_PATTERN;
@@ -2452,7 +2452,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 103:
 YY_RULE_SETUP
-#line 533 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 533 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/* Regular expression submatches */
 				L_lval.s = ckstrdup(L_text);
@@ -2461,7 +2461,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 104:
 YY_RULE_SETUP
-#line 538 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 538 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/*
 				 * Skip any leading 0's which would
@@ -2475,7 +2475,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 105:
 YY_RULE_SETUP
-#line 548 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 548 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/*
 				 * Create a leading 0 so it looks like
@@ -2488,7 +2488,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 106:
 YY_RULE_SETUP
-#line 557 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 557 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_lval.s = canonical_num(L_text);
 				return T_INT_LITERAL;
@@ -2496,7 +2496,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 107:
 YY_RULE_SETUP
-#line 561 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 561 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_lval.s = ckstrdup(L_text);
 				return T_FLOAT_LITERAL;
@@ -2505,7 +2505,7 @@ YY_RULE_SETUP
 case 108:
 /* rule 108 can match eol */
 YY_RULE_SETUP
-#line 565 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 565 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				int	line = strtoul(L_text+5, NULL, 10);
 
@@ -2521,7 +2521,7 @@ YY_RULE_SETUP
 case 109:
 /* rule 109 can match eol */
 YY_RULE_SETUP
-#line 576 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 576 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				int	line  = strtoul(L_text+5, NULL, 10);
 				char	*beg  = strchr(L_text, '"') + 1;
@@ -2541,7 +2541,7 @@ YY_RULE_SETUP
 case 110:
 /* rule 110 can match eol */
 YY_RULE_SETUP
-#line 591 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 591 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				--L->line;  // since \n already scanned
 				L_err("malformed #line");
@@ -2550,7 +2550,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 111:
 YY_RULE_SETUP
-#line 596 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 596 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				char	*beg  = strchr(L_text, '"') + 1;
 				char	*end  = strrchr(L_text, '"');
@@ -2568,7 +2568,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 112:
 YY_RULE_SETUP
-#line 610 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 610 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				char	*beg  = strchr(L_text, '<') + 1;
 				char	*end  = strrchr(L_text, '>');
@@ -2588,7 +2588,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 113:
 YY_RULE_SETUP
-#line 626 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 626 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("malformed #include");
 				yy_push_state(eat_through_eol);
@@ -2596,13 +2596,13 @@ YY_RULE_SETUP
 	YY_BREAK
 case 114:
 YY_RULE_SETUP
-#line 630 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 630 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PRAGMA;
 	YY_BREAK
 case 115:
 /* rule 115 can match eol */
 YY_RULE_SETUP
-#line 631 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 631 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/*
 				 * Rather than using a start condition
@@ -2629,7 +2629,7 @@ YY_RULE_SETUP
 case 116:
 /* rule 116 can match eol */
 YY_RULE_SETUP
-#line 653 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 653 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				--L->line;  // since \n already scanned
 				unless (L->line == 1) {
@@ -2644,44 +2644,44 @@ YY_RULE_SETUP
 case 117:
 /* rule 117 can match eol */
 YY_RULE_SETUP
-#line 663 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 663 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 118:
 YY_RULE_SETUP
-#line 664 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 664 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 119:
 /* rule 119 can match eol */
 YY_RULE_SETUP
-#line 665 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 665 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 120:
 YY_RULE_SETUP
-#line 666 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 666 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_push_state(str_double); STRBUF_START(L->token_off);
 	YY_BREAK
 case 121:
 YY_RULE_SETUP
-#line 667 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 667 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_push_state(str_single); STRBUF_START(L->token_off);
 	YY_BREAK
 case 122:
 YY_RULE_SETUP
-#line 668 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 668 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_push_state(str_backtick); STRBUF_START(L->token_off);
 	YY_BREAK
 case 123:
 YY_RULE_SETUP
-#line 669 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 669 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_push_state(comment);
 	YY_BREAK
 case 124:
 /* rule 124 can match eol */
 YY_RULE_SETUP
-#line 670 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 670 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2695,7 +2695,7 @@ YY_RULE_SETUP
 case 125:
 /* rule 125 can match eol */
 YY_RULE_SETUP
-#line 679 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 679 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2709,7 +2709,7 @@ YY_RULE_SETUP
 case 126:
 /* rule 126 can match eol */
 YY_RULE_SETUP
-#line 688 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 688 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(subst_re);
@@ -2724,7 +2724,7 @@ YY_RULE_SETUP
 case 127:
 /* rule 127 can match eol */
 YY_RULE_SETUP
-#line 698 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 698 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		char	*p, *q;
 
@@ -2751,7 +2751,7 @@ YY_RULE_SETUP
 case 128:
 /* rule 128 can match eol */
 YY_RULE_SETUP
-#line 720 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 720 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		char	*p, *q;
 
@@ -2777,11 +2777,11 @@ YY_RULE_SETUP
 /* illegal here documents (bad stuff before or after the delim) */
 case 129:
 /* rule 129 can match eol */
-#line 743 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 743 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 130:
 /* rule 130 can match eol */
 YY_RULE_SETUP
-#line 743 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 743 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_synerr("<<- unsupported, use =\\n\\t<<END to strip one "
 			 "leading tab");
@@ -2790,7 +2790,7 @@ YY_RULE_SETUP
 case 131:
 /* rule 131 can match eol */
 YY_RULE_SETUP
-#line 747 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 747 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_synerr("illegal characters after here-document delimeter");
 	}
@@ -2798,7 +2798,7 @@ YY_RULE_SETUP
 case 132:
 /* rule 132 can match eol */
 YY_RULE_SETUP
-#line 750 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 750 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_synerr("illegal characters before here-document delimeter");
 	}
@@ -2806,7 +2806,7 @@ YY_RULE_SETUP
 case 133:
 /* rule 133 can match eol */
 YY_RULE_SETUP
-#line 753 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 753 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_synerr("illegal characters after here-document delimeter");
 	}
@@ -2814,7 +2814,7 @@ YY_RULE_SETUP
 case 134:
 /* rule 134 can match eol */
 YY_RULE_SETUP
-#line 756 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 756 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_synerr("illegal characters before here-document delimeter");
 	}
@@ -2829,13 +2829,13 @@ YY_RULE_SETUP
 case 135:
 /* rule 135 can match eol */
 YY_RULE_SETUP
-#line 767 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 767 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 /* / starts an RE */
 case 136:
 YY_RULE_SETUP
-#line 769 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 769 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2849,7 +2849,7 @@ YY_RULE_SETUP
 	 */
 case 137:
 YY_RULE_SETUP
-#line 779 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 779 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2860,7 +2860,7 @@ YY_RULE_SETUP
 /* nothing else starts an RE */
 case 138:
 YY_RULE_SETUP
-#line 786 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 786 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		unput(L_text[0]);
 		undo_yy_user_action();
@@ -2877,13 +2877,13 @@ YY_RULE_SETUP
 case 139:
 /* rule 139 can match eol */
 YY_RULE_SETUP
-#line 799 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 799 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 /* / starts an RE */
 case 140:
 YY_RULE_SETUP
-#line 801 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 801 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2899,7 +2899,7 @@ YY_RULE_SETUP
 	 */
 case 141:
 YY_RULE_SETUP
-#line 813 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 813 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2910,7 +2910,7 @@ YY_RULE_SETUP
 /* nothing else starts an RE */
 case 142:
 YY_RULE_SETUP
-#line 820 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 820 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		unput(L_text[0]);
 		undo_yy_user_action();
@@ -2921,14 +2921,14 @@ YY_RULE_SETUP
 
 case 143:
 YY_RULE_SETUP
-#line 828 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 828 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_RBRACE;
 	YY_BREAK
 
 
 case 144:
 YY_RULE_SETUP
-#line 832 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 832 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (interpol_rbrace()) {
 					STRBUF_START(L_lloc.end);
@@ -2946,7 +2946,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 145:
 YY_RULE_SETUP
-#line 846 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 846 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_synerr("illegal character");
 	}
@@ -2955,28 +2955,28 @@ YY_RULE_SETUP
 
 case 146:
 YY_RULE_SETUP
-#line 852 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 852 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\r", 1);
 	YY_BREAK
 case 147:
 YY_RULE_SETUP
-#line 853 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 853 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\n", 1);
 	YY_BREAK
 case 148:
 YY_RULE_SETUP
-#line 854 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 854 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\t", 1);
 	YY_BREAK
 case 149:
-#line 856 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 856 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 150:
-#line 857 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 857 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 151:
-#line 858 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 858 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 152:
 YY_RULE_SETUP
-#line 858 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 858 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				char		buf[TCL_UTF_MAX];
 				Tcl_UniChar	ch;
@@ -2987,18 +2987,18 @@ YY_RULE_SETUP
 case 153:
 /* rule 153 can match eol */
 YY_RULE_SETUP
-#line 864 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 864 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text+1, 1);
 	YY_BREAK
 case 154:
 YY_RULE_SETUP
-#line 865 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 865 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("$", 1);
 	YY_BREAK
 case 155:
 /* rule 155 can match eol */
 YY_RULE_SETUP
-#line 866 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 866 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("missing string terminator \"");
 				STRBUF_ADD("\n", 1);
@@ -3006,12 +3006,12 @@ YY_RULE_SETUP
 	YY_BREAK
 case 156:
 YY_RULE_SETUP
-#line 870 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 870 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, L_leng);
 	YY_BREAK
 case 157:
 YY_RULE_SETUP
-#line 871 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 871 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3022,12 +3022,12 @@ YY_RULE_SETUP
 case 158:
 /* rule 158 can match eol */
 YY_RULE_SETUP
-#line 877 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 877 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 159:
 YY_RULE_SETUP
-#line 878 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 878 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				yy_pop_state();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3039,45 +3039,45 @@ YY_RULE_SETUP
 
 case 160:
 YY_RULE_SETUP
-#line 887 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 887 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\\", 1);
 	YY_BREAK
 case 161:
 YY_RULE_SETUP
-#line 888 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 888 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("'", 1);
 	YY_BREAK
 case 162:
 /* rule 162 can match eol */
 YY_RULE_SETUP
-#line 889 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 889 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\n", 1);
 	YY_BREAK
 case 163:
 /* rule 163 can match eol */
 YY_RULE_SETUP
-#line 890 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 890 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("missing string terminator \'");
 				STRBUF_ADD("\n", 1);
 			}
 	YY_BREAK
 case 164:
-#line 895 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 895 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 165:
 YY_RULE_SETUP
-#line 895 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 895 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, L_leng);
 	YY_BREAK
 case 166:
 /* rule 166 can match eol */
 YY_RULE_SETUP
-#line 896 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 896 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 167:
 YY_RULE_SETUP
-#line 897 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 897 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				yy_pop_state();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3089,28 +3089,28 @@ YY_RULE_SETUP
 
 case 168:
 YY_RULE_SETUP
-#line 906 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 906 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text+1, 1);
 	YY_BREAK
 case 169:
 /* rule 169 can match eol */
 YY_RULE_SETUP
-#line 907 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 907 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 /* ignore \<newline> */
 	YY_BREAK
 case 170:
-#line 909 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 909 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 171:
-#line 910 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 910 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 172:
 YY_RULE_SETUP
-#line 910 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 910 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, L_leng);
 	YY_BREAK
 case 173:
 /* rule 173 can match eol */
 YY_RULE_SETUP
-#line 911 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 911 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("missing string terminator `");
 				STRBUF_ADD("\n", 1);
@@ -3118,7 +3118,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 174:
 YY_RULE_SETUP
-#line 915 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 915 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3128,7 +3128,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 175:
 YY_RULE_SETUP
-#line 921 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 921 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				yy_pop_state();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3146,7 +3146,7 @@ case 176:
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up L_text again */
 YY_RULE_SETUP
-#line 933 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 933 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				int	len;
 				char	*p = L_text;
@@ -3186,7 +3186,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 177:
 YY_RULE_SETUP
-#line 969 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 969 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				char	*p = strstr(L_text, here_pfx);
 				if (p == L_text) {
@@ -3201,35 +3201,35 @@ YY_RULE_SETUP
 case 178:
 /* rule 178 can match eol */
 YY_RULE_SETUP
-#line 979 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 979 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, 1);
 	YY_BREAK
 
 
 case 179:
 YY_RULE_SETUP
-#line 983 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 983 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\\", 1);
 	YY_BREAK
 case 180:
 YY_RULE_SETUP
-#line 984 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 984 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("$", 1);
 	YY_BREAK
 case 181:
 YY_RULE_SETUP
-#line 985 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 985 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("`", 1);
 	YY_BREAK
 case 182:
 /* rule 182 can match eol */
 YY_RULE_SETUP
-#line 986 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 986 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 // ignore \<newline>
 	YY_BREAK
 case 183:
 YY_RULE_SETUP
-#line 987 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 987 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3239,7 +3239,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 184:
 YY_RULE_SETUP
-#line 993 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 993 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_lval.s = ckstrdup(STRBUF_STRING());
 				STRBUF_STOP(L_lloc.beg);
@@ -3253,7 +3253,7 @@ case 185:
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up L_text again */
 YY_RULE_SETUP
-#line 1000 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1000 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				int	len;
 				char	*p = L_text;
@@ -3293,7 +3293,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 186:
 YY_RULE_SETUP
-#line 1036 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1036 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				char	*p = strstr(L_text, here_pfx);
 				if (p == L_text) {
@@ -3308,7 +3308,7 @@ YY_RULE_SETUP
 case 187:
 /* rule 187 can match eol */
 YY_RULE_SETUP
-#line 1046 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1046 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, 1);
 	YY_BREAK
 
@@ -3316,24 +3316,24 @@ STRBUF_ADD(L_text, 1);
 case 188:
 /* rule 188 can match eol */
 YY_RULE_SETUP
-#line 1050 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1050 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 189:
 YY_RULE_SETUP
-#line 1051 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1051 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 190:
 YY_RULE_SETUP
-#line 1052 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1052 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_pop_state();
 	YY_BREAK
 
 
 case 191:
 YY_RULE_SETUP
-#line 1056 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1056 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3343,7 +3343,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 192:
 YY_RULE_SETUP
-#line 1062 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1062 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if ((L_text[1] == re_end_delim) ||
 				    (L_text[1] == re_start_delim)) {
@@ -3356,7 +3356,7 @@ YY_RULE_SETUP
 case 193:
 /* rule 193 can match eol */
 YY_RULE_SETUP
-#line 1070 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1070 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				--L->line;  // since \n already scanned
 				L_err("run-away regular expression");
@@ -3369,7 +3369,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 194:
 YY_RULE_SETUP
-#line 1079 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1079 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				// Convert $3 to \3 (regexp capture reference).
 				STRBUF_ADD("\\", 1);
@@ -3378,7 +3378,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 195:
 YY_RULE_SETUP
-#line 1084 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1084 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (*L_text == re_end_delim) {
 					L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3412,7 +3412,7 @@ YY_RULE_SETUP
 case 196:
 /* rule 196 can match eol */
 YY_RULE_SETUP
-#line 1115 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1115 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				--L->line;  // since \n already scanned
 				L_err("run-away regular expression");
@@ -3423,7 +3423,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 197:
 YY_RULE_SETUP
-#line 1122 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1122 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				extract_re_delims(*L_text);
 				yy_pop_state();
@@ -3433,7 +3433,7 @@ YY_RULE_SETUP
 
 case 198:
 YY_RULE_SETUP
-#line 1129 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1129 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_lval.s = ckstrdup(L_text);
 				yy_pop_state();
@@ -3442,7 +3442,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 199:
 YY_RULE_SETUP
-#line 1134 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1134 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				unput(L_text[0]);
 				undo_yy_user_action();
@@ -3455,19 +3455,19 @@ YY_RULE_SETUP
 
 case 200:
 YY_RULE_SETUP
-#line 1144 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1144 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 201:
 /* rule 201 can match eol */
 YY_RULE_SETUP
-#line 1145 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1145 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_pop_state();
 	YY_BREAK
 
 case 202:
 YY_RULE_SETUP
-#line 1148 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1148 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/* This rule matches a char if no other does. */
 				L_synerr("illegal character");
@@ -3489,14 +3489,14 @@ case YY_STATE_EOF(interpol):
 case YY_STATE_EOF(here_doc_interp):
 case YY_STATE_EOF(here_doc_nointerp):
 case YY_STATE_EOF(eat_through_eol):
-#line 1153 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1153 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				unless (include_pop()) yyterminate();
 			}
 	YY_BREAK
 case 203:
 YY_RULE_SETUP
-#line 1156 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1156 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 ECHO;
 	YY_BREAK
 #line 3503 "Lscanner.c"
@@ -4511,7 +4511,7 @@ void L_free (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 1156 "/Users/rob/bk/dev-L-try-catch/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1156 "/Users/rob/bk/dev-L-compiler-warnings/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 
 void
