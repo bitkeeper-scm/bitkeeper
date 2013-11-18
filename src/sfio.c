@@ -84,6 +84,7 @@ private	struct {
 	u32	takepatch:1;	/* called from takepatch */
 	u32	clone:1;	/* --clone: use 'bk _sfiles_clone' */
 	u32	parents:1;	/* --parents */
+	u32	doubleKeys:1;	/* bam recurse is sending double len keys */
 	int	mode;		/* M_IN, M_OUT, M_LIST */
 	char	**more;		/* additional list of files to send */
 	char	*prefix;	/* dir prefix to put on the file listing */
@@ -523,12 +524,14 @@ out_file(char *file, struct stat *sp, off_t *byte_count, int useDsum, u32 dsum)
 		*byte_count += printf("%010u", sz);
 		sum = adler32(sum, data, sz);
 		if (fwrite(data, 1, len, stdout) != len) {
+			free(data);
 			if ((errno != EPIPE) || getenv("BK_SHOWPROC")) {
 				perror(file);
 			}
 			sccs_free(s);
 			return (1);
 		}
+		free(data);
 		*byte_count += len;
 		sccs_free(s);
 	} else {
@@ -570,12 +573,25 @@ out_file(char *file, struct stat *sp, off_t *byte_count, int useDsum, u32 dsum)
 private int
 out_bptuple(char *keys, off_t *byte_count)
 {
-	char	*path, *fullpath, *p;
+	char	*path, *fullpath, *p, *newkeys = keys;
 	int	n, sum;
 	struct	stat sb;
 
+	/*
+	 * see if keys has 2 sets of keys, to cover copying
+	 * :BAMHASH: <old-dkey> <old-md5root> :BAMHASH: <new-dkey> <new-md5root>
+	 */
+	if ((p = strchr(keys, ' ')) &&
+	    (p = separator(p+1)) && (p = strchr(p+1, ' '))) {
+		*p = 0;
+		newkeys = p + 1;
+	}
 	unless (fullpath = bp_lookupkeys(0, keys)) {
 		if (opts->recurse) {
+			if (p) {
+				opts->doubleKeys = 1;
+				*p = ' ';
+			}
 			opts->missing = addLine(opts->missing, strdup(keys));
 			return (0);
 		}
@@ -589,8 +605,8 @@ out_bptuple(char *keys, off_t *byte_count)
 		perror(fullpath);
 		return (SFIO_LSTAT);
 	}
-	*byte_count += printf("%04d%s", (int)strlen(keys), keys);
-	unless (hash_insertStr(opts->sent, path, keys)) {
+	*byte_count += printf("%04d%s", (int)strlen(newkeys), newkeys);
+	unless (hash_insertStr(opts->sent, path, newkeys)) {
 		n = out_hardlink(path, &sb, byte_count, opts->sent->vptr);
 	} else {
 		/*
@@ -598,7 +614,10 @@ out_bptuple(char *keys, off_t *byte_count)
 		 * we don't calculate it again.  If the file is corrupted it
 		 * will be detected when being unpacked.
 		 */
-		if ((p = strrchr(path, '.')) && (p[1] == 'd') &&
+		if (opts->lclone) {
+			/* Wacky options, but -H is for internal linking */
+			n = out_hardlink(path, &sb, byte_count, fullpath);
+		} else if ((p = strrchr(path, '.')) && (p[1] == 'd') &&
 		    !getenv("_BP_HASHCHARS")) {
 			while (*p != '/') --p;
 			sum = strtoul(p+1, 0, 16);
@@ -626,6 +645,25 @@ missing(off_t *byte_count)
 err:		send_eof(SFIO_LOOKUP);
 		return;
 	}
+	if (opts->doubleKeys) {
+		/* bk mv BAMsrc BAMdest - bring remote files to BAMsrc */
+		p = aprintf("bk -q@'%s' -Lr -Bstdin -zo0 sfio -qoB -" 
+		    " | bk sfio -qiB -",
+		    bp_serverURL(buf));
+		f = popen(p, "w");
+		free(p);
+		unless (f) goto err;
+		EACH(opts->missing) {
+			/* Just the lower part of the key; could be old bk */
+			if ((p = strchr(opts->missing[i], ' ')) &&
+			    (p = separator(p+1)) && (p = strchr(p+1, ' '))) {
+				*p = 0;
+			}
+			fprintf(f, "%s\n", opts->missing[i]);
+			if (p) *p = ' ';
+		}
+		if (pclose(f)) goto err;
+	}
 	tmpf = bktmp(0);
 	unless (f = fopen(tmpf, "w")) {
 		perror(tmpf);
@@ -637,8 +675,14 @@ err:		send_eof(SFIO_LOOKUP);
 	/*
 	 * XXX - this will fail miserably on loops or locks.
 	 */
-	p = aprintf("bk -q@'%s' -Lr -Bstdin -zo0 sfio -qoB - < '%s'",
-	    bp_serverURL(buf), tmpf);
+	if (opts->doubleKeys) {
+		/* files are local, so just do the local copy */
+		p = aprintf("bk sfio -qoB%s - < '%s'",
+		    opts->lclone ?  "L" : "", tmpf);
+	} else {
+		p = aprintf("bk -q@'%s' -Lr -Bstdin -zo0 sfio -qoB - < '%s'",
+		    bp_serverURL(buf), tmpf);
+	}
 	f = popen(p, "r");
 	free(p);
 	unless (f) goto err;
@@ -646,9 +690,10 @@ err:		send_eof(SFIO_LOOKUP);
 	while ((i = fread(buf, 1, sizeof(buf), f)) > 0) {
 		*byte_count += fwrite(buf, 1, i, stdout);
 	}
-	pclose(f);	// If we error here we're just hosed.
+	i = pclose(f);	// If we error here we're just hosed.
 	unlink(tmpf);
 	free(tmpf);
+	if (i) goto err;
 	/* they should have sent EOF */
 }
 
@@ -858,9 +903,11 @@ in_bptuple(char *keys, char *datalen, int extract)
 	char	*p, *t;
 	u32	sum = 0, sum2 = 0;
 	char	file[MAXPATH];
+	int	hardlink = 0;
 	char	tmp[MAXPATH];
 
 	if (strneq("HLNK00", datalen, 6)) {
+		hardlink = 1;
 		sscanf(&datalen[6], "%04d", &todo);
 		/* keys linked to older keys we load into file */
 		if (fread(file, 1, todo, stdin) != todo) return (1);
@@ -883,6 +930,10 @@ in_bptuple(char *keys, char *datalen, int extract)
 				return (1);
 			}
 		}
+		unless (strchr(file, '|')) {
+			strcpy(tmp, file);
+			goto addfile;
+		}
 		/* find bp file used by the linked keys and use that */
 		unless (p = mdbm_fetch_str(proj_BAMindex(0, 0), file)) {
 			fprintf(stderr, "sfio: hardlink to %s failed.\n",
@@ -893,7 +944,7 @@ in_bptuple(char *keys, char *datalen, int extract)
 	} else {
 
 		sscanf(datalen, "%010d", &todo);
-
+addfile:
 		bp_dataroot(0, file);
 		t = file + strlen(file);
 
@@ -905,7 +956,12 @@ in_bptuple(char *keys, char *datalen, int extract)
 			sprintf(p, ".d%d", i);
 			unless (exists(file)) break;
 		}
-		if (in_file(file, todo, extract)) return (1);
+		if (hardlink) {
+			if (fileLink(tmp, file)) return (1);
+			todo = size(file);
+		} else {
+			if (in_file(file, todo, extract)) return (1);
+		}
 		/* see if we should collapse with other files */
 		strcpy(tmp, file);
 		for (j = 1; j <= i; j++) {

@@ -13942,6 +13942,7 @@ sccs_delta(sccs *s,
 	ser_t	d = 0, e, p, n = 0;
 	char	*rev, *tmpfile = 0;
 	int	added = 0, deleted = 0, unchanged = 0;
+	int	samedata = 0;
 	pfile	pf = {0};
 	ser_t	pserial;
 
@@ -14117,6 +14118,7 @@ out:
 	} else {
 		switch (diff_g(s, &pf, &tmpfile)) {
 		    case 1:		/* no diffs */
+			samedata = 1;
 			if (flags & DELTA_FORCE) {
 				break;     /* forced 0 sized delta */
 			}
@@ -14227,7 +14229,7 @@ out:
 	EACH(syms) addsym(s, n, !(flags&DELTA_PATCH), syms[i]);
 
 	if (BAM(s)) {
-		if (!(flags & DELTA_PATCH) && bp_delta(s, n)) {
+		if (!(flags & DELTA_PATCH) && !samedata && bp_delta(s, n)) {
 			fprintf(stderr, "BAM: delta of %s failed\n",
 			    s->gfile);
 			return (-1);

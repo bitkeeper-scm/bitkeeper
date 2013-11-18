@@ -11,6 +11,10 @@
 
 # Copyright (c) 2001 Amelia Graf
 
+linkcount() {
+	bk _stat $1 | awk -F\| '{print $4}'
+}
+
 commercial project
 echo $N Test bk cp ..................................................$NL
 echo "This is file 1" > file1
@@ -127,7 +131,7 @@ bk cp B C 2>ERR || {
 }
 echo OK
 
-echo $N Test that copying a BAM file fails ..........................$NL
+echo $N Test that copying a BAM file works ..........................$NL
 cd "$HERE"
 commercial proj3
 BK="`bk bin`/bk"
@@ -140,26 +144,42 @@ bk new $Q data || exit 1
 perl -e 'printf "Hi there\x0\n";' > small
 BK_CONFIG='BAM:1k!' bk new $Q small
 test -d BitKeeper/BAM || exit 1
-bk cp data data-copy >OUT 2>&1
-grep -q 'cannot copy BAM files' OUT || fail -f OUT wrong error message
+bk edit $Q data
+echo newline >> data
+bk ci $Q -ydifferent data
+bk edit $Q data
+cp "$DATA" data
+bk ci $Q -ysame data
+bk cp $Q data data-copy || fail
+bk commit $Q -ylock-it-in
+cd BitKeeper/BAM/* || fail
+test `wc -l < BAM.index` -eq 6 || fail BAM.index
 echo OK
 
-echo $N Test that cp -f a BAM file \"works\" ..........................$NL
-bk cp -f data data-copy >OUT 2>&1
-grep -q 'failed to fetch BAM data' OUT || fail -f OUT wrong error message
-echo OK
-
-echo $N Test that cp -f on a BAM file to another repo \"works\" .......$NL
+echo $N Test that cp -f on a BAM file to another repo works .........$NL
 cd "$HERE"
 commercial proj4
-(
-	cd ../proj3
-	bk cp -f data ../proj4/data-copy
-	cd ../proj4
-	bk repocheck # fixes the missing d-file
-	find ../proj3/BitKeeper/BAM | bk bam reattach -
-) > OUT 2>&1
-bk repocheck $Q || fail -f OUT
-# If you want to see the scary output, uncomment below
-#cat OUT
+cd ../proj3
+bk bam server $Q .
+# Need no-hardlinks to turn of BAM populating - need to test BAM recursion
+bk clone $Q --no-hardlinks . ../no-bam
+cd ../no-bam
+bk cp $Q -f data ../proj4/data-copy || fail
+cd ../proj4
+bk repocheck $Q || fail
+# Hardlink in recurse case because both local repos get a copy
+for f in BitKeeper/BAM/*/*/*
+do	test `linkcount $f` = 2 || fail $f bad link count `linkcount $f`
+done
+echo OK
+
+echo $N Test that cp -f on a BAM file hardlinks if no recurse .......$NL
+cd "$HERE"
+commercial proj5
+cd ../proj4
+bk cp $Q -f data-copy ../proj5/data-hardlink || fail
+cd ../proj5
+for f in BitKeeper/BAM/*/*/*
+do	test `linkcount $f` = 3 || fail $f bad link count `linkcount $f`
+done
 echo OK
