@@ -886,12 +886,12 @@ parameter_decl:
 		if ($3) {
 			L_set_declBaseType($3, $2);
 			$$ = $3;
-			$$->flags |= $1;
-			$$->node.loc = @1;
 		} else {
 			$$ = ast_mkVarDecl($2, NULL, @2, @2);
 			if (isnameoftype($2)) $$->flags |= DECL_REF;
 		}
+		$$->flags |= $1;
+		$$->node.loc = @1;
 	}
 	| parameter_attrs T_ELLIPSIS id
 	{

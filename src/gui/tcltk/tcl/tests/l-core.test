@@ -16828,6 +16828,53 @@ void function3() _attribute (bad) {}
 } -returnCodes {error} -match regexp -result {.*1: L Error: illegal attribute 'bad'
 }
 
+test function-4 {check formal-parameter attribute inconsistency checking} -body {
+#lang L --line=1
+// Check with and without names for the formals in the proto.
+string function4a(string s);
+string function4a(_optional string s)
+{
+	return (s);
+}
+string function4b(_optional string s);
+string function4b(string s)
+{
+	return (s);
+}
+string function4c(string);
+string function4c(_optional string s)
+{
+	return (s);
+}
+string function4d(_optional string);
+string function4d(string s)
+{
+	return (s);
+}
+string function4e(string);
+string function4e(_mustbetype string s)
+{
+	return (s);
+}
+string function4f(_mustbetype string);
+string function4f(string s)
+{
+	return (s);
+}
+string function4g(_mustbetype string);
+string function4g(_optional string s)
+{
+	return (s);
+}
+} -returnCodes {error} -match regexp -result {.*3: L Error: does not match other declaration of function4a
+.*8: L Error: does not match other declaration of function4b
+.*13: L Error: does not match other declaration of function4c
+.*18: L Error: does not match other declaration of function4d
+.*23: L Error: does not match other declaration of function4e
+.*28: L Error: does not match other declaration of function4f
+.*33: L Error: does not match other declaration of function4g
+}
+
 test initializers-1 {check variable initializer error cases} -body {
 #lang L --line=1
 extern int g = 0;

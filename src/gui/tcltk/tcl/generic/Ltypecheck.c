@@ -335,7 +335,11 @@ private int
 typeck_decls(VarDecl *a, VarDecl *b)
 {
 	for (; a && b; a = a->next, b = b->next) {
-		unless (L_typeck_same(a->type, b->type)) return (0);
+		unless (L_typeck_same(a->type, b->type) &&
+			((a->flags & (DECL_OPTIONAL | DECL_NAME_EQUIV)) ==
+			 (b->flags & (DECL_OPTIONAL | DECL_NAME_EQUIV)))) {
+			return (0);
+		}
 	}
 	/* Not the same if one has more declarations. */
 	return !(a || b);
