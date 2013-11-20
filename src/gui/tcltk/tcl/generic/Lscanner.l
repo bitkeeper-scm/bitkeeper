@@ -956,7 +956,7 @@ canonical_num(char *num)
 				yy_pop_state();
 				return T_RE_MODIFIER;
 			}
-	.		{
+	.|\n		{
 				unput(yytext[0]);
 				undo_yy_user_action();
 				yy_pop_state();
