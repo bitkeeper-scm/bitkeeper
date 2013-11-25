@@ -343,6 +343,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 	/* t = root, v = deltakey */
 	while (d = cset_rdweavePair(cset, 0, &t, &v)) {
 		unless (componentKey(v)) continue;
+		if (!revs && !(FLAGS(cset, (d)) & D_RED)) continue;
 		unless (c = nested_findKey(n, t)) {
 			c = new(comp);
 			c->n = n;
