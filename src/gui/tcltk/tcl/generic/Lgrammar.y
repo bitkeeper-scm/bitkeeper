@@ -121,18 +121,19 @@ extern int	L_lex (void);
 %token T_GREATER ">"
 %token T_GREATEREQ ">="
 %token T_GT "gt"
+%token <s> T_HTML
 %token <s> T_ID "id"
-%token T_LHTML_START "<?="
 %token T_IF "if"
 %token T_INSTANCE "instance"
 %token T_INT "int"
 %token <s> T_INT_LITERAL "integer constant"
+%token <s> T_LHTML_EXPR_START "<?="
+%token <s> T_LHTML_EXPR_END "?>"
 %token T_LBRACE "{"
 %token T_LBRACKET "["
 %token T_LE "le"
 %token <s> T_LEFT_INTERPOL "${"
 %token <s> T_LEFT_INTERPOL_RE "${ (in re)"
-%token <s> T_START_BACKTICK "backtick"
 %token T_LESSTHAN "<"
 %token T_LESSTHANEQ "<="
 %token T_LPAREN "("
@@ -166,6 +167,7 @@ extern int	L_lex (void);
 %token T_SLASH "/"
 %token T_SPLIT "split"
 %token T_STAR "*"
+%token <s> T_START_BACKTICK "backtick"
 %token <s> T_STR_BACKTICK "`"
 %token <s> T_STR_LITERAL "string constant"
 %token T_STRCAT " . "
@@ -192,12 +194,13 @@ extern int	L_lex (void);
  * highest precedence.
  */
 %left LOWEST
-// The next four %nonassoc lines are defined to resolve a conflict with
+// The following %nonassoc lines are defined to resolve a conflict with
 // labeled statements (see the stmt nonterm).
 %nonassoc T_IF T_UNLESS T_RETURN T_ID T_STR_LITERAL T_LEFT_INTERPOL
 %nonassoc T_STR_BACKTICK T_INT_LITERAL T_FLOAT_LITERAL T_TYPE T_WHILE
 %nonassoc T_FOR T_DO T_DEFINED T_STRING T_FOREACH T_BREAK T_CONTINUE
 %nonassoc T_SPLIT T_GOTO T_WIDGET T_PRAGMA T_SWITCH T_START_BACKTICK T_TRY
+%nonassoc T_HTML T_LHTML_EXPR_START
 %left T_COMMA
 %nonassoc T_ELSE T_SEMI
 %right T_EQUALS T_EQPLUS T_EQMINUS T_EQSTAR T_EQSLASH T_EQPERC
@@ -248,17 +251,6 @@ start:	  toplevel_code
 	{
 		REVERSE(TopLev, next, $1);
 		L->ast = $1;
-	}
-	| T_LHTML_START expr
-	{
-		// Wrap expr in a puts(-nonewline) call.
-		TopLev	*t = ast_mkTopLevel(L_TOPLEVEL_STMT, NULL, @2, @2);
-		Expr	*arg = ast_mkConst(L_string, "-nonewline", @1, @1);
-		t->u.stmt = ast_mkStmt(L_STMT_EXPR, NULL, @2, @2);
-		t->u.stmt->u.expr = ast_mkFnCall(ast_mkId("puts", @1, @1),
-						 arg, @2, @2);
-		arg->next = $2;
-		L->ast = t;
 	}
 	;
 
@@ -565,6 +557,24 @@ stmt:
 	{
 		L_compile_attributes(L->options, $1, L_attrs_pragma);
 		$$ = NULL;
+	}
+	| T_HTML
+	{
+		// Wrap the html in a puts(-nonewline) call.
+		Expr	*fn = ast_mkId("puts", @1, @1);
+		Expr	*arg = ast_mkConst(L_string, "-nonewline", @1, @1);
+		arg->next = ast_mkConst(L_string, $1, @1, @1);
+		$$ = ast_mkStmt(L_STMT_EXPR, NULL, @1, @1);
+		$$->u.expr = ast_mkFnCall(fn, arg, @1, @1);
+	}
+	| T_LHTML_EXPR_START expr T_LHTML_EXPR_END
+	{
+		// Wrap expr in a puts(-nonewline) call.
+		Expr	*fn = ast_mkId("puts", @2, @2);
+		Expr	*arg = ast_mkConst(L_string, "-nonewline", @2, @2);
+		arg->next = $2;
+		$$ = ast_mkStmt(L_STMT_EXPR, NULL, @1, @3);
+		$$->u.expr = ast_mkFnCall(fn, arg, @1, @3);
 	}
 	;
 

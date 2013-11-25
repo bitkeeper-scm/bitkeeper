@@ -16,6 +16,8 @@
 %x here_doc_interp
 %x here_doc_nointerp
 %x eat_through_eol
+%x lhtml
+%x lhtml_expr_start
 ID	([a-zA-Z_]|::)([0-9a-zA-Z_]|::)*
 HEX	[a-fA-F0-9]
 %{
@@ -77,6 +79,8 @@ private int	in_lhtml = 0;	// Lhtml mode
 
 
 #define STRBUF_STRING()		Tcl_GetString(str)
+
+#define STRBUF_STARTED()	(str != NULL)
 
 #define STRBUF_ADD(s, len)	Tcl_AppendToObj(str, s, len)
 
@@ -156,16 +160,6 @@ inject(char *s)
 
 	Tcl_AppendToObj(L->script, s, len);
 	L->script_len += len;
-}
-
-/*
- * In case of errors, the start condition stack will be left in an
- * unknown state.  This function gives us a way to reset it.
- */
-void L_lex_start()
-{
-	include_top = -1;
-	BEGIN(0);
 }
 
 /*
@@ -454,21 +448,6 @@ canonical_num(char *num)
 	"->"		return T_POINTS;
 	":"		return T_COLON;
 	"?"		return T_QUESTION;
-	"<?"=?		{
-				/*
-				 * <? and <?= start a script or expr
-				 * inside of an lhtml document but is a
-				 * syntax error otherwise.
-				 */
-				unless (in_lhtml) {
-					undo_yy_user_action();
-					REJECT;
-				}
-				// Return a token for <?= but ignore <?
-				if (yyleng == 3) {
-					return T_LHTML_START;
-				}
-	}
 	"?>"		{
 				/*
 				 * ?> marks the end of a script or expr
@@ -479,7 +458,13 @@ canonical_num(char *num)
 					undo_yy_user_action();
 					REJECT;
 				}
-				yyterminate();
+				yy_pop_state();
+				STRBUF_START(L_lloc.end);
+				if (YYSTATE == lhtml_expr_start) {
+					yy_pop_state();  // pop back to lhtml
+					ASSERT(YYSTATE == lhtml);
+					return T_LHTML_EXPR_END;
+				}
 	}
 	"and"		{
 				L_err("'and','or','xor','not' are "
@@ -755,6 +740,55 @@ canonical_num(char *num)
 	}
 	=[ \t\r\n]*<<\'[^a-zA-Z_][a-zA-Z_][a-zA-Z_0-9]*\'	{
 		L_synerr("illegal characters before here-document delimeter");
+	}
+}
+
+<lhtml>{
+	/*
+	 * The compiler prepends a #line directive to Lhtml source.
+	 * This communicates the correct line number to the Tcl
+	 * code that prints run-time error messages.
+	 */
+	^#line[ \t]+[0-9]+\n {
+		int	line = strtoul(yytext+5, NULL, 10);
+
+		if (line <= 0) {
+			--L->line;  // since \n already scanned
+			L_err("malformed #line");
+			++L->line;
+		} else {
+			L->line = line;
+		}
+	}
+	"<?"=?	{
+		L_lval.s = ckstrdup(STRBUF_STRING());
+		STRBUF_STOP(L_lloc.beg);
+		if (yyleng == 2) {
+			yy_push_state(INITIAL);
+		} else {
+			yy_push_state(lhtml_expr_start);
+		}
+		return T_HTML;
+	}
+	.|\n	STRBUF_ADD(yytext, yyleng);
+	<<EOF>>	{
+		unless (STRBUF_STARTED()) yyterminate();
+		L_lval.s = ckstrdup(STRBUF_STRING());
+		STRBUF_STOP(L_lloc.beg);
+		return T_HTML;
+	}
+}
+
+<lhtml_expr_start>{
+	/*
+	 * This start condition is here only so the rule for ?> can
+	 * know whether we previously scanned <? or <?=.
+	 */
+	.|\n	{
+		unput(yytext[0]);
+		undo_yy_user_action();
+		yy_push_state(INITIAL);
+		return T_LHTML_EXPR_START;
 	}
 }
 
@@ -1151,9 +1185,25 @@ canonical_num(char *num)
 				yyterminate();
 			}
 	<<EOF>>		{
+				if (in_lhtml) {
+					yy_user_action();  // for line #s
+					L_synerr("premature EOF");
+				}
 				unless (include_pop()) yyterminate();
 			}
 %%
+void
+L_lex_start()
+{
+	include_top = -1;
+	if (in_lhtml) {
+		STRBUF_START(0);
+		BEGIN(lhtml);
+	} else {
+		BEGIN(INITIAL);
+	}
+}
+
 void
 L_lex_begReArg(int kind)
 {

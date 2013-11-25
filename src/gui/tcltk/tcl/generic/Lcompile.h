@@ -119,8 +119,6 @@ typedef struct {
 	int	prev_token_len;
 	int	token_off;	// offset of curr token from start of input
 	int	prev_token_off;	// offset of prev token from start of input
-	int	scanned_chars;	// # chars consumed by the scanner/parser
-	int	scanned_lines;	// # newlines consumed by the scanner/parser
 	Tcl_Obj	*script;	// src of script being compiled
 	int	script_len;
 	Tcl_Obj	*options;	// hash of command-line options

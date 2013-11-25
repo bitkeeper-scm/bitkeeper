@@ -257,10 +257,35 @@ test lhtml-4 {test lhtml document parsing} -body {
 </html>
 }
 
-test lhtml-5 {test premature EOF in lhtml document} -body {
+test lhtml-5 {test lhtml with L loops} -body {
+#lang Lhtml
+<html>
+<tr>
+<? int lhtml5; ?>
+<? for (lhtml5 = 0; lhtml5 < 3; ++lhtml5) { ?>
+	<td><? puts(nonewline: lhtml5); ?></td>
+<? } ?>
+</tr>
+</html>
+} -output {<html>
+<tr>
+
+
+	<td>0</td>
+
+	<td>1</td>
+
+	<td>2</td>
+
+</tr>
+</html>
+}
+
+test lhtml-6 {test premature EOF in lhtml document} -body {
 #lang Lhtml --line=1
 <? // no ending delim
-} -returnCodes error -result {premature EOF in Lhtml document}
+} -returnCodes error -match regexp -result {.*2: L Error: premature EOF
+}
 
 test parse-1.0 {Test parsing an empty L script} -body {
 #lang L --line=1

@@ -165,7 +165,6 @@ private int	ast_compile(void *ast);
 private void	ast_free(Ast *ast_list);
 private char	*basenm(char *s);
 private int	compile_abs(Expr *expr);
-private int	compile_and_run(int line, char *code);
 private int	compile_assert(Expr *expr);
 private void	compile_assign(Expr *expr);
 private void	compile_assignComposite(Expr *expr);
@@ -566,7 +565,6 @@ parse_options(int objc, Tcl_Obj **objv, char *allowed[])
 private int
 parse_script(char *str, Ast **ast_p, Tcl_Obj *nameObj)
 {
-	int	line_beg;
 	char	*prepend, *s;
 	void	*lex_buffer;
 
@@ -601,7 +599,6 @@ parse_script(char *str, Ast **ast_p, Tcl_Obj *nameObj)
 			L->line += atoi(s);
 		}
 	}
-	line_beg = L->line;
 	prepend = cksprintf("#line %d\n", L->line);
 	str = cksprintf("%s%s", prepend, str);
 
@@ -616,8 +613,6 @@ parse_script(char *str, Ast **ast_p, Tcl_Obj *nameObj)
 	ASSERT(ast_p);
 	*ast_p = L->ast;
 
-	L->scanned_chars = L->token_off - strlen(prepend) + L->prev_token_len;
-	L->scanned_lines = L->line - line_beg;
 	L__delete_buffer(lex_buffer);
 	ckfree(str);
 	ckfree(prepend);
@@ -7688,55 +7683,6 @@ Tcl_LDefined(
 }
 
 /*
- * Immediately compile and run the given L code.  Return TCL_OK if
- * there were no compile-time or run-time errors, else return the
- * status from Tcl_LObjCmd().
- */
-private int
-compile_and_run(int line, char *code)
-{
-	int	ret;
-	Tcl_Obj	*objv[3];
-
-	objv[0] = Tcl_NewStringObj("L", 1);
-	Tcl_IncrRefCount(objv[0]);
-
-	objv[1] = Tcl_NewObj();
-	Tcl_AppendPrintfToObj(objv[1], "--line=%d", line);
-	Tcl_IncrRefCount(objv[1]);
-
-	objv[2] = Tcl_NewStringObj(code, -1);
-	Tcl_IncrRefCount(objv[2]);
-
-	L_lex_begLhtml();
-	ret = Tcl_LObjCmd(NULL, L->interp, 3, objv);
-	L_lex_endLhtml();
-
-	Tcl_DecrRefCount(objv[0]);
-	Tcl_IncrRefCount(objv[1]);
-	Tcl_IncrRefCount(objv[2]);
-
-	return (ret);
-}
-
-private void
-tcl_puts(Tcl_Obj *o)
-{
-	Tcl_Obj	*objv[3];
-
-	objv[0] = Tcl_NewStringObj("puts", 4);
-	objv[1] = Tcl_NewStringObj("-nonewline", 10);
-	objv[2] = o;
-	Tcl_IncrRefCount(objv[0]);
-	Tcl_IncrRefCount(objv[1]);
-	Tcl_IncrRefCount(objv[2]);
-	Tcl_EvalObjv(L->interp, 3, objv, 0);
-	Tcl_DecrRefCount(objv[0]);
-	Tcl_DecrRefCount(objv[1]);
-	Tcl_DecrRefCount(objv[2]);
-}
-
-/*
  * This evaluates an Lhtml document.  All input is passed through
  * to Tcl's stdout channel with two kinds of interpolation:
  *
@@ -7747,8 +7693,9 @@ tcl_puts(Tcl_Obj *o)
  *   replaced by whatever it evaluates to (this is just like regular L
  *   string interpolation).
  *
- * This works by putting the scanner into an Lhtml mode (done above
- * in compile_and_run()) where <?, <?=, and ?> are recognized.
+ * This works by putting the scanner into an Lhtml mode where
+ * <?, <?=, and ?> are recognized. The parser contains rules for
+ * wrapping the html in puts() calls.
  */
 int
 Tcl_LHtmlObjCmd(
@@ -7757,73 +7704,11 @@ Tcl_LHtmlObjCmd(
     int objc,			/* Number of arguments. */
     Tcl_Obj *const objv[])	/* Argument objects. */
 {
-	char		*end, *s;
-	int		len, line, ret = TCL_OK;
-	Tcl_Obj		*errs, *out;
+	int	ret;
 
-	if ((objc < 2) || (objc > 4)) {
-		Tcl_WrongNumArgs(interp, 1, objv, "[opts] lhtml-document");
-		return (TCL_ERROR);
-	}
-	ret = parse_options(objc-1, (Tcl_Obj **)objv+1, L_attrs_Lhtml);
-	unless (ret == TCL_OK) {
-		Tcl_SetObjResult(interp, L->errs);
-		return (TCL_ERROR);
-	}
-	if ((s = hash_get(L->options, "line"))) {
-		line = atoi(s);
-	} else {
-		line = 1;
-	}
-	if ((s = hash_get(L->options, "lineadj"))) {
-		line += atoi(s);
-	}
-	s = Tcl_GetStringFromObj(objv[objc-1], &len);
-	end = s + len;
-	errs = Tcl_NewObj();
-	out  = Tcl_NewObj();
-	Tcl_IncrRefCount(errs);
-	Tcl_IncrRefCount(out);
-	while (s < end) {
-		if (s[0] == '\n') {
-			++line;
-			Tcl_AppendToObj(out, s, 1);
-			s += 1;
-		} else if ((s[0] == '\r') && (s[1] == '\n')) {
-			++line;
-			Tcl_AppendToObj(out, s, 2);
-			s += 2;
-		} else if ((s[0] == '<') && (s[1] == '?')) {
-			if (out->length) {
-				tcl_puts(out);
-				Tcl_SetStringObj(out, NULL, 0);
-			}
-			/*
-			 * This compiles up to the "?>" ending delim (or EOF).
-			 * Concat all error messages so we can return them all.
-			 */
-			if (compile_and_run(line, s) != TCL_OK) {
-				Tcl_AppendObjToObj(errs,
-						   Tcl_GetObjResult(interp));
-				ret = TCL_ERROR;
-			}
-			s += L->scanned_chars;
-			line += L->scanned_lines;
-			unless ((s[-2] == '?') && (s[-1] == '>')) {
-				Tcl_AppendToObj(errs,
-					"premature EOF in Lhtml document", -1);
-				ret = TCL_ERROR;
-				break;
-			}
-		} else {
-			Tcl_AppendToObj(out, s, 1);
-			s += 1;
-		}
-	}
-	if (out->length) tcl_puts(out);
-	Tcl_DecrRefCount(out);
-	unless (ret == TCL_OK) Tcl_SetObjResult(interp, errs);
-	Tcl_DecrRefCount(errs);
+	L_lex_begLhtml();
+	ret = Tcl_LObjCmd(NULL, interp, objc, objv);
+	L_lex_endLhtml();
 	return (ret);
 }
 
