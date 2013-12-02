@@ -485,7 +485,7 @@ EOF
 {
 
 	if (ac == 0) return (-1);
-label:	function(args);
+ label:	function(args);
 	for (i = 0; cmds[i].name; ++i) {
 		if (strcasecmp(av[0], cmds[i].name) == 0) {
 			if (streq(av[0], "pull")) av[0] = "remote pull";
@@ -506,7 +506,7 @@ EOF
 {
 
 	if (ac == 0) return (-1);
-label:	function(args);
+ label:	function(args);
 	for (i = 0; cmds[i].name; ++i) {
 		if (strcasecmp(av[0], cmds[i].name) == 0) {
 			if (streq(av[0], "pull")) av[0] = "remote pull";
@@ -532,7 +532,6 @@ run_test "void Scan::complete (const Status scanStatus, const utf::SlightlyEmbar
 run_test "static void Scan::complete (const Status scanStatus, const utf::SlightlyEmbarrassinglyButAlphanumericallyNamedString &errorString)" "static void Scan::complete (const Status"
 run_test "Region::element_iterator Region::element_begin()" "Region::element_iterator Region::element"
 # invalid ones should match main
-run_test "a::::::()" "main(int ac, char **av)"
 run_test "(void)funcall();" "main(int ac, char **av)"
 echo OK
 
