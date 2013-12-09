@@ -965,7 +965,7 @@ diff_printUnified(df_ctx *dc, char *nameA, time_t *timeA,
 		 */
 		for (j = i + 1; j <= nHunks; j++) {
 			if ((h[j].li - (h[j-1].li + h[j-1].ll))
-			    > (context * 2)) {
+			    > (context * 2) + 1) {
 				break;
 			}
 		}

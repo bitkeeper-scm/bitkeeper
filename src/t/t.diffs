@@ -625,3 +625,10 @@ cat <<EOF > ../WANT
 EOF
 cmpfiles ../WANT ../GOT
 echo OK
+
+echo $N Test diffs -R+ file for non-existent file....................$NL
+bk diffs -R+ this-file-does-not-exist > GOT
+cat <<EOF > WANT
+EOF
+cmpfiles WANT GOT
+echo OK

@@ -491,6 +491,7 @@ nulldiff(char *name, df_opt *dop)
 	char	*here, *file, *p;
 
 	name = sccs2name(name);
+	unless (exists(name)) goto out;
 	unless (dop->new_is_null) {
 		printf("New file: %s\n", name);
 		goto out;
