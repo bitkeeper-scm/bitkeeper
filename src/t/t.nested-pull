@@ -1469,6 +1469,17 @@ cmpfiles WANT GOT
 bk unpull $Q -sf
 echo OK
 
+echo $N Try to pull -rREV before a comp from repo without comp ......$NL
+# Bug fix in nested.c to ignore weave data in uncolored region
+# Tickled by call to nested_init() in bkd_pull.c
+cd ../remote
+# tickle the bug directly
+bk _nested -r1.11 > xxx || fail
+bk here rm $Q -f GTOOLS
+cd ../local
+bk pull $Q -r1.11 ../remote || fail
+echo OK
+
 echo $N Test a pull aborting due to an edited file ..................$NL
 cd "$HERE"/project
 bk clone $Q . ../edited
