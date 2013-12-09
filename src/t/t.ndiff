@@ -783,6 +783,39 @@ bk ndiff A B > GOT
 cmpfiles WANT GOT
 echo OK
 
+echo $N Do a unified diff where the context overlaps.................$NL
+rm -f A
+i=1
+while [ $i -le 100 ]
+do
+	echo $i >> A
+	i=`expr $i + 1`
+done
+cat A | sed 's/^10$/A/;s/^18$/B/;' > B
+bk --trace=tmp ndiff -up A B | grep -v ^--- | grep -v ^+++ > GOT
+cat <<EOF > WANT
+@@ -7,15 +7,15 @@ 
+ 7
+ 8
+ 9
+-10
++A
+ 11
+ 12
+ 13
+ 14
+ 15
+ 16
+ 17
+-18
++B
+ 19
+ 20
+ 21
+EOF
+cmpfiles WANT GOT
+echo OK
+
 echo $N Add a line at end of function and a new function.............$NL
 cat <<EOF > A
 int
