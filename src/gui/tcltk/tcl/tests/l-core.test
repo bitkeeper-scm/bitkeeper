@@ -4915,6 +4915,20 @@ void strindex_6()
 strindex_6();
 } -returnCodes error -result {index is more than one past end of string}
 
+test strindex-7 {multi-index string indexing} -body {
+#lang L --line=1
+void strindex_7()
+{
+	string	s = "value";
+
+	s[0][0] = "x";
+	s[0][0][0] = "x";
+}
+strindex_7();
+} -returnCodes error -match regexp -result {.*5: L Error: cannot index a string index
+.*6: L Error: cannot index a string index
+}
+
 test slice-1 {string slicing} -body {
 #lang L --line=1
 string slice_1_f(string s) { return (s); }
@@ -5390,6 +5404,75 @@ void end_10()
 	for (i = 0; i < 100; ++i) a[END,0];
 }
 end_10();
+} -output {}
+
+test end-11 {check deeply nested ENDs} -body {
+#lang L
+void end_11()
+{
+	/*
+	 * Test that 40 ENDs can stack up.
+	 */
+
+	int	a[] = { 1, 0, 0 };
+	int	i;
+
+	i = a[END-1 + a[END-1 + a[END-1 + a[END-1 + a[END-1 +
+	    a[END-1 + a[END-1 + a[END-1 + a[END-1 + a[END-1 +
+	    a[END-1 + a[END-1 + a[END-1 + a[END-1 + a[END-1 +
+	    a[END-1 + a[END-1 + a[END-1 + a[END-1 + a[END-1 +
+	    a[END-1 + a[END-1 + a[END-1 + a[END-1 + a[END-1 +
+	    a[END-1 + a[END-1 + a[END-1 + a[END-1 + a[END-1 +
+	    a[END-1 + a[END-1 + a[END-1 + a[END-1 + a[END-1 +
+	    a[END-1 + a[END-1 + a[END-1 + a[END-1 +
+	    a[END]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]];
+	unless (i == 0) puts("bad");
+}
+end_11();
+} -output {}
+
+test end-12 {check END in various contexts} -body {
+#lang L
+int end_12f(int a, int b)
+{
+	unless (a == b) {
+		puts("bad ${a} ${b}");
+	}
+	return (a);
+}
+void end_12()
+{
+	int	a[] = { 1, 2, 3 };
+	int	i;
+
+	// END in an arg list
+	a[end_12f(END,2)];
+	a[end_12f(2,END)];
+
+	// END is an id, array index
+	i = a[END];
+	unless (i == 3) puts("bad 1");
+
+	// END is an id, array slice
+	a[0..(i=END)];
+	unless (i == 2) puts("bad 2.1");
+	a[(i=END)..END];
+	unless (i == 2) puts("bad 2.2");
+
+	// END in a unary op
+	i = a[+END];
+	unless (i == 3) puts("bad 3");
+
+	// END in a binary op
+	a[i=END+END];
+	unless (i == 4) puts("bad 4");
+
+	// END in a trinary op
+	i = 0;
+	a[END==2 ? (i=END) : (i=0)];
+	unless (i == 2) puts("bad 5");
+}
+end_12();
 } -output {}
 
 test loop-1.0 {while loops} -body {
@@ -9958,6 +10041,7 @@ void deep_5_1()
 {
 	block	b, v1, v2;
 	string	h{string}, h2{string}, h3{string};
+	string	a1[][], a2[][];
 
 	/*
 	 * Having the rhs be a string concat creates an object with a
@@ -9974,6 +10058,24 @@ void deep_5_1()
 
 	unless (v1.line eq "LINE11") puts("v1 bad: ${v1}");
 	unless (v2.line eq "LINE2") puts("v2 bad: ${v2}");
+
+	/*
+	 * Do it again but with a list of a list (2d array in this case).
+	 * Having the rhs be a string concat creates an object with a
+	 * refCount of 1.
+	 */
+
+	a1 = { { "old" . "val" } };
+	a2 = a1;
+	a1[0][0] = "newval";
+	unless (a1[0][0] == "newval") puts("a1[][] bad 1");
+	unless (a2[0][0] == "oldval") puts("a2[][] bad 2");
+
+	a1 = { { } };
+	a2 = a1;
+	a1[0][0] = "newval";
+	unless (a1[0][0] == "newval") puts("a1[][] bad 3");
+	if (a2[0][0]) puts("a2[][] bad 4");
 
 	/* Try the same thing with hashes. */
 

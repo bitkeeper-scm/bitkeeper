@@ -1933,6 +1933,51 @@ UpdateStringOfList(
 }
 
 /*
+ *----------------------------------------------------------------------
+ *
+ * TclDuplicateListRep --
+ *
+ *	Create an unshared copy of a list's internal representation.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	The object's internal representation is changed to point to
+ *	a newly allocated copy of its old representation.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TclDuplicateListRep(Tcl_Obj *objPtr)
+{
+    int i, numElems;
+    List *listRepPtr, *oldListRepPtr;
+    Tcl_Obj **elemPtrs, **oldElems;
+
+    listRepPtr = (List *)objPtr->internalRep.twoPtrValue.ptr1;
+    if (listRepPtr->refCount > 1) {
+	oldListRepPtr = listRepPtr;
+	numElems = listRepPtr->elemCount;
+	listRepPtr = NewListIntRep(listRepPtr->maxElemCount, NULL);
+	if (!listRepPtr) {
+	    Tcl_Panic("Not enough memory to allocate list");
+	}
+	oldElems = &oldListRepPtr->elements;
+	elemPtrs = &listRepPtr->elements;
+	for (i=0; i<numElems; i++) {
+	    elemPtrs[i] = oldElems[i];
+	    Tcl_IncrRefCount(elemPtrs[i]);
+	}
+	listRepPtr->elemCount = numElems;
+	listRepPtr->refCount++;
+	oldListRepPtr->refCount--;
+	objPtr->internalRep.twoPtrValue.ptr1 = (void *) listRepPtr;
+    }
+}
+
+/*
  * Local Variables:
  * mode: c
  * c-basic-offset: 4

@@ -258,7 +258,7 @@ typedef enum {
 	L_IDX_HASH    = 0x00000020,
 	L_IDX_STRING  = 0x00000040,
 	L_LVALUE      = 0x00000080, // if we will be writing the obj
-	L_DELETE      = 0x00000100, // delete obj from its parent hash/array
+	L_DELETE      = 0x00000100, // delete from parent hash/array/string
 	L_PUSH_VAL    = 0x00000200, // what we want INST_L_INDEX to leave on
 	L_PUSH_PTR    = 0x00000400, //   the stack
 	L_PUSH_VALPTR = 0x00000800,
@@ -276,7 +276,7 @@ typedef enum {
 	L_SPLIT_LIM   = 0x00800000, // enforce split limit
 	L_INSERT_ELT  = 0x01000000, // insert a single elt into a list
 	L_INSERT_LIST = 0x02000000, // insert a list into a list
-	L_WAS_DUPD    = 0x04000000, // obj was dup'd to make an unshared copy
+	L_NEG_OK      = 0x04000000, // indexing element -1 is OK
 	L_EXPR_RE_L   = 0x08000000, // expr is an re with "l" qualifier
 } Expr_f;
 

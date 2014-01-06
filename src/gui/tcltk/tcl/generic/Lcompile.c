@@ -255,6 +255,7 @@ private void	frame_push(void *node, char *name, Frame_f flags);
 private void	frame_resumeBody();
 private void	frame_resumePrologue();
 private char	*get_text(Expr *expr);
+private int	has_END(Expr *expr);
 private void	init_predefined();
 private Type	*iscallbyname(VarDecl *formal);
 private int	ispatternfn(char *name, Expr **foo, Expr **Foo_star,
@@ -1919,8 +1920,8 @@ compile_pop_shift(Expr *expr)
 			  loc,
 			  loc);
 	expr->b->a = arg;
-	/* L_DELETE here permits indexing element -1 (array already empty). */
-	compile_expr(arg, L_PUSH_PTR | L_DELETE | L_LVALUE);
+	/* L_NEG_OK here permits indexing element -1 (array already empty). */
+	compile_expr(arg, L_PUSH_PTR | L_DELETE | L_NEG_OK | L_LVALUE);
 	unless (isarray(arg->a) || ispoly(arg->a)) {
 		L_errf(expr, "arg to %s not an array reference (&)", opNm);
 		return (0);
@@ -2562,7 +2563,7 @@ compile_undef(Expr *expr)
 	int	n;
 	Expr	*arg = expr->b;
 
-	n = compile_exprs(arg, L_PUSH_PTR | L_LVALUE);
+	n = compile_exprs(arg, L_PUSH_PTR | L_DELETE | L_LVALUE);
 	unless (n == 1) {
 		L_errf(expr, "incorrect # args to undef");
 		goto done;
@@ -3813,11 +3814,14 @@ compile_trinOp(Expr *expr)
 			L_errf(expr->a, "illegal type for slice");
 			expr->type = L_poly;
 		}
-		if (isstring(expr->a) || iswidget(expr->a)) {
-			TclEmitOpcode(INST_L_PUSH_STR_SIZE, L->frame->envPtr);
-		} else if (isarray(expr->a) || islist(expr->a) ||
-			   ispoly(expr->a)) {
-			TclEmitOpcode(INST_L_PUSH_LIST_SIZE, L->frame->envPtr);
+		if (has_END(expr->b) || has_END(expr->c)) {
+			if (isstring(expr->a) || iswidget(expr->a)) {
+				TclEmitOpcode(INST_L_PUSH_STR_SIZE,
+					      L->frame->envPtr);
+			} else {
+				TclEmitOpcode(INST_L_PUSH_LIST_SIZE,
+					      L->frame->envPtr);
+			}
 		}
 		save = L->idx_op;
 		L->idx_op = L_OP_ARRAY_SLICE;
@@ -3830,7 +3834,7 @@ compile_trinOp(Expr *expr)
 			L_errf(expr->c, "second slice index not an int");
 		}
 		L->idx_op = save;
-		if (istype(expr->a, L_STRING|L_WIDGET|L_ARRAY|L_LIST|L_POLY)) {
+		if (has_END(expr->b) || has_END(expr->c)) {
 			TclEmitOpcode(INST_L_POP_SIZE, L->frame->envPtr);
 		}
 		emit_invoke(i);
@@ -5054,6 +5058,50 @@ struct_lookupMember(Type *t, Expr *idx, int *offset)
 }
 
 /*
+ * Determine whether an array index expression contains a reference to
+ * the array's END index.
+ */
+private int
+has_END(Expr *expr)
+{
+	Expr	*p;
+
+	unless (expr) return (0);
+	switch (expr->kind) {
+	    case L_EXPR_FUNCALL:
+		for (p = expr->b; p; p = p->next) {
+			if (isid(p, "END")) return (1);
+		}
+		return (0);
+	    case L_EXPR_CONST:
+	    case L_EXPR_RE:
+		return (0);
+	    case L_EXPR_ID:
+		return (isid(expr, "END"));
+	    case L_EXPR_UNOP:
+		return (has_END(expr->a));
+	    case L_EXPR_BINOP:
+		if (expr->op == L_OP_POINTS) {
+			/* END in a nested index refers to another array. */
+			return (0);
+		} else {
+			return (has_END(expr->a) || has_END(expr->b));
+		}
+	    case L_EXPR_TRINOP:
+		if (expr->op == L_OP_ARRAY_SLICE) {
+			/* END in a nested index refers to another array. */
+			return (0);
+		} else {
+			return (has_END(expr->a) || has_END(expr->b) ||
+				has_END(expr->c));
+		}
+	    default: ASSERT(0);
+	}
+	/*NOTREACHED*/
+	return (0);
+}
+
+/*
  * Generate code to push an array/hash/struct/string index onto the stack.
  * Return flags suitable for the INST_L_INDEX instruction which indicate
  * whether the operator is an array, hash, struct, or string index.
@@ -5099,6 +5147,16 @@ push_index(Expr *expr, int flags)
 			type = expr->a->type->base_type;
 			ret  = L_IDX_ARRAY;
 		} else if (isstring(expr->a) || iswidget(expr->a)) {
+			/*
+			 * Disallow stringvar[0][0] = "x". It doesn't make much
+			 * sense and INST_L_DEEP_WRITE can't handle it anyway.
+			 */
+			if ((expr->a->op == L_OP_ARRAY_INDEX) &&
+			    expr->a->sym &&
+			    isstring(expr->a->a) &&
+			    (expr->a->flags & L_LVALUE)) {
+				L_errf(expr, "cannot index a string index");
+			}
 			type = L_string;
 			ret  = L_IDX_STRING;
 		} else if (ispoly(expr->a)) {
@@ -5238,11 +5296,13 @@ compile_idxOp2(Expr *expr, Expr_f flags)
 		return (compile_clsInstDeref(expr, flags));
 	}
 
-	if (flags & L_REUSE_IDX) {
-	} else if (isstring(expr->a) || iswidget(expr->a)) {
-		TclEmitOpcode(INST_L_PUSH_STR_SIZE, L->frame->envPtr);
-	} else if (isarray(expr->a) || islist(expr->a) || ispoly(expr->a)) {
-		TclEmitOpcode(INST_L_PUSH_LIST_SIZE, L->frame->envPtr);
+	if (has_END(expr->b)) {
+		if (flags & L_REUSE_IDX) {
+		} else if (isstring(expr->a) || iswidget(expr->a)) {
+			TclEmitOpcode(INST_L_PUSH_STR_SIZE, L->frame->envPtr);
+		} else {
+			TclEmitOpcode(INST_L_PUSH_LIST_SIZE, L->frame->envPtr);
+		}
 	}
 
 	save = L->idx_op;
@@ -5250,8 +5310,7 @@ compile_idxOp2(Expr *expr, Expr_f flags)
 	flags |= push_index(expr, flags);
 	L->idx_op = save;
 
-	if (istype(expr->a, L_STRING|L_WIDGET|L_ARRAY|L_LIST|L_POLY) &&
-	    !(flags & L_REUSE_IDX)) {
+	if (has_END(expr->b)) {
 		TclEmitOpcode(INST_L_POP_SIZE, L->frame->envPtr);
 	}
 
@@ -5289,7 +5348,7 @@ compile_idxOp2(Expr *expr, Expr_f flags)
 
 	expr->sym   = expr->a->sym;  // propagate sym table ptr up the tree
 	expr->flags = flags | L_EXPR_DEEP;
-	return (1);
+	return ((flags & L_DISCARD) ? 0 : 1);
 }
 
 /* Compile classname->var. */

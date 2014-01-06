@@ -16,13 +16,12 @@ if {[lsearch [namespace children] ::tcltest] == -1} {
 set haveMem [llength [info commands memory]]
 testConstraint memory $haveMem
 
-if {$haveMem} {
-    proc getbytes {} {
-	set lines [split [memory info] "\n"]
-	lindex $lines 3 3
-    }
-    set lam [list {} {set a 1}]
+#lang L
+int getbytes()
+{
+	return ((int)(split(split(/\n/, Memory_info())[3])[3]));
 }
+#lang tcl
 
 # This causes L to keep running L code even after a compile error.
 set ::env(_L_TEST) 1
