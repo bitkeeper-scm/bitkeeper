@@ -3694,11 +3694,16 @@ void op_1_3_3()
 	/*
 	 * More cases (prompted by bugs):
 	 * - hash w/underlying dict elements added in different order
+	 * - two hashes w/same key but different value
 	 */
 
 	hs1 = { "k1"=>"v1", "k2"=>"v2" };
 	hs2 = { "k2"=>"v2", "k1"=>"v1" };
 	unless (eq(hs1,hs2)) puts("bad 22.1");
+
+	hs1 = { "k"=>"v1" };
+	hs2 = { "k"=>"v2" };
+	if (eq(hs1,hs2)) puts("bad 22.2");
 
 	push(&ahs1, hs1);
 	push(&ahs1, hs2);

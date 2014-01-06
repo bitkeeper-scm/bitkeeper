@@ -2174,12 +2174,11 @@ compile_eq_stack(Expr *expr, Type *type)
 	    case L_HASH:
 		/*
 		 *     if (length(lhs) != length(rhs)) goto out_false2
-		 *     itmp = length(rhs)
 		 *     if [dict first lhs] goto out_true
 		 * top_off:
-		 *     // stack: key val
+		 *     // stack: val key (key is on top)
 		 *     unless [::dict exists rhs key] goto out_false
-		 *     unless [::dict get rhs key] == val goto out_false
+		 *     unless [::dict get rhs key] == val goto out_false2
 		 *     unless [dict next] goto top_off
 		 * out_true:
 		 *     pop   // pop key
@@ -2197,38 +2196,58 @@ compile_eq_stack(Expr *expr, Type *type)
 		push_lit("::dict");
 		push_lit("size");
 		emit_load_scalar(ltmp->idx);
+		// ::dict size lhs
 		emit_invoke(3);
+		// <lhs-size>
 		push_lit("::dict");
 		push_lit("size");
 		emit_load_scalar(rtmp->idx);
+		// <lhs-size> ::dict size rhs
 		emit_invoke(3);
+		// <lhs-size> <rhs-size>
 		TclEmitOpcode(INST_EQ, L->frame->envPtr);
+		// <true/false>
 		out_false2 = emit_jmp_fwd(INST_JUMP_FALSE4, out_false2);
 		emit_load_scalar(ltmp->idx);
+		// lhs
 		TclEmitInstInt4(INST_DICT_FIRST, itmp->idx, L->frame->envPtr);
+		// <lhs-val> <lhs-key> <done-flag>
 		out_true = emit_jmp_fwd(INST_JUMP_TRUE4, out_true);
 		top_off = currOffset(L->frame->envPtr);
+		// <lhs-val> <lhs-key>
 		TclEmitOpcode(INST_DUP, L->frame->envPtr);
+		// <lhs-val> <lhs-key> <lhs-key>
 		push_lit("::dict");
 		push_lit("exists");
 		emit_load_scalar(rtmp->idx);
+		// <lhs-val> <lhs-key> <lhs-key> ::dict exists rhs
 		TclEmitInstInt1(INST_ROT, 3, L->frame->envPtr);
+		// <lhs-val> <lhs-key> ::dict exists rhs <lhs-key>
 		emit_invoke(4);
+		// <lhs-val> <lhs-key> <rhs-exists-flag>
 		out_false = emit_jmp_fwd(INST_JUMP_FALSE4, out_false);
+		// <lhs-val> <lhs-key>
 		push_lit("::dict");
 		push_lit("get");
 		emit_load_scalar(rtmp->idx);
+		// <lhs-val> <lhs-key> ::dict get rhs
 		TclEmitInstInt1(INST_ROT, 3, L->frame->envPtr);
+		// <lhs-val> ::dict get rhs <lhs-key>
 		emit_invoke(4);
+		// <lhs-val> <rhs-val>
 		compile_eq_stack(expr, type->base_type);
-		out_false = emit_jmp_fwd(INST_JUMP_FALSE4, out_false);
+		// <equals-flag>
+		out_false2 = emit_jmp_fwd(INST_JUMP_FALSE4, out_false2);
 		TclEmitInstInt4(INST_DICT_NEXT, itmp->idx, L->frame->envPtr);
+		// <lhs-val> <lhs-key> <done-flag>
 		emit_jmp_back(TCL_FALSE_JUMP, top_off);
 		fixup_jmps(&out_true);
+		// <lhs-val> <lhs-key>
 		emit_pop();
 		emit_pop();
 		push_lit("1");
 		out = emit_jmp_fwd(INST_JUMP1, out);
+		// <lhs-val> <lhs-key>
 		fixup_jmps(&out_false);
 		emit_pop();
 		emit_pop();
