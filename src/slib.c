@@ -10209,6 +10209,7 @@ bk_badFilename(char *name)
 	if (streq(base, BKSKIP)) return (1);
 	if (streq(base, GCHANGESET) && !streq(name, GCHANGESET)) return (1);
 	if (streq(base, ".bk")) return (1);
+	if (streq(base, ".") || streq(base, "..")) return (1);
 
 	return (0);
 }
