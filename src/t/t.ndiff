@@ -873,3 +873,27 @@ EOF
 bk ndiff A B > GOT
 cmpfiles WANT GOT
 echo failed \(bug align\)
+
+echo $N Test alignment of lines within diff blocks in sdiff..........$NL
+cat <<EOF > A
+badger
+mushroom
+badger
+EOF
+cat <<EOF > B
+badger
+if (a snake)
+  mushroom
+endif
+badger
+EOF
+bk ndiff --sdiff=1 A B > GOT
+cat <<EOF > WANT
+ 
+>
+|
+>
+ 
+EOF
+cmpfiles WANT GOT
+echo OK

@@ -422,7 +422,14 @@ proc readFiles {L R {O {}}} \
 
 	set d [sdiff $L $R]
 	set data [read $d]
-	catch {close $d}
+	if {[catch {close $d} err why]} {
+		set code [dict get $why -errorcode]
+		set code [lindex $code 0]
+		if {$code ne "CHILDSTATUS"} {
+			displayMessage "diff: $err: $code"
+			return 1
+		}
+	}
 
 	set lastDiff 0
 	if {[regexp {^Binary files.*differ} $data]} {
