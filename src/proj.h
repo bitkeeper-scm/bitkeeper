@@ -47,6 +47,7 @@ project*	proj_findProduct(project *p);
 project*	proj_isResync(project *p);
 int		proj_leaseChecked(project *p, int write);
 char*		proj_md5rootkey(project *p);
+char*		proj_syncroot(project *p);
 char*		proj_repoID(project *p);
 char*		proj_relpath(project *p, char *path);
 void		proj_reset(project *p);

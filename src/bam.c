@@ -386,7 +386,7 @@ nofile:			fprintf(stderr, "BAM: insert to %s failed\n", buf);
 			unless (canmv) unlink(tmp);
 			return (1);
 		}
-		chmod(buf, (mode & 0555));
+		if (mode) chmod(buf, (mode & 0555));
 	}
 domap:
 	/* move p to path relative to BAM dir */
@@ -487,6 +487,86 @@ bp_lookup(sccs *s, ser_t d)
 	return (ret);
 }
 
+private char *
+bp_bamPath(project *proj, char *buf, int syncroot)
+{
+	project	*prod, *ptmp;
+	char	*p;
+	char	*rk, *sk;
+
+	/* find repo where BAM dir is stored */
+	unless (prod = proj_isResync(proj)) prod = proj;
+	if (ptmp = proj_product(prod)) prod = ptmp;
+
+	concat_path(buf, proj_root(prod), BAM_ROOT "/");
+	p = buf + strlen(buf);
+	if (getenv("_BK_IN_BKD") && getenv("BK_ROOTKEY")) {
+		rk = getenv(syncroot ? "BK_SYNCROOT" : "BK_ROOTKEY");
+		unless (rk) return (0);
+	} else {
+		rk = proj_rootkey(proj);
+		if (syncroot) {
+			sk = proj_syncroot(proj);
+			if (streq(rk, sk)) return (0);
+			rk = sk;
+		}
+	}
+	assert(rk);
+	strcpy(p, rk);
+	/* ROOTKEY =~ s/[\|:]/-/g */
+	while (p = strpbrk(p, "|:")) *p++ = '-';	/* : for windows */
+	return (buf);
+}
+
+/*
+ * return 0 - OK; 1 - ERR; 2 - Block recurse
+ */
+private	int
+bp_merge(char *from, char *to)
+{
+	project	*src = proj_init(from);	/* do we have to recurse up? */
+	project	*dest = proj_init(to);
+	char	*p, *key;
+	int	rc = 0;
+	MDBM	*db;
+	kvpair	kv;
+	char	buf[MAXPATH];
+
+	if (getenv("_BK_BAM_MERGE")) return (2);	/* block recursion */
+	/*
+	 * Walk all the local bam files and add to other repo
+	 * BAM servers can have data not pointed to by any delta.
+	 */
+	concat_path(buf, from, BAM_DB);
+	unless (exists(buf)) {
+		fprintf(stderr, "no bam index\n");
+		return (0);
+	}
+	unless (db = mdbm_open(buf, O_RDONLY, 0666, 8192)) {
+		fprintf(stderr, "no bam index open\n");
+		return (0);
+	}
+	putenv("_BK_BAM_MERGE=1");
+	EACH_KV(db) {
+		/* in the log and not here.  Ignore for now */
+		unless (p = bp_lookupkeys(src, kv.key.dptr)) {
+			continue;
+		}
+		key = strdup(kv.key.dptr);	/* need writable string */
+		rc = bp_insert(dest, p, key, 1, 0);
+		free(key);
+		free(p);
+		if (rc) {
+			/* save reviewer time: sanitize rc from bp_insert(); */
+			rc = 1;
+			break;
+		}
+	}
+	mdbm_close(db);
+	putenv("_BK_BAM_MERGE=");
+	return (rc);
+}
+
 /*
  * Return path to BAM data for this project.
  * proj_root(proj_product(proj))/BAM_ROOT/proj_rootkey(proj)
@@ -501,32 +581,70 @@ bp_lookup(sccs *s, ser_t d)
 char *
 bp_dataroot(project *proj, char *buf)
 {
-	project	*root, *prod;
-	char	*p, *t;
+	project	*root;
+	struct	stat	sb;
 	char    tmp[MAXPATH];
 	char	old[MAXPATH];
+	int	rc;
 
 	unless (buf) buf = tmp;
-	unless (root = proj_isResync(proj)) root = proj;
-	unless (prod = proj_product(root)) prod = root;
-	concat_path(buf, proj_root(prod), BAM_ROOT "/");
-	p = buf + strlen(buf);
-	if (getenv("_BK_IN_BKD") && (t = getenv("BK_ROOTKEY"))) {
-		strcpy(p, t);
+
+	/* try using syncroot for BAM */
+	if (bp_bamPath(proj, buf, 1)) {
+		bp_bamPath(proj, old, 0);
+		assert(!streq(old, buf));
+		if (lstat(old, &sb)) {
+			/* nothing at rootkey, create link */
+mklink:			if (features_minrelease(proj, 0) <= 6) {
+#ifdef	WIN32
+				Fprintf(old,
+				    "If you are seeing "
+				    "'Failed to locate BAM Data ...',\n"
+				    "please upgrade BK and try again.\n"
+				    "The BAM data layout has been upgraded.\n"
+				    "Data was moved to\n\t%s\n",
+				    buf);	/* block old bk with a file */
+#else
+				if (symlink(basenm(buf), old) &&
+				    (errno != ENOENT)) {
+					fprintf(stderr, "BAM symlink fail:\n"
+					    "\t%s\nto\t%s\n",
+					    old, basenm(buf));
+					exit(1);
+				}
+#endif
+			}
+		} else if (S_ISDIR(sb.st_mode)) {
+			/* found old BAM data */
+			if (isdir(buf)) {
+				if (rc = bp_merge(old, buf)) {
+					if (rc == 2) goto old;
+					fprintf(stderr, "BP MERGE FAILED\n");
+					exit(1);
+				}
+				proj_reset(proj); /* close index.db */
+				rmtree(old);	/* careful! */
+			} else if (rename(old, buf)) {
+				fprintf(stderr,
+				    "BAM move fail:\n"
+				    "\t%s\nto\t%s\n",
+				    old, buf);
+				exit(1);
+			}
+			goto mklink;
+		}
 	} else {
-		strcpy(p, proj_rootkey(proj));
+old:		bp_bamPath(proj, buf, 0);
 	}
-	/* ROOTKEY =~ s/\|/-/g */
-	while (p = strpbrk(p, "|:")) *p++ = '-';	/* : for windows */
 
 	unless (isdir(buf)) {
 		/* test for old bam dir */
+		unless (root = proj_isResync(proj)) root = proj;
 		concat_path(old, proj_root(root), BAM_ROOT "/" BAM_DB);
 		if (getenv("_BK_BAM_V2") || exists(old)) {
 			strcpy(buf, dirname(old));
 		}
 	}
-
 	if (buf == tmp) {
 		return (strdup(buf));
 	} else {

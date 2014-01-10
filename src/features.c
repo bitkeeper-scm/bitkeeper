@@ -52,7 +52,7 @@ features_main(int ac, char **av)
 			printf("\n");
 			return (0);
 		    case 'm':
-			features_minrelease();
+			features_dumpMinRelease();
 			return (0);
 		    case 'o':
 			comma = 0;
@@ -433,13 +433,12 @@ features_fromBits(u32 bits)
 	return (ret);
 }
 
-void
-features_minrelease(void)
+int
+features_minrelease(project *proj, char ***list)
 {
 	int	minrel = 4;
 	u32	repof;
 	int	i;
-	char	**list = 0;
 	struct {
 		u32	mask;
 		int	ver;
@@ -458,19 +457,30 @@ features_minrelease(void)
 	 * table from bk-features.h, but really only the lines where
 	 * d==1 are tested.
 	 */
-	repof = features_bits(0);
+	repof = features_bits(proj);
 	for (i = 0; repof && bits[i].mask; i++) {
 		if (repof & bits[i].mask) {
 			if (bits[i].ver > minrel) {
 				minrel = bits[i].ver;
-				truncLines(list, 0);
+				if (list) truncLines(*list, 0);
 			}
-			if (bits[i].ver == minrel) {
-				list = addLine(list, bits[i].name);
+			if (list && (bits[i].ver == minrel)) {
+				*list = addLine(*list, bits[i].name);
 			}
 			repof &= ~bits[i].mask;
 		}
 	}
+	return (minrel);
+}
+
+void
+features_dumpMinRelease(void)
+{
+	int	i;
+	char	**list = 0;
+	int	minrel;
+
+	minrel = features_minrelease(0, &list);
 	printf("This repository is compatible with bk-%d.x and later", minrel);
 	unless (minrel == 4) {
 		printf(" because of features:\n\t");

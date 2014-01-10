@@ -72,4 +72,5 @@ char	*features_list(project *p);
 int	features_bkdCheck(int in_bkd, int no_repo);
 u32	features_toBits(char *features, char *bad);
 char	*features_fromBits(u32 bits);
-void	features_minrelease(void);
+int	features_minrelease(project *proj, char ***list);
+void	features_dumpMinRelease(void);

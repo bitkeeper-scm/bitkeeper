@@ -10,10 +10,12 @@ export _BK_FORCE_NETFS
 echo $N Check bitkeeper 6.0 installation ............................$NL
 if [ -n "$BK_DEV_SKIPTEST" ]; then echo skipped; exit 0; fi
 # Skip this test for Windows VISTA
-OSTYPE=`uname -s`
-case $OSTYPE in
-	MINGW32_NT-6.*) echo skipped; exit 0;;
-esac
+test -d $OLDBK || {
+	OSTYPE=`uname -s`
+	case $OSTYPE in
+		MINGW32_NT-6.*) echo skipped; exit 0;;
+	esac
+}
 echo license: $BKL_PRO > c
 echo licsign1: $BKL_P1 >> c
 echo licsign2: $BKL_P2 >> c
@@ -187,6 +189,38 @@ cat <<EOF > WANT
 pull: searching http://localhost:$OLDP/nest...ok (gate)
 EOF
 cmpfiles WANT GOT
+echo OK
+
+echo $N Clone an old bam repo with new client and get bam file ......$NL
+cd "$HERE"
+# Need to create a syncroot distinct from rootkey
+# So take a standalone repo, make a BAM file, then attach it.
+$OLDBK/bk --cd=nest bam server $Q .
+$OLDBK/bk clone $Q project binary
+cd binary
+$OLDBK/bk bam server $Q ../nest
+# BAM binary data will not pass this test on windows.  Skip BAM testing.
+echo binary > bam
+if [ X"$PLATFORM" = XWIN32 ]
+then	$OLDBK/bk new $Q bam
+else	$OLDBK/bk new $Q -b bam
+fi
+$OLDBK/bk commit $Q -ybamfile
+cd ../nest
+$OLDBK/bk attach $Q ../binary binary
+cd ../binary
+$OLDBK/bk edit $Q bam
+echo dvd > bam
+$OLDBK/bk delta $Q -ybig-data bam
+$OLDBK/bk commit $Q -ypush-to-bam-server
+$OLDBK/bk push $Q
+cd ..
+# Now using a new client, clone and fetch the BAM file
+bk clone $Q \
+    --checkout=get bk://localhost:$NEWP/nest nested-bam-clone || fail
+cd nested-bam-clone/binary
+bk portal $Q .
+bk port $Q ../../binary || fail
 echo OK
 
 echo -------------- ascii cset files match
@@ -372,7 +406,7 @@ bk portal -q .
 echo OK
 
 echo $N Detach from bk6/compat to bk/bkfile - works .................$NL
-$OLDBK/bk detach $Q gcc bk://localhost:$NEWP/gcc.bk || fail
+$OLDBK/bk detach $Q -Bnone gcc bk://localhost:$NEWP/gcc.bk || fail
 echo OK
 
 echo $N Attach from bk6/compat to bk/bkfile - works .................$NL

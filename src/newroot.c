@@ -196,7 +196,6 @@ xorsyncroot(sccs *s, char *buf)
 	char	*rand;
 	mp_int	a, b;
 	project	*p;
-	char	key[MAXKEY];
 
 	/* attach isn't done - so proj_product does not yet work */
 	rand = getRandom(proj_rootkey(p = proj_findProduct(s->proj)));
@@ -204,8 +203,7 @@ xorsyncroot(sccs *s, char *buf)
 	mp_init(&a);
 	mp_read_radix(&a, rand, 16);
 
-	sccs_syncRoot(s, key);
-	rand = getRandom(key);
+	rand = getRandom(proj_syncroot(s->proj));
 	mp_init(&b);
 	mp_read_radix(&b, rand, 16);
 

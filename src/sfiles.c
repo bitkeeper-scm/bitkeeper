@@ -1729,8 +1729,13 @@ findsfiles(char *file, struct stat *sb, void *data)
 			 * lclone wants all the BAM files.  Under
 			 * clone the default prunedirs will prune this
 			 * directory, but lclone will traverse it.
+			 * We want to skip the symlink'ed BAM directories
+			 * for syncroot, those will get recreated.
 			 */
-			return (si->fn(file, sb, si->data));
+			unless (sb->st_mode) lstat(file, sb);
+			unless (S_ISLNK(sb->st_mode)) {
+				return (si->fn(file, sb, si->data));
+			}
 		}
 	}
 	return (0);
@@ -1803,7 +1808,7 @@ sfiles_clone_main(int ac, char **av)
 	}
 	if (av[optind]) usage();
 	load_project(".");
-	/* in lclone mode decsend into BAM */
+	/* in lclone mode descend into BAM */
 	if (lclone) removeLine(prunedirs, "/" BAM_ROOT, free);
 	si.fn = fastprint;
 	si.rootlen = 1;
