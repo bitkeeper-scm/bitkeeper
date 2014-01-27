@@ -80,15 +80,15 @@ bk regex 'fo[ob]+' foobar > /dev/null || {
 echo OK
 
 echo $N Check word matching .........................................$NL
-bk regex '\<foo\>' 'the foo is bar' > /dev/null || {
+bk regex '\bfoo\b' 'the foo is bar' > /dev/null || {
 	echo should have matched foo in '"the foo is bar"'
 	exit 1
 }
-bk regex '\<oo\>' 'the foo is bar' > /dev/null && {
+bk regex '\boo\b' 'the foo is bar' > /dev/null && {
 	echo should not have matched oo in '"the foo is bar"'
 	exit 1
 }
-bk regex '\<ba\>' 'the foo is bar' > /dev/null && {
+bk regex '\bba\b' 'the foo is bar' > /dev/null && {
 	echo should not have matched ba in '"the foo is bar"'
 	exit 1
 }

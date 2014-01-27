@@ -180,7 +180,7 @@ OBJ =	bkver.o cmd.o \
 	mailsplit.o mtime.o mv.o names.o ndiff.o nested.o newroot.o \
 	opark.o \
 	parent.o park.o partition.o \
-	pending.o pcre.o preference.o proj.o \
+	pending.o preference.o proj.o \
 	poly.o \
 	populate.o \
 	port/bkd_server.o \

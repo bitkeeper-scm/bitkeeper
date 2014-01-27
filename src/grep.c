@@ -12,9 +12,9 @@
  */
 /* Copyright 2003 BitMover, Inc. */
 #include "sccs.h"
-#include "regex.h"	/* has to be second, conflicts w/ system .h's */
+#include "pcre.h"
 
-private	void	doit(FILE *f, regex *re);
+private	void	doit(FILE *f, pcre *re);
 private char	*getfile(char *buf);
 private void	done(char *file);
 
@@ -44,9 +44,11 @@ grep_main(int ac, char **av)
 	int	c;
 	char	*pat;
 	FILE	*f;
+	const	char *perr;
+	int	poff;
 	char	*rev = 0, *range = 0, **cmd;
 	int	aflags = 0, args = 0;
-	regex	*re = 0;
+	pcre	*re = 0;
 	char	aopts[20];
 
 	opts.firstmatch = 1;
@@ -131,7 +133,7 @@ grep_main(int ac, char **av)
 		}
 		pat = s;
 	}
-	unless (re = re_comp(pat)) exit(2);
+	unless (re = pcre_compile(pat, 0, &perr, &poff, 0)) exit(2);
 	if (rev && range) {
 		fprintf(stderr, "grep: can't mix -r with -R\n");
 		exit(2);
@@ -194,7 +196,7 @@ grep_main(int ac, char **av)
 	putenv("BK_PRINT_EACH_NAME=YES");
 	f = popenvp(&cmd[1], "r");
 	doit(f, re);
-	re_free(re);
+	free(re);
 	if (pclose(f)) exit(2);
 	exit(opts.found ? 0 : 1);
 }
@@ -254,7 +256,7 @@ realloc:
 }
 
 private void
-doit(FILE *f, regex *re)
+doit(FILE *f, pcre *re)
 {
 	char	*p, *file = strdup("?");
 	int	match, i, j, k, n;
@@ -295,9 +297,10 @@ doit(FILE *f, regex *re)
 		if (opts.nocase) {
 			for (i = 0; p[i]; i++) lower[i] = tolower(p[i]);
 			lower[i] = 0;
-			match = re_exec(re, lower);
+			match = !pcre_exec(re, 0,
+			    lower, strlen(lower), 0, 0, 0, 0);
 		} else {
-			match = re_exec(re, p);
+			match = !pcre_exec(re, 0, p, strlen(p), 0, 0, 0, 0);
 		}
 		if (opts.invert) match = !match;
 		unless (match || print) continue;

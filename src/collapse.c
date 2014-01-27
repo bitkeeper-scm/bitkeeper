@@ -1,6 +1,6 @@
 #include "sccs.h"
 #include "resolve.h"
-#include "regex.h"
+#include "pcre.h"
 #include "range.h"
 #include "nested.h"
 #include "poly.h"
@@ -655,11 +655,13 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 	ser_t	d;
 	int	i;
 	char	**comments = 0;
+	const	char *perr;
+	int	poff;
 	char	*cmts;
 	char	*cfile = sccs_Xfile(s, 'c');
 	char	*p;
 	FILE	*f;
-	regex	*re;
+	pcre	*re;
 	char	skippat[] =
 	    "^Rename: .* ->|"
 	    "^Merge rename: .* ->|"
@@ -672,9 +674,9 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 	    "^auto-union\n$";
 
 	/* generate the list of delta comments we skip */
-	unless (re = re_comp(skippat)) {
+	unless (re = pcre_compile(skippat, 0, &perr, &poff, 0)) {
 		fprintf(stderr, "%s: regex failed %s\npat = %s\n",
-		    me, re_lasterr(), skippat);
+		    me, perr, skippat);
 		return (1);
 	}
 	EACH (rmdeltas) {
@@ -688,7 +690,10 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 		 * pattern, then ignore these comments.
 		 */
 		cmts = COMMENTS(s, d);
-		if ((strcnt(cmts, '\n') == 1) && re_exec(re, cmts)) continue;
+		if ((strcnt(cmts, '\n') == 1) &&
+		    !pcre_exec(re, 0, cmts, strlen(cmts), 0, 0, 0, 0)) {
+			continue;
+		}
 
 		p = strdup(cmts);
 		chomp(p);
@@ -698,7 +703,7 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 		chomp(p);
 		comments = addLine(comments, p);
 	}
-	re_free(re);
+	free(re);
 
 	if (comments) {
 		f = fopen(cfile, "w");

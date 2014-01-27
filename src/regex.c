@@ -1,28 +1,27 @@
-/* regex.c Copyright (c) 2004 BitMover, Inc. */
-
+#include "system.h"
 #include "sccs.h"
-#include "regex.h"	/* has to be second, conflicts w/ system .h's */
+#include "pcre.h"
 
-/*
- * This file contains routines to match file names against lists of
- * regex patterns.  
- */
 int
 regex_main(int ac, char **av)
 {
-	regex	*re = 0;
-	char	*regex = av[1];
-	int	i, matched = 0;
+	pcre	*re;
+	int	i, off;
+	const char	*error;
+	int	matched = 0;
 
 	unless (av[1] && av[2]) usage();
-	unless (re = re_comp(regex)) return (1);
+	unless (re = pcre_compile(av[1], 0, &error, &off, 0)) {
+		fprintf(stderr, "pcre_compile returned 0: %s\n", error);
+		return(1);
+	}
 	for (i = 2; av[i]; i++) {
-		if (re_exec(re, av[i])) {
+		unless (pcre_exec(re, 0, av[i], strlen(av[i]), 0, 0, 0, 0)) {
 			printf("%s matches.\n", av[i]);
 			matched = 1;
 		}
 	}
 	unless (matched) printf("No match.\n");
-	re_free(re);
+	free(re);
 	return (matched ? 0 : 1);
 }
