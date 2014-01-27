@@ -585,7 +585,7 @@ bk gate -r $Q || fail
 bk portal -r $Q || fail
 bk undo $Q -r+ -f || fail
 bk portal $Q . || fail
-bk rmdir bar
+bk rmdir bar || fail
 # it would be nice if this failed
 bk attach -q "$HERE"/stand2 bar || fail
 bk repocheck $Q 2> ERR && fail -f should fail

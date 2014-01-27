@@ -38,6 +38,10 @@ done
 bk sfiles -l A B | bk clean -
 sleep 1
 bk co $Q -l A/file1
+
+# demonstrate that not having an idcache is OK
+rm -f BitKeeper/log/x.id_cache
+
 echo "this is a comment for file1" | bk cfile save A/file1
 echo "this is a old comment for file1" | bk cfile save A/file1@1.1
 bk mv A/file1 B/file1

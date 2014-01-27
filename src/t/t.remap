@@ -27,7 +27,7 @@ for i in 1 3 5 7 9
 do
 	bk setup --sccs-compat -fc"$HERE/empty" comp$i || fail
 	mv comp$i product
-	(cd product; bk attach -N $Q comp$i || fail)
+	bk --cd=product attach -N $Q comp$i || fail
 done
 cd product
 for i in 0 2 4 6 8

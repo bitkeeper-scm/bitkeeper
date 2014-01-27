@@ -740,7 +740,7 @@ _rmdir() {		# /* doc 2.0 */
 	if [ X"$1" = X ]; then bk help -s rmdir; exit 1; fi
 	if [ X"$2" != X ]; then bk help -s rmdir; exit 1; fi
 	if [ ! -d "$1" ]; then echo "$1 is not a directory" 1>&2; exit 1; fi
-	bk -r check -a || exit 1;
+	bk sfiles --relpath="`bk root -S "$1"`" "$1" | bk check -c - || exit 1;
 	__bkfiles "$1" "Removing"
 	XNUM=`bk sfiles -x "$1" | wc -l`
 	if [ "$XNUM" -ne 0 ]

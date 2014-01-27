@@ -1209,7 +1209,7 @@ nested_updateIdcache(project *comp)
 	project	*prod = proj_product(comp);
 	char	buf[MAXPATH];
 
-	concat_path(buf, proj_root(prod), IDCACHE);
+	concat_path(buf, proj_root(prod), getIDCACHE(prod));
 	unless (idDB = loadDB(buf, 0, DB_IDCACHE)) return;
 
 	concat_path(buf, proj_root(comp),  GCHANGESET);
