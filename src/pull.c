@@ -22,6 +22,7 @@ private struct {
 	u32	gotsome:1;		/* we got some csets */
 	u32	collapsedups:1;		/* -D: pass to takepatch (collapse dups) */
 	u32	port:1;			/* is port command? */
+	u32	port_pull:1;		/* pull and port */
 	u32	portNoCommit:1;		/* don't commit on port */
 	u32	transaction:1;		/* is $_BK_TRANSACTION set? */
 	u32	local:1;		/* set if we find local work */
@@ -68,6 +69,7 @@ pull_main(int ac, char **av)
 		{ "safe", 320 },	/* require all comps to be here */
 		{ "unsafe", 330 },	/* turn off safe above */
 		{ "auto-populate", 340},/* just work */
+		{ "auto-port", 345},	/* turn pull into port/pull combo */
 
 		/* aliases */
 		{ "standalone", 'S'},
@@ -79,7 +81,6 @@ pull_main(int ac, char **av)
 	if (streq(prog, "port")) {
 		title = "port";
 		opts.port = 1;
-		safe_putenv("BK_PORT_ROOTKEY=%s", proj_rootkey(0));
 	}
 	opts.automerge = 1;
 	opts.safe = -1;	/* -1 == not set on command line */
@@ -138,6 +139,14 @@ pull_main(int ac, char **av)
 			break;
 		    case 340:  /* --auto-populate */
 			opts.autoPopulate = 1;
+			break;
+		    case 345:	/* --auto-port */
+			if (proj_isEnsemble(0)) {
+				fprintf(stderr, "%s: --auto-port only works "
+				    "in standalone repositories.\n", prog);
+				return (1);
+			}
+			opts.port_pull = 1;
 			break;
 		    default: bk_badArg(c, av);
 		}
@@ -234,6 +243,10 @@ err:		freeLines(envVar, free);
 	/*
 	 * pull from each parent
 	 */
+	if (opts.port_pull || opts.port) {
+		opts.port = 1;
+		safe_putenv("BK_PORT_ROOTKEY=%s", proj_rootkey(0));
+	}
 	EACH (urls) {
 		/*
 		 * XXX What else needs to be reset?  Where can the reset
@@ -480,7 +493,7 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 		} else if (!getenv("BKD_PRODUCT_ROOTKEY")) {
 			/* standalone -> standalone */
 			if ((p = getenv("BKD_ROOTKEY")) &&
-			    streq(p, proj_rootkey(0))) {
+			    streq(p, proj_rootkey(0)) && !opts.port_pull) {
 				fprintf(stderr,
 				    "port: may not port between "
 				    "identical repositories\n");
