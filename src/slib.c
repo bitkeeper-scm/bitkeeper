@@ -10306,6 +10306,7 @@ bk_badFilename(char *name)
 	if (streq(base, BKSKIP)) return (1);
 	if (streq(base, GCHANGESET) && !streq(name, GCHANGESET)) return (1);
 	if (streq(base, ".bk")) return (1);
+	if (streq(base, ".") || streq(base, "..")) return (1);
 
 	return (0);
 }
@@ -17815,7 +17816,7 @@ again:	unless (f = fopen(file, "rt")) {
 		if (first && idcache) {
 recache:		first = 0;
 			sum = 0;
-			if (f) fclose(f);
+			if (f) fclose(f), f = 0;
 			if (DB) mdbm_close(DB), DB = 0;
 			unless (strneq(file, "BitKeeper/", 10)) {
 				cwd = strdup(proj_cwd());
@@ -17824,6 +17825,7 @@ recache:		first = 0;
 				chdir(file);
 				*t = '/';
 			}
+			unless (proj_root(0)) goto out;
 			if (sccs_reCache(quiet)) {
 				fprintf(stderr, "Failed to rebuild idcache\n");
 				goto out;
@@ -17831,6 +17833,7 @@ recache:		first = 0;
 			if (cwd) {
 				chdir(cwd);
 				free(cwd);
+				cwd = 0;
 			}
 			goto again;
 		}
@@ -17850,6 +17853,10 @@ recache:		first = 0;
 		}
 out:		if (f) fclose(f);
 		if (DB) mdbm_close(DB), DB = 0;
+		if (cwd) {
+			chdir(cwd);
+			free(cwd);
+		}
 		return (0);
 	}
 	DB = mdbm_mem();
@@ -17931,6 +17938,7 @@ out:		if (f) fclose(f);
 		goto recache;
 	}
 	fclose(f);
+	if (idcache) assert(DB);
 	return (DB);
 }
 
@@ -18164,7 +18172,13 @@ sccs_stripdel(sccs *s, char *who)
 
 out:
 	free(remap);
-	if (error) sccs_abortWrite(s);
+	if (error) {
+		sccs_abortWrite(s);
+	} else {
+		if (FLAGS(s, e) & D_CSET) {
+			unlink(sccsXfile(s, 'd')); /* unlink d.file */
+		}
+	}
 	debug((stderr, "stripdel returns %d\n", error));
 	return (error);
 }

@@ -25,6 +25,7 @@ struct project {
 	char	*root;		/* fullpath root of the project */
 	char	*rootkey;	/* Root key of ChangeSet file */
 	char	*md5rootkey;	/* MD5 root key of ChangeSet file */
+	char	*syncroot;	/* sync root key of ChangeSet file */
 	char	*repoID;	/* RepoID */
 	char	*comppath;	/* if component, path to root from product */
 	MDBM	*config;	/* config DB */
@@ -603,16 +604,18 @@ proj_rootkey(project *p)
 	/* clear existing values */
 	if (p->rootkey)    { free(p->rootkey);    p->rootkey = 0; }
 	if (p->md5rootkey) { free(p->md5rootkey); p->md5rootkey = 0; }
+	if (p->syncroot)   { free(p->syncroot);   p->syncroot = 0; }
 
 	/* load values from cache */
 	concat_path(file, p->root, "/BitKeeper/log/ROOTKEY");
 	if (f = fopen(file, "rt")) {
 		if (t = fgetline(f)) p->rootkey = strdup(t);
 		if (t = fgetline(f)) p->md5rootkey = strdup(t);
+		if (t = fgetline(f)) p->syncroot = strdup(t);
 		fclose(f);
 	}
 
-	if (p->rootkey && p->md5rootkey) return (p->rootkey);
+	if (p->rootkey && p->md5rootkey && p->syncroot) return (p->rootkey);
 
 	/* cache invalid, regenerate values */
 	concat_path(buf, p->root, CHANGESET);
@@ -625,12 +628,17 @@ proj_rootkey(project *p)
 		sccs_md5delta(sc, TREE(sc), buf);
 		if (p->md5rootkey) free(p->md5rootkey);
 		p->md5rootkey = strdup(buf);
+		sccs_syncRoot(sc, buf);
+		if (p->syncroot) free(p->syncroot);
+		p->syncroot = strdup(buf);
 		sccs_free(sc);
 		concat_path(file, p->root, "/BitKeeper/log/ROOTKEY");
 		if (f = fopen(file, "wt")) {
 			fputs(p->rootkey, f);
 			putc('\n', f);
 			fputs(p->md5rootkey, f);
+			putc('\n', f);
+			fputs(p->syncroot, f);
 			putc('\n', f);
 			fclose(f);
 		}
@@ -649,6 +657,19 @@ proj_md5rootkey(project *p)
 	if (p->rparent && (ret = proj_md5rootkey(p->rparent))) return (ret);
 	unless (p->md5rootkey) proj_rootkey(p);
 	return (p->md5rootkey);
+}
+
+/* Return the sync root key of the ChangeSet file in the current project. */
+char *
+proj_syncroot(project *p)
+{
+	char	*ret;
+
+	unless (p || (p = curr_proj())) p = proj_fakenew();
+
+	if (p->rparent && (ret = proj_syncroot(p->rparent))) return (ret);
+	unless (p->syncroot) proj_rootkey(p);
+	return (p->syncroot);
 }
 
 /*

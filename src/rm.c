@@ -15,6 +15,10 @@ rm_main(int ac, char **av)
 	char	*name;
 	int	c, errors = 0;
 	int	force = 0;
+	MDBM	*idDB;
+	project	*proj, *p;
+	char	*dir;
+	char	buf[MAXPATH];
 
         while ((c = getopt(ac, av, "f", 0)) != -1) {
                 switch (c) {
@@ -24,9 +28,33 @@ rm_main(int ac, char **av)
         }
 	unless (av[optind]) usage(); /* require one argument */
 
+	proj = 0;
+	idDB = 0;
 	for (name = sfileFirst("sccsrm",&av[optind], 0);
 	    name; name = sfileNext()) {
-		errors |= sccs_rm(name, force);
+		strcpy(buf, name);
+		dir = dirname(dirname(buf)); /* strip SCCS/s.file */
+		p = proj_init(dir);
+		if (p != proj) {
+			if (idDB) {
+				idcache_write(proj, idDB);
+				mdbm_close(idDB);
+				proj_free(proj);
+			}
+			proj = p;
+			concat_path(buf, proj_root(proj), getIDCACHE(proj));
+			idDB = loadDB(buf, 0, DB_IDCACHE);
+			assert(idDB);
+		} else if (p) {
+			assert(idDB);
+			proj_free(p);
+		}
+		errors |= sccs_rm(name, force, idDB);
+	}
+	if (idDB) {
+		idcache_write(proj, idDB);
+		mdbm_close(idDB);
+		proj_free(proj);
 	}
 	if (sfileDone()) errors |= 2;
 	return (errors);
@@ -124,7 +152,7 @@ sccs_rmName(sccs *s)
 }
 
 int
-sccs_rm(char *name, int force)
+sccs_rm(char *name, int force, MDBM *idDB)
 {
 	char	*rmName;
 	char	*sfile;
@@ -153,7 +181,7 @@ sccs_rm(char *name, int force)
 	sccs_close(s);
 	rmName = sccs_rmName(s);
 	unless (samepath(rmName, sfile)) {
-		error |= sccs_mv(sfile, rmName, 0, 1, 0, force);
+		error |= sccs_mv(sfile, rmName, 0, 1, 0, force, idDB);
 	}
 	sccs_free(s);
 	free(rmName);

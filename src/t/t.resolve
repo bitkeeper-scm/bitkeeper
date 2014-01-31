@@ -1224,6 +1224,42 @@ cd local || exit 1
 }
 echo OK
 
+echo $N Show rename to . with ml bug is fixed .......................$NL
+cd ..
+rm -fr local
+tar xf TAR || exit 1
+cd local || exit 1
+{ echo ml; echo .; echo q; } | bk pull -q 2> ERR
+grep -q "Illegal filename" ERR || fail -f ERR wrong error message
+echo OK
+
+echo $N Show rename to .. with ml does not ..........................$NL
+cd ..
+rm -fr local
+tar xf TAR || exit 1
+cd local || exit 1
+{ echo ml; echo ..; echo q; } | bk pull -q 2> ERR
+grep -q "Illegal filename" ERR || fail -f ERR wrong error message
+echo OK
+
+echo $N Show rename to . with mr bug is fixed .......................$NL
+cd ..
+rm -fr local
+tar xf TAR || exit 1
+cd local || exit 1
+{ echo mr; echo .; echo q; } | bk pull -q 2> ERR
+grep -q "Illegal filename" ERR || fail -f ERR wrong error message
+echo OK
+
+echo $N Show rename to .. with mr does not ..........................$NL
+cd ..
+rm -fr local
+tar xf TAR || exit 1
+cd local || exit 1
+{ echo mr; echo ..; echo q; } | bk pull -q 2> ERR
+grep -q "Illegal filename" ERR || fail -f ERR wrong error message
+echo OK
+
 echo $N Show unmerged leaf as part of a pull resolve with rl ........$NL
 cd "$HERE"
 rm -fr remote local

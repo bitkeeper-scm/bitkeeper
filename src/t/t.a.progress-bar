@@ -409,8 +409,8 @@ ul
 EOF
 bk pull -T ../standalone <resolve >OUT 2>&1 || fail -f OUT
 bk grep -q 'resolve: 2 unresolved conflicts, starting manual' OUT || fail -f OUT
-bk grep -q '(content conflict) for-automerge-conflict-1' OUT || fail -f OUT
-bk grep -q '(content conflict) for-automerge-conflict-2' OUT || fail -f OUT
+bk grep -q '\(content conflict\) for-automerge-conflict-1' OUT || fail -f OUT
+bk grep -q '\(content conflict\) for-automerge-conflict-2' OUT || fail -f OUT
 chkoutput OUT || fail $msg
 chkpasses OUT 'takepatch' 'pull' 'check' || fail $msg
 chknumbars OUT 3 || fail $msg
@@ -437,9 +437,9 @@ EOF
 bk pull -T ../standalone <resolve >OUT 2>&1 || fail -f OUT
 bk grep -q 'resolve: 3 unresolved conflicts, starting manual' OUT || fail -f OUT
 bk grep -q '3 unresolved name conflict\[s\]' OUT || fail -f OUT
-bk grep -q '(create/sfile conflict) for-name-conflict-1' OUT || fail -f OUT
-bk grep -q '(create/sfile conflict) for-name-conflict-2' OUT || fail -f OUT
-bk grep -q '(create/sfile conflict) for-name-conflict-3' OUT || fail -f OUT
+bk grep -q '\(create/sfile conflict\) for-name-conflict-1' OUT || fail -f OUT
+bk grep -q '\(create/sfile conflict\) for-name-conflict-2' OUT || fail -f OUT
+bk grep -q '\(create/sfile conflict\) for-name-conflict-3' OUT || fail -f OUT
 chkoutput OUT || fail $msg
 chkpasses OUT 'takepatch' 'pull' 'check' 'resolve' || fail $msg
 chknumbars OUT 3 || fail $msg
@@ -449,7 +449,7 @@ echo OK
 echo $N pull -i w/name conflicts ....................................$NL
 bk unpull $Q -f
 echo q | bk pull -Ti ../standalone >OUT 2>&1 && fail -f OUT
-bk grep -q '(create/sfile conflict) for-name-conflict-1' OUT || fail -f OUT
+bk grep -q '\(create/sfile conflict\) for-name-conflict-1' OUT || fail -f OUT
 chkpasses100 OUT 'takepatch' || fail -f x $msg
 chknumbars OUT 1 || fail $msg
 chkblanks OUT 0 || fail $msg
@@ -879,9 +879,9 @@ EOF
 bk pull -q -T ../standalone <resolve >OUT 2>&1 || fail -f OUT
 bk grep -q 'resolve: 3 unresolved conflicts, starting manual' OUT || fail -f OUT
 bk grep -q '3 unresolved name conflict\[s\]' OUT || fail -f OUT
-bk grep -q '(create/sfile conflict) for-name-conflict-q-1' OUT || fail -f OUT
-bk grep -q '(create/sfile conflict) for-name-conflict-q-2' OUT || fail -f OUT
-bk grep -q '(create/sfile conflict) for-name-conflict-q-3' OUT || fail -f OUT
+bk grep -q '\(create/sfile conflict\) for-name-conflict-q-1' OUT || fail -f OUT
+bk grep -q '\(create/sfile conflict\) for-name-conflict-q-2' OUT || fail -f OUT
+bk grep -q '\(create/sfile conflict\) for-name-conflict-q-3' OUT || fail -f OUT
 chkoutput OUT || fail $msg
 chknumbars OUT 0 || fail $msg
 chkblanks OUT 0 || fail $msg
@@ -1222,9 +1222,9 @@ EOF
 bk pull -v -T ../standalone <resolve >OUT 2>&1 || fail -f OUT
 bk grep -q 'resolve: 3 unresolved conflicts, starting manual' OUT || fail -f OUT
 bk grep -q '3 unresolved name conflict\[s\]' OUT || fail -f OUT
-bk grep -q '(create/sfile conflict) for-name-conflict-v-1' OUT || fail -f OUT
-bk grep -q '(create/sfile conflict) for-name-conflict-v-2' OUT || fail -f OUT
-bk grep -q '(create/sfile conflict) for-name-conflict-v-3' OUT || fail -f OUT
+bk grep -q '\(create/sfile conflict\) for-name-conflict-v-1' OUT || fail -f OUT
+bk grep -q '\(create/sfile conflict\) for-name-conflict-v-2' OUT || fail -f OUT
+bk grep -q '\(create/sfile conflict\) for-name-conflict-v-3' OUT || fail -f OUT
 chkoutput OUT || fail $msg
 chkblanks OUT 0 || fail $msg
 cd ..

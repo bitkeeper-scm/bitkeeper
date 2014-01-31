@@ -424,7 +424,7 @@ clone_main(int ac, char **av)
 		if (opts->product) {
 			free(title);
 			title = "";
-			if (opts->downgrade) features_minrelease();
+			if (opts->downgrade) features_dumpMinRelease();
 		}
 	}
 	FREE(opts->pull_fromlev);
@@ -442,8 +442,6 @@ chkAttach(char *dir)
 	int	ret = 1;
 	int	already = 0;
 	project	*prod = 0, *proj = 0;
-	sccs	*s;
-	char	key[MAXKEY];
 
 	/* note: allowing under a standalone inside a product */
 	unless ((proj = proj_init(dir)) && (prod = proj_findProduct(proj))) {
@@ -505,6 +503,8 @@ chkAttach(char *dir)
 		goto err;
 	}
 	EACH_STRUCT(n->comps, cp, i) {
+		project	*p;
+
 		unless (C_PRESENT(cp)) {
 			fprintf(stderr, "Product needs to be fully "
 			    "populated. Run 'bk here set all' to fix.\n");
@@ -512,17 +512,13 @@ chkAttach(char *dir)
 		}
 		if (cp->product || opts->force) continue;
 
-		// XXX - be nice to cache this in BitKeeper/log
-		p = aprintf("%s/SCCS/s.ChangeSet", cp->path);
-		s = sccs_init(p, INIT_MUSTEXIST|INIT_NOCKSUM);
-		free(p);
-		sccs_syncRoot(s, key);
-		sccs_free(s);
-		if (streq(key, syncroot)) {
+		p = proj_init(cp->path);
+		if (streq(proj_syncroot(p), syncroot)) {
 			fprintf(stderr, "%s: already attached at %s\n",
 			    reldir, cp->path);
 		    	already++;
 		}
+		proj_free(p);
 	}
 	if (already) goto err;
 
@@ -1917,14 +1913,33 @@ attach(void)
 	if (!rc && (isdir(tmp))) {
 		concat_path(buf, proj_root(proj_findProduct(0)), "BitKeeper/BAM");
 		concat_path(buf, buf, basenm(tmp));
-		if (rc = rename(tmp, buf)) {
-			mkdirf(buf);
-			if (rc = rename(tmp, buf)) {
-				fprintf(stderr, "attach: BAM move failed\n");
-			}
+
+		/*
+		 * XXX if the product already has data for this component
+		 * then we skip it.  'bk bam push' instead??
+		 */
+		mkdirf(buf);
+		if (!isdir(buf) && (rc = rename(tmp, buf))) {
+			fprintf(stderr, "attach: BAM move failed\n");
 		}
-		/* XXX leave other repos BAM data here? */
-		unless (rc) rmdir("BitKeeper/BAM");
+		unless (rc) {
+			char	**list = getdir("BitKeeper/BAM");
+			int	i;
+
+			/* cleanup any rootkey->syncroot symlinks */
+			EACH(list) {
+				unless (strstr(list[i], "-ChangeSet-")) {
+					continue;
+				}
+
+				concat_path(buf, "BitKeeper/BAM", list[i]);
+				/* symlinks on unix, files on windows */
+				unless (isdir(buf)) unlink(buf);
+			}
+			freeLines(list, free);
+			/* XXX leave other repos BAM data here? */
+			rmdir("BitKeeper/BAM");
+		}
 	}
 	free(tmp);
 
@@ -1940,6 +1955,8 @@ attach(void)
 	}
 
 	proj_reset(0);	/* to reset proj_isComponent() */
+	tmp = bp_dataroot(0, 0); /* to create rootkey->syncroot link */
+	free(tmp);
 	unless (nested_mine(0, getenv("_BK_NESTED_LOCK"), 1)) {
 		unless (nlid = nested_wrlock(0)) {
 			fprintf(stderr, "%s\n", nested_errmsg());

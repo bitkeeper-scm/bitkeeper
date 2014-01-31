@@ -121,4 +121,17 @@ test "$REV" != "1.1" && {
 	exit 1
 }
 echo OK
-exit 0
+
+echo $N Run 'bk mv' from outside and test idcache .....................$NL
+cd "$HERE"
+cd project
+echo hi > move-me
+bk new $Q move-me
+cd ..
+commercial junk
+bk mv ../project/move-me ../project/moved || fail
+ID=`find . -name x.id_cache | head -1`
+grep -q move-me $ID && fail should not be here
+grep -q move-me ../project/$ID || fail should be here
+cd ..
+echo OK

@@ -1,10 +1,8 @@
-/* Copyright (c) 1999 Andrew Chang */
 #include "system.h"
 #include "sccs.h"
 
 private	char	*getRelativeName(char *, project *proj);
 private	void	rmDir(char *);
-private	int	update_idcache(sccs *s, char *old, char *new);
 private char	**xfileList(char *sfile);
 
 /*
@@ -35,8 +33,8 @@ sccs_rmEmptyDirs(char *path)
 }
 
 int
-sccs_mv(char	*name,
-	char	*dest, int isDir, int isDelete, int isUnDelete, int force)
+sccs_mv(char	*name, char *dest,
+	int	isDir, int isDelete, int isUnDelete, int force, MDBM *idDB)
 {
 	char 	*t, *destfile, *oldpath, *newpath, *rev;
 	char	*sname = 0, *gfile = 0, *sfile = 0, *ogfile = 0, *osfile = 0;
@@ -150,11 +148,10 @@ err:		if (sname) free(sname);
 	ogfile = strdup(s->gfile);
 	osfile = strdup(s->sfile);
 //fprintf(stderr, "mv(%s, %s) = %d\n", s->sfile, sfile, error);
-	if (!error && (error = update_idcache(s, oldpath, newpath))) {
-		fprintf(stderr, "Idcache failure\n");
-		goto out;
-	}
 	if (error) goto out;
+	/* update idcache */
+	sccs_sdelta(s, sccs_ino(s), buf);
+	mdbm_store_str(idDB, buf, newpath, MDBM_REPLACE);
 	sccs_free(s);
 	/* For split root config; We recompute sfile here */
 	/* we don't want the sPath() adjustment		  */
@@ -259,56 +256,6 @@ out:	if (s) sccs_free(s);
 	free(destfile); free(sfile); free(gfile);
 	free(sname);
 	return (error);
-}
-
-/*
- * Update the idcache for this file.
- */
-private	int
-update_idcache(sccs *s, char *old, char *new)
-{
-	char	*root;
-	int	rc;
-	char	*t;
-	MDBM	*idDB;
-	char	path[MAXPATH*2];
-	char	key[MAXKEY];
-
-	unless (root = proj_root(s->proj)) {
-		fprintf(stderr,
-		    "can't find package root, idcache not updated\n");
-		return (1);
-	}
-
-	/*
-	 * This code ripped off from sfiles -r.
-	 */
-again:	
-	sprintf(path, "%s/%s", root, getIDCACHE(s->proj));
-	unless (idDB = loadDB(path, 0, DB_IDCACHE)) {
-		fprintf(stderr, "Creating new idcache.\n");
-		idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	}
-	sccs_sdelta(s, sccs_ino(s), key);
-	if ((t = mdbm_fetch_str(idDB, key)) &&
-	    !streq(t, old) && !streq(t, new)) {
-		t = name2sccs(t);
-		sprintf(path, "%s/%s", root, t);
-		unless (exists(path)) {
-			fprintf(stderr,
-			    "Out of date idcache detected, updating...\n");
-			mdbm_close(idDB);
-			sccs_reCache(0);
-			goto again;
-		}
-		fprintf(stderr, "Key %s exists for %s\n", key, t);
-		mdbm_close(idDB);
-		return (1);
-	}
-	mdbm_store_str(idDB, key, new, MDBM_REPLACE);
-	rc = idcache_write(s->proj, idDB);
-	mdbm_close(idDB);
-	return (rc);
 }
 
 private	char *

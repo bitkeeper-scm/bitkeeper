@@ -804,11 +804,34 @@ alignMods(filedf *o, char **A, char **B, FILE *out)
 	int	lenA, lenB;
 	int	n = nLines(A), m = nLines(B);
 	int	d = o->diffgap;	/* gap penalty */
-	int	F[n+1][m+1];
-	int	algnA[n+m+1];
-	int	algnB[n+m+1];
+	int	**F;
+	int	*algnA;
+	int	*algnB;
 
-	for (i = 0; i <= n; i++) F[i][0] = d * i;
+	if ((n * m) > 100000) {
+		/*
+		 * Punt if the problem is too large since the
+		 * algorithm is O(n^2).  The rationale is that the
+		 * line alignment only helps if you're looking at
+		 * smallish regions. Once you've gone over a few
+		 * screenfuls you're just reading new code so no point
+		 * in working hard to align lines.
+		 *
+		 */
+		for (i = 1; (i <= n) && (i <= m); i++) {
+			printLines(o, A[i], B[i], out);
+		}
+		while (i <= n) printLines(o, A[i++], 0, out);
+		while (i <= m) printLines(o, 0, B[i++], out);
+		return;
+	}
+	F = malloc((n+1) * sizeof(int *));
+	algnA = calloc(n+m+1, sizeof(int));
+	algnB = calloc(n+m+1, sizeof(int));
+	for (i = 0; i <= n; i++) {
+		F[i] = malloc((m+1) * sizeof(int));
+		F[i][0] = d * i;
+	}
 	for (j = 0; j <= m; j++) F[0][j] = d * j;
 	for (i = 1; i <= n; i++) {
 		lenA = strlen(A[i]);
@@ -877,6 +900,10 @@ alignMods(filedf *o, char **A, char **B, FILE *out)
 			printLines(o, A[algnA[i]], B[algnB[i]], out);
 		}
 	}
+	for (i = 0; i <= n; i++) free(F[i]);
+	free(F);
+	free(algnA);
+	free(algnB);
 }
 
 private int

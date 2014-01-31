@@ -1,0 +1,39 @@
+echo $N Test port/pull combination...................................$NL
+nested product
+bk clone -sALL $Q . ../product-copy
+bk detach $Q gcc "$HERE/gcc"
+cd gcc
+touch afile
+bk new $Q afile
+bk commit $Q -yafile
+bk changes -qkSr+ > "$HERE/KEYS"
+cd "$HERE"
+bk clone $Q gcc gcc.copy
+cd gcc
+touch bfile
+bk new $Q bfile
+bk commit $Q -ybfile
+bk changes -qkr+ >> "$HERE/KEYS"
+sort < "$HERE/KEYS" > "$HERE/WANT"
+cd "$HERE/gcc.copy"
+bk parent $Q -r
+bk parent $Q -a -i ../gcc
+bk parent $Q -a -i ../product/gcc
+bk changes -qkSR | sort > GOT
+cmpfiles "$HERE/WANT" GOT
+bk pull --auto-port $Q || fail
+bk changes -qkSR > GOT
+rm -f WANT
+touch WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N pull --auto-port in a product should fail....................$NL
+cd "$HERE/product-copy"
+bk pull --auto-port ../product 2> GOT && fail
+cat <<EOF > WANT
+pull: --auto-port only works in standalone repositories.
+EOF
+cmpfiles WANT GOT
+echo OK
+

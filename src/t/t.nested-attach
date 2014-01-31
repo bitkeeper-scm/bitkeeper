@@ -28,7 +28,9 @@ cd "$HERE"
 nested nested1
 # test attach where product has no BAM dir initially
 test -d BitKeeper/BAM && fail product BAM directory there
-bk attach --force -q "$HERE/standalone1" component1 || exit 1
+bk attach -q "$HERE/standalone1" component1 || exit 1
+RSTRING=`bk --cd=component1 prs -r1.0 -hnd':RANDOM:' ChangeSet`
+test X"$RSTRING" = X0 && fail zero random string
 bk -e -r check -ac || fail
 test -d component1/BitKeeper/BAM && fail BAM directory still there
 cd component1
@@ -583,7 +585,7 @@ bk gate -r $Q || fail
 bk portal -r $Q || fail
 bk undo $Q -r+ -f || fail
 bk portal $Q . || fail
-bk rmdir bar
+bk rmdir bar || fail
 # it would be nice if this failed
 bk attach -q "$HERE"/stand2 bar || fail
 bk repocheck $Q 2> ERR && fail -f should fail

@@ -871,6 +871,9 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 			fprintf(f, "standalone\n");
 		}
 		fprintf(f, "putenv 'BK_ROOTKEY=%s'\n", proj_rootkey(p));
+		unless (streq(proj_rootkey(p), proj_syncroot(p))) {
+			fprintf(f, "putenv 'BK_SYNCROOT=%s'\n", proj_syncroot(p));
+		}
 		if (repo = proj_repoID(prod)) {
 			fprintf(f, "putenv 'BK_REPO_ID=%s'\n", repo);
 			if (bp_hasBAM()) fprintf(f, "putenv BK_BAM=YES\n");
@@ -1107,6 +1110,11 @@ sendServerInfo(u32 cmdlog_flags)
 		if (rootkey = proj_rootkey(0)) {
 			sprintf(buf, "ROOTKEY=%s\n", rootkey);
 			out(buf);
+			p = proj_syncroot(0);
+			unless (streq(rootkey, p)) {
+				sprintf(buf, "SYNCROOT=%s\n", p);
+				out(buf);
+			}
 		}
 		/* Match :REPOTYPE: */
 		if (proj_isComponent(0)) {

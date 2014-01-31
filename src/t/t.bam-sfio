@@ -6,7 +6,7 @@ commercial project
 echo BAM > foo
 cp foo bar
 bk new $Q -b foo bar
-RK="`bk changes -r+ -nd:ROOTKEY: | sed 's?|?-?g'`"
+RK="`bk changes -r+ -nd:SYNCROOT: | sed 's?|?-?g'`"
 ENTRY=`bk prs -r+ -hnd:BAMENTRY: foo`
 cwd="$HERE"/project
 cat <<EOF > WANT
@@ -26,7 +26,7 @@ cd gcc || exit 1
 echo BAM > foo
 cp foo bar
 bk new $Q -b foo bar
-RK="`bk changes -Sr+ -nd:ROOTKEY: | sed 's?|?-?g'`"
+RK="`bk changes -Sr+ -nd:SYNCROOT: | sed 's?|?-?g'`"
 ENTRY=`bk prs -r+ -hnd:BAMENTRY: foo`
 cat <<EOF > WANT
 $cwd/BitKeeper/BAM/$RK/$ENTRY

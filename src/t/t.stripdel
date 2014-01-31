@@ -218,3 +218,20 @@ bk changes -rNEWTAG -nd'$if(x=y){z}' 2> ERR && fail -f ERR
 echo "changes: no such delta \`\`NEWTAG'' in ChangeSet" > WANT
 cmpfiles WANT ERR
 echo OK
+
+cd "$HERE"
+echo $N Make sure stripdel cleans up d.files ........................$NL
+commercial dfiles
+mkdir subdir
+cd subdir
+for i in a b c d e f
+do 	echo $i > $i
+done
+cd ..
+bk extras | bk new $Q -
+bk commit $Q -y'new files'
+bk mvdir subdir dir || fail
+bk sfiles -pCA | bk stripdel $Q - || fail
+bk -r names $Q || fail
+test -d dir && fail
+echo OK

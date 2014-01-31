@@ -254,12 +254,14 @@ do_cmds(void)
 		alarm(Opts.alarm);
 	}
 	/* Don't allow existing env to be used */
+	/* XXX put function in utils.c and have it match what gets set? */
 	putenv("BK_AUTH_HMAC=BAD");
 	putenv("BK_LICENSE=");
 	putenv("BK_REMAP=");
 	putenv("BK_FEATURES=");
 	putenv("BK_FEATURES_REQUIRED=");
 	putenv("BK_QUIET_TRIGGERS=");
+	putenv("BK_SYNCROOT=");
 
 	lease_inbkd();		/* enable bkd-mode in lease code */
 

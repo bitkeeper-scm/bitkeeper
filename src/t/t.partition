@@ -193,7 +193,7 @@ cat <<'EOF' > WANT
 EOF
 checkfiles WANT GOT
 # .bk/partition/<orig md5key>/<random>
-DBKPART="`tail -1 "$HERE/project/BitKeeper/log/ROOTKEY"`"
+DBKPART="`sed -ne '2p' "$HERE/project/BitKeeper/log/ROOTKEY"`"
 RAND="`head -1 BitKeeper/log/ROOTKEY | sed 's/.*|//'`"
 DBKPART="$BK_DOTBK/partition/$DBKPART/$RAND"
 test -f "$DBKPART" || fail no dotbk partition "$DBKPART"

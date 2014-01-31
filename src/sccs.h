@@ -1163,7 +1163,7 @@ int	sccs_rewrite_pfile(sccs *s, pfile *pf);
 int	sccs_isleaf(sccs *s, ser_t d);
 int	emptyDir(char *dir);
 int	gone(char *key, MDBM *db);
-int	sccs_mv(char *, char *, int, int, int, int);
+int	sccs_mv(char *, char *, int, int, int, int, MDBM *idcache);
 ser_t	sccs_gca(sccs *, ser_t l, ser_t r, char **i, char **x);
 char	*_relativeName(char *gName, int isDir,
 	    int mustHaveRmarker, int wantRealName, project *proj);
@@ -1223,7 +1223,7 @@ MDBM	*loadConfig(project *p, int forcelocal);
 int	ascii(char *file);
 char	*sccs_rmName(sccs *s);
 char	*key2rmName(char *rootkey);
-int	sccs_rm(char *name, int force);
+int	sccs_rm(char *name, int force, MDBM *idcache);
 void	sccs_rmEmptyDirs(char *path);
 void	do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out);
 char 	**get_http_proxy(char *host);

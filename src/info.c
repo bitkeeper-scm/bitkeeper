@@ -2,7 +2,7 @@
  * Copyright (c) 2012, BitMover, Inc.  All rights reserved.
  */
 #include "sccs.h"
-#include "regex.h"
+#include "pcre.h"
 
 #define	INFO_TABLE	1	/* open / create a table */
 #define	INFO_DELETE	2	/* delete items */
@@ -235,7 +235,9 @@ op(FILE *out, FILE *log, int cmd, hash *db, hash *h, char *regexp)
 {
 	int	n = 0;
 	hash	*h2 = hash_new(HASH_MEMHASH);
-	regex	*re = 0;
+	pcre	*re = 0;
+	const	char	*perr;
+	int	poff;
 
 	if ((cmd == INFO_COUNT) && !regexp) {
 		EACH_HASH(db) {
@@ -249,7 +251,7 @@ op(FILE *out, FILE *log, int cmd, hash *db, hash *h, char *regexp)
 	 */
 	if (regexp) {
 		assert(!h);
-		unless (re = re_comp(regexp)) {
+		unless (re = pcre_compile(regexp, 0, &perr, &poff, 0)) {
 			fprintf(out, "ERROR-bad regexp %s\n", regexp);
 			goto err;
 		}
@@ -263,20 +265,22 @@ op(FILE *out, FILE *log, int cmd, hash *db, hash *h, char *regexp)
 			    "ERROR-bad command %d with regexp %s\n",
 			    cmd, regexp);
 			hash_free(h2);
-			re_free(re);
+			free(re);
 			return;
 		}
 		unless (cmd == INFO_COUNT) h = hash_new(HASH_MEMHASH);
 		EACH_HASH(db) {
 			if (*(char *)db->kptr == ' ') continue;
-			unless (re_exec(re, db->kptr)) continue;
+			if (pcre_exec(re, 0,
+				db->kptr, strlen(db->kptr),
+				    0, 0, 0, 0)) continue;
 			if (cmd == INFO_COUNT) {
 				n++;
 			} else {
 				hash_store(h, db->kptr, db->klen, "", 1);
 			}
 		}
-		re_free(re);
+		free(re);
 	}
 
 	if (cmd == INFO_COUNT) {
