@@ -229,19 +229,19 @@ cd "$HERE"
 bk clone $Q project bam-server
 bk clone $Q project bam-receiver
 cd bam-server
-echo binary > bam
-bk new $Q -b bam
+echo binary > bam2
+bk new $Q -b bam2
 bk commit $Q -ybam-file
 bk bam server $Q .
 cd ..
 bk clone $Q bk://localhost:$OLDP/bam-server bam-copy
 bk clone $Q bk://localhost:$OLDP/bam-server bam-xcopy
 cd bam-copy
-bk cp $Q bam newbam || fail
+bk cp $Q bam2 newbam || fail
 bk get $Q || fail
 # across a component, same thing
 cd ../bam-xcopy
-bk cp $Q -f bam ../bam-receiver/newbam || fail
+bk cp $Q -f bam2 ../bam-receiver/newbam || fail
 cd ../bam-receiver
 bk get $Q || fail
 echo OK
