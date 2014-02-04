@@ -528,6 +528,15 @@ walkrevs_addSer(sccs *s, ser_t d, void *token)
 	return (0);
 }
 
+int
+walkrevs_countIfDSET(sccs *s, ser_t d, void *token)
+{
+	int	*n = (int *)token;
+
+	if (FLAGS(s, d) & D_SET) (*n)++;
+	return (0);
+}
+
 /*
  * Expand the set of deltas already tagged with D_SET to include:
  * The meta data that is in would be here if the deltas newer that D_SET

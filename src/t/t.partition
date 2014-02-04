@@ -274,6 +274,21 @@ test -f copy/src/b || {
 }
 echo OK
 
+echo $N Test bisect warning about partition..........................$NL
+cd "$HERE"
+bk partition $Q -Cmapfile project bisect-test
+cd bisect-test
+cat <<EOF > bisect.sh
+#!/bin/sh
+exit 0
+EOF
+chmod +x bisect.sh
+bk bisect --search --cmd=bisect.sh > OUT 2> ERR && fail
+grep -q "Warning: this is a partitioned tree" ERR || fail -f ERR no warning
+grep -q "where the script returns zero" ERR || fail -f ERR wrong error
+cd ..
+echo OK
+
 echo $N Test rollback generating an error ...........................$NL
 bk partition $Q -Cmapfile project xcomps || exit 1
 cd xcomps

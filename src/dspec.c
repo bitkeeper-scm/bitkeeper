@@ -237,14 +237,20 @@ dollar(FILE *out)
 			stmtList(rc ? 0 : out);
 			if (*g.p++ != '}') err("missing }");
 		}
-	} else if (strneq("$each(", g.p, 6)) {
+	} else if (strneq("$each(", g.p, 6) ||
+	    strneq("$first(", g.p, 7)) {
 		nextln	state;
 		char	*bufptr;
 		int	savejoin;
+		int	first = strneq("$first(", g.p, 7);
 
-		if (in_each++) err("nested each illegal");
+		if (in_each++) {
+			first
+			    ? err("nested first illegal")
+			    : err("nested each illegal");
+		}
 
-		g.p += 6;
+		g.p += first ? 7 : 6;
 		if (*g.p++ != ':') err("missing id");
 
 		/* Extract the id in $each(:id:) */
@@ -270,6 +276,7 @@ dollar(FILE *out)
 			g.p = bufptr;
 			stmtList(out);
 			++g.line;
+			if (first) break;
 		}
 		g.eachkey.dptr = 0;
 		g.eachkey.dsize = 0;

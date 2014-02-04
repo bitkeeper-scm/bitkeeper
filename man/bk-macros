@@ -158,18 +158,38 @@
 .de OPTreq
 \fB\\$1\fP\*<\\$2\*>\\$3
 ..
+.\" LOPT --f
+.de LOPT
+\fB\\$1\fP
+..
+.\" LOPTreq --f filename ==> --f=<filename>
+.de LOPTreq
+\fB\\$1\fP=\*<\\$2\*>\\$3
+..
 .\" [OPTreq] -f filename ==> [-f<filename>]
 .de [OPTreq]
 .\" bk-changes.1 is the only user of $3
 [\fB\\$1\fP\*<\\$2\*>\\$3]
 ..
+.\" [LOPTreq] --f filename ==> [--f=<filename>]
+.de [LOPTreq]
+[\fB\\$1\fP=\*<\\$2\*>]
+..
 .\" OPTopt -f filename ==> -f[<filename>]
 .de OPTopt
 \fB\\$1\fP[\*<\\$2\*>]
 ..
+.\" LOPTopt --f filename ==> --f[=<filename>]
+.de LOPTopt
+\fB\\$1\fP[=\*<\\$2\*>]
+..
 .\" [OPTopt] -f filename ==> [-f[<filename>]]
 .de [OPTopt]
 [\fB\\$1\fP[\*<\\$2\*>]]
+..
+.\" [LOPTopt] --f filename ==> [--f[=<filename>]]
+.de [LOPTopt]
+[\fB\\$1\fP[=\*<\\$2\*>]]
 ..
 .\" OPTequal -f key value ==> -f<key>=<value>
 .de OPTequal

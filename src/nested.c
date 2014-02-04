@@ -527,6 +527,7 @@ pending:
 				 * Because it's not in the idcache, this
 				 * can't be pending.
 				 */
+				assert(c->_deltakey);
 				c->path = key2path(c->_deltakey, 0, 0, 0);
 			}
 			c->inCache = 0;

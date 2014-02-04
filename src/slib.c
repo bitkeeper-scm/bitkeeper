@@ -1849,7 +1849,7 @@ sccs_findDate(sccs *sc, char *s, int roundup)
 
 	/* Walking the table newest .. oldest order */
 	for (tmp = 0, d = TABLE(sc);
-	    d >= TREE(sc); tmp = d, d = sccs_prev(sc, d)) {
+	    d >= TREE(sc); d = sccs_prev(sc, d)) {
 		if (TAG(sc, d)) continue;
 		if (DATE(sc, d) == date) return (d);
 		/*
@@ -1858,6 +1858,7 @@ sccs_findDate(sccs *sc, char *s, int roundup)
 		 *             ^tmp  ^d
 		 */
 		if (DATE(sc, d) < date) break;
+		tmp = d;
 	}
 	if (roundup == ROUNDDOWN) return (tmp);
 	return (d);
@@ -17128,7 +17129,8 @@ bad:	if (gmap) free (gmap);
 ser_t
 sccs_gca(sccs *s, ser_t left, ser_t right, char **inc, char **exc)
 {
-	return (gca3(s, left, right, inc, exc));
+	return ((inc || exc)
+	    ? gca3(s, left, right, inc, exc) : gca2(s, left, right));
 }
 
 /*

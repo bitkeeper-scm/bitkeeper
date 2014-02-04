@@ -1516,3 +1516,15 @@ This version of Bitkeeper doesn't support repositories with short keys.
 
 Please send mail to support@bitmover.com to request assistance.
 $
+#bisect_script_error
+ # BISECT FAILED
+ #
+ # The script you provided should work (exit zero) 
+ # for revision '#BKARG#1#' and fail (exit non-zero)
+ # for revision '#BKARG#2#'. As this was not the case,
+ # bisect was aborted.
+ #
+ # Please fix your script and run bisect again.
+ #
+ # BISECT DID NOT RUN
+$

@@ -1,0 +1,204 @@
+.so ../bk-macros
+.TH "bk bisect" "\*[BKVER]" 2012/01/07 "\*(BC" "\*(UM"
+.SH NAME
+bk bisect \- quickly find a changeset that introduced a bug
+.SH SYNOPSIS
+.B bk bisect
+.LOPTreq --cmd prog
+.OPTreq -r revs
+.[ARG] opts
+.br
+.B bk bisect 
+.LOPTreq --cmd prog
+.LOPTopt --search unit
+.[ARG] opts
+.SH DESCRIPTION
+The
+.B bisect
+command is used to find the changeset that introduced a bug.
+.LP
+The normal usage is to specify a range to search and 
+.B bk bisect 
+will run a binary search over the changeset graph, looking for
+the changeset that caused the bug.
+.LP
+You must supply a program (usually a shell script) that implements
+a test that demonstrates the presence (or absence) of the bug, and
+passes status back through the exit status.
+It typically builds the source code and runs a test that looks for
+the bug (there are examples below).
+Note: the program is run at the root of the repository, if you are
+looking for some problem in a subdirectory remember to change directories
+before running your test.
+.LP
+The repository where
+.B bisect
+is run will be cloned to a temporary copy (see
+.B \-\-dir
+below) and the test program will be run at the root of
+this repository clone.
+.LP
+If you do not know the range to search, see the "--search" option below.
+.SH OPTIONS
+.\" Hey, keep this the same as --dir below
+.TP "\-\-cmd=<prog>"
+.LOPTreq \-\-cmd prog
+.B <prog>
+is a program (usually a shell script) that tests for the bug.
+.SP
+The program tells 
+.B bisect
+where to search next via its exit code:
+.RS
+.TP "0   "
+0
+An exit of 0 means that the bug was not present, so continue the search
+forward on the descendants of this changeset.
+.tp
+1
+An exit of 1 means the bug was present, so continue the search
+backward on the ancestors of this changeset.
+.tp
+2
+An exit of 2 means the test could not be run and bisect should skip
+this revision and continue the search.
+.tp
+3
+An exit of 3 means abort the search immediately.
+.RE
+.\" Hey, keep this the same as the first one
+.TP "\-\-cmd=<prog>"
+.LOPTreq \-\-dir dir
+Use the specified directory as location of the cloned repository in which
+tests are run.
+Ideally you want this to be a local disk (SSD is best).
+The default is 
+.DS
+`bk root -P`/BitKeeper/tmp/bisect
+.DE
+.tp
+.B \-\-keys
+Print MD5KEYS instead of dates as the prefix to each changeset searched.
+.tp
+.OPTreq \-r range
+Specify the changesets to be searched, i.e., "1.100..1.500".
+This is frequently a pair of tags such as "\-rbk-5.0..bk-6.0".
+If you want to search from a rev to the tip then say "\-rbk-6.0..".
+Mutually exclusive with "--search".
+.tp
+.OPTreq \-s alias
+When searching a nested collection limit the search to changesets that
+modify one or more of the components implied by
+.ARG alias .
+If this option is repeated the implied subset is the union of all
+specified aliases.
+.tp
+.LOPTopt \-\-search unit
+Sometimes you have no idea where the bug was introduced so specifying
+a range is not an option.
+Use "\-\-search" to tell
+.B bk bisect
+to search for a good starting changeset that does not contain the bug.
+By default it does exponentially increasing probes in units of one month
+(tries one month backwards, then two months, then four months, etc.)
+The optional one-letter
+.ARG unit
+can be used to override the default unit of months (M) to search
+by years (Y), weeks (W), days (d) or  hours (h).
+Mutually exclusive with "-r".
+.tp
+.LOPTopt \-\-validate both|stop|none
+The most common user error when using
+.B bk bisect
+is providing a program that does not actually find the bug.
+To prevent this error,
+.B bk bisect
+validates by default that the user provided program returns 0 at
+the start of the range and 1 at the end of the range (which is what
+.LOPTreq --validate both 
+does).
+.SP
+The full set of options are:
+.RS
+.TP "both "
+both
+validate both endpoints of the range (this is the default).  
+.tp
+start
+Validate that the bug is present in the starting endpoint only.
+.tp
+stop
+Validate that the bug is present in the stopping endpoint only.
+.tp 
+none
+Do not validate the endpoints before starting the bisect search.
+.RE
+.SH EXIT STATUS
+.B bk bisect
+returns exit status:
+.TP
+0
+if it finds a match
+.tp
+1
+if no matches were found
+.tp
+2
+if an error occurred
+.SH EXAMPLES
+This command is used when you have a test case which demonstrates a bug
+but you don't know where the bug was introduced.
+.DS
+$ bk bisect --cmd=build-and-test --search
+.DE
+and BitKeeper will clone the repository into the working directory.
+The test case will build the tree (if needed), run the test, and then exit 
+as described above.
+.LP
+This is a contrived example because you could do this much more cheaply with
+bk annotate and bk r2c, but suppose you wanted to figure out which changeset
+added the string "THE STRING" to a file called "the-file".  
+The test program would not need to build anything, it just looks like this:
+.DS
+#!/bin/sh
+
+bk co -q the-file || exit 3 # skip if we can't get the-file
+
+# grep -q exits 0 if a match is found
+grep -q "THE STRING" the-file
+if [ $? = 0 ]
+then	# still there, look in ancestors
+	exit 1
+else	# not there, look in descendants
+	exit 0
+fi
+.DE
+Here is another example looking for when the string was removed (again
+contrived because you can do this much faster using bk revtool).  
+The changeset listed will be the one that removed the string:
+.DS
+#!/bin/sh
+
+# We run at the root but we're looking in a subdir
+bk grep -q '^fixDates(' src/slib.c
+if [ $? = 0 ]
+then    # found it
+        exit 0
+else    # not there
+        exit 1
+fi
+.DE
+.SH LIMITATIONS
+Bisect works on the basis that there is a single changeset that is the answer.
+If the bug was introduced more than once then only one of the changesets is 
+reported.
+.LP
+When using the "--search" option,
+there is a bias towards the more recent work so if the changesets that 
+introduced the bug are widely spaced in time then it is likely the more 
+recent one will be reported.  
+If they are close together then it could be either changeset that is reported.
+.SH SEE ALSO
+.SA range
+.SH CATEGORY
+.B Utility

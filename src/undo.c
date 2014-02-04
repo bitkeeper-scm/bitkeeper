@@ -34,7 +34,6 @@ private	int	undo_ensemble1(nested *n, options *ops,
 private	int	undo_ensemble2(nested *n, options *ops);
 private	void	undo_ensemble_rollback(nested *n, options *opts,
     char **comp_list);
-private	int	undoLimit(char **limit);
 
 int
 undo_main(int ac,  char **av)
@@ -113,7 +112,7 @@ undo_main(int ac,  char **av)
 	opts->empty = hash_new(HASH_MEMHASH);
 	trigger_setQuiet(opts->quiet);
 	cmdlog_lock(CMD_WRLOCK|CMD_NESTED_WRLOCK);
-	if (undoLimit(&must_have)) limitwarning = 1;
+	if (undoLimit(0, &must_have)) limitwarning = 1;
 	save_log_markers();
 	// XXX - be nice to do this only if we actually are going to undo
 	unlink(BACKUP_SFIO); /* remove old backup file */
@@ -938,15 +937,15 @@ move_file(options *opts, char ***checkfiles)
 	return (rc);
 }
 
-private	int
-undoLimit(char **limit)
+int
+undoLimit(sccs *cs, char **limit)
 {
 	sccs	*s;
 	int	i, ret = 0, in_log = 0;
 	char	*p;
 
 	if (getenv("_BK_TRANSACTION")) return (0); /* let top level chk */
-	unless (s = sccs_csetInit(INIT_MUSTEXIST)) return (0);
+	unless ((s = cs) || (s = sccs_csetInit(INIT_MUSTEXIST))) return (0);
 	EACH(s->text) {
 		if (s->text[i][0] == '\001') continue;
 		unless (in_log) {
@@ -963,7 +962,7 @@ undoLimit(char **limit)
 			break;
 		}
 	}
-	sccs_free(s);
+	if (s != cs) sccs_free(s);
 	return (ret);
 }
 

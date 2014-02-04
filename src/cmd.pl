@@ -180,6 +180,7 @@ bam
 BAM => bam
 base64
 bin
+bisect
 bkd
 binpool => bam
 cat

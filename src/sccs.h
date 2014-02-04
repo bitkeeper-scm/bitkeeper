@@ -1544,6 +1544,7 @@ void	datamap(char *name, void *start, int len,
 void	dataunmap(FILE *f, int keep);
 FILE	*fopen_bkfile(char *file, char *mode, u64 size, int chkxor);
 FILE	*fdopen_bkfile(FILE *f, char *mode, u64 size, int chkxor);
+int	undoLimit(sccs *cs, char **limit);
 
 #define	RGCA_ALL	0x1000
 #define	RGCA_STANDALONE	0x2000

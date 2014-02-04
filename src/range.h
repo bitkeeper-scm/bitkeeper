@@ -55,5 +55,6 @@ int	walkrevs_clrFlags(sccs *s, ser_t d, void *token);
 int	walkrevs_printkey(sccs *s, ser_t d, void *token);
 int	walkrevs_printmd5key(sccs *s, ser_t d, void *token);
 int	walkrevs_addSer(sccs *s, ser_t d, void *token);
+int	walkrevs_countIfDSET(sccs *s, ser_t d, void *token);
 
 #endif
