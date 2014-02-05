@@ -9108,11 +9108,11 @@ _hasDiffs(sccs *s, ser_t d, u32 flags, int inex, pfile *pf)
 				no_lf = 1;
 			}
 			/* now strip CR; if gline was "\n", glen now 0 */
-			if (glen && (gline[glen-1] == '\r')) glen--;
+			while (glen && (gline[glen-1] == '\r')) glen--;
 
 			/* now strip CR in weave if old broken sfile */
 			flen = strlen(fbuf);
-			if (flen && (fbuf[flen-1] == '\r')) flen--;
+			while (flen && (fbuf[flen-1] == '\r')) flen--;
 
 			unless (((flen == glen) &&
 				strneq(gline, fbuf, flen)) ||
