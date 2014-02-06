@@ -14427,6 +14427,10 @@ doDiff(sccs *s, df_opt *dop, char *leftf, char *rightf,
 	if (WRITABLE(s) && !EDITED(s)) {
 		error = " (writable without lock!) ";
 	}
+	if (binaryCheck(diffs)) {
+		fputs("Binary files differ", out);
+		goto out;
+	}
 	while (fnext(buf, diffs)) {
 		if (first) {
 			if (dop->out_header) {
@@ -14449,7 +14453,7 @@ doDiff(sccs *s, df_opt *dop, char *leftf, char *rightf,
 	if (dop->out_comments && !first) {
 		fprintf(out, "\n");
 	}
-	fclose(diffs);
+out:	fclose(diffs);
 	unlink(diffFile);
 	return (0);
 }
