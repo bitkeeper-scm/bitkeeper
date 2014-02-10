@@ -2705,10 +2705,14 @@ compile_write(Expr *expr)
  * int spawn(string cmd, STATUS &s)
  * int spawn(string argv[])
  * int spawn(string argv[], STATUS &s)
+ * int spawn(cmd | argv[], string in, FILE out, FILE err)
+ * int spawn(cmd | argv[], string in, FILE out, FILE err, STATUS &s)
+ * int spawn(cmd | argv[], string[] in, FILE out, FILE err)
+ * int spawn(cmd | argv[], string[] in, FILE out, FILE err, STATUS &s)
  * int spawn(cmd | argv[], "input", "${outf}", "errors")
  * int spawn(cmd | argv[], "input", "${outf}", "errors", STATUS &s)
- * int spawn(cmd | argv[], FILE in, FILE out, FILE err);
- * int spawn(cmd | argv[], FILE in, FILE out, FILE err, STATUS &s);
+ * int spawn(cmd | argv[], FILE in, FILE out, FILE err)
+ * int spawn(cmd | argv[], FILE in, FILE out, FILE err, STATUS &s)
  *
  * Convert these into a call to system_ or spawn_ that has exactly
  * seven args, the last being flags indicating the number and type of

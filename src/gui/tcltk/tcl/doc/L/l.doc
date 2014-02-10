@@ -2122,17 +2122,17 @@ second in the sort order, +1 if the first comes after the second, and
 
 =proto int spawn(string argv[], STATUS &s)
 
-=proto int spawn(cmd | argv[], FILE in, FILE out, FILE err);
+=proto int spawn(cmd | argv[], FILE in, FILE out, FILE err)
 
-=proto int spawn(cmd | argv[], FILE in, FILE out, FILE err, STATUS &s);
+=proto int spawn(cmd | argv[], FILE in, FILE out, FILE err, STATUS &s)
 
-=proto int spawn(cmd | argv[], string in, FILE out, FILE err);
+=proto int spawn(cmd | argv[], string in, FILE out, FILE err)
 
-=proto int spawn(cmd | argv[], string in, FILE out, FILE err, STATUS &s);
+=proto int spawn(cmd | argv[], string in, FILE out, FILE err, STATUS &s)
 
-=proto int spawn(cmd | argv[], string[] in, FILE out, FILE err);
+=proto int spawn(cmd | argv[], string[] in, FILE out, FILE err)
 
-=proto int spawn(cmd | argv[], string[] in, FILE out, FILE err, STATUS &s);
+=proto int spawn(cmd | argv[], string[] in, FILE out, FILE err, STATUS &s)
 
 =proto int spawn(cmd | argv[], "input", "${outf}", "errors")
 
@@ -2232,8 +2232,6 @@ Return 0 on success, -1 on failure.
 =proto int system(cmd | argv[], string in, string &out, string &err)
 
 =proto int system(cmd | argv[], string in, string &out, string &err, STATUS &s)
-
-=proto int system(cmd | argv[], string[] in, string[] &out, string[] &err, STATUS &s)
 
 =proto int system(cmd | argv[], string[] in, string[] &out, string[] &err)
 

@@ -1101,6 +1101,11 @@ system_(poly argv, poly in, poly &out_ref, poly &err_ref, STATUS &status_ref,
 			}
 		}
 	} else if (flags & SYSTEM_IN_HANDLE__) {
+		unless (defined(in)) {
+			stdio_lasterr = "stdin channel not open";
+			ret = undef;
+			goto out;
+		}
 		chIn = in;
 	}
 	if (flags & (SYSTEM_OUT_STRING__ | SYSTEM_OUT_ARRAY__)) {
@@ -1113,6 +1118,11 @@ system_(poly argv, poly in, poly &out_ref, poly &err_ref, STATUS &status_ref,
 			}
 		}
 	} else if (flags & SYSTEM_OUT_HANDLE__) {
+		unless (defined(out)) {
+			stdio_lasterr = "stdout channel not open";
+			ret = undef;
+			goto out;
+		}
 		chOut = out;
 	} else unless (userOutRedirect) {
 		chOut = "stdout";
@@ -1127,6 +1137,11 @@ system_(poly argv, poly in, poly &out_ref, poly &err_ref, STATUS &status_ref,
 			}
 		}
 	} else if (flags & SYSTEM_ERR_HANDLE__) {
+		unless (defined(err)) {
+			stdio_lasterr = "stderr channel not open";
+			ret = undef;
+			goto out;
+		}
 		chErr = err;
 	} else unless (userErrRedirect) {
 		chErr = "stderr";

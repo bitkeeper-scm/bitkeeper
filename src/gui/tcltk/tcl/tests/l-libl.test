@@ -2420,6 +2420,7 @@ void system3()
 	int	ret;
 	string	err[], out[];
 	STATUS	status;
+	FILE	not_open;
 
 	/* Check that a non-zero cmd return status is surfaced as an error. */
 	ret = system("perl -e 'print \"out\";exit(123)'",
@@ -2475,6 +2476,25 @@ void system3()
 	/* Cannot open error file. */
 	ret = system("date", undef, "out", "/bad/unwritable");
 	if (defined(ret)) puts("bad 8.1");
+
+	/* A passed-in FILE that is undef. */
+	ret = system("date", not_open, undef, undef);
+	if (defined(ret)) puts("bad 9.1");
+	ret = system("date", undef, not_open, undef);
+	if (defined(ret)) puts("bad 9.2");
+	ret = system("date", undef, undef, not_open);
+	if (defined(ret)) puts("bad 9.3");
+
+	/* A passed-in FILE that was open but is now closed. */
+	not_open = open("out", "w");
+	unless (not_open) puts("bad 10.1");
+	fclose(not_open);
+	ret = system("date", not_open, undef, undef);
+	if (defined(ret)) puts("bad 10.2");
+	ret = system("date", undef, not_open, undef);
+	if (defined(ret)) puts("bad 10.3");
+	ret = system("date", undef, undef, not_open);
+	if (defined(ret)) puts("bad 10.4");
 
 	unlink("out");
 	unlink("err");
