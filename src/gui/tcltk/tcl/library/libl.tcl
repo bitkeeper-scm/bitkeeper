@@ -1879,7 +1879,7 @@ L_undef_ref_parm_accessed_(_argused string name1, _argused string name2,
 	}
 	eval("return -code error -level 2 {undefined reference parameter ${msg}}");
 }
-string	L_undef_ref_parm_;
+string	L_undef_ref_parm_ = "L_undef_ref_parm_ object";
 Trace_addVariable("::L_undef_ref_parm_", {"read","write"},
 		  &L_undef_ref_parm_accessed_);
 

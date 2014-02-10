@@ -10925,6 +10925,33 @@ void reference_1_5_5(string &arg5, string arg5,  string &arg5) {}
 .*5: L Error: multiple declaration of local arg5
 }
 
+test reference-1.6 {test reference parameter passed as a reference parameter} -body {
+#lang L --line=1
+string reference_1_6_g;
+void reference_1_6_1(string &arg)
+{
+	arg .= "2";
+	reference_1_6_2(&arg);
+}
+void reference_1_6_2(string &arg)
+{
+	arg .= "3";
+}
+void reference_1_6()
+{
+	string	s;
+
+	s = "1";
+	reference_1_6_1(&s);
+	unless (s == "123") puts("bad 1");
+
+	reference_1_6_g = "1";
+	reference_1_6_1(&reference_1_6_g);
+	unless (reference_1_6_g == "123") puts("bad 2");
+}
+reference_1_6();
+} -output {}
+
 test pointer-1 {check L pointers} -body {
 #lang L --line=1
 string	pointer_1_g_public;
@@ -11843,21 +11870,27 @@ defined_1_11();
 
 test defined-1.12 {check defined(&var)} -body {
 #lang L --line=1 -nowarn
-string def1_12_f1(string &a)
+string def1_12_g1 = "global1";
+string def1_12_g2 = "global2";
+string def1_12_g3 = "global3";
+
+// The args are all named differently on purpose.
+string def1_12_f1(string &a1)
 {
-	return ((string)defined(&a));
+	return ((string)defined(&a1));
 }
-string def1_12_f2(string &a, string &b)
+string def1_12_f2(string &a2, string &b2)
 {
-	return ((string)defined(&a) . (string)defined(&b));
+	return ((string)defined(&a2) . (string)defined(&b2));
 }
-string def1_12_f3(string &a, string &b, string &c)
+string def1_12_f3(string &a3, string &b3, string &c3)
 {
-	return ((string)defined(&a) . (string)defined(&b) . (string)defined(&c));
+	return ((string)defined(&a3) . (string)defined(&b3) .
+		(string)defined(&c3));
 }
-string def1_12_ff(string &a, string &b)
+string def1_12_ff(string &a4, string &b4)
 {
-	return (def1_12_f1(&a) . def1_12_f1(&b));
+	return (def1_12_f1(&a4) . def1_12_f1(&b4));
 }
 void defined_1_12()
 {
@@ -11884,6 +11917,12 @@ void defined_1_12()
 	unless (def1_12_ff(undef, &b) eq "01") puts("bad 4.2");
 	unless (def1_12_ff(&a, undef) eq "10") puts("bad 4.3");
 	unless (def1_12_ff(undef, undef) eq "00") puts("bad 4.4");
+
+	unless (def1_12_f1(&def1_12_g1) eq "1") puts("bad 5.1");
+	unless (def1_12_f2(&def1_12_g1, &def1_12_g2) eq "11") puts("bad 5.2");
+	unless (def1_12_f3(&def1_12_g1, &def1_12_g2, &def1_12_g3) eq "111") {
+		puts("bad 5.2");
+	}
 }
 defined_1_12();
 } -output {}

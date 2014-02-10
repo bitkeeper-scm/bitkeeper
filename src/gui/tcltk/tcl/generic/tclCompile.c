@@ -441,8 +441,9 @@ InstructionDesc const tclInstructionTable[] = {
 	 * -1 means append). */
     {"unsetLocal",	 5,    0,	  1,	{OPERAND_LVT4}},
 	/* Unset the local variable at index op1. */
-    {"mark-undef",	 1,    0,	  0,	{OPERAND_NONE}},
-	/* set the undef bit in stktop */
+    {"different-obj",	 5,    0,	  1,	{OPERAND_LVT4}},
+	/* Determine whether the variable whose name is at stktop
+	 * points to a different object as the given local. */
     {0}
 };
 

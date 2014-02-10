@@ -8349,11 +8349,6 @@ TclExecuteByteCode(
 	NEXT_INST_F(1, 1, 1);
     }
 
-    case INST_MARK_UNDEF: {
-	(OBJ_AT_TOS)->undef = 1;
-	NEXT_INST_F(1, 0, 0);
-    }
-
     case INST_L_PUSH_LIST_SIZE: {
 	int length;
 	Tcl_Obj *valuePtr;
@@ -8494,6 +8489,37 @@ TclExecuteByteCode(
 	    TclSetVarUndefined(varPtr);
 	}
 	NEXT_INST_F(5, 0, 0);
+    }
+
+    case INST_DIFFERENT_OBJ: {
+	unsigned int opnd = TclGetUInt4AtPtr(pc+1);
+	Var *localVarPtr = &compiledLocals[opnd];
+	Var *otherVarPtr, *varPtr;
+	Tcl_Obj *varName = OBJ_AT_TOS;
+	Tcl_Obj *localObjPtr, *otherObjPtr;
+
+	otherVarPtr = TclObjLookupVar(interp, varName, NULL, TCL_GLOBAL_ONLY,
+				      NULL, 0, 0, &varPtr);
+	if (otherVarPtr == NULL) {
+	    Tcl_SetResult(interp, "variable not found", TCL_STATIC);
+	    result = TCL_ERROR;
+	    goto checkForCatch;
+	}
+	while (TclIsVarLink(otherVarPtr)) {
+	    otherVarPtr = otherVarPtr->value.linkPtr;
+	}
+	while (TclIsVarLink(localVarPtr)) {
+	    localVarPtr = localVarPtr->value.linkPtr;
+	}
+	if (!TclIsVarUndefined(localVarPtr) && !TclIsVarUndefined(otherVarPtr)) {
+	    localObjPtr = localVarPtr->value.objPtr;
+	    otherObjPtr = otherVarPtr->value.objPtr;
+	    objResultPtr = constants[localObjPtr != otherObjPtr];
+	} else {
+	    objResultPtr = constants[1];
+	}
+
+	NEXT_INST_F(5, 1, 1);
     }
 
     default:

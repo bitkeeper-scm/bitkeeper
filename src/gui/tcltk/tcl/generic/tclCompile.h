@@ -667,7 +667,7 @@ typedef struct ByteCode {
 #define INST_L_LINDEX_STK		143
 #define INST_L_LIST_INSERT		144
 #define INST_UNSET_LOCAL		145
-#define INST_MARK_UNDEF			146
+#define INST_DIFFERENT_OBJ		146
 
 /* The last opcode */
 #define LAST_INST_OPCODE		146

@@ -3373,7 +3373,7 @@ compile_exprs(Expr *expr, Expr_f flags)
 private int
 push_parms(Expr *actuals, VarDecl *formals)
 {
-	int	i = 0;
+	int	i;
 	int	widget_flag = FALSE;
 	int	strlen_of_variable = strlen("variable");
 	char	*s;
@@ -3384,17 +3384,12 @@ push_parms(Expr *actuals, VarDecl *formals)
 		if (isaddrof(a) && (a->a->kind == L_EXPR_ID) &&
 		    (sym = sym_lookup(a->a, L_NOWARN)) &&
 		    (sym->decl->flags & DECL_REF)) {
-			s = cksprintf("&%s", a->a->str);
-			v = mkId(s);
-			ckfree(s);
-			sym = sym_lookup(v, L_NOWARN);
-			ASSERT(sym);
-			emit_load_scalar(sym->idx);
+			push_lit(sym->tclname);
 			a->type = type_mkNameOf(a->a->type);
 		} else if (isid(a, "undef") &&
-			   formals && isnameoftype(formals->type)) {
+			   formals && isnameoftype(formals->type) &&
+			   !isfntype(formals->type->base_type)) {
 			push_lit("::L_undef_ref_parm_");
-			TclEmitOpcode(INST_MARK_UNDEF, L->frame->envPtr);
 			a->type = L_poly;
 		} else {
 			compile_expr(a, L_PUSH_VAL);
@@ -3879,30 +3874,26 @@ compile_trinOp(Expr *expr)
 private void
 compile_defined(Expr *expr)
 {
-	Expr	*var;
 	Sym	*sym;
-	char	*name;
 
 	if (isaddrof(expr)) {
 		unless (expr->a->kind == L_EXPR_ID) {
 			L_errf(expr, "arg to & not a call-by-reference parm");
 			return;
 		}
-		name = cksprintf("&%s", expr->a->str);
-		var = mkId(name);
-		ckfree(name);
-		sym = sym_lookup(var, L_NOWARN);
+		sym = sym_lookup(expr->a, L_NOWARN);
 		unless (sym && (sym->decl->flags & DECL_REF)) {
 			L_errf(expr, "%s undeclared or not a "
 			       "call-by-reference parm", expr->a->str);
 			return;
 		}
-		emit_load_scalar(sym->idx);
+		push_lit("::L_undef_ref_parm_");
+		TclEmitInstInt4(INST_DIFFERENT_OBJ, sym->idx, L->frame->envPtr);
 	} else {
 		compile_expr(expr, L_PUSH_VAL);
 		L_typeck_deny(L_VOID, expr);
+		TclEmitOpcode(INST_L_DEFINED, L->frame->envPtr);
 	}
-	TclEmitOpcode(INST_L_DEFINED, L->frame->envPtr);
 }
 
 /*
