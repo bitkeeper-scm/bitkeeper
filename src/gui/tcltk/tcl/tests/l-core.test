@@ -9947,57 +9947,169 @@ test deep-3.1 {check reading an undefined array index} -body {
 void
 deep_3_1()
 {
+	int	i;
 	int	a[] = {};
 
 	/*
-	 * Reading an array element with an undefined index is legal
-	 * and should return undef.
+	 * Reading an array element with an undefined index should
+	 * cause a run-time error.
 	 */
-
-	if (defined(a[undef])) puts("bad 1");
+	a[i];
 }
 deep_3_1();
-} -output {}
+} -returnCodes error -match glob -result {cannot read from undefined array index}
 
 test deep-3.2 {check writing an undefined array index} -body {
 #lang L --line=1
 void
 deep_3_2()
 {
+	int	i;
 	int	a[] = {};
 
 	/*
-	 * Writing an array element with an undefined index is
-	 * illegal.
+	 * Writing an array element with an undefined index should
+	 * cause a run-time error.
 	 */
-
-	a[undef] = 0;  // run-time error
+	a[i] = 0;  // run-time error
 }
 deep_3_2();
-} -returnCodes error -match regexp -result {cannot write to undefined array index}
+} -returnCodes error -match glob -result {cannot write to undefined array index}
+
+test deep-3.2.2 {check reading an undefined hash index} -body {
+#lang L
+void
+deep_3_2_2()
+{
+	string	idx;
+	string	h{string} = {};
+
+	/*
+	 * Reading a hash element with an undefined index should
+	 * cause a run-time error.
+	 */
+	h{idx};
+}
+deep_3_2_2();
+} -returnCodes error -match glob -result {cannot read from undefined hash index}
+
+test deep-3.2.2.1 {check back-door reading undefined hash index} -setup {
+	makeFile {
+		string	s;
+		string	deep_3_2_2h{string};
+
+		deep_3_2_2h{s};
+		puts("worked");
+	} deep-3.2.2.1.l
+} -body {
+#lang L --line=1
+void deep_3_2_2_1()
+{
+	/*
+	 * Test the back door BK_L_ALLOW_UNDEF_HASH_INDEX=YES which
+	 * allows using an undef hash index. Do this in its own tclsh
+	 * instance since the env variable is read only at the first
+	 * undef hash index.
+	 */
+	int	ret;
+	string	err, out, tclsh = interpreter();
+
+	putenv("BK_L_ALLOW_UNDEF_HASH_INDEX=YES");
+	ret = system({tclsh, "deep-3.2.2.1.l"}, undef, &out, &err);
+	if (ret) puts("bad 1");
+	unless (out == "worked\n") puts("bad 2");
+	putenv("BK_L_ALLOW_UNDEF_HASH_INDEX=");
+}
+deep_3_2_2_1();
+} -output {}
+
+test deep-3.2.3 {check writing an undefined hash index} -body {
+#lang L
+void
+deep_3_2_3()
+{
+	string	idx;
+	string	h{string} = {};
+
+	/*
+	 * Writing a hash element with an undefined index should
+	 * cause a run-time error.
+	 */
+	h{idx} = "bad";
+}
+deep_3_2_3();
+} -returnCodes error -match glob -result {cannot write to undefined hash index}
+
+test deep-3.2.3.1 {check back-door writing undefined array index} -setup {
+	makeFile {
+		string	s;
+		string	deep_3_2_3h{string};
+
+		deep_3_2_3h{s} = "should be ok now";
+		puts("worked");
+	} deep-3.2.3.1.l
+} -body {
+#lang L --line=1
+void deep_3_2_3_1()
+{
+	/*
+	 * Test the back door BK_L_ALLOW_UNDEF_HASH_INDEX=YES which
+	 * allows using an undef hash index. Do this in its own tclsh
+	 * instance since the env variable is read only at the first
+	 * undef hash index.
+	 */
+	int	ret;
+	string	err, out, tclsh = interpreter();
+
+	putenv("BK_L_ALLOW_UNDEF_HASH_INDEX=YES");
+	ret = system({tclsh, "deep-3.2.3.1.l"}, undef, &out, &err);
+	if (ret) puts("bad 1");
+	unless (out == "worked\n") puts("bad 2");
+	putenv("BK_L_ALLOW_UNDEF_HASH_INDEX=");
+}
+deep_3_2_3_1();
+} -output {}
 
 test deep-3.3 {check reading an undefined string index} -body {
 #lang L --line=1
 void
 deep_3_3()
 {
+	int	i;
 	string	s = "";
 
 	/*
-	 * Reading a string element with an undefined index is legal
-	 * and should return undef.
+	 * Reading a string element with an undefined index should
+	 * cause a run-time error.
 	 */
-
-	if (defined(s[undef])) puts("bad 1");
+	s[i];
 }
 deep_3_3();
-} -output {}
+} -returnCodes error -match glob -result {cannot read from undefined string index}
+
+test deep-3.3.1 {check writing an undefined string index} -body {
+#lang L
+void
+deep_3_3_1()
+{
+	int	i;
+	string	s;
+
+	/*
+	 * Writing a string element with an undefined index should
+	 * cause a run-time error.
+	 */
+	s[i] = "bad";
+}
+deep_3_3_1();
+} -returnCodes error -match glob -result {cannot write to undefined string index}
 
 test deep-3.4 {check writing an undefined array index} -body {
 #lang L --line=1
 void
 deep_3_4()
 {
+	int	i;
 	string	s = "";
 
 	/*
@@ -10005,10 +10117,35 @@ deep_3_4()
 	 * illegal.
 	 */
 
-	s[undef] = "bad";  // run-time error
+	s[i] = "bad";  // run-time error
 }
 deep_3_4();
 } -returnCodes error -match regexp -result {cannot write to undefined string index}
+
+test deep-3.5 {check compile-time undefined array and hash indices} -body {
+#lang L --line=1
+void deep_3_5()
+{
+	int	ia[];
+	string	sa[], sh{string};
+
+	/* These should all be compile-time errors. */
+
+	ia[undef];
+	sa[undef];
+	ia[undef] = 1;
+	sa[undef] = "bad";
+	sh{undef};
+	sh{undef} = "bad";
+}
+deep_3_5();
+} -returnCodes error -match regexp -result {.*8: L Error: cannot use undef as an array/string index
+.*9: L Error: cannot use undef as an array/string index
+.*10: L Error: cannot use undef as an array/string index
+.*11: L Error: cannot use undef as an array/string index
+.*12: L Error: cannot use undef as a hash index
+.*13: L Error: cannot use undef as a hash index
+}
 
 test deep-4.0 {check hash and array indexing of a poly} -body {
 #lang L --line=1
@@ -12465,13 +12602,6 @@ void undef_8()
 	}
 	aft = Lrefcnt(undef);
 	if (aft > bef) puts("bad 3 a[] read ${bef} -> ${aft}");
-
-	bef = Lrefcnt(undef);
-	for (i = 0; i < iters; ++i) {
-		a[j];  // array read with undef index
-	}
-	aft = Lrefcnt(undef);
-	if (aft > bef) puts("bad 4 a[undef] read ${bef} -> ${aft}");
 
 	bef = Lrefcnt(undef);
 	for (i = 0; i < iters; ++i) {

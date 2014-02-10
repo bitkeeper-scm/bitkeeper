@@ -1730,6 +1730,8 @@ private	FILE	debugf = undef;
 void
 debug_enter(string cmd, string op)
 {
+	unless (cmd) return;
+
 	op = op;
 	debug{cmd} = Clock_microseconds();
 	fprintf(debugf, "ENTER ${cmd}\n");
@@ -1740,6 +1742,8 @@ void
 debug_leave(string cmd, int code, string result, string op)
 {
 	float	t;
+
+	unless (cmd) return;
 
 	op = op;
 	code = code;

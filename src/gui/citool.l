@@ -262,10 +262,12 @@ getSelectedFile()
 	string	node;
 	string	file;
 
-	node = getSelectedNode();
-	unless (defined(node)) return (undef);
-
-	file = ListBox_itemcget(self.o_files, node, data:);
+	unless (node = getSelectedNode()) {
+		return (undef);
+	}
+	unless (file = ListBox_itemcget(self.o_files, node, data:)) {
+		return (undef);
+	}
 	return (self.files{file});
 }
 
@@ -830,7 +832,7 @@ processFiles(string files[])
 		// so we'll just select the first file in the root component.
 		string	file = self.components{self.root}[0];
 
-		if (defined(self.files{file})) {
+		if (file && self.files{file}) {
 			selectFile(self.files{file}.node);
 		}
 	}
@@ -1755,8 +1757,7 @@ moveNext()
 	string	sel = getSelectedNode();
 	int	idx = ListBox_index(self.o_files, sel);
 
-	node = ListBox_item(self.o_files, ++idx);
-	unless (ListBox_exists(self.o_files, node)) return;
+	unless (node = ListBox_item(self.o_files, ++idx)) return;
 	if (node =~ /pending/) {
 		selectPendingNode(node);
 	} else {
@@ -1771,8 +1772,7 @@ movePrevious()
 	string	sel = getSelectedNode();
 	int	idx = ListBox_index(self.o_files, sel);
 
-	node = ListBox_item(self.o_files, --idx);
-	unless (ListBox_exists(self.o_files, node)) return;
+	unless (node = ListBox_item(self.o_files, --idx)) return;
 	if (node =~ /pending/) {
 		selectPendingNode(node);
 	} else {
@@ -1874,8 +1874,13 @@ getComments(sfile sf)
 string
 getCommentsFromDisk(sfile sf, _optional int prefix)
 {
-	string	comments;
+	string	comments = "";
 
+	/*
+	 * We sometimes get called with self.files{"ChangeSet"} when
+	 * in fact, there is no sf struct for "ChangeSet".
+	 */
+	unless (sf) return (comments);
 	if ((sf.type == "cset") && self.compinfo{sf.component}.comments) {
 		// We have cached comments for this cset file.
 		comments = self.compinfo{sf.component}.comments;
@@ -2157,13 +2162,13 @@ fillComments(FILE pipe)
 
 	while (1) {
 		file = self.cfiles[self.cfiles_idx++];
-		sf = self.files{file};
 
 		unless (file && self.cfiles_pipe) {
 			// No files left, close the pipe.
 			stopCfileComments();
 			return;
 		}
+		sf = self.files{file};
 
 		// We handle ChangeSet and pending files ourselves
 		// since they can have comments that don't live on disk
@@ -2320,16 +2325,14 @@ pasteComments()
 	}
 
 	// Find the next uncommented file and skip down.
-	while (1) {
-		node = ListBox_item(self.o_files, ++idx);
+	while (node = ListBox_item(self.o_files, ++idx)) {
 		if (node =~ /pending/) continue;
-		unless (ListBox_exists(self.o_files, node)) return;
 		file = ListBox_itemcget(self.o_files, node, data:);
 		sf = self.files{file};
 		if (isCommented(sf)) continue;
 		break;
 	}
-	selectFile(node);
+	if (node) selectFile(node);
 }
 
 void

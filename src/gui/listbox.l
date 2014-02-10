@@ -125,12 +125,10 @@ ListBox_itemDelete(ListBox self, ...args)
 	string	itemName;
 
 	foreach (itemName in args) {
-		idx = ListBox_index(self, itemName);
+		if ((idx = ListBox_index(self, itemName)) < 0) continue;
 		if (idx < low) low = idx;
-		if (idx != -1) {
-			undef(self->itemList[idx]);
-			undef(self->items{itemName});
-		}
+		undef(self->itemList[idx]);
+		undef(self->items{itemName});
 	}
 	ListBox_RedrawRows(low);
 	ListBox_Redraw();

@@ -9938,12 +9938,13 @@ L_deepDiveArray(
 
     if (L_isUndef(idxObj)) {
 	if (lvalue) {
-	    Tcl_ResetResult(interp);
-	    Tcl_AppendResult(interp, "cannot write to undefined array index",
-			     NULL);
+	    Tcl_SetResult(interp, "cannot write to undefined array index",
+			  NULL);
 	    return (NULL);
 	} else {
-	    return (L_undefObjPtrPtr());
+	    Tcl_SetResult(interp, "cannot read from undefined array index",
+			  NULL);
+	    return (NULL);
 	}
     }
     if (TclGetIntFromObj(NULL, idxObj, &idx) != TCL_OK) {
@@ -10076,6 +10077,30 @@ L_deepDiveHash(
 	    return (L_undefObjPtrPtr());
 	}
     }
+
+    if (L_isUndef(idxObj)) {
+	static int	undef_idx_ok = -1;
+
+	if (undef_idx_ok == -1) {
+	    undef_idx_ok = getenv("BK_L_ALLOW_UNDEF_HASH_INDEX") != NULL;
+	}
+	if (undef_idx_ok == 1) {
+	    unless (flags & L_LVALUE) {
+		return (L_undefObjPtrPtr());
+	    }
+	} else {
+	    if (flags & L_LVALUE) {
+		Tcl_SetResult(interp, "cannot write to undefined hash index",
+			      NULL);
+		return (NULL);
+	    } else {
+		Tcl_SetResult(interp, "cannot read from undefined hash index",
+			      NULL);
+		return (NULL);
+	    }
+	}
+    }
+
     dict = (Dict *)obj->internalRep.otherValuePtr;
     hPtr = Tcl_FindHashEntry(&dict->table, (char *)idxObj);
     unless (hPtr) {
@@ -10140,12 +10165,13 @@ L_deepDiveString(
 
     if (L_isUndef(idxObj)) {
 	if (flags & L_LVALUE) {
-	    Tcl_ResetResult(interp);
-	    Tcl_AppendResult(interp, "cannot write to undefined string index",
-			     NULL);
+	    Tcl_SetResult(interp, "cannot write to undefined string index",
+			  NULL);
 	    return (NULL);
 	} else {
-	    return (L_undefObjPtrPtr());
+	    Tcl_SetResult(interp, "cannot read from undefined string index",
+			  NULL);
+	    return (NULL);
 	}
     }
     if (TclGetIntFromObj(NULL, idxObj, &idx) != TCL_OK) {

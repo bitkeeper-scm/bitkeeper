@@ -5136,7 +5136,13 @@ push_index(Expr *expr, int flags)
 		ret = L_IDX_ARRAY;
 		break;
 	    case L_OP_ARRAY_INDEX:
-		unless (reuse) compile_expr(expr->b, L_PUSH_VAL);
+		unless (reuse) {
+			compile_expr(expr->b, L_PUSH_VAL);
+			if (isid(expr->b, "undef")) {
+				L_errf(expr->b, "cannot use undef as an "
+				       "array/string index");
+			}
+		}
 		L_typeck_expect(L_INT, expr->b, "in array/string index");
 		if (isarray(expr->a) || islist(expr->a)) {
 			type = expr->a->type->base_type;
@@ -5162,7 +5168,13 @@ push_index(Expr *expr, int flags)
 		}
 		break;
 	    case L_OP_HASH_INDEX: {
-		unless (reuse) compile_expr(expr->b, L_PUSH_VAL);
+		unless (reuse) {
+			compile_expr(expr->b, L_PUSH_VAL);
+			if (isid(expr->b, "undef")) {
+				L_errf(expr->b, "cannot use undef as a "
+				       "hash index");
+			}
+		}
 		if (ishash(expr->a)) {
 			L_typeck_expect(expr->a->type->u.hash.idx_type->kind,
 					expr->b,

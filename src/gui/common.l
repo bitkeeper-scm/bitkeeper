@@ -218,7 +218,7 @@ setScrollbar(string sb, string w, float first, float last)
 	float	xview[], yview[];
 
 	Scrollbar_set(sb, first, last);
-	unless (defined(_bk.w_scrollbars{w})) return;
+	unless (_bk.w_scrollbars{w}) return;
 	xview = Widget_xview(w);
 	yview = Widget_yview(w);
 	x = xview[0];
