@@ -11,8 +11,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclInt.h"
@@ -21,7 +19,7 @@
  * Prototypes for functions defined later in this file:
  */
 
-static int 		GetIndexFromObjList(Tcl_Interp *interp,
+static int		GetIndexFromObjList(Tcl_Interp *interp,
 			    Tcl_Obj *objPtr, Tcl_Obj *tableObjPtr,
 			    const char *msg, int flags, int *indexPtr);
 static int		SetIndexFromAny(Tcl_Interp *interp, Tcl_Obj *objPtr);
@@ -46,11 +44,11 @@ static void		PrintUsage(Tcl_Interp *interp,
  */
 
 static const Tcl_ObjType indexType = {
-    "index",				/* name */
-    FreeIndex,				/* freeIntRepProc */
-    DupIndex,				/* dupIntRepProc */
-    UpdateStringOfIndex,		/* updateStringProc */
-    SetIndexFromAny			/* setFromAnyProc */
+    "index",			/* name */
+    FreeIndex,			/* freeIntRepProc */
+    DupIndex,			/* dupIntRepProc */
+    UpdateStringOfIndex,	/* updateStringProc */
+    SetIndexFromAny		/* setFromAnyProc */
 };
 
 /*
@@ -105,7 +103,7 @@ typedef struct {
 
 int
 Tcl_GetIndexFromObj(
-    Tcl_Interp *interp, 	/* Used for error reporting if not NULL. */
+    Tcl_Interp *interp,		/* Used for error reporting if not NULL. */
     Tcl_Obj *objPtr,		/* Object containing the string to lookup. */
     const char *const*tablePtr,	/* Array of strings to compare against the
 				 * value of objPtr; last entry must be NULL
@@ -145,30 +143,29 @@ Tcl_GetIndexFromObj(
  *
  * GetIndexFromObjList --
  *
- *	This procedure looks up an object's value in a table of strings
- *	and returns the index of the matching string, if any.
+ *	This procedure looks up an object's value in a table of strings and
+ *	returns the index of the matching string, if any.
  *
  * Results:
- *	If the value of objPtr is identical to or a unique abbreviation
- *	for one of the entries in tableObjPtr, then the return value is
- *	TCL_OK and the index of the matching entry is stored at
- *	*indexPtr.  If there isn't a proper match, then TCL_ERROR is
- *	returned and an error message is left in interp's result (unless
- *	interp is NULL).  The msg argument is used in the error
- *	message; for example, if msg has the value "option" then the
- *	error message will say something flag 'bad option "foo": must be
- *	...'
+ *	If the value of objPtr is identical to or a unique abbreviation for
+ *	one of the entries in tableObjPtr, then the return value is TCL_OK and
+ *	the index of the matching entry is stored at *indexPtr. If there isn't
+ *	a proper match, then TCL_ERROR is returned and an error message is
+ *	left in interp's result (unless interp is NULL). The msg argument is
+ *	used in the error message; for example, if msg has the value "option"
+ *	then the error message will say something flag 'bad option "foo": must
+ *	be ...'
  *
  * Side effects:
- *	The result of the lookup is cached as the internal rep of
- *	objPtr, so that repeated lookups can be done quickly.
+ *	Removes any internal representation that the object might have. (TODO:
+ *	find a way to cache the lookup.)
  *
  *----------------------------------------------------------------------
  */
 
 int
 GetIndexFromObjList(
-    Tcl_Interp *interp, 	/* Used for error reporting if not NULL. */
+    Tcl_Interp *interp,		/* Used for error reporting if not NULL. */
     Tcl_Obj *objPtr,		/* Object containing the string to lookup. */
     Tcl_Obj *tableObjPtr,	/* List of strings to compare against the
 				 * value of objPtr. */
@@ -183,8 +180,8 @@ GetIndexFromObjList(
     const char **tablePtr;
 
     /*
-     * Use Tcl_GetIndexFromObjStruct to do the work to avoid duplicating
-     * most of the code there.  This is a bit ineffiecient but simpler.
+     * Use Tcl_GetIndexFromObjStruct to do the work to avoid duplicating most
+     * of the code there. This is a bit ineffiecient but simpler.
      */
 
     result = Tcl_ListObjGetElements(interp, tableObjPtr, &objc, &objv);
@@ -196,14 +193,14 @@ GetIndexFromObjList(
      * Build a string table from the list.
      */
 
-    tablePtr = (const char **) ckalloc((objc + 1) * sizeof(char *));
+    tablePtr = ckalloc((objc + 1) * sizeof(char *));
     for (t = 0; t < objc; t++) {
 	if (objv[t] == objPtr) {
 	    /*
 	     * An exact match is always chosen, so we can stop here.
 	     */
 
-	    ckfree((char *) tablePtr);
+	    ckfree(tablePtr);
 	    *indexPtr = t;
 	    return TCL_OK;
 	}
@@ -220,8 +217,7 @@ GetIndexFromObjList(
      */
 
     TclFreeIntRep(objPtr);
-    objPtr->typePtr = NULL;
-    ckfree((char *) tablePtr);
+    ckfree(tablePtr);
 
     return result;
 }
@@ -237,13 +233,13 @@ GetIndexFromObjList(
  *
  * Results:
  *	If the value of objPtr is identical to or a unique abbreviation for
- *	one of the entries in tablePtr, then the return value is TCL_OK and the
- *	index of the matching entry is stored at *indexPtr. If there isn't a
- *	proper match, then TCL_ERROR is returned and an error message is left
- *	in interp's result (unless interp is NULL). The msg argument is used
- *	in the error message; for example, if msg has the value "option" then
- *	the error message will say something flag 'bad option "foo": must be
- *	...'
+ *	one of the entries in tablePtr, then the return value is TCL_OK and
+ *	the index of the matching entry is stored at *indexPtr. If there isn't
+ *	a proper match, then TCL_ERROR is returned and an error message is
+ *	left in interp's result (unless interp is NULL). The msg argument is
+ *	used in the error message; for example, if msg has the value "option"
+ *	then the error message will say something flag 'bad option "foo": must
+ *	be ...'
  *
  * Side effects:
  *	The result of the lookup is cached as the internal rep of objPtr, so
@@ -254,7 +250,7 @@ GetIndexFromObjList(
 
 int
 Tcl_GetIndexFromObjStruct(
-    Tcl_Interp *interp, 	/* Used for error reporting if not NULL. */
+    Tcl_Interp *interp,		/* Used for error reporting if not NULL. */
     Tcl_Obj *objPtr,		/* Object containing the string to lookup. */
     const void *tablePtr,	/* The first string in the table. The second
 				 * string will be at this address plus the
@@ -340,16 +336,16 @@ Tcl_GetIndexFromObjStruct(
      */
 
     if (objPtr->typePtr == &indexType) {
- 	indexRep = objPtr->internalRep.otherValuePtr;
+	indexRep = objPtr->internalRep.otherValuePtr;
     } else {
 	TclFreeIntRep(objPtr);
- 	indexRep = (IndexRep *) ckalloc(sizeof(IndexRep));
- 	objPtr->internalRep.otherValuePtr = indexRep;
- 	objPtr->typePtr = &indexType;
+	indexRep = ckalloc(sizeof(IndexRep));
+	objPtr->internalRep.otherValuePtr = indexRep;
+	objPtr->typePtr = &indexType;
     }
     indexRep->tablePtr = (void *) tablePtr;
-    indexRep->offset   = offset;
-    indexRep->index    = index;
+    indexRep->offset = offset;
+    indexRep->index = index;
 
     *indexPtr = index;
     return TCL_OK;
@@ -364,17 +360,23 @@ Tcl_GetIndexFromObjStruct(
 
 	TclNewObj(resultPtr);
 	Tcl_SetObjResult(interp, resultPtr);
-	Tcl_AppendStringsToObj(resultPtr, (numAbbrev > 1) &&
-		!(flags & TCL_EXACT) ? "ambiguous " : "bad ", msg, " \"", key,
-		"\": must be ", STRING_AT(tablePtr, offset, 0), NULL);
-	for (entryPtr = NEXT_ENTRY(tablePtr, offset), count = 0;
-		*entryPtr != NULL;
-		entryPtr = NEXT_ENTRY(entryPtr, offset), count++) {
-	    if (*NEXT_ENTRY(entryPtr, offset) == NULL) {
-		Tcl_AppendStringsToObj(resultPtr, ((count > 0) ? "," : ""),
-			" or ", *entryPtr, NULL);
-	    } else {
-		Tcl_AppendStringsToObj(resultPtr, ", ", *entryPtr, NULL);
+	Tcl_AppendStringsToObj(resultPtr,
+		(numAbbrev>1 && !(flags & TCL_EXACT) ? "ambiguous " : "bad "),
+		msg, " \"", key, NULL);
+	if (STRING_AT(tablePtr, offset, 0) == NULL) {
+	    Tcl_AppendStringsToObj(resultPtr, "\": no valid options", NULL);
+	} else {
+	    Tcl_AppendStringsToObj(resultPtr, "\": must be ",
+		    STRING_AT(tablePtr, offset, 0), NULL);
+	    for (entryPtr = NEXT_ENTRY(tablePtr, offset), count = 0;
+		    *entryPtr != NULL;
+		    entryPtr = NEXT_ENTRY(entryPtr, offset), count++) {
+		if (*NEXT_ENTRY(entryPtr, offset) == NULL) {
+		    Tcl_AppendStringsToObj(resultPtr, (count > 0 ? "," : ""),
+			    " or ", *entryPtr, NULL);
+		} else {
+		    Tcl_AppendStringsToObj(resultPtr, ", ", *entryPtr, NULL);
+		}
 	    }
 	}
 	Tcl_SetErrorCode(interp, "TCL", "LOOKUP", "INDEX", msg, key, NULL);
@@ -407,9 +409,11 @@ SetIndexFromAny(
     Tcl_Interp *interp,		/* Used for error reporting if not NULL. */
     register Tcl_Obj *objPtr)	/* The object to convert. */
 {
+    if (interp) {
     Tcl_SetObjResult(interp, Tcl_NewStringObj(
 	    "can't convert value to index except via Tcl_GetIndexFromObj API",
 	    -1));
+    }
     return TCL_ERROR;
 }
 
@@ -440,7 +444,7 @@ UpdateStringOfIndex(
     register const char *indexStr = EXPAND_OF(indexRep);
 
     len = strlen(indexStr);
-    buf = (char *) ckalloc(len + 1);
+    buf = ckalloc(len + 1);
     memcpy(buf, indexStr, len+1);
     objPtr->bytes = buf;
     objPtr->length = len;
@@ -470,7 +474,7 @@ DupIndex(
     Tcl_Obj *dupPtr)
 {
     IndexRep *srcIndexRep = srcPtr->internalRep.otherValuePtr;
-    IndexRep *dupIndexRep = (IndexRep *) ckalloc(sizeof(IndexRep));
+    IndexRep *dupIndexRep = ckalloc(sizeof(IndexRep));
 
     memcpy(dupIndexRep, srcIndexRep, sizeof(IndexRep));
     dupPtr->internalRep.otherValuePtr = dupIndexRep;
@@ -498,7 +502,8 @@ static void
 FreeIndex(
     Tcl_Obj *objPtr)
 {
-    ckfree((char *) objPtr->internalRep.otherValuePtr);
+    ckfree(objPtr->internalRep.otherValuePtr);
+    objPtr->typePtr = NULL;
 }
 
 /*
@@ -523,10 +528,10 @@ TclInitPrefixCmd(
     Tcl_Interp *interp)		/* Current interpreter. */
 {
     static const EnsembleImplMap prefixImplMap[] = {
-	{"all",		PrefixAllObjCmd},
-	{"longest",	PrefixLongestObjCmd},
-	{"match",	PrefixMatchObjCmd},
-	{NULL}
+	{"all",		PrefixAllObjCmd, NULL, NULL, NULL, 0},
+	{"longest",	PrefixLongestObjCmd, NULL, NULL, NULL, 0},
+	{"match",	PrefixMatchObjCmd, NULL, NULL, NULL, 0},
+	{NULL, NULL, NULL, NULL, NULL, 0}
     };
     Tcl_Command prefixCmd;
 
@@ -945,12 +950,14 @@ Tcl_WrongNumArgs(
 	    } else {
 		elementStr = TclGetStringFromObj(origObjv[i], &elemLen);
 	    }
-	    len = Tcl_ScanCountedElement(elementStr, elemLen, &flags);
+	    flags = 0;
+	    len = TclScanElement(elementStr, elemLen, &flags);
 
 	    if (MAY_QUOTE_WORD && len != elemLen) {
-		char *quotedElementStr = TclStackAlloc(interp, (unsigned)len);
+		char *quotedElementStr = TclStackAlloc(interp,
+			(unsigned)len + 1);
 
-		len = Tcl_ConvertCountedElement(elementStr, elemLen,
+		len = TclConvertElement(elementStr, elemLen,
 			quotedElementStr, flags);
 		Tcl_AppendToObj(objPtr, quotedElementStr, len);
 		TclStackFree(interp, quotedElementStr);
@@ -999,12 +1006,14 @@ Tcl_WrongNumArgs(
 	     */
 
 	    elementStr = TclGetStringFromObj(objv[i], &elemLen);
-	    len = Tcl_ScanCountedElement(elementStr, elemLen, &flags);
+	    flags = 0;
+	    len = TclScanElement(elementStr, elemLen, &flags);
 
 	    if (MAY_QUOTE_WORD && len != elemLen) {
-		char *quotedElementStr = TclStackAlloc(interp,(unsigned) len);
+		char *quotedElementStr = TclStackAlloc(interp,
+			(unsigned) len + 1);
 
-		len = Tcl_ConvertCountedElement(elementStr, elemLen,
+		len = TclConvertElement(elementStr, elemLen,
 			quotedElementStr, flags);
 		Tcl_AppendToObj(objPtr, quotedElementStr, len);
 		TclStackFree(interp, quotedElementStr);
@@ -1105,7 +1114,7 @@ Tcl_ParseArgsObjv(
 	 */
 
 	nrem = 1;
-	leftovers = (Tcl_Obj **) ckalloc((nrem+1) * sizeof(Tcl_Obj *));
+	leftovers = ckalloc((nrem + 1) * sizeof(Tcl_Obj *));
 	leftovers[nrem-1] = objv[0];
 	leftovers[nrem] = NULL;
     } else {
@@ -1177,8 +1186,7 @@ Tcl_ParseArgsObjv(
 	     * Allocate nrem (+1 extra for NULL terminator) pointers.
 	     */
 
-	    leftovers = (Tcl_Obj **) ckrealloc((void *) leftovers,
-		    (nrem+1) * sizeof(Tcl_Obj *));
+	    leftovers = ckrealloc(leftovers, (nrem+1) * sizeof(Tcl_Obj *));
 	    leftovers[nrem-1] = curArg;
 	    continue;
 	}
@@ -1227,14 +1235,14 @@ Tcl_ParseArgsObjv(
 		    (double *) infoPtr->dstPtr) == TCL_ERROR) {
 		Tcl_AppendResult(interp, "expected floating-point argument ",
 			"for \"", infoPtr->keyStr, "\" but got \"",
-			Tcl_GetString((Tcl_Obj *) objv[srcIndex]),"\"", NULL);
+			Tcl_GetString(objv[srcIndex]), "\"", NULL);
 		goto error;
 	    }
 	    srcIndex++;
 	    objc--;
 	    break;
 	case TCL_ARGV_FUNC: {
-	    Tcl_ArgvFuncProc handlerProc;
+	    Tcl_ArgvFuncProc *handlerProc;
 	    Tcl_Obj *argObj;
 
 	    if (objc == 0) {
@@ -1242,7 +1250,7 @@ Tcl_ParseArgsObjv(
 	    } else {
 		argObj = objv[srcIndex];
 	    }
-	    handlerProc = (Tcl_ArgvFuncProc) infoPtr->srcPtr;
+	    handlerProc = (Tcl_ArgvFuncProc *) infoPtr->srcPtr;
 	    if (handlerProc(infoPtr->clientData, argObj, infoPtr->dstPtr)) {
 		srcIndex++;
 		objc--;
@@ -1250,9 +1258,9 @@ Tcl_ParseArgsObjv(
 	    break;
 	}
 	case TCL_ARGV_GENFUNC: {
-	    Tcl_ArgvGenFuncProc handlerProc;
+	    Tcl_ArgvGenFuncProc *handlerProc;
 
-	    handlerProc = (Tcl_ArgvGenFuncProc) infoPtr->srcPtr;
+	    handlerProc = (Tcl_ArgvGenFuncProc *) infoPtr->srcPtr;
 	    objc = handlerProc(infoPtr->clientData, interp, objc,
 		    &objv[srcIndex], infoPtr->dstPtr);
 	    if (objc < 0) {
@@ -1280,7 +1288,7 @@ Tcl_ParseArgsObjv(
      */
 
   argsDone:
-    if (remObjv==NULL) {
+    if (remObjv == NULL) {
 	/*
 	 * Nothing to do.
 	 */
@@ -1289,16 +1297,15 @@ Tcl_ParseArgsObjv(
     }
 
     if (objc > 0) {
-	leftovers = (Tcl_Obj **) ckrealloc((void *) leftovers,
-		(nrem+objc+1) * sizeof(Tcl_Obj*));
+	leftovers = ckrealloc(leftovers, (nrem+objc+1) * sizeof(Tcl_Obj *));
 	while (objc) {
-	    leftovers[nrem]=objv[srcIndex];
+	    leftovers[nrem] = objv[srcIndex];
 	    nrem++;
 	    srcIndex++;
 	    objc--;
 	}
     } else if (leftovers != NULL) {
-	ckfree((char *) leftovers);
+	ckfree(leftovers);
     }
     leftovers[nrem] = NULL;
     *objcPtr = nrem;
@@ -1315,7 +1322,7 @@ Tcl_ParseArgsObjv(
 	    "\" option requires an additional argument", NULL);
   error:
     if (leftovers != NULL) {
-	ckfree((char *) leftovers);
+	ckfree(leftovers);
     }
     return TCL_ERROR;
 }
@@ -1415,6 +1422,57 @@ PrintUsage(
     }
 }
 
+/*
+ *----------------------------------------------------------------------
+ *
+ * TclGetCompletionCodeFromObj --
+ *
+ *	Parses Completion code Code
+ *
+ * Results:
+ *	Returns TCL_ERROR if the value is an invalid completion code.
+ *	Otherwise, returns TCL_OK, and writes the completion code to
+ *  the pointer provided.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+int
+TclGetCompletionCodeFromObj(
+    Tcl_Interp *interp,		/* Current interpreter. */
+    Tcl_Obj *value,
+    int *code)	/* Argument objects. */
+{
+    static const char *const returnCodes[] = {
+	    "ok", "error", "return", "break", "continue", NULL
+    };
+
+    if ((value->typePtr != &indexType)
+	    && (TCL_OK == TclGetIntFromObj(NULL, value, code))) {
+	return TCL_OK;
+    }
+    if (TCL_OK == Tcl_GetIndexFromObj(
+	    NULL, value, returnCodes, NULL, TCL_EXACT, code)) {
+	return TCL_OK;
+    }
+    /*
+     * Value is not a legal completion code.
+     */
+
+    if (interp != NULL) {
+	Tcl_ResetResult(interp);
+	Tcl_AppendResult(interp, "bad completion code \"",
+		TclGetString(value),
+		"\": must be ok, error, return, break, "
+		"continue, or an integer", NULL);
+	Tcl_SetErrorCode(interp, "TCL", "RESULT", "ILLEGAL_CODE", NULL);
+    }
+    return TCL_ERROR;
+}
+
 /*
  * Local Variables:
  * mode: c

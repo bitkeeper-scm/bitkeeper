@@ -1,11 +1,10 @@
-# $Id$
 # This file is the basis for a binary Tcl RPM for Linux.
 
 %{!?directory:%define directory /usr/local}
 
 Name:          tcl
 Summary:       Tcl scripting language development environment
-Version:       8.6b1
+Version:       8.6b2
 Release:       2
 License:       BSD
 Group:         Development/Languages

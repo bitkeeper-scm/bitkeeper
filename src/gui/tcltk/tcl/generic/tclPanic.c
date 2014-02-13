@@ -11,11 +11,12 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclInt.h"
+#ifdef _WIN32
+    MODULE_SCOPE void tclWinDebugPanic(const char *format, ...);
+#endif
 
 /*
  * The panicProc variable contains a pointer to an application specific panic
@@ -23,13 +24,6 @@
  */
 
 static Tcl_PanicProc *panicProc = NULL;
-
-/*
- * The platformPanicProc variable contains a pointer to a platform specific
- * panic procedure, if any. (TclpPanic may be NULL via a macro.)
- */
-
-static Tcl_PanicProc *const platformPanicProc = TclpPanic;
 
 /*
  *----------------------------------------------------------------------
@@ -51,6 +45,10 @@ void
 Tcl_SetPanicProc(
     Tcl_PanicProc *proc)
 {
+#ifdef _WIN32
+    /* tclWinDebugPanic only installs if there is no panicProc yet. */
+    if ((proc != tclWinDebugPanic) || (panicProc == NULL))
+#endif
     panicProc = proc;
 }
 
@@ -91,16 +89,31 @@ Tcl_PanicVA(
 
     if (panicProc != NULL) {
 	panicProc(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
-    } else if (platformPanicProc != NULL) {
-	platformPanicProc(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7,
-		arg8);
+#ifdef _WIN32
+    } else if (IsDebuggerPresent()) {
+	tclWinDebugPanic(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
+#endif
     } else {
 	fprintf(stderr, format, arg1, arg2, arg3, arg4, arg5, arg6, arg7,
 		arg8);
 	fprintf(stderr, "\n");
 	fflush(stderr);
-	abort();
     }
+    /* In case the users panic proc does not abort, we do it here */
+#ifdef _WIN32
+#   if defined(__GNUC__)
+    __builtin_trap();
+#   elif defined(_WIN64)
+    __debugbreak();
+#   elif defined(_MSC_VER)
+    _asm {int 3}
+#   else
+    DebugBreak();
+#   endif
+    ExitProcess(1);
+#else
+    abort();
+#endif
 }
 
 /*

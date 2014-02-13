@@ -6,15 +6,20 @@
  *
  * Copyright (c) 1995-1997 Sun Microsystems, Inc.
  *
- * See the file "license.terms" for information on usage and redistribution of
- * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
+ * See the file "license.terms" for information on usage and redistribution
+ * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
  */
 
 #include "tclInt.h"
 #include <mach-o/rld.h>
 #include <streams/streams.h>
+
+/* Static procedures defined within this file */
+
+static void* FindSymbol(Tcl_Interp* interp, Tcl_LoadHandle loadHandle,
+			const char* symbol);
+static void UnloadFile(Tcl_LoadHandle loadHandle);
+
 
 /*
  *----------------------------------------------------------------------
@@ -47,6 +52,7 @@ TclpDlopen(
 				 * function which should be used for this
 				 * file. */
 {
+    Tcl_LoadHandle newHandle;
     struct mach_header *header;
     char *fileName;
     char *files[2];
@@ -95,8 +101,12 @@ TclpDlopen(
     }
     NXCloseMemory(errorStream, NX_FREEBUFFER);
 
-    *loadHandle = (Tcl_LoadHandle)1; /* A dummy non-NULL value */
-    *unloadProcPtr = &TclpUnloadFile;
+    newHandle = ckalloc(sizeof(*newHandle));
+    newHandle->clientData = INT2PTR(1);
+    newHandle->findSymbolProcPtr = &FindSymbol;
+    newHandle->unloadFileProcPtr = &UnloadFile;
+    *loadHandle = newHandle;
+    *unloadProcPtr = &UnloadFile;
 
     return TCL_OK;
 }
@@ -104,7 +114,7 @@ TclpDlopen(
 /*
  *----------------------------------------------------------------------
  *
- * TclpFindSymbol --
+ * FindSymbol --
  *
  *	Looks up a symbol, by name, through a handle associated with a
  *	previously loaded piece of code (shared library).
@@ -117,8 +127,8 @@ TclpDlopen(
  *----------------------------------------------------------------------
  */
 
-Tcl_PackageInitProc *
-TclpFindSymbol(
+static void*
+FindSymbol(
     Tcl_Interp *interp,
     Tcl_LoadHandle loadHandle,
     const char *symbol)
@@ -132,13 +142,19 @@ TclpFindSymbol(
 	strcat(sym, symbol);
 	rld_lookup(NULL, sym, (unsigned long *)&proc);
     }
+    if (proc == NULL && interp != NULL) {
+	Tcl_ResetResult(interp);
+	Tcl_AppendResult(interp, "cannot find symbol \"", symbol,
+			 "\"", NULL);
+	Tcl_SetErrorCode(interp, "TCL", "LOOKUP", "LOAD_SYMBOL", symbol, NULL);
+    }
     return proc;
 }
 
 /*
  *----------------------------------------------------------------------
  *
- * TclpUnloadFile --
+ * UnloadFile --
  *
  *	Unloads a dynamically loaded binary code file from memory. Code
  *	pointers in the formerly loaded file are no longer valid after calling
@@ -154,11 +170,12 @@ TclpFindSymbol(
  */
 
 void
-TclpUnloadFile(
+UnloadFile(
     Tcl_LoadHandle loadHandle)	/* loadHandle returned by a previous call to
 				 * TclpDlopen(). The loadHandle is a token
 				 * that represents the loaded file. */
 {
+    ckfree(loadHandle);
 }
 
 /*

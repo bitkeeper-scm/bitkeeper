@@ -7,8 +7,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include <errno.h>
@@ -64,8 +62,7 @@ mkstemp(
 	 */
 
 	for (b=a ; *b ; b++) {
-	    long int rand = random() % RAND_MAX;        // IRIX is busted.
-	    float r = rand / (float)RAND_MAX;
+	    float r = rand() / ((float) RAND_MAX);
 
 	    *b = alphanumerics[(int)(r * alphanumericsLen)];
 	}

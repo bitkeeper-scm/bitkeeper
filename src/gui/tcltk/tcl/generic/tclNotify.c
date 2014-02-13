@@ -13,8 +13,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclInt.h"
@@ -97,7 +95,7 @@ TCL_DECLARE_MUTEX(listLock)
  */
 
 static void		QueueEvent(ThreadSpecificData *tsdPtr,
-			    Tcl_Event* evPtr, Tcl_QueuePosition position);
+			    Tcl_Event *evPtr, Tcl_QueuePosition position);
 
 /*
  *----------------------------------------------------------------------
@@ -183,7 +181,7 @@ TclFinalizeNotifier(void)
     for (evPtr = tsdPtr->firstEventPtr; evPtr != NULL; ) {
 	hold = evPtr;
 	evPtr = evPtr->nextPtr;
-	ckfree((char *) hold);
+	ckfree(hold);
     }
     tsdPtr->firstEventPtr = NULL;
     tsdPtr->lastEventPtr = NULL;
@@ -278,7 +276,7 @@ Tcl_CreateEventSource(
 				 * checkProc. */
 {
     ThreadSpecificData *tsdPtr = TCL_TSD_INIT(&dataKey);
-    EventSource *sourcePtr = (EventSource *) ckalloc(sizeof(EventSource));
+    EventSource *sourcePtr = ckalloc(sizeof(EventSource));
 
     sourcePtr->setupProc = setupProc;
     sourcePtr->checkProc = checkProc;
@@ -332,7 +330,7 @@ Tcl_DeleteEventSource(
 	} else {
 	    prevPtr->nextPtr = sourcePtr->nextPtr;
 	}
-	ckfree((char *) sourcePtr);
+	ckfree(sourcePtr);
 	return;
     }
 }
@@ -355,7 +353,7 @@ Tcl_DeleteEventSource(
 
 void
 Tcl_QueueEvent(
-    Tcl_Event* evPtr,		/* Event to add to queue. The storage space
+    Tcl_Event *evPtr,		/* Event to add to queue. The storage space
 				 * must have been allocated the caller with
 				 * malloc (ckalloc), and it becomes the
 				 * property of the event queue. It will be
@@ -364,6 +362,7 @@ Tcl_QueueEvent(
 				 * TCL_QUEUE_MARK. */
 {
     ThreadSpecificData *tsdPtr = TCL_TSD_INIT(&dataKey);
+
     QueueEvent(tsdPtr, evPtr, position);
 }
 
@@ -412,6 +411,8 @@ Tcl_ThreadQueueEvent(
 
     if (tsdPtr) {
 	QueueEvent(tsdPtr, evPtr, position);
+    } else {
+	ckfree(evPtr);
     }
     Tcl_MutexUnlock(&listLock);
 }
@@ -515,14 +516,13 @@ QueueEvent(
 void
 Tcl_DeleteEvents(
     Tcl_EventDeleteProc *proc,	/* The function to call. */
-    ClientData clientData)    	/* The type-specific data. */
+    ClientData clientData)	/* The type-specific data. */
 {
     Tcl_Event *evPtr;		/* Pointer to the event being examined */
     Tcl_Event *prevPtr;		/* Pointer to evPtr's predecessor, or NULL if
 				 * evPtr designates the first event in the
 				 * queue for the thread. */
-    Tcl_Event* hold;
-
+    Tcl_Event *hold;
     ThreadSpecificData *tsdPtr = TCL_TSD_INIT(&dataKey);
 
     Tcl_MutexLock(&(tsdPtr->queueMutex));
@@ -563,7 +563,7 @@ Tcl_DeleteEvents(
 
 	    hold = evPtr;
 	    evPtr = evPtr->nextPtr;
-	    ckfree((char *) hold);
+	    ckfree(hold);
 	} else {
 	    /*
 	     * Event is to be retained.
@@ -702,7 +702,7 @@ Tcl_ServiceEvent(
 		}
 	    }
 	    if (evPtr) {
-		ckfree((char *) evPtr);
+		ckfree(evPtr);
 	    }
 	    Tcl_MutexUnlock(&(tsdPtr->queueMutex));
 	    return 1;

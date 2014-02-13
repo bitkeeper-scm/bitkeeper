@@ -7,8 +7,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclInt.h"
@@ -45,7 +43,7 @@ typedef struct CharSet {
  * Declarations for functions used only in this file.
  */
 
-static const char * BuildCharSet(CharSet *cset, const char *format);
+static const char *	BuildCharSet(CharSet *cset, const char *format);
 static int		CharInSet(CharSet *cset, int ch);
 static void		ReleaseCharSet(CharSet *cset);
 static int		ValidateFormat(Tcl_Interp *interp, const char *format,
@@ -103,10 +101,9 @@ BuildCharSet(
 	end += Tcl_UtfToUniChar(end, &ch);
     }
 
-    cset->chars = (Tcl_UniChar *)
-	    ckalloc(sizeof(Tcl_UniChar) * (end - format - 1));
+    cset->chars = ckalloc(sizeof(Tcl_UniChar) * (end - format - 1));
     if (nranges > 0) {
-	cset->ranges = (struct Range *) ckalloc(sizeof(struct Range)*nranges);
+	cset->ranges = ckalloc(sizeof(struct Range) * nranges);
     } else {
 	cset->ranges = NULL;
     }
@@ -226,9 +223,9 @@ static void
 ReleaseCharSet(
     CharSet *cset)
 {
-    ckfree((char *)cset->chars);
+    ckfree(cset->chars);
     if (cset->ranges) {
-	ckfree((char *)cset->ranges);
+	ckfree(cset->ranges);
     }
 }
 
@@ -262,7 +259,7 @@ ValidateFormat(
     char *end;
     Tcl_UniChar ch;
     int objIndex, xpgSize, nspace = numVars;
-    int *nassign = (int *) TclStackAlloc(interp, nspace * sizeof(int));
+    int *nassign = TclStackAlloc(interp, nspace * sizeof(int));
     char buf[TCL_UTF_MAX+1];
 
     /*
@@ -334,6 +331,7 @@ ValidateFormat(
 	    Tcl_SetResult(interp,
 		    "cannot mix \"%\" and \"%n$\" conversion specifiers",
 		    TCL_STATIC);
+	    Tcl_SetErrorCode(interp, "TCL", "FORMAT", "MIXEDSPECTYPES", NULL);
 	    goto error;
 	}
 
@@ -380,6 +378,7 @@ ValidateFormat(
 		Tcl_SetResult(interp,
 			"field width may not be specified in %c conversion",
 			TCL_STATIC);
+		Tcl_SetErrorCode(interp, "TCL", "FORMAT", "BADWIDTH", NULL);
 		goto error;
 	    }
 	    /*
@@ -393,6 +392,7 @@ ValidateFormat(
 		Tcl_AppendResult(interp,
 			"field size modifier may not be specified in %", buf,
 			" conversion", NULL);
+		Tcl_SetErrorCode(interp, "TCL", "FORMAT", "BADSIZE", NULL);
 		goto error;
 	    }
 	    /*
@@ -411,6 +411,7 @@ ValidateFormat(
 	    if (flags & SCAN_BIG) {
 		Tcl_SetResult(interp,
 			"unsigned bignum scans are invalid", TCL_STATIC);
+		Tcl_SetErrorCode(interp, "TCL", "FORMAT", "BADUNSIGNED",NULL);
 		goto error;
 	    }
 	    break;
@@ -447,16 +448,14 @@ ValidateFormat(
 	badSet:
 	    Tcl_SetResult(interp, "unmatched [ in format string",
 		    TCL_STATIC);
+		Tcl_SetErrorCode(interp, "TCL", "FORMAT", "BRACKET", NULL);
 	    goto error;
 	default:
-	    {
-		char buf[TCL_UTF_MAX+1];
-
-		buf[Tcl_UniCharToUtf(ch, buf)] = '\0';
-		Tcl_AppendResult(interp, "bad scan conversion character \"",
-			buf, "\"", NULL);
-		goto error;
-	    }
+	    buf[Tcl_UniCharToUtf(ch, buf)] = '\0';
+	    Tcl_AppendResult(interp, "bad scan conversion character \"", buf,
+		    "\"", NULL);
+		Tcl_SetErrorCode(interp, "TCL", "FORMAT", "BADTYPE", NULL);
+	    goto error;
 	}
 	if (!(flags & SCAN_SUPPRESS)) {
 	    if (objIndex >= nspace) {
@@ -472,7 +471,7 @@ ValidateFormat(
 		} else {
 		    nspace += 16;	/* formerly STATIC_LIST_SIZE */
 		}
-		nassign = (int *) TclStackRealloc(interp, nassign,
+		nassign = TclStackRealloc(interp, nassign,
 			nspace * sizeof(int));
 		for (i = value; i < nspace; i++) {
 		    nassign[i] = 0;
@@ -502,6 +501,7 @@ ValidateFormat(
 	    Tcl_SetResult(interp,
 		    "variable is assigned by multiple \"%n$\" conversion specifiers",
 		    TCL_STATIC);
+	    Tcl_SetErrorCode(interp, "TCL", "FORMAT", "POLYASSIGNED", NULL);
 	    goto error;
 	} else if (!xpgSize && (nassign[i] == 0)) {
 	    /*
@@ -512,6 +512,7 @@ ValidateFormat(
 	    Tcl_SetResult(interp,
 		    "variable is not assigned by any conversion specifiers",
 		    TCL_STATIC);
+	    Tcl_SetErrorCode(interp, "TCL", "FORMAT", "UNASSIGNED", NULL);
 	    goto error;
 	}
     }
@@ -523,10 +524,12 @@ ValidateFormat(
     if (gotXpg) {
 	Tcl_SetResult(interp, "\"%n$\" argument index out of range",
 		TCL_STATIC);
+	Tcl_SetErrorCode(interp, "TCL", "FORMAT", "INDEXRANGE", NULL);
     } else {
 	Tcl_SetResult(interp,
 		"different numbers of variable names and field specifiers",
 		TCL_STATIC);
+	Tcl_SetErrorCode(interp, "TCL", "FORMAT", "FIELDVARMISMATCH", NULL);
     }
 
   error:
@@ -554,7 +557,7 @@ ValidateFormat(
 	/* ARGSUSED */
 int
 Tcl_ScanObjCmd(
-    ClientData dummy,    	/* Not used. */
+    ClientData dummy,		/* Not used. */
     Tcl_Interp *interp,		/* Current interpreter. */
     int objc,			/* Number of arguments. */
     Tcl_Obj *const objv[])	/* Argument objects. */
@@ -596,7 +599,7 @@ Tcl_ScanObjCmd(
      */
 
     if (totalVars > 0) {
-	objs = (Tcl_Obj **) ckalloc(sizeof(Tcl_Obj *) * totalVars);
+	objs = ckalloc(sizeof(Tcl_Obj *) * totalVars);
 	for (i = 0; i < totalVars; i++) {
 	    objs[i] = NULL;
 	}
@@ -712,6 +715,7 @@ Tcl_ScanObjCmd(
 	    if (!(flags & SCAN_SUPPRESS)) {
 		objPtr = Tcl_NewIntObj(string - baseString);
 		Tcl_IncrRefCount(objPtr);
+		CLANG_ASSERT(objs);
 		objs[objIndex++] = objPtr;
 	    }
 	    nconversions++;
@@ -819,6 +823,7 @@ Tcl_ScanObjCmd(
 	    if (!(flags & SCAN_SUPPRESS)) {
 		objPtr = Tcl_NewStringObj(string, end-string);
 		Tcl_IncrRefCount(objPtr);
+		CLANG_ASSERT(objs);
 		objs[objIndex++] = objPtr;
 	    }
 	    string = end;
@@ -869,6 +874,7 @@ Tcl_ScanObjCmd(
 	    if (!(flags & SCAN_SUPPRESS)) {
 		objPtr = Tcl_NewIntObj((int)sch);
 		Tcl_IncrRefCount(objPtr);
+		CLANG_ASSERT(objs);
 		objs[objIndex++] = objPtr;
 	    }
 	    break;
@@ -964,7 +970,7 @@ Tcl_ScanObjCmd(
 		if (Tcl_GetDoubleFromObj(NULL, objPtr, &dvalue) != TCL_OK) {
 #ifdef ACCEPT_NAN
 		    if (objPtr->typePtr == &tclDoubleType) {
-			dValue = objPtr->internalRep.doubleValue;
+			dvalue = objPtr->internalRep.doubleValue;
 		    } else
 #endif
 		    {
@@ -973,6 +979,7 @@ Tcl_ScanObjCmd(
 		    }
 		}
 		Tcl_SetDoubleObj(objPtr, dvalue);
+		CLANG_ASSERT(objs);
 		objs[objIndex++] = objPtr;
 		string = end;
 	    }
@@ -994,9 +1001,14 @@ Tcl_ScanObjCmd(
 		continue;
 	    }
 	    result++;
-	    if (Tcl_ObjSetVar2(interp, objv[i+3], NULL, objs[i], 0) == NULL) {
-		Tcl_AppendResult(interp, "couldn't set variable \"",
-			TclGetString(objv[i+3]), "\"", NULL);
+
+	    /*
+	     * In case of multiple errors in setting variables, just report
+	     * the first one.
+	     */
+
+	    if (Tcl_ObjSetVar2(interp, objv[i+3], NULL, objs[i],
+		    (code == TCL_OK) ? TCL_LEAVE_ERR_MSG : 0) == NULL) {
 		code = TCL_ERROR;
 	    }
 	    Tcl_DecrRefCount(objs[i]);
@@ -1022,7 +1034,7 @@ Tcl_ScanObjCmd(
 	}
     }
     if (objs != NULL) {
-	ckfree((char *) objs);
+	ckfree(objs);
     }
     if (code == TCL_OK) {
 	if (underflow && (nconversions == 0)) {
@@ -1042,7 +1054,7 @@ Tcl_ScanObjCmd(
     }
     return code;
 }
-
+
 /*
  * Local Variables:
  * mode: c

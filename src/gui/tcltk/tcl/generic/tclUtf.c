@@ -7,8 +7,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclInt.h"
@@ -707,7 +705,7 @@ Tcl_UniCharAtIndex(
     register const char *src,	/* The UTF-8 string to dereference. */
     register int index)		/* The position of the desired character. */
 {
-    Tcl_UniChar ch;
+    Tcl_UniChar ch = 0;
 
     while (index >= 0) {
 	index--;
@@ -1529,7 +1527,7 @@ Tcl_UniCharIsSpace(
      */
 
     if (ch < 0x80) {
-	return isspace(UCHAR(ch)); /* INTL: ISO space */
+	return TclIsSpaceProc((char)ch);
     } else {
 	category = (GetUniCharInfo(ch) & UNICODE_CATEGORY_MASK);
 	return ((SPACE_BITS >> category) & 1);

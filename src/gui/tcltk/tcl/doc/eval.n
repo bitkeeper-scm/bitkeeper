@@ -5,8 +5,6 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-'\" RCS: @(#) $Id$
-'\" 
 .so man.macros
 .TH eval n "" Tcl "Tcl Built-In Commands"
 .BS
@@ -62,11 +60,11 @@ start of the list in the variable:
 .PP
 .CS
 proc lprepend {varName args} {
-   upvar 1 $varName var
-   # Ensure that the variable exists and contains a list
-   lappend var
-   # Now we insert all the arguments in one go
-   set var [\fBeval\fR [list linsert $var 0] $args]
+    upvar 1 $varName var
+    # Ensure that the variable exists and contains a list
+    lappend var
+    # Now we insert all the arguments in one go
+    set var [\fBeval\fR [list linsert $var 0] $args]
 }
 .CE
 .PP
@@ -80,3 +78,6 @@ set var [linsert $var 0 {*}$args]
 catch(n), concat(n), error(n), interp(n), list(n), namespace(n), subst(n), tclvars(n), uplevel(n)
 .SH KEYWORDS
 concatenate, evaluate, script
+'\" Local Variables:
+'\" mode: nroff
+'\" End:

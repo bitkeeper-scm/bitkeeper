@@ -1,17 +1,15 @@
 '\"
 '\" Copyright (c) 2001 Vincent Darley
-'\" Copyright (c) 2008 Donal K. Fellows
+'\" Copyright (c) 2008-2010 Donal K. Fellows
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
-'\" RCS: @(#) $Id$
 '\" 
 .so man.macros
 .TH Filesystem 3 8.4 Tcl "Tcl Library Procedures"
 .BS
 .SH NAME
-Tcl_FSRegister, Tcl_FSUnregister, Tcl_FSData, Tcl_FSMountsChanged, Tcl_FSGetFileSystemForPath, Tcl_FSGetPathType, Tcl_FSCopyFile, Tcl_FSCopyDirectory, Tcl_FSCreateDirectory, Tcl_FSDeleteFile, Tcl_FSRemoveDirectory, Tcl_FSRenameFile, Tcl_FSListVolumes, Tcl_FSEvalFile, Tcl_FSEvalFileEx, Tcl_FSLoadFile, Tcl_FSMatchInDirectory, Tcl_FSLink, Tcl_FSLstat, Tcl_FSUtime, Tcl_FSFileAttrsGet, Tcl_FSFileAttrsSet, Tcl_FSFileAttrStrings, Tcl_FSStat, Tcl_FSAccess, Tcl_FSOpenFileChannel, Tcl_FSGetCwd, Tcl_FSChdir, Tcl_FSPathSeparator, Tcl_FSJoinPath, Tcl_FSSplitPath, Tcl_FSEqualPaths, Tcl_FSGetNormalizedPath, Tcl_FSJoinToPath, Tcl_FSConvertToPathType, Tcl_FSGetInternalRep, Tcl_FSGetTranslatedPath, Tcl_FSGetTranslatedStringPath, Tcl_FSNewNativePath, Tcl_FSGetNativePath, Tcl_FSFileSystemInfo, Tcl_GetAccessTimeFromStat, Tcl_GetBlockSizeFromStat, Tcl_GetBlocksFromStat, Tcl_GetChangeTimeFromStat, Tcl_GetDeviceTypeFromStat, Tcl_GetFSDeviceFromStat, Tcl_GetFSInodeFromStat, Tcl_GetGroupIdFromStat, Tcl_GetLinkCountFromStat, Tcl_GetModeFromStat, Tcl_GetModificationTimeFromStat, Tcl_GetSizeFromStat, Tcl_GetUserIdFromStat, Tcl_AllocStatBuf \- procedures to interact with any filesystem
+Tcl_FSRegister, Tcl_FSUnregister, Tcl_FSData, Tcl_FSMountsChanged, Tcl_FSGetFileSystemForPath, Tcl_FSGetPathType, Tcl_FSCopyFile, Tcl_FSCopyDirectory, Tcl_FSCreateDirectory, Tcl_FSDeleteFile, Tcl_FSRemoveDirectory, Tcl_FSRenameFile, Tcl_FSListVolumes, Tcl_FSEvalFile, Tcl_FSEvalFileEx, Tcl_FSLoadFile, Tcl_FSUnloadFile, Tcl_FSMatchInDirectory, Tcl_FSLink, Tcl_FSLstat, Tcl_FSUtime, Tcl_FSFileAttrsGet, Tcl_FSFileAttrsSet, Tcl_FSFileAttrStrings, Tcl_FSStat, Tcl_FSAccess, Tcl_FSOpenFileChannel, Tcl_FSGetCwd, Tcl_FSChdir, Tcl_FSPathSeparator, Tcl_FSJoinPath, Tcl_FSSplitPath, Tcl_FSEqualPaths, Tcl_FSGetNormalizedPath, Tcl_FSJoinToPath, Tcl_FSConvertToPathType, Tcl_FSGetInternalRep, Tcl_FSGetTranslatedPath, Tcl_FSGetTranslatedStringPath, Tcl_FSNewNativePath, Tcl_FSGetNativePath, Tcl_FSFileSystemInfo, Tcl_GetAccessTimeFromStat, Tcl_GetBlockSizeFromStat, Tcl_GetBlocksFromStat, Tcl_GetChangeTimeFromStat, Tcl_GetDeviceTypeFromStat, Tcl_GetFSDeviceFromStat, Tcl_GetFSInodeFromStat, Tcl_GetGroupIdFromStat, Tcl_GetLinkCountFromStat, Tcl_GetModeFromStat, Tcl_GetModificationTimeFromStat, Tcl_GetSizeFromStat, Tcl_GetUserIdFromStat, Tcl_AllocStatBuf \- procedures to interact with any filesystem
 .SH SYNOPSIS
 .nf
 \fB#include <tcl.h>\fR
@@ -63,7 +61,12 @@ int
 .sp
 int
 \fBTcl_FSLoadFile\fR(\fIinterp, pathPtr, sym1, sym2, proc1Ptr, proc2Ptr,
-               handlePtr, unloadProcPtr\fR)
+               loadHandlePtr, unloadProcPtr\fR)
+.sp
+.VS 8.6
+int
+\fBTcl_FSUnloadFile\fR(\fIinterp, loadHandle\fR)
+.VE 8.6
 .sp
 int
 \fBTcl_FSMatchInDirectory\fR(\fIinterp, resultPtr, pathPtr, pattern, types\fR)
@@ -134,7 +137,7 @@ const char *
 Tcl_Obj *
 \fBTcl_FSNewNativePath\fR(\fIfsPtr, clientData\fR)
 .sp
-const char *
+const void *
 \fBTcl_FSGetNativePath\fR(\fIpathPtr\fR)
 .sp
 Tcl_Obj *
@@ -200,7 +203,7 @@ As for \fIpathPtr\fR, but used for the destination filename for a copy or
 rename operation.
 .AP "const char" *encodingName in
 The encoding of the data stored in the
-file identified by \fIpathPtr\fR and to be evaluted.
+file identified by \fIpathPtr\fR and to be evaluated.
 .AP "const char" *pattern in
 Only files or directories matching this pattern will be returned.
 .AP Tcl_GlobTypeData *types in
@@ -249,10 +252,12 @@ Filled with the safe-init function for this code.
 .AP ClientData *clientDataPtr out
 Filled with the clientData value to pass to this code's unload
 function when it is called.
-.AP Tcl_LoadHandle *handlePtr out
+.AP Tcl_LoadHandle *loadHandlePtr out
 Filled with an abstract token representing the loaded file.
 .AP Tcl_FSUnloadFileProc **unloadProcPtr out
 Filled with the function to use to unload this piece of code.
+.AP Tcl_LoadHandle loadHandle in
+Handle to the loaded library to be unloaded.
 .AP utimbuf *tval in
 The access and modification times in this structure are read and
 used to set those values for a given file.
@@ -439,9 +444,20 @@ belongs will be called. If that filesystem does not implement this
 function (most virtual filesystems will not, because of OS limitations
 in dynamically loading binary code), Tcl will attempt to copy the file
 to a temporary directory and load that temporary file.
+.VS 8.6
+\fBTcl_FSUnloadFile\fR reverses the operation, asking for the library
+indicated by the \fIloadHandle\fR to be removed from the process. Note that,
+unlike with the \fBunload\fR command, this does not give the library any
+opportunity to clean up.
+.VE 8.6
 .PP
-Returns a standard Tcl completion code. If an error occurs, an error
-message is left in the \fIinterp\fR's result.
+Both the above functions return a standard Tcl completion code. If an error
+occurs, an error message is left in the \fIinterp\fR's result.
+.PP
+.VS 8.6
+The token provided via the variable indicated by \fIloadHandlePtr\fR may be
+used with \fBTcl_FindSymbol\fR.
+.VE 8.6
 .PP
 \fBTcl_FSMatchInDirectory\fR is used by the globbing code to search a
 directory for all files which match a given pattern. The appropriate
@@ -484,8 +500,9 @@ directories named in the path leading to the file. The \fITcl_StatBuf\fR
 structure includes info regarding device, inode (always 0 on Windows),
 privilege mode, nlink (always 1 on Windows), user id (always 0 on
 Windows), group id (always 0 on Windows), rdev (same as device on
-Windows), size, last access time, last modification time, and creation
-time. See \fBPORTABLE STAT RESULT API\fR for a description of how to write
+Windows), size, last access time, last modification time, and
+last metadata change time.
+See \fBPORTABLE STAT RESULT API\fR for a description of how to write
 portable code to allocate and access the \fITcl_StatBuf\fR structure.
 .PP
 If \fIpath\fR exists, \fBTcl_FSLstat\fR returns 0 and the stat structure
@@ -543,8 +560,9 @@ directories named in the path leading to the file. The \fITcl_StatBuf\fR
 structure includes info regarding device, inode (always 0 on Windows),
 privilege mode, nlink (always 1 on Windows), user id (always 0 on
 Windows), group id (always 0 on Windows), rdev (same as device on
-Windows), size, last access time, last modification time, and creation
-time. See \fBPORTABLE STAT RESULT API\fR for a description of how to write
+Windows), size, last access time, last modification time, and
+last metadata change time.
+See \fBPORTABLE STAT RESULT API\fR for a description of how to write
 portable code to allocate and access the \fITcl_StatBuf\fR structure.
 .PP
 If \fIpath\fR exists, \fBTcl_FSStat\fR returns 0 and the stat structure
@@ -565,7 +583,7 @@ leaves an error message in \fIinterp\fR's result after any error.
 .PP
 The newly created channel is not registered in the supplied interpreter; to
 register it, use \fBTcl_RegisterChannel\fR, described below.
-If one of the standard channels, \fBstdin, stdout\fR or \fBstderr\fR was
+If one of the standard channels, \fBstdin\fR, \fBstdout\fR or \fBstderr\fR was
 previously closed, the act of creating the new channel also assigns it as a
 replacement for the standard channel.
 .PP
@@ -700,14 +718,14 @@ sequences (these have been expanded to their current
 representation in the filesystem). The object returned is owned by the
 caller, which must store it or call Tcl_DecrRefCount to ensure memory is
 freed. This function is of little practical use, and
-\fBTcl_FSGetNormalizedPath\fR or \fBTcl_GetNativePath\fR are usually
+\fBTcl_FSGetNormalizedPath\fR or \fBTcl_FSGetNativePath\fR are usually
 better functions to use for most purposes.
 .PP
 \fBTcl_FSGetTranslatedStringPath\fR does the same as
 \fBTcl_FSGetTranslatedPath\fR, but returns a character string or NULL.
 The string returned is dynamically allocated and owned by the caller,
 which must store it or call \fBckfree\fR to ensure it is freed. Again,
-\fBTcl_FSGetNormalizedPath\fR or \fBTcl_GetNativePath\fR are usually
+\fBTcl_FSGetNormalizedPath\fR or \fBTcl_FSGetNativePath\fR are usually
 better functions to use for most purposes.
 .PP
 \fBTcl_FSNewNativePath\fR performs something like the reverse of the
@@ -724,14 +742,13 @@ a UTF-8 string representation if that is required by some Tcl code.
 \fBTcl_FSGetNativePath\fR is for use by the Win/Unix native
 filesystems, so that they can easily retrieve the native (char* or
 TCHAR*) representation of a path. This function is a convenience
-wrapper around \fBTcl_FSGetInternalRep\fR, and assumes the native
-representation is string-based. It may be desirable in the future to
-have non-string-based native representations (for example, on MacOSX, a
-representation using a fileSpec of FSRef structure would probably be
-more efficient). On Windows a full Unicode representation would allow
-for paths of unlimited length. Currently the representation is simply a
-character string which may contain either the relative path or a
-complete, absolute normalized path in the native encoding (complex
+wrapper around \fBTcl_FSGetInternalRep\fR. It may be desirable in the
+future to have non-string-based native representations (for example,
+on MacOSX, a representation using a fileSpec of FSRef structure would
+probably be more efficient). On Windows a full Unicode representation
+would allow for paths of unlimited length. Currently the representation
+is simply a character string which may contain either the relative path
+or a complete, absolute normalized path in the native encoding (complex
 conditions dictate which of these will be provided, so neither can be
 relied upon, unless the path is known to be absolute). If you need a
 native path which must be absolute, then you should ask for the native
@@ -775,7 +792,7 @@ It returns one of \fBTCL_PATH_ABSOLUTE\fR, \fBTCL_PATH_RELATIVE\fR, or
 .PP
 \fBTcl_AllocStatBuf\fR allocates a \fITcl_StatBuf\fR on the system heap (which
 may be deallocated by being passed to \fBckfree\fR). This allows extensions to
-invoke \fBTcl_FSStat\fR and \fBTcl_FSLStat\fR without being dependent on the
+invoke \fBTcl_FSStat\fR and \fBTcl_FSLstat\fR without being dependent on the
 size of the buffer. That in turn depends on the flags used to build Tcl.
 .PP
 .VS 8.6
@@ -950,7 +967,7 @@ static Tcl_Filesystem vfsFilesystem = {
     NULL,
     /* Core will use stat for lstat */
     NULL,
-    /* No load; use the core fallback mechansism */
+    /* No load; use the core fallback mechanism */
     NULL,
     /* We don't need a getcwd or chdir; the core's own
      * internal value is suitable */
@@ -1147,8 +1164,8 @@ to all directories named in the path leading to the file. The stat
 structure includes info regarding device, inode (always 0 on Windows),
 privilege mode, nlink (always 1 on Windows), user id (always 0 on
 Windows), group id (always 0 on Windows), rdev (same as device on
-Windows), size, last access time, last modification time, and creation
-time.
+Windows), size, last access time, last modification time, and
+last metadata change time.
 .PP
 If the file represented by \fIpathPtr\fR exists, the
 \fBTcl_FSStatProc\fR returns 0 and the stat structure is filled with
@@ -1204,7 +1221,7 @@ result after any error.
 .PP
 The newly created channel is not registered in the supplied
 interpreter; to register it, use \fBTcl_RegisterChannel\fR. If one of
-the standard channels, \fBstdin, stdout\fR or \fBstderr\fR was
+the standard channels, \fBstdin\fR, \fBstdout\fR or \fBstderr\fR was
 previously closed, the act of creating the new channel also assigns it
 as a replacement for the standard channel.
 .SS MATCHINDIRECTORYPROC
@@ -1362,7 +1379,7 @@ will take that list and first increment its reference count before using it.
 On completion of that use, Tcl will decrement its reference count. Hence if
 the list should be disposed of by Tcl when done, it should have a
 reference count of zero, and if the list should not be disposed of, the
-filesystem should ensure it returns an object with a refererence count
+filesystem should ensure it returns an object with a reference count
 of at least one.
 .SS FILEATTRSGETPROC
 .PP
@@ -1432,7 +1449,7 @@ occurred in the process. If successful, the directory specified by
 deleted without error. If this flag is not given, then and the
 directory is non-empty a POSIX
 .QW EEXIST
-error should be signalled. If an
+error should be signaled. If an
 error does occur, the name of the file or directory which caused the
 error should be placed in \fIerrorPtr\fR.
 .SS DELETEFILEPROC
@@ -1623,4 +1640,4 @@ directory to the value specified in \fIpathPtr\fR. The function returns
 .SH "SEE ALSO"
 cd(n), file(n), filename(n), load(n), open(n), pwd(n), source(n), unload(n)
 .SH KEYWORDS
-stat, access, filesystem, vfs, virtual
+stat, access, filesystem, vfs, virtual filesystem

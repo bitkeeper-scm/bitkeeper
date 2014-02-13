@@ -12,8 +12,6 @@
 #
 # See the file "license.terms" for information on usage and redistribution
 # of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-#
-# RCS: @(#) $Id$
 
 if {[catch {package require tcltest 2}]} {
     puts stderr "Skipping tests in [info script].  tcltest 2 required."
@@ -1670,8 +1668,8 @@ test io-14.3 {Tcl_SetStdChannel & Tcl_GetStdChannel} {exec openpipe} {
 out
 } {err
 }}
-# This test relies on the fact that the smallest available fd is used first.
-test io-14.4 {Tcl_SetStdChannel & Tcl_GetStdChannel} {exec unix} {
+# This test relies on the fact that stdout is used before stderr
+test io-14.4 {Tcl_SetStdChannel & Tcl_GetStdChannel} {exec} {
     set f [open $path(test1) w]
     puts -nonewline $f { close stdin
 	close stdout
@@ -1696,8 +1694,8 @@ test io-14.4 {Tcl_SetStdChannel & Tcl_GetStdChannel} {exec unix} {
     close $f2
     set result
 } {{ close stdin
-file1
-} {file2
+stdout
+} {stderr
 }}
 catch {interp delete z}
 test io-14.5 {Tcl_GetChannel: stdio name translation} {
@@ -2222,7 +2220,7 @@ test io-28.5 {Tcl_Close vs standard handles} {stdio unix testchannel openpipe} {
     set f [open "|[list [interpreter] $path(script)]" r]
     set l [gets $f]
     close $f
-    set l
+    lsort $l
 } {file1 file2}
 
 test io-29.1 {Tcl_WriteChars, channel not writable} {
@@ -3858,7 +3856,7 @@ test io-32.3 {Tcl_Read, negative byte count} {
     set l [list [catch {read $f -1} msg] $msg]
     close $f
     set l
-} {1 {bad argument "-1": should be "nonewline"}}
+} {1 {expected non-negative integer but got "-1"}}
 test io-32.4 {Tcl_Read, positive byte count} {
     set f [open $path(longfile) r]
     set x [read $f 1024]
@@ -7007,6 +7005,44 @@ test io-53.8a {CopyData: async callback and error handling, Bug 1932639, at eof}
     removeFile foo
     removeFile bar
 } -result {1 sync/OK {CMD 0}}
+test io-53.8b {CopyData: async callback and -size 0} -setup {
+    # copy progress callback. errors out intentionally
+    proc ::cmd args {
+	lappend ::RES "CMD $args"
+	set ::forever has-been-reached
+	return
+    }
+    # Files we use for our channels
+    set foo [makeFile ashgdfashdgfasdhgfasdhgf foo]
+    set bar [makeFile {} bar]
+    # Channels to copy between
+    set f [open $foo r] ; fconfigure $f -translation binary
+    set g [open $bar w] ; fconfigure $g -translation binary -buffering none
+} -constraints {stdio openpipe fcopy} -body {
+	set ::RES {}
+    # Run the copy. Should not invoke -command now.
+    fcopy $f $g -size 0 -command ::cmd
+    # Check that -command was not called synchronously
+    lappend ::RES [expr {([llength $::RES] > 1) ? "sync/FAIL" : "sync/OK"}]
+    # Now let the async part happen. Should capture the eof in cmd
+    # If not break the event loop via timer.
+    set token [after 1000 {
+	lappend ::RES {cmd/FAIL timeout}
+	set ::forever has-been-reached
+    }]
+    vwait ::forever
+    catch {after cancel $token}
+    # Report
+    set ::RES
+} -cleanup {
+    close $f
+    close $g
+    catch {unset ::RES}
+    catch {unset ::forever}
+    rename ::cmd {}
+    removeFile foo
+    removeFile bar
+} -result {sync/OK {CMD 0}}
 test io-53.9 {CopyData: -size and event interaction, Bug 780533} -setup {
     set out [makeFile {} out]
     set err [makeFile {} err]
@@ -7126,6 +7162,37 @@ test io-53.10 {Bug 1350564, multi-directional fcopy} -setup {
     removeFile err
     catch {unset ::forever}
 } -result {AB BA}
+test io-53.11 {Bug 2895565} -setup {
+    set in [makeFile {} in]
+    set f [open $in w]
+    fconfigure $f -encoding utf-8 -translation binary
+    puts -nonewline $f [string repeat "Ho hum\n" 11]
+    close $f
+    set inChan [open $in r]
+    fconfigure $inChan -translation binary
+    set out [makeFile {} out]
+    set outChan [open $out w]
+    fconfigure $outChan -encoding cp1252 -translation crlf
+    proc CopyDone {bytes args} {
+	variable done
+	if {[llength $args]} {
+	    set done "Error: '[lindex $args 0]' after $bytes bytes copied"
+	} else {
+	    set done "$bytes bytes copied"
+	}
+    }
+} -body {
+    variable done
+    after 2000 [list set [namespace which -variable done] timeout]
+    fcopy $inChan $outChan -size 40 -command [namespace which CopyDone]
+    vwait [namespace which -variable done]
+    set done
+} -cleanup {
+    close $outChan
+    close $inChan
+    removeFile out
+    removeFile in
+} -result {40 bytes copied}
 
 test io-54.1 {Recursive channel events} {socket fileevent} {
     # This test checks to see if file events are delivered during recursive

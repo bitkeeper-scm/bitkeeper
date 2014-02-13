@@ -6,12 +6,13 @@
  * Copyright (c) 1996-1997 Sun Microsystems, Inc.
  * Copyright (c) 1998 by Scriptics Corporation.
  *
- * See the file "license.terms" for information on usage and redistribution of
- * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
+ * See the file "license.terms" for information on usage and redistribution
+ * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
  */
 
+#ifndef USE_TCL_STUBS
+#   define USE_TCL_STUBS
+#endif
 #include "tclInt.h"
 
 /*
@@ -61,27 +62,17 @@ static const char *gotsig = "0";
  * Forward declarations of functions defined later in this file:
  */
 
-static void		TestFileHandlerProc(ClientData clientData, int mask);
-static int		TestfilehandlerCmd(ClientData dummy,
-			    Tcl_Interp *interp, int argc, const char **argv);
-static int		TestfilewaitCmd(ClientData dummy,
-			    Tcl_Interp *interp, int argc, const char **argv);
-static int		TestfindexecutableCmd(ClientData dummy,
-			    Tcl_Interp *interp, int argc, const char **argv);
-static int		TestgetopenfileCmd(ClientData dummy,
-			    Tcl_Interp *interp, int argc, const char **argv);
-static int		TestgetdefencdirCmd(ClientData dummy,
-			    Tcl_Interp *interp, int argc, const char **argv);
-static int		TestsetdefencdirCmd(ClientData dummy,
-			    Tcl_Interp *interp, int argc, const char **argv);
-int			TclplatformtestInit(Tcl_Interp *interp);
-static int		TestalarmCmd(ClientData dummy,
-			    Tcl_Interp *interp, int argc, const char **argv);
-static int		TestgotsigCmd(ClientData dummy,
-			    Tcl_Interp *interp, int argc, const char **argv);
-static void		AlarmHandler(int signum);
-static int		TestchmodCmd(ClientData dummy,
-			    Tcl_Interp *interp, int argc, const char **argv);
+static Tcl_CmdProc TestalarmCmd;
+static Tcl_CmdProc TestchmodCmd;
+static Tcl_CmdProc TestfilehandlerCmd;
+static Tcl_CmdProc TestfilewaitCmd;
+static Tcl_CmdProc TestfindexecutableCmd;
+static Tcl_CmdProc TestgetdefencdirCmd;
+static Tcl_CmdProc TestgetopenfileCmd;
+static Tcl_CmdProc TestgotsigCmd;
+static Tcl_CmdProc TestsetdefencdirCmd;
+static Tcl_FileProc TestFileHandlerProc;
+static void AlarmHandler(int signum);
 
 /*
  *----------------------------------------------------------------------
@@ -105,23 +96,23 @@ TclplatformtestInit(
     Tcl_Interp *interp)		/* Interpreter to add commands to. */
 {
     Tcl_CreateCommand(interp, "testchmod", TestchmodCmd,
-	    (ClientData) 0, NULL);
+	    NULL, NULL);
     Tcl_CreateCommand(interp, "testfilehandler", TestfilehandlerCmd,
-	    (ClientData) 0, NULL);
+	    NULL, NULL);
     Tcl_CreateCommand(interp, "testfilewait", TestfilewaitCmd,
-	    (ClientData) 0, NULL);
+	    NULL, NULL);
     Tcl_CreateCommand(interp, "testfindexecutable", TestfindexecutableCmd,
-	    (ClientData) 0, NULL);
+	    NULL, NULL);
     Tcl_CreateCommand(interp, "testgetopenfile", TestgetopenfileCmd,
-	    (ClientData) 0, NULL);
+	    NULL, NULL);
     Tcl_CreateCommand(interp, "testgetdefenc", TestgetdefencdirCmd,
-	    (ClientData) 0, NULL);
+	    NULL, NULL);
     Tcl_CreateCommand(interp, "testsetdefenc", TestsetdefencdirCmd,
-	    (ClientData) 0, NULL);
+	    NULL, NULL);
     Tcl_CreateCommand(interp, "testalarm", TestalarmCmd,
-	    (ClientData) 0, NULL);
+	    NULL, NULL);
     Tcl_CreateCommand(interp, "testgotsig", TestgotsigCmd,
-	    (ClientData) 0, NULL);
+	    NULL, NULL);
     return TCL_OK;
 }
 
@@ -236,24 +227,24 @@ TestfilehandlerCmd(
 
 	if (strcmp(argv[3], "readable") == 0) {
 	    Tcl_CreateFileHandler(GetFd(pipePtr->readFile), TCL_READABLE,
-		    TestFileHandlerProc, (ClientData) pipePtr);
+		    TestFileHandlerProc, pipePtr);
 	} else if (strcmp(argv[3], "off") == 0) {
 	    Tcl_DeleteFileHandler(GetFd(pipePtr->readFile));
 	} else if (strcmp(argv[3], "disabled") == 0) {
 	    Tcl_CreateFileHandler(GetFd(pipePtr->readFile), 0,
-		    TestFileHandlerProc, (ClientData) pipePtr);
+		    TestFileHandlerProc, pipePtr);
 	} else {
 	    Tcl_AppendResult(interp, "bad read mode \"", argv[3], "\"", NULL);
 	    return TCL_ERROR;
 	}
 	if (strcmp(argv[4], "writable") == 0) {
 	    Tcl_CreateFileHandler(GetFd(pipePtr->writeFile), TCL_WRITABLE,
-		    TestFileHandlerProc, (ClientData) pipePtr);
+		    TestFileHandlerProc, pipePtr);
 	} else if (strcmp(argv[4], "off") == 0) {
 	    Tcl_DeleteFileHandler(GetFd(pipePtr->writeFile));
 	} else if (strcmp(argv[4], "disabled") == 0) {
 	    Tcl_CreateFileHandler(GetFd(pipePtr->writeFile), 0,
-		    TestFileHandlerProc, (ClientData) pipePtr);
+		    TestFileHandlerProc, pipePtr);
 	} else {
 	    Tcl_AppendResult(interp, "bad read mode \"", argv[4], "\"", NULL);
 	    return TCL_ERROR;
@@ -337,7 +328,7 @@ TestFileHandlerProc(
     int mask)			/* Indicates which events happened:
 				 * TCL_READABLE or TCL_WRITABLE. */
 {
-    Pipe *pipePtr = (Pipe *) clientData;
+    Pipe *pipePtr = clientData;
 
     if (mask & TCL_READABLE) {
 	pipePtr->readCount++;
@@ -494,7 +485,7 @@ TestgetopenfileCmd(
 	    == TCL_ERROR) {
         return TCL_ERROR;
     }
-    if (filePtr == (ClientData) NULL) {
+    if (filePtr == NULL) {
         Tcl_AppendResult(interp,
 		"Tcl_GetOpenFile succeeded but FILE * NULL!", NULL);
         return TCL_ERROR;

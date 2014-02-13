@@ -9,8 +9,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 /*
@@ -42,8 +40,8 @@ typedef struct CopyState {
     struct Channel *writePtr;	/* Pointer to output channel. */
     int readFlags;		/* Original read channel flags. */
     int writeFlags;		/* Original write channel flags. */
-    int toRead;			/* Number of bytes to copy, or -1. */
-    int total;			/* Total bytes transferred (written). */
+    Tcl_WideInt toRead;		/* Number of bytes to copy, or -1. */
+    Tcl_WideInt total;		/* Total bytes transferred (written). */
     Tcl_Interp *interp;		/* Interp that started the copy. */
     Tcl_Obj *cmdPtr;		/* Command to be invoked at completion. */
     int bufSize;		/* Size of appended buffer. */
@@ -65,13 +63,13 @@ typedef struct ChannelBuffer {
     int bufLength;		/* How big is the buffer? */
     struct ChannelBuffer *nextPtr;
     				/* Next buffer in chain. */
-    char buf[4];		/* Placeholder for real buffer. The real
-				 * buffer occuppies this space + bufSize-4
+    char buf[1];		/* Placeholder for real buffer. The real
+				 * buffer occuppies this space + bufSize-1
 				 * bytes. This must be the last field in the
 				 * structure. */
 } ChannelBuffer;
 
-#define CHANNELBUFFER_HEADER_SIZE	(sizeof(ChannelBuffer) - 4)
+#define CHANNELBUFFER_HEADER_SIZE	TclOffset(ChannelBuffer, buf)
 
 /*
  * How much extra space to allocate in buffer to hold bytes from previous

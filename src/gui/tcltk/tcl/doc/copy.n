@@ -4,8 +4,6 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\"
-'\" RCS: @(#) $Id$
-'\"
 .so man.macros
 .TH copy n 0.1 TclOO "TclOO Commands"
 .BS
@@ -39,9 +37,9 @@ then demonstrates that the copied object is indeed a copy.
 .PP
 .CS
 oo::object create src
-oo::define src method msg {} {puts foo}
+oo::objdefine src method msg {} {puts foo}
 \fBoo::copy\fR src dst
-oo::define src method msg {} {puts bar}
+oo::objdefine src method msg {} {puts bar}
 src msg              \fI\(-> prints "bar"\fR
 dst msg              \fI\(-> prints "foo"\fR
 .CE

@@ -5,8 +5,6 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-'\" RCS: @(#) $Id$
-'\" 
 .so man.macros
 .TH binary n 8.0 Tcl "Tcl Built-In Commands"
 .BS
@@ -15,9 +13,9 @@
 binary \- Insert and extract fields from binary strings
 .SH SYNOPSIS
 .VS 8.6
-\fBbinary decode \fIformat\fR ?\fI-option value ...\fR? \fIdata\fR
+\fBbinary decode \fIformat\fR ?\fI\-option value ...\fR? \fIdata\fR
 .br
-\fBbinary encode \fIformat\fR ?\fI-option value ...\fR? \fIdata\fR
+\fBbinary encode \fIformat\fR ?\fI\-option value ...\fR? \fIdata\fR
 .br
 .VE 8.6
 \fBbinary format \fIformatString \fR?\fIarg arg ...\fR?

@@ -9,8 +9,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * CVS: $Id$
  */
 
 #include "tclInt.h"
@@ -118,7 +116,7 @@ static inline void	ResultAdd(ResultBuffer *r, unsigned char *buf,
  * transformations.
  */
 
-static Tcl_ChannelType transformChannelType = {
+static const Tcl_ChannelType transformChannelType = {
     "transform",		/* Type name. */
     TCL_CHANNEL_VERSION_5,	/* v5 channel */
     TransformCloseProc,		/* Close proc. */
@@ -135,7 +133,7 @@ static Tcl_ChannelType transformChannelType = {
     TransformNotifyProc,	/* Handling of events bubbling up. */
     TransformWideSeekProc,	/* Wide seek proc. */
     NULL,			/* Thread action. */
-    NULL,			/* Truncate. */
+    NULL			/* Truncate. */
 };
 
 /*
@@ -261,7 +259,7 @@ TclChannelTransform(
      * regime of the underlying channel and to use the same for us too.
      */
 
-    dataPtr = (TransformChannelData *) ckalloc(sizeof(TransformChannelData));
+    dataPtr = ckalloc(sizeof(TransformChannelData));
 
     Tcl_DStringInit(&ds);
     Tcl_GetChannelOption(interp, chan, "-blocking", &ds);
@@ -290,7 +288,7 @@ TclChannelTransform(
 		Tcl_GetChannelName(chan), "\"", NULL);
 	Tcl_DecrRefCount(dataPtr->command);
 	ResultClear(&dataPtr->result);
-	ckfree((char *) dataPtr);
+	ckfree(dataPtr);
 	return TCL_ERROR;
     }
 
@@ -563,7 +561,7 @@ TransformCloseProc(
 
     ResultClear(&dataPtr->result);
     Tcl_DecrRefCount(dataPtr->command);
-    ckfree((char *) dataPtr);
+    ckfree(dataPtr);
     return TCL_OK;
 }
 
@@ -1229,7 +1227,7 @@ ResultClear(
     r->used = 0;
 
     if (r->allocated) {
-	ckfree((char *) r->buf);
+	ckfree(r->buf);
 	r->buf = NULL;
 	r->allocated = 0;
     }
@@ -1373,10 +1371,10 @@ ResultAdd(
 
 	if (r->allocated == 0) {
 	    r->allocated = toWrite + INCREMENT;
-	    r->buf = UCHARP(ckalloc(r->allocated));
+	    r->buf = ckalloc(r->allocated);
 	} else {
 	    r->allocated += toWrite + INCREMENT;
-	    r->buf = UCHARP(ckrealloc((char *) r->buf, r->allocated));
+	    r->buf = ckrealloc(r->buf, r->allocated);
 	}
     }
 

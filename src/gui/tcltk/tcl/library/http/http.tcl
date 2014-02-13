@@ -7,13 +7,11 @@
 #
 # See the file "license.terms" for information on usage and redistribution of
 # this file, and for a DISCLAIMER OF ALL WARRANTIES.
-#
-# RCS: @(#) $Id$
 
 package require Tcl 8.6
 # Keep this in sync with pkgIndex.tcl and with the install directories in
 # Makefiles
-package provide http 2.8.1
+package provide http 2.8.2
 
 namespace eval http {
     # Allow resourcing to not clobber existing data
@@ -100,7 +98,7 @@ namespace eval http {
 # Arguments:
 #     msg	Message to output
 #
-if {[info command http::Log] eq {}} { proc http::Log {args} {} }
+if {[info command http::Log] eq {}} {proc http::Log {args} {}}
 
 # http::register --
 #
@@ -201,7 +199,7 @@ proc http::Finish {token {errormsg ""} {skipCB 0}} {
     if {
 	($state(status) eq "timeout") || ($state(status) eq "error") ||
 	([info exists state(connection)] && ($state(connection) eq "close"))
-    } then {
+    } {
         CloseSocket $state(sock) $token
     }
     if {[info exists state(after)]} {
@@ -369,7 +367,7 @@ proc http::geturl {url args} {
 	    if {
 		[info exists type($flag)] &&
 		![string is $type($flag) -strict $value]
-	    } then {
+	    } {
 		unset $token
 		return -code error \
 		    "Bad value for $flag ($value), must be $type($flag)"
@@ -439,7 +437,7 @@ proc http::geturl {url args} {
 	    ( [^/:\#?]+ )		# <host part of authority>
 	    (?: : (\d+) )?		# <port part of authority>
 	)?
-	( / [^\#?]* (?: \? [^\#?]* )?)?	# <path> (including query)
+	( / [^\#]*)?			# <path> (including query)
 	(?: \# (.*) )?			# <fragment>
 	$
     }
@@ -728,7 +726,7 @@ proc http::geturl {url args} {
 	# versions TclHttpd in various error cases). Depending on the
 	# platform, the client may or may not be able to get the response from
 	# the server because of the error it will get trying to write the post
-	# data.  Having both fileevents active changes the timing and the
+	# data. Having both fileevents active changes the timing and the
 	# behavior, but no two platforms (among Solaris, Linux, and NT) behave
 	# the same, and none behave all that well in any case. Servers should
 	# always read their POST data if they expect the client to read their
@@ -759,7 +757,7 @@ proc http::geturl {url args} {
 		return -code error [lindex $state(error) 0]
 	    }
 	}
-    } err]} then {
+    } err]} {
 	# The socket probably was never connected, or the connection dropped
 	# later.
 
@@ -867,7 +865,7 @@ proc http::Connect {token} {
     if {
 	[eof $state(sock)] ||
 	[string length [fconfigure $state(sock) -error]]
-    } then {
+    } {
 	Finish $token "connect failed [fconfigure $state(sock) -error]" 1
     } else {
 	set state(status) connect
@@ -918,7 +916,7 @@ proc http::Write {token} {
 		set done 1
 	    }
 	}
-    } err]} then {
+    } err]} {
 	# Do not call Finish here, but instead let the read half of the socket
 	# process whatever server reply there is to get.
 
@@ -997,7 +995,7 @@ proc http::Event {sock token} {
 			&& ($state(connection) eq "close"))
 		    || [info exists state(transfer)])
 		&& ($state(totalsize) == 0)
-	    } then {
+	    } {
 		Log "body size is 0 and no events likely - complete."
 		Eof $token
 		return
@@ -1008,7 +1006,7 @@ proc http::Event {sock token} {
 
 	    if {
 		$state(-binary) || ![string match -nocase text* $state(type)]
-	    } then {
+	    } {
 		# Turn off conversions for non-text data
 		set state(binary) 1
 	    }
@@ -1030,8 +1028,14 @@ proc http::Event {sock token} {
 		    content-type {
 			set state(type) [string trim [string tolower $value]]
 			# grab the optional charset information
-			regexp -nocase {charset\s*=\s*(\S+?);?} \
-			    $state(type) -> state(charset)
+			if {[regexp -nocase \
+				 {charset\s*=\s*\"((?:[^""]|\\\")*)\"} \
+				 $state(type) -> cs]} {
+			    set state(charset) [string map {{\"} \"} $cs]
+			} else {
+			    regexp -nocase {charset\s*=\s*(\S+?);?} \
+				$state(type) -> state(charset)
+			}
 		    }
 		    content-length {
 			set state(totalsize) [string trim $value]
@@ -1070,7 +1074,7 @@ proc http::Event {sock token} {
 	    } elseif {
 		[info exists state(transfer)]
 		&& $state(transfer) eq "chunked"
-	    } then {
+	    } {
 		set size 0
 		set chunk [getTextLine $sock]
 		set n [string length $chunk]
@@ -1110,11 +1114,11 @@ proc http::Event {sock token} {
 		if {
 		    ($state(totalsize) > 0)
 		    && ($state(currentsize) >= $state(totalsize))
-		} then {
+		} {
 		    Eof $token
 		}
 	    }
-	} err]} then {
+	} err]} {
 	    return [Finish $token $err]
 	} else {
 	    if {[info exists state(-progress)]} {
@@ -1277,18 +1281,18 @@ proc http::Eof {token {force 0}} {
 	    Log "error doing $coding '$state(body)'"
 	    return [Finish $token $err]
 	}
-	
+
 	if {!$state(binary)} {
 	    # If we are getting text, set the incoming channel's encoding
 	    # correctly.  iso8859-1 is the RFC default, but this could be any IANA
 	    # charset.  However, we only know how to convert what we have
 	    # encodings for.
-	    
+
 	    set enc [CharsetToEncoding $state(charset)]
 	    if {$enc ne "binary"} {
 		set state(body) [encoding convertfrom $enc $state(body)]
 	    }
-	    
+
 	    # Translate text line endings.
 	    set state(body) [string map {\r\n \n \r \n} $state(body)]
 	}
@@ -1391,7 +1395,7 @@ proc http::ProxyRequired {host} {
 	if {
 	    ![info exists http(-proxyport)] ||
 	    ![string length $http(-proxyport)]
-	} then {
+	} {
 	    set http(-proxyport) 8080
 	}
 	return [list $http(-proxyhost) $http(-proxyport)]
@@ -1475,7 +1479,7 @@ proc http::make-transformation-chunked {chan command} {
             }
             if {[catch {
 		uplevel #0 [linsert $command end $chunk]
-	    }]} then {
+	    }]} {
 		http::Log "Error in callback: $::errorInfo"
 	    }
             if {[string length $chunk] == 0} {

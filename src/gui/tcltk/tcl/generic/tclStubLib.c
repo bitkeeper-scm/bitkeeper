@@ -9,8 +9,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 /*
@@ -28,13 +26,11 @@ MODULE_SCOPE const TclStubs *tclStubsPtr;
 MODULE_SCOPE const TclPlatStubs *tclPlatStubsPtr;
 MODULE_SCOPE const TclIntStubs *tclIntStubsPtr;
 MODULE_SCOPE const TclIntPlatStubs *tclIntPlatStubsPtr;
-MODULE_SCOPE const TclTomMathStubs *tclTomMathStubsPtr;
 
 const TclStubs *tclStubsPtr = NULL;
 const TclPlatStubs *tclPlatStubsPtr = NULL;
 const TclIntStubs *tclIntStubsPtr = NULL;
 const TclIntPlatStubs *tclIntPlatStubsPtr = NULL;
-const TclTomMathStubs *tclTomMathStubsPtr = NULL;
 
 static const TclStubs *
 HasStubSupport(
@@ -145,54 +141,9 @@ Tcl_InitStubs(
 }
 
 /*
- *----------------------------------------------------------------------
- *
- * TclTomMathInitStubs --
- *
- *	Initializes the Stubs table for Tcl's subset of libtommath
- *
- * Results:
- *	Returns a standard Tcl result.
- *
- * This procedure should not be called directly, but rather through
- * the TclTomMath_InitStubs macro, to insure that the Stubs table
- * matches the header files used in compilation.
- *
- *----------------------------------------------------------------------
+ * Local Variables:
+ * mode: c
+ * c-basic-offset: 4
+ * fill-column: 78
+ * End:
  */
-
-MODULE_SCOPE const char *
-TclTomMathInitializeStubs(
-    Tcl_Interp *interp,		/* Tcl interpreter */
-    const char *version,	/* Tcl version needed */
-    int epoch,			/* Stubs table epoch from the header files */
-    int revision)		/* Stubs table revision number from the
-				 * header files */
-{
-    int exact = 0;
-    const char *packageName = "tcl::tommath";
-    const char *errMsg = NULL;
-    ClientData pkgClientData = NULL;
-    const char *actualVersion =
-	Tcl_PkgRequireEx(interp, packageName, version, exact, &pkgClientData);
-    TclTomMathStubs *stubsPtr = pkgClientData;
-
-    if (actualVersion == NULL) {
-	return NULL;
-    }
-    if (pkgClientData == NULL) {
-	errMsg = "missing stub table pointer";
-    } else if ((stubsPtr->tclBN_epoch)() != epoch) {
-	errMsg = "epoch number mismatch";
-    } else if ((stubsPtr->tclBN_revision)() != revision) {
-	errMsg = "requires a later revision";
-    } else {
-	tclTomMathStubsPtr = stubsPtr;
-	return actualVersion;
-    }
-    Tcl_ResetResult(interp);
-    Tcl_AppendResult(interp, "error loading ", packageName,
-	    " (requested version ", version, ", actual version ",
-	    actualVersion, "): ", errMsg, NULL);
-    return NULL;
-}

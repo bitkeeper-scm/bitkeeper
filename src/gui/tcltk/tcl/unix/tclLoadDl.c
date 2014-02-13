@@ -6,10 +6,8 @@
  *
  * Copyright (c) 1995-1997 Sun Microsystems, Inc.
  *
- * See the file "license.terms" for information on usage and redistribution of
- * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
+ * See the file "license.terms" for information on usage and redistribution
+ * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
  */
 
 #include "tclInt.h"
@@ -21,18 +19,26 @@
 
 /*
  * In some systems, like SunOS 4.1.3, the RTLD_NOW flag isn't defined and this
- * argument to dlopen must always be 1. The RTLD_GLOBAL flag is needed on some
- * systems (e.g. SCO and UnixWare) but doesn't exist on others; if it doesn't
- * exist, set it to 0 so it has no effect.
+ * argument to dlopen must always be 1. The RTLD_LOCAL flag doesn't exist on
+ * some platforms; if it doesn't exist, set it to 0 so it has no effect.
+ * See [Bug #3216070]
  */
 
 #ifndef RTLD_NOW
 #   define RTLD_NOW 1
 #endif
 
-#ifndef RTLD_GLOBAL
-#   define RTLD_GLOBAL 0
+#ifndef RTLD_LOCAL
+#   define RTLD_LOCAL 0
 #endif
+
+/*
+ * Static procedures defined within this file.
+ */
+
+static void *		FindSymbol(Tcl_Interp *interp,
+			    Tcl_LoadHandle loadHandle, const char *symbol);
+static void		UnloadFile(Tcl_LoadHandle loadHandle);
 
 /*
  *---------------------------------------------------------------------------
@@ -66,6 +72,7 @@ TclpDlopen(
 				 * file. */
 {
     void *handle;
+    Tcl_LoadHandle newHandle;
     const char *native;
 
     /*
@@ -75,7 +82,10 @@ TclpDlopen(
      */
 
     native = Tcl_FSGetNativePath(pathPtr);
-    handle = dlopen(native, RTLD_NOW | RTLD_GLOBAL);
+    /*
+     * Use (RTLD_NOW|RTLD_LOCAL) always, see [Bug #3216070]
+     */
+    handle = dlopen(native, RTLD_NOW | RTLD_LOCAL);
     if (handle == NULL) {
 	/*
 	 * Let the OS loader examine the binary search path for whatever
@@ -84,10 +94,13 @@ TclpDlopen(
 	 */
 
 	Tcl_DString ds;
-	char *fileName = Tcl_GetString(pathPtr);
+	const char *fileName = Tcl_GetString(pathPtr);
 
 	native = Tcl_UtfToExternalDString(NULL, fileName, -1, &ds);
-	handle = dlopen(native, RTLD_NOW | RTLD_GLOBAL);
+	/*
+	 * Use (RTLD_NOW|RTLD_LOCAL) always, see [Bug #3216070]
+	 */
+	handle = dlopen(native, RTLD_NOW | RTLD_LOCAL);
 	Tcl_DStringFree(&ds);
     }
 
@@ -103,16 +116,20 @@ TclpDlopen(
 		Tcl_GetString(pathPtr), "\": ", errorStr, NULL);
 	return TCL_ERROR;
     }
+    newHandle = ckalloc(sizeof(*newHandle));
+    newHandle->clientData = handle;
+    newHandle->findSymbolProcPtr = &FindSymbol;
+    newHandle->unloadFileProcPtr = &UnloadFile;
+    *unloadProcPtr = &UnloadFile;
+    *loadHandle = newHandle;
 
-    *unloadProcPtr = &TclpUnloadFile;
-    *loadHandle = (Tcl_LoadHandle) handle;
     return TCL_OK;
 }
 
 /*
  *----------------------------------------------------------------------
  *
- * TclpFindSymbol --
+ * FindSymbol --
  *
  *	Looks up a symbol, by name, through a handle associated with a
  *	previously loaded piece of code (shared library).
@@ -125,16 +142,21 @@ TclpDlopen(
  *----------------------------------------------------------------------
  */
 
-Tcl_PackageInitProc *
-TclpFindSymbol(
+static void *
+FindSymbol(
     Tcl_Interp *interp,		/* Place to put error messages. */
     Tcl_LoadHandle loadHandle,	/* Value from TcpDlopen(). */
     const char *symbol)		/* Symbol to look up. */
 {
-    const char *native;
-    Tcl_DString newName, ds;
-    void *handle = (void *) loadHandle;
-    Tcl_PackageInitProc *proc;
+    const char *native;		/* Name of the library to be loaded, in
+				 * system encoding */
+    Tcl_DString newName, ds;	/* Buffers for converting the name to
+				 * system encoding and prepending an 
+				 * underscore*/
+    void *handle = (void *) loadHandle->clientData;
+				/* Native handle to the loaded library */
+    void *proc;			/* Address corresponding to the resolved
+				 * symbol */
 
     /*
      * Some platforms still add an underscore to the beginning of symbol
@@ -143,25 +165,29 @@ TclpFindSymbol(
      */
 
     native = Tcl_UtfToExternalDString(NULL, symbol, -1, &ds);
-    proc = (Tcl_PackageInitProc *) dlsym(handle,	/* INTL: Native. */
-	    native);
+    proc = dlsym(handle, native);	/* INTL: Native. */
     if (proc == NULL) {
 	Tcl_DStringInit(&newName);
 	Tcl_DStringAppend(&newName, "_", 1);
 	native = Tcl_DStringAppend(&newName, native, -1);
-	proc = (Tcl_PackageInitProc *) dlsym(handle,	/* INTL: Native. */
-		native);
+	proc = dlsym(handle, native);	/* INTL: Native. */
 	Tcl_DStringFree(&newName);
     }
     Tcl_DStringFree(&ds);
-
+    if (proc == NULL && interp != NULL) {
+	Tcl_ResetResult(interp);
+	Tcl_AppendResult(interp, "cannot find symbol \"", symbol, "\": ",
+		dlerror(), NULL);
+	Tcl_SetErrorCode(interp, "TCL", "LOOKUP", "LOAD_SYMBOL", symbol,
+		NULL);
+    }
     return proc;
 }
 
 /*
  *----------------------------------------------------------------------
  *
- * TclpUnloadFile --
+ * UnloadFile --
  *
  *	Unloads a dynamically loaded binary code file from memory. Code
  *	pointers in the formerly loaded file are no longer valid after calling
@@ -176,16 +202,16 @@ TclpFindSymbol(
  *----------------------------------------------------------------------
  */
 
-void
-TclpUnloadFile(
+static void
+UnloadFile(
     Tcl_LoadHandle loadHandle)	/* loadHandle returned by a previous call to
 				 * TclpDlopen(). The loadHandle is a token
 				 * that represents the loaded file. */
 {
-    void *handle;
+    void *handle = loadHandle->clientData;
 
-    handle = (void *) loadHandle;
     dlclose(handle);
+    ckfree(loadHandle);
 }
 
 /*

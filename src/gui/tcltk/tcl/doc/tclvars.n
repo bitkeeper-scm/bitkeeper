@@ -5,14 +5,12 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-'\" RCS: @(#) $Id$
-'\" 
 .so man.macros
 .TH tclvars n 8.0 Tcl "Tcl Built-In Commands"
 .BS
 '\" Note:  do not modify the .SH NAME line immediately below!
 .SH NAME
-tclvars \- Variables used by Tcl
+argc, argv, argv0, auto_path, env, errorCode, errorInfo, tcl_interactive, tcl_library, tcl_nonwordchars, tcl_patchLevel, tcl_pkgPath, tcl_platform, tcl_precision, tcl_rcFileName, tcl_traceCompile, tcl_traceEval, tcl_wordchars, tcl_version \- Variables used by Tcl
 .BE
 .SH DESCRIPTION
 .PP
@@ -26,10 +24,10 @@ If set, then it must contain a valid Tcl list giving directories to
 search during auto-load operations (including for package index
 files when using the default \fBpackage unknown\fR handler).
 This variable is initialized during startup to contain, in order:
-the directories listed in the TCLLIBPATH environment variable,
-the directory named by the $tcl_library variable,
-the parent directory of $tcl_library,
-the directories listed in the $tcl_pkgPath variable.
+the directories listed in the \fBTCLLIBPATH\fR environment variable,
+the directory named by the \fBtcl_library\fR global variable,
+the parent directory of \fBtcl_library\fR,
+the directories listed in the \fBtcl_pkgPath\fR variable.
 Additional locations to look for files and package indices should
 normally be added to this variable using \fBlappend\fR.
 .RS
@@ -101,6 +99,12 @@ Tcl format, using
 .QW /
 as the path separator, regardless of platform.
 This variable is only used when initializing the \fBauto_path\fR variable.
+.TP
+\fBenv(TCL_INTERP_DEBUG_FRAME)\fR
+.
+If existing, it has the same effect as running \fBinterp debug\fR
+\fB{} -frame 1\fR
+as the very first command of each new Tcl interpreter.
 .RE
 .TP
 \fBerrorCode\fR
@@ -248,8 +252,9 @@ either one or two entries; if it contains two entries, the first is
 normally a directory for platform-dependent packages (e.g., shared library
 binaries) and the second is normally a directory for platform-independent
 packages (e.g., script files). Typically a package is installed as a
-subdirectory of one of the entries in \fB$tcl_pkgPath\fR. The directories
-in \fB$tcl_pkgPath\fR are included by default in the \fBauto_path\fR
+subdirectory of one of the entries in the \fBtcl_pkgPath\fR
+variable. The directories in the \fBtcl_pkgPath\fR variable are
+included by default in the \fBauto_path\fR
 variable, so they and their immediate subdirectories are automatically
 searched for packages during \fBpackage require\fR commands.  Note:
 \fBtcl_pkgPath\fR is not intended to be modified by the application.  Its
@@ -359,21 +364,40 @@ binary number.
 .RE
 .PP
 .RS
-17 digits is
+If \fBtcl_precision\fR is not zero, then when Tcl converts a floating
+point number, it creates a decimal representation of at most 
+\fBtcl_precision\fR significant digits; the result may be shorter if
+the shorter result represents the original number exactly. If no
+result of at most \fBtcl_precision\fR digits is an exact representation
+of the original number, the one that is closest to the original
+number is chosen.
+If the original number lies precisely between two equally accurate
+decimal representations, then the one with an even value for the least
+significant digit is chosen; for instance, if \fBtcl_precision\fR is 3, then
+0.3125 will convert to 0.312, not 0.313, while 0.6875 will convert to
+0.688, not 0.687. Any string of trailing zeroes that remains is trimmed.
+.RE
+.PP
+.RS
+a \fBtcl_precision\fR value of 17 digits is
 .QW perfect
 for IEEE floating-point in that it allows
 double-precision values to be converted to strings and back to
-binary with no loss of information.  However, using 17 digits prevents
-any rounding, which produces longer, less intuitive results.  For example,
-\fBexpr {1.4}\fR returns 1.3999999999999999 with \fBtcl_precision\fR
-set to 17, vs. 1.4 if \fBtcl_precision\fR is 12.
+binary with no loss of information. For this reason, you will often
+see it as a value in legacy code that must run on Tcl versions before
+8.5. It is no longer recommended; as noted above, a zero value is the
+preferred method.
 .RE
 .PP
 .RS
 All interpreters in a thread share a single \fBtcl_precision\fR value:
 changing it in one interpreter will affect all other interpreters as
-well.  However, safe interpreters are not allowed to modify the
+well.  Safe interpreters are not allowed to modify the
 variable.
+.RE
+.PP
+.RS
+Valid values for \fBtcl_precision\fR range from 0 to 17.
 .RE
 .TP
 \fBtcl_rcFileName\fR
@@ -390,10 +414,10 @@ for Windows.
 The value of this variable can be set to control
 how much tracing information
 is displayed during bytecode compilation.
-By default, tcl_traceCompile is zero and no information is displayed.
-Setting tcl_traceCompile to 1 generates a one-line summary in stdout
+By default, \fBtcl_traceCompile\fR is zero and no information is displayed.
+Setting \fBtcl_traceCompile\fR to 1 generates a one-line summary in \fBstdout\fR
 whenever a procedure or top-level command is compiled.
-Setting it to 2 generates a detailed listing in stdout of the
+Setting it to 2 generates a detailed listing in \fBstdout\fR of the
 bytecode instructions emitted during every compilation.
 This variable is useful in
 tracking down suspected problems with the Tcl compiler.
@@ -408,15 +432,15 @@ This variable and functionality only exist if
 The value of this variable can be set to control
 how much tracing information
 is displayed during bytecode execution.
-By default, tcl_traceExec is zero and no information is displayed.
-Setting tcl_traceExec to 1 generates a one-line trace in stdout
+By default, \fBtcl_traceExec\fR is zero and no information is displayed.
+Setting \fBtcl_traceExec\fR to 1 generates a one-line trace in \fBstdout\fR
 on each call to a Tcl procedure.
 Setting it to 2 generates a line of output
 whenever any Tcl command is invoked
 that contains the name of the command and its arguments.
 Setting it to 3 produces a detailed trace showing the result of
 executing each bytecode instruction.
-Note that when tcl_traceExec is 2 or 3,
+Note that when \fBtcl_traceExec\fR is 2 or 3,
 commands such as \fBset\fR and \fBincr\fR
 that have been entirely replaced by a sequence
 of bytecode instructions are not shown.
@@ -461,6 +485,7 @@ bug fixes that retain backward compatibility.
 The value of this variable is returned by the \fBinfo tclversion\fR
 command.
 .SH "OTHER GLOBAL VARIABLES"
+.PP
 The following variables are only guaranteed to exist in \fBtclsh\fR
 and \fBwish\fR executables; the Tcl library does not define them
 itself but many Tcl environments do.
@@ -484,18 +509,47 @@ was invoked.
 Contains 1 if \fBtclsh\fR or \fBwish\fR is running interactively (no
 script was specified and standard input is a terminal-like device), 0
 otherwise.
+.SH EXAMPLES
 .PP
-The \fBwish\fR executable additionally specifies the following global
-variable:
-.TP 6
-\fBgeometry\fR
-.
-If set, contains the user-supplied geometry specification to use for
-the main Tk window.
+To add a directory to the collection of locations searched by
+\fBpackage require\fR, e.g., because of some application-specific
+packages that are used, the \fBauto_path\fR variable needs to be
+updated:
+.PP
+.CS
+lappend ::\fBauto_path\fR [file join [pwd] "theLibDir"]
+.CE
+.PP
+A simple though not very robust way to handle command line arguments
+of the form
+.QW "\-foo 1 \-bar 2"
+is to load them into an array having first loaded in the default settings:
+.CS
+array set arguments {-foo 0 -bar 0 -grill 0}
+array set arguments $::\fBargv\fR
+puts "foo is $arguments(-foo)"
+puts "bar is $arguments(-bar)"
+puts "grill is $arguments(-grill)"
+.CE
+.PP
+The \fBargv0\fR global variable can be used (in conjunction with the
+\fBinfo script\fR command) to determine whether the current script is
+being executed as the main script or loaded as a library.  This is
+useful because it allows a single script to be used as both a library
+and a demonstration of that library:
+.PP
+.CS
+if {$::\fBargv0\fR eq [info script]} {
+    # running as: tclsh example.tcl
+} else {
+    package provide Example 1.0
+}
+.CE
 .SH "SEE ALSO"
-eval(n), library(n), tclsh(1), wish(1)
+eval(n), library(n), tclsh(1), tkvars(n), wish(1)
 .SH KEYWORDS
-arithmetic, bytecode, compiler, error, environment, POSIX, precision, subprocess, variables
+arithmetic, bytecode, compiler, error, environment, POSIX, precision,
+subprocess, user, variables
 '\" Local Variables:
 '\" mode: nroff
 '\" End:

@@ -4,8 +4,6 @@
 #
 # 1997/10 -- dl
 #
-# $Id$
-#
 # restart with tclsh \
 exec tclsh "$0" ${1+"$@"}
 

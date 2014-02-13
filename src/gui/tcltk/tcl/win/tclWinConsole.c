@@ -8,14 +8,10 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclWinInt.h"
 
-#include <fcntl.h>
-#include <io.h>
 #include <sys/stat.h>
 
 /*
@@ -163,7 +159,7 @@ static void		ConsoleThreadActionProc(ClientData instanceData,
  * based IO.
  */
 
-static Tcl_ChannelType consoleChannelType = {
+static const Tcl_ChannelType consoleChannelType = {
     "console",			/* Type name. */
     TCL_CHANNEL_VERSION_5,	/* v5 channel */
     ConsoleCloseProc,		/* Close proc. */
@@ -180,7 +176,7 @@ static Tcl_ChannelType consoleChannelType = {
     NULL,			/* handler proc. */
     NULL,			/* wide seek proc */
     ConsoleThreadActionProc,    /* thread action proc */
-    NULL,                       /* truncation */
+    NULL                       /* truncation */
 };
 
 /*
@@ -199,9 +195,8 @@ readConsoleBytes(
 {
     DWORD ntchars;
     BOOL result;
-    int tcharsize;
-    tcharsize = tclWinProcs->useWide? 2 : 1;
-    result = tclWinProcs->readConsoleProc(
+    int tcharsize = sizeof(TCHAR);
+    result = ReadConsole(
 	    hConsole, lpBuffer, nbytes / tcharsize, &ntchars, NULL);
     if (nbytesread)
 	*nbytesread = (ntchars*tcharsize);
@@ -217,9 +212,8 @@ writeConsoleBytes(
 {
     DWORD ntchars;
     BOOL result;
-    int tcharsize;
-    tcharsize = tclWinProcs->useWide? 2 : 1;
-    result = tclWinProcs->writeConsoleProc(
+    int tcharsize = sizeof(TCHAR);
+    result = WriteConsole(
 	    hConsole, lpBuffer, nbytes / tcharsize, &ntchars, NULL);
     if (nbyteswritten)
 	*nbyteswritten = (ntchars*tcharsize);
@@ -434,7 +428,7 @@ ConsoleCheckProc(
 
 	if (needEvent) {
 	    infoPtr->flags |= CONSOLE_PENDING;
-	    evPtr = (ConsoleEvent *) ckalloc(sizeof(ConsoleEvent));
+	    evPtr = ckalloc(sizeof(ConsoleEvent));
 	    evPtr->header.proc = ConsoleEventProc;
 	    evPtr->infoPtr = infoPtr;
 	    Tcl_QueueEvent((Tcl_Event *) evPtr, TCL_QUEUE_TAIL);
@@ -660,7 +654,7 @@ ConsoleCloseProc(
 	ckfree(consolePtr->writeBuf);
 	consolePtr->writeBuf = 0;
     }
-    ckfree((char*) consolePtr);
+    ckfree(consolePtr);
 
     return errorCode;
 }
@@ -816,7 +810,7 @@ ConsoleOutputProc(
 		ckfree(infoPtr->writeBuf);
 	    }
 	    infoPtr->writeBufLen = toWrite;
-	    infoPtr->writeBuf = ckalloc((size_t)toWrite);
+	    infoPtr->writeBuf = ckalloc(toWrite);
 	}
 	memcpy(infoPtr->writeBuf, buf, (size_t)toWrite);
 	infoPtr->toWrite = toWrite;
@@ -1187,7 +1181,7 @@ ConsoleReaderThread(
 	    DWORD err;
 	    err = GetLastError();
 
-	    if (err == EOF) {
+	    if (err == (DWORD)EOF) {
 		infoPtr->readFlags = CONSOLE_EOF;
 	    }
 	}
@@ -1349,7 +1343,7 @@ TclWinOpenConsoleChannel(
      * See if a channel with this handle already exists.
      */
 
-    infoPtr = (ConsoleInfo *) ckalloc((unsigned) sizeof(ConsoleInfo));
+    infoPtr = ckalloc(sizeof(ConsoleInfo));
     memset(infoPtr, 0, sizeof(ConsoleInfo));
 
     infoPtr->validMask = permissions;
@@ -1366,10 +1360,10 @@ TclWinOpenConsoleChannel(
      * for instance).
      */
 
-    wsprintfA(channelName, "file%lx", (int) infoPtr);
+    sprintf(channelName, "file%" TCL_I_MODIFIER "x", (size_t) infoPtr);
 
     infoPtr->channel = Tcl_CreateChannel(&consoleChannelType, channelName,
-	    (ClientData) infoPtr, permissions);
+	    infoPtr, permissions);
 
     if (permissions & TCL_READABLE) {
 	/*
@@ -1407,11 +1401,11 @@ TclWinOpenConsoleChannel(
 
     Tcl_SetChannelOption(NULL, infoPtr->channel, "-translation", "auto");
     Tcl_SetChannelOption(NULL, infoPtr->channel, "-eofchar", "\032 {}");
-    if (tclWinProcs->useWide)
-	Tcl_SetChannelOption(NULL, infoPtr->channel, "-encoding", "unicode");
-    else
-	Tcl_SetChannelOption(NULL, infoPtr->channel, "-encoding", encoding);
-
+#ifdef UNICODE
+    Tcl_SetChannelOption(NULL, infoPtr->channel, "-encoding", "unicode");
+#else
+    Tcl_SetChannelOption(NULL, infoPtr->channel, "-encoding", encoding);
+#endif
     return infoPtr->channel;
 }
 

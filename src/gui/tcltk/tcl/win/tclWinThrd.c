@@ -9,14 +9,10 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclWinInt.h"
 
-#include <fcntl.h>
-#include <io.h>
 #include <sys/stat.h>
 
 /*
@@ -44,8 +40,10 @@ static CRITICAL_SECTION initLock;
 
 #ifdef TCL_THREADS
 
-static CRITICAL_SECTION allocLock;
-static Tcl_Mutex allocLockPtr = (Tcl_Mutex) &allocLock;
+static struct Tcl_Mutex_ {
+    CRITICAL_SECTION crit;
+} allocLock;
+static Tcl_Mutex allocLockPtr = &allocLock;
 static int allocOnce = 0;
 
 #endif /* TCL_THREADS */
@@ -145,7 +143,7 @@ typedef struct allocMutex {
 int
 TclpThreadCreate(
     Tcl_ThreadId *idPtr,	/* Return, the ID of the thread. */
-    Tcl_ThreadCreateProc proc,	/* Main() function of the thread. */
+    Tcl_ThreadCreateProc *proc,	/* Main() function of the thread. */
     ClientData clientData,	/* The one argument to Main(). */
     int stackSize,		/* Size of stack for the new thread. */
     int flags)			/* Flags controlling behaviour of the new
@@ -263,7 +261,7 @@ TclpThreadExit(
 Tcl_ThreadId
 Tcl_GetCurrentThread(void)
 {
-    return (Tcl_ThreadId) GetCurrentThreadId();
+    return (Tcl_ThreadId)(size_t)GetCurrentThreadId();
 }
 
 /*
@@ -413,7 +411,7 @@ Tcl_GetAllocMutex(void)
 {
 #ifdef TCL_THREADS
     if (!allocOnce) {
-	InitializeCriticalSection(&allocLock);
+	InitializeCriticalSection(&allocLock.crit);
 	allocOnce = 1;
     }
     return &allocLockPtr;
@@ -455,7 +453,7 @@ TclFinalizeLock(void)
 
 #ifdef TCL_THREADS
     if (allocOnce) {
-	DeleteCriticalSection(&allocLock);
+	DeleteCriticalSection(&allocLock.crit);
 	allocOnce = 0;
     }
 #endif
@@ -505,7 +503,7 @@ Tcl_MutexLock(
 	 */
 
 	if (*mutexPtr == NULL) {
-	    csPtr = (CRITICAL_SECTION *) ckalloc(sizeof(CRITICAL_SECTION));
+	    csPtr = ckalloc(sizeof(CRITICAL_SECTION));
 	    InitializeCriticalSection(csPtr);
 	    *mutexPtr = (Tcl_Mutex)csPtr;
 	    TclRememberMutex(mutexPtr);
@@ -566,7 +564,7 @@ TclpFinalizeMutex(
 
     if (csPtr != NULL) {
 	DeleteCriticalSection(csPtr);
-	ckfree((char *) csPtr);
+	ckfree(csPtr);
 	*mutexPtr = NULL;
     }
 }
@@ -648,7 +646,7 @@ Tcl_ConditionWait(
 	 */
 
 	if (*condPtr == NULL) {
-	    winCondPtr = (WinCondition *) ckalloc(sizeof(WinCondition));
+	    winCondPtr = ckalloc(sizeof(WinCondition));
 	    InitializeCriticalSection(&winCondPtr->condLock);
 	    winCondPtr->firstPtr = NULL;
 	    winCondPtr->lastPtr = NULL;
@@ -859,7 +857,7 @@ TclpFinalizeCondition(
 
     if (winCondPtr != NULL) {
 	DeleteCriticalSection(&winCondPtr->condLock);
-	ckfree((char *) winCondPtr);
+	ckfree(winCondPtr);
 	*condPtr = NULL;
     }
 }

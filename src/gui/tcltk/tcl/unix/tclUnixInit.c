@@ -6,8 +6,6 @@
  * Copyright (c) 1995-1997 Sun Microsystems, Inc.
  * Copyright (c) 1999 by Scriptics Corporation.
  * All rights reserved.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclInt.h"
@@ -274,10 +272,11 @@ static int		MacOSXGetLibraryPath(Tcl_Interp *interp,
 			    int maxPathLen, char *tclLibPath);
 #endif /* HAVE_COREFOUNDATION */
 #if defined(__APPLE__) && (defined(TCL_LOAD_FROM_MEMORY) || ( \
-	defined(TCL_THREADS) && defined(MAC_OS_X_VERSION_MIN_REQUIRED) && \
-	MAC_OS_X_VERSION_MIN_REQUIRED < 1030) || ( \
-	defined(__LP64__) && defined(MAC_OS_X_VERSION_MIN_REQUIRED) && \
-	MAC_OS_X_VERSION_MIN_REQUIRED < 1050))
+	defined(MAC_OS_X_VERSION_MIN_REQUIRED) && ( \
+	(defined(TCL_THREADS) && MAC_OS_X_VERSION_MIN_REQUIRED < 1030) || \
+	(defined(__LP64__) && MAC_OS_X_VERSION_MIN_REQUIRED < 1050) || \
+	(defined(HAVE_COREFOUNDATION) && MAC_OS_X_VERSION_MIN_REQUIRED < 1050)\
+	)))
 /*
  * Need to check Darwin release at runtime in tclUnixFCmd.c and tclLoadDyld.c:
  * initialize release global at startup from uname().
@@ -474,7 +473,7 @@ TclpInitLibraryPath(
 	    Tcl_ListObjAppendElement(NULL, pathPtr, objPtr);
 	    Tcl_DStringFree(&ds);
 	}
-	ckfree((char *) pathv);
+	ckfree(pathv);
     }
 
     /*
@@ -507,7 +506,7 @@ TclpInitLibraryPath(
 
     *encodingPtr = Tcl_GetEncoding(NULL, NULL);
     str = Tcl_GetStringFromObj(pathPtr, lengthPtr);
-    *valuePtr = ckalloc((unsigned int) (*lengthPtr)+1);
+    *valuePtr = ckalloc((*lengthPtr) + 1);
     memcpy(*valuePtr, str, (size_t)(*lengthPtr)+1);
     Tcl_DecrRefCount(pathPtr);
 }

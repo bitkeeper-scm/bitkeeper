@@ -5,8 +5,6 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-'\" RCS: @(#) $Id$
-'\" 
 .so man.macros
 .TH Tcl_Hash 3 "" Tcl "Tcl Library Procedures"
 .BS
@@ -37,7 +35,7 @@ ClientData
 .sp
 \fBTcl_SetHashValue\fR(\fIentryPtr, value\fR)
 .sp
-char *
+void *
 \fBTcl_GetHashKey\fR(\fItablePtr, entryPtr\fR)
 .sp
 Tcl_HashEntry *
@@ -60,7 +58,7 @@ Kind of keys to use for new hash table.  Must be either
 \fBTCL_CUSTOM_PTR_KEYS\fR, or an integer value greater than 1.
 .AP Tcl_HashKeyType *typePtr in
 Address of structure which defines the behaviour of the hash table.
-.AP "const char" *key in
+.AP "const void" *key in
 Key to use for probe into table.  Exact form depends on
 \fIkeyType\fR used to create table.
 .AP int *newPtr out
@@ -83,8 +81,8 @@ very quickly locate the entry, and hence its value. There may be at
 most one entry in a hash table with a particular key, but many entries
 may have the same value.  Keys can take one of four forms: strings,
 one-word values, integer arrays, or custom keys defined by a
-Tcl_HashKeyType structure (See section \fBTHE TCL_HASHKEYTYPE
-STRUCTURE\fR below). All of the keys in a given table have the same
+Tcl_HashKeyType structure (See section \fBTHE TCL_HASHKEYTYPE STRUCTURE\fR
+below). All of the keys in a given table have the same
 form, which is specified when the table is initialized.
 .PP
 The value of a hash table entry can be anything that fits in the same
@@ -221,7 +219,7 @@ NULL if the end of the table has been reached.
 A call to \fBTcl_FirstHashEntry\fR followed by calls to
 \fBTcl_NextHashEntry\fR will return each of the entries in
 the table exactly once, in an arbitrary order.
-It is unadvisable to modify the structure of the table, e.g.
+It is inadvisable to modify the structure of the table, e.g.
 by creating or deleting entries, while the search is in progress,
 with the exception of deleting the entry returned by
 \fBTcl_FirstHashEntry\fR or \fBTcl_NextHashEntry\fR.

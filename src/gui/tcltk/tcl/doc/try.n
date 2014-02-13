@@ -4,8 +4,6 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-'\" RCS: @(#) $Id$
-'\" 
 .so man.macros
 .TH try n 8.6 Tcl "Tcl Built-In Commands"
 .BS
@@ -31,7 +29,7 @@ one of the following forms:
 \fBon \fIcode variableList script\fR
 .
 This clause matches if the evaluation of \fIbody\fR completed with the
-exeception code \fIcode\fR. The \fIcode\fR may be expressed as an integer or
+exception code \fIcode\fR. The \fIcode\fR may be expressed as an integer or
 one of the following literal words: \fBok\fR, \fBerror\fR, \fBreturn\fR,
 \fBbreak\fR, or \fBcontinue\fR. Those literals correspond to the integers 0
 through 4 respectively.
@@ -51,7 +49,8 @@ non-empty, it names a variable into which the result of the evaluation of
 \fIbody\fR (from the main \fBtry\fR) will be placed; this will contain the
 human-readable form of any errors. If the second word of the list is present
 and non-empty, it names a variable into which the options dictionary of the
-interpreter at the moment of completion of execution of \fIbody\fR.
+interpreter at the moment of completion of execution of \fIbody\fR
+will be placed.
 .PP
 The \fIscript\fR word of each \fIhandler\fR is also always interpreted the
 same: as a Tcl script to evaluate if the clause is matched. If \fIscript\fR is

@@ -2,8 +2,6 @@
 dnl	This file is an input file used by the GNU "autoconf" program to
 dnl	generate the file "configure", which is run during Tcl installation
 dnl	to configure the system for the local environment.
-#
-# RCS: @(#) $Id$
 
 AC_INIT([tcl],[8.6])
 AC_PREREQ(2.59)
@@ -27,7 +25,7 @@ m4_ifdef([SC_USE_CONFIG_HEADERS], [
 TCL_VERSION=8.6
 TCL_MAJOR_VERSION=8
 TCL_MINOR_VERSION=6
-TCL_PATCH_LEVEL="b1.1"
+TCL_PATCH_LEVEL="b2"
 VERSION=${TCL_VERSION}
 
 #------------------------------------------------------------------------
@@ -98,6 +96,12 @@ AC_PROG_BISON
 
 SC_MISSING_POSIX_HEADERS
 
+#--------------------------------------------------------------------
+# Determines the correct executable file extension (.exe)
+#--------------------------------------------------------------------
+
+AC_EXEEXT
+
 #------------------------------------------------------------------------
 # If we're using GCC, see if the compiler understands -pipe.  If so, use it.
 # It makes compiling go faster.  (This is only a performance feature.)
@@ -136,6 +140,17 @@ SC_TCL_LINK_LIBS
 LIBS="$LIBS$THREADS_LIBS"
 
 SC_ENABLE_SHARED
+
+#--------------------------------------------------------------------
+# Look for a native installed tclsh binary (if available)
+# If one cannot be found then use the binary we build (fails for
+# cross compiling). This is used for NATIVE_TCLSH in Makefile.
+#--------------------------------------------------------------------
+
+SC_PROG_TCLSH
+if test "$TCLSH_PROG" = ""; then
+  TCLSH_PROG='./${TCL_EXE}'
+fi
 
 #------------------------------------------------------------------------
 #	Add stuff for zlib
@@ -209,7 +224,7 @@ if test "`uname -s`" = "Darwin" && test "${TCL_THREADS}" = 1 && \
 fi
 AC_CHECK_FUNC(realpath, , [AC_DEFINE(NO_REALPATH, 1, [Do we have realpath()])])
 
-SC_TCL_GETADDRINFO
+SC_TCL_IPV6
 
 #-------------------------------------------------------------------- 
 #	Look for thread-safe variants of some library functions.
@@ -294,11 +309,13 @@ SC_TIME_HANDLER
 SC_ENABLE_PCRE
 
 #--------------------------------------------------------------------
-#	Some systems (e.g., IRIX 4.0.5) lack the st_blksize field in struct
-#	stat. But we might be able to use fstatfs instead.
+#	Some systems (e.g., IRIX 4.0.5) lack some fields in struct stat. But
+#	we might be able to use fstatfs instead. Some systems (OpenBSD?) also
+#	lack blkcnt_t.
 #--------------------------------------------------------------------
 
-AC_STRUCT_ST_BLKSIZE
+AC_CHECK_MEMBERS([struct stat.st_blocks, struct stat.st_blksize])
+AC_CHECK_TYPES([blkcnt_t])
 AC_CHECK_FUNC(fstatfs, , [AC_DEFINE(NO_FSTATFS, 1, [Do we have fstatfs()?])])
 
 #--------------------------------------------------------------------
@@ -841,31 +858,17 @@ else
     eval libdir="$libdir"
     # default install directory for bundled packages
     PACKAGE_DIR="$libdir"
-    if test "$SHARED_BUILD" = "0" || test "$TCL_NEEDS_EXP_FILE" = "0"; then
-        if test "${TCL_LIB_VERSIONS_OK}" = "ok"; then
-            TCL_LIB_FLAG="-ltcl${TCL_VERSION}"
-        else
-            TCL_LIB_FLAG="-ltcl`echo ${TCL_VERSION} | tr -d .`"
-        fi
-        TCL_BUILD_LIB_SPEC="-L`pwd | sed -e 's/ /\\\\ /g'` ${TCL_LIB_FLAG}"
-        TCL_LIB_SPEC="-L${libdir} ${TCL_LIB_FLAG}"
+    if test "${TCL_LIB_VERSIONS_OK}" = "ok"; then
+        TCL_LIB_FLAG="-ltcl${TCL_VERSION}"
     else
-        TCL_BUILD_EXP_FILE="lib.exp"
-        eval "TCL_EXP_FILE=libtcl${TCL_EXPORT_FILE_SUFFIX}"
-    
-        if test "$GCC" = "yes" ; then
-            TCL_BUILD_LIB_SPEC="-Wl,-bI:`pwd | sed -e 's/ /\\\\ /g'`/${TCL_BUILD_EXP_FILE} -L`pwd | sed -e 's/ /\\\\ /g'`"
-            TCL_LIB_SPEC="-Wl,-bI:${libdir}/${TCL_EXP_FILE} -L${libdir}"
-        else
-            TCL_BUILD_LIB_SPEC="-bI:`pwd | sed -e 's/ /\\\\ /g'`/${TCL_BUILD_EXP_FILE}"
-            TCL_LIB_SPEC="-bI:${libdir}/${TCL_EXP_FILE}"
-        fi
+        TCL_LIB_FLAG="-ltcl`echo ${TCL_VERSION} | tr -d .`"
     fi
+    TCL_BUILD_LIB_SPEC="-L`pwd | sed -e 's/ /\\\\ /g'` ${TCL_LIB_FLAG}"
+    TCL_LIB_SPEC="-L${libdir} ${TCL_LIB_FLAG}"
 fi
 VERSION='${VERSION}'
 eval "CFG_TCL_SHARED_LIB_SUFFIX=${TCL_SHARED_LIB_SUFFIX}"
 eval "CFG_TCL_UNSHARED_LIB_SUFFIX=${TCL_UNSHARED_LIB_SUFFIX}"
-eval "CFG_TCL_EXPORT_FILE_SUFFIX=${TCL_EXPORT_FILE_SUFFIX}"
 VERSION=${TCL_VERSION}
 
 #--------------------------------------------------------------------
@@ -939,15 +942,11 @@ AC_SUBST(TCL_BUILD_STUB_LIB_PATH)
 AC_SUBST(TCL_SRC_DIR)
 AC_SUBST(CFG_TCL_SHARED_LIB_SUFFIX)
 AC_SUBST(CFG_TCL_UNSHARED_LIB_SUFFIX)
-AC_SUBST(CFG_TCL_EXPORT_FILE_SUFFIX)
 
 AC_SUBST(TCL_SHARED_BUILD)
 AC_SUBST(LD_LIBRARY_PATH_VAR)
 
 AC_SUBST(TCL_BUILD_LIB_SPEC)
-AC_SUBST(TCL_NEEDS_EXP_FILE)
-AC_SUBST(TCL_BUILD_EXP_FILE)
-AC_SUBST(TCL_EXP_FILE)
 
 AC_SUBST(TCL_LIB_VERSIONS_OK)
 AC_SUBST(TCL_SHARED_LIB_SUFFIX)

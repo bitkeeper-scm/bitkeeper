@@ -8,8 +8,6 @@
 #
 # See the file "license.terms" for information on usage and redistribution
 # of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-#
-# RCS: @(#) $Id$
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest
@@ -40,33 +38,28 @@ if {[testConstraint testnrelevels]} {
 	    set last $depth
 	    return $res
 	}
-	proc setabs {} {
-	    uplevel 1 variable abs -[lindex [testnrelevels] 0]
-	}
-
-	variable body0 {
-	    set x [depthDiff]
-	    if {[incr i] > 10} {
-		variable abs
-		incr abs [lindex [testnrelevels] 0]
-		return [list [lrange $x 0 3] $abs]
-	    }
-	}
-	proc makebody txt {
-	    variable body0
-	    return "$body0; $txt"
-	}
 	namespace export *
     }
     namespace import testnre::*
 }
 
+proc errorcode options {
+    dict get [dict merge {-errorcode NONE} $options] -errorcode
+}
+
 test tailcall-0.1 {tailcall is constant space} -constraints testnrelevels -setup {
     proc a i {
+	#
+	# NOTE: there may be a diff in callback depth with the first call
+	# ($i==0) due to the fact that the first is from an eval. Successive
+	# calls should add nothing to any stack depths.
+	#
+	if {$i == 1} {
+	    depthDiff
+	}
 	if {[incr i] > 10} {
 	    return [depthDiff]
 	}
-	depthDiff
 	tailcall a $i
     }
 } -body {
@@ -77,10 +70,12 @@ test tailcall-0.1 {tailcall is constant space} -constraints testnrelevels -setup
 
 test tailcall-0.2 {tailcall is constant space} -constraints testnrelevels -setup {
     set a { i {
+	if {$i == 1} {
+	    depthDiff
+	}
 	if {[incr i] > 10} {
 	    return [depthDiff]
 	}
-	depthDiff
 	upvar 1 a a
 	tailcall apply $a $i
     }}
@@ -92,10 +87,12 @@ test tailcall-0.2 {tailcall is constant space} -constraints testnrelevels -setup
 
 test tailcall-0.3 {tailcall is constant space} -constraints testnrelevels -setup {
     proc a i {
+	if {$i == 1} {
+	    depthDiff
+	}
 	if {[incr i] > 10} {
 	    return [depthDiff]
 	}
-	depthDiff
 	tailcall b $i
     }
     interp alias {} b {} a
@@ -111,10 +108,12 @@ test tailcall-0.4 {tailcall is constant space} -constraints testnrelevels -setup
 	namespace export *
     }
     proc ::ns::a i {
+	if {$i == 1} {
+	    depthDiff
+	}
 	if {[incr i] > 10} {
 	    return [depthDiff]
 	}
-	depthDiff
 	set b [uplevel 1 [list namespace which b]]
 	tailcall $b $i
     }
@@ -129,10 +128,12 @@ test tailcall-0.4 {tailcall is constant space} -constraints testnrelevels -setup
 
 test tailcall-0.5 {tailcall is constant space} -constraints testnrelevels -setup {
     proc b i {
+	if {$i == 1} {
+	    depthDiff
+	}
 	if {[incr i] > 10} {
 	    return [depthDiff]
 	}
-	depthDiff
 	tailcall a b $i
     }
     namespace ensemble create -command a -map {b b}
@@ -148,10 +149,12 @@ test tailcall-0.6 {tailcall is constant space} -constraints {testnrelevels known
     # This test fails because ns-unknown is not NR-enabled
     #
     proc c i {
+	if {$i == 1} {
+	    depthDiff
+	}
 	if {[incr i] > 10} {
 	    return [depthDiff]
 	}
-	depthDiff
 	tailcall a b $i
     }
     proc d {ens sub args} {
@@ -167,12 +170,15 @@ test tailcall-0.6 {tailcall is constant space} -constraints {testnrelevels known
 } -result {0 0 0 0 0 0}
 
 test tailcall-0.7 {tailcall is constant space} -constraints testnrelevels -setup {
+    catch {rename foo {}}
     oo::class create foo {
 	method b i {
+	    if {$i == 1} {
+		depthDiff
+	    }
 	    if {[incr i] > 10} {
 		return [depthDiff]
 	    }
-	    depthDiff
 	    tailcall [self] b $i
 	}
     }
@@ -315,7 +321,7 @@ test tailcall-8 {tailcall tailcall} -setup {
     namespace eval ::foo c
 } -cleanup {
     namespace delete ::foo
-} -match glob -result *tailcall* -returnCodes error
+} -result cbac
 
 test tailcall-9 {tailcall factorial} -setup {
     proc fact {n {b 1}} {
@@ -375,6 +381,20 @@ test tailcall-11b {tailcall and uplevel} -setup {
 } -cleanup {
     unset -nocomplain ::x
 } -match glob -result *tailcall* -returnCodes error
+
+test tailcall-11c {tailcall and uplevel} -setup {
+    proc a {} {
+	uplevel 1 {tailcall lappend ::x 2}
+	set ::x 1
+    }
+    proc b {} {set ::x 0; a; lappend ::x 3}
+} -body {
+    list [b] $::x
+} -cleanup {
+    rename a {}
+    rename b {}
+    unset -nocomplain ::x
+} -result {{0 3 2} {0 3 2}}
 
 test tailcall-12.1 {[Bug 2649975]} -setup {
     proc dump {{text {}}} {
@@ -537,27 +557,99 @@ test tailcall-12.2 {[Bug 2649975]} -setup {
 1: exiting from foo's alpha
 }
 
-test tailcall-12.3a {[Bug 2695587]} -setup {
-    proc a {} {
-	list [catch [list tailcall foo] msg] $msg
-    }
-} -body {
-    a
+test tailcall-12.3a0 {[Bug 2695587]} -body {
+    apply {{} {
+	catch [list tailcall foo]
+    }}
+} -returnCodes 1 -result {invalid command name "foo"}
+
+test tailcall-12.3a1 {[Bug 2695587]} -body {
+    apply {{} {
+	catch [list tailcall foo]
+	tailcall
+    }}
+} -result {}
+
+test tailcall-12.3a2 {[Bug 2695587]} -body {
+    apply {{} {
+	catch [list tailcall foo]
+	tailcall moo
+    }}
+} -returnCodes 1 -result {invalid command name "moo"}
+
+test tailcall-12.3a3 {[Bug 2695587]} -body {
+    set x 0
+    apply {{} {
+	catch [list tailcall foo]
+	tailcall lappend x 1
+    }}
+    set x
 } -cleanup {
-    rename a {}
-} -result {1 {Tailcall called from within a catch environment}}
+    unset x
+} -result {0 1} 
 
-test tailcall-12.3b {[Bug 2695587]} -setup {
-    proc a {} {
-	list [catch {tailcall foo} msg] $msg
-    }
-} -body {
-    a
+test tailcall-12.3b0 {[Bug 2695587]} -body {
+    apply {{} {
+	set catch catch
+	$catch [list tailcall foo]
+    }}
+} -returnCodes 1 -result {invalid command name "foo"}
+
+test tailcall-12.3b1 {[Bug 2695587]} -body {
+    apply {{} {
+	set catch catch
+	$catch [list tailcall foo]
+	tailcall
+    }}
+} -result {}
+
+test tailcall-12.3b2 {[Bug 2695587]} -body {
+    apply {{} {
+	set catch catch
+	$catch [list tailcall foo]
+	tailcall moo
+    }}
+} -returnCodes 1 -result {invalid command name "moo"}
+
+test tailcall-12.3b3 {[Bug 2695587]} -body {
+    set x 0
+    apply {{} {
+	set catch catch
+	$catch [list tailcall foo]
+	tailcall lappend x 1
+    }}
+    set x
 } -cleanup {
-    rename a {}
-} -result {1 {Tailcall called from within a catch environment}}
+    unset x
+} -result {0 1} 
 
+# MORE VARIANTS MISSING: bc'ed caught script vs (bc'ed, not-bc'ed)
+# catch. Actually superfluous now, as tailcall just returns TCL_RETURN so that
+# standard catch behaviour is required.
 
+test tailcall-13.1 {directly tailcalling the tailcall command is ok} {
+    list [catch {
+	apply {{} {
+	    apply {{} {
+		tailcall tailcall subst ok
+		subst b
+	    }}
+	    subst c
+	}}
+    } msg opt] $msg [errorcode $opt]
+} {0 ok NONE}
+test tailcall-13.2 {indirectly tailcalling the tailcall command is ok} {
+    list [catch {
+	apply {{} {
+	    apply {{} {
+		tailcall eval tailcall subst ok
+		subst b
+	    }}
+	    subst c
+	}}
+    } msg opt] $msg [errorcode $opt]
+} {0 ok NONE}
+
 if {[testConstraint testnrelevels]} {
     namespace forget testnre::*
     namespace delete testnre
@@ -565,3 +657,7 @@ if {[testConstraint testnrelevels]} {
 
 # cleanup
 ::tcltest::cleanupTests
+
+# Local Variables:
+# mode: tcl
+# End:

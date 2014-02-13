@@ -8,8 +8,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclInt.h"
@@ -64,7 +62,7 @@ Tcl_ScaleTimeProc *tclScaleTimeProcPtr = NativeScaleTime;
 ClientData tclTimeClientData = NULL;
 
 /*
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------
  *
  * TclpGetSeconds --
  *
@@ -77,7 +75,7 @@ ClientData tclTimeClientData = NULL;
  * Side effects:
  *	None.
  *
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------
  */
 
 unsigned long
@@ -87,7 +85,7 @@ TclpGetSeconds(void)
 }
 
 /*
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------
  *
  * TclpGetClicks --
  *
@@ -102,7 +100,7 @@ TclpGetSeconds(void)
  * Side effects:
  *	None.
  *
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------
  */
 
 unsigned long
@@ -136,7 +134,7 @@ TclpGetClicks(void)
 #ifdef TCL_WIDE_CLICKS
 
 /*
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------
  *
  * TclpGetWideClicks --
  *
@@ -151,7 +149,7 @@ TclpGetClicks(void)
  * Side effects:
  *	None.
  *
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------
  */
 
 Tcl_WideInt
@@ -176,7 +174,7 @@ TclpGetWideClicks(void)
 }
 
 /*
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------
  *
  * TclpWideClicksToNanoseconds --
  *
@@ -189,7 +187,7 @@ TclpGetWideClicks(void)
  * Side effects:
  *	None.
  *
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------
  */
 
 double
@@ -424,25 +422,14 @@ TclpGmtime(
     ThreadSpecificData *tsdPtr = TCL_TSD_INIT(&tmKey);
 
 #ifdef HAVE_GMTIME_R
-    gmtime_r(timePtr, &(tsdPtr->gmtime_buf));
+    gmtime_r(timePtr, &tsdPtr->gmtime_buf);
 #else
     Tcl_MutexLock(&tmMutex);
-    memcpy(&(tsdPtr->gmtime_buf), gmtime(timePtr), sizeof(struct tm));
+    memcpy(&tsdPtr->gmtime_buf, gmtime(timePtr), sizeof(struct tm));
     Tcl_MutexUnlock(&tmMutex);
 #endif
 
-    return &(tsdPtr->gmtime_buf);
-}
-
-/*
- * Forwarder for obsolete item in Stubs
- */
-
-struct tm *
-TclpGmtime_unix(
-    const time_t *timePtr)
-{
-    return TclpGmtime(timePtr);
+    return &tsdPtr->gmtime_buf;
 }
 
 /*
@@ -475,23 +462,14 @@ TclpLocaltime(
 
     SetTZIfNecessary();
 #ifdef HAVE_LOCALTIME_R
-    localtime_r(timePtr, &(tsdPtr->localtime_buf));
+    localtime_r(timePtr, &tsdPtr->localtime_buf);
 #else
     Tcl_MutexLock(&tmMutex);
-    memcpy(&(tsdPtr->localtime_buf), localtime(timePtr), sizeof(struct tm));
+    memcpy(&tsdPtr->localtime_buf, localtime(timePtr), sizeof(struct tm));
     Tcl_MutexUnlock(&tmMutex);
 #endif
 
-    return &(tsdPtr->localtime_buf);
-}
-/*
- * Forwarder for obsolete item in Stubs
- */
-struct tm*
-TclpLocaltime_unix(
-    const time_t *timePtr)
-{
-    return TclpLocaltime(timePtr);
+    return &tsdPtr->localtime_buf;
 }
 
 /*
@@ -639,7 +617,7 @@ SetTZIfNecessary(void)
     if (lastTZ == NULL || strcmp(lastTZ, newTZ)) {
 	tzset();
 	if (lastTZ == NULL) {
-	    Tcl_CreateExitHandler(CleanupMemory, (ClientData) NULL);
+	    Tcl_CreateExitHandler(CleanupMemory, NULL);
 	} else {
 	    Tcl_Free(lastTZ);
 	}

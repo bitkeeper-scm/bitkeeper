@@ -9,8 +9,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclInt.h"
@@ -109,9 +107,18 @@ FileForRedirect(
 	}
 	file = TclpMakeFile(chan, writing ? TCL_WRITABLE : TCL_READABLE);
 	if (file == NULL) {
-	    Tcl_AppendResult(interp, "channel \"", Tcl_GetChannelName(chan),
-		    "\" wasn't opened for ",
-		    ((writing) ? "writing" : "reading"), NULL);
+	    Tcl_Obj *msg;
+
+	    Tcl_GetChannelError(chan, &msg);
+	    if (msg) {
+		Tcl_SetObjResult(interp, msg);
+	    } else {
+		Tcl_AppendResult(interp, "channel \"",
+			Tcl_GetChannelName(chan), "\" wasn't opened for ",
+			((writing) ? "writing" : "reading"), NULL);
+		Tcl_SetErrorCode(interp, "TCL", "OPERATION", "EXEC",
+			"BADCHAN", NULL);
+	    }
 	    return NULL;
 	}
 	*releasePtr = 1;
@@ -153,6 +160,7 @@ FileForRedirect(
   badLastArg:
     Tcl_AppendResult(interp, "can't specify \"", arg,
 	    "\" as last word in command", NULL);
+    Tcl_SetErrorCode(interp, "TCL", "OPERATION", "EXEC", "SYNTAX", NULL);
     return NULL;
 }
 
@@ -185,7 +193,7 @@ Tcl_DetachPids(
 
     Tcl_MutexLock(&pipeMutex);
     for (i = 0; i < numPids; i++) {
-	detPtr = (Detached *) ckalloc(sizeof(Detached));
+	detPtr = ckalloc(sizeof(Detached));
 	detPtr->pid = pidPtr[i];
 	detPtr->nextPtr = detList;
 	detList = detPtr;
@@ -235,7 +243,7 @@ Tcl_ReapDetachedProcs(void)
 	} else {
 	    prevPtr->nextPtr = detPtr->nextPtr;
 	}
-	ckfree((char *) detPtr);
+	ckfree(detPtr);
 	detPtr = nextPtr;
     }
     Tcl_MutexUnlock(&pipeMutex);
@@ -275,7 +283,7 @@ TclCleanupChildren(
     int result = TCL_OK;
     int i, abnormalExit, anyErrorInfo;
     Tcl_Pid pid;
-    WAIT_STATUS_TYPE waitStatus;
+    int waitStatus;
     const char *msg;
     unsigned long resolvedPid;
 
@@ -288,7 +296,7 @@ TclCleanupChildren(
 	 */
 
 	resolvedPid = TclpGetPid(pidPtr[i]);
-	pid = Tcl_WaitPid(pidPtr[i], (int *) &waitStatus, 0);
+	pid = Tcl_WaitPid(pidPtr[i], &waitStatus, 0);
 	if (pid == (Tcl_Pid) -1) {
 	    result = TCL_ERROR;
 	    if (interp != NULL) {
@@ -323,8 +331,7 @@ TclCleanupChildren(
 	    sprintf(msg1, "%lu", resolvedPid);
 	    if (WIFEXITED(waitStatus)) {
 		if (interp != NULL) {
-		    sprintf(msg2, "%lu",
-			    (unsigned long) WEXITSTATUS(waitStatus));
+		    sprintf(msg2, "%u", WEXITSTATUS(waitStatus));
 		    Tcl_SetErrorCode(interp, "CHILDSTATUS", msg1, msg2, NULL);
 		}
 		abnormalExit = 1;
@@ -332,21 +339,21 @@ TclCleanupChildren(
 		const char *p;
 
 		if (WIFSIGNALED(waitStatus)) {
-		    p = Tcl_SignalMsg((int) (WTERMSIG(waitStatus)));
+		    p = Tcl_SignalMsg(WTERMSIG(waitStatus));
 		    Tcl_SetErrorCode(interp, "CHILDKILLED", msg1,
-			    Tcl_SignalId((int) (WTERMSIG(waitStatus))), p,
-			    NULL);
+			    Tcl_SignalId(WTERMSIG(waitStatus)), p, NULL);
 		    Tcl_AppendResult(interp, "child killed: ", p, "\n", NULL);
 		} else if (WIFSTOPPED(waitStatus)) {
-		    p = Tcl_SignalMsg((int) (WSTOPSIG(waitStatus)));
+		    p = Tcl_SignalMsg(WSTOPSIG(waitStatus));
 		    Tcl_SetErrorCode(interp, "CHILDSUSP", msg1,
-			    Tcl_SignalId((int) (WSTOPSIG(waitStatus))), p,
-			    NULL);
+			    Tcl_SignalId(WSTOPSIG(waitStatus)), p, NULL);
 		    Tcl_AppendResult(interp, "child suspended: ", p, "\n",
 			    NULL);
 		} else {
 		    Tcl_AppendResult(interp,
 			    "child wait status didn't make sense\n", NULL);
+		    Tcl_SetErrorCode(interp, "TCL", "OPERATION", "EXEC",
+			    "ODDWAITRESULT", msg1, NULL);
 		}
 	    }
 	}
@@ -476,19 +483,19 @@ TclCreatePipeline(
 				 * first process in pipeline (specified via <
 				 * or <@). */
     int inputClose = 0;		/* If non-zero, then inputFile should be
-    				 * closed when cleaning up. */
+				 * closed when cleaning up. */
     int inputRelease = 0;
     TclFile outputFile = NULL;	/* Writable file for output from last command
 				 * in pipeline (could be file or pipe). NULL
 				 * means use stdout. */
     int outputClose = 0;	/* If non-zero, then outputFile should be
-    				 * closed when cleaning up. */
+				 * closed when cleaning up. */
     int outputRelease = 0;
     TclFile errorFile = NULL;	/* Writable file for error output from all
 				 * commands in pipeline. NULL means use
 				 * stderr. */
     int errorClose = 0;		/* If non-zero, then errorFile should be
-    				 * closed when cleaning up. */
+				 * closed when cleaning up. */
     int errorRelease = 0;
     const char *p;
     const char *nextArg;
@@ -544,6 +551,8 @@ TclCreatePipeline(
 		if ((i == (lastBar + 1)) || (i == (argc - 1))) {
 		    Tcl_SetResult(interp, "illegal use of | or |& in command",
 			    TCL_STATIC);
+		    Tcl_SetErrorCode(interp, "TCL", "OPERATION", "EXEC",
+			    "PIPESYNTAX", NULL);
 		    goto error;
 		}
 	    }
@@ -570,6 +579,8 @@ TclCreatePipeline(
 		    if (inputLiteral == NULL) {
 			Tcl_AppendResult(interp, "can't specify \"", argv[i],
 				"\" as last word in command", NULL);
+			Tcl_SetErrorCode(interp, "TCL", "OPERATION", "EXEC",
+				"PIPESYNTAX", NULL);
 			goto error;
 		    }
 		    skip = 2;
@@ -678,6 +689,8 @@ TclCreatePipeline(
 		if (i != argc-1) {
 		    Tcl_AppendResult(interp, "must specify \"", argv[i],
 			    "\" as last word in command", NULL);
+		    Tcl_SetErrorCode(interp, "TCL", "OPERATION", "EXEC",
+			    "PIPESYNTAX", NULL);
 		    goto error;
 		}
 		errorFile = outputFile;
@@ -718,6 +731,8 @@ TclCreatePipeline(
 
 	Tcl_SetResult(interp, "illegal use of | or |& in command",
 		TCL_STATIC);
+	Tcl_SetErrorCode(interp, "TCL", "OPERATION", "EXEC", "PIPESYNTAX",
+		NULL);
 	goto error;
     }
 
@@ -840,7 +855,7 @@ TclCreatePipeline(
      */
 
     Tcl_ReapDetachedProcs();
-    pidPtr = (Tcl_Pid *) ckalloc((unsigned) (cmdCount * sizeof(Tcl_Pid)));
+    pidPtr = ckalloc(cmdCount * sizeof(Tcl_Pid));
 
     curInFile = inputFile;
 
@@ -1001,7 +1016,7 @@ TclCreatePipeline(
 		Tcl_DetachPids(1, &pidPtr[i]);
 	    }
 	}
-	ckfree((char *) pidPtr);
+	ckfree(pidPtr);
     }
     numPids = -1;
     goto cleanup;
@@ -1076,11 +1091,15 @@ Tcl_OpenCommandChannel(
 	if ((flags & TCL_STDOUT) && (outPipe == NULL)) {
 	    Tcl_AppendResult(interp, "can't read output from command:"
 		    " standard output was redirected", NULL);
+	    Tcl_SetErrorCode(interp, "TCL", "OPERATION", "EXEC",
+		    "BADREDIRECT", NULL);
 	    goto error;
 	}
 	if ((flags & TCL_STDIN) && (inPipe == NULL)) {
 	    Tcl_AppendResult(interp, "can't write input to command:"
 		    " standard input was redirected", NULL);
+	    Tcl_SetErrorCode(interp, "TCL", "OPERATION", "EXEC",
+		    "BADREDIRECT", NULL);
 	    goto error;
 	}
     }
@@ -1091,6 +1110,7 @@ Tcl_OpenCommandChannel(
     if (channel == NULL) {
 	Tcl_AppendResult(interp, "pipe for command could not be created",
 		NULL);
+	Tcl_SetErrorCode(interp, "TCL", "OPERATION", "EXEC", "NOPIPE", NULL);
 	goto error;
     }
     return channel;
@@ -1098,7 +1118,7 @@ Tcl_OpenCommandChannel(
   error:
     if (numPids > 0) {
 	Tcl_DetachPids(numPids, pidPtr);
-	ckfree((char *) pidPtr);
+	ckfree(pidPtr);
     }
     if (inPipe != NULL) {
 	TclpCloseFile(inPipe);

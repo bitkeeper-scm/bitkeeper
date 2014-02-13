@@ -8,8 +8,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclWinInt.h"
@@ -102,7 +100,7 @@ static DWORD		FileGetType(HANDLE handle);
  * This structure describes the channel type structure for file based IO.
  */
 
-static Tcl_ChannelType fileChannelType = {
+static const Tcl_ChannelType fileChannelType = {
     "file",			/* Type name. */
     TCL_CHANNEL_VERSION_5,	/* v5 channel */
     FileCloseProc,		/* Close proc. */
@@ -119,7 +117,7 @@ static Tcl_ChannelType fileChannelType = {
     NULL,			/* handler proc. */
     FileWideSeekProc,		/* Wide seek proc. */
     FileThreadActionProc,	/* Thread action proc. */
-    FileTruncateProc,		/* Truncate proc. */
+    FileTruncateProc		/* Truncate proc. */
 };
 
 #ifdef HAVE_NO_SEH
@@ -276,7 +274,7 @@ FileCheckProc(
 	    infoPtr = infoPtr->nextPtr) {
 	if (infoPtr->watchMask && !(infoPtr->flags & FILE_PENDING)) {
 	    infoPtr->flags |= FILE_PENDING;
-	    evPtr = (FileEvent *) ckalloc(sizeof(FileEvent));
+	    evPtr = ckalloc(sizeof(FileEvent));
 	    evPtr->header.proc = FileEventProc;
 	    evPtr->infoPtr = infoPtr;
 	    Tcl_QueueEvent((Tcl_Event *) evPtr, TCL_QUEUE_TAIL);
@@ -443,7 +441,7 @@ FileCloseProc(
 	    break;
 	}
     }
-    ckfree((char *)fileInfoPtr);
+    ckfree(fileInfoPtr);
     return errorCode;
 }
 
@@ -491,7 +489,7 @@ FileSeekProc(
 
     oldPosHigh = 0;
     oldPos = SetFilePointer(infoPtr->handle, 0, &oldPosHigh, FILE_CURRENT);
-    if (oldPos == INVALID_SET_FILE_POINTER) {
+    if (oldPos == (LONG)INVALID_SET_FILE_POINTER) {
 	DWORD winError = GetLastError();
 
 	if (winError != NO_ERROR) {
@@ -503,7 +501,7 @@ FileSeekProc(
 
     newPosHigh = (offset < 0 ? -1 : 0);
     newPos = SetFilePointer(infoPtr->handle, offset, &newPosHigh, moveMethod);
-    if (newPos == INVALID_SET_FILE_POINTER) {
+    if (newPos == (LONG)INVALID_SET_FILE_POINTER) {
 	DWORD winError = GetLastError();
 
 	if (winError != NO_ERROR) {
@@ -566,7 +564,7 @@ FileWideSeekProc(
     newPosHigh = Tcl_WideAsLong(offset >> 32);
     newPos = SetFilePointer(infoPtr->handle, Tcl_WideAsLong(offset),
 	    &newPosHigh, moveMethod);
-    if (newPos == INVALID_SET_FILE_POINTER) {
+    if (newPos == (LONG)INVALID_SET_FILE_POINTER) {
 	DWORD winError = GetLastError();
 
 	if (winError != NO_ERROR) {
@@ -608,7 +606,7 @@ FileTruncateProc(
 
     oldPosHigh = 0;
     oldPos = SetFilePointer(infoPtr->handle, 0, &oldPosHigh, FILE_CURRENT);
-    if (oldPos == INVALID_SET_FILE_POINTER) {
+    if (oldPos == (LONG)INVALID_SET_FILE_POINTER) {
 	DWORD winError = GetLastError();
 	if (winError != NO_ERROR) {
 	    TclWinConvertError(winError);
@@ -623,7 +621,7 @@ FileTruncateProc(
     newPosHigh = Tcl_WideAsLong(length >> 32);
     newPos = SetFilePointer(infoPtr->handle, Tcl_WideAsLong(length),
 	    &newPosHigh, FILE_BEGIN);
-    if (newPos == INVALID_SET_FILE_POINTER) {
+    if (newPos == (LONG)INVALID_SET_FILE_POINTER) {
 	DWORD winError = GetLastError();
 	if (winError != NO_ERROR) {
 	    TclWinConvertError(winError);
@@ -856,7 +854,7 @@ TclpOpenFileChannel(
     char channelName[16 + TCL_INTEGER_SPACE];
     TclFile readFile = NULL, writeFile = NULL;
 
-    nativeName = (TCHAR *) Tcl_FSGetNativePath(pathPtr);
+    nativeName = Tcl_FSGetNativePath(pathPtr);
     if (nativeName == NULL) {
 	return NULL;
     }
@@ -915,7 +913,7 @@ TclpOpenFileChannel(
 	    flags = FILE_ATTRIBUTE_READONLY;
 	}
     } else {
-	flags = tclWinProcs->getFileAttributesProc(nativeName);
+	flags = GetFileAttributes(nativeName);
 	if (flags == 0xFFFFFFFF) {
 	    flags = 0;
 	}
@@ -931,7 +929,7 @@ TclpOpenFileChannel(
      * Now we get to create the file.
      */
 
-    handle = tclWinProcs->createFileProc(nativeName, accessMode, shareMode,
+    handle = CreateFile(nativeName, accessMode, shareMode,
 	    NULL, createMode, flags, (HANDLE) NULL);
 
     if (handle == INVALID_HANDLE_VALUE) {
@@ -999,6 +997,8 @@ TclpOpenFileChannel(
 	channel = NULL;
 	Tcl_AppendResult(interp, "couldn't open \"", TclGetString(pathPtr),
 		"\": bad file type", NULL);
+	Tcl_SetErrorCode(interp, "TCL", "VALUE", "CHANNEL", "BAD_TYPE",
+		NULL);
 	break;
     }
 
@@ -1027,7 +1027,7 @@ Tcl_MakeFileChannel(
     int mode)			/* ORed combination of TCL_READABLE and
 				 * TCL_WRITABLE to indicate file mode. */
 {
-#ifdef HAVE_NO_SEH
+#if defined(HAVE_NO_SEH) && !defined(_WIN64)
     EXCEPTION_REGISTRATION registration;
 #endif
     char channelName[16 + TCL_INTEGER_SPACE];
@@ -1093,12 +1093,7 @@ Tcl_MakeFileChannel(
 	 */
 
 	result = 0;
-#ifndef HAVE_NO_SEH
-	__try {
-	    CloseHandle(dupedHandle);
-	    result = 1;
-	} __except (EXCEPTION_EXECUTE_HANDLER) {}
-#else
+#if defined(HAVE_NO_SEH) && !defined(_WIN64)
 	/*
 	 * Don't have SEH available, do things the hard way. Note that this
 	 * needs to be one block of asm, to avoid stack imbalance; also, it is
@@ -1178,7 +1173,15 @@ Tcl_MakeFileChannel(
 	    "%eax", "%ebx", "%ecx", "%edx", "%esi", "%edi", "memory"
 	    );
 	result = registration.status;
-
+#else
+#ifndef HAVE_NO_SEH
+	__try {
+#endif
+	    CloseHandle(dupedHandle);
+	    result = 1;
+#ifndef HAVE_NO_SEH
+	} __except (EXCEPTION_EXECUTE_HANDLER) {}
+#endif
 #endif
 	if (result == FALSE) {
 	    return NULL;
@@ -1222,7 +1225,7 @@ TclpGetDefaultStdChannel(
     HANDLE handle;
     int mode = -1;
     const char *bufMode = NULL;
-    DWORD handleId = (DWORD)INVALID_HANDLE_VALUE;
+    DWORD handleId = (DWORD) -1;
 				/* Standard handle to retrieve. */
 
     switch (type) {
@@ -1321,7 +1324,7 @@ TclWinOpenFileChannel(
 	}
     }
 
-    infoPtr = (FileInfo *) ckalloc((unsigned) sizeof(FileInfo));
+    infoPtr = ckalloc(sizeof(FileInfo));
 
     /*
      * TIP #218. Removed the code inserting the new structure into the global
@@ -1335,7 +1338,7 @@ TclWinOpenFileChannel(
     infoPtr->flags = appendMode;
     infoPtr->handle = handle;
     infoPtr->dirty = 0;
-    wsprintfA(channelName, "file%lx", (int) infoPtr);
+    sprintf(channelName, "file%" TCL_I_MODIFIER "x", (size_t) infoPtr);
 
     infoPtr->channel = Tcl_CreateChannel(&fileChannelType, channelName,
 	    infoPtr, permissions);

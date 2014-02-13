@@ -11,8 +11,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclInt.h"
@@ -221,7 +219,7 @@ static const struct ClockCommand clockCommands[] = {
     { "GetJulianDayFromEraYearMonthDay",
 		ClockGetjuliandayfromerayearmonthdayObjCmd },
     { "GetJulianDayFromEraYearWeekDay",
-    		ClockGetjuliandayfromerayearweekdayObjCmd },
+		ClockGetjuliandayfromerayearweekdayObjCmd },
     { "ParseFormatArgs",	ClockParseformatargsObjCmd },
     { NULL, NULL }
 };
@@ -251,17 +249,26 @@ TclClockInit(
     const struct ClockCommand *clockCmdPtr;
     char cmdName[50];		/* Buffer large enough to hold the string
 				 *::tcl::clock::GetJulianDayFromEraYearMonthDay
-				 * plus a terminating NULL. */
+				 * plus a terminating NUL. */
     ClockClientData *data;
     int i;
+
+    /*
+     * Safe interps get [::clock] as alias to a master, so do not need their
+     * own copies of the support routines.
+     */
+
+    if (Tcl_IsSafe(interp)) {
+	return;
+    }
 
     /*
      * Create the client data, which is a refcounted literal pool.
      */
 
-    data = (ClockClientData *) ckalloc(sizeof(ClockClientData));
+    data = ckalloc(sizeof(ClockClientData));
     data->refCount = 0;
-    data->literals = (Tcl_Obj **) ckalloc(LIT__END * sizeof(Tcl_Obj*));
+    data->literals = ckalloc(LIT__END * sizeof(Tcl_Obj*));
     for (i = 0; i < LIT__END; ++i) {
 	data->literals[i] = Tcl_NewStringObj(literals[i], -1);
 	Tcl_IncrRefCount(data->literals[i]);
@@ -271,8 +278,8 @@ TclClockInit(
      * Install the commands.
      */
 
-    strcpy(cmdName, "::tcl::clock::");
 #define TCL_CLOCK_PREFIX_LEN 14 /* == strlen("::tcl::clock::") */
+    memcpy(cmdName, "::tcl::clock::", TCL_CLOCK_PREFIX_LEN);
     for (clockCmdPtr=clockCommands ; clockCmdPtr->name!=NULL ; clockCmdPtr++) {
 	strcpy(cmdName + TCL_CLOCK_PREFIX_LEN, clockCmdPtr->name);
 	data->refCount++;
@@ -787,8 +794,7 @@ ConvertLocalToUTCUsingTable(
 	    if (nHave == 8) {
 		Tcl_Panic("loop in ConvertLocalToUTCUsingTable");
 	    }
-	    have[nHave] = fields->tzOffset;
-	    ++nHave;
+	    have[nHave++] = fields->tzOffset;
 	}
 	fields->seconds = fields->localSeconds - fields->tzOffset;
     }
@@ -835,7 +841,7 @@ ConvertLocalToUTCUsingC(
     secondOfDay = (int)(jsec % SECONDS_PER_DAY);
     if (secondOfDay < 0) {
 	secondOfDay += SECONDS_PER_DAY;
-	--fields->julianDay;
+	fields->julianDay--;
     }
     GetGregorianEraYearDay(fields, changeover);
     GetMonthDay(fields);
@@ -1248,7 +1254,7 @@ GetGregorianEraYearDay(
 	day %= FOUR_CENTURIES;
 	if (day < 0) {
 	    day += FOUR_CENTURIES;
-	    --n;
+	    n--;
 	}
 	year += 400 * n;
 
@@ -1286,7 +1292,7 @@ GetGregorianEraYearDay(
     day %= FOUR_YEARS;
     if (day < 0) {
 	day += FOUR_YEARS;
-	--n;
+	n--;
     }
     year += 4 * n;
 
@@ -1467,15 +1473,15 @@ GetJulianDayFromEraYearMonthDay(
 
     ym1o4 = ym1 / 4;
     if (ym1 % 4 < 0) {
-	--ym1o4;
+	ym1o4--;
     }
     ym1o100 = ym1 / 100;
     if (ym1 % 100 < 0) {
-	--ym1o100;
+	ym1o100--;
     }
     ym1o400 = ym1 / 400;
     if (ym1 % 400 < 0) {
-	--ym1o400;
+	ym1o400--;
     }
     fields->julianDay = JDAY_1_JAN_1_CE_GREGORIAN - 1
 	    + fields->dayOfMonth
@@ -2013,13 +2019,13 @@ ClockDeleteCmdProc(
     ClockClientData *data = clientData;
     int i;
 
-    --data->refCount;
+    data->refCount--;
     if (data->refCount == 0) {
 	for (i = 0; i < LIT__END; ++i) {
 	    Tcl_DecrRefCount(data->literals[i]);
 	}
-	ckfree((char *) data->literals);
-	ckfree((char *) data);
+	ckfree(data->literals);
+	ckfree(data);
     }
 }
 

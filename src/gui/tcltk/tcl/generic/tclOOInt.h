@@ -4,18 +4,16 @@
  *	This file contains the structure definitions and some of the function
  *	declarations for the object-system (NB: not Tcl_Obj, but ::oo).
  *
- * Copyright (c) 2006 by Donal K. Fellows
+ * Copyright (c) 2006-2011 by Donal K. Fellows
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #ifndef TCL_OO_INTERNAL_H
 #define TCL_OO_INTERNAL_H 1
 
-#include <tclInt.h>
+#include "tclInt.h"
 #include "tclOO.h"
 
 /*
@@ -67,12 +65,12 @@ typedef struct Method {
  * tuned in their behaviour.
  */
 
-typedef int (*TclOO_PreCallProc)(ClientData clientData, Tcl_Interp *interp,
+typedef int (TclOO_PreCallProc)(ClientData clientData, Tcl_Interp *interp,
 	Tcl_ObjectContext context, Tcl_CallFrame *framePtr, int *isFinished);
-typedef int (*TclOO_PostCallProc)(ClientData clientData, Tcl_Interp *interp,
+typedef int (TclOO_PostCallProc)(ClientData clientData, Tcl_Interp *interp,
 	Tcl_ObjectContext context, Tcl_Namespace *namespacePtr, int result);
-typedef void (*TclOO_PmCDDeleteProc)(ClientData clientData);
-typedef ClientData (*TclOO_PmCDCloneProc)(ClientData clientData);
+typedef void (TclOO_PmCDDeleteProc)(ClientData clientData);
+typedef ClientData (TclOO_PmCDCloneProc)(ClientData clientData);
 
 /*
  * Procedure-like methods have the following extra information.
@@ -87,16 +85,16 @@ typedef struct ProcedureMethod {
     int flags;			/* Flags to control features. */
     int refCount;
     ClientData clientData;
-    TclOO_PmCDDeleteProc deleteClientdataProc;
-    TclOO_PmCDCloneProc cloneClientdataProc;
+    TclOO_PmCDDeleteProc *deleteClientdataProc;
+    TclOO_PmCDCloneProc *cloneClientdataProc;
     ProcErrorProc *errProc;	/* Replacement error handler. */
-    TclOO_PreCallProc preCallProc;
+    TclOO_PreCallProc *preCallProc;
 				/* Callback to allow for additional setup
 				 * before the method executes. */
-    TclOO_PostCallProc postCallProc;
+    TclOO_PostCallProc *postCallProc;
 				/* Callback to allow for additional cleanup
 				 * after the method executes. */
-    GetFrameInfoValueProc gfivProc;
+    GetFrameInfoValueProc *gfivProc;
 				/* Callback to allow for fine tuning of how
 				 * the method reports itself. */
 } ProcedureMethod;
@@ -191,7 +189,7 @@ typedef struct Object {
     Tcl_Obj *cachedNameObj;	/* Cache of the name of the object. */
     Tcl_HashTable *chainCache;	/* Place to keep unused contexts. This table
 				 * is indexed by method name as Tcl_Obj. */
-    Tcl_ObjectMapMethodNameProc mapMethodNameProc;
+    Tcl_ObjectMapMethodNameProc *mapMethodNameProc;
 				/* Function to allow remapping of method
 				 * names. For itcl-ng. */
     LIST_STATIC(Tcl_Obj *) variables;
@@ -199,6 +197,8 @@ typedef struct Object {
 
 #define OBJECT_DELETED	1	/* Flag to say that an object has been
 				 * destroyed. */
+#define DESTRUCTOR_CALLED 2	/* Flag to say that the destructor has been
+				 * called. */
 #define ROOT_OBJECT 0x1000	/* Flag to say that this object is the root of
 				 * the class hierarchy and should be treated
 				 * specially during teardown. */
@@ -210,6 +210,10 @@ typedef struct Object {
 				 * instance of the class, and has had nothing
 				 * added that changes the dispatch chain (i.e.
 				 * no methods, mixins, or filters. */
+#define ROOT_CLASS 0x8000	/* Flag to say that this object is the root
+				 * class of classes, and should be treated
+				 * specially during teardown (and in a few
+				 * other spots). */
 
 /*
  * And the definition of a class. Note that every class also has an associated
@@ -362,7 +366,7 @@ typedef struct CallContext {
 } CallContext;
 
 /*
- * Bits for the 'flags' field of the call context.
+ * Bits for the 'flags' field of the call chain.
  */
 
 #define PUBLIC_METHOD     0x01	/* This is a public (exported) method. */
@@ -461,6 +465,9 @@ MODULE_SCOPE int	TclOOCopyObjectCmd(ClientData clientData,
 MODULE_SCOPE int	TclOONextObjCmd(ClientData clientData,
 			    Tcl_Interp *interp, int objc,
 			    Tcl_Obj *const *objv);
+MODULE_SCOPE int	TclOONextToObjCmd(ClientData clientData,
+			    Tcl_Interp *interp, int objc,
+			    Tcl_Obj *const *objv);
 MODULE_SCOPE int	TclOOSelfObjCmd(ClientData clientData,
 			    Tcl_Interp *interp, int objc,
 			    Tcl_Obj *const *objv);
@@ -512,6 +519,9 @@ MODULE_SCOPE void	TclOODeleteChainCache(Tcl_HashTable *tablePtr);
 MODULE_SCOPE void	TclOODeleteContext(CallContext *contextPtr);
 MODULE_SCOPE void	TclOODelMethodRef(Method *method);
 MODULE_SCOPE CallContext *TclOOGetCallContext(Object *oPtr,
+			    Tcl_Obj *methodNameObj, int flags,
+			    Tcl_Obj *cacheInThisObj);
+MODULE_SCOPE CallChain *TclOOGetStereotypeCallChain(Class *clsPtr,
 			    Tcl_Obj *methodNameObj, int flags);
 MODULE_SCOPE Foundation	*TclOOGetFoundation(Tcl_Interp *interp);
 MODULE_SCOPE Tcl_Obj *	TclOOGetFwdFromMethod(Method *mPtr);
@@ -539,6 +549,8 @@ MODULE_SCOPE void	TclOORemoveFromMixinSubs(Class *subPtr,
 			    Class *mixinPtr);
 MODULE_SCOPE void	TclOORemoveFromSubclasses(Class *subPtr,
 			    Class *superPtr);
+MODULE_SCOPE Tcl_Obj *	TclOORenderCallChain(Tcl_Interp *interp,
+			    CallChain *callPtr);
 MODULE_SCOPE void	TclOOStashContext(Tcl_Obj *objPtr,
 			    CallContext *contextPtr);
 MODULE_SCOPE void	TclOOSetupVariableResolver(Tcl_Namespace *nsPtr);
@@ -588,6 +600,7 @@ MODULE_SCOPE int	TclOOUpcatchCmd(ClientData ignored,
  * but all arguments are used multiple times and so must have no side effects.
  */
 
+#undef DUPLICATE /* prevent possible conflict with definition in WINAPI nb30.h */
 #define DUPLICATE(target,source,type) \
     do { \
 	register unsigned len = sizeof(type) * ((target).num=(source).num);\

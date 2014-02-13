@@ -9,8 +9,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclInt.h"
@@ -46,7 +44,7 @@ static int		DoGlob(Tcl_Interp *interp, Tcl_Obj *resultPtr,
  * specific files.
  */
 
-#if (!defined(HAVE_ST_BLOCKS) && !defined(GUESSED_BLOCK_SIZE))
+#if (!defined(HAVE_STRUCT_STAT_ST_BLKSIZE) && !defined(GUESSED_BLOCK_SIZE))
 #define GUESSED_BLOCK_SIZE	1024
 #endif
 
@@ -421,7 +419,7 @@ TclpGetNativePathType(
 		    && (path[1] == '/') && isdigit(UCHAR(path[2]))) {
 		path += 3;
 		while (isdigit(UCHAR(*path))) {
-		    ++path;
+		    path++;
 		}
 	    }
 #endif
@@ -579,8 +577,7 @@ Tcl_SplitPath(
      * plus the argv pointers and the terminating NULL pointer.
      */
 
-    *argvPtr = (const char **) ckalloc((unsigned)
-	    ((((*argcPtr) + 1) * sizeof(char *)) + size));
+    *argvPtr = ckalloc((((*argcPtr) + 1) * sizeof(char *)) + size);
 
     /*
      * Position p after the last argv pointer and copy the contents of the
@@ -647,11 +644,12 @@ SplitUnixPath(
     /*
      * Check for QNX //<node id> prefix
      */
+
     if ((path[0] == '/') && (path[1] == '/')
 	    && isdigit(UCHAR(path[2]))) { /* INTL: digit */
 	path += 3;
 	while (isdigit(UCHAR(*path))) { /* INTL: digit */
-	    ++path;
+	    path++;
 	}
     }
 #endif
@@ -1212,7 +1210,7 @@ Tcl_GlobObjCmd(
     int index, i, globFlags, length, join, dir, result;
     char *string;
     const char *separators;
-    Tcl_Obj *typePtr, *resultPtr, *look;
+    Tcl_Obj *typePtr, *look;
     Tcl_Obj *pathOrDir = NULL;
     Tcl_DString prefix;
     static const char *const options[] = {
@@ -1260,11 +1258,14 @@ Tcl_GlobObjCmd(
 	    if (i == (objc-1)) {
 		Tcl_SetObjResult(interp, Tcl_NewStringObj(
 			"missing argument to \"-directory\"", -1));
+		Tcl_SetErrorCode(interp, "TCL", "ARGUMENT", "MISSING", NULL);
 		return TCL_ERROR;
 	    }
 	    if (dir != PATH_NONE) {
 		Tcl_SetObjResult(interp, Tcl_NewStringObj(
 			"\"-directory\" cannot be used with \"-path\"", -1));
+		Tcl_SetErrorCode(interp, "TCL", "OPERATION", "GLOB",
+			"BADOPTIONCOMBINATION", NULL);
 		return TCL_ERROR;
 	    }
 	    dir = PATH_DIR;
@@ -1282,11 +1283,14 @@ Tcl_GlobObjCmd(
 	    if (i == (objc-1)) {
 		Tcl_SetObjResult(interp, Tcl_NewStringObj(
 			"missing argument to \"-path\"", -1));
+		Tcl_SetErrorCode(interp, "TCL", "ARGUMENT", "MISSING", NULL);
 		return TCL_ERROR;
 	    }
 	    if (dir != PATH_NONE) {
 		Tcl_SetObjResult(interp, Tcl_NewStringObj(
 			"\"-path\" cannot be used with \"-directory\"", -1));
+		Tcl_SetErrorCode(interp, "TCL", "OPERATION", "GLOB",
+			"BADOPTIONCOMBINATION", NULL);
 		return TCL_ERROR;
 	    }
 	    dir = PATH_GENERAL;
@@ -1297,6 +1301,7 @@ Tcl_GlobObjCmd(
 	    if (i == (objc-1)) {
 		Tcl_SetObjResult(interp, Tcl_NewStringObj(
 			"missing argument to \"-types\"", -1));
+		Tcl_SetErrorCode(interp, "TCL", "ARGUMENT", "MISSING", NULL);
 		return TCL_ERROR;
 	    }
 	    typePtr = objv[i+1];
@@ -1316,6 +1321,8 @@ Tcl_GlobObjCmd(
 	Tcl_AppendResult(interp,
 		"\"-tails\" must be used with either "
 		"\"-directory\" or \"-path\"", NULL);
+	Tcl_SetErrorCode(interp, "TCL", "OPERATION", "GLOB",
+		"BADOPTIONCOMBINATION", NULL);
 	return TCL_ERROR;
     }
 
@@ -1331,8 +1338,8 @@ Tcl_GlobObjCmd(
 
     if (dir == PATH_GENERAL) {
 	int pathlength;
-	char *last;
-	char *first = Tcl_GetStringFromObj(pathOrDir,&pathlength);
+	const char *last;
+	const char *first = Tcl_GetStringFromObj(pathOrDir,&pathlength);
 
 	/*
 	 * Find the last path separator in the path
@@ -1424,8 +1431,7 @@ Tcl_GlobObjCmd(
 	if (length <= 0) {
 	    goto skipTypes;
 	}
-	globTypes = (Tcl_GlobTypeData *)
-		TclStackAlloc(interp, sizeof(Tcl_GlobTypeData));
+	globTypes = TclStackAlloc(interp, sizeof(Tcl_GlobTypeData));
 	globTypes->type = 0;
 	globTypes->perm = 0;
 	globTypes->macType = NULL;
@@ -1433,7 +1439,7 @@ Tcl_GlobObjCmd(
 
 	while (--length >= 0) {
 	    int len;
-	    char *str;
+	    const char *str;
 
 	    Tcl_ListObjIndex(interp, typePtr, length, &look);
 	    str = Tcl_GetStringFromObj(look, &len);
@@ -1491,8 +1497,8 @@ Tcl_GlobObjCmd(
 	    } else {
 		Tcl_Obj *item;
 
-		if ((Tcl_ListObjLength(NULL, look, &len) == TCL_OK) &&
-			(len == 3)) {
+		if ((Tcl_ListObjLength(NULL, look, &len) == TCL_OK)
+			&& (len == 3)) {
 		    Tcl_ListObjIndex(interp, look, 0, &item);
 		    if (!strcmp("macintosh", Tcl_GetString(item))) {
 			Tcl_ListObjIndex(interp, look, 1, &item);
@@ -1522,10 +1528,10 @@ Tcl_GlobObjCmd(
 		 */
 
 	    badTypesArg:
-		TclNewObj(resultPtr);
-		Tcl_AppendToObj(resultPtr, "bad argument to \"-types\": ", -1);
-		Tcl_AppendObjToObj(resultPtr, look);
-		Tcl_SetObjResult(interp, resultPtr);
+		Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+			"bad argument to \"-types\": %s",
+			Tcl_GetString(look)));
+		Tcl_SetErrorCode(interp, "TCL", "ARGUMENT", "BAD", NULL);
 		result = TCL_ERROR;
 		join = 0;
 		goto endOfGlob;
@@ -1535,6 +1541,7 @@ Tcl_GlobObjCmd(
 			"only one MacOS type or creator argument"
 			" to \"-types\" allowed", -1));
 		result = TCL_ERROR;
+		Tcl_SetErrorCode(interp, "TCL", "ARGUMENT", "BAD", NULL);
 		join = 0;
 		goto endOfGlob;
 	    }
@@ -1616,6 +1623,7 @@ Tcl_GlobObjCmd(
 		Tcl_AppendResult(interp, Tcl_DStringValue(&prefix), NULL);
 	    } else {
 		const char *sep = "";
+
 		for (i = 0; i < objc; i++) {
 		    string = Tcl_GetString(objv[i]);
 		    Tcl_AppendResult(interp, sep, string, NULL);
@@ -1623,6 +1631,8 @@ Tcl_GlobObjCmd(
 		}
 	    }
 	    Tcl_AppendResult(interp, "\"", NULL);
+	    Tcl_SetErrorCode(interp, "TCL", "OPERATION", "GLOB", "NOMATCH",
+		    NULL);
 	    result = TCL_ERROR;
 	}
     }
@@ -1824,7 +1834,7 @@ TclGlob(
 		if (tail[0] == '/') {
 		    tail++;
 		} else {
-		    tail+=2;
+		    tail += 2;
 		}
 		Tcl_IncrRefCount(pathPrefix);
 		break;
@@ -1983,19 +1993,19 @@ TclGlob(
 	for (i = 0; i< objc; i++) {
 	    int len;
 	    const char *oldStr = Tcl_GetStringFromObj(objv[i], &len);
-	    Tcl_Obj *elems[1];
+	    Tcl_Obj *elem;
 
 	    if (len == prefixLen) {
 		if ((pattern[0] == '\0')
 			|| (strchr(separators, pattern[0]) == NULL)) {
-		    TclNewLiteralStringObj(elems[0], ".");
+		    TclNewLiteralStringObj(elem, ".");
 		} else {
-		    TclNewLiteralStringObj(elems[0], "/");
+		    TclNewLiteralStringObj(elem, "/");
 		}
 	    } else {
-		elems[0] = Tcl_NewStringObj(oldStr+prefixLen, len-prefixLen);
+		elem = Tcl_NewStringObj(oldStr+prefixLen, len-prefixLen);
 	    }
-	    Tcl_ListObjReplace(interp, filenamesObj, i, 1, 1, elems);
+	    Tcl_ListObjReplace(interp, filenamesObj, i, 1, 1, &elem);
 	}
     }
 
@@ -2253,11 +2263,15 @@ DoGlob(
 	    }
 	    Tcl_SetResult(interp, "unmatched open-brace in file name",
 		    TCL_STATIC);
+	    Tcl_SetErrorCode(interp, "TCL", "OPERATION", "GLOB", "BALANCE",
+		    NULL);
 	    return TCL_ERROR;
 
 	} else if (*p == '}') {
 	    Tcl_SetResult(interp, "unmatched close-brace in file name",
 		    TCL_STATIC);
+	    Tcl_SetErrorCode(interp, "TCL", "OPERATION", "GLOB", "BALANCE",
+		    NULL);
 	    return TCL_ERROR;
 	}
     }
@@ -2361,14 +2375,42 @@ DoGlob(
 		pattern, &dirOnly);
 	*p = save;
 	if (result == TCL_OK) {
-	    int subdirc, i;
+	    int subdirc, i, repair = -1;
 	    Tcl_Obj **subdirv;
 
 	    result = Tcl_ListObjGetElements(interp, subdirsPtr,
 		    &subdirc, &subdirv);
 	    for (i=0; result==TCL_OK && i<subdirc; i++) {
+		Tcl_Obj *copy = NULL;
+
+		if (pathPtr == NULL && Tcl_GetString(subdirv[i])[0] == '~') {
+		    Tcl_ListObjLength(NULL, matchesObj, &repair);
+		    copy = subdirv[i];
+		    subdirv[i] = Tcl_NewStringObj("./", 2);
+		    Tcl_AppendObjToObj(subdirv[i], copy);
+		    Tcl_IncrRefCount(subdirv[i]);
+		}
 		result = DoGlob(interp, matchesObj, separators, subdirv[i],
 			1, p+1, types);
+		if (copy) {
+		    int end;
+
+		    Tcl_DecrRefCount(subdirv[i]);
+		    subdirv[i] = copy;
+		    Tcl_ListObjLength(NULL, matchesObj, &end);
+		    while (repair < end) {
+			const char *bytes;
+			int numBytes;
+			Tcl_Obj *fixme, *newObj;
+			Tcl_ListObjIndex(NULL, matchesObj, repair, &fixme);
+			bytes = Tcl_GetStringFromObj(fixme, &numBytes);
+			newObj = Tcl_NewStringObj(bytes+2, numBytes-2);
+			Tcl_ListObjReplace(NULL, matchesObj, repair, 1,
+				1, &newObj);
+			repair++;
+		    }
+		    repair = -1;
+		}
 	    }
 	}
 	TclDecrRefCount(subdirsPtr);
@@ -2417,7 +2459,6 @@ DoGlob(
 
 #if defined(__CYGWIN__) && defined(__WIN32__)
 	    {
-		extern int cygwin_conv_to_win32_path(const char *, char *);
 		char winbuf[MAX_PATH+1];
 
 		cygwin_conv_to_win32_path(Tcl_DStringValue(&append), winbuf);
@@ -2435,6 +2476,16 @@ DoGlob(
 		    Tcl_DStringAppend(&append, ".", 1);
 		}
 	    }
+#if defined(__CYGWIN__) && !defined(__WIN32__)
+	    DLLIMPORT extern int cygwin_conv_to_posix_path(const char *, char *);
+	    {
+		char winbuf[MAXPATHLEN+1];
+
+		cygwin_conv_to_posix_path(Tcl_DStringValue(&append), winbuf);
+		Tcl_DStringFree(&append);
+		Tcl_DStringAppend(&append, winbuf, -1);
+	    }
+#endif /* __CYGWIN__ && __WIN32__ */
 	    break;
 	}
 
@@ -2533,7 +2584,7 @@ DoGlob(
 Tcl_StatBuf *
 Tcl_AllocStatBuf(void)
 {
-    return (Tcl_StatBuf *) ckalloc(sizeof(Tcl_StatBuf));
+    return ckalloc(sizeof(Tcl_StatBuf));
 }
 
 /*
@@ -2635,11 +2686,12 @@ Tcl_WideUInt
 Tcl_GetBlocksFromStat(
     const Tcl_StatBuf *statPtr)
 {
-#ifdef HAVE_ST_BLOCKS
+#ifdef HAVE_STRUCT_STAT_ST_BLOCKS
     return (Tcl_WideUInt) statPtr->st_blocks;
 #else
-    return ((Tcl_WideUInt) statPtr->st_size
-	    + (GUESSED_BLOCK_SIZE-1)) / GUESSED_BLOCK_SIZE;
+    register unsigned blksize = Tcl_GetBlockSizeFromStat(statPtr);
+
+    return ((Tcl_WideUInt) statPtr->st_size + blksize - 1) / blksize;
 #endif
 }
 
@@ -2647,7 +2699,7 @@ unsigned
 Tcl_GetBlockSizeFromStat(
     const Tcl_StatBuf *statPtr)
 {
-#ifdef HAVE_ST_BLOCKS
+#ifdef HAVE_STRUCT_STAT_ST_BLKSIZE
     return (unsigned) statPtr->st_blksize;
 #else
     /*

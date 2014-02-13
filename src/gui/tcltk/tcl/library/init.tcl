@@ -3,8 +3,6 @@
 # Default system startup file for Tcl-based applications.  Defines
 # "unknown" procedure and auto-load facilities.
 #
-# RCS: @(#) $Id$
-#
 # Copyright (c) 1991-1993 The Regents of the University of California.
 # Copyright (c) 1994-1996 Sun Microsystems, Inc.
 # Copyright (c) 1998-1999 Scriptics Corporation.
@@ -18,7 +16,7 @@
 if {[info commands package] == ""} {
     error "version mismatch: library\nscripts expect Tcl version 7.5b1 or later but the loaded version is\nonly [info patchlevel]"
 }
-package require -exact Tcl 8.6b1.1
+package require -exact Tcl 8.6b2
 
 # Compute the auto path to use in this interpreter.
 # The values on the path come from several locations:
@@ -79,7 +77,7 @@ namespace eval tcl {
     # TIP #255 min and max functions
     namespace eval mathfunc {
 	proc min {args} {
-	    if {[llength $args] == 0} {
+	    if {![llength $args]} {
 		return -code error \
 		    "too few arguments to math function \"min\""
 	    }
@@ -90,12 +88,12 @@ namespace eval tcl {
 		if {[catch {expr {double($arg)}} err]} {
 		    return -code error $err
 		}
-		if {$arg < $val} { set val $arg }
+		if {$arg < $val} {set val $arg}
 	    }
 	    return $val
 	}
 	proc max {args} {
-	    if {[llength $args] == 0} {
+	    if {![llength $args]} {
 		return -code error \
 		    "too few arguments to math function \"max\""
 	    }
@@ -106,7 +104,7 @@ namespace eval tcl {
 		if {[catch {expr {double($arg)}} err]} {
 		    return -code error $err
 		}
-		if {$arg > $val} { set val $arg }
+		if {$arg > $val} {set val $arg}
 	    }
 	    return $val
 	}
@@ -238,8 +236,13 @@ proc unknown args {
     variable ::tcl::UnknownPending
     global auto_noexec auto_noload env tcl_interactive
 
-    catch {set savedErrorInfo $::errorInfo}
-    catch {set savedErrorCode $::errorCode}
+
+    if {[info exists ::errorInfo]} {
+	set savedErrorInfo $::errorInfo
+    }
+    if {[info exists ::errorCode]} {
+	set savedErrorCode $::errorCode
+    }
 
     set name [lindex $args 0]
     if {![info exists auto_noload]} {
@@ -248,13 +251,13 @@ proc unknown args {
 	#
 	if {[info exists UnknownPending($name)]} {
 	    return -code error "self-referential recursion\
-		    in \"unknown\" for command \"$name\"";
+		    in \"unknown\" for command \"$name\""
 	}
-	set UnknownPending($name) pending;
+	set UnknownPending($name) pending
 	set ret [catch {
 		auto_load $name [uplevel 1 {::namespace current}]
 	} msg opts]
-	unset UnknownPending($name);
+	unset UnknownPending($name)
 	if {$ret != 0} {
 	    dict append opts -errorinfo "\n    (autoloading \"$name\")"
 	    return -options $opts $msg
@@ -542,14 +545,14 @@ proc auto_qualify {cmd namespace} {
 
     # Before each return case we give an example of which category it is
     # with the following form :
-    # ( inputCmd, inputNameSpace) -> output
+    # (inputCmd, inputNameSpace) -> output
 
     if {[string match ::* $cmd]} {
 	if {$n > 1} {
-	    # ( ::foo::bar , * ) -> ::foo::bar
+	    # (::foo::bar , *) -> ::foo::bar
 	    return [list $cmd]
 	} else {
-	    # ( ::global , * ) -> global
+	    # (::global , *) -> global
 	    return [list [string range $cmd 2 end]]
 	}
     }
@@ -559,17 +562,17 @@ proc auto_qualify {cmd namespace} {
 
     if {$n == 0} {
 	if {$namespace eq "::"} {
-	    # ( nocolons , :: ) -> nocolons
+	    # (nocolons , ::) -> nocolons
 	    return [list $cmd]
 	} else {
-	    # ( nocolons , ::sub ) -> ::sub::nocolons nocolons
+	    # (nocolons , ::sub) -> ::sub::nocolons nocolons
 	    return [list ${namespace}::$cmd $cmd]
 	}
     } elseif {$namespace eq "::"} {
-	#  ( foo::bar , :: ) -> ::foo::bar
+	#  (foo::bar , ::) -> ::foo::bar
 	return [list ::$cmd]
     } else {
-	# ( foo::bar , ::sub ) -> ::sub::foo::bar ::foo::bar
+	# (foo::bar , ::sub) -> ::sub::foo::bar ::foo::bar
 	return [list ${namespace}::$cmd ::$cmd]
     }
 }
@@ -646,7 +649,7 @@ proc auto_execok name {
 	# Add an initial ; to have the {} extension check first.
 	set execExtensions [split ";$env(PATHEXT)" ";"]
     } else {
-	set execExtensions [list {} .com .exe .bat]
+	set execExtensions [list {} .com .exe .bat .cmd]
     }
 
     if {$name in $shellBuiltins} {
@@ -689,7 +692,9 @@ proc auto_execok name {
 
     foreach dir [split $path {;}] {
 	# Skip already checked directories
-	if {[info exists checked($dir)] || ($dir eq {})} { continue }
+	if {[info exists checked($dir)] || ($dir eq "")} {
+	    continue
+	}
 	set checked($dir) {}
 	foreach ext $execExtensions {
 	    set file [file join $dir ${name}${ext}]
@@ -816,6 +821,34 @@ proc tcl::CopyDirectory {action src dest} {
 	}
     }
     return
+}
+
+# TIP 131
+if 0 {
+proc tcl::rmmadwiw {} {
+    set magic {
+        42 83 fe f6 ff f8 f1 e5 c6 f9 eb fd ff fb f1 e5 cc f5 ec f5 e3 fd fe
+        ff f5 fa f3 e1 c7 f9 f2 fd ff f9 fe f9 ed f4 fa f6 e6 f9 f2 e6 fd f9
+        ff f9 f6 e6 fa fd ff fc fb fc f9 f1 ed
+    }
+    foreach mystic [lassign $magic tragic] {
+        set comic [expr (0x$mystic ^ 0x$tragic) - 255 + 0x$tragic]
+        append logic [format %x $comic]
+        set tragic $mystic
+    }
+    binary format H* $logic
+}
+
+proc tcl::mathfunc::rmmadwiw {} {
+    set age [expr {9*6}]
+    set mind ""
+    while {$age} {
+        lappend mind [expr {$age%13}]
+        set age [expr {$age/13}]
+    }
+    set matter [lreverse $mind]
+    return [join $matter ""]
+}
 }
 
 source [file join $::tcl_library libl.tcl]

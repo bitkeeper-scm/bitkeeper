@@ -9,8 +9,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclWinInt.h"
@@ -210,7 +208,7 @@ TclpInitLibraryPath(
 
     *encodingPtr = NULL;
     bytes = Tcl_GetStringFromObj(pathPtr, lengthPtr);
-    *valuePtr = ckalloc((unsigned)(*lengthPtr)+1);
+    *valuePtr = ckalloc((*lengthPtr) + 1);
     memcpy(*valuePtr, bytes, (size_t)(*lengthPtr)+1);
     Tcl_DecrRefCount(pathPtr);
 }
@@ -308,7 +306,7 @@ AppendEnvironment(
 	    objPtr = Tcl_NewStringObj(buf, -1);
 	}
 	Tcl_ListObjAppendElement(NULL, pathPtr, objPtr);
-	ckfree((char *) pathv);
+	ckfree(pathv);
     }
 }
 
@@ -357,7 +355,7 @@ InitializeDefaultLibraryDir(
     TclWinNoBackslash(name);
     sprintf(end + 1, "lib/tcl%s", TCL_VERSION);
     *lengthPtr = strlen(name);
-    *valuePtr = ckalloc((unsigned int) *lengthPtr + 1);
+    *valuePtr = ckalloc(*lengthPtr + 1);
     *encodingPtr = NULL;
     memcpy(*valuePtr, name, (size_t) *lengthPtr + 1);
 }
@@ -392,31 +390,6 @@ ToUtf(
     }
     *dst = '\0';
     return (int) (dst - start);
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * TclWinEncodingsCleanup --
- *
- *	Reset information to its original state in finalization to allow for
- *	reinitialization to be possible. This must not be called until after
- *	the filesystem has been finalised, or exit crashes may occur when
- *	using virtual filesystems.
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	Static information reset to startup state.
- *
- *---------------------------------------------------------------------------
- */
-
-void
-TclWinEncodingsCleanup(void)
-{
-    TclWinResetInterfaceEncodings();
 }
 
 /*
@@ -457,11 +430,9 @@ TclpSetInitialEncodings(void)
 void
 TclpSetInterfaces(void)
 {
-    int platformId, useWide;
+    int useWide;
 
-    platformId = TclWinGetPlatformId();
-    useWide = ((platformId == VER_PLATFORM_WIN32_NT)
-	    || (platformId == VER_PLATFORM_WIN32_CE));
+    useWide = (TclWinGetPlatformId() != VER_PLATFORM_WIN32_WINDOWS);
     TclWinSetInterfaces(useWide);
 }
 
@@ -499,12 +470,14 @@ TclpSetVariables(
 {
     const char *ptr;
     char buffer[TCL_INTEGER_SPACE * 2];
-    SYSTEM_INFO sysInfo, *sysInfoPtr = &sysInfo;
-    OemId *oemId;
+    union {
+	SYSTEM_INFO info;
+	OemId oemId;
+    } sys;
     OSVERSIONINFOA osInfo;
     Tcl_DString ds;
     TCHAR szUserName[UNLEN+1];
-    DWORD dwUserNameLen = sizeof(szUserName);
+    DWORD cchUserNameLen = UNLEN;
 
     Tcl_SetVar2Ex(interp, "tclDefaultLibrary", NULL,
 	    TclGetProcessGlobalValue(&defaultLibraryDir), TCL_GLOBAL_ONLY);
@@ -512,8 +485,7 @@ TclpSetVariables(
     osInfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFOA);
     GetVersionExA(&osInfo);
 
-    oemId = (OemId *) sysInfoPtr;
-    GetSystemInfo(&sysInfo);
+    GetSystemInfo(&sys.info);
 
     /*
      * Define the tcl_platform array.
@@ -527,9 +499,9 @@ TclpSetVariables(
     }
     wsprintfA(buffer, "%d.%d", osInfo.dwMajorVersion, osInfo.dwMinorVersion);
     Tcl_SetVar2(interp, "tcl_platform", "osVersion", buffer, TCL_GLOBAL_ONLY);
-    if (oemId->wProcessorArchitecture < NUMPROCESSORS) {
+    if (sys.oemId.wProcessorArchitecture < NUMPROCESSORS) {
 	Tcl_SetVar2(interp, "tcl_platform", "machine",
-		processors[oemId->wProcessorArchitecture],
+		processors[sys.oemId.wProcessorArchitecture],
 		TCL_GLOBAL_ONLY);
     }
 
@@ -573,12 +545,15 @@ TclpSetVariables(
     /*
      * Initialize the user name from the environment first, since this is much
      * faster than asking the system.
+     * Note: cchUserNameLen is number of characters including nul terminator.
      */
 
     Tcl_DStringInit(&ds);
     if (TclGetEnv("USERNAME", &ds) == NULL) {
-	if (GetUserName(szUserName, &dwUserNameLen) != 0) {
-	    Tcl_WinTCharToUtf(szUserName, (int) dwUserNameLen, &ds);
+	if (GetUserName(szUserName, &cchUserNameLen) != 0) {
+	    int cbUserNameLen = cchUserNameLen - 1;
+	    cbUserNameLen *= sizeof(TCHAR);
+	    Tcl_WinTCharToUtf(szUserName, cbUserNameLen, &ds);
 	}
     }
     Tcl_SetVar2(interp, "tcl_platform", "user", Tcl_DStringValue(&ds),
@@ -631,7 +606,7 @@ TclpFindVariable(
      */
 
     length = strlen(name);
-    nameUpper = (char *) ckalloc((unsigned) length+1);
+    nameUpper = ckalloc(length + 1);
     memcpy(nameUpper, name, (size_t) length+1);
     Tcl_UtfToUpper(nameUpper);
 

@@ -9,8 +9,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclInt.h"
@@ -174,13 +172,13 @@ typedef struct ByteArray {
 				 * array. */
     int allocated;		/* The amount of space actually allocated
 				 * minus 1 byte. */
-    unsigned char bytes[4];	/* The array of bytes. The actual size of this
+    unsigned char bytes[1];	/* The array of bytes. The actual size of this
 				 * field depends on the 'allocated' field
 				 * above. */
 } ByteArray;
 
 #define BYTEARRAY_SIZE(len) \
-		((unsigned) (sizeof(ByteArray) - 4 + (len)))
+		((unsigned) (TclOffset(ByteArray, bytes) + (len)))
 #define GET_BYTEARRAY(objPtr) \
 		((ByteArray *) (objPtr)->internalRep.otherValuePtr)
 #define SET_BYTEARRAY(objPtr, baPtr) \
@@ -306,7 +304,7 @@ Tcl_SetByteArrayObj(
     Tcl_InvalidateStringRep(objPtr);
 
     length = (length < 0) ? 0 : length;
-    byteArrayPtr = (ByteArray *) ckalloc(BYTEARRAY_SIZE(length));
+    byteArrayPtr = ckalloc(BYTEARRAY_SIZE(length));
     memset(byteArrayPtr, 0, BYTEARRAY_SIZE(length));
     byteArrayPtr->used = length;
     byteArrayPtr->allocated = length;
@@ -393,8 +391,7 @@ Tcl_SetByteArrayLength(
 
     byteArrayPtr = GET_BYTEARRAY(objPtr);
     if (length > byteArrayPtr->allocated) {
-	byteArrayPtr = (ByteArray *)
-		ckrealloc((char *) byteArrayPtr, BYTEARRAY_SIZE(length));
+	byteArrayPtr = ckrealloc(byteArrayPtr, BYTEARRAY_SIZE(length));
 	byteArrayPtr->allocated = length;
 	SET_BYTEARRAY(objPtr, byteArrayPtr);
     }
@@ -434,7 +431,7 @@ SetByteArrayFromAny(
 	src = TclGetStringFromObj(objPtr, &length);
 	srcEnd = src + length;
 
-	byteArrayPtr = (ByteArray *) ckalloc(BYTEARRAY_SIZE(length));
+	byteArrayPtr = ckalloc(BYTEARRAY_SIZE(length));
 	for (dst = byteArrayPtr->bytes; src < srcEnd; ) {
 	    src += Tcl_UtfToUniChar(src, &ch);
 	    *dst++ = UCHAR(ch);
@@ -471,7 +468,8 @@ static void
 FreeByteArrayInternalRep(
     Tcl_Obj *objPtr)		/* Object with internal rep to free. */
 {
-    ckfree((char *) GET_BYTEARRAY(objPtr));
+    ckfree(GET_BYTEARRAY(objPtr));
+    objPtr->typePtr = NULL;
 }
 
 /*
@@ -502,7 +500,7 @@ DupByteArrayInternalRep(
     srcArrayPtr = GET_BYTEARRAY(srcPtr);
     length = srcArrayPtr->used;
 
-    copyArrayPtr = (ByteArray *) ckalloc(BYTEARRAY_SIZE(length));
+    copyArrayPtr = ckalloc(BYTEARRAY_SIZE(length));
     copyArrayPtr->used = length;
     copyArrayPtr->allocated = length;
     memcpy(copyArrayPtr->bytes, srcArrayPtr->bytes, (size_t) length);
@@ -552,13 +550,16 @@ UpdateStringOfByteArray(
      */
 
     size = length;
-    for (i = 0; i < length; i++) {
+    for (i = 0; i < length && size >= 0; i++) {
 	if ((src[i] == 0) || (src[i] > 127)) {
 	    size++;
 	}
     }
+    if (size < 0) {
+	Tcl_Panic("max size for a Tcl value (%d bytes) exceeded", INT_MAX);
+    }
 
-    dst = (char *) ckalloc((unsigned) (size + 1));
+    dst = ckalloc(size + 1);
     objPtr->bytes = dst;
     objPtr->length = size;
 
@@ -570,6 +571,102 @@ UpdateStringOfByteArray(
 	    dst += Tcl_UniCharToUtf(src[i], dst);
 	}
 	*dst = '\0';
+    }
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TclAppendBytesToByteArray --
+ *
+ *	This function appends an array of bytes to a byte array object. Note
+ *	that the object *must* be unshared, and the array of bytes *must not*
+ *	refer to the object being appended to.  Also the caller must have
+ *	already checked that the final length of the bytearray after the
+ *	append operations is complete will not overflow the int range.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	Allocates enough memory for an array of bytes of the requested total
+ *	size, or possibly larger. [Bug 2992970]
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TclAppendBytesToByteArray(
+    Tcl_Obj *objPtr,
+    const unsigned char *bytes,
+    int len)
+{
+    ByteArray *byteArrayPtr;
+
+    if (Tcl_IsShared(objPtr)) {
+	Tcl_Panic("%s called with shared object","TclAppendBytesToByteArray");
+    }
+    if (len < 0) {
+	Tcl_Panic("%s must be called with definite number of bytes to append",
+		"TclAppendBytesToByteArray");
+    }
+    if (objPtr->typePtr != &tclByteArrayType) {
+	SetByteArrayFromAny(NULL, objPtr);
+    }
+    byteArrayPtr = GET_BYTEARRAY(objPtr);
+
+    /*
+     * If we need to, resize the allocated space in the byte array.
+     */
+
+    if (byteArrayPtr->used + len > byteArrayPtr->allocated) {
+	unsigned int attempt, used = byteArrayPtr->used;
+	ByteArray *tmpByteArrayPtr = NULL;
+
+	attempt = byteArrayPtr->allocated;
+	if (attempt < 1) {
+	    /*
+	     * No allocated bytes, so must be none used too. We use this
+	     * method to calculate how many bytes to allocate because we can
+	     * end up with a zero-length buffer otherwise, when doubling can
+	     * cause trouble. [Bug 3067036]
+	     */
+
+	    attempt = len + 1;
+	} else {
+	    do {
+		attempt *= 2;
+	    } while (attempt < used+len);
+	}
+
+	if (BYTEARRAY_SIZE(attempt) > BYTEARRAY_SIZE(used)) {
+	    tmpByteArrayPtr = attemptckrealloc(byteArrayPtr,
+		    BYTEARRAY_SIZE(attempt));
+	}
+
+	if (tmpByteArrayPtr == NULL) {
+	    attempt = used + len;
+	    if (BYTEARRAY_SIZE(attempt) < BYTEARRAY_SIZE(used)) {
+		Tcl_Panic("attempt to allocate a bigger buffer than we can handle");
+	    }
+	    tmpByteArrayPtr = ckrealloc(byteArrayPtr,
+		    BYTEARRAY_SIZE(attempt));
+	}
+
+	byteArrayPtr = tmpByteArrayPtr;
+	byteArrayPtr->allocated = attempt;
+	byteArrayPtr->used = used;
+	SET_BYTEARRAY(objPtr, byteArrayPtr);
+    }
+
+    /*
+     * Do the append if there's any point.
+     */
+
+    if (len > 0) {
+	memcpy(byteArrayPtr->bytes + byteArrayPtr->used, bytes, len);
+	byteArrayPtr->used += len;
+	Tcl_InvalidateStringRep(objPtr);
     }
 }
 
@@ -590,29 +687,30 @@ UpdateStringOfByteArray(
  *----------------------------------------------------------------------
  */
 
+static const EnsembleImplMap binaryMap[] = {
+{ "format", BinaryFormatCmd, NULL, NULL, NULL, 0 },
+{ "scan",   BinaryScanCmd, NULL, NULL, NULL, 0 },
+{ "encode", NULL, NULL, NULL, NULL, 0 },
+{ "decode", NULL, NULL, NULL, NULL, 0 },
+{ NULL, NULL, NULL, NULL, NULL, 0 }
+};
+static const EnsembleImplMap encodeMap[] = {
+{ "hex",      BinaryEncodeHex, NULL, NULL, (ClientData)HexDigits, 0 },
+{ "uuencode", BinaryEncode64,  NULL, NULL, (ClientData)UueDigits, 0 },
+{ "base64",   BinaryEncode64,  NULL, NULL, (ClientData)B64Digits, 0 },
+{ NULL, NULL, NULL, NULL, NULL, 0 }
+};
+static const EnsembleImplMap decodeMap[] = {
+{ "hex",      BinaryDecodeHex, NULL, NULL, NULL, 0 },
+{ "uuencode", BinaryDecodeUu,  NULL, NULL, NULL, 0 },
+{ "base64",   BinaryDecode64,  NULL, NULL, NULL, 0 },
+{ NULL, NULL, NULL, NULL, NULL, 0 }
+};
+
 Tcl_Command
 TclInitBinaryCmd(
     Tcl_Interp *interp)
 {
-    const EnsembleImplMap binaryMap[] = {
-	{ "format", BinaryFormatCmd, NULL },
-	{ "scan",   BinaryScanCmd,   NULL },
-	{ "encode", NULL,	     NULL },
-	{ "decode", NULL,	     NULL },
-	{ NULL, NULL, NULL }
-    };
-    const EnsembleImplMap encodeMap[] = {
-	{ "hex",      BinaryEncodeHex, NULL, NULL, (ClientData)HexDigits },
-	{ "uuencode", BinaryEncode64,  NULL, NULL, (ClientData)UueDigits },
-	{ "base64",   BinaryEncode64,  NULL, NULL, (ClientData)B64Digits },
-	{ NULL, NULL, NULL }
-    };
-    const EnsembleImplMap decodeMap[] = {
-	{ "hex",      BinaryDecodeHex, NULL },
-	{ "uuencode", BinaryDecodeUu,  NULL },
-	{ "base64",   BinaryDecode64,  NULL },
-	{ NULL, NULL, NULL }
-    };
     Tcl_Command binaryEnsemble;
 
     binaryEnsemble = TclMakeEnsemble(interp, "binary", binaryMap);
@@ -1042,7 +1140,7 @@ BinaryFormatCmd(
 		 * this is safe since we aren't going to modify the array.
 		 */
 
-		listv = (Tcl_Obj**)(objv + arg);
+		listv = (Tcl_Obj **) (objv + arg);
 		listc = 1;
 		count = 1;
 	    } else {
@@ -1159,7 +1257,6 @@ BinaryScanCmd(
 				 * string. */
     Tcl_Obj *resultPtr = NULL;	/* Object holding result buffer. */
     unsigned char *buffer;	/* Start of result buffer. */
-    unsigned char *cursor;	/* Current position within result buffer. */
     const char *errorString;
     const char *str;
     int offset, size, length;
@@ -1178,7 +1275,6 @@ BinaryScanCmd(
     Tcl_InitHashTable(numberCachePtr, TCL_ONE_WORD_KEYS);
     buffer = Tcl_GetByteArrayFromObj(objv[1], &length);
     format = TclGetString(objv[2]);
-    cursor = buffer;
     arg = 3;
     offset = 0;
     while (*format != '\0') {
@@ -1304,7 +1400,6 @@ BinaryScanCmd(
 	case 'H': {
 	    char *dest;
 	    unsigned char *src;
-	    int i;
 	    static const char hexdigit[] = "0123456789abcdef";
 
 	    if (arg >= objc) {
@@ -2031,7 +2126,7 @@ ScanNumber(
 	    register Tcl_HashEntry *hPtr;
 	    int isNew;
 
-	    hPtr = Tcl_CreateHashEntry(tablePtr, (char *)value, &isNew);
+	    hPtr = Tcl_CreateHashEntry(tablePtr, INT2PTR(value), &isNew);
 	    if (!isNew) {
 		return Tcl_GetHashValue(hPtr);
 	    }
@@ -2304,11 +2399,14 @@ BinaryDecodeHex(
 		value |= (c & 0xf);
 	    } else {
 		value <<= 4;
-		++cut;
+		cut++;
 	    }
 	}
 	*cursor++ = UCHAR(value);
 	value = 0;
+    }
+    if (cut > size) {
+	cut = size;
     }
     Tcl_SetByteArrayLength(resultObj, cursor - begin - cut);
     Tcl_SetObjResult(interp, resultObj);
@@ -2344,7 +2442,7 @@ BinaryDecodeHex(
 #define OUTPUT(c) \
     do {						\
 	*cursor++ = (c);				\
-	++outindex;					\
+	outindex++;					\
 	if (maxlen > 0 && cursor != limit) {		\
 	    if (outindex == maxlen) {			\
 		memcpy(cursor, wrapchar, wrapcharlen);	\
@@ -2353,7 +2451,7 @@ BinaryDecodeHex(
 	    }						\
 	}						\
 	if (cursor > limit) {				\
-	    Tcl_Panic("limit hit\n");			\
+	    Tcl_Panic("limit hit");			\
 	}						\
     } while (0)
 
@@ -2498,23 +2596,28 @@ BinaryDecodeUu(
 	    if (data < dataend) {
 		d[i] = c = *data++;
 		if (c < 33 || c > 96) {
-		    if (strict || !isspace(c)) {
+		    if (strict || !isspace(UCHAR(c))) {
 			goto badUu;
 		    }
 		    i--;
 		    continue;
 		}
 	    } else {
-		++cut;
+		cut++;
 	    }
 	}
-	if (cut>3) cut=3;
+	if (cut > 3) {
+	    cut = 3;
+	}
 	*cursor++ = (((d[0] - 0x20) & 0x3f) << 2)
 		| (((d[1] - 0x20) & 0x3f) >> 4);
 	*cursor++ = (((d[1] - 0x20) & 0x3f) << 4)
 		| (((d[2] - 0x20) & 0x3f) >> 2);
 	*cursor++ = (((d[2] - 0x20) & 0x3f) << 6)
 		| (((d[3] - 0x20) & 0x3f));
+    }
+    if (cut > size) {
+	cut = size;
     }
     Tcl_SetByteArrayLength(resultObj, cursor - begin - cut);
     Tcl_SetObjResult(interp, resultObj);
@@ -2583,7 +2686,6 @@ BinaryDecode64(
     size = ((count + 3) & ~3) * 3 / 4;
     begin = cursor = Tcl_SetByteArrayLength(resultObj, size);
     while (data < dataend) {
-	int i;
 	unsigned long value = 0;
 
 	for (i=0 ; i<4 ; i++) {
@@ -2603,7 +2705,7 @@ BinaryDecode64(
 		} else if (c == '=') {
 		    value <<= 6;
 		    if (cut < 2) {
-			++cut;
+			cut++;
 		    }
 		} else {
 		    if (strict || !isspace(c)) {
@@ -2614,12 +2716,15 @@ BinaryDecode64(
 		}
 	    } else {
 		value <<= 6;
-		++cut;
+		cut++;
 	    }
 	}
 	*cursor++ = UCHAR((value >> 16) & 0xff);
 	*cursor++ = UCHAR((value >> 8) & 0xff);
 	*cursor++ = UCHAR(value & 0xff);
+    }
+    if (cut > size) {
+	cut = size;
     }
     Tcl_SetByteArrayLength(resultObj, cursor - begin - cut);
     Tcl_SetObjResult(interp, resultObj);

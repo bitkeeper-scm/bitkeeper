@@ -9,8 +9,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclInt.h"
@@ -455,7 +453,7 @@ static unsigned char Lexeme[] = {
 	INVALID		/* SUB */,	INVALID		/* ESC */,
 	INVALID		/* FS */,	INVALID		/* GS */,
 	INVALID		/* RS */,	INVALID		/* US */,
-	INVALID		/* SPACE */,	0 		/* ! or != */,
+	INVALID		/* SPACE */,	0		/* ! or != */,
 	QUOTED		/* " */,	INVALID		/* # */,
 	VARIABLE	/* $ */,	MOD		/* % */,
 	0		/* & or && */,	INVALID		/* ' */,
@@ -607,6 +605,12 @@ ParseExpr(
 				 * for the error message, supplying more
 				 * information after the error msg and
 				 * location have been reported. */
+    const char *errCode = NULL;	/* The detail word of the errorCode list, or
+				 * NULL to indicate that no changes to the
+				 * errorCode are to be done. */
+    const char *subErrCode = NULL;
+				/* Extra information for use in generating the
+				 * errorCode. */
     const char *mark = "_@_";	/* In the portion of the complete error
 				 * message where the error location is
 				 * reported, this "mark" substring is inserted
@@ -623,9 +627,10 @@ ParseExpr(
 
     TclParseInit(interp, start, numBytes, parsePtr);
 
-    nodes = (OpNode *) attemptckalloc(nodesAvailable * sizeof(OpNode));
+    nodes = attemptckalloc(nodesAvailable * sizeof(OpNode));
     if (nodes == NULL) {
 	TclNewLiteralStringObj(msg, "not enough memory to parse expression");
+	errCode = "NOMEM";
 	goto error;
     }
 
@@ -670,13 +675,13 @@ ParseExpr(
 	    OpNode *newPtr;
 
 	    do {
-		newPtr = (OpNode *) attemptckrealloc((char *) nodes,
-			(unsigned int) size * sizeof(OpNode));
+		newPtr = attemptckrealloc(nodes, size * sizeof(OpNode));
 	    } while ((newPtr == NULL)
 		    && ((size -= (size - nodesUsed) / 2) > nodesUsed));
 	    if (newPtr == NULL) {
 		TclNewLiteralStringObj(msg,
 			"not enough memory to parse expression");
+		errCode = "NOMEM";
 		goto error;
 	    }
 	    nodesAvailable = size;
@@ -684,23 +689,33 @@ ParseExpr(
 	}
 	nodePtr = nodes + nodesUsed;
 
-	/* Skip white space between lexemes. */
+	/*
+	 * Skip white space between lexemes.
+	 */
+
 	scanned = TclParseAllWhiteSpace(start, numBytes);
 	start += scanned;
 	numBytes -= scanned;
 
 	scanned = ParseLexeme(start, numBytes, &lexeme, &literal);
 
-	/* Use context to categorize the lexemes that are ambiguous. */
+	/*
+	 * Use context to categorize the lexemes that are ambiguous.
+	 */
+
 	if ((NODE_TYPE & lexeme) == 0) {
+	    int b;
+
 	    switch (lexeme) {
 	    case INVALID:
-		msg = Tcl_ObjPrintf(
-			"invalid character \"%.*s\"", scanned, start);
+		msg = Tcl_ObjPrintf("invalid character \"%.*s\"",
+			scanned, start);
+		errCode = "BADCHAR";
 		goto error;
 	    case INCOMPLETE:
-		msg = Tcl_ObjPrintf(
-			"incomplete operator \"%.*s\"", scanned, start);
+		msg = Tcl_ObjPrintf("incomplete operator \"%.*s\"",
+			scanned, start);
+		errCode = "PARTOP";
 		goto error;
 	    case BAREWORD:
 
@@ -723,53 +738,51 @@ ParseExpr(
 		     */
 
 		    Tcl_ListObjAppendElement(NULL, funcList, literal);
+		} else if (Tcl_GetBooleanFromObj(NULL,literal,&b) == TCL_OK) {
+		    lexeme = BOOLEAN;
 		} else {
-		    int b;
-		    if (Tcl_GetBooleanFromObj(NULL, literal, &b) == TCL_OK) {
-			lexeme = BOOLEAN;
-		    } else {
-			Tcl_DecrRefCount(literal);
-			msg = Tcl_ObjPrintf(
-				"invalid bareword \"%.*s%s\"",
-				(scanned < limit) ? scanned : limit - 3, start,
-				(scanned < limit) ? "" : "...");
-			post = Tcl_ObjPrintf(
-				"should be \"$%.*s%s\" or \"{%.*s%s}\"",
-				(scanned < limit) ? scanned : limit - 3,
-				start, (scanned < limit) ? "" : "...",
-				(scanned < limit) ? scanned : limit - 3,
-				start, (scanned < limit) ? "" : "...");
-			Tcl_AppendPrintfToObj(post,
-				" or \"%.*s%s(...)\" or ...",
-				(scanned < limit) ? scanned : limit - 3,
-				start, (scanned < limit) ? "" : "...");
-			if (NotOperator(lastParsed)) {
-			    if ((lastStart[0] == '0')
-				    && ((lastStart[1] == 'o')
-				    || (lastStart[1] == 'O'))
-				    && (lastStart[2] >= '0')
-				    && (lastStart[2] <= '9')) {
-				const char *end = lastStart + 2;
-				Tcl_Obj *copy;
+		    Tcl_DecrRefCount(literal);
+		    msg = Tcl_ObjPrintf("invalid bareword \"%.*s%s\"",
+			    (scanned < limit) ? scanned : limit - 3, start,
+			    (scanned < limit) ? "" : "...");
+		    post = Tcl_ObjPrintf(
+			    "should be \"$%.*s%s\" or \"{%.*s%s}\"",
+			    (scanned < limit) ? scanned : limit - 3,
+			    start, (scanned < limit) ? "" : "...",
+			    (scanned < limit) ? scanned : limit - 3,
+			    start, (scanned < limit) ? "" : "...");
+		    Tcl_AppendPrintfToObj(post, " or \"%.*s%s(...)\" or ...",
+			    (scanned < limit) ? scanned : limit - 3,
+			    start, (scanned < limit) ? "" : "...");
+		    if (NotOperator(lastParsed)) {
+			errCode = "BADNUMBER";
+			if ((lastStart[0] == '0')
+				&& ((lastStart[1] == 'o')
+				|| (lastStart[1] == 'O'))
+				&& (lastStart[2] >= '0')
+				&& (lastStart[2] <= '9')) {
+			    const char *end = lastStart + 2;
+			    Tcl_Obj *copy;
 
-				while (isdigit(*end)) {
-				    end++;
-				}
-				copy = Tcl_NewStringObj(lastStart,
-					end - lastStart);
-				if (TclCheckBadOctal(NULL,
-					Tcl_GetString(copy))) {
-				    Tcl_AppendToObj(post,
-					    "(invalid octal number?)", -1);
-				}
-				Tcl_DecrRefCount(copy);
+			    while (isdigit(UCHAR(*end))) {
+				end++;
 			    }
-			    scanned = 0;
-			    insertMark = 1;
-			    parsePtr->errorType = TCL_PARSE_BAD_NUMBER;
+			    copy = Tcl_NewStringObj(lastStart, end-lastStart);
+			    if (TclCheckBadOctal(NULL, Tcl_GetString(copy))) {
+				Tcl_AppendToObj(post,
+					" (invalid octal number?)", -1);
+				errCode = "BADNUMBER";
+				subErrCode = "OCTAL";
+			    }
+			    Tcl_DecrRefCount(copy);
 			}
-			goto error;
+			scanned = 0;
+			insertMark = 1;
+			parsePtr->errorType = TCL_PARSE_BAD_NUMBER;
+		    } else {
+			errCode = "BAREWORD";
 		    }
+		    goto error;
 		}
 		break;
 	    case PLUS:
@@ -810,12 +823,15 @@ ParseExpr(
 
 	    if (NotOperator(lastParsed)) {
 		msg = Tcl_ObjPrintf("missing operator at %s", mark);
+		errCode = "MISSING";
 		if (lastStart[0] == '0') {
 		    Tcl_Obj *copy = Tcl_NewStringObj(lastStart,
 			    start + scanned - lastStart);
+
 		    if (TclCheckBadOctal(NULL, Tcl_GetString(copy))) {
 			TclNewLiteralStringObj(post,
 				"looks like invalid octal number");
+			errCode = "BADNUMBER_OCTAL";
 		    }
 		    Tcl_DecrRefCount(copy);
 		}
@@ -881,7 +897,7 @@ ParseExpr(
 
 	    case BRACED:
 		code = Tcl_ParseBraces(NULL, start, numBytes,
-			    parsePtr, 1, &end);
+			parsePtr, 1, &end);
 		scanned = end - start;
 		break;
 
@@ -896,13 +912,14 @@ ParseExpr(
 		tokenPtr = parsePtr->tokenPtr + wordIndex + 1;
 		if (code == TCL_OK && tokenPtr->type != TCL_TOKEN_VARIABLE) {
 		    TclNewLiteralStringObj(msg, "invalid character \"$\"");
+		    errCode = "BADCHAR";
 		    goto error;
 		}
 		scanned = tokenPtr->size;
 		break;
 
 	    case SCRIPT: {
-		Tcl_Parse *nestedPtr = (Tcl_Parse *)
+		Tcl_Parse *nestedPtr =
 			TclStackAlloc(interp, sizeof(Tcl_Parse));
 
 		tokenPtr = parsePtr->tokenPtr + parsePtr->numTokens;
@@ -913,7 +930,7 @@ ParseExpr(
 		end = start + numBytes;
 		start++;
 		while (1) {
-		    code = Tcl_ParseCommand(interp, start, (end - start), 1,
+		    code = Tcl_ParseCommand(interp, start, end - start, 1,
 			    nestedPtr);
 		    if (code != TCL_OK) {
 			parsePtr->term = nestedPtr->term;
@@ -921,10 +938,10 @@ ParseExpr(
 			parsePtr->incomplete = nestedPtr->incomplete;
 			break;
 		    }
-		    start = (nestedPtr->commandStart + nestedPtr->commandSize);
+		    start = nestedPtr->commandStart + nestedPtr->commandSize;
 		    Tcl_FreeParse(nestedPtr);
-		    if ((nestedPtr->term < end) && (*(nestedPtr->term) == ']')
-			    && !(nestedPtr->incomplete)) {
+		    if ((nestedPtr->term < end) && (nestedPtr->term[0] == ']')
+			    && !nestedPtr->incomplete) {
 			break;
 		    }
 
@@ -934,6 +951,7 @@ ParseExpr(
 			parsePtr->errorType = TCL_PARSE_MISSING_BRACKET;
 			parsePtr->incomplete = 1;
 			code = TCL_ERROR;
+			errCode = "UNBALANCED";
 			break;
 		    }
 		}
@@ -944,7 +962,7 @@ ParseExpr(
 		tokenPtr->size = scanned;
 		parsePtr->numTokens++;
 		break;
-	    }
+	    }			/* SCRIPT case */
 	    }
 	    if (code != TCL_OK) {
 		/*
@@ -964,6 +982,9 @@ ParseExpr(
 
 		start = parsePtr->term;
 		scanned = parsePtr->incomplete;
+		if (parsePtr->incomplete) {
+		    errCode = "UNBALANCED";
+		}
 		goto error;
 	    }
 
@@ -1013,6 +1034,7 @@ ParseExpr(
 		msg = Tcl_ObjPrintf("missing operator at %s", mark);
 		scanned = 0;
 		insertMark = 1;
+		errCode = "MISSING";
 		goto error;
 	    }
 
@@ -1071,6 +1093,7 @@ ParseExpr(
 		    msg = Tcl_ObjPrintf("empty subexpression at %s", mark);
 		    scanned = 0;
 		    insertMark = 1;
+		    errCode = "EMPTY";
 		    goto error;
 		}
 
@@ -1078,30 +1101,34 @@ ParseExpr(
 		    if (nodePtr[-1].lexeme == OPEN_PAREN) {
 			TclNewLiteralStringObj(msg, "unbalanced open paren");
 			parsePtr->errorType = TCL_PARSE_MISSING_PAREN;
+			errCode = "UNBALANCED";
 		    } else if (nodePtr[-1].lexeme == COMMA) {
 			msg = Tcl_ObjPrintf(
 				"missing function argument at %s", mark);
 			scanned = 0;
 			insertMark = 1;
+			errCode = "MISSING";
 		    } else if (nodePtr[-1].lexeme == START) {
 			TclNewLiteralStringObj(msg, "empty expression");
+			errCode = "EMPTY";
 		    }
-		} else {
-		    if (lexeme == CLOSE_PAREN) {
-			TclNewLiteralStringObj(msg, "unbalanced close paren");
-		    } else if ((lexeme == COMMA)
-			    && (nodePtr[-1].lexeme == OPEN_PAREN)
-			    && (nodePtr[-2].lexeme == FUNCTION)) {
-			msg = Tcl_ObjPrintf(
-				"missing function argument at %s", mark);
-			scanned = 0;
-			insertMark = 1;
-		    }
+		} else if (lexeme == CLOSE_PAREN) {
+		    TclNewLiteralStringObj(msg, "unbalanced close paren");
+		    errCode = "UNBALANCED";
+		} else if ((lexeme == COMMA)
+			&& (nodePtr[-1].lexeme == OPEN_PAREN)
+			&& (nodePtr[-2].lexeme == FUNCTION)) {
+		    msg = Tcl_ObjPrintf("missing function argument at %s",
+			    mark);
+		    scanned = 0;
+		    insertMark = 1;
+		    errCode = "UNBALANCED";
 		}
 		if (msg == NULL) {
 		    msg = Tcl_ObjPrintf("missing operand at %s", mark);
 		    scanned = 0;
 		    insertMark = 1;
+		    errCode = "MISSING";
 		}
 		goto error;
 	    }
@@ -1178,6 +1205,7 @@ ParseExpr(
 			&& (lexeme != CLOSE_PAREN)) {
 		    TclNewLiteralStringObj(msg, "unbalanced open paren");
 		    parsePtr->errorType = TCL_PARSE_MISSING_PAREN;
+		    errCode = "UNBALANCED";
 		    goto error;
 		}
 
@@ -1185,10 +1213,10 @@ ParseExpr(
 		if ((incompletePtr->lexeme == QUESTION)
 			&& (NotOperator(complete)
 			|| (nodes[complete].lexeme != COLON))) {
-		    msg = Tcl_ObjPrintf(
-			    "missing operator \":\" at %s", mark);
+		    msg = Tcl_ObjPrintf("missing operator \":\" at %s", mark);
 		    scanned = 0;
 		    insertMark = 1;
+		    errCode = "MISSING";
 		    goto error;
 		}
 
@@ -1199,6 +1227,7 @@ ParseExpr(
 		    TclNewLiteralStringObj(msg,
 			    "unexpected operator \":\" "
 			    "without preceding \"?\"");
+		    errCode = "SURPRISE";
 		    goto error;
 		}
 
@@ -1261,6 +1290,7 @@ ParseExpr(
 	    if (lexeme == CLOSE_PAREN) {
 		if (incompletePtr->lexeme != OPEN_PAREN) {
 		    TclNewLiteralStringObj(msg, "unbalanced close paren");
+		    errCode = "UNBALANCED";
 		    goto error;
 		}
 	    }
@@ -1271,6 +1301,7 @@ ParseExpr(
 			|| (incompletePtr[-1].lexeme != FUNCTION)) {
 		    TclNewLiteralStringObj(msg,
 			    "unexpected \",\" outside function argument list");
+		    errCode = "SURPRISE";
 		    goto error;
 		}
 	    }
@@ -1279,6 +1310,7 @@ ParseExpr(
 	    if (IsOperator(complete) && (nodes[complete].lexeme == COLON)) {
 		TclNewLiteralStringObj(msg,
 			"unexpected operator \":\" without preceding \"?\"");
+		errCode = "SURPRISE";
 		goto error;
 	    }
 
@@ -1335,13 +1367,12 @@ ParseExpr(
 	numBytes -= scanned;
     }	/* main parsing loop */
 
-  error:
-
     /*
      * We only get here if there's been an error. Any errors that didn't get a
      * suitable parsePtr->errorType, get recorded as syntax errors.
      */
 
+  error:
     if (parsePtr->errorType == TCL_PARSE_SUCCESS) {
 	parsePtr->errorType = TCL_PARSE_SYNTAX;
     }
@@ -1351,7 +1382,7 @@ ParseExpr(
      */
 
     if (nodes != NULL) {
-	ckfree((char*) nodes);
+	ckfree(nodes);
     }
 
     if (interp == NULL) {
@@ -1363,7 +1394,6 @@ ParseExpr(
 	    Tcl_DecrRefCount(msg);
 	}
     } else {
-
 	/*
 	 * Construct the complete error message. Start with the simple error
 	 * message, pulled from the interp result if necessary...
@@ -1381,13 +1411,13 @@ ParseExpr(
 	Tcl_AppendPrintfToObj(msg, "\nin expression \"%s%.*s%.*s%s%s%.*s%s\"",
 		((start - limit) < parsePtr->string) ? "" : "...",
 		((start - limit) < parsePtr->string)
-			? (start - parsePtr->string) : limit - 3,
+			? (int) (start - parsePtr->string) : limit - 3,
 		((start - limit) < parsePtr->string)
 			? parsePtr->string : start - limit + 3,
 		(scanned < limit) ? scanned : limit - 3, start,
 		(scanned < limit) ? "" : "...", insertMark ? mark : "",
 		(start + scanned + limit > parsePtr->end)
-			? parsePtr->end - (start + scanned) : limit-3,
+			? (int) (parsePtr->end - start) - scanned : limit-3,
 		start + scanned,
 		(start + scanned + limit > parsePtr->end) ? "" : "...");
 
@@ -1411,6 +1441,10 @@ ParseExpr(
 		"\n    (parsing expression \"%.*s%s\")",
 		(numBytes < limit) ? numBytes : limit - 3,
 		parsePtr->string, (numBytes < limit) ? "" : "..."));
+	if (errCode) {
+	    Tcl_SetErrorCode(interp, "TCL", "PARSE", "EXPR", errCode,
+		    subErrCode, NULL);
+	}
     }
 
     return TCL_ERROR;
@@ -1477,7 +1511,7 @@ ConvertTreeToTokens(
 
 	    /* Skip any white space that comes before the literal */
 	    scanned = TclParseAllWhiteSpace(start, numBytes);
-	    start +=scanned;
+	    start += scanned;
 	    numBytes -= scanned;
 
 	    /*
@@ -1498,7 +1532,7 @@ ConvertTreeToTokens(
 	    subExprTokenPtr[1].numComponents = 0;
 
 	    parsePtr->numTokens += 2;
-	    start +=scanned;
+	    start += scanned;
 	    numBytes -= scanned;
 	    break;
 
@@ -1550,7 +1584,7 @@ ConvertTreeToTokens(
 	    }
 
 	    scanned = tokenPtr->start + tokenPtr->size - start;
-	    start +=scanned;
+	    start += scanned;
 	    numBytes -= scanned;
 	    tokenPtr += toCopy;
 	    break;
@@ -1566,7 +1600,7 @@ ConvertTreeToTokens(
 	     */
 
 	    scanned = TclParseAllWhiteSpace(start, numBytes);
-	    start +=scanned;
+	    start += scanned;
 	    numBytes -= scanned;
 
 	    /*
@@ -1641,7 +1675,7 @@ ConvertTreeToTokens(
 
 	    /* Skip any white space that comes before the operator */
 	    scanned = TclParseAllWhiteSpace(start, numBytes);
-	    start +=scanned;
+	    start += scanned;
 	    numBytes -= scanned;
 
 	    /*
@@ -1672,7 +1706,7 @@ ConvertTreeToTokens(
 		break;
 	    }
 
-	    start +=scanned;
+	    start += scanned;
 	    numBytes -= scanned;
 	    break;
 
@@ -1693,10 +1727,10 @@ ConvertTreeToTokens(
 
 		/* Skip past matching close paren. */
 		scanned = TclParseAllWhiteSpace(start, numBytes);
-		start +=scanned;
+		start += scanned;
 		numBytes -= scanned;
 		scanned = ParseLexeme(start, numBytes, &lexeme, NULL);
-		start +=scanned;
+		start += scanned;
 		numBytes -= scanned;
 		break;
 
@@ -1784,12 +1818,11 @@ Tcl_ParseExpr(
 				 * information in the structure is ignored. */
 {
     int code;
-    OpNode *opTree = NULL;	/* Will point to the tree of operators */
-    Tcl_Obj *litList = Tcl_NewObj();	/* List to hold the literals */
-    Tcl_Obj *funcList = Tcl_NewObj();	/* List to hold the functon names*/
-    Tcl_Parse *exprParsePtr = (Tcl_Parse *)
-	    TclStackAlloc(interp, sizeof(Tcl_Parse));
-				/* Holds the Tcl_Tokens of substitutions */
+    OpNode *opTree = NULL;	/* Will point to the tree of operators. */
+    Tcl_Obj *litList = Tcl_NewObj();	/* List to hold the literals. */
+    Tcl_Obj *funcList = Tcl_NewObj();	/* List to hold the functon names. */
+    Tcl_Parse *exprParsePtr = TclStackAlloc(interp, sizeof(Tcl_Parse));
+				/* Holds the Tcl_Tokens of substitutions. */
 
     if (numBytes < 0) {
 	numBytes = (start ? strlen(start) : 0);
@@ -1811,7 +1844,7 @@ Tcl_ParseExpr(
 
     Tcl_FreeParse(exprParsePtr);
     TclStackFree(interp, exprParsePtr);
-    ckfree((char *) opTree);
+    ckfree(opTree);
     return code;
 }
 
@@ -2039,8 +2072,7 @@ TclCompileExpr(
     OpNode *opTree = NULL;	/* Will point to the tree of operators */
     Tcl_Obj *litList = Tcl_NewObj();	/* List to hold the literals */
     Tcl_Obj *funcList = Tcl_NewObj();	/* List to hold the functon names*/
-    Tcl_Parse *parsePtr = (Tcl_Parse *)
-	    TclStackAlloc(interp, sizeof(Tcl_Parse));
+    Tcl_Parse *parsePtr = TclStackAlloc(interp, sizeof(Tcl_Parse));
 				/* Holds the Tcl_Tokens of substitutions */
 
     int code = ParseExpr(interp, script, numBytes, &opTree, litList,
@@ -2071,7 +2103,7 @@ TclCompileExpr(
     TclStackFree(interp, parsePtr);
     Tcl_DecrRefCount(funcList);
     Tcl_DecrRefCount(litList);
-    ckfree((char *) opTree);
+    ckfree(opTree);
 }
 
 /*
@@ -2103,6 +2135,7 @@ ExecConstantExprTree(
     ByteCode *byteCodePtr;
     int code;
     Tcl_Obj *byteCodeObj = Tcl_NewObj();
+    NRE_callback *rootPtr = TOP_CB(interp);
 
     /*
      * Note we are compiling an expression with literal arguments. This means
@@ -2110,7 +2143,7 @@ ExecConstantExprTree(
      * bytecode, so there's no need to tend to TIP 280 issues.
      */
 
-    envPtr = (CompileEnv *) TclStackAlloc(interp, sizeof(CompileEnv));
+    envPtr = TclStackAlloc(interp, sizeof(CompileEnv));
     TclInitCompileEnv(interp, envPtr, NULL, 0, NULL, 0);
     CompileExprTree(interp, nodes, index, litObjvPtr, NULL, NULL, envPtr,
 	    0 /* optimize */);
@@ -2119,8 +2152,9 @@ ExecConstantExprTree(
     TclInitByteCodeObj(byteCodeObj, envPtr);
     TclFreeCompileEnv(envPtr);
     TclStackFree(interp, envPtr);
-    byteCodePtr = (ByteCode *) byteCodeObj->internalRep.otherValuePtr;
-    code = TclExecuteByteCode(interp, byteCodePtr);
+    byteCodePtr = byteCodeObj->internalRep.otherValuePtr;
+    TclNRExecuteByteCode(interp, byteCodePtr);
+    code = TclNRRunCallbacks(interp, TCL_OK, rootPtr);
     Tcl_DecrRefCount(byteCodeObj);
     return code;
 }
@@ -2174,10 +2208,10 @@ CompileExprTree(
 
 	    switch (nodePtr->lexeme) {
 	    case QUESTION:
-		newJump = (JumpList *) TclStackAlloc(interp, sizeof(JumpList));
+		newJump = TclStackAlloc(interp, sizeof(JumpList));
 		newJump->next = jumpPtr;
 		jumpPtr = newJump;
-		newJump = (JumpList *) TclStackAlloc(interp, sizeof(JumpList));
+		newJump = TclStackAlloc(interp, sizeof(JumpList));
 		newJump->next = jumpPtr;
 		jumpPtr = newJump;
 		jumpPtr->depth = envPtr->currStackDepth;
@@ -2185,13 +2219,13 @@ CompileExprTree(
 		break;
 	    case AND:
 	    case OR:
-		newJump = (JumpList *) TclStackAlloc(interp, sizeof(JumpList));
+		newJump = TclStackAlloc(interp, sizeof(JumpList));
 		newJump->next = jumpPtr;
 		jumpPtr = newJump;
-		newJump = (JumpList *) TclStackAlloc(interp, sizeof(JumpList));
+		newJump = TclStackAlloc(interp, sizeof(JumpList));
 		newJump->next = jumpPtr;
 		jumpPtr = newJump;
-		newJump = (JumpList *) TclStackAlloc(interp, sizeof(JumpList));
+		newJump = TclStackAlloc(interp, sizeof(JumpList));
 		newJump->next = jumpPtr;
 		jumpPtr = newJump;
 		jumpPtr->depth = envPtr->currStackDepth;
@@ -2211,7 +2245,7 @@ CompileExprTree(
 		p = TclGetStringFromObj(*funcObjv, &length);
 		funcObjv++;
 		Tcl_DStringAppend(&cmdName, p, length);
-		TclEmitPush(TclRegisterNewNSLiteral(envPtr,
+		TclEmitPush(TclRegisterNewCmdLiteral(envPtr,
 			Tcl_DStringValue(&cmdName),
 			Tcl_DStringLength(&cmdName)), envPtr);
 		Tcl_DStringFree(&cmdName);
@@ -2231,6 +2265,7 @@ CompileExprTree(
 		TclEmitForwardJump(envPtr, TCL_FALSE_JUMP, &(jumpPtr->jump));
 		break;
 	    case COLON:
+		CLANG_ASSERT(jumpPtr);
 		TclEmitForwardJump(envPtr, TCL_UNCONDITIONAL_JUMP,
 			&(jumpPtr->next->jump));
 		envPtr->currStackDepth = jumpPtr->depth;
@@ -2284,6 +2319,7 @@ CompileExprTree(
 		numWords++;
 		break;
 	    case COLON:
+		CLANG_ASSERT(jumpPtr);
 		if (TclFixupForwardJump(envPtr, &(jumpPtr->next->jump),
 			(envPtr->codeNext - envPtr->codeStart)
 			- jumpPtr->next->jump.codeOffset, 127)) {
@@ -2302,6 +2338,7 @@ CompileExprTree(
 		break;
 	    case AND:
 	    case OR:
+		CLANG_ASSERT(jumpPtr);
 		TclEmitForwardJump(envPtr, (nodePtr->lexeme == AND)
 			?  TCL_FALSE_JUMP : TCL_TRUE_JUMP,
 			&(jumpPtr->next->jump));
@@ -2433,7 +2470,7 @@ CompileExprTree(
  *	A standard Tcl return code and result left in interp.
  *
  * Side effects:
- * 	None.
+ *	None.
  *
  *----------------------------------------------------------------------
  */
@@ -2486,7 +2523,7 @@ TclSingleOpCmd(
  *	A standard Tcl return code and result left in interp.
  *
  * Side effects:
- * 	None.
+ *	None.
  *
  *----------------------------------------------------------------------
  */
@@ -2504,10 +2541,9 @@ TclSortingOpCmd(
 	Tcl_SetObjResult(interp, Tcl_NewBooleanObj(1));
     } else {
 	TclOpCmdClientData *occdPtr = clientData;
-	Tcl_Obj **litObjv = (Tcl_Obj **) TclStackAlloc(interp,
-		2*(objc-2)*sizeof(Tcl_Obj *));
-	OpNode *nodes = (OpNode *) TclStackAlloc(interp,
-		2*(objc-2)*sizeof(OpNode));
+	Tcl_Obj **litObjv = TclStackAlloc(interp,
+		2 * (objc-2) * sizeof(Tcl_Obj *));
+	OpNode *nodes = TclStackAlloc(interp, 2 * (objc-2) * sizeof(OpNode));
 	unsigned char lexeme;
 	int i, lastAnd = 1;
 	Tcl_Obj *const *litObjPtrPtr = litObjv;
@@ -2567,7 +2603,7 @@ TclSortingOpCmd(
  *	A standard Tcl return code and result left in interp.
  *
  * Side effects:
- * 	None.
+ *	None.
  *
  *----------------------------------------------------------------------
  */
@@ -2634,8 +2670,7 @@ TclVariadicOpCmd(
 	return code;
     } else {
 	Tcl_Obj *const *litObjv = objv + 1;
-	OpNode *nodes = (OpNode *) TclStackAlloc(interp,
-		(objc-1)*sizeof(OpNode));
+	OpNode *nodes = TclStackAlloc(interp, (objc-1) * sizeof(OpNode));
 	int i, lastOp = OT_LITERAL;
 
 	nodes[0].lexeme = START;
@@ -2687,7 +2722,7 @@ TclVariadicOpCmd(
  *	A standard Tcl return code and result left in interp.
  *
  * Side effects:
- * 	None.
+ *	None.
  *
  *----------------------------------------------------------------------
  */

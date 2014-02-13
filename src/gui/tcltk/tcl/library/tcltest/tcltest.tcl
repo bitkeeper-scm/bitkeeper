@@ -15,8 +15,6 @@
 # Copyright (c) 2000 by Ajuba Solutions
 # Contributions from Don Porter, NIST, 2002.  (not subject to US copyright)
 # All rights reserved.
-#
-# RCS: @(#) $Id$
 
 package require Tcl 8.5		;# -verbose line uses [info frame]
 namespace eval tcltest {
@@ -24,7 +22,7 @@ namespace eval tcltest {
     # When the version number changes, be sure to update the pkgIndex.tcl file,
     # and the install directory in the Makefiles.  When the minor version
     # changes (new feature) be sure to update the man page as well.
-    variable Version 2.3.1
+    variable Version 2.3.3
 
     # Compatibility support for dumb variables defined in tcltest 1
     # Do not use these.  Call [package provide Tcl] and [info patchlevel]
@@ -798,6 +796,29 @@ namespace eval tcltest {
     trace variable Option(-errfile) w \
 	    [namespace code {errorChannel $Option(-errfile) ;#}]
 
+    proc loadIntoSlaveInterpreter {slave args} {
+	variable Version
+	interp eval $slave [package ifneeded tcltest $Version]
+	interp eval $slave "tcltest::configure {*}{$args}"
+	interp alias $slave ::tcltest::ReportToMaster \
+	    {} ::tcltest::ReportedFromSlave
+    }
+    proc ReportedFromSlave {total passed skipped failed because newfiles} {
+	variable numTests
+	variable skippedBecause
+	variable createdNewFiles
+	incr numTests(Total)   $total
+	incr numTests(Passed)  $passed
+	incr numTests(Skipped) $skipped
+	incr numTests(Failed)  $failed
+	foreach {constraint count} $because {
+	    incr skippedBecause($constraint) $count
+	}
+	foreach {testfile created} $newfiles {
+	    lappend createdNewFiles($testfile) {*}$created
+	}
+	return
+    }
 }
 
 #####################################################################
@@ -2105,7 +2126,7 @@ proc tcltest::test {name description args} {
 	    }
 	}
 	if {[info exists testLine]} {
-	    puts [outputChannel] "$testFile:$testLine: test failed:\
+	    puts [outputChannel] "$testFile:$testLine: error: test failed:\
 		    $name [string trim $description]"
 	}
     }	
@@ -2356,6 +2377,14 @@ proc tcltest::cleanupTests {{calledFromAllFile 0}} {
 
     FillFilesExisted
     set testFileName [file tail [info script]]
+
+    # Hook to handle reporting to a parent interpreter
+    if {[llength [info commands [namespace current]::ReportToMaster]]} {
+	ReportToMaster $numTests(Total) $numTests(Passed) $numTests(Skipped) \
+	    $numTests(Failed) [array get skippedBecause] \
+	    [array get createdNewFiles]
+	set testSingleFile false
+    }
 
     # Call the cleanup hook
     cleanupTestsHook

@@ -9,8 +9,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclInt.h"
@@ -43,7 +41,7 @@ static struct TSDMaster {
 				 * increasing value. */
     Tcl_Mutex mutex;		/* Protection for the rest of this structure,
 				 * which holds per-process data. */
-} tsdMaster = { NULL, 0 };
+} tsdMaster = { NULL, 0, NULL };
 
 /*
  * The type of the data held per thread in a system TSD.
@@ -119,7 +117,7 @@ TSDTableDelete(
 	     * and must now be deallocated or they will leak.
 	     */
 
-	    ckfree((char *) tsdTablePtr->tablePtr[i]);
+	    ckfree(tsdTablePtr->tablePtr[i]);
 	}
     }
 

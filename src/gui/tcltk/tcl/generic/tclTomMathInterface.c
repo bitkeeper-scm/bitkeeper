@@ -10,15 +10,12 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclInt.h"
 #include "tommath.h"
-#include <limits.h>
 
-MODULE_SCOPE const TclTomMathStubs * const tclTomMathConstStubsPtr;
+MODULE_SCOPE const TclTomMathStubs tclTomMathStubs;
 
 /*
  *----------------------------------------------------------------------
@@ -40,12 +37,12 @@ MODULE_SCOPE const TclTomMathStubs * const tclTomMathConstStubsPtr;
 
 int
 TclTommath_Init(
-    Tcl_Interp* interp		/* Tcl interpreter */
-) {
+    Tcl_Interp *interp)		/* Tcl interpreter */
+{
     /* TIP #268: Full patchlevel instead of just major.minor */
 
     if (Tcl_PkgProvideEx(interp, "tcl::tommath", TCL_PATCH_LEVEL,
-	    (ClientData) tclTomMathConstStubsPtr) != TCL_OK) {
+	    &tclTomMathStubs) != TCL_OK) {
 	return TCL_ERROR;
     }
     return TCL_OK;
@@ -191,7 +188,7 @@ TclBNInitBignumFromLong(
 {
     int status;
     unsigned long v;
-    mp_digit* p;
+    mp_digit *p;
 
     /*
      * Allocate enough memory to hold the largest possible long
