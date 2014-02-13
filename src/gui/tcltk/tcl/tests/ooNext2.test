@@ -2,16 +2,14 @@
 # Sourcing this file into Tcl runs the tests and generates output for errors.
 # No output means no errors were found.
 #
-# Copyright (c) 2006-2008 Donal K. Fellows
+# Copyright (c) 2006-2011 Donal K. Fellows
 #
 # See the file "license.terms" for information on usage and redistribution of
 # this file, and for a DISCLAIMER OF ALL WARRANTIES.
-#
-# RCS: @(#) $Id: oo.test,v 1.59 2011/01/18 16:10:48 dkf Exp $
 
-package require -exact TclOO 0.6.3 ;# Must match value in configure.in
-if {[lsearch [namespace children] ::tcltest] == -1} {
-    package require tcltest 2
+package require -exact TclOO 0.7 ;# Must match value in configure.in
+package require tcltest 2
+if {"::tcltest" in [namespace children]} {
     namespace import -force ::tcltest::*
 }
 
@@ -513,6 +511,21 @@ test oo-call-1.18 {object call introspection - memory leaks} -body {
 	info object call oo::object destroy
     }
 } -constraints memory -result 0
+test oo-call-1.19 {object call introspection - memory leaks} -setup {
+    oo::class create leaktester { method foo {} {dummy} }
+} -body {
+    leaktest {
+	set lt [leaktester new]
+	oo::objdefine $lt method foobar {} {dummy}
+	list [info object call $lt destroy] \
+	    [info object call $lt foo] \
+	    [info object call $lt bar] \
+	    [info object call $lt foobar] \
+	    [$lt destroy]
+    }
+} -cleanup {
+    leaktester destroy
+} -constraints memory -result 0
 
 test oo-call-2.1 {class call introspection} -setup {
     oo::class create root
@@ -682,6 +695,16 @@ test oo-call-2.12 {class call introspection - errors} -setup {
 test oo-call-2.13 {class call introspection - memory leaks} -body {
     leaktest {
 	info class call oo::class destroy
+    }
+} -constraints memory -result 0
+test oo-call-2.14 {class call introspection - memory leaks} -body {
+    leaktest {
+	oo::class create leaktester { method foo {} {dummy} }
+	[leaktester new] destroy
+	list [info class call leaktester destroy] \
+	    [info class call leaktester foo] \
+	    [info class call leaktester bar] \
+	    [leaktester destroy]
     }
 } -constraints memory -result 0
 

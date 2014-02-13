@@ -192,8 +192,6 @@ static int maxDigits;		/* The maximum number of digits to the left of
 				 * the decimal point of a double. */
 static int minDigits;		/* The maximum number of digits to the right
 				 * of the decimal point in a double. */
-static int mantDIGIT;		/* Number of mp_digit's needed to hold the
-				 * significand of a double. */
 static const double pow_10_2_n[] = {	/* Inexact higher powers of ten. */
     1.0,
     100.0,
@@ -247,15 +245,6 @@ static const int itens [] = {
     1000000,
     10000000,
     100000000
-};
-
-static const Tcl_WideUInt wtens[] = {
-    1, 10, 100, 1000, 10000, 100000, 1000000,
-    (Tcl_WideUInt) 1000000*10, 		(Tcl_WideUInt) 1000000*100,
-    (Tcl_WideUInt) 1000000*1000, 	(Tcl_WideUInt) 1000000*10000,
-    (Tcl_WideUInt) 1000000*100000, 	(Tcl_WideUInt) 1000000*1000000,
-    (Tcl_WideUInt) 1000000*1000000*10, 	(Tcl_WideUInt) 1000000*1000000*100,
-    (Tcl_WideUInt) 1000000*1000000*1000,(Tcl_WideUInt) 1000000*1000000*10000
 };
 
 static const double bigtens[] = {
@@ -1101,7 +1090,10 @@ TclParseNumber(
 		    d = 10 + c - 'a';
 		} else if (c >= 'A' && c <= 'F') {
 		    d = 10 + c - 'A';
+		} else {
+		    goto endgame;
 		}
+		numSigDigs++;
 		significandWide = (significandWide << 4) + d;
 		state = sNANHEX;
 		break;
@@ -3875,6 +3867,7 @@ StrictBignumConversion(
      * S = 2**s2 * 5*s5
      */
 
+    mp_init_multi(&temp, &dig, NULL);
     TclBNInitBignumFromWideUInt(&b, bw);
     mp_mul_2d(&b, b2, &b);
     mp_init_set_int(&S, 1);
@@ -3889,13 +3882,11 @@ StrictBignumConversion(
 	ilim =ilim1;
 	--k;
     }
-    mp_init(&temp);
 
     /*
      * Convert the leading digit.
      */
 
-    mp_init(&dig);
     i = 0;
     mp_div(&b, &S, &dig, &b);
     if (dig.used > 1 || dig.dp[0] >= 10) {
@@ -3983,7 +3974,7 @@ StrictBignumConversion(
      * string.
      */
 
-    mp_clear_multi(&b, &temp, NULL);
+    mp_clear_multi(&b, &S, &temp, &dig, NULL);
     *s = '\0';
     *decpt = k;
     if (endPtr) {
@@ -4432,7 +4423,6 @@ TclInitDoubleConversion(void)
 	    + 0.5 * log(10.)) / log(10.));
     minDigits = (int) floor((DBL_MIN_EXP - DBL_MANT_DIG)
 	    * log((double) FLT_RADIX) / log(10.));
-    mantDIGIT = (mantBits + DIGIT_BIT-1) / DIGIT_BIT;
     log10_DIGIT_MAX = (int) floor(DIGIT_BIT * log(2.) / log(10.));
 
     /*
@@ -4479,6 +4469,9 @@ TclFinalizeDoubleConversion(void)
     ckfree(pow10_wide);
     for (i=0; i<9; ++i) {
 	mp_clear(pow5 + i);
+    }
+    for (i=0; i < 5; ++i) {
+	mp_clear(pow5_13 + i);
     }
 }
 

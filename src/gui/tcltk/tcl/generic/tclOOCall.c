@@ -4,7 +4,7 @@
  *	This file contains the method call chain management code for the
  *	object-system core.
  *
- * Copyright (c) 2005-2011 by Donal K. Fellows
+ * Copyright (c) 2005-2012 by Donal K. Fellows
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -37,7 +37,7 @@ struct ChainBuilder {
 #define DEFINITE_PROTECTED 0x100000
 #define DEFINITE_PUBLIC    0x200000
 #define KNOWN_STATE	   (DEFINITE_PROTECTED | DEFINITE_PUBLIC)
-#define SPECIAL		   (CONSTRUCTOR | DESTRUCTOR)
+#define SPECIAL		   (CONSTRUCTOR | DESTRUCTOR | FORCE_UNKNOWN)
 
 /*
  * Function declarations for things defined in this file.
@@ -997,6 +997,22 @@ TclOOGetCallContext(
     cb.oPtr = oPtr;
 
     /*
+     * If we're working with a forced use of unknown, do that now.
+     */
+
+    if (flags & FORCE_UNKNOWN) {
+	AddSimpleChainToCallContext(oPtr, oPtr->fPtr->unknownMethodNameObj,
+		&cb, NULL, 0, NULL);
+	callPtr->flags |= OO_UNKNOWN_METHOD;
+	callPtr->epoch = -1;
+	if (callPtr->numChain == 0) {
+	    TclOODeleteChain(callPtr);
+	    return NULL;
+	}
+	goto returnContext;
+    }
+
+    /*
      * Add all defined filters (if any, and if we're going to be processing
      * them; they're not processed for constructors, destructors or when we're
      * in the middle of processing a filter).
@@ -1166,7 +1182,7 @@ TclOOGetStereotypeCallChain(
 	hPtr = NULL;
     }
 
-    callPtr = (CallChain *) ckalloc(sizeof(CallChain));
+    callPtr = ckalloc(sizeof(CallChain));
     memset(callPtr, 0, sizeof(CallChain));
     callPtr->flags = flags & (PUBLIC_METHOD|PRIVATE_METHOD|FILTER_HANDLING);
     callPtr->epoch = fPtr->epoch;
@@ -1214,9 +1230,7 @@ TclOOGetStereotypeCallChain(
     } else {
 	if (hPtr == NULL) {
 	    if (clsPtr->classChainCache == NULL) {
-		clsPtr->classChainCache = (Tcl_HashTable *)
-			ckalloc(sizeof(Tcl_HashTable));
-
+		clsPtr->classChainCache = ckalloc(sizeof(Tcl_HashTable));
 		Tcl_InitObjHashTable(clsPtr->classChainCache);
 	    }
 	    hPtr = Tcl_CreateHashEntry(clsPtr->classChainCache,

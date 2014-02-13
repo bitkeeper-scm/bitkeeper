@@ -1802,7 +1802,7 @@ EXTERN int		Tcl_LoadFile(Tcl_Interp *interp, Tcl_Obj *pathPtr,
 				const char *const symv[], int flags,
 				void *procPtrs, Tcl_LoadHandle *handlePtr);
 /* 628 */
-EXTERN void*		Tcl_FindSymbol(Tcl_Interp *interp,
+EXTERN void *		Tcl_FindSymbol(Tcl_Interp *interp,
 				Tcl_LoadHandle handle, const char *symbol);
 /* 629 */
 EXTERN int		Tcl_FSUnloadFile(Tcl_Interp *interp,
@@ -1830,7 +1830,7 @@ typedef struct TclStubs {
 #if !defined(__WIN32__) && !defined(MAC_OSX_TCL) /* UNIX */
     void (*tcl_CreateFileHandler) (int fd, int mask, Tcl_FileProc *proc, ClientData clientData); /* 9 */
 #endif /* UNIX */
-#ifdef __WIN32__ /* WIN */
+#if defined(__WIN32__) /* WIN */
     void (*reserved9)(void);
 #endif /* WIN */
 #ifdef MAC_OSX_TCL /* MACOSX */
@@ -1839,7 +1839,7 @@ typedef struct TclStubs {
 #if !defined(__WIN32__) && !defined(MAC_OSX_TCL) /* UNIX */
     void (*tcl_DeleteFileHandler) (int fd); /* 10 */
 #endif /* UNIX */
-#ifdef __WIN32__ /* WIN */
+#if defined(__WIN32__) /* WIN */
     void (*reserved10)(void);
 #endif /* WIN */
 #ifdef MAC_OSX_TCL /* MACOSX */
@@ -2004,7 +2004,7 @@ typedef struct TclStubs {
 #if !defined(__WIN32__) && !defined(MAC_OSX_TCL) /* UNIX */
     int (*tcl_GetOpenFile) (Tcl_Interp *interp, const char *chanID, int forWriting, int checkUsage, ClientData *filePtr); /* 167 */
 #endif /* UNIX */
-#ifdef __WIN32__ /* WIN */
+#if defined(__WIN32__) /* WIN */
     void (*reserved167)(void);
 #endif /* WIN */
 #ifdef MAC_OSX_TCL /* MACOSX */
@@ -2470,7 +2470,7 @@ typedef struct TclStubs {
     int (*tcl_NRExprObj) (Tcl_Interp *interp, Tcl_Obj *objPtr, Tcl_Obj *resultPtr); /* 625 */
     int (*tcl_NRSubstObj) (Tcl_Interp *interp, Tcl_Obj *objPtr, int flags); /* 626 */
     int (*tcl_LoadFile) (Tcl_Interp *interp, Tcl_Obj *pathPtr, const char *const symv[], int flags, void *procPtrs, Tcl_LoadHandle *handlePtr); /* 627 */
-    void* (*tcl_FindSymbol) (Tcl_Interp *interp, Tcl_LoadHandle handle, const char *symbol); /* 628 */
+    void * (*tcl_FindSymbol) (Tcl_Interp *interp, Tcl_LoadHandle handle, const char *symbol); /* 628 */
     int (*tcl_FSUnloadFile) (Tcl_Interp *interp, Tcl_LoadHandle handlePtr); /* 629 */
 } TclStubs;
 
@@ -3791,8 +3791,6 @@ extern const TclStubs *tclStubsPtr;
 #   define Tcl_MainEx Tcl_MainExW
     EXTERN void Tcl_MainExW(int argc, wchar_t **argv,
 	    Tcl_AppInitProc *appInitProc, Tcl_Interp *interp);
-#   define Tcl_Main(argc, argv, proc) Tcl_MainExW(argc, argv, proc, \
-	    (Tcl_FindExecutable(argv[0]), (Tcl_CreateInterp)()))
 #endif
 
 #undef TCL_STORAGE_CLASS

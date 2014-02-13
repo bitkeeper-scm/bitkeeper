@@ -59,10 +59,10 @@ extern "C" {
 #define TCL_MAJOR_VERSION   8
 #define TCL_MINOR_VERSION   6
 #define TCL_RELEASE_LEVEL   TCL_BETA_RELEASE
-#define TCL_RELEASE_SERIAL  2
+#define TCL_RELEASE_SERIAL  3
 
 #define TCL_VERSION	    "8.6"
-#define TCL_PATCH_LEVEL	    "8.6b2"
+#define TCL_PATCH_LEVEL	    "8.6b3"
 
 /*
  *----------------------------------------------------------------------------
@@ -161,6 +161,23 @@ extern "C" {
 #   define TCL_FORMAT_PRINTF(a,b) __attribute__ ((__format__ (__printf__, a, b)))
 #else
 #   define TCL_FORMAT_PRINTF(a,b)
+#endif
+
+/*
+ * Allow a part of Tcl's API to be explicitly marked as deprecated.
+ *
+ * Used to make TIP 330/336 generate moans even if people use the
+ * compatibility macros. Change your code, guys! We won't support you forever.
+ */
+
+#if defined(__GNUC__) && ((__GNUC__ >= 4) || ((__GNUC__ == 3) && (__GNUC_MINOR__ >= 1)))
+#   if (__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC__MINOR__ >= 5))
+#	define TCL_DEPRECATED_API(msg)	__attribute__ ((__deprecated__ (msg)))
+#   else
+#	define TCL_DEPRECATED_API(msg)	__attribute__ ((__deprecated__))
+#   endif
+#else
+#   define TCL_DEPRECATED_API(msg)	/* nothing portable */
 #endif
 
 /*
@@ -374,29 +391,16 @@ typedef long LONG;
  */
 
 #if !defined(TCL_WIDE_INT_TYPE)&&!defined(TCL_WIDE_INT_IS_LONG)
-#   if defined(__WIN32__) && !defined(__CYGWIN__)
+#   if defined(__WIN32__)
 #      define TCL_WIDE_INT_TYPE __int64
 #      ifdef __BORLANDC__
-typedef struct stati64 Tcl_StatBuf;
 #         define TCL_LL_MODIFIER	"L"
 #      else /* __BORLANDC__ */
-#         if defined(_WIN64)
-typedef struct __stat64 Tcl_StatBuf;
-#         elif (defined(_MSC_VER) && (_MSC_VER < 1400))
-typedef struct _stati64	Tcl_StatBuf;
-#         else
-typedef struct _stat32i64 Tcl_StatBuf;
-#         endif /* _MSC_VER < 1400 */
 #         define TCL_LL_MODIFIER	"I64"
 #      endif /* __BORLANDC__ */
 #   elif defined(__GNUC__)
 #      define TCL_WIDE_INT_TYPE long long
 #      define TCL_LL_MODIFIER	"ll"
-#      if defined(__WIN32__)
-typedef struct _stat32i64 Tcl_StatBuf;
-#      else
-typedef struct stat	Tcl_StatBuf;
-#      endif
 #   else /* ! __WIN32__ && ! __GNUC__ */
 /*
  * Don't know what platform it is and configure hasn't discovered what is
@@ -423,7 +427,6 @@ typedef TCL_WIDE_INT_TYPE		Tcl_WideInt;
 typedef unsigned TCL_WIDE_INT_TYPE	Tcl_WideUInt;
 
 #ifdef TCL_WIDE_INT_IS_LONG
-typedef struct stat	Tcl_StatBuf;
 #   define Tcl_WideAsLong(val)		((long)(val))
 #   define Tcl_LongAsWide(val)		((long)(val))
 #   define Tcl_WideAsDouble(val)	((double)((long)(val)))
@@ -437,11 +440,6 @@ typedef struct stat	Tcl_StatBuf;
  * or some other strange platform.
  */
 #   ifndef TCL_LL_MODIFIER
-#      ifdef HAVE_STRUCT_STAT64
-typedef struct stat64	Tcl_StatBuf;
-#      else
-typedef struct stat	Tcl_StatBuf;
-#      endif /* HAVE_STRUCT_STAT64 */
 #      define TCL_LL_MODIFIER		"ll"
 #   endif /* !TCL_LL_MODIFIER */
 #   define Tcl_WideAsLong(val)		((long)((Tcl_WideInt)(val)))
@@ -449,6 +447,39 @@ typedef struct stat	Tcl_StatBuf;
 #   define Tcl_WideAsDouble(val)	((double)((Tcl_WideInt)(val)))
 #   define Tcl_DoubleAsWide(val)	((Tcl_WideInt)((double)(val)))
 #endif /* TCL_WIDE_INT_IS_LONG */
+
+#if defined(__WIN32__)
+#   ifdef __BORLANDC__
+	typedef struct stati64 Tcl_StatBuf;
+#   elif defined(_WIN64)
+	typedef struct __stat64 Tcl_StatBuf;
+#   elif (defined(_MSC_VER) && (_MSC_VER < 1400)) || defined(_USE_32BIT_TIME_T)
+	typedef struct _stati64	Tcl_StatBuf;
+#   else
+	typedef struct _stat32i64 Tcl_StatBuf;
+#   endif /* _MSC_VER < 1400 */
+#elif defined(__CYGWIN__)
+    typedef struct _stat32i64 {
+	dev_t st_dev;
+	unsigned short st_ino;
+	unsigned short st_mode;
+	short st_nlink;
+	short st_uid;
+	short st_gid;
+	/* Here is a 2-byte gap */
+	dev_t st_rdev;
+	/* Here is a 4-byte gap */
+	long long st_size;
+	struct {long tv_sec;} st_atim;
+	struct {long tv_sec;} st_mtim;
+	struct {long tv_sec;} st_ctim;
+	/* Here is a 4-byte gap */
+    } Tcl_StatBuf;
+#elif defined(HAVE_STRUCT_STAT64)
+    typedef struct stat64 Tcl_StatBuf;
+#else
+    typedef struct stat Tcl_StatBuf;
+#endif
 
 /*
  *----------------------------------------------------------------------------
@@ -474,9 +505,11 @@ typedef struct Tcl_Interp {
     /* TIP #330: Strongly discourage extensions from using the string
      * result. */
 #ifdef USE_INTERP_RESULT
-    char *result;		/* If the last command returned a string
+    char *result TCL_DEPRECATED_API("use Tcl_GetResult/Tcl_SetResult");
+				/* If the last command returned a string
 				 * result, this points to it. */
-    void (*freeProc) (char *blockPtr);
+    void (*freeProc) (char *blockPtr)
+	    TCL_DEPRECATED_API("use Tcl_GetResult/Tcl_SetResult");
 				/* Zero means the string result is statically
 				 * allocated. TCL_DYNAMIC means it was
 				 * allocated with ckalloc and should be freed
@@ -485,15 +518,16 @@ typedef struct Tcl_Interp {
 				 * Tcl_Eval must free it before executing next
 				 * command. */
 #else
-    char *unused3;
-    void (*unused4) (char *);
+    char *unused3 TCL_DEPRECATED_API("bad field access");
+    void (*unused4) (char *) TCL_DEPRECATED_API("bad field access");
 #endif
 #ifdef USE_INTERP_ERRORLINE
-    int errorLine;		/* When TCL_ERROR is returned, this gives the
+    int errorLine TCL_DEPRECATED_API("use Tcl_GetErrorLine/Tcl_SetErrorLine");
+				/* When TCL_ERROR is returned, this gives the
 				 * line number within the command where the
 				 * error occurred (1 if first line). */
 #else
-    int unused5;
+    int unused5 TCL_DEPRECATED_API("bad field access");
 #endif
 } Tcl_Interp;
 
@@ -2171,12 +2205,12 @@ typedef struct Tcl_EncodingType {
 
 /*
  * The maximum number of bytes that are necessary to represent a single
- * Unicode character in UTF-8. The valid values should be 3 or 6 (or perhaps 1
- * if we want to support a non-unicode enabled core). If 3, then Tcl_UniChar
- * must be 2-bytes in size (UCS-2) (the default). If 6, then Tcl_UniChar must
- * be 4-bytes in size (UCS-4). At this time UCS-2 mode is the default and
- * recommended mode. UCS-4 is experimental and not recommended. It works for
- * the core, but most extensions expect UCS-2.
+ * Unicode character in UTF-8. The valid values should be 3, 4 or 6
+ * (or perhaps 1 if we want to support a non-unicode enabled core). If 3 or
+ * 4, then Tcl_UniChar must be 2-bytes in size (UCS-2) (the default). If 6,
+ * then Tcl_UniChar must be 4-bytes in size (UCS-4). At this time UCS-2 mode
+ * is the default and recommended mode. UCS-4 is experimental and not
+ * recommended. It works for the core, but most extensions expect UCS-2.
  */
 
 #ifndef TCL_UTF_MAX
@@ -2188,7 +2222,7 @@ typedef struct Tcl_EncodingType {
  * reflected in regcustom.h.
  */
 
-#if TCL_UTF_MAX > 3
+#if TCL_UTF_MAX > 4
     /*
      * unsigned int isn't 100% accurate as it should be a strict 4-byte value
      * (perhaps wchar_t). 64-bit systems may have troubles. The size of this
@@ -2294,12 +2328,12 @@ typedef int (Tcl_ArgvGenFuncProc)(ClientData clientData, Tcl_Interp *interp,
 
 #define TCL_ARGV_AUTO_HELP \
     {TCL_ARGV_HELP,	"-help",	NULL,	NULL, \
-	    "Print summary of command-line options and abort"}
+	    "Print summary of command-line options and abort", NULL}
 #define TCL_ARGV_AUTO_REST \
     {TCL_ARGV_REST,	"--",		NULL,	NULL, \
-	    "Marks the end of the options"}
+	    "Marks the end of the options", NULL}
 #define TCL_ARGV_TABLE_END \
-    {TCL_ARGV_END}
+    {TCL_ARGV_END, NULL, NULL, NULL, NULL, NULL}
 
 /*
  *----------------------------------------------------------------------------
@@ -2391,8 +2425,10 @@ const char *		TclTomMathInitializeStubs(Tcl_Interp *interp,
  * Tcl_GetMemoryInfo is needed for AOLserver. [Bug 1868171]
  */
 
-EXTERN void		Tcl_Main(int argc, char **argv,
-			    Tcl_AppInitProc *appInitProc);
+#define Tcl_Main(argc, argv, proc) Tcl_MainEx(argc, argv, proc, \
+	    (Tcl_FindExecutable(argv[0]), (Tcl_CreateInterp)()))
+EXTERN void		Tcl_MainEx(int argc, char **argv,
+			    Tcl_AppInitProc *appInitProc, Tcl_Interp *interp);
 EXTERN const char *	Tcl_PkgInitStubsCheck(Tcl_Interp *interp,
 			    const char *version, int exact);
 #if defined(TCL_THREADS) && defined(USE_THREAD_ALLOC)

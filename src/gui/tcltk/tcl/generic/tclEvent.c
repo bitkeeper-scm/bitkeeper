@@ -953,27 +953,38 @@ Tcl_Exit(
 	currentAppExitPtr(INT2PTR(status));
 	Tcl_Panic("AppExitProc returned unexpectedly");
     } else {
-	/*
-	 * Use default handling.
-	 */
 
-	InvokeExitHandlers();
+	if (TclFullFinalizationRequested()) {
 
-	/*
-	 * Ensure the thread-specific data is initialised as it is used in
-	 * Tcl_FinalizeThread()
-	 */
-	
-	(void) TCL_TSD_INIT(&dataKey);
-	
-	/*
-	 * Now finalize the calling thread only (others are not safely
-	 * reachable).  Among other things, this triggers a flush of the
-	 * Tcl_Channels that may have data enqueued.
-	 */
-	
-	Tcl_FinalizeThread();
-	
+	    /*
+	     * Thorough finalization for Valgrind et al.
+	     */
+
+	    Tcl_Finalize();
+
+	} else {
+
+	    /*
+	     * Fast and deterministic exit (default behavior)
+	     */
+	    
+	    InvokeExitHandlers();
+	    
+	    /*
+	     * Ensure the thread-specific data is initialised as it is used in
+	     * Tcl_FinalizeThread()
+	     */
+	    
+	    (void) TCL_TSD_INIT(&dataKey);
+	    
+	    /*
+	     * Now finalize the calling thread only (others are not safely
+	     * reachable).  Among other things, this triggers a flush of the
+	     * Tcl_Channels that may have data enqueued.
+	     */
+	    
+	    Tcl_FinalizeThread();
+	}
 	TclpExit(status);
 	Tcl_Panic("OS exit failed!");
     }
@@ -1405,7 +1416,7 @@ Tcl_VwaitObjCmd(
 	}
 	if (Tcl_LimitExceeded(interp)) {
 	    Tcl_ResetResult(interp);
-	    Tcl_AppendResult(interp, "limit exceeded", NULL);
+	    Tcl_SetObjResult(interp, Tcl_NewStringObj("limit exceeded", -1));
 	    break;
 	}
     }
@@ -1415,8 +1426,9 @@ Tcl_VwaitObjCmd(
 
     if (!foundEvent) {
 	Tcl_ResetResult(interp);
-	Tcl_AppendResult(interp, "can't wait for variable \"", nameString,
-		"\": would wait forever", NULL);
+	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		"can't wait for variable \"%s\": would wait forever",
+		nameString));
 	Tcl_SetErrorCode(interp, "TCL", "EVENT", "NO_SOURCES", NULL);
 	return TCL_ERROR;
     }
@@ -1508,7 +1520,7 @@ Tcl_UpdateObjCmd(
 	}
 	if (Tcl_LimitExceeded(interp)) {
 	    Tcl_ResetResult(interp);
-	    Tcl_AppendResult(interp, "limit exceeded", NULL);
+	    Tcl_SetObjResult(interp, Tcl_NewStringObj("limit exceeded", -1));
 	    return TCL_ERROR;
 	}
     }

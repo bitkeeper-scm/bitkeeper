@@ -700,7 +700,6 @@ RANLIB
 ZLIB_INCLUDE
 ZLIB_SRCS
 ZLIB_OBJS
-ZLIB_DIR
 TCLSH_PROG
 TCL_THREADS
 EGREP
@@ -2346,7 +2345,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 TCL_VERSION=8.6
 TCL_MAJOR_VERSION=8
 TCL_MINOR_VERSION=6
-TCL_PATCH_LEVEL="b2"
+TCL_PATCH_LEVEL="b3"
 VERSION=${TCL_VERSION}
 
 #------------------------------------------------------------------------
@@ -2361,6 +2360,14 @@ if test -r "$cache_file" -a -f "$cache_file"; then
 	*) pkg_cache_file=../../$cache_file ;;
     esac
     PKG_CFG_ARGS="${PKG_CFG_ARGS} --cache-file=$pkg_cache_file"
+fi
+
+#------------------------------------------------------------------------
+# Empty slate for bundled packages, to avoid stale configuration
+#------------------------------------------------------------------------
+#rm -Rf pkgs
+if test -f Makefile; then
+    make distclean-packages
 fi
 
 #------------------------------------------------------------------------
@@ -4901,8 +4908,6 @@ fi
 fi
 if test $zlib_ok = no; then :
 
-  ZLIB_DIR=\${COMPAT_DIR}/zlib
-
   ZLIB_OBJS=\${ZLIB_OBJS}
 
   ZLIB_SRCS=\${ZLIB_SRCS}
@@ -5516,14 +5521,56 @@ fi
 	    CC_SEARCH_FLAGS=""
 	    LD_SEARCH_FLAGS=""
 	    ;;
-	CYGWIN_*)
+	CYGWIN_*|MINGW32*)
 	    SHLIB_CFLAGS=""
 	    SHLIB_LD='${CC} -shared'
 	    SHLIB_SUFFIX=".dll"
-	    DL_OBJS="tclLoadDl.o"
+	    DL_OBJS="tclLoadDl.o tclWinError.o"
 	    DL_LIBS="-ldl"
 	    CC_SEARCH_FLAGS=""
 	    LD_SEARCH_FLAGS=""
+	    TCL_NEEDS_EXP_FILE=1
+	    TCL_EXPORT_FILE_SUFFIX='${VERSION}\$\{DBGX\}.dll.a'
+	    TCL_SHLIB_LD_EXTRAS='-Wl,--out-implib,$@.a'
+	    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Cygwin version of gcc" >&5
+$as_echo_n "checking for Cygwin version of gcc... " >&6; }
+if ${ac_cv_cygwin+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		#ifdef __CYGWIN__
+		    #error cygwin
+		#endif
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ac_cv_cygwin=no
+else
+  ac_cv_cygwin=yes
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_cygwin" >&5
+$as_echo "$ac_cv_cygwin" >&6; }
+	    if test "$ac_cv_cygwin" = "no"; then
+		as_fn_error $? "${CC} is not a cygwin compiler." "$LINENO" 5
+	    fi
+	    if test "x${TCL_THREADS}" = "x0"; then
+		as_fn_error $? "CYGWIN compile is only supported with --enable-threads" "$LINENO" 5
+	    fi
+	    if test "x${SHARED_BUILD}" = "x1" -a ! -f "../win/tcldde14.dll" -a ! -f "../win/tk86.dll"; then
+		as_fn_error $? "Please configure and make the ../win directory first." "$LINENO" 5
+	    fi
 	    ;;
 	dgux*)
 	    SHLIB_CFLAGS="-K PIC"
@@ -6763,7 +6810,7 @@ else
 		arch=`isainfo`
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to use -lsunmath for fp rounding control" >&5
 $as_echo_n "checking whether to use -lsunmath for fp rounding control... " >&6; }
-		if test "$arch" = "amd64 i386"; then :
+		if test "$arch" = "amd64 i386" -o "$arch" = "i386"; then :
 
 			{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
@@ -6823,7 +6870,7 @@ else
   textmode=text
 fi
 		case $system in
-		    SunOS-5.[1-9][0-9]*)
+		    SunOS-5.[1-9][0-9]*|SunOS-5.[7-9])
 			SHLIB_LD="\${CC} -G -z $textmode \${LDFLAGS}";;
 		    *)
 			SHLIB_LD="/usr/ccs/bin/ld -G -z $textmode";;
@@ -6940,7 +6987,7 @@ fi
 	case $system in
 	    AIX-*) ;;
 	    BSD/OS*) ;;
-	    CYGWIN_*) ;;
+	    CYGWIN_*|MINGW32_*) ;;
 	    IRIX*) ;;
 	    NetBSD-*|FreeBSD-*|OpenBSD-*) ;;
 	    Darwin-*) ;;
@@ -6968,20 +7015,20 @@ fi
 
 	UNSHARED_LIB_SUFFIX='${VERSION}.a'
 fi
-	DLL_INSTALL_DIR="\$(LIB_INSTALL_DIR)"
+    DLL_INSTALL_DIR="\$(LIB_INSTALL_DIR)"
 
     if test "${SHARED_BUILD}" = 1 -a "${SHLIB_SUFFIX}" != ""; then :
 
         LIB_SUFFIX=${SHARED_LIB_SUFFIX}
-        MAKE_LIB='${SHLIB_LD} -o $@ ${OBJS} ${SHLIB_LD_LIBS} ${TCL_SHLIB_LD_EXTRAS} ${TK_SHLIB_LD_EXTRAS} ${LD_SEARCH_FLAGS}'
+        MAKE_LIB='${SHLIB_LD} -o $@ ${OBJS} ${TCL_SHLIB_LD_EXTRAS} ${SHLIB_LD_LIBS} ${TK_SHLIB_LD_EXTRAS} ${LD_SEARCH_FLAGS}'
         if test "${SHLIB_SUFFIX}" = ".dll"; then :
 
-            INSTALL_LIB='$(INSTALL_LIBRARY) $(LIB_FILE) "$(BIN_INSTALL_DIR)"/$(LIB_FILE)'
+            INSTALL_LIB='$(INSTALL_LIBRARY) $(LIB_FILE) "$(BIN_INSTALL_DIR)/$(LIB_FILE)"'
             DLL_INSTALL_DIR="\$(BIN_INSTALL_DIR)"
 
 else
 
-            INSTALL_LIB='$(INSTALL_LIBRARY) $(LIB_FILE) "$(LIB_INSTALL_DIR)"/$(LIB_FILE)'
+            INSTALL_LIB='$(INSTALL_LIBRARY) $(LIB_FILE) "$(LIB_INSTALL_DIR)/$(LIB_FILE)"'
 
 fi
 
@@ -6992,12 +7039,12 @@ else
         if test "$RANLIB" = ""; then :
 
             MAKE_LIB='$(STLIB_LD) $@ ${OBJS}'
-            INSTALL_LIB='$(INSTALL_LIBRARY) $(LIB_FILE) "$(LIB_INSTALL_DIR)"/$(LIB_FILE)'
+            INSTALL_LIB='$(INSTALL_LIBRARY) $(LIB_FILE) "$(LIB_INSTALL_DIR)/$(LIB_FILE)"'
 
 else
 
             MAKE_LIB='${STLIB_LD} $@ ${OBJS} ; ${RANLIB} $@'
-            INSTALL_LIB='$(INSTALL_LIBRARY) $(LIB_FILE) "$(LIB_INSTALL_DIR)"/$(LIB_FILE) ; (cd "$(LIB_INSTALL_DIR)" ; $(RANLIB) $(LIB_FILE))'
+            INSTALL_LIB='$(INSTALL_LIBRARY) $(LIB_FILE) "$(LIB_INSTALL_DIR)/$(LIB_FILE)" ; (cd "$(LIB_INSTALL_DIR)" ; $(RANLIB) $(LIB_FILE))'
 
 fi
 
@@ -7012,7 +7059,7 @@ fi
 else
 
         MAKE_STUB_LIB='${STLIB_LD} $@ ${STUB_LIB_OBJS} ; ${RANLIB} $@'
-        INSTALL_STUB_LIB='$(INSTALL_LIBRARY) $(STUB_LIB_FILE) "$(LIB_INSTALL_DIR)"/$(STUB_LIB_FILE) ; (cd "$(LIB_INSTALL_DIR)" ; $(RANLIB) $(STUB_LIB_FILE))'
+        INSTALL_STUB_LIB='$(INSTALL_LIBRARY) $(STUB_LIB_FILE) "$(LIB_INSTALL_DIR)/$(STUB_LIB_FILE)" ; (cd "$(LIB_INSTALL_DIR)" ; $(RANLIB) $(STUB_LIB_FILE))'
 
 fi
 
@@ -7024,6 +7071,45 @@ fi
         TCL_LIBS="${DL_LIBS} ${LIBS} ${MATH_LIBS}"
 fi
 
+
+	# See if the compiler supports casting to a union type.
+	# This is used to stop gcc from printing a compiler
+	# warning when initializing a union member.
+
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for cast to union support" >&5
+$as_echo_n "checking for cast to union support... " >&6; }
+if ${tcl_cv_cast_to_union+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+		  union foo { int i; double d; };
+		  union foo f = (union foo) (int) 0;
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  tcl_cv_cast_to_union=yes
+else
+  tcl_cv_cast_to_union=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_cast_to_union" >&5
+$as_echo "$tcl_cv_cast_to_union" >&6; }
+	if test "$tcl_cv_cast_to_union" = "yes"; then
+
+$as_echo "#define HAVE_CAST_TO_UNION 1" >>confdefs.h
+
+	fi
 
     # FIXME: This subst was left in only because the TCL_DL_LIBS
     # entry in tclConfig.sh uses it. It is not clear why someone
@@ -7081,6 +7167,9 @@ fi
     if test "$tcl_ok" = "no"; then
 	CFLAGS_DEFAULT='$(CFLAGS_OPTIMIZE)'
 	LDFLAGS_DEFAULT='$(LDFLAGS_OPTIMIZE)'
+
+$as_echo "#define NDEBUG 1" >>confdefs.h
+
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
@@ -7095,10 +7184,6 @@ $as_echo "yes (standard debugging)" >&6; }
 	fi
     fi
 
-
-    ### FIXME: Surely TCL_CFG_DEBUG should be set to whether we're debugging?
-
-$as_echo "#define TCL_CFG_DEBUG 1" >>confdefs.h
 
 
     if test "$tcl_ok" = "mem" -o "$tcl_ok" = "all"; then
@@ -9217,7 +9302,12 @@ $as_echo "no pcre" >&6; }
 #	lack blkcnt_t.
 #--------------------------------------------------------------------
 
-ac_fn_c_check_member "$LINENO" "struct stat" "st_blocks" "ac_cv_member_struct_stat_st_blocks" "$ac_includes_default"
+if test "$ac_cv_cygwin" = "yes"; then
+    if test "x${SHARED_BUILD}" = "x1"; then
+	TCL_SHLIB_LD_EXTRAS="${TCL_SHLIB_LD_EXTRAS} \${COMPAT_DIR}/zlib/win32/zdll.lib"
+    fi
+else
+    ac_fn_c_check_member "$LINENO" "struct stat" "st_blocks" "ac_cv_member_struct_stat_st_blocks" "$ac_includes_default"
 if test "x$ac_cv_member_struct_stat_st_blocks" = xyes; then :
 
 cat >>confdefs.h <<_ACEOF
@@ -9236,6 +9326,7 @@ _ACEOF
 
 fi
 
+fi
 ac_fn_c_check_type "$LINENO" "blkcnt_t" "ac_cv_type_blkcnt_t" "$ac_includes_default"
 if test "x$ac_cv_type_blkcnt_t" = xyes; then :
 
@@ -10025,28 +10116,18 @@ fi
 #	The code below deals with several issues related to gettimeofday:
 #	1. Some systems don't provide a gettimeofday function at all
 #	   (set NO_GETTOD if this is the case).
-#	2. SGI systems don't use the BSD form of the gettimeofday function,
-#	   but they have a BSDgettimeofday function that can be used instead.
-#	3. See if gettimeofday is declared in the <sys/time.h> header file.
+#	2. See if gettimeofday is declared in the <sys/time.h> header file.
 #	   if not, set the GETTOD_NOT_DECLARED flag so that tclPort.h can
 #	   declare it.
 #--------------------------------------------------------------------
 
-ac_fn_c_check_func "$LINENO" "BSDgettimeofday" "ac_cv_func_BSDgettimeofday"
-if test "x$ac_cv_func_BSDgettimeofday" = xyes; then :
-
-$as_echo "#define HAVE_BSDGETTIMEOFDAY 1" >>confdefs.h
-
-else
-
-    ac_fn_c_check_func "$LINENO" "gettimeofday" "ac_cv_func_gettimeofday"
+ac_fn_c_check_func "$LINENO" "gettimeofday" "ac_cv_func_gettimeofday"
 if test "x$ac_cv_func_gettimeofday" = xyes; then :
 
 else
 
-$as_echo "#define NO_GETTOD 1" >>confdefs.h
 
-fi
+$as_echo "#define NO_GETTOD 1" >>confdefs.h
 
 
 fi
@@ -10828,6 +10909,51 @@ fi
 $as_echo "$tcl_ok" >&6; }
 
 #--------------------------------------------------------------------
+# The check below checks whether the cpuid instruction is usable.
+#--------------------------------------------------------------------
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether the cpuid instruction is usable" >&5
+$as_echo_n "checking whether the cpuid instruction is usable... " >&6; }
+if ${tcl_cv_cpuid+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+	int index,regsPtr[4];
+    __asm__ __volatile__("mov %%ebx, %%edi     \n\t"
+                 "cpuid            \n\t"
+                 "mov %%ebx, %%esi   \n\t"
+                 "mov %%edi, %%ebx  \n\t"
+                 : "=a"(regsPtr[0]), "=S"(regsPtr[1]), "=c"(regsPtr[2]), "=d"(regsPtr[3])
+                 : "a"(index) : "edi");
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  tcl_cv_cpuid=yes
+else
+  tcl_cv_cpuid=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_cpuid" >&5
+$as_echo "$tcl_cv_cpuid" >&6; }
+if test $tcl_cv_cpuid = yes; then
+
+$as_echo "#define HAVE_CPUID 1" >>confdefs.h
+
+fi
+
+#--------------------------------------------------------------------
 #	The statements below define a collection of symbols related to
 #	building libtcl as a shared library instead of a static library.
 #--------------------------------------------------------------------
@@ -10932,8 +11058,8 @@ $as_echo "#define TCL_FRAMEWORK 1" >>confdefs.h
     HTML_DIR="${libdir}/Resources/Documentation/Reference/Tcl"
     EXTRA_INSTALL="install-private-headers html-tcl"
     EXTRA_BUILD_HTML='@ln -fs contents.htm "$(HTML_INSTALL_DIR)"/TclTOC.html'
-    EXTRA_INSTALL_BINARIES='@echo "Installing Info.plist to $(LIB_INSTALL_DIR)/Resources" && mkdir -p "$(LIB_INSTALL_DIR)/Resources" && $(INSTALL_DATA) Tcl-Info.plist "$(LIB_INSTALL_DIR)/Resources/Info.plist"'
-    EXTRA_INSTALL_BINARIES="$EXTRA_INSTALL_BINARIES"' && echo "Installing license.terms to $(LIB_INSTALL_DIR)/Resources" && $(INSTALL_DATA) "$(TOP_DIR)/license.terms" "$(LIB_INSTALL_DIR)/Resources"'
+    EXTRA_INSTALL_BINARIES='@echo "Installing Info.plist to $(LIB_INSTALL_DIR)/Resources/" && $(INSTALL_DATA_DIR) "$(LIB_INSTALL_DIR)/Resources" && $(INSTALL_DATA) Tcl-Info.plist "$(LIB_INSTALL_DIR)/Resources/Info.plist"'
+    EXTRA_INSTALL_BINARIES="$EXTRA_INSTALL_BINARIES"' && echo "Installing license.terms to $(LIB_INSTALL_DIR)/Resources/" && $(INSTALL_DATA) "$(TOP_DIR)/license.terms" "$(LIB_INSTALL_DIR)/Resources"'
     EXTRA_INSTALL_BINARIES="$EXTRA_INSTALL_BINARIES"' && echo "Finalizing Tcl.framework" && rm -f "$(LIB_INSTALL_DIR)/../Current" && ln -s "$(VERSION)" "$(LIB_INSTALL_DIR)/../Current" && for f in "$(LIB_FILE)" tclConfig.sh Resources Headers PrivateHeaders; do rm -f "$(LIB_INSTALL_DIR)/../../$$f" && ln -s "Versions/Current/$$f" "$(LIB_INSTALL_DIR)/../.."; done && f="$(STUB_LIB_FILE)" && rm -f "$(LIB_INSTALL_DIR)/../../$$f" && ln -s "Versions/$(VERSION)/$$f" "$(LIB_INSTALL_DIR)/../.."'
     # Don't use AC_DEFINE for the following as the framework version define
     # needs to go into the Makefile even when using autoheader, so that we

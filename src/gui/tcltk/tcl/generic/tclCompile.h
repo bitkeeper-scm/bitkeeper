@@ -677,25 +677,30 @@ typedef struct ByteCode {
 #define INST_UNSET_ARRAY_STK		136
 #define INST_UNSET_STK			137
 
+/* For [dict with] compilation */
+#define INST_DICT_EXPAND		138
+#define INST_DICT_RECOMBINE_STK		139
+#define INST_DICT_RECOMBINE_IMM		140
+
 /* L stuff */
-#define INST_ROT			138
-#define INST_L_INDEX			139
-#define INST_L_DEEP_WRITE		140
-#define INST_L_SPLIT			141
-#define INST_L_DEFINED			142
-#define INST_L_PUSH_LIST_SIZE		143
-#define INST_L_PUSH_STR_SIZE		144
-#define INST_L_READ_SIZE		145
-#define INST_L_POP_SIZE			146
-#define INST_L_PUSH_UNDEF		147
-#define INST_EXPAND_ROT			148
-#define INST_L_LINDEX_STK		149
-#define INST_L_LIST_INSERT		150
-#define INST_UNSET_LOCAL		151
-#define INST_MARK_UNDEF			152
+#define INST_ROT			141
+#define INST_L_INDEX			142
+#define INST_L_DEEP_WRITE		143
+#define INST_L_SPLIT			144
+#define INST_L_DEFINED			145
+#define INST_L_PUSH_LIST_SIZE		146
+#define INST_L_PUSH_STR_SIZE		147
+#define INST_L_READ_SIZE		148
+#define INST_L_POP_SIZE			149
+#define INST_L_PUSH_UNDEF		150
+#define INST_EXPAND_ROT			151
+#define INST_L_LINDEX_STK		152
+#define INST_L_LIST_INSERT		153
+#define INST_UNSET_LOCAL		154
+#define INST_MARK_UNDEF			155
 
 /* The last opcode */
-#define LAST_INST_OPCODE		152
+#define LAST_INST_OPCODE		155
 
 /*
  * Table describing the Tcl bytecode instructions: their name (for displaying
@@ -879,8 +884,7 @@ typedef struct {
  *----------------------------------------------------------------
  */
 
-MODULE_SCOPE Tcl_NRPostProc	NRCommand;
-MODULE_SCOPE Tcl_ObjCmdProc	NRInterpCoroutine;
+MODULE_SCOPE Tcl_ObjCmdProc	TclNRInterpCoroutine;
 
 /*
  *----------------------------------------------------------------
@@ -973,6 +977,8 @@ MODULE_SCOPE void	TclRegisterAuxDataType(const AuxDataType *typePtr);
 MODULE_SCOPE int	TclRegisterLiteral(CompileEnv *envPtr,
 			    char *bytes, int length, int flags);
 MODULE_SCOPE void	TclReleaseLiteral(Tcl_Interp *interp, Tcl_Obj *objPtr);
+MODULE_SCOPE void	TclInvalidateCmdLiteral(Tcl_Interp *interp, 
+			    const char *name, Namespace *nsPtr);
 MODULE_SCOPE int	TclSingleOpCmd(ClientData clientData,
 			    Tcl_Interp *interp, int objc,
 			    Tcl_Obj *const objv[]);
@@ -1374,6 +1380,16 @@ MODULE_SCOPE Tcl_Obj	*TclNewInstNameObj(unsigned char inst);
 
 #define EnvHasLVT(envPtr) \
     (envPtr->procPtr || envPtr->iPtr->varFramePtr->localCachePtr)
+
+/*
+ * Macros for making it easier to deal with tokens and DStrings.
+ */
+
+#define TclDStringAppendToken(dsPtr, tokenPtr) \
+    Tcl_DStringAppend((dsPtr), (tokenPtr)->start, (tokenPtr)->size)
+#define TclRegisterDStringLiteral(envPtr, dsPtr) \
+    TclRegisterLiteral(envPtr, Tcl_DStringValue(dsPtr), \
+	    Tcl_DStringLength(dsPtr), /*flags*/ 0)
 
 /*
  * DTrace probe macros (NOPs if DTrace support is not enabled).

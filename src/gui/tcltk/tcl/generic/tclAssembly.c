@@ -265,7 +265,7 @@ static int		CheckStrictlyPositive(Tcl_Interp*, int);
 static ByteCode *	CompileAssembleObj(Tcl_Interp *interp,
 			    Tcl_Obj *objPtr);
 static void		CompileEmbeddedScript(AssemblyEnv*, Tcl_Token*,
-			    TalInstDesc*);
+			    const TalInstDesc*);
 static int		DefineLabel(AssemblyEnv* envPtr, const char* label);
 static void		DeleteMirrorJumpTable(JumptableInfo* jtPtr);
 static void		DupAssembleCodeInternalRep(Tcl_Obj* src,
@@ -350,7 +350,7 @@ static const Tcl_ObjType assembleCodeType = {
  * Source instructions recognized in the Tcl Assembly Language (TAL)
  */
 
-TalInstDesc TalInstructionTable[] = {
+static const TalInstDesc TalInstructionTable[] = {
     /* PUSH must be first, see the code near the end of TclAssembleCode */
     {"push",		ASSEM_PUSH,	(INST_PUSH1<<8
 					 | INST_PUSH4),		0,	1},
@@ -370,10 +370,13 @@ TalInstDesc TalInstructionTable[] = {
     {"bitxor",		ASSEM_1BYTE,	INST_BITXOR,		2,	1},
     {"concat",		ASSEM_CONCAT1,	INST_CONCAT1,		INT_MIN,1},
     {"dictAppend",	ASSEM_LVT4,	INST_DICT_APPEND,	2,	1},
+    {"dictExpand",	ASSEM_1BYTE,	INST_DICT_EXPAND,	3,	1},
     {"dictGet",		ASSEM_DICT_GET, INST_DICT_GET,		INT_MIN,1},
     {"dictIncrImm",	ASSEM_SINT4_LVT4,
 					INST_DICT_INCR_IMM,	1,	1},
     {"dictLappend",	ASSEM_LVT4,	INST_DICT_LAPPEND,	2,	1},
+    {"dictRecombineStk",ASSEM_1BYTE,	INST_DICT_RECOMBINE_STK,3,	0},
+    {"dictRecombineImm",ASSEM_LVT4,	INST_DICT_RECOMBINE_IMM,2,	0},
     {"dictSet",		ASSEM_DICT_SET, INST_DICT_SET,		INT_MIN,1},
     {"dictUnset",	ASSEM_DICT_UNSET,
 					INST_DICT_UNSET,	INT_MIN,1},
@@ -489,7 +492,7 @@ TalInstDesc TalInstructionTable[] = {
  * The instructions must be in ascending order by numeric operation code.
  */
 
-static unsigned char NonThrowingByteCodes[] = {
+static const unsigned char NonThrowingByteCodes[] = {
     INST_PUSH1, INST_PUSH4, INST_POP, INST_DUP,			/* 1-4 */
     INST_JUMP1, INST_JUMP4,					/* 34-35 */
     INST_END_CATCH, INST_PUSH_RESULT, INST_PUSH_RETURN_CODE,	/* 70-72 */
@@ -783,11 +786,6 @@ TclNRAssembleObjCmd(
      * Use NRE to evaluate the bytecode from the trampoline.
      */
 
-#if 0
-    Tcl_NRAddCallback(interp, NRCallTEBC, INT2PTR(TCL_NR_BC_TYPE), codePtr,
-	    NULL, NULL);
-    return TCL_OK;
-#endif
     return TclNRExecuteByteCode(interp, codePtr);
 }
 
@@ -817,11 +815,17 @@ CompileAssembleObj(
     CompileEnv compEnv;		/* Compilation environment structure */
     register ByteCode *codePtr = NULL;
 				/* Bytecode resulting from the assembly */
+    register const AuxData * auxDataPtr;
+				/* Pointer to an auxiliary data element
+				 * in a compilation environment being
+				 * destroyed. */
     Namespace* namespacePtr;	/* Namespace in which variable and command
 				 * names in the bytecode resolve */
     int status;			/* Status return from Tcl_AssembleCode */
     const char* source;		/* String representation of the source code */
     int sourceLen;		/* Length of the source code in bytes */
+    int i;
+
 
     /*
      * Get the expression ByteCode from the object. If it exists, make sure it
@@ -858,6 +862,43 @@ CompileAssembleObj(
 	/*
 	 * Assembly failed. Clean up and report the error.
 	 */
+
+	/*
+	 * Free any literals that were constructed for the assembly.
+	 */
+	for (i = 0; i < compEnv.literalArrayNext; i++) {
+	    TclReleaseLiteral(interp, compEnv.literalArrayPtr[i].objPtr);
+	}
+
+	/*
+	 * Free any auxiliary data that was attached to the bytecode
+	 * under construction.
+	 */
+
+	for (i = 0; i < compEnv.auxDataArrayNext; i++) {
+	    auxDataPtr = compEnv.auxDataArrayPtr + i;
+	    if (auxDataPtr->type->freeProc != NULL) {
+		(auxDataPtr->type->freeProc)(auxDataPtr->clientData);
+	    }
+	}
+
+	/*
+	 * TIP 280. If there is extended command line information,
+	 * we need to clean it up.
+	 */
+
+	if (compEnv.extCmdMapPtr != NULL) {
+	    if (compEnv.extCmdMapPtr->type == TCL_LOCATION_SOURCE) {
+		Tcl_DecrRefCount(compEnv.extCmdMapPtr->path);
+	    }
+	    for (i = 0; i < compEnv.extCmdMapPtr->nuloc; ++i) {
+		ckfree(compEnv.extCmdMapPtr->loc[i].line);
+	    }
+	    if (compEnv.extCmdMapPtr->loc != NULL) {
+		ckfree(compEnv.extCmdMapPtr->loc);
+	    }
+	    Tcl_DeleteHashTable(&(compEnv.extCmdMapPtr->litInfo));
+	}
 
 	TclFreeCompileEnv(&compEnv);
 	return NULL;
@@ -1727,7 +1768,7 @@ static void
 CompileEmbeddedScript(
     AssemblyEnv* assemEnvPtr,	/* Assembly environment */
     Tcl_Token* tokenPtr,	/* Tcl_Token containing the script */
-    TalInstDesc* instPtr)	/* Instruction that determines whether
+    const TalInstDesc* instPtr)	/* Instruction that determines whether
 				 * the script is 'expr' or 'eval' */
 {
     CompileEnv* envPtr = assemEnvPtr->envPtr;
@@ -3893,10 +3934,17 @@ BuildExceptionRanges(
 	prevPtr = bbPtr;
     }
 
+    /* Make sure that all catches are closed */
+
     if (catchDepth != 0) {
 	Tcl_Panic("unclosed catch at end of code in "
 		"tclAssembly.c:BuildExceptionRanges, can't happen");
     }
+
+    /* Free temp storage */
+
+    ckfree(catchIndices);
+    ckfree(catches);
 
     return TCL_OK;
 }

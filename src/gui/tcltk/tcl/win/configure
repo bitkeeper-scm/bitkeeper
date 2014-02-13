@@ -627,11 +627,9 @@ RC_DEFINE
 RC_INCLUDE
 RC_TYPE
 RC_OUT
-TCL_REG_PATCH_LEVEL
 TCL_REG_MINOR_VERSION
 TCL_REG_MAJOR_VERSION
 TCL_REG_VERSION
-TCL_DDE_PATCH_LEVEL
 TCL_DDE_MINOR_VERSION
 TCL_DDE_MAJOR_VERSION
 TCL_DDE_VERSION
@@ -1403,12 +1401,12 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-info-body      enable the info body command (default: on)
-  --enable-threads        build with threads
-  --enable-shared         build and link with shared libraries --enable-shared
+  --enable-threads        build with threads (default: on)
+  --enable-shared         build and link with shared libraries (default: on)
   --enable-64bit          enable 64bit support (where applicable)
   --enable-wince          enable Win/CE support (where applicable)
   --enable-pcre           whether to enable pcre (default: off)
-  --enable-symbols        build with debugging symbols --disable-symbols
+  --enable-symbols        build with debugging symbols (default: off)
   --enable-embedded-manifest
                           embed manifest if possible (default: yes)
 
@@ -1417,7 +1415,7 @@ Optional Packages:
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-bk              directory containing BK source
   --with-tommath          directory containing tommath headers and libraries
-  --with-encoding              encoding for configuration values
+  --with-encoding         encoding for configuration values
   --with-celib=DIR        use Windows/CE support library from DIR
   --with-pcre             directory containing pcre headers and libraries
 
@@ -2120,22 +2118,25 @@ SHELL=/bin/sh
 TCL_VERSION=8.6
 TCL_MAJOR_VERSION=8
 TCL_MINOR_VERSION=6
-TCL_PATCH_LEVEL="b2"
+TCL_PATCH_LEVEL="b3"
 VER=$TCL_MAJOR_VERSION$TCL_MINOR_VERSION
 
-TCL_DDE_VERSION=1.3
+TCL_DDE_VERSION=1.4
 TCL_DDE_MAJOR_VERSION=1
-TCL_DDE_MINOR_VERSION=3
-TCL_DDE_PATCH_LEVEL="2"
+TCL_DDE_MINOR_VERSION=4
 DDEVER=$TCL_DDE_MAJOR_VERSION$TCL_DDE_MINOR_VERSION
 
 TCL_REG_VERSION=1.3
 TCL_REG_MAJOR_VERSION=1
 TCL_REG_MINOR_VERSION=3
-TCL_REG_PATCH_LEVEL="0"
 REGVER=$TCL_REG_MAJOR_VERSION$TCL_REG_MINOR_VERSION
 
 PKG_CFG_ARGS=$@
+
+#------------------------------------------------------------------------
+# Empty slate for bundled packages, to avoid stale configuration
+#------------------------------------------------------------------------
+rm -Rf pkgs
 
 #------------------------------------------------------------------------
 # Handle the --prefix=... option
@@ -3887,526 +3888,6 @@ fi
 
 
 #--------------------------------------------------------------------
-# Perform additinal compiler tests.
-#--------------------------------------------------------------------
-
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for SEH support in compiler" >&5
-$as_echo_n "checking for SEH support in compiler... " >&6; }
-if ${tcl_cv_seh+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  if test "$cross_compiling" = yes; then :
-  tcl_cv_seh=no
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#undef WIN32_LEAN_AND_MEAN
-
-int main(int argc, char** argv) {
-    int a, b = 0;
-    __try {
-        a = 666 / b;
-    }
-    __except (EXCEPTION_EXECUTE_HANDLER) {
-        return 0;
-    }
-    return 1;
-}
-
-_ACEOF
-if ac_fn_c_try_run "$LINENO"; then :
-  tcl_cv_seh=yes
-else
-  tcl_cv_seh=no
-fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
-
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_seh" >&5
-$as_echo "$tcl_cv_seh" >&6; }
-if test "$tcl_cv_seh" = "no" ; then
-
-$as_echo "#define HAVE_NO_SEH 1" >>confdefs.h
-
-fi
-
-#
-# Check to see if the excpt.h include file provided contains the
-# definition for EXCEPTION_DISPOSITION; if not, which is the case
-# with Cygwin's version as of 2002-04-10, define it to be int,
-# sufficient for getting the current code to work.
-#
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for EXCEPTION_DISPOSITION support in include files" >&5
-$as_echo_n "checking for EXCEPTION_DISPOSITION support in include files... " >&6; }
-if ${tcl_cv_eh_disposition+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#undef WIN32_LEAN_AND_MEAN
-
-int
-main ()
-{
-
-  EXCEPTION_DISPOSITION x;
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  tcl_cv_eh_disposition=yes
-else
-  tcl_cv_eh_disposition=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_eh_disposition" >&5
-$as_echo "$tcl_cv_eh_disposition" >&6; }
-if test "$tcl_cv_eh_disposition" = "no" ; then
-
-$as_echo "#define EXCEPTION_DISPOSITION int" >>confdefs.h
-
-fi
-
-
-# Check to see if the winsock2.h include file provided contains
-# typedefs like LPFN_ACCEPT and friends.
-#
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for LPFN_ACCEPT support in winsock2.h" >&5
-$as_echo_n "checking for LPFN_ACCEPT support in winsock2.h... " >&6; }
-if ${tcl_cv_lpfn_decls+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#undef WIN32_LEAN_AND_MEAN
-#include <winsock2.h>
-
-int
-main ()
-{
-
-  LPFN_ACCEPT accept;
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  tcl_cv_lpfn_decls=yes
-else
-  tcl_cv_lpfn_decls=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_lpfn_decls" >&5
-$as_echo "$tcl_cv_lpfn_decls" >&6; }
-if test "$tcl_cv_lpfn_decls" = "no" ; then
-
-$as_echo "#define HAVE_NO_LPFN_DECLS 1" >>confdefs.h
-
-fi
-
-# Check to see if winnt.h defines CHAR, SHORT, and LONG
-# even if VOID has already been #defined. The win32api
-# used by mingw and cygwin is known to do this.
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for winnt.h that ignores VOID define" >&5
-$as_echo_n "checking for winnt.h that ignores VOID define... " >&6; }
-if ${tcl_cv_winnt_ignore_void+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#define VOID void
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#undef WIN32_LEAN_AND_MEAN
-
-int
-main ()
-{
-
-  CHAR c;
-  SHORT s;
-  LONG l;
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  tcl_cv_winnt_ignore_void=yes
-else
-  tcl_cv_winnt_ignore_void=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_winnt_ignore_void" >&5
-$as_echo "$tcl_cv_winnt_ignore_void" >&6; }
-if test "$tcl_cv_winnt_ignore_void" = "yes" ; then
-
-$as_echo "#define HAVE_WINNT_IGNORE_VOID 1" >>confdefs.h
-
-fi
-
-# Check to see if malloc.h is missing the alloca function
-# declaration. This is known to be a problem with Mingw.
-# If we compiled without the function declaration, it
-# would work but we would get a warning message from gcc.
-# If we add the function declaration ourselves, it
-# would not compile correctly because the _alloca
-# function expects the argument to be passed in a
-# register and not on the stack. Instead, we just
-# call it from inline asm code.
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for alloca declaration in malloc.h" >&5
-$as_echo_n "checking for alloca declaration in malloc.h... " >&6; }
-if ${tcl_cv_malloc_decl_alloca+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#include <malloc.h>
-
-int
-main ()
-{
-
-  size_t arg = 0;
-  void* ptr;
-  ptr = alloca;
-  ptr = alloca(arg);
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  tcl_cv_malloc_decl_alloca=yes
-else
-  tcl_cv_malloc_decl_alloca=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_malloc_decl_alloca" >&5
-$as_echo "$tcl_cv_malloc_decl_alloca" >&6; }
-if test "$tcl_cv_malloc_decl_alloca" = "no" &&
-   test "${GCC}" = "yes" ; then
-
-$as_echo "#define HAVE_ALLOCA_GCC_INLINE 1" >>confdefs.h
-
-fi
-
-# See if the compiler supports casting to a union type.
-# This is used to stop gcc from printing a compiler
-# warning when initializing a union member.
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for cast to union support" >&5
-$as_echo_n "checking for cast to union support... " >&6; }
-if ${tcl_cv_cast_to_union+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-int
-main ()
-{
-
-  union foo { int i; double d; };
-  union foo f = (union foo) (int) 0;
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  tcl_cv_cast_to_union=yes
-else
-  tcl_cv_cast_to_union=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_cast_to_union" >&5
-$as_echo "$tcl_cv_cast_to_union" >&6; }
-if test "$tcl_cv_cast_to_union" = "yes"; then
-
-$as_echo "#define HAVE_CAST_TO_UNION 1" >>confdefs.h
-
-fi
-
-# Check to see if struct _stat32i64 exists in mingw's sys/stat.h
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking struct _stat32i64" >&5
-$as_echo_n "checking struct _stat32i64... " >&6; }
-if ${tcl_struct_stat32i64+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#include <sys/types.h>
-#include <sys/stat.h>
-
-int
-main ()
-{
-
-  struct _stat32i64 foo;
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  tcl_struct_stat32i64=yes
-else
-  tcl_struct_stat32i64=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_struct_stat32i64" >&5
-$as_echo "$tcl_struct_stat32i64" >&6; }
-if test "$tcl_struct_stat32i64" = "yes" ; then
-
-$as_echo "#define HAVE_STRUCT_STAT32I64 1" >>confdefs.h
-
-fi
-
-
-# See if declarations like FINDEX_INFO_LEVELS are
-# missing from winbase.h. This is known to be
-# a problem with VC++ 5.2.
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for FINDEX_INFO_LEVELS in winbase.h" >&5
-$as_echo_n "checking for FINDEX_INFO_LEVELS in winbase.h... " >&6; }
-if ${tcl_cv_findex_enums+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#undef WIN32_LEAN_AND_MEAN
-
-int
-main ()
-{
-
-  FINDEX_INFO_LEVELS i;
-  FINDEX_SEARCH_OPS j;
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  tcl_cv_findex_enums=yes
-else
-  tcl_cv_findex_enums=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_findex_enums" >&5
-$as_echo "$tcl_cv_findex_enums" >&6; }
-if test "$tcl_cv_findex_enums" = "no"; then
-
-$as_echo "#define HAVE_NO_FINDEX_ENUMS 1" >>confdefs.h
-
-fi
-
-# See if MWMO_ALERTABLE is missing from winuser.h
-# This is known to be a problem with Mingw.
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for MWMO_ALERTABLE in winuser.h" >&5
-$as_echo_n "checking for MWMO_ALERTABLE in winuser.h... " >&6; }
-if ${tcl_cv_mwmo_alertable+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#undef WIN32_LEAN_AND_MEAN
-
-int
-main ()
-{
-
-  int i = MWMO_ALERTABLE;
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  tcl_cv_mwmo_alertable=yes
-else
-  tcl_cv_mwmo_alertable=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_mwmo_alertable" >&5
-$as_echo "$tcl_cv_mwmo_alertable" >&6; }
-if test "$tcl_cv_mwmo_alertable" = "no"; then
-
-$as_echo "#define HAVE_NO_MWMO_ALERTABLE 1" >>confdefs.h
-
-fi
-
-# See if the compiler supports intrinsics.
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for intrinsics support in compiler" >&5
-$as_echo_n "checking for intrinsics support in compiler... " >&6; }
-if ${tcl_cv_intrinsics+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-
-# ac_fn_c_try_link LINENO
-# -----------------------
-# Try to link conftest.$ac_ext, and return whether this succeeded.
-ac_fn_c_try_link ()
-{
-  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
-  rm -f conftest.$ac_objext conftest$ac_exeext
-  if { { ac_try="$ac_link"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval ac_try_echo="\"\$as_me:${as_lineno-$LINENO}: $ac_try_echo\""
-$as_echo "$ac_try_echo"; } >&5
-  (eval "$ac_link") 2>conftest.err
-  ac_status=$?
-  if test -s conftest.err; then
-    grep -v '^ *+' conftest.err >conftest.er1
-    cat conftest.er1 >&5
-    mv -f conftest.er1 conftest.err
-  fi
-  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
-  test $ac_status = 0; } && {
-	 test -z "$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest$ac_exeext && {
-	 test "$cross_compiling" = yes ||
-	 test -x conftest$ac_exeext
-       }; then :
-  ac_retval=0
-else
-  $as_echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	ac_retval=1
-fi
-  # Delete the IPA/IPO (Inter Procedural Analysis/Optimization) information
-  # created by the PGI compiler (conftest_ipa8_conftest.oo), as it would
-  # interfere with the next link command; also delete a directory that is
-  # left behind by Apple's compiler.  We do this before executing the actions.
-  rm -rf conftest.dSYM conftest_ipa8_conftest.oo
-  eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
-  as_fn_set_status $ac_retval
-
-} # ac_fn_c_try_link
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#undef WIN32_LEAN_AND_MEAN
-#include <intrin.h>
-
-int
-main ()
-{
-
-  __cpuidex(0,0,0);
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  tcl_cv_intrinsics=yes
-else
-  tcl_cv_intrinsics=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_intrinsics" >&5
-$as_echo "$tcl_cv_intrinsics" >&6; }
-if test "$tcl_cv_intrinsics" = "yes"; then
-
-$as_echo "#define HAVE_INTRIN_H 1" >>confdefs.h
-
-fi
-
-# See if the <wspiapi.h> header file is present
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for wspiapi.h" >&5
-$as_echo_n "checking for wspiapi.h... " >&6; }
-if ${tcl_have_wspiapi_h+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#include <wspiapi.h>
-
-int
-main ()
-{
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  tcl_have_wspiapi_h=yes
-else
-  tcl_have_wspiapi_h=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_have_wspiapi_h" >&5
-$as_echo "$tcl_have_wspiapi_h" >&6; }
-if test "$tcl_have_wspiapi_h" = "yes"; then
-
-$as_echo "#define HAVE_WSPIAPI_H 1" >>confdefs.h
-
-fi
-
-#--------------------------------------------------------------------
 # Determines the correct binary file extension (.o, .obj, .exe etc.)
 #--------------------------------------------------------------------
 
@@ -4429,8 +3910,8 @@ fi
 
 
     if test "$tcl_ok" = "yes"; then
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes (default)" >&5
+$as_echo "yes (default)" >&6; }
 	TCL_THREADS=1
 	$as_echo "#define TCL_THREADS 1" >>confdefs.h
 
@@ -4623,6 +4104,59 @@ fi
     # which requires x86|amd64|ia64.
     MACHINE="X86"
 
+    if test "$GCC" = "yes"; then
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for cross-compile version of gcc" >&5
+$as_echo_n "checking for cross-compile version of gcc... " >&6; }
+if ${ac_cv_cross+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+	    #ifndef __WIN32__
+		#error cross-compiler
+	    #endif
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ac_cv_cross=no
+else
+  ac_cv_cross=yes
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_cross" >&5
+$as_echo "$ac_cv_cross" >&6; }
+
+      if test "$ac_cv_cross" = "yes"; then
+	case "$do64bit" in
+	    amd64|x64|yes)
+		CC="x86_64-w64-mingw32-gcc"
+		LD="x86_64-w64-mingw32-ld"
+		AR="x86_64-w64-mingw32-ar"
+		RANLIB="x86_64-w64-mingw32-ranlib"
+		RC="x86_64-w64-mingw32-windres"
+	    ;;
+	    *)
+		CC="i686-w64-mingw32-gcc"
+		LD="i686-w64-mingw32-ld"
+		AR="i686-w64-mingw32-ar"
+		RANLIB="i686-w64-mingw32-ranlib"
+		RC="i686-w64-mingw32-windres"
+	    ;;
+	esac
+      fi
+    fi
+
     # Check for a bug in gcc's windres that causes the
     # compile to fail when a Windows native path is
     # passed into windres. The mingw toolchain requires
@@ -4656,17 +4190,26 @@ $as_echo "yes" >&6; }
 	cyg_conftest=
     fi
 
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Cygwin version of gcc" >&5
-$as_echo_n "checking for Cygwin version of gcc... " >&6; }
-if ${ac_cv_cygwin+:} false; then :
+    if test "$CYGPATH" = "echo"; then
+        DEPARG='"$<"'
+    else
+        DEPARG='"$(shell $(CYGPATH) $<)"'
+    fi
+
+    # set various compiler flags depending on whether we are using gcc or cl
+
+    if test "${GCC}" = "yes" ; then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for mingw32 version of gcc" >&5
+$as_echo_n "checking for mingw32 version of gcc... " >&6; }
+if ${ac_cv_win32+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-    #ifdef __CYGWIN__
-    #error cygwin
-    #endif
+		#ifdef __WIN32__
+		    #error win32
+		#endif
 
 int
 main ()
@@ -4677,79 +4220,76 @@ main ()
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  ac_cv_cygwin=no
+  ac_cv_win32=no
 else
-  ac_cv_cygwin=yes
+  ac_cv_win32=yes
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_cygwin" >&5
-$as_echo "$ac_cv_cygwin" >&6; }
-    if test "$ac_cv_cygwin" = "yes" ; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Compiling under Cygwin is not currently supported.
-If you are not sure you want this, see the README
-file for information about building with Mingw." >&5
-$as_echo "$as_me: WARNING: Compiling under Cygwin is not currently supported.
-If you are not sure you want this, see the README
-file for information about building with Mingw." >&2;}
-    fi
-    if test "$CYGPATH" = "echo" || test "$ac_cv_cygwin" = "yes"; then
-        DEPARG='"$<"'
-    else
-        DEPARG='"$(shell $(CYGPATH) $<)"'
-    fi
-
-    # set various compiler flags depending on whether we are using gcc or cl
-
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking compiler flags" >&5
-$as_echo_n "checking compiler flags... " >&6; }
-    if test "${GCC}" = "yes" ; then
-	SHLIB_LD=""
-	SHLIB_LD_LIBS='${LIBS}'
-	LIBS="-lnetapi32 -lkernel32 -luser32 -ladvapi32 -lws2_32"
-	# mingw needs to link ole32 and oleaut32 for [send], but MSVC doesn't
-	LIBS_GUI="-lgdi32 -lcomdlg32 -limm32 -lcomctl32 -lshell32 -luuid -lole32 -loleaut32"
-	STLIB_LD='${AR} cr'
-	RC_OUT=-o
-	RC_TYPE=
-	RC_INCLUDE=--include
-	RC_DEFINE=--define
-	RES=res.o
-	MAKE_LIB="\${STLIB_LD} \$@"
-	POST_MAKE_LIB="\${RANLIB} \$@"
-	MAKE_EXE="\${CC} -o \$@"
-	LIBPREFIX="lib"
-
-	extra_cflags="-pipe"
-	extra_ldflags="-pipe"
-
-	if test "$ac_cv_cygwin" = "yes"; then
-	  touch ac$$.c
-	  if ${CC} -c -mwin32 ac$$.c >/dev/null 2>&1; then
-	    case "$extra_cflags" in
-	      *-mwin32*) ;;
-	      *) extra_cflags="-mwin32 $extra_cflags" ;;
-	    esac
-	    case "$extra_ldflags" in
-	      *-mwin32*) ;;
-	      *) extra_ldflags="-mwin32 $extra_ldflags" ;;
-	    esac
-	  fi
-	  rm -f ac$$.o ac$$.c
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_win32" >&5
+$as_echo "$ac_cv_win32" >&6; }
+	if test "$ac_cv_win32" != "yes"; then
+	    as_fn_error $? "${CC} cannot produce win32 executables." "$LINENO" 5
 	fi
 
 	hold_cflags=$CFLAGS; CFLAGS="$CFLAGS -mwindows -municode -Dmain=xxmain"
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for working -municode linker flag" >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for working -municode linker flag" >&5
 $as_echo_n "checking for working -municode linker flag... " >&6; }
 if ${ac_cv_municode+:} false; then :
   $as_echo_n "(cached) " >&6
 else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+
+# ac_fn_c_try_link LINENO
+# -----------------------
+# Try to link conftest.$ac_ext, and return whether this succeeded.
+ac_fn_c_try_link ()
+{
+  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
+  rm -f conftest.$ac_objext conftest$ac_exeext
+  if { { ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:${as_lineno-$LINENO}: $ac_try_echo\""
+$as_echo "$ac_try_echo"; } >&5
+  (eval "$ac_link") 2>conftest.err
+  ac_status=$?
+  if test -s conftest.err; then
+    grep -v '^ *+' conftest.err >conftest.er1
+    cat conftest.er1 >&5
+    mv -f conftest.er1 conftest.err
+  fi
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext && {
+	 test "$cross_compiling" = yes ||
+	 test -x conftest$ac_exeext
+       }; then :
+  ac_retval=0
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_retval=1
+fi
+  # Delete the IPA/IPO (Inter Procedural Analysis/Optimization) information
+  # created by the PGI compiler (conftest_ipa8_conftest.oo), as it would
+  # interfere with the next link command; also delete a directory that is
+  # left behind by Apple's compiler.  We do this before executing the actions.
+  rm -rf conftest.dSYM conftest_ipa8_conftest.oo
+  eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
+  as_fn_set_status $ac_retval
+
+} # ac_fn_c_try_link
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-    #include <windows.h>
-    int APIENTRY wWinMain(HINSTANCE a, HINSTANCE b, LPWSTR c, int d) {return 0;}
+	#include <windows.h>
+	int APIENTRY wWinMain(HINSTANCE a, HINSTANCE b, LPWSTR c, int d) {return 0;}
 
 int
 main ()
@@ -4770,12 +4310,35 @@ rm -f core conftest.err conftest.$ac_objext \
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_municode" >&5
 $as_echo "$ac_cv_municode" >&6; }
-    CFLAGS=$hold_cflags
-    if test "$ac_cv_municode" = "yes" ; then
-	extra_ldflags="$extra_ldflags -municode"
-    else
-	extra_cflags="$extra_cflags -DTCL_BROKEN_MAINARGS"
+	CFLAGS=$hold_cflags
+	if test "$ac_cv_municode" = "yes" ; then
+	    extra_ldflags="$extra_ldflags -municode"
+	else
+	    extra_cflags="$extra_cflags -DTCL_BROKEN_MAINARGS"
+	fi
     fi
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking compiler flags" >&5
+$as_echo_n "checking compiler flags... " >&6; }
+    if test "${GCC}" = "yes" ; then
+	SHLIB_LD=""
+	SHLIB_LD_LIBS='${LIBS}'
+	LIBS="-lnetapi32 -lkernel32 -luser32 -ladvapi32 -lws2_32"
+	# mingw needs to link ole32 and oleaut32 for [send], but MSVC doesn't
+	LIBS_GUI="-lgdi32 -lcomdlg32 -limm32 -lcomctl32 -lshell32 -luuid -lole32 -loleaut32"
+	STLIB_LD='${AR} cr'
+	RC_OUT=-o
+	RC_TYPE=
+	RC_INCLUDE=--include
+	RC_DEFINE=--define
+	RES=res.o
+	MAKE_LIB="\${STLIB_LD} \$@"
+	POST_MAKE_LIB="\${RANLIB} \$@"
+	MAKE_EXE="\${CC} -o \$@"
+	LIBPREFIX="lib"
+
+	extra_cflags="$extra_cflags -pipe"
+	extra_ldflags="$extra_ldflags -pipe"
 
 	if test "${SHARED_BUILD}" = "0" ; then
 	    # static
@@ -4859,9 +4422,9 @@ $as_echo "   Using 64-bit $MACHINE mode" >&6; }
 		cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-			#ifdef _WIN64
-			#error 64-bit
-			#endif
+		    #ifndef _WIN64
+			#error 32-bit
+		    #endif
 
 int
 main ()
@@ -4872,9 +4435,9 @@ main ()
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  tcl_win_64bit=no
-else
   tcl_win_64bit=yes
+else
+  tcl_win_64bit=no
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
@@ -5121,6 +4684,182 @@ _ACEOF
 
     fi
 
+    if test "${GCC}" = "yes" ; then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for SEH support in compiler" >&5
+$as_echo_n "checking for SEH support in compiler... " >&6; }
+if ${tcl_cv_seh+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test "$cross_compiling" = yes; then :
+  tcl_cv_seh=no
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+	    #define WIN32_LEAN_AND_MEAN
+	    #include <windows.h>
+	    #undef WIN32_LEAN_AND_MEAN
+
+	    int main(int argc, char** argv) {
+		int a, b = 0;
+		__try {
+		    a = 666 / b;
+		}
+		__except (EXCEPTION_EXECUTE_HANDLER) {
+		    return 0;
+		}
+		return 1;
+	    }
+
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  tcl_cv_seh=yes
+else
+  tcl_cv_seh=no
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_seh" >&5
+$as_echo "$tcl_cv_seh" >&6; }
+	if test "$tcl_cv_seh" = "no" ; then
+
+$as_echo "#define HAVE_NO_SEH 1" >>confdefs.h
+
+	fi
+
+	#
+	# Check to see if the excpt.h include file provided contains the
+	# definition for EXCEPTION_DISPOSITION; if not, which is the case
+	# with Cygwin's version as of 2002-04-10, define it to be int,
+	# sufficient for getting the current code to work.
+	#
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for EXCEPTION_DISPOSITION support in include files" >&5
+$as_echo_n "checking for EXCEPTION_DISPOSITION support in include files... " >&6; }
+if ${tcl_cv_eh_disposition+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#	    define WIN32_LEAN_AND_MEAN
+#	    include <windows.h>
+#	    undef WIN32_LEAN_AND_MEAN
+
+int
+main ()
+{
+
+		EXCEPTION_DISPOSITION x;
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  tcl_cv_eh_disposition=yes
+else
+  tcl_cv_eh_disposition=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_eh_disposition" >&5
+$as_echo "$tcl_cv_eh_disposition" >&6; }
+	if test "$tcl_cv_eh_disposition" = "no" ; then
+
+$as_echo "#define EXCEPTION_DISPOSITION int" >>confdefs.h
+
+	fi
+
+	# Check to see if winnt.h defines CHAR, SHORT, and LONG
+	# even if VOID has already been #defined. The win32api
+	# used by mingw and cygwin is known to do this.
+
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for winnt.h that ignores VOID define" >&5
+$as_echo_n "checking for winnt.h that ignores VOID define... " >&6; }
+if ${tcl_cv_winnt_ignore_void+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		#define VOID void
+		#define WIN32_LEAN_AND_MEAN
+		#include <windows.h>
+		#undef WIN32_LEAN_AND_MEAN
+
+int
+main ()
+{
+
+		CHAR c;
+		SHORT s;
+		LONG l;
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  tcl_cv_winnt_ignore_void=yes
+else
+  tcl_cv_winnt_ignore_void=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_winnt_ignore_void" >&5
+$as_echo "$tcl_cv_winnt_ignore_void" >&6; }
+	if test "$tcl_cv_winnt_ignore_void" = "yes" ; then
+
+$as_echo "#define HAVE_WINNT_IGNORE_VOID 1" >>confdefs.h
+
+	fi
+
+	# See if the compiler supports casting to a union type.
+	# This is used to stop gcc from printing a compiler
+	# warning when initializing a union member.
+
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for cast to union support" >&5
+$as_echo_n "checking for cast to union support... " >&6; }
+if ${tcl_cv_cast_to_union+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+		  union foo { int i; double d; };
+		  union foo f = (union foo) (int) 0;
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  tcl_cv_cast_to_union=yes
+else
+  tcl_cv_cast_to_union=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_cast_to_union" >&5
+$as_echo "$tcl_cv_cast_to_union" >&6; }
+	if test "$tcl_cv_cast_to_union" = "yes"; then
+
+$as_echo "#define HAVE_CAST_TO_UNION 1" >>confdefs.h
+
+	fi
+    fi
+
     # DL_LIBS is empty, but then we match the Unix version
 
 
@@ -5143,7 +4882,7 @@ esac
 #	as we just assume that the platform hasn't got a usable z.lib
 #------------------------------------------------------------------------
 
-if test "$do64bit" = "yes"; then :
+if test "$do64bit" = "yes" && test "$GCC" != "yes"; then :
 
   tcl_ok=no
 
@@ -5165,8 +4904,17 @@ if test "$tcl_ok" = "yes"; then :
 
   ZLIB_DLL_FILE=\${ZLIB_DLL_FILE}
 
-  ZLIB_LIBS=\${ZLIB_DIR}/win32/zdll.lib
+  if test "$do64bit" = "yes"; then :
 
+    ZLIB_LIBS=\${ZLIB_DIR}/win64/zdll.lib
+
+
+else
+
+    ZLIB_LIBS=\${ZLIB_DIR}/win32/zdll.lib
+
+
+fi
 
 else
 
@@ -5286,6 +5034,174 @@ _ACEOF
 
 fi
 
+
+#--------------------------------------------------------------------
+# Perform additinal compiler tests.
+#--------------------------------------------------------------------
+
+# See if declarations like FINDEX_INFO_LEVELS are
+# missing from winbase.h. This is known to be
+# a problem with VC++ 5.2.
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for FINDEX_INFO_LEVELS in winbase.h" >&5
+$as_echo_n "checking for FINDEX_INFO_LEVELS in winbase.h... " >&6; }
+if ${tcl_cv_findex_enums+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#undef WIN32_LEAN_AND_MEAN
+
+int
+main ()
+{
+
+  FINDEX_INFO_LEVELS i;
+  FINDEX_SEARCH_OPS j;
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  tcl_cv_findex_enums=yes
+else
+  tcl_cv_findex_enums=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_findex_enums" >&5
+$as_echo "$tcl_cv_findex_enums" >&6; }
+if test "$tcl_cv_findex_enums" = "no"; then
+
+$as_echo "#define HAVE_NO_FINDEX_ENUMS 1" >>confdefs.h
+
+fi
+
+# See if the compiler supports intrinsics.
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for intrinsics support in compiler" >&5
+$as_echo_n "checking for intrinsics support in compiler... " >&6; }
+if ${tcl_cv_intrinsics+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#undef WIN32_LEAN_AND_MEAN
+#include <intrin.h>
+
+int
+main ()
+{
+
+  __cpuidex(0,0,0);
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  tcl_cv_intrinsics=yes
+else
+  tcl_cv_intrinsics=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_intrinsics" >&5
+$as_echo "$tcl_cv_intrinsics" >&6; }
+if test "$tcl_cv_intrinsics" = "yes"; then
+
+$as_echo "#define HAVE_INTRIN_H 1" >>confdefs.h
+
+fi
+
+# See if the <wspiapi.h> header file is present
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for wspiapi.h" >&5
+$as_echo_n "checking for wspiapi.h... " >&6; }
+if ${tcl_cv_wspiapi_h+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <wspiapi.h>
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  tcl_cv_wspiapi_h=yes
+else
+  tcl_cv_wspiapi_h=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_wspiapi_h" >&5
+$as_echo "$tcl_cv_wspiapi_h" >&6; }
+if test "$tcl_cv_wspiapi_h" = "yes"; then
+
+$as_echo "#define HAVE_WSPIAPI_H 1" >>confdefs.h
+
+fi
+
+# See if declarations like FINDEX_INFO_LEVELS are
+# missing from winbase.h. This is known to be
+# a problem with VC++ 5.2.
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for FINDEX_INFO_LEVELS in winbase.h" >&5
+$as_echo_n "checking for FINDEX_INFO_LEVELS in winbase.h... " >&6; }
+if ${tcl_cv_findex_enums+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#undef WIN32_LEAN_AND_MEAN
+
+int
+main ()
+{
+
+  FINDEX_INFO_LEVELS i;
+  FINDEX_SEARCH_OPS j;
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  tcl_cv_findex_enums=yes
+else
+  tcl_cv_findex_enums=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_findex_enums" >&5
+$as_echo "$tcl_cv_findex_enums" >&6; }
+if test "$tcl_cv_findex_enums" = "no"; then
+
+$as_echo "#define HAVE_NO_FINDEX_ENUMS 1" >>confdefs.h
+
+fi
 
 #------------------------------------------------------------------------------
 #       Check if we want to use pcre
@@ -5435,6 +5351,9 @@ fi
 	CFLAGS_DEFAULT='$(CFLAGS_OPTIMIZE)'
 	LDFLAGS_DEFAULT='$(LDFLAGS_OPTIMIZE)'
 	DBGX=""
+
+$as_echo "#define NDEBUG 1" >>confdefs.h
+
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
@@ -5451,18 +5370,19 @@ $as_echo "yes (standard debugging)" >&6; }
     fi
 
 
-    $as_echo "#define TCL_CFG_DEBUG 1" >>confdefs.h
-
 
     if test "$tcl_ok" = "mem" -o "$tcl_ok" = "all"; then
-	$as_echo "#define TCL_MEM_DEBUG 1" >>confdefs.h
+
+$as_echo "#define TCL_MEM_DEBUG 1" >>confdefs.h
 
     fi
 
     if test "$tcl_ok" = "compile" -o "$tcl_ok" = "all"; then
-	$as_echo "#define TCL_COMPILE_DEBUG 1" >>confdefs.h
 
-	$as_echo "#define TCL_COMPILE_STATS 1" >>confdefs.h
+$as_echo "#define TCL_COMPILE_DEBUG 1" >>confdefs.h
+
+
+$as_echo "#define TCL_COMPILE_STATS 1" >>confdefs.h
 
     fi
 
@@ -5686,8 +5606,6 @@ fi
 
 
 # win only
-
-
 
 
 
