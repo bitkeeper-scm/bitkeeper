@@ -890,8 +890,8 @@ canonical_num(char *num)
 	\\u{HEX}{HEX}		|
 	\\u{HEX}{HEX}{HEX}	|
 	\\u{HEX}{HEX}{HEX}{HEX}	{
-				char		buf[TCL_UTF_MAX];
-				Tcl_UniChar	ch;
+				char	buf[TCL_UTF_MAX];
+				int	ch;
 				TclParseHex(yytext+2, 4, &ch);
 				STRBUF_ADD(buf, Tcl_UniCharToUtf(ch, buf));
 			}
