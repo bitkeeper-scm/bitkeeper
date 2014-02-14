@@ -344,7 +344,7 @@ Tcl_MainEx(
 				 Tcl_NewStringObj(argv[0], -1));
 
 	if ((argc > 3) && (0 == _tcscmp(TEXT("-encoding"), argv[1]))
-		&& (TEXT('-') != argv[3][0])) {
+		&& ('-' != argv[3][0])) {
 	    Tcl_Obj *value = NewNativeObj(argv[2], -1);
 	    Tcl_SetStartupScript(NewNativeObj(argv[3], -1),
 		    Tcl_GetString(value));
@@ -359,7 +359,7 @@ Tcl_MainEx(
 		argObj = Tcl_NewStringObj(argv[i], -1);
 		Tcl_ListObjAppendElement(NULL, L->global->tclsh_argv, argObj);
 		++L->global->tclsh_argc;
-		if (TEXT('-') != argv[i][0]) {
+		if ('-' != argv[i][0]) {
 		    Tcl_SetStartupScript(argObj, NULL);
 		    argc -= i;
 		    argv += i;

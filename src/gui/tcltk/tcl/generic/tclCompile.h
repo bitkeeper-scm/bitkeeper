@@ -677,30 +677,60 @@ typedef struct ByteCode {
 #define INST_UNSET_ARRAY_STK		136
 #define INST_UNSET_STK			137
 
-/* For [dict with] compilation */
+/* For [dict with], [dict exists], [dict create] and [dict merge] */
 #define INST_DICT_EXPAND		138
 #define INST_DICT_RECOMBINE_STK		139
 #define INST_DICT_RECOMBINE_IMM		140
+#define INST_DICT_EXISTS		141
+#define INST_DICT_VERIFY		142
+
+/* For [string map] and [regsub] compilation */
+#define INST_STR_MAP			143
+#define INST_STR_FIND			144
+#define INST_STR_FIND_LAST		145
+#define INST_STR_RANGE_IMM		146
+#define INST_STR_RANGE			147
+
+/* For operations to do with coroutines and other NRE-manipulators */
+#define INST_YIELD			148
+#define INST_COROUTINE_NAME		149
+#define INST_TAILCALL			150
+
+/* For compilation of basic information operations */
+#define INST_NS_CURRENT			151
+#define INST_INFO_LEVEL_NUM		152
+#define INST_INFO_LEVEL_ARGS		153
+#define INST_RESOLVE_COMMAND		154
+#define INST_TCLOO_SELF			155
+#define INST_TCLOO_CLASS		156
+#define INST_TCLOO_NS			157
+#define INST_TCLOO_IS_OBJECT		158
+
+/* For compilation of [array] subcommands */
+#define INST_ARRAY_EXISTS_STK		159
+#define INST_ARRAY_EXISTS_IMM		160
+#define INST_ARRAY_MAKE_STK		161
+#define INST_ARRAY_MAKE_IMM		162
 
 /* L stuff */
-#define INST_ROT			141
-#define INST_L_INDEX			142
-#define INST_L_DEEP_WRITE		143
-#define INST_L_SPLIT			144
-#define INST_L_DEFINED			145
-#define INST_L_PUSH_LIST_SIZE		146
-#define INST_L_PUSH_STR_SIZE		147
-#define INST_L_READ_SIZE		148
-#define INST_L_POP_SIZE			149
-#define INST_L_PUSH_UNDEF		150
-#define INST_EXPAND_ROT			151
-#define INST_L_LINDEX_STK		152
-#define INST_L_LIST_INSERT		153
-#define INST_UNSET_LOCAL		154
-#define INST_MARK_UNDEF			155
+#define INST_ROT			163
+#define INST_L_INDEX			164
+#define INST_L_DEEP_WRITE		165
+#define INST_L_SPLIT			166
+#define INST_L_DEFINED			167
+#define INST_L_PUSH_LIST_SIZE		168
+#define INST_L_PUSH_STR_SIZE		169
+#define INST_L_READ_SIZE		170
+#define INST_L_POP_SIZE			171
+#define INST_L_PUSH_UNDEF		172
+#define INST_EXPAND_ROT			173
+#define INST_L_LINDEX_STK		174
+#define INST_L_LIST_INSERT		175
+#define INST_UNSET_LOCAL		176
+#define INST_MARK_UNDEF			177
 
 /* The last opcode */
-#define LAST_INST_OPCODE		155
+#define LAST_INST_OPCODE		177
 
 /*
  * Table describing the Tcl bytecode instructions: their name (for displaying
