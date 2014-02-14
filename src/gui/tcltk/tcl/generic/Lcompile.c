@@ -1464,7 +1464,7 @@ compile_trycatch(Stmt *stmt)
 		}
 	}
 
-	range = DeclareExceptionRange(L->frame->envPtr, CATCH_EXCEPTION_RANGE);
+	range = TclCreateExceptRange(CATCH_EXCEPTION_RANGE, L->frame->envPtr);
 	TclEmitInstInt4(INST_BEGIN_CATCH4, range, L->frame->envPtr);
 
 	/*
