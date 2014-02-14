@@ -714,7 +714,7 @@ Tcl_GetRegExpFromObj(
      * TclRegexp* when the type is tclRegexpType.
      */
 
-    regexpPtr = objPtr->internalRep.otherValuePtr;
+    regexpPtr = objPtr->internalRep.twoPtrValue.ptr1;
 
     /* XXX Need to have case where -type classic isn't ignored in regexp/sub */
     if ((interp != NULL) && (((Interp *)interp)->flags & INTERP_PCRE)) {
@@ -741,7 +741,7 @@ Tcl_GetRegExpFromObj(
 	 */
 
 	TclFreeIntRep(objPtr);
-	objPtr->internalRep.otherValuePtr = regexpPtr;
+	objPtr->internalRep.twoPtrValue.ptr1 = regexpPtr;
 	objPtr->typePtr = &tclRegexpType;
     }
     return (Tcl_RegExp) regexpPtr;
@@ -889,7 +889,7 @@ static void
 FreeRegexpInternalRep(
     Tcl_Obj *objPtr)		/* Regexp object with internal rep to free. */
 {
-    TclRegexp *regexpRepPtr = objPtr->internalRep.otherValuePtr;
+    TclRegexp *regexpRepPtr = objPtr->internalRep.twoPtrValue.ptr1;
 
     /*
      * If this is the last reference to the regexp, free it.
@@ -923,10 +923,10 @@ DupRegexpInternalRep(
     Tcl_Obj *srcPtr,		/* Object with internal rep to copy. */
     Tcl_Obj *copyPtr)		/* Object with internal rep to set. */
 {
-    TclRegexp *regexpPtr = srcPtr->internalRep.otherValuePtr;
+    TclRegexp *regexpPtr = srcPtr->internalRep.twoPtrValue.ptr1;
 
     regexpPtr->refCount++;
-    copyPtr->internalRep.otherValuePtr = srcPtr->internalRep.otherValuePtr;
+    copyPtr->internalRep.twoPtrValue.ptr1 = srcPtr->internalRep.twoPtrValue.ptr1;
     copyPtr->typePtr = &tclRegexpType;
 }
 
