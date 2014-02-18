@@ -1753,13 +1753,29 @@ TclCompileInvocation(
     int numWords,
     CompileEnv *envPtr)
 {
-    int wordIdx = 0;
+    int adjust = 0, wordIdx = 0;
+    char *cmd, *s;
+    Tcl_Obj *obj;
     DefineLineInformation;
 
     if (cmdObj) {
 	CompileCmdLiteral(interp, cmdObj, envPtr);
 	wordIdx = 1;
 	tokenPtr = TokenAfter(tokenPtr);
+	cmd = Tcl_GetString(cmdObj);
+	if (!strcmp("L", cmd) || !strcmp("Lhtml", cmd)) {
+	    /*
+	     * If this is the L or Lhtml command, push the argument --line=%d
+	     * to it now.  This communicates the source line # to the L
+	     * compiler.
+	     */
+	    obj = Tcl_ObjPrintf("--line=%d", envPtr->line+1);
+	    Tcl_IncrRefCount(obj);
+	    s = TclGetString(obj);
+	    adjust = TclRegisterNewLiteral(envPtr, s, strlen(s));
+	    Tcl_DecrRefCount(obj);
+	    TclEmitPush(adjust, envPtr);
+	}
     }
 
     for (; wordIdx < numWords; wordIdx++, tokenPtr = TokenAfter(tokenPtr)) {
@@ -1781,6 +1797,14 @@ TclCompileInvocation(
 	TclEmitPush(objIdx, envPtr);
     }
 
+    /*
+     * Possible adjust for L-command argument injection (see comment
+     * above).
+     */
+    if (adjust) {
+	++wordIdx;
+    }
+
     if (wordIdx <= 255) {
 	TclEmitInstInt1(INST_INVOKE_STK1, wordIdx, envPtr);
     } else {
@@ -1796,7 +1820,8 @@ CompileExpanded(
     int numWords,
     CompileEnv *envPtr)
 {
-    int wordIdx = 0;
+    int adjust = 0, wordIdx = 0;
+    char *cmd;
     DefineLineInformation;
 
 
@@ -1805,6 +1830,23 @@ CompileExpanded(
 	CompileCmdLiteral(interp, cmdObj, envPtr);
 	wordIdx = 1;
 	tokenPtr = TokenAfter(tokenPtr);
+	cmd = Tcl_GetString(cmdObj);
+	if (!strcmp("L", cmd) || !strcmp("Lhtml", cmd)) {
+	    /*
+	     * If this is the L or Lhtml command, push the argument --line=%d
+	     * to it now.  This communicates the source line # to the L
+	     * compiler.
+	     */
+	    char *s;
+	    Tcl_Obj *obj;
+
+	    obj = Tcl_ObjPrintf("--line=%d", envPtr->line+1);
+	    Tcl_IncrRefCount(obj);
+	    s = TclGetString(obj);
+	    adjust = TclRegisterNewLiteral(envPtr, s, strlen(s));
+	    Tcl_DecrRefCount(obj);
+	    TclEmitPush(adjust, envPtr);
+	}
     }
 
     for (; wordIdx < numWords; wordIdx++, tokenPtr = TokenAfter(tokenPtr)) {
@@ -1828,6 +1870,14 @@ CompileExpanded(
 		    tokenPtr[1].start - envPtr->source, envPtr->clNext);
 	}
 	TclEmitPush(objIdx, envPtr);
+    }
+
+    /*
+     * Possible adjust for L-command argument injection (see comment
+     * above).
+     */
+    if (adjust) {
+	++wordIdx;
     }
 
     /*
