@@ -202,9 +202,13 @@ getMsgv(char *msg_name, char **bkargs, char *prefix, char b, FILE *outf)
 				} else {
 					n = 1;
 				}
-				assert(n <= nLines(bkargs));
 				fputs(b, outf);
-				fputs(bkargs[n], outf);
+				if (n <= nLines(bkargs)) {
+					fputs(bkargs[n], outf);
+				} else {
+					// not enough arguments
+					fprintf(outf, "#BKARG#%d#", n);
+				}
 				b = p;
 			} while (p = strstr(b, "#BKARG#"));
 			fputs(b, outf);
