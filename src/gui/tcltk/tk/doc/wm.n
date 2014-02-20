@@ -5,8 +5,6 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-'\" RCS: @(#) $Id$
-'\" 
 .so man.macros
 .TH wm n 8.5 Tk "Tk Built-In Commands"
 .BS
@@ -61,6 +59,13 @@ values are as follows:
 All platforms support the following attributes (though X11 users
 should see the notes below):
 .TP
+\fB\-alpha\fR
+.
+Specifies the alpha transparency level of the toplevel. It accepts a value
+from \fB0.0\fR (fully transparent) to \fB1.0\fR (opaque).  Values outside that
+range will be constrained.  Where not supported, the \fB\-alpha\fR value
+remains at \fB1.0\fR.
+.TP
 \fB\-fullscreen\fR
 .
 Places the window in a mode that takes up the entire screen, has no
@@ -72,14 +77,6 @@ Windows, dock and menubar on OSX, general window decorations on X11).
 Specifies whether this is a topmost window (displays above all other windows).
 .PP
 On Windows, the following attributes may be set.
-.TP
-\fB\-alpha\fR
-.
-Specifies the alpha transparency level of the toplevel.
-It accepts a value from \fB0.0\fR (fully transparent) to \fB1.0\fR
-(opaque).  Values outside that range will be constrained.  This is
-supported on Windows 2000/XP+.  Where not supported, the \fB\-alpha\fR
-value remains at \fB1.0\fR.
 .TP
 \fB\-disabled\fR
 .
@@ -99,12 +96,6 @@ at \fB{}\fR.
 .PP
 On Mac OS X, the following attributes may be set.
 .TP
-\fB\-alpha\fR
-.
-Specifies the alpha transparency level of the window.
-It accepts a value from \fB0.0\fR (fully transparent) to \fB1.0\fR (opaque),
-values outside that range will be constrained.
-.TP
 \fB\-modified\fR
 .
 Specifies the modification state of the window (determines whether the
@@ -123,13 +114,93 @@ can be dragged and dropped in lieu of the file's finder icon).
 \fB\-transparent\fR
 .
 Makes the window content area transparent and turns off the window shadow. For
-the transparency to be effecive, the toplevel background needs to be set to a
+the transparency to be effective, the toplevel background needs to be set to a
 color with some alpha, e.g.
 .QW systemTransparent .
 .PP
 On X11, the following attributes may be set. These are not supported by all
 window managers, and will have no effect under older WMs.
 .\" See http://www.freedesktop.org/Standards/wm-spec
+.TP
+\fB\-type\fR
+.VS 8.6
+Requests that the window should be interpreted by the window manager as being
+of the specified type(s). This may cause the window to be decorated in a
+different way or otherwise managed differently, though exactly what happens is
+entirely up to the window manager. A list of types may be used, in order of
+preference. The following values are mapped to constants defined in the EWMH
+specification (using others is possible, but not advised):
+.RS
+.TP
+\fBdesktop\fR
+.
+indicates a desktop feature,
+.TP
+\fBdock\fR
+.
+indicates a dock/panel feature,
+.TP
+\fBtoolbar\fR
+.
+indicates a toolbar window that should be acting on behalf of another window,
+as indicated with \fBwm transient\fR,
+.TP
+\fBmenu\fR
+.
+indicates a torn-off menu that should be acting on behalf of another window,
+as indicated with \fBwm transient\fR,
+.TP
+\fButility\fR
+.
+indicates a utility window (e.g., palette or toolbox) that should be acting on
+behalf of another window, as indicated with \fBwm transient\fR,
+.TP
+\fBsplash\fR
+.
+indicates a splash screen, displayed during application start up,
+.TP
+\fBdialog\fR
+.
+indicates a general dialog window, that should be acting on behalf of another
+window, as indicated with \fBwm transient\fR,
+.TP
+\fBdropdown_menu\fR
+.
+indicates a menu summoned from a menu bar, which should usually also be set to
+be override-redirected (with \fBwm overrideredirect\fR),
+.TP
+\fBpopup_menu\fR
+.
+indicates a popup menu, which should usually also be set to be
+override-redirected (with \fBwm overrideredirect\fR),
+.TP
+\fBtooltip\fR
+.
+indicates a tooltip window, which should usually also be set to be
+override-redirected (with \fBwm overrideredirect\fR),
+.TP
+\fBnotification\fR
+.
+indicates a window that provides a background notification of some event,
+which should usually also be set to be override-redirected (with \fBwm
+overrideredirect\fR),
+.TP
+\fBcombo\fR
+.
+indicates the drop-down list of a combobox widget, which should usually also
+be set to be override-redirected (with \fBwm overrideredirect\fR),
+.TP
+\fBdnd\fR
+.
+indicates a window that represents something being dragged, which should
+usually also be set to be override-redirected (with
+\fBwm overrideredirect\fR),
+.TP
+\fBnormal\fR
+.
+indicates a window that has no special interpretation.
+.RE
+.VE 8.6
 .TP
 \fB\-zoomed\fR
 .
@@ -278,6 +349,15 @@ If \fInewGeometry\fR is specified as an empty string then any
 existing user-specified geometry for \fIwindow\fR is cancelled, and
 the window will revert to the size requested internally by its
 widgets.
+.PP
+Note that this is related to \fBwinfo geometry\fR, but not the same. That can
+only query the geometry, and always reflects Tk's current understanding of the
+actual size and location of \fIwindow\fR, whereas \fBwm geometry\fR allows
+both setting and querying of the \fIwindow manager\fR's understanding of the
+size and location of the window. This can vary significantly, for example to
+reflect the addition of decorative elements to \fIwindow\fR such as title
+bars, and window managers are not required to precisely follow the requests
+made through this command.
 .RE
 .TP
 \fBwm grid \fIwindow\fR ?\fIbaseWidth baseHeight widthInc heightInc\fR?
@@ -635,6 +715,9 @@ empty string if \fIwindow\fR is not currently a transient window.
 A transient window will mirror state changes in the master and
 inherit the state of the master when initially mapped. It is an
 error to attempt to make a window a transient of itself.
+The window manager may also decorate a transient window differently, removing
+some features normally present (e.g., minimize and maximize buttons) though
+this is entirely at the discretion of the window manager.
 .TP
 \fBwm withdraw \fIwindow\fR
 .

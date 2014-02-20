@@ -9,8 +9,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "default.h"
@@ -50,8 +48,6 @@ static int		GetIndex(Tcl_Interp *interp, TkSharedText *sharedPtr,
 static void		DupTextIndexInternalRep(Tcl_Obj *srcPtr,
 			    Tcl_Obj *copyPtr);
 static void		FreeTextIndexInternalRep(Tcl_Obj *listPtr);
-static int		SetTextIndexFromAny(Tcl_Interp *interp,
-			    Tcl_Obj *objPtr);
 static void		UpdateStringOfTextIndex(Tcl_Obj *objPtr);
 
 /*
@@ -66,7 +62,7 @@ static void		UpdateStringOfTextIndex(Tcl_Obj *objPtr);
 	((objPtr)->internalRep.twoPtrValue.ptr1 = (void *) (indexPtr))
 #define SET_INDEXEPOCH(objPtr, epoch) \
 	((objPtr)->internalRep.twoPtrValue.ptr2 = INT2PTR(epoch))
-
+
 /*
  * Define the 'textindex' object type, which Tk uses to represent indices in
  * text widgets internally.
@@ -77,7 +73,7 @@ const Tcl_ObjType tkTextIndexType = {
     FreeTextIndexInternalRep,	/* freeIntRepProc */
     DupTextIndexInternalRep,	/* dupIntRepProc */
     NULL,			/* updateStringProc */
-    SetTextIndexFromAny		/* setFromAnyProc */
+    NULL			/* setFromAnyProc */
 };
 
 static void
@@ -86,16 +82,18 @@ FreeTextIndexInternalRep(
 				 * free. */
 {
     TkTextIndex *indexPtr = GET_TEXTINDEX(indexObjPtr);
+
     if (indexPtr->textPtr != NULL) {
 	if (--indexPtr->textPtr->refCount == 0) {
 	    /*
 	     * The text widget has been deleted and we need to free it now.
 	     */
 
-	    ckfree((char *) (indexPtr->textPtr));
+	    ckfree(indexPtr->textPtr);
 	}
     }
-    ckfree((char *) indexPtr);
+    ckfree(indexPtr);
+    indexObjPtr->typePtr = NULL;
 }
 
 static void
@@ -106,7 +104,7 @@ DupTextIndexInternalRep(
     int epoch;
     TkTextIndex *dupIndexPtr, *indexPtr;
 
-    dupIndexPtr = (TkTextIndex *) ckalloc(sizeof(TkTextIndex));
+    dupIndexPtr = ckalloc(sizeof(TkTextIndex));
     indexPtr = GET_TEXTINDEX(srcPtr);
     epoch = GET_INDEXEPOCH(srcPtr);
 
@@ -121,7 +119,7 @@ DupTextIndexInternalRep(
     SET_INDEXEPOCH(copyPtr, epoch);
     copyPtr->typePtr = &tkTextIndexType;
 }
-
+
 /*
  * This will not be called except by TkTextNewIndexObj below. This is because
  * if a TkTextIndex is no longer valid, it is not possible to regenerate the
@@ -134,26 +132,15 @@ UpdateStringOfTextIndex(
 {
     char buffer[TK_POS_CHARS];
     register int len;
-
     const TkTextIndex *indexPtr = GET_TEXTINDEX(objPtr);
 
     len = TkTextPrintIndex(indexPtr->textPtr, indexPtr, buffer);
 
-    objPtr->bytes = ckalloc((unsigned) len + 1);
+    objPtr->bytes = ckalloc(len + 1);
     strcpy(objPtr->bytes, buffer);
     objPtr->length = len;
 }
-
-static int
-SetTextIndexFromAny(
-    Tcl_Interp *interp,		/* Used for error reporting if not NULL. */
-    Tcl_Obj *objPtr)		/* The object to convert. */
-{
-    Tcl_AppendResult(interp, "can't convert value to textindex except "
-	    "via TkTextGetIndexFromObj API", -1);
-    return TCL_ERROR;
-}
-
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -186,7 +173,7 @@ MakeObjIndex(
 				 * position. */
     const TkTextIndex *origPtr)	/* Pointer to index. */
 {
-    TkTextIndex *indexPtr = (TkTextIndex *) ckalloc(sizeof(TkTextIndex));
+    TkTextIndex *indexPtr = ckalloc(sizeof(TkTextIndex));
 
     indexPtr->tree = origPtr->tree;
     indexPtr->linePtr = origPtr->linePtr;
@@ -250,7 +237,7 @@ TkTextGetIndexFromObj(
 
     return MakeObjIndex((cache ? textPtr : NULL), objPtr, &index);
 }
-
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -295,7 +282,7 @@ TkTextNewIndexObj(
     UpdateStringOfTextIndex(retVal);
     return retVal;
 }
-
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -363,7 +350,7 @@ TkTextMakePixelIndex(
     }
     return TkTextMeasureDown(textPtr, indexPtr, pixelOffset);
 }
-
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -456,7 +443,7 @@ TkTextMakeByteIndex(
     }
     return indexPtr;
 }
-
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -551,7 +538,7 @@ TkTextMakeCharIndex(
     }
     return indexPtr;
 }
-
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -591,7 +578,7 @@ TkTextIndexToSeg(
     }
     return segPtr;
 }
-
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -624,7 +611,7 @@ TkTextSegToOffset(
     }
     return offset;
 }
-
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -653,7 +640,7 @@ TkTextGetObjIndex(
     return GetIndex(interp, NULL, textPtr, Tcl_GetString(idxObj), indexPtr,
 	    NULL);
 }
-
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -682,7 +669,7 @@ TkTextSharedGetObjIndex(
     return GetIndex(interp, sharedTextPtr, NULL, Tcl_GetString(idxObj),
 	    indexPtr, NULL);
 }
-
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -711,7 +698,7 @@ TkTextGetIndex(
 {
     return GetIndex(interp, NULL, textPtr, string, indexPtr, NULL);
 }
-
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -759,14 +746,24 @@ GetIndex(
 
     /*
      *---------------------------------------------------------------------
-     * Stage 1: check to see if the index consists of nothing but a mark name.
-     * We do this check now even though it's also done later, in order to
-     * allow mark names that include funny characters such as spaces or "+1c".
+     * Stage 1: check to see if the index consists of nothing but a mark
+     * name, an embedded window or an embedded image.  We do this check
+     * now even though it's also done later, in order to allow mark names,
+     * embedded window names or image names that include funny characters
+     * such as spaces or "+1c".
      *---------------------------------------------------------------------
      */
 
     if (TkTextMarkNameToIndex(textPtr, string, indexPtr) == TCL_OK) {
 	goto done;
+    }
+
+    if (TkTextWindowIndex(textPtr, string, indexPtr) != 0) {
+	return TCL_OK;
+    }
+
+    if (TkTextImageIndex(textPtr, string, indexPtr) != 0) {
+	return TCL_OK;
     }
 
     /*
@@ -831,13 +828,14 @@ GetIndex(
 	if (!TkBTreeCharTagged(&first, tagPtr) && !TkBTreeNextTag(&search)) {
 	    if (tagPtr == textPtr->selTagPtr) {
 		tagName = "sel";
-	    } else {
+	    } else if (hPtr != NULL) {
 		tagName = Tcl_GetHashKey(&sharedPtr->tagTable, hPtr);
 	    }
-	    Tcl_ResetResult(interp);
-	    Tcl_AppendResult(interp,
-		    "text doesn't contain any characters tagged with \"",
-		    tagName, "\"", NULL);
+	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		    "text doesn't contain any characters tagged with \"%s\"",
+		    tagName));
+	    Tcl_SetErrorCode(interp, "TK", "LOOKUP", "TEXT_INDEX", tagName,
+		    NULL);
 	    Tcl_DStringFree(&copy);
 	    return TCL_ERROR;
 	}
@@ -1000,11 +998,11 @@ GetIndex(
 
   error:
     Tcl_DStringFree(&copy);
-    Tcl_ResetResult(interp);
-    Tcl_AppendResult(interp, "bad text index \"", string, "\"", NULL);
+    Tcl_SetObjResult(interp, Tcl_ObjPrintf("bad text index \"%s\"", string));
+    Tcl_SetErrorCode(interp, "TK", "TEXT", "BAD_INDEX", NULL);
     return TCL_ERROR;
 }
-
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -1068,7 +1066,7 @@ TkTextPrintIndex(
     return sprintf(string, "%d.%d",
 	    TkBTreeLinesTo(textPtr, indexPtr->linePtr) + 1, charIndex);
 }
-
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -1121,7 +1119,7 @@ TkTextIndexCmp(
     }
     return 0;
 }
-
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -1365,7 +1363,7 @@ ForwBack(
     }
     return p;
 }
-
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -1435,7 +1433,7 @@ TkTextIndexForwBytes(
 	dstPtr->linePtr = linePtr;
     }
 }
-
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -1483,7 +1481,7 @@ TkTextIndexForwChars(
 	return;
     }
     if (checkElided) {
-	infoPtr = (TkTextElideInfo *) ckalloc(sizeof(TkTextElideInfo));
+	infoPtr = ckalloc(sizeof(TkTextElideInfo));
 	elide = TkTextIsElided(textPtr, srcPtr, infoPtr);
     }
 
@@ -1611,10 +1609,10 @@ TkTextIndexForwChars(
   forwardCharDone:
     if (infoPtr != NULL) {
 	TkTextFreeElideInfo(infoPtr);
-	ckfree((char *) infoPtr);
+	ckfree(infoPtr);
     }
 }
-
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -1667,7 +1665,7 @@ TkTextIndexCount(
     seg2Ptr = TkTextIndexToSeg(indexPtr2, &maxBytes);
 
     if (checkElided) {
-	infoPtr = (TkTextElideInfo *) ckalloc(sizeof(TkTextElideInfo));
+	infoPtr = ckalloc(sizeof(TkTextElideInfo));
 	elide = TkTextIsElided(textPtr, indexPtr1, infoPtr);
     }
 
@@ -1807,11 +1805,11 @@ TkTextIndexCount(
   countDone:
     if (infoPtr != NULL) {
 	TkTextFreeElideInfo(infoPtr);
-	ckfree((char *) infoPtr);
+	ckfree(infoPtr);
     }
     return count;
 }
-
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -1879,7 +1877,7 @@ TkTextIndexBackBytes(
     }
     return 0;
 }
-
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -1925,7 +1923,7 @@ TkTextIndexBackChars(
 	return;
     }
     if (checkElided) {
-	infoPtr = (TkTextElideInfo *) ckalloc(sizeof(TkTextElideInfo));
+	infoPtr = ckalloc(sizeof(TkTextElideInfo));
 	elide = TkTextIsElided(textPtr, srcPtr, infoPtr);
     }
 
@@ -2091,10 +2089,10 @@ TkTextIndexBackChars(
   backwardCharDone:
     if (infoPtr != NULL) {
 	TkTextFreeElideInfo(infoPtr);
-	ckfree((char *) infoPtr);
+	ckfree(infoPtr);
     }
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -2298,7 +2296,7 @@ StartEnd(
   done:
     return p;
 }
-
+
 /*
  * Local Variables:
  * mode: c

@@ -8,8 +8,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #ifndef _TKTEXT
@@ -21,11 +19,6 @@
 
 #ifndef _TKUNDO
 #include "tkUndo.h"
-#endif
-
-#ifdef BUILD_tk
-# undef TCL_STORAGE_CLASS
-# define TCL_STORAGE_CLASS DLLEXPORT
 #endif
 
 /*
@@ -175,7 +168,7 @@ typedef struct TkTextSegment {
     int size;			/* Size of this segment (# of bytes of index
 				 * space it occupies). */
     union {
-	char chars[4];		/* Characters that make up character info.
+	char chars[1];		/* Characters that make up character info.
 				 * Actual length varies to hold as many
 				 * characters as needed.*/
 	TkTextToggle toggle;	/* Information about tag toggle. */
@@ -489,7 +482,7 @@ typedef struct TkTextTabArray {
 } TkTextTabArray;
 
 /*
- * Enumeration definining the edit modes of the widget.
+ * Enumeration defining the edit modes of the widget.
  */
 
 typedef enum {
@@ -498,6 +491,19 @@ typedef enum {
     TK_TEXT_EDIT_REPLACE,	/* replace mode */
     TK_TEXT_EDIT_OTHER		/* none of the above */
 } TkTextEditMode;
+
+/*
+ * Enumeration defining the ways in which a text widget may be modified (for
+ * undo/redo handling).
+ */
+
+typedef enum {
+    TK_TEXT_DIRTY_NORMAL,	/* Normal behavior. */
+    TK_TEXT_DIRTY_UNDO,		/* Reverting a compound action. */
+    TK_TEXT_DIRTY_REDO,		/* Reapplying a compound action. */
+    TK_TEXT_DIRTY_FIXED		/* Forced to be dirty; can't be undone/redone
+				 * by normal activity. */
+} TkTextDirtyMode;
 
 /*
  * The following enum is used to define a type for the -state option of the
@@ -544,15 +550,16 @@ typedef struct TkSharedText {
 				 * Each "object" used for this table is the
 				 * name of a tag. */
     int stateEpoch;		/* This is incremented each time the B-tree's
-				 * contents change structurally, and means
-				 * that any cached TkTextIndex objects are no
-				 * longer valid. */
+				 * contents change structurally, or when the
+				 * start/end limits change, and means that any
+				 * cached TkTextIndex objects are no longer
+				 * valid. */
 
     /*
-     * Information related to the undo/redo functonality
+     * Information related to the undo/redo functionality.
      */
 
-    TkUndoRedoStack *undoStack; /* The undo/redo stack. */
+    TkUndoRedoStack *undoStack;	/* The undo/redo stack. */
     int undo;			/* Non-zero means the undo/redo behaviour is
 				 * enabled. */
     int maxUndo;		/* The maximum depth of the undo stack
@@ -560,14 +567,12 @@ typedef struct TkSharedText {
 				 * statements. */
     int autoSeparators;		/* Non-zero means the separators will be
 				 * inserted automatically. */
-    int modifiedSet;		/* Flag indicating that the 'dirtyness' of
-				 * the text widget has been explicitly set. */
     int isDirty;		/* Flag indicating the 'dirtyness' of the
 				 * text widget. If the flag is not zero,
 				 * unsaved modifications have been applied to
 				 * the text widget. */
-    int isDirtyIncrement;	/* Amount with which the isDirty flag is
-				 * incremented every edit action. */
+    TkTextDirtyMode dirtyMode;	/* The nature of the dirtyness characterized
+				 * by the isDirty flag. */
     TkTextEditMode lastEditMode;/* Keeps track of what the last edit mode
 				 * was. */
 
@@ -953,6 +958,8 @@ MODULE_SCOPE const Tk_SegType tkTextLeftMarkType;
 MODULE_SCOPE const Tk_SegType tkTextRightMarkType;
 MODULE_SCOPE const Tk_SegType tkTextToggleOnType;
 MODULE_SCOPE const Tk_SegType tkTextToggleOffType;
+MODULE_SCOPE const Tk_SegType tkTextEmbWindowType;
+MODULE_SCOPE const Tk_SegType tkTextEmbImageType;
 
 /*
  * Convenience macros for use by B-tree clients which want to access pixel
@@ -1134,7 +1141,12 @@ MODULE_SCOPE int	TkTextYviewCmd(TkText *textPtr, Tcl_Interp *interp,
 MODULE_SCOPE void	TkTextWinFreeClient(Tcl_HashEntry *hPtr,
 			    TkTextEmbWindowClient *client);
 
-# undef TCL_STORAGE_CLASS
-# define TCL_STORAGE_CLASS DLLIMPORT
-
 #endif /* _TKTEXT */
+
+/*
+ * Local Variables:
+ * mode: c
+ * c-basic-offset: 4
+ * fill-column: 78
+ * End:
+ */

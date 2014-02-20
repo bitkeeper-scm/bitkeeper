@@ -1,6 +1,4 @@
 #
-# $Id$
-#
 # Settings for 'winnative' theme.
 #
 
@@ -41,7 +39,13 @@ namespace eval ttk::theme::winnative {
 	ttk::style map TCombobox \
 	    -selectbackground [list !focus SystemWindow] \
 	    -selectforeground [list !focus SystemWindowText] \
-	    -foreground	[list {readonly focus} SystemHighlightText] \
+	    -fieldbackground [list \
+	    	readonly SystemButtonFace \
+		disabled SystemButtonFace] \
+	    -foreground	[list \
+		disabled		SystemGrayText \
+	    	{readonly focus}	SystemHighlightText \
+	    ] \
 	    -focusfill	[list {readonly focus} SystemHighlight] \
 	    ;
 

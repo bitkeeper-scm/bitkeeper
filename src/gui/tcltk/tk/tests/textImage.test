@@ -6,8 +6,6 @@
 #
 # Copyright (c) 1998-1999 by Scriptics Corporation.
 # All rights reserved.
-#
-# RCS: @(#) $Id$
 
 package require tcltest 2.2
 namespace import ::tcltest::*
@@ -161,13 +159,13 @@ test textImage-1.13 {names argument checking} -setup {
     .t image create insert -image small
     lappend result [.t image names]
     .t image create insert -image small
-    lappend result [.t image names]
+    lappend result [lsort [.t image names]]
     .t image create insert -image small -name little
-    lappend result [.t image names]
+    lappend result [lsort [.t image names]]
 } -cleanup {
     destroy .t
     image delete small
-} -result {{} small {small#1 small} {small#1 small little}}
+} -result {{} small {small small#1} {little small small#1}}
 
 test textImage-1.14 {basic argument checking} -setup {
     destroy .t

@@ -4,16 +4,11 @@
 # Copyright (c) 1995 Sun Microsystems, Inc.
 # Copyright (c) 1998-1999 by Scriptics Corporation.
 # All rights reserved.
-#
-# RCS: @(#) $Id$
 
 package require tcltest 2.2
 namespace import ::tcltest::*
 tcltest::configure {*}$argv
 tcltest::loadTestedCommands
-testConstraint unthreaded [expr {
-    (![info exist tcl_platform(threaded)] || !$tcl_platform(threaded))
-}]
 namespace import ::tk::test::loadTkCommand
 update
 
@@ -194,9 +189,8 @@ test window-2.8 {Tk_DestroyWindow, cleanup half dead windows at exit} -constrain
     list $error $msg
 } -result {0 {}}
 
-# window-2.9 deadlocks threaded Tk [Bug 1715716]
 test window-2.9 {Tk_DestroyWindow, Destroy bindings evaluated after exit} -constraints {
-    unixOrWin unthreaded
+    unixOrWin
 } -body {
     set code [loadTkCommand]
     append code {

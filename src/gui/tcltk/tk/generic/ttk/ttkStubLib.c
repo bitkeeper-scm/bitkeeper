@@ -1,9 +1,4 @@
 /*
- * $Id$
- * SOURCE: tk/generic/tkStubLib.c, version 1.9 2004/03/17
- */
-
-/*
  * We need to ensure that we use the tcl stub macros so that this file
  * contains no references to any of the tcl stub functions.
  */
@@ -42,9 +37,9 @@ TtkInitializeStubs(
     const char *packageName = "Ttk";
     const char *errMsg = NULL;
     ClientData pkgClientData = NULL;
-    const char *actualVersion= Tcl_PkgRequireEx(
+    const char *actualVersion = Tcl_PkgRequireEx(
 	interp, packageName, version, exact, &pkgClientData);
-    TtkStubs *stubsPtr = pkgClientData;
+    const TtkStubs *stubsPtr = pkgClientData;
 
     if (!actualVersion) {
 	return NULL;

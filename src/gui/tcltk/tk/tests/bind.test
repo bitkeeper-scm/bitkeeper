@@ -6,8 +6,6 @@
 # Copyright (c) 1994-1995 Sun Microsystems, Inc.
 # Copyright (c) 1998-1999 by Scriptics Corporation.
 # All rights reserved.
-#
-# RCS: @(#) $Id$
 
 package require tcltest 2.2
 namespace import ::tcltest::*
@@ -299,55 +297,12 @@ test bind-6.1 {Tk_DeleteBindTable procedure} -body {
 } -cleanup {
     destroy .t.c
 } -result {}
-test bind-6.2 {Tk_DeleteBindTable procedure: pending bindings deleted later} -constraints {
-    testcbind
-} -body {
-    catch {interp delete foo}
-    interp create foo
-    foo eval {
-        load {} Tk
-        tk useinputmethods 0
-        load {} Tktest
-        wm geometry . +0+0
-        frame .g -width 50 -height 50
-        bindtags .g {a b c d}
-        pack .g
-        update
-        set x {}
-        testcbind a <1> "lappend x a1; destroy ." "lappend x bye.a1"
-        bind b <1> "lappend x b1"
-        testcbind c <1> "lappend x c1" "lappend x bye.c1"
-        testcbind c <2> "lappend x all2" "lappend x bye.all2"
-        event generate .g <1>
-    }
-    set x [foo eval set x]
-    return $x
-} -cleanup {
-    interp delete foo
-    bind a <1> {}
-    bind b <1> {}
-    bind c <1> {}
-    bind c <2> {}
-    destroy .g
-} -result {a1 bye.all2 bye.a1 b1 bye.c1}
-
 test bind-7.1 {Tk_CreateBinding procedure: bad binding} -body {
     canvas .t.c
     .t.c bind foo <
 } -cleanup {
     destroy .t.c
 } -returnCodes error -result {no event type or button # or keysym}
-test bind-7.2 {Tk_CreateBinding procedure: replace existing C binding} -constraints {
-    testcbind
-} -body {
-    frame .t.f
-    set x {}
-    testcbind .t.f <1> "xyz" "lappend x bye.1"
-    bind .t.f <1> "abc"
-    return $x
-} -cleanup {
-    destroy .t.f
-} -result {bye.1}
 test bind-7.3 {Tk_CreateBinding procedure: append} -body {
     canvas .t.c
     .t.c bind foo <1> "button 1"
@@ -365,52 +320,9 @@ test bind-7.4 {Tk_CreateBinding procedure: append to non-existing} -body {
     destroy .t.c
 } -result {button 1}
 
-test bind-8.1 {TkCreateBindingProcedure: error} -constraints {
-    testcbind
-} -body {
-    testcbind . <xyz> "xyz"
+test bind-8.1 {Tk_CreateBinding: error} -body {
+    bind . <xyz> "xyz"
 } -returnCodes error -result {bad event type or keysym "xyz"}
-test bind-8.2 {TkCreateBindingProcedure: new binding} -constraints {
-    testcbind
-} -setup {
-    frame .t.f
-    set x {}
-} -body {
-    testcbind .t.f <1> "lappend x 1" "lappend x bye.1"
-    event generate .t.f <1>
-    destroy .t.f
-    return $x
-} -result {bye.1}
-test bind-8.3 {TkCreateBindingProcedure: replace existing} -constraints {
-    testcbind
-} -setup {
-    frame .t.f
-    pack .t.f
-    set x {}
-} -body {
-    testcbind .t.f <1> "lappend x old1" "lappend x bye.old1"
-    testcbind .t.f <1> "lappend x new1" "lappend x bye.new1"
-    return $x
-} -cleanup {
-    destroy .t.f
-} -result {bye.old1}
-test bind-8.4 {TkCreateBindingProcedure: replace existing while pending} -constraints {
-    testcbind
-} -setup {
-    frame .t.f
-    pack .t.f
-    update    
-    set x {}
-} -body {
-    testcbind .t.f <1> "lappend x .t.f; testcbind Frame <1> {lappend x Frame}"
-    testcbind Frame <1> "lappend x never"
-    event generate .t.f <1>
-    bind .t.f <1> {}
-    return $x
-} -cleanup {
-    destroy .t.f
-    bind Frame <1> {}
-} -result {.t.f Frame}
 
 test bind-9.1 {Tk_DeleteBinding procedure} -body {
     frame .t.f -class Test -width 150 -height 100
@@ -448,28 +360,6 @@ test bind-9.3 {Tk_DeleteBinding procedure} -setup {
 } -cleanup {
     destroy .t.f
 } -result {{<Button-1> <Double-Alt-Button-1> <Meta-Button-1>} {<Button-1> <Meta-Button-1>} <Meta-Button-1> {}}
-test bind-9.4 {Tk_DeleteBinding procedure: pending bindings delete later} -constraints {
-    testcbind
-} -setup {
-    frame .t.f
-    pack .t.f
-    update
-    set x {}
-} -body {
-    bindtags .t.f {a b c}
-    testcbind a <1> {lappend x a1; bind c <1> {}; bind c <2> {}} {lappend x bye.a1}
-    bind b <1> {lappend x b1}
-    testcbind c <1> {lappend x c1} {lappend x bye.c1}
-    testcbind c <2> {lappend x c2} {lappend x bye.c2}
-    event generate .t.f <1>
-    bind a <1> {}
-    bind b <1> {}
-    return $x
-} -cleanup {
-    destroy .t.f
-    bind c <1> {}
-    bind c <2> {}
-} -result {a1 bye.c2 b1 bye.c1 bye.a1}
 
 test bind-10.1 {Tk_GetBinding procedure} -body {
     canvas .t.c
@@ -484,16 +374,6 @@ test bind-10.2 {Tk_GetBinding procedure} -body {
 } -cleanup {
     destroy .t.c
 } -result {Test}
-test bind-10.3 {Tk_GetBinding procedure: C binding} -constraints {
-    testcbind
-} -body {
-    frame .t.f
-    testcbind .t.f <1> "foo"
-    list [bind .t.f] [bind .t.f <1>]
-} -cleanup {
-    destroy .t.f
-} -result {<Button-1> {}}
-
 
 test bind-11.1 {Tk_GetAllBindings procedure} -body {
     frame .t.f 
@@ -535,23 +415,6 @@ test bind-12.2 {Tk_DeleteAllBindings procedure} -body {
     }
     destroy .t.f
 } -result {}
-test bind-12.3 {Tk_DeleteAllBindings procedure: pending bindings deleted later} -constraints {
-    testcbind
-} -setup {
-    frame .t.f
-    pack .t.f
-    update
-    set x {}
-} -body {
-    testcbind .t.f <1> {lappend x before; event generate .t.f <2>; lappend x after} {lappend x bye.f1}
-    testcbind .t.f <2> {destroy .t.f} {lappend x bye.f2}
-    bind .t.f <Destroy> {lappend x fDestroy}
-    testcbind .t.f <3> {foo} {lappend x bye.f3}
-    event generate .t.f <1>
-    return $x
-} -cleanup {
-    destroy .t.f
-} -result {before fDestroy bye.f3 bye.f2 after bye.f1}
 
 test bind-13.1 {Tk_BindEvent procedure} -setup {
     frame .t.f -class Test -width 150 -height 100
@@ -1056,9 +919,8 @@ test bind-13.32 {Tk_BindEvent procedure: match} -setup {
 } -cleanup {
     destroy .t.f
 } -result {Button-2}
-test bind-13.33 {Tk_BindEvent procedure: many C bindings cause realloc} -constraints {
-    testcbind
-} -setup {
+test bind-13.33 {Tk_BindEvent procedure: many C bindings cause realloc} -setup {
+    # this test might not be useful anymore [#3009998]
     frame .t.f -class Test -width 150 -height 100
     pack .t.f
     focus -force .t.f
@@ -1067,7 +929,7 @@ test bind-13.33 {Tk_BindEvent procedure: many C bindings cause realloc} -constra
 } -body {
     bindtags .t.f {a b c d e f g h i j k l m n o p}
         foreach p [bindtags .t.f] {
-        testcbind $p <1> "lappend x $p"
+        bind $p <1> "lappend x $p"
     }
     event generate .t.f <1>
     return $x
@@ -1090,66 +952,27 @@ test bind-13.34 {Tk_BindEvent procedure: multiple tags} -setup {
     destroy .t.f
     bind Test <Button-2> {}
 } -result {.t.f Button}
-test bind-13.35 {Tk_BindEvent procedure: execute C binding} -constraints {
-    testcbind
-} -setup {
+test bind-13.35 {Tk_BindEvent procedure: execute binding} -setup {
     frame .t.f -class Test -width 150 -height 100
     pack .t.f
     focus -force .t.f
     update
     set x {}
 } -body {
-    testcbind .t.f <1> {lappend x 1}
+    bind .t.f <1> {lappend x 1}
     event generate .t.f <1>
     return $x
 } -cleanup {
     destroy .t.f
 } -result {1}
-test bind-13.36 {Tk_BindEvent procedure: pending list marked deleted} -constraints {
-    testcbind
-} -setup {
+test bind-13.38 {Tk_BindEvent procedure: binding gets to run} -setup {
     frame .t.f -class Test -width 150 -height 100
     pack .t.f
     focus -force .t.f
     update
     set x {}
 } -body {
-    testcbind Test <1> {lappend x Test} {lappend x Deleted}
-    bind .t.f <1> {lappend x .t.f; destroy .t.f}
-    event generate .t.f <1>
-    set y [list $x [bind Test]]
-    return $y
-} -cleanup {
-    destroy .t.f
-    bind Test <1> {}
-} -result {.t.f <Button-1>}
-test bind-13.37 {Tk_BindEvent procedure: C binding marked deleted} -constraints {
-    testcbind
-} -setup {
-    frame .t.f -class Test -width 150 -height 100
-    pack .t.f
-    focus -force .t.f
-    update
-    set x {}
-} -body {
-    testcbind Test <1> {lappend x Test} {lappend x Deleted}
-    bind .t.f <1> {lappend x .t.f; bind Test <1> {}; lappend x after}
-    event generate .t.f <1>
-    return $x
-} -cleanup {
-    destroy .t.f
-    bind Test <1> {}
-} -result {.t.f after Deleted}
-test bind-13.38 {Tk_BindEvent procedure: C binding gets to run} -constraints {
-    testcbind
-} -setup {
-    frame .t.f -class Test -width 150 -height 100
-    pack .t.f
-    focus -force .t.f
-    update
-    set x {}
-} -body {
-    testcbind Test <1> {lappend x Test}
+    bind Test <1> {lappend x Test}
     bind .t.f <1> {lappend x .t.f}
     event generate .t.f <1>
     return $x
@@ -1157,46 +980,6 @@ test bind-13.38 {Tk_BindEvent procedure: C binding gets to run} -constraints {
     destroy .t.f
     bind Test <1> {}
 } -result {.t.f Test}
-test bind-13.39 {Tk_BindEvent procedure: C binding deleted, refcount == 0} -constraints {
-    testcbind
-} -setup {
-    frame .t.f -class Test -width 150 -height 100
-    pack .t.f
-    focus -force .t.f
-    update
-    set x {}
-} -body {
-    testcbind .t.f <1> {lappend x hi; bind .t.f <1> {}} {lappend x bye}
-    event generate .t.f <1>
-    return $x
-} -cleanup {
-    destroy .t.f
-} -result {hi bye}
-test bind-13.40 {Tk_BindEvent procedure: C binding deleted, refcount != 0} -constraints {
-    testcbind
-} -setup {
-    frame .t.f -class Test -width 150 -height 100
-    pack .t.f
-    focus -force .t.f
-    update
-    set x {}
-} -body {
-    testcbind .t.f <1> {
-        lappend x before$n
-        if {$n==0} {
-            bind .t.f <1> {}
-        } else {
-            set n [expr $n-1]
-            event generate .t.f <1>
-        }
-        lappend x after$n
-    } {lappend x Deleted}
-    set n 3
-    event generate .t.f <1>
-    return $x
-} -cleanup {
-    destroy .t.f
-} -result {before3 before2 before1 before0 after0 after0 after0 after0 Deleted}
 test bind-13.41 {Tk_BindEvent procedure: continue in script} -setup {
     frame .t.f -class Test -width 150 -height 100
     pack .t.f
@@ -1206,23 +989,6 @@ test bind-13.41 {Tk_BindEvent procedure: continue in script} -setup {
 } -body {
     bind .t.f <Button-2> {lappend x b1; continue; lappend x b2}
     bind Test <Button-2> {lappend x B1; continue; lappend x B2}
-    event generate .t.f <Button-2>
-    return $x
-} -cleanup {
-    destroy .t.f
-    bind Test <Button-2> {}
-} -result {b1 B1}
-test bind-13.42 {Tk_BindEvent procedure: continue in script} -constraints {
-    testcbind
-} -setup {
-    frame .t.f -class Test -width 150 -height 100
-    pack .t.f
-    focus -force .t.f
-    update
-    set x {}
-} -body {
-    testcbind .t.f <Button-2> {lappend x b1; continue; lappend x b2}
-    testcbind Test <Button-2> {lappend x B1; continue; lappend x B2}
     event generate .t.f <Button-2>
     return $x
 } -cleanup {
@@ -1244,25 +1010,6 @@ test bind-13.43 {Tk_BindEvent procedure: break in script} -setup {
     destroy .t.f
     bind Test <Button-2> {}
 } -result  {b1}
-test bind-13.44 {Tk_BindEvent procedure: break in script} -constraints {
-    testcbind
-} -setup {
-    frame .t.f -class Test -width 150 -height 100
-    pack .t.f
-    focus -force .t.f
-    update
-    set x {}
-} -body {
-    testcbind .t.f <Button-2> {lappend x b1; break; lappend x b2}
-    testcbind Test <Button-2> {lappend x B1; break; lappend x B2}
-    event generate .t.f <Button-2>
-    return $x
-} -cleanup {
-    destroy .t.f
-    bind Test <Button-2> {}
-} -result {b1}
-
-
 test bind-13.45 {Tk_BindEvent procedure: error in script} -setup {
     proc bgerror msg {
         global x 
@@ -1284,91 +1031,7 @@ test bind-13.45 {Tk_BindEvent procedure: error in script} -setup {
     bind Test <Button-2> {}
     proc bgerror args {}
 } -result {b1 {invalid command name "blap"}}
-test bind-13.46 {Tk_BindEvent procedure: error in script} -constraints {
-    testcbind
-} -setup {
-    proc bgerror msg {
-        global x 
-        lappend x $msg
-    }
-    frame .t.f -class Test -width 150 -height 100
-    pack .t.f
-    focus -force .t.f
-    update
-    set x {}
-} -body {
-    testcbind .t.f <Button-2> {lappend x b1; blap}
-    testcbind Test <Button-2> {lappend x B1}
-    event generate .t.f <Button-2>
-    update
-    return $x
-} -cleanup {
-    destroy .t.f
-    bind Test <Button-2> {}
-    proc bgerror args {}
-} -result {b1 {invalid command name "blap"}}
 
-test bind-14.1 {TkBindDeadWindow: no C bindings pending} -constraints {
-    testcbind
-} -setup {
-    frame .t.f -class Test -width 150 -height 100
-    pack .t.f
-    focus -force .t.f
-    update
-    set x {}
-} -body {
-    bind .t.f <1> x
-    testcbind .t.f <2> y
-    destroy .t.f
-} -cleanup {
-    destroy .t.f
-} -result {}
-test bind-14.2 {TkBindDeadWindow: is called after <Destroy>} -constraints {
-    testcbind
-} -setup {
-    frame .t.f -class Test -width 150 -height 100
-    pack .t.f
-    focus -force .t.f
-    update
-    set x {}
-} -body {
-    testcbind .t.f <Destroy> "lappend x .t.f"
-    testcbind Test <Destroy> "lappend x Test"
-    set x {}
-    destroy .t.f
-    bind Test <Destroy> {}
-    set x
-} -result {.t.f Test}
-test bind-14.3 {TkBindDeadWindow: pending C bindings} -constraints {
-    testcbind
-} -setup {
-    frame .t.f -class Test -width 150 -height 100
-    pack .t.f
-    focus -force .t.f
-    update
-    set x {}
-} -body {
-    bindtags .t.f {a b c d}
-    testcbind a <1> "lappend x a1" "lappend x bye.a1"
-    testcbind b <1> "destroy .t.f; lappend x b1" "lappend x bye.t1"
-    testcbind c <1> "lappend x c1" "lappend x bye.c1"
-    testcbind d <1> "lappend x d1" "lappend x bye.d1"
-    bind a <2> "event generate .t.f <1>"
-    testcbind b <2> "lappend x b2" "lappend x bye.t2"
-    testcbind c <2> "lappend x c2" "lappend x bye.d2"
-    bind d <2> "lappend x d2"
-    testcbind a <3> "event generate .t.f <2>"
-    event generate .t.f <3>
-    return $x
-} -cleanup {
-    destroy .t.f
-    foreach tag {a b c d} {
-        foreach event {<1> <2> <3>} {
-            bind $tag $event {}
-        }
-    }
-} -result {a1 b1 d2}
-    
 test bind-15.1 {MatchPatterns procedure, ignoring type mismatches} -setup {
     frame .t.f -class Test -width 150 -height 100
     pack .t.f

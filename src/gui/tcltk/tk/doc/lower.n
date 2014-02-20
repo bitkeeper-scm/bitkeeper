@@ -5,8 +5,6 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-'\" RCS: @(#) $Id$
-'\" 
 .so man.macros
 .TH lower n 3.3 Tk "Tk Built-In Commands"
 .BS
@@ -29,6 +27,10 @@ In this case the \fBlower\fR command will insert
 \fIwindow\fR into the stacking order just below \fIbelowThis\fR
 (or the ancestor of \fIbelowThis\fR that is a sibling of \fIwindow\fR);
 this could end up either raising or lowering \fIwindow\fR.
+.PP
+All \fBtoplevel\fR windows may be restacked with respect to each
+other, whatever their relative path names, but the window manager is
+not obligated to strictly honor requests to restack.
 .SH "SEE ALSO"
 raise
 .SH KEYWORDS

@@ -5,8 +5,6 @@
 # Copyright (c) 1998 Sun Microsystems, Inc.
 # Copyright (c) 1998-1999 by Scriptics Corporation.
 # All rights reserved.
-#
-# RCS: @(#) $Id$
 
 package require tcltest 2.2
 namespace import ::tcltest::*
@@ -87,11 +85,11 @@ test bitmap-3.1 {Tk_FreeBitmapFromObj - reference counts} -constraints {
 test bitmap-4.1 {FreeBitmapObjProc} -constraints {
     testbitmap
 } -body {
-    set x [format questhead]
+    set x [join questhead]
     button .b -bitmap $x
-    set y [format questhead]
+    set y [join questhead]
     .b configure -bitmap $y
-    set z [format questhead]
+    set z [join questhead]
     .b configure -bitmap $z
     set result {}
     lappend result [testbitmap questhead]

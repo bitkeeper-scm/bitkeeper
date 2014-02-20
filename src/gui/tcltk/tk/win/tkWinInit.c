@@ -8,8 +8,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tkWinInt.h"
@@ -72,7 +70,7 @@ TkpGetAppName(
     int argc, namelength;
     const char **argv = NULL, *name, *p;
 
-    name = Tcl_GetVar(interp, "argv0", TCL_GLOBAL_ONLY);
+    name = Tcl_GetVar2(interp, "argv0", NULL, TCL_GLOBAL_ONLY);
     namelength = -1;
     if (name != NULL) {
 	Tcl_SplitPath(name, &argc, &argv);
@@ -92,7 +90,7 @@ TkpGetAppName(
     }
     Tcl_DStringAppend(namePtr, name, namelength);
     if (argv != NULL) {
-	ckfree((char *)argv);
+	ckfree(argv);
     }
 }
 
@@ -118,27 +116,46 @@ TkpDisplayWarning(
     const char *msg,		/* Message to be displayed. */
     const char *title)		/* Title of warning. */
 {
-    Tcl_DString msgString, titleString;
-    Tcl_Encoding unicodeEncoding = TkWinGetUnicodeEncoding();
+#define TK_MAX_WARN_LEN 1024
+    WCHAR titleString[TK_MAX_WARN_LEN];
+    WCHAR *msgString; /* points to titleString, just after title, leaving space for ": " */
+    int len; /* size of title, including terminating NULL */
 
+    /* If running on Cygwin and we have a stderr channel, use it. */
+#if !defined(STATIC_BUILD)
+	if (tclStubsPtr->reserved9) {
+	Tcl_Channel errChannel = Tcl_GetStdChannel(TCL_STDERR);
+	if (errChannel) {
+	    Tcl_WriteChars(errChannel, title, -1);
+	    Tcl_WriteChars(errChannel, ": ", 2);
+	    Tcl_WriteChars(errChannel, msg, -1);
+	    Tcl_WriteChars(errChannel, "\n", 1);
+	    return;
+	}
+    }
+#endif /* !STATIC_BUILD */
+
+    len = MultiByteToWideChar(CP_UTF8, 0, title, -1, titleString, TK_MAX_WARN_LEN);
+    msgString = &titleString[len + 1];
+    titleString[TK_MAX_WARN_LEN - 1] = L'\0';
+    MultiByteToWideChar(CP_UTF8, 0, msg, -1, msgString, (TK_MAX_WARN_LEN - 1) - len);
     /*
      * Truncate MessageBox string if it is too long to not overflow the screen
      * and cause possible oversized window error.
      */
-
-#define TK_MAX_WARN_LEN (1024 * sizeof(WCHAR))
-    Tcl_UtfToExternalDString(unicodeEncoding, msg, -1, &msgString);
-    Tcl_UtfToExternalDString(unicodeEncoding, title, -1, &titleString);
-    if (Tcl_DStringLength(&msgString) > TK_MAX_WARN_LEN) {
-	Tcl_DStringSetLength(&msgString, TK_MAX_WARN_LEN);
-	Tcl_DStringAppend(&msgString, (char *) L" ...", 4 * sizeof(WCHAR));
+    if (titleString[TK_MAX_WARN_LEN - 1] != L'\0') {
+	memcpy(titleString + (TK_MAX_WARN_LEN - 5), L" ...", 5 * sizeof(WCHAR));
     }
-    MessageBoxW(NULL, (WCHAR *) Tcl_DStringValue(&msgString),
-	    (WCHAR *) Tcl_DStringValue(&titleString),
-	    MB_OK | MB_ICONEXCLAMATION | MB_SYSTEMMODAL
-	    | MB_SETFOREGROUND | MB_TOPMOST);
-    Tcl_DStringFree(&msgString);
-    Tcl_DStringFree(&titleString);
+    if (IsDebuggerPresent()) {
+	titleString[len - 1] = L':';
+	titleString[len] = L' ';
+	OutputDebugStringW(titleString);
+    } else {
+	titleString[len - 1] = L'\0';
+	MessageBoxW(NULL, msgString, titleString,
+		MB_OK | MB_ICONEXCLAMATION | MB_SYSTEMMODAL
+		| MB_SETFOREGROUND | MB_TOPMOST);
+    }
 }
 
 /*

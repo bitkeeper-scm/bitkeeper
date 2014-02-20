@@ -9,8 +9,6 @@
 # All rights reserved.
 #
 # Author: Paul Mackerras (paulus@cs.anu.edu.au)
-#
-# RCS: @(#) $Id$
 
 package require tcltest 2.2
 namespace import ::tcltest::*
@@ -1114,6 +1112,45 @@ test imgPhoto-16.1 {copying to self doesn't access freed memory} -setup {
 } -cleanup {
     image delete $i
 } -result {}
+
+# Check that we can guess our supported output formats [Bug 2983824]
+test imgPhoto-17.1 {photo write: format guessing from filename} -setup {
+    set i [image create photo -width 3 -height 3]
+} -body {
+    set f [makeFile {} test.png]
+    $i write $f
+    set fd [open $f]
+    seek $fd 1
+    read $fd 3
+} -cleanup {
+    catch {close $fd}
+    image delete $i
+    catch {removeFile $f}
+} -result PNG
+test imgPhoto-17.2 {photo write: format guessing from filename} -setup {
+    set i [image create photo -width 3 -height 3]
+} -body {
+    set f [makeFile {} test.gif]
+    $i write $f
+    set fd [open $f]
+    read $fd 3
+} -cleanup {
+    catch {close $fd}
+    image delete $i
+    catch {removeFile $f}
+} -result GIF
+test imgPhoto-17.3 {photo write: format guessing from filename} -setup {
+    set i [image create photo -width 3 -height 3]
+} -body {
+    set f [makeFile {} test.ppm]
+    $i write $f
+    set fd [open $f]
+    read $fd 3
+} -cleanup {
+    catch {close $fd}
+    image delete $i
+    catch {removeFile $f}
+} -result "P6\n"
 
 # ----------------------------------------------------------------------
 

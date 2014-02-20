@@ -90,6 +90,7 @@ set auto_index(::tk::ListboxExtendUpDown) [list source [file join $dir listbox.t
 set auto_index(::tk::ListboxDataExtend) [list source [file join $dir listbox.tcl]]
 set auto_index(::tk::ListboxCancel) [list source [file join $dir listbox.tcl]]
 set auto_index(::tk::ListboxSelectAll) [list source [file join $dir listbox.tcl]]
+set auto_index(::tk::Megawidget) [list source [file join $dir megawidget.tcl]]
 set auto_index(::tk::MbEnter) [list source [file join $dir menu.tcl]]
 set auto_index(::tk::MbLeave) [list source [file join $dir menu.tcl]]
 set auto_index(::tk::MbPost) [list source [file join $dir menu.tcl]]

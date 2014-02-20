@@ -5,8 +5,6 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-'\" RCS: @(#) $Id$
-'\" 
 .so man.macros
 .TH event n 8.3 Tk "Tk Built-In Commands"
 .BS
@@ -78,7 +76,7 @@ defined for the given virtual event;  if the virtual event is
 not defined then an empty string is returned.
 .RS
 .PP
-Note that virtual events that that are not bound to physical event
+Note that virtual events that are not bound to physical event
 sequences are \fInot\fR returned by \fBevent info\fR.
 .RE
 .SH "EVENT FIELDS"
@@ -319,6 +317,10 @@ been pressed in combination with the Alt key. The usual response to
 this is to either focus into the widget (or some related widget) or to
 invoke the widget.
 .TP
+\fB<<Invoke>>\fR
+This can be sent to some widgets (e.g. button, listbox, menu) as an
+alternative to <space>.
+.TP
 \fB<<ListboxSelect>>\fR
 This is sent to a listbox when the set of selected item(s) in the
 listbox is updated.
@@ -334,6 +336,9 @@ changed.
 \fB<<Selection>>\fR
 This is sent to a text widget when the selection in the widget is
 changed.
+.TP
+\fB<<ThemeChanged>>\fR
+This is sent to a text widget when the ttk (Tile) theme changed.
 .TP
 \fB<<TraverseIn>>\fR
 This is sent to a widget when the focus enters the widget because of a
@@ -360,6 +365,36 @@ Copy the currently selected widget contents to the clipboard.
 \fB<<Cut>>\fR
 Move the currently selected widget contents to the clipboard.
 .TP
+\fB<<LineEnd>>\fR
+.
+Move to the end of the line in the current widget while deselecting any
+selected contents.
+.TP
+\fB<<LineStart>>\fR
+.
+Move to the start of the line in the current widget while deselecting any
+selected contents.
+.TP
+\fB<<NextChar>>\fR
+.
+Move to the next item (i.e., visible character) in the current widget while
+deselecting any selected contents.
+.TP
+\fB<<NextLine>>\fR
+.
+Move to the next line in the current widget while deselecting any selected
+contents.
+.TP
+\fB<<NextPara>>\fR
+.
+Move to the next paragraph in the current widget while deselecting any
+selected contents.
+.TP
+\fB<<NextWord>>\fR
+.
+Move to the next group of items (i.e., visible word) in the current widget
+while deselecting any selected contents.
+.TP
 \fB<<Paste>>\fR
 Replace the currently selected widget contents with the contents of
 the clipboard.
@@ -368,13 +403,96 @@ the clipboard.
 Insert the contents of the selection at the mouse location. (This
 event has meaningful \fB%x\fR and \fB%y\fR substitutions).
 .TP
+\fB<<PrevChar>>\fR
+.
+Move to the previous item (i.e., visible character) in the current widget
+while deselecting any selected contents.
+.TP
+\fB<<PrevLine>>\fR
+.
+Move to the previous line in the current widget while deselecting any selected
+contents.
+.TP
+\fB<<PrevPara>>\fR
+.
+Move to the previous paragraph in the current widget while deselecting any
+selected contents.
+.TP
 \fB<<PrevWindow>>\fR
 Traverse to the previous window.
+.TP
+\fB<<PrevWord>>\fR
+.
+Move to the previous group of items (i.e., visible word) in the current widget
+while deselecting any selected contents.
 .TP
 \fB<<Redo>>\fR
 Redo one undone action.
 .TP
+\fB<<SelectAll>>\fR
+.
+Set the range of selected contents to the complete widget.
+.TP
+\fB<<SelectLineEnd>>\fR
+.
+Move to the end of the line in the current widget while extending the range
+of selected contents.
+.TP
+\fB<<SelectLineStart>>\fR
+.
+Move to the start of the line in the current widget while extending the range
+of selected contents.
+.TP
+\fB<<SelectNextChar>>\fR
+.
+Move to the next item (i.e., visible character) in the current widget while
+extending the range of selected contents.
+.TP
+\fB<<SelectNextLine>>\fR
+.
+Move to the next line in the current widget while extending the range of
+selected contents.
+.TP
+\fB<<SelectNextPara>>\fR
+.
+Move to the next paragraph in the current widget while extending the range
+of selected contents.
+.TP
+\fB<<SelectNextWord>>\fR
+.
+Move to the next group of items (i.e., visible word) in the current widget
+while extending the range of selected contents.
+.TP
+\fB<<SelectNone>>\fR
+.
+Reset the range of selected contents to be empty.
+.TP
+\fB<<SelectPrevChar>>\fR
+.
+Move to the previous item (i.e., visible character) in the current widget
+while extending the range of selected contents.
+.TP
+\fB<<SelectPrevLine>>\fR
+.
+Move to the previous line in the current widget while extending the range of
+selected contents.
+.TP
+\fB<<SelectPrevPara>>\fR
+.
+Move to the previous paragraph in the current widget while extending the
+range of selected contents.
+.TP
+\fB<<SelectPrevWord>>\fR
+.
+Move to the previous group of items (i.e., visible word) in the current widget
+while extending the range of selected contents.
+.TP
+\fB<<ToggleSelection>>\fR
+.
+Toggle the selection.
+.TP
 \fB<<Undo>>\fR
+.
 Undo the last action.
 .SH EXAMPLES
 .SS "MAPPING KEYS TO VIRTUAL EVENTS"
@@ -390,6 +508,9 @@ Consider the following virtual event definitions:
 \fBevent add\fR <<Paste>> <Button-2>
 \fBevent add\fR <<Save>> <Control-X><Control-S>
 \fBevent add\fR <<Save>> <Shift-F12>
+if {[tk windowingsystem] eq "aqua"} {
+    \fBevent add\fR <<Save>> <Command-s>
+}
 .CE
 .PP
 In the \fBbind\fR command, a virtual event can be bound like any other

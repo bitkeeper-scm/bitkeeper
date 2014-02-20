@@ -8,8 +8,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #ifndef _TKMENU
@@ -27,11 +25,6 @@
 #include "default.h"
 #endif
 
-#ifdef BUILD_tk
-# undef TCL_STORAGE_CLASS
-# define TCL_STORAGE_CLASS DLLEXPORT
-#endif
-
 /*
  * Dummy types used by the platform menu code.
  */
@@ -47,6 +40,19 @@ typedef struct TkMenuPlatformEntryData_ *TkMenuPlatformEntryData;
 enum compound {
     COMPOUND_BOTTOM, COMPOUND_CENTER, COMPOUND_LEFT, COMPOUND_NONE,
     COMPOUND_RIGHT, COMPOUND_TOP
+};
+
+/*
+ * Additional menu entry drawing parameters for Windows platform.
+ * DRAW_MENU_ENTRY_ARROW makes TkpDrawMenuEntry draw the arrow
+ * itself when cascade entry is disabled.
+ * DRAW_MENU_ENTRY_NOUNDERLINE forbids underline when ODS_NOACCEL
+ * is set, thus obeying the system-wide Windows UI setting.
+ */
+
+enum drawingParameters {
+    DRAW_MENU_ENTRY_ARROW = (1<<0),
+    DRAW_MENU_ENTRY_NOUNDERLINE = (1<<1)
 };
 
 /*
@@ -546,15 +552,12 @@ MODULE_SCOPE void	TkpDrawMenuEntry(TkMenuEntry *mePtr,
 			    Drawable d, Tk_Font tkfont,
 			    const Tk_FontMetrics *menuMetricsPtr, int x,
 			    int y, int width, int height, int strictMotif,
-			    int drawArrow);
+			    int drawingParameters);
 MODULE_SCOPE void	TkpMenuInit(void);
 MODULE_SCOPE int	TkpMenuNewEntry(TkMenuEntry *mePtr);
 MODULE_SCOPE int	TkpNewMenu(TkMenu *menuPtr);
 MODULE_SCOPE int	TkpPostMenu(Tcl_Interp *interp, TkMenu *menuPtr,
 			    int x, int y);
 MODULE_SCOPE void	TkpSetWindowMenuBar(Tk_Window tkwin, TkMenu *menuPtr);
-
-# undef TCL_STORAGE_CLASS
-# define TCL_STORAGE_CLASS DLLIMPORT
 
 #endif /* _TKMENU */

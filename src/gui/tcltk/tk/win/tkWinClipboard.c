@@ -8,8 +8,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tkWinInt.h"
@@ -106,7 +104,7 @@ TkSelGetSelection(
 	     */
 
 	    locale = LANGIDFROMLCID(*((int*)data));
-	    GetLocaleInfo(locale, LOCALE_IDEFAULTANSICODEPAGE,
+	    GetLocaleInfoA(locale, LOCALE_IDEFAULTANSICODEPAGE,
 		    Tcl_DStringValue(&ds)+2, Tcl_DStringLength(&ds)-2);
 	    GlobalUnlock(handle);
 
@@ -164,9 +162,10 @@ TkSelGetSelection(
     return result;
 
   error:
-    Tcl_AppendResult(interp, Tk_GetAtomName(tkwin, selection),
-	    " selection doesn't exist or form \"",
-	    Tk_GetAtomName(tkwin, target), "\" not defined", NULL);
+    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+	    "%s selection doesn't exist or form \"%s\" not defined",
+	    Tk_GetAtomName(tkwin, selection), Tk_GetAtomName(tkwin, target)));
+    Tcl_SetErrorCode(interp, "TK", "SELECTION", "EXISTS", NULL);
     return TCL_ERROR;
 }
 
@@ -187,7 +186,7 @@ TkSelGetSelection(
  *----------------------------------------------------------------------
  */
 
-void
+int
 XSetSelectionOwner(
     Display *display,
     Atom selection,
@@ -214,6 +213,7 @@ XSetSelectionOwner(
 	    UpdateClipboard(hwnd);
 	}
     }
+    return Success;
 }
 
 /*
@@ -275,7 +275,7 @@ TkWinClipboardRender(
      * Copy the data and change EOL characters.
      */
 
-    buffer = rawText = ckalloc((unsigned)length + 1);
+    buffer = rawText = ckalloc(length + 1);
     if (targetPtr != NULL) {
 	for (cbPtr = targetPtr->firstBufferPtr; cbPtr != NULL;
 		cbPtr = cbPtr->nextPtr) {
@@ -295,7 +295,7 @@ TkWinClipboardRender(
      * encoding before placing it on the clipboard.
      */
 
-    if (TkWinGetPlatformId() == VER_PLATFORM_WIN32_NT) {
+#ifdef UNICODE
 	Tcl_DStringInit(&ds);
 	Tcl_UtfToUniCharDString(rawText, -1, &ds);
 	ckfree(rawText);
@@ -311,7 +311,7 @@ TkWinClipboardRender(
 	GlobalUnlock(handle);
 	Tcl_DStringFree(&ds);
 	SetClipboardData(CF_UNICODETEXT, handle);
-    } else {
+#else
 	Tcl_UtfToExternalDString(NULL, rawText, -1, &ds);
 	ckfree(rawText);
 	handle = GlobalAlloc(GMEM_MOVEABLE|GMEM_DDESHARE,
@@ -326,7 +326,7 @@ TkWinClipboardRender(
 	GlobalUnlock(handle);
 	Tcl_DStringFree(&ds);
 	SetClipboardData(CF_TEXT, handle);
-    }
+#endif
 }
 
 /*
@@ -385,7 +385,7 @@ UpdateClipboard(
      * possible.
      */
 
-    if (TkWinGetPlatformId() == VER_PLATFORM_WIN32_NT) {
+    if (TkWinGetPlatformId() != VER_PLATFORM_WIN32_WINDOWS) {
 	SetClipboardData(CF_UNICODETEXT, NULL);
     } else {
 	SetClipboardData(CF_TEXT, NULL);

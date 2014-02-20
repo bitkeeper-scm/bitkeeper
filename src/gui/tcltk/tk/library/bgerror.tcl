@@ -10,9 +10,6 @@
 # Copyright (c) 2007 by ActiveState Software Inc.
 # Copyright (c) 2007 Daniel A. Steffen <das@users.sourceforge.net>
 # Copyright (c) 2009 Pat Thoyts <patthoyts@users.sourceforge.net>
-# 
-# RCS: @(#) $Id$
-#
 
 namespace eval ::tk::dialog::error {
     namespace import -force ::tk::msgcat::*
@@ -30,13 +27,13 @@ namespace eval ::tk::dialog::error {
     }
 }
 
-proc ::tk::dialog::error::Return {} {
+proc ::tk::dialog::error::Return {which code} {
     variable button
 
-    .bgerrorDialog.ok configure -state active -relief sunken
+    .bgerrorDialog.$which state {active selected focus}
     update idletasks
     after 100
-    set button 0
+    set button $code
 }
 
 proc ::tk::dialog::error::Details {} {
@@ -77,6 +74,17 @@ proc ::tk::dialog::error::Destroy {w} {
 	variable button
 	set button -1
     }
+}
+
+proc ::tk::dialog::error::DeleteByProtocol {} {
+    variable button
+    set button 1
+}
+
+proc ::tk::dialog::error::ReturnInDetails w {
+    bind $w <Return> {}; # Remove this binding
+    $w invoke
+    return -code break
 }
 
 # ::tk::dialog::error::bgerror --
@@ -142,10 +150,12 @@ proc ::tk::dialog::error::bgerror err {
     wm withdraw $dlg
     wm title $dlg $title
     wm iconname $dlg ErrorDialog
-    wm protocol $dlg WM_DELETE_WINDOW { }
+    wm protocol $dlg WM_DELETE_WINDOW [namespace code DeleteByProtocol]
 
     if {$windowingsystem eq "aqua"} {
 	::tk::unsupported::MacWindowStyle style $dlg moveableAlert {}
+    } elseif {$windowingsystem eq "x11"} {
+	wm attributes $dlg -type dialog
     }
 
     ttk::frame $dlg.bot
@@ -204,11 +214,15 @@ proc ::tk::dialog::error::bgerror err {
     # The "OK" button is the default for this dialog.
     $dlg.ok configure -default active
 
-    bind $dlg <Return>	[namespace code Return]
-    bind $dlg <Destroy>	[namespace code [list Destroy %W]]
+    bind $dlg <Return>	[namespace code {Return ok 0}]
+    bind $dlg <Escape>	[namespace code {Return dismiss 1}]
+    bind $dlg <Destroy>	[namespace code {Destroy %W}]
+    bind $dlg.function <Return>	[namespace code {ReturnInDetails %W}]
     $dlg.function configure -command [namespace code Details]
 
-    # 6. Place the window (centered in the display) and deiconify it.
+    # 6. Withdraw the window, then update all the geometry information
+    # so we know how big it wants to be, then center the window in the
+    # display (Motif style) and de-iconify it.
 
     ::tk::PlaceWindow $dlg
 
@@ -219,7 +233,7 @@ proc ::tk::dialog::error::bgerror err {
     # 8. Ensure that we are topmost.
 
     raise $dlg
-    if {$tcl_platform(platform) eq "windows"} {
+    if {[tk windowingsystem] eq "win32"} {
 	# Place it topmost if we aren't at the top of the stacking
 	# order to ensure that it's seen
 	if {[lindex [wm stackorder .] end] ne "$dlg"} {

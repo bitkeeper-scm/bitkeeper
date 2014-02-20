@@ -1,4 +1,4 @@
-/* $Id$
+/*
  * Copyright (c) 2003 Joe English.  Freely redistributable.
  *
  * Declarations for Tk theme engine.
@@ -408,7 +408,23 @@ typedef enum { 		/* -orient option values */
 } Ttk_Orient;
 
 /*------------------------------------------------------------------------
- * +++ Stub table declarations:
+ * +++ Utilities.
+ */
+
+typedef struct TtkEnsemble {
+    const char *name;			/* subcommand name */
+    Tcl_ObjCmdProc *command; 		/* subcommand implementation, OR: */
+    const struct TtkEnsemble *ensemble;	/* subcommand ensemble */
+} Ttk_Ensemble;
+
+MODULE_SCOPE int Ttk_InvokeEnsemble(	/* Run an ensemble command */
+    const Ttk_Ensemble *commands, int cmdIndex,
+    void *clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
+
+MODULE_SCOPE int TtkEnumerateHashTable(Tcl_Interp *, Tcl_HashTable *);
+
+/*------------------------------------------------------------------------
+ * +++ Stub table declarations.
  */
 
 #include "ttkDecls.h"

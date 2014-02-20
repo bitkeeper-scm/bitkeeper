@@ -4,8 +4,6 @@
 # Copyright (c) 1995-1997 Sun Microsystems, Inc.
 # Copyright (c) 1998-1999 by Scriptics Corporation.
 # All rights reserved.
-#
-# RCS: @(#) $Id$
 
 package require tcltest 2.2
 namespace import ::tcltest::*
@@ -1455,6 +1453,17 @@ test menu-3.29 {MenuWidgetCmd procedure, "delete" option} -setup {
 } -cleanup {
 	destroy .m1
 } -result {}
+test menu-3.29+1 {MenuWidgetCmd, "delete", Bug 220950} -setup {
+    destroy .m1
+} -body {
+    menu .m1
+    .m1 add command -label "bogus"
+    .m1 add command -label "ok"
+    .m1 delete 10 20
+    .m1 entrycget last -label
+} -cleanup {
+    destroy .m1
+} -result ok
 test menu-3.30 {MenuWidgetCmd procedure, "entrycget" option} -setup {
 	destroy .m1
 } -body {
@@ -3309,6 +3318,47 @@ test menu-22.2 {GetIndexFromCoords} -setup {
     .m1 add command -label "test"
     .m1 configure -tearoff 0
     .m1 index @5,5
+} -cleanup {
+	deleteWindows
+} -result {0}
+test menu-22.3 {GetIndexFromCoords: mapped window, y only} -setup {
+	deleteWindows
+} -constraints {unix} -body {
+    menu .m1
+    .m1 add command -label "test"
+    .m1 configure -tearoff 0
+    tk_popup .m1 0 0
+    tkwait visibility .m1
+    .m1 index @5
+} -cleanup {
+	deleteWindows
+} -result {0}
+test menu-22.4 {GetIndexFromCoords: mapped window x,y} -setup {
+	deleteWindows
+} -constraints {unix} -body {
+    menu .m1
+    .m1 add command -label "test"
+    .m1 configure -tearoff 0
+    tk_popup .m1 0 0
+    tkwait visibility .m1
+    update
+    set x [expr {[winfo width .m1] - [.m1 cget -borderwidth] - 1}]
+    .m1 index @$x,5
+} -cleanup {
+	deleteWindows
+} -result {0}
+test menu-22.5 {GetIndexFromCoords: mapped wide window} -setup {
+	deleteWindows
+} -constraints {unix} -body {
+    menu .m1
+    .m1 add command -label "test"
+    .m1 configure -tearoff 0
+    tk_popup .m1 0 0
+    tkwait visibility .m1
+    wm geometry .m1 200x100
+    update
+    set x [expr {[winfo width .m1] - [.m1 cget -borderwidth] - 1}]
+    .m1 index @$x,5
 } -cleanup {
 	deleteWindows
 } -result {0}

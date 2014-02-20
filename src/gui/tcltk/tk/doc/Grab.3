@@ -2,8 +2,6 @@
 '\" Copyright (c) 1998-2000 by Scriptics Corporation.
 '\" All rights reserved.
 '\" 
-'\" RCS: @(#) $Id$
-'\" 
 .so man.macros
 .TH Tk_Grab 3 "" Tk "Tk Library Procedures"
 .BS
@@ -52,7 +50,7 @@ receive pointer- or keyboard-related events until the next call to
 Tk_Ungrab.  If a previous grab was in effect within the application,
 then it is replaced with a new one.
 .PP
-\fBTcl_Ungrab\fR releases a grab on the mouse pointer and keyboard, if
+\fBTk_Ungrab\fR releases a grab on the mouse pointer and keyboard, if
 there is one set on the window given by \fItkwin\fR.  Once a grab is
 released, pointer and keyboard events will start being delivered to
 other windows again.

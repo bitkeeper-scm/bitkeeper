@@ -2,8 +2,6 @@
 #
 # Support procs to use Tk in safe interpreters.
 #
-# RCS: @(#) $Id$
-#
 # Copyright (c) 1997 Sun Microsystems, Inc.
 #
 # See the file "license.terms" for information on usage and redistribution
@@ -81,19 +79,21 @@ proc ::safe::loadTk {} {}
 	    }
 	}
     }
+
+    # Get state for access to the cleanupHook.
+    namespace upvar ::safe S$slave state
+
     if {![::tcl::OptProcArgGiven "-use"]} {
 	# create a decorated toplevel
-	::tcl::Lassign [tkTopLevel $slave $display] w use
+	lassign [tkTopLevel $slave $display] w use
 
 	# set our delete hook (slave arg is added by interpDelete)
 	# to clean up both window related code and tkInit(slave)
-	Set [DeleteHookName $slave] [list tkDelete {} $w]
-
+	set state(cleanupHook) [list tkDelete {} $w]
     } else {
-
 	# set our delete hook (slave arg is added by interpDelete)
 	# to clean up tkInit(slave)
-	Set [DeleteHookName $slave] [list disallowTk]
+	set state(cleanupHook) [list disallowTk]
 
 	# Let's be nice and also accept tk window names instead of ids
 	if {[string match ".*" $use]} {
@@ -114,8 +114,8 @@ proc ::safe::loadTk {} {}
 	}
 	if {$nDisplay ne $display} {
 	    if {$displayGiven} {
-		error "conflicting -display $display and -use\
-			$use -> $nDisplay"
+		return -code error -errorcode {TK DISPLAY SAFE} \
+		    "conflicting -display $display and -use $use -> $nDisplay"
 	    } else {
 		set display $nDisplay
 	    }
@@ -139,7 +139,7 @@ proc ::safe::TkInit {interpPath} {
     } else {
 	Log $interpPath "TkInit called for interp with clearance:\
 		preventing Tk init" ERROR
-	error "not allowed"
+	return -code error -errorcode {TK SAFE PERMISSION} "not allowed"
     }
 }
 
@@ -219,8 +219,8 @@ proc ::safe::tkTopLevel {slave display} {
     incr tkSafeId
     set w ".safe$tkSafeId"
     if {[catch {toplevel $w -screen $display -class SafeTk} msg]} {
-	return -code error "Unable to create toplevel for\
-		safe slave \"$slave\" ($msg)"
+	return -code error -errorcode {TK TOPLEVEL SAFE} \
+	    "Unable to create toplevel for safe slave \"$slave\" ($msg)"
     }
     Log $slave "New toplevel $w" NOTICE
 

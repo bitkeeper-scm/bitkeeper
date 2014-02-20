@@ -7,19 +7,12 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #ifndef _TK3D
 #define _TK3D
 
-#include <tkInt.h>
-
-#ifdef BUILD_tk
-# undef TCL_STORAGE_CLASS
-# define TCL_STORAGE_CLASS DLLEXPORT
-#endif
+#include "tkInt.h"
 
 /*
  * One of the following data structures is allocated for each 3-D border
@@ -88,8 +81,5 @@ typedef struct TkBorder {
 MODULE_SCOPE TkBorder	*TkpGetBorder(void);
 MODULE_SCOPE void	TkpGetShadows(TkBorder *borderPtr, Tk_Window tkwin);
 MODULE_SCOPE void	TkpFreeBorder(TkBorder *borderPtr);
-
-# undef TCL_STORAGE_CLASS
-# define TCL_STORAGE_CLASS DLLIMPORT
 
 #endif /* _TK3D */

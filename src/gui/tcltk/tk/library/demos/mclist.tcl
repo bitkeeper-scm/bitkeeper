@@ -2,8 +2,6 @@
 #
 # This demonstration script creates a toplevel window containing a Ttk
 # tree widget configured as a multi-column listbox.
-#
-# RCS: @(#) $Id$
 
 if {![info exists widgetDemo]} {
     error "This script should be run from the \"widget\" demo."
@@ -85,6 +83,16 @@ foreach {country capital currency} $data {
 
 ## Code to do the sorting of the tree contents when clicked on
 proc SortBy {tree col direction} {
+    # Determine currently sorted column and its sort direction
+    foreach c {country capital currency} {
+	set s [$tree heading $c state]
+	if {("selected" in $s || "alternate" in $s) && $col ne $c} {
+	    # Sorted column has changed
+	    $tree heading $c -image noArrow state {!selected !alternate !user1}
+	    set direction [expr {"alternate" in $s}]
+	}
+    }
+
     # Build something we can sort
     set data {}
     foreach row [$tree children {}] {
@@ -99,9 +107,13 @@ proc SortBy {tree col direction} {
 	$tree move [lindex $info 1] {} [incr r]
     }
 
-    foreach c {country capital currency} {$tree heading $c -image noArrow}
-
     # Switch the heading so that it will sort in the opposite direction
     $tree heading $col -command [list SortBy $tree $col [expr {!$direction}]] \
-	-image [expr {$direction?"upArrow":"downArrow"}]
+	state [expr {$direction?"!selected alternate":"selected !alternate"}]
+    if {[ttk::style theme use] eq "aqua"} {
+	# Aqua theme displays native sort arrows when user1 state is set
+	$tree heading $col state "user1"
+    } else {
+	$tree heading $col -image [expr {$direction?"upArrow":"downArrow"}]
+    }
 }

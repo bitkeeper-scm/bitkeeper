@@ -5,8 +5,6 @@
 # Copyright (c) 1998 Sun Microsystems, Inc.
 # Copyright (c) 1998-1999 by Scriptics Corporation.
 # All rights reserved.
-#
-# RCS: @(#) $Id$
 
 package require tcltest 2.2
 namespace import ::tcltest::*
@@ -147,11 +145,11 @@ test cursor-3.1 {Tk_FreeCursorFromObj - reference counts} -constraints {
 test cursor-4.1 {FreeCursorObjProc} -constraints {
     testcursor
 } -body {
-    set x [format heart]
+    set x [join heart]
     button .b -cursor $x
-    set y [format heart]
+    set y [join heart]
     .b configure -cursor $y
-    set z [format heart]
+    set z [join heart]
     .b configure -cursor $z
     set result {}
     lappend result [testcursor heart]

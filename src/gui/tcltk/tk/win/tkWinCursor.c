@@ -7,8 +7,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tkWinInt.h"
@@ -74,8 +72,7 @@ static struct CursorName {
  */
 
 #define TK_DEFAULT_CURSOR	IDC_ARROW
-
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -116,7 +113,7 @@ TkGetCursorByName(
 	goto badCursorSpec;
     }
 
-    cursorPtr = (TkWinCursor *) ckalloc(sizeof(TkWinCursor));
+    cursorPtr = ckalloc(sizeof(TkWinCursor));
     cursorPtr->info.cursor = (Tk_Cursor) cursorPtr;
     cursorPtr->winCursor = NULL;
     cursorPtr->system = 0;
@@ -133,13 +130,14 @@ TkGetCursorByName(
 	 */
 
 	if (Tcl_IsSafe(interp)) {
-	    Tcl_AppendResult(interp, "can't get cursor from a file in",
-		    " a safe interpreter", NULL);
-	    ckfree((char *) argv);
-	    ckfree((char *) cursorPtr);
+	    Tcl_SetObjResult(interp, Tcl_NewStringObj(
+		    "can't get cursor from a file in a safe interpreter",-1));
+	    Tcl_SetErrorCode(interp, "TK", "SAFE", "CURSOR_FILE", NULL);
+	    ckfree(argv);
+	    ckfree(cursorPtr);
 	    return NULL;
 	}
-	cursorPtr->winCursor = LoadCursorFromFile(&(argv[0][1]));
+	cursorPtr->winCursor = LoadCursorFromFileA(&(argv[0][1]));
     } else {
 	/*
 	 * Check for the cursor in the system cursor set.
@@ -158,24 +156,25 @@ TkGetCursorByName(
 	     * one of our application resources.
 	     */
 
-	    cursorPtr->winCursor = LoadCursor(Tk_GetHINSTANCE(), argv[0]);
+	    cursorPtr->winCursor = LoadCursorA(Tk_GetHINSTANCE(), argv[0]);
 	} else {
 	    cursorPtr->system = 1;
 	}
     }
 
     if (cursorPtr->winCursor == NULL) {
-	ckfree((char *) cursorPtr);
+	ckfree(cursorPtr);
     badCursorSpec:
-	ckfree((char *) argv);
-	Tcl_AppendResult(interp, "bad cursor spec \"", string, "\"", NULL);
+	ckfree(argv);
+	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		"bad cursor spec \"%s\"", string));
+	Tcl_SetErrorCode(interp, "TK", "VALUE", "CURSOR", NULL);
 	return NULL;
-    } else {
-	ckfree((char *) argv);
-	return (TkCursor *) cursorPtr;
     }
+    ckfree(argv);
+    return (TkCursor *) cursorPtr;
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -204,7 +203,7 @@ TkCreateCursorFromData(
 {
     return NULL;
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -228,7 +227,7 @@ TkpFreeCursor(
 {
     /* TkWinCursor *winCursorPtr = (TkWinCursor *) cursorPtr; */
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -263,7 +262,7 @@ TkpSetCursor(
 	SetCursor(hcursor);
     }
 }
-
+
 /*
  * Local Variables:
  * mode: c

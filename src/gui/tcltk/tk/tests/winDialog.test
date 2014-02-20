@@ -6,8 +6,6 @@
 # Copyright (c) 1997 Sun Microsystems, Inc.
 # Copyright (c) 1998-1999 by Scriptics Corporation.
 # Copyright (c) 1998-1999 ActiveState Corporation.
-#
-# RCS: @(#) $Id$
 
 package require tcltest 2.2
 namespace import ::tcltest::*
@@ -168,7 +166,6 @@ test winDialog-1.7 {Tk_ChooseColorObjCmd: -parent} -constraints {
 
 test winDialog-2.1 {ColorDlgHookProc} -constraints {emptyTest nt} -body {}
 
-
 test winDialog-3.1 {Tk_GetOpenFileObjCmd} -constraints {
     nt testwinevent english
 } -body {
@@ -239,21 +236,33 @@ test winDialog-5.7 {GetFileName: extension begins with .} -constraints {
 #    }
 
     start {set x [tk_getSaveFile -defaultextension .foo -title Save]}
+    set msg {}
     then {
-        SetText 0x480 bar
-        Click ok
+	if {[catch {SetText 0x47C bar} msg]} {
+	    Click cancel
+	} else {
+	    Click ok
+	}
     }
-    string totitle $x
+    string totitle $x$msg
+} -cleanup {
+    unset msg
 } -result [string totitle [file join [pwd] bar.foo]]
 test winDialog-5.8 {GetFileName: extension doesn't begin with .} -constraints {
     nt testwinevent
 } -body {
     start {set x [tk_getSaveFile -defaultextension foo -title Save]}
+    set msg {}
     then {
-        SetText 0x480 bar
-        Click ok
+	if {[catch {SetText 0x47C bar} msg]} {
+	    Click cancel
+	} else {
+	    Click ok
+	}
     }
-    string totitle $x
+    string totitle $x$msg
+} -cleanup {
+    unset msg
 } -result [string totitle [file join [pwd] bar.foo]]
 test winDialog-5.9 {GetFileName: file types} -constraints {
     nt testwinevent
@@ -414,13 +423,19 @@ if {[info exists ::env(TEMP)]} {
 test winDialog-5.23 {GetFileName: convert \ to /} -constraints {
     nt testwinevent
 } -body {
+    set msg {}
     start {set x [tk_getSaveFile -title Back]}
     then {
-        SetText 0x480 [file nativename \
-                           [file join [file normalize $::env(TEMP)] "12x 457"]]
-        Click ok
+	if {[catch {SetText 0x47C [file nativename \
+		[file join [file normalize $::env(TEMP)] "12x 457"]]} msg]} {
+	    Click cancel
+	} else {
+	    Click ok
+	}
     }
-    return $x
+    return $x$msg
+} -cleanup {
+    unset msg
 } -result [file join [file normalize $::env(TEMP)] "12x 457"]
 }
 test winDialog-5.24 {GetFileName: file types: MakeFilter() succeeds} -constraints {

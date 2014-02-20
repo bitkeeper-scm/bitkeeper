@@ -4,8 +4,6 @@
 # checkbutton, and radiobutton widgets and provides procedures
 # that help in implementing those bindings.
 #
-# RCS: @(#) $Id$
-#
 # Copyright (c) 1992-1994 The Regents of the University of California.
 # Copyright (c) 1994-1996 Sun Microsystems, Inc.
 # Copyright (c) 2002 ActiveState Corporation.
@@ -37,8 +35,11 @@ if {[tk windowingsystem] eq "aqua"} {
     bind Checkbutton <ButtonRelease-1> {
 	tk::ButtonUp %W
     }
+    bind Checkbutton <Leave> {
+	tk::ButtonLeave %W
+    }
 }
-if {"windows" eq $tcl_platform(platform)} {
+if {"win32" eq [tk windowingsystem]} {
     bind Checkbutton <equal> {
 	tk::CheckRadioInvoke %W select
     }
@@ -57,6 +58,9 @@ if {"windows" eq $tcl_platform(platform)} {
     bind Checkbutton <Enter> {
 	tk::CheckRadioEnter %W
     }
+    bind Checkbutton <Leave> {
+	tk::ButtonLeave %W
+    }
 
     bind Radiobutton <1> {
 	tk::CheckRadioDown %W
@@ -71,7 +75,7 @@ if {"windows" eq $tcl_platform(platform)} {
 if {"x11" eq [tk windowingsystem]} {
     bind Checkbutton <Return> {
 	if {!$tk_strictMotif} {
-	    tk::CheckRadioInvoke %W
+	    tk::CheckInvoke %W
 	}
     }
     bind Radiobutton <Return> {
@@ -80,16 +84,19 @@ if {"x11" eq [tk windowingsystem]} {
 	}
     }
     bind Checkbutton <1> {
-	tk::CheckRadioInvoke %W
+	tk::CheckInvoke %W
     }
     bind Radiobutton <1> {
 	tk::CheckRadioInvoke %W
     }
     bind Checkbutton <Enter> {
-	tk::ButtonEnter %W
+	tk::CheckEnter %W
     }
     bind Radiobutton <Enter> {
 	tk::ButtonEnter %W
+    }
+    bind Checkbutton <Leave> {
+	tk::CheckLeave %W
     }
 }
 
@@ -100,6 +107,15 @@ bind Checkbutton <space> {
     tk::CheckRadioInvoke %W
 }
 bind Radiobutton <space> {
+    tk::CheckRadioInvoke %W
+}
+bind Button <<Invoke>> {
+    tk::ButtonInvoke %W
+}
+bind Checkbutton <<Invoke>> {
+    tk::CheckRadioInvoke %W
+}
+bind Radiobutton <<Invoke>> {
     tk::CheckRadioInvoke %W
 }
 
@@ -118,16 +134,13 @@ bind Button <ButtonRelease-1> {
 }
 
 bind Checkbutton <FocusIn> {}
-bind Checkbutton <Leave> {
-    tk::ButtonLeave %W
-}
 
 bind Radiobutton <FocusIn> {}
 bind Radiobutton <Leave> {
     tk::ButtonLeave %W
 }
 
-if {"windows" eq $tcl_platform(platform)} {
+if {"win32" eq [tk windowingsystem]} {
 
 #########################
 # Windows implementation 
@@ -635,3 +648,117 @@ proc ::tk::CheckRadioInvoke {w {cmd invoke}} {
 	uplevel #0 [list $w $cmd]
     }
 }
+
+# Special versions of the handlers for checkbuttons on Unix that do the magic
+# to make things work right when the checkbutton indicator is hidden;
+# radiobuttons don't need this complexity.
+
+# ::tk::CheckInvoke --
+# The procedure below invokes the checkbutton, like ButtonInvoke, but handles
+# what to do when the checkbutton indicator is missing. Only used on Unix.
+#
+# Arguments:
+# w -		The name of the widget.
+
+proc ::tk::CheckInvoke {w} {
+    variable ::tk::Priv
+    if {[$w cget -state] ne "disabled"} {
+	# Additional logic to switch the "selected" colors around if necessary
+	# (when we're indicator-less).
+
+	if {![$w cget -indicatoron] && [info exist Priv($w,selectcolor)]} {
+	    if {[$w cget -selectcolor] eq $Priv($w,aselectcolor)} {
+		$w configure -selectcolor $Priv($w,selectcolor)
+	    } else {
+		$w configure -selectcolor $Priv($w,aselectcolor)
+	    }
+	}
+	uplevel #0 [list $w invoke]
+    }
+}
+
+# ::tk::CheckEnter --
+# The procedure below enters the checkbutton, like ButtonEnter, but handles
+# what to do when the checkbutton indicator is missing. Only used on Unix.
+#
+# Arguments:
+# w -		The name of the widget.
+
+proc ::tk::CheckEnter {w} {
+    variable ::tk::Priv
+    if {[$w cget -state] ne "disabled"} {
+	# On unix the state is active just with mouse-over
+	$w configure -state active
+
+	# If the mouse button is down, set the relief to sunken on entry.
+	# Overwise, if there's an -overrelief value, set the relief to that.
+
+	set Priv($w,relief) [$w cget -relief]
+	if {$Priv(buttonWindow) eq $w} {
+	    $w configure -relief sunken
+	    set Priv($w,prelief) sunken
+	} elseif {[set over [$w cget -overrelief]] ne ""} {
+	    $w configure -relief $over
+	    set Priv($w,prelief) $over
+	}
+
+	# Compute what the "selected and active" color should be.
+
+	if {![$w cget -indicatoron] && [$w cget -selectcolor] ne ""} {
+	    set Priv($w,selectcolor) [$w cget -selectcolor]
+	    lassign [winfo rgb $w [$w cget -selectcolor]]      r1 g1 b1
+	    lassign [winfo rgb $w [$w cget -activebackground]] r2 g2 b2
+	    set Priv($w,aselectcolor) \
+		[format "#%04x%04x%04x" [expr {($r1+$r2)/2}] \
+		     [expr {($g1+$g2)/2}] [expr {($b1+$b2)/2}]]
+	    # use uplevel to work with other var resolvers
+	    if {[uplevel #0 [list set [$w cget -variable]]]
+		 eq [$w cget -onvalue]} {
+		$w configure -selectcolor $Priv($w,aselectcolor)
+	    }
+	}
+    }
+    set Priv(window) $w
+}
+
+# ::tk::CheckLeave --
+# The procedure below leaves the checkbutton, like ButtonLeave, but handles
+# what to do when the checkbutton indicator is missing. Only used on Unix.
+#
+# Arguments:
+# w -		The name of the widget.
+
+proc ::tk::CheckLeave {w} {
+    variable ::tk::Priv
+    if {[$w cget -state] ne "disabled"} {
+	$w configure -state normal
+    }
+
+    # Restore the original button "selected" color; assume that the user
+    # wasn't monkeying around with things too much.
+
+    if {![$w cget -indicatoron] && [info exist Priv($w,selectcolor)]} {
+	$w configure -selectcolor $Priv($w,selectcolor)
+    }
+    unset -nocomplain Priv($w,selectcolor) Priv($w,aselectcolor)
+
+    # Restore the original button relief if it was changed by Tk. That is
+    # signaled by the existence of Priv($w,prelief).
+
+    if {[info exists Priv($w,relief)]} {
+	if {[info exists Priv($w,prelief)] && \
+		$Priv($w,prelief) eq [$w cget -relief]} {
+	    $w configure -relief $Priv($w,relief)
+	}
+	unset -nocomplain Priv($w,relief) Priv($w,prelief)
+    }
+
+    set Priv(window) ""
+}
+
+return
+
+# Local Variables:
+# mode: tcl
+# fill-column: 78
+# End:
