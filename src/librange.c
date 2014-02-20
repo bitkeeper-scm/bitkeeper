@@ -116,14 +116,6 @@ out:	fclose(f);
 	return (rc);
 }
 
-
-private void
-rangeReset(sccs *sc)
-{
-	sc->rstart = sc->rstop = 0;
-	sc->state &= ~S_SET;
-}
-
 time_t
 range_cutoff(char *spec)
 {
@@ -191,8 +183,6 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 	ser_t	*dlist = 0;
 	int	i, restore = 0, rc = 1;
 	RANGE	save = {0};
-
-	rangeReset(s);
 
 	/* must pick a mode */
 	assert(((flags & RANGE_ENDPOINTS) != 0) ^ ((flags & RANGE_SET) != 0));
