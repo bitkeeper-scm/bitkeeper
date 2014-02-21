@@ -1464,7 +1464,7 @@ compile_trycatch(Stmt *stmt)
 		}
 	}
 
-	range = DeclareExceptionRange(L->frame->envPtr, CATCH_EXCEPTION_RANGE);
+	range = TclCreateExceptRange(CATCH_EXCEPTION_RANGE, L->frame->envPtr);
 	TclEmitInstInt4(INST_BEGIN_CATCH4, range, L->frame->envPtr);
 
 	/*
@@ -3743,8 +3743,8 @@ compile_cast(Expr *expr, Expr_f flags)
 	if (flags & L_LVALUE) {
 		compile_expr(expr->b, flags);
 	} else if ((type->kind == L_INT) || (type->kind == L_FLOAT)) {
-		range = DeclareExceptionRange(L->frame->envPtr,
-					      CATCH_EXCEPTION_RANGE);
+		range = TclCreateExceptRange(CATCH_EXCEPTION_RANGE,
+					     L->frame->envPtr);
 		TclEmitInstInt4(INST_BEGIN_CATCH4, range, L->frame->envPtr);
 		ExceptionRangeStarts(L->frame->envPtr, range);
 		if (type->kind == L_INT) {

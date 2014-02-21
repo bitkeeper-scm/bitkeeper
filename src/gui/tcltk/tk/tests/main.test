@@ -7,8 +7,6 @@
 # Copyright (c) 1997 by Sun Microsystems, Inc.
 # Copyright (c) 1998-1999 by Scriptics Corporation.
 # All rights reserved.
-#
-# RCS: @(#) $Id$
 
 package require tcltest 2.2
 namespace import ::tcltest::*
@@ -96,7 +94,7 @@ test main-2.3 {Tk_MainEx: -encoding option} -constraints stdio -setup {
 test main-3.1 {Tk_ParseArgv: -help option} -constraints unix -body {
     # Run only on unix as Win32 pops up native dialog
     exec [interpreter] -help
-} -returnCodes error -match glob -result {% Application initialization failed: Command-specific options:*}
+} -returnCodes error -match glob -result {% application-specific initialization failed: Command-specific options:*}
 
 test main-3.2 {Tk_ParseArgv: -help option} -setup {
     set maininterp [interp create]

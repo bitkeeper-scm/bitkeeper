@@ -8,8 +8,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclInt.h"
@@ -64,7 +62,7 @@ Tcl_ScaleTimeProc *tclScaleTimeProcPtr = NativeScaleTime;
 ClientData tclTimeClientData = NULL;
 
 /*
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------
  *
  * TclpGetSeconds --
  *
@@ -77,7 +75,7 @@ ClientData tclTimeClientData = NULL;
  * Side effects:
  *	None.
  *
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------
  */
 
 unsigned long
@@ -87,7 +85,7 @@ TclpGetSeconds(void)
 }
 
 /*
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------
  *
  * TclpGetClicks --
  *
@@ -102,7 +100,7 @@ TclpGetSeconds(void)
  * Side effects:
  *	None.
  *
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------
  */
 
 unsigned long
@@ -136,7 +134,7 @@ TclpGetClicks(void)
 #ifdef TCL_WIDE_CLICKS
 
 /*
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------
  *
  * TclpGetWideClicks --
  *
@@ -151,7 +149,7 @@ TclpGetClicks(void)
  * Side effects:
  *	None.
  *
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------
  */
 
 Tcl_WideInt
@@ -176,7 +174,7 @@ TclpGetWideClicks(void)
 }
 
 /*
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------
  *
  * TclpWideClicksToNanoseconds --
  *
@@ -189,7 +187,7 @@ TclpGetWideClicks(void)
  * Side effects:
  *	None.
  *
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------
  */
 
 double
@@ -222,122 +220,6 @@ TclpWideClicksToNanoseconds(
     return nsec;
 }
 #endif /* TCL_WIDE_CLICKS */
-
-/*
- *----------------------------------------------------------------------
- *
- * TclpGetTimeZone --
- *
- *	Determines the current timezone. The method varies wildly between
- *	different platform implementations, so its hidden in this function.
- *
- * Results:
- *	The return value is the local time zone, measured in minutes away from
- *	GMT (-ve for east, +ve for west).
- *
- * Side effects:
- *	None.
- *
- *----------------------------------------------------------------------
- */
-
-int
-TclpGetTimeZone(
-    unsigned long currentTime)
-{
-    int timeZone;
-
-    /*
-     * We prefer first to use the time zone in "struct tm" if the structure
-     * contains such a member. Following that, we try to locate the external
-     * 'timezone' variable and use its value. If both of those methods fail,
-     * we attempt to convert a known time to local time and use the difference
-     * from UTC as the local time zone. In all cases, we need to undo any
-     * Daylight Saving Time adjustment.
-     */
-
-#if defined(HAVE_TM_TZADJ)
-#define TCL_GOT_TIMEZONE
-    /*
-     * Struct tm contains tm_tzadj - that value may be used.
-     */
-
-    time_t curTime = (time_t) currentTime;
-    struct tm *timeDataPtr = TclpLocaltime(&curTime);
-
-    timeZone = timeDataPtr->tm_tzadj / 60;
-    if (timeDataPtr->tm_isdst) {
-	timeZone += 60;
-    }
-#endif
-
-#if defined(HAVE_TM_GMTOFF) && !defined (TCL_GOT_TIMEZONE)
-#define TCL_GOT_TIMEZONE
-    /*
-     * Struct tm contains tm_gmtoff - that value may be used.
-     */
-
-    time_t curTime = (time_t) currentTime;
-    struct tm *timeDataPtr = TclpLocaltime(&curTime);
-
-    timeZone = -(timeDataPtr->tm_gmtoff / 60);
-    if (timeDataPtr->tm_isdst) {
-	timeZone += 60;
-    }
-#endif
-
-#if defined(HAVE_TIMEZONE_VAR) && !defined(TCL_GOT_TIMEZONE) && !defined(USE_DELTA_FOR_TZ)
-#define TCL_GOT_TIMEZONE
-    /*
-     * The 'timezone' external var is present and may be used.
-     */
-
-    SetTZIfNecessary();
-
-    /*
-     * Note: this is not a typo in "timezone" below! See tzset documentation
-     * for details.
-     */
-
-    timeZone = timezone / 60;
-#endif
-
-#if !defined(TCL_GOT_TIMEZONE)
-#define TCL_GOT_TIMEZONE
-    /*
-     * Fallback - determine time zone with a known reference time.
-     */
-
-    time_t tt;
-    struct tm *stm;
-
-    tt = 849268800L;		/* 1996-11-29 12:00:00  GMT */
-    stm = TclpLocaltime(&tt);	/* eg 1996-11-29  6:00:00  CST6CDT */
-
-    /*
-     * The calculation below assumes a max of +12 or -12 hours from GMT.
-     */
-
-    timeZone = (12 - stm->tm_hour)*60 + (0 - stm->tm_min);
-    if (stm->tm_isdst) {
-	timeZone += 60;
-    }
-
-    /*
-     * Now have offset for our known reference time, eg +360 for CST6CDT.
-     */
-#endif
-
-#ifndef TCL_GOT_TIMEZONE
-    /*
-     * Cause fatal compile error, we don't know how to get timezone.
-     */
-
-#error autoconf did not figure out how to determine the timezone.
-#endif
-
-    return timeZone;
-}
 
 /*
  *----------------------------------------------------------------------
@@ -424,25 +306,14 @@ TclpGmtime(
     ThreadSpecificData *tsdPtr = TCL_TSD_INIT(&tmKey);
 
 #ifdef HAVE_GMTIME_R
-    gmtime_r(timePtr, &(tsdPtr->gmtime_buf));
+    gmtime_r(timePtr, &tsdPtr->gmtime_buf);
 #else
     Tcl_MutexLock(&tmMutex);
-    memcpy(&(tsdPtr->gmtime_buf), gmtime(timePtr), sizeof(struct tm));
+    memcpy(&tsdPtr->gmtime_buf, gmtime(timePtr), sizeof(struct tm));
     Tcl_MutexUnlock(&tmMutex);
 #endif
 
-    return &(tsdPtr->gmtime_buf);
-}
-
-/*
- * Forwarder for obsolete item in Stubs
- */
-
-struct tm *
-TclpGmtime_unix(
-    const time_t *timePtr)
-{
-    return TclpGmtime(timePtr);
+    return &tsdPtr->gmtime_buf;
 }
 
 /*
@@ -475,23 +346,14 @@ TclpLocaltime(
 
     SetTZIfNecessary();
 #ifdef HAVE_LOCALTIME_R
-    localtime_r(timePtr, &(tsdPtr->localtime_buf));
+    localtime_r(timePtr, &tsdPtr->localtime_buf);
 #else
     Tcl_MutexLock(&tmMutex);
-    memcpy(&(tsdPtr->localtime_buf), localtime(timePtr), sizeof(struct tm));
+    memcpy(&tsdPtr->localtime_buf, localtime(timePtr), sizeof(struct tm));
     Tcl_MutexUnlock(&tmMutex);
 #endif
 
-    return &(tsdPtr->localtime_buf);
-}
-/*
- * Forwarder for obsolete item in Stubs
- */
-struct tm*
-TclpLocaltime_unix(
-    const time_t *timePtr)
-{
-    return TclpLocaltime(timePtr);
+    return &tsdPtr->localtime_buf;
 }
 
 /*
@@ -639,9 +501,9 @@ SetTZIfNecessary(void)
     if (lastTZ == NULL || strcmp(lastTZ, newTZ)) {
 	tzset();
 	if (lastTZ == NULL) {
-	    Tcl_CreateExitHandler(CleanupMemory, (ClientData) NULL);
+	    Tcl_CreateExitHandler(CleanupMemory, NULL);
 	} else {
-	    Tcl_Free(lastTZ);
+	    ckfree(lastTZ);
 	}
 	lastTZ = ckalloc(strlen(newTZ) + 1);
 	strcpy(lastTZ, newTZ);

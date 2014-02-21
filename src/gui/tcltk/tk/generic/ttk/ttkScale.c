@@ -1,4 +1,4 @@
-/* $Id$
+/*
  * Copyright (C) 2004 Pat Thoyts <patthoyts@users.sourceforge.net>
  *
  * ttk::scale widget.
@@ -45,8 +45,6 @@ typedef struct
 
 static Tk_OptionSpec ScaleOptionSpecs[] =
 {
-    WIDGET_TAKES_FOCUS,
-
     {TK_OPTION_STRING, "-command", "command", "Command", "",
 	Tk_Offset(Scale,scale.commandObj), -1, 
 	TK_OPTION_NULL_OK,0,0},
@@ -68,6 +66,7 @@ static Tk_OptionSpec ScaleOptionSpecs[] =
 	DEF_SCALE_LENGTH, Tk_Offset(Scale,scale.lengthObj), -1, 0, 0, 
     	GEOMETRY_CHANGED},
 
+    WIDGET_TAKEFOCUS_TRUE,
     WIDGET_INHERIT_OPTIONS(ttkCoreOptionSpecs)
 };
 
@@ -242,7 +241,7 @@ static double ScaleFraction(Scale *scalePtr, double value)
  */
 static int
 ScaleGetCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     Scale *scalePtr = recordPtr;
     int x, y, r = TCL_OK;
@@ -270,7 +269,7 @@ ScaleGetCommand(
  */
 static int
 ScaleSetCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     Scale *scalePtr = recordPtr;
     double from = 0.0, to = 1.0, value;
@@ -338,7 +337,7 @@ ScaleSetCommand(
 
 static int
 ScaleCoordsCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     Scale *scalePtr = recordPtr;
     double value;
@@ -462,17 +461,16 @@ ValueToPoint(Scale *scalePtr, double value)
     return pt;
 }
 
-static WidgetCommandSpec ScaleCommands[] =
-{
-    { "configure",   TtkWidgetConfigureCommand },
-    { "cget",        TtkWidgetCgetCommand },
-    { "state",       TtkWidgetStateCommand },
-    { "instate",     TtkWidgetInstateCommand },
-    { "identify",    TtkWidgetIdentifyCommand },
-    { "set",         ScaleSetCommand },
-    { "get",         ScaleGetCommand },
-    { "coords",      ScaleCoordsCommand },
-    { 0, 0 }
+static const Ttk_Ensemble ScaleCommands[] = {
+    { "configure",   TtkWidgetConfigureCommand,0 },
+    { "cget",        TtkWidgetCgetCommand,0 },
+    { "state",       TtkWidgetStateCommand,0 },
+    { "instate",     TtkWidgetInstateCommand,0 },
+    { "identify",    TtkWidgetIdentifyCommand,0 },
+    { "set",         ScaleSetCommand,0 },
+    { "get",         ScaleGetCommand,0 },
+    { "coords",      ScaleCoordsCommand,0 },
+    { 0,0,0 }
 };
 
 static WidgetSpec ScaleWidgetSpec =

@@ -1,4 +1,3 @@
-# $Id$
 #
 # ttk::treeview widget bindings and utilities.
 #
@@ -44,7 +43,7 @@ bind Treeview	<KeyPress-space>	{ ttk::treeview::ToggleFocus %W }
 
 bind Treeview	<Shift-ButtonPress-1> \
 		{ ttk::treeview::Select %W %x %y extend }
-bind Treeview	<Control-ButtonPress-1> \
+bind Treeview	<<ToggleSelection>> \
 		{ ttk::treeview::Select %W %x %y toggle }
 
 ttk::copyBindings TtkScrollable Treeview 
@@ -234,7 +233,7 @@ proc ttk::treeview::heading.drag {w x y} {
 proc ttk::treeview::heading.release {w} {
     variable State
     if {[lsearch -exact [$w heading $State(heading) state] pressed] >= 0} {
-	after idle [$w heading $State(heading) -command]
+	after 0 [$w heading $State(heading) -command]
     }
     $w heading $State(heading) state !pressed
 }

@@ -1,6 +1,4 @@
 #
-# $Id$
-#
 # DERIVED FROM: tk/library/entry.tcl r1.22
 #
 # Copyright (c) 1992-1994 The Regents of the University of California.
@@ -80,7 +78,7 @@ bind TEntry <B1-Leave> 		{ ttk::Repeatedly ttk::entry::AutoScroll %W }
 bind TEntry <B1-Enter>		{ ttk::CancelRepeat }
 bind TEntry <ButtonRelease-1>	{ ttk::CancelRepeat }
 
-bind TEntry <Control-ButtonPress-1> {
+bind TEntry <<ToggleSelection>> {
     %W instate {!readonly !disabled} { %W icursor @%x ; focus %W }
 }
 
@@ -95,22 +93,22 @@ bind TEntry <<PasteSelection>>		{ ttk::entry::ScanRelease %W %x }
 
 ## Keyboard navigation bindings:
 #
-bind TEntry <Key-Left> 			{ ttk::entry::Move %W prevchar }
-bind TEntry <Key-Right> 		{ ttk::entry::Move %W nextchar }
-bind TEntry <Control-Key-Left>		{ ttk::entry::Move %W prevword }
-bind TEntry <Control-Key-Right>		{ ttk::entry::Move %W nextword }
-bind TEntry <Key-Home>			{ ttk::entry::Move %W home }
-bind TEntry <Key-End>			{ ttk::entry::Move %W end }
+bind TEntry <<PrevChar>>		{ ttk::entry::Move %W prevchar }
+bind TEntry <<NextChar>> 		{ ttk::entry::Move %W nextchar }
+bind TEntry <<PrevWord>>		{ ttk::entry::Move %W prevword }
+bind TEntry <<NextWord>>		{ ttk::entry::Move %W nextword }
+bind TEntry <<LineStart>>		{ ttk::entry::Move %W home }
+bind TEntry <<LineEnd>>			{ ttk::entry::Move %W end }
 
-bind TEntry <Shift-Key-Left> 		{ ttk::entry::Extend %W prevchar }
-bind TEntry <Shift-Key-Right>		{ ttk::entry::Extend %W nextchar }
-bind TEntry <Shift-Control-Key-Left>	{ ttk::entry::Extend %W prevword }
-bind TEntry <Shift-Control-Key-Right>	{ ttk::entry::Extend %W nextword }
-bind TEntry <Shift-Key-Home>		{ ttk::entry::Extend %W home }
-bind TEntry <Shift-Key-End>		{ ttk::entry::Extend %W end }
+bind TEntry <<SelectPrevChar>> 		{ ttk::entry::Extend %W prevchar }
+bind TEntry <<SelectNextChar>>		{ ttk::entry::Extend %W nextchar }
+bind TEntry <<SelectPrevWord>>		{ ttk::entry::Extend %W prevword }
+bind TEntry <<SelectNextWord>>		{ ttk::entry::Extend %W nextword }
+bind TEntry <<SelectLineStart>>		{ ttk::entry::Extend %W home }
+bind TEntry <<SelectLineEnd>>		{ ttk::entry::Extend %W end }
 
-bind TEntry <Control-Key-slash> 	{ %W selection range 0 end }
-bind TEntry <Control-Key-backslash> 	{ %W selection clear }
+bind TEntry <<SelectAll>> 		{ %W selection range 0 end }
+bind TEntry <<SelectNone>> 		{ %W selection clear }
 
 bind TEntry <<TraverseIn>> 	{ %W selection range 0 end; %W icursor end }
 
@@ -137,14 +135,13 @@ bind TEntry <Key-Tab> 			{# nothing}
 if {[tk windowingsystem] eq "aqua"} {
     bind TEntry <Command-KeyPress>	{# nothing}
 }
+# Tk-on-Cocoa generates characters for these two keys. [Bug 2971663]
+bind TEntry <<PrevLine>>		{# nothing}
+bind TEntry <<NextLine>>		{# nothing}
 
 ## Additional emacs-like bindings:
 #
-bind TEntry <Control-Key-a>		{ ttk::entry::Move %W home }
-bind TEntry <Control-Key-b>		{ ttk::entry::Move %W prevchar }
-bind TEntry <Control-Key-d> 		{ ttk::entry::Delete %W }
-bind TEntry <Control-Key-e> 		{ ttk::entry::Move %W end }
-bind TEntry <Control-Key-f> 		{ ttk::entry::Move %W nextchar }
+bind TEntry <Control-Key-d>		{ ttk::entry::Delete %W }
 bind TEntry <Control-Key-h>		{ ttk::entry::Backspace %W }
 bind TEntry <Control-Key-k>		{ %W delete insert end }
 
@@ -228,7 +225,7 @@ proc ttk::entry::See {w {index insert}} {
 #	position following the next end-of-word position.
 #
 set ::ttk::entry::State(startNext) \
-	[string equal $::tcl_platform(platform) "windows"]
+	[string equal [tk windowingsystem] "win32"]
 
 proc ttk::entry::NextWord {w start} {
     variable State

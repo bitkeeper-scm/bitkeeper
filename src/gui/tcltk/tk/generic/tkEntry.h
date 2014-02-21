@@ -6,7 +6,7 @@
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
  *
- * Copyright (c) 2002 Apple Computer, Inc.
+ * Copyright (c) 2002 Apple Inc.
  */
 
 #ifndef _TKENTRY
@@ -14,11 +14,6 @@
 
 #ifndef _TKINT
 #include "tkInt.h"
-#endif
-
-#ifdef BUILD_tk
-#undef TCL_STORAGE_CLASS
-#define TCL_STORAGE_CLASS DLLEXPORT
 #endif
 
 enum EntryType {
@@ -299,8 +294,5 @@ enum selelement {
 MODULE_SCOPE int	TkpDrawEntryBorderAndFocus(Entry *entryPtr,
 			    Drawable d, int isSpinbox);
 MODULE_SCOPE int	TkpDrawSpinboxButtons(Spinbox *sbPtr, Drawable d);
-
-#undef TCL_STORAGE_CLASS
-#define TCL_STORAGE_CLASS DLLIMPORT
 
 #endif /* _TKENTRY */

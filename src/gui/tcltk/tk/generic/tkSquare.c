@@ -11,12 +11,16 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #if 0
 #define __NO_OLD_CONFIG
+#endif
+#ifndef USE_TCL_STUBS
+#   define USE_TCL_STUBS
+#endif
+#ifndef USE_TK_STUBS
+#   define USE_TK_STUBS
 #endif
 #include "tkInt.h"
 
@@ -63,41 +67,38 @@ typedef struct {
 static const Tk_OptionSpec optionSpecs[] = {
     {TK_OPTION_BORDER, "-background", "background", "Background",
 	    "#d9d9d9", Tk_Offset(Square, bgBorderPtr), -1, 0,
-	    (ClientData) "white"},
+	    "white", 0},
     {TK_OPTION_SYNONYM, "-bd", NULL, NULL, NULL, 0, -1, 0,
-	    (ClientData) "-borderwidth"},
+	    "-borderwidth", 0},
     {TK_OPTION_SYNONYM, "-bg", NULL, NULL, NULL, 0, -1, 0,
-	    (ClientData) "-background"},
+	    "-background", 0},
     {TK_OPTION_PIXELS, "-borderwidth", "borderWidth", "BorderWidth",
-	    "2", Tk_Offset(Square, borderWidthPtr), -1},
+	    "2", Tk_Offset(Square, borderWidthPtr), -1, 0, NULL, 0},
     {TK_OPTION_BOOLEAN, "-dbl", "doubleBuffer", "DoubleBuffer",
-	    "1", Tk_Offset(Square, doubleBufferPtr), -1},
+	    "1", Tk_Offset(Square, doubleBufferPtr), -1, 0 , NULL, 0},
     {TK_OPTION_SYNONYM, "-fg", NULL, NULL, NULL, 0, -1, 0,
-	    (ClientData) "-foreground"},
+	    "-foreground", 0},
     {TK_OPTION_BORDER, "-foreground", "foreground", "Foreground",
 	    "#b03060", Tk_Offset(Square, fgBorderPtr), -1, 0,
-	    (ClientData) "black"},
+	    "black", 0},
     {TK_OPTION_PIXELS, "-posx", "posx", "PosX", "0",
-	    Tk_Offset(Square, xPtr), -1},
+	    Tk_Offset(Square, xPtr), -1, 0, NULL, 0},
     {TK_OPTION_PIXELS, "-posy", "posy", "PosY", "0",
-	    Tk_Offset(Square, yPtr), -1},
+	    Tk_Offset(Square, yPtr), -1, 0, NULL, 0},
     {TK_OPTION_RELIEF, "-relief", "relief", "Relief",
-	    "raised", Tk_Offset(Square, reliefPtr), -1},
+	    "raised", Tk_Offset(Square, reliefPtr), -1, 0, NULL, 0},
     {TK_OPTION_PIXELS, "-size", "size", "Size", "20",
-	    Tk_Offset(Square, sizeObjPtr), -1},
-    {TK_OPTION_END}
+	    Tk_Offset(Square, sizeObjPtr), -1, 0, NULL, 0},
+    {TK_OPTION_END, NULL, NULL, NULL, NULL, 0, 0, 0, NULL, 0}
 };
 
 /*
  * Forward declarations for procedures defined later in this file:
  */
 
-int			SquareObjCmd(ClientData clientData,
-			    Tcl_Interp *interp, int objc,
-			    Tcl_Obj * const objv[]);
 static void		SquareDeletedProc(ClientData clientData);
 static int		SquareConfigure(Tcl_Interp *interp, Square *squarePtr);
-static void		SquareDestroy(char *memPtr);
+static void		SquareDestroy(void *memPtr);
 static void		SquareDisplay(ClientData clientData);
 static void		KeepInWindow(Square *squarePtr);
 static void		SquareObjEventProc(ClientData clientData,
@@ -159,8 +160,8 @@ SquareObjCmd(
      * just the non-NULL/0 items.
      */
 
-    squarePtr = (Square *) ckalloc(sizeof(Square));
-    memset((void *) squarePtr, 0, (sizeof(Square)));
+    squarePtr = ckalloc(sizeof(Square));
+    memset(squarePtr, 0, sizeof(Square));
 
     squarePtr->tkwin = tkwin;
     squarePtr->display = Tk_Display(tkwin);
@@ -174,7 +175,7 @@ SquareObjCmd(
     if (Tk_InitOptions(interp, (char *) squarePtr, optionTable, tkwin)
 	    != TCL_OK) {
 	Tk_DestroyWindow(squarePtr->tkwin);
-	ckfree((char *) squarePtr);
+	ckfree(squarePtr);
 	return TCL_ERROR;
     }
 
@@ -236,8 +237,8 @@ SquareWidgetObjCmd(
 	return TCL_ERROR;
     }
 
-    if (Tcl_GetIndexFromObj(interp, objv[1], squareOptions, "command",
-	    0, &index) != TCL_OK) {
+    if (Tcl_GetIndexFromObjStruct(interp, objv[1], squareOptions,
+	    sizeof(char *), "command", 0, &index) != TCL_OK) {
 	return TCL_ERROR;
     }
 
@@ -409,7 +410,7 @@ SquareObjEventProc(
 	if (squarePtr->updatePending) {
 	    Tcl_CancelIdleCall(SquareDisplay, squarePtr);
 	}
-	Tcl_EventuallyFree(squarePtr, SquareDestroy);
+	Tcl_EventuallyFree(squarePtr, (Tcl_FreeProc *) SquareDestroy);
     }
 }
 
@@ -553,11 +554,11 @@ SquareDisplay(
 
 static void
 SquareDestroy(
-    char *memPtr)		/* Info about square widget. */
+    void *memPtr)		/* Info about square widget. */
 {
-    Square *squarePtr = (Square *) memPtr;
+    Square *squarePtr = memPtr;
 
-    ckfree((char *) squarePtr);
+    ckfree(squarePtr);
 }
 
 /*

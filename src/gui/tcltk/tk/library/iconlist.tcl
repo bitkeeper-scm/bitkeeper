@@ -3,8 +3,6 @@
 #	Implements the icon-list megawidget used in the "Tk" standard file
 #	selection dialog boxes.
 #
-# RCS: @(#) $Id$
-#
 # Copyright (c) 1994-1998 Sun Microsystems, Inc.
 # Copyright (c) 2009 Donal K. Fellows
 #
@@ -30,36 +28,24 @@
 
 package require Tk 8.6
 
-::oo::class create ::tk::IconList {
-    variable w hull canvas sbar accel accelCB arrangeCB fill font index \
+::tk::Megawidget create ::tk::IconList ::tk::FocusableWidget {
+    variable w canvas sbar accel accelCB fill font index \
 	itemList itemsPerColumn list maxIH maxIW maxTH maxTW noScroll \
 	numItems oldX oldY options rect selected selection textList
     constructor args {
-	set w [namespace tail [self]]
-	my configure {*}$args
-	rename [self] _$w
-	my Create
-	rename ::$w theFrame
-	rename [self] ::$w
-	set arrangeCB {}
+	next {*}$args
 	set accelCB {}
     }
-    self {
-	method unknown {w args} {
-	    if {[string match .* $w]} {
-		[self] create $w {*}$args
-		return $w
-	    }
-	    next $w {*}$args
-	}
-	unexport new unknown
-    }
     destructor {
-	after cancel $arrangeCB
 	my Reset
-	if {[winfo exists $w]} {
-	    bind $hull <Destroy> {}
-	    destroy $w
+	next
+    }
+
+    method GetSpecs {} {
+	concat [next] {
+	    {-command "" "" ""}
+	    {-font "" "" "TkIconFont"}
+	    {-multiple "" "" "0"}
 	}
     }
 
@@ -112,8 +98,9 @@ package require Tk 8.6
 			set first [set last [lindex $args 0]]
 		    }
 		    default {
-			return -code error "wrong # args: should be\
-			     \"[lrange [info level 0] 0 1] first ?last?\""
+			return -code error -errorcode {TCL WRONGARGS} \
+			    "wrong # args: should be\
+			    \"[lrange [info level 0] 0 1] first ?last?\""
 		    }
 		}
 
@@ -163,8 +150,9 @@ package require Tk 8.6
 			set first [set last [lindex $args 0]]
 		    }
 		    default {
-			return -code error "wrong # args: should be\
-			     \"[lrange [info level 0] 0 1] first ?last?\""
+			return -code error -errorcode {TCL WRONGARGS} \
+			    "wrong # args: should be\
+			    \"[lrange [info level 0] 0 1] first ?last?\""
 		    }
 		}
 
@@ -190,27 +178,6 @@ package require Tk 8.6
 	set rTag [lindex $list $item 2]
 	lassign $itemList($rTag) iTag tTag text serial
 	return $text
-    }
-
-    #	Configure the widget variables of IconList, according to the command
-    #	line arguments.
-    #
-    method configure args {
-	# 1: the configuration specs
-	#
-	set specs {
-	    {-command "" "" ""}
-	    {-font "" "" "TkIconFont"}
-	    {-multiple "" "" "0"}
-	}
-
-	# 2: parse the arguments
-	#
-	tclParseConfigSpec [my varname options] $specs "" $args
-    }
-
-    method cget option {
-	return $options($option)
     }
 
     #	Deletes all the items inside the canvas subwidget and reset the
@@ -269,7 +236,8 @@ package require Tk 8.6
 	    set textList($numItems) [string tolower $text]
 	    incr numItems
 	}
-	my ArrangeWhenIdle
+	my WhenIdle Arrange
+	return
     }
 
     #	Gets called when the user invokes the IconList (usually by
@@ -330,18 +298,9 @@ package require Tk 8.6
 
     # ----------------------------------------------------------------------
 
-    method ArrangeWhenIdle {} {
-	if {$arrangeCB eq ""} {
-	    set arrangeCB [after idle [namespace code {my Arrange}]]
-	}
-	return
-    }
-
     #	Places the icons in a column-major arrangement.
     #
     method Arrange {} {
-	set arrangeCB ""
-
 	if {![info exists list]} {
 	    if {[info exists canvas] && [winfo exists $canvas]} {
 		set noScroll 1
@@ -442,15 +401,13 @@ package require Tk 8.6
     #	operations.
     #
     method Create {} {
-	ttk::frame $w
-	set hull [ttk::entry $w.cHull -takefocus 0]
-	set sbar [ttk::scrollbar $w.cHull.sbar -orient horizontal -takefocus 0]
+	variable hull
+	set sbar [ttk::scrollbar $hull.sbar -orient horizontal -takefocus 0]
 	catch {$sbar configure -highlightthickness 0}
-	set canvas [canvas $w.cHull.canvas -highlightthick 0 -takefocus 1 \
+	set canvas [canvas $hull.canvas -highlightthick 0 -takefocus 1 \
 			-width 400 -height 120 -background white]
-	pack $sbar -side bottom -fill x -padx 2 -in $hull -pady {0 2}
+	pack $sbar -side bottom -fill x -padx 2 -pady {0 2}
 	pack $canvas -expand yes -fill both -padx 2 -pady {2 0}
-	pack $hull -expand yes -fill both -ipadx 2 -ipady 2
 
 	$sbar configure -command [list $canvas xview]
 	$canvas configure -xscrollcommand [list $sbar set]
@@ -474,7 +431,7 @@ package require Tk 8.6
 
 	# Creates the event bindings.
 	#
-	bind $canvas <Configure>	[namespace code {my ArrangeWhenIdle}]
+	bind $canvas <Configure>	[namespace code {my WhenIdle Arrange}]
 
 	bind $canvas <1>		[namespace code {my Btn1 %x %y}]
 	bind $canvas <B1-Motion>	[namespace code {my Motion1 %x %y}]
@@ -489,10 +446,10 @@ package require Tk 8.6
 	bind $canvas <Control-B1-Motion> {;}
 	bind $canvas <Shift-B1-Motion>	[namespace code {my ShiftMotion1 %x %y}]
 
-	bind $canvas <Up>		[namespace code {my UpDown -1}]
-	bind $canvas <Down>		[namespace code {my UpDown  1}]
-	bind $canvas <Left>		[namespace code {my LeftRight -1}]
-	bind $canvas <Right>		[namespace code {my LeftRight  1}]
+	bind $canvas <<PrevLine>>	[namespace code {my UpDown -1}]
+	bind $canvas <<NextLine>>	[namespace code {my UpDown  1}]
+	bind $canvas <<PrevChar>>	[namespace code {my LeftRight -1}]
+	bind $canvas <<NextChar>>	[namespace code {my LeftRight  1}]
 	bind $canvas <Return>		[namespace code {my ReturnKey}]
 	bind $canvas <KeyPress>		[namespace code {my KeyPress %A}]
 	bind $canvas <Control-KeyPress> ";"
@@ -500,8 +457,6 @@ package require Tk 8.6
 
 	bind $canvas <FocusIn>		[namespace code {my FocusIn}]
 	bind $canvas <FocusOut>		[namespace code {my FocusOut}]
-
-	bind $hull <Destroy>		[namespace code {my destroy}]
 
 	return $w
     }
@@ -613,7 +568,7 @@ package require Tk 8.6
 	my AutoScan
     }
     method FocusIn {} {
-	$hull state focus
+	$w state focus
 	if {![info exists list]} {
 	    return
 	}
@@ -622,7 +577,7 @@ package require Tk 8.6
 	}
     }
     method FocusOut {} {
-	$hull state !focus
+	$w state !focus
 	$w selection clear 0 end
     }
 
@@ -654,7 +609,8 @@ package require Tk 8.6
     #	Moves the active element left or right by one column
     #
     # Arguments:
-    #	amount -	+1 to move right one column, -1 to move left one column
+    #	amount -	+1 to move right one column, -1 to move left one
+    #			column
     #
     method LeftRight amount {
 	if {![info exists list]} {
@@ -731,3 +687,10 @@ package require Tk 8.6
 	unset -nocomplain accel
     }
 }
+
+return
+
+# Local Variables:
+# mode: tcl
+# fill-column: 78
+# End:

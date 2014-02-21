@@ -1,4 +1,4 @@
-/* $Id$
+/*
  * Copyright (c) 2003, Joe English
  *
  * label, button, checkbutton, radiobutton, and menubutton widgets.
@@ -244,17 +244,17 @@ static Tk_OptionSpec LabelOptionSpecs[] =
 	NULL, Tk_Offset(Label, label.wrapLengthObj), -1,
 	TK_OPTION_NULL_OK,0,GEOMETRY_CHANGED /*SB: SIZE_CHANGED*/ },
 
+    WIDGET_TAKEFOCUS_FALSE,
     WIDGET_INHERIT_OPTIONS(BaseOptionSpecs)
 };
 
-static WidgetCommandSpec LabelCommands[] =
-{
-    { "configure",	TtkWidgetConfigureCommand },
-    { "cget",		TtkWidgetCgetCommand },
-    { "instate",	TtkWidgetInstateCommand },
-    { "state",  	TtkWidgetStateCommand },
-    { "identify",	TtkWidgetIdentifyCommand },
-    { NULL, NULL }
+static const Ttk_Ensemble LabelCommands[] = {
+    { "configure",	TtkWidgetConfigureCommand,0 },
+    { "cget",		TtkWidgetCgetCommand,0 },
+    { "instate",	TtkWidgetInstateCommand,0 },
+    { "state",  	TtkWidgetStateCommand,0 },
+    { "identify",	TtkWidgetIdentifyCommand,0 },
+    { 0,0,0 }
 };
 
 static WidgetSpec LabelWidgetSpec =
@@ -302,14 +302,13 @@ typedef struct
  */
 static Tk_OptionSpec ButtonOptionSpecs[] =
 {
-    WIDGET_TAKES_FOCUS,
-
     {TK_OPTION_STRING, "-command", "command", "Command",
 	"", Tk_Offset(Button, button.commandObj), -1, 0,0,0},
     {TK_OPTION_STRING_TABLE, "-default", "default", "Default",
 	"normal", Tk_Offset(Button, button.defaultStateObj), -1,
 	0, (ClientData) ttkDefaultStrings, DEFAULTSTATE_CHANGED},
 
+    WIDGET_TAKEFOCUS_TRUE,
     WIDGET_INHERIT_OPTIONS(BaseOptionSpecs)
 };
 
@@ -341,7 +340,7 @@ static int ButtonConfigure(Tcl_Interp *interp, void *recordPtr, int mask)
  */
 static int
 ButtonInvokeCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     Button *buttonPtr = recordPtr;
     if (objc > 2) {
@@ -354,15 +353,14 @@ ButtonInvokeCommand(
     return Tcl_EvalObjEx(interp, buttonPtr->button.commandObj, TCL_EVAL_GLOBAL);
 }
 
-static WidgetCommandSpec ButtonCommands[] =
-{
-    { "configure",	TtkWidgetConfigureCommand },
-    { "cget",		TtkWidgetCgetCommand },
-    { "invoke",		ButtonInvokeCommand },
-    { "instate",	TtkWidgetInstateCommand },
-    { "state",  	TtkWidgetStateCommand },
-    { "identify",	TtkWidgetIdentifyCommand },
-    { NULL, NULL }
+static const Ttk_Ensemble ButtonCommands[] = {
+    { "configure",	TtkWidgetConfigureCommand,0 },
+    { "cget",		TtkWidgetCgetCommand,0 },
+    { "invoke",		ButtonInvokeCommand,0 },
+    { "instate",	TtkWidgetInstateCommand,0 },
+    { "state",  	TtkWidgetStateCommand,0 },
+    { "identify",	TtkWidgetIdentifyCommand,0 },
+    { 0,0,0 }
 };
 
 static WidgetSpec ButtonWidgetSpec =
@@ -414,8 +412,6 @@ typedef struct
  */
 static Tk_OptionSpec CheckbuttonOptionSpecs[] =
 {
-    WIDGET_TAKES_FOCUS,
-
     {TK_OPTION_STRING, "-variable", "variable", "Variable",
 	"", Tk_Offset(Checkbutton, checkbutton.variableObj), -1,
 	TK_OPTION_DONT_SET_DEFAULT,0,0},
@@ -429,6 +425,7 @@ static Tk_OptionSpec CheckbuttonOptionSpecs[] =
 	"", Tk_Offset(Checkbutton, checkbutton.commandObj), -1,
 	0,0,0},
 
+    WIDGET_TAKEFOCUS_TRUE,
     WIDGET_INHERIT_OPTIONS(BaseOptionSpecs)
 };
 
@@ -521,7 +518,7 @@ CheckbuttonPostConfigure(Tcl_Interp *interp, void *recordPtr, int mask)
  */
 static int
 CheckbuttonInvokeCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     Checkbutton *checkPtr = recordPtr;
     WidgetCore *corePtr = &checkPtr->core;
@@ -555,16 +552,15 @@ CheckbuttonInvokeCommand(
 	checkPtr->checkbutton.commandObj, TCL_EVAL_GLOBAL);
 }
 
-static WidgetCommandSpec CheckbuttonCommands[] =
-{
-    { "configure",	TtkWidgetConfigureCommand },
-    { "cget",		TtkWidgetCgetCommand },
-    { "invoke",		CheckbuttonInvokeCommand },
-    { "instate",	TtkWidgetInstateCommand },
-    { "state",  	TtkWidgetStateCommand },
-    { "identify",	TtkWidgetIdentifyCommand },
+static const Ttk_Ensemble CheckbuttonCommands[] = {
+    { "configure",	TtkWidgetConfigureCommand,0 },
+    { "cget",		TtkWidgetCgetCommand,0 },
+    { "invoke",		CheckbuttonInvokeCommand,0 },
+    { "instate",	TtkWidgetInstateCommand,0 },
+    { "state",  	TtkWidgetStateCommand,0 },
+    { "identify",	TtkWidgetIdentifyCommand,0 },
     /* MISSING: select, deselect, toggle */
-    { NULL, NULL }
+    { 0,0,0 }
 };
 
 static WidgetSpec CheckbuttonWidgetSpec =
@@ -616,8 +612,6 @@ typedef struct
  */
 static Tk_OptionSpec RadiobuttonOptionSpecs[] =
 {
-    WIDGET_TAKES_FOCUS,
-
     {TK_OPTION_STRING, "-variable", "variable", "Variable",
 	"::selectedButton", Tk_Offset(Radiobutton, radiobutton.variableObj),-1,
 	0,0,0},
@@ -628,6 +622,7 @@ static Tk_OptionSpec RadiobuttonOptionSpecs[] =
 	"", Tk_Offset(Radiobutton, radiobutton.commandObj), -1,
 	0,0,0},
 
+    WIDGET_TAKEFOCUS_TRUE,
     WIDGET_INHERIT_OPTIONS(BaseOptionSpecs)
 };
 
@@ -707,7 +702,7 @@ RadiobuttonPostConfigure(Tcl_Interp *interp, void *recordPtr, int mask)
  */
 static int
 RadiobuttonInvokeCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     Radiobutton *radioPtr = recordPtr;
     WidgetCore *corePtr = &radioPtr->core;
@@ -733,16 +728,15 @@ RadiobuttonInvokeCommand(
 	radioPtr->radiobutton.commandObj, TCL_EVAL_GLOBAL);
 }
 
-static WidgetCommandSpec RadiobuttonCommands[] =
-{
-    { "configure",	TtkWidgetConfigureCommand },
-    { "cget",		TtkWidgetCgetCommand },
-    { "invoke",		RadiobuttonInvokeCommand },
-    { "instate",	TtkWidgetInstateCommand },
-    { "state",  	TtkWidgetStateCommand },
-    { "identify",	TtkWidgetIdentifyCommand },
+static const Ttk_Ensemble RadiobuttonCommands[] = {
+    { "configure",	TtkWidgetConfigureCommand,0 },
+    { "cget",		TtkWidgetCgetCommand,0 },
+    { "invoke",		RadiobuttonInvokeCommand,0 },
+    { "instate",	TtkWidgetInstateCommand,0 },
+    { "state",  	TtkWidgetStateCommand,0 },
+    { "identify",	TtkWidgetIdentifyCommand,0 },
     /* MISSING: select, deselect */
-    { NULL, NULL }
+    { 0,0,0 }
 };
 
 static WidgetSpec RadiobuttonWidgetSpec =
@@ -788,30 +782,28 @@ typedef struct
 /*
  * Option specifications:
  */
-static const char *directionStrings[] = {
+static const char *const directionStrings[] = {
     "above", "below", "left", "right", "flush", NULL
 };
 static Tk_OptionSpec MenubuttonOptionSpecs[] =
 {
-    WIDGET_TAKES_FOCUS,
-
     {TK_OPTION_STRING, "-menu", "menu", "Menu",
 	"", Tk_Offset(Menubutton, menubutton.menuObj), -1, 0,0,0},
     {TK_OPTION_STRING_TABLE, "-direction", "direction", "Direction",
 	"below", Tk_Offset(Menubutton, menubutton.directionObj), -1,
 	0,(ClientData)directionStrings,GEOMETRY_CHANGED},
 
+    WIDGET_TAKEFOCUS_TRUE,
     WIDGET_INHERIT_OPTIONS(BaseOptionSpecs)
 };
 
-static WidgetCommandSpec MenubuttonCommands[] =
-{
-    { "configure",	TtkWidgetConfigureCommand },
-    { "cget",		TtkWidgetCgetCommand },
-    { "instate",	TtkWidgetInstateCommand },
-    { "state",  	TtkWidgetStateCommand },
-    { "identify",	TtkWidgetIdentifyCommand },
-    { NULL, NULL }
+static const Ttk_Ensemble MenubuttonCommands[] = {
+    { "configure",	TtkWidgetConfigureCommand,0 },
+    { "cget",		TtkWidgetCgetCommand,0 },
+    { "instate",	TtkWidgetInstateCommand,0 },
+    { "state",  	TtkWidgetStateCommand,0 },
+    { "identify",	TtkWidgetIdentifyCommand,0 },
+    { 0,0,0 }
 };
 
 static WidgetSpec MenubuttonWidgetSpec =

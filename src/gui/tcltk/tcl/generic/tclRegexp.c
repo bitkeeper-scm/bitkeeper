@@ -9,8 +9,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclInt.h"
@@ -55,8 +53,8 @@
  *
  * *** NOTE: this code has been altered slightly for use in Tcl: ***
  * *** 1. Names have been changed, e.g. from re_comp to		 ***
- * ***    TclRegComp, to avoid clashes with other 		 ***
- * ***    regexp implementations used by applications. 		 ***
+ * ***    TclRegComp, to avoid clashes with other		 ***
+ * ***    regexp implementations used by applications.		 ***
  */
 
 /*
@@ -181,7 +179,7 @@ Tcl_RegExpExec(
 				 * that "^" won't match. */
 {
     int flags, result, numChars;
-    TclRegexp *regexp = (TclRegexp *)re;
+    TclRegexp *regexp = (TclRegexp *) re;
     Tcl_DString ds;
     const Tcl_UniChar *ustr;
 
@@ -412,9 +410,8 @@ Tcl_RegExpMatch(
     const char *text,		/* Text to search for pattern matches. */
     const char *pattern)	/* Regular expression to match against text. */
 {
-    Tcl_RegExp re;
+    Tcl_RegExp re = Tcl_RegExpCompile(interp, pattern);
 
-    re = Tcl_RegExpCompile(interp, pattern);
     if (re == NULL) {
 	return -1;
     }
@@ -457,7 +454,8 @@ Tcl_RegExpExecObj(
     int i, length;
     int reflags = regexpPtr->flags;
     /* We could allow TCL_REG_PCRE to accept glob-fallback as well */
-#define TCL_REG_GLOBOK_FLAGS (TCL_REG_ADVANCED | TCL_REG_NOSUB | TCL_REG_NOCASE)
+#define TCL_REG_GLOBOK_FLAGS \
+	(TCL_REG_ADVANCED | TCL_REG_NOSUB | TCL_REG_NOCASE)
 
     /*
      * Take advantage of the equivalent glob pattern, if one exists.
@@ -716,7 +714,7 @@ Tcl_GetRegExpFromObj(
      * TclRegexp* when the type is tclRegexpType.
      */
 
-    regexpPtr = (TclRegexp *) objPtr->internalRep.otherValuePtr;
+    regexpPtr = objPtr->internalRep.twoPtrValue.ptr1;
 
     /* XXX Need to have case where -type classic isn't ignored in regexp/sub */
     if ((interp != NULL) && (((Interp *)interp)->flags & INTERP_PCRE)) {
@@ -743,7 +741,7 @@ Tcl_GetRegExpFromObj(
 	 */
 
 	TclFreeIntRep(objPtr);
-	objPtr->internalRep.otherValuePtr = (void *) regexpPtr;
+	objPtr->internalRep.twoPtrValue.ptr1 = regexpPtr;
 	objPtr->typePtr = &tclRegexpType;
     }
     return (Tcl_RegExp) regexpPtr;
@@ -856,14 +854,14 @@ TclRegError(
     int status)			/* Status code to report. */
 {
     char buf[100];		/* ample in practice */
-    char cbuf[100];		/* lots in practice */
+    char cbuf[TCL_INTEGER_SPACE];
     size_t n;
     const char *p;
 
     Tcl_ResetResult(interp);
     n = TclReError(status, NULL, buf, sizeof(buf));
     p = (n > sizeof(buf)) ? "..." : "";
-    Tcl_AppendResult(interp, msg, buf, p, NULL);
+    Tcl_SetObjResult(interp, Tcl_ObjPrintf("%s%s%s", msg, buf, p));
 
     sprintf(cbuf, "%d", status);
     (void) TclReError(REG_ITOA, NULL, cbuf, sizeof(cbuf));
@@ -891,7 +889,7 @@ static void
 FreeRegexpInternalRep(
     Tcl_Obj *objPtr)		/* Regexp object with internal rep to free. */
 {
-    TclRegexp *regexpRepPtr = (TclRegexp *) objPtr->internalRep.otherValuePtr;
+    TclRegexp *regexpRepPtr = objPtr->internalRep.twoPtrValue.ptr1;
 
     /*
      * If this is the last reference to the regexp, free it.
@@ -900,6 +898,7 @@ FreeRegexpInternalRep(
     if (--(regexpRepPtr->refCount) <= 0) {
 	FreeRegexp(regexpRepPtr);
     }
+    objPtr->typePtr = NULL;
 }
 
 /*
@@ -924,10 +923,10 @@ DupRegexpInternalRep(
     Tcl_Obj *srcPtr,		/* Object with internal rep to copy. */
     Tcl_Obj *copyPtr)		/* Object with internal rep to set. */
 {
-    TclRegexp *regexpPtr = (TclRegexp *) srcPtr->internalRep.otherValuePtr;
+    TclRegexp *regexpPtr = srcPtr->internalRep.twoPtrValue.ptr1;
 
     regexpPtr->refCount++;
-    copyPtr->internalRep.otherValuePtr = srcPtr->internalRep.otherValuePtr;
+    copyPtr->internalRep.twoPtrValue.ptr1 = srcPtr->internalRep.twoPtrValue.ptr1;
     copyPtr->typePtr = &tclRegexpType;
 }
 
@@ -1046,7 +1045,7 @@ CompileRegexp(
      * This is a new expression, so compile it and add it to the cache.
      */
 
-    regexpPtr = (TclRegexp *) ckalloc(sizeof(TclRegexp));
+    regexpPtr = ckalloc(sizeof(TclRegexp));
     memset(regexpPtr, 0, sizeof(TclRegexp));
 
     regexpPtr->flags = flags;
@@ -1176,10 +1175,8 @@ CompileRegexp(
      */
 
     if (TclReToGlob(NULL, string, length, &stringBuf, &exact) == TCL_OK) {
-	regexpPtr->globObjPtr = Tcl_NewStringObj(Tcl_DStringValue(&stringBuf),
-		Tcl_DStringLength(&stringBuf));
+	regexpPtr->globObjPtr = TclDStringToObj(&stringBuf);
 	Tcl_IncrRefCount(regexpPtr->globObjPtr);
-	Tcl_DStringFree(&stringBuf);
     } else {
 	regexpPtr->globObjPtr = NULL;
     }
@@ -1197,6 +1194,7 @@ CompileRegexp(
 
     if (tsdPtr->patterns[NUM_REGEXPS-1] != NULL) {
 	TclRegexp *oldRegexpPtr = tsdPtr->regexps[NUM_REGEXPS-1];
+
 	if (--(oldRegexpPtr->refCount) <= 0) {
 	    FreeRegexp(oldRegexpPtr);
 	}
@@ -1207,8 +1205,8 @@ CompileRegexp(
 	tsdPtr->patLengths[i+1] = tsdPtr->patLengths[i];
 	tsdPtr->regexps[i+1] = tsdPtr->regexps[i];
     }
-    tsdPtr->patterns[0] = (char *) ckalloc((unsigned) (length+1));
-    strcpy(tsdPtr->patterns[0], string);
+    tsdPtr->patterns[0] = ckalloc(length + 1);
+    memcpy(tsdPtr->patterns[0], string, (unsigned) length + 1);
     tsdPtr->patLengths[0] = length;
     tsdPtr->regexps[0] = regexpPtr;
 
@@ -1248,9 +1246,9 @@ FreeRegexp(
 	TclDecrRefCount(regexpPtr->globObjPtr);
     }
     if (regexpPtr->matches) {
-	ckfree((char *) regexpPtr->matches);
+	ckfree(regexpPtr->matches);
     }
-    ckfree((char *) regexpPtr);
+    ckfree(regexpPtr);
 }
 
 /*
@@ -1285,6 +1283,7 @@ FinalizeRegexp(
 	ckfree(tsdPtr->patterns[i]);
 	tsdPtr->patterns[i] = NULL;
     }
+
 #ifdef HAVE_PCRE
     if (tsdPtr->matches != NULL) {
 	ckfree((char *) tsdPtr->matches);
@@ -1294,6 +1293,7 @@ FinalizeRegexp(
      * We may find ourselves reinitialized if another finalization routine
      * invokes regexps.
      */
+
     tsdPtr->initialized = 0;
 }
 
@@ -1324,23 +1324,13 @@ TclRegexpClassic(
     int doinline,
     int offset)
 {
-    int i, match, numMatchesSaved;
+    int i, match, numMatchesSaved, matchLength;
     int eflags, stringLength;
     Tcl_Obj *objPtr, *resultPtr = NULL;
     Tcl_RegExpInfo info;
 
     objPtr = objv[1];
     stringLength = Tcl_GetCharLength(objPtr);
-
-    eflags = 0;
-    if (offset > 0) {
-	/*
-	 * Add flag if using offset (string is part of a larger string), so
-	 * that "^" won't match.
-	 */
-
-	eflags |= TCL_REG_NOTBOL;
-    }
 
     objc -= 2;
     objv += 2;
@@ -1369,12 +1359,26 @@ TclRegexpClassic(
      */
 
     while (1) {
-	match = Tcl_RegExpExecObj(interp, regExpr, objPtr,
-		offset /* offset */, numMatchesSaved, eflags
-		| ((offset > 0 &&
-		(Tcl_GetUniChar(objPtr,offset-1) != (Tcl_UniChar)'\n'))
-		? TCL_REG_NOTBOL : 0));
+	/*
+	 * Pass either 0 or TCL_REG_NOTBOL in the eflags. Passing
+	 * TCL_REG_NOTBOL indicates that the character at offset should not be
+	 * considered the start of the line. If for example the pattern {^} is
+	 * passed and -start is positive, then the pattern will not match the
+	 * start of the string unless the previous character is a newline.
+	 */
 
+	if (offset == 0) {
+	    eflags = 0;
+	} else if (offset > stringLength) {
+	    eflags = TCL_REG_NOTBOL;
+	} else if (Tcl_GetUniChar(objPtr, offset-1) == (Tcl_UniChar)'\n') {
+	    eflags = 0;
+	} else {
+	    eflags = TCL_REG_NOTBOL;
+	}
+
+	match = Tcl_RegExpExecObj(interp, regExpr, objPtr, offset,
+		numMatchesSaved, eflags);
 	if (match < 0) {
 	    return TCL_ERROR;
 	}
@@ -1467,11 +1471,8 @@ TclRegexpClassic(
 		    return TCL_ERROR;
 		}
 	    } else {
-		Tcl_Obj *valuePtr;
-		valuePtr = Tcl_ObjSetVar2(interp, objv[i], NULL, newPtr, 0);
-		if (valuePtr == NULL) {
-		    Tcl_AppendResult(interp, "couldn't set variable \"",
-			    TclGetString(objv[i]), "\"", NULL);
+		if (Tcl_ObjSetVar2(interp, objv[i], NULL, newPtr,
+			TCL_LEAVE_ERR_MSG) == NULL) {
 		    return TCL_ERROR;
 		}
 	    }
@@ -1491,7 +1492,16 @@ TclRegexpClassic(
 	 * offset never changes).
 	 */
 
-	if (info.matches[0].end == 0) {
+	matchLength = (info.matches[0].end - info.matches[0].start);
+
+	offset += info.matches[0].end;
+
+	/*
+	 * A match of length zero could happen for {^} {$} or {.*} and in
+	 * these cases we always want to bump the index up one.
+	 */
+
+	if (matchLength == 0) {
 	    offset++;
 	}
 	offset += info.matches[0].end;

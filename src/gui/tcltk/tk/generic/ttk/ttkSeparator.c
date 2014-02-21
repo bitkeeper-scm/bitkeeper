@@ -1,5 +1,4 @@
-/* $Id$
- *
+/*
  * Copyright (c) 2004, Joe English
  *
  * ttk::separator and ttk::sizegrip widgets.
@@ -24,13 +23,13 @@ typedef struct
     SeparatorPart separator;
 } Separator;
 
-static Tk_OptionSpec SeparatorOptionSpecs[] =
-{
+static Tk_OptionSpec SeparatorOptionSpecs[] = {
     {TK_OPTION_STRING_TABLE, "-orient", "orient", "Orient", "horizontal",
 	Tk_Offset(Separator,separator.orientObj),
 	Tk_Offset(Separator,separator.orient),
 	0,(ClientData)ttkOrientStrings,STYLE_CHANGED },
 
+    WIDGET_TAKEFOCUS_FALSE,
     WIDGET_INHERIT_OPTIONS(ttkCoreOptionSpecs)
 };
 
@@ -49,14 +48,13 @@ static Ttk_Layout SeparatorGetLayout(
 /*
  * Widget commands:
  */
-static WidgetCommandSpec SeparatorCommands[] =
-{
-    { "configure",	TtkWidgetConfigureCommand },
-    { "cget",		TtkWidgetCgetCommand },
-    { "identify",	TtkWidgetIdentifyCommand },
-    { "instate",	TtkWidgetInstateCommand },
-    { "state",  	TtkWidgetStateCommand },
-    { NULL, NULL }
+static const Ttk_Ensemble SeparatorCommands[] = {
+    { "configure",	TtkWidgetConfigureCommand,0 },
+    { "cget",		TtkWidgetCgetCommand,0 },
+    { "identify",	TtkWidgetIdentifyCommand,0 },
+    { "instate",	TtkWidgetInstateCommand,0 },
+    { "state",  	TtkWidgetStateCommand,0 },
+    { 0,0,0 }
 };
 
 /*
@@ -86,21 +84,25 @@ TTK_END_LAYOUT
  * 	Has no options or methods other than the standard ones.
  */
 
-static WidgetCommandSpec SizegripCommands[] =
-{
-    { "configure",	TtkWidgetConfigureCommand },
-    { "cget",		TtkWidgetCgetCommand },
-    { "identify",	TtkWidgetIdentifyCommand },
-    { "instate",	TtkWidgetInstateCommand },
-    { "state",  	TtkWidgetStateCommand },
-    { NULL, NULL }
+static Tk_OptionSpec SizegripOptionSpecs[] = {
+    WIDGET_TAKEFOCUS_FALSE,
+    WIDGET_INHERIT_OPTIONS(ttkCoreOptionSpecs)
+};
+
+static const Ttk_Ensemble SizegripCommands[] = {
+    { "configure",	TtkWidgetConfigureCommand,0 },
+    { "cget",		TtkWidgetCgetCommand,0 },
+    { "identify",	TtkWidgetIdentifyCommand,0 },
+    { "instate",	TtkWidgetInstateCommand,0 },
+    { "state",  	TtkWidgetStateCommand,0 },
+    { 0,0,0 }
 };
 
 static WidgetSpec SizegripWidgetSpec =
 {
     "TSizegrip",		/* className */
     sizeof(WidgetCore),		/* recordSize */
-    ttkCoreOptionSpecs, 	/* optionSpecs */
+    SizegripOptionSpecs, 	/* optionSpecs */
     SizegripCommands,		/* subcommands */
     TtkNullInitialize,		/* initializeProc */
     TtkNullCleanup,		/* cleanupProc */

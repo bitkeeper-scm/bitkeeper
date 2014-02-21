@@ -79,7 +79,7 @@ static void lexnest(struct vars *, const chr *, const chr *);
 static void lexword(struct vars *);
 static int next(struct vars *);
 static int lexescape(struct vars *);
-static chr lexdigits(struct vars *, int, int, int);
+static int lexdigits(struct vars *, int, int, int);
 static int brenext(struct vars *, pchr);
 static void skip(struct vars *);
 static chr newline(NOPARMS);
@@ -121,12 +121,15 @@ static void destroystate(struct nfa *, struct state *);
 static void newarc(struct nfa *, int, pcolor, struct state *, struct state *);
 static struct arc *allocarc(struct nfa *, struct state *);
 static void freearc(struct nfa *, struct arc *);
+static int hasnonemptyout(struct state *);
+static int nonemptyouts(struct state *);
+static int nonemptyins(struct state *);
 static struct arc *findarc(struct state *, int, pcolor);
 static void cparc(struct nfa *, struct arc *, struct state *, struct state *);
 static void moveins(struct nfa *, struct state *, struct state *);
-static void copyins(struct nfa *, struct state *, struct state *);
+static void copyins(struct nfa *, struct state *, struct state *, int);
 static void moveouts(struct nfa *, struct state *, struct state *);
-static void copyouts(struct nfa *, struct state *, struct state *);
+static void copyouts(struct nfa *, struct state *, struct state *, int);
 static void cloneouts(struct nfa *, struct state *, struct state *, struct state *, int);
 static void delsub(struct nfa *, struct state *, struct state *);
 static void deltraverse(struct nfa *, struct state *, struct state *);
@@ -144,7 +147,8 @@ static int push(struct nfa *, struct arc *);
 #define	COMPATIBLE	3	/* compatible but not satisfied yet */
 static int combine(struct arc *, struct arc *);
 static void fixempties(struct nfa *, FILE *);
-static int unempty(struct nfa *, struct arc *);
+static struct state *emptyreachable(struct state *, struct state *);
+static void replaceempty(struct nfa *, struct state *, struct state *);
 static void cleanup(struct nfa *);
 static void markreachable(struct nfa *, struct state *, struct state *, struct state *);
 static void markcanreach(struct nfa *, struct state *, struct state *, struct state *);
@@ -607,7 +611,7 @@ makesearch(
     for (s=slist ; s!=NULL ; s=s2) {
 	s2 = newstate(nfa);
 
-	copyouts(nfa, s, s2);
+	copyouts(nfa, s, s2, 1);
 	for (a=s->ins ; a!=NULL ; a=b) {
 	    b = a->inchain;
 
@@ -738,6 +742,7 @@ parsebranch(
 
 	/* NB, recursion in parseqatom() may swallow rest of branch */
 	parseqatom(v, stopper, type, lp, right, t);
+	NOERRN();
     }
 
     if (!seencontent) {		/* empty branch */
@@ -1234,6 +1239,7 @@ parseqatom(
 	EMPTYARC(atom->end, rp);
 	t->right = subre(v, '=', 0, atom->end, rp);
     }
+    NOERR();
     assert(SEE('|') || SEE(stopper) || SEE(EOS));
     t->flags |= COMBINE(t->flags, t->right->flags);
     top->flags |= COMBINE(top->flags, t->flags);
@@ -1458,7 +1464,7 @@ brackpart(
     celt startc, endc;
     struct cvec *cv;
     const chr *startp, *endp;
-    chr c[1];
+    chr c;
 
     /*
      * Parse something, get rid of special cases, take shortcuts.
@@ -1470,7 +1476,7 @@ brackpart(
 	return;
 	break;
     case PLAIN:
-	c[0] = v->nextvalue;
+	c = v->nextvalue;
 	NEXT();
 
 	/*
@@ -1478,10 +1484,10 @@ brackpart(
 	 */
 
 	if (!SEE(RANGE)) {
-	    onechr(v, c[0], lp, rp);
+	    onechr(v, c, lp, rp);
 	    return;
 	}
-	startc = element(v, c, c+1);
+	startc = element(v, &c, &c+1);
 	NOERR();
 	break;
     case COLLEL:
@@ -1525,9 +1531,9 @@ brackpart(
 	switch (v->nexttype) {
 	case PLAIN:
 	case RANGE:
-	    c[0] = v->nextvalue;
+	    c = v->nextvalue;
 	    NEXT();
-	    endc = element(v, c, c+1);
+	    endc = element(v, &c, &c+1);
 	    NOERR();
 	    break;
 	case COLLEL:
@@ -2131,7 +2137,7 @@ stdump(
 
 /*
  - stid - identify a subtree node for dumping
- ^ static char *stid(struct subre *, char *, size_t);
+ ^ static const char *stid(struct subre *, char *, size_t);
  */
 static const char *			/* points to buf or constant string */
 stid(

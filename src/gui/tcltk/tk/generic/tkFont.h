@@ -9,17 +9,10 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #ifndef _TKFONT
 #define _TKFONT
-
-#ifdef BUILD_tk
-#undef TCL_STORAGE_CLASS
-#define TCL_STORAGE_CLASS DLLEXPORT
-#endif
 
 /*
  * The following structure keeps track of the attributes of a font. It can be
@@ -189,6 +182,12 @@ typedef struct TkXLFDAttributes {
 #define XLFD_NUMFIELDS	    13	/* Number of fields in XLFD. */
 
 /*
+ * Helper macro. How to correctly round a double to a short.
+ */
+
+#define ROUND16(x)	((short) floor((x) + 0.5))
+
+/*
  * Low-level API exported by generic code to platform-specific code.
  */
 
@@ -221,8 +220,5 @@ MODULE_SCOPE TkFont *	TkpGetFontFromAttributes(TkFont *tkFontPtr,
 MODULE_SCOPE void	TkpGetFontFamilies(Tcl_Interp *interp,
 			    Tk_Window tkwin);
 MODULE_SCOPE TkFont *	TkpGetNativeFont(Tk_Window tkwin, const char *name);
-
-#undef TCL_STORAGE_CLASS
-#define TCL_STORAGE_CLASS DLLIMPORT
 
 #endif	/* _TKFONT */

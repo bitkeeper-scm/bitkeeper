@@ -4,19 +4,15 @@
  *	Routines to support keyboard events on the Macintosh.
  *
  * Copyright (c) 1995-1997 Sun Microsystems, Inc.
- * Copyright 2001, Apple Computer, Inc.
- * Copyright (c) 2005-2007 Daniel A. Steffen <das@users.sourceforge.net>
+ * Copyright 2001-2009, Apple Inc.
+ * Copyright (c) 2005-2009 Daniel A. Steffen <das@users.sourceforge.net>
  *
  * See the file "license.terms" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
-#include "tkMacOSXInt.h"
-#include "tkMacOSXEvent.h"	/* for TkMacOSXKeycodeToUnicode()
-				 * FIXME: That function should probably move
-				 * here. */
+#include "tkMacOSXPrivate.h"
+#include "tkMacOSXEvent.h"
 
 /*
  * A couple of simple definitions to make code a bit more self-explaining.
@@ -108,6 +104,8 @@ static Tcl_HashTable vkeyTable;		/* virtualkeyArray hashed by virtual
 static int latin1Table[LATIN1_MAX+1];	/* Reverse mapping table for
 					 * controls, ASCII and Latin-1. */
 
+static int keyboardChanged = 1;
+
 /*
  * Prototypes for static functions used in this file.
  */
@@ -115,7 +113,23 @@ static int latin1Table[LATIN1_MAX+1];	/* Reverse mapping table for
 static void	InitKeyMaps (void);
 static void	InitLatin1Table(Display *display);
 static int	XKeysymToMacKeycode(Display *display, KeySym keysym);
+static int	KeycodeToUnicode(UniChar * uniChars, int maxChars,
+			UInt16 keyaction, UInt32 keycode, UInt32 modifiers,
+			UInt32 * deadKeyStatePtr);
 
+#pragma mark TKApplication(TKKeyboard)
+
+@implementation TKApplication(TKKeyboard)
+- (void) keyboardChanged: (NSNotification *) notification
+{
+#ifdef TK_MAC_DEBUG_NOTIFICATIONS
+    TKLog(@"-[%@(%p) %s] %@", [self class], self, _cmd, notification);
+#endif
+    keyboardChanged = 1;
+}
+@end
+
+#pragma mark -
 
 /*
  *----------------------------------------------------------------------
@@ -146,13 +160,13 @@ InitKeyMaps(void)
 
     Tcl_InitHashTable(&keycodeTable, TCL_ONE_WORD_KEYS);
     for (kPtr = keyArray; kPtr->keycode != 0; kPtr++) {
-	hPtr = Tcl_CreateHashEntry(&keycodeTable, (char *) kPtr->keycode,
+	hPtr = Tcl_CreateHashEntry(&keycodeTable, INT2PTR(kPtr->keycode),
 		&dummy);
 	Tcl_SetHashValue(hPtr, kPtr->keysym);
     }
     Tcl_InitHashTable(&vkeyTable, TCL_ONE_WORD_KEYS);
     for (kPtr = virtualkeyArray; kPtr->keycode != 0; kPtr++) {
-	hPtr = Tcl_CreateHashEntry(&vkeyTable, (char *) kPtr->keycode,
+	hPtr = Tcl_CreateHashEntry(&vkeyTable, INT2PTR(kPtr->keycode),
 		&dummy);
 	Tcl_SetHashValue(hPtr, kPtr->keysym);
     }
@@ -182,56 +196,128 @@ static void
 InitLatin1Table(
     Display *display)
 {
-    static Boolean latin1_initialized = false;
-    static SInt16 lastKeyLayoutID = -1;
+    int keycode;
+    KeySym keysym;
+    int state;
+    int modifiers;
 
-    SInt16 keyScript;
-    SInt16 keyLayoutID;
+    memset(latin1Table, 0, sizeof(latin1Table));
 
-    keyScript = GetScriptManagerVariable(smKeyScript);
-    keyLayoutID = GetScriptVariable(keyScript,smScriptKeys);
+    /*
+     * In the common X11 implementations, a keymap has four columns
+     * "plain", "Shift", "Mode_switch" and "Mode_switch + Shift". We don't
+     * use "Mode_switch", but we use "Option" instead. (This is similar to
+     * Apple's X11 implementation, where "Mode_switch" is used as an alias
+     * for "Option".)
+     *
+     * So here we go through all 4 columns of the keymap and find all
+     * Latin-1 compatible keycodes. We go through the columns back-to-front
+     * from the more exotic columns to the more simple, so that simple
+     * keycode-modifier combinations are preferred in the resulting table.
+     */
 
-    if (!latin1_initialized || (lastKeyLayoutID != keyLayoutID)) {
-	int keycode;
-	KeySym keysym;
-	int state;
-	int modifiers;
+    for (state = 3; state >= 0; state--) {
+	modifiers = 0;
+	if (state & 1) {
+	    modifiers |= shiftKey;
+	}
+	if (state & 2) {
+	    modifiers |= optionKey;
+	}
 
-	latin1_initialized = true;
-	lastKeyLayoutID = keyLayoutID;
-
-	memset(latin1Table, 0, sizeof(latin1Table));
-
-	/*
-	 * In the common X11 implementations, a keymap has four columns
-	 * "plain", "Shift", "Mode_switch" and "Mode_switch + Shift". We don't
-	 * use "Mode_switch", but we use "Option" instead. (This is similar to
-	 * Apple's X11 implementation, where "Mode_switch" is used as an alias
-	 * for "Option".)
-	 *
-	 * So here we go through all 4 columns of the keymap and find all
-	 * Latin-1 compatible keycodes. We go through the columns back-to-front
-	 * from the more exotic columns to the more simple, so that simple
-	 * keycode-modifier combinations are preferred in the resulting table.
-	 */
-
-	for (state = 3; state >= 0; state--) {
-	    modifiers = 0;
-	    if (state & 1) {
-		modifiers |= shiftKey;
-	    }
-	    if (state & 2) {
-		modifiers |= optionKey;
-	    }
-
-	    for (keycode = 0; keycode <= MAC_KEYCODE_MAX; keycode++) {
-		keysym = XKeycodeToKeysym(display,keycode<<16,state);
-		if (keysym <= LATIN1_MAX) {
-		    latin1Table[keysym] = keycode | modifiers;
-		}
+	for (keycode = 0; keycode <= MAC_KEYCODE_MAX; keycode++) {
+	    keysym = XKeycodeToKeysym(display,keycode<<16,state);
+	    if (keysym <= LATIN1_MAX) {
+		latin1Table[keysym] = keycode | modifiers;
 	    }
 	}
     }
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * KeycodeToUnicode --
+ *
+ *	Given MacOS key event data this function generates the Unicode
+ *	characters. It does this using OS resources and APIs.
+ *
+ *	The parameter deadKeyStatePtr can be NULL, if no deadkey handling is
+ *	needed.
+ *
+ *	This function is called from XKeycodeToKeysym() in tkMacOSKeyboard.c.
+ *
+ * Results:
+ *	The number of characters generated if any, 0 if we are waiting for
+ *	another byte of a dead-key sequence. Fills in the uniChars array with a
+ *	Unicode string.
+ *
+ * Side Effects:
+ *	None
+ *
+ *----------------------------------------------------------------------
+ */
+
+static int
+KeycodeToUnicode(
+    UniChar *uniChars,
+    int maxChars,
+    UInt16 keyaction,
+    UInt32 keycode,
+    UInt32 modifiers,
+    UInt32 *deadKeyStatePtr)
+{
+    static const void *uchr = NULL;
+    static UInt32 keyboardType = 0;
+    UniCharCount actuallength = 0;
+
+    if (keyboardChanged) {
+	TISInputSourceRef currentKeyboardLayout =
+		TISCopyCurrentKeyboardLayoutInputSource();
+
+	if (currentKeyboardLayout) {
+	    CFDataRef keyLayoutData = (CFDataRef) TISGetInputSourceProperty(
+		    currentKeyboardLayout, kTISPropertyUnicodeKeyLayoutData);
+
+	    if (keyLayoutData) {
+		uchr = CFDataGetBytePtr(keyLayoutData);
+		keyboardType = LMGetKbdType();
+	    }
+	    CFRelease(currentKeyboardLayout);
+	}
+	keyboardChanged = 0;
+    }
+    if (uchr) {
+	OptionBits options = 0;
+	UInt32 dummyState;
+	OSStatus err;
+
+	keycode &= 0xFF;
+	modifiers = (modifiers >> 8) & 0xFF;
+
+	if (!deadKeyStatePtr) {
+	    options = kUCKeyTranslateNoDeadKeysMask;
+	    dummyState = 0;
+	    deadKeyStatePtr = &dummyState;
+	}
+
+	err = ChkErr(UCKeyTranslate, uchr, keycode, keyaction, modifiers,
+		keyboardType, options, deadKeyStatePtr, maxChars,
+		&actuallength, uniChars);
+
+	if (!actuallength && *deadKeyStatePtr) {
+	    /*
+	     * More data later
+	     */
+
+	    return 0;
+	}
+	*deadKeyStatePtr = 0;
+	if (err != noErr) {
+	    actuallength = 0;
+	}
+    }
+    return actuallength;
 }
 
 /*
@@ -276,13 +362,13 @@ XKeycodeToKeysym(
 
     newKeycode = keycode >> 16;
 
-    if ((keycode & 0xFFFF) == 0x10) {
-	hPtr = Tcl_FindHashEntry(&vkeyTable, (char *) newKeycode);
+    if ((keycode & 0xFFFF) >= 0xF700) { /* NSEvent.h function key unicodes */
+	hPtr = Tcl_FindHashEntry(&vkeyTable, INT2PTR(newKeycode));
 	if (hPtr != NULL) {
 	    return (KeySym) Tcl_GetHashValue(hPtr);
 	}
     }
-    hPtr = Tcl_FindHashEntry(&keycodeTable, (char *) newKeycode);
+    hPtr = Tcl_FindHashEntry(&keycodeTable, INT2PTR(newKeycode));
     if (hPtr != NULL) {
 	return (KeySym) Tcl_GetHashValue(hPtr);
     }
@@ -299,8 +385,8 @@ XKeycodeToKeysym(
     }
 
     newChar = 0;
-    TkMacOSXKeycodeToUnicode(&newChar, 1, kEventRawKeyDown,
-	    newKeycode & 0x00FF, newKeycode & 0xFF00, NULL);
+    KeycodeToUnicode(&newChar, 1, kUCKeyActionDown, newKeycode & 0x00FF,
+	    newKeycode & 0xFF00, NULL);
 
     /*
      * X11 keysyms are identical to Unicode for ASCII and Latin-1. Give up for
@@ -330,7 +416,7 @@ XKeycodeToKeysym(
  *----------------------------------------------------------------------
  */
 
-char *
+const char *
 TkpGetString(
     TkWindow *winPtr,		/* Window where event occurred: Needed to get
 				 * input context. */
@@ -372,7 +458,7 @@ XGetModifierMapping(
      * don't generate them either. So there is no modifier map.
      */
 
-    modmap = (XModifierKeymap *) ckalloc(sizeof(XModifierKeymap));
+    modmap = ckalloc(sizeof(XModifierKeymap));
     modmap->max_keypermod = 0;
     modmap->modifiermap = NULL;
     return modmap;
@@ -394,14 +480,15 @@ XGetModifierMapping(
  *----------------------------------------------------------------------
  */
 
-void
+int
 XFreeModifiermap(
     XModifierKeymap *modmap)
 {
     if (modmap->modifiermap != NULL) {
-	ckfree((char *) modmap->modifiermap);
+	ckfree(modmap->modifiermap);
     }
-    ckfree((char *) modmap);
+    ckfree(modmap);
+    return Success;
 }
 
 /*
@@ -468,7 +555,10 @@ XKeysymToMacKeycode(
 	 * character code point are the same.
 	 */
 
-	InitLatin1Table(display);
+	if (keyboardChanged) {
+	    InitLatin1Table(display);
+	    keyboardChanged = 0;
+	}
 	return latin1Table[keysym];
     }
 
@@ -540,32 +630,6 @@ XKeysymToKeycode(
 
     return result;
 }
-
-/*
-NB: Keep this commented code for a moment for reference.
-
-    if ((keysym >= XK_space) && (XK_asciitilde)) {
-	if (keysym == 'a') {
-	    virtualKeyCode = 0x00;
-	} else if (keysym == 'b' || keysym == 'B') {
-	    virtualKeyCode = 0x0B;
-	} else if (keysym == 'c') {
-	    virtualKeyCode = 0x08;
-	} else if (keysym == 'x' || keysym == 'X') {
-	    virtualKeyCode = 0x07;
-	} else if (keysym == 'z') {
-	    virtualKeyCode = 0x06;
-	} else if (keysym == ' ') {
-	    virtualKeyCode = 0x31;
-	} else if (keysym == XK_Return) {
-	    virtualKeyCode = 0x24;
-	    keysym = '\r';
-	}
-	keycode = keysym + (virtualKeyCode <<16);
-    }
-
-    return keycode;
-*/
 
 /*
  *----------------------------------------------------------------------
@@ -672,26 +736,28 @@ TkpGetKeySym(
     if (eventPtr->xany.send_event == -1) {
 	int modifier = eventPtr->xkey.keycode;
 
-	if (modifier == cmdKey) {
+	if (modifier == NSCommandKeyMask) {
 	    return XK_Meta_L;
-	} else if (modifier == shiftKey) {
+	} else if (modifier == NSShiftKeyMask) {
 	    return XK_Shift_L;
-	} else if (modifier == alphaLock) {
+	} else if (modifier == NSAlphaShiftKeyMask) {
 	    return XK_Caps_Lock;
-	} else if (modifier == optionKey) {
+	} else if (modifier == NSAlternateKeyMask) {
 	    return XK_Alt_L;
-	} else if (modifier == controlKey) {
+	} else if (modifier == NSControlKeyMask) {
 	    return XK_Control_L;
-	} else if (modifier == kEventKeyModifierNumLockMask) {
+	} else if (modifier == NSNumericPadKeyMask) {
 	    return XK_Num_Lock;
-	} else if (modifier == kEventKeyModifierFnMask) {
+	} else if (modifier == NSFunctionKeyMask) {
 	    return XK_Super_L;
+/*
 	} else if (modifier == rightShiftKey) {
 	    return XK_Shift_R;
 	} else if (modifier == rightOptionKey) {
 	    return XK_Alt_R;
 	} else if (modifier == rightControlKey) {
 	    return XK_Control_R;
+*/
 	} else {
 	    /*
 	     * If we get here, we probably need to implement something new.
@@ -699,6 +765,12 @@ TkpGetKeySym(
 
 	    return NoSymbol;
 	}
+    }
+
+    /* If nbytes has been set, it's not a function key, but a regular key that
+       has been translated in tkMacOSXKeyEvent.c; just use that. */
+    if (eventPtr->xkey.nbytes) {
+      return eventPtr->xkey.keycode & 0xFFFF;
     }
 
     /*
@@ -826,7 +898,7 @@ TkpInitKeymapInfo(
      */
 
     if (dispPtr->modKeyCodes != NULL) {
-	ckfree((char *) dispPtr->modKeyCodes);
+	ckfree(dispPtr->modKeyCodes);
     }
     dispPtr->numModKeyCodes = 0;
     dispPtr->modKeyCodes = NULL;
@@ -834,7 +906,7 @@ TkpInitKeymapInfo(
 
 /*
  * Local Variables:
- * mode: c
+ * mode: objc
  * c-basic-offset: 4
  * fill-column: 79
  * coding: utf-8

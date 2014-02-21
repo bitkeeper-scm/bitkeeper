@@ -1,5 +1,4 @@
-/* $Id$
- *
+/*
  * Tag tables.  3/4-baked, work in progress.
  *
  * Copyright (C) 2005, Joe English.  Freely redistributable.
@@ -17,7 +16,8 @@
  */
 struct TtkTag {
     int 	priority;		/* 1=>highest */
-    void	*tagRecord;
+    const char	*tagName;		/* Back-pointer to hash table entry */
+    void	*tagRecord;		/* User data */
 };
 
 struct TtkTagTable {
@@ -32,13 +32,14 @@ struct TtkTagTable {
 /*------------------------------------------------------------------------
  * +++ Tags.
  */
-static Ttk_Tag NewTag(Ttk_TagTable tagTable)
+static Ttk_Tag NewTag(Ttk_TagTable tagTable, const char *tagName)
 {
-    Ttk_Tag tag = (Ttk_Tag)ckalloc(sizeof(*tag));
+    Ttk_Tag tag = ckalloc(sizeof(*tag));
     tag->tagRecord = ckalloc(tagTable->recordSize);
     memset(tag->tagRecord, 0, tagTable->recordSize);
     /* Don't need Tk_InitOptions() here, all defaults should be NULL. */
     tag->priority = ++tagTable->nTags;
+    tag->tagName = tagName;
     return tag;
 }
 
@@ -46,7 +47,7 @@ static void DeleteTag(Ttk_TagTable tagTable, Ttk_Tag tag)
 {
     Tk_FreeConfigOptions(tag->tagRecord,tagTable->optionTable,tagTable->tkwin);
     ckfree(tag->tagRecord);
-    ckfree((void*)tag);
+    ckfree(tag);
 }
 
 /*------------------------------------------------------------------------
@@ -57,7 +58,7 @@ Ttk_TagTable Ttk_CreateTagTable(
     Tcl_Interp *interp, Tk_Window tkwin,
     Tk_OptionSpec optionSpecs[], int recordSize)
 {
-    Ttk_TagTable tagTable = (Ttk_TagTable)ckalloc(sizeof(*tagTable));
+    Ttk_TagTable tagTable = ckalloc(sizeof(*tagTable));
     tagTable->tkwin = tkwin;
     tagTable->optionSpecs = optionSpecs;
     tagTable->optionTable = Tk_CreateOptionTable(interp, optionSpecs);
@@ -79,7 +80,7 @@ void Ttk_DeleteTagTable(Ttk_TagTable tagTable)
     }
 
     Tcl_DeleteHashTable(&tagTable->tags);
-    ckfree((void*)tagTable);
+    ckfree(tagTable);
 }
 
 Ttk_Tag Ttk_GetTag(Ttk_TagTable tagTable, const char *tagName)
@@ -89,7 +90,8 @@ Ttk_Tag Ttk_GetTag(Ttk_TagTable tagTable, const char *tagName)
 	&tagTable->tags, tagName, &isNew);
 
     if (isNew) {
-	Tcl_SetHashValue(entryPtr, NewTag(tagTable));
+	tagName = Tcl_GetHashKey(&tagTable->tags, entryPtr);
+	Tcl_SetHashValue(entryPtr, NewTag(tagTable,tagName));
     }
     return Tcl_GetHashValue(entryPtr);
 }
@@ -114,7 +116,7 @@ Ttk_Tag Ttk_GetTagFromObj(Ttk_TagTable tagTable, Tcl_Obj *objPtr)
 Ttk_TagSet Ttk_GetTagSetFromObj(
     Tcl_Interp *interp, Ttk_TagTable tagTable, Tcl_Obj *objPtr)
 {
-    Ttk_TagSet tagset = (Ttk_TagSet)(ckalloc(sizeof *tagset));
+    Ttk_TagSet tagset = ckalloc(sizeof(*tagset));
     Tcl_Obj **objv;
     int i, objc;
 
@@ -125,11 +127,11 @@ Ttk_TagSet Ttk_GetTagSetFromObj(
     }
 
     if (Tcl_ListObjGetElements(interp, objPtr, &objc, &objv) != TCL_OK) {
-	ckfree((ClientData)tagset);
+	ckfree(tagset);
     	return NULL;
     }
 
-    tagset->tags = (Ttk_Tag*)ckalloc((objc+1) * sizeof(Ttk_Tag));
+    tagset->tags = ckalloc((objc+1) * sizeof(Ttk_Tag));
     for (i=0; i<objc; ++i) {
 	tagset->tags[i] = Ttk_GetTagFromObj(tagTable, objv[i]);
     }
@@ -139,10 +141,25 @@ Ttk_TagSet Ttk_GetTagSetFromObj(
     return tagset;
 }
 
+/* Ttk_NewTagSetObj --
+ * 	Construct a fresh Tcl_Obj * from a tag set.
+ */
+Tcl_Obj *Ttk_NewTagSetObj(Ttk_TagSet tagset)
+{
+    Tcl_Obj *result = Tcl_NewListObj(0,0);
+    int i;
+
+    for (i = 0; i < tagset->nTags; ++i) {
+	Tcl_ListObjAppendElement(
+	    NULL, result, Tcl_NewStringObj(tagset->tags[i]->tagName, -1));
+    }
+    return result;
+}
+
 void Ttk_FreeTagSet(Ttk_TagSet tagset)
 {
-    ckfree((ClientData)tagset->tags);
-    ckfree((ClientData)tagset);
+    ckfree(tagset->tags);
+    ckfree(tagset);
 }
 
 /* Ttk_TagSetContains -- test if tag set contains a tag.
@@ -158,9 +175,54 @@ int Ttk_TagSetContains(Ttk_TagSet tagset, Ttk_Tag tag)
     return 0;
 }
 
+/* Ttk_TagSetAdd -- add a tag to a tag set.
+ *
+ * Returns: 0 if tagset already contained tag,
+ * 1 if tagset was modified.
+ */
+int Ttk_TagSetAdd(Ttk_TagSet tagset, Ttk_Tag tag)
+{
+    int i;
+    for (i = 0; i < tagset->nTags; ++i) {
+	if (tagset->tags[i] == tag) {
+	    return 0;
+	}
+    }
+    tagset->tags = ckrealloc(tagset->tags, 
+	    (tagset->nTags+1)*sizeof(tagset->tags[0]));
+    tagset->tags[tagset->nTags++] = tag;
+    return 1;
+}
+
+/* Ttk_TagSetRemove -- remove a tag from a tag set.
+ *
+ * Returns: 0 if tagset did not contain tag,
+ * 1 if tagset was modified.
+ */
+int Ttk_TagSetRemove(Ttk_TagSet tagset, Ttk_Tag tag)
+{
+    int i = 0, j = 0;
+    while (i < tagset->nTags) {
+	if ((tagset->tags[j] = tagset->tags[i]) != tag) {
+	    ++j;
+	}
+	++i;
+    }
+    tagset->nTags = j;
+    return j != i;
+}
+
 /*------------------------------------------------------------------------
  * +++ Utilities for widget commands.
  */
+
+/* Ttk_EnumerateTags -- implements [$w tag names]
+ */
+int Ttk_EnumerateTags(
+    Tcl_Interp *interp, Ttk_TagTable tagTable)
+{
+    return TtkEnumerateHashTable(interp, &tagTable->tags);
+}
 
 /* Ttk_EnumerateTagOptions -- implements [$w tag configure $tag]
  */
@@ -171,6 +233,8 @@ int Ttk_EnumerateTagOptions(
 	tagTable->optionSpecs, tagTable->optionTable, tagTable->tkwin);
 }
 
+/* Ttk_TagOptionValue -- implements [$w tag configure $tag -option]
+ */
 Tcl_Obj *Ttk_TagOptionValue(
     Tcl_Interp *interp,
     Ttk_TagTable tagTable,

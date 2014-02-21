@@ -11,8 +11,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tkInt.h"
@@ -154,8 +152,10 @@ Tk_GetAnchor(
     }
 
   error:
-    Tcl_AppendResult(interp, "bad anchor position \"", string,
-	    "\": must be n, ne, e, se, s, sw, w, nw, or center", NULL);
+    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+	    "bad anchor position \"%s\": must be"
+	    " n, ne, e, se, s, sw, w, nw, or center", string));
+    Tcl_SetErrorCode(interp, "TK", "VALUE", "ANCHOR", NULL);
     return TCL_ERROR;
 }
 
@@ -239,8 +239,10 @@ Tk_GetJoinStyle(
 	return TCL_OK;
     }
 
-    Tcl_AppendResult(interp, "bad join style \"", string,
-	    "\": must be bevel, miter, or round", NULL);
+    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+	    "bad join style \"%s\": must be bevel, miter, or round",
+	    string));
+    Tcl_SetErrorCode(interp, "TK", "VALUE", "JOIN", NULL);
     return TCL_ERROR;
 }
 
@@ -318,8 +320,10 @@ Tk_GetCapStyle(
 	return TCL_OK;
     }
 
-    Tcl_AppendResult(interp, "bad cap style \"", string,
-	    "\": must be butt, projecting, or round", NULL);
+    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+	    "bad cap style \"%s\": must be butt, projecting, or round",
+	    string));
+    Tcl_SetErrorCode(interp, "TK", "VALUE", "CAP", NULL);
     return TCL_ERROR;
 }
 
@@ -434,8 +438,10 @@ Tk_GetJustify(
 	return TCL_OK;
     }
 
-    Tcl_AppendResult(interp, "bad justification \"", string,
-	    "\": must be left, right, or center", NULL);
+    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+	    "bad justification \"%s\": must be left, right, or center",
+	    string));
+    Tcl_SetErrorCode(interp, "TK", "VALUE", "JUSTIFY", NULL);
     return TCL_ERROR;
 }
 
@@ -489,7 +495,7 @@ static void
 FreeUidThreadExitProc(
     ClientData clientData)		/* Not used. */
 {
-    ThreadSpecificData *tsdPtr = (ThreadSpecificData *)
+    ThreadSpecificData *tsdPtr =
             Tcl_GetThreadData(&dataKey, sizeof(ThreadSpecificData));
 
     Tcl_DeleteHashTable(&tsdPtr->uidTable);
@@ -523,7 +529,7 @@ Tk_GetUid(
     const char *string)		/* String to convert. */
 {
     int dummy;
-    ThreadSpecificData *tsdPtr = (ThreadSpecificData *)
+    ThreadSpecificData *tsdPtr =
             Tcl_GetThreadData(&dataKey, sizeof(ThreadSpecificData));
     Tcl_HashTable *tablePtr = &tsdPtr->uidTable;
 
@@ -570,9 +576,7 @@ Tk_GetScreenMM(
 
     d = strtod(string, &end);
     if (end == string) {
-	error:
-	Tcl_AppendResult(interp, "bad screen distance \"", string, "\"", NULL);
-	return TCL_ERROR;
+	goto error;
     }
     while ((*end != '\0') && isspace(UCHAR(*end))) {
 	end++;
@@ -608,6 +612,12 @@ Tk_GetScreenMM(
     }
     *doublePtr = d;
     return TCL_OK;
+
+  error:
+    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+	    "bad screen distance \"%s\"", string));
+    Tcl_SetErrorCode(interp, "TK", "VALUE", "SCREEN_DISTANCE", NULL);
+    return TCL_ERROR;
 }
 
 /*
@@ -686,9 +696,7 @@ TkGetDoublePixels(
 
     d = strtod((char *) string, &end);
     if (end == string) {
-    error:
-	Tcl_AppendResult(interp, "bad screen distance \"", string, "\"", NULL);
-	return TCL_ERROR;
+	goto error;
     }
     while ((*end != '\0') && isspace(UCHAR(*end))) {
 	end++;
@@ -727,6 +735,12 @@ TkGetDoublePixels(
     }
     *doublePtr = d;
     return TCL_OK;
+
+  error:
+    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+	    "bad screen distance \"%s\"", string));
+    Tcl_SetErrorCode(interp, "TK", "VALUE", "FRACTIONAL_PIXELS", NULL);
+    return TCL_ERROR;
 }
 
 /*

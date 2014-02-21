@@ -9,9 +9,8 @@
 #
 # See the file "license.terms" for information on usage and redistribution
 # of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-# 
-# RCS: @(#) $Id$
 
+package prefer latest
 package require Tcl 8.5
 package require tcltest 2.2
 namespace import tcltest::*
@@ -21,3 +20,4 @@ if {[info exists ::env(TCLTEST_SHELL_OPTIONS)]} {
 } else {
     exit [runAllTests]
 }
+proc exit args {}

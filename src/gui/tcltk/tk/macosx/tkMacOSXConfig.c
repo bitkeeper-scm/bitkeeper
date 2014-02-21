@@ -5,12 +5,10 @@
  *	the configuration package.
  *
  * Copyright (c) 1997 by Sun Microsystems, Inc.
- * Copyright 2001, Apple Computer, Inc.
+ * Copyright 2001, Apple Inc.
  *
  * See the file "license.terms" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tkInt.h"

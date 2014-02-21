@@ -9,13 +9,14 @@
 #
 # See the file "license.terms" for information on usage and redistribution of
 # this file, and for a DISCLAIMER OF ALL WARRANTIES.
-#
-# RCS: @(#) $Id$
 
-if {[lsearch [namespace children] ::tcltest] == -1} {
+if {"::tcltest" ni [namespace children]} {
     package require tcltest 2
     namespace import -force ::tcltest::*
 }
+
+::tcltest::loadTestedCommands
+catch [list package require -exact Tcltest [info patchlevel]]
 
 testConstraint testsetplatform [llength [info commands testsetplatform]]
 testConstraint testtranslatefilename [llength [info commands testtranslatefilename]]
@@ -42,7 +43,7 @@ global env
 if {[testConstraint testsetplatform]} {
     set platform [testgetplatform]
 }
-
+
 # Caution: when using 'testsetplatform' to test different file name platform
 # descriptions in this file, one must be very careful not to combine such
 # platform manipulation with commands like 'cd', 'pwd'. That is because the
@@ -198,7 +199,7 @@ test filename-4.12 {Tcl_SplitPath: unix} {testsetplatform} {
 test filename-4.13 {Tcl_SplitPath: unix} {testsetplatform} {
     testsetplatform unix
     file split //foo
-} {/ foo}
+} "/ foo"
 test filename-4.14 {Tcl_SplitPath: unix} {testsetplatform} {
     testsetplatform unix
     file split foo//bar
@@ -435,11 +436,11 @@ test filename-7.16 {Tcl_JoinPath: unix} {testsetplatform} {
 test filename-7.17 {Tcl_JoinPath: unix} {testsetplatform} {
     testsetplatform unix
     file join //a b
-} {/a/b}
+} "/a/b"
 test filename-7.18 {Tcl_JoinPath: unix} {testsetplatform} {
     testsetplatform unix
     file join /// a b
-} {/a/b}
+} "/a/b"
 
 test filename-9.1 {Tcl_JoinPath: win} {testsetplatform} {
     testsetplatform win
@@ -748,7 +749,7 @@ test filename-11.13 {Tcl_GlobCmd} {
 } [file join $env(HOME)]
 set oldpwd [pwd]
 set oldhome $env(HOME)
-cd [temporaryDirectory]
+catch {cd [makeDirectory tcl[pid]]}
 set env(HOME) [pwd]
 file delete -force globTest
 file mkdir globTest/a1/b1
@@ -1290,6 +1291,21 @@ test filename-14.30 {Bug 2710920} {unixOrPc} {
     file rootname [lindex [lsort [glob globTest/*/]] 0]
 } globTest/a1/
 
+test filename-14.31 {Bug 2918610} -setup {
+    set d [makeDirectory foo]
+    makeFile {} bar.soom $d
+} -body {
+    foreach fn [glob $d/bar.soom] {
+        set root [file rootname $fn]
+        close [open $root {WRONLY CREAT}]
+    }
+    llength [glob -directory $d *]
+} -cleanup {
+    file delete -force $d/bar
+    removeFile bar.soom $d
+    removeDirectory foo
+} -result 2
+
 unset globname
 
 # The following tests are only valid for Unix systems. On some systems, like
@@ -1419,7 +1435,7 @@ test filename-16.13 {windows specific globbing} {win sharedCdrive} {
 } //[info hostname]/c/globTest
 test filename-16.14 {windows specific globbing} {win} {
     cd [lindex [glob -types d -dir C:/ *] 0]
-    expr {[lsearch -exact [glob {{.,*}*}] ".."] != -1}
+    expr {".." in [glob {{.,*}*}]}
 } {1}
 test filename-16.15 {windows specific globbing} {win} {
     cd [lindex [glob -types d -dir C:/ *] 0]
@@ -1435,6 +1451,11 @@ test filename-16.17 {windows specific globbing} -constraints {win} -body {
     list [glob -nocomplain -tails -dir C:/ *] \
 	[glob -nocomplain -tails -dir C: *]
 } -match compareWords -result equal
+
+# Put the working directory back now that we're done with globbing in C:/
+if {[testConstraint win]} {
+    cd $oldDir
+}
 
 test filename-17.1 {windows specific special files} {testsetplatform} {
     testsetplatform win
@@ -1509,12 +1530,93 @@ test fileName-20.4 {Bug 1750300} -setup {
     removeFile TAGS $d
     removeDirectory foo
 } -result 0
-
+test fileName-20.5 {Bug 2837800} -setup {
+    set dd [makeDirectory isolate]
+    set d [makeDirectory ./~foo $dd]
+    makeFile {} test $d
+    set savewd [pwd]
+    cd $dd
+} -body {
+    glob -nocomplain */test
+} -cleanup {
+    cd $savewd
+    removeFile test $d
+    removeDirectory ./~foo $dd
+    removeDirectory isolate
+} -result ~foo/test
+test fileName-20.6 {Bug 2837800} -setup {
+    # Recall that we have $env(HOME) set so that references
+    # to ~ point to [temporaryDirectory]
+    makeFile {} test ~
+    set dd [makeDirectory isolate]
+    set d [makeDirectory ./~ $dd]
+    set savewd [pwd]
+    cd $dd
+} -body {
+    glob -nocomplain */test
+} -cleanup {
+    cd $savewd
+    removeDirectory ./~ $dd
+    removeDirectory isolate
+    removeFile test ~
+} -result {}
+test fileName-20.7 {Bug 2806250} -setup {
+    set savewd [pwd]
+    cd [temporaryDirectory]
+    set d [makeDirectory isolate]
+    makeFile {} ./~test $d
+} -body {
+    file exists [lindex [glob -nocomplain isolate/*] 0]
+} -cleanup {
+    removeFile ./~test $d
+    removeDirectory isolate
+    cd $savewd
+} -result 1
+test fileName-20.8 {Bug 2806250} -setup {
+    set savewd [pwd]
+    cd [temporaryDirectory]
+    set d [makeDirectory isolate]
+    makeFile {} ./~test $d
+} -body {
+    file tail [lindex [glob -nocomplain isolate/*] 0]
+} -cleanup {
+    removeFile ./~test $d
+    removeDirectory isolate
+    cd $savewd
+} -result ./~test
+test fileName-20.9 {globbing for special chars} -setup {
+    makeFile {} test ~
+    set d [makeDirectory isolate]
+    set savewd [pwd]
+    cd $d
+} -body {
+   glob -nocomplain -directory ~ test
+} -cleanup {
+    cd $savewd
+    removeDirectory isolate
+    removeFile test ~
+} -result ~/test
+test fileName-20.10 {globbing for special chars} -setup {
+    set s [makeDirectory sub ~]
+    makeFile {} fileName-20.10 $s
+    set d [makeDirectory isolate]
+    set savewd [pwd]
+    cd $d
+} -body {
+   glob -nocomplain -directory ~ -join * fileName-20.10
+} -cleanup {
+    cd $savewd
+    removeDirectory isolate
+    removeFile fileName-20.10 $s
+    removeDirectory sub ~
+} -result ~/sub/fileName-20.10
+
 # cleanup
 catch {file delete -force C:/globTest}
 cd [temporaryDirectory]
 file delete -force globTest
 cd $oldpwd
+catch {removeDirectory tcl[pid]}
 set env(HOME) $oldhome
 if {[testConstraint testsetplatform]} {
     testsetplatform $platform

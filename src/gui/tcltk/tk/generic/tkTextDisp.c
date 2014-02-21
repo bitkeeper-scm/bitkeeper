@@ -11,8 +11,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tkInt.h"
@@ -20,6 +18,8 @@
 
 #ifdef __WIN32__
 #include "tkWinInt.h"
+#elif defined(__CYGWIN__)
+#include "tkUnixInt.h"
 #endif
 
 #ifdef MAC_OSX_TK
@@ -415,8 +415,8 @@ typedef struct TextDInfo {
 
 typedef struct CharInfo {
     int numBytes;		/* Number of bytes to display. */
-    char chars[4];		/* UTF characters to display. Actual size will
-				 * be numBytes, not 4. THIS MUST BE THE LAST
+    char chars[1];		/* UTF characters to display. Actual size will
+				 * be numBytes, not 1. THIS MUST BE THE LAST
 				 * FIELD IN THE STRUCTURE. */
 } CharInfo;
 
@@ -626,7 +626,7 @@ TkTextCreateDInfo(
     register TextDInfo *dInfoPtr;
     XGCValues gcValues;
 
-    dInfoPtr = (TextDInfo *) ckalloc(sizeof(TextDInfo));
+    dInfoPtr = ckalloc(sizeof(TextDInfo));
     Tcl_InitHashTable(&dInfoPtr->styleTable, sizeof(StyleValues)/sizeof(int));
     dInfoPtr->dLinePtr = NULL;
     dInfoPtr->copyGC = None;
@@ -719,7 +719,7 @@ TkTextFreeDInfo(
 	textPtr->refCount--;
 	dInfoPtr->scrollbarTimer = NULL;
     }
-    ckfree((char *) dInfoPtr);
+    ckfree(dInfoPtr);
 }
 
 /*
@@ -923,7 +923,7 @@ GetStyle(
 	}
     }
     if (tagPtrs != NULL) {
-	ckfree((char *) tagPtrs);
+	ckfree(tagPtrs);
     }
 
     /*
@@ -933,7 +933,7 @@ GetStyle(
     hPtr = Tcl_CreateHashEntry(&textPtr->dInfoPtr->styleTable,
 	    (char *) &styleValues, &isNew);
     if (!isNew) {
-	stylePtr = (TextStyle *) Tcl_GetHashValue(hPtr);
+	stylePtr = Tcl_GetHashValue(hPtr);
 	stylePtr->refCount++;
 	return stylePtr;
     }
@@ -942,7 +942,7 @@ GetStyle(
      * No existing style matched. Make a new one.
      */
 
-    stylePtr = (TextStyle *) ckalloc(sizeof(TextStyle));
+    stylePtr = ckalloc(sizeof(TextStyle));
     stylePtr->refCount = 1;
     if (styleValues.border != NULL) {
 	gcValues.foreground = Tk_3DBorderColor(styleValues.border)->pixel;
@@ -1007,7 +1007,7 @@ FreeStyle(
 	    Tk_FreeGC(textPtr->display, stylePtr->fgGC);
 	}
 	Tcl_DeleteHashEntry(stylePtr->hPtr);
-	ckfree((char *) stylePtr);
+	ckfree(stylePtr);
     }
 }
 
@@ -1106,7 +1106,7 @@ LayoutDLine(
      * Create and initialize a new DLine structure.
      */
 
-    dlPtr = (DLine *) ckalloc(sizeof(DLine));
+    dlPtr = ckalloc(sizeof(DLine));
     dlPtr->index = *indexPtr;
     dlPtr->byteCount = 0;
     dlPtr->y = 0;
@@ -1337,7 +1337,7 @@ LayoutDLine(
 	     * into a single display line.
 	     *
 	    if (segPtr == NULL && chunkPtr != NULL) {
-		ckfree((char *) chunkPtr);
+		ckfree(chunkPtr);
 		chunkPtr = NULL;
 	    }
 	     */
@@ -1351,7 +1351,7 @@ LayoutDLine(
 	    continue;
 	}
 	if (chunkPtr == NULL) {
-	    chunkPtr = (TkTextDispChunk *) ckalloc(sizeof(TkTextDispChunk));
+	    chunkPtr = ckalloc(sizeof(TkTextDispChunk));
 	    chunkPtr->nextPtr = NULL;
 	    chunkPtr->clientData = NULL;
 	}
@@ -1483,7 +1483,7 @@ LayoutDLine(
 	     */
 
 	    if (chunkPtr != NULL) {
-		ckfree((char *) chunkPtr);
+		ckfree(chunkPtr);
 	    }
 	    break;
 	}
@@ -1614,7 +1614,7 @@ LayoutDLine(
 	    if (chunkPtr->undisplayProc != NULL) {
 		chunkPtr->undisplayProc(textPtr, chunkPtr);
 	    }
-	    ckfree((char *) chunkPtr);
+	    ckfree(chunkPtr);
 	}
 	if (breakByteOffset != breakChunkPtr->numBytes) {
 	    if (breakChunkPtr->undisplayProc != NULL) {
@@ -1974,7 +1974,7 @@ UpdateDisplayInfo(
 
 	if (spaceLeft <= dInfoPtr->newTopPixelOffset) {
 	    /*
-	     * We can full up all the needed space just by showing more of the
+	     * We can fill up all the needed space just by showing more of the
 	     * current top line.
 	     */
 
@@ -2008,8 +2008,9 @@ UpdateDisplayInfo(
 		 * widget.
 		 */
 
-		lineNum = -1;
-		bytesToCount = 0;	/* Stop compiler warning. */
+                lineNum = TkBTreeNumLines(textPtr->sharedTextPtr->tree,
+                        textPtr) - 1;
+                bytesToCount = INT_MAX;
 	    } else {
 		lineNum = TkBTreeLinesTo(textPtr,
 			dInfoPtr->dLinePtr->index.linePtr);
@@ -2311,9 +2312,9 @@ FreeDLines(
 	    }
 	    FreeStyle(textPtr, chunkPtr->stylePtr);
 	    nextChunkPtr = chunkPtr->nextPtr;
-	    ckfree((char *) chunkPtr);
+	    ckfree(chunkPtr);
 	}
-	ckfree((char *) firstPtr);
+	ckfree(firstPtr);
 	firstPtr = nextDLinePtr;
     }
     if (action != DLINE_FREE_TEMP) {
@@ -2891,7 +2892,7 @@ AsyncUpdateLineMetrics(
 	 */
 
 	if (--textPtr->refCount == 0) {
-	    ckfree((char *) textPtr);
+	    ckfree(textPtr);
 	}
 	return;
     }
@@ -2902,9 +2903,15 @@ AsyncUpdateLineMetrics(
 	return;
     }
 
+    /*
+     * Reify where we end or all hell breaks loose with the calculations when
+     * we try to update. [Bug 2677890]
+     */
+
     lineNum = dInfoPtr->currentMetricUpdateLine;
-    if (lineNum == -1) {
-	dInfoPtr->lastMetricUpdateLine = 0;
+    if (dInfoPtr->lastMetricUpdateLine == -1) {
+	dInfoPtr->lastMetricUpdateLine =
+		TkBTreeNumLines(textPtr->sharedTextPtr->tree, textPtr);
     }
 
     /*
@@ -2937,7 +2944,7 @@ AsyncUpdateLineMetrics(
 
 	textPtr->refCount--;
 	if (textPtr->refCount == 0) {
-	    ckfree((char *) textPtr);
+	    ckfree(textPtr);
 	}
 	return;
     }
@@ -3227,7 +3234,7 @@ TextInvalidateLineMetrics(
 	 */
 
 	TkBTreeLinePixelEpoch(textPtr, linePtr) = 0;
-	while (counter > 0 && linePtr != 0) {
+	while (counter > 0 && linePtr != NULL) {
 	    linePtr = TkBTreeNextLine(textPtr, linePtr);
 	    if (linePtr != NULL) {
 		TkBTreeLinePixelEpoch(textPtr, linePtr) = 0;
@@ -3242,7 +3249,7 @@ TextInvalidateLineMetrics(
 	 * more lines than is strictly necessary (but the examination of the
 	 * extra lines should be quick, since their pixelCalculationEpoch will
 	 * be up to date). However, to keep track of that would require more
-	 * complex record-keeping that what we have.
+	 * complex record-keeping than what we have.
 	 */
 
 	if (dInfoPtr->lineUpdateTimer == NULL) {
@@ -3948,7 +3955,7 @@ DisplayText(
 	dInfoPtr->flags &= ~REPICK_NEEDED;
 	TkTextPickCurrent(textPtr, &textPtr->pickEvent);
 	if (--textPtr->refCount == 0) {
-	    ckfree((char *) textPtr);
+	    ckfree(textPtr);
 	    goto end;
 	}
 	if ((textPtr->tkwin == NULL) || (textPtr->flags & DESTROYED)) {
@@ -5391,18 +5398,18 @@ TkTextSeeCmd(
 	oneThird = lineWidth/3;
 	if (delta < 0) {
 	    if (delta < -oneThird) {
-		dInfoPtr->newXPixelOffset = (x - lineWidth/2);
+		dInfoPtr->newXPixelOffset = x - lineWidth/2;
 	    } else {
-		dInfoPtr->newXPixelOffset -= ((-delta) );
+		dInfoPtr->newXPixelOffset += delta;
 	    }
 	} else {
 	    delta -= lineWidth - width;
 	    if (delta <= 0) {
 		return TCL_OK;
 	    } else if (delta > oneThird) {
-		dInfoPtr->newXPixelOffset = (x - lineWidth/2);
+		dInfoPtr->newXPixelOffset = x - lineWidth/2;
 	    } else {
-		dInfoPtr->newXPixelOffset += (delta );
+		dInfoPtr->newXPixelOffset += delta;
 	    }
 	}
     }
@@ -5980,8 +5987,11 @@ TkTextScanCmd(
 	dInfoPtr->scanTotalYScroll = 0;
 	dInfoPtr->scanMarkY = y;
     } else {
-	Tcl_AppendResult(interp, "bad scan option \"", Tcl_GetString(objv[2]),
-		"\": must be mark or dragto", NULL);
+	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		"bad scan option \"%s\": must be mark or dragto",
+		Tcl_GetString(objv[2])));
+	Tcl_SetErrorCode(interp, "TCL", "LOOKUP", "INDEX", "scan option",
+		Tcl_GetString(objv[2]), NULL);
 	return TCL_ERROR;
     }
     return TCL_OK;
@@ -6054,12 +6064,18 @@ GetXView(
     if (textPtr->xScrollCmd != NULL) {
 	char buf1[TCL_DOUBLE_SPACE+1];
 	char buf2[TCL_DOUBLE_SPACE+1];
+	Tcl_DString buf;
 
 	buf1[0] = ' ';
 	buf2[0] = ' ';
 	Tcl_PrintDouble(NULL, first, buf1+1);
 	Tcl_PrintDouble(NULL, last, buf2+1);
-	code = Tcl_VarEval(interp, textPtr->xScrollCmd, buf1, buf2, NULL);
+	Tcl_DStringInit(&buf);
+	Tcl_DStringAppend(&buf, textPtr->xScrollCmd, -1);
+	Tcl_DStringAppend(&buf, buf1, -1);
+	Tcl_DStringAppend(&buf, buf2, -1);
+	code = Tcl_EvalEx(interp, Tcl_DStringValue(&buf), -1, 0);
+	Tcl_DStringFree(&buf);
 	if (code != TCL_OK) {
 	    Tcl_AddErrorInfo(interp,
 		    "\n    (horizontal scrolling command executed by text)");
@@ -6336,12 +6352,18 @@ GetYView(
     if (textPtr->yScrollCmd != NULL) {
 	char buf1[TCL_DOUBLE_SPACE+1];
 	char buf2[TCL_DOUBLE_SPACE+1];
+	Tcl_DString buf;
 
 	buf1[0] = ' ';
 	buf2[0] = ' ';
 	Tcl_PrintDouble(NULL, first, buf1+1);
 	Tcl_PrintDouble(NULL, last, buf2+1);
-	code = Tcl_VarEval(interp, textPtr->yScrollCmd, buf1, buf2, NULL);
+	Tcl_DStringInit(&buf);
+	Tcl_DStringAppend(&buf, textPtr->yScrollCmd, -1);
+	Tcl_DStringAppend(&buf, buf1, -1);
+	Tcl_DStringAppend(&buf, buf2, -1);
+	code = Tcl_EvalEx(interp, Tcl_DStringValue(&buf), -1, 0);
+	Tcl_DStringFree(&buf);
 	if (code != TCL_OK) {
 	    Tcl_AddErrorInfo(interp,
 		    "\n    (vertical scrolling command executed by text)");
@@ -6381,7 +6403,7 @@ AsyncUpdateYScrollbar(
     }
 
     if (--textPtr->refCount == 0) {
-	ckfree((char *) textPtr);
+	ckfree(textPtr);
     }
 }
 
@@ -6721,10 +6743,10 @@ DlineXOfIndex(
 				 * coordinate. */
 {
     register TkTextDispChunk *chunkPtr = dlPtr->chunkPtr;
-    int x;
+    int x = 0;
 
     if (byteIndex == 0 || chunkPtr == NULL) {
-	return 0;
+	return x;
     }
 
     /*
@@ -6846,6 +6868,9 @@ TkTextIndexBbox(
 
 	if (charWidthPtr != NULL) {
 	    *charWidthPtr = dInfoPtr->maxX - *xPtr;
+            if (*charWidthPtr > textPtr->charWidth) {
+                *charWidthPtr = textPtr->charWidth;
+            }
 	}
 	if (*xPtr > dInfoPtr->maxX) {
 	    *xPtr = dInfoPtr->maxX;
@@ -7066,7 +7091,7 @@ TkTextCharLayoutProc(
 #if TK_LAYOUT_WITH_BASE_CHUNKS
     if (baseCharChunkPtr == NULL) {
 	baseCharChunkPtr = chunkPtr;
-	bciPtr = (BaseCharInfo *) ckalloc(sizeof(BaseCharInfo));
+	bciPtr = ckalloc(sizeof(BaseCharInfo));
 	baseString = &bciPtr->baseChars;
 	Tcl_DStringInit(baseString);
 	bciPtr->width = 0;
@@ -7074,7 +7099,7 @@ TkTextCharLayoutProc(
 	ciPtr = &bciPtr->ci;
     } else {
 	bciPtr = baseCharChunkPtr->clientData;
-	ciPtr = (CharInfo *) ckalloc(sizeof(CharInfo));
+	ciPtr = ckalloc(sizeof(CharInfo));
 	baseString = &bciPtr->baseChars;
     }
 
@@ -7137,7 +7162,7 @@ TkTextCharLayoutProc(
 	    } else {
 		Tcl_DStringSetLength(baseString,lineOffset);
 	    }
-	    ckfree((char *) ciPtr);
+	    ckfree(ciPtr);
 #endif /* TK_LAYOUT_WITH_BASE_CHUNKS */
 	    return 0;
 	}
@@ -7163,8 +7188,7 @@ TkTextCharLayoutProc(
     chunkPtr->breakIndex = -1;
 
 #if !TK_LAYOUT_WITH_BASE_CHUNKS
-    ciPtr = (CharInfo *)
-	    ckalloc((unsigned) bytesThatFit + Tk_Offset(CharInfo, chars) + 1);
+    ciPtr = ckalloc((Tk_Offset(CharInfo, chars) + 1) + bytesThatFit);
     chunkPtr->clientData = ciPtr;
     memcpy(ciPtr->chars, p, (unsigned) bytesThatFit);
 #endif /* TK_LAYOUT_WITH_BASE_CHUNKS */
@@ -7203,11 +7227,21 @@ TkTextCharLayoutProc(
     } else {
 	for (count = bytesThatFit, p += bytesThatFit - 1; count > 0;
 		count--, p--) {
-	    if (isspace(UCHAR(*p))) {
+	    /*
+	     * Don't use isspace(); effects are unpredictable and can lead to
+	     * odd word-wrapping problems on some platforms. Also don't use
+	     * Tcl_UniCharIsSpace here either, as it identifies non-breaking
+	     * spaces as places to break. What we actually want is only the
+	     * ASCII space characters, so use them explicitly...
+	     */
+
+	    switch (*p) {
+	    case '\t': case '\n': case '\v': case '\f': case '\r': case ' ':
 		chunkPtr->breakIndex = count;
-		break;
+		goto checkForNextChunk;
 	    }
 	}
+    checkForNextChunk:
 	if ((bytesThatFit + byteOffset) == segPtr->size) {
 	    for (nextPtr = segPtr->nextPtr; nextPtr != NULL;
 		    nextPtr = nextPtr->nextPtr) {
@@ -7280,7 +7314,7 @@ CharChunkMeasureChars(
 
     return MeasureChars(tkfont, chars, charsLen, start, end-start,
 	    startX, maxX, flags, nextXPtr);
-#else
+#else /* TK_LAYOUT_WITH_BASE_CHUNKS */
     {
 	int xDisplacement;
 	int fit, bstart = start, bend = end;
@@ -7320,7 +7354,7 @@ CharChunkMeasureChars(
 	    return fit - bstart;
 	}
     }
-#endif
+#endif /* TK_LAYOUT_WITH_BASE_CHUNKS */
 }
 
 /*
@@ -7534,7 +7568,7 @@ CharUndisplayProc(
 	ciPtr->numBytes = 0;
 #endif /* TK_LAYOUT_WITH_BASE_CHUNKS */
 
-	ckfree((char *) ciPtr);
+	ckfree(ciPtr);
 	chunkPtr->clientData = NULL;
     }
 }
@@ -8174,8 +8208,8 @@ TextGetScrollInfoObj(
     };
     int index;
 
-    if (Tcl_GetIndexFromObj(interp, objv[2], subcommands, "option", 0,
-	    &index) != TCL_OK) {
+    if (Tcl_GetIndexFromObjStruct(interp, objv[2], subcommands,
+	    sizeof(char *), "option", 0, &index) != TCL_OK) {
 	return TKTEXT_SCROLL_ERROR;
     }
 
@@ -8194,8 +8228,8 @@ TextGetScrollInfoObj(
 	    Tcl_WrongNumArgs(interp, 3, objv, "number units|pages|pixels");
 	    return TKTEXT_SCROLL_ERROR;
 	}
-	if (Tcl_GetIndexFromObj(interp, objv[4], units, "argument", 0,
-		&index) != TCL_OK) {
+	if (Tcl_GetIndexFromObjStruct(interp, objv[4], units,
+		sizeof(char *), "argument", 0, &index) != TCL_OK) {
 	    return TKTEXT_SCROLL_ERROR;
 	}
 	switch ((enum viewUnits) index) {
@@ -8350,7 +8384,9 @@ FreeBaseChunk(
 	ciPtr->chars = NULL;
     }
 
-    Tcl_DStringFree(&((BaseCharInfo *) baseChunkPtr->clientData)->baseChars);
+    if (baseChunkPtr) {
+	Tcl_DStringFree(&((BaseCharInfo *) baseChunkPtr->clientData)->baseChars);
+    }
 }
 
 /*

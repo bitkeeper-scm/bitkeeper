@@ -4,8 +4,6 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-'\" RCS: @(#) $Id$
-'\" 
 .so man.macros
 .TH fontchooser n "" Tk "Tk Built-In Commands"
 .BS
@@ -120,7 +118,7 @@ with the focus. The recommended practice is to set font dialog \fB\-font\fR and
 \fB\-command\fR configuration options in per\-widget \fB<FocusIn>\fR handlers
 (and if necessary to unset them \- i.e. set to the empty string \- in
 corresponding \fB<FocusOut>\fR handlers). This is particularly important for
-implementors of library code using the font selection dialog, to avoid
+implementers of library code using the font selection dialog, to avoid
 conflicting with application code that may also want to use the dialog.
 .PP
 Because the font selection dialog is application-global, in the presence of

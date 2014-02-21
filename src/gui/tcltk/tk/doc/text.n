@@ -5,8 +5,6 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-'\" RCS: @(#) $Id$
-'\" 
 .so man.macros
 .TH text n 8.5 Tk "Tk Built-In Commands"
 .BS
@@ -38,12 +36,12 @@ Specifies a boolean that says whether the blinking insertion cursor should be
 drawn as a character-sized rectangular block. If false (the default) a thin
 vertical line is used for the insertion cursor.
 .OP \-endline endLine EndLine
-Specifies an integer line index representing the last line of the underlying
-textual data store that should be contained in the widget. This allows a text
-widget to reflect only a portion of a larger piece of text. Instead of an
-integer, the empty string can be provided to this configuration option, which
-will configure the widget to end at the very last line in the textual data
-store.
+Specifies an integer line index representing the line of the underlying
+textual data store that should be just after the last line contained in
+the widget. This allows a text widget to reflect only a portion of a
+larger piece of text. Instead of an integer, the empty string can be
+provided to this configuration option, which will configure the widget
+to end at the very last line in the textual data store.
 .OP \-height height Height
 Specifies the desired height for the window, in units of characters in the
 font given by the \fB\-font\fR option. Must be at least one.
@@ -114,7 +112,7 @@ If the list of tab stops does not have enough elements to cover all of the
 tabs in a text line, then Tk extrapolates new tab stops using the spacing and
 alignment from the last tab stop in the list. Tab distances must be strictly
 positive, and must always increase from one tab stop to the next (if not, an
-error is thrown). The value of the \fBtabs\fR option may be overridden by
+error is thrown). The value of the \fB\-tabs\fR option may be overridden by
 \fB\-tabs\fR options in tags.
 .PP
 If no \fB\-tabs\fR option is specified, or if it is specified as an empty
@@ -134,7 +132,7 @@ of the \fIn\fR'th tab stop, then a gap of a single space will be inserted as a
 fallback. If the tab style is \fBwordprocessor\fR then any tab character being
 laid out will use (and be defined by) the first tab stop to the right of the
 preceding characters already laid out on that line. The value of the
-\fBtabstyle\fR option may be overridden by \fB\-tabstyle\fR options in tags.
+\fB\-tabstyle\fR option may be overridden by \fB\-tabstyle\fR options in tags.
 .OP \-undo undo Undo
 Specifies a boolean that says whether the undo mechanism is active or not.
 .OP \-width width Width
@@ -180,8 +178,8 @@ widget. See \fBEMBEDDED WINDOWS\fR below for more details.
 The fourth form of annotation allows Tk images to be embedded in a text
 widget. See \fBEMBEDDED IMAGES\fR below for more details.
 .PP
-The text widget also has a built-in undo/redo mechanism. See \fBTHE UNDO
-MECHANISM\fR below for more details.
+The text widget also has a built-in undo/redo mechanism. See
+\fBTHE UNDO MECHANISM\fR below for more details.
 .PP
 The text widget allows for the creation of peer widgets. These are other text
 widgets which share the same underlying data (text, marks, tags, images, etc).
@@ -271,7 +269,7 @@ text. Spaces on either side of \fIcount\fR are optional. If the \fBdisplay\fR
 submodifier is given, elided characters are skipped over without being
 counted. If \fBany\fR is given, then all characters are counted. For
 historical reasons, if neither modifier is given then the count actually takes
-place in units of index positions (see \fBindices\fR for details). This
+place in units of index positions (see \fBINDICES\fR for details). This
 behaviour may be changed in a future major release, so if you need an index
 count, you are encouraged to use \fBindices\fR instead wherever possible.
 .TP
@@ -284,7 +282,7 @@ the text (1.0). Spaces on either side of \fIcount\fR are optional. If the
 \fBdisplay\fR submodifier is given, elided characters are skipped over without
 being counted. If \fBany\fR is given, then all characters are counted. For
 historical reasons, if neither modifier is given then the count actually takes
-place in units of index positions (see \fBindices\fR for details). This
+place in units of index positions (see \fBINDICES\fR for details). This
 behavior may be changed in a future major release, so if you need an index
 count, you are encouraged to use \fBindices\fR instead wherever possible.
 .TP
@@ -434,7 +432,7 @@ then a solid fill will be used for the background.
 .
 \fIPixels\fR specifies the width of a border to draw around the tag using any
 of the forms accepted by \fBTk_GetPixels\fR. This option should be used in
-conjuction with the \fB\-relief\fR option to provide the desired border.
+conjunction with the \fB\-relief\fR option to provide the desired border.
 .TP
 \fB\-elide \fIboolean\fR
 .
@@ -619,8 +617,9 @@ The name space for marks is different from that for tags: the same name may be
 used for both a mark and a tag, but they will refer to different things.
 .PP
 Two marks have special significance. First, the mark \fBinsert\fR is
-associated with the insertion cursor, as described under \fBTHE INSERTION
-CURSOR\fR below. Second, the mark \fBcurrent\fR is associated with the
+associated with the insertion cursor, as described under
+\fBTHE INSERTION CURSOR\fR
+below. Second, the mark \fBcurrent\fR is associated with the
 character closest to the mouse and is adjusted automatically to track the
 mouse position and any changes to the text in the widget (one exception:
 \fBcurrent\fR is not updated in response to mouse motions if a mouse button is
@@ -766,7 +765,7 @@ the bottom of the embedded image. It may have any of the usual forms defined
 for a screen distance.
 .SH "THE SELECTION"
 .PP
-Selection support is implemented via tags. If the \fBexportSelection\fR option
+Selection support is implemented via tags. If the \fB\-exportselection\fR option
 for the text widget is true then the \fBsel\fR tag will be associated with the
 selection:
 .IP [1]
@@ -786,8 +785,8 @@ is generated.
 The \fBsel\fR tag is automatically defined when a text widget is created, and
 it may not be deleted with the
 .QW "\fIpathName \fBtag delete\fR"
-widget command. Furthermore, the \fBselectBackground\fR,
-\fBselectBorderWidth\fR, and \fBselectForeground\fR options for the text
+widget command. Furthermore, the \fB\-selectbackground\fR,
+\fB\-selectborderwidth\fR, and \fB\-selectforeground\fR options for the text
 widget are tied to the \fB\-background\fR, \fB\-borderwidth\fR, and
 \fB\-foreground\fR options for the \fBsel\fR tag: changes in either will
 automatically be reflected in the other. Also the
@@ -867,8 +866,8 @@ arbitrary other widgets, cannot be shared between peers. This means the
 (it is advisable to use the \fB\-create\fR script capabilities to allow each
 peer to create its own embedded windows as needed). Fourth, all of the
 configuration options of each peer (e.g. \fB\-font\fR, etc) can be set
-independently, with the exception of \fB\-undo\fR, \fB\-maxUndo\fR,
-\fB\-autoSeparators\fR (i.e. all undo, redo and modified state issues are
+independently, with the exception of \fB\-undo\fR, \fB\-maxundo\fR,
+\fB\-autoseparators\fR (i.e. all undo, redo and modified state issues are
 shared).
 .PP
 Finally any single peer need not contain all lines from the underlying data
@@ -962,7 +961,7 @@ each counting option given. Valid counting options are \fB\-chars\fR,
 default value, if no option is specified, is \fB\-indices\fR. There is an
 additional possible option \fB\-update\fR which is a modifier. If given, then
 all subsequent options ensure that any possible out of date information is
-recalculated. This currently only has any effect for the \fI\-ypixels\fR count
+recalculated. This currently only has any effect for the \fB\-ypixels\fR count
 (which, if \fB\-update\fR is not given, will use the text widget's current
 cached value for each line). The count options are interpreted as follows:
 .RS
@@ -1042,7 +1041,7 @@ deleted. It is not allowable to delete characters in a way that would leave
 the text without a newline as the last character. The command returns an empty
 string. If more indices are given, multiple ranges of text will be deleted.
 All indices are first checked for validity before any deletions are made. They
-are sorted and the text is removed from the last range to the first range to
+are sorted and the text is removed from the last range to the first range so
 deleted text does not cause an undesired index shifting side-effects. If
 multiple ranges with the same start index are given, then the longest range is
 used. If overlapping ranges are given, then they will be merged into spans
@@ -1133,7 +1132,7 @@ behavior of the command depends on the \fIoption\fR argument that follows the
 supported:
 .RS
 .TP
-\fIpathName \fBedit modified ?\fIboolean\fR?
+\fIpathName \fBedit modified \fR?\fIboolean\fR?
 .
 If \fIboolean\fR is not specified, returns the modified flag of the widget.
 The insert, delete, edit undo and edit redo commands or the user can set or
@@ -1163,7 +1162,7 @@ the undo stack in between two separators. Generates an error when the undo
 stack is empty. Does nothing when the \fB\-undo\fR option is false.
 .RE
 .TP
-\fIpathName \fBget\fR \fI?\-displaychars?\fR \fI\-\- index1\fR ?\fIindex2 ...\fR?
+\fIpathName \fBget\fR ?\fB\-displaychars\fR? ?\fB\-\-\fR? \fIindex1\fR ?\fIindex2 ...\fR?
 .
 Return a range of characters from the text. The return value will be all the
 characters in the text starting with the one whose index is \fIindex1\fR and
@@ -1188,7 +1187,7 @@ command depends on the \fIoption\fR argument that follows the \fBtag\fR
 argument. The following forms of the command are currently supported:
 .RS
 .TP
-\fIpathName \fBimage cget\fR \fIindex option\fR
+\fIpathName \fBimage cget \fIindex option\fR
 .
 Returns the value of a configuration option for an embedded image. \fIIndex\fR
 identifies the embedded image, and \fIoption\fR specifies a particular
@@ -1308,7 +1307,7 @@ calls to
 This command returns an empty string.
 .RE
 .TP
-\fIpathName \fBpeer\fR \fIoption args\fR
+\fIpathName \fBpeer \fIoption args\fR
 .
 This command is used to create and query widget peers. It has two forms,
 depending on \fIoption\fR:
@@ -1327,7 +1326,7 @@ Returns a list of peers of this widget (this does not include the widget
 itself). The order within this list is undefined.
 .RE
 .TP
-\fIpathName \fBreplace\fR \fIindex1 index2 chars\fR ?\fItagList chars tagList ...\fR?
+\fIpathName \fBreplace \fIindex1 index2 chars\fR ?\fItagList chars tagList ...\fR?
 .
 Replaces the range of characters between \fIindex1\fR and \fIindex2\fR with
 the given characters and tags. See the section on \fIpathName \fBinsert\fR for
@@ -1343,7 +1342,7 @@ stack are correctly modified, if undo operations are active in the text
 widget. The command returns an empty string.
 .RE
 .TP
-\fIpathName \fBscan\fR \fIoption args\fR
+\fIpathName \fBscan \fIoption args\fR
 .
 This command is used to implement scanning on texts. It has two forms,
 depending on \fIoption\fR:
@@ -1398,7 +1397,8 @@ those in \fIpattern\fR. This is the default.
 \fB\-regexp\fR
 .
 Treat \fIpattern\fR as a regular expression and match it against the text
-using the rules for regular expressions (see the \fBregexp\fR command for
+using the rules for regular expressions (see the \fBregexp\fR command
+and the \fBre_syntax\fR page for
 details). The default matching automatically passes both the
 \fB\-lineanchor\fR and \fB\-linestop\fR options to the regexp engine (unless
 \fB\-nolinestop\fR is used), so that \fI^$\fR match beginning and end of line,
@@ -1572,7 +1572,7 @@ bindings will be invoked first, followed by bindings for the window as a
 whole.
 .RE
 .TP
-\fIpathName \fBtag cget\fR \fItagName option\fR
+\fIpathName \fBtag cget \fItagName option\fR
 .
 This command returns the current value of the option named \fIoption\fR
 associated with the tag given by \fItagName\fR. \fIOption\fR may have any of
@@ -1675,11 +1675,11 @@ has no effect. This command returns an empty string.
 \fIpathName \fBwindow \fIoption \fR?\fIarg arg ...\fR?
 .
 This command is used to manipulate embedded windows. The behavior of the
-command depends on the \fIoption\fR argument that follows the \fBtag\fR
+command depends on the \fIoption\fR argument that follows the \fBwindow\fR
 argument. The following forms of the command are currently supported:
 .RS
 .TP
-\fIpathName \fBwindow cget\fR \fIindex option\fR
+\fIpathName \fBwindow cget \fIindex option\fR
 .
 Returns the value of a configuration option for an embedded window.
 \fIIndex\fR identifies the embedded window, and \fIoption\fR specifies a
@@ -1757,7 +1757,7 @@ negative then characters farther to the left become visible; if it is positive
 then characters farther to the right become visible.
 .RE
 .TP
-\fIpathName \fByview \fI?args\fR?
+\fIpathName \fByview \fR?\fIargs\fR?
 .
 This command is used to query and change the vertical position of the text in
 the widget's window. It can take any of the following forms:
@@ -1822,7 +1822,7 @@ If \fIindex\fR is only a few lines off-screen below the window then it will be
 positioned at the bottom of the window.
 .IP [4]
 Otherwise, \fIindex\fR will be centered in the window.
-.LP
+.PP
 The \fB\-pickplace\fR option has been obsoleted by the \fIpathName \fBsee\fR
 widget command (\fIpathName \fBsee\fR handles both x- and y-motion to make a
 location visible, whereas the \fB\-pickplace\fR mode only handles motion in
@@ -2038,7 +2038,7 @@ tags within them.
 .PP
 The display line with the insert cursor is redrawn each time the cursor
 blinks, which causes a steady stream of graphics traffic. Set the
-\fBinsertOffTime\fR attribute to 0 avoid this.
+\fB\-insertofftime\fR attribute to 0 avoid this.
 .SS "KNOWN BUGS"
 .PP
 The \fIpathName \fBsearch \-regexp\fR sub-command attempts to perform
@@ -2057,9 +2057,9 @@ Tcl's regexp system returns the incorrect code and adding a second extra line
 would actually match, the text widget will return the wrong result. In
 practice this is a rare problem, but it can occur, for example:
 .CS
-pack [text .t]
-\.t insert 1.0 "aaaa\enbbbb\encccc\enbbbb\enaaaa\en"
-\.t search \-regexp \-\- {(a+|b+\enc+\enb+)+\ena+} 1.0
+pack [\fBtext\fR .t]
+\&.t insert 1.0 "aaaa\enbbbb\encccc\enbbbb\enaaaa\en"
+\&.t search \-regexp \-\- {(a+|b+\enc+\enb+)+\ena+} 1.0
 .CE
 will not find a match when one exists of 19 characters starting from the first
 .QW b .
@@ -2073,9 +2073,9 @@ actually encompasses all of them. The search algorithm used by the widget does
 not look back arbitrarily far for a possible match which might cover large
 portions of the widget. For example:
 .CS
-pack [text .t]
-\.t insert 1.0 "aaaa\enbbbb\enbbbb\enbbbb\enbbbb\\n"
-\.t search \-regexp \-backward \-\- {b+\en|a+\en(b+\en)+} end
+pack [\fBtext\fR .t]
+\&.t insert 1.0 "aaaa\enbbbb\enbbbb\enbbbb\enbbbb\\n"
+\&.t search \-regexp \-backward \-\- {b+\en|a+\en(b+\en)+} end
 .CE
 matches at
 .QW 5.0

@@ -3,8 +3,6 @@
 # This file defines the default bindings for Tk scrollbar widgets.
 # It also provides procedures that help in implementing the bindings.
 #
-# RCS: @(#) $Id$
-#
 # Copyright (c) 1994 The Regents of the University of California.
 # Copyright (c) 1994-1996 Sun Microsystems, Inc.
 #
@@ -93,28 +91,28 @@ bind Scrollbar <Control-2> {
     tk::ScrollTopBottom %W %x %y
 }
 
-bind Scrollbar <Up> {
+bind Scrollbar <<PrevLine>> {
     tk::ScrollByUnits %W v -1
 }
-bind Scrollbar <Down> {
+bind Scrollbar <<NextLine>> {
     tk::ScrollByUnits %W v 1
 }
-bind Scrollbar <Control-Up> {
+bind Scrollbar <<PrevPara>> {
     tk::ScrollByPages %W v -1
 }
-bind Scrollbar <Control-Down> {
+bind Scrollbar <<NextPara>> {
     tk::ScrollByPages %W v 1
 }
-bind Scrollbar <Left> {
+bind Scrollbar <<PrevChar>> {
     tk::ScrollByUnits %W h -1
 }
-bind Scrollbar <Right> {
+bind Scrollbar <<NextChar>> {
     tk::ScrollByUnits %W h 1
 }
-bind Scrollbar <Control-Left> {
+bind Scrollbar <<PrevWord>> {
     tk::ScrollByPages %W h -1
 }
-bind Scrollbar <Control-Right> {
+bind Scrollbar <<NextWord>> {
     tk::ScrollByPages %W h 1
 }
 bind Scrollbar <Prior> {
@@ -123,10 +121,10 @@ bind Scrollbar <Prior> {
 bind Scrollbar <Next> {
     tk::ScrollByPages %W hv 1
 }
-bind Scrollbar <Home> {
+bind Scrollbar <<LineStart>> {
     tk::ScrollToPos %W 0
 }
-bind Scrollbar <End> {
+bind Scrollbar <<LineEnd>> {
     tk::ScrollToPos %W 1
 }
 }

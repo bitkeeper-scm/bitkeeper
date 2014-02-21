@@ -9,8 +9,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tkInt.h"
@@ -100,27 +98,28 @@ Tk_ImageType tkBitmapImageType = {
     ImgBmapFree,		/* freeProc */
     ImgBmapDelete,		/* deleteProc */
     ImgBmapPostscript,		/* postscriptProc */
-    NULL			/* nextPtr */
+    NULL,			/* nextPtr */
+    NULL
 };
 
 /*
  * Information used for parsing configuration specs:
  */
 
-static Tk_ConfigSpec configSpecs[] = {
+static const Tk_ConfigSpec configSpecs[] = {
     {TK_CONFIG_UID, "-background", NULL, NULL,
-	"", Tk_Offset(BitmapMaster, bgUid), 0},
+	"", Tk_Offset(BitmapMaster, bgUid), 0, NULL},
     {TK_CONFIG_STRING, "-data", NULL, NULL,
-	NULL, Tk_Offset(BitmapMaster, dataString), TK_CONFIG_NULL_OK},
+	NULL, Tk_Offset(BitmapMaster, dataString), TK_CONFIG_NULL_OK, NULL},
     {TK_CONFIG_STRING, "-file", NULL, NULL,
-	NULL, Tk_Offset(BitmapMaster, fileString), TK_CONFIG_NULL_OK},
+	NULL, Tk_Offset(BitmapMaster, fileString), TK_CONFIG_NULL_OK, NULL},
     {TK_CONFIG_UID, "-foreground", NULL, NULL,
-	"#000000", Tk_Offset(BitmapMaster, fgUid), 0},
+	"#000000", Tk_Offset(BitmapMaster, fgUid), 0, NULL},
     {TK_CONFIG_STRING, "-maskdata", NULL, NULL,
-	NULL, Tk_Offset(BitmapMaster, maskDataString), TK_CONFIG_NULL_OK},
+	NULL, Tk_Offset(BitmapMaster, maskDataString), TK_CONFIG_NULL_OK, NULL},
     {TK_CONFIG_STRING, "-maskfile", NULL, NULL,
-	NULL, Tk_Offset(BitmapMaster, maskFileString), TK_CONFIG_NULL_OK},
-    {TK_CONFIG_END, NULL, NULL, NULL, NULL, 0, 0}
+	NULL, Tk_Offset(BitmapMaster, maskFileString), TK_CONFIG_NULL_OK, NULL},
+    {TK_CONFIG_END, NULL, NULL, NULL, NULL, 0, 0, NULL}
 };
 
 /*
@@ -153,7 +152,7 @@ static void		ImgBmapConfigureInstance(BitmapInstance *instancePtr);
 static int		ImgBmapConfigureMaster(BitmapMaster *masterPtr,
 			    int argc, Tcl_Obj *const objv[], int flags);
 static int		NextBitmapWord(ParseInfo *parseInfoPtr);
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -179,15 +178,14 @@ ImgBmapCreate(
     int argc,			/* Number of arguments. */
     Tcl_Obj *const argv[],	/* Argument objects for options (doesn't
 				 * include image name or type). */
-    const Tk_ImageType *typePtr,	/* Pointer to our type record (not used). */
+    const Tk_ImageType *typePtr,/* Pointer to our type record (not used). */
     Tk_ImageMaster master,	/* Token for image, to be used by us in later
 				 * callbacks. */
     ClientData *clientDataPtr)	/* Store manager's token for image here; it
 				 * will be returned in later callbacks. */
 {
-    BitmapMaster *masterPtr;
+    BitmapMaster *masterPtr = ckalloc(sizeof(BitmapMaster));
 
-    masterPtr = (BitmapMaster *) ckalloc(sizeof(BitmapMaster));
     masterPtr->tkMaster = master;
     masterPtr->interp = interp;
     masterPtr->imageCmd = Tcl_CreateObjCommand(interp, name, ImgBmapCmd,
@@ -209,7 +207,7 @@ ImgBmapCreate(
     *clientDataPtr = masterPtr;
     return TCL_OK;
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -241,19 +239,19 @@ ImgBmapConfigureMaster(
 {
     BitmapInstance *instancePtr;
     int maskWidth, maskHeight, dummy1, dummy2;
+    const char **argv = ckalloc((objc+1) * sizeof(char *));
 
-    const char **argv = (const char **) ckalloc((objc+1) * sizeof(char *));
     for (dummy1 = 0; dummy1 < objc; dummy1++) {
-	argv[dummy1]=Tcl_GetString(objv[dummy1]);
+	argv[dummy1] = Tcl_GetString(objv[dummy1]);
     }
     argv[objc] = NULL;
 
     if (Tk_ConfigureWidget(masterPtr->interp, Tk_MainWindow(masterPtr->interp),
 	    configSpecs, objc, argv, (char *) masterPtr, flags) != TCL_OK) {
-	ckfree((char *) argv);
+	ckfree(argv);
 	return TCL_ERROR;
     }
-    ckfree((char *) argv);
+    ckfree(argv);
 
     /*
      * Parse the bitmap and/or mask to create binary data. Make sure that the
@@ -279,8 +277,10 @@ ImgBmapConfigureMaster(
     if ((masterPtr->maskFileString != NULL)
 	    || (masterPtr->maskDataString != NULL)) {
 	if (masterPtr->data == NULL) {
-	    Tcl_SetResult(masterPtr->interp, "can't have mask without bitmap",
-		    TCL_STATIC);
+	    Tcl_SetObjResult(masterPtr->interp, Tcl_NewStringObj(
+		    "can't have mask without bitmap", -1));
+	    Tcl_SetErrorCode(masterPtr->interp, "TK", "IMAGE", "BITMAP",
+		    "NO_BITMAP", NULL);
 	    return TCL_ERROR;
 	}
 	masterPtr->maskData = TkGetBitmapData(masterPtr->interp,
@@ -293,8 +293,10 @@ ImgBmapConfigureMaster(
 		|| (maskHeight != masterPtr->height)) {
 	    ckfree(masterPtr->maskData);
 	    masterPtr->maskData = NULL;
-	    Tcl_SetResult(masterPtr->interp,
-		    "bitmap and mask have different sizes", TCL_STATIC);
+	    Tcl_SetObjResult(masterPtr->interp, Tcl_NewStringObj(
+		    "bitmap and mask have different sizes", -1));
+	    Tcl_SetErrorCode(masterPtr->interp, "TK", "IMAGE", "BITMAP",
+		    "MASK_SIZE", NULL);
 	    return TCL_ERROR;
 	}
     }
@@ -313,7 +315,7 @@ ImgBmapConfigureMaster(
 	    masterPtr->height, masterPtr->width, masterPtr->height);
     return TCL_OK;
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -328,7 +330,7 @@ ImgBmapConfigureMaster(
  *	None.
  *
  * Side effects:
- *	Generates errors via Tcl_BackgroundError if there are problems in
+ *	Generates errors via Tcl_BackgroundException if there are problems in
  *	setting up the instance.
  *
  *----------------------------------------------------------------------
@@ -446,9 +448,9 @@ ImgBmapConfigureInstance(
     Tcl_AppendObjToErrorInfo(masterPtr->interp, Tcl_ObjPrintf(
 	    "\n    (while configuring image \"%s\")", Tk_NameOfImage(
 	    masterPtr->tkMaster)));
-    Tcl_BackgroundError(masterPtr->interp);
+    Tcl_BackgroundException(masterPtr->interp, TCL_ERROR);
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -475,7 +477,7 @@ char *
 TkGetBitmapData(
     Tcl_Interp *interp,		/* For reporting errors, or NULL. */
     const char *string,		/* String describing bitmap. May be NULL. */
-    const char *fileName,		/* Name of file containing bitmap description.
+    const char *fileName,	/* Name of file containing bitmap description.
 				 * Used only if string is NULL. Must not be
 				 * NULL if string is NULL. */
     int *widthPtr, int *heightPtr,
@@ -492,8 +494,10 @@ TkGetBitmapData(
     pi.string = string;
     if (string == NULL) {
 	if ((interp != NULL) && Tcl_IsSafe(interp)) {
-	    Tcl_AppendResult(interp, "can't get bitmap data from a file in a",
-		    " safe interpreter", NULL);
+	    Tcl_SetObjResult(interp, Tcl_NewStringObj(
+		    "can't get bitmap data from a file in a safe interpreter",
+		    -1));
+	    Tcl_SetErrorCode(interp, "TK", "SAFE", "BITMAP_FILE", NULL);
 	    return NULL;
 	}
 	expandedFileName = Tcl_TranslateFileName(interp, fileName, &buffer);
@@ -505,8 +509,9 @@ TkGetBitmapData(
 	if (pi.chan == NULL) {
 	    if (interp != NULL) {
 		Tcl_ResetResult(interp);
-		Tcl_AppendResult(interp, "couldn't read bitmap file \"",
-			fileName, "\": ", Tcl_PosixError(interp), NULL);
+		Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+			"couldn't read bitmap file \"%s\": %s",
+			fileName, Tcl_PosixError(interp)));
 	    }
 	    return NULL;
 	}
@@ -595,8 +600,11 @@ TkGetBitmapData(
 	    }
 	} else if ((pi.word[0] == '{') && (pi.word[1] == 0)) {
 	    if (interp != NULL) {
-		Tcl_AppendResult(interp, "format error in bitmap data; ",
-			"looks like it's an obsolete X10 bitmap file", NULL);
+		Tcl_SetObjResult(interp, Tcl_NewStringObj(
+			"format error in bitmap data; looks like it's an"
+			" obsolete X10 bitmap file", -1));
+		Tcl_SetErrorCode(interp, "TK", "IMAGE", "BITMAP", "OBSOLETE",
+			NULL);
 	    }
 	    goto errorCleanup;
 	}
@@ -612,7 +620,7 @@ TkGetBitmapData(
 	goto error;
     }
     numBytes = ((width+7)/8) * height;
-    data = ckalloc((unsigned) numBytes);
+    data = ckalloc(numBytes);
     for (p = data; numBytes > 0; p++, numBytes--) {
 	if (NextBitmapWord(&pi) != TCL_OK) {
 	    goto error;
@@ -638,7 +646,9 @@ TkGetBitmapData(
 
   error:
     if (interp != NULL) {
-	Tcl_SetResult(interp, "format error in bitmap data", TCL_STATIC);
+	Tcl_SetObjResult(interp, Tcl_NewStringObj(
+		"format error in bitmap data", -1));
+	Tcl_SetErrorCode(interp, "TK", "IMAGE", "BITMAP", "FORMAT", NULL);
     }
 
   errorCleanup:
@@ -650,7 +660,7 @@ TkGetBitmapData(
     }
     return NULL;
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -720,7 +730,7 @@ NextBitmapWord(
     parseInfoPtr->word[parseInfoPtr->wordLength] = 0;
     return TCL_OK;
 }
-
+
 /*
  *--------------------------------------------------------------
  *
@@ -754,8 +764,8 @@ ImgBmapCmd(
 	Tcl_WrongNumArgs(interp, 1, objv, "option ?arg ...?");
 	return TCL_ERROR;
     }
-    if (Tcl_GetIndexFromObj(interp, objv[1], bmapOptions, "option", 0,
-	    &index) != TCL_OK) {
+    if (Tcl_GetIndexFromObjStruct(interp, objv[1], bmapOptions,
+	    sizeof(char *), "option", 0, &index) != TCL_OK) {
 	return TCL_ERROR;
     }
     switch (index) {
@@ -783,7 +793,7 @@ ImgBmapCmd(
 	return TCL_OK;
     }
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -830,7 +840,7 @@ ImgBmapGet(
      * the image.
      */
 
-    instancePtr = (BitmapInstance *) ckalloc(sizeof(BitmapInstance));
+    instancePtr = ckalloc(sizeof(BitmapInstance));
     instancePtr->refCount = 1;
     instancePtr->masterPtr = masterPtr;
     instancePtr->tkwin = tkwin;
@@ -854,7 +864,7 @@ ImgBmapGet(
 
     return instancePtr;
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -914,7 +924,7 @@ ImgBmapDisplay(
 	XSetClipOrigin(display, instancePtr->gc, 0, 0);
     }
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -975,9 +985,9 @@ ImgBmapFree(
 	}
 	prevPtr->nextPtr = instancePtr->nextPtr;
     }
-    ckfree((char *) instancePtr);
+    ckfree(instancePtr);
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -1016,9 +1026,9 @@ ImgBmapDelete(
 	ckfree(masterPtr->maskData);
     }
     Tk_FreeOptions(configSpecs, (char *) masterPtr, NULL, 0);
-    ckfree((char *) masterPtr);
+    ckfree(masterPtr);
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -1048,7 +1058,7 @@ ImgBmapCmdDeletedProc(
 	Tk_DeleteImage(masterPtr->interp, Tk_NameOfImage(masterPtr->tkMaster));
     }
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -1079,8 +1089,7 @@ GetByte(
 	return buffer;
     }
 }
-
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -1102,28 +1111,22 @@ GetByte(
  *	   3.  The postscript coordinate system has been scaled so that the
  *	       entire bitmap is one unit squared.
  *
- *	Some postscript implementations cannot handle bitmap strings longer
- *	than about 60k characters. If the bitmap data is that big or bigger,
- *	then we render it by splitting it into several smaller bitmaps.
- *
  * Results:
- *	Returns TCL_OK on success. Returns TCL_ERROR and leaves and error
- *	message in interp->result if there is a problem.
+ *	None.
  *
  * Side effects:
- *	Postscript code is appended to interp->result.
+ *	Postscript code is appended to psObj.
  *
  *----------------------------------------------------------------------
  */
 
-static int
+static void
 ImgBmapPsImagemask(
-    Tcl_Interp *interp,		/* Append postscript to this interpreter */
+    Tcl_Obj *psObj,		/* Append postscript to this buffer. */
     int width, int height,	/* Width and height of the bitmap in pixels */
-    char *data)			/* Data for the bitmap */
+    char *data)			/* Data for the bitmap. */
 {
     int i, j, nBytePerRow;
-    char buffer[200];
 
     /*
      * The bit order of bitmaps in Tk is the opposite of the bit order that
@@ -1133,7 +1136,7 @@ ImgBmapPsImagemask(
      * within a byte so that the bits will be in the order postscript expects.
      */
 
-    static unsigned char bit_reverse[] = {
+    static const unsigned char bit_reverse[] = {
        0, 128, 64, 192, 32, 160,  96, 224, 16, 144, 80, 208, 48, 176, 112, 240,
        8, 136, 72, 200, 40, 168, 104, 232, 24, 152, 88, 216, 56, 184, 120, 248,
        4, 132, 68, 196, 36, 164, 100, 228, 20, 148, 84, 212, 52, 180, 116, 244,
@@ -1152,31 +1155,22 @@ ImgBmapPsImagemask(
       15, 143, 79, 207, 47, 175, 111, 239, 31, 159, 95, 223, 63, 191, 127, 255,
     };
 
-    if (width*height > 60000) {
-	Tcl_ResetResult(interp);
-	Tcl_AppendResult(interp, "unable to generate postscript for bitmaps "
-		"larger than 60000 pixels", NULL);
-	return TCL_ERROR;
-    }
-
-    sprintf(buffer, "0 0 moveto %d %d true [%d 0 0 %d 0 %d] {<\n",
+    Tcl_AppendPrintfToObj(psObj,
+	    "0 0 moveto %d %d true [%d 0 0 %d 0 %d] {<\n",
 	    width, height, width, -height, height);
-    Tcl_AppendResult(interp, buffer, NULL);
 
-    nBytePerRow = (width+7)/8;
-    for(i=0; i<height; i++){
-	for(j=0; j<nBytePerRow; j++){
-	    sprintf(buffer, " %02x",
+    nBytePerRow = (width + 7) / 8;
+    for (i=0; i<height; i++) {
+	for (j=0; j<nBytePerRow; j++) {
+	    Tcl_AppendPrintfToObj(psObj, " %02x",
 		    bit_reverse[0xff & data[i*nBytePerRow + j]]);
-	    Tcl_AppendResult(interp, buffer, NULL);
 	}
-	Tcl_AppendResult(interp, "\n", NULL);
+	Tcl_AppendToObj(psObj, "\n", -1);
     }
 
-    Tcl_AppendResult(interp, ">} imagemask \n", NULL);
-    return TCL_OK;
+    Tcl_AppendToObj(psObj, ">} imagemask \n", -1);
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -1185,7 +1179,6 @@ ImgBmapPsImagemask(
  *	This procedure generates postscript for rendering a bitmap image.
  *
  * Results:
-
  *	On success, this routine writes postscript code into interp->result
  *	and returns TCL_OK TCL_ERROR is returned and an error message is left
  *	in interp->result if anything goes wrong.
@@ -1206,7 +1199,8 @@ ImgBmapPostscript(
     int prepass)
 {
     BitmapMaster *masterPtr = clientData;
-    char buffer[200];
+    Tcl_InterpState interpState;
+    Tcl_Obj *psObj;
 
     if (prepass) {
 	return TCL_OK;
@@ -1216,9 +1210,30 @@ ImgBmapPostscript(
      * There is nothing to do for bitmaps with zero width or height.
      */
 
-    if (width<=0 || height<=0 || masterPtr->width<=0 || masterPtr->height<= 0){
+    if (width<=0 || height<=0 || masterPtr->width<=0 || masterPtr->height<=0){
 	return TCL_OK;
     }
+
+    /*
+     * Some postscript implementations cannot handle bitmap strings longer
+     * than about 60k characters. If the bitmap data is that big or bigger,
+     * we bail out.
+     */
+
+    if (masterPtr->width*masterPtr->height > 60000) {
+	Tcl_SetObjResult(interp, Tcl_NewStringObj(
+		"unable to generate postscript for bitmaps larger than 60000"
+		" pixels", -1));
+	Tcl_SetErrorCode(interp, "TK", "CANVAS", "PS", "MEMLIMIT", NULL);
+	return TCL_ERROR;
+    }
+
+    /*
+     * Make our working space.
+     */
+
+    psObj = Tcl_NewObj();
+    interpState = Tcl_SaveInterpState(interp, TCL_OK);
 
     /*
      * Translate the origin of the coordinate system to be the lower-left
@@ -1229,13 +1244,11 @@ ImgBmapPostscript(
      * necessary here.
      */
 
-    if (x!=0 || y!=0) {
-	sprintf(buffer, "%d %d moveto\n", x, y);
-	Tcl_AppendResult(interp, buffer, NULL);
+    if (x != 0 || y != 0) {
+	Tcl_AppendPrintfToObj(psObj, "%d %d moveto\n", x, y);
     }
-    if (width!=1 || height!=1) {
-	sprintf(buffer, "%d %d scale\n", width, height);
- 	Tcl_AppendResult(interp, buffer, NULL);
+    if (width != 1 || height != 1) {
+	Tcl_AppendPrintfToObj(psObj, "%d %d scale\n", width, height);
     }
 
     /*
@@ -1249,18 +1262,21 @@ ImgBmapPostscript(
     if ((masterPtr->bgUid != NULL) && (masterPtr->bgUid[0] != '\000')) {
 	XColor color;
 
-	XParseColor(Tk_Display(tkwin), Tk_Colormap(tkwin), masterPtr->bgUid,
+	TkParseColor(Tk_Display(tkwin), Tk_Colormap(tkwin), masterPtr->bgUid,
 		&color);
+	Tcl_ResetResult(interp);
 	if (Tk_PostscriptColor(interp, psinfo, &color) != TCL_OK) {
-	    return TCL_ERROR;
+	    goto error;
 	}
+	Tcl_AppendObjToObj(psObj, Tcl_GetObjResult(interp));
+
 	if (masterPtr->maskData == NULL) {
-	    Tcl_AppendResult(interp,
-		    "0 0 moveto 1 0 rlineto 0 1 rlineto -1 0 rlineto ",
-		    "closepath fill\n", NULL);
-	} else if (ImgBmapPsImagemask(interp, masterPtr->width,
-		masterPtr->height, masterPtr->maskData) != TCL_OK) {
-	    return TCL_ERROR;
+	    Tcl_AppendToObj(psObj,
+		    "0 0 moveto 1 0 rlineto 0 1 rlineto -1 0 rlineto "
+		    "closepath fill\n", -1);
+	} else {
+	    ImgBmapPsImagemask(psObj, masterPtr->width, masterPtr->height,
+		    masterPtr->maskData);
 	}
     }
 
@@ -1271,19 +1287,33 @@ ImgBmapPostscript(
     if ((masterPtr->fgUid != NULL) && (masterPtr->data != NULL)) {
 	XColor color;
 
-	XParseColor(Tk_Display(tkwin), Tk_Colormap(tkwin), masterPtr->fgUid,
+	TkParseColor(Tk_Display(tkwin), Tk_Colormap(tkwin), masterPtr->fgUid,
 		&color);
+	Tcl_ResetResult(interp);
 	if (Tk_PostscriptColor(interp, psinfo, &color) != TCL_OK) {
-	    return TCL_ERROR;
+	    goto error;
 	}
-	if (ImgBmapPsImagemask(interp, masterPtr->width, masterPtr->height,
-		masterPtr->data) != TCL_OK) {
-	    return TCL_ERROR;
-	}
-    }
-    return TCL_OK;
-}
+	Tcl_AppendObjToObj(psObj, Tcl_GetObjResult(interp));
 
+	ImgBmapPsImagemask(psObj, masterPtr->width, masterPtr->height,
+		masterPtr->data);
+    }
+
+    /*
+     * Plug the accumulated postscript back into the result.
+     */
+
+    (void) Tcl_RestoreInterpState(interp, interpState);
+    Tcl_AppendObjToObj(Tcl_GetObjResult(interp), psObj);
+    Tcl_DecrRefCount(psObj);
+    return TCL_OK;
+
+  error:
+    Tcl_DiscardInterpState(interpState);
+    Tcl_DecrRefCount(psObj);
+    return TCL_ERROR;
+}
+
 /*
  * Local Variables:
  * mode: c

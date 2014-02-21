@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * This file is (mostly) automatically generated from ttk.decls.
  * It is compiled and linked in with the ttk package proper.
  */
@@ -8,11 +6,11 @@
 #include "tk.h"
 #include "ttkTheme.h"
 
-MODULE_SCOPE TtkStubs ttkStubs;
+MODULE_SCOPE const TtkStubs ttkStubs;
 
 /* !BEGIN!: Do not edit below this line. */
 
-TtkStubs ttkStubs = {
+const TtkStubs ttkStubs = {
     TCL_STUB_MAGIC,
     TTK_STUBS_EPOCH,
     TTK_STUBS_REVISION,

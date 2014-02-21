@@ -11,8 +11,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "default.h"
@@ -116,11 +114,11 @@ static const Tk_OptionSpec optionSpecs[] = {
 	 -1, Tk_Offset(Message, aspect), 0, 0, 0},
     {TK_OPTION_BORDER, "-background", "background", "Background",
 	 DEF_MESSAGE_BG_COLOR, -1, Tk_Offset(Message, border), 0,
-	 (ClientData) DEF_MESSAGE_BG_MONO, 0},
+	 DEF_MESSAGE_BG_MONO, 0},
     {TK_OPTION_SYNONYM, "-bd", NULL, NULL, NULL,
-	 0, -1, 0, (ClientData) "-borderwidth", 0},
+	 0, -1, 0, "-borderwidth", 0},
     {TK_OPTION_SYNONYM, "-bg", NULL, NULL, NULL,
-	 0, -1, 0, (ClientData) "-background", 0},
+	 0, -1, 0, "-background", 0},
     {TK_OPTION_PIXELS, "-borderwidth", "borderWidth", "BorderWidth",
 	 DEF_MESSAGE_BORDER_WIDTH, -1,
 	 Tk_Offset(Message, borderWidth), 0, 0, 0},
@@ -128,14 +126,14 @@ static const Tk_OptionSpec optionSpecs[] = {
 	 DEF_MESSAGE_CURSOR, -1, Tk_Offset(Message, cursor),
 	 TK_OPTION_NULL_OK, 0, 0},
     {TK_OPTION_SYNONYM, "-fg", NULL, NULL, NULL,
-	 0, -1, 0, (ClientData) "-foreground", 0},
+	 0, -1, 0, "-foreground", 0},
     {TK_OPTION_FONT, "-font", "font", "Font",
 	DEF_MESSAGE_FONT, -1, Tk_Offset(Message, tkfont), 0, 0, 0},
     {TK_OPTION_COLOR, "-foreground", "foreground", "Foreground",
 	DEF_MESSAGE_FG, -1, Tk_Offset(Message, fgColorPtr), 0, 0, 0},
     {TK_OPTION_COLOR, "-highlightbackground", "highlightBackground",
 	 "HighlightBackground", DEF_MESSAGE_HIGHLIGHT_BG, -1,
-	 Tk_Offset(Message, highlightBgColorPtr), 0, 0},
+	 Tk_Offset(Message, highlightBgColorPtr), 0, 0, 0},
     {TK_OPTION_COLOR, "-highlightcolor", "highlightColor", "HighlightColor",
 	 DEF_MESSAGE_HIGHLIGHT, -1, Tk_Offset(Message, highlightColorPtr),
 	 0, 0, 0},
@@ -162,7 +160,7 @@ static const Tk_OptionSpec optionSpecs[] = {
 	TK_OPTION_NULL_OK, 0, 0},
     {TK_OPTION_PIXELS, "-width", "width", "Width",
 	DEF_MESSAGE_WIDTH, -1, Tk_Offset(Message, width), 0, 0 ,0},
-    {TK_OPTION_END, NULL, NULL, NULL, NULL, 0, 0, 0, 0}
+    {TK_OPTION_END, NULL, NULL, NULL, NULL, 0, 0, 0, 0, 0}
 };
 
 /*
@@ -190,9 +188,11 @@ static void		DisplayMessage(ClientData clientData);
  * that can be invoked from generic window code.
  */
 
-static Tk_ClassProcs messageClass = {
+static const Tk_ClassProcs messageClass = {
     sizeof(Tk_ClassProcs),	/* size */
     MessageWorldChanged,	/* worldChangedProc */
+    NULL,			/* createProc */
+    NULL			/* modalProc */
 };
 
 /*
@@ -241,7 +241,7 @@ Tk_MessageObjCmd(
 
     optionTable = Tk_CreateOptionTable(interp, optionSpecs);
 
-    msgPtr = (Message *) ckalloc(sizeof(Message));
+    msgPtr = ckalloc(sizeof(Message));
     memset(msgPtr, 0, (size_t) sizeof(Message));
 
     /*
@@ -277,7 +277,7 @@ Tk_MessageObjCmd(
 	return TCL_ERROR;
     }
 
-    Tcl_SetResult(interp, Tk_PathName(msgPtr->tkwin), TCL_STATIC);
+    Tcl_SetObjResult(interp, TkNewWindowObj(msgPtr->tkwin));
     return TCL_OK;
 }
 
@@ -318,8 +318,8 @@ MessageWidgetObjCmd(
 	return TCL_ERROR;
     }
 
-    if (Tcl_GetIndexFromObj(interp, objv[1], optionStrings, "option", 0,
-	    &index) != TCL_OK) {
+    if (Tcl_GetIndexFromObjStruct(interp, objv[1], optionStrings,
+	    sizeof(char *), "option", 0, &index) != TCL_OK) {
 	return TCL_ERROR;
     }
 
@@ -405,13 +405,13 @@ DestroyMessage(
 	Tk_FreeTextLayout(msgPtr->textLayout);
     }
     if (msgPtr->textVarName != NULL) {
-	Tcl_UntraceVar(msgPtr->interp, msgPtr->textVarName,
+	Tcl_UntraceVar2(msgPtr->interp, msgPtr->textVarName, NULL,
 		TCL_GLOBAL_ONLY|TCL_TRACE_WRITES|TCL_TRACE_UNSETS,
 		MessageTextVarProc, msgPtr);
     }
     Tk_FreeConfigOptions((char *) msgPtr, msgPtr->optionTable, msgPtr->tkwin);
     msgPtr->tkwin = NULL;
-    ckfree((char *) msgPtr);
+    ckfree(msgPtr);
 }
 
 /*
@@ -450,7 +450,7 @@ ConfigureMessage(
      */
 
     if (msgPtr->textVarName != NULL) {
-	Tcl_UntraceVar(interp, msgPtr->textVarName,
+	Tcl_UntraceVar2(interp, msgPtr->textVarName, NULL,
 		TCL_GLOBAL_ONLY|TCL_TRACE_WRITES|TCL_TRACE_UNSETS,
 		MessageTextVarProc, msgPtr);
     }
@@ -470,9 +470,9 @@ ConfigureMessage(
     if (msgPtr->textVarName != NULL) {
 	const char *value;
 
-	value = Tcl_GetVar(interp, msgPtr->textVarName, TCL_GLOBAL_ONLY);
+	value = Tcl_GetVar2(interp, msgPtr->textVarName, NULL, TCL_GLOBAL_ONLY);
 	if (value == NULL) {
-	    Tcl_SetVar(interp, msgPtr->textVarName, msgPtr->string,
+	    Tcl_SetVar2(interp, msgPtr->textVarName, NULL, msgPtr->string,
 		    TCL_GLOBAL_ONLY);
 	} else {
 	    if (msgPtr->string != NULL) {
@@ -480,7 +480,7 @@ ConfigureMessage(
 	    }
 	    msgPtr->string = strcpy(ckalloc(strlen(value) + 1), value);
 	}
-	Tcl_TraceVar(interp, msgPtr->textVarName,
+	Tcl_TraceVar2(interp, msgPtr->textVarName, NULL,
 		TCL_GLOBAL_ONLY|TCL_TRACE_WRITES|TCL_TRACE_UNSETS,
 		MessageTextVarProc, msgPtr);
     }
@@ -527,9 +527,7 @@ MessageWorldChanged(
     XGCValues gcValues;
     GC gc = None;
     Tk_FontMetrics fm;
-    Message *msgPtr;
-
-    msgPtr = (Message *) instanceData;
+    Message *msgPtr = instanceData;
 
     if (msgPtr->border != NULL) {
 	Tk_SetBackgroundFromBorder(msgPtr->tkwin, msgPtr->border);
@@ -847,16 +845,16 @@ MessageTextVarProc(
 
     if (flags & TCL_TRACE_UNSETS) {
 	if ((flags & TCL_TRACE_DESTROYED) && !(flags & TCL_INTERP_DESTROYED)) {
-	    Tcl_SetVar(interp, msgPtr->textVarName, msgPtr->string,
+	    Tcl_SetVar2(interp, msgPtr->textVarName, NULL, msgPtr->string,
 		    TCL_GLOBAL_ONLY);
-	    Tcl_TraceVar(interp, msgPtr->textVarName,
+	    Tcl_TraceVar2(interp, msgPtr->textVarName, NULL,
 		    TCL_GLOBAL_ONLY|TCL_TRACE_WRITES|TCL_TRACE_UNSETS,
 		    MessageTextVarProc, clientData);
 	}
 	return NULL;
     }
 
-    value = Tcl_GetVar(interp, msgPtr->textVarName, TCL_GLOBAL_ONLY);
+    value = Tcl_GetVar2(interp, msgPtr->textVarName, NULL, TCL_GLOBAL_ONLY);
     if (value == NULL) {
 	value = "";
     }
@@ -864,7 +862,7 @@ MessageTextVarProc(
 	ckfree(msgPtr->string);
     }
     msgPtr->numChars = Tcl_NumUtfChars(value, -1);
-    msgPtr->string = (char *) ckalloc((unsigned) (strlen(value) + 1));
+    msgPtr->string = ckalloc(strlen(value) + 1);
     strcpy(msgPtr->string, value);
     ComputeMessageGeometry(msgPtr);
 

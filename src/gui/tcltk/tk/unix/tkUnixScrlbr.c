@@ -8,8 +8,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tkInt.h"
@@ -38,8 +36,11 @@ typedef struct UnixScrollbar {
  * variable is declared at this scope.
  */
 
-Tk_ClassProcs tkpScrollbarProcs = {
-    sizeof(Tk_ClassProcs)	/* size */
+const Tk_ClassProcs tkpScrollbarProcs = {
+    sizeof(Tk_ClassProcs),	/* size */
+    NULL,					/* worldChangedProc */
+    NULL,					/* createProc */
+    NULL					/* modalProc */
 };
 
 /*
@@ -62,15 +63,14 @@ TkScrollbar *
 TkpCreateScrollbar(
     Tk_Window tkwin)
 {
-    UnixScrollbar *scrollPtr = (UnixScrollbar *)
-	    ckalloc(sizeof(UnixScrollbar));
+    UnixScrollbar *scrollPtr = ckalloc(sizeof(UnixScrollbar));
 
     scrollPtr->troughGC = None;
     scrollPtr->copyGC = None;
 
     Tk_CreateEventHandler(tkwin,
 	    ExposureMask|StructureNotifyMask|FocusChangeMask,
-	    TkScrollbarEventProc, (ClientData) scrollPtr);
+	    TkScrollbarEventProc, scrollPtr);
 
     return (TkScrollbar *) scrollPtr;
 }
@@ -305,14 +305,13 @@ TkpComputeScrollbarGeometry(
      * grabbed with the mouse).
      */
 
-    if (scrollPtr->sliderFirst > (fieldLength - 2*scrollPtr->borderWidth)) {
-	scrollPtr->sliderFirst = fieldLength - 2*scrollPtr->borderWidth;
+    if (scrollPtr->sliderFirst > fieldLength - MIN_SLIDER_LENGTH) {
+	scrollPtr->sliderFirst = fieldLength - MIN_SLIDER_LENGTH;
     }
     if (scrollPtr->sliderFirst < 0) {
 	scrollPtr->sliderFirst = 0;
     }
-    if (scrollPtr->sliderLast < (scrollPtr->sliderFirst
-	    + MIN_SLIDER_LENGTH)) {
+    if (scrollPtr->sliderLast < scrollPtr->sliderFirst + MIN_SLIDER_LENGTH) {
 	scrollPtr->sliderLast = scrollPtr->sliderFirst + MIN_SLIDER_LENGTH;
     }
     if (scrollPtr->sliderLast > fieldLength) {

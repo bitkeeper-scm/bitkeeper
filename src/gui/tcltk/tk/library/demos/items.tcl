@@ -2,8 +2,6 @@
 #
 # This demonstration script creates a canvas that displays the
 # canvas item types.
-#
-# RCS: @(#) $Id$
 
 if {![info exists widgetDemo]} {
     error "This script should be run from the \"widget\" demo."
@@ -175,7 +173,7 @@ bind $c <2> "$c scan mark %x %y"
 bind $c <B2-Motion> "$c scan dragto %x %y"
 bind $c <3> "itemMark $c %x %y"
 bind $c <B3-Motion> "itemStroke $c %x %y"
-bind $c <Control-f> "itemsUnderArea $c"
+bind $c <<NextChar>> "itemsUnderArea $c"
 bind $c <1> "itemStartDrag $c %x %y"
 bind $c <B1-Motion> "itemDrag $c %x %y"
 
@@ -288,6 +286,6 @@ proc itemDrag {c x y} {
 # is invoked.
 
 proc butPress {w color} {
-    set i [$w create text 25c 18.1c -text "Ouch!!" -fill $color -anchor n]
+    set i [$w create text 25c 18.1c -text "Oooohhh!!" -fill $color -anchor n]
     after 500 "$w delete $i"
 }

@@ -1,20 +1,48 @@
 #
-# $Id$
-#
 # Utilities for widget implementations.
 #
 
 ### Focus management.
 #
+# See also: #1516479
+#
 
 ## ttk::takefocus --
 #	This is the default value of the "-takefocus" option
-#	for widgets that participate in keyboard navigation.
+#	for ttk::* widgets that participate in keyboard navigation.
 #
-# See also: tk::FocusOK
+# NOTES:
+#	tk::FocusOK (called by tk_focusNext) tests [winfo viewable]
+#	if -takefocus is 1, empty, or missing; but not if it's a
+#	script prefix, so we have to check that here as well.
+#
 #
 proc ttk::takefocus {w} {
     expr {[$w instate !disabled] && [winfo viewable $w]}
+}
+
+## ttk::GuessTakeFocus --
+#	This routine is called as a fallback for widgets
+#	with a missing or empty -takefocus option.
+#
+#	It implements the same heuristics as tk::FocusOK.
+#
+proc ttk::GuessTakeFocus {w} {
+    # Don't traverse to widgets with '-state disabled':
+    #
+    if {![catch {$w cget -state} state] && $state eq "disabled"} {
+	return 0
+    }
+
+    # Allow traversal to widgets with explicit key or focus bindings:
+    #
+    if {[regexp {Key|Focus} [concat [bind $w] [bind [winfo class $w]]]]} {
+	return 1;
+    }
+
+    # Default is nontraversable:
+    #
+    return 0;
 }
 
 ## ttk::traverseTo $w --
@@ -38,36 +66,26 @@ proc ttk::clickToFocus {w} {
 }
 
 ## ttk::takesFocus w --
-#	Test if the widget can take keyboard focus:
+#	Test if the widget can take keyboard focus.
 #
-#	+ widget is viewable, AND:
-#	- if -takefocus is missing or empty, return 0, OR
-#	- if -takefocus is 0 or 1, return that value, OR
-#	- append the widget name to -takefocus and evaluate it
-#	  as a script.
-#
-# See also: tk::FocusOK
-#
-# Note: This routine doesn't implement the same fallback heuristics
-#	as tk::FocusOK.
+#	See the description of the -takefocus option in options(n)
+#	for details.
 #
 proc ttk::takesFocus {w} {
-
-    if {![winfo viewable $w]} { return 0 }
-
-    if {![catch {$w cget -takefocus} takefocus]} {
+    if {![winfo viewable $w]} {
+    	return 0
+    } elseif {[catch {$w cget -takefocus} takefocus]} {
+	return [GuessTakeFocus $w]
+    } else {
 	switch -- $takefocus {
-	    0  -
-	    1  { return $takefocus }
-	    "" { return 0 }
+	    "" { return [GuessTakeFocus $w] }
+	    0  { return 0 }
+	    1  { return 1 }
 	    default {
-		set value [uplevel #0 $takefocus [list $w]]
-		return [expr {$value eq 1}]
+		return [expr {[uplevel #0 $takefocus [list $w]] == 1}]
 	    }
 	}
     }
-
-    return 0
 }
 
 ## ttk::focusFirst $w --

@@ -1,6 +1,4 @@
 /* winTheme.c - Copyright (C) 2004 Pat Thoyts <patthoyts@users.sf.net>
- *
- * $Id$
  */
 
 #ifdef _MSC_VER
@@ -109,7 +107,7 @@ typedef struct {
 #define FIXEDSIZE(id) (id|_FIXEDSIZE)
 #define HALFMETRIC(id) (id|_HALFMETRIC)
 #define GETMETRIC(m) \
-    ((m) & _FIXEDSIZE ? (m) & ~_FIXEDSIZE : GetSystemMetrics((m)&0x0fffffff))
+    ((m) & _FIXEDSIZE ? (int)((m) & ~_FIXEDSIZE) : GetSystemMetrics((m)&0x0fffffff))
 
 static FrameControlElementData FrameControlElements[] = {
     { "Checkbutton.indicator",
@@ -191,7 +189,7 @@ typedef struct {
 
 static Ttk_ElementOptionSpec BorderElementOptions[] = {
     { "-relief",TK_OPTION_RELIEF,Tk_Offset(BorderElement,reliefObj), "flat" },
-    {NULL}
+    {NULL, 0, 0, NULL}
 };
 
 static void BorderElementSize(
@@ -242,7 +240,7 @@ typedef struct {
 static Ttk_ElementOptionSpec FieldElementOptions[] = {
     { "-fieldbackground", TK_OPTION_BORDER,
     	Tk_Offset(FieldElement,backgroundObj), "white" },
-    {NULL}
+    { NULL, 0, 0, NULL }
 };
 
 static void FieldElementSize(
@@ -297,7 +295,7 @@ static Ttk_ElementOptionSpec ButtonBorderElementOptions[] = {
 	Tk_Offset(ButtonBorderElement,highlightColorObj), "black" },
     { "-default", TK_OPTION_ANY,
 	Tk_Offset(ButtonBorderElement,defaultStateObj), "disabled" },
-    {NULL}
+    {NULL, 0, 0, NULL}
 };
 
 static void ButtonBorderElementSize(
@@ -421,7 +419,7 @@ typedef struct {
 static Ttk_ElementOptionSpec FillFocusElementOptions[] = {
     { "-focusfill", TK_OPTION_COLOR,
 	Tk_Offset(FillFocusElement,fillColorObj), "white" },
-    { NULL }
+    {NULL, 0, 0, NULL}
 };
 
 	/* @@@ FIX THIS */
@@ -492,7 +490,7 @@ static void TroughClientDataDeleteProc(void *clientData)
 
 static TroughClientData *TroughClientDataInit(Tcl_Interp *interp)
 {
-    TroughClientData *cd = (TroughClientData*)ckalloc(sizeof(*cd));
+    TroughClientData *cd = ckalloc(sizeof(*cd));
     cd->PatternBitmap = CreateBitmap(8, 8, 1, 1, Pattern);
     cd->PatternBrush  = CreatePatternBrush(cd->PatternBitmap);
     Ttk_RegisterCleanup(interp, cd, TroughClientDataDeleteProc);
@@ -545,7 +543,7 @@ typedef struct {
 
 static Ttk_ElementOptionSpec ThumbElementOptions[] = {
     { "-orient", TK_OPTION_ANY,Tk_Offset(ThumbElement,orientObj),"horizontal"},
-    { NULL }
+    { NULL, 0, 0, NULL }
 };
 
 static void ThumbElementSize(
@@ -602,7 +600,7 @@ typedef struct {
 static Ttk_ElementOptionSpec SliderElementOptions[] = {
     { "-orient", TK_OPTION_ANY, Tk_Offset(SliderElement,orientObj),
       "horizontal" },
-    { NULL }
+      { NULL, 0, 0, NULL }
 };
 
 static void SliderElementSize(

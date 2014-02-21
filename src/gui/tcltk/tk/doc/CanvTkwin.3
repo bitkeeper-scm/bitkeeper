@@ -4,8 +4,6 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-'\" RCS: @(#) $Id$
-'\" 
 .so man.macros
 .TH Tk_CanvasTkwin 3 4.1 Tk "Tk Library Procedures"
 .BS
@@ -145,14 +143,14 @@ structure for the \fB\-tags\fR option.   The code typically looks
 like this:
 .PP
 .CS
-static Tk_CustomOption tagsOption = {Tk_CanvasTagsParseProc,
+static const Tk_CustomOption tagsOption = {Tk_CanvasTagsParseProc,
     Tk_CanvasTagsPrintProc, (ClientData) NULL
 };
 
-static Tk_ConfigSpec configSpecs[] = {
+static const Tk_ConfigSpec configSpecs[] = {
     ...
-    {TK_CONFIG_CUSTOM, "\-tags", (char *) NULL, (char *) NULL,
-        (char *) NULL, 0, TK_CONFIG_NULL_OK, &tagsOption},
+    {TK_CONFIG_CUSTOM, "\-tags", NULL, NULL,
+        NULL, 0, TK_CONFIG_NULL_OK, &tagsOption},
     ...
 };
 .CE

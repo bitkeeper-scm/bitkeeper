@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DERIVED FROM: tk/generic/tkEntry.c r1.35.
  *
  * Copyright (c) 1990-1994 The Regents of the University of California.
@@ -11,7 +9,8 @@
  */
 
 #include <string.h>
-#include <tk.h>
+#include <stdio.h>
+#include <tkInt.h>
 #include <X11/Xatom.h>
 
 #include "ttkTheme.h"
@@ -32,7 +31,7 @@ typedef enum validateMode {
     VMODE_ALL, VMODE_KEY, VMODE_FOCUS, VMODE_FOCUSIN, VMODE_FOCUSOUT, VMODE_NONE
 } VMODE;
 
-static const char *validateStrings[] = {
+static const char *const validateStrings[] = {
     "all", "key", "focus", "focusin", "focusout", "none", NULL
 };
 
@@ -45,7 +44,7 @@ typedef enum validateReason {
     VALIDATE_FORCED
 } VREASON;
 
-static const char *validateReasonStrings[] = {
+static const char *const validateReasonStrings[] = {
     "key", "key", "focusin", "focusout", "forced", NULL
 };
 
@@ -156,8 +155,6 @@ typedef struct {
 #define DEF_LIST_HEIGHT	"10"
 
 static Tk_OptionSpec EntryOptionSpecs[] = {
-    WIDGET_TAKES_FOCUS,
-
     {TK_OPTION_BOOLEAN, "-exportselection", "exportSelection",
         "ExportSelection", "1", -1, Tk_Offset(Entry, entry.exportSelection),
 	0,0,0 },
@@ -201,6 +198,7 @@ static Tk_OptionSpec EntryOptionSpecs[] = {
 	NULL, Tk_Offset(Entry, entry.styleData.backgroundObj), -1,
 	TK_OPTION_NULL_OK,0,0},
 
+    WIDGET_TAKEFOCUS_TRUE,
     WIDGET_INHERIT_OPTIONS(ttkCoreOptionSpecs)
 };
 
@@ -654,7 +652,7 @@ static void EntryRevalidateBG(Entry *entryPtr, VREASON reason)
 {
     Tcl_Interp *interp = entryPtr->core.interp;
     if (EntryRevalidate(interp, entryPtr, reason) == TCL_ERROR) {
-	Tcl_BackgroundError(interp);
+	Tcl_BackgroundException(interp, TCL_ERROR);
     }
 }
 
@@ -760,8 +758,8 @@ static int EntrySetValue(Entry *entryPtr, const char *value)
 	    Tcl_GetString(entryPtr->entry.textVariableObj);
 	if (textVarName && *textVarName) {
 	    entryPtr->core.flags |= SYNCING_VARIABLE;
-	    value = Tcl_SetVar(entryPtr->core.interp, textVarName,
-		    value, TCL_GLOBAL_ONLY|TCL_LEAVE_ERR_MSG);
+	    value = Tcl_SetVar2(entryPtr->core.interp, textVarName,
+		    NULL, value, TCL_GLOBAL_ONLY|TCL_LEAVE_ERR_MSG);
 	    entryPtr->core.flags &= ~SYNCING_VARIABLE;
 	    if (!value || WidgetDestroyed(&entryPtr->core)) {
 		return TCL_ERROR;
@@ -788,7 +786,7 @@ static void EntryTextVariableTrace(void *recordPtr, const char *value)
     }
 
     if (entryPtr->core.flags & SYNCING_VARIABLE) {
-	/* Trace was fired due to Tcl_SetVar call in EntrySetValue.
+	/* Trace was fired due to Tcl_SetVar2 call in EntrySetValue.
 	 * Don't do anything.
 	 */
 	return;
@@ -1137,13 +1135,14 @@ EntryDoLayout(void *recordPtr)
  *      Get a GC using the specified foreground color and the entry's font.
  *      Result must be freed with Tk_FreeGC().
  */
-static GC EntryGetGC(Entry *entryPtr, Tcl_Obj *colorObj)
+static GC EntryGetGC(Entry *entryPtr, Tcl_Obj *colorObj, TkRegion clip)
 {
     Tk_Window tkwin = entryPtr->core.tkwin;
     Tk_Font font = Tk_GetFontFromObj(tkwin, entryPtr->entry.fontObj);
     XColor *colorPtr;
     unsigned long mask = 0ul;
     XGCValues gcValues;
+    GC gc;
 
     gcValues.line_width = 1; mask |= GCLineWidth;
     gcValues.font = Tk_FontId(font); mask |= GCFont;
@@ -1151,7 +1150,11 @@ static GC EntryGetGC(Entry *entryPtr, Tcl_Obj *colorObj)
 	gcValues.foreground = colorPtr->pixel;
 	mask |= GCForeground;
     }
-    return Tk_GetGC(entryPtr->core.tkwin, mask, &gcValues);
+    gc = Tk_GetGC(entryPtr->core.tkwin, mask, &gcValues);
+    if (clip != None) {
+	TkSetRegion(Tk_Display(entryPtr->core.tkwin), gc, clip);
+    }
+    return gc;
 }
 
 /* EntryDisplay --
@@ -1162,23 +1165,27 @@ static void EntryDisplay(void *clientData, Drawable d)
     Entry *entryPtr = clientData;
     Tk_Window tkwin = entryPtr->core.tkwin;
     int leftIndex = entryPtr->entry.xscroll.first,
-	rightIndex = entryPtr->entry.xscroll.last,
+	rightIndex = entryPtr->entry.xscroll.last + 1,
 	selFirst = entryPtr->entry.selectFirst,
 	selLast = entryPtr->entry.selectLast;
     EntryStyleData es;
     GC gc;
     int showSelection, showCursor;
+    Ttk_Box textarea;
+    TkRegion clipRegion;
+    XRectangle rect;
 
     EntryInitStyleData(entryPtr, &es);
 
+    textarea = Ttk_ClientRegion(entryPtr->core.layout, "textarea");
     showCursor =
-	   (entryPtr->core.flags & CURSOR_ON) != 0
+	   (entryPtr->core.flags & CURSOR_ON)
 	&& EntryEditable(entryPtr)
 	&& entryPtr->entry.insertPos >= leftIndex
 	&& entryPtr->entry.insertPos <= rightIndex
 	;
     showSelection =
-	   (entryPtr->core.state & TTK_STATE_DISABLED) == 0
+	   !(entryPtr->core.state & TTK_STATE_DISABLED)
 	&& selFirst > -1
 	&& selLast > leftIndex
 	&& selFirst <= rightIndex
@@ -1216,6 +1223,20 @@ static void EntryDisplay(void *clientData, Drawable d)
 	}
     }
 
+    /* Initialize the clip region. Note that Xft does _not_ derive its
+     * clipping area from the GC, so we have to supply that by other means.
+     */
+
+    rect.x = textarea.x;
+    rect.y = textarea.y;
+    rect.width = textarea.width;
+    rect.height = textarea.height;
+    clipRegion = TkCreateRegion();
+    TkUnionRectWithRegion(&rect, clipRegion, clipRegion);
+#ifdef HAVE_XFT
+    TkUnixSetXftClipRegion(clipRegion);
+#endif
+
     /* Draw cursor:
      */
     if (showCursor) {
@@ -1232,31 +1253,42 @@ static void EntryDisplay(void *clientData, Drawable d)
 	/* @@@ should: maybe: SetCaretPos even when blinked off */
 	Tk_SetCaretPos(tkwin, cursorX, cursorY, cursorHeight);
 
-	gc = EntryGetGC(entryPtr, es.insertColorObj);
+	gc = EntryGetGC(entryPtr, es.insertColorObj, clipRegion);
 	XFillRectangle(Tk_Display(tkwin), d, gc,
 	    cursorX-cursorWidth/2, cursorY, cursorWidth, cursorHeight);
+	XSetClipMask(Tk_Display(tkwin), gc, None);
 	Tk_FreeGC(Tk_Display(tkwin), gc);
     }
 
     /* Draw the text:
      */
-    gc = EntryGetGC(entryPtr, es.foregroundObj);
+    gc = EntryGetGC(entryPtr, es.foregroundObj, clipRegion);
     Tk_DrawTextLayout(
 	Tk_Display(tkwin), d, gc, entryPtr->entry.textLayout,
 	entryPtr->entry.layoutX, entryPtr->entry.layoutY,
 	leftIndex, rightIndex);
+    XSetClipMask(Tk_Display(tkwin), gc, None);
     Tk_FreeGC(Tk_Display(tkwin), gc);
 
     /* Overwrite the selected portion (if any) in the -selectforeground color:
      */
     if (showSelection) {
-	gc = EntryGetGC(entryPtr, es.selForegroundObj);
+	gc = EntryGetGC(entryPtr, es.selForegroundObj, clipRegion);
 	Tk_DrawTextLayout(
 	    Tk_Display(tkwin), d, gc, entryPtr->entry.textLayout,
 	    entryPtr->entry.layoutX, entryPtr->entry.layoutY,
 	    selFirst, selLast);
+	XSetClipMask(Tk_Display(tkwin), gc, None);
 	Tk_FreeGC(Tk_Display(tkwin), gc);
     }
+
+    /* Drop the region. Note that we have to manually remove the reference to
+     * it from the Xft guts (if they're being used).
+     */
+#ifdef HAVE_XFT
+    TkUnixSetXftClipRegion(None);
+#endif
+    TkDestroyRegion(clipRegion);
 }
 
 /*------------------------------------------------------------------------
@@ -1282,8 +1314,8 @@ EntryIndex(
     int *indexPtr)		/* Return value */
 {
 #   define EntryWidth(e) (Tk_Width(entryPtr->core.tkwin)) /* Not Right */
-    int length;
-    const char *string = Tcl_GetStringFromObj(indexObj, &length);
+    const char *string = Tcl_GetString(indexObj);
+    size_t length = indexObj->length;
 
     if (strncmp(string, "end", length) == 0) {
 	*indexPtr = entryPtr->entry.numChars;
@@ -1295,9 +1327,10 @@ EntryIndex(
 	*indexPtr = entryPtr->entry.xscroll.last;
     } else if (strncmp(string, "sel.", 4) == 0) {
 	if (entryPtr->entry.selectFirst < 0) {
-	    Tcl_ResetResult(interp);
-	    Tcl_AppendResult(interp, "selection isn't in widget ",
-		    Tk_PathName(entryPtr->core.tkwin), NULL);
+	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		    "selection isn't in widget %s",
+		    Tk_PathName(entryPtr->core.tkwin)));
+	    Tcl_SetErrorCode(interp, "TTK", "ENTRY", "NO_SELECTION", NULL);
 	    return TCL_ERROR;
 	}
 	if (strncmp(string, "sel.first", length) == 0) {
@@ -1349,8 +1382,9 @@ EntryIndex(
     return TCL_OK;
 
 badIndex:
-    Tcl_ResetResult(interp);
-    Tcl_AppendResult(interp, "bad entry index \"", string, "\"", NULL);
+    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+	    "bad entry index \"%s\"", string));
+    Tcl_SetErrorCode(interp, "TTK", "ENTRY", "INDEX", NULL);
     return TCL_ERROR;
 }
 
@@ -1359,7 +1393,7 @@ badIndex:
  */
 static int
 EntryBBoxCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     Entry *entryPtr = recordPtr;
     Ttk_Box b;
@@ -1389,7 +1423,7 @@ EntryBBoxCommand(
  */
 static int
 EntryDeleteCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     Entry *entryPtr = recordPtr;
     int first, last;
@@ -1418,14 +1452,14 @@ EntryDeleteCommand(
  */
 static int
 EntryGetCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     Entry *entryPtr = recordPtr;
     if (objc != 2) {
 	Tcl_WrongNumArgs(interp, 2, objv, NULL);
 	return TCL_ERROR;
     }
-    Tcl_SetResult(interp, entryPtr->entry.string, TCL_VOLATILE);
+    Tcl_SetObjResult(interp, Tcl_NewStringObj(entryPtr->entry.string, -1));
     return TCL_OK;
 }
 
@@ -1434,7 +1468,7 @@ EntryGetCommand(
  */
 static int
 EntryICursorCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     Entry *entryPtr = recordPtr;
     if (objc != 3) {
@@ -1454,7 +1488,7 @@ EntryICursorCommand(
  */
 static int
 EntryIndexCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     Entry *entryPtr = recordPtr;
     int index;
@@ -1476,7 +1510,7 @@ EntryIndexCommand(
  */
 static int
 EntryInsertCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     Entry *entryPtr = recordPtr;
     int index;
@@ -1494,11 +1528,11 @@ EntryInsertCommand(
     return TCL_OK;
 }
 
-/* selection clear --
+/* $entry selection clear --
  * 	Clear selection.
  */
 static int EntrySelectionClearCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     Entry *entryPtr = recordPtr;
 
@@ -1515,7 +1549,7 @@ static int EntrySelectionClearCommand(
  * 	Returns 1 if any characters are selected, 0 otherwise.
  */
 static int EntrySelectionPresentCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     Entry *entryPtr = recordPtr;
     if (objc != 3) {
@@ -1531,7 +1565,7 @@ static int EntrySelectionPresentCommand(
  * 	Explicitly set the selection range.
  */
 static int EntrySelectionRangeCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     Entry *entryPtr = recordPtr;
     int start, end;
@@ -1558,27 +1592,18 @@ static int EntrySelectionRangeCommand(
     return TCL_OK;
 }
 
-/* $entry selection $command ?arg arg...?
- *	Ensemble, see above.
- */
-static int EntrySelectionCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
-{
-    static WidgetCommandSpec EntrySelectionCommands[] = {
-	{ "clear", EntrySelectionClearCommand },
-	{ "present", EntrySelectionPresentCommand },
-	{ "range", EntrySelectionRangeCommand },
-	{0,0}
-    };
-    return TtkWidgetEnsembleCommand(
-	    EntrySelectionCommands, 2, interp, objc, objv, recordPtr);
-}
+static const Ttk_Ensemble EntrySelectionCommands[] = {
+    { "clear",   EntrySelectionClearCommand,0 },
+    { "present", EntrySelectionPresentCommand,0 },
+    { "range",   EntrySelectionRangeCommand,0 },
+    { 0,0,0 }
+};
 
 /* $entry set $value
  * 	Sets the value of an entry widget.
  */
 static int EntrySetCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     Entry *entryPtr = recordPtr;
     if (objc != 3) {
@@ -1594,7 +1619,7 @@ static int EntrySetCommand(
  * 	or error status from -validatecommand / -invalidcommand.
  */
 static int EntryValidateCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     Entry *entryPtr = recordPtr;
     int code;
@@ -1616,28 +1641,36 @@ static int EntryValidateCommand(
 /* $entry xview	-- horizontal scrolling interface
  */
 static int EntryXViewCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     Entry *entryPtr = recordPtr;
+    if (objc == 3) {
+	int newFirst;
+	if (EntryIndex(interp, entryPtr, objv[2], &newFirst) != TCL_OK) {
+	    return TCL_ERROR;
+	}
+	TtkScrollTo(entryPtr->entry.xscrollHandle, newFirst);
+	return TCL_OK;
+    }
     return TtkScrollviewCommand(interp, objc, objv, entryPtr->entry.xscrollHandle);
 }
 
-static WidgetCommandSpec EntryCommands[] = {
-    { "bbox", 		EntryBBoxCommand },
-    { "cget", 		TtkWidgetCgetCommand },
-    { "configure", 	TtkWidgetConfigureCommand },
-    { "delete", 	EntryDeleteCommand },
-    { "get", 		EntryGetCommand },
-    { "icursor", 	EntryICursorCommand },
-    { "identify",	TtkWidgetIdentifyCommand },
-    { "index", 		EntryIndexCommand },
-    { "insert", 	EntryInsertCommand },
-    { "instate",	TtkWidgetInstateCommand },
-    { "selection", 	EntrySelectionCommand },
-    { "state",  	TtkWidgetStateCommand },
-    { "validate", 	EntryValidateCommand },
-    { "xview", 		EntryXViewCommand },
-    {0,0}
+static const Ttk_Ensemble EntryCommands[] = {
+    { "bbox", 		EntryBBoxCommand,0 },
+    { "cget", 		TtkWidgetCgetCommand,0 },
+    { "configure", 	TtkWidgetConfigureCommand,0 },
+    { "delete", 	EntryDeleteCommand,0 },
+    { "get", 		EntryGetCommand,0 },
+    { "icursor", 	EntryICursorCommand,0 },
+    { "identify",	TtkWidgetIdentifyCommand,0 },
+    { "index", 		EntryIndexCommand,0 },
+    { "insert", 	EntryInsertCommand,0 },
+    { "instate",	TtkWidgetInstateCommand,0 },
+    { "selection", 	0,EntrySelectionCommands },
+    { "state",  	TtkWidgetStateCommand,0 },
+    { "validate", 	EntryValidateCommand,0 },
+    { "xview", 		EntryXViewCommand,0 },
+    { 0,0,0 }
 };
 
 /*------------------------------------------------------------------------
@@ -1726,7 +1759,7 @@ ComboboxConfigure(Tcl_Interp *interp, void *recordPtr, int mask)
  * 	in sync at all times, [$cb current] double-checks
  */
 static int ComboboxCurrentCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     Combobox *cbPtr = recordPtr;
     int currentIndex = cbPtr->combobox.currentIndex;
@@ -1764,9 +1797,9 @@ static int ComboboxCurrentCommand(
 	    return TCL_ERROR;
 	}
 	if (currentIndex < 0 || currentIndex >= nValues) {
-	    Tcl_AppendResult(interp,
-		    "Index ", Tcl_GetString(objv[2]), " out of range",
-		    NULL);
+	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		    "Index %s out of range", Tcl_GetString(objv[2])));
+	    Tcl_SetErrorCode(interp, "TTK", "COMBOBOX", "IDX_RANGE", NULL);
 	    return TCL_ERROR;
 	}
 
@@ -1783,23 +1816,24 @@ static int ComboboxCurrentCommand(
 /*------------------------------------------------------------------------
  * +++ Combobox widget definition.
  */
-static WidgetCommandSpec ComboboxCommands[] = {
-    { "bbox", 		EntryBBoxCommand },
-    { "cget", 		TtkWidgetCgetCommand },
-    { "configure", 	TtkWidgetConfigureCommand },
-    { "current", 	ComboboxCurrentCommand },
-    { "delete", 	EntryDeleteCommand },
-    { "get", 		EntryGetCommand },
-    { "icursor", 	EntryICursorCommand },
-    { "identify",	TtkWidgetIdentifyCommand },
-    { "index", 		EntryIndexCommand },
-    { "insert", 	EntryInsertCommand },
-    { "instate",	TtkWidgetInstateCommand },
-    { "selection", 	EntrySelectionCommand },
-    { "state",  	TtkWidgetStateCommand },
-    { "set", 		EntrySetCommand },
-    { "xview", 		EntryXViewCommand },
-    {0,0}
+static const Ttk_Ensemble ComboboxCommands[] = {
+    { "bbox", 		EntryBBoxCommand,0 },
+    { "cget", 		TtkWidgetCgetCommand,0 },
+    { "configure", 	TtkWidgetConfigureCommand,0 },
+    { "current", 	ComboboxCurrentCommand,0 },
+    { "delete", 	EntryDeleteCommand,0 },
+    { "get", 		EntryGetCommand,0 },
+    { "icursor", 	EntryICursorCommand,0 },
+    { "identify",	TtkWidgetIdentifyCommand,0 },
+    { "index", 		EntryIndexCommand,0 },
+    { "insert", 	EntryInsertCommand,0 },
+    { "instate",	TtkWidgetInstateCommand,0 },
+    { "selection", 	0,EntrySelectionCommands },
+    { "state",  	TtkWidgetStateCommand,0 },
+    { "set", 		EntrySetCommand,0 },
+    { "validate",	EntryValidateCommand,0 },
+    { "xview", 		EntryXViewCommand,0 },
+    { 0,0,0 }
 };
 
 static WidgetSpec ComboboxWidgetSpec = {
@@ -1895,23 +1929,23 @@ SpinboxConfigure(Tcl_Interp *interp, void *recordPtr, int mask)
     return EntryConfigure(interp, recordPtr, mask);
 }
 
-static WidgetCommandSpec SpinboxCommands[] = {
-    { "bbox", 		EntryBBoxCommand },
-    { "cget", 		TtkWidgetCgetCommand },
-    { "configure", 	TtkWidgetConfigureCommand },
-    { "delete", 	EntryDeleteCommand },
-    { "get", 		EntryGetCommand },
-    { "icursor", 	EntryICursorCommand },
-    { "identify",	TtkWidgetIdentifyCommand },
-    { "index", 		EntryIndexCommand },
-    { "insert", 	EntryInsertCommand },
-    { "instate",	TtkWidgetInstateCommand },
-    { "selection", 	EntrySelectionCommand },
-    { "state",  	TtkWidgetStateCommand },
-    { "set", 		EntrySetCommand },
-    { "validate",	EntryValidateCommand },
-    { "xview", 		EntryXViewCommand },
-    {0,0}
+static const Ttk_Ensemble SpinboxCommands[] = {
+    { "bbox", 		EntryBBoxCommand,0 },
+    { "cget", 		TtkWidgetCgetCommand,0 },
+    { "configure", 	TtkWidgetConfigureCommand,0 },
+    { "delete", 	EntryDeleteCommand,0 },
+    { "get", 		EntryGetCommand,0 },
+    { "icursor", 	EntryICursorCommand,0 },
+    { "identify",	TtkWidgetIdentifyCommand,0 },
+    { "index", 		EntryIndexCommand,0 },
+    { "insert", 	EntryInsertCommand,0 },
+    { "instate",	TtkWidgetInstateCommand,0 },
+    { "selection", 	0,EntrySelectionCommands },
+    { "state",  	TtkWidgetStateCommand,0 },
+    { "set", 		EntrySetCommand,0 },
+    { "validate",	EntryValidateCommand,0 },
+    { "xview", 		EntryXViewCommand,0 },
+    { 0,0,0 }
 };
 
 static WidgetSpec SpinboxWidgetSpec = {
@@ -1946,7 +1980,7 @@ static Ttk_ElementOptionSpec TextareaElementOptions[] = {
 	Tk_Offset(TextareaElement,fontObj), DEF_ENTRY_FONT },
     { "-width", TK_OPTION_INT,
 	Tk_Offset(TextareaElement,widthObj), "20" },
-    {0,0,0}
+    { NULL, 0, 0, NULL }
 };
 
 static void TextareaElementSize(

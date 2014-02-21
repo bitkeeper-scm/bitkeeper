@@ -1,11 +1,10 @@
-# $Id$
 # This file is the basis for a binary Tk Linux RPM.
 
 %{!?directory:%define directory /usr/local}
 
 Name:          tk
 Summary:       Tk graphical toolkit for the Tcl scripting language.
-Version:       8.6b1
+Version:       8.6.1
 Release:       2
 License:       BSD
 Group:         Development/Languages
@@ -33,7 +32,7 @@ CFLAGS="%optflags" ./configure \
 	--prefix=%{directory} \
 	--exec-prefix=%{directory} \
 	--libdir=%{directory}/%{_lib}
-make 
+make
 
 %install
 cd unix

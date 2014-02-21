@@ -1,6 +1,4 @@
 #
-# $Id$
-#
 # Aqua theme (OSX native look and feel)
 #
 
@@ -31,9 +29,10 @@ namespace eval ttk::theme::aqua {
 
 	ttk::style configure TButton -anchor center -width -6
 	ttk::style configure Toolbutton -padding 4
-	# See Apple HIG figs 14-63, 14-65
-	ttk::style configure TNotebook -tabposition n -padding {20 12}
-	ttk::style configure TNotebook.Tab -padding {10 2 10 2}
+
+	ttk::style configure TNotebook -tabmargins {10 0} -tabposition n
+	ttk::style configure TNotebook -padding {18 8 18 17}
+	ttk::style configure TNotebook.Tab -padding {12 3 12 2}
 
 	# Combobox:
 	ttk::style configure TCombobox -postoffset {5 -2 -10 0}

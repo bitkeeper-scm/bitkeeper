@@ -4,8 +4,6 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-'\" RCS: @(#) $Id$
-'\" 
 .so man.macros
 .TH grid n 8.5 Tk "Tk Built-In Commands"
 .BS
@@ -24,6 +22,7 @@ The \fBgrid\fR command can have any of several forms, depending
 on the \fIoption\fR argument:
 .TP
 \fBgrid \fIslave \fR?\fIslave ...\fR? ?\fIoptions\fR?
+.
 If the first argument to \fBgrid\fR is suitable as the first slave
 argument to \fBgrid configure\fR, either a window name (any value
 starting with \fB.\fR) or one of the characters \fBx\fR or \fB^\fR
@@ -31,11 +30,13 @@ starting with \fB.\fR) or one of the characters \fBx\fR or \fB^\fR
 processed in the same way as \fBgrid configure\fR.
 .TP
 \fBgrid anchor \fImaster\fR ?\fIanchor\fR?
+.
 The anchor value controls how to place the grid within the master
 when no row/column has any weight.  See \fBTHE GRID ALGORITHM\fR below
 for further details.  The default \fIanchor\fR is \fInw\fR.
 .TP
 \fBgrid bbox \fImaster\fR ?\fIcolumn row\fR? ?\fIcolumn2 row2\fR?
+.
 With no arguments,
 the bounding box (in pixels) of the grid is returned.
 The return value consists of 4 integers.  The first two are the pixel
@@ -48,6 +49,7 @@ arguments are specified, then the bounding box spanning the rows and columns
 indicated is returned.
 .TP
 \fBgrid columnconfigure \fImaster index \fR?\fI\-option value...\fR?
+.
 Query or set the column properties of the \fIindex\fR column of the
 geometry master, \fImaster\fR.
 The valid options are \fB\-minsize\fR, \fB\-weight\fR, \fB\-uniform\fR
@@ -84,6 +86,7 @@ are returned in a list of
 pairs.
 .TP
 \fBgrid configure \fIslave \fR?\fIslave ...\fR? ?\fIoptions\fR?
+.
 The arguments consist of the names of one or more slave windows
 followed by pairs of arguments that specify how
 to manage the slaves.
@@ -95,6 +98,7 @@ The following options are supported:
 .RS
 .TP
 \fB\-column \fIn\fR
+.
 Insert the slave so that it occupies the \fIn\fRth column in the grid.
 Column numbers start with 0.  If this option is not supplied, then the
 slave is arranged just to the right of previous slave specified on this
@@ -106,17 +110,20 @@ is incremented by one.  Thus the \fBx\fR represents a blank column
 for this row in the grid.
 .TP
 \fB\-columnspan \fIn\fR
+.
 Insert the slave so that it occupies \fIn\fR columns in the grid.
 The default is one column, unless the window name is followed by a
 \fB\-\fR, in which case the columnspan is incremented once for each immediately
 following \fB\-\fR.
 .TP
 \fB\-in \fIother\fR
+.
 Insert the slave(s) in the master
 window given by \fIother\fR.  The default is the first slave's
 parent window.
 .TP
 \fB\-ipadx \fIamount\fR
+.
 The \fIamount\fR specifies how much horizontal internal padding to
 leave on each side of the slave(s).  This is space is added
 inside the slave(s) border.
@@ -124,12 +131,14 @@ The \fIamount\fR must be a valid screen distance, such as \fB2\fR or \fB.5c\fR.
 It defaults to 0.
 .TP
 \fB\-ipady \fIamount\fR
+.
 The \fIamount\fR specifies how much vertical internal padding to
 leave on the top and bottom of the slave(s).
 This space is added inside the slave(s) border.
 The \fIamount\fR  defaults to 0.
 .TP
 \fB\-padx \fIamount\fR
+.
 The \fIamount\fR specifies how much horizontal external padding to
 leave on each side of the slave(s), in screen units.
 \fIAmount\fR may be a list
@@ -138,6 +147,7 @@ The \fIamount\fR defaults to 0.
 This space is added outside the slave(s) border.
 .TP
 \fB\-pady \fIamount\fR
+.
 The \fIamount\fR specifies how much vertical external padding to
 leave on the top and bottom of the slave(s), in screen units.
 \fIAmount\fR may be a list
@@ -146,12 +156,14 @@ The \fIamount\fR defaults to 0.
 This space is added outside the slave(s) border.
 .TP
 \fB\-row \fIn\fR
+.
 Insert the slave so that it occupies the \fIn\fRth row in the grid.
 Row numbers start with 0.  If this option is not supplied, then the
 slave is arranged on the same row as the previous slave specified on this
 call to \fBgrid\fR, or the first unoccupied row if this is the first slave.
 .TP
 \fB\-rowspan \fIn\fR
+.
 Insert the slave so that it occupies \fIn\fR rows in the grid.
 The default is one row.  If the next \fBgrid\fR command contains
 \fB^\fR characters instead of \fIslaves\fR that line up with the columns
@@ -159,6 +171,7 @@ of this \fIslave\fR, then the \fBrowspan\fR of this \fIslave\fR is
 extended by one.
 .TP
 \fB\-sticky \fIstyle\fR
+.
 If a slave's cell is larger than its requested dimensions, this
 option may be used to position (or stretch) the slave within its cell.
 \fIStyle\fR  is a string that contains zero or more of the characters
@@ -169,7 +182,7 @@ east, or west) that the slave will
 .QW stick
 to.  If both \fBn\fR and \fBs\fR (or \fBe\fR and \fBw\fR) are
 specified, the slave will be stretched to fill the entire
-height (or width) of its cavity.  The \fBsticky\fR option subsumes the
+height (or width) of its cavity.  The \fB\-sticky\fR option subsumes the
 combination of \fB\-anchor\fR and \fB\-fill\fR that is used by \fBpack\fR.
 The default is
 .QW "" ,
@@ -181,6 +194,7 @@ than receiving default values.
 .RE
 .TP
 \fBgrid forget \fIslave \fR?\fIslave ...\fR?
+.
 Removes each of the \fIslave\fRs from grid for its
 master and unmaps their windows.
 The slaves will no longer be managed by the grid geometry manager.
@@ -189,6 +203,7 @@ slave is managed once more by the grid geometry manager, the initial
 default settings are used.
 .TP
 \fBgrid info \fIslave\fR
+.
 Returns a list whose elements are the current configuration state of
 the slave given by \fIslave\fR in the same option-value form that
 might be specified to \fBgrid configure\fR.
@@ -197,12 +212,14 @@ The first two elements of the list are
 where \fImaster\fR is the slave's master.
 .TP
 \fBgrid location \fImaster x y\fR
+.
 Given  \fIx\fR and \fIy\fR values in screen units relative to the master window,
 the column and row number at that \fIx\fR and \fIy\fR location is returned.
 For locations that are above or to the left of the grid, \fB\-1\fR is
 returned.
 .TP
 \fBgrid propagate \fImaster\fR ?\fIboolean\fR?
+.
 If \fIboolean\fR has a true boolean value such as \fB1\fR or \fBon\fR
 then propagation is enabled for \fImaster\fR, which must be a window
 name (see \fBGEOMETRY PROPAGATION\fR below).
@@ -215,6 +232,7 @@ for \fImaster\fR.
 Propagation is enabled by default.
 .TP
 \fBgrid rowconfigure \fImaster index \fR?\fI\-option value...\fR?
+.
 Query or set the row properties of the \fIindex\fR row of the
 geometry master, \fImaster\fR.
 The valid options are \fB\-minsize\fR, \fB\-weight\fR, \fB\-uniform\fR
@@ -251,6 +269,7 @@ are returned in a list of
 pairs.
 .TP
 \fBgrid remove \fIslave \fR?\fIslave ...\fR?
+.
 Removes each of the \fIslave\fRs from grid for its
 master and unmaps their windows.
 The slaves will no longer be managed by the grid geometry manager.
@@ -260,12 +279,14 @@ slave is managed once more by the grid geometry manager, the previous
 values are retained.
 .TP
 \fBgrid size \fImaster\fR
+.
 Returns the size of the grid (in columns then rows) for \fImaster\fR.
 The size is determined either by the \fIslave\fR occupying the largest
-row or column, or the largest column or row with a \fBminsize\fR,
-\fBweight\fR, or \fBpad\fR that is non-zero.
+row or column, or the largest column or row with a \fB\-minsize\fR,
+\fB\-weight\fR, or \fB\-pad\fR that is non-zero.
 .TP
 \fBgrid slaves \fImaster\fR ?\fI\-option value\fR?
+.
 If no options are supplied, a list of all of the slaves in \fImaster\fR
 are returned, most recently manages first.
 \fIOption\fR can be either \fB\-row\fR or \fB\-column\fR which
@@ -280,7 +301,7 @@ added, or removed without the need to explicitly specify row and
 column information.
 When no column or row information is specified for a \fIslave\fR,
 default values are chosen for
-\fBcolumn\fR, \fBrow\fR, \fBcolumnspan\fR and \fBrowspan\fR
+\fB\-column\fR, \fB\-row\fR, \fB\-columnspan\fR and \fB\-rowspan\fR
 at the time the \fIslave\fR is managed. The values are chosen
 based upon the current layout of the grid, the position of the \fIslave\fR
 relative to other \fIslave\fRs in the same grid command, and the presence
@@ -289,17 +310,20 @@ command where \fIslave\fR names are normally expected.
 .RS
 .TP
 \fB\-\fR
-This increases the columnspan of the \fIslave\fR to the left.  Several
-\fB\-\fR's in a row will successively increase the columnspan. A \fB\-\fR
+.
+This increases the \fB\-columnspan\fR of the \fIslave\fR to the left.  Several
+\fB\-\fR's in a row will successively increase the number of columns spanned. A \fB\-\fR
 may not follow a \fB^\fR or a \fBx\fR, nor may it be the first \fIslave\fR
 argument to \fBgrid configure\fR.
 .TP
 \fBx\fR
+.
 This leaves an empty column between the \fIslave\fR on the left and
 the \fIslave\fR on the right.
 .TP
 \fB^\fR
-This extends the \fBrowspan\fR of the \fIslave\fR above the \fB^\fR's
+.
+This extends the \fB\-rowspan\fR of the \fIslave\fR above the \fB^\fR's
 in the grid.  The number of \fB^\fR's in a row must match the number of
 columns spanned by the \fIslave\fR above it.
 .RE
@@ -316,12 +340,12 @@ For the final step, each slave is positioned in its row(s) and column(s)
 based on the setting of its \fIsticky\fR flag.
 .PP
 To compute the minimum size of a layout, the grid geometry manager
-first looks at all slaves whose columnspan and rowspan values are one,
+first looks at all slaves whose \fB\-columnspan\fR and \fB\-rowspan\fR values are one,
 and computes the nominal size of each row or column to be either the
 \fIminsize\fR for that row or column, or the sum of the \fIpad\fRding
 plus the size of the largest slave, whichever is greater.  After that
 the rows or columns in each uniform group adapt to each other.  Then
-the slaves whose rowspans or columnspans are greater than one are
+the slaves whose row-spans or column-spans are greater than one are
 examined.  If a group of rows or columns need to be increased in size
 in order to accommodate these slaves, then extra space is added to each
 row or column in the group according to its \fIweight\fR.  For each
@@ -393,15 +417,18 @@ manager, written by George Howlett.
 .SH EXAMPLES
 .PP
 A toplevel window containing a text widget and two scrollbars:
+.PP
 .CS
 # Make the widgets
 toplevel .t
 text .t.txt \-wrap none \-xscroll {.t.h set} \-yscroll {.t.v set}
-scrollbar .t.v \-orient vertical   \-command {.t.txt xview}
+scrollbar .t.v \-orient vertical   \-command {.t.txt yview}
 scrollbar .t.h \-orient horizontal \-command {.t.txt xview}
+
 # Lay them out
 \fBgrid\fR .t.txt .t.v \-sticky nsew
 \fBgrid\fR .t.h        \-sticky nsew
+
 # Tell the text widget to take all the extra room
 \fBgrid rowconfigure\fR    .t .t.txt \-weight 1
 \fBgrid columnconfigure\fR .t .t.txt \-weight 1
@@ -410,10 +437,12 @@ scrollbar .t.h \-orient horizontal \-command {.t.txt xview}
 Three widgets of equal width, despite their different
 .QW natural
 widths:
+.PP
 .CS
 button .b \-text "Foo"
 entry .e \-variable foo
 label .l \-text "This is a fairly long piece of text"
+
 \fBgrid\fR .b .e .l \-sticky ew
 \fBgrid columnconfigure\fR . "all" \-uniform allTheSame
 .CE

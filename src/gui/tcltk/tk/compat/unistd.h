@@ -9,8 +9,6 @@
  * copyright notice appear in all copies. The University of California makes
  * no representations about the suitability of this software for any purpose.
  * It is provided "as is" without express or implied warranty.
- *
- * RCS: @(#) $Id$
  */
 
 #ifndef _UNISTD
@@ -18,14 +16,14 @@
 
 #include <sys/types.h>
 #ifndef _TCL
-#   include "tcl.h"
+#   include <tcl.h>
 #endif
 
 #ifndef NULL
 #define NULL    0
 #endif
 
-/* 
+/*
  * Strict POSIX stuff goes here. Extensions go down below, in the ifndef
  * _POSIX_SOURCE section.
  */

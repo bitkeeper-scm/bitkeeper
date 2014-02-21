@@ -7,8 +7,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tkUnixInt.h"
@@ -38,6 +36,15 @@ typedef struct {
     XftColor color;
 } UnixFtFont;
 
+/*
+ * Used to describe the current clipping box. Can't be passed normally because
+ * the information isn't retrievable from the GC.
+ */
+
+typedef struct ThreadSpecificData {
+    Region clipRegion;		/* The clipping region, or None. */
+} ThreadSpecificData;
+static Tcl_ThreadDataKey dataKey;
 
 /*
  * Package initialization:
@@ -88,8 +95,17 @@ GetFont(
 	FcPattern *pat = FcFontRenderPrepare(0, fontPtr->pattern,
 		fontPtr->faces[i].source);
 	double s = sin(angle*PI/180.0), c = cos(angle*PI/180.0);
-	FcMatrix mat = {c, -s, s, c};
+	FcMatrix mat;
 	XftFont *ftFont;
+
+	/*
+	 * Initialize the matrix manually so this can compile with HP-UX cc
+	 * (which does not allow non-constant structure initializers). [Bug
+	 * 2978410]
+	 */
+
+	mat.xx = mat.yy = c;
+	mat.xy = -(mat.yx = s);
 
 	if (angle != 0.0) {
 	    FcPatternAddMatrix(pat, FC_MATRIX, &mat);
@@ -115,7 +131,7 @@ GetFont(
 	     * proceed at this point.
 	     */
 
-	    Tcl_Panic("Cannot find a usable font.");
+	    Tcl_Panic("Cannot find a usable font");
 	}
 
 	if (angle == 0.0) {
@@ -229,10 +245,10 @@ InitFont(
     FcCharSet *charset;
     FcResult result;
     XftFont *ftFont;
-    int i;
+    int i, iWidth;
 
     if (!fontPtr) {
-	fontPtr = (UnixFtFont *) ckalloc(sizeof(UnixFtFont));
+	fontPtr = ckalloc(sizeof(UnixFtFont));
     }
 
     FcConfigSubstitute(0, pattern, FcMatchPattern);
@@ -244,14 +260,13 @@ InitFont(
 
     set = FcFontSort(0, pattern, FcTrue, NULL, &result);
     if (!set) {
-	FcPatternDestroy(pattern);
-	ckfree((char *) fontPtr);
+	ckfree(fontPtr);
 	return NULL;
     }
 
     fontPtr->fontset = set;
     fontPtr->pattern = pattern;
-    fontPtr->faces = (UnixFtFace *) ckalloc(set->nfont * sizeof(UnixFtFace));
+    fontPtr->faces = ckalloc(set->nfont * sizeof(UnixFtFace));
     fontPtr->nfaces = set->nfont;
 
     /*
@@ -289,6 +304,43 @@ InitFont(
     GetTkFontAttributes(ftFont, &fontPtr->font.fa);
     GetTkFontMetrics(ftFont, &fontPtr->font.fm);
 
+    /*
+     * Fontconfig can't report any information about the position or thickness
+     * of underlines or overstrikes. Thus, we use some defaults that are
+     * hacked around from backup defaults in tkUnixFont.c, which are in turn
+     * based on recommendations in the X manual. The comments from that file
+     * leading to these computations were:
+     *
+     *	    If the XA_UNDERLINE_POSITION property does not exist, the X manual
+     *	    recommends using half the descent.
+     *
+     *	    If the XA_UNDERLINE_THICKNESS property does not exist, the X
+     *	    manual recommends using the width of the stem on a capital letter.
+     *	    I don't know of a way to get the stem width of a letter, so guess
+     *	    and use 1/3 the width of a capital I.
+     *
+     * Note that nothing corresponding to *either* property is reported by
+     * Fontconfig at all. [Bug 1961455]
+     */
+
+    {
+	TkFont *fPtr = &fontPtr->font;
+
+	fPtr->underlinePos = fPtr->fm.descent / 2;
+	Tk_MeasureChars((Tk_Font) fPtr, "I", 1, -1, 0, &iWidth);
+	fPtr->underlineHeight = iWidth / 3;
+	if (fPtr->underlineHeight == 0) {
+	    fPtr->underlineHeight = 1;
+	}
+	if (fPtr->underlineHeight + fPtr->underlinePos > fPtr->fm.descent) {
+	    fPtr->underlineHeight = fPtr->fm.descent - fPtr->underlinePos;
+	    if (fPtr->underlineHeight == 0) {
+		fPtr->underlinePos--;
+		fPtr->underlineHeight = 1;
+	    }
+	}
+    }
+
     return fontPtr;
 }
 
@@ -313,7 +365,7 @@ FinishedWithFont(
 	}
     }
     if (fontPtr->faces) {
-	ckfree((char *) fontPtr->faces);
+	ckfree(fontPtr->faces);
     }
     if (fontPtr->pattern) {
 	FcPatternDestroy(fontPtr->pattern);
@@ -353,6 +405,7 @@ TkpGetNativeFont(
 
     fontPtr = InitFont(tkwin, pattern, NULL);
     if (!fontPtr) {
+	FcPatternDestroy(pattern);
 	return NULL;
     }
     return &fontPtr->font;
@@ -418,9 +471,25 @@ TkpGetFontFromAttributes(
 	FinishedWithFont(fontPtr);
     }
     fontPtr = InitFont(tkwin, pattern, fontPtr);
+
+    /*
+     * Hack to work around issues with weird issues with Xft/Xrender
+     * connection. For details, see comp.lang.tcl thread starting from
+     * <adcc99ed-c73e-4efc-bb5d-e57a57a051e8@l35g2000pra.googlegroups.com>
+     */
+
     if (!fontPtr) {
+	XftPatternAddBool(pattern, XFT_RENDER, FcFalse);
+	fontPtr = InitFont(tkwin, pattern, fontPtr);
+    }
+
+    if (!fontPtr) {
+	FcPatternDestroy(pattern);
 	return NULL;
     }
+
+    fontPtr->font.fa.underline = faPtr->underline;
+    fontPtr->font.fa.overstrike = faPtr->overstrike;
     return &fontPtr->font;
 }
 
@@ -692,9 +761,11 @@ Tk_DrawChars(
     UnixFtFont *fontPtr = (UnixFtFont *) tkfont;
     XGCValues values;
     XColor xcolor;
-    int clen, nspec;
+    int clen, nspec, xStart = x;
     XftGlyphFontSpec specs[NUM_SPEC];
     XGlyphInfo metrics;
+    ThreadSpecificData *tsdPtr = (ThreadSpecificData *)
+            Tcl_GetThreadData(&dataKey, sizeof(ThreadSpecificData));
 
     if (fontPtr->ftDraw == 0) {
 #if DEBUG_FONTSEL
@@ -721,6 +792,9 @@ Tk_DrawChars(
 	fontPtr->color.color.alpha = 0xffff;
 	fontPtr->color.pixel = values.foreground;
     }
+    if (tsdPtr->clipRegion != None) {
+	XftDrawSetClip(fontPtr->ftDraw, tsdPtr->clipRegion);
+    }
     nspec = 0;
     while (numBytes > 0 && x <= maxCoord && y <= maxCoord) {
 	XftFont *ftFont;
@@ -732,7 +806,7 @@ Tk_DrawChars(
 	     * This should not happen, but it can.
 	     */
 
-	    return;
+	    goto doUnderlineStrikeout;
 	}
 	source += clen;
 	numBytes -= clen;
@@ -758,10 +832,45 @@ Tk_DrawChars(
     if (nspec) {
 	XftDrawGlyphFontSpec(fontPtr->ftDraw, &fontPtr->color, specs, nspec);
     }
+
+  doUnderlineStrikeout:
+    if (tsdPtr->clipRegion != None) {
+	XftDrawSetClip(fontPtr->ftDraw, None);
+    }
+    if (fontPtr->font.fa.underline != 0) {
+	XFillRectangle(display, drawable, gc, xStart,
+		y + fontPtr->font.underlinePos, (unsigned) (x - xStart),
+		(unsigned) fontPtr->font.underlineHeight);
+    }
+    if (fontPtr->font.fa.overstrike != 0) {
+	y -= fontPtr->font.fm.descent + (fontPtr->font.fm.ascent) / 10;
+	XFillRectangle(display, drawable, gc, xStart, y,
+		(unsigned) (x - xStart),
+		(unsigned) fontPtr->font.underlineHeight);
+    }
 }
 
+/*
+ *---------------------------------------------------------------------------
+ *
+ * TkDrawAngledChars --
+ *
+ *	Draw some characters at an angle. This would be simple code, except
+ *	Xft has bugs with cumulative errors in character positioning which are
+ *	caused by trying to perform all calculations internally with integers.
+ *	So we have to do the work ourselves with floating-point math.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	Target drawable is updated.
+ *
+ *---------------------------------------------------------------------------
+ */
+
 void
-TkpDrawAngledChars(
+TkDrawAngledChars(
     Display *display,		/* Display on which to draw. */
     Drawable drawable,		/* Window or pixmap in which to draw. */
     GC gc,			/* Graphics context for drawing characters. */
@@ -784,6 +893,9 @@ TkpDrawAngledChars(
     UnixFtFont *fontPtr = (UnixFtFont *) tkfont;
     XGCValues values;
     XColor xcolor;
+    int xStart = x, yStart = y;
+    ThreadSpecificData *tsdPtr = (ThreadSpecificData *)
+            Tcl_GetThreadData(&dataKey, sizeof(ThreadSpecificData));
 #ifdef XFT_HAS_FIXED_ROTATED_PLACEMENT
     int clen, nglyph;
     FT_UInt glyphs[NUM_SPEC];
@@ -817,11 +929,14 @@ TkpDrawAngledChars(
 	fontPtr->color.color.alpha = 0xffff;
 	fontPtr->color.pixel = values.foreground;
     }
+    if (tsdPtr->clipRegion != None) {
+	XftDrawSetClip(fontPtr->ftDraw, tsdPtr->clipRegion);
+    }
 
     nglyph = 0;
     currentFtFont = NULL;
     originX = originY = 0;		/* lint */
-    
+
     while (numBytes > 0 && x <= maxCoord && x >= minCoord && y <= maxCoord
 	    && y >= minCoord) {
 	XftFont *ftFont;
@@ -833,7 +948,7 @@ TkpDrawAngledChars(
 	     * This should not happen, but it can.
 	     */
 
-	    return;
+	    goto doUnderlineStrikeout;
 	}
 	source += clen;
 	numBytes -= clen;
@@ -855,8 +970,8 @@ TkpDrawAngledChars(
 		XftDrawGlyphs(fontPtr->ftDraw, &fontPtr->color, currentFtFont,
 			originX, originY, glyphs, nglyph);
 	    }
-	    originX = (int) floor(x + 0.5);
-	    originY = (int) floor(y + 0.5);
+	    originX = ROUND16(x);
+	    originY = ROUND16(y);
 	    if (nglyph) {
 		XftGlyphExtents(fontPtr->display, currentFtFont, glyphs,
 			nglyph, &metrics);
@@ -903,6 +1018,9 @@ TkpDrawAngledChars(
 	fontPtr->color.color.alpha = 0xffff;
 	fontPtr->color.pixel = values.foreground;
     }
+    if (tsdPtr->clipRegion != None) {
+	XftDrawSetClip(fontPtr->ftDraw, tsdPtr->clipRegion);
+    }
     nspec = 0;
     while (numBytes > 0 && x <= maxCoord && x >= minCoord
 	    && y <= maxCoord && y >= minCoord) {
@@ -915,7 +1033,7 @@ TkpDrawAngledChars(
 	     * This should not happen, but it can.
 	     */
 
-	    return;
+	    goto doUnderlineStrikeout;
 	}
 	source += clen;
 	numBytes -= clen;
@@ -925,8 +1043,8 @@ TkpDrawAngledChars(
 	if (ftFont && ft0Font) {
 	    specs[nspec].font = ftFont;
 	    specs[nspec].glyph = XftCharIndex(fontPtr->display, ftFont, c);
-	    specs[nspec].x = (int) floor(x + 0.5);
-	    specs[nspec].y = (int) floor(y + 0.5);
+	    specs[nspec].x = ROUND16(x);
+	    specs[nspec].y = ROUND16(y);
 	    XftGlyphExtents(fontPtr->display, ft0Font, &specs[nspec].glyph, 1,
 		    &metrics);
 	    x += metrics.xOff*cosA + metrics.yOff*sinA;
@@ -943,6 +1061,75 @@ TkpDrawAngledChars(
 	XftDrawGlyphFontSpec(fontPtr->ftDraw, &fontPtr->color, specs, nspec);
     }
 #endif /* XFT_HAS_FIXED_ROTATED_PLACEMENT */
+
+  doUnderlineStrikeout:
+    if (tsdPtr->clipRegion != None) {
+	XftDrawSetClip(fontPtr->ftDraw, None);
+    }
+    if (fontPtr->font.fa.underline || fontPtr->font.fa.overstrike) {
+	XPoint points[5];
+	double width = (x - xStart) * cosA + (yStart - y) * sinA;
+	double barHeight = fontPtr->font.underlineHeight;
+	double dy = fontPtr->font.underlinePos;
+
+	if (fontPtr->font.fa.underline != 0) {
+	    if (fontPtr->font.underlineHeight == 1) {
+		dy++;
+	    }
+	    points[0].x = xStart + ROUND16(dy*sinA);
+	    points[0].y = yStart + ROUND16(dy*cosA);
+	    points[1].x = xStart + ROUND16(dy*sinA + width*cosA);
+	    points[1].y = yStart + ROUND16(dy*cosA - width*sinA);
+	    if (fontPtr->font.underlineHeight == 1) {
+		XDrawLines(display, drawable, gc, points, 2, CoordModeOrigin);
+	    } else {
+		points[2].x = xStart + ROUND16(dy*sinA + width*cosA
+			+ barHeight*sinA);
+		points[2].y = yStart + ROUND16(dy*cosA - width*sinA
+			+ barHeight*cosA);
+		points[3].x = xStart + ROUND16(dy*sinA + barHeight*sinA);
+		points[3].y = yStart + ROUND16(dy*cosA + barHeight*cosA);
+		points[4].x = points[0].x;
+		points[4].y = points[0].y;
+		XFillPolygon(display, drawable, gc, points, 5, Complex,
+			CoordModeOrigin);
+		XDrawLines(display, drawable, gc, points, 5, CoordModeOrigin);
+	    }
+	}
+	if (fontPtr->font.fa.overstrike != 0) {
+	    dy = -fontPtr->font.fm.descent
+		   - (fontPtr->font.fm.ascent) / 10;
+	    points[0].x = xStart + ROUND16(dy*sinA);
+	    points[0].y = yStart + ROUND16(dy*cosA);
+	    points[1].x = xStart + ROUND16(dy*sinA + width*cosA);
+	    points[1].y = yStart + ROUND16(dy*cosA - width*sinA);
+	    if (fontPtr->font.underlineHeight == 1) {
+		XDrawLines(display, drawable, gc, points, 2, CoordModeOrigin);
+	    } else {
+		points[2].x = xStart + ROUND16(dy*sinA + width*cosA
+			+ barHeight*sinA);
+		points[2].y = yStart + ROUND16(dy*cosA - width*sinA
+			+ barHeight*cosA);
+		points[3].x = xStart + ROUND16(dy*sinA + barHeight*sinA);
+		points[3].y = yStart + ROUND16(dy*cosA + barHeight*cosA);
+		points[4].x = points[0].x;
+		points[4].y = points[0].y;
+		XFillPolygon(display, drawable, gc, points, 5, Complex,
+			CoordModeOrigin);
+		XDrawLines(display, drawable, gc, points, 5, CoordModeOrigin);
+	    }
+	}
+    }
+}
+
+void
+TkUnixSetXftClipRegion(
+    TkRegion clipRegion)	/* The clipping region to install. */
+{
+    ThreadSpecificData *tsdPtr = (ThreadSpecificData *)
+            Tcl_GetThreadData(&dataKey, sizeof(ThreadSpecificData));
+
+    tsdPtr->clipRegion = (Region) clipRegion;
 }
 
 /*

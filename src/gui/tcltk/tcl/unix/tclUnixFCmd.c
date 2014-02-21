@@ -10,8 +10,6 @@
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
  *
- * RCS: @(#) $Id$
- *
  * Portions of this code were derived from NetBSD source code which has the
  * following copyright notice:
  *
@@ -25,11 +23,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *      This product includes software developed by the University of
- *      California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors may
+ * 3. Neither the name of the University nor the names of its contributors may
  *    be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -49,11 +43,11 @@
 #include "tclInt.h"
 #include <utime.h>
 #include <grp.h>
-#ifndef HAVE_ST_BLKSIZE
+#ifndef HAVE_STRUCT_STAT_ST_BLKSIZE
 #ifndef NO_FSTATFS
 #include <sys/statfs.h>
 #endif
-#endif
+#endif /* !HAVE_STRUCT_STAT_ST_BLKSIZE */
 #ifdef HAVE_FTS
 #include <fts.h>
 #endif
@@ -66,6 +60,16 @@
 #define DOTREE_PRED	1	/* pre-order directory */
 #define DOTREE_POSTD	2	/* post-order directory */
 #define DOTREE_F	3	/* regular file */
+
+/*
+ * Fallback temporary file location the temporary file generation code. Can be
+ * overridden at compile time for when it is known that temp files can't be
+ * written to /tmp (hello, iOS!).
+ */
+
+#ifndef TCL_TEMPORARY_FILE_DIRECTORY
+#define TCL_TEMPORARY_FILE_DIRECTORY	"/tmp"
+#endif
 
 /*
  * Callbacks for file attributes code.
@@ -118,7 +122,7 @@ typedef int (TraversalProc)(Tcl_DString *srcPtr, Tcl_DString *dstPtr,
 extern TclFileAttrProcs tclpFileAttrProcs[];
 extern const char *const tclpFileAttrStrings[];
 
-#else
+#else /* !DJGPP */
 enum {
     UNIX_GROUP_ATTRIBUTE, UNIX_OWNER_ATTRIBUTE, UNIX_PERMISSIONS_ATTRIBUTE,
 #if defined(HAVE_CHFLAGS) && defined(UF_IMMUTABLE)
@@ -158,7 +162,7 @@ const TclFileAttrProcs tclpFileAttrProcs[] = {
     {TclMacOSXGetFileAttribute,	TclMacOSXSetFileAttribute},
 #endif
 };
-#endif
+#endif /* DJGPP */
 
 /*
  * This is the maximum number of consecutive readdir/unlink calls that can be
@@ -189,11 +193,13 @@ static int		DoRemoveDirectory(Tcl_DString *pathPtr,
 			    int recursive, Tcl_DString *errorPtr);
 static int		DoRenameFile(const char *src, const char *dst);
 static int		TraversalCopy(Tcl_DString *srcPtr,
-			    Tcl_DString *dstPtr, const Tcl_StatBuf *statBufPtr,
-			    int type, Tcl_DString *errorPtr);
+			    Tcl_DString *dstPtr,
+			    const Tcl_StatBuf *statBufPtr, int type,
+			    Tcl_DString *errorPtr);
 static int		TraversalDelete(Tcl_DString *srcPtr,
-			    Tcl_DString *dstPtr, const Tcl_StatBuf *statBufPtr,
-			    int type, Tcl_DString *errorPtr);
+			    Tcl_DString *dstPtr,
+			    const Tcl_StatBuf *statBufPtr, int type,
+			    Tcl_DString *errorPtr);
 static int		TraverseUnixTree(TraversalProc *traversalProc,
 			    Tcl_DString *sourcePtr, Tcl_DString *destPtr,
 			    Tcl_DString *errorPtr, int doRewind);
@@ -217,8 +223,8 @@ Realpath(
     return realpath(path, resolved);
 }
 #else
-#define Realpath realpath
-#endif
+#   define Realpath	realpath
+#endif /* PURIFY */
 
 #ifndef NO_REALPATH
 #if defined(__APPLE__) && defined(TCL_THREADS) && \
@@ -231,16 +237,16 @@ Realpath(
  */
 
 MODULE_SCOPE long tclMacOSXDarwinRelease;
-#define haveRealpath (tclMacOSXDarwinRelease >= 7)
+#   define haveRealpath	(tclMacOSXDarwinRelease >= 7)
 #else
-#define haveRealpath 1
+#   define haveRealpath	1
 #endif
 #endif /* NO_REALPATH */
 
 #ifdef HAVE_FTS
-#ifdef HAVE_STRUCT_STAT64
+#if defined(HAVE_STRUCT_STAT64) && !defined(__APPLE__)
 /* fts doesn't do stat64 */
-#define noFtsStat 1
+#   define noFtsStat	1
 #elif defined(__APPLE__) && defined(__LP64__) && \
 	defined(MAC_OS_X_VERSION_MIN_REQUIRED) && \
 	MAC_OS_X_VERSION_MIN_REQUIRED < 1050
@@ -251,9 +257,9 @@ MODULE_SCOPE long tclMacOSXDarwinRelease;
  */
 
 MODULE_SCOPE long tclMacOSXDarwinRelease;
-#define noFtsStat (tclMacOSXDarwinRelease < 9)
+#   define noFtsStat	(tclMacOSXDarwinRelease < 9)
 #else
-#define noFtsStat 0
+#   define noFtsStat	0
 #endif
 #endif /* HAVE_FTS */
 
@@ -456,15 +462,16 @@ DoCopyFile(
     switch ((int) (statBufPtr->st_mode & S_IFMT)) {
 #ifndef DJGPP
     case S_IFLNK: {
-	char link[MAXPATHLEN];
+	char linkBuf[MAXPATHLEN+1];
 	int length;
 
-	length = readlink(src, link, sizeof(link));	/* INTL: Native. */
+	length = readlink(src, linkBuf, MAXPATHLEN);
+							/* INTL: Native. */
 	if (length == -1) {
 	    return TCL_ERROR;
 	}
-	link[length] = '\0';
-	if (symlink(link, dst) < 0) {			/* INTL: Native. */
+	linkBuf[length] = '\0';
+	if (symlink(linkBuf, dst) < 0) {		/* INTL: Native. */
 	    return TCL_ERROR;
 	}
 #ifdef MAC_OSX_TCL
@@ -472,7 +479,7 @@ DoCopyFile(
 #endif
 	break;
     }
-#endif
+#endif /* !DJGPP */
     case S_IFBLK:
     case S_IFCHR:
 	if (mknod(dst, statBufPtr->st_mode,		/* INTL: Native. */
@@ -526,7 +533,7 @@ TclUnixCopyFile(
 #define BINMODE |O_BINARY
 #else
 #define BINMODE
-#endif
+#endif /* DJGPP */
 
 #define DEFAULT_COPY_BLOCK_SIZE 4069
 
@@ -547,13 +554,13 @@ TclUnixCopyFile(
      * that's likely to be fairly efficient anyway.
      */
 
-#ifdef HAVE_ST_BLKSIZE
+#ifdef HAVE_STRUCT_STAT_ST_BLKSIZE
     blockSize = statBufPtr->st_blksize;
 #elif !defined(NO_FSTATFS)
     {
 	struct statfs fs;
 
-	if (fstatfs(srcFd, &fs, sizeof(fs), 0) == 0) {
+	if (fstatfs(srcFd, &fs) == 0) {
 	    blockSize = fs.f_bsize;
 	} else {
 	    blockSize = DEFAULT_COPY_BLOCK_SIZE;
@@ -561,13 +568,14 @@ TclUnixCopyFile(
     }
 #else
     blockSize = DEFAULT_COPY_BLOCK_SIZE;
-#endif /* HAVE_ST_BLKSIZE */
+#endif /* HAVE_STRUCT_STAT_ST_BLKSIZE */
 
     /*
-     * [SF Tcl Bug 1586470] Even if we HAVE_ST_BLKSIZE, there are filesystems
-     * which report a bogus value for the blocksize. An example is the Andrew
-     * Filesystem (afs), reporting a blocksize of 0. When detecting such a
-     * situation we now simply fall back to a hardwired default size.
+     * [SF Tcl Bug 1586470] Even if we HAVE_STRUCT_STAT_ST_BLKSIZE, there are
+     * filesystems which report a bogus value for the blocksize. An example
+     * is the Andrew Filesystem (afs), reporting a blocksize of 0. When
+     * detecting such a situation we now simply fall back to a hardwired
+     * default size.
      */
 
     if (blockSize <= 0) {
@@ -634,9 +642,9 @@ TclpObjDeleteFile(
 
 int
 TclpDeleteFile(
-    const char *path)		/* Pathname of file to be removed (native). */
+    const void *path)		/* Pathname of file to be removed (native). */
 {
-    if (unlink(path) != 0) {				/* INTL: Native. */
+    if (unlink((const char *)path) != 0) {
 	return TCL_ERROR;
     }
     return TCL_OK;
@@ -969,11 +977,11 @@ TraverseUnixTree(
 	return result;
     }
 
-    Tcl_DStringAppend(sourcePtr, "/", 1);
+    TclDStringAppendLiteral(sourcePtr, "/");
     sourceLen = Tcl_DStringLength(sourcePtr);
 
     if (targetPtr != NULL) {
-	Tcl_DStringAppend(targetPtr, "/", 1);
+	TclDStringAppendLiteral(targetPtr, "/");
 	targetLen = Tcl_DStringLength(targetPtr);
     }
 
@@ -1041,7 +1049,7 @@ TraverseUnixTree(
     }
 #else /* HAVE_FTS */
     paths[0] = source;
-    fts = fts_open((char**)paths, FTS_PHYSICAL | FTS_NOCHDIR |
+    fts = fts_open((char **) paths, FTS_PHYSICAL | FTS_NOCHDIR |
 	    (noFtsStat || doRewind ? FTS_NOSTAT : 0), NULL);
     if (fts == NULL) {
 	errfile = source;
@@ -1100,7 +1108,7 @@ TraverseUnixTree(
 	    Tcl_DStringSetLength(targetPtr, targetLen);
 	}
     }
-#endif /* HAVE_FTS */
+#endif /* !HAVE_FTS */
 
   end:
     if (errfile != NULL) {
@@ -1322,9 +1330,9 @@ GetGroupAttribute(
 
     if (result != 0) {
 	if (interp != NULL) {
-	    Tcl_AppendResult(interp, "could not read \"",
-		    TclGetString(fileName), "\": ",
-		    Tcl_PosixError(interp), NULL);
+	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		    "could not read \"%s\": %s",
+		    TclGetString(fileName), Tcl_PosixError(interp)));
 	}
 	return TCL_ERROR;
     }
@@ -1341,7 +1349,6 @@ GetGroupAttribute(
 	*attributePtrPtr = Tcl_NewStringObj(utf, -1);
 	Tcl_DStringFree(&ds);
     }
-    endgrent();
     return TCL_OK;
 }
 
@@ -1377,9 +1384,9 @@ GetOwnerAttribute(
 
     if (result != 0) {
 	if (interp != NULL) {
-	    Tcl_AppendResult(interp, "could not read \"",
-		    TclGetString(fileName), "\": ",
-		    Tcl_PosixError(interp), NULL);
+	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		    "could not read \"%s\": %s",
+		    TclGetString(fileName), Tcl_PosixError(interp)));
 	}
 	return TCL_ERROR;
     }
@@ -1390,13 +1397,10 @@ GetOwnerAttribute(
 	*attributePtrPtr = Tcl_NewIntObj((int) statBuf.st_uid);
     } else {
 	Tcl_DString ds;
-	const char *utf;
 
-	utf = Tcl_ExternalToUtfDString(NULL, pwPtr->pw_name, -1, &ds);
-	*attributePtrPtr = Tcl_NewStringObj(utf, Tcl_DStringLength(&ds));
-	Tcl_DStringFree(&ds);
+	(void) Tcl_ExternalToUtfDString(NULL, pwPtr->pw_name, -1, &ds);
+	*attributePtrPtr = TclDStringToObj(&ds);
     }
-    endpwent();
     return TCL_OK;
 }
 
@@ -1431,9 +1435,9 @@ GetPermissionsAttribute(
 
     if (result != 0) {
 	if (interp != NULL) {
-	    Tcl_AppendResult(interp, "could not read \"",
-		    TclGetString(fileName), "\": ",
-		    Tcl_PosixError(interp), NULL);
+	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		    "could not read \"%s\": %s",
+		    TclGetString(fileName), Tcl_PosixError(interp)));
 	}
 	return TCL_ERROR;
     }
@@ -1483,11 +1487,13 @@ SetGroupAttribute(
 	Tcl_DStringFree(&ds);
 
 	if (groupPtr == NULL) {
-	    endgrent();
 	    if (interp != NULL) {
-		Tcl_AppendResult(interp, "could not set group for file \"",
-			TclGetString(fileName), "\": group \"", string,
-			"\" does not exist", NULL);
+		Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+			"could not set group for file \"%s\":"
+			" group \"%s\" does not exist",
+			TclGetString(fileName), string));
+		Tcl_SetErrorCode(interp, "TCL", "OPERATION", "SETGRP",
+			"NO_GROUP", NULL);
 	    }
 	    return TCL_ERROR;
 	}
@@ -1497,12 +1503,11 @@ SetGroupAttribute(
     native = Tcl_FSGetNativePath(fileName);
     result = chown(native, (uid_t) -1, (gid_t) gid);	/* INTL: Native. */
 
-    endgrent();
     if (result != 0) {
 	if (interp != NULL) {
-	    Tcl_AppendResult(interp, "could not set group for file \"",
-		    TclGetString(fileName), "\": ", Tcl_PosixError(interp),
-		    NULL);
+	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		    "could not set group for file \"%s\": %s",
+		    TclGetString(fileName), Tcl_PosixError(interp)));
 	}
 	return TCL_ERROR;
     }
@@ -1545,14 +1550,17 @@ SetOwnerAttribute(
 	string = Tcl_GetStringFromObj(attributePtr, &length);
 
 	native = Tcl_UtfToExternalDString(NULL, string, length, &ds);
-	pwPtr = TclpGetPwNam(native); /* INTL: Native. */
+	pwPtr = TclpGetPwNam(native);			/* INTL: Native. */
 	Tcl_DStringFree(&ds);
 
 	if (pwPtr == NULL) {
 	    if (interp != NULL) {
-		Tcl_AppendResult(interp, "could not set owner for file \"",
-			TclGetString(fileName), "\": user \"", string,
-			"\" does not exist", NULL);
+		Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+			"could not set owner for file \"%s\":"
+			" user \"%s\" does not exist",
+			TclGetString(fileName), string));
+		Tcl_SetErrorCode(interp, "TCL", "OPERATION", "SETOWN",
+			"NO_USER", NULL);
 	    }
 	    return TCL_ERROR;
 	}
@@ -1564,9 +1572,9 @@ SetOwnerAttribute(
 
     if (result != 0) {
 	if (interp != NULL) {
-	    Tcl_AppendResult(interp, "could not set owner for file \"",
-		    TclGetString(fileName), "\": ", Tcl_PosixError(interp),
-		    NULL);
+	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		    "could not set owner for file \"%s\": %s",
+		    TclGetString(fileName), Tcl_PosixError(interp)));
 	}
 	return TCL_ERROR;
     }
@@ -1634,9 +1642,9 @@ SetPermissionsAttribute(
 	result = TclpObjStat(fileName, &buf);
 	if (result != 0) {
 	    if (interp != NULL) {
-		Tcl_AppendResult(interp, "could not read \"",
-			TclGetString(fileName), "\": ",
-			Tcl_PosixError(interp), NULL);
+		Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+			"could not read \"%s\": %s",
+			TclGetString(fileName), Tcl_PosixError(interp)));
 	    }
 	    return TCL_ERROR;
 	}
@@ -1644,8 +1652,10 @@ SetPermissionsAttribute(
 
 	if (GetModeFromPermString(NULL, modeStringPtr, &newMode) != TCL_OK) {
 	    if (interp != NULL) {
-		Tcl_AppendResult(interp, "unknown permission string format \"",
-			modeStringPtr, "\"", NULL);
+		Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+			"unknown permission string format \"%s\"",
+			modeStringPtr));
+		Tcl_SetErrorCode(interp, "TCL", "VALUE", "PERMISSION", NULL);
 	    }
 	    return TCL_ERROR;
 	}
@@ -1655,9 +1665,9 @@ SetPermissionsAttribute(
     result = chmod(native, newMode);		/* INTL: Native. */
     if (result != 0) {
 	if (interp != NULL) {
-	    Tcl_AppendResult(interp, "could not set permissions for file \"",
-		    TclGetString(fileName), "\": ",
-		    Tcl_PosixError(interp), NULL);
+	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		    "could not set permissions for file \"%s\": %s",
+		    TclGetString(fileName), Tcl_PosixError(interp)));
 	}
 	return TCL_ERROR;
     }
@@ -1910,10 +1920,10 @@ TclpObjNormalizePath(
     int pathLen;
     char cur;
     const char *path = Tcl_GetStringFromObj(pathPtr, &pathLen);
-#ifndef NO_REALPATH
-    char normPath[MAXPATHLEN];
     Tcl_DString ds;
     const char *nativePath;
+#ifndef NO_REALPATH
+    char normPath[MAXPATHLEN];
 #endif
 
     /*
@@ -1965,8 +1975,6 @@ TclpObjNormalizePath(
 	     * Reached directory separator.
 	     */
 
-	    Tcl_DString ds;
-	    const char *nativePath;
 	    int accessOk;
 
 	    nativePath = Tcl_UtfToExternalDString(NULL, path,
@@ -2017,7 +2025,7 @@ TclpObjNormalizePath(
 	    return 0;
 	}
 
-	nativePath = Tcl_UtfToExternalDString(NULL, path, nextCheckpoint, &ds);
+	nativePath = Tcl_UtfToExternalDString(NULL, path,nextCheckpoint, &ds);
 	if (Realpath(nativePath, normPath) != NULL) {
 	    int newNormLen;
 
@@ -2095,7 +2103,7 @@ TclpObjNormalizePath(
 /*
  *----------------------------------------------------------------------
  *
- * TclpOpenTemporaryFile --
+ * TclpOpenTemporaryFile, TclUnixOpenTemporaryFile --
  *
  *	Creates a temporary file, possibly based on the supplied bits and
  *	pieces of template supplied in the first three arguments. If the
@@ -2105,7 +2113,12 @@ TclpObjNormalizePath(
  *	file to go away once it is no longer needed.
  *
  * Results:
- *	A read-write Tcl Channel open on the file.
+ *	A read-write Tcl Channel open on the file for TclpOpenTemporaryFile,
+ *	or a file descriptor (or -1 on failure) for TclUnixOpenTemporaryFile.
+ *
+ * Side effects:
+ *	Accesses the filesystem. Will set the contents of the Tcl_Obj fourth
+ *	argument (if that is non-NULL).
  *
  *----------------------------------------------------------------------
  */
@@ -2117,10 +2130,29 @@ TclpOpenTemporaryFile(
     Tcl_Obj *extensionObj,
     Tcl_Obj *resultingNameObj)
 {
-    Tcl_Channel chan;
+    int fd = TclUnixOpenTemporaryFile(dirObj, basenameObj, extensionObj,
+	    resultingNameObj);
+
+    if (fd == -1) {
+	return NULL;
+    }
+    return Tcl_MakeFileChannel(INT2PTR(fd), TCL_READABLE|TCL_WRITABLE);
+}
+
+int
+TclUnixOpenTemporaryFile(
+    Tcl_Obj *dirObj,
+    Tcl_Obj *basenameObj,
+    Tcl_Obj *extensionObj,
+    Tcl_Obj *resultingNameObj)
+{
     Tcl_DString template, tmp;
     const char *string;
     int len, fd;
+
+    /*
+     * We should also check against making more then TMP_MAX of these.
+     */
 
     if (dirObj) {
 	string = Tcl_GetStringFromObj(dirObj, &len);
@@ -2130,24 +2162,24 @@ TclpOpenTemporaryFile(
 	Tcl_DStringAppend(&template, DefaultTempDir(), -1); /* INTL: native */
     }
 
-    Tcl_DStringAppend(&template, "/", -1);
+    TclDStringAppendLiteral(&template, "/");
 
     if (basenameObj) {
 	string = Tcl_GetStringFromObj(basenameObj, &len);
 	Tcl_UtfToExternalDString(NULL, string, len, &tmp);
-	Tcl_DStringAppend(&template, Tcl_DStringValue(&tmp), -1);
+	TclDStringAppendDString(&template, &tmp);
 	Tcl_DStringFree(&tmp);
     } else {
-	Tcl_DStringAppend(&template, "tcl", -1);
+	TclDStringAppendLiteral(&template, "tcl");
     }
 
-    Tcl_DStringAppend(&template, "_XXXXXX", -1);
+    TclDStringAppendLiteral(&template, "_XXXXXX");
 
 #ifdef HAVE_MKSTEMPS
     if (extensionObj) {
 	string = Tcl_GetStringFromObj(extensionObj, &len);
 	Tcl_UtfToExternalDString(NULL, string, len, &tmp);
-	Tcl_DStringAppend(&template, Tcl_DStringValue(&tmp), -1);
+	TclDStringAppendDString(&template, &tmp);
 	fd = mkstemps(Tcl_DStringValue(&template), Tcl_DStringLength(&tmp));
 	Tcl_DStringFree(&tmp);
     } else
@@ -2157,9 +2189,10 @@ TclpOpenTemporaryFile(
     }
 
     if (fd == -1) {
-	return NULL;
+	Tcl_DStringFree(&template);
+	return -1;
     }
-    chan = Tcl_MakeFileChannel(INT2PTR(fd), TCL_READABLE|TCL_WRITABLE);
+
     if (resultingNameObj) {
 	Tcl_ExternalToUtfDString(NULL, Tcl_DStringValue(&template),
 		Tcl_DStringLength(&template), &tmp);
@@ -2178,7 +2211,7 @@ TclpOpenTemporaryFile(
     }
     Tcl_DStringFree(&template);
 
-    return chan;
+    return fd;
 }
 
 /*
@@ -2193,23 +2226,24 @@ DefaultTempDir(void)
 
     dir = getenv("TMPDIR");
     if (dir && dir[0] && stat(dir, &buf) == 0 && S_ISDIR(buf.st_mode)
-	    && access(dir, W_OK)) {
+	    && access(dir, W_OK) == 0) {
 	return dir;
     }
 
 #ifdef P_tmpdir
     dir = P_tmpdir;
-    if (stat(dir, &buf) == 0 && S_ISDIR(buf.st_mode) && access(dir, W_OK)) {
+    if (stat(dir, &buf)==0 && S_ISDIR(buf.st_mode) && access(dir, W_OK)==0) {
 	return dir;
     }
 #endif
 
     /*
-     * Assume that "/tmp" is always an existing writable directory; we've no
-     * recovery mechanism if it isn't.
+     * Assume that the default location ("/tmp" if not overridden) is always
+     * an existing writable directory; we've no recovery mechanism if it
+     * isn't.
      */
 
-    return "/tmp";
+    return TCL_TEMPORARY_FILE_DIRECTORY;
 }
 
 #if defined(HAVE_CHFLAGS) && defined(UF_IMMUTABLE)
@@ -2244,14 +2278,14 @@ GetReadOnlyAttribute(
 
     if (result != 0) {
 	if (interp != NULL) {
-	    Tcl_AppendResult(interp, "could not read \"",
-		    TclGetString(fileName), "\": ", Tcl_PosixError(interp),
-		    NULL);
+	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		    "could not read \"%s\": %s",
+		    TclGetString(fileName), Tcl_PosixError(interp)));
 	}
 	return TCL_ERROR;
     }
 
-    *attributePtrPtr = Tcl_NewBooleanObj((statBuf.st_flags&UF_IMMUTABLE) != 0);
+    *attributePtrPtr = Tcl_NewBooleanObj(statBuf.st_flags&UF_IMMUTABLE);
 
     return TCL_OK;
 }
@@ -2291,9 +2325,9 @@ SetReadOnlyAttribute(
 
     if (result != 0) {
 	if (interp != NULL) {
-	    Tcl_AppendResult(interp, "could not read \"",
-		    TclGetString(fileName), "\": ", Tcl_PosixError(interp),
-		    NULL);
+	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		    "could not read \"%s\": %s",
+		    TclGetString(fileName), Tcl_PosixError(interp)));
 	}
 	return TCL_ERROR;
     }
@@ -2308,9 +2342,9 @@ SetReadOnlyAttribute(
     result = chflags(native, statBuf.st_flags);		/* INTL: Native. */
     if (result != 0) {
 	if (interp != NULL) {
-	    Tcl_AppendResult(interp, "could not set flags for file \"",
-		    TclGetString(fileName), "\": ", Tcl_PosixError(interp),
-		    NULL);
+	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		    "could not set flags for file \"%s\": %s",
+		    TclGetString(fileName), Tcl_PosixError(interp)));
 	}
 	return TCL_ERROR;
     }

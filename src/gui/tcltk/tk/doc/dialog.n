@@ -5,8 +5,6 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-'\" RCS: @(#) $Id$
-'\" 
 .so man.macros
 .TH tk_dialog n 4.1 Tk "Tk Built-In Commands"
 .BS
@@ -32,7 +30,8 @@ Text to appear in the window manager's title bar for the dialog.
 Message to appear in the top portion of the dialog box.
 .TP
 \fIbitmap\fR
-If non-empty, specifies a bitmap to display in the top portion of
+If non-empty, specifies a bitmap (in a form suitable for Tk_GetBitmap)
+to display in the top portion of
 the dialog, to the left of the text.
 If this is an empty string then no bitmap is displayed in the dialog.
 .TP

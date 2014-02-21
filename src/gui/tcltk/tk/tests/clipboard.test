@@ -5,8 +5,6 @@
 # Copyright (c) 1994 Sun Microsystems, Inc.
 # Copyright (c) 1998-1999 by Scriptics Corporation.
 # All rights reserved.
-#
-# RCS: @(#) $Id$
 
 #
 # Note: Multiple display clipboard handling will only be tested if the
@@ -26,7 +24,7 @@ foreach i {a b c d e f g j h i j k l m o p q r s t u v w x y z} {
 }
 
 # Now we start the main body of the test code
-
+
 test clipboard-1.1 {ClipboardHandler procedure} -setup {
     clipboard clear
 } -body {
@@ -242,7 +240,7 @@ test clipboard-6.2 {Tk_ClipboardAppend procedure} -constraints unix -setup {
 } -cleanup {
     clipboard clear
     cleanupbg
-}  -result {0x10}
+}  -result {0x10 }
 test clipboard-6.3 {Tk_ClipboardAppend procedure} -setup {
     clipboard clear
 } -body {
@@ -308,7 +306,6 @@ test clipboard-7.10 {Tk_ClipboardCmd procedure} -body {
 test clipboard-7.11 {Tk_ClipboardCmd procedure} -body {
     clipboard append -displayof foo "test"
 } -returnCodes error -result {bad window path name "foo"}
-
 test clipboard-7.12 {Tk_ClipboardCmd procedure} -body {
     clipboard clear -displayof
 } -returnCodes error -result {wrong # args: should be "clipboard clear ?-displayof window?"}
@@ -321,11 +318,9 @@ test clipboard-7.14 {Tk_ClipboardCmd procedure} -body {
 test clipboard-7.15 {Tk_ClipboardCmd procedure} -body {
     clipboard clear -displayof foo
 } -returnCodes error -result {bad window path name "foo"}
-
 test clipboard-7.16 {Tk_ClipboardCmd procedure} -body {
     clipboard error
 } -returnCodes error -result {bad option "error": must be append, clear, or get}
-
 test clipboard-7.17 {Tk_ClipboardCmd procedure} -setup {
     clipboard clear
 } -body {
@@ -356,10 +351,11 @@ test clipboard-7.20 {Tk_ClipboardCmd procedure} -setup {
 } -cleanup {
     clipboard clear
 } -result {-type}
+
 # cleanup
 cleanupTests
 return
 
-
-
-
+# Local Variables:
+# mode: tcl
+# End:

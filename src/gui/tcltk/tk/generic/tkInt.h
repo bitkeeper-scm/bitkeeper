@@ -10,29 +10,22 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: $Id$
  */
 
 #ifndef _TKINT
 #define _TKINT
 
-#ifndef _TK
-#include "tk.h"
-#endif
-#ifndef _TCL
-#include "tcl.h"
-#endif
 #ifndef _TKPORT
 #include "tkPort.h"
 #endif
 
 /*
- * Ensure WORDS_BIGENDIAN is defined correcly:
+ * Ensure WORDS_BIGENDIAN is defined correctly:
  * Needs to happen here in addition to configure to work with fat compiles on
  * Darwin (where configure runs only once for multiple architectures).
  */
 
+#include <stdio.h>
 #ifdef HAVE_SYS_TYPES_H
 #    include <sys/types.h>
 #endif
@@ -103,14 +96,6 @@ typedef struct TkRegion_ *TkRegion;
 typedef struct TkStressedCmap TkStressedCmap;
 typedef struct TkBindInfo_ *TkBindInfo;
 typedef struct Busy *TkBusy;
-
-/*
- * Function types.
- */
-
-typedef int (TkBindEvalProc)(ClientData clientData, Tcl_Interp *interp,
-	XEvent *eventPtr, Tk_Window tkwin, KeySym keySym);
-typedef void (TkBindFreeProc)(ClientData clientData);
 
 /*
  * One of the following structures is maintained for each cursor in use in the
@@ -314,8 +299,9 @@ typedef struct TkDisplay {
 				 * multiple applications on the display have
 				 * the focus, this will refer to the innermost
 				 * window in the innermost application. This
-				 * information isn't used under Unix or
-				 * Windows, but it's needed on the Mac. */
+				 * information isn't used on Windows, but it's
+				 * needed on the Mac, and also on X11 when XIM
+				 * processing is being done. */
 
     /*
      * Information used by tkGC.c only:
@@ -399,10 +385,6 @@ typedef struct TkDisplay {
     int postCommandGeneration;
 
     /*
-     * Information used by tkOption.c only.
-     */
-
-    /*
      * Information used by tkPack.c only.
      */
 
@@ -471,42 +453,12 @@ typedef struct TkDisplay {
 				 * application name on each comm window. */
 
     /*
-     * Information used by tkXId.c only:
-     */
-
-    struct TkIdStack *idStackPtr;
-				/* First in list of chunks of free resource
-				 * identifiers, or NULL if there are no free
-				 * resources. */
-    XID (*defaultAllocProc) (Display *display);
-				/* Default resource allocator for display. */
-    struct TkIdStack *windowStackPtr;
-				/* First in list of chunks of window ids that
-				 * can't be reused right now. */
-    Tcl_TimerToken idCleanupScheduled;
-				/* If set, it means a call to WindowIdCleanup
-				 * has already been scheduled, 0 means it
-				 * hasn't. */
-
-    /*
      * Information used by tkUnixWm.c and tkWinWm.c only:
      */
 
     struct TkWmInfo *firstWmPtr;/* Points to first top-level window. */
     struct TkWmInfo *foregroundWmPtr;
 				/* Points to the foreground window. */
-
-    /*
-     * Information maintained by tkWindow.c for use later on by tkXId.c:
-     */
-
-    int destroyCount;		/* Number of Tk_DestroyWindow operations in
-				 * progress. */
-    unsigned long lastDestroyRequest;
-				/* Id of most recent XDestroyWindow request;
-				 * can re-use ids in windowStackPtr when
-				 * server has seen this request and event
-				 * queue is empty. */
 
     /*
      * Information used by tkVisual.c only:
@@ -539,7 +491,9 @@ typedef struct TkDisplay {
 				 * display. */
     Window mouseButtonWindow;	/* Window the button state was set in, added
 				 * in Tk 8.4. */
-    Window warpWindow;
+    Tk_Window warpWindow;
+    Tk_Window warpMainwin;	/* For finding the root window for warping
+				 * purposes. */
     int warpX;
     int warpY;
 
@@ -572,6 +526,7 @@ typedef struct TkDisplay {
 #define TK_DISPLAY_USE_IM			(1 << 1)
 #define TK_DISPLAY_WM_TRACING			(1 << 3)
 #define TK_DISPLAY_IN_WARP			(1 << 4)
+#define TK_DISPLAY_USE_XKB			(1 << 5)
 
 /*
  * One of the following structures exists for each error handler created by a
@@ -806,7 +761,8 @@ typedef struct TkWindow {
      * Information used by tkGeometry.c for geometry management.
      */
 
-    const Tk_GeomMgr *geomMgrPtr; /* Information about geometry manager for this
+    const Tk_GeomMgr *geomMgrPtr;
+				/* Information about geometry manager for this
 				 * window. */
     ClientData geomData;	/* Argument for geometry manager functions. */
     int reqWidth, reqHeight;	/* Arguments from last call to
@@ -825,13 +781,14 @@ typedef struct TkWindow {
     struct TkWmInfo *wmInfoPtr;	/* For top-level windows (and also for special
 				 * Unix menubar and wrapper windows), points
 				 * to structure with wm-related info (see
-				 * tkWm.c). For other windows, this is NULL. */
+				 * tkWm.c). For other windows, this is
+				 * NULL. */
 
     /*
      * Information used by widget classes.
      */
 
-    Tk_ClassProcs *classProcsPtr;
+    const Tk_ClassProcs *classProcsPtr;
     ClientData instanceData;
 
     /*
@@ -851,7 +808,34 @@ typedef struct TkWindow {
 
     int minReqWidth;		/* Minimum requested width. */
     int minReqHeight;		/* Minimum requested height. */
+    char *geometryMaster;
 } TkWindow;
+
+/*
+ * Real definition of some events. Note that these events come from outside
+ * but have internally generated pieces added to them.
+ */
+
+typedef struct {
+    XKeyEvent keyEvent;		/* The real event from X11. */
+    char *charValuePtr;		/* A pointer to a string that holds the key's
+				 * %A substitution text (before backslash
+				 * adding), or NULL if that has not been
+				 * computed yet. If non-NULL, this string was
+				 * allocated with ckalloc(). */
+    int charValueLen;		/* Length of string in charValuePtr when that
+				 * is non-NULL. */
+    KeySym keysym;		/* Key symbol computed after input methods
+				 * have been invoked */
+} TkKeyEvent;
+
+/*
+ * Flags passed to TkpMakeMenuWindow's 'transient' argument.
+ */
+
+#define TK_MAKE_MENU_TEAROFF	0	/* Only non-transient case. */
+#define TK_MAKE_MENU_POPUP	1
+#define TK_MAKE_MENU_DROPDOWN	2
 
 /*
  * The following structure is used with TkMakeEnsemble to create ensemble
@@ -890,12 +874,6 @@ typedef struct TkpClipMask {
 
 #define TKP_CLIP_PIXMAP 0
 #define TKP_CLIP_REGION 1
-
-/*
- * Pointer to first entry in list of all displays currently known.
- */
-
-extern TkDisplay *tkDisplayList;
 
 /*
  * Return values from TkGrabState:
@@ -949,7 +927,6 @@ MODULE_SCOPE const Tcl_ObjType tkBitmapObjType;
 MODULE_SCOPE const Tcl_ObjType tkColorObjType;
 MODULE_SCOPE const Tcl_ObjType tkCursorObjType;
 MODULE_SCOPE const Tcl_ObjType tkFontObjType;
-MODULE_SCOPE const Tcl_ObjType tkOptionObjType;
 MODULE_SCOPE const Tcl_ObjType tkStateKeyObjType;
 MODULE_SCOPE const Tcl_ObjType tkTextIndexType;
 
@@ -968,6 +945,8 @@ MODULE_SCOPE TkMainInfo		*tkMainWindowList;
 MODULE_SCOPE Tk_ImageType	tkPhotoImageType;
 MODULE_SCOPE Tcl_HashTable	tkPredefBitmapTable;
 
+MODULE_SCOPE const char *const tkWebColors[20];
+
 /*
  * The definition of pi, at least from the perspective of double-precision
  * floats.
@@ -982,6 +961,23 @@ MODULE_SCOPE Tcl_HashTable	tkPredefBitmapTable;
 #endif
 
 /*
+ * Support for Clang Static Analyzer <http://clang-analyzer.llvm.org>
+ */
+
+#if defined(PURIFY) && defined(__clang__)
+#if __has_feature(attribute_analyzer_noreturn) && \
+	!defined(Tcl_Panic) && defined(Tcl_Panic_TCL_DECLARED)
+void Tcl_Panic(const char *, ...) __attribute__((analyzer_noreturn));
+#endif
+#if !defined(CLANG_ASSERT)
+#include <assert.h>
+#define CLANG_ASSERT(x) assert(x)
+#endif
+#elif !defined(CLANG_ASSERT)
+#define CLANG_ASSERT(x)
+#endif /* PURIFY && __clang__ */
+
+/*
  * The following magic value is stored in the "send_event" field of FocusIn
  * and FocusOut events. This allows us to separate "real" events coming from
  * the server from those that we generated.
@@ -994,11 +990,6 @@ MODULE_SCOPE Tcl_HashTable	tkPredefBitmapTable;
  */
 
 #include "tkIntDecls.h"
-
-#ifdef BUILD_tk
-#undef TCL_STORAGE_CLASS
-#define TCL_STORAGE_CLASS DLLEXPORT
-#endif
 
 /*
  * Themed widget set init function:
@@ -1150,6 +1141,11 @@ MODULE_SCOPE int	Tk_WmObjCmd(ClientData clientData, Tcl_Interp *interp,
 MODULE_SCOPE int	Tk_GetDoublePixelsFromObj(Tcl_Interp *interp,
 			    Tk_Window tkwin, Tcl_Obj *objPtr,
 			    double *doublePtr);
+MODULE_SCOPE int	TkSetGeometryMaster(Tcl_Interp *interp,
+			    Tk_Window tkwin, const char *master);
+MODULE_SCOPE void	TkFreeGeometryMaster(Tk_Window tkwin,
+			    const char *master);
+
 MODULE_SCOPE void	TkEventInit(void);
 MODULE_SCOPE void	TkRegisterObjTypes(void);
 MODULE_SCOPE int	TkCreateMenuCmd(Tcl_Interp *interp);
@@ -1160,27 +1156,9 @@ MODULE_SCOPE int	TkCanvasGetCoordObj(Tcl_Interp *interp,
 			    double *doublePtr);
 MODULE_SCOPE int	TkGetDoublePixels(Tcl_Interp *interp, Tk_Window tkwin,
 			    const char *string, double *doublePtr);
-MODULE_SCOPE int	TkOrientParseProc(ClientData clientData,
-			    Tcl_Interp *interp, Tk_Window tkwin,
-			    const char *value, char *widgRec, int offset);
-MODULE_SCOPE const char * TkOrientPrintProc(ClientData clientData,
-			    Tk_Window tkwin, char *widgRec, int offset,
-			    Tcl_FreeProc **freeProcPtr);
 MODULE_SCOPE int	TkPostscriptImage(Tcl_Interp *interp, Tk_Window tkwin,
 			    Tk_PostscriptInfo psInfo, XImage *ximage,
 			    int x, int y, int width, int height);
-MODULE_SCOPE int	TkSmoothParseProc(ClientData clientData,
-			    Tcl_Interp *interp, Tk_Window tkwin,
-			    const char *value, char *recordPtr, int offset);
-MODULE_SCOPE const char * TkSmoothPrintProc(ClientData clientData,
-			    Tk_Window tkwin, char *recordPtr, int offset,
-			    Tcl_FreeProc **freeProcPtr);
-MODULE_SCOPE int	TkTileParseProc(ClientData clientData,
-			    Tcl_Interp *interp, Tk_Window tkwin,
-			    const char *value, char *widgRec, int offset);
-MODULE_SCOPE const char * TkTilePrintProc(ClientData clientData,
-			    Tk_Window tkwin, char *widgRec, int offset,
-			    Tcl_FreeProc **freeProcPtr);
 MODULE_SCOPE void       TkMapTopFrame(Tk_Window tkwin);
 MODULE_SCOPE XEvent *	TkpGetBindingXEvent(Tcl_Interp *interp);
 MODULE_SCOPE void	TkCreateExitHandler(Tcl_ExitProc *proc,
@@ -1193,7 +1171,7 @@ MODULE_SCOPE void	TkpBuildRegionFromAlphaData(TkRegion region,
 			    unsigned x, unsigned y, unsigned width,
 			    unsigned height, unsigned char *dataPtr,
 			    unsigned pixelStride, unsigned lineStride);
-MODULE_SCOPE void	TkPrintPadAmount(Tcl_Interp *interp,
+MODULE_SCOPE void	TkAppendPadAmount(Tcl_Obj *bufferObj,
 			    const char *buffer, int pad1, int pad2);
 MODULE_SCOPE int	TkParsePadAmount(Tcl_Interp *interp,
 			    Tk_Window tkwin, Tcl_Obj *objPtr,
@@ -1223,28 +1201,29 @@ MODULE_SCOPE void	TkpMakeTransparentWindowExist(Tk_Window tkwin,
 MODULE_SCOPE void	TkpCreateBusy(Tk_FakeWin *winPtr, Tk_Window tkRef,
 			    Window *parentPtr, Tk_Window tkParent,
 			    TkBusy busy);
-MODULE_SCOPE void	TkDrawAngledTextLayout(Display *display,
-			    Drawable drawable, GC gc, Tk_TextLayout layout,
-			    int x, int y, double angle, int firstChar,
-			    int lastChar);
-MODULE_SCOPE void	TkpDrawAngledChars(Display *display,Drawable drawable,
-			    GC gc, Tk_Font tkfont, const char *source,
-			    int numBytes, double x, double y, double angle);
-MODULE_SCOPE void	TkUnderlineAngledTextLayout(Display *display,
-			    Drawable drawable, GC gc, Tk_TextLayout layout,
-			    int x, int y, double angle, int underline);
-MODULE_SCOPE int	TkIntersectAngledTextLayout(Tk_TextLayout layout,
-			    int x,int y, int width, int height, double angle);
 MODULE_SCOPE int	TkBackgroundEvalObjv(Tcl_Interp *interp,
 			    int objc, Tcl_Obj *const *objv, int flags);
-MODULE_SCOPE void	TkSendVirtualEvent(Tk_Window tgtWin, const char *eventName);
+MODULE_SCOPE void	TkSendVirtualEvent(Tk_Window tgtWin,
+			    const char *eventName);
 MODULE_SCOPE Tcl_Command TkMakeEnsemble(Tcl_Interp *interp,
-			    const char *namespace, const char *name,
+			    const char *nsname, const char *name,
 			    ClientData clientData, const TkEnsemble *map);
 MODULE_SCOPE int	TkInitTkCmd(Tcl_Interp *interp,
 			    ClientData clientData);
 MODULE_SCOPE int	TkInitFontchooser(Tcl_Interp *interp,
 			    ClientData clientData);
+MODULE_SCOPE void	TkpWarpPointer(TkDisplay *dispPtr);
+
+#ifdef __WIN32__
+#define TkParseColor XParseColor
+#else
+MODULE_SCOPE Status TkParseColor (Display * display,
+				Colormap map, const char* spec,
+				XColor * colorPtr);
+#endif
+#ifdef HAVE_XFT
+MODULE_SCOPE void	TkUnixSetXftClipRegion(TkRegion clipRegion);
+#endif
 
 /*
  * Unsupported commands.
@@ -1254,8 +1233,18 @@ MODULE_SCOPE int	TkUnsupported1ObjCmd(ClientData clientData,
 			    Tcl_Interp *interp, int objc,
 			    Tcl_Obj *const objv[]);
 
-#undef TCL_STORAGE_CLASS
-#define TCL_STORAGE_CLASS DLLIMPORT
+/*
+ * For Tktest.
+ */
+MODULE_SCOPE int SquareObjCmd(ClientData clientData,
+			    Tcl_Interp *interp, int objc,
+			    Tcl_Obj * const objv[]);
+MODULE_SCOPE int	TkOldTestInit(Tcl_Interp *interp);
+#if !(defined(__WIN32__) || defined(MAC_OSX_TK))
+#define TkplatformtestInit(x) TCL_OK
+#else
+MODULE_SCOPE int	TkplatformtestInit(Tcl_Interp *interp);
+#endif
 
 #endif /* _TKINT */
 
