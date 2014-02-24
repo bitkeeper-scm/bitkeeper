@@ -2118,7 +2118,7 @@ SHELL=/bin/sh
 TCL_VERSION=8.6
 TCL_MAJOR_VERSION=8
 TCL_MINOR_VERSION=6
-TCL_PATCH_LEVEL=".0"
+TCL_PATCH_LEVEL=".1"
 VER=$TCL_MAJOR_VERSION$TCL_MINOR_VERSION
 
 TCL_DDE_VERSION=1.4
@@ -3982,7 +3982,8 @@ $as_echo "shared" >&6; }
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: static" >&5
 $as_echo "static" >&6; }
 	SHARED_BUILD=0
-	$as_echo "#define STATIC_BUILD 1" >>confdefs.h
+
+$as_echo "#define STATIC_BUILD 1" >>confdefs.h
 
     fi
 
@@ -4898,8 +4899,17 @@ if test "$tcl_ok" = "yes"; then :
 
   if test "$do64bit" = "yes"; then :
 
-    ZLIB_LIBS=\${ZLIB_DIR}/win64/zdll.lib
+    if test "$GCC" == "yes"; then :
 
+      ZLIB_LIBS=\${ZLIB_DIR}/win64/libz.dll.a
+
+
+else
+
+      ZLIB_LIBS=\${ZLIB_DIR}/win64/zdll.lib
+
+
+fi
 
 else
 
@@ -4911,10 +4921,6 @@ fi
 else
 
   ZLIB_OBJS=\${ZLIB_OBJS}
-
-  cat >>confdefs.h <<_ACEOF
-#define NO_VIZ 1
-_ACEOF
 
 
 fi
