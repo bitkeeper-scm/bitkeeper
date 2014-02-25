@@ -71,7 +71,7 @@ collapse_main(int ac, char **av)
 		switch (c) {
 		    case '@':
 			if (url) usage();
-			url = optarg;
+			if (optarg) url = parent_normalize(optarg);
 			fromurl = 1;
 			break;
 		    case 'a':
@@ -171,6 +171,7 @@ collapse_main(int ac, char **av)
 out:	freeLines(nav, free);
 	if (s) sccs_free(s);
 	if (after) free(after);
+	if (url) free(url);
 	return (rc);
 }
 
