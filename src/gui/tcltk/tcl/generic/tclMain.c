@@ -344,7 +344,7 @@ Tcl_MainEx(
 	L->global->tclsh_argc = 1;
 	L->global->tclsh_argv = Tcl_NewObj();
 	Tcl_ListObjAppendElement(NULL, L->global->tclsh_argv,
-				 Tcl_NewStringObj(argv[0], -1));
+				 NewNativeObj(argv[0], -1));
 
 	if ((argc > 3) && (0 == _tcscmp(TEXT("-encoding"), argv[1]))
 		&& ('-' != argv[3][0])) {
@@ -359,7 +359,7 @@ Tcl_MainEx(
 	    int i;
 	    Tcl_Obj *argObj;
 	    for (i = 1; i < argc; ++i) {
-		argObj = Tcl_NewStringObj(argv[i], -1);
+		argObj = NewNativeObj(argv[i], -1);
 		Tcl_ListObjAppendElement(NULL, L->global->tclsh_argv, argObj);
 		++L->global->tclsh_argc;
 		if ('-' != argv[i][0]) {
@@ -367,8 +367,8 @@ Tcl_MainEx(
 		    argc -= i;
 		    argv += i;
 		    break;
-		} else if (!strcmp(argv[i], "--version") ||
-			   !strcmp(argv[i], "-version")) {
+		} else if (!_tcscmp(argv[i], TEXT("--version")) ||
+			   !_tcscmp(argv[i], TEXT("-version"))) {
 		    if (strlen(L_VER_TAG)) {
 			printf("L version is %s %s for %s\n",
 			       L_VER_TAG, L_VER_UTC, L_VER_PLATFORM);

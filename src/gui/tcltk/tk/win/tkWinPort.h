@@ -32,6 +32,10 @@
 #include <string.h>
 #include <limits.h>
 
+#ifdef __MINGW32__
+#include <stdint.h>
+#endif
+
 /*
  * Need to block out this include for building extensions with MetroWerks
  * compiler for Win32.

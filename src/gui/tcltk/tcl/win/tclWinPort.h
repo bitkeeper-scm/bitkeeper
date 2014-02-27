@@ -93,6 +93,10 @@ typedef DWORD_PTR * PDWORD_PTR;
 #include <signal.h>
 #include <limits.h>
 
+#ifdef __MINGW32__
+#include <stdint.h>
+#endif
+
 #ifndef __GNUC__
 #    define strncasecmp _strnicmp
 #    define strcasecmp _stricmp
