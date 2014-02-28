@@ -14595,6 +14595,7 @@ normal_diff(sccs *s, char *lrev, char *lrevM,
 	/*
 	 * Create the lfile & rfile for diff
 	 */
+	lfile[0] = rfile[0] = 0;
 	if (mkDiffTarget(s, lrev, lrevM, dop->flags, lfile, pf)) {
 		goto done;
 	}
@@ -14619,8 +14620,10 @@ normal_diff(sccs *s, char *lrev, char *lrevM,
 	rc = doDiff(s, dop, lfile, rfile, out, lrev, rrev, ltag, rtag);
 	free(ltag);
 	free(rtag);
-done:	unless (streq(lfile, DEVNULL_RD)) unlink(lfile);
-	unless (streq(rfile, s->gfile) || streq(rfile, DEVNULL_RD)) unlink(rfile);
+done:	unless (!*lfile || streq(lfile, DEVNULL_RD)) unlink(lfile);
+	unless (!*rfile || streq(rfile, s->gfile) || streq(rfile, DEVNULL_RD)){
+		unlink(rfile);
+	}
 	if (lpath) free(lpath);
 	if (rpath) free(rpath);
 	return (rc);

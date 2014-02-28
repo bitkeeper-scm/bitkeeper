@@ -295,6 +295,7 @@ find_root(char *dir)
 		if (isdir(buf)) {
 			/* found repo */
 			*p = 0;
+			if (((p - buf) > 4) && streq(p-4, "/.bk")) return (0);
 			return (strdup(buf));
 		}
 		for (p--; *p != '/'; p--); /* previous / */
