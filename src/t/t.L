@@ -40,6 +40,7 @@ echo $N Run L tests..................................................$NL
 cd "$BUILDDIR"
 make test-l >xyzOUT 2>xyzERR
 bk grep -q '^all.tcl:.*Failed\t0' xyzOUT || {
+	echo
 	cat xyzOUT
 	echo -------------------
 	fail -f xyzERR
