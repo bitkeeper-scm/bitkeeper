@@ -586,51 +586,6 @@ InstructionDesc const tclInstructionTable[] = {
 	 * -1 means append). */
     {"unsetLocal",	 5,    0,	  1,	{OPERAND_LVT4}},
 	/* Unset the local variable at index op1. */
-    {"mark-undef",	 1,    0,	  0,	{OPERAND_NONE}},
-	/* set the undef bit in stktop */
-
-    {"rot",		 2,    0,         1,    {OPERAND_UINT1}},
-	/* Rotate the top opnd elements in the stack */
-    {"l-index",		 5,    -1,        1,    {OPERAND_UINT4}},
-	/* Index into a nested struct/array/hash. opnd contains flags,
-	 * index is stktop, object to index into is stknext. */
-    {"l-deep-write",     9,    -1,        2,    {OPERAND_UINT4, OPERAND_UINT4}},
-	/* Write via L deep pointer pushed by l-index above.  opnd1 is a local
-	 * var index of a var that points to the top-level object being
-	 * indexed; it will be written if the top-level object needed to be
-	 * copied by l-index for copy-on-write.  opnd2 contains flags
-	 * indicating whether to leave old or new value on stack top.
-	 * stktop is the L deep pointer, stknext is the value to write. */
-    {"lsplit",		 2,    0,         1,    {OPERAND_UINT4}},
-	/* Perl-like string split. opnd is a flags word (see Expr_f),
-	 * stack contains the limit (optional), then the delimeter
-	 * (optional) then the string to split. */
-    {"l-defined",	 1,    0,         0,	{OPERAND_NONE}},
-	/* Test whether value at stackTop is the L undefined value. */
-    {"l-push-list-size", 1,    0,         0,	{OPERAND_NONE}},
-	/* Store the size of the list at stktop in the internal L
-	 * sizes stack.  Sizes are used to implement the L END keyword. */
-    {"l-push-string-size", 1,  0,         0,	{OPERAND_NONE}},
-	/* Store the length of the string at stktop in the internal L
-	 * sizes stack. */
-    {"l-read-size",	 1,    1,         0,	{OPERAND_NONE}},
-	/* Push what's on the top of the internal L sizes stack. */
-    {"l-pop-size",	 1,    0,         0,	{OPERAND_NONE}},
-	/* Pop the internal L sizes stack. */
-    {"l-push-undef",	 1,    1,         0,	{OPERAND_NONE}},
-	/* Push the L undef object. */
-    {"expandRot",	 2,    0,	  1,    {OPERAND_UINT1}},
-	/* Rotate the top opnd1 stack elements with those after
-	 * the expand marker (see expandStart). */
-    {"l-lindex-stk",	 2,    1,	  1,	{OPERAND_UINT1}},
-	/* push(listindex stktop opnd) except if opnd is <0 or
-	 * > # list elements then push the L undef object. */
-    {"l-list-insert",    9,    0,         3,    {OPERAND_LVT4, OPERAND_UINT4}},
-	/* Insert into list local var. Operands are local slot index,
-	 * flags, and list index to insert before (0 means prepend,
-	 * -1 means append). */
-    {"unsetLocal",	 5,    0,	  1,	{OPERAND_LVT4}},
-	/* Unset the local variable at index op1. */
     {"different-obj",	 5,    0,	  1,	{OPERAND_LVT4}},
 	/* Determine whether the variable whose name is at stktop
 	 * points to a different object as the given local. */
