@@ -31,7 +31,7 @@ echo OK
 echo $N Check new and co with files having termination CRLF .........$NL
 # create a file with line terminated with CRLF 
 # reference file with only LF
-printf 'data\r\n' > data
+printf 'data\r\r\n' > data
 echo 'data' > data.ref
 bk ci $Q -i data
 bk co $Q data || exit 1
@@ -44,7 +44,10 @@ echo OK
 
 echo $N Check edit and co with files having termination CRLF ........$NL
 # File is checked out edit already
-printf 'last line\r\n' >> data
+printf 'data\r\r\n' > data
+bk sfiles -c > emptylist
+test -s emptylist && fail -f emptylist
+printf 'last line\r\r\n' >> data
 echo 'last line' >> data.ref
 bk ci $Q -m'newlastline' data
 bk co $Q data || exit 1

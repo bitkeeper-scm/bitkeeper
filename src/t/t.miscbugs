@@ -119,3 +119,13 @@ bk pwd -P 2>ERR && fail -f ERR should fail
 echo "pwd: Cannot find package root." > WANT
 cmpfiles ERR WANT
 echo OK
+
+echon Test running inside .bk directory ...........................
+cd project/.bk
+bk root 2>../ERR && fail -f ../ERR should fail
+cd ..
+echo "root: cannot find package root." > WANT
+cmpfiles WANT ERR
+cd "$HERE"
+echo OK
+

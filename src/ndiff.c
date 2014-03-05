@@ -911,10 +911,10 @@ lcs(char *a, int alen, char *b, int blen)
 {
 	int	i, j;
 	int	ret;
-	int	d[alen+1][blen+1];
+	int	**d;
 
-	for (i = 0; i <= alen; i++) d[i][0] = 0;
-	for (j = 0; j <= blen; j++) d[0][j] = 0;
+	d = calloc(alen+1, sizeof(int *));
+	for (i = 0; i <= alen; i++) d[i] = calloc(blen+1, sizeof(int));
 
 	for (i = 1; i <= alen; i++) {
 		for (j = 1; j <= blen; j++) {
@@ -926,5 +926,7 @@ lcs(char *a, int alen, char *b, int blen)
 		}
 	}
 	ret = d[alen][blen];
+	for (i = 0; i <= alen; i++) free(d[i]);
+	free(d);
 	return (ret);
 }
