@@ -9108,11 +9108,11 @@ _hasDiffs(sccs *s, ser_t d, u32 flags, int inex, pfile *pf)
 				no_lf = 1;
 			}
 			/* now strip CR; if gline was "\n", glen now 0 */
-			if (glen && (gline[glen-1] == '\r')) glen--;
+			while (glen && (gline[glen-1] == '\r')) glen--;
 
 			/* now strip CR in weave if old broken sfile */
 			flen = strlen(fbuf);
-			if (flen && (fbuf[flen-1] == '\r')) flen--;
+			while (flen && (fbuf[flen-1] == '\r')) flen--;
 
 			unless (((flen == glen) &&
 				strneq(gline, fbuf, flen)) ||
@@ -14427,6 +14427,10 @@ doDiff(sccs *s, df_opt *dop, char *leftf, char *rightf,
 	if (WRITABLE(s) && !EDITED(s)) {
 		error = " (writable without lock!) ";
 	}
+	if (binaryCheck(diffs)) {
+		fputs("Binary files differ", out);
+		goto out;
+	}
 	while (fnext(buf, diffs)) {
 		if (first) {
 			if (dop->out_header) {
@@ -14449,7 +14453,7 @@ doDiff(sccs *s, df_opt *dop, char *leftf, char *rightf,
 	if (dop->out_comments && !first) {
 		fprintf(out, "\n");
 	}
-	fclose(diffs);
+out:	fclose(diffs);
 	unlink(diffFile);
 	return (0);
 }
@@ -14591,6 +14595,7 @@ normal_diff(sccs *s, char *lrev, char *lrevM,
 	/*
 	 * Create the lfile & rfile for diff
 	 */
+	lfile[0] = rfile[0] = 0;
 	if (mkDiffTarget(s, lrev, lrevM, dop->flags, lfile, pf)) {
 		goto done;
 	}
@@ -14615,8 +14620,10 @@ normal_diff(sccs *s, char *lrev, char *lrevM,
 	rc = doDiff(s, dop, lfile, rfile, out, lrev, rrev, ltag, rtag);
 	free(ltag);
 	free(rtag);
-done:	unless (streq(lfile, DEVNULL_RD)) unlink(lfile);
-	unless (streq(rfile, s->gfile) || streq(rfile, DEVNULL_RD)) unlink(rfile);
+done:	unless (!*lfile || streq(lfile, DEVNULL_RD)) unlink(lfile);
+	unless (!*rfile || streq(rfile, s->gfile) || streq(rfile, DEVNULL_RD)){
+		unlink(rfile);
+	}
 	if (lpath) free(lpath);
 	if (rpath) free(rpath);
 	return (rc);

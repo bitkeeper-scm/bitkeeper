@@ -96,7 +96,7 @@ cmd_pull_part2(int ac, char **av)
 	int	gzip = 0, verbose = 1, triggers_failed = 0;
 	int	rtags, update_only = 0, delay = -1;
 	char	*port = 0;
-	char	*keys = bktmp(0);
+	char	*keys;
 	char	*makepatch[10] = { "bk", "makepatch", 0 };
 	char	*rev = 0;
 	char	*p;
@@ -173,6 +173,7 @@ cmd_pull_part2(int ac, char **av)
 	/*
 	 * What we want is: remote => bk _prunekey => keys
 	 */
+	keys = bktmp(0);
 	fd = open(keys, O_WRONLY, 0);
  	if (prunekey(cset, &r, 0, fd, pkflags, 1, &local, &rem, &rtags) < 0) {
 		local = 0;	/* not set on error */

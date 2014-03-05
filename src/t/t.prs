@@ -912,6 +912,20 @@ grep -q '@@ other_function' GOT || {
 }
 echo OK
 
+echo $N Make sure binary files do not print tmp paths................$NL
+printf "This is\0a binary\n" > binfile
+bk new $Q binfile
+bk edit $Q binfile
+printf "Now with a \0 change\n" > binfile
+bk ci $Q -y.
+echo "Binary files differ" > WANT
+for dspec in :DIFFS: :DIFFS_U: :DIFFS_UP:
+do
+	bk log -nd$dspec -r+ binfile > GOT
+	cmpfiles WANT GOT
+done
+echo OK
+
 echo $N checking prs -C on branch side of merge .....................$NL
 cd "$HERE"
 bk _rm -fr project copy
