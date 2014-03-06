@@ -1620,9 +1620,18 @@ launch_wish(char *script, char **av)
 	if (strchr(script, '/')) {
 		strcpy(cmd_path, script);
 	} else {
-		sprintf(cmd_path, "%s/gui/lib/%s", bin, script);
+		if (proj_configbool(0, "legacyguis")) {
+			sprintf(cmd_path, "%s/gui/lib/legacy/%s", bin, script);
+		} else {
+			sprintf(cmd_path, "%s/gui/lib/%s", bin, script);
+		}
 	}
 	argv[++ac] = cmd_path;
+	unless (exists(cmd_path)) {
+		fprintf(stderr, "bk: %s command not found\n", script);
+		exit(1);
+	}
+
 	/*
 	 * Pass 1, get all the wish args first.
 	 */
