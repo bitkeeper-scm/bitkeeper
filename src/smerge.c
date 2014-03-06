@@ -14,7 +14,7 @@ private void	merge_conflicts(conflct *head);
 private int	resolve_conflict(conflct *curr);
 private diffln	*unidiff(conflct *curr, int left, int right);
 private int	sameline(ld_t *left, ld_t *right);
-private	int	file_init(char *file, char *rev, char *anno, file_t *f);
+private	int	file_init(char *file, int side, char *anno, file_t *f);
 private	void	file_free(file_t *f);
 private	int	do_diff_merge(void);
 
@@ -44,8 +44,10 @@ enum {
 
 enum {
 	LEFT,
-	GCA,
-	RIGHT
+	GCA,			/* GCA with whodel relative to LEFT rev */
+	RIGHT,
+	GCAR,			/* GCA with whodel relative to RIGHT rev */
+	NFILES
 };
 
 /* ld = line data  (Information to save about each line in the file) */
@@ -70,8 +72,8 @@ struct file {
 };
 
 
-private	char	*revs[3];
-private	file_t	body[3];
+private	char	*revs[NFILES];
+private	file_t	body[NFILES];
 private	char	*file;
 private	int	mode;
 private	int	fdiff;
@@ -163,7 +165,7 @@ smerge_main(int ac, char **av)
 	}
 	if (fdiff && mode == MODE_3WAY) mode = MODE_GCA;
 	file = av[optind];
-	revs[GCA] = find_gca(file, revs[LEFT], revs[RIGHT]);
+	revs[GCA] = revs[GCAR] = find_gca(file, revs[LEFT], revs[RIGHT]);
 
 	/*
 	 * Disable the merge_content heuristic if the merge GCA is a
@@ -176,8 +178,8 @@ smerge_main(int ac, char **av)
 		enable_mergefcns("3", 0);
 	}
 
-	for (i = 0; i < 3; i++) {
-		if (file_init(file, revs[i], anno, &body[i])) {
+	for (i = 0; i < NFILES; i++) {
+		if (file_init(file, i, anno, &body[i])) {
 			goto err;
 		}
 	}
@@ -202,11 +204,11 @@ smerge_main(int ac, char **av)
 		ret = do_weave_merge(start, end);
 	}
  err:
-	for (i = 0; i < 3; i++) {
+	for (i = 0; i < NFILES; i++) {
 		unless (i == RIGHT && identical) {
 			file_free(&body[i]);
 		}
-		free(revs[i]);
+		unless (i == GCAR) free(revs[i]);
 	}
 	return (ret);
 }
@@ -223,7 +225,7 @@ smerge_saveseq(u32 seq)
  * Open a file and populate the file_t structure.
  */
 private	int
-file_init(char *file, char *rev, char *anno, file_t *f)
+file_init(char *file, int side, char *anno, file_t *f)
 {
 	char	*p;
 	char	*end;
@@ -233,6 +235,7 @@ file_init(char *file, char *rev, char *anno, file_t *f)
 	int	i;
 	char	*sfile = name2sccs(file);
 	char	*inc, *exc;
+	char	*rev;
 	char	tmp[MAXPATH];
 
 	if (anno) flags = annotate_args(flags|GET_ALIGN, anno);
@@ -247,12 +250,24 @@ file_init(char *file, char *rev, char *anno, file_t *f)
 		return (-1);
 	}
 	free(sfile);
-	rev = strdup(rev);
+	if (side == GCA) {
+		s->whodel = sccs_findrev(s, revs[LEFT]);
+	} else if (side == GCAR){
+		s->whodel = sccs_findrev(s, revs[RIGHT]);
+	} else {
+		/*
+		 * Enable a nop whodel so that the annotation alignment is the
+		 * same.
+		 */
+		s->whodel = sccs_findrev(s, revs[side]);
+	}
+	rev = strdup(revs[side]);
 	if (inc = strchr(rev, '+')) *inc++ = 0;
 	if (exc = strchr(inc ? inc : rev, '-')) *exc++ = 0;
 
 	if (sccs_get(s, rev, 0, inc, exc, flags, f->tmpfile)) {
 		fprintf(stderr, "Fetch of revision %s failed!\n", rev);
+		free(rev);
 		return (-1);
 	}
 	free(rev);
@@ -408,8 +423,8 @@ printhighlight(int *highlight)
 }
 
 struct conflct {
-	int	start[3];	/* lines at start of conflict */
-	int	end[3];		/* lines after end of conflict */
+	int	start[NFILES];	/* lines at start of conflict */
+	int	end[NFILES];	/* lines after end of conflict */
 	int	start_seq;	/* seq of lines before 'start' */
 	int	end_seq;	/* seq of lines at 'end' */
 	ld_t	*merged;	/* result of an automerge */
@@ -437,7 +452,7 @@ do_weave_merge(u32 start, u32 end)
 {
 	conflct	*clist;
 	conflct	*curr;
-	int	mk[3];
+	int	mk[NFILES] = {0};
 	int	i;
 	int	len;
 	int	ret = 0;
@@ -448,7 +463,6 @@ do_weave_merge(u32 start, u32 end)
 	/* Merge any that *might* be incorrectly marked */
 	merge_conflicts(clist);
 
-	mk[0] = mk[1] = mk[2] = 0;
 	curr = clist;
 	while (curr) {
 		conflct	*tmp;
@@ -457,7 +471,9 @@ do_weave_merge(u32 start, u32 end)
 		len = curr->start[GCA] - mk[GCA];
 
 		/* should be the same number of lines */
-		for (i = 0; i < 3; i++) assert(len == curr->start[i] - mk[i]);
+		for (i = 0; i < NFILES; i++) {
+			assert(len == curr->start[i] - mk[i]);
+		}
 
 		for (i = 0; i < len; i++) {
 			ld_t	*gcaline = &body[GCA].lines[mk[GCA] + i];
@@ -483,7 +499,7 @@ do_weave_merge(u32 start, u32 end)
 			/* handle conflict */
 			if (resolve_conflict(curr)) ret = 1;
 		}
-		for (i = 0; i < 3; i++) mk[i] = curr->end[i];
+		for (i = 0; i < NFILES; i++) mk[i] = curr->end[i];
 
 		tmp = curr;
 		curr = curr->next;
@@ -492,7 +508,7 @@ do_weave_merge(u32 start, u32 end)
 	/* Handle any lines after the last conflict */
 
 	len = body[GCA].n - mk[GCA];
-	for (i = 0; i < 3; i++) assert(len == body[i].n - mk[i]);
+	for (i = 0; i < NFILES; i++) assert(len == body[i].n - mk[i]);
 
 	for (i = 0; i < len; i++) {
 		ld_t	*gcaline = &body[GCA].lines[mk[GCA] + i];
@@ -516,22 +532,20 @@ private conflct *
 find_conflicts(void)
 {
 	int	i, j;
-	int	mk[3];
-	ld_t	*lines[3];
+	int	mk[NFILES] = {0};
+	ld_t	*lines[NFILES];
 	conflct	*list = 0;
 	conflct	*end = 0;
 	conflct	*p;
 
-	for (i = 0; i < 3; i++) mk[i] = 0;
-
 	while (1) {
 		int	minlen;
 		int	at_end;
-		u32	seq[3];
+		u32	seq[NFILES];
 
 		/* Assume everything matches here */
 		minlen = INT_MAX;
-		for (i = 0; i < 3; i++) {
+		for (i = 0; i < NFILES; i++) {
 			lines[i] = &body[i].lines[mk[i]];
 			if (minlen > body[i].n - mk[i]) {
 				minlen = body[i].n - mk[i];
@@ -539,13 +553,14 @@ find_conflicts(void)
 		}
 		j = 0;
 		while (j < minlen &&
-		    lines[0][j].seq == lines[1][j].seq &&
-		    lines[0][j].seq == lines[2][j].seq) {
+		    lines[LEFT][j].seq == lines[RIGHT][j].seq &&
+		    lines[LEFT][j].seq == lines[GCA][j].seq &&
+		    lines[LEFT][j].seq == lines[GCAR][j].seq) {
 			j++;
 		}
 		/* at start of conflict or end of file */
 		at_end = 1;
-		for (i = 0; i < 3; i++) {
+		for (i = 0; i < NFILES; i++) {
 			mk[i] += j;
 			if (mk[i] < body[i].n) at_end = 0;
 		}
@@ -567,22 +582,22 @@ find_conflicts(void)
 		} else {
 			p->start_seq = 0;
 		}
-		for (i = 0; i < 3; i++) {
+		for (i = 0; i < NFILES; i++) {
 			p->start[i] = mk[i];
 			lines[i] = body[i].lines;
 		}
 
 		/* find end */
-		for (i = 0; i < 3; i++) {
+		for (i = 0; i < NFILES; i++) {
 			seq[i] = lines[i][mk[i]].seq;
 		}
 		do {
 			u32	maxseq = 0;
 			at_end = 1;
-			for (i = 0; i < 3; i++) {
+			for (i = 0; i < NFILES; i++) {
 				if (seq[i] > maxseq) maxseq = seq[i];
 			}
-			for (i = 0; i < 3; i++) {
+			for (i = 0; i < NFILES; i++) {
 				while (seq[i] < maxseq) {
 					++mk[i];
 					seq[i] = lines[i][mk[i]].seq;
@@ -592,11 +607,11 @@ find_conflicts(void)
 			}
 		} while (!at_end);
 
-		assert(seq[0] == seq[1] && seq[0] == seq[2]);
-		for (i = 0; i < 3; i++) {
+		assert(seq[0]);
+		for (i = 0; i < NFILES; i++) {
+			assert(seq[0] == seq[i]);
 			p->end[i] = mk[i];
 		}
-		assert(seq[0]);
 		p->end_seq = seq[0];
 	}
 	return (list);
@@ -610,7 +625,7 @@ contains_line(conflct *c, ld_t *line)
 {
 	int	i, j;
 
-	for (i = 0; i < 3; i++) {
+	for (i = 0; i < NFILES; i++) {
 		for (j = c->start[i]; j < c->end[i]; j++) {
 			if (sameline(&body[i].lines[j], line)) return (1);
 		}
@@ -638,7 +653,7 @@ merge_conflicts(conflct *head)
 
 				/* merge the two regions */
 				tmp = head->next;
-				for (i = 0; i < 3; i++) {
+				for (i = 0; i < NFILES; i++) {
 					head->end[i] = tmp->end[i];
 				}
 				assert(tmp->end_seq);
@@ -864,7 +879,7 @@ do_diff_merge(void)
 	conflct	conf;
 
 	ldiff = diffwalk_new(&body[GCA], &body[LEFT]);
-	rdiff = diffwalk_new(&body[GCA], &body[RIGHT]);
+	rdiff = diffwalk_new(&body[GCAR], &body[RIGHT]);
 
 	gcaline = 1;
 	while (1) {
@@ -900,8 +915,8 @@ do_diff_merge(void)
 			}
 		}
 		memset(&conf, 0, sizeof(conf));
-		conf.start[GCA] = start - 1;
-		conf.end[GCA] = end - 1;
+		conf.start[GCA] = conf.start[GCAR] = start - 1;
+		conf.end[GCA] = conf.end[GCAR] = end - 1;
 #if SHOW_SEQ
 		if (start - 1 > 0) {
 			conf.start_seq = body[GCA].lines[start - 2].seq;
@@ -1140,7 +1155,7 @@ user_conflict(conflct *curr)
 	switch (mode) {
 	    case MODE_GCA:
 		sameleft = samedata(curr, GCA, LEFT);
-		sameright = samedata(curr, GCA, RIGHT);
+		sameright = samedata(curr, GCAR, RIGHT);
 		unless (sameleft && !sameright) {
 			printf("<<<<<<< local %s %s vs %s\n",
 			    file, revs[GCA], revs[LEFT]);
@@ -1152,8 +1167,8 @@ user_conflict(conflct *curr)
 		}
 		unless (sameright && !sameleft) {
 			printf("<<<<<<< remote %s %s vs %s\n",
-			    file, revs[GCA], revs[RIGHT]);
-			diffs = unidiff(curr, GCA, RIGHT);
+			    file, revs[GCAR], revs[RIGHT]);
+			diffs = unidiff(curr, GCAR, RIGHT);
 			for (i = 0; diffs[i].ld; i++) {
 				printline(diffs[i].ld, diffs[i].c, 1);
 			}
@@ -1188,7 +1203,7 @@ user_conflict(conflct *curr)
 		break;
 	    case MODE_NEWONLY:
 		sameleft = samedata(curr, GCA, LEFT);
-		sameright = samedata(curr, GCA, RIGHT);
+		sameright = samedata(curr, GCAR, RIGHT);
 		unless (sameleft && !sameright) {
 			printf("<<<<<<< local %s %s vs %s\n",
 			    file, revs[GCA], revs[LEFT]);
@@ -1202,8 +1217,8 @@ user_conflict(conflct *curr)
 		}
 		unless (sameright && !sameleft) {
 			printf("<<<<<<< remote %s %s vs %s\n",
-			    file, revs[GCA], revs[RIGHT]);
-			diffs = unidiff(curr, GCA, RIGHT);
+			    file, revs[GCAR], revs[RIGHT]);
+			diffs = unidiff(curr, GCAR, RIGHT);
 			for (i = 0; diffs[i].ld; i++) {
 				if (diffs[i].c != '-') {
 					printline(diffs[i].ld, diffs[i].c, 1);
@@ -1233,7 +1248,7 @@ user_conflict_fdiff(conflct *c)
 	switch (mode) {
 	    case MODE_GCA:
 		left = unidiff(c, GCA, LEFT);
-		right = unidiff(c, GCA, RIGHT);
+		right = unidiff(c, GCAR, RIGHT);
 		break;
 	    case MODE_2WAY:
 		/* fake a diff output */
@@ -1272,7 +1287,7 @@ user_conflict_fdiff(conflct *c)
 		}
 		left[j].ld = 0;
 		free(diffs);
-		diffs = unidiff(c, GCA, RIGHT);
+		diffs = unidiff(c, GCAR, RIGHT);
 		for (i = 0; diffs[i].ld; i++);
 		right = calloc(i+1, sizeof(diffln));
 		j = 0;
@@ -1594,7 +1609,7 @@ merge_only_one(conflct *c)
 		c->merged[i].line = 0;
 		return (1);
 	}
-	if (samedata(c, GCA, RIGHT)) {
+	if (samedata(c, GCAR, RIGHT)) {
 		int	len = c->end[LEFT] - c->start[LEFT];
 		c->merged = calloc(len + 1, sizeof(ld_t));
 		for (i = 0; i < len; i++) {
@@ -1687,7 +1702,7 @@ merge_content(conflct *c)
 	int	ok;
 
 	left = unidiff(c, GCA, LEFT);
-	right = unidiff(c, GCA, RIGHT);
+	right = unidiff(c, GCAR, RIGHT);
 
 	modified = lines_modified(left);
 	unless (modified) goto bad;
@@ -1765,7 +1780,7 @@ merge_content(conflct *c)
  * and those indexes.
  */
 private void
-split_conflict(conflct *c, int splitidx[3])
+split_conflict(conflct *c, int splitidx[NFILES])
 {
 	conflct	*newc;
 	int	i;
@@ -1777,7 +1792,7 @@ split_conflict(conflct *c, int splitidx[3])
 	/* create a new conflict region */
 	newc = new(conflct);
 
-	for (i = 0; i < 3; i++) {
+	for (i = 0; i < NFILES; i++) {
 		newc->end[i] = c->end[i];
 		newc->start[i] = c->end[i] = c->start[i] + splitidx[i];
 	}
@@ -1800,14 +1815,14 @@ split_conflict(conflct *c, int splitidx[3])
 private int
 merge_common_header(conflct *c)
 {
-	ld_t	*start[3];
-	int	len[3];
+	ld_t	*start[NFILES];
+	int	len[NFILES];
 	int	minlen;
-	int	splitidx[3];
+	int	splitidx[NFILES];
 	int	i, j;
 	int	chkgca;
 
-	for (i = 0; i < 3; i++) {
+	for (i = 0; i < NFILES; i++) {
 		start[i] = &body[i].lines[c->start[i]];
 		len[i] = c->end[i] - c->start[i];
 	}
@@ -1828,7 +1843,7 @@ merge_common_header(conflct *c)
 
 	splitidx[LEFT] = i;
 	splitidx[RIGHT] = i;
-	splitidx[GCA] = j;
+	splitidx[GCA] = splitidx[GCAR] = j;
 
 	split_conflict(c, splitidx);
 
@@ -1842,14 +1857,14 @@ merge_common_header(conflct *c)
 private int
 merge_common_footer(conflct *c)
 {
-	ld_t	*start[3];
-	int	len[3];
+	ld_t	*start[NFILES];
+	int	len[NFILES];
 	int	minlen;
-	int	splitidx[3];
+	int	splitidx[NFILES];
 	int	i, j;
 	int	chkgca;
 
-	for (i = 0; i < 3; i++) {
+	for (i = 0; i < NFILES; i++) {
 		start[i] = &body[i].lines[c->start[i]];
 		len[i] = c->end[i] - c->start[i];
 	}
@@ -1874,6 +1889,7 @@ merge_common_footer(conflct *c)
 	splitidx[LEFT] = len[LEFT] - i;
 	splitidx[RIGHT] = len[RIGHT] - i;
 	splitidx[GCA] = len[GCA] - j;
+	splitidx[GCAR] = len[GCAR] - j;
 
 	split_conflict(c, splitidx);
 
@@ -1889,13 +1905,13 @@ merge_common_deletes(conflct *c)
 {
 	diffln	*left, *right;
 	diffln	*p;
-	int	splitidx[3];
+	int	splitidx[NFILES];
 	int	i, j;
 	int	ret = 0;
 	int	cnt;
 
 	left = unidiff(c, GCA, LEFT);
-	right = unidiff(c, GCA, RIGHT);
+	right = unidiff(c, GCAR, RIGHT);
 	/*
 	 * remove matching deletes at beginning
 	 *
@@ -1924,10 +1940,11 @@ merge_common_deletes(conflct *c)
 	if (j < cnt) cnt = j;
 
 	if (cnt > 0) {
-		for (i = 0; i < 3; i++) {
+		for (i = 0; i < NFILES; i++) {
 			splitidx[i] = c->end[i] - c->start[i];
 		}
 		splitidx[GCA] -= cnt;
+		splitidx[GCAR] -= cnt;
 		split_conflict(c, splitidx);
 		ret = 1;
 	}
@@ -1945,18 +1962,18 @@ merge_common_deletes(conflct *c)
 private int
 merge_added_oneside(conflct *c)
 {
-	ld_t	*start[3];
+	ld_t	*start[NFILES];
 	int	maxlen;
-	int	splitidx[3];
+	int	splitidx[NFILES];
 	int	i, side;
 	u32	seq;
 
 	/* Each need to have some lines for this case to make sense */
-	for (i = 0; i < 3; i++) {
+	for (i = 0; i < NFILES; i++) {
 		unless (c->end[i] != c->start[i]) return (0);
 	}
 
-	for (i = 0; i < 3; i++) {
+	for (i = 0; i < NFILES; i++) {
 		start[i] = &body[i].lines[c->start[i]];
 		splitidx[i] = 0;
 	}
