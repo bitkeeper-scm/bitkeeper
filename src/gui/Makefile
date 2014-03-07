@@ -23,7 +23,7 @@ COMMON	= ../port/$(SYS)_platform.tcl config.tcl bktheme.tcl tooltip.tcl \
 LCOMMON = common.l search.l
 SRC	= appState.tcl ciedit.tcl citool.tcl \
 	  common.tcl config.tcl csettool.tcl difflib.tcl difftool.tcl \
-	  fm3tool.tcl fmtool.tcl helptool.tcl msgtool.tcl progress.tcl \
+	  fm3tool.tcl fmtool.tcl helptool.tcl msgtool.tcl \
 	  renametool.tcl revtool.tcl search.tcl setuptool.tcl \
 	  ../port/$(SYS)_platform.tcl fmlib.tcl
 
