@@ -7220,7 +7220,7 @@ get_bp(sccs *s, char *printOut, int flags, ser_t d,
 	 */
 #define	BAD	(GET_PREFIX|GET_ASCII|GET_ALIGN|\
 		GET_NOHASH|GET_HASHONLY|GET_DIFFS|GET_BKDIFFS|\
-		GET_SKIPGONE|GET_SEQ|GET_COMMENTS)
+		GET_SKIPGONE|GET_SEQ)
 	if (flags & BAD) {
 		fprintf(stderr,
 		    "get: bad flags on get for %s: %x\n", s->gfile, flags);
