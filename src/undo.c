@@ -60,7 +60,6 @@ undo_main(int ac,  char **av)
 	char	*must_have = 0;
 	char	**nav = 0;
 	options	*opts;
-	u32	nf = 0;
 	longopt	lopts[] = {
 		{ "force-unpopulate", 310 },
 
@@ -116,21 +115,6 @@ undo_main(int ac,  char **av)
 	save_log_markers();
 	// XXX - be nice to do this only if we actually are going to undo
 	unlink(BACKUP_SFIO); /* remove old backup file */
-	unless (opts->quiet || opts->verbose) {
-		/*
-		 * Progress-bar tick counts:
-		 *   getrev: filesNrevs
-		 *   bk cset: csetrevs (if save==1)
-		 *   moveAndSave: sfiles (uniq of filesNrevs)
-		 *   bk stripdel: filesNrevs
-		 *   bk renumber: sfiles that exist
-		 *   bk names: sfiles that exist
-		 * Guess each at # files in repo then adjust as we go along.
-		 */
-		nf = repo_nfiles(0, 0);
-		opts->tick_cur = 0;
-		opts->tick = progress_start(PROGRESS_BAR, nf*(5+save));
-	}
 	/*
 	 * Get a list of <file>|<key> entries, one per delta,
 	 * so it may have multiple entries for the same file.
@@ -171,13 +155,19 @@ undo_main(int ac,  char **av)
 	uniqLines(sfiles, free);
 
 	/*
-	 * Now we know better how many iterations we will make, so
-	 * adjust down the progress bar max accordingly.
+	 * Only now do we know how many iterations we will make, so
+	 * finally start the progress bar:
+	 *   bk cset: csetrevs (if save==1)
+	 *   moveAndSave: sfiles (uniq of filesNrevs)
+	 *   bk stripdel: filesNrevs
+	 *   bk renumber: sfiles that exist
+	 *   bk names: sfiles that exist
 	 */
-	if (opts->tick) {
-		progress_adjustMax(opts->tick, (i64)(5+save)*nf -
-		    (2*nLines(filesNrevs) + 3*nLines(sfiles) +
-		     (save ? ncsetrevs : 0)));
+	unless (opts->quiet || opts->verbose) {
+		opts->tick_cur = 0;
+		opts->tick = progress_start(PROGRESS_BAR,
+				(save ? ncsetrevs : 0) +
+				(nLines(filesNrevs) + 3*nLines(sfiles)));
 	}
 
 	bktmp(undo_list);
@@ -694,7 +684,6 @@ getrev(options *opts, char *top_rev, int aflg)
 	f = popen(cmd, "r");
 	free(cmd);
 	while (fnext(revline, f)) {
-		if (opts->tick) progress(opts->tick, ++(opts->tick_cur));
 		chomp(revline);
 		list = addLine(list, strdup(revline));
 	}
