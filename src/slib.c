@@ -6496,12 +6496,12 @@ deltaChk(sccs *cset, char *rk, char *dk)
 }
 
 private int
-getKey(sccs *s, MDBM *DB, char *data, int flags, hashpl *dbstate)
+getKey(sccs *s, MDBM *DB, char *data, int hashFlags, int flags, hashpl *dbstate)
 {
 	char	*k, *v;
 	int	rc;
 
-	if (flags & DB_DB) {
+	if (hashFlags & DB_DB) {
 		hash_parseLine(data, DB->memdb, dbstate);
 		return (1);
 	}
@@ -6966,7 +6966,8 @@ out:			if (slist) free(slist);
 				continue;
 			}
 			if (hash &&
-			    getKey(s, DB, buf, hashFlags|flags, &dbstate) != 1) {
+			    getKey(s, DB, buf, hashFlags, flags, &dbstate)
+			    != 1) {
 				continue;
 			}
 			lines++;
@@ -7114,7 +7115,7 @@ write:
 			print = visitedstate(state, slist);
 		}
 	}
-	if (hash) getKey(s, DB, 0, hashFlags|flags, &dbstate);
+	if (hash) getKey(s, DB, 0, hashFlags, flags, &dbstate);
 
 	if (BITKEEPER(s) &&
 	    d && (flags & NEWCKSUM) && !(flags&GET_SHUTUP) && lines) {
