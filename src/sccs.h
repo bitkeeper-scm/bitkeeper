@@ -91,8 +91,7 @@ int	checking_rmdir(char *dir);
 #define	GET_RELPATH	0x00000010	/* like GET_MODNAME but full relative */
 #define	GET_SKIPGONE	0x00000020	/* ignore gone deltas in HASH */
 #define	GET_SEQ		0x00000040	/* sccs_get: prefix with sequence no */
-#define	GET_COMMENTS	0x00000080	/* diffs -H: prefix diffs with hist */
-#define	DIFF_COMMENTS	GET_COMMENTS
+/* Unused		0x00000080 */
 #define	GET_PREFIX	\
     (GET_REVNUMS|GET_MD5KEY|GET_USER|GET_LINENUM|GET_MODNAME|\
      GET_RELPATH|GET_PREFIXDATE|GET_SEQ|GET_LINENAME|GET_SERIAL)
