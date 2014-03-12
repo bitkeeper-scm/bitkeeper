@@ -2167,17 +2167,42 @@ proc prs {revs text} \
 	set old ""
 	set new ""
 	foreach rev $revs {
-		if {![regexp {^ ([+-])([0-9]+\.[0-9.]+)} $rev -> sign rev]} {
+		if {![regexp {^ ([+-])([0-9]+\.[0-9.\-dx]+)}	\
+		      $rev -> sign rev]} {
 			continue
 		}
-		if {$sign eq "-"} {
-			lappend old $rev
+		set all [split $rev -]
+		if {[llength $all] > 1} {
+			foreach a $all {
+				if {[string index $a 0] != "d" && \
+					[string index $a 0] != "x"} {
+					continue
+				}
+				lappend old [string range $a 1 end]
+			}
 		} else {
-			lappend new $rev
+			if {$sign eq "-"} {
+				lappend old $rev
+			} else {
+				lappend new $rev
+			}
 		}
 	}
-	set old [join [lsort -dict -unique $old] ,]
-	set new [join [lsort -dict -unique $new] ,]
+	set old [lsort -dict -unique $old]
+	set new [lsort -dict -unique $new]
+	if {$old == $new} {
+		# don't show delete if it's identical
+		# to the list of revs that added
+		set old ""
+	} else {
+		# filter out from deleted any rev that
+		# also added
+		set new_old ""
+		foreach r $old {if {$r ni $new} {lappend new_old $r}}
+		set old $new_old
+	}
+	set old [join $old ,]
+	set new [join $new ,]
 	doprs $text $old old
 	doprs $text $new new
 }

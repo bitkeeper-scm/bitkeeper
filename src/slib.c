@@ -6515,12 +6515,12 @@ deltaChk(sccs *cset, char *rk, char *dk)
 }
 
 private int
-getKey(sccs *s, MDBM *DB, char *data, int flags, hashpl *dbstate)
+getKey(sccs *s, MDBM *DB, char *data, int hashFlags, int flags, hashpl *dbstate)
 {
 	char	*k, *v;
 	int	rc;
 
-	if (flags & DB_DB) {
+	if (hashFlags & DB_DB) {
 		hash_parseLine(data, DB->memdb, dbstate);
 		return (1);
 	}
@@ -7037,7 +7037,8 @@ out:			if (slist) free(slist);
 				continue;
 			}
 			if (hash &&
-			    getKey(s, DB, buf, hashFlags|flags, &dbstate) != 1) {
+			    getKey(s, DB, buf, hashFlags, flags, &dbstate)
+			    != 1) {
 				continue;
 			}
 			lines++;
@@ -7195,7 +7196,7 @@ write:
 			}
 		}
 	}
-	if (hash) getKey(s, DB, 0, hashFlags|flags, &dbstate);
+	if (hash) getKey(s, DB, 0, hashFlags, flags, &dbstate);
 
 	if (BITKEEPER(s) &&
 	    d && (flags & NEWCKSUM) && !(flags&GET_SHUTUP) && lines) {
@@ -7301,7 +7302,7 @@ get_bp(sccs *s, char *printOut, int flags, ser_t d,
 	 */
 #define	BAD	(GET_PREFIX|GET_ASCII|GET_ALIGN|\
 		GET_NOHASH|GET_HASHONLY|GET_DIFFS|GET_BKDIFFS|\
-		GET_SKIPGONE|GET_SEQ|GET_COMMENTS)
+		GET_SKIPGONE|GET_SEQ)
 	if (flags & BAD) {
 		fprintf(stderr,
 		    "get: bad flags on get for %s: %x\n", s->gfile, flags);
@@ -9206,11 +9207,11 @@ _hasDiffs(sccs *s, ser_t d, u32 flags, int inex, pfile *pf)
 				no_lf = 1;
 			}
 			/* now strip CR; if gline was "\n", glen now 0 */
-			if (glen && (gline[glen-1] == '\r')) glen--;
+			while (glen && (gline[glen-1] == '\r')) glen--;
 
 			/* now strip CR in weave if old broken sfile */
 			flen = strlen(fbuf);
-			if (flen && (fbuf[flen-1] == '\r')) flen--;
+			while (flen && (fbuf[flen-1] == '\r')) flen--;
 
 			unless (((flen == glen) &&
 				strneq(gline, fbuf, flen)) ||
@@ -14527,6 +14528,10 @@ doDiff(sccs *s, df_opt *dop, char *leftf, char *rightf,
 	if (WRITABLE(s) && !EDITED(s)) {
 		error = " (writable without lock!) ";
 	}
+	if (binaryCheck(diffs)) {
+		fputs("Binary files differ", out);
+		goto out;
+	}
 	while (fnext(buf, diffs)) {
 		if (first) {
 			if (dop->out_header) {
@@ -14549,7 +14554,7 @@ doDiff(sccs *s, df_opt *dop, char *leftf, char *rightf,
 	if (dop->out_comments && !first) {
 		fprintf(out, "\n");
 	}
-	fclose(diffs);
+out:	fclose(diffs);
 	unlink(diffFile);
 	return (0);
 }
@@ -14691,6 +14696,7 @@ normal_diff(sccs *s, char *lrev, char *lrevM,
 	/*
 	 * Create the lfile & rfile for diff
 	 */
+	lfile[0] = rfile[0] = 0;
 	if (mkDiffTarget(s, lrev, lrevM, dop->flags, lfile, pf)) {
 		goto done;
 	}
@@ -14715,8 +14721,10 @@ normal_diff(sccs *s, char *lrev, char *lrevM,
 	rc = doDiff(s, dop, lfile, rfile, out, lrev, rrev, ltag, rtag);
 	free(ltag);
 	free(rtag);
-done:	unless (streq(lfile, DEVNULL_RD)) unlink(lfile);
-	unless (streq(rfile, s->gfile) || streq(rfile, DEVNULL_RD)) unlink(rfile);
+done:	unless (!*lfile || streq(lfile, DEVNULL_RD)) unlink(lfile);
+	unless (!*rfile || streq(rfile, s->gfile) || streq(rfile, DEVNULL_RD)){
+		unlink(rfile);
+	}
 	if (lpath) free(lpath);
 	if (rpath) free(rpath);
 	return (rc);

@@ -1,0 +1,23 @@
+
+echo $N BAM and porting .............................................$NL
+# Make a bam file in a component, make this the bam server
+nested project
+bk bam server $Q .
+echo bam > gcc/bam
+bk new $Q -b gcc/bam
+bk commit $Q -ybam
+# bam data in a standalone component
+bk detach $Q gcc ../gcc
+cd ../gcc
+bk bam server $Q .
+# New bam data
+bk edit $Q bam
+echo more good bam >> bam
+bk delta $Q -ybambam bam
+bk commit $Q -ybambam
+# port used to not find bam data because of different rootkeys
+# Now that it uses syncroot, it works
+cd ../project/gcc
+bk port $Q "$HERE/gcc" || fail port failed
+bk get $Q bam || fail get of bam data failed
+echo OK

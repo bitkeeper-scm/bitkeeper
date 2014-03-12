@@ -425,7 +425,7 @@ echo OK
 
 echo $N Test collapse -e@bad.repo ...................................$NL
 bk collapse -e@bad.repo 2>ERR && fail -f ERR
-grep -q 'collapse: failed to contact bad.repo for -@.' ERR || fail -f ERR
+grep -q 'collapse: failed to contact .*bad.repo for -@.' ERR || fail -f ERR
 echo OK
 
 echo $N Test collapse -e@ when missing tip ..........................$NL
@@ -462,7 +462,10 @@ echo OK
 echo $N Test collapse -e@url ........................................$NL
 bk new $Q -c myfile || fail
 bk commit $Q -yhi2 || fail
-bk collapse -e@../project || fail
+mkdir src
+cd src
+bk collapse -e@../../project || fail
+cd ..
 touch GOT
 test "`bk sfiles -cp`" && fail
 bk sfiles -x > GOT

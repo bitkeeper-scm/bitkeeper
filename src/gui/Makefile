@@ -11,9 +11,8 @@ endif
 
 REPO   := $(shell basename "`bk -P root`")
 LIBDIR	= lib
-GUIS	= revtool citool oldcitool helptool difftool csettool fmtool fm3tool \
-	  msgtool renametool setuptool bugform supportform showproc \
-	  catcomments debugtool
+GUIS	= revtool citool helptool difftool csettool fmtool fm3tool \
+	  msgtool renametool setuptool 
 TCLWRAP	= ../tclwrap
 DOIT	= ../t/doit
 GUITEST = ../t/guitest.tcl
@@ -22,12 +21,11 @@ T	= $(REPO)/src/t
 COMMON	= ../port/$(SYS)_platform.tcl config.tcl bktheme.tcl tooltip.tcl \
 	  common.tcl
 LCOMMON = common.l search.l
-SRC	= appState.tcl bugform.tcl buglib.tcl ciedit.tcl citool.tcl \
+SRC	= appState.tcl ciedit.tcl citool.tcl \
 	  common.tcl config.tcl csettool.tcl difflib.tcl difftool.tcl \
-	  fm3tool.tcl fmtool.tcl helptool.tcl msgtool.tcl progress.tcl \
+	  fm3tool.tcl fmtool.tcl helptool.tcl msgtool.tcl \
 	  renametool.tcl revtool.tcl search.tcl setuptool.tcl \
-	  ../port/$(SYS)_platform.tcl supportform.tcl supportlib.tcl \
-	  showproc.tcl debugtool.l fmlib.tcl
+	  ../port/$(SYS)_platform.tcl fmlib.tcl
 
 default: notes/BUILD
 	@cat notes/BUILD
@@ -36,6 +34,7 @@ default: notes/BUILD
 ordered:
 	$(Q)$(MAKE) tcltk
 	$(Q)$(MAKE) $(GUIS)
+	$(Q)(cd legacy && make)
 
 gui guis:  ../tclwrap lib images ordered
 	@echo GUIs are up-to-date
@@ -99,15 +98,6 @@ wc: $(SRC)
 
 FORCE:
 
-bugform: $(COMMON) search.tcl appState.tcl buglib.tcl bugform.tcl
-	@(echo 'wm withdraw .' ;  cat $^) | $(TCLWRAP) > $(LIBDIR)/bugform
-
-supportform: $(COMMON) search.tcl appState.tcl supportlib.tcl supportform.tcl
-	@(echo 'wm withdraw .' ;  cat $^) | $(TCLWRAP) > $(LIBDIR)/supportform
-
-oldcitool: $(COMMON) search.tcl appState.tcl progress.tcl ciedit.tcl citool.tcl
-	@(echo 'wm withdraw .' ; cat $^) |  $(TCLWRAP) > $(LIBDIR)/oldcitool
-
 citool: $(COMMON) appState.tcl ciedit.tcl $(LCOMMON) listbox.l citool.l
 	@(	echo 'wm withdraw .' ;		\
 		cat $(filter %.tcl,$^) ;	\
@@ -145,19 +135,3 @@ revtool: $(COMMON) search.tcl appState.tcl revtool.tcl
 
 setuptool: $(COMMON) tkwizard.tcl setuptool.tcl
 	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/setuptool
-
-showproc: showproc.tcl
-	@(echo "wm withdraw ."; cat $^) | $(TCLWRAP) > $(LIBDIR)/showproc
-
-catcomments: catcomments.l
-	@cat $^ > $(LIBDIR)/catcomments.l
-
-debugtool: $(COMMON) appState.tcl $(LCOMMON) debugtool.l
-	@(	echo 'wm withdraw .' ;		\
-		cat $(filter %.tcl,$^) ;	\
-		echo ; echo 'L {' ; echo ;	\
-		cat $(filter %.l,$^) ;		\
-		echo '}' ; 		\
-		echo 'main $$argc $$argv' ;	\
-	) | $(TCLWRAP) > $(LIBDIR)/debugtool
-	@cp -f debugtool.l debugserver.l $(LIBDIR)
