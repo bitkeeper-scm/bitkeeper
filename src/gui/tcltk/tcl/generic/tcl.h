@@ -818,11 +818,11 @@ typedef struct Tcl_ObjType {
 
 typedef struct Tcl_Obj {
 #ifndef TCL_MEM_DEBUG
-    int refCount:31;		/* When 0 the object will be freed. */
-    int undef:1;		/* Used by L to mark an object as having
+    unsigned int undef:1;	/* Used by L to mark an object as having
 				 * the undef value.  Steal a bit from
 				 * refCount to avoid increasing the
 				 * Tcl_Obj memory footprint. */
+    int refCount:31;		/* When 0 the object will be freed. */
 #else
     int refCount;
     int undef;

@@ -43,12 +43,12 @@ else
 	SHARED := --disable-shared
 	PCRE_OBJ:= bin/tclsh
 	ifeq "$(shell uname)" "Darwin"
-		AQUA := 1
+		AQUA := --enable-aqua
+		XFTSUPPORT :=
 		BKAPP=bin/BitKeeper.app
 		SO := .dylib
 		SINGLE_MODULE := "LDFLAGS=-single_module"
-		ENABLE_64BIT=
-		ifeq "$(shell uname -p)" "G5"
+		ifeq "$(shell uname -m)" "x86_64"
 			ENABLE_64BIT=--enable-64bit
 		endif
 		ifeq (10.,$(findstring 10.,$(shell uname -r)))
@@ -80,8 +80,8 @@ REGVERSION := 1.2
 TKTABLE := Tktable2.10
 
 LIBTKTABLE := lib$(TKTABLE)$(SO)
-TREECTRL := treectrl2.2.9
-LIBTREECTRL := libtreectrl2.2$(SO)
+TREECTRL := treectrl2.4.1
+LIBTREECTRL := libtreectrl2.4$(SO)
 BWIDGET := BWidget1.8
 TCLBUILD := ../build/tcl/Tcl.framework
 TKBUILD  := ../build/tk/Tk.framework
@@ -145,7 +145,7 @@ tcl/$S/Makefile: tcl/$S/configure $(LIBPCRE) Makefile
 tk/$S/Makefile: tk/$S/configure Makefile
 	$(if $(Q),@echo Configuring Tk,)
 	$(Q)cd tk/$S; \
-	./configure $(QUIET) \
+	./configure $(QUIET) --with-tcl=../../tcl/$S $(AQUA) \
 	    $(ENABLE_64BIT) $(XSSSUPPORT) $(XFTSUPPORT) $(SHARED) $(SYMBOLS)
 
 populate:
@@ -321,7 +321,7 @@ bin/tclsh$(EXE): tcl/$S/Makefile Lversion-L.sh Lversion-C.sh
 	cd tcl/$S && \
 	$(MAKE) Q=$(Q) prefix= exec_prefix= INSTALL_ROOT=../.. \
 	    XLIBS="$(LIBTOMCRYPT)" \
-	    install-binaries install-libraries
+	    install-binaries install-libraries install-headers
 	if [ -x bin/tclsh$(TCLVERSION)$(EXE) ] ; then \
 		mv bin/tclsh$(TCLVERSION)$(EXE) bin/tclsh$(EXE) ; \
 	fi
@@ -346,7 +346,7 @@ bin/bkgui$(EXE): tk/$S/Makefile bin/tclsh$(EXE)
 	$(MAKE) prefix= exec_prefix= INSTALL_ROOT=../.. \
 	    XLIBS="$(LIBTOMCRYPT) $(LIBPCRE)" \
 	    BK_TCL_LIB="$(LIBTCL)" \
-	    install-binaries install-libraries
+	    install-binaries install-libraries install-headers
 	rm -rf include usr lib/tk*/images
 	cd lib/tcl$(TCLVERSION)/encoding/; \
 	    mkdir tmp; \
