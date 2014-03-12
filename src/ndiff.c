@@ -44,12 +44,13 @@ private	u32	hash_ignore_ws(void *buf, int len,
 private	u32	hash_ignore_ws_chg(void *data, int len,
     int side, int last, void *extra);
 
-private void	printLine(void *data, int len, int side, int last,
+private void	printLine(char *prefix, void *data, int len, int side,
+    int last, void *extra, FILE *out);
+private	void	printHeader(int lno, int li, int ll, int ri, int rl,
     void *extra, FILE *out);
-private	void	printHeader(int lno, void *extra, FILE *out);
 private	void	printDeco(u32 where, void *extra, FILE *out);
 
-private void	sdPrint(void *data, int len, int side, int last,
+private void	sdPrint(char *prefix, void *data, int len, int side, int last,
     void *extra, FILE *out);
 private void	sdState(u32 where, void *extra, FILE *out);
 
@@ -202,6 +203,9 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 	pcre	*re = 0;
 	FILE	*fout = 0;
 	struct	stat sb[2];
+	struct	tm	*tm;
+	long	offset;
+	char	buf[1024];
 
 	if (getenv("_BK_USE_EXTERNAL_DIFF")) {
 		return (external_diff(file1, file2, dop, out));
@@ -363,11 +367,15 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 
 	/* Print the diffs. */
 	if (o->dop->out_unified) {
-		diff_printUnified(dc,
-		    file1, &sb[0].st_mtime,
-		    file2, &sb[1].st_mtime,
-		    o->dop->context,
-		    printLine, o->dop->pattern ? printHeader : 0, fout);
+		/* print header */
+		tm = localtimez(&sb[0].st_mtime, &offset);
+		strftime(buf, 1024, "%Y-%m-%d %H:%M:%S", tm);
+		fprintf(fout, "--- %s\t%s %s\n", files[0], buf, tzone(offset));
+		tm = localtimez(&sb[1].st_mtime, &offset);
+		strftime(buf, 1024, "%Y-%m-%d %H:%M:%S", tm);
+		fprintf(fout, "+++ %s\t%s %s\n", files[1], buf, tzone(offset));
+		diff_printUnified(dc, o->dop->context,
+		    printLine, printHeader, fout);
 	} else if (o->dop->out_rcs) {
 		diff_printRCS(dc, printLine, fout);
 	} else if (o->dop->out_define) {
@@ -643,10 +651,12 @@ hash_ignore_ws(void *data, int len, int side, int last, void *extra)
 }
 
 private void
-printLine(void *data, int len, int side, int last, void *extra, FILE *out)
+printLine(char *prefix, void *data, int len, int side, int last,
+    void *extra, FILE *out)
 {
 	filedf	*o = (filedf *)extra;
 
+	fprintf(out, "%s", prefix);
 	fwrite(data, len, 1, out);
 	if (last && !o->files[side].nl) {
 		fputc('\n', out);
@@ -657,19 +667,28 @@ printLine(void *data, int len, int side, int last, void *extra, FILE *out)
 }
 
 private	void
-printHeader(int lno, void *extra, FILE *out)
+printHeader(int lno, int li, int ll, int ri, int rl, void *extra, FILE *out)
 {
 	int	i;
 	filedf	*o = (filedf *)extra;
 
-	EACH_REVERSE(o->fn_defs) {
-		if (o->fn_defs[i].lno <= lno) {
-			fprintf(out, "%.*s",
-			    (int)min(40, strlen(o->fn_defs[i].s)),
-			    o->fn_defs[i].s);
-			return;
+	fprintf(out, "@@ -%d", li);
+	if (!li || (ll > 1)) fprintf(out, ",%d", ll);
+	fprintf(out, " +%d", ri);
+	if (!ri || (rl > 1)) fprintf(out, ",%d", rl);
+	fprintf(out, " @@");
+	if (o->dop->pattern) {
+		fputc(' ', out);
+		EACH_REVERSE(o->fn_defs) {
+			if (o->fn_defs[i].lno <= lno) {
+				fprintf(out, "%.*s",
+				    (int)min(40, strlen(o->fn_defs[i].s)),
+				    o->fn_defs[i].s);
+				break;
+			}
 		}
 	}
+	fprintf(out, "\n");
 }
 
 private void
@@ -693,7 +712,8 @@ printDeco(u32 where, void *extra, FILE *out)
 }
 
 private void
-sdPrint(void *data, int len, int side, int last, void *extra, FILE *out)
+sdPrint(char *prefix, void *data, int len,
+    int side, int last, void *extra, FILE *out)
 {
 	filedf	*o = (filedf *)extra;
 	char	*buf = (char *)data;
