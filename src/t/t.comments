@@ -104,9 +104,22 @@ cmpfiles "$HERE"/file c
 echo OK
 
 echo $N Now edit from commit ........................................$NL
+mkdir BitKeeper/triggers
+cat <<EOF > BitKeeper/triggers/pre-commit
+#!/bin/sh
+
+echo "\$BK_COMMENTFILE" > "$HERE"/cfile1
+cat  "\$BK_COMMENTFILE" > "$HERE"/cfile2
+exit 0
+EOF
+chmod +x BitKeeper/triggers/pre-commit
 rm ../file
 bk _cp c SCCS/c.ChangeSet
 (echo e; echo u) | EDITOR=../myvi.sh bk commit $Q >OUT || fail -f OUT
 test "`bk prs -r+ -hnd:C: foo`" = "myedit" || fail
 cmpfiles "$HERE"/file c
+cd ..
+grep -q 'c.ChangeSet' cfile1 && fail -f cfile1
+grep -q 'SCCS/c.' cfile1 && fail -f cfile1
+grep -q myedit cfile2 || fail -f cfile2
 echo OK
