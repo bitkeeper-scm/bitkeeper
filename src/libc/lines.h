@@ -131,7 +131,7 @@ int	parallelLines(char **a, char **b,
 #define	removeArrayN(s, n)	_removeArrayN((s), (n), sizeof((s)[0]))
 
 /* void catArray(TYPE **space, TYPE *array) */
-#define	catArray(s, a)		_catArray((s), (a), sizeof((s)[0]))
+#define	catArray(s, a)		_catArray((void **)(s), (a), sizeof((*(s))[0]))
 
 /* void reverseArray(TYPE *space); */
 #define	reverseArray(s)		_reverseArray((s), sizeof((s)[0]))
