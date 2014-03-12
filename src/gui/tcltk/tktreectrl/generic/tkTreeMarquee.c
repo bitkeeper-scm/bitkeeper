@@ -1,11 +1,9 @@
-/* 
+/*
  * tkTreeMarquee.c --
  *
  *	This module implements the selection rectangle for treectrl widgets.
  *
- * Copyright (c) 2002-2008 Tim Baker
- *
- * RCS: @(#) $Id$
+ * Copyright (c) 2002-2011 Tim Baker
  */
 
 #include "tkTreeCtrl.h"
@@ -26,11 +24,32 @@ struct TreeMarquee_
     int sx, sy;				/* Offset of canvas from top-left
 					 * corner of the window when we
 					 * were drawn. */
+    int sw, sh;				/* Width & height when drawn. */
+
+    TreeColor *fillColorPtr;		/* -fill */
+    Tcl_Obj *fillObj;			/* -fill */
+    TreeColor *outlineColorPtr;		/* -outline */
+    Tcl_Obj *outlineObj;		/* -outline */
+    int outlineWidth;			/* -outlinewidth */
+    Tcl_Obj *outlineWidthObj;		/* -outlinewidth */
 };
 
 #define MARQ_CONF_VISIBLE		0x0001
+#define MARQ_CONF_COLORS		0x0002
 
 static Tk_OptionSpec optionSpecs[] = {
+    {TK_OPTION_CUSTOM, "-fill", (char *) NULL, (char *) NULL,
+	(char *) NULL, Tk_Offset(TreeMarquee_, fillObj),
+	Tk_Offset(TreeMarquee_, fillColorPtr), TK_OPTION_NULL_OK,
+	(ClientData) &TreeCtrlCO_treecolor, MARQ_CONF_COLORS},
+    {TK_OPTION_CUSTOM, "-outline", (char *) NULL, (char *) NULL,
+	(char *) NULL, Tk_Offset(TreeMarquee_, outlineObj),
+	Tk_Offset(TreeMarquee_, outlineColorPtr), TK_OPTION_NULL_OK,
+	(ClientData) &TreeCtrlCO_treecolor, MARQ_CONF_COLORS},
+    {TK_OPTION_PIXELS, "-outlinewidth", (char *) NULL, (char *) NULL,
+	"1", Tk_Offset(TreeMarquee_, outlineWidthObj),
+	Tk_Offset(TreeMarquee_, outlineWidth), 0,
+	(ClientData) NULL, MARQ_CONF_COLORS},
     {TK_OPTION_BOOLEAN, "-visible", (char *) NULL, (char *) NULL,
 	"0", -1, Tk_Offset(TreeMarquee_, visible),
 	0, (ClientData) NULL, MARQ_CONF_VISIBLE},
@@ -41,7 +60,7 @@ static Tk_OptionSpec optionSpecs[] = {
 /*
  *----------------------------------------------------------------------
  *
- * TreeMarquee_Init --
+ * TreeMarquee_InitWidget --
  *
  *	Perform marquee-related initialization when a new TreeCtrl is
  *	created.
@@ -56,7 +75,7 @@ static Tk_OptionSpec optionSpecs[] = {
  */
 
 int
-TreeMarquee_Init(
+TreeMarquee_InitWidget(
     TreeCtrl *tree		/* Widget info. */
     )
 {
@@ -78,7 +97,7 @@ TreeMarquee_Init(
 /*
  *----------------------------------------------------------------------
  *
- * TreeMarquee_Free --
+ * TreeMarquee_FreeWidget --
  *
  *	Free marquee-related resources when a TreeCtrl is deleted.
  *
@@ -92,13 +111,66 @@ TreeMarquee_Init(
  */
 
 void
-TreeMarquee_Free(
-    TreeMarquee marquee	/* Marquee token. */
+TreeMarquee_FreeWidget(
+    TreeCtrl *tree		/* Widget info. */
     )
 {
+    TreeMarquee marquee = tree->marquee;
+
     Tk_FreeConfigOptions((char *) marquee, marquee->optionTable,
 	marquee->tree->tkwin);
     WFREE(marquee, TreeMarquee_);
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeMarquee_IsXOR --
+ *
+ *	Return true if the marquee is being drawn with XOR.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+int TreeMarquee_IsXOR(TreeMarquee marquee)
+{
+    if (marquee->fillColorPtr || marquee->outlineColorPtr)
+	return FALSE;
+
+#if defined(WIN32)
+    return FALSE; /* TRUE on XP, FALSE on Win7 (lots of flickering) */
+#elif defined(MAC_OSX_TK)
+    return FALSE;
+#else
+    return TRUE; /* X11 */
+#endif
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeMarquee_IsVisible --
+ *
+ *	Return true if the marquee is being drawn.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+int TreeMarquee_IsVisible(TreeMarquee marquee)
+{
+    return marquee->visible;
 }
 
 /*
@@ -126,9 +198,20 @@ TreeMarquee_Display(
     TreeCtrl *tree = marquee->tree;
 
     if (!marquee->onScreen && marquee->visible) {
-	marquee->sx = 0 - tree->xOrigin;
-	marquee->sy = 0 - tree->yOrigin;
-	TreeMarquee_Draw(marquee, Tk_WindowId(tree->tkwin), marquee->sx, marquee->sy);
+	if (TreeMarquee_IsXOR(marquee)) {
+	    marquee->sx = 0 - tree->xOrigin;
+	    marquee->sy = 0 - tree->yOrigin;
+	    TreeMarquee_DrawXOR(marquee, Tk_WindowId(tree->tkwin),
+		marquee->sx, marquee->sy);
+	} else {
+	    marquee->sx = MIN(marquee->x1, marquee->x2) - tree->xOrigin;
+	    marquee->sy = MIN(marquee->y1, marquee->y2) - tree->yOrigin;
+	    marquee->sw = abs(marquee->x2 - marquee->x1) + 1;
+	    marquee->sh = abs(marquee->y2 - marquee->y1) + 1;
+/*	    Tree_InvalidateItemArea(tree, marquee->sx, marquee->sy,
+		marquee->sx + marquee->sw, marquee->sy + marquee->sh);*/
+	    Tree_EventuallyRedraw(tree);
+	}
 	marquee->onScreen = TRUE;
     }
 }
@@ -157,7 +240,13 @@ TreeMarquee_Undisplay(
     TreeCtrl *tree = marquee->tree;
 
     if (marquee->onScreen) {
-	TreeMarquee_Draw(marquee, Tk_WindowId(tree->tkwin), marquee->sx, marquee->sy);
+	if (TreeMarquee_IsXOR(marquee)) {
+	    TreeMarquee_DrawXOR(marquee, Tk_WindowId(tree->tkwin), marquee->sx, marquee->sy);
+	} else {
+/*	    Tree_InvalidateItemArea(tree, marquee->sx, marquee->sy,
+		marquee->sx + marquee->sw, marquee->sy + marquee->sh);*/
+	    Tree_EventuallyRedraw(tree);
+	}
 	marquee->onScreen = FALSE;
     }
 }
@@ -165,7 +254,7 @@ TreeMarquee_Undisplay(
 /*
  *----------------------------------------------------------------------
  *
- * TreeMarquee_Draw --
+ * TreeMarquee_DrawXOR --
  *
  *	Draw (or erase) the selection rectangle.
  *
@@ -179,7 +268,7 @@ TreeMarquee_Undisplay(
  */
 
 void
-TreeMarquee_Draw(
+TreeMarquee_DrawXOR(
     TreeMarquee marquee,	/* Marquee token. */
     Drawable drawable,		/* Where to draw. */
     int x1, int y1		/* Offset of canvas from top-left corner
@@ -198,6 +287,123 @@ TreeMarquee_Draw(
     TreeDotRect_Setup(tree, drawable, &dotState);
     TreeDotRect_Draw(&dotState, x1 + x, y1 + y, w, h);
     TreeDotRect_Restore(&dotState);
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeMarquee_Draw --
+ *
+ *	Draw the selection rectangle if it is visible.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	Stuff is drawn.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TreeMarquee_Draw(
+    TreeMarquee marquee,	/* Marquee token. */
+    TreeDrawable td)		/* Where to draw. */
+{
+#if 1 /* Use XOR dotted rectangles where possible. */
+    TreeCtrl *tree = marquee->tree;
+
+    if (!marquee->visible)
+	return;
+
+    if (marquee->fillColorPtr || marquee->outlineColorPtr) {
+	TreeRectangle tr;
+	TreeClip clip;
+
+	tr.x = 0 - tree->xOrigin + MIN(marquee->x1, marquee->x2);
+	tr.width = abs(marquee->x1 - marquee->x2) + 1;
+	tr.y = 0 - tree->yOrigin + MIN(marquee->y1, marquee->y2);
+	tr.height = abs(marquee->y1 - marquee->y2) + 1;
+
+	clip.type = TREE_CLIP_AREA, clip.area = TREE_AREA_CONTENT;
+
+	if (marquee->fillColorPtr) {
+	    TreeRectangle trBrush;
+	    TreeColor_GetBrushBounds(tree, marquee->fillColorPtr, tr,
+		    tree->xOrigin, tree->yOrigin,
+		    (TreeColumn) NULL, (TreeItem) NULL, &trBrush);
+	    TreeColor_FillRect(tree, td, &clip, marquee->fillColorPtr, trBrush, tr);
+	}
+	if (marquee->outlineColorPtr && marquee->outlineWidth > 0) {
+	    TreeRectangle trBrush;
+	    TreeColor_GetBrushBounds(tree, marquee->outlineColorPtr, tr,
+		    tree->xOrigin, tree->yOrigin,
+		    (TreeColumn) NULL, (TreeItem) NULL, &trBrush);
+	    TreeColor_DrawRect(tree, td, &clip, marquee->outlineColorPtr,
+		trBrush, tr, marquee->outlineWidth, 0);
+	}
+	return;
+    }
+
+    /* Yes this is XOR drawing but we aren't erasing the previous
+     * marquee as when TreeMarquee_IsXOR() returns TRUE. */
+    TreeMarquee_DrawXOR(marquee, td.drawable,
+	0 - tree->xOrigin, 0 - tree->yOrigin);
+#else /* */
+    TreeCtrl *tree = marquee->tree;
+    int x, y, w, h;
+    GC gc;
+    XGCValues gcValues;
+    unsigned long mask;
+#ifdef WIN32
+    XPoint points[5];
+    XRectangle rect;
+#endif
+#if 0
+    XColor *colorPtr;
+#endif
+
+    if (!marquee->visible)
+	return;
+
+    x = MIN(marquee->x1, marquee->x2);
+    w = abs(marquee->x1 - marquee->x2) + 1;
+    y = MIN(marquee->y1, marquee->y2);
+    h = abs(marquee->y1 - marquee->y2) + 1;
+
+#if 0
+    colorPtr = Tk_GetColor(tree->interp, tree->tkwin, "gray50");
+    gc = Tk_GCForColor(colorPtr, Tk_WindowId(tree->tkwin));
+
+    XFillRectangle(tree->display, td.drawable, gc,
+	x - tree->drawableXOrigin, y - tree->drawableYOrigin,
+	w - 1, h - 1);
+#else /* Stippled rectangles: BUG not clipped to contentbox. */
+    gcValues.stipple = Tk_GetBitmap(tree->interp, tree->tkwin, "gray50");
+    gcValues.fill_style = FillStippled;
+    mask = GCStipple|GCFillStyle;
+    gc = Tk_GetGC(tree->tkwin, mask, &gcValues);
+
+#ifdef WIN32
+    /* XDrawRectangle ignores the stipple pattern. */
+    rect.x = x - tree->drawableXOrigin;
+    rect.y = y - tree->drawableYOrigin;
+    rect.width = w;
+    rect.height = h;
+    points[0].x = rect.x, points[0].y = rect.y;
+    points[1].x = rect.x + rect.width - 1, points[1].y = rect.y;
+    points[2].x = rect.x + rect.width - 1, points[2].y = rect.y + rect.height - 1;
+    points[3].x = rect.x, points[3].y = rect.y + rect.height - 1;
+    points[4] = points[0];
+    XDrawLines(tree->display, td.drawable, gc, points, 5, CoordModeOrigin);
+#else
+    XDrawRectangle(tree->display, td.drawable, gc,
+	x - tree->drawableXOrigin, y - tree->drawableYOrigin,
+	w - 1, h - 1);
+#endif
+    Tk_FreeGC(tree->display, gc);
+#endif
+#endif /* */
 }
 
 /*
@@ -434,8 +640,8 @@ TreeMarqueeCmd(
 	/* T marquee identify */
 	case COMMAND_IDENTIFY: {
 	    int x1, y1, x2, y2, n = 0;
-	    int totalWidth = Tree_TotalWidth(tree);
-	    int totalHeight = Tree_TotalHeight(tree);
+	    int totalWidth = Tree_CanvasWidth(tree);
+	    int totalHeight = Tree_CanvasHeight(tree);
 	    TreeItemList items;
 	    Tcl_Obj *listObj;
 

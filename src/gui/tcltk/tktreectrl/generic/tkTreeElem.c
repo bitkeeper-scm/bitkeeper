@@ -1,15 +1,17 @@
-/* 
+/*
  * tkTreeElem.c --
  *
  *	This module implements elements for treectrl widgets.
  *
- * Copyright (c) 2002-2008 Tim Baker
- *
- * RCS: @(#) $Id$
+ * Copyright (c) 2002-2011 Tim Baker
  */
 
 #include "tkTreeCtrl.h"
 #include "tkTreeElem.h"
+
+/* When a column header is in the pressed state, any bitmap, image, and text
+ * elements are offset by 1,1. */
+#define HEADER_OFFSET_HACK 1
 
 /*
  *----------------------------------------------------------------------
@@ -59,7 +61,7 @@ DO_BooleanForState(
     return result;
 }
 
-static XColor *
+static TreeColor *
 DO_ColorForState(
     TreeCtrl *tree,
     TreeElement elem,
@@ -67,7 +69,7 @@ DO_ColorForState(
     int state
     )
 {
-    XColor *result = NULL;
+    TreeColor *result = NULL;
     PerStateInfo *psi;
     int match = MATCH_NONE;
 
@@ -78,7 +80,7 @@ DO_ColorForState(
 	PerStateInfo *psi = DynamicOption_FindData(elem->master->options, id);
 	if (psi != NULL) {
 	    int matchM;
-	    XColor *resultM = PerStateColor_ForState(tree, psi, state, &matchM);
+	    TreeColor *resultM = PerStateColor_ForState(tree, psi, state, &matchM);
 	    if (matchM > match)
 		result = resultM;
 	}
@@ -447,6 +449,7 @@ IntegerCO_Alloc(
     return co;
 }
 
+#if 0 /* UNUSED, keep but shutup compiler warning */
 static int
 IntegerCO_Init(
     Tk_OptionSpec *optionTable,
@@ -469,8 +472,9 @@ IntegerCO_Init(
 
     return TCL_OK;
 }
+#endif
 
-Tk_ObjCustomOption *
+static Tk_ObjCustomOption *
 StringTableCO_Alloc(
     CONST char *optionName,
     CONST char **tablePtr
@@ -513,12 +517,12 @@ int StringTableCO_Init(Tk_OptionSpec *optionTable, CONST char *optionName, CONST
 
 /*****/
 
-int TreeStateFromObj(TreeCtrl *tree, Tcl_Obj *obj, int *stateOff, int *stateOn)
+int TreeStateFromObj(TreeCtrl *tree, int domain, Tcl_Obj *obj, int *stateOff, int *stateOn)
 {
     int states[3];
 
     states[STATE_OP_ON] = states[STATE_OP_OFF] = states[STATE_OP_TOGGLE] = 0;
-    if (Tree_StateFromObj(tree, obj, states, NULL, SFO_NOT_TOGGLE) != TCL_OK)
+    if (Tree_StateFromObj(tree, domain, obj, states, NULL, SFO_NOT_TOGGLE) != TCL_OK)
 	return TCL_ERROR;
 
     (*stateOn) |= states[STATE_OP_ON];
@@ -561,6 +565,12 @@ static void AdjustForSticky(int sticky, int cavityWidth, int cavityHeight,
     }
 }
 
+#define DO_COLOR_FOR_STATE(xVAR,xID,xSTATE) \
+    { \
+	TreeColor *tc = DO_ColorForState(tree, elem, xID, xSTATE); \
+	xVAR = (tc != NULL) ? tc->color : NULL; \
+    }
+
 /* This macro gets the value of a per-state option for an element, then
  * looks for a better match from the master element if it exists */
 #define OPTION_FOR_STATE(xFUNC,xTYPE,xVAR,xFIELD,xSTATE) \
@@ -577,9 +587,19 @@ static void AdjustForSticky(int sticky, int cavityWidth, int cavityHeight,
 #define BORDER_FOR_STATE(xVAR,xFIELD,xSTATE) \
     OPTION_FOR_STATE(PerStateBorder_ForState,Tk_3DBorder,xVAR,xFIELD,xSTATE)
 #define COLOR_FOR_STATE(xVAR,xFIELD,xSTATE) \
-    OPTION_FOR_STATE(PerStateColor_ForState,XColor*,xVAR,xFIELD,xSTATE)
+    { \
+	TreeColor *tc; \
+	OPTION_FOR_STATE(PerStateColor_ForState,TreeColor*,tc,xFIELD,xSTATE) \
+	xVAR = (tc != NULL) ? tc->color : NULL; \
+    }
+#define TREECOLOR_FOR_STATE(xVAR,xFIELD,xSTATE) \
+    OPTION_FOR_STATE(PerStateColor_ForState,TreeColor*,xVAR,xFIELD,xSTATE)
+#define FLAGS_FOR_STATE(xVAR,xFIELD,xSTATE) \
+    OPTION_FOR_STATE(PerStateFlags_ForState,int,xVAR,xFIELD,xSTATE)
 #define FONT_FOR_STATE(xVAR,xFIELD,xSTATE) \
     OPTION_FOR_STATE(PerStateFont_ForState,Tk_Font,xVAR,xFIELD,xSTATE)
+#define GRADIENT_FOR_STATE(xVAR,xFIELD,xSTATE) \
+    OPTION_FOR_STATE(PerStateGradient_ForState,TreeGradient,xVAR,xFIELD,xSTATE)
 #define IMAGE_FOR_STATE(xVAR,xFIELD,xSTATE) \
     OPTION_FOR_STATE(PerStateImage_ForState,Tk_Image,xVAR,xFIELD,xSTATE)
 #define RELIEF_FOR_STATE(xVAR,xFIELD,xSTATE) \
@@ -658,7 +678,7 @@ static int WorldChangedProcBitmap(TreeElementArgs *args)
 
     if ((flagS | flagM) & (
 #ifdef DEPRECATED
-	    BITMAP_CONF_DRAW | 
+	    BITMAP_CONF_DRAW |
 #endif
 	    BITMAP_CONF_FG | BITMAP_CONF_BG))
 	mask |= CS_DISPLAY;
@@ -677,9 +697,9 @@ static int ConfigProcBitmap(TreeElementArgs *args)
 
     for (error = 0; error <= 1; error++) {
 	if (error == 0) {
-	    if (Tk_SetOptions(tree->interp, (char *) elemX,
+	    if (Tree_SetOptions(tree, elem->stateDomain, elemX,
 			elem->typePtr->optionTable,
-			args->config.objc, args->config.objv, tree->tkwin,
+			args->config.objc, args->config.objv,
 			&savedOptions, &args->config.flagSelf) != TCL_OK) {
 		args->config.flagSelf = 0;
 		continue;
@@ -722,6 +742,8 @@ static void DisplayProcBitmap(TreeElementArgs *args)
     Pixmap bitmap;
     XColor *fg, *bg;
     int imgW, imgH;
+    int inHeader = elem->stateDomain == STATE_DOMAIN_HEADER;
+    int columnState = COLUMN_STATE_NORMAL;
 
 #ifdef DEPRECATED
     BOOLEAN_FOR_STATE(draw, draw, state)
@@ -742,6 +764,22 @@ static void DisplayProcBitmap(TreeElementArgs *args)
 	args->display.width, args->display.height,
 	FALSE, FALSE,
 	&x, &y, &width, &height);
+#if HEADER_OFFSET_HACK == 1
+    if (inHeader) {
+	if (state & STATE_HEADER_ACTIVE)
+	    columnState = COLUMN_STATE_ACTIVE;
+	else if (state & STATE_HEADER_PRESSED)
+	    columnState = COLUMN_STATE_PRESSED;
+    }
+    if (inHeader && columnState == COLUMN_STATE_PRESSED) {
+	/* If this bitmap fills the whole header, don't offset it. */
+	/* FIXME: should have a layout option to control this. */
+	if (imgW < args->display.spanBbox.width ||
+		imgH < args->display.spanBbox.height) {
+	    x += 1, y += 1;
+	}
+    }
+#endif
     if (imgW > args->display.width)
 	imgW = args->display.width;
     if (imgH > args->display.height)
@@ -830,15 +868,16 @@ static int StateProcBitmap(TreeElementArgs *args)
 static int UndefProcBitmap(TreeElementArgs *args)
 {
     TreeCtrl *tree = args->tree;
-    ElementBitmap *elemX = (ElementBitmap *) args->elem;
+    TreeElement elem = args->elem;
+    ElementBitmap *elemX = (ElementBitmap *) elem;
     int modified = 0;
 
 #ifdef DEPRECATED
-    modified |= PerStateInfo_Undefine(tree, &pstBoolean, &elemX->draw, args->state);
+    modified |= PerStateInfo_Undefine(tree, &pstBoolean, &elemX->draw, elem->stateDomain, args->state);
 #endif
-    modified |= PerStateInfo_Undefine(tree, &pstColor, &elemX->fg, args->state);
-    modified |= PerStateInfo_Undefine(tree, &pstColor, &elemX->bg, args->state);
-    modified |= PerStateInfo_Undefine(tree, &pstBitmap, &elemX->bitmap, args->state);
+    modified |= PerStateInfo_Undefine(tree, &pstColor, &elemX->fg, elem->stateDomain, args->state);
+    modified |= PerStateInfo_Undefine(tree, &pstColor, &elemX->bg, elem->stateDomain, args->state);
+    modified |= PerStateInfo_Undefine(tree, &pstBitmap, &elemX->bitmap, elem->stateDomain, args->state);
     return modified;
 }
 
@@ -1011,9 +1050,9 @@ static int ConfigProcBorder(TreeElementArgs *args)
 
     for (error = 0; error <= 1; error++) {
 	if (error == 0) {
-	    if (Tk_SetOptions(tree->interp, (char *) elemX,
+	    if (Tree_SetOptions(tree, elem->stateDomain, elemX,
 			elem->typePtr->optionTable,
-			args->config.objc, args->config.objv, tree->tkwin,
+			args->config.objc, args->config.objv,
 			&savedOptions, &args->config.flagSelf) != TCL_OK) {
 		args->config.flagSelf = 0;
 		continue;
@@ -1060,6 +1099,10 @@ static void DisplayProcBorder(TreeElementArgs *args)
     Tk_3DBorder border;
     int relief, filled = FALSE;
     int thickness = 0;
+#if USE_ITEM_PIXMAP == 0
+    TreeClip clip;
+#endif
+    TreeRectangle tr1, tr2;
 
 #ifdef DEPRECATED
     BOOLEAN_FOR_STATE(draw, draw, state)
@@ -1100,13 +1143,37 @@ static void DisplayProcBorder(TreeElementArgs *args)
 	TRUE, TRUE,
 	&x, &y, &width, &height);
 
+    /* X11 coordinates are 16-bit. */
+    TreeRect_SetXYWH(tr1, x, y, width, height);
+    TreeRect_SetXYWH(tr2, -thickness, -thickness,
+	args->display.td.width + thickness * 2,
+	args->display.td.height + thickness * 2);
+    TreeRect_Intersect(&tr1, &tr1, &tr2);
+
+#if USE_ITEM_PIXMAP == 0
+    /* Using a region instead of a rect because of how Tree_Fill3DRectangle
+     * and Tree_Draw3DRectangle are implemented. */
+    clip.type = TREE_CLIP_REGION;
+    clip.region = Tree_GetRectRegion(tree, &args->display.bounds);
+
+    if (filled) {
+	Tree_Fill3DRectangle(tree, args->display.td, &clip, border,
+		tr1.x, tr1.y, tr1.width, tr1.height, thickness, relief);
+    } else if (thickness > 0) {
+	Tree_Draw3DRectangle(tree, args->display.td, &clip, border,
+		tr1.x, tr1.y, tr1.width, tr1.height, thickness, relief);
+    }
+
+    Tree_FreeRegion(tree, clip.region);
+#else
     if (filled) {
 	Tk_Fill3DRectangle(tree->tkwin, args->display.drawable, border,
-		x, y, width, height, thickness, relief);
+		tr1.x, tr1.y, tr1.width, tr1.height, thickness, relief);
     } else if (thickness > 0) {
 	Tk_Draw3DRectangle(tree->tkwin, args->display.drawable, border,
-		x, y, width, height, thickness, relief);
+		tr1.x, tr1.y, tr1.width, tr1.height, thickness, relief);
     }
+#endif
 }
 
 static void NeededProcBorder(TreeElementArgs *args)
@@ -1171,14 +1238,15 @@ static int StateProcBorder(TreeElementArgs *args)
 static int UndefProcBorder(TreeElementArgs *args)
 {
     TreeCtrl *tree = args->tree;
-    ElementBorder *elemX = (ElementBorder *) args->elem;
+    TreeElement elem = args->elem;
+    ElementBorder *elemX = (ElementBorder *) elem;
     int modified = 0;
 
 #ifdef DEPRECATED
-    modified |= PerStateInfo_Undefine(tree, &pstBoolean, &elemX->draw, args->state);
+    modified |= PerStateInfo_Undefine(tree, &pstBoolean, &elemX->draw, elem->stateDomain, args->state);
 #endif
-    modified |= PerStateInfo_Undefine(tree, &pstBorder, &elemX->border, args->state);
-    modified |= PerStateInfo_Undefine(tree, &pstRelief, &elemX->relief, args->state);
+    modified |= PerStateInfo_Undefine(tree, &pstBorder, &elemX->border, elem->stateDomain, args->state);
+    modified |= PerStateInfo_Undefine(tree, &pstRelief, &elemX->relief, elem->stateDomain, args->state);
     return modified;
 }
 
@@ -1370,9 +1438,9 @@ static int ConfigProcCheckButton(TreeElementArgs *args)
 
     for (error = 0; error <= 1; error++) {
 	if (error == 0) {
-	    if (Tk_SetOptions(tree->interp, (char *) elemX,
+	    if (Tree_SetOptions(tree, tree, elem->stateDomain,
 			elem->typePtr->optionTable,
-			args->config.objc, args->config.objv, tree->tkwin,
+			args->config.objc, args->config.objv,
 			&savedOptions, &args->config.flagSelf) != TCL_OK) {
 		args->config.flagSelf = 0;
 		continue;
@@ -1579,6 +1647,816 @@ TreeElementType treeElemTypeCheckButton = {
 
 /*****/
 
+typedef struct ElementHeader ElementHeader;
+
+struct ElementHeader
+{
+    TreeElement_ header; /* Must be first */
+    PerStateInfo border;	/* -background */
+    int borderWidth;		/* -borderwidth */
+    Tcl_Obj *borderWidthObj;	/* -borderwidth */
+    PerStateInfo arrowBitmap;	/* -arrowbitmap */
+    PerStateInfo arrowImage;	/* -arrowimage */
+    Tcl_Obj *arrowPadXObj;	/* -arrowpadx */
+    int *arrowPadX;		/* -arrowpadx */
+    Tcl_Obj *arrowPadYObj;	/* -arrowpady */
+    int *arrowPadY;		/* -arrowpady */
+    int arrow;			/* -arrow */
+#define SIDE_LEFT 0
+#define SIDE_RIGHT 1
+    int arrowSide;		/* -arrowside */
+    int arrowGravity;		/* -arrowgravity */
+    int state;			/* -state */
+};
+
+static CONST char *headerStateST[] = { "normal", "active", "pressed", (char *) NULL };
+static CONST char *headerArrowST[] = { "none", "up", "down", (char *) NULL };
+static CONST char *headerArrowSideST[] = { "left", "right", (char *) NULL };
+
+#define HEADER_CONF_SIZE 0x0001
+#define HEADER_CONF_DISPLAY 0x0002
+
+static Tk_OptionSpec headerOptionSpecs[] = {
+    {TK_OPTION_CUSTOM, "-arrow", (char *) NULL, (char *) NULL,
+     (char *) NULL, -1, Tk_Offset(ElementHeader, arrow), TK_OPTION_NULL_OK,
+     (ClientData) NULL, HEADER_CONF_DISPLAY | HEADER_CONF_SIZE},
+    {TK_OPTION_CUSTOM, "-arrowbitmap", (char *) NULL, (char *) NULL,
+     (char *) NULL,
+     Tk_Offset(ElementHeader, arrowBitmap.obj), Tk_Offset(ElementHeader, arrowBitmap),
+     TK_OPTION_NULL_OK, (ClientData) NULL, HEADER_CONF_DISPLAY | HEADER_CONF_SIZE},
+    {TK_OPTION_CUSTOM, "-arrowgravity", (char *) NULL, (char *) NULL,
+     (char *) NULL, -1, Tk_Offset(ElementHeader, arrowGravity), TK_OPTION_NULL_OK,
+     (ClientData) NULL, HEADER_CONF_DISPLAY | HEADER_CONF_SIZE},
+    {TK_OPTION_CUSTOM, "-arrowimage", (char *) NULL, (char *) NULL,
+     (char *) NULL,
+     Tk_Offset(ElementHeader, arrowImage.obj), Tk_Offset(ElementHeader, arrowImage),
+     TK_OPTION_NULL_OK, (ClientData) NULL, HEADER_CONF_DISPLAY | HEADER_CONF_SIZE},
+    {TK_OPTION_CUSTOM, "-arrowpadx", (char *) NULL, (char *) NULL,
+     (char *) NULL, Tk_Offset(ElementHeader, arrowPadXObj), Tk_Offset(ElementHeader, arrowPadX),
+     TK_OPTION_NULL_OK, (ClientData) &TreeCtrlCO_pad, HEADER_CONF_DISPLAY | HEADER_CONF_SIZE},
+    {TK_OPTION_CUSTOM, "-arrowpady", (char *) NULL, (char *) NULL,
+     (char *) NULL, Tk_Offset(ElementHeader, arrowPadYObj), Tk_Offset(ElementHeader, arrowPadY),
+     TK_OPTION_NULL_OK, (ClientData) &TreeCtrlCO_pad, HEADER_CONF_DISPLAY | HEADER_CONF_SIZE},
+    {TK_OPTION_CUSTOM, "-arrowside", (char *) NULL, (char *) NULL,
+     (char *) NULL, -1, Tk_Offset(ElementHeader, arrowSide), TK_OPTION_NULL_OK,
+     (ClientData) NULL, HEADER_CONF_DISPLAY | HEADER_CONF_SIZE},
+    {TK_OPTION_CUSTOM, "-background", (char *) NULL, (char *) NULL,
+     (char *) NULL,
+     Tk_Offset(ElementHeader, border.obj), Tk_Offset(ElementHeader, border),
+     TK_OPTION_NULL_OK, (ClientData) NULL, HEADER_CONF_DISPLAY},
+    {TK_OPTION_PIXELS, "-borderwidth", (char *) NULL, (char *) NULL,
+     (char *) NULL, Tk_Offset(ElementHeader, borderWidthObj),
+     Tk_Offset(ElementHeader, borderWidth),
+     TK_OPTION_NULL_OK, (ClientData) NULL, HEADER_CONF_SIZE | HEADER_CONF_DISPLAY},
+    {TK_OPTION_CUSTOM, "-state", (char *) NULL, (char *) NULL,
+     (char *) NULL, -1, Tk_Offset(ElementHeader, state), TK_OPTION_NULL_OK,
+     (ClientData) NULL, HEADER_CONF_DISPLAY},
+    {TK_OPTION_END, (char *) NULL, (char *) NULL, (char *) NULL,
+     (char *) NULL, 0, -1, 0, (ClientData) NULL, 0}
+};
+
+static void DeleteProcHeader(TreeElementArgs *args)
+{
+/*    TreeCtrl *tree = args->tree;
+    TreeElement elem = args->elem;
+    ElementHeader *elemX = (ElementHeader *) elem;*/
+}
+
+static int WorldChangedProcHeader(TreeElementArgs *args)
+{
+    int flagT = args->change.flagTree;
+    int flagM = args->change.flagMaster;
+    int flagS = args->change.flagSelf;
+    int mask = 0;
+
+    if (flagT & TREE_CONF_THEME)
+	mask |= CS_DISPLAY | CS_LAYOUT;
+    else if ((flagS | flagM) & HEADER_CONF_SIZE)
+	mask |= CS_DISPLAY | CS_LAYOUT;
+    else if ((flagS | flagM) & HEADER_CONF_DISPLAY)
+	mask |= CS_DISPLAY;
+
+    return mask;
+}
+
+static int ConfigProcHeader(TreeElementArgs *args)
+{
+    TreeCtrl *tree = args->tree;
+    TreeElement elem = args->elem;
+    ElementHeader *elemX = (ElementHeader *) elem;
+    Tk_SavedOptions savedOptions;
+    int error;
+    Tcl_Obj *errorResult = NULL;
+
+    for (error = 0; error <= 1; error++) {
+	if (error == 0) {
+	    if (Tree_SetOptions(tree, elem->stateDomain, elemX,
+			elem->typePtr->optionTable,
+			args->config.objc, args->config.objv,
+			&savedOptions, &args->config.flagSelf) != TCL_OK) {
+		args->config.flagSelf = 0;
+		continue;
+	    }
+
+	    Tk_FreeSavedOptions(&savedOptions);
+	    break;
+	} else {
+	    errorResult = Tcl_GetObjResult(tree->interp);
+	    Tcl_IncrRefCount(errorResult);
+	    Tk_RestoreSavedOptions(&savedOptions);
+
+	    Tcl_SetObjResult(tree->interp, errorResult);
+	    Tcl_DecrRefCount(errorResult);
+	    return TCL_ERROR;
+	}
+    }
+
+    return TCL_OK;
+}
+
+static int CreateProcHeader(TreeElementArgs *args)
+{
+    TreeElement elem = args->elem;
+    ElementHeader *elemX = (ElementHeader *) elem;
+
+    elemX->arrow = -1;
+    elemX->arrowGravity = -1;
+    elemX->arrowSide = -1;
+    elemX->state = -1;
+
+    return TCL_OK;
+}
+
+struct HeaderParams
+{
+    int state;		/* COLUMN_STATE_XXX */
+    int arrow;		/* COLUMN_ARROW_XXX */
+    int borderWidth;
+    int margins[4];	/* content margins, not including arrow */
+    int elemState;	/* STATE_XXX */
+    int eUnionBbox[4];
+    int iUnionBbox[4];
+};
+
+static void
+HeaderGetParams(
+    TreeCtrl *tree,
+    ElementHeader *elemX,
+    int state,
+    struct HeaderParams *params
+    )
+{
+    ElementHeader *masterX = (ElementHeader *) elemX->header.master;
+    int i;
+
+    params->elemState = state;
+
+    params->state = COLUMN_STATE_NORMAL;
+    if (elemX->state != -1)
+	params->state = elemX->state;
+    else if (masterX != NULL && masterX->state != -1)
+	params->state = masterX->state;
+    else if (elemX->header.stateDomain == STATE_DOMAIN_HEADER) {
+	if (state & STATE_HEADER_ACTIVE) params->state = COLUMN_STATE_ACTIVE;
+	if (state & STATE_HEADER_PRESSED) params->state = COLUMN_STATE_PRESSED;
+    }
+
+    params->arrow = COLUMN_ARROW_NONE;
+    if (elemX->arrow != -1)
+	params->arrow = elemX->arrow;
+    else if (masterX != NULL && masterX->arrow != -1)
+	params->arrow = masterX->arrow;
+    else if (elemX->header.stateDomain == STATE_DOMAIN_HEADER) {
+	if (state & STATE_HEADER_SORT_UP) params->arrow = COLUMN_ARROW_UP;
+	if (state & STATE_HEADER_SORT_DOWN) params->arrow = COLUMN_ARROW_DOWN;
+    }
+
+    if (elemX->borderWidthObj)
+	params->borderWidth = elemX->borderWidth;
+    else if ((masterX != NULL) && (masterX->borderWidthObj != NULL))
+	params->borderWidth = masterX->borderWidth;
+    else
+	params->borderWidth = 2; /* Column header -borderwidth defaults to 2. */
+    if (params->borderWidth < 0)
+	params->borderWidth = 2;
+
+    if (tree->useTheme &&
+	    (TreeTheme_GetHeaderContentMargins(tree, params->state,
+	    params->arrow, params->margins) == TCL_OK)) {
+#ifdef WIN32
+	/* I'm hacking these margins since the default XP theme does not give
+	 * reasonable ContentMargins for HP_HEADERITEM */
+	int bw = MAX(params->borderWidth, 3);
+	params->margins[1] = MAX(params->margins[1], bw);
+	params->margins[3] = MAX(params->margins[3], bw);
+#endif /* WIN32 */
+    } else {
+	params->margins[0] = params->margins[2] = 0;
+	params->margins[1] = params->margins[3] = params->borderWidth;
+    }
+
+    for (i = 0; i < 4; i++)
+	params->eUnionBbox[i] = params->iUnionBbox[i] = -1;
+}
+
+struct ArrowLayout {
+    int arrow;
+    int arrowSide;
+    int x;
+    int y;
+    int width;
+    int height;
+    int padX[2];
+    int padY[2];
+};
+
+static void
+HeaderLayoutArrow(
+    TreeCtrl *tree,
+    ElementHeader *elemX,
+    struct HeaderParams *params,
+    int x, int y, int width, int height, /* bounds of whole element */
+    int indent,
+    struct ArrowLayout *layout
+    )
+{
+    ElementHeader *masterX = (ElementHeader *) elemX->header.master;
+    int state = params->elemState;
+    int arrowSide, arrowWidth = -1, arrowGravity, arrowHeight;
+    Tk_Image image;
+    Pixmap bitmap;
+    int defPadX[2] = {6, 6}, defPadY[2] = {0, 0}, *arrowPadX, *arrowPadY;
+    int match, match2;
+    int minX, maxX, padX[2];
+#ifdef MAC_OSX_TK
+    int margins[4];
+#endif
+
+    layout->arrow = params->arrow;
+    if (layout->arrow == COLUMN_ARROW_NONE) {
+	return;
+    }
+
+    arrowSide = elemX->arrowSide;
+    if (arrowSide == -1 && masterX != NULL)
+	arrowSide = masterX->arrowSide;
+    if (arrowSide == -1)
+	arrowSide = SIDE_RIGHT;
+
+    arrowGravity = elemX->arrowGravity;
+    if (arrowGravity == -1 && masterX != NULL)
+	arrowGravity = masterX->arrowGravity;
+    if (arrowGravity == -1)
+	arrowGravity = SIDE_LEFT;
+
+    arrowPadX = elemX->arrowPadX;
+    if (arrowPadX == NULL && masterX != NULL) {
+	arrowPadX = masterX->arrowPadX;
+    }
+    if (arrowPadX == NULL) {
+	arrowPadX = defPadX;
+    }
+
+    arrowPadY = elemX->arrowPadY;
+    if (arrowPadY == NULL && masterX != NULL) {
+	arrowPadY = masterX->arrowPadY;
+    }
+    if (arrowPadY == NULL) {
+	arrowPadY = defPadY;
+    }
+
+#ifdef MAC_OSX_TK
+    /* Under Aqua, the Appearance Manager draws the sort arrow as part of
+    * the header background. */
+    if (tree->useTheme && TreeTheme_GetHeaderContentMargins(tree,
+	    params->state, params->arrow, margins) == TCL_OK) {
+	layout->arrowSide = SIDE_RIGHT;
+	layout->width = margins[2];
+	layout->x = width - layout->width;
+	layout->y = 0;
+	layout->height = 1; /* bogus value */
+	/* The content margins do not include padding on the left of the
+	 * sort arrow. */
+	layout->padX[PAD_TOP_LEFT] = arrowPadX[PAD_TOP_LEFT];
+	layout->padX[PAD_BOTTOM_RIGHT] = 0;
+	layout->padY[PAD_TOP_LEFT] = layout->padY[PAD_BOTTOM_RIGHT] = 0;
+	return;
+    }
+#endif
+
+    if (arrowWidth == -1) {
+	IMAGE_FOR_STATE(image, arrowImage, state);
+	if (image != NULL) {
+	    Tk_SizeOfImage(image, &arrowWidth, &arrowHeight);
+	}
+    }
+
+    if (arrowWidth == -1) {
+	BITMAP_FOR_STATE(bitmap, arrowBitmap, state);
+	if (bitmap != None) {
+	    Tk_SizeOfBitmap(tree->display, bitmap, &arrowWidth, &arrowHeight);
+	}
+    }
+
+    if ((arrowWidth == -1) && tree->useTheme &&
+	    TreeTheme_GetArrowSize(tree, Tk_WindowId(tree->tkwin),
+	    params->arrow == COLUMN_ARROW_UP, &arrowWidth, &arrowHeight) == TCL_OK) {
+	/* nothing */
+    }
+
+    if (arrowWidth == -1) {
+#if 0
+	/* This is the original calculation of arrow size. */
+	Tk_Font tkfont = column->tkfont ? column->tkfont : tree->tkfont;
+	Tk_FontMetrics fm;
+	Tk_GetFontMetrics(tkfont, &fm);
+	arrowWidth = (fm.linespace + column->textPadY[PAD_TOP_LEFT] +
+	    column->textPadY[PAD_BOTTOM_RIGHT] + column->borderWidth * 2) / 2;
+	if (!(arrowWidth & 1))
+	    arrowWidth--;
+	arrowHeight = arrowWidth;
+#endif
+	arrowWidth = 9; /* FIXME: -sortarrowwidth */
+	arrowHeight = arrowWidth;
+    }
+
+    minX = x + indent;
+    maxX = x + width;
+    padX[PAD_TOP_LEFT] = padX[PAD_BOTTOM_RIGHT] = 0;
+    if (arrowSide == SIDE_LEFT) {
+	if (params->iUnionBbox[0] != -1) {
+	    maxX = x + params->iUnionBbox[0];
+	    padX[PAD_TOP_LEFT] = params->iUnionBbox[0] - params->eUnionBbox[0];
+	}
+    } else {
+	if (params->iUnionBbox[2] != -1) {
+	    minX = x + params->iUnionBbox[2];
+	    padX[PAD_BOTTOM_RIGHT] = params->eUnionBbox[2] - params->iUnionBbox[2];
+	}
+    }
+
+    if (arrowGravity == SIDE_LEFT) {
+	layout->x = minX + MAX(padX[PAD_BOTTOM_RIGHT], arrowPadX[PAD_TOP_LEFT]);
+	layout->x = MIN(layout->x, (x + width) - arrowPadX[PAD_BOTTOM_RIGHT] - arrowWidth);
+    } else {
+	layout->x = maxX - MAX(padX[PAD_TOP_LEFT], arrowPadX[PAD_BOTTOM_RIGHT]) - arrowWidth;
+    }
+
+    /* Don't let the arrow go too far left when the column is very narrow. */
+    layout->x = MAX(layout->x, x + indent + arrowPadX[PAD_TOP_LEFT]);
+
+    layout->width = arrowWidth;
+
+    layout->y = y + (height - (arrowHeight + arrowPadY[PAD_TOP_LEFT] +
+	arrowPadY[PAD_BOTTOM_RIGHT])) / 2 + arrowPadY[PAD_TOP_LEFT];
+    layout->height = arrowHeight;
+
+    layout->arrowSide = arrowSide;
+    layout->padX[0] = arrowPadX[0];
+    layout->padX[1] = arrowPadX[1];
+    layout->padY[0] = arrowPadY[0];
+    layout->padY[1] = arrowPadY[1];
+}
+
+static void
+HeaderDrawArrow(
+    TreeElementArgs *args,
+    struct HeaderParams *params,
+    int x, int y, int width, int height, /* bounds of whole element */
+    int indent
+    )
+{
+    TreeCtrl *tree = args->tree;
+    TreeElement elem = args->elem;
+    ElementHeader *elemX = (ElementHeader *) elem;
+    ElementHeader *masterX = (ElementHeader *) elem->master;
+    Tk_Image image;
+    Pixmap bitmap;
+    Tk_3DBorder border;
+    int state = params->elemState;
+    int sunken = params->state == COLUMN_STATE_PRESSED;
+    struct ArrowLayout layout;
+    int match, match2;
+
+    if (params->arrow == COLUMN_ARROW_NONE)
+	return;
+
+    HeaderLayoutArrow(tree, elemX, params, x, y, width, height, indent, &layout);
+
+    IMAGE_FOR_STATE(image, arrowImage, state);
+    if (image != NULL) {
+	Tree_RedrawImage(image, 0, 0, layout.width, layout.height,
+	    args->display.td,
+	    layout.x + sunken,
+	    layout.y + sunken);
+	return;
+    }
+
+    BITMAP_FOR_STATE(bitmap, arrowBitmap, state);
+    if (bitmap != None) {
+	int bx, by;
+	bx = layout.x + sunken;
+	by = layout.y + sunken;
+	Tree_DrawBitmap(tree, bitmap, args->display.drawable, NULL, NULL,
+		0, 0,
+		(unsigned int) layout.width, (unsigned int) layout.height,
+		bx, by);
+	return;
+    }
+
+    if (tree->useTheme) {
+	if (TreeTheme_DrawHeaderArrow(tree, args->display.td, params->state,
+	    layout.arrow == COLUMN_ARROW_UP, layout.x + sunken,
+	    layout.y + sunken,
+	    layout.width, layout.height) == TCL_OK)
+	    return;
+    }
+
+    if (1) {
+	int arrowWidth = layout.width;
+	int arrowHeight = layout.height;
+	int arrowBottom = layout.y + arrowHeight;
+	XPoint points[5];
+	int color1 = 0, color2 = 0;
+	int i;
+
+	switch (layout.arrow) {
+	    case COLUMN_ARROW_UP:
+		points[0].x = layout.x;
+		points[0].y = arrowBottom - 1;
+		points[1].x = layout.x + arrowWidth / 2;
+		points[1].y = layout.y - 1;
+		color1 = TK_3D_DARK_GC;
+		points[4].x = layout.x + arrowWidth / 2;
+		points[4].y = layout.y - 1;
+		points[3].x = layout.x + arrowWidth - 1;
+		points[3].y = arrowBottom - 1;
+		points[2].x = layout.x;
+		points[2].y = arrowBottom - 1;
+		color2 = TK_3D_LIGHT_GC;
+		break;
+	    case COLUMN_ARROW_DOWN:
+		points[0].x = layout.x + arrowWidth - 1;
+		points[0].y = layout.y;
+		points[1].x = layout.x + arrowWidth / 2;
+		points[1].y = arrowBottom;
+		color1 = TK_3D_LIGHT_GC;
+		points[2].x = layout.x + arrowWidth - 1;
+		points[2].y = layout.y;
+		points[3].x = layout.x;
+		points[3].y = layout.y;
+		points[4].x = layout.x + arrowWidth / 2;
+		points[4].y = arrowBottom;
+		color2 = TK_3D_DARK_GC;
+		break;
+	}
+	for (i = 0; i < 5; i++) {
+	    points[i].x += sunken;
+	    points[i].y += sunken;
+	}
+
+	BORDER_FOR_STATE(border, border, state)
+	if (border == NULL) {
+	    Tk_Uid colorName = Tk_GetUid(DEF_BUTTON_BG_COLOR);
+	    if (params->state == COLUMN_STATE_ACTIVE)
+		colorName = Tk_GetUid(DEF_BUTTON_ACTIVE_BG_COLOR);
+	    border = Tk_Get3DBorder(tree->interp, tree->tkwin,
+		colorName); /* FIXME: cache it! */
+	    if (border == NULL)
+		border = tree->border;
+	}
+	XDrawLines(tree->display, args->display.drawable,
+		Tk_3DBorderGC(tree->tkwin, border, color2),
+		points + 2, 3, CoordModeOrigin);
+	XDrawLines(tree->display, args->display.drawable,
+		Tk_3DBorderGC(tree->tkwin, border, color1),
+		points, 2, CoordModeOrigin);
+    }
+}
+
+static void DisplayProcHeader(TreeElementArgs *args)
+{
+    TreeCtrl *tree = args->tree;
+    TreeElement elem = args->elem;
+    ElementHeader *elemX = (ElementHeader *) elem;
+    ElementHeader *masterX = (ElementHeader *) elem->master;
+/*    int state = args->state;*/
+    int x = args->display.x, y = args->display.y;
+    int width = args->display.width, height = args->display.height;
+    int arrowIndent = 0;
+    Tk_3DBorder border, borderDefault = NULL;
+    int i, relief;
+    int match, match2;
+    struct HeaderParams params;
+    TreeRectangle tr1, tr2;
+
+    if (tree->useTheme && (tree->themeHeaderHeight > 0)) {
+	height = tree->themeHeaderHeight;
+    }
+
+    AdjustForSticky(args->display.sticky,
+	args->display.width, args->display.height,
+	TRUE, TRUE,
+	&x, &y, &width, &height);
+
+    /* We want the right side of the header to match the right edge of the
+     * column and not be clipped when the column width is less than the needed
+     * width of the style. */
+    width = MIN(width, TreeRect_Right(args->display.spanBbox) - x);
+
+    /* Don't draw the sort arrow in the canvasPadX space. */
+    if (x < args->display.spanBbox.x + args->display.indent) {
+	arrowIndent = args->display.indent;
+    }
+
+    HeaderGetParams(tree, elemX, args->state, &params);
+
+    for (i = 0; i < 4; i++) {
+	params.eUnionBbox[i] = args->display.eUnionBbox[i] - (x - args->display.spanBbox.x);
+	params.iUnionBbox[i] = args->display.iUnionBbox[i] - (x - args->display.spanBbox.x);
+    }
+
+    if (tree->useTheme && TreeTheme_DrawHeaderItem(tree, args->display.td,
+	    params.state, params.arrow, args->display.spanIndex, x, y, width, height)
+	    == TCL_OK) {
+
+#if !defined(MAC_OSX_TK)
+	/* Under Aqua, the Appearance Manager draws the sort arrow as part of
+	 * the header background. */
+	HeaderDrawArrow(args, &params, x, y, width, height, arrowIndent);
+#endif
+	return;
+    }
+
+    BORDER_FOR_STATE(border, border, params.elemState)
+    if (border == NULL) {
+	Tk_Uid colorName = Tk_GetUid(DEF_BUTTON_BG_COLOR);
+	if (params.state != COLUMN_STATE_NORMAL)
+	    colorName = Tk_GetUid(DEF_BUTTON_ACTIVE_BG_COLOR);
+	borderDefault = Tk_Get3DBorder(tree->interp, tree->tkwin,
+	    colorName); /* FIXME: cache it! */
+	if (borderDefault == NULL)
+	    return;
+	border = borderDefault;
+    }
+
+    /* X11 coordinates are 16-bit. */
+    TreeRect_SetXYWH(tr1, x, y, width, height);
+    TreeRect_SetXYWH(tr2, -params.borderWidth, -params.borderWidth,
+	args->display.td.width + params.borderWidth * 2,
+	args->display.td.height + params.borderWidth * 2);
+    TreeRect_Intersect(&tr1, &tr1, &tr2);
+
+    Tk_Fill3DRectangle(tree->tkwin, args->display.drawable, border,
+	    tr1.x, tr1.y, tr1.width, tr1.height, params.borderWidth, TK_RELIEF_FLAT);
+
+    HeaderDrawArrow(args, &params, x, y, width, height, arrowIndent);
+
+    relief = (params.state == COLUMN_STATE_PRESSED) ?
+	TK_RELIEF_SUNKEN : TK_RELIEF_RAISED;
+    Tk_Draw3DRectangle(tree->tkwin, args->display.drawable, border,
+	   tr1. x, tr1.y, tr1.width, tr1.height, params.borderWidth, relief);
+
+    if (borderDefault != NULL)
+	Tk_Free3DBorder(borderDefault);
+}
+
+static void NeededProcHeader(TreeElementArgs *args)
+{
+    TreeCtrl *tree = args->tree;
+    TreeElement elem = args->elem;
+    ElementHeader *elemX = (ElementHeader *) elem;
+/*    ElementHeader *masterX = (ElementHeader *) elem->master;*/
+    struct HeaderParams params;
+    struct ArrowLayout layout;
+    TreeRectangle bounds = {0, 0, 100, 24};
+    int width = 0, height = 0, fixedHeight = -1;
+
+    if (args->tree->useTheme && (tree->themeHeaderHeight > 0)) {
+	fixedHeight = tree->themeHeaderHeight;
+    }
+
+    HeaderGetParams(tree, elemX, args->state, &params);
+
+    HeaderLayoutArrow(tree, elemX, &params, TreeRect_Left(bounds),
+	TreeRect_Top(bounds), TreeRect_Width(bounds),
+	TreeRect_Height(bounds), 0, &layout);
+
+    if (layout.arrow != COLUMN_ARROW_NONE) {
+	width = layout.padX[0] + layout.width + layout.padX[1];
+	height = layout.padY[0] + layout.height + layout.padY[1];
+    }
+
+#if 0
+     /* Original header code never considered borderWidth or
+      * TreeTheme_GetHeaderContentMargins when calculating needed width. */
+    width += params.margins[0] + params.margins[1];
+#endif
+    height += params.margins[1] + params.margins[3];
+
+    args->needed.width = width;
+    args->needed.height = (fixedHeight > 0) ? fixedHeight : height;
+}
+
+static int StateProcHeader(TreeElementArgs *args)
+{
+    TreeCtrl *tree = args->tree;
+    TreeElement elem = args->elem;
+    ElementHeader *elemX = (ElementHeader *) elem;
+    ElementHeader *masterX = (ElementHeader *) elem->master;
+    int match, match2;
+    Tk_Image image1 = NULL, image2 = NULL;
+    Pixmap bitmap1 = None, bitmap2 = None;
+    Tk_3DBorder border1, border2;
+    struct HeaderParams params1, params2;
+
+    if (!args->states.visible2)
+	return 0;
+
+    HeaderGetParams(tree, elemX, args->states.state1, &params1);
+    HeaderGetParams(tree, elemX, args->states.state2, &params2);
+
+    /* Check for -arrow changing to/from "none" */
+    if ((params1.arrow != COLUMN_ARROW_NONE) ^
+	    (params2.arrow != COLUMN_ARROW_NONE))
+	return CS_DISPLAY | CS_LAYOUT;
+
+    if (params1.arrow != COLUMN_ARROW_NONE) {
+	IMAGE_FOR_STATE(image1, arrowImage, args->states.state1)
+    }
+    if (params2.arrow != COLUMN_ARROW_NONE) {
+	IMAGE_FOR_STATE(image2, arrowImage, args->states.state2)
+    }
+    if (image1 != image2) {
+	if ((image1 != NULL) && (image2 != NULL)) {
+	    int w1, h1, w2, h2;
+	    Tk_SizeOfImage(image1, &w1, &h1);
+	    Tk_SizeOfImage(image2, &w2, &h2);
+	    if ((w1 != w2) || (h1 != h2))
+		return CS_DISPLAY | CS_LAYOUT;
+	    return CS_DISPLAY;
+	}
+	return CS_DISPLAY | CS_LAYOUT;
+    }
+
+    if (params1.arrow != COLUMN_ARROW_NONE) {
+	BITMAP_FOR_STATE(bitmap1, arrowBitmap, args->states.state1)
+    }
+    if (params2.arrow != COLUMN_ARROW_NONE) {
+	BITMAP_FOR_STATE(bitmap2, arrowBitmap, args->states.state2)
+    }
+    if (bitmap1 != bitmap2) {
+	if ((bitmap1 != None) && (bitmap2 != None)) {
+	    int w1, h1, w2, h2;
+	    Tk_SizeOfBitmap(tree->display, bitmap1, &w1, &h1);
+	    Tk_SizeOfBitmap(tree->display, bitmap2, &w2, &h2);
+	    if ((w1 != w2) || (h1 != h2))
+		return CS_DISPLAY | CS_LAYOUT;
+	    return CS_DISPLAY;
+	}
+	return CS_DISPLAY | CS_LAYOUT;
+    }
+
+    if (!args->states.draw2)
+	return 0;
+
+    /* Headers look different on MacOSX in the background. */
+    if ((args->states.state1 & STATE_HEADER_BG) ^
+	    (args->states.state2 & STATE_HEADER_BG))
+	return CS_DISPLAY;
+
+    if (params1.state != params2.state)
+	return CS_DISPLAY;
+
+    if (params1.arrow != params2.arrow)
+	return CS_DISPLAY;
+
+    BORDER_FOR_STATE(border1, border, args->states.state1)
+    BORDER_FOR_STATE(border2, border, args->states.state2)
+    if (border1 != border2)
+	return CS_DISPLAY;
+
+    return 0;
+}
+
+static int UndefProcHeader(TreeElementArgs *args)
+{
+    TreeCtrl *tree = args->tree;
+    TreeElement elem = args->elem;
+    ElementHeader *elemX = (ElementHeader *) elem;
+    int modified = 0;
+
+    modified |= PerStateInfo_Undefine(tree, &pstBitmap, &elemX->arrowBitmap, elem->stateDomain, args->state);
+    modified |= PerStateInfo_Undefine(tree, &pstImage, &elemX->arrowImage, elem->stateDomain, args->state);
+    modified |= PerStateInfo_Undefine(tree, &pstBorder, &elemX->border, elem->stateDomain, args->state);
+    return modified;
+}
+
+static int ActualProcHeader(TreeElementArgs *args)
+{
+    TreeCtrl *tree = args->tree;
+    ElementHeader *elemX = (ElementHeader *) args->elem;
+    ElementHeader *masterX = (ElementHeader *) args->elem->master;
+    static CONST char *optionName[] = {
+	"-arrowbitmap",
+	"-arrowimage",
+	"-background",
+	(char *) NULL };
+    int index, match, matchM;
+    Tcl_Obj *obj = NULL;
+
+    if (Tcl_GetIndexFromObj(tree->interp, args->actual.obj, optionName,
+		"option", 0, &index) != TCL_OK)
+	return TCL_ERROR;
+
+    switch (index) {
+	case 0: {
+	    OBJECT_FOR_STATE(obj, pstBitmap, arrowBitmap, args->state)
+	    break;
+	}
+	case 1: {
+	    OBJECT_FOR_STATE(obj, pstImage, arrowImage, args->state)
+	    break;
+	}
+	case 2: {
+	    OBJECT_FOR_STATE(obj, pstBorder, border, args->state)
+	    break;
+	}
+    }
+    if (obj != NULL)
+	Tcl_SetObjResult(tree->interp, obj);
+    return TCL_OK;
+}
+
+TreeElementType treeElemTypeHeader = {
+    "header",
+    sizeof(ElementHeader),
+    headerOptionSpecs,
+    NULL,
+    CreateProcHeader,
+    DeleteProcHeader,
+    ConfigProcHeader,
+    DisplayProcHeader,
+    NeededProcHeader,
+    NULL, /* heightProc */
+    WorldChangedProcHeader,
+    StateProcHeader,
+    UndefProcHeader,
+    ActualProcHeader,
+    NULL /* onScreenProc */
+};
+
+void
+TreeElement_GetContentMargins(
+    TreeCtrl *tree,
+    TreeElement elem,
+    int state,
+    int eMargins[4],
+    int uMargins[4],
+    int *arrowHeight
+    )
+{
+    eMargins[0] = eMargins[1] = eMargins[2] = eMargins[3] = 0;
+    uMargins[0] = uMargins[1] = uMargins[2] = uMargins[3] = 0;
+    *arrowHeight = 0;
+
+    if (ELEMENT_TYPE_MATCHES(elem->typePtr, &treeElemTypeHeader)) {
+	ElementHeader *elemX = (ElementHeader *) elem;
+	struct HeaderParams params;
+	struct ArrowLayout layout;
+	TreeRectangle bounds = {0, 0, 100, 24};
+
+	HeaderGetParams(tree, elemX, state, &params);
+
+	/* Added to ePadY of elements in the -union */
+	eMargins[1] = params.margins[1];
+	eMargins[3] = params.margins[3];
+
+	/* Added to iPadY of this element */
+	uMargins[1] = params.margins[1];
+	uMargins[3] = params.margins[3];
+
+	if (params.arrow == COLUMN_ARROW_NONE)
+	    return;
+
+	HeaderLayoutArrow(tree, elemX, &params, TreeRect_Left(bounds),
+	    TreeRect_Top(bounds), TreeRect_Width(bounds),
+	    TreeRect_Height(bounds), 0, &layout);
+
+	if (layout.arrowSide == SIDE_LEFT) {
+	    uMargins[0] = layout.padX[PAD_TOP_LEFT] + layout.width + layout.padX[PAD_BOTTOM_RIGHT];
+	    eMargins[0] = layout.padX[PAD_TOP_LEFT] + layout.width;
+	} else {
+	    uMargins[2] = layout.padX[PAD_TOP_LEFT] + layout.width + layout.padX[PAD_BOTTOM_RIGHT];
+	    eMargins[2] =                             layout.width + layout.padX[PAD_BOTTOM_RIGHT];
+	}
+
+	*arrowHeight = layout.padY[0] + layout.height + layout.padY[1];
+    }
+}
+
+/*****/
+
 typedef struct ElementImage ElementImage;
 
 struct ElementImage
@@ -1661,9 +2539,9 @@ static int ConfigProcImage(TreeElementArgs *args)
 
     for (error = 0; error <= 1; error++) {
 	if (error == 0) {
-	    if (Tk_SetOptions(tree->interp, (char *) elemX,
+	    if (Tree_SetOptions(tree, elem->stateDomain, elemX,
 			elem->typePtr->optionTable,
-			args->config.objc, args->config.objv, tree->tkwin,
+			args->config.objc, args->config.objv,
 			&savedOptions, &args->config.flagSelf) != TCL_OK) {
 		args->config.flagSelf = 0;
 		continue;
@@ -1708,6 +2586,8 @@ static void DisplayProcImage(TreeElementArgs *args)
     Tk_Image image;
     int imgW, imgH;
     int tiled = 0, *eit, *eitM = NULL;
+    int inHeader = elem->stateDomain == STATE_DOMAIN_HEADER;
+    int columnState = COLUMN_STATE_NORMAL;
 
 #ifdef DEPRECATED
     draw = DO_BooleanForState(tree, elem, 1002, state);
@@ -1728,8 +2608,11 @@ static void DisplayProcImage(TreeElementArgs *args)
     else if ((eitM != NULL) && (*eitM != -1))
 	tiled = *eitM;
     if (tiled) {
-	Tree_DrawTiledImage(tree, args->display.drawable, image, x, y,
-	    x + args->display.width, y + args->display.height, -x, -y);
+	TreeRectangle tr;
+	tr.x = x, tr.y = y;
+	tr.width = args->display.width, tr.height = args->display.height;
+	Tree_DrawTiledImage(tree, args->display.td, image, tr,
+		x, y, TRUE, TRUE);
 	return;
     }
 
@@ -1739,6 +2622,22 @@ static void DisplayProcImage(TreeElementArgs *args)
 	args->display.width, args->display.height,
 	FALSE, FALSE,
 	&x, &y, &width, &height);
+#if HEADER_OFFSET_HACK == 1
+    if (inHeader) {
+	if (state & STATE_HEADER_ACTIVE)
+	    columnState = COLUMN_STATE_ACTIVE;
+	else if (state & STATE_HEADER_PRESSED)
+	    columnState = COLUMN_STATE_PRESSED;
+    }
+    if (inHeader && columnState == COLUMN_STATE_PRESSED) {
+	/* If this image fills the whole header, don't offset it. */
+	/* FIXME: should have a layout option to control this. */
+	if (imgW < args->display.spanBbox.width ||
+		imgH < args->display.spanBbox.height) {
+	    x += 1, y += 1;
+	}
+    }
+#endif
     if (imgW > args->display.width)
 	imgW = args->display.width;
     if (imgH > args->display.height)
@@ -1835,9 +2734,9 @@ static int UndefProcImage(TreeElementArgs *args)
 
 #ifdef DEPRECATED
     if ((psi = DynamicOption_FindData(elem->options, 1002)) != NULL)
-	modified |= PerStateInfo_Undefine(tree, &pstBoolean, psi, args->state);
+	modified |= PerStateInfo_Undefine(tree, &pstBoolean, psi, elem->stateDomain, args->state);
 #endif
-    modified |= PerStateInfo_Undefine(tree, &pstImage, &elemX->image, args->state);
+    modified |= PerStateInfo_Undefine(tree, &pstImage, &elemX->image, elem->stateDomain, args->state);
     return modified;
 }
 
@@ -1917,9 +2816,12 @@ struct ElementRect
     PerStateInfo outline;
     int outlineWidth;
     Tcl_Obj *outlineWidthObj;
-    int open;
-    char *openString;
+    PerStateInfo open;
     int showFocus;
+    int rx;
+    Tcl_Obj *rxObj;
+    int ry;
+    Tcl_Obj *ryObj;
 };
 
 #define RECT_CONF_FILL 0x0001
@@ -1928,8 +2830,9 @@ struct ElementRect
 #define RECT_CONF_OPEN 0x0008
 #define RECT_CONF_SIZE 0x0010
 #define RECT_CONF_FOCUS 0x0020
+#define RECT_CONF_RADIUS 0x0040
 #ifdef DEPRECATED
-#define RECT_CONF_DRAW 0x0040
+#define RECT_CONF_DRAW 0x0080
 #endif
 
 static Tk_OptionSpec rectOptionSpecs[] = {
@@ -1947,8 +2850,8 @@ static Tk_OptionSpec rectOptionSpecs[] = {
      (char *) NULL, Tk_Offset(ElementRect, heightObj),
      Tk_Offset(ElementRect, height),
      TK_OPTION_NULL_OK, (ClientData) NULL, RECT_CONF_SIZE},
-    {TK_OPTION_STRING, "-open", (char *) NULL, (char *) NULL,
-     (char *) NULL, -1, Tk_Offset(ElementRect, openString),
+    {TK_OPTION_CUSTOM, "-open", (char *) NULL, (char *) NULL, (char *) NULL,
+     Tk_Offset(ElementRect, open.obj), Tk_Offset(ElementRect, open),
      TK_OPTION_NULL_OK, (ClientData) NULL, RECT_CONF_OPEN},
     {TK_OPTION_CUSTOM, "-outline", (char *) NULL, (char *) NULL,
      (char *) NULL,
@@ -1958,6 +2861,14 @@ static Tk_OptionSpec rectOptionSpecs[] = {
      (char *) NULL, Tk_Offset(ElementRect, outlineWidthObj),
      Tk_Offset(ElementRect, outlineWidth),
      TK_OPTION_NULL_OK, (ClientData) NULL, RECT_CONF_OUTWIDTH},
+    {TK_OPTION_PIXELS, "-rx", (char *) NULL, (char *) NULL,
+     (char *) NULL, Tk_Offset(ElementRect, rxObj),
+     Tk_Offset(ElementRect, rx),
+     TK_OPTION_NULL_OK, (ClientData) NULL, RECT_CONF_RADIUS},
+    {TK_OPTION_PIXELS, "-ry", (char *) NULL, (char *) NULL,
+     (char *) NULL, Tk_Offset(ElementRect, ryObj),
+     Tk_Offset(ElementRect, ry),
+     TK_OPTION_NULL_OK, (ClientData) NULL, RECT_CONF_RADIUS},
     {TK_OPTION_CUSTOM, "-showfocus", (char *) NULL, (char *) NULL,
      (char *) NULL, -1, Tk_Offset(ElementRect, showFocus),
      TK_OPTION_NULL_OK, (ClientData) &booleanCO, RECT_CONF_FOCUS},
@@ -1989,7 +2900,7 @@ static int WorldChangedProcRect(TreeElementArgs *args)
 	    RECT_CONF_DRAW |
 #endif
 	    RECT_CONF_FILL | RECT_CONF_OUTLINE | RECT_CONF_OPEN |
-	    RECT_CONF_FOCUS))
+	    RECT_CONF_FOCUS | RECT_CONF_RADIUS))
 	mask |= CS_DISPLAY;
 
     return mask;
@@ -2000,52 +2911,18 @@ static int ConfigProcRect(TreeElementArgs *args)
     TreeCtrl *tree = args->tree;
     TreeElement elem = args->elem;
     ElementRect *elemX = (ElementRect *) elem;
-    ElementRect savedX;
     Tk_SavedOptions savedOptions;
     int error;
     Tcl_Obj *errorResult = NULL;
-    int i;
 
     for (error = 0; error <= 1; error++) {
 	if (error == 0) {
-	    if (Tk_SetOptions(tree->interp, (char *) elemX,
+	    if (Tree_SetOptions(tree, elem->stateDomain, elemX,
 			elem->typePtr->optionTable,
-			args->config.objc, args->config.objv, tree->tkwin,
+			args->config.objc, args->config.objv,
 			&savedOptions, &args->config.flagSelf) != TCL_OK) {
 		args->config.flagSelf = 0;
 		continue;
-	    }
-
-	    if (args->config.flagSelf & RECT_CONF_OPEN)
-		savedX.open = elemX->open;
-
-	    if (args->config.flagSelf & RECT_CONF_OPEN) {
-		elemX->open = 0;
-		if (elemX->openString != NULL) {
-		    int badChar = 0;
-
-		    for (i = 0; elemX->openString[i]; i++) {
-			switch (elemX->openString[i]) {
-			    case 'w': case 'W': elemX->open |= 0x01; break;
-			    case 'n': case 'N': elemX->open |= 0x02; break;
-			    case 'e': case 'E': elemX->open |= 0x04; break;
-			    case 's': case 'S': elemX->open |= 0x08; break;
-			    default: {
-				Tcl_ResetResult(tree->interp);
-				Tcl_AppendResult(tree->interp, "bad open value \"",
-					elemX->openString, "\": must be a string ",
-					"containing zero or more of n, e, s, and w",
-					(char *) NULL);
-				badChar = 1;
-				break;
-			    }
-			}
-			if (badChar)
-			    break;
-		    }
-		    if (badChar)
-			continue;
-		}
 	    }
 
 	    Tk_FreeSavedOptions(&savedOptions);
@@ -2054,9 +2931,6 @@ static int ConfigProcRect(TreeElementArgs *args)
 	    errorResult = Tcl_GetObjResult(tree->interp);
 	    Tcl_IncrRefCount(errorResult);
 	    Tk_RestoreSavedOptions(&savedOptions);
-
-	    if (args->config.flagSelf & RECT_CONF_OPEN)
-		elemX->open = savedX.open;
 
 	    Tcl_SetObjResult(tree->interp, errorResult);
 	    Tcl_DecrRefCount(errorResult);
@@ -2088,10 +2962,14 @@ static void DisplayProcRect(TreeElementArgs *args)
 #ifdef DEPRECATED
     int draw;
 #endif
-    XColor *color;
+    TreeColor *tc;
+    TreeRectangle tr;
+    TreeRectangle trBrush;
+    TreeClip clip, *clipPtr = &clip;
     int open = 0;
     int outlineWidth = 0;
     int showFocus = 0;
+    int rx = 0, ry = 0;
 
 #ifdef DEPRECATED
     BOOLEAN_FOR_STATE(draw, draw, state)
@@ -2104,10 +2982,9 @@ static void DisplayProcRect(TreeElementArgs *args)
     else if ((masterX != NULL) && (masterX->outlineWidthObj != NULL))
 	outlineWidth = masterX->outlineWidth;
 
-    if (elemX->openString != NULL)
-	open = elemX->open;
-    else if ((masterX != NULL) && (masterX->openString != NULL))
-	open = masterX->open;
+    FLAGS_FOR_STATE(open, open, state)
+    if (open == 0xFFFFFFFF) /* unspecified */
+	open = 0;
 
     if (elemX->showFocus != -1)
 	showFocus = elemX->showFocus;
@@ -2124,36 +3001,82 @@ static void DisplayProcRect(TreeElementArgs *args)
     else if ((masterX != NULL) && (masterX->heightObj != NULL))
 	height = masterX->height;
 
+    if (elemX->rxObj != NULL)
+	rx = elemX->rx;
+    else if ((masterX != NULL) && (masterX->rxObj != NULL))
+	rx = masterX->rx;
+
+    if (elemX->ryObj != NULL)
+	ry = elemX->ry;
+    else if ((masterX != NULL) && (masterX->ryObj != NULL))
+	ry = masterX->ry;
+
     AdjustForSticky(args->display.sticky,
 	args->display.width, args->display.height,
 	TRUE, TRUE,
 	&x, &y, &width, &height);
 
-    COLOR_FOR_STATE(color, fill, state)
-    if (color != NULL) {
-	GC gc = Tk_GCForColor(color, Tk_WindowId(tree->tkwin));
-	XFillRectangle(tree->display, args->display.drawable, gc,
-		x, y, width, height);
+    TreeRect_SetXYWH(tr, x, y, width, height);
+
+#if USE_ITEM_PIXMAP == 0
+    clip.type = TREE_CLIP_RECT;
+    clip.tr = args->display.bounds;
+#else
+    clipPtr = NULL;
+#endif
+
+    if (rx < 1 && ry < 1)
+	rx = ry = 0;
+    else if (ry < 1)
+	ry = rx;
+    else if (rx < 1)
+	rx = ry;
+    rx = MIN(rx, width/2);
+    ry = MIN(ry, height/2);
+    if (rx >= 1 && ry >= 1) {
+	TREECOLOR_FOR_STATE(tc, fill, state)
+	if (tc != NULL) {
+	    TreeColor_GetBrushBounds(tree, tc, tr,
+		    tree->drawableXOrigin, tree->drawableYOrigin,
+		    args->display.column, args->display.item, &trBrush);
+	    TreeColor_FillRoundRect(tree, args->display.td, clipPtr, tc, trBrush, tr, rx, ry, open);
+	}
+	TREECOLOR_FOR_STATE(tc, outline, state)
+	if ((tc != NULL) && (outlineWidth > 0) && (open != RECT_OPEN_WNES)) {
+	    TreeColor_GetBrushBounds(tree, tc, tr,
+		    tree->drawableXOrigin, tree->drawableYOrigin,
+		    args->display.column, args->display.item, &trBrush);
+	    TreeColor_DrawRoundRect(tree, args->display.td, clipPtr, tc,
+		trBrush, tr, outlineWidth, rx, ry, open);
+	}
+	/* FIXME: its not round! */
+	if (showFocus && (state & STATE_ITEM_FOCUS) && (state & STATE_ITEM_ACTIVE)) {
+	    Tree_DrawActiveOutline(tree, args->display.drawable,
+		    args->display.x, args->display.y,
+		    args->display.width, args->display.height,
+		    open);
+	}
+	return;
     }
 
-    COLOR_FOR_STATE(color, outline, state)
-    if ((color != NULL) && (outlineWidth > 0)) {
-	GC gc = Tk_GCForColor(color, Tk_WindowId(tree->tkwin));
-	if (!(open & 0x01))
-	    XFillRectangle(tree->display, args->display.drawable, gc,
-		    x, y, outlineWidth, height);
-	if (!(open & 0x02))
-	    XFillRectangle(tree->display, args->display.drawable, gc,
-		    x, y, width, outlineWidth);
-	if (!(open & 0x04))
-	    XFillRectangle(tree->display, args->display.drawable, gc,
-		    x + width - outlineWidth, y, outlineWidth, height);
-	if (!(open & 0x08))
-	    XFillRectangle(tree->display, args->display.drawable, gc,
-		    x, y + height - outlineWidth, width, outlineWidth);
+    TREECOLOR_FOR_STATE(tc, fill, state)
+    if (tc != NULL) {
+	TreeColor_GetBrushBounds(tree, tc, tr,
+		tree->drawableXOrigin, tree->drawableYOrigin,
+		args->display.column, args->display.item, &trBrush);
+	TreeColor_FillRect(tree, args->display.td, clipPtr, tc, trBrush, tr);
     }
 
-    if (showFocus && (state & STATE_FOCUS) && (state & STATE_ACTIVE)) {
+    TREECOLOR_FOR_STATE(tc, outline, state)
+    if ((tc != NULL) && (outlineWidth > 0) && (open != RECT_OPEN_WNES)) {
+	TreeColor_GetBrushBounds(tree, tc, tr,
+		tree->drawableXOrigin, tree->drawableYOrigin,
+		args->display.column, args->display.item, &trBrush);
+	TreeColor_DrawRect(tree, args->display.td, clipPtr, tc, trBrush, tr,
+	    outlineWidth, open);
+    }
+
+    if (showFocus && (state & STATE_ITEM_FOCUS) && (state & STATE_ITEM_ACTIVE)) {
 	Tree_DrawActiveOutline(tree, args->display.drawable,
 		args->display.x, args->display.y,
 		args->display.width, args->display.height,
@@ -2198,8 +3121,9 @@ static int StateProcRect(TreeElementArgs *args)
 #ifdef DEPRECATED
     int draw1, draw2;
 #endif
-    XColor *f1, *f2;
-    XColor *o1, *o2;
+    int open1, open2;
+    XColor *c1, *c2;
+    TreeColor *tc1, *tc2;
     int s1, s2;
     int showFocus = 0;
 
@@ -2225,22 +3149,27 @@ static int StateProcRect(TreeElementArgs *args)
 	showFocus = masterX->showFocus;
 
     s1 = showFocus &&
-	(args->states.state1 & STATE_FOCUS) &&
-	(args->states.state1 & STATE_ACTIVE);
+	(args->states.state1 & STATE_ITEM_FOCUS) &&
+	(args->states.state1 & STATE_ITEM_ACTIVE);
     s2 = showFocus &&
-	(args->states.state2 & STATE_FOCUS) &&
-	(args->states.state2 & STATE_ACTIVE);
+	(args->states.state2 & STATE_ITEM_FOCUS) &&
+	(args->states.state2 & STATE_ITEM_ACTIVE);
     if (s1 != s2)
 	return CS_DISPLAY;
 
-    COLOR_FOR_STATE(f1, fill, args->states.state1)
-    COLOR_FOR_STATE(f2, fill, args->states.state2)
-    if (f1 != f2)
+    TREECOLOR_FOR_STATE(tc1, fill, args->states.state1)
+    TREECOLOR_FOR_STATE(tc2, fill, args->states.state2)
+    if (TREECOLOR_CMP(tc1, tc2))
 	return CS_DISPLAY;
 
-    COLOR_FOR_STATE(o1, outline, args->states.state1)
-    COLOR_FOR_STATE(o2, outline, args->states.state2)
-    if (o1 != o2)
+    FLAGS_FOR_STATE(open1, open, args->states.state1)
+    FLAGS_FOR_STATE(open2, open, args->states.state2)
+    if (open1 != open2)
+	return CS_DISPLAY;
+
+    COLOR_FOR_STATE(c1, outline, args->states.state1)
+    COLOR_FOR_STATE(c2, outline, args->states.state2)
+    if (c1 != c2)
 	return CS_DISPLAY;
 
     return 0;
@@ -2249,14 +3178,16 @@ static int StateProcRect(TreeElementArgs *args)
 static int UndefProcRect(TreeElementArgs *args)
 {
     TreeCtrl *tree = args->tree;
-    ElementRect *elemX = (ElementRect *) args->elem;
+    TreeElement elem = args->elem;
+    ElementRect *elemX = (ElementRect *) elem;
     int modified = 0;
 
 #ifdef DEPRECATED
-    modified |= PerStateInfo_Undefine(tree, &pstBoolean, &elemX->draw, args->state);
+    modified |= PerStateInfo_Undefine(tree, &pstBoolean, &elemX->draw, elem->stateDomain, args->state);
 #endif
-    modified |= PerStateInfo_Undefine(tree, &pstColor, &elemX->fill, args->state);
-    modified |= PerStateInfo_Undefine(tree, &pstColor, &elemX->outline, args->state);
+    modified |= PerStateInfo_Undefine(tree, &pstColor, &elemX->fill, elem->stateDomain, args->state);
+    modified |= PerStateInfo_Undefine(tree, &pstFlags, &elemX->open, elem->stateDomain, args->state);
+    modified |= PerStateInfo_Undefine(tree, &pstColor, &elemX->outline, elem->stateDomain, args->state);
     return modified;
 }
 
@@ -2269,8 +3200,18 @@ static int ActualProcRect(TreeElementArgs *args)
 #ifdef DEPRECATED
 	"-draw",
 #endif
-	"-fill", "-outline",
+	"-fill",
+	 "-open",
+	 "-outline",
 	(char *) NULL };
+    enum optionEnum {
+#ifdef DEPRECATED
+	OPT_DRAW,
+#endif
+	OPT_FILL,
+	OPT_OPEN,
+	OPT_OUTLINE
+    };
     int index, match, matchM;
     Tcl_Obj *obj = NULL;
 
@@ -2278,30 +3219,25 @@ static int ActualProcRect(TreeElementArgs *args)
 		"option", 0, &index) != TCL_OK)
 	return TCL_ERROR;
 
-    switch (index) {
+    switch ((enum optionEnum) index) {
 #ifdef DEPRECATED
-	case 0: {
+	case OPT_DRAW: {
 	    OBJECT_FOR_STATE(obj, pstBoolean, draw, args->state)
 	    break;
 	}
-	case 1: {
-	    OBJECT_FOR_STATE(obj, pstColor, fill, args->state)
-	    break;
-	}
-	case 2: {
-	    OBJECT_FOR_STATE(obj, pstColor, outline, args->state)
-	    break;
-	}
-#else
-	case 0: {
-	    OBJECT_FOR_STATE(obj, pstColor, fill, args->state)
-	    break;
-	}
-	case 1: {
-	    OBJECT_FOR_STATE(obj, pstColor, outline, args->state)
-	    break;
-	}
 #endif
+	case OPT_FILL: {
+	    OBJECT_FOR_STATE(obj, pstColor, fill, args->state)
+	    break;
+	}
+	case OPT_OPEN: {
+	    OBJECT_FOR_STATE(obj, pstFlags, open, args->state)
+	    break;
+	}
+	case OPT_OUTLINE: {
+	    OBJECT_FOR_STATE(obj, pstColor, outline, args->state)
+	    break;
+	}
     }
     if (obj != NULL)
 	Tcl_SetObjResult(tree->interp, obj);
@@ -2352,6 +3288,19 @@ struct ElementText
 #define TEXT_CONF_TEXTVAR 0x0080
 #endif
 
+/*
+ * Dynamic option ids for the text element.
+ */
+#define DOID_TEXT_VAR 1001
+#define DOID_TEXT_DRAW 1002
+#define DOID_TEXT_FILL 1003
+#define DOID_TEXT_FONT 1004
+#define DOID_TEXT_LAYOUT 1005
+#define DOID_TEXT_DATA 1006
+#define DOID_TEXT_LAYOUT2 1007
+#define DOID_TEXT_STYLE 1008
+#define DOID_TEXT_LAYOUT3 1009
+
 typedef struct ElementTextData {
     Tcl_Obj *dataObj;			/* -data */
 #define TDT_NULL -1
@@ -2385,6 +3334,13 @@ typedef struct ElementTextLayout2 {
     int neededWidth;
     int totalWidth;
 } ElementTextLayout2;
+
+typedef struct ElementTextLayout3 {
+    Tcl_Obj *lMargin1Obj;		/* -lmargin1 */
+    int lMargin1;			/* -lmargin2 */
+    Tcl_Obj *lMargin2Obj;		/* -lmargin1 */
+    int lMargin2;			/* -lmargin2 */
+} ElementTextLayout3;
 
 #define TEXT_STYLE
 #ifdef TEXT_STYLE
@@ -2470,6 +3426,12 @@ static Tk_OptionSpec textOptionSpecs[] = {
     {TK_OPTION_CUSTOM, "-lines", (char *) NULL, (char *) NULL,
      (char *) NULL, -1, Tk_Offset(TreeElement_, options),
      TK_OPTION_NULL_OK, (ClientData) NULL, TEXT_CONF_LAYOUT},
+    {TK_OPTION_CUSTOM, "-lmargin1", (char *) NULL, (char *) NULL,
+     (char *) NULL, -1, Tk_Offset(TreeElement_, options),
+     TK_OPTION_NULL_OK, (ClientData) NULL, TEXT_CONF_LAYOUT},
+    {TK_OPTION_CUSTOM, "-lmargin2", (char *) NULL, (char *) NULL,
+     (char *) NULL, -1, Tk_Offset(TreeElement_, options),
+     TK_OPTION_NULL_OK, (ClientData) NULL, TEXT_CONF_LAYOUT},
     {TK_OPTION_STRING, "-text", (char *) NULL, (char *) NULL,
      (char *) NULL, -1, Tk_Offset(ElementText, textCfg),
      TK_OPTION_NULL_OK, (ClientData) NULL, TEXT_CONF_STRINGREP},
@@ -2548,18 +3510,18 @@ static void TextUpdateStringRep(TreeElementArgs *args)
     /* If -text is specified, then -data and -textvariable are ignored. */
     if (elemX->textCfg != NULL) {
 	elemX->text = elemX->textCfg;
-	elemX->textLen = strlen(elemX->textCfg);
+	elemX->textLen = (int) strlen(elemX->textCfg);
 	return;
     }
 
 #ifdef TEXTVAR
-    etv = DynamicOption_FindData(elem->options, 1001);
+    etv = DynamicOption_FindData(elem->options, DOID_TEXT_VAR);
     varNameObj = etv ? etv->varNameObj : NULL;
 
     if (varNameObj != NULL) {
 	Tcl_Obj *valueObj = Tcl_ObjGetVar2(tree->interp, varNameObj, NULL,
 		TCL_GLOBAL_ONLY);
-	
+
 	if (valueObj == NULL) {
 	    /* not possible I think */
 	} else {
@@ -2575,21 +3537,21 @@ static void TextUpdateStringRep(TreeElementArgs *args)
     }
 #endif
 
-    etd = DynamicOption_FindData(elem->options, 1006);
+    etd = DynamicOption_FindData(elem->options, DOID_TEXT_DATA);
     if (masterX != NULL)
-	etdM = DynamicOption_FindData(elem->master->options, 1006);
+	etdM = DynamicOption_FindData(elem->master->options, DOID_TEXT_DATA);
 
     dataObj = etd ? etd->dataObj : NULL;
     if ((dataObj == NULL) && (etdM != NULL))
-	dataObj = etdM->dataObj; 
+	dataObj = etdM->dataObj;
 
     dataType = etd ? etd->dataType : TDT_NULL;
     if ((dataType == TDT_NULL) && (etdM != NULL))
-	dataType = etdM->dataType; 
+	dataType = etdM->dataType;
 
     formatObj = etd ? etd->formatObj : NULL;
     if ((formatObj == NULL) && (etdM != NULL))
-	formatObj = etdM->formatObj; 
+	formatObj = etdM->formatObj;
 
     /* Only create a string rep if elemX (not masterX) has dataObj,
        dataType or formatObj. */
@@ -2597,29 +3559,12 @@ static void TextUpdateStringRep(TreeElementArgs *args)
 	    ((etd != NULL) && ((etd->dataObj != NULL) ||
 		    (etd->dataType != TDT_NULL) ||
 		    (etd->formatObj != NULL)))) {
-	int i, objc = 0;
+	int objc = 0;
 	Tcl_Obj *objv[5], *resultObj = NULL;
-	static Tcl_Obj *staticObj[3] = { NULL };
-	static Tcl_Obj *staticFormat[4] = { NULL };
 	Tcl_ObjCmdProc *clockObjCmd = NULL, *formatObjCmd = NULL;
 	ClientData clockClientData = NULL, formatClientData = NULL;
 	Tcl_CmdInfo cmdInfo;
 
-	if (staticFormat[0] == NULL) {
-	    staticFormat[0] = Tcl_NewStringObj("%g", -1);
-	    staticFormat[1] = Tcl_NewStringObj("%d", -1);
-	    staticFormat[2] = Tcl_NewStringObj("%ld", -1);
-	    staticFormat[3] = Tcl_NewStringObj("%s", -1);
-	    for (i = 0; i < 4; i++)
-		Tcl_IncrRefCount(staticFormat[i]);
-	}
-	if (staticObj[0] == NULL) {
-	    staticObj[0] = Tcl_NewStringObj("clock", -1);
-	    staticObj[1] = Tcl_NewStringObj("format", -1);
-	    staticObj[2] = Tcl_NewStringObj("-format", -1);
-	    for (i = 0; i < 3; i++)
-		Tcl_IncrRefCount(staticObj[i]);
-	}
 	if (Tcl_GetCommandInfo(tree->interp, "::clock", &cmdInfo) == 1) {
 	    clockObjCmd = cmdInfo.objProc;
 	    clockClientData = cmdInfo.objClientData;
@@ -2637,8 +3582,8 @@ static void TextUpdateStringRep(TreeElementArgs *args)
 	    case TDT_DOUBLE:
 		if (formatObjCmd == NULL)
 		    break;
-		if (formatObj == NULL) formatObj = staticFormat[0];
-		objv[objc++] = staticObj[1]; /* format */
+		if (formatObj == NULL) formatObj = tree->formatFloatObj;
+		objv[objc++] = tree->stringFormatObj;
 		objv[objc++] = formatObj;
 		objv[objc++] = dataObj;
 		if (formatObjCmd(formatClientData, tree->interp, objc, objv)
@@ -2648,8 +3593,8 @@ static void TextUpdateStringRep(TreeElementArgs *args)
 	    case TDT_INTEGER:
 		if (formatObjCmd == NULL)
 		    break;
-		if (formatObj == NULL) formatObj = staticFormat[1];
-		objv[objc++] = staticObj[1]; /* format */
+		if (formatObj == NULL) formatObj = tree->formatIntObj;
+		objv[objc++] = tree->stringFormatObj;
 		objv[objc++] = formatObj;
 		objv[objc++] = dataObj;
 		if (formatObjCmd(formatClientData, tree->interp, objc, objv)
@@ -2659,8 +3604,8 @@ static void TextUpdateStringRep(TreeElementArgs *args)
 	    case TDT_LONG:
 		if (formatObjCmd == NULL)
 		    break;
-		if (formatObj == NULL) formatObj = staticFormat[2];
-		objv[objc++] = staticObj[1]; /* format */
+		if (formatObj == NULL) formatObj = tree->formatLongObj;;
+		objv[objc++] = tree->stringFormatObj;
 		objv[objc++] = formatObj;
 		objv[objc++] = dataObj;
 		if (formatObjCmd(formatClientData, tree->interp, objc, objv)
@@ -2670,8 +3615,8 @@ static void TextUpdateStringRep(TreeElementArgs *args)
 	    case TDT_STRING:
 		if (formatObjCmd == NULL)
 		    break;
-		if (formatObj == NULL) formatObj = staticFormat[3];
-		objv[objc++] = staticObj[1]; /* format */
+		if (formatObj == NULL) formatObj = tree->formatStringObj;;
+		objv[objc++] = tree->stringFormatObj;
 		objv[objc++] = formatObj;
 		objv[objc++] = dataObj;
 		if (formatObjCmd(formatClientData, tree->interp, objc, objv)
@@ -2681,11 +3626,11 @@ static void TextUpdateStringRep(TreeElementArgs *args)
 	    case TDT_TIME:
 		if (clockObjCmd == NULL)
 		    break;
-		objv[objc++] = staticObj[0];
-		objv[objc++] = staticObj[1];
+		objv[objc++] = tree->stringClockObj;
+		objv[objc++] = tree->stringFormatObj;
 		objv[objc++] = dataObj;
 		if (formatObj != NULL) {
-		    objv[objc++] = staticObj[2];
+		    objv[objc++] = tree->optionFormatObj;
 		    objv[objc++] = formatObj;
 		}
 		if (clockObjCmd(clockClientData, tree->interp, objc, objv)
@@ -2720,6 +3665,7 @@ TextUpdateLayout(
     ElementText *elemX = (ElementText *) elem;
     ElementText *masterX = (ElementText *) elem->master;
     int state = args->state;
+    int inHeader = elem->stateDomain == STATE_DOMAIN_HEADER;
     Tk_Font tkfont;
     char *text = NULL;
     int textLen = 0;
@@ -2732,14 +3678,16 @@ TextUpdateLayout(
     int textWidth;
     ElementTextLayout *etl, *etlM = NULL;
     ElementTextLayout2 *etl2;
+    ElementTextLayout3 *etl3, *etl3M = NULL;
     DynamicOption *opt;
+    int lMargin1 = 0, lMargin2 = 0;
 
     if (tree->debug.enable && tree->debug.textLayout)
 	dbwin("TextUpdateLayout: %s %p (%s) %s\n    fixedWidth %d maxWidth %d\n",
 	    Tk_PathName(tree->tkwin), elemX, masterX ? "instance" : "master",
 	    func, fixedWidth, maxWidth);
 
-    etl2 = DynamicOption_FindData(elem->options, 1007);
+    etl2 = DynamicOption_FindData(elem->options, DOID_TEXT_LAYOUT2);
     if (etl2 != NULL && etl2->layout != NULL) {
 	if (tree->debug.enable && tree->debug.textLayout)
 	    dbwin("    FREE\n");
@@ -2757,9 +3705,9 @@ TextUpdateLayout(
     if ((text == NULL) || (textLen == 0))
 	return etl2;
 
-    etl = DynamicOption_FindData(elem->options, 1005);
+    etl = DynamicOption_FindData(elem->options, DOID_TEXT_LAYOUT);
     if (masterX != NULL)
-	etlM = DynamicOption_FindData(elem->master->options, 1005);
+	etlM = DynamicOption_FindData(elem->master->options, DOID_TEXT_LAYOUT);
 
     if (etl != NULL && etl->lines != -1)
 	lines = etl->lines;
@@ -2768,9 +3716,9 @@ TextUpdateLayout(
     if (lines == 1)
 	return etl2;
 
-    tkfont = DO_FontForState(tree, elem, 1004, state);
+    tkfont = DO_FontForState(tree, elem, DOID_TEXT_FONT, state);
     if (tkfont == NULL)
-	tkfont = tree->tkfont;
+	tkfont = inHeader ? tree->tkfontHeader : tree->tkfont;
 
     if (etl != NULL && etl->wrap != TEXT_WRAP_NULL)
 	wrap = etl->wrap;
@@ -2819,7 +3767,7 @@ if (tree->debug.enable && tree->debug.textLayout) dbwin("    available width %d 
 
     if (etl2 == NULL) {
 	opt = (DynamicOption *) DynamicOption_AllocIfNeeded(tree,
-	    &elem->options, 1007, sizeof(ElementTextLayout2), NULL);
+	    &elem->options, DOID_TEXT_LAYOUT2, sizeof(ElementTextLayout2), NULL);
 	etl2 = (ElementTextLayout2 *) opt->data;
 	/* It is possible that the needed size of this element does not
 	 * require a TextLayout, in which case neededWidth never gets
@@ -2827,8 +3775,21 @@ if (tree->debug.enable && tree->debug.textLayout) dbwin("    available width %d 
 	etl2->neededWidth = -1;
     }
 
+    etl3 = DynamicOption_FindData(elem->options, DOID_TEXT_LAYOUT3);
+    if (masterX != NULL)
+	etl3M = DynamicOption_FindData(elem->master->options, DOID_TEXT_LAYOUT3);
+    if (etl3 != NULL && etl3->lMargin1Obj != NULL)
+	lMargin1 = etl3->lMargin1;
+    else if (etl3M != NULL && etl3M->lMargin1Obj != NULL)
+	lMargin1 = etl3M->lMargin1;
+    if (etl3 != NULL && etl3->lMargin2Obj != NULL)
+	lMargin2 = etl3->lMargin2;
+    else if (etl3M != NULL && etl3M->lMargin2Obj != NULL)
+	lMargin2 = etl3M->lMargin2;
+
     etl2->layout = TextLayout_Compute(tkfont, text,
-	    Tcl_NumUtfChars(text, textLen), width, justify, lines, flags);
+	    Tcl_NumUtfChars(text, textLen), width, justify, lines,
+	    lMargin1, lMargin2, flags);
 
     if (tree->debug.enable && tree->debug.textLayout)
 	dbwin("    ALLOC\n");
@@ -2840,7 +3801,8 @@ static Tcl_VarTraceProc VarTraceProc_Text;
 
 static void TextTraceSet(Tcl_Interp *interp, ElementText *elemX)
 {
-    ElementTextVar *etv = DynamicOption_FindData(elemX->header.options, 1001);
+    ElementTextVar *etv = DynamicOption_FindData(elemX->header.options,
+	DOID_TEXT_VAR);
     Tcl_Obj *varNameObj = etv ? etv->varNameObj : NULL;
 
     if (varNameObj != NULL) {
@@ -2853,7 +3815,8 @@ static void TextTraceSet(Tcl_Interp *interp, ElementText *elemX)
 
 static void TextTraceUnset(Tcl_Interp *interp, ElementText *elemX)
 {
-    ElementTextVar *etv = DynamicOption_FindData(elemX->header.options, 1001);
+    ElementTextVar *etv = DynamicOption_FindData(elemX->header.options,
+	DOID_TEXT_VAR);
     Tcl_Obj *varNameObj = etv ? etv->varNameObj : NULL;
 
     if (varNameObj != NULL) {
@@ -2868,7 +3831,8 @@ static char *VarTraceProc_Text(ClientData clientData, Tcl_Interp *interp,
     CONST char *name1, CONST char *name2, int flags)
 {
     ElementText *elemX = (ElementText *) clientData;
-    ElementTextVar *etv = DynamicOption_FindData(elemX->header.options, 1001);
+    ElementTextVar *etv = DynamicOption_FindData(elemX->header.options,
+	DOID_TEXT_VAR);
     Tcl_Obj *varNameObj = etv ? etv->varNameObj : NULL;
     Tcl_Obj *valueObj;
 
@@ -2896,7 +3860,8 @@ static char *VarTraceProc_Text(ClientData clientData, Tcl_Interp *interp,
 
     elemX->textLen = STRINGREP_INVALID;
     Tree_ElementChangedItself(etv->tree, etv->item, etv->column,
-	(TreeElement) elemX, TEXT_CONF_TEXTVAR, CS_LAYOUT | CS_DISPLAY);
+	(TreeElement) elemX, TEXT_CONF_LAYOUT | TEXT_CONF_TEXTVAR,
+	CS_LAYOUT | CS_DISPLAY);
     return (char *) NULL;
 }
 #endif /* TEXTVAR */
@@ -2912,10 +3877,11 @@ static void DeleteProcText(TreeElementArgs *args)
 	ckfree(elemX->text);
 	elemX->text = NULL;
     }
-    etl2 = DynamicOption_FindData(elem->options, 1007);
+    etl2 = DynamicOption_FindData(elem->options, DOID_TEXT_LAYOUT2);
     if (etl2 != NULL && etl2->layout != NULL)
 	TextLayout_Free(etl2->layout);
-    DynamicOption_Free1(tree, &elem->options, 1007, sizeof(ElementTextLayout2));
+    DynamicOption_Free1(tree, &elem->options, DOID_TEXT_LAYOUT2,
+	sizeof(ElementTextLayout2));
 #ifdef TEXTVAR
     TextTraceUnset(tree->interp, elemX);
 #endif
@@ -2942,16 +3908,16 @@ static int ConfigProcText(TreeElementArgs *args)
 
     for (error = 0; error <= 1; error++) {
 	if (error == 0) {
-	    if (Tk_SetOptions(interp, (char *) elemX,
+	    if (Tree_SetOptions(tree, elem->stateDomain, elemX,
 			elem->typePtr->optionTable,
-			args->config.objc, args->config.objv, tree->tkwin,
+			args->config.objc, args->config.objv,
 			&savedOptions, &args->config.flagSelf) != TCL_OK) {
 		args->config.flagSelf = 0;
 		continue;
 	    }
 
 #ifdef TEXTVAR
-	    etv = DynamicOption_FindData(elem->options, 1001);
+	    etv = DynamicOption_FindData(elem->options, DOID_TEXT_VAR);
 	    if (etv != NULL) {
 		etv->tree = tree;
 		etv->item = args->config.item;
@@ -3028,11 +3994,11 @@ TextRedoLayoutIfNeeded(
     ElementTextLayout *etl, *etlM = NULL;
     ElementTextLayout2 *etl2;
 
-    etl = DynamicOption_FindData(elem->options, 1005);
+    etl = DynamicOption_FindData(elem->options, DOID_TEXT_LAYOUT);
     if (masterX != NULL)
-	etlM = DynamicOption_FindData(elem->master->options, 1005);
+	etlM = DynamicOption_FindData(elem->master->options, DOID_TEXT_LAYOUT);
 
-    etl2 = DynamicOption_FindData(elem->options, 1007);
+    etl2 = DynamicOption_FindData(elem->options, DOID_TEXT_LAYOUT2);
 
     /* If text wrapping is disabled, the layout doesn't change */
     if (etl != NULL && etl->wrap != TEXT_WRAP_NULL)
@@ -3098,14 +4064,19 @@ static void DisplayProcText(TreeElementArgs *args)
     int bytesThatFit, pixelsForText;
     char *ellipsis = "...";
     TkRegion clipRgn = NULL;
-    ElementTextLayout2 *etl2; 
+    ElementTextLayout2 *etl2;
 #ifdef TEXT_STYLE
     ElementTextStyle *ets, *etsM = NULL;
     int underline = TEXT_UNDERLINE_EMPTYVAL;
 #endif
+#if USE_ITEM_PIXMAP == 0
+    TreeRectangle trClip, trElem;
+#endif
+    int inHeader = elem->stateDomain == STATE_DOMAIN_HEADER;
+    int columnState = COLUMN_STATE_NORMAL;
 
 #ifdef DEPRECATED
-    draw = DO_BooleanForState(tree, elem, 1002, state);
+    draw = DO_BooleanForState(tree, elem, DOID_TEXT_DRAW, state);
     if (!draw)
 	return;
 #endif
@@ -3118,35 +4089,58 @@ static void DisplayProcText(TreeElementArgs *args)
     if (text == NULL) /* always false (or layout sets height/width to zero) */
 	return;
 
-    color = DO_ColorForState(tree, elem, 1003, state);
-    tkfont = DO_FontForState(tree, elem, 1004, state);
+    if (inHeader) {
+	if (state & STATE_HEADER_ACTIVE)
+	    columnState = COLUMN_STATE_ACTIVE;
+	else if (state & STATE_HEADER_PRESSED)
+	    columnState = COLUMN_STATE_PRESSED;
+    }
+
+    DO_COLOR_FOR_STATE(color, DOID_TEXT_FILL, state);
+
+    /* If no color is specified and this element is in a header, get the
+     * system theme color.  If no theme color is provided then use the default
+     * header text color. */
+    if ((color == NULL) && inHeader) {
+	if (!tree->useTheme || TreeTheme_GetHeaderTextColor(tree, columnState,
+		&color) != TCL_OK) {
+	    color = tree->defHeaderTextColor;
+	}
+	if (color->pixel == tree->defHeaderTextColor->pixel)
+	    color = NULL;
+    }
+
+    tkfont = DO_FontForState(tree, elem, DOID_TEXT_FONT, state);
 
     /* FIXME: -font {"" {state...}}*/
     if ((color != NULL) || (tkfont != NULL)) {
 	XGCValues gcValues;
 	unsigned long gcMask = 0;
 	if (color == NULL)
-	    color = tree->fgColorPtr;
+	    color = inHeader ? tree->defHeaderTextColor : tree->fgColorPtr;
 	gcValues.foreground = color->pixel;
 	gcMask |= GCForeground;
 	if (tkfont == NULL)
-	    tkfont = tree->tkfont;
+	    tkfont = inHeader ? tree->tkfontHeader : tree->tkfont;
 	gcValues.font = Tk_FontId(tkfont);
 	gcMask |= GCFont;
 	gcValues.graphics_exposures = False;
 	gcMask |= GCGraphicsExposures;
 	gc = Tree_GetGC(tree, gcMask, &gcValues);
+    } else if (inHeader) {
+	tkfont = tree->tkfontHeader;
+	gc = tree->headerTextGC;
     } else {
 	tkfont = tree->tkfont;
 	gc = tree->textGC;
     }
 
 #ifdef TEXT_STYLE
-    ets = DynamicOption_FindData(elem->options, 1008);
+    ets = DynamicOption_FindData(elem->options, DOID_TEXT_STYLE);
     if (ets != NULL && ets->underline != TEXT_UNDERLINE_EMPTYVAL)
 	underline = ets->underline;
     else if (masterX != NULL) {
-	etsM = DynamicOption_FindData(elem->master->options, 1008);
+	etsM = DynamicOption_FindData(elem->master->options, DOID_TEXT_STYLE);
 	if (etsM != NULL && etsM->underline != TEXT_UNDERLINE_EMPTYVAL)
 	    underline = etsM->underline;
     }
@@ -3168,6 +4162,22 @@ static void DisplayProcText(TreeElementArgs *args)
 	    args->display.width, args->display.height,
 	    FALSE, FALSE,
 	    &x, &y, &width, &height);
+#if HEADER_OFFSET_HACK == 1
+	/* FIXME: should have a layout option to control this. */
+	if (inHeader && columnState == COLUMN_STATE_PRESSED)
+	    x += 1, y += 1;
+#endif
+#if USE_ITEM_PIXMAP == 0
+	/* Use clipping if text is larger than the display area. */
+	trElem.x = x, trElem.y = y, trElem.width = args->display.width,
+	    trElem.height = args->display.height;
+	if (TreeRect_Intersect(&trClip, &trElem, &args->display.bounds)) {
+	    clipRgn = Tree_GetRectRegion(tree, &trClip);
+	    TkSetRegion(tree->display, gc, clipRgn);
+	} else {
+	    return;
+	}
+#else
 	/* Use clipping if text is larger than the display area. */
 	if (pixelsForText > args->display.width || height > args->display.height) {
 	    XRectangle rect;
@@ -3179,6 +4189,7 @@ static void DisplayProcText(TreeElementArgs *args)
 	    TkUnionRectWithRegion(&rect, clipRgn, clipRgn);
 	    TkSetRegion(tree->display, gc, clipRgn);
 	}
+#endif
 	TextLayout_Draw(tree->display, args->display.drawable, gc,
 		layout, x, y, 0, -1, underline);
 	if (clipRgn != NULL) {
@@ -3203,6 +4214,22 @@ static void DisplayProcText(TreeElementArgs *args)
 	args->display.width, args->display.height,
 	FALSE, FALSE,
 	&x, &y, &width, &height);
+#if HEADER_OFFSET_HACK == 1
+    /* FIXME: should have a layout option to control this. */
+    if (inHeader && columnState == COLUMN_STATE_PRESSED)
+	x += 1, y += 1;
+#endif
+#if USE_ITEM_PIXMAP == 0
+    /* Use clipping if text is larger than the display area. */
+    trElem.x = x, trElem.y = y, trElem.width = args->display.width,
+	trElem.height = args->display.height;
+    if (TreeRect_Intersect(&trClip, &trElem, &args->display.bounds)) {
+	clipRgn = Tree_GetRectRegion(tree, &trClip);
+	TkSetRegion(tree->display, gc, clipRgn);
+    } else {
+	return;
+    }
+#else
     /* Use clipping if text is larger than the display area. */
     if (pixelsForText > args->display.width || height > args->display.height) {
 	XRectangle rect;
@@ -3214,10 +4241,11 @@ static void DisplayProcText(TreeElementArgs *args)
 	TkUnionRectWithRegion(&rect, clipRgn, clipRgn);
 	TkSetRegion(tree->display, gc, clipRgn);
     }
+#endif
     if (bytesThatFit != textLen) {
 	char staticStr[256], *buf = staticStr;
 	int bufLen = abs(bytesThatFit);
-	int ellipsisLen = strlen(ellipsis);
+	int ellipsisLen = (int) strlen(ellipsis);
 
 	if (bufLen + ellipsisLen > sizeof(staticStr))
 	    buf = ckalloc(bufLen + ellipsisLen);
@@ -3233,8 +4261,8 @@ static void DisplayProcText(TreeElementArgs *args)
 	    CONST char *fstBytePtr = Tcl_UtfAtIndex(buf, underline);
 	    CONST char *sndBytePtr = Tcl_UtfNext(fstBytePtr);
 	    Tk_UnderlineChars(tree->display, args->display.drawable, gc,
-		    tkfont, buf, x, y + fm.ascent, 
-		    fstBytePtr - buf, sndBytePtr - buf);
+		    tkfont, buf, x, y + fm.ascent,
+		    (int) (fstBytePtr - buf), (int) (sndBytePtr - buf));
 	}
 #endif
 	if (buf != staticStr)
@@ -3247,8 +4275,8 @@ static void DisplayProcText(TreeElementArgs *args)
 	    CONST char *fstBytePtr = Tcl_UtfAtIndex(text, underline);
 	    CONST char *sndBytePtr = Tcl_UtfNext(fstBytePtr);
 	    Tk_UnderlineChars(tree->display, args->display.drawable, gc,
-		    tkfont, text, x, y + fm.ascent, 
-		    fstBytePtr - text, sndBytePtr - text);
+		    tkfont, text, x, y + fm.ascent,
+		    (int) (fstBytePtr - text), (int) (sndBytePtr - text));
 	}
 #endif
     }
@@ -3272,10 +4300,11 @@ static void NeededProcText(TreeElementArgs *args)
     int width = 0, height = 0;
     ElementTextLayout *etl, *etlM = NULL;
     ElementTextLayout2 *etl2;
+    int inHeader = elem->stateDomain == STATE_DOMAIN_HEADER;
 
-    etl = DynamicOption_FindData(args->elem->options, 1005);
+    etl = DynamicOption_FindData(args->elem->options, DOID_TEXT_LAYOUT);
     if (masterX != NULL)
-	etlM = DynamicOption_FindData(args->elem->master->options, 1005);
+	etlM = DynamicOption_FindData(args->elem->master->options, DOID_TEXT_LAYOUT);
 
     if ((masterX != NULL) && (masterX->textLen == STRINGREP_INVALID)) {
 	args->elem = (TreeElement) masterX;
@@ -3320,9 +4349,9 @@ static void NeededProcText(TreeElementArgs *args)
 	if (textLen > 0) {
 	    int maxWidth = -1;
 
-	    tkfont = DO_FontForState(tree, elem, 1004, state);
+	    tkfont = DO_FontForState(tree, elem, DOID_TEXT_FONT, state);
 	    if (tkfont == NULL)
-		tkfont = tree->tkfont;
+		tkfont = inHeader ? tree->tkfontHeader : tree->tkfont;
 
 	    width = Tk_TextWidth(tkfont, text, textLen);
 	    if (etl != NULL && etl->widthObj != NULL)
@@ -3347,6 +4376,7 @@ static void HeightProcText(TreeElementArgs *args)
     TreeElement elem = args->elem;
     ElementText *elemX = (ElementText *) elem;
     ElementText *masterX = (ElementText *) elem->master;
+    int inHeader = elem->stateDomain == STATE_DOMAIN_HEADER;
     int state = args->state;
     int height = 0;
     char *text = NULL;
@@ -3356,7 +4386,7 @@ static void HeightProcText(TreeElementArgs *args)
     ElementTextLayout2 *etl2;
 
     etl2 = TextRedoLayoutIfNeeded("HeightProcText", args, args->height.fixedWidth);
-   
+
     if (etl2 != NULL && etl2->layout != NULL) {
 	TextLayout_Size(etl2->layout, NULL, &height);
     } else {
@@ -3368,9 +4398,9 @@ static void HeightProcText(TreeElementArgs *args)
 	    textLen = masterX->textLen;
 	}
 	if (textLen > 0) {
-	    tkfont = DO_FontForState(tree, elem, 1004, state);
+	    tkfont = DO_FontForState(tree, elem, DOID_TEXT_FONT, state);
 	    if (tkfont == NULL)
-		tkfont = tree->tkfont;
+		tkfont = inHeader ? tree->tkfontHeader : tree->tkfont;
 	    Tk_GetFontMetrics(tkfont, &fm);
 	    height = fm.linespace;
 	}
@@ -3394,13 +4424,13 @@ TreeElement_GetSortData(
     Tcl_Obj *dataObj = NULL;
     int dataType = TDT_NULL;
 
-    etd = DynamicOption_FindData(elem->options, 1006);
+    etd = DynamicOption_FindData(elem->options, DOID_TEXT_DATA);
     if (etd != NULL) {
 	dataObj = etd->dataObj;
 	dataType = etd->dataType;
     }
     if (dataType == TDT_NULL && masterX != NULL) {
-	etdM = DynamicOption_FindData(elem->master->options, 1006);
+	etdM = DynamicOption_FindData(elem->master->options, DOID_TEXT_DATA);
 	/* FIXME: get dataObj from master? */
 	if (etdM != NULL)
 	    dataType = etdM->dataType;
@@ -3443,13 +4473,15 @@ TreeElement_GetSortData(
 		}
 	    }
 	    if (elemX->textCfg != NULL) {
-		Tcl_Obj	*tmp;
-		tmp = Tcl_NewStringObj(elemX->textCfg, -1);
-		if (Tcl_GetLongFromObj(tree->interp, tmp, lv) != TCL_OK) {
-		    Tcl_DecrRefCount(tmp);
+		Tcl_Obj obj;
+
+		obj.refCount = 1;
+		obj.bytes = (char *) elemX->textCfg;
+		obj.length = (int) strlen(elemX->textCfg);
+		obj.typePtr = NULL;
+
+		if (Tcl_GetLongFromObj(tree->interp, &obj, lv) != TCL_OK)
 		    return TCL_ERROR;
-		}
-		Tcl_DecrRefCount(tmp);
 		break;
 	    }
 	    FormatResult(tree->interp, "can't get a long from an empty -text value");
@@ -3473,24 +4505,24 @@ static int StateProcText(TreeElementArgs *args)
     if (!args->states.visible2)
 	return 0;
 
-    tkfont1 = DO_FontForState(tree, elem, 1004, args->states.state1);
-    tkfont2 = DO_FontForState(tree, elem, 1004, args->states.state2);
+    tkfont1 = DO_FontForState(tree, elem, DOID_TEXT_FONT, args->states.state1);
+    tkfont2 = DO_FontForState(tree, elem, DOID_TEXT_FONT, args->states.state2);
     if (tkfont1 != tkfont2)
 	return CS_DISPLAY | CS_LAYOUT;
 
     if (!args->states.draw2)
 	return 0;
 #ifdef DEPRECATED
-    draw1 = DO_BooleanForState(tree, elem, 1002, args->states.state1);
-    draw2 = DO_BooleanForState(tree, elem, 1002, args->states.state2);
+    draw1 = DO_BooleanForState(tree, elem, DOID_TEXT_DRAW, args->states.state1);
+    draw2 = DO_BooleanForState(tree, elem, DOID_TEXT_DRAW, args->states.state2);
     if ((draw1 != 0) != (draw2 != 0))
 	return CS_DISPLAY;
     if (draw2 == 0)
 	return 0;
 #endif
 
-    f1 = DO_ColorForState(tree, elem, 1003, args->states.state1);
-    f2 = DO_ColorForState(tree, elem, 1003, args->states.state2);
+    DO_COLOR_FOR_STATE(f1, DOID_TEXT_FILL, args->states.state1);
+    DO_COLOR_FOR_STATE(f2, DOID_TEXT_FILL, args->states.state2);
     if (f1 != f2)
 	return CS_DISPLAY;
 
@@ -3500,16 +4532,17 @@ static int StateProcText(TreeElementArgs *args)
 static int UndefProcText(TreeElementArgs *args)
 {
     TreeCtrl *tree = args->tree;
-/*    ElementText *elemX = (ElementText *) args->elem;*/
+    TreeElement elem = args->elem;
+/*    ElementText *elemX = (ElementText *) elem;*/
     int modified = 0;
     PerStateInfo *psi;
 
-    if ((psi = DynamicOption_FindData(args->elem->options, 1002)) != NULL)
-	modified |= PerStateInfo_Undefine(tree, &pstBoolean, psi, args->state);
-    if ((psi = DynamicOption_FindData(args->elem->options, 1003)) != NULL)
-	modified |= PerStateInfo_Undefine(tree, &pstColor, psi, args->state);
-    if ((psi = DynamicOption_FindData(args->elem->options, 1004)) != NULL)
-	modified |= PerStateInfo_Undefine(tree, &pstFont, psi, args->state);
+    if ((psi = DynamicOption_FindData(args->elem->options, DOID_TEXT_DRAW)) != NULL)
+	modified |= PerStateInfo_Undefine(tree, &pstBoolean, psi, elem->stateDomain, args->state);
+    if ((psi = DynamicOption_FindData(args->elem->options, DOID_TEXT_FILL)) != NULL)
+	modified |= PerStateInfo_Undefine(tree, &pstColor, psi, elem->stateDomain, args->state);
+    if ((psi = DynamicOption_FindData(args->elem->options, DOID_TEXT_FONT)) != NULL)
+	modified |= PerStateInfo_Undefine(tree, &pstFont, psi, elem->stateDomain, args->state);
 
     return modified;
 }
@@ -3535,24 +4568,24 @@ static int ActualProcText(TreeElementArgs *args)
     switch (index) {
 #ifdef DEPRECATED
 	case 0: {
-	    obj = DO_ObjectForState(tree, &pstBoolean, args->elem, 1002, args->state);
+	    obj = DO_ObjectForState(tree, &pstBoolean, args->elem, DOID_TEXT_DRAW, args->state);
 	    break;
 	}
 	case 1: {
-	    obj = DO_ObjectForState(tree, &pstColor, args->elem, 1003, args->state);
+	    obj = DO_ObjectForState(tree, &pstColor, args->elem, DOID_TEXT_FILL, args->state);
 	    break;
 	}
 	case 2: {
-	    obj = DO_ObjectForState(tree, &pstFont, args->elem, 1004, args->state);
+	    obj = DO_ObjectForState(tree, &pstFont, args->elem, DOID_TEXT_FONT, args->state);
 	    break;
 	}
 #else
 	case 0: {
-	    obj = DO_ObjectForState(tree, &pstColor, args->elem, 1003, args->state);
+	    obj = DO_ObjectForState(tree, &pstColor, args->elem, DOID_TEXT_FILL, args->state);
 	    break;
 	}
 	case 1: {
-	    obj = DO_ObjectForState(tree, &pstFont, args->elem, 1004, args->state);
+	    obj = DO_ObjectForState(tree, &pstFont, args->elem, DOID_TEXT_FONT, args->state);
 	    break;
 	}
 #endif
@@ -3617,11 +4650,11 @@ struct ElementWindow
 static Tk_OptionSpec windowOptionSpecs[] = {
 #ifdef CLIP_WINDOW
     {TK_OPTION_CUSTOM, "-clip", (char *) NULL, (char *) NULL,
-     (char) NULL, -1, Tk_Offset(ElementWindow, clip),
+     (char *) NULL, -1, Tk_Offset(ElementWindow, clip),
      TK_OPTION_NULL_OK, (ClientData) &booleanCO, 0},
 #endif
     {TK_OPTION_CUSTOM, "-destroy", (char *) NULL, (char *) NULL,
-     (char) NULL, -1, Tk_Offset(ElementWindow, destroy),
+     (char *) NULL, -1, Tk_Offset(ElementWindow, destroy),
      TK_OPTION_NULL_OK, (ClientData) &booleanCO, 0},
 #ifdef DEPRECATED
     {TK_OPTION_CUSTOM, "-draw", (char *) NULL, (char *) NULL,
@@ -3630,7 +4663,7 @@ static Tk_OptionSpec windowOptionSpecs[] = {
      TK_OPTION_NULL_OK, (ClientData) NULL, EWIN_CONF_DRAW},
 #endif
     {TK_OPTION_WINDOW, "-window", (char *) NULL, (char *) NULL,
-     (char) NULL, -1, Tk_Offset(ElementWindow, tkwin),
+     (char *) NULL, -1, Tk_Offset(ElementWindow, tkwin),
      TK_OPTION_NULL_OK, (ClientData) NULL, EWIN_CONF_WINDOW},
     {TK_OPTION_END, (char *) NULL, (char *) NULL, (char *) NULL,
      (char *) NULL, 0, -1, 0, (ClientData) NULL, 0}
@@ -3789,9 +4822,9 @@ static int ConfigProcWindow(TreeElementArgs *args)
 
     for (error = 0; error <= 1; error++) {
 	if (error == 0) {
-	    if (Tk_SetOptions(tree->interp, (char *) elemX,
+	    if (Tree_SetOptions(tree, elem->stateDomain, elemX,
 			elem->typePtr->optionTable,
-			args->config.objc, args->config.objv, tree->tkwin,
+			args->config.objc, args->config.objv,
 			&savedOptions, &args->config.flagSelf) != TCL_OK) {
 		args->config.flagSelf = 0;
 		continue;
@@ -3967,10 +5000,7 @@ static void DisplayProcWindow(TreeElementArgs *args)
     if (height > args->display.height)
 	height = args->display.height;
 
-    minX = args->display.bounds[0];
-    minY = args->display.bounds[1];
-    maxX = args->display.bounds[2];
-    maxY = args->display.bounds[3];
+    TreeRect_XYXY(args->display.bounds, &minX, &minY, &maxX, &maxY);
 
     /*
      * If the window is completely out of the visible area of the treectrl
@@ -3982,7 +5012,7 @@ static void DisplayProcWindow(TreeElementArgs *args)
 	    || (x >= maxX) || (y >= maxY)) {
 hideIt:
 	if (tree->tkwin == Tk_Parent(elemX->tkwin)) {
-	    Tk_UnmapWindow(elemX->tkwin); 
+	    Tk_UnmapWindow(elemX->tkwin);
 	} else {
 	    Tk_UnmaintainGeometry(elemX->tkwin, tree->tkwin);
 	}
@@ -4130,7 +5160,7 @@ static int UndefProcWindow(TreeElementArgs *args)
     int modified = 0;
 
 #ifdef DEPRECATED
-    modified |= PerStateInfo_Undefine(tree, &pstBoolean, &elemX->draw, args->state);
+    modified |= PerStateInfo_Undefine(tree, &pstBoolean, &elemX->draw, elem->stateDomain, args->state);
 #endif
     return modified;
 }
@@ -4171,7 +5201,7 @@ static void OnScreenProcWindow(TreeElementArgs *args)
 
     if (!args->screen.visible && (elemX->tkwin != NULL)) {
 	if (tree->tkwin == Tk_Parent(elemX->tkwin)) {
-	    Tk_UnmapWindow(elemX->tkwin); 
+	    Tk_UnmapWindow(elemX->tkwin);
 	} else {
 	    Tk_UnmaintainGeometry(elemX->tkwin, tree->tkwin);
 	}
@@ -4198,8 +5228,9 @@ TreeElementType treeElemTypeWindow = {
 
 /*****/
 
+/* This structure holds the list of element types for an interpreter.
+ * Each element type has a Tk_OptionTable that is per-interp. */
 typedef struct ElementAssocData ElementAssocData;
-
 struct ElementAssocData
 {
     TreeElementType *typeList;
@@ -4282,6 +5313,12 @@ int TreeCtrl_RegisterElementType(Tcl_Interp *interp, TreeElementType *newTypePtr
 }
 
 static TreeCtrlStubs stubs = {
+#ifdef TREECTRL_DEBUG
+    sizeof(TreeCtrl),
+    sizeof(TreeCtrlStubs),
+    sizeof(TreeElement),
+    sizeof(TreeElementArgs),
+#endif
     TreeCtrl_RegisterElementType,
     Tree_RedrawElement,
     Tree_ElementIterateBegin,
@@ -4303,6 +5340,79 @@ static TreeCtrlStubs stubs = {
     PerStateCO_Init
 };
 
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeElement_InitWidget --
+ *
+ *	Element-related initialization when a treectrl is created.
+ *
+ * Results:
+ *	A standard Tcl result.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+int
+TreeElement_InitWidget(
+    TreeCtrl *tree
+    )
+{
+    /* These options are used by the text element. Originally these were
+     * static globals but that isn't thread safe. */
+    tree->formatFloatObj = Tcl_NewStringObj("%g", -1);
+    tree->formatIntObj = Tcl_NewStringObj("%d", -1);
+    tree->formatLongObj = Tcl_NewStringObj("%ld", -1);
+    tree->formatStringObj = Tcl_NewStringObj("%s", -1);
+    Tcl_IncrRefCount(tree->formatFloatObj);
+    Tcl_IncrRefCount(tree->formatIntObj);
+    Tcl_IncrRefCount(tree->formatLongObj);
+    Tcl_IncrRefCount(tree->formatStringObj);
+
+    tree->stringClockObj = Tcl_NewStringObj("clock", -1);
+    tree->stringFormatObj = Tcl_NewStringObj("format", -1);
+    tree->optionFormatObj = Tcl_NewStringObj("-format", -1);
+    Tcl_IncrRefCount(tree->stringClockObj);
+    Tcl_IncrRefCount(tree->stringFormatObj);
+    Tcl_IncrRefCount(tree->optionFormatObj);
+
+    return TCL_OK;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeElement_FreeWidget --
+ *
+ *	Free element-related resources for a deleted TreeCtrl.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TreeElement_FreeWidget(
+    TreeCtrl *tree
+    )
+{
+    Tcl_DecrRefCount(tree->formatFloatObj);
+    Tcl_DecrRefCount(tree->formatIntObj);
+    Tcl_DecrRefCount(tree->formatLongObj);
+    Tcl_DecrRefCount(tree->formatStringObj);
+
+    Tcl_DecrRefCount(tree->stringClockObj);
+    Tcl_DecrRefCount(tree->stringFormatObj);
+    Tcl_DecrRefCount(tree->optionFormatObj);
+}
+
 static void FreeAssocData(ClientData clientData, Tcl_Interp *interp)
 {
     ElementAssocData *assocData = clientData;
@@ -4318,7 +5428,26 @@ static void FreeAssocData(ClientData clientData, Tcl_Interp *interp)
     ckfree((char *) assocData);
 }
 
-int TreeElement_Init(Tcl_Interp *interp)
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeElement_InitInterp --
+ *
+ *	Element-related initialization when the package is loaded.
+ *
+ * Results:
+ *	A standard Tcl result.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+int
+TreeElement_InitInterp(
+    Tcl_Interp *interp
+    )
 {
     ElementAssocData *assocData;
 
@@ -4349,6 +5478,23 @@ int TreeElement_Init(Tcl_Interp *interp)
 	&pstBorder, TreeStateFromObj);
     PerStateCO_Init(treeElemTypeBorder.optionSpecs, "-relief",
 	&pstRelief, TreeStateFromObj);
+
+    /*
+     * header
+     */
+    StringTableCO_Init(treeElemTypeHeader.optionSpecs, "-arrow",
+	headerArrowST);
+    PerStateCO_Init(treeElemTypeHeader.optionSpecs, "-arrowbitmap",
+	&pstBitmap, TreeStateFromObj);
+    StringTableCO_Init(treeElemTypeHeader.optionSpecs, "-arrowgravity",
+	headerArrowSideST);
+    PerStateCO_Init(treeElemTypeHeader.optionSpecs, "-arrowimage",
+	&pstImage, TreeStateFromObj);
+    StringTableCO_Init(treeElemTypeHeader.optionSpecs, "-arrowside",
+	headerArrowSideST);
+    PerStateCO_Init(treeElemTypeHeader.optionSpecs, "-background",
+	&pstBorder, TreeStateFromObj);
+    StringTableCO_Init(treeElemTypeHeader.optionSpecs, "-state", headerStateST);
 
     /*
      * image
@@ -4390,39 +5536,41 @@ int TreeElement_Init(Tcl_Interp *interp)
 #endif
     PerStateCO_Init(treeElemTypeRect.optionSpecs, "-fill",
 	&pstColor, TreeStateFromObj);
+    PerStateCO_Init(treeElemTypeRect.optionSpecs, "-open",
+	&pstFlags, TreeStateFromObj);
     PerStateCO_Init(treeElemTypeRect.optionSpecs, "-outline",
 	&pstColor, TreeStateFromObj);
 
-    /* 
+    /*
      * text
      */
     /* 3 options in the same structure. */
     DynamicCO_Init(treeElemTypeText.optionSpecs, "-data",
-	1006, sizeof(ElementTextData),
+	DOID_TEXT_DATA, sizeof(ElementTextData),
 	Tk_Offset(ElementTextData, dataObj),
 	-1, &TreeCtrlCO_string,
 	ElementTextDataInit);
     DynamicCO_Init(treeElemTypeText.optionSpecs, "-datatype",
-	1006, sizeof(ElementTextData),
+	DOID_TEXT_DATA, sizeof(ElementTextData),
 	-1,
 	Tk_Offset(ElementTextData, dataType),
 	StringTableCO_Alloc("-datatype", textDataTypeST),
 	ElementTextDataInit);
     DynamicCO_Init(treeElemTypeText.optionSpecs, "-format",
-	1006, sizeof(ElementTextData),
+	DOID_TEXT_DATA, sizeof(ElementTextData),
 	Tk_Offset(ElementTextData, formatObj),
 	-1, &TreeCtrlCO_string,
 	ElementTextDataInit);
 
     /* 4 options in the same structure. */
     DynamicCO_Init(treeElemTypeText.optionSpecs, "-justify",
-	1005, sizeof(ElementTextLayout),
+	DOID_TEXT_LAYOUT, sizeof(ElementTextLayout),
 	-1,
 	Tk_Offset(ElementTextLayout, justify),
 	StringTableCO_Alloc("-justify", textJustifyST),
 	ElementTextLayoutInit);
     DynamicCO_Init(treeElemTypeText.optionSpecs, "-lines",
-	1005, sizeof(ElementTextLayout),
+	DOID_TEXT_LAYOUT, sizeof(ElementTextLayout),
 	-1,
 	Tk_Offset(ElementTextLayout, lines),
 	IntegerCO_Alloc("-lines",
@@ -4432,12 +5580,12 @@ int TreeElement_Init(Tcl_Interp *interp)
 	    0x01),	/* flags: min */
 	ElementTextLayoutInit);
     DynamicCO_Init(treeElemTypeText.optionSpecs, "-width",
-	1005, sizeof(ElementTextLayout),
+	DOID_TEXT_LAYOUT, sizeof(ElementTextLayout),
 	Tk_Offset(ElementTextLayout, widthObj),
 	Tk_Offset(ElementTextLayout, width), &TreeCtrlCO_pixels,
 	ElementTextLayoutInit);
     DynamicCO_Init(treeElemTypeText.optionSpecs, "-wrap",
-	1005, sizeof(ElementTextLayout),
+	DOID_TEXT_LAYOUT, sizeof(ElementTextLayout),
 	-1,
 	Tk_Offset(ElementTextLayout, wrap),
 	StringTableCO_Alloc("-wrap", textWrapST),
@@ -4445,30 +5593,32 @@ int TreeElement_Init(Tcl_Interp *interp)
 
 #ifdef DEPRECATED
     DynamicCO_Init(treeElemTypeText.optionSpecs, "-draw",
-	1002, sizeof(PerStateInfo),
+	DOID_TEXT_DRAW, sizeof(PerStateInfo),
 	Tk_Offset(PerStateInfo, obj),
 	0, PerStateCO_Alloc("-draw", &pstBoolean, TreeStateFromObj),
 	(DynamicOptionInitProc *) NULL);
 #endif
     DynamicCO_Init(treeElemTypeText.optionSpecs, "-fill",
-	1003, sizeof(PerStateInfo),
+	DOID_TEXT_FILL, sizeof(PerStateInfo),
 	Tk_Offset(PerStateInfo, obj),
 	0, PerStateCO_Alloc("-fill", &pstColor, TreeStateFromObj),
 	(DynamicOptionInitProc *) NULL);
     DynamicCO_Init(treeElemTypeText.optionSpecs, "-font",
-	1004, sizeof(PerStateInfo),
+	DOID_TEXT_FONT, sizeof(PerStateInfo),
 	Tk_Offset(PerStateInfo, obj),
 	0, PerStateCO_Alloc("-font", &pstFont, TreeStateFromObj),
 	(DynamicOptionInitProc *) NULL);
+#ifdef TEXTVAR
     DynamicCO_Init(treeElemTypeText.optionSpecs, "-textvariable",
-	1001, sizeof(ElementTextVar),
+	DOID_TEXT_VAR, sizeof(ElementTextVar),
 	Tk_Offset(struct ElementTextVar, varNameObj),
 	-1, &TreeCtrlCO_string,
 	(DynamicOptionInitProc *) NULL);
+#endif
 
 #ifdef TEXT_STYLE
     DynamicCO_Init(treeElemTypeText.optionSpecs, "-underline",
-	1008, sizeof(ElementTextStyle),
+	DOID_TEXT_STYLE, sizeof(ElementTextStyle),
 	-1,
 	Tk_Offset(ElementTextStyle, underline),
 	IntegerCO_Alloc("-underline",
@@ -4478,6 +5628,18 @@ int TreeElement_Init(Tcl_Interp *interp)
 	    0x00),	/* flags */
 	ElementTextStyleInit);
 #endif
+
+    /* 2 options in the same structure */
+    DynamicCO_Init(treeElemTypeText.optionSpecs, "-lmargin1",
+	DOID_TEXT_LAYOUT3, sizeof(ElementTextLayout3),
+	Tk_Offset(ElementTextLayout3, lMargin1Obj),
+	Tk_Offset(ElementTextLayout3, lMargin1), &TreeCtrlCO_pixels,
+	(DynamicOptionInitProc *) NULL);
+    DynamicCO_Init(treeElemTypeText.optionSpecs, "-lmargin2",
+	DOID_TEXT_LAYOUT3, sizeof(ElementTextLayout3),
+	Tk_Offset(ElementTextLayout3, lMargin2Obj),
+	Tk_Offset(ElementTextLayout3, lMargin2), &TreeCtrlCO_pixels,
+	(DynamicOptionInitProc *) NULL);
 
     /*
      * window
@@ -4494,6 +5656,7 @@ int TreeElement_Init(Tcl_Interp *interp)
     TreeCtrl_RegisterElementType(interp, &treeElemTypeBitmap);
     TreeCtrl_RegisterElementType(interp, &treeElemTypeBorder);
 /*    TreeCtrl_RegisterElementType(interp, &treeElemTypeCheckButton);*/
+    TreeCtrl_RegisterElementType(interp, &treeElemTypeHeader);
     TreeCtrl_RegisterElementType(interp, &treeElemTypeImage);
     TreeCtrl_RegisterElementType(interp, &treeElemTypeRect);
     TreeCtrl_RegisterElementType(interp, &treeElemTypeText);

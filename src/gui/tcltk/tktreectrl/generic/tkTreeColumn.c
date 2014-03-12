@@ -1,18 +1,82 @@
-/* 
+/*
  * tkTreeColumn.c --
  *
  *	This module implements treectrl widget's columns.
  *
- * Copyright (c) 2002-2008 Tim Baker
+ * Copyright (c) 2002-2011 Tim Baker
  * Copyright (c) 2002-2003 Christian Krone
  * Copyright (c) 2003 ActiveState Corporation
- *
- * RCS: @(#) $Id$
  */
 
 #include "tkTreeCtrl.h"
 
 typedef struct TreeColumn_ TreeColumn_;
+
+typedef struct ColumnSpan ColumnSpan;
+typedef struct SpanArray SpanArray;
+struct SpanArray
+{
+    ColumnSpan **spans;
+    int count;			/* Number of useful elements in spans[]. */
+    int alloc;			/* Number of elements allocated in spans[]. */
+};
+
+/* A structure of the following type is kept for each span in an item or
+ * header that covers a unique range of columns. */
+struct ColumnSpan
+{
+    TreeColumn start;		/* First column in the span. */
+    TreeColumn end;		/* Last column in the span. */
+    int maxNeededWidth;		/* Width of the widest style in any item
+				 * or header. */
+    int widthOfColumns;		/* Sum of the calculated display widths of
+				 * the columns. */
+    SpanArray spansToRight;	/* List of spans following this one. */
+    ColumnSpan *next;		/* Head is TreeColumnPriv_.spans. */
+    ColumnSpan *nextCur;	/* Head is TreeColumnPriv_.spansCur. */
+    int sumOfSpans;
+};
+
+/* A structure of the following type is kept for each TreeColumn.
+ * This is used when calculating the requested width of styles. */
+typedef struct ColumnReqData ColumnReqData;
+struct ColumnReqData
+{
+    int vis;		/* TRUE if the column is visible, otherwise FALSE. */
+    int min;		/* -minwidth or -1, no greater than -maxwidth. */
+    int fixed;		/* -width, or -1. */
+    int max;		/* -maxwidth or -1. */
+    int req;		/* The width requested by a all or part of a style
+			 * in a single item in this column. */
+    int maxSingleSpanWidth; /* The widest span of 1. */
+    int maxSingleItemWidth; /* The widest span of 1 in items. */
+    int maxSingleHeaderWidth; /* The widest span of 1 in headers. */
+    SpanArray spans;	/* Array of span pointers touching this column.*/
+    TreeColumn spanMin;		/* Any span that includes this column */
+    TreeColumn spanMax;		/* begins on or after spanMin and ends on */
+				/* or before spanMax.  This includes spans */
+				/* in headers and items. */
+    int fat;		/* TRUE when every spans[].widthOfColumns is greater
+			 * than spans[].maxNeededWidth, indicating the column
+			 * is wider than needed. */
+};
+
+/* A structure of the following type is kept for each TreeCtrl to hold
+ * private data used by this file. */
+struct TreeColumnPriv_
+{
+    int spansInvalid;		/* TRUE if the TreeColumn.spanMin and
+				 * TreeColumn.spanMax fields are
+				 * out-of-date, otherwise FALSE. */
+    int reqInvalid;		/* TRUE if TreeColumn.reqData is out-of-date,
+				 * otherwise FALSE. */
+    ColumnSpan *spans;		/* All the spans for the widget. */
+    ColumnSpan *freeSpans;	/* Unused spans. */
+    ColumnSpan *spansCur;	/* The subset of spans[] for the current
+				 * update. */
+    int allSpansAreOne;		/* TRUE if all spans cover exactly one column,
+				 * otherwise FALSE. */
+};
 
 #ifdef UNIFORM_GROUP
 typedef struct UniformGroup {
@@ -28,8 +92,6 @@ typedef struct UniformGroup {
  */
 struct TreeColumn_
 {
-    Tcl_Obj *textObj;		/* -text */
-    char *text;			/* -text */
     int width;			/* -width */
     Tcl_Obj *widthObj;		/* -width */
     int minWidth;		/* -minwidth */
@@ -41,87 +103,40 @@ struct TreeColumn_
     Tcl_Obj *stepWidthObj;	/* -stepwidth */
     int widthHack;		/* -widthhack */
 #endif /* DEPRECATED */
-    Tk_Font tkfont;		/* -font */
     Tk_Justify justify;		/* -justify */
     int itemJustify;		/* -itemjustify */
-    PerStateInfo border;	/* -background */
-    Tcl_Obj *borderWidthObj;	/* -borderwidth */
-    int borderWidth;		/* -borderwidth */
-    XColor *textColor;		/* -textcolor */
     int expand;			/* -expand */
     int squeeze;		/* -squeeze */
     int visible;		/* -visible */
     int resize;			/* -resize */
     TagInfo *tagInfo;		/* -tags */
-    char *imageString;		/* -image */
-    PerStateInfo arrowBitmap;	/* -arrowbitmap */
-    PerStateInfo arrowImage;	/* -arrowimage */
-    Pixmap bitmap;		/* -bitmap */
     Tcl_Obj *itemBgObj;		/* -itembackground */
     TreeStyle itemStyle;	/* -itemstyle */
-    int button;			/* -button */
-    Tcl_Obj *textPadXObj;	/* -textpadx */
-    int *textPadX;		/* -textpadx */
-    Tcl_Obj *textPadYObj;	/* -textpady */
-    int *textPadY;		/* -textpady */
-    Tcl_Obj *imagePadXObj;	/* -imagepadx */
-    int *imagePadX;		/* -imagepadx */
-    Tcl_Obj *imagePadYObj;	/* -imagepady */
-    int *imagePadY;		/* -imagepady */
-    Tcl_Obj *arrowPadXObj;	/* -arrowpadx */
-    int *arrowPadX;		/* -arrowpadx */
-    Tcl_Obj *arrowPadYObj;	/* -arrowpady */
-    int *arrowPadY;		/* -arrowpady */
-
-#define ARROW_NONE 0
-#define ARROW_UP 1
-#define ARROW_DOWN 2
-    int arrow;			/* -arrow */
-
-#define SIDE_LEFT 0
-#define SIDE_RIGHT 1
-    int arrowSide;		/* -arrowside */
-    int arrowGravity;		/* -arrowgravity */
-
-#define COLUMN_STATE_NORMAL 0
-#define COLUMN_STATE_ACTIVE 1
-#define COLUMN_STATE_PRESSED 2
-    int state;			/* -state */
-
     int lock;			/* -lock */
 
     TreeCtrl *tree;
     Tk_OptionTable optionTable;
     int id;			/* unique column identifier */
     int index;			/* order in list of columns */
-    int textLen;
-    int textWidth;
-    Tk_Image image;
-    int neededWidth;		/* calculated from borders + image/bitmap +
-				 * text + arrow */
-    int neededHeight;		/* calculated from borders + image/bitmap +
-				 * text */
     int offset;			/* Total width of preceding columns */
     int useWidth;		/* -width, -minwidth, or required+expansion */
     int widthOfItems;		/* width of all TreeItemColumns */
-    int itemBgCount;
-    XColor **itemBgColor;
-    GC bitmapGC;
+    int itemBgCount;		/* -itembackground colors */
+    TreeColor **itemBgColor;	/* -itembackground colors */
     TreeColumn prev;
     TreeColumn next;
-    TextLayout textLayout;	/* multi-line titles */
-    int textLayoutWidth;	/* width passed to TextLayout_Compute */
-    int textLayoutInvalid;
-#define TEXT_WRAP_NULL -1
-#define TEXT_WRAP_CHAR 0
-#define TEXT_WRAP_WORD 1
-    int textWrap;		/* -textwrap */
-    int textLines;		/* -textlines */
 #ifdef UNIFORM_GROUP
     UniformGroup *uniform;	/* -uniform */
     int weight;			/* -weight */
 #endif
     TreeColumnDInfo dInfo;	/* Display info. */
+#if COLUMNGRID == 1
+    Tcl_Obj *gridLeftColorObj;	/* -gridleftcolor */
+    Tcl_Obj *gridRightColorObj;	/* -gridrightcolor */
+    TreeColor *gridLeftColor;	/* -gridleftcolor */
+    TreeColor *gridRightColor;	/* -gridrightcolor */
+#endif
+    ColumnReqData reqData;
 };
 
 #ifdef UNIFORM_GROUP
@@ -260,87 +275,40 @@ static Tk_ObjCustomOption uniformGroupCO =
 };
 #endif /* UNIFORM_GROUP */
 
-static CONST char *arrowST[] = { "none", "up", "down", (char *) NULL };
 static CONST char *arrowSideST[] = { "left", "right", (char *) NULL };
-static CONST char *stateST[] = { "normal", "active", "pressed", (char *) NULL };
 static CONST char *lockST[] = { "left", "none", "right", (char *) NULL };
 static CONST char *justifyStrings[] = {
     "left", "right", "center", (char *) NULL
 };
 
-#define COLU_CONF_IMAGE		0x0001
-#define COLU_CONF_NWIDTH	0x0002	/* neededWidth */
-#define COLU_CONF_NHEIGHT	0x0004	/* neededHeight */
 #define COLU_CONF_TWIDTH	0x0008	/* totalWidth */
 #define COLU_CONF_ITEMBG	0x0010
 #define COLU_CONF_DISPLAY	0x0040
 #define COLU_CONF_JUSTIFY	0x0080
 #define COLU_CONF_TAGS		0x0100
-#define COLU_CONF_TEXT		0x0200
-#define COLU_CONF_BITMAP	0x0400
+#ifdef DEPRECATED
 #define COLU_CONF_RANGES	0x0800
+#endif
+#if COLUMNGRID == 1
+#define COLU_CONF_GRIDLINES	0x1000
+#endif
 
 static Tk_OptionSpec columnSpecs[] = {
-    {TK_OPTION_STRING_TABLE, "-arrow", (char *) NULL, (char *) NULL,
-     "none", -1, Tk_Offset(TreeColumn_, arrow),
-     0, (ClientData) arrowST, COLU_CONF_NWIDTH | COLU_CONF_NHEIGHT | COLU_CONF_DISPLAY},
-    {TK_OPTION_CUSTOM, "-arrowbitmap", (char *) NULL, (char *) NULL,
-     (char *) NULL,
-     Tk_Offset(TreeColumn_, arrowBitmap.obj), Tk_Offset(TreeColumn_, arrowBitmap),
-     TK_OPTION_NULL_OK, (ClientData) NULL,
-     COLU_CONF_NWIDTH | COLU_CONF_NHEIGHT | COLU_CONF_DISPLAY},
-    {TK_OPTION_STRING_TABLE, "-arrowgravity", (char *) NULL, (char *) NULL,
-     "left", -1, Tk_Offset(TreeColumn_, arrowGravity),
-     0, (ClientData) arrowSideST, COLU_CONF_DISPLAY},
-    {TK_OPTION_CUSTOM, "-arrowimage", (char *) NULL, (char *) NULL,
-     (char *) NULL,
-     Tk_Offset(TreeColumn_, arrowImage.obj), Tk_Offset(TreeColumn_, arrowImage),
-     TK_OPTION_NULL_OK, (ClientData) NULL,
-     COLU_CONF_NWIDTH | COLU_CONF_NHEIGHT | COLU_CONF_DISPLAY},
-    {TK_OPTION_CUSTOM, "-arrowpadx", (char *) NULL, (char *) NULL,
-     "6", Tk_Offset(TreeColumn_, arrowPadXObj), Tk_Offset(TreeColumn_, arrowPadX),
-     0, (ClientData) &TreeCtrlCO_pad, COLU_CONF_NWIDTH | COLU_CONF_DISPLAY},
-    {TK_OPTION_CUSTOM, "-arrowpady", (char *) NULL, (char *) NULL,
-     "0", Tk_Offset(TreeColumn_, arrowPadYObj), Tk_Offset(TreeColumn_, arrowPadY),
-     0, (ClientData) &TreeCtrlCO_pad, COLU_CONF_NWIDTH | COLU_CONF_DISPLAY},
-    {TK_OPTION_STRING_TABLE, "-arrowside", (char *) NULL, (char *) NULL,
-     "right", -1, Tk_Offset(TreeColumn_, arrowSide),
-     0, (ClientData) arrowSideST, COLU_CONF_NWIDTH | COLU_CONF_DISPLAY},
-     /* NOTE: -background is a per-state option, so DEF_BUTTON_BG_COLOR
-      * must be a list of one element */
-    {TK_OPTION_CUSTOM, "-background", (char *) NULL, (char *) NULL,
-     (char *) NULL /* initialized later */,
-     Tk_Offset(TreeColumn_, border.obj), Tk_Offset(TreeColumn_, border),
-     0, (ClientData) NULL, COLU_CONF_DISPLAY},
-    {TK_OPTION_BITMAP, "-bitmap", (char *) NULL, (char *) NULL,
-     (char *) NULL, -1, Tk_Offset(TreeColumn_, bitmap),
-     TK_OPTION_NULL_OK, (ClientData) NULL,
-     COLU_CONF_BITMAP | COLU_CONF_NWIDTH | COLU_CONF_NHEIGHT | COLU_CONF_DISPLAY},
-    {TK_OPTION_PIXELS, "-borderwidth", (char *) NULL, (char *) NULL,
-     "2", Tk_Offset(TreeColumn_, borderWidthObj), Tk_Offset(TreeColumn_, borderWidth),
-     0, (ClientData) NULL, COLU_CONF_TWIDTH | COLU_CONF_NWIDTH | COLU_CONF_NHEIGHT | COLU_CONF_DISPLAY},
-    {TK_OPTION_BOOLEAN, "-button", (char *) NULL, (char *) NULL,
-     "1", -1, Tk_Offset(TreeColumn_, button),
-     0, (ClientData) NULL, 0},
     {TK_OPTION_BOOLEAN, "-expand", (char *) NULL, (char *) NULL,
      "0", -1, Tk_Offset(TreeColumn_, expand),
      0, (ClientData) NULL, COLU_CONF_TWIDTH},
-    {TK_OPTION_FONT, "-font", (char *) NULL, (char *) NULL,
-     (char *) NULL, -1, Tk_Offset(TreeColumn_, tkfont),
-     TK_OPTION_NULL_OK, (ClientData) NULL, COLU_CONF_NWIDTH |
-     COLU_CONF_NHEIGHT | COLU_CONF_DISPLAY | COLU_CONF_TEXT},
-    {TK_OPTION_STRING, "-image", (char *) NULL, (char *) NULL,
-     (char *) NULL, -1, Tk_Offset(TreeColumn_, imageString),
-     TK_OPTION_NULL_OK, (ClientData) NULL,
-     COLU_CONF_IMAGE | COLU_CONF_NWIDTH | COLU_CONF_NHEIGHT | COLU_CONF_DISPLAY},
-    {TK_OPTION_CUSTOM, "-imagepadx", (char *) NULL, (char *) NULL,
-     "6", Tk_Offset(TreeColumn_, imagePadXObj),
-     Tk_Offset(TreeColumn_, imagePadX), 0, (ClientData) &TreeCtrlCO_pad,
-     COLU_CONF_NWIDTH | COLU_CONF_DISPLAY},
-    {TK_OPTION_CUSTOM, "-imagepady", (char *) NULL, (char *) NULL,
-     "0", Tk_Offset(TreeColumn_, imagePadYObj),
-     Tk_Offset(TreeColumn_, imagePadY), 0, (ClientData) &TreeCtrlCO_pad,
-     COLU_CONF_NHEIGHT | COLU_CONF_DISPLAY},
+#if COLUMNGRID==1
+    {TK_OPTION_CUSTOM, "-gridleftcolor", (char *) NULL, (char *) NULL, (char *) NULL,
+	Tk_Offset(TreeColumn_, gridLeftColorObj),
+	Tk_Offset(TreeColumn_, gridLeftColor),
+	TK_OPTION_NULL_OK, (ClientData) &TreeCtrlCO_treecolor,
+	COLU_CONF_GRIDLINES},
+    {TK_OPTION_CUSTOM, "-gridrightcolor", (char *) NULL, (char *) NULL, (char *) NULL,
+	Tk_Offset(TreeColumn_, gridRightColorObj),
+	Tk_Offset(TreeColumn_, gridRightColor),
+	TK_OPTION_NULL_OK, (ClientData) &TreeCtrlCO_treecolor,
+	COLU_CONF_GRIDLINES},
+#endif
     {TK_OPTION_STRING, "-itembackground", (char *) NULL, (char *) NULL,
      (char *) NULL, Tk_Offset(TreeColumn_, itemBgObj), -1,
      TK_OPTION_NULL_OK, (ClientData) NULL, COLU_CONF_ITEMBG},
@@ -368,9 +336,6 @@ static Tk_OptionSpec columnSpecs[] = {
     {TK_OPTION_BOOLEAN, "-squeeze", (char *) NULL, (char *) NULL,
      "0", -1, Tk_Offset(TreeColumn_, squeeze),
      0, (ClientData) NULL, COLU_CONF_TWIDTH},
-    {TK_OPTION_STRING_TABLE, "-state", (char *) NULL, (char *) NULL,
-     "normal", -1, Tk_Offset(TreeColumn_, state), 0, (ClientData) stateST,
-     COLU_CONF_NWIDTH | COLU_CONF_NHEIGHT | COLU_CONF_DISPLAY},
 #ifdef DEPRECATED
     {TK_OPTION_PIXELS, "-stepwidth", (char *) NULL, (char *) NULL,
      (char *) NULL, Tk_Offset(TreeColumn_, stepWidthObj),
@@ -380,25 +345,6 @@ static Tk_OptionSpec columnSpecs[] = {
     {TK_OPTION_CUSTOM, "-tags", (char *) NULL, (char *) NULL,
      (char *) NULL, -1, Tk_Offset(TreeColumn_, tagInfo),
      TK_OPTION_NULL_OK, (ClientData) &TreeCtrlCO_tagInfo, COLU_CONF_TAGS},
-    {TK_OPTION_STRING, "-text", (char *) NULL, (char *) NULL,
-     (char *) NULL, Tk_Offset(TreeColumn_, textObj), Tk_Offset(TreeColumn_, text),
-     TK_OPTION_NULL_OK, (ClientData) NULL,
-     COLU_CONF_TEXT | COLU_CONF_NWIDTH | COLU_CONF_NHEIGHT | COLU_CONF_DISPLAY},
-    {TK_OPTION_COLOR, "-textcolor", (char *) NULL, (char *) NULL,
-     DEF_BUTTON_FG, -1, Tk_Offset(TreeColumn_, textColor),
-     0, (ClientData) NULL, COLU_CONF_DISPLAY},
-    {TK_OPTION_INT, "-textlines", (char *) NULL, (char *) NULL,
-     "1", -1, Tk_Offset(TreeColumn_, textLines),
-     0, (ClientData) NULL, COLU_CONF_TEXT | COLU_CONF_NWIDTH |
-     COLU_CONF_NHEIGHT | COLU_CONF_DISPLAY},
-    {TK_OPTION_CUSTOM, "-textpadx", (char *) NULL, (char *) NULL,
-     "6", Tk_Offset(TreeColumn_, textPadXObj),
-     Tk_Offset(TreeColumn_, textPadX), 0, (ClientData) &TreeCtrlCO_pad,
-     COLU_CONF_NWIDTH | COLU_CONF_DISPLAY},
-    {TK_OPTION_CUSTOM, "-textpady", (char *) NULL, (char *) NULL,
-     "0", Tk_Offset(TreeColumn_, textPadYObj),
-     Tk_Offset(TreeColumn_, textPadY), 0, (ClientData) &TreeCtrlCO_pad,
-     COLU_CONF_NHEIGHT | COLU_CONF_DISPLAY},
 #ifdef UNIFORM_GROUP
     {TK_OPTION_CUSTOM, "-uniform", (char *) NULL, (char *) NULL,
      (char *) NULL, -1, Tk_Offset(TreeColumn_, uniform), TK_OPTION_NULL_OK,
@@ -459,7 +405,7 @@ ColumnCO_Set(
     int flags			/* Flags for the option, set Tk_SetOptions. */
     )
 {
-    int cfoFlags = (int) clientData;
+    int cfoFlags = PTR2INT(clientData);
     TreeCtrl *tree = (TreeCtrl *) ((TkWindow *) tkwin)->instanceData;
     int objEmpty;
     TreeColumn new, *internalPtr;
@@ -564,7 +510,7 @@ Tk_ObjCustomOption TreeCtrlCO_column =
     ColumnCO_Get,
     ColumnCO_Restore,
     NULL,
-    (ClientData) (CFO_NOT_NULL)
+    (ClientData) INT2PTR(CFO_NOT_NULL)
 };
 
 /*
@@ -580,7 +526,7 @@ Tk_ObjCustomOption TreeCtrlCO_column_NOT_TAIL =
     ColumnCO_Get,
     ColumnCO_Restore,
     NULL,
-    (ClientData) (CFO_NOT_NULL | CFO_NOT_TAIL)
+    (ClientData) INT2PTR(CFO_NOT_NULL | CFO_NOT_TAIL)
 };
 
 static Tk_OptionSpec dragSpecs[] = {
@@ -588,7 +534,7 @@ static Tk_OptionSpec dragSpecs[] = {
      "0", -1, Tk_Offset(TreeCtrl, columnDrag.enable),
      0, (ClientData) NULL, 0},
     {TK_OPTION_INT, "-imagealpha", (char *) NULL, (char *) NULL,
-     "128", -1, Tk_Offset(TreeCtrl, columnDrag.alpha),
+     "200", -1, Tk_Offset(TreeCtrl, columnDrag.alpha),
      0, (ClientData) NULL, 0},
     {TK_OPTION_COLOR, "-imagecolor", (char *) NULL, (char *) NULL,
      "gray75", -1, Tk_Offset(TreeCtrl, columnDrag.color),
@@ -599,6 +545,9 @@ static Tk_OptionSpec dragSpecs[] = {
     {TK_OPTION_PIXELS, "-imageoffset", (char *) NULL, (char *) NULL,
      (char *) NULL, Tk_Offset(TreeCtrl, columnDrag.offsetObj),
      Tk_Offset(TreeCtrl, columnDrag.offset), 0, (ClientData) NULL, 0},
+    {TK_OPTION_INT, "-imagespan", (char *) NULL, (char *) NULL,
+     "1", -1, Tk_Offset(TreeCtrl, columnDrag.span),
+     0, (ClientData) NULL, 0},
     {TK_OPTION_COLOR, "-indicatorcolor", (char *) NULL, (char *) NULL,
      "Black", -1, Tk_Offset(TreeCtrl, columnDrag.indColor),
      0, (ClientData) NULL, 0},
@@ -608,173 +557,12 @@ static Tk_OptionSpec dragSpecs[] = {
     {TK_OPTION_STRING_TABLE, "-indicatorside", (char *) NULL, (char *) NULL,
      "left", -1, Tk_Offset(TreeCtrl, columnDrag.indSide),
      0, (ClientData) arrowSideST, 0},
+    {TK_OPTION_INT, "-indicatorspan", (char *) NULL, (char *) NULL,
+     "1", -1, Tk_Offset(TreeCtrl, columnDrag.indSpan),
+     0, (ClientData) NULL, 0},
     {TK_OPTION_END, (char *) NULL, (char *) NULL, (char *) NULL,
      (char *) NULL, 0, -1, 0, 0, 0}
 };
-
-/*
- *----------------------------------------------------------------------
- *
- * ImageChangedProc --
- *
- *	This procedure is invoked by the image code whenever the manager
- *	for an image does something that affects the size or contents
- *	of an image displayed in a column header.
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	Invalidates the size of the column and schedules a redisplay.
- *
- *----------------------------------------------------------------------
- */
-
-static void
-ImageChangedProc(
-    ClientData clientData,		/* Pointer to Column record. */
-    int x, int y,			/* Upper left pixel (within image)
-					 * that must be redisplayed. */
-    int width, int height,		/* Dimensions of area to redisplay
-					 * (may be <= 0). */
-    int imageWidth, int imageHeight	/* New dimensions of image. */
-    )
-{
-    /* I would like to know the image was deleted... */
-    TreeColumn column = clientData;
-    TreeCtrl *tree = column->tree;
-
-    /* Duplicate the effects of configuring the -image option. */
-    column->neededWidth = -1;
-    column->neededHeight = -1;
-    tree->headerHeight = -1;
-    tree->widthOfColumns = -1;
-    tree->widthOfColumnsLeft = tree->widthOfColumnsRight = -1;
-    Tree_DInfoChanged(tree, DINFO_CHECK_COLUMN_WIDTH | DINFO_DRAW_HEADER);
-}
-
-/*
- *----------------------------------------------------------------------
- *
- * ColumnStateFromObj --
- *
- *	Parses a string object containing "state" or "!state" to a
- *	state bit flag.
- *	This function is passed to PerStateInfo_FromObj().
- *
- * Results:
- *	A standard Tcl result.
- *
- * Side effects:
- *	None.
- *
- *----------------------------------------------------------------------
- */
-
-static int
-ColumnStateFromObj(
-    TreeCtrl *tree,		/* Widget info. */
-    Tcl_Obj *obj,		/* String object to parse. */
-    int *stateOff,		/* OR'd with state bit if "!state" is
-				 * specified. Caller must initialize. */
-    int *stateOn		/* OR'd with state bit if "state" is
-				 * specified. Caller must initialize. */
-    )
-{
-    Tcl_Interp *interp = tree->interp;
-    int i, op = STATE_OP_ON, op2, op3, length, state = 0;
-    char ch0, *string;
-    CONST char *stateNames[4] = { "normal", "active", "pressed", "up" };
-    int states[3];
-
-    states[STATE_OP_ON] = 0;
-    states[STATE_OP_OFF] = 0;
-    states[STATE_OP_TOGGLE] = 0;
-
-    string = Tcl_GetStringFromObj(obj, &length);
-    if (length == 0)
-	goto unknown;
-    ch0 = string[0];
-    if (ch0 == '!') {
-	op = STATE_OP_OFF;
-	++string;
-	ch0 = string[0];
-    } else if (ch0 == '~') {
-	if (1) {
-	    FormatResult(interp, "can't specify '~' for this command");
-	    return TCL_ERROR;
-	}
-	op = STATE_OP_TOGGLE;
-	++string;
-	ch0 = string[0];
-    }
-    for (i = 0; i < 4; i++) {
-	if ((ch0 == stateNames[i][0]) && !strcmp(string, stateNames[i])) {
-	    state = 1L << i;
-	    break;
-	}
-    }
-    if (state == 0)
-	goto unknown;
-
-    if (op == STATE_OP_ON) {
-	op2 = STATE_OP_OFF;
-	op3 = STATE_OP_TOGGLE;
-    }
-    else if (op == STATE_OP_OFF) {
-	op2 = STATE_OP_ON;
-	op3 = STATE_OP_TOGGLE;
-    } else {
-	op2 = STATE_OP_ON;
-	op3 = STATE_OP_OFF;
-    }
-    states[op2] &= ~state;
-    states[op3] &= ~state;
-    states[op] |= state;
-
-    *stateOn |= states[STATE_OP_ON];
-    *stateOff |= states[STATE_OP_OFF];
-
-    return TCL_OK;
-
-unknown:
-    FormatResult(interp, "unknown state \"%s\"", string);
-    return TCL_ERROR;
-}
-
-/*
- *----------------------------------------------------------------------
- *
- * Column_MakeState --
- *
- *	Return a bit mask suitable for passing to the PerState_xxx
- *	functions.
- *
- * Results:
- *	State flags for the column's current state.
- *
- * Side effects:
- *	None.
- *
- *----------------------------------------------------------------------
- */
-
-static int
-Column_MakeState(
-    TreeColumn column		/* Column record. */
-    )
-{
-    int state = 0;
-    if (column->state == COLUMN_STATE_NORMAL)
-	state |= 1L << 0;
-    else if (column->state == COLUMN_STATE_ACTIVE)
-	state |= 1L << 1;
-    else if (column->state == COLUMN_STATE_PRESSED)
-	state |= 1L << 2;
-    if (column->arrow == ARROW_UP)
-	state |= 1L << 3;
-    return state;
-}
 
 /*
  *----------------------------------------------------------------------
@@ -858,7 +646,6 @@ typedef struct Qualifiers {
     int visible;		/* 1 for -visible TRUE,
 				   0 for -visible FALSE,
 				   -1 for unspecified. */
-    int states[3];		/* States that must be on or off. */
     TagExpr expr;		/* Tag expression. */
     int exprOK;			/* TRUE if expr is valid. */
     int lock;			/* COLUMN_LOCK_xxx or -1 */
@@ -872,7 +659,7 @@ typedef struct Qualifiers {
  *
  * Qualifiers_Init --
  *
- *	Helper routine for TreeItem_FromObj.
+ *	Helper routine for TreeColumnList_FromObj.
  *
  * Results:
  *	None.
@@ -891,7 +678,6 @@ Qualifiers_Init(
 {
     q->tree = tree;
     q->visible = -1;
-    q->states[0] = q->states[1] = q->states[2] = 0;
     q->exprOK = FALSE;
     q->lock = -1;
     q->ntail = 0;
@@ -903,7 +689,7 @@ Qualifiers_Init(
  *
  * Qualifiers_Scan --
  *
- *	Helper routine for TreeItem_FromObj.
+ *	Helper routine for TreeColumnList_FromObj.
  *
  * Results:
  *	TCL_OK or TCL_ERROR.
@@ -929,15 +715,14 @@ Qualifiers_Scan(
     int qual, j = startIndex;
 
     static CONST char *qualifiers[] = {
-	"lock", "state", "tag", "visible", "!tail", "!visible", NULL
+	"lock", "tag", "visible", "!tail", "!visible", NULL
     };
     enum qualEnum {
-	QUAL_LOCK, QUAL_STATE, QUAL_TAG, QUAL_VISIBLE, QUAL_NOT_TAIL,
-	QUAL_NOT_VISIBLE
+	QUAL_LOCK, QUAL_TAG, QUAL_VISIBLE, QUAL_NOT_TAIL, QUAL_NOT_VISIBLE
     };
     /* Number of arguments used by qualifiers[]. */
     static int qualArgs[] = {
-	2, 2, 2, 1, 1, 1
+	2, 2, 1, 1, 1
     };
 
     *argsUsed = 0;
@@ -956,22 +741,6 @@ Qualifiers_Scan(
 		if (Tcl_GetIndexFromObj(interp, objv[j + 1], lockST,
 			"lock", 0, &q->lock) != TCL_OK)
 		    goto errorExit;
-		break;
-	    }
-	    case QUAL_STATE: {
-		int i, listObjc;
-		Tcl_Obj **listObjv;
-
-		if (Tcl_ListObjGetElements(interp, objv[j + 1],
-			&listObjc, &listObjv) != TCL_OK)
-		    goto errorExit;
-		q->states[STATE_OP_OFF] = q->states[STATE_OP_ON] = 0;
-		for (i = 0; i < listObjc; i++) {
-		    if (ColumnStateFromObj(tree, listObjv[i],
-			    &q->states[STATE_OP_OFF],
-			    &q->states[STATE_OP_ON]) != TCL_OK)
-			goto errorExit;
-		}
 		break;
 	    }
 	    case QUAL_TAG: {
@@ -1014,10 +783,10 @@ errorExit:
  *
  * Qualifies --
  *
- *	Helper routine for TreeItem_FromObj.
+ *	Helper routine for TreeColumnList_FromObj.
  *
  * Results:
- *	Returns TRUE if the item meets the given criteria.
+ *	Returns TRUE if the column meets the given criteria.
  *
  * Side effects:
  *	None.
@@ -1041,10 +810,6 @@ Qualifies(
 	return 0;
     else if ((q->visible == 0) && column->visible)
 	return 0;
-    if (q->states[STATE_OP_OFF] & Column_MakeState(column))
-	return 0;
-    if ((q->states[STATE_OP_ON] & Column_MakeState(column)) != q->states[STATE_OP_ON])
-	return 0;
     if (q->exprOK && !TagExpr_Eval(&q->expr, column->tagInfo))
 	return 0;
     if ((q->lock != -1) && (column->lock != q->lock))
@@ -1059,7 +824,7 @@ Qualifies(
  *
  * Qualifiers_Free --
  *
- *	Helper routine for TreeItem_FromObj.
+ *	Helper routine for TreeColumnList_FromObj.
  *
  * Results:
  *	None.
@@ -1105,6 +870,7 @@ Qualifiers_Free(
  * -- returning a single column --
  * next QUALIFIERS
  * prev QUALIFIERS
+ * span N QUALIFIERS
  *
  * QUALIFIERS:
  * state stateList
@@ -1157,18 +923,18 @@ TreeColumnList_FromObj(
     };
 
     static CONST char *modifiers[] = {
-	"next", "prev", (char *) NULL
+	"next", "prev", "span", (char *) NULL
     };
     enum modEnum {
-	TMOD_NEXT, TMOD_PREV
+	TMOD_NEXT, TMOD_PREV, TMOD_SPAN
     };
     /* Number of arguments used by modifiers[]. */
     static int modArgs[] = {
-	1, 1
+	1, 1, 2
     };
     /* Boolean: can modifiers[] be followed by 1 or more qualifiers. */
     static int modQual[] = {
-	1, 1
+	1, 1, 1
     };
 
     TreeColumnList_Init(tree, columns, 0);
@@ -1503,6 +1269,22 @@ gotFirstPart:
 		    column = column->prev;
 		break;
 	    }
+	    case TMOD_SPAN: {
+		int span, lock;
+		TreeColumn match = NULL;
+
+		if (Tcl_GetIntFromObj(NULL, objv[listIndex + 1], &span) != TCL_OK)
+		    goto errorExit;
+		lock = column->lock;
+		while (span-- > 0 && column != NULL && column->lock == lock) {
+		    if (!Qualifies(&q, column))
+			break;
+		    match = column;
+		    column = column->next;
+		}
+		column = match;
+		break;
+	    }
 	}
 	if ((TreeColumnList_Count(columns) == 0) && (column == NULL)) {
 	    if (flags & CFO_NOT_NULL)
@@ -1759,12 +1541,64 @@ Tree_FindColumn(
 {
     TreeColumn column = tree->columns;
 
+if (columnIndex == tree->columnTail->index) return tree->columnTail;
+
     while (column != NULL) {
 	if (column->index == columnIndex)
 	    break;
 	column = column->next;
     }
     return column;
+}
+
+TreeColumn
+Tree_FirstColumn(
+    TreeCtrl *tree,
+    int lock,
+    int tailOK
+    )
+{
+    TreeColumn column = NULL;
+
+    switch (lock) {
+	case COLUMN_LOCK_LEFT:
+	    column = tree->columnLockLeft;
+	    break;
+	case COLUMN_LOCK_NONE:
+	    column = tree->columnLockNone;
+	    if (column == NULL && tailOK)
+		column = tree->columnTail;
+	    break;
+	case COLUMN_LOCK_RIGHT:
+	    column = tree->columnLockRight;
+	    break;
+	default:
+	    column = tree->columns;
+	    if (column == NULL && tailOK)
+		column = tree->columnTail;
+	    break;
+    }
+    return column;
+}
+
+TreeColumn
+Tree_ColumnToTheRight(
+    TreeColumn column,		/* Column token. */
+    int displayOrder,
+    int tailOK
+    )
+{
+    TreeCtrl *tree = column->tree;
+    TreeColumn next = column->next;
+
+    if (column == tree->columnTail)
+	tailOK = FALSE;
+    if (displayOrder && next == tree->columnLockRight) {
+	return tailOK ? tree->columnTail : NULL;
+    }
+    if (next == NULL && tailOK)
+	return tree->columnTail;
+    return next;
 }
 
 /*
@@ -1834,7 +1668,8 @@ TreeColumn_Prev(
 
 static void
 Column_FreeColors(
-    XColor **colors,		/* Array of colors. May be NULL. */
+    TreeColumn column,		/* Column token. */
+    TreeColor **colors,		/* Array of colors. May be NULL. */
     int count			/* Number of colors. */
     )
 {
@@ -1845,7 +1680,7 @@ Column_FreeColors(
     }
     for (i = 0; i < count; i++) {
 	if (colors[i] != NULL) {
-	    Tk_FreeColor(colors[i]);
+	    Tree_FreeColor(column->tree, colors[i]);
 	}
     }
     WCFREE(colors, XColor *, count);
@@ -1891,6 +1726,13 @@ Column_Move(
 	goto renumber;
     if (move->index == before->index - 1)
 	goto renumber;
+
+    /* Move the column in every header */
+    item = tree->headerItems;
+    while (item != NULL) {
+	TreeItem_MoveColumn(tree, item, move->index, before->index);
+	item = TreeItem_GetNextSibling(tree, item);
+    }
 
     /* Move the column in every item */
     hPtr = Tcl_FirstHashEntry(&tree->itemHash, &search);
@@ -2019,9 +1861,8 @@ renumber:
     if (move->visible) {
 	/* Must update column widths because of expansion. */
 	/* Also update columnTreeLeft. */
-	tree->widthOfColumns = -1;
-	tree->widthOfColumnsLeft = tree->widthOfColumnsRight = -1;
-	Tree_DInfoChanged(tree, DINFO_CHECK_COLUMN_WIDTH);
+	TreeColumns_InvalidateWidth(tree);
+	TreeColumns_InvalidateCounts(tree);
     }
 }
 
@@ -2060,16 +1901,61 @@ Column_Config(
     int error;
     Tcl_Obj *errorResult = NULL;
     int mask, maskFree = 0;
-    XGCValues gcValues;
-    unsigned long gcMask;
-/*    int stateOld = Column_MakeState(column), stateNew;*/
     int visible = column->visible;
     int lock = column->lock;
+#if COLUMNGRID == 1
+    int gridLines, prevGridLines = visible &&
+	    (column->gridLeftColor != NULL ||
+	    column->gridRightColor != NULL);
+#endif
+
+    int objC = 0, hObjC = 0;
+    Tcl_Obj *staticObjV[STATIC_SIZE], **objV = staticObjV;
+    Tcl_Obj *staticHObjV[STATIC_SIZE], **hObjV = staticHObjV;
+    int i;
+
+    /* Hack -- Pass some options to the underlying header-column */
+    STATIC_ALLOC(objV, Tcl_Obj *, objc);
+    STATIC_ALLOC(hObjV, Tcl_Obj *, objc);
+    for (i = 0; i < objc; i += 2) {
+	Tk_OptionSpec *specPtr = columnSpecs;
+	int length;
+	CONST char *optionName = Tcl_GetStringFromObj(objv[i], &length);
+	while (specPtr->type != TK_OPTION_END) {
+	    if (strncmp(specPtr->optionName, optionName, length) == 0) {
+		objV[objC++] = objv[i];
+		if (i + 1 < objc)
+		    objV[objC++] = objv[i + 1];
+		/* Pass -justify to the default header as well */
+		if (strcmp(specPtr->optionName, "-justify") == 0) {
+		    hObjV[hObjC++] = objv[i];
+		    if (i + 1 < objc)
+			hObjV[hObjC++] = objv[i + 1];
+		}
+		break;
+	    }
+	    specPtr++;
+	}
+	if (specPtr->type == TK_OPTION_END) {
+	    hObjV[hObjC++] = objv[i];
+	    if (i + 1 < objc)
+		hObjV[hObjC++] = objv[i + 1];
+	}
+    }
+    if (TreeHeader_ConsumeColumnConfig(tree, column, hObjC, hObjV, createFlag) != TCL_OK) {
+	STATIC_FREE(objV, Tcl_Obj *, objc);
+	STATIC_FREE(hObjV, Tcl_Obj *, objc);
+	return TCL_ERROR;
+    }
+
+    /* Init these to prevent compiler warnings */
+    saved.itemBgCount = 0;
+    saved.itemBgColor = NULL;
 
     for (error = 0; error <= 1; error++) {
 	if (error == 0) {
 	    if (Tk_SetOptions(tree->interp, (char *) column,
-			column->optionTable, objc, objv, tree->tkwin,
+			column->optionTable, objC, objV, tree->tkwin,
 			&savedOptions, &mask) != TCL_OK) {
 		mask = 0;
 		continue;
@@ -2078,8 +1964,6 @@ Column_Config(
 	    /* Wouldn't have to do this if Tk_InitOptions() would return
 	     * a mask of configured options like Tk_SetOptions() does. */
 	    if (createFlag) {
-		if (column->imageString != NULL)
-		    mask |= COLU_CONF_IMAGE;
 		if (column->itemBgObj != NULL)
 		    mask |= COLU_CONF_ITEMBG;
 	    }
@@ -2088,8 +1972,6 @@ Column_Config(
 	     * Step 1: Save old values
 	     */
 
-	    if (mask & COLU_CONF_IMAGE)
-		saved.image = column->image;
 	    if (mask & COLU_CONF_ITEMBG) {
 		saved.itemBgColor = column->itemBgColor;
 		saved.itemBgCount = column->itemBgCount;
@@ -2112,19 +1994,6 @@ Column_Config(
 	     * Step 2: Process new values
 	     */
 
-	    if (mask & COLU_CONF_IMAGE) {
-		if (column->imageString == NULL) {
-		    column->image = NULL;
-		} else {
-		    column->image = Tk_GetImage(tree->interp, tree->tkwin,
-			    column->imageString, ImageChangedProc,
-			    (ClientData) column);
-		    if (column->image == NULL)
-			continue;
-		    maskFree |= COLU_CONF_IMAGE;
-		}
-	    }
-
 	    if (mask & COLU_CONF_ITEMBG) {
 		if (column->itemBgObj == NULL) {
 		    column->itemBgColor = NULL;
@@ -2132,26 +2001,25 @@ Column_Config(
 		} else {
 		    int i, length, listObjc;
 		    Tcl_Obj **listObjv;
-		    XColor **colors;
+		    TreeColor **colors;
 
 		    if (Tcl_ListObjGetElements(tree->interp, column->itemBgObj,
 				&listObjc, &listObjv) != TCL_OK)
 			continue;
-		    colors = (XColor **) ckalloc(sizeof(XColor *) * listObjc);
+		    colors = (TreeColor **) ckalloc(sizeof(TreeColor *) * listObjc);
 		    for (i = 0; i < listObjc; i++)
 			colors[i] = NULL;
 		    for (i = 0; i < listObjc; i++) {
 			/* Can specify "" for tree background */
 			(void) Tcl_GetStringFromObj(listObjv[i], &length);
 			if (length != 0) {
-			    colors[i] = Tk_AllocColorFromObj(tree->interp,
-				    tree->tkwin, listObjv[i]);
+			    colors[i] = Tree_AllocColorFromObj(tree, listObjv[i]);
 			    if (colors[i] == NULL)
 				break;
 			}
 		    }
 		    if (i < listObjc) {
-			Column_FreeColors(colors, listObjc);
+			Column_FreeColors(column, colors, listObjc);
 			continue;
 		    }
 		    column->itemBgColor = colors;
@@ -2164,13 +2032,11 @@ Column_Config(
 	     * Step 3: Free saved values
 	     */
 
-	    if (mask & COLU_CONF_IMAGE) {
-		if (saved.image != NULL)
-		    Tk_FreeImage(saved.image);
-	    }
 	    if (mask & COLU_CONF_ITEMBG)
-		Column_FreeColors(saved.itemBgColor, saved.itemBgCount);
+		Column_FreeColors(column, saved.itemBgColor, saved.itemBgCount);
 	    Tk_FreeSavedOptions(&savedOptions);
+	    STATIC_FREE(objV, Tcl_Obj *, objc);
+	    STATIC_FREE(hObjV, Tcl_Obj *, objc);
 	    break;
 	} else {
 	    errorResult = Tcl_GetObjResult(tree->interp);
@@ -2180,16 +2046,12 @@ Column_Config(
 	    /*
 	     * Free new values.
 	     */
-	    if (maskFree & COLU_CONF_IMAGE)
-		Tk_FreeImage(column->image);
 	    if (maskFree & COLU_CONF_ITEMBG)
-		Column_FreeColors(column->itemBgColor, column->itemBgCount);
+		Column_FreeColors(column, column->itemBgColor, column->itemBgCount);
 
 	    /*
 	     * Restore old values.
 	     */
-	    if (mask & COLU_CONF_IMAGE)
-		column->image = saved.image;
 	    if (mask & COLU_CONF_ITEMBG) {
 		column->itemBgColor = saved.itemBgColor;
 		column->itemBgCount = saved.itemBgCount;
@@ -2197,6 +2059,8 @@ Column_Config(
 
 	    Tcl_SetObjResult(tree->interp, errorResult);
 	    Tcl_DecrRefCount(errorResult);
+	    STATIC_FREE(objV, Tcl_Obj *, objc);
+	    STATIC_FREE(hObjV, Tcl_Obj *, objc);
 	    return TCL_ERROR;
 	}
     }
@@ -2205,39 +2069,8 @@ Column_Config(
     if (visible != column->visible || lock != column->lock)
 	TreeItem_SpansInvalidate(tree, NULL);
 
-    /* Wouldn't have to do this if Tk_InitOptions() would return
-    * a mask of configured options like Tk_SetOptions() does. */
-    if (createFlag) {
-	if (column->textObj != NULL)
-	    mask |= COLU_CONF_TEXT;
-	if (column->bitmap != None)
-	    mask |= COLU_CONF_BITMAP;
-    }
-
-    if (mask & COLU_CONF_TEXT) {
-	if (column->textObj != NULL)
-	    (void) Tcl_GetStringFromObj(column->textObj, &column->textLen);
-	else
-	    column->textLen = 0;
-	if (column->textLen) {
-	    Tk_Font tkfont = column->tkfont ? column->tkfont : tree->tkfont;
-	    column->textWidth = Tk_TextWidth(tkfont, column->text, column->textLen);
-	} else
-	    column->textWidth = 0;
-    }
-
-    if (mask & COLU_CONF_BITMAP) {
-	if (column->bitmapGC != None) {
-	    Tk_FreeGC(tree->display, column->bitmapGC);
-	    column->bitmapGC = None;
-	}
-	if (column->bitmap != None) {
-	    gcValues.clip_mask = column->bitmap;
-	    gcValues.graphics_exposures = False;
-	    gcMask = GCClipMask | GCGraphicsExposures;
-	    column->bitmapGC = Tk_GetGC(tree->tkwin, gcMask, &gcValues);
-	}
-    }
+    if (visible != column->visible || lock != column->lock)
+	TreeColumns_InvalidateCounts(tree);
 
     if (mask & COLU_CONF_ITEMBG) {
 	if (!createFlag) {
@@ -2252,7 +2085,7 @@ Column_Config(
 		walk = walk->next;
 	    }
 	}
-	Tree_DInfoChanged(tree, DINFO_INVALIDATE);
+	Tree_DInfoChanged(tree, DINFO_INVALIDATE); /* implicit DINFO_DRAW_WHITESPACE */
     }
 
     if (!createFlag && (column->lock != lock)) {
@@ -2281,15 +2114,9 @@ Column_Config(
 	Tree_DInfoChanged(tree, DINFO_REDO_COLUMN_WIDTH);
     }
 
-    if (mask & (COLU_CONF_NWIDTH | COLU_CONF_TWIDTH))
-	mask |= COLU_CONF_NHEIGHT;
-    if (mask & (COLU_CONF_JUSTIFY | COLU_CONF_TEXT))
-	column->textLayoutInvalid = TRUE;
-
-    if (mask & COLU_CONF_NWIDTH)
-	column->neededWidth = -1;
-    if (mask & COLU_CONF_NHEIGHT) {
-	column->neededHeight = -1;
+    /* If there are no more visible columns, the header isn't shown. */
+    /* Header height may change with the width of columns (due to text wrapping). */
+    if (mask & COLU_CONF_TWIDTH) {
 	tree->headerHeight = -1;
     }
 
@@ -2297,21 +2124,40 @@ Column_Config(
     if (mask & COLU_CONF_JUSTIFY)
 	Tree_DInfoChanged(tree, DINFO_INVALIDATE);
 
+#ifdef DEPRECATED
     /* -stepwidth and -widthhack */
     if (mask & COLU_CONF_RANGES)
 	Tree_DInfoChanged(tree, DINFO_REDO_RANGES);
+#endif
 
     /* Redraw everything */
-    if (mask & (COLU_CONF_TWIDTH | COLU_CONF_NWIDTH | COLU_CONF_NHEIGHT)) {
-	tree->widthOfColumns = -1;
-	tree->widthOfColumnsLeft = tree->widthOfColumnsRight = -1;
-	Tree_DInfoChanged(tree, DINFO_CHECK_COLUMN_WIDTH | DINFO_DRAW_HEADER);
+    if (mask & COLU_CONF_TWIDTH) {
+	if ((column->reqData.spanMin != NULL) && /* if it's NULL, then it's hidden or tree->spansInvalid=TRUE */
+		(column->reqData.spanMin != column->reqData.spanMax)) { /* spans of 1 don't require item-width recalc */
+	    TreeColumns_InvalidateWidthOfItems(tree, column);
+	}
+	TreeColumns_InvalidateWidth(tree);
+	Tree_DInfoChanged(tree, DINFO_DRAW_HEADER);
     }
 
     /* Redraw header only */
     else if (mask & COLU_CONF_DISPLAY) {
 	Tree_DInfoChanged(tree, DINFO_DRAW_HEADER);
     }
+
+#if COLUMNGRID == 1
+    if (mask & COLU_CONF_GRIDLINES) {
+	Tree_DInfoChanged(tree, DINFO_INVALIDATE | DINFO_DRAW_WHITESPACE);
+    }
+
+    gridLines = column->visible &&
+	    (column->gridLeftColor != NULL ||
+	    column->gridRightColor != NULL);
+    if (gridLines != prevGridLines) {
+	tree->columnsWithGridLines += gridLines ? 1 : -1;
+/*dbwin("tree->columnsWithGridLines is now %d", tree->columnsWithGridLines);*/
+    }
+#endif
 
     return TCL_OK;
 }
@@ -2358,8 +2204,10 @@ Column_Alloc(
 	return NULL;
     }
 #endif
-    column->neededWidth = column->neededHeight = -1;
-    tree->headerHeight = tree->widthOfColumns = -1;
+    tree->headerHeight = -1;
+    /* Don't call TreeColumns_InvalidateWidth(), it will fail during
+     * Tree_InitColumns(). */
+    tree->widthOfColumns = -1;
     tree->widthOfColumnsLeft = tree->widthOfColumnsRight = -1;
     column->id = tree->nextColumnId++;
     tree->columnCount++;
@@ -2391,15 +2239,11 @@ Column_Free(
     TreeCtrl *tree = column->tree;
     TreeColumn next = column->next;
 
-    Column_FreeColors(column->itemBgColor, column->itemBgCount);
-    if (column->bitmapGC != None)
-	Tk_FreeGC(tree->display, column->bitmapGC);
-    if (column->image != NULL)
-	Tk_FreeImage(column->image);
-    if (column->textLayout != NULL)
-	TextLayout_Free(column->textLayout);
+    Column_FreeColors(column, column->itemBgColor, column->itemBgCount);
     TreeDisplay_FreeColumnDInfo(tree, column);
     Tk_FreeConfigOptions((char *) column, column->optionTable, tree->tkwin);
+    if (column->reqData.spans.spans != NULL)
+	ckfree((char *) column->reqData.spans.spans);
     WFREE(column, TreeColumn_);
     tree->columnCount--;
     if (tree->columnCount == 0)
@@ -2556,707 +2400,6 @@ TreeColumn_StepWidth(
     return column->stepWidthObj ? column->stepWidth : -1;
 }
 #endif /* DEPRECATED */
-
-/*
- *----------------------------------------------------------------------
- *
- * Column_UpdateTextLayout --
- *
- *	Recalculate the TextLayout for the text displayed in the
- *	column header. The old TextLayout (if any) is freed. If
- *	there is no text or if it is only one line then no TextLayout
- *	is created.
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	Memory may be allocated/deallocated.
- *
- *----------------------------------------------------------------------
- */
-
-static void
-Column_UpdateTextLayout(
-    TreeColumn column,		/* Column record. */
-    int width			/* Maximum line length. Zero means there
-				 * is no limit. */
-    )
-{
-    Tk_Font tkfont;
-    char *text = column->text;
-    int textLen = column->textLen;
-    int justify = column->justify;
-    int maxLines = MAX(column->textLines, 0); /* -textlines */
-    int wrap = TEXT_WRAP_WORD; /* -textwrap */
-    int flags = 0;
-    int i, multiLine = FALSE;
-
-    if (column->textLayout != NULL) {
-	TextLayout_Free(column->textLayout);
-	column->textLayout = NULL;
-    }
-
-    if ((text == NULL) || (textLen == 0))
-	return;
-
-    for (i = 0; i < textLen; i++) {
-	if ((text[i] == '\n') || (text[i] == '\r')) {
-	    multiLine = TRUE;
-	    break;
-	}
-    }
-
-#ifdef MAC_OSX_TK
-    /* The height of the header is fixed on Aqua. There is only room for
-     * a single line of text. */
-    if (column->tree->useTheme)
-	maxLines = 1;
-#endif
-
-    if (!multiLine && ((maxLines == 1) || (!width || (width >= column->textWidth))))
-	return;
-
-    tkfont = column->tkfont ? column->tkfont : column->tree->tkfont;
-
-    if (wrap == TEXT_WRAP_WORD)
-	flags |= TK_WHOLE_WORDS;
-
-    column->textLayout = TextLayout_Compute(tkfont, text,
-	    Tcl_NumUtfChars(text, textLen), width, justify, maxLines, flags);
-}
-
-/*
- *----------------------------------------------------------------------
- *
- * Column_GetArrowSize --
- *
- *	Return the size of the sort arrow displayed in the column header
- *	for the column's current state.
- *
- * Results:
- *	Height and width of the arrow.
- *
- * Side effects:
- *	None.
- *
- *----------------------------------------------------------------------
- */
-
-static void
-Column_GetArrowSize(
-    TreeColumn column,		/* Column record. */
-    int *widthPtr,		/* Returned width. */
-    int *heightPtr		/* Returned height. */
-    )
-{
-    TreeCtrl *tree = column->tree;
-    int state = Column_MakeState(column);
-    int arrowWidth = -1, arrowHeight;
-    Tk_Image image;
-    Pixmap bitmap;
-
-    /* image > bitmap > theme > draw */
-    image = PerStateImage_ForState(tree, &column->arrowImage,
-	state, NULL);
-    if (image != NULL) {
-	Tk_SizeOfImage(image, &arrowWidth, &arrowHeight);
-    }
-    if (arrowWidth == -1) {
-	bitmap = PerStateBitmap_ForState(tree, &column->arrowBitmap,
-	    state, NULL);
-	if (bitmap != None) {
-	    Tk_SizeOfBitmap(tree->display, bitmap, &arrowWidth, &arrowHeight);
-	}
-    }
-    if ((arrowWidth == -1) && tree->useTheme &&
-	TreeTheme_GetArrowSize(tree, Tk_WindowId(tree->tkwin),
-	column->arrow == ARROW_UP, &arrowWidth, &arrowHeight) == TCL_OK) {
-    }
-    if (arrowWidth == -1) {
-	Tk_Font tkfont = column->tkfont ? column->tkfont : tree->tkfont;
-	Tk_FontMetrics fm;
-	Tk_GetFontMetrics(tkfont, &fm);
-	arrowWidth = (fm.linespace + column->textPadY[PAD_TOP_LEFT] +
-	    column->textPadY[PAD_BOTTOM_RIGHT] + column->borderWidth * 2) / 2;
-	if (!(arrowWidth & 1))
-	    arrowWidth--;
-	arrowHeight = arrowWidth;
-    }
-
-    (*widthPtr) = arrowWidth;
-    (*heightPtr) = arrowHeight;
-}
-
-/*
- * The following structure holds size/position info for all the graphical
- * elements of a column header.
- */
-struct Layout
-{
-    Tk_Font tkfont;
-    Tk_FontMetrics fm;
-    int width; /* Provided by caller */
-    int height; /* Provided by caller */
-    int textLeft;
-    int textWidth;
-    int bytesThatFit;
-    int imageLeft;
-    int imageWidth;
-    int arrowLeft;
-    int arrowWidth;
-    int arrowHeight;
-};
-
-/*
- * The following structure is used by the Column_DoLayout() procedure to
- * hold size/position info for each graphical element displayed in the
- * header.
- */
-struct LayoutPart
-{
-    int padX[2];
-    int padY[2];
-    int width;
-    int height;
-    int left;
-    int top;
-};
-
-/*
- *----------------------------------------------------------------------
- *
- * Column_DoLayout --
- *
- *	Arrange all the graphical elements making up a column header.
- *
- * Results:
- *	Layout info is returned.
- *
- * Side effects:
- *	None.
- *
- *----------------------------------------------------------------------
- */
-
-static void
-Column_DoLayout(
-    TreeColumn column,		/* Column record. */
-    struct Layout *layout	/* Returned layout info. The width and
-				 * height fields must be initialized. */
-    )
-{
-#if defined(MAC_OSX_TK)
-    TreeCtrl *tree = column->tree;
-#endif
-    struct LayoutPart *parts[3];
-    struct LayoutPart partArrow, partImage, partText;
-    int i, padList[4], widthList[3], n = 0;
-    int iArrow = -1, iImage = -1, iText = -1;
-    int left, right;
-    int widthForText = 0;
-#if defined(MAC_OSX_TK)
-    int margins[4];
-    int arrow = column->arrow;
-    int arrowSide = column->arrowSide;
-    int arrowGravity = column->arrowGravity;
-#endif
-
-#if defined(MAC_OSX_TK)
-    /* Under Aqua, we let the Appearance Manager draw the sort arrow */
-    if (tree->useTheme) {
-	column->arrow = ARROW_NONE;
-	column->arrowSide = SIDE_RIGHT;
-	column->arrowGravity = SIDE_RIGHT;
-    }
-#endif
-
-    padList[0] = 0;
-
-    if (column->arrow != ARROW_NONE) {
-	Column_GetArrowSize(column, &partArrow.width, &partArrow.height);
-	partArrow.padX[PAD_TOP_LEFT] = column->arrowPadX[PAD_TOP_LEFT];
-	partArrow.padX[PAD_BOTTOM_RIGHT] = column->arrowPadX[PAD_BOTTOM_RIGHT];
-	partArrow.padY[PAD_TOP_LEFT] = column->arrowPadY[PAD_TOP_LEFT];
-	partArrow.padY[PAD_BOTTOM_RIGHT] = column->arrowPadY[PAD_BOTTOM_RIGHT];
-    }
-    if ((column->arrow != ARROW_NONE) && (column->arrowSide == SIDE_LEFT)) {
-	parts[n] = &partArrow;
-	padList[n] = partArrow.padX[PAD_TOP_LEFT];
-	padList[n + 1] = partArrow.padX[PAD_BOTTOM_RIGHT];
-	iArrow = n++;
-    }
-    if ((column->image != NULL) || (column->bitmap != None)) {
-	if (column->image != NULL)
-	    Tk_SizeOfImage(column->image, &partImage.width, &partImage.height);
-	else
-	    Tk_SizeOfBitmap(column->tree->display, column->bitmap, &partImage.width, &partImage.height);
-	partImage.padX[PAD_TOP_LEFT] = column->imagePadX[PAD_TOP_LEFT];
-	partImage.padX[PAD_BOTTOM_RIGHT] = column->imagePadX[PAD_BOTTOM_RIGHT];
-	partImage.padY[PAD_TOP_LEFT] = column->imagePadY[PAD_TOP_LEFT];
-	partImage.padY[PAD_BOTTOM_RIGHT] = column->imagePadY[PAD_BOTTOM_RIGHT];
-	parts[n] = &partImage;
-	padList[n] = MAX(partImage.padX[PAD_TOP_LEFT], padList[n]);
-	padList[n + 1] = partImage.padX[PAD_BOTTOM_RIGHT];
-	iImage = n++;
-    }
-    if (column->textLen > 0) {
-	struct LayoutPart *parts2[3];
-	int n2 = 0;
-
-	partText.padX[PAD_TOP_LEFT] = column->textPadX[PAD_TOP_LEFT];
-	partText.padX[PAD_BOTTOM_RIGHT] = column->textPadX[PAD_BOTTOM_RIGHT];
-	partText.padY[PAD_TOP_LEFT] = column->textPadY[PAD_TOP_LEFT];
-	partText.padY[PAD_BOTTOM_RIGHT] = column->textPadY[PAD_BOTTOM_RIGHT];
-
-	/* Calculate space for the text */
-	if (iArrow != -1)
-	    parts2[n2++] = &partArrow;
-	if (iImage != -1)
-	    parts2[n2++] = &partImage;
-	parts2[n2++] = &partText;
-	if ((column->arrow != ARROW_NONE) && (column->arrowSide == SIDE_RIGHT))
-	    parts2[n2++] = &partArrow;
-	widthForText = layout->width;
-	for (i = 0; i < n2; i++) {
-	    if (i)
-		widthForText -= MAX(parts2[i]->padX[0], parts2[i-1]->padX[1]);
-	    else
-		widthForText -= parts2[i]->padX[0];
-	    if (parts2[i] != &partText)
-		widthForText -= parts2[i]->width;
-	}
-	widthForText -= parts2[n2-1]->padX[1];
-    }
-    layout->bytesThatFit = 0;
-    if (widthForText > 0) {
-	if (column->textLayoutInvalid || (column->textLayoutWidth != widthForText)) {
-	    Column_UpdateTextLayout(column, widthForText);
-	    column->textLayoutInvalid = FALSE;
-	    column->textLayoutWidth = widthForText;
-	}
-	if (column->textLayout != NULL) {
-	    TextLayout_Size(column->textLayout, &partText.width, &partText.height);
-	    parts[n] = &partText;
-	    padList[n] = MAX(partText.padX[PAD_TOP_LEFT], padList[n]);
-	    padList[n + 1] = partText.padX[PAD_BOTTOM_RIGHT];
-	    iText = n++;
-	} else {
-	    layout->tkfont = column->tkfont ? column->tkfont : column->tree->tkfont;
-	    Tk_GetFontMetrics(layout->tkfont, &layout->fm);
-	    if (widthForText >= column->textWidth) {
-		partText.width = column->textWidth;
-		partText.height = layout->fm.linespace;
-		layout->bytesThatFit = column->textLen;
-	    } else {
-		partText.width = widthForText;
-		partText.height = layout->fm.linespace;
-		layout->bytesThatFit = Tree_Ellipsis(layout->tkfont,
-			column->text, column->textLen, &partText.width,
-			"...", FALSE);
-	    }
-	    parts[n] = &partText;
-	    padList[n] = MAX(partText.padX[PAD_TOP_LEFT], padList[n]);
-	    padList[n + 1] = partText.padX[PAD_BOTTOM_RIGHT];
-	    iText = n++;
-	}
-    }
-    if ((column->arrow != ARROW_NONE) && (column->arrowSide == SIDE_RIGHT)) {
-	parts[n] = &partArrow;
-	padList[n] = MAX(partArrow.padX[PAD_TOP_LEFT], padList[n]);
-	padList[n + 1] = partArrow.padX[PAD_BOTTOM_RIGHT];
-	iArrow = n++;
-    }
-
-#if defined(MAC_OSX_TK)
-    /* Under Aqua, we let the Appearance Manager draw the sort arrow */
-    /* This code assumes the arrow is on the right */
-    if (tree->useTheme && (arrow != ARROW_NONE)) {
-	if (TreeTheme_GetHeaderContentMargins(tree, column->state,
-		arrow, margins) == TCL_OK) {
-	    parts[n] = &partArrow;
-	    partArrow.width = margins[2];
-	    padList[n] = MAX(0, padList[n]); /* ignore -arrowpadx */
-	    padList[n + 1] = 0;
-	    iArrow = n++;
-	}
-    }
-    if (n == 0) {
-	column->arrow = arrow;
-	column->arrowSide = arrowSide;
-	column->arrowGravity = arrowGravity;
-    }
-#endif
-
-    if (n == 0)
-	return;
-
-    for (i = 0; i < n; i++) {
-	padList[i] = parts[i]->padX[0];
-	if (i)
-	    padList[i] = MAX(padList[i], parts[i-1]->padX[1]);
-	padList[i + 1] = parts[i]->padX[1];
-	widthList[i] = parts[i]->width;
-    }
-    if (iText != -1) {
-	switch (column->justify) {
-	    case TK_JUSTIFY_LEFT:
-		partText.left = 0;
-		break;
-	    case TK_JUSTIFY_RIGHT:
-		partText.left = layout->width;
-		break;
-	    case TK_JUSTIFY_CENTER:
-		if (iImage == -1)
-		    partText.left = (layout->width - partText.width) / 2;
-		else
-		    partText.left = (layout->width - partImage.width -
-			    padList[iText] - partText.width) / 2 + partImage.width +
-			padList[iText];
-		break;
-	}
-    }
-
-    if (iImage != -1) {
-	switch (column->justify) {
-	    case TK_JUSTIFY_LEFT:
-		partImage.left = 0;
-		break;
-	    case TK_JUSTIFY_RIGHT:
-		partImage.left = layout->width;
-		break;
-	    case TK_JUSTIFY_CENTER:
-		if (iText == -1)
-		    partImage.left = (layout->width - partImage.width) / 2;
-		else
-		    partImage.left = (layout->width - partImage.width -
-			    padList[iText] - partText.width) / 2;
-		break;
-	}
-    }
-
-    if (iArrow == -1)
-	goto finish;
-
-    switch (column->justify) {
-	case TK_JUSTIFY_LEFT:
-	    switch (column->arrowSide) {
-		case SIDE_LEFT:
-		    partArrow.left = 0;
-		    break;
-		case SIDE_RIGHT:
-		    switch (column->arrowGravity) {
-			case SIDE_LEFT:
-			    partArrow.left = 0;
-			    break;
-			case SIDE_RIGHT:
-			    partArrow.left = layout->width;
-			    break;
-		    }
-		    break;
-	    }
-	    break;
-	case TK_JUSTIFY_RIGHT:
-	    switch (column->arrowSide) {
-		case SIDE_LEFT:
-		    switch (column->arrowGravity) {
-			case SIDE_LEFT:
-			    partArrow.left = 0;
-			    break;
-			case SIDE_RIGHT:
-			    partArrow.left = layout->width;
-			    break;
-		    }
-		    break;
-		case SIDE_RIGHT:
-		    partArrow.left = layout->width;
-		    break;
-	    }
-	    break;
-	case TK_JUSTIFY_CENTER:
-	    switch (column->arrowSide) {
-		case SIDE_LEFT:
-		    switch (column->arrowGravity) {
-			case SIDE_LEFT:
-			    partArrow.left = 0;
-			    break;
-			case SIDE_RIGHT:
-			    if (n == 3)
-				partArrow.left =
-				    (layout->width - widthList[1] - padList[2] -
-					    widthList[2]) / 2 - padList[1] - widthList[0];
-			    else if (n == 2)
-				partArrow.left =
-				    (layout->width - widthList[1]) / 2 -
-				    padList[1] - widthList[0];
-			    else
-				partArrow.left = layout->width;
-			    break;
-		    }
-		    break;
-		case SIDE_RIGHT:
-		    switch (column->arrowGravity) {
-			case SIDE_LEFT:
-			    if (n == 3)
-				partArrow.left =
-				    (layout->width - widthList[0] - padList[1] -
-					    widthList[1]) / 2 + widthList[0] + padList[1] +
-				    widthList[1] + padList[2];
-			    else if (n == 2)
-				partArrow.left =
-				    (layout->width - widthList[0]) / 2 +
-				    widthList[0] + padList[1];
-			    else
-				partArrow.left = 0;
-			    break;
-			case SIDE_RIGHT:
-			    partArrow.left = layout->width;
-			    break;
-		    }
-		    break;
-	    }
-	    break;
-    }
-
-finish:
-    right = layout->width - padList[n];
-    for (i = n - 1; i >= 0; i--) {
-	if (parts[i]->left + parts[i]->width > right)
-	    parts[i]->left = right - parts[i]->width;
-	right -= parts[i]->width + padList[i];
-    }
-    left = padList[0];
-    for (i = 0; i < n; i++) {
-	if (parts[i]->left < left)
-	    parts[i]->left = left;
-	left += parts[i]->width + padList[i + 1];
-    }
-
-    if (iArrow != -1) {
-	layout->arrowLeft = partArrow.left;
-	layout->arrowWidth = partArrow.width;
-	layout->arrowHeight = partArrow.height;
-    }
-    if (iImage != -1) {
-	layout->imageLeft = partImage.left;
-	layout->imageWidth = partImage.width;
-    }
-    if (iText != -1) {
-	layout->textLeft = partText.left;
-	layout->textWidth = partText.width;
-    }
-
-#if defined(MAC_OSX_TK)
-    /* Under Aqua, we let the Appearance Manager draw the sort arrow */
-    column->arrow = arrow;
-    column->arrowSide = arrowSide;
-    column->arrowGravity = arrowGravity;
-#endif
-}
-
-/*
- *----------------------------------------------------------------------
- *
- * TreeColumn_NeededWidth --
- *
- *	Return the total width requested by all the graphical elements
- *	that make up a column header.  The width is recalculated if it
- *	is marked out-of-date.
- *
- * Results:
- *	The width needed by the current arrangement of the
- *	bitmap/image/text/arrow.
- *
- * Side effects:
- *	None.
- *
- *----------------------------------------------------------------------
- */
-
-int
-TreeColumn_NeededWidth(
-    TreeColumn column		/* Column token. */
-    )
-{
-    TreeCtrl *tree = column->tree;
-    int i, widthList[3], padList[4], n = 0;
-    int arrowWidth, arrowHeight;
-#if defined(MAC_OSX_TK)
-    int margins[4];
-    int arrow = column->arrow;
-#endif
-
-    if (!tree->showHeader)
-	return 0;
-
-    if (column->neededWidth >= 0)
-	return column->neededWidth;
-
-    for (i = 0; i < 3; i++) widthList[i] = 0;
-    for (i = 0; i < 4; i++) padList[i] = 0;
-
-#if defined(MAC_OSX_TK)
-    /* Under OSX we let the Appearance Manager draw the sort arrow. */
-    if (tree->useTheme)
-	column->arrow = ARROW_NONE;
-#endif
-
-    if (column->arrow != ARROW_NONE)
-	Column_GetArrowSize(column, &arrowWidth, &arrowHeight);
-    if ((column->arrow != ARROW_NONE) && (column->arrowSide == SIDE_LEFT)) {
-	widthList[n] = arrowWidth;
-	padList[n] = column->arrowPadX[PAD_TOP_LEFT];
-	padList[n + 1] = column->arrowPadX[PAD_BOTTOM_RIGHT];
-	n++;
-    }
-    if ((column->image != NULL) || (column->bitmap != None)) {
-	int imgWidth, imgHeight;
-	if (column->image != NULL)
-	    Tk_SizeOfImage(column->image, &imgWidth, &imgHeight);
-	else
-	    Tk_SizeOfBitmap(tree->display, column->bitmap, &imgWidth, &imgHeight);
-	padList[n] = MAX(column->imagePadX[PAD_TOP_LEFT], padList[n]);
-	padList[n + 1] = column->imagePadX[PAD_BOTTOM_RIGHT];
-	widthList[n] = imgWidth;
-	n++;
-    }
-    if (column->textLen > 0) {
-	padList[n] = MAX(column->textPadX[PAD_TOP_LEFT], padList[n]);
-	padList[n + 1] = column->textPadX[PAD_BOTTOM_RIGHT];
-	if (column->textLayoutInvalid || (column->textLayoutWidth != 0)) {
-	    Column_UpdateTextLayout(column, 0);
-	    column->textLayoutInvalid = FALSE;
-	    column->textLayoutWidth = 0;
-	}
-	if (column->textLayout != NULL)
-	    TextLayout_Size(column->textLayout, &widthList[n], NULL);
-	else
-	    widthList[n] = column->textWidth;
-	n++;
-    }
-    if ((column->arrow != ARROW_NONE) && (column->arrowSide == SIDE_RIGHT)) {
-	widthList[n] = arrowWidth;
-	padList[n] = MAX(column->arrowPadX[PAD_TOP_LEFT], padList[n]);
-	padList[n + 1] = column->arrowPadX[PAD_BOTTOM_RIGHT];
-	n++;
-    }
-
-    column->neededWidth = 0;
-    for (i = 0; i < n; i++)
-	column->neededWidth += widthList[i] + padList[i];
-    column->neededWidth += padList[n];
-
-#if defined(MAC_OSX_TK)
-    if (tree->useTheme)
-	column->arrow = arrow;
-
-    /* Under OSX we let the Appearance Manager draw the sort arrow. This code
-     * assumes the arrow is on the right. */
-    if (tree->useTheme &&
-	(TreeTheme_GetHeaderContentMargins(tree, column->state, column->arrow,
-		margins) == TCL_OK)) {
-	column->neededWidth += margins[2];
-    }
-#endif
-
-    /* Notice I'm not considering column->borderWidth. */
-
-    return column->neededWidth;
-}
-
-/*
- *----------------------------------------------------------------------
- *
- * TreeColumn_NeededHeight --
- *
- *	Return the total height requested by all the graphical elements
- *	that make up a column header.  The height is recalculated if it
- *	is marked out-of-date.
- *
- * Results:
- *	The height needed by the current arrangement of the
- *	bitmap/image/text/arrow.
- *
- * Side effects:
- *	None.
- *
- *----------------------------------------------------------------------
- */
-
-int
-TreeColumn_NeededHeight(
-    TreeColumn column		/* Column token. */
-    )
-{
-    TreeCtrl *tree = column->tree;
-    int margins[4];
-
-    if (column->neededHeight >= 0)
-	return column->neededHeight;
-
-#if defined(MAC_OSX_TK)
-    /* List headers are a fixed height on Aqua */
-    if (tree->useTheme) {
-	(void) TreeTheme_GetHeaderFixedHeight(tree, &column->neededHeight);
-	return column->neededHeight;
-    }
-#endif
-
-    column->neededHeight = 0;
-    if (column->arrow != ARROW_NONE) {
-	int arrowWidth, arrowHeight;
-	Column_GetArrowSize(column, &arrowWidth, &arrowHeight);
-	arrowHeight += column->arrowPadY[PAD_TOP_LEFT]
-	    + column->arrowPadY[PAD_BOTTOM_RIGHT];
-	column->neededHeight = MAX(column->neededHeight, arrowHeight);
-    }
-    if ((column->image != NULL) || (column->bitmap != None)) {
-	int imgWidth, imgHeight;
-	if (column->image != NULL)
-	    Tk_SizeOfImage(column->image, &imgWidth, &imgHeight);
-	else
-	    Tk_SizeOfBitmap(tree->display, column->bitmap, &imgWidth, &imgHeight);
-	imgHeight += column->imagePadY[PAD_TOP_LEFT]
-	    + column->imagePadY[PAD_BOTTOM_RIGHT];
-	column->neededHeight = MAX(column->neededHeight, imgHeight);
-    }
-    if (column->text != NULL) {
-	struct Layout layout;
-	layout.width = TreeColumn_UseWidth(column);
-	layout.height = -1;
-	Column_DoLayout(column, &layout);
-	if (column->textLayout != NULL) {
-	    int height;
-	    TextLayout_Size(column->textLayout, NULL, &height);
-	    height += column->textPadY[PAD_TOP_LEFT]
-		+ column->textPadY[PAD_BOTTOM_RIGHT];
-	    column->neededHeight = MAX(column->neededHeight, height);
-	} else {
-	    Tk_Font tkfont = column->tkfont ? column->tkfont : column->tree->tkfont;
-	    Tk_FontMetrics fm;
-	    Tk_GetFontMetrics(tkfont, &fm);
-	    fm.linespace += column->textPadY[PAD_TOP_LEFT]
-		+ column->textPadY[PAD_BOTTOM_RIGHT];
-	    column->neededHeight = MAX(column->neededHeight, fm.linespace);
-	}
-    }
-    if (column->tree->useTheme &&
-	(TreeTheme_GetHeaderContentMargins(tree, column->state,
-		column->arrow, margins) == TCL_OK)) {
-#ifdef WIN32
-	/* I'm hacking these margins since the default XP theme does not give
-	 * reasonable ContentMargins for HP_HEADERITEM */
-	int bw = MAX(column->borderWidth, 3);
-	margins[1] = MAX(margins[1], bw);
-	margins[3] = MAX(margins[3], bw);
-#endif /* WIN32 */
-	column->neededHeight += margins[1] + margins[3];
-    } else {
-	column->neededHeight += column->borderWidth * 2;
-    }
-
-    return column->neededHeight;
-}
 
 /*
  *----------------------------------------------------------------------
@@ -3418,38 +2561,67 @@ TreeColumn_BackgroundCount(
 /*
  *----------------------------------------------------------------------
  *
- * TreeColumn_BackgroundGC --
+ * TreeColumn_BackgroundColor --
  *
- *	Return a graphics context for one color of the -itembackground
+ *	Return a TreeColor for one color of the -itembackground
  *	config option for a column.
  *
  * Results:
- *	A graphics context, or None.
+ *	A TreeColor, or NULL.
  *
  * Side effects:
- *	Might allocate a new graphics context? But the GC is freed
- *	when the last reference to the color is lost, so the caller
- *	need not worry about it.
+ *	None.
  *
  *----------------------------------------------------------------------
  */
 
-GC
-TreeColumn_BackgroundGC(
+TreeColor *
+TreeColumn_BackgroundColor(
     TreeColumn column,		/* Column token. */
     int index			/* This number is determined by the display
 				 * code. */
     )
 {
-    XColor *color;
-
     if ((index < 0) || (column->itemBgCount == 0))
-	return None;
-    color = column->itemBgColor[index % column->itemBgCount];
-    if (color == NULL)
-	return None;
-    return Tk_GCForColor(color, Tk_WindowId(column->tree->tkwin));
+	return NULL;
+    return column->itemBgColor[index % column->itemBgCount];
 }
+
+#if COLUMNGRID == 1
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeColumn_GridColors --
+ *
+ *	Returns the color and width for this column's gridlines.
+ *
+ * Results:
+ *	Returns the left and right colors and their widths.  Either
+ *	color may be NULL.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+int
+TreeColumn_GridColors(
+    TreeColumn column,		/* Column token. */
+    TreeColor **leftColorPtr,	/* Returned left color. */
+    TreeColor **rightColorPtr,	/* Returned right color. */
+    int *leftWidthPtr,
+    int *rightWidthPtr
+    )
+{
+    (*leftColorPtr) = column->gridLeftColor;
+    (*rightColorPtr) = column->gridRightColor;
+    (*leftWidthPtr) = 1;
+    (*rightWidthPtr) = 1;
+    return (*leftColorPtr != NULL && *leftWidthPtr > 0) ||
+	    (*rightColorPtr != NULL && *rightWidthPtr > 0);
+}
+#endif
 
 /*
  *----------------------------------------------------------------------
@@ -3599,6 +2771,49 @@ TreeColumn_Index(
 /*
  *----------------------------------------------------------------------
  *
+ * TreeColumn_VisIndex --
+ *
+ *	Return the 0-based index for a column.
+ *
+ * Results:
+ *	Position of the column in the list of visible columns.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+int
+TreeColumn_VisIndex(
+    TreeColumn column		/* Column token. */
+    )
+{
+    TreeCtrl *tree = column->tree;
+    TreeColumn walk = Tree_FirstColumn(tree, column->lock, TRUE);
+    int index = 0;
+
+    /* FIXME: slow, this is only used by headers in TreeItem_Indent. */
+    /* I can't calculate this in LayoutColumns because TreeItem_Indent is
+     * used during that procedure. */
+
+    if (!column->visible)
+	return -1;
+
+    while (walk != column) {
+	if (walk->visible) {
+	    /* I only care about the first non-locked visible column (index==0).*/
+	    return 1;
+	    index++;
+	}
+	walk = Tree_ColumnToTheRight(walk, TRUE, TRUE);
+    }
+    return index;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
  * ColumnTagCmd --
  *
  *	This procedure is invoked to process the [column tag] widget
@@ -3705,7 +2920,7 @@ ColumnTagCmd(
 	case COMMAND_NAMES: {
 	    Tcl_Obj *listObj;
 	    Tk_Uid *tags = NULL;
-	    int i, tagSpace, numTags = 0;
+	    int i, tagSpace = 0, numTags = 0;
 
 	    if (objc != 5) {
 		Tcl_WrongNumArgs(interp, 4, objv, "column");
@@ -3853,6 +3068,20 @@ TreeColumnCmd(
 	    if (TreeColumn_FromObj(tree, objv[3], &column,
 			CFO_NOT_NULL) != TCL_OK)
 		return TCL_ERROR;
+	    {
+		Tk_OptionSpec *specPtr = columnSpecs;
+		int length;
+		CONST char *optionName = Tcl_GetStringFromObj(objv[4], &length);
+		while (specPtr->type != TK_OPTION_END) {
+		    if (strncmp(specPtr->optionName, optionName, length) == 0) {
+			break;
+		    }
+		    specPtr++;
+		}
+		if (specPtr->type == TK_OPTION_END) {
+		    return TreeHeader_ConsumeColumnCget(tree, column, objv[4]);
+		}
+	    }
 	    resultObjPtr = Tk_GetOptionValue(interp, (char *) column,
 		    column->optionTable, objv[4], tree->tkwin);
 	    if (resultObjPtr == NULL)
@@ -3904,13 +3133,39 @@ TreeColumnCmd(
 		if (TreeColumn_FromObj(tree, objv[3], &column,
 			CFO_NOT_NULL) != TCL_OK)
 		    return TCL_ERROR;
-		resultObjPtr = Tk_GetOptionInfo(interp, (char *) column,
-			column->optionTable,
-			(objc == 4) ? (Tcl_Obj *) NULL : objv[4],
-			tree->tkwin);
-		if (resultObjPtr == NULL)
-		    goto errorExit;
-		Tcl_SetObjResult(interp, resultObjPtr);
+		if (objc == 5) {
+		    Tk_OptionSpec *specPtr = columnSpecs;
+		    int length;
+		    CONST char *optionName = Tcl_GetStringFromObj(objv[4], &length);
+		    while (specPtr->type != TK_OPTION_END) {
+			if (strncmp(specPtr->optionName, optionName, length) == 0) {
+			    break;
+			}
+			specPtr++;
+		    }
+		    if (specPtr->type == TK_OPTION_END) {
+			resultObjPtr = TreeHeader_ConsumeColumnOptionInfo(tree, column, objv[4]);
+			if (resultObjPtr == NULL)
+			    goto errorExit;
+			Tcl_SetObjResult(interp, resultObjPtr);
+			break;
+		    }
+		    resultObjPtr = Tk_GetOptionInfo(interp, (char *) column,
+			    column->optionTable,
+			    (objc == 4) ? (Tcl_Obj *) NULL : objv[4],
+			    tree->tkwin);
+		    if (resultObjPtr == NULL)
+			goto errorExit;
+		    Tcl_SetObjResult(interp, resultObjPtr);
+		} else {
+		    /* Return the combined [configure] output of the column and header-column */
+		    Tcl_Obj *objPtr = Tk_GetOptionInfo(interp, (char *) column,
+			column->optionTable, (Tcl_Obj *) NULL,  tree->tkwin);
+		    resultObjPtr = TreeHeader_ConsumeColumnOptionInfo(tree, column, NULL);
+		    Tcl_ListObjAppendList(interp, resultObjPtr, objPtr);
+		    Tcl_SetObjResult(interp, resultObjPtr);
+		    break;
+		}
 		break;
 	    }
 	    /* If "all" is specified, get a list of columns instead of
@@ -3928,10 +3183,30 @@ TreeColumnCmd(
 
 	case COMMAND_CREATE: {
 	    TreeColumn column, last = tree->columnLast;
+	    TreeItem item;
 
 	    /* FIXME: -count N -tags $tags */
 	    column = Column_Alloc(tree);
+
+	    column->index = TreeColumn_Index(tree->columnTail) + 1; /* after the tail column */
+
+	    /* Create the item-column and header-column in every header */
+	    item = tree->headerItems;
+	    while (item != NULL) {
+		(void) TreeItem_MakeColumnExist(tree, item, column->index);
+		item = TreeItem_GetNextSibling(tree, item);
+	    }
+	    column->index = TreeColumn_Index(tree->columnTail);
+
 	    if (Column_Config(column, objc - 3, objv + 3, TRUE) != TCL_OK) {
+
+		/* Delete the item-column and header-column in every header */
+		item = tree->headerItems;
+		while (item != NULL) {
+		    TreeItem_RemoveColumns(tree, item, column->index, column->index);
+		    item = TreeItem_GetNextSibling(tree, item);
+		}
+
 		Column_Free(column);
 		return TCL_ERROR;
 	    }
@@ -3967,9 +3242,20 @@ TreeColumnCmd(
 		Column_Move(column, before);
 	    }
 
+	    item = tree->headerItems;
+	    while (item != NULL) {
+		TreeItemColumn itemColumn = TreeItem_FindColumn(tree, item,
+		    column->index);
+		TreeHeaderColumn_EnsureStyleExists(TreeItem_GetHeader(tree,
+		    item), TreeItemColumn_GetHeaderColumn(tree, itemColumn),
+		    column);
+		item = TreeItem_GetNextSibling(tree, item);
+	    }
+
 	    /* Indicate that all items must recalculate their list of spans. */
 	    TreeItem_SpansInvalidate(tree, NULL);
 
+	    TreeColumns_InvalidateCounts(tree);
 	    Tree_DInfoChanged(tree, DINFO_REDO_COLUMN_WIDTH);
 	    Tcl_SetObjResult(interp, TreeColumn_ToObj(tree, column));
 	    break;
@@ -4006,6 +3292,15 @@ TreeColumnCmd(
 		    column = tree->columns;
 		    while (column != NULL) {
 			TreeDisplay_ColumnDeleted(tree, column);
+			TreeHeader_ColumnDeleted(tree, column);
+			TreeGradient_ColumnDeleted(tree, column);
+#if COLUMNGRID == 1
+			if (column->visible &&
+				(column->gridLeftColor != NULL ||
+				column->gridRightColor != NULL)) {
+			    tree->columnsWithGridLines -= 1;
+			}
+#endif
 			column = Column_Free(column);
 		    }
 		    tree->columnTail->index = 0;
@@ -4016,6 +3311,13 @@ TreeColumnCmd(
 		    tree->columnLockRight = NULL;
 
 		    /* Delete all TreeItemColumns */
+		    item = tree->headerItems;
+		    while (item != NULL) {
+			TreeItem_RemoveAllColumns(tree, item);
+			item = TreeItem_GetNextSibling(tree, item);
+		    }
+
+		    /* Delete all TreeItemColumns */
 		    hPtr = Tcl_FirstHashEntry(&tree->itemHash, &search);
 		    while (hPtr != NULL) {
 			item = (TreeItem) Tcl_GetHashValue(hPtr);
@@ -4024,11 +3326,15 @@ TreeColumnCmd(
 		    }
 
 		    tree->columnTree = NULL;
-		    tree->columnDrag.column = tree->columnDrag.indColumn = NULL;
-		    tree->widthOfColumns = tree->headerHeight = -1;
-		    tree->widthOfColumnsLeft = tree->widthOfColumnsRight = -1;
-		    Tree_DInfoChanged(tree, DINFO_REDO_COLUMN_WIDTH);
 		    goto doneDELETE;
+		}
+
+		/* Delete all TreeItemColumns */
+		item = tree->headerItems;
+		while (item != NULL) {
+		    TreeItem_RemoveColumns(tree, item, column->index,
+			column->index);
+		    item = TreeItem_GetNextSibling(tree, item);
 		}
 
 		/* Delete all TreeItemColumns */
@@ -4041,6 +3347,16 @@ TreeColumnCmd(
 		}
 
 		TreeDisplay_ColumnDeleted(tree, column);
+		TreeHeader_ColumnDeleted(tree, column);
+		TreeGradient_ColumnDeleted(tree, column);
+#if COLUMNGRID == 1
+		if (column->visible &&
+			(column->gridLeftColor != NULL ||
+			column->gridRightColor != NULL)) {
+		    tree->columnsWithGridLines -= 1;
+/*dbwin("tree->columnsWithGridLines is now %d", tree->columnsWithGridLines);*/
+		}
+#endif
 
 		/* Unlink. */
 		prev = column->prev;
@@ -4056,10 +3372,6 @@ TreeColumnCmd(
 
 		if (column == tree->columnTree)
 		    tree->columnTree = NULL;
-		if (column == tree->columnDrag.column)
-		    tree->columnDrag.column = NULL;
-		if (column == tree->columnDrag.indColumn)
-		    tree->columnDrag.indColumn = NULL;
 
 		(void) Column_Free(column);
 
@@ -4089,11 +3401,13 @@ TreeColumnCmd(
 	    }
 	    tree->columnTail->index = index;
 
+doneDELETE:
+	    TreeColumns_InvalidateCounts(tree);
 	    tree->widthOfColumns = tree->headerHeight = -1;
 	    tree->widthOfColumnsLeft = tree->widthOfColumnsRight = -1;
+	    tree->columnPriv->reqInvalid = TRUE;
 	    Tree_DInfoChanged(tree, DINFO_REDO_COLUMN_WIDTH);
 
-doneDELETE:
 	    /* Indicate that all items must recalculate their list of spans. */
 	    TreeItem_SpansInvalidate(tree, NULL);
 
@@ -4104,56 +3418,12 @@ doneDELETE:
 
 	/* T column dragcget option */
 	case COMMAND_DRAGCGET: {
-	    Tcl_Obj *resultObjPtr;
-
-	    if (objc != 4) {
-		Tcl_WrongNumArgs(interp, 3, objv, "option");
-		return TCL_ERROR;
-	    }
-	    resultObjPtr = Tk_GetOptionValue(interp, (char *) tree,
-		    tree->columnDrag.optionTable, objv[3], tree->tkwin);
-	    if (resultObjPtr == NULL)
-		return TCL_ERROR;
-	    Tcl_SetObjResult(interp, resultObjPtr);
-	    break;
+	    return TreeHeaderCmd(clientData, interp, objc, objv);
 	}
 
 	/* T column dragconfigure ?option? ?value? ?option value ...? */
 	case COMMAND_DRAGCONF: {
-	    Tcl_Obj *resultObjPtr;
-	    Tk_SavedOptions savedOptions;
-	    int mask, result;
-
-	    if (objc < 3) {
-		Tcl_WrongNumArgs(interp, 3, objv, "?option? ?value?");
-		return TCL_ERROR;
-	    }
-	    if (objc <= 4) {
-		resultObjPtr = Tk_GetOptionInfo(interp, (char *) tree,
-			tree->columnDrag.optionTable,
-			(objc == 3) ? (Tcl_Obj *) NULL : objv[3],
-			tree->tkwin);
-		if (resultObjPtr == NULL)
-		    return TCL_ERROR;
-		Tcl_SetObjResult(interp, resultObjPtr);
-		break;
-	    }
-	    result = Tk_SetOptions(interp, (char *) tree,
-		    tree->columnDrag.optionTable, objc - 3, objv + 3, tree->tkwin,
-		    &savedOptions, &mask);
-	    if (result != TCL_OK) {
-		Tk_RestoreSavedOptions(&savedOptions);
-		return TCL_ERROR;
-	    }
-	    Tk_FreeSavedOptions(&savedOptions);
-
-	    if (tree->columnDrag.alpha < 0)
-		tree->columnDrag.alpha = 0;
-	    if (tree->columnDrag.alpha > 255)
-		tree->columnDrag.alpha = 255;
-
-	    Tree_DInfoChanged(tree, DINFO_DRAW_HEADER);
-	    break;
+	    return TreeHeaderCmd(clientData, interp, objc, objv);
 	}
 
 	case COMMAND_COUNT: {
@@ -4185,9 +3455,7 @@ doneDELETE:
 			CFO_NOT_NULL) != TCL_OK)
 		return TCL_ERROR;
 
-	    /* Update layout if needed */
-	    (void) Tree_WidthOfColumns(tree);
-	    Tcl_SetObjResult(interp, Tcl_NewIntObj(column->useWidth));
+	    Tcl_SetObjResult(interp, Tcl_NewIntObj(TreeColumn_UseWidth(column)));
 	    break;
 	}
 
@@ -4281,10 +3549,16 @@ doneDELETE:
 		    break;
 	    }
 	    if (before->index < first->index || before->index > last->index) {
-		FormatResult(tree->interp,
-		    "column %s%d and column %s%d -lock options conflict",
-		    tree->columnPrefix, move->id,
-		    tree->columnPrefix, before->id);
+		if (before == tree->columnTail) {
+		    FormatResult(tree->interp,
+			"can't move column %s%d before tail: -lock options conflict",
+			tree->columnPrefix, move->id);
+		} else {
+		    FormatResult(tree->interp,
+			"can't move column %s%d before column %s%d: -lock options conflict",
+			tree->columnPrefix, move->id,
+			tree->columnPrefix, before->id);
+		}
 		return TCL_ERROR;
 	    }
 	    Column_Move(move, before);
@@ -4307,9 +3581,9 @@ doneDELETE:
 		return TCL_ERROR;
 
 	    /* Update layout if needed */
-	    (void) Tree_TotalWidth(tree);
+	    (void) Tree_CanvasWidth(tree);
 	    width = TreeColumn_WidthOfItems(column);
-	    width = MAX(width, TreeColumn_NeededWidth(column));
+	    width = MAX(width, TreeColumn_WidthOfHeaders(column));
 	    Tcl_SetObjResult(interp, Tcl_NewIntObj(width));
 	    break;
 	}
@@ -4372,562 +3646,696 @@ errorExit:
 /*
  *----------------------------------------------------------------------
  *
- * Column_DrawArrow --
+ * InitColumnReqData --
  *
- *	Draw the sort arrow for a column.
+ *	Initialize the ColumnReqData structure in every column.
  *
  * Results:
  *	None.
  *
  * Side effects:
- *	Stuff is drawn in a drawable.
+ *	None.
  *
  *----------------------------------------------------------------------
  */
 
 static void
-Column_DrawArrow(
-    TreeColumn column,		/* Column record. */
-    TreeDrawable td,		/* Where to draw. */
-    int x, int y,		/* Top-left corner of the column's header. */
-    struct Layout layout	/* Size/position info. */
+InitColumnReqData(
+    TreeCtrl *tree
     )
 {
-    TreeCtrl *tree = column->tree;
-    int height = tree->headerHeight;
-    int sunken = column->state == COLUMN_STATE_PRESSED;
-    Tk_Image image = NULL;
-    Pixmap bitmap;
-    Tk_3DBorder border;
-    int state = Column_MakeState(column);
-    int arrowPadY = column->arrowPadY[PAD_TOP_LEFT] +
-	column->arrowPadY[PAD_BOTTOM_RIGHT];
+    TreeColumnPriv priv = tree->columnPriv;
+    ColumnReqData *cd;
+    TreeColumn column;
 
-    if (column->arrow == ARROW_NONE)
+    if (!priv->reqInvalid || tree->columnCount == 0)
 	return;
 
-    image = PerStateImage_ForState(tree, &column->arrowImage, state, NULL);
-    if (image != NULL) {
-	Tree_RedrawImage(image, 0, 0, layout.arrowWidth, layout.arrowHeight,
-	    td,
-	    x + layout.arrowLeft + sunken,
-	    y + (height - (layout.arrowHeight + arrowPadY)) / 2 + sunken);
-	return;
+/*dbwin("InitColumnReqData %s\n", Tk_PathName(tree->tkwin));*/
+
+    for (column = tree->columns;
+	    column != NULL;
+	    column = column->next) {
+	cd = &column->reqData;
+	cd->vis = TreeColumn_Visible(column);
+	cd->min = TreeColumn_MinWidth(column);
+	cd->fixed = TreeColumn_FixedWidth(column);
+	cd->max = TreeColumn_MaxWidth(column);
+/*	cd->req = 0;*/
+	if ((cd->max >= 0) && (cd->min > cd->max))
+	    cd->min = cd->max;
     }
 
-    bitmap = PerStateBitmap_ForState(tree, &column->arrowBitmap, state, NULL);
-    if (bitmap != None) {
-	int bx, by;
-	bx = x + layout.arrowLeft + sunken;
-	by = y + (height - (layout.arrowHeight + arrowPadY)) / 2 + sunken;
-	Tree_DrawBitmap(tree, bitmap, td.drawable, NULL, NULL,
-		0, 0,
-		(unsigned int) layout.arrowWidth, (unsigned int) layout.arrowHeight,
-		bx, by);
-	return;
-    }
+    priv->reqInvalid = FALSE;
+}
 
-    if (tree->useTheme) {
-	if (TreeTheme_DrawHeaderArrow(tree, td.drawable,
-	    column->arrow == ARROW_UP, x + layout.arrowLeft + sunken,
-	    y + (height - (layout.arrowHeight + arrowPadY)) / 2 + sunken,
-	    layout.arrowWidth, layout.arrowHeight) == TCL_OK)
+/*
+ *----------------------------------------------------------------------
+ *
+ * SpanArray_Add --
+ *
+ *	Adds a ColumnSpan pointer to an array if it isn't already in
+ *	the array.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	Memory may be allocated.
+ *
+ *----------------------------------------------------------------------
+ */
+
+static void
+SpanArray_Add(
+    SpanArray *sa,
+    ColumnSpan *cs
+    )
+{
+    int i;
+
+    for (i = 0; i < sa->count; i++) {
+	if (sa->spans[i] == cs)
 	    return;
     }
-
-    if (1) {
-	int arrowWidth = layout.arrowWidth;
-	int arrowHeight = layout.arrowHeight;
-	int arrowTop = y + (height - (layout.arrowHeight + arrowPadY)) / 2 + column->arrowPadY[PAD_TOP_LEFT];
-	int arrowBottom = arrowTop + arrowHeight;
-	XPoint points[5];
-	int color1 = 0, color2 = 0;
-	int i;
-
-	switch (column->arrow) {
-	    case ARROW_UP:
-		points[0].x = x + layout.arrowLeft;
-		points[0].y = arrowBottom - 1;
-		points[1].x = x + layout.arrowLeft + arrowWidth / 2;
-		points[1].y = arrowTop - 1;
-		color1 = TK_3D_DARK_GC;
-		points[4].x = x + layout.arrowLeft + arrowWidth / 2;
-		points[4].y = arrowTop - 1;
-		points[3].x = x + layout.arrowLeft + arrowWidth - 1;
-		points[3].y = arrowBottom - 1;
-		points[2].x = x + layout.arrowLeft;
-		points[2].y = arrowBottom - 1;
-		color2 = TK_3D_LIGHT_GC;
-		break;
-	    case ARROW_DOWN:
-		points[0].x = x + layout.arrowLeft + arrowWidth - 1;
-		points[0].y = arrowTop;
-		points[1].x = x + layout.arrowLeft + arrowWidth / 2;
-		points[1].y = arrowBottom;
-		color1 = TK_3D_LIGHT_GC;
-		points[2].x = x + layout.arrowLeft + arrowWidth - 1;
-		points[2].y = arrowTop;
-		points[3].x = x + layout.arrowLeft;
-		points[3].y = arrowTop;
-		points[4].x = x + layout.arrowLeft + arrowWidth / 2;
-		points[4].y = arrowBottom;
-		color2 = TK_3D_DARK_GC;
-		break;
-	}
-	for (i = 0; i < 5; i++) {
-	    points[i].x += sunken;
-	    points[i].y += sunken;
-	}
-
-	border = PerStateBorder_ForState(tree, &column->border, state, NULL);
-	if (border == NULL)
-	    border = tree->border;
-	XDrawLines(tree->display, td.drawable,
-		Tk_3DBorderGC(tree->tkwin, border, color2),
-		points + 2, 3, CoordModeOrigin);
-	XDrawLines(tree->display, td.drawable,
-		Tk_3DBorderGC(tree->tkwin, border, color1),
-		points, 2, CoordModeOrigin);
+    if (sa->alloc < sa->count + 1) {
+	sa->spans = (ColumnSpan **) ckrealloc((char *) sa->spans,
+	    sizeof(ColumnSpan *) * (sa->count + 10));
+	sa->alloc = sa->count + 10;
     }
+    sa->spans[sa->count++] = cs;
 }
 
 /*
  *----------------------------------------------------------------------
  *
- * Column_Draw --
+ * AddColumnSpan --
  *
- *	Draw the header for a column.
+ *	Adds or updates a span record for a range of columns
+ *	covered by a span.  For every unique range of columns covered
+ *	by a span, there exists exactly one ColumnSpan record.
  *
  * Results:
- *	None.
+ *	Pointer to a new or updated ColumnSpan.
  *
  * Side effects:
- *	Stuff is drawn in a drawable.
+ *	Memory may be allocated.
  *
  *----------------------------------------------------------------------
  */
 
-static void
-Column_Draw(
-    TreeColumn column,		/* Column record. */
-    TreeDrawable td,		/* Where to draw. */
-    int x, int y,		/* Top-left corner of the column's header. */
-    int dragImage		/* TRUE if we are creating a transparent
-				 * drag image for this header. */
+static ColumnSpan *
+AddColumnSpan(
+    ColumnSpan *spanPrev,	/* The span to the left.  The span returned
+				 * by this function will be added to the
+				 * spanToTheRight array of spanPrev if it
+				 * wasn't already. */
+    TreeColumn spanMin,		/* First column in the span. */
+    TreeColumn spanMax,		/* Last column in the span. */
+    int neededWidth,		/* Width needed by the span. */
+    int doHeaders		/* TRUE if this span is in a header, FALSE
+				 * if the span is in an item. */
     )
 {
-    TreeCtrl *tree = column->tree;
-    int height = tree->headerHeight;
-    struct Layout layout;
-    int width = column->useWidth;
-    int sunken = column->state == COLUMN_STATE_PRESSED;
-    int relief = sunken ? TK_RELIEF_SUNKEN : TK_RELIEF_RAISED;
-    Tk_3DBorder border;
-    int theme = TCL_ERROR;
+    TreeCtrl *tree = spanMin->tree;
+    TreeColumnPriv priv = tree->columnPriv;
+    ColumnSpan *cs = priv->spans;
+    ColumnReqData *cd = &spanMin->reqData;
+    TreeColumn column;
+    int i;
 
-    layout.width = width;
-    layout.height = height;
-    Column_DoLayout(column, &layout);
+    /* See if a span record exists by checking the list of spans touching
+     * the first column. */
+    for (i = 0; i < cd->spans.count; i++) {
+	cs = cd->spans.spans[i];
+	if ((cs->start == spanMin) && (cs->end == spanMax))
+	    break;
+    }
+    if (i < cd->spans.count) {
+	/* Add this span to the list of spans following spanPrev. */
+	if (spanPrev != NULL && priv->spansInvalid == TRUE)
+	    SpanArray_Add(&spanPrev->spansToRight, cs);
 
-    border = PerStateBorder_ForState(tree, &column->border,
-	Column_MakeState(column), NULL);
-    if (border == NULL)
-	border = tree->border;
+	cs->maxNeededWidth = MAX(cs->maxNeededWidth, neededWidth);
 
-    if (dragImage) {
-	GC gc = Tk_GCForColor(tree->columnDrag.color, Tk_WindowId(tree->tkwin));
-	XFillRectangle(tree->display, td.drawable, gc, x, y, width, height);
-    } else {
-	if (tree->useTheme) {
-	    theme = TreeTheme_DrawHeaderItem(tree, td.drawable, column->state,
-		    column->arrow, x, y, width, height);
+	/* Remember the widest span of 1 in this column. */
+	if (spanMin == spanMax) {
+	    cd->maxSingleSpanWidth = MAX(cd->maxSingleSpanWidth, neededWidth);
+	    if (doHeaders)
+		cd->maxSingleHeaderWidth = MAX(cd->maxSingleHeaderWidth, neededWidth);
+	    else
+		cd->maxSingleItemWidth = MAX(cd->maxSingleItemWidth, neededWidth);
 	}
-	if (theme != TCL_OK)
-	    Tk_Fill3DRectangle(tree->tkwin, td.drawable, border,
-		    x, y, width, height, 0, TK_RELIEF_FLAT);
+	return cs;
     }
 
-    if (column->image != NULL) {
-	int imgW, imgH, ix, iy, h;
-	Tk_SizeOfImage(column->image, &imgW, &imgH);
-	ix = x + layout.imageLeft + sunken;
-	h = column->imagePadY[PAD_TOP_LEFT] + imgH
-	    + column->imagePadY[PAD_BOTTOM_RIGHT];
-	iy = y + (height - h) / 2 + sunken;
-	iy += column->imagePadY[PAD_TOP_LEFT];
-	Tree_RedrawImage(column->image, 0, 0, imgW, imgH, td, ix, iy);
-    } else if (column->bitmap != None) {
-	int imgW, imgH, bx, by, h;
-
-	Tk_SizeOfBitmap(tree->display, column->bitmap, &imgW, &imgH);
-	bx = x + layout.imageLeft + sunken;
-	h = column->imagePadY[PAD_TOP_LEFT] + imgH
-	    + column->imagePadY[PAD_BOTTOM_RIGHT];
-	by = y + (height - h) / 2 + sunken;
-	by += column->imagePadY[PAD_TOP_LEFT];
-	Tree_DrawBitmapWithGC(tree, column->bitmap, td.drawable, column->bitmapGC,
-		0, 0, (unsigned int) imgW, (unsigned int) imgH,
-		bx, by);
-    }
-
-    if ((column->text != NULL) && (column->textLayout != NULL)) {
-	int h;
-	XGCValues gcValues;
-	GC gc;
-	unsigned long mask;
-	TextLayout_Size(column->textLayout, NULL, &h);
-	h += column->textPadY[PAD_TOP_LEFT] + column->textPadY[PAD_BOTTOM_RIGHT];
-	gcValues.font = Tk_FontId(column->tkfont ? column->tkfont : tree->tkfont);
-	gcValues.foreground = column->textColor->pixel;
-	gcValues.graphics_exposures = False;
-	mask = GCFont | GCForeground | GCGraphicsExposures;
-	gc = Tree_GetGC(tree, mask, &gcValues);
-	TextLayout_Draw(tree->display, td.drawable, gc,
-		column->textLayout,
-		x + layout.textLeft + sunken,
-		y + (height - h) / 2 + column->textPadY[PAD_TOP_LEFT] + sunken,
-		0, -1, -1);
-    } else if ((column->text != NULL) && (layout.bytesThatFit != 0)) {
-	XGCValues gcValues;
-	GC gc;
-	unsigned long mask;
-	char staticStr[256], *text = staticStr;
-	int textLen = column->textLen;
-	char *ellipsis = "...";
-	int ellipsisLen = strlen(ellipsis);
-	int tx, ty, h;
-
-	if (textLen + ellipsisLen > sizeof(staticStr))
-	    text = ckalloc(textLen + ellipsisLen);
-	memcpy(text, column->text, textLen);
-	if (layout.bytesThatFit != textLen) {
-	    textLen = abs(layout.bytesThatFit);
-	    if (layout.bytesThatFit > 0) {
-		memcpy(text + layout.bytesThatFit, ellipsis, ellipsisLen);
-		textLen += ellipsisLen;
-	    }
-	}
-
-	gcValues.font = Tk_FontId(layout.tkfont);
-	gcValues.foreground = column->textColor->pixel;
-	gcValues.graphics_exposures = False;
-	mask = GCFont | GCForeground | GCGraphicsExposures;
-	gc = Tree_GetGC(tree, mask, &gcValues);
-	tx = x + layout.textLeft + sunken;
-	h = column->textPadY[PAD_TOP_LEFT] + layout.fm.linespace
-	    + column->textPadY[PAD_BOTTOM_RIGHT];
-	ty = y + (height - h) / 2 + layout.fm.ascent + sunken;
-	ty += column->textPadY[PAD_TOP_LEFT];
-	Tk_DrawChars(tree->display, td.drawable, gc,
-		layout.tkfont, text, textLen, tx, ty);
-	if (text != staticStr)
-	    ckfree(text);
-    }
-
-    if (dragImage)
-	return;
-
-#if defined(MAC_OSX_TK)
-    /* Under Aqua, we let the Appearance Manager draw the sort arrow */
-    if (theme != TCL_OK)
+#ifdef TREECTRL_DEBUG
+    if (priv->spansInvalid == FALSE) BreakIntoDebugger();
 #endif
-    Column_DrawArrow(column, td, x, y, layout);
 
-    if (theme != TCL_OK)
-	Tk_Draw3DRectangle(tree->tkwin, td.drawable, border,
-		x, y, width, height, column->borderWidth, relief);
-}
-
-/*
- *----------------------------------------------------------------------
- *
- * SetImageForColumn --
- *
- *	Set a photo image containing a simplified picture of the header
- *	of a column. This image is used when dragging and dropping a column
- *	header.
- *
- * Results:
- *	Token for a photo image, or NULL if the image could not be
- *	created.
- *
- * Side effects:
- *	A photo image called "::TreeCtrl::ImageColumn" will be created if
- *	it doesn't exist. The image is set to contain a picture of the
- *	column header.
- *
- *----------------------------------------------------------------------
- */
-
-static Tk_Image
-SetImageForColumn(
-    TreeCtrl *tree,		/* Widget info. */
-    TreeColumn column		/* Column record. */
-    )
-{
-    Tk_PhotoHandle photoH;
-    TreeDrawable td;
-    int width = column->useWidth; /* the entire column, not just what is visible */
-    int height = tree->headerHeight;
-    XImage *ximage;
-
-    photoH = Tk_FindPhoto(tree->interp, "::TreeCtrl::ImageColumn");
-    if (photoH == NULL) {
-	Tcl_GlobalEval(tree->interp, "image create photo ::TreeCtrl::ImageColumn");
-	photoH = Tk_FindPhoto(tree->interp, "::TreeCtrl::ImageColumn");
-	if (photoH == NULL)
-	    return NULL;
+    if (priv->freeSpans == NULL) {
+	cs = (ColumnSpan *) ckalloc(sizeof(ColumnSpan));
+	cs->spansToRight.alloc = 0;
+	cs->spansToRight.spans = NULL;
+    } else {
+	cs = priv->freeSpans;
+	priv->freeSpans = cs->next;
     }
+    cs->start = spanMin;
+    cs->end = spanMax;
+    cs->maxNeededWidth = neededWidth;
+    cs->spansToRight.count = 0;
 
-    td.width = width;
-    td.height = height;
-    td.drawable = Tk_GetPixmap(tree->display, Tk_WindowId(tree->tkwin),
-	    width, height, Tk_Depth(tree->tkwin));
+    cs->next = priv->spans;
+    priv->spans = cs;
 
-    Column_Draw(column, td, 0, 0, TRUE);
+    cs->nextCur = priv->spansCur;
+    priv->spansCur = cs;
 
-    /* Pixmap -> XImage */
-    ximage = XGetImage(tree->display, td.drawable, 0, 0,
-	    (unsigned int)width, (unsigned int)height, AllPlanes, ZPixmap);
-    if (ximage == NULL)
-	panic("tkTreeColumn.c:SetImageForColumn() ximage is NULL");
+    /* Add this span to the list of spans following spanPrev. */
+    if (spanPrev != NULL)
+	SpanArray_Add(&spanPrev->spansToRight, cs);
 
-    /* XImage -> Tk_Image */
-    Tree_XImage2Photo(tree->interp, photoH, ximage, tree->columnDrag.alpha);
+    for (column = spanMin; column != spanMax->next; column = column->next) {
+	cd = &column->reqData;
+	/* Add this new span record to the list of span records touching
+	 *  this column. */
+	SpanArray_Add(&cd->spans, cs);
 
-    XDestroyImage(ximage);
-    Tk_FreePixmap(tree->display, td.drawable);
-
-    return Tk_GetImage(tree->interp, tree->tkwin, "::TreeCtrl::ImageColumn",
-	NULL, (ClientData) NULL);
-}
-
-static void
-DrawDragIndicator(
-    TreeCtrl *tree,		/* Widget info. */
-    Drawable drawable,		/* Where to draw. */
-    int lock
-    )
-{
-    TreeColumn column = tree->columnDrag.indColumn;
-    int x, y, w, h;
-    int minX = 0, maxX = 0;
-    GC gc;
-
-    if ((column == NULL) || (column->lock != lock))
-	return;
-
-    switch (lock) {
-	case COLUMN_LOCK_LEFT:
-	    minX = Tree_HeaderLeft(tree);
-	    maxX = Tree_ContentLeft(tree);
-	    break;
-	case COLUMN_LOCK_NONE:
-	    minX = Tree_ContentLeft(tree);
-	    maxX = Tree_ContentRight(tree);
-	    break;
-	case COLUMN_LOCK_RIGHT:
-	    minX = Tree_ContentRight(tree);
-	    maxX = Tree_HeaderRight(tree);
-	    break;
-    }
-
-    if (TreeColumn_Bbox(column, &x, &y, &w, &h) == 0) {
-	if (tree->columnDrag.indSide == SIDE_LEFT) {
-	    x -= 1;
-	    if (x == minX - 1)
-		x += 1;
+	/* Track the minimum and maximum columns of any span touching this
+	 * column.*/
+	if (priv->spansInvalid == FALSE) {
+#ifdef TREECTRL_DEBUG
+	    if (spanMin->index < cd->spanMin->index) BreakIntoDebugger();
+	    if (spanMax->index > cd->spanMax->index) BreakIntoDebugger();
+#endif
 	} else {
-	    x += w - 1;
-	    if (x == maxX - 1)
-		x -= 1;
+	    if (spanMin->index < cd->spanMin->index)
+		cd->spanMin = spanMin;
+	    if (spanMax->index > cd->spanMax->index)
+		cd->spanMax = spanMax;
 	}
-	gc = Tk_GCForColor(tree->columnDrag.indColor, Tk_WindowId(tree->tkwin));
-	XFillRectangle(tree->display, drawable, gc,
-	    x, y, 2, tree->headerHeight);
-    }
-}
 
-static void
-DrawHeaderLeft(
-    TreeCtrl *tree,		/* Widget info. */
-    TreeDrawable td		/* Where to draw. */
+	/* Remember the widest span of 1 in this column. */
+	if (spanMin == spanMax) {
+	    cd->maxSingleSpanWidth = MAX(cd->maxSingleSpanWidth, neededWidth);
+	    if (doHeaders)
+		cd->maxSingleHeaderWidth = MAX(cd->maxSingleHeaderWidth, neededWidth);
+	    else
+		cd->maxSingleItemWidth = MAX(cd->maxSingleItemWidth, neededWidth);
+	} else
+	    priv->allSpansAreOne = FALSE;
+    }
+    return cs;
+}
+/*
+s1 -> s2 -> s3
+   |_ s4 -> s5
+s6 -> s7 -> s8
+*/
+static int
+SumSpanWidths(
+    int *sum,			/* The current total span width. */
+    SpanArray *sa,		/* For each span in this array, the
+				 * maximum width of each chain of spans
+				 * starting with that span is found and
+				 * added to *sum. */
+    TreeColumn end		/* The column up to and including which the
+				 * sum of spans should be found. */
     )
 {
-    TreeColumn column = tree->columnLockLeft;
-    Tk_Window tkwin = tree->tkwin;
-    int x = Tree_HeaderLeft(tree), y = Tree_HeaderTop(tree);
-    int height = tree->headerHeight;
-    TreeDrawable td2;
+    int i, max = 0;
+    int visited = 0;
 
-    td2.width = Tk_Width(tkwin);
-    td2.height = Tree_HeaderBottom(tree);
-    td2.drawable = Tk_GetPixmap(tree->display, Tk_WindowId(tkwin),
-	    td2.width, td2.height, Tk_Depth(tkwin));
-
-    while (column != NULL && column->lock == COLUMN_LOCK_LEFT) {
-	if (column->visible) {
-	    Column_Draw(column, td2, x, y, FALSE);
-	    x += column->useWidth;
+    for (i = 0; i < sa->count; i++) {
+	ColumnSpan *cs = sa->spans[i];
+	if (cs->end->index <= end->index) {
+	    visited++;
+	    if (cs->sumOfSpans == -1) {
+		cs->sumOfSpans = cs->maxNeededWidth;
+		visited += SumSpanWidths(&cs->sumOfSpans, &cs->spansToRight, end);
+	    }
+	    max = MAX(max, cs->sumOfSpans);
 	}
-	column = column->next;
     }
-
-    DrawDragIndicator(tree, td2.drawable, COLUMN_LOCK_LEFT);
-
-    height = MIN(height, Tree_BorderBottom(tree) - Tree_BorderTop(tree));
-    XCopyArea(tree->display, td2.drawable, td.drawable,
-	    tree->copyGC, Tree_HeaderLeft(tree), y,
-	    x - Tree_HeaderLeft(tree), height,
-	    Tree_HeaderLeft(tree), y);
-
-    Tk_FreePixmap(tree->display, td2.drawable);
-}
-
-static void
-DrawHeaderRight(
-    TreeCtrl *tree,		/* Widget info. */
-    TreeDrawable td		/* Where to draw. */
-    )
-{
-    TreeColumn column = tree->columnLockRight;
-    Tk_Window tkwin = tree->tkwin;
-    int x = Tree_ContentRight(tree), y = Tree_HeaderTop(tree);
-    int height = tree->headerHeight;
-    TreeDrawable td2;
-
-    td2.width = Tk_Width(tkwin);
-    td2.height = Tree_HeaderBottom(tree);
-    td2.drawable = Tk_GetPixmap(tree->display, Tk_WindowId(tkwin),
-	    td2.width, td2.height, Tk_Depth(tkwin));
-
-    while (column != NULL && column->lock == COLUMN_LOCK_RIGHT) {
-	if (column->visible) {
-	    Column_Draw(column, td2, x, y, FALSE);
-	    x += column->useWidth;
-	}
-	column = column->next;
-    }
-
-    DrawDragIndicator(tree, td2.drawable, COLUMN_LOCK_RIGHT);
-
-    height = MIN(height, Tree_BorderBottom(tree) - Tree_BorderTop(tree));
-    XCopyArea(tree->display, td2.drawable, td.drawable,
-	    tree->copyGC, Tree_ContentRight(tree), y,
-	    x - Tree_ContentRight(tree), height,
-	    Tree_ContentRight(tree), y);
-
-    Tk_FreePixmap(tree->display, td2.drawable);
+    *sum += max;
+    return visited;
 }
 
 /*
  *----------------------------------------------------------------------
  *
- * Tree_DrawHeader --
+ * TrimTheFat --
  *
- *	Draw the header of every column.
+ *	Removes excess width from columns that may have been added by
+ *	DistributeSpanWidthToColumns(). In the scenario below, where
+ *	two items and the width needed by each of 3 spans is shown,
+ *	Column0 will have a requested width of 75, and Column1 will
+ *	have a requested width of 100/2=50, for a total width of
+ *	75+50=125, which is wider than any item needs.  At the end of
+ *	this procedure, the requested width of Column1 will be 25.
+ *
+ *	       Column0 Column1
+ *	item1: 75----- 25----
+ *	item2: 100-----------
  *
  * Results:
  *	None.
  *
  * Side effects:
- *	Stuff is drawn in a drawable.
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+static void
+TrimTheFatAux(
+    TreeColumn start,
+    TreeColumn end
+    )
+{
+#ifdef TREECTRL_DEBUG
+    TreeCtrl *tree = start->tree;
+#endif
+    TreeColumn column;
+    int sumOfSpanWidths = 0;
+    int sumOfColumnWidths = 0, fat, fatPerCol;
+    int numColsThatCanShrink = 0, csn;
+    ColumnReqData *cd;
+    ColumnSpan *cs;
+    int visited;
+
+#ifdef TREECTRL_DEBUG
+    if (start->prev != NULL &&
+	start->prev->reqData.spanMax->index >= start->index) BreakIntoDebugger();
+    if (end->next != NULL &&
+	end->next->reqData.spanMin->index <= end->index) BreakIntoDebugger();
+#endif
+
+    /* Sum the widths of spans across the range of columns. */
+    sumOfSpanWidths = 0;
+    visited = SumSpanWidths(&sumOfSpanWidths, &start->reqData.spans, end);
+    if (sumOfSpanWidths <= 0)
+	return;
+
+    for (column = start; column != end->next; column = column->next) {
+	cd = &column->reqData;
+	if (!cd->vis) continue;
+	sumOfColumnWidths += (cd->fixed >= 0) ? cd->fixed : column->widthOfItems;
+	if (cd->fat &&
+		(cd->fixed < 0) &&
+		(column->widthOfItems > MAX(cd->maxSingleSpanWidth, cd->min)))
+	    numColsThatCanShrink++;
+    }
+
+#ifdef TREECTRL_DEBUG
+    if (tree->debug.enable && tree->debug.span)
+	dbwin("%d-%d sumOfColumnWidths %d sumOfSpanWidths %d (visited %d)\n", start->index, end->index, sumOfColumnWidths, sumOfSpanWidths, visited);
+#endif
+
+    if (!numColsThatCanShrink)
+	return;
+    fat = sumOfColumnWidths - sumOfSpanWidths;
+    if (fat <= 0)
+	return;
+
+    while (fat > 0) {
+	int origFat = fat;
+	/* Subtract 1 to smooth out the distribution. May result in more looping. */
+	fatPerCol = MAX(1, fat / numColsThatCanShrink - 1);
+	for (column = start; column != end->next; column = column->next) {
+	    int minSpanFat = -1;
+	    cd = &column->reqData;
+	    if (!cd->vis || !cd->fat) continue;
+	    if ((cd->fixed >= 0) || (column->widthOfItems <= cd->min) ||
+		    (column->widthOfItems <= cd->maxSingleSpanWidth))
+		continue;
+	    for (csn = 0; csn < cd->spans.count; csn++) {
+		cs = cd->spans.spans[csn];
+		if (cs->widthOfColumns > cs->maxNeededWidth) {
+		    if (minSpanFat == -1)
+			minSpanFat = cs->widthOfColumns - cs->maxNeededWidth;
+		    else
+			minSpanFat = MIN(minSpanFat, cs->widthOfColumns - cs->maxNeededWidth);
+		} else {
+		    minSpanFat = 0; /* no span touching this column can get smaller */
+		    cd->fat = FALSE; /* FIXME: mark all in this span */
+		    --numColsThatCanShrink;
+		    break;
+		}
+	    }
+	    if (minSpanFat > 0) {
+		int trim = MIN(minSpanFat, fatPerCol);
+		if (column->widthOfItems - trim < cd->min)
+		    trim = column->widthOfItems - cd->min;
+		if (column->widthOfItems - trim < cd->maxSingleSpanWidth)
+		    trim = column->widthOfItems - cd->maxSingleSpanWidth;
+#ifdef TREECTRL_DEBUG
+		if (tree->debug.enable && tree->debug.span)
+		    dbwin("trimmed %d from %d (numColsThatCanShrink=%d fat=%d minSpanFat=%d)\n", trim, column->index, numColsThatCanShrink, fat, minSpanFat);
+#endif
+		column->widthOfItems -= trim;
+		fat -= trim;
+		if (fat <= 0) break;
+		for (csn = 0; csn < cd->spans.count; csn++) {
+		    cs = cd->spans.spans[csn];
+		    cs->widthOfColumns -= trim;
+		}
+		if (column->widthOfItems <= MAX(cd->maxSingleSpanWidth, cd->min))
+		    --numColsThatCanShrink;
+	    }
+	    if (numColsThatCanShrink == 0)
+		break;
+	}
+	if (fat == origFat || numColsThatCanShrink == 0)
+	    break;
+    }
+}
+
+static void
+TrimTheFat(
+    TreeColumn start,
+    TreeColumn end
+    )
+{
+    TreeColumnPriv priv = start->tree->columnPriv;
+    TreeColumn column;
+    ColumnReqData *cd;
+    ColumnSpan *cs;
+
+    if (priv->allSpansAreOne)
+	return;
+
+#ifdef TREECTRL_DEBUG
+    if (start->prev != NULL &&
+	start->prev->reqData.spanMax->index >= start->index) BreakIntoDebugger();
+    if (end->next != NULL &&
+	end->next->reqData.spanMin->index <= end->index) BreakIntoDebugger();
+#endif
+
+    for (cs = priv->spansCur; cs != NULL; cs = cs->nextCur) {
+	/* Sum the current widths of columns in each span record. */
+	cs->widthOfColumns = 0;
+	for (column = cs->start; column != cs->end->next; column = column->next) {
+	    cd = &column->reqData;
+	    if (!cd->vis) continue;
+	    cs->widthOfColumns += (cd->fixed >= 0) ? cd->fixed : column->widthOfItems;
+	}
+	/* Mark columns that cannot get smaller. */
+	if (cs->widthOfColumns <= cs->maxNeededWidth) {
+	    for (column = cs->start; column != cs->end->next; column = column->next) {
+		cd = &column->reqData;
+		cd->fat = FALSE;
+	    }
+#if 0
+	} else {
+	    priv->minPositiveFatOfAllSpans = MIN(priv->minPositiveFatOfAllSpans, cs->widthOfColumns - cs->maxNeededWidth);
+#endif
+	}
+	cs->sumOfSpans = -1;
+    }
+
+    column = start;
+    while (column != end->next) {
+	TreeColumn columnMin, columnMax;
+	/* Operate on the narrowest range of columns whose spans do not
+	 * overlap another such range of columns. */
+	columnMin = column->reqData.spanMin;
+	columnMax = column->reqData.spanMax;
+	while ((columnMax->next != NULL) &&
+		(columnMax->next->reqData.spanMin->index <= columnMax->index)) {
+	    columnMax = columnMax->next->reqData.spanMax;
+	}
+	TrimTheFatAux(columnMin, columnMax);
+	column = columnMax->next;
+    }
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeItem_RequestWidthInColumns --
+ *
+ *	Calculates the width needed by styles in a range of columns
+ *	for a single header or item.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	None.
  *
  *----------------------------------------------------------------------
  */
 
 void
-Tree_DrawHeader(
+TreeItem_RequestWidthInColumns(
     TreeCtrl *tree,		/* Widget info. */
-    TreeDrawable td,		/* Where to draw. */
-    int x, int y		/* Top-left corner of the header. */
+    TreeItem item,
+    TreeColumn columnMin,
+    TreeColumn columnMax
     )
 {
-    TreeColumn column = tree->columns;
-    Tk_Window tkwin = tree->tkwin;
-    int minX, maxX, width, height;
-    Drawable drawable = td.drawable;
-    TreeDrawable tp;
-    Drawable pixmap;
+#ifdef TREECTRL_DEBUG
+    TreeColumnPriv priv = tree->columnPriv;
+#endif
+    int doHeaders = TreeItem_GetHeader(tree, item) != NULL;
+    int columnIndexMin = TreeColumn_Index(columnMin);
+    int columnIndexMax = TreeColumn_Index(columnMax);
+    int *spans = TreeItem_GetSpans(tree, item);
+    TreeItemColumn itemColumn;
+    TreeColumn treeColumn;
+    int columnIndex, width, indent;
+    ColumnSpan *csPrev = NULL;
 
-    /* Update layout if needed */
-    (void) Tree_HeaderHeight(tree);
-    (void) Tree_WidthOfColumns(tree);
+#ifdef TREECTRL_DEBUG
+    if (columnMax == tree->columnTail) BreakIntoDebugger();
+    if (priv->reqInvalid) BreakIntoDebugger();
+    if (columnMin->prev != NULL &&
+	columnMin->prev->reqData.spanMax->index >= columnMin->index) BreakIntoDebugger();
+    if (columnMax->next != NULL &&
+	columnMax->next->reqData.spanMin->index <= columnMax->index) BreakIntoDebugger();
+#endif
 
-    minX = Tree_ContentLeft(tree);
-    maxX = Tree_ContentRight(tree);
-
-    if (tree->doubleBuffer == DOUBLEBUFFER_ITEM) {
-	tp.width = Tk_Width(tkwin);
-	tp.height = Tree_HeaderBottom(tree);
-	tp.drawable = Tk_GetPixmap(tree->display, Tk_WindowId(tkwin),
-		tp.width, tp.height, Tk_Depth(tkwin));
-    } else {
-	tp = td;
-    }
-    pixmap = tp.drawable;
-
-    column = tree->columnLockNone;
-    while (column != NULL && column->lock == COLUMN_LOCK_NONE) {
-	if (column->visible) {
-	    if ((x < maxX) && (x + column->useWidth > minX))
-		Column_Draw(column, tp, x, y, FALSE);
-	    x += column->useWidth;
+    treeColumn = columnMin;
+    itemColumn = TreeItem_FindColumn(tree, item, columnIndexMin);
+    if (spans == NULL) {
+	for (columnIndex = columnIndexMin;
+		columnIndex <= columnIndexMax;
+		++columnIndex) {
+	    ColumnReqData *cd = &treeColumn->reqData;
+	    if (cd->vis) {
+		width = (itemColumn != NULL) ?
+		    TreeItemColumn_NeededWidth(tree, item, itemColumn) : 0;
+		/* FOR COMPATIBILITY ONLY. Don't request width from -indent
+		 * if there is no item column. */
+		if (itemColumn != NULL) {
+		    indent = doHeaders ? 0 : TreeItem_Indent(tree, treeColumn, item);
+		    width += indent;
+		}
+		csPrev = AddColumnSpan(csPrev, treeColumn, treeColumn, width, doHeaders);
+	    }
+	    treeColumn = TreeColumn_Next(treeColumn);
+	    if (itemColumn != NULL)
+		itemColumn = TreeItemColumn_GetNext(tree, itemColumn);
 	}
-	column = column->next;
+	return;
     }
 
-    /* Draw "tail" column */
-    if (x < maxX) {
-	column = tree->columnTail;
-	width = maxX - x + column->borderWidth;
-	height = tree->headerHeight;
-	if (!column->visible) {
-	    Tk_Fill3DRectangle(tkwin, pixmap, tree->border,
-		    x, y, width, height, 0, TK_RELIEF_FLAT);
-	} else if (tree->useTheme &&
-	    (TreeTheme_DrawHeaderItem(tree, pixmap, 0, 0, x, y, width, height) == TCL_OK)) {
-	} else {
-	    Tk_3DBorder border;
-	    border = PerStateBorder_ForState(tree, &column->border,
-		Column_MakeState(column), NULL);
-	    if (border == NULL)
-		border = tree->border;
-	    Tk_Fill3DRectangle(tkwin, pixmap, border,
-		    x, y, width, height, column->borderWidth, TK_RELIEF_RAISED);
+#if defined(TREECTRL_DEBUG)
+    /* It must be true that a span starts at columnMin. */
+    if (spans[columnIndexMin] != columnIndexMin) BreakIntoDebugger();
+#endif
+
+    for (columnIndex = columnIndexMin;
+	    columnIndex <= columnIndexMax;
+	    /*++columnIndex*/) {
+	ColumnReqData *cd = &treeColumn->reqData;
+	int columnIndex2 = columnIndex;
+	TreeColumn treeColumn2 = treeColumn;
+	TreeColumn lastColumnInSpan = treeColumn;
+#if defined(TREECTRL_DEBUG)
+	if (TreeColumn_Index(treeColumn) != columnIndex) BreakIntoDebugger();
+	if (itemColumn != NULL && TreeItemColumn_Index(tree, item, itemColumn) != columnIndex) BreakIntoDebugger();
+	if (spans[columnIndex] != columnIndex) BreakIntoDebugger();
+#endif
+	while ((columnIndex2 <= columnIndexMax) &&
+		(spans[columnIndex2] == columnIndex)) {
+	    lastColumnInSpan = treeColumn2;
+	    treeColumn2 = TreeColumn_Next(treeColumn2);
+	    columnIndex2++;
+	}
+
+	if (cd->vis) {
+	    width = (itemColumn != NULL) ?
+		TreeItemColumn_NeededWidth(tree, item, itemColumn) : 0;
+
+	    /* Indentation is spread amongst the visible columns as well, and
+	     * is only used if the -treecolumn is the first column in the span. */
+	    /* FOR COMPATIBILITY ONLY. Don't request width from -indent
+	     * if there is no item column. */
+	    if (itemColumn != NULL) {
+		indent = doHeaders ? 0 : TreeItem_Indent(tree, treeColumn, item);
+		width += indent;
+	    }
+	    csPrev = AddColumnSpan(csPrev, treeColumn, lastColumnInSpan, width, doHeaders);
+	}
+
+	treeColumn = TreeColumn_Next(lastColumnInSpan);
+	if (treeColumn == NULL)
+	    break;
+	while (/*(itemColumn != NULL) && */(columnIndex < TreeColumn_Index(treeColumn))) {
+	    if (itemColumn != NULL)
+	    itemColumn = TreeItemColumn_GetNext(tree, itemColumn);
+	    ++columnIndex;
 	}
     }
+}
 
-    if (minX < maxX)
-	DrawDragIndicator(tree, pixmap, COLUMN_LOCK_NONE);
+/*
+ *----------------------------------------------------------------------
+ *
+ * DistributeSpanWidthToColumns --
+ *
+ *	Ensures that each range of columns covered by a span is wide
+ *	enough to contain that span, without violating the -width and
+ *	-maxwidth column options.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
 
-    if (Tree_WidthOfLeftColumns(tree) > 0)
-	DrawHeaderLeft(tree, tp);
-    if (Tree_WidthOfRightColumns(tree) > 0)
-	DrawHeaderRight(tree, tp);
+static void
+DistributeSpanWidthToColumns(
+    TreeColumn start,
+    TreeColumn end
+    )
+{
+    TreeCtrl *tree = start->tree;
+    TreeColumnPriv priv = tree->columnPriv;
+    ColumnSpan *cs;
+    ColumnReqData *cd;
+    TreeColumn column;
 
-    if (tree->columnDrag.column != NULL) {
-	Tk_Image image;
-	int x, y, w, h;
-
-	if (TreeColumn_Bbox(tree->columnDrag.column, &x, &y, &w, &h) == 0) {
-	    int ix = 0, iy = 0, iw = w, ih = tree->headerHeight;
-
-	    image = SetImageForColumn(tree, tree->columnDrag.column);
-	    x += tree->columnDrag.offset;
-	    Tree_RedrawImage(image, ix, iy, iw, ih, tp, x, y);
-	    Tk_FreeImage(image);
-	}
+    if (priv->allSpansAreOne) {
+	for (column = start; column != end->next; column = column->next)
+	    column->widthOfItems = column->reqData.maxSingleSpanWidth;
+	return;
     }
 
-    if (tree->doubleBuffer == DOUBLEBUFFER_ITEM) {
-	height = MIN(tree->headerHeight, Tree_BorderBottom(tree) - Tree_BorderTop(tree));
-	XCopyArea(tree->display, pixmap, drawable,
-		tree->copyGC, Tree_HeaderLeft(tree), y,
-		Tree_HeaderWidth(tree), height,
-		Tree_HeaderLeft(tree), y);
+    for (cs = priv->spansCur; cs != NULL; cs = cs->nextCur) {
+	int numVisibleColumns = 0, spaceRemaining = cs->maxNeededWidth;
+	int numMinWidth = 0, minMinWidth = -1, varWidth = 0;
 
-	Tk_FreePixmap(tree->display, pixmap);
+	if (cs->maxNeededWidth <= 0)
+	    continue;
+
+	for (column = cs->start;
+		column != cs->end->next;
+		column = column->next) {
+	    cd = &column->reqData;
+#if defined(TREECTRL_DEBUG)
+	    if (cd->vis != TreeColumn_Visible(column)) BreakIntoDebugger();
+	    if (TreeColumn_MaxWidth(column) >= 0 && cd->min > TreeColumn_MaxWidth(column)) BreakIntoDebugger();
+	    if (TreeColumn_MaxWidth(column) < 0 && cd->min != TreeColumn_MinWidth(column)) BreakIntoDebugger();
+	    if (cd->max != TreeColumn_MaxWidth(column)) BreakIntoDebugger();
+	    if (cd->fixed != TreeColumn_FixedWidth(column)) BreakIntoDebugger();
+#endif
+	    cd->req = 0;
+	    if (cd->vis)
+		numVisibleColumns++;
+	}
+
+	/* Dump space into fixed-width and minwidth */
+	for (column = cs->start;
+		(spaceRemaining > 0) &&
+		(column != cs->end->next);
+		column = column->next) {
+	    int spaceUsed;
+	    cd = &column->reqData;
+	    if (!cd->vis) continue;
+	    if (cd->fixed >= 0) {
+		spaceUsed = cd->fixed;
+		numVisibleColumns--;
+	    } else if (cd->min >= 0) {
+		spaceUsed = cd->min;
+		++numMinWidth;
+		if (minMinWidth == -1)
+		    minMinWidth = cd->min;
+		else
+		    minMinWidth = MIN(minMinWidth, cd->min);
+	    } else
+		continue;
+	    spaceUsed = MIN(spaceUsed, spaceRemaining);
+	    cd->req += spaceUsed;
+	    spaceRemaining -= spaceUsed;
+	}
+
+	/* Distribute width to visible columns in the span. */
+	while ((spaceRemaining > 0) && (numVisibleColumns > 0)) {
+	    int each;
+	    int origSpaceRemaining = spaceRemaining;
+
+	    /* This is the amount to give to each column. Some columns
+	     * may get one extra pixel (starting from the leftmost column). */
+	    each = MAX(1, spaceRemaining / numVisibleColumns);
+	    varWidth += each;
+
+	    /* If all the columns have -minwidth, there will be a lot of
+	     * useless looping until varWidth exceeds the smallest -minwidth. */
+	    if (numMinWidth == numVisibleColumns)
+		while (varWidth <= minMinWidth)
+		    varWidth += each;
+
+	    for (column = cs->start;
+		    (spaceRemaining > 0) &&
+		    (column != cs->end->next);
+		    column = column->next) {
+		int spaceUsed = each;
+		cd = &column->reqData;
+		if (!cd->vis) continue;
+		if (cd->fixed >= 0)
+		    continue;
+		if ((cd->max >= 0) && (cd->req >= cd->max))
+		    continue;
+		/* Don't grow minwidth columns until the space of variable-width
+		 * columns exceeds that of minwidth. */
+		if ((cd->min >= 0) && (cd->req >= varWidth))
+		    continue;
+		if (cd->min >= 0) {
+		    spaceUsed = MIN(varWidth - cd->req, spaceUsed);
+		}
+		if (cd->max >= 0) {
+		    spaceUsed = MIN(cd->max - cd->req, spaceUsed);
+		    if (cd->req + MIN(spaceUsed, spaceRemaining) >= cd->max) {
+			spaceUsed = cd->max - cd->req;
+			numVisibleColumns--;
+		    }
+		}
+		spaceUsed = MIN(spaceUsed, spaceRemaining);
+		cd->req += spaceUsed;
+#if defined(TREECTRL_DEBUG)
+		if (cd->fixed >= 0 && cd->req > cd->fixed) BreakIntoDebugger();
+		if (cd->fixed < 0 && cd->max >= 0 && cd->req > cd->max) BreakIntoDebugger();
+#endif
+		spaceRemaining -= spaceUsed;
+	    }
+
+	    if (spaceRemaining == origSpaceRemaining)
+		break;
+	}
+	for (column = cs->start;
+		(column != cs->end->next);
+		column = column->next) {
+	    cd = &column->reqData;
+	    if (!cd->vis) continue;
+	    column->widthOfItems = MAX(column->widthOfItems, cd->req);
+	}
     }
 }
 
@@ -4956,34 +4364,86 @@ TreeColumn_WidthOfItems(
     )
 {
     TreeCtrl *tree = column->tree;
-    TreeItem item;
-    TreeItemColumn itemColumn;
-    int width;
+    TreeColumnPriv priv = tree->columnPriv;
+    TreeColumn columnMin = NULL, columnMax = NULL;
 
-    if (column->widthOfItems >= 0)
-	return column->widthOfItems;
+    if (IS_TAIL(column))
+	return 0;
 
-    column->widthOfItems = 0;
-    item = tree->root;
-    if (!TreeItem_ReallyVisible(tree, item))
-	item = TreeItem_NextVisible(tree, item);
-    while (item != NULL) {
-#ifdef EXPENSIVE_SPAN_WIDTH /* NOT USED */
-	width = TreeItem_NeededWidthOfColumn(tree, item, column->index);
-	if (column == tree->columnTree)
-	    width += TreeItem_Indent(tree, item);
-	column->widthOfItems = MAX(column->widthOfItems, width);
-#else
-	itemColumn = TreeItem_FindColumn(tree, item, column->index);
-	if (itemColumn != NULL) {
-	    width = TreeItemColumn_NeededWidth(tree, item, itemColumn);
-	    if (column == tree->columnTree)
-		width += TreeItem_Indent(tree, item);
-	    column->widthOfItems = MAX(column->widthOfItems, width);
+    if (priv->spansInvalid) {
+	columnMin = tree->columns;
+	columnMax = tree->columnLast;
+	if (priv->freeSpans != NULL)
+	    priv->freeSpans->next = priv->spans;
+	else
+	    priv->freeSpans = priv->spans;
+	priv->spans = NULL;
+	priv->spansCur = NULL;
+	priv->allSpansAreOne = TRUE;
+    } else if (column->reqData.spanMin->widthOfItems < 0) {
+	ColumnSpan *cs;
+
+	columnMin = column->reqData.spanMin;
+	columnMax = column->reqData.spanMax;
+	/* Gather all adjacent out-of-date columns into one group. */
+	/* Must also get any spans that overlap any spans that overlap this
+	 * column. */
+	while ((columnMin->prev != NULL) &&
+		((columnMin->prev->reqData.spanMax->index >= columnMin->index) ||
+		(columnMin->prev->reqData.spanMin->widthOfItems < 0))) {
+	    columnMin = columnMin->prev->reqData.spanMin;
 	}
-#endif
-	item = TreeItem_NextVisible(tree, item);
+	while ((columnMax->next != NULL) &&
+		((columnMax->next->reqData.spanMin->index <= columnMax->index) ||
+		(columnMax->next->widthOfItems < 0))) {
+	    columnMax = columnMax->next->reqData.spanMax;
+	}
+	/* Build the list of span records touching the range of columns. */
+	priv->spansCur = NULL;
+	for (cs = priv->spans; cs != NULL; cs = cs->next) {
+	    if (cs->start->index < columnMin->index ||
+		    cs->end->index > columnMax->index) {
+		continue;
+	    }
+	    cs->maxNeededWidth = 0;
+	    cs->nextCur = priv->spansCur;
+	    priv->spansCur = cs;
+	}
     }
+    if (columnMin != NULL) {
+	TreeColumn column2;
+	for (column2 = columnMin;
+		column2 != columnMax->next;
+		column2 = column2->next) {
+	    column2->widthOfItems = 0;
+	    column2->reqData.maxSingleSpanWidth = 0;
+	    column2->reqData.maxSingleHeaderWidth = 0;
+	    column2->reqData.maxSingleItemWidth = 0;
+	    column2->reqData.fat = TRUE;
+	    if (priv->spansInvalid) {
+		column2->reqData.spanMin = column2->reqData.spanMax = column2;
+		column2->reqData.spans.count = 0;
+	    }
+	}
+#ifdef TREECTRL_DEBUG
+	if (tree->debug.enable && tree->debug.span)
+	    dbwin("RequestWidthInColumns %s %d-%d allSpansAreOne=%d\n",
+		Tk_PathName(tree->tkwin), columnMin->index, columnMax->index,
+		priv->allSpansAreOne);
+#endif
+	InitColumnReqData(tree);
+	TreeHeaders_RequestWidthInColumns(tree, columnMin, columnMax);
+	TreeItems_RequestWidthInColumns(tree, columnMin, columnMax);
+	priv->spansInvalid = FALSE; /* Clear this *after* the above call. */
+	DistributeSpanWidthToColumns(columnMin, columnMax);
+	TrimTheFat(columnMin, columnMax);
+    }
+
+    /* FOR COMPATIBILITY ONLY */
+    /* See the use of TreeColumn_WidthOfItems() by tkTreeDisplay.c. */
+    TreeColumns_UpdateCounts(tree);
+    if (tree->columnCountVis == 1 && tree->columnVis == column)
+	return column->reqData.maxSingleItemWidth;
 
     return column->widthOfItems;
 }
@@ -4991,9 +4451,134 @@ TreeColumn_WidthOfItems(
 /*
  *----------------------------------------------------------------------
  *
- * Tree_InvalidateColumnWidth --
+ * TreeColumn_WidthOfHeaders --
  *
- *	Marks the width of zero or more columns as out-of-date.
+ *	Return the requested width of styles displayed in every visible
+ *	header for a single column.
+ *
+ * Results:
+ *	Pixel width.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+int
+TreeColumn_WidthOfHeaders(
+    TreeColumn column		/* Column token. */
+    )
+{
+    TreeCtrl *tree = column->tree;
+    int width = TreeColumn_WidthOfItems(column);
+
+    /* FOR COMPATIBILITY ONLY */
+    /* See the use of TreeColumn_WidthOfItems() by tkTreeDisplay.c. */
+    if (tree->columnCountVis == 1 && tree->columnVis == column)
+	return column->reqData.maxSingleHeaderWidth;
+
+    return width;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeColumns_InvalidateSpans --
+ *
+ *	Marks the spanMin & spanMax fields of every column as
+ *	out-of-date.
+ *	Called when anything affects the spans of items or headers,
+ *	such as:
+ *	a) header and item deletion
+ *	b) header and item visibility changes, including expanding,
+ *	   collapsing, or reparenting
+ *	d) [item span] or [header span] changed spans
+ *	e) column creation, deletion, reordering, or visibility
+ *	   changes (handled by TreeItem_SpansInvalidate).
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TreeColumns_InvalidateSpans(
+    TreeCtrl *tree		/* Widget info. */
+    )
+{
+    tree->columnPriv->spansInvalid = TRUE;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeColumns_InvalidateWidthOfItems --
+ *
+ *	Marks the width requested by items in zero or more columns
+ *	as out-of-date.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	Idle task may be scheduled.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TreeColumns_InvalidateWidthOfItems(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeColumn column		/* Column to modify. NULL means
+				 * modify every column. */
+    )
+{
+    TreeColumnPriv priv = tree->columnPriv;
+
+    /* FIXME: This gets called for both items and headers.  If invalidating
+     * header width, there is no need to invalidate widthOfItems unless the
+     * column is covered by a span > 1 in one or more items. */
+
+    if (column == NULL) {
+	column = tree->columns;
+	while (column != NULL) {
+	    column->widthOfItems = -1;
+	    column = column->next;
+	}
+    } else if (!priv->spansInvalid &&
+	    column->reqData.spanMin != NULL) { /* spanMin/Max can be NULL during creation when spansInvalid hasn't been set TRUE yet */
+	TreeColumn columnMin = column->reqData.spanMin;
+	TreeColumn columnMax = column->reqData.spanMax;
+	columnMin->widthOfItems = -1;
+
+	/* Must recalculate the width of items in every span that overlaps
+	 * any of the spans that include this column. */
+	while ((columnMin->prev != NULL) &&
+		(columnMin->prev->reqData.spanMax->index >= columnMin->index)) {
+	    columnMin = columnMin->prev->reqData.spanMin;
+	    columnMin->widthOfItems = -1;
+	}
+	while ((columnMax->next != NULL) &&
+		(columnMax->next->reqData.spanMin->index <= columnMax->index)) {
+	    columnMax = columnMax->next->reqData.spanMax;
+	    columnMax->reqData.spanMin->widthOfItems = -1;
+	}
+
+    }
+    TreeColumns_InvalidateWidth(tree);
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeColumns_InvalidateWidth --
+ *
+ *	Marks the width of columns as out-of-date.
  *	Schedules a redisplay to check the widths of columns which
  *	will perform any relayout necessary.
  *
@@ -5007,147 +4592,15 @@ TreeColumn_WidthOfItems(
  */
 
 void
-Tree_InvalidateColumnWidth(
-    TreeCtrl *tree,		/* Widget info. */
-    TreeColumn column		/* Column to modify. NULL means
-				 * modify every column. */
-    )
-{
-#ifdef COLUMN_SPANxxx
-    /* It may be necessary to recalculate the width of other columns as
-     * well when column-spanning is in effect. */
-    column = NULL;
-#endif
-
-    if (column == NULL) {
-	column = tree->columns;
-	while (column != NULL) {
-	    column->widthOfItems = -1;
-	    column = column->next;
-	}
-    } else {
-	column->widthOfItems = -1;
-    }
-    tree->widthOfColumns = -1;
-    tree->widthOfColumnsLeft = tree->widthOfColumnsRight = -1;
-    Tree_DInfoChanged(tree, DINFO_CHECK_COLUMN_WIDTH);
-}
-
-/*
- *----------------------------------------------------------------------
- *
- * Tree_InvalidateColumnHeight --
- *
- *	Marks the height of zero or more column headers as out-of-date.
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	None.
- *
- *----------------------------------------------------------------------
- */
-
-void
-Tree_InvalidateColumnHeight(
-    TreeCtrl *tree,		/* Widget info. */
-    TreeColumn column		/* Column to modify. NULL means
-				 * modify every column. */
-    )
-{
-    if (column == NULL) {
-	column = tree->columns;
-	while (column != NULL) {
-	    column->neededHeight = -1;
-	    column = column->next;
-	}
-    } else {
-	column->neededHeight = -1;
-    }
-    tree->headerHeight = -1;
-}
-
-/*
- *----------------------------------------------------------------------
- *
- * TreeColumn_TreeChanged --
- *
- *	Called when a TreeCtrl is configured. Performs any relayout
- *	necessary on column headers.
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	None.
- *
- *----------------------------------------------------------------------
- */
-
-void
-TreeColumn_TreeChanged(
-    TreeCtrl *tree,		/* Widget info. */
-    int flagT			/* TREE_CONF_xxx flags. */
-    )
-{
-    TreeColumn column;
-
-    /* Column widths are invalidated elsewhere */
-    if (flagT & TREE_CONF_FONT) {
-	column = tree->columns;
-	while (column != NULL) {
-	    if ((column->tkfont == NULL) && (column->textLen > 0)) {
-		column->textWidth = Tk_TextWidth(tree->tkfont, column->text,
-		    column->textLen);
-		column->neededWidth = column->neededHeight = -1;
-		column->textLayoutInvalid = TRUE;
-	    }
-	    column = column->next;
-	}
-	tree->headerHeight = -1;
-    }
-}
-
-/*
- *----------------------------------------------------------------------
- *
- * Tree_HeaderHeight --
- *
- *	Return the total height of the column header area. The height
- *	is only recalculated if it is marked out-of-date.
- *
- * Results:
- *	Pixel height. Will be zero if the -showheader option is FALSE.
- *
- * Side effects:
- *	None.
- *
- *----------------------------------------------------------------------
- */
-
-int
-Tree_HeaderHeight(
+TreeColumns_InvalidateWidth(
     TreeCtrl *tree		/* Widget info. */
     )
 {
-    TreeColumn column;
-    int height;
-
-    if (!tree->showHeader)
-	return 0;
-
-    if (tree->headerHeight >= 0)
-	return tree->headerHeight;
-
-    height = 0;
-    column = tree->columns;
-    while (column != NULL) {
-	if (column->visible)
-	    height = MAX(height, TreeColumn_NeededHeight(column));
-	column = column->next;
-    }
-    return tree->headerHeight = height;
+    tree->widthOfColumns = -1;
+    tree->widthOfColumnsLeft = -1;
+    tree->widthOfColumnsRight = -1;
+    tree->columnPriv->reqInvalid = TRUE;
+    Tree_DInfoChanged(tree, DINFO_CHECK_COLUMN_WIDTH);
 }
 
 /*
@@ -5155,10 +4608,12 @@ Tree_HeaderHeight(
  *
  * TreeColumn_Bbox --
  *
- *	Return the bounding box for a column header.
+ *	Return the bounding box for a column.
+ *	This used to be the function to call to get the bounding
+ *	box of a column header.
  *
  * Results:
- *	Return value is -1 if the item is not visible.
+ *	Return value is -1 if the column is not visible.
  *
  * Side effects:
  *	Column layout will be updated if needed.
@@ -5174,7 +4629,7 @@ TreeColumn_Bbox(
     )
 {
     TreeCtrl *tree = column->tree;
-    int left = 0 - tree->xOrigin;
+    int left = 0;
 
     if (!tree->showHeader || !TreeColumn_Visible(column))
 	return -1;
@@ -5183,7 +4638,7 @@ TreeColumn_Bbox(
     *h = Tree_HeaderHeight(tree);
 
     if (column == tree->columnTail) {
-	*x = Tree_WidthOfColumns(tree) - tree->xOrigin;
+	*x = Tree_WidthOfColumns(tree) - tree->xOrigin; /* Canvas -> Window */
 	*w = 1; /* xxx */
 	return 0;
     }
@@ -5196,6 +4651,7 @@ TreeColumn_Bbox(
 	    left = Tree_BorderLeft(tree);
 	    break;
 	case COLUMN_LOCK_NONE:
+	    left = 0 - Tree_GetOriginX(tree); /* Canvas -> Window */
 	    break;
 	case COLUMN_LOCK_RIGHT:
 	    left = Tree_ContentRight(tree);
@@ -5204,96 +4660,6 @@ TreeColumn_Bbox(
 
     *x = left + TreeColumn_Offset(column);
     return 0;
-}
-
-/*
- *--------------------------------------------------------------
- *
- * Tree_HeaderUnderPoint --
- *
- *	Return a TreeColumn whose header contains the given coordinates.
- *
- * Results:
- *	TreeColumn token or NULL if no column contains the point.
- *
- * Side effects:
- *	Column layout will be updated if needed.
- *
- *--------------------------------------------------------------
- */
-
-TreeColumn
-Tree_HeaderUnderPoint(
-    TreeCtrl *tree,		/* Widget info. */
-    int *x_, int *y_,		/* In: window coordinates.
-				 * Out: coordinates relative to top-left
-				 * corner of the returned column. */
-    int *w, int *h,		/* Returned width and height. */
-    int nearest			/* TRUE if the column nearest the coordinates
-				 * should be returned. */
-    )
-{
-    Tk_Window tkwin = tree->tkwin;
-    int x = *x_, y = *y_;
-    int left, top, width, height;
-    TreeColumn column = tree->columns;
-    int hit;
-
-    hit = Tree_HitTest(tree, x, y);
-    if (!nearest && (hit != TREE_AREA_HEADER))
-	return NULL;
-
-    if (nearest) {
-	if (x < Tree_BorderLeft(tree))
-	    x = Tree_BorderLeft(tree);
-	if (x >= Tree_BorderRight(tree))
-	    x = Tree_BorderRight(tree) - 1;
-	if (y < Tree_BorderTop(tree))
-	    y = Tree_BorderTop(tree);
-	if (y >= Tree_ContentTop(tree))
-	    y = Tree_ContentTop(tree) - 1;
-    }
-
-    /* Test the columns in reverse of drawing order. */
-    column = tree->columnLockRight;
-    while ((column != NULL) && (TreeColumn_Lock(column) == COLUMN_LOCK_RIGHT)) {
-	if (TreeColumn_Bbox(column, &left, &top, &width, &height) == 0) {
-	    if ((x >= left) && (x < left + width)) {
-		goto done;
-	    }
-	}
-	column = TreeColumn_Next(column);
-    }
-
-    column = tree->columnLockLeft;
-    while ((column != NULL) && (TreeColumn_Lock(column) == COLUMN_LOCK_LEFT)) {
-	if (TreeColumn_Bbox(column, &left, &top, &width, &height) == 0) {
-	    if ((x >= left) && (x < left + width)) {
-		goto done;
-	    }
-	}
-	column = TreeColumn_Next(column);
-    }
-
-    column = tree->columnLockNone;
-    while ((column != NULL) && (TreeColumn_Lock(column) == COLUMN_LOCK_NONE)) {
-	if (TreeColumn_Bbox(column, &left, &top, &width, &height) == 0) {
-	    if ((x >= left) && (x < left + width)) {
-		goto done;
-	    }
-	}
-	column = TreeColumn_Next(column);
-    }
-
-    column = tree->columnTail;
-    left = Tree_WidthOfColumns(tree) - tree->xOrigin;
-    width = Tk_Width(tkwin) - left;
-done:
-    (*x_) = x - left;
-    (*y_) = y - Tree_HeaderTop(tree);
-    (*w) = width;
-    (*h) = Tree_HeaderHeight(tree);
-    return column;
 }
 
 /*
@@ -5319,13 +4685,11 @@ done:
 
 static int
 LayoutColumns(
-    TreeColumn first,		/* First column to update. All columns
+    TreeCtrl *tree,		/* Widget info. */
+    TreeColumn first		/* First column to update. All columns
 				 * with the same -lock value are updated. */
-    TreeColumn *visPtr,		/* Out: first visible column. */
-    int *countVisPtr		/* Out: number of visible columns. */
     )
 {
-    TreeCtrl *tree;
     TreeColumn column;
     int width, visWidth, totalWidth = 0;
     int numExpand = 0, numSqueeze = 0;
@@ -5336,14 +4700,19 @@ LayoutColumns(
     int uniformCount = 0;
 #endif
 
-    if (visPtr != NULL)
-	(*visPtr) = NULL;
-    (*countVisPtr) = 0;
+#ifdef TREECTRL_DEBUG
+    if (tree->debugCheck.inLayoutColumns)
+	panic("recursive call to LayoutColumns");
+#endif
 
     if (first == NULL)
 	return 0;
 
     tree = first->tree;
+
+#ifdef TREECTRL_DEBUG
+    tree->debugCheck.inLayoutColumns = TRUE;
+#endif
 
 #ifdef UNIFORM_GROUP
     /* Initialize the .minSize field of every uniform group. */
@@ -5370,7 +4739,7 @@ LayoutColumns(
 		width = column->width;
 	    else {
 		width = TreeColumn_WidthOfItems(column);
-		width = MAX(width, TreeColumn_NeededWidth(column));
+		width = MAX(width, TreeColumn_WidthOfHeaders(column));
 		width = MAX(width, TreeColumn_MinWidth(column));
 		if (TreeColumn_MaxWidth(column) != -1)
 		    width = MIN(width, TreeColumn_MaxWidth(column));
@@ -5395,9 +4764,6 @@ LayoutColumns(
 		    numSqueeze++;
 #endif
 	    }
-	    if (visPtr != NULL && (*visPtr) == NULL)
-		(*visPtr) = column;
-	    (*countVisPtr)++;
 	} else
 	    width = 0;
 	column->useWidth = width;
@@ -5431,6 +4797,10 @@ LayoutColumns(
 	goto doOffsets;
 
     visWidth = Tree_ContentWidth(tree);
+
+    /* Hack */
+    visWidth -= tree->canvasPadX[PAD_TOP_LEFT] + tree->canvasPadX[PAD_BOTTOM_RIGHT];
+
     if (visWidth <= 0)
 	goto doOffsets;
 
@@ -5513,9 +4883,19 @@ doOffsets:
     column = first;
     while (column != NULL && column->lock == first->lock) {
 	column->offset = totalWidth;
+
+	/* Hack */
+	if (column->lock == COLUMN_LOCK_NONE)
+	    column->offset += tree->canvasPadX[PAD_TOP_LEFT];
+
 	totalWidth += column->useWidth;
 	column = column->next;
     }
+
+#ifdef TREECTRL_DEBUG
+    tree->debugCheck.inLayoutColumns = FALSE;
+#endif
+
     return totalWidth;
 }
 
@@ -5545,6 +4925,12 @@ Tree_WidthOfColumns(
     TreeCtrl *tree		/* Widget info. */
     )
 {
+    /* Tree_WidthOfColumns used to update columnCountVis, but that is now
+     * done in a separate function TreeColumns_UpdateCounts, because
+     * TreeItem_ReallyVisible needs up-to-date counts (for header items)
+     * and LayoutColumns may call TreeItem_ReallyVisible. */
+    TreeColumns_UpdateCounts(tree);
+
     /* This gets called when the layout of all columns needs to be current.
      * So update the layout of the left- and right-locked columns too. */
     (void) Tree_WidthOfLeftColumns(tree);
@@ -5553,10 +4939,7 @@ Tree_WidthOfColumns(
     if (tree->widthOfColumns >= 0)
 	return tree->widthOfColumns;
 
-    tree->widthOfColumns = LayoutColumns(
-	tree->columnLockNone,
-	&tree->columnVis,
-	&tree->columnCountVis);
+    tree->widthOfColumns = LayoutColumns(tree, tree->columnLockNone);
 
     if (tree->columnTree != NULL && TreeColumn_Visible(tree->columnTree)) {
 	tree->columnTreeLeft = tree->columnTree->offset;
@@ -5565,6 +4948,12 @@ Tree_WidthOfColumns(
 	tree->columnTreeLeft = 0;
 	tree->columnTreeVis = FALSE;
     }
+
+    /* I can't calculate the width of the tail column here because it
+     * depends on Tree_FakeCanvasWidth which calls this function. */
+    tree->columnTail->offset = tree->canvasPadX[PAD_TOP_LEFT] +
+	tree->widthOfColumns;
+    tree->columnTail->useWidth = 0; /* hack */
 
     return tree->widthOfColumns;
 }
@@ -5608,10 +4997,7 @@ Tree_WidthOfLeftColumns(
 	return 0;
     }
 
-    tree->widthOfColumnsLeft = LayoutColumns(
-	tree->columnLockLeft,
-	NULL,
-	&tree->columnCountVisLeft);
+    tree->widthOfColumnsLeft = LayoutColumns(tree, tree->columnLockLeft);
 
     return tree->widthOfColumnsLeft;
 }
@@ -5655,10 +5041,7 @@ Tree_WidthOfRightColumns(
 	return 0;
     }
 
-    tree->widthOfColumnsRight = LayoutColumns(
-	tree->columnLockRight,
-	NULL,
-	&tree->columnCountVisRight);
+    tree->widthOfColumnsRight = LayoutColumns(tree, tree->columnLockRight);
 
     return tree->widthOfColumnsRight;
 }
@@ -5666,7 +5049,130 @@ Tree_WidthOfRightColumns(
 /*
  *----------------------------------------------------------------------
  *
- * Tree_InitColumns --
+ * UpdateColumnCounts --
+ *
+ *	Calculates the number of visible columns with the same -lock
+ *	value, and optionally returns the first visible column in the
+ *	group.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+static void
+UpdateColumnCounts(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeColumn first,		/* First column to check. All columns
+				 * with the same -lock value are checked. */
+    TreeColumn *visPtr,		/* Out: first visible column. */
+    int *countVisPtr		/* Out: number of visible columns. */
+    )
+{
+    TreeColumn column;
+
+    if (visPtr != NULL)
+	(*visPtr) = NULL;
+    (*countVisPtr) = 0;
+
+    for (column = first;
+	    column != NULL && column->lock == first->lock;
+	    column = column->next) {
+	if (column->visible) {
+	    if (visPtr != NULL && (*visPtr) == NULL)
+		(*visPtr) = column;
+	    (*countVisPtr)++;
+	}
+    }
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeColumns_UpdateCounts --
+ *
+ *	Recalculates the number of visible columns and the first
+ *	visible non-locked column if needed.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TreeColumns_UpdateCounts(
+    TreeCtrl *tree		/* Widget info. */
+    )
+{
+    int displayLockedColumns = Tree_ShouldDisplayLockedColumns(tree);
+
+    if (tree->displayLockedColumns != displayLockedColumns) {
+	tree->columnCountVis = -1;
+	tree->displayLockedColumns = displayLockedColumns;
+    }
+
+    if (tree->columnCountVis >= 0)
+	return;
+
+    UpdateColumnCounts(tree, tree->columnLockNone,
+	&tree->columnVis, &tree->columnCountVis);
+
+    if (displayLockedColumns) {
+	UpdateColumnCounts(tree, tree->columnLockLeft,
+	    NULL, &tree->columnCountVisLeft);
+	UpdateColumnCounts(tree, tree->columnLockRight,
+	    NULL, &tree->columnCountVisRight);
+    } else {
+	tree->columnCountVisLeft = 0;
+	tree->columnCountVisRight = 0;
+    }
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeColumns_InvalidateCounts --
+ *
+ *	Marks the number of visible columns as out-of-date.
+ *	The number of visible columns changes when:
+ *	1) creating a column
+ *	2) deleting a column
+ *	3) moving a column (affects tree->columnVis anyway)
+ *	4) column option -visible changes
+ *	5) column option -lock changes
+ *	6) Tree_ShouldDisplayLockedColumns() changes
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TreeColumns_InvalidateCounts(
+    TreeCtrl *tree		/* Widget info. */
+    )
+{
+    tree->columnCountVis = -1;
+    tree->columnCountVisLeft = -1;
+    tree->columnCountVisRight = -1;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeColumn_InitWidget --
  *
  *	Perform column-related initialization when a new TreeCtrl is
  *	created.
@@ -5681,7 +5187,7 @@ Tree_WidthOfRightColumns(
  */
 
 void
-Tree_InitColumns(
+TreeColumn_InitWidget(
     TreeCtrl *tree		/* Widget info. */
     )
 {
@@ -5689,24 +5195,29 @@ Tree_InitColumns(
 
     column = Column_Alloc(tree);
     column->id = -1;
+    column->reqData.spanMin = column->reqData.spanMax = column;
     tree->columnTail = column;
     tree->nextColumnId = 0;
     tree->columnCount = 0;
     Column_Config(column, 0, NULL, TRUE);
 
-    tree->columnDrag.optionTable = Tk_CreateOptionTable(tree->interp, dragSpecs);
+    tree->columnDrag.optionTable = Tk_CreateOptionTable(tree->interp,
+	dragSpecs);
     (void) Tk_InitOptions(tree->interp, (char *) tree,
-	    tree->columnDrag.optionTable, tree->tkwin);
+	tree->columnDrag.optionTable, tree->tkwin);
 
 #ifdef UNIFORM_GROUP
     Tcl_InitHashTable(&tree->uniformGroupHash, TCL_STRING_KEYS);
 #endif
+
+    tree->columnPriv = (TreeColumnPriv) ckalloc(sizeof(struct TreeColumnPriv_));
+    memset((char *) tree->columnPriv, 0, sizeof(struct TreeColumnPriv_));
 }
 
 /*
  *----------------------------------------------------------------------
  *
- * Tree_FreeColumns --
+ * TreeColumn_FreeWidget --
  *
  *	Free column-related resources for a deleted TreeCtrl.
  *
@@ -5719,11 +5230,13 @@ Tree_InitColumns(
  *----------------------------------------------------------------------
  */
 
-void Tree_FreeColumns(
+void
+TreeColumn_FreeWidget(
     TreeCtrl *tree		/* Widget info. */
     )
 {
     TreeColumn column = tree->columns;
+    struct TreeColumnPriv_ *priv = tree->columnPriv;
 
     while (column != NULL) {
 	column = Column_Free(column);
@@ -5735,32 +5248,49 @@ void Tree_FreeColumns(
 #ifdef UNIFORM_GROUP
     Tcl_DeleteHashTable(&tree->uniformGroupHash);
 #endif
+
+    while (priv->spans != NULL) {
+	ColumnSpan *cs = priv->spans;
+	priv->spans = cs->next;
+	if (cs->spansToRight.spans != NULL)
+	    ckfree((char *) cs->spansToRight.spans);
+	ckfree((char *) cs);
+    }
+    while (priv->freeSpans != NULL) {
+	ColumnSpan *cs = priv->freeSpans;
+	priv->freeSpans = cs->next;
+	if (cs->spansToRight.spans != NULL)
+	    ckfree((char *) cs->spansToRight.spans);
+	ckfree((char *) cs);
+    }
+
+    ckfree((char *) priv);
 }
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeColumn_InitInterp --
+ *
+ *	Performs column-related initialization when the TkTreeCtrl
+ *	package is loaded into an interpreter.
+ *
+ * Results:
+ *	TCL_OK.
+ *
+ * Side effects:
+ *	Messes with the columnSpecs[] option array.
+ *
+ *----------------------------------------------------------------------
+ */
 
 int
 TreeColumn_InitInterp(
     Tcl_Interp *interp		/* Current interpreter. */
     )
 {
-    Tk_OptionSpec *specPtr;
-    Tcl_DString dString;
-
-    specPtr = Tree_FindOptionSpec(columnSpecs, "-background");
-    if (specPtr->defValue == NULL) {
-	Tcl_DStringInit(&dString);
-	Tcl_DStringAppendElement(&dString, DEF_BUTTON_BG_COLOR);
-	Tcl_DStringAppendElement(&dString, "normal");
-	Tcl_DStringAppendElement(&dString, DEF_BUTTON_ACTIVE_BG_COLOR);
-	Tcl_DStringAppendElement(&dString, "");
-	specPtr->defValue = ckalloc(Tcl_DStringLength(&dString) + 1);
-	strcpy((char *)specPtr->defValue, Tcl_DStringValue(&dString));
-	Tcl_DStringFree(&dString);
-    }
-    
-    PerStateCO_Init(columnSpecs, "-arrowbitmap", &pstBitmap, ColumnStateFromObj);
-    PerStateCO_Init(columnSpecs, "-arrowimage", &pstImage, ColumnStateFromObj);
-    PerStateCO_Init(columnSpecs, "-background", &pstBorder, ColumnStateFromObj);
     StringTableCO_Init(columnSpecs, "-itemjustify", justifyStrings);
+    TreeStyleCO_Init(columnSpecs, "-itemstyle", STATE_DOMAIN_ITEM);
 
     return TCL_OK;
 }

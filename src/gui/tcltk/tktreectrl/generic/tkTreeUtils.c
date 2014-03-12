@@ -1,34 +1,12 @@
-/* 
+/*
  * tkTreeUtils.c --
  *
  *	This module implements misc routines for treectrl widgets.
  *
- * Copyright (c) 2002-2008 Tim Baker
- *
- * RCS: @(#) $Id$
+ * Copyright (c) 2002-2011 Tim Baker
  */
 
 #include "tkTreeCtrl.h"
-
-#ifdef WIN32
-#include "tkWinInt.h"
-#endif
-
-/* OffsetRgn() on Mac */
-#if defined(MAC_OSX_TK)
-#include <Carbon/Carbon.h>
-#include "tkMacOSXInt.h"
-static PixPatHandle gPenPat = NULL;
-
-/* TkRegion changed from RgnHandle to HIShapeRef in 8.4.17/8.5.0 */
-#if (TK_MAJOR_VERSION == 8) && (TK_MINOR_VERSION >= 5)
-#define MAC_OSX_HISHAPE 1
-#elif (TK_MAJOR_VERSION == 8) && (TK_MINOR_VERSION == 4) && (TK_RELEASE_SERIAL >= 17)
-#define MAC_OSX_HISHAPE 1
-#endif
-
-#endif
-#define TCL_ALIGN(x) (((int)(x) + 7) & ~7)
 
 struct dbwinterps {
     int count;
@@ -97,6 +75,42 @@ void dbwin(char *fmt, ...)
 	    TCL_GLOBAL_ONLY);
     }
 }
+
+#if defined(TREECTRL_DEBUG)
+#ifdef WIN32
+#include <windows.h>
+#endif
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeCtrl_BreakIntoDebugger --
+ *
+ *	If running in a debugger, call DebugBreak(), otherwise
+ *	panic().
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TreeCtrl_BreakIntoDebugger(
+    const char *file,
+    int line
+    )
+{
+#if defined(WIN32)
+    if (IsDebuggerPresent())
+	DebugBreak();
+    else
+#endif
+    panic("Debugger call at %s:%d", file, line);
+}
+#endif /* TREECTRL_DEBUG */
 
 /*
  * Forward declarations for procedures defined later in this file:
@@ -234,7 +248,7 @@ Tree_Ellipsis(
 {
     char staticStr[256], *tmpStr = staticStr;
     int pixels, pixelsTest, bytesThatFit, bytesTest;
-    int ellipsisNumBytes = strlen(ellipsis);
+    int ellipsisNumBytes = (int) strlen(ellipsis);
     int bytesInFirstCh;
     Tcl_UniChar uniCh;
 
@@ -256,7 +270,7 @@ Tree_Ellipsis(
     if (force)
 	bytesTest = bytesThatFit;
     else
-	bytesTest = Tcl_UtfPrev(string + bytesThatFit, string) - string;
+	bytesTest = (int) (Tcl_UtfPrev(string + bytesThatFit, string) - string);
     if (bytesTest + ellipsisNumBytes > sizeof(staticStr))
 	tmpStr = ckalloc(bytesTest + ellipsisNumBytes);
     memcpy(tmpStr, string, bytesTest);
@@ -271,7 +285,7 @@ Tree_Ellipsis(
 		ckfree(tmpStr);
 	    return bytesTest;
 	}
-	bytesTest = Tcl_UtfPrev(string + bytesTest, string) - string;
+	bytesTest = (int) (Tcl_UtfPrev(string + bytesTest, string) - string);
     }
 
     singleChar:
@@ -288,602 +302,6 @@ Tree_Ellipsis(
 	ckfree(tmpStr);
     return bytesThatFit;
 }
-
-/*
- *----------------------------------------------------------------------
- *
- * Tree_HDotLine --
- *
- *	Draws a horizontal 1-pixel-tall dotted line.
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	Stuff is drawn.
- *
- *----------------------------------------------------------------------
- */
-
-void
-Tree_HDotLine(
-    TreeCtrl *tree,		/* Widget info. */
-    Drawable drawable,		/* Where to draw. */
-    GC gc,			/* Graphics context. */
-    int x1, int y1, int x2	/* Left, top and right coordinates. */
-    )
-{
-#ifdef WIN32
-    TkWinDCState state;
-    HDC dc;
-    HPEN pen, oldPen;
-    int nw;
-    int wx = x1 + tree->drawableXOrigin;
-    int wy = y1 + tree->drawableYOrigin;
-
-    dc = TkWinGetDrawableDC(tree->display, drawable, &state);
-    SetROP2(dc, R2_COPYPEN);
-
-    pen = CreatePen(PS_SOLID, 1, gc->foreground);
-    oldPen = SelectObject(dc, pen);
-
-    nw = !(wx & 1) == !(wy & 1);
-    for (x1 += !nw; x1 < x2; x1 += 2) {
-	MoveToEx(dc, x1, y1, NULL);
-	LineTo(dc, x1 + 1, y1);
-    }
-
-    SelectObject(dc, oldPen);
-    DeleteObject(pen);
-
-    TkWinReleaseDrawableDC(drawable, dc, &state);
-#else
-    int nw;
-    int wx = x1 + tree->drawableXOrigin;
-    int wy = y1 + tree->drawableYOrigin;
-
-    nw = !(wx & 1) == !(wy & 1);
-    for (x1 += !nw; x1 < x2; x1 += 2) {
-	XDrawPoint(tree->display, drawable, gc, x1, y1);
-    }
-#endif
-}
-
-/*
- *----------------------------------------------------------------------
- *
- * Tree_VDotLine --
- *
- *	Draws a vertical 1-pixel-wide dotted line.
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	Stuff is drawn.
- *
- *----------------------------------------------------------------------
- */
-
-void
-Tree_VDotLine(
-    TreeCtrl *tree,		/* Widget info. */
-    Drawable drawable,		/* Where to draw. */
-    GC gc,			/* Graphics context. */
-    int x1, int y1, int y2)	/* Left, top, and bottom coordinates. */
-{
-#ifdef WIN32
-    TkWinDCState state;
-    HDC dc;
-    HPEN pen, oldPen;
-    int nw;
-    int wx = x1 + tree->drawableXOrigin;
-    int wy = y1 + tree->drawableYOrigin;
-
-    dc = TkWinGetDrawableDC(tree->display, drawable, &state);
-    SetROP2(dc, R2_COPYPEN);
-
-    pen = CreatePen(PS_SOLID, 1, gc->foreground);
-    oldPen = SelectObject(dc, pen);
-
-    nw = !(wx & 1) == !(wy & 1);
-    for (y1 += !nw; y1 < y2; y1 += 2) {
-	MoveToEx(dc, x1, y1, NULL);
-	LineTo(dc, x1 + 1, y1);
-    }
-
-    SelectObject(dc, oldPen);
-    DeleteObject(pen);
-
-    TkWinReleaseDrawableDC(drawable, dc, &state);
-#else
-    int nw;
-    int wx = x1 + tree->drawableXOrigin;
-    int wy = y1 + tree->drawableYOrigin;
-
-    nw = !(wx & 1) == !(wy & 1);
-    for (y1 += !nw; y1 < y2; y1 += 2) {
-	XDrawPoint(tree->display, drawable, gc, x1, y1);
-    }
-#endif
-}
-
-/*
- *----------------------------------------------------------------------
- *
- * Tree_DrawActiveOutline --
- *
- *	Draws 0 or more sides of a rectangle, dot-on dot-off, XOR style.
- *	This is used by rectangle Elements to indicate the "active"
- *	item.
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	Stuff is drawn.
- *
- *----------------------------------------------------------------------
- */
-
-void
-Tree_DrawActiveOutline(
-    TreeCtrl *tree,		/* Widget info. */
-    Drawable drawable,		/* Where to draw. */
-    int x, int y,		/* Left and top coordinates. */
-    int width, int height,	/* Size of rectangle. */
-    int open			/* Bitmask of edges not to draw:
-				 * 0x01: left
-				 * 0x02: top
-				 * 0x04: right
-				 * 0x08: bottom */
-    )
-{
-#ifdef WIN32
-    int wx = x + tree->drawableXOrigin;
-    int wy = y + tree->drawableYOrigin;
-    int w = !(open & 0x01);
-    int n = !(open & 0x02);
-    int e = !(open & 0x04);
-    int s = !(open & 0x08);
-    int nw, ne, sw, se;
-    int i;
-    TkWinDCState state;
-    HDC dc;
-
-    /* Dots on even pixels only */
-    nw = !(wx & 1) == !(wy & 1);
-    ne = !((wx + width - 1) & 1) == !(wy & 1);
-    sw = !(wx & 1) == !((wy + height - 1) & 1);
-    se = !((wx + width - 1) & 1) == !((wy + height - 1) & 1);
-
-    dc = TkWinGetDrawableDC(tree->display, drawable, &state);
-    SetROP2(dc, R2_NOT);
-
-    if (w) /* left */
-    {
-	for (i = !nw; i < height; i += 2) {
-	    MoveToEx(dc, x, y + i, NULL);
-	    LineTo(dc, x + 1, y + i);
-	}
-    }
-    if (n) /* top */
-    {
-	for (i = nw ? w * 2 : 1; i < width; i += 2) {
-	    MoveToEx(dc, x + i, y, NULL);
-	    LineTo(dc, x + i + 1, y);
-	}
-    }
-    if (e) /* right */
-    {
-	for (i = ne ? n * 2 : 1; i < height; i += 2) {
-	    MoveToEx(dc, x + width - 1, y + i, NULL);
-	    LineTo(dc, x + width, y + i);
-	}
-    }
-    if (s) /* bottom */
-    {
-	for (i = sw ? w * 2 : 1; i < width - (se && e); i += 2) {
-	    MoveToEx(dc, x + i, y + height - 1, NULL);
-	    LineTo(dc, x + i + 1, y + height - 1);
-	}
-    }
-
-    TkWinReleaseDrawableDC(drawable, dc, &state);
-#else /* WIN32 */
-    int wx = x + tree->drawableXOrigin;
-    int wy = y + tree->drawableYOrigin;
-    int w = !(open & 0x01);
-    int n = !(open & 0x02);
-    int e = !(open & 0x04);
-    int s = !(open & 0x08);
-    int nw, ne, sw, se;
-    int i;
-    XGCValues gcValues;
-    unsigned long gcMask;
-    GC gc;
-
-    /* Dots on even pixels only */
-    nw = !(wx & 1) == !(wy & 1);
-    ne = !((wx + width - 1) & 1) == !(wy & 1);
-    sw = !(wx & 1) == !((wy + height - 1) & 1);
-    se = !((wx + width - 1) & 1) == !((wy + height - 1) & 1);
-
-#if defined(MAC_TCL) || defined(MAC_OSX_TK)
-    gcValues.function = GXxor;
-#else
-    gcValues.function = GXinvert;
-#endif
-    gcMask = GCFunction;
-    gc = Tree_GetGC(tree, gcMask, &gcValues);
-
-    if (w) /* left */
-    {
-	for (i = !nw; i < height; i += 2) {
-	    XDrawPoint(tree->display, drawable, gc, x, y + i);
-	}
-    }
-    if (n) /* top */
-    {
-	for (i = nw ? w * 2 : 1; i < width; i += 2) {
-	    XDrawPoint(tree->display, drawable, gc, x + i, y);
-	}
-    }
-    if (e) /* right */
-    {
-	for (i = ne ? n * 2 : 1; i < height; i += 2) {
-	    XDrawPoint(tree->display, drawable, gc, x + width - 1, y + i);
-	}
-    }
-    if (s) /* bottom */
-    {
-	for (i = sw ? w * 2 : 1; i < width - (se && e); i += 2) {
-	    XDrawPoint(tree->display, drawable, gc, x + i, y + height - 1);
-	}
-    }
-#endif
-}
-
-/*
- * The following structure is used when drawing a number of dotted XOR
- * rectangles.
- */
-struct DotStatePriv
-{
-    TreeCtrl *tree;
-    Drawable drawable;
-#ifdef WIN32
-    HDC dc;
-    TkWinDCState dcState;
-    HRGN rgn;
-#elif defined(MAC_OSX_TK)
-    CGrafPtr saveWorld;
-    GDHandle saveDevice;
-    RgnHandle rgn;
-#else
-    GC gc;
-    TkRegion rgn;
-#endif
-};
-
-/*
- *----------------------------------------------------------------------
- *
- * TreeDotRect_Setup --
- *
- *	Prepare a drawable for drawing a series of dotted XOR rectangles.
- *
- * Results:
- *	State info is returned to be used by the other TreeDotRect_xxx()
- *	procedures.
- *
- * Side effects:
- *	On Win32 and OSX the device context/graphics port is altered
- *	in preparation for drawing. On X11 a new graphics context is
- *	created.
- *
- *----------------------------------------------------------------------
- */
-
-void
-TreeDotRect_Setup(
-    TreeCtrl *tree,		/* Widget info. */
-    Drawable drawable,		/* Where to draw. */
-    DotState *p			/* Where to save state info. */
-    )
-{
-    struct DotStatePriv *dotState = (struct DotStatePriv *) p;
-#ifdef WIN32
-#elif defined(MAC_OSX_TK)
-    MacDrawable *macWin = (MacDrawable *) drawable;
-    GWorldPtr destPort;
-    Rect bounds;
-    RgnHandle clipRgn;
-#else
-    XGCValues gcValues;
-    unsigned long mask;
-    XRectangle xrect;
-#endif
-
-    if (sizeof(*dotState) > sizeof(*p))
-	panic("TreeDotRect_Setup: DotState hack is too small");
-
-    dotState->tree = tree;
-    dotState->drawable = drawable;
-#ifdef WIN32
-    dotState->dc = TkWinGetDrawableDC(tree->display, drawable, &dotState->dcState);
-
-    /* XOR drawing */
-    SetROP2(dotState->dc, R2_NOT);
-
-    /* Keep drawing inside the contentbox. */
-    dotState->rgn = CreateRectRgn(
-	Tree_ContentLeft(tree),
-	Tree_ContentTop(tree),
-	Tree_ContentRight(tree),
-	Tree_ContentBottom(tree));
-    SelectClipRgn(dotState->dc, dotState->rgn);
-#elif defined(MAC_OSX_TK)
-    /* NOTE: OSX doesn't support XOR drawing except in Quickdraw.  That is
-     * why the X11 wrapper isn't used here. */
-    tree->display->request++;
-    destPort = TkMacOSXGetDrawablePort(drawable);
-    GetGWorld(&dotState->saveWorld, &dotState->saveDevice);
-    SetGWorld(destPort, NULL);
-    TkMacOSXSetUpClippingRgn(drawable);
-
-    /* Save the old clip region. */
-#ifdef MAC_OSX_HISHAPE
-    /* NOTE: Tree_GetRegion returns a HIShapeRef which isn't wanted. */
-    dotState->rgn = NewRgn(); // FIXME: want to cache these regions.
-#else
-    dotState->rgn = (RgnHandle) Tree_GetRegion(tree);
-#endif
-    GetClip(dotState->rgn);
-
-    /* Keep drawing inside the contentbox. */
-#ifdef MAC_OSX_HISHAPE
-    clipRgn = NewRgn(); // FIXME: want to cache these regions.
-#else
-    clipRgn = (RgnHandle) Tree_GetRegion(tree);
-#endif
-    bounds.left = macWin->xOff + Tree_ContentLeft(tree);
-    bounds.top = macWin->yOff + Tree_ContentTop(tree);
-    bounds.right = bounds.left + Tree_ContentWidth(tree);
-    bounds.bottom = bounds.top + Tree_ContentHeight(tree);
-    RectRgn(clipRgn, &bounds);
-
-    /* Set the clipping region to the intersection of the two regions. */
-    SectRgn(dotState->rgn, clipRgn, clipRgn);
-    SetClip(clipRgn);
-#ifdef MAC_OSX_HISHAPE
-    DisposeRgn(clipRgn);
-#else
-    Tree_FreeRegion(tree, (TkRegion) clipRgn);
-#endif
-
-    PenNormal();
-    PenMode(patXor);
-    ShowPen();
-#else
-    gcValues.line_style = LineOnOffDash;
-    gcValues.line_width = 1;
-    gcValues.dash_offset = 0;
-    gcValues.dashes = 1;
-#if defined(MAC_TCL)
-    gcValues.function = GXxor;
-#else
-    gcValues.function = GXinvert;
-#endif
-    mask = GCLineWidth | GCLineStyle | GCDashList | GCDashOffset | GCFunction;
-    dotState->gc = Tk_GetGC(tree->tkwin, mask, &gcValues);
-
-    /* Keep drawing inside the contentbox. */
-    dotState->rgn = Tree_GetRegion(tree);
-    xrect.x = Tree_ContentLeft(tree);
-    xrect.y = Tree_ContentTop(tree);
-    xrect.width = Tree_ContentRight(tree) - xrect.x;
-    xrect.height = Tree_ContentBottom(tree) - xrect.y;
-    TkUnionRectWithRegion(&xrect, dotState->rgn, dotState->rgn);
-    TkSetRegion(tree->display, dotState->gc, dotState->rgn);
-#endif
-}
-
-/*
- *----------------------------------------------------------------------
- *
- * TreeDotRect_Draw --
- *
- *	Draw a dotted XOR rectangle.
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	Stuff is drawn.
- *
- *----------------------------------------------------------------------
- */
-
-void
-TreeDotRect_Draw(
-    DotState *p,		/* Info returned by TreeDotRect_Setup(). */
-    int x, int y,		/* Left and top coordinates. */
-    int width, int height	/* Size of rectangle. */
-    )
-{
-    struct DotStatePriv *dotState = (struct DotStatePriv *) p;
-#ifdef WIN32
-#if 1
-    RECT rect;
-
-    rect.left = x;
-    rect.right = x + width;
-    rect.top = y;
-    rect.bottom = y + height;
-    DrawFocusRect(dotState->dc, &rect);
-#else
-    HDC dc = dotState->dc; 
-    int i;
-    int wx = x + dotState->tree->drawableXOrigin;
-    int wy = y + dotState->tree->drawableYOrigin;
-    int nw, ne, sw, se;
-
-    /* Dots on even pixels only */
-    nw = !(wx & 1) == !(wy & 1);
-    ne = !((wx + width - 1) & 1) == !(wy & 1);
-    sw = !(wx & 1) == !((wy + height - 1) & 1);
-    se = !((wx + width - 1) & 1) == !((wy + height - 1) & 1);
-
-    for (i = !nw; i < height; i += 2) {
-	MoveToEx(dc, x, y + i, NULL);
-	LineTo(dc, x + 1, y + i);
-    }
-    for (i = nw ? 2 : 1; i < width; i += 2) {
-	MoveToEx(dc, x + i, y, NULL);
-	LineTo(dc, x + i + 1, y);
-    }
-    for (i = ne ? 2 : 1; i < height; i += 2) {
-	MoveToEx(dc, x + width - 1, y + i, NULL);
-	LineTo(dc, x + width, y + i);
-    }
-    for (i = sw ? 2 : 1; i < width - se; i += 2) {
-	MoveToEx(dc, x + i, y + height - 1, NULL);
-	LineTo(dc, x + i + 1, y + height - 1);
-    }
-#endif
-#elif defined(MAC_OSX_TK)
-    MacDrawable *macWin = (MacDrawable *) dotState->drawable;
-    int i;
-    int wx = x + dotState->tree->drawableXOrigin;
-    int wy = y + dotState->tree->drawableYOrigin;
-    int nw, ne, sw, se;
-
-    /* Dots on even pixels only */
-    nw = !(wx & 1) == !(wy & 1);
-    ne = !((wx + width - 1) & 1) == !(wy & 1);
-    sw = !(wx & 1) == !((wy + height - 1) & 1);
-    se = !((wx + width - 1) & 1) == !((wy + height - 1) & 1);
-
-    x += macWin->xOff;
-    y += macWin->yOff;
-
-    for (i = !nw; i < height; i += 2) {
-	MoveTo(x, y + i);
-	LineTo(x, y + i);
-    }
-    for (i = nw ? 2 : 1; i < width; i += 2) {
-	MoveTo(x + i, y);
-	LineTo(x + i, y);
-    }
-    for (i = ne ? 2 : 1; i < height; i += 2) {
-	MoveTo(x + width, y + i);
-	LineTo(x + width, y + i);
-    }
-    for (i = sw ? 2 : 1; i < width - se; i += 2) {
-	MoveTo(x + i, y + height - 1);
-	LineTo(x + i, y + height - 1);
-    }
-#else /* MAC_OSX_TK */
-    XDrawRectangle(dotState->tree->display, dotState->drawable, dotState->gc,
-	x, y, width - 1, height - 1);
-#endif
-}
-
-/*
- *----------------------------------------------------------------------
- *
- * TreeDotRect_Restore --
- *
- *	Restore the drawing environment.
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	On Win32 and OSX the device context/graphics port is restored.
- *	On X11 a new graphics context is freed.
- *
- *----------------------------------------------------------------------
- */
-
-void
-TreeDotRect_Restore(
-    DotState *p			/* Info returned by TreeDotRect_Setup(). */
-    )
-{
-    struct DotStatePriv *dotState = (struct DotStatePriv *) p;
-#ifdef WIN32
-    SelectClipRgn(dotState->dc, NULL);
-    DeleteObject(dotState->rgn);
-    TkWinReleaseDrawableDC(dotState->drawable, dotState->dc, &dotState->dcState);
-#elif defined(MAC_OSX_TK)
-    HidePen();
-    SetClip(dotState->rgn);
-#ifdef MAC_OSX_HISHAPE
-    DisposeRgn(dotState->rgn);
-#else
-    Tree_FreeRegion(dotState->tree, (TkRegion) dotState->rgn);
-#endif
-    SetGWorld(dotState->saveWorld, dotState->saveDevice);
-#else
-    XSetClipMask(dotState->tree->display, dotState->gc, None);
-    Tree_FreeRegion(dotState->tree, dotState->rgn);
-    Tk_FreeGC(dotState->tree->display, dotState->gc);
-#endif
-}
-
-#ifdef MAC_OSX_TK
-
-/*
- *----------------------------------------------------------------------
- *
- * DrawXORLine --
- *
- *	Draw a 1-pixel thick XOR line (not dotted). This is used
- *	to draw the vertical column proxy when resizing columns.
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	Stuff is drawn.
- *
- *----------------------------------------------------------------------
- */
-
-void
-DrawXORLine(
-    Display *display,		/* Display. */
-    Drawable drawable,		/* Where to draw. */
-    int x1, int y1,		/* Left, top. */
-    int x2, int y2		/* Bottom, right. */
-    )
-{
-    MacDrawable *macWin = (MacDrawable *) drawable;
-    CGrafPtr saveWorld;
-    GDHandle saveDevice;
-    GWorldPtr destPort;
-
-    destPort = TkMacOSXGetDrawablePort(drawable);
-    display->request++;
-    GetGWorld(&saveWorld, &saveDevice);
-    SetGWorld(destPort, NULL);
-    TkMacOSXSetUpClippingRgn(drawable);
-#if 1
-    PenNormal();
-#else
-    TkMacOSXSetUpGraphicsPort(gc, destPort);
-#endif
-    PenMode(patXor);
-    ShowPen();
-    MoveTo(macWin->xOff + x1, macWin->yOff + y1);
-    LineTo(macWin->xOff + x2, macWin->yOff + y2);
-    HidePen();
-    SetGWorld(saveWorld, saveDevice);
-}
-
-#endif /* MAC_OSX_TK */
 
 /*
  *----------------------------------------------------------------------
@@ -912,7 +330,7 @@ Tree_GetRegion(
 	return TkCreateRegion();
     }
     region = tree->regionStack[--tree->regionStackLen];
-    TkSubtractRegion(region, region, region);
+    Tree_SetEmptyRegion(region);
     return region;
 }
 
@@ -946,81 +364,67 @@ Tree_FreeRegion(
 /*
  *----------------------------------------------------------------------
  *
- * Tree_FillRegion --
+ * Tree_SetEmptyRegion --
  *
- *	Paint a region with the foreground color of a graphics context.
+ *	Set a region to empty.
  *
  * Results:
  *	None.
  *
  * Side effects:
- *	Stuff is drawn.
+ *	None.
  *
  *----------------------------------------------------------------------
  */
 
 void
-Tree_FillRegion(
-    Display *display,		/* Display. */
-    Drawable drawable,		/* Where to draw. */
-    GC gc,			/* Foreground color. */
-    TkRegion rgn		/* Region to paint. */
+Tree_SetEmptyRegion(
+    TkRegion region		/* Region to modify. */
     )
 {
-#ifdef WIN32
-    HDC dc;
-    TkWinDCState dcState;
-    HBRUSH brush;
-
-    dc = TkWinGetDrawableDC(display, drawable, &dcState);
-    SetROP2(dc, R2_COPYPEN);
-    brush = CreateSolidBrush(gc->foreground);
-    FillRgn(dc, (HRGN) rgn, brush);
-    DeleteObject(brush);
-    TkWinReleaseDrawableDC(drawable, dc, &dcState);
-#elif defined(MAC_OSX_TK) && (TK_MINOR_VERSION == 4) && (TK_RELEASE_SERIAL < 15)
-    /* Not needed as of 8.4.15 / 8.5a7 */
-    MacDrawable *macWin = (MacDrawable *) drawable;
-    CGrafPtr saveWorld;
-    GDHandle saveDevice;
-    GWorldPtr destPort;
-    RGBColor macColor;
-
-    destPort = TkMacOSXGetDrawablePort(drawable);
-    if (gPenPat == NULL)
-	gPenPat = NewPixPat();
-    if (TkSetMacColor(gc->foreground, &macColor) == true)
-	MakeRGBPat(gPenPat, &macColor);
-    display->request++;
-    GetGWorld(&saveWorld, &saveDevice);
-    SetGWorld(destPort, NULL);
-    TkMacOSXSetUpClippingRgn(drawable);
-    TkMacOSXSetUpGraphicsPort(gc, destPort);
-    OffsetRgn((RgnHandle) rgn, macWin->xOff, macWin->yOff);
-    ShowPen(); /* seemed to work without this */
-    FillCRgn((RgnHandle) rgn, gPenPat);
-    HidePen(); /* seemed to work without this */
-    OffsetRgn((RgnHandle) rgn, -macWin->xOff, -macWin->yOff);
-    SetGWorld(saveWorld, saveDevice);
-#else
-    XRectangle box;
-
-    TkClipBox(rgn, &box);
-    TkSetRegion(display, gc, rgn);
-    XFillRectangle(display, drawable, gc, box.x, box.y, box.width, box.height);
-    XSetClipMask(display, gc, None);
-#endif
+    TkSubtractRegion(region, region, region);
 }
 
 /*
  *----------------------------------------------------------------------
  *
- * Tree_OffsetRegion --
+ * Tree_GetRectRegion --
  *
- *	Offset a region.
+ *	Allocate a region and set it to a single rectangle.
  *
  * Results:
+ *	Changes a region.
+ *
+ * Side effects:
  *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+TkRegion
+Tree_GetRectRegion(
+    TreeCtrl *tree,		/* Widget info. */
+    const TreeRectangle *rect	/* Rectangle */
+    )
+{
+    XRectangle xr;
+    TkRegion region;
+
+    region = Tree_GetRegion(tree);
+    TreeRect_ToXRect(*rect, &xr);
+    TkUnionRectWithRegion(&xr, region, region);
+    return region;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * Tree_SetRectRegion --
+ *
+ *	Set a region to a single rectangle.
+ *
+ * Results:
+ *	Changes a region.
  *
  * Side effects:
  *	None.
@@ -1029,123 +433,26 @@ Tree_FillRegion(
  */
 
 void
-Tree_OffsetRegion(
+Tree_SetRectRegion(
     TkRegion region,		/* Region to modify. */
-    int xOffset, int yOffset	/* Horizontal and vertical offsets. */
+    const TreeRectangle *rect	/* Rectangle */
     )
 {
-#ifdef WIN32
-    OffsetRgn((HRGN) region, xOffset, yOffset);
-#elif defined(MAC_OSX_HISHAPE)
-    HIShapeOffset((HIMutableShapeRef) region, xOffset, yOffset);
-#elif defined(MAC_TCL) || defined(MAC_OSX_TK)
-    OffsetRgn((RgnHandle) region, (short) xOffset, (short) yOffset);
-#else
-    XOffsetRegion((Region) region, xOffset, yOffset);
-#endif
+    XRectangle xr;
+    Tree_SetEmptyRegion(region);
+    TreeRect_ToXRect(*rect, &xr);
+    TkUnionRectWithRegion(&xr, region, region);
 }
 
 /*
  *----------------------------------------------------------------------
  *
- * Tree_ScrollWindow --
+ * Tree_GetRegionBounds --
  *
- *	Wrapper around TkScrollWindow() to fix an apparent bug with the
- *	Mac/OSX versions.
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	Stuff is scrolled in a drawable.
- *
- *----------------------------------------------------------------------
- */
-
-int
-Tree_ScrollWindow(
-    TreeCtrl *tree,		/* Widget info. */
-    GC gc,			/* Arg to TkScrollWindow(). */
-    int x, int y,		/* Arg to TkScrollWindow(). */
-    int width, int height,	/* Arg to TkScrollWindow(). */
-    int dx, int dy,		/* Arg to TkScrollWindow(). */
-    TkRegion damageRgn		/* Arg to TkScrollWindow(). */
-    )
-{
-#ifdef WIN32xxx
-    /* It would be best to call ScrollWindowEx with SW_SCROLLCHILDREN so
-     * that windows in window elements scroll smoothly with a minimum of
-     * redrawing. */
-    HWND hwnd = TkWinGetHWND(Tk_WindowId(tree->tkwin));
-    HWND hwndChild;
-    RECT scrollRect, childRect;
-    struct {
-	int x;
-	int y;
-	TkWindow *winPtr;
-    } winInfo[128], *winInfoPtr;
-    TkWindow *winPtr = (TkWindow *) tree->tkwin;
-    int winCount = 0;
-    int result;
-
-    winInfoPtr = winInfo;
-    for (winPtr = winPtr->childList; winPtr != NULL; winPtr = winPtr->nextPtr) {
-	if (winPtr->window != None) {
-	    hwndChild = TkWinGetHWND(winPtr->window);
-	    GetWindowRect(hwndChild, &childRect);
-	    winInfoPtr->x = childRect.left;
-	    winInfoPtr->y = childRect.top;
-	    winInfoPtr->winPtr = winPtr;
-	    winInfoPtr++;
-	    winCount++;
-	}
-    }
-
-    scrollRect.left = x;
-    scrollRect.top = y;
-    scrollRect.right = x + width;
-    scrollRect.bottom = y + height;
-    result = (ScrollWindowEx(hwnd, dx, dy, &scrollRect, NULL, (HRGN) damageRgn,
-	    NULL, SW_SCROLLCHILDREN) == NULLREGION) ? 0 : 1;
-
-    winInfoPtr = winInfo;
-    while (winCount--) {
-	winPtr = winInfoPtr->winPtr;
-	hwndChild = TkWinGetHWND(winPtr->window);
-	GetWindowRect(hwndChild, &childRect);
-	if (childRect.left != winInfoPtr->x ||
-		childRect.top != winInfoPtr->y) {
-	    dbwin("moved window %s %d,%d\n", winPtr->pathName, childRect.left - winInfoPtr->x, childRect.top - winInfoPtr->y);
-	    winPtr->changes.x += childRect.left - winInfoPtr->x;
-	    winPtr->changes.y += childRect.top - winInfoPtr->y;
-	    /* TkDoConfigureNotify(winPtr); */
-	}
-	winInfoPtr++;
-    }
-#else /* WIN32 */
-    int result = TkScrollWindow(tree->tkwin, gc, x, y, width, height, dx, dy,
-	damageRgn);
-#endif /* WIN32 */
-#if defined(MAC_TCL) || defined(MAC_OSX_TK)
-    {
-	MacDrawable *macWin = (MacDrawable *) Tk_WindowId(tree->tkwin);
-	/* BUG IN TK? */
-	Tree_OffsetRegion(damageRgn, -macWin->xOff, -macWin->yOff);
-    }
-#endif
-    return result;
-}
-
-/*
- *----------------------------------------------------------------------
- *
- * Tree_UnsetClipMask --
- *
- *	Wrapper around XSetClipMask(). On Win32 Tk_DrawChars() does
- *	not clear the clipping region.
+ *	Return the bounding rectangle of a region.
  *
  * Results:
- *	None.
+ *	Result rect is filled in with the bounds of the given region.
  *
  * Side effects:
  *	None.
@@ -1154,24 +461,14 @@ Tree_ScrollWindow(
  */
 
 void
-Tree_UnsetClipMask(
-    TreeCtrl *tree,		/* Widget info. */
-    Drawable drawable,		/* Where to draw. */
-    GC gc			/* Graphics context to modify. */
+Tree_GetRegionBounds(
+    TkRegion region,		/* Region to modify. */
+    TreeRectangle *rect		/* Rectangle */
     )
 {
-    XSetClipMask(tree->display, gc, None);
-#ifdef WIN32
-    /* Tk_DrawChars does not clear the clip region */
-    if (drawable == Tk_WindowId(tree->tkwin)) {
-	HDC dc;
-	TkWinDCState dcState;
-
-	dc = TkWinGetDrawableDC(tree->display, drawable, &dcState);
-	SelectClipRgn(dc, NULL);
-	TkWinReleaseDrawableDC(drawable, dc, &dcState);
-    }
-#endif
+    XRectangle xr;
+    TkClipBox(region, &xr);
+    TreeRect_FromXRect(xr, rect);
 }
 
 /*
@@ -1235,66 +532,6 @@ void Tree_RedrawImage(
 /*
  *----------------------------------------------------------------------
  *
- * Tree_DrawBitmapWithGC --
- *
- *	Draw part of a bitmap.
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	Stuff is drawn.
- *
- *----------------------------------------------------------------------
- */
-
-void
-Tree_DrawBitmapWithGC(
-    TreeCtrl *tree,		/* Widget info. */
-    Pixmap bitmap,		/* Bitmap to draw. */
-    Drawable drawable,		/* Where to draw. */
-    GC gc,			/* Graphics context. */
-    int src_x, int src_y,	/* Left and top of part of bitmap to copy. */
-    int width, int height,	/* Width and height of part of bitmap to
-				 * copy. */
-    int dest_x, int dest_y	/* Left and top coordinates to copy part of
-				 * the bitmap to. */
-    )
-{
-#ifdef WIN32
-    TkpClipMask *clipPtr = (TkpClipMask *) gc->clip_mask;
-#endif
-    XSetClipOrigin(tree->display, gc, dest_x, dest_y);
-#ifdef WIN32
-    /*
-     * It seems as though the device context is not set up properly
-     * when drawing a transparent bitmap into a window. Normally Tk draws
-     * into an offscreen pixmap which gets a temporary device context.
-     * This fixes a bug with -doublebuffer none in the demo "Bitmaps".
-     */
-    if (drawable == Tk_WindowId(tree->tkwin)) {
-	if ((clipPtr != NULL) &&
-	    (clipPtr->type == TKP_CLIP_PIXMAP) &&
-	    (clipPtr->value.pixmap == bitmap)) {
-	    HDC dc;
-	    TkWinDCState dcState;
-
-	    dc = TkWinGetDrawableDC(tree->display, drawable, &dcState);
-	    SetTextColor(dc, RGB(0,0,0));
-	    SetBkColor(dc, RGB(255,255,255));
-	    TkWinReleaseDrawableDC(drawable, dc, &dcState);
-	}
-    }
-#endif
-    XCopyPlane(tree->display, bitmap, drawable, gc,
-	src_x, src_y, (unsigned int) width, (unsigned int) height,
-	dest_x, dest_y, 1);
-    XSetClipOrigin(tree->display, gc, 0, 0);
-}
-
-/*
- *----------------------------------------------------------------------
- *
  * Tree_DrawBitmap --
  *
  *	Draw part of a bitmap.
@@ -1344,208 +581,6 @@ Tree_DrawBitmap(
 	src_x, src_y, width, height, dest_x, dest_y);
     Tk_FreeGC(tree->display, gc);
 }
-
-/*
- * TIP #116 altered Tk_PhotoPutBlock API to add interp arg.
- * We need to remove that for compiling with 8.4.
- */
-#if (TK_MAJOR_VERSION == 8) && (TK_MINOR_VERSION < 5)
-#define TK_PHOTOPUTBLOCK(interp, hdl, blk, x, y, w, h, cr) \
-	Tk_PhotoPutBlock(hdl, blk, x, y, w, h, cr)
-#define TK_PHOTOPUTZOOMEDBLOCK(interp, hdl, blk, x, y, w, h, \
-		zx, zy, sx, sy, cr) \
-	Tk_PhotoPutZoomedBlock(hdl, blk, x, y, w, h, \
-		zx, zy, sx, sy, cr)
-#else
-#define TK_PHOTOPUTBLOCK	Tk_PhotoPutBlock
-#define TK_PHOTOPUTZOOMEDBLOCK	Tk_PhotoPutZoomedBlock
-#endif
-
-/*
- *----------------------------------------------------------------------
- *
- * Tree_XImage2Photo --
- *
- *	Copy pixels from an XImage to a Tk photo image.
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	The given photo image is blanked and all the pixels from the
- *	XImage are put into the photo image.
- *
- *----------------------------------------------------------------------
- */
-
-#if defined(WIN32) || defined(MAC_TCL) || defined(MAC_OSX_TK)
-
-void
-Tree_XImage2Photo(
-    Tcl_Interp *interp,		/* Current interpreter. */
-    Tk_PhotoHandle photoH,	/* Existing photo image. */
-    XImage *ximage,		/* XImage to copy pixels from. */
-    int alpha			/* Desired transparency of photo image.*/
-    )
-{
-    Tk_PhotoImageBlock photoBlock;
-    unsigned char *pixelPtr;
-    int x, y, w = ximage->width, h = ximage->height;
-#if defined(MAC_TCL) || defined(MAC_OSX_TK)
-    unsigned long red_shift, green_shift, blue_shift;
-#endif
-
-    Tk_PhotoBlank(photoH);
-
-    /* See TkPoscriptImage */
-
-#if defined(MAC_TCL) || defined(MAC_OSX_TK)
-    red_shift = green_shift = blue_shift = 0;
-    while ((0x0001 & (ximage->red_mask >> red_shift)) == 0)
-	red_shift++;
-    while ((0x0001 & (ximage->green_mask >> green_shift)) == 0)
-	green_shift++;
-    while ((0x0001 & (ximage->blue_mask >> blue_shift)) == 0)
-	blue_shift++;
-#endif
-
-    pixelPtr = (unsigned char *) Tcl_Alloc(ximage->width * ximage->height * 4);
-    photoBlock.pixelPtr  = pixelPtr;
-    photoBlock.width     = ximage->width;
-    photoBlock.height    = ximage->height;
-    photoBlock.pitch     = ximage->width * 4;
-    photoBlock.pixelSize = 4;
-    photoBlock.offset[0] = 0;
-    photoBlock.offset[1] = 1;
-    photoBlock.offset[2] = 2;
-    photoBlock.offset[3] = 3;
-
-    for (y = 0; y < ximage->height; y++) {
-	for (x = 0; x < ximage->width; x++) {
-	    int r, g, b;
-	    unsigned long pixel;
-
-	    /* FIXME: I think this blows up on classic Mac??? */
-	    pixel = XGetPixel(ximage, x, y);
-#ifdef WIN32
-	    r = GetRValue(pixel);
-	    g = GetGValue(pixel);
-	    b = GetBValue(pixel);
-#endif
-#if defined(MAC_TCL) || defined(MAC_OSX_TK)
-	    r = (pixel & ximage->red_mask) >> red_shift;
-	    g = (pixel & ximage->green_mask) >> green_shift;
-	    b = (pixel & ximage->blue_mask) >> blue_shift;
-#endif
-	    pixelPtr[y * photoBlock.pitch + x * 4 + 0] = r;
-	    pixelPtr[y * photoBlock.pitch + x * 4 + 1] = g;
-	    pixelPtr[y * photoBlock.pitch + x * 4 + 2] = b;
-	    pixelPtr[y * photoBlock.pitch + x * 4 + 3] = alpha;
-	}
-    }
-
-    TK_PHOTOPUTBLOCK(interp, photoH, &photoBlock, 0, 0, w, h,
-	    TK_PHOTO_COMPOSITE_SET);
-
-    Tcl_Free((char *) pixelPtr);
-}
-
-#else /* not X11 */
-
-void
-Tree_XImage2Photo(
-    Tcl_Interp *interp,		/* Current interpreter. */
-    Tk_PhotoHandle photoH,	/* Existing photo image. */
-    XImage *ximage,		/* XImage to copy pixels from. */
-    int alpha			/* Desired transparency of photo image.*/
-    )
-{
-    Tk_Window tkwin = Tk_MainWindow(interp);
-    Display *display = Tk_Display(tkwin);
-    Visual *visual = Tk_Visual(tkwin);
-    Tk_PhotoImageBlock photoBlock;
-    unsigned char *pixelPtr;
-    int x, y, w = ximage->width, h = ximage->height;
-    int i, ncolors;
-    XColor *xcolors;
-    unsigned long red_shift, green_shift, blue_shift;
-    int separated = 0;
-
-    Tk_PhotoBlank(photoH);
-
-    /* See TkPoscriptImage */
-
-    ncolors = visual->map_entries;
-    xcolors = (XColor *) ckalloc(sizeof(XColor) * ncolors);
-
-    if ((visual->class == DirectColor) || (visual->class == TrueColor)) {
-	separated = 1;
-	red_shift = green_shift = blue_shift = 0;
-	/* ximage->red_mask etc are zero */
-	while ((0x0001 & (visual->red_mask >> red_shift)) == 0)
-	    red_shift++;
-	while ((0x0001 & (visual->green_mask >> green_shift)) == 0)
-	    green_shift++;
-	while ((0x0001 & (visual->blue_mask >> blue_shift)) == 0)
-	    blue_shift++;
-	for (i = 0; i < ncolors; i++) {
-	    xcolors[i].pixel =
-		((i << red_shift) & visual->red_mask) |
-		((i << green_shift) & visual->green_mask) |
-		((i << blue_shift) & visual->blue_mask);
-	}
-    } else {
-	red_shift = green_shift = blue_shift = 0;
-	for (i = 0; i < ncolors; i++)
-	    xcolors[i].pixel = i;
-    }
-
-    XQueryColors(display, Tk_Colormap(tkwin), xcolors, ncolors);
-
-    pixelPtr = (unsigned char *) Tcl_Alloc(ximage->width * ximage->height * 4);
-    photoBlock.pixelPtr  = pixelPtr;
-    photoBlock.width     = ximage->width;
-    photoBlock.height    = ximage->height;
-    photoBlock.pitch     = ximage->width * 4;
-    photoBlock.pixelSize = 4;
-    photoBlock.offset[0] = 0;
-    photoBlock.offset[1] = 1;
-    photoBlock.offset[2] = 2;
-    photoBlock.offset[3] = 3;
-
-    for (y = 0; y < ximage->height; y++) {
-	for (x = 0; x < ximage->width; x++) {
-	    int r, g, b;
-	    unsigned long pixel;
-
-	    pixel = XGetPixel(ximage, x, y);
-	    if (separated) {
-		r = (pixel & visual->red_mask) >> red_shift;
-		g = (pixel & visual->green_mask) >> green_shift;
-		b = (pixel & visual->blue_mask) >> blue_shift;
-		r = ((double) xcolors[r].red / USHRT_MAX) * 255;
-		g = ((double) xcolors[g].green / USHRT_MAX) * 255;
-		b = ((double) xcolors[b].blue / USHRT_MAX) * 255;
-	    } else {
-		r = ((double) xcolors[pixel].red / USHRT_MAX) * 255;
-		g = ((double) xcolors[pixel].green / USHRT_MAX) * 255;
-		b = ((double) xcolors[pixel].blue / USHRT_MAX) * 255;
-	    }
-	    pixelPtr[y * photoBlock.pitch + x * 4 + 0] = r;
-	    pixelPtr[y * photoBlock.pitch + x * 4 + 1] = g;
-	    pixelPtr[y * photoBlock.pitch + x * 4 + 2] = b;
-	    pixelPtr[y * photoBlock.pitch + x * 4 + 3] = alpha;
-	}
-    }
-
-    TK_PHOTOPUTBLOCK(interp, photoH, &photoBlock, 0, 0, w, h,
-	    TK_PHOTO_COMPOSITE_SET);
-
-    Tcl_Free((char *) pixelPtr);
-    ckfree((char *) xcolors);
-}
-
-#endif /* X11 */
 
 /*
  * Replacement for Tk_TextLayout stuff. Allows the caller to break lines
@@ -1632,7 +667,7 @@ static LayoutChunk *NewChunk(LayoutInfo **layoutPtrPtr, int *maxPtr,
     if (layoutPtr->numChunks == layoutPtr->maxChunks) {
 	layoutPtr->maxChunks *= 2;
 	s = sizeof(LayoutInfo) + ((layoutPtr->maxChunks - 1) * sizeof(LayoutChunk));
-	layoutPtr = (LayoutInfo *) ckrealloc((char *) layoutPtr, s);
+	layoutPtr = (LayoutInfo *) ckrealloc((char *) layoutPtr, (int) s);
 
 	*layoutPtrPtr = layoutPtr;
     }
@@ -1674,6 +709,7 @@ TextLayout TextLayout_Compute(
 				** just let lines get as long as needed. */
     Tk_Justify justify,		/* How to justify lines. */
     int maxLines,
+    int lMargin1, int lMargin2, /* Extra indentation or zero */
     int flags	/* Flag bits OR-ed together.
 		 ** TK_IGNORE_TABS means that tab characters
 		 ** should not be expanded.  TK_IGNORE_NEWLINES
@@ -1728,8 +764,7 @@ TextLayout TextLayout_Compute(
     baseline = fm.ascent;
     maxWidth = 0;
 
-    curX = 0;
-
+    curX = lMargin1;
     end = Tcl_UtfAtIndex(string, numChars);
     special = string;
 
@@ -1751,7 +786,8 @@ TextLayout TextLayout_Compute(
 
 	chunkPtr = NULL;
 	if (start < special) {
-	    bytesThisChunk = Tk_MeasureChars(tkfont, start, special - start,
+	    bytesThisChunk = Tk_MeasureChars(tkfont, start,
+		(int) (special - start),
 		wrapLength - curX, flags, &newX);
 	    newX += curX;
 	    flags &= ~TK_AT_LEAST_ONE;
@@ -1812,7 +848,7 @@ TextLayout TextLayout_Compute(
 	    CONST char *end;
 
 	    end = chunkPtr->start + chunkPtr->numBytes;
-	    bytesThisChunk = start - end;
+	    bytesThisChunk = (int) (start - end);
 	    if (bytesThisChunk > 0) {
 		bytesThisChunk =
 		    Tk_MeasureChars(tkfont, end, bytesThisChunk, -1, 0,
@@ -1831,7 +867,14 @@ wrapLine:
 
 	Tcl_DStringAppend(&lineBuffer, (char *) &curX, sizeof(curX));
 
-	curX = 0;
+	chunkPtr = layoutPtr->numChunks ?
+	    &layoutPtr->chunks[layoutPtr->numChunks - 1] : NULL;
+	if ((chunkPtr != NULL) && !(flags & TK_IGNORE_NEWLINES) &&
+		(chunkPtr->start[0] == '\n'))
+	    curX = lMargin1;
+	else
+	    curX = lMargin2;
+
 	baseline += height;
 	layoutPtr->numLines++;
 
@@ -1839,8 +882,8 @@ wrapLine:
 	    break;
     }
 
-    if (start >= end)
-    if ((layoutPtr->numChunks > 0) && !(flags & TK_IGNORE_NEWLINES)) {
+    if ((start >= end) && (layoutPtr->numChunks > 0) &&
+	    !(flags & TK_IGNORE_NEWLINES)) {
 	if (layoutPtr->chunks[layoutPtr->numChunks - 1].start[0] == '\n') {
 	    chunkPtr =
 #ifdef TEXTLAYOUT_ALLOCHAX
@@ -1860,7 +903,7 @@ wrapLine:
      * text remaining */
     if ((start < end) && (layoutPtr->numChunks > 0)) {
 	char *ellipsis = "...";
-	int ellipsisLen = strlen(ellipsis);
+	int ellipsisLen = (int) strlen(ellipsis);
 	char staticStr[256], *buf = staticStr;
 	int pixelsForText;
 
@@ -1931,7 +974,7 @@ finish:
 
     layoutPtr->width = maxWidth;
     layoutPtr->height = baseline - fm.ascent;
-layoutPtr->totalWidth = 0;
+    layoutPtr->totalWidth = 0;
     if (layoutPtr->numChunks == 0) {
 	layoutPtr->height = height;
 
@@ -1963,13 +1006,14 @@ layoutPtr->totalWidth = 0;
 	    else if (justify == TK_JUSTIFY_RIGHT) {
 		chunkPtr->x += extra;
 	    }
-if (chunkPtr->x + chunkPtr->totalWidth > layoutPtr->totalWidth)
-    layoutPtr->totalWidth = chunkPtr->x + chunkPtr->totalWidth;
+	    if (chunkPtr->x + chunkPtr->totalWidth > layoutPtr->totalWidth)
+		layoutPtr->totalWidth = chunkPtr->x + chunkPtr->totalWidth;
 	    chunkPtr++;
 	}
 /* dbwin("totalWidth %d displayWidth %d\n", layoutPtr->totalWidth, maxWidth); */
-    Tcl_DStringFree(&lineBuffer);
     }
+
+    Tcl_DStringFree(&lineBuffer);
 
     /* We don't want single-line text layouts for text elements, but it happens for column titles */
 /*	if (layoutPtr->numLines == 1)
@@ -2046,7 +1090,7 @@ void TextLayout_Draw(
 	    } else {
 		firstByte = Tcl_UtfAtIndex(chunkPtr->start, firstChar);
 		Tk_MeasureChars(layoutPtr->tkfont, chunkPtr->start,
-		    firstByte - chunkPtr->start, -1, 0, &drawX);
+		    (int) (firstByte - chunkPtr->start), -1, 0, &drawX);
 	    }
 	    if (lastChar < numDisplayChars)
 		numDisplayChars = lastChar;
@@ -2055,38 +1099,37 @@ void TextLayout_Draw(
 	    if (chunkPtr->ellipsis) {
 		char staticStr[256], *buf = staticStr;
 		char *ellipsis = "...";
-		int ellipsisLen = strlen(ellipsis);
+		int ellipsisLen = (int) strlen(ellipsis);
 
 		if ((lastByte - firstByte) + ellipsisLen > sizeof(staticStr))
-		    buf = ckalloc((lastByte - firstByte) + ellipsisLen);
+		    buf = ckalloc((int) (lastByte - firstByte) + ellipsisLen);
 		memcpy(buf, firstByte, (lastByte - firstByte));
 		memcpy(buf + (lastByte - firstByte), ellipsis, ellipsisLen);
 		Tk_DrawChars(display, drawable, gc, layoutPtr->tkfont,
-		    buf, (lastByte - firstByte) + ellipsisLen,
+		    buf, (int) (lastByte - firstByte) + ellipsisLen,
 		    x + chunkPtr->x + drawX, y + chunkPtr->y);
 		if (buf != staticStr)
 		    ckfree(buf);
 	    } else
 #endif
 	    Tk_DrawChars(display, drawable, gc, layoutPtr->tkfont,
-		firstByte, lastByte - firstByte, x + chunkPtr->x + drawX,
-		y + chunkPtr->y);
-#if 1
+		firstByte, (int) (lastByte - firstByte),
+		x + chunkPtr->x + drawX, y + chunkPtr->y);
+
 	    if (underline >= firstChar && underline < numDisplayChars) {
 		CONST char *fstBytePtr = Tcl_UtfAtIndex(chunkPtr->start, underline);
 		CONST char *sndBytePtr = Tcl_UtfNext(fstBytePtr);
 		Tk_UnderlineChars(display, drawable, gc,
 			layoutPtr->tkfont, firstByte,
-			x + chunkPtr->x + drawX, y + chunkPtr->y, 
-			fstBytePtr - chunkPtr->start, sndBytePtr - chunkPtr->start);
+			x + chunkPtr->x + drawX, y + chunkPtr->y,
+			(int) (fstBytePtr - chunkPtr->start),
+			(int) (sndBytePtr - chunkPtr->start));
 	    }
-#endif
 	}
 	firstChar -= chunkPtr->numChars;
 	lastChar -= chunkPtr->numChars;
-#if 1
 	underline -= chunkPtr->numChars;
-#endif
+
 	if (lastChar <= 0)
 	    break;
 	chunkPtr++;
@@ -2102,7 +1145,7 @@ void TextLayout_Draw(
  *	A pad amount (typically the value of an option -XXXpadx or
  *	-XXXpady, where XXX may be a possibly empty string) can
  *	be either a single pixel width, or a list of two pixel widths.
- *	If a single pixel width, the amount specified is used for 
+ *	If a single pixel width, the amount specified is used for
  *	padding on both sides.  If two amounts are specified, then
  *	they specify the left/right or top/bottom padding.
  *
@@ -2117,15 +1160,16 @@ void TextLayout_Draw(
  */
 
 int
-TreeCtrl_GetPadAmountFromObj(interp, tkwin, padObj, topLeftPtr, bottomRightPtr)
-    Tcl_Interp *interp;		/* Interpreter for error reporting, or NULL,
+TreeCtrl_GetPadAmountFromObj(
+    Tcl_Interp *interp,		/* Interpreter for error reporting, or NULL,
 				 * if no error message is wanted. */
-    Tk_Window tkwin;		/* A window.  Needed by Tk_GetPixels() */
-    Tcl_Obj *padObj;		/* Object containing a pad amount. */
-    int *topLeftPtr;		/* Pointer to the location, where to store the
+    Tk_Window tkwin,		/* A window.  Needed by Tk_GetPixels() */
+    Tcl_Obj *padObj,		/* Object containing a pad amount. */
+    int *topLeftPtr,		/* Pointer to the location, where to store the
 				   first component of the padding. */
-    int *bottomRightPtr;	/* Pointer to the location, where to store the
+    int *bottomRightPtr		/* Pointer to the location, where to store the
 				   second component of the padding. */
+    )
 {
     int padc;			/* Number of element objects in padv. */
     Tcl_Obj **padv;		/* Pointer to the element objects of the
@@ -2187,8 +1231,9 @@ TreeCtrl_GetPadAmountFromObj(interp, tkwin, padObj, topLeftPtr, bottomRightPtr)
  */
 
 Tcl_Obj *
-TreeCtrl_NewPadAmountObj(padAmounts)
-    int *padAmounts;		/* Internal form of a pad amount. */
+TreeCtrl_NewPadAmountObj(
+    int *padAmounts		/* Internal form of a pad amount. */
+    )
 {
     Tcl_Obj *newObj;
 
@@ -2222,7 +1267,7 @@ TreeCtrl_NewPadAmountObj(padAmounts)
  *	A pad amount (typically the value of an option -XXXpadx or
  *	-XXXpady, where XXX may be a possibly empty string) can
  *	be either a single pixel width, or a list of two pixel widths.
- *	If a single pixel width, the amount specified is used for 
+ *	If a single pixel width, the amount specified is used for
  *	padding on both sides.  If two amounts are specified, then
  *	they specify the left/right or top/bottom padding.
  *
@@ -2246,34 +1291,41 @@ TreeCtrl_NewPadAmountObj(padAmounts)
  */
 
 static int
-PadAmountOptionSet(clientData, interp, tkwin, valuePtr, recordPtr,
-		   internalOffset, saveInternalPtr, flags)
-    ClientData clientData;	/* unused. */
-    Tcl_Interp *interp;		/* Interpreter for error reporting, or NULL,
+PadAmountOptionSet(
+    ClientData clientData,	/* unused. */
+    Tcl_Interp *interp,		/* Interpreter for error reporting, or NULL,
 				 * if no error message is wanted. */
-    Tk_Window tkwin;		/* A window.  Needed by Tk_GetPixels() */
-    Tcl_Obj **valuePtr;		/* The argument to "-padx", "-pady", "-ipadx",
+    Tk_Window tkwin,		/* A window.  Needed by Tk_GetPixels() */
+    Tcl_Obj **valuePtr,		/* The argument to "-padx", "-pady", "-ipadx",
 				 * or "-ipady".  The thing to be parsed. */
-    char *recordPtr;		/* Pointer to start of widget record. */
-    int internalOffset;		/* Offset of internal representation or
+    char *recordPtr,		/* Pointer to start of widget record. */
+    int internalOffset,		/* Offset of internal representation or
 				 * -1, if no internal repr is wanted. */
-    char *saveInternalPtr;	/* Pointer to the place, where the saved
+    char *saveInternalPtr,	/* Pointer to the place, where the saved
 				 * internal form (of type "int *") resides. */
-    int flags;			/* Flags as specified in Tk_OptionSpec. */
+    int flags			/* Flags as specified in Tk_OptionSpec. */
+    )
 {
+    int objEmpty;
     int topLeft, bottomRight;	/* The two components of the padding. */
     int *new;			/* Pointer to the allocated array of integers
 				 * containing the parsed pad amounts. */
     int **internalPtr;		/* Pointer to the place, where the internal
 				 * form (of type "int *") resides. */
 
-    /*
-     * Check that the given object indeed specifies a valid pad amount.
-     */
+    objEmpty = ObjectIsEmpty((*valuePtr));
 
-    if (TreeCtrl_GetPadAmountFromObj(interp, tkwin, *valuePtr,
-	    &topLeft, &bottomRight) != TCL_OK) {
-	return TCL_ERROR;
+    if ((flags & TK_OPTION_NULL_OK) && objEmpty)
+	(*valuePtr) = NULL;
+    else {
+	/*
+	* Check that the given object indeed specifies a valid pad amount.
+	*/
+
+	if (TreeCtrl_GetPadAmountFromObj(interp, tkwin, *valuePtr,
+		&topLeft, &bottomRight) != TCL_OK) {
+	    return TCL_ERROR;
+	}
     }
 
     /*
@@ -2284,44 +1336,53 @@ PadAmountOptionSet(clientData, interp, tkwin, valuePtr, recordPtr,
     if (internalOffset >= 0) {
 	internalPtr = (int **) (recordPtr + internalOffset);
 	*(int **) saveInternalPtr = *internalPtr;
-	new = (int *) ckalloc(2 * sizeof(int));
-	new[PAD_TOP_LEFT]     = topLeft;
-	new[PAD_BOTTOM_RIGHT] = bottomRight;
+	if (*valuePtr == NULL)
+	    new = NULL;
+	else {
+	    new = (int *) ckalloc(2 * sizeof(int));
+	    new[PAD_TOP_LEFT]     = topLeft;
+	    new[PAD_BOTTOM_RIGHT] = bottomRight;
+	}
 	*internalPtr = new;
     }
     return TCL_OK;
 }
 
 static Tcl_Obj *
-PadAmountOptionGet(clientData, tkwin, recordPtr, internalOffset)
-    ClientData clientData;	/* unused. */
-    Tk_Window tkwin;		/* A window; unused. */
-    char *recordPtr;		/* Pointer to start of widget record. */
-    int internalOffset;		/* Offset of internal representation. */
+PadAmountOptionGet(
+    ClientData clientData,	/* unused. */
+    Tk_Window tkwin,		/* A window; unused. */
+    char *recordPtr,		/* Pointer to start of widget record. */
+    int internalOffset		/* Offset of internal representation. */
+    )
 {
     int *padAmounts = *(int **)(recordPtr + internalOffset);
 
+    if (padAmounts == NULL)
+	return NULL;
     return TreeCtrl_NewPadAmountObj(padAmounts);
 }
 
 static void
-PadAmountOptionRestore(clientData, tkwin, internalPtr, saveInternalPtr)
-    ClientData clientData;	/* unused. */
-    Tk_Window tkwin;		/* A window; unused. */
-    char *internalPtr;		/* Pointer to the place, where the internal
+PadAmountOptionRestore(
+    ClientData clientData,	/* unused. */
+    Tk_Window tkwin,		/* A window; unused. */
+    char *internalPtr,		/* Pointer to the place, where the internal
 				 * form (of type "int *") resides. */
-    char *saveInternalPtr;	/* Pointer to the place, where the saved
+    char *saveInternalPtr	/* Pointer to the place, where the saved
 				 * internal form (of type "int *") resides. */
+    )
 {
     *(int **) internalPtr = *(int **) saveInternalPtr;
 }
 
 static void
-PadAmountOptionFree(clientData, tkwin, internalPtr)
-    ClientData clientData;	/* unused. */
-    Tk_Window tkwin;		/* A window; unused */
-    char *internalPtr;		/* Pointer to the place, where the internal
+PadAmountOptionFree(
+    ClientData clientData,	/* unused. */
+    Tk_Window tkwin,		/* A window; unused */
+    char *internalPtr		/* Pointer to the place, where the internal
 				 * form (of type "int *") resides. */
+    )
 {
     if (*(int **)internalPtr != NULL) {
 	ckfree((char *) *(int **)internalPtr);
@@ -2433,6 +1494,7 @@ PerStateInfo_Free(
 int
 PerStateInfo_FromObj(
     TreeCtrl *tree,		/* Widget info. */
+    int domain,			/* STATE_DOMAIN_XXX index. */
     StateFromObjProc proc,	/* Procedure used to turn a Tcl_Obj into
 				 * a state bit-flag. */
     PerStateType *typePtr,	/* Type-specific functions and values. */
@@ -2504,7 +1566,7 @@ PerStateInfo_FromObj(
 	}
 	pData->stateOff = pData->stateOn = 0; /* all states */
 	for (j = 0; j < objc2; j++) {
-	    if (proc(tree, objv2[j], &pData->stateOff, &pData->stateOn) != TCL_OK) {
+	    if (proc(tree, domain, objv2[j], &pData->stateOff, &pData->stateOn) != TCL_OK) {
 		goto freeIt;
 	    }
 	}
@@ -2638,7 +1700,7 @@ PerStateInfo_ObjForState(
 
     pData = PerStateInfo_ForState(tree, typePtr, pInfo, state, match);
     if (pData != NULL) {
-	i = ((char *) pData - (char *) pInfo->data) / typePtr->size;
+	i = (int) ((char *) pData - (char *) pInfo->data) / typePtr->size;
 	Tcl_ListObjIndex(tree->interp, pInfo->obj, i * 2, &obj);
 	return obj;
     }
@@ -2692,6 +1754,7 @@ PerStateInfo_Undefine(
     TreeCtrl *tree,		/* Widget info. */
     PerStateType *typePtr,	/* Type-specific functions and values. */
     PerStateInfo *pInfo,	/* Per-state info to modify. */
+    int domain,			/* STATE_DOMAIN_XXX index. */
     int state			/* State bit-flag that was undefined. */
     )
 {
@@ -2725,7 +1788,7 @@ PerStateInfo_Undefine(
 	    for (j = 0; j < numStates; ) {
 		Tcl_ListObjIndex(tree->interp, listObj, j, &stateObj);
 		stateOff = stateOn = 0;
-		TreeStateFromObj(tree, stateObj, &stateOff, &stateOn);
+		TreeStateFromObj(tree, domain, stateObj, &stateOff, &stateOn); /* FIXME: why this proc? */
 		if ((stateOff | stateOn) & state) {
 		    Tcl_ListObjReplace(tree->interp, listObj, j, 1, 0, NULL);
 		    numStates--;
@@ -2753,14 +1816,23 @@ Tree_GetGC(
     XGCValues *gcValues)
 {
     GCCache *pGC;
-    unsigned long valid = GCFont | GCForeground | GCFunction | GCBackground
-	    | GCGraphicsExposures;
+    unsigned long valid = GCBackground | GCDashList | GCDashOffset | GCFont |
+	    GCForeground | GCFunction | GCGraphicsExposures | GCLineStyle;
 
     if ((mask | valid) != valid)
-	panic("GCCache_Get: unsupported mask");
+	panic("Tree_GetGC: unsupported mask");
 
     for (pGC = tree->gcCache; pGC != NULL; pGC = pGC->next) {
 	if (mask != pGC->mask)
+	    continue;
+	if ((mask & GCBackground) &&
+		(pGC->gcValues.background != gcValues->background))
+	    continue;
+	if ((mask & GCDashList) &&
+		(pGC->gcValues.dashes != gcValues->dashes)) /* FIXME: single value */
+	    continue;
+	if ((mask & GCDashOffset) &&
+		(pGC->gcValues.dash_offset != gcValues->dash_offset))
 	    continue;
 	if ((mask & GCFont) &&
 		(pGC->gcValues.font != gcValues->font))
@@ -2770,9 +1842,6 @@ Tree_GetGC(
 	    continue;
 	if ((mask & GCFunction) &&
 		(pGC->gcValues.function != gcValues->function))
-	    continue;
-	if ((mask & GCBackground) &&
-		(pGC->gcValues.background != gcValues->background))
 	    continue;
 	if ((mask & GCGraphicsExposures) &&
 		(pGC->gcValues.graphics_exposures != gcValues->graphics_exposures))
@@ -3005,7 +2074,7 @@ typedef struct PerStateDataColor PerStateDataColor;
 struct PerStateDataColor
 {
     PerStateData header;
-    XColor *color;
+    TreeColor *color;
 };
 
 static int
@@ -3018,7 +2087,7 @@ PSDColorFromObj(
 	/* Specify empty string to override masterX */
 	pColor->color = NULL;
     } else {
-	pColor->color = Tk_AllocColorFromObj(tree->interp, tree->tkwin, obj);
+	pColor->color = Tree_AllocColorFromObj(tree, obj);
 	if (pColor->color == NULL)
 	    return TCL_ERROR;
     }
@@ -3031,7 +2100,7 @@ PSDColorFree(
     PerStateDataColor *pColor)
 {
     if (pColor->color != NULL)
-	Tk_FreeColor(pColor->color);
+	Tree_FreeColor(tree, pColor->color);
 }
 
 PerStateType pstColor =
@@ -3042,7 +2111,7 @@ PerStateType pstColor =
     (PerStateType_FreeProc) PSDColorFree
 };
 
-XColor *
+TreeColor *
 PerStateColor_ForState(
     TreeCtrl *tree,
     PerStateInfo *pInfo,
@@ -3264,6 +2333,140 @@ PerStateRelief_ForState(
 
 /*****/
 
+int
+Tree_GetFlagsFromString(
+    TreeCtrl *tree,
+    const char *string,
+    int length,
+    const char *typeStr,
+    const CharFlag flags[],
+    int *flagsPtr
+    )
+{
+    int i, j, bits = 0, allBits = 0, numFlags = 0;
+
+    for (j = 0; flags[j].flagChar != '\0'; j++) {
+	allBits |= flags[j].flagBit;
+	numFlags++;
+    }
+
+    for (i = 0; i < length; i++) {
+	for (j = 0; flags[j].flagChar != '\0'; j++) {
+	    if (string[i] == flags[j].flagChar
+		    || string[i] == toupper(flags[j].flagChar)) {
+		bits |= flags[j].flagBit;
+		break;
+	    }
+	}
+	if (flags[j].flagChar == '\0') {
+	    Tcl_ResetResult(tree->interp);
+	    Tcl_AppendResult(tree->interp, "bad ", typeStr, " \"",
+		    string, "\": must be a string ",
+		    "containing zero or more of ",
+		    (char *) NULL);
+	    for (j = 0; flags[j].flagChar != '\0'; j++) {
+		char buf[8];
+		if (flags[j+1].flagChar != '\0')
+		    (void) sprintf(buf, "%c%s ", flags[j].flagChar,
+			(numFlags > 2) ? "," : "");
+		else
+		    (void) sprintf(buf, "and %c", flags[j].flagChar);
+		Tcl_AppendResult(tree->interp, buf, (char *) NULL);
+	    }
+	    return TCL_ERROR;
+	}
+    }
+
+    (*flagsPtr) &= ~allBits;
+    (*flagsPtr) |= bits;
+
+    return TCL_OK;
+}
+
+int
+Tree_GetFlagsFromObj(
+    TreeCtrl *tree,
+    Tcl_Obj *obj,
+    const char *typeStr,
+    const CharFlag flags[],
+    int *flagsPtr
+    )
+{
+    int length;
+    char *string;
+
+    string = Tcl_GetStringFromObj(obj, &length);
+    return Tree_GetFlagsFromString(tree, string, length, typeStr, flags,
+	    flagsPtr);
+}
+
+/*****/
+
+/* The rect element's -open option */
+typedef struct PerStateDataFlags PerStateDataFlags;
+struct PerStateDataFlags
+{
+    PerStateData header;
+    int flags;
+};
+
+static int
+PSDFlagsFromObj(
+    TreeCtrl *tree,
+    Tcl_Obj *obj,
+    PerStateDataFlags *pFlags)
+{
+    if (ObjectIsEmpty(obj)) {
+	pFlags->flags = 0xFFFFFFFF;
+    } else {
+	static const CharFlag openFlags[] = {
+	    { 'n', RECT_OPEN_N },
+	    { 'e', RECT_OPEN_E },
+	    { 's', RECT_OPEN_S },
+	    { 'w', RECT_OPEN_W },
+	    { 0, 0 }
+	};
+	pFlags->flags = 0;
+	if (Tree_GetFlagsFromObj(tree, obj, "open value", openFlags,
+		&pFlags->flags) != TCL_OK) {
+	    return TCL_ERROR;
+	}
+    }
+    return TCL_OK;
+}
+
+static void
+PSDFlagsFree(
+    TreeCtrl *tree,
+    PerStateDataFlags *pFlags)
+{
+}
+
+PerStateType pstFlags =
+{
+    "pstFlags",
+    sizeof(PerStateDataFlags),
+    (PerStateType_FromObjProc) PSDFlagsFromObj,
+    (PerStateType_FreeProc) PSDFlagsFree
+};
+
+int
+PerStateFlags_ForState(
+    TreeCtrl *tree,
+    PerStateInfo *pInfo,
+    int state,
+    int *match)
+{
+    PerStateDataFlags *pData;
+
+    pData = (PerStateDataFlags *) PerStateInfo_ForState(tree, &pstFlags, pInfo, state, match);
+    if (pData != NULL)
+	return pData->flags;
+    return 0xFFFFFFFF;
+}
+
+/*****/
+
 void
 PSTSave(
     PerStateInfo *pInfo,
@@ -3320,8 +2523,9 @@ struct AllocElem
 {
     AllocElem *next;
 #ifdef TREECTRL_DEBUG
-    int free;
-    int size;
+    char dbug[4];	/* "DBUG" */
+    int free;		/* 1 if elem is available for reuse. */
+    int size;		/* Number of bytes in body[]. */
 #endif
     char body[1];	/* First byte of client's space.  Actual
 			 * size of this field will be larger than
@@ -3376,8 +2580,11 @@ struct AllocStats {
  * body pointer that's used by clients.
  */
 
-#define BODY_OFFSET \
-    ((unsigned long) (&((AllocElem *) 0)->body))
+#ifdef offsetofXXX
+#define BODY_OFFSET ((size_t) offsetof(AllocElem, body))
+#else
+#define BODY_OFFSET ((size_t) (&((AllocElem *) 0)->body))
+#endif
 
 #ifdef ALLOC_STATS
 
@@ -3502,6 +2709,7 @@ TreeAlloc_Alloc(
 	elem = freeList->head;
 	for (i = 1; i < block->count - 1; i++) {
 #ifdef TREECTRL_DEBUG
+	    strncpy(elem->dbug, "DBUG", 4);
 	    elem->free = 1;
 	    elem->size = size;
 #endif
@@ -3511,6 +2719,7 @@ TreeAlloc_Alloc(
 	}
 	elem->next = NULL;
 #ifdef TREECTRL_DEBUG
+	strncpy(elem->dbug, "DBUG", 4);
 	elem->free = 1;
 	elem->size = size;
 #endif
@@ -3600,17 +2809,21 @@ TreeAlloc_Free(
     stats->size -= size;
 #endif
 
+    /* Comment from Tcl_DbCkfree: */
     /*
-     * Comment from Tcl_DbCkfree:
      * The following cast is *very* tricky.  Must convert the pointer
      * to an integer before doing arithmetic on it, because otherwise
      * the arithmetic will be done differently (and incorrectly) on
      * word-addressed machines such as Crays (will subtract only bytes,
      * even though BODY_OFFSET is in words on these machines).
      */
-    elem = (AllocElem *) (((unsigned long) ptr) - BODY_OFFSET);
+    /* Note: The Tcl source used to do "(unsigned long) ptr" but that
+     * results in pointer truncation on 64-bit Windows builds. */
+    elem = (AllocElem *) (((size_t) ptr) - BODY_OFFSET);
 
 #ifdef TREECTRL_DEBUG
+    if (strncmp(elem->dbug, "DBUG", 4) != 0)
+	panic("TreeAlloc_Free: element header != DBUG");
     if (elem->free)
 	panic("TreeAlloc_Free: element already marked free");
     if (elem->size != size)
@@ -4247,7 +3460,7 @@ TagInfo_FromObj(
     return TCL_OK;
 }
 
-Tcl_Obj *
+static Tcl_Obj *
 TagInfo_ToObj(
     TreeCtrl *tree,		/* Widget info. */
     TagInfo *tagInfo
@@ -4897,7 +4110,7 @@ _TagExpr_Eval(
 			    uid == searchUids->negparenUid) {
 			parendepth++;
 			continue;
-		    } 
+		    }
 		    if (uid == searchUids->endparenUid) {
 			parendepth--;
 			if (parendepth < 0) {
@@ -5112,7 +4325,9 @@ PerStateCO_Set(
 	new.data = NULL;
 	new.count = 0;
 /*	Tcl_IncrRefCount((*value));*/
-	if (PerStateInfo_FromObj(tree, cd->proc, cd->typePtr, &new) != TCL_OK) {
+	if (tree->configStateDomain == -1)
+	    panic("PerStateCO_Set configStateDomain == -1");
+	if (PerStateInfo_FromObj(tree, tree->configStateDomain, cd->proc, cd->typePtr, &new) != TCL_OK) {
 /*	    Tcl_DecrRefCount((*value));*/
 	    return TCL_ERROR;
 	}
@@ -5309,7 +4524,7 @@ static CONST char *DynamicOptionUid = "DynamicOption";
  *----------------------------------------------------------------------
  */
 
-DynamicOption *
+static DynamicOption *
 DynamicOption_Find(
     DynamicOption *first,	/* Head of linked list. */
     int id			/* Unique id. */
@@ -5841,6 +5056,72 @@ DynamicOption_Free1(
 /*
  *----------------------------------------------------------------------
  *
+ * Tree_InitOptions --
+ * Tree_SetOptions --
+ *
+ *	These procedures are just wrappers around Tk_InitOptions and
+ *	Tk_SetOptions.  They set tree->configStateDomain so that any
+ *	per-state options know which state domain to use.
+ *
+ * Results:
+ *	A standard Tcl result.
+ *
+ * Side effects:
+ *	Whatever the wrapped function does.
+ *
+ *----------------------------------------------------------------------
+ */
+
+int
+Tree_InitOptions(
+    TreeCtrl *tree,
+    int domain,
+    void *recordPtr,
+    Tk_OptionTable optionTable
+    )
+{
+    int result;
+
+    if (tree->configStateDomain != -1)
+	panic("Tree_InitOptions configStateDomain != -1");
+
+    tree->configStateDomain = domain;
+
+    result = Tk_InitOptions(tree->interp, recordPtr, optionTable, tree->tkwin);
+
+    tree->configStateDomain = -1;
+    return result;
+}
+
+int
+Tree_SetOptions(
+    TreeCtrl *tree,
+    int domain,
+    void *recordPtr,
+    Tk_OptionTable optionTable,
+    int objc,
+    Tcl_Obj *CONST objv[],
+    Tk_SavedOptions *savePtr,
+    int *maskPtr
+    )
+{
+    int result;
+
+    if (tree->configStateDomain != -1)
+	panic("Tree_SetOptions configStateDomain != -1");
+
+    tree->configStateDomain = domain;
+
+    result = Tk_SetOptions(tree->interp, recordPtr, optionTable, objc, objv,
+	tree->tkwin, savePtr, maskPtr);
+
+    tree->configStateDomain = -1;
+    return result;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
  * StringCO_Set --
  * StringCO_Get --
  * StringCO_Restore --
@@ -6070,6 +5351,7 @@ StyleCO_Set(
     int flags
     )
 {
+    int domain = PTR2INT(clientData), domainS;
     TreeCtrl *tree = (TreeCtrl *) ((TkWindow *) tkwin)->instanceData;
     int objEmpty;
     TreeStyle *internalPtr, new;
@@ -6087,6 +5369,14 @@ StyleCO_Set(
     } else {
 	if (TreeStyle_FromObj(tree, *valuePtr, &new) != TCL_OK)
 	    return TCL_ERROR;
+	domainS = TreeStyle_GetStateDomain(tree, new);
+	if (domainS != domain) {
+	    FormatResult(interp,
+		"expected state domain \"%s\" but got \"%s\"",
+		tree->stateDomain[domain].name,
+		tree->stateDomain[domainS].name);
+	    return TCL_ERROR;
+	}
     }
 
     if (internalPtr != NULL) {
@@ -6136,6 +5426,45 @@ Tk_ObjCustomOption TreeCtrlCO_style =
 /*
  *----------------------------------------------------------------------
  *
+ * TreeStyleCO_Init --
+ *
+ *	Initializes a Tk_OptionSpec.clientData for a custom option.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TreeStyleCO_Init(
+    Tk_OptionSpec *optionTable,
+    CONST char *optionName,
+    int domain
+    )
+{
+    Tk_OptionSpec *specPtr;
+    Tk_ObjCustomOption *co;
+
+    specPtr = Tree_FindOptionSpec(optionTable, optionName);
+    if (specPtr->type != TK_OPTION_CUSTOM)
+	panic("TreeStyleCO_Init: %s is not TK_OPTION_CUSTOM", optionName);
+    if (specPtr->clientData != NULL)
+	return;
+
+    co = (Tk_ObjCustomOption *) ckalloc(sizeof(Tk_ObjCustomOption));
+    *co = TreeCtrlCO_style;
+    co->clientData = INT2PTR(domain);
+
+    specPtr->clientData = co;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
  * BooleanFlagCO_Set --
  * BooleanFlagCO_Get --
  * BooleanFlagCO_Restore --
@@ -6165,7 +5494,7 @@ BooleanFlagCO_Set(
     int flags
     )
 {
-    int theFlag = (int) clientData;
+    int theFlag = PTR2INT(clientData);
     int new, *internalPtr;
 
     if (internalOffset >= 0)
@@ -6195,7 +5524,7 @@ BooleanFlagCO_Get(
     int internalOffset
     )
 {
-    int theFlag = (int) clientData;
+    int theFlag = PTR2INT(clientData);
     int value = *(int *) (recordPtr + internalOffset);
 
     return Tcl_NewBooleanObj(value & theFlag);
@@ -6209,7 +5538,7 @@ BooleanFlagCO_Restore(
     char *saveInternalPtr
     )
 {
-    int theFlag = (int) clientData;
+    int theFlag = PTR2INT(clientData);
     int value = *(int *) saveInternalPtr;
 
     if (value & theFlag)
@@ -6241,7 +5570,7 @@ BooleanFlagCO_Init(
     co->getProc = BooleanFlagCO_Get;
     co->restoreProc = BooleanFlagCO_Restore;
     co->freeProc = NULL;
-    co->clientData = (ClientData) theFlag;
+    co->clientData = (ClientData) INT2PTR(theFlag);
 
     specPtr->clientData = co;
 
@@ -6435,3 +5764,2526 @@ Tree_GetIntForIndex(
     }
     return TCL_OK;
 }
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * Tree_DrawRoundRectX11 --
+ *
+ *	Draw a rounded rectangle with a solid color.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	Drawing.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+Tree_DrawRoundRectX11(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeDrawable td,		/* Where to draw. */
+    TreeClip *clip,		/* Clipping area or NULL. */
+    GC gc,			/* Graphics context. */
+    TreeRectangle tr,		/* Where to draw. */
+    int outlineWidth,
+    int rx, int ry,		/* Corner radius */
+    int open			/* RECT_OPEN_x flags */
+    )
+{
+    int x = tr.x, y = tr.y, width = tr.width, height = tr.height;
+    TreeRectangle rects[4], *pr = rects;
+    int nrects = 0;
+    int drawW = (open & RECT_OPEN_W) == 0;
+    int drawN = (open & RECT_OPEN_N) == 0;
+    int drawE = (open & RECT_OPEN_E) == 0;
+    int drawS = (open & RECT_OPEN_S) == 0;
+    int i;
+
+    /* Calculate the bounds of each edge that should be drawn */
+    if (drawW) {
+	pr->x = x, pr->y = y, pr->width = outlineWidth, pr->height = height;
+	if (drawN)
+	    pr->y += ry, pr->height -= ry;
+	if (drawS)
+	    pr->height -= ry;
+	if (pr->width > 0 && pr->height > 0)
+	    pr++, nrects++;
+    }
+    if (drawN) {
+	pr->x = x, pr->y = y, pr->width = width, pr->height = outlineWidth;
+	if (drawW)
+	    pr->x += rx, pr->width -= rx;
+	if (drawE)
+	    pr->width -= rx;
+	if (pr->width > 0 && pr->height > 0)
+	    pr++, nrects++;
+    }
+    if (drawE) {
+	pr->x = x + width - outlineWidth, pr->y = y, pr->width = outlineWidth, pr->height = height;
+	if (drawN)
+	    pr->y += ry, pr->height -= ry;
+	if (drawS)
+	    pr->height -= ry;
+	if (pr->width > 0 && pr->height > 0)
+	    pr++, nrects++;
+    }
+    if (drawS) {
+	pr->x = x, pr->y = y + height - outlineWidth, pr->width = width, pr->height = outlineWidth;
+	if (drawW)
+	    pr->x += rx, pr->width -= rx;
+	if (drawE)
+	    pr->width -= rx;
+	if (pr->width > 0 && pr->height > 0)
+	    pr++, nrects++;
+    }
+    for (i = 0; i < nrects; i++)
+	Tree_FillRectangle(tree, td, clip, gc, rects[i]);
+
+    /* On Win32 the code below works, leaving a 1-pixel hole at each
+     * corner.  But on X11 there is no hole. */
+    if (rx == 1 && ry == 1)
+	return;
+
+    width -= 1, height -= 1;
+
+    if (drawW && drawN)
+	Tree_DrawArc(tree, td, clip, gc, x, y, rx*2, ry*2, 64*90, 64*90); /* top-left */
+    if (drawW && drawS)
+	Tree_DrawArc(tree, td, clip, gc, x, y + height - ry*2, rx*2, ry*2, 64*180, 64*90); /* bottom-left */
+    if (drawE && drawN)
+	Tree_DrawArc(tree, td, clip, gc, x + width - rx*2, y, rx*2, ry*2, 64*0, 64*90); /* top-right */
+    if (drawE && drawS)
+	Tree_DrawArc(tree, td, clip, gc, x + width - rx*2, y + height - ry*2, rx*2, ry*2, 64*270, 64*90); /* bottom-right */
+
+    for (i = 1; i < outlineWidth; i++) {
+	x += 1, width -= 2;
+	if (drawW && drawN)
+	    Tree_DrawArc(tree, td, clip, gc, x, y, rx*2, ry*2, 64*90, 64*90); /* top-left */
+	if (drawW && drawS)
+	    Tree_DrawArc(tree, td, clip, gc, x, y + height - ry*2, rx*2, ry*2, 64*180, 64*90); /* bottom-left */
+	if (drawE && drawN)
+	    Tree_DrawArc(tree, td, clip, gc, x + width - rx*2, y, rx*2, ry*2, 64*0, 64*90); /* top-right */
+	if (drawE && drawS)
+	    Tree_DrawArc(tree, td, clip, gc, x + width - rx*2, y + height - ry*2, rx*2, ry*2, 64*270, 64*90); /* bottom-right */
+
+	y += 1, height -= 2;
+	if (drawW && drawN)
+	    Tree_DrawArc(tree, td, clip, gc, x, y, rx*2, ry*2, 64*90, 64*90); /* top-left */
+	if (drawW && drawS)
+	    Tree_DrawArc(tree, td, clip, gc, x, y + height - ry*2, rx*2, ry*2, 64*180, 64*90); /* bottom-left */
+	if (drawE && drawN)
+	    Tree_DrawArc(tree, td, clip, gc, x + width - rx*2, y, rx*2, ry*2, 64*0, 64*90); /* top-right */
+	if (drawE && drawS)
+	    Tree_DrawArc(tree, td, clip, gc, x + width - rx*2, y + height - ry*2, rx*2, ry*2, 64*270, 64*90); /* bottom-right */
+    }
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * Tree_FillRoundRectX11 --
+ *
+ *	Fill a rounded rectangle with a solid color.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	Drawing.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+Tree_FillRoundRectX11(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeDrawable td,		/* Where to draw. */
+    TreeClip *clip,		/* Clipping area or NULL. */
+    GC gc,			/* Graphics context. */
+    TreeRectangle tr,		/* Rectangle to paint. */
+    int rx, int ry,		/* Corner radius */
+    int open			/* RECT_OPEN_x flags */
+    )
+{
+    TreeRectangle rects[3], *rectp = rects;
+    int nrects = 0;
+    int drawW = (open & RECT_OPEN_W) == 0;
+    int drawN = (open & RECT_OPEN_N) == 0;
+    int drawE = (open & RECT_OPEN_E) == 0;
+    int drawS = (open & RECT_OPEN_S) == 0;
+    int i;
+
+    tr.height -= 1, tr.width -= 1;
+    if (drawW && drawN)
+	Tree_FillArc(tree, td, clip, gc, tr.x, tr.y, rx*2, ry*2, 64*90, 64*90); /* top-left */
+    if (drawW && drawS)
+	Tree_FillArc(tree, td, clip, gc, tr.x, tr.y + tr.height - ry*2, rx*2, ry*2, 64*180, 64*90); /* bottom-left */
+    if (drawE && drawN)
+	Tree_FillArc(tree, td, clip, gc, tr.x + tr.width - rx*2, tr.y, rx*2, ry*2, 64*0, 64*90); /* top-right */
+    if (drawE && drawS)
+	Tree_FillArc(tree, td, clip, gc, tr.x + tr.width - rx*2, tr.y + tr.height - ry*2, rx*2, ry*2, 64*270, 64*90); /* bottom-right */
+    tr.height += 1, tr.width += 1;
+
+    /* Everything but left/right edges */
+    rectp->x = tr.x + rx;
+    rectp->y = tr.y;
+    rectp->width = tr.width - rx * 2;
+    rectp->height = tr.height;
+    if (rectp->width > 0 && rectp->height > 0) {
+	nrects++;
+	rectp++;
+    }
+
+    /* Left edge */
+    rectp->x = tr.x;
+    rectp->y = tr.y;
+    rectp->width = rx;
+    rectp->height = tr.height;
+    if (drawW && drawN)
+	rectp->y += ry, rectp->height -= ry;
+    if (drawW && drawS)
+	rectp->height -= ry;
+    if (rectp->width > 0 && rectp->height > 0) {
+	nrects++;
+	rectp++;
+    }
+
+    /* Right edge */
+    rectp->x = tr.x + tr.width - rx;
+    rectp->y = tr.y;
+    rectp->width = rx;
+    rectp->height = tr.height;
+    if (drawE && drawN)
+	rectp->y += ry, rectp->height -= ry;
+    if (drawE && drawS)
+	rectp->height -= ry;
+    if (rectp->width > 0 && rectp->height > 0) {
+	nrects++;
+	rectp++;
+    }
+
+    for (i = 0; i < nrects; i++)
+	Tree_FillRectangle(tree, td, clip, gc, rects[i]);
+}
+
+/*****/
+
+typedef struct PerStateDataGradient PerStateDataGradient;
+struct PerStateDataGradient
+{
+    PerStateData header;
+    TreeGradient gradient;
+};
+
+static int
+PSDGradientFromObj(
+    TreeCtrl *tree,
+    Tcl_Obj *obj,
+    PerStateDataGradient *pGradient)
+{
+    if (ObjectIsEmpty(obj)) {
+	/* Specify empty string to override masterX */
+	pGradient->gradient = NULL;
+    } else {
+	if (TreeGradient_FromObj(tree, obj, &pGradient->gradient) != TCL_OK)
+	    return TCL_ERROR;
+	pGradient->gradient->refCount++;
+    }
+    return TCL_OK;
+}
+
+static void
+PSDGradientFree(
+    TreeCtrl *tree,
+    PerStateDataGradient *pGradient)
+{
+    if (pGradient->gradient != NULL)
+	TreeGradient_Release(tree, pGradient->gradient);
+}
+
+PerStateType pstGradient =
+{
+    "pstGradient",
+    sizeof(PerStateDataGradient),
+    (PerStateType_FromObjProc) PSDGradientFromObj,
+    (PerStateType_FreeProc) PSDGradientFree
+};
+
+TreeGradient
+PerStateGradient_ForState(
+    TreeCtrl *tree,
+    PerStateInfo *pInfo,
+    int state,
+    int *match)
+{
+    PerStateDataGradient *pData;
+
+    pData = (PerStateDataGradient *) PerStateInfo_ForState(tree, &pstGradient, pInfo, state, match);
+    if (pData != NULL)
+	return pData->gradient;
+    return NULL;
+}
+
+/*****/
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * Tree_AllocColorFromObj --
+ *
+ *	Allocate a TreeColor structure based on the given object.
+ *
+ * Results:
+ *	A new TreeColor struct or NULL if an error occurred.
+ *
+ * Side effects:
+ *	Memory may be allocated.  If the color refers to a gradient
+ *	its refCount is incremented.
+ *
+ *----------------------------------------------------------------------
+ */
+
+TreeColor *
+Tree_AllocColorFromObj(
+    TreeCtrl *tree,		/* Widget info. */
+    Tcl_Obj *obj		/* Gradient name or Tk color specification */
+    )
+{
+    TreeGradient gradient = NULL;
+    XColor *color = NULL;
+    TreeColor *tc;
+
+    if (TreeGradient_FromObj(tree, obj, &gradient) == TCL_OK) {
+	gradient->refCount++;
+    } else {
+	Tcl_ResetResult(tree->interp);
+	color = Tk_AllocColorFromObj(tree->interp, tree->tkwin, obj);
+	if (color == NULL) {
+	    FormatResult(tree->interp, "unknown color or gradient name \"%s\"",
+		Tcl_GetString(obj));
+	    return NULL;
+	}
+    }
+
+    tc = (TreeColor *) ckalloc(sizeof(TreeColor));
+    tc->color = color;
+    tc->gradient = gradient;
+
+    return tc;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * Tree_FreeColor --
+ *
+ *	Free a TreeColor.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	Memory may be freed.  If the color refers to a gradient
+ *	its refCount is decremented.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+Tree_FreeColor(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeColor *tc		/* Color to free, may be NULL */
+    )
+{
+    if (tc != NULL) {
+	if (tc->color)
+	    Tk_FreeColor(tc->color);
+	if (tc->gradient)
+	   TreeGradient_Release(tree, tc->gradient);
+	WFREE(tc, TreeColor);
+    }
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeColor_ToObj --
+ *
+ *	Returns the Tcl_Obj representation of a TreeColor.
+ *
+ * Results:
+ *	The returned representation is bogus, ensure any TreeColor
+ *	options store the object representation.
+ *
+ * Side effects:
+ *	Creates a new Tcl_Obj.
+ *
+ *----------------------------------------------------------------------
+ */
+
+Tcl_Obj *
+TreeColor_ToObj(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeColor *tc		/* Color to get Tcl_Obj rep of */
+    )
+{
+    /* FIXME */
+    return Tcl_NewStringObj("insert tree color rep here", -1);
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeColor_IsOpaque --
+ *
+ *	Test whether a tree color would be drawn fully opaque or not.
+ *
+ * Results:
+ *	1 if opaque, 0 otherwise.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+int
+TreeColor_IsOpaque(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeColor *tc		/* Color info. */
+    )
+{
+    if (tc == NULL)
+	return 0;
+    if (tc->gradient != NULL)
+	return TreeGradient_IsOpaque(tree, tc->gradient);
+    return tc->color != NULL;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeColorCO_Set --
+ * TreeColorCO_Get --
+ * TreeColorCO_Restore --
+ *
+ *	These procedures implement a TK_OPTION_CUSTOM where the custom
+ *	option is a TreeColor.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+static int
+TreeColorCO_Set(
+    ClientData clientData,
+    Tcl_Interp *interp,
+    Tk_Window tkwin,
+    Tcl_Obj **valuePtr,
+    char *recordPtr,
+    int internalOffset,
+    char *saveInternalPtr,
+    int flags
+    )
+{
+    TreeCtrl *tree = (TreeCtrl *) ((TkWindow *) tkwin)->instanceData;
+    int objEmpty;
+    TreeColor **internalPtr, *new;
+
+    if (internalOffset >= 0)
+	internalPtr = (TreeColor **) (recordPtr + internalOffset);
+    else
+	internalPtr = NULL;
+
+    objEmpty = ObjectIsEmpty((*valuePtr));
+
+    if ((flags & TK_OPTION_NULL_OK) && objEmpty) {
+	(*valuePtr) = NULL;
+	new = 0;
+    } else {
+	new = Tree_AllocColorFromObj(tree, *valuePtr);
+	if (new == NULL)
+	    return TCL_ERROR;
+    }
+
+    if (internalPtr != NULL) {
+	*((TreeColor **) saveInternalPtr) = *internalPtr;
+	*internalPtr = new;
+    }
+
+    return TCL_OK;
+}
+
+static Tcl_Obj *
+TreeColorCO_Get(
+    ClientData clientData,
+    Tk_Window tkwin,
+    char *recordPtr,
+    int internalOffset
+    )
+{
+    TreeCtrl *tree = (TreeCtrl *) ((TkWindow *) tkwin)->instanceData;
+    TreeColor **internalPtr = (TreeColor **) (recordPtr + internalOffset);
+    return TreeColor_ToObj(tree, *internalPtr);
+}
+
+static void
+TreeColorCO_Restore(
+    ClientData clientData,
+    Tk_Window tkwin,
+    char *internalPtr,
+    char *saveInternalPtr
+    )
+{
+    *(TreeColor **) internalPtr = *(TreeColor **) saveInternalPtr;
+}
+
+static void
+TreeColorCO_Free(
+    ClientData clientData,
+    Tk_Window tkwin,
+    char *internalPtr
+    )
+{
+    TreeCtrl *tree = (TreeCtrl *) ((TkWindow *) tkwin)->instanceData;
+    TreeColor *value = *((TreeColor **) internalPtr);
+    if (value != NULL) {
+	Tree_FreeColor(tree, value);
+	*((TreeColor **) internalPtr) = NULL;
+    }
+}
+
+Tk_ObjCustomOption TreeCtrlCO_treecolor =
+{
+    "tree color",
+    TreeColorCO_Set,
+    TreeColorCO_Get,
+    TreeColorCO_Restore,
+    TreeColorCO_Free,
+    (ClientData) NULL
+};
+
+/*****/
+
+/* *** Borrowed some gradient code from TkPath *** */
+
+static GradientStop *
+NewGradientStop(
+    double offset,
+    XColor *color,
+    double opacity
+    )
+{
+    GradientStop *stopPtr;
+
+    stopPtr = (GradientStop *) ckalloc(sizeof(GradientStop));
+    memset(stopPtr, '\0', sizeof(GradientStop));
+    stopPtr->offset = offset;
+    stopPtr->color = color;
+    stopPtr->opacity = opacity;
+    return stopPtr;
+}
+
+static GradientStopArray *
+NewGradientStopArray(
+    int nstops
+    )
+{
+    GradientStopArray *stopArrPtr;
+    GradientStop **stops;
+
+    stopArrPtr = (GradientStopArray *) ckalloc(sizeof(GradientStopArray));
+    memset(stopArrPtr, '\0', sizeof(GradientStopArray));
+
+    /* Array of *pointers* to GradientStop. */
+    stops = (GradientStop **) ckalloc(nstops*sizeof(GradientStop *));
+    memset(stops, '\0', nstops*sizeof(GradientStop *));
+    stopArrPtr->nstops = nstops;
+    stopArrPtr->stops = stops;
+    return stopArrPtr;
+}
+
+static void
+FreeAllStops(
+    GradientStop **stops,
+    int nstops
+    )
+{
+    int i;
+    for (i = 0; i < nstops; i++) {
+        if (stops[i] != NULL) {
+            Tk_FreeColor(stops[i]->color);
+            WFREE(stops[i], GradientStop);
+        }
+    }
+    WCFREE(stops, GradientStop*, nstops);
+}
+
+static void
+FreeStopArray(
+    GradientStopArray *stopArrPtr
+    )
+{
+    if (stopArrPtr != NULL) {
+        FreeAllStops(stopArrPtr->stops, stopArrPtr->nstops);
+        WFREE(stopArrPtr, GradientStopArray);
+    }
+}
+
+/*
+ * The stops are a list of stop lists where each stop list is:
+ *		{offset color ?opacity?}
+ */
+static int
+StopsSet(
+    ClientData clientData,
+    Tcl_Interp *interp,		/* Current interp; may be used for errors. */
+    Tk_Window tkwin,		/* Window for which option is being set. */
+    Tcl_Obj **value,		/* Pointer to the pointer to the value object.
+				 * We use a pointer to the pointer because
+				 * we may need to return a value (NULL). */
+    char *recordPtr,		/* Pointer to storage for the widget record. */
+    int internalOffset,		/* Offset within *recordPtr at which the
+				 internal value is to be stored. */
+    char *oldInternalPtr,	/* Pointer to storage for the old value. */
+    int flags			/* Flags for the option, set Tk_SetOptions. */
+    )
+{
+    char *internalPtr;
+    int i, nstops, stopLen;
+    int objEmpty = 0;
+    Tcl_Obj *valuePtr;
+    double offset, lastOffset, opacity;
+    Tcl_Obj **objv;
+    Tcl_Obj *stopObj;
+    Tcl_Obj *obj;
+    XColor *color;
+    GradientStopArray *new = NULL;
+
+    valuePtr = *value;
+    if (internalOffset >= 0)
+	internalPtr = recordPtr + internalOffset;
+    else
+	internalPtr = NULL;
+    objEmpty = ObjectIsEmpty(valuePtr);
+
+    if ((flags & TK_OPTION_NULL_OK) && objEmpty) {
+        valuePtr = NULL;
+    } else {
+
+        /* Deal with each stop list in turn. */
+        if (Tcl_ListObjGetElements(interp, valuePtr, &nstops, &objv) != TCL_OK) {
+            return TCL_ERROR;
+        }
+        if (nstops < 2) {
+	    FormatResult(interp, "at least 2 stops required, %d given", nstops);
+	    return TCL_ERROR;
+        }
+        new = NewGradientStopArray(nstops);
+        lastOffset = 0.0;
+
+        for (i = 0; i < nstops; i++) {
+            stopObj = objv[i];
+            if (Tcl_ListObjLength(interp, stopObj, &stopLen) != TCL_OK) {
+                goto error;
+            }
+            if ((stopLen < 2) || (stopLen > 3)) {
+                Tcl_SetObjResult(interp, Tcl_NewStringObj(
+                        "stop list not {offset color ?opacity?}", -1));
+                goto error;
+            }
+	    Tcl_ListObjIndex(interp, stopObj, 0, &obj);
+	    if (Tcl_GetDoubleFromObj(interp, obj, &offset) != TCL_OK) {
+		goto error;
+	    }
+	    if ((offset < 0.0) || (offset > 1.0)) {
+		Tcl_SetObjResult(interp, Tcl_NewStringObj(
+			"stop offsets must be in the range 0.0 to 1.0", -1));
+		goto error;
+	    }
+	    if ((i == 0) && (offset != 0.0)) {
+		FormatResult(interp, "first stop offset must be 0.0, got %.4g", offset);
+		goto error;
+	    }
+	    if ((i == nstops - 1) && (offset != 1.0)) {
+		FormatResult(interp, "last stop offset must be 1.0, got %.4g", offset);
+		goto error;
+	    }
+	    if (offset < lastOffset) {
+		Tcl_SetObjResult(interp, Tcl_NewStringObj(
+			"stop offsets must be ordered", -1));
+		goto error;
+	    }
+	    Tcl_ListObjIndex(interp, stopObj, 1, &obj);
+	    color = Tk_AllocColorFromObj(interp, Tk_MainWindow(interp), obj);
+	    if (color == NULL)
+		goto error;
+	    if (stopLen == 3) {
+		Tcl_ListObjIndex(interp, stopObj, 2, &obj);
+		if (Tcl_GetDoubleFromObj(interp, obj, &opacity) != TCL_OK) {
+		    goto error;
+		}
+	    } else {
+		opacity = 1.0;
+	    }
+
+	    /* Make new stop. */
+	    new->stops[i] = NewGradientStop(offset, color, opacity);
+	    lastOffset = offset;
+        }
+    }
+    if (internalPtr != NULL) {
+        *((GradientStopArray **) oldInternalPtr) = *((GradientStopArray **) internalPtr);
+        *((GradientStopArray **) internalPtr) = new;
+    }
+    return TCL_OK;
+
+error:
+    if (new != NULL) {
+        FreeStopArray(new);
+    }
+    return TCL_ERROR;
+}
+
+static void
+StopsRestore(
+    ClientData clientData,
+    Tk_Window tkwin,
+    char *internalPtr,		/* Pointer to storage for value. */
+    char *oldInternalPtr	/* Pointer to old value. */
+    )
+{
+    *(GradientStopArray **)internalPtr = *(GradientStopArray **)oldInternalPtr;
+}
+
+static void
+StopsFree(
+    ClientData clientData,
+    Tk_Window tkwin,
+    char *internalPtr
+    )
+{
+    if (*((char **) internalPtr) != NULL) {
+        FreeStopArray(*(GradientStopArray **)internalPtr);
+    }
+}
+
+static Tk_ObjCustomOption stopsCO =
+{
+    "stops",
+    StopsSet,
+    NULL,
+    StopsRestore,
+    StopsFree,
+    (ClientData) NULL
+};
+
+/*****/
+
+typedef enum {
+    GCT_AREA = 0,
+    GCT_CANVAS,
+    GCT_COLUMN,
+    GCT_ITEM
+} GradientCoordType;
+
+static const char *coordTypeNames[] = {
+    "area", "canvas", "column", "item", NULL
+};
+
+struct GradientCoord {
+    GradientCoordType type;
+    float value;
+    TreeColumn column; /* optional arg to GCT_COLUMN */
+    TreeItem item; /* optional arg to GCT_ITEM */
+    int area; /* required arg to GCT_AREA */
+};
+
+static int
+GradientCoordSet(
+    ClientData clientData,
+    Tcl_Interp *interp,		/* Current interp; may be used for errors. */
+    Tk_Window tkwin,		/* Window for which option is being set. */
+    Tcl_Obj **value,		/* Pointer to the pointer to the value object.
+				 * We use a pointer to the pointer because
+				 * we may need to return a value (NULL). */
+    char *recordPtr,		/* Pointer to storage for the widget record. */
+    int internalOffset,		/* Offset within *recordPtr at which the
+				 internal value is to be stored. */
+    char *oldInternalPtr,	/* Pointer to storage for the old value. */
+    int flags			/* Flags for the option, set Tk_SetOptions. */
+    )
+{
+    TreeCtrl *tree = (TreeCtrl *) ((TkWindow *) tkwin)->instanceData;
+    char *internalPtr;
+    int objEmpty = 0;
+    Tcl_Obj *valuePtr;
+    Tcl_Obj **objv;
+    int objc;
+    double coordValue;
+    GradientCoordType coordType;
+    GradientCoord *new = NULL;
+    TreeColumn column = NULL;
+    TreeItem item = NULL;
+    int area = TREE_AREA_NONE;
+
+    valuePtr = *value;
+    if (internalOffset >= 0)
+	internalPtr = recordPtr + internalOffset;
+    else
+	internalPtr = NULL;
+    objEmpty = ObjectIsEmpty(valuePtr);
+
+    if ((flags & TK_OPTION_NULL_OK) && objEmpty) {
+        valuePtr = NULL;
+    } else {
+        if (Tcl_ListObjGetElements(interp, valuePtr, &objc, &objv) != TCL_OK) {
+            return TCL_ERROR;
+        }
+        if (objc < 2) {
+	    FormatResult(interp, "expected list {offset coordType ?arg ...?}");
+	    return TCL_ERROR;
+        }
+        if (Tcl_GetIndexFromObj(interp, objv[1], coordTypeNames,
+	    "coordinate type", 0, (int *) &coordType) != TCL_OK) {
+	    return TCL_ERROR;
+	}
+	if (Tcl_GetDoubleFromObj(interp, objv[0], &coordValue) != TCL_OK) {
+	    return TCL_ERROR;
+	}
+	if (coordType == GCT_AREA) {
+	    if (objc != 3) {
+		FormatResult(interp, "wrong # args after \"area\": must be 1");
+		return TCL_ERROR;
+	    }
+	    if (TreeArea_FromObj(tree, objv[2], &area) != TCL_OK) {
+		return TCL_ERROR;
+	    }
+	}
+	if (coordType == GCT_COLUMN && objc > 2) {
+	    if (objc > 3) {
+		FormatResult(interp, "wrong # args after \"column\": must be 0 or 1");
+		return TCL_ERROR;
+	    }
+	    if (TreeColumn_FromObj(tree, objv[2], &column, CFO_NOT_NULL)
+		    != TCL_OK) {
+		return TCL_ERROR;
+	    }
+	}
+	if (coordType == GCT_ITEM && objc > 2) {
+	    if (objc > 3) {
+		FormatResult(interp, "wrong # args after \"item\": must be 0 or 1");
+		return TCL_ERROR;
+	    }
+	    if (TreeItem_FromObj(tree, objv[2], &item, IFO_NOT_NULL)
+		    != TCL_OK) {
+		return TCL_ERROR;
+	    }
+	}
+	new = (GradientCoord *) ckalloc(sizeof(GradientCoord));
+	new->type = coordType;
+	new->value = (float) coordValue;
+	new->column = column;
+	new->item = item;
+	new->area = area;
+    }
+    if (internalPtr != NULL) {
+        *((GradientCoord **) oldInternalPtr) = *((GradientCoord **) internalPtr);
+        *((GradientCoord **) internalPtr) = new;
+    }
+    return TCL_OK;
+}
+
+static void
+GradientCoordRestore(
+    ClientData clientData,
+    Tk_Window tkwin,
+    char *internalPtr,		/* Pointer to storage for value. */
+    char *oldInternalPtr)	/* Pointer to old value. */
+{
+    *(GradientCoord **)internalPtr = *(GradientCoord **)oldInternalPtr;
+}
+
+static void
+GradientCoordFree(
+    ClientData clientData,
+    Tk_Window tkwin,
+    char *internalPtr)
+{
+    if (*((char **) internalPtr) != NULL) {
+        ckfree(*(char **)internalPtr);
+    }
+}
+
+static Tk_ObjCustomOption gradientCoordCO =
+{
+    "coordinate",
+    GradientCoordSet,
+    NULL,
+    GradientCoordRestore,
+    GradientCoordFree,
+    (ClientData) NULL
+};
+
+/*
+ *--------------------------------------------------------------
+ *
+ * TreeGradient_ColumnDeleted --
+ *
+ *	Removes any reference to a column from the coordinates of
+ *	all gradients.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	None.
+ *
+ *--------------------------------------------------------------
+ */
+
+void
+TreeGradient_ColumnDeleted(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeColumn column		/* Column about to be deleted. */
+    )
+{
+    Tcl_HashEntry *hPtr;
+    Tcl_HashSearch search;
+    TreeGradient gradient;
+
+    hPtr = Tcl_FirstHashEntry(&tree->gradientHash, &search);
+    while (hPtr != NULL) {
+	gradient = (TreeGradient) Tcl_GetHashValue(hPtr);
+
+#define CHECK_GCOORD(GCRD,OBJ) \
+	if ((GCRD != NULL) && (GCRD->column == column)) { \
+	    ckfree((char *) GCRD); \
+	    Tcl_DecrRefCount(OBJ); \
+	    GCRD = NULL; \
+	    OBJ = NULL; \
+	}
+	CHECK_GCOORD(gradient->left,   gradient->leftObj);
+	CHECK_GCOORD(gradient->right,  gradient->rightObj);
+	CHECK_GCOORD(gradient->top,    gradient->topObj);
+	CHECK_GCOORD(gradient->bottom, gradient->bottomObj);
+#undef CHECK_GCOORD
+
+	hPtr = Tcl_NextHashEntry(&search);
+    }
+}
+
+/*
+ *--------------------------------------------------------------
+ *
+ * TreeGradient_ItemDeleted --
+ *
+ *	Removes any reference to an item from the coordinates of
+ *	all gradients.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	None.
+ *
+ *--------------------------------------------------------------
+ */
+
+void
+TreeGradient_ItemDeleted(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeItem item		/* Item about to be deleted. */
+    )
+{
+    Tcl_HashEntry *hPtr;
+    Tcl_HashSearch search;
+    TreeGradient gradient;
+
+    hPtr = Tcl_FirstHashEntry(&tree->gradientHash, &search);
+    while (hPtr != NULL) {
+	gradient = (TreeGradient) Tcl_GetHashValue(hPtr);
+
+#define CHECK_GCOORD(GCRD,OBJ) \
+	if ((GCRD != NULL) && (GCRD->item == item)) { \
+	    ckfree((char *) GCRD); \
+	    Tcl_DecrRefCount(OBJ); \
+	    GCRD = NULL; \
+	    OBJ = NULL; \
+	}
+	CHECK_GCOORD(gradient->left,   gradient->leftObj);
+	CHECK_GCOORD(gradient->right,  gradient->rightObj);
+	CHECK_GCOORD(gradient->top,    gradient->topObj);
+	CHECK_GCOORD(gradient->bottom, gradient->bottomObj);
+#undef CHECK_GCOORD
+
+	hPtr = Tcl_NextHashEntry(&search);
+    }
+}
+
+static TreeColumn
+FindNthVisibleColumn(
+    TreeCtrl *tree,
+    TreeColumn column,
+    int *n
+    )
+{
+    int index = TreeColumn_Index(column);
+    TreeColumn column2 = column, column3 = column;
+
+    if ((*n) > 0) {
+	while ((*n) > 0 && ++index < tree->columnCount) {
+	    column3 = TreeColumn_Next(column3);
+	    if (TreeColumn_Visible(column3)) {
+		column2 = column3;
+		(*n) -= 1;
+	    }
+	}
+    } else {
+	while ((*n) < 0 && --index >= 0) {
+	    column3 = TreeColumn_Prev(column3);
+	    if (TreeColumn_Visible(column3)) {
+		column2 = column3;
+		(*n) += 1;
+	    }
+	}
+    }
+    return column2;
+}
+
+static int
+GetGradientBrushCoordX(
+    TreeCtrl *tree,			/* Widget Info. */
+    GradientCoord *gcrd,		/* Left or right coordinate. */
+    TreeColumn column,			/* Column or NULL. */
+    TreeItem item,			/* Item or NULL. */
+    int *xPtr				/* Returned canvas coordinate.
+					 * Will remain unchanged if the
+					 * gradient coordinate cannot be
+					 * resolved. */
+    )
+{
+    if (gcrd == NULL)
+	return 0;
+
+    switch (gcrd->type) {
+	case GCT_AREA: {
+	    TreeRectangle tr;
+	    if (Tree_AreaBbox(tree, gcrd->area, &tr) == TRUE) {
+		(*xPtr) = (int) (TreeRect_Left(tr) + TreeRect_Width(tr) * gcrd->value);
+		(*xPtr) += tree->xOrigin; /* Window -> Canvas */
+		return 1;
+	    }
+	    break;
+	}
+
+	case GCT_CANVAS: {
+	    int canvasWidth = Tree_FakeCanvasWidth(tree);
+	    (*xPtr) = (int) (canvasWidth * gcrd->value);
+	    return 1;
+	}
+
+/* FIXME: if item != NULL then make column offset relative to item */
+	case GCT_COLUMN:
+	    if (gcrd->column != NULL)
+		column = gcrd->column;
+	    if (column != NULL) {
+		int x, w;
+		if (gcrd->value < 0.0) {
+		    int n = (int) ceil(-gcrd->value);
+		    n = -n; /* backwards */
+		    column = FindNthVisibleColumn(tree, column, &n);
+		    if (TreeColumn_Visible(column)) {
+			double tmp, frac;
+			if ((n < 0) || (frac = modf(-gcrd->value, &tmp)) == 0.0)
+			    frac = 1.0;
+			x = TreeColumn_Offset(column);
+			w = TreeColumn_UseWidth(column);
+			(*xPtr) = (int) (x + w * (1.0 - frac));
+			return 1;
+		    }
+		} else if (gcrd->value > 1.0) {
+		    int n = (int) ceil(gcrd->value - 1.0);
+		    column = FindNthVisibleColumn(tree, column, &n);
+		    if (TreeColumn_Visible(column)) {
+			double tmp, frac;
+			if ((n > 0) || (frac = modf(gcrd->value, &tmp)) == 0.0)
+			    frac = 1.0;
+			x = TreeColumn_Offset(column);
+			w = TreeColumn_UseWidth(column);
+			(*xPtr) = (int) (x + w * frac);
+			return 1;
+		    }
+		} else {
+		    if (TreeColumn_Visible(column)) {
+			x = TreeColumn_Offset(column);
+			w = TreeColumn_UseWidth(column);
+			(*xPtr) = (int) (x + w * gcrd->value);
+			return 1;
+		    }
+		}
+	    }
+	    break;
+
+	case GCT_ITEM:
+	    if (gcrd->item != NULL)
+		item = gcrd->item;
+	    if (item != NULL) {
+		TreeRectangle tr;
+		int lock;
+		if (tree->columnCountVis > 0)
+		    lock = COLUMN_LOCK_NONE;
+		else if (tree->columnCountVisLeft > 0)
+		    lock = COLUMN_LOCK_LEFT;
+		else if (tree->columnCountVisRight > 0)
+		    lock = COLUMN_LOCK_RIGHT;
+		else
+		    break; /* not possible else wouldn't be drawing */
+		if (gcrd->value < 0.0) {
+		    int clip = 0, row, col, row2, col2;
+		    if (Tree_ItemToRNC(tree, item, &row, &col) == TCL_OK) {
+			int n = (int) ceil(-gcrd->value);
+			TreeItem item2 = Tree_RNCToItem(tree, row, col - n);
+			(void) Tree_ItemToRNC(tree, item2, &row2, &col2);
+			if (row2 == row)
+			    item = item2; /* there is an item to the left */
+			if (row2 != row || col2 != col - n)
+			    clip = 1; /* no item 'n' columns to the left */
+		    }
+		    if (Tree_ItemBbox(tree, item, lock, &tr) != -1) {
+			double tmp, frac;
+			if (clip || (frac = modf(-gcrd->value, &tmp)) == 0.0)
+			    frac = 1.0;
+			(*xPtr) = (int) (tr.x + tr.width * (1.0 - frac));
+			return 1;
+		    }
+		} else if (gcrd->value > 1.0) {
+		    int clip = 0, row, col, row2, col2;
+		    if (Tree_ItemToRNC(tree, item, &row, &col) == TCL_OK) {
+			int n = (int) ceil(gcrd->value - 1.0);
+			TreeItem item2 = Tree_RNCToItem(tree, row, col + n);
+			(void) Tree_ItemToRNC(tree, item2, &row2, &col2);
+			if (row2 == row)
+			    item = item2; /* there is an item to the right */
+			if (row2 != row || col2 != col + n)
+			    clip = 1; /* no item 'n' columns to the right */
+		    }
+		    if (Tree_ItemBbox(tree, item, lock, &tr) != -1) {
+			double tmp, frac;
+			if (clip || (frac = modf(gcrd->value, &tmp)) == 0.0)
+			    frac = 1.0;
+			(*xPtr) = (int) (tr.x + tr.width * frac);
+			return 1;
+		    }
+		} else if (Tree_ItemBbox(tree, item, lock, &tr) != -1) {
+		    (*xPtr) = (int) (tr.x + tr.width * gcrd->value);
+		    return 1;
+		}
+	    }
+	    break;
+    }
+    return 0;
+}
+
+static int
+GetGradientBrushCoordY(
+    TreeCtrl *tree,			/* Widget Info. */
+    GradientCoord *gcrd,		/* Top or bottom coordinate. */
+    TreeColumn column,			/* Column or NULL. */
+    TreeItem item,			/* Item or NULL. */
+    int *yPtr				/* Returned canvas coordinate.
+					 * Will remain unchanged if the
+					 * gradient coordinate cannot be
+					 * resolved. */
+    )
+{
+    if (gcrd == NULL)
+	return 0;
+
+    switch (gcrd->type) {
+	case GCT_AREA: {
+	    TreeRectangle tr;
+	    if (Tree_AreaBbox(tree, gcrd->area, &tr) == TRUE) {
+		(*yPtr) = (int) (TreeRect_Top(tr) + TreeRect_Height(tr) * gcrd->value);
+		(*yPtr) += tree->yOrigin; /* Window -> Canvas */
+		return 1;
+	    }
+	    break;
+	}
+
+	case GCT_CANVAS: {
+	    int canvasHeight = Tree_FakeCanvasHeight(tree);
+	    (*yPtr) = (int) (canvasHeight * gcrd->value);
+	    return 1;
+	}
+
+	case GCT_COLUMN:
+	    /* Can't think of any use for this */
+	    break;
+
+	case GCT_ITEM:
+	    if (gcrd->item != NULL)
+		item = gcrd->item;
+	    if (item != NULL) {
+		TreeRectangle tr;
+		int lock;
+		if (tree->columnCountVis > 0)
+		    lock = COLUMN_LOCK_NONE;
+		else if (tree->columnCountVisLeft > 0)
+		    lock = COLUMN_LOCK_LEFT;
+		else if (tree->columnCountVisRight > 0)
+		    lock = COLUMN_LOCK_RIGHT;
+		else
+		    break; /* not possible else wouldn't be drawing */
+		if (gcrd->value < 0.0) {
+		    int clip = 0, row, col, row2, col2;
+		    if (Tree_ItemToRNC(tree, item, &row, &col) == TCL_OK) {
+			int n = (int) ceil(-gcrd->value);
+			TreeItem item2 = Tree_RNCToItem(tree, row - n, col);
+			(void) Tree_ItemToRNC(tree, item2, &row2, &col2);
+			if (col2 == col)
+			    item = item2; /* there is an item above */
+			if (row2 != row - n || col2 != col)
+			    clip = 1; /* no item 'n' rows above */
+		    }
+		    if (Tree_ItemBbox(tree, item, lock, &tr) != -1) {
+			double tmp, frac;
+			if (clip || (frac = modf(-gcrd->value, &tmp)) == 0.0)
+			    frac = 1.0;
+			(*yPtr) = (int) (tr.y + tr.height * (1.0 - frac));
+			return 1;
+		    }
+		} else if (gcrd->value > 1.0) {
+		    int clip = 0, row, col, row2, col2;
+		    if (Tree_ItemToRNC(tree, item, &row, &col) == TCL_OK) {
+			int n = (int) ceil(gcrd->value - 1.0);
+			TreeItem item2 = Tree_RNCToItem(tree, row + n, col);
+			(void) Tree_ItemToRNC(tree, item2, &row2, &col2);
+			if (col2 == col)
+			    item = item2; /* there is an item below */
+			if (row2 != row + n || col2 != col)
+			    clip = 1; /* no item 'n' rows below */
+		    }
+		    if (Tree_ItemBbox(tree, item, lock, &tr) != -1) {
+			double tmp, frac;
+			if (clip || (frac = modf(gcrd->value, &tmp)) == 0.0)
+			    frac = 1.0;
+			(*yPtr) = (int) (tr.y + tr.height * frac);
+			return 1;
+		    }
+		} else if (Tree_ItemBbox(tree, item, lock, &tr) != -1) {
+		    (*yPtr) = (int) (tr.y + tr.height * gcrd->value);
+		    return 1;
+		}
+	    }
+	    break;
+    }
+    return 0;
+}
+
+/*
+ *--------------------------------------------------------------
+ *
+ * TreeGradient_GetBrushBounds --
+ *
+ *	Returns the bounds of the brush that should be used to
+ *	draw a gradient.
+ *
+ * Results:
+ *	Return 1 if the brush size is non-empty, 0 otherwise.
+ *
+ * Side effects:
+ *	May recalculate item/column layout info if it is out-of-date.
+ *
+ *--------------------------------------------------------------
+ */
+
+int
+TreeGradient_GetBrushBounds(
+    TreeCtrl *tree,			/* Widget Info. */
+    TreeGradient gradient,		/* Gradient token. */
+    const TreeRectangle *trPaint,	/* Area to paint, canvas coords. */
+    TreeRectangle *trBrush,		/* Returned brush bounds. */
+    TreeColumn column,			/* Column or NULL. */
+    TreeItem item			/* Item or NULL. */
+    )
+{
+    int x1, y1, x2, y2;
+
+    x1 = trPaint->x;
+    y1 = trPaint->y;
+    x2 = trPaint->x + trPaint->width;
+    y2 = trPaint->y + trPaint->height;
+
+    /* FIXME: If an item's or column's visibility changes, may need to redraw */
+
+   (void) GetGradientBrushCoordX(tree, gradient->left, column, item, &x1);
+   (void) GetGradientBrushCoordX(tree, gradient->right, column, item, &x2);
+   (void) GetGradientBrushCoordY(tree, gradient->top, column, item, &y1);
+   (void) GetGradientBrushCoordY(tree, gradient->bottom, column, item, &y2);
+
+    trBrush->x = x1;
+    trBrush->y = y1;
+    trBrush->width = x2 - x1;
+    trBrush->height = y2 - y1;
+
+    return trBrush->width > 0 && trBrush->height > 0;
+}
+
+/*
+ *--------------------------------------------------------------
+ *
+ * TreeGradient_IsRelativeToCanvas --
+ *
+ *	Returns true if the gradient brush is relative to the
+ *	canvas along the horizontal and vertical axes.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	None.
+ *
+ *--------------------------------------------------------------
+ */
+
+void
+TreeGradient_IsRelativeToCanvas(
+    TreeGradient gradient,
+    int *relX,
+    int *relY
+    )
+{
+    (*relX) = (*relY) = 1;
+
+    if (gradient->vertical == 0 &&
+	    ((gradient->left != NULL &&
+	    gradient->left->type == GCT_AREA) ||
+	    (gradient->right != NULL &&
+	    gradient->right->type == GCT_AREA)))
+	(*relX) = 0;
+
+    if (gradient->vertical==1 &&
+	    ((gradient->top != NULL &&
+	    gradient->top->type == GCT_AREA) ||
+	    (gradient->bottom != NULL &&
+	    gradient->bottom->type == GCT_AREA)))
+	(*relY) = 0;
+}
+
+/*
+ *--------------------------------------------------------------
+ *
+ * TreeColor_GetBrushBounds --
+ *
+ *	Determines the bounds of the gradient brush.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	May mark an item as needing to be redrawn when scrolling
+ *	occurs if the gradient brush isn't relative to the canvas.
+ *
+ *--------------------------------------------------------------
+ */
+
+void
+TreeColor_GetBrushBounds(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeColor *tc,		/* Color or gradient. */
+    TreeRectangle trPaint,	/* Area to be painted. */
+    int xOrigin,		/* Offset of trPaint from canvas. */
+    int yOrigin,
+    TreeColumn column,		/* Column trPaint is in, or NULL. */
+    TreeItem item,		/* Item trPaint is in, or NULL. */
+    TreeRectangle *trBrush	/* Returned brush bounds. */
+    )
+{
+    int relX, relY;
+
+    if (tc->gradient != NULL) {
+
+	trPaint.x += xOrigin;
+	trPaint.y += yOrigin;
+	(void) TreeGradient_GetBrushBounds(tree, tc->gradient, &trPaint,
+	    trBrush, column, item);
+	trBrush->x -= xOrigin;
+	trBrush->y -= yOrigin;
+
+	if (item != NULL) {
+	    TreeGradient_IsRelativeToCanvas(tc->gradient, &relX, &relY);
+	    if (relX == 0)
+		Tree_InvalidateItemOnScrollX(tree, item);
+	    if (relY == 0)
+		Tree_InvalidateItemOnScrollY(tree, item);
+	}
+    } else {
+	*trBrush = trPaint;
+    }
+}
+
+/*****/
+
+#define GRAD_CONF_STOPS 0x0001
+#define GRAD_CONF_STEPS 0x0002
+
+static char *orientStringTable[] = { "horizontal", "vertical", (char *) NULL };
+
+static Tk_OptionSpec gradientOptionSpecs[] = {
+    {TK_OPTION_CUSTOM, "-bottom", NULL, NULL, NULL,
+	Tk_Offset(TreeGradient_, bottomObj),
+        Tk_Offset(TreeGradient_, bottom),
+	TK_OPTION_NULL_OK, (ClientData) &gradientCoordCO, 0},
+    {TK_OPTION_CUSTOM, "-left", NULL, NULL, NULL,
+	Tk_Offset(TreeGradient_, leftObj),
+        Tk_Offset(TreeGradient_, left),
+	TK_OPTION_NULL_OK, (ClientData) &gradientCoordCO, 0},
+    {TK_OPTION_CUSTOM, "-right", NULL, NULL, NULL,
+	Tk_Offset(TreeGradient_, rightObj),
+        Tk_Offset(TreeGradient_, right),
+	TK_OPTION_NULL_OK, (ClientData) &gradientCoordCO, 0},
+    {TK_OPTION_CUSTOM, "-top", NULL, NULL, NULL,
+	Tk_Offset(TreeGradient_, topObj),
+        Tk_Offset(TreeGradient_, top),
+	TK_OPTION_NULL_OK, (ClientData) &gradientCoordCO, 0},
+    {TK_OPTION_STRING_TABLE, "-orient", (char *) NULL, (char *) NULL,
+	"horizontal", -1, Tk_Offset(TreeGradient_, vertical),
+	0, (ClientData) orientStringTable, 0},
+    {TK_OPTION_INT, "-steps", (char *) NULL, (char *) NULL,
+	"1", -1, Tk_Offset(TreeGradient_, steps),
+	0, (ClientData) NULL, GRAD_CONF_STEPS},
+    {TK_OPTION_CUSTOM, "-stops", NULL, NULL, NULL,
+	Tk_Offset(TreeGradient_, stopsObj),
+        Tk_Offset(TreeGradient_, stopArrPtr),
+	TK_OPTION_NULL_OK, (ClientData) &stopsCO, GRAD_CONF_STOPS},
+    {TK_OPTION_END, (char *) NULL, (char *) NULL, (char *) NULL,
+	(char *) NULL, 0, -1, 0, (ClientData) NULL, 0}
+};
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeGradient_FromObj --
+ *
+ *	Convert a Tcl_Obj to a TreeGradient.
+ *
+ * Results:
+ *	A standard Tcl result.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+int
+TreeGradient_FromObj(
+    TreeCtrl *tree,		/* Widget info. */
+    Tcl_Obj *obj,		/* Object to convert from. */
+    TreeGradient *gradientPtr)	/* Returned gradient token. */
+{
+    char *name;
+    Tcl_HashEntry *hPtr;
+
+    name = Tcl_GetString(obj);
+    hPtr = Tcl_FindHashEntry(&tree->gradientHash, name);
+    if (hPtr != NULL) {
+	(*gradientPtr) = (TreeGradient) Tcl_GetHashValue(hPtr);
+    }
+    if ((hPtr == NULL) || ((*gradientPtr)->deletePending != 0)) {
+	Tcl_AppendResult(tree->interp, "gradient \"", name, "\" doesn't exist",
+	    NULL);
+	return TCL_ERROR;
+    }
+    return TCL_OK;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * Gradient_ToObj --
+ *
+ *	Create a new Tcl_Obj representing a gradient.
+ *
+ * Results:
+ *	A Tcl_Obj.
+ *
+ * Side effects:
+ *	Memory is allocated.
+ *
+ *----------------------------------------------------------------------
+ */
+
+static Tcl_Obj *
+Gradient_ToObj(
+    TreeGradient gradient	/* Gradient to create Tcl_Obj from. */
+    )
+{
+    return Tcl_NewStringObj(gradient->name, -1);
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * CalcStepColors --
+ *
+ *	Calculates the colors between (and including) 2 color stops.
+ *	These colors are only used when native gradients aren't
+ *	supported.
+ *
+ * Results:
+ *	'stepColors' is filled in with exactly 'step's XColors.
+ *
+ * Side effects:
+ *	Colors are allocated.
+ *
+ *----------------------------------------------------------------------
+ */
+
+static void
+CalcStepColors(
+    TreeCtrl *tree,		/* Widget info. */
+    GradientStop *stop1,	/* The first color stop. */
+    GradientStop *stop2,	/* The second color stop. */
+    XColor *stepColors[],	/* Returned colors. */
+    int steps			/* Number of colors to allocate. */
+    )
+{
+    int i;
+    XColor *c1 = stop1->color, *c2 = stop2->color;
+
+    if (steps == 1) {
+	stepColors[0] = Tk_GetColorByValue(tree->tkwin,
+		(stop1->offset > 0) ? stop2->color : stop1->color);
+	return;
+    }
+
+#undef CLAMP
+#define CLAMP(a,b,c) (((a)<(b))?(b):(((a)>(c))?(c):(a)))
+
+    for (i = 1; i <= steps; i++) {
+	XColor pref;
+	int range, increment;
+	double factor = (i - 1) * 1.0f / (steps - 1);
+
+	range = (c2->red - c1->red);
+	increment = (int)(range * factor);
+	pref.red = CLAMP(c1->red + increment, 0, USHRT_MAX);
+
+	range = (c2->green - c1->green);
+	increment = (int)(range * factor);
+	pref.green = CLAMP(c1->green + increment, 0, USHRT_MAX);
+
+	range = (c2->blue - c1->blue);
+	increment = (int)(range * factor);
+	pref.blue = CLAMP(c1->blue + increment, 0, USHRT_MAX);
+
+	stepColors[i - 1] = Tk_GetColorByValue(tree->tkwin, &pref);
+    }
+#undef CLAMP
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * Gradient_CalcStepColors --
+ *
+ *	Calculates the entire list of step colors.
+ *	These colors are only used when native gradients aren't
+ *	supported.
+ *
+ * Results:
+ *	The TreeGradient.stepColors array is written with exactly
+ *	#steps X #stops XColors.
+ *
+ * Side effects:
+ *	Colors are allocated.
+ *
+ *----------------------------------------------------------------------
+ */
+
+#ifdef TREECTRL_DEBUG
+int sameXColor(XColor *c1, XColor *c2)
+{
+    return c1->red == c2->red && c1->green==c2->green && c1->blue==c2->blue;
+}
+#endif
+
+static void
+Gradient_CalcStepColors(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeGradient gradient	/* Gradient token. */
+    )
+{
+    int i, step1, step2;
+
+    for (i = 0; i < gradient->stopArrPtr->nstops - 1; i++) {
+	GradientStop *stop1 = gradient->stopArrPtr->stops[i];
+	GradientStop *stop2 = gradient->stopArrPtr->stops[i+1];
+	step1 = (int)floor(stop1->offset * (gradient->nStepColors));
+	step2 = (int)floor(stop2->offset * (gradient->nStepColors))-1;
+/*dbwin("CalcStepColors %g -> %g steps=%d-%d\n", stop1->offset,stop2->offset,step1,step2);*/
+	CalcStepColors(tree, stop1, stop2, gradient->stepColors + step1,
+		step2 - step1 + 1);
+   }
+#ifdef TREECTRL_DEBUG
+    if (!sameXColor(gradient->stepColors[0], gradient->stopArrPtr->stops[0]->color))
+	dbwin("stepColors[0] not same");
+    if (!sameXColor(gradient->stepColors[gradient->nStepColors - 1], gradient->stopArrPtr->stops[gradient->stopArrPtr->nstops - 1]->color))
+	dbwin("stepColors[end-1] not same");
+#endif
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * Gradient_Config --
+ *
+ *	This procedure is called to process an objc/objv list to set
+ *	configuration options for a TreeGradient.
+ *
+ * Results:
+ *	The return value is a standard Tcl result.  If TCL_ERROR is
+ *	returned, then an error message is left in interp's result.
+ *
+ * Side effects:
+ *	Configuration information, such as text string, colors, font,
+ *	etc. get set for gradient;  old resources get freed, if there
+ *	were any.  Display changes may occur.
+ *
+ *----------------------------------------------------------------------
+ */
+
+static int
+Gradient_Config(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeGradient gradient,	/* Gradient token. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *CONST objv[],	/* Argument values. */
+    int createFlag		/* TRUE if the gradient is being created. */
+    )
+{
+    TreeGradient_ saved;
+    Tk_SavedOptions savedOptions;
+    int error;
+    Tcl_Obj *errorResult = NULL;
+    int mask, maskFree = 0;
+
+    saved.nStepColors = 0;
+    saved.stepColors = NULL;
+
+    for (error = 0; error <= 1; error++) {
+	if (error == 0) {
+	    if (Tk_SetOptions(tree->interp, (char *) gradient,
+			tree->gradientOptionTable,
+			objc, objv, tree->tkwin,
+			&savedOptions, &mask) != TCL_OK) {
+		mask = 0;
+		continue;
+	    }
+
+	    /* Wouldn't have to do this if Tk_InitOptions() would return
+	     * a mask of configured options like Tk_SetOptions() does. */
+	    if (createFlag) {
+		mask |= GRAD_CONF_STOPS | GRAD_CONF_STEPS;
+	    }
+
+	    /*
+	     * Step 1: Save old values
+	     */
+
+	    if (mask & (GRAD_CONF_STOPS | GRAD_CONF_STEPS)) {
+		saved.nStepColors = gradient->nStepColors;
+		saved.stepColors = gradient->stepColors;
+	    }
+
+	    /*
+	     * Step 2: Process new values
+	     */
+
+	    if (mask & (GRAD_CONF_STOPS | GRAD_CONF_STEPS)) {
+		if (gradient->steps < 1 || gradient->steps > 25) {
+		    FormatResult(tree->interp, "steps must be >= 1 and <= 25");
+		    continue;
+		}
+		if ((gradient->stopArrPtr != NULL) &&
+			(gradient->stopArrPtr->nstops > 0)) {
+		    gradient->nStepColors = gradient->stopArrPtr->nstops * gradient->steps;
+		    gradient->stepColors = (XColor **)ckalloc(sizeof(XColor*)*gradient->nStepColors);
+		    Gradient_CalcStepColors(tree, gradient);
+		    maskFree |= GRAD_CONF_STEPS;
+		} else {
+		    gradient->nStepColors = 0;
+		    gradient->stepColors = NULL;
+		}
+	    }
+
+	    /*
+	     * Step 3: Free saved values
+	     */
+
+	    if (mask & (GRAD_CONF_STOPS | GRAD_CONF_STEPS)) {
+		if (saved.stepColors != NULL) { /* will be NULL when createFlag==1 */
+		    int i;
+		    for (i = 0; i < saved.nStepColors; i++) {
+			Tk_FreeColor(saved.stepColors[i]);
+		    }
+		    WCFREE(saved.stepColors, XColor*, saved.nStepColors);
+		}
+	    }
+
+	    Tk_FreeSavedOptions(&savedOptions);
+	    break;
+	} else {
+	    errorResult = Tcl_GetObjResult(tree->interp);
+	    Tcl_IncrRefCount(errorResult);
+	    Tk_RestoreSavedOptions(&savedOptions);
+
+	    /*
+	     * Free new values.
+	     */
+
+	    if (maskFree & (GRAD_CONF_STOPS | GRAD_CONF_STEPS)) {
+		if (gradient->stepColors != NULL) {
+		    int i;
+		    for (i = 0; i < gradient->nStepColors; i++) {
+			Tk_FreeColor(gradient->stepColors[i]);
+		    }
+		    WCFREE(gradient->stepColors, XColor*, gradient->nStepColors);
+		}
+	    }
+
+	    /*
+	     * Restore old values.
+	     */
+	    if (mask & (GRAD_CONF_STOPS | GRAD_CONF_STEPS)) {
+		gradient->nStepColors = saved.nStepColors;
+		gradient->stepColors = saved.stepColors;
+	    }
+
+	    Tcl_SetObjResult(tree->interp, errorResult);
+	    Tcl_DecrRefCount(errorResult);
+	    return TCL_ERROR;
+	}
+    }
+    return TCL_OK;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * Gradient_FreeResources --
+ *
+ *	Free memory etc associated with a TreeGradient.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	Memory is deallocated.
+ *
+ *----------------------------------------------------------------------
+ */
+
+static void
+Gradient_FreeResources(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeGradient gradient,	/* Gradient token. */
+    int deleting		/* TRUE if deleting the gradient,
+				   FALSE if createing a new gradient to
+				   replace a deletePending gradient. */
+    )
+{
+    Tcl_HashEntry *hPtr;
+    int i;
+
+    Tk_FreeConfigOptions((char *) gradient,
+	tree->gradientOptionTable,
+	tree->tkwin);
+
+    if (gradient->stepColors != NULL) {
+	for (i = 0; i < gradient->nStepColors; i++)
+	    Tk_FreeColor(gradient->stepColors[i]);
+	WCFREE(gradient->stepColors, XColor*, gradient->nStepColors);
+    }
+
+    if (deleting == 0)
+	return;
+
+    hPtr = Tcl_FindHashEntry(&tree->gradientHash, gradient->name);
+    if (hPtr) /* NULL during creation */
+	Tcl_DeleteHashEntry(hPtr);
+
+    WFREE(gradient, TreeGradient_);
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeGradient_Release --
+ *
+ *	Decrease refCount on a gradient and free it if deletion was
+ *	pending.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	Memory may be deallocated.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TreeGradient_Release(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeGradient gradient	/* Gradient token. */
+    )
+{
+#ifdef TREECTRL_DEBUG
+    if (gradient->refCount <= 0)
+	panic("TreeGradient_Release: refCount <= 0");
+#endif
+    gradient->refCount--;
+    if ((gradient->refCount == 0) && (gradient->deletePending != 0)) {
+	Gradient_FreeResources(tree, gradient, 1);
+    }
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * Gradient_CreateAndConfig --
+ *
+ *	Allocate and initialize a gradient.
+ *
+ * Results:
+ *	Pointer to the new Gradient, or NULL if an error occurs.
+ *
+ * Side effects:
+ *	Memory is allocated.
+ *
+ *----------------------------------------------------------------------
+ */
+
+static TreeGradient
+Gradient_CreateAndConfig(
+    TreeCtrl *tree,		/* Widget info. */
+    char *name,			/* Name of new gradient. */
+    int objc,			/* Number of config-option arg-value pairs. */
+    Tcl_Obj *CONST objv[]	/* Config-option arg-value pairs. */
+    )
+{
+    TreeGradient gradient;
+
+    gradient = (TreeGradient) ckalloc(sizeof(TreeGradient_));
+    memset(gradient, '\0', sizeof(TreeGradient_));
+    gradient->name = Tk_GetUid(name);
+
+    if (Tk_InitOptions(tree->interp, (char *) gradient,
+	tree->gradientOptionTable, tree->tkwin) != TCL_OK) {
+	WFREE(gradient, TreeGradient_);
+	return NULL;
+    }
+
+    if (Gradient_Config(tree, gradient, objc, objv, TRUE) != TCL_OK) {
+	Gradient_FreeResources(tree, gradient, 1);
+	return NULL;
+    }
+
+    return gradient;
+}
+
+static void
+Gradient_Changed(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeGradient gradient	/* Gradient token. */
+    )
+{
+    Tree_DInfoChanged(tree, DINFO_INVALIDATE | DINFO_OUT_OF_DATE | DINFO_DRAW_HEADER);
+}
+
+static void
+Gradient_Deleted(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeGradient gradient	/* Gradient token. */
+    )
+{
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeGradientCmd --
+ *
+ *	This procedure is invoked to process the [gradient]
+ *	widget command.  See the user documentation for details on what
+ *	it does.
+ *
+ * Results:
+ *	A standard Tcl result.
+ *
+ * Side effects:
+ *	See the user documentation.
+ *
+ *----------------------------------------------------------------------
+ */
+
+int
+TreeGradientCmd(
+    ClientData clientData,	/* Widget info. */
+    Tcl_Interp *interp,		/* Current interpreter. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *CONST objv[]	/* Argument values. */
+    )
+{
+    TreeCtrl *tree = clientData;
+    static CONST char *commandNames[] = {
+	"cget", "configure", "create", "delete", "names", "native",
+	(char *) NULL
+    };
+    enum {
+	COMMAND_CGET, COMMAND_CONFIGURE, COMMAND_CREATE,
+	COMMAND_DELETE, COMMAND_NAMES, COMMAND_NATIVE
+    };
+    int index;
+
+    if (objc < 3) {
+	Tcl_WrongNumArgs(interp, 2, objv, "command ?arg arg ...?");
+	return TCL_ERROR;
+    }
+
+    if (Tcl_GetIndexFromObj(interp, objv[2], commandNames, "command", 0,
+	&index) != TCL_OK) {
+	return TCL_ERROR;
+    }
+
+    switch (index) {
+	case COMMAND_CGET: {
+	    Tcl_Obj *resultObjPtr = NULL;
+	    TreeGradient gradient;
+
+	    if (objc != 5) {
+		Tcl_WrongNumArgs(interp, 3, objv, "name option");
+		return TCL_ERROR;
+	    }
+	    if (TreeGradient_FromObj(tree, objv[3], &gradient) != TCL_OK)
+		return TCL_ERROR;
+	    resultObjPtr = Tk_GetOptionValue(interp, (char *) gradient,
+		tree->gradientOptionTable, objv[4], tree->tkwin);
+	    if (resultObjPtr == NULL)
+		return TCL_ERROR;
+	    Tcl_SetObjResult(interp, resultObjPtr);
+	    break;
+	}
+	case COMMAND_CONFIGURE: {
+	    Tcl_Obj *resultObjPtr = NULL;
+	    TreeGradient gradient;
+
+	    if (objc < 4) {
+		Tcl_WrongNumArgs(interp, 3, objv, "name ?option? ?value option value ...?");
+		return TCL_ERROR;
+	    }
+	    if (TreeGradient_FromObj(tree, objv[3], &gradient) != TCL_OK)
+		return TCL_ERROR;
+	    if (objc <= 5) {
+		resultObjPtr = Tk_GetOptionInfo(interp, (char *) gradient,
+		    tree->gradientOptionTable,
+		    (objc == 4) ? (Tcl_Obj *) NULL : objv[4],
+		    tree->tkwin);
+		if (resultObjPtr == NULL)
+		    return TCL_ERROR;
+		Tcl_SetObjResult(interp, resultObjPtr);
+	    } else {
+		if (Gradient_Config(tree, gradient,
+		    objc - 4, objv + 4, 0) != TCL_OK)
+		    return TCL_ERROR;
+		Gradient_Changed(tree, gradient);
+	    }
+	    break;
+	}
+	/* T gradient create NAME ?option value ...? */
+	case COMMAND_CREATE: {
+	    char *name;
+	    int len;
+	    Tcl_HashEntry *hPtr;
+	    int isNew;
+	    TreeGradient gradient;
+
+	    if (objc < 4) {
+		Tcl_WrongNumArgs(interp, 3, objv, "name ?option value ...?");
+		return TCL_ERROR;
+	    }
+	    name = Tcl_GetStringFromObj(objv[3], &len);
+	    if (!len) {
+		FormatResult(interp, "invalid gradient name \"\"");
+		return TCL_ERROR;
+	    }
+	    /* Just like named fonts, if we create a new gradient that has the
+	     * same name as one that is awaiting deletion, we copy the new
+	     * config to the old gradient and forget it is being deleted. */
+	    hPtr = Tcl_FindHashEntry(&tree->gradientHash, name);
+	    if (hPtr != NULL) {
+		TreeGradient gradient2;
+		gradient = (TreeGradient) Tcl_GetHashValue(hPtr);
+		if (gradient->deletePending == 0) {
+		    FormatResult(interp, "gradient \"%s\" already exists", name);
+		    return TCL_ERROR;
+		}
+		gradient2 = Gradient_CreateAndConfig(tree, name, objc - 4, objv + 4);
+		if (gradient2 == NULL)
+		    return TCL_ERROR;
+		Gradient_FreeResources(tree, gradient, 0);
+		gradient->stopArrPtr = gradient2->stopArrPtr;
+		gradient->steps = gradient2->steps;
+		gradient->nStepColors = gradient2->nStepColors;
+		gradient->stepColors = gradient2->stepColors;
+		gradient->deletePending = 0;
+		WFREE(gradient2, TreeGradient_);
+		Gradient_Changed(tree, gradient);
+		break;
+	    }
+	    gradient = Gradient_CreateAndConfig(tree, name, objc - 4, objv + 4);
+	    if (gradient == NULL)
+		return TCL_ERROR;
+	    hPtr = Tcl_CreateHashEntry(&tree->gradientHash, name, &isNew);
+	    Tcl_SetHashValue(hPtr, gradient);
+	    Tcl_SetObjResult(interp, Gradient_ToObj((TreeGradient) gradient));
+	    break;
+	}
+	/* T gradient delete ?name ...? */
+	case COMMAND_DELETE: {
+	    int i;
+	    TreeGradient gradient;
+
+	    if (objc < 3) {
+		Tcl_WrongNumArgs(interp, 3, objv, "?name ...?");
+		return TCL_ERROR;
+	    }
+	    for (i = 3; i < objc; i++) {
+		if (TreeGradient_FromObj(tree, objv[i], &gradient) != TCL_OK)
+		    return TCL_ERROR;
+		if (gradient->refCount > 0) {
+		    gradient->deletePending = 1;
+		} else {
+		    Gradient_Deleted(tree, gradient);
+		    Gradient_FreeResources(tree, gradient, 1);
+		}
+	    }
+	    break;
+	}
+	/* T gradient names */
+	case COMMAND_NAMES: {
+	    Tcl_Obj *listObj;
+	    Tcl_HashSearch search;
+	    Tcl_HashEntry *hPtr;
+	    TreeGradient gradient;
+
+	    if (objc != 3) {
+		Tcl_WrongNumArgs(interp, 3, objv, NULL);
+		return TCL_ERROR;
+	    }
+	    listObj = Tcl_NewListObj(0, NULL);
+	    hPtr = Tcl_FirstHashEntry(&tree->gradientHash, &search);
+	    while (hPtr != NULL) {
+		gradient = (TreeGradient) Tcl_GetHashValue(hPtr);
+		if (gradient->deletePending == 0) {
+		    Tcl_ListObjAppendElement(interp, listObj, Gradient_ToObj(gradient));
+		}
+		hPtr = Tcl_NextHashEntry(&search);
+	    }
+	    Tcl_SetObjResult(interp, listObj);
+	    break;
+	}
+	/* T gradient native ?bool? */
+	case COMMAND_NATIVE: {
+	    int native;
+
+	    if (objc > 4) {
+		Tcl_WrongNumArgs(interp, 3, objv, "?preference?");
+		return TCL_ERROR;
+	    }
+	    if (objc == 4) {
+		if (Tcl_GetBooleanFromObj(interp, objv[3], &native) != TCL_OK) {
+		    return TCL_ERROR;
+		}
+		if (native != tree->nativeGradients) {
+		    Tree_DInfoChanged(tree, DINFO_INVALIDATE | DINFO_OUT_OF_DATE
+			| DINFO_DRAW_HEADER);
+		    tree->nativeGradients = native;
+		}
+	    }
+	    native = Tree_HasNativeGradients(tree);
+	    Tcl_SetObjResult(interp, Tcl_NewBooleanObj(native));
+	    break;
+	}
+    }
+    return TCL_OK;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeGradient_IsOpaque --
+ *
+ *	Test whether a gradient would be drawn fully opaque or not.
+ *
+ * Results:
+ *	1 if opaque, 0 otherwise.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+int
+TreeGradient_IsOpaque(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeGradient gradient	/* Gradient token. */
+    )
+{
+    GradientStopArray *stopArrPtr = gradient->stopArrPtr;
+    int i;
+
+    if (stopArrPtr->nstops < 2)
+	return 0; /* no colors == fully transparent */
+
+    if (!tree->nativeGradients || !Tree_HasNativeGradients(tree))
+	return 1;
+
+    for (i = 0; i < stopArrPtr->nstops; i++) {
+	GradientStop *stop = stopArrPtr->stops[i];
+	if (stop->opacity < 1.0f)
+	    return 0;
+    }
+
+    return 1;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeGradient_InitWidget --
+ *
+ *	Gradient-related package initialization.
+ *
+ * Results:
+ *	A standard Tcl result.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TreeGradient_InitWidget(
+    TreeCtrl *tree		/* Widget info. */
+    )
+{
+    tree->gradientOptionTable = Tk_CreateOptionTable(tree->interp,
+	gradientOptionSpecs);
+    tree->nativeGradients = 1; /* Preference, not availability */
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeGradient_FreeWidget --
+ *
+ *	Free gradient-related resources for a deleted TreeCtrl.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	Memory is freed.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TreeGradient_FreeWidget(
+    TreeCtrl *tree		/* Widget info. */
+    )
+{
+    Tcl_HashEntry *hPtr;
+    Tcl_HashSearch search;
+    TreeGradient gradient;
+
+    while (1) {
+	hPtr = Tcl_FirstHashEntry(&tree->gradientHash, &search);
+	if (hPtr == NULL)
+	    break;
+	gradient = (TreeGradient) Tcl_GetHashValue(hPtr);
+	if (gradient->refCount != 0) {
+	    panic("TreeGradient_Free: one or more gradients still being used");
+	}
+	Gradient_FreeResources(tree, gradient, 1);
+    }
+
+    Tcl_DeleteHashTable(&tree->gradientHash);
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeGradient_FillRoundRectX11 --
+ *
+ *	Paint a rectangle with a gradient using XFillRectangle.
+ *	We can't paint a rounded rectangle with a gradient on X11.
+ *	If I could clip drawing to arc's then I could do it.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	Drawing.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TreeGradient_FillRoundRectX11(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeDrawable td,		/* Where to draw. */
+    TreeClip *clip,		/* Clipping area or NULL. */
+    TreeGradient gradient,	/* Gradient token. */
+    TreeRectangle trBrush,	/* Brush bounds. */
+    TreeRectangle tr,		/* Rectangle to paint. */
+    int rx, int ry,		/* Corner radius */
+    int open			/* RECT_OPEN_x flags */
+    )
+{
+    if (tr.height <= 0 || tr.width <= 0 || gradient->nStepColors <= 0)
+	return;
+
+    /* Use the first stop color */
+    Tree_FillRoundRect(tree, td, clip, gradient->stopArrPtr->stops[0]->color,
+	tr, rx, ry, open);
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeGradient_FillRectX11 --
+ *
+ *	Paint a rectangle with a gradient using XFillRectangle.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	Drawing.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+_TreeGradient_FillRectX11(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeDrawable td,		/* Where to draw. */
+    TreeClip *clip,		/* Clipping area or NULL. */
+    TreeGradient gradient,	/* Gradient token. */
+    TreeRectangle trBrush,	/* Brush bounds. */
+    TreeRectangle tr		/* Rectangle to paint. */
+    )
+{
+    TreeRectangle trSub, trPaint;
+    int i;
+    float delta;
+    GC gc;
+
+    if (tr.height <= 0 || tr.width <= 0 || gradient->nStepColors <= 0)
+	return;
+
+    trSub = trBrush;
+
+    if (gradient->vertical) {
+	delta = ((float)trBrush.height) / gradient->nStepColors;
+	for (i = 0; i < gradient->nStepColors; i++) {
+	    float y1 = trBrush.y + i * delta;
+	    float y2 = trBrush.y + (i+1) * delta;
+	    trSub.y = (int)y1;
+	    trSub.height = (int)(ceil(y2) - floor(y1));
+	    if (TreeRect_Intersect(&trPaint, &trSub, &tr)) {
+		gc = Tk_GCForColor(gradient->stepColors[i], Tk_WindowId(tree->tkwin));
+		Tree_FillRectangle(tree, td, clip, gc, trPaint);
+	    }
+	}
+    } else {
+	delta = ((float)trBrush.width) / gradient->nStepColors;
+	for (i = 0; i < gradient->nStepColors; i++) {
+	    float x1 = trBrush.x + i * delta;
+	    float x2 = trBrush.x + (i+1) * delta;
+	    trSub.x = (int)x1;
+	    trSub.width = (int)(ceil(x2) - floor(x1));
+	    if (TreeRect_Intersect(&trPaint, &trSub, &tr)) {
+		gc = Tk_GCForColor(gradient->stepColors[i], Tk_WindowId(tree->tkwin));
+		Tree_FillRectangle(tree, td, clip, gc, trPaint);
+	    }
+	}
+    }
+}
+
+void
+TreeGradient_FillRectX11(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeDrawable td,		/* Where to draw. */
+    TreeClip *clip,		/* Clipping area or NULL. */
+    TreeGradient gradient,	/* Gradient token. */
+    TreeRectangle trBrush,	/* Brush bounds. */
+    TreeRectangle tr		/* Rectangle to paint. */
+    )
+{
+    TreeRectangle trSub;
+    int oldX = trBrush.x, oldY = trBrush.y;
+
+    if (trBrush.height < 1 || trBrush.width < 1) return;
+    if (tr.height < 1 || tr.width < 1) return;
+
+    /* This implements tiling of the gradient brush */
+    while (tr.x < trBrush.x)
+	trBrush.x -= trBrush.width;
+    while (tr.x >= trBrush.x + trBrush.width)
+	trBrush.x += trBrush.width;
+    while (tr.y < trBrush.y)
+	trBrush.y -= trBrush.height;
+    while (tr.y >= trBrush.y + trBrush.height)
+	trBrush.y += trBrush.height;
+    oldX = trBrush.x, oldY = trBrush.y;
+    while (trBrush.x < tr.x + tr.width) {
+	trBrush.y = oldY;
+	while (trBrush.y < tr.y + tr.height) {
+	    TreeRect_Intersect(&trSub, &trBrush, &tr);
+	    _TreeGradient_FillRectX11(tree, td, clip, gradient,
+		trBrush, trSub);
+	    trBrush.y += trBrush.height;
+	}
+	trBrush.x += trBrush.width;
+    }
+}
+
+void
+TreeGradient_DrawRectX11(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeDrawable td,		/* Where to draw. */
+    TreeClip *clip,		/* Clipping area or NULL. */
+    TreeGradient gradient,	/* Gradient token. */
+    TreeRectangle trBrush,	/* Brush bounds. */
+    TreeRectangle tr,		/* Rectangle to outline. */
+    int outlineWidth,		/* Width of outline. */
+    int open			/* RECT_OPEN_x flags */
+    )
+{
+    TreeRectangle trEdge;
+
+    if (!(open & RECT_OPEN_W)) {
+	trEdge.x = tr.x, trEdge.y = tr.y,
+	    trEdge.width = outlineWidth, trEdge.height = tr.height;
+	TreeGradient_FillRectX11(tree, td, clip, gradient, trBrush, trEdge);
+    }
+    if (!(open & RECT_OPEN_N)) {
+	trEdge.x = tr.x, trEdge.y = tr.y,
+	    trEdge.width = tr.width, trEdge.height = outlineWidth;
+	TreeGradient_FillRectX11(tree, td, clip, gradient, trBrush, trEdge);
+    }
+    if (!(open & RECT_OPEN_E)) {
+	trEdge.x = tr.x + tr.width - outlineWidth, trEdge.y = tr.y,
+	    trEdge.width = outlineWidth, trEdge.height = tr.height;
+	TreeGradient_FillRectX11(tree, td, clip, gradient, trBrush, trEdge);
+    }
+    if (!(open & RECT_OPEN_S)) {
+	trEdge.x = tr.x, trEdge.y = tr.y + tr.height - outlineWidth,
+	    trEdge.width = tr.width, trEdge.height = outlineWidth;
+	TreeGradient_FillRectX11(tree, td, clip, gradient, trBrush, trEdge);
+    }
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeColor_DrawRect --
+ *
+ *	Draw a rectangle with a gradient or solid color.
+ *
+ * Results:
+ *	If the gradient has <2 stops then nothing is drawn.
+ *
+ * Side effects:
+ *	Drawing.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TreeColor_DrawRect(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeDrawable td,		/* Where to draw. */
+    TreeClip *clip,		/* Clipping area or NULL. */
+    TreeColor *tc,		/* Color info. */
+    TreeRectangle trBrush,	/* Brush bounds. */
+    TreeRectangle tr,		/* Rectangle to outline. */
+    int outlineWidth,		/* Width of outline. */
+    int open			/* RECT_OPEN_x flags */
+    )
+{
+    if (tc == NULL || outlineWidth < 1 || open == RECT_OPEN_WNES)
+	return;
+    if (tc->gradient != NULL) {
+	TreeGradient_DrawRect(tree, td, clip, tc->gradient, trBrush, tr,
+	    outlineWidth, open);
+    }
+    if (tc->color != NULL) {
+	GC gc = Tk_GCForColor(tc->color, td.drawable);
+	TreeRectangle trEdge;
+	if (!(open & RECT_OPEN_W)) {
+	    trEdge.x = tr.x, trEdge.y = tr.y,
+		trEdge.width = outlineWidth, trEdge.height = tr.height;
+	    Tree_FillRectangle(tree, td, clip, gc, trEdge);
+	}
+	if (!(open & RECT_OPEN_N)) {
+	    trEdge.x = tr.x, trEdge.y = tr.y,
+		trEdge.width = tr.width, trEdge.height = outlineWidth;
+	    Tree_FillRectangle(tree, td, clip, gc, trEdge);
+	}
+	if (!(open & RECT_OPEN_E)) {
+	    trEdge.x = tr.x + tr.width - outlineWidth, trEdge.y = tr.y,
+		trEdge.width = outlineWidth, trEdge.height = tr.height;
+	    Tree_FillRectangle(tree, td, clip, gc, trEdge);
+	}
+	if (!(open & RECT_OPEN_S)) {
+	    trEdge.x = tr.x, trEdge.y = tr.y + tr.height - outlineWidth,
+		trEdge.width = tr.width, trEdge.height = outlineWidth;
+	    Tree_FillRectangle(tree, td, clip, gc, trEdge);
+	}
+    }
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeColor_FillRect --
+ *
+ *	Paint a rectangle with a gradient or solid color.
+ *
+ * Results:
+ *	If the gradient has <2 stops then nothing is drawn.
+ *
+ * Side effects:
+ *	Drawing.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TreeColor_FillRect(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeDrawable td,		/* Where to draw. */
+    TreeClip *clip,		/* Clipping area or NULL. */
+    TreeColor *tc,		/* Color info. */
+    TreeRectangle trBrush,	/* Brush bounds. */
+    TreeRectangle tr		/* Rectangle to paint. */
+    )
+{
+    if (tc == NULL)
+	return;
+    if (tc->gradient != NULL) {
+	TreeGradient_FillRect(tree, td, clip, tc->gradient, trBrush, tr);
+    }
+    if (tc->color != NULL) {
+	GC gc = Tk_GCForColor(tc->color, td.drawable);
+	Tree_FillRectangle(tree, td, clip, gc, tr);
+    }
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeColor_DrawRoundRect --
+ *
+ *	Draw a rounded rectangle with a gradient or solid color.
+ *
+ * Results:
+ *	If the gradient has <2 stops then nothing is drawn.
+ *
+ * Side effects:
+ *	Drawing.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TreeColor_DrawRoundRect(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeDrawable td,		/* Where to draw. */
+    TreeClip *clip,		/* Clipping area or NULL. */
+    TreeColor *tc,		/* Color info. */
+    TreeRectangle trBrush,	/* Brush bounds. */
+    TreeRectangle tr,		/* Rectangle to outline. */
+    int outlineWidth,		/* Width of outline. */
+    int rx, int ry,		/* Corner radius */
+    int open			/* RECT_OPEN_x flags */
+    )
+{
+    if (tc == NULL)
+	return;
+    if (tc->gradient != NULL) {
+	TreeGradient_DrawRoundRect(tree, td, clip, tc->gradient, trBrush, tr,
+	    outlineWidth, rx, ry, open);
+    }
+    if (tc->color != NULL) {
+	Tree_DrawRoundRect(tree, td, clip, tc->color, tr, outlineWidth,
+	    rx, ry, open);
+    }
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TreeColor_FillRoundRect --
+ *
+ *	Paint a rounded rectangle with a gradient or solid color.
+ *
+ * Results:
+ *	If the gradient has <2 stops then nothing is drawn.
+ *
+ * Side effects:
+ *	Drawing.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TreeColor_FillRoundRect(
+    TreeCtrl *tree,		/* Widget info. */
+    TreeDrawable td,		/* Where to draw. */
+    TreeClip *clip,		/* Clipping area or NULL. */
+    TreeColor *tc,		/* Color info. */
+    TreeRectangle trBrush,	/* Brush bounds. */
+    TreeRectangle tr,		/* Rectangle to paint. */
+    int rx, int ry,		/* Corner radius */
+    int open			/* RECT_OPEN_x flags */
+    )
+{
+    if (tc == NULL)
+	return;
+    if (tc->gradient != NULL) {
+	TreeGradient_FillRoundRect(tree, td, clip, tc->gradient, trBrush, tr,
+	    rx, ry, open);
+    }
+    if (tc->color != NULL) {
+	Tree_FillRoundRect(tree, td, clip, tc->color, tr, rx, ry, open);
+    }
+}
+

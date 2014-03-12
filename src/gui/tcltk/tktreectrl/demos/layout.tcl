@@ -1,18 +1,17 @@
-# RCS: @(#) $Id$
+# Copyright (c) 2002-2011 Tim Baker
 
 #
 # Demo: Layout
 #
-proc DemoLayout {} {
-
-    set T [DemoList]
+namespace eval DemoLayout {}
+proc DemoLayout::Init {T} {
 
     #
     # Configure the treectrl widget
     #
 
     $T configure -showroot no -showrootbutton yes -showbuttons yes \
-	-showlines $::ShowLines -itemheight 0 -selectmode browse
+	-showlines [ShouldShowLines $T] -itemheight 0 -selectmode browse
 
     #
     # Create columns
@@ -99,7 +98,7 @@ proc DemoLayout {} {
 
     $T element create eb border -background $::SystemButtonFace \
 	-relief {sunken {selected} raised {}} -thickness 2 -filled yes
-    $T element create et text
+    $T element create et text -lmargin2 20
 
     set text "Here is a text element surrounded by a border element.\nResize the column to watch me wrap."
 
@@ -121,7 +120,28 @@ proc DemoLayout {} {
 
     ###
 
-    set styleNum 5
+    set S [$T style create s5]
+    $T style elements $S {e1 e2 e3 e4 e5 e6 e7 e8}
+    $T style layout $S e1 -union e2 -ipadx 4 -ipady 4
+    $T style layout $S e2 -union e3 -ipadx 4 -ipady 4 -visible {no selected}
+    $T style layout $S e3 -union e4 -ipadx 4 -ipady 4
+    $T style layout $S e4 -width 30 -height 30
+    $T style layout $S e5 -union e6 -ipadx 4 -ipady 4
+    $T style layout $S e6 -union e7 -ipadx 4 -ipady 4 -visible {no selected}
+    $T style layout $S e7 -union e8 -ipadx 4 -ipady 4
+    $T style layout $S e8 -width 30 -height 30 -padx {24 0}
+
+    set I [$T item create -button yes]
+    $T item style set $I C0 $S
+    $T item lastchild root $I
+
+    set I2 [$T item create]
+    $T item style set $I2 C0 $S
+    $T item lastchild $I $I2
+
+    ###
+
+    set styleNum 6
     foreach {orient expandList} {horizontal {s ns n} vertical {e we w}} {
 	foreach expand $expandList {
 

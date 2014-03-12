@@ -9,8 +9,6 @@
 #
 # See the file "license.terms" for information on usage and redistribution
 # of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-#
-# RCS: @(#) $Id$
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest 2
@@ -29,16 +27,18 @@ test treectrl-1.2 {Unknown option} -body {
 } -returnCodes error -result {unknown option "-foo"}
 
 test treectrl-1.3 {Create a tree} -body {
-    treectrl .t
+    # The default borderwidth in Tk 8.4 is "2" while in Tk 8.5 it is "1"
+    # The default highlightthickness is "0" Mac OS X but "1" on other platforms.
+    treectrl .t -borderwidth 1 -highlightthickness 1
 } -result {.t}
 
 test treectrl-1.4 {configure: List all options} -body {
-	.t configure
+    .t configure
 } -result {{-background background Background white *}*} -match glob
 
 test treectrl-1.5 {configure -background with totally empty visible tree} -body {
     pack .t -expand yes -fill both
-    update idletasks
+    update
     .t configure -background white
     update idletasks
 } -result {}
@@ -76,8 +76,8 @@ test treectrl-1.12 {configure: -buttoncolor option} -body {
 } -result {-buttoncolor buttonColor ButtonColor #808080 red}
 
 test treectrl-1.13 {configure: invalid -buttonbitmap option} -body {
-    .t configure -buttonbitmap foo
-} -returnCodes error -result {bitmap "foo" not defined}
+    .t configure -buttonbitmap no-such-bitmap
+} -returnCodes error -result {bitmap "no-such-bitmap" not defined}
 
 test treectrl-1.14 {configure: -buttonbitmap option} -body {
     .t configure -buttonbitmap hourglass
@@ -191,7 +191,7 @@ test treectrl-1.41 {configure: invalid -showlines option} -body {
 test treectrl-1.42 {configure: -showlines option} -body {
     .t configure -showlines false
     .t configure -showlines
-} -result {-showlines showLines ShowLines 1 0}
+} -result {-showlines showLines ShowLines * 0} -match glob
 
 test treectrl-1.43 {configure: invalid -showroot option} -body {
     .t configure -showroot foo
@@ -561,7 +561,7 @@ test treectrl-12.1 {contentbox: too many args} -body {
 
 test treectrl-12.2 {contentbox} -body {
     .t contentbox
-} -result {3 3 203 203}
+} -result {2 2 202 202}
 
 test treectrl-12.3 {contentbox: simple double check with borders} -body {
     expr {[lindex [.t contentbox] 0] \
@@ -620,9 +620,9 @@ test treectrl-14.1 {rename and change some columns} -body {
 } -result {}
 
 test treectrl-15.1 {identify: missing args} -body {
-	wm geometry . 400x200 ; update
+    wm geometry . 400x200 ; update
     .t identify
-} -returnCodes error -result {wrong # args: should be ".t identify x y"}
+} -returnCodes error -result {wrong # args: should be ".t identify ?switches? x y"}
 
 test treectrl-15.2 {identify: negative coords} -body {
     .t configure -showheader 1 -showlines 1 -showbuttons 1 \
@@ -634,10 +634,10 @@ test treectrl-15.2 {identify: negative coords} -body {
 } -result {}
 
 test treectrl-15.3 {identify: header left} -body {
-	# column 0 has width 0
-	# column 1 has width 0
-	# column 2 has width 40 + 40 + 150 = 230
-	# borders are 2 + 1 = 3
+    # column 0 has width 0
+    # column 1 has width 0
+    # column 2 has width 40 + 40 + 150 = 230
+    # borders are 2 + 1 = 3
     .t identify 3 4
 } -result {header 2 left}
 
@@ -658,23 +658,139 @@ test treectrl-15.7 {identify: tail} -body {
 } -result {header tail}
 
 test treectrl-15.8 {identify: item (to the left)} -body {
-    .t identify 4 10
+    scan [.t bbox header] "%d %d %d %d" left top right bottom
+    .t identify 4 $bottom
 } -result {item 1}
 
 test treectrl-15.9 {identify: button} -body {
-    .t identify 60 10
+    scan [.t bbox header] "%d %d %d %d" left top right bottom
+    .t identify 60 $bottom
 } -result {item 1 button}
 
 test treectrl-15.10 {identify: over element} -body {
-    .t identify 150 10
+    scan [.t bbox header] "%d %d %d %d" left top right bottom
+    .t identify 150 $bottom
 } -result {item 1 column 2 elem eRect2}
 
 test treectrl-15.11 {identify: item (to the right)} -body {
     # first make column wider, otherwise we can't get right of the item
     .t column configure column1 -width 250
-    update idletasks 
-    .t identify 233 10
+    update idletasks
+    scan [.t bbox header] "%d %d %d %d" left top right bottom
+    .t identify 233 $bottom
 } -result {item 1 column 2}
+
+test treectrl-15.12 {identify: negative coords} -body {
+    .t column configure column1 -width ""
+    .t identify -array id -5 -5
+    parray id
+} -output {id(where) = 
+} -cleanup {array unset id}
+
+test treectrl-15.13 {identify: header left} -body {
+    # column 0 has width 0
+    # column 1 has width 0
+    # column 2 has width 40 + 40 + 150 = 230
+    # borders are 2 + 1 = 3
+    .t identify -array id 3 4
+    parray id
+} -output {id(column)  = 2
+id(element) = 
+id(header)  = 0
+id(side)    = left
+id(where)   = header
+} -cleanup {array unset id}
+
+test treectrl-15.14 {identify: header} -body {
+    .t identify -array id 40 4
+    parray id
+} -output {id(column)  = 2
+id(element) = 
+id(header)  = 0
+id(side)    = 
+id(where)   = header
+} -cleanup {array unset id}
+
+test treectrl-15.15 {identify: header right} -body {
+    .t identify -array id 232 4
+    parray id
+} -output {id(column)  = 2
+id(element) = 
+id(header)  = 0
+id(side)    = right
+id(where)   = header
+} -cleanup {array unset id}
+
+test treectrl-15.16 {identify: tail left} -body {
+    .t identify -array id 233 4
+    parray id
+} -output {id(column)  = tail
+id(element) = 
+id(header)  = 0
+id(side)    = left
+id(where)   = header
+} -cleanup {array unset id}
+
+test treectrl-15.17 {identify: tail} -body {
+    .t identify -array id 250 4
+    parray id
+} -output {id(column)  = tail
+id(element) = 
+id(header)  = 0
+id(side)    = 
+id(where)   = header
+} -cleanup {array unset id}
+
+test treectrl-15.18 {identify: item (to the left)} -body {
+    scan [.t bbox header] "%d %d %d %d" left top right bottom
+    .t identify -array id 4 $bottom
+    parray id
+} -output {id(button)  = no
+id(column)  = 2
+id(element) = 
+id(item)    = 1
+id(line)    = 
+id(where)   = item
+} -cleanup {array unset id}
+
+test treectrl-15.19 {identify: button} -body {
+    scan [.t bbox header] "%d %d %d %d" left top right bottom
+    .t identify -array id 60 $bottom
+    parray id
+} -output {id(button)  = yes
+id(column)  = 2
+id(element) = 
+id(item)    = 1
+id(line)    = 
+id(where)   = item
+} -cleanup {array unset id}
+
+test treectrl-15.20 {identify: over element} -body {
+    scan [.t bbox header] "%d %d %d %d" left top right bottom
+    .t identify -array id 150 $bottom
+    parray id
+} -output {id(button)  = no
+id(column)  = 2
+id(element) = eRect2
+id(item)    = 1
+id(line)    = 
+id(where)   = item
+} -cleanup {array unset id}
+
+test treectrl-15.21 {identify: item (to the right)} -body {
+    # first make column wider, otherwise we can't get right of the item
+    .t column configure column1 -width 250
+    update idletasks
+    scan [.t bbox header] "%d %d %d %d" left top right bottom
+    .t identify -array id 233 $bottom
+    parray id
+} -output {id(button)  = no
+id(column)  = 2
+id(element) = 
+id(item)    = 1
+id(line)    = 
+id(where)   = item
+} -cleanup {array unset id}
 
 test treectrl-16.1 {dragimage: missing args} -body {
     .t dragimage
@@ -838,6 +954,229 @@ test treectrl-18.9 {-defaultstyle: deleting column does not update -defaultstyle
     .t column delete "tag e"
     .t cget -defaultstyle
 } -result {a b {} d {} c}
+
+test treectrl-19.1 {gradient: missing args} -body {
+    .t gradient
+} -returnCodes error -result {wrong # args: should be ".t gradient command ?arg arg ...?"}
+
+test treectrl-19.3 {gradient: unknown command} -body {
+    .t gradient foo
+} -returnCodes error -result {bad command "foo": must be *} -match glob
+
+test treectrl-19.9 {gradient create: missing args} -body {
+    .t gradient create
+} -returnCodes error -result {wrong # args: should be ".t gradient create name ?option value ...?"}
+
+test treectrl-19.10 {gradient create: empty gradient name} -body {
+    .t gradient create ""
+} -returnCodes error -result {invalid gradient name ""}
+
+test treectrl-19.11 {gradient create: valid name} -body {
+    .t gradient create G1
+} -result {G1}
+
+test treectrl-19.12 {gradient create: duplicate name} -body {
+    .t gradient create G1
+} -returnCodes error -result {gradient "G1" already exists}
+
+test treectrl-19.13 {gradient create: missing argument option} -body {
+    .t gradient create G2 -stops
+} -returnCodes error -result {value for "-stops" missing}
+
+test treectrl-19.14 {gradient create: unknown option} -body {
+    .t gradient create G2 -foo
+} -returnCodes error -result {unknown option "-foo"}
+
+test treectrl-19.15 {gradient configure: missing args} -body {
+    .t gradient configure
+} -returnCodes error -result {wrong # args: should be ".t gradient configure name ?option? ?value option value ...?"}
+
+test treectrl-19.16 {gradient configure: unknown gradient} -body {
+    .t gradient configure foo
+} -returnCodes error -result {gradient "foo" doesn't exist}
+
+test treectrl-19.17 {gradient configure -steps: default} -body {
+    .t gradient configure G1 -steps
+} -result {-steps {} {} 1 1}
+
+test treectrl-19.18 {gradient configure -steps: invalid} -body {
+    .t gradient configure G1 -steps foo
+} -returnCodes error -result {expected integer but got "foo"}
+
+test treectrl-19.19 {gradient configure -steps: out of bounds} -body {
+    .t gradient configure G1 -steps 0
+} -returnCodes error -result {steps must be >= 1 and <= 25}
+
+test treectrl-19.20 {gradient configure -steps: out of bounds} -body {
+    .t gradient configure G1 -steps 100
+} -returnCodes error -result {steps must be >= 1 and <= 25}
+
+test treectrl-19.21 {gradient configure -steps: valid, lower limit} -body {
+    .t gradient configure G1 -steps 1
+} -result {}
+
+test treectrl-19.22 {gradient configure -steps: valid, upper limit} -body {
+    .t gradient configure G1 -steps 25
+} -result {}
+
+test treectrl-19.23 {gradient configure -stops: invalid} -body {
+    .t gradient configure G1 -stops foo
+} -returnCodes error -result {at least 2 stops required, 1 given}
+
+test treectrl-19.24 {gradient configure -stops: invalid} -body {
+    .t gradient configure G1 -stops {foo bar}
+} -returnCodes error -result {stop list not {offset color ?opacity?}}
+
+test treectrl-19.25 {gradient configure -stops: 0.0 must be first} -body {
+    .t gradient configure G1 -stops {{1.0 foo} {2.0 bar}}
+} -returnCodes error -result {first stop offset must be 0.0, got 1}
+
+test treectrl-19.26 {gradient configure -stops: unknown color} -body {
+    .t gradient configure G1 -stops {{0.0 foo} {2.0 bar}}
+} -returnCodes error -result {unknown color name "foo"}
+
+test treectrl-19.27 {gradient configure -stops: 1.0 must be last} -body {
+    .t gradient configure G1 -stops {{0.0 blue} {0.5 bar}}
+} -returnCodes error -result {last stop offset must be 1.0, got 0.5}
+
+test treectrl-19.28 {gradient configure -stops: must be ordered} -body {
+    .t gradient configure G1 -stops {{0.0 red} {0.5 green} {0.4 yellow} {1.0 blue}}
+} -returnCodes error -result {stop offsets must be ordered}
+
+test treectrl-20.1 {gradient coords: default} -body {
+    .t gradient configure G1 -left
+} -result {-left {} {} {} {}}
+
+test treectrl-20.2 {gradient coords: invalid} -body {
+    .t gradient configure G1 -left foo
+} -returnCodes error -result {expected list {offset coordType ?arg ...?}}
+
+test treectrl-20.3 {gradient coords: invalid} -body {
+    .t gradient configure G1 -left {a b}
+} -returnCodes error -result {bad coordinate type "b": must be *} -match glob
+
+test treectrl-20.4 {gradient coords: invalid} -body {
+    .t gradient configure G1 -left {a item}
+} -returnCodes error -result {expected floating-point number but got "a"}
+
+test treectrl-20.5 {gradient coords, area: missing arg} -body {
+    .t gradient configure G1 -left {0.5 area}
+} -returnCodes error -result {wrong # args after "area": must be 1}
+
+test treectrl-20.6 {gradient coords, area: too many args} -body {
+    .t gradient configure G1 -left {0.5 area a b}
+} -returnCodes error -result {wrong # args after "area": must be 1}
+
+test treectrl-20.7 {gradient coords, area: unknown area} -body {
+    .t gradient configure G1 -left {0.5 area foo}
+} -returnCodes error -result {bad area "foo": must be *} -match glob
+
+test treectrl-20.8 {gradient coords, area: valid} -body {
+    .t gradient configure G1 -left {0.5 area content}
+} -result {}
+
+test treectrl-20.9 {gradient coords, column: too many args} -body {
+    .t gradient configure G1 -left {0.5 column a b}
+} -returnCodes error -result {wrong # args after "column": must be 0 or 1}
+
+test treectrl-20.10 {gradient coords, column: invalid column} -body {
+    .t gradient configure G1 -left {0.5 column foo}
+} -returnCodes error -result {column "foo" doesn't exist}
+
+test treectrl-20.11 {gradient coords, column: valid w/o column} -body {
+    .t gradient configure G1 -left {0.5 column}
+} -result {}
+
+test treectrl-20.12 {gradient coords, column: valid w/ column} -body {
+    .t gradient configure G1 -left {0.5 column first}
+} -result {}
+
+test treectrl-20.13 {gradient coords, column: delete a column} -setup {
+    .t column create -tags C1
+    .t gradient configure G1 -left {0.5 column C1}
+} -body {
+    .t column delete C1
+    .t gradient cget G1 -left
+} -result {}
+
+test treectrl-20.20 {gradient coords, item: too many args} -body {
+    .t gradient configure G1 -left {0.5 item a b}
+} -returnCodes error -result {wrong # args after "item": must be 0 or 1}
+
+test treectrl-20.21 {gradient coords, item: invalid item} -body {
+    .t gradient configure G1 -left {0.5 item foo}
+} -returnCodes error -result {item "foo" doesn't exist}
+
+test treectrl-20.22 {gradient coords, item: valid w/o item} -body {
+    .t gradient configure G1 -left {0.5 item}
+} -result {}
+
+test treectrl-20.23 {gradient coords, item: valid w/ item} -body {
+    .t gradient configure G1 -left {0.5 item first}
+} -result {}
+
+test treectrl-20.24 {gradient coords, item: delete an item} -setup {
+    .t item create -tags I1
+    .t gradient configure G1 -left {0.5 item I1}
+} -body {
+    .t item delete I1
+    .t gradient cget G1 -left
+} -result {}
+
+test treectrl-21.1 {gradient delete: no args} -body {
+    .t gradient delete
+} -result {}
+
+test treectrl-21.2 {gradient delete: unknown gradient} -body {
+    .t gradient delete foo
+} -returnCodes error -result {gradient "foo" doesn't exist}
+
+test treectrl-21.3 {gradient delete: success} -body {
+    set result [.t gradient names]
+    .t gradient delete G1
+    lappend result [.t gradient names]
+} -result {G1 {}}
+
+test treectrl-21.4 {gradient delete: in use} -setup {
+    .t gradient create G1
+    .t column create -tags C1 -itembackground G1
+} -body {
+    set result [.t gradient names]
+    .t gradient delete G1
+    lappend result [.t gradient names]
+    lappend result [.t column cget C1 -itembackground]
+} -result {G1 {} G1}
+
+test treectrl-21.5 {gradient delete: deleted gradient recreated} -body {
+    .t gradient create G1
+    .t gradient names
+} -result {G1}
+
+test treectrl-21.6 {gradient delete: deleted gradient no longer referenced} -setup {
+    .t gradient delete G1
+    .t column configure C1 -itembackground {}
+} -body {
+    # now the gradient is freed
+} -result {}
+
+test treectrl-22.1 {gradient native: no args} -body {
+    string is boolean -strict [.t gradient native]
+} -result {1}
+
+test treectrl-22.2 {gradient native: too many args} -body {
+    .t gradient native foo bar
+} -returnCodes error -result {wrong # args: should be ".t gradient native ?preference?"}
+
+test treectrl-22.3 {gradient native: result doesn't change} -body {
+    set r1 [.t gradient native]
+    .t gradient native [expr {!$r1}]
+    set r2 [.t gradient native]
+    expr {$r1 eq $r2}
+} -result {1}
+
+test treectrl-99.1 {some needed cleanup} -body {
+    destroy .t
+} -result {}
 
 # cleanup
 image delete emptyImg

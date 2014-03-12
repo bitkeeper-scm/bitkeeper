@@ -1,10 +1,10 @@
-# RCS: @(#) $Id$
+# Copyright (c) 2006-2011 Tim Baker
 
-proc DemoColumnLock {} {
+namespace eval DemoColumnLock {}
 
-    global ColumnLock
+proc DemoColumnLock::Init {T} {
 
-    set T [DemoList]
+    variable Priv
 
     InitPics *checked
 
@@ -16,8 +16,8 @@ proc DemoColumnLock {} {
 	-showbuttons no \
 	-showlines no \
 	-showroot no \
-	-xscrollincrement 6 -xscrolldelay 30 \
-	-yscrollincrement 6 -yscrolldelay 30
+	-xscrollincrement 40 -xscrolldelay 50 -xscrollsmoothing yes \
+	-yscrollincrement 0 -yscrolldelay 50 -yscrollsmoothing yes
 
     #
     # Create columns
@@ -29,8 +29,8 @@ proc DemoColumnLock {} {
     $T column configure first -text LEFT -lock left -width ""
     $T column configure last -text RIGHT -lock right -width ""
 
-    $T state define CHECK
-    $T state define mouseover
+    $T item state define CHECK
+    $T item state define mouseover
 
     #
     # Create styles for the left-locked column, and create items
@@ -42,7 +42,7 @@ proc DemoColumnLock {} {
     $T style elements label1 {label1.bg label1.text}
     $T style layout label1 label1.bg -detach yes -iexpand xy
     $T style layout label1 label1.text -expand wns -padx 2
-    
+
     for {set i 1} {$i <= 10} {incr i} {
 	set I [$T item create -tags R$i -parent root]
 	$T item style set $I C0 label1
@@ -56,7 +56,7 @@ proc DemoColumnLock {} {
     $T style elements label2 {label2.bd label2.text}
     $T style layout label2 label2.bd -detach yes -iexpand xy
     $T style layout label2 label2.text -expand news -padx 2 -pady 2
-    
+
     for {set i 11} {$i <= 20} {incr i} {
 	set I [$T item create -tags R$i -parent root]
 	$T item style set $I C0 label2
@@ -69,7 +69,7 @@ proc DemoColumnLock {} {
     $T style elements label3 {label3.div label3.text}
     $T style layout label3 label3.div -detach yes -expand n -iexpand x
     $T style layout label3 label3.text -expand ws -padx 2 -pady 2
-    
+
     for {set i 21} {$i <= 30} {incr i} {
 	set I [$T item create -tags R$i -parent root]
 	$T item style set $I C0 label3
@@ -84,15 +84,15 @@ proc DemoColumnLock {} {
     $T style layout label4 label4.rect -detach yes -iexpand xy
     $T style layout label4 label4.text -expand we -padx 2 -pady 2
     $T style layout label4 label4.w -iexpand x -padx 2 -pady {0 2}
-    
+
     for {set i 31} {$i <= 40} {incr i} {
 	set I [$T item create -tags R$i -parent root]
 	$T item style set $I C0 label4
-	$T item element configure $I C0 label4.text -textvariable ::DemoColumnLock(R$i)
+	$T item element configure $I C0 label4.text -textvariable ::DemoColumnLock::Priv(R$i)
 	set clip [frame $T.clipR${I}C0 -borderwidth 0]
-	$::entryCmd $clip.e -width 4 -textvariable ::DemoColumnLock(R$i)
+	$::entryCmd $clip.e -width 4 -textvariable ::DemoColumnLock::Priv(R$i)
 	$T item element configure $I C0 label4.w -window $clip
-	set ::DemoColumnLock(R$i) "R$i"
+	set Priv(R$i) "R$i"
     }
 
     #
@@ -137,10 +137,10 @@ proc DemoColumnLock {} {
     # Create styles for the non-locked columns
     #
 
-    $T state define selN
-    $T state define selS
-    $T state define selW
-    $T state define selE
+    $T item state define selN
+    $T item state define selS
+    $T item state define selW
+    $T item state define selE
 
     $T element create cell.bd rect -outline gray -outlinewidth 1 -open wn \
 	-fill {gray80 mouseover #F7F7F7 CHECK}
@@ -183,75 +183,73 @@ proc DemoColumnLock {} {
     $T item style set "list {R2 R22}" "all lock none" windowStyle
 
     foreach C [$T column id "lock none !tail"] {
-	set ::DemoColumnLock(C$C) [$T column cget $C -tags]
+	set Priv(C$C) [$T column cget $C -tags]
 
 	set I R2
 	set clip [frame $T.clipR${I}C$C -borderwidth 0]
-	$::entryCmd $clip.e -width 4 -textvariable ::DemoColumnLock(C$C)
+	$::entryCmd $clip.e -width 4 -textvariable ::DemoColumnLock::Priv(C$C)
 	$T item element configure $I $C windowStyle.window -window $clip + \
-	    windowStyle.text -textvariable ::DemoColumnLock(C$C)
+	    windowStyle.text -textvariable ::DemoColumnLock::Priv(C$C)
 
 	set I R22
 	set clip [frame $T.clipR${I}C$C -borderwidth 0]
-	$::entryCmd $clip.e -width 4 -textvariable ::DemoColumnLock(C$C)
+	$::entryCmd $clip.e -width 4 -textvariable ::DemoColumnLock::Priv(C$C)
 	$T item element configure $I $C windowStyle.window -window $clip + \
-	    windowStyle.text -textvariable ::DemoColumnLock(C$C)
+	    windowStyle.text -textvariable ::DemoColumnLock::Priv(C$C)
     }
 
     bind DemoColumnLock <ButtonPress-1> {
-	ColumnLockButton1 %W %x %y
+	DemoColumnLock::Button1 %W %x %y
     }
     bind DemoColumnLock <Button1-Motion> {
-	ColumnLockMotion1 %W %x %y
-	ColumnLockMotion %W %x %y
+	DemoColumnLock::Motion1 %W %x %y
+	DemoColumnLock::Motion %W %x %y
     }
     bind DemoColumnLock <Motion> {
-	ColumnLockMotion %W %x %y
+	DemoColumnLock::Motion %W %x %y
     }
 
-    set ColumnLock(prev) ""
-    set ColumnLock(selection) {}
+    set Priv(prev) ""
+    set Priv(selection) {}
 
     bindtags $T [list $T DemoColumnLock TreeCtrl [winfo toplevel $T] all]
 
     return
 }
 
-proc ColumnLockButton1 {w x y} {
-    global ColumnLock
-    set id [$w identify $x $y]
-    set ColumnLock(selecting) 0
-    if {[lindex $id 0] eq "item"} {
-	lassign $id what item where arg1 arg2 arg3
-	if {$where eq "column"} {
-	    if {[$w column compare $arg1 == last]} {
-		$w item state set $item ~CHECK
-		return
-	    }
-	    if {[$w column cget $arg1 -lock] eq "none"} {
-		set ColumnLock(corner1) [list $item $arg1]
-		set ColumnLock(corner2) $ColumnLock(corner1)
-		set ColumnLock(selecting) 1
-		ColumnLockUpdateSelection $w
-	    }
+proc DemoColumnLock::Button1 {w x y} {
+    variable Priv
+    $w identify -array id $x $y
+    set Priv(selecting) 0
+    if {$id(where) eq "item"} {
+	set item $id(item)
+	set column $id(column)
+	if {[$w column compare $column == last]} {
+	    $w item state set $item ~CHECK
+	    return
+	}
+	if {[$w column cget $column -lock] eq "none"} {
+	    set Priv(corner1) [list $item $column]
+	    set Priv(corner2) $Priv(corner1)
+	    set Priv(selecting) 1
+	    UpdateSelection $w
 	}
     }
     return
 }
 
-proc ColumnLockMotion1 {w x y} {
-    global ColumnLock
-    set id [$w identify $x $y]
-    if {[lindex $id 0] eq "item"} {
-	lassign $id what item where arg1 arg2 arg3
-	if {$where eq "column"} {
-	    if {[$w column cget $arg1 -lock] eq "none"} {
-		if {$ColumnLock(selecting)} {
-		    set corner [list $item $arg1]
-		    if {$corner ne $ColumnLock(corner2)} {
-			set ColumnLock(corner2) $corner
-			ColumnLockUpdateSelection $w
-		    }
+proc DemoColumnLock::Motion1 {w x y} {
+    variable Priv
+    $w identify -array id $x $y
+    if {$id(where) eq "item"} {
+	set item $id(item)
+	set column $id(column)
+	if {[$w column cget $column -lock] eq "none"} {
+	    if {$Priv(selecting)} {
+		set corner [list $item $column]
+		if {$corner ne $Priv(corner2)} {
+		    set Priv(corner2) $corner
+		    UpdateSelection $w
 		}
 	    }
 	}
@@ -259,47 +257,45 @@ proc ColumnLockMotion1 {w x y} {
     return
 }
 
-proc ColumnLockMotion {w x y} {
-    global ColumnLock
-    set id [$w identify $x $y]
-    if {$id eq ""} {
-    } elseif {[lindex $id 0] eq "header"} {
-    } elseif {[lindex $id 0] eq "item"} {
-	set item [lindex $id 1]
-	if {[lindex $id 2] eq "column"} {
-	    set column [lindex $id 3]
-	} else {
-	    set column [$w cget -treecolumn]
-	}
+proc DemoColumnLock::Motion {w x y} {
+    variable Priv
+    $w identify -array id $x $y
+    if {$id(where) eq ""} {
+	# nothing
+    } elseif {$id(where) eq "header"} {
+	# nothing
+    } elseif {$id(where) eq "item"} {
+	set item $id(item)
+	set column $id(column)
 	set curr [list $item $column]
-	if {$curr ne $ColumnLock(prev)} {
-	    if {$ColumnLock(prev) ne ""} {
-		eval $w item state forcolumn $ColumnLock(prev) !mouseover
+	if {$curr ne $Priv(prev)} {
+	    if {$Priv(prev) ne ""} {
+		eval $w item state forcolumn $Priv(prev) !mouseover
 	    }
 	    $w item state forcolumn $item $column mouseover
-	    set ColumnLock(prev) $curr
+	    set Priv(prev) $curr
 	}
 	return
     }
-    if {$ColumnLock(prev) ne ""} {
-	eval $w item state forcolumn $ColumnLock(prev) !mouseover
-	set ColumnLock(prev) ""
+    if {$Priv(prev) ne ""} {
+	eval $w item state forcolumn $Priv(prev) !mouseover
+	set Priv(prev) ""
     }
     return
 }
 
-proc ColumnLockUpdateSelection {w} {
-    global ColumnLock
+proc DemoColumnLock::UpdateSelection {w} {
+    variable Priv
 
     # Clear the old selection.
-    foreach {item column} $ColumnLock(selection) {
+    foreach {item column} $Priv(selection) {
 	$w item state forcolumn $item $column {!selN !selS !selE !selW}
     }
-    set ColumnLock(selection) {}
+    set Priv(selection) {}
 
     # Order the 2 corners.
-    foreach {item1 column1} $ColumnLock(corner1) {}
-    foreach {item2 column2} $ColumnLock(corner2) {}
+    foreach {item1 column1} $Priv(corner1) {}
+    foreach {item2 column2} $Priv(corner2) {}
     if {[$w item compare $item1 > $item2]} {
 	set swap $item1
 	set item1 $item2
@@ -320,18 +316,18 @@ proc ColumnLockUpdateSelection {w} {
     # Remember every item-column on the edges of the selection.
     foreach item [list $item1 $item2] {
 	foreach column [$w column id "range $column1 $column2"] {
-	    lappend ColumnLock(selection) $item $column
+	    lappend Priv(selection) $item $column
 	}
     }
     foreach item [$w item id "range $item1 $item2"] {
 	foreach column [list $column1 $column2] {
-	    lappend ColumnLock(selection) $item $column
+	    lappend Priv(selection) $item $column
 	}
     }
     return
 }
 
-proc ColumnLockAddText {} {
+proc DemoColumnLock::AddText {} {
     set w [DemoList]
     $w style elements cell {cell.bd label1.text cell.selN cell.selS cell.selW cell.selE}
     $w item text visible {lock none} abc

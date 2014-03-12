@@ -1,11 +1,15 @@
-# RCS: @(#) $Id$
+# Copyright (c) 2005-2011 Tim Baker
 
+# A nice feature of the element type "window" is the -clip option.
 set ::clip 1
-proc DemoBigList {} {
 
-    global BigList
+namespace eval DemoBigList {}
 
-    set T [DemoList]
+proc DemoBigList::Init {T} {
+
+    variable Priv
+
+    set Priv(noise) 0
 
     #
     # Configure the treectrl widget
@@ -15,12 +19,13 @@ proc DemoBigList {} {
 	-showroot no -showbuttons no -showlines no \
 	-showrootlines no
 
-if {$::clip} {
-    $T configure -xscrollincrement 4 -yscrollincrement 4
-} else {
-    # Hide the borders because child windows appear on top of them
-    $T configure -borderwidth 0 -highlightthickness 0
-}
+    if {$::clip} {
+	$T configure -xscrollincrement 4 -yscrollincrement 4
+    } else {
+	# Hide the borders because child windows appear on top of them
+	$T configure -borderwidth 0 -highlightthickness 0
+    }
+
     #
     # Create columns
     #
@@ -36,37 +41,35 @@ if {$::clip} {
     # Create elements
     #
 
-    set BigList(bg) $::SystemButtonFace
+    set Priv(bg) $::SystemButtonFace
     set outline gray70
 
-    $T element create eRectTop.e rect -outline $outline -fill $BigList(bg) \
-	-outlinewidth 1 -open es
-    $T element create eRectTop.we rect -outline $outline -fill $BigList(bg) \
-	-outlinewidth 1 -open wes
-    $T element create eRectTop.w rect -outline $outline -fill $BigList(bg) \
-	-outlinewidth 1 -open ws
-    $T element create eRectBottom rect -outline $outline -fill $BigList(bg) \
-	-outlinewidth 1 -open n
+    $T item state define openW
+    $T item state define openE
+    $T item state define openWE
+
+    $T element create eRectTop rect -outline $outline -fill $Priv(bg) \
+	-outlinewidth 1 -open {wes openWE es openE ws openW} -rx 7
+    $T element create eRectBottom rect -outline $outline -fill $Priv(bg) \
+	-outlinewidth 1 -open n -rx 7
 
     # Title
-    $T element create elemBorderTitle border -relief {sunken open raised {}} -thickness 1 \
-	-filled yes -background $::SystemButtonFace
+    $T element create elemBorderTitle border -relief {sunken open raised {}} \
+	-thickness 1 -filled yes -background $::SystemButtonFace
     $T element create elemTxtTitle text \
 	-font [list DemoFontBold]
 
     # Citizen
-    $T element create elemRectSel rect -showfocus no \
-	-fill [list $::SystemHighlight {selected focus} gray {selected !focus}]
-    $T element create elemTxtItem text \
-	-fill [list $::SystemHighlightText {selected focus}]
+    $T element create elemTxtItem text
     $T element create elemTxtName text \
-	-fill [list $::SystemHighlightText {selected focus} blue {}]
+	-fill [list blue {}]
 
     # Citizen info
     $T element create elemWindow window
-if {$::clip} {
-    $T element configure elemWindow -clip yes
-}
+    if {$::clip} {
+	$T element configure elemWindow -clip yes
+    }
+
     #
     # Create styles using the elements
     #
@@ -77,28 +80,28 @@ if {$::clip} {
     $T style layout $S elemBorderTitle -detach yes -indent no -iexpand xy
 
     set S [$T style create styItem]
-    $T style elements $S {eRectTop.e elemRectSel elemTxtItem elemTxtName}
-    $T style layout $S eRectTop.e -detach yes -indent no -iexpand xy -draw {yes open no {}}
+    $T style elements $S {eRectTop elemTxtItem elemTxtName}
+    $T style layout $S eRectTop -detach yes -indent no -iexpand xy \
+	-draw {yes open no {}} -padx {2 0}
     $T style layout $S elemTxtItem -expand ns
     $T style layout $S elemTxtName -expand ns -padx {20}
-    $T style layout $S elemRectSel -detach yes -indent no -iexpand xy
 
     set S [$T style create styID]
-    $T style elements $S {eRectTop.we elemRectSel elemTxtItem}
-    $T style layout $S eRectTop.we -detach yes -indent yes -iexpand xy -draw {yes open no {}}
+    $T style elements $S {eRectTop elemTxtItem}
+    $T style layout $S eRectTop -detach yes -indent yes -iexpand xy -draw {yes open no {}}
     $T style layout $S elemTxtItem -padx 6 -expand ns
-    $T style layout $S elemRectSel -detach yes -indent no -iexpand xy
 
     set S [$T style create styParent]
-    $T style elements $S {eRectTop.w elemRectSel elemTxtItem}
-    $T style layout $S eRectTop.w -detach yes -indent yes -iexpand xy -draw {yes open no {}}
+    $T style elements $S {eRectTop elemTxtItem}
+    $T style layout $S eRectTop -detach yes -indent yes -iexpand xy \
+	-draw {yes open no {}} -padx {0 2}
     $T style layout $S elemTxtItem -padx 6 -expand ns
-    $T style layout $S elemRectSel -detach yes -indent no -iexpand xy
 
     set S [$T style create styCitizen]
     $T style elements $S {eRectBottom elemWindow}
-    $T style layout $S eRectBottom -detach yes -indent no -iexpand xy
-    $T style layout $S elemWindow -pady {0 1}
+    $T style layout $S eRectBottom -detach yes -indent no -iexpand xy \
+	-padx 2 -pady {0 1}
+    $T style layout $S elemWindow -pady {0 2}
 
     #
     # Create 10000 items. Each of these items will hold 10 child items.
@@ -107,32 +110,38 @@ if {$::clip} {
     set index 1
     foreach I [$T item create -count 10000 -parent root -button yes -open no \
 	-height 20 -tags title] {
-	set BigList(titleIndex,$I) $index
+	set Priv(titleIndex,$I) $index
 	incr index 10
     }
 
     # This binding will add child items to an item just before it is expanded.
     $T notify bind $T <Expand-before> {
-	BigListExpandBefore %T %I
+	DemoBigList::ExpandBefore %T %I
     }
 
+    # In this demo there are 100,000 items that display a window element.
+    # It would take a lot of time and memory to create 100,000 Tk windows
+    # all at once when initializing the demo list.
+    # The solution is to assign item styles only when items are actually
+    # visible to the user onscreen.
+    #
     # This binding will assign styles to items when they are displayed and
     # clear the styles when they are no longer displayed.
     $T notify bind $T <ItemVisibility> {
-	BigListItemVisibility %T %v %h
+	DemoBigList::ItemVisibility %T %v %h
     }
 
-    set BigList(freeWindows) {}
-    set BigList(nextWindowId) 0
-    set BigList(prev) ""
+    set Priv(freeWindows) {}
+    set Priv(nextWindowId) 0
+    set Priv(prev) ""
 
-    BigListGetWindowHeight $T
+    GetWindowHeight $T
+
+    # When the Tile/Ttk theme changes, recalculate the height of styCitizen
+    # windows.
     if {$::tile} {
 	bind DemoBigList <<ThemeChanged>> {
-	    BigListGetWindowHeight [DemoList]
-	    if {[[DemoList] item id {first visible tag info}] ne ""} {
-		[DemoList] item conf {tag info} -height $BigList(windowHeight)
-	    }
+	    after idle BigListThemeChanged [DemoList]
 	}
     }
 
@@ -140,22 +149,22 @@ if {$::clip} {
 	if {[lindex [%W identify %x %y] 0] eq "header"} {
 	    TreeCtrl::DoubleButton1 %W %x %y
 	} else {
-	    BigListButton1 %W %x %y
+	    DemoBigList::Button1 %W %x %y
 	}
 	break
     }
     bind DemoBigList <ButtonPress-1> {
-	BigListButton1 %W %x %y
+	DemoBigList::Button1 %W %x %y
 	break
     }
     bind DemoBigList <Motion> {
-	BigListMotion %W %x %y
+	DemoBigList::Motion %W %x %y
     }
 
     bind DemoBigListChildWindow <Motion> {
 	set x [expr {%X - [winfo rootx [DemoList]]}]
 	set y [expr {%Y - [winfo rooty [DemoList]]}]
-	BigListMotion [DemoList] $x $y
+	DemoBigList::Motion [DemoList] $x $y
     }
 
     bindtags $T [list $T DemoBigList TreeCtrl [winfo toplevel $T] all]
@@ -163,34 +172,58 @@ if {$::clip} {
     return
 }
 
-proc BigListGetWindowHeight {T} {
-    global BigList
-    # Create a new window just to get the requested size. This will be the
+# DemoBigList::GetWindowHeight
+#
+# Calculate and store the height of one of the windows used to display citizen
+# information.  Since item styles are assigned on-the-fly (see the
+# BigListItemVisibility procedure) we need to know the height an item would
+# have if it had the "styCitizen" style assigned so the scrollbars are set
+# properly.
+#
+# Arguments:
+# T		The treectrl widget.
+
+proc DemoBigList::GetWindowHeight {T} {
+    variable Priv
+    # Create a new window just to get the requested size.  This will be the
     # value of the item -height option for some items.
-    set w [BigListNewWindow $T root]
+    set w [NewWindow $T root]
     update idletasks
-if {$::clip} {
-    set height [winfo reqheight [lindex [winfo children $w] 0]]
-} else {
-    set height [winfo reqheight $w]
-}
-    # Add 1 pixel for the border
-    incr height
-    set BigList(windowHeight) $height
-    BigListFreeWindow $T $w
+    if {$::clip} {
+	set height [winfo reqheight [lindex [winfo children $w] 0]]
+    } else {
+	set height [winfo reqheight $w]
+    }
+    # Add 2 pixels for the border and gap
+    incr height 2
+    set Priv(windowHeight) $height
+    FreeWindow $T $w
     return
 }
 
-proc BigListExpandBefore {T I} {
+# DemoBigList::ExpandBefore --
+#
+# Handle the <Expand-before> event.  If the item already has child items,
+# then nothing happens.  Otherwise 1 or more items are created as children
+# of the item being expanded.
+#
+# Take advantage of the <Expand-before> event to create child items
+# immediately prior to expanding a parent item.
+#
+# Arguments:
+# T		The treectrl widget.
+# I		The item whose children are about to be displayed.
 
-    global BigList
+proc DemoBigList::ExpandBefore {T I} {
+
+    variable Priv
 
     set parent [$T item parent $I]
     if {[$T item numchildren $I]} return
 
     # Title
     if {[$T item tag expr $I title]} {
-	set index $BigList(titleIndex,$I)
+	set index $Priv(titleIndex,$I)
 	set threats {Severe High Elevated Guarded Low}
 	set names1 {Bill John Jack Bob Tim Sam Mary Susan Lilian Jeff Gary
 	    Neil Margaret}
@@ -203,9 +236,9 @@ proc BigListExpandBefore {T I} {
 		-height 20 -tags citizen] {
 	    set name1 [lindex $names1 [expr {int(rand() * [llength $names1])}]]
 	    set name2 [lindex $names2 [expr {int(rand() * [llength $names2])}]]
-	    set BigList(itemIndex,$I) $index
-	    set BigList(name,$I) "$name1 $name2"
-	    set BigList(threat,$I) [lindex $threats [expr {int(rand() * 5)}]]
+	    set Priv(itemIndex,$I) $index
+	    set Priv(name,$I) "$name1 $name2"
+	    set Priv(threat,$I) [lindex $threats [expr {int(rand() * 5)}]]
 	    incr index
 	}
 	return
@@ -216,15 +249,28 @@ proc BigListExpandBefore {T I} {
 
 	# Add 1 child item to this item.
 	# The styles will be assigned in BigListItemVisibility.
-	$T item create -parent $I -height $BigList(windowHeight) -tags info
+	$T item create -parent $I -height $Priv(windowHeight) -tags info
     }
 
     return
 }
 
-proc BigListItemVisibility {T visible hidden} {
+# DemoBigList::ItemVisibility --
+#
+# Handle the <ItemVisibility> event.  Item styles are assigned or cleared
+# when item visibility changes.
+#
+# Take advantage of the <ItemVisibility> event to update the appearance of
+# items just before they become visible onscreen.
+#
+# Arguments:
+# T		The treectrl widget.
+# visible	List of items that are now visible.
+# hidden	List of items that are no longer visible.
 
-    global BigList
+proc DemoBigList::ItemVisibility {T visible hidden} {
+
+    variable Priv
 
     # Assign styles and configure elements in each item that is now
     # visible on screen.
@@ -233,7 +279,7 @@ proc BigListItemVisibility {T visible hidden} {
 
 	# Title
 	if {[$T item tag expr $I title]} {
-	    set first $BigList(titleIndex,$I)
+	    set first $Priv(titleIndex,$I)
 	    set last [expr {$first + 10 - 1}]
 	    set first [format %06d $first]
 	    set last [format %06d $last]
@@ -246,18 +292,22 @@ proc BigListItemVisibility {T visible hidden} {
 
 	# Citizen
 	if {[$T item tag expr $I citizen]} {
-	    set index $BigList(itemIndex,$I)
-	    $T item style set $I colItem styItem  colID styID colParent styParent
+	    set index $Priv(itemIndex,$I)
+	    $T item style set $I colItem styItem colID styID colParent styParent
 	    $T item element configure $I \
-		colItem elemTxtItem -text "Citizen $index" + elemTxtName -textvariable ::BigList(name,$I) , \
+		colItem elemTxtItem -text "Citizen $index" + elemTxtName \
+		-textvariable ::DemoBigList::Priv(name,$I) , \
 		colParent elemTxtItem -text $parent , \
 		colID elemTxtItem -text $I
+	    $T item state forcolumn $I colItem openE
+	    $T item state forcolumn $I colID openWE
+	    $T item state forcolumn $I colParent openW
 	    continue
 	}
 
 	# Citizen info
 	if {[$T item tag expr $I info]} {
-	    set w [BigListNewWindow $T $parent]
+	    set w [NewWindow $T $parent]
 	    $T item style set $I colItem styCitizen
 	    $T item span $I colItem 3
 	    $T item element configure $I colItem \
@@ -272,41 +322,42 @@ proc BigListItemVisibility {T visible hidden} {
 	if {[$T item tag expr $I info]} {
 	    # Add this window to the list of unused windows
 	    set w [$T item element cget $I colItem elemWindow -window]
-	    BigListFreeWindow $T $w
+	    FreeWindow $T $w
 	}
 	$T item style set $I colItem "" colParent "" colID ""
     }
     return
 }
 
-proc BigListNewWindow {T I} {
-    global BigList
+proc DemoBigList::NewWindow {T I} {
+    variable Priv
 
     # Check the list of unused windows
-    if {[llength $BigList(freeWindows)]} {
-	set w [lindex $BigList(freeWindows) 0]
-	set BigList(freeWindows) [lrange $BigList(freeWindows) 1 end]
-if {$::clip} {
-	set f $w
-	set w [lindex [winfo children $f] 0]
-}
-puts "reuse window $w"
+    if {[llength $Priv(freeWindows)]} {
+	set w [lindex $Priv(freeWindows) 0]
+	set Priv(freeWindows) [lrange $Priv(freeWindows) 1 end]
+	if {$::clip} {
+	    set f $w
+	    set w [lindex [winfo children $f] 0]
+	}
+
+	if {$Priv(noise)} { dbwin "reuse window $w" }
 
     # No unused windows exist. Create a new one.
     } else {
-	set id [incr BigList(nextWindowId)]
-if {$::clip} {
-	set f [frame $T.clip$id -background blue]
-	set w [frame $f.frame$id -background $BigList(bg)]
-} else {
-	set w [frame $T.frame$id -background $BigList(bg)]
-}
+	set id [incr Priv(nextWindowId)]
+	if {$::clip} {
+	    set f [frame $T.clip$id -background blue]
+	    set w [frame $f.frame$id -background $Priv(bg)]
+	} else {
+	    set w [frame $T.frame$id -background $Priv(bg)]
+	}
 	# Name: label + entry
-	label $w.label1 -text "Name:" -anchor w -background $BigList(bg)
+	label $w.label1 -text "Name:" -anchor w -background $Priv(bg)
 	$::entryCmd $w.entry1 -width 24
 
 	# Threat Level: label + menubutton
-	label $w.label2 -text "Threat Level:" -anchor w -background $BigList(bg)
+	label $w.label2 -text "Threat Level:" -anchor w -background $Priv(bg)
 	if {$::tile} {
 	    ttk::combobox $w.mb2 -values {Severe High Elevated Guarded Low} \
 		-state readonly -width [string length "Elevated"]
@@ -341,42 +392,42 @@ if {$::clip} {
 	AddBindTag $w DemoBigListChildWindow
 	AddBindTag $w TagIdentify
 
-puts "create window $w"
+	if {$Priv(noise)} { dbwin "create window $w" }
     }
 
     # Tie the widgets to the global variables for this citizen
-    $w.entry1 configure -textvariable BigList(name,$I)
-    $w.mb2 configure -textvariable BigList(threat,$I)
+    $w.entry1 configure -textvariable ::DemoBigList::Priv(name,$I)
+    $w.mb2 configure -textvariable ::DemoBigList::Priv(threat,$I)
     if {!$::tile} {
 	foreach label {Severe High Elevated Guarded Low} {
-	    $w.mb2.m entryconfigure $label -variable BigList(threat,$I)
+	    $w.mb2.m entryconfigure $label -variable ::DemoBigList::Priv(threat,$I)
 	}
     }
-if {$::clip} { return $f }
+    if {$::clip} { return $f }
     return $w
 }
 
-proc BigListFreeWindow {T w} {
-    global BigList
+proc DemoBigList::FreeWindow {T w} {
+    variable Priv
 
     # Add the window to our list of free windows. DemoClear will actually
     # delete the window when the demo changes.
-    lappend BigList(freeWindows) $w
-puts "free window $w"
+    lappend Priv(freeWindows) $w
+    if {$Priv(noise)} { dbwin "free window $w" }
     return
 }
 
-proc BigListButton1 {w x y} {
-    variable TreeCtrl::Priv
+proc DemoBigList::Button1 {w x y} {
+    variable ::TreeCtrl::Priv
     focus $w
-    set id [$w identify $x $y]
+    $w identify -array id $x $y
     set Priv(buttonMode) ""
-    if {[lindex $id 0] eq "header"} {
+    if {$id(where) eq "header"} {
 	TreeCtrl::ButtonPress1 $w $x $y
-    } elseif {[lindex $id 0] eq "item"} {
-	set item [lindex $id 1]
+    } elseif {$id(where) eq "item"} {
+	set item $id(item)
 	# click a button
-	if {[llength $id] != 6} {
+	if {$id(element) eq ""} {
 	    TreeCtrl::ButtonPress1 $w $x $y
 	    return
 	}
@@ -387,23 +438,31 @@ proc BigListButton1 {w x y} {
     return
 }
 
-proc BigListMotion {w x y} {
-    global BigList
-    set id [$w identify $x $y]
-    if {[lindex $id 0] eq "item"} {
-	set item [lindex $id 1]
+proc DemoBigList::Motion {w x y} {
+    variable Priv
+    $w identify -array id $x $y
+    if {$id(where) eq "item"} {
+	set item $id(item)
 	if {[$w item tag expr $item !info]} {
-	    if {$item ne $BigList(prev)} {
+	    if {$item ne $Priv(prev)} {
 		$w configure -cursor hand2
-		set BigList(prev) $item
+		set Priv(prev) $item
 	    }
 	    return
 	}
     }
-    if {$BigList(prev) ne ""} {
+    if {$Priv(prev) ne ""} {
 	$w configure -cursor ""
-	set BigList(prev) ""
+	set Priv(prev) ""
     }
     return
 }
 
+proc DemoBigList::ThemeChanged {T} {
+    variable Priv
+    GetWindowHeight $T
+    if {[$T item id {first visible tag info}] ne ""} {
+	$T item conf {tag info} -height $Priv(windowHeight)
+    }
+    return
+}

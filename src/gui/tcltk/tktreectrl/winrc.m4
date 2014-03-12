@@ -91,6 +91,7 @@ AC_DEFUN([TREECTRL_ADD_RC], [
 		    j="`echo $i | sed -e 's/\.[[^.]]*$//'`.\${RES}"
 		fi
 		PKG_OBJECTS="$PKG_OBJECTS $j"
+		TEA_ADD_CLEANFILES($j)
 		;;
 	esac
     done

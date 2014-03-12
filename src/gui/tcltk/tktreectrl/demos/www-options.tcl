@@ -1,10 +1,9 @@
-# RCS: @(#) $Id$
+# Copyright (c) 2002-2011 Tim Baker
 
-proc DemoInternetOptions {} {
+namespace eval DemoInternetOptions {}
+proc DemoInternetOptions::Init {T} {
 
-    global Options
-
-    set T [DemoList]
+    variable Priv
 
     set height [font metrics [$T cget -font] -linespace]
     if {$height < 18} {
@@ -17,6 +16,8 @@ proc DemoInternetOptions {} {
 
     $T configure -showroot no -showbuttons no -showlines no -itemheight $height \
 	-selectmode browse
+
+    $T configure -canvaspadx {4 0} -canvaspady {2 0}
 
     InitPics internet-*
 
@@ -32,9 +33,9 @@ proc DemoInternetOptions {} {
     # Create elements
     #
 
-    $T state define check
-    $T state define radio
-    $T state define on
+    $T item state define check
+    $T item state define radio
+    $T item state define on
 
     $T element create elemImg image -image {
 	internet-check-on {check on}
@@ -42,8 +43,10 @@ proc DemoInternetOptions {} {
 	internet-radio-on {radio on}
 	internet-radio-off {radio}
     }
-    $T element create elemTxt text -fill [list $::SystemHighlightText {selected focus}]
-    $T element create elemRectSel rect -fill [list $::SystemHighlight {selected focus}] -showfocus yes
+    $T element create elemTxt text \
+	-fill [list $::SystemHighlightText {selected focus}] -lines 1
+    $T element create elemRectSel rect \
+	-fill [list $::SystemHighlight {selected focus}] -showfocus yes
 
     #
     # Create styles using the elements
@@ -52,7 +55,7 @@ proc DemoInternetOptions {} {
     set S [$T style create STYLE]
     $T style elements $S {elemRectSel elemImg elemTxt}
     $T style layout $S elemImg -padx {0 4} -expand ns
-    $T style layout $S elemTxt -expand ns
+    $T style layout $S elemTxt -expand ns -squeeze x
     $T style layout $S elemRectSel -union [list elemTxt] -iexpand ns -ipadx 2
 
     #
@@ -77,10 +80,10 @@ proc DemoInternetOptions {} {
 	set item [$T item create]
 	$T item style set $item C0 STYLE
 	$T item element configure $item C0 elemTxt -text $text
-	set Options(option,$item) $option
-	set Options(group,$item) $group
+	set Priv(option,$item) $option
+	set Priv(group,$item) $group
 	if {($setting eq "on") || ($setting eq "off")} {
-	    set Options(setting,$item) $setting
+	    set Priv(setting,$item) $setting
 	    if {$group eq ""} {
 		$T item state set $item check
 		if {$setting eq "on"} {
@@ -88,7 +91,7 @@ proc DemoInternetOptions {} {
 		}
 	    } else {
 		if {$setting eq "on"} {
-		    set Options(current,$group) $item
+		    set Priv(current,$group) $item
 		    $T item state set $item on
 		}
 		$T item state set $item radio
@@ -105,7 +108,7 @@ proc DemoInternetOptions {} {
 	TreeCtrl::DoubleButton1 %W %x %y
     }
     bind DemoInternetOptions <ButtonPress-1> {
-	OptionButton1 %W %x %y
+	DemoInternetOptions::Button1 %W %x %y
 	break
     }
 
@@ -114,39 +117,38 @@ proc DemoInternetOptions {} {
     return
 }
 
-proc OptionButton1 {T x y} {
-    variable TreeCtrl::Priv
-    global Options
+proc DemoInternetOptions::Button1 {T x y} {
+    variable Priv
     focus $T
     set id [$T identify $x $y]
     if {[lindex $id 0] eq "header"} {
 	TreeCtrl::ButtonPress1 $T $x $y
     } elseif {$id eq ""} {
-	set Priv(buttonMode) ""
+	set ::TreeCtrl::Priv(buttonMode) ""
     } else {
-	set Priv(buttonMode) ""
+	set ::TreeCtrl::Priv(buttonMode) ""
 	set item [lindex $id 1]
 	$T selection modify $item all
 	$T activate $item
-	if {$Options(option,$item) eq ""} return
-	set group $Options(group,$item)
+	if {$Priv(option,$item) eq ""} return
+	set group $Priv(group,$item)
 	# a checkbutton
 	if {$group eq ""} {
 	    $T item state set $item ~on
-	    if {$Options(setting,$item) eq "on"} {
+	    if {$Priv(setting,$item) eq "on"} {
 		set setting off
 	    } else {
 		set setting on
 	    }
-	    set Options(setting,$item) $setting
+	    set Priv(setting,$item) $setting
 	# a radiobutton
 	} else {
-	    set current $Options(current,$group)
+	    set current $Priv(current,$group)
 	    if {$current eq $item} return
 	    $T item state set $current !on
 	    $T item state set $item on
-	    set Options(setting,$item) on
-	    set Options(current,$group) $item
+	    set Priv(setting,$item) on
+	    set Priv(current,$group) $item
 	}
     }
     return
@@ -154,11 +156,9 @@ proc OptionButton1 {T x y} {
 
 
 # Alternate implementation that does not rely on run-time states
-proc DemoInternetOptions_2 {} {
+proc DemoInternetOptions::Init_2 {T} {
 
-    global Options
-
-    set T [DemoList]
+    variable Priv
 
     set height [font metrics [$T cget -font] -linespace]
     if {$height < 18} {
@@ -220,16 +220,16 @@ proc DemoInternetOptions_2 {} {
 	set item [$T item create]
 	$T item style set $item 0 STYLE
 	$T item element configure $item 0 elemTxt -text $text
-	set Options(option,$item) $option
-	set Options(group,$item) $group
+	set Priv(option,$item) $option
+	set Priv(group,$item) $group
 	if {$setting eq "on" || $setting eq "off"} {
-	    set Options(setting,$item) $setting
+	    set Priv(setting,$item) $setting
 	    if {$group eq ""} {
 		set img internet-check-$setting
 		$T item element configure $item 0 elemImg -image $img
 	    } else {
 		if {$setting eq "on"} {
-		    set Options(current,$group) $item
+		    set Priv(current,$group) $item
 		}
 		set img internet-radio-$setting
 		$T item element configure $item 0 elemImg -image $img
@@ -246,7 +246,7 @@ proc DemoInternetOptions_2 {} {
 	TreeCtrl::DoubleButton1 %W %x %y
     }
     bind DemoInternetOptions <ButtonPress-1> {
-	OptionButton1 %W %x %y
+	DemoInternetOptions::Button1 %W %x %y
 	break
     }
 
@@ -255,39 +255,39 @@ proc DemoInternetOptions_2 {} {
     return
 }
 
-proc OptionButton1_2 {T x y} {
-    variable TreeCtrl::Priv
-    global Options
+# Alternate implementation that does not rely on run-time states
+proc DemoInternetOptions::Button1_2 {T x y} {
+    variable Priv
     focus $T
     set id [$T identify $x $y]
     if {[lindex $id 0] eq "header"} {
 	TreeCtrl::ButtonPress1 $T $x $y
     } elseif {$id eq ""} {
-	set Priv(buttonMode) ""
+	set ::TreeCtrl::Priv(buttonMode) ""
     } else {
-	set Priv(buttonMode) ""
+	set ::TreeCtrl::Priv(buttonMode) ""
 	set item [lindex $id 1]
 	$T selection modify $item all
 	$T activate $item
-	if {$Options(option,$item) eq ""} return
-	set group $Options(group,$item)
+	if {$Priv(option,$item) eq ""} return
+	set group $Priv(group,$item)
 	# a checkbutton
 	if {$group eq ""} {
-	    if {$Options(setting,$item) eq "on"} {
+	    if {$Priv(setting,$item) eq "on"} {
 		set setting off
 	    } else {
 		set setting on
 	    }
 	    $T item element configure $item 0 elemImg -image internet-check-$setting
-	    set Options(setting,$item) $setting
+	    set Priv(setting,$item) $setting
 	# a radiobutton
 	} else {
-	    set current $Options(current,$group)
+	    set current $Priv(current,$group)
 	    if {$current eq $item} return
 	    $T item element configure $current 0 elemImg -image internet-radio-off
 	    $T item element configure $item 0 elemImg -image internet-radio-on
-	    set Options(setting,$item) on
-	    set Options(current,$group) $item
+	    set Priv(setting,$item) on
+	    set Priv(current,$group) $item
 	}
     }
     return

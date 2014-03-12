@@ -1,8 +1,7 @@
-# RCS: @(#) $Id$
+# Copyright (c) 2006-2011 Tim Baker
 
-proc DemoMyComputer {} {
-
-    set T [DemoList]
+namespace eval DemoMyComputer {}
+proc DemoMyComputer::Init {T} {
 
     set font [.menubar cget -font]
     if {[lsearch -exact [font names] DemoMyComputerHeaderFont] == -1} {
@@ -16,7 +15,7 @@ proc DemoMyComputer {} {
     #
 
     $T configure -showroot no -showbuttons no -showlines no \
-	-selectmode browse -xscrollincrement 20 \
+	-selectmode browse -xscrollincrement 20 -xscrollsmoothing yes \
 	-font $font
 
     #
@@ -39,7 +38,10 @@ proc DemoMyComputer {} {
 	-lines 1
     $T element create txtOther text -lines 1
     $T element create elemRectSel rect -fill [list $::SystemHighlight {selected focus} gray {selected !focus}] -showfocus yes
-    $T element create rectDivider rect -fill blue -height 1 -width 250
+
+    $T gradient create G_divider -stops {{0.0 blue} {0.8 blue} {1.0 white}} \
+	-steps 12
+    $T element create rectDivider rect -fill G_divider -height 1 -width 250
 
     #
     # Create styles using the elements
@@ -61,23 +63,6 @@ proc DemoMyComputer {} {
     set S [$T style create styOther]
     $T style elements $S txtOther
     $T style layout $S txtOther -padx 6 -squeeze x -expand ns
-
-    # List of lists: {column style element ...} specifying text elements
-    # the user can edit
-    TreeCtrl::SetEditable $T {
-    }
-
-    # List of lists: {column style element ...} specifying elements
-    # the user can click on or select with the selection rectangle
-    TreeCtrl::SetSensitive $T {
-	{name styName txtName}
-    }
-
-    # List of lists: {column style element ...} specifying elements
-    # added to the drag image when dragging selected items
-    TreeCtrl::SetDragImage $T {
-	{name styName txtName}
-    }
 
     #
     # Create items and assign styles
@@ -117,5 +102,26 @@ proc DemoMyComputer {} {
 	$T item lastchild root $I
     }
 
-#    bindtags $T [list $T TreeCtrlFileList TreeCtrl [winfo toplevel $T] all]
+if 0 {
+    # List of lists: {column style element ...} specifying text elements
+    # the user can edit
+    TreeCtrl::SetEditable $T {
+    }
+
+    # List of lists: {column style element ...} specifying elements
+    # the user can click on or select with the selection rectangle
+    TreeCtrl::SetSensitive $T {
+	{name styName txtName}
+    }
+
+    # List of lists: {column style element ...} specifying elements
+    # added to the drag image when dragging selected items
+    TreeCtrl::SetDragImage $T {
+	{name styName txtName}
+    }
+
+    bindtags $T [list $T TreeCtrlFileList TreeCtrl [winfo toplevel $T] all]
+}
+
+    return
 }

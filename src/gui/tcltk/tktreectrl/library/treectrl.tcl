@@ -1,12 +1,14 @@
-# RCS: @(#) $Id$
+# Copyright (c) 2002-2011 Tim Baker
 
 bind TreeCtrl <Motion> {
     TreeCtrl::CursorCheck %W %x %y
     TreeCtrl::MotionInHeader %W %x %y
+    TreeCtrl::MotionInButtons %W %x %y
 }
 bind TreeCtrl <Leave> {
     TreeCtrl::CursorCancel %W
     TreeCtrl::MotionInHeader %W
+    TreeCtrl::MotionInButtons %W
 }
 bind TreeCtrl <ButtonPress-1> {
     TreeCtrl::ButtonPress1 %W %x %y
@@ -53,7 +55,7 @@ bind TreeCtrl <Shift-KeyPress-Down> {
     TreeCtrl::Extend %W below
 }
 bind TreeCtrl <KeyPress-Left> {
-    if {[%W cget -orient] eq "vertical" && [%W cget -wrap] eq ""} {
+    if {![TreeCtrl::Has2DLayout %W]} {
 	%W item collapse [%W item id active]
     } else {
 	TreeCtrl::SetActiveItem %W [TreeCtrl::LeftRight %W active -1]
@@ -66,7 +68,7 @@ bind TreeCtrl <Control-KeyPress-Left> {
     %W xview scroll -1 pages
 }
 bind TreeCtrl <KeyPress-Right> {
-    if {[%W cget -orient] eq "vertical" && [%W cget -wrap] eq ""} {
+    if {![TreeCtrl::Has2DLayout %W]} {
 	%W item expand [%W item id active]
     } else {
 	TreeCtrl::SetActiveItem %W [TreeCtrl::LeftRight %W active 1]
@@ -158,6 +160,7 @@ bind TreeCtrl <KeyPress-Return> {
 # Additional Tk bindings that aren't part of the Motif look and feel:
 
 bind TreeCtrl <ButtonPress-2> {
+    focus %W
     TreeCtrl::ScanMark %W %x %y
 }
 bind TreeCtrl <Button2-Motion> {
@@ -169,6 +172,15 @@ if {$tcl_platform(platform) eq "windows"} {
 	TreeCtrl::ScanMark %W %x %y
     }
     bind TreeCtrl <Control-Button3-Motion> {
+	TreeCtrl::ScanDrag %W %x %y
+    }
+}
+if {[string equal [tk windowingsystem] "aqua"]} {
+    # Middle mouse on Mac OSX
+    bind TreeCtrl <ButtonPress-3> {
+	TreeCtrl::ScanMark %W %x %y
+    }
+    bind TreeCtrl <Button3-Motion> {
 	TreeCtrl::ScanDrag %W %x %y
     }
 }
@@ -226,12 +238,7 @@ source [file join [file dirname [info script]] filelist-bindings.tcl]
 
 proc ::TreeCtrl::ColumnCanResizeLeft {w column} {
     if {[$w column cget $column -lock] eq "right"} {
-	if {[$w column compare $column == "first visible lock right"]} {
-	    return 1
-	}
-	if {[$w column compare $column == "last visible lock right"]} {
-	    return 1
-	}
+	return 1
     }
     return 0
 }
@@ -255,49 +262,6 @@ proc ::TreeCtrl::ColumnCanMoveHere {w column before} {
 	[$w column compare $before <= "last lock $lock next"]}]
 }
 
-# ::TreeCtrl::ColumnsBbox --
-#
-# Returns the bounding box of an area of the header.  The [bbox] command
-# can't be used if the items area is completely obscured. [BUG 2355369]
-#
-# Arguments:
-# w		The treectrl widget.
-# area		left, content or right
-
-proc ::TreeCtrl::ColumnsBbox {w area} {
-    if {[$w bbox header] eq ""} return
-    scan [$w bbox header] "%d %d %d %d" x1 y1 x2 y2
-
-    # If the items area is not obscured then use the [bbox] command.
-    if {[$w bbox $area] ne ""} {
-	scan [$w bbox $area] "%d %d %d %d" x1 dummy x2 dummy
-	return "$x1 $y1 $x2 $y2"
-    }
-
-    set contentLeft $x1
-    if {[$w column id "last visible lock left"] ne ""} {
-	scan [$w column bbox "last visible lock left"] "%d %d %d %d" a b c d
-	set contentLeft $c
-    } elseif {$area eq "left"} {
-	return ""
-    }
-
-    set contentRight $x2
-    if {[$w column id "first visible lock right"] ne ""} {
-	scan [$w column bbox "first visible lock right"] "%d %d %d %d" a b c d
-	set contentRight $a
-    } elseif {$area eq "right"} {
-	return ""
-    }
-
-    switch -- $area {
-	left { set result "$x1 $y1 $contentLeft $y2" }
-	content { set result "$contentLeft $y1 $contentRight $y2" }
-	right { set result "$contentRight $y1 $x2 $y2" }
-    }
-    return $result
-}
-
 # ::TreeCtrl::ColumnDragFindBefore --
 #
 # This is called when dragging a column header. The result is 1 if the given
@@ -316,31 +280,64 @@ proc ::TreeCtrl::ColumnDragFindBefore {w x y dragColumn indColumn_ indSide_} {
     upvar $indColumn_ indColumn
     upvar $indSide_ indSide
 
-    switch -- [$w column cget $dragColumn -lock] {
-	left {set area left}
-	none {set area content}
-	right {set area right}
-    }
-
-# BUG 2355369
-#    scan [$w bbox $area] "%d %d %d %d" minX y1 maxX y2
-    scan [ColumnsBbox $w $area] "%d %d %d %d" minX y1 maxX y2
+    set lock [$w column cget $dragColumn -lock]
+    scan [$w bbox header.$lock] "%d %d %d %d" minX y1 maxX y2
     if {$x < $minX} {
 	set x $minX
     }
     if {$x >= $maxX} {
 	set x [expr {$maxX - 1}]
     }
-    set id [$w identify $x $y]
-    if {[lindex $id 0] ne "header"} {
+    $w identify -array id $x $y
+    if {$id(where) ne "header"} {
 	return 0
     }
-    set indColumn [lindex $id 1]
+    set indColumn $id(column)
+    if {[$w column compare $indColumn == $dragColumn]} {
+	return 0
+    }
+
+    # The given $x is either the left edge or the right edge of the column
+    # header that is being dragged depending on which direction the user
+    # is dragging the column.
+    # When dragging to the left, the indicator column is chosen to be the
+    # leftmost column whose mid-way point is greater than the left edge of the
+    # dragged header.
+    # When dragging to the right, the indicator column is chosen to be the
+    # rightmost column whose mid-way point is less than the right edge of the
+    # dragged header.
+    if {[$w column compare $indColumn != "tail"]} {
+	variable Priv
+	scan [$w header bbox $Priv(header) $indColumn] "%d %d %d %d" x1 y1 x2 y2
+	# Hack - ignore canvaspadx
+	if {[$w column cget $indColumn -lock] eq "none" &&
+		[$w column compare $indColumn == "first visible lock none"]} {
+	    incr x1 [lindex [$w cget -canvaspadx] 0]
+	}
+	if {[$w column compare $dragColumn < $indColumn]} {
+	    if {$x < $x1 + ($x2 - $x1) / 2} {
+		set indColumn [$w column id "$indColumn prev visible"]
+		set indColumn [GetSpanStartColumn $w $Priv(header) $indColumn]
+	    }
+	} else {
+	    if {$x > $x1 + ($x2 - $x1) / 2} {
+		# Find the column at the start of the next visible span
+		set starts [GetSpanStarts $w $Priv(header)]
+		for {set i [$w column order $indColumn]} {true} {incr i} {
+		    if {[$w column compare [lindex $starts $i] > $indColumn]} break
+		}
+		set indColumn [lindex $starts $i]
+	    }
+	}
+    }
+
     set before $indColumn
     set prev [$w column id "$dragColumn prev visible"]
     set next [$w column id "$dragColumn next visible"]
     if {[$w column compare $indColumn == "tail"]} {
 	set indSide left
+	set indColumn [$w column id "last lock none visible"]
+	set indSide right
     } elseif {$prev ne "" && [$w column compare $prev == $indColumn]} {
 	set indSide left
     } elseif {$next ne "" && [$w column compare $next == $indColumn]} {
@@ -355,64 +352,160 @@ proc ::TreeCtrl::ColumnDragFindBefore {w x y dragColumn indColumn_ indSide_} {
 	    set indSide right
 	}
     }
+    if {$before eq "" || [$w column compare $before > "last lock $lock next"]} {
+	set before [$w column id "last lock $lock next"]
+    }
     return [ColumnCanMoveHere $w $dragColumn $before]
+}
+
+# ::TreeCtrl::ListElementWindows --
+#
+# Return a list of Tk windows in window elements in a column header.
+#
+# Arguments:
+# T		The treectrl widget.
+# H		Header id
+# C		Column id
+
+proc ::TreeCtrl::ListElementWindows {T H C} {
+    set S [$T header style set $H $C]
+    if {$S eq ""} return
+    set result {}
+    foreach E [$T header style elements $H $C] {
+	if {[$T element type $E] eq "window"} {
+	    set window [$T header element cget $H $C $E -window]
+	    if {$window ne ""} {
+		lappend result $window
+	    }
+	}
+    }
+    return $result
+}
+
+# ::TreeCtrl::ColumnDragRestackWindows --
+#
+# Restack windows in window elements so that windows in dragged headers
+# are above all other windows in undragged headers.
+#
+# Arguments:
+# T		The treectrl widget.
+
+proc ::TreeCtrl::ColumnDragRestackWindows {T} {
+    variable Priv
+    set C [$T header dragcget -imagecolumn]
+    set lock [$T column cget $C -lock]
+    set span [$T header dragcget -imagespan]
+    set last [$T column id [list $C span $span]]
+    set dragged [$T column id [list range $C $last]]
+    foreach H [$T header id all] {
+	set prev ""
+	set lowest ""
+	foreach C $dragged {
+	    foreach win [ListElementWindows $T $H $C] {
+		if {$prev eq ""} {
+		    set lowest $win
+		} else {
+		    raise $win $prev
+		}
+		set prev $win
+	    }
+	}
+	if {$lowest eq ""} continue
+	foreach C [$T column id "lock $lock !tail"] {
+	    if {[lsearch -exact $dragged $C] != -1} continue
+	    foreach win [ListElementWindows $T $H $C] {
+		lower $win $lowest
+	    }
+	}
+    }
+    return
 }
 
 # ::TreeCtrl::CursorAction --
 #
-# If the given point is at the left or right edge of a resizable column, the
-# result is "column resize C". If the given point is in a header with -button
-# TRUE, the result is "column button C".
+# If the given point is at the left or right edge of a resizable column
+# header, the result is "action header-resize header H column C".
+# If the given point is in a header with -button=TRUE, the result is
+# "action header-button header H column C".
 #
 # Arguments:
 # w		The treectrl widget.
 # x		Window coord of pointer.
 # y		Window coord of pointer.
 
-proc ::TreeCtrl::CursorAction {w x y} {
+proc ::TreeCtrl::CursorAction {w x y var_} {
+    upvar $var_ var
     variable Priv
-    set id [$w identify $x $y]
+    $w identify -array id $x $y
 
-    if {[lindex $id 0] eq "header"} {
-	set column [lindex $id 1]
-	set side [lindex $id 2]
-	if {$side eq "left"} {
-	    if {[$w column compare $column == tail]} {
-		set column2 [$w column id "last visible lock none"]
-		if {$column2 ne "" && [$w column cget $column2 -resize]} {
-		    return "column resize $column2"
+    set var(action) ""
+    if {$id(where) eq "header"} {
+	set var(header) $id(header)
+	set column $id(column)
+	set side $id(side)
+	if {$side eq ""} {
+	    if {[scan [$w bbox header.left] "%d %d %d %d" x1 y1 x2 y2] == 4} {
+		if {$x < $x2 + 4 && $x >= $x2} {
+		    set column [$w column id "last visible lock left"]
+		    set side right
 		}
-		# Can't -resize or -button the tail column
-		return ""
 	    }
+	    if {[scan [$w bbox header.right] "%d %d %d %d" x1 y1 x2 y2] == 4} {
+		if {$x >= $x1 - 4 && $x < $x1} {
+		    set column [$w column id "first visible lock right"]
+		    set side left
+		}
+	    }
+	}
+	if {$side eq "left"} {
 	    if {[ColumnCanResizeLeft $w $column]} {
 		if {[$w column cget $column -resize]} {
-		    return "column resize $column"
+		    array set var [list action "header-resize" column $column]
+		    return
 		}
 	    } else {
 		# Resize the previous column
-		set lock [$w column cget $column -lock]
-		if {[$w column compare $column != "first visible lock $lock"]} {
-		    set column2 [$w column id "$column prev visible"]
-		    if {[$w column cget $column2 -resize]} {
-			return "column resize $column2"
+		if {[$w column compare $column == tail]} {
+		    set prev [$w column id "last visible lock none"]
+		    if {$prev eq ""} {
+			set prev [$w column id "last visible lock left"]
 		    }
+		} else {
+		    set prev [$w column id "$column prev visible"]
+		}
+		if {$prev ne "" && [$w column cget $prev -resize]} {
+		    array set var [list action "header-resize" column $prev]
+		    return
 		}
 	    }
 	} elseif {$side eq "right"} {
-	    if {![ColumnCanResizeLeft $w $column]} {
-		if {[$w column cget $column -resize]} {
-		    return "column resize $column"
+	    # Get the last visible column in the span
+	    set span [$w header span $id(header) $column]
+	    set last [$w column id "$column span $span"]
+	    set columns [$w column id [list range $column $last visible]]
+	    set column2 [lindex $columns end]
+	    if {[ColumnCanResizeLeft $w $column2]} {
+		# Resize the next column
+		set next [$w column id "$column2 next visible !tail"]
+		if {$next ne "" && [$w column cget $next -resize]} {
+		    array set var [list action "header-resize" column $next]
+		    return
+		}
+	    } else {
+		if {[$w column cget $column2 -resize]} {
+		    array set var [list action "header-resize" column $column2]
+		    return
 		}
 	    }
 	}
 	if {[$w column compare $column == "tail"]} {
-	    # nothing
-	} elseif {[$w column cget $column -button]} {
-	    return "column button $column"
+	    # Can't -resize or -button the tail column
+	} elseif {[$w header cget $id(header) $column -button]} {
+	    array set var [list action "header-button" column $column]
+	    return
 	}
     }
-    return ""
+    return
 }
 
 # ::TreeCtrl::CursorCheck --
@@ -430,8 +523,12 @@ proc ::TreeCtrl::CursorAction {w x y} {
 
 proc ::TreeCtrl::CursorCheck {w x y} {
     variable Priv
-    set action [CursorAction $w $x $y]
-    if {[lindex $action 1] ne "resize"} {
+    CursorAction $w $x $y action
+    # If we are in the middle of resizing a column, don't cancel the cursor
+    if {[info exists Priv(buttonMode)] && $Priv(buttonMode) eq "resize"} {
+	array set action {action "header-resize" header XXX column XXX}
+    }
+    if {$action(action) ne "header-resize"} {
 	CursorCancel $w
 	return
     }
@@ -459,6 +556,7 @@ proc ::TreeCtrl::CursorCheck {w x y} {
 
 proc ::TreeCtrl::CursorCheckAux {w} {
     variable Priv
+    if {![winfo exists $w]} return
     set x [winfo pointerx $w]
     set y [winfo pointery $w]
     if {[info exists Priv(cursor,$w)]} {
@@ -490,10 +588,110 @@ proc ::TreeCtrl::CursorCancel {w} {
     return
 }
 
+# ::TreeCtrl::GetSpanStarts --
+#
+# This procedure returns a list of column ids, one per tree column.
+# Each column id indicates the column at the start of a span.
+#
+# Arguments:
+# T		The treectrl widget.
+# H		Header id
+
+proc ::TreeCtrl::GetSpanStarts {T H} {
+    set columns [list]
+    set spans [$T header span $H]
+    if {[lindex [lsort -integer $spans] end] eq 1} {
+	return [$T column list]
+    }
+    for {set index 0} {$index < [$T column count]} {}  {
+	set Cspan [$T column id "order $index"]
+	set span [lindex $spans $index]
+	if {![$T column cget $Cspan -visible]} {
+	    set span 1
+	}
+	while {$span > 0 && $index < [$T column count]} {
+	    if {[$T column cget "order $index" -lock] ne [$T column cget $Cspan -lock]} break
+	    lappend columns $Cspan
+	    incr span -1
+	    incr index
+	}
+    }
+    return $columns
+}
+
+# ::TreeCtrl::GetSpanStartColumn --
+#
+# This procedure returns the column at the start of a span which covers the
+# given column.
+#
+# Arguments:
+# T		The treectrl widget.
+# H		Header id
+# C		Column id
+
+proc ::TreeCtrl::GetSpanStartColumn {T H C} {
+    set columns [GetSpanStarts $T $H]
+    return [lindex $columns [$T column order $C]]
+}
+
+# ::TreeCtrl::SetHeaderState --
+#
+# This procedure sets the state of a header-column and remembers that
+# header-column.  If a different header-column is passed later the previous
+# header-column's state is set to 'normal'.
+#
+# Arguments:
+# T		The treectrl widget.
+# H		Header id
+# C		Column id
+# state		active|normal|pressed
+
+proc ::TreeCtrl::SetHeaderState {T H C state} {
+    variable Priv
+    if {[info exists Priv(inheader,$T)]} {
+	lassign $Priv(inheader,$T) Hprev Cprev
+    } else {
+	if {$H eq "" || $C eq ""} return
+	set Hprev [set Cprev ""]
+    }
+    if {$H ne $Hprev || $C ne $Cprev} {
+	if {$Hprev ne "" && [$T header id $Hprev] ne ""} {
+	    if {$Cprev ne "" && [$T column id $Cprev] ne ""} {
+		$T header configure $Hprev $Cprev -state normal
+		TryEvent $T Header state [list H $Hprev C $Cprev s normal]
+	    }
+	}
+    }
+    if {$H eq "" || $C eq ""} {
+	unset Priv(inheader,$T)
+    } else {
+	$T header configure $H $C -state $state
+	TryEvent $T Header state [list H $H C $C s $state]
+	set Priv(inheader,$T) [list $H $C]
+    }
+    return
+}
+
+# ::TreeCtrl::ClearHeaderState --
+#
+# If a header-column's state was previously set via SetHeaderState then
+# that column's state is set to normal and the header-column is forgotten.
+#
+# Arguments:
+# T		The treectrl widget.
+# H		Header id
+# C		Column id
+# state		active|normal|pressed
+
+proc ::TreeCtrl::ClearHeaderState {T} {
+    SetHeaderState $T "" "" ""
+    return
+}
+
 # ::TreeCtrl::MotionInHeader --
 #
-# This procedure updates the active/normal states of columns as the pointer
-# moves in and out of column headers. Typically this results in visual
+# This procedure updates the active/normal states of column headers as the
+# mouse pointer moves in and out of them. Typically this results in visual
 # feedback by changing the appearance of the headers.
 #
 # Arguments:
@@ -505,30 +703,94 @@ proc ::TreeCtrl::MotionInHeader {w args} {
     if {[llength $args]} {
 	set x [lindex $args 0]
 	set y [lindex $args 1]
-	set action [CursorAction $w $x $y]
+	CursorAction $w $x $y action
     } else {
-	set action ""
+	array set action {action ""}
     }
     if {[info exists Priv(inheader,$w)]} {
-	set prevColumn $Priv(inheader,$w)
+	lassign $Priv(inheader,$w) headerPrev columnPrev
     } else {
-	set prevColumn ""
+	set headerPrev [set columnPrev ""]
     }
+    set header ""
     set column ""
-    if {[lindex $action 0] eq "column"} {
-	set column [lindex $action 2]
+    if {$action(action) eq "header-button"} {
+	set header $action(header)
+	set column $action(column)
+    } elseif {$action(action) eq "header-resize"} {
+	set header $action(header)
+	set column [GetSpanStartColumn $w $header $action(column)]
     }
-    if {$column ne $prevColumn} {
-	if {$prevColumn ne ""} {
-	    $w column configure $prevColumn -state normal
-	}
+    if {$header ne $headerPrev || $column ne $columnPrev} {
 	if {$column ne ""} {
-	    $w column configure $column -state active
-	    set Priv(inheader,$w) $column
+	    SetHeaderState $w $header $column active
 	} else {
-	    unset Priv(inheader,$w)
+	    ClearHeaderState $w
 	}
     }
+    return
+}
+
+# ::TreeCtrl::MotionInButtons --
+#
+# This procedure updates the active/normal states of item buttons.
+# Typically this results in visual feedback by changing the appearance
+# of the buttons.
+#
+# Arguments:
+# T		The treectrl widget.
+# args		x y coords if the pointer is in the window, or an empty list.
+
+proc ::TreeCtrl::MotionInButtons {T args} {
+    variable Priv
+    set button ""
+    if {[llength $args]} {
+	set x [lindex $args 0]
+	set y [lindex $args 1]
+	$T identify -array id $x $y
+	if {$id(where) eq "item" && $id(button)} {
+	    set button $id(item)
+	}
+    }
+    if {[info exists Priv(inbutton,$T)]} {
+	set prevButton $Priv(inbutton,$T)
+    } else {
+	set prevButton ""
+    }
+    if {$button ne $prevButton} {
+	if {$prevButton ne ""} {
+	    if {[$T item id $prevButton] ne ""} {
+		$T item buttonstate $prevButton normal
+	    }
+	}
+	if {$button ne ""} {
+	    $T item buttonstate $button active
+	    set Priv(inbutton,$T) $button
+	} else {
+	    unset Priv(inbutton,$T)
+	}
+    }
+    if {[$T notify bind TreeCtrlButtonNotifyScroll] eq ""} {
+	$T notify bind TreeCtrlButtonNotifyScroll <Scroll> {
+	    TreeCtrl::ButtonNotifyScroll %T
+	}
+    }
+    return
+}
+
+# ::TreeCtrl::ButtonNotifyScroll --
+#
+# Called when a <Scroll> event occurs and a button is in the active state.
+# Finds the mouse pointer coords and calls MotionInButtons to update the
+# state of affected buttons.
+#
+# Arguments:
+# T		The treectrl widget.
+
+proc ::TreeCtrl::ButtonNotifyScroll {T} {
+    set x [expr {[winfo pointerx $T] - [winfo rootx $T]}]
+    set y [expr {[winfo pointery $T] - [winfo rooty $T]}]
+    MotionInButtons $T $x $y
     return
 }
 
@@ -545,56 +807,65 @@ proc ::TreeCtrl::ButtonPress1 {w x y} {
     variable Priv
     focus $w
 
-    set id [$w identify $x $y]
-    if {$id eq ""} {
+    $w identify -array id $x $y
+    if {$id(where) eq ""} {
 	return
     }
 
-    if {[lindex $id 0] eq "item"} {
-	lassign $id where item arg1 arg2
-	if {$arg1 eq "button"} {
-	    $w item toggle $item
+    if {$id(where) eq "item"} {
+	set item $id(item)
+	if {$id(button)} {
+	    if {[$w cget -buttontracking]} {
+		$w item buttonstate $item pressed
+		set Priv(buttonMode) buttonTracking
+		set Priv(buttontrack,item) $item
+	    } else {
+		$w item toggle $item -animate
+	    }
 	    return
-	} elseif {$arg1 eq "line"} {
-	    $w item toggle $arg2
+	} elseif {$id(line) ne ""} {
+	    $w item toggle $id(line)
 	    return
 	}
     }
     set Priv(buttonMode) ""
-    if {[lindex $id 0] eq "header"} {
-	set action [CursorAction $w $x $y]
-	if {[lindex $action 1] eq "resize"} {
-	    set column [lindex $action 2]
+    if {$id(where) eq "header"} {
+	CursorAction $w $x $y action
+	if {$action(action) eq "header-resize"} {
+	    set column $action(column)
 	    set Priv(buttonMode) resize
+	    set Priv(header) $action(header)
 	    set Priv(column) $column
 	    set Priv(x) $x
 	    set Priv(y) $y
 	    set Priv(width) [$w column width $column]
 	    return
 	}
-	set column [lindex $id 1]
-	if {[lindex $action 1] eq "button"} {
+	set column $id(column)
+	if {$action(action) eq "header-button"} {
 	    set Priv(buttonMode) header
-	    $w column configure $column -state pressed
+	    SetHeaderState $w $action(header) $column pressed
 	} else {
 	    if {[$w column compare $column == "tail"]} return
-	    if {![$w column dragcget -enable]} return
+	    if {![$w header dragcget -enable]} return
+	    if {![$w header dragcget $action(header) -enable]} return
 	    set Priv(buttonMode) dragColumnWait
 	}
+	set Priv(header) $action(header)
 	set Priv(column) $column
 	set Priv(columnDrag,x) $x
 	set Priv(columnDrag,y) $y
 	return
     }
-    set item [lindex $id 1]
+    set item $id(item)
     if {![$w item enabled $item]} {
 	return
     }
 
     # If the initial mouse-click is in a locked column, restrict scrolling
     # to the vertical.
-    scan [$w contentbox] "%d %d %d %d" x1 y1 x2 y2
-    if {$x >= $x1 && $x < $x2} {
+    set count [scan [$w contentbox] "%d %d %d %d" x1 y1 x2 y2]
+    if {$count != -1 && $x >= $x1 && $x < $x2} {
 	set Priv(autoscan,direction,$w) xy
     } else {
 	set Priv(autoscan,direction,$w) y
@@ -616,25 +887,29 @@ proc ::TreeCtrl::ButtonPress1 {w x y} {
 
 proc ::TreeCtrl::DoubleButton1 {w x y} {
 
-    set id [$w identify $x $y]
-    if {$id eq ""} {
+    $w identify -array id $x $y
+    if {$id(where) eq ""} {
 	return
     }
-    if {[lindex $id 0] eq "item"} {
-	lassign $id where item arg1 arg2
-	if {$arg1 eq "button"} {
-	    $w item toggle $item
+    if {$id(where) eq "item"} {
+	if {$id(button)} {
+	    if {[$w cget -buttontracking]} {
+		# There is no <ButtonRelease> so just toggle it
+		$w item toggle $id(item) -animate
+	    } else {
+		$w item toggle $id(item) -animate
+	    }
 	    return
-	} elseif {$arg1 eq "line"} {
-	    $w item toggle $arg2
+	} elseif {$id(line) ne ""} {
+	    $w item toggle $id(line)
 	    return
 	}
     }
-    if {[lindex $id 0] eq "header"} {
-	set action [CursorAction $w $x $y]
+    if {$id(where) eq "header"} {
+	CursorAction $w $x $y action
 	# Double-click between columns to set default column width
-	if {[lindex $action 1] eq "resize"} {
-	    set column [lindex $action 2]
+	if {$action(action) eq "header-resize"} {
+	    set column $action(column)
 	    $w column configure $column -width ""
 	    CursorCheck $w $x $y
 	    MotionInHeader $w $x $y
@@ -659,32 +934,65 @@ proc ::TreeCtrl::Motion1 {w x y} {
     if {![info exists Priv(buttonMode)]} return
     switch $Priv(buttonMode) {
 	header {
-	    set id [$w identify $x $y]
-	    if {![string match "header $Priv(column)*" $id]} {
-		if {[$w column cget $Priv(column) -state] eq "pressed"} {
-		    $w column configure $Priv(column) -state normal
+	    $w identify -array id $x $y
+	    if {$id(where) ne "header" ||
+		    $id(header) ne $Priv(header) ||
+		    $id(column) ne $Priv(column)} {
+		if {[$w header cget $Priv(header) $Priv(column) -state] eq "pressed"} {
+		    ClearHeaderState $w
 		}
 	    } else {
-		if {[$w column cget $Priv(column) -state] ne "pressed"} {
-		    $w column configure $Priv(column) -state pressed
+		if {[$w header cget $Priv(header) $Priv(column) -state] ne "pressed"} {
+		    SetHeaderState $w $Priv(header) $Priv(column) pressed
 		}
-		if {[$w column dragcget -enable] &&
+		if {[$w header dragcget -enable] &&
+		    [$w header dragcget $Priv(header) -enable] &&
 		    (abs($Priv(columnDrag,x) - $x) > 4)} {
-		    $w column dragconfigure \
+		    set Priv(columnDrag,x) $x
+		    $w header dragconfigure \
 			-imagecolumn $Priv(column) \
-			-imageoffset [expr {$x - $Priv(columnDrag,x)}]
+			-imageoffset [expr {$x - $Priv(columnDrag,x)}] \
+			-imagespan [$w header span $Priv(header) $Priv(column)]
+		    ColumnDragRestackWindows $w
 		    set Priv(buttonMode) dragColumn
-		    TryEvent $w ColumnDrag begin [list C $Priv(column)]
+		    TryEvent $w ColumnDrag begin [list H $Priv(header) C $Priv(column)]
+		    # Allow binding scripts to cancel the drag
+		    if {[$w header dragcget -imagecolumn] eq ""} {
+			set Priv(buttonMode) header
+		    }
 		}
+	    }
+	}
+	buttonTracking {
+	    $w identify -array id $x $y
+	    set itemTrack $Priv(buttontrack,item)
+	    set exists [expr {[$w item id $itemTrack] ne ""}]
+	    set mouseover 0
+	    if {$id(where) eq "item" && $id(button)} {
+		if {$exists && [$w item compare $itemTrack == $id(item)]} {
+		    set mouseover 1
+		}
+	    }
+	    if {$mouseover} {
+		$w item buttonstate $itemTrack pressed
+	    } elseif {$exists} {
+		$w item buttonstate $itemTrack normal
 	    }
 	}
 	dragColumnWait {
 	    if {(abs($Priv(columnDrag,x) - $x) > 4)} {
-		$w column dragconfigure \
+		set Priv(columnDrag,x) $x
+		$w header dragconfigure \
 		    -imagecolumn $Priv(column) \
-		    -imageoffset [expr {$x - $Priv(columnDrag,x)}]
+		    -imageoffset [expr {$x - $Priv(columnDrag,x)}] \
+		    -imagespan [$w header span $Priv(header) $Priv(column)]
+		ColumnDragRestackWindows $w
 		set Priv(buttonMode) dragColumn
-		TryEvent $w ColumnDrag begin [list C $Priv(column)]
+		TryEvent $w ColumnDrag begin [list H $Priv(header) C $Priv(column)]
+		# Allow binding scripts to cancel the drag
+		if {[$w header dragcget -imagecolumn] eq ""} {
+		    unset Priv(buttonMode)
+		}
 	    }
 	}
 	dragColumn {
@@ -694,18 +1002,36 @@ proc ::TreeCtrl::Motion1 {w x y} {
 	    } else {
 		set inside 1
 	    }
-	    if {$inside && ([$w column dragcget -imagecolumn] eq "")} {
-		$w column dragconfigure -imagecolumn $Priv(column)
-	    } elseif {!$inside && ([$w column dragcget -imagecolumn] ne "")} {
-		$w column dragconfigure -imagecolumn "" -indicatorcolumn ""
+	    if {$inside && ([$w header dragcget -imagecolumn] eq "")} {
+		$w header dragconfigure -imagecolumn $Priv(column)
+	    } elseif {!$inside && ([$w header dragcget -imagecolumn] ne "")} {
+		$w header dragconfigure -imagecolumn "" -indicatorcolumn ""
 	    }
 	    if {$inside} {
-		$w column dragconfigure -imageoffset [expr {$x - $Priv(columnDrag,x)}]
-		if {[ColumnDragFindBefore $w $x $Priv(columnDrag,y) $Priv(column) indColumn indSide]} {
-		    $w column dragconfigure -indicatorcolumn $indColumn \
-			-indicatorside $indSide
+		set offset [expr {$x - $Priv(columnDrag,x)}]
+		$w header dragconfigure -imageoffset $offset
+
+		# When dragging to the left, use the left edge of the dragged
+		# header to choose the -indicatorcolumn.  When dragging to the
+		# right, use the right edge.
+		scan [$w header bbox $Priv(header) $Priv(column)] "%d %d %d %d" x1 y1 x2 y2
+		if {$offset > 0} {
+		    set xEdge [expr {$offset + $x2}]
 		} else {
-		    $w column dragconfigure -indicatorcolumn ""
+		    set xEdge [expr {$offset + $x1}]
+		}
+
+		if {[ColumnDragFindBefore $w $xEdge $Priv(columnDrag,y) $Priv(column) indColumn indSide]} {
+		    set prevIndColumn [$w header dragcget -indicatorcolumn]
+		    $w header dragconfigure \
+			-indicatorcolumn $indColumn \
+			-indicatorside $indSide \
+			-indicatorspan [$w header span $Priv(header) $indColumn]
+		    if {$indColumn != $prevIndColumn} {
+			TryEvent $w ColumnDrag indicator [list H $Priv(header) C $indColumn]
+		    }
+		} else {
+		    $w header dragconfigure -indicatorcolumn ""
 		}
 	    }
 	    if {[$w column cget $Priv(column) -lock] eq "none"} {
@@ -744,8 +1070,8 @@ proc ::TreeCtrl::Motion1 {w x y} {
 		    scan [$w column bbox $Priv(column)] "%d %d %d %d" x1 y1 x2 y2
 		    if {[ColumnCanResizeLeft $w $Priv(column)]} {
 			# Use "ne" because -columnproxy could be ""
-			if {$x ne [$w cget -columnproxy]} {
-			    $w configure -columnproxy $x
+			if {$x2 - $width ne [$w cget -columnproxy]} {
+			    $w configure -columnproxy [expr {$x2 - $width}]
 			}
 		    } else {
 			if {($x1 + $width - 1) ne [$w cget -columnproxy]} {
@@ -778,8 +1104,8 @@ proc ::TreeCtrl::Leave1 {w x y} {
     if {![info exists Priv(buttonMode)]} return
     switch $Priv(buttonMode) {
 	header {
-	    if {[$w column cget $Priv(column) -state] eq "pressed"} {
-		$w column configure $Priv(column) -state normal
+	    if {[$w header cget $Priv(header) $Priv(column) -state] eq "pressed"} {
+		ClearHeaderState $w
 	    }
 	}
     }
@@ -818,38 +1144,50 @@ proc ::TreeCtrl::Release1 {w x y} {
     if {![info exists Priv(buttonMode)]} return
     switch $Priv(buttonMode) {
 	header {
-	    if {[$w column cget $Priv(column) -state] eq "pressed"} {
-		$w column configure $Priv(column) -state active
-		TryEvent $w Header invoke [list C $Priv(column)]
+	    if {[$w header cget $Priv(header) $Priv(column) -state] eq "pressed"} {
+		SetHeaderState $w $Priv(header) $Priv(column) active
+		TryEvent $w Header invoke [list H $Priv(header) C $Priv(column)]
+	    }
+	    CursorCheck $w $x $y
+	    MotionInHeader $w $x $y
+	}
+	buttonTracking {
+	    $w identify -array id $x $y
+	    set itemTrack $Priv(buttontrack,item)
+	    set exists [expr {[$w item id $itemTrack] ne ""}]
+	    if {$id(where) eq "item" && $id(button)} {
+		if {$exists && [$w item compare $itemTrack == $id(item)]} {
+		    $w item buttonstate $id(item) active
+		    $w item toggle $itemTrack -animate
+		}
 	    }
 	}
 	dragColumn {
 	    AutoScanCancel $w
-	    $w column configure $Priv(column) -state normal
-	    if {[$w column dragcget -imagecolumn] ne ""} {
+	    ClearHeaderState $w
+	    if {[$w header dragcget -imagecolumn] ne ""} {
 		set visible 1
 	    } else {
 		set visible 0
 	    }
-	    set column [$w column dragcget -indicatorcolumn]
-	    $w column dragconfigure -imagecolumn "" -indicatorcolumn ""
+	    set column [$w header dragcget -indicatorcolumn]
+	    $w header dragconfigure -imagecolumn "" -indicatorcolumn ""
 	    if {$visible && ($column ne "")} {
-		set side [$w column dragcget -indicatorside]
-		if {$side eq "right"} {
-		    set column [$w column id "$column next visible"]
+		# If dragging to the right, drop after the last column in the
+		# span of the indicator column.
+		if {[$w column order $Priv(column)] < [$w column order $column]} {
+		    set span [$w header dragcget -indicatorspan]
+		    set column [$w column id "$column span $span next"]
 		}
-		TryEvent $w ColumnDrag receive [list C $Priv(column) b $column]
-	    }
-	    set id [$w identify $x $y]
-	    if {[lindex $id 0] eq "header"} {
-		set column [lindex $id 1]
-		if {($column ne "") && [$w column compare $column != "tail"]} {
-		    if {[$w column cget $column -button]} {
-			$w column configure $column -state active
-		    }
+		set lock [$w column cget $Priv(column) -lock]
+		if {$column eq "" || [$w column compare $column > "last lock $lock next"]} {
+		    set column [$w column id "last lock $lock next"]
 		}
+		TryEvent $w ColumnDrag receive [list H $Priv(header) C $Priv(column) b $column]
 	    }
-	    TryEvent $w ColumnDrag end [list C $Priv(column)]
+	    CursorCheck $w $x $y
+	    MotionInHeader $w $x $y
+	    TryEvent $w ColumnDrag end [list H $Priv(header) C $Priv(column)]
 	}
 	normal {
 	    AutoScanCancel $w
@@ -870,7 +1208,11 @@ set Priv(prev) ""
 		$w configure -columnproxy {}
 		$w column configure $Priv(column) -width $width
 	    }
+	    # Clear buttonMode early so CursorCheck doesn't exit
+	    unset Priv(buttonMode)
 	    CursorCheck $w $x $y
+	    MotionInHeader $w $x $y
+	    return
 	}
     }
     unset Priv(buttonMode)
@@ -920,6 +1262,7 @@ proc ::TreeCtrl::SelectionMotion {w item} {
     variable Priv
 
     if {$item eq ""} return
+    set item [$w item id $item]
     if {$item eq $Priv(prev)} return
     if {![$w item enabled $item]} return
 
@@ -1035,7 +1378,12 @@ proc ::TreeCtrl::BeginToggle {w item} {
 
 proc ::TreeCtrl::AutoScanCheck {w x y} {
     variable Priv
-    scan [$w contentbox] "%d %d %d %d" x1 y1 x2 y2
+    # Could have clicked in locked column
+    if {[scan [$w contentbox] "%d %d %d %d" x1 y1 x2 y2] == -1} {
+	if {[scan [$w bbox left] "%d %d %d %d" x1 y1 x2 y2] == -1} {
+	    scan [$w bbox right] "%d %d %d %d" x1 y1 x2 y2
+	}
+    }
     set margin [winfo pixels $w [$w cget -scrollmargin]]
     if {![info exists Priv(autoscan,direction,$w)]} {
 	set Priv(autoscan,direction,$w) xy
@@ -1089,6 +1437,7 @@ proc ::TreeCtrl::AutoScanCheck {w x y} {
 
 proc ::TreeCtrl::AutoScanCheckAux {w} {
     variable Priv
+    if {![winfo exists $w]} return
     # Not quite sure how this can happen
     if {![info exists Priv(autoscan,afterId,$w)]} return
     unset Priv(autoscan,afterId,$w)
@@ -1133,14 +1482,23 @@ proc ::TreeCtrl::AutoScanCancel {w} {
 proc ::TreeCtrl::ColumnDragScrollCheck {w x y} {
     variable Priv
 
-# BUG 2355369
-#    scan [$w contentbox] "%d %d %d %d" x1 y1 x2 y2
-    scan [ColumnsBbox $w content] "%d %d %d %d" x1 y1 x2 y2
+    # When dragging to the left, use the left edge of the dragged
+    # header to choose the -indicatorcolumn.  When dragging to the
+    # right, use the right edge.
+    scan [$w header bbox $Priv(header) $Priv(column)] "%d %d %d %d" x1 y1 x2 y2
+    set offset [$w header dragcget -imageoffset]
+    if {$offset > 0} {
+	set xEdge [expr {$offset + $x2}]
+    } else {
+	set xEdge [expr {$offset + $x1}]
+    }
+
+    scan [$w bbox header.none] "%d %d %d %d" x1 y1 x2 y2
 
     if {($x < $x1) || ($x >= $x2)} {
 	if {![info exists Priv(autoscan,afterId,$w)]} {
 	    set bbox1 [$w column bbox $Priv(column)]
-	    if {$x >= $x2} {
+	    if {$xEdge >= $x2} {
 		$w xview scroll 1 units
 	    } else {
 		$w xview scroll -1 units
@@ -1148,13 +1506,13 @@ proc ::TreeCtrl::ColumnDragScrollCheck {w x y} {
 	    set bbox2 [$w column bbox $Priv(column)]
 	    if {[lindex $bbox1 0] != [lindex $bbox2 0]} {
 		incr Priv(columnDrag,x) [expr {[lindex $bbox2 0] - [lindex $bbox1 0]}]
-		$w column dragconfigure -imageoffset [expr {$x - $Priv(columnDrag,x)}]
+		$w header dragconfigure -imageoffset [expr {$x - $Priv(columnDrag,x)}]
 
-		if {[ColumnDragFindBefore $w $x $Priv(columnDrag,y) $Priv(column) indColumn indSide]} {
-		    $w column dragconfigure -indicatorcolumn $indColumn \
+		if {[ColumnDragFindBefore $w $xEdge $Priv(columnDrag,y) $Priv(column) indColumn indSide]} {
+		    $w header dragconfigure -indicatorcolumn $indColumn \
 			-indicatorside $indSide
 		} else {
-		    $w column dragconfigure -indicatorcolumn ""
+		    $w header dragconfigure -indicatorcolumn ""
 		}
 	    }
 	    set Priv(autoscan,afterId,$w) [after 50 [list TreeCtrl::ColumnDragScrollCheckAux $w]]
@@ -1174,6 +1532,7 @@ proc ::TreeCtrl::ColumnDragScrollCheck {w x y} {
 
 proc ::TreeCtrl::ColumnDragScrollCheckAux {w} {
     variable Priv
+    if {![winfo exists $w]} return
     # Not quite sure how this can happen
     if {![info exists Priv(autoscan,afterId,$w)]} return
     unset Priv(autoscan,afterId,$w)
@@ -1183,6 +1542,28 @@ proc ::TreeCtrl::ColumnDragScrollCheckAux {w} {
     set y [expr {$y - [winfo rooty $w]}]
     ColumnDragScrollCheck $w $x $y
     return
+}
+
+# ::TreeCtrl::Has2DLayout --
+#
+# Determine if items are displayed in a 2-dimensional arrangement.
+# This is used by the <Left> and <Right> bindings.
+#
+# Arguments:
+# w		The treectrl widget.
+
+proc ::TreeCtrl::Has2DLayout {T} {
+    if {[$T cget -orient] ne "vertical" || [$T cget -wrap] ne ""} {
+	return 1
+    }
+    set item [$T item id "last visible"]
+    if {$item ne ""} {
+	lassign [$T item rnc $item] row column
+	if {$column > 0} {
+	    return 1
+	}
+    }
+    return 0
 }
 
 # ::TreeCtrl::UpDown --
@@ -1373,13 +1754,16 @@ proc ::TreeCtrl::Cancel w {
 	set first $last
 	set last $tmp
     }
-    $w selection clear $first $last
-    while {[$w item compare $first <= $last]} {
-	if {[lsearch $Priv(selection) $first] >= 0} {
-	    $w selection add $first
+    set select {}
+    set deselect {}
+    foreach item [$w item id "range $first $last visible"] {
+	if {[lsearch $Priv(selection) $item] == -1} {
+	    lappend deselect $item
+	} else {
+	    lappend select $item
 	}
-	set first [$w item id "$first next visible"]
     }
+    $w selection modify $select $deselect
     return
 }
 

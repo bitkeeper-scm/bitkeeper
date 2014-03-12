@@ -11,8 +11,6 @@
 #
 # See the file "license.terms" for information on usage and redistribution
 # of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-#
-# RCS: @(#) $Id$
 
 #========================================================================
 # Edit the following few lines when writing a new extension
@@ -52,6 +50,8 @@ PKG_EXTRA_FILES =
 
 PKG_MAN_PAGES	= 
 
+PKG_MANIFEST	= @PKG_MANIFEST@
+
 #========================================================================
 # "PKG_LIB_FILE" refers to the library (dynamic or static as per
 # configuration options) composed of the named objects.
@@ -61,7 +61,7 @@ PKG_LIB_FILE	= @PKG_LIB_FILE@
 PKG_STUB_LIB_FILE = @PKG_STUB_LIB_FILE@
 
 lib_BINARIES	= $(PKG_LIB_FILE)
-BINARIES	= $(lib_BINARIES)
+BINARIES	= $(lib_BINARIES) pkgIndex.tcl
 
 SHELL		= @SHELL@
 
@@ -97,6 +97,7 @@ PACKAGE_PATCHLEVEL	= @PACKAGE_PATCHLEVEL@
 CC		= @CC@
 CFLAGS_DEFAULT	= @CFLAGS_DEFAULT@
 CFLAGS_WARNING	= @CFLAGS_WARNING@
+CC_OBJNAME	= @CC_OBJNAME@
 CLEANFILES	= @CLEANFILES@
 EXEEXT		= @EXEEXT@
 LDFLAGS_DEFAULT	= @LDFLAGS_DEFAULT@
@@ -148,7 +149,7 @@ PKG_CFLAGS	= @PKG_CFLAGS@
 
 DEFS		= @DEFS@ $(PKG_CFLAGS)
 
-CONFIG_CLEAN_FILES = Makefile
+CONFIG_CLEAN_FILES = Makefile $(PKG_MANIFEST)
 
 CPPFLAGS	= @CPPFLAGS@
 LIBS		= @PKG_LIBS@ @LIBS@
@@ -177,7 +178,7 @@ all: binaries libraries doc
 # of the Makefile, in the "BINARIES" variable.
 #========================================================================
 
-binaries: $(BINARIES) pkgIndex.tcl
+binaries: $(BINARIES)
 
 libraries:
 
@@ -190,7 +191,7 @@ doc-x:
 doc:
 	@echo "No docs to build"
 
-install: all install-binaries install-libraries install-doc
+install: all install-binaries install-libraries
 
 install-binaries: binaries install-lib-binaries install-bin-binaries
 	@mkdir -p $(DESTDIR)$(pkglibdir)
@@ -249,6 +250,15 @@ depend:
 # The $(PKG_OBJECTS) objects are created and linked into the final
 # library.  In most cases these object files will correspond to the
 # source files above.
+#
+# NOTE regarding the manifest(s):  When building on a non-Windows box the
+# shelliconNN.dll.manifest file should not exist.  When building with
+# MingW GCC the manifest will also not exist.  Only when building with
+# a Microsoft compiler that auto-generates a manifest (to pick the correct
+# MSVCRT runtime) will $@.manifest exist; in this case mt.exe should
+# also exist.  If mt.exe is used there is actually no need for shellicon.rc
+# to include shellicon.dll.manifest since mt.exe will clobber that resource
+# with the merged manifests.
 #========================================================================
 
 $(PKG_LIB_FILE): $(PKG_OBJECTS)
@@ -273,7 +283,10 @@ $(PKG_LIB_FILE): $(PKG_OBJECTS)
 VPATH = $(srcdir):$(srcdir)/generic:$(srcdir)/unix:$(srcdir)/win
 
 .c.@OBJEXT@:
-	$(COMPILE) -c `@CYGPATH@ $<` -o $@
+	$(COMPILE) -c `@CYGPATH@ $<` $(CC_OBJNAME)
+
+.rc.@RES@:
+	@RC@ @RC_OUT@ $@ @RC_INCLUDE@ "`@CYGPATH@ $(srcdir)`" @RC_DEPARG@
 
 #========================================================================
 # Create the pkgIndex.tcl file.
@@ -400,6 +413,8 @@ install-bin-binaries:
 	done
 
 .SUFFIXES: .c .$(OBJEXT)
+.SUFFIXES: .@RES@
+.SUFFIXES: .rc
 
 Makefile: $(srcdir)/Makefile.in  $(top_builddir)/config.status
 	cd $(top_builddir) \

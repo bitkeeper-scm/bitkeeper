@@ -2,8 +2,6 @@
 dnl	This file is an input file used by the GNU "autoconf" program to
 dnl	generate the file "configure", which is run during Tcl installation
 dnl	to configure the system for the local environment.
-#
-# RCS: @(#) $Id$
 
 #-----------------------------------------------------------------------
 # Sample configure.in for Tcl Extensions.
@@ -19,11 +17,11 @@ dnl	to configure the system for the local environment.
 # AC_INIT(generic/tcl.h)
 #-----------------------------------------------------------------------
 
-AC_INIT([shellicon], [2.2])
-AC_SUBST([PACKAGE_PATCHLEVEL], [2.2.9])
+AC_INIT([shellicon], [2.4])
+AC_SUBST([PACKAGE_PATCHLEVEL], [2.4.1])
 AC_DEFINE_UNQUOTED(PACKAGE_PATCHLEVEL, "$PACKAGE_PATCHLEVEL")
 
-TEA_INIT([3.5])
+TEA_INIT([3.9])
 
 AC_CONFIG_AUX_DIR(tclconfig)
 
@@ -115,17 +113,34 @@ AC_C_BIGENDIAN
 # your system.
 #--------------------------------------------------------------------
 
+OUTPUTFILES=Makefile
+
 if test "${TEA_PLATFORM}" = "windows" ; then
-    AC_DEFINE(BUILD_shellicon)
-    CLEANFILES="pkgIndex.tcl *.lib *.dll *.exp *.ilk *.pdb vc*.pch"
-    TEA_ADD_LIBS([gdi32.lib user32.lib comctl32.lib ole32.lib])
-else
-    CLEANFILES="pkgIndex.tcl"
+    TEA_ADD_LIBS([gdi32.lib user32.lib comctl32.lib ole32.lib shell32.lib])
+
+    # Find rc.exe or windres.exe.
+    # Defined in winrc.m4.
+    TREECTRL_PROG_RC
+
+    # X86|AMD64|IA64 for manifest
+    AC_SUBST(MACHINE)
+
+    # PKG_MANIFEST -> VC_MANIFEST_EMBED_DLL -> MAKE_SHARED_LIB
+    TEA_ADD_MANIFEST([shellicon.dll.manifest])
+
+    # Create shellicon.dll.manifest from shellicon.dll.manifest.in.
+    # shellicon.dll.manifest is included by shellicon.rc.
+    # If building with a Microsoft compiler that generates
+    # shelliconNN.dll.manifest (to pick the correct MSVCRT runtime) then
+    # that manifest is merged with mine using mt.exe (see the Makefile
+    # rule for PKG_LIB_FILE).
+    OUTPUTFILES="Makefile shellicon.dll.manifest"
+
+    TREECTRL_ADD_RC([shellicon.rc])
 fi
 if test "${TEA_WINDOWINGSYSTEM}" = "aqua"; then
     TEA_ADD_LIBS([-framework Carbon])
 fi
-AC_SUBST(CLEANFILES)
 
 #--------------------------------------------------------------------
 # Check whether --enable-threads or --disable-threads was given.
@@ -194,4 +209,5 @@ TEA_PROG_WISH
 # which require substituting th AC variables in.  Include these here.
 #--------------------------------------------------------------------
 
-AC_OUTPUT([Makefile])
+AC_OUTPUT([$OUTPUTFILES])
+

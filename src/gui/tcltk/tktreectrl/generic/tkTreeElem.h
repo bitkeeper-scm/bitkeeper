@@ -1,11 +1,9 @@
-/* 
+/*
  * tkTreeElem.h --
  *
  *	This module is the header for elements in treectrl widgets.
  *
- * Copyright (c) 2002-2008 Tim Baker
- *
- * RCS: @(#) $Id$
+ * Copyright (c) 2002-2011 Tim Baker
  */
 
 typedef struct TreeElementType TreeElementType;
@@ -32,18 +30,27 @@ struct TreeElementArgs
 	TreeItemColumn column;
     } config;
     struct {
-	int x;
-	int y;
-	int width;
-	int height;
-#define STICKY_W 0x1000 /* These values must match ELF_STICKY_xxx */
+	int x;			/* Display area of the element. */
+	int y;			/* ^ */
+	int width;		/* ^ */
+	int height;		/* ^ */
+#define STICKY_W 0x1000		/* These values must match ELF_STICKY_xxx */
 #define STICKY_N 0x2000
 #define STICKY_E 0x4000
 #define STICKY_S 0x8000
-	int sticky;
-	TreeDrawable td;
-	Drawable drawable;
-	int bounds[4];
+	int sticky;		/* How to stretch/position the element within
+				 * its display area. */
+	int indent;		/* Distance the style is indented from the
+				 * left of spanBbox. */
+	int spanIndex;		/* 0-based index in the list of visible spans. */
+	TreeDrawable td;	/* Where to draw. */
+	Drawable drawable;	/* Where to draw. */
+	TreeRectangle bounds;	/* TREE_AREA_XXX bounds. */
+	TreeRectangle spanBbox;	/* Bounds of the span. */
+	int eUnionBbox[4];	/* Bounds of elements in a this element's */
+	int iUnionBbox[4];	/*  -union. */
+	TreeColumn column; /* needed for gradients */
+	TreeItem item; /* needed for gradients */
     } display;
     struct {
 	int fixedWidth;
@@ -104,38 +111,51 @@ struct TreeElement_
     Tk_Uid name;		/* "elem2", "eText" etc */
     TreeElementType *typePtr;
     TreeElement master;		/* NULL if this is master */
+    int stateDomain;		/* STATE_DOMAIN_XXX index. */
+    int hidden;			/* Hackish flag for hidden header styles. */
     DynamicOption *options;	/* Dynamically-allocated options. */
     /* type-specific data here */
 };
 
-extern TreeElementType treeElemTypeBitmap;
-extern TreeElementType treeElemTypeBorder;
-extern TreeElementType treeElemTypeCheckButton;
-extern TreeElementType treeElemTypeImage;
-extern TreeElementType treeElemTypeRect;
-extern TreeElementType treeElemTypeText;
-extern TreeElementType treeElemTypeWindow;
+MODULE_SCOPE TreeElementType treeElemTypeBitmap;
+MODULE_SCOPE TreeElementType treeElemTypeBorder;
+MODULE_SCOPE TreeElementType treeElemTypeCheckButton;
+MODULE_SCOPE TreeElementType treeElemTypeHeader;
+MODULE_SCOPE TreeElementType treeElemTypeImage;
+MODULE_SCOPE TreeElementType treeElemTypeRect;
+MODULE_SCOPE TreeElementType treeElemTypeText;
+MODULE_SCOPE TreeElementType treeElemTypeWindow;
 
 #define ELEMENT_TYPE_MATCHES(t1,t2) ((t1)->name == (t2)->name)
 
 /***** ***** *****/
 
-extern int TreeElement_GetSortData(TreeCtrl *tree, TreeElement elem, int type, long *lv, double *dv, char **sv);
+MODULE_SCOPE int TreeElement_GetSortData(TreeCtrl *tree, TreeElement elem, int type, long *lv, double *dv, char **sv);
 
 typedef struct TreeIterate_ *TreeIterate;
 
-extern int TreeElement_TypeFromObj(TreeCtrl *tree, Tcl_Obj *objPtr, TreeElementType **typePtrPtr);
-extern void Tree_RedrawElement(TreeCtrl *tree, TreeItem item, TreeElement elem);
-extern TreeIterate Tree_ElementIterateBegin(TreeCtrl *tree, TreeElementType *elemTypePtr);
-extern TreeIterate Tree_ElementIterateNext(TreeIterate iter_);
-extern TreeElement Tree_ElementIterateGet(TreeIterate iter_);
-extern void Tree_ElementIterateChanged(TreeIterate iter_, int mask);
-extern void Tree_ElementChangedItself(TreeCtrl *tree, TreeItem item,
+MODULE_SCOPE int TreeElement_TypeFromObj(TreeCtrl *tree, Tcl_Obj *objPtr, TreeElementType **typePtrPtr);
+MODULE_SCOPE void Tree_RedrawElement(TreeCtrl *tree, TreeItem item, TreeElement elem);
+MODULE_SCOPE TreeIterate Tree_ElementIterateBegin(TreeCtrl *tree, TreeElementType *elemTypePtr);
+MODULE_SCOPE TreeIterate Tree_ElementIterateNext(TreeIterate iter_);
+MODULE_SCOPE TreeElement Tree_ElementIterateGet(TreeIterate iter_);
+MODULE_SCOPE void Tree_ElementIterateChanged(TreeIterate iter_, int mask);
+MODULE_SCOPE void Tree_ElementChangedItself(TreeCtrl *tree, TreeItem item,
     TreeItemColumn column, TreeElement elem, int flags, int mask);
+MODULE_SCOPE int TreeCtrl_RegisterElementType(Tcl_Interp *interp, TreeElementType *newTypePtr);
+MODULE_SCOPE void TreeElement_GetContentMargins(TreeCtrl *tree,
+	TreeElement elem, int state, int eMargins[4], int uMargins[4],
+	int *arrowHeight);
 
 typedef struct TreeCtrlStubs TreeCtrlStubs;
 struct TreeCtrlStubs
 {
+#ifdef TREECTRL_DEBUG
+    int sizeofTreeCtrl;
+    int sizeofTreeCtrlStubs;
+    int sizeofTreeElement;
+    int sizeofTreeElementArgs;
+#endif
     int (*TreeCtrl_RegisterElementType)(Tcl_Interp *interp,
 		TreeElementType *typePtr);
     void (*Tree_RedrawElement)(TreeCtrl *tree, TreeItem item,
@@ -147,21 +167,21 @@ struct TreeCtrlStubs
     void (*Tree_ElementIterateChanged)(TreeIterate iter_, int mask);
     void (*PerStateInfo_Free)(TreeCtrl *tree, PerStateType *typePtr,
 		PerStateInfo *pInfo);
-    int (*PerStateInfo_FromObj)(TreeCtrl *tree, StateFromObjProc proc,
+    int (*PerStateInfo_FromObj)(TreeCtrl *tree, int domain, StateFromObjProc proc,
 		PerStateType *typePtr, PerStateInfo *pInfo);
     PerStateData *(*PerStateInfo_ForState)(TreeCtrl *tree,
 		PerStateType *typePtr, PerStateInfo *pInfo, int state, int *match);
     Tcl_Obj *(*PerStateInfo_ObjForState)(TreeCtrl *tree,
 		PerStateType *typePtr, PerStateInfo *pInfo, int state, int *match);
     int (*PerStateInfo_Undefine)(TreeCtrl *tree, PerStateType *typePtr,
-		PerStateInfo *pInfo, int state);
+		PerStateInfo *pInfo, int domain, int state);
     PerStateType *pstBoolean;
     int (*PerStateBoolean_ForState)(TreeCtrl *tree, PerStateInfo *pInfo,
 		int state, int *match);
     void (*PSTSave)(PerStateInfo *pInfo, PerStateInfo *pSave);
     void (*PSTRestore)(TreeCtrl *tree, PerStateType *typePtr,
 		PerStateInfo *pInfo, PerStateInfo *pSave);
-    int (*TreeStateFromObj)(TreeCtrl *tree, Tcl_Obj *obj, int *stateOff,
+    int (*TreeStateFromObj)(TreeCtrl *tree, int domain, Tcl_Obj *obj, int *stateOff,
 		int *stateOn);
     int (*BooleanCO_Init)(Tk_OptionSpec *optionTable, CONST char *optionName);
     int (*StringTableCO_Init)(Tk_OptionSpec *optionTable,

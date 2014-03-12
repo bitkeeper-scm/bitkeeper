@@ -1,15 +1,15 @@
-/* 
+/*
  * tkTreeNotify.c --
  *
  *	This module implements "qebind.c" events for treectrl widgets.
  *
- * Copyright (c) 2002-2008 Tim Baker
- *
- * RCS: @(#) $Id$
+ * Copyright (c) 2002-2011 Tim Baker
  */
 
 #include "tkTreeCtrl.h"
 
+/* Even though these are static globals and initialized for each new
+ * treectrl widget, the values are exactly the same for every widget. */
 static int EVENT_EXPAND,
     DETAIL_EXPAND_BEFORE,
     DETAIL_EXPAND_AFTER;
@@ -531,7 +531,7 @@ void
 TreeNotify_OpenClose(
     TreeCtrl *tree,		/* Widget info. */
     TreeItem item,		/* Item token. */
-    int state,			/* STATE_OPEN or 0 */
+    int state,			/* STATE_ITEM_OPEN or 0 */
     int before			/* TRUE for <xxx-before> event, FALSE for
 				 * <xxx-after> event. */
     )
@@ -545,7 +545,7 @@ TreeNotify_OpenClose(
     data.tree = tree;
     data.id = TreeItem_GetID(tree, item);
 
-    if (state & STATE_OPEN) {
+    if (state & STATE_ITEM_OPEN) {
 	event.type = EVENT_EXPAND;
 	event.detail = before ? DETAIL_EXPAND_BEFORE : DETAIL_EXPAND_AFTER;
     } else {
@@ -802,7 +802,7 @@ TreeNotify_ItemVisibility(
 /*
  *----------------------------------------------------------------------
  *
- * TreeNotify_Init --
+ * TreeNotify_InitWidget --
  *
  *	Perform event-related initialization when a new TreeCtrl is
  *	created.
@@ -817,7 +817,7 @@ TreeNotify_ItemVisibility(
  */
 
 int
-TreeNotify_Init(
+TreeNotify_InitWidget(
     TreeCtrl *tree		/* Widget info. */
     )
 {

@@ -9,8 +9,6 @@
 #
 # See the file "license.terms" for information on usage and redistribution
 # of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-#
-# CVS: @(#) $Id$
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest 2
@@ -21,7 +19,10 @@ package require Tk
 package require treectrl
 
 test column-0.1 {some needed preparations} -body {
-    pack [treectrl .t]
+    pack [treectrl .t -usetheme no]
+    # The default borderwidth in Tk 8.4 is "2" while in Tk 8.5 it is "1".
+    # The default highlightthickness is "0" Mac OS X but "1" on other platforms.
+    .t configure -borderwidth 1 -highlightthickness 1
 } -result {}
 
 test column-0.2 {create an image} -body {
@@ -76,7 +77,7 @@ test column-2.3 {column bbox: tree doesn't show headers} -body {
 test column-2.4 {column bbox} -body {
     .t configure -showheader 1
     .t column bbox 0
-} -result {0 3 482 7}
+} -result {2 2 484 6}
 
 test column-2.5 {column bbox: tail column not allowed} -body {
     .t column bbox tail
@@ -148,8 +149,8 @@ test column-3.12a {column configure/cget: 2 element -arrowpadx} -body {
 } -result {8 5}
 
 test column-3.13 {column configure: invalid -bitmap} -body {
-    .t column configure column1 -bitmap foo
-} -returnCodes error -result {bitmap "foo" not defined}
+    .t column configure column1 -bitmap no-such-bitmap
+} -returnCodes error -result {bitmap "no-such-bitmap" not defined}
 
 test column-3.14 {column configure/cget: -bitmap} -body {
     .t column configure column1 -bitmap questhead
@@ -223,7 +224,7 @@ test column-3.26a {column configure/cget: 2 element -imagepadx/y} -body {
 
 test column-3.27 {column configure: invalid -itembackground} -body {
     .t column configure column1 -itembackground no
-} -returnCodes error -result {unknown color name "no"}
+} -returnCodes error -result {unknown color or gradient name "no"}
 
 test column-3.28 {column configure/cget: simple -itembackground} -body {
     .t column configure column1 -itembackground blue
@@ -232,7 +233,7 @@ test column-3.28 {column configure/cget: simple -itembackground} -body {
 
 test column-3.29 {column configure: invalid -itembackground list} -body {
     .t column configure column1 -itembackground {blue selected green active}
-} -returnCodes error -result {unknown color name "selected"}
+} -returnCodes error -result {unknown color or gradient name "selected"}
 
 test column-3.30 {column configure/cget: -itembackground list} -body {
     .t column configure column1 -itembackground {blue green magenta red}
@@ -532,6 +533,22 @@ test column-11.4 {column count: all includes tail} -body {
 test column-11.5 {column count: unknown tag} -body {
     .t column count {tag foo}
 } -result {0}
+
+test column-12.1 {column configure: passing args to header configure} -setup {
+    .t column create -tags column0
+} -body {
+    set opts {}
+    foreach info [.t column configure column0] {
+	foreach {name x y default current} $info {}
+	lappend opts $name $current
+    }
+    eval .t column configure column0 $opts
+} -result {}
+
+test column-12.2 {column configure: -font is per-state in text element} -setup {
+    .t column create -tags column1 -text "Column 1"
+    .t column configure column1 -font {Courier 10 bold}
+} -result {}
 
 test column-99.1 {some needed cleanup} -body {
     destroy .t
