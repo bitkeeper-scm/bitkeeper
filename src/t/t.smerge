@@ -290,7 +290,7 @@ cat > gca <<EOF
    won't change
 EOF
 bk delta $Q -y1.1.1.2 gca || exit 1
-bk smerge -g -Aall -l1.2.1.1 -r1.3 gca > out
+bk smerge -g -Aall -a9 -l1.2.1.1 -r1.3 gca > out
 # exit 1
 sed 's/^\\//' > out2 <<EOF
    won't change
@@ -769,4 +769,67 @@ printf "ul\n.\n" | bk pull $Q 2> ERR || {
 	cat ERR
 	exit 1
 }
+echo OK
+
+echo $N Test out merge_with_following_gca ...........................$NL
+  printf " foo\n foo\n" > test8
+bk new $Q test8
+# Make two diffs to get the right weave; just #2 and weave has new blk at end
+bk edit $Q test8
+  printf " bar\n foo\n foo\n" > test8
+bk delta $Q -ypart1 test8
+bk edit $Q test8
+  printf " foo\n foo\n bar\n foo\n foo\n" > test8
+bk delta $Q -ypart2 test8
+## Other branch of conflict - just make make a null delta
+bk _get $Q -e -r1.1 test8
+bk delta $Q -f -yempty test8
+## First, demo diff as laid out in comment header (using 2 foo's; better test)
+bk smerge -Aall -l1.3 -r1.1.1.1 test8 > GOT
+sed 's/^\\//' <<EOF > WANT
+\<<<<<<< gca test8 1.1
+\<<<<<<< local test8 1.3
+ foo
+ foo
+ bar
+\<<<<<<< remote test8 1.1.1.1
+\>>>>>>>
+ foo
+ foo
+EOF
+cmpfiles WANT GOT
+# Then demo the impact of the new code, as described in header comment
+bk smerge -Aall -a8 -l1.3 -r1.1.1.1 test8 > GOT
+sed 's/^\\//' <<EOF > WANT
+\<<<<<<< gca test8 1.1
+ foo
+ foo
+\<<<<<<< local test8 1.3
+ foo
+ foo
+ bar
+ foo
+ foo
+\<<<<<<< remote test8 1.1.1.1
+ foo
+ foo
+\>>>>>>>
+EOF
+cmpfiles WANT GOT
+# Finally demo auto-merging of common header
+# -a4: to split the common header
+# -a1: to merge identical changes
+bk smerge -Aall -a1 -a4 -a8 -l1.3 -r1.1.1.1 test8 > GOT
+sed 's/^\\//' <<EOF > WANT
+ foo
+ foo
+\<<<<<<< gca test8 1.1
+\<<<<<<< local test8 1.3
+ bar
+ foo
+ foo
+\<<<<<<< remote test8 1.1.1.1
+\>>>>>>>
+EOF
+cmpfiles WANT GOT
 echo OK
