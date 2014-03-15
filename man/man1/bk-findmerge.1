@@ -1,0 +1,28 @@
+.so ../bk-macros
+.TH "bk findmerge" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk findmerge \- show where two revisions where merged
+.SH SYNOPSIS
+.B bk findmerge
+.[B] \-a
+.OPTreq \-r rev1
+.OPTreq \-r rev2
+.ARG file
+.SH DESCRIPTION
+This command will print the revision which is the least upper
+bound (LUB) of the specified two revisions.
+If there is more than one merge for the two revisions
+(e.g. because two different users merged them independently),
+then findmerge will return the oldest one.
+Adding the \-a option lists all of them.
+.SH OPTIONS
+.TP \-r\*<rev\*>
+.B \-a
+list all of the least upper bound merges where the two given
+revisions came together.
+.tp
+.OPTreq \-r rev
+specify the first and second rev (both are required).
+.tp
+.SH CATEGORY
+.B Utility

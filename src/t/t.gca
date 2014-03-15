@@ -132,3 +132,41 @@ cmpfiles WANT ERR
 echo '1.2.1.2+1.3,1.4' > WANT
 cmpfiles WANT GOT
 echo OK
+
+echo $N Test lub a.k.a. findmerge....................................$NL
+bk findmerge wp 2> ERR && fail -f ERR
+grep -q "findmerge: must specify 2 revisions" ERR || fail -f ERR
+bk findmerge -r+ wp 2> ERR && fail -f ERR
+grep -q "findmerge: must specify 2 revisions" ERR || fail -f ERR
+REV=`bk findmerge -r1.3 -r1.2.1.1 wp`
+test $REV = 1.5 || fail expected 1.5, got $REV
+REV=`bk findmerge -r1.2.1.1..1.1.2.1 wp`
+test $REV = 1.2.1.2 || fail expected 1.2.1.2, got $REV
+# test a case where there are multiple merges
+# namely a criss-cross merge
+touch xc
+bk new $Q xc
+bk _get -e $Q xc
+bk delta $Q -fy1.2 xc
+bk _get -e $Q -r1.2 xc
+bk delta $Q -fy1.3 xc
+bk _get -e $Q -r1.2 xc
+bk delta $Q -fy1.2.1.1 xc
+# merge once
+bk _get -e $Q -r1.3 -M1.2.1.1 xc
+bk delta $Q -fy1.3 xc
+# merge twice
+bk _get -e $Q -r1.3 -M1.2.1.1 xc
+bk delta $Q -fy1.3.1.2 xc
+# merge the merges
+bk _get -e $Q -r1.4 -M1.3.1.1 xc
+bk delta $Q -fy1.5 xc
+REV=`bk findmerge -r1.3..1.2.1.1 xc`
+test $REV = 1.4 || fail expected 1.4 got $REV
+bk findmerge -a -r1.3 -r1.2.1.1 xc > GOT
+cat >WANT <<EOF
+1.4
+1.3.1.1
+EOF
+cmpfiles WANT GOT
+echo OK

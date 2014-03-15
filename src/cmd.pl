@@ -229,6 +229,7 @@ _find
 _findcset
 _findhashdup
 findkey remote
+findmerge
 fix
 fixtool
 _fslchmod
