@@ -321,7 +321,7 @@ bin/tclsh$(EXE): tcl/$S/Makefile Lversion-L.sh Lversion-C.sh
 	cd tcl/$S && \
 	$(MAKE) Q=$(Q) prefix= exec_prefix= INSTALL_ROOT=../.. \
 	    XLIBS="$(LIBTOMCRYPT)" \
-	    install-binaries install-libraries install-headers
+	    install-binaries install-libraries
 	if [ -x bin/tclsh$(TCLVERSION)$(EXE) ] ; then \
 		mv bin/tclsh$(TCLVERSION)$(EXE) bin/tclsh$(EXE) ; \
 	fi
@@ -346,7 +346,7 @@ bin/bkgui$(EXE): tk/$S/Makefile bin/tclsh$(EXE)
 	$(MAKE) prefix= exec_prefix= INSTALL_ROOT=../.. \
 	    XLIBS="$(LIBTOMCRYPT) $(LIBPCRE)" \
 	    BK_TCL_LIB="$(LIBTCL)" \
-	    install-binaries install-libraries install-headers
+	    install-binaries install-libraries
 	rm -rf include usr lib/tk*/images
 	cd lib/tcl$(TCLVERSION)/encoding/; \
 	    mkdir tmp; \

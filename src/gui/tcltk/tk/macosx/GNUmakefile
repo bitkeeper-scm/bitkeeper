@@ -132,7 +132,7 @@ wish			:= ${wish}-X11
 override EMBEDDED_BUILD :=
 endif
 
-INSTALL_TARGETS		= install-binaries install-libraries
+INSTALL_TARGETS		= install-binaries install-libraries install-headers
 ifeq (${EMBEDDED_BUILD},)
 INSTALL_TARGETS		+= install-private-headers install-demos
 endif
