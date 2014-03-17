@@ -6427,7 +6427,7 @@ $as_echo_n "checking whether to use Cocoa or Carbon... " >&6; }
 	    { $as_echo "$as_me:${as_lineno-$LINENO}: result: Cocoa" >&5
 $as_echo "Cocoa" >&6; }
 
-    PKG_CFLAGS="$PKG_CFLAGS -DMAC_TK_COCOA -std=gnu99 -x objective-c -fobjc-gc"
+    PKG_CFLAGS="$PKG_CFLAGS -DMAC_TK_COCOA -std=gnu99 -x objective-c"
 
 
 

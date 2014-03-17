@@ -177,7 +177,7 @@ if test "${TEA_WINDOWINGSYSTEM}" = "aqua"; then
     case ${TK_LIBS} in
 	*Cocoa*)
 	    AC_MSG_RESULT([Cocoa])
-	    TEA_ADD_CFLAGS([-DMAC_TK_COCOA -std=gnu99 -x objective-c -fobjc-gc])
+	    TEA_ADD_CFLAGS([-DMAC_TK_COCOA -std=gnu99 -x objective-c])
 	    TEA_ADD_SOURCES([tkMacOSXTree.c])
 	    TEA_ADD_LIBS([-framework Cocoa -framework Carbon])
 	    ;;
