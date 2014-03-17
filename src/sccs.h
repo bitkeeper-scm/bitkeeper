@@ -1393,12 +1393,6 @@ void	lockfile_cleanup(void);
 
 int	diff_cleanOpts(df_opt *opts);
 int	diff_files(char *file1, char *file2, df_opt *opts, df_ctx **dc, char *out);
-
-void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
-int	(*is_whitespace)(int i));
-void	close_gaps(u8 *vec, int n, int (*compare)(int a, int b));
-int	diff_algor(int m, int n, u8 *lchg, u8 *rchg,
-int	(*compare)(int a, int b));
 int	diffline(char *left, char *right);
 typedef	void (*set_pfunc)(sccs *, ser_t);
 u8	*set_get(sccs *s, char *rev);

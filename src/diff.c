@@ -824,14 +824,12 @@ diff_print(df_ctx *dc, df_puts pfn, FILE *out)
 		fprintf(out, "\n");
 
 		for (j = h[i].li; j < (h[i].li + h[i].ll); j++) {
-			fprintf(out, "< ");
-			pfn(dc->things[0][j].data, dc->things[0][j].len,
+			pfn("< ", dc->things[0][j].data, dc->things[0][j].len,
 			    LEFT, j == n, dc->extra, out);
 		}
 		if (h[i].ll && h[i].rl) fprintf(out, "---\n");
 		for (j = h[i].ri; j < (h[i].ri + h[i].rl); j++) {
-			fprintf(out, "> ");
-			pfn(dc->things[1][j].data, dc->things[1][j].len,
+			pfn("> ", dc->things[1][j].data, dc->things[1][j].len,
 			    RIGHT, j == m, dc->extra, out);
 		}
 	}
@@ -856,7 +854,7 @@ diff_printRCS(df_ctx *dc, df_puts pfn, FILE *out)
 			fprintf(out, "a%d %d\n",
 			    h->ll ? h->li : h->li - 1, h->rl);
 			for (y = h->ri; y < (h->ri + h->rl); y++) {
-				pfn(dc->things[1][y].data,
+				pfn("", dc->things[1][y].data,
 				    dc->things[1][y].len, RIGHT,
 				    y == m, dc->extra, out);
 
@@ -884,7 +882,7 @@ diff_printDecorated(df_ctx *dc, df_puts pfn, df_deco dfn, FILE *out)
 		if (x < h[i].li) {
 			dfn(DF_COMMON_START, dc->extra, out);
 			for (; x < h[i].li; x++) {
-				pfn(dc->things[0][x].data,
+				pfn("", dc->things[0][x].data,
 				    dc->things[0][x].len,
 				    LEFT, x == n, dc->extra,
 				    out);
@@ -895,7 +893,7 @@ diff_printDecorated(df_ctx *dc, df_puts pfn, df_deco dfn, FILE *out)
 		if (h[i].ll) {
 			dfn(DF_LEFT_START, dc->extra, out);
 			for (; x < (h[i].li + h[i].ll); x++) {
-				pfn(dc->things[0][x].data,
+				pfn("", dc->things[0][x].data,
 				    dc->things[0][x].len,
 				    LEFT, x == n, dc->extra,
 				    out);
@@ -909,7 +907,7 @@ diff_printDecorated(df_ctx *dc, df_puts pfn, df_deco dfn, FILE *out)
 			dfn(DF_RIGHT_START, dc->extra, out);
 		}
 		for (y = h[i].ri; y < (h[i].ri + h[i].rl); y++) {
-			pfn(dc->things[1][y].data,
+			pfn("", dc->things[1][y].data,
 			    dc->things[1][y].len,
 			    RIGHT, y == m, dc->extra,
 			    out);
@@ -920,7 +918,7 @@ diff_printDecorated(df_ctx *dc, df_puts pfn, df_deco dfn, FILE *out)
 	if (y <= m) {
 		dfn(DF_COMMON_START, dc->extra, out);
 		for (; y <= m; y++) {
-			pfn(dc->things[1][y].data,
+			pfn("", dc->things[1][y].data,
 			    dc->things[1][y].len,
 			    RIGHT, y == m, dc->extra,
 			    out);
@@ -930,9 +928,7 @@ diff_printDecorated(df_ctx *dc, df_puts pfn, df_deco dfn, FILE *out)
 }
 
 void
-diff_printUnified(df_ctx *dc, char *nameA, time_t *timeA,
-    char *nameB, time_t *timeB, int context,
-    df_puts pfn, df_hdr phdr, FILE *out)
+diff_printUnified(df_ctx *dc, int context, df_puts pfn, df_hdr phdr, FILE *out)
 {
 	int	i, j;
 	int	nHunks;
@@ -940,23 +936,12 @@ diff_printUnified(df_ctx *dc, char *nameA, time_t *timeA,
 	int	sx, ex, sy, ey;
 	int	x, y;
 	hunk	*h;
-	struct	tm	*tm;
-	long	offset;
-	char	buf[1024];
 
 	assert(dc);
 	h = dc->hunks;
 	nHunks = nLines(h);
 	n = nLines(dc->things[0]);
 	m = nLines(dc->things[1]);
-
-	/* print header */
-	tm = localtimez(timeA, &offset);
-	strftime(buf, 1024, "%Y-%m-%d %H:%M:%S", tm);
-	fprintf(out, "--- %s\t%s %s\n", nameA, buf, tzone(offset));
-	tm = localtimez(timeB, &offset);
-	strftime(buf, 1024, "%Y-%m-%d %H:%M:%S", tm);
-	fprintf(out, "+++ %s\t%s %s\n", nameB, buf, tzone(offset));
 
 	EACH_INDEX(h, i) {
 		/*
@@ -976,16 +961,12 @@ diff_printUnified(df_ctx *dc, char *nameA, time_t *timeA,
 		ex = min(h[j].li + h[j].ll - 1 + context, n);
 		ey = min(h[j].ri + h[j].rl - 1 + context, m);
 
-		fprintf(out, "@@ -%d", n ? sx : 0);
-		if (!n || (ex-sx+1 > 1)) fprintf(out, ",%d", ex-sx+1);
-		fprintf(out, " +%d", m ? sy : 0);
-		if (!m || (ey-sy+1 > 1)) fprintf(out, ",%d", ey-sy+1);
-		fprintf(out, " @@");
 		if (phdr) {
-			fputc(' ', out);
-			phdr(h[i].li, dc->extra, out);
+			phdr(h[i].li,
+			    n ? sx : 0, ex - sx + 1,
+			    m ? sy : 0, ey - sy + 1,
+			    dc->extra, out);
 		}
-		fprintf(out, "\n");
 
 		/*
 		 * Print all hunks. The idea is we keep x, y current
@@ -995,27 +976,23 @@ diff_printUnified(df_ctx *dc, char *nameA, time_t *timeA,
 		y = sy;
 		for (; i <= j; i++) {
 			for (; x < h[i].li; x++) {
-				fputc(' ', out);
-				pfn(dc->things[0][x].data,
+				pfn(" ", dc->things[0][x].data,
 				    dc->things[0][x].len, LEFT,
 				    x == n, dc->extra, out);
 			}
 			for (; x < (h[i].li + h[i].ll); x++) {
-				fputc('-', out);
-				pfn(dc->things[0][x].data,
+				pfn("-", dc->things[0][x].data,
 				    dc->things[0][x].len, LEFT,
 				    x == n, dc->extra, out);
 			}
 			for (y = h[i].ri; y < (h[i].ri + h[i].rl); y++) {
-				fputc('+', out);
-				pfn(dc->things[1][y].data,
+				pfn("+", dc->things[1][y].data,
 				    dc->things[1][y].len, RIGHT,
 				    y == m, dc->extra, out);
 			}
 		}
 		for (; y <= ey; y++) {
-			fputc(' ', out);
-			pfn(dc->things[1][y].data,
+			pfn(" ", dc->things[1][y].data,
 			    dc->things[1][y].len, RIGHT,
 			    y == m, dc->extra, out);
 		}

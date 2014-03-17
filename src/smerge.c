@@ -22,6 +22,7 @@ private void	highlight_diff(diffln *diff);
 
 private	void	user_conflict(conflct *curr);
 private	void	user_conflict_fdiff(conflct *curr);
+private	void	conflct_free(conflct *c);
 
 /* automerge functions */
 private	void	enable_mergefcns(char *list, int enable);
@@ -77,6 +78,7 @@ private	file_t	body[NFILES];
 private	char	*file;
 private	int	mode;
 private	int	fdiff;
+private	int	show_mergefn;
 private	char	*anno = 0;
 #ifdef	SHOW_SEQ
 private	int	parse_range(char *range, u32 *start, u32 *end);
@@ -93,6 +95,10 @@ smerge_main(int ac, char **av)
 	int	do_diff3 = 0;
 	int	identical = 0;
 	char	*p;
+	longopt	lopts[] = {
+		{ "show-merge-fn", 310 },
+		{ 0, 0 }
+	};
 
 	/* A "just in case" hook to disable one or more of the merge
 	 * heuristics.  We can add a BK_MERGE_ENABLE in the future if
@@ -104,7 +110,7 @@ smerge_main(int ac, char **av)
 	if (getenv("BK_MERGE_DIFF3")) do_diff3 = 1;
 
 	mode = MODE_3WAY;
-	while ((c = getopt(ac, av, "234A;a;defghI;l;npr;R;s", 0)) != -1) {
+	while ((c = getopt(ac, av, "234A;a;defghI;l;npr;R;s", lopts)) != -1) {
 		switch (c) {
 		    case '2': /* 2 way format (like diff3) */
 			mode = MODE_2WAY;
@@ -155,6 +161,9 @@ smerge_main(int ac, char **av)
 			break;
 #endif
 		    case 'h': /* help */
+		    case 310: /* --show-merge-fn */
+			show_mergefn = 1;
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -429,7 +438,7 @@ struct conflct {
 	int	end_seq;	/* seq of lines at 'end' */
 	ld_t	*merged;	/* result of an automerge */
 	conflct	*prev, *next;
-	/* XXX need list of automerge algros that touched this block */
+	char	**algos;	/* merge algos that touched this block */
 };
 
 /*
@@ -489,7 +498,7 @@ do_weave_merge(u32 start, u32 end)
 				while (curr) {
 					tmp = curr;
 					curr = curr->next;
-					free(tmp);
+					conflct_free(tmp);
 				}
 				return (ret);
 			}
@@ -503,7 +512,7 @@ do_weave_merge(u32 start, u32 end)
 
 		tmp = curr;
 		curr = curr->next;
-		free(tmp);
+		conflct_free(tmp);
 	}
 	/* Handle any lines after the last conflict */
 
@@ -617,6 +626,14 @@ find_conflicts(void)
 	return (list);
 }
 
+private void
+conflct_free(conflct *c)
+{
+	unless (c) return;
+	if (c->algos) freeLines(c->algos, 0);
+	free(c);
+}
+
 /*
  * Return true if a line appears anywhere inside a conflict.
  */
@@ -660,7 +677,7 @@ merge_conflicts(conflct *head)
 				head->end_seq = tmp->end_seq;
 				head->next = tmp->next;
 				if (tmp->next) tmp->next->prev = head;
-				free(tmp);
+				conflct_free(tmp);
 				/*
 				 * don't update head so we try this
 				 * conflict again.
@@ -970,21 +987,22 @@ struct mergefcns {
 	char	*name;		/* "name" of function for commandline */
 	int	enable;		/* is this function enabled */
 	int	(*fcn)(conflct *r);
+	char	*fname;		/* function name */
 	char	*help;
 } mergefcns[] = {
-	{"1",	-1, merge_same_changes,
+	{"1",	-1, merge_same_changes, "merge_same_changes",
 	"Merge identical changes made by both sides"},
-	{"2",	-1, merge_only_one,
+	{"2",	-1, merge_only_one, "merge_only_one",
 	"Merge when only one side changes"},
-	{"3",	-1, merge_content,
+	{"3",	-1, merge_content, "merge_content",
 	"Merge adjacent non-overlapping modifications on both sides"},
-	{"4",	-1, merge_common_header,
+	{"4",	-1, merge_common_header, "merge_common_header",
 	"Merge identical changes at the start of a conflict"},
-	{"7",	-1, merge_added_oneside,
+	{"7",	-1, merge_added_oneside, "merge_added_oneside",
 	"Split one side add from conflict"},
-	{"5",	-1, merge_common_footer,
+	{"5",	-1, merge_common_footer, "merge_common_footer",
 	"Merge identical changes at the end of a conflict"},
-	{"6",	-1, merge_common_deletes,
+	{"6",	-1, merge_common_deletes, "merge_common_deletes",
 	"Merge identical deletions made by both sides"},
 };
 #define	N_MERGEFCNS (sizeof(mergefcns)/sizeof(struct mergefcns))
@@ -1054,6 +1072,7 @@ resolve_conflict(conflct *curr)
 	int	i;
 	int	ret = 0;
 	int	changed;
+	char	*t;
 
 	/*
 	 * Try every enabled automerge function on the current conflict
@@ -1063,7 +1082,11 @@ resolve_conflict(conflct *curr)
 		changed = 0;
 		for (i = 0; i < N_MERGEFCNS; i++) {
 			unless (mergefcns[i].enable) continue;
-			changed |= mergefcns[i].fcn(curr);
+			if (mergefcns[i].fcn(curr)) {
+				curr->algos =
+				    addLine(curr->algos, mergefcns[i].fname);
+				changed |= 1;
+			}
 			if (curr->merged) break;
 		}
 	} while (changed && !curr->merged);
@@ -1072,6 +1095,11 @@ resolve_conflict(conflct *curr)
 		/* This region was automerged */
 		if (fdiff) {
 			putchar('M');
+			if (show_mergefn && curr->algos) {
+				t = joinLines(", ", curr->algos);
+				printf(" %s", t);
+				free(t);
+			}
 #ifdef SHOW_SEQ
 			printf(" %d", curr->start_seq);
 #endif
@@ -1149,16 +1177,22 @@ user_conflict(conflct *curr)
 {
 	int	i;
 	diffln	*diffs;
+	char	*t, *fcns = "";
 	int	sameleft;
 	int	sameright;
 
+	if (show_mergefn && curr->algos) {
+		t = joinLines(", ", curr->algos);
+		fcns = aprintf(" %s", t);
+		free(t);
+	}
 	switch (mode) {
 	    case MODE_GCA:
 		sameleft = samedata(curr, GCA, LEFT);
 		sameright = samedata(curr, GCAR, RIGHT);
 		unless (sameleft && !sameright) {
-			printf("<<<<<<< local %s %s vs %s\n",
-			    file, revs[GCA], revs[LEFT]);
+			printf("<<<<<<< local %s %s vs %s%s\n",
+			    file, revs[GCA], revs[LEFT], fcns);
 			diffs = unidiff(curr, GCA, LEFT);
 			for (i = 0; diffs[i].ld; i++) {
 				printline(diffs[i].ld, diffs[i].c, 1);
@@ -1166,8 +1200,8 @@ user_conflict(conflct *curr)
 			free(diffs);
 		}
 		unless (sameright && !sameleft) {
-			printf("<<<<<<< remote %s %s vs %s\n",
-			    file, revs[GCAR], revs[RIGHT]);
+			printf("<<<<<<< remote %s %s vs %s%s\n",
+			    file, revs[GCAR], revs[RIGHT], fcns);
 			diffs = unidiff(curr, GCAR, RIGHT);
 			for (i = 0; diffs[i].ld; i++) {
 				printline(diffs[i].ld, diffs[i].c, 1);
@@ -1205,8 +1239,8 @@ user_conflict(conflct *curr)
 		sameleft = samedata(curr, GCA, LEFT);
 		sameright = samedata(curr, GCAR, RIGHT);
 		unless (sameleft && !sameright) {
-			printf("<<<<<<< local %s %s vs %s\n",
-			    file, revs[GCA], revs[LEFT]);
+			printf("<<<<<<< local %s %s vs %s%s\n",
+			    file, revs[GCA], revs[LEFT], fcns);
 			diffs = unidiff(curr, GCA, LEFT);
 			for (i = 0; diffs[i].ld; i++) {
 				if (diffs[i].c != '-') {
@@ -1216,8 +1250,8 @@ user_conflict(conflct *curr)
 			free(diffs);
 		}
 		unless (sameright && !sameleft) {
-			printf("<<<<<<< remote %s %s vs %s\n",
-			    file, revs[GCAR], revs[RIGHT]);
+			printf("<<<<<<< remote %s %s vs %s%s\n",
+			    file, revs[GCAR], revs[RIGHT], fcns);
 			diffs = unidiff(curr, GCAR, RIGHT);
 			for (i = 0; diffs[i].ld; i++) {
 				if (diffs[i].c != '-') {
@@ -1229,6 +1263,7 @@ user_conflict(conflct *curr)
 		printf(">>>>>>>\n");
 		break;
 	}
+	if (*fcns) free(fcns);
 }
 
 /*
@@ -1913,9 +1948,20 @@ merge_common_deletes(conflct *c)
 	left = unidiff(c, GCA, LEFT);
 	right = unidiff(c, GCAR, RIGHT);
 	/*
-	 * remove matching deletes at beginning
-	 *
-	 * XXX not implimented.  Why?
+	 * Remove matching deletes at beginning is not implemented
+	 * because it logically separates what was a modification into
+	 * a delete, then add. It can also cause some bad merges to
+	 * occur.
+	 * ex:
+	 *    <<< local
+	 *    - foo
+	 *    + bar
+	 *    <<< remote
+	 *    - foo
+	 *    >>>
+	 * The above shouldn't automerge. If foo & bar are different items
+	 * in a list then 'bar' should stay. If 'bar' is an edit of 'foo' then
+	 * 'bar' should be removed.
 	 */
 
 	/*

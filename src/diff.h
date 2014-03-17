@@ -45,13 +45,14 @@ typedef u32 (*df_hash)(void *a, int len, int side, int last, void *extra);
  * Print an item to 'out'. The 'extra' argument is what was passed to
  * diff_new(). The argument 'last' will only be true for the last item.
  */
-typedef void (*df_puts)(void *a, int alen,
+typedef void (*df_puts)(char *prefix, void *a, int alen,
     int side, int last, void *extra, FILE *out);
 
 /*
  * For printing headers in diff -p output
  */
-typedef void (*df_hdr)(int lno, void *extra, FILE *out);
+typedef void (*df_hdr)(int lno, int li, int ll, int ri, int rl,
+    void *extra, FILE *out);
 
 #define	DF_COMMON_START	0x00000001
 #define	DF_COMMON_END	0x00000002
@@ -119,9 +120,7 @@ hunk	*diff_items(df_ctx *dc, int firstDiff, int minimal);
 
 void	diff_print(df_ctx *dc, df_puts pfn, FILE *out);
 void	diff_printRCS(df_ctx *dc, df_puts pfn, FILE *out);
-void	diff_printUnified(df_ctx *dc, char *nameA, time_t *timeA,
-    char *nameB, time_t *timeB, int context,
-    df_puts pfn, df_hdr phdr, FILE *out);
+void	diff_printUnified(df_ctx *dc, int context, df_puts pfn, df_hdr phdr, FILE *out);
 void	diff_printDecorated(df_ctx *dc, df_puts pfn, df_deco dfn, FILE *out);
 
 /*
