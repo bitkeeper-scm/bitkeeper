@@ -5,12 +5,12 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-.so man.macros
 .TH toplevel n 8.4 Tk "Tk Built-In Commands"
+.so man.macros
 .BS
 '\" Note:  do not modify the .SH NAME line immediately below!
 .SH NAME
-toplevel \- Create and manipulate toplevel widgets
+toplevel \- Create and manipulate 'toplevel' main and popup window widgets
 .SH SYNOPSIS
 \fBtoplevel\fR \fIpathName \fR?\fIoptions\fR?
 .SO

@@ -97,7 +97,6 @@ FindSystemColor(
 {
     int l, u, r, i;
     int index;
-	int version = LOBYTE(LOWORD(GetVersion()));
 
     /*
      * Perform a binary search on the sorted array of colors.
@@ -120,15 +119,7 @@ FindSystemColor(
 	return 0;
     }
 
-    index = sysColors[i].index;
-    if (version < 4) {
-	if (index == COLOR_3DDKSHADOW) {
-	    index = COLOR_BTNSHADOW;
-	} else if (index == COLOR_3DLIGHT) {
-	    index = COLOR_BTNHIGHLIGHT;
-	}
-    }
-    *indexPtr = index;
+    *indexPtr = index = sysColors[i].index;
     colorPtr->pixel = GetSysColor(index);
 
     /*

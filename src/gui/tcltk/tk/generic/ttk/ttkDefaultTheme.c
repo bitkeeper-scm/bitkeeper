@@ -12,7 +12,7 @@
 #include <X11/Xutil.h>
 #include "ttkTheme.h"
 
-#if defined(WIN32)
+#if defined(_WIN32)
 static const int WIN32_XDRAWLINE_HACK = 1;
 #else
 static const int WIN32_XDRAWLINE_HACK = 0;

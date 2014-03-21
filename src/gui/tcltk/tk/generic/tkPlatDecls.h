@@ -29,11 +29,15 @@ extern "C" {
 
 /* !BEGIN!: Do not edit below this line. */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Exported function declarations:
  */
 
-#if defined(__WIN32__) || defined(__CYGWIN__) /* WIN */
+#if defined(_WIN32) || defined(__CYGWIN__) /* WIN */
 /* 0 */
 EXTERN Window		Tk_AttachHWND(Tk_Window tkwin, HWND hwnd);
 /* 1 */
@@ -84,7 +88,7 @@ typedef struct TkPlatStubs {
     int magic;
     void *hooks;
 
-#if defined(__WIN32__) || defined(__CYGWIN__) /* WIN */
+#if defined(_WIN32) || defined(__CYGWIN__) /* WIN */
     Window (*tk_AttachHWND) (Tk_Window tkwin, HWND hwnd); /* 0 */
     HINSTANCE (*tk_GetHINSTANCE) (void); /* 1 */
     HWND (*tk_GetHWND) (Window window); /* 2 */
@@ -107,10 +111,8 @@ typedef struct TkPlatStubs {
 #endif /* AQUA */
 } TkPlatStubs;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 extern const TkPlatStubs *tkPlatStubsPtr;
+
 #ifdef __cplusplus
 }
 #endif
@@ -121,7 +123,7 @@ extern const TkPlatStubs *tkPlatStubsPtr;
  * Inline function declarations:
  */
 
-#if defined(__WIN32__) || defined(__CYGWIN__) /* WIN */
+#if defined(_WIN32) || defined(__CYGWIN__) /* WIN */
 #define Tk_AttachHWND \
 	(tkPlatStubsPtr->tk_AttachHWND) /* 0 */
 #define Tk_GetHINSTANCE \

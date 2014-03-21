@@ -12,9 +12,9 @@
 
 #include "tkInt.h"
 
-#ifdef __WIN32__
+#ifdef _WIN32
 #include "tkWinInt.h"
-#elif !(defined(__WIN32__) || defined(MAC_OSX_TK))
+#elif !defined(MAC_OSX_TK)
 #include "tkUnixInt.h"
 #endif
 

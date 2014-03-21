@@ -1168,7 +1168,7 @@ GetPostscriptPoints(
  *--------------------------------------------------------------
  */
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 
 /*
@@ -1178,15 +1178,15 @@ GetPostscriptPoints(
  #define GetBValue(rgb)	((BYTE)((rgb)>>16))
  */
 
-#else /* !WIN32 */
+#else /* !_WIN32 */
 
 #define GetRValue(rgb)	((rgb & cdata->red_mask) >> cdata->red_shift)
 #define GetGValue(rgb)	((rgb & cdata->green_mask) >> cdata->green_shift)
 #define GetBValue(rgb)	((rgb & cdata->blue_mask) >> cdata->blue_shift)
 
-#endif /* WIN32 */
+#endif /* _WIN32 */
 
-#if defined(WIN32) || defined(MAC_OSX_TK)
+#if defined(_WIN32) || defined(MAC_OSX_TK)
 static void
 TkImageGetColor(
     TkColormapData *cdata,	/* Colormap data */
@@ -1198,7 +1198,7 @@ TkImageGetColor(
     *green = (double) GetGValue(pixel) / 255.0;
     *blue  = (double) GetBValue(pixel) / 255.0;
 }
-#else /* ! (WIN32 || MAC_OSX_TK) */
+#else /* ! (_WIN32 || MAC_OSX_TK) */
 static void
 TkImageGetColor(
     TkColormapData *cdata,	/* Colormap data */
@@ -1220,7 +1220,7 @@ TkImageGetColor(
 	*blue  = cdata->colors[pixel].blue / 65535.0;
     }
 }
-#endif /* WIN32 || MAC_OSX_TK */
+#endif /* _WIN32 || MAC_OSX_TK */
 
 /*
  *--------------------------------------------------------------

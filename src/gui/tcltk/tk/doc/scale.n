@@ -5,12 +5,12 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-.so man.macros
 .TH scale n 4.1 Tk "Tk Built-In Commands"
+.so man.macros
 .BS
 '\" Note:  do not modify the .SH NAME line immediately below!
 .SH NAME
-scale \- Create and manipulate scale widgets
+scale \- Create and manipulate 'scale' value-controlled slider widgets
 .SH SYNOPSIS
 \fBscale\fR \fIpathName \fR?\fIoptions\fR?
 .SO

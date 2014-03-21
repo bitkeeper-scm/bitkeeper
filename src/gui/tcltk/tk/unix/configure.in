@@ -518,6 +518,18 @@ if test $tk_aqua = no; then
 	    CFLAGS=$tk_oldCFlags
 	    LIBS=$tk_oldLibs
 	fi
+	dnl make sure that linking against fontconfig libraries finds Fc* symbols
+	if test "$found_xft" = "yes" ; then
+	    tk_oldCFlags=$CFLAGS
+	    CFLAGS="$CFLAGS $XINCLUDES $XFT_CFLAGS"
+	    tk_oldLibs=$LIBS
+	    LIBS="$tk_oldLIBS $XFT_LIBS $XLIBSW -lfontconfig"
+	    AC_CHECK_LIB(fontconfig, FcFontSort, [
+		XFT_LIBS="$XFT_LIBS -lfontconfig"
+	    ], [])
+	    CFLAGS=$tk_oldCFlags
+	    LIBS=$tk_oldLibs
+	fi
 	dnl print a warning if xft is unusable and was specifically requested
 	if test "$found_xft" = "no" ; then
 	    if test "$enable_xft" = "yes" ; then

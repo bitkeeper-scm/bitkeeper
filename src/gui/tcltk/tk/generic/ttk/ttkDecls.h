@@ -23,6 +23,10 @@ extern const char *TtkInitializeStubs(
 #define TTK_STUBS_EPOCH 0
 #define TTK_STUBS_REVISION 31
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Exported function declarations:
  */
@@ -178,10 +182,8 @@ typedef struct TtkStubs {
     int (*ttk_GetOrientFromObj) (Tcl_Interp *interp, Tcl_Obj *objPtr, int *orient); /* 40 */
 } TtkStubs;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 extern const TtkStubs *ttkStubsPtr;
+
 #ifdef __cplusplus
 }
 #endif

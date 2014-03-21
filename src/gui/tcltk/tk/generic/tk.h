@@ -75,7 +75,7 @@ extern "C" {
 #define TK_MAJOR_VERSION	8
 #define TK_MINOR_VERSION	6
 #define TK_RELEASE_LEVEL	TCL_FINAL_RELEASE
-#define TK_RELEASE_SERIAL	0
+#define TK_RELEASE_SERIAL	1
 
 #define TK_VERSION		"8.6"
 #define TK_PATCH_LEVEL		"8.6.1"
@@ -1496,7 +1496,7 @@ typedef struct Tk_ElementSpec {
 #define Tk_Release		Tcl_Release
 
 /* Removed Tk_Main, use macro instead */
-#if defined(__WIN32__) || defined(__CYGWIN__)
+#if defined(_WIN32) || defined(__CYGWIN__)
 #define Tk_Main(argc, argv, proc) Tk_MainEx(argc, argv, proc, \
 	(Tcl_FindExecutable(0), (Tcl_CreateInterp)()))
 #else

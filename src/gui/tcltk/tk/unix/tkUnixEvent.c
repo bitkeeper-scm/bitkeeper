@@ -15,7 +15,7 @@
 #ifdef HAVE_XKBKEYCODETOKEYSYM
 #  include <X11/XKBlib.h>
 #else
-#  define XkbOpenDisplay(D,V,E,M,m,R) (V),(E),(M),(m),(R),(NULL)
+#  define XkbOpenDisplay(D,V,E,M,m,R) ((V),(E),(M),(m),(R),(NULL))
 #endif
 
 /*

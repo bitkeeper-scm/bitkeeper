@@ -14,7 +14,7 @@
 
 #include "tkInt.h"
 
-#if defined(WIN32)
+#if defined(_WIN32)
 #include "tkWinInt.h"
 #elif defined(MAC_OSX_TK)
 #include "tkMacOSXInt.h"
@@ -49,7 +49,7 @@ static int		WindowingsystemCmd(ClientData dummy,
 			    Tcl_Interp *interp, int objc,
 			    Tcl_Obj *const *objv);
 
-#if defined(__WIN32__) || defined(MAC_OSX_TK)
+#if defined(_WIN32) || defined(MAC_OSX_TK)
 MODULE_SCOPE const TkEnsemble tkFontchooserEnsemble[];
 #else
 #define tkFontchooserEnsemble NULL
@@ -649,7 +649,7 @@ TkInitTkCmd(
     ClientData clientData)
 {
     TkMakeEnsemble(interp, "::", "tk", clientData, tkCmdMap);
-#if defined(__WIN32__) || defined(MAC_OSX_TK)
+#if defined(_WIN32) || defined(MAC_OSX_TK)
     TkInitFontchooser(interp, clientData);
 #endif
     return TCL_OK;
@@ -914,7 +914,7 @@ WindowingsystemCmd(
 	Tcl_WrongNumArgs(interp, 1, objv, NULL);
 	return TCL_ERROR;
     }
-#if defined(WIN32)
+#if defined(_WIN32)
     windowingsystem = "win32";
 #elif defined(MAC_OSX_TK)
     windowingsystem = "aqua";

@@ -5,12 +5,12 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-.so man.macros
 .TH message n 4.0 Tk "Tk Built-In Commands"
+.so man.macros
 .BS
 '\" Note:  do not modify the .SH NAME line immediately below!
 .SH NAME
-message \- Create and manipulate message widgets
+message \- Create and manipulate 'message' non-interactive text widgets
 .SH SYNOPSIS
 \fBmessage\fR \fIpathName \fR?\fIoptions\fR?
 .SO
@@ -74,7 +74,8 @@ there must not exist a window named \fIpathName\fR, but
 \fIpathName\fR's parent must exist.
 .PP
 A message is a widget that displays a textual string.  A message
-widget has three special features.  First, it breaks up
+widget has three special features that differentiate it from a
+\fBlabel\fR widget.  First, it breaks up
 its string into lines in order to produce a given aspect ratio
 for the window.  The line breaks are chosen at word boundaries
 wherever possible (if not even a single word would fit on a
@@ -112,12 +113,14 @@ determine the exact behavior of the command.  The following
 commands are possible for message widgets:
 .TP
 \fIpathName \fBcget \fIoption\fR
+.
 Returns the current value of the configuration option given
 by \fIoption\fR.
 \fIOption\fR may have any of the values accepted by the \fBmessage\fR
 command.
 .TP
 \fIpathName \fBconfigure\fR ?\fIoption\fR? ?\fIvalue option value ...\fR?
+.
 Query or modify the configuration options of the widget.
 If no \fIoption\fR is specified, returns a list describing all of
 the available options for \fIpathName\fR (see \fBTk_ConfigureInfo\fR for

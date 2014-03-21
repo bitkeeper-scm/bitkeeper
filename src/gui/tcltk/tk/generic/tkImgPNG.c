@@ -2283,10 +2283,10 @@ ParseFormat(
     Tcl_Obj **objv = NULL;
     int objc = 0;
     static const char *const fmtOptions[] = {
-	"png", "-alpha", NULL
+	"-alpha", NULL
     };
     enum fmtOptions {
-	OPT_PNG, OPT_ALPHA
+	OPT_ALPHA
     };
 
     /*
@@ -2299,33 +2299,30 @@ ParseFormat(
     }
 
     for (; objc>0 ; objc--, objv++) {
-    	int optIndex;
-
-        if (Tcl_GetIndexFromObjStruct(interp, objv[0], fmtOptions,
-		sizeof(char *), "option", 0, &optIndex) == TCL_ERROR) {
-            return TCL_ERROR;
-	}
+	int optIndex;
 
 	/*
 	 * Ignore the "png" part of the format specification.
 	 */
 
-	if (OPT_PNG == optIndex) {
+	if (!strcasecmp(Tcl_GetString(objv[0]), "png")) {
 	    continue;
 	}
 
-    	if (objc < 2) {
+	if (Tcl_GetIndexFromObjStruct(interp, objv[0], fmtOptions,
+		sizeof(char *), "option", 0, &optIndex) == TCL_ERROR) {
+	    return TCL_ERROR;
+	}
+
+	if (objc < 2) {
 	    Tcl_WrongNumArgs(interp, 1, objv, "value");
 	    return TCL_ERROR;
-    	}
+	}
 
 	objc--;
 	objv++;
 
 	switch ((enum fmtOptions) optIndex) {
-	case OPT_PNG:
-	    break;
-
 	case OPT_ALPHA:
 	    if (Tcl_GetDoubleFromObj(interp, objv[0],
 		    &pngPtr->alpha) == TCL_ERROR) {

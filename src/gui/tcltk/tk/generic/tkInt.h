@@ -1077,6 +1077,9 @@ MODULE_SCOPE int	Tk_ListboxObjCmd(ClientData clientData,
 MODULE_SCOPE int	Tk_LowerObjCmd(ClientData clientData,
 			    Tcl_Interp *interp, int objc,
 			    Tcl_Obj *const objv[]);
+MODULE_SCOPE int	Tk_MenuObjCmd(ClientData clientData,
+			    Tcl_Interp *interp, int objc,
+			    Tcl_Obj *const objv[]);
 MODULE_SCOPE int	Tk_MenubuttonObjCmd(ClientData clientData,
 			    Tcl_Interp *interp, int objc,
 			    Tcl_Obj *const objv[]);
@@ -1148,7 +1151,6 @@ MODULE_SCOPE void	TkFreeGeometryMaster(Tk_Window tkwin,
 
 MODULE_SCOPE void	TkEventInit(void);
 MODULE_SCOPE void	TkRegisterObjTypes(void);
-MODULE_SCOPE int	TkCreateMenuCmd(Tcl_Interp *interp);
 MODULE_SCOPE int	TkDeadAppCmd(ClientData clientData,
 			    Tcl_Interp *interp, int argc, const char **argv);
 MODULE_SCOPE int	TkCanvasGetCoordObj(Tcl_Interp *interp,
@@ -1214,7 +1216,7 @@ MODULE_SCOPE int	TkInitFontchooser(Tcl_Interp *interp,
 			    ClientData clientData);
 MODULE_SCOPE void	TkpWarpPointer(TkDisplay *dispPtr);
 
-#ifdef __WIN32__
+#ifdef _WIN32
 #define TkParseColor XParseColor
 #else
 MODULE_SCOPE Status TkParseColor (Display * display,
@@ -1240,7 +1242,7 @@ MODULE_SCOPE int SquareObjCmd(ClientData clientData,
 			    Tcl_Interp *interp, int objc,
 			    Tcl_Obj * const objv[]);
 MODULE_SCOPE int	TkOldTestInit(Tcl_Interp *interp);
-#if !(defined(__WIN32__) || defined(MAC_OSX_TK))
+#if !(defined(_WIN32) || defined(MAC_OSX_TK))
 #define TkplatformtestInit(x) TCL_OK
 #else
 MODULE_SCOPE int	TkplatformtestInit(Tcl_Interp *interp);

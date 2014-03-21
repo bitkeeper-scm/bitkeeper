@@ -486,6 +486,7 @@ static Ttk_ElementOptionSpec LabelElementOptions[] = {
  * 	Calculate the text, image, and total width and height.
  */
 
+#undef  MAX
 #define MAX(a,b) ((a) > (b) ? a : b);
 static void LabelSetup(
     LabelElement *c, Tk_Window tkwin, Ttk_State state)

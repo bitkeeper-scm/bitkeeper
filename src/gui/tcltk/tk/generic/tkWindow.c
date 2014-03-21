@@ -14,7 +14,7 @@
 
 #include "tkInt.h"
 
-#ifdef __WIN32__
+#ifdef _WIN32
 #include "tkWinInt.h"
 #elif !defined(MAC_OSX_TK)
 #include "tkUnixInt.h"
@@ -149,6 +149,7 @@ static const TkCmd commands[] = {
     {"label",		Tk_LabelObjCmd,		ISSAFE},
     {"labelframe",	Tk_LabelframeObjCmd,	ISSAFE},
     {"listbox",		Tk_ListboxObjCmd,	ISSAFE},
+    {"menu",		Tk_MenuObjCmd,	PASSMAINWINDOW},
     {"menubutton",	Tk_MenubuttonObjCmd,	ISSAFE},
     {"message",		Tk_MessageObjCmd,	ISSAFE},
     {"panedwindow",	Tk_PanedWindowObjCmd,	ISSAFE},
@@ -188,7 +189,7 @@ static const TkCmd commands[] = {
      * these commands differently (via the script library).
      */
 
-#if defined(__WIN32__) || defined(MAC_OSX_TK)
+#if defined(_WIN32) || defined(MAC_OSX_TK)
     {"tk_chooseColor",	Tk_ChooseColorObjCmd,	PASSMAINWINDOW},
     {"tk_chooseDirectory", Tk_ChooseDirectoryObjCmd,WINMACONLY|PASSMAINWINDOW},
     {"tk_getOpenFile",	Tk_GetOpenFileObjCmd,	WINMACONLY|PASSMAINWINDOW},
@@ -958,7 +959,7 @@ TkCreateMainWindow(
 	    Tcl_Panic("TkCreateMainWindow: builtin command with NULL string and object procs");
 	}
 
-#if defined(__WIN32__) && !defined(STATIC_BUILD)
+#if defined(_WIN32) && !defined(STATIC_BUILD)
 	if ((cmdPtr->flags & WINMACONLY) && tclStubsPtr->reserved9) {
 	    /*
 	     * We are running on Cygwin, so don't use the win32 dialogs.
@@ -966,7 +967,7 @@ TkCreateMainWindow(
 
 	    continue;
 	}
-#endif /* __WIN32__ && !STATIC_BUILD */
+#endif /* _WIN32 && !STATIC_BUILD */
 
 	if (cmdPtr->flags & PASSMAINWINDOW) {
 	    clientData = tkwin;
@@ -986,8 +987,6 @@ TkCreateMainWindow(
 	    Tcl_HideCommand(interp, cmdPtr->name, cmdPtr->name);
 	}
     }
-
-    TkCreateMenuCmd(interp);
 
     /*
      * Set variables for the intepreter.
@@ -1467,7 +1466,7 @@ Tk_DestroyWindow(
 	TkWmRemoveFromColormapWindows(winPtr);
     }
     if (winPtr->window != None) {
-#if defined(MAC_OSX_TK) || defined(__WIN32__)
+#if defined(MAC_OSX_TK) || defined(_WIN32)
 	XDestroyWindow(winPtr->display, winPtr->window);
 #else
 	if ((winPtr->flags & TK_TOP_HIERARCHY)
@@ -1579,7 +1578,7 @@ Tk_DestroyWindow(
 	     * display now and relinquish its data structures.
 	     */
 
-#if !defined(WIN32) && defined(NOT_YET)
+#if !defined(_WIN32) && defined(NOT_YET)
 	    if (dispPtr->refCount <= 0) {
 		/*
 		 * I have disabled this code because on Windows there are
@@ -1627,7 +1626,7 @@ Tk_DestroyWindow(
 
 		TkCloseDisplay(dispPtr);
 	    }
-#endif /* !WIN32 && NOT_YET */
+#endif /* !_WIN32 && NOT_YET */
 	}
     }
     Tcl_EventuallyFree(winPtr, TCL_DYNAMIC);
@@ -2852,7 +2851,7 @@ DeleteWindowsExitProc(
     tsdPtr->initialized = 0;
 }
 
-#if defined(__WIN32__)
+#if defined(_WIN32)
 
 static HMODULE tkcygwindll = NULL;
 
@@ -2898,7 +2897,7 @@ TkCygwinMainEx(
     tkmainex(argc, argv, appInitProc, interp);
     return 1;
 }
-#endif /* __WIN32__ */
+#endif /* _WIN32 */
 
 /*
  *----------------------------------------------------------------------
@@ -2927,7 +2926,7 @@ int
 Tk_Init(
     Tcl_Interp *interp)		/* Interpreter to initialize. */
 {
-#if defined(__WIN32__)
+#if defined(_WIN32)
     if (tkcygwindll) {
 	int (*tkinit)(Tcl_Interp *);
 
@@ -2936,7 +2935,7 @@ Tk_Init(
 	    return tkinit(interp);
 	}
     }
-#endif /* __WIN32__ */
+#endif /* _WIN32 */
     return Initialize(interp);
 }
 
@@ -3000,7 +2999,7 @@ Tk_SafeInit(
      * checked at several places to differentiate the two initialisations.
      */
 
-#if defined(__WIN32__)
+#if defined(_WIN32)
     if (tkcygwindll) {
 	int (*tksafeinit)(Tcl_Interp *);
 
@@ -3010,7 +3009,7 @@ Tk_SafeInit(
 	    return tksafeinit(interp);
 	}
     }
-#endif /* __WIN32__ */
+#endif /* _WIN32 */
     return Initialize(interp);
 }
 

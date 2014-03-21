@@ -407,7 +407,7 @@ TkImgPhotoGet(
  *----------------------------------------------------------------------
  */
 
-#ifndef __WIN32__
+#ifndef _WIN32
 #define GetRValue(rgb)	(UCHAR(((rgb) & red_mask) >> red_shift))
 #define GetGValue(rgb)	(UCHAR(((rgb) & green_mask) >> green_shift))
 #define GetBValue(rgb)	(UCHAR(((rgb) & blue_mask) >> blue_shift))
@@ -419,7 +419,7 @@ TkImgPhotoGet(
 	(((r) * red_mask / 255)   & red_mask)   | \
 	(((g) * green_mask / 255) & green_mask) | \
 	(((b) * blue_mask / 255)  & blue_mask)  ))
-#endif /* !__WIN32__ */
+#endif /* !_WIN32 */
 
 static void
 BlendComplexAlpha(
@@ -453,7 +453,7 @@ BlendComplexAlpha(
      * might be cached for better performance.
      */
 
-#ifndef __WIN32__
+#ifndef _WIN32
     unsigned long red_mask, green_mask, blue_mask;
     unsigned long red_shift, green_shift, blue_shift;
     Visual *visual = iPtr->visualInfo.visual;
@@ -473,7 +473,7 @@ BlendComplexAlpha(
     while ((0x0001 & (blue_mask >> blue_shift)) == 0) {
 	blue_shift++;
     }
-#endif /* !__WIN32__ */
+#endif /* !_WIN32 */
 
     /*
      * Only UNIX requires the special case for <24bpp. It varies with 3 extra
@@ -481,7 +481,7 @@ BlendComplexAlpha(
      * optimized.
      */
 
-#if !(defined(__WIN32__) || defined(MAC_OSX_TK))
+#if !(defined(_WIN32) || defined(MAC_OSX_TK))
     if (bgImg->depth < 24) {
 	unsigned char red_mlen, green_mlen, blue_mlen;
 
@@ -529,7 +529,7 @@ BlendComplexAlpha(
 	}
 	return;
     }
-#endif /* !__WIN32__ && !MAC_OSX_TK */
+#endif /* !_WIN32 && !MAC_OSX_TK */
 
     for (y = 0; y < height; y++) {
 	line = (y + yOffset) * iPtr->masterPtr->width;
@@ -1336,12 +1336,12 @@ AllocateColors(
 	 * since we will be passing the color table into the TkPutImage call.
 	 */
 
-#ifndef __WIN32__
+#ifndef _WIN32
 	if ((colorPtr->visualInfo.class != DirectColor)
 		&& (colorPtr->visualInfo.class != TrueColor)) {
 	    colorPtr->flags |= MAP_COLORS;
 	}
-#endif /* __WIN32__ */
+#endif /* _WIN32 */
     }
 
     colorPtr->numColors = numColors;
@@ -1770,7 +1770,7 @@ TkImgDitherInstance(
 		    case NBBY:
 			*destBytePtr++ = i;
 			break;
-#ifndef __WIN32__
+#ifndef _WIN32
 			/*
 			 * This case is not valid for Windows because the
 			 * image format is different from the pixel format in
@@ -1832,7 +1832,7 @@ TkImgDitherInstance(
 		    case NBBY:
 			*destBytePtr++ = i;
 			break;
-#ifndef __WIN32__
+#ifndef _WIN32
 			/*
 			 * This case is not valid for Windows because the
 			 * image format is different from the pixel format in

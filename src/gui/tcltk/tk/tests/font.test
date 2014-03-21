@@ -2345,6 +2345,16 @@ test font-46.5 {font actual, too many chars} -body {
     font actual {times 10} 123456789012345678901234567890123456789012345678901
 } -returnCodes error -result {expected a single character but got "1234567890123456789012345678901234567..."}
 
+test font-47.1 {Bug f214b8ad5b} -body {
+    interp create one
+    interp create two
+    load {} Tk one
+    load {} Tk two
+    one eval menu .menubar
+    two eval menu .menubar
+    interp delete one
+    interp delete two
+} -result {}
 
 # cleanup
 cleanupTests

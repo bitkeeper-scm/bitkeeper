@@ -25,6 +25,10 @@
 
 /* !BEGIN!: Do not edit below this line. */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Exported function declarations:
  */
@@ -1148,10 +1152,8 @@ typedef struct TkStubs {
     void (*tk_CreateOldPhotoImageFormat) (const Tk_PhotoImageFormat *formatPtr); /* 273 */
 } TkStubs;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 extern const TkStubs *tkStubsPtr;
+
 #ifdef __cplusplus
 }
 #endif

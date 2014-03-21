@@ -15,7 +15,7 @@
 #include "default.h"
 #include "tkInt.h"
 
-#ifdef WIN32
+#ifdef _WIN32
 #include "tkWinInt.h"
 #endif
 
@@ -2077,7 +2077,7 @@ DisplayListbox(
 		Tk_UnderlineChars(listPtr->display, pixmap, gc,
 			listPtr->tkfont, stringRep, x, y, 0, stringLen);
 	    } else if (listPtr->activeStyle == ACTIVE_STYLE_DOTBOX) {
-#ifdef WIN32
+#ifdef _WIN32
 		/*
 		 * This provides for exact default look and feel on Windows.
 		 */
@@ -2094,7 +2094,7 @@ DisplayListbox(
 		rect.bottom = rect.top + listPtr->lineHeight;
 		DrawFocusRect(dc, &rect);
 		TkWinReleaseDrawableDC(pixmap, dc, &state);
-#else /* !WIN32 */
+#else /* !_WIN32 */
 		/*
 		 * Draw a dotted box around the text.
 		 */
@@ -2133,7 +2133,7 @@ DisplayListbox(
 		    gcValues.line_style = LineSolid;
 		    XChangeGC(listPtr->display, gc, GCLineStyle, &gcValues);
 		}
-#endif /* WIN32 */
+#endif /* _WIN32 */
 	    }
 	}
 

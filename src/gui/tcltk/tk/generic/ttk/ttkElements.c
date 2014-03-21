@@ -1145,7 +1145,7 @@ static void TabElementDraw(
 	Tk_3DBorderGC(tkwin, border, TK_3D_FLAT_GC),
 	pts, 6, Convex, CoordModeOrigin);
 
-#ifndef WIN32
+#ifndef _WIN32
     /*
      * Account for whether XDrawLines draws endpoints by platform
      */

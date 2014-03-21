@@ -290,14 +290,14 @@ proc genStubs::addPlatformGuard {plat iftxt {eltxt {}}} {
     set text ""
     switch $plat {
 	win {
-	    append text "#ifdef __WIN32__ /* WIN */\n${iftxt}"
+	    append text "#ifdef _WIN32 /* WIN */\n${iftxt}"
 	    if {$eltxt ne ""} {
 		append text "#else /* WIN */\n${eltxt}"
 	    }
 	    append text "#endif /* WIN */\n"
 	}
 	unix {
-	    append text "#if !defined(__WIN32__) && !defined(MAC_OSX_TCL)\
+	    append text "#if !defined(_WIN32) && !defined(MAC_OSX_TCL)\
 		    /* UNIX */\n${iftxt}"
 	    if {$eltxt ne ""} {
 		append text "#else /* UNIX */\n${eltxt}"
@@ -319,7 +319,7 @@ proc genStubs::addPlatformGuard {plat iftxt {eltxt {}}} {
 	    append text "#endif /* AQUA */\n"
 	}
 	x11 {
-	    append text "#if !(defined(__WIN32__) || defined(MAC_OSX_TK))\
+	    append text "#if !(defined(_WIN32) || defined(MAC_OSX_TK))\
 		    /* X11 */\n${iftxt}"
 	    if {$eltxt ne ""} {
 		append text "#else /* X11 */\n${eltxt}"
@@ -769,6 +769,8 @@ proc genStubs::emitHeader {name} {
 	append text "#define ${CAPName}_STUBS_REVISION $revision\n"
     }
 
+    append text "\n#ifdef __cplusplus\nextern \"C\" {\n#endif\n"
+
     emitDeclarations $name text
 
     if {[info exists hooks($name)]} {
@@ -796,8 +798,7 @@ proc genStubs::emitHeader {name} {
 
     append text "} ${capName}Stubs;\n\n"
 
-    append text "#ifdef __cplusplus\nextern \"C\" {\n#endif\n"
-    append text "extern const ${capName}Stubs *${name}StubsPtr;\n"
+    append text "extern const ${capName}Stubs *${name}StubsPtr;\n\n"
     append text "#ifdef __cplusplus\n}\n#endif\n"
 
     emitMacros $name text

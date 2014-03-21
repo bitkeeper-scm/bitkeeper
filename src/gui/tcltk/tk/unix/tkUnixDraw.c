@@ -11,7 +11,7 @@
 
 #include "tkInt.h"
 
-#if !defined(__WIN32__)
+#ifndef _WIN32
 #include "tkUnixInt.h"
 #endif
 

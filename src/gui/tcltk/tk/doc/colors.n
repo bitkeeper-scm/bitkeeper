@@ -6,8 +6,8 @@
 '\" 
 '\" 
 '\"
-.so man.macros
 .TH colors n 8.3 Tk "Tk Built-In Commands"
+.so man.macros
 .BS
 .\" Note:  do not modify the .SH NAME line immediately below!
 .SH NAME

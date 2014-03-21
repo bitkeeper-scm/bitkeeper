@@ -359,10 +359,7 @@ typedef struct TkMenu {
     				/* A pointer to the original menu for this
     				 * clone chain. Points back to this structure
     				 * if this menu is a master menu. */
-    struct TkMenuOptionTables *optionTablesPtr;
-				/* A pointer to the collection of option
-				 * tables that work with menus and menu
-				 * entries. */
+    void *reserved1; /* not used any more. */
     Tk_Window parentTopLevelPtr;/* If this menu is a menubar, this is the
     				 * toplevel that owns the menu. Only
     				 * applicable for menubar clones. */
@@ -429,17 +426,6 @@ typedef struct TkMenuReferences {
     				 * window (which is what we hash on) may not
     				 * be around when we are deleting. */
 } TkMenuReferences;
-
-/*
- * This structure contains all of the option tables that are needed by menus.
- */
-
-typedef struct TkMenuOptionTables {
-    Tk_OptionTable menuOptionTable;
-				/* The option table for menus. */
-    Tk_OptionTable entryOptionTables[6];
-				/* The tables for menu entries. */
-} TkMenuOptionTables;
 
 /*
  * Flag bits for menus:

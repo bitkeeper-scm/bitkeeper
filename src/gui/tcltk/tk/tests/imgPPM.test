@@ -21,7 +21,7 @@ proc put {file data} {
     puts -nonewline $f $data
     close $f
 }
-
+
 test imgPPM-1.1 {FileReadPPM procedure} -body {
     put test.ppm "P6\n0 256\n255\nabcdef"
     image create photo p1 -file test.ppm
@@ -39,9 +39,9 @@ test imgPPM-1.4 {FileReadPPM procedure} -body {
     image create photo p1 -file test.ppm
 } -returnCodes error -result {PPM image file "test.ppm" has dimension(s) <= 0}
 test imgPPM-1.5 {FileReadPPM procedure} -body {
-    put test.ppm "P6\n10 20\n256\nabcdef"
+    put test.ppm "P6\n10 20\n100000\nabcdef"
     image create photo p1 -file test.ppm
-} -returnCodes error -result {PPM image file "test.ppm" has bad maximum intensity value 256}
+} -returnCodes error -result {PPM image file "test.ppm" has bad maximum intensity value 100000}
 test imgPPM-1.6 {FileReadPPM procedure} -body {
     put test.ppm "P6\n10 20\n0\nabcdef"
     image create photo p1 -file test.ppm
@@ -162,6 +162,71 @@ test imgPPM-4.1 {StringReadPPM procedure, data too short [Bug 1822391]} -body {
     image delete I
 } -returnCodes error -result {truncated PPM data}
 
+test imgPPM-5.1 {StringReadPPM procedure} -setup {
+    image create photo ppm
+} -body {
+    ppm put "P6\n0 256\n255\nabcdef"
+} -returnCodes error -cleanup {
+    image delete ppm
+} -result {PPM image data has dimension(s) <= 0}
+test imgPPM-5.2 {StringReadPPM procedure} -setup {
+    image create photo ppm
+} -body {
+    ppm put "P6\n-2 256\n255\nabcdef"
+} -returnCodes error -cleanup {
+    image delete ppm
+} -result {PPM image data has dimension(s) <= 0}
+test imgPPM-5.3 {StringReadPPM procedure} -setup {
+    image create photo ppm
+} -body {
+    ppm put "P6\n10 0\n255\nabcdef"
+} -returnCodes error -cleanup {
+    image delete ppm
+} -result {PPM image data has dimension(s) <= 0}
+test imgPPM-5.4 {StringReadPPM procedure} -setup {
+    image create photo ppm
+} -body {
+    ppm put "P6\n10 -2\n255\nabcdef"
+} -returnCodes error -cleanup {
+    image delete ppm
+} -result {PPM image data has dimension(s) <= 0}
+test imgPPM-5.5 {StringReadPPM procedure} -setup {
+    image create photo ppm
+} -body {
+    ppm put "P6\n10 20\n100000\nabcdef"
+} -returnCodes error -cleanup {
+    image delete ppm
+} -result {PPM image data has bad maximum intensity value 100000}
+test imgPPM-5.6 {StringReadPPM procedure} -setup {
+    image create photo ppm
+} -body {
+    ppm put "P6\n10 20\n0\nabcdef"
+} -returnCodes error -cleanup {
+    image delete ppm
+} -result {PPM image data has bad maximum intensity value 0}
+test imgPPM-5.7 {StringReadPPM procedure} -setup {
+    image create photo ppm
+} -body {
+    ppm put "P6\n10 10\n255\nabcdef"
+} -returnCodes error -cleanup {
+    image delete ppm
+} -result {truncated PPM data}
+test imgPPM-5.8 {StringReadPPM procedure} -setup {
+    image create photo ppm
+} -body {
+    ppm put "P6\n5 4\n255\n01234567890123456789012345678901234567890123456789012345678"
+} -returnCodes error -cleanup {
+    image delete ppm
+} -result {truncated PPM data}
+test imgPPM-5.9 {StringReadPPM procedure} -setup {
+    image create photo ppm
+} -body {
+    ppm put "P6\n5 4\n150\n012345678901234567890123456789012345678901234567890123456789"
+    list [image width ppm] [image height ppm]
+} -cleanup {
+    image delete ppm
+} -result {5 4}
+
 imageFinish
 
 # cleanup
@@ -169,3 +234,6 @@ catch {file delete test.ppm}
 cleanupTests
 return
 
+# Local Variables:
+# mode: tcl
+# End:

@@ -60,7 +60,7 @@
 
 namespace eval ttk {
 
-set tip145 [catch {font create TkDefaultFont}]
+variable tip145 [catch {font create TkDefaultFont}]
 catch {font create TkTextFont}
 catch {font create TkHeadingFont}
 catch {font create TkCaptionFont}

@@ -16,7 +16,7 @@
 #include "tkInt.h"
 #include "tkText.h"
 
-#ifdef __WIN32__
+#ifdef _WIN32
 #include "tkWinInt.h"
 #elif defined(__CYGWIN__)
 #include "tkUnixInt.h"

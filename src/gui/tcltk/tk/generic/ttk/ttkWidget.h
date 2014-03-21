@@ -260,7 +260,7 @@ MODULE_SCOPE int TtkGetLabelAnchorFromObj(
  * Platform-specific initialization.
  */
 
-#if defined(__WIN32__)
+#ifdef _WIN32
 #define Ttk_PlatformInit Ttk_WinPlatformInit
 MODULE_SCOPE int Ttk_PlatformInit(Tcl_Interp *);
 #elif defined(MAC_OSX_TK)

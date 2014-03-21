@@ -5,12 +5,12 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-.so man.macros
 .TH menubutton n 4.0 Tk "Tk Built-In Commands"
+.so man.macros
 .BS
 '\" Note:  do not modify the .SH NAME line immediately below!
 .SH NAME
-menubutton \- Create and manipulate menubutton widgets
+menubutton \- Create and manipulate 'menubutton' pop-up menu indicator widgets
 .SH SYNOPSIS
 \fBmenubutton\fR \fIpathName \fR?\fIoptions\fR?
 .SO
@@ -93,13 +93,19 @@ the menu before releasing the mouse button, the button release
 causes the underlying menu entry to be invoked.  When the button
 is released, the menu is unposted.
 .PP
-Menubuttons are typically organized into groups called menu bars
+Menubuttons are used to construct a \fBtk_optionMenu\fR, which is the
+preferred mechanism for allowing a user to select one item from a list
+on Mac OS X.
+.PP
+Menubuttons were also typically organized into groups called menu bars
 that allow scanning:
 if the mouse button is pressed over one menubutton (causing it
 to post its menu) and the mouse is moved over another menubutton
 in the same menu bar without releasing the mouse button, then the
 menu of the first menubutton is unposted and the menu of the
 new menubutton is posted instead.
+\fIThis use is deprecated\fR in favor of setting a \fBmenu\fR directly as a
+menubar; see the \fBtoplevel\fR's \fB\-menu\fR option for how to do that.
 .PP
 There are several interactions between menubuttons and menus;  see
 the \fBmenu\fR manual entry for information on various menu configurations,
@@ -118,12 +124,14 @@ determine the exact behavior of the command.  The following
 commands are possible for menubutton widgets:
 .TP
 \fIpathName \fBcget \fIoption\fR
+.
 Returns the current value of the configuration option given
 by \fIoption\fR.
 \fIOption\fR may have any of the values accepted by the \fBmenubutton\fR
 command.
 .TP
 \fIpathName \fBconfigure\fR ?\fIoption\fR? ?\fIvalue option value ...\fR?
+.
 Query or modify the configuration options of the widget.
 If no \fIoption\fR is specified, returns a list describing all of
 the available options for \fIpathName\fR (see \fBTk_ConfigureInfo\fR for

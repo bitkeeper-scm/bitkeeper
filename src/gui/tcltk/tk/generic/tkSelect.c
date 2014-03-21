@@ -1193,7 +1193,7 @@ TkSelInit(
      *	  http://www.cl.cam.ac.uk/~mgk25/unicode.html#x11
      */
 
-#if !defined(__WIN32__)
+#if !defined(_WIN32)
     dispPtr->utf8Atom		= Tk_InternAtom(tkwin, "UTF8_STRING");
 #else
     dispPtr->utf8Atom		= (Atom) 0;

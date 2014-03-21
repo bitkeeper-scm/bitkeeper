@@ -5,12 +5,12 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-.so man.macros
 .TH menu n 4.1 Tk "Tk Built-In Commands"
+.so man.macros
 .BS
 '\" Note:  do not modify the .SH NAME line immediately below!
 .SH NAME
-menu, tk_menuSetFocus \- Create and manipulate menu widgets
+menu, tk_menuSetFocus \- Create and manipulate 'menu' widgets and menubars
 .SH SYNOPSIS
 .nf
 \fBmenu\fR \fIpathName \fR?\fIoptions\fR?
@@ -73,6 +73,9 @@ library.
 .PP
 The \fBmenu\fR command creates a new top-level window (given
 by the \fIpathName\fR argument) and makes it into a menu widget.
+That menu widget can either be used as a pop-up window or applied to a
+\fBtoplevel\fR (with its \fB\-menu\fR option) to make it into the menubar for
+that toplevel.
 Additional
 options, described above, may be specified on the command line
 or in the option database

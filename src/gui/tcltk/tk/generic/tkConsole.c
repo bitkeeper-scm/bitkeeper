@@ -84,7 +84,7 @@ static const Tcl_ChannelType consoleChannelType = {
     NULL
 };
 
-#ifdef __WIN32__
+#ifdef _WIN32
 #include <windows.h>
 
 /*

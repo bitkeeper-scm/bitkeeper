@@ -14,11 +14,11 @@
 
 #include "tkInt.h"
 
-#ifdef __WIN32__
+#ifdef _WIN32
 #include "tkWinInt.h"
 #endif
 
-#if !(defined(__WIN32__) || defined(MAC_OSX_TK)) /* UNIX */
+#if !(defined(_WIN32) || defined(MAC_OSX_TK)) /* UNIX */
 #include "tkUnixInt.h"
 #endif
 

@@ -9,8 +9,8 @@
 '\"	    Department of Computer Science,
 '\"	    Australian National University.
 '\"
-.so man.macros
 .TH photo n 4.0 Tk "Tk Built-In Commands"
+.so man.macros
 .BS
 '\" Note:  do not modify the .SH NAME line immediately below!
 .SH NAME

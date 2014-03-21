@@ -24,7 +24,7 @@
 #include "tkInt.h"
 #include "tkText.h"
 
-#ifdef __WIN32__
+#ifdef _WIN32
 #include "tkWinInt.h"
 #endif
 
@@ -160,11 +160,11 @@ static int		TestfontObjCmd(ClientData dummy,
 			    Tcl_Obj *const objv[]);
 static int		TestmakeexistCmd(ClientData dummy,
 			    Tcl_Interp *interp, int argc, const char **argv);
-#if !(defined(__WIN32__) || defined(MAC_OSX_TK) || defined(__CYGWIN__))
+#if !(defined(_WIN32) || defined(MAC_OSX_TK) || defined(__CYGWIN__))
 static int		TestmenubarCmd(ClientData dummy,
 			    Tcl_Interp *interp, int argc, const char **argv);
 #endif
-#if defined(__WIN32__) || defined(MAC_OSX_TK)
+#if defined(_WIN32) || defined(MAC_OSX_TK)
 static int		TestmetricsCmd(ClientData dummy,
 			    Tcl_Interp *interp, int argc, const char **argv);
 #endif
@@ -186,7 +186,7 @@ static void		CustomOptionFree(ClientData clientData,
 			    Tk_Window tkwin, char *internalPtr);
 static int		TestpropCmd(ClientData dummy,
 			    Tcl_Interp *interp, int argc, const char **argv);
-#if !(defined(__WIN32__) || defined(MAC_OSX_TK) || defined(__CYGWIN__))
+#if !(defined(_WIN32) || defined(MAC_OSX_TK) || defined(__CYGWIN__))
 static int		TestwrapperCmd(ClientData dummy,
 			    Tcl_Interp *interp, int argc, const char **argv);
 #endif
@@ -259,7 +259,7 @@ Tktest_Init(
     Tcl_CreateCommand(interp, "testtext", TkpTesttextCmd,
 	    (ClientData) Tk_MainWindow(interp), NULL);
 
-#if defined(__WIN32__) || defined(MAC_OSX_TK)
+#if defined(_WIN32) || defined(MAC_OSX_TK)
     Tcl_CreateCommand(interp, "testmetrics", TestmetricsCmd,
 	    (ClientData) Tk_MainWindow(interp), NULL);
 #elif !defined(__CYGWIN__)
@@ -269,7 +269,7 @@ Tktest_Init(
 	    (ClientData) Tk_MainWindow(interp), NULL);
     Tcl_CreateCommand(interp, "testwrapper", TestwrapperCmd,
 	    (ClientData) Tk_MainWindow(interp), NULL);
-#endif /* __WIN32__ || MAC_OSX_TK */
+#endif /* _WIN32 || MAC_OSX_TK */
 
     /*
      * Create test image type.
@@ -1693,7 +1693,7 @@ TestmakeexistCmd(
  */
 
 	/* ARGSUSED */
-#if !(defined(__WIN32__) || defined(MAC_OSX_TK) || defined(__CYGWIN__))
+#if !(defined(_WIN32) || defined(MAC_OSX_TK) || defined(__CYGWIN__))
 static int
 TestmenubarCmd(
     ClientData clientData,	/* Main window for application. */
@@ -1761,7 +1761,7 @@ TestmenubarCmd(
  *----------------------------------------------------------------------
  */
 
-#if defined(__WIN32__) || defined(MAC_OSX_TK)
+#if defined(_WIN32) || defined(MAC_OSX_TK)
 static int
 TestmetricsCmd(
     ClientData clientData,	/* Main window for application. */
@@ -1772,7 +1772,7 @@ TestmetricsCmd(
     char buf[TCL_INTEGER_SPACE];
     int val;
 
-#ifdef __WIN32__
+#ifdef _WIN32
     if (argc < 2) {
 	Tcl_AppendResult(interp, "wrong # args;  must be \"", argv[0],
 		" option ?arg ...?\"", NULL);
@@ -1795,13 +1795,13 @@ TestmetricsCmd(
 #endif
 
     if (strcmp(argv[1], "cyvscroll") == 0) {
-#ifdef __WIN32__
+#ifdef _WIN32
 	val = GetSystemMetrics(SM_CYVSCROLL);
 #else
 	val = ((TkScrollbar *) winPtr->instanceData)->width;
 #endif
     } else  if (strcmp(argv[1], "cxhscroll") == 0) {
-#ifdef __WIN32__
+#ifdef _WIN32
 	val = GetSystemMetrics(SM_CXHSCROLL);
 #else
 	val = ((TkScrollbar *) winPtr->instanceData)->width;
@@ -1895,7 +1895,7 @@ TestpropCmd(
     return TCL_OK;
 }
 
-#if !(defined(__WIN32__) || defined(MAC_OSX_TK) || defined(__CYGWIN__))
+#if !(defined(_WIN32) || defined(MAC_OSX_TK) || defined(__CYGWIN__))
 /*
  *----------------------------------------------------------------------
  *

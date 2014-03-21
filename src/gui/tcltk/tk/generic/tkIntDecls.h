@@ -35,6 +35,10 @@ struct TkSharedText;
 
 /* !BEGIN!: Do not edit below this line. */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Exported function declarations:
  */
@@ -672,20 +676,20 @@ typedef struct TkIntStubs {
     void (*tkSetRegion) (Display *display, GC gc, TkRegion rgn); /* 118 */
     void (*tkUnionRectWithRegion) (XRectangle *rect, TkRegion src, TkRegion dr_return); /* 119 */
     void (*reserved120)(void);
-#if !(defined(__WIN32__) || defined(MAC_OSX_TK)) /* X11 */
+#if !(defined(_WIN32) || defined(MAC_OSX_TK)) /* X11 */
     void (*reserved121)(void);
 #endif /* X11 */
-#if defined(__WIN32__) /* WIN */
+#if defined(_WIN32) /* WIN */
     void (*reserved121)(void);
 #endif /* WIN */
 #ifdef MAC_OSX_TK /* AQUA */
     void (*reserved121)(void); /* Dummy entry for stubs table backwards compatibility */
     Pixmap (*tkpCreateNativeBitmap) (Display *display, const void *source); /* 121 */
 #endif /* AQUA */
-#if !(defined(__WIN32__) || defined(MAC_OSX_TK)) /* X11 */
+#if !(defined(_WIN32) || defined(MAC_OSX_TK)) /* X11 */
     void (*reserved122)(void);
 #endif /* X11 */
-#if defined(__WIN32__) /* WIN */
+#if defined(_WIN32) /* WIN */
     void (*reserved122)(void);
 #endif /* WIN */
 #ifdef MAC_OSX_TK /* AQUA */
@@ -693,10 +697,10 @@ typedef struct TkIntStubs {
     void (*tkpDefineNativeBitmaps) (void); /* 122 */
 #endif /* AQUA */
     void (*reserved123)(void);
-#if !(defined(__WIN32__) || defined(MAC_OSX_TK)) /* X11 */
+#if !(defined(_WIN32) || defined(MAC_OSX_TK)) /* X11 */
     void (*reserved124)(void);
 #endif /* X11 */
-#if defined(__WIN32__) /* WIN */
+#if defined(_WIN32) /* WIN */
     void (*reserved124)(void);
 #endif /* WIN */
 #ifdef MAC_OSX_TK /* AQUA */
@@ -765,10 +769,8 @@ typedef struct TkIntStubs {
     void (*tkDrawAngledChars) (Display *display, Drawable drawable, GC gc, Tk_Font tkfont, const char *source, int numBytes, double x, double y, double angle); /* 184 */
 } TkIntStubs;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 extern const TkIntStubs *tkIntStubsPtr;
+
 #ifdef __cplusplus
 }
 #endif
@@ -1148,7 +1150,7 @@ extern const TkIntStubs *tkIntStubsPtr;
 /*
  * On X11, these macros are just wrappers for the equivalent X Region calls.
  */
-#if !(defined(__WIN32__) || defined(__CYGWIN__) || defined(MAC_OSX_TK)) /* X11 */
+#if !(defined(_WIN32) || defined(__CYGWIN__) || defined(MAC_OSX_TK)) /* X11 */
 
 #undef TkClipBox
 #undef TkCreateRegion

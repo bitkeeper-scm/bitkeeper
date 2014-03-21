@@ -14,7 +14,7 @@
 
 #include "tkInt.h"
 
-#ifdef __WIN32__
+#ifdef _WIN32
 #include "tkWinInt.h"
 #endif
 

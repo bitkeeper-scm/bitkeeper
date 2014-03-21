@@ -421,7 +421,7 @@ TkFontPkgFree(
 	fontsLeft++;
 #ifdef DEBUG_FONTS
 	fprintf(stderr, "Font %s still in cache.\n",
-		Tcl_GetHashKey(&fiPtr->fontCache, searchPtr));
+		(char *) Tcl_GetHashKey(&fiPtr->fontCache, searchPtr));
 #endif
     }
 
@@ -1093,7 +1093,8 @@ Tk_AllocFontFromObj(
     int isNew, descent;
     NamedFont *nfPtr;
 
-    if (objPtr->typePtr != &tkFontObjType) {
+    if (objPtr->typePtr != &tkFontObjType
+	    || objPtr->internalRep.twoPtrValue.ptr2 != fiPtr) {
 	SetFontFromAny(interp, objPtr);
     }
 
@@ -1133,6 +1134,7 @@ Tk_AllocFontFromObj(
 	    fontPtr->resourceRefCount++;
 	    fontPtr->objRefCount++;
 	    objPtr->internalRep.twoPtrValue.ptr1 = fontPtr;
+	    objPtr->internalRep.twoPtrValue.ptr2 = fiPtr;
 	    return (Tk_Font) fontPtr;
 	}
     }
@@ -1243,6 +1245,7 @@ Tk_AllocFontFromObj(
     }
 
     objPtr->internalRep.twoPtrValue.ptr1 = fontPtr;
+    objPtr->internalRep.twoPtrValue.ptr2 = fiPtr;
     return (Tk_Font) fontPtr;
 }
 
@@ -1275,7 +1278,8 @@ Tk_GetFontFromObj(
     TkFont *fontPtr;
     Tcl_HashEntry *hashPtr;
 
-    if (objPtr->typePtr != &tkFontObjType) {
+    if (objPtr->typePtr != &tkFontObjType
+	    || objPtr->internalRep.twoPtrValue.ptr2 != fiPtr) {
 	SetFontFromAny(NULL, objPtr);
     }
 
@@ -1311,6 +1315,7 @@ Tk_GetFontFromObj(
 	    if (Tk_Screen(tkwin) == fontPtr->screen) {
 		fontPtr->objRefCount++;
 		objPtr->internalRep.twoPtrValue.ptr1 = fontPtr;
+		objPtr->internalRep.twoPtrValue.ptr2 = fiPtr;
 		return (Tk_Font) fontPtr;
 	    }
 	}
@@ -1356,6 +1361,7 @@ SetFontFromAny(
     }
     objPtr->typePtr = &tkFontObjType;
     objPtr->internalRep.twoPtrValue.ptr1 = NULL;
+    objPtr->internalRep.twoPtrValue.ptr2 = NULL;
 
     return TCL_OK;
 }
@@ -1517,8 +1523,9 @@ FreeFontObj(
 	fontPtr->objRefCount--;
 	if ((fontPtr->resourceRefCount == 0) && (fontPtr->objRefCount == 0)) {
 	    ckfree(fontPtr);
-	    objPtr->internalRep.twoPtrValue.ptr1 = NULL;
 	}
+	objPtr->internalRep.twoPtrValue.ptr1 = NULL;
+	objPtr->internalRep.twoPtrValue.ptr2 = NULL;
     }
 }
 
@@ -1549,6 +1556,8 @@ DupFontObjProc(
 
     dupObjPtr->typePtr = srcObjPtr->typePtr;
     dupObjPtr->internalRep.twoPtrValue.ptr1 = fontPtr;
+    dupObjPtr->internalRep.twoPtrValue.ptr2
+	    = srcObjPtr->internalRep.twoPtrValue.ptr2;
 
     if (fontPtr != NULL) {
 	fontPtr->objRefCount++;

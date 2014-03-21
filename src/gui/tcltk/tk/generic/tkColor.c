@@ -829,7 +829,7 @@ TkDebugColor(
     return resultPtr;
 }
 
-#ifndef __WIN32__
+#ifndef _WIN32
 
 /* This function is not necessary for Win32,
  * since XParseColor already does the right thing */
@@ -937,7 +937,7 @@ TkParseColor(
 done:
     return XParseColor(display, map, name, color);
 }
-#endif /* __WIN32__ */
+#endif /* _WIN32 */
 /*
  * Local Variables:
  * mode: c

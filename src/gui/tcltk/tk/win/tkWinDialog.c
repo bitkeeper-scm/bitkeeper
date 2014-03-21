@@ -46,10 +46,6 @@
 #endif
 #endif /* BFFM_VALIDATEFAILED */
 
-#ifndef OPENFILENAME_SIZE_VERSION_400
-#define OPENFILENAME_SIZE_VERSION_400 76
-#endif
-
 typedef struct ThreadSpecificData {
     int debugFlag;		/* Flags whether we should output debugging
 				 * information while displaying a builtin
@@ -680,11 +676,7 @@ GetFileName(
     hWnd = Tk_GetHWND(Tk_WindowId(tkwin));
 
     ZeroMemory(&ofn, sizeof(OPENFILENAME));
-    if (LOBYTE(LOWORD(GetVersion())) < 5) {
-	ofn.lStructSize = OPENFILENAME_SIZE_VERSION_400;
-    } else {
-	ofn.lStructSize = sizeof(OPENFILENAME);
-    }
+    ofn.lStructSize = sizeof(OPENFILENAME);
     ofn.hwndOwner = hWnd;
     ofn.hInstance = TkWinGetHInstance(ofn.hwndOwner);
     ofn.lpstrFile = file;

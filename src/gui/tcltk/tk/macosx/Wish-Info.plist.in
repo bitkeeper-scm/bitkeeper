@@ -72,5 +72,7 @@ Copyright © 2001-2002 Jim Ingham &amp; Ian Reid</string>
 	<true/>
 	<key>OSAScriptingDefinition</key>
 	<string>Wish.sdef</string>
+	<key>NSHighResolutionCapable</key>
+	<string>True</string>
 </dict>
 </plist>

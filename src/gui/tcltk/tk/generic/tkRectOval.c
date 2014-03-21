@@ -671,11 +671,11 @@ ComputeRectOvalBbox(
 	 * correct place to solve it, but it works.
 	 */
 
-#ifdef __WIN32__
+#ifdef _WIN32
 	bloat = 1;
 #else
 	bloat = 0;
-#endif /* __WIN32__ */
+#endif /* _WIN32 */
     } else {
 #ifdef MAC_OSX_TK
 	/*

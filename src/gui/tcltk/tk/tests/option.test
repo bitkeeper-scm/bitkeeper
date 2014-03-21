@@ -384,15 +384,18 @@ test option-15.6 {database files} -body {
 	option get . x6 color
 } -result {}
 test option-15.7 {database files} -body {
+    option read $option1
+	option get . x9 color
+} -result " \t\\A\n"
+test option-15.8 {database files} -body {
     option read $option1 widget foo
 } -returnCodes error -result {wrong # args: should be "option readfile fileName ?priority?"}
-
-test option-15.8 {database files} -body {
+test option-15.9 {database files} -body {
     option add *x3 burgundy
     catch {option read $option1 userDefault}
     option get . x3 color
 } -result burgundy
-test option-15.9 {database files} -body {
+test option-15.10 {database files} -body {
     set option2 [file join [testsDirectory] option.file2]
     option read $option2
 } -returnCodes error -result {missing colon on line 2}
