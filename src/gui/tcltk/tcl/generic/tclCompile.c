@@ -7,7 +7,6 @@
  *
  * Copyright (c) 1996-1998 Sun Microsystems, Inc.
  * Copyright (c) 2001 by Kevin B. Kenny. All rights reserved.
- * Copyright (c) 2007 BitMover, Inc.
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -64,7 +63,7 @@ InstructionDesc const tclInstructionTable[] = {
 	/* Pop the topmost stack object */
     {"dup",		  1,   +1,         0,	{OPERAND_NONE}},
 	/* Duplicate the topmost stack object and push the result */
-    {"concat1",		  2,   INT_MIN,    1,	{OPERAND_UINT1}},
+    {"strcat",		  2,   INT_MIN,    1,	{OPERAND_UINT1}},
 	/* Concatenate the top op1 items and push result */
     {"invokeStk1",	  2,   INT_MIN,    1,	{OPERAND_UINT1}},
 	/* Invoke command named objv[0]; <objc,objv> = <op1,top op1> */
@@ -388,6 +387,7 @@ InstructionDesc const tclInstructionTable[] = {
 	 * except for the ERR_ALREADY_LOGGED flag in the interpreter. */
     {"reverse",		 5,    0,         1,	{OPERAND_UINT4}},
 	/* Reverse the order of the arg elements at the top of stack */
+
     {"regexp",		 2,   -1,         1,	{OPERAND_INT1}},
 	/* Regexp:	push (regexp stknext stktop) opnd == nocase */
 
@@ -401,6 +401,7 @@ InstructionDesc const tclInstructionTable[] = {
 	 * stknext */
     {"existStk",	 1,    0,         0,	{OPERAND_NONE}},
 	/* Test if general variable exists; unparsed variable name is stktop*/
+
     {"nop",		 1,    0,         0,	{OPERAND_NONE}},
 	/* Do nothing */
     {"returnCodeBranch", 1,   -1,	  0,	{OPERAND_NONE}},
@@ -492,6 +493,7 @@ InstructionDesc const tclInstructionTable[] = {
 	 * qualified version, or produces the empty string if no such command
 	 * exists. Never generates errors.
 	 * Stack:  ... cmdName => ... fullCmdName */
+
     {"tclooSelf",	 1,	+1,	  0,	{OPERAND_NONE}},
 	/* Push the identity of the current TclOO object (i.e., the name of
 	 * its current public access command) on the stack. */
@@ -544,55 +546,113 @@ InstructionDesc const tclInstructionTable[] = {
 	/* Drops an element from the auxiliary stack, popping stack elements
 	 * until the matching stack depth is reached. */
 
-    {"rot",		 2,    0,         1,    {OPERAND_UINT1}},
-	/* Rotate the top opnd elements in the stack */
-    {"l-index",		 5,    -1,        1,    {OPERAND_UINT4}},
-	/* Index into a nested struct/array/hash. opnd contains flags,
-	 * index is stktop, object to index into is stknext. */
-    {"l-deep-write",     9,    -1,        2,    {OPERAND_UINT4, OPERAND_UINT4}},
-	/* Write via L deep pointer pushed by l-index above.  opnd1 is a local
-	 * var index of a var that points to the top-level object being
-	 * indexed; it will be written if the top-level object needed to be
-	 * copied by l-index for copy-on-write.  opnd2 contains flags
-	 * indicating whether to leave old or new value on stack top.
-	 * stktop is the L deep pointer, stknext is the value to write. */
-    {"lsplit",		 2,    0,         1,    {OPERAND_UINT4}},
-	/* Perl-like string split. opnd is a flags word (see Expr_f),
-	 * stack contains the limit (optional), then the delimeter
-	 * (optional) then the string to split. */
-    {"l-defined",	 1,    0,         0,	{OPERAND_NONE}},
-	/* Test whether value at stackTop is the L undefined value. */
-    {"l-push-list-size", 1,    0,         0,	{OPERAND_NONE}},
-	/* Store the size of the list at stktop in the internal L
-	 * sizes stack.  Sizes are used to implement the L END keyword. */
-    {"l-push-string-size", 1,  0,         0,	{OPERAND_NONE}},
-	/* Store the length of the string at stktop in the internal L
-	 * sizes stack. */
-    {"l-read-size",	 1,    1,         0,	{OPERAND_NONE}},
-	/* Push what's on the top of the internal L sizes stack. */
-    {"l-pop-size",	 1,    0,         0,	{OPERAND_NONE}},
-	/* Pop the internal L sizes stack. */
-    {"l-push-undef",	 1,    1,         0,	{OPERAND_NONE}},
-	/* Push the L undef object. */
-    {"expandRot",	 2,    0,	  1,    {OPERAND_UINT1}},
-	/* Rotate the top opnd1 stack elements with those after
-	 * the expand marker (see expandStart). */
-    {"l-lindex-stk",	 2,    1,	  1,	{OPERAND_UINT1}},
-	/* push(listindex stktop opnd) except if opnd is <0 or
-	 * > # list elements then push the L undef object. */
-    {"l-list-insert",    9,    0,         3,    {OPERAND_LVT4, OPERAND_UINT4}},
-	/* Insert into list local var. Operands are local slot index,
-	 * flags, and list index to insert before (0 means prepend,
-	 * -1 means append). */
-    {"unsetLocal",	 5,    0,	  1,	{OPERAND_LVT4}},
-	/* Unset the local variable at index op1. */
-    {"different-obj",	 5,    0,	  1,	{OPERAND_LVT4}},
-	/* Determine whether the variable whose name is at stktop
-	 * points to a different object as the given local. */
+    /* New foreach implementation */
+    {"foreach_start",	 5,	+2,	  1,	{OPERAND_AUX4}},
+	/* Initialize execution of a foreach loop. Operand is aux data index
+	 * of the ForeachInfo structure for the foreach command. It pushes 2
+	 * elements which hold runtime params for foreach_step, they are later
+	 * dropped by foreach_end together with the value lists. NOTE that the
+	 * iterator-tracker and info reference must not be passed to bytecodes
+	 * that handle normal Tcl values. NOTE that this instruction jumps to
+	 * the foreach_step instruction paired with it; the stack info below
+	 * is only nominal.
+	 * Stack: ... listObjs... => ... listObjs... iterTracker info */
+    {"foreach_step",	 1,	 0,	  0,	{OPERAND_NONE}},
+	/* "Step" or begin next iteration of foreach loop. Assigns to foreach
+	 * iteration variables. May jump to straight after the foreach_start
+	 * that pushed the iterTracker and info values. MUST be followed
+	 * immediately by a foreach_end.
+	 * Stack: ... listObjs... iterTracker info =>
+	 *				... listObjs... iterTracker info */
+    {"foreach_end",	 1,	 0,	  0,	{OPERAND_NONE}},
+	/* Clean up a foreach loop by dropping the info value, the tracker
+	 * value and the lists that were being iterated over.
+	 * Stack: ... listObjs... iterTracker info => ... */
+    {"lmap_collect",	 1,	-1,	  0,	{OPERAND_NONE}},
+	/* Appends the value at the top of the stack to the list located on
+	 * the stack the "other side" of the foreach-related values.
+	 * Stack: ... collector listObjs... iterTracker info value =>
+	 *			... collector listObjs... iterTracker info */
+
+    {"strtrim",		 1,	-1,	  0,	{OPERAND_NONE}},
+	/* [string trim] core: removes the characters (designated by the value
+	 * at the top of the stack) from both ends of the string and pushes
+	 * the resulting string.
+	 * Stack: ... string charset => ... trimmedString */
+    {"strtrimLeft",	 1,	-1,	  0,	{OPERAND_NONE}},
+	/* [string trimleft] core: removes the characters (designated by the
+	 * value at the top of the stack) from the left of the string and
+	 * pushes the resulting string.
+	 * Stack: ... string charset => ... trimmedString */
+    {"strtrimRight",	 1,	-1,	  0,	{OPERAND_NONE}},
+	/* [string trimright] core: removes the characters (designated by the
+	 * value at the top of the stack) from the right of the string and
+	 * pushes the resulting string.
+	 * Stack: ... string charset => ... trimmedString */
+
+    {"concatStk",	 5,	INT_MIN,  1,	{OPERAND_UINT4}},
+	/* Wrapper round Tcl_ConcatObj(), used for [concat] and [eval]. opnd
+	 * is number of values to concatenate.
+	 * Operation:	push concat(stk1 stk2 ... stktop) */
+
+    {"strcaseUpper",	 1,	0,	  0,	{OPERAND_NONE}},
+	/* [string toupper] core: converts whole string to upper case using
+	 * the default (extended "C" locale) rules.
+	 * Stack: ... string => ... newString */
+    {"strcaseLower",	 1,	0,	  0,	{OPERAND_NONE}},
+	/* [string tolower] core: converts whole string to upper case using
+	 * the default (extended "C" locale) rules.
+	 * Stack: ... string => ... newString */
+    {"strcaseTitle",	 1,	0,	  0,	{OPERAND_NONE}},
+	/* [string totitle] core: converts whole string to upper case using
+	 * the default (extended "C" locale) rules.
+	 * Stack: ... string => ... newString */
+    {"strreplace",	 1,	-3,	  0,	{OPERAND_NONE}},
+	/* [string replace] core: replaces a non-empty range of one string
+	 * with the contents of another.
+	 * Stack: ... string fromIdx toIdx replacement => ... newString */
+
+    {"originCmd",	 1,	0,	  0,	{OPERAND_NONE}},
+	/* Reports which command was the origin (via namespace import chain)
+	 * of the command named on the top of the stack.
+	 * Stack:  ... cmdName => ... fullOriginalCmdName */
+
+    {"tclooNext",	 2,	INT_MIN,  1,	{OPERAND_UINT1}},
+	/* Call the next item on the TclOO call chain, passing opnd arguments
+	 * (min 1, max 255, *includes* "next").  The result of the invoked
+	 * method implementation will be pushed on the stack in place of the
+	 * arguments (similar to invokeStk).
+	 * Stack:  ... "next" arg2 arg3 -- argN => ... result */
+    {"tclooNextClass",	 2,	INT_MIN,  1,	{OPERAND_UINT1}},
+	/* Call the following item on the TclOO call chain defined by class
+	 * className, passing opnd arguments (min 2, max 255, *includes*
+	 * "nextto" and the class name). The result of the invoked method
+	 * implementation will be pushed on the stack in place of the
+	 * arguments (similar to invokeStk).
+	 * Stack:  ... "nextto" className arg3 arg4 -- argN => ... result */
+
+    {"yieldToInvoke",	 1,	0,	  0,	{OPERAND_NONE}},
+	/* Makes the current coroutine yield the value at the top of the
+	 * stack, invoking the given command/args with resolution in the given
+	 * namespace (all packed into a list), and places the list of values
+	 * that are the response back on top of the stack when it resumes.
+	 * Stack:  ... [list ns cmd arg1 ... argN] => ... resumeList */
+
+    {"numericType",	 1,	0,	  0,	{OPERAND_NONE}},
+	/* Pushes the numeric type code of the word at the top of the stack.
+	 * Stack:  ... value => ... typeCode */
+    {"tryCvtToBoolean",	 1,	+1,	  0,	{OPERAND_NONE}},
+	/* Try converting stktop to boolean if possible. No errors.
+	 * Stack:  ... value => ... value isStrictBool */
+    {"strclass",	 2,	0,	  1,	{OPERAND_SCLS1}},
+	/* See if all the characters of the given string are a member of the
+	 * specified (by opnd) character class. Note that an empty string will
+	 * satisfy the class check (standard definition of "all").
+	 * Stack:  ... stringValue => ... boolean */
 
     {NULL, 0, 0, 0, {OPERAND_NONE}}
 };
-
+
 /*
  * Prototypes for procedures defined later in this file:
  */
@@ -799,7 +859,9 @@ TclSetByteCodeFromAny(
      * instruction generator boundaries.
      */
 
-    TclOptimizeBytecode(&compEnv);
+    if (iPtr->extra.optimizer) {
+	(iPtr->extra.optimizer)(&compEnv);
+    }
 
     /*
      * Invoke the compilation hook procedure if one exists.
@@ -1754,29 +1816,13 @@ TclCompileInvocation(
     int numWords,
     CompileEnv *envPtr)
 {
-    int adjust = 0, wordIdx = 0;
-    char *cmd, *s;
-    Tcl_Obj *obj;
+    int wordIdx = 0, depth = TclGetStackDepth(envPtr);
     DefineLineInformation;
 
     if (cmdObj) {
 	CompileCmdLiteral(interp, cmdObj, envPtr);
 	wordIdx = 1;
 	tokenPtr = TokenAfter(tokenPtr);
-	cmd = Tcl_GetString(cmdObj);
-	if (!strcmp("L", cmd) || !strcmp("Lhtml", cmd)) {
-	    /*
-	     * If this is the L or Lhtml command, push the argument --line=%d
-	     * to it now.  This communicates the source line # to the L
-	     * compiler.
-	     */
-	    obj = Tcl_ObjPrintf("--line=%d", envPtr->line+1);
-	    Tcl_IncrRefCount(obj);
-	    s = TclGetString(obj);
-	    adjust = TclRegisterNewLiteral(envPtr, s, strlen(s));
-	    Tcl_DecrRefCount(obj);
-	    TclEmitPush(adjust, envPtr);
-	}
     }
 
     for (; wordIdx < numWords; wordIdx++, tokenPtr = TokenAfter(tokenPtr)) {
@@ -1798,19 +1844,12 @@ TclCompileInvocation(
 	TclEmitPush(objIdx, envPtr);
     }
 
-    /*
-     * Possible adjust for L-command argument injection (see comment
-     * above).
-     */
-    if (adjust) {
-	++wordIdx;
-    }
-
     if (wordIdx <= 255) {
-	TclEmitInstInt1(INST_INVOKE_STK1, wordIdx, envPtr);
+	TclEmitInvoke(envPtr, INST_INVOKE_STK1, wordIdx);
     } else {
-	TclEmitInstInt4(INST_INVOKE_STK4, wordIdx, envPtr);
+	TclEmitInvoke(envPtr, INST_INVOKE_STK4, wordIdx);
     }
+    TclCheckStackDepth(depth+1, envPtr);
 }
 
 static void
@@ -1821,33 +1860,15 @@ CompileExpanded(
     int numWords,
     CompileEnv *envPtr)
 {
-    int adjust = 0, wordIdx = 0;
-    char *cmd;
+    int wordIdx = 0;
     DefineLineInformation;
-
-
+    int depth = TclGetStackDepth(envPtr);
+    
     StartExpanding(envPtr);
     if (cmdObj) {
 	CompileCmdLiteral(interp, cmdObj, envPtr);
 	wordIdx = 1;
 	tokenPtr = TokenAfter(tokenPtr);
-	cmd = Tcl_GetString(cmdObj);
-	if (!strcmp("L", cmd) || !strcmp("Lhtml", cmd)) {
-	    /*
-	     * If this is the L or Lhtml command, push the argument --line=%d
-	     * to it now.  This communicates the source line # to the L
-	     * compiler.
-	     */
-	    char *s;
-	    Tcl_Obj *obj;
-
-	    obj = Tcl_ObjPrintf("--line=%d", envPtr->line+1);
-	    Tcl_IncrRefCount(obj);
-	    s = TclGetString(obj);
-	    adjust = TclRegisterNewLiteral(envPtr, s, strlen(s));
-	    Tcl_DecrRefCount(obj);
-	    TclEmitPush(adjust, envPtr);
-	}
     }
 
     for (; wordIdx < numWords; wordIdx++, tokenPtr = TokenAfter(tokenPtr)) {
@@ -1874,32 +1895,21 @@ CompileExpanded(
     }
 
     /*
-     * Possible adjust for L-command argument injection (see comment
-     * above).
-     */
-    if (adjust) {
-	++wordIdx;
-    }
-
-    /*
-     * The stack depth during argument expansion can only be
-     * managed at runtime, as the number of elements in the
-     * expanded lists is not known at compile time. We adjust here
-     * the stack depth estimate so that it is correct after the
-     * command with expanded arguments returns.
+     * The stack depth during argument expansion can only be managed at
+     * runtime, as the number of elements in the expanded lists is not known
+     * at compile time. We adjust here the stack depth estimate so that it is
+     * correct after the command with expanded arguments returns.
      *
-     * The end effect of this command's invocation is that all the
-     * words of the command are popped from the stack, and the
-     * result is pushed: the stack top changes by (1-wordIdx).
+     * The end effect of this command's invocation is that all the words of
+     * the command are popped from the stack, and the result is pushed: the
+     * stack top changes by (1-wordIdx).
      *
-     * Note that the estimates are not correct while the command
-     * is being prepared and run, INST_EXPAND_STKTOP is not
-     * stack-neutral in general.
+     * Note that the estimates are not correct while the command is being
+     * prepared and run, INST_EXPAND_STKTOP is not stack-neutral in general.
      */
 
-    TclEmitOpcode(INST_INVOKE_EXPANDED, envPtr);
-    envPtr->expandCount--;
-    TclAdjustStackDepth(1 - wordIdx, envPtr);
+    TclEmitInvoke(envPtr, INST_INVOKE_EXPANDED, wordIdx);
+    TclCheckStackDepth(depth+1, envPtr);
 }
 
 static int 
@@ -1911,10 +1921,11 @@ CompileCmdCompileProc(
 {
     int unwind = 0, incrOffset = -1;
     DefineLineInformation;
+    int depth = TclGetStackDepth(envPtr);
 
     /*
-     * Emit of the INST_START_CMD instruction is controlled by
-     * the value of envPtr->atCmdStart:
+     * Emit of the INST_START_CMD instruction is controlled by the value of
+     * envPtr->atCmdStart:
      *
      * atCmdStart == 2	: We are not using the INST_START_CMD instruction.
      * atCmdStart == 1	: INST_START_CMD was the last instruction emitted.
@@ -1945,9 +1956,10 @@ CompileCmdCompileProc(
     if (TCL_OK == TclAttemptCompileProc(interp, parsePtr, 1, cmdPtr, envPtr)) {
 	if (incrOffset >= 0) {
 	    /*
-	     * We successfully compiled a command.  Increment the number
-	     * of commands that start at the currently active INST_START_CMD.
+	     * We successfully compiled a command.  Increment the number of
+	     * commands that start at the currently active INST_START_CMD.
 	     */
+
 	    unsigned char *incrPtr = envPtr->codeStart + incrOffset;
 	    unsigned char *startPtr = incrPtr - 5;
 
@@ -1957,15 +1969,16 @@ CompileCmdCompileProc(
 		TclStoreInt4AtPtr(envPtr->codeNext - startPtr, startPtr + 1);
 	    }
 	}
+	TclCheckStackDepth(depth+1, envPtr);
 	return TCL_OK;
     }
 
     envPtr->codeNext -= unwind; /* Unwind INST_START_CMD */
 
     /*
-     * Throw out any line information generated by the failed
-     * compile attempt.
+     * Throw out any line information generated by the failed compile attempt.
      */
+
     while (mapPtr->nuloc - 1 > eclIndex) {
 	mapPtr->nuloc--;
 	ckfree(mapPtr->loc[mapPtr->nuloc].line);
@@ -1973,11 +1986,11 @@ CompileCmdCompileProc(
     }
 
     /*
-     * Reset the index of next command.
-     * Toss out any from failed nested partial compiles.
+     * Reset the index of next command.  Toss out any from failed nested
+     * partial compiles.
      */
-    envPtr->numCommands = mapPtr->nuloc;
 
+    envPtr->numCommands = mapPtr->nuloc;
     return TCL_ERROR;
 }
 
@@ -1999,7 +2012,8 @@ CompileCommandTokens(
     int *clNext = envPtr->clNext;
     int cmdIdx = envPtr->numCommands;
     int startCodeOffset = envPtr->codeNext - envPtr->codeStart;
-
+    int depth = TclGetStackDepth(envPtr);
+    
     assert (parsePtr->numWords > 0);
 
     /* Pre-Compile */
@@ -2009,11 +2023,10 @@ CompileCommandTokens(
 	    parsePtr->commandStart - envPtr->source, startCodeOffset);
 
     /*
-     * TIP #280. Scan the words and compute the extended location
-     * information. The map first contain full per-word line
-     * information for use by the compiler. This is later replaced by
-     * a reduced form which signals non-literal words, stored in
-     * 'wlines'.
+     * TIP #280. Scan the words and compute the extended location information.
+     * The map first contain full per-word line information for use by the
+     * compiler. This is later replaced by a reduced form which signals
+     * non-literal words, stored in 'wlines'.
      */
 
     EnterCmdWordData(eclPtr, parsePtr->commandStart - envPtr->source,
@@ -2035,8 +2048,8 @@ CompileCommandTokens(
 	cmdPtr = (Command *) Tcl_GetCommandFromObj(interp, cmdObj);
 	if (cmdPtr) {
 	    /*
-	     * Found a command.  Test the ways we can be told
-	     * not to attempt to compile it.
+	     * Found a command.  Test the ways we can be told not to attempt
+	     * to compile it.
 	     */
 	    if ((cmdPtr->compileProc == NULL)
 		    || (cmdPtr->nsPtr->flags & NS_SUPPRESS_COMPILATION)
@@ -2080,8 +2093,8 @@ CompileCommandTokens(
 	    (envPtr->codeNext-envPtr->codeStart) - startCodeOffset);
 
     /*
-     * TIP #280: Free full form of per-word line data and insert the
-     * reduced form now
+     * TIP #280: Free full form of per-word line data and insert the reduced
+     * form now
      */
 
     envPtr->line = cmdLine;
@@ -2091,6 +2104,7 @@ CompileCommandTokens(
     eclPtr->loc[wlineat].line = wlines;
     eclPtr->loc[wlineat].next = NULL;
 
+    TclCheckStackDepth(depth, envPtr);
     return cmdIdx;
 }
 
@@ -2110,6 +2124,7 @@ TclCompileScript(
 				 * Initial value of -1 indicates this routine
 				 * has not yet generated any bytecode. */
     const char *p = script;	/* Where we are in our compile. */
+    int depth = TclGetStackDepth(envPtr);
 
     if (envPtr->iPtr == NULL) {
 	Tcl_Panic("TclCompileScript() called on uninitialized CompileEnv");
@@ -2166,20 +2181,20 @@ TclCompileScript(
 
 	if (parse.numWords == 0) {
 	    /*
-	     * The "command" parsed has no words.  In this case
-	     * we can skip the rest of the loop body.  With no words,
-	     * clearly CompileCommandTokens() has nothing to do.  Since
-	     * the parser aggressively sucks up leading comment and white
-	     * space, including newlines, parse.commandStart must be 
-	     * pointing at either the end of script, or a command-terminating
-	     * semi-colon.  In either case, the TclAdvance*() calls have
-	     * nothing to do.  Finally, when no words are parsed, no
-	     * tokens have been allocated at parse.tokenPtr so there's
-	     * also nothing for Tcl_FreeParse() to do.
+	     * The "command" parsed has no words.  In this case we can skip
+	     * the rest of the loop body.  With no words, clearly
+	     * CompileCommandTokens() has nothing to do.  Since the parser
+	     * aggressively sucks up leading comment and white space,
+	     * including newlines, parse.commandStart must be pointing at
+	     * either the end of script, or a command-terminating semi-colon.
+	     * In either case, the TclAdvance*() calls have nothing to do.
+	     * Finally, when no words are parsed, no tokens have been
+	     * allocated at parse.tokenPtr so there's also nothing for
+	     * Tcl_FreeParse() to do.
 	     *
 	     * The advantage of this shortcut is that CompileCommandTokens()
-	     * can be written with an assumption that parse.numWords > 0,
-	     * with the implication the CCT() always generates bytecode.
+	     * can be written with an assumption that parse.numWords > 0, with
+	     * the implication the CCT() always generates bytecode.
 	     */
 	    continue;
 	}
@@ -2198,27 +2213,30 @@ TclCompileScript(
 
     if (lastCmdIdx == -1) {
 	/*
-	 * Compiling the script yielded no bytecode.  The script must be
-	 * all whitespace, comments, and empty commands.  Such scripts
-	 * are defined to successfully produce the empty string result,
-	 * so we emit the simple bytecode that makes that happen.
+	 * Compiling the script yielded no bytecode.  The script must be all
+	 * whitespace, comments, and empty commands.  Such scripts are defined
+	 * to successfully produce the empty string result, so we emit the
+	 * simple bytecode that makes that happen.
 	 */
+
 	PushStringLiteral(envPtr, "");
     } else {
 	/*
 	 * We compiled at least one command to bytecode.  The routine
 	 * CompileCommandTokens() follows the bytecode of each compiled
-	 * command with an INST_POP, so that stack balance is maintained
-	 * when several commands are in sequence.  (The result of each
-	 * command is thrown away before moving on to the next command).
-	 * For the last command compiled, we need to undo that INST_POP
-	 * so that the result of the last command becomes the result of
-	 * the script.  The code here removes that trailing INST_POP.
+	 * command with an INST_POP, so that stack balance is maintained when
+	 * several commands are in sequence.  (The result of each command is
+	 * thrown away before moving on to the next command).  For the last
+	 * command compiled, we need to undo that INST_POP so that the result
+	 * of the last command becomes the result of the script.  The code
+	 * here removes that trailing INST_POP.
 	 */
+
 	envPtr->cmdMapPtr[lastCmdIdx].numCodeBytes--;
 	envPtr->codeNext--;
 	envPtr->currStackDepth++;
     }
+    TclCheckStackDepth(depth+1, envPtr);
 }
 
 /*
@@ -2324,11 +2342,12 @@ TclCompileTokens(
     Tcl_DString textBuffer;	/* Holds concatenated chars from adjacent
 				 * TCL_TOKEN_TEXT, TCL_TOKEN_BS tokens. */
     char buffer[TCL_UTF_MAX];
-    int i, numObjsToConcat, length;
+    int i, numObjsToConcat, length, adjust;
     unsigned char *entryCodeNext = envPtr->codeNext;
 #define NUM_STATIC_POS 20
     int isLiteral, maxNumCL, numCL;
     int *clPosition = NULL;
+    int depth = TclGetStackDepth(envPtr);
 
     /*
      * For the handling of continuation lines in literals we first check if
@@ -2361,6 +2380,7 @@ TclCompileTokens(
 	clPosition = ckalloc(maxNumCL * sizeof(int));
     }
 
+    adjust = 0;
     Tcl_DStringInit(&textBuffer);
     numObjsToConcat = 0;
     for ( ;  count > 0;  count--, tokenPtr++) {
@@ -2404,6 +2424,7 @@ TclCompileTokens(
 		    clPosition[numCL] = clPos;
 		    numCL ++;
 		}
+		adjust++;
 	    }
 	    break;
 
@@ -2426,8 +2447,10 @@ TclCompileTokens(
 		numCL = 0;
 	    }
 
+	    envPtr->line += adjust;
 	    TclCompileScript(interp, tokenPtr->start+1,
 		    tokenPtr->size-2, envPtr);
+	    envPtr->line -= adjust;
 	    numObjsToConcat++;
 	    break;
 
@@ -2478,11 +2501,11 @@ TclCompileTokens(
      */
 
     while (numObjsToConcat > 255) {
-	TclEmitInstInt1(INST_CONCAT1, 255, envPtr);
+	TclEmitInstInt1(INST_STR_CONCAT1, 255, envPtr);
 	numObjsToConcat -= 254;	/* concat pushes 1 obj, the result */
     }
     if (numObjsToConcat > 1) {
-	TclEmitInstInt1(INST_CONCAT1, numObjsToConcat, envPtr);
+	TclEmitInstInt1(INST_STR_CONCAT1, numObjsToConcat, envPtr);
     }
 
     /*
@@ -2502,6 +2525,7 @@ TclCompileTokens(
     if (maxNumCL) {
 	ckfree(clPosition);
     }
+    TclCheckStackDepth(depth+1, envPtr);
 }
 
 /*
@@ -2549,7 +2573,7 @@ TclCompileCmdWord(
 	 */
 
 	TclCompileTokens(interp, tokenPtr, count, envPtr);
-	TclEmitOpcode(INST_EVAL_STK, envPtr);
+	TclEmitInvoke(envPtr, INST_EVAL_STK);
     }
 }
 
@@ -2613,11 +2637,11 @@ TclCompileExprWords(
     }
     concatItems = 2*numWords - 1;
     while (concatItems > 255) {
-	TclEmitInstInt1(INST_CONCAT1, 255, envPtr);
+	TclEmitInstInt1(INST_STR_CONCAT1, 255, envPtr);
 	concatItems -= 254;
     }
     if (concatItems > 1) {
-	TclEmitInstInt1(INST_CONCAT1, concatItems, envPtr);
+	TclEmitInstInt1(INST_STR_CONCAT1, concatItems, envPtr);
     }
     TclEmitOpcode(INST_EXPR_STK, envPtr);
 }
@@ -3446,9 +3470,9 @@ TclAddLoopContinueFixup(
  *
  * TclCleanupStackForBreakContinue --
  *
- *	Ditch the extra elements from the auxiliary stack and the main
- *	stack. How to do this exactly depends on whether there are any
- *	elements on the auxiliary stack to pop.
+ *	Ditch the extra elements from the auxiliary stack and the main stack.
+ *	How to do this exactly depends on whether there are any elements on
+ *	the auxiliary stack to pop.
  *
  * ---------------------------------------------------------------------
  */
@@ -3462,23 +3486,16 @@ TclCleanupStackForBreakContinue(
     int toPop = envPtr->expandCount - auxPtr->expandTarget;
 
     if (toPop > 0) {
-	while (toPop > 0) {
+	while (toPop --> 0) {
 	    TclEmitOpcode(INST_EXPAND_DROP, envPtr);
-	    toPop--;
 	}
 	TclAdjustStackDepth(auxPtr->expandTargetDepth - envPtr->currStackDepth,
 		envPtr);
-	toPop = auxPtr->expandTargetDepth - auxPtr->stackDepth;
-	while (toPop > 0) {
-	    TclEmitOpcode(INST_POP, envPtr);
-	    toPop--;
-	}
-    } else {
-	toPop = envPtr->currStackDepth - auxPtr->stackDepth;
-	while (toPop > 0) {
-	    TclEmitOpcode(INST_POP, envPtr);
-	    toPop--;
-	}
+	envPtr->currStackDepth = auxPtr->expandTargetDepth;
+    }
+    toPop = envPtr->currStackDepth - auxPtr->stackDepth;
+    while (toPop --> 0) {
+	TclEmitOpcode(INST_POP, envPtr);
     }
     envPtr->currStackDepth = savedStackDepth;
 }
@@ -3990,6 +4007,198 @@ TclFixupForwardJump(
     }
 
     return 1;			/* the jump was grown */
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TclEmitInvoke --
+ *
+ *	Emit one of the invoke-related instructions, wrapping it if necessary
+ *	in code that ensures that any break or continue operation passing
+ *	through it gets the stack unwinding correct, converting it into an
+ *	internal jump if in an appropriate context.
+ *
+ * Results:
+ *	None
+ *
+ * Side effects:
+ *	Issues the jump with all correct stack management. May create another
+ *	loop exception range; pointers to ExceptionRange and ExceptionAux
+ *	structures should not be held across this call.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TclEmitInvoke(
+    CompileEnv *envPtr,
+    int opcode,
+    ...)
+{
+    va_list argList;
+    ExceptionRange *rangePtr;
+    ExceptionAux *auxBreakPtr, *auxContinuePtr;
+    int arg1, arg2, wordCount = 0, expandCount = 0;
+    int loopRange = 0, breakRange = 0, continueRange = 0;
+    int cleanup, depth = TclGetStackDepth(envPtr);
+    
+    /*
+     * Parse the arguments.
+     */
+
+    va_start(argList, opcode);
+    switch (opcode) {
+    case INST_INVOKE_STK1:
+	wordCount = arg1 = cleanup = va_arg(argList, int);
+	arg2 = 0;
+	break;
+    case INST_INVOKE_STK4:
+	wordCount = arg1 = cleanup = va_arg(argList, int);
+	arg2 = 0;
+	break;
+    case INST_INVOKE_REPLACE:
+	arg1 = va_arg(argList, int);
+	arg2 = va_arg(argList, int);
+	wordCount = arg1 + arg2 - 1;
+	cleanup = arg1 + 1;
+	break;
+    default:
+	Tcl_Panic("unexpected opcode");
+    case INST_EVAL_STK:
+	wordCount = cleanup = 1;
+	arg1 = arg2 = 0;
+	break;
+    case INST_RETURN_STK:
+	wordCount = cleanup = 2;
+	arg1 = arg2 = 0;
+	break;
+    case INST_INVOKE_EXPANDED:
+	wordCount = arg1 = cleanup = va_arg(argList, int);
+	arg2 = 0;
+	expandCount = 1;
+	break;
+    }
+    va_end(argList);
+
+    /*
+     * Determine if we need to handle break and continue exceptions with a
+     * special handling exception range (so that we can correctly unwind the
+     * stack).
+     *
+     * These must be done separately; they can be different (especially for
+     * calls from inside a [for] increment clause).
+     */
+
+    rangePtr = TclGetInnermostExceptionRange(envPtr, TCL_BREAK, &auxBreakPtr);
+    if (rangePtr == NULL || rangePtr->type != LOOP_EXCEPTION_RANGE) {
+	auxBreakPtr = NULL;
+    } else if (auxBreakPtr->stackDepth == envPtr->currStackDepth-wordCount
+	    && auxBreakPtr->expandTarget == envPtr->expandCount-expandCount) {
+	auxBreakPtr = NULL;
+    } else {
+	breakRange = auxBreakPtr - envPtr->exceptAuxArrayPtr;
+    }
+
+    rangePtr = TclGetInnermostExceptionRange(envPtr, TCL_CONTINUE,
+	    &auxContinuePtr);
+    if (rangePtr == NULL || rangePtr->type != LOOP_EXCEPTION_RANGE) {
+	auxContinuePtr = NULL;
+    } else if (auxContinuePtr->stackDepth == envPtr->currStackDepth-wordCount
+	    && auxContinuePtr->expandTarget == envPtr->expandCount-expandCount) {
+	auxContinuePtr = NULL;
+    } else {
+	continueRange = auxBreakPtr - envPtr->exceptAuxArrayPtr;
+    }
+
+    if (auxBreakPtr != NULL || auxContinuePtr != NULL) {
+	loopRange = TclCreateExceptRange(LOOP_EXCEPTION_RANGE, envPtr);
+	ExceptionRangeStarts(envPtr, loopRange);
+    }
+
+    /*
+     * Issue the invoke itself.
+     */
+
+    switch (opcode) {
+    case INST_INVOKE_STK1:
+	TclEmitInstInt1(INST_INVOKE_STK1, arg1, envPtr);
+	break;
+    case INST_INVOKE_STK4:
+	TclEmitInstInt4(INST_INVOKE_STK4, arg1, envPtr);
+	break;
+    case INST_INVOKE_EXPANDED:
+	TclEmitOpcode(INST_INVOKE_EXPANDED, envPtr);
+	envPtr->expandCount--;
+	TclAdjustStackDepth(1 - arg1, envPtr);
+	break;
+    case INST_EVAL_STK:
+	TclEmitOpcode(INST_EVAL_STK, envPtr);
+	break;
+    case INST_RETURN_STK:
+	TclEmitOpcode(INST_RETURN_STK, envPtr);
+	break;
+    case INST_INVOKE_REPLACE:
+	TclEmitInstInt4(INST_INVOKE_REPLACE, arg1, envPtr);
+	TclEmitInt1(arg2, envPtr);
+	TclAdjustStackDepth(-1, envPtr); /* Correction to stack depth calcs */
+	break;
+    }
+
+    /*
+     * If we're generating a special wrapper exception range, we need to
+     * finish that up now.
+     */
+
+    if (auxBreakPtr != NULL || auxContinuePtr != NULL) {
+	int savedStackDepth = envPtr->currStackDepth;
+	int savedExpandCount = envPtr->expandCount;
+	JumpFixup nonTrapFixup;
+
+	if (auxBreakPtr != NULL) {
+	    auxBreakPtr = envPtr->exceptAuxArrayPtr + breakRange;
+	}
+	if (auxContinuePtr != NULL) {
+	    auxContinuePtr = envPtr->exceptAuxArrayPtr + continueRange;
+	}
+
+	ExceptionRangeEnds(envPtr, loopRange);
+	TclEmitForwardJump(envPtr, TCL_UNCONDITIONAL_JUMP, &nonTrapFixup);
+
+	/*
+	 * Careful! When generating these stack unwinding sequences, the depth
+	 * of stack in the cases where they are taken is not the same as if
+	 * the exception is not taken.
+	 */
+
+	if (auxBreakPtr != NULL) {
+	    TclAdjustStackDepth(-1, envPtr);
+
+	    ExceptionRangeTarget(envPtr, loopRange, breakOffset);
+	    TclCleanupStackForBreakContinue(envPtr, auxBreakPtr);
+	    TclAddLoopBreakFixup(envPtr, auxBreakPtr);
+	    TclAdjustStackDepth(1, envPtr);
+
+	    envPtr->currStackDepth = savedStackDepth;
+	    envPtr->expandCount = savedExpandCount;
+	}
+
+	if (auxContinuePtr != NULL) {
+	    TclAdjustStackDepth(-1, envPtr);
+
+	    ExceptionRangeTarget(envPtr, loopRange, continueOffset);
+	    TclCleanupStackForBreakContinue(envPtr, auxContinuePtr);
+	    TclAddLoopContinueFixup(envPtr, auxContinuePtr);
+	    TclAdjustStackDepth(1, envPtr);
+
+	    envPtr->currStackDepth = savedStackDepth;
+	    envPtr->expandCount = savedExpandCount;
+	}
+
+	TclFinalizeLoopExceptionRange(envPtr, loopRange);
+	TclFixupForwardJumpToHere(envPtr, &nonTrapFixup, 127);
+    }
+    TclCheckStackDepth(depth+1-cleanup, envPtr);
 }
 
 /*
@@ -4888,6 +5097,11 @@ FormatInstruction(
 	    }
 	    Tcl_AppendPrintfToObj(bufferObj, "%%v%u ", (unsigned) opnd);
 	    break;
+	case OPERAND_SCLS1:
+	    opnd = TclGetUInt1AtPtr(pc+numBytes); numBytes++;
+	    Tcl_AppendPrintfToObj(bufferObj, "%s ",
+		    tclStringClassTable[opnd].name);
+	    break;
 	case OPERAND_NONE:
 	default:
 	    break;
@@ -5104,7 +5318,7 @@ PrintSourceToObj(
     int maxChars)		/* Maximum number of chars to print. */
 {
     register const char *p;
-    register int i = 0;
+    register int i = 0, len;
 
     if (stringPtr == NULL) {
 	Tcl_AppendToObj(appendObj, "\"\"", -1);
@@ -5113,32 +5327,50 @@ PrintSourceToObj(
 
     Tcl_AppendToObj(appendObj, "\"", -1);
     p = stringPtr;
-    for (;  (*p != '\0') && (i < maxChars);  p++, i++) {
-	switch (*p) {
+    for (;  (*p != '\0') && (i < maxChars);  p+=len) {
+	Tcl_UniChar ch;
+
+	len = TclUtfToUniChar(p, &ch);
+	switch (ch) {
 	case '"':
 	    Tcl_AppendToObj(appendObj, "\\\"", -1);
+	    i += 2;
 	    continue;
 	case '\f':
 	    Tcl_AppendToObj(appendObj, "\\f", -1);
+	    i += 2;
 	    continue;
 	case '\n':
 	    Tcl_AppendToObj(appendObj, "\\n", -1);
+	    i += 2;
 	    continue;
 	case '\r':
 	    Tcl_AppendToObj(appendObj, "\\r", -1);
+	    i += 2;
 	    continue;
 	case '\t':
 	    Tcl_AppendToObj(appendObj, "\\t", -1);
+	    i += 2;
 	    continue;
 	case '\v':
 	    Tcl_AppendToObj(appendObj, "\\v", -1);
+	    i += 2;
 	    continue;
 	default:
-	    Tcl_AppendPrintfToObj(appendObj, "%c", *p);
+	    if (ch < 0x20 || ch >= 0x7f) {
+		Tcl_AppendPrintfToObj(appendObj, "\\u%04x", ch);
+		i += 6;
+	    } else {
+		Tcl_AppendPrintfToObj(appendObj, "%c", ch);
+		i++;
+	    }
 	    continue;
 	}
     }
     Tcl_AppendToObj(appendObj, "\"", -1);
+    if (*p != '\0') {
+	Tcl_AppendToObj(appendObj, "...", -1);
+    }
 }
 
 #ifdef TCL_COMPILE_STATS

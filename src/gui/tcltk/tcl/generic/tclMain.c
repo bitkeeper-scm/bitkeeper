@@ -49,7 +49,7 @@
  * we have to translate that to strcmp here.
  */
 
-#ifndef __WIN32__
+#ifndef _WIN32
 #   define TCHAR char
 #   define TEXT(arg) arg
 #   define _tcscmp strcmp
