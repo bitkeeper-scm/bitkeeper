@@ -5424,50 +5424,39 @@ PrintSourceToObj(
 
     Tcl_AppendToObj(appendObj, "\"", -1);
     p = stringPtr;
-    for (;  (*p != '\0') && (i < maxChars);  p+=len) {
+    for (;  (*p != '\0') && (i < maxChars);  ++i, p+=len) {
 	Tcl_UniChar ch;
 
 	len = TclUtfToUniChar(p, &ch);
 	switch (ch) {
 	case '"':
 	    Tcl_AppendToObj(appendObj, "\\\"", -1);
-	    i += 2;
 	    continue;
 	case '\f':
 	    Tcl_AppendToObj(appendObj, "\\f", -1);
-	    i += 2;
 	    continue;
 	case '\n':
 	    Tcl_AppendToObj(appendObj, "\\n", -1);
-	    i += 2;
 	    continue;
 	case '\r':
 	    Tcl_AppendToObj(appendObj, "\\r", -1);
-	    i += 2;
 	    continue;
 	case '\t':
 	    Tcl_AppendToObj(appendObj, "\\t", -1);
-	    i += 2;
 	    continue;
 	case '\v':
 	    Tcl_AppendToObj(appendObj, "\\v", -1);
-	    i += 2;
 	    continue;
 	default:
 	    if (ch < 0x20 || ch >= 0x7f) {
 		Tcl_AppendPrintfToObj(appendObj, "\\u%04x", ch);
-		i += 6;
 	    } else {
 		Tcl_AppendPrintfToObj(appendObj, "%c", ch);
-		i++;
 	    }
 	    continue;
 	}
     }
     Tcl_AppendToObj(appendObj, "\"", -1);
-    if (*p != '\0') {
-	Tcl_AppendToObj(appendObj, "...", -1);
-    }
 }
 
 #ifdef TCL_COMPILE_STATS
