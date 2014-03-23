@@ -5217,7 +5217,7 @@ TEBCresume(
 
     case INST_LIST_LENGTH:
 	TRACE(("\"%.30s\" => ", O2S(OBJ_AT_TOS)));
-	if (OBJ_AT_TOS->undef) {
+	if ((OBJ_AT_TOS)->undef) {
 	    length = 0;
 	} else if (TclListObjLength(interp, OBJ_AT_TOS, &length) != TCL_OK) {
 	    TRACE_ERROR(interp);

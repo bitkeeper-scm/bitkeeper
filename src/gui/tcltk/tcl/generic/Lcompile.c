@@ -1016,7 +1016,7 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 		push_litf("::L::_instance_%s", clsname);
 		push_litf("::L::_class_%s::__num", clsname);
 		TclEmitOpcode(INST_LOAD_STK, L->frame->envPtr);
-		TclEmitInstInt1(INST_CONCAT1, 2, L->frame->envPtr);
+		TclEmitInstInt1(INST_STR_CONCAT1, 2, L->frame->envPtr);
 		emit_store_scalar(self_sym->idx);
 		push_lit("");
 		emit_invoke(4);
@@ -3331,7 +3331,7 @@ compile_var(Expr *expr, Expr_f flags)
 			ASSERT(self);
 			emit_load_scalar(self->idx);
 			push_litf("::%s", sym->name);
-			TclEmitInstInt1(INST_CONCAT1, 2, L->frame->envPtr);
+			TclEmitInstInt1(INST_STR_CONCAT1, 2, L->frame->envPtr);
 			break;
 		    default:
 			ASSERT(0);
@@ -3485,7 +3485,7 @@ compile_unOp(Expr *expr)
 		if (expr->a) {
 			compile_expr(expr->a, L_PUSH_VAL);
 			push_lit(expr->str);
-			TclEmitInstInt1(INST_CONCAT1, 2, L->frame->envPtr);
+			TclEmitInstInt1(INST_STR_CONCAT1, 2, L->frame->envPtr);
 		} else {
 			push_lit(expr->str);
 		}
@@ -3646,7 +3646,7 @@ compile_binOp(Expr *expr, Expr_f flags)
 	    case L_OP_INTERP_RE:
 		compile_expr(expr->a, L_PUSH_VAL);
 		compile_expr(expr->b, L_PUSH_VAL);
-		TclEmitInstInt1(INST_CONCAT1, 2, L->frame->envPtr);
+		TclEmitInstInt1(INST_STR_CONCAT1, 2, L->frame->envPtr);
 		expr->type = L_string;
 		return (1);
 	    case L_OP_LIST:
@@ -3723,7 +3723,7 @@ compile_binOp(Expr *expr, Expr_f flags)
 				"in lhs of . operator");
 		L_typeck_expect(L_STRING|L_WIDGET, expr->b,
 				"in rhs of . operator");
-		TclEmitInstInt1(INST_CONCAT1, 2, L->frame->envPtr);
+		TclEmitInstInt1(INST_STR_CONCAT1, 2, L->frame->envPtr);
 		expr->type = L_string;
 		return (1);
 	    default:
@@ -3792,7 +3792,7 @@ compile_trinOp(Expr *expr)
 		compile_expr(expr->a, L_PUSH_VAL);
 		compile_expr(expr->b, L_PUSH_VAL);
 		compile_expr(expr->c, L_PUSH_VAL);
-		TclEmitInstInt1(INST_CONCAT1, 3, L->frame->envPtr);
+		TclEmitInstInt1(INST_STR_CONCAT1, 3, L->frame->envPtr);
 		expr->type = L_string;
 		n = 1;
 		break;
@@ -5464,7 +5464,7 @@ compile_clsInstDeref(Expr *expr, Expr_f flags)
 	if (flags & L_PUSH_NAME) {
 		// Caller already pushed obj value, so concat var name to it.
 		push_litf("::%s", sym->name);
-		TclEmitInstInt1(INST_CONCAT1, 2, L->frame->envPtr);
+		TclEmitInstInt1(INST_STR_CONCAT1, 2, L->frame->envPtr);
 		expr->sym  = sym;
 		expr->type = sym->type;
 		return (1);  // stack effect
@@ -5849,7 +5849,7 @@ emit_instrForLOp(Expr *expr, Type *type)
 	}
 	switch (expr->op) {
 	    case L_OP_EQDOT:
-		op  = INST_CONCAT1;
+		op  = INST_STR_CONCAT1;
 		arg = 2;
 		break;
 	    default:
