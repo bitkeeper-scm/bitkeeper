@@ -2345,7 +2345,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 TCL_VERSION=8.6
 TCL_MAJOR_VERSION=8
 TCL_MINOR_VERSION=6
-TCL_PATCH_LEVEL=".0"
+TCL_PATCH_LEVEL=".1"
 VERSION=${TCL_VERSION}
 
 #------------------------------------------------------------------------
@@ -4442,17 +4442,22 @@ $as_echo "$as_me: WARNING: Don't know how to find pthread lib on your system - y
 
 	# Does the pthread-implementation provide
 	# 'pthread_attr_setstacksize' ?
-	for ac_func in pthread_attr_setstacksize
+
+	ac_saved_libs=$LIBS
+	LIBS="$LIBS $THREADS_LIBS"
+	for ac_func in pthread_attr_setstacksize pthread_atfork
 do :
-  ac_fn_c_check_func "$LINENO" "pthread_attr_setstacksize" "ac_cv_func_pthread_attr_setstacksize"
-if test "x$ac_cv_func_pthread_attr_setstacksize" = xyes; then :
+  as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
+ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
+if eval test \"x\$"$as_ac_var"\" = x"yes"; then :
   cat >>confdefs.h <<_ACEOF
-#define HAVE_PTHREAD_ATTR_SETSTACKSIZE 1
+#define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
 _ACEOF
 
 fi
 done
 
+	LIBS=$ac_saved_libs
     else
 	TCL_THREADS=0
     fi
@@ -5061,49 +5066,6 @@ if ${tcl_cv_cc_visibility_hidden+:} false; then :
   $as_echo_n "(cached) " >&6
 else
 
-	    if test "$SHARED_BUILD" = 1; then :
-
-		hold_cflags=$CFLAGS; CFLAGS="$CFLAGS -fvisibility=hidden -Werror"
-		cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-int
-main ()
-{
-#if !defined(__GNUC__) || __GNUC__ < 4
-#error visibility hidden is not supported for this compiler
-#endif
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  tcl_cv_cc_visibility_hidden=yes
-else
-  tcl_cv_cc_visibility_hidden=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-		CFLAGS=$hold_cflags
-
-else
-
-		tcl_cv_cc_visibility_hidden=no
-
-fi
-
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_cc_visibility_hidden" >&5
-$as_echo "$tcl_cv_cc_visibility_hidden" >&6; }
-    if test $tcl_cv_cc_visibility_hidden = yes; then :
-
-	CFLAGS="$CFLAGS -fvisibility=hidden"
-
-$as_echo "#define MODULE_SCOPE extern" >>confdefs.h
-
-
-else
-
 	hold_cflags=$CFLAGS; CFLAGS="$CFLAGS -Werror"
 	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -5126,13 +5088,17 @@ fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 	CFLAGS=$hold_cflags
-	if test $tcl_cv_cc_visibility_hidden = yes; then :
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_cc_visibility_hidden" >&5
+$as_echo "$tcl_cv_cc_visibility_hidden" >&6; }
+    if test $tcl_cv_cc_visibility_hidden = yes; then :
 
 
 $as_echo "#define MODULE_SCOPE extern __attribute__((__visibility__(\"hidden\")))" >>confdefs.h
 
 
-fi
+$as_echo "#define HAVE_HIDDEN 1" >>confdefs.h
+
 
 fi
 
@@ -5525,13 +5491,16 @@ fi
 	    SHLIB_CFLAGS=""
 	    SHLIB_LD='${CC} -shared'
 	    SHLIB_SUFFIX=".dll"
-	    DL_OBJS="tclLoadDl.o tclWinError.o"
+	    DL_OBJS="tclLoadDl.o"
+	    PLAT_OBJS='${CYGWIN_OBJS}'
+	    PLAT_SRCS='${CYGWIN_SRCS}'
 	    DL_LIBS="-ldl"
 	    CC_SEARCH_FLAGS=""
 	    LD_SEARCH_FLAGS=""
 	    TCL_NEEDS_EXP_FILE=1
 	    TCL_EXPORT_FILE_SUFFIX='${VERSION}\$\{DBGX\}.dll.a'
 	    TCL_SHLIB_LD_EXTRAS='-Wl,--out-implib,$@.a'
+	    TK_SHLIB_LD_EXTRAS='-Wl,--out-implib,$@.a'
 	    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Cygwin version of gcc" >&5
 $as_echo_n "checking for Cygwin version of gcc... " >&6; }
 if ${ac_cv_cygwin+:} false; then :
@@ -5568,8 +5537,15 @@ $as_echo "$ac_cv_cygwin" >&6; }
 	    if test "x${TCL_THREADS}" = "x0"; then
 		as_fn_error $? "CYGWIN compile is only supported with --enable-threads" "$LINENO" 5
 	    fi
-	    if test "x${SHARED_BUILD}" = "x1" -a ! -f "../win/tcldde14.dll" -a ! -f "../win/tk86.dll"; then
-		as_fn_error $? "Please configure and make the ../win directory first." "$LINENO" 5
+	    do64bit_ok=yes
+	    if test "x${SHARED_BUILD}" = "x1"; then
+		echo "running cd ../win; ${CONFIG_SHELL-/bin/sh} ./configure $ac_configure_args"
+		# The eval makes quoting arguments work.
+		if cd ../win; eval ${CONFIG_SHELL-/bin/sh} ./configure $ac_configure_args; cd ../unix
+		then :
+		else
+		    { echo "configure: error: configure failed for ../win" 1>&2; exit 1; }
+		fi
 	    fi
 	    ;;
 	dgux*)
@@ -5898,7 +5874,7 @@ fi
 
 fi
 	    ;;
-	Linux*)
+	Linux*|GNU*|NetBSD-Debian)
 	    SHLIB_CFLAGS="-fPIC"
 	    SHLIB_SUFFIX=".so"
 
@@ -5971,20 +5947,6 @@ fi
   CFLAGS="$CFLAGS -fno-inline"
 fi
 	    ;;
-	GNU*)
-	    SHLIB_CFLAGS="-fPIC"
-	    SHLIB_SUFFIX=".so"
-
-	    SHLIB_LD='${CC} -shared'
-	    DL_OBJS=""
-	    DL_LIBS="-ldl"
-	    LDFLAGS="$LDFLAGS -Wl,--export-dynamic"
-	    CC_SEARCH_FLAGS=""
-	    LD_SEARCH_FLAGS=""
-	    if test "`uname -m`" = "alpha"; then :
-  CFLAGS="$CFLAGS -mieee"
-fi
-	    ;;
 	Lynx*)
 	    SHLIB_CFLAGS="-fPIC"
 	    SHLIB_SUFFIX=".so"
@@ -6020,60 +5982,15 @@ fi
 	    CC_SEARCH_FLAGS=""
 	    LD_SEARCH_FLAGS=""
 	    ;;
-	NetBSD-1.*|FreeBSD-[1-2].*)
-	    SHLIB_CFLAGS="-fPIC"
-	    SHLIB_LD="ld -Bshareable -x"
-	    SHLIB_SUFFIX=".so"
-	    DL_OBJS="tclLoadDl.o"
-	    DL_LIBS=""
-	    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ELF" >&5
-$as_echo_n "checking for ELF... " >&6; }
-if ${tcl_cv_ld_elf+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-
-		cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#ifdef __ELF__
-	yes
-#endif
-
-_ACEOF
-if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
-  $EGREP "yes" >/dev/null 2>&1; then :
-  tcl_cv_ld_elf=yes
-else
-  tcl_cv_ld_elf=no
-fi
-rm -f conftest*
-
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_ld_elf" >&5
-$as_echo "$tcl_cv_ld_elf" >&6; }
-	    if test $tcl_cv_ld_elf = yes; then :
-
-		SHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.so'
-
-else
-
-		SHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.so.${SHLIB_VERSION}'
-
-fi
-
-	    # Ancient FreeBSD doesn't handle version numbers with dots.
-
-	    UNSHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.a'
-	    TCL_LIB_VERSIONS_OK=nodots
-	    ;;
 	OpenBSD-*)
 	    arch=`arch -s`
 	    case "$arch" in
-	    m88k|vax)
+	    vax)
 		# Equivalent using configure option --disable-load
 		# Step 4 will set the necessary variables
 		DL_OBJS=""
 		SHLIB_LD_LIBS=""
+		LDFLAGS=""
 		;;
 	    *)
 		SHLIB_CFLAGS="-fPIC"
@@ -6087,10 +6004,11 @@ fi
 fi
 		LD_SEARCH_FLAGS=${CC_SEARCH_FLAGS}
 		SHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.so.${SHLIB_VERSION}'
+		LDFLAGS="-Wl,-export-dynamic"
 		;;
 	    esac
 	    case "$arch" in
-	    m88k|vax)
+	    vax)
 		CFLAGS_OPTIMIZE="-O1"
 		;;
 	    sh)
@@ -6100,38 +6018,6 @@ fi
 		CFLAGS_OPTIMIZE="-O2"
 		;;
 	    esac
-	    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ELF" >&5
-$as_echo_n "checking for ELF... " >&6; }
-if ${tcl_cv_ld_elf+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-
-		cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#ifdef __ELF__
-	yes
-#endif
-
-_ACEOF
-if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
-  $EGREP "yes" >/dev/null 2>&1; then :
-  tcl_cv_ld_elf=yes
-else
-  tcl_cv_ld_elf=no
-fi
-rm -f conftest*
-
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_ld_elf" >&5
-$as_echo "$tcl_cv_ld_elf" >&6; }
-	    if test $tcl_cv_ld_elf = yes; then :
-
-		LDFLAGS=-Wl,-export-dynamic
-
-else
-  LDFLAGS=""
-fi
 	    if test "${TCL_THREADS}" = "1"; then :
 
 		# On OpenBSD:	Compile with -pthread
@@ -6144,9 +6030,8 @@ fi
 	    UNSHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.a'
 	    TCL_LIB_VERSIONS_OK=nodots
 	    ;;
-	NetBSD-*|FreeBSD-[3-4].*)
-	    # FreeBSD 3.* and greater have ELF.
-	    # NetBSD 2.* has ELF and can use 'cc -shared' to build shared libs
+	NetBSD-*)
+	    # NetBSD has ELF and can use 'cc -shared' to build shared libs
 	    SHLIB_CFLAGS="-fPIC"
 	    SHLIB_LD='${CC} -shared ${SHLIB_CFLAGS}'
 	    SHLIB_SUFFIX=".so"
@@ -6166,20 +6051,13 @@ fi
 	    	LDFLAGS="$LDFLAGS -pthread"
 
 fi
-	    case $system in
-	    FreeBSD-3.*)
-	    	# FreeBSD-3 doesn't handle version numbers with dots.
-	    	UNSHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.a'
-	    	SHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.so'
-	    	TCL_LIB_VERSIONS_OK=nodots
-		;;
-	    esac
 	    ;;
 	FreeBSD-*)
 	    # This configuration from FreeBSD Ports.
 	    SHLIB_CFLAGS="-fPIC"
 	    SHLIB_LD="${CC} -shared"
-	    TCL_SHLIB_LD_EXTRAS="-soname \$@"
+	    TCL_SHLIB_LD_EXTRAS="-Wl,-soname=\$@"
+	    TK_SHLIB_LD_EXTRAS="-Wl,-soname,\$@"
 	    SHLIB_SUFFIX=".so"
 	    DL_OBJS="tclLoadDl.o"
 	    DL_LIBS=""
@@ -6187,7 +6065,7 @@ fi
 	    if test $doRpath = yes; then :
 
 		CC_SEARCH_FLAGS='-Wl,-rpath,${LIB_RUNTIME_DIR}'
-		LD_SEARCH_FLAGS='-rpath ${LIB_RUNTIME_DIR}'
+		LD_SEARCH_FLAGS='-Wl,-rpath,${LIB_RUNTIME_DIR}'
 fi
 	    if test "${TCL_THREADS}" = "1"; then :
 
@@ -6196,11 +6074,15 @@ fi
 		CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 		LDFLAGS="$LDFLAGS $PTHREAD_LIBS"
 fi
-	    # Version numbers are dot-stripped by system policy.
-	    TCL_TRIM_DOTS=`echo ${VERSION} | tr -d .`
-	    UNSHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.a'
-	    SHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}\$\{DBGX\}.so.1'
-	    TCL_LIB_VERSIONS_OK=nodots
+	    case $system in
+	    FreeBSD-3.*)
+		# Version numbers are dot-stripped by system policy.
+		TCL_TRIM_DOTS=`echo ${VERSION} | tr -d .`
+		UNSHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.a'
+		SHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.so'
+		TCL_LIB_VERSIONS_OK=nodots
+		;;
+	    esac
 	    ;;
 	Darwin-*)
 	    CFLAGS_OPTIMIZE="-Os"
@@ -6392,7 +6274,6 @@ fi
 
 $as_echo "#define MODULE_SCOPE __private_extern__" >>confdefs.h
 
-		tcl_cv_cc_visibility_hidden=yes
 
 fi
 	    CC_SEARCH_FLAGS=""
@@ -7002,9 +6883,6 @@ fi
 $as_echo "#define MODULE_SCOPE extern" >>confdefs.h
 
 
-$as_echo "#define NO_VIZ /**/" >>confdefs.h
-
-
 fi
 
     if test "$SHARED_LIB_SUFFIX" = ""; then :
@@ -7450,7 +7328,7 @@ else
 	    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <sys/types.h>
-#include <sys/dirent.h>
+#include <dirent.h>
 int
 main ()
 {
@@ -8680,13 +8558,39 @@ fi
 fi
 
 #---------------------------------------------------------------------------
-#	Determine which interface to use to talk to the serial port.
-#	Note that #include lines must begin in leftmost column for
-#	some compilers to recognize them as preprocessor directives.
+#	Check for serial port interface.
+#
+#	termios.h is present on all POSIX systems.
+#	sys/ioctl.h is almost always present, though what it contains
+#	is system-specific.
+#	sys/modem.h is needed on HP-UX.
 #---------------------------------------------------------------------------
 
+for ac_header in termios.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "termios.h" "ac_cv_header_termios_h" "$ac_includes_default"
+if test "x$ac_cv_header_termios_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_TERMIOS_H 1
+_ACEOF
 
-    for ac_header in sys/modem.h
+fi
+
+done
+
+for ac_header in sys/ioctl.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "sys/ioctl.h" "ac_cv_header_sys_ioctl_h" "$ac_includes_default"
+if test "x$ac_cv_header_sys_ioctl_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_SYS_IOCTL_H 1
+_ACEOF
+
+fi
+
+done
+
+for ac_header in sys/modem.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "sys/modem.h" "ac_cv_header_sys_modem_h" "$ac_includes_default"
 if test "x$ac_cv_header_sys_modem_h" = xyes; then :
@@ -8697,203 +8601,6 @@ _ACEOF
 fi
 
 done
-
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking termios vs. termio vs. sgtty" >&5
-$as_echo_n "checking termios vs. termio vs. sgtty... " >&6; }
-if ${tcl_cv_api_serial+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-
-    if test "$cross_compiling" = yes; then :
-  tcl_cv_api_serial=no
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#include <termios.h>
-
-int main() {
-    struct termios t;
-    if (tcgetattr(0, &t) == 0) {
-	cfsetospeed(&t, 0);
-	t.c_cflag |= PARENB | PARODD | CSIZE | CSTOPB;
-	return 0;
-    }
-    return 1;
-}
-_ACEOF
-if ac_fn_c_try_run "$LINENO"; then :
-  tcl_cv_api_serial=termios
-else
-  tcl_cv_api_serial=no
-fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
-    if test $tcl_cv_api_serial = no ; then
-	if test "$cross_compiling" = yes; then :
-  tcl_cv_api_serial=no
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#include <termio.h>
-
-int main() {
-    struct termio t;
-    if (ioctl(0, TCGETA, &t) == 0) {
-	t.c_cflag |= CBAUD | PARENB | PARODD | CSIZE | CSTOPB;
-	return 0;
-    }
-    return 1;
-}
-_ACEOF
-if ac_fn_c_try_run "$LINENO"; then :
-  tcl_cv_api_serial=termio
-else
-  tcl_cv_api_serial=no
-fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
-    fi
-    if test $tcl_cv_api_serial = no ; then
-	if test "$cross_compiling" = yes; then :
-  tcl_cv_api_serial=no
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#include <sgtty.h>
-
-int main() {
-    struct sgttyb t;
-    if (ioctl(0, TIOCGETP, &t) == 0) {
-	t.sg_ospeed = 0;
-	t.sg_flags |= ODDP | EVENP | RAW;
-	return 0;
-    }
-    return 1;
-}
-_ACEOF
-if ac_fn_c_try_run "$LINENO"; then :
-  tcl_cv_api_serial=sgtty
-else
-  tcl_cv_api_serial=no
-fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
-    fi
-    if test $tcl_cv_api_serial = no ; then
-	if test "$cross_compiling" = yes; then :
-  tcl_cv_api_serial=no
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#include <termios.h>
-#include <errno.h>
-
-int main() {
-    struct termios t;
-    if (tcgetattr(0, &t) == 0
-	|| errno == ENOTTY || errno == ENXIO || errno == EINVAL) {
-	cfsetospeed(&t, 0);
-	t.c_cflag |= PARENB | PARODD | CSIZE | CSTOPB;
-	return 0;
-    }
-    return 1;
-}
-_ACEOF
-if ac_fn_c_try_run "$LINENO"; then :
-  tcl_cv_api_serial=termios
-else
-  tcl_cv_api_serial=no
-fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
-    fi
-    if test $tcl_cv_api_serial = no; then
-	if test "$cross_compiling" = yes; then :
-  tcl_cv_api_serial=no
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#include <termio.h>
-#include <errno.h>
-
-int main() {
-    struct termio t;
-    if (ioctl(0, TCGETA, &t) == 0
-	|| errno == ENOTTY || errno == ENXIO || errno == EINVAL) {
-	t.c_cflag |= CBAUD | PARENB | PARODD | CSIZE | CSTOPB;
-	return 0;
-    }
-    return 1;
-    }
-_ACEOF
-if ac_fn_c_try_run "$LINENO"; then :
-  tcl_cv_api_serial=termio
-else
-  tcl_cv_api_serial=no
-fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
-    fi
-    if test $tcl_cv_api_serial = no; then
-	if test "$cross_compiling" = yes; then :
-  tcl_cv_api_serial=none
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#include <sgtty.h>
-#include <errno.h>
-
-int main() {
-    struct sgttyb t;
-    if (ioctl(0, TIOCGETP, &t) == 0
-	|| errno == ENOTTY || errno == ENXIO || errno == EINVAL) {
-	t.sg_ospeed = 0;
-	t.sg_flags |= ODDP | EVENP | RAW;
-	return 0;
-    }
-    return 1;
-}
-_ACEOF
-if ac_fn_c_try_run "$LINENO"; then :
-  tcl_cv_api_serial=sgtty
-else
-  tcl_cv_api_serial=none
-fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
-    fi
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_api_serial" >&5
-$as_echo "$tcl_cv_api_serial" >&6; }
-    case $tcl_cv_api_serial in
-	termios)
-$as_echo "#define USE_TERMIOS 1" >>confdefs.h
-;;
-	termio)
-$as_echo "#define USE_TERMIO 1" >>confdefs.h
-;;
-	sgtty)
-$as_echo "#define USE_SGTTY 1" >>confdefs.h
-;;
-    esac
 
 
 #--------------------------------------------------------------------
@@ -9302,11 +9009,7 @@ $as_echo "no pcre" >&6; }
 #	lack blkcnt_t.
 #--------------------------------------------------------------------
 
-if test "$ac_cv_cygwin" = "yes"; then
-    if test "x${SHARED_BUILD}" = "x1"; then
-	TCL_SHLIB_LD_EXTRAS="${TCL_SHLIB_LD_EXTRAS} \${COMPAT_DIR}/zlib/win32/zdll.lib"
-    fi
-else
+if test "$ac_cv_cygwin" != "yes"; then
     ac_fn_c_check_member "$LINENO" "struct stat" "st_blocks" "ac_cv_member_struct_stat_st_blocks" "$ac_includes_default"
 if test "x$ac_cv_member_struct_stat_st_blocks" = xyes; then :
 
@@ -10464,17 +10167,6 @@ do :
 if test "x$ac_cv_func_OSSpinLockLock" = xyes; then :
   cat >>confdefs.h <<_ACEOF
 #define HAVE_OSSPINLOCKLOCK 1
-_ACEOF
-
-fi
-done
-
-	for ac_func in pthread_atfork
-do :
-  ac_fn_c_check_func "$LINENO" "pthread_atfork" "ac_cv_func_pthread_atfork"
-if test "x$ac_cv_func_pthread_atfork" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_PTHREAD_ATFORK 1
 _ACEOF
 
 fi

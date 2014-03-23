@@ -2398,9 +2398,9 @@ $as_echo "$as_me: WARNING: --with-tcl argument should refer to directory contain
 			`ls -dr ${srcdir}/../tcl[8-9].[0-9] 2>/dev/null` \
 			`ls -dr ${srcdir}/../tcl[8-9].[0-9]* 2>/dev/null` ; do
 		    if test -f "$i/unix/tclConfig.sh" ; then
-		    ac_cv_c_tclconfig="`(cd $i/unix; pwd)`"
-		    break
-		fi
+			ac_cv_c_tclconfig="`(cd $i/unix; pwd)`"
+			break
+		    fi
 		done
 	    fi
 
@@ -4530,49 +4530,6 @@ if ${tcl_cv_cc_visibility_hidden+:} false; then :
   $as_echo_n "(cached) " >&6
 else
 
-	    if test "$SHARED_BUILD" = 1; then :
-
-		hold_cflags=$CFLAGS; CFLAGS="$CFLAGS -fvisibility=hidden -Werror"
-		cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-int
-main ()
-{
-#if !defined(__GNUC__) || __GNUC__ < 4
-#error visibility hidden is not supported for this compiler
-#endif
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  tcl_cv_cc_visibility_hidden=yes
-else
-  tcl_cv_cc_visibility_hidden=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-		CFLAGS=$hold_cflags
-
-else
-
-		tcl_cv_cc_visibility_hidden=no
-
-fi
-
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_cc_visibility_hidden" >&5
-$as_echo "$tcl_cv_cc_visibility_hidden" >&6; }
-    if test $tcl_cv_cc_visibility_hidden = yes; then :
-
-	CFLAGS="$CFLAGS -fvisibility=hidden"
-
-$as_echo "#define MODULE_SCOPE extern" >>confdefs.h
-
-
-else
-
 	hold_cflags=$CFLAGS; CFLAGS="$CFLAGS -Werror"
 	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -4595,7 +4552,10 @@ fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 	CFLAGS=$hold_cflags
-	if test $tcl_cv_cc_visibility_hidden = yes; then :
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcl_cv_cc_visibility_hidden" >&5
+$as_echo "$tcl_cv_cc_visibility_hidden" >&6; }
+    if test $tcl_cv_cc_visibility_hidden = yes; then :
 
 
 $as_echo "#define MODULE_SCOPE extern __attribute__((__visibility__(\"hidden\")))" >>confdefs.h
@@ -4603,8 +4563,6 @@ $as_echo "#define MODULE_SCOPE extern __attribute__((__visibility__(\"hidden\"))
 
 $as_echo "#define HAVE_HIDDEN 1" >>confdefs.h
 
-
-fi
 
 fi
 
@@ -5005,7 +4963,8 @@ fi
 	    LD_SEARCH_FLAGS=""
 	    TCL_NEEDS_EXP_FILE=1
 	    TCL_EXPORT_FILE_SUFFIX='${VERSION}\$\{DBGX\}.dll.a'
-	    TCL_SHLIB_LD_EXTRAS='-Wl,--out-implib,$@.a'
+	    SHLIB_LD_LIBS="${SHLIB_LD_LIBS} -Wl,--out-implib,$@.a"
+	    TK_SHLIB_LD_EXTRAS='-Wl,--out-implib,$@.a'
 	    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Cygwin version of gcc" >&5
 $as_echo_n "checking for Cygwin version of gcc... " >&6; }
 if ${ac_cv_cygwin+:} false; then :
@@ -5042,8 +5001,15 @@ $as_echo "$ac_cv_cygwin" >&6; }
 	    if test "x${TCL_THREADS}" = "x0"; then
 		as_fn_error $? "CYGWIN compile is only supported with --enable-threads" "$LINENO" 5
 	    fi
-	    if test "x${SHARED_BUILD}" = "x1" -a ! -f "../win/tcldde14.dll" -a ! -f "../win/tk86.dll"; then
-		as_fn_error $? "Please configure and make the ../win directory first." "$LINENO" 5
+	    do64bit_ok=yes
+	    if test "x${SHARED_BUILD}" = "x1"; then
+		echo "running cd ../win; ${CONFIG_SHELL-/bin/sh} ./configure $ac_configure_args"
+		# The eval makes quoting arguments work.
+		if cd ../win; eval ${CONFIG_SHELL-/bin/sh} ./configure $ac_configure_args; cd ../unix
+		then :
+		else
+		    { echo "configure: error: configure failed for ../win" 1>&2; exit 1; }
+		fi
 	    fi
 	    ;;
 	dgux*)
@@ -5554,7 +5520,8 @@ fi
 	    # This configuration from FreeBSD Ports.
 	    SHLIB_CFLAGS="-fPIC"
 	    SHLIB_LD="${CC} -shared"
-	    TCL_SHLIB_LD_EXTRAS="-Wl,-soname=\$@"
+	    SHLIB_LD_LIBS="${SHLIB_LD_LIBS} -Wl,-soname=\$@"
+	    TK_SHLIB_LD_EXTRAS="-Wl,-soname,\$@"
 	    SHLIB_SUFFIX=".so"
 	    DL_OBJS="tclLoadDl.o"
 	    DL_LIBS=""
@@ -5571,11 +5538,15 @@ fi
 		CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 		LDFLAGS="$LDFLAGS $PTHREAD_LIBS"
 fi
-	    # Version numbers are dot-stripped by system policy.
-	    TCL_TRIM_DOTS=`echo ${VERSION} | tr -d .`
-	    UNSHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.a'
-	    SHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}\$\{DBGX\}.so.1'
-	    TCL_LIB_VERSIONS_OK=nodots
+	    case $system in
+	    FreeBSD-3.*)
+		# Version numbers are dot-stripped by system policy.
+		TCL_TRIM_DOTS=`echo ${VERSION} | tr -d .`
+		UNSHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.a'
+		SHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.so'
+		TCL_LIB_VERSIONS_OK=nodots
+		;;
+	    esac
 	    ;;
 	Darwin-*)
 	    CFLAGS_OPTIMIZE="-Os"
@@ -5767,7 +5738,6 @@ fi
 
 $as_echo "#define MODULE_SCOPE __private_extern__" >>confdefs.h
 
-		tcl_cv_cc_visibility_hidden=yes
 
 fi
 	    CC_SEARCH_FLAGS=""
@@ -8366,6 +8336,56 @@ _ACEOF
 else
 
 		found_xft=no
+
+fi
+
+	    CFLAGS=$tk_oldCFlags
+	    LIBS=$tk_oldLibs
+	fi
+		if test "$found_xft" = "yes" ; then
+	    tk_oldCFlags=$CFLAGS
+	    CFLAGS="$CFLAGS $XINCLUDES $XFT_CFLAGS"
+	    tk_oldLibs=$LIBS
+	    LIBS="$tk_oldLIBS $XFT_LIBS $XLIBSW -lfontconfig"
+	    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for FcFontSort in -lfontconfig" >&5
+$as_echo_n "checking for FcFontSort in -lfontconfig... " >&6; }
+if ${ac_cv_lib_fontconfig_FcFontSort+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lfontconfig  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char FcFontSort ();
+int
+main ()
+{
+return FcFontSort ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_fontconfig_FcFontSort=yes
+else
+  ac_cv_lib_fontconfig_FcFontSort=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_fontconfig_FcFontSort" >&5
+$as_echo "$ac_cv_lib_fontconfig_FcFontSort" >&6; }
+if test "x$ac_cv_lib_fontconfig_FcFontSort" = xyes; then :
+
+		XFT_LIBS="$XFT_LIBS -lfontconfig"
 
 fi
 
