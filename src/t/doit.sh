@@ -618,6 +618,7 @@ get_options()
 	GUI_TEST=NO
 	PARALLEL=
 	dashx=
+	FAILTHRES=9999
 	while true
 	do	case $1 in
 		    -g) GUI_TEST=YES;;
