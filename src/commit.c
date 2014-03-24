@@ -350,6 +350,7 @@ do_commit(char **av,
 	int	rc, i;
 	sccs	*cset;
 	char	**syms = 0;
+	char	*p;
 	FILE 	*f, *f2;
 	char	*t;
 	char	**list = 0;
@@ -389,15 +390,17 @@ err:		rc = 1;
 	safe_putenv("BK_PENDING=%s", pendingFiles);
 
 	/* XXX could avoid if we knew if a trigger would fire... */
+	bktmp(commentFile);
 	if (dflags & DELTA_CFILE) {
-		strcpy(commentFile, sccs_Xfile(cset, 'c'));
-		unless (size(commentFile) > 0) {
+		p = sccs_Xfile(cset, 'c');
+		unless (size(p) > 0) {
 			fprintf(stderr, "commit: saved comments not found.\n");
 			rc = 1;
 			goto done;
 		}
+		cset->used_cfile = 1;
+		fileCopy(p, commentFile);
 	} else {
-		bktmp(commentFile);
 		comments_writefile(commentFile);
 	}
 	safe_putenv("BK_COMMENTFILE=%s", commentFile);
@@ -502,18 +505,12 @@ err:		rc = 1;
 	}
 	trigger(opts.resync ? "merge" : av[0], "post");
 done:	if (unlink(pendingFiles)) perror(pendingFiles);
+	// Someone else created the c.file, unlink only on success
+	if ((dflags & DELTA_CFILE) && !rc) comments_cleancfile(cset);
+	if (*commentFile) unlink(commentFile);
 	sccs_free(cset);
 	freeLines(list, free);
 	commitRestore(rc);
-	unless (*commentFile) {
-		// don't try to unlink
-	} else if (dflags & DELTA_CFILE) {
-		// Someone else created the c.file, unlink only on success
-		unless (rc) unlink(commentFile);
-	} else {
-		// we created it, always unlink
-		unlink(commentFile);
-	}
 	/*
 	 * If we are doing a commit in RESYNC or the commit failed, do
 	 * not log the cset. Let the resolver do it after it moves the
