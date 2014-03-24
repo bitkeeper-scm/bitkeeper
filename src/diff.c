@@ -261,7 +261,6 @@ compressHashes(df_ctx *dc, int side)
 	u32	*u;
 	u32	**v;
 	int	**idx;
-	int	next_match, prev_match;
 	thing	**t;
 
 	assert(((side == LEFT) && !dc->l && !dc->lidx) ||
@@ -292,40 +291,6 @@ compressHashes(df_ctx *dc, int side)
 		t = hash_fetch(dc->h, &u[i], sizeof(u32));
 		assert(t);
 		if ((*t)->matches[!side]) {
-			/*
-			 * 3 is arbitrary, experiment with other numbers?
-			 */
-			if (!dc->minimal && (((*t)->matches[!side] > 3))) {
-				/*
-				 * This gives bigger diffs, but can
-				 * sometimes result in better
-				 * diffs. The main idea is that if we
-				 * find an unchanged line in the
-				 * middle of changed lines, we just
-				 * mark it as changed.
-				 */
-				next_match = 1;
-				prev_match = 1;
-				if (i < nLines(u)) {
-					t = hash_fetch(dc->h,
-					    &u[i+1], sizeof(u32));
-					assert(t);
-					next_match = (*t)->matches[!side];
-				}
-				if (i > 1) {
-					prev_match = !dc->chg[side][i-1];
-				}
-				if (!next_match && !prev_match) {
-					/*
-					 * This line is in between two
-					 * lines that are going to be
-					 * discarded anyway, discard
-					 * it as well.
-					 */
-					dc->chg[side][i] = 1;
-					continue;
-				}
-			}
 			/* matches lines on the other side, keep it */
 			(*v)[j] = u[i];
 			(*idx)[j] = i;
