@@ -481,6 +481,27 @@ EOF
 cmpfiles want out
 echo OK
 
+echo $N Check range options .........................................$NL
+bk smerge -sgA3 -R2..10 -l1.1.2.1 -r1.1.1.1 gca > out
+if [ $? -ne 1 ]; then echo failed; exit 1; fi
+sed 's/^\\//' <<EOF > WANT
+     3	   won't change either
+\<<<<<<< local gca 1.1 vs 1.1.2.1
+-     5	   gca1
++     6	   right1
+      7	   gca2
+      8	   gca3
+\<<<<<<< remote gca 1.1 vs 1.1.1.1
+      5	   gca1
+-     7	   gca2
+-     8	   gca3
++     9	   left
++    10	   left
+>>>>>>>
+EOF
+cmpfiles out WANT
+echo OK
+
 #echo $N "Check versions with excludes (and identical versions)........$NL"
 #bk smerge -g gca 1.1.2.1-1.1.2.1 1.1.1.1 > out
 #diff -u out V1.1.1.1 > DIFF.OUT
@@ -613,7 +634,7 @@ bk delta $Q -ynone fdiffm
 bk smerge -Im -f -l1.1 -r1.1.1.1 fdiffm > fdiffm_R
 bk smerge $D3 -Im -f -l1.1 -r1.1.1.1 fdiffm > fdiffm_RD3
 cat <<EOF > fdiffm_D
-M
+M 0
  1.1.1.1               | branch
 L
  1.1                   | a
@@ -621,16 +642,16 @@ s
 R
 -1.1-d1.1.1.1          | a
 +1.1.1.1               | branch
-E
+E 4
  1.1                   | b
  1.1                   | c
-M
+M 5
  1.1.1.1               | branch end
 L
 s
 R
 +1.1.1.1               | branch end
-E
+E -1
 EOF
 cmp -s fdiffm_R fdiffm_D || {
 	echo failed
@@ -677,7 +698,7 @@ echo $NX "end"$NXL >> nonl.txt
 bk delta $Q -yremote nonl.txt
 bk smerge --show-merge-fn -Im -f -l1.1.1.1 -r1.2 nonl.txt > nonl_R
 cat <<EOF >nonl_D
-L
+L 0
 -1.1-d1.1.1.1          | gca start
 h 0-3
 +1.1.1.1               | remote start
@@ -689,11 +710,11 @@ h 0-3
 s
 +1.2                   | local start
 h 0-5
-E
+E 4
  1.1                   | 1
  1.1                   | 2
  1.1                   | 3
-M merge_only_one
+M 6 merge_only_one
  1.1.1.1               | end
 L
 -1.1-d1.1.1.1          | end
@@ -702,9 +723,26 @@ h 3-4
 R
  1.1                   | end
 s
-E
+E -1
 EOF
 checkfiles nonl_R nonl_D
+
+# test range
+bk smerge --show-merge-fn -R6..-1 -Im -f -l1.1.1.1 -r1.2 nonl.txt > GOT
+cat <<EOF > WANT
+M 6 merge_only_one
+ 1.1.1.1               | end
+L
+-1.1-d1.1.1.1          | end
+h 3-4
++1.1.1.1               | end
+R
+ 1.1                   | end
+s
+E -1
+EOF
+cmpfiles GOT WANT
+
 sed 's/^\\//' <<EOF >nonl_D
 \<<<<<<< local nonl.txt 1.1 vs 1.1.1.1
 -gca start

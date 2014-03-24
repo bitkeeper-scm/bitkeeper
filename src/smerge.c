@@ -81,10 +81,8 @@ private	int	mode;
 private	int	fdiff;
 private	int	show_mergefn;
 private	char	*anno = 0;
-#ifdef	SHOW_SEQ
 private	int	parse_range(char *range, u32 *start, u32 *end);
 private	int	show_seq;
-#endif
 
 int
 smerge_main(int ac, char **av)
@@ -145,12 +143,6 @@ smerge_main(int ac, char **av)
 		    case 'r':
 			revs[RIGHT] = strdup(optarg);
 			break;
-#ifdef	SHOW_SEQ
-/*
- * This stuff is removed for 3.0.
- * If it gets added back, there is also a regression for this
- * in the t.smerge history that should be recovered.
- */
 		    case 'R': /* show output in the range <r> */
 			if (parse_range(optarg, &start, &end)) {
 				usage();
@@ -160,7 +152,6 @@ smerge_main(int ac, char **av)
 		    case 's': /* show sequence numbers */
 			show_seq = 1;
 			break;
-#endif
 		    case 'h': /* help */
 		    default: goto help;
 		    case 310: /* --show-merge-fn */
@@ -405,9 +396,7 @@ printline(ld_t *ld, char first_char, int forcenl)
 
 	if (fdiff && !first_char) first_char = ' ';
 	if (first_char) putchar(first_char);
-#ifdef	SHOW_SEQ
 	if (show_seq) printf("%6d\t", ld->seq);
-#endif
 
 	/* Print annotation before line, if present */
 	if (a) while (a < p) putchar(*a++);
@@ -931,12 +920,10 @@ do_diff_merge(void)
 		memset(&conf, 0, sizeof(conf));
 		conf.start[GCA] = conf.start[GCAR] = start - 1;
 		conf.end[GCA] = conf.end[GCAR] = end - 1;
-#if SHOW_SEQ
 		if (start - 1 > 0) {
 			conf.start_seq = body[GCA].lines[start - 2].seq;
 		}
 		conf.end_seq = body[GCA].lines[end - 1].seq;
-#endif
 
 		diffwalk_range(ldiff, LEFT, &conf);
 		diffwalk_range(rdiff, RIGHT, &conf);
@@ -1098,14 +1085,12 @@ resolve_conflict(conflct *curr)
 		/* This region was automerged */
 		if (fdiff) {
 			putchar('M');
+			printf(" %d", curr->start_seq);
 			if (show_mergefn && curr->algos) {
 				t = joinLines(", ", curr->algos);
 				printf(" %s", t);
 				free(t);
 			}
-#ifdef SHOW_SEQ
-			printf(" %d", curr->start_seq);
-#endif
 			putchar('\n');
 		}
 		for (p = curr->merged; p->line; p++) {
@@ -1126,10 +1111,8 @@ resolve_conflict(conflct *curr)
 	}
 	if (fdiff) {
 		putchar('E');
-#ifdef SHOW_SEQ
 		assert(curr->end_seq);
 		printf(" %d", curr->end_seq);
-#endif
 		putchar('\n');
 	}
 	return (ret);
@@ -1365,9 +1348,7 @@ user_conflict_fdiff(conflct *c)
 	blankline.anno = 0;
 
 	putchar('L');
-#ifdef SHOW_SEQ
 	unless (c->merged) printf(" %d", c->start_seq);
-#endif
 	putchar('\n');
 	lp = left;
 	rp = right;
@@ -1580,7 +1561,6 @@ highlight_diff(diffln *diff)
 	}
 }
 
-#ifdef SHOW_SEQ
 /*
  * Parse a range string from the command line.
  * Valid formats:
@@ -1603,7 +1583,6 @@ parse_range(char *range, u32 *start, u32 *end)
 	}
 	return(0);
 }
-#endif
 
 /*--------------------------------------------------------------------
  * Automerge functions
