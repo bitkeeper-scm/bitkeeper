@@ -80,18 +80,14 @@ REGVERSION := 1.2
 TKTABLE := Tktable2.10
 
 LIBTKTABLE := lib$(TKTABLE)$(SO)
-TREECTRL := treectrl2.4.1
-LIBTREECTRL := libtreectrl2.4$(SO)
 BWIDGET := BWidget1.8
 TCLBUILD := ../build/tcl/Tcl.framework
 TKBUILD  := ../build/tk/Tk.framework
 WISHPATH := build/tk/Wish.app
 EXTENSIONS := lib/$(TKTABLE)/$(LIBTKTABLE) \
-	      lib/$(TREECTRL)/$(LIBTREECTRL) \
 	      lib/$(BWIDGET)/pkgIndex.tcl \
 	      lib/Tkcon/pkgIndex.tcl
 AQUAEXTENSIONS := $(BKAPP)/Contents/lib/$(TKTABLE)/$(LIBTKTABLE) \
-		  $(BKAPP)/Contents/lib/$(TREECTRL)/$(LIBTREECTRL) \
 		  $(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl \
 		  $(BKAPP)/Contents/lib/Tkcon/pkgIndex.tcl
 
@@ -126,7 +122,6 @@ srcs: pcre/configure \
 	tcl/$S/configure \
 	tk/$S/configure \
 	tktable/configure \
-	tktreectrl/configure \
 	lib/$(BWIDGET)/pkgIndex.tcl \
 	lib/Tkcon/pkgIndex.tcl
 
@@ -158,7 +153,6 @@ CHANGELOGS =  \
 	tcl/ChangeLog \
 	tk/ChangeLog \
 	tktable/ChangeLog \
-	tktreectrl/ChangeLog \
 	bwidget/ChangeLog \
 	tkcon/ChangeLog
 
@@ -223,40 +217,6 @@ $(BKAPP)/Contents/lib/$(TKTABLE)/$(LIBTKTABLE): tktable/configure
 	$(MAKE) prefix= exec_prefix= DESTDIR=../$(BKAPP)/Contents/ \
 	    libdir=lib bindir=Resources install
 
-# fetch tktreectrl subdirectory if needed
-tktreectrl/configure: tktreectrl/ChangeLog
-	$(Q)(cd tktreectrl && bk -Ur get -qS)
-
-# TkTreeCtrl libs
-lib/$(TREECTRL)/$(LIBTREECTRL): tktreectrl/configure bin/bkgui$(EXE)
-	cd tktreectrl ; \
-	test -f Makefile -a "X$(AQUA)" != X && { \
-		$(MAKE) distclean ; \
-	}; \
-	test -f Makefile || { \
-		./configure $(QUIET) --with-tcl=../tcl/$S --with-tk=../tk/$S \
-			--with-tclinclude=../tcl/generic \
-			--with-tkinclude=../tk/generic \
-			--disable-threads $(ENABLE_64BIT) $(SYMBOLS) ; \
-	}; \
-	$(MAKE) prefix= exec_prefix= DESTDIR=../ \
-		libdir=lib bindir=bin install
-
-$(BKAPP)/Contents/lib/$(TREECTRL)/$(LIBTREECTRL): tktreectrl/configure
-	cd tktreectrl; \
-	test -f Makefile -a "X$(AQUA)" != X && { \
-		$(MAKE) distclean ; \
-	}; \
-	test -f Makefile || { \
-		./configure $(QUIET) \
-		    --with-tcl=$(TCLBUILD) \
-		    --with-tk=$(TKBUILD) \
-		    --with-tclinclude=$(TCLBUILD)/Headers \
-		    --with-tkinclude=$(TKBUILD)/Headers ; \
-	}; \
-	$(MAKE) prefix= exec_prefix= DESTDIR=../$(BKAPP)/Contents/ \
-	    libdir=lib bindir=Resources install
-
 $(BKAPP)/Contents/lib:
 	mkdir $(BKAPP)/Contents/lib
 
@@ -290,13 +250,11 @@ $(BKAPP)/Contents/lib/GetOpts/pkgIndex.tcl: lib/GetOpts/pkgIndex.tcl \
 	cp -fRPH lib/GetOpts $(BKAPP)/Contents/lib
 
 rm_doc: FORCE
-	rm -rf lib/$(TKTABLE)/html \
-	    lib/$(TREECTRL)/htmldoc
+	rm -rf lib/$(TKTABLE)/html
 	if [ "X$(AQUA)" != X ]; \
 	then \
 	    rm -rf \
 		$(BKAPP)/Contents/lib/$(TKTABLE)/html \
-		$(BKAPP)/Contents/lib/$(TREECTRL)/htmldoc \
 		$(BKAPP)/Contents/man ; \
 	fi
 
@@ -375,7 +333,6 @@ clean-obj: FORCE
 	-test -d tcl && cd tcl/$S && test -f Makefile && $(MAKE) distclean
 	-test -d tk && cd tk/$S && test -f Makefile && $(MAKE) distclean
 	-test -d tktable && cd tktable && test -f Makefile && $(MAKE) distclean
-	-test -d tktreectrl && cd tktreectrl && test -f Makefile && $(MAKE) distclean
 	-test -d pcre && cd pcre && { \
 		test -f Makefile && $(MAKE) distclean; \
 		rm -rf local; \
@@ -403,12 +360,10 @@ test:
 
 verify: FORCE
 	test -d lib/$(TKTABLE) || exit 1
-	test -d lib/$(TREECTRL) || exit 1
 	test -f lib/$(BWIDGET)/pkgIndex.tcl || exit 1
 	if [ "X$(AQUA)" != X ]; \
 	then \
 	    test -d $(BKAPP)/Contents/lib/$(TKTABLE) || exit 1 ; \
-	    test -d $(BKAPP)/Contents/lib/$(TREECTRL) || exit 1 ; \
 	    test -f $(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl \
 		|| exit 1 ; \
 	fi
