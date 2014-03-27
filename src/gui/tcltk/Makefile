@@ -48,18 +48,9 @@ else
 		BKAPP=bin/BitKeeper.app
 		SO := .dylib
 		SINGLE_MODULE := "LDFLAGS=-single_module"
-		ifeq "$(shell uname -m)" "x86_64"
-			ENABLE_64BIT=--enable-64bit
-		endif
-		ifeq (10.,$(findstring 10.,$(shell uname -r)))
-			CC := cc -m32
-			LD := $(CC)
-			export CC LD
-		endif
-	else
-		ifeq "$(shell uname -m)" "x86_64"
-			ENABLE_64BIT=--enable-64bit
-		endif
+	endif
+	ifeq "$(shell uname -m)" "x86_64"
+		ENABLE_64BIT=--enable-64bit
 	endif
 	# No rpath on freebsd 2.2.8
 	ifeq "$(shell uname -r)" "2.2.8-RELEASE"
