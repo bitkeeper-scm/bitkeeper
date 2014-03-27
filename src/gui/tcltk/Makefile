@@ -170,11 +170,11 @@ pcre/Makefile: pcre/configure Makefile
 	$(Q)(cd pcre && \
 	    ./configure $(QUIET) --disable-cpp --disable-shared --enable-utf8=yes --prefix=)
 
-pcre/configure: Makefile pcre/ChangeLog
+pcre/configure: Makefile
 	$(Q)(cd pcre && bk -Ur get -qS)
 
 # fetch tktable subdirectory if needed
-tktable/configure: tktable/ChangeLog
+tktable/configure:
 	$(Q)(cd tktable && bk -Ur get -qS)
 
 # Tktable libs
