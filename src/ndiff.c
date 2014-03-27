@@ -24,33 +24,34 @@ typedef struct {
 	char	**bl[2];	/* # of lines in left/right for sdiff */
 	int	state;		/* for sdiff */
 	int	diffgap;	/* gap value for sdiff */
+	char	*last[2];	/* start of last line in file */
 	df_opt	*dop;		/* copy of diff opts */
 } filedf;
 
 
 /* comparison funcs */
 private	int	cmp_identical(void *a, int lena,
-    void *b, int lenb, int last, void *extra);
+    void *b, int lenb, void *extra);
 private	int	cmp_ignore_ws(void *va, int lena,
-    void *vb, int lenb, int last, void *extra);
+    void *vb, int lenb, void *extra);
 private	int	cmp_ignore_ws_chg(void *va, int lena,
-    void *vb, int lenb, int last, void *extra);
+    void *vb, int lenb, void *extra);
 
 /* hashing funcs */
 private	u32	hash_identical(void *data, int len,
-    int side, int last, void *extra);
+    int side, void *extra);
 private	u32	hash_ignore_ws(void *buf, int len,
-    int side, int last, void *extra);
+    int side, void *extra);
 private	u32	hash_ignore_ws_chg(void *data, int len,
-    int side, int last, void *extra);
+    int side, void *extra);
 
 private void	printLine(char *prefix, void *data, int len, int side,
-    int last, void *extra, FILE *out);
+    void *extra, FILE *out);
 private	void	printHeader(int lno, int li, int ll, int ri, int rl,
     void *extra, FILE *out);
 private	void	printDeco(u32 where, void *extra, FILE *out);
 
-private void	sdPrint(char *prefix, void *data, int len, int side, int last,
+private void	sdPrint(char *prefix, void *data, int len, int side,
     void *extra, FILE *out);
 private void	sdState(u32 where, void *extra, FILE *out);
 
@@ -296,6 +297,7 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 					if (e != t) hasctrlr = 1;
 					*e = '\n';
 				}
+				o->last[i] = s;
 				diff_addItem(dc, i, s, e - s + 1);
 				lno[i]++;
 				if (re && (i == 0)) {
@@ -324,6 +326,7 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 				e--;
 				o->files[i].nl = 0;
 			}
+			o->last[i] = s;
 			diff_addItem(dc, i, s, e - s + 1);
 			lno[i]++;
 		}
@@ -525,7 +528,7 @@ align(void *data, int len, int pos, void *extra)
  * Just see if two lines are identical
  */
 private	int
-cmp_identical(void *va, int lena, void *vb, int lenb, int last, void *extra)
+cmp_identical(void *va, int lena, void *vb, int lenb, void *extra)
 {
 	if (lena != lenb) return (lena - lenb);
 	return (memcmp(va, vb, lena));
@@ -535,7 +538,7 @@ cmp_identical(void *va, int lena, void *vb, int lenb, int last, void *extra)
  * Compare ignoring all white space. (diff -w)
  */
 private	int
-cmp_ignore_ws(void *va, int lena, void *vb, int lenb, int last, void *extra)
+cmp_ignore_ws(void *va, int lena, void *vb, int lenb, void *extra)
 {
 	int	i, j;
 	int	sa, sb;
@@ -562,7 +565,7 @@ cmp_ignore_ws(void *va, int lena, void *vb, int lenb, int last, void *extra)
  * Compare ignoring changes in white space (diff -b).
  */
 private	int
-cmp_ignore_ws_chg(void *va, int lena, void *vb, int lenb, int last, void *extra)
+cmp_ignore_ws_chg(void *va, int lena, void *vb, int lenb, void *extra)
 {
 	int	i, j;
 	int	sa, sb;
@@ -599,13 +602,13 @@ cmp_ignore_ws_chg(void *va, int lena, void *vb, int lenb, int last, void *extra)
  * Hash data, use crc32c for speed
  */
 private	u32
-hash_identical(void *data, int len, int side, int last, void *extra)
+hash_identical(void *data, int len, int side, void *extra)
 {
 	u32	h = 0;
 	filedf	*o = (filedf *)extra;
 	char	*buf = (char *)data;
 
-	if (last && !o->files[side].nl) h = 1;
+	if ((data == o->last[side]) && !o->files[side].nl) h = 1;
 	return (crc32c(h, buf, len));
 }
 
@@ -613,7 +616,7 @@ hash_identical(void *data, int len, int side, int last, void *extra)
  * Hash data ignoring changes in white space (diff -b)
  */
 private	u32
-hash_ignore_ws_chg(void *data, int len, int side, int last, void *extra)
+hash_ignore_ws_chg(void *data, int len, int side, void *extra)
 {
 	u32	h = 0;
 	int	i, j = 0;
@@ -621,7 +624,8 @@ hash_ignore_ws_chg(void *data, int len, int side, int last, void *extra)
 	char	*buf = (char *)data;
 	char	copy[len];
 
-	if (last && !o->files[side].nl && o->dop->strip_trailing_cr) {
+	if ((data == o->last[side]) && !o->files[side].nl &&
+	    o->dop->strip_trailing_cr) {
 		h = 1;
 	}
 	for (i = 0; i < len; i++) {
@@ -639,7 +643,7 @@ hash_ignore_ws_chg(void *data, int len, int side, int last, void *extra)
  * Hash data ignoring all white space (diff -w)
  */
 private	u32
-hash_ignore_ws(void *data, int len, int side, int last, void *extra)
+hash_ignore_ws(void *data, int len, int side, void *extra)
 {
 	u32	h = 0;
 	int	i, j = 0;
@@ -647,7 +651,8 @@ hash_ignore_ws(void *data, int len, int side, int last, void *extra)
 	char	*buf = (char *)data;
 	char	copy[len];
 
-	if (last && !o->files[side].nl && o->dop->strip_trailing_cr) {
+	if ((data == o->last[side]) && !o->files[side].nl &&
+	    o->dop->strip_trailing_cr) {
 		h = 1;
 	}
 	for (i = 0; i < len; i++) {
@@ -661,14 +666,14 @@ hash_ignore_ws(void *data, int len, int side, int last, void *extra)
 }
 
 private void
-printLine(char *prefix, void *data, int len, int side, int last,
+printLine(char *prefix, void *data, int len, int side,
     void *extra, FILE *out)
 {
 	filedf	*o = (filedf *)extra;
 
 	fprintf(out, "%s", prefix);
 	fwrite(data, len, 1, out);
-	if (last && !o->files[side].nl) {
+	if ((data == o->last[side]) && !o->files[side].nl) {
 		fputc('\n', out);
 		unless (o->dop->out_define) {
 			fputs("\\ No newline at end of file\n", out);
@@ -723,7 +728,7 @@ printDeco(u32 where, void *extra, FILE *out)
 
 private void
 sdPrint(char *prefix, void *data, int len,
-    int side, int last, void *extra, FILE *out)
+    int side, void *extra, FILE *out)
 {
 	filedf	*o = (filedf *)extra;
 	char	*buf = (char *)data;

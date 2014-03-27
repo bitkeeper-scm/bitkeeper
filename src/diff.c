@@ -222,8 +222,7 @@ hashThings(df_ctx *dc, int side, int from)
 	for (i = 1; i < from; i++) dc->hashes[side][i] = 0;
 	for (i = from; i <= n; i++) {
 		thing1 = &dc->things[side][i];
-		dh = dc->dhash(thing1->data, thing1->len, side,
-		    i == n, dc->extra);
+		dh = dc->dhash(thing1->data, thing1->len, side, dc->extra);
 		unless (dh) dh = 1;
 		while (1) {
 			if (thing2 = hash_insert(dc->h, &dh, sizeof(u32),
@@ -237,7 +236,7 @@ hashThings(df_ctx *dc, int side, int from)
 				thing2 = dc->h->vptr;
 				unless (dc->dcmp(thing1->data, thing1->len,
 					(*thing2)->data, (*thing2)->len,
-					i == n,	dc->extra)) {
+					dc->extra)) {
 					(*thing2)->matches[side]++;
 					break;
 				}
@@ -762,13 +761,10 @@ void
 diff_print(df_ctx *dc, df_puts pfn, FILE *out)
 {
 	int	i, j;
-	int	n, m;
 	hunk	*h;
 
 	assert(dc);
 	h = dc->hunks;
-	n = nLines(dc->things[0]);
-	m = nLines(dc->things[1]);
 
 	EACH_INDEX(h, i) {
 		fprintf(out, "%d", h[i].ll? h[i].li: h[i].li - 1);
@@ -790,12 +786,12 @@ diff_print(df_ctx *dc, df_puts pfn, FILE *out)
 
 		for (j = h[i].li; j < (h[i].li + h[i].ll); j++) {
 			pfn("< ", dc->things[0][j].data, dc->things[0][j].len,
-			    LEFT, j == n, dc->extra, out);
+			    LEFT, dc->extra, out);
 		}
 		if (h[i].ll && h[i].rl) fprintf(out, "---\n");
 		for (j = h[i].ri; j < (h[i].ri + h[i].rl); j++) {
 			pfn("> ", dc->things[1][j].data, dc->things[1][j].len,
-			    RIGHT, j == m, dc->extra, out);
+			    RIGHT, dc->extra, out);
 		}
 	}
 }
@@ -804,11 +800,10 @@ void
 diff_printRCS(df_ctx *dc, df_puts pfn, FILE *out)
 {
 	hunk	*h;
-	int	y, m;
+	int	y;
 
 	assert(dc);
 	h = dc->hunks;
-	m = nLines(dc->things[1]);
 
 	y = 1;
 	EACHP(dc->hunks, h) {
@@ -821,7 +816,7 @@ diff_printRCS(df_ctx *dc, df_puts pfn, FILE *out)
 			for (y = h->ri; y < (h->ri + h->rl); y++) {
 				pfn("", dc->things[1][y].data,
 				    dc->things[1][y].len, RIGHT,
-				    y == m, dc->extra, out);
+				    dc->extra, out);
 
 			}
 		}
@@ -833,12 +828,11 @@ diff_printDecorated(df_ctx *dc, df_puts pfn, df_deco dfn, FILE *out)
 {
 	int	i;
 	int	x, y;
-	int	n, m;
+	int	m;
 	hunk	*h;
 
 	assert(dc);
 	h = dc->hunks;
-	n = nLines(dc->things[0]);
 	m = nLines(dc->things[1]);
 
 	x = 1;
@@ -849,8 +843,7 @@ diff_printDecorated(df_ctx *dc, df_puts pfn, df_deco dfn, FILE *out)
 			for (; x < h[i].li; x++) {
 				pfn("", dc->things[0][x].data,
 				    dc->things[0][x].len,
-				    LEFT, x == n, dc->extra,
-				    out);
+				    LEFT, dc->extra, out);
 			}
 			dfn(DF_COMMON_END, dc->extra, out);
 		}
@@ -860,8 +853,7 @@ diff_printDecorated(df_ctx *dc, df_puts pfn, df_deco dfn, FILE *out)
 			for (; x < (h[i].li + h[i].ll); x++) {
 				pfn("", dc->things[0][x].data,
 				    dc->things[0][x].len,
-				    LEFT, x == n, dc->extra,
-				    out);
+				    LEFT, dc->extra, out);
 			}
 		}
 		if (h[i].ll && h[i].rl) {
@@ -874,8 +866,7 @@ diff_printDecorated(df_ctx *dc, df_puts pfn, df_deco dfn, FILE *out)
 		for (y = h[i].ri; y < (h[i].ri + h[i].rl); y++) {
 			pfn("", dc->things[1][y].data,
 			    dc->things[1][y].len,
-			    RIGHT, y == m, dc->extra,
-			    out);
+			    RIGHT, dc->extra, out);
 		}
 		if (h[i].rl) dfn(DF_RIGHT_END, dc->extra, out);
 		if (h[i].ll && h[i].rl) dfn(DF_MOD_END, dc->extra, out);
@@ -885,8 +876,7 @@ diff_printDecorated(df_ctx *dc, df_puts pfn, df_deco dfn, FILE *out)
 		for (; y <= m; y++) {
 			pfn("", dc->things[1][y].data,
 			    dc->things[1][y].len,
-			    RIGHT, y == m, dc->extra,
-			    out);
+			    RIGHT, dc->extra, out);
 		}
 		dfn(DF_COMMON_END, dc->extra, out);
 	}
@@ -943,23 +933,23 @@ diff_printUnified(df_ctx *dc, int context, df_puts pfn, df_hdr phdr, FILE *out)
 			for (; x < h[i].li; x++) {
 				pfn(" ", dc->things[0][x].data,
 				    dc->things[0][x].len, LEFT,
-				    x == n, dc->extra, out);
+				    dc->extra, out);
 			}
 			for (; x < (h[i].li + h[i].ll); x++) {
 				pfn("-", dc->things[0][x].data,
 				    dc->things[0][x].len, LEFT,
-				    x == n, dc->extra, out);
+				    dc->extra, out);
 			}
 			for (y = h[i].ri; y < (h[i].ri + h[i].rl); y++) {
 				pfn("+", dc->things[1][y].data,
 				    dc->things[1][y].len, RIGHT,
-				    y == m, dc->extra, out);
+				    dc->extra, out);
 			}
 		}
 		for (; y <= ey; y++) {
 			pfn(" ", dc->things[1][y].data,
 			    dc->things[1][y].len, RIGHT,
-			    y == m, dc->extra, out);
+			    dc->extra, out);
 		}
 		i--;
 	}
