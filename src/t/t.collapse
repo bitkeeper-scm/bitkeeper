@@ -271,8 +271,9 @@ C edited comment
 edited_symlink 1.0 0/0/0 u2
 BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
 ---
-exclude 1.3 1/1/1 u2
+exclude 1.3 1/0/1 u2
 BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
+inc/exc -3
 -rw-
 C replace
 
@@ -537,4 +538,25 @@ bk commit $Q -yafile
 unset BK_CONFIG
 bk collapse $Q -ea$REV || fail collapse failed
 bk -e sfiles -cg | grep -q attr && fail left edite attr file
+echo OK
+
+echo $N Test pending exclude ........................................$NL
+echo 0 > f
+bk new -l $Q f
+for h in 1 2 3 4 5 6 7 8 9 10
+do	echo $h > f
+	bk delta $Q -y$h -l f || fail
+done
+bk commit -y10 $Q
+REV=`bk changes -r+ -nd:REV:`
+bk edit -x1.2 $Q f
+bk delta $Q -yex f || fail
+bk commit -y2 $Q || fail
+bk edit -x1.4 $Q f
+bk collapse $Q -ea$REV || fail
+X=`bk _cat SCCS/p.f | sed 's/.*-x/-x/'`
+test X$X = X-x1.2,1.4 || fail
+bk collapse -ea$REV 2>/dev/null || fail
+X=`bk _cat SCCS/p.f | sed 's/.*-x/-x/'`
+test X$X = X-x1.2,1.4 || fail
 echo OK
