@@ -124,11 +124,6 @@ void	diff_printUnified(df_ctx *dc, int context, df_puts pfn, df_hdr phdr, FILE *
 void	diff_printDecorated(df_ctx *dc, df_puts pfn, df_deco dfn, FILE *out);
 
 /*
- * Walking the diffs by hand.
- */
-hunk	*diff_hunks(df_ctx *dc);
-
-/*
  * Freeing the diff context.
  */
 void	diff_free(df_ctx *dc);

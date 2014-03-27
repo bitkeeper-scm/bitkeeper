@@ -293,7 +293,7 @@ regen(sccs *s, int verbose, char *key)
 			free(a1);
 			a1 = bktmp(0);
 			assert(a1 && a1[0]);
-			if (diff_files(a2, a3, 0, 0, a1)) {
+			if (diff_files(a2, a3, 0, a1)) {
 				fprintf(stderr, "\n%s@%s != orig@%s\n",
 				    gfile, rev(revs, s, d), REV(s, d));
 				sys("echo", "diff", a2, a3, ">", a1, SYS);

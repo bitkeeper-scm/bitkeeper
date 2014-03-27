@@ -964,10 +964,3 @@ diff_printUnified(df_ctx *dc, int context, df_puts pfn, df_hdr phdr, FILE *out)
 		i--;
 	}
 }
-
-hunk	*
-diff_hunks(df_ctx *dc)
-{
-	unless (dc) return (0);
-	return (dc->hunks);
-}

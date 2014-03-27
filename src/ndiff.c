@@ -138,7 +138,7 @@ ndiff_main(int ac, char **av)
 		goto out;
 	}
 
-	rc = diff_files(av[optind], av[optind+1], &opts, 0, "-");
+	rc = diff_files(av[optind], av[optind+1], &opts, "-");
 out:	if (opts.out_define) FREE(opts.out_define);
 	if (opts.pattern) free(opts.pattern);
 	if (pattern) FREE(pattern);
@@ -186,7 +186,7 @@ diff_cleanOpts(df_opt *opts)
  *   2  error
  */
 int
-diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
+diff_files(char *file1, char *file2, df_opt *dop, char *out)
 {
 	int	i, j, n;
 	int	firstDiff;
@@ -205,6 +205,7 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 	struct	stat sb[2];
 	struct	tm	*tm;
 	long	offset;
+	hunk	*h, *hlist;
 	char	buf[1024];
 
 	if (getenv("_BK_USE_EXTERNAL_DIFF")) {
@@ -356,14 +357,25 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 	}
 	assert((firstDiff <= lno[0]) && (firstDiff <= lno[1]));
 	/* Do the diff */
-	diff_items(dc, firstDiff, o->dop->minimal);
-	unless (nLines(diff_hunks(dc))) {
+	hlist = diff_items(dc, firstDiff, o->dop->minimal);
+	unless (nLines(hlist)) {
 		rc = 0;
 		goto out;
 	}
 	rc = 1;			/* difference found */
-	if (odc) *odc = dc;
 	unless (out) goto out;
+
+	if (o->dop->out_diffstat) {
+		dop->adds = dop->dels = dop->mods = 0;
+		EACHP(hlist, h) {
+			if (h->ll == h->rl) {
+				dop->mods += h->ll;
+			} else {
+				dop->adds += h->rl;
+				dop->dels += h->ll;
+			}
+		}
+	}
 
 	/* Print the diffs. */
 	if (o->dop->out_unified) {
@@ -383,8 +395,6 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 	} else if (o->dop->out_sdiff) {
 		diff_printDecorated(dc, sdPrint, sdState, fout);
 	} else if (o->dop->out_print_hunks) {
-		hunk	*h, *hlist = diff_hunks(dc);
-
 		EACHP(hlist, h) {
 			fprintf(fout,
 			    "%d,%d %d,%d\n", h->li, h->ll, h->ri, h->rl);
@@ -397,7 +407,7 @@ out:	if (fout && (fout != stdout)) fclose(fout);
 	FREE(data[1]);
 	FREE(o->dop);
 	FREE(o);
-	unless (odc) diff_free(dc);
+	diff_free(dc);
 	return (rc);
 }
 

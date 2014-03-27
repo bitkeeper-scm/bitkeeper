@@ -519,7 +519,7 @@ nulldiff(char *name, df_opt *dop)
 	assert(p);
 	file = aprintf("%s/%s", p+1, name);
 	chdir("..");
-	ret = diff_files(DEVNULL_RD, file, dop, 0, "-");
+	ret = diff_files(DEVNULL_RD, file, dop, "-");
 	chdir(here);
 	free(here);
 	free(file);
