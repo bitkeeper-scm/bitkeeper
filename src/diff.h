@@ -27,26 +27,24 @@ typedef	struct df_ctx	df_ctx;
 
 /*
  * Compare two items returning zero if they are equal.  The 'extra'
- * argument is what was passed as extra to diff_new(). The 'last'
- * argument will be true for the last element in the list of
- * things. This is useful for things like "no newline at end of file".
+ * argument is what was passed as extra to diff_new().
  */
 typedef int (*df_cmp)(void *a, int alen,
-    void *b, int blen, int last, void *extra);
+    void *b, int blen, void *extra);
 
 /*
  * Hash an item into a u32 value. Extra is what was passed to
  * diff_new(). The 'side' argument is zero for the left side, and one
  * for the right side.
  */
-typedef u32 (*df_hash)(void *a, int len, int side, int last, void *extra);
+typedef u32 (*df_hash)(void *a, int len, int side, void *extra);
 
 /*
  * Print an item to 'out'. The 'extra' argument is what was passed to
- * diff_new(). The argument 'last' will only be true for the last item.
+ * diff_new().
  */
 typedef void (*df_puts)(char *prefix, void *a, int alen,
-    int side, int last, void *extra, FILE *out);
+    int side, void *extra, FILE *out);
 
 /*
  * For printing headers in diff -p output
@@ -122,11 +120,6 @@ void	diff_print(df_ctx *dc, df_puts pfn, FILE *out);
 void	diff_printRCS(df_ctx *dc, df_puts pfn, FILE *out);
 void	diff_printUnified(df_ctx *dc, int context, df_puts pfn, df_hdr phdr, FILE *out);
 void	diff_printDecorated(df_ctx *dc, df_puts pfn, df_deco dfn, FILE *out);
-
-/*
- * Walking the diffs by hand.
- */
-hunk	*diff_hunks(df_ctx *dc);
 
 /*
  * Freeing the diff context.

@@ -1,0 +1,60 @@
+#!/bin/sh
+
+nbk=../bk
+
+check()
+{
+	cmp -s $1 $2
+	if [ $? -eq 0 ]; then
+		echo -n 0
+	else
+		grep -q '^<<<' $2
+		if [ $? -eq 0 ]; then
+			echo -n 1
+		else
+			echo -n 2
+		fi
+	fi
+}
+
+trap "rm -f userfile P M G myfile myfile2 mergefile sccsfile" 0
+
+for f in $*
+do	bk prs -hnd'$if(:MERGE:){:REV: :PARENT: :MPARENT: :GCA2:}' $f |
+	while read r p m gca
+	do	
+		args="-g -l$p -r$m $f"
+		bk smerge $args > myfile
+		$nbk smerge $args > myfile2
+
+		# skip merges were installed smerge is the same
+		cmp -s myfile myfile2 && continue
+		
+		bk get -qkpr$r $f > userfile
+		
+		check myfile myfile2
+		check userfile myfile
+		check userfile myfile2
+
+		# check diff3
+		bk get -qkpr$p $f > P
+		bk get -qkpr$m $f > M
+		bk get -qkpr$gca $f > G
+		bk merge P G M mergefile
+		check userfile mergefile
+		rm -f G P M mergefile
+
+		# check sccsmerge
+		bk get -qkp -M$m -r$p $f > sccsfile
+		check userfile sccsfile
+		rm -f sccsfile
+
+		echo '' smerge $args
+
+		#xxdiff myfile myfile2 userfile
+
+		rm -f myfile myfile2 userfile
+	done
+done
+
+

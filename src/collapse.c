@@ -440,7 +440,10 @@ do_file(char *file, char *tiprev)
 	int	rc = 1;
 	ser_t	*rmdeltas = 0;
 	int	i;
+	pfile	pf = {0};
 	char	*sfile = 0, *gfile = 0, *pfile = 0, *dfile = 0;
+	u8	*premap;
+	char	*inc, *exc = 0;
 	time_t	gtime = 0;
 
 	cmdlog_lock(CMD_WRLOCK);
@@ -528,6 +531,17 @@ do_file(char *file, char *tiprev)
 			gtime = s->gtime;
 			savefile = aprintf("%s.fix.%u", gfile, getpid());
 			rename(gfile, savefile);
+
+			/* calculate any excluded revs */
+			if (HAS_PFILE(s)) sccs_read_pfile("collapse", s, &pf);
+			premap = sccs_set(s, d, pf.iLst, pf.xLst);
+			free_pfile(&pf);
+			EACH(rmdeltas) {
+				e = rmdeltas[i];
+				premap[e] = 0;
+			}
+			sccs_graph(s, tipd, premap, &inc, &exc);
+			free(premap);
 		}
 		/* remove p.file */
 		unlink(pfile);
@@ -594,11 +608,13 @@ do_file(char *file, char *tiprev)
 			rename(savefile, gfile);
 			free(savefile);
 			savefile = 0;
-			if (sccs_get(s, "+", 0, 0, 0,
+			if (sccs_get(s, "+", 0, inc, exc,
 				SILENT|GET_EDIT|GET_SKIPGET, "-")) {
 				fprintf(stderr, "%s: get -g %s failed\n",
 				    me, gfile);
 			}
+			FREE(inc);
+			FREE(exc);
 			s->gtime = gtime;
 		}
 		sccs_setStime(s, 0);

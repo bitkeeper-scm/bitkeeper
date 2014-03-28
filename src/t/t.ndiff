@@ -897,3 +897,67 @@ cat <<EOF > WANT
 EOF
 cmpfiles WANT GOT
 echo OK
+
+echo $N Make sure lines we say changed actually changed..............$NL
+cat <<EOF > A
+funca()
+{
+	var a;
+
+	stuff;
+}
+
+funca()
+{
+	var a;
+
+	stuff;
+}
+
+funca()
+{
+	var a;
+
+	stuff;
+}
+
+funca()
+{
+	var a;
+
+	stuff;
+}
+EOF
+cat <<EOF > B
+funcb()
+{
+	var b;
+
+	stuff;
+}
+
+funcb()
+{
+	var b;
+
+	stuff;
+}
+
+funcb()
+{
+	var b;
+
+	stuff;
+}
+
+funcb()
+{
+	var b;
+
+	stuff;
+}
+EOF
+bk ndiff -u A B > GOT
+bk diff -up A B > WANT
+cmpfiles WANT GOT
+echo OK

@@ -147,10 +147,7 @@ bk edit $Q blech
 echo hi there >> blech
 bk ci $Q -ywhatever blech
 bk commit $Q -c || exit 1
-bk _test -f SCCS/c.ChangeSet && {
-	echo not unlinked
-	exit 1
-}
+bk _test -f SCCS/c.ChangeSet && fail not unlinked
 test `bk changes -r+ -d:C:` = "whatever" || {
 	echo bad comments stored
 	bk changes -r+ -nd:C:

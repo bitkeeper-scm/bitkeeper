@@ -366,7 +366,7 @@ process(Opts *opts, char *root, char *start, char *end, MDBM *idDB)
 		if (sccs_get(s, start, 0, 0, 0, SILENT|PRINT, file_a)) {}
 		if (sccs_get(s, end, 0, 0, 0, SILENT|PRINT, file_b)) {}
 		dop.ignore_trailing_cr = 1;
-		diffs = diff_files(file_a, file_b, &dop, 0, 0);
+		diffs = diff_files(file_a, file_b, &dop, 0);
 		sccs_free(s);
 		unlink(file_a);
 		unlink(file_b);

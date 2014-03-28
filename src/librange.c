@@ -157,6 +157,45 @@ range_cset(sccs *s, ser_t d)
 	s->state |= S_SET;
 }
 
+/*
+ * Given two deltas, find the oldest merge where they came together.
+ * If a fourth arg is passed, return a list of all merges where these
+ * two deltas were merged.
+ * Note: also works for colinear d1 and d2.
+ */
+ser_t
+range_findMerge(sccs *s, ser_t d1, ser_t d2, ser_t **mlist)
+{
+	ser_t	d, e, start, ret = 0;
+	u32	pcolor = 0, mcolor = 0;
+
+	assert(d1 && d2);
+	start = (d1 < d2) ? d1 : d2;
+	FLAGS(s, d1) |= D_BLUE;
+	FLAGS(s, d2) |= D_RED;
+	for (d = start; d <= TABLE(s); d++) {
+		if (TAG(s, d)) continue;
+		pcolor = mcolor = 0;
+		if (e = PARENT(s, d)) {
+			pcolor = FLAGS(s, e) & (D_RED|D_BLUE);
+		}
+		if (e = MERGE(s, d)) {
+			mcolor = FLAGS(s, e) & (D_RED|D_BLUE);
+		}
+		FLAGS(s, d) |= (pcolor|mcolor);
+		if (((FLAGS(s, d) & (D_RED|D_BLUE)) == (D_RED|D_BLUE)) &&
+		    ((pcolor != (D_RED|D_BLUE)) &&
+		    (mcolor != (D_RED|D_BLUE)))) {
+			unless (ret) ret = d;	/* first is oldest */
+			unless (mlist) break;
+			addArray(mlist, &d);
+		}
+	}
+	if (d > TABLE(s)) d = TABLE(s);
+	for (e = start; e <= d; e++) FLAGS(s, e) &= ~(D_RED|D_BLUE);
+	return (ret);
+}
+
 private ser_t
 getrev(char *me, sccs *s, int flags, char *rev)
 {
