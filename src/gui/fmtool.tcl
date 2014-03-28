@@ -184,7 +184,7 @@ proc useDiff {which color} \
 	incr nextBoth 2
 	set a [lindex $rDiff $nextDiff]; incr nextDiff 1
 	set b [lindex $rDiff $nextDiff]; incr nextDiff 1
-	set Text [.diffs.$which get $a $b]
+	set Text [getUserText .diffs.$which $a $b]
 	set Here [.merge.t index end]
 
 	.merge.t insert end $Text [list tmp $which]

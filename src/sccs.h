@@ -1392,7 +1392,7 @@ int	inskeys(char *image, char *keys);
 void	lockfile_cleanup(void);
 
 int	diff_cleanOpts(df_opt *opts);
-int	diff_files(char *file1, char *file2, df_opt *opts, df_ctx **dc, char *out);
+int	diff_files(char *file1, char *file2, df_opt *opts, char *out);
 int	diffline(char *left, char *right);
 typedef	void (*set_pfunc)(sccs *, ser_t);
 u8	*set_get(sccs *s, char *rev);

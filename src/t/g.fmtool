@@ -114,3 +114,25 @@ err=$?
 test -s "$OUT" && fail -f "$OUT"
 test $err -ne 0 && fail
 echo OK
+
+echo $N Make sure we do not put space markers in files...............$NL
+echo "#define TEST" > file1
+echo "#   define TEST" > WANT
+bk guitest fmtool file1 WANT GOT >"$OUT" 2>&1 <<'EOF'
+	test_buttonPress "Use Right"
+	test_buttonPress Done
+	test_die 99
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Make sure the space marker in user data makes it through.....$NL
+printf "#define\342\220\243TEST\n" > file1
+printf "#   define\342\220\243TEST\n" > WANT
+bk guitest fmtool file1 WANT GOT >"$OUT" 2>&1 <<'EOF'
+	test_buttonPress "Use Right"
+	test_buttonPress Done
+	test_die 99
+EOF
+cmpfiles WANT GOT
+echo OK

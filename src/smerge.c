@@ -10,7 +10,6 @@ typedef struct file	file_t;
 private char	*find_gca(char *file, char *left, char *right);
 private int	do_weave_merge(u32 start, u32 end);
 private conflct	*find_conflicts(void);
-private void	merge_conflicts(conflct *head);
 private int	resolve_conflict(conflct *curr);
 private diffln	*unidiff(conflct *curr, int left, int right);
 private int	sameline(ld_t *left, ld_t *right);
@@ -35,6 +34,8 @@ private int	merge_common_header(conflct *r);
 private int	merge_common_footer(conflct *r);
 private	int	merge_common_deletes(conflct *r);
 private int	merge_added_oneside(conflct *r);
+private	int	merge_with_following_gca(conflct *r);
+private	int	merge_conflicts(conflct *head);
 
 enum {
 	MODE_GCA,
@@ -80,10 +81,8 @@ private	int	mode;
 private	int	fdiff;
 private	int	show_mergefn;
 private	char	*anno = 0;
-#ifdef	SHOW_SEQ
 private	int	parse_range(char *range, u32 *start, u32 *end);
 private	int	show_seq;
-#endif
 
 int
 smerge_main(int ac, char **av)
@@ -144,12 +143,6 @@ smerge_main(int ac, char **av)
 		    case 'r':
 			revs[RIGHT] = strdup(optarg);
 			break;
-#ifdef	SHOW_SEQ
-/*
- * This stuff is removed for 3.0.
- * If it gets added back, there is also a regression for this
- * in the t.smerge history that should be recovered.
- */
 		    case 'R': /* show output in the range <r> */
 			if (parse_range(optarg, &start, &end)) {
 				usage();
@@ -159,16 +152,15 @@ smerge_main(int ac, char **av)
 		    case 's': /* show sequence numbers */
 			show_seq = 1;
 			break;
-#endif
 		    case 'h': /* help */
+		    default: goto help;
 		    case 310: /* --show-merge-fn */
 			show_mergefn = 1;
 			break;
-		    default: bk_badArg(c, av);
 		}
 	}
 	unless (av[optind] && !av[optind+1] && revs[LEFT] && revs[RIGHT]) {
-		system("bk help -s smerge");
+help:		system("bk help -s smerge");
 		mergefcns_help();
 		return (2);
 	}
@@ -179,7 +171,7 @@ smerge_main(int ac, char **av)
 	/*
 	 * Disable the merge_content heuristic if the merge GCA is a
 	 * set node and not a single rev.  We have had cases of
-	 * merging two merges that resolve a conflict different just
+	 * merging two merges that resolve a conflict differently just
 	 * deleting everything as a result of this code.  See testcase
 	 * in same cset.
 	 */
@@ -391,8 +383,8 @@ find_gca(char *file, char *left, char *right)
 }
 
 /*
- * print a line from a ld_t structure and optional put the
- * first_char argument at the beginngin.
+ * print a line from a ld_t structure and optionally put the
+ * first_char argument at the beginning.
  * Handles the -s (show_seq) knob.
  */
 private void
@@ -404,9 +396,7 @@ printline(ld_t *ld, char first_char, int forcenl)
 
 	if (fdiff && !first_char) first_char = ' ';
 	if (first_char) putchar(first_char);
-#ifdef	SHOW_SEQ
 	if (show_seq) printf("%6d\t", ld->seq);
-#endif
 
 	/* Print annotation before line, if present */
 	if (a) while (a < p) putchar(*a++);
@@ -437,6 +427,7 @@ struct conflct {
 	int	start_seq;	/* seq of lines before 'start' */
 	int	end_seq;	/* seq of lines at 'end' */
 	ld_t	*merged;	/* result of an automerge */
+	u32	split:1;	/* created by split */
 	conflct	*prev, *next;
 	char	**algos;	/* merge algos that touched this block */
 };
@@ -469,14 +460,11 @@ do_weave_merge(u32 start, u32 end)
 	/* create a linked list of all conflict regions */
 	clist = find_conflicts();
 
-	/* Merge any that *might* be incorrectly marked */
-	merge_conflicts(clist);
-
 	curr = clist;
 	while (curr) {
 		conflct	*tmp;
 
-		/* print lines up the the next conflict */
+		/* print lines up to the next conflict */
 		len = curr->start[GCA] - mk[GCA];
 
 		/* should be the same number of lines */
@@ -534,7 +522,7 @@ do_weave_merge(u32 start, u32 end)
 }
 
 /*
- * Find all conflict sections in the file based only of sequence numbers.
+ * Find all conflict sections in the file based only on sequence numbers.
  * Return a linked list of conflict regions.
  */
 private conflct *
@@ -651,44 +639,42 @@ contains_line(conflct *c, ld_t *line)
 }
 
 /*
- * Walk list of conflicts and merge any that are only
- * seperated by one line that exists in one of the conflict
- * regions.
+ * Merge a conflict into the following conflict if they are adjacent
+ * or if they are separated by one line that exists in one of the
+ * conflict regions.
  * XXX should handle N
  */
-private void
+private int
 merge_conflicts(conflct *head)
 {
-	while (head) {
-		if (head->next && head->next->start[0] - head->end[0] == 1) {
-			ld_t	*line = &body[0].lines[head->end[0]];
+	ld_t	*line;
+	conflct	*tmp;
+	int	i;
 
-			if (contains_line(head, line) ||
-			    contains_line(head->next, line)) {
-				conflct	*tmp;
-				int	i;
+	unless (head->next) return (0);
+	if (head->split) return (0);
+	line = &body[0].lines[head->end[0]];
+	if ((((head->next->start[0] - head->end[0]) == 1) &&
+		(contains_line(head, line) ||
+		 contains_line(head->next, line))) ||
+	    (head->next->start[0] == head->end[0])) {
 
-				/* merge the two regions */
-				tmp = head->next;
-				for (i = 0; i < NFILES; i++) {
-					head->end[i] = tmp->end[i];
-				}
-				assert(tmp->end_seq);
-				head->end_seq = tmp->end_seq;
-				head->next = tmp->next;
-				if (tmp->next) tmp->next->prev = head;
-				conflct_free(tmp);
-				/*
-				 * don't update head so we try this
-				 * conflict again.
-				 */
-			} else {
-				head = head->next;
-			}
-		} else {
-			head = head->next;
+		/* merge the two regions */
+		T_DEBUG("merge %d-%d %d-%d",
+		    head->start[LEFT], head->end[LEFT],
+		    head->next->start[LEFT], head->next->end[LEFT]);
+		tmp = head->next;
+		for (i = 0; i < NFILES; i++) {
+			head->end[i] = tmp->end[i];
 		}
+		assert(tmp->end_seq);
+		head->end_seq = tmp->end_seq;
+		head->next = tmp->next;
+		if (tmp->next) tmp->next->prev = head;
+		conflct_free(tmp);
+		return (1);
 	}
+	return (0);
 }
 
 /*
@@ -712,7 +698,7 @@ struct difwalk {
 
 /*
  * Read a line from the diff and return it.  The arguments are like fgets().
- * We need to just skip lines about missing newlines, we don't actually
+ * We need to just skip over lines missing newlines; we don't actually
  * read the lines so we don't need to know about the missing newline.
  * We are just looking for line counts.
  */
@@ -934,12 +920,10 @@ do_diff_merge(void)
 		memset(&conf, 0, sizeof(conf));
 		conf.start[GCA] = conf.start[GCAR] = start - 1;
 		conf.end[GCA] = conf.end[GCAR] = end - 1;
-#if SHOW_SEQ
 		if (start - 1 > 0) {
 			conf.start_seq = body[GCA].lines[start - 2].seq;
 		}
 		conf.end_seq = body[GCA].lines[end - 1].seq;
-#endif
 
 		diffwalk_range(ldiff, LEFT, &conf);
 		diffwalk_range(rdiff, RIGHT, &conf);
@@ -958,8 +942,8 @@ do_diff_merge(void)
 }
 
 /*
- * Define of set of autoresolve function for processing a
- * conflict. Each function takes conflict regression and looks at it to
+ * Define of set of autoresolve functions for processing a
+ * conflict. Each function takes a conflict region and looks at it to
  * determine if a merge is possible.  If a merge is possible then the
  * ->merged array is initialized with the lines in the merged output
  * and 1 is returned.  The conflict can be split into to adjacent
@@ -980,8 +964,10 @@ do_diff_merge(void)
  * If you evolve this code, use new numbers.
  *
  * Currently all functions are enabled by default, we use -1 to mean that
- * it is enabled, but hasn't been override by the command line.  It gets
+ * it is enabled, but hasn't been overridden by the command line.  It gets
  * set to 1 if a function is explicitly enabled.
+ *
+ * The order in the struct is the order the enabled functions are run.
  */
 struct mergefcns {
 	char	*name;		/* "name" of function for commandline */
@@ -990,6 +976,8 @@ struct mergefcns {
 	char	*fname;		/* function name */
 	char	*help;
 } mergefcns[] = {
+	{"9",   -1, merge_conflicts, "merge_conflicts",
+	 "Merge adjacent conflict regions"},
 	{"1",	-1, merge_same_changes, "merge_same_changes",
 	"Merge identical changes made by both sides"},
 	{"2",	-1, merge_only_one, "merge_only_one",
@@ -1004,12 +992,14 @@ struct mergefcns {
 	"Merge identical changes at the end of a conflict"},
 	{"6",	-1, merge_common_deletes, "merge_common_deletes",
 	"Merge identical deletions made by both sides"},
+	{"8",   -1, merge_with_following_gca, "merge_with_following_gca",
+	 "Match single side with GCA"},
 };
 #define	N_MERGEFCNS (sizeof(mergefcns)/sizeof(struct mergefcns))
 
 /*
- * Called by the command line parses to enable/disable different functions.
- * This function takes a comma or space seperated list of function names
+ * Called by the command line parser to enable/disable different functions.
+ * This function takes a comma or space separated list of function names
  * and enables/disables those functions.  "all" is an alias for all functions.
  */
 private void
@@ -1095,14 +1085,12 @@ resolve_conflict(conflct *curr)
 		/* This region was automerged */
 		if (fdiff) {
 			putchar('M');
+			printf(" %d", curr->start_seq);
 			if (show_mergefn && curr->algos) {
 				t = joinLines(", ", curr->algos);
 				printf(" %s", t);
 				free(t);
 			}
-#ifdef SHOW_SEQ
-			printf(" %d", curr->start_seq);
-#endif
 			putchar('\n');
 		}
 		for (p = curr->merged; p->line; p++) {
@@ -1123,10 +1111,8 @@ resolve_conflict(conflct *curr)
 	}
 	if (fdiff) {
 		putchar('E');
-#ifdef SHOW_SEQ
 		assert(curr->end_seq);
 		printf(" %d", curr->end_seq);
-#endif
 		putchar('\n');
 	}
 	return (ret);
@@ -1362,9 +1348,7 @@ user_conflict_fdiff(conflct *c)
 	blankline.anno = 0;
 
 	putchar('L');
-#ifdef SHOW_SEQ
 	unless (c->merged) printf(" %d", c->start_seq);
-#endif
 	putchar('\n');
 	lp = left;
 	rp = right;
@@ -1544,11 +1528,11 @@ highlight_line(diffln *del, diffln *add)
 
 /*
  * Walk replacements in a diff and find lines that are mostly similar.
- * For those lines generate chararacter highlighting information to
+ * For those lines generate character highlighting information to
  * mark the characters that have changed.
  *
  * For any line that should be highlighted, the highlight field of
- * the diffln struct is set of an array of character pairs.  The array
+ * the diffln struct is an array of range pairs {start, end}.  The array
  * ends at the pair 0,0.  (The array is allocated with malloc and it
  * is up to the user to free.
  */
@@ -1577,7 +1561,6 @@ highlight_diff(diffln *diff)
 	}
 }
 
-#ifdef SHOW_SEQ
 /*
  * Parse a range string from the command line.
  * Valid formats:
@@ -1600,7 +1583,6 @@ parse_range(char *range, u32 *start, u32 *end)
 	}
 	return(0);
 }
-#endif
 
 /*--------------------------------------------------------------------
  * Automerge functions
@@ -1722,7 +1704,7 @@ are_unmodified(diffln *diff, u32 *lines)
 }
 
 /*
- * Determine if both sides made modifications to non-overlaping sections.
+ * Determine if both sides made modifications to non-overlapping sections.
  * A modification is a delete of 1 or more lines follow by an addition
  * of 0 or more lines.
  */
@@ -1812,7 +1794,7 @@ merge_content(conflct *c)
 /*
  * Take a conflict region and a set of 3 indexes for the 3 sides
  * and split the conflict into two such that the second conflict starts
- * and those indexes.
+ * with those indexes.
  */
 private void
 split_conflict(conflct *c, int splitidx[NFILES])
@@ -1835,6 +1817,7 @@ split_conflict(conflct *c, int splitidx[NFILES])
 
 	c->end_seq = seq;
 	newc->start_seq = seq;
+	c->split = 1;		/* prevent merge_conflicts() from joining */
 
 	/* link it up */
 	if (c->next) c->next->prev = newc;
@@ -1881,6 +1864,9 @@ merge_common_header(conflct *c)
 	splitidx[GCA] = splitidx[GCAR] = j;
 
 	split_conflict(c, splitidx);
+	T_DEBUG("split %d-%d %d-%d",
+	    c->start[LEFT], c->end[LEFT],
+	    c->next->start[LEFT], c->next->end[LEFT]);
 
 	return (1);
 }
@@ -1927,6 +1913,9 @@ merge_common_footer(conflct *c)
 	splitidx[GCAR] = len[GCAR] - j;
 
 	split_conflict(c, splitidx);
+	T_DEBUG("split %d-%d %d-%d",
+	    c->start[LEFT], c->end[LEFT],
+	    c->next->start[LEFT], c->next->end[LEFT]);
 
 	return (1);
 }
@@ -1992,6 +1981,9 @@ merge_common_deletes(conflct *c)
 		splitidx[GCA] -= cnt;
 		splitidx[GCAR] -= cnt;
 		split_conflict(c, splitidx);
+		T_DEBUG("split %d-%d %d-%d",
+		    c->start[LEFT], c->end[LEFT],
+		    c->next->start[LEFT], c->next->end[LEFT]);
 		ret = 1;
 	}
 
@@ -2041,6 +2033,80 @@ merge_added_oneside(conflct *c)
 	splitidx[side] = i;
 
 	split_conflict(c, splitidx);
+	T_DEBUG("split %d-%d %d-%d",
+	    c->start[LEFT], c->end[LEFT],
+	    c->next->start[LEFT], c->next->end[LEFT]);
 
 	return (1);
+}
+
+/*
+ * Kind of a conflict rotation.  When data only exists on one side of
+ * the conflict and the first line of that side matches the first
+ * line in the common block after the conflict then merge the common
+ * line into the conflict.  This will effectively move the common line
+ * from after the conflict to before it and shift the conflict region
+ * down one line.
+ *
+ * <<< local
+ * foo
+ * bar
+ * <<< remote
+ * >>>
+ * foo
+ *
+ * becomes
+ *
+ * <<< local
+ * foo
+ * bar
+ * foo
+ * <<< remote
+ * foo
+ * >>>
+ *
+ * then common header will pop 'foo' off the top.
+ */
+private int
+merge_with_following_gca(conflct *c)
+{
+	int	i, j, side;
+	int	len[NFILES];
+	int	ret = 0;
+	int	gap;		/* number of common lines after conflict */
+
+	for (i = 0; i < NFILES; i++) {
+		len[i] = c->end[i] - c->start[i];
+	}
+	/*
+	 * Only if only one side has lines active
+	 */
+	if ((len[LEFT] == 0) && (len[RIGHT] != 0)) {
+		side = RIGHT;
+	} else if ((len[RIGHT] == 0) && (len[LEFT] != 0)) {
+		side = LEFT;
+	} else {
+		return (0);
+	}
+	if (c->next) {
+		gap = c->next->start[GCA] - c->end[GCA];
+	} else {
+		gap = body[GCA].n - c->end[GCA];
+	}
+	if (len[side] < gap) gap = len[side];	/* gap = min(conf, common) */
+	for (j = 0; j < gap; j++) {
+		unless (sameline(
+		    &body[side].lines[c->start[side] + j],
+		    &body[GCA].lines[c->end[GCA] + j])) {
+			break;
+		}
+	}
+	if (j) {
+		for (i = 0; i < NFILES; i++) {
+			c->end[i] += j;
+		}
+		c->end_seq = body[GCA].lines[c->end[GCA]].seq;
+		ret = 1;
+	}
+	return (ret);
 }

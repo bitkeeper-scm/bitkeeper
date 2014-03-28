@@ -9507,7 +9507,7 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 		df_opt	dop = {0};
 
 		dop.ignore_trailing_cr = 1;
-		ret = diff_files(old, new, &dop, 0, tmpfile);
+		ret = diff_files(old, new, &dop, tmpfile);
 	}
 	unless (streq(old, DEVNULL_WR)) unlink(old);
 	if (!streq(new, s->gfile) && !streq(new, DEVNULL_WR)){
@@ -14491,8 +14491,6 @@ doDiff(sccs *s, df_opt *dop, char *leftf, char *rightf,
 	char	spaces[80];
 	int	first = 1;
 	char	*error = "";
-	df_ctx	*dc = 0;
-	hunk	*hunks, *h;
 	df_opt	dop2 = {0};
 
 	unless (dop) dop = &dop2;
@@ -14510,20 +14508,7 @@ doDiff(sccs *s, df_opt *dop, char *leftf, char *rightf,
 	}
 	unless (bktmp(diffFile)) return (-1);
 	dop->ignore_trailing_cr = 1;
-	diff_files(leftf, rightf, dop, &dc, diffFile);
-	if (dop->out_diffstat) {
-		hunks = diff_hunks(dc);
-		dop->adds = dop->dels = dop->mods = 0;
-		EACHP(hunks, h) {
-			if (h->ll == h->rl) {
-				dop->mods += h->ll;
-			} else {
-				dop->adds += h->rl;
-				dop->dels += h->ll;
-			}
-		}
-	}
-	diff_free(dc);
+	diff_files(leftf, rightf, dop, diffFile);
 	diffs = fopen(diffFile, "rt");
 	if (WRITABLE(s) && !EDITED(s)) {
 		error = " (writable without lock!) ";
