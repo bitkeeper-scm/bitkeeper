@@ -1,6 +1,6 @@
 
 ============================================================================
-Release notes for BitKeeper version 6.0.3 (released Mar 28, 2014)
+Release notes for BitKeeper version 6.0.3 (released Apr 7, 2014)
 
     This is a bugfix release.
 
@@ -32,6 +32,7 @@ Bugfixes
       time an unpopulated component was created)
 
   Other bugfixes
+    - Fix bkweb not accessing files outside of where the bkd was started.
     - Fix documentation bugs on the cset and config manpages.
     - Prevent bk from running inside the .bk directory.
     - Fix :DIFFS: dspec to not print temp file names for binary files.
