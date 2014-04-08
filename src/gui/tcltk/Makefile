@@ -67,7 +67,7 @@ ifdef	Q
 endif
 
 DDEVERSION := 1.3
-REGVERSION := 1.2
+REGVERSION := 1.3
 TKTABLE := Tktable2.10
 
 LIBTKTABLE := lib$(TKTABLE)$(SO)
