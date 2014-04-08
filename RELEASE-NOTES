@@ -8,6 +8,51 @@ bk pull
       multiple parents or URLs.
 
 ============================================================================
+Release notes for BitKeeper version 6.0.3 (released Apr 7, 2014)
+
+    This is a bugfix release.
+
+Bugfixes
+
+  bk changes
+    - Fix a bug in bk changes -i -S :
+      only prepend the component path when not in standalone mode.
+
+  bk collapse
+    - collapse -@../../repo was not working when the user was
+      not in the repository root.
+
+  bk diffs
+    - Was erroneously reporting non-existent files as new.
+    - Add -F option.
+
+  bk difftool
+    - Fix problem where large and completely different files
+      would show nothing.
+
+  bk fmtool
+    - Fix problem where fmtool would insert a space symbol instead
+      of a space character.
+
+  bk pull
+    - Fix an obscure problem in which a nested pull could dump core.
+      (bk pull -rSOME_OLD_REV where SOME_OLD_REV is before the
+      time an unpopulated component was created)
+
+  Other bugfixes
+    - Fix bkweb not accessing files outside of where the bkd was started.
+    - Fix documentation bugs on the cset and config manpages.
+    - Prevent bk from running inside the .bk directory.
+    - Fix :DIFFS: dspec to not print temp file names for binary files.
+    - Fix problem where \r\r\n line termination was confusing citool.
+    - Prevent users from moving files to . and .. when resolving rename
+      conflicts.
+    - Fix a bug that could cause some of bk's GUI-based tools to output
+      blank lines to the terminal when invoked from the command line.
+    - Fix pre-commit triggers to not pass an SCCS file in BK_COMMENTFILE
+      (since that is not helpful in a remapped tree).
+
+============================================================================
 Release notes for BitKeeper version 6.0.2 (released Oct 29, 2013)
 
     This is a bugfix release (one feature snuck in).

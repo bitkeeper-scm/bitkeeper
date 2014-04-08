@@ -1487,6 +1487,7 @@ highlightSideBySide(widget left, widget right, string start, string stop, int pr
 	string	rlines[] = split(/\n/, (string)Text_get(right, start, stop));
 	hunk	hunks[], h;
 	int	llen, rlen;
+	int	loff, roff;
 	int	allspace;
 	string	sl, sr;
 
@@ -1518,11 +1519,15 @@ highlightSideBySide(widget left, widget right, string start, string stop, int pr
 				    "${line}.${prefix + h.ri + h.rl}");
 			}
 		} else {
+			loff = roff = 0;
 			foreach (h in hunks) {
+				h.li += loff;
+				h.ri += roff;
 				sl = Text_get(left,
 				    "${line}.${prefix + h.li}",
 				    "${line}.${prefix + h.li + h.ll}");
 				sl = String_map({" ", "\u2423"}, sl);
+				loff += length(sl);
 				Text_tagAdd(left, "userData",
 				    "${line}.${prefix + h.li}",
 				    "${line}.${prefix + h.li + h.ll}");
@@ -1533,6 +1538,7 @@ highlightSideBySide(widget left, widget right, string start, string stop, int pr
 				    "${line}.${prefix + h.ri}",
 				    "${line}.${prefix + h.ri + h.rl}");
 				sr = String_map({" ", "\u2423"}, sr);
+				roff += length(sr);
 				Text_tagAdd(right, "userData",
 				    "${line}.${prefix + h.ri}",
 				    "${line}.${prefix + h.ri + h.rl}");
@@ -1720,7 +1726,7 @@ configureDiffWidget(string app, widget w, ...args)
 	Text_tagConfigure(w, "highlightsp",
 	    background: gc("${app}.highlightsp"));
 	Text_tagConfigure(w, "userData", elide: 1);
-	Text_tagConfigure(w, "bkMetaData", elide: 1);
+	Text_tagConfigure(w, "bkMetaData", elide: 0);
 
 	// Message tags.
 	Text_tagConfigure(w, "warning", background: gc("${app}.warnColor"));
