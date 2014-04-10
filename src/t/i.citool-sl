@@ -1,0 +1,18 @@
+echo $N Check that the subline highlighting works on the last diff...$NL
+commercial proj
+cat <<EOF > sl-file
+7
+"clist" and "keystate" should highlight the whole word
+8
+	int foo[3];	// the ] should NOT be highlighted
+EOF
+bk new $Q sl-file
+bk edit $Q sl-file
+cat <<EOF > sl-file
+7
+"keystate" and "clist" should highlight the whole word
+8
+	int foo[NFILES] = {0};	// the ] should NOT be highlighted
+EOF
+bk citool sl-file
+echo OK

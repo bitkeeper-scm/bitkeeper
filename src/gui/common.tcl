@@ -1570,12 +1570,12 @@ highlightStacked(widget w, string start, string stop, int prefix)
 		if (line[0] == "+") {
 			push(&addlines, line[prefix..END]);
 			if (!hunkstart) hunkstart = l;
-			continue;
+			if (l < length(lines)) continue;
 		}
 		if (line[0] == "-") {
 			push(&sublines, line[prefix..END]);
 			if (!hunkstart) hunkstart = l;
-			continue;
+			if (l < length(lines)) continue;
 		}
 		if (defined(addlines) && defined(sublines)) {
 			int	i = 0;
