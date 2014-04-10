@@ -51,7 +51,7 @@ do	bk prs -hnd'$if(:MERGE:){:REV: :PARENT: :MPARENT: :GCA2:}' $f |
 
 		echo '' smerge $args
 
-		#xxdiff myfile myfile2 userfile
+		xxdiff myfile myfile2 userfile
 
 		rm -f myfile myfile2 userfile
 	done

@@ -13,7 +13,7 @@
  */
 typedef	struct hunk {
 	int	li, ri;		/* Left index, right index.   */
-	int	ll, rl;		/* Left length, right lenght. */
+	int	ll, rl;		/* Left length, right length. */
 } hunk;
 
 /*

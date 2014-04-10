@@ -653,18 +653,8 @@ R
 +1.1.1.1               | branch end
 E -1
 EOF
-cmp -s fdiffm_R fdiffm_D || {
-	echo failed
-	echo difference between actual and desired:
-	diff fdiffm_R fdiffm_D
-	exit 1
-}
-cmp -s fdiffm_RD3 fdiffm_D || {
-	echo failed
-	echo difference between actual and desired in diff3:
-	diff fdiffm_RD3 fdiffm_D
-	exit 1
-}
+cmpfiles fdiffm_R fdiffm_D
+cmpfiles fdiffm_RD3 fdiffm_D
 echo OK
 
 # Test a fmtool fdiff output with :-Im -f
@@ -870,4 +860,47 @@ sed 's/^\\//' <<EOF > WANT
 \>>>>>>>
 EOF
 cmpfiles WANT GOT
+echo OK
+
+echo $N Demo that -g output uses diff and not the weave .............$NL
+
+# check a historical merge that shows what this fixes
+# just in case:
+# 1.117 == bryan@bigmac.bitmover.com|src/bk.c|20020820033927|43415
+# 1.161.9.2 == lm@dylan.bitmover.com|src/bk.c|20020820175916|26573
+
+bk smerge -g -l1.177 -r1.161.9.2 "`bk bin`"/bk.c |
+    sed -n -e 's/[^ ]*bk.c/bk.c/' -e '/^<<</,/^>>>/p' -e '/^>>>/q' > OUT
+cat <<EOF | sed 's/^\\//' > WANT
+\<<<<<<< local bk.c 1.161.7.3 vs 1.177
+ 		if (try > 1) {
+ 			fprintf(stderr, "%s(%d): got lock on try %d.\n",
+ 			    av[0], getpid(), try);
++			fflush(stderr);
+ 		}
+\<<<<<<< remote bk.c 1.161.7.3 vs 1.161.9.2
+-		if (try > 1) {
+-			fprintf(stderr, "%s(%d): got lock on try %d.\n",
+-			    av[0], getpid(), try);
+-		}
+>>>>>>>
+EOF
+cmpfiles OUT WANT
+
+# without this cset we get this:
+# <<<<<<< local ../bk.c 1.161.7.3 vs 1.177
+# -		if (try > 1) {
+# -			fprintf(stderr, "%s(%d): got lock on try %d.\n",
+# -			    av[0], getpid(), try);
+# +		if (try > 1) {
+# +			fprintf(stderr, "%s(%d): got lock on try %d.\n",
+# +			    av[0], getpid(), try);
+# +			fflush(stderr);
+#  		}
+# <<<<<<< remote ../bk.c 1.161.7.3 vs 1.161.9.2
+# -		if (try > 1) {
+# -			fprintf(stderr, "%s(%d): got lock on try %d.\n",
+# -			    av[0], getpid(), try);
+# -		}
+# >>>>>>>
 echo OK
