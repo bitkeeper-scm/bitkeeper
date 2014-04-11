@@ -1393,6 +1393,7 @@ void	lockfile_cleanup(void);
 
 int	diff_cleanOpts(df_opt *opts);
 int	diff_files(char *file1, char *file2, df_opt *opts, char *out);
+u32	ndiff_align(void *data, int len, int pos, void *extra);
 int	diffline(char *left, char *right);
 typedef	void (*set_pfunc)(sccs *, ser_t);
 u8	*set_get(sccs *s, char *rev);

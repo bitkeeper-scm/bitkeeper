@@ -19,6 +19,60 @@ send_cderror(char *path)
 	out(" (illegal, nonexistent, or not package root)\n");
 }
 
+/*
+ * like fullname() but it also expands if the final component of the
+ * pathname is a symlink
+ */
+private void
+fullname_expand(char *dir, char *buf)
+{
+	int	i;
+	char	sym[MAXPATH];
+
+	while (1) {
+		/* convert dir to a full pathname and expand symlinks */
+		dir = fullname(dir, buf);
+		unless (isSymlnk(dir)) return;
+
+		/*
+		 * fullname() doesn't expand symlinks in the last
+		 * component so fix that.
+		 */
+		i = readlink(dir, sym, sizeof(sym));
+		assert(i < sizeof(sym));
+		sym[i] = 0;
+		if (IsFullPath(sym)) {
+			strcpy(buf, sym);
+		} else {
+			concat_path(buf, dirname(dir), sym);
+		}
+	}
+}
+
+
+/*
+ * return 1 if the path is under a directory where the bkd start or if
+ * Opts.safe_cd is not enabled
+ */
+int
+bkd_isSafe(char *file)
+{
+	char	*p;
+	char	a[MAXPATH];
+	char	b[MAXPATH];
+
+	unless (Opts.safe_cd || ((p = getenv("BKD_DAEMON")) && *p)) return (1);
+	fullname_expand(start_cwd, a);
+	fullname_expand(file, b);
+	if ((strlen(b) >= strlen(a)) && pathneq(a, b, strlen(a))) return (1);
+	if (Opts.symlink_ok) {
+		fullLink(file, b, 0);
+		if ((strlen(b) >= strlen(a)) && pathneq(a, b, strlen(a))) {
+			return (1);
+		}
+	}
+	return (0);
+}
 
 /*
  * Change to the directory, making sure it is at or below where we are.

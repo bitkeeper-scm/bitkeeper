@@ -16,6 +16,8 @@ whitespace	only	   changes	  should be orange
 "clist" and "keystate" should highlight the whole word
 8
 	int foo[3];	// the ] should NOT be highlighted
+9
+tab	space tab/space	 space/tab 	tab/tab		space/space  end
 EOF
 cat <<EOF > RIGHT
 1
@@ -34,6 +36,8 @@ whitespace	only     changes 	should be orange
 "keystate" and "clist" should highlight the whole word
 8
 	int foo[NFILES] = {0};	// the ] should NOT be highlighted
+9
+tab space	tab/space 	space/tab	 tab/tab  space/space		end
 EOF
 bk difftool LEFT RIGHT
 echo OK

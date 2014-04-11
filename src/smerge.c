@@ -12,6 +12,7 @@ private int	do_weave_merge(u32 start, u32 end);
 private conflct	*find_conflicts(void);
 private int	resolve_conflict(conflct *curr);
 private diffln	*unidiff(conflct *curr, int left, int right);
+private diffln	*unidiff_ndiff(conflct *curr, int left, int right);
 private int	sameline(ld_t *left, ld_t *right);
 private	int	file_init(char *file, int side, char *anno, file_t *f);
 private	void	file_free(file_t *f);
@@ -36,6 +37,12 @@ private	int	merge_common_deletes(conflct *r);
 private int	merge_added_oneside(conflct *r);
 private	int	merge_with_following_gca(conflct *r);
 private	int	merge_conflicts(conflct *head);
+
+private	int	cmp_identical(void *va, int lena, void *vb, int lenb,
+    void *extra);
+private	u32	hash_identical(void *data, int len, int side,
+    void *extra);
+private	u32	align_wsLine(void *data, int len, int pos, void *extra);
 
 enum {
 	MODE_GCA,
@@ -1179,7 +1186,7 @@ user_conflict(conflct *curr)
 		unless (sameleft && !sameright) {
 			printf("<<<<<<< local %s %s vs %s%s\n",
 			    file, revs[GCA], revs[LEFT], fcns);
-			diffs = unidiff(curr, GCA, LEFT);
+			diffs = unidiff_ndiff(curr, GCA, LEFT);
 			for (i = 0; diffs[i].ld; i++) {
 				printline(diffs[i].ld, diffs[i].c, 1);
 			}
@@ -1188,7 +1195,7 @@ user_conflict(conflct *curr)
 		unless (sameright && !sameleft) {
 			printf("<<<<<<< remote %s %s vs %s%s\n",
 			    file, revs[GCAR], revs[RIGHT], fcns);
-			diffs = unidiff(curr, GCAR, RIGHT);
+			diffs = unidiff_ndiff(curr, GCAR, RIGHT);
 			for (i = 0; diffs[i].ld; i++) {
 				printline(diffs[i].ld, diffs[i].c, 1);
 			}
@@ -1227,7 +1234,7 @@ user_conflict(conflct *curr)
 		unless (sameleft && !sameright) {
 			printf("<<<<<<< local %s %s vs %s%s\n",
 			    file, revs[GCA], revs[LEFT], fcns);
-			diffs = unidiff(curr, GCA, LEFT);
+			diffs = unidiff_ndiff(curr, GCA, LEFT);
 			for (i = 0; diffs[i].ld; i++) {
 				if (diffs[i].c != '-') {
 					printline(diffs[i].ld, diffs[i].c, 1);
@@ -1238,7 +1245,7 @@ user_conflict(conflct *curr)
 		unless (sameright && !sameleft) {
 			printf("<<<<<<< remote %s %s vs %s%s\n",
 			    file, revs[GCAR], revs[RIGHT], fcns);
-			diffs = unidiff(curr, GCAR, RIGHT);
+			diffs = unidiff_ndiff(curr, GCAR, RIGHT);
 			for (i = 0; diffs[i].ld; i++) {
 				if (diffs[i].c != '-') {
 					printline(diffs[i].ld, diffs[i].c, 1);
@@ -1488,6 +1495,68 @@ unidiff(conflct *curr, int left, int right)
 	p->c = 0;
 
 	return (out);
+}
+
+private void
+gatherDiffs(char *prefix, void *a, int alen, int side,
+    void *extra, FILE *unused)
+{
+	diffln	**out = (diffln **)extra;
+	diffln	*dl;
+	ld_t	*line = (ld_t *)a;
+
+	dl = addArray(out, 0);
+	dl->c = prefix[0];
+	dl->ld = line;
+}
+
+/*
+ * do a diff of two sides of a conflict region and return
+ * an array of diffln structures.
+ * The returned array is allocated with malloc and needs to be freed by
+ * the user and the end of the array is marked by a ld pointer set to null.
+ * Typical usage:
+ *
+ *    diffs = unidiff(curr, GCA, LEFT);
+ *    for (i = 0; diffs[i].ld; i++) {
+ *	     printline(diffs[i].ld, diffs[i].c, 0);
+ *    }
+ *    free(diffs);
+ */
+private diffln *
+unidiff_ndiff(conflct *curr, int left, int right)
+{
+	ld_t	*llines, *rlines;
+	ld_t	*el, *er;
+	diffln	*out = 0, *ret, *dl;
+	df_ctx	*dc;
+	int	i;
+
+	llines = &body[left].lines[curr->start[left]];
+	rlines = &body[right].lines[curr->start[right]];
+	el = &body[left].lines[curr->end[left]];
+	er = &body[right].lines[curr->end[right]];
+
+	dc = diff_new(cmp_identical, hash_identical, align_wsLine, &out);
+	for (; llines < el; llines++) {
+		diff_addItem(dc, 0, llines, 0);
+	}
+	for (; rlines < er; rlines++) {
+		diff_addItem(dc, 1, rlines, 0);
+	}
+
+	diff_items(dc, 0, 1);
+	// XXX Big number is hack to get full context
+	diff_printUnified(dc, (1 << 28), gatherDiffs, 0, 0);
+	diff_free(dc);
+	/* Copy the data since the caller doesn't expect an array */
+	ret = calloc(nLines(out) + 1, sizeof(diffln));
+	i = 0;
+	EACHP(out, dl) {
+		ret[i++] = *dl;
+	}
+	free(out);
+	return (ret);
 }
 
 /*
@@ -2109,4 +2178,35 @@ merge_with_following_gca(conflct *c)
 		ret = 1;
 	}
 	return (ret);
+}
+
+/*
+ * Just see if two lines are identical
+ */
+private	int
+cmp_identical(void *va, int lena, void *vb, int lenb, void *extra)
+{
+	ld_t	*la = (ld_t *)va;
+	ld_t	*lb = (ld_t *)vb;
+
+	lena = la->len;
+	lenb = lb->len;
+	if (lena != lenb) return (lena - lenb);
+	return (memcmp(la->line, lb->line, lena));
+}
+
+private	u32
+hash_identical(void *data, int len, int side, void *extra)
+{
+	ld_t	*line = (ld_t *)data;
+
+	return (crc32c(0, line->line, line->len));
+}
+
+private u32
+align_wsLine(void *data, int len, int pos, void *extra)
+{
+	ld_t	*line = (ld_t *)data;
+
+	return (ndiff_align(line->line, line->len, pos, 0));
 }

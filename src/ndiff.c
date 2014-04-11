@@ -56,8 +56,6 @@ private void	sdPrint(char *prefix, void *data, int len, int side,
 private void	sdState(u32 where, void *extra, FILE *out);
 
 /* other functions */
-private u32	align(void *data, int len, int pos, void *extra);
-
 private	int	external_diff(char *lfile, char *rfile, df_opt *dop, char *out);
 
 private void	printLines(filedf *o, char *left, char *right, FILE *out);
@@ -278,7 +276,7 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 		dhash = hash_identical;
 	}
 
-	dc = diff_new(dcmp, dhash, align, o);
+	dc = diff_new(dcmp, dhash, ndiff_align, o);
 
 	re = o->dop->pattern;
 
@@ -473,8 +471,8 @@ external_diff(char *lfile, char *rfile, df_opt *dop, char *out)
 	return (ret);
 }
 
-private u32
-align(void *data, int len, int pos, void *extra)
+u32
+ndiff_align(void *data, int len, int pos, void *extra)
 {
 	char	*line = data;
 	int	i, j, c;
