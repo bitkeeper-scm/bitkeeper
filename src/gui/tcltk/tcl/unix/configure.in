@@ -143,6 +143,7 @@ SC_TCL_CFG_ENCODING
 #--------------------------------------------------------------------
 
 SC_TCL_LINK_LIBS
+AC_SEARCH_LIBS(inet_aton, resolv)
 
 # Add the threads support libraries
 LIBS="$LIBS$THREADS_LIBS"
