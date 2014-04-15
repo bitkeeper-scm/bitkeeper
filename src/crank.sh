@@ -18,7 +18,7 @@ test -r "$REMOTE" || {
 	echo No remote crank shell script found
 	exit 1
 }
-test "X$HOSTS" = X && HOSTS=`chosts bugfix-build`
+test "X$HOSTS" = X && HOSTS=`chosts build`
 test "X$HOSTS" = X && {
 	echo No build hosts found.
 	exit 1
