@@ -596,6 +596,14 @@ if test $tcl_cv_isnan = no; then
 fi
 
 #--------------------------------------------------------------------
+# Work around apparent fork() problem on netbsd 4.
+#--------------------------------------------------------------------
+
+if test "`uname -s`" = "NetBSD" ; then
+    AC_DEFINE(USE_VFORK, 1, [Should we use vfork() instead of fork()?])
+fi
+
+#--------------------------------------------------------------------
 # Darwin specific API checks and defines
 #--------------------------------------------------------------------
 
