@@ -240,7 +240,7 @@ BK_INCLUDES		= @BK_INCLUDES@
 @BK_HDRS@
 @BK_SRCS@
 ifdef BK_DIR
-BK_LIBS			= $(BK_DIR)/tomcrypt/libtomcrypt.a
+BK_LIBS			= $(BK_DIR)/tomcrypt/libtomcrypt.a $(BK_DIR)/gui/tcltk/pcre/.libs/libpcre.a
 TOMMATH_DIR		= $(BK_DIR)/tommath
 endif
 # Must be absolute because of the cd dltest $(DLTEST_DIR)/configure below.
