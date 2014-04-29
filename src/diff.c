@@ -6,143 +6,96 @@
  * hashes of them so it doesn't really matter what they are.
  */
 typedef struct thing {
-	void	*data;		/* data pointer */
-	int	len;		/* length pointer */
-	int	matches[2];	/* matches on either side */
+	int	idx;		/* (side, index) of item */
+	u8	side;
+	u8	both;		/* does it exist on both sides */
 } thing;
-
-enum {LEFT, RIGHT};
 
 /*
  * Internal diff state.
  */
-struct df_ctx {
-	df_cmp	dcmp;		/* compare function */
-	df_hash	dhash;		/* hash function */
-	df_puts	dprint;		/* print function */
-	df_align dalgn;		/* align function */
-	thing	*things[2];	/* addArray()'s of things */
+typedef	struct {
+	df_data	*data;		/* data fetch function */
+	df_cmp	*dcmp;		/* compare function */
+	df_hash	*dhash;		/* hash function */
+	df_cost	*dcost;		/* cost function */
 	u32	*hashes[2];	/* hashed version of things */
-	u32	*l, *r;		/* reduced version of hashes */
-	int	*lidx, *ridx;	/* mappings between l/r <-> hashes */
+	u32	*red[2];	/* reduced version of hashes */
+	int	*idx[2];	/* mappings between l/r <-> hashes */
 	u8	*chg[2];	/* change maps */
 	int	*vf, *vr;	/* diags for meyer's diff algo */
 	hash	*h;		/* storage hash u32 <-> data */
 	int	minimal;	/* whether to find the minimal diffs */
 	int	max_steps;	/* upper limit on diag finding algo */
-	hunk	*hunks;		/* the results of diffing */
+	hunk	range;		/* The range we are diffing */
 	void	*extra;		/* app extra stuff */
 
 #ifdef	DEBUG_DIFF
 	int	*minf, *minr;	/* bounds checking */
 	int	*maxf, *maxr;	/* bounds checking */
 #endif
-};
+} df_ctx;
 
-private void hashThings(df_ctx *dc, int side, int from);
-private void compressHashes(df_ctx *dc, int side);
-private void idiff(df_ctx *dc, int x1, int x2, int y1, int y2);
-private int  dsplit1(df_ctx *dc, int x1, int x2, int y1, int y2,
-    int *mx, int *my);
-private void shrink_gaps(df_ctx *dc, int side);
-private void align_blocks(df_ctx *dc, int side);
-private void ses(df_ctx *dc, int firstDiff);
+private	void	hashThings(df_ctx *dc, int side);
+private	void	compressHashes(df_ctx *dc, int side);
+private	void	idiff(df_ctx *dc, int x1, int x2, int y1, int y2);
+private	int	dsplit1(df_ctx *dc, int x1, int x2, int y1, int y2,
+		    int *mx, int *my);
+private	void	shrink_gaps(df_ctx *dc, int side);
+private	void	align_blocks(df_ctx *dc, int side);
+private hunk	*ses(df_ctx *dc, hunk *hunks);
 
-/*
- * Get a new diff context, this intializes the diff structure.
- * See the diff.h for meaning of the fields..
- */
-df_ctx	*
-diff_new(df_cmp cfn, df_hash hfn, df_align algn, void *extra)
-{
-	df_ctx	*dc;
-
-	dc = new(df_ctx);
-	dc->dcmp = cfn;
-	dc->dhash = hfn;
-	dc->dalgn = algn;
-	dc->extra = extra;
-	dc->h = hash_new(HASH_MEMHASH);
-	return (dc);
-}
-
-void
-diff_free(df_ctx *dc)
-{
-	unless (dc) return;
-	hash_free(dc->h);
-	FREE(dc->hunks);
-	FREE(dc->things[0]);
-	FREE(dc->things[1]);
-	FREE(dc);
-}
-
-void
-diff_addItem(df_ctx *dc, int side, void *data, int len)
-{
-	thing	*t;
-
-	assert(dc);
-	assert((side == 0) || (side == 1));
-
-	t = addArray(&(dc->things[side]), 0);
-	t->data = data;
-	t->len = len;
-
-}
+private	u32	cmpIt(df_ctx *dc, int idxA, int sideA, int idxB, int sideB);
+private	u32	hashIt(df_ctx *dc, int idx, int side);
+private	u32	costIt(df_ctx *dc, int idx, int side, int pos);
+private	int	lcs(char *a, int alen, char *b, int blen);
 
 hunk *
-diff_items(df_ctx *dc, int firstDiff, int minimal)
+diff_items(hunk *range, int minimal,
+    df_data *data, df_cmp *dcmp, df_hash *dhash, df_cost *dcost, void *extra)
 {
-	hunk	*h;
+	hunk	*hunks = 0;
+	int	i;
 	int	x, y;
 	int	*minf, *minr;
+	df_ctx	*dc;
 #ifdef	DEBUG_DIFF
 	int	*maxf, *maxr;
 #endif
 	int	n[2];
 
-	dc->minimal = minimal;
-	n[LEFT] = nLines(dc->things[LEFT]);
-	n[RIGHT] = nLines(dc->things[RIGHT]);
-	unless (n[LEFT] && n[RIGHT]) {
-		if (n[LEFT]) {
-			/* Right is empty. */
-			h = addArray(&dc->hunks, 0);
-			h->li = h->ri = 1;
-			h->ll = n[LEFT];
-			h->rl = 0;
-		} else if (n[RIGHT]) {
-			/* Left is empty. */
-			h = addArray(&dc->hunks, 0);
-			h->li = h->ri = 1;
-			h->ll = 0;
-			h->rl = n[RIGHT];
-		}
-		/* Both are emtpy, no diffs. */
-		return (dc->hunks);
+	for (i = 0; i < 2; i++) {
+		n[i] = range->len[i];
 	}
+	unless (n[DF_LEFT] && n[DF_RIGHT]) {
+		/* add in unsanitized diff block */
+		if (n[DF_LEFT] || n[DF_RIGHT]) addArray(&hunks, range);
+		return (hunks);
+	}
+	dc = new(df_ctx);
+	dc->range = *range;
+	dc->minimal = minimal;
+	dc->data = data;
+	dc->dcmp = dcmp;
+	dc->dhash = dhash;
+	dc->dcost = dcost;
+	dc->extra = extra;
 	/* Both have content, do the diff. */
-	hashThings(dc, LEFT, firstDiff);
-	hashThings(dc, RIGHT, firstDiff);
-
-	 /*
-	 * Adding a zero (NULL) at the beginning and end of chg[0] &
-	 * chg[1] saves bounds comparisons later.
-	 */
-	dc->chg[0] = calloc(n[LEFT] + 2, sizeof(int));
-	dc->chg[1] = calloc(n[RIGHT] + 2, sizeof(int));
-
-	compressHashes(dc, LEFT);
-	compressHashes(dc, RIGHT);
-
+	dc->h = hash_new(HASH_MEMHASH);
+	hashThings(dc, DF_LEFT);
+	hashThings(dc, DF_RIGHT);
+	/* Now that both hashes are filled */
+	for (i = 0; i < 2; i++) {
+		compressHashes(dc, i);
+		n[i] = nLines(dc->red[i]);
+	}
+	hash_free(dc->h);
+	dc->h = 0;
 	/*
 	 * Bound how much effort we're willing to put into finding the
 	 * diff.
 	 */
-	n[LEFT] = nLines(dc->l);
-	n[RIGHT] = nLines(dc->r);
-	x = n[LEFT] + n[RIGHT] + 3;
+	x = n[DF_LEFT] + n[DF_RIGHT] + 3;
 	y = 1;
 	while (x != 0) {
 		x >>= 2;
@@ -156,26 +109,26 @@ diff_items(df_ctx *dc, int firstDiff, int minimal)
 	 * variables are just for bounds checking on vf/vr and can be
 	 * removed once we have confidence we're not going out of bounds.
 	 */
-	minf = malloc(2 * (n[LEFT] + n[RIGHT] + 1) * sizeof(int));
-	minr = malloc(2 * (n[LEFT] + n[RIGHT] + 1) * sizeof(int));
+	minf = malloc(2 * (n[DF_LEFT] + n[DF_RIGHT] + 1) * sizeof(int));
+	minr = malloc(2 * (n[DF_LEFT] + n[DF_RIGHT] + 1) * sizeof(int));
 #ifdef	DEBUG_DIFF
-	maxf = minf + 2 * (n[LEFT] + n[RIGHT] + 1) - 1;
-	maxr = minr + 2 * (n[LEFT] + n[RIGHT] + 1) - 1;
+	maxf = minf + 2 * (n[DF_LEFT] + n[DF_RIGHT] + 1) - 1;
+	maxr = minr + 2 * (n[DF_LEFT] + n[DF_RIGHT] + 1) - 1;
 	dc->minf = minf;
 	dc->maxf = maxf;
 	dc->minr = minr;
 	dc->maxr = maxr;
 #endif
 
-	dc->vf = minf + (n[LEFT] + n[RIGHT] + 1);
-	dc->vr = minr + (n[LEFT] + n[RIGHT] + 1);
+	dc->vf = minf + (n[DF_LEFT] + n[DF_RIGHT] + 1);
+	dc->vr = minr + (n[DF_LEFT] + n[DF_RIGHT] + 1);
 
-	idiff(dc, 0, n[LEFT], 0, n[RIGHT]);
+	idiff(dc, 0, n[DF_LEFT], 0, n[DF_RIGHT]);
 
-	FREE(dc->l);
-	FREE(dc->r);
-	FREE(dc->lidx);
-	FREE(dc->ridx);
+	FREE(dc->red[DF_LEFT]);
+	FREE(dc->red[DF_RIGHT]);
+	FREE(dc->idx[DF_LEFT]);
+	FREE(dc->idx[DF_RIGHT]);
 	FREE(minf);
 	FREE(minr);
 	/*
@@ -183,61 +136,81 @@ diff_items(df_ctx *dc, int firstDiff, int minimal)
 	 * changed. However, we need to shuffle them around a bit to
 	 * minimize the number of hunks.
 	 */
-	shrink_gaps(dc, LEFT);
-	shrink_gaps(dc, RIGHT);
-	if (dc->dalgn) {
-		align_blocks(dc, LEFT);
-		align_blocks(dc, RIGHT);
+	shrink_gaps(dc, DF_LEFT);
+	shrink_gaps(dc, DF_RIGHT);
+	if (dc->dcost) {
+		align_blocks(dc, DF_LEFT);
+		align_blocks(dc, DF_RIGHT);
 	}
 
 	/*
 	 * Time to turn it into hunks using the Shortest Edit Script function.
 	 */
-	ses(dc, firstDiff);
+	hunks = ses(dc, hunks);
 
-	FREE(dc->chg[0]);
-	FREE(dc->chg[1]);
-	FREE(dc->hashes[0]);
-	FREE(dc->hashes[1]);
-	return (dc->hunks);
+	FREE(dc->chg[DF_LEFT]);
+	FREE(dc->chg[DF_RIGHT]);
+	FREE(dc->hashes[DF_LEFT]);
+	FREE(dc->hashes[DF_RIGHT]);
+	FREE(dc);
+	return (hunks);
 }
 
+/* Helpers: Internal arrays are base 1, externals are base h->start[side] */
+
+#define IDX(h, i, s)	(DSTART(h, s) + (i) - 1)
+
+inline	private	u32
+cmpIt(df_ctx *dc, int idxA, int sideA, int idxB, int sideB)
+{
+	return (dc->dcmp(
+	    IDX(&dc->range, idxA, sideA), sideA,
+	    IDX(&dc->range, idxB, sideB), sideB,
+	    dc->data, dc->extra));
+}
+
+inline	private	u32
+hashIt(df_ctx *dc, int idx, int side)
+{
+	return (dc->dhash(
+	    IDX(&dc->range, idx, side), side, dc->data, dc->extra));
+}
+
+inline	private	u32
+costIt(df_ctx *dc, int idx, int side, int pos)
+{
+	return (dc->dcost(
+	    IDX(&dc->range, idx, side), side, pos, dc->data, dc->extra));
+}
 
 /*
  * Hash the things on side 'side' skipping anything before 'from'.
  * Also keeps track of how many matches on either side it has seen.
  */
 private void
-hashThings(df_ctx *dc, int side, int from)
+hashThings(df_ctx *dc, int side)
 {
 	int	i, n;
 	u32	dh;
-	thing	*thing1, **thing2;
+	thing	*t;
 
-	unless (from > 0) from = 1;
 	assert(!dc->hashes[side]);
-	n = nLines(dc->things[side]);
-	assert(from <= n);
+	n = dc->range.len[side];
 	growArray(&dc->hashes[side], n);
-	for (i = 1; i < from; i++) dc->hashes[side][i] = 0;
-	for (i = from; i <= n; i++) {
-		thing1 = &dc->things[side][i];
-		dh = dc->dhash(thing1->data, thing1->len, side, dc->extra);
-		unless (dh) dh = 1;
+	for (i = 1; i <= n; i++) {
+		dh = hashIt(dc, i, side);
 		while (1) {
-			if (thing2 = hash_insert(dc->h, &dh, sizeof(u32),
-				0, sizeof(thing *))) {
+			if (t = hash_insert(dc->h, &dh, sizeof(u32),
+			    0, sizeof(thing))) {
 				/* new entry */
-				*thing2 = thing1;
-				(*thing2)->matches[side]++;
+				t->idx = i;
+				t->side = side;
 				break;
 			} else {
 				/* existing entry */
-				thing2 = dc->h->vptr;
-				unless (dc->dcmp(thing1->data, thing1->len,
-					(*thing2)->data, (*thing2)->len,
-					dc->extra)) {
-					(*thing2)->matches[side]++;
+				t = dc->h->vptr;
+				unless (cmpIt(dc, i, side, t->idx, t->side)) {
+					if (t->side != side) t->both = 1;
 					break;
 				}
 			}
@@ -256,40 +229,42 @@ hashThings(df_ctx *dc, int side, int from)
 private void
 compressHashes(df_ctx *dc, int side)
 {
-	int	i, j;
+	int	i, j, n;
 	u32	*u;
 	u32	**v;
 	int	**idx;
-	thing	**t;
+	thing	*t;
 
-	assert(((side == LEFT) && !dc->l && !dc->lidx) ||
-	    ((side == RIGHT) && !dc->r && !dc->ridx));
+	assert(!dc->red[side] && !dc->idx[side]);
 
 	/*
 	 * Compress the hash maps and immediately mark lines that only
-	 * exist in LEFT as deletions and lines that only exist in
-	 * RIGHT as additions. Also, if we have a line on one side
+	 * exist in DF_LEFT as deletions and lines that only exist in
+	 * DF_RIGHT as additions. Also, if we have a line on one side
 	 * that has multiple matches in the other side, but is between
 	 * a region that is unique, it also gets marked.
 	 *
-	 * The compressed hashes go in dc->l, and dc->r and are what
+	 * The compressed hashes go in dc->red[DF_LEFT], and
+	 * dc->red[DF_RIGHT] and are what
 	 * will be passed to the diff engine. We also save a mapping
 	 * from the compressed indices to the original ones.
 	 */
+	n = dc->range.len[side];
 	u = dc->hashes[side];
-	v = (side == LEFT)? &dc->l : &dc->r;
-	idx = (side == LEFT)? &dc->lidx : &dc->ridx;
-	growArray(v, nLines(u));
-	growArray(idx, nLines(u));
+	v = &dc->red[side];
+	idx = &dc->idx[side];
+	growArray(v, n);
+	growArray(idx, n);
+ 	/*
+	 * Adding a zero (NULL) at the beginning and end of chg[0] &
+	 * chg[1] saves bounds comparisons later.
+	 */
+	dc->chg[side] = calloc(n + 2, sizeof(int));
 	j = 1;
 	EACH(u) {
-		unless (u[i]) {
-			dc->chg[side][i] = 0;
-			continue;
-		}
 		t = hash_fetch(dc->h, &u[i], sizeof(u32));
 		assert(t);
-		if ((*t)->matches[!side]) {
+		if (t->both) {
 			/* matches lines on the other side, keep it */
 			(*v)[j] = u[i];
 			(*idx)[j] = i;
@@ -319,18 +294,20 @@ idiff(df_ctx *dc, int x1, int x2, int y1, int y2)
 
 	assert(x1 <= x2);
 	assert(y1 <= y2);
-	while ((x1 < x2) && (y1 < y2) && (dc->l[x1+1] == dc->r[y1+1])) {
+	while ((x1 < x2) && (y1 < y2) &&
+	    (dc->red[DF_LEFT][x1+1] == dc->red[DF_RIGHT][y1+1])) {
 		x1++, y1++;
 	}
-	while ((x1 < x2) && (y1 < y2) && (dc->l[x2] == dc->r[y2])) {
+	while ((x1 < x2) && (y1 < y2) &&
+	    (dc->red[DF_LEFT][x2] == dc->red[DF_RIGHT][y2])) {
 		x2--, y2--;
 	}
 	if (x1 == x2) {
 		/* ADD */
-		while (y1 < y2) dc->chg[1][dc->ridx[y2--]] = 1;
+		while (y1 < y2) dc->chg[1][dc->idx[DF_RIGHT][y2--]] = 1;
 	} else if (y1 == y2) {
 		/* DELETE */
-		while (x1 < x2) dc->chg[0][dc->lidx[x2--]] = 1;
+		while (x1 < x2) dc->chg[0][dc->idx[DF_LEFT][x2--]] = 1;
 	} else {
 		dsplit1(dc, x1, x2, y1, y2, &x, &y);
 		assert((x1 <= x) && (x <= x2));
@@ -355,8 +332,8 @@ dsplit1(df_ctx *dc, int x1, int x2, int y1, int y2, int *mx, int *my)
 {
 	int	d, k;
 	int	x, y;
-	u32	*A = dc->l;
-	u32	*B = dc->r;
+	u32	*A = dc->red[DF_LEFT];
+	u32	*B = dc->red[DF_RIGHT];
 	int	*vf = dc->vf;
 	int	*vr = dc->vr;
 	int	kmin = x1 - y2;
@@ -543,9 +520,9 @@ shrink_gaps(df_ctx *dc, int side)
 	u8	*chg;
 	u32	*h;
 
-	n = nLines(dc->hashes[side]);
 	chg = dc->chg[side];
 	h = dc->hashes[side];
+	n = nLines(h);
 
 	i = 1;
 	/* Find first block */
@@ -633,14 +610,10 @@ align_blocks(df_ctx *dc, int side)
 	int	n;
 	u8	*chg;
 	u32	*h;
-	thing	*t;
-	df_align algn;
 
-	n = nLines(dc->things[side]);
+	n = dc->range.len[side];
 	chg = dc->chg[side];
 	h = dc->hashes[side];
-	t = dc->things[side];
-	algn = dc->dalgn;
 	a = 1;
 	while (1) {
 		int	up, down;
@@ -675,27 +648,24 @@ align_blocks(df_ctx *dc, int side)
 			for (i = -up; i <= down; i++) {
 				int	a1 = a + i;
 				int	b1 = b + i;
-				int	price;
-				int	cost = 0;
+				int	cost;
+				int	total = 0;
 
 				while ((a1 < b1) &&
-				    (price = algn(t[a1].data, t[a1].len,
-				    DF_START, dc->extra))) {
-					cost += price;
+				    (cost = costIt(dc, a1, side, DF_START))) {
+					total += cost;
 					++a1;
 				}
 
 				while ((b1 > a1) &&
-				    (price = algn(t[b1-1].data, t[b1-1].len,
-				    DF_END, dc->extra))) {
-					cost += price;
+				    (cost = costIt(dc, b1-1, side, DF_END))) {
+					total += cost;
 					--b1;
 				}
 
 				while (a1 < b1) {
-					/* algn returns 0 for invalid */
-					cost += algn(t[a1].data, t[a1].len,
-					    DF_MIDDLE, dc->extra);
+					total +=
+					    costIt(dc, a1, side, DF_MIDDLE);
 					++a1;
 				}
 				/*
@@ -703,8 +673,8 @@ align_blocks(df_ctx *dc, int side)
 				 * if all things are equal shift down as far as
 				 * possible.
 				 */
-				if (cost <= best) {
-					best = cost;
+				if (total <= best) {
+					best = total;
 					bestalign = i;
 				}
 			}
@@ -731,226 +701,410 @@ align_blocks(df_ctx *dc, int side)
  * "did change", turn it into a hunks structure with the Shortest Edit
  * Script.
  */
-private void
-ses(df_ctx *dc, int firstDiff)
+private hunk *
+ses(df_ctx *dc, hunk *hunks)
 {
 	int	n, m;
 	int	x, y;
 	hunk	*h;
-	hunk	*hunks = 0;
 
-	n = nLines(dc->hashes[0]);
-	m = nLines(dc->hashes[1]);
+	n = dc->range.len[DF_LEFT];
+	m = dc->range.len[DF_RIGHT];
 	for (x = 1, y = 1; (x <= n) || (y <= m);) {
-		if (dc->chg[0][x] || dc->chg[1][y]) {
+		if (dc->chg[DF_LEFT][x] || dc->chg[DF_RIGHT][y]) {
 			h = addArray(&hunks, 0);
-			h->li = x;
-			h->ri = y;
-			while ((x <= n) && dc->chg[0][x]) x++;
-			while ((y <= m) && dc->chg[1][y]) y++;
-			h->ll = x - h->li;
-			h->rl = y - h->ri;
+			h->start[DF_LEFT] = x;
+			h->start[DF_RIGHT] = y;
+			while ((x <= n) && dc->chg[DF_LEFT][x]) x++;
+			while ((y <= m) && dc->chg[DF_RIGHT][y]) y++;
+			h->len[DF_LEFT] = x - h->start[DF_LEFT];
+			h->len[DF_RIGHT] = y - h->start[DF_RIGHT];
+			h->start[DF_LEFT] += dc->range.start[DF_LEFT] - 1;
+			h->start[DF_RIGHT] += dc->range.start[DF_RIGHT] - 1;
 		}
 		if (x <= n) x++;
 		if (y <= m) y++;
 	}
-	dc->hunks = hunks;
+	return (hunks);
 }
 
-void
-diff_print(df_ctx *dc, df_puts pfn, FILE *out)
+/* Comparison functions for the various diff options */
+
+/*
+ * Just see if two lines are identical
+ */
+int
+diff_cmpLine(
+    int idxa, int sidea, int idxb, int sideb, df_data *data, void *extra)
+{
+	int	lena, lenb;
+	char	*a = data(idxa, sidea, extra, &lena);
+	char	*b = data(idxb, sideb, extra, &lenb);
+
+	if (lena != lenb) return (lena - lenb);
+	return (memcmp(a, b, lena));
+}
+
+/*
+ * Compare ignoring all white space. (diff -w)
+ */
+int
+diff_cmpIgnoreWS(
+    int idxa, int sidea, int idxb, int sideb, df_data *data, void *extra)
 {
 	int	i, j;
-	hunk	*h;
+	int	lena, lenb;
+	char	*a = data(idxa, sidea, extra, &lena);
+	char	*b = data(idxb, sideb, extra, &lenb);
 
-	assert(dc);
-	h = dc->hunks;
-
-	EACH_INDEX(h, i) {
-		fprintf(out, "%d", h[i].ll? h[i].li: h[i].li - 1);
-		if (h[i].ll > 1) {
-			fprintf(out, ",%d", h[i].li + h[i].ll - 1);
+	i = j = 0;
+	for (;;) {
+		while ((i < lena) && (j < lenb)) {	/* optimize */
+			unless (a[i] == b[j]) break;
+			i++, j++;
 		}
-		if (h[i].ll && h[i].rl) {
-			fprintf(out, "c");
-		} else if (h[i].ll) {
-			fprintf(out, "d");
-		} else if (h[i].rl) {
-			fprintf(out, "a");
-		}
-		fprintf(out, "%d", h[i].rl? h[i].ri: h[i].ri - 1);
-		if (h[i].rl > 1) {
-			fprintf(out, ",%d", h[i].ri + h[i].rl - 1);
-		}
-		fprintf(out, "\n");
-
-		for (j = h[i].li; j < (h[i].li + h[i].ll); j++) {
-			pfn("< ", dc->things[0][j].data, dc->things[0][j].len,
-			    LEFT, dc->extra, out);
-		}
-		if (h[i].ll && h[i].rl) fprintf(out, "---\n");
-		for (j = h[i].ri; j < (h[i].ri + h[i].rl); j++) {
-			pfn("> ", dc->things[1][j].data, dc->things[1][j].len,
-			    RIGHT, dc->extra, out);
-		}
+		while ((i < lena) && isspace(a[i])) i++;
+		while ((j < lenb) && isspace(b[j])) j++;
+		unless ((i < lena) && (j < lenb) && (a[i] == b[j])) break;
+		i++, j++;
 	}
+	return (!((i == lena) && (j == lenb)));
 }
 
-void
-diff_printRCS(df_ctx *dc, df_puts pfn, FILE *out)
-{
-	hunk	*h;
-	int	y;
-
-	assert(dc);
-	h = dc->hunks;
-
-	y = 1;
-	EACHP(dc->hunks, h) {
-		if (h->ll) {
-			fprintf(out, "d%d %d\n", h->li, h->ll);
-		}
-		if (h->rl) {
-			fprintf(out, "a%d %d\n",
-			    h->ll ? h->li : h->li - 1, h->rl);
-			for (y = h->ri; y < (h->ri + h->rl); y++) {
-				pfn("", dc->things[1][y].data,
-				    dc->things[1][y].len, RIGHT,
-				    dc->extra, out);
-
-			}
-		}
-	}
-}
-
-void
-diff_printDecorated(df_ctx *dc, df_puts pfn, df_deco dfn, FILE *out)
-{
-	int	i;
-	int	x, y;
-	int	m;
-	hunk	*h;
-
-	assert(dc);
-	h = dc->hunks;
-	m = nLines(dc->things[1]);
-
-	x = 1;
-	y = 1;
-	EACH_INDEX(h, i) {
-		if (x < h[i].li) {
-			dfn(DF_COMMON_START, dc->extra, out);
-			for (; x < h[i].li; x++) {
-				pfn("", dc->things[0][x].data,
-				    dc->things[0][x].len,
-				    LEFT, dc->extra, out);
-			}
-			dfn(DF_COMMON_END, dc->extra, out);
-		}
-		if (h[i].ll && h[i].rl) dfn(DF_MOD_START, dc->extra, out);
-		if (h[i].ll) {
-			dfn(DF_LEFT_START, dc->extra, out);
-			for (; x < (h[i].li + h[i].ll); x++) {
-				pfn("", dc->things[0][x].data,
-				    dc->things[0][x].len,
-				    LEFT, dc->extra, out);
-			}
-		}
-		if (h[i].ll && h[i].rl) {
-			dfn(DF_LEFT_END|DF_RIGHT_START, dc->extra, out);
-		} else if (h[i].ll) {
-			dfn(DF_LEFT_END, dc->extra, out);
-		} else if (h[i].rl) {
-			dfn(DF_RIGHT_START, dc->extra, out);
-		}
-		for (y = h[i].ri; y < (h[i].ri + h[i].rl); y++) {
-			pfn("", dc->things[1][y].data,
-			    dc->things[1][y].len,
-			    RIGHT, dc->extra, out);
-		}
-		if (h[i].rl) dfn(DF_RIGHT_END, dc->extra, out);
-		if (h[i].ll && h[i].rl) dfn(DF_MOD_END, dc->extra, out);
-	}
-	if (y <= m) {
-		dfn(DF_COMMON_START, dc->extra, out);
-		for (; y <= m; y++) {
-			pfn("", dc->things[1][y].data,
-			    dc->things[1][y].len,
-			    RIGHT, dc->extra, out);
-		}
-		dfn(DF_COMMON_END, dc->extra, out);
-	}
-}
-
-void
-diff_printUnified(df_ctx *dc, int context, df_puts pfn, df_hdr phdr, FILE *out)
+/*
+ * Compare ignoring changes in white space (diff -b).
+ */
+int
+diff_cmpIgnoreWSChg(
+    int idxa, int sidea, int idxb, int sideb, df_data *data, void *extra)
 {
 	int	i, j;
-	int	nHunks;
+	int	sa, sb;
+	int	lena, lenb;
+	char	*a = data(idxa, sidea, extra, &lena);
+	char	*b = data(idxb, sideb, extra, &lenb);
+
+	i = j = 0;
+	for (;;) {
+		while ((i < lena) && (j < lenb)) {	/* skip matches */
+			unless (a[i] == b[j]) break;
+			i++, j++;
+		}
+		sa = (i < lena) ? isspace(a[i]) : 0;
+		sb = (j < lenb) ? isspace(b[j]) : 0;
+		unless (sa || sb) break;
+		unless (sa && sb) {
+			if (sa && (!i || !isspace(a[i-1]))) break;
+			if (sb && (!j || !isspace(a[j-1]))) break;
+		}
+		while ((i < lena) && isspace(a[i])) i++;
+		while ((j < lenb) && isspace(b[j])) j++;
+		unless ((i < lena) && (j < lenb) && (a[i] == b[j])) break;
+		i++, j++;
+	}
+	return (!((i == lena) && (j == lenb)));
+}
+
+/* HASH FUNCTIONS */
+
+/*
+ * Hash data, use crc32c for speed
+ */
+u32
+diff_hashLine(int idx, int side, df_data *data, void *extra)
+{
+	int	len;
+	char	*a = data(idx, side, extra, &len);
+
+	return (crc32c(0, a, len));
+}
+
+/*
+ * Hash data ignoring all white space (diff -w)
+ */
+u32
+diff_hashIgnoreWS(int idx, int side, df_data *data, void *extra)
+{
+	int	i, j = 0;
+	int	len;
+	char	*a = data(idx, side, extra, &len);
+	u32	ret = 0;
+	char	copy[MAXLINE];
+
+	for (i = 0; i < len; i++) {
+		unless (isspace(a[i])) {
+			copy[j++] = a[i];
+			if (j >= MAXLINE) {
+				assert(j == MAXLINE);
+				ret = crc32c(ret, copy, j);
+				j = 0;
+			}
+		}
+	}
+	if (j) ret = crc32c(ret, copy, j);
+	return (ret);
+}
+
+/*
+ * Hash data ignoring changes in white space (diff -b)
+ */
+u32
+diff_hashIgnoreWSChg(int idx, int side, df_data *data, void *extra)
+{
+	int	i, j = 0;
+	int	len;
+	char	*a = data(idx, side, extra, &len);
+	u32	ret = 0;
+	char	copy[MAXLINE];
+
+	for (i = 0; i < len; i++) {
+		if (isspace(a[i])) {
+			while ((i < len - 1) && isspace(a[i+1])) i++;
+			copy[j++] = ' ';
+		} else {
+			copy[j++] = a[i];
+		}
+		if (j >= MAXLINE) {
+			assert(j == MAXLINE);
+			ret = crc32c(ret, copy, j);
+			j = 0;
+		}
+	}
+	if (j) ret = crc32c(ret, copy, j);
+	return (ret);
+}
+
+/* ALIGN FUNCTIONS */
+
+u32
+diff_cost(int idx, int side, int pos, df_data *data, void *extra)
+{
+	int	len;
+	char	*line = data(idx, side, extra, &len);
+	int	i, j, c;
+	int	cost;
+	struct {
+		char	*match;		/* pattern to match */
+		int	len;		/* size of match */
+		int	cost[3];	/* cost for BEG, END, MID */
+	} menu[] = {
+		{"", 0, {2, 1, 3}},	/* empty line */
+		{"/*", 2, {1, 2, 3}},	/* start comment */
+		{"*/", 2, {2, 1, 3}},	/* end comment */
+		{"{", 1, {1, 2, 3}},	/* start block */
+		{"}", 1, {2, 1, 3}},	/* end block */
+		{0, 0, {0, 0, 0}}
+	};
+	/* remove final newline */
+	if ((len > 0) && (line[len-1] == '\n')) --len;
+
+	/* skip whitespace at start of line */
+	for (i = 0; i < len; i++) {
+		unless ((line[i] == ' ') || (line[i] == '\t')) break;
+	}
+
+	/* handle blank line case */
+	if (i == len) return (menu[0].cost[pos]);
+
+	/* look for other cases */
+	cost = 0;
+	for (j = 1; menu[j].match; j++) {
+		c = menu[j].len;
+		if (((len - i) >= c) && strneq(line+i, menu[j].match, c)) {
+			cost = menu[j].cost[pos];
+			i += c;
+			break;
+		}
+	}
+	if (cost) {
+		/* make sure all that's left is whitespace */
+		for (/* i */; i < len; i++) {
+			unless ((line[i] == ' ') || (line[i] == '\t')) break;
+		}
+		if (i == len) return (cost);
+	}
+	return (0);
+}
+
+/*
+ * This implements the Needleman-Wunsch algorithm for finding
+ * the best alignment of diff block.
+ * See http://en.wikipedia.org/wiki/Needleman-Wunsch_algorithm
+ *
+ * Return an int addArray made up of DF_LEFT, DF_RIGHT, and DF_BOTH
+ * for each line to be printed.  Only need a byte, but no byte addArray.
+ */
+int *
+diff_alignMods(hunk *h, df_data *data, void *extra, int diffgap)
+{
+	int	i, j, k;
+	int	match, delete, insert;
+	int	score, scoreDiag, scoreUp, scoreLeft;
+	int	lenA, lenB;
+	int	cmd;
+	char	*strA, *strB;
 	int	n, m;
-	int	sx, ex, sy, ey;
-	int	x, y;
-	hunk	*h;
+	int	**F;
+	int	*algnA;
+	int	*algnB;
+	int	*plist = 0;
 
-	assert(dc);
-	h = dc->hunks;
-	nHunks = nLines(h);
-	n = nLines(dc->things[0]);
-	m = nLines(dc->things[1]);
+	n = DLEN(h, DF_LEFT);
+	m = DLEN(h, DF_RIGHT);
 
-	EACH_INDEX(h, i) {
+	if ((n * m) > 100000) {
 		/*
-		 * Find overlapping hunks that should be printed in
-		 * the same @@ block.
+		 * Punt if the problem is too large since the
+		 * algorithm is O(n^2).  The rationale is that the
+		 * line alignment only helps if you're looking at
+		 * smallish regions. Once you've gone over a few
+		 * screenfuls you're just reading new code so no point
+		 * in working hard to align lines.
+		 *
 		 */
-		for (j = i + 1; j <= nHunks; j++) {
-			if ((h[j].li - (h[j-1].li + h[j-1].ll))
-			    > (context * 2) + 1) {
-				break;
-			}
-		}
-		--j;
 
-		sx = max(h[i].li - context, 1);
-		sy = max(h[i].ri - context, 1);
-		ex = min(h[j].li + h[j].ll - 1 + context, n);
-		ey = min(h[j].ri + h[j].rl - 1 + context, m);
-
-		if (phdr) {
-			phdr(h[i].li,
-			    n ? sx : 0, ex - sx + 1,
-			    m ? sy : 0, ey - sy + 1,
-			    dc->extra, out);
+		cmd = DF_BOTH;
+		for (i = 0; (i < n) && (i < m); i++) {
+			addArray(&plist, &cmd);
 		}
-
-		/*
-		 * Print all hunks. The idea is we keep x, y current
-		 * across loops.
-		 */
-		x = sx;
-		y = sy;
-		for (; i <= j; i++) {
-			for (; x < h[i].li; x++) {
-				pfn(" ", dc->things[0][x].data,
-				    dc->things[0][x].len, LEFT,
-				    dc->extra, out);
-			}
-			for (; x < (h[i].li + h[i].ll); x++) {
-				pfn("-", dc->things[0][x].data,
-				    dc->things[0][x].len, LEFT,
-				    dc->extra, out);
-			}
-			for (y = h[i].ri; y < (h[i].ri + h[i].rl); y++) {
-				pfn("+", dc->things[1][y].data,
-				    dc->things[1][y].len, RIGHT,
-				    dc->extra, out);
-			}
+		cmd = DF_LEFT;
+		for ( ; i < n; i++) {
+			addArray(&plist, &cmd);
 		}
-		for (; y <= ey; y++) {
-			pfn(" ", dc->things[1][y].data,
-			    dc->things[1][y].len, RIGHT,
-			    dc->extra, out);
+		cmd = DF_RIGHT;
+		for ( ; i < m; i++) {
+			addArray(&plist, &cmd);
 		}
-		i--;
+		return (plist);
 	}
+	F = malloc((n+1) * sizeof(int *));
+	algnA = calloc(n+m+1, sizeof(int));
+	algnB = calloc(n+m+1, sizeof(int));
+
+	for (i = 0; i <= n; i++) {
+		F[i] = malloc((m+1) * sizeof(int));
+		F[i][0] = diffgap * i;
+	}
+	for (j = 0; j <= m; j++) F[0][j] = diffgap * j;
+	for (i = 1; i <= n; i++) {
+		strA = data(IDX(h, i, DF_LEFT), DF_LEFT, extra, &lenA);
+		for (j = 1; j <= m; j++) {
+			strB = data(
+			    IDX(h, j, DF_RIGHT), DF_RIGHT, extra, &lenB);
+			match  = F[i-1][j-1] + lcs(strA, lenA, strB, lenB);
+			delete = F[i-1][j] + diffgap;
+			insert = F[i][j-1] + diffgap;
+			F[i][j] = max(match, max(delete, insert));
+		}
+	}
+	/*
+	 * F now has all the alignments, walk it back to find
+	 * the best one.
+	 */
+	k = n + m;
+	i = n;
+	j = m;
+	while ((i > 0) && (j > 0)) {
+		score     = F[i][j];
+		scoreDiag = F[i-1][j-1];
+		scoreUp   = F[i][j-1];
+		scoreLeft = F[i-1][j];
+		assert(k > 0);
+		if (score == (scoreUp + diffgap)) {
+			algnA[k] = -1;
+			algnB[k] = j;
+			j--; k--;
+			continue;
+		}
+		if (score == (scoreLeft + diffgap)) {
+			algnA[k] = i;
+			algnB[k] = -1;
+			i--; k--;
+			continue;
+		}
+		strA = data(IDX(h, i, DF_LEFT), DF_LEFT, extra, &lenA);
+		strB = data(IDX(h, j, DF_RIGHT), DF_RIGHT, extra, &lenB);
+		if (score == (scoreDiag + lcs(strA, lenA, strB, lenB))) {
+			algnA[k] = i;
+			algnB[k] = j;
+			i--; j--; k--;
+			continue;
+		}
+	}
+	while (i > 0) {
+		assert(k > 0);
+		algnA[k] = i;
+		algnB[k] = -1;
+		i--; k--;
+	}
+	while (j > 0) {
+		assert(k > 0);
+		algnA[k] = -1;
+		algnB[k] = j;
+		j--; k--;
+	}
+	/* Now print the output */
+	for (i = k + 1; i <= (n + m); i++) {
+		assert((algnA[i] != -1) || (algnB[i] != -1));
+		if (algnA[i] == -1) {
+			cmd = DF_RIGHT;
+		} else if (algnB[i] == -1) {
+			cmd = DF_LEFT;
+		} else {
+			cmd = DF_BOTH;
+		}
+		addArray(&plist, &cmd);
+	}
+	for (i = 0; i <= n; i++) free(F[i]);
+	free(F);
+	free(algnA);
+	free(algnB);
+	return (plist);
+}
+
+private	int
+lcs(char *a, int alen, char *b, int blen)
+{
+	int	i, j;
+	int	ret;
+	int	**d;
+
+	d = calloc(alen+1, sizeof(int *));
+	for (i = 0; i <= alen; i++) d[i] = calloc(blen+1, sizeof(int));
+
+	for (i = 1; i <= alen; i++) {
+		for (j = 1; j <= blen; j++) {
+			if (a[i] == b[j]) {
+				d[i][j] = d[i-1][j-1] + 1;
+			} else {
+				d[i][j] = max(d[i][j-1], d[i-1][j]);
+			}
+		}
+	}
+	ret = d[alen][blen];
+	for (i = 0; i <= alen; i++) free(d[i]);
+	free(d);
+	return (ret);
+}
+
+/*
+ * Strictly only need one side of common, but we do both.
+ * And get a small integrity check out of it.
+ */
+void
+diff_mkCommon(hunk *out, hunk *range, hunk *from, hunk *to)
+{
+	int	start, end, side;
+
+	for (side = 0; side < 2; side++) {
+		start = from ? DEND(from, side) : DSTART(range, side);
+		end = to ? DSTART(to, side) : DEND(range, side);
+
+		/* maybe have setters and this is a little too magic? */
+		DSTART(out, side) = start;
+		DLEN(out, side) = end - start;
+	}
+
+	/* integrity check - sides have same length */
+	assert(DLEN(out, DF_LEFT) == DLEN(out, DF_RIGHT));
 }

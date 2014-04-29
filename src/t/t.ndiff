@@ -543,6 +543,7 @@ main(int ac, char **av)
 	printf("This is main\n");
 }
 
+private
 int
 afunc(int a)
 {
@@ -556,12 +557,14 @@ main(int ac, char **av)
 	printf("This is main\n");
 }
 
+private
 int
 bfunc(int b)
 {
 	printf("This is bfunc\n");
 }
 
+private
 int
 afunc(int a)
 {
@@ -569,7 +572,8 @@ afunc(int a)
 }
 EOF
 cat <<EOF > WANT
-6a7,12
+6a7,13
+> private
 > int
 > bfunc(int b)
 > {
@@ -794,7 +798,7 @@ done
 cat A | sed 's/^10$/A/;s/^18$/B/;' > B
 bk --trace=tmp ndiff -up A B | grep -v ^--- | grep -v ^+++ > GOT
 cat <<EOF > WANT
-@@ -7,15 +7,15 @@ 
+@@ -7,15 +7,15 @@
  7
  8
  9
@@ -959,5 +963,123 @@ funcb()
 EOF
 bk ndiff -u A B > GOT
 bk diff -up A B > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test no newline and different formats .......................$NL
+printf " a\n end" > a
+printf " b\n end" > b
+bk ndiff -DFOO a b > GOT
+cat <<EOF > WANT
+#ifndef FOO
+ a
+#else /* FOO */
+ b
+#endif /* FOO */
+ end
+EOF
+cmpfiles WANT GOT
+bk ndiff -u a b | sed 's/	.*//' > GOT
+cat <<EOF > WANT
+--- a
++++ b
+@@ -1,2 +1,2 @@
+- a
++ b
+  end
+\ No newline at end of file
+EOF
+cmpfiles WANT GOT
+# While we are here, show rider of fixing RCS diffs
+# Changed: end of line format; 'a' cmd references where d ends, not starts
+printf "a1\na2" > a
+printf "b" > b
+bk ndiff -n a b > GOT
+printf "d1 2\na2 1\nb" > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test -b with white space rollover to next line ..............$NL
+# before this RTI, this failed.
+# first line in 'a' has trailing tab; send line in b has leading ' '.
+cat <<EOF > a
+a	
+b
+EOF
+cat <<EOF > b
+a
+ b
+EOF
+bk ndiff -b a b > GOT
+cat <<EOF > WANT
+2c2
+< b
+---
+>  b
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test -u with empty blocks ...................................$NL
+# More tests which failed before this RTI
+cat <<EOF > a
+a
+b
+EOF
+printf "" > b
+bk ndiff -u a b | sed 's/	.*//' > GOT
+cat <<EOF > WANT
+--- a
++++ b
+@@ -1,2 +0,0 @@
+-a
+-b
+EOF
+cmpfiles WANT GOT
+bk ndiff -u b a | sed 's/	.*//' > GOT
+cat <<EOF > WANT
+--- b
++++ a
+@@ -0,0 +1,2 @@
++a
++b
+EOF
+cmpfiles WANT GOT
+cat <<EOF > b
+a
+x
+b
+EOF
+bk ndiff -u0 a b | sed 's/	.*//' > GOT
+cat <<EOF > WANT
+--- a
++++ b
+@@ -1,0 +2 @@
++x
+EOF
+cmpfiles WANT GOT
+bk ndiff -u0 b a | sed 's/	.*//' > GOT
+cat <<EOF > WANT
+--- b
++++ a
+@@ -2 +1,0 @@
+-x
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test -Dfoo and --sdiff with same inode and same contents ....$NL
+# even though no diff, it still prints whole file out. Fixed by this RTI.
+echo a > a
+echo a > b
+bk ndiff -Dfoo a a > GOT
+cmpfiles a GOT
+bk ndiff -Dfoo a b > GOT
+cmpfiles a GOT
+# sdiff too
+echo "a    a" > WANT
+bk ndiff --sdiff=8 a a > GOT
+cmpfiles WANT GOT
+bk ndiff --sdiff=8 a b > GOT
 cmpfiles WANT GOT
 echo OK

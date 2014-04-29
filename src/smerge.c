@@ -38,11 +38,7 @@ private int	merge_added_oneside(conflct *r);
 private	int	merge_with_following_gca(conflct *r);
 private	int	merge_conflicts(conflct *head);
 
-private	int	cmp_identical(void *va, int lena, void *vb, int lenb,
-    void *extra);
-private	u32	hash_identical(void *data, int len, int side,
-    void *extra);
-private	u32	align_wsLine(void *data, int len, int pos, void *extra);
+private	char	*smergeData(int idx, int side, void *extra, int *len);
 
 enum {
 	MODE_GCA,
@@ -1497,19 +1493,6 @@ unidiff(conflct *curr, int left, int right)
 	return (out);
 }
 
-private void
-gatherDiffs(char *prefix, void *a, int alen, int side,
-    void *extra, FILE *unused)
-{
-	diffln	**out = (diffln **)extra;
-	diffln	*dl;
-	ld_t	*line = (ld_t *)a;
-
-	dl = addArray(out, 0);
-	dl->c = prefix[0];
-	dl->ld = line;
-}
-
 /*
  * do a diff of two sides of a conflict region and return
  * an array of diffln structures.
@@ -1517,45 +1500,71 @@ gatherDiffs(char *prefix, void *a, int alen, int side,
  * the user and the end of the array is marked by a ld pointer set to null.
  * Typical usage:
  *
- *    diffs = unidiff(curr, GCA, LEFT);
+ *    diffs = unidiff_ndiff(curr, GCA, LEFT);
  *    for (i = 0; diffs[i].ld; i++) {
  *	     printline(diffs[i].ld, diffs[i].c, 0);
  *    }
  *    free(diffs);
  */
+
+typedef	struct {
+	ld_t	*lines[2];
+} smdiff;
+
 private diffln *
 unidiff_ndiff(conflct *curr, int left, int right)
 {
-	ld_t	*llines, *rlines;
-	ld_t	*el, *er;
-	diffln	*out = 0, *ret, *dl;
-	df_ctx	*dc;
-	int	i;
+	hunk	range, *hunks;
+	hunk	*h, *from, common;
+	diffln	*ret, *dl;	
+	int	i, n;
+	int	j, side;
+	smdiff	data;
 
-	llines = &body[left].lines[curr->start[left]];
-	rlines = &body[right].lines[curr->start[right]];
-	el = &body[left].lines[curr->end[left]];
-	er = &body[right].lines[curr->end[right]];
+	/* range being diffed */
+	range.start[DF_LEFT] = curr->start[left];
+	range.len[DF_LEFT] = curr->end[left] - curr->start[left];
+	range.start[DF_RIGHT] = curr->start[right];
+	range.len[DF_RIGHT] = curr->end[right] - curr->start[right];
 
-	dc = diff_new(cmp_identical, hash_identical, align_wsLine, &out);
-	for (; llines < el; llines++) {
-		diff_addItem(dc, 0, llines, 0);
+	data.lines[DF_LEFT] = body[left].lines;
+	data.lines[DF_RIGHT] = body[right].lines;
+
+	/* XXX: this disables some alignment by starting diff here */
+	hunks = diff_items(&range, 1,
+	    smergeData, diff_cmpLine, diff_hashLine, diff_cost, &data);
+
+	/* Length of output is all of one side plus hunks on other */
+	n = range.len[DF_LEFT];
+	EACH(hunks) n += hunks[i].len[DF_RIGHT];
+	/* result is a null entry terminated list */
+	ret = dl = calloc(n + 1, sizeof(diffln));
+	from = 0;
+	EACHP(hunks, h) {
+		diff_mkCommon(&common, &range, from, h);
+		DFOREACH(&common, DF_LEFT, j) {
+			dl->c = ' ';
+			dl->ld = &data.lines[DF_LEFT][j];
+			dl++;
+		}
+		from = h;
+		for (side = 0; side < 2; side++) {
+			DFOREACH(h, side, j) {
+				dl->c = (side == DF_LEFT) ? '-' : '+';
+				dl->ld = &data.lines[side][j];
+				dl++;
+			}
+		}
 	}
-	for (; rlines < er; rlines++) {
-		diff_addItem(dc, 1, rlines, 0);
+	diff_mkCommon(&common, &range, from, 0);
+	DFOREACH(&common, DF_LEFT, j) {
+		dl->c = ' ';
+		dl->ld = &data.lines[DF_LEFT][j];
+		dl++;
 	}
 
-	diff_items(dc, 0, 1);
-	// XXX Big number is hack to get full context
-	diff_printUnified(dc, (1 << 28), gatherDiffs, 0, 0);
-	diff_free(dc);
-	/* Copy the data since the caller doesn't expect an array */
-	ret = calloc(nLines(out) + 1, sizeof(diffln));
-	i = 0;
-	EACHP(out, dl) {
-		ret[i++] = *dl;
-	}
-	free(out);
+	assert(ret + n == dl);
+	free(hunks);
 	return (ret);
 }
 
@@ -2180,33 +2189,12 @@ merge_with_following_gca(conflct *c)
 	return (ret);
 }
 
-/*
- * Just see if two lines are identical
- */
-private	int
-cmp_identical(void *va, int lena, void *vb, int lenb, void *extra)
+private	char *
+smergeData(int idx, int side, void *extra, int *len)
 {
-	ld_t	*la = (ld_t *)va;
-	ld_t	*lb = (ld_t *)vb;
+	smdiff	*data = (smdiff *)extra;
+	ld_t	*dl = &data->lines[side][idx];
 
-	lena = la->len;
-	lenb = lb->len;
-	if (lena != lenb) return (lena - lenb);
-	return (memcmp(la->line, lb->line, lena));
-}
-
-private	u32
-hash_identical(void *data, int len, int side, void *extra)
-{
-	ld_t	*line = (ld_t *)data;
-
-	return (crc32c(0, line->line, line->len));
-}
-
-private u32
-align_wsLine(void *data, int len, int pos, void *extra)
-{
-	ld_t	*line = (ld_t *)data;
-
-	return (ndiff_align(line->line, line->len, pos, 0));
+	if (len) *len = dl->len;
+	return (dl->line);
 }
