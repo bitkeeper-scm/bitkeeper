@@ -1,3 +1,5 @@
+Document sh.exe dump core seen on windows
+
 We've had some problems where users were seeing sh.exe core dump on Windows.
 
 See http://db.bitkeeper.com/cgi-bin/view.cgi?id=2006-08-30-001

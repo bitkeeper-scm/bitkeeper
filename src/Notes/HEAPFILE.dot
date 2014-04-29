@@ -1,3 +1,5 @@
+Heap visualizing tool
+
 digraph g {
 	graph [
 	       compound=true

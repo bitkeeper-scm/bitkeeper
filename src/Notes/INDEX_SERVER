@@ -1,3 +1,5 @@
+Imagined index server working with blobs.
+
 With the new filesystem remapping and sfile blobs we are introducing a
 NFS-like index server.  Bascially all sfile reading and writing is
 handled by a single process that maintains a consistant view of the

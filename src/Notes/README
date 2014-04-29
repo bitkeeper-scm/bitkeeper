@@ -1,0 +1,3 @@
+#!/bin/sh
+
+for f in *; do printf "%s - %s\n" $f "`head -1 $f`"; done

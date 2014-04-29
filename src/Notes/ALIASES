@@ -1,3 +1,5 @@
+Some corner cases around using the aliases db (see also MODULES)
+
 Rework the alias interface to support the following new features:
 
   bk alias -h # shows what aliases are "here"

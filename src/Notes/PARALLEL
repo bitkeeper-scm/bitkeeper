@@ -1,3 +1,5 @@
+Details about clone -j
+
 Parallel clones
 
 The idea here is to send the BitKeeper/etc and /log dirs first, in their own

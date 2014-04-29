@@ -1,3 +1,5 @@
+Early cut at aliases (subsets)
+
 For modules, we want to record the module name[s] used, if and only if it
 was symbolic, in BitKeeper/log/MODULES.  The reason for this is so that
 subsequent pulls need to use this file, unioned with any components not

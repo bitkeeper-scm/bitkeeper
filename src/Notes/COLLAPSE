@@ -1,3 +1,5 @@
+The structure of collapse command as an enhanced fix -c
+
 bk collapse
 	-aAFTERREV		# collapse all csets descended from AFTERREV
 	-rLIST_OF_REVS	        # replace all csets named in LIST_OF_REVS

@@ -1,3 +1,5 @@
+sccs_lockfile() working over NFS notes
+
 [Wed Nov  9 18:01:44 PST 2005]
 
 This is a brain dump to summarize the effort that has been put into

@@ -1,4 +1,4 @@
-Some ideas I have been thinking about:
+Some of Wayne's thoughts relating to heap perf
 
  * sccs_addUniqStr() currently has to page all of delta2 into
    memory.  Since the heap saves the tipkey at the time of the

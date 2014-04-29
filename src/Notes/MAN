@@ -1,3 +1,5 @@
+Info about man files
+
 Categories
     Each man page _may_ have a .SH CATEGORY <category> entry.  If it
     does, then an entry is added to the <category>.c command listing.

@@ -1,3 +1,5 @@
+A list of dspecs and their descriptions
+
 A - what string
 B - branch
 BAM - returns 1 if sfile is BAM, null otherwise

@@ -1,3 +1,5 @@
+Relating to FLAGS file, extensions to ATT SCCS for state capture
+
 My file format differs from the ATT SCCS file format in the following ways:
 
 I have the following extra information in the file:

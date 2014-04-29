@@ -1,3 +1,5 @@
+Rick's crappy notes about some release process
+
 on some machine (work, disks)
 ___ move approved changes from /home/bk/bk-3.1.x-queue/ready to .../processing
 

@@ -1,3 +1,5 @@
+Saving things before throwing over the wall in pass4
+
 Foreach s.file in RESYNC {
 	if (l = key_init(s.file in Repository) {
 		clean || abort

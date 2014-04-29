@@ -1,3 +1,5 @@
+The internals of the attributes file
+
 As part of the nested tag work we are going to reintroduce the attributes
 file with extra per-cset metadata in a KV file
 

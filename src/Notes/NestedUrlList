@@ -1,3 +1,5 @@
+How to find components when repos are sparse
+
 A nested repository is allowed to be sparse, that means it has
 components that are not present.  Each of the missing component is
 identified by a rootkey/deltakey pair for that component.

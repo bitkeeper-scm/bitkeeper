@@ -1,3 +1,5 @@
+bk 1.0 todo list
+
 When getting a new branch off of 1.0, the revs should not be a branch of 
 1.0, like 1.0.1.1, it should be a new "release".  
 
