@@ -780,3 +780,84 @@ bk prs -c"$KEY1" foo..bar 2> ERR && {
 	exit 1
 }
 echo 'failed (bug not filed)'
+
+# This tests that a user name doesn't get cleaned to something
+# with two consecutive dots.
+echo $N Range using keys and user name with spaces and dots .........$NL
+touch newfile
+BK_USER="Pat P. Windows" bk new $Q newfile || fail
+KEY=`bk prs -r+ -hnd:KEY: newfile`
+GOT=`bk prs -r"$KEY" -hnd:G: newfile 2>ERR`
+[ "$GOT" = "newfile" ] || fail "got $GOT" -f ERR
+USER=`bk prs -r+ -hnd:USER: newfile`
+[ "$USER" = "Pat.P.Windows" ] || fail "got $USER"
+bk edit $Q newfile
+date >>newfile
+BK_USER="Pat P.. Windows" bk delta $Q -yupdate newfile || fail
+KEY=`bk prs -r+ -hnd:KEY: newfile`
+GOT=`bk prs -r"$KEY" -hnd:G: newfile 2>ERR`
+[ "$GOT" = "newfile" ] || fail "got $GOT" -f ERR
+USER=`bk prs -r+ -hnd:USER: newfile`
+[ "$USER" = "Pat.P.Windows" ] || fail "got $USER"
+bk edit $Q newfile
+date >>newfile
+BK_USER="Pat P... Windows" bk delta $Q -yupdate newfile || fail
+KEY=`bk prs -r+ -hnd:KEY: newfile`
+GOT=`bk prs -r"$KEY" -hnd:G: newfile 2>ERR`
+[ "$GOT" = "newfile" ] || fail "got $GOT" -f ERR
+USER=`bk prs -r+ -hnd:USER: newfile`
+[ "$USER" = "Pat.P.Windows" ] || fail "got $USER"
+bk edit $Q newfile
+date >>newfile
+BK_USER="Pat P. . ..Windows" bk delta $Q -yupdate newfile || fail
+KEY=`bk prs -r+ -hnd:KEY: newfile`
+GOT=`bk prs -r"$KEY" -hnd:G: newfile 2>ERR`
+[ "$GOT" = "newfile" ] || fail "got $GOT" -f ERR
+USER=`bk prs -r+ -hnd:USER: newfile`
+[ "$USER" = "Pat.P.Windows" ] || fail "got $USER"
+# This one has lots of spaces.
+bk edit $Q newfile
+date >>newfile
+BK_USER="Pat P.         Windows" bk delta $Q -yupdate newfile || fail
+KEY=`bk prs -r+ -hnd:KEY: newfile`
+GOT=`bk prs -r"$KEY" -hnd:G: newfile 2>ERR`
+[ "$GOT" = "newfile" ] || fail "got $GOT" -f ERR
+USER=`bk prs -r+ -hnd:USER: newfile`
+[ "$USER" = "Pat.P.Windows" ] || fail "got $USER"
+# This one has spaces and tabs.
+bk edit $Q newfile
+date >>newfile
+BK_USER="Pat P.   		       Windows" bk delta $Q -yupdate newfile || fail
+KEY=`bk prs -r+ -hnd:KEY: newfile`
+GOT=`bk prs -r"$KEY" -hnd:G: newfile 2>ERR`
+[ "$GOT" = "newfile" ] || fail "got $GOT" -f ERR
+USER=`bk prs -r+ -hnd:USER: newfile`
+[ "$USER" = "Pat.P.Windows" ] || fail "got $USER"
+# A leading . should cause no problem.
+bk edit $Q newfile
+date >>newfile
+BK_USER=". Pat P. Windows" bk delta $Q -yupdate newfile || fail
+KEY=`bk prs -r+ -hnd:KEY: newfile`
+GOT=`bk prs -r"$KEY" -hnd:G: newfile 2>ERR`
+[ "$GOT" = "newfile" ] || fail "got $GOT" -f ERR
+USER=`bk prs -r+ -hnd:USER: newfile`
+[ "$USER" = ".Pat.P.Windows" ] || fail "got $USER"
+# A leading . should cause no problem.
+bk edit $Q newfile
+date >>newfile
+BK_USER=".. Pat P. Windows" bk delta $Q -yupdate newfile || fail
+KEY=`bk prs -r+ -hnd:KEY: newfile`
+GOT=`bk prs -r"$KEY" -hnd:G: newfile 2>ERR`
+[ "$GOT" = "newfile" ] || fail "got $GOT" -f ERR
+USER=`bk prs -r+ -hnd:USER: newfile`
+[ "$USER" = ".Pat.P.Windows" ] || fail "got $USER"
+# A leading . should cause no problem.
+bk edit $Q newfile
+date >>newfile
+BK_USER="... Pat P. Windows" bk delta $Q -yupdate newfile || fail
+KEY=`bk prs -r+ -hnd:KEY: newfile`
+GOT=`bk prs -r"$KEY" -hnd:G: newfile 2>ERR`
+[ "$GOT" = "newfile" ] || fail "got $GOT" -f ERR
+USER=`bk prs -r+ -hnd:USER: newfile`
+[ "$USER" = ".Pat.P.Windows" ] || fail "got $USER"
+echo OK

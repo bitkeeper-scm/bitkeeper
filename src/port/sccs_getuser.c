@@ -7,29 +7,47 @@
 static	char	*s, *r;
 static	uid_t	uid = (uid_t)-1;
 
+/*
+ * Return a cleaned copy of nm by replacing [ \r\t|/] with "." but
+ * never allow two dots in a row (just remove one).
+ */
 private	char *
-cleanup(char *s)
+cleanup(char *nm)
 {
 	int	warned = 0;
-	char	*t;
+	char	*cleaned, *from, *prev, *to;
 
-	unless (s && *s) return (0);
-	for (t = s; *t; t++) {
-		if (*t == ' ') *t = '.';
-		if ((*t == '\r') || (*t == '\n') ||
-		    (*t == '|') || (*t == '/')) {
+	unless (nm && *nm) return (0);
+	cleaned = malloc(strlen(nm)+1);  // worst-case length
+	for (from = nm, to = cleaned, prev = 0; *from; from++) {
+		switch (*from) {
+		    case '\r': case '\n':
+		    case '|':  case '/':
 			unless (warned) {
 				fprintf(stderr,
 				    "Bad user name '%s'; names may not "
 				    "contain LR, CR, "
 				    "'|' or '/' characters.\n"
-				    "Replacing bad characters with a '.'\n", s);
+				    "Replacing bad characters with a '.'\n", nm);
+				warned = 1;
 			}
-			warned = 1;
-			*t = '.';
+			/*FALLTHRU*/
+		    case ' ':
+		    case '\t':
+		    case '.':
+			unless (prev && (*prev == '.')) {
+				prev = to;
+				*to++ = '.';
+			}
+			break;
+		    default:
+			prev = to;
+			*to++ = *from;
+			break;
 		}
 	}
-	return (s);
+	*to = 0;
+	return (cleaned);
 }
 
 void
@@ -71,7 +89,6 @@ sccs_getuser(void)
 	} else {
 		s = cleanup(s);
 	}
-	if (s) s = strdup(s);
 	return (s);
 }
 
@@ -117,7 +134,7 @@ sccs_realuser(void)
 #endif
 	/* XXX - it might be nice to return basename of $HOME or something */
 	unless (r && r[0]) r = UNKNOWN_USER;
-	if (r = cleanup(r)) r = strdup(r);
+	r = cleanup(r);
 	return (r);
 }
 
