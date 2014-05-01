@@ -1,3 +1,5 @@
+Related to Named Branches - how to manage name spaces
+
 The problems with revisioning stuff in the file:
 
 Assume that no new deltas are added to the file, but the pathname is changed.

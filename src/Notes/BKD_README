@@ -1,3 +1,5 @@
+A list of bkd commands sketched out
+
 This file tries to document the resync daemon commands.
 
 clone - clone the current repository

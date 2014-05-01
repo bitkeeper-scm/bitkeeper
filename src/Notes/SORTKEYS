@@ -1,3 +1,5 @@
+Describe problem and encoding of sortkeys
+
 SORTKEY - New code to store and propagate additional metadata to
 keep cset and delta sort order constant through transformations,
 like csetprune, partition, and fixing checksums.

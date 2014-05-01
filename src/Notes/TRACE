@@ -1,3 +1,5 @@
+Internal tracing mechanism
+
 BK Internal Tracing.  How to instrument the code to be able to
 track what is going on in a multi process setup.
 

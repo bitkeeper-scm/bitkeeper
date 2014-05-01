@@ -1,3 +1,5 @@
+Enumerate feature bits
+
 Protocol level features:
    lkey:1	use leasekey #1 to sign lease requests
    BAMv2	support BAM operations (4.1.1 and later)

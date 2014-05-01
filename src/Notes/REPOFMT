@@ -1,3 +1,5 @@
+Proposal to minimize having a zillion flags for clone
+
 In the current -stable tree we support binary sfile's using the
 'binfile' config variable.  The config is checked whenever a sfile is
 going to be written: if 'binfile' is true then a binary sfile is

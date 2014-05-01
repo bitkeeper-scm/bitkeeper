@@ -381,7 +381,7 @@ img_cleanup() {
 echo $N Check that exporting to a full disk will fail ...............$NL
 cd "$HERE"
 # Create a small Mac volume and mount it; do test there
-hdiutil create -quiet -size 10m -fs HFS+J -volname Regression regression.dmg
+hdiutil create -quiet -size 2m -fs HFS+J -volname Regression regression.dmg
 mkdir regression
 REG="$HERE/regression"
 hdiutil attach ${Q:+-quiet} -mountpoint "$REG" regression.dmg

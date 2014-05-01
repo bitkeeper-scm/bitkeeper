@@ -1,3 +1,5 @@
+Thoughts about sfile internal formats
+
 A list of things to do when we revise the file format.
 
 * Have a real magic number for the file format, and a format version.

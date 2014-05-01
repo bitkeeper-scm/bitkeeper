@@ -1,3 +1,5 @@
+Thoughts on revision number mapping when importing RCS / ATT SCCS
+
 The only hard part about converting is getting the revision numbers 
 correct.  Because of the differences in RCS/SCCS revision numbering,
 there can't be a 1:1 mapping.

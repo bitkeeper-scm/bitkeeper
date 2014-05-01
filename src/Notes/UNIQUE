@@ -1,3 +1,5 @@
+Original work on making unique delta keys.
+
 [Thu Oct 14 13:57:29 PDT 1999]
 
 In order to ensure that delta keys are unique, we're going to try the following:

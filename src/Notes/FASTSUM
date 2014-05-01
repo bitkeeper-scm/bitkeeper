@@ -1,3 +1,5 @@
+Encode non-ChangeSet sfile weave to optimize checksum calculation.
+
 Speed up checksums
 ------------------
 

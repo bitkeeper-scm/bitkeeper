@@ -1,3 +1,5 @@
+Basic locking model - not nested
+
 Reader/writer locking in BK.
 
 This is single repository wide locking, not individual file locking.

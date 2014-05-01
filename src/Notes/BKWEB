@@ -1,3 +1,5 @@
+A little on BK/Web as well as what a free version would look like.
+
 In order to get the sorting that Beth wants (and CVSweb does), we need to
 wack sccslog.  There are two changes needed:
 

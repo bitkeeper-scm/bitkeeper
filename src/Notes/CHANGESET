@@ -1,3 +1,5 @@
+Thoughts about shrinking an sfile, in particular the ChangeSet file
+
 Smaller changeset file
 ----------------------
     Non-SCCS graph format:

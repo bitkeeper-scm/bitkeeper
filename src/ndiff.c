@@ -10,57 +10,41 @@ typedef	struct {
 	char	*s;		/* string to print */
 } header;
 
-/*
- * One of these for each file we are diffing.
- */
 typedef	struct {
-	u32	nl:1;		/* does it have a newline at the end? */
-	u32	binary:1;	/* set if binary */
-} file;
+	char	*data;
+	int	len;
+} line;
 
 typedef struct {
-	file	files[2];	/* the two files to diff */
+	df_opt	dop;		/* copy of diff opts */
+	u8	binary[2];	/* set if files are binary */
 	header	*fn_defs;	/* function defs for diff -p */
-	char	**bl[2];	/* # of lines in left/right for sdiff */
-	int	state;		/* for sdiff */
 	int	diffgap;	/* gap value for sdiff */
-	char	*last[2];	/* start of last line in file */
-	df_opt	*dop;		/* copy of diff opts */
+	line	*lines[2];
 } filedf;
-
-
-/* comparison funcs */
-private	int	cmp_identical(void *a, int lena,
-    void *b, int lenb, void *extra);
-private	int	cmp_ignore_ws(void *va, int lena,
-    void *vb, int lenb, void *extra);
-private	int	cmp_ignore_ws_chg(void *va, int lena,
-    void *vb, int lenb, void *extra);
-
-/* hashing funcs */
-private	u32	hash_identical(void *data, int len,
-    int side, void *extra);
-private	u32	hash_ignore_ws(void *buf, int len,
-    int side, void *extra);
-private	u32	hash_ignore_ws_chg(void *data, int len,
-    int side, void *extra);
-
-private void	printLine(char *prefix, void *data, int len, int side,
-    void *extra, FILE *out);
-private	void	printHeader(int lno, int li, int ll, int ri, int rl,
-    void *extra, FILE *out);
-private	void	printDeco(u32 where, void *extra, FILE *out);
-
-private void	sdPrint(char *prefix, void *data, int len, int side,
-    void *extra, FILE *out);
-private void	sdState(u32 where, void *extra, FILE *out);
 
 /* other functions */
 private	int	external_diff(char *lfile, char *rfile, df_opt *dop, char *out);
+private	void	saveline(line **lines, int side, char *data, int len);
+private	char	*getData(int idx, int side, void *extra, int *len);
+private	void	printStd(hunk *hunks, filedf *fop, FILE *out);
+private	void	printRCS(hunk *hunks,
+		    filedf *fop, FILE *out);
+private	void	printIfDef(hunk *hunks, hunk *range,
+		    filedf *fop, FILE *out, char *defstr);
+private	void	printUnified(hunk *hunks, hunk *range,
+		    filedf *fop, FILE *out);
+private	void	printUBlock(hunk *hunks, hunk *range, filedf *fop, FILE *out);
+private	void	printSdiff(hunk *hunks, hunk *range, filedf *fop, FILE *out);
+private	void	printLines(char *left, int lenL,
+		    char *right, int lenR, FILE *out, df_opt *dop);
+private	void	printHunk(char *prefix, hunk *h, int side,
+		    filedf *fop, FILE *out, u32 nlFlags);
 
-private void	printLines(filedf *o, char *left, char *right, FILE *out);
-private void	alignMods(filedf *o, char **A, char **B, FILE *out);
-private int	lcs(char *a, int alen, char *b, int blen);
+enum {
+	PRN_ADD_NL = 1,		/* print new line at end of diffs */
+	PRN_WARN_NL = 2,	/* print warning (implies PRN_ADD_NL */
+};
 
 int
 ndiff_main(int ac, char **av)
@@ -187,24 +171,23 @@ diff_cleanOpts(df_opt *opts)
 int
 diff_files(char *file1, char *file2, df_opt *dop, char *out)
 {
-	int	i, j, n;
-	int	firstDiff;
+	int	i, j;
+	int	printAll = dop->out_define || dop->out_sdiff; /* whole file */
 	int	lno[2];
 	int	skip[2] = {0, 0};
-	int	rc = 2, hasctrlr = 0;
+	int	rc = 2;
 	char	*files[2] = {file1, file2};
 	char	*data[2] = {0, 0};
-	df_cmp	dcmp = 0;
-	df_hash	dhash = 0;
+	df_cmp	*dcmp;
+	df_hash	*dhash;
 	header	*fh;
-	df_ctx	*dc = 0;
-	filedf	*o;
+	filedf	fop = {{0}};
 	pcre	*re = 0;
 	FILE	*fout = 0;
 	struct	stat sb[2];
 	struct	tm	*tm;
 	long	offset;
-	hunk	*h, *hlist;
+	hunk	*h, *hlist = 0, range;
 	char	buf[1024];
 
 	if (getenv("_BK_USE_EXTERNAL_DIFF")) {
@@ -218,14 +201,12 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 		unless (fout) return (2);
 	}
 
-	o = new(filedf);
-	o->dop = new(df_opt);
-	*o->dop = *dop;
-	o->diffgap = proj_configint(0, "diffgap", 0);
+	fop.dop = *dop;
+	fop.diffgap = proj_configint(0, "diffgap", 0);
 
 	for (i = 0; i < 2; i++) {
 		if (stat(files[i], &sb[i])) {
-			unless (o->dop->new_is_null) {
+			unless (dop->new_is_null) {
 				perror(files[i]);
 				return (2);
 			}
@@ -234,8 +215,9 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 	}
 
 	/* Maybe they gave us the same file? */
-	if (!win32() &&
-	    (sb[0].st_dev == sb[1].st_dev) && (sb[0].st_ino == sb[1].st_ino)) {
+	if (!win32() && !printAll &&
+	    (sb[DF_LEFT].st_dev == sb[DF_RIGHT].st_dev) &&
+	    (sb[DF_LEFT].st_ino == sb[DF_RIGHT].st_ino)) {
 		/* no diffs */
 		return (0);
 	}
@@ -255,8 +237,8 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 	 * seeing if they differ and don't care about the actual
 	 * diffs, then do a quick comparison.
 	 */
-	if ((sb[0].st_size == sb[1].st_size) &&
-	    !memcmp(data[0], data[1], sb[0].st_size)) {
+	if (!printAll && (sb[DF_LEFT].st_size == sb[DF_RIGHT].st_size) &&
+	    !memcmp(data[DF_LEFT], data[DF_RIGHT], sb[DF_LEFT].st_size)) {
 		/* no diffs */
 		rc = 0;
 		goto out;
@@ -265,72 +247,64 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 	/*
 	 * Set up the right functions for running the diff.
 	 */
-	if (o->dop->ignore_all_ws) {
-		dcmp  = cmp_ignore_ws;
-		dhash = hash_ignore_ws;
-	} else if (o->dop->ignore_ws_chg) {
-		dcmp  = cmp_ignore_ws_chg;
-		dhash = hash_ignore_ws_chg;
+	if (dop->ignore_all_ws) {
+		dcmp  = diff_cmpIgnoreWS;
+		dhash = diff_hashIgnoreWS;
+	} else if (dop->ignore_ws_chg) {
+		dcmp  = diff_cmpIgnoreWSChg;
+		dhash = diff_hashIgnoreWSChg;
 	} else {
-		dcmp  = cmp_identical;
-		dhash = hash_identical;
+		dcmp  = diff_cmpLine;
+		dhash = diff_hashLine;
 	}
 
-	dc = diff_new(dcmp, dhash, ndiff_align, o);
+	re = dop->pattern;
 
-	re = o->dop->pattern;
-
-	lno[0] = lno[1] = 0;
+	lno[DF_LEFT] = lno[DF_RIGHT] = 0;
 
 	for (i = 0; i < 2; i++) {
 		char	*s, *e, *t = 0;	/* start/end/tmp */
 
 		s = e = data[i];
 		for (j = 0; j < sb[i].st_size; j++) {
-			if (*e == '\0') o->files[i].binary = 1;
+			if (*e == '\0') fop.binary[i] = 1;
 			if (*e == '\n') {
-				if (o->dop->strip_trailing_cr) {
+				if (dop->strip_trailing_cr) {
 					t = e;
 					while ((e > s) && (*(e-1)=='\r')) e--;
-					if (e != t) hasctrlr = 1;
 					*e = '\n';
 				}
-				o->last[i] = s;
-				diff_addItem(dc, i, s, e - s + 1);
-				lno[i]++;
+				saveline(&fop.lines[i], i, s, e - s + 1);
+				++lno[i];
 				if (re && (i == 0)) {
 					unless (pcre_exec(re, 0, s, e - s + 1,
 						0, 0, 0, 0)) {
-						fh = addArray(&o->fn_defs,0);
-						fh->lno = lno[0];
+						fh = addArray(&fop.fn_defs,0);
+						fh->lno = lno[DF_LEFT];
 						fh->s = strndup(s, e - s + 1);
 						chomp(fh->s);
 						trim(fh->s);
 					}
 				}
-				if (o->dop->strip_trailing_cr) e = t;
+				if (dop->strip_trailing_cr) e = t;
 				s = e + 1;
 			}
 			e++;
 		}
-		o->files[i].nl = 1;
 		if (j && (*(e-1) != '\n')) {
-			if (o->dop->ignore_trailing_cr && (*(e-1) == '\r')) {
+			if (dop->ignore_trailing_cr && (*(e-1) == '\r')) {
 				t = e;
 				while ((e > s) && (*(e-1) == '\r')) e--;
-				if (e != t) hasctrlr = 1;
 				*e = '\n';
 			} else {
 				e--;
-				o->files[i].nl = 0;
 			}
-			o->last[i] = s;
-			diff_addItem(dc, i, s, e - s + 1);
-			lno[i]++;
+			saveline(&fop.lines[i], i, s, e - s + 1);
+			++lno[i];
 		}
 	}
 
-	if (o->files[0].binary || o->files[1].binary) {
+	if (fop.binary[DF_LEFT] || fop.binary[DF_RIGHT]) {
 		/*
 		 * We already know the files can't be identical as
 		 * we've checked for same size and equal contents
@@ -344,71 +318,61 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 		goto out;
 	}
 
-	/*
-	 * This is an optimization where we just compare as much as we
-	 * can to avoid hashing.
-	 */
-	n = min(sb[0].st_size, sb[1].st_size);
-	firstDiff = 0;
-	unless (hasctrlr) {
-		for (i = 0; i < n; i++) {
-			if (data[0][i] != data[1][i]) break;
-			if (data[0][i] == '\n') firstDiff++;
-		}
-	}
-	assert((firstDiff <= lno[0]) && (firstDiff <= lno[1]));
 	/* Do the diff */
-	hlist = diff_items(dc, firstDiff, o->dop->minimal);
-	unless (nLines(hlist)) {
-		rc = 0;
-		goto out;
-	}
-	rc = 1;			/* difference found */
-	unless (out) goto out;
+	range.start[DF_LEFT] = range.start[DF_RIGHT] = 1;
+	range.len[DF_LEFT] = lno[DF_LEFT];
+	range.len[DF_RIGHT] = lno[DF_RIGHT];
+	hlist = diff_items(&range, dop->minimal,
+	    getData, dcmp, dhash, diff_cost, &fop);
 
-	if (o->dop->out_diffstat) {
+	rc = nLines(hlist) != 0;
+	if (!out || (!rc && !printAll)) goto out;
+
+	if (dop->out_diffstat) {
 		dop->adds = dop->dels = dop->mods = 0;
 		EACHP(hlist, h) {
-			if (h->ll == h->rl) {
-				dop->mods += h->ll;
+			if (DLEN(h, DF_LEFT) == DLEN(h, DF_RIGHT)) {
+				dop->mods += DLEN(h, DF_LEFT);
 			} else {
-				dop->adds += h->rl;
-				dop->dels += h->ll;
+				dop->dels += DLEN(h, DF_LEFT);
+				dop->adds += DLEN(h, DF_RIGHT);
 			}
 		}
 	}
-
-	/* Print the diffs. */
-	if (o->dop->out_unified) {
+	if (dop->out_unified) {
 		/* print header */
-		tm = localtimez(&sb[0].st_mtime, &offset);
+		tm = localtimez(&sb[DF_LEFT].st_mtime, &offset);
+		strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", tm);
+		fprintf(fout, "--- %s\t%s %s\n",
+		    files[DF_LEFT], buf, tzone(offset));
+		tm = localtimez(&sb[DF_RIGHT].st_mtime, &offset);
 		strftime(buf, 1024, "%Y-%m-%d %H:%M:%S", tm);
-		fprintf(fout, "--- %s\t%s %s\n", files[0], buf, tzone(offset));
-		tm = localtimez(&sb[1].st_mtime, &offset);
-		strftime(buf, 1024, "%Y-%m-%d %H:%M:%S", tm);
-		fprintf(fout, "+++ %s\t%s %s\n", files[1], buf, tzone(offset));
-		diff_printUnified(dc, o->dop->context,
-		    printLine, printHeader, fout);
-	} else if (o->dop->out_rcs) {
-		diff_printRCS(dc, printLine, fout);
-	} else if (o->dop->out_define) {
-		diff_printDecorated(dc, printLine, printDeco, fout);
-	} else if (o->dop->out_sdiff) {
-		diff_printDecorated(dc, sdPrint, sdState, fout);
-	} else if (o->dop->out_print_hunks) {
+		fprintf(fout, "+++ %s\t%s %s\n",
+		    files[DF_RIGHT], buf, tzone(offset));
+		printUnified(hlist, &range, &fop, fout);
+	} else if (dop->out_rcs) {
+		printRCS(hlist, &fop, fout);
+	} else if (dop->out_define) {
+		printIfDef(
+		    hlist, &range, &fop, fout, dop->out_define);
+	} else if (dop->out_sdiff) {
+		printSdiff(hlist, &range, &fop, fout);
+	} else if (dop->out_print_hunks) {
 		EACHP(hlist, h) {
-			fprintf(fout,
-			    "%d,%d %d,%d\n", h->li, h->ll, h->ri, h->rl);
+			fprintf(fout, "%d,%d %d,%d\n",
+			    DSTART(h, DF_LEFT), DLEN(h, DF_LEFT),
+			    DSTART(h, DF_RIGHT), DLEN(h, DF_RIGHT));
 		}
 	} else {
-		diff_print(dc, printLine, fout);
+		printStd(hlist, &fop, fout);
 	}
+
 out:	if (fout && (fout != stdout)) fclose(fout);
-	FREE(data[0]);
-	FREE(data[1]);
-	FREE(o->dop);
-	FREE(o);
-	diff_free(dc);
+	FREE(data[DF_LEFT]);
+	FREE(data[DF_RIGHT]);
+	FREE(fop.lines[DF_LEFT]);
+	FREE(fop.lines[DF_RIGHT]);
+	FREE(hlist);
 	return (rc);
 }
 
@@ -471,310 +435,82 @@ external_diff(char *lfile, char *rfile, df_opt *dop, char *out)
 	return (ret);
 }
 
-u32
-ndiff_align(void *data, int len, int pos, void *extra)
+private	char *
+getData(int idx, int side, void *extra, int *len)
 {
-	char	*line = data;
-	int	i, j, c;
-	int	price;
-	struct {
-		char	*match;		/* pattern to match */
-		int	len;		/* size of match */
-		int	price[3];	/* price for BEG, END, MID */
-	} menu[] = {
-		{"", 0, {2, 1, 3}},	/* empty line */
-		{"/*", 2, {1, 2, 3}},	/* start comment */
-		{"*/", 2, {2, 1, 3}},	/* end comment */
-		{"{", 1, {1, 2, 3}},	/* start block */
-		{"}", 1, {2, 1, 3}},	/* end block */
-		{0, 0, {0, 0, 0}}
-	};
-	/* remove final newline */
-	if ((len > 0) && (line[len-1] == '\n')) --len;
+	line	*data = &((filedf *)extra)->lines[side][idx];
 
-	/* skip whitespace at start of line */
-	for (i = 0; i < len; i++) {
-		unless ((line[i] == ' ') || (line[i] == '\t')) break;
-	}
-
-	/* handle blank line case */
-	if (i == len) return (menu[0].price[pos]);
-
-	/* look for other cases */
-	price = 0;
-	for (j = 1; menu[j].match; j++) {
-		c = menu[j].len;
-		if (((len - i) >= c) && strneq(line+i, menu[j].match, c)) {
-			price = menu[j].price[pos];
-			i += c;
-			break;
-		}
-	}
-	if (price) {
-		/* make sure all that's left is whitespace */
-		for (/* i */; i < len; i++) {
-			unless ((line[i] == ' ') || (line[i] == '\t')) break;
-		}
-		if (i == len) return (price);
-	}
-	return (0);
+	if (len) *len = data->len;
+	return (data->data);
 }
 
-/* Comparison functions for the various diff options */
-
-/*
- * Just see if two lines are identical
- */
-private	int
-cmp_identical(void *va, int lena, void *vb, int lenb, void *extra)
+private	void
+saveline(line **lines, int side, char *data, int len)
 {
-	if (lena != lenb) return (lena - lenb);
-	return (memcmp(va, vb, lena));
+	line	*newline = addArray(lines, 0);
+
+	newline->data = data;
+	newline->len = len;
 }
 
-/*
- * Compare ignoring all white space. (diff -w)
- */
-private	int
-cmp_ignore_ws(void *va, int lena, void *vb, int lenb, void *extra)
+private	void
+printSdiff(hunk *hunks, hunk *range, filedf *fop, FILE *out)
 {
-	int	i, j;
-	int	sa, sb;
-	char	*a = (char *)va;
-	char	*b = (char *)vb;
+	hunk	*h, *from, common, hc;
+	int	*plist, i, j, len;
+	char	*strA, *strB;
+	int	cmd;
+	int	lenA, lenB;
+	char	*str;
 
-	i = j = 0;
-	while (i < lena || j < lenb) {
-		if (a[i] == b[j]) {
-			i++, j++;
-			continue;
+	from = 0;
+	EACHP(hunks, h) {
+		diff_mkCommon(&common, range, from, h);
+		DFOREACH(&common, DF_LEFT, j) {
+			str = getData(j, DF_LEFT, fop, &len);
+			printLines(str, len, str, len, out, &fop->dop);
 		}
-		sa = isspace(a[i]);
-		sb = isspace(b[j]);
-		unless (sa || sb) break; /* real difference */
-		while ((i < lena) && isspace(a[i])) i++;
-		while ((j < lenb) && isspace(b[j])) j++;
-		unless (a[i] == b[j]) break;
+		from = h;
+
+		plist = diff_alignMods(h, getData, fop, fop->diffgap);
+		hc = *h; // copy so we can modify
+		EACH(plist) {
+			cmd = plist[i];
+			strA = strB = 0;
+			lenA = lenB = 0;
+			if (cmd != DF_RIGHT) {
+				strA = getData(hc.start[DF_LEFT]++,
+				    DF_LEFT, fop, &lenA);
+				assert(hc.len[DF_LEFT]);
+				hc.len[DF_LEFT]--;
+			}
+			if (cmd != DF_LEFT) {
+				strB = getData(hc.start[DF_RIGHT]++,
+				    DF_RIGHT, fop, &lenB);
+				assert(hc.len[DF_RIGHT]);
+				hc.len[DF_RIGHT]--;
+			}
+			printLines(strA, lenA, strB, lenB, out, &fop->dop);
+		}
+		assert(!hc.len[DF_LEFT] && !hc.len[DF_RIGHT]);
+		free(plist);
 	}
-	return (!((i == lena) && (j == lenb)));
-}
-
-/*
- * Compare ignoring changes in white space (diff -b).
- */
-private	int
-cmp_ignore_ws_chg(void *va, int lena, void *vb, int lenb, void *extra)
-{
-	int	i, j;
-	int	sa, sb;
-	char	*a = (char *)va;
-	char	*b = (char *)vb;
-
-	i = j = 0;
-	while ((i < lena) || (j < lenb)) {
-		if (a[i] == b[j]) {
-			i++, j++;
-			continue;
-		}
-		sa = isspace(a[i]);
-		sb = isspace(b[j]);
-		unless (sa || sb) break; /* real difference */
-		if ((i > 0) && isspace(a[i-1])) {
-			while ((i < lena) && (sa = isspace(a[i]))) i++;
-		}
-		if ((j > 0) && isspace(b[j-1])) {
-			while ((j < lenb) && (sb = isspace(b[j]))) j++ ;
-		}
-		if (sa && sb) {
-			i++, j++;
-			continue;
-		}
-		unless (a[i] == b[j]) break;
-	}
-	return (!((i == lena) && (j == lenb)));
-}
-
-/* HASH FUNCTIONS */
-
-/*
- * Hash data, use crc32c for speed
- */
-private	u32
-hash_identical(void *data, int len, int side, void *extra)
-{
-	u32	h = 0;
-	filedf	*o = (filedf *)extra;
-	char	*buf = (char *)data;
-
-	if ((data == o->last[side]) && !o->files[side].nl) h = 1;
-	return (crc32c(h, buf, len));
-}
-
-/*
- * Hash data ignoring changes in white space (diff -b)
- */
-private	u32
-hash_ignore_ws_chg(void *data, int len, int side, void *extra)
-{
-	u32	h = 0;
-	int	i, j = 0;
-	filedf	*o = (filedf *)extra;
-	char	*buf = (char *)data;
-	char	copy[len];
-
-	if ((data == o->last[side]) && !o->files[side].nl &&
-	    o->dop->strip_trailing_cr) {
-		h = 1;
-	}
-	for (i = 0; i < len; i++) {
-		if (isspace(buf[i])) {
-			while ((i < len) && isspace(buf[i+1])) i++;
-			copy[j++] = ' ';
-			continue;
-		}
-		copy[j++] = buf[i];
-	}
-	return (crc32c(h, copy, j));
-}
-
-/*
- * Hash data ignoring all white space (diff -w)
- */
-private	u32
-hash_ignore_ws(void *data, int len, int side, void *extra)
-{
-	u32	h = 0;
-	int	i, j = 0;
-	filedf	*o = (filedf *)extra;
-	char	*buf = (char *)data;
-	char	copy[len];
-
-	if ((data == o->last[side]) && !o->files[side].nl &&
-	    o->dop->strip_trailing_cr) {
-		h = 1;
-	}
-	for (i = 0; i < len; i++) {
-		if (isspace(buf[i])) {
-			while ((i < len) && isspace(buf[i+1])) i++;
-			continue;
-		}
-		copy[j++] = buf[i];
-	}
-	return (crc32c(h, copy, j));
-}
-
-private void
-printLine(char *prefix, void *data, int len, int side,
-    void *extra, FILE *out)
-{
-	filedf	*o = (filedf *)extra;
-
-	fprintf(out, "%s", prefix);
-	fwrite(data, len, 1, out);
-	if ((data == o->last[side]) && !o->files[side].nl) {
-		fputc('\n', out);
-		unless (o->dop->out_define) {
-			fputs("\\ No newline at end of file\n", out);
-		}
+	diff_mkCommon(&common, range, from, 0);
+	DFOREACH(&common, DF_LEFT, j) {
+		str = getData(j, DF_LEFT, fop, &len);
+		printLines(str, len, str, len, out, &fop->dop);
 	}
 }
 
 private	void
-printHeader(int lno, int li, int ll, int ri, int rl, void *extra, FILE *out)
-{
-	int	i;
-	filedf	*o = (filedf *)extra;
-
-	fprintf(out, "@@ -%d", li);
-	if (!li || (ll > 1)) fprintf(out, ",%d", ll);
-	fprintf(out, " +%d", ri);
-	if (!ri || (rl > 1)) fprintf(out, ",%d", rl);
-	fprintf(out, " @@");
-	if (o->dop->pattern) {
-		fputc(' ', out);
-		EACH_REVERSE(o->fn_defs) {
-			if (o->fn_defs[i].lno <= lno) {
-				fprintf(out, "%.*s",
-				    (int)min(40, strlen(o->fn_defs[i].s)),
-				    o->fn_defs[i].s);
-				break;
-			}
-		}
-	}
-	fprintf(out, "\n");
-}
-
-private void
-printDeco(u32 where, void *extra, FILE *out)
-{
-	filedf	*o = (filedf *)extra;
-	char	*defstr = o->dop->out_define;
-
-	if (where & DF_LEFT_START) {
-		fprintf(out, "#ifndef %s\n", defstr);
-	} else if ((where & (DF_LEFT_END|DF_RIGHT_START)) ==
-	    (DF_LEFT_END|DF_RIGHT_START)) {
-		fprintf(out, "#else /* %s */\n", defstr);
-	} else if (where & DF_LEFT_END) {
-		fprintf(out, "#endif /* ! %s */\n", defstr);
-	} else if (where & DF_RIGHT_START) {
-		fprintf(out, "#ifdef %s\n", defstr);
-	} else if (where & DF_RIGHT_END) {
-		fprintf(out, "#endif /* %s */\n", defstr);
-	}
-}
-
-private void
-sdPrint(char *prefix, void *data, int len,
-    int side, void *extra, FILE *out)
-{
-	filedf	*o = (filedf *)extra;
-	char	*buf = (char *)data;
-	char	*str;
-
-	if (buf[len-1] == '\n') len--;
-	str = strndup(buf, len);
-	switch (o->state) {
-	    case DF_MOD_START:
-		o->bl[side] = addLine(o->bl[side], str);
-		return;
-	    case DF_COMMON_START: printLines(o, str, str, out); break;
-	    case DF_LEFT_START:	  printLines(o, str, 0, out); break;
-	    case DF_RIGHT_START:  printLines(o, 0, str, out); break;
-	    default:		assert(0);
-	}
-	FREE(str);
-}
-
-private void
-sdState(u32 where, void *extra, FILE *out)
-{
-	filedf	*o = (filedf *)extra;
-
-	switch (where) {
-	    case DF_MOD_START:
-	    case DF_COMMON_START:
-		o->state = where;
-		break;
-	    case DF_LEFT_START:
-	    case DF_RIGHT_START:
-		if (o->state != DF_MOD_START) o->state = where;
-		break;
-	    case DF_MOD_END:
-		alignMods(o, o->bl[0], o->bl[1], out);
-		freeLines(o->bl[0], free);
-		freeLines(o->bl[1], free);
-		o->bl[0] = o->bl[1] = 0;
-		o->state = 0;
-	    default: break;
-	}
-}
-
-private void
-printLines(filedf *o, char *left, char *right, FILE *out)
+printLines(char *left, int lenL, char *right, int lenR, FILE *out, df_opt *dop)
 {
 	int	i, j, n;
 	char	sep;
+
+	/* chop */
+	if (lenL && (left[lenL-1] == '\n')) lenL--;
+	if (lenR && (right[lenR-1] == '\n')) lenR--;
 
 	/*
 	 * If they pass the same pointer we assume it's not a diff,
@@ -788,7 +524,7 @@ printLines(filedf *o, char *left, char *right, FILE *out)
 	} else {
 		sep = '>';
 	}
-	n = (int)o->dop->out_sdiff;
+	n = (int)dop->out_sdiff;
 	if (n <= 1) {
 		fputc(sep, out);
 		fputc('\n', out);
@@ -808,7 +544,7 @@ printLines(filedf *o, char *left, char *right, FILE *out)
 	 * that.
 	 */
 	if (left) {
-		for (i = j = 0; (j < n) && (i < strlen(left)); i++, j++) {
+		for (i = j = 0; (j < n) && (i < lenL); i++, j++) {
 			fputc(left[i], out);
 			if (left[i] == '\t') j += 7 - (j % 8);
 		}
@@ -819,147 +555,203 @@ printLines(filedf *o, char *left, char *right, FILE *out)
 	fputc(' ', out);
 	fputc(sep, out);
 	fputc(' ', out);
-	if (right) fprintf(out, "%.*s", n, right);
+	if (right) fprintf(out, "%.*s", lenR, right);
 	fputc('\n', out);
 }
 
-/*
- * This implements the Needleman–Wunsch algorithm for finding
- * the best alignment of diff block.
- * See http://en.wikipedia.org/wiki/Needleman–Wunsch_algorithm
- */
-private void
-alignMods(filedf *o, char **A, char **B, FILE *out)
+private	void
+printStd(hunk *hunks, filedf *fop, FILE *out)
 {
-	int	i, j, k;
-	int	match, delete, insert;
-	int	score, scoreDiag, scoreUp, scoreLeft;
-	int	lenA, lenB;
-	int	n = nLines(A), m = nLines(B);
-	int	d = o->diffgap;	/* gap penalty */
-	int	**F;
-	int	*algnA;
-	int	*algnB;
+	hunk	*h;
+	int	left, right;
 
-	if ((n * m) > 100000) {
-		/*
-		 * Punt if the problem is too large since the
-		 * algorithm is O(n^2).  The rationale is that the
-		 * line alignment only helps if you're looking at
-		 * smallish regions. Once you've gone over a few
-		 * screenfuls you're just reading new code so no point
-		 * in working hard to align lines.
-		 *
-		 */
-		for (i = 1; (i <= n) && (i <= m); i++) {
-			printLines(o, A[i], B[i], out);
+	EACHP(hunks, h) {
+		left = DLEN(h, DF_LEFT);
+		right = DLEN(h, DF_RIGHT);
+
+		fprintf(out, "%d", DAFTER(h, DF_LEFT));
+		if (left > 1) {
+			fprintf(out, ",%d", DLAST(h, DF_LEFT));
 		}
-		while (i <= n) printLines(o, A[i++], 0, out);
-		while (i <= m) printLines(o, 0, B[i++], out);
-		return;
-	}
-	F = malloc((n+1) * sizeof(int *));
-	algnA = calloc(n+m+1, sizeof(int));
-	algnB = calloc(n+m+1, sizeof(int));
-	for (i = 0; i <= n; i++) {
-		F[i] = malloc((m+1) * sizeof(int));
-		F[i][0] = d * i;
-	}
-	for (j = 0; j <= m; j++) F[0][j] = d * j;
-	for (i = 1; i <= n; i++) {
-		lenA = strlen(A[i]);
-		for (j = 1; j <= m; j++) {
-			lenB = strlen(B[j]);
-			match  = F[i-1][j-1] + lcs(A[i], lenA, B[j], lenB);
-			delete = F[i-1][j] + d;
-			insert = F[i][j-1] + d;
-			F[i][j] = max(match, max(delete, insert));
+		if (left && right) {
+			fputc('c', out);
+		} else if (left) {
+			fputc('d', out);
+		} else if (right) {
+			fputc('a', out);
 		}
-	}
-	/*
-	 * F now has all the alignments, walk it back to find
-	 * the best one.
-	 */
-	k = n + m;
-	i = nLines(A);
-	j = nLines(B);
-	while ((i > 0) && (j > 0)) {
-		score     = F[i][j];
-		scoreDiag = F[i-1][j-1];
-		scoreUp   = F[i][j-1];
-		scoreLeft = F[i-1][j];
-		assert(k > 0);
-		lenA = strlen(A[i]);
-		lenB = strlen(B[j]);
-		if (score == (scoreUp + d)) {
-			algnA[k] = -1;
-			algnB[k] = j;
-			j--; k--;
-			continue;
+		fprintf(out, "%d", DAFTER(h, DF_RIGHT));
+		if (right > 1) {
+			fprintf(out, ",%d", DLAST(h, DF_RIGHT));
 		}
-		if (score == (scoreLeft + d)) {
-			algnA[k] = i;
-			algnB[k] = -1;
-			i--; k--;
-			continue;
+		fputc('\n', out);
+
+		printHunk("< ", h, DF_LEFT, fop, out, PRN_WARN_NL);
+		if (left && right) {
+			fputs("---\n", out);
 		}
-		if (score == (scoreDiag + lcs(A[i], lenA, B[j], lenB))) {
-			algnA[k] = i;
-			algnB[k] = j;
-			i--; j--; k--;
-			continue;
-		}
+		printHunk("> ", h, DF_RIGHT, fop, out, PRN_WARN_NL);
 	}
-	while (i > 0) {
-		assert(k > 0);
-		algnA[k] = i;
-		algnB[k] = -1;
-		i--; k--;
-	}
-	while (j > 0) {
-		assert(k > 0);
-		algnA[k] = -1;
-		algnB[k] = j;
-		j--; k--;
-	}
-	/* Now print the output */
-	for (i = k + 1; i <= (n + m); i++) {
-		assert((algnA[i] != -1) || (algnB[i] != -1));
-		if (algnA[i] == -1) {
-			printLines(o, 0, B[algnB[i]], out);
-		} else if (algnB[i] == -1) {
-			printLines(o, A[algnA[i]], 0, out);
-		} else {
-			printLines(o, A[algnA[i]], B[algnB[i]], out);
-		}
-	}
-	for (i = 0; i <= n; i++) free(F[i]);
-	free(F);
-	free(algnA);
-	free(algnB);
 }
 
-private int
-lcs(char *a, int alen, char *b, int blen)
+private	void
+printRCS(hunk *hunks, filedf *fop, FILE *out)
 {
-	int	i, j;
-	int	ret;
-	int	**d;
+	hunk	*h;
+	int	left, right;
 
-	d = calloc(alen+1, sizeof(int *));
-	for (i = 0; i <= alen; i++) d[i] = calloc(blen+1, sizeof(int));
+	EACHP(hunks, h) {
+		left = DLEN(h, DF_LEFT);
+		right = DLEN(h, DF_RIGHT);
 
-	for (i = 1; i <= alen; i++) {
-		for (j = 1; j <= blen; j++) {
-			if (a[i] == b[j]) {
-				d[i][j] = d[i-1][j-1] + 1;
-			} else {
-				d[i][j] = max(d[i][j-1], d[i-1][j]);
+		if (left) {
+			fprintf(out, "d%d %d\n", DSTART(h, DF_LEFT), left);
+		}
+		if (right) {
+			fprintf(out, "a%d %d\n", DLAST(h, DF_LEFT), right);
+			printHunk(0, h, DF_RIGHT, fop, out, 0);
+		}
+	}
+}
+
+private	void
+printUnified(hunk *hunks, hunk *range, filedf *fop, FILE *out)
+{
+	hunk	*h, *set = 0;
+	int	startCommon, endCommon;
+	int	context = fop->dop.context;
+
+	startCommon = DSTART(range, DF_LEFT);
+	EACHP(hunks, h) {
+		/* consider context as part of this hunk */
+		endCommon = DSTART(h, DF_LEFT) - context;
+		/* If any common remains, then hunks are separated: flush */
+		if ((endCommon - startCommon > 1) && nLines(set)) {
+			printUBlock(set, range, fop, out);
+			truncArray(set, 0);
+		}
+		/* consider context as part of this hunk */
+		startCommon = DEND(h, DF_LEFT) + context;
+		addArray(&set, h);
+	}
+	if (nLines(set)) {
+		printUBlock(set, range, fop, out);
+	}
+	free(set);
+}
+
+private	void
+printUBlock(hunk *hunks, hunk *range, filedf *fop, FILE *out)
+{
+	hunk	*h, *from, common, bounds;
+	hunk	*first = &hunks[1];
+	hunk	*last = &hunks[nLines(hunks)];
+	int	i, left, right, n, m, side;
+	int	context = fop->dop.context;
+	char	*p;
+
+	assert(last != hunks);
+	for (side = 0; side < 2; side++) {
+		m = DSTART(first, side) - context;
+		n = DSTART(range, side);
+		DSTART(&bounds, side) = max(m, n);
+
+		m = DEND(last, side) + context;
+		n = DEND(range, side);
+		DLEN(&bounds, side) = min(m, n) - DSTART(&bounds, side);
+	}
+	range = &bounds;
+
+	left = range->len[DF_LEFT];
+	right = range->len[DF_RIGHT];
+
+	fprintf(out, "@@ -%d", DAFTER(range, DF_LEFT));
+	if (left != 1) fprintf(out, ",%d", left);
+	fprintf(out, " +%d", DAFTER(range, DF_RIGHT));
+	if (right != 1) fprintf(out, ",%d", right);
+	fputs(" @@", out);
+
+	assert(nLines(hunks));
+	if (fop->fn_defs) {
+		/* XXX: different than diff; range->start[DF_LEFT] */
+		int	idx = DSTART(&hunks[1], DF_LEFT);
+
+		EACH_REVERSE(fop->fn_defs) {
+			if (fop->fn_defs[i].lno < idx) {
+				p = fop->fn_defs[i].s;
+				fputc(' ', out);
+				fprintf(out, "%.*s",
+				    (int)min(40, strlen(p)), p);
+				break;
 			}
 		}
 	}
-	ret = d[alen][blen];
-	for (i = 0; i <= alen; i++) free(d[i]);
-	free(d);
-	return (ret);
+	fputc('\n', out);
+
+	from = 0;
+	EACHP(hunks, h) {
+		diff_mkCommon(&common, range, from, h);
+		printHunk(" ", &common, DF_LEFT, fop, out, PRN_WARN_NL);
+		from = h;
+
+		printHunk("-", h, DF_LEFT, fop, out, PRN_WARN_NL);
+		printHunk("+", h, DF_RIGHT, fop, out, PRN_WARN_NL);
+	}
+	diff_mkCommon(&common, range, from, 0);
+	printHunk(" ", &common, DF_LEFT, fop, out, PRN_WARN_NL);
+}
+
+private	void
+printIfDef(hunk *hunks, hunk *range,
+    filedf *fop, FILE *out, char *defstr)
+{
+	hunk	*h, *from, common;
+	int	left, right;
+
+	from = 0;
+	EACHP(hunks, h) {
+		diff_mkCommon(&common, range, from, h);
+		printHunk(0, &common, DF_LEFT, fop, out, PRN_ADD_NL);
+		from = h;
+
+		left = DLEN(h, DF_LEFT);
+		right = DLEN(h, DF_RIGHT);
+
+		if (left) {
+			fprintf(out, "#ifndef %s\n", defstr);
+			printHunk(0, h, DF_LEFT, fop, out, PRN_ADD_NL);
+		}
+		if (right) {
+			if (left) {
+				fprintf(out, "#else /* %s */\n", defstr);
+			} else {
+				fprintf(out, "#ifdef %s\n", defstr);
+			}
+			printHunk(0, h, DF_RIGHT, fop, out, PRN_ADD_NL);
+			fprintf(out, "#endif /* %s */\n", defstr);
+		} else if (left) {
+			fprintf(out, "#endif /* ! %s */\n", defstr);
+		}
+	}
+	diff_mkCommon(&common, range, from, 0);
+	printHunk(0, &common, DF_LEFT, fop, out, PRN_ADD_NL);
+}
+
+private	void
+printHunk(char *prefix, hunk *h, int side, filedf *fop, FILE *out, u32 nlFlags)
+{
+	int	j, len;
+	char	*p;
+
+	DFOREACH(h, side, j) {
+		p = getData(j, side, fop, &len);
+		if (prefix) fputs(prefix, out);
+		fwrite(p, len, 1, out);
+		if (nlFlags && (!len || (p[len-1] != '\n'))) {
+			fputc('\n', out);
+			if (nlFlags & PRN_WARN_NL) {
+				fputs("\\ No newline at end of file\n", out);
+			}
+		}
+	}
 }

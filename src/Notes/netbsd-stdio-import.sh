@@ -1,3 +1,5 @@
+Process used for importing netbsd libs
+
 set -x
 
 cd ~/bk/bk-stdio-hist
