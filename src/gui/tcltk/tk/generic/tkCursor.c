@@ -10,8 +10,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tkInt.h"
@@ -42,6 +40,7 @@ static void		CursorInit(TkDisplay *dispPtr);
 static void		DupCursorObjProc(Tcl_Obj *srcObjPtr,
 			    Tcl_Obj *dupObjPtr);
 static void		FreeCursor(TkCursor *cursorPtr);
+static void		FreeCursorObj(Tcl_Obj *objPtr);
 static void		FreeCursorObjProc(Tcl_Obj *objPtr);
 static TkCursor *	TkcGetCursor(Tcl_Interp *interp, Tk_Window tkwin,
 			    const char *name);
@@ -115,7 +114,7 @@ Tk_AllocCursorFromObj(
 	     * longer in use. Clear the reference.
 	     */
 
-	    FreeCursorObjProc(objPtr);
+	    FreeCursorObj(objPtr);
 	    cursorPtr = NULL;
 	} else if (Tk_Display(tkwin) == cursorPtr->display) {
 	    cursorPtr->resourceRefCount++;
@@ -132,7 +131,7 @@ Tk_AllocCursorFromObj(
     if (cursorPtr != NULL) {
 	TkCursor *firstCursorPtr = Tcl_GetHashValue(cursorPtr->hashPtr);
 
-	FreeCursorObjProc(objPtr);
+	FreeCursorObj(objPtr);
 	for (cursorPtr = firstCursorPtr;  cursorPtr != NULL;
 		cursorPtr = cursorPtr->nextPtr) {
 	    if (Tk_Display(tkwin) == cursorPtr->display) {
@@ -240,7 +239,7 @@ TkcGetCursor(
     }
 
     nameHashPtr = Tcl_CreateHashEntry(&dispPtr->cursorNameTable,
-            string, &isNew);
+	    string, &isNew);
     if (!isNew) {
 	existingCursorPtr = Tcl_GetHashValue(nameHashPtr);
 	for (cursorPtr = existingCursorPtr; cursorPtr != NULL;
@@ -274,7 +273,7 @@ TkcGetCursor(
     cursorPtr->hashPtr = nameHashPtr;
     cursorPtr->nextPtr = existingCursorPtr;
     cursorPtr->idHashPtr = Tcl_CreateHashEntry(&dispPtr->cursorIdTable,
-            (char *) cursorPtr->cursor, &isNew);
+	    (char *) cursorPtr->cursor, &isNew);
     if (!isNew) {
 	Tcl_Panic("cursor already registered in Tk_GetCursor");
     }
@@ -340,7 +339,7 @@ Tk_GetCursorFromData(
     dataKey.bg = bg;
     dataKey.display = Tk_Display(tkwin);
     dataHashPtr = Tcl_CreateHashEntry(&dispPtr->cursorDataTable,
-            (char *) &dataKey, &isNew);
+	    (char *) &dataKey, &isNew);
     if (!isNew) {
 	cursorPtr = Tcl_GetHashValue(dataHashPtr);
 	cursorPtr->resourceRefCount++;
@@ -352,12 +351,16 @@ Tk_GetCursorFromData(
      * add it to the database.
      */
 
-    if (XParseColor(dataKey.display, Tk_Colormap(tkwin), fg, &fgColor) == 0) {
-	Tcl_AppendResult(interp, "invalid color name \"", fg, "\"", NULL);
+    if (TkParseColor(dataKey.display, Tk_Colormap(tkwin), fg, &fgColor) == 0) {
+	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		"invalid color name \"%s\"", fg));
+	Tcl_SetErrorCode(interp, "TK", "VALUE", "CURSOR", "COLOR", NULL);
 	goto error;
     }
-    if (XParseColor(dataKey.display, Tk_Colormap(tkwin), bg, &bgColor) == 0) {
-	Tcl_AppendResult(interp, "invalid color name \"", bg, "\"", NULL);
+    if (TkParseColor(dataKey.display, Tk_Colormap(tkwin), bg, &bgColor) == 0) {
+	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		"invalid color name \"%s\"", bg));
+	Tcl_SetErrorCode(interp, "TK", "VALUE", "CURSOR", "COLOR", NULL);
 	goto error;
     }
 
@@ -373,7 +376,7 @@ Tk_GetCursorFromData(
     cursorPtr->hashPtr = dataHashPtr;
     cursorPtr->objRefCount = 0;
     cursorPtr->idHashPtr = Tcl_CreateHashEntry(&dispPtr->cursorIdTable,
-            (char *) cursorPtr->cursor, &isNew);
+	    (char *) cursorPtr->cursor, &isNew);
     cursorPtr->nextPtr = NULL;
 
     if (!isNew) {
@@ -481,7 +484,7 @@ FreeCursor(
     }
     TkpFreeCursor(cursorPtr);
     if (cursorPtr->objRefCount == 0) {
-	ckfree((char *) cursorPtr);
+	ckfree(cursorPtr);
     }
 }
 
@@ -550,13 +553,13 @@ Tk_FreeCursorFromObj(
     Tcl_Obj *objPtr)		/* The Tcl_Obj * to be freed. */
 {
     FreeCursor(GetCursorFromObj(tkwin, objPtr));
-    FreeCursorObjProc(objPtr);
+    FreeCursorObj(objPtr);
 }
 
 /*
  *---------------------------------------------------------------------------
  *
- * FreeCursorFromObjProc --
+ * FreeCursorObjProc, FreeCursorObj --
  *
  *	This proc is called to release an object reference to a cursor.
  *	Called when the object's internal rep is released or when the cached
@@ -576,13 +579,21 @@ static void
 FreeCursorObjProc(
     Tcl_Obj *objPtr)		/* The object we are releasing. */
 {
+    FreeCursorObj(objPtr);
+    objPtr->typePtr = NULL;
+}
+
+static void
+FreeCursorObj(
+    Tcl_Obj *objPtr)		/* The object we are releasing. */
+{
     TkCursor *cursorPtr = objPtr->internalRep.twoPtrValue.ptr1;
 
     if (cursorPtr != NULL) {
 	cursorPtr->objRefCount--;
 	if ((cursorPtr->objRefCount == 0)
 		&& (cursorPtr->resourceRefCount == 0)) {
-	    ckfree((char *) cursorPtr);
+	    ckfree(cursorPtr);
 	}
 	objPtr->internalRep.twoPtrValue.ptr1 = NULL;
     }
@@ -714,7 +725,7 @@ GetCursorFromObj(
     for (cursorPtr = Tcl_GetHashValue(hashPtr);
 	    cursorPtr != NULL; cursorPtr = cursorPtr->nextPtr) {
 	if (Tk_Display(tkwin) == cursorPtr->display) {
-	    FreeCursorObjProc(objPtr);
+	    FreeCursorObj(objPtr);
 	    objPtr->internalRep.twoPtrValue.ptr1 = cursorPtr;
 	    cursorPtr->objRefCount++;
 	    return cursorPtr;

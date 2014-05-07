@@ -5,8 +5,6 @@
 # No output means no errors were found.
 #
 # Copyright (c) 1998-2000 by Jos Decoster. All rights reserved.
-#
-# RCS: @(#) $Id$
 
 package require tcltest 2.1
 tcltest::configure {*}$argv

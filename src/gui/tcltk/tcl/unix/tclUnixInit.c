@@ -6,8 +6,6 @@
  * Copyright (c) 1995-1997 Sun Microsystems, Inc.
  * Copyright (c) 1999 by Scriptics Corporation.
  * All rights reserved.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclInt.h"
@@ -33,6 +31,54 @@
 #	include <dlfcn.h>
 #   endif
 #endif
+
+#ifdef __CYGWIN__
+DLLIMPORT extern __stdcall unsigned char GetVersionExW(void *);
+DLLIMPORT extern __stdcall void *LoadLibraryW(const void *);
+DLLIMPORT extern __stdcall void FreeLibrary(void *);
+DLLIMPORT extern __stdcall void *GetProcAddress(void *, const char *);
+DLLIMPORT extern __stdcall void GetSystemInfo(void *);
+
+#define NUMPLATFORMS 4
+static const char *const platforms[NUMPLATFORMS] = {
+    "Win32s", "Windows 95", "Windows NT", "Windows CE"
+};
+
+#define NUMPROCESSORS 11
+static const char *const  processors[NUMPROCESSORS] = {
+    "intel", "mips", "alpha", "ppc", "shx", "arm", "ia64", "alpha64", "msil",
+    "amd64", "ia32_on_win64"
+};
+
+typedef struct _SYSTEM_INFO {
+  union {
+    DWORD  dwOemId;
+    struct {
+      int wProcessorArchitecture;
+      int wReserved;
+    };
+  };
+  DWORD     dwPageSize;
+  void *lpMinimumApplicationAddress;
+  void *lpMaximumApplicationAddress;
+  void *dwActiveProcessorMask;
+  DWORD     dwNumberOfProcessors;
+  DWORD     dwProcessorType;
+  DWORD     dwAllocationGranularity;
+  int      wProcessorLevel;
+  int      wProcessorRevision;
+} SYSTEM_INFO;
+
+typedef struct _OSVERSIONINFOW {
+  DWORD dwOSVersionInfoSize;
+  DWORD dwMajorVersion;
+  DWORD dwMinorVersion;
+  DWORD dwBuildNumber;
+  DWORD dwPlatformId;
+  wchar_t szCSDVersion[128];
+} OSVERSIONINFOW;
+#endif
+
 #ifdef HAVE_COREFOUNDATION
 #include <CoreFoundation/CoreFoundation.h>
 #endif
@@ -274,10 +320,11 @@ static int		MacOSXGetLibraryPath(Tcl_Interp *interp,
 			    int maxPathLen, char *tclLibPath);
 #endif /* HAVE_COREFOUNDATION */
 #if defined(__APPLE__) && (defined(TCL_LOAD_FROM_MEMORY) || ( \
-	defined(TCL_THREADS) && defined(MAC_OS_X_VERSION_MIN_REQUIRED) && \
-	MAC_OS_X_VERSION_MIN_REQUIRED < 1030) || ( \
-	defined(__LP64__) && defined(MAC_OS_X_VERSION_MIN_REQUIRED) && \
-	MAC_OS_X_VERSION_MIN_REQUIRED < 1050))
+	defined(MAC_OS_X_VERSION_MIN_REQUIRED) && ( \
+	(defined(TCL_THREADS) && MAC_OS_X_VERSION_MIN_REQUIRED < 1030) || \
+	(defined(__LP64__) && MAC_OS_X_VERSION_MIN_REQUIRED < 1050) || \
+	(defined(HAVE_COREFOUNDATION) && MAC_OS_X_VERSION_MIN_REQUIRED < 1050)\
+	)))
 /*
  * Need to check Darwin release at runtime in tclUnixFCmd.c and tclLoadDyld.c:
  * initialize release global at startup from uname().
@@ -455,8 +502,7 @@ TclpInitLibraryPath(
 	 * If TCL_LIBRARY is set, search there.
 	 */
 
-	objPtr = Tcl_NewStringObj(str, -1);
-	Tcl_ListObjAppendElement(NULL, pathPtr, objPtr);
+	Tcl_ListObjAppendElement(NULL, pathPtr, Tcl_NewStringObj(str, -1));
 
 	Tcl_SplitPath(str, &pathc, &pathv);
 	if ((pathc > 0) && (strcasecmp(installLib + 4, pathv[pathc-1]) != 0)) {
@@ -470,11 +516,9 @@ TclpInitLibraryPath(
 
 	    pathv[pathc - 1] = installLib + 4;
 	    str = Tcl_JoinPath(pathc, pathv, &ds);
-	    objPtr = Tcl_NewStringObj(str, Tcl_DStringLength(&ds));
-	    Tcl_ListObjAppendElement(NULL, pathPtr, objPtr);
-	    Tcl_DStringFree(&ds);
+	    Tcl_ListObjAppendElement(NULL, pathPtr, TclDStringToObj(&ds));
 	}
-	ckfree((char *) pathv);
+	ckfree(pathv);
     }
 
     /*
@@ -507,7 +551,7 @@ TclpInitLibraryPath(
 
     *encodingPtr = Tcl_GetEncoding(NULL, NULL);
     str = Tcl_GetStringFromObj(pathPtr, lengthPtr);
-    *valuePtr = ckalloc((unsigned int) (*lengthPtr)+1);
+    *valuePtr = ckalloc((*lengthPtr) + 1);
     memcpy(*valuePtr, str, (size_t)(*lengthPtr)+1);
     Tcl_DecrRefCount(pathPtr);
 }
@@ -704,7 +748,12 @@ void
 TclpSetVariables(
     Tcl_Interp *interp)
 {
-#ifndef NO_UNAME
+#ifdef __CYGWIN__
+    SYSTEM_INFO sysInfo;
+    static OSVERSIONINFOW osInfo;
+    static int osInfoInitialized = 0;
+    char buffer[TCL_INTEGER_SPACE * 2];
+#elif !defined(NO_UNAME)
     struct utsname name;
 #endif
     int unameOK;
@@ -813,7 +862,37 @@ TclpSetVariables(
 #endif
 
     unameOK = 0;
-#ifndef NO_UNAME
+#ifdef __CYGWIN__
+	unameOK = 1;
+    if (!osInfoInitialized) {
+	HANDLE handle = LoadLibraryW(L"NTDLL");
+	int(__stdcall *getversion)(void *) =
+		(int(__stdcall *)(void *))GetProcAddress(handle, "RtlGetVersion");
+	osInfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFOW);
+	if (!getversion || getversion(&osInfo)) {
+	    GetVersionExW(&osInfo);
+	}
+	if (handle) {
+	    FreeLibrary(handle);
+	}
+	osInfoInitialized = 1;
+    }
+
+    GetSystemInfo(&sysInfo);
+
+    if (osInfo.dwPlatformId < NUMPLATFORMS) {
+	Tcl_SetVar2(interp, "tcl_platform", "os",
+		platforms[osInfo.dwPlatformId], TCL_GLOBAL_ONLY);
+    }
+    sprintf(buffer, "%d.%d", osInfo.dwMajorVersion, osInfo.dwMinorVersion);
+    Tcl_SetVar2(interp, "tcl_platform", "osVersion", buffer, TCL_GLOBAL_ONLY);
+    if (sysInfo.wProcessorArchitecture < NUMPROCESSORS) {
+	Tcl_SetVar2(interp, "tcl_platform", "machine",
+		processors[sysInfo.wProcessorArchitecture],
+		TCL_GLOBAL_ONLY);
+    }
+
+#elif !defined NO_UNAME
     if (uname(&name) >= 0) {
 	const char *native;
 

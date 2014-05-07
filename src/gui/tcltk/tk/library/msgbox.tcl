@@ -3,8 +3,6 @@
 #	Implements messageboxes for platforms that do not have native
 #	messagebox support.
 #
-# RCS: @(#) $Id$
-#
 # Copyright (c) 1994-1997 Sun Microsystems, Inc.
 #
 # See the file "license.terms" for information on usage and redistribution
@@ -113,7 +111,7 @@ static unsigned char w3_bits[] = {
    0x00, 0xc0, 0x03, 0x00, 0x00, 0x80, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};"
-
+
 # ::tk::MessageBox --
 #
 #	Pops up a messagebox with an application-supplied message with
@@ -155,8 +153,9 @@ proc ::tk::MessageBox {args} {
 
     tclParseConfigSpec $w $specs "" $args
 
-    if {[lsearch -exact {info warning error question} $data(-icon)] == -1} {
-	error "bad -icon value \"$data(-icon)\": must be error, info, question, or warning"
+    if {$data(-icon) ni {info warning error question}} {
+	return -code error -errorcode [list TK LOOKUP ICON $data(-icon)] \
+	    "bad -icon value \"$data(-icon)\": must be error, info, question, or warning"
     }
     set windowingsystem [tk windowingsystem]
     if {$windowingsystem eq "aqua"} {
@@ -171,7 +170,8 @@ proc ::tk::MessageBox {args} {
     }
 
     if {![winfo exists $data(-parent)]} {
-	error "bad window path name \"$data(-parent)\""
+	return -code error -errorcode [list TK LOOKUP WINDOW $data(-parent)] \
+	    "bad window path name \"$data(-parent)\""
     }
 
     switch -- $data(-type) {
@@ -206,9 +206,10 @@ proc ::tk::MessageBox {args} {
 	    set cancel cancel
 	}
 	default {
-	    error "bad -type value \"$data(-type)\": must be\
-		    abortretryignore, ok, okcancel, retrycancel,\
-		    yesno, or yesnocancel"
+	    return -code error -errorcode [list TK LOOKUP DLG_TYPE $data(-type)] \
+		"bad -type value \"$data(-type)\": must be\
+		abortretryignore, ok, okcancel, retrycancel,\
+		yesno, or yesnocancel"
 	}
     }
 
@@ -232,7 +233,8 @@ proc ::tk::MessageBox {args} {
 	}
     }
     if {!$valid} {
-	error "invalid default button \"$data(-default)\""
+	return -code error -errorcode {TK MSGBOX DEFAULT} \
+	    "invalid default button \"$data(-default)\""
     }
 
     # 2. Set the dialog to be a child window of $parent
@@ -254,7 +256,7 @@ proc ::tk::MessageBox {args} {
     toplevel $w -class Dialog -bg $bg
     wm title $w $data(-title)
     wm iconname $w Dialog
-    wm protocol $w WM_DELETE_WINDOW { }
+    wm protocol $w WM_DELETE_WINDOW [list $w.$cancel invoke]
 
     # Message boxes should be transient with respect to their parent so that
     # they always stay on top of the parent window.  But some window managers
@@ -269,6 +271,8 @@ proc ::tk::MessageBox {args} {
 
     if {$windowingsystem eq "aqua"} {
 	::tk::unsupported::MacWindowStyle style $w moveableModal {}
+    } elseif {$windowingsystem eq "x11"} {
+        wm attributes $w -type dialog
     }
 
     ttk::frame $w.bot
@@ -368,12 +372,12 @@ proc ::tk::MessageBox {args} {
 
     if {$data(-default) ne ""} {
 	bind $w <FocusIn> {
-	    if {[winfo class %W] eq "Button"} {
+	    if {[winfo class %W] in "Button TButton"} {
 		%W configure -default active
 	    }
 	}
 	bind $w <FocusOut> {
-	    if {[winfo class %W] eq "Button"} {
+	    if {[winfo class %W] in "Button TButton"} {
 		%W configure -default normal
 	    }
 	}
@@ -382,7 +386,7 @@ proc ::tk::MessageBox {args} {
     # 6. Create bindings for <Return>, <Escape> and <Destroy> on the dialog
 
     bind $w <Return> {
-	if {[winfo class %W] eq "Button"} {
+	if {[winfo class %W] in "Button TButton"} {
 	    %W invoke
 	}
     }
@@ -395,7 +399,7 @@ proc ::tk::MessageBox {args} {
 
     # 7. Withdraw the window, then update all the geometry information
     # so we know how big it wants to be, then center the window in the
-    # display and de-iconify it.
+    # display (Motif style) and de-iconify it.
 
     ::tk::PlaceWindow $w widget $data(-parent)
 

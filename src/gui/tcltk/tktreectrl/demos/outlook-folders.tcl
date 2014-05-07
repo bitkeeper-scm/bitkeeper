@@ -1,13 +1,12 @@
-# RCS: @(#) $Id$
+# Copyright (c) 2002-2011 Tim Baker
 
 #
 # Demo: Outlook Express folder list
 #
-proc DemoOutlookFolders {} {
+namespace eval DemoOutlookFolders {}
+proc DemoOutlookFolders::Init {T} {
 
     InitPics outlook-*
-
-    set T [DemoList]
 
     set height [font metrics [$T cget -font] -linespace]
     if {$height < 18} {
@@ -19,7 +18,118 @@ proc DemoOutlookFolders {} {
     #
 
     $T configure -itemheight $height -selectmode browse \
-	-showroot yes -showrootbutton no -showbuttons yes -showlines $::ShowLines
+	-showroot yes -showrootbutton no -showbuttons yes \
+	-showlines [ShouldShowLines $T]
+
+    $T configure -canvaspadx {4 0} -canvaspady {2 0}
+
+    #
+    # Create columns
+    #
+
+    $T column create -text Folders -tags C0
+    $T configure -treecolumn C0
+
+    #
+    # Create custom item states.
+    # When an item has the custom "unread" state, the elemTxtName element
+    # uses a bold font and the elemTxtCount element is visible.
+    #
+
+    $T item state define unread
+
+    #
+    # Create elements
+    #
+
+    $T element create elemImg image
+    $T element create elemTxtName text -fill [list $::SystemHighlightText {selected focus}] \
+	-font [list DemoFontBold unread] -lines 1
+    $T element create elemTxtCount text -fill blue
+    $T element create elemRectSel rect -fill [list $::SystemHighlight {selected focus} gray {selected !focus}] \
+	-showfocus yes
+
+    #
+    # Create styles using the elements
+    #
+
+    # image + text + text
+    set S [$T style create styFolder]
+    $T style elements $S {elemRectSel elemImg elemTxtName elemTxtCount}
+    $T style layout $S elemImg -expand ns
+    $T style layout $S elemTxtName -padx 4 -expand ns -squeeze x
+    $T style layout $S elemTxtCount -expand ns -visible {yes unread no {}}
+    $T style layout $S elemRectSel -union [list elemTxtName] -iexpand ns -ipadx 2
+
+    #
+    # Create items and assign styles
+    #
+
+    $T item style set root C0 $S
+    $T item element configure root C0 \
+	elemImg -image outlook-main + \
+	elemTxtName -text "Outlook Express"
+
+    set parentList [list root {} {} {} {} {} {}]
+    set parent root
+    foreach {depth img text button unread} {
+	0 local "Local Folders" yes 0
+	    1 inbox Inbox no 5
+	    1 outbox Outbox no 0
+	    1 sent "Sent Items" no 0
+	    1 deleted "Deleted Items" no 50
+	    1 draft Drafts no 0
+	    1 folder "Messages to Dad" no 0
+	    1 folder "Messages to Sis" no 0
+	    1 folder "Messages to Me" yes 5
+		2 folder "2001" no 0
+		2 folder "2000" no 0
+		2 folder "1999" no 0
+	0 server "news.gmane.org" yes 0
+	    1 group "gmane.comp.lang.lua.general" no 498
+    } {
+	set item [$T item create -button $button]
+	$T item style set $item C0 $S
+	$T item element configure $item C0 \
+	    elemImg -image outlook-$img + \
+	    elemTxtName -text $text
+
+	if {$unread} {
+	    $T item element configure $item C0 \
+		elemTxtCount -text "($unread)"
+	    $T item state set $item unread
+	}
+
+	$T item lastchild [lindex $parentList $depth] $item
+	incr depth
+	set parentList [lreplace $parentList $depth $depth $item]
+    }
+
+    return
+}
+
+#
+# Here is the original implementation which doesn't use custom states.
+# It has 4 different item styles and 6 different elements.
+#
+proc DemoOutlookFolders::Init.orig {T} {
+
+    InitPics outlook-*
+
+    set height [font metrics [$T cget -font] -linespace]
+    if {$height < 18} {
+	set height 18
+    }
+
+    #
+    # Configure the treectrl widget
+    #
+
+    $T configure -itemheight $height -selectmode browse \
+	-showroot yes -showrootbutton no -showbuttons yes \
+	-showlines [ShouldShowLines $T]
+
+    $T configure -canvaspadx {4 0} -canvaspady {2 0}
 
     #
     # Create columns

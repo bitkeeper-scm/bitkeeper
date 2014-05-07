@@ -5,8 +5,6 @@
 # Copyright (c) 1997 Sun Microsystems, Inc.
 # Copyright (c) 1998-1999 by Scriptics Corporation.
 # All rights reserved.
-#
-# RCS: @(#) $Id$
 
 package require tcltest 2.2
 namespace import ::tcltest::*
@@ -18,8 +16,8 @@ proc killTables {} {
     # chain2 depends on chain1.  If chain1 is deleted first, the
     # delete of chain2 will crash.
     deleteWindows
-    foreach t {alltypes chain2 chain1 configerror internal new notenoughparams
-	    twowindows} {
+    foreach t {alltypes chain3 chain2 chain1 configerror internal
+	    new notenoughparams twowindows} {
 	    while {[testobjconfig info $t] != ""} {
 	        testobjconfig delete $t
 	    }
@@ -128,15 +126,15 @@ test config-2.1 {Tk_DeleteOptionTable - reference counts} -constraints {
     set x {}
     testobjconfig chain1 .a
     testobjconfig chain2 .b
-    testobjconfig chain2 .c
+    testobjconfig chain3 .c
     deleteWindows
-    testobjconfig delete chain2
+    testobjconfig delete chain3
     lappend x [testobjconfig info chain2] [testobjconfig info chain1]
     testobjconfig delete chain2
     lappend x [testobjconfig info chain2] [testobjconfig info chain1]
 } -cleanup {
     killTables
-} -result {{1 4 -three 2 2 -one} {2 2 -one} {} {1 2 -one}}
+} -result {{3 4 -three 2 2 -one} {2 2 -one} {} {2 2 -one}}
 
 # No tests for DestroyOptionHashTable; couldn't figure out how to test.
 

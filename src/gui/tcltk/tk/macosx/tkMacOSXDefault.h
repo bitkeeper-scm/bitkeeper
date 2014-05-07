@@ -6,17 +6,19 @@
  *
  * Copyright (c) 1991-1994 The Regents of the University of California.
  * Copyright (c) 1994-1997 Sun Microsystems, Inc.
- * Copyright 2001, Apple Computer, Inc.
- * Copyright (c) 2006-2007 Daniel A. Steffen <das@users.sourceforge.net>
+ * Copyright 2001-2009, Apple Inc.
+ * Copyright (c) 2006-2009 Daniel A. Steffen <das@users.sourceforge.net>
  *
  * See the file "license.terms" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #ifndef _TKMACDEFAULT
 #define _TKMACDEFAULT
+
+#ifndef TK_MAC_BUTTON_USE_COMPATIBILITY_METRICS
+#define TK_MAC_BUTTON_USE_COMPATIBILITY_METRICS 1
+#endif
 
 /*
  * The definitions below provide symbolic names for the default colors.
@@ -70,7 +72,12 @@
 #define DEF_BUTTON_HIGHLIGHT_BG_MONO	DEF_BUTTON_BG_MONO
 #define DEF_BUTTON_HIGHLIGHT		"systemButtonFrame"
 #define DEF_LABEL_HIGHLIGHT_WIDTH	"0"
+#if TK_MAC_BUTTON_USE_COMPATIBILITY_METRICS
 #define DEF_BUTTON_HIGHLIGHT_WIDTH	"4"
+#define DEF_BUTTON_HIGHLIGHT_WIDTH_NOCM	"1"
+#else
+#define DEF_BUTTON_HIGHLIGHT_WIDTH	"1"
+#endif
 #define DEF_BUTTON_IMAGE		((char *) NULL)
 #define DEF_BUTTON_INDICATOR		"1"
 #define DEF_BUTTON_JUSTIFY		"center"
@@ -78,9 +85,19 @@
 #define DEF_BUTTON_ON_VALUE		"1"
 #define DEF_BUTTON_TRISTATE_VALUE	""
 #define DEF_BUTTON_OVER_RELIEF		""
+#if TK_MAC_BUTTON_USE_COMPATIBILITY_METRICS
 #define DEF_BUTTON_PADX			"12"
+#define DEF_BUTTON_PADX_NOCM		"1"
+#else
+#define DEF_BUTTON_PADX			"1"
+#endif
 #define DEF_LABCHKRAD_PADX		"1"
+#if TK_MAC_BUTTON_USE_COMPATIBILITY_METRICS
 #define DEF_BUTTON_PADY			"3"
+#define DEF_BUTTON_PADY_NOCM		"1"
+#else
+#define DEF_BUTTON_PADY			"1"
+#endif
 #define DEF_LABCHKRAD_PADY		"1"
 #define DEF_BUTTON_RELIEF		"flat"
 #define DEF_LABCHKRAD_RELIEF		"flat"
@@ -342,12 +359,11 @@
 #define DEF_MENUBUTTON_HIGHLIGHT	BLACK
 #define DEF_MENUBUTTON_HIGHLIGHT_WIDTH	"0"
 #define DEF_MENUBUTTON_IMAGE		((char *) NULL)
-#define DEF_MENUBUTTON_INDICATOR	"0"
-/* #define DEF_MENUBUTTON_JUSTIFY		"center" */
+#define DEF_MENUBUTTON_INDICATOR	"1"
 #define DEF_MENUBUTTON_JUSTIFY		"left"
 #define DEF_MENUBUTTON_MENU		""
-#define DEF_MENUBUTTON_PADX		"4p"
-#define DEF_MENUBUTTON_PADY		"3p"
+#define DEF_MENUBUTTON_PADX		"4"
+#define DEF_MENUBUTTON_PADY		"3"
 #define DEF_MENUBUTTON_RELIEF		"flat"
 #define DEF_MENUBUTTON_STATE		"normal"
 #define DEF_MENUBUTTON_TAKE_FOCUS	"0"

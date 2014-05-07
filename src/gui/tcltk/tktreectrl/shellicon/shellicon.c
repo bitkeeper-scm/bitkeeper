@@ -1,13 +1,11 @@
-/* 
+/*
  * shellicon.c --
  *
  *	This is a Tk extension that adds a new element type to TkTreeCtrl.
  *	The element type's name is "shellicon". A shellicon element can
  *	display the icon for a file or folder using Win32 Shell API calls.
  *
- * Copyright (c) 2005 Tim Baker
- *
- * RCS: @(#) $Id$
+ * Copyright (c) 2005-2011 Tim Baker
  */
 
 #include "tkTreeCtrl.h"
@@ -64,8 +62,8 @@ TreeCtrlStubs *stubs;
 	stubs->PerStateInfo_ForState(t,ty,in,st,ma)
 #define PerStateInfo_ObjForState(t,ty,in,st,ma) \
 	stubs->PerStateInfo_ObjForState(t,ty,in,st,ma)
-#define PerStateInfo_Undefine(t,ty,in,st) \
-	stubs->PerStateInfo_Undefine(t,ty,in,st)
+#define PerStateInfo_Undefine(t,ty,in,dom,st) \
+	stubs->PerStateInfo_Undefine(t,ty,in,dom,st)
 #undef pstBoolean
 #define pstBoolean \
 	(*stubs->TreeCtrl_pstBoolean)
@@ -146,7 +144,9 @@ typedef struct ElementShellIcon ElementShellIcon;
 struct ElementShellIcon
 {
     TreeElement_ header;
+#ifdef DEPRECATED
     PerStateInfo draw;
+#endif
     Tcl_Obj *pathObj;		/* path of file or directory */
     char *path;
     Tcl_Obj *widthObj;
@@ -161,8 +161,13 @@ struct ElementShellIcon
     int size;			/* SIZE_LARGE if unspecified */
     HIMAGELIST hImgList;	/* the system image list */
     int iIcon;			/* index into hImgList */
+    /* FIXME: overlays no longer work in Win7 */
     int addOverlays;		/* only when useImgList is FALSE */
     int useImgList;		/* if false, create icons */
+#define USE_SEL_ALWAYS 0	/* always draw selected icon */
+#define USE_SEL_AUTO 1		/* draw selected icon when item is selected */
+#define USE_SEL_NEVER 2		/* never draw the selected icon */
+    int useSelected;		/* when to draw the selected icon */
     HICON hIcon;		/* icon */
     HICON hIconSel;		/* selected icon */
 };
@@ -177,15 +182,20 @@ static CONST char *sizeST[] = {
 static CONST char *typeST[] = {
     "directory", "file", (char *) NULL
 };
+static CONST char *useSelectedST[] = {
+    "always", "auto", "never", (char *) NULL
+};
 
 static Tk_OptionSpec shellIconOptionSpecs[] = {
     {TK_OPTION_CUSTOM, "-addoverlays", (char *) NULL, (char *) NULL,
      (char *) NULL, -1, Tk_Offset(ElementShellIcon, addOverlays),
      TK_OPTION_NULL_OK, (ClientData) NULL, SHELLICON_CONF_ICON},
+#ifdef DEPRECATED
     {TK_OPTION_CUSTOM, "-draw", (char *) NULL, (char *) NULL,
      (char *) NULL, Tk_Offset(ElementShellIcon, draw.obj),
      Tk_Offset(ElementShellIcon, draw),
      TK_OPTION_NULL_OK, (ClientData) NULL, SHELLICON_CONF_DRAW},
+#endif
     {TK_OPTION_PIXELS, "-height", (char *) NULL, (char *) NULL,
      (char *) NULL, Tk_Offset(ElementShellIcon, heightObj),
      Tk_Offset(ElementShellIcon, height),
@@ -203,6 +213,9 @@ static Tk_OptionSpec shellIconOptionSpecs[] = {
     {TK_OPTION_CUSTOM, "-useimagelist", (char *) NULL, (char *) NULL,
      (char *) NULL, -1, Tk_Offset(ElementShellIcon, useImgList),
      TK_OPTION_NULL_OK, (ClientData) NULL, SHELLICON_CONF_ICON},
+    {TK_OPTION_CUSTOM, "-useselected", (char *) NULL, (char *) NULL,
+     (char *) NULL, -1, Tk_Offset(ElementShellIcon, useSelected),
+     TK_OPTION_NULL_OK, (ClientData) NULL, SHELLICON_CONF_DRAW},
     {TK_OPTION_PIXELS, "-width", (char *) NULL, (char *) NULL,
      (char *) NULL, Tk_Offset(ElementShellIcon, widthObj),
      Tk_Offset(ElementShellIcon, width),
@@ -226,7 +239,7 @@ static void LoadIconIfNeeded(TreeElementArgs *args)
     int overlays = 1;
     int type = -1;
     int useImgList = TRUE;
-    HRESULT result;
+    DWORD_PTR result;
 
     /* -useimagelist boolean */
     if (elemX->useImgList != -1)
@@ -288,7 +301,7 @@ static void LoadIconIfNeeded(TreeElementArgs *args)
 	/* MSDN says SHGFI_OPENICON returns the image list containing the
 	 * small open icon. In practice the large open icon gets returned
 	 * for SHGFI_LARGEICON, so we support it. */
-	if (/*(size == SIZE_SMALL) && */(args->state & STATE_OPEN))
+	if (/*(size == SIZE_SMALL) && */(args->state & STATE_ITEM_OPEN))
 	    uFlags |= SHGFI_OPENICON;
 
 	CoInitialize(NULL);
@@ -365,7 +378,7 @@ static void LoadIconIfNeeded(TreeElementArgs *args)
 	/* MSDN says SHGFI_OPENICON returns the image list containing the
 	 * small open icon. In practice the large open icon gets returned
 	 * for SHGFI_LARGEICON. */
-	if (/*(size == SIZE_SMALL) && */(args->state & STATE_OPEN))
+	if (/*(size == SIZE_SMALL) && */(args->state & STATE_ITEM_OPEN))
 	    uFlags |= SHGFI_OPENICON;
 
 	CoInitialize(NULL);
@@ -471,6 +484,7 @@ static int CreateProcShellIcon(TreeElementArgs *args)
     elemX->size = -1;
     elemX->addOverlays = -1;
     elemX->useImgList = -1;
+    elemX->useSelected = -1;
 
     return TCL_OK;
 }
@@ -489,11 +503,14 @@ static void DisplayProcShellIcon(TreeElementArgs *args)
     HDC hDC;
     TkWinDCState dcState;
     UINT fStyle = ILD_TRANSPARENT;
-    HICON hIcon;
+    HICON hIcon = NULL;
+    int useSelected;
 
+#ifdef DEPRECATED
     BOOLEAN_FOR_STATE(draw, draw, state)
     if (!draw)
 	return;
+#endif
 
     LoadIconIfNeeded(args);
 
@@ -507,7 +524,25 @@ static void DisplayProcShellIcon(TreeElementArgs *args)
 	&x, &y, &width, &height);
 
     hDC = TkWinGetDrawableDC(tree->display, args->display.drawable, &dcState);
-    hIcon = (state & STATE_SELECTED) ? elemX->hIconSel : elemX->hIcon;
+
+    useSelected = elemX->useSelected;
+    if (useSelected == -1 && masterX != NULL)
+	useSelected = masterX->useSelected;
+    switch (useSelected) {
+	case USE_SEL_ALWAYS:
+	    hIcon = elemX->hIconSel;
+	    fStyle |= ILD_SELECTED;
+	    break;
+	case -1:
+	case USE_SEL_AUTO:
+	    hIcon = (state & STATE_ITEM_SELECTED) ? elemX->hIconSel : elemX->hIcon;
+	    if (state & STATE_ITEM_SELECTED)
+		fStyle |= ILD_SELECTED;
+	    break;
+	case USE_SEL_NEVER:
+	    hIcon = elemX->hIcon;
+	    break;
+    }
     if (hIcon != NULL) {
 #if 1
 	/* If DI_DEFAULTSIZE is used, small icons get stretched */
@@ -517,8 +552,6 @@ static void DisplayProcShellIcon(TreeElementArgs *args)
 	DrawIcon(hDC, x, y, hIcon);
 #endif
     } else {
-	if (state & STATE_SELECTED)
-	    fStyle |= ILD_SELECTED;
 	ImageList_Draw(elemX->hImgList, elemX->iIcon, hDC, x, y, fStyle);
     }
     TkWinReleaseDrawableDC(args->display.drawable, hDC, &dcState);
@@ -582,27 +615,37 @@ static int StateProcShellIcon(TreeElementArgs *args)
     ElementShellIcon *elemX = (ElementShellIcon *) elem;
     ElementShellIcon *masterX = (ElementShellIcon *) elem->master;
     int match, match2;
+#ifdef DEPRECATED
     int draw1, draw2;
+#endif
     int sel1, sel2;
     int open1, open2;
     int mask = 0;
 
+#ifdef DEPRECATED
     BOOLEAN_FOR_STATE(draw1, draw, args->states.state1)
     if (draw1 == -1)
 	draw1 = 1;
-    open1 = (args->states.state1 & STATE_OPEN) != 0;
-    sel1 = (args->states.state1 & STATE_SELECTED) != 0;
+#endif
+    open1 = (args->states.state1 & STATE_ITEM_OPEN) != 0;
+    sel1 = (args->states.state1 & STATE_ITEM_SELECTED) != 0;
 
+#ifdef DEPRECATED
     BOOLEAN_FOR_STATE(draw2, draw, args->states.state2)
     if (draw2 == -1)
 	draw2 = 1;
-    open2 = (args->states.state2 & STATE_OPEN) != 0;
-    sel2 = (args->states.state2 & STATE_SELECTED) != 0;
+#endif
+    open2 = (args->states.state2 & STATE_ITEM_OPEN) != 0;
+    sel2 = (args->states.state2 & STATE_ITEM_SELECTED) != 0;
 
     if (elemX->path == NULL)
 	open1 = open2 = sel1 = sel2 = 0;
 
-    if ((draw1 != draw2) || (sel1 != sel2) || (open1 != open2))
+    if (
+#ifdef DEPRECATED
+	(draw1 != draw2) ||
+#endif
+	(sel1 != sel2) || (open1 != open2))
 	mask |= CS_DISPLAY;
 
     /* Directories may have an open and closed icon. */
@@ -616,10 +659,13 @@ static int StateProcShellIcon(TreeElementArgs *args)
 static int UndefProcShellIcon(TreeElementArgs *args)
 {
     TreeCtrl *tree = args->tree;
-    ElementShellIcon *elemX = (ElementShellIcon *) args->elem;
+    TreeElement elem = args->elem;
+    ElementShellIcon *elemX = (ElementShellIcon *) elem;
     int modified = 0;
 
-    modified |= PerStateInfo_Undefine(tree, &pstBoolean, &elemX->draw, args->state);
+#ifdef DEPRECATED
+    modified |= PerStateInfo_Undefine(tree, &pstBoolean, &elemX->draw, elem->stateDomain, args->state);
+#endif
     return modified;
 }
 
@@ -629,7 +675,9 @@ static int ActualProcShellIcon(TreeElementArgs *args)
     ElementShellIcon *elemX = (ElementShellIcon *) args->elem;
     ElementShellIcon *masterX = (ElementShellIcon *) args->elem->master;
     static CONST char *optionName[] = {
+#ifdef DEPRECATED
 	"-draw",
+#endif
 	(char *) NULL };
     int index, match, matchM;
     Tcl_Obj *obj = NULL;
@@ -639,11 +687,15 @@ static int ActualProcShellIcon(TreeElementArgs *args)
 	return TCL_ERROR;
 
     switch (index) {
+#ifdef DEPRECATED
 	case 0:
 	{
 	    OBJECT_FOR_STATE(obj, pstBoolean, draw, args->state)
 	    break;
 	}
+#endif
+	default:
+	    break;
     }
     if (obj != NULL)
 	Tcl_SetObjResult(tree->interp, obj);
@@ -715,6 +767,15 @@ DLLEXPORT int Shellicon_Init(Tcl_Interp *interp)
     FreeLibrary(hLib);
 #endif
 
+#if 0
+{
+typedef BOOL (WINAPI *FileIconInitProc)(BOOL fFullInit);
+HMODULE hShell32 = LoadLibrary("shell32.dll");
+FileIconInitProc FileIconInit = (FileIconInitProc) GetProcAddress(hShell32, (LPCSTR)660);
+FileIconInit(TRUE);
+}
+#endif
+
     /* Load TkTreeCtrl */
     if (Tcl_PkgRequire(interp, "treectrl", PACKAGE_PATCHLEVEL, TRUE) == NULL)
 	return TCL_ERROR;
@@ -724,6 +785,17 @@ DLLEXPORT int Shellicon_Init(Tcl_Interp *interp)
     if (stubs == NULL)
 	return TCL_ERROR;
 
+#ifdef TREECTRL_DEBUG
+    if (sizeof(TreeCtrl) != stubs->sizeofTreeCtrl ||
+	    sizeof(TreeCtrlStubs) != stubs->sizeofTreeCtrlStubs ||
+	    sizeof(TreeElement) != stubs->sizeofTreeElement ||
+	    sizeof(TreeElementArgs) != stubs->sizeofTreeElementArgs) {
+	Tcl_SetResult(interp, "probably forgot to recompile shellicon",
+		TCL_VOLATILE);
+	return TCL_ERROR;
+    }
+#endif
+
     /* Initialize the options table */
     BooleanCO_Init(shellIconOptionSpecs, "-addoverlays");
     BooleanCO_Init(shellIconOptionSpecs, "-useimagelist");
@@ -731,6 +803,7 @@ DLLEXPORT int Shellicon_Init(Tcl_Interp *interp)
 	    TreeStateFromObj);
     StringTableCO_Init(shellIconOptionSpecs, "-size", sizeST);
     StringTableCO_Init(shellIconOptionSpecs, "-type", typeST);
+    StringTableCO_Init(shellIconOptionSpecs, "-useselected", useSelectedST);
 
     /* Add the "shellicon" element type */
     if (TreeCtrl_RegisterElementType(interp, &elemTypeShellIcon) != TCL_OK)

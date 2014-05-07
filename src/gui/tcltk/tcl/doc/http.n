@@ -6,10 +6,8 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-'\" RCS: @(#) $Id$
-'\" 
-.so man.macros
 .TH "http" n 2.7 http "Tcl Bundled Packages"
+.so man.macros
 .BS
 '\" Note:  do not modify the .SH NAME line immediately below!
 .SH NAME
@@ -18,9 +16,9 @@ http \- Client-side implementation of the HTTP/1.1 protocol
 \fBpackage require http ?2.7?\fR
 .\" See Also -useragent option documentation in body!
 .sp
-\fB::http::config ?\fI-option value\fR ...?
+\fB::http::config ?\fI\-option value\fR ...?
 .sp
-\fB::http::geturl \fIurl\fR ?\fI-option value\fR ...?
+\fB::http::geturl \fIurl\fR ?\fI\-option value\fR ...?
 .sp
 \fB::http::formatQuery\fR \fIkey value\fR ?\fIkey value\fR ...?
 .sp
@@ -51,7 +49,8 @@ http \- Client-side implementation of the HTTP/1.1 protocol
 .SH DESCRIPTION
 .PP
 The \fBhttp\fR package provides the client side of the HTTP/1.1
-protocol.  The package implements the GET, POST, and HEAD operations
+protocol, as defined in RFC 2616.
+The package implements the GET, POST, and HEAD operations
 of HTTP/1.1.  It allows configuration of a proxy host to get through
 firewalls.  The package is compatible with the \fBSafesock\fR security
 policy, so it can be used by untrusted applets to do URL fetching from
@@ -568,7 +567,7 @@ The type of the URL contents.  Examples include \fBtext/html\fR,
 \fBContent-Length\fR
 .
 The advertised size of the contents.  The actual size obtained by
-\fB::http::geturl\fR is available as \fBstate(size)\fR.
+\fB::http::geturl\fR is available as \fBstate(currentsize)\fR.
 .TP
 \fBLocation\fR
 .
@@ -606,36 +605,36 @@ progress meter, and prints the meta-data associated with the URL.
 .PP
 .CS
 proc httpcopy { url file {chunk 4096} } {
-   set out [open $file w]
-   set token [\fB::http::geturl\fR $url -channel $out \e
-          -progress httpCopyProgress -blocksize $chunk]
-   close $out
+    set out [open $file w]
+    set token [\fB::http::geturl\fR $url -channel $out \e
+            -progress httpCopyProgress -blocksize $chunk]
+    close $out
 
-   # This ends the line started by httpCopyProgress
-   puts stderr ""
+    # This ends the line started by httpCopyProgress
+    puts stderr ""
 
-   upvar #0 $token state
-   set max 0
-   foreach {name value} $state(meta) {
-      if {[string length $name] > $max} {
-         set max [string length $name]
-      }
-      if {[regexp -nocase ^location$ $name]} {
-         # Handle URL redirects
-         puts stderr "Location:$value"
-         return [httpcopy [string trim $value] $file $chunk]
-      }
-   }
-   incr max
-   foreach {name value} $state(meta) {
-      puts [format "%-*s %s" $max $name: $value]
-   }
+    upvar #0 $token state
+    set max 0
+    foreach {name value} $state(meta) {
+        if {[string length $name] > $max} {
+            set max [string length $name]
+        }
+        if {[regexp -nocase ^location$ $name]} {
+            # Handle URL redirects
+            puts stderr "Location:$value"
+            return [httpcopy [string trim $value] $file $chunk]
+        }
+    }
+    incr max
+    foreach {name value} $state(meta) {
+        puts [format "%-*s %s" $max $name: $value]
+    }
 
-   return $token
+    return $token
 }
 proc httpCopyProgress {args} {
-   puts -nonewline stderr .
-   flush stderr
+    puts -nonewline stderr .
+    flush stderr
 }
 .CE
 .SH "SEE ALSO"

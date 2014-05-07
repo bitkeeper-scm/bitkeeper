@@ -1,10 +1,10 @@
-# RCS: @(#) $Id$
+# Copyright (c) 2005-2011 Tim Baker
 
-proc DemoFirefoxPrivacy {} {
+namespace eval DemoFirefoxPrivacy {}
 
-    global FirefoxPrivacy
+proc DemoFirefoxPrivacy::Init {T} {
 
-    set T [DemoList]
+    variable Priv
 
     #
     # Configure the treectrl widget
@@ -163,13 +163,13 @@ if {$::clip} {
     bindtags $f.t1 TextWrapBindTag
     if {$::tile} {
 	$::checkbuttonCmd $f.cb1 -text "Save information I enter in web page forms and the Search Bar" \
-	    -variable ::cbvar($f.cb1) -style DemoCheckbutton
+	    -variable ::DemoFirefoxPrivacy::Priv(cbvar,$f.cb1) -style DemoCheckbutton
     } else {
 	checkbutton $f.cb1 -background $bg -highlightthickness 0 -text "Save\
 	    information I enter in web page forms and the Search Bar" \
-	    -variable ::cbvar($f.cb1)
+	    -variable ::DemoFirefoxPrivacy::Priv(cbvar,$f.cb1)
     }
-    set ::cbvar($f.cb1) 1
+    set Priv(cbvar,$f.cb1) 1
     pack $f.t1 -side top -anchor w -fill x -padx {0 8} -pady {0 4}
     pack $f.cb1 -side top -anchor w
 if {$::clip} {
@@ -198,12 +198,12 @@ if {$::clip} {
     bindtags $fLeft.t1 TextWrapBindTag
     if {$::tile} {
 	$::checkbuttonCmd $fLeft.cb1 -text "Remember Passwords" \
-	    -variable ::cbvar($fLeft.cb1) -style DemoCheckbutton
+	    -variable ::DemoFirefoxPrivacy::Priv(cbvar,$fLeft.cb1) -style DemoCheckbutton
     } else {
 	checkbutton $fLeft.cb1 -background $bg -highlightthickness 0 \
-	    -text "Remember Passwords" -variable ::cbvar($fLeft.cb1)
+	    -text "Remember Passwords" -variable ::DemoFirefoxPrivacy::Priv(cbvar,$fLeft.cb1)
     }
-    set ::cbvar($fLeft.cb1) 1
+    set Priv(cbvar,$fLeft.cb1) 1
     pack $fLeft.t1 -side top -expand yes -fill x -pady {0 6}
     pack $fLeft.cb1 -side top -anchor w
 
@@ -286,22 +286,22 @@ if {$::clip} {
     set fLeft [frame $f.fLeft -borderwidth 0 -background $bg]
     if {$::tile} {
 	$::checkbuttonCmd $fLeft.cb1  -style DemoCheckbutton \
-	    -text "Allow sites to set cookies" -variable ::cbvar($fLeft.cb1)
+	    -text "Allow sites to set cookies" -variable ::DemoFirefoxPrivacy::Priv(cbvar,$fLeft.cb1)
     } else {
 	checkbutton $fLeft.cb1 -background $bg -highlightthickness 0 \
-	    -text "Allow sites to set cookies" -variable ::cbvar($fLeft.cb1)
+	    -text "Allow sites to set cookies" -variable ::DemoFirefoxPrivacy::Priv(cbvar,$fLeft.cb1)
     }
-    set ::cbvar($fLeft.cb1) 1
+    set Priv(cbvar,$fLeft.cb1) 1
     if {$::tile} {
 	$::checkbuttonCmd $fLeft.cb2  -style DemoCheckbutton \
 	    -text "for the originating web site only" \
-	    -variable ::cbar($fLeft.cb2)
+	    -variable ::DemoFirefoxPrivacy::Priv(cbvar,$fLeft.cb2)
     } else {
 	checkbutton $fLeft.cb2 -background $bg -highlightthickness 0 \
 	    -text "for the originating web site only" \
-	    -variable ::cbar($fLeft.cb2)
+	    -variable ::DemoFirefoxPrivacy::Priv(cbvar,$fLeft.cb2)
     }
-    set ::cbar($fLeft.cb2) 0
+    set Priv(cbvar,$fLeft.cb2) 0
     pack $fLeft.cb1 -side top -anchor w
     pack $fLeft.cb2 -side top -anchor w -padx {20 0}
 
@@ -401,12 +401,12 @@ if {$::clip} {
 	if {[lindex [%W identify %x %y] 0] eq "header"} {
 	    TreeCtrl::DoubleButton1 %W %x %y
 	} else {
-	    DemoFirefoxPrivacyButton1 %W %x %y
+	    DemoFirefoxPrivacy::Button1 %W %x %y
 	}
 	break
     }
     bind DemoFirefoxPrivacy <ButtonPress-1> {
-	DemoFirefoxPrivacyButton1 %W %x %y
+	DemoFirefoxPrivacy::Button1 %W %x %y
 	break
     }
     bind DemoFirefoxPrivacy <Button1-Motion> {
@@ -416,10 +416,10 @@ if {$::clip} {
 	# noop
     }
     bind DemoFirefoxPrivacy <Motion> {
-	DemoFirefoxPrivacyMotion %W %x %y
+	DemoFirefoxPrivacy::Motion %W %x %y
     }
     bind DemoFirefoxPrivacy <Leave> {
-	DemoFirefoxPrivacyMotion %W %x %y
+	DemoFirefoxPrivacy::Motion %W %x %y
     }
 
     if {$::tile} {
@@ -429,27 +429,27 @@ if {$::clip} {
 	}
     }
 
-    set FirefoxPrivacy(prev) ""
+    set Priv(prev) ""
     bindtags $T [list $T DemoFirefoxPrivacy TreeCtrl [winfo toplevel $T] all]
 
     return
 }
 
-proc DemoFirefoxPrivacyButton1 {w x y} {
-    variable TreeCtrl::Priv
+proc DemoFirefoxPrivacy::Button1 {w x y} {
+    variable ::TreeCtrl::Priv
     focus $w
-    set id [$w identify $x $y]
+    $w identify -array id $x $y
     set Priv(buttonMode) ""
-    if {[lindex $id 0] eq "header"} {
+    if {$id(where) eq "header"} {
 	TreeCtrl::ButtonPress1 $w $x $y
-    } elseif {[lindex $id 0] eq "item"} {
-	set item [lindex $id 1]
+    } elseif {$id(where) eq "item"} {
+	set item $id(item)
 	# click a button
-	if {[llength $id] != 6} {
+	if {$id(element) eq ""} {
 	    TreeCtrl::ButtonPress1 $w $x $y
 	    return
 	}
-	if {[lindex $id 5] eq "eText1"} {
+	if {$id(element) eq "eText1"} {
 	    $w item toggle $item
 	    DisplayStylesInItem $item
 	}
@@ -457,22 +457,22 @@ proc DemoFirefoxPrivacyButton1 {w x y} {
     return
 }
 
-proc DemoFirefoxPrivacyMotion {w x y} {
-    global FirefoxPrivacy
-    set id [$w identify $x $y]
-    if {[lindex $id 0] eq "item"} {
-	set item [lindex $id 1]
-	if {[llength $id] == 6 && [lindex $id 5] eq "eText1"} {
-	    if {$item ne $FirefoxPrivacy(prev)} {
+proc DemoFirefoxPrivacy::Motion {w x y} {
+    variable Priv
+    $w identify -array id $x $y
+    if {$id(where) eq "item"} {
+	set item $id(item)
+	if {$id(element) eq "eText1"} {
+	    if {$item ne $Priv(prev)} {
 		$w configure -cursor hand2
-		set FirefoxPrivacy(prev) $item
+		set Priv(prev) $item
 	    }
 	    return
 	}
     }
-    if {$FirefoxPrivacy(prev) ne ""} {
+    if {$Priv(prev) ne ""} {
 	$w configure -cursor ""
-	set FirefoxPrivacy(prev) ""
+	set Priv(prev) ""
     }
     return
 }

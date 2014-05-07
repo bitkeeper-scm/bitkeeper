@@ -5,8 +5,6 @@
 # Copyright (c) 1994-1996 Sun Microsystems, Inc.
 # Copyright (c) 1998-1999 by Scriptics Corporation.
 # All rights reserved.
-#
-# RCS: @(#) $Id$
 
 package require tcltest 2.2
 eval tcltest::configure $argv
@@ -1399,7 +1397,7 @@ abcdefghijklm
     .t replace 3.1 2.3 foo
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {Index "2.3" before "3.1" in the text}
+} -returnCodes {error} -result {index "2.3" before "3.1" in the text}
 test text-8.20 {TextWidgetCmd procedure, "replace" option} -setup {
     text .t
 } -body {
@@ -2617,6 +2615,24 @@ test text-10.38 {TextWidgetCmd procedure, "count" option} -setup {
 } -cleanup {
     destroy .t
 } -result {3 903 903 45}
+test text-10.39 {TextWidgetCmd procedure, "count" option} -setup {
+    text .t
+    pack .t
+    update
+    set res {}
+} -body {
+    .t insert end "Line 1 - This is Line 1\n"
+    .t insert end "Line 2 - This is Line 2\n"
+    .t insert end "Line 3 - This is Line 3\n"
+    .t insert end "Line 4 - This is Line 4\n"
+    .t insert end "Line 5 - This is Line 5\n"
+    lappend res [.t count -displaylines 1.19 3.24] [.t count -displaylines 1.0 end]
+    .t tag add hidden 2.9 3.17
+    .t tag configure hidden -elide true
+    lappend res [.t count -displaylines 1.19 3.24] [.t count -displaylines 1.0 end]
+} -cleanup {
+    destroy .t
+} -result {2 6 2 5}
 
 
 test text-11.1 {counting with tag priority eliding} -setup {
@@ -3689,7 +3705,7 @@ test text-22.1 {TextSearchCmd procedure, argument parsing} -body {
     .t search -
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad switch "-": must be --, -all, -backward, -count, -elide, -exact, -forward, -nocase, -nolinestop, -overlap, -regexp, or -strictlimits}
+} -returnCodes error -result {ambiguous switch "-": must be --, -all, -backwards, -count, -elide, -exact, -forwards, -nocase, -nolinestop, -overlap, -regexp, or -strictlimits}
 test text-22.2 {TextSearchCmd procedure, -backwards option} -body {
     text .t
     .t insert end "xxyz xyz x. the\nfoo -forward bar xxxxx BaR foo\nxyz xxyzx"
@@ -3753,7 +3769,7 @@ test text-22.10 {TextSearchCmd procedure, -n ambiguous option} -body {
     .t search -n BaR 1.1
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad switch "-n": must be --, -all, -backward, -count, -elide, -exact, -forward, -nocase, -nolinestop, -overlap, -regexp, or -strictlimits}
+} -returnCodes error -result {ambiguous switch "-n": must be --, -all, -backwards, -count, -elide, -exact, -forwards, -nocase, -nolinestop, -overlap, -regexp, or -strictlimits}
 test text-22.11 {TextSearchCmd procedure, -nocase option} -body {
     text .t
     .t insert end "xxyz xyz x. the\nfoo -forward bar xxxxx BaR foo\nxyz xxyzx"
@@ -5875,7 +5891,13 @@ test text-24.26 {TextDumpCmd procedure, unicode characters} -body {
 } -cleanup {
     destroy .t
 } -result "text abc\xb1\xb1\xb1 1.0 mark insert 1.6 mark current 1.6 text {\n} 1.6"
-
+test text-24.27 {TextDumpCmd procedure, peer present} -body {
+    text .t
+    .t peer create .t.t
+    .t dump -all 1.0 end
+} -cleanup {
+    destroy .t
+} -result "mark insert 1.0 mark current 1.0 text {\n} 1.0"
 
 test text-25.1 {text widget vs hidden commands} -body {
     text .t
@@ -6079,7 +6101,18 @@ test text-27.17 {bug fix 1536735 - undo with empty text} -body {
 } -cleanup {
     destroy .t
 } -result {0 0 1 0}
-
+test text-27.18 {patch 1469210 - inserting after undo} -setup {
+    destroy .t
+} -body {
+    text .t -undo 1
+    .t insert end foo
+    .t edit modified 0
+    .t edit undo
+    .t insert end bar
+    .t edit modified
+} -cleanup {
+    destroy .t
+} -result 1
 
 test text-28.1 {bug fix - 624372, ControlUtfProc long lines} -body {
     pack [text .t -wrap none]
@@ -6616,6 +6649,100 @@ test text-34.1 {peer widget -start, -end and selection} -setup {
 } -cleanup {
     destroy .t
 } -result {{10.0 20.0} {6.0 16.0} {6.0 11.0} {1.0 6.0} {1.0 2.0} {} {10.0 20.0}}
+
+test text-32.2 {peer widget -start, -end and deletion (bug 1630262)} -setup {
+    destroy .t .pt
+    set res {}
+} -body {
+    text .t
+    .t peer create .pt
+    for {set i 1} {$i < 100} {incr i} {
+      .t insert end "Line $i\n"
+    }
+    .t configure -startline 5
+    # none of the following delete shall crash
+    # (all did before fixing bug 1630262)
+    # 1. delete on the same line: line1 == line2 in DeleteIndexRange,
+    #    and resetView is true neither for .t not for .pt
+    .pt delete 2.0 2.2
+    # 2. delete just one line: line1 < line2 in DeleteIndexRange,
+    #    and resetView is true only for .t, not for .pt
+    .pt delete 2.0 3.0
+    # 3. delete several lines: line1 < line2 in DeleteIndexRange,
+    #    and resetView is true only for .t, not for .pt
+    .pt delete 2.0 5.0
+    # 4. delete to the end line: line1 < line2 in DeleteIndexRange,
+    #    and resetView is true only for .t, not for .pt
+    .pt delete 2.0 end
+    # this test succeeds provided there is no crash
+    set res 1
+} -cleanup {
+    destroy .pt
+} -result {1}
+
+test text-32.3 {peer widget -start, -end and deletion (bug 1630262)} -setup {
+    destroy .t .pt
+    set res {}
+} -body {
+    text .t
+    .t peer create .pt
+    for {set i 1} {$i < 100} {incr i} {
+      .t insert end "Line $i\n"
+    }
+    .t configure -startline 5
+    .pt configure -startline 3
+    # the following delete shall not crash
+    # (it did before fixing bug 1630262)
+    .pt delete 2.0 3.0
+    # moreover -startline shall be correct
+    # (was wrong before fixing bug 1630262)
+    lappend res [.t cget -start] [.pt cget -start]
+} -cleanup {
+    destroy .pt
+} -result {4 3}
+
+test text-32.4 {peer widget -start, -end and deletion (bug 1630262)} -setup {
+    destroy .t .pt
+    set res {}
+} -body {
+    text .t
+    .t peer create .pt
+    for {set i 1} {$i < 100} {incr i} {
+      .t insert end "Line $i\n"
+    }
+    .t configure -startline 5 -endline 15
+    .pt configure -startline 8 -endline 12
+    # .pt now shows a range entirely inside the range of .pt
+    # from .t, delete lines located after [.pt cget -end]
+    .t delete 9.0 10.0
+    # from .t, delete lines straddling [.pt cget -end]
+    .t delete 6.0 9.0
+    lappend res [.t cget -start] [.t cget -end] [.pt cget -start] [.pt cget -end]
+    .t configure -startline 5 -endline 12
+    .pt configure -startline 8 -endline 12
+    # .pt now shows again a range entirely inside the range of .pt
+    # from .t, delete lines located before [.pt cget -start]
+    .t delete 2.0 3.0
+    # from .t, delete lines straddling [.pt cget -start]
+    .t delete 2.0 5.0
+    lappend res [.t cget -start] [.t cget -end] [.pt cget -start] [.pt cget -end]
+    .t configure -startline 22 -endline 31
+    .pt configure -startline 42 -endline 51
+    # .t now shows a range entirely before the range of .pt
+    # from .t, delete some lines, then do it from .pt
+    .t delete 2.0 3.0
+    .t delete 2.0 5.0
+    .pt delete 2.0 5.0
+    lappend res [.t cget -start] [.t cget -end] [.pt cget -start] [.pt cget -end]
+    .t configure -startline 55 -endline 75
+    .pt configure -startline 60 -endline 70
+    # .pt now shows a range entirely inside the range of .t
+    # from .t, delete a range straddling the entire range of .pt
+    .t delete 3.0 18.0
+    lappend res [.t cget -start] [.t cget -end] [.pt cget -start] [.pt cget -end]
+} -cleanup {
+    destroy .pt .t
+} -result {5 11 8 10 5 8 6 8 22 27 38 44 55 60 57 57}
 
 test text-35.1 {widget dump -command alters tags} -setup {
      proc Dumpy {key value index} {

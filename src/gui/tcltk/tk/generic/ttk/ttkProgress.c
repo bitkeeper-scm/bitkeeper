@@ -1,5 +1,4 @@
-/* $Id$
- *
+/*
  * Copyright (c) Joe English, Pat Thoyts, Michael Kirkham
  *
  * ttk::progressbar widget.
@@ -19,7 +18,7 @@
 enum {
     TTK_PROGRESSBAR_DETERMINATE, TTK_PROGRESSBAR_INDETERMINATE
 };
-static const char *ProgressbarModeStrings[] = {
+static const char *const ProgressbarModeStrings[] = {
     "determinate", "indeterminate", NULL
 };
 
@@ -69,6 +68,8 @@ static Tk_OptionSpec ProgressbarOptionSpecs[] =
     {TK_OPTION_INT, "-phase", "phase", "Phase",
 	"0", Tk_Offset(Progressbar,progress.phaseObj), -1,
 	0, 0, 0 },
+
+    WIDGET_TAKEFOCUS_FALSE,
     WIDGET_INHERIT_OPTIONS(ttkCoreOptionSpecs)
 };
 
@@ -393,7 +394,7 @@ static Ttk_Layout ProgressbarGetLayout(
 /* $sb step ?amount?
  */
 static int ProgressbarStepCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     Progressbar *pb = recordPtr;
     double value = 0.0, stepAmount = 1.0;
@@ -467,30 +468,29 @@ static int ProgressbarStartStopCommand(
 }
 
 static int ProgressbarStartCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     return ProgressbarStartStopCommand(
 	interp, "::ttk::progressbar::start", objc, objv);
 }
 
 static int ProgressbarStopCommand(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr)
+    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     return ProgressbarStartStopCommand(
 	interp, "::ttk::progressbar::stop", objc, objv);
 }
 
-static WidgetCommandSpec ProgressbarCommands[] =
-{
-    { "configure",	TtkWidgetConfigureCommand },
-    { "cget",		TtkWidgetCgetCommand },
-    { "identify",	TtkWidgetIdentifyCommand },
-    { "instate",	TtkWidgetInstateCommand },
-    { "start", 		ProgressbarStartCommand },
-    { "state",  	TtkWidgetStateCommand },
-    { "step", 		ProgressbarStepCommand },
-    { "stop", 		ProgressbarStopCommand },
-    { NULL, NULL }
+static const Ttk_Ensemble ProgressbarCommands[] = {
+    { "configure",	TtkWidgetConfigureCommand,0 },
+    { "cget",		TtkWidgetCgetCommand,0 },
+    { "identify",	TtkWidgetIdentifyCommand,0 },
+    { "instate",	TtkWidgetInstateCommand,0 },
+    { "start", 		ProgressbarStartCommand,0 },
+    { "state",  	TtkWidgetStateCommand,0 },
+    { "step", 		ProgressbarStepCommand,0 },
+    { "stop", 		ProgressbarStopCommand,0 },
+    { 0,0,0 }
 };
 
 /*

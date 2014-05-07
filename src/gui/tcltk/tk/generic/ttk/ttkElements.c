@@ -1,5 +1,4 @@
-/* $Id$
- *
+/*
  * Copyright (c) 2003, Joe English
  *
  * Default implementation for themed elements.
@@ -22,7 +21,7 @@
  * and may be used in other engines.
  */
 
-/* public */ Ttk_ElementOptionSpec TtkNullElementOptions[] = { {NULL} };
+/* public */ Ttk_ElementOptionSpec TtkNullElementOptions[] = { { NULL, 0, 0, NULL } };
 
 /* public */ void
 TtkNullElementSize(
@@ -62,7 +61,7 @@ typedef struct {
 static Ttk_ElementOptionSpec BackgroundElementOptions[] = {
     { "-background", TK_OPTION_BORDER,
 	    Tk_Offset(BackgroundElement,backgroundObj), DEFAULT_BACKGROUND },
-    {NULL}
+    { NULL, 0, 0, NULL }
 };
 
 static void FillElementDraw(
@@ -119,7 +118,7 @@ static Ttk_ElementOptionSpec BorderElementOptions[] = {
 	Tk_Offset(BorderElement,borderWidthObj), DEFAULT_BORDERWIDTH },
     { "-relief", TK_OPTION_RELIEF,
 	Tk_Offset(BorderElement,reliefObj), "flat" },
-    {NULL}
+    { NULL, 0, 0, NULL }
 };
 
 static void BorderElementSize(
@@ -172,7 +171,7 @@ static Ttk_ElementOptionSpec FieldElementOptions[] = {
 	Tk_Offset(FieldElement,borderObj), "white" },
     { "-borderwidth", TK_OPTION_PIXELS,
 	Tk_Offset(FieldElement,borderWidthObj), "2" },
-    {NULL}
+    { NULL, 0, 0, NULL }
 };
 
 static void FieldElementSize(
@@ -230,7 +229,7 @@ static Ttk_ElementOptionSpec PaddingElementOptions[] = {
 	Tk_Offset(PaddingElement,reliefObj), "flat" },
     { "-shiftrelief", TK_OPTION_INT,
 	Tk_Offset(PaddingElement,shiftreliefObj), "0" },
-    {NULL}
+    { NULL, 0, 0, NULL }
 };
 
 static void PaddingElementSize(
@@ -294,7 +293,7 @@ static Ttk_ElementOptionSpec FocusElementOptions[] = {
 	Tk_Offset(FocusElement,focusColorObj), "black" },
     { "-focusthickness",TK_OPTION_PIXELS,
 	Tk_Offset(FocusElement,focusThicknessObj), "1" },
-    {NULL}
+    { NULL, 0, 0, NULL }
 };
 
 static void FocusElementSize(
@@ -346,7 +345,7 @@ static Ttk_ElementOptionSpec SeparatorElementOptions[] = {
 	Tk_Offset(SeparatorElement, orientObj), "horizontal" },
     { "-background", TK_OPTION_BORDER,
 	Tk_Offset(SeparatorElement,borderObj), DEFAULT_BACKGROUND },
-    {NULL}
+    { NULL, 0, 0, NULL }
 };
 
 static void SeparatorElementSize(
@@ -507,7 +506,7 @@ static Ttk_ElementOptionSpec IndicatorElementOptions[] = {
 	Tk_Offset(IndicatorElement,marginObj), "0 2 4 2" },
     { "-borderwidth", TK_OPTION_PIXELS,
 	Tk_Offset(IndicatorElement,borderWidthObj), DEFAULT_BORDERWIDTH },
-    {NULL}
+    { NULL, 0, 0, NULL }
 };
 
 /*
@@ -653,7 +652,7 @@ static Ttk_ElementOptionSpec MenuIndicatorElementOptions[] = {
 	Tk_Offset(MenuIndicatorElement,reliefObj),"raised" },
     { "-indicatormargin", TK_OPTION_STRING,
 	    Tk_Offset(MenuIndicatorElement,marginObj), "5 0" },
-    { NULL }
+    { NULL, 0, 0, NULL }
 };
 
 static void MenuIndicatorElementSize(
@@ -720,7 +719,7 @@ static Ttk_ElementOptionSpec ArrowElementOptions[] = {
 	Tk_Offset(ArrowElement,colorObj),"black"},
     { "-arrowsize", TK_OPTION_PIXELS,
 	Tk_Offset(ArrowElement,sizeObj), "14" },
-    { NULL }
+    { NULL, 0, 0, NULL }
 };
 
 static Ttk_Padding ArrowMargins = { 3,3,3,3 };
@@ -787,7 +786,7 @@ static Ttk_ElementOptionSpec TroughElementOptions[] = {
 	Tk_Offset(TroughElement,colorObj), DEFAULT_BACKGROUND },
     { "-troughrelief",TK_OPTION_RELIEF,
 	Tk_Offset(TroughElement,reliefObj), "sunken" },
-    { NULL }
+    { NULL, 0, 0, NULL }
 };
 
 static void TroughElementSize(
@@ -851,7 +850,7 @@ static Ttk_ElementOptionSpec ThumbElementOptions[] = {
 	Tk_Offset(ThumbElement,borderObj), DEFAULT_BACKGROUND },
     { "-borderwidth", TK_OPTION_PIXELS,
 	Tk_Offset(ThumbElement,borderWidthObj), DEFAULT_BORDERWIDTH },
-    { NULL }
+    { NULL, 0, 0, NULL }
 };
 
 static void ThumbElementSize(
@@ -924,7 +923,7 @@ static Ttk_ElementOptionSpec SliderElementOptions[] = {
 	DEFAULT_BACKGROUND },
     { "-orient", TK_OPTION_ANY, Tk_Offset(SliderElement,orientObj),
 	"horizontal" },
-    { NULL }
+    { NULL, 0, 0, NULL }
 };
 
 static void SliderElementSize(
@@ -1035,7 +1034,7 @@ static Ttk_ElementOptionSpec PbarElementOptions[] = {
 	DEFAULT_BORDERWIDTH },
     { "-background", TK_OPTION_BORDER, Tk_Offset(PbarElement,borderObj),
 	DEFAULT_BACKGROUND },
-    { NULL }
+    { NULL, 0, 0, NULL }
 };
 
 static void PbarElementSize(
@@ -1146,7 +1145,7 @@ static void TabElementDraw(
 	Tk_3DBorderGC(tkwin, border, TK_3D_FLAT_GC),
 	pts, 6, Convex, CoordModeOrigin);
 
-#ifndef WIN32
+#ifndef _WIN32
     /*
      * Account for whether XDrawLines draws endpoints by platform
      */
@@ -1276,7 +1275,7 @@ void TtkElements_Init(Tcl_Interp *interp)
     /*
      * Register "default" as a user-loadable theme (for now):
      */
-    Tcl_PkgProvide(interp, "ttk::theme::default", TTK_VERSION);
+    Tcl_PkgProvideEx(interp, "ttk::theme::default", TTK_VERSION, NULL);
 }
 
 /*EOF*/

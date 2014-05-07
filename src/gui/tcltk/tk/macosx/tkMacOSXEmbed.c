@@ -8,16 +8,14 @@
  *	Tk application is allowed on the Macintosh.
  *
  * Copyright (c) 1996-1997 Sun Microsystems, Inc.
- * Copyright 2001, Apple Computer, Inc.
- * Copyright (c) 2006-2008 Daniel A. Steffen <das@users.sourceforge.net>
+ * Copyright 2001-2009, Apple Inc.
+ * Copyright (c) 2006-2009 Daniel A. Steffen <das@users.sourceforge.net>
  *
- * See the file "license.terms" for information on usage and redistribution of
- * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- *  RCS: @(#) $Id$
+ * See the file "license.terms" for information on usage and redistribution
+ * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
  */
 
-#include "tkMacOSXInt.h"
+#include "tkMacOSXPrivate.h"
 #include "tkBusy.h"
 
 /*
@@ -92,8 +90,7 @@ Tk_MacOSXSetEmbedHandler(
     Tk_MacOSXEmbedGetOffsetInParentProc *getOffsetProc)
 {
     if (tkMacOSXEmbedHandler == NULL) {
-	tkMacOSXEmbedHandler = (TkMacOSXEmbedHandler *)
-		ckalloc(sizeof(TkMacOSXEmbedHandler));
+	tkMacOSXEmbedHandler = ckalloc(sizeof(TkMacOSXEmbedHandler));
     }
     tkMacOSXEmbedHandler->registerWinProc = registerWinProc;
     tkMacOSXEmbedHandler->getPortProc = getPortProc;
@@ -137,7 +134,7 @@ TkpMakeWindow(
 	 * Allocate sub window
 	 */
 
-	macWin = (MacDrawable *) ckalloc(sizeof(MacDrawable));
+	macWin = ckalloc(sizeof(MacDrawable));
 	if (macWin == NULL) {
 	    winPtr->privatePtr = NULL;
 	    return None;
@@ -146,10 +143,10 @@ TkpMakeWindow(
 	winPtr->privatePtr = macWin;
 	macWin->visRgn = NULL;
 	macWin->aboveVisRgn = NULL;
-	macWin->drawRect = CGRectNull;
+	macWin->drawRgn = NULL;
 	macWin->referenceCount = 0;
 	macWin->flags = TK_CLIP_INVALID;
-	macWin->grafPtr = NULL;
+	macWin->view = nil;
 	macWin->context = NULL;
 	macWin->size = CGSizeZero;
 	if (Tk_IsTopLevel(macWin->winPtr)) {
@@ -160,7 +157,7 @@ TkpMakeWindow(
 	    macWin->xOff = 0;
 	    macWin->yOff = 0;
 	    macWin->toplevel = macWin;
-	} else {
+	} else if (winPtr->parentPtr) {
 	    macWin->xOff = winPtr->parentPtr->privatePtr->xOff +
 		    winPtr->parentPtr->changes.border_width +
 		    winPtr->changes.x;
@@ -211,8 +208,9 @@ TkpUseWindow(
     Container *containerPtr;
 
     if (winPtr->window != None) {
-	Tcl_AppendResult(interp, "can't modify container after widget is "
-		"created", NULL);
+	Tcl_SetObjResult(interp, Tcl_NewStringObj(
+		"can't modify container after widget is created", -1));
+	Tcl_SetErrorCode(interp, "TK", "EMBED", "POST_CREATE", NULL);
 	return TCL_ERROR;
     }
 
@@ -230,12 +228,12 @@ TkpUseWindow(
     }
 
     usePtr = (TkWindow *) Tk_IdToWindow(winPtr->display, (Window) parent);
-    if (usePtr != NULL) {
-	if (!(usePtr->flags & TK_CONTAINER)) {
-	    Tcl_AppendResult(interp, "window \"", usePtr->pathName,
-		    "\" doesn't have -container option set", NULL);
-	    return TCL_ERROR;
-	}
+    if (usePtr != NULL && !(usePtr->flags & TK_CONTAINER)) {
+	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		"window \"%s\" doesn't have -container option set",
+		usePtr->pathName));
+	Tcl_SetErrorCode(interp, "TK", "EMBED", "CONTAINER", NULL);
+	return TCL_ERROR;
     }
 
     /*
@@ -263,7 +261,7 @@ TkpUseWindow(
      * Make the embedded window.
      */
 
-    macWin = (MacDrawable *) ckalloc(sizeof(MacDrawable));
+    macWin = ckalloc(sizeof(MacDrawable));
     if (macWin == NULL) {
 	winPtr->privatePtr = NULL;
 	return TCL_ERROR;
@@ -280,12 +278,12 @@ TkpUseWindow(
      * correctly find the container's port.
      */
 
-    macWin->grafPtr = NULL;
+    macWin->view = nil;
     macWin->context = NULL;
     macWin->size = CGSizeZero;
     macWin->visRgn = NULL;
     macWin->aboveVisRgn = NULL;
-    macWin->drawRect = CGRectNull;
+    macWin->drawRgn = NULL;
     macWin->referenceCount = 0;
     macWin->flags = TK_CLIP_INVALID;
     macWin->toplevel = macWin;
@@ -308,25 +306,27 @@ TkpUseWindow(
 
     if (containerPtr == NULL) {
 	/*
-	 * If someone has registered an in process embedding handler, then
+	 * If someone has registered an in-process embedding handler, then
 	 * see if it can handle this window...
 	 */
 
 	if (tkMacOSXEmbedHandler == NULL ||
-		tkMacOSXEmbedHandler->registerWinProc((int) parent,
+		tkMacOSXEmbedHandler->registerWinProc((long) parent,
 		(Tk_Window) winPtr) != TCL_OK) {
-	    Tcl_AppendResult(interp, "The window ID ", string,
-		    " does not correspond to a valid Tk Window.", NULL);
+	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		    "The window ID %s does not correspond to a valid Tk Window",
+		    string));
+	    Tcl_SetErrorCode(interp, "TK", "EMBED", "HANDLE", NULL);
 	    return TCL_ERROR;
-	} else {
-	    containerPtr = (Container *) ckalloc(sizeof(Container));
-
-	    containerPtr->parentPtr = NULL;
-	    containerPtr->embedded = (Window) macWin;
-	    containerPtr->embeddedPtr = macWin->winPtr;
-	    containerPtr->nextPtr = firstContainerPtr;
-	    firstContainerPtr = containerPtr;
 	}
+
+	containerPtr = ckalloc(sizeof(Container));
+
+	containerPtr->parentPtr = NULL;
+	containerPtr->embedded = (Window) macWin;
+	containerPtr->embeddedPtr = macWin->winPtr;
+	containerPtr->nextPtr = firstContainerPtr;
+	firstContainerPtr = containerPtr;
     } else {
 	/*
 	 * The window is embedded in another Tk window.
@@ -392,7 +392,7 @@ TkpMakeContainer(
      */
 
     Tk_MakeWindowExist(tkwin);
-    containerPtr = (Container *) ckalloc(sizeof(Container));
+    containerPtr = ckalloc(sizeof(Container));
     containerPtr->parent = Tk_WindowId(tkwin);
     containerPtr->parentPtr = winPtr;
     containerPtr->embedded = None;
@@ -1089,7 +1089,7 @@ EmbedWindowDeleted(
 		XEvent event;
 
 		event.xany.serial =
-			Tk_Display(containerPtr->parentPtr)->request;
+			LastKnownRequestProcessed(Tk_Display(containerPtr->parentPtr));
 		event.xany.send_event = False;
 		event.xany.display = Tk_Display(containerPtr->parentPtr);
 
@@ -1117,7 +1117,7 @@ EmbedWindowDeleted(
 	} else {
 	    prevPtr->nextPtr = containerPtr->nextPtr;
 	}
-	ckfree((char *) containerPtr);
+	ckfree(containerPtr);
     }
 }
 
@@ -1177,8 +1177,9 @@ TkpCreateBusy(
 
 /*
  * Local Variables:
- * mode: c
+ * mode: objc
  * c-basic-offset: 4
- * fill-column: 78
+ * fill-column: 79
+ * coding: utf-8
  * End:
  */

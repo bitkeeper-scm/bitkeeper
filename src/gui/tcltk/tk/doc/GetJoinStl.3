@@ -5,10 +5,8 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-'\" RCS: @(#) $Id$
-'\" 
-.so man.macros
 .TH Tk_GetJoinStyle 3 "" Tk "Tk Library Procedures"
+.so man.macros
 .BS
 .SH NAME
 Tk_GetJoinStyle, Tk_NameOfJoinStyle \- translate between strings and join styles
@@ -26,11 +24,12 @@ const char *
 .AP Tcl_Interp *interp in
 Interpreter to use for error reporting.
 .AP "const char" *string in
-String containing name of join style: one of
-.QW bevel ,
-.QW miter ,
+String containing name of join style \- one of
+.QW \fBbevel\fR ,
+.QW \fBmiter\fR ,
 or
-.QW round .
+.QW \fBround\fR
+\- or a unique abbreviation of one.
 .AP int *joinPtr out
 Pointer to location in which to store X join style corresponding to
 \fIstring\fR.

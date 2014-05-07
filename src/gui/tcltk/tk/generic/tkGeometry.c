@@ -9,8 +9,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tkInt.h"
@@ -306,6 +304,88 @@ Tk_SetMinimumRequestSize(
 /*
  *----------------------------------------------------------------------
  *
+ * TkSetGeometryMaster --
+ *
+ *	Set a geometry master for this window. Only one master may own
+ *	a window at any time.
+ *
+ * Results:
+ *	A standard Tcl result.
+ *
+ * Side effects:
+ *	The geometry master is recorded for the window.
+ *
+ *----------------------------------------------------------------------
+ */
+
+int
+TkSetGeometryMaster(
+    Tcl_Interp *interp,		/* Current interpreter, for error. */
+    Tk_Window tkwin,		/* Window that will have geometry master
+				 * set. */
+    const char *master)		/* The master identity. */
+{
+    register TkWindow *winPtr = (TkWindow *) tkwin;
+
+    if (winPtr->geometryMaster != NULL &&
+	    strcmp(winPtr->geometryMaster, master) == 0) {
+	return TCL_OK;
+    }
+    if (winPtr->geometryMaster != NULL) {
+	if (interp != NULL) {
+	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		    "cannot use geometry manager %s inside %s which already"
+		    " has slaves managed by %s",
+		    master, Tk_PathName(tkwin), winPtr->geometryMaster));
+	    Tcl_SetErrorCode(interp, "TK", "GEOMETRY", "FIGHT", NULL);
+	}
+	return TCL_ERROR;
+    }
+
+    winPtr->geometryMaster = ckalloc(strlen(master) + 1);
+    strcpy(winPtr->geometryMaster, master);
+    return TCL_OK;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TkFreeGeometryMaster --
+ *
+ *	Remove a geometry master for this window. Only one master may own
+ *	a window at any time.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	The geometry master is cleared for the window.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TkFreeGeometryMaster(
+    Tk_Window tkwin,		/* Window that will have geometry master
+				 * cleared. */
+    const char *master)		/* The master identity. */
+{
+    register TkWindow *winPtr = (TkWindow *) tkwin;
+
+    if (winPtr->geometryMaster != NULL &&
+	    strcmp(winPtr->geometryMaster, master) != 0) {
+	Tcl_Panic("Trying to free %s from geometry manager %s",
+		winPtr->geometryMaster, master);
+    }
+    if (winPtr->geometryMaster != NULL) {
+	ckfree(winPtr->geometryMaster);
+	winPtr->geometryMaster = NULL;
+    }
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
  * Tk_MaintainGeometry --
  *
  *	This procedure is invoked by geometry managers to handle slaves whose
@@ -383,7 +463,7 @@ Tk_MaintainGeometry(
     if (!isNew) {
 	masterPtr = Tcl_GetHashValue(hPtr);
     } else {
-	masterPtr = (MaintainMaster *) ckalloc(sizeof(MaintainMaster));
+	masterPtr = ckalloc(sizeof(MaintainMaster));
 	masterPtr->ancestor = master;
 	masterPtr->checkScheduled = 0;
 	masterPtr->slavePtr = NULL;
@@ -401,7 +481,7 @@ Tk_MaintainGeometry(
 	    goto gotSlave;
 	}
     }
-    slavePtr = (MaintainSlave *) ckalloc(sizeof(MaintainSlave));
+    slavePtr = ckalloc(sizeof(MaintainSlave));
     slavePtr->slave = slave;
     slavePtr->master = master;
     slavePtr->nextPtr = masterPtr->slavePtr;
@@ -529,7 +609,7 @@ Tk_UnmaintainGeometry(
     }
     Tk_DeleteEventHandler(slavePtr->slave, StructureNotifyMask,
 	    MaintainSlaveProc, slavePtr);
-    ckfree((char *) slavePtr);
+    ckfree(slavePtr);
     if (masterPtr->slavePtr == NULL) {
 	if (masterPtr->ancestor != NULL) {
 	    for (ancestor = master; ; ancestor = Tk_Parent(ancestor)) {
@@ -544,7 +624,7 @@ Tk_UnmaintainGeometry(
 	    Tcl_CancelIdleCall(MaintainCheckProc, masterPtr);
 	}
 	Tcl_DeleteHashEntry(hPtr);
-	ckfree((char *) masterPtr);
+	ckfree(masterPtr);
     }
 }
 

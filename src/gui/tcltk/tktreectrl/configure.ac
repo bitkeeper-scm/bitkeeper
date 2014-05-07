@@ -2,8 +2,6 @@
 dnl	This file is an input file used by the GNU "autoconf" program to
 dnl	generate the file "configure", which is run during Tcl installation
 dnl	to configure the system for the local environment.
-#
-# RCS: @(#) $Id$
 
 #-----------------------------------------------------------------------
 # Sample configure.in for Tcl Extensions.
@@ -19,11 +17,11 @@ dnl	to configure the system for the local environment.
 # AC_INIT(generic/tcl.h)
 #-----------------------------------------------------------------------
 
-AC_INIT([treectrl], [2.2])
-AC_SUBST([PACKAGE_PATCHLEVEL], [2.2.9])
+AC_INIT([treectrl], [2.4])
+AC_SUBST([PACKAGE_PATCHLEVEL], [2.4.1])
 AC_DEFINE_UNQUOTED(PACKAGE_PATCHLEVEL, "$PACKAGE_PATCHLEVEL")
 
-TEA_INIT([3.5])
+TEA_INIT([3.9])
 
 AC_CONFIG_AUX_DIR(tclconfig)
 
@@ -68,10 +66,11 @@ TEA_SETUP_COMPILER
 #-----------------------------------------------------------------------
 
 TEA_ADD_SOURCES([qebind.c tkTreeColumn.c tkTreeCtrl.c tkTreeDisplay.c
-		tkTreeDrag.c tkTreeElem.c tkTreeItem.c tkTreeMarquee.c
-		tkTreeNotify.c tkTreeStyle.c tkTreeTheme.c tkTreeUtils.c])
+		tkTreeDrag.c tkTreeElem.c tkTreeHeader.c tkTreeItem.c
+		tkTreeMarquee.c tkTreeNotify.c tkTreeStyle.c tkTreeTheme.c
+		tkTreeUtils.c])
 TEA_ADD_HEADERS([])
-#TEA_ADD_INCLUDES([-I. -I\"`${CYGPATH} ${srcdir}/generic`\"])
+TEA_ADD_INCLUDES([-I. -I\"`${CYGPATH} ${srcdir}/generic`\"])
 TEA_ADD_CFLAGS([])
 TEA_ADD_STUB_SOURCES([])
 TEA_ADD_TCL_SOURCES([library/treectrl.tcl library/filelist-bindings.tcl])
@@ -100,6 +99,27 @@ TEA_PATH_X
 # Needed for OS X ppx/intel image handling
 AC_C_BIGENDIAN
 
+AS_IF([test "$GCC" = yes], [
+
+# Needed for pointer-to-int conversions with GCC on 64-bit
+AC_CHECK_TYPE([intptr_t], [
+    AC_DEFINE([HAVE_INTPTR_T], 1, [Do we have the intptr_t type?])], [
+    AC_CACHE_CHECK([for pointer-size signed integer type], tcl_cv_intptr_t, [
+    for tcl_cv_intptr_t in "int" "long" "long long" none; do
+	if test "$tcl_cv_intptr_t" != none; then
+	    AC_COMPILE_IFELSE([AC_LANG_BOOL_COMPILE_TRY([AC_INCLUDES_DEFAULT],
+		    [[sizeof (void *) <= sizeof ($tcl_cv_intptr_t)]])], 
+		[tcl_ok=yes], [tcl_ok=no])
+	    test "$tcl_ok" = yes && break; fi
+    done])
+    if test "$tcl_cv_intptr_t" != none; then
+	AC_DEFINE_UNQUOTED([intptr_t], [$tcl_cv_intptr_t], [Signed integer
+	   type wide enough to hold a pointer.])
+    fi
+])
+
+], [])
+
 #--------------------------------------------------------------------
 # __CHANGE__
 # A few miscellaneous platform-specific items:
@@ -120,13 +140,12 @@ AC_C_BIGENDIAN
 OUTPUTFILES=Makefile
 
 if test "${TEA_PLATFORM}" = "windows" ; then
-    AC_DEFINE(BUILD_treectrl)
-    CLEANFILES="pkgIndex.tcl *.lib *.dll *.exp *.ilk *.pdb vc*.pch"
+    TEA_ADD_SOURCES([tkWinTree.c])
     TEA_ADD_LIBS([gdi32.lib user32.lib])
 
     AC_ARG_ENABLE(shellicon,
 	AC_HELP_STRING([--enable-shellicon],
-	    [build the shellicon extension (default: no)]),
+	[build the shellicon extension (default: no)]),
 	[tcl_ok=$enableval], [tcl_ok=no])
     if test "$tcl_ok" = "yes" ; then
 	AC_CONFIG_SUBDIRS(shellicon)
@@ -139,6 +158,9 @@ if test "${TEA_PLATFORM}" = "windows" ; then
     # X86|AMD64|IA64 for manifest
     AC_SUBST(MACHINE)
 
+    # PKG_MANIFEST -> VC_MANIFEST_EMBED_DLL -> MAKE_SHARED_LIB
+    TEA_ADD_MANIFEST([treectrl.dll.manifest])
+
     # Create treectrl.dll.manifest from treectrl.dll.manifest.in.
     # treectrl.dll.manifest is included by treectrl.rc.
     # If building with a Microsoft compiler that generates
@@ -148,19 +170,54 @@ if test "${TEA_PLATFORM}" = "windows" ; then
     OUTPUTFILES="Makefile treectrl.dll.manifest"
 
     TREECTRL_ADD_RC([treectrl.rc])
-else
-    CLEANFILES="pkgIndex.tcl"
 fi
+
 if test "${TEA_WINDOWINGSYSTEM}" = "aqua"; then
-    TEA_ADD_LIBS([-framework Carbon])
+    AC_MSG_CHECKING([whether to use Cocoa or Carbon])
+    case ${TK_LIBS} in
+	*Cocoa*)
+	    AC_MSG_RESULT([Cocoa])
+	    TEA_ADD_CFLAGS([-DMAC_TK_COCOA -std=gnu99 -x objective-c])
+	    TEA_ADD_SOURCES([tkMacOSXTree.c])
+	    TEA_ADD_LIBS([-framework Cocoa -framework Carbon])
+	    ;;
+	*)
+	    AC_MSG_RESULT([Carbon])
+	    TEA_ADD_CFLAGS([-DMAC_TK_CARBON])
+	    TEA_ADD_SOURCES([tkMacOSXTree.c])
+	    TEA_ADD_LIBS([-framework Carbon])
+	    ;;
+    esac
 fi
-AC_SUBST(CLEANFILES)
+
+if test "${TEA_WINDOWINGSYSTEM}" = "x11"; then
+    TEA_ADD_SOURCES([tkUnixTree.c])
+
+    AC_ARG_ENABLE(gtk,
+	AC_HELP_STRING([--enable-gtk],
+	[build GTK+ theme-aware treectrl (default: no)]),
+	[tcl_ok=$enableval], [tcl_ok=no])
+    if test "$tcl_ok" = "yes" ; then
+		PKG_CHECK_MODULES([GTK], [gtk+-2.0 gdk-pixbuf-xlib-2.0])
+	TEA_ADD_CFLAGS([-DTREECTRL_GTK $GTK_CFLAGS])
+	TEA_ADD_LIBS([$GTK_LIBS])
+    fi
+
+    TEA_ADD_LIBS([${MATH_LIBS}])
+fi
 
 #--------------------------------------------------------------------
 # Check whether --enable-threads or --disable-threads was given.
 #--------------------------------------------------------------------
 
 TEA_ENABLE_THREADS
+
+AS_IF([test "${TCL_THREADS}" = "1"], [
+    DIST_WIN_THREADS=-threads
+], [
+    DIST_WIN_THREADS=""
+])
+AC_SUBST(DIST_WIN_THREADS)
 
 #--------------------------------------------------------------------
 # The statement below defines a collection of symbols related to
@@ -176,6 +233,11 @@ TEA_ENABLE_SHARED
 #--------------------------------------------------------------------
 
 TEA_CONFIG_CFLAGS
+
+AS_IF([test "$MACHINE" = "X86"], [DIST_WIN_MACHINE=x86])
+AS_IF([test "$MACHINE" = "AMD64"], [DIST_WIN_MACHINE=x86_64])
+AS_IF([test "$MACHINE" = "IA64"], [DIST_WIN_MACHINE=ia64])
+AC_SUBST(DIST_WIN_MACHINE)
 
 #--------------------------------------------------------------------
 # Set the default compiler switches based on the --enable-symbols option.

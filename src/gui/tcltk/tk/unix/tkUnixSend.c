@@ -10,8 +10,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tkUnixInt.h"
@@ -220,13 +218,12 @@ static NameRegistry *	RegOpen(Tcl_Interp *interp,
 			    TkDisplay *dispPtr, int lock);
 static void		SendEventProc(ClientData clientData, XEvent *eventPtr);
 static int		SendInit(Tcl_Interp *interp, TkDisplay *dispPtr);
-static Tk_RestrictAction SendRestrictProc(ClientData clientData,
-			    XEvent *eventPtr);
+static Tk_RestrictProc SendRestrictProc;
 static int		ServerSecure(TkDisplay *dispPtr);
 static void		UpdateCommWindow(TkDisplay *dispPtr);
 static int		ValidateName(TkDisplay *dispPtr, const char *name,
 			    Window commWindow, int oldOK);
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -269,7 +266,7 @@ RegOpen(
 	SendInit(interp, dispPtr);
     }
 
-    regPtr = (NameRegistry *) ckalloc(sizeof(NameRegistry));
+    regPtr = ckalloc(sizeof(NameRegistry));
     regPtr->dispPtr = dispPtr;
     regPtr->locked = 0;
     regPtr->modified = 0;
@@ -325,7 +322,7 @@ RegOpen(
     }
     return regPtr;
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -378,7 +375,7 @@ RegFindName(
     }
     return None;
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -442,7 +439,7 @@ RegDeleteName(
 	}
     }
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -476,7 +473,7 @@ RegAddName(
     sprintf(id, "%x ", (unsigned) commWindow);
     idLength = strlen(id);
     newBytes = idLength + strlen(name) + 1;
-    newProp = ckalloc((unsigned) (regPtr->propLength + newBytes));
+    newProp = ckalloc(regPtr->propLength + newBytes);
     strcpy(newProp, id);
     strcpy(newProp+idLength, name);
     if (regPtr->property != NULL) {
@@ -492,7 +489,7 @@ RegAddName(
     regPtr->property = newProp;
     regPtr->allocedByX = 0;
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -550,9 +547,9 @@ RegClose(
 	    ckfree(regPtr->property);
 	}
     }
-    ckfree((char *) regPtr);
+    ckfree(regPtr);
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -636,7 +633,7 @@ ValidateName(
 		    break;
 		}
 	    }
-	    ckfree((char *) argv);
+	    ckfree(argv);
 	}
     } else {
 	result = 0;
@@ -647,7 +644,7 @@ ValidateName(
     }
     return result;
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -679,10 +676,74 @@ ServerSecure(
     int numHosts, secure;
     Bool enabled;
 
-    secure = 0;
     addrPtr = XListHosts(dispPtr->display, &numHosts, &enabled);
-    if (enabled && (numHosts == 0)) {
+    if (!enabled) {
+    insecure:
+	secure = 0;
+    } else if (numHosts == 0) {
 	secure = 1;
+    } else {
+	/*
+	 * Recent versions of X11 have the extra feature of allowing more
+	 * sophisticated authorization checks to be performed than the dozy
+	 * old ones that used to plague xhost usage. However, not all deployed
+	 * versions of Xlib know how to deal with this feature, so this code
+	 * is conditional on having the right #def in place. [Bug 1909931]
+	 *
+	 * Note that at this point we know that there's at least one entry in
+	 * the list returned by XListHosts. However there may be multiple
+	 * entries; as long as each is one of either 'SI:localhost:*' or
+	 * 'SI:localgroup:*' then we will claim to be secure enough.
+	 */
+
+#ifdef FamilyServerInterpreted
+	XServerInterpretedAddress *siPtr;
+	int i;
+
+	for (i=0 ; i<numHosts ; i++) {
+	    if (addrPtr[i].family != FamilyServerInterpreted) {
+		/*
+		 * We don't understand what the X server is letting in, so we
+		 * err on the side of safety.
+		 */
+
+		goto insecure;
+	    }
+	    siPtr = (XServerInterpretedAddress *) addrPtr[0].address;
+
+	    /*
+	     * We don't check the username or group here. This is because it's
+	     * officially non-portable and we are just making sure there
+	     * aren't silly misconfigurations. (Apparently 'root' is not a
+	     * very good choice, but we still don't put any effort in to spot
+	     * that.) However we do check to see that the constraints are
+	     * imposed against the connecting user and/or group.
+	     */
+
+	    if (       !(siPtr->typelength == 9 /* ==strlen("localuser") */
+			&& !memcmp(siPtr->type, "localuser", 9))
+		    && !(siPtr->typelength == 10 /* ==strlen("localgroup") */
+			&& !memcmp(siPtr->type, "localgroup", 10))) {
+		/*
+		 * The other defined types of server-interpreted controls
+		 * involve particular hosts. These are still insecure for the
+		 * same reasons that classic xhost access is insecure; there's
+		 * just no way to be sure that the users on those systems are
+		 * the ones who should be allowed to connect to this display.
+		 */
+
+		goto insecure;
+	    }
+	}
+	secure = 1;
+#else
+	/*
+	 * We don't understand what the X server is letting in, so we err on
+	 * the side of safety.
+	 */
+
+	secure = 0;
+#endif /* FamilyServerInterpreted */
     }
     if (addrPtr != NULL) {
 	XFree((char *) addrPtr);
@@ -690,9 +751,9 @@ ServerSecure(
     return secure;
 #endif /* TK_NO_SECURITY */
 }
-
+
 /*
- *--------------------------------------------------------------
+ *----------------------------------------------------------------------
  *
  * Tk_SetAppName --
  *
@@ -713,7 +774,7 @@ ServerSecure(
  *	registration will be removed automatically if the interpreter is
  *	deleted or the "send" command is removed.
  *
- *--------------------------------------------------------------
+ *----------------------------------------------------------------------
  */
 
 const char *
@@ -756,7 +817,7 @@ Tk_SetAppName(
 	     * the "send" command to the interpreter.
 	     */
 
-	    riPtr = (RegisteredInterp *) ckalloc(sizeof(RegisteredInterp));
+	    riPtr = ckalloc(sizeof(RegisteredInterp));
 	    riPtr->interp = interp;
 	    riPtr->dispPtr = winPtr->dispPtr;
 	    riPtr->nextPtr = tsdPtr->interpListPtr;
@@ -840,7 +901,7 @@ Tk_SetAppName(
 
     RegAddName(regPtr, actualName, Tk_WindowId(dispPtr->commTkwin));
     RegClose(regPtr);
-    riPtr->name = (char *) ckalloc((unsigned) (strlen(actualName) + 1));
+    riPtr->name = ckalloc(strlen(actualName) + 1);
     strcpy(riPtr->name, actualName);
     if (actualName != name) {
 	Tcl_DStringFree(&dString);
@@ -849,7 +910,7 @@ Tk_SetAppName(
 
     return riPtr->name;
 }
-
+
 /*
  *--------------------------------------------------------------
  *
@@ -882,7 +943,7 @@ Tk_SendCmd(
     const char *destName;
     int result, c, async, i, firstArg;
     size_t length;
-    Tk_RestrictProc *prevRestrictProc;
+    Tk_RestrictProc *prevProc;
     ClientData prevArg;
     TkDisplay *dispPtr;
     Tcl_Time timeout;
@@ -923,15 +984,19 @@ Tk_SendCmd(
 	    i++;
 	    break;
 	} else {
-	    Tcl_AppendResult(interp, "bad option \"", argv[i],
-		    "\": must be -async, -displayof, or --", NULL);
+	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		    "bad option \"%s\": must be -async, -displayof, or --",
+		    argv[i]));
+	    Tcl_SetErrorCode(interp, "TK", "SEND", "OPTION", NULL);
 	    return TCL_ERROR;
 	}
     }
 
     if (argc < (i+2)) {
-	Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
-		" ?-option value ...? interpName arg ?arg ...?\"", NULL);
+	Tcl_SetObjResult(interp, Tcl_ObjPrintf("wrong # args: should be "
+		"\"%s ?-option value ...? interpName arg ?arg ...?\"",
+		argv[0]));
+	Tcl_SetErrorCode(interp, "TCL", "WRONGARGS", NULL);
 	return TCL_ERROR;
     }
     destName = argv[i];
@@ -959,7 +1024,7 @@ Tk_SendCmd(
 	localInterp = riPtr->interp;
 	Tcl_Preserve(localInterp);
 	if (firstArg == (argc-1)) {
-	    result = Tcl_GlobalEval(localInterp, argv[firstArg]);
+	    result = Tcl_EvalEx(localInterp, argv[firstArg], -1, TCL_EVAL_GLOBAL);
 	} else {
 	    Tcl_DStringInit(&request);
 	    Tcl_DStringAppend(&request, argv[firstArg], -1);
@@ -967,7 +1032,7 @@ Tk_SendCmd(
 		Tcl_DStringAppend(&request, " ", 1);
 		Tcl_DStringAppend(&request, argv[i], -1);
 	    }
-	    result = Tcl_GlobalEval(localInterp, Tcl_DStringValue(&request));
+	    result = Tcl_EvalEx(localInterp, Tcl_DStringValue(&request), -1, TCL_EVAL_GLOBAL);
 	    Tcl_DStringFree(&request);
 	}
 	if (interp != localInterp) {
@@ -1006,7 +1071,10 @@ Tk_SendCmd(
     commWindow = RegFindName(regPtr, destName);
     RegClose(regPtr);
     if (commWindow == None) {
-	Tcl_AppendResult(interp, "no application named \"",destName,"\"",NULL);
+	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		"no application named \"%s\"", destName));
+	Tcl_SetErrorCode(interp, "TK", "LOOKUP", "APPLICATION", destName,
+		NULL);
 	return TCL_ERROR;
     }
 
@@ -1074,7 +1142,7 @@ Tk_SendCmd(
      * other events in the application.
      */
 
-    prevRestrictProc = Tk_RestrictEvents(SendRestrictProc, NULL, &prevArg);
+    prevProc = Tk_RestrictEvents(SendRestrictProc, NULL, &prevArg);
     Tcl_GetTime(&timeout);
     timeout.sec += 2;
     while (!pending.gotResponse) {
@@ -1096,7 +1164,7 @@ Tk_SendCmd(
 		    msg = "target application died";
 		}
 		pending.code = TCL_ERROR;
-		pending.result = (char *) ckalloc((unsigned) (strlen(msg) + 1));
+		pending.result = ckalloc(strlen(msg) + 1);
 		strcpy(pending.result, msg);
 		pending.gotResponse = 1;
 	    } else {
@@ -1105,7 +1173,7 @@ Tk_SendCmd(
 	    }
 	}
     }
-    (void) Tk_RestrictEvents(prevRestrictProc, prevArg, &prevArg);
+    Tk_RestrictEvents(prevProc, prevArg, &prevArg);
 
     /*
      * Unregister the information about the pending command and return the
@@ -1129,16 +1197,14 @@ Tk_SendCmd(
 	ckfree(pending.errorInfo);
     }
     if (pending.errorCode != NULL) {
-	Tcl_Obj *errorObjPtr = Tcl_NewStringObj(pending.errorCode, -1);
-
-	Tcl_SetObjErrorCode(interp, errorObjPtr);
+	Tcl_SetObjErrorCode(interp, Tcl_NewStringObj(pending.errorCode, -1));
 	ckfree(pending.errorCode);
     }
-    Tcl_SetResult(interp, pending.result, TCL_VOLATILE);
+    Tcl_SetObjResult(interp, Tcl_NewStringObj(pending.result, -1));
     ckfree(pending.result);
     return pending.code;
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -1167,6 +1233,7 @@ TkGetInterpNames(
 {
     TkWindow *winPtr = (TkWindow *) tkwin;
     NameRegistry *regPtr;
+    Tcl_Obj *resultObj = Tcl_NewObj();
     char *p;
 
     /*
@@ -1201,7 +1268,8 @@ TkGetInterpNames(
 	     * The application still exists; add its name to the result.
 	     */
 
-	    Tcl_AppendElement(interp, entryName);
+	    Tcl_ListObjAppendElement(NULL, resultObj,
+		    Tcl_NewStringObj(entryName, -1));
 	} else {
 	    int count;
 
@@ -1224,9 +1292,10 @@ TkGetInterpNames(
 	}
     }
     RegClose(regPtr);
+    Tcl_SetObjResult(interp, resultObj);
     return TCL_OK;
 }
-
+
 /*
  *--------------------------------------------------------------
  *
@@ -1256,7 +1325,7 @@ TkSendCleanup(
 	dispPtr->commTkwin = NULL;
     }
 }
-
+
 /*
  *--------------------------------------------------------------
  *
@@ -1288,12 +1357,12 @@ SendInit(
      * for it.
      */
 
-    dispPtr->commTkwin = Tk_CreateWindow(interp, (Tk_Window) NULL,
-	    "_comm", DisplayString(dispPtr->display));
-    if (dispPtr->commTkwin == NULL) {
-	Tcl_Panic("Tk_CreateWindow failed in SendInit!");
-    }
+    dispPtr->commTkwin = (Tk_Window) TkAllocWindow(dispPtr,
+    	DefaultScreen(dispPtr->display), NULL);
     Tcl_Preserve(dispPtr->commTkwin);
+    ((TkWindow *) dispPtr->commTkwin)->flags |=
+	    TK_TOP_HIERARCHY|TK_TOP_LEVEL|TK_HAS_WRAPPER|TK_WIN_MANAGED;
+    TkWmNewWindow((TkWindow *) dispPtr->commTkwin);
     atts.override_redirect = True;
     Tk_ChangeWindowAttributes(dispPtr->commTkwin,
 	    CWOverrideRedirect, &atts);
@@ -1313,7 +1382,7 @@ SendInit(
 
     return TCL_OK;
 }
-
+
 /*
  *--------------------------------------------------------------
  *
@@ -1496,7 +1565,7 @@ SendEventProc(
 	    remoteInterp = riPtr->interp;
 	    Tcl_Preserve(remoteInterp);
 
-	    result = Tcl_GlobalEval(remoteInterp, script);
+	    result = Tcl_EvalEx(remoteInterp, script, -1, TCL_EVAL_GLOBAL);
 
 	    /*
 	     * The call to Tcl_Release may have released the interpreter which
@@ -1506,7 +1575,7 @@ SendEventProc(
 	     */
 
 	    if (commWindow != None) {
-		Tcl_DStringAppend(&reply, Tcl_GetStringResult(remoteInterp),
+		Tcl_DStringAppend(&reply, Tcl_GetString(Tcl_GetObjResult(remoteInterp)),
 			-1);
 		if (result == TCL_ERROR) {
 		    const char *varValue;
@@ -1618,19 +1687,16 @@ SendEventProc(
 		}
 		pcPtr->code = code;
 		if (resultString != NULL) {
-		    pcPtr->result =
-			    ckalloc((unsigned) (strlen(resultString) + 1));
+		    pcPtr->result = ckalloc(strlen(resultString) + 1);
 		    strcpy(pcPtr->result, resultString);
 		}
 		if (code == TCL_ERROR) {
 		    if (errorInfo != NULL) {
-			pcPtr->errorInfo =
-				ckalloc((unsigned) (strlen(errorInfo) + 1));
+			pcPtr->errorInfo = ckalloc(strlen(errorInfo) + 1);
 			strcpy(pcPtr->errorInfo, errorInfo);
 		    }
 		    if (errorCode != NULL) {
-			pcPtr->errorCode =
-				ckalloc((unsigned) (strlen(errorCode) + 1));
+			pcPtr->errorCode = ckalloc(strlen(errorCode) + 1);
 			strcpy(pcPtr->errorCode, errorCode);
 		    }
 		}
@@ -1651,7 +1717,7 @@ SendEventProc(
     }
     XFree(propInfo);
 }
-
+
 /*
  *--------------------------------------------------------------
  *
@@ -1719,8 +1785,7 @@ AppendErrorProc(
     for (pcPtr = tsdPtr->pendingCommands; pcPtr != NULL;
 	    pcPtr = pcPtr->nextPtr) {
 	if ((pcPtr == pendingPtr) && (pcPtr->result == NULL)) {
-	    pcPtr->result = (char *) ckalloc((unsigned)
-		    (strlen(pcPtr->target) + 50));
+	    pcPtr->result = ckalloc(strlen(pcPtr->target) + 50);
 	    sprintf(pcPtr->result, "no application named \"%s\"",
 		    pcPtr->target);
 	    pcPtr->code = TCL_ERROR;
@@ -1730,7 +1795,7 @@ AppendErrorProc(
     }
     return 0;
 }
-
+
 /*
  *--------------------------------------------------------------
  *
@@ -1774,12 +1839,12 @@ DeleteProc(
 	    }
 	}
     }
-    ckfree((char *) riPtr->name);
+    ckfree(riPtr->name);
     riPtr->interp = NULL;
     UpdateCommWindow(riPtr->dispPtr);
     Tcl_EventuallyFree(riPtr, TCL_DYNAMIC);
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -1819,7 +1884,7 @@ SendRestrictProc(
     }
     return TK_DEFER_EVENT;
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -1859,7 +1924,7 @@ UpdateCommWindow(
 	    Tcl_DStringLength(&names));
     Tcl_DStringFree(&names);
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -1932,7 +1997,7 @@ TkpTestsendCmd(
 			*p = '\n';
 		    }
 		}
-		Tcl_SetResult(interp, property, TCL_VOLATILE);
+		Tcl_SetObjResult(interp, Tcl_NewStringObj(property, -1));
 	    }
 	    if (property != NULL) {
 		XFree(property);
@@ -1956,10 +2021,7 @@ TkpTestsendCmd(
 	    Tcl_DStringFree(&tmp);
 	}
     } else if (strcmp(argv[1], "serial") == 0) {
-	char buf[TCL_INTEGER_SPACE];
-
-	sprintf(buf, "%d", localData.sendSerial+1);
-	Tcl_SetResult(interp, buf, TCL_VOLATILE);
+	Tcl_SetObjResult(interp, Tcl_NewIntObj(localData.sendSerial+1));
     } else {
 	Tcl_AppendResult(interp, "bad option \"", argv[1],
 		"\": must be bogus, prop, or serial", NULL);
@@ -1967,7 +2029,7 @@ TkpTestsendCmd(
     }
     return TCL_OK;
 }
-
+
 /*
  * Local Variables:
  * mode: c

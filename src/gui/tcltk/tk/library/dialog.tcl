@@ -3,8 +3,6 @@
 # This file defines the procedure tk_dialog, which creates a dialog
 # box containing a bitmap, a message, and one or more buttons.
 #
-# RCS: @(#) $Id$
-#
 # Copyright (c) 1992-1993 The Regents of the University of California.
 # Copyright (c) 1994-1997 Sun Microsystems, Inc.
 #
@@ -36,8 +34,9 @@ proc ::tk_dialog {w title text bitmap default args} {
     # Check that $default was properly given
     if {[string is integer -strict $default]} {
 	if {$default >= [llength $args]} {
-	    return -code error "default button index greater than number of\
-		    buttons specified for tk_dialog"
+	    return -code error -errorcode {TK DIALOG BAD_DEFAULT} \
+		"default button index greater than number of buttons\
+		specified for tk_dialog"
 	}
     } elseif {"" eq $default} {
 	set default -1
@@ -74,6 +73,8 @@ proc ::tk_dialog {w title text bitmap default args} {
 
     if {$windowingsystem eq "aqua"} {
 	::tk::unsupported::MacWindowStyle style $w moveableModal {}
+    } elseif {$windowingsystem eq "x11"} {
+	wm attributes $w -type dialog
     }
 
     frame $w.bot
@@ -129,15 +130,14 @@ proc ::tk_dialog {w title text bitmap default args} {
 
     # 4. Create a binding for <Return> on the dialog if there is a
     # default button.
+    # Convention also dictates that if the keyboard focus moves among the
+    # the buttons that the <Return> binding affects the button with the focus.
 
     if {$default >= 0} {
-	bind $w <Return> "
-	[list $w.button$default] configure -state active -relief sunken
-	update idletasks
-	after 100
-	set ::tk::Priv(button) $default
-	"
+	bind $w <Return> [list $w.button$default invoke]
     }
+    bind $w <<PrevWindow>> [list bind $w <Return> {[tk_focusPrev %W] invoke}]
+    bind $w <<NextWindow>> [list bind $w <Return> {[tk_focusNext %W] invoke}]
 
     # 5. Create a <Destroy> binding for the window that sets the
     # button variable to -1;  this is needed in case something happens
@@ -147,42 +147,19 @@ proc ::tk_dialog {w title text bitmap default args} {
 
     # 6. Withdraw the window, then update all the geometry information
     # so we know how big it wants to be, then center the window in the
-    # display and de-iconify it.
+    # display (Motif style) and de-iconify it.
 
-    wm withdraw $w
-    update idletasks
-    set x [expr {[winfo screenwidth $w]/2 - [winfo reqwidth $w]/2 \
-	    - [winfo vrootx [winfo parent $w]]}]
-    set y [expr {[winfo screenheight $w]/2 - [winfo reqheight $w]/2 \
-	    - [winfo vrooty [winfo parent $w]]}]
-    # Make sure that the window is on the screen and set the maximum
-    # size of the window is the size of the screen.  That'll let things
-    # fail fairly gracefully when very large messages are used. [Bug 827535]
-    if {$x < 0} {
-	set x 0
-    }
-    if {$y < 0} {
-	set y 0
-    }
-    wm maxsize $w [winfo screenwidth $w] [winfo screenheight $w]
-    wm geometry $w +$x+$y
-    wm deiconify $w
-
+    ::tk::PlaceWindow $w 
     tkwait visibility $w
 
     # 7. Set a grab and claim the focus too.
 
-    set oldFocus [focus]
-    set oldGrab [grab current $w]
-    if {$oldGrab ne ""} {
-	set grabStatus [grab status $oldGrab]
-    }
-    grab $w
     if {$default >= 0} {
-	focus $w.button$default
+        set focus $w.button$default
     } else {
-	focus $w
+        set focus $w
     }
+    tk::SetFocusGrab $w $focus
 
     # 8. Wait for the user to respond, then restore the focus and
     # return the index of the selected button.  Restore the focus
@@ -191,21 +168,14 @@ proc ::tk_dialog {w title text bitmap default args} {
     # restore any grab that was in effect.
 
     vwait ::tk::Priv(button)
-    catch {focus $oldFocus}
+
     catch {
 	# It's possible that the window has already been destroyed,
 	# hence this "catch".  Delete the Destroy handler so that
 	# Priv(button) doesn't get reset by it.
 
 	bind $w <Destroy> {}
-	destroy $w
     }
-    if {$oldGrab ne ""} {
-	if {$grabStatus ne "global"} {
-	    grab $oldGrab
-	} else {
-	    grab -global $oldGrab
-	}
-    }
+    tk::RestoreFocusGrab $w $focus
     return $Priv(button)
 }

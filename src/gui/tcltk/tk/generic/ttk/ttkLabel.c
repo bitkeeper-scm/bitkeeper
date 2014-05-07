@@ -1,5 +1,4 @@
-/* $Id$
- *
+/*
  * text, image, and label elements.
  *
  * The label element combines text and image elements,
@@ -8,7 +7,7 @@
  */
 
 #include <tcl.h>
-#include <tk.h>
+#include <tkInt.h>
 #include "ttkTheme.h"
 
 /*----------------------------------------------------------------------
@@ -67,7 +66,7 @@ static Ttk_ElementOptionSpec TextElementOptions[] = {
 	Tk_Offset(TextElement,wrapLengthObj), "0" },
     { "-embossed", TK_OPTION_INT,
 	Tk_Offset(TextElement,embossedObj), "0"},
-    {NULL}
+    { NULL, 0, 0, NULL }
 };
 
 static int TextSetup(TextElement *text, Tk_Window tkwin)
@@ -129,10 +128,10 @@ static void TextDraw(TextElement *text, Tk_Window tkwin, Drawable d, Ttk_Box b)
 {
     XColor *color = Tk_GetColorFromObj(tkwin, text->foregroundObj);
     int underline = -1;
-    int lastChar = -1;
     XGCValues gcValues;
     GC gc1, gc2;
     Tk_Anchor anchor = TK_ANCHOR_CENTER;
+    TkRegion clipRegion = NULL;
 
     gcValues.font = Tk_FontId(text->tkfont);
     gcValues.foreground = color->pixel;
@@ -148,21 +147,32 @@ static void TextDraw(TextElement *text, Tk_Window tkwin, Drawable d, Ttk_Box b)
 
     /*
      * Clip text if it's too wide:
-     * @@@ BUG: This will overclip multi-line text.
      */
     if (b.width < text->width) {
-	lastChar = Tk_PointToChar(text->textLayout, b.width, 1) + 1;
+	XRectangle rect;
+
+	clipRegion = TkCreateRegion();
+	rect.x = b.x;
+	rect.y = b.y;
+	rect.width = b.width + (text->embossed ? 1 : 0);
+	rect.height = b.height + (text->embossed ? 1 : 0);
+	TkUnionRectWithRegion(&rect, clipRegion, clipRegion);
+	TkSetRegion(Tk_Display(tkwin), gc1, clipRegion);
+	TkSetRegion(Tk_Display(tkwin), gc2, clipRegion);
+#ifdef HAVE_XFT
+	TkUnixSetXftClipRegion(clipRegion);
+#endif
     }
 
     if (text->embossed) {
 	Tk_DrawTextLayout(Tk_Display(tkwin), d, gc2,
-	    text->textLayout, b.x+1, b.y+1, 0/*firstChar*/, lastChar);
+	    text->textLayout, b.x+1, b.y+1, 0/*firstChar*/, -1/*lastChar*/);
     }
     Tk_DrawTextLayout(Tk_Display(tkwin), d, gc1,
-	    text->textLayout, b.x, b.y, 0/*firstChar*/, lastChar);
+	    text->textLayout, b.x, b.y, 0/*firstChar*/, -1/*lastChar*/);
 
     Tcl_GetIntFromObj(NULL, text->underlineObj, &underline);
-    if (underline >= 0 && (lastChar == -1 || underline <= lastChar)) {
+    if (underline >= 0) {
 	if (text->embossed) {
 	    Tk_UnderlineTextLayout(Tk_Display(tkwin), d, gc2,
 		text->textLayout, b.x+1, b.y+1, underline);
@@ -171,6 +181,14 @@ static void TextDraw(TextElement *text, Tk_Window tkwin, Drawable d, Ttk_Box b)
 	    text->textLayout, b.x, b.y, underline);
     }
 
+    if (clipRegion != NULL) {
+#ifdef HAVE_XFT
+	TkUnixSetXftClipRegion(None);
+#endif
+	XSetClipMask(Tk_Display(tkwin), gc1, None);
+	XSetClipMask(Tk_Display(tkwin), gc2, None);
+	TkDestroyRegion(clipRegion);
+    }
     Tk_FreeGC(Tk_Display(tkwin), gc1);
     Tk_FreeGC(Tk_Display(tkwin), gc2);
 }
@@ -236,7 +254,7 @@ static Ttk_ElementOptionSpec ImageElementOptions[] = {
 	Tk_Offset(ImageElement,stippleObj), "gray50" },
     { "-background", TK_OPTION_COLOR,
 	Tk_Offset(ImageElement,backgroundObj), DEFAULT_BACKGROUND },
-    {NULL}
+    { NULL, 0, 0, NULL }
 };
 
 /*
@@ -326,10 +344,16 @@ static void ImageDraw(
      * stipple the image.
      * @@@ Possibly: Don't do disabled-stippling at all;
      * @@@ it's ugly and out of fashion.
+     * Do not stipple at all under Aqua, just draw the image: it shows up 
+     * as a white rectangle otherwise.
      */
+
+    
     if (state & TTK_STATE_DISABLED) {
 	if (TtkSelectImage(image->imageSpec, 0ul) == image->tkimg) {
+#ifndef MAC_OSX_TK
 	    StippleOver(image, tkwin, d, b.x,b.y);
+#endif
 	}
     }
 }
@@ -452,8 +476,7 @@ static Ttk_ElementOptionSpec LabelElementOptions[] = {
 	Tk_Offset(LabelElement,image.stippleObj), "gray50" },
     { "-background", TK_OPTION_COLOR,
 	Tk_Offset(LabelElement,image.backgroundObj), DEFAULT_BACKGROUND },
-
-    {NULL}
+    { NULL, 0, 0, NULL }
 };
 
 /*
@@ -463,6 +486,7 @@ static Ttk_ElementOptionSpec LabelElementOptions[] = {
  * 	Calculate the text, image, and total width and height.
  */
 
+#undef  MAX
 #define MAX(a,b) ((a) > (b) ? a : b);
 static void LabelSetup(
     LabelElement *c, Tk_Window tkwin, Ttk_State state)

@@ -1,11 +1,10 @@
-# RCS: @(#) $Id$
+# Copyright (c) 2002-2011 Tim Baker
 
 #
 # Demo: iMovie
 #
-proc DemoIMovie {} {
-
-    set T [DemoList]
+namespace eval DemoIMovie {}
+proc DemoIMovie::Init {T} {
 
     #
     # Configure the treectrl widget
@@ -13,7 +12,10 @@ proc DemoIMovie {} {
 
     $T configure -showroot no -showbuttons no -showlines no \
 	-selectmode browse -orient horizontal -wrap window \
-	-showheader no -background #dcdcdc
+	-showheader no -background #dcdcdc -yscrollsmoothing yes
+
+    $T configure -canvaspadx 8 -canvaspady 8 \
+	-itemgapx 8 -itemgapy 8
 
     #
     # Create columns
@@ -26,8 +28,8 @@ proc DemoIMovie {} {
     switch -- $::thisPlatform {
 	macintosh -
 	macosx {
-	    set font1 {Geneva 9}
-	    set font2 {Geneva 10}
+	    set font1 {Geneva 10}
+	    set font2 {Geneva 11}
 	}
 	unix {
 	    set font1 {Helvetica 12}
@@ -56,12 +58,12 @@ proc DemoIMovie {} {
 
     set S [$T style create STYLE -orient vertical]
     $T style elements $S {elemShadow elemRect elemTime elemImg elemName}
-    $T style layout $S elemShadow -detach yes -padx {1 2} -pady {1 2} -iexpand xy
+    $T style layout $S elemShadow -detach yes -padx {1 0} -pady {1 0} -iexpand xy
     $T style layout $S elemTime -padx {2 0}
     $T style layout $S elemImg -pady {0 1}
     $T style layout $S elemName -expand we -ipady {0 2} -padx {0 3} -squeeze x
     $T style layout $S elemRect -union {elemTime elemImg elemName} \
-	-ipadx 6 -padx {0 3} -pady {0 3}
+	-ipadx 6 -padx {0 1} -pady {0 1}
 
     # Set default item style
     $T column configure C0 -itemstyle $S
@@ -95,7 +97,7 @@ proc DemoIMovie {} {
     }
 
     bind DemoIMovie <ButtonPress-1> {
-	iMovieButton1 %W %x %y
+	DemoIMovie::Button1 %W %x %y
     }
 
     bindtags $T [list $T DemoIMovie TreeCtrl [winfo toplevel $T] all]
@@ -103,7 +105,7 @@ proc DemoIMovie {} {
     return
 }
 
-proc iMovieButton1 {T x y} {
+proc DemoIMovie::Button1 {T x y} {
     focus $T
     set id [$T identify $x $y]
 
@@ -134,9 +136,9 @@ proc iMovieButton1 {T x y} {
 			    place $T.entry -y [expr {$y1 - 1}]
 			}
 			$T.entry selection clear
-			scan [$T item bbox $I] "%d %d %d %d" x1 y1 x2 y2
-			set left [expr {$x1 + 6 - 1}]
-			set right [expr {$x2 - 3 - 6 + 1}]
+			scan [$T item bbox $I C0 elemImg] "%d %d %d %d" x1 y1 x2 y2
+			set left $x1
+			set right $x2
 			place $T.entry -x $left -width [expr {$right - $left}]
 			$T.entry icursor [$T.entry index @[expr {$x - ($x1 + 1)}]]
 			# Disable mouse tracking
@@ -152,12 +154,12 @@ proc iMovieButton1 {T x y} {
 #
 # Demo: iMovie (Wrap)
 #
-proc DemoIMovieWrap {} {
+namespace eval DemoIMovieWrap {}
+proc DemoIMovieWrap::Init {T} {
 
-    DemoIMovie
+    DemoIMovie::Init $T
 
-    set T [DemoList]
-    $T configure -wrap ""
+    $T configure -wrap "" -xscrollsmoothing yes
     $T item configure "root child 4" -wrap yes
     $T item configure "root child 5" -wrap yes
     $T item configure "root child 8" -wrap yes

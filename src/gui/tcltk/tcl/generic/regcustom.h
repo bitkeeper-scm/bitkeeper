@@ -30,16 +30,16 @@
  * Headers if any.
  */
 
-#include "tclInt.h"
+#include "regex.h"
 
 /*
  * Overrides for regguts.h definitions, if any.
  */
 
 #define	FUNCPTR(name, args)	(*name)args
-#define	MALLOC(n)		ckalloc(n)
+#define	MALLOC(n)		VS(attemptckalloc(n))
 #define	FREE(p)			ckfree(VS(p))
-#define	REALLOC(p,n)		ckrealloc(VS(p),n)
+#define	REALLOC(p,n)		VS(attemptckrealloc(VS(p),n))
 
 /*
  * Do not insert extras between the "begin" and "end" lines - this chunk is
@@ -97,7 +97,7 @@ typedef int celt;		/* Type to hold chr, or NOCELT */
 #define	NOCELT (-1)		/* Celt value which is not valid chr */
 #define	CHR(c) (UCHAR(c))	/* Turn char literal into chr literal */
 #define	DIGITVAL(c) ((c)-'0')	/* Turn chr digit into its value */
-#if TCL_UTF_MAX > 3
+#if TCL_UTF_MAX > 4
 #define	CHRBITS	32		/* Bits in a chr; must not use sizeof */
 #define	CHR_MIN	0x00000000	/* Smallest and largest chr; the value */
 #define	CHR_MAX	0xffffffff	/* CHR_MAX-CHR_MIN+1 should fit in uchr */
@@ -155,7 +155,9 @@ typedef int celt;		/* Type to hold chr, or NOCELT */
 #endif
 
 /*
- * And pick up the standard header.
+ * Local Variables:
+ * mode: c
+ * c-basic-offset: 4
+ * fill-column: 78
+ * End:
  */
-
-#include "regex.h"

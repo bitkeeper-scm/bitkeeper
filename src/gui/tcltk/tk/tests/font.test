@@ -5,8 +5,6 @@
 # Copyright (c) 1996-1998 Sun Microsystems, Inc.
 # Copyright (c) 1998-1999 by Scriptics Corporation.
 # All rights reserved.
-#
-# RCS: @(#) $Id$
 
 package require tcltest 2.2
 namespace import ::tcltest::*
@@ -21,10 +19,9 @@ toplevel .t
 wm geom .t +0+0
 update idletasks
 
-case [tk windowingsystem] {
+switch [tk windowingsystem] {
     x11	 	{set fixed "fixed"}
     win32	{set fixed "courier 12"}
-    classic -
     aqua	{set fixed "monaco 9"}
 }
 
@@ -78,7 +75,7 @@ test font-2.1 {TkFontPkgFree} -setup {
     lappend x [foo eval {catch {font families} msg; set msg}]
 } -cleanup {
         interp delete foo
-} -result {{named font "wiggles" doesn't exist} {can't invoke "font" command:  application has been destroyed}}
+} -result {{named font "wiggles" doesn't exist} {can't invoke "font" command: application has been destroyed}}
 
 
 test font-3.1 {font command: general} -body {
@@ -801,11 +798,11 @@ test font-18.1 {FreeFontObjProc} -constraints testfont -setup {
     destroy .b1
     set result {}
 } -body {
-    set x [format {Courier 12}]
+    set x [join {Courier 12} { }]
     button .b1 -font $x
-    set y [format {Courier 12}]
+    set y [join {Courier 12} { }]
     .b1 configure -font $y
-    set z [format {Courier 12}]
+    set z [join {Courier 12} { }]
     .b1 configure -font $z
     lappend result [testfont counts {Courier 12}]
     set x red
@@ -2348,6 +2345,16 @@ test font-46.5 {font actual, too many chars} -body {
     font actual {times 10} 123456789012345678901234567890123456789012345678901
 } -returnCodes error -result {expected a single character but got "1234567890123456789012345678901234567..."}
 
+test font-47.1 {Bug f214b8ad5b} -body {
+    interp create one
+    interp create two
+    load {} Tk one
+    load {} Tk two
+    one eval menu .menubar
+    two eval menu .menubar
+    interp delete one
+    interp delete two
+} -result {}
 
 # cleanup
 cleanupTests

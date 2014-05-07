@@ -9,16 +9,10 @@
  *
  * See the file "license.terms" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #ifndef _DIRENT
 #define _DIRENT
-
-#ifndef _TCL
-#include <tcl.h>
-#endif
 
 /*
  * Dirent structure, which holds information about a single

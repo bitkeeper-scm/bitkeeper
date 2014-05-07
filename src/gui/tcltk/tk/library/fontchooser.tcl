@@ -7,8 +7,6 @@
 #
 # See the file "license.terms" for information on usage and redistribution
 # of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-#
-# RCS: @(#) $Id$
 
 namespace eval ::tk::fontchooser {
     variable S
@@ -31,6 +29,10 @@ namespace eval ::tk::fontchooser {
     set S(-title) [::msgcat::mc "Font"]
     set S(-command) ""
     set S(-font) TkDefaultFont
+}
+
+proc ::tk::fontchooser::Setup {} {
+    variable S
 
     # Canonical versions of font families, styles, etc. for easier searching
     set S(fonts,lcase) {}
@@ -54,6 +56,7 @@ namespace eval ::tk::fontchooser {
         configure ::tk::fontchooser::Configure
     }
 }
+::tk::fontchooser::Setup
 
 proc ::tk::fontchooser::Show {} {
     variable S
@@ -98,7 +101,8 @@ proc ::tk::fontchooser::Configure {args} {
         } elseif {[info exists S($option)]} {
             return $S($option)
         }
-        return -code error "bad option \"$option\": must be\
+        return -code error -errorcode [list TK LOOKUP OPTION $option] \
+	    "bad option \"$option\": must be\
             -command, -font, -parent, -title or -visible"
     }
     
@@ -106,9 +110,10 @@ proc ::tk::fontchooser::Configure {args} {
                    -font $S(-font) -command $S(-command)]
     set r [tclParseConfigSpec [namespace which -variable S] $specs "" $args]
     if {![winfo exists $S(-parent)]} {
+	set code [list TK LOOKUP WINDOW $S(-parent)]
         set err "bad window path name \"$S(-parent)\""
         array set S $cache
-        return -code error $err
+        return -code error -errorcode $code $err
     }
     if {[string trim $S(-title)] eq ""} {
         set S(-title) [::msgcat::mc "Font"]
@@ -136,16 +141,17 @@ proc ::tk::fontchooser::Create {} {
         wm withdraw $S(W)
         wm title $S(W) $S(-title)
         wm transient $S(W) [winfo toplevel $S(-parent)]
-        wm geometry $S(W) 430x316
 
         set outer [::ttk::frame $S(W).outer -padding {10 10}]
         ::tk::AmpWidget ::ttk::label $S(W).font -text [::msgcat::mc "&Font:"]
         ::tk::AmpWidget ::ttk::label $S(W).style -text [::msgcat::mc "Font st&yle:"]
         ::tk::AmpWidget ::ttk::label $S(W).size -text [::msgcat::mc "&Size:"]
-        ttk::entry $S(W).efont -textvariable [namespace which -variable S](font)
-        ttk::entry $S(W).estyle -textvariable [namespace which -variable S](style)
+        ttk::entry $S(W).efont -width 18 \
+            -textvariable [namespace which -variable S](font)
+        ttk::entry $S(W).estyle -width 10 \
+            -textvariable [namespace which -variable S](style)
         ttk::entry $S(W).esize -textvariable [namespace which -variable S](size) \
-            -width 0 -validate key -validatecommand {string is double %P}
+            -width 3 -validate key -validatecommand {string is double %P}
 
         ttk_slistbox $S(W).lfonts -height 7 -exportselection 0 \
             -selectmode browse -activestyle none \
@@ -153,9 +159,9 @@ proc ::tk::fontchooser::Create {} {
         ttk_slistbox $S(W).lstyles -width 5 -height 7 -exportselection 0 \
             -selectmode browse -activestyle none \
             -listvariable [namespace which -variable S](styles)
-        ttk_slistbox $S(W).lsizes -width 6 -height 7 -exportselection 0 \
+        ttk_slistbox $S(W).lsizes -width 4 -height 7 -exportselection 0 \
             -selectmode browse -activestyle none \
-            -listvariable [namespace which -variable S](sizes) \
+            -listvariable [namespace which -variable S](sizes)
 
         set WE $S(W).effects
         ::ttk::labelframe $WE -text [::msgcat::mc "Effects"]
@@ -176,6 +182,22 @@ proc ::tk::fontchooser::Create {} {
         ::tk::AmpWidget ::ttk::button $S(W).apply -text [::msgcat::mc "&Apply"] \
             -command [namespace code [list Apply]]
         wm protocol $S(W) WM_DELETE_WINDOW [namespace code [list Done 0]]
+
+        # Calculate minimum sizes
+        ttk::scrollbar $S(W).tmpvs
+        set scroll_width [winfo reqwidth $S(W).tmpvs]
+        destroy $S(W).tmpvs
+        set minsize(gap) 10
+        set minsize(bbox) [winfo reqwidth $S(W).ok]
+        set minsize(fonts) \
+            [expr {[font measure TkDefaultFont "Helvetica"] + $scroll_width}]
+        set minsize(styles) \
+            [expr {[font measure TkDefaultFont "Bold Italic"] + $scroll_width}]
+        set minsize(sizes) \
+            [expr {[font measure TkDefaultFont "-99"] + $scroll_width}]
+        set min [expr {$minsize(gap) * 4}]
+        foreach {what width} [array get minsize] { incr min $width }
+        wm minsize $S(W) $min 260
 
         bind $S(W) <Return> [namespace code [list Done 1]]
         bind $S(W) <Escape> [namespace code [list Done 0]]
@@ -198,7 +220,7 @@ proc ::tk::fontchooser::Create {} {
         ::ttk::label $WS.sample -relief sunken -anchor center \
             -textvariable [namespace which -variable S](sampletext)
         set S(sample) $WS.sample
-        grid $WS.sample -sticky news -padx 8 -pady 6
+        grid $WS.sample -sticky news -padx 6 -pady 4
         grid rowconfigure $WS 0 -weight 1
         grid columnconfigure $WS 0 -weight 1
         grid propagate $WS 0
@@ -219,8 +241,12 @@ proc ::tk::fontchooser::Create {} {
         grid $S(W).lfonts x $S(W).lstyles x $S(W).lsizes x ^     -in $outer -sticky news
         grid $WE          x $WS           - -            x ^     -in $outer -sticky news -pady {15 30}
         grid configure $bbox -sticky n
-        grid columnconfigure $outer {1 3 5} -minsize 10
+        grid columnconfigure $outer {1 3 5} -minsize $minsize(gap)
         grid columnconfigure $outer {0 2 4} -weight 1
+        grid columnconfigure $outer 0 -minsize $minsize(fonts)
+        grid columnconfigure $outer 2 -minsize $minsize(styles)
+        grid columnconfigure $outer 4 -minsize $minsize(sizes)
+        grid columnconfigure $outer 6 -minsize $minsize(bbox)
 
         grid $outer -sticky news
         grid rowconfigure $S(W) 0 -weight 1
@@ -415,9 +441,9 @@ proc ::tk::fontchooser::ttk_slistbox {w args} {
         grid columnconfigure $f 0 -weight 1
         interp hide {} $w
         interp alias {} $w {} $f.list
-    } err]} {
+    } err opt]} {
         destroy $f
-        return -code error $err
+        return -options $opt $err
     }
     return $w
 }

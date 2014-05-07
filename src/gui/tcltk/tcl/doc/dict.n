@@ -4,10 +4,8 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\"
-'\" RCS: @(#) $Id$
-'\"
-.so man.macros
 .TH dict n 8.5 Tcl "Tcl Built-In Commands"
+.so man.macros
 .BS
 '\" Note:  do not modify the .SH NAME line immediately below!
 .SH NAME
@@ -69,7 +67,7 @@ dictionary, and a condition of \fBTCL_CONTINUE\fR is equivalent to a false
 result. The key/value pairs are tested in the order in which the keys
 were inserted into the dictionary.
 .TP
-\fBdict filter \fIdictionaryValue \fBvalue \fIglobPattern\fR
+\fBdict filter \fIdictionaryValue \fBvalue \fR?\fIglobPattern ...\fR?
 .VS 8.6
 The value rule only matches those key/value pairs whose values match any
 of the given patterns (in the style of \fBstring match\fR.)
@@ -107,7 +105,7 @@ dict get $dict foo bar spong
 dict get [dict get [dict get $dict foo] bar] spong
 .CE
 .PP
-If no keys are provided, dict would return a list containing pairs of
+If no keys are provided, \fBdict get\fR will return a list containing pairs of
 elements in a manner similar to \fBarray get\fR. That is, the first
 element of each pair would be the key and the second element would be
 the value for that key.
@@ -131,7 +129,7 @@ This returns information (intended for display to people) about the
 given dictionary though the format of this data is dependent on the
 implementation of the dictionary. For dictionaries that are
 implemented by hash tables, it is expected that this will return the
-string produced by \fBTcl_HashStats\fR, similar to \fBarray info\fR.
+string produced by \fBTcl_HashStats\fR, similar to \fBarray statistics\fR.
 .TP
 \fBdict keys \fIdictionaryValue \fR?\fIglobPattern\fR?
 .
@@ -148,6 +146,31 @@ the resulting dictionary value back to that variable. Non-existent
 keys are treated as if they map to an empty list, and it is legal for
 there to be no items to append to the list. It is an error for the
 value that the key maps to to not be representable as a list.
+.TP
+\fBdict map \fR{\fIkeyVar valueVar\fR} \fIdictionaryValue body\fR
+.
+This command applies a transformation to each element of a dictionary,
+returning a new dictionary. It takes three arguments: the first is a
+two-element list of variable names (for the key and value respectively of each
+mapping in the dictionary), the second the dictionary value to iterate across,
+and the third a script to be evaluated for each mapping with the key and value
+variables set appropriately (in the manner of \fBlmap\fR). In an iteration
+where the evaluated script completes normally (\fBTCL_OK\fR, as opposed to an
+\fBerror\fR, etc.) the result of the script is put into an accumulator
+dictionary using the key that is the current contents of the \fIkeyVar\fR
+variable at that point. The result of the \fBdict map\fR command is the
+accumulator dictionary after all keys have been iterated over.
+.RS
+.PP
+If the evaluation of the body for any particular step generates a \fBbreak\fR,
+no further pairs from the dictionary will be iterated over and the \fBdict
+map\fR command will terminate successfully immediately. If the evaluation of
+the body for a particular step generates a \fBcontinue\fR result, the current
+iteration is aborted and the accumulator dictionary is not modified. The order
+of iteration is the natural order of the dictionary (typically the order in
+which the keys were added to the dictionary; the order is the same as that
+used in \fBdict for\fR).
+.RE
 .TP
 \fBdict merge \fR?\fIdictionaryValue ...\fR?
 .
@@ -208,9 +231,18 @@ to the dictionary within \fIdictionaryVariable\fR (unless
 are silently discarded), even if the result of \fIbody\fR is an error
 or some other kind of exceptional exit. The result of \fBdict
 update\fR is (unless some kind of error occurs) the result of the
-evaluation of \fIbody\fR. Note that the mapping of values to variables
+evaluation of \fIbody\fR.
+.RS
+.PP
+Each \fIvarName\fR is mapped in the scope enclosing the \fBdict update\fR;
+it is recommended that this command only be used in a local scope
+(\fBproc\fRedure, lambda term for \fBapply\fR, or method). Because of
+this, the variables set by \fBdict update\fR will continue to
+exist after the command finishes (unless explicitly \fBunset\fR).
+Note that the mapping of values to variables
 does not use traces; changes to the \fIdictionaryVariable\fR's
 contents only happen when \fIbody\fR terminates.
+.RE
 .TP
 \fBdict values \fIdictionaryValue \fR?\fIglobPattern\fR?
 .
@@ -233,10 +265,29 @@ dictionary be discarded, and this also happens if the contents of
 \fIdictionaryVariable\fR are adjusted so that the chain of
 dictionaries no longer exists. The result of \fBdict with\fR is
 (unless some kind of error occurs) the result of the evaluation of
-\fIbody\fR. Note that the mapping of values to variables does not use
+\fIbody\fR.
+.RS
+.PP
+The variables are mapped in the scope enclosing the \fBdict with\fR;
+it is recommended that this command only be used in a local scope
+(\fBproc\fRedure, lambda term for \fBapply\fR, or method). Because of
+this, the variables set by \fBdict with\fR will continue to
+exist after the command finishes (unless explicitly \fBunset\fR).
+Note that the mapping of values to variables does not use
 traces; changes to the \fIdictionaryVariable\fR's contents only happen
 when \fIbody\fR terminates.
+.PP
+If the \fIdictionaryVariable\fR contains a value that is not a dictionary at
+the point when the \fIbody\fR terminates (which can easily happen if the name
+is the same as any of the keys in dictionary) then an error occurs at that
+point. This command is thus not recommended for use when the keys in the
+dictionary are expected to clash with the \fIdictionaryVariable\fR name
+itself. Where the contained key does map to a dictionary, the net effect is to
+combine that inner dictionary into the outer dictionary; see the
+\fBEXAMPLES\fR below for an illustration of this.
+.RE
 .SH "DICTIONARY VALUES"
+.PP
 Dictionaries are values that contain an efficient, order-preserving
 mapping from arbitrary keys to arbitrary values.
 Each key in the dictionary maps to a single value.
@@ -254,6 +305,12 @@ the others are ignored, meaning that,
 and
 .QW "apple carrot apple banana"
 are equivalent dictionaries (with different string representations).
+.PP
+Operations that derive a new dictionary from an old one (e.g., updates
+like \fBdict set\fR and \fBdict unset\fR) preserve the order of keys
+in the dictionary. The exceptions to this are for any new keys they
+add, which are appended to the sequence, and any keys that are
+removed, which are excised from the order.
 .SH EXAMPLES
 .PP
 Basic dictionary usage:
@@ -303,16 +360,16 @@ Constructing and using nested dictionaries:
 set i 0
 puts "There are [\fBdict size\fR $employeeInfo] employees"
 \fBdict for\fR {id info} $employeeInfo {
-   puts "Employee #[incr i]: $id"
-   \fBdict with\fR info {
-      puts "   Name: $forenames $surname"
-      puts "   Address: $street, $city"
-      puts "   Telephone: $phone"
-   }
+    puts "Employee #[incr i]: $id"
+    \fBdict with\fR info {
+        puts "   Name: $forenames $surname"
+        puts "   Address: $street, $city"
+        puts "   Telephone: $phone"
+    }
 }
 # Another way to iterate and pick out names...
 foreach id [\fBdict keys\fR $employeeInfo] {
-   puts "Hello, [\fBdict get\fR $employeeInfo $id forenames]!"
+    puts "Hello, [\fBdict get\fR $employeeInfo $id forenames]!"
 }
 .CE
 .PP
@@ -322,7 +379,7 @@ A localizable version of \fBstring toupper\fR:
 # Set up the basic C locale
 set capital [\fBdict create\fR C [\fBdict create\fR]]
 foreach c [split {abcdefghijklmnopqrstuvwxyz} ""] {
-   \fBdict set\fR capital C $c [string toupper $c]
+    \fBdict set\fR capital C $c [string toupper $c]
 }
 
 # English locales can luckily share the "C" locale
@@ -336,10 +393,49 @@ foreach c [split {abcdefghijklmnopqrstuvwxyz} ""] {
 set upperCaseMap [\fBdict get\fR $capital $env(LANG)]
 set upperCase [string map $upperCaseMap $string]
 .CE
+.PP
+Showing the detail of \fBdict with\fR:
+.PP
+.CS
+proc sumDictionary {varName} {
+    upvar 1 $varName vbl
+    foreach key [\fBdict keys\fR $vbl] {
+        # Manufacture an entry in the subdictionary
+        \fBdict set\fR vbl $key total 0
+        # Add the values and remove the old
+        \fBdict with\fR vbl $key {
+            set total [expr {$x + $y + $z}]
+            unset x y z
+        }
+    }
+    puts "last total was $total, for key $key"
+}
+
+set myDict {
+    a {x 1 y 2 z 3}
+    b {x 6 y 5 z 4}
+}
+
+sumDictionary myDict
+#    prints: \fIlast total was 15, for key b\fR
+
+puts "dictionary is now \\"$myDict\\""
+#    prints: \fIdictionary is now "a {total 6} b {total 15}"\fR
+.CE
+.PP
+When \fBdict with\fR is used with a key that clashes with the name of the
+dictionary variable:
+.PP
+.CS
+set foo {foo {a b} bar 2 baz 3}
+\fBdict with\fR foo {}
+puts $foo
+#    prints: \fIa b foo {a b} bar 2 baz 3\fR
+.CE
 .SH "SEE ALSO"
-append(n), array(n), foreach(n), incr(n), list(n), lappend(n), set(n)
+append(n), array(n), foreach(n), mapeach(n), incr(n), list(n), lappend(n), set(n)
 .SH KEYWORDS
-dictionary, create, update, lookup, iterate, filter
+dictionary, create, update, lookup, iterate, filter, map
 '\" Local Variables:
 '\" mode: nroff
 '\" End:

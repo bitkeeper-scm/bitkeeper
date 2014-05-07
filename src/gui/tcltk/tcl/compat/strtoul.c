@@ -8,8 +8,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclInt.h"
@@ -20,7 +18,7 @@
  * characters).
  */
 
-static char cvtIn[] = {
+static const char cvtIn[] = {
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9,		/* '0' - '9' */
     100, 100, 100, 100, 100, 100, 100,		/* punctuation */
     10, 11, 12, 13, 14, 15, 16, 17, 18, 19,	/* 'A' - 'Z' */

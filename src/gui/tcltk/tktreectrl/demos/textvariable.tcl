@@ -1,8 +1,9 @@
-# RCS: @(#) $Id$
+# Copyright (c) 2005-2011 Tim Baker
 
-proc DemoTextvariable {} {
+namespace eval DemoTextvariable {}
+proc DemoTextvariable::Init {T} {
 
-    set T [DemoList]
+    variable Priv
 
     #
     # Configure the treectrl widget
@@ -11,10 +12,12 @@ proc DemoTextvariable {} {
     $T configure -showroot no -showbuttons no -showlines no \
 	-selectmode extended -xscrollincrement 20 \
 	-yscrollincrement 10 -showheader yes
-if {!$::clip} {
-    # Hide the borders because child windows appear on top of them
-    $T configure -borderwidth 0 -highlightthickness 0
-}
+
+    if {!$::clip} {
+	# Hide the borders because child windows appear on top of them
+	$T configure -borderwidth 0 -highlightthickness 0
+    }
+
     #
     # Create columns
     #
@@ -27,7 +30,7 @@ if {!$::clip} {
     #
 
     $T element create eWindow window
-    $T element create eRect rect
+    $T element create eRect rect -rx 7
     $T element create eText1 text -width 300
     $T element create eText2 text -wrap none
 
@@ -57,22 +60,23 @@ if {!$::clip} {
     foreach i {0 1} color {gray75 "light blue"} {
 	set I [$T item create]
 	$T item style set $I C0 s2
-if {$::clip} {
-	set clip [frame $T.clip$I -borderwidth 0]
-	set e [$::entryCmd $clip.e -width 48 -textvariable tvar$I]
-	$T item element configure $I C0 \
-	    eRect -fill [list $color] + \
-	    eText2 -textvariable tvar$I + \
-	    eWindow -window $clip -clip yes
-} else {
-	set e [$::entryCmd $T.e$I -width 48 -textvariable tvar$I]
-	$T item element configure $I C0 \
-	    eRect -fill [list $color] + \
-	    eText2 -textvariable tvar$I + \
-	    eWindow -window $e
-}
+	set tvar ::DemoTextvariable::Priv(tvar,$I)
+	if {$::clip} {
+	    set clip [frame $T.clip$I -borderwidth 0]
+	    set e [$::entryCmd $clip.e -width 48 -textvariable $tvar]
+	    $T item element configure $I C0 \
+		eRect -fill [list $color] + \
+		eText2 -textvariable $tvar + \
+		eWindow -window $clip -clip yes
+	} else {
+	    set e [$::entryCmd $T.e$I -width 48 -textvariable $tvar]
+	    $T item element configure $I C0 \
+		eRect -fill [list $color] + \
+		eText2 -textvariable $tvar + \
+		eWindow -window $e
+	}
 	$T item lastchild root $I
-	set ::tvar$I "This is item $I"
+	set Priv(tvar,$I) "This is item $I"
     }
 
     return

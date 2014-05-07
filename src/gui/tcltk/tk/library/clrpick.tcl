@@ -3,8 +3,6 @@
 #	Color selection dialog for platforms that do not support a
 #	standard color selection dialog.
 #
-# RCS: @(#) $Id$
-#
 # Copyright (c) 1996 Sun Microsystems, Inc.
 #
 # See the file "license.terms" for information on usage and redistribution
@@ -74,6 +72,7 @@ proc ::tk::dialog::color:: {args} {
 	    destroy $w
 	}
 	toplevel $w -class TkColorDialog -screen $sc
+	if {[tk windowingsystem] eq "x11"} {wm attributes $w -type dialog}
 	BuildDialog $w
     }
 
@@ -90,7 +89,7 @@ proc ::tk::dialog::color:: {args} {
 
     # 5. Withdraw the window, then update all the geometry information
     # so we know how big it wants to be, then center the window in the
-    # display and de-iconify it.
+    # display (Motif style) and de-iconify it.
 
     ::tk::PlaceWindow $w widget $data(-parent)
     wm title $w $data(-title)
@@ -191,11 +190,13 @@ proc ::tk::dialog::color::Config {dataName argList} {
 	set data(-title) " "
     }
     if {[catch {winfo rgb . $data(-initialcolor)} err]} {
-	error $err
+	return -code error -errorcode [list TK LOOKUP COLOR $data(-initialcolor)] \
+	    $err
     }
 
     if {![winfo exists $data(-parent)]} {
-	error "bad window path name \"$data(-parent)\""
+	return -code error -errorcode [list TK LOOKUP WINDOW $data(-parent)] \
+	    "bad window path name \"$data(-parent)\""
     }
 }
 

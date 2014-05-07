@@ -6,8 +6,6 @@
 #
 # Copyright (c) 1998-2000 by Scriptics Corporation.
 # All rights reserved.
-# 
-# RCS: @(#) $Id$
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest
@@ -43,6 +41,8 @@ set timeCmd {clock format [clock seconds]}
 puts $chan "Tests began at [eval $timeCmd]"
 
 package require treectrl
+
+#tcltest::matchFiles header*
 
 # source each of the specified tests
 foreach file [lsort [::tcltest::getMatchingFiles]] {

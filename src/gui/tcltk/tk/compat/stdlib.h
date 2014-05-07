@@ -12,14 +12,14 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #ifndef _STDLIB
 #define _STDLIB
 
-#include <tcl.h>
+#ifndef _TCL
+#   include <tcl.h>
+#endif
 
 extern void		abort(void);
 extern double		atof(const char *string);

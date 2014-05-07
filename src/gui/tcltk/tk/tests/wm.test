@@ -6,8 +6,6 @@
 # Copyright (c) 1994-1997 Sun Microsystems, Inc.
 # Copyright (c) 1998-1999 by Scriptics Corporation.
 # All rights reserved.
-#
-# RCS: @(#) $Id$
 
 # This file tests window manager interactions that work across platforms.
 # Window manager tests that only work on a specific platform should be placed
@@ -139,7 +137,7 @@ test wm-attributes-1.2.3 {usage} -constraints win -returnCodes error -body {
 } -result {wrong # args: should be "wm attributes window ?-alpha ?double?? ?-transparentcolor ?color?? ?-disabled ?bool?? ?-fullscreen ?bool?? ?-toolwindow ?bool?? ?-topmost ?bool??"}
 test wm-attributes-1.2.4 {usage} -constraints {unix notAqua} -returnCodes error -body {
     wm attributes . _
-} -result {bad attribute "_": must be -alpha, -topmost, -zoomed, or -fullscreen}
+} -result {bad attribute "_": must be -alpha, -topmost, -zoomed, -fullscreen, or -type}
 test wm-attributes-1.2.5 {usage} -constraints aqua -returnCodes error -body {
     wm attributes . _
 } -result {bad attribute "_": must be -alpha, -modified, -notify, or -titlepath}
@@ -643,16 +641,16 @@ test wm-geometry-1.3 {usage} -returnCodes error -body {
     wm geometry . bogus
 } -result {bad geometry specifier "bogus"}
 
-test wm-geometry-2.1 {setting values} -setup {
-    set result {}
-} -body {
+test wm-geometry-2.1 {setting values} -body {
     wm geometry .t 150x150+50+50
     update
-    lappend result [wm geometry .t]
+    set result [wm geometry .t]
     wm geometry .t {}
     update
-    lappend result [string equal [wm geometry .t] "150x150+50+50"]
-} -result [list 150x150+50+50 0]
+    return [list $result [string equal [wm geometry .t] $result]]
+} -cleanup {
+    unset result
+} -match glob -result [list 150x150+*+* 0]
 
 
 ### wm grid ###
@@ -1356,6 +1354,7 @@ test wm-stackorder-2.3 {stacking order} -body {
     toplevel .t ; update
     toplevel .t2 ; update
     raise .
+    raiseDelay
     raise .t2
     raiseDelay
     wm stackorder .
@@ -1706,6 +1705,7 @@ test wm-transient-4.1 {transient toplevel is withdrawn
 test wm-transient-4.2 {already mapped transient toplevel
         is withdrawn if master is iconic} -body {
     toplevel .master
+    raiseDelay
     wm iconify .master
     update
     toplevel .subject
@@ -1892,6 +1892,23 @@ test wm-transient-7.5 {Reassign transient, destroy transient} -body {
 } -cleanup {
     deleteWindows
 }
+
+test wm-transient-8.1 {transient to withdrawn window, Bug 1163496} -setup {
+    deleteWindows
+    set result {}
+} -body {
+    # Verifies that transients stay on top of their masters, even if they were
+    # made transients when those masters were withdrawn.
+    toplevel .t1; wm withdraw  .t1;     update
+    toplevel .t2; wm transient .t2 .t1; update
+    lappend result [winfo ismapped .t1] [winfo ismapped .t2]
+    wm deiconify .t1; update
+    lappend result [winfo ismapped .t1] [winfo ismapped .t2]
+    raise .t1; update
+    lappend result [lsearch -all -inline -glob [wm stackorder .] ".t?"]
+} -cleanup {
+    deleteWindows
+} -result {0 0 1 1 {.t1 .t2}}
 
 
 ### wm state ###

@@ -10,8 +10,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tkInt.h"
@@ -269,12 +267,12 @@ Tk_ClipboardClear(
 		cbPtr = nextCbPtr) {
 	    ckfree(cbPtr->buffer);
 	    nextCbPtr = cbPtr->nextPtr;
-	    ckfree((char *) cbPtr);
+	    ckfree(cbPtr);
 	}
 	nextTargetPtr = targetPtr->nextPtr;
 	Tk_DeleteSelHandler(dispPtr->clipWindow, dispPtr->clipboardAtom,
 		targetPtr->type);
-	ckfree((char *) targetPtr);
+	ckfree(targetPtr);
     }
     dispPtr->clipTargetPtr = NULL;
 
@@ -360,7 +358,7 @@ Tk_ClipboardAppend(
 	}
     }
     if (targetPtr == NULL) {
-	targetPtr = (TkClipboardTarget *) ckalloc(sizeof(TkClipboardTarget));
+	targetPtr = ckalloc(sizeof(TkClipboardTarget));
 	targetPtr->type = type;
 	targetPtr->format = format;
 	targetPtr->firstBufferPtr = targetPtr->lastBufferPtr = NULL;
@@ -369,10 +367,12 @@ Tk_ClipboardAppend(
 	Tk_CreateSelHandler(dispPtr->clipWindow, dispPtr->clipboardAtom,
 		type, ClipboardHandler, targetPtr, format);
     } else if (targetPtr->format != format) {
-	Tcl_AppendResult(interp, "format \"", Tk_GetAtomName(tkwin, format),
-		"\" does not match current format \"",
-		Tk_GetAtomName(tkwin, targetPtr->format),"\" for ",
-		Tk_GetAtomName(tkwin, type), NULL);
+	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		"format \"%s\" does not match current format \"%s\" for %s",
+		Tk_GetAtomName(tkwin, format),
+		Tk_GetAtomName(tkwin, targetPtr->format),
+		Tk_GetAtomName(tkwin, type)));
+	Tcl_SetErrorCode(interp, "TK", "CLIPBOARD", "FORMAT_MISMATCH", NULL);
 	return TCL_ERROR;
     }
 
@@ -380,7 +380,7 @@ Tk_ClipboardAppend(
      * Append a new buffer to the buffer chain.
      */
 
-    cbPtr = (TkClipboardBuffer *) ckalloc(sizeof(TkClipboardBuffer));
+    cbPtr = ckalloc(sizeof(TkClipboardBuffer));
     cbPtr->nextPtr = NULL;
     if (targetPtr->lastBufferPtr != NULL) {
 	targetPtr->lastBufferPtr->nextPtr = cbPtr;
@@ -390,7 +390,7 @@ Tk_ClipboardAppend(
     targetPtr->lastBufferPtr = cbPtr;
 
     cbPtr->length = strlen(buffer);
-    cbPtr->buffer = (char *) ckalloc((unsigned) (cbPtr->length + 1));
+    cbPtr->buffer = ckalloc(cbPtr->length + 1);
     strcpy(cbPtr->buffer, buffer);
 
     TkSelUpdateClipboard((TkWindow *) dispPtr->clipWindow, targetPtr);
@@ -476,8 +476,9 @@ Tk_ClipboardObjCmd(
 
 	    i++;
 	    if (i >= objc) {
-		Tcl_AppendResult(interp, "value for \"", string,
-			"\" missing", NULL);
+		Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+			"value for \"%s\" missing", string));
+		Tcl_SetErrorCode(interp, "TK", "CLIPBOARD", "VALUE", NULL);
 		return TCL_ERROR;
 	    }
 	    switch ((enum appendOptions) subIndex) {
@@ -565,8 +566,9 @@ Tk_ClipboardObjCmd(
 	    }
 	    i++;
 	    if (i >= objc) {
-		Tcl_AppendResult(interp, "value for \"", string,
-			"\" missing", NULL);
+		Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+			"value for \"%s\" missing", string));
+		Tcl_SetErrorCode(interp, "TK", "CLIPBOARD", "VALUE", NULL);
 		return TCL_ERROR;
 	    }
 	    switch ((enum getOptions) subIndex) {
@@ -599,7 +601,7 @@ Tk_ClipboardObjCmd(
 
 	Tcl_DStringInit(&selBytes);
 	result = Tk_GetSelection(interp, tkwin, selection, target,
-		ClipboardGetProc, (ClientData) &selBytes);
+		ClipboardGetProc, &selBytes);
 	if (result == TCL_OK) {
 	    Tcl_DStringResult(interp, &selBytes);
 	} else {
@@ -647,12 +649,12 @@ TkClipInit(
      * and set up an event handler for it.
      */
 
-    dispPtr->clipWindow = Tk_CreateWindow(interp, NULL, "_clip",
-	    DisplayString(dispPtr->display));
-    if (dispPtr->clipWindow == NULL) {
-	return TCL_ERROR;
-    }
+    dispPtr->clipWindow = (Tk_Window) TkAllocWindow(dispPtr,
+	DefaultScreen(dispPtr->display), NULL);
     Tcl_Preserve(dispPtr->clipWindow);
+    ((TkWindow *) dispPtr->clipWindow)->flags |=
+	    TK_TOP_HIERARCHY|TK_TOP_LEVEL|TK_HAS_WRAPPER|TK_WIN_MANAGED;
+    TkWmNewWindow((TkWindow *) dispPtr->clipWindow);
     atts.override_redirect = True;
     Tk_ChangeWindowAttributes(dispPtr->clipWindow, CWOverrideRedirect, &atts);
     Tk_MakeWindowExist(dispPtr->clipWindow);
@@ -704,12 +706,11 @@ ClipboardGetProc(
 				 * selection. */
     Tcl_Interp *interp,		/* Interpreter used for error reporting (not
 				 * used). */
-    const char *portion)		/* New information to be appended. */
+    const char *portion)	/* New information to be appended. */
 {
     Tcl_DStringAppend((Tcl_DString *) clientData, portion, -1);
     return TCL_OK;
 }
-
 
 /*
  * Local Variables:

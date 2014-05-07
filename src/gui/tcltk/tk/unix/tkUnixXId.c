@@ -6,8 +6,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tkUnixInt.h"
@@ -37,7 +35,7 @@ Tk_FreeXId(
     XID xid)			/* Identifier that is no longer in use. */
 {
     /*
-     * This does nothing, because the XC-MISC extension takes care of 
+     * This does nothing, because the XC-MISC extension takes care of
      * freeing XIDs for us.  It has been a standard X11 extension for
      * about 15 years as of 2008.  Keith Packard and another X.org
      * developer suggested that we remove the previous code that used:

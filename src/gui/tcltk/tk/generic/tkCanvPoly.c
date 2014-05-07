@@ -9,11 +9,8 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
-#include <stdio.h>
 #include "tkInt.h"
 #include "tkCanvas.h"
 
@@ -58,38 +55,38 @@ typedef struct PolygonItem  {
  */
 
 static const Tk_CustomOption smoothOption = {
-    TkSmoothParseProc, TkSmoothPrintProc, (ClientData) NULL
+    TkSmoothParseProc, TkSmoothPrintProc, NULL
 };
 static const Tk_CustomOption stateOption = {
-    TkStateParseProc, TkStatePrintProc, (ClientData) 2
+    TkStateParseProc, TkStatePrintProc, INT2PTR(2)
 };
 static const Tk_CustomOption tagsOption = {
-    Tk_CanvasTagsParseProc, Tk_CanvasTagsPrintProc, (ClientData) NULL
+    Tk_CanvasTagsParseProc, Tk_CanvasTagsPrintProc, NULL
 };
 static const Tk_CustomOption dashOption = {
-    TkCanvasDashParseProc, TkCanvasDashPrintProc, (ClientData) NULL
+    TkCanvasDashParseProc, TkCanvasDashPrintProc, NULL
 };
 static const Tk_CustomOption offsetOption = {
     TkOffsetParseProc, TkOffsetPrintProc,
-    (ClientData) (TK_OFFSET_RELATIVE|TK_OFFSET_INDEX)
+    INT2PTR(TK_OFFSET_RELATIVE|TK_OFFSET_INDEX)
 };
 static const Tk_CustomOption pixelOption = {
-    TkPixelParseProc, TkPixelPrintProc, (ClientData) NULL
+    TkPixelParseProc, TkPixelPrintProc, NULL
 };
 
-static Tk_ConfigSpec configSpecs[] = {
+static const Tk_ConfigSpec configSpecs[] = {
     {TK_CONFIG_CUSTOM, "-activedash", NULL, NULL,
 	NULL, Tk_Offset(PolygonItem, outline.activeDash),
 	TK_CONFIG_NULL_OK, &dashOption},
     {TK_CONFIG_COLOR, "-activefill", NULL, NULL,
-	NULL, Tk_Offset(PolygonItem, activeFillColor), TK_CONFIG_NULL_OK},
+	NULL, Tk_Offset(PolygonItem, activeFillColor), TK_CONFIG_NULL_OK, NULL},
     {TK_CONFIG_COLOR, "-activeoutline", NULL, NULL,
-	NULL, Tk_Offset(PolygonItem, outline.activeColor), TK_CONFIG_NULL_OK},
+	NULL, Tk_Offset(PolygonItem, outline.activeColor), TK_CONFIG_NULL_OK, NULL},
     {TK_CONFIG_BITMAP, "-activeoutlinestipple", NULL, NULL,
 	NULL, Tk_Offset(PolygonItem, outline.activeStipple),
-	TK_CONFIG_NULL_OK},
+	TK_CONFIG_NULL_OK, NULL},
     {TK_CONFIG_BITMAP, "-activestipple", NULL, NULL,
-	NULL, Tk_Offset(PolygonItem, activeFillStipple), TK_CONFIG_NULL_OK},
+	NULL, Tk_Offset(PolygonItem, activeFillStipple), TK_CONFIG_NULL_OK, NULL},
     {TK_CONFIG_CUSTOM, "-activewidth", NULL, NULL,
 	"0.0", Tk_Offset(PolygonItem, outline.activeWidth),
 	TK_CONFIG_DONT_SET_DEFAULT, &pixelOption},
@@ -98,52 +95,52 @@ static Tk_ConfigSpec configSpecs[] = {
 	TK_CONFIG_NULL_OK, &dashOption},
     {TK_CONFIG_PIXELS, "-dashoffset", NULL, NULL,
 	"0", Tk_Offset(PolygonItem, outline.offset),
-	TK_CONFIG_DONT_SET_DEFAULT},
+	TK_CONFIG_DONT_SET_DEFAULT, NULL},
     {TK_CONFIG_CUSTOM, "-disableddash", NULL, NULL,
 	NULL, Tk_Offset(PolygonItem, outline.disabledDash),
 	TK_CONFIG_NULL_OK, &dashOption},
     {TK_CONFIG_COLOR, "-disabledfill", NULL, NULL,
-	NULL, Tk_Offset(PolygonItem, disabledFillColor), TK_CONFIG_NULL_OK},
+	NULL, Tk_Offset(PolygonItem, disabledFillColor), TK_CONFIG_NULL_OK, NULL},
     {TK_CONFIG_COLOR, "-disabledoutline", NULL, NULL,
 	NULL, Tk_Offset(PolygonItem, outline.disabledColor),
-	TK_CONFIG_NULL_OK},
+	TK_CONFIG_NULL_OK, NULL},
     {TK_CONFIG_BITMAP, "-disabledoutlinestipple", NULL, NULL,
 	NULL, Tk_Offset(PolygonItem, outline.disabledStipple),
-	TK_CONFIG_NULL_OK},
+	TK_CONFIG_NULL_OK, NULL},
     {TK_CONFIG_BITMAP, "-disabledstipple", NULL, NULL,
-	NULL, Tk_Offset(PolygonItem, disabledFillStipple), TK_CONFIG_NULL_OK},
+	NULL, Tk_Offset(PolygonItem, disabledFillStipple), TK_CONFIG_NULL_OK, NULL},
     {TK_CONFIG_CUSTOM, "-disabledwidth", NULL, NULL,
 	"0.0", Tk_Offset(PolygonItem, outline.disabledWidth),
 	TK_CONFIG_DONT_SET_DEFAULT, &pixelOption},
     {TK_CONFIG_COLOR, "-fill", NULL, NULL,
-	"black", Tk_Offset(PolygonItem, fillColor), TK_CONFIG_NULL_OK},
+	"black", Tk_Offset(PolygonItem, fillColor), TK_CONFIG_NULL_OK, NULL},
     {TK_CONFIG_JOIN_STYLE, "-joinstyle", NULL, NULL,
-	"round", Tk_Offset(PolygonItem, joinStyle), TK_CONFIG_DONT_SET_DEFAULT},
+	"round", Tk_Offset(PolygonItem, joinStyle), TK_CONFIG_DONT_SET_DEFAULT, NULL},
     {TK_CONFIG_CUSTOM, "-offset", NULL, NULL,
 	"0,0", Tk_Offset(PolygonItem, tsoffset),
 	TK_CONFIG_NULL_OK, &offsetOption},
     {TK_CONFIG_COLOR, "-outline", NULL, NULL,
-	NULL, Tk_Offset(PolygonItem, outline.color), TK_CONFIG_NULL_OK},
+	NULL, Tk_Offset(PolygonItem, outline.color), TK_CONFIG_NULL_OK, NULL},
     {TK_CONFIG_CUSTOM, "-outlineoffset", NULL, NULL,
 	"0,0", Tk_Offset(PolygonItem, outline.tsoffset),
 	TK_CONFIG_NULL_OK, &offsetOption},
     {TK_CONFIG_BITMAP, "-outlinestipple", NULL, NULL,
-	NULL, Tk_Offset(PolygonItem, outline.stipple), TK_CONFIG_NULL_OK},
+	NULL, Tk_Offset(PolygonItem, outline.stipple), TK_CONFIG_NULL_OK, NULL},
     {TK_CONFIG_CUSTOM, "-smooth", NULL, NULL,
 	"0", Tk_Offset(PolygonItem, smooth),
 	TK_CONFIG_DONT_SET_DEFAULT, &smoothOption},
     {TK_CONFIG_INT, "-splinesteps", NULL, NULL,
-	"12", Tk_Offset(PolygonItem, splineSteps), TK_CONFIG_DONT_SET_DEFAULT},
+	"12", Tk_Offset(PolygonItem, splineSteps), TK_CONFIG_DONT_SET_DEFAULT, NULL},
     {TK_CONFIG_CUSTOM, "-state", NULL, NULL,
 	NULL, Tk_Offset(Tk_Item, state), TK_CONFIG_NULL_OK, &stateOption},
     {TK_CONFIG_BITMAP, "-stipple", NULL, NULL,
-	NULL, Tk_Offset(PolygonItem, fillStipple), TK_CONFIG_NULL_OK},
+	NULL, Tk_Offset(PolygonItem, fillStipple), TK_CONFIG_NULL_OK, NULL},
     {TK_CONFIG_CUSTOM, "-tags", NULL, NULL,
 	NULL, 0, TK_CONFIG_NULL_OK, &tagsOption},
     {TK_CONFIG_CUSTOM, "-width", NULL, NULL,
 	"1.0", Tk_Offset(PolygonItem, outline.width),
 	TK_CONFIG_DONT_SET_DEFAULT, &pixelOption},
-    {TK_CONFIG_END, NULL, NULL, NULL, NULL, 0, 0}
+    {TK_CONFIG_END, NULL, NULL, NULL, NULL, 0, 0, NULL}
 };
 
 /*
@@ -211,6 +208,7 @@ Tk_ItemType tkPolygonType = {
     PolygonInsert,		/* insertProc */
     PolygonDeleteCoords,		/* dTextProc */
     NULL,				/* nextPtr */
+    NULL, 0, NULL, NULL
 };
 
 /*
@@ -253,7 +251,7 @@ CreatePolygon(
     int i;
 
     if (objc == 0) {
-	Tcl_Panic("canvas did not pass any coords\n");
+	Tcl_Panic("canvas did not pass any coords");
     }
 
     /*
@@ -361,13 +359,14 @@ PolygonCoords(
 	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
 		"wrong # coordinates: expected an even number, got %d",
 		objc));
+	Tcl_SetErrorCode(interp, "TK", "CANVAS", "COORDS", "POLYGON", NULL);
 	return TCL_ERROR;
     }
 
     numPoints = objc/2;
     if (polyPtr->pointsAllocated <= numPoints) {
 	if (polyPtr->coordPtr != NULL) {
-	    ckfree((char *) polyPtr->coordPtr);
+	    ckfree(polyPtr->coordPtr);
 	}
 
 	/*
@@ -375,8 +374,7 @@ PolygonCoords(
 	 * another point to close the polygon.
 	 */
 
-	polyPtr->coordPtr = (double *)
-		ckalloc(sizeof(double) * (unsigned)(objc+2));
+	polyPtr->coordPtr = ckalloc(sizeof(double) * (objc+2));
 	polyPtr->pointsAllocated = numPoints+1;
     }
     for (i = objc-1; i >= 0; i--) {
@@ -572,7 +570,7 @@ DeletePolygon(
 
     Tk_DeleteOutline(display, &polyPtr->outline);
     if (polyPtr->coordPtr != NULL) {
-	ckfree((char *) polyPtr->coordPtr);
+	ckfree(polyPtr->coordPtr);
     }
     if (polyPtr->fillColor != NULL) {
 	Tk_FreeColor(polyPtr->fillColor);
@@ -825,7 +823,7 @@ TkFillPolygon(
     if (numPoints <= MAX_STATIC_POINTS) {
 	pointPtr = staticPoints;
     } else {
-	pointPtr = (XPoint *) ckalloc((unsigned) numPoints * sizeof(XPoint));
+	pointPtr = ckalloc(numPoints * sizeof(XPoint));
     }
 
     for (i=0, pPtr=pointPtr ; i<numPoints; i+=1, coordPtr+=2, pPtr++) {
@@ -847,7 +845,7 @@ TkFillPolygon(
 		CoordModeOrigin);
     }
     if (pointPtr != staticPoints) {
-	ckfree((char *) pointPtr);
+	ckfree(pointPtr);
     }
 }
 
@@ -971,8 +969,7 @@ DisplayPolygon(
 	if (numPoints <= MAX_STATIC_POINTS) {
 	    pointPtr = staticPoints;
 	} else {
-	    pointPtr = (XPoint *)
-		    ckalloc((unsigned) numPoints * sizeof(XPoint));
+	    pointPtr = ckalloc(numPoints * sizeof(XPoint));
 	}
 	numPoints = polyPtr->smooth->coordProc(canvas, polyPtr->coordPtr,
 		polyPtr->numPoints, polyPtr->splineSteps, pointPtr, NULL);
@@ -985,7 +982,7 @@ DisplayPolygon(
 		    numPoints, CoordModeOrigin);
 	}
 	if (pointPtr != staticPoints) {
-	    ckfree((char *) pointPtr);
+	    ckfree(pointPtr);
 	}
     }
     Tk_ResetOutlineGC(canvas, itemPtr, &polyPtr->outline);
@@ -1039,15 +1036,14 @@ PolygonInsert(
     while (beforeThis < 0) {
 	beforeThis += length;
     }
-    newCoordPtr = (double *)
-	    ckalloc(sizeof(double) * (unsigned)(length + 2 + objc));
+    newCoordPtr = ckalloc(sizeof(double) * (length + 2 + objc));
     for (i=0; i<beforeThis; i++) {
 	newCoordPtr[i] = polyPtr->coordPtr[i];
     }
     for (i=0; i<objc; i++) {
 	if (Tcl_GetDoubleFromObj(NULL, objv[i],
 		&newCoordPtr[i+beforeThis]) != TCL_OK){
-	    ckfree((char *) newCoordPtr);
+	    ckfree(newCoordPtr);
 	    return;
 	}
     }
@@ -1056,7 +1052,7 @@ PolygonInsert(
 	newCoordPtr[i+objc] = polyPtr->coordPtr[i];
     }
     if (polyPtr->coordPtr) {
-	ckfree((char *) polyPtr->coordPtr);
+	ckfree(polyPtr->coordPtr);
     }
     length += objc;
     polyPtr->coordPtr = newCoordPtr;
@@ -1200,7 +1196,8 @@ PolygonDeleteCoords(
     if (count >= length) {
 	polyPtr->numPoints = 0;
 	if (polyPtr->coordPtr != NULL) {
-	    ckfree((char *) polyPtr->coordPtr);
+	    ckfree(polyPtr->coordPtr);
+	    polyPtr->coordPtr = NULL;
 	}
 	ComputePolygonBbox(canvas, polyPtr);
 	return;
@@ -1289,8 +1286,7 @@ PolygonToPoint(
 	if (numPoints <= MAX_STATIC_POINTS) {
 	    polyPoints = staticSpace;
 	} else {
-	    polyPoints = (double *)
-		    ckalloc((unsigned) 2*numPoints*sizeof(double));
+	    polyPoints = ckalloc(2 * numPoints * sizeof(double));
 	}
 	numPoints = polyPtr->smooth->coordProc(canvas, polyPtr->coordPtr,
 		polyPtr->numPoints, polyPtr->splineSteps, NULL, polyPoints);
@@ -1408,7 +1404,7 @@ PolygonToPoint(
 
   donepoint:
     if (polyPoints != staticSpace && polyPoints != polyPtr->coordPtr) {
-	ckfree((char *) polyPoints);
+	ckfree(polyPoints);
     }
     return bestDist;
 }
@@ -1499,8 +1495,7 @@ PolygonToArea(
 	if (numPoints <= MAX_STATIC_POINTS) {
 	    polyPoints = staticSpace;
 	} else {
-	    polyPoints = (double *)
-		    ckalloc((unsigned) 2*numPoints*sizeof(double));
+	    polyPoints = ckalloc(2 * numPoints * sizeof(double));
 	}
 	numPoints = polyPtr->smooth->coordProc(canvas, polyPtr->coordPtr,
 		polyPtr->numPoints, polyPtr->splineSteps, NULL, polyPoints);
@@ -1603,7 +1598,7 @@ PolygonToArea(
 
   donearea:
     if ((polyPoints != staticSpace) && (polyPoints != polyPtr->coordPtr)) {
-	ckfree((char *) polyPoints);
+	ckfree(polyPoints);
     }
     return inside;
 }
@@ -1678,11 +1673,10 @@ GetPolygonIndex(
     int *indexPtr)		/* Where to store converted index. */
 {
     PolygonItem *polyPtr = (PolygonItem *) itemPtr;
-    int length;
-    const char *string = Tcl_GetStringFromObj(obj, &length);
+    const char *string = Tcl_GetString(obj);
 
     if (string[0] == 'e') {
-	if (strncmp(string, "end", (unsigned)length) != 0) {
+	if (strncmp(string, "end", obj->length) != 0) {
 	    goto badIndex;
 	}
 	*indexPtr = 2*(polyPtr->numPoints - polyPtr->autoClosed);
@@ -1737,6 +1731,7 @@ GetPolygonIndex(
 
   badIndex:
     Tcl_SetObjResult(interp, Tcl_ObjPrintf("bad index \"%s\"", string));
+    Tcl_SetErrorCode(interp, "TK", "CANVAS", "ITEM_INDEX", "POLY", NULL);
     return TCL_ERROR;
 }
 
@@ -1805,13 +1800,15 @@ PolygonToPostscript(
 				 * being created. */
 {
     PolygonItem *polyPtr = (PolygonItem *) itemPtr;
-    const char *style;
+    int style;
     XColor *color;
     XColor *fillColor;
     Pixmap stipple;
     Pixmap fillStipple;
     Tk_State state = itemPtr->state;
     double width;
+    Tcl_Obj *psObj;
+    Tcl_InterpState interpState;
 
     if (polyPtr->numPoints < 2 || polyPtr->coordPtr == NULL) {
 	return TCL_OK;
@@ -1858,9 +1855,17 @@ PolygonToPostscript(
 	    fillStipple = polyPtr->disabledFillStipple;
 	}
     }
+
+    /*
+     * Make our working space.
+     */
+
+    psObj = Tcl_NewObj();
+    interpState = Tcl_SaveInterpState(interp, TCL_OK);
+
     if (polyPtr->numPoints == 2) {
 	if (color == NULL) {
-	    return TCL_OK;
+	    goto done;
 	}
 
 	/*
@@ -1868,7 +1873,7 @@ PolygonToPostscript(
 	 * tiny to be used directly...)
 	 */
 
-	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+	Tcl_AppendPrintfToObj(psObj,
 		"matrix currentmatrix\n"	/* save state */
 		"%.15g %.15g translate "	/* go to drawing location */
 		"%.15g %.15g scale "		/* scale the drawing */
@@ -1877,24 +1882,30 @@ PolygonToPostscript(
 		"setmatrix\n",			/* restore state */
 		polyPtr->coordPtr[0],
 		Tk_CanvasPsY(canvas, polyPtr->coordPtr[1]),
-		width/2.0, width/2.0));
+		width/2.0, width/2.0);
 
 	/*
 	 * Color it in.
 	 */
 
+	Tcl_ResetResult(interp);
 	if (Tk_CanvasPsColor(interp, canvas, color) != TCL_OK) {
-	    return TCL_ERROR;
+	    goto error;
 	}
+	Tcl_AppendObjToObj(psObj, Tcl_GetObjResult(interp));
+
 	if (stipple != None) {
-	    Tcl_AppendResult(interp, "clip ", NULL);
+	    Tcl_AppendToObj(psObj, "clip ", -1);
+
+	    Tcl_ResetResult(interp);
 	    if (Tk_CanvasPsStipple(interp, canvas, stipple) != TCL_OK) {
-		return TCL_ERROR;
+		goto error;
 	    }
+	    Tcl_AppendObjToObj(psObj, Tcl_GetObjResult(interp));
 	} else {
-	    Tcl_AppendResult(interp, "fill\n", NULL);
+	    Tcl_AppendToObj(psObj, "fill\n", -1);
 	}
-	return TCL_OK;
+	goto done;
     }
 
     /*
@@ -1902,6 +1913,7 @@ PolygonToPostscript(
      */
 
     if (fillColor != NULL && polyPtr->numPoints > 3) {
+	Tcl_ResetResult(interp);
 	if (!polyPtr->smooth || !polyPtr->smooth->postscriptProc) {
 	    Tk_CanvasPsPath(interp, canvas, polyPtr->coordPtr,
 		    polyPtr->numPoints);
@@ -1910,18 +1922,24 @@ PolygonToPostscript(
 		    polyPtr->numPoints, polyPtr->splineSteps);
 	}
 	if (Tk_CanvasPsColor(interp, canvas, fillColor) != TCL_OK) {
-	    return TCL_ERROR;
+	    goto error;
 	}
+	Tcl_AppendObjToObj(psObj, Tcl_GetObjResult(interp));
+
 	if (fillStipple != None) {
-	    Tcl_AppendResult(interp, "eoclip ", NULL);
+	    Tcl_AppendToObj(psObj, "eoclip ", -1);
+
+	    Tcl_ResetResult(interp);
 	    if (Tk_CanvasPsStipple(interp, canvas, fillStipple) != TCL_OK) {
-		return TCL_ERROR;
+		goto error;
 	    }
+	    Tcl_AppendObjToObj(psObj, Tcl_GetObjResult(interp));
+
 	    if (color != NULL) {
-		Tcl_AppendResult(interp, "grestore gsave\n", NULL);
+		Tcl_AppendToObj(psObj, "grestore gsave\n", -1);
 	    }
 	} else {
-	    Tcl_AppendResult(interp, "eofill\n", NULL);
+	    Tcl_AppendToObj(psObj, "eofill\n", -1);
 	}
     }
 
@@ -1930,6 +1948,7 @@ PolygonToPostscript(
      */
 
     if (color != NULL) {
+	Tcl_ResetResult(interp);
 	if (!polyPtr->smooth || !polyPtr->smooth->postscriptProc) {
 	    Tk_CanvasPsPath(interp, canvas, polyPtr->coordPtr,
 		    polyPtr->numPoints);
@@ -1937,20 +1956,38 @@ PolygonToPostscript(
 	    polyPtr->smooth->postscriptProc(interp, canvas, polyPtr->coordPtr,
 		    polyPtr->numPoints, polyPtr->splineSteps);
 	}
+	Tcl_AppendObjToObj(psObj, Tcl_GetObjResult(interp));
 
 	if (polyPtr->joinStyle == JoinRound) {
-	    style = "1";
+	    style = 1;
 	} else if (polyPtr->joinStyle == JoinBevel) {
-	    style = "2";
+	    style = 2;
 	} else {
-	    style = "0";
+	    style = 0;
 	}
-	Tcl_AppendResult(interp, style, " setlinejoin 1 setlinecap\n", NULL);
+	Tcl_AppendPrintfToObj(psObj, "%d setlinejoin 1 setlinecap\n", style);
+
+	Tcl_ResetResult(interp);
 	if (Tk_CanvasPsOutline(canvas, itemPtr, &polyPtr->outline) != TCL_OK){
-	    return TCL_ERROR;
+	    goto error;
 	}
+	Tcl_AppendObjToObj(psObj, Tcl_GetObjResult(interp));
     }
+
+    /*
+     * Plug the accumulated postscript back into the result.
+     */
+
+  done:
+    (void) Tcl_RestoreInterpState(interp, interpState);
+    Tcl_AppendObjToObj(Tcl_GetObjResult(interp), psObj);
+    Tcl_DecrRefCount(psObj);
     return TCL_OK;
+
+  error:
+    Tcl_DiscardInterpState(interpState);
+    Tcl_DecrRefCount(psObj);
+    return TCL_ERROR;
 }
 
 /*

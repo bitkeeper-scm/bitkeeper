@@ -1,6 +1,4 @@
 #
-# $Id$
-#
 # Combobox bindings.
 #
 # <<NOTE-WM-TRANSIENT>>:
@@ -114,9 +112,12 @@ switch -- [tk windowingsystem] {
 #
 proc ttk::combobox::Press {mode w x y} {
     variable State
+
+    $w instate disabled { return }
+
     set State(entryPress) [expr {
-	   [$w instate {!readonly !disabled}]
-	&& [string match *textarea [$w identify $x $y]]
+	   [$w instate !readonly]
+	&& [string match *textarea [$w identify element $x $y]]
     }]
 
     focus $w
@@ -221,9 +222,9 @@ proc ttk::combobox::LBTab {lb dir} {
 	LBSelect $lb
 	Unpost $cb
 	# The [grab release] call in [Unpost] queues events that later
-	# re-set the focus.  [update] to make sure these get processed first:
-	update
-	ttk::traverseTo $newFocus
+	# re-set the focus (@@@ NOTE: this might not be true anymore).
+	# Set new focus later:
+	after 0 [list ttk::traverseTo $newFocus]
     }
 }
 
@@ -271,8 +272,7 @@ proc ttk::combobox::PopdownWindow {cb} {
 
     if {![winfo exists $cb.popdown]} {
 	set poplevel [PopdownToplevel $cb.popdown]
-
-        set popdown [ttk::frame $poplevel.f -style ComboboxPopdownFrame]
+	set popdown [ttk::frame $poplevel.f -style ComboboxPopdownFrame]
 
 	$scrollbar $popdown.sb \
 	    -orient vertical -command [list $popdown.l yview]
@@ -310,6 +310,7 @@ proc ttk::combobox::PopdownToplevel {w} {
 	default -
 	x11 {
 	    $w configure -relief flat -borderwidth 0
+	    wm attributes $w -type combo
 	    wm overrideredirect $w true
 	}
 	win32 {
@@ -397,7 +398,7 @@ proc ttk::combobox::Post {cb} {
 
     set popdown [PopdownWindow $cb]
     ConfigureListbox $cb
-    update idletasks
+    update idletasks	;# needed for geometry propagation.
     PlacePopdown $cb $popdown
     # See <<NOTE-WM-TRANSIENT>>
     switch -- [tk windowingsystem] {

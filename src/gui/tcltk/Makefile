@@ -43,23 +43,14 @@ else
 	SHARED := --disable-shared
 	PCRE_OBJ:= bin/tclsh
 	ifeq "$(shell uname)" "Darwin"
-		AQUA := 1
+		AQUA := --enable-aqua
+		XFTSUPPORT :=
 		BKAPP=bin/BitKeeper.app
 		SO := .dylib
 		SINGLE_MODULE := "LDFLAGS=-single_module"
-		ENABLE_64BIT=
-		ifeq "$(shell uname -p)" "G5"
-			ENABLE_64BIT=--enable-64bit
-		endif
-		ifeq (10.,$(findstring 10.,$(shell uname -r)))
-			CC := cc -m32
-			LD := $(CC)
-			export CC LD
-		endif
-	else
-		ifeq "$(shell uname -m)" "x86_64"
-			ENABLE_64BIT=--enable-64bit
-		endif
+	endif
+	ifeq "$(shell uname -m)" "x86_64"
+		ENABLE_64BIT=--enable-64bit
 	endif
 	# No rpath on freebsd 2.2.8
 	ifeq "$(shell uname -r)" "2.2.8-RELEASE"
@@ -76,22 +67,18 @@ ifdef	Q
 endif
 
 DDEVERSION := 1.3
-REGVERSION := 1.2
+REGVERSION := 1.3
 TKTABLE := Tktable2.10
 
 LIBTKTABLE := lib$(TKTABLE)$(SO)
-TREECTRL := treectrl2.2.9
-LIBTREECTRL := libtreectrl2.2$(SO)
 BWIDGET := BWidget1.8
 TCLBUILD := ../build/tcl/Tcl.framework
 TKBUILD  := ../build/tk/Tk.framework
 WISHPATH := build/tk/Wish.app
 EXTENSIONS := lib/$(TKTABLE)/$(LIBTKTABLE) \
-	      lib/$(TREECTRL)/$(LIBTREECTRL) \
 	      lib/$(BWIDGET)/pkgIndex.tcl \
 	      lib/Tkcon/pkgIndex.tcl
 AQUAEXTENSIONS := $(BKAPP)/Contents/lib/$(TKTABLE)/$(LIBTKTABLE) \
-		  $(BKAPP)/Contents/lib/$(TREECTRL)/$(LIBTREECTRL) \
 		  $(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl \
 		  $(BKAPP)/Contents/lib/Tkcon/pkgIndex.tcl
 
@@ -126,7 +113,6 @@ srcs: pcre/configure \
 	tcl/$S/configure \
 	tk/$S/configure \
 	tktable/configure \
-	tktreectrl/configure \
 	lib/$(BWIDGET)/pkgIndex.tcl \
 	lib/Tkcon/pkgIndex.tcl
 
@@ -145,7 +131,7 @@ tcl/$S/Makefile: tcl/$S/configure $(LIBPCRE) Makefile
 tk/$S/Makefile: tk/$S/configure Makefile
 	$(if $(Q),@echo Configuring Tk,)
 	$(Q)cd tk/$S; \
-	./configure $(QUIET) \
+	./configure $(QUIET) --with-tcl=../../tcl/$S $(AQUA) \
 	    $(ENABLE_64BIT) $(XSSSUPPORT) $(XFTSUPPORT) $(SHARED) $(SYMBOLS)
 
 populate:
@@ -158,7 +144,6 @@ CHANGELOGS =  \
 	tcl/ChangeLog \
 	tk/ChangeLog \
 	tktable/ChangeLog \
-	tktreectrl/ChangeLog \
 	bwidget/ChangeLog \
 	tkcon/ChangeLog
 
@@ -185,11 +170,11 @@ pcre/Makefile: pcre/configure Makefile
 	$(Q)(cd pcre && \
 	    ./configure $(QUIET) --disable-cpp --disable-shared --enable-utf8=yes --prefix=)
 
-pcre/configure: Makefile pcre/ChangeLog
+pcre/configure: Makefile
 	$(Q)(cd pcre && bk -Ur get -qS)
 
 # fetch tktable subdirectory if needed
-tktable/configure: tktable/ChangeLog
+tktable/configure:
 	$(Q)(cd tktable && bk -Ur get -qS)
 
 # Tktable libs
@@ -210,40 +195,6 @@ lib/$(TKTABLE)/$(LIBTKTABLE): tktable/configure bin/bkgui$(EXE)
 
 $(BKAPP)/Contents/lib/$(TKTABLE)/$(LIBTKTABLE): tktable/configure
 	cd tktable; \
-	test -f Makefile -a "X$(AQUA)" != X && { \
-		$(MAKE) distclean ; \
-	}; \
-	test -f Makefile || { \
-		./configure $(QUIET) \
-		    --with-tcl=$(TCLBUILD) \
-		    --with-tk=$(TKBUILD) \
-		    --with-tclinclude=$(TCLBUILD)/Headers \
-		    --with-tkinclude=$(TKBUILD)/Headers ; \
-	}; \
-	$(MAKE) prefix= exec_prefix= DESTDIR=../$(BKAPP)/Contents/ \
-	    libdir=lib bindir=Resources install
-
-# fetch tktreectrl subdirectory if needed
-tktreectrl/configure: tktreectrl/ChangeLog
-	$(Q)(cd tktreectrl && bk -Ur get -qS)
-
-# TkTreeCtrl libs
-lib/$(TREECTRL)/$(LIBTREECTRL): tktreectrl/configure bin/bkgui$(EXE)
-	cd tktreectrl ; \
-	test -f Makefile -a "X$(AQUA)" != X && { \
-		$(MAKE) distclean ; \
-	}; \
-	test -f Makefile || { \
-		./configure $(QUIET) --with-tcl=../tcl/$S --with-tk=../tk/$S \
-			--with-tclinclude=../tcl/generic \
-			--with-tkinclude=../tk/generic \
-			--disable-threads $(ENABLE_64BIT) $(SYMBOLS) ; \
-	}; \
-	$(MAKE) prefix= exec_prefix= DESTDIR=../ \
-		libdir=lib bindir=bin install
-
-$(BKAPP)/Contents/lib/$(TREECTRL)/$(LIBTREECTRL): tktreectrl/configure
-	cd tktreectrl; \
 	test -f Makefile -a "X$(AQUA)" != X && { \
 		$(MAKE) distclean ; \
 	}; \
@@ -290,13 +241,11 @@ $(BKAPP)/Contents/lib/GetOpts/pkgIndex.tcl: lib/GetOpts/pkgIndex.tcl \
 	cp -fRPH lib/GetOpts $(BKAPP)/Contents/lib
 
 rm_doc: FORCE
-	rm -rf lib/$(TKTABLE)/html \
-	    lib/$(TREECTRL)/htmldoc
+	rm -rf lib/$(TKTABLE)/html
 	if [ "X$(AQUA)" != X ]; \
 	then \
 	    rm -rf \
 		$(BKAPP)/Contents/lib/$(TKTABLE)/html \
-		$(BKAPP)/Contents/lib/$(TREECTRL)/htmldoc \
 		$(BKAPP)/Contents/man ; \
 	fi
 
@@ -375,7 +324,6 @@ clean-obj: FORCE
 	-test -d tcl && cd tcl/$S && test -f Makefile && $(MAKE) distclean
 	-test -d tk && cd tk/$S && test -f Makefile && $(MAKE) distclean
 	-test -d tktable && cd tktable && test -f Makefile && $(MAKE) distclean
-	-test -d tktreectrl && cd tktreectrl && test -f Makefile && $(MAKE) distclean
 	-test -d pcre && cd pcre && { \
 		test -f Makefile && $(MAKE) distclean; \
 		rm -rf local; \
@@ -403,12 +351,10 @@ test:
 
 verify: FORCE
 	test -d lib/$(TKTABLE) || exit 1
-	test -d lib/$(TREECTRL) || exit 1
 	test -f lib/$(BWIDGET)/pkgIndex.tcl || exit 1
 	if [ "X$(AQUA)" != X ]; \
 	then \
 	    test -d $(BKAPP)/Contents/lib/$(TKTABLE) || exit 1 ; \
-	    test -d $(BKAPP)/Contents/lib/$(TREECTRL) || exit 1 ; \
 	    test -f $(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl \
 		|| exit 1 ; \
 	fi

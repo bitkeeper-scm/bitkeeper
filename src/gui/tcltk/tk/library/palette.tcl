@@ -3,8 +3,6 @@
 # This file contains procedures that change the color palette used
 # by Tk.
 #
-# RCS: @(#) $Id$
-#
 # Copyright (c) 1995-1997 Sun Microsystems, Inc.
 #
 # See the file "license.terms" for information on usage and redistribution
@@ -38,7 +36,8 @@ proc ::tk_setPalette {args} {
 	array set new $args
     }
     if {![info exists new(background)]} {
-	error "must specify a background color"
+	return -code error -errorcode {TK SET_PALETTE BACKGROUND} \
+	    "must specify a background color"
     }
     set bg [winfo rgb . $new(background)]
     if {![info exists new(foreground)]} {

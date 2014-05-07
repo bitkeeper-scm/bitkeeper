@@ -1,5 +1,4 @@
 # tcl pkg-config source file
-# $Id$
 
 prefix=@prefix@
 exec_prefix=@exec_prefix@

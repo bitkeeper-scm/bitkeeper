@@ -5,14 +5,12 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-'\" RCS: @(#) $Id$
-'\" 
-.so man.macros
 .TH panedwindow n 8.4 Tk "Tk Built-In Commands"
+.so man.macros
 .BS
 '\" Note:  do not modify the .SH NAME line immediately below!
 .SH NAME
-panedwindow \- Create and manipulate panedwindow widgets
+panedwindow \- Create and manipulate 'panedwindow' split container widgets
 .SH SYNOPSIS
 \fBpanedwindow\fR \fIpathName \fR?\fIoptions\fR?
 .SO
@@ -83,7 +81,8 @@ the panedwindow widget's path name.  \fIOption\fR and the \fIarg\fRs
 determine the exact behavior of the command.  The following
 commands are possible for panedwindow widgets:
 .TP
-\fIpathName \fBadd \fIwindow ?window ...? ?option value ...?\fR
+\fIpathName \fBadd \fIwindow \fR?\fIwindow ...\fR? ?\fIoption value ...\fR?
+.
 Add one or more windows to the panedwindow, each in a separate pane.
 The arguments consist of the names of one or more windows
 followed by pairs of arguments that specify how to manage the windows.
@@ -91,11 +90,13 @@ followed by pairs of arguments that specify how to manage the windows.
 \fBconfigure\fR subcommand.
 .TP
 \fIpathName \fBcget \fIoption\fR
+.
 Returns the current value of the configuration option given by
 \fIoption\fR.  \fIOption\fR may have any of the values accepted by the
 \fBpanedwindow\fR command.
 .TP
-\fIpathName \fBconfigure \fI?option? ?value option value ...?\fR
+\fIpathName \fBconfigure \fR?\fIoption\fR? ?\fIvalue option value ...\fR?
+.
 Query or modify the configuration options of the widget.  If no
 \fIoption\fR is specified, returns a list describing all of the
 available options for \fIpathName\fR (see \fBTk_ConfigureInfo\fR for
@@ -108,11 +109,13 @@ modifies the given widget option(s) to have the given value(s);  in
 this case the command returns an empty string. \fIOption\fR may have
 any of the values accepted by the \fBpanedwindow\fR command.
 .TP
-\fIpathName \fBforget \fIwindow ?window ...?\fR
+\fIpathName \fBforget \fIwindow \fR?\fIwindow ...\fR?
+.
 Remove the pane containing \fIwindow\fR from the panedwindow.  All
 geometry management options for \fIwindow\fR will be forgotten.
 .TP
 \fIpathName \fBidentify \fIx y\fR
+.
 Identify the panedwindow component underneath the point given by
 \fIx\fR and \fIy\fR, in window coordinates.  If the point is over a
 sash or a sash handle, the result is a two element list containing the
@@ -120,53 +123,63 @@ index of the sash or handle, and a word indicating whether it is over
 a sash or a handle, such as {0 sash} or {2 handle}.  If the point is
 over any other part of the panedwindow, the result is an empty list.
 .TP
-\fIpathName \fBproxy \fI?args?\fR
+\fIpathName \fBproxy \fR?\fIargs\fR?
+.
 This command is used to query and change the position of the sash
 proxy, used for rubberband-style pane resizing. It can take any of
 the following forms:
 .RS
 .TP
 \fIpathName \fBproxy coord\fR
+.
 Return a list containing the x and y coordinates of the most recent
 proxy location.
 .TP
 \fIpathName \fBproxy forget\fR
+.
 Remove the proxy from the display.
 .TP
 \fIpathName \fBproxy place \fIx y\fR
+.
 Place the proxy at the given \fIx\fR and \fIy\fR coordinates.  
 .RE
 .TP
-\fIpathName \fBsash \fI?args?\fR
+\fIpathName \fBsash \fR?\fIargs\fR?
 This command is used to query and change the position of sashes in the
 panedwindow.  It can take any of the following forms:
 .RS
 .TP
 \fIpathName \fBsash coord \fIindex\fR
+.
 Return the current x and y coordinate pair for the sash given by
 \fIindex\fR.  \fIIndex\fR must be an integer between 0 and 1 less than
 the number of panes in the panedwindow.  The coordinates given are
 those of the top left corner of the region containing the sash.
 .TP
 \fIpathName \fBsash dragto \fIindex x y\fR
+.
 This command computes the difference between the given coordinates and the
 coordinates given to the last \fBsash mark\fR command for the given
 sash.  It then moves that sash the computed difference.  The return
 value is the empty string.
 .TP
 \fIpathName \fBsash mark \fIindex x y\fR
+.
 Records \fIx\fR and \fIy\fR for the sash given by \fIindex\fR; used in
 conjunction with later \fBsash dragto\fR commands to move the sash.
 .TP
 \fIpathName \fBsash place \fIindex x y\fR
+.
 Place the sash given by \fIindex\fR at the given coordinates.
 .RE
 .TP
 \fIpathName \fBpanecget \fIwindow option\fR
+.
 Query a management option for \fIwindow\fR.  \fIOption\fR may be any
 value allowed by the \fBpaneconfigure\fR subcommand.
 .TP
-\fIpathName \fBpaneconfigure \fIwindow ?option? ?value option value ...?\fR
+\fIpathName \fBpaneconfigure \fIwindow \fR?\fIoption\fR? ?\fIvalue option value ...\fR?
+.
 Query or modify the management options for \fIwindow\fR.  If no
 \fIoption\fR is specified, returns a list describing all of the
 available options for \fIpathName\fR (see \fBTk_ConfigureInfo\fR for
@@ -181,14 +194,17 @@ are supported:
 .RS
 .TP
 \fB\-after \fIwindow\fR
+.
 Insert the window after the window specified.  \fIwindow\fR should be the
 name of a window already managed by \fIpathName\fR.
 .TP
 \fB\-before \fIwindow\fR
+.
 Insert the window before the window specified.  \fIwindow\fR should be
 the name of a window already managed by \fIpathName\fR.
 .TP
 \fB\-height \fIsize\fR
+.
 Specify a height for the window.  The height will be the outer
 dimension of the window including its border, if any.  If \fIsize\fR
 is an empty string, or if \fB\-height\fR is not specified, then the
@@ -197,11 +213,13 @@ height may later be adjusted by the movement of sashes in the
 panedwindow.  \fISize\fR may be any value accepted by \fBTk_GetPixels\fR.
 .TP
 \fB\-hide \fIboolean\fR
+.
 Controls the visibility of a pane.  When the \fIboolean\fR is true
 (according to \fBTcl_GetBoolean\fR) the pane will not be visible, but
 it will still be maintained in the list of panes.
 .TP
 \fB\-minsize \fIn\fR
+.
 Specifies that the size of the window cannot be made less than
 \fIn\fR.  This constraint only affects the size of the widget in the
 paned dimension \(em the x dimension for horizontal panedwindows, the y
@@ -209,16 +227,19 @@ dimension for vertical panedwindows.  May be any value accepted by
 \fBTk_GetPixels\fR.
 .TP
 \fB\-padx \fIn\fR
+.
 Specifies a non-negative value indicating how much extra space to
 leave on each side of the window in the X-direction.  The value may 
 have any of the forms accepted by \fBTk_GetPixels\fR.
 .TP
 \fB\-pady \fIn\fR
+.
 Specifies a non-negative value indicating how much extra space to
 leave on each side of the window in the Y-direction.  The value may 
 have any of the forms accepted by \fBTk_GetPixels\fR.
 .TP
 \fB\-sticky \fIstyle\fR
+.
 If a window's pane is larger than the requested dimensions of the
 window, this option may be used to position (or stretch) the window
 within its pane.  \fIStyle\fR  is a string that contains zero or more
@@ -232,6 +253,7 @@ are specified, the window will be stretched to fill the entire height
 (or width) of its cavity.
 .TP
 \fB\-stretch \fIwhen\fR
+.
 Controls how extra space is allocated to each of the panes.
 \fIWhen\fR is one of \fBalways\fR, \fBfirst\fR, \fBlast\fR,
 \fBmiddle\fR, and \fBnever\fR.
@@ -243,24 +265,30 @@ definition:
 .RS
 .TP
 \fBalways\fR
+.
 This pane will always stretch.
 .TP
 \fBfirst\fR
+.
 Only if this pane is the first pane (left-most or top-most) will it
 stretch.
 .TP
 \fBlast\fR
+.
 Only if this pane is the last pane (right-most or bottom-most) will it
 stretch.  This is the default value.
 .TP
 \fBmiddle\fR
+.
 Only if this pane is not the first or last pane will it stretch.
 .TP
 \fBnever\fR
+.
 This pane will never stretch.
 .RE
 .TP
 \fB\-width \fIsize\fR
+.
 Specify a width for the window.  The width will be the outer
 dimension of the window including its border, if any.  If \fIsize\fR
 is an empty string, or if \fB\-width\fR is not specified, then the
@@ -270,6 +298,7 @@ panedwindow.  \fISize\fR may be any value accepted by \fBTk_GetPixels\fR.
 .RE
 .TP
 \fIpathName \fBpanes\fR
+.
 Returns an ordered list of the widgets managed by \fIpathName\fR.
 .SH "RESIZING PANES"
 .PP

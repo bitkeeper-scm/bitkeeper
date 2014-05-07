@@ -4,10 +4,8 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\"
-'\" RCS: @(#) $Id$
-'\"
-.so man.macros
 .TH my n 0.1 TclOO "TclOO Commands"
+.so man.macros
 .BS
 '\" Note:  do not modify the .SH NAME line immediately below!
 .SH NAME
@@ -29,11 +27,11 @@ method is invoked is always the one that is the current context of the method
 (i.e. the object that is returned by \fBself object\fR) from which the
 \fBmy\fR command is invoked.
 .PP
-Each object has its own \fBmy\fR command, contained in its unique namespace.
+Each object has its own \fBmy\fR command, contained in its instance namespace.
 .SH EXAMPLES
 .PP
 This example shows basic use of \fBmy\fR to use the \fBvariables\fR method of
-the \fBoo::object\fR class, which is not publically visible by default:
+the \fBoo::object\fR class, which is not publicly visible by default:
 .PP
 .CS
 oo::class create c {

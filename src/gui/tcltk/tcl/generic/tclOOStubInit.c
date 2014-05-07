@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * This file is (mostly) automatically generated from tclOO.decls.
  * It is compiled and linked in with the tclOO package proper.
  */
@@ -8,14 +6,19 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-#include "tclOO.h"
 #include "tclOOInt.h"
+
+MODULE_SCOPE const TclOOStubs tclOOStubs;
+
+#ifdef __GNUC__
+#pragma GCC dependency "tclOO.decls"
+#endif
 
 /* !BEGIN!: Do not edit below this line. */
 
 static const TclOOIntStubs tclOOIntStubs = {
     TCL_STUB_MAGIC,
-    NULL,
+    0,
     TclOOGetDefineCmdContext, /* 0 */
     TclOOMakeProcInstanceMethod, /* 1 */
     TclOOMakeProcMethod, /* 2 */
@@ -38,7 +41,7 @@ static const TclOOStubHooks tclOOStubHooks = {
     &tclOOIntStubs
 };
 
-static const TclOOStubs tclOOStubs = {
+const TclOOStubs tclOOStubs = {
     TCL_STUB_MAGIC,
     &tclOOStubHooks,
     Tcl_CopyObjectInstance, /* 0 */
@@ -69,10 +72,7 @@ static const TclOOStubs tclOOStubs = {
     Tcl_ObjectSetMethodNameMapper, /* 25 */
     Tcl_ClassSetConstructor, /* 26 */
     Tcl_ClassSetDestructor, /* 27 */
+    Tcl_GetObjectName, /* 28 */
 };
 
 /* !END!: Do not edit above this line. */
-
-MODULE_SCOPE const TclOOStubs * const tclOOConstStubPtr;
-const TclOOStubs * const tclOOConstStubPtr = &tclOOStubs;
-

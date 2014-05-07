@@ -7,13 +7,14 @@
 #
 # See the file "license.terms" for information on usage and redistribution of
 # this file, and for a DISCLAIMER OF ALL WARRANTIES.
-#
-# RCS: @(#) $Id$
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest 2
     namespace import -force ::tcltest::*
 }
+
+::tcltest::loadTestedCommands
+catch [list package require -exact Tcltest [info patchlevel]]
 
 # Used for constraining memory leak tests
 testConstraint memory [llength [info commands memory]]
@@ -140,6 +141,12 @@ test cmdIL-1.34 {lsort -stride errors} -returnCodes error -body {
 test cmdIL-1.35 {lsort -stride errors} -returnCodes error -body {
     lsort -stride 2 -index 3 {a b c d}
 } -result {when used with "-stride", the leading "-index" value must be within the group}
+test cmdIL-1.36 {lsort -stride and -index: Bug 2918962} {
+    lsort -stride 2 -index {0 1} {
+	{{c o d e} 54321} {{b l a h} 94729}
+	{{b i g} 12345} {{d e m o} 34512}
+    }
+} {{{b i g} 12345} {{d e m o} 34512} {{c o d e} 54321} {{b l a h} 94729}}
 
 # Can't think of any good tests for the MergeSort and MergeLists procedures,
 # except a bunch of random lists to sort.
@@ -410,6 +417,15 @@ test cmdIL-4.34 {SortCompare procedure, -ascii option with -nocase option} {
 test cmdIL-4.35 {SortCompare procedure, -ascii option with -nocase option} {
     lsort -ascii -nocase {d E c B a D35 d300 100 20}
 } {100 20 a B c d d300 D35 E}
+test cmdIL-4.36 {SortCompare procedure, UTF-8 with -nocase option} {
+    scan [lsort -ascii -nocase [list \u101 \u100]] %c%c%c
+} {257 32 256}
+test cmdIL-4.37 {SortCompare procedure, UTF-8 with -nocase option} {
+    scan [lsort -ascii -nocase [list a\u0000a a]] %c%c%c%c%c
+} {97 32 97 0 97}
+test cmdIL-4.38 {SortCompare procedure, UTF-8 with -nocase option} {
+    scan [lsort -ascii -nocase [list a a\u0000a]] %c%c%c%c%c
+} {97 32 97 0 97}
 
 test cmdIL-5.1 {lsort with list style index} {
     lsort -ascii -decreasing -index {0 1} {
@@ -452,6 +468,9 @@ test cmdIL-5.5 {lsort with list style index and sharing} -body {
 } -result 0 -cleanup {
     rename test_lsort ""
 }
+test cmdIL-5.6 {lsort with multiple list-style index options} {
+    lsort -index {1 2 3} -index 0 {{a b} {c d} {b e}}
+} {{a b} {b e} {c d}}
 
 # Compiled version
 test cmdIL-6.1 {lassign command syntax} -returnCodes error -body {
@@ -706,6 +725,16 @@ test cmdIL-7.8 {lreverse command - shared intrep [Bug 1675044]} -setup {
     unset -nocomplain x y
     rename K {}
 } -result 1
+
+# This belongs in info test, but adding tests there breaks tests
+# that compute source file line numbers.
+test info-20.6 {Bug 3587651} -setup {
+    namespace eval my {namespace eval tcl {namespace eval mathfunc {
+        proc demo x {return 42}
+    }}}} -body {    namespace eval my {expr {"demo" in [info functions]}}} -cleanup {
+    namespace delete my
+} -result 1
+
 
 # cleanup
 ::tcltest::cleanupTests

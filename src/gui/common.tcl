@@ -51,6 +51,10 @@ proc bk_initTheme {} \
 	option add *Entry.background	#FFFFFF
 	option add *Entry.borderWidth	1
 	option add *Text.background	#FFFFFF
+	## Work around a Tk bug in OS X.
+	if {[tk windowingsystem] == "aqua"} {
+		option add *Menu.background systemMenu
+	}
 
 	## Make the ReadOnly tag
 	foreach event [bind Text] {

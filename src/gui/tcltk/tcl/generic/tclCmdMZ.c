@@ -10,19 +10,20 @@
  * Copyright (c) 1994-1997 Sun Microsystems, Inc.
  * Copyright (c) 1998-2000 Scriptics Corporation.
  * Copyright (c) 2002 ActiveState Corporation.
- * Copyright (c) 2003 Donal K. Fellows.
+ * Copyright (c) 2003-2009 Donal K. Fellows.
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclInt.h"
 #include "tclRegexp.h"
+#include "tclStringTrim.h"
 
 static inline Tcl_Obj *	During(Tcl_Interp *interp, int resultCode,
 			    Tcl_Obj *oldOptions, Tcl_Obj *errorInfo);
+static int		SwitchPostProc(ClientData data[], Tcl_Interp *interp,
+			    int result);
 static int		TryPostBody(ClientData data[], Tcl_Interp *interp,
 			    int result);
 static int		TryPostFinal(ClientData data[], Tcl_Interp *interp,
@@ -30,15 +31,40 @@ static int		TryPostFinal(ClientData data[], Tcl_Interp *interp,
 static int		TryPostHandler(ClientData data[], Tcl_Interp *interp,
 			    int result);
 static int		UniCharIsAscii(int character);
+static int		UniCharIsHexDigit(int character);
 
 /*
  * Default set of characters to trim in [string trim] and friends. This is a
- * UTF-8 literal string containing space, tab, newline, carriage return,
- * ethiopic wordspace (U+1361), ogham space mark (U+1680), and ideographic
- * space (U+3000). [TIP #318]
+ * UTF-8 literal string containing all Unicode space characters [TIP #413]
  */
 
-#define DEFAULT_TRIM_SET " \t\n\r\xe1\x8d\xa1\xe1\x9a\x80\xe3\x80\x80"
+const char tclDefaultTrimSet[] = 
+	"\x09\x0a\x0b\x0c\x0d " /* ASCII */
+	"\xc0\x80" /*     nul (U+0000) */
+	"\xc2\x85" /*     next line (U+0085) */
+	"\xc2\xa0" /*     non-breaking space (U+00a0) */
+	"\xe1\x9a\x80" /* ogham space mark (U+1680) */
+	"\xe1\xa0\x8e" /* mongolian vowel separator (U+180e) */
+	"\xe2\x80\x80" /* en quad (U+2000) */
+	"\xe2\x80\x81" /* em quad (U+2001) */
+	"\xe2\x80\x82" /* en space (U+2002) */
+	"\xe2\x80\x83" /* em space (U+2003) */
+	"\xe2\x80\x84" /* three-per-em space (U+2004) */
+	"\xe2\x80\x85" /* four-per-em space (U+2005) */
+	"\xe2\x80\x86" /* six-per-em space (U+2006) */
+	"\xe2\x80\x87" /* figure space (U+2007) */
+	"\xe2\x80\x88" /* punctuation space (U+2008) */
+	"\xe2\x80\x89" /* thin space (U+2009) */
+	"\xe2\x80\x8a" /* hair space (U+200a) */
+	"\xe2\x80\x8b" /* zero width space (U+200b) */
+	"\xe2\x80\xa8" /* line separator (U+2028) */
+	"\xe2\x80\xa9" /* paragraph separator (U+2029) */
+	"\xe2\x80\xaf" /* narrow no-break space (U+202f) */
+	"\xe2\x81\x9f" /* medium mathematical space (U+205f) */
+	"\xe2\x81\xa0" /* word joiner (U+2060) */
+	"\xe3\x80\x80" /* ideographic space (U+3000) */
+	"\xef\xbb\xbf" /* zero width no-break space (U+feff) */
+;
 
 /*
  *----------------------------------------------------------------------
@@ -222,8 +248,8 @@ Tcl_RegexpObjCmd(
      */
 
     if (doinline && ((objc - 2) != 0)) {
-	Tcl_AppendResult(interp, "regexp match variables not allowed"
-		" when using -inline", NULL);
+	Tcl_SetObjResult(interp, Tcl_NewStringObj(
+		"regexp match variables not allowed when using -inline", -1));
       optionError:
 	if (startIndex) {
 	    Tcl_DecrRefCount(startIndex);
@@ -764,9 +790,8 @@ Tcl_RegsubObjCmd(
 	Tcl_AppendUnicodeToObj(resultPtr, wstring + offset, wlen - offset);
     }
     if (objc == 4) {
-	if (Tcl_ObjSetVar2(interp, objv[3], NULL, resultPtr, 0) == NULL) {
-	    Tcl_AppendResult(interp, "couldn't set variable \"",
-		    TclGetString(objv[3]), "\"", NULL);
+	if (Tcl_ObjSetVar2(interp, objv[3], NULL, resultPtr,
+		TCL_LEAVE_ERR_MSG) == NULL) {
 	    result = TCL_ERROR;
 	} else {
 	    /*
@@ -1013,7 +1038,8 @@ Tcl_SplitObjCmd(
 	     * Assume Tcl_UniChar is an integral type...
 	     */
 
-	    hPtr = Tcl_CreateHashEntry(&charReuseTable, (char*)0+ch, &isNew);
+	    hPtr = Tcl_CreateHashEntry(&charReuseTable, INT2PTR((int) ch),
+		    &isNew);
 	    if (isNew) {
 		TclNewStringObj(objPtr, stringPtr, len);
 
@@ -1021,9 +1047,9 @@ Tcl_SplitObjCmd(
 		 * Don't need to fiddle with refcount...
 		 */
 
-		Tcl_SetHashValue(hPtr, (ClientData) objPtr);
+		Tcl_SetHashValue(hPtr, objPtr);
 	    } else {
-		objPtr = (Tcl_Obj *) Tcl_GetHashValue(hPtr);
+		objPtr = Tcl_GetHashValue(hPtr);
 	    }
 	    Tcl_ListObjAppendElement(NULL, listPtr, objPtr);
 	}
@@ -1154,7 +1180,12 @@ StringFirstCmd(
 	}
     }
 
-    if (needleLen > 0) {
+    /*
+     * If the length of the needle is more than the length of the haystack, it
+     * cannot be contained in there so we can avoid searching. [Bug 2960021]
+     */
+
+    if (needleLen > 0 && needleLen <= haystackLen) {
 	register Tcl_UniChar *p, *end;
 
 	end = haystackStr + haystackLen - needleLen + 1;
@@ -1259,7 +1290,12 @@ StringLastCmd(
 	p = haystackStr + haystackLen - needleLen;
     }
 
-    if (needleLen > 0) {
+    /*
+     * If the length of the needle is more than the length of the haystack, it
+     * cannot be contained in there so we can avoid searching. [Bug 2960021]
+     */
+
+    if (needleLen > 0 && needleLen <= haystackLen) {
 	for (; p >= haystackStr; p--) {
 	    /*
 	     * Scan backwards to find the first character.
@@ -1327,7 +1363,7 @@ StringIndexCmd(
 	 * bytearray for a result.
 	 */
 
-	if (objv[1]->typePtr == &tclByteArrayType) {
+	if (TclIsPureByteArray(objv[1])) {
 	    unsigned char uch = (unsigned char) ch;
 
 	    Tcl_SetObjResult(interp, Tcl_NewByteArrayObj(&uch, 1));
@@ -1366,27 +1402,34 @@ StringIsCmd(
     int objc,			/* Number of arguments. */
     Tcl_Obj *const objv[])	/* Argument objects. */
 {
-    const char *string1, *string2, *end, *stop;
+    const char *string1, *end, *stop;
     Tcl_UniChar ch;
     int (*chcomp)(int) = NULL;	/* The UniChar comparison function. */
     int i, failat = 0, result = 1, strict = 0, index, length1, length2;
     Tcl_Obj *objPtr, *failVarObj = NULL;
     Tcl_WideInt w;
 
-    static const char *const isOptions[] = {
+    static const char *const isClasses[] = {
 	"alnum",	"alpha",	"ascii",	"control",
-	"boolean",	"digit",	"double",	"false",
-	"graph",	"integer",	"list",		"lower",
-	"print",	"punct",	"space",	"true",
-	"upper",	"wideinteger",	"wordchar",	"xdigit",
-	NULL
+	"boolean",	"digit",	"double",	"entier",
+	"false",	"graph",	"integer",	"list",
+	"lower",	"print",	"punct",	"space",
+	"true",		"upper",	"wideinteger",	"wordchar",
+	"xdigit",	NULL
+    };
+    enum isClasses {
+	STR_IS_ALNUM,	STR_IS_ALPHA,	STR_IS_ASCII,	STR_IS_CONTROL,
+	STR_IS_BOOL,	STR_IS_DIGIT,	STR_IS_DOUBLE,	STR_IS_ENTIER,
+	STR_IS_FALSE,	STR_IS_GRAPH,	STR_IS_INT,	STR_IS_LIST,
+	STR_IS_LOWER,	STR_IS_PRINT,	STR_IS_PUNCT,	STR_IS_SPACE,
+	STR_IS_TRUE,	STR_IS_UPPER,	STR_IS_WIDE,	STR_IS_WORD,
+	STR_IS_XDIGIT
+    };
+    static const char *const isOptions[] = {
+	"-strict", "-failindex", NULL
     };
     enum isOptions {
-	STR_IS_ALNUM, STR_IS_ALPHA,	STR_IS_ASCII,  STR_IS_CONTROL,
-	STR_IS_BOOL,  STR_IS_DIGIT,	STR_IS_DOUBLE, STR_IS_FALSE,
-	STR_IS_GRAPH, STR_IS_INT,	STR_IS_LIST,   STR_IS_LOWER,
-	STR_IS_PRINT, STR_IS_PUNCT, STR_IS_SPACE,  STR_IS_TRUE,
-	STR_IS_UPPER, STR_IS_WIDE,	STR_IS_WORD,   STR_IS_XDIGIT
+	OPT_STRICT, OPT_FAILIDX
     };
 
     if (objc < 3 || objc > 6) {
@@ -1394,29 +1437,31 @@ StringIsCmd(
 		"class ?-strict? ?-failindex var? str");
 	return TCL_ERROR;
     }
-    if (Tcl_GetIndexFromObj(interp, objv[1], isOptions, "class", 0,
+    if (Tcl_GetIndexFromObj(interp, objv[1], isClasses, "class", 0,
 	    &index) != TCL_OK) {
 	return TCL_ERROR;
     }
 
     if (objc != 3) {
 	for (i = 2; i < objc-1; i++) {
-	    string2 = TclGetStringFromObj(objv[i], &length2);
-	    if ((length2 > 1) &&
-		    strncmp(string2, "-strict", (size_t) length2) == 0) {
+	    int idx2;
+
+	    if (Tcl_GetIndexFromObj(interp, objv[i], isOptions, "option", 0,
+		    &idx2) != TCL_OK) {
+		return TCL_ERROR;
+	    }
+	    switch ((enum isOptions) idx2) {
+	    case OPT_STRICT:
 		strict = 1;
-	    } else if ((length2 > 1) &&
-		    strncmp(string2, "-failindex", (size_t)length2) == 0){
+		break;
+	    case OPT_FAILIDX:
 		if (i+1 >= objc-1) {
 		    Tcl_WrongNumArgs(interp, 2, objv,
 			    "?-strict? ?-failindex var? str");
 		    return TCL_ERROR;
 		}
 		failVarObj = objv[++i];
-	    } else {
-		Tcl_AppendResult(interp, "bad option \"", string2,
-			"\": must be -strict or -failindex", NULL);
-		return TCL_ERROR;
+		break;
 	    }
 	}
     }
@@ -1429,20 +1474,12 @@ StringIsCmd(
      */
 
     objPtr = objv[objc-1];
-    string1 = TclGetStringFromObj(objPtr, &length1);
-    if (length1 == 0 && index != STR_IS_LIST) {
-	if (strict) {
-	    result = 0;
-	}
-	goto str_is_done;
-    }
-    end = string1 + length1;
 
     /*
      * When entering here, result == 1 and failat == 0.
      */
 
-    switch ((enum isOptions) index) {
+    switch ((enum isClasses) index) {
     case STR_IS_ALNUM:
 	chcomp = Tcl_UniCharIsAlnum;
 	break;
@@ -1455,8 +1492,14 @@ StringIsCmd(
     case STR_IS_BOOL:
     case STR_IS_TRUE:
     case STR_IS_FALSE:
-	if (TCL_OK != Tcl_ConvertToType(NULL, objPtr, &tclBooleanType)) {
-	    result = 0;
+	if ((objPtr->typePtr != &tclBooleanType)
+		&& (TCL_OK != TclSetBooleanFromAny(NULL, objPtr))) {
+	    if (strict) {
+		result = 0;
+	    } else {
+		string1 = TclGetStringFromObj(objPtr, &length1);
+		result = length1 == 0;
+	    }
 	} else if (((index == STR_IS_TRUE) &&
 		objPtr->internalRep.longValue == 0)
 	    || ((index == STR_IS_FALSE) &&
@@ -1474,12 +1517,20 @@ StringIsCmd(
 	/* TODO */
 	if ((objPtr->typePtr == &tclDoubleType) ||
 		(objPtr->typePtr == &tclIntType) ||
-#ifndef NO_WIDE_TYPE
+#ifndef TCL_WIDE_INT_IS_LONG
 		(objPtr->typePtr == &tclWideIntType) ||
 #endif
 		(objPtr->typePtr == &tclBignumType)) {
 	    break;
 	}
+	string1 = TclGetStringFromObj(objPtr, &length1);
+	if (length1 == 0) {
+	    if (strict) {
+		result = 0;
+	    }
+	    goto str_is_done;
+	}
+	end = string1 + length1;
 	if (TclParseNumber(NULL, objPtr, NULL, NULL, -1,
 		(const char **) &stop, 0) != TCL_OK) {
 	    result = 0;
@@ -1489,7 +1540,6 @@ StringIsCmd(
 	    if (stop < end) {
 		result = 0;
 		TclFreeIntRep(objPtr);
-		objPtr->typePtr = NULL;
 	    }
 	}
 	break;
@@ -1502,14 +1552,65 @@ StringIsCmd(
 	    break;
 	}
 	goto failedIntParse;
+    case STR_IS_ENTIER:
+	if ((objPtr->typePtr == &tclIntType) ||
+#ifndef TCL_WIDE_INT_IS_LONG
+		(objPtr->typePtr == &tclWideIntType) ||
+#endif
+		(objPtr->typePtr == &tclBignumType)) {
+	    break;
+	}
+	string1 = TclGetStringFromObj(objPtr, &length1);
+	if (length1 == 0) {
+	    if (strict) {
+		result = 0;
+	    }
+	    goto str_is_done;
+	}
+	end = string1 + length1;
+	if (TclParseNumber(NULL, objPtr, NULL, NULL, -1,
+		(const char **) &stop, TCL_PARSE_INTEGER_ONLY) == TCL_OK) {
+	    if (stop == end) {
+		/*
+		 * Entire string parses as an integer.
+		 */
+
+		break;
+	    } else {
+		/*
+		 * Some prefix parsed as an integer, but not the whole string,
+		 * so return failure index as the point where parsing stopped.
+		 * Clear out the internal rep, since keeping it would leave
+		 * *objPtr in an inconsistent state.
+		 */
+
+		result = 0;
+		failat = stop - string1;
+		TclFreeIntRep(objPtr);
+	    }
+	} else {
+	    /*
+	     * No prefix is a valid integer. Fail at beginning.
+	     */
+
+	    result = 0;
+	    failat = 0;
+	}
+	break;
     case STR_IS_WIDE:
 	if (TCL_OK == Tcl_GetWideIntFromObj(NULL, objPtr, &w)) {
 	    break;
 	}
 
     failedIntParse:
+	string1 = TclGetStringFromObj(objPtr, &length1);
+	if (length1 == 0) {
+	    if (strict) {
+		result = 0;
+	    }
+	    goto str_is_done;
+	}
 	result = 0;
-
 	if (failVarObj == NULL) {
 	    /*
 	     * Don't bother computing the failure point if we're not going to
@@ -1518,6 +1619,7 @@ StringIsCmd(
 
 	    break;
 	}
+	end = string1 + length1;
 	if (TclParseNumber(NULL, objPtr, NULL, NULL, -1,
 		(const char **) &stop, TCL_PARSE_INTEGER_ONLY) == TCL_OK) {
 	    if (stop == end) {
@@ -1539,7 +1641,6 @@ StringIsCmd(
 
 		failat = stop - string1;
 		TclFreeIntRep(objPtr);
-		objPtr->typePtr = NULL;
 	    }
 	} else {
 	    /*
@@ -1566,16 +1667,17 @@ StringIsCmd(
 	     * SetListFromAny().
 	     */
 
-	    const char *elemStart, *nextElem, *limit;
-	    int lenRemain, elemSize, hasBrace;
+	    const char *elemStart, *nextElem;
+	    int lenRemain, elemSize;
 	    register const char *p;
 
-	    limit = string1 + length1;
+	    string1 = TclGetStringFromObj(objPtr, &length1);
+	    end = string1 + length1;
 	    failat = -1;
 	    for (p=string1, lenRemain=length1; lenRemain > 0;
-		    p=nextElem, lenRemain=limit-nextElem) {
+		    p=nextElem, lenRemain=end-nextElem) {
 		if (TCL_ERROR == TclFindElement(NULL, p, lenRemain,
-			&elemStart, &nextElem, &elemSize, &hasBrace)) {
+			&elemStart, &nextElem, &elemSize, NULL)) {
 		    Tcl_Obj *tmpStr;
 
 		    /*
@@ -1588,7 +1690,7 @@ StringIsCmd(
 		     * if it is the first "element" that has the failure.
 		     */
 
-		    while (isspace(UCHAR(*p))) {		/* INTL: ? */
+		    while (TclIsSpaceProc(*p)) {
 			p++;
 		    }
 		    TclNewStringObj(tmpStr, string1, p-string1);
@@ -1619,17 +1721,19 @@ StringIsCmd(
 	chcomp = Tcl_UniCharIsWordChar;
 	break;
     case STR_IS_XDIGIT:
-	for (; string1 < end; string1++, failat++) {
-	    /* INTL: We assume unicode is bad for this class. */
-	    if ((*((unsigned char *)string1) >= 0xC0) ||
-		    !isxdigit(*(unsigned char *)string1)) {
-		result = 0;
-		break;
-	    }
-	}
+	chcomp = UniCharIsHexDigit;
 	break;
     }
+
     if (chcomp != NULL) {
+	string1 = TclGetStringFromObj(objPtr, &length1);
+	if (length1 == 0) {
+	    if (strict) {
+		result = 0;
+	    }
+	    goto str_is_done;
+	}
+	end = string1 + length1;
 	for (; string1 < end; string1 += length2, failat++) {
 	    length2 = TclUtfToUniChar(string1, &ch);
 	    if (!chcomp(ch)) {
@@ -1659,6 +1763,13 @@ UniCharIsAscii(
     int character)
 {
     return (character >= 0) && (character < 0x80);
+}
+
+static int
+UniCharIsHexDigit(
+    int character)
+{
+    return (character >= 0) && (character < 0x80) && isxdigit(character);
 }
 
 /*
@@ -1704,8 +1815,10 @@ StringMapCmd(
 		strncmp(string, "-nocase", (size_t) length2) == 0) {
 	    nocase = 1;
 	} else {
-	    Tcl_AppendResult(interp, "bad option \"", string,
-		    "\": must be -nocase", NULL);
+	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		    "bad option \"%s\": must be -nocase", string));
+	    Tcl_SetErrorCode(interp, "TCL", "LOOKUP", "INDEX", "option",
+		    string, NULL);
 	    return TCL_ERROR;
 	}
     }
@@ -1742,8 +1855,7 @@ StringMapCmd(
 	 * adapt this code...
 	 */
 
-	mapElemv = (Tcl_Obj **)
-		TclStackAlloc(interp, sizeof(Tcl_Obj *) * mapElemc);
+	mapElemv = TclStackAlloc(interp, sizeof(Tcl_Obj *) * mapElemc);
 	Tcl_DictObjFirst(interp, objv[objc-2], &search, mapElemv+0,
 		mapElemv+1, &done);
 	for (i=2 ; i<mapElemc ; i+=2) {
@@ -1769,6 +1881,8 @@ StringMapCmd(
 
 	    Tcl_SetObjResult(interp,
 		    Tcl_NewStringObj("char map list unbalanced", -1));
+	    Tcl_SetErrorCode(interp, "TCL", "OPERATION", "MAP",
+		    "UNBALANCED", NULL);
 	    return TCL_ERROR;
 	}
     }
@@ -1852,12 +1966,10 @@ StringMapCmd(
 	 * case.
 	 */
 
-	mapStrings = (Tcl_UniChar **)
-		TclStackAlloc(interp, mapElemc * 2 * sizeof(Tcl_UniChar *));
-	mapLens = (int *) TclStackAlloc(interp, mapElemc * 2 * sizeof(int));
+	mapStrings = TclStackAlloc(interp, mapElemc*2*sizeof(Tcl_UniChar *));
+	mapLens = TclStackAlloc(interp, mapElemc * 2 * sizeof(int));
 	if (nocase) {
-	    u2lc = (Tcl_UniChar *) TclStackAlloc(interp,
-		    mapElemc * sizeof(Tcl_UniChar));
+	    u2lc = TclStackAlloc(interp, mapElemc * sizeof(Tcl_UniChar));
 	}
 	for (index = 0; index < mapElemc; index++) {
 	    mapStrings[index] = Tcl_GetUnicodeFromObj(mapElemv[index],
@@ -1970,8 +2082,10 @@ StringMatchCmd(
 	    strncmp(string, "-nocase", (size_t) length) == 0) {
 	    nocase = TCL_MATCH_NOCASE;
 	} else {
-	    Tcl_AppendResult(interp, "bad option \"", string,
-		    "\": must be -nocase", NULL);
+	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		    "bad option \"%s\": must be -nocase", string));
+	    Tcl_SetErrorCode(interp, "TCL", "LOOKUP", "INDEX", "option",
+		    string, NULL);
 	    return TCL_ERROR;
 	}
     }
@@ -2100,9 +2214,11 @@ StringReptCmd(
      * We need to keep 2 <= length2 <= INT_MAX.
      */
 
-    if (count > (INT_MAX / length1)) {
+    if (count > INT_MAX/length1) {
 	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
-		"result exceeds max size for a Tcl value (%d bytes)", INT_MAX));
+		"result exceeds max size for a Tcl value (%d bytes)",
+		INT_MAX));
+	Tcl_SetErrorCode(interp, "TCL", "MEMORY", NULL);
 	return TCL_ERROR;
     }
     length2 = length1 * count;
@@ -2123,6 +2239,7 @@ StringReptCmd(
 	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
 		"string size overflow, out of memory allocating %u bytes",
 		length2 + 1));
+	Tcl_SetErrorCode(interp, "TCL", "MEMORY", NULL);
 	return TCL_ERROR;
     }
     for (index = 0; index < count; index++) {
@@ -2421,13 +2538,16 @@ StringEqualCmd(
 	    if (i+1 >= objc-2) {
 		goto str_cmp_args;
 	    }
-	    ++i;
+	    i++;
 	    if (TclGetIntFromObj(interp, objv[i], &reqlength) != TCL_OK) {
 		return TCL_ERROR;
 	    }
 	} else {
-	    Tcl_AppendResult(interp, "bad option \"", string2,
-		    "\": must be -nocase or -length", NULL);
+	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		    "bad option \"%s\": must be -nocase or -length",
+		    string2));
+	    Tcl_SetErrorCode(interp, "TCL", "LOOKUP", "INDEX", "option",
+		    string2, NULL);
 	    return TCL_ERROR;
 	}
     }
@@ -2448,8 +2568,8 @@ StringEqualCmd(
 	return TCL_OK;
     }
 
-    if (!nocase && objv[0]->typePtr == &tclByteArrayType &&
-	    objv[1]->typePtr == &tclByteArrayType) {
+    if (!nocase && TclIsPureByteArray(objv[0]) &&
+	    TclIsPureByteArray(objv[1])) {
 	/*
 	 * Use binary versions of comparisons since that won't cause undue
 	 * type conversions and it is much faster. Only do this if we're
@@ -2568,13 +2688,16 @@ StringCmpCmd(
 	    if (i+1 >= objc-2) {
 		goto str_cmp_args;
 	    }
-	    ++i;
+	    i++;
 	    if (TclGetIntFromObj(interp, objv[i], &reqlength) != TCL_OK) {
 		return TCL_ERROR;
 	    }
 	} else {
-	    Tcl_AppendResult(interp, "bad option \"", string2,
-		    "\": must be -nocase or -length", NULL);
+	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		    "bad option \"%s\": must be -nocase or -length",
+		    string2));
+	    Tcl_SetErrorCode(interp, "TCL", "LOOKUP", "INDEX", "option",
+		    string2, NULL);
 	    return TCL_ERROR;
 	}
     }
@@ -2595,8 +2718,8 @@ StringCmpCmd(
 	return TCL_OK;
     }
 
-    if (!nocase && objv[0]->typePtr == &tclByteArrayType &&
-	    objv[1]->typePtr == &tclByteArrayType) {
+    if (!nocase && TclIsPureByteArray(objv[0]) &&
+	    TclIsPureByteArray(objv[1])) {
 	/*
 	 * Use binary versions of comparisons since that won't cause undue
 	 * type conversions and it is much faster. Only do this if we're
@@ -3012,73 +3135,25 @@ StringTrimCmd(
     int objc,			/* Number of arguments. */
     Tcl_Obj *const objv[])	/* Argument objects. */
 {
-    Tcl_UniChar ch, trim;
-    register const char *p, *end;
-    const char *check, *checkEnd, *string1, *string2;
-    int offset, length1, length2;
+    const char *string1, *string2;
+    int triml, trimr, length1, length2;
 
     if (objc == 3) {
 	string2 = TclGetStringFromObj(objv[2], &length2);
     } else if (objc == 2) {
-	string2 = DEFAULT_TRIM_SET;
-	length2 = strlen(DEFAULT_TRIM_SET);
+	string2 = tclDefaultTrimSet;
+	length2 = strlen(tclDefaultTrimSet);
     } else {
 	Tcl_WrongNumArgs(interp, 1, objv, "string ?chars?");
 	return TCL_ERROR;
     }
     string1 = TclGetStringFromObj(objv[1], &length1);
-    checkEnd = string2 + length2;
 
-    /*
-     * The outer loop iterates over the string. The inner loop iterates over
-     * the trim characters. The loops terminate as soon as a non-trim
-     * character is discovered and string1 is left pointing at the first
-     * non-trim character.
-     */
+    triml = TclTrimLeft(string1, length1, string2, length2);
+    trimr = TclTrimRight(string1 + triml, length1 - triml, string2, length2);
 
-    end = string1 + length1;
-    for (p = string1; p < end; p += offset) {
-	offset = TclUtfToUniChar(p, &ch);
-
-	for (check = string2; ; ) {
-	    if (check >= checkEnd) {
-		p = end;
-		break;
-	    }
-	    check += TclUtfToUniChar(check, &trim);
-	    if (ch == trim) {
-		length1 -= offset;
-		string1 += offset;
-		break;
-	    }
-	}
-    }
-
-    /*
-     * The outer loop iterates over the string. The inner loop iterates over
-     * the trim characters. The loops terminate as soon as a non-trim
-     * character is discovered and length1 marks the last non-trim character.
-     */
-
-    end = string1;
-    for (p = string1 + length1; p > end; ) {
-	p = Tcl_UtfPrev(p, string1);
-	offset = TclUtfToUniChar(p, &ch);
-	check = string2;
-	while (1) {
-	    if (check >= checkEnd) {
-		p = end;
-		break;
-	    }
-	    check += TclUtfToUniChar(check, &trim);
-	    if (ch == trim) {
-		length1 -= offset;
-		break;
-	    }
-	}
-    }
-
-    Tcl_SetObjResult(interp, Tcl_NewStringObj(string1, length1));
+    Tcl_SetObjResult(interp,
+	    Tcl_NewStringObj(string1 + triml, length1 - triml - trimr));
     return TCL_OK;
 }
 
@@ -3108,49 +3183,23 @@ StringTrimLCmd(
     int objc,			/* Number of arguments. */
     Tcl_Obj *const objv[])	/* Argument objects. */
 {
-    Tcl_UniChar ch, trim;
-    register const char *p, *end;
-    const char *check, *checkEnd, *string1, *string2;
-    int offset, length1, length2;
+    const char *string1, *string2;
+    int trim, length1, length2;
 
     if (objc == 3) {
 	string2 = TclGetStringFromObj(objv[2], &length2);
     } else if (objc == 2) {
-	string2 = DEFAULT_TRIM_SET;
-	length2 = strlen(DEFAULT_TRIM_SET);
+	string2 = tclDefaultTrimSet;
+	length2 = strlen(tclDefaultTrimSet);
     } else {
 	Tcl_WrongNumArgs(interp, 1, objv, "string ?chars?");
 	return TCL_ERROR;
     }
     string1 = TclGetStringFromObj(objv[1], &length1);
-    checkEnd = string2 + length2;
 
-    /*
-     * The outer loop iterates over the string. The inner loop iterates over
-     * the trim characters. The loops terminate as soon as a non-trim
-     * character is discovered and string1 is left pointing at the first
-     * non-trim character.
-     */
+    trim = TclTrimLeft(string1, length1, string2, length2);
 
-    end = string1 + length1;
-    for (p = string1; p < end; p += offset) {
-	offset = TclUtfToUniChar(p, &ch);
-
-	for (check = string2; ; ) {
-	    if (check >= checkEnd) {
-		p = end;
-		break;
-	    }
-	    check += TclUtfToUniChar(check, &trim);
-	    if (ch == trim) {
-		length1 -= offset;
-		string1 += offset;
-		break;
-	    }
-	}
-    }
-
-    Tcl_SetObjResult(interp, Tcl_NewStringObj(string1, length1));
+    Tcl_SetObjResult(interp, Tcl_NewStringObj(string1+trim, length1-trim));
     return TCL_OK;
 }
 
@@ -3180,48 +3229,23 @@ StringTrimRCmd(
     int objc,			/* Number of arguments. */
     Tcl_Obj *const objv[])	/* Argument objects. */
 {
-    Tcl_UniChar ch, trim;
-    register const char *p, *end;
-    const char *check, *checkEnd, *string1, *string2;
-    int offset, length1, length2;
+    const char *string1, *string2;
+    int trim, length1, length2;
 
     if (objc == 3) {
 	string2 = TclGetStringFromObj(objv[2], &length2);
     } else if (objc == 2) {
-	string2 = DEFAULT_TRIM_SET;
-	length2 = strlen(DEFAULT_TRIM_SET);
+	string2 = tclDefaultTrimSet;
+	length2 = strlen(tclDefaultTrimSet);
     } else {
 	Tcl_WrongNumArgs(interp, 1, objv, "string ?chars?");
 	return TCL_ERROR;
     }
     string1 = TclGetStringFromObj(objv[1], &length1);
-    checkEnd = string2 + length2;
 
-    /*
-     * The outer loop iterates over the string. The inner loop iterates over
-     * the trim characters. The loops terminate as soon as a non-trim
-     * character is discovered and length1 marks the last non-trim character.
-     */
+    trim = TclTrimRight(string1, length1, string2, length2);
 
-    end = string1;
-    for (p = string1 + length1; p > end; ) {
-	p = Tcl_UtfPrev(p, string1);
-	offset = TclUtfToUniChar(p, &ch);
-	check = string2;
-	while (1) {
-	    if (check >= checkEnd) {
-		p = end;
-		break;
-	    }
-	    check += TclUtfToUniChar(check, &trim);
-	    if (ch == trim) {
-		length1 -= offset;
-		break;
-	    }
-	}
-    }
-
-    Tcl_SetObjResult(interp, Tcl_NewStringObj(string1, length1));
+    Tcl_SetObjResult(interp, Tcl_NewStringObj(string1, length1-trim));
     return TCL_OK;
 }
 
@@ -3253,29 +3277,29 @@ TclInitStringCmd(
     Tcl_Interp *interp)		/* Current interpreter. */
 {
     static const EnsembleImplMap stringImplMap[] = {
-	{"bytelength",	StringBytesCmd,	NULL},
-	{"compare",	StringCmpCmd,	TclCompileStringCmpCmd},
-	{"equal",	StringEqualCmd,	TclCompileStringEqualCmd},
-	{"first",	StringFirstCmd,	NULL},
-	{"index",	StringIndexCmd,	TclCompileStringIndexCmd},
-	{"is",		StringIsCmd,	NULL},
-	{"last",	StringLastCmd,	NULL},
-	{"length",	StringLenCmd,	TclCompileStringLenCmd},
-	{"map",		StringMapCmd,	NULL},
-	{"match",	StringMatchCmd,	TclCompileStringMatchCmd},
-	{"range",	StringRangeCmd,	NULL},
-	{"repeat",	StringReptCmd,	NULL},
-	{"replace",	StringRplcCmd,	NULL},
-	{"reverse",	StringRevCmd,	NULL},
-	{"tolower",	StringLowerCmd,	NULL},
-	{"toupper",	StringUpperCmd,	NULL},
-	{"totitle",	StringTitleCmd,	NULL},
-	{"trim",	StringTrimCmd,	NULL},
-	{"trimleft",	StringTrimLCmd,	NULL},
-	{"trimright",	StringTrimRCmd,	NULL},
-	{"wordend",	StringEndCmd,	NULL},
-	{"wordstart",	StringStartCmd,	NULL},
-	{NULL}
+	{"bytelength",	StringBytesCmd,	TclCompileBasic1ArgCmd, NULL, NULL, 0},
+	{"compare",	StringCmpCmd,	TclCompileStringCmpCmd, NULL, NULL, 0},
+	{"equal",	StringEqualCmd,	TclCompileStringEqualCmd, NULL, NULL, 0},
+	{"first",	StringFirstCmd,	TclCompileStringFirstCmd, NULL, NULL, 0},
+	{"index",	StringIndexCmd,	TclCompileStringIndexCmd, NULL, NULL, 0},
+	{"is",		StringIsCmd,	TclCompileStringIsCmd, NULL, NULL, 0},
+	{"last",	StringLastCmd,	TclCompileStringLastCmd, NULL, NULL, 0},
+	{"length",	StringLenCmd,	TclCompileStringLenCmd, NULL, NULL, 0},
+	{"map",		StringMapCmd,	TclCompileStringMapCmd, NULL, NULL, 0},
+	{"match",	StringMatchCmd,	TclCompileStringMatchCmd, NULL, NULL, 0},
+	{"range",	StringRangeCmd,	TclCompileStringRangeCmd, NULL, NULL, 0},
+	{"repeat",	StringReptCmd,	TclCompileBasic2ArgCmd, NULL, NULL, 0},
+	{"replace",	StringRplcCmd,	TclCompileStringReplaceCmd, NULL, NULL, 0},
+	{"reverse",	StringRevCmd,	TclCompileBasic1ArgCmd, NULL, NULL, 0},
+	{"tolower",	StringLowerCmd,	TclCompileStringToLowerCmd, NULL, NULL, 0},
+	{"toupper",	StringUpperCmd,	TclCompileStringToUpperCmd, NULL, NULL, 0},
+	{"totitle",	StringTitleCmd,	TclCompileStringToTitleCmd, NULL, NULL, 0},
+	{"trim",	StringTrimCmd,	TclCompileStringTrimCmd, NULL, NULL, 0},
+	{"trimleft",	StringTrimLCmd,	TclCompileStringTrimLCmd, NULL, NULL, 0},
+	{"trimright",	StringTrimRCmd,	TclCompileStringTrimRCmd, NULL, NULL, 0},
+	{"wordend",	StringEndCmd,	TclCompileBasic2ArgCmd, NULL, NULL, 0},
+	{"wordstart",	StringStartCmd,	TclCompileBasic2ArgCmd, NULL, NULL, 0},
+	{NULL, NULL, NULL, NULL, NULL, 0}
     };
 
     return TclMakeEnsemble(interp, "string", stringImplMap);
@@ -3300,30 +3324,24 @@ TclInitStringCmd(
  */
 
 int
-Tcl_SubstObjCmd(
-    ClientData dummy,		/* Not used. */
-    Tcl_Interp *interp,		/* Current interpreter. */
-    int objc,			/* Number of arguments. */
-    Tcl_Obj *const objv[])	/* Argument objects. */
+TclSubstOptions(
+    Tcl_Interp *interp,
+    int numOpts,
+    Tcl_Obj *const opts[],
+    int *flagPtr)
 {
     static const char *const substOptions[] = {
 	"-nobackslashes", "-nocommands", "-novariables", NULL
     };
-    enum substOptions {
+    enum {
 	SUBST_NOBACKSLASHES, SUBST_NOCOMMANDS, SUBST_NOVARS
     };
-    Tcl_Obj *resultPtr;
-    int flags, i;
+    int i, flags = TCL_SUBST_ALL;
 
-    /*
-     * Parse command-line options.
-     */
-
-    flags = TCL_SUBST_ALL;
-    for (i = 1; i < (objc-1); i++) {
+    for (i = 0; i < numOpts; i++) {
 	int optionIndex;
 
-	if (Tcl_GetIndexFromObj(interp, objv[i], substOptions, "switch", 0,
+	if (Tcl_GetIndexFromObj(interp, opts[i], substOptions, "switch", 0,
 		&optionIndex) != TCL_OK) {
 	    return TCL_ERROR;
 	}
@@ -3341,23 +3359,39 @@ Tcl_SubstObjCmd(
 	    Tcl_Panic("Tcl_SubstObjCmd: bad option index to SubstOptions");
 	}
     }
-    if (i != objc-1) {
+    *flagPtr = flags;
+    return TCL_OK;
+}
+
+int
+Tcl_SubstObjCmd(
+    ClientData dummy,		/* Not used. */
+    Tcl_Interp *interp,		/* Current interpreter. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])	/* Argument objects. */
+{
+    return Tcl_NRCallObjProc(interp, TclNRSubstObjCmd, dummy, objc, objv);
+}
+
+int
+TclNRSubstObjCmd(
+    ClientData dummy,		/* Not used. */
+    Tcl_Interp *interp,		/* Current interpreter. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])	/* Argument objects. */
+{
+    int flags;
+
+    if (objc < 2) {
 	Tcl_WrongNumArgs(interp, 1, objv,
 		"?-nobackslashes? ?-nocommands? ?-novariables? string");
 	return TCL_ERROR;
     }
 
-    /*
-     * Perform the substitution.
-     */
-
-    resultPtr = Tcl_SubstObj(interp, objv[i], flags);
-
-    if (resultPtr == NULL) {
+    if (TclSubstOptions(interp, objc-2, objv+1, &flags) != TCL_OK) {
 	return TCL_ERROR;
     }
-    Tcl_SetObjResult(interp, resultPtr);
-    return TCL_OK;
+    return Tcl_NRSubstObj(interp, objv[objc-1], flags);
 }
 
 /*
@@ -3384,7 +3418,16 @@ Tcl_SwitchObjCmd(
     int objc,			/* Number of arguments. */
     Tcl_Obj *const objv[])	/* Argument objects. */
 {
-    int i,j, index, mode, foundmode, result, splitObjs, numMatchesSaved;
+    return Tcl_NRCallObjProc(interp, TclNRSwitchObjCmd, dummy, objc, objv);
+}
+int
+TclNRSwitchObjCmd(
+    ClientData dummy,		/* Not used. */
+    Tcl_Interp *interp,		/* Current interpreter. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])	/* Argument objects. */
+{
+    int i,j, index, mode, foundmode, splitObjs, numMatchesSaved;
     int noCase, patternLength;
     const char *pattern;
     Tcl_Obj *stringObj, *indexVarObj, *matchVarObj;
@@ -3436,7 +3479,7 @@ Tcl_SwitchObjCmd(
 	    i++;
 	    goto finishedOptions;
 	case OPT_NOCASE:
-	    strCmpFn = strcasecmp;
+	    strCmpFn = TclUtfCasecmp;
 	    noCase = 1;
 	    break;
 
@@ -3450,15 +3493,16 @@ Tcl_SwitchObjCmd(
 		 * Mode already set via -exact, -glob, or -regexp.
 		 */
 
-		Tcl_AppendResult(interp, "bad option \"",
-			TclGetString(objv[i]), "\": ", options[mode],
-			" option already found", NULL);
+		Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+			"bad option \"%s\": %s option already found",
+			TclGetString(objv[i]), options[mode]));
+		Tcl_SetErrorCode(interp, "TCL", "OPERATION", "SWITCH",
+			"DOUBLEOPT", NULL);
 		return TCL_ERROR;
-	    } else {
-		foundmode = 1;
-		mode = index;
-		break;
 	    }
+	    foundmode = 1;
+	    mode = index;
+	    break;
 
 	    /*
 	     * Check for TIP#75 options specifying the variables to write
@@ -3468,8 +3512,11 @@ Tcl_SwitchObjCmd(
 	case OPT_INDEXV:
 	    i++;
 	    if (i >= objc-2) {
-		Tcl_AppendResult(interp, "missing variable name argument to ",
-			"-indexvar", " option", NULL);
+		Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+			"missing variable name argument to %s option",
+			"-indexvar"));
+		Tcl_SetErrorCode(interp, "TCL", "OPERATION", "SWITCH",
+			"NOVAR", NULL);
 		return TCL_ERROR;
 	    }
 	    indexVarObj = objv[i];
@@ -3478,8 +3525,11 @@ Tcl_SwitchObjCmd(
 	case OPT_MATCHV:
 	    i++;
 	    if (i >= objc-2) {
-		Tcl_AppendResult(interp, "missing variable name argument to ",
-			"-matchvar", " option", NULL);
+		Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+			"missing variable name argument to %s option",
+			"-matchvar"));
+		Tcl_SetErrorCode(interp, "TCL", "OPERATION", "SWITCH",
+			"NOVAR", NULL);
 		return TCL_ERROR;
 	    }
 	    matchVarObj = objv[i];
@@ -3495,13 +3545,17 @@ Tcl_SwitchObjCmd(
 	return TCL_ERROR;
     }
     if (indexVarObj != NULL && mode != OPT_REGEXP) {
-	Tcl_AppendResult(interp,
-		"-indexvar option requires -regexp option", NULL);
+	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		"%s option requires -regexp option", "-indexvar"));
+	Tcl_SetErrorCode(interp, "TCL", "OPERATION", "SWITCH",
+		"MODERESTRICTION", NULL);
 	return TCL_ERROR;
     }
     if (matchVarObj != NULL && mode != OPT_REGEXP) {
-	Tcl_AppendResult(interp,
-		"-matchvar option requires -regexp option", NULL);
+	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		"%s option requires -regexp option", "-matchvar"));
+	Tcl_SetErrorCode(interp, "TCL", "OPERATION", "SWITCH",
+		"MODERESTRICTION", NULL);
 	return TCL_ERROR;
     }
 
@@ -3522,8 +3576,8 @@ Tcl_SwitchObjCmd(
     splitObjs = 0;
     if (objc == 1) {
 	Tcl_Obj **listv;
-	blist = objv[0];
 
+	blist = objv[0];
 	if (TclListObjGetElements(interp, objv[0], &objc, &listv) != TCL_OK){
 	    return TCL_ERROR;
 	}
@@ -3548,7 +3602,10 @@ Tcl_SwitchObjCmd(
 
     if (objc % 2) {
 	Tcl_ResetResult(interp);
-	Tcl_AppendResult(interp, "extra switch pattern with no body", NULL);
+	Tcl_SetObjResult(interp, Tcl_NewStringObj(
+		"extra switch pattern with no body", -1));
+	Tcl_SetErrorCode(interp, "TCL", "OPERATION", "SWITCH", "BADARM",
+		NULL);
 
 	/*
 	 * Check if this can be due to a badly placed comment in the switch
@@ -3561,10 +3618,12 @@ Tcl_SwitchObjCmd(
 	if (splitObjs) {
 	    for (i=0 ; i<objc ; i+=2) {
 		if (TclGetString(objv[i])[0] == '#') {
-		    Tcl_AppendResult(interp, ", this may be due to a "
-			    "comment incorrectly placed outside of a "
-			    "switch body - see the \"switch\" "
-			    "documentation", NULL);
+		    Tcl_AppendToObj(Tcl_GetObjResult(interp),
+			    ", this may be due to a comment incorrectly"
+			    " placed outside of a switch body - see the"
+			    " \"switch\" documentation", -1);
+		    Tcl_SetErrorCode(interp, "TCL", "OPERATION", "SWITCH",
+			    "BADARM", "COMMENT?", NULL);
 		    break;
 		}
 	    }
@@ -3579,9 +3638,11 @@ Tcl_SwitchObjCmd(
      */
 
     if (strcmp(TclGetString(objv[objc-1]), "-") == 0) {
-	Tcl_ResetResult(interp);
-	Tcl_AppendResult(interp, "no body specified for pattern \"",
-		TclGetString(objv[objc-2]), "\"", NULL);
+	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		"no body specified for pattern \"%s\"",
+		TclGetString(objv[objc-2])));
+	Tcl_SetErrorCode(interp, "TCL", "OPERATION", "SWITCH", "BADARM",
+		"FALLTHROUGH", NULL);
 	return TCL_ERROR;
     }
 
@@ -3620,36 +3681,35 @@ Tcl_SwitchObjCmd(
 		}
 	    }
 	    goto matchFound;
-	} else {
-	    switch (mode) {
-	    case OPT_EXACT:
-		if (strCmpFn(TclGetString(stringObj), pattern) == 0) {
-		    goto matchFound;
-		}
-		break;
-	    case OPT_GLOB:
-		if (Tcl_StringCaseMatch(TclGetString(stringObj), pattern,
-			noCase)) {
-		    goto matchFound;
-		}
-		break;
-	    case OPT_REGEXP:
-		regExpr = Tcl_GetRegExpFromObj(interp, objv[i],
-			TCL_REG_ADVANCED | (noCase ? TCL_REG_NOCASE : 0));
-		if (regExpr == NULL) {
-		    return TCL_ERROR;
-		} else {
-		    int matched = Tcl_RegExpExecObj(interp, regExpr,
-			    stringObj, 0, numMatchesSaved, 0);
+	}
 
-		    if (matched < 0) {
-			return TCL_ERROR;
-		    } else if (matched) {
-			goto matchFoundRegexp;
-		    }
-		}
-		break;
+	switch (mode) {
+	case OPT_EXACT:
+	    if (strCmpFn(TclGetString(stringObj), pattern) == 0) {
+		goto matchFound;
 	    }
+	    break;
+	case OPT_GLOB:
+	    if (Tcl_StringCaseMatch(TclGetString(stringObj),pattern,noCase)) {
+		goto matchFound;
+	    }
+	    break;
+	case OPT_REGEXP:
+	    regExpr = Tcl_GetRegExpFromObj(interp, objv[i],
+		    TCL_REG_ADVANCED | (noCase ? TCL_REG_NOCASE : 0));
+	    if (regExpr == NULL) {
+		return TCL_ERROR;
+	    } else {
+		int matched = Tcl_RegExpExecObj(interp, regExpr, stringObj, 0,
+			numMatchesSaved, 0);
+
+		if (matched < 0) {
+		    return TCL_ERROR;
+		} else if (matched) {
+		    goto matchFoundRegexp;
+		}
+	    }
+	    break;
 	}
     }
     return TCL_OK;
@@ -3679,8 +3739,12 @@ Tcl_SwitchObjCmd(
 	    if (indexVarObj != NULL) {
 		Tcl_Obj *rangeObjAry[2];
 
-		rangeObjAry[0] = Tcl_NewLongObj(info.matches[j].start);
-		rangeObjAry[1] = Tcl_NewLongObj(info.matches[j].end);
+		if (info.matches[j].end > 0) {
+		    rangeObjAry[0] = Tcl_NewLongObj(info.matches[j].start);
+		    rangeObjAry[1] = Tcl_NewLongObj(info.matches[j].end-1);
+		} else {
+		    rangeObjAry[0] = rangeObjAry[1] = Tcl_NewIntObj(-1);
+		}
 
 		/*
 		 * Never fails; the object is always clean at this point.
@@ -3741,7 +3805,7 @@ Tcl_SwitchObjCmd(
      */
 
   matchFound:
-    ctxPtr = (CmdFrame *) TclStackAlloc(interp, sizeof(CmdFrame));
+    ctxPtr = TclStackAlloc(interp, sizeof(CmdFrame));
     *ctxPtr = *iPtr->cmdFramePtr;
 
     if (splitObjs) {
@@ -3771,9 +3835,9 @@ Tcl_SwitchObjCmd(
 	if (ctxPtr->type == TCL_LOCATION_SOURCE && ctxPtr->line[bidx] >= 0) {
 	    int bline = ctxPtr->line[bidx];
 
-	    ctxPtr->line = (int *) ckalloc(objc * sizeof(int));
+	    ctxPtr->line = ckalloc(objc * sizeof(int));
 	    ctxPtr->nline = objc;
-	    TclListLines(TclGetString(blist), bline, objc, ctxPtr->line);
+	    TclListLines(blist, bline, objc, ctxPtr->line, objv);
 	} else {
 	    /*
 	     * This is either a dynamic code word, when all elements are
@@ -3785,7 +3849,7 @@ Tcl_SwitchObjCmd(
 
 	    int k;
 
-	    ctxPtr->line = (int *) ckalloc(objc * sizeof(int));
+	    ctxPtr->line = ckalloc(objc * sizeof(int));
 	    ctxPtr->nline = objc;
 	    for (k=0; k < objc; k++) {
 		ctxPtr->line[k] = -1;
@@ -3811,9 +3875,31 @@ Tcl_SwitchObjCmd(
      * TIP #280: Make invoking context available to switch branch.
      */
 
-    result = TclEvalObjEx(interp, objv[j], 0, ctxPtr, j);
+    Tcl_NRAddCallback(interp, SwitchPostProc, INT2PTR(splitObjs), ctxPtr,
+	    INT2PTR(pc), (ClientData) pattern);
+    return TclNREvalObjEx(interp, objv[j], 0, ctxPtr, splitObjs ? j : bidx+j);
+}
+
+static int
+SwitchPostProc(
+    ClientData data[],		/* Data passed from Tcl_NRAddCallback above */
+    Tcl_Interp *interp,		/* Tcl interpreter */
+    int result)			/* Result to return*/
+{
+    /* Unpack the preserved data */
+
+    int splitObjs = PTR2INT(data[0]);
+    CmdFrame *ctxPtr = data[1];
+    int pc = PTR2INT(data[2]);
+    const char *pattern = data[3];
+    int patternLength = strlen(pattern);
+
+    /*
+     * Clean up TIP 280 context information
+     */
+
     if (splitObjs) {
-	ckfree((char *) ctxPtr->line);
+	ckfree(ctxPtr->line);
 	if (pc && (ctxPtr->type == TCL_LOCATION_SOURCE)) {
 	    /*
 	     * Death of SrcInfo reference.
@@ -3880,7 +3966,10 @@ Tcl_ThrowObjCmd(
     if (Tcl_ListObjLength(interp, objv[1], &len) != TCL_OK) {
 	return TCL_ERROR;
     } else if (len < 1) {
-	Tcl_AppendResult(interp, "type must be non-empty list", NULL);
+	Tcl_SetObjResult(interp, Tcl_NewStringObj(
+		"type must be non-empty list", -1));
+	Tcl_SetErrorCode(interp, "TCL", "OPERATION", "THROW", "BADEXCEPTION",
+		NULL);
 	return TCL_ERROR;
     }
 
@@ -4028,14 +4117,11 @@ TclNRTryObjCmd(
 {
     Tcl_Obj *bodyObj, *handlersObj, *finallyObj = NULL;
     int i, bodyShared, haveHandlers, dummy, code;
-    static const char *handlerNames[] = {
+    static const char *const handlerNames[] = {
 	"finally", "on", "trap", NULL
     };
     enum Handlers {
 	TryFinally, TryOn, TryTrap
-    };
-    static const char *exceptionNames[] = {
-	"ok", "error", "return", "break", "continue", NULL
     };
 
     /*
@@ -4065,14 +4151,19 @@ TclNRTryObjCmd(
 	switch ((enum Handlers) type) {
 	case TryFinally:	/* finally script */
 	    if (i < objc-2) {
-		Tcl_AppendResult(interp, "finally clause must be last", NULL);
+		Tcl_SetObjResult(interp, Tcl_NewStringObj(
+			"finally clause must be last", -1));
 		Tcl_DecrRefCount(handlersObj);
+		Tcl_SetErrorCode(interp, "TCL", "OPERATION", "TRY", "FINALLY",
+			"NONTERMINAL", NULL);
 		return TCL_ERROR;
 	    } else if (i == objc-1) {
-		Tcl_AppendResult(interp, "wrong # args to finally clause: ",
-			"must be \"", TclGetString(objv[0]),
-			" ... finally script\"", NULL);
+		Tcl_SetObjResult(interp, Tcl_NewStringObj(
+			"wrong # args to finally clause: must be"
+			" \"... finally script\"", -1));
 		Tcl_DecrRefCount(handlersObj);
+		Tcl_SetErrorCode(interp, "TCL", "OPERATION", "TRY", "FINALLY",
+			"ARGUMENT", NULL);
 		return TCL_ERROR;
 	    }
 	    finallyObj = objv[++i];
@@ -4080,19 +4171,16 @@ TclNRTryObjCmd(
 
 	case TryOn:		/* on code variableList script */
 	    if (i > objc-4) {
-		Tcl_AppendResult(interp, "wrong # args to on clause: ",
-			"must be \"", TclGetString(objv[0]),
-			" ... on code variableList script\"", NULL);
+		Tcl_SetObjResult(interp, Tcl_NewStringObj(
+			"wrong # args to on clause: must be \"... on code"
+			" variableList script\"", -1));
 		Tcl_DecrRefCount(handlersObj);
+		Tcl_SetErrorCode(interp, "TCL", "OPERATION", "TRY", "ON",
+			"ARGUMENT", NULL);
 		return TCL_ERROR;
 	    }
-	    if (Tcl_GetIntFromObj(NULL, objv[i+1], &code) != TCL_OK
-		    && Tcl_GetIndexFromObj(NULL, objv[i+1], exceptionNames,
-			    "code", 0, &code) != TCL_OK) {
-		Tcl_SetObjResult(interp, Tcl_ObjPrintf(
-			"bad code '%s': must be integer, \"ok\", \"error\", "
-			"\"return\", \"break\" or \"continue\"",
-			Tcl_GetString(objv[i+1])));
+	    if (TclGetCompletionCodeFromObj(interp, objv[i+1],
+		    &code) != TCL_OK) {
 		Tcl_DecrRefCount(handlersObj);
 		return TCL_ERROR;
 	    }
@@ -4101,10 +4189,13 @@ TclNRTryObjCmd(
 
 	case TryTrap:		/* trap pattern variableList script */
 	    if (i > objc-4) {
-		Tcl_AppendResult(interp, "wrong # args to trap clause: ",
+		Tcl_SetObjResult(interp, Tcl_NewStringObj(
+			"wrong # args to trap clause: "
 			"must be \"... trap pattern variableList script\"",
-			NULL);
+			-1));
 		Tcl_DecrRefCount(handlersObj);
+		Tcl_SetErrorCode(interp, "TCL", "OPERATION", "TRY", "TRAP",
+			"ARGUMENT", NULL);
 		return TCL_ERROR;
 	    }
 	    code = 1;
@@ -4113,6 +4204,8 @@ TclNRTryObjCmd(
 			"bad prefix '%s': must be a list",
 			Tcl_GetString(objv[i+1])));
 		Tcl_DecrRefCount(handlersObj);
+		Tcl_SetErrorCode(interp, "TCL", "OPERATION", "TRY", "TRAP",
+			"EXNFORMAT", NULL);
 		return TCL_ERROR;
 	    }
 	    info[2] = objv[i+1];
@@ -4140,10 +4233,11 @@ TclNRTryObjCmd(
 	}
     }
     if (bodyShared) {
-	Tcl_AppendResult(interp,
-		"last non-finally clause must not have a body of \"-\"",
-		NULL);
+	Tcl_SetObjResult(interp, Tcl_NewStringObj(
+		"last non-finally clause must not have a body of \"-\"", -1));
 	Tcl_DecrRefCount(handlersObj);
+	Tcl_SetErrorCode(interp, "TCL", "OPERATION", "TRY", "BADFALLTHROUGH",
+		NULL);
 	return TCL_ERROR;
     }
     if (!haveHandlers) {
@@ -4155,8 +4249,8 @@ TclNRTryObjCmd(
      * Execute the body.
      */
 
-    Tcl_NRAddCallback(interp, TryPostBody, handlersObj, finallyObj, objv[0],
-	    NULL);
+    Tcl_NRAddCallback(interp, TryPostBody, handlersObj, finallyObj,
+	    (ClientData)objv, INT2PTR(objc));
     return TclNREvalObjEx(interp, bodyObj, 0,
 	    ((Interp *) interp)->cmdFramePtr, 1);
 }
@@ -4218,31 +4312,45 @@ TryPostBody(
     Tcl_Interp *interp,
     int result)
 {
-    Tcl_Obj *resultObj, *options, *handlersObj, *finallyObj, *cmdObj;
-    int i, dummy, code;
+    Tcl_Obj *resultObj, *options, *handlersObj, *finallyObj, *cmdObj, **objv;
+    int i, dummy, code, objc;
+    int numHandlers = 0;
 
     handlersObj = data[0];
     finallyObj = data[1];
-    cmdObj = data[2];
+    objv = data[2];
+    objc = PTR2INT(data[3]);
+
+    cmdObj = objv[0];
+
+    /*
+     * Check for limits/rewinding, which override normal trapping behaviour.
+     */
+
+    if (((Interp*) interp)->execEnvPtr->rewind || Tcl_LimitExceeded(interp)) {
+	Tcl_AppendObjToErrorInfo(interp, Tcl_ObjPrintf(
+		"\n    (\"%s\" body line %d)", TclGetString(cmdObj),
+		Tcl_GetErrorLine(interp)));
+	if (handlersObj != NULL) {
+	    Tcl_DecrRefCount(handlersObj);
+	}
+	return TCL_ERROR;
+    }
 
     /*
      * Basic processing of the outcome of the script, including adding of
      * errorinfo trace.
      */
 
-    resultObj = Tcl_GetObjResult(interp);
-    Tcl_IncrRefCount(resultObj);
     if (result == TCL_ERROR) {
 	Tcl_AppendObjToErrorInfo(interp, Tcl_ObjPrintf(
 		"\n    (\"%s\" body line %d)", TclGetString(cmdObj),
 		Tcl_GetErrorLine(interp)));
     }
-    if (handlersObj != NULL || finallyObj != NULL) {
-	options = Tcl_GetReturnOptions(interp, result);
-	Tcl_IncrRefCount(options);
-    } else {
-	options = NULL;
-    }
+    resultObj = Tcl_GetObjResult(interp);
+    Tcl_IncrRefCount(resultObj);
+    options = Tcl_GetReturnOptions(interp, result);
+    Tcl_IncrRefCount(options);
     Tcl_ResetResult(interp);
 
     /*
@@ -4250,7 +4358,7 @@ TryPostBody(
      */
 
     if (handlersObj != NULL) {
-	int numHandlers, found = 0;
+	int found = 0;
 	Tcl_Obj **handlers, **info;
 
 	Tcl_ListObjGetElements(NULL, handlersObj, &numHandlers, &handlers);
@@ -4326,8 +4434,10 @@ TryPostBody(
 		Tcl_ListObjIndex(NULL, info[3], 0, &varName);
 		if (Tcl_ObjSetVar2(interp, varName, NULL, resultObj,
 			TCL_LEAVE_ERR_MSG) == NULL) {
+		    Tcl_DecrRefCount(resultObj);
 		    goto handlerFailed;
 		}
+		Tcl_DecrRefCount(resultObj);
 		if (dummy > 1) {
 		    Tcl_ListObjIndex(NULL, info[3], 1, &varName);
 		    if (Tcl_ObjSetVar2(interp, varName, NULL, options,
@@ -4335,6 +4445,12 @@ TryPostBody(
 			goto handlerFailed;
 		    }
 		}
+	    } else {
+		/*
+		 * Dispose of the result to prevent a memleak. [Bug 2910044]
+		 */
+
+		Tcl_DecrRefCount(resultObj);
 	    }
 
 	    /*
@@ -4348,13 +4464,15 @@ TryPostBody(
 	     */
 
 	    handlerBodyObj = info[4];
-	    Tcl_NRAddCallback(interp, TryPostHandler, cmdObj, options,
-		    info[0], finallyObj);
+	    Tcl_NRAddCallback(interp, TryPostHandler, objv, options, info[0],
+		    INT2PTR((finallyObj == NULL) ? 0 : objc - 1));
 	    Tcl_DecrRefCount(handlersObj);
 	    return TclNREvalObjEx(interp, handlerBodyObj, 0,
-		    ((Interp *) interp)->cmdFramePtr, -1);
+		    ((Interp *) interp)->cmdFramePtr, 4*i + 5);
 
 	handlerFailed:
+	    resultObj = Tcl_GetObjResult(interp);
+	    Tcl_IncrRefCount(resultObj);
 	    options = During(interp, result, options, NULL);
 	    break;
 
@@ -4374,10 +4492,10 @@ TryPostBody(
      */
 
     if (finallyObj != NULL) {
-	Tcl_NRAddCallback(interp, TryPostFinal, resultObj, INT2PTR(result),
-		options, cmdObj);
+	Tcl_NRAddCallback(interp, TryPostFinal, resultObj, options, cmdObj,
+		NULL);
 	return TclNREvalObjEx(interp, finallyObj, 0,
-		((Interp *) interp)->cmdFramePtr, -1);
+		((Interp *) interp)->cmdFramePtr, objc - 1);
     }
 
     /*
@@ -4385,14 +4503,10 @@ TryPostBody(
      * any temporary storage.
      */
 
-    if (options != NULL) {
-	result = TclProcessReturn(interp, result, 0, options);
-	Tcl_DecrRefCount(options);
-    }
-    if (resultObj != NULL) {
-	Tcl_SetObjResult(interp, resultObj);
-	Tcl_DecrRefCount(resultObj);
-    }
+    result = Tcl_SetReturnOptions(interp, options);
+    Tcl_DecrRefCount(options);
+    Tcl_SetObjResult(interp, resultObj);
+    Tcl_DecrRefCount(resultObj);
     return result;
 }
 
@@ -4413,13 +4527,30 @@ TryPostHandler(
     Tcl_Interp *interp,
     int result)
 {
-    Tcl_Obj *resultObj, *cmdObj, *options, *handlerKindObj;
+    Tcl_Obj *resultObj, *cmdObj, *options, *handlerKindObj, **objv;
     Tcl_Obj *finallyObj;
+    int finally;
 
-    cmdObj = data[0];
+    objv = data[0];
     options = data[1];
     handlerKindObj = data[2];
-    finallyObj = data[3];
+    finally = PTR2INT(data[3]);
+
+    cmdObj = objv[0];
+    finallyObj = finally ? objv[finally] : 0;
+
+    /*
+     * Check for limits/rewinding, which override normal trapping behaviour.
+     */
+
+    if (((Interp*) interp)->execEnvPtr->rewind || Tcl_LimitExceeded(interp)) {
+	options = During(interp, result, options, Tcl_ObjPrintf(
+		"\n    (\"%s ... %s\" handler line %d)",
+		TclGetString(cmdObj), TclGetString(handlerKindObj),
+		Tcl_GetErrorLine(interp)));
+	Tcl_DecrRefCount(options);
+	return TCL_ERROR;
+    }
 
     /*
      * The handler result completely substitutes for the result of the body.
@@ -4443,10 +4574,14 @@ TryPostHandler(
      */
 
     if (finallyObj != NULL) {
-	Tcl_NRAddCallback(interp, TryPostFinal, resultObj, INT2PTR(result),
-		options, cmdObj);
-	return TclNREvalObjEx(interp, finallyObj, 0,
-		((Interp *) interp)->cmdFramePtr, -1);
+	Interp *iPtr = (Interp *) interp;
+
+	Tcl_NRAddCallback(interp, TryPostFinal, resultObj, options, cmdObj,
+		NULL);
+
+	/* The 'finally' script is always the last argument word. */
+	return TclNREvalObjEx(interp, finallyObj, 0, iPtr->cmdFramePtr,
+		finally);
     }
 
     /*
@@ -4454,7 +4589,7 @@ TryPostHandler(
      * any temporary storage.
      */
 
-    result = TclProcessReturn(interp, result, 0, options);
+    result = Tcl_SetReturnOptions(interp, options);
     Tcl_DecrRefCount(options);
     Tcl_SetObjResult(interp, resultObj);
     Tcl_DecrRefCount(resultObj);
@@ -4476,24 +4611,21 @@ static int
 TryPostFinal(
     ClientData data[],
     Tcl_Interp *interp,
-    int finalResult)
+    int result)
 {
     Tcl_Obj *resultObj, *options, *cmdObj;
-    int result;
 
     resultObj = data[0];
-    result = PTR2INT(data[1]);
-    options = data[2];
-    cmdObj = data[3];
+    options = data[1];
+    cmdObj = data[2];
 
     /*
      * If the result wasn't OK, we need to adjust the result options.
      */
 
-    if (finalResult != TCL_OK) {
+    if (result != TCL_OK) {
 	Tcl_DecrRefCount(resultObj);
 	resultObj = NULL;
-	result = finalResult;
 	if (result == TCL_ERROR) {
 	    options = During(interp, result, options, Tcl_ObjPrintf(
 		    "\n    (\"%s ... finally\" body line %d)",
@@ -4512,7 +4644,7 @@ TryPostFinal(
      * any temporary storage.
      */
 
-    result = TclProcessReturn(interp, result, 0, options);
+    result = Tcl_SetReturnOptions(interp, options);
     Tcl_DecrRefCount(options);
     if (resultObj != NULL) {
 	Tcl_SetObjResult(interp, resultObj);
@@ -4559,6 +4691,8 @@ TclNRWhileObjCmd(
     int objc,			/* Number of arguments. */
     Tcl_Obj *const objv[])	/* Argument objects. */
 {
+    ForIterData *iterPtr;
+
     if (objc != 3) {
 	Tcl_WrongNumArgs(interp, 1, objv, "test command");
 	return TCL_ERROR;
@@ -4568,8 +4702,15 @@ TclNRWhileObjCmd(
      * We reuse [for]'s callback, passing a NULL for the 'next' script.
      */
 
-    TclNRAddCallback(interp, TclNRForIterCallback, objv[1], objv[2],
-	    NULL, "\n    (\"while\" body line %d)");
+    TclSmallAllocEx(interp, sizeof(ForIterData), iterPtr);
+    iterPtr->cond = objv[1];
+    iterPtr->body = objv[2];
+    iterPtr->next = NULL;
+    iterPtr->msg  = "\n    (\"while\" body line %d)";
+    iterPtr->word = 2;
+
+    TclNRAddCallback(interp, TclNRForIterCallback, iterPtr, NULL,
+	    NULL, NULL);
     return TCL_OK;
 }
 
@@ -4591,21 +4732,31 @@ TclNRWhileObjCmd(
 
 void
 TclListLines(
-    const char *listStr,	/* Pointer to string with list structure.
-				 * Assumed to be valid. Assumed to contain n
-				 * elements. */
+    Tcl_Obj *listObj,		/* Pointer to obj holding a string with list
+				 * structure. Assumed to be valid. Assumed to
+				 * contain n elements. */
     int line,			/* Line the list as a whole starts on. */
     int n,			/* #elements in lines */
-    int *lines)			/* Array of line numbers, to fill. */
+    int *lines,			/* Array of line numbers, to fill. */
+    Tcl_Obj *const *elems)      /* The list elems as Tcl_Obj*, in need of
+				 * derived continuation data */
 {
+    const char *listStr = Tcl_GetString(listObj);
+    const char *listHead = listStr;
     int i, length = strlen(listStr);
     const char *element = NULL, *next = NULL;
+    ContLineLoc *clLocPtr = TclContinuationsGet(listObj);
+    int *clNext = (clLocPtr ? &clLocPtr->loc[0] : NULL);
 
     for (i = 0; i < n; i++) {
 	TclFindElement(NULL, listStr, length, &element, &next, NULL, NULL);
 
 	TclAdvanceLines(&line, listStr, element);
 				/* Leading whitespace */
+	TclAdvanceContinuations(&line, &clNext, element - listHead);
+	if (elems && clNext) {
+	    TclContinuationsEnterDerived(elems[i], element-listHead, clNext);
+	}
 	lines[i] = line;
 	length -= (next - listStr);
 	TclAdvanceLines(&line, element, next);

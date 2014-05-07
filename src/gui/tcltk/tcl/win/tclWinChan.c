@@ -8,8 +8,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclWinInt.h"
@@ -97,12 +95,12 @@ static void		FileThreadActionProc(ClientData instanceData,
 static int		FileTruncateProc(ClientData instanceData,
 			    Tcl_WideInt length);
 static DWORD		FileGetType(HANDLE handle);
-
+static int		NativeIsComPort(CONST TCHAR *nativeName);
 /*
  * This structure describes the channel type structure for file based IO.
  */
 
-static Tcl_ChannelType fileChannelType = {
+static const Tcl_ChannelType fileChannelType = {
     "file",			/* Type name. */
     TCL_CHANNEL_VERSION_5,	/* v5 channel */
     FileCloseProc,		/* Close proc. */
@@ -119,25 +117,8 @@ static Tcl_ChannelType fileChannelType = {
     NULL,			/* handler proc. */
     FileWideSeekProc,		/* Wide seek proc. */
     FileThreadActionProc,	/* Thread action proc. */
-    FileTruncateProc,		/* Truncate proc. */
+    FileTruncateProc		/* Truncate proc. */
 };
-
-#ifdef HAVE_NO_SEH
-/*
- * Unlike Borland and Microsoft, we don't register exception handlers by
- * pushing registration records onto the runtime stack. Instead, we register
- * them by creating an EXCEPTION_REGISTRATION within the activation record.
- */
-
-typedef struct EXCEPTION_REGISTRATION {
-    struct EXCEPTION_REGISTRATION *link;
-    EXCEPTION_DISPOSITION (*handler)(
-	    struct _EXCEPTION_RECORD*, void*, struct _CONTEXT*, void*);
-    void *ebp;
-    void *esp;
-    int status;
-} EXCEPTION_REGISTRATION;
-#endif
 
 /*
  *----------------------------------------------------------------------
@@ -276,7 +257,7 @@ FileCheckProc(
 	    infoPtr = infoPtr->nextPtr) {
 	if (infoPtr->watchMask && !(infoPtr->flags & FILE_PENDING)) {
 	    infoPtr->flags |= FILE_PENDING;
-	    evPtr = (FileEvent *) ckalloc(sizeof(FileEvent));
+	    evPtr = ckalloc(sizeof(FileEvent));
 	    evPtr->header.proc = FileEventProc;
 	    evPtr->infoPtr = infoPtr;
 	    Tcl_QueueEvent((Tcl_Event *) evPtr, TCL_QUEUE_TAIL);
@@ -443,7 +424,7 @@ FileCloseProc(
 	    break;
 	}
     }
-    ckfree((char *)fileInfoPtr);
+    ckfree(fileInfoPtr);
     return errorCode;
 }
 
@@ -491,7 +472,7 @@ FileSeekProc(
 
     oldPosHigh = 0;
     oldPos = SetFilePointer(infoPtr->handle, 0, &oldPosHigh, FILE_CURRENT);
-    if (oldPos == INVALID_SET_FILE_POINTER) {
+    if (oldPos == (LONG)INVALID_SET_FILE_POINTER) {
 	DWORD winError = GetLastError();
 
 	if (winError != NO_ERROR) {
@@ -503,7 +484,7 @@ FileSeekProc(
 
     newPosHigh = (offset < 0 ? -1 : 0);
     newPos = SetFilePointer(infoPtr->handle, offset, &newPosHigh, moveMethod);
-    if (newPos == INVALID_SET_FILE_POINTER) {
+    if (newPos == (LONG)INVALID_SET_FILE_POINTER) {
 	DWORD winError = GetLastError();
 
 	if (winError != NO_ERROR) {
@@ -566,7 +547,7 @@ FileWideSeekProc(
     newPosHigh = Tcl_WideAsLong(offset >> 32);
     newPos = SetFilePointer(infoPtr->handle, Tcl_WideAsLong(offset),
 	    &newPosHigh, moveMethod);
-    if (newPos == INVALID_SET_FILE_POINTER) {
+    if (newPos == (LONG)INVALID_SET_FILE_POINTER) {
 	DWORD winError = GetLastError();
 
 	if (winError != NO_ERROR) {
@@ -608,7 +589,7 @@ FileTruncateProc(
 
     oldPosHigh = 0;
     oldPos = SetFilePointer(infoPtr->handle, 0, &oldPosHigh, FILE_CURRENT);
-    if (oldPos == INVALID_SET_FILE_POINTER) {
+    if (oldPos == (LONG)INVALID_SET_FILE_POINTER) {
 	DWORD winError = GetLastError();
 	if (winError != NO_ERROR) {
 	    TclWinConvertError(winError);
@@ -623,7 +604,7 @@ FileTruncateProc(
     newPosHigh = Tcl_WideAsLong(length >> 32);
     newPos = SetFilePointer(infoPtr->handle, Tcl_WideAsLong(length),
 	    &newPosHigh, FILE_BEGIN);
-    if (newPos == INVALID_SET_FILE_POINTER) {
+    if (newPos == (LONG)INVALID_SET_FILE_POINTER) {
 	DWORD winError = GetLastError();
 	if (winError != NO_ERROR) {
 	    TclWinConvertError(winError);
@@ -856,7 +837,7 @@ TclpOpenFileChannel(
     char channelName[16 + TCL_INTEGER_SPACE];
     TclFile readFile = NULL, writeFile = NULL;
 
-    nativeName = (TCHAR *) Tcl_FSGetNativePath(pathPtr);
+    nativeName = Tcl_FSGetNativePath(pathPtr);
     if (nativeName == NULL) {
 	return NULL;
     }
@@ -904,6 +885,33 @@ TclpOpenFileChannel(
     }
 
     /*
+     * [2413550] Avoid double-open of serial ports on Windows
+     * Special handling for Windows serial ports by a "name-hint"
+     * to directly open it with the OVERLAPPED flag set.
+     */
+
+    if( NativeIsComPort(nativeName) ) {
+
+	handle = TclWinSerialOpen(INVALID_HANDLE_VALUE, nativeName, accessMode);
+	if (handle == INVALID_HANDLE_VALUE) {
+	    TclWinConvertError(GetLastError());
+	    if (interp != (Tcl_Interp *) NULL) {
+		Tcl_AppendResult(interp, "couldn't open serial \"",
+			TclGetString(pathPtr), "\": ",
+			Tcl_PosixError(interp), NULL);
+	    }
+	    return NULL;
+	}
+
+	/*
+	* For natively named Windows serial ports we are done.
+	*/
+	channel = TclWinOpenSerialChannel(handle, channelName,
+		channelPermissions);
+
+	return channel;
+    }
+    /*
      * If the file is being created, get the file attributes from the
      * permissions argument, else use the existing file attributes.
      */
@@ -915,7 +923,7 @@ TclpOpenFileChannel(
 	    flags = FILE_ATTRIBUTE_READONLY;
 	}
     } else {
-	flags = tclWinProcs->getFileAttributesProc(nativeName);
+	flags = GetFileAttributes(nativeName);
 	if (flags == 0xFFFFFFFF) {
 	    flags = 0;
 	}
@@ -931,7 +939,7 @@ TclpOpenFileChannel(
      * Now we get to create the file.
      */
 
-    handle = tclWinProcs->createFileProc(nativeName, accessMode, shareMode,
+    handle = CreateFile(nativeName, accessMode, shareMode,
 	    NULL, createMode, flags, (HANDLE) NULL);
 
     if (handle == INVALID_HANDLE_VALUE) {
@@ -942,8 +950,9 @@ TclpOpenFileChannel(
 	}
 	TclWinConvertError(err);
 	if (interp != (Tcl_Interp *) NULL) {
-	    Tcl_AppendResult(interp, "couldn't open \"", TclGetString(pathPtr),
-		    "\": ", Tcl_PosixError(interp), NULL);
+	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		    "couldn't open \"%s\": %s",
+		    TclGetString(pathPtr), Tcl_PosixError(interp)));
 	}
 	return NULL;
     }
@@ -953,17 +962,21 @@ TclpOpenFileChannel(
     switch (FileGetType(handle)) {
     case FILE_TYPE_SERIAL:
 	/*
+	 * Natively named serial ports "com1-9", "\\\\.\\comXX" are 
+	 * already done with the code above.
+	 * Here we handle all other serial port names.
+	 *
 	 * Reopen channel for OVERLAPPED operation. Normally this shouldn't
 	 * fail, because the channel exists.
 	 */
 
-	handle = TclWinSerialReopen(handle, nativeName, accessMode);
+	handle = TclWinSerialOpen(handle, nativeName, accessMode);
 	if (handle == INVALID_HANDLE_VALUE) {
 	    TclWinConvertError(GetLastError());
 	    if (interp != (Tcl_Interp *) NULL) {
-		Tcl_AppendResult(interp, "couldn't reopen serial \"",
-			TclGetString(pathPtr), "\": ",
-			Tcl_PosixError(interp), NULL);
+		Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+			"couldn't reopen serial \"%s\": %s",
+			TclGetString(pathPtr), Tcl_PosixError(interp)));
 	    }
 	    return NULL;
 	}
@@ -997,8 +1010,11 @@ TclpOpenFileChannel(
 	 */
 
 	channel = NULL;
-	Tcl_AppendResult(interp, "couldn't open \"", TclGetString(pathPtr),
-		"\": bad file type", NULL);
+	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		"couldn't open \"%s\": bad file type",
+		TclGetString(pathPtr)));
+	Tcl_SetErrorCode(interp, "TCL", "VALUE", "CHANNEL", "BAD_TYPE",
+		NULL);
 	break;
     }
 
@@ -1027,8 +1043,8 @@ Tcl_MakeFileChannel(
     int mode)			/* ORed combination of TCL_READABLE and
 				 * TCL_WRITABLE to indicate file mode. */
 {
-#ifdef HAVE_NO_SEH
-    EXCEPTION_REGISTRATION registration;
+#if defined(HAVE_NO_SEH) && !defined(_WIN64)
+    TCLEXCEPTION_REGISTRATION registration;
 #endif
     char channelName[16 + TCL_INTEGER_SPACE];
     Tcl_Channel channel = NULL;
@@ -1093,12 +1109,7 @@ Tcl_MakeFileChannel(
 	 */
 
 	result = 0;
-#ifndef HAVE_NO_SEH
-	__try {
-	    CloseHandle(dupedHandle);
-	    result = 1;
-	} __except (EXCEPTION_EXECUTE_HANDLER) {}
-#else
+#if defined(HAVE_NO_SEH) && !defined(_WIN64)
 	/*
 	 * Don't have SEH available, do things the hard way. Note that this
 	 * needs to be one block of asm, to avoid stack imbalance; also, it is
@@ -1114,7 +1125,7 @@ Tcl_MakeFileChannel(
 	    "movl       %[dupedHandle], %%ebx"          "\n\t"
 
 	    /*
-	     * Construct an EXCEPTION_REGISTRATION to protect the call to
+	     * Construct an TCLEXCEPTION_REGISTRATION to protect the call to
 	     * CloseHandle.
 	     */
 
@@ -1128,7 +1139,7 @@ Tcl_MakeFileChannel(
 	    "movl       $0,             0x10(%%edx)"    "\n\t" /* status */
 
 	    /*
-	     * Link the EXCEPTION_REGISTRATION on the chain.
+	     * Link the TCLEXCEPTION_REGISTRATION on the chain.
 	     */
 
 	    "movl       %%edx,          %%fs:0"         "\n\t"
@@ -1141,7 +1152,7 @@ Tcl_MakeFileChannel(
 	    "call       _CloseHandle@4"                 "\n\t"
 
 	    /*
-	     * Come here on normal exit. Recover the EXCEPTION_REGISTRATION
+	     * Come here on normal exit. Recover the TCLEXCEPTION_REGISTRATION
 	     * and put a TRUE status return into it.
 	     */
 
@@ -1151,7 +1162,7 @@ Tcl_MakeFileChannel(
 	    "jmp        2f"                             "\n"
 
 	    /*
-	     * Come here on an exception. Recover the EXCEPTION_REGISTRATION
+	     * Come here on an exception. Recover the TCLEXCEPTION_REGISTRATION
 	     */
 
 	    "1:"                                        "\t"
@@ -1160,7 +1171,7 @@ Tcl_MakeFileChannel(
 
 	    /*
 	     * Come here however we exited. Restore context from the
-	     * EXCEPTION_REGISTRATION in case the stack is unbalanced.
+	     * TCLEXCEPTION_REGISTRATION in case the stack is unbalanced.
 	     */
 
 	    "2:"                                        "\t"
@@ -1178,7 +1189,15 @@ Tcl_MakeFileChannel(
 	    "%eax", "%ebx", "%ecx", "%edx", "%esi", "%edi", "memory"
 	    );
 	result = registration.status;
-
+#else
+#ifndef HAVE_NO_SEH
+	__try {
+#endif
+	    CloseHandle(dupedHandle);
+	    result = 1;
+#ifndef HAVE_NO_SEH
+	} __except (EXCEPTION_EXECUTE_HANDLER) {}
+#endif
 #endif
 	if (result == FALSE) {
 	    return NULL;
@@ -1222,7 +1241,7 @@ TclpGetDefaultStdChannel(
     HANDLE handle;
     int mode = -1;
     const char *bufMode = NULL;
-    DWORD handleId = (DWORD)INVALID_HANDLE_VALUE;
+    DWORD handleId = (DWORD) -1;
 				/* Standard handle to retrieve. */
 
     switch (type) {
@@ -1321,7 +1340,7 @@ TclWinOpenFileChannel(
 	}
     }
 
-    infoPtr = (FileInfo *) ckalloc((unsigned) sizeof(FileInfo));
+    infoPtr = ckalloc(sizeof(FileInfo));
 
     /*
      * TIP #218. Removed the code inserting the new structure into the global
@@ -1335,7 +1354,7 @@ TclWinOpenFileChannel(
     infoPtr->flags = appendMode;
     infoPtr->handle = handle;
     infoPtr->dirty = 0;
-    wsprintfA(channelName, "file%lx", (int) infoPtr);
+    sprintf(channelName, "file%" TCL_I_MODIFIER "x", (size_t) infoPtr);
 
     infoPtr->channel = Tcl_CreateChannel(&fileChannelType, channelName,
 	    infoPtr, permissions);
@@ -1489,6 +1508,74 @@ FileGetType(
     }
 
     return type;
+}
+
+ /*
+ *----------------------------------------------------------------------
+ *
+ * NativeIsComPort --
+ *
+ *	Determines if a path refers to a Windows serial port.
+ *	A simple and efficient solution is to use a "name hint" to detect 
+ *      COM ports by their filename instead of resorting to a syscall 
+ *	to detect serialness after the fact.
+ *	The following patterns cover common serial port names:
+ *	    COM[1-9]:?
+ *	    //./COM[0-9]+
+ *	    \\.\COM[0-9]+
+ *
+ * Results:
+ *	1 = serial port, 0 = not.
+ *
+ *----------------------------------------------------------------------
+ */
+
+static int
+NativeIsComPort(
+    const TCHAR *nativePath)	/* Path of file to access, native encoding. */
+{
+    const WCHAR *p = (const WCHAR *) nativePath;
+    int i, len = wcslen(p);
+
+    /*
+     * 1. Look for com[1-9]:?
+     */
+
+    if ( (len >= 4) && (len <= 5) 
+	    && (_wcsnicmp(p, L"com", 3) == 0) ) {
+	/*
+	* The 4th character must be a digit 1..9 optionally followed by a ":"
+	*/
+	
+	if ( (p[3] < L'1') || (p[3] > L'9') ) {
+	    return 0;
+	}
+	if ( (len == 5) && (p[4] != L':') ) {
+	    return 0;
+	}
+	return 1;
+    }
+    
+    /*
+     * 2. Look for //./com[0-9]+ or \\.\com[0-9]+
+     */
+    
+    if ( (len >= 8) && ( 
+	       (_wcsnicmp(p, L"//./com", 7) == 0)
+	    || (_wcsnicmp(p, L"\\\\.\\com", 7) == 0) ) )
+    {
+	/*
+	* Charaters 8..end must be a digits 0..9
+	*/
+    
+	for ( i=7; i<len; i++ ) {
+	    if ( (p[i] < '0') || (p[i] > '9') ) {
+		return 0;
+	    }
+	}
+	return 1;
+    }
+    return 0;
 }
 
 /*

@@ -1,8 +1,8 @@
 #!/bin/wish84.exe
 
-# RCS: @(#) $Id$
+# Copyright (c) 2002-2011 Tim Baker
 
-set VERSION 2.2.9
+set VERSION 2.4.1
 
 package require Tk 8.4
 
@@ -16,6 +16,11 @@ switch -- [tk windowingsystem] {
     classic { set thisPlatform "macintosh" }
     win32 { set thisPlatform "windows" }
     x11 { set thisPlatform "unix" }
+}
+
+proc Platform {args} {
+    if {![llength $args]} { return $::thisPlatform }
+    return [expr {[lsearch -exact $args $::thisPlatform] != -1}]
 }
 
 # Get full pathname to this file
@@ -104,6 +109,8 @@ proc LoadSharedLibrary {} {
     return 1
 }
 
+puts "demo.tcl: Tcl/Tk [info patchlevel] [winfo server .]"
+
 # See if treectrl is already loaded for some reason
 if {[llength [info commands treectrl]]} {
     puts "demo.tcl: using previously-loaded treectrl package v[package provide treectrl]"
@@ -174,30 +181,19 @@ if {$tile} {
     set checkbuttonCmd ::ttk::checkbutton
     set radiobuttonCmd ttk::radiobutton
     set scrollbarCmd ::ttk::scrollbar
+    set scaleCmd ::ttk::scale
 } else {
     set entryCmd ::entry
     set buttonCmd ::button
     set checkbuttonCmd ::checkbutton
     set radiobuttonCmd ::radiobutton
     set scrollbarCmd ::scrollbar
+    set scaleCmd ::scale
 }
 
-option add *TreeCtrl.useTheme 1
+option add *TreeCtrl.Background white
 #option add *TreeCtrl.itemPrefix item
 #option add *TreeCtrl.ColumnPrefix col
-
-# Resizing columns can be done in realtime or by displaying a proxy line
-switch -- $::thisPlatform {
-    macosx -
-    unix {
-	option add *TreeCtrl.columnResizeMode realtime
-    }
-    windows {
-	if {$::tcl_platform(os) eq "Windows NT"} {
-	    option add *TreeCtrl.columnResizeMode realtime
-	}
-    }
-}
 
 if {$tile} {
     set font TkDefaultFont
@@ -207,7 +203,7 @@ if {$tile} {
 	    set font {Geneva 9}
 	}
 	macosx {
-	    set font {{Lucida Grande} 11}
+	    set font {{Lucida Grande} 13}
 	}
 	unix {
 	    set font {Helvetica -12}
@@ -239,12 +235,22 @@ proc SetDemoFontSize {size} {
 }
 proc IncreaseFontSize {} {
     set size [font configure DemoFont -size]
-    SetDemoFontSize [incr size]
+    if {$size < 0} {
+	incr size -1
+    } else {
+	incr size
+    }
+    SetDemoFontSize $size
     return
 }
 proc DecreaseFontSize {} {
     set size [font configure DemoFont -size]
-    SetDemoFontSize [incr size -1]
+    if {$size < 0} {
+	incr size
+    } else {
+	incr size -1
+    }
+    SetDemoFontSize $size
     return
 }
 
@@ -255,6 +261,10 @@ foreach file {
     column-lock
     explorer
     firefox
+    gradients
+    gradients2
+    gradients3
+    headers
     help
     imovie
     layout
@@ -264,6 +274,7 @@ foreach file {
     outlook-newgroup
     random
     span
+    table
     textvariable
     www-options
 } {
@@ -304,18 +315,32 @@ proc MakeMenuBar {} {
 		console show
 	    }
 	}
+    } else {
+#	uplevel #0 source ~/Programming/console.tcl
     }
-    $m2 add command -label "Event Browser" -command ToggleEventsWindow
-    $m2 add command -label "Identify" -command ToggleIdentifyWindow
+    $m2 add command -label "Event Browser" -command EventsWindow::ToggleWindowVisibility
+    $m2 add command -label "Identify" -command IdentifyWindow::ToggleWindowVisibility
     $m2 add command -label "Style Editor" -command ToggleStyleEditorWindow
-    $m2 add command -label "View Source" -command ToggleSourceWindow
-    $m2 add command -label "Magnifier" -command ToggleLoupeWindow
+    $m2 add command -label "View Source" -command SourceWindow::ToggleWindowVisibility
+    $m2 add command -label "Magnifier" -command LoupeWindow::ToggleWindowVisibility
+    $m2 add separator
+    $m2 add checkbutton -label "Native Gradients" -command ToggleNativeGradients \
+	-variable ::NativeGradients
     $m2 add separator
     $m2 add command -label "Increase Font Size" -command IncreaseFontSize
     $m2 add command -label "Decrease Font Size" -command DecreaseFontSize
-    $m2 add separator
-    $m2 add command -label "Quit" -command exit
-    $m add cascade -label "File" -menu $m2
+    switch -- [Platform] {
+	macintosh -
+	macosx {
+	    $m add cascade -label "TkTreeCtrl" -menu $m2
+	}
+	unix -
+	windows {
+	    $m2 add separator
+	    $m2 add command -label "Quit" -command exit
+	    $m add cascade -label "File" -menu $m2
+	}
+    }
 
     if {$::tile} {
 	set m2 [menu $m.mTheme -tearoff no]
@@ -325,13 +350,15 @@ proc MakeMenuBar {} {
 		-variable ::DemoTheme -value $theme
 	}
 	$m2 add separator
-	$m2 add command -label "Inspector" -command ToggleThemeWindow
+	$m2 add command -label "Inspector" -command ThemeWindow::ToggleWindowVisibility
     }
-    
+
     return
 }
 
-proc MakeEventsWindow {} {
+namespace eval EventsWindow {}
+
+proc EventsWindow::Init {} {
     set w [toplevel .events]
     wm withdraw $w
 #    wm transient $w .
@@ -344,7 +371,7 @@ proc MakeEventsWindow {} {
     $m1 add cascade -label "Dynamic" -menu [menu $m1.m2 -tearoff 0]
     $m1 add command -label "Clear Window" -command "$w.f.t item delete all" \
 	-accelerator Ctrl+X
-    $m1 add command -label "Rebuild Menus" -command "RebuildEventsMenus $w.f.t $m"
+    $m1 add command -label "Rebuild Menus" -command "EventsWindow::RebuildMenus $w.f.t $m"
     $m add cascade -label "Events" -menu $m1
 
     bind $w <Control-KeyPress-x> "$w.f.t item delete all"
@@ -378,9 +405,9 @@ proc MakeEventsWindow {} {
 
     $T column configure C0 -itemstyle s1
 
-    RebuildEventsMenus $T $m
+    RebuildMenus $T $m
 
-    wm protocol $w WM_DELETE_WINDOW "ToggleEventsWindow"
+    wm protocol $w WM_DELETE_WINDOW "EventsWindow::ToggleWindowVisibility"
     switch -- $::thisPlatform {
 	macintosh -
 	macosx {
@@ -393,7 +420,9 @@ proc MakeEventsWindow {} {
 
     return
 }
-proc RebuildEventsMenus {T m} {
+
+proc EventsWindow::RebuildMenus {T m} {
+    variable Priv
     foreach event [lsort -dictionary [[DemoList] notify eventnames]] {
 	set details [lsort -dictionary [[DemoList] notify detailnames $event]]
 	foreach detail $details {
@@ -415,35 +444,43 @@ proc RebuildEventsMenus {T m} {
     set menu(static) $m.m1.m1
     set menu(dynamic) $m.m1.m2
     foreach {pattern linkage} $patterns {
-	if {![info exists ::EventTrack($pattern)]} {
-	    set ::EventTrack($pattern) 1
+	if {![info exists Priv(track,$pattern)]} {
+	    set Priv(track,$pattern) 1
 	}
 	$menu($linkage) add checkbutton -label $pattern \
-	    -variable EventTrack($pattern) \
-	    -command [list ToggleEvent $T $pattern]
+	    -variable ::EventsWindow::Priv(track,$pattern) \
+	    -command [list EventsWindow::ToggleEvent $T $pattern]
     }
     foreach linkage {static dynamic} {
 	$menu($linkage) add separator
 	$menu($linkage) add command -label "Toggle All" \
-	    -command [list ToggleEvents $T $patterns2($linkage)]
+	    -command [list EventsWindow::ToggleEvents $T $patterns2($linkage)]
     }
 
-    set ::Events {}
-    set ::EventsId ""
+    set Priv(events) {}
+    set Priv(afterId) ""
     foreach {pattern linkage} $patterns {
 	[DemoList] notify bind $T $pattern {
-	    lappend Events %?
-	    if {$EventsId eq ""} {
-		set EventsId [after idle [list RecordEvents %W]]
-	    }
+	    EventsWindow::EventBinding %W %?
 	}
     }
     return
 }
-proc RecordEvents {T} {
-    set ::EventsId ""
-    set events $::Events
-    set ::Events {}
+
+proc EventsWindow::EventBinding {T charMap} {
+    variable Priv
+    lappend Priv(events) $charMap
+    if {$Priv(afterId) eq ""} {
+	set Priv(afterId) [after idle [list EventsWindow::RecordEvents $T]]
+    }
+    return
+}
+
+proc EventsWindow::RecordEvents {T} {
+    variable Priv
+    set Priv(afterId) ""
+    set events $Priv(events)
+    set Priv(events) {}
     if {![winfo ismapped .events]} return
     if {[$T item numchildren root] > 2000} {
 	set N [expr {[$T item numchildren root] - 2000}]
@@ -464,7 +501,8 @@ proc RecordEvents {T} {
     $T see "last visible"
     return
 }
-proc RecordEvent {T list open} {
+
+proc EventsWindow::RecordEvent {T list open} {
     set I [$T item create -open $open]
     array set map $list
     $T item text $I C0 $map(P)
@@ -479,83 +517,123 @@ proc RecordEvent {T list open} {
     }
     return
 }
-proc ToggleEventsWindow {} {
+
+proc EventsWindow::ToggleWindowVisibility {} {
     set w .events
     if {![winfo exists $w]} {
-	MakeEventsWindow
+	Init
     }
     if {[winfo ismapped $w]} {
 	wm withdraw $w
     } else {
 	wm deiconify $w
+	raise $w
     }
     return
 }
-proc ToggleEvent {T pattern} {
-    [DemoList] notify configure $T $pattern -active $::EventTrack($pattern)
-    return    
-}
-proc ToggleEvents {T patterns} {
-    foreach pattern $patterns {
-	set ::EventTrack($pattern) [expr {!$::EventTrack($pattern)}]
-	ToggleEvent $T $pattern
-    }
-    return    
+
+proc EventsWindow::ToggleEvent {T pattern} {
+    variable Priv
+    [DemoList] notify configure $T $pattern -active $Priv(track,$pattern)
+    return
 }
 
-proc MakeIdentifyWindow {} {
+proc EventsWindow::ToggleEvents {T patterns} {
+    variable Priv
+    foreach pattern $patterns {
+	set Priv(track,$pattern) [expr {!$Priv(track,$pattern)}]
+	ToggleEvent $T $pattern
+    }
+    return
+}
+
+namespace eval IdentifyWindow {}
+
+proc IdentifyWindow::Init {} {
     set w .identify
     toplevel $w
     wm withdraw $w
     wm title $w "TkTreeCtrl Identify"
     set wText $w.text
-    text $wText -state disabled -width 50 -height 2 -font [[DemoList] cget -font]
+    text $wText -state disabled -width 70 -height 3 -font [[DemoList] cget -font]
     $wText tag configure tagBold -font DemoFontBold
     pack $wText -expand yes -fill both
-    wm protocol $w WM_DELETE_WINDOW "ToggleIdentifyWindow"
+    wm protocol $w WM_DELETE_WINDOW "IdentifyWindow::ToggleWindowVisibility"
     return
 }
-proc UpdateIdentifyWindow {T x y} {
+
+proc IdentifyWindow::Update {T x y} {
     set w .identify
     if {![winfo exists $w]} return
+    if {![winfo ismapped $w]} return
     set wText $w.text
     $wText configure -state normal
     $wText delete 1.0 end
-    $wText insert end x= tagBold "$x  " {} y= tagBold $y\n
+    set nearest [$T item id [list nearest $x $y]]
+    $wText insert end "x=" tagBold "$x  " {} "y=" tagBold "$y  " {} "nearest=" tagBold $nearest\n
+    $wText insert end "string: "
     foreach {key val} [$T identify $x $y] {
+	$wText insert end $key tagBold " $val "
+    }
+    $wText insert end "\narray: "
+    $T identify -array id $x $y
+    switch -- $id(where) {
+	"header" {
+	    set keys [list where header column element side]
+	}
+	"item" {
+	    set keys [list where item column element button line]
+	}
+	default {
+	    set keys [array names id]
+	}
+    }
+    foreach key $keys {
+	set val $id($key)
+	if {$val eq ""} {
+	    set val "\"\""
+	}
 	$wText insert end $key tagBold " $val "
     }
     $wText configure -state disabled
     return
 }
-proc ToggleIdentifyWindow {} {
+
+proc IdentifyWindow::ToggleWindowVisibility {} {
     set w .identify
     if {![winfo exists $w]} {
-	MakeIdentifyWindow
+	Init
     }
     if {[winfo ismapped $w]} {
 	wm withdraw $w
     } else {
 	wm deiconify $w
+	raise $w
     }
     return
 }
 
-proc MakeSourceWindow {} {
+namespace eval SourceWindow {}
+
+proc SourceWindow::Init {} {
     set w [toplevel .source]
     wm withdraw $w
 #    wm transient $w .
     set f [frame $w.f -borderwidth 0]
-    switch -- $::thisPlatform {
-	macintosh -
-	macosx {
-	    set font {Geneva 9}
-	}
-	unix {
-	    set font {Courier -12}
-	}
-	default {
-	    set font {Courier 9}
+    if {[lsearch -exact [font names] TkFixedFont] != -1} {
+	set font TkFixedFont
+    } else {
+	switch -- $::thisPlatform {
+	    macintosh -
+	    macosx {
+		set font {Geneva 9}
+	    }
+	    unix {
+		set font {Courier -12}
+	    }
+	    default {
+		set font {Courier 9}
+	    }
 	}
     }
     text $f.t -font $font -tabs [font measure $font 12345678] -wrap none \
@@ -569,11 +647,11 @@ proc MakeSourceWindow {} {
     grid configure $f.sh -row 1 -column 0 -sticky we
     grid configure $f.sv -row 0 -column 1 -sticky ns
 
-    wm protocol $w WM_DELETE_WINDOW "ToggleSourceWindow"
+    wm protocol $w WM_DELETE_WINDOW "SourceWindow::ToggleWindowVisibility"
     switch -- $::thisPlatform {
 	macintosh -
 	macosx {
-	    wm geometry $w -40+40
+	    wm geometry $w +0+30
 	}
 	default {
 	    wm geometry $w -0+0
@@ -582,7 +660,8 @@ proc MakeSourceWindow {} {
 
     return
 }
-proc ShowSource {file} {
+
+proc SourceWindow::ShowSource {file} {
     wm title .source "TkTreeCtrl Source: $file"
     set path [Path $file]
     set t .source.f.t
@@ -593,12 +672,14 @@ proc ShowSource {file} {
     close $chan
     return
 }
-proc ToggleSourceWindow {} {
+
+proc SourceWindow::ToggleWindowVisibility {} {
     set w .source
     if {[winfo ismapped $w]} {
 	wm withdraw $w
     } else {
 	wm deiconify $w
+	raise $w
     }
     return
 }
@@ -613,12 +694,14 @@ proc ToggleStyleEditorWindow {} {
 	wm withdraw $w
     } else {
 	wm deiconify $w
+	raise $w
 	StyleEditor::SetListOfStyles
     }
     return
 }
 
-proc MakeThemeWindow {} {
+namespace eval ThemeWindow {}
+proc ThemeWindow::Init {} {
     set w [toplevel .theme]
     wm withdraw $w
 #    wm transient $w .
@@ -627,7 +710,7 @@ proc MakeThemeWindow {} {
     set m [menu $w.menubar]
     $w configure -menu $m
     set m1 [menu $m.m1 -tearoff 0]
-    $m1 add command -label "Set List" -command SetThemeWindow
+    $m1 add command -label "Set List" -command ThemeWindow::SetList
     $m add cascade -label "Theme" -menu $m1
 
     TreePlusScrollbarsInAFrame $w.f 1 1
@@ -649,25 +732,28 @@ proc MakeThemeWindow {} {
 
     $T column configure C0 -itemstyle s1
 
-    SetThemeWindow
+    SetList
 
-    wm protocol $w WM_DELETE_WINDOW "ToggleThemeWindow"
+    wm protocol $w WM_DELETE_WINDOW "ThemeWindow::ToggleWindowVisibility"
 
     return
 }
-proc ToggleThemeWindow {} {
+
+proc ThemeWindow::ToggleWindowVisibility {} {
     set w .theme
     if {![winfo exists $w]} {
-	MakeThemeWindow
+	Init
     }
     if {[winfo ismapped $w]} {
 	wm withdraw $w
     } else {
 	wm deiconify $w
+	raise $w
     }
     return
 }
-proc SetThemeWindow {} {
+
+proc ThemeWindow::SetList {} {
     set w .theme
     set T $w.f.t
 
@@ -719,15 +805,25 @@ proc SetThemeWindow {} {
     return
 }
 
-MakeSourceWindow
+set ::NativeGradients 1
+proc ToggleNativeGradients {} {
+    [DemoList] gradient native $::NativeGradients
+    dbwin "native gradients is now $::NativeGradients"
+    return
+}
+
+SourceWindow::Init
 MakeMenuBar
 
 # http://wiki.tcl.tk/950
 proc sbset {sb first last} {
-    if {$first <= 0 && $last >= 1} {
-	grid remove $sb
-    } else {
-	grid $sb
+    # Get infinite loop on X11
+    if {$::thisPlatform ne "unix"} {
+	if {$first <= 0 && $last >= 1} {
+	    grid remove $sb
+	} else {
+	    grid $sb
+	}
     }
     $sb set $first $last
     return
@@ -740,7 +836,10 @@ proc TreePlusScrollbarsInAFrame {f h v} {
 	frame $f -borderwidth 1 -relief sunken
     }
     treectrl $f.t -highlightthickness 0 -borderwidth 0
-    $f.t configure -xscrollincrement 20
+    if {[Platform unix]} {
+	$f.t configure -headerfont [$f.t cget -font]
+    }
+    $f.t configure -xscrollincrement 20 -xscrollsmoothing 1
 #    $f.t configure -itemprefix item# -columnprefix column#
     $f.t debug configure -enable no -display yes -erasecolor pink \
 	-drawcolor orange -displaydelay 30 -textlayout 0 -data 0 -span 0
@@ -786,15 +885,39 @@ proc TreePlusScrollbarsInAFrame {f h v} {
 
     MakeListPopup $f.t
     MakeHeaderPopup $f.t
-    bind $f.t <ButtonPress-3> {
-	ShowPopup %W %x %y %X %Y
-    }
-    if {[tk windowingsystem] eq "aqua"} {
-	bind $f.t <Control-ButtonPress-1> {
-	    ShowPopup %W %x %y %X %Y
+
+    switch -- $::thisPlatform {
+	macintosh -
+	macosx {
+	    bind $f.t <Control-ButtonPress-1> {
+		ShowPopup %W %x %y %X %Y
+	    }
+	    bind $f.t <ButtonPress-2> {
+		ShowPopup %W %x %y %X %Y
+	    }
+	}
+	unix -
+	windows {
+	    bind $f.t <ButtonPress-3> {
+		ShowPopup %W %x %y %X %Y
+	    }
 	}
     }
+
     return
+}
+
+proc ShouldShowLines {T} {
+    if {![$T cget -usetheme]} {
+	return 1
+    }
+    switch -- [$T theme platform] {
+	aqua -
+	gtk {
+	    return 0
+	}
+    }
+    return 1
 }
 
 proc MakeMainWindow {} {
@@ -804,17 +927,15 @@ proc MakeMainWindow {} {
     switch -- $::thisPlatform {
 	macintosh -
 	macosx {
-	    wm geometry . +40+40
-	    set ::ShowLines 0
+	    wm geometry . +6+30
 	}
 	default {
 	    wm geometry . +0+0
-	    set ::ShowLines 1
 	}
     }
 
-    panedwindow .pw2 -orient horizontal -borderwidth 0
-    panedwindow .pw1 -orient vertical -borderwidth 0
+    panedwindow .pw2 -orient horizontal -borderwidth 0 -sashwidth 6
+    panedwindow .pw1 -orient vertical -borderwidth 0 -sashwidth 6
 
     # Tree + scrollbar: demos
     TreePlusScrollbarsInAFrame .f1 1 1
@@ -824,13 +945,13 @@ proc MakeMainWindow {} {
 
     # Tree + scrollbar: styles + elements in list
     TreePlusScrollbarsInAFrame .f4 1 1
-    .f4.t configure -showlines $::ShowLines -showroot no -height 140
+    .f4.t configure -showlines [ShouldShowLines .f4.t] -showroot no -height 140
     .f4.t column create -text "Elements and Styles" -expand yes -button no -tags C0
     .f4.t configure -treecolumn C0
 
     # Tree + scrollbar: styles + elements in selected item
     TreePlusScrollbarsInAFrame .f3 1 1
-    .f3.t configure -showlines $::ShowLines -showroot no
+    .f3.t configure -showlines [ShouldShowLines .f3.t] -showroot no
     .f3.t column create -text "Styles in Item" -expand yes -button no -tags C0
     .f3.t configure -treecolumn C0
 
@@ -861,7 +982,7 @@ proc MakeMainWindow {} {
 	    set x %x
 	    set y %y
 	}
-	UpdateIdentifyWindow [DemoList] $x $y
+	IdentifyWindow::Update [DemoList] $x $y
     }
     AddBindTag [DemoList] TagIdentify
 
@@ -869,6 +990,11 @@ proc MakeMainWindow {} {
     .pw2 add .f2 -width 450
 
     pack .pw2 -expand yes -fill both
+
+    bind [DemoList] <g> {
+	set NativeGradients [expr {!$NativeGradients}]
+	ToggleNativeGradients
+    }
 
     ###
     # A treectrl widget can generate the following built-in events:
@@ -887,9 +1013,11 @@ proc MakeMainWindow {} {
     # are generated by the library scripts.
 
     [DemoList] notify install <Header-invoke>
+    [DemoList] notify install <Header-state>
 
     [DemoList] notify install <ColumnDrag-begin>
     [DemoList] notify install <ColumnDrag-end>
+    [DemoList] notify install <ColumnDrag-indicator>
     [DemoList] notify install <ColumnDrag-receive>
 
     [DemoList] notify install <Drag-begin>
@@ -901,6 +1029,8 @@ proc MakeMainWindow {} {
     [DemoList] notify install <Edit-accept>
     ###
 
+    # This event is generated when a column's visibility is changed by
+    # the context menu.
     [DemoList] notify install <DemoColumnVisibility>
 
     return
@@ -908,6 +1038,9 @@ proc MakeMainWindow {} {
 
 proc DemoList {} {
     return .f2.f1.t
+}
+proc demolist args { # console-friendly version
+    uplevel .f2.f1.t $args
 }
 
 proc MakeListPopup {T} {
@@ -922,8 +1055,31 @@ proc MakeListPopup {T} {
     set m2 [menu $m.mBgImg -tearoff no]
     $m2 add radiobutton -label none -variable Popup(bgimg) -value none \
         -command {$Popup(T) configure -backgroundimage ""}
+    $m2 add radiobutton -label feather -variable Popup(bgimg) -value feather \
+        -command {$Popup(T) configure -bgimage $Popup(bgimg) -bgimageopaque no}
     $m2 add radiobutton -label sky -variable Popup(bgimg) -value sky \
-        -command {$Popup(T) configure -backgroundimage $Popup(bgimg)}
+        -command {$Popup(T) configure -bgimage $Popup(bgimg) -bgimageopaque yes}
+    $m2 add separator
+    set m3 [menu $m2.mBgImgAnchor -tearoff no]
+    foreach anchor {nw n ne w center e sw s se} {
+	$m3 add radiobutton -label $anchor -variable Popup(bgimganchor) \
+	    -value $anchor \
+	    -command {$Popup(T) configure -bgimageanchor $Popup(bgimganchor)}
+    }
+    $m2 add cascade -label "Anchor" -menu $m3
+    $m2 add separator
+    $m2 add checkbutton -label "Opaque" -variable Popup(bgimgopaque) \
+	-command {$Popup(T) configure -bgimageopaque $Popup(bgimgopaque)}
+    $m2 add separator
+    $m2 add checkbutton -label "Scroll X" -variable Popup(bgimgscrollx) \
+	-onvalue x -offvalue "" -command {$Popup(T) configure -bgimagescroll $Popup(bgimgscrollx)$Popup(bgimgscrolly)}
+    $m2 add checkbutton -label "Scroll Y" -variable Popup(bgimgscrolly) \
+	-onvalue y -offvalue "" -command {$Popup(T) configure -bgimagescroll $Popup(bgimgscrollx)$Popup(bgimgscrolly)}
+    $m2 add separator
+    $m2 add checkbutton -label "Tile X" -variable Popup(bgimgtilex) \
+	-onvalue x -offvalue "" -command {$Popup(T) configure -bgimagetile $Popup(bgimgtilex)$Popup(bgimgtiley)}
+    $m2 add checkbutton -label "Tile Y" -variable Popup(bgimgtiley) \
+	-onvalue y -offvalue "" -command {$Popup(T) configure -bgimagetile $Popup(bgimgtilex)$Popup(bgimgtiley)}
     $m add cascade -label "Background Image" -menu $m2
 
     set m2 [menu $m.mBgMode -tearoff no]
@@ -933,8 +1089,14 @@ proc MakeListPopup {T} {
     }
     $m add cascade -label "Background Mode" -menu $m2
 
-    set m2 [menu $m.mVisible -tearoff no]
-    $m add cascade -label Columns -menu $m2
+    $m add checkbutton -label "Button Tracking" -variable Popup(buttontracking) \
+	-command {$Popup(T) configure -buttontracking $Popup(buttontracking)}
+
+    set m2 [menu $m.mColumns -tearoff no]
+    $m add cascade -label "Columns" -menu $m2
+
+    set m2 [menu $m.mHeaders -tearoff no]
+    $m add cascade -label "Headers" -menu $m2
 
     set m2 [menu $m.mColumnResizeMode -tearoff no]
     $m2 add radiobutton -label proxy -variable Popup(columnresizemode) -value proxy \
@@ -963,7 +1125,7 @@ proc MakeListPopup {T} {
     $m2 add checkbutton -label Enable -variable Popup(debug,enable) \
 	-command {$Popup(T) debug configure -enable $Popup(debug,enable)}
     $m add cascade -label Debug -menu $m2
-
+if 0 {
     set m2 [menu $m.mBuffer -tearoff no]
     $m2 add radiobutton -label "none" -variable Popup(doublebuffer) -value none \
 	-command {$Popup(T) configure -doublebuffer $Popup(doublebuffer)}
@@ -972,7 +1134,7 @@ proc MakeListPopup {T} {
     $m2 add radiobutton -label "window" -variable Popup(doublebuffer) -value window \
 	-command {$Popup(T) configure -doublebuffer $Popup(doublebuffer)}
     $m add cascade -label Buffering -menu $m2
-
+}
     set m2 [menu $m.mItemWrap -tearoff no]
     $m add cascade -label "Item Wrap" -menu $m2
 
@@ -989,6 +1151,13 @@ proc MakeListPopup {T} {
     $m2 add radiobutton -label "Vertical" -variable Popup(orient) -value vertical \
 	-command {$Popup(T) configure -orient $Popup(orient)}
     $m add cascade -label Orient -menu $m2
+
+    set m2 [menu $m.mSmoothing -tearoff no]
+    $m2 add checkbutton -label X -variable Popup(xscrollsmoothing) \
+        -command {$Popup(T) configure -xscrollsmoothing $Popup(xscrollsmoothing)}
+    $m2 add checkbutton -label Y -variable Popup(yscrollsmoothing) \
+        -command {$Popup(T) configure -yscrollsmoothing $Popup(yscrollsmoothing)}
+    $m add cascade -label "Scroll Smoothing" -menu $m2
 
     set m2 [menu $m.mSelectMode -tearoff no]
     foreach mode [list browse extended multiple single] {
@@ -1024,68 +1193,136 @@ proc MakeListPopup {T} {
 }
 
 proc MakeHeaderPopup {T} {
-    set m [menu $T.mHeader -tearoff no]
+    set m [menu $T.mColumn -tearoff no]
 
-    set m2 [menu $m.mArrow -tearoff no]
-    $m add cascade -label Arrow -menu $m2
+    ### Header
+
+    set m1 [menu $m.mHeader -tearoff no]
+    $m add cascade -label "Header" -menu $m1
+
+    $m1 add checkbutton -label "Visible" -variable Popup(header,visible) \
+	-command [list eval $T header configure \$Popup(header) -visible \$Popup(header,visible)]
+
+    set m2 [menu $m1.mDnD -tearoff no]
+    $m1 add cascade -label "Drag and Drop" -menu $m2
+    $m2 add checkbutton -label "Draw" -variable Popup(header,drag,draw) \
+	-command [list eval $T header dragconfigure \$Popup(header) -draw \$Popup(header,drag,draw)]
+    $m2 add checkbutton -label "Enable" -variable Popup(header,drag,enable) \
+	-command [list eval $T header dragconfigure \$Popup(header) -enable \$Popup(header,drag,enable)]
+
+    ### Header column
+
+    set m1 [menu $m.mHeaderColumn -tearoff no]
+    $m add cascade -label "Header Column" -menu $m1
+
+    set m2 [menu $m1.mArrow -tearoff no]
+    $m1 add cascade -label Arrow -menu $m2
     $m2 add radiobutton -label "None" -variable Popup(arrow) -value none \
-	-command {$Popup(T) column configure $Popup(column) -arrow none}
+	-command {$Popup(T) header configure $Popup(header) $Popup(column) -arrow none}
     $m2 add radiobutton -label "Up" -variable Popup(arrow) -value up \
-	-command {$Popup(T) column configure $Popup(column) -arrow up}
+	-command {$Popup(T) header configure $Popup(header) $Popup(column) -arrow up}
     $m2 add radiobutton -label "Down" -variable Popup(arrow) -value down \
-	-command {$Popup(T) column configure $Popup(column) -arrow down}
+	-command {$Popup(T) header configure $Popup(header) $Popup(column) -arrow down}
     $m2 add separator
     $m2 add radiobutton -label "Side Left" -variable Popup(arrow,side) -value left \
-	-command {$Popup(T) column configure $Popup(column) -arrowside left}
+	-command {$Popup(T) header configure $Popup(header) $Popup(column) -arrowside left}
     $m2 add radiobutton -label "Side Right" -variable Popup(arrow,side) -value right \
-	-command {$Popup(T) column configure $Popup(column) -arrowside right}
+	-command {$Popup(T) header configure $Popup(header) $Popup(column) -arrowside right}
     $m2 add separator
     $m2 add radiobutton -label "Gravity Left" -variable Popup(arrow,gravity) -value left \
-	-command {$Popup(T) column configure $Popup(column) -arrowgravity left}
+	-command {$Popup(T) header configure $Popup(header) $Popup(column) -arrowgravity left}
     $m2 add radiobutton -label "Gravity Right" -variable Popup(arrow,gravity) -value right \
-	-command {$Popup(T) column configure $Popup(column) -arrowgravity right}
+	-command {$Popup(T) header configure $Popup(header) $Popup(column) -arrowgravity right}
 
-    $m add checkbutton -label "Button" -variable Popup(button) \
-	-command {$Popup(T) column configure $Popup(column) -button $Popup(button)}
-    $m add checkbutton -label "Expand" -variable Popup(expand) \
-	-command {$Popup(T) column configure $Popup(column) -expand $Popup(expand)}
+    $m1 add checkbutton -label "Button" -variable Popup(button) \
+	-command {$Popup(T) header configure $Popup(header) $Popup(column) -button $Popup(button)}
 
-    set m2 [menu $m.mItemJustify -tearoff no]
-    $m add cascade -label "Item Justify" -menu $m2
-    $m2 add radiobutton -label "Left" -variable Popup(itemjustify) -value left \
-	-command {$Popup(T) column configure $Popup(column) -itemjustify left}
-    $m2 add radiobutton -label "Center" -variable Popup(itemjustify) -value center \
-	-command {$Popup(T) column configure $Popup(column) -itemjustify center}
-    $m2 add radiobutton -label "Right" -variable Popup(itemjustify) -value right \
-	-command {$Popup(T) column configure $Popup(column) -itemjustify right}
-    $m2 add radiobutton -label "Unspecified" -variable Popup(itemjustify) -value none \
-	-command {$Popup(T) column configure $Popup(column) -itemjustify {}}
+    set m2 [menu $m1.mJustify -tearoff no]
+    $m1 add cascade -label "Justify" -menu $m2
+    $m2 add radiobutton -label "Left" -variable Popup(header,justify) -value left \
+	-command {$Popup(T) header configure $Popup(header) $Popup(column) -justify left}
+    $m2 add radiobutton -label "Center" -variable Popup(header,justify) -value center \
+	-command {$Popup(T) header configure $Popup(header) $Popup(column) -justify center}
+    $m2 add radiobutton -label "Right" -variable Popup(header,justify) -value right \
+	-command {$Popup(T) header configure $Popup(header) $Popup(column) -justify right}
 
-    set m2 [menu $m.mJustify -tearoff no]
-    $m add cascade -label Justify -menu $m2
-    $m2 add radiobutton -label "Left" -variable Popup(justify) -value left \
-	-command {$Popup(T) column configure $Popup(column) -justify left}
-    $m2 add radiobutton -label "Center" -variable Popup(justify) -value center \
-	-command {$Popup(T) column configure $Popup(column) -justify center}
-    $m2 add radiobutton -label "Right" -variable Popup(justify) -value right \
-	-command {$Popup(T) column configure $Popup(column) -justify right}
+    set m2 [menu $m1.mSpan -tearoff no]
+    $m1 add cascade -label Span -menu $m2
 
-    set m2 [menu $m.mLock -tearoff no]
-    $m add cascade -label Lock -menu $m2
-    $m2 add radiobutton -label "Left" -variable Popup(lock) -value left \
-	-command {$Popup(T) column configure $Popup(column) -lock left}
-    $m2 add radiobutton -label "None" -variable Popup(lock) -value none \
-	-command {$Popup(T) column configure $Popup(column) -lock none}
-    $m2 add radiobutton -label "Right" -variable Popup(lock) -value right \
-	-command {$Popup(T) column configure $Popup(column) -lock right}
+    ### Tree column
+    $m add command -label "Column"
 
-    $m add checkbutton -label "Resize" -variable Popup(resize) \
-	-command {$Popup(T) column configure $Popup(column) -resize $Popup(resize)}
-    $m add checkbutton -label "Squeeze" -variable Popup(squeeze) \
-	-command {$Popup(T) column configure $Popup(column) -squeeze $Popup(squeeze)}
-    $m add checkbutton -label "Tree Column" -variable Popup(treecolumn) \
-	-command {$Popup(T) configure -treecolumn [expr {$Popup(treecolumn) ? $Popup(column) : ""}]}
     return
+}
+
+proc MakeHeaderSubmenu {T H parentMenu} {
+
+    ### Header
+
+    set m1 [menu $parentMenu.mHeader$H -tearoff no]
+
+    $m1 add checkbutton -label "Visible" -variable Popup(header,visible,$H) \
+	-command [list eval $T header configure $H -visible \$Popup(header,visible,$H)]
+
+    return $m1
+}
+
+proc MakeColumnSubmenu {T C parentMenu {menuName ""}} {
+
+    ### Tree-column
+if 1 {
+    if {$menuName ne ""} {
+	set m1 [menu $parentMenu.mColumn$menuName -tearoff no]
+    } else {
+	set m1 [menu $parentMenu.mColumn$C -tearoff no]
+    }
+} else {
+    set m1 $parentMenu.mColumn$C
+    $m1 delete 0 end
+}
+    $m1 add checkbutton -label "Expand" -variable Popup(column,expand,$C) \
+	-command [list eval $T column configure $C -expand \$Popup(column,expand,$C)]
+
+    set m2 [menu $m1.mItemJustify -tearoff no]
+    $m1 add cascade -label "Item Justify" -menu $m2
+    $m2 add radiobutton -label "Left" -variable Popup(column,itemjustify,$C) -value left \
+	-command [list $T column configure $C -itemjustify left]
+    $m2 add radiobutton -label "Center" -variable Popup(column,itemjustify,$C) -value center \
+	-command [list $T column configure $C -itemjustify center]
+    $m2 add radiobutton -label "Right" -variable Popup(column,itemjustify,$C) -value right \
+	-command [list $T column configure $C -itemjustify right]
+    $m2 add radiobutton -label "Unspecified" -variable Popup(column,itemjustify,$C) -value none \
+	-command [list $T column configure $C -itemjustify {}]
+
+    set m2 [menu $m1.mJustify -tearoff no]
+    $m1 add cascade -label "Justify" -menu $m2
+    $m2 add radiobutton -label "Left" -variable Popup(column,justify,$C) -value left \
+	-command [list $T column configure $C -justify left]
+    $m2 add radiobutton -label "Center" -variable Popup(column,justify,$C) -value center \
+	-command [list $T column configure $C -justify center]
+    $m2 add radiobutton -label "Right" -variable Popup(column,justify,$C) -value right \
+	-command [list $T column configure $C -justify right]
+
+    set m2 [menu $m1.mLock -tearoff no]
+    $m1 add cascade -label Lock -menu $m2
+    $m2 add radiobutton -label "Left" -variable Popup(column,lock,$C) -value left \
+	-command [list $T column configure $C -lock left]
+    $m2 add radiobutton -label "None" -variable Popup(column,lock,$C) -value none \
+	-command [list $T column configure $C -lock none]
+    $m2 add radiobutton -label "Right" -variable Popup(column,lock,$C) -value right \
+	-command [list $T column configure $C -lock right]
+
+    $m1 add checkbutton -label "Resize" -variable Popup(column,resize,$C) \
+	-command [list eval $T column configure $C -resize \$Popup(column,resize,$C)]
+    $m1 add checkbutton -label "Squeeze" -variable Popup(column,squeeze,$C) \
+	-command [list eval $T column configure $C -squeeze \$Popup(column,squeeze,$C)]
+    $m1 add checkbutton -label "Tree Column" -variable Popup(column,treecolumn,$C) \
+	-command [list eval $T configure -treecolumn "\[expr {\$Popup(column,treecolumn,$C) ? $C : {}}\]"]
+    $m1 add checkbutton -label "Visible" -variable Popup(column,visible,$C) \
+	-command [list eval $T column configure $C -visible \$Popup(column,visible,$C) \; \
+	    TreeCtrl::TryEvent $T DemoColumnVisibility {} [list C $C] ]
+
+    return $m1
 }
 
 proc AddBindTag {w tag} {
@@ -1101,28 +1338,58 @@ proc AddBindTag {w tag} {
 
 MakeMainWindow
 
-InitPics sky
+InitPics sky feather
 
 proc ShowPopup {T x y X Y} {
     global Popup
     set Popup(T) $T
-    set id [$T identify $x $y]
-    if {$id ne ""} {
-	if {[lindex $id 0] eq "header"} {
-	    set Popup(column) [lindex $id 1]
-	    set Popup(arrow) [$T column cget $Popup(column) -arrow]
-	    set Popup(arrow,side) [$T column cget $Popup(column) -arrowside]
-	    set Popup(arrow,gravity) [$T column cget $Popup(column) -arrowgravity]
-	    set Popup(button) [$T column cget $Popup(column) -button]
-	    set Popup(expand) [$T column cget $Popup(column) -expand]
-	    set Popup(resize) [$T column cget $Popup(column) -resize]
-	    set Popup(squeeze) [$T column cget $Popup(column) -squeeze]
-	    set Popup(itemjustify) [$T column cget $Popup(column) -itemjustify]
-	    if {$Popup(itemjustify) eq ""} { set Popup(itemjustify) none }
-	    set Popup(justify) [$T column cget $Popup(column) -justify]
-	    set Popup(lock) [$T column cget $Popup(column) -lock]
-	    set Popup(treecolumn) [expr {[$T column id tree] eq $Popup(column)}]
-	    tk_popup $T.mHeader $X $Y
+    $T identify -array id $x $y
+    if {$id(where) ne ""} {
+	if {$id(where) eq "header"} {
+	    set H $id(header)
+	    set C $id(column)
+	    set Popup(header) $H
+	    set Popup(column) $C
+	    set Popup(arrow) [$T header cget $H $C -arrow]
+	    set Popup(arrow,side) [$T header cget $H $C -arrowside]
+	    set Popup(arrow,gravity) [$T header cget $H $C -arrowgravity]
+	    set Popup(button) [$T header cget $H $C -button]
+	    set Popup(header,justify) [$T header cget $H $C -justify]
+	    set Popup(header,visible) [$T header cget $H -visible]
+
+	    set Popup(header,drag,draw) [$T header dragcget $H -draw]
+	    set Popup(header,drag,enable) [$T header dragcget $H -enable]
+
+	    set Popup(column,expand,$C) [$T column cget $C -expand]
+	    set Popup(column,resize,$C) [$T column cget $C -resize]
+	    set Popup(column,squeeze,$C) [$T column cget $C -squeeze]
+	    set Popup(column,itemjustify,$C) [$T column cget $C -itemjustify]
+	    if {$Popup(column,itemjustify,$C) eq ""} { set Popup(column,itemjustify) none }
+	    set Popup(column,justify,$C) [$T column cget $C -justify]
+	    set Popup(column,lock,$C) [$T column cget $C -lock]
+	    set Popup(column,treecolumn,$C) [expr {[$T column id tree] eq $C}]
+	    $T.mColumn delete "Column"
+	    destroy $T.mColumn.mColumnX
+	    set m1 [MakeColumnSubmenu $T $C $T.mColumn "X"]
+	    $T.mColumn add cascade -label "Column" -menu $m1
+
+	    set m $T.mColumn.mHeaderColumn.mSpan
+	    $m delete 0 end
+	    if {[$T column compare $C == tail]} {
+		$m add checkbutton -label 1 -variable Popup(span)
+		set Popup(span) 1
+	    } else {
+		set lock [$T column cget $C -lock]
+		set last [expr {[$T column order "last lock $lock"] - [$T column order $C] + 1}]
+		for {set i 1} {$i <= $last} {incr i} {
+		    set break [expr {!(($i - 1) % 20)}]
+		    $m add radiobutton -label $i -command "$T header span $H $C $i" \
+			-variable Popup(span) -value $i -columnbreak $break
+		}
+		set Popup(span) [$T header span $H $C]
+	    }
+
+	    tk_popup $T.mColumn $X $Y
 	    return
 	}
     }
@@ -1130,34 +1397,39 @@ proc ShowPopup {T x y X Y} {
     set m $menu.mCollapse
     $m delete 0 end
     $m add command -label "All" -command {$Popup(T) item collapse all}
-    if {$id ne ""} {
-	if {[lindex $id 0] eq "item"} {
-	    set item [lindex $id 1]
-	    $m add command -label "Item $item" -command "$T item collapse $item"
-	    $m add command -label "Item $item (recurse)" -command "$T item collapse $item -recurse"
-	}
+    if {$id(where) eq "item"} {
+	set item $id(item)
+	$m add command -label "Item $item" -command "$T item collapse $item"
+	$m add command -label "Item $item (recurse)" -command "$T item collapse $item -recurse"
     }
     set m $menu.mExpand
     $m delete 0 end
     $m add command -label "All" -command {$Popup(T) item expand all}
-    if {$id ne ""} {
-	if {[lindex $id 0] eq "item"} {
-	    set item [lindex $id 1]
-	    $m add command -label "Item $item" -command "$T item expand $item"
-	    $m add command -label "Item $item (recurse)" -command "$T item expand $item -recurse"
-	}
+    if {$id(where) eq "item"} {
+	set item $id(item)
+	$m add command -label "Item $item" -command "$T item expand $item"
+	$m add command -label "Item $item (recurse)" -command "$T item expand $item -recurse"
     }
     foreach option {data display displaydelay enable span textlayout} {
 	set Popup(debug,$option) [$T debug cget -$option]
     }
     set Popup(bgimg) [$T cget -backgroundimage]
+    set Popup(bgimganchor) [$T cget -bgimageanchor]
+    set Popup(bgimgopaque) [$T cget -bgimageopaque]
+    set Popup(bgimgscrollx) [string trim [$T cget -bgimagescroll] y]
+    set Popup(bgimgscrolly) [string trim [$T cget -bgimagescroll] x]
+    set Popup(bgimgtilex) [string trim [$T cget -bgimagetile] y]
+    set Popup(bgimgtiley) [string trim [$T cget -bgimagetile] x]
     if {$Popup(bgimg) eq ""} { set Popup(bgimg) none }
     set Popup(bgmode) [$T cget -backgroundmode]
+    set Popup(buttontracking) [$T cget -buttontracking]
     set Popup(columnresizemode) [$T cget -columnresizemode]
     set Popup(doublebuffer) [$T cget -doublebuffer]
     set Popup(linestyle) [$T cget -linestyle]
     set Popup(orient) [$T cget -orient]
     set Popup(selectmode) [$T cget -selectmode]
+    set Popup(xscrollsmoothing) [$T cget -xscrollsmoothing]
+    set Popup(yscrollsmoothing) [$T cget -yscrollsmoothing]
     set Popup(showbuttons) [$T cget -showbuttons]
     set Popup(showheader) [$T cget -showheader]
     set Popup(showlines) [$T cget -showlines]
@@ -1165,39 +1437,57 @@ proc ShowPopup {T x y X Y} {
     set Popup(showrootbutton) [$T cget -showrootbutton]
     set Popup(showrootchildbuttons) [$T cget -showrootchildbuttons]
     set Popup(showrootlines) [$T cget -showrootlines]
-    set m $menu.mVisible
+
+    set m $menu.mColumns
+    eval destroy [winfo children $m]
     $m delete 0 end
     foreach C [$T column list] {
 	set break [expr {!([$T column order $C] % 20)}]
-	set Popup(visible,$C) [$T column cget $C -visible]
-	$m add checkbutton \
-	    -label "Column $C \"[$T column cget $C -text]\" \[[$T column cget $C -image]\]" \
-	    -variable Popup(visible,$C) \
-	    -command "$T column configure $C -visible \$Popup(visible,$C) ;
-		TreeCtrl::TryEvent $T DemoColumnVisibility {} {C $C}" \
-	    -columnbreak $break
+	set m1 [MakeColumnSubmenu $T $C $m]
+#	set m1 [menu $m.mColumn$C -postcommand [list PostColumnSubmenu $T $C $m]]
+	$m add cascade -menu $m1 -columnbreak $break \
+	    -label "Column $C \"[$T column cget $C -text]\" \[[$T column cget $C -image]\]"
+
+	set Popup(column,expand,$C) [$T column cget $C -expand]
+	set Popup(column,justify,$C) [$T column cget $C -justify]
+	set Popup(column,itemjustify,$C) [$T column cget $C -itemjustify]
+	if {$Popup(column,itemjustify,$C) eq ""} { set Popup(column,itemjustify,$C) none }
+	set Popup(column,lock,$C) [$T column cget $C -lock]
+	set Popup(column,squeeze,$C) [$T column cget $C -squeeze]
+	set Popup(column,visible,$C) [$T column cget $C -visible]
+	set Popup(treecolumn,$C) no
+	if {[$T column id tree] ne ""} {
+	    set Popup(treecolumn,$C) [$T column compare [$T column id tree] == $C]
+	}
+    }
+
+    set m $menu.mHeaders
+    eval destroy [winfo children $m]
+    $m delete 0 end
+    foreach H [$T header id all] {
+	set m1 [MakeHeaderSubmenu $T $H $m]
+	$m add cascade -menu $m1 -label "Header $H"
+	set Popup(header,visible,$H) [$T header cget $H -visible]
     }
 
     set m $menu.mItemWrap
     $m delete 0 end
     $m add command -label "All Off" -command {$Popup(T) item configure all -wrap off}
     $m add command -label "All On" -command {$Popup(T) item configure all -wrap on}
-    if {$id ne ""} {
-	if {[lindex $id 0] eq "item"} {
-	    set item [lindex $id 1]
-	    if {[$T item cget $item -wrap]} {
-		$m add command -label "Item $item Off" -command "$T item configure $item -wrap off"
-	    } else {
-		$m add command -label "Item $item On" -command "$T item configure $item -wrap on"
-	    }
+    if {$id(where) eq "item"} {
+	set item $id(item)
+	if {[$T item cget $item -wrap]} {
+	    $m add command -label "Item $item Off" -command "$T item configure $item -wrap off"
+	} else {
+	    $m add command -label "Item $item On" -command "$T item configure $item -wrap on"
 	}
     }
 
     set m $menu.mSpan
     $m delete 0 end
-    if {[llength $id] >= 4 && [lindex $id 2] eq "column"} {
-	set item [lindex $id 1]
-	set column [lindex $id 3]
+    if {$id(where) eq "item" && $id(column) ne ""} {
+	set item $id(item)
+	set column $id(column)
 	set lock [$T column cget $column -lock]
 	for {set i 1} {$i <= [$T column order "last lock $lock"] - [$T column order $column] + 1} {incr i} {
 	    set break [expr {!(($i - 1) % 20)}]
@@ -1245,9 +1535,11 @@ proc InitDemoList {} {
 	"Random $::RandomN Items, Button Images" DemoRandom2 random.tcl \
 	"Outlook Express (Folders)" DemoOutlookFolders outlook-folders.tcl \
 	"Outlook Express (Newsgroup)" DemoOutlookNewsgroup outlook-newgroup.tcl \
-	"Explorer (Details)" DemoExplorerDetails explorer.tcl \
+	"Explorer (Details, Win98)" DemoExplorerDetails explorer.tcl \
+	"Explorer (Details, Win7)" DemoExplorerDetailsWin7 explorer.tcl \
 	"Explorer (List)" DemoExplorerList explorer.tcl \
-	"Explorer (Large icons)" DemoExplorerLargeIcons explorer.tcl \
+	"Explorer (Large icons, Win98)" DemoExplorerLargeIcons explorer.tcl \
+	"Explorer (Large icons, Win7)" DemoExplorerLargeIconsWin7 explorer.tcl \
 	"Explorer (Small icons)" DemoExplorerSmallIcons explorer.tcl \
 	"Internet Options" DemoInternetOptions www-options.tcl \
 	"Help Contents" DemoHelpContents help.tcl \
@@ -1261,7 +1553,12 @@ proc InitDemoList {} {
 	"Big List" DemoBigList biglist.tcl \
 	"Column Spanning" DemoSpan span.tcl \
 	"My Computer" DemoMyComputer mycomputer.tcl \
-	"Column Locking" DemoColumnLock column-lock.tcl
+	"Column Locking" DemoColumnLock column-lock.tcl \
+	"Gradients" DemoGradients gradients.tcl \
+	"Gradients II" DemoGradients2 gradients2.tcl \
+	"Gradients III" DemoGradients3 gradients3.tcl \
+	"Headers" DemoHeaders headers.tcl \
+	"Table" DemoTable table.tcl \
 	] {
 	set item [$t item create]
 	$t item lastchild root $item
@@ -1276,21 +1573,34 @@ proc InitDemoList {} {
 
 InitDemoList
 
-proc ClicksToSeconds {clicks} {
-    return [format "%.2g" [expr {$clicks / 1000000.0}]]
+proc TimerStart {} {
+    if {[info tclversion] < 8.5} {
+	return [set ::gStartTime [clock clicks -milliseconds]]
+    }
+    return [set ::gStartTime [clock microseconds]]
 }
 
-proc DemoSet {cmd file} {
+proc TimerStop {{startTime ""}} {
+    if {[info tclversion] < 8.5} {
+	set endTime [clock clicks -milliseconds]
+	if {$startTime eq ""} { set startTime $::gStartTime }
+	return [format "%.2g" [expr {($endTime - $startTime) / 1000.0}]]
+    }
+    set endTime [clock microseconds]
+    if {$startTime eq ""} { set startTime $::gStartTime }
+    return [format "%.2g" [expr {($endTime - $startTime) / 1000000.0}]]
+}
+
+proc DemoSet {namespace file} {
     DemoClear
-    set clicks [clock clicks]
-    uplevel #0 $cmd
-    set clicks [expr {[clock clicks] - $clicks}]
-    dbwin "set list in [ClicksToSeconds $clicks] seconds ($clicks clicks)\n"
+    TimerStart
+    uplevel #0 ${namespace}::Init [DemoList]
+    dbwin "set list in [TimerStop] seconds\n"
     [DemoList] xview moveto 0
     [DemoList] yview moveto 0
     update
     DisplayStylesInList
-    ShowSource $file
+    SourceWindow::ShowSource $file
     catch {
 	if {[winfo ismapped .styleEditor]} {
 	    StyleEditor::SetListOfStyles
@@ -1500,8 +1810,11 @@ proc DemoClear {} {
 
     set T [DemoList]
 
-    # Clear the demo list
+    # Delete all the items (except the root item, it never gets deleted).
     $T item delete all
+
+    # Delete all the headers (except the first header, it never gets deleted).
+    $T header delete all
 
     # Clear all bindings on the demo list added by the previous demo.
     # The bindings are removed from the tag $T only. For those
@@ -1511,7 +1824,8 @@ proc DemoClear {} {
     $T notify unbind $T
 
     # Clear all run-time states
-    eval $T state undefine [$T state names]
+    eval $T header state undefine [$T header state names]
+    eval $T item state undefine [$T item state names]
 
     # Clear the styles-in-item list
     .f3.t item delete all
@@ -1527,31 +1841,62 @@ proc DemoClear {} {
 
     # Delete -window windows
     foreach child [winfo children $T] {
-	if {[string equal $child $T.mTree] || [string equal $child $T.mHeader]} continue
+	if {[string equal $child $T.mTree] || [string equal $child $T.mColumn]} continue
 	destroy $child
     }
+
+    # Restore defaults to marquee
+    $T marquee configure -fill {} -outline {} -outlinewidth 1
+
+    # Delete gradients
+    eval $T gradient delete [$T gradient names]
 
     $T item configure root -button no -wrap no
     $T item expand root
 
-    # Restore some happy defaults to the demo list
-    $T configure -orient vertical -wrap "" -xscrollincrement 0 \
-	-yscrollincrement 0 -itemheight 0 -showheader yes \
-	-background white -scrollmargin 0 -xscrolldelay 50 -yscrolldelay 50 \
-	-buttonbitmap "" -buttonimage "" -backgroundmode row \
-	-indent 19 -backgroundimage "" -showrootchildbuttons yes \
-	-showrootlines yes -minitemheight 0 -borderwidth [expr {$::tileFull ? 0 : 6}] \
-	-highlightthickness [expr {$::tileFull ? 0 : 3}] -usetheme yes -cursor {} \
-	-itemwidth 0 -itemwidthequal no -itemwidthmultiple 0 \
-	-font [.f4.t cget -font]
+    # Restore header defaults
+    foreach spec [$T header configure 0] {
+	if {[llength $spec] == 2} continue
+	lassign $spec name x y default current
+	$T header configure all $name $default
+    }
 
-    # Undo "column configure all" in a demo
-    $T column configure tail -background \
-	[lindex [$T column configure tail -background] 3]
+    # Restore some happy defaults to the demo list
+    foreach spec [$T configure] {
+	if {[llength $spec] == 2} continue
+	lassign $spec name x y default current
+	$T configure $name $default
+    }
+    $T configure -background white
+    $T configure -borderwidth [expr {$::tileFull ? 0 : 6}]
+    $T configure -font DemoFont
+    if {[Platform unix]} {
+	$T configure -headerfont DemoFont
+    }
+    $T configure -highlightthickness [expr {$::tileFull ? 0 : 3}]
+    $T configure -relief ridge
+
+    switch -- [$T theme platform] {
+	visualstyles {
+	    $T theme setwindowtheme ""
+	}
+    }
+
+    # Restore defaults to the tail column
+    foreach spec [$T column configure tail] {
+	if {[llength $spec] == 2} continue
+	lassign $spec name x y default current
+	$T column configure tail $name $default
+    }
 
     # Enable drag-and-drop column reordering. This also requires the
     # <ColumnDrag> event be installed.
-    $T column dragconfigure -enable yes
+    $T header dragconfigure -enable yes
+    $T header dragconfigure all -enable yes -draw yes
+
+    # Re-active the column drag-and-drop binding in case the previous demo
+    # deactivated it.
+    $T notify configure DontDelete <ColumnDrag-receive> -active yes
 
     # Restore default bindings to the demo list
     bindtags $T [list $T TreeCtrl [winfo toplevel $T] all DisplayStylesInItemBindTag]
@@ -1572,6 +1917,8 @@ proc DemoPictureCatalog {} {
     $T configure -showroot no -showbuttons no -showlines no \
 	-selectmode multiple -orient horizontal -wrap window \
 	-yscrollincrement 50 -showheader no
+
+    $T column create
 
     $T element create elemTxt text -fill {SystemHighlightText {selected focus}}
     $T element create elemSelTxt rect -fill {SystemHighlight {selected focus}}
@@ -1606,8 +1953,10 @@ proc DemoPictureCatalog2 {} {
 	-selectmode multiple -orient horizontal -wrap window \
 	-yscrollincrement 50 -showheader no
 
+    $T column create
+
     $T element create elemTxt text -fill {SystemHighlightText {selected focus}} \
-	-justify left -wrap word -lines 2
+	-justify left -wrap word -lines 3
     $T element create elemSelTxt rect -fill {SystemHighlight {selected focus}}
     $T element create elemSelImg rect -outline {SystemHighlight {selected focus}} \
 	-outlinewidth 4
@@ -1760,81 +2109,89 @@ proc CursorWindow {} {
 # A little screen magnifier
 if {[llength [info commands loupe]]} {
 
-    set Loupe(zoom) 2
-    set Loupe(x) 0
-    set Loupe(y) 0
-    set Loupe(auto) 1
-    set Loupe(afterId) ""
+    namespace eval LoupeWindow {
+	variable Priv
+	set Priv(zoom) 2
+	set Priv(x) 0
+	set Priv(y) 0
+	set Priv(auto) 1
+	set Priv(afterId) ""
+	set Priv(image) ::LoupeWindow::Image
+	set Priv(delay) 500
+    }
 
-    proc LoupeAfter {} {
-
-	global Loupe
+    proc LoupeWindow::After {} {
+	variable Priv
 	set x [winfo pointerx .]
 	set y [winfo pointery .]
-	if {$Loupe(auto) || ($Loupe(x) != $x) || ($Loupe(y) != $y)} {
-	    set w [image width $Loupe(image)]
-	    set h [image height $Loupe(image)]
-	    loupe $Loupe(image) $x $y $w $h $::Loupe(zoom)
-	    set Loupe(x) $x
-	    set Loupe(y) $y
+	if {$Priv(auto) || ($Priv(x) != $x) || ($Priv(y) != $y)} {
+	    set w [image width $Priv(image)]
+	    set h [image height $Priv(image)]
+	    loupe $Priv(image) $x $y $w $h $Priv(zoom)
+	    set Priv(x) $x
+	    set Priv(y) $y
 	}
-	set Loupe(afterId) [after $Loupe(delay) LoupeAfter]
+	set Priv(afterId) [after $Priv(delay) LoupeWindow::After]
 	return
     }
 
-    proc MakeLoupeWindow {} {
-
-	global Loupe
-
+    proc LoupeWindow::Init {} {
+	variable Priv
 	set w [toplevel .loupe]
 	wm title $w "TreeCtrl Magnifier"
 	wm withdraw $w
-	wm geometry $w -0+0
-	image create photo ImageLoupe -width 280 -height 150
-	pack [label $w.label -image ImageLoupe -borderwidth 1 -relief sunken] \
+	if {[Platform macintosh macosx]} {
+	    wm geometry $w +6+30
+	} else {
+	    wm geometry $w -0+0
+	}
+	image create photo $Priv(image) -width 280 -height 150
+	pack [label $w.label -image $Priv(image) -borderwidth 1 -relief sunken] \
 	    -expand yes -fill both
 
 	set f [frame $w.zoom -borderwidth 0]
-	radiobutton $f.r1 -text "1x" -variable ::Loupe(zoom) -value 1
-	radiobutton $f.r2 -text "2x" -variable ::Loupe(zoom) -value 2
-	radiobutton $f.r4 -text "4x" -variable ::Loupe(zoom) -value 4
-	radiobutton $f.r8 -text "8x" -variable ::Loupe(zoom) -value 8
+	radiobutton $f.r1 -text "1x" -variable ::LoupeWindow::Priv(zoom) -value 1
+	radiobutton $f.r2 -text "2x" -variable ::LoupeWindow::Priv(zoom) -value 2
+	radiobutton $f.r4 -text "4x" -variable ::LoupeWindow::Priv(zoom) -value 4
+	radiobutton $f.r8 -text "8x" -variable ::LoupeWindow::Priv(zoom) -value 8
 	pack $f.r1 $f.r2 $f.r4 $f.r8 -side left
-	pack $f -side bottom -anchor e
+	pack $f -side bottom -anchor center
 
 	# Resize the image with the window
 	bind LoupeWindow <Configure> {
-	    set w [expr {%w - 2}]
-	    set h [expr {%h - 2}]
-	    if {$w != [$Loupe(image) cget -width] ||
-		$h != [$Loupe(image) cget -height]} {
-		$Loupe(image) configure -width $w -height $h
-		loupe $Loupe(image) $Loupe(x) $Loupe(y) $w $h $Loupe(zoom)
-	    }
+	    LoupeWindow::ResizeImage %w %h
 	}
 	bindtags $w.label [concat [bindtags .loupe] LoupeWindow]
 
-	wm protocol $w WM_DELETE_WINDOW "ToggleLoupeWindow"
-
-	set Loupe(image) ImageLoupe
-	set Loupe(delay) 500
+	wm protocol $w WM_DELETE_WINDOW "LoupeWindow::ToggleWindowVisibility"
 	return
     }
 
-    proc ToggleLoupeWindow {} {
+    proc LoupeWindow::ResizeImage {w h} {
+	variable Priv
+	set w [expr {$w - 2}]
+	set h [expr {$h - 2}]
+	if {$w != [$Priv(image) cget -width] ||
+	    $h != [$Priv(image) cget -height]} {
+	    $Priv(image) configure -width $w -height $h
+	    loupe $Priv(image) $Priv(x) $Priv(y) $w $h $Priv(zoom)
+	}
+	return
+    }
 
-	global Loupe
-
+    proc LoupeWindow::ToggleWindowVisibility {} {
+	variable Priv
 	set w .loupe
 	if {![winfo exists $w]} {
-	    MakeLoupeWindow
+	    LoupeWindow::Init
 	}
 	if {[winfo ismapped $w]} {
-	    after cancel $Loupe(afterId)
+	    after cancel $Priv(afterId)
 	    wm withdraw $w
 	} else {
-	    LoupeAfter
+	    After
 	    wm deiconify $w
+	    raise $w
 	}
 	return
     }
@@ -1851,3 +2208,4 @@ proc RandomPerfTest {} {
     puts [time {[DemoList] colu conf 0 -width 160 ; update}]
     return
 }
+

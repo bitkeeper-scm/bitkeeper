@@ -4,8 +4,6 @@
 # can be used by non-unix systems that do not have built-in support
 # for shells.
 #
-# RCS: @(#) $Id$
-#
 # Copyright (c) 1995-1997 Sun Microsystems, Inc.
 # Copyright (c) 1998-2000 Ajuba Solutions.
 # Copyright (c) 2007-2008 Daniel A. Steffen <das@users.sourceforge.net>
@@ -116,6 +114,11 @@ proc ::tk::ConsoleInit {} {
         -accel "$mod++" -command {event generate .console <<Console_FontSizeIncr>>}
     AmpMenuArgs .menubar.edit add command -label [mc "&Decrease Font Size"] \
         -accel "$mod+-" -command {event generate .console <<Console_FontSizeDecr>>}
+
+    if {[tk windowingsystem] eq "aqua"} {
+	.menubar add cascade -label [mc Window] -menu [menu .menubar.window]
+	.menubar add cascade -label [mc Help] -menu [menu .menubar.help]
+    }
 
     . configure -menu .menubar
 
@@ -342,6 +345,39 @@ proc ::tk::ConsolePrompt {{partial normal}} {
     $w see end
 }
 
+# Copy selected text from the console
+proc ::tk::console::Copy {w} {
+    if {![catch {set data [$w get sel.first sel.last]}]} {
+        clipboard clear -displayof $w
+        clipboard append -displayof $w $data
+    }
+}
+# Copies selected text. If the selection is within the current active edit
+# region then it will be cut, if not it is only copied.
+proc ::tk::console::Cut {w} {
+    if {![catch {set data [$w get sel.first sel.last]}]} {
+        clipboard clear -displayof $w
+        clipboard append -displayof $w $data
+        if {[$w compare sel.first >= output]} {
+            $w delete sel.first sel.last
+	}
+    }
+}
+# Paste text from the clipboard
+proc ::tk::console::Paste {w} {
+    catch {
+        set clip [::tk::GetSelection $w CLIPBOARD]
+        set list [split $clip \n\r]
+        tk::ConsoleInsert $w [lindex $list 0]
+        foreach x [lrange $list 1 end] {
+            $w mark set insert {end - 1c}
+            tk::ConsoleInsert $w "\n"
+            tk::ConsoleInvoke
+            tk::ConsoleInsert $w $x
+        }
+    }
+}
+
 # ::tk::ConsoleBind --
 # This procedure first ensures that the default bindings for the Text
 # class have been defined.  Then certain bindings are overridden for
@@ -368,14 +404,14 @@ proc ::tk::ConsoleBind {w} {
 
     # Ignore all Alt, Meta, and Control keypresses unless explicitly bound.
     # Otherwise, if a widget binding for one of these is defined, the
+    # <Keypress> class binding will also fire and insert the character
+    # which is wrong.
 
     bind Console <Alt-KeyPress> {# nothing }
     bind Console <Meta-KeyPress> {# nothing}
     bind Console <Control-KeyPress> {# nothing}
 
     foreach {ev key} {
-	<<Console_Prev>>		<Key-Up>
-	<<Console_Next>>		<Key-Down>
 	<<Console_NextImmediate>>	<Control-Key-n>
 	<<Console_PrevImmediate>>	<Control-Key-p>
 	<<Console_PrevSearch>>		<Control-Key-r>
@@ -461,18 +497,16 @@ proc ::tk::ConsoleBind {w} {
     }
     bind Console <Control-h> [bind Console <BackSpace>]
 
-    bind Console <Home> {
+    bind Console <<LineStart>> {
 	if {[%W compare insert < promptEnd]} {
 	    tk::TextSetCursor %W {insert linestart}
 	} else {
 	    tk::TextSetCursor %W promptEnd
 	}
     }
-    bind Console <Control-a> [bind Console <Home>]
-    bind Console <End> {
+    bind Console <<LineEnd>> {
 	tk::TextSetCursor %W {insert lineend}
     }
-    bind Console <Control-e> [bind Console <End>]
     bind Console <Control-d> {
 	if {[%W compare insert < promptEnd]} {
 	    break
@@ -522,10 +556,10 @@ proc ::tk::ConsoleBind {w} {
 	    %W delete insert {insert wordend}
 	}
     }
-    bind Console <<Console_Prev>> {
+    bind Console <<PrevLine>> {
 	tk::ConsoleHistory prev
     }
-    bind Console <<Console_Next>> {
+    bind Console <<NextLine>> {
 	tk::ConsoleHistory next
     }
     bind Console <Insert> {
@@ -543,32 +577,10 @@ proc ::tk::ConsoleBind {w} {
 	    exit
 	}
     }
-    bind Console <<Cut>> {
-        # Same as the copy event
- 	if {![catch {set data [%W get sel.first sel.last]}]} {
-	    clipboard clear -displayof %W
-	    clipboard append -displayof %W $data
-	}
-    }
-    bind Console <<Copy>> {
- 	if {![catch {set data [%W get sel.first sel.last]}]} {
-	    clipboard clear -displayof %W
-	    clipboard append -displayof %W $data
-	}
-    }
-    bind Console <<Paste>> {
-	catch {
-	    set clip [::tk::GetSelection %W CLIPBOARD]
-	    set list [split $clip \n\r]
-	    tk::ConsoleInsert %W [lindex $list 0]
-	    foreach x [lrange $list 1 end] {
-		%W mark set insert {end - 1c}
-		tk::ConsoleInsert %W "\n"
-		tk::ConsoleInvoke
-		tk::ConsoleInsert %W $x
-	    }
-	}
-    }
+    bind Console <<Cut>> { ::tk::console::Cut %W }
+    bind Console <<Copy>> { ::tk::console::Copy %W }
+    bind Console <<Paste>> { ::tk::console::Paste %W }
+
     bind Console <<Console_FontSizeIncr>> {
         set size [font configure TkConsoleFont -size]
         if {$size < 0} {set sign -1} else {set sign 1}
@@ -617,7 +629,6 @@ proc ::tk::ConsoleBind {w} {
 	if {"%A" ne ""} {
 	    ::tk::console::TagProc %W
 	}
-	break
     }
 }
 
@@ -660,7 +671,7 @@ proc ::tk::ConsoleInsert {w s} {
 
 proc ::tk::ConsoleOutput {dest string} {
     set w .console
-    $w insert output [string map {\0 \u25a1} $string] $dest
+    $w insert output $string $dest
     ::tk::console::ConstrainBuffer $w $::tk::console::maxLines
     $w see insert
 }
@@ -963,8 +974,8 @@ proc ::tk::console::Expand {w {type ""}} {
  
 proc ::tk::console::ExpandPathname str {
     set pwd [EvalAttached pwd]
-    if {[catch {EvalAttached [list cd [file dirname $str]]} err]} {
-	return -code error $err
+    if {[catch {EvalAttached [list cd [file dirname $str]]} err opt]} {
+	return -options $opt $err
     }
     set dir [file tail $str]
     ## Check to see if it was known to be a directory and keep the trailing

@@ -6,8 +6,6 @@
 # Copyright (c) 1994 Sun Microsystems, Inc.
 # Copyright (c) 1998-1999 by Scriptics Corporation.
 # All rights reserved.
-#
-# RCS: @(#) $Id$
 
 proc getsize w {
     regexp {(^[^+-]*)} [wm geometry $w] foo x

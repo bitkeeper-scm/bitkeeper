@@ -6,8 +6,6 @@
 # Copyright (c) 1994-1996 Sun Microsystems, Inc.
 # Copyright (c) 1998-1999 by Scriptics Corporation.
 # All rights reserved.
-#
-# RCS: @(#) $Id$
 
 package require tcltest 2.2
 namespace import ::tcltest::*
@@ -470,7 +468,7 @@ test frame-2.18 {toplevel configuration options} -setup {
     toplevel .x -container 1 -use [winfo id .t]
 } -cleanup {
     deleteWindows
-} -returnCodes error -result {A window cannot have both the -use and the -container option set.}
+} -returnCodes error -result {windows cannot have both the -use and the -container option set}
 test frame-2.19 {toplevel configuration options} -setup {
 	deleteWindows
     set opts {}

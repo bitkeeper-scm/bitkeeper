@@ -3,8 +3,6 @@
 # This file defines the default bindings for Tk listbox widgets
 # and provides procedures that help in implementing those bindings.
 #
-# RCS: @(#) $Id$
-#
 # Copyright (c) 1994 The Regents of the University of California.
 # Copyright (c) 1994-1995 Sun Microsystems, Inc.
 # Copyright (c) 1998 by Scriptics Corporation.
@@ -71,28 +69,28 @@ bind Listbox <B1-Enter> {
     tk::CancelRepeat
 }
 
-bind Listbox <Up> {
+bind Listbox <<PrevLine>> {
     tk::ListboxUpDown %W -1
 }
-bind Listbox <Shift-Up> {
+bind Listbox <<SelectPrevLine>> {
     tk::ListboxExtendUpDown %W -1
 }
-bind Listbox <Down> {
+bind Listbox <<NextLine>> {
     tk::ListboxUpDown %W 1
 }
-bind Listbox <Shift-Down> {
+bind Listbox <<SelectNextLine>> {
     tk::ListboxExtendUpDown %W 1
 }
-bind Listbox <Left> {
+bind Listbox <<PrevChar>> {
     %W xview scroll -1 units
 }
-bind Listbox <Control-Left> {
+bind Listbox <<PrevWord>> {
     %W xview scroll -1 pages
 }
-bind Listbox <Right> {
+bind Listbox <<NextChar>> {
     %W xview scroll 1 units
 }
-bind Listbox <Control-Right> {
+bind Listbox <<NextWord>> {
     %W xview scroll 1 pages
 }
 bind Listbox <Prior> {
@@ -109,10 +107,10 @@ bind Listbox <Control-Prior> {
 bind Listbox <Control-Next> {
     %W xview scroll 1 pages
 }
-bind Listbox <Home> {
+bind Listbox <<LineStart>> {
     %W xview moveto 0
 }
-bind Listbox <End> {
+bind Listbox <<LineEnd>> {
     %W xview moveto 1
 }
 bind Listbox <Control-Home> {
@@ -122,7 +120,7 @@ bind Listbox <Control-Home> {
     %W selection set 0
     event generate %W <<ListboxSelect>>
 }
-bind Listbox <Shift-Control-Home> {
+bind Listbox <Control-Shift-Home> {
     tk::ListboxDataExtend %W 0
 }
 bind Listbox <Control-End> {
@@ -132,7 +130,7 @@ bind Listbox <Control-End> {
     %W selection set end
     event generate %W <<ListboxSelect>>
 }
-bind Listbox <Shift-Control-End> {
+bind Listbox <Control-Shift-End> {
     tk::ListboxDataExtend %W [%W index end]
 }
 bind Listbox <<Copy>> {
@@ -142,6 +140,9 @@ bind Listbox <<Copy>> {
     }
 }
 bind Listbox <space> {
+    tk::ListboxBeginSelect %W [%W index active]
+}
+bind Listbox <<Invoke>> {
     tk::ListboxBeginSelect %W [%W index active]
 }
 bind Listbox <Select> {
@@ -156,10 +157,10 @@ bind Listbox <Shift-Select> {
 bind Listbox <Escape> {
     tk::ListboxCancel %W
 }
-bind Listbox <Control-slash> {
+bind Listbox <<SelectAll>> {
     tk::ListboxSelectAll %W
 }
-bind Listbox <Control-backslash> {
+bind Listbox <<SelectNone>> {
     if {[%W cget -selectmode] ne "browse"} {
 	%W selection clear 0 end
 	event generate %W <<ListboxSelect>>

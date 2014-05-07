@@ -9,8 +9,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tclWinInt.h"
@@ -103,6 +101,10 @@ static TclInitProcessGlobalValueProc	InitializeDefaultLibraryDir;
 static ProcessGlobalValue defaultLibraryDir =
 	{0, 0, NULL, NULL, InitializeDefaultLibraryDir, NULL, NULL};
 
+static TclInitProcessGlobalValueProc	InitializeSourceLibraryDir;
+static ProcessGlobalValue sourceLibraryDir =
+	{0, 0, NULL, NULL, InitializeSourceLibraryDir, NULL, NULL};
+
 static void		AppendEnvironment(Tcl_Obj *listPtr, const char *lib);
 static int		ToUtf(const WCHAR *wSrc, char *dst);
 
@@ -177,7 +179,7 @@ TclpInitLibraryPath(
     int *lengthPtr,
     Tcl_Encoding *encodingPtr)
 {
-#define LIBRARY_SIZE	    32
+#define LIBRARY_SIZE	    64
     Tcl_Obj *pathPtr;
     char installLib[LIBRARY_SIZE];
     const char *bytes;
@@ -208,9 +210,16 @@ TclpInitLibraryPath(
     Tcl_ListObjAppendElement(NULL, pathPtr,
 	    TclGetProcessGlobalValue(&defaultLibraryDir));
 
+    /*
+     * Look for the library in its source checkout location.
+     */
+
+    Tcl_ListObjAppendElement(NULL, pathPtr,
+	    TclGetProcessGlobalValue(&sourceLibraryDir));
+
     *encodingPtr = NULL;
     bytes = Tcl_GetStringFromObj(pathPtr, lengthPtr);
-    *valuePtr = ckalloc((unsigned)(*lengthPtr)+1);
+    *valuePtr = ckalloc((*lengthPtr) + 1);
     memcpy(*valuePtr, bytes, (size_t)(*lengthPtr)+1);
     Tcl_DecrRefCount(pathPtr);
 }
@@ -290,8 +299,6 @@ AppendEnvironment(
 	 */
 
 	if ((pathc > 0) && (lstrcmpiA(shortlib, pathv[pathc - 1]) != 0)) {
-	    const char *str;
-
 	    /*
 	     * TCL_LIBRARY is set but refers to a different tcl installation
 	     * than the current version. Try fiddling with the specified
@@ -301,14 +308,13 @@ AppendEnvironment(
 
 	    pathv[pathc - 1] = shortlib;
 	    Tcl_DStringInit(&ds);
-	    str = Tcl_JoinPath(pathc, pathv, &ds);
-	    objPtr = Tcl_NewStringObj(str, Tcl_DStringLength(&ds));
-	    Tcl_DStringFree(&ds);
+	    (void) Tcl_JoinPath(pathc, pathv, &ds);
+	    objPtr = TclDStringToObj(&ds);
 	} else {
 	    objPtr = Tcl_NewStringObj(buf, -1);
 	}
 	Tcl_ListObjAppendElement(NULL, pathPtr, objPtr);
-	ckfree((char *) pathv);
+	ckfree(pathv);
     }
 }
 
@@ -357,7 +363,58 @@ InitializeDefaultLibraryDir(
     TclWinNoBackslash(name);
     sprintf(end + 1, "lib/tcl%s", TCL_VERSION);
     *lengthPtr = strlen(name);
-    *valuePtr = ckalloc((unsigned int) *lengthPtr + 1);
+    *valuePtr = ckalloc(*lengthPtr + 1);
+    *encodingPtr = NULL;
+    memcpy(*valuePtr, name, (size_t) *lengthPtr + 1);
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * InitializeSourceLibraryDir --
+ *
+ *	Locate the Tcl script library default location relative to the
+ *	location of the Tcl DLL as it exists in the build output directory
+ *	associated with the source checkout.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	None.
+ *
+ *---------------------------------------------------------------------------
+ */
+
+static void
+InitializeSourceLibraryDir(
+    char **valuePtr,
+    int *lengthPtr,
+    Tcl_Encoding *encodingPtr)
+{
+    HMODULE hModule = TclWinGetTclInstance();
+    WCHAR wName[MAX_PATH + LIBRARY_SIZE];
+    char name[(MAX_PATH + LIBRARY_SIZE) * TCL_UTF_MAX];
+    char *end, *p;
+
+    if (GetModuleFileNameW(hModule, wName, MAX_PATH) == 0) {
+	GetModuleFileNameA(hModule, name, MAX_PATH);
+    } else {
+	ToUtf(wName, name);
+    }
+
+    end = strrchr(name, '\\');
+    *end = '\0';
+    p = strrchr(name, '\\');
+    if (p != NULL) {
+	end = p;
+    }
+    *end = '\\';
+
+    TclWinNoBackslash(name);
+    sprintf(end + 1, "../library");
+    *lengthPtr = strlen(name);
+    *valuePtr = ckalloc(*lengthPtr + 1);
     *encodingPtr = NULL;
     memcpy(*valuePtr, name, (size_t) *lengthPtr + 1);
 }
@@ -397,31 +454,6 @@ ToUtf(
 /*
  *---------------------------------------------------------------------------
  *
- * TclWinEncodingsCleanup --
- *
- *	Reset information to its original state in finalization to allow for
- *	reinitialization to be possible. This must not be called until after
- *	the filesystem has been finalised, or exit crashes may occur when
- *	using virtual filesystems.
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	Static information reset to startup state.
- *
- *---------------------------------------------------------------------------
- */
-
-void
-TclWinEncodingsCleanup(void)
-{
-    TclWinResetInterfaceEncodings();
-}
-
-/*
- *---------------------------------------------------------------------------
- *
  * TclpSetInitialEncodings --
  *
  *	Based on the locale, determine the encoding of the operating system
@@ -454,15 +486,10 @@ TclpSetInitialEncodings(void)
     Tcl_DStringFree(&encodingName);
 }
 
-void
-TclpSetInterfaces(void)
+void TclWinSetInterfaces(
+    int dummy)			/* Not used. */
 {
-    int platformId, useWide;
-
-    platformId = TclWinGetPlatformId();
-    useWide = ((platformId == VER_PLATFORM_WIN32_NT)
-	    || (platformId == VER_PLATFORM_WIN32_CE));
-    TclWinSetInterfaces(useWide);
+    TclpSetInterfaces();
 }
 
 const char *
@@ -499,21 +526,33 @@ TclpSetVariables(
 {
     const char *ptr;
     char buffer[TCL_INTEGER_SPACE * 2];
-    SYSTEM_INFO sysInfo, *sysInfoPtr = &sysInfo;
-    OemId *oemId;
-    OSVERSIONINFOA osInfo;
+    union {
+	SYSTEM_INFO info;
+	OemId oemId;
+    } sys;
+    static OSVERSIONINFOW osInfo;
+    static int osInfoInitialized = 0;
     Tcl_DString ds;
     TCHAR szUserName[UNLEN+1];
-    DWORD dwUserNameLen = sizeof(szUserName);
+    DWORD cchUserNameLen = UNLEN;
 
     Tcl_SetVar2Ex(interp, "tclDefaultLibrary", NULL,
 	    TclGetProcessGlobalValue(&defaultLibraryDir), TCL_GLOBAL_ONLY);
 
-    osInfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFOA);
-    GetVersionExA(&osInfo);
-
-    oemId = (OemId *) sysInfoPtr;
-    GetSystemInfo(&sysInfo);
+    if (!osInfoInitialized) {
+	HANDLE handle = LoadLibraryW(L"NTDLL");
+	int(__stdcall *getversion)(void *) =
+		(int(__stdcall *)(void *)) GetProcAddress(handle, "RtlGetVersion");
+	osInfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFOW);
+	if (!getversion || getversion(&osInfo)) {
+	    GetVersionExW(&osInfo);
+	}
+	if (handle) {
+		FreeLibrary(handle);
+	}
+	osInfoInitialized = 1;
+    }
+    GetSystemInfo(&sys.info);
 
     /*
      * Define the tcl_platform array.
@@ -527,9 +566,9 @@ TclpSetVariables(
     }
     wsprintfA(buffer, "%d.%d", osInfo.dwMajorVersion, osInfo.dwMinorVersion);
     Tcl_SetVar2(interp, "tcl_platform", "osVersion", buffer, TCL_GLOBAL_ONLY);
-    if (oemId->wProcessorArchitecture < NUMPROCESSORS) {
+    if (sys.oemId.wProcessorArchitecture < NUMPROCESSORS) {
 	Tcl_SetVar2(interp, "tcl_platform", "machine",
-		processors[oemId->wProcessorArchitecture],
+		processors[sys.oemId.wProcessorArchitecture],
 		TCL_GLOBAL_ONLY);
     }
 
@@ -573,12 +612,15 @@ TclpSetVariables(
     /*
      * Initialize the user name from the environment first, since this is much
      * faster than asking the system.
+     * Note: cchUserNameLen is number of characters including nul terminator.
      */
 
     Tcl_DStringInit(&ds);
     if (TclGetEnv("USERNAME", &ds) == NULL) {
-	if (GetUserName(szUserName, &dwUserNameLen) != 0) {
-	    Tcl_WinTCharToUtf(szUserName, (int) dwUserNameLen, &ds);
+	if (GetUserName(szUserName, &cchUserNameLen) != 0) {
+	    int cbUserNameLen = cchUserNameLen - 1;
+	    cbUserNameLen *= sizeof(TCHAR);
+	    Tcl_WinTCharToUtf(szUserName, cbUserNameLen, &ds);
 	}
     }
     Tcl_SetVar2(interp, "tcl_platform", "user", Tcl_DStringValue(&ds),
@@ -631,7 +673,7 @@ TclpFindVariable(
      */
 
     length = strlen(name);
-    nameUpper = (char *) ckalloc((unsigned) length+1);
+    nameUpper = ckalloc(length + 1);
     memcpy(nameUpper, name, (size_t) length+1);
     Tcl_UtfToUpper(nameUpper);
 

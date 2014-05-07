@@ -1,13 +1,12 @@
-# RCS: @(#) $Id$
+# Copyright (c) 2002-2011 Tim Baker
 
 #
 # Demo: Help contents
 #
-proc DemoHelpContents {} {
+namespace eval DemoHelpContents {}
+proc DemoHelpContents::Init {T} {
 
-    global HelpContents
-
-    set T [DemoList]
+    variable Priv
 
     set height [font metrics [$T cget -font] -linespace]
     if {$height < 18} {
@@ -20,6 +19,8 @@ proc DemoHelpContents {} {
 
     $T configure -showroot no -showbuttons no -showlines no -itemheight $height \
 	-selectmode browse
+
+    $T configure -canvaspadx {4 0} -canvaspady {2 0}
 
     InitPics help-*
 
@@ -36,12 +37,12 @@ proc DemoHelpContents {} {
     #
 
     # Define a new item state
-    $T state define mouseover
+    $T item state define mouseover
 
     $T element create elemImgPage image -image help-page
     $T element create elemImgBook image -image {help-book-open {open} help-book-closed {}}
     $T element create elemTxt text -fill [list $::SystemHighlightText {selected focus} blue {mouseover}] \
-	-font [list DemoFontUnderline {mouseover}]
+	-font [list DemoFontUnderline {mouseover}] -lines 1
     $T element create elemRectSel rect -fill [list $::SystemHighlight {selected focus}] -showfocus yes
 
     #
@@ -52,14 +53,14 @@ proc DemoHelpContents {} {
     set S [$T style create styBook]
     $T style elements $S {elemRectSel elemImgBook elemTxt}
     $T style layout $S elemImgBook -padx {0 4} -expand ns
-    $T style layout $S elemTxt -expand ns
+    $T style layout $S elemTxt -expand ns -squeeze x
     $T style layout $S elemRectSel -union [list elemTxt] -iexpand ns -ipadx 2
 
     # page
     set S [$T style create styPage]
     $T style elements $S {elemRectSel elemImgPage elemTxt}
     $T style layout $S elemImgPage -padx {0 4} -expand ns
-    $T style layout $S elemTxt -expand ns
+    $T style layout $S elemTxt -expand ns -squeeze x
     $T style layout $S elemRectSel -union [list elemTxt] -iexpand ns -ipadx 2
 
     #
@@ -98,12 +99,12 @@ proc DemoHelpContents {} {
 	if {[lindex [%W identify %x %y] 0] eq "header"} {
 	    TreeCtrl::DoubleButton1 %W %x %y
 	} else {
-	    HelpButton1 %W %x %y
+	    DemoHelpContents::Button1 %W %x %y
 	}
 	break
     }
     bind DemoHelpContents <ButtonPress-1> {
-	HelpButton1 %W %x %y
+	DemoHelpContents::Button1 %W %x %y
 	break
     }
     bind DemoHelpContents <Button1-Motion> {
@@ -113,10 +114,10 @@ proc DemoHelpContents {} {
 	# noop
     }
     bind DemoHelpContents <Motion> {
-	HelpMotion %W %x %y
+	DemoHelpContents::Motion %W %x %y
     }
     bind DemoHelpContents <Leave> {
-	HelpMotion %W %x %y
+	DemoHelpContents::Motion %W %x %y
     }
     bind DemoHelpContents <KeyPress-Return> {
 	if {[%W selection count] == 1} {
@@ -125,7 +126,7 @@ proc DemoHelpContents {} {
 	break
     }
 
-    set HelpContents(prev) ""
+    set Priv(prev) ""
     bindtags $T [list $T DemoHelpContents TreeCtrl [winfo toplevel $T] all]
 
     return
@@ -133,9 +134,9 @@ proc DemoHelpContents {} {
 
 # This is an alternate implementation that does not define a new item state
 # to change the appearance of the item under the cursor.
-proc DemoHelpContents_2 {} {
+proc DemoHelpContents::Init_2 {T} {
 
-    global HelpContents
+    variable Priv
 
     set T [DemoList]
 
@@ -238,12 +239,12 @@ proc DemoHelpContents_2 {} {
 	if {[lindex [%W identify %x %y] 0] eq "header"} {
 	    TreeCtrl::DoubleButton1 %W %x %y
 	} else {
-	    HelpButton1 %W %x %y
+	    DemoHelpContents::Button1 %W %x %y
 	}
 	break
     }
     bind DemoHelpContents <ButtonPress-1> {
-	HelpButton1 %W %x %y
+	DemoHelpContents::Button1 %W %x %y
 	break
     }
     bind DemoHelpContents <Button1-Motion> {
@@ -253,10 +254,10 @@ proc DemoHelpContents_2 {} {
 	# noop
     }
     bind DemoHelpContents <Motion> {
-	HelpMotion_2 %W %x %y
+	DemoHelpContents::Motion_2 %W %x %y
     }
     bind DemoHelpContents <Leave> {
-	HelpMotion_2 %W %x %y
+	DemoHelpContents::Motion_2 %W %x %y
     }
     bind DemoHelpContents <KeyPress-Return> {
 	if {[%W selection count] == 1} {
@@ -265,14 +266,14 @@ proc DemoHelpContents_2 {} {
 	break
     }
 
-    set HelpContents(prev) ""
+    set Priv(prev) ""
     bindtags $T [list $T DemoHelpContents TreeCtrl [winfo toplevel $T] all]
 
     return
 }
 
-proc HelpButton1 {w x y} {
-    variable TreeCtrl::Priv
+proc DemoHelpContents::Button1 {w x y} {
+    variable ::TreeCtrl::Priv
     focus $w
     set id [$w identify $x $y]
     set Priv(buttonMode) ""
@@ -303,60 +304,59 @@ proc HelpButton1 {w x y} {
     return
 }
 
-proc HelpMotion {w x y} {
-    global HelpContents
+proc DemoHelpContents::Motion {w x y} {
+    variable Priv
     set id [$w identify $x $y]
     if {$id eq ""} {
     } elseif {[lindex $id 0] eq "header"} {
     } elseif {[lindex $id 0] eq "item"} {
 	set item [lindex $id 1]
 	if {[llength $id] == 6} {
-	    if {$item ne $HelpContents(prev)} {
-		if {$HelpContents(prev) ne ""} {
-		    $w item state set $HelpContents(prev) !mouseover
+	    if {$item ne $Priv(prev)} {
+		if {$Priv(prev) ne ""} {
+		    $w item state set $Priv(prev) !mouseover
 		}
 		$w item state set $item mouseover
 		$w configure -cursor hand2
-		set HelpContents(prev) $item
+		set Priv(prev) $item
 	    }
 	    return
 	}
     }
-    if {$HelpContents(prev) ne ""} {
-	$w item state set $HelpContents(prev) !mouseover
+    if {$Priv(prev) ne ""} {
+	$w item state set $Priv(prev) !mouseover
 	$w configure -cursor ""
-	set HelpContents(prev) ""
+	set Priv(prev) ""
     }
     return
 }
 
 # Alternate implementation that does not rely on run-time states
-proc HelpMotion_2 {w x y} {
-    variable TreeCtrl::Priv
-    global HelpContents
+proc DemoHelpContents::Motion_2 {w x y} {
+    variable Priv
     set id [$w identify $x $y]
     if {[lindex $id 0] eq "header"} {
     } elseif {$id ne ""} {
 	set item [lindex $id 1]
 	if {[llength $id] == 6} {
-	    if {$item ne $HelpContents(prev)} {
-		if {$HelpContents(prev) ne ""} {
-		    set style [$w item style set $HelpContents(prev) 0]
+	    if {$item ne $Priv(prev)} {
+		if {$Priv(prev) ne ""} {
+		    set style [$w item style set $Priv(prev) 0]
 		    set style [string trim $style .f]
-		    $w item style map $HelpContents(prev) 0 $style {elemTxtOver elemTxt}
+		    $w item style map $Priv(prev) 0 $style {elemTxtOver elemTxt}
 		}
 		set style [$w item style set $item 0]
 		$w item style map $item 0 $style.f {elemTxt elemTxtOver}
-		set HelpContents(prev) $item
+		set Priv(prev) $item
 	    }
 	    return
 	}
     }
-    if {$HelpContents(prev) ne ""} {
-	set style [$w item style set $HelpContents(prev) 0]
+    if {$Priv(prev) ne ""} {
+	set style [$w item style set $Priv(prev) 0]
 	set style [string trim $style .f]
-	$w item style map $HelpContents(prev) 0 $style {elemTxtOver elemTxt}
-	set HelpContents(prev) ""
+	$w item style map $Priv(prev) 0 $style {elemTxtOver elemTxt}
+	set Priv(prev) ""
     }
     return
 }

@@ -1,4 +1,4 @@
-/* $Id$
+/*
  * Copyright (c) 2003, Joe English
  * Helper routines for widget implementations.
  */
@@ -49,20 +49,6 @@ typedef struct
 } WidgetCore;
 
 /*
- * Subcommand specifications:
- */
-typedef int (*WidgetSubcommandProc)(
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr);
-typedef struct {
-    const char *name;
-    WidgetSubcommandProc command;
-} WidgetCommandSpec;
-
-MODULE_SCOPE int TtkWidgetEnsembleCommand(	/* Run an ensemble command */
-    const WidgetCommandSpec *commands, int cmdIndex,
-    Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], void *recordPtr);
-
-/*
  * Widget specifications:
  */
 struct WidgetSpec_
@@ -70,7 +56,7 @@ struct WidgetSpec_
     const char 		*className;	/* Widget class name */
     size_t 		recordSize;	/* #bytes in widget record */
     const Tk_OptionSpec	*optionSpecs;	/* Option specifications */
-    const WidgetCommandSpec *commands;	/* Widget instance subcommands */
+    const Ttk_Ensemble	*commands;	/* Widget instance subcommands */
 
     /*
      * Hooks:
@@ -104,15 +90,15 @@ MODULE_SCOPE int TtkCoreConfigure(Tcl_Interp*, void *, int mask);
 /* Common widget commands:
  */
 MODULE_SCOPE int TtkWidgetConfigureCommand(
-	Tcl_Interp *, int, Tcl_Obj*const[], void *);
+	void *,Tcl_Interp *, int, Tcl_Obj*const[]);
 MODULE_SCOPE int TtkWidgetCgetCommand(
-	Tcl_Interp *, int, Tcl_Obj*const[], void *);
+	void *,Tcl_Interp *, int, Tcl_Obj*const[]);
 MODULE_SCOPE int TtkWidgetInstateCommand(
-	Tcl_Interp *, int, Tcl_Obj*const[], void *);
+	void *,Tcl_Interp *, int, Tcl_Obj*const[]);
 MODULE_SCOPE int TtkWidgetStateCommand(
-	Tcl_Interp *, int, Tcl_Obj*const[], void *);
+	void *,Tcl_Interp *, int, Tcl_Obj*const[]);
 MODULE_SCOPE int TtkWidgetIdentifyCommand(
-	Tcl_Interp *, int, Tcl_Obj*const[], void *);
+	void *,Tcl_Interp *, int, Tcl_Obj*const[]);
 
 /* Widget constructor:
  */
@@ -123,14 +109,18 @@ MODULE_SCOPE int TtkWidgetConstructorObjCmd(
     Tcl_CreateObjCommand(interp, name, \
 	TtkWidgetConstructorObjCmd, (ClientData)specPtr,NULL)
 
-/* WIDGET_TAKES_FOCUS --
- * Add this to the OptionSpecs table of widgets that
- * take keyboard focus during traversal to override
- * CoreOptionSpec's -takefocus default value:
+/* WIDGET_TAKEFOCUS_TRUE --
+ * WIDGET_TAKEFOCUS_FALSE --
+ *	Add one or the other of these to each OptionSpecs table 
+ *	to indicate whether the widget should take focus 
+ *	during keyboard traversal.
  */
-#define WIDGET_TAKES_FOCUS \
+#define WIDGET_TAKEFOCUS_TRUE \
     {TK_OPTION_STRING, "-takefocus", "takeFocus", "TakeFocus", \
 	"ttk::takefocus", Tk_Offset(WidgetCore, takeFocusPtr), -1, 0,0,0 }
+#define WIDGET_TAKEFOCUS_FALSE \
+    {TK_OPTION_STRING, "-takefocus", "takeFocus", "TakeFocus", \
+	"", Tk_Offset(WidgetCore, takeFocusPtr), -1, 0,0,0 }
 
 /* WIDGET_INHERIT_OPTIONS(baseOptionSpecs) --
  * Add this at the end of an OptionSpecs table to inherit
@@ -138,6 +128,10 @@ MODULE_SCOPE int TtkWidgetConstructorObjCmd(
  */
 #define WIDGET_INHERIT_OPTIONS(baseOptionSpecs) \
     {TK_OPTION_END, 0,0,0, NULL, -1,-1, 0, (ClientData)baseOptionSpecs, 0}
+
+/* All widgets should inherit from ttkCoreOptionSpecs[].
+ */
+MODULE_SCOPE Tk_OptionSpec ttkCoreOptionSpecs[];
 
 /*
  * Useful routines for use inside widget implementations:
@@ -229,26 +223,24 @@ MODULE_SCOPE Tcl_Obj *Ttk_TagOptionValue(
 MODULE_SCOPE int Ttk_EnumerateTagOptions(
     Tcl_Interp *, Ttk_TagTable, Ttk_Tag);
 
+MODULE_SCOPE int Ttk_EnumerateTags(Tcl_Interp *, Ttk_TagTable);
+
 MODULE_SCOPE int Ttk_ConfigureTag(
     Tcl_Interp *interp, Ttk_TagTable tagTable, Ttk_Tag tag,
     int objc, Tcl_Obj *const objv[]);
 
 MODULE_SCOPE Ttk_TagSet Ttk_GetTagSetFromObj(
     Tcl_Interp *interp, Ttk_TagTable, Tcl_Obj *objPtr);
+MODULE_SCOPE Tcl_Obj *Ttk_NewTagSetObj(Ttk_TagSet);
 
 MODULE_SCOPE void Ttk_FreeTagSet(Ttk_TagSet);
 
 MODULE_SCOPE int Ttk_TagSetContains(Ttk_TagSet, Ttk_Tag tag);
-MODULE_SCOPE void Ttk_TagSetAdd(Ttk_TagSet, Ttk_Tag tag);
-MODULE_SCOPE void Ttk_TagSetRemove(Ttk_TagSet, Ttk_Tag tag);
+MODULE_SCOPE int Ttk_TagSetAdd(Ttk_TagSet, Ttk_Tag tag);
+MODULE_SCOPE int Ttk_TagSetRemove(Ttk_TagSet, Ttk_Tag tag);
 
 MODULE_SCOPE void Ttk_TagSetValues(Ttk_TagTable, Ttk_TagSet, void *record);
 MODULE_SCOPE void Ttk_TagSetApplyStyle(Ttk_TagTable,Ttk_Style,Ttk_State,void*);
-
-/*
- * Useful widget base classes:
- */
-MODULE_SCOPE Tk_OptionSpec ttkCoreOptionSpecs[];
 
 /*
  * String tables for widget resource specifications:
@@ -268,7 +260,7 @@ MODULE_SCOPE int TtkGetLabelAnchorFromObj(
  * Platform-specific initialization.
  */
 
-#if defined(__WIN32__)
+#ifdef _WIN32
 #define Ttk_PlatformInit Ttk_WinPlatformInit
 MODULE_SCOPE int Ttk_PlatformInit(Tcl_Interp *);
 #elif defined(MAC_OSX_TK)

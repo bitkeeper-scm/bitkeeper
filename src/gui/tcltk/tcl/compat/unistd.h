@@ -9,17 +9,12 @@
  * copyright notice appear in all copies. The University of California makes
  * no representations about the suitability of this software for any purpose.
  * It is provided "as is" without express or implied warranty.
- *
- * RCS: @(#) $Id$
  */
 
 #ifndef _UNISTD
 #define _UNISTD
 
 #include <sys/types.h>
-#ifndef _TCL
-#   include "tcl.h"
-#endif
 
 #ifndef NULL
 #define NULL    0

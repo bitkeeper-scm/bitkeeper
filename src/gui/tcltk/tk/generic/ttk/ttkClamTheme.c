@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * Copyright (C) 2004 Joe English
  *
  * "clam" theme; inspired by the XFCE family of Gnome themes.
@@ -14,7 +12,7 @@
  * off-by-one error in the end point. This is especially apparent with this
  * theme. Defining this macro as true handles this case.
  */
-#if defined(WIN32) && !defined(WIN32_XDRAWLINE_HACK)
+#if defined(_WIN32) && !defined(WIN32_XDRAWLINE_HACK)
 #	define WIN32_XDRAWLINE_HACK 1
 #else
 #	define WIN32_XDRAWLINE_HACK 0
@@ -119,7 +117,7 @@ static Ttk_ElementOptionSpec BorderElementOptions[] = {
 	Tk_Offset(BorderElement,reliefObj), "flat" },
     { "-borderwidth", TK_OPTION_PIXELS,
 	Tk_Offset(BorderElement,borderWidthObj), "2" },
-    {0,0,0}
+    { NULL, 0, 0, NULL }
 };
 
 /*
@@ -207,7 +205,7 @@ static Ttk_ElementOptionSpec FieldElementOptions[] = {
 	Tk_Offset(FieldElement,darkColorObj), DARK_COLOR },
     { "-fieldbackground", TK_OPTION_BORDER,
 	Tk_Offset(FieldElement,backgroundObj), "white" },
-    {0,0,0}
+    { NULL, 0, 0, NULL }
 };
 
 static void FieldElementSize(
@@ -293,7 +291,7 @@ static Ttk_ElementOptionSpec IndicatorElementOptions[] = {
 	Tk_Offset(IndicatorElement,upperColorObj), DARKEST_COLOR },
     { "-lowerbordercolor", TK_OPTION_COLOR,
 	Tk_Offset(IndicatorElement,lowerColorObj), DARK_COLOR },
-    {0,0,0}
+    { NULL, 0, 0, NULL }
 };
 
 static void IndicatorElementSize(
@@ -412,7 +410,7 @@ static Ttk_ElementOptionSpec MenuIndicatorElementOptions[] =
     { "-arrowpadding",TK_OPTION_STRING,
 	Tk_Offset(MenuIndicatorElement,paddingObj),
 	"3" },
-    { NULL }
+    { NULL, 0, 0, NULL }
 };
 
 static void MenuIndicatorElementSize(
@@ -478,7 +476,7 @@ static Ttk_ElementOptionSpec GripElementOptions[] = {
 	Tk_Offset(GripElement,borderColorObj), DARKEST_COLOR },
     { "-gripcount", TK_OPTION_INT,
 	Tk_Offset(GripElement,gripCountObj), "5" },
-    {0,0,0}
+    { NULL, 0, 0, NULL }
 };
 
 static void GripElementSize(
@@ -577,7 +575,7 @@ static Ttk_ElementOptionSpec ScrollbarElementOptions[] = {
 	Tk_Offset(ScrollbarElement,gripCountObj), "5" },
     { "-sliderlength", TK_OPTION_INT,
 	Tk_Offset(ScrollbarElement,sliderlengthObj), "30" },
-    {0,0,0}
+    { NULL, 0, 0, NULL }
 };
 
 static void TroughElementDraw(
@@ -803,7 +801,7 @@ static Ttk_ElementOptionSpec NotebookElementOptions[] = {
 	Tk_Offset(NotebookElement,lightColorObj), LIGHT_COLOR },
     { "-darkcolor", TK_OPTION_COLOR,
 	Tk_Offset(NotebookElement,darkColorObj), DARK_COLOR },
-    {0,0,0}
+    { NULL, 0, 0, NULL }
 };
 
 static void TabElementSize(

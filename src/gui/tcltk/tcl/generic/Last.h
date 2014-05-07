@@ -16,7 +16,6 @@ typedef struct ClsDecl	ClsDecl;
 typedef struct Stmt	Stmt;
 typedef struct TopLev	TopLev;
 typedef struct ClsLev	ClsLev;
-typedef struct Class	Class;
 typedef struct Cond	Cond;
 typedef struct Loop	Loop;
 typedef struct ForEach	ForEach;

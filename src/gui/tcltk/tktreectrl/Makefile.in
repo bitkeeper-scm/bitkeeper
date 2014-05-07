@@ -11,8 +11,6 @@
 #
 # See the file "license.terms" for information on usage and redistribution
 # of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-#
-# RCS: @(#) $Id$
 
 #========================================================================
 # Edit the following few lines when writing a new extension
@@ -52,6 +50,8 @@ PKG_EXTRA_FILES =
 
 PKG_MAN_PAGES	= 
 
+PKG_MANIFEST	= @PKG_MANIFEST@
+
 #========================================================================
 # "PKG_LIB_FILE" refers to the library (dynamic or static as per
 # configuration options) composed of the named objects.
@@ -61,7 +61,7 @@ PKG_LIB_FILE	= @PKG_LIB_FILE@
 PKG_STUB_LIB_FILE = @PKG_STUB_LIB_FILE@
 
 lib_BINARIES	= $(PKG_LIB_FILE)
-BINARIES	= $(lib_BINARIES)
+BINARIES	= $(lib_BINARIES) pkgIndex.tcl
 
 SHELL		= @SHELL@
 
@@ -96,6 +96,7 @@ PACKAGE_PATCHLEVEL	= @PACKAGE_PATCHLEVEL@
 CC		= @CC@
 CFLAGS_DEFAULT	= @CFLAGS_DEFAULT@
 CFLAGS_WARNING	= @CFLAGS_WARNING@
+CC_OBJNAME	= @CC_OBJNAME@
 CLEANFILES	= @CLEANFILES@
 EXEEXT		= @EXEEXT@
 LDFLAGS_DEFAULT	= @LDFLAGS_DEFAULT@
@@ -147,7 +148,7 @@ PKG_CFLAGS	= @PKG_CFLAGS@
 
 DEFS		= @DEFS@ $(PKG_CFLAGS)
 
-CONFIG_CLEAN_FILES = Makefile
+CONFIG_CLEAN_FILES = Makefile $(PKG_MANIFEST)
 
 CPPFLAGS	= @CPPFLAGS@
 LIBS		= @PKG_LIBS@ @LIBS@
@@ -176,7 +177,7 @@ all: binaries libraries doc
 # of the Makefile, in the "BINARIES" variable.
 #========================================================================
 
-binaries: $(BINARIES) pkgIndex.tcl
+binaries: $(BINARIES)
 
 libraries:
 
@@ -227,7 +228,7 @@ install-doc: install-doc-x
 	cp $(srcdir)/doc/*.html $(DESTDIR)$(pkglibdir)/htmldoc
 
 test: binaries libraries
-	$(WISH) `@CYGPATH@ $(srcdir)/tests/all.tcl` $(TESTFLAGS) | cat
+	@$(WISH) `@CYGPATH@ $(srcdir)/tests/all.tcl` $(TESTFLAGS) | cat
 
 shell: binaries libraries
 	@$(WISH) $(SCRIPT)
@@ -236,7 +237,25 @@ demo: binaries libraries
 	@$(WISH) `@CYGPATH@ $(srcdir)/demos/demo.tcl` | cat
 
 gdb:
-	$(TCLSH_ENV) gdb --silent --args $(WISH_PROG) $(srcdir)/demos/demo.tcl
+	@$(TCLSH_ENV) gdb --silent --args $(WISH_PROG) $(srcdir)/demos/demo.tcl
+
+VALGRINDARGS=--tool=memcheck --num-callers=8 --leak-resolution=high --leak-check=yes --show-reachable=yes -v
+
+valgrind: binaries libraries
+	$(TCLSH_ENV) valgrind $(VALGRINDARGS) $(TCLSH_PROG) `@CYGPATH@ $(srcdir)/tests/all.tcl` $(TESTFLAGS) | cat
+
+valgrindshell: binaries libraries
+	$(TCLSH_ENV) valgrind $(VALGRINDARGS) $(WISH_PROG) $(SCRIPT)
+
+valgrinddemo: binaries libraries
+	$(TCLSH_ENV) valgrind $(VALGRINDARGS) $(WISH_PROG) $(srcdir)/demos/demo.tcl
+
+# Type 'make vcexpress' from MSYS to launch the proper wish.exe in the Visual C++
+# 2008 Express Edition debugger.  Start the debugger then type 'source $env(DEMO)'
+# in the wish console to run the treectrl demo.
+VCEXPRESS	= C:/Program Files (x86)/Microsoft Visual Studio 9.0/Common7/IDE/VCExpress.exe
+vcexpress:
+	$(TCLSH_ENV) DEMO="$(srcdir)/demos/demo.tcl" "$(VCEXPRESS)" //DebugExe $(WISH_PROG) &
 
 depend:
 
@@ -263,9 +282,6 @@ $(PKG_LIB_FILE): $(PKG_OBJECTS)
 	-rm -f $(PKG_LIB_FILE)
 	${MAKE_LIB}
 	$(RANLIB) $(PKG_LIB_FILE)
-	if test -f $@.manifest; then \
-	    mt -nologo -manifest $@.manifest treectrl.dll.manifest "-outputresource:$@;#2"; \
-	fi;
 
 #========================================================================
 # In the following lines, $(srcdir) refers to the toplevel directory
@@ -281,10 +297,10 @@ $(PKG_LIB_FILE): $(PKG_OBJECTS)
 #========================================================================
 
 # I added leading $(srcdir) because autoconf 2.53 strips it off
-VPATH = $(srcdir):$(srcdir)/generic:$(srcdir)/unix:$(srcdir)/win
+VPATH = $(srcdir):$(srcdir)/generic:$(srcdir)/macosx:$(srcdir)/unix:$(srcdir)/win
 
 .c.@OBJEXT@:
-	$(COMPILE) -c `@CYGPATH@ $<` -o $@
+	$(COMPILE) -c `@CYGPATH@ $<` $(CC_OBJNAME)
 
 .rc.@RES@:
 	@RC@ @RC_OUT@ $@ @RC_INCLUDE@ "`@CYGPATH@ $(srcdir)`" @RC_DEPARG@
@@ -299,9 +315,9 @@ pkgIndex.tcl:
 	echo 'set script ""';\
 	echo 'if {![info exists ::env(TREECTRL_LIBRARY)]';\
 	echo '    && [file exists [file join $$dir treectrl.tcl]]} {';\
-	echo '    append script "set ::treectrl_library \"$$dir\"\n"';\
+	echo '    append script "[list set ::treectrl_library $$dir]\n"';\
 	echo '}';\
-	echo 'append script "load \"[file join $$dir $(PKG_LIB_FILE)]\" $(PACKAGE_NAME)"';\
+	echo 'append script [list load [file join $$dir $(PKG_LIB_FILE)] $(PACKAGE_NAME)]';\
 	echo 'package ifneeded $(PACKAGE_NAME) $(PACKAGE_PATCHLEVEL) $$script'\
 	) > pkgIndex.tcl
 
@@ -318,13 +334,13 @@ COMPRESS	= tar zcvf $(DIST_ARC) $(DIST_NAME)
 DIST_ROOT	= /tmp/dist
 DIST_DIR	= $(DIST_ROOT)/$(DIST_NAME)
 
-DIST_DEMOS	= biglist bitmaps column-lock demo explorer firefox help \
-		  imovie layout mailwasher mycomputer outlook-folders \
-		  outlook-newgroup random span style-editor textvariable \
-		  www-options
+DIST_DEMOS	= biglist bitmaps column-lock demo explorer firefox gradients \
+		  gradients2 gradients3 headers help imovie layout \
+		  mailwasher mycomputer outlook-folders outlook-newgroup \
+		  random span style-editor table textvariable www-options
 
-DIST_DOCS	= man.macros treectrl.html treectrl.man treectrl.n
-DIST_DOCS2	= "What's New in TkTreeCtrl.html"
+DIST_DOCS	= man.macros treectrl.html treectrl.man treectrl.n \
+		  What-is-New-in-TkTreeCtrl.html
 
 DIST_LIBRARY	= filelist-bindings.tcl treectrl.tcl
 
@@ -338,55 +354,68 @@ dist: dist-clean
 	mkdir -p $(DIST_DIR)/doc
 	mkdir -p $(DIST_DIR)/generic
 	mkdir -p $(DIST_DIR)/library
+	mkdir -p $(DIST_DIR)/macosx
 	mkdir -p $(DIST_DIR)/shellicon
 	mkdir -p $(DIST_DIR)/shellicon/tclconfig
 	mkdir -p $(DIST_DIR)/tclconfig
 	mkdir -p $(DIST_DIR)/tests
+	mkdir -p $(DIST_DIR)/unix
+	mkdir -p $(DIST_DIR)/win
 
-	list='aclocal.m4 ChangeLog configure configure.ac license.terms Makefile.in README.txt treectrl.dll.manifest.in treectrl.rc winrc.m4'; \
+	list='aclocal.m4 ChangeLog configure configure.ac license.terms Makefile.in pkg.m4 README.txt treectrl.dll.manifest.in treectrl.rc winrc.m4'; \
 	for p in $$list; do \
 	    cp -p $(srcdir)/$$p $(DIST_DIR)/$$p; \
+	    chmod 664 $(DIST_DIR)/$$p; \
 	done
-	chmod 664 $(DIST_DIR)/Makefile.in $(DIST_DIR)/aclocal.m4
 	chmod 775 $(DIST_DIR)/configure $(DIST_DIR)/configure.ac
 
 	list='$(DIST_DEMOS)'; for p in $$list; do \
 	    cp -p $(srcdir)/demos/$$p.tcl $(DIST_DIR)/demos/$$p.tcl; \
+	    chmod 664 $(DIST_DIR)/demos/$$p.tcl; \
 	done
 
 	cp -p $(srcdir)/demos/pics/*.gif $(DIST_DIR)/demos/pics/
+	chmod 664 $(DIST_DIR)/demos/pics/*.gif
 
 	list='$(DIST_DOCS)'; for p in $$list; do \
 	    cp -p $(srcdir)/doc/$$p $(DIST_DIR)/doc/$$p; \
+	    chmod 664 $(DIST_DIR)/doc/$$p; \
 	done
-	cp -p $(srcdir)/doc/$(DIST_DOCS2) $(DIST_DIR)/doc/$(DIST_DOCS2)
 
-	cp -p $(srcdir)/generic/*.[ch] $(DIST_DIR)/generic/
+	list='generic macosx unix win'; for p in $$list; do \
+	    cp -p $(srcdir)/$$p/*.[ch] $(DIST_DIR)/$$p/; \
+	    chmod 664 $(DIST_DIR)/$$p/*.[ch]; \
+	done
 
 	list='$(DIST_LIBRARY)'; for p in $$list; do \
 	    cp -p $(srcdir)/library/$$p $(DIST_DIR)/library/$$p; \
+	    chmod 664 $(DIST_DIR)/library/$$p; \
 	done
 
-	list='aclocal.m4 configure configure.ac Makefile.in shellicon.c'; \
+	list='aclocal.m4 configure configure.ac Makefile.in shellicon.c shellicon.rc shellicon.dll.manifest.in'; \
 	for p in $$list; do \
 	    cp -p $(srcdir)/shellicon/$$p $(DIST_DIR)/shellicon/$$p; \
+	    chmod 664 $(DIST_DIR)/shellicon/$$p; \
 	done
-	chmod 664 $(DIST_DIR)/shellicon/Makefile.in $(DIST_DIR)/shellicon/aclocal.m4
 	chmod 775 $(DIST_DIR)/shellicon/configure $(DIST_DIR)/shellicon/configure.ac
 
 	list='install-sh README.txt tcl.m4'; \
 	for p in $$list; do \
 	    cp -p $(srcdir)/shellicon/tclconfig/$$p $(DIST_DIR)/shellicon/tclconfig/$$p; \
+	    chmod 664 $(DIST_DIR)/shellicon/tclconfig/$$p; \
 	done
-	chmod 664 $(DIST_DIR)/shellicon/tclconfig/tcl.m4
-	chmod +x $(DIST_DIR)/shellicon/tclconfig/install-sh
+	chmod 775 $(DIST_DIR)/shellicon/tclconfig/install-sh
 
-	cp $(srcdir)/tclconfig/install-sh $(srcdir)/tclconfig/tcl.m4 \
-		$(DIST_DIR)/tclconfig/
+	list='install-sh tcl.m4'; \
+	for p in $$list; do \
+	    cp $(srcdir)/tclconfig/$$p $(DIST_DIR)/tclconfig/$$p; \
+	done
 	chmod 664 $(DIST_DIR)/tclconfig/tcl.m4
-	chmod +x $(DIST_DIR)/tclconfig/install-sh
+	chmod 775 $(DIST_DIR)/tclconfig/install-sh
 
 	cp -p $(srcdir)/tests/all.tcl $(srcdir)/tests/*.test $(DIST_DIR)/tests/
+	chmod 664 $(DIST_DIR)/tests/all.tcl
+	chmod 664 $(DIST_DIR)/tests/*.test
 
 	(cd $(DIST_ROOT); $(COMPRESS);)
 
@@ -396,9 +425,15 @@ dist: dist-clean
 
 DIST_WIN_NAME	= treectrl$(PACKAGE_PATCHLEVEL)
 DIST_WIN_DIR	= $(DIST_ROOT)/$(DIST_WIN_NAME)
-DIST_WIN_ARC	= tktreectrl-$(PACKAGE_PATCHLEVEL)-Tk@TK_VERSION@-win32.zip
+DIST_WIN_ARC	= tktreectrl-$(PACKAGE_PATCHLEVEL)-@DIST_WIN_MACHINE@@DIST_WIN_THREADS@-Tk@TK_VERSION@.zip
 COMPRESS_WIN	= zip -r -v -9 $(DIST_WIN_ARC) $(DIST_WIN_NAME)
-UPX		= upx -9 $(DIST_WIN_DIR)/$(PKG_LIB_FILE)
+
+# Set this to 'strip' or 'x86_64-w64-mingw32-strip' for GCC builds
+STRIP		=
+
+# An update to the gcc tools adds support for TLS callbacks which upx chokes on
+# UPX		= upx -9 $(DIST_WIN_DIR)/$(PKG_LIB_FILE)
+UPX		=
 
 dist-win-clean:
 	rm -rf $(DIST_WIN_DIR) $(DIST_ROOT)/$(DIST_WIN_ARC)
@@ -420,7 +455,7 @@ dist-win: dist-win-clean
 	    cp -p $(srcdir)/$$p $(DIST_WIN_DIR)/$$p; \
 	done
 
-	strip -s $(DIST_WIN_DIR)/$(PKG_LIB_FILE)
+	test -z $(STRIP) || $(STRIP) -s $(DIST_WIN_DIR)/$(PKG_LIB_FILE)
 	$(UPX)
 
 	list='$(DIST_LIBRARY)'; for p in $$list; do \
@@ -436,12 +471,11 @@ dist-win: dist-win-clean
 	list='$(DIST_DOCS)'; for p in $$list; do \
 	    cp -p $(srcdir)/doc/$$p $(DIST_WIN_DIR)/doc/$$p; \
 	done
-	cp -p $(srcdir)/doc/$(DIST_DOCS2) $(DIST_WIN_DIR)/doc/$(DIST_DOCS2)
 
 	TCL_TRIM_DOTS=`echo $(PACKAGE_VERSION) | tr -d .`; \
 	SHELLICON_DLL="shellicon$$TCL_TRIM_DOTS.dll"; \
 	cp -p $(top_builddir)/shellicon/$$SHELLICON_DLL $(DIST_WIN_DIR)/shellicon/$$SHELLICON_DLL; \
-	strip -s $(DIST_WIN_DIR)/shellicon/$$SHELLICON_DLL;
+	test -z $(STRIP) || $(STRIP) -s $(DIST_WIN_DIR)/shellicon/$$SHELLICON_DLL;
 	cp -p $(top_builddir)/shellicon/pkgIndex.tcl $(DIST_WIN_DIR)/shellicon/pkgIndex.tcl
 
 	(cd $(DIST_ROOT); $(COMPRESS_WIN);)

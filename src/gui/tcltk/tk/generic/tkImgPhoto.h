@@ -14,13 +14,13 @@
  * Author: Paul Mackerras (paulus@cs.anu.edu.au),
  *	   Department of Computer Science,
  *	   Australian National University.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tkInt.h"
-#ifdef __WIN32__
+#ifdef _WIN32
 #include "tkWinInt.h"
+#elif defined(__CYGWIN__)
+#include "tkUnixInt.h"
 #endif
 
 /*
@@ -223,9 +223,9 @@ struct PhotoInstance {
  * Implementation of the Porter-Duff Source-Over compositing rule.
  */
 
-#define PD_SRC_OVER(srcColor,srcAlpha,dstColor,dstAlpha) \
+#define PD_SRC_OVER(srcColor, srcAlpha, dstColor, dstAlpha) \
 	(srcColor*srcAlpha/255) + dstAlpha*(255-srcAlpha)/255*dstColor/255
-#define PD_SRC_OVER_ALPHA(srcAlpha,dstAlpha) \
+#define PD_SRC_OVER_ALPHA(srcAlpha, dstAlpha) \
 	(srcAlpha + (255-srcAlpha)*dstAlpha/255)
 
 #undef MIN

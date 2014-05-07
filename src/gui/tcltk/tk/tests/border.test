@@ -4,8 +4,6 @@
 # Copyright (c) 1998 Sun Microsystems, Inc.
 # Copyright (c) 1998-1999 by Scriptics Corporation.
 # All rights reserved.
-#
-# RCS: @(#) $Id$
 
 package require tcltest 2.2
 namespace import ::tcltest::*
@@ -134,11 +132,11 @@ test border-3.1 {FreeBorderObjProc} -constraints {
 } -setup {
     set result {}
 } -body {
-    set x [format purple]
+    set x [join purple]
     button .b -bg $x -text .b1
-    set y [format purple]
+    set y [join purple]
     .b configure -bg $y
-    set z [format purple]
+    set z [join purple]
     .b configure -bg $z
     lappend result [testborder purple]
     set x red

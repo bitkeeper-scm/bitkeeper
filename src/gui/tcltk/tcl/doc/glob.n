@@ -4,11 +4,8 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\"
-'\" RCS: @(#) $Id$
-'\"
-.so man.macros
 .TH glob n 8.3 Tcl "Tcl Built-In Commands"
+.so man.macros
 .BS
 '\" Note:  do not modify the .SH NAME line immediately below!
 .SH NAME
@@ -43,8 +40,9 @@ whose names may contain glob-sensitive characters.
 .TP
 \fB\-join\fR
 .
-The remaining pattern arguments are treated as a single pattern
-obtained by joining the arguments with directory separators.
+The remaining pattern arguments, after option processing, are treated
+as a single pattern obtained by joining the arguments with directory
+separators.
 .TP
 \fB\-nocomplain\fR
 .
@@ -232,9 +230,9 @@ and will not be
 interpreted as a wildcard character. One solution to this problem is
 to use the Unix style forward slash as a path separator. Windows style
 paths can be converted to Unix style paths with the command
-.QW "\fBfile join $path\fR"
+.QW "\fBfile join\fR \fB$path\fR"
 or
-.QW "\fBfile normalize $path\fR" .
+.QW "\fBfile normalize\fR \fB$path\fR" .
 .SH EXAMPLES
 .PP
 Find all the Tcl files in the current directory:

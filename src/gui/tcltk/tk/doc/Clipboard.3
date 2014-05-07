@@ -5,10 +5,8 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-'\" RCS: @(#) $Id$
-'\" 
-.so man.macros
 .TH Tk_ClipboardClear 3 4.0 Tk "Tk Library Procedures"
+.so man.macros
 .BS
 .SH NAME
 Tk_ClipboardClear, Tk_ClipboardAppend \- Manage the clipboard
@@ -73,7 +71,7 @@ this application).
 .PP
 \fBTk_ClipboardClear\fR may invoke callbacks, including arbitrary
 Tcl scripts, as a result of losing the CLIPBOARD selection, so
-any calling function should take care to be reentrant at the point
+any calling function should take care to be re-entrant at the point
 \fBTk_ClipboardClear\fR is invoked.
 .SH KEYWORDS
 append, clipboard, clear, format, type

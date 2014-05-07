@@ -9,8 +9,6 @@
 #
 # See the file "license.terms" for information on usage and redistribution
 # of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-#
-# CVS: @(#) $Id$
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest 2
@@ -371,6 +369,19 @@ test item-14.50 {item element configure: cleanup} -body {
     .t item element configure 8 0 eText -fill yellow
 } -result {}
 
+test item-14.60 {item element cget: tail not allowed} -body {
+    .t item element cget root tail eText -fill
+} -returnCodes error -result {can't specify "tail" for this command}
+
+test item-14.61 {item element configure: tail not allowed} -body {
+    .t item element configure root tail eText -fill
+} -returnCodes error -result {can't specify "tail" for this command}
+
+test item-14.62 {item element perstate: tail not allowed} -body {
+    .t item element perstate root tail eText -fill
+} -returnCodes error -result {can't specify "tail" for this command}
+
+
 test item-15.1 {item style: missing args} -body {
     .t item style
 } -returnCodes error -result {wrong # args: should be ".t item style command item ?arg ...?"}
@@ -505,6 +516,24 @@ test item-15.25 {item style set: all items, multiple columns} -body {
     set res
 } -result {{{} {}} {{} {}} {{} {}} {{} {}} {{} {}} {{} {}} {{} {}} {{} {}}}
 
+
+test item-15.30 {item style elements: tail not allowed} -body {
+    .t item style elements root tail
+} -returnCodes error -result {can't specify "tail" for this command}
+
+test item-15.31 {item style map: tail not allowed} -body {
+    .t item style map root tail testStyle2 {}
+} -returnCodes error -result {can't specify "tail" for this command}
+
+test item-15.32 {item style set: tail not allowed} -body {
+    .t item style set root tail
+} -returnCodes error -result {can't specify "tail" for this command}
+
+test item-15.33 {item style set: tail not allowed} -body {
+    .t item style set root tail testStyle2
+} -returnCodes error -result {can't specify "tail" for this command}
+
+
 test item-16.1 {item state: missing args} -body {
     .t item state
 } -returnCodes error -result {wrong # args: should be ".t item state command item ?arg ...?"}
@@ -519,7 +548,7 @@ test item-16.3 {item state get: unknown item} -body {
 
 test item-16.4 {item state get: too much arg} -body {
     .t item state get 8 open enabled
-} -returnCodes error -result {wrong # args: should be ".t item state get 8 ?state?"}
+} -returnCodes error -result {wrong # args: should be ".t item state get item ?state?"}
 
 test item-16.5 {item state get: invalid arg} -body {
     .t item state get 8 !open
@@ -551,7 +580,7 @@ test item-16.10 {item state get: user defined state not set} -body {
 
 test item-16.11 {item state set: missing arg} -body {
     .t item state set 8
-} -returnCodes error -result {wrong # args: should be ".t item state set 8 ?last? stateList"}
+} -returnCodes error -result {wrong # args: should be ".t item state set item ?last? stateList"}
 
 test item-16.12 {item state: try to reset predefined state} -body {
     .t item state set 8 open
@@ -637,7 +666,7 @@ test item-16.26 {item state set: invalid range} -body {
 
 test item-16.40 {item state forcolumn: missing arg} -body {
     .t item state forcolumn
-} -returnCodes error -result {wrong # args: should be ".t item state command item ?arg ...?"}
+} -returnCodes error -result {wrong # args: should be ".t item state forcolumn item column ?stateList?"}
 
 test item-16.41 {item state forcolumn: missing arg} -body {
     .t item state forcolumn 8
@@ -677,6 +706,14 @@ test item-16.47 {item state forcolumn: set list} -body {
     }
     set res
 } -result {state0 {} state0 {} state0 {} state0 {}}
+
+test item-16.50 {item state forcolumn: tail not allowed} -body {
+    .t item state forcolumn root tail
+} -returnCodes error -result {can't specify "tail" for this command}
+
+test item-16.51 {item state forcolumn: tail not allowed} -body {
+    .t item state forcolumn root tail foo
+} -returnCodes error -result {can't specify "tail" for this command}
 
 test item-17.1 {item sort: missing args} -body {
     .t item sort
@@ -1037,6 +1074,14 @@ test item-19.6 {item text: several items, get first column} -body {
     .t item text {list {2 4 6 8}} first
 } -returnCodes error -result {can't specify > 1 item for this command}
 
+test item-19.10 {item text: tail not allowed} -body {
+    .t item text root tail
+} -returnCodes error -result {can't specify "tail" for this command}
+
+test item-19.11 {item text: tail not allowed} -body {
+    .t item text root tail "hello"
+} -returnCodes error -result {can't specify "tail" for this command}
+
 test item-20.1 {item tag: too few args} -body {
     .t item tag
 } -returnCodes error -result {wrong # args: should be ".t item tag command ?arg arg ...?"}
@@ -1222,6 +1267,137 @@ test item-22.7 {-button: set auto abbreviation} -body {
     .t item conf foo -button a
     .t item cget foo -button
 } -result {auto}
+
+test item-23.1 {compare: missing args} -body {
+    .t item compare
+} -returnCodes error  -result {wrong # args: should be ".t item compare item1 op item2"}
+
+test item-23.2 {compare: unknown operator} -body {
+    .t item compare root foo root
+} -returnCodes error -result {bad comparison operator "foo": must be <, <=, ==, >=, >, or !=}
+
+test item-23.3 {compare: unknown item} -body {
+    .t item compare root foo bar
+} -returnCodes error -result {item "bar" doesn't exist}
+
+test item-23.4 {compare: same item} -body {
+    set result {}
+    foreach op {< <= == >= > !=} {
+	lappend result [.t item compare root $op root]
+    }
+    set result
+} -result {0 1 1 1 0 0}
+
+test item-23.5 {compare: different items} -setup {
+    .t item delete all
+    .t item create -tags item1 -parent root
+    .t item create -tags item2 -parent root
+} -body {
+    set result {}
+    foreach op {< <= == >= > !=} {
+	lappend result [.t item compare item1 $op item2]
+    }
+    set result
+} -result {1 1 0 0 0 1}
+
+test item-23.6 {compare: different items} -setup {
+    .t item delete all
+    .t item create -tags item1 -parent root
+    .t item create -tags item2 -parent root
+} -body {
+    set result {}
+    foreach op {< <= == >= > !=} {
+	lappend result [.t item compare item2 $op item1]
+    }
+    set result
+} -result {0 0 0 1 1 1}
+
+test item-23.7 {compare: uncommon ancestor, LT} -setup {
+    .t item delete all
+    .t item create -tags item1 ; # no parent
+    .t item create -tags item2 ; # no parent
+} -body {
+    .t item compare item1 < item2
+} -returnCodes error -result {item 1 and item 2 don't share a common ancestor}
+
+test item-23.8 {compare: uncommon ancestor, GT} -body {
+    .t item compare item1 > item2
+} -returnCodes error -result {item 1 and item 2 don't share a common ancestor}
+
+test item-23.9 {compare: uncommon ancestor, EQ or NE} -body {
+    .t item compare item1 == item2
+    .t item compare item1 != item2
+} -result {1}
+
+test item-24.1 {buttonstate: missing args} -body {
+    .t item buttonstate
+} -returnCodes error -result {wrong # args: should be ".t item buttonstate item ?state?"}
+
+test item-24.2 {buttonstate: unknown item} -body {
+    .t item buttonstate foo
+} -returnCodes error -result {item "foo" doesn't exist}
+
+test item-24.3 {buttonstate: current state} -body {
+    .t item buttonstate root
+} -result {normal}
+
+test item-24.4 {buttonstate: unknown state} -body {
+    .t item buttonstate root foo
+} -returnCodes error -result {bad state "foo": must be active, normal, or pressed}
+
+test item-24.5 {buttonstate: set state} -body {
+    .t item buttonstate root active
+} -result {active}
+
+test item-25.1 {span: too few args} -setup {
+    .t item delete all
+    .t item create -parent root -tags item0
+    .t column delete all
+    .t column create -tags column0
+    .t column create -tags column1
+    .t column create -tags column2
+    .t column create -tags column3
+} -body {
+    .t item span
+} -returnCodes error -result {wrong # args: should be ".t item span item ?column? ?span? ?column span ...?"}
+
+test item-25.2 {span: unknown item} -body {
+    .t item span foo
+} -returnCodes error -result {item "foo" doesn't exist}
+
+test item-25.3 {span: multiple items no column not allowed} -body {
+    .t item span all
+} -returnCodes error -result {can't specify > 1 item for this command}
+
+test item-25.4 {span: single item, no column} -body {
+    .t item span root
+} -result {1 1 1 1}
+
+test item-25.5 {span: multiple items single column not allowed} -body {
+    .t item span all column0
+} -returnCodes error -result {can't specify > 1 item for this command}
+
+test item-25.6 {span: single item missing span} -body {
+    .t item span root column0 1 column1
+}  -returnCodes error -result {missing argument after column "column1"}
+
+test item-25.7 {span: multiple items missing span} -body {
+    .t item span all column0 1 column1
+}  -returnCodes error -result {missing argument after column "column1"}
+
+test item-25.8 {span: single item single column} -body {
+    .t item span root column0
+} -result {1}
+
+test item-25.9 {span: single item multiple columns} -body {
+    .t item span root all 3
+    .t item span root
+} -result {3 3 3 3}
+
+test item-25.10 {span: multiple items multiple columns} -body {
+    .t item span all all 2
+    list [.t item span root] [.t item span item0]
+} -result {{2 2 2 2} {2 2 2 2}}
 
 test item-99.1 {some needed cleanup} -body {
     destroy .t

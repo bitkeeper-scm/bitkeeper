@@ -1,5 +1,4 @@
-/* $Id$
- *
+/*
  * Copyright (c) 2003, Joe English
  *
  * Tk alternate theme, intended to match the MSUE and Gtk's (old) default theme
@@ -13,7 +12,7 @@
 #include <X11/Xutil.h>
 #include "ttkTheme.h"
 
-#if defined(WIN32)
+#if defined(_WIN32)
 static const int WIN32_XDRAWLINE_HACK = 1;
 #else
 static const int WIN32_XDRAWLINE_HACK = 0;
@@ -251,7 +250,7 @@ static Ttk_ElementOptionSpec BorderElementOptions[] = {
     	STRINGIFY(BORDERWIDTH) },
     { "-relief", TK_OPTION_RELIEF, Tk_Offset(BorderElement,reliefObj),
     	"flat" },
-    {NULL}
+        { NULL, 0, 0, NULL }
 };
 
 static void BorderElementSize(
@@ -325,7 +324,7 @@ static Ttk_ElementOptionSpec FieldElementOptions[] = {
     	"white" },
     { "-bordercolor",TK_OPTION_COLOR, Tk_Offset(FieldElement,borderColorObj),
 	"black" },
-    {NULL}
+    { NULL, 0, 0, NULL }
 };
 
 static void FieldElementSize(
@@ -476,7 +475,7 @@ static Ttk_ElementOptionSpec IndicatorElementOptions[] = {
 	    Tk_Offset(IndicatorElement,borderColorObj), "black" },
     { "-indicatormargin", TK_OPTION_STRING,
 	    Tk_Offset(IndicatorElement,marginObj), "0 2 4 2" },
-    {NULL}
+	    { NULL, 0, 0, NULL }
 };
 
 static void IndicatorElementSize(
@@ -499,7 +498,7 @@ static void IndicatorElementDraw(
     IndicatorElement *indicator = elementRecord;
     Display *display = Tk_Display(tkwin);
     Ttk_Padding padding;
-    XColor *fgColor, *frameColor, *lightColor, *shadeColor, *indicatorColor, *borderColor;
+    XColor *fgColor, *frameColor, *shadeColor, *indicatorColor, *borderColor;
 
     int index, ix, iy;
     XGCValues gcValues;
@@ -529,7 +528,6 @@ static void IndicatorElementDraw(
      */
     fgColor = Tk_GetColorFromObj(tkwin, indicator->foregroundObj);
     frameColor = Tk_GetColorFromObj(tkwin, indicator->backgroundObj);
-    lightColor = Tk_GetColorFromObj(tkwin, indicator->lightColorObj);
     shadeColor = Tk_GetColorFromObj(tkwin, indicator->shadeColorObj);
     indicatorColor = Tk_GetColorFromObj(tkwin, indicator->colorObj);
     borderColor = Tk_GetColorFromObj(tkwin, indicator->borderColorObj);
@@ -614,7 +612,7 @@ static Ttk_ElementOptionSpec ArrowElementOptions[] = {
 	Tk_Offset(ArrowElement,reliefObj),"raised"},
     { "-arrowcolor", TK_OPTION_COLOR,
 	Tk_Offset(ArrowElement,colorObj),"black"},
-    { NULL }
+    { NULL, 0, 0, NULL }
 };
 
 /*
@@ -694,7 +692,7 @@ static Ttk_ElementOptionSpec MenubuttonArrowElementOptions[] = {
 	Tk_Offset(MenubuttonArrowElement,sizeObj), STRINGIFY(MENUBUTTON_ARROW_SIZE)},
     { "-arrowcolor",TK_OPTION_COLOR,
 	Tk_Offset(MenubuttonArrowElement,colorObj), "black"},
-    { NULL }
+    { NULL, 0, 0, NULL }
 };
 
 static Ttk_Padding MenubuttonArrowPadding = { 3, 0, 3, 0 };
@@ -724,8 +722,8 @@ static void MenubuttonArrowElementDraw(
     int width = 0, height = 0;
 
     Tk_GetPixelsFromObj(NULL, tkwin, arrow->sizeObj, &size);
-    Tcl_GetIndexFromObj(NULL, arrow->directionObj, directionStrings,
-	   ""/*message*/, 0/*flags*/, &postDirection);
+    Tcl_GetIndexFromObjStruct(NULL, arrow->directionObj, directionStrings,
+	   sizeof(char *), ""/*message*/, 0/*flags*/, &postDirection);
 
     /* ... this might not be such a great idea ... */
     switch (postDirection) {
@@ -782,7 +780,7 @@ static Ttk_ElementOptionSpec TroughElementOptions[] = {
 	Tk_Offset(TroughElement,reliefObj), "sunken" },
     { "-groovewidth", TK_OPTION_PIXELS,
 	Tk_Offset(TroughElement,grooveWidthObj), "-1" },
-    { NULL }
+    { NULL, 0, 0, NULL }
 };
 
 static void TroughElementSize(
@@ -860,7 +858,7 @@ static Ttk_ElementOptionSpec ThumbElementOptions[] = {
 	"black" },
     { "-relief", TK_OPTION_RELIEF,Tk_Offset(ThumbElement,reliefObj),"raised" },
     { "-orient", TK_OPTION_ANY,Tk_Offset(ThumbElement,orientObj),"horizontal"},
-    { NULL }
+    { NULL, 0, 0, NULL }
 };
 
 static void ThumbElementSize(
@@ -949,7 +947,7 @@ static Ttk_ElementOptionSpec SliderElementOptions[] = {
 	"black" },
     { "-orient", TK_OPTION_ANY, Tk_Offset(SliderElement,orientObj),
 	"horizontal" },
-    { NULL }
+    { NULL, 0, 0, NULL }
 };
 
 static void SliderElementSize(
@@ -1023,7 +1021,7 @@ static Ttk_ElementOptionSpec TreeitemIndicatorOptions[] = {
 	Tk_Offset(TreeitemIndicator,diameterObj), "9" },
     { "-indicatormargins", TK_OPTION_STRING,
 	Tk_Offset(TreeitemIndicator,marginObj), "2 2 4 2" },
-    {NULL}
+    { NULL, 0, 0, NULL }
 };
 
 static void TreeitemIndicatorSize(

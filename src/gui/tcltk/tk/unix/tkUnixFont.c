@@ -8,8 +8,6 @@
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id$
  */
 
 #include "tkUnixInt.h"
@@ -589,7 +587,7 @@ UtfToUcs2beProc(
     srcStart = src;
     srcEnd = src + srcLen;
     srcClose = srcEnd;
-    if ((flags & TCL_ENCODING_END) == 0) {
+    if (!(flags & TCL_ENCODING_END)) {
 	srcClose -= TCL_UTF_MAX;
     }
 
@@ -721,7 +719,7 @@ TkpGetNativeFont(
 	}
 	fontStructPtr = CreateClosestFont(tkwin, &fa.fa, &fa.xa);
     }
-    fontPtr = (UnixFont *) ckalloc(sizeof(UnixFont));
+    fontPtr = ckalloc(sizeof(UnixFont));
     InitFont(tkwin, fontStructPtr, fontPtr);
 
     return (TkFont *) fontPtr;
@@ -777,7 +775,7 @@ TkpGetFontFromAttributes(
 
     fontPtr = (UnixFont *) tkFontPtr;
     if (fontPtr == NULL) {
-	fontPtr = (UnixFont *) ckalloc(sizeof(UnixFont));
+	fontPtr = ckalloc(sizeof(UnixFont));
     } else {
 	ReleaseFont(fontPtr);
     }
@@ -1086,7 +1084,7 @@ Tk_MeasureChars(
 	int newX, termX, sawNonSpace, dstWrote;
 	Tcl_UniChar ch;
 	FontFamily *familyPtr;
-	char buf[16];
+	XChar2b buf[8];
 
 	/*
 	 * How many chars will fit in the space allotted? This first version
@@ -1108,14 +1106,14 @@ Tk_MeasureChars(
 	    } else {
 		lastSubFontPtr = FindSubFontForChar(fontPtr, ch, NULL);
 		familyPtr = lastSubFontPtr->familyPtr;
-		Tcl_UtfToExternal(NULL, familyPtr->encoding, p, next - p,
-			0, NULL, buf, sizeof(buf), NULL, &dstWrote, NULL);
+		Tcl_UtfToExternal(NULL, familyPtr->encoding, p, next - p, 0, NULL,
+			(char *)&buf[0].byte1, sizeof(buf), NULL, &dstWrote, NULL);
 		if (familyPtr->isTwoByteFont) {
 		    newX += XTextWidth16(lastSubFontPtr->fontStructPtr,
-			    (XChar2b *) buf, dstWrote >> 1);
+			    buf, dstWrote >> 1);
 		} else {
-		    newX += XTextWidth(lastSubFontPtr->fontStructPtr, buf,
-			    dstWrote);
+		    newX += XTextWidth(lastSubFontPtr->fontStructPtr,
+			    (char *)&buf[0].byte1, dstWrote);
 		}
 	    }
 	    if (newX > maxLength) {
@@ -1650,7 +1648,7 @@ InitFont(
     pageMap = fontPtr->subFontArray[0].fontMap[0];
     for (i = 0; i < 256; i++) {
 	if ((minHi > 0) || (i < minLo) || (i > maxLo)
-		|| (((pageMap[i>>3] >> (i&7)) & 1) == 0)) {
+		|| !((pageMap[i>>3] >> (i&7)) & 1)) {
 	    n = 0;
 	} else if (fontStructPtr->per_char == NULL) {
 	    n = fontStructPtr->max_bounds.width;
@@ -1729,7 +1727,7 @@ ReleaseFont(
 	ReleaseSubFont(fontPtr->display, &fontPtr->subFontArray[i]);
     }
     if (fontPtr->subFontArray != fontPtr->staticSubFonts) {
-	ckfree((char *) fontPtr->subFontArray);
+	ckfree(fontPtr->subFontArray);
     }
 }
 
@@ -1846,7 +1844,7 @@ AllocFontFamily(
 	}
     }
 
-    familyPtr = (FontFamily *) ckalloc(sizeof(FontFamily));
+    familyPtr = ckalloc(sizeof(FontFamily));
     memset(familyPtr, 0, sizeof(FontFamily));
     familyPtr->nextPtr = tsdPtr->fontFamilyList;
     tsdPtr->fontFamilyList = familyPtr;
@@ -1933,7 +1931,7 @@ FreeFontFamily(
 	familyPtrPtr = &(*familyPtrPtr)->nextPtr;
     }
 
-    ckfree((char *) familyPtr);
+    ckfree(familyPtr);
 }
 
 /*
@@ -2213,7 +2211,7 @@ FontMapLoadPage(
     ThreadSpecificData *tsdPtr =
 	    Tcl_GetThreadData(&dataKey, sizeof(ThreadSpecificData));
 
-    subFontPtr->fontMap[row] = (char *) ckalloc(FONTMAP_BITSPERPAGE / 8);
+    subFontPtr->fontMap[row] = ckalloc(FONTMAP_BITSPERPAGE / 8);
     memset(subFontPtr->fontMap[row], 0, FONTMAP_BITSPERPAGE / 8);
 
     if (subFontPtr->familyPtr == &tsdPtr->controlFamily) {
@@ -2545,7 +2543,7 @@ CanUseFallback(
 	     * make a copy.
 	     */
 
-	    nameList = (char **) ckalloc(numNames * sizeof(char *));
+	    nameList = ckalloc(numNames * sizeof(char *));
 	    memcpy(nameList, nameListOrig, numNames * sizeof(char *));
 	}
 	nameList[nameIdx] = NULL;
@@ -2563,7 +2561,7 @@ CanUseFallback(
 
     if (fontStructPtr == NULL) {
 	if (nameList != nameListOrig) {
-	    ckfree((char *) nameList);
+	    ckfree(nameList);
 	}
 	XFreeFontNames(nameListOrig);
 	return NULL;
@@ -2583,16 +2581,15 @@ CanUseFallback(
 	goto retry;
     }
     if (nameList != nameListOrig) {
-	ckfree((char *) nameList);
+	ckfree(nameList);
     }
     XFreeFontNames(nameListOrig);
 
     if (fontPtr->numSubFonts >= SUBFONT_SPACE) {
 	SubFont *newPtr;
 
-	newPtr = (SubFont *)
-		ckalloc(sizeof(SubFont) * (fontPtr->numSubFonts + 1));
-	memcpy((char *) newPtr, fontPtr->subFontArray,
+	newPtr = ckalloc(sizeof(SubFont) * (fontPtr->numSubFonts + 1));
+	memcpy(newPtr, fontPtr->subFontArray,
 		fontPtr->numSubFonts * sizeof(SubFont));
 	if (fixSubFontPtrPtr != NULL) {
 	    register SubFont *fixSubFontPtr = *fixSubFontPtrPtr;
@@ -2603,7 +2600,7 @@ CanUseFallback(
 	    }
 	}
 	if (fontPtr->subFontArray != fontPtr->staticSubFonts) {
-	    ckfree((char *) fontPtr->subFontArray);
+	    ckfree(fontPtr->subFontArray);
 	}
 	fontPtr->subFontArray = newPtr;
     }
@@ -3010,7 +3007,7 @@ GetEncodingAlias(
     EncodingAlias *aliasPtr;
 
     for (aliasPtr = encodingAliases; aliasPtr->aliasPattern != NULL; ) {
-	if (Tcl_StringMatch((char *) name, aliasPtr->aliasPattern)) {
+	if (Tcl_StringMatch(name, aliasPtr->aliasPattern)) {
 	    return aliasPtr->realName;
 	}
 	aliasPtr++;
@@ -3018,6 +3015,28 @@ GetEncodingAlias(
     return name;
 }
 
+/*
+ *---------------------------------------------------------------------------
+ *
+ * TkDrawAngledChars --
+ *
+ *	Draw some characters at an angle. This is awkward here because we have
+ *	no reliable way of drawing any characters at an angle in classic X11;
+ *	we have to draw on a Pixmap which is converted to an XImage (from
+ *	helper function GetImageOfText), rotate the image (hokey code!) onto
+ *	another XImage (from helper function InitDestImage), and then use the
+ *	rotated image as a mask when drawing. This is pretty awful; improved
+ *	versions are welcomed!
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	Target drawable is updated.
+ *
+ *---------------------------------------------------------------------------
+ */
+
 static inline XImage *
 GetImageOfText(
     Display *display,		/* Display on which to draw. */
@@ -3095,7 +3114,7 @@ InitDestImage(
 }
 
 void
-TkpDrawAngledChars(
+TkDrawAngledChars(
     Display *display,		/* Display on which to draw. */
     Drawable drawable,		/* Window or pixmap in which to draw. */
     GC gc,			/* Graphics context for drawing characters. */
@@ -3179,32 +3198,32 @@ TkpDrawAngledChars(
 	    for (j=0 ; j<srcHeight ; j++) {
 		switch (quadrant) {
 		case Q0:
-		    dx = floor(i*cosA + j*sinA + 0.5);
-		    dy = floor(j*cosA + (srcWidth - i)*sinA + 0.5);
+		    dx = ROUND16(i*cosA + j*sinA);
+		    dy = ROUND16(j*cosA + (srcWidth - i)*sinA);
 		    break;
 		case R1:
 		    dx = j;
 		    dy = srcWidth - i;
 		    break;
 		case Q1:
-		    dx = floor((i - srcWidth)*cosA + j*sinA + 0.5);
-		    dy = floor((srcWidth-i)*sinA + (j-srcHeight)*cosA + 0.5);
+		    dx = ROUND16((i - srcWidth)*cosA + j*sinA);
+		    dy = ROUND16((srcWidth-i)*sinA + (j-srcHeight)*cosA);
 		    break;
 		case R2:
 		    dx = srcWidth - i;
 		    dy = srcHeight - j;
 		    break;
 		case Q2:
-		    dx = floor((i-srcWidth)*cosA + (j-srcHeight)*sinA + 0.5);
-		    dy = floor((j - srcHeight)*cosA - i*sinA + 0.5);
+		    dx = ROUND16((i-srcWidth)*cosA + (j-srcHeight)*sinA);
+		    dy = ROUND16((j - srcHeight)*cosA - i*sinA);
 		    break;
 		case R3:
 		    dx = srcHeight - j;
 		    dy = i;
 		    break;
 		default:
-		    dx = floor(i*cosA + (j - srcHeight)*sinA + 0.5);
-		    dy = floor(j*cosA - i*sinA + 0.5);
+		    dx = ROUND16(i*cosA + (j - srcHeight)*sinA);
+		    dy = ROUND16(j*cosA - i*sinA);
 		}
 
 		if (dx < 0 || dy < 0 || dx >= bufWidth || dy >= bufHeight) {

@@ -1,6 +1,4 @@
 #
-# $Id$
-#
 # Bindings for Buttons, Checkbuttons, and Radiobuttons.
 #
 # Notes: <Button1-Leave>, <Button1-Enter> only control the "pressed"
@@ -28,7 +26,7 @@ bind TButton <<Invoke>> 	{ ttk::button::activate %W }
 bind TButton <ButtonPress-1> \
     { %W instate !disabled { ttk::clickToFocus %W; %W state pressed } }
 bind TButton <ButtonRelease-1> \
-    { %W instate {pressed !disabled} { %W state !pressed; %W invoke } }
+    { %W instate pressed { %W state !pressed; %W instate !disabled { %W invoke } } }
 bind TButton <Button1-Leave> \
     { %W state !pressed }
 bind TButton <Button1-Enter> \
@@ -54,7 +52,7 @@ bind TRadiobutton <KeyPress-Down> 	{ ttk::button::RadioTraverse %W +1 }
 proc ttk::button::activate {w} {
     $w instate disabled { return }
     set oldState [$w state pressed]
-    update idletasks; after 100
+    update idletasks; after 100	;# block event loop to avoid reentrancy
     $w state $oldState
     $w invoke
 }

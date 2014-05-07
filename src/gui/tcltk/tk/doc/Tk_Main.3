@@ -5,10 +5,8 @@
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 '\" 
-'\" RCS: @(#) $Id$
-'\" 
-.so man.macros
 .TH Tk_Main 3 4.0 Tk "Tk Library Procedures"
+.so man.macros
 .BS
 .SH NAME
 Tk_Main \- main program for Tk-based applications
@@ -22,7 +20,8 @@ Tk_Main \- main program for Tk-based applications
 .AP int argc in
 Number of elements in \fIargv\fR.
 .AP char *argv[] in
-Array of strings containing command-line arguments.
+Array of strings containing command-line arguments. On Windows, when
+using -DUNICODE, the parameter type changes to wchar_t *.
 .AP Tcl_AppInitProc *appInitProc in
 Address of an application-specific initialization procedure.
 The value for this argument is usually \fBTcl_AppInit\fR.
@@ -62,6 +61,10 @@ for \fBTcl_AppInit\fR.
 \fBTk_Main\fR supports both an interactive mode and a startup script
 mode, with the file name and encoding of a startup script under the
 control of the \fBTcl_SetStartupScript\fR and \fBTcl_GetStartupScript\fR
-routines.
+routines. However it calls \fBTk_MainLoop\fR after processing any
+supplied script, and in interactive uses events registered with
+\fBTcl_CreateFileHandler\fR to process user input.
+.SH "SEE ALSO"
+Tcl_DoOneEvent(3)
 .SH KEYWORDS
 application-specific initialization, command-line arguments, main program
