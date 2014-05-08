@@ -311,6 +311,8 @@ grep -q 'grep.* 2.[4-9]' VERS || grep -q 'grep.* 2.1[0-9]' VERS || {
 	exit 1
 }
 
+if ! grep -q FreeBSD VERS
+then
 echo $N 'exactly 2*C lines between matches, must not print "--" ......'$NL
 echo ' -nC2' > s1.cmd
 cat <<EOF > DATA
@@ -444,6 +446,8 @@ bk grep -nC3 match DATA > GOT
 $GREP -nC3 match DATA > WANT
 checkfiles WANT GOT
 echo OK
+
+fi # End of FreeBSD skipped tests
 
 echo $N diff -C matches last line of file 1, do not print file 2 ....$NL
 cat <<EOF > f1
