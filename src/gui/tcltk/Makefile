@@ -52,6 +52,11 @@ else
 	ifeq "$(shell uname -m)" "x86_64"
 		ENABLE_64BIT=--enable-64bit
 	endif
+	# Work around for suspected compiler bug on hp-ia64.
+	# Do like a debug build but use -O2.
+	ifeq "$(shell uname -s)" "HP-UX"
+		SYMBOLS="--enable-symbols=all-with-O2"
+	endif
 	# No rpath on freebsd 2.2.8
 	ifeq "$(shell uname -r)" "2.2.8-RELEASE"
 		SHARED := $(SHARED) --disable-rpath

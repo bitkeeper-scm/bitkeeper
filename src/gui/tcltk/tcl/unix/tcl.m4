@@ -932,6 +932,11 @@ AC_DEFUN([SC_ENABLE_SYMBOLS], [
 	AC_DEFINE(NDEBUG, 1, [Is no debugging enabled?])
 	AC_MSG_RESULT([no])
 	AC_DEFINE(TCL_CFG_OPTIMIZED, 1, [Is this an optimized build?])
+    elif test "$tcl_ok" = "all-with-O2"; then
+	CFLAGS_DEFAULT='$(CFLAGS_OPTIMIZE)'
+	LDFLAGS_DEFAULT='$(LDFLAGS_OPTIMIZE)'
+	AC_MSG_RESULT([all-with-O2 (all debugging but with -O2 optimization)])
+	AC_DEFINE(TCL_CFG_OPTIMIZED, 1, [Is this an optimized build?])
     else
 	CFLAGS_DEFAULT='$(CFLAGS_DEBUG)'
 	LDFLAGS_DEFAULT='$(LDFLAGS_DEBUG)'
@@ -942,12 +947,12 @@ AC_DEFUN([SC_ENABLE_SYMBOLS], [
     AC_SUBST(CFLAGS_DEFAULT)
     AC_SUBST(LDFLAGS_DEFAULT)
 
-    if test "$tcl_ok" = "mem" -o "$tcl_ok" = "all"; then
+    if test "$tcl_ok" = "mem" -o "$tcl_ok" = "all" -o "$tcl_ok" = "all-with-O2"; then
 	AC_DEFINE(TCL_MEM_DEBUG, 1, [Is memory debugging enabled?])
     fi
 
     ifelse($1,bccdebug,dnl Only enable 'compile' for the Tcl core itself
-	if test "$tcl_ok" = "compile" -o "$tcl_ok" = "all"; then
+	if test "$tcl_ok" = "compile" -o "$tcl_ok" = "all" -o "$tcl_ok" = "all-with-O2"; then
 	    AC_DEFINE(TCL_COMPILE_DEBUG, 1, [Is bytecode debugging enabled?])
 	    AC_DEFINE(TCL_COMPILE_STATS, 1, [Are bytecode statistics enabled?])
 	fi)
@@ -955,7 +960,7 @@ AC_DEFUN([SC_ENABLE_SYMBOLS], [
     if test "$tcl_ok" != "yes" -a "$tcl_ok" != "no"; then
 	if test "$tcl_ok" = "all"; then
 	    AC_MSG_RESULT([enabled symbols mem ]ifelse($1,bccdebug,[compile ])[debugging])
-	else
+	elif test "$tcl_ok" != "all-with-O2"; then
 	    AC_MSG_RESULT([enabled $tcl_ok debugging])
 	fi
     fi
