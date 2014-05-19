@@ -199,7 +199,7 @@ checkfiles WANT GOT
 echo OK
 
 echo $N annotated grep -adpru, recursive ............................$NL
-bk -r grep -apdru bitkeeper > GOT
+bk -Ur grep -apdru bitkeeper > GOT
 cat <<EOF > WANT
 subdir/old:1998/01/11:bk/$USER:1.1:bitkeeper rocks!
 subdir/user:2004/08/23:joe/$USER:1.1:bitkeeper rocks!
