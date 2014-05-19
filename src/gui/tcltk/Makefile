@@ -12,17 +12,17 @@ TCLVERSION := 8.6
 TCLVERSIONNODOTS := 86
 
 # Machines on which we disable XFT
-NO_XFT := netbsd4.bitmover.com	\
-	netbsd4-64.bitmover.com	\
-	freebsd4.bitmover.com	\
-	sco.bitmover.com	\
-	netbsd.bitmover.com	\
-	aix5.bitmover.com	\
-	sunx86.bitmover.com	\
-	hp11.bitmover.com	\
-	macos103.bitmover.com	\
-	hp-ia64.bitmover.com	\
-	sun.bitmover.com
+NO_XFT := netbsd4.bitkeeper.com	\
+	netbsd4-64.bitkeeper.com	\
+	freebsd4.bitkeeper.com	\
+	sco.bitkeeper.com	\
+	netbsd.bitkeeper.com	\
+	aix5.bitkeeper.com	\
+	sunx86.bitkeeper.com	\
+	hp11.bitkeeper.com	\
+	macos103.bitkeeper.com	\
+	hp-ia64.bitkeeper.com	\
+	sun.bitkeeper.com
 
 ifeq "$(OSTYPE)" "msys"
 	S := win
@@ -152,7 +152,7 @@ populate:
 	$(if $(Q), @echo Cloning TclTk repos,)
 	$(Q) BK_CONFIG='checkout:get!' bk here add $(QUIET) TCLTK || \
 	     BK_CONFIG='checkout:get!' bk here add $(QUIET) \
-		-@bk://data.bitmover.com$$_BUILD_PORT/bk TCLTK
+		-@bk://data.bitkeeper.com$$_BUILD_PORT/bk TCLTK
 
 CHANGELOGS =  \
 	tcl/ChangeLog \
