@@ -242,6 +242,8 @@ _fslmv
 _mv => _fslmv
 _fslrm
 _rm => _fslrm
+_fslrmdir
+_rmdir => _fslrmdir
 gca
 get
 _getdir

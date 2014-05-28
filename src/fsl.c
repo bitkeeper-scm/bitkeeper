@@ -124,6 +124,20 @@ fslmkdir_main(int ac, char **av)
 	return (rc);
 }
 
+int
+fslrmdir_main(int ac, char **av)
+{
+	int	rc = 0;
+	if (ac < 2) usage1(av[0]);
+	while (--ac) {
+		if (rmdir(av[ac])) {
+			perror(av[ac]);
+			rc = 1;
+		}
+	}
+	return (rc);
+}
+
 /*
  * Write stdin to a file
  * Used for scripts to write something via bk's fslayer
