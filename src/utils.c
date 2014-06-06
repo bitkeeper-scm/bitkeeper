@@ -1939,6 +1939,13 @@ bk_badArg(int c, char **av)
 			/* unknown --long option */
 			fprintf(stderr, "bad option %s\n", av[optind-1]);
 		}
+	} else if (c == GETOPT_NOARG) {
+		if (optopt) {
+			fprintf(stderr, "-%c missing argument\n", optopt);
+		} else {
+			/* unknown --long option */
+			fprintf(stderr, "%s missing argument\n", av[optind-1]);
+		}
 	} else {
 		/* we shouldn't see these */
 		if (isprint(c)) {
@@ -1978,7 +1985,7 @@ bk_saveArg(char **nav, char **av, int c)
 		/* normal short option */
 		buf = aprintf("-%c%s", c, optarg?optarg:"");
 		nav = addLine(nav, buf);
-	} else if (c > 256) {
+	} else if (c > GETOPT_NOARG) {
 		/* long option */
 		if (optarg && (optarg == av[optind-1])) {
 			/* --long with-arg */
@@ -1987,7 +1994,7 @@ bk_saveArg(char **nav, char **av, int c)
 		nav = addLine(nav, strdup(av[optind-1]));
 	} else {
 		/* getopt error */
-		assert((c == -1) || (c == GETOPT_ERR));
+		assert((c == -1) || (c == GETOPT_ERR) || (c == GETOPT_NOARG));
 	}
 	return (nav);
 }

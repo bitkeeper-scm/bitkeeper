@@ -149,14 +149,14 @@ getopt(int ac, char **av, char *opts, longopt *lopts)
 		optind++;
 		optopt = *t;
 		// TRACE("%s", "wanted another word");
-		return (GETOPT_ERR);
+		return (GETOPT_NOARG);
 	}
 
 	/* Nope, there had better be another word. */
 	if ((optind + 1 == ac) || (av[optind+1][0] == '-')) {
 		optopt = av[optind][n];
 		// TRACE("%s", "wanted another word");
-		return (GETOPT_ERR);
+		return (GETOPT_NOARG);
 	}
 	optarg = av[optind+1];
 	optind += 2;
@@ -171,12 +171,13 @@ doLong(int ac, char **av, longopt *lopts)
 {
 	char	*s, *t;
 	int	len1, len2;
+	int	err = GETOPT_ERR;
 
 	unless (lopts) {
 err:		n = 1;
 		optind++;
 		optopt = 0;
-		return (GETOPT_ERR);
+		return (err);
 	}
 	/* len of option without =value part */
 	s = av[optind] + 2;
@@ -206,6 +207,7 @@ err:		n = 1;
 		n = 1;
 		return (lopts->ret);
 	}
+	err = GETOPT_NOARG;	/* follow errs related to args */
 
 	/* got one with an option, see if it is cozied up to the flag */
 	if ((*s == '=') || (*s == ':')) {
