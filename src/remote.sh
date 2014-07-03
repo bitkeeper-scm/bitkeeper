@@ -153,8 +153,8 @@ case $CMD in
 		test $CMD = trial && DEST="$DEST-trial"
 		if [ X$OSTYPE = Xmsys -o X$OSTYPE = Xcygwin ] ; 
 		then	# we're on Windows
-			# We only want images done on WinXP
-			test $HOSTNAME = winxp || {
+			# We only want images done on win7-vm
+			test $HOSTNAME = win7-vm || {
 				test $CMD = save || rm -rf /build/$BKDIR
 				rm -rf /build/.tmp-$BK_USER
 				exit 0
