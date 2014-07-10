@@ -207,8 +207,8 @@ remap_rmdir(project *proj, char *dir)
 		t = buf + strlen(buf);
 		while (1) {
 			while (*t != '/') --t;
-			*t = 0;
 			if (streq(t, "/.bk")) break;
+			*t = 0;
 			if (rmdir(buf)) break;
 		}
 		return (0);

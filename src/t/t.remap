@@ -186,3 +186,13 @@ echo OK
 
 bk _kill bk://localhost:$P
 trap "" 0
+
+echo $N Check rmtree on remap does not try to rmdir the root.........$NL
+# This would try to recurse too far backwards up .bk side of things.
+# In windows, this could lead to trying to delete the dir we were in.
+cd "$HERE"/remap
+bk _rm -r dir || fail
+bk _rm -r SCCS || fail
+bk _rm -r BitKeeper || fail
+test `ls | wc -l` -eq 0 || fail
+echo OK
