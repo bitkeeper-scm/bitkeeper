@@ -196,3 +196,14 @@ EOF
 perl -pe '($file) = /^([^|]+)/;s/\+/`bk prs -hd:MD5KEY: -r+ $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
 cmpfiles WANT2 GOT
 echo OK
+
+echo $N See that testing presence does not get fooled by deepness ...$NL
+# clone with partial check copied idcache, which has gcc in it, but the
+# repo doesn't.  Then a check to see if gcc present only checked existence
+# of gcc.  Now it checks gcc/BitKeeper/etc .
+cd "$HERE"
+echo "partial_check:on!" >> "$BK_DOTBK"/config
+bk clone $Q -s./gcc/deepnest project just-deep
+cd just-deep
+bk here add $Q ./gdb || fail
+echo OK
