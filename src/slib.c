@@ -4831,9 +4831,6 @@ sccs_init(char *name, u32 flags)
 	}
 	mkgraph(s, flags);
 
-	/* test lease after we have PATHNAME(s, TABLE(s)) */
-	lease_check(s->proj, O_RDONLY, s);
-
 	if (HASGRAPH(s)) {
 		/*
 		 * get the xflags from the delta graph
@@ -4885,6 +4882,9 @@ sccs_init(char *name, u32 flags)
 			if (s->text[i][0] == '@') break;
 		}
 	}
+	/* test lease after we have PATHNAME(s, TABLE(s)) */
+	lease_check(s->proj, O_RDONLY, s);
+     
  out:
 	if (fixstime) sccs_setStime(s, s->stime); /* only make older */
 	return (s);

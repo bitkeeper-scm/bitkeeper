@@ -243,6 +243,18 @@ BitMover can be reached at:
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
+#license-max-users
+The current BitKeeper license supports a fixed number users and the
+the current repository contains more that the purchased amount.
+
+File: #BKARG#
+
+BitMover can be reached at:
+   +1-408-370-9911 (international and California)
+   888-401-8808 (toll free in the US & Canada) 
+during business hours (PST) or via email at sales@bitmover.com.
+Thanks!
+$
 #lease-loop-blocked
 A lease-proxy trigger requested a lease, probably because it used a bk
 operation, such as 'bk get'.  A lease-proxy trigger may not fetch a lease.

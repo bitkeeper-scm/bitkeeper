@@ -164,7 +164,7 @@ histo_print(histo *h, char *title, char *(*print)(u64 data))
 	sortArray(h->data, numcmp);
 	for (i = 0; i < 10; i++) {
 		j = (i * h->num) / 10;
-		printf("%6s ", print(h->data[j+1]));
+		printf("%6s ", print(h->data ? h->data[j+1] : 0));
 	}
 	printf("%6s", print(h->data[h->num])); /* max */
 	printf("\n");

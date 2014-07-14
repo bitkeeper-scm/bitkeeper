@@ -402,6 +402,7 @@ upgrade_maybeNag(char *out)
 {
 	FILE	*f;
 	char	*t, *key, *new_utc, *new_age, *bk_age;
+	u32	bits;
 	int	same, i;
 	time_t	now = time(0);
 	char	*av[] = {
@@ -458,10 +459,10 @@ upgrade_maybeNag(char *out)
 
 	/* But don't do anything if noNAG is set */
 	if (key = lease_bkl(0, 0)) {	/* get a lease, but don't fail */
-		license_info(key, buf, 0);
+		bits = license_bklbits(key);
 		free(key);
 
-		if (strstr(buf, "noNAG")) return;
+		if (bits & LIC_NONAG) return;
 	}
 
 donag:	/* okay, nag */

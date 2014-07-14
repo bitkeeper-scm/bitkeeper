@@ -72,6 +72,7 @@ bkversion(FILE *f)
 	FILE	*f1;
 	float	exp;
 	time_t	now = time(0);
+	int	seats;
 	char	*key, *t;
 	char	buf[MAXLINE];
 
@@ -82,8 +83,9 @@ bkversion(FILE *f)
 	fflush(f);	/* put out ver info while waiting for lease */
 	/* get a lease, but don't fail */
 	if (key = lease_bkl(0, 0)) {
-		license_info(key, buf, 0);
+		license_info(key, buf, 0, &seats);
 		fprintf(f, "Options: %s\n", buf);
+		if (seats) fprintf(f, "MaxSeats: %d\n", seats);
 		fprintf(f, "Customer ID: %.12s\n", key + 12);
 		free(key);
 	}

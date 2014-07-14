@@ -310,8 +310,8 @@ delta_main(int ac, char **av)
 			}
 			goto next;
 		}
-		if (mode) d = sccs_parseArg(s, d, 'O', mode, 0);
 		lease_check(s->proj, O_WRONLY, s);
+		if (mode) d = sccs_parseArg(s, d, 'O', mode, 0);
 		if (df & DELTA_AUTO) {
 			if (HAS_SFILE(s)) {
 				df &= ~NEWFILE;
