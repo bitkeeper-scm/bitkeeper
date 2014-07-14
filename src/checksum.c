@@ -3,6 +3,7 @@
 #include "logging.h"
 #include "progress.h"
 #include "graph.h"
+#include "range.h"
 
 private	int	do_chksum(int fd, int off, int *sump);
 private	int	chksum_sccs(char **files, char *offset);
@@ -332,6 +333,22 @@ setOrder(sccs *s, ser_t d, void *token)
 	addArray(order, &d);
 	return (0);
 }
+/* save the graph symmetric difference */
+typedef	struct {
+	u8	*symdiff;
+	u32	bits;
+} sdrange;
+
+private	int
+xorDelta(sccs *s, ser_t d, void *token)
+{
+	sdrange *r = (sdrange *)token;
+
+	FLAGS(s, d) &= ~(D_RED|D_BLUE);
+	unless (r->symdiff[d]) r->bits++;
+	r->symdiff[d] |= 2;
+	return (0);
+}
 
 typedef	struct {
 	ser_t	ser;		/* which cset serial */
@@ -365,6 +382,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	ser_t	d, prev;
 	int	found = 0;
 	int	n = 0;
+	int	verify = !proj_configbool(s->proj, "no_graphverify");
 	u32	index;
 	ticker	*tick = 0;
 
@@ -423,21 +441,29 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	EACH_INDEX(order, orderIndex) {
 		d = order[orderIndex];
 
-		/* serialmap[i] = slist[i] ^ symdiff[i] */
+		/* serialmap[i] = (slist[i] ^ symdiff[i]) & 1 */
 		bits = graph_symdiff(s, d, prev, 0, symdiff, 0, -1, 0);
 		start = (d > prev) ? d : prev;
+		/* closure[i] = (slist[i] ^ symdiff[i]) & 2 */
+		if (verify) {
+			sdrange	r = {symdiff, bits};
+
+			range_walkrevs( s, prev, 0, d, WR_BOTH, xorDelta, &r);
+			bits = r.bits;
+		}
 
 		if (tick) progress(tick, ++n);
 		added = 0;
 		for (i = start; bits; i--) {
 			unless (symdiff[i]) continue;
-			slist[i] ^= 1;	/* transition slist from prev to d */
+			/* transition slist from prev to d */
+			slist[i] ^= symdiff[i];
 			symdiff[i] = 0;
 			bits--;
 
 			/* get list of files changed by serial 'i' */
 			EACH_INDEX(csetlist[i], index) {
-				ser_t	ser;
+				ser_t	ser = 0;
 				int	j;
 				int	num;
 
@@ -454,6 +480,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 				while ((j > 1) && (item->sse[j-1].ser <= d)) {
 					--j;
 				}
+again:
 				for (; j <= num; ++j) {
 					ser = item->sse[j].ser;
 					if ((ser <= d) &&
@@ -464,6 +491,31 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 					}
 				}
 				item->last = j;
+				/* written for branch predictor */
+				unless (verify && (j <= num) && 
+				    ((slist[ser] ^ symdiff[ser]) != 3)) {
+					continue;
+				}
+				/* mismatch between graph and serialmap */
+				unless (found++) {
+					fprintf(stderr,
+					    "closure failure %s(%s)\n",
+					    s->gfile,
+					    REV(s, d));
+				}
+				if (fix) {
+					fprintf(stderr, "Unfixable.\n"
+					    "Write support@bitmover.com\n");
+					exit(1);
+				}
+				/* checksum is really just serial map */
+				unless ((slist[ser] ^ symdiff[ser]) & 1) {
+					/* false hit: undo and keep looking */
+					sum -= item->sse[j].sum;
+					if (ser == d) --added;
+					j++;
+					goto again;
+				}
 			}
 		}
 		prev = d;

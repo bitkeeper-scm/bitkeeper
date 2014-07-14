@@ -121,6 +121,18 @@ EOF
 checkfiles WANT GOT
 echo OK
 
+test -d "$TESTDATA/xaraya-exclude-merge" && {
+echo $N Test an exclude of a merge fails closure test ...............$NL
+# We can turn off verify checking
+bk --config=no_graphverify:1 --cd="$TESTDATA/xaraya-exclude-merge" \
+    bk checksum ChangeSet || fail
+# Or run with it on
+bk --cd="$TESTDATA/xaraya-exclude-merge" bk checksum ChangeSet 2> GOT && fail
+echo "closure failure ChangeSet(1.482)" > WANT
+cmpfiles WANT GOT
+echo OK
+}
+
 echo $N Test a tag has no checksum problems .........................$NL
 bk tag $Q TOP
 test "`bk changes -ar=5 -d':DT:-:DS:'`" = T-5 || fail 4 no longer a tag
