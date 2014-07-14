@@ -482,3 +482,21 @@ perl -e '$i=104;print("123456789012345678901234567890123456789\n")while($i--)' >
 bk grep 'This is test line number 1' >/dev/null x || fail 1
 bk grep -q 'This is test line number 1' x || fail 2
 echo OK
+
+echo $N Dash works as pattern only if files listed ..................$NL
+# The -i in tests is because it downcases pattern in place, which stressed
+# the implementation because the dash added by bk -U was not modifiable.
+bk edit $Q file1
+echo "line with -" > file1
+# this fails as we don't allow '-' as a pattern by itself
+bk -U grep -i 2> ERR && fail -f ERR should fail
+bk help -s grep 2> WANT
+cmpfiles WANT ERR
+bk grep -i - 2> ERR && fail -f ERR should fail
+cmpfiles WANT ERR
+bk -U grep -i - > GOT || fail -f GOT
+echo "file1:line with -" > WANT
+cmpfiles WANT GOT
+bk grep -i - file1 > GOT || fail -f GOT
+cmpfiles file1 GOT
+echo OK

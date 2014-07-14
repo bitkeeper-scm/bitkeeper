@@ -596,11 +596,10 @@ compCheckPresent(comp *c)
 	c->_present = 0;
 	unless (proj = proj_isResync(c->n->proj)) proj = c->n->proj;
 	concat_path(buf, proj_root(proj), c->path);
-	if (c->inCache && exists(buf)) {
-		c->_present = 1;
-		return;
-	}
-	if (exists(buf) && (proj = proj_init(buf))) {
+	if (c->inCache) {
+		concat_path(buf, buf, BKROOT);
+		if (isdir(buf)) c->_present = 1;
+	} else if (exists(buf) && (proj = proj_init(buf))) {
 		char	*path = proj_root(proj);
 		char	*rootkey = proj_rootkey(proj);
 
