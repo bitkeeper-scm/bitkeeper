@@ -2797,7 +2797,7 @@ typeck_spawn(Expr *in, Expr *out, Expr *err)
 	if (!in || isid(in, "undef")) {
 	} else if (typeisf(in, "FILE")) {
 		flags |= SYSTEM_IN_HANDLE;
-	} else if (isstring(in) && isconst(in)) {
+	} else if (isstring(in) && (isconst(in) || isinterp(in))) {
 		flags |= SYSTEM_IN_FILENAME;
 	} else if (isstring(in) || ispoly(in)) {
 		flags |= SYSTEM_IN_STRING;
@@ -2810,7 +2810,7 @@ typeck_spawn(Expr *in, Expr *out, Expr *err)
 	if (!out || isid(out, "undef")) {
 	} else if (typeisf(out, "FILE")) {
 		flags |= SYSTEM_OUT_HANDLE;
-	} else if (isstring(out) && isconst(out)) {
+	} else if (isstring(out) && (isconst(out) || isinterp(out))) {
 		flags |= SYSTEM_OUT_FILENAME;
 	} else {
 		L_errf(out, "third arg must be FILE, or string constant");
@@ -2818,7 +2818,7 @@ typeck_spawn(Expr *in, Expr *out, Expr *err)
 	if (!err || isid(err, "undef")) {
 	} else if (typeisf(err, "FILE")) {
 		flags |= SYSTEM_ERR_HANDLE;
-	} else if (isstring(err) && isconst(err)) {
+	} else if (isstring(err) && (isconst(err) || isinterp(err))) {
 		flags |= SYSTEM_ERR_FILENAME;
 	} else {
 		L_errf(err, "fourth arg must be FILE, or string constant");
@@ -2835,7 +2835,7 @@ typeck_system(Expr *in, Expr *out, Expr *err)
 	if (!in || isid(in, "undef")) {
 	} else if (typeisf(in, "FILE")) {
 		flags |= SYSTEM_IN_HANDLE;
-	} else if (isstring(in) && isconst(in)) {
+	} else if (isstring(in) && (isconst(in) || isinterp(in))) {
 		flags |= SYSTEM_IN_FILENAME;
 	} else if (isstring(in) || ispoly(in)) {
 		flags |= SYSTEM_IN_STRING;
@@ -2848,7 +2848,7 @@ typeck_system(Expr *in, Expr *out, Expr *err)
 	if (!out || isid(out, "undef")) {
 	} else if (typeisf(out, "FILE")) {
 		flags |= SYSTEM_OUT_HANDLE;
-	} else if (isstring(out) && isconst(out)) {
+	} else if (isstring(out) && (isconst(out) || isinterp(out))) {
 		flags |= SYSTEM_OUT_FILENAME;
 	} else if (isaddrof(out) && (isstring(out->a) || ispoly(out->a))) {
 		flags |= SYSTEM_OUT_STRING;
@@ -2861,7 +2861,7 @@ typeck_system(Expr *in, Expr *out, Expr *err)
 	if (!err || isid(err, "undef")) {
 	} else if (typeisf(err, "FILE")) {
 		flags |= SYSTEM_ERR_HANDLE;
-	} else if (isstring(err) && isconst(err)) {
+	} else if (isstring(err) && (isconst(err) || isinterp(err))) {
 		flags |= SYSTEM_ERR_FILENAME;
 	} else if (isaddrof(err) && (isstring(err->a) || ispoly(err->a))) {
 		flags |= SYSTEM_ERR_STRING;

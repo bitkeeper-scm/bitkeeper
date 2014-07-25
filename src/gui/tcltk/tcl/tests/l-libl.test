@@ -2637,6 +2637,24 @@ void system4()
 	unlink("out");
 	unlink("err");
 
+	/* Same, reading and writing to files w/filename in interpolated string. */
+	av = { "perl", "-e", "print uc $_ while (<>)" };
+	tstwritef("in", { "this is line 1", "and line 2", "line 3" });
+	inNm  = "in";
+	outNm = "out";
+	errNm = "err";
+	ret = system(av, "${inNm}", "${outNm}", "${errNm}");
+	unless (ret == 0) puts("bad 3.1");
+	if (tstreadf(outNm, {"THIS IS LINE 1", "AND LINE 2", "LINE 3"})) {
+		puts("bad 3.2");
+	}
+	if (tstreadf("err", {})) {
+		puts("bad 3.3");
+	}
+	unlink(inNm);
+	unlink(outNm);
+	unlink(errNm);
+
 	/* Same, using spawn(). */
 	av = { "perl", "-e", "print uc $_ while (<>)" };
 	tstwritef("in", { "this is line 1", "and line 2", "line 3" });
@@ -2652,6 +2670,25 @@ void system4()
 	unlink("in");
 	unlink("out");
 	unlink("err");
+
+	/* Same, using spawn() w/filename in interpolated string. */
+	av = { "perl", "-e", "print uc $_ while (<>)" };
+	tstwritef("in", { "this is line 1", "and line 2", "line 3" });
+	inNm  = "in";
+	outNm = "out";
+	errNm = "err";
+	pid = spawn(av, "${inNm}", "${outNm}", "${errNm}");
+	unless (defined(pid)) puts("bad 3.10");
+	unless (waitpid(pid, undef, 0) >= 0) puts("bad 3.11");
+	if (tstreadf("out", {"THIS IS LINE 1", "AND LINE 2", "LINE 3"})) {
+		puts("bad 3.12");
+	}
+	if (tstreadf("err", {})) {
+		puts("bad 3.13");
+	}
+	unlink(inNm);
+	unlink(outNm);
+	unlink(errNm);
 
 	/* Same, reading and writing to open file handles. */
 	av   = { "perl", "-e", "print uc $_ while (<>)" };
