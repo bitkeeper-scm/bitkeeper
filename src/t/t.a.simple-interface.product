@@ -55,6 +55,7 @@ dotest()
 	fill=`printf "%${len}s\n" "" | sed -e 's/ /./g' 2> /dev/null`
 	echo $N "$line$fill"$NL
 	rm -rf "$HERE"/*
+	rm -rf XYZ
 	(	set -x
 		bk "$@" < /dev/null
 		bk "$@" -r+ < /dev/null

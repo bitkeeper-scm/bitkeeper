@@ -29,7 +29,7 @@ BK_HOST=localhost bk setup -a -f -cc project 2>ERR && {
 	echo "failed"
 	exit 1
 }
-grep -q 'bad host name' ERR || fail
+grep -q 'bad host name' ERR || fail -f ERR
 echo OK
 
 echo $N Check defaults from setup -p ................................$NL
@@ -75,4 +75,77 @@ touch proj2/stuff
 bk setup -e -a -f -cc proj2 2>ERR || fail -f ERR "should have worked"
 # Try again, should fail this time
 bk setup -e -a -f -cc proj2 2>ERR && fail -f ERR "should have failed"
+echo OK
+
+echo $N Test setup noargs with a non-existent path...................$NL
+cd "$HERE"
+bk setup new-repo || fail
+cd new-repo
+bk repocheck -q || fail
+echo OK
+
+echo $N Test setup noargs with an existing, empty path...............$NL
+cd "$HERE"
+rm -rf new-repo
+mkdir new-repo
+bk setup new-repo || fail
+cd new-repo
+bk repocheck -q || fail
+echo OK
+
+echo $N Test setup noargs inside an empty directory..................$NL
+cd "$HERE"
+rm -rf new-repo
+mkdir new-repo
+cd new-repo
+bk setup || fail
+bk repocheck -q || fail
+echo OK
+
+echo $N Test setup noargs inside a non-empty directory...............$NL
+cd "$HERE"
+rm -rf new-repo
+mkdir new-repo
+cd new-repo
+mkdir adir
+touch afile
+touch adir/afile
+bk setup || fail
+bk repocheck -q || fail
+bk -Ux > ../GOT
+cat <<EOF > WANT
+afile
+adir/afile
+EOF
+cmpfiles WANT ../GOT
+echo OK
+
+# this test depends on the last
+echo $N Test setup noargs inside of a repo...........................$NL
+cd "$HERE"
+cd new-repo
+bk setup 2>ERR && fail
+grep -q "existing version control files" ERR || fail -f ERR wrong one
+echo OK
+
+# this test builds on the last
+echo $N Test have version controlled files masked by new repo .......$NL
+SHALLOW=a/b
+DEEP=$SHALLOW/c
+DEEPER=$DEEP/d
+# start off with a repo way down there
+bk setup $DEEPER || fail
+# not okay if version controlled file at new root ..
+touch $SHALLOW/foo
+bk new $Q $SHALLOW/foo
+bk setup $SHALLOW 2>ERR && fail -f ERR
+grep -q "existing version control files" ERR || fail -f ERR wrong two
+# not okay if deeper than new root.
+bk mv $SHALLOW/foo $DEEP/foo
+bk setup $SHALLOW 2>ERR && fail -f ERR
+grep -q "existing version control files" ERR || fail -f ERR wrong two
+# okay if just an extra file lying around; just no version controlled ones
+touch $DEEP/bar
+bk rm $DEEP/foo
+bk setup $SHALLOW || fail
 echo OK
