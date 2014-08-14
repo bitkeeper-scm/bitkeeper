@@ -45,4 +45,5 @@ bk grep -q '^all.tcl:.*Failed\t0' xyzOUT || {
 	echo -------------------
 	fail -f xyzERR
 }
+rm -f xyzERR xyzOUT
 echo OK

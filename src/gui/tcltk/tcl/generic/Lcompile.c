@@ -5370,6 +5370,12 @@ compile_clsDeref(Expr *expr, Expr_f flags)
 	ClsDecl	*clsdecl = type->u.class.clsdecl;
 	Tcl_HashEntry *hPtr;
 
+	expr->type = L_poly;
+	unless (isclasstype(type)) {
+		L_errf(expr, "can dereference only class types");
+		return (0);
+	}
+
 	ASSERT(type && clsdecl);
 
 	clsnm = clsdecl->decl->id->str;
@@ -5381,7 +5387,6 @@ compile_clsDeref(Expr *expr, Expr_f flags)
 	hPtr = Tcl_FindHashEntry(clsdecl->symtab, varnm);
 	unless (hPtr) {
 		L_errf(expr, "%s is not a member of class %s", varnm, clsnm);
-		expr->type = L_poly;
 		return (0);
 	}
 	sym = (Sym *)Tcl_GetHashValue(hPtr);

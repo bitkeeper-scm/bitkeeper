@@ -621,6 +621,7 @@ void file2()
 	fmt = "%s";
 	unless (fprintf(f, fmt) == -1) puts("bad 4.2");
 	fclose(f);
+	unlink("file2tst");
 }
 file2();
 } -output {}
@@ -717,6 +718,8 @@ void Fprintf2()
 	Fprintf("fname", "%s");
 }
 Fprintf2();
+} -cleanup {
+	removeFile "fname"
 } -returnCodes error -match regexp -result {.*3: L Warning: bad format specifier
 }
 
@@ -728,6 +731,8 @@ void Fprintf2_1()
 	unless (Fprintf("fname", fmt) == -1) puts("bad 1");
 }
 Fprintf2_1();
+} -cleanup {
+	removeFile "fname"
 } -output {}
 
 test ftype-1 {test ftpye} -setup {

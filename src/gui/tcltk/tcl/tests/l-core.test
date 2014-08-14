@@ -20185,6 +20185,24 @@ void class_3_9_main()
 class_3_9_main();
 } -output {}
 
+test class-3.10 {check dereferncing struct type name like a class name} -body {
+#lang L --line=1
+/*
+ * This used to assert: declare a typedef for a struct and then
+ * use the struct name like a class name to dereference a class
+ * variable.
+ */
+typedef struct {
+	int	x;
+} class_3_10_var;
+void class_3_10_main()
+{
+	class_3_10_var->x;
+}
+class_3_10_main();
+} -returnCodes {error} -match regexp -result {.*11: L Error: can dereference only class types
+}
+
 test class-4.1 {check scoping of private names in classes} -body {
 #lang L --line=1
 /*
