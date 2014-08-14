@@ -1294,7 +1294,7 @@ pid_t	mkpager(void);
 int	getRealName(char *path, MDBM *db, char *realname);
 int	addsym(sccs *s, ser_t metad, int graph, char *tag);
 int	delta_table(sccs *s, int willfix);
-int	walksfiles(char *dir, walkfn fn, void *data);
+int	walksfiles(char *dir, walkfn *fn, void *data);
 ser_t	getSymlnkCksumDelta(sccs *s, ser_t d);
 hash	*generateTimestampDB(project *p);
 int	timeMatch(project *proj, char *gfile, char *sfile, hash *timestamps);

@@ -122,7 +122,7 @@ init(char *name, int flags, MDBM *sDB, MDBM *gDB)
 }
 
 private int
-fastprint(char *file, struct stat *sb, void *data)
+fastprint(char *file, char type, void *data)
 {
 	filecnt	*fc = data;
 
@@ -830,7 +830,7 @@ winfo_free(winfo *wi)
 
 
 private int
-sfiles_walk(char *file, struct stat *sb, void *data)
+sfiles_walk(char *file, char type, void *data)
 {
 	winfo	*wi = (winfo *)data;
 	char	*p;
@@ -842,7 +842,7 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 	if ((p - file) < wi->rootlen) p = 0;
 
 	/* make 'buf' match the directory we are in */
-	if (S_ISDIR(sb->st_mode)) {
+	if (type == 'd') {
 		if (p) {
 			strncpy(buf, file, p-file);
 			buf[p-file] = 0;
@@ -868,7 +868,7 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 	}
 	unless (wi->sccsdir) wi->sccsdir = strdup(buf);
 
-	if (S_ISDIR(sb->st_mode)) {
+	if (type == 'd') {
 		if (p && patheq(p, "/SCCS")) return (0);
 		if (p &&((p-file) > wi->rootlen) && patheq(p+1, "BitKeeper")) {
 			/*
@@ -1615,7 +1615,7 @@ enableFastPendingScan(void)
  */
 typedef struct sinfo sinfo;
 struct sinfo {
-	walkfn	fn;		/* call this function on each sfile */
+	walkfn	*fn;		/* call this function on each sfile */
 	void	*data;		/* pass this to the fn() */
 	int	rootlen;	/* the len of the dir passed to walksfiles() */
 	char	*proj_prefix;	/* the prefix needed to make a relpath */
@@ -1625,7 +1625,7 @@ struct sinfo {
 };
 
 private int
-findsfiles(char *file, struct stat *sb, void *data)
+findsfiles(char *file, char type, void *data)
 {
 	char	*p = strrchr(file, '/');
 	sinfo	*si = (sinfo *)data;
@@ -1633,7 +1633,7 @@ findsfiles(char *file, struct stat *sb, void *data)
 	char	tmp[MAXPATH];
 
 	unless (p) return (0);
-	if (S_ISDIR(sb->st_mode)) {
+	if (type == 'd') {
 		if (si->dfiles) {
 			hash_free(si->dfiles);
 			si->dfiles = 0;
@@ -1697,10 +1697,10 @@ findsfiles(char *file, struct stat *sb, void *data)
 			if (si->dfiles && hash_fetchStr(si->dfiles, p+3)) {
 				/* clone includes d.files too */
 				p[1] = 'd';
-				si->fn(file, sb, si->data);
+				si->fn(file, 'f', si->data);
 				p[1] = 's';
 			}
-			return (si->fn(file, sb, si->data));
+			return (si->fn(file, type, si->data));
 		} else if (si->is_clone &&
 		    (p - file >= 6) && pathneq(p - 5, "/SCCS/d.", 8)) {
 			/*
@@ -1732,9 +1732,8 @@ findsfiles(char *file, struct stat *sb, void *data)
 			 * We want to skip the symlink'ed BAM directories
 			 * for syncroot, those will get recreated.
 			 */
-			unless (sb->st_mode) lstat(file, sb);
-			unless (S_ISLNK(sb->st_mode)) {
-				return (si->fn(file, sb, si->data));
+			unless (type == 'l') {
+				return (si->fn(file, type, si->data));
 			}
 		}
 	}
@@ -1742,7 +1741,7 @@ findsfiles(char *file, struct stat *sb, void *data)
 }
 
 int
-walksfiles(char *dir, walkfn fn, void *data)
+walksfiles(char *dir, walkfn *fn, void *data)
 {
 	char	*p;
 	sinfo	si = {0};
@@ -1948,7 +1947,7 @@ walk_deepComponents(char *path, walkfn fn, void *data)
 		unless (exists(buf)) continue;
 
 		comp = proj_init(gfile);
-		if (proj_isComponent(comp)) fn(buf, 0, data);
+		if (proj_isComponent(comp)) fn(buf, 'f', data);
 		proj_free(comp);
 	}
 }

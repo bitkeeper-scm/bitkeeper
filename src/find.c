@@ -4,7 +4,7 @@
 /*
  * _find - find regular files and symbolic links
  */
-private int	do_print(char *path, struct stat *sb, void *data);
+private int	do_print(char *path, char type, void *data);
 private	char 	**globs = 0;
 private	int	wantdir = 0;
 
@@ -35,10 +35,10 @@ find_main(int ac, char **av)
 }
 
 private int
-do_print(char *path, struct stat *sb, void *data)
+do_print(char *path, char type, void *data)
 {
 	char	*t;
-	int	isdir = (S_ISDIR(sb->st_mode) != 0);
+	int	isdir = (type == 'd');
 
 	if (strneq(path, "./", 2)) path += 2;
 	t = strrchr(path, '/');

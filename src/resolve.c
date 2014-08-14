@@ -1617,14 +1617,14 @@ edit_tip(resolve *rs, char *sfile, ser_t d, char *rfile, int which)
  * renamed as part of the incoming patch.
  */
 private int
-findDirConflict(char *file, struct stat *sb, void *token)
+findDirConflict(char *file, char type, void *token)
 {
 	opts	*opts = token;
 	char	*t;
 	char	*sfile;
 	char	buf[MAXKEY];
 
-	if (S_ISDIR(sb->st_mode)) {
+	if (type == 'd') {
 		opts->dirlist = addLine(opts->dirlist, strdup(file));
 		return (0);
 	}
@@ -3264,7 +3264,7 @@ typedef	struct {
  * bite us someday, I'd like it split up to do one thing well.
  */
 private int
-resolvewalk(char *file, struct stat *sb, void *data)
+resolvewalk(char *file, char type, void *data)
 {
 	char	*p, *q;
 	cinfo	*ci = (cinfo *)data;

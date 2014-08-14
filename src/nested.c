@@ -5,8 +5,8 @@
 
 private	int	compSort(const void *a, const void *b);
 private	void	compFree(void *x);
-private	int	compRemove(char *path, struct stat *statbuf, void *data);
-private	int	empty(char *path, struct stat *statbuf, void *data);
+private	int	compRemove(char *path, char type, void *data);
+private	int	empty(char *path, char type, void *data);
 private	int	nestedLoadCache(nested *n, MDBM *idDB);
 private	void	nestedSaveCache(nested *n);
 
@@ -1051,7 +1051,7 @@ nested_deep(nested *nin, char *path, int present_only)
  * and bail if we find anything else -- then the dir is not empty.
  */
 private	int
-empty(char *path, struct stat *statbuf, void *data)
+empty(char *path, char type, void *data)
 {
 	char	**list = (char **)data;
 	int	i, len;
@@ -1059,7 +1059,7 @@ empty(char *path, struct stat *statbuf, void *data)
 	len = strlen(path);
 
 	/* bail if not a dir -- it's in the region of interest: not empty */
-	unless (statbuf && S_ISDIR(statbuf->st_mode)) {
+	unless (type == 'd') {
 		return (1);
 	}
 	/*
@@ -1084,7 +1084,7 @@ empty(char *path, struct stat *statbuf, void *data)
  * not to touch anything in any deeply nested components' namespaces.
  */
 private int
-compRemove(char *path, struct stat *statbuf, void *data)
+compRemove(char *path, char type, void *data)
 {
 	char	**list = (char **)data;
 	int	i, len;
@@ -1092,7 +1092,7 @@ compRemove(char *path, struct stat *statbuf, void *data)
 	len = strlen(path);
 
 	/* if it's not a dir, just delete it */
-	unless (statbuf && S_ISDIR(statbuf->st_mode)) {
+	unless (type == 'd') {
 		return (unlink(path));
 	}
 	/* it's a dir */

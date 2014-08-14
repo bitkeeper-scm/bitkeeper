@@ -99,7 +99,7 @@ int	fslayer_rename(const char *old, const char *new);
 int	fslayer_chmod(const char *path, mode_t mode);
 int	fslayer_link(const char *old, const char *new);
 int	fslayer_symlink(const char *old, const char *new);
-char**	fslayer__getdir(char *dir, struct stat *s);
+char**	fslayer_getdir(char *dir);
 int	fslayer_access(const char *path, int mode);
 int	fslayer_utime(const char *path, const struct utimbuf *buf);
 int	fslayer_mkdir(const char *path, mode_t mode);

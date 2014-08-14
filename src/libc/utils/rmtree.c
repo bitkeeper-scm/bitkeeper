@@ -1,6 +1,6 @@
 #include "system.h"
 
-private	int	rmtreewalk(char *file, struct stat *sb, void *data);
+private	int	rmtreewalk(char *file, char type, void *data);
 
 int
 rmtree(char *dir)
@@ -27,15 +27,16 @@ rmtree(char *dir)
 }
 
 private int
-rmtreewalk(char *file, struct stat *sb, void *data)
+rmtreewalk(char *file, char type, void *data)
 {
 	char	***dirs = data;
 	int	ret;
+	struct	stat sb;
 
-	if (S_ISDIR(sb->st_mode)) {
+	if (type == 'd') {
 		if (ret = rmIfRepo(file)) return (ret);
-		if ((sb->st_mode & 0700) != 0700) {
-			chmod(file, sb->st_mode | 0700);
+		if (!lstat(file, &sb) && ((sb.st_mode & 0700) != 0700)) {
+			chmod(file, sb.st_mode | 0700);
 		}
 		*dirs = addLine(*dirs, strdup(file));
 	} else {

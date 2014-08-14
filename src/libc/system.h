@@ -126,10 +126,9 @@ char	*dirname(char *path);
 char	*dirname_alloc(char *path);
 
 /* dirs.c */
-#define	getdir(dir)	_getdir(dir, 0)
-char	**_getdir(char *dir, struct stat *sb);
-typedef	int	(*walkfn)(char *file, struct stat *statbuf, void *data);
-int	walkdir(char *dir, walkfn fn, void *data);
+char	**getdir(char *dir);
+typedef	int	walkfn(char *file, char type, void *data);
+int	walkdir(char *dir, walkfn *fn, void *data);
 
 /* efopen.c */
 FILE	*efopen(char *env);
