@@ -108,8 +108,6 @@ case $CMD in
 		# don't crank for 3 weeks!  Then build the trial image:
 		./build trial-image || failed
 	}
-	# save some diskspace for tight machines
-	(cd gui/tcltk; ../../build clean)
 	# run tests
 	{ ./build test 2>&1 || failed; } | \
 		while read line
