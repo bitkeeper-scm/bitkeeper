@@ -1624,11 +1624,7 @@ findDirConflict(char *file, char type, void *token)
 	char	*sfile;
 	char	buf[MAXKEY];
 
-	if (type == 'd') {
-		opts->dirlist = addLine(opts->dirlist, strdup(file));
-		return (0);
-	}
-
+	if (type == 'd') return (0);
 	if (t = strstr(file, "/SCCS/")) {
 		if (strneq(t+6, "s.", 2)) {
 			sccs	*local = sccs_init(file, INIT_NOCKSUM);
@@ -1694,18 +1690,14 @@ pathConflict(opts *opts, char *gfile)
 	return (0);
 }
 
-private	void
-deleteDirs(char **list)
+private	int
+deleteDirs(char *dir, void *data)
 {
-	int	i;
-
-	reverseLines(list);
-	EACH(list) {
-		if (rmdir(list[i]) == 0) {
-			fprintf(stderr,
-			    "resolve: removing empty directory: %s\n", list[i]);
-		}
+	if (rmdir(dir) == 0) {
+		fprintf(stderr,
+		    "resolve: removing empty directory: %s\n", dir);
 	}
+	return (0);
 }
 
 
@@ -1782,10 +1774,9 @@ slotTaken(resolve *rs, char *slot, char **why)
 			int	conf;
 
 			if (isdir(gfile)) {
-				opts->dirlist = 0;
-				conf = walkdir(gfile, findDirConflict, opts);
-				deleteDirs(opts->dirlist);
-				freeLines(opts->dirlist, free);
+				conf = walkdir(gfile,
+				    (walkfns){.file = findDirConflict,
+					      .tail = deleteDirs}, opts);
 			} else {
 				conf = GFILE_CONFLICT;
 			}

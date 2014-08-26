@@ -70,7 +70,6 @@ typedef struct {
 	char	**includes;	/* list of globs indicating files to resolve */
 	char	**excludes;	/* list of globs indicating files to skip */
 	char	**notmerged;	/* list of files that didn't automerge */
-	char	**dirlist;	/* list of directories to delete */
 	char	**nav;		/* argv for component resolves */
 	char	**aliases;	/* aliases for nested resolve*/
 	char	**complist;	/* sorted list of union of components */

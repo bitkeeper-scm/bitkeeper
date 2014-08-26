@@ -1115,7 +1115,7 @@ compRemove(char *path, char type, void *data)
  * components under the given dir.
  */
 private int
-nestedWalkdir(nested *n, char *dir, int present_only, walkfn fn)
+nestedWalkdir(nested *n, char *dir, int present_only, filefn *fn)
 {
 	char	*relpath;
 	int	ret;
@@ -1133,7 +1133,7 @@ nestedWalkdir(nested *n, char *dir, int present_only, walkfn fn)
 	proj_free(p2);
 	list = nested_deep(n, relpath, present_only);
 
-	ret = walkdir(relpath, fn, list);
+	ret = walkdir(relpath, (walkfns){ .file = fn }, list);
 	freeLines(list, free);
 	free(relpath);
 	chdir(cwd);

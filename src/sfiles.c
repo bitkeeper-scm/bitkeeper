@@ -33,7 +33,7 @@ private	void	free_project(void);
 private void	load_ignore(project *p);
 private	void	ignore_file(char *file);
 private	void	print_components(char *frompath);
-private	void	walk_deepComponents(char *path, walkfn fn, void *data);
+private	void	walk_deepComponents(char *path, filefn *fn, void *data);
 private	int	fastWalk(char **dirs);
 
 typedef struct {
@@ -1125,7 +1125,7 @@ walk(char *indir)
 		}
 		free(p);
 	}
-	walkdir(dir, sfiles_walk, &wi);
+	walkdir(dir, (walkfns){ .file = sfiles_walk }, &wi);
 	if (wi.sccsdir) sccsdir(&wi);
 	if (proj) free(wi.proj_prefix);
 	unless (opts.onelevel) print_components(dir);
@@ -1615,7 +1615,7 @@ enableFastPendingScan(void)
  */
 typedef struct sinfo sinfo;
 struct sinfo {
-	walkfn	*fn;		/* call this function on each sfile */
+	filefn	*fn;		/* call this function on each sfile */
 	void	*data;		/* pass this to the fn() */
 	int	rootlen;	/* the len of the dir passed to walksfiles() */
 	char	*proj_prefix;	/* the prefix needed to make a relpath */
@@ -1741,7 +1741,7 @@ findsfiles(char *file, char type, void *data)
 }
 
 int
-walksfiles(char *dir, walkfn *fn, void *data)
+walksfiles(char *dir, filefn *fn, void *data)
 {
 	char	*p;
 	sinfo	si = {0};
@@ -1760,7 +1760,7 @@ walksfiles(char *dir, walkfn *fn, void *data)
 		}
 		free(p);
 	}
-	rc = walkdir(dir, findsfiles, &si);
+	rc = walkdir(dir, (walkfns){ .file = findsfiles }, &si);
 	if (proj) free(si.proj_prefix);
 	freeLines(components, free);	/* set by walk_deepComponents() */
 	components = 0;
@@ -1839,13 +1839,13 @@ sfiles_clone_main(int ac, char **av)
 	concat_path(buf, "BitKeeper/etc/SCCS", "x.dfile");
 	if (exists(buf)) puts(buf);
 
-	rc = walkdir("./BitKeeper/etc", findsfiles, &si);
+	rc = walkdir("./BitKeeper/etc", (walkfns){.file = findsfiles}, &si);
 	if (mark2) puts("||");
 	if (exists(CHANGESET_H1)) puts(CHANGESET_H1);
 	if (exists(CHANGESET_H2)) puts(CHANGESET_H2);
 	puts(CHANGESET);
 	si.skip_etc = 1;
-	unless (rc) rc = walkdir(".", findsfiles, &si);
+	unless (rc) rc = walkdir(".", (walkfns){.file = findsfiles}, &si);
 	free_project();
 	return (rc);
 }
@@ -1920,7 +1920,7 @@ done:
 }
 
 private void
-walk_deepComponents(char *path, walkfn fn, void *data)
+walk_deepComponents(char *path, filefn *fn, void *data)
 {
 	int	i, x;
 	char	*p;

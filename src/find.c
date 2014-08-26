@@ -27,7 +27,7 @@ find_main(int ac, char **av)
 	}
 	unless (dirs) dirs = addLine(0, strdup("."));
 	EACH (dirs) {
-		walkdir(dirs[i], do_print, 0);
+		walkdir(dirs[i], (walkfns){ .file = do_print}, 0);
 	}
 	freeLines(dirs, free);
 	if (globs) freeLines(globs, free);

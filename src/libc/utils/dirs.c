@@ -1,7 +1,7 @@
 #include "system.h"
 
 private	int	getType(char *file);
-private	int	_walkdir(char *dir, walkfn fn, void *data);
+private	int	_walkdir(char *dir, walkfns fn, void *data);
 
 /*
  * walkdir() will traverse the directory 'dir' and calls the fn()
@@ -27,7 +27,7 @@ private	int	_walkdir(char *dir, walkfn fn, void *data);
  * a user specified error code from fn().
  */
 int
-walkdir(char *dir, walkfn fn, void *data)
+walkdir(char *dir, walkfns fn, void *data)
 {
 	int	ret;
 	char	type;
@@ -37,12 +37,11 @@ walkdir(char *dir, walkfn fn, void *data)
 		perror(dir);
 		return (-1);
 	}
-	assert(fn);
 	strcpy(buf, dir);
-	ret = fn(buf, type, data);
+	ret = fn.file ? fn.file(buf, type, data) : 0;
 	if (ret > 0) return (ret);
 	if ((type == 'd') && (ret != -1)) {
-		strcpy(buf, dir); /* fn() can trash buffer */
+		strcpy(buf, dir); /* callback can trash buffer */
 		return (_walkdir(buf, fn, data));
 	}
 	return (0);
@@ -75,7 +74,7 @@ extsort(const void *a, const void *b)
  * be there.  This can be used to skip an lstat.
  */
 private int
-_walkdir(char *dir, walkfn fn, void *data)
+_walkdir(char *dir, walkfns fn, void *data)
 {
 	char	**lines;
 	int	i;
@@ -97,7 +96,7 @@ _walkdir(char *dir, walkfn fn, void *data)
 			/* file disappeared, skip it */
 			unless (type) continue;
 
-			ret = fn(dir, type, data);
+			ret = fn.file ? fn.file(dir, type, data) : 0;
 			if (type == 'd') {
 				if (ret == 0) {
 					dirlist = addLine(dirlist, lines[i]);
@@ -109,6 +108,11 @@ _walkdir(char *dir, walkfn fn, void *data)
 		if (lines[i]) free(lines[i]);
 	}
 	freeLines(lines, 0);
+	if (!ret && fn.dir) {
+		dir[len] = 0;
+		ret = fn.dir(dir, data);
+		dir[len] = '/';
+	}
 	EACH (dirlist) {
 		unless (ret) {
 			strcpy(&dir[len+1], dirlist[i]);
@@ -116,6 +120,10 @@ _walkdir(char *dir, walkfn fn, void *data)
 		}
 	}
 	freeLines(dirlist, free);
+	if (!ret && fn.tail) {
+		dir[len] = 0;
+		ret = fn.tail(dir, data);
+	}
 	if (ret == -2) ret = 0;	/* prunedir is not an error */
 	return (ret);
 }

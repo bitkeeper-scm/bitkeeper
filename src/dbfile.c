@@ -114,7 +114,7 @@ getFields(char *dir)
 {
 	char	**lines = 0;
 
-	walkdir(dir, getFields_walkfn, &lines);
+	walkdir(dir, (walkfns){ .file = getFields_walkfn }, &lines);
 	uniqLines(lines, free);
 	reverseLines(lines);
 	return (lines);
