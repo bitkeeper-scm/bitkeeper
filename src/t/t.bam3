@@ -20,7 +20,7 @@ do	echo $f > F$f
 	perl -e 'printf "a\000b\n"' >> F$f
 done
 commercial pmaster
-bk bam server $Q . || exit 1
+bk bam server $Q . || fail
 echo OK
 
 echo $N Create some binary data and check BAM .......................$NL
@@ -29,7 +29,7 @@ bk new $Q bin.data
 cp ../F1 copy
 bk new $Q copy
 bk commit $Q -ybindata
-test -d BitKeeper/BAM || exit 1
+test -d BitKeeper/BAM || fail
 echo OK
 
 echo $N Make sure that clone copies the BAM pool ....................$NL
@@ -41,11 +41,7 @@ while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
 test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM >> OUT
-test -s OUT && {
-	echo failed
-	cat OUT
-	exit 1
-}
+test -s OUT && fail -f OUT
 echo OK
 
 echo $N Make sure that clone w/ server does not copy BAM pool .......$NL
@@ -59,11 +55,7 @@ done > OUT 2>&1
 for i in BitKeeper/log/BAM
 do	test -f $i || echo $i is not present
 done >> OUT
-test -s OUT && {
-	echo failed
-	cat OUT
-	exit 1
-}
+test -s OUT && fail -f OUT
 echo OK
 
 echo $N Make sure that clone w/ diff server does not copy BAM pool ..$NL
@@ -77,16 +69,12 @@ done > OUT 2>&1
 for i in BitKeeper/log/BAM
 do	test -f $i || echo $i is not present
 done >> OUT
-test -s OUT && {
-	echo failed
-	cat OUT
-	exit 1
-}
+test -s OUT && fail -f OUT
 echo OK
 
 echo $N Make sure that clone w/ empty server copies BAM pool ........$NL
 cd "$HERE"
-bk clone -B"$HERE/clone2" $Q pmaster clone4 || exit 1
+bk clone -B"$HERE/clone2" $Q pmaster clone4 || fail
 cd clone4
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
 while read x
@@ -94,17 +82,16 @@ do	test -f $x || echo $x is missing
 done > OUT 2>&1
 test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM >> OUT
 test -s OUT && {
-	echo failed
-	cat OUT
-	find BitKeeper -type f -print
-	exit 1
+	cat OUT > ERR
+	find BitKeeper -type f -print >> ERR
+	fail -f ERR
 }
 echo OK
 
 echo $N Make sure that lclone copies the BAM pool ...................$NL
 cd "$HERE"
 rm -rf clone
-BK_NO_HARDLINK_CLONE= bk clone $Q -l pmaster clone || exit 1
+BK_NO_HARDLINK_CLONE= bk clone $Q -l pmaster clone || fail
 cd clone
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
 while read x
@@ -112,10 +99,9 @@ do	test -f $x || echo $x is missing
 done > OUT 2>&1
 test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM >> OUT
 test -s OUT && {
-	echo failed
-	cat OUT
-	find BitKeeper -print
-	exit 1
+	cat OUT > ERR
+	find BitKeeper -print >> ERR
+	fail -f ERR
 }
 echo OK
 
@@ -123,31 +109,30 @@ echo OK
 
 echo $N Make sure that rclone copies the BAM pool ...................$NL
 cd "$HERE"
-bk bkd -d -aPORT -ikill -l"$HERE/XXX" || exit 1
+bk bkd -d -aPORT -ikill -l"$HERE/XXX" || fail
 P=`cat PORT`
 bk clone $Q -B. pmaster bk://localhost:$P/rclone
-bk _kill bk://localhost:$P || exit 1
-cd rclone || exit 1
+bk _kill bk://localhost:$P || fail
+cd rclone || fail
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
 while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
 test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM >> OUT
 test -s OUT && {
-	echo failed
-	cat OUT
-	cat "$HERE/XXX"
-	exit 1
+	cat OUT > ERR
+	cat "$HERE/XXX" >> ERR
+	fail -f ERR
 }
 echo OK
 
 echo $N Make sure that rclone of server does not copy BAM pool ......$NL
 cd "$HERE"
 rm -f XXX
-bk bkd -d -aPORT -ikill -l"$HERE/XXX" || exit 1
+bk bkd -d -aPORT -ikill -l"$HERE/XXX" || fail
 P=`cat PORT`
 bk clone $Q -Bbk://localhost:$P/pmaster pmaster bk://localhost:$P/rclone2
-cd rclone2 || exit 1
+cd rclone2 || fail
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
 while read x
 do	test -f $x && echo $x is present
@@ -156,10 +141,9 @@ for i in BitKeeper/log/BAM
 do	test -f $i || echo $i should be present
 done >> OUT
 test -s OUT && {
-	echo failed
-	cat OUT
-	cat "$HERE/XXX"
-	exit 1
+	cat OUT > ERR
+	cat "$HERE/XXX" >> ERR
+	fail -f ERR
 }
 echo OK
 
@@ -173,20 +157,16 @@ done > OUT 2>&1
 for i in BitKeeper/log/BAM
 do	test -f $i || echo $i should be present
 done >> OUT
-test -s OUT && {
-	echo failed
-	cat OUT
-	exit 1
-}
-bk _kill bk://localhost:$P || exit 1
+test -s OUT && fail -f OUT
+bk _kill bk://localhost:$P || fail
 echo OK
 
 echo $N Make sure that rclone w/ diff server does not copy BAM pool .$NL
 cd "$HERE"
-bk bkd -d -aPORT -ikill -l"$HERE/XXX" || exit 1
+bk bkd -d -aPORT -ikill -l"$HERE/XXX" || fail
 P=`cat PORT`
 bk clone $Q -Bbk://localhost:$P/rclone pmaster bk://localhost:$P/rclone3
-cd rclone3 || exit 1
+cd rclone3 || fail
 (cd ../rclone && find BitKeeper/BAM -type f -print ) |
 while read x
 do	test -f $x && echo $x is present
@@ -195,10 +175,9 @@ for i in BitKeeper/log/BAM
 do	test -f $i || echo $i should be present
 done >> OUT
 test -s OUT && {
-	echo failed
-	cat OUT
-	cat "$HERE/XXX"
-	exit 1
+	cat OUT > ERR
+	cat "$HERE/XXX" >> ERR
+	fail -f ERR
 }
 echo OK
 
@@ -212,12 +191,8 @@ done > OUT 2>&1
 for i in BitKeeper/log/BAM
 do	test -f $i || echo $i should be present
 done >> OUT
-test -s OUT && {
-	echo failed
-	cat OUT
-	exit 1
-}
-bk _kill bk://localhost:$P || exit 1
+test -s OUT && fail -f OUT
+bk _kill bk://localhost:$P || fail
 echo OK
 
 echo $N Clone using bk:// of repo with file url bam server ..........$NL
@@ -235,9 +210,9 @@ echo "binary data" > WANT
 # See the README files in the /home/bk/test_data/file-url* repos for
 # details.  Test all the permutations I saw: file:// file:/// and /...
 for f in 2-slash 3-slash abs-path; do
-	bk clone $Q bk://data.bitmover.com/test_data/file-url-$f || exit 1
-	cd file-url-$f || exit 2
-	bk get $Q bam || exit 3
+	bk clone $Q bk://data.bitmover.com/test_data/file-url-$f || fail on $f
+	cd file-url-$f || fail on $f
+	bk get $Q bam || fail on $f
 	cmpfiles ../WANT bam
 	cd ..
 done

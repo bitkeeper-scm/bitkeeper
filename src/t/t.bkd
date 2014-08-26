@@ -14,11 +14,14 @@ unsetHttpProxy
 
 echo $N Create initial repository ...................................$NL
 commercial project
-if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
+if [ ! -d BitKeeper/etc ]; then fail failed to make BitKeeper/etc; fi
+if bk _test ! -f SCCS/s.ChangeSet; then fail failed to make ChangeSet; fi
 P=`bk pending | wc -l`
-if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
-bk sane 2> sane.out || { echo failed; cat sane.out; exit 1; }
+if [ $P -ne 0 ]; then
+	bk pending > ERR
+	fail -f ERR echo files are pending
+fi
+bk sane 2> sane.out || fail -f sane.out
 echo OK
 
 echo $N Create some data ............................................$NL
@@ -36,14 +39,14 @@ do	perl -e 'sysread(STDIN, $buf, 2048000);
 done
 bk new $Q bk?
 bk commit $Q -ycset1
-if bk _test ! -f SCCS/s.foo.c; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.foo.c; then fail failed to create history; fi
 echo OK
 
 echo $N clone the workspace .........................................$NL
-bk clone $Q "$HERE/project" "$HERE/copy" || exit 1
+bk clone $Q "$HERE/project" "$HERE/copy" || fail
 cd "$HERE/copy"
-if bk _test ! -f "BitKeeper/etc/SCCS/x.dfile"; then echo failed; exit 1; fi
-bk bkd -q -d -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
+if bk _test ! -f "BitKeeper/etc/SCCS/x.dfile"; then fail failed; fi
+bk bkd -q -d -aPORT -ikill > "$HERE/BKD" 2>&1 || fail
 P=`cat PORT`
 echo OK
 
@@ -51,16 +54,15 @@ echo $N die part way through a clone and make sure we clean locks ...$NL
 cd "$HERE"
 BK_DIE_OFFSET=10 bk clone bk://localhost:$P junk > OUT 2>&1
 # cat OUT
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 cd "$HERE/copy"
 for i in 1 2 3
 do	bk lock -q && break
 	sleep $i
 done
 bk lock -q || {
-	echo failed to clean up locks
-	bk lock -l
-	exit 1
+	bk lock -l > ERR
+	fail -f ERR failed to clean up locks
 }
 cd "$HERE"
 rm -rf junk
@@ -81,14 +83,15 @@ do	bk changes -r+ bk://localhost:$P/"$HERE/project" > changes.out 2>&1
 	sleep 1
 done
 bk lock -U "$HERE/project"
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 grep -q changes "$HERE/STDERR" || {
-	echo failed
+	(
 	echo STDERR
 	cat "$HERE/STDERR"
 	echo changes.out
 	cat changes.out
-	exit 1
+	) > ERR
+	fail -f ERR
 }
 cores
 echo OK
@@ -101,43 +104,24 @@ bk bkd -dq -aPORT -l"$HERE/LOG" -P"$HERE/PID" -ikill &
 PARENT=$!
 wait $PARENT
 bk _usleep 20000
-test -f "$HERE/PID" || {
-	echo No pid file
-	exit 1
-}
+test -f "$HERE/PID" || fail No pid file
 PID=`cat "$HERE/PID"`
-test X$PID = X && {
-	echo Empty pid file
-	exit 1
-}
-test $PARENT = $PID && {
-	echo wrong pid in pid file
-	exit 1
-}
+test X$PID = X && fail Empty pid file
+test $PARENT = $PID && fail wrong pid in pid file
 P=`cat PORT`
 echo OK
 
 echo $N Make sure that commands leave the pid file alone ............$NL
 # Run this twice to trigger the auto-rotating of the log
-bk changes bk://localhost:$P > /dev/null || exit 1
+bk changes bk://localhost:$P > /dev/null || fail
 GOT=`cat "$HERE/PID"`
-test $PID = $GOT || {
-	echo Child stomped on pid file
-	exit 1
-}
+test $PID = $GOT || fail Child stomped on pid file
 echo OK
 
 echo $N Make sure that we support log files - background ............$NL
 sleep 1
-test -f "$HERE/LOG" || {
-	echo No log file
-	exit 1
-}
-grep -q changes "$HERE/LOG" || {
-	echo bad log file
-	cat "$HERE/LOG"
-	exit 1
-}
+test -f "$HERE/LOG" || fail No log file
+grep -q changes "$HERE/LOG" || fail -f "$HERE/LOG" bad log file
 echo OK
 
 echo $N Make sure that the log was auto-rotated .....................$NL
@@ -150,18 +134,14 @@ close(FILE);
 EOF
 perl "$HERE/test.pl"
 # Do something, trigger the auto-rotate
-bk changes bk://localhost:$P > /dev/null || exit 1
+bk changes bk://localhost:$P > /dev/null || fail
 test -f "$HERE/LOG.old" || fail LOG.old missing
 echo OK
 
 echo $N Make sure that we disallow looking out of repo ..............$NL
 bk changes -r+ bk://localhost:$P/"$HERE/copy" > "$HERE/WANT" 2>&1
-grep -q 'ERROR-cannot cd to' "$HERE/WANT" || {
-	echo failed 
-	cat "$HERE/WANT"
-	exit 1
-}
-bk _kill bk://localhost:$P || exit 1
+grep -q 'ERROR-cannot cd to' "$HERE/WANT" || fail -f "$HERE/WANT"
+bk _kill bk://localhost:$P || fail
 echo OK
 
 # Now we know that $P is an unused port, go grab it
@@ -174,19 +154,12 @@ bk bkd -ikill -dD -a"$HERE/PORT" -l"$HERE/LOG" -P"$HERE/PID" &
 WANT=$!
 sleep 2
 test -f "$HERE/PID" || {
-	echo No pid file
-	ls "$HERE"
-	exit 1
+	ls "$HERE" > ERR
+	fail -f ERR No pid file
 }
 PID=`cat "$HERE/PID"`
-test X$PID = X && {
-	echo Empty pid file
-	exit 1
-}
-kill -0 $WANT || {
-	unable to kill $PID
-	exit 1
-}
+test X$PID = X && fail Empty pid file
+kill -0 $WANT || fail unable to kill $PID
 P=`cat "$HERE/PORT"`
 # create log file
 bk changes -r+ bk://localhost:$P >/dev/null 2>&1
@@ -194,30 +167,16 @@ echo OK
 
 echo $N Make sure that we support log files - foreground ............$NL
 bk _usleep 10000
-test -f "$HERE/LOG" || {
-	echo No log file
-	exit 1
-}
-grep -q changes "$HERE/LOG" || {
-	echo bad log file
-	cat "$HERE/LOG"
-	exit 1
-}
+test -f "$HERE/LOG" || fail No log file
+grep -q changes "$HERE/LOG" || fail -f "$HERE/LOG" bad log file
 echo OK
 
 echo $N Make sure that we exit 2 if the port is in use - background .$NL
 bk bkd -p$P > OUT 2>&1
-test $? -eq 2 || {
-	echo failed
-	exit 1
-}
-grep -q use OUT || {
-	echo failed
-	cat OUT
-	exit 1
-}
+test $? -eq 2 || fail
+grep -q use OUT || fail -f OUT
 # Flush bkd
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 echo OK
 
 # Win32 note: If bkd binary is on a network drive
@@ -226,17 +185,17 @@ echo OK
 # before you run this test.
 echo $N "push a new changeset via bkd (no compression)" ...............$NL
 cd "$HERE/copy"
-bk bkd -q -d -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
+bk bkd -q -d -aPORT -ikill > "$HERE/BKD" 2>&1 || fail
 P=`cat PORT`
 cd "$HERE/project/src"
 echo woo > woo.c
-bk ci $Q -i woo.c || exit 1
-bk commit $Q -ycset1 || exit 1
-bk push $Q -z0 bk://localhost:$P || exit 1
+bk ci $Q -i woo.c || fail
+bk commit $Q -ycset1 || fail
+bk push $Q -z0 bk://localhost:$P || fail
 cd "$HERE/copy/src"
-if bk _test ! -f SCCS/s.woo.c; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/s.woo.c; then fail; fi
 bk lock -U "$HERE/copy"
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 echo OK
 
 echo $N "pull a new changeset via bkd (no compression)" ...............$NL
@@ -245,14 +204,14 @@ echo zoo > zoo.c
 bk ci $Q -i zoo.c
 bk commit $Q -ycset1
 cd "$HERE/project"
-bk bkd -q -d -aPORT -ikill || exit 1
+bk bkd -q -d -aPORT -ikill || fail
 P=`cat PORT`
 bk lock -U "$HERE/copy"        # needed on Freebsd4
 cd "$HERE/copy/src"
 bk pull $Q -z0 bk://localhost:$P
-if bk _test ! -f SCCS/s.zoo.c; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/s.zoo.c; then fail; fi
 bk lock -U "$HERE/project"
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 echo OK
 
 echo $N "pull a new changeset via bkd (with compression)" .............$NL
@@ -261,39 +220,35 @@ echo boo > boo.c
 bk ci $Q -i boo.c
 bk commit $Q -ycset1
 cd "$HERE/project"
-bk bkd -q -d -aPORT -ikill || exit 1
+bk bkd -q -d -aPORT -ikill || fail
 P=`cat PORT`
 cd "$HERE/copy/src"
 bk pull $Q bk://localhost:$P
-if bk _test ! -f SCCS/s.boo.c; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/s.boo.c; then fail; fi
 bk lock -U "$HERE/project"
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 echo OK
 
 echo $N "pull via bkd -xpull" .........................................$NL
 cd "$HERE/project"
 rm -f "$HERE/LOG"
-bk bkd -q -l"$HERE/LOG" -xpull -aPORT -ikill || exit 1
+bk bkd -q -l"$HERE/LOG" -xpull -aPORT -ikill || fail
 P=`cat PORT`
 cd "$HERE/copy/src"
 bk pull bk://localhost:$P > pull.out 2>&1
 grep -q "bkd has disabled" pull.out
-if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1; fi
+if [ $? -ne 0 ]; then fail -f pull.out; fi
 bk lock -U "$HERE/project"
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 echo OK
 
 echo $N Make sure that the bad pull attempt was logged ..............$NL
-grep -q "BAD CMD" "$HERE/LOG" || {
-	echo failed
-	cat "$HERE/LOG"
-	exit 1
-}
+grep -q "BAD CMD" "$HERE/LOG" || fail -f "$HERE/LOG"
 echo OK
 
 echo $N "push a new changeset via bkd (with compression)" .............$NL
 cd "$HERE/copy"
-bk bkd -q -d -aPORT -ikill -l"$HERE/LOG" || exit 1
+bk bkd -q -d -aPORT -ikill -l"$HERE/LOG" || fail
 P=`cat PORT`
 cd "$HERE/project/src"
 echo aoo > aoo.c
@@ -301,21 +256,21 @@ bk ci $Q -i aoo.c
 bk commit $Q -ycset1
 bk push $Q -z6 bk://localhost:$P
 cd "$HERE/copy/src"
-if bk _test ! -f SCCS/s.aoo.c; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/s.aoo.c; then fail; fi
 bk lock -U "$HERE/copy"
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 echo OK
 
 echo $N clone a tree via bkd ........................................$NL
 cd "$HERE/project"
-bk bkd -q -d -aPORT -ikill || exit 1
+bk bkd -q -d -aPORT -ikill || fail
 P=`cat PORT`
 bk clone $Q bk://localhost:$P "$HERE/copy2"
-if [ -f BitKeeper/tmp/clone.sfio ]; then echo failed; exit 1; fi
+if [ -f BitKeeper/tmp/clone.sfio ]; then fail; fi
 cd "$HERE/copy2/src"
-if bk _test ! -f SCCS/s.aoo.c; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/s.aoo.c; then fail; fi
 bk lock -U "$HERE/project"
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 echo OK
 
 echo $N "pull a new changeset via bkd -xcd -xpush " ...................$NL
@@ -324,33 +279,33 @@ echo coo > coo.c
 bk ci $Q -i coo.c
 bk commit $Q -ycset1
 cd "$HERE/project"
-bk bkd -q -d -aPORT -xcd -xpush -ikill || exit 1
+bk bkd -q -d -aPORT -xcd -xpush -ikill || fail
 P=`cat PORT`
 cd "$HERE/copy/src"
 bk pull $Q bk://localhost:$P
-if bk _test ! -f SCCS/s.coo.c; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/s.coo.c; then fail; fi
 bk lock -U "$HERE/project"
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 echo OK
 
 echo $N check a push to bkd with a gfile conflict ...................$NL
 cd "$HERE/project"
-bk bkd -q -d -aPORT -ikill || exit 1
+bk bkd -q -d -aPORT -ikill || fail
 P=`cat PORT`
 cd "$HERE/project"
 echo data1 > conflict.c
 cd "$HERE/copy"
 echo data2 > old.c
 bk new $Q old.c
-bk commit $Q -yold.c || exit 1
-bk push -c1 $Q bk://localhost:$P || exit 1
+bk commit $Q -yold.c || fail
+bk push -c1 $Q bk://localhost:$P || fail
 bk lock -U "$HERE/project"
 cd "$HERE/copy"
-bk mv old.c conflict.c || exit 1
+bk mv old.c conflict.c || fail
 bk commit $Q -ygconflict
 echo "" | bk push -v -c1 bk://localhost:$P > bk.out 2>&1
 grep -q "Did not resolve 1 renames, no conflicts causing abort." bk.out
-if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
+if [ $? -ne 0 ]; then fail -f bk.out; fi
 rm -f  "$HERE/project/conflict.c"
 echo OK
 
@@ -363,50 +318,45 @@ bk delta $Q -ydata3 bar.c
 bk commit $Q -ydata3
 cd "$HERE/copy"
 bk pull $Q http://localhost:$P/.
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+if [ $? -ne 0 ]; then fail; fi
 echo OK
 
 echo $N "check when server can't write to BitKeeper/tmp"...............$NL
-bk unpull $Q -f|| exit 1
+bk unpull $Q -f|| fail
 chmod -w "$HERE/project/BitKeeper/tmp"
-bk pull $Q bk://localhost:$P/ || exit 1
+bk pull $Q bk://localhost:$P/ || fail
 chmod +w "$HERE/project/BitKeeper/tmp"
 echo OK
 
 echo $N check http clone from bkd ...................................$NL
 cd "$HERE"
 bk clone $Q http://localhost:$P "$HERE/project2"
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+if [ $? -ne 0 ]; then fail; fi
 echo OK
 
 echo $N check http clone with bad -r from bkd .......................$NL
 bk clone $Q -rbad http://localhost:$P "$HERE/junk2" 2> err && {
-	echo should have failed
-	exit 1
+	fail should have failed
 }
-grep -q "rev bad doesn't exist" err || {
-	echo wrong error
-	cat err
-	exit 1
-}
+grep -q "rev bad doesn't exist" err || fail -f err wrong error
 bk lock -U "$HERE/project"
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 echo OK
 
 echo $N Make sure bkd -C disallows cd to parent dir .................$NL
 cd "$HERE/project/src"
-bk bkd -q -d -C -aPORT -ikill || exit 1
+bk bkd -q -d -C -aPORT -ikill || fail
 P=`cat PORT`
 cd "$HERE/copy"
 bk pull bk://localhost:$P/"$HERE/project" > pull.out 2>&1
 grep -q "ERROR-cannot cd to" pull.out
-if [ $? -ne 0 ]; then echo failed 1; cat pull.out; exit 1 ; fi
+if [ $? -ne 0 ]; then fail -f pull.out; fi
 bk pull bk://localhost:$P/.. > pull.out 2>&1
 grep -q "ERROR-cannot cd to" pull.out
-if [ $? -ne 0 ]; then echo failed 2; cat pull.out; exit 1 ; fi
+if [ $? -ne 0 ]; then fail -f pull.out; fi
 bk pull bk://localhost:$P/sub/../../project > pull.out 2>&1
 grep -q "ERROR-cannot cd to" pull.out
-if [ $? -ne 0 ]; then echo failed 3; cat pull.out; exit 1 ; fi
+if [ $? -ne 0 ]; then fail -f pull.out; fi
 bk lock -U "$HERE/project"
 echo OK
 
@@ -444,8 +394,8 @@ echo OK
 
 echo $N Make sure bkd -S lets internal symlink go outside ...........$NL
 cd "$HERE/project/src"
-bk _kill bk://localhost:$P || exit 1
-bk bkd -q -d -S -aPORT -ikill || exit 1
+bk _kill bk://localhost:$P || fail
+bk bkd -q -d -S -aPORT -ikill || fail
 P=`cat PORT`
 cd "$HERE"
 # test symlink to outside
@@ -469,65 +419,56 @@ cmpfiles WANT chg.out
 echo OK
 
 } # end of not WIN32
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 
 echo $N Make sure bkd logs requests under the remote user name ......$NL
 cd "$HERE/project"
 cp /dev/null BitKeeper/log/repo_log
-BK_USER=garbage bk bkd -qd -aPORT -ikill || exit 1
+BK_USER=garbage bk bkd -qd -aPORT -ikill || fail
 P=`cat PORT`
 cd "$HERE/copy"
 BK_USER=pull_USER bk pull bk://localhost:$P/"$HERE/project" > pull.out 2>&1
 bk _usleep 250000
 grep -q pull_USER "$HERE/project/BitKeeper/log/repo_log" || {
-	echo failed to get first name right in pull
-	cat "$HERE/project/BitKeeper/log/repo_log"
-	exit 1
+	fail -f "$HERE/project/BitKeeper/log/repo_log" failed to get first name right in pull
 }
 BK_USER=USER_PULL bk pull bk://localhost:$P/"$HERE/project" > pull.out 2>&1
 bk _usleep 250000
 grep -q USER_PULL "$HERE/project/BitKeeper/log/repo_log" || {
-	echo failed to get second name right in pull
-	cat "$HERE/project/BitKeeper/log/repo_log"
-	exit 1
+	fail -f "$HERE/project/BitKeeper/log/repo_log" failed to get second name right in pull
 }
 BK_USER=CLONE bk clone $Q bk://localhost:$P/"$HERE/project" "$HERE/clone"
 bk _usleep 250000
 grep -q CLONE "$HERE/project/BitKeeper/log/repo_log" || {
-	echo failed to get third name right in clone
-	cat "$HERE/project/BitKeeper/log/repo_log"
-	exit 1
+	fail -f "$HERE/project/BitKeeper/log/repo_log" failed to get third name right in clone
 }
 BK_USER=PUSH bk push $Q bk://localhost:$P/"$HERE/project"
 bk _usleep 250000
 grep -q PUSH "$HERE/project/BitKeeper/log/repo_log" || {
-	echo failed to get fourth name right in push
-	cat "$HERE/project/BitKeeper/log/repo_log"
-	exit 1
+	fail -f "$HERE/project/BitKeeper/log/repo_log" failed to get fourth name right in push
 }
 bk lock -U "$HERE/project"
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 bk lock -U
 echo OK
 
 echo $N make sure bkd with -phost:port option works..................$NL
 cd "$HERE/project"
-bk bkd -q -p127.0.0.1:0 -aPORT -d -ikill || exit 1
+bk bkd -q -p127.0.0.1:0 -aPORT -d -ikill || fail
 P=`cat PORT`
 OPATH="$PATH"
 PATH="/bin:/usr/sbin:/usr/etc:$PATH"
 export PATH
 netstat -an | grep -i LISTEN | grep 127.0.0.1.$P > "$DEV_NULL" 2>&1 || {
-	echo failed
+	(
 	echo could not find bkd listening on 127.0.0.1:$P
 	netstat -an | grep -i LISTEN
-	exit 1
+	) > ERR
+	fail -f ERR
 }
 # Make sure we can clone from localhost
 bk clone $Q "bk://localhost:$P" "$HERE/copy3" || {
-	echo failed
-	echo "bk clone bk://localhost:$P should have succeeded, but failed"
-	exit 1
+	fail "bk clone bk://localhost:$P should have succeeded, but failed"
 }
 # Make sure we can't clone from $HOSTNAME
 HOST=`bk gethost -r`
@@ -535,9 +476,7 @@ IP=`bk gethost -nr`
 if [ $IP != "127.0.0.1" ]
 then
 	bk clone $Q "bk://$HOST:$P" "$HERE/copy4" 2> ERR && {
-		echo failed
-		echo "bk clone bk://$HOST:$P should have failed, but succeeded"
-		exit 1
+		fail "bk clone bk://$HOST:$P should have failed, but succeeded"
 	}
 fi
 bk _kill bk://localhost:$P
@@ -561,9 +500,7 @@ echo 1.1 > WANT
 BK_RSH="ssh -i ppfree -o StrictHostKeyChecking=no -o Compression=no" \
     bk changes -q -r+ -nd:I: \
     bk://bkdshell@work/empty > GOT 2> ERR || {
-	echo failed
-	cat ERR
-	exit 1
+	fail -f ERR
 }
 checkfiles WANT GOT
 echo OK
@@ -573,9 +510,7 @@ cd "$HERE/project"
 BK_RSH="ssh -i ppfree -o StrictHostKeyChecking=no -o Compression=no" \
     bk changes -q -r+ -nd:I: \
     ssh://bkdshell@work/empty > GOT 2> ERR || {
-	echo failed
-	cat ERR
-	exit 1
+	fail -f ERR
 }
 checkfiles WANT GOT
 echo OK
@@ -586,14 +521,14 @@ BK_TRACE_REMOTE=1 \
 BK_REMOTEBIN=/home/bk/releases/4.0.2d \
     bk changes -q -r+ -nd:I: \
     ssh://bkd@work/empty > GOT 2> ERR || {
-	echo failed
-	cat ERR
-	exit 1
+	fail -f ERR
 }
 grep -q "Server info:VERSION=bk-4.0.2d" ERR || {
+	(
 	echo version not 4.0.2d
 	grep "Server info:VERSION=" ERR
-	exit 1
+	) > ERR2
+	fail -f ERR2
 }
 checkfiles WANT GOT
 echo OK

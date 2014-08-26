@@ -6,69 +6,60 @@ for f in 1 2 3 4 5 6 7 8 9
 do	printf "F$f\na\000b\n" > F$f
 done
 commercial pmaster
-bk bam server $Q . || exit 1
+bk bam server $Q . || fail
 echo OK
 
 echo $N Diff against clean repo .....................................$NL
 cp ../F1 file
-bk new $Q -b file || exit 1
-bk commit $Q -y1 || exit 1
+bk new $Q -b file || fail
+bk commit $Q -y1 || fail
 cd ..
-bk clone $Q pmaster copy || exit 1
+bk clone $Q pmaster copy || fail
 cd copy
-bk get $Q file || exit 1
+bk get $Q file || fail
 cmpfiles file ../F1
-bk edit $Q file || exit 1
-bk bam clean $Q -a || exit 1
-bk -r diffs -u || exit 1
-bk clean $Q file || exit 1
+bk edit $Q file || fail
+bk bam clean $Q -a || fail
+bk -r diffs -u || fail
+bk clean $Q file || fail
 echo OK
 
 echo $N Pull bam deltas without local BAM data for diffs ............$NL
 cd ../pmaster
 bk edit $Q file
 cp ../F2 file
-bk ci -y2 $Q file || exit 1
-bk commit $Q -y2 || exit 1
+bk ci -y2 $Q file || fail
+bk commit $Q -y2 || fail
 cd ../copy
-bk get $Q file || exit 1
-test -w file && exit 1
+bk get $Q file || fail
+test -w file && fail
 bk prs -r+ -hnd'BAM clean: would remove :BAMFILE:' file |
     sed 's/BitKeeper\/BAM\/[^\/]*\///' > WANT
-bk bam index || exit 1
-bk bam clean $Q -an 2>GOT || exit 1
+bk bam index || fail
+bk bam clean $Q -an 2>GOT || fail
 cmpfiles GOT WANT
-bk bam index || exit 1
-bk bam clean $Q -a || exit 1
-BK_CONFIG=checkout:get bk pull $Q || exit 1
+bk bam index || fail
+bk bam clean $Q -a || fail
+BK_CONFIG=checkout:get bk pull $Q || fail
 checkfiles file ../F2
 echo OK
 
 echo $N Test diffs when the BAM file is missing in master ...........$NL
 bk edit $Q file
-test -w file || exit 1
-bk bam clean $Q -a || exit 1
+test -w file || fail
+bk bam clean $Q -a || fail
 mv ../pmaster/BitKeeper/BAM ../BAM-hold
-bk diffs -u file > OUT 2> ERR && exit 1
-test -s OUT && {
-	echo failed
-	echo expected no output and got
-	cat OUT
-	exit 1
-}
-grep -q "failed to fetch delta" ERR || {
-	echo wrong message
-	cat ERR
-	exit 1
-}
+bk diffs -u file > OUT 2> ERR && fail
+test -s OUT && fail -f OUT expected no output and got
+grep -q "failed to fetch delta" ERR || fail -f ERR wrong message
 mv ../BAM-hold ../pmaster/BitKeeper/BAM 
 echo OK
 
 echo $N Test bk clean -a against a clean tree .......................$NL
 cd ../pmaster
-bk clone $Q -r1.2 . ../clean || exit 1
+bk clone $Q -r1.2 . ../clean || fail
 cd ../clean
-bk bam clean -a 2>ERR || exit 1
+bk bam clean -a 2>ERR || fail
 echo 'BAM clean: no BAM data in this repository' > WANT
 cmpfiles ERR WANT
 echo OK

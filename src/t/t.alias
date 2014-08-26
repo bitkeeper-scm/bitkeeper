@@ -15,15 +15,15 @@ echo OK
 
 echo $N Test illegal entries for alias in the list command ..........$NL
 # bad name - start with alpha, only alphanumeric, +, -, _, = (why '=' ?)
-bk alias '8foo' 2> ERR && exit 1
+bk alias '8foo' 2> ERR && fail
 grep -q "alias: invalid alias name: 8foo" ERR || fail -f ERR
-bk alias "foo#" 2> ERR && exit 1
+bk alias "foo#" 2> ERR && fail
 grep -q "alias: invalid alias name: foo#" ERR || fail -f ERR
 # valid but non-existent alias
-bk alias foo 2> ERR && exit 1
+bk alias foo 2> ERR && fail
 grep -q "alias: no alias: foo" ERR || fail -f ERR
 # valid keyword, but not valid key 
-bk alias all 2> ERR && exit 1
+bk alias all 2> ERR && fail
 grep -q "use 'bk comps -sALL' to expand this reserved alias" ERR || fail -f ERR
 echo OK
 

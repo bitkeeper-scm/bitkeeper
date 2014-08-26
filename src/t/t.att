@@ -14,7 +14,7 @@
 
 echo $N Setup license server for AT\&T files .........................$NL
 commercial license
-bk bkd -q -d -aPORT -ikill || exit 1
+bk bkd -q -d -aPORT -ikill || fail
 P=`cat PORT`
 export BK_LICENSEURL=bk://localhost:$P/
 bk lease flush -a
@@ -23,17 +23,17 @@ echo OK
 echo $N Setup some files ............................................$NL
 cd "$HERE"
 date > date
-bk ci $Q -i -l date || exit 1
+bk ci $Q -i -l date || fail
 echo new > date
-bk ci $Q -y date || exit 1
+bk ci $Q -y date || fail
 echo OK
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 
 echo $N Make sure get -r1.1 works w/ no b flag ......................$NL
 bk get $S -er1.1 date
-if bk _test ! -f SCCS/p.date; then echo Failed, did not edit file.; exit 1; fi
+if bk _test ! -f SCCS/p.date; then echo Failed, did not edit file.; fail; fi
 bk _cat SCCS/p.date | grep -q '1.1 1.1.1.1 '
-if [ $? -ne 0 ]; then echo Failed, bad rev.; exit 1; fi
+if [ $? -ne 0 ]; then echo Failed, bad rev.; fail; fi
 bk clean date
 echo OK
 #echo $N Make sure get -b works w/ no -b flag ........................$NL

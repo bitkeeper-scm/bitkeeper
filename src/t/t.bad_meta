@@ -16,10 +16,10 @@
 
 echo $N Create initial repository ...................................$NL
 commercial project
-if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
+if [ ! -d BitKeeper/etc ]; then fail failed to make BitKeeper/etc; fi
+if bk _test ! -f SCCS/s.ChangeSet; then fail failed to make ChangeSet; fi
 P=`bk pending | wc -l`
-if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+if [ $P -ne 0 ]; then bk pending > ERR; fail -f ERR files are pending; fi
 echo OK
 echo $N Create some data ............................................$NL
 mkdir src
@@ -28,25 +28,25 @@ echo foo > foo.c
 echo bar > bar.c
 echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
-if bk _test ! -f SCCS/s.foo.c; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.foo.c; then fail failed to create history; fi
 echo OK
 echo $N check disabling of user \& group data ........................$NL
 bk admin -aawc foo.c 2> admin.out
-if [ $? -eq 0 ]; then echo failed; exit 1; fi
+if [ $? -eq 0 ]; then fail; fi
 grep -q "not supported" admin.out
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+if [ $? -ne 0 ]; then fail; fi
 bk admin -eawc foo.c 2> admin.out
-if [ $? -eq 0 ]; then echo failed; exit 1; fi
+if [ $? -eq 0 ]; then fail; fi
 grep -q "not supported" admin.out
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+if [ $? -ne 0 ]; then fail; fi
 rm admin.out
 echo OK
 echo $N check disabling of adding null delta to ChangeSet file ......$NL
 cd "$HERE/project"
-if bk _test ! -f SCCS/s.ChangeSet; then echo ChangeSet file not found; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then fail ChangeSet file not found; fi
 bk admin -fRCS ChangeSet 2> admin.out
-if [ $? -eq 0 ]; then echo failed; exit 1; fi
+if [ $? -eq 0 ]; then fail; fi
 grep -q "Cannot create null delta in ChangeSet file" admin.out 
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+if [ $? -ne 0 ]; then fail; fi
 echo OK
 rm admin.out

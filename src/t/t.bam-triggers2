@@ -6,7 +6,7 @@ DATA="$HERE"/data
 perl -e 'sysread(STDIN, $buf, 81920);
 syswrite(STDOUT, $buf, 81920);' < $BK > "$DATA"
 cp "$DATA" data
-bk new $Q data || exit 1
+bk new $Q data || fail
 mkdir -p BitKeeper/triggers
 cat > BitKeeper/triggers/pre-resolve <<EOF
 #!/bin/sh

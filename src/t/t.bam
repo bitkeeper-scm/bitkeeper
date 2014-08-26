@@ -27,10 +27,10 @@ DATA="$HERE"/data
 perl -e 'sysread(STDIN, $buf, 81920);
 syswrite(STDOUT, $buf, 81920);' < $BK > "$DATA"
 cp "$DATA" data
-bk new $Q data || exit 1
+bk new $Q data || fail
 perl -e 'printf "Hi there\x0\n";' > small
 BK_CONFIG='BAM:1k!' bk new $Q small
-test -d BitKeeper/BAM || exit 1
+test -d BitKeeper/BAM || fail
 echo OK
 # find BitKeeper/BAM -type f 
 # find BitKeeper/BAM -type f -name '*.a1' | xargs cat
@@ -44,59 +44,42 @@ test -f data-1.0 -a ! -s data-1.0 || fail
 echo OK
 
 echo $N Check encoding for large/small binaries .....................$NL
-test `bk prs -hr+ -nd:ENC: data` = BAM || {
-	echo data should have been BAM
-	exit 1
-}
-test `bk prs -hr+ -nd:ENC: small` = uuencode || {
-	echo small should have been uuencode
-	exit 1
-}
+test `bk prs -hr+ -nd:ENC: data` = BAM || fail data should have been BAM
+test `bk prs -hr+ -nd:ENC: small` = uuencode || fail small should be uuencode
 echo OK
 
 echo $N Try checksum on BAM file ....................................$NL
-bk checksum data || exit 1
+bk checksum data || fail
 echo OK
 
 echo $N Create some different binary data and delta it ..............$NL
-bk edit $Q data || exit 1
+bk edit $Q data || fail
 echo foo >> data
-bk clean -q data && {
-	echo should not have cleaned data
-	exit 1
-}
+bk clean -q data && fail should not have cleaned data
 bk diffs data > OUT
-grep -q 'Binary file data differs' OUT || exit 1
+grep -q 'Binary file data differs' OUT || fail
 bk delta $Q -yfoo data
 NUM=`find BitKeeper/BAM -type f -name '*.d1' -print | wc -l`
 test $NUM = 2 || {
-	echo wrong number of files
-	find BitKeeper/BAM -type f -name '*.d1' -print
-	exit 1
+	find BitKeeper/BAM -type f -name '*.d1' -print > ERR
+	fail -f ERR wrong number of files
 }
 echo OK
 
 echo $N Delete bam files ............................................$NL
 # Failed on windows because of the second delete putting a : into file name
 echo bd > bd
-bk new $Q -b bd || exit 1
-bk rm bd || exit 1
+bk new $Q -b bd || fail
+bk rm bd || fail
 echo bd > bd
-bk new $Q -b bd || exit 1
-bk rm bd || exit 1
-bk -r check -ac 2> ERR || {
-	echo check failed
-	exit 1
-}
+bk new $Q -b bd || fail
+bk rm bd || fail
+bk -r check -ac 2> ERR || fail check failed
 echo OK
 
 echo $N Check that we picked up the right timestamps ................$NL
 bk -Ur bam timestamps -n > OUT
-test -s OUT && {
-	echo failed
-	cat OUT
-	exit 1
-}
+test -s OUT && fail -f OUT
 echo OK
 
 echo $N Same data should just get added to the same BAM file ........$NL
@@ -105,9 +88,8 @@ cp "$DATA" subdir/data3
 bk new $Q subdir/data3
 NUM=`find BitKeeper/BAM -type f -name '*.d1' -print | wc -l`
 test $NUM = 3 || {
-	echo wrong number of files
-	find BitKeeper/BAM -type f -name '*.d1' -print
-	exit 1
+	find BitKeeper/BAM -type f -name '*.d1' -print > ERR
+	fail -f ERR wrong number of files
 }
 echo OK
 
@@ -115,12 +97,11 @@ echo $N Force a fake hash and see if that worked ....................$NL
 cp "$DATA" fake_hash
 RK=`bk id | sed 's/|/-/g'`
 _BK_FAKE_HASH=deadbeef bk new $Q fake_hash
-test -d BitKeeper/BAM || exit 1
-test -f BitKeeper/BAM/$RK/de/deadbeef.d1 || exit 2
+test -d BitKeeper/BAM || fail
+test -f BitKeeper/BAM/$RK/de/deadbeef.d1 || fail
 if [ -w BitKeeper/BAM/$RK/de/deadbeef.d1 ]
-then	echo failed
-	echo file in BAM storage is writable
-	ls -l BitKeeper/BAM/de/deadbeef.d1
+then	ls -l BitKeeper/BAM/de/deadbeef.d1 > ERR
+	fail -f ERR file in BAM storage is writable
 else	echo OK
 fi
 
@@ -128,20 +109,16 @@ echo $N See if a failed get changes the file to RW ..................$NL
 bk clean fake_hash
 _BK_FAKE_HASH=deadbeef bk get $Q fake_hash
 test -w fake_hash && {
-	echo fake_hash should not be writable
-	ls -l
-	exit 1
+	ls -l > ERR
+	fail -f ERR fake_hash should not be writable
 }
 mv BitKeeper/BAM/$RK/de/deadbeef.d1 BitKeeper/BAM/$RK/de/deadbeef.SAVE
 _BK_FAKE_HASH=deadbeef bk get $Q fake_hash > OUT 2>&1 && {
-	echo should have failed
-	cat OUT
-	exit 1
+	fail -f OUT should have failed
 }
 test -w fake_hash && {
-	echo should not have changed modes on fake_hash
-	ls -l fake_hash
-	exit 1
+	ls -l fake_hash > ERR
+	fail -f ERR should not have changed modes on fake_hash
 }
 mv BitKeeper/BAM/$RK/de/deadbeef.SAVE BitKeeper/BAM/$RK/de/deadbeef.d1
 echo OK
@@ -150,18 +127,13 @@ echo $N See if a failed get -Gchanges the gfile state ...............$NL
 _BK_FAKE_HASH=deadbeef bk get $Q fake_hash
 mv BitKeeper/BAM/$RK/de/deadbeef.d1 BitKeeper/BAM/$RK/de/deadbeef.SAVE
 _BK_FAKE_HASH=deadbeef bk get $Q -Gjunk fake_hash > OUT 2>&1 && {
-	echo should have failed
-	exit 1
+	fail should have failed
 }
 test -w fake_hash && {
-	echo should not have changed modes on fake_hash
-	ls -l fake_hash
-	exit 1
+	ls -l fake_hash > ERR
+	fail -f ERR should not have changed modes on fake_hash
 }
-test -f junk && {
-	echo should not have left junk
-	exit 1
-}
+test -f junk && fail should not have left junk
 mv BitKeeper/BAM/$RK/de/deadbeef.SAVE BitKeeper/BAM/$RK/de/deadbeef.d1
 echo OK
 
@@ -169,38 +141,33 @@ echo $N Same data should just get added to the same BAM file ........$NL
 cp "$DATA" data4
 _BK_FAKE_HASH=deadbeef bk new $Q data4
 test -f BitKeeper/BAM/de/deadbeef.d2 && {
-	echo failed
-	set -x
-	ls -lR BitKeeper/BAM
-	exit 2
+	ls -lR BitKeeper/BAM > ERR
+	fail -f ERR
 }
 echo OK
 
 echo $N Clean the file, check it out, make sure that worked .........$NL
-bk clean fake_hash || { echo clean failed; exit 1; }
-test -f fake_hash && { echo clean failed to remove; exit 1; }
-_BK_FAKE_HASH=deadbeef bk co $Q fake_hash || { echo co failed; exit 1; }
-cmp -s "$DATA" fake_hash || { echo cmp failed; exit 1; }
+bk clean fake_hash || fail clean failed
+test -f fake_hash && fail clean failed to remove
+_BK_FAKE_HASH=deadbeef bk co $Q fake_hash || fail co failed
+cmp -s "$DATA" fake_hash || fail cmp failed
 echo OK
 
 echo $N Test for already gotting that get -S works ..................$NL
-_BK_FAKE_HASH=deadbeef bk co $Q -S fake_hash || { echo co failed; exit 1; }
+_BK_FAKE_HASH=deadbeef bk co $Q -S fake_hash || fail co failed
 echo OK
 
 echo $N Commit, check that the keys are BAM .........................$NL
-bk commit $Q -ywhatever || exit 1
-bk co $Q ChangeSet || exit 1
+bk commit $Q -ywhatever || fail
+bk co $Q ChangeSet || fail
 awk -F'|' '$2 == "data" && $5 ~ /^B:/ { print; }' < ChangeSet > OUT
-test -s OUT || exit 1
+test -s OUT || fail
 echo OK
 
 echo $N Make a patch, check for BAM data ............................$NL
 find BitKeeper/BAM -type f | bk sort > "$HERE"/WANT
 bk makepatch -B -r1.0.. > "$HERE"/ALL
-grep -q '== @SFIO@ ==' "$HERE"/ALL || {
-	echo no sfio marker
-	exit 1
-}
+grep -q '== @SFIO@ ==' "$HERE"/ALL || fail no sfio marker
 echo OK
 
 
@@ -208,13 +175,9 @@ echo $N Take the patch and check for BAM data .......................$NL
 mkdir "$HERE"/new
 cd "$HERE"/new
 _BK_ALLOW_BAD_CRC=YES bk takepatch -ivv < "$HERE"/ALL > "$HERE"/OUT 2>&1 || {
-	cat "$HERE"/OUT
-	exit 1
+	fail -f "$HERE"/OUT
 }
-test -d BitKeeper/BAM || {
-	echo Should have made BAM dir
-	exit 1
-}
+test -d BitKeeper/BAM || fail Should have made BAM dir
 find BitKeeper/BAM -type f | bk sort > "$HERE"/GOT
 cmpfiles "$HERE"/WANT "$HERE"/GOT
 echo OK
@@ -222,26 +185,18 @@ echo OK
 echo $N Make sure that gets in RESYNC get from RESYNC ...............$NL
 cd RESYNC
 bk _get $Q -r1.1 data
-test -f data || {
-	echo did not get data
-	exit 1
-}
+test -f data || fail did not get data
 cmp -s "$DATA" data || {
-	echo wrong data
-	cmp  "$DATA" data
-	ls -l "$DATA" data
-	exit 1
+	cmp  "$DATA" data > ERR
+	ls -l "$DATA" data >> ERR
+	fail -f ERR wrong data
 }
 _BK_FAKE_HASH=deadbeef bk get $Q fake_hash
-test -f fake_hash || {
-	echo did not get data
-	exit 1
-}
+test -f fake_hash || fail did not get data
 cmp -s "$DATA" fake_hash || {
-	echo wrong data
-	cmp  "$DATA" data
-	ls -l "$DATA" data BitKeeper/BAM/$RK/de/deadbeef.d1
-	exit 1
+	cmp  "$DATA" data > ERR
+	ls -l "$DATA" data BitKeeper/BAM/$RK/de/deadbeef.d1 >> ERR
+	fail -f ERR wrong data
 }
 echo OK
 # cat BitKeeper/BAM/de/deadbeef.a1
@@ -250,8 +205,7 @@ echo $N Take the patch and try to resolve it ........................$NL
 mkdir "$HERE"/new2
 cd "$HERE"/new2
 _BK_ALLOW_BAD_CRC=YES bk takepatch -ivva < "$HERE"/ALL > "$HERE"/OUT 2>&1 || {
-	cat "$HERE"/OUT
-	exit 1
+	fail -f "$HERE"/OUT
 }
 # cat "$HERE"/OUT
 find BitKeeper/BAM -type f | bk sort > "$HERE"/GOT
@@ -261,36 +215,26 @@ echo OK
 echo $N Run resolve and make sure it applies the data ...............$NL
 cd "$HERE"/new
 echo q | _BK_NEWPROJECT=YES bk resolve > OUT 2>&1
-test -d RESYNC && {
-	echo failed
-	cat OUT
-	exit 1
-}
+test -d RESYNC && fail -f OUT
 find BitKeeper/BAM -type f | bk sort > "$HERE"/GOT
 cmpfiles "$HERE"/WANT "$HERE"/GOT
 echo OK
 
 echo $N Test pull to see that it sends BAM data .....................$NL
 cd "$HERE"
-_BK_ALLOW_BAD_CRC=YES bk clone $Q -r1.1 project pull || exit 1
+_BK_ALLOW_BAD_CRC=YES bk clone $Q -r1.1 project pull || fail
 cd pull
-test -d BitKeeper/BAM && {
-	echo should have no BAM dir
-	exit 1
-}
-_BK_ALLOW_BAD_CRC=YES bk pull $Q || exit 1
+test -d BitKeeper/BAM && fail should have no BAM dir
+_BK_ALLOW_BAD_CRC=YES bk pull $Q || fail
 find BitKeeper/BAM -type f | bk sort > "$HERE"/GOT
 cmpfiles "$HERE"/WANT "$HERE"/GOT
 echo OK
 
 echo $N Make sure clone sends BAM data ..............................$NL
 cd "$HERE"
-_BK_ALLOW_BAD_CRC=YES bk clone $Q project clone || exit 1
+_BK_ALLOW_BAD_CRC=YES bk clone $Q project clone || fail
 cd clone
-test -d BitKeeper/BAM || {
-	echo no BAM dir
-	exit 1
-}
+test -d BitKeeper/BAM || fail no BAM dir
 find BitKeeper/BAM -type f | bk sort > "$HERE"/GOT
 cmpfiles "$HERE"/WANT "$HERE"/GOT
 echo OK
@@ -306,28 +250,21 @@ done
 cd "$HERE"/clone
 BEFORE=`find BitKeeper/BAM -type f -print | wc -l`
 ( echo ul; echo Use local version; echo .; echo q) | bk pull $Q >OUT 2>&1 || {
-	echo failed
-	cat OUT
-	exit 1
+	fail -f OUT
 }
-test -d RESYNC && exit 2
+test -d RESYNC && fail
 AFTER=`find BitKeeper/BAM -type f -print | wc -l`
 # We should have one extra d
-test $BEFORE -eq `expr $AFTER - 1` || {
-	echo failed
-	echo $BEFORE $AFTER
-	exit 1
-}
+test $BEFORE -eq `expr $AFTER - 1` || fail $BEFORE $AFTER
 echo OK
 
 echo $N Test unpull .................................................$NL
-bk unpull -f $Q || exit 1
+bk unpull -f $Q || fail
 bk co $Q data
 test `wc -c < BitKeeper/tmp/unpull.patch` -gt `wc -c < data` || {
-	echo Patch is too small, must not contain BAM data
-	exit 1
+	fail Patch is too small, must not contain BAM data
 }
-test -d RESYNC && exit 1
+test -d RESYNC && fail left RESYNC behind
 echo OK
 
 echo $N Test a manual merge .........................................$NL
@@ -336,19 +273,11 @@ echo $N Test a manual merge .........................................$NL
   echo use both
   echo .
   echo q
-) | bk pull $Q >OUT 2>&1 || {
-	echo failed
-	cat OUT
-	exit 1
-}
-test -d RESYNC && exit 2
+) | bk pull $Q >OUT 2>&1 || fail -f OUT
+test -d RESYNC && fail
 AFTER=`find BitKeeper/BAM -type f -print | wc -l`
 # We should have two extra d
-test $BEFORE -eq `expr $AFTER - 2` || {
-	echo failed
-	echo $BEFORE $AFTER
-	exit 1
-}
+test $BEFORE -eq `expr $AFTER - 2` || fail $BEFORE $AFTER
 echo OK
 
 echo $N See if we can fetch remote BAM data with get ................$NL
@@ -358,97 +287,65 @@ cd "$HERE"
 _BK_ALLOW_BAD_CRC=YES bk clone $Q project remote
 cd remote
 rm -rf BitKeeper/BAM
-bk bam server $Q ../project || exit 1
-bk get $Q data || {
-	echo get failed
-	exit 1
-}
-test -d BitKeeper/BAM || {
-	echo failed to create BitKeeper/BAM
-	exit 1
-}
-test -f data || {
-	echo bk get succeeded but no data
-	exit 1
-}
+bk bam server $Q ../project || fail
+bk get $Q data || fail get failed
+test -d BitKeeper/BAM || fail failed to create BitKeeper/BAM
+test -f data || fail bk get succeeded but no data
 echo OK
 
 echo $N See if we can fetch remote BAM data with get in subdir ......$NL
 cd "$HERE"/remote
 rm -rf BitKeeper/BAM
 cd subdir
-bk get $Q data3 || {
-	echo get failed
-	exit 1
-}
-test -d ../BitKeeper/BAM || {
-	echo failed to create BitKeeper/BAM
-	exit 1
-}
-test -f data3 || {
-	echo bk get succeeded but no data
-	exit 1
-}
+bk get $Q data3 || fail get failed
+test -d ../BitKeeper/BAM || fail failed to create BitKeeper/BAM
+test -f data3 || fail bk get succeeded but no data
 echo OK
 
 echo $N See if we can fetch remote BAM data with bk -r get ..........$NL
 cd "$HERE"/remote
 rm -rf BitKeeper/BAM
 _BK_ALLOW_BAD_CRC=YES \
- bk -r get -F $Q || {
-	echo failed
-	exit 1
-}
-test -d BitKeeper/BAM || {
-	echo failed to create BitKeeper/BAM
-	exit 1
-}
-test -f data || {
-	echo bk get succeeded but no data
-	exit 1
-}
-test -f fake_hash || {
-	echo bk get succeeded but no fake_hash
-	exit 1
-}
+ bk -r get -F $Q || fail
+test -d BitKeeper/BAM || fail failed to create BitKeeper/BAM
+test -f data || fail bk get succeeded but no data
+test -f fake_hash || fail bk get succeeded but no fake_hash
 echo OK
 
 echo $N Test get/clean cycle ........................................$NL
 for i in 1 2 3
 do	bk clean data 
-	test -f data && { echo failed to clean $i; exit 1; }
+	test -f data && fail failed to clean $i
 	bk get $Q data
-	test -f data || { echo failed to get $i; exit 1; }
-	test -w data && { echo failed to get ${i} RO; exit 1; }
+	test -f data || fail failed to get $i
+	test -w data && fail failed to get ${i} RO
 	bk clean data
-	test -f data && { echo failed to clean ${i}B; exit 1; }
+	test -f data && fail failed to clean ${i}B
 	bk edit $Q data
-	test -f data || { echo failed to get ${i}B; exit 1; }
-	test -w data || { echo failed to edit ${i}B; exit 1; }
+	test -f data || fail failed to get ${i}B
+	test -w data || fail failed to edit ${i}B
 done
 echo OK
 
 echo $N Test remote push to remote server ...........................$NL
 cd "$HERE"
-bk bkd -q -d -aPORT -ikill > BKD 2>&1 || exit 1
+bk bkd -q -d -aPORT -ikill > BKD 2>&1 || fail
 P=`cat PORT`
 commercial servmaster
-bk bam server $Q ../project || exit 1
+bk bam server $Q ../project || fail
 bk commit $Q -ysetup
 cd ..
-bk clone $Q bk://localhost:$P/servmaster someclient || exit 1
+bk clone $Q bk://localhost:$P/servmaster someclient || fail
 cd someclient || {
-	echo failed no copy
 	bk _kill bk://localhost:$P
-	exit 1
+	fail failed no copy
 }
 echo foo > binfile
-bk new $Q -b binfile || exit 1
-bk commit $Q -ybinfile || exit 1
+bk new $Q -b binfile || fail
+bk commit $Q -ybinfile || fail
 bk push $Q || {
-	echo failed
 	bk _kill bk://localhost:$P
-	exit 1
+	fail
 }
 echo OK
 
@@ -456,28 +353,22 @@ echo $N Test rclone of binpool master ...............................$NL
 cd ../servmaster
 bk -r check -aB || {
 	bk _kill bk://localhost:$P
-	exit 1
+	fail
 }
 bk bam server $Q . || {
-	echo bam server failed
 	bk _kill bk://localhost:$P
-	exit 1
+	fail bam server failed
 }
 bk clone $Q . bk://localhost:$P/servmaster.copy 2>ERR && {
-	echo should have failed
-	cat ERR
 	bk _kill bk://localhost:$P
-	exit 1
+	fail -f ERR should have failed
 }
 test -d ../servmaster.copy && {
-	echo should not have left directory
 	bk _kill bk://localhost:$P
-	exit 1
+	fail should not have left directory
 }
 grep -q "clone: when cloning a BAM server -B<url> is required." ERR || {
-	echo bad error message
-	cat ERR
-	exit 1
+	fail -f ERR bad error message
 }
 echo OK
 
@@ -485,40 +376,24 @@ echo OK
 echo $N Test rclone -Bjunk ..........................................$NL
 cd ../project
 bk clone $Q -Bjunk . bk://localhost:$P/servmaster.copy 2>ERR && {
-	echo should have failed
-	cat ERR
 	bk _kill bk://localhost:$P
-	exit 1
+	fail -f ERR echo should have failed
 }
 test -d ../servmaster.copy && {
-	echo should not have left directory
 	bk _kill bk://localhost:$P
-	exit 1
+	fail should not have left directory
 }
-grep -q "unable to contact BAM server 'junk'" ERR || {
-	echo bad error msg
-	cat ERR
-	exit 1
-}
+grep -q "unable to contact BAM server 'junk'" ERR || fail -f ERR bad error msg
 echo OK
 
 bk _kill bk://localhost:$P
 
 echo $N Test clone -Bjunk ...........................................$NL
 cd "$HERE"
-bk clone $Q -Bjunk project test1 2>ERR && {
-	echo should have failed
-	cat ERR
-	exit 1
-}
-test -d test1 && {
-	echo should not have left directory
-	exit 1
-}
+bk clone $Q -Bjunk project test1 2>ERR && fail -f ERR echo should have failed
+test -d test1 && fail should not have left directory
 grep -q "clone: unable to get id from BAM server 'junk'" ERR || {
-	echo bad error message
-	cat ERR
-	exit 1
+	fail -f ERR bad error message
 }
 echo OK
 
@@ -534,23 +409,17 @@ do	 chmod 0 $x
 done
 rm -f data
 BK_SHOWPROC="$HERE"/log bk get $Q data > OUT 2>&1 && {
-	echo should have failed
-	cat "$HERE"/log
-	cat OUT
-	ls -lR BitKeeper/BAM
-	exit 1
+	cat "$HERE"/log > ERR
+	cat OUT >> ERR
+	ls -lR BitKeeper/BAM >> ERR
+	fail -f ERR should have failed
 }
 grep -q sfio "$HERE"/log && {
-	echo should not have run sfio
-	cat "$HERE"/log 
-	cat OUT
-	exit 1
+	cat "$HERE"/log > ERR
+	cat OUT >> ERR
+	fail -f ERR should not have run sfio
 }
-test -f data && {
-	echo should not have gotten data
-	cat OUT
-	exit 1
-}
+test -f data && fail -f OUT should not have gotten data
 bk _find BitKeeper/BAM -type f -name '*.d1' | while read x
 do	 chmod 444 $x
 done
@@ -565,65 +434,61 @@ echo $N Test get/clean cycle with hardlinks .........................$NL
 cd "$HERE"/remote
 for i in 1 2 3
 do	BK_CONFIG='BAM_hardlinks:yes' bk clean data 
-	test -f data && { echo failed to clean $i; exit 1; }
+	test -f data && fail failed to clean $i
 	BK_CONFIG='BAM_hardlinks:yes' bk get $Q data
-	test -f data || { echo failed to get $i; exit 1; }
-	test -w data && { echo failed to get ${i} RO; exit 1; }
+	test -f data || fail failed to get $i
+	test -w data && fail failed to get ${i} RO
 	BK_CONFIG='BAM_hardlinks:yes' bk clean data
-	test -f data && { echo failed to clean ${i}B; exit 1; }
+	test -f data && fail failed to clean ${i}B
 	BK_CONFIG='BAM_hardlinks:yes' bk edit $Q data
-	test -f data || { echo failed to get ${i}B; exit 1; }
-	test -w data || { echo failed to edit ${i}B; exit 1; }
+	test -f data || fail failed to get ${i}B
+	test -w data || fail failed to edit ${i}B
 done
 echo OK
 
 echo $N Test that get does not hardlink without BAM_hardlinks .......$NL
 cd "$HERE"/project
 bk -r clean
-test -f data && { echo failed to clean; exit 1; }
-bk get $Q data || exit 1
+test -f data && fail failed to clean
+bk get $Q data || fail
 test `linkcount data` = 1 || {
-	echo failed
-	ls -l data
-	exit 1
+	ls -l data > ERR
+	fail -f ERR
 }
 echo OK
 
 echo $N Test that get hardlinks if BAM_hardlinks is set .............$NL
 cd "$HERE"/project
 bk -r clean
-test -f data && { echo failed to clean; exit 1; }
-BK_CONFIG='BAM_hardlinks:yes' bk get $Q data || exit 1
+test -f data && fail failed to clean
+BK_CONFIG='BAM_hardlinks:yes' bk get $Q data || fail
 test `linkcount data` = 2 || {
-	echo failed
-	ls -l data
-	echo links is `linkcount data`
-	bk _stat data
-	exit 1
+	ls -l data > ERR
+	echo links is `linkcount data` >> ERR
+	bk _stat data >> ERR
+	fail -f ERR
 }
 echo OK
 
 echo $N Test that edit does not hardlink ............................$NL
 cd "$HERE"/project
 bk clean data
-test -f data && { echo failed to clean; exit 1; }
-bk edit $Q data || exit 1
+test -f data && fail failed to clean
+bk edit $Q data || fail
 test `linkcount data` = 1 || {
-	echo failed
-	ls -l data
-	exit 1
+	ls -l data > ERR
+	fail -f ERR
 }
 echo OK
 
 echo $N Test that edit does not hardlink with BAM_hardlinks set .....$NL
 cd "$HERE"/project
 bk clean data
-test -f data && { echo failed to clean; exit 1; }
-BK_CONFIG='BAM_hardlinks:yes' bk edit $Q data || exit 1
+test -f data && fail failed to clean
+BK_CONFIG='BAM_hardlinks:yes' bk edit $Q data || fail
 test `linkcount data` = 1 || {
-	echo failed
-	ls -l data
-	exit 1
+	ls -l data > ERR
+	fail -f ERR
 }
 echo OK
 
@@ -631,23 +496,25 @@ echo OK
 test $PLATFORM != WIN32 && {
 # Fall through with 'data' in edit state to ..
 echo $N Test that hardlinking does not alter permissions ............$NL
-test -f data || { echo expected data from last test; exit 1; }
-test -x data && { echo expected data with no execute; ls -l data; exit 1; }
+test -f data || fail expected data from last test
+test -x data && {
+	ls -l data > ERR
+	fail -f ERR expected data with no execute
+}
 cp data prog
 chmod +x prog
-test -x prog || { echo expected prog with execute; exit 1; }
+test -x prog || fail expected prog with execute
 bk new $Q -b prog
 bk clean data prog
-BK_CONFIG='BAM_hardlinks:yes' bk get $Q data prog || exit 1
+BK_CONFIG='BAM_hardlinks:yes' bk get $Q data prog || fail
 DLINK=`linkcount data`
 PLINK=`linkcount prog`
 test `expr $DLINK + $PLINK` -le 2 && {
-	echo failed - no hardlinks
-	ls -l data prog
-	exit 1
+	ls -l data prog > ERR
+	fail -f ERR failed - no hardlinks
 }
-test -x data && { echo expected data with no execute; exit 1; }
-test -x prog || { echo expected prog with execute; exit 1; }
+test -x data && fail expected data with no execute
+test -x prog || fail expected prog with execute
 echo OK
 
 echo $N Test that chmod +x works with hardlinks .....................$NL
@@ -660,13 +527,12 @@ mv data data-new
 OLINK=`linkcount data-old`
 NLINK=`linkcount data-new`
 test `expr $OLINK + $NLINK` -le 2 && {
-	echo failed - no hardlinks
 	# ls -l data-old data-new
-	ls -l
-	exit 1
+	ls -l > ERR
+	fail -f ERR failed - no hardlinks
 }
-test -x data-old && { echo expected data with no execute; exit 1; }
-test -x data-new || { echo expected prog with execute; exit 1; }
+test -x data-old && fail expected data with no execute
+test -x data-new || fail expected prog with execute
 echo OK
 }
 
@@ -691,11 +557,6 @@ do
     done
 done
 bk commit $Q -f -y"Moved a hundred files"
-bk undo $Q -f -r+ 2>ERR || {
-	echo failed
-	echo
-	cat ERR
-	exit 1
-}
+bk undo $Q -f -r+ 2>ERR || fail -f ERR
 echo OK
 

@@ -88,5 +88,5 @@ while read i
 do
 	dotest "Simple interface test (repo)" $i || break
 done < "$HERE/.INTERFACES"
-test -s XXX && exit 1
+test -s XXX && fail
 exit 0

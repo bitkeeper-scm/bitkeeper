@@ -20,8 +20,8 @@ cp binary binary_sfile
 cp binary WANT_BINARY
 bk new $Q -b binary_sfile
 bk new $Q ascii_sfile
-test -f ascii_sfile && exit 1
-test -f binary_sfile && exit 1
+test -f ascii_sfile && fail
+test -f binary_sfile && fail
 echo OK
 
 echo $N Cat ASCII file not under version control ....................$NL

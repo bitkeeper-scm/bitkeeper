@@ -5,14 +5,14 @@
 
 echo $N Setup bam server ............................................$NL
 commercial server
-bk bam server $Q . || exit 1
+bk bam server $Q . || fail
 cd ..
-bk clone $Q server copy1 || exit 1
+bk clone $Q server copy1 || fail
 cd copy1
 echo 1 > file1
 bk new -b $Q file1
-bk commit -yfile1 $Q || exit 1
-bk bam push $Q || exit 1
+bk commit -yfile1 $Q || fail
+bk bam push $Q || fail
 echo OK
 
 echo $N Setup other repos that share the same server ................$NL
@@ -20,14 +20,14 @@ cd ..
 echo 'BAM: 1' > c
 for n in 2 3
 do
-	bk setup -cc -f repo$n || exit 1
+	bk setup -cc -f repo$n || fail
 	cd repo$n
 	bk bam server $Q ../server
 	echo $n > file$n
-	bk new -b $Q file$n || exit 1
-	bk commit -yfile$n $Q || exit 1
-	bk bam push $Q || exit 1
-	bk bam clean -a $Q || exit 1
+	bk new -b $Q file$n || fail
+	bk commit -yfile$n $Q || fail
+	bk bam push $Q || fail
+	bk bam clean -a $Q || fail
 	cd ..
 done
 echo OK

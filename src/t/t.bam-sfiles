@@ -20,10 +20,10 @@ DATA="$HERE"/data
 perl -e 'sysread(STDIN, $buf, 81920);
 syswrite(STDOUT, $buf, 81920);' < $BK > "$DATA"
 cp "$DATA" data
-bk new $Q data || exit 1
+bk new $Q data || fail
 perl -e 'printf "Hi there\x0\n";' > small
 BK_CONFIG='BAM:1k!' bk new $Q small
-test -d BitKeeper/BAM || exit 1
+test -d BitKeeper/BAM || fail
 bk commit $Q -ydata1
 echo OK
 
@@ -38,7 +38,7 @@ bk _rm -fr BitKeeper/deleted
 echo "$ROOTKEY" | bk gone -q -
 perl -e 'sysread(STDIN, $buf, 91920);
 syswrite(STDOUT, $buf, 91920);' < $BK > data
-bk new $Q data || exit 1
+bk new $Q data || fail
 echo OK
 
 # Without this we don't fail below, I'm not clear why

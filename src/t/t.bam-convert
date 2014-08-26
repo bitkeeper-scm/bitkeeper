@@ -21,35 +21,26 @@ syswrite(STDOUT, $buf, 10240);' < data > data2
 chmod u+w data data2
 touch zero
 printf "x" > one
-bk new $Q -b zero one data data2 || exit 1
+bk new $Q -b zero one data data2 || fail
 bk commit -ywhatever $Q || fail
-test -d BitKeeper/BAM && {
-	echo should not have created BAM dir
-	exit 1
-}
+test -d BitKeeper/BAM && fail should not have created BAM dir
 # save data for convert test
 bk get -kpq data > ../data-1.1
 echo OK
 
 echo $N Exclude it and then exclude the exclude then check contents .$NL
-bk clean data || exit 1
+bk clean data || fail
 bk cset $Q -x+
 bk co $Q data
-test -s data && {
-	echo expected empty data
-	exit 1
-}
+test -s data && fail expected empty data
 # save data for convert test
 bk get -kpq data > ../data-1.2
 bk cset $Q -x+
 bk get -kpq data > ../data-1.3
-bk clean data || exit 1
-test -f data && exit 1
-bk co $Q data || exit 1
-cmp -s "$BIN1" data || {
-	echo failed to retrieve the data
-	exit 1
-}
+bk clean data || fail
+test -f data && fail
+bk co $Q data || fail
+cmp -s "$BIN1" data || fail failed to retrieve the data
 # for later -- look for GONE
 bk clone $Q . ../gone
 bk clone $Q . ../notgone
@@ -62,19 +53,14 @@ bk delta $Q -yBAM BitKeeper/etc/config
 bk commit $Q -yBAM 
 # Compressed cset files had a bug, make sure it doesn't come back.
 bk admin -Zgzip ChangeSet || fail
-bk bam convert 16k > OUT 2>&1 || {
-	echo failed
-	cat OUT
-	exit 1
-}
+bk bam convert 16k > OUT 2>&1 || fail -f OUT
 for i in 1 2 3
 do	bk get -kpqr1.$i data > data-1.$i
 	cmp data-1.$i ../data-1.$i || touch busted
 done
 test -f busted && {
-	echo failed
-	ls -l data-* ../data-*
-	exit 1
+	ls -l data-* ../data-* > ERR
+	fail -f ERR
 }
 echo OK
 
@@ -102,11 +88,7 @@ echo $N Try and convert to a bigger BAM size, should fail ...........$NL
 cd ..
 bk clone $Q proj convert
 cd convert
-bk bam convert 100000 > OUT 2>&1 && {
-	echo should have failed
-	cat OUT
-	exit 1
-}
+bk bam convert 100000 > OUT 2>&1 && fail -f OUT should have failed
 grep -q 'BAM size must be less than 16384.' OUT || fail -f OUT
 echo OK
 

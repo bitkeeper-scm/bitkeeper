@@ -27,7 +27,7 @@ echo OK
 
 echo $N Time fetching slib.c fully annotated.........................$NL
 EXPECTED=96000.0
-bk bkd -d -lBKD.LOG -aPORT -ikill > STDOUT 2> STDERR || exit 1
+bk bkd -d -lBKD.LOG -aPORT -ikill > STDOUT 2> STDERR || fail
 P=`cat PORT`
 bk tclsh <<EOF >TIME
 	set times 5
@@ -44,11 +44,8 @@ bk tclsh <<EOF >TIME
 	exit 0
 EOF
 rc=$?
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 test $rc = 0 || {
-	echo failed
-	T=`cat TIME`
-	echo expected $EXPECTED microseconds and got $T microseconds
-	exit 1
+	fail "expected $EXPECTED microseconds and got `cat TIME` microseconds"
 }
 echo OK

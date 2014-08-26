@@ -20,7 +20,7 @@ echo $N test BK_RSH does not get truncated with multiple use ........$NL
 commercial project
 cd ..
 # General setup for all the tests: 2 bin directories, both in path
-mkdir bin1 bin2 || exit 1
+mkdir bin1 bin2 || fail
 PATH="$root/bin1:$root/bin2:$PATH"
 export PATH
 # do not define it if it is not being used.
@@ -55,16 +55,12 @@ export BK_LICENSEURL
 mkdir -p project/RESYNC/BitKeeper/tmp
 touch project/RESYNC/BitKeeper/tmp/patch
 rm -f OUT*
-BK_RSH="mytest.sh arg1" bk abort -f rsh://host/project || exit 1
-test -d project/RESYNC && {
-	echo failed: RESYNC still there
-	exit 1
-}
+BK_RSH="mytest.sh arg1" bk abort -f rsh://host/project || fail
+test -d project/RESYNC && fail RESYNC still there
 # should be at least two OUT files: lease fetch and command
 test `ls OUT* | wc -l` -ge 2 || {
-	echo failed: not enough OUT files
-	ls OUT*
-	exit 1
+	ls OUT* > ERR
+	fail -f ERR not enough OUT files
 }
 cat - <<'EOF' > WANT
 arg1
@@ -80,11 +76,8 @@ echo $N test BK_RSH with spaces in arguments works ..................$NL
 rm -f OUT*
 mkdir -p project/RESYNC/BitKeeper/tmp
 touch project/RESYNC/BitKeeper/tmp/patch
-BK_RSH="mytest.sh arg1 'arg 2'" bk abort -f rsh://host/project || exit 1
-test -d project/RESYNC && {
-	echo failed: RESYNC still there
-	exit 1
-}
+BK_RSH="mytest.sh arg1 'arg 2'" bk abort -f rsh://host/project || fail
+test -d project/RESYNC && fail RESYNC still there
 echo " 'arg1' 'arg 2' 'host' 'bk bkd'" > WANT
 cat - <<'EOF' > WANT
 arg1
@@ -98,7 +91,7 @@ done
 echo OK
 
 echo $N test rsh as a directory will be ignored .....................$NL
-mkdir bin1/rsh || exit 1
+mkdir bin1/rsh || fail
 touch bin1/rsh/foo
 cp bin1/mytest.sh bin2/rsh
 rm -f OUT*
@@ -108,10 +101,7 @@ touch project/RESYNC/BitKeeper/tmp/patch
 # Did not fully debug SCO as to why it wanted rsh even though it was not
 # first in path
 BK_RSH=rsh bk abort rsh://host/project
-test -d project/RESYNC && {
-	echo failed: RESYNC still there
-	exit 1
-}
+test -d project/RESYNC && fail RESYNC still there
 cat - <<'EOF' > WANT
 host
 bk bkd
@@ -123,14 +113,6 @@ echo OK
 
 echo $N test BK_RSH set to something bogus will not hang ............$NL
 # this used to hang because spawn_rwPipe would close stdout, and not restore
-BK_RSH="$root/bogus-prog-name" bk changes rsh://host/path > OUT 2> ERR && {
-	echo failed
-	exit 1
-}
-grep -q "Command not found" ERR || {
-	echo failed
-	echo wrong error message
-	cat ERR
-	exit 1
-}
+BK_RSH="$root/bogus-prog-name" bk changes rsh://host/path > OUT 2> ERR && fail
+grep -q "Command not found" ERR || fail -f ERR wrong error message
 echo OK
