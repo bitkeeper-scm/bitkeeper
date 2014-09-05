@@ -255,6 +255,42 @@ isNullFile(char *rev, char *file)
 	return (0);
 }
 
+private int
+isIdenticalData(char *file, char *rev1, char *rev2)
+{
+	sccs	*s;
+	ser_t	d1, d2;
+	char	*file_1 = 0, *file_2 = 0, *sfile;
+	int	same = 0;
+
+	sfile = name2sccs(file);
+	s = sccs_init(sfile, INIT_MUSTEXIST|INIT_NOCKSUM);
+	free(sfile);
+	unless (s) return (0);
+	d1 = sccs_findrev(s, rev1);
+	d2 = sccs_findrev(s, rev2);
+	unless (d1 && d2) goto out;
+	if (sccs_getCksumDelta(s, d1) == sccs_getCksumDelta(s, d2)) goto out;
+
+	file_1 = bktmp(0);
+	if (sccs_get(s, rev1, 0, 0, 0, SILENT|PRINT, file_1)) goto out;
+	file_2 = bktmp(0);
+	if (sccs_get(s, rev2, 0, 0, 0, SILENT|PRINT, file_2)) goto out;
+	same = sameFiles(file_1, file_2);
+out:
+	sccs_free(s);
+	if (file_1) {
+		unlink(file_1);
+		free(file_1);
+	}
+	if (file_2) {
+		unlink(file_2);
+		free(file_2);
+	}
+	return (same);
+}
+
+
 /*
  * Convert root/start/end keys to sfile|path1|rev1|path2|rev2 format
  * If we are rset -l<rev> then start is null, and end is <rev>.
@@ -351,29 +387,9 @@ process(Opts *opts, char *root, char *start, char *end, MDBM *idDB)
 			}
 		}
 	}
-	if (opts->elide && !streq(basenm(path0), GCHANGESET)) {
-		sccs	*s;
-		char	*file_a, *file_b, *spath0;
-		int	diffs;
-		df_opt	dop = {0};
-
-		spath0 = name2sccs(path0);
-		s = sccs_init(spath0, INIT_MUSTEXIST|INIT_NOCKSUM);
-		assert(s);
-		/* get first rev */
-		file_a = bktmp(0);
-		file_b = bktmp(0);
-		if (sccs_get(s, start, 0, 0, 0, SILENT|PRINT, file_a)) {}
-		if (sccs_get(s, end, 0, 0, 0, SILENT|PRINT, file_b)) {}
-		dop.ignore_trailing_cr = 1;
-		diffs = diff_files(file_a, file_b, &dop, 0);
-		sccs_free(s);
-		unlink(file_a);
-		unlink(file_b);
-		FREE(file_a);
-		FREE(file_b);
-		FREE(spath0);
-		unless (diffs) goto done;
+	if (opts->elide && !streq(basenm(path0), GCHANGESET) &&
+	    isIdenticalData(path0, start, end)) {
+		goto done;
 	}
 	if (opts->prefix0) printf("%s", opts->prefix0);
 	printf("%s|", path0);

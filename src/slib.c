@@ -6429,7 +6429,7 @@ doreget:	f = s->gfile;
  * not an almostUnique() value.
  */
 ser_t
-getCksumDelta(sccs *s, ser_t d)
+sccs_getCksumDelta(sccs *s, ser_t d)
 {
 	ser_t	t;
 
@@ -7200,7 +7200,7 @@ write:
 
 	if (BITKEEPER(s) &&
 	    d && (flags & NEWCKSUM) && !(flags&GET_SHUTUP) && lines) {
-		ser_t	z = getCksumDelta(s, d);
+		ser_t	z = sccs_getCksumDelta(s, d);
 
 		if (!z || ((sum_t)sum != SUM(s, z))) {
 		    fprintf(stderr,
@@ -7343,7 +7343,7 @@ get_bp(sccs *s, char *printOut, int flags, ser_t d,
 	/* Track get_reg from here on down (mostly) */
 	if (BITKEEPER(s) &&
 	    (flags & NEWCKSUM) && !(flags & GET_SHUTUP) && s->added) {
-		ser_t	z = getCksumDelta(s, d);
+		ser_t	z = sccs_getCksumDelta(s, d);
 
 		if (!z || (s->dsum != SUM(s, z))) {
 		    fprintf(stderr,
@@ -14322,7 +14322,7 @@ end(sccs *s, ser_t n, int flags, int add, int del, int same)
 	}
 	if (BITKEEPER(s)) {
 		if (!BAM(s) && (add || del || same) && (FLAGS(s, n) & D_ICKSUM)) {
-			ser_t	z = getCksumDelta(s, n);
+			ser_t	z = sccs_getCksumDelta(s, n);
 
 			assert(z);
 			/* they should match */
@@ -14345,7 +14345,7 @@ end(sccs *s, ser_t n, int flags, int add, int del, int same)
 			/*
 			 * XXX: would like "if cksum is same as parent"
 			 * but we can't do that because we use the inc/ex
-			 * in getCksumDelta().
+			 * in sccs_getCksumDelta().
 			 */
 			if (add || del || HAS_CLUDES(s, n) || S_ISLNK(MODE(s, n))) {
 				SUM_SET(s, n, s->dsum);

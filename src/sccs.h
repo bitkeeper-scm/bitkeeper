@@ -1062,7 +1062,7 @@ char	**cset_mkList(sccs *cset);
 int	cset_bykeys(const void *a, const void *b);
 int	cset_byserials(const void *a, const void *b);
 int	sccs_newchksum(sccs *s);
-ser_t	getCksumDelta(sccs *s, ser_t d);
+ser_t	sccs_getCksumDelta(sccs *s, ser_t d);
 ser_t	*addSerial(ser_t *space, ser_t s);
 void	sccs_perfile(sccs *s, FILE *out, int patch);
 sccs	*sccs_getperfile(sccs *, FILE *, int *);
