@@ -1954,12 +1954,13 @@ sfiles_local_main(int ac, char **av)
 	char	*rev = 0;
 	int	c;
 	char	*t, *p, *r, *t1;
+	char	**aliases = 0;
 	FILE	*f, *f1;
 	int	standalone = 0, norev = 0, nomods = 0, elide = 0, extras = 0;
 	hash	*seen;
 	char	**out = 0;
 	int	i, rc = 1;
-	char	buf[MAXLINE];
+	char	buf[MAXLINE], arg[200];
 	longopt	lopts[] = {
 		{ "elide",   310 },
 		{ "extras",  315 },
@@ -1968,10 +1969,13 @@ sfiles_local_main(int ac, char **av)
 		{ 0, 0 }
 	};
 
-	while ((c = getopt(ac, av, "r;S", lopts)) != -1) {
+	while ((c = getopt(ac, av, "r;Ss;", lopts)) != -1) {
 		switch (c) {
 		    case 'r': rev = optarg; break;
 		    case 'S': standalone = 1; break;
+		    case 's':
+			aliases = addLine(aliases, strdup(optarg));
+			break;
 		    case 310: elide = 1; break;
 		    case 315: extras = 1; break;
 		    case 320: nomods = 1; break;
@@ -1980,6 +1984,7 @@ sfiles_local_main(int ac, char **av)
 		}
 	}
 	bk_nested2root(standalone);
+	if (aliases && standalone) usage();
 
 	seen = hash_new(HASH_MEMHASH);
 	/* do pending first */
@@ -1987,6 +1992,10 @@ sfiles_local_main(int ac, char **av)
 	    standalone ? "sfiles -g" : "-A",
 	    nomods ? "p" : "cp",
 	    extras ? "x" : "");
+	EACH(aliases) {
+		sprintf(arg, " -s%s", aliases[i]);
+		strcat(buf, arg);
+	}
 	f = popen(buf, "r");
 	while (t = fgetline(f)) {
 		if (streq(basenm(t), "ChangeSet")) {
@@ -2024,6 +2033,10 @@ sfiles_local_main(int ac, char **av)
 		/* now override with rset output */
 		sprintf(buf, "bk rset %s -%sHr'%s'..", elide ? "--elide" : "",
 		    (standalone ? "S" : ""), rev);
+		EACH(aliases) {
+			sprintf(arg, " -s%s", aliases[i]);
+			strcat(buf, arg);
+		}
 		f = popen(buf, "r");
 		while (t = fgetline(f)) {
 			p = strchr(t, '|');
@@ -2048,6 +2061,7 @@ sfiles_local_main(int ac, char **av)
 	EACH(out) puts(out[i]);
 	rc = 0;
 out:	freeLines(out, free);
+	freeLines(aliases, free);
 	hash_free(seen);
 	return (rc);
 }

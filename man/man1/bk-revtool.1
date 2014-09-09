@@ -31,11 +31,13 @@ may be used to view any revision controlled file,
 including the ChangeSet file. When no filename is given, the entire
 package history is shown.
 .if \n[NESTED] \{\
-In a nested collection, the default is to show the product history.
-If you wish to look at a component's history, go to that directory
+In a nested collection, the default is to show the product changesets.
+If you wish to look at a component's changesets, go to that directory
 and run
 .DS
 $ bk revtool -S
+or
+$ bk revtool --standalone
 .DE
 .\}
 .LP
