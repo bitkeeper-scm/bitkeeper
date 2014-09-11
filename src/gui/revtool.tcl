@@ -2455,7 +2455,7 @@ proc arguments {} \
 					[string range $arg 2 end]
 			    }
 		    }
-		    "^-S$" {
+		    "^-S$" - "^--standalone$" {
 			set dashs 1
 		    }
 		    "^-.*" {

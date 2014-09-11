@@ -18,3 +18,25 @@ bk difftool -L 2> GOT
 echo "No files found with differences" > WANT
 cmpfiles WANT GOT
 echo OK
+
+echo $N See that -S works with -L to act as if comp is standalone ...$NL
+cd "$HERE"
+nested nest
+cd gcc
+touch foo
+bk new $Q -l foo
+bk commit $Q -f
+bk detach $Q . "$HERE"/gcc
+echo new data > foo
+bk delta $Q -l -y'more edits' foo
+bk commit $Q -y'more csets'
+echo work in progress > foo
+bk guitest difftool -S -L"$HERE"/gcc > OUT 2>&1 <<EOF || fail -f OUT
+	test_buttonPress "Quit"
+EOF
+bk guitest difftool --standalone -L"$HERE"/gcc > OUT 2>&1 <<EOF \
+    || fail -f OUT
+	test_buttonPress "Quit"
+EOF
+bk unedit $Q foo
+echo OK

@@ -40,7 +40,7 @@ struct	range {
 
 int	range_process(char *me, sccs *s, u32 flags, RANGE *rargs);
 int	range_addArg(RANGE *rargs, char *arg, int isdate);
-int	range_urlArg(RANGE *rargs, char *url);
+int	range_urlArg(RANGE *rargs, char *url, int standalone);
 
 void	range_cset(sccs *s, ser_t d);
 ser_t	range_findMerge(sccs *s, ser_t d1, ser_t d2, ser_t **mlist);

@@ -5,7 +5,7 @@ bk log \- print file revision history and/or metadata
 .SH SYNOPSIS
 .if n .ll 7.49i
 .B bk log
-.[B] \-dDf
+.[B] \-dDfS
 .if t .ds d date
 .if n .ds d d
 .if t .ds r rev
@@ -92,6 +92,12 @@ Specify a revision, or part of a range.
 (Or key or changeset revision. See 
 .B bk help terms
 under \*(lqrev argument.\*(rq)
+.tp
+.B \-S
+.tp
+.B \-\-standalone
+Use with -L in a nested component when you want the component to act like
+a standalone repository.
 .SS RANGE SPECIFICATIONS
 .TP \fB\-c2006/07.\|.2006\fP
 .B \-r+
