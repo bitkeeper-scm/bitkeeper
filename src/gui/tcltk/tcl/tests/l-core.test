@@ -18680,7 +18680,7 @@ test builtin-11.5 {check insert built-in} -body {
 #lang L --line=1
 void builtin_11_5()
 {
-	int	a[];
+	int	a[], i;
 	struct {
 		int	a[];
 	} st;
@@ -18736,6 +18736,21 @@ void builtin_11_5()
 	unless (eq(st.a, {3,4,5,2,1})) puts("bad 4.3");
 	insert(&st.a, 0, {5,6,7}, 8, {9,10});
 	unless (eq(st.a, {5,6,7,8,9,10,3,4,5,2,1})) puts("bad 4.4 ${a}");
+
+	/* Check with an expression as the index arg. */
+
+	a = {};
+	i = 0;
+	insert(&a, i, 1);
+	unless (eq(a, {1})) puts("bad 5.1");
+	insert(&a, i, 2);
+	unless (eq(a, {2,1})) puts("bad 5.2");
+	insert(&a, i+1, 3);
+	unless (eq(a, {2,3,1})) puts("bad 5.3");
+	insert(&a, --i, 5);  // try a side effect in the index arg
+	unless (eq(a, {2,3,1,5})) puts("bad 5.4");
+	insert(&a, i+1, 6);
+	unless (eq(a, {6,2,3,1,5})) puts("bad 5.5");
 }
 builtin_11_5();
 } -output {}

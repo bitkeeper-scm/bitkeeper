@@ -1979,10 +1979,6 @@ compile_insert_unshift(Expr *expr)
 		L_errf(expr, "first arg to %s not an array reference (&)", opNm);
 		return (0);
 	}
-	unless (isint(index)) {
-		L_errf(expr, "second arg to %s not an int", opNm);
-		return (0);
-	}
 	compile_expr(array, L_PUSH_PTR | L_LVALUE);
 	unless (isarray(array) || ispoly(array)) {
 		L_errf(expr,
@@ -2012,6 +2008,10 @@ compile_insert_unshift(Expr *expr)
 		compile_expr(index, L_PUSH_VAL);
 		emit_store_scalar(idxTmp->idx);
 		emit_pop();
+		unless (isint(index)) {
+			L_errf(expr, "second arg to %s not an int", opNm);
+			return (0);
+		}
 		argTmp = tmp_get(TMP_REUSE);
 		push_lit("");
 		emit_store_scalar(argTmp->idx);
@@ -2064,12 +2064,17 @@ compile_insert_unshift(Expr *expr)
 		}
 		if (array->flags & L_EXPR_DEEP) {
 			TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
-			compile_expr(index, L_PUSH_VAL);
+		}
+		compile_expr(index, L_PUSH_VAL);
+		unless (isint(index)) {
+			L_errf(expr, "second arg to %s not an int", opNm);
+			return (0);
+		}
+		if (array->flags & L_EXPR_DEEP) {
 			TclEmitInstInt4(INST_L_DEEP_WRITE, idx,
 					L->frame->envPtr);
 			TclEmitInt4(flags | L_DISCARD, L->frame->envPtr);
 		} else {
-			compile_expr(index, L_PUSH_VAL);
 			TclEmitInstInt4(INST_L_LIST_INSERT, idx,
 					L->frame->envPtr);
 			TclEmitInt4(flags, L->frame->envPtr);
