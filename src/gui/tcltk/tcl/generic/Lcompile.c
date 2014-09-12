@@ -1176,6 +1176,7 @@ frame_pop()
 	Proc	*proc  = frame->proc;
 	Sym	*sym;
 	Label	*label;
+	ByteCode *codePtr;
 	Tcl_HashEntry *hPtr;
 	Tcl_HashSearch hSearch;
 
@@ -1252,6 +1253,9 @@ frame_pop()
 							TclObjInterpProc,
 							(ClientData)proc,
 							TclProcDeleteProc);
+		// Don't recompile on compileEpoch changes.
+		codePtr = (ByteCode *)proc->bodyPtr->internalRep.twoPtrValue.ptr1;
+		codePtr->flags |= TCL_BYTECODE_PRECOMPILED;
 		TclFreeCompileEnv(frame->bodyEnvPtr);
 		TclFreeCompileEnv(frame->prologueEnvPtr);
 		ckfree((char *)frame->bodyEnvPtr);
