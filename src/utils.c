@@ -1379,6 +1379,7 @@ spawn_cmd(int flag, char **av)
 			fprintf(stderr,
 			    "%s died from %d\n", av[0], WTERMSIG(ret));
 		}
+		return (127);
 	} else unless (WIFEXITED(ret)) {
 		fprintf(stderr, "bk: cannot spawn %s\n", av[0]);
 		return (127);
