@@ -43,7 +43,6 @@ bk co $Q -l A/file1
 rm -f BitKeeper/log/x.id_cache
 
 echo "this is a comment for file1" | bk cfile save A/file1
-echo "this is a old comment for file1" | bk cfile save A/file1@1.1
 bk mv A/file1 B/file1
 # We need this on cygwin (dir cache lag?)
 while true
@@ -58,7 +57,6 @@ if [ ! -f B/file1 ]; then echo failed 1; exit 1; fi
 if bk _test ! -f B/SCCS/s.file1; then echo failed 2; exit 1; fi
 if bk _test ! -f B/SCCS/p.file1; then echo failed 3; exit 1; fi
 if bk _test ! -f B/SCCS/c.file1; then echo failed 4; exit 1; fi
-if bk _test ! -f B/SCCS/c.file1@1.1; then echo failed 4; exit 1; fi
 if bk _test ! -f A/SCCS/s.file3; then echo failed 5; exit 1; fi
 # XXX - I think this is right but am not sure.
 DPATH=`bk prs -hr1.5 -d:DPN: B/file1`
@@ -228,7 +226,6 @@ bk rm A/file4
 bk unrm A/file4 > /dev/null
 if bk _test ! -f A/SCCS/s.file4; then echo failed; exit 1; fi
 if bk _test -f A/SCCS/c.file4; then echo failed; exit 1; fi
-if bk _test -f A/SCCS/c.file4@1.1; then echo failed; exit 1; fi
 XFILES=`bk -R sfiles -x`
 if [ "$XFILES" != "" ]; then echo failed; echo $XFILES; exit 1; fi
 bk rm A/file4

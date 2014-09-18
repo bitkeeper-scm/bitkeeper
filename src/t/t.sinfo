@@ -1,0 +1,11 @@
+echo $N Check that _print_pfile still prints it out same ............$NL
+# tested against /usr/bin/bk at the time this RTI was done.
+commercial project
+touch foo
+bk new $Q -l foo
+bk sinfo foo | sed 's/ bk.*//' > GOT
+cat <<EOF > WANT
+foo:                    1.1 1.2
+EOF
+cmpfiles WANT GOT
+echo OK

@@ -755,17 +755,7 @@ newFile(char *path, char *comp, int ser)
 
 	spath = name2sccs(path);
 	unlink(path);
-	unlink(spath);
-	line = strrchr(spath, '/');
-	assert(line);
-	line++;
-	*line = 'p';
-	unlink(spath);
-	*line = 'd';
-	unlink(spath);
-	*line = 'c';
-	unlink(spath);
-	*line = 's';
+	sfile_delete(0, path);
 
 	unless (f = fopen(path, "w")) {
 		perror(path);
@@ -822,7 +812,7 @@ newFile(char *path, char *comp, int ser)
 	sccs_sdelta(s, d, dk);
 	sccs_sdelta(s, sccs_ino(s), rk);
 	sccs_newchksum(s);
-	unlink(sccs_Xfile(s, 'd'));
+	xfile_delete(s->gfile, 'd');
 	sccs_free(s);
 	ret = aprintf("%u\t%s %s", ser, rk, dk);
 

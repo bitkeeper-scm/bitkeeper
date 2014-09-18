@@ -3,23 +3,23 @@ echo $N Verify that collapsed csets cannot return ...................$NL
 commercial project
 echo test > file
 bk new $Q file
-bk commit -yfirst $Q || exit 1
+bk commit -yfirst $Q || fail
 cd "$HERE"
 bk clone $Q project copy
 cd copy
-bk collapse -el || exit 1
+bk collapse -el || fail
 echo test2 > file
-bk -cr ci -c $Q || exit 1
-bk commit -yreplacement $Q || exit 1
+bk -cr ci -c $Q || fail
+bk commit -yreplacement $Q || fail
 bk pull $Q 2>ERR && fail -f ERR
-grep -q "the cset has been collapsed" ERR || fail -f ERR 
+grep -q "the cset has been collapsed" ERR || fail -f ERR
 echo OK
 
 echo $N Test that \'bk pull -D\' will allow uncollapsed csets .........$NL
 (echo rr; echo y) | BK_FORCE_RESOLVE_RERUN=1 bk pull $Q -D 2> ERR || {
 	fail -f ERR should have worked
 }
-grep -q "1 unresolved name conflict" ERR || exit 1
+grep -q "1 unresolved name conflict" ERR || fail
 echo OK
 
 # test 'bk collapse -e'
@@ -31,57 +31,57 @@ do	echo initial > $f
 done
 bk edit $Q exclude
 echo newline >> exclude
-bk ci -ynew $Q exclude || exit 1
+bk ci -ynew $Q exclude || fail
 echo binary junk > binary
-bk new -Euuencode $Q binary || exit 1
+bk new -Euuencode $Q binary || fail
 echo binary junk > binpool
-bk new -EBAM $Q binpool || exit 1
+bk new -EBAM $Q binpool || fail
 
 if [ "$PLATFORM" != "WIN32" ]
 then
 	ln -s file1 change_symlink
-	bk new $Q change_symlink || exit 1
+	bk new $Q change_symlink || fail
 fi
-bk commit $Q -yinitial || exit 1
+bk commit $Q -yinitial || fail
 
 
 #  contents edit
-bk edit $Q file || exit 1
+bk edit $Q file || fail
 echo add line >> file
-bk ci -ycontents $Q file || exit 1
+bk ci -ycontents $Q file || fail
 #  renamed file
-bk mv renamed rename_dest || exit 1
+bk mv renamed rename_dest || fail
 #  deleted file
-bk rm deleted || exit 1
+bk rm deleted || fail
 #  file cereated in this cset
 echo new_file > new_file
-bk new $Q new_file || exit 1
+bk new $Q new_file || fail
 #  change mode
-bk chmod +x modes || exit 1
+bk chmod +x modes || fail
 #  add/del xflags
-bk admin -fRCS xflags || exit 1
-bk admin -FSCCS xflags || exit 1
+bk admin -fRCS xflags || fail
+bk admin -FSCCS xflags || fail
 echo hi > create_delete
-bk new $Q create_delete || exit 1
-bk rm create_delete || exit 1
+bk new $Q create_delete || fail
+bk rm create_delete || fail
 
 # excludes
-bk edit $Q -x1.2 exclude || exit 1
+bk edit $Q -x1.2 exclude || fail
 echo replace >> exclude
-bk ci -yreplace $Q exclude || exit 1
+bk ci -yreplace $Q exclude || fail
 
 # binary files
-bk edit $Q binary || exit 1
+bk edit $Q binary || fail
 echo more junk >> binary
-bk ci -ymore $Q binary || exit 1
-bk edit $Q binpool || exit 1
+bk ci -ymore $Q binary || fail
+bk edit $Q binpool || fail
 echo more junk >> binpool
-bk ci -ymore $Q binpool || exit 1
+bk ci -ymore $Q binpool || fail
 
 # changes and edited file
-bk edit $Q chg_edit || exit 1
+bk edit $Q chg_edit || fail
 echo stuff in fixed cset >> chg_edit
-bk ci -ystuff $Q chg_edit || exit 1
+bk ci -ystuff $Q chg_edit || fail
 
 # nulls moves disappear
 bk mv file2 junk
@@ -107,14 +107,14 @@ then
 	bk new $Q edited_symlink
 fi
 
-bk commit $Q -ynewcset || exit 1
+bk commit $Q -ynewcset || fail
 
 # already edited file
-bk edit $Q edited || exit 1
+bk edit $Q edited || fail
 echo new stuff not in cset >> edited
 echo edited comment | bk cfile save edited
 
-bk edit $Q chg_edit || exit 1
+bk edit $Q chg_edit || fail
 echo new stuff not in cset >> chg_edit
 echo edited comment | bk cfile save chg_edit
 
@@ -126,9 +126,9 @@ then
 	echo edited comment | bk cfile save edited_symlink
 fi
 
-BK_USER=u1 bk collapse -el $Q || exit 1
-BK_USER=u2 bk -xlr delta -a $Q -c || exit 1
-BK_USER=u3 bk commit $Q -ycollapse || exit 1
+BK_USER=u1 bk collapse -el $Q || fail
+BK_USER=u2 bk -xlr delta -a $Q -c || fail
+BK_USER=u3 bk commit $Q -ycollapse || fail
 
 bk changes -r+ -v -d'# dspec-v2
 :GFILE:\ :REV:\ $unless(:CHANGESET:){:DL:\ }:USER:
@@ -357,29 +357,26 @@ echo OK
 
 echo $N Verify that collapse works starting with edited ChangeSet ...$NL
 bk edit $Q file
-bk delta $Q -fyempty file || exit 1
-bk commit $Q -yempty || exit 1
-bk edit $Q ChangeSet || exit 1
-bk collapse $Q -e || exit 1
-test -f ChangeSet && {
-	echo failed
-	exit 1
-}
+bk delta $Q -fyempty file || fail
+bk commit $Q -yempty || fail
+bk edit $Q ChangeSet || fail
+bk collapse $Q -e || fail
+test -f ChangeSet && fail
 echo OK
 
 echo $N Demonstrate using collapse -d for multiple users ............$NL
 REV=`bk changes -r+ -nd:REV:`
 echo f1 > f1
-BK_USER=user1 bk new $Q f1 || exit 1
-BK_USER=user1 bk commit $Q -yf1 || exit 1
+BK_USER=user1 bk new $Q f1 || fail
+BK_USER=user1 bk commit $Q -yf1 || fail
 echo f2 > f2
-BK_USER=user2 bk new $Q f2 || exit 1
-BK_USER=user2 bk commit $Q -yf2 || exit 1
+BK_USER=user2 bk new $Q f2 || fail
+BK_USER=user2 bk commit $Q -yf2 || fail
 
-bk collapse --no-save -eda$REV || exit 1
-bk -r check -ac || exit 1
+bk collapse --no-save -eda$REV || fail
+bk -r check -ac || fail
 # bk fix can be used to do a partial collapse of files before commit
-BK_USER=user3 bk commit $Q -ynew || exit 1
+BK_USER=user3 bk commit $Q -ynew || fail
 bk changes -r+ -v -nd':USER: :GFILE:@:REV:' > GOT
 cat <<EOF > WANT
 user3 ChangeSet@1.5

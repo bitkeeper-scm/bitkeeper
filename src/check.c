@@ -657,7 +657,6 @@ private int
 chk_dfile(sccs *s)
 {
 	ser_t	d;
-	char	*dfile;
 	int	hasdfile;
 	int	rc = 0;
 
@@ -674,11 +673,10 @@ chk_dfile(sccs *s)
 	 * as a special case.
 	 */
 
-	dfile = sccs_Xfile(s, 'd');
-	hasdfile = exists(dfile);
+	hasdfile = xfile_exists(s->gfile, 'd');
 	if (FLAGS(s, d) & D_CSET) {
 		/* nothing pending, cleanup any extra dfiles */
-		if (hasdfile) unlink(dfile);
+		if (hasdfile) xfile_delete(s->gfile, 'd');
 	} else {
 		/* pending */
 		unless (hasdfile) {
@@ -878,8 +876,8 @@ no_gfile(sccs *s)
 		    "%s has merge|include|exclude but no gfile.\n", s->gfile);
 		rc = 1;
 	} else {
-		if (unlink(s->pfile)) {
-			perror(s->pfile);
+		if (xfile_delete(s->gfile, 'p')) {
+			perror(s->sfile);
 			rc = 1;
 		} else {
 			s->state &= ~S_PFILE;
@@ -916,8 +914,8 @@ readonly_gfile(sccs *s)
 	/* XXX slow in checkout:edit mode */
 	if (HAS_PFILE(s) && HAS_GFILE(s) && !writable(s->gfile)) {
 		if (gfile_unchanged(s) == 1) {
-			if (unlink(s->pfile)) {
-				perror(s->pfile);
+			if (xfile_delete(s->gfile, 'p')) {
+				perror(s->sfile);
 			} else {
 				s->state &= ~S_PFILE;
 			}
@@ -2365,7 +2363,7 @@ check(sccs *s, MDBM *idDB)
 			    aprintf("%s|%s", s->sfile, REV(s, d)));
 		}
 		sccs_restart(s);
-		if (d == sccs_top(s)) unlink(sccs_Xfile(s, 'd'));
+		if (d == sccs_top(s)) xfile_delete(s->gfile, 'd');
 		doMarks = addLine(doMarks,
 		    aprintf("%s|%s", s->sfile, REV(s, d)));
 	}

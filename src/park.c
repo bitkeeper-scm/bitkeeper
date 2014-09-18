@@ -329,15 +329,13 @@ err:		if (s) sccs_free(s);
 	f = fopen(parkedfile, "rt");
 	assert(f);
 	while (fnext(buf, f)) {
-		char *cname;
-
 		chomp(buf);
 		sname = name2sccs(buf);
 		s = sccs_init(sname, 0);
 		if (HAS_SFILE(s)) {
 			sccs_unedit(s, SILENT);
-			cname = sccs_Xfile(s, 'c');
-			unlink(cname); /* clean c.file if exists */
+			/* clean c.file if exists */
+			xfile_delete(s->gfile, 'c');
 		} else {
 			unlink(s->gfile);
 		}
@@ -1404,8 +1402,9 @@ unsupported_file_type(sccs *s)
 private int
 parkfile_header(sccs *s, ser_t top, char *type, FILE *out)
 {
-	FILE	*f;
-	char	buf[MAXLINE];
+	char	**comments;
+	int	i;
+	char	*t;
 
 	fprintf(out, "# TYPE: %s\n", type);
 	if (HAS_SFILE(s)) {
@@ -1416,13 +1415,13 @@ parkfile_header(sccs *s, ser_t top, char *type, FILE *out)
 		sccs_pdelta(s, top, out);
 		fputs("\n", out);
 	}
-	f = fopen(sccs_Xfile(s, 'c'), "rt");
-	if (f) {
-		while (fnext(buf, f)) {
-			chomp(buf);
-			fprintf(out, "# PARKCMT: %s\n", buf);
+	if (t = xfile_fetch(s->gfile, 'c')) {
+		comments = splitLine(t, "\n", 0);
+		free(t);
+		EACH(comments) {
+			fprintf(out, "# PARKCMT: %s\n", comments[i]);
 		}
-		fclose(f);
+		freeLines(comments, free);
 	}
 	fprintf(out, "%c\n", '#'); /* end of header */
 	if (fflush(out)) {

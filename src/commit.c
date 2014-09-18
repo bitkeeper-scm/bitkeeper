@@ -237,14 +237,20 @@ commit_main(int ac, char **av)
 	 * Prompt though, that's what we do in delta.
 	 */
 	unless (dflags & (DELTA_DONTASK|DELTA_CFILE)) {
-		if (size("SCCS/c.ChangeSet") > 0) {
+		if (xfile_exists(CHANGESET, 'c')) {
+			char	*t;
+
 			bktmp_local(buf);
-			fileCopy("SCCS/c.ChangeSet", buf);
+			t = xfile_fetch(CHANGESET, 'c');
+			Fprintf(buf, "%s", t);
+			free(t);
 			if (!doit && comments_prompt(buf)) {
 				fprintf(stderr, "Commit aborted.\n");
 				return (1);
 			}
-			fileCopy(buf, "SCCS/c.ChangeSet");
+			t = loadfile(buf, 0);
+			xfile_store(CHANGESET, 'c', t);
+			free(t);
 			unlink(buf);
 			dflags |= DELTA_CFILE;
 		}
@@ -392,14 +398,16 @@ err:		rc = 1;
 	/* XXX could avoid if we knew if a trigger would fire... */
 	bktmp(commentFile);
 	if (dflags & DELTA_CFILE) {
-		p = sccs_Xfile(cset, 'c');
-		unless (size(p) > 0) {
+		unless (p = xfile_fetch(cset->sfile, 'c')) {
 			fprintf(stderr, "commit: saved comments not found.\n");
 			rc = 1;
 			goto done;
 		}
 		cset->used_cfile = 1;
-		fileCopy(p, commentFile);
+		f = fopen(commentFile, "w");
+		fputs(p, f);
+		free(p);
+		fclose(f);
 	} else {
 		comments_writefile(commentFile);
 	}
@@ -817,7 +825,7 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	}
 	T_PERF("wrote weave");
 	unlink(cset->gfile);
-	unlink(cset->pfile);
+	xfile_delete(cset->gfile, 'p');
 	cset->state &= ~(S_GFILE|S_PFILE);
 
 out:	unless (error || (flags & SILENT)) {
@@ -846,6 +854,9 @@ cset_setup(int flags)
 
 #define	CSET_BACKUP	"BitKeeper/tmp/SCCS/commit.cset.backup"
 
+static	char	*save_pfile;
+static	char	*save_cfile;
+
 /*
  * Save SCCS/?.ChangeSet files so we can restore them later if commit
  * fails.
@@ -853,10 +864,7 @@ cset_setup(int flags)
 private void
 commitSnapshot(void)
 {
-	char	*ext = "scp";	/* file exensions to backup */
-	int	i;
-	char	file[MAXPATH];
-	char	save[MAXPATH];
+	char	*t;
 
 	/*
 	 * We don't save a backup of the ChangeSet heaps in
@@ -868,13 +876,9 @@ commitSnapshot(void)
 	 * the file when it need to append new data to the end.
 	 */
 	mkdir("BitKeeper/tmp/SCCS", 0777);
-	for (i = 0; ext[i]; i++) {
-		sprintf(file, "SCCS/%c.ChangeSet", ext[i]);
-		if (exists(file)) {
-			sprintf(save, CSET_BACKUP ".%c", ext[i]);
-			fileLink(file, save);
-		}
-	}
+	fileLink("SCCS/s.ChangeSet", CSET_BACKUP ".s");
+	if (t = xfile_fetch(CHANGESET, 'p')) save_pfile = t;
+	if (t = xfile_fetch(CHANGESET, 'c')) save_cfile = t;
 	if (exists(SATTR)) fileLink(SATTR, CSET_BACKUP "attr.s");
 }
 
@@ -885,23 +889,21 @@ commitSnapshot(void)
 private void
 commitRestore(int rc)
 {
-	char	*ext = "scp";	/* file exensions to backup */
-	int	i;
-	char	file[MAXPATH];
 	char	save[MAXPATH];
 
-	for (i = 0; ext[i]; i++) {
-		sprintf(save, CSET_BACKUP ".%c", ext[i]);
-		if (exists(save)) {
-			sprintf(file, "SCCS/%c.ChangeSet", ext[i]);
-			if (rc) {
-				fileMove(save, file);
-				unlink("BitKeeper/log/TIP");
-			} else {
-				unlink(save);
-			}
+	if (rc) {
+		if (exists(CSET_BACKUP ".s")) {
+			fileMove(CSET_BACKUP ".s", "SCCS/s.ChangeSet");
 		}
+		unlink("BitKeeper/log/TIP");
+		if (save_pfile) xfile_store(CHANGESET, 'p', save_pfile);
+		if (save_cfile) xfile_store(CHANGESET, 'c', save_cfile);
+	} else {
+		unlink(CSET_BACKUP ".s");
 	}
+	FREE(save_pfile);
+	FREE(save_cfile);
+
 	strcpy(save, CSET_BACKUP "attr.s");
 	if (exists(save)) {
 		if (rc) {

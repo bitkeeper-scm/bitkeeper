@@ -517,13 +517,13 @@ error:		if (perfile) sccs_free(perfile);
 				sccs_restart(s);
 			}
 		} else if (s->state & S_PFILE) {
-			if (unlink(s->pfile)) {
+			if (xfile_delete(s->gfile, 'p')) {
 				fprintf(stderr,
 				    "takepatch: unlink(%s): %s\n",
-				    s->pfile, strerror(errno));
+				    s->sfile, strerror(errno));
 				goto error;
 			}
-			s->state &= ~S_PFILE; 
+			s->state &= ~S_PFILE;
 		}
 		tmp = sccs_top(s);
 		unless (CSET(s)) {

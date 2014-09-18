@@ -813,7 +813,7 @@ doMarks(cset_t *cs, sccs *s)
 			return (1);
 		} else if (attip) {
 			// remove dfile
-			unlink(sccs_Xfile(s, 'd'));
+			xfile_delete(s->gfile, 'd');
 		}
 		if ((cs->verbose > 1) && did) {
 			fprintf(stderr,

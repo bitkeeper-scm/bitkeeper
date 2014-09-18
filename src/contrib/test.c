@@ -10,9 +10,10 @@
  * This program is in the Public Domain.
  */
 
-#include "system.h"
+#include "../sccs.h"
 #include "../cmd.h"
 
+#if 0
 static void error(const char *, ...);
 
 static void
@@ -24,6 +25,7 @@ error(const char *msg, ...)
 	va_end(ap);
 	exit(2);
 }
+#endif
 
 /* test(1) accepts the following grammar:
 	oexpr	::= aexpr | aexpr "-o" oexpr ;
@@ -328,16 +330,26 @@ static int
 filstat(char *nm, enum token mode)
 {
 	struct stat s;
+	int xfile;
 
-	if (mode == FILSYM ? lstat(nm, &s) : stat(nm, &s))
-		return 0;
+	xfile = is_xfile(nm);
+
+	if (xfile) {
+		memset(&s, 0, sizeof(s));
+	} else {
+		if (mode == FILSYM ? lstat(nm, &s) : stat(nm, &s))
+			return 0;
+	}
 
 	switch (mode) {
 	case FILRD:
+		if (xfile) return (xfile_exists(nm, xfile));
 		return (access(nm, R_OK) == 0);
 	case FILWR:
+		if (xfile) return (xfile_exists(nm, xfile));
 		return (access(nm, W_OK) == 0);
 	case FILEX:
+		if (xfile) return (0);
 		if (access(nm, X_OK) != 0)
 			return 0;
 		if (S_ISDIR(s.st_mode)
@@ -348,8 +360,10 @@ filstat(char *nm, enum token mode)
 			return 1;
 		return (s.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) != 0;
 	case FILEXIST:
+		if (xfile) return (xfile_exists(nm, xfile));
 		return (access(nm, F_OK) == 0);
 	case FILREG:
+		if (xfile) return (xfile_exists(nm, xfile));
 		return S_ISREG(s.st_mode);
 	case FILDIR:
 		return S_ISDIR(s.st_mode);

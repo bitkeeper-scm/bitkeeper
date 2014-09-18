@@ -233,7 +233,7 @@ poly_pull(int got_patch, char *mergefile)
 	sccs	*cset = 0;
 	ser_t	*polylist = 0, d, fake = 0, local = 0, remote = 0;
 	ser_t	*gca = 0;
-	char	*dfile, *resync;
+	char	*resync;
 	int	rc = 1, write = 0;
 	int	i;
 	char	*ckey;
@@ -330,8 +330,7 @@ poly_pull(int got_patch, char *mergefile)
 		assert(FLAGS(cset, fake) & D_CSET);
 		FLAGS(cset, fake) &= ~D_CSET;
 		write = 1;
-		dfile = sccs_Xfile(cset, 'd');
-		touch(dfile, 0666);
+		xfile_store(cset->gfile, 'd', "");
 	}
 	if (write && sccs_newchksum(cset)) {
 		perror(cset->sfile);
@@ -353,21 +352,16 @@ polyRemote(polymap *pm, char *rfile)
 	sccs	*s = 0;
 	names	*revs = 0;
 	char	*sfile = 0, *remote = 0;
-	char	*p;
 	int	ret = 1;
-	
+
 	sfile = name2sccs(rfile);
-	p = strrchr(sfile, '/');
-	assert(p && (p[1] == 's'));
-	p[1] = 'r';
-	if (revs = res_getnames(sfile, 'r')) {
-		remote = revs->remote;
-		pm->merge = 1;
-	}
-	p[1] = 's';
 	unless (s = sccs_init(sfile, SILENT|INIT_MUSTEXIST)) {
 		ret = 0;
 		goto err;
+	}
+	if (revs = res_getnames(s, 'r')) {
+		remote = revs->remote;
+		pm->merge = 1;
 	}
 	if (sccs_get(s, remote, 0, 0, 0, SILENT, "-")) {
 		goto err;
@@ -565,7 +559,7 @@ polyFlush(void)
 				/* don't know trunk and branch, so fork */
 				rc = sys("bk", "get", "-qgeM", s->gfile, SYS);
 				unless (rc) {
-					unlink(sccs_Xfile(s, 'r'));
+					xfile_delete(s->gfile, 'r');
 					s->state |= S_PFILE;
 				}
 				//assert(rc == 0);
@@ -585,7 +579,7 @@ polyFlush(void)
 			rc = sccs_delta(s, dflags, 0, 0, 0, 0);
 			if (rc == -2) {
 				/* no delta if no diffs in file */
-				unlink(s->pfile);
+				xfile_delete(s->gfile, 'p');
 				unlink(s->gfile);
 			}
 			if (dflags & NEWFILE) {

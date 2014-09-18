@@ -6,12 +6,12 @@ fstat 172
 getdir 6
 link 2
 lseek 120
-lstat 366
-mkdir 13
+lstat 364
+mkdir 14
 open 252
-read 5147
+read 5145
 rename 7
 rmdir 2
 stat 23
 unlink 41
-write 186
+write 187

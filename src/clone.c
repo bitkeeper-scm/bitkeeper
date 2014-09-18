@@ -1501,10 +1501,7 @@ sccs_rmUncommitted(int quiet, char ***stripped)
 		 * This can be removed if stripdel were to hand unlinking
 		 * of dfile in all cases.
 		 */
-		s = strrchr(files[i], '/');
-		assert(s[1] == 's');
-		s[1] = 'd';
-		unlink(files[i]);
+		xfile_delete(files[i], 'd');
 	}
 	freeLines(files, free);
 

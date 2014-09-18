@@ -2361,8 +2361,8 @@ sccs_finishWrite(sccs *s)
 		if (CSET(s)) {
 			cset_savetip(s);
 			if (!BKFILE_OUT(s) && BKFILE(s)) {
-				unlink(sccs_Xfile(s, '1')); /* careful */
-				unlink(sccs_Xfile(s, '2')); /* careful */
+				unlink(sccsXfile(s, '1')); /* careful */
+				unlink(sccsXfile(s, '2')); /* careful */
 			}
 		}
 	}
@@ -4698,9 +4698,9 @@ sccs_init(char *name, u32 flags)
 		gdb_backtrace();
 	}
 
-	if (strchr(name, '\n') || strchr(name, '\r')) {
+	if (strpbrk(name, "\n\r|")) {
 		fprintf(stderr,
-		   "bad file name, file name must not contain LF or CR "
+		   "bad file name, file name must not contain LF or CR or | "
 		   "character\n");
 		return (0);
 	}
@@ -4795,11 +4795,10 @@ sccs_init(char *name, u32 flags)
 			goto err;
 		}
 	}
-	s->pfile = strdup(sccsXfile(s, 'p'));
 	if (flags & INIT_NOSTAT) {
 		if (flags & INIT_HASpFILE) s->state |= S_PFILE;
 	} else {
-		if (isreg(s->pfile)) s->state |= S_PFILE;
+		if (xfile_exists(s->gfile, 'p')) s->state |= S_PFILE;
 	}
 	debug((stderr, "init(%s) -> %s, %s\n", s->gfile, s->sfile, s->gfile));
 	if (lstat_rc || sccs_open(s)) {
@@ -4818,7 +4817,6 @@ sccs_init(char *name, u32 flags)
 			if (s->fullsfile != s->sfile) free(s->fullsfile);
 			free(s->sfile);
 			free(s->gfile);
-			free(s->pfile);
 			proj_free(s->proj);
 			free(s);	/* We really mean free, not sccs_free */
 			return (0);
@@ -4909,7 +4907,7 @@ sccs_restart(sccs *s)
 		return (0);
 	}
 	s->state |= S_SFILE;
-	if (isreg(s->pfile)) {
+	if (xfile_exists(s->gfile, 'p')) {
 		s->state |= S_PFILE;
 	} else {
 		s->state &= ~S_PFILE;
@@ -5007,8 +5005,6 @@ sccs_writeHere(sccs *s, char *new)
 	}
 	free(s->gfile);
 	s->gfile = sccs2name(s->sfile);
-	free(s->pfile);
-	s->pfile = strdup(sccs_Xfile(s, 'p'));
 	s->state &= ~(S_PFILE|S_GFILE);
 	/* NOTE: we leave S_SFILE set, but no sfile there */
 }
@@ -5033,7 +5029,7 @@ chk_gmode(sccs *s)
 	gfileExists = !lstat(gfile, &sbuf);
 	gfileWritable = (gfileExists && (sbuf.st_mode & 0200));
 	if (S_ISLNK(sbuf.st_mode)) return; /* skip smylink */
-	pfileExists = exists(sccs_Xfile(s, 'p'));
+	pfileExists = xfile_exists(s->gfile, 'p');
 
 	if (gfileWritable) {
 		unless (pfileExists) {
@@ -5118,7 +5114,6 @@ sccs_free(sccs *s)
 	if (s->fullsfile != s->sfile) free(s->fullsfile);
 	if (s->sfile) free(s->sfile);
 	if (s->gfile) free(s->gfile);
-	if (s->pfile) free(s->pfile);
 	if (s->defbranch) free(s->defbranch);
 	freeLines(s->usersgroups, free);
 	freeLines(s->flags, free);
@@ -5192,6 +5187,7 @@ sccs_filetype(char *name)
 	}
 	unless (s[1] && (s[2] == '.')) return (0);
 	switch (s[1]) {
+	    case 'a':	/* 'again' files from resolve.c */
 	    case 'c':	/* comments files */
 	    case 'd':	/* delta pending */
 	    case 'm':	/* name resolve files */
@@ -6231,7 +6227,7 @@ private int
 write_pfile(sccs *s, int flags, ser_t d,
 	char *rev, char *iLst, char *i2, char *xLst, char *mRev)
 {
-	int	fd, len;
+	int	len;
 	char	*tmp, *tmp2;
 	char	*path, *dir;
 
@@ -6260,11 +6256,6 @@ write_pfile(sccs *s, int flags, ser_t d,
 	}
 	if (READ_ONLY(s)) {
 		fprintf(stderr, "get: read-only %s\n", s->gfile);
-		return (-1);
-	}
-	fd = open(s->pfile, O_CREAT|O_WRONLY|O_EXCL, GROUP_MODE);
-	if (fd == -1) {
-		fprintf(stderr, "get: can't plock %s\n", s->gfile);
 		return (-1);
 	}
 	tmp2 = time2date(time(0));
@@ -6308,8 +6299,11 @@ write_pfile(sccs *s, int flags, ser_t d,
 		strcat(tmp, mRev);
 	}
 	strcat(tmp, "\n");
-	write(fd, tmp, strlen(tmp));
-	close(fd);
+	if (xfile_store(s->gfile, 'p', tmp)) {
+		fprintf(stderr, "get: can't plock %s\n", s->gfile);
+		free(tmp);
+		return (-1);
+	}
 	free(tmp);
 
 	if (s->proj) {
@@ -6325,17 +6319,11 @@ write_pfile(sccs *s, int flags, ser_t d,
 int
 sccs_rewrite_pfile(sccs *s, pfile *pf)
 {
-	int	fd, len;
+	int	len;
 	char	*tmp;
 	char	*user = sccs_getuser();
 	char	*date = time2date(time(0));
 
-
-	/* XXX: Do I need any special locking code? */
-	if ((fd = open(s->pfile, O_WRONLY|O_TRUNC, 0666)) == -1) {
-		perror("open pfile");
-		return (-1);
-	}
 	len = strlen(pf->oldrev)
 	    + MAXREV + 2
 	    + strlen(pf->newrev)
@@ -6361,8 +6349,11 @@ sccs_rewrite_pfile(sccs *s, pfile *pf)
 		strcat(tmp, pf->mRev);
 	}
 	strcat(tmp, "\n");
-	write(fd, tmp, strlen(tmp));
-	close(fd);
+	if (xfile_store(s->gfile, 'p', tmp)) {
+		perror("open pfile");
+		free(tmp);
+		return (-1);
+	}
 	free(tmp);
 	return (0);
 }
@@ -7471,7 +7462,7 @@ sccs_get(sccs *s, char *rev,
 		fprintf(stderr, "get: bad chksum on %s\n", s->sfile);
 err:		if (i2) free(i2);
 		if (locked) {
-			unlink(s->pfile);
+			xfile_delete(s->gfile, 'p');
 			s->state &= ~S_PFILE;
 		}
 		return (-1);
@@ -7563,7 +7554,7 @@ err:		if (i2) free(i2);
 			free_pfile(&pf);
 			free(gfile);
 			if (rc) goto err;
-			unlink(s->pfile);
+			xfile_delete(s->gfile, 'p');
 			s->state &= ~S_PFILE;
 		} else {
 			free(gfile);
@@ -9668,7 +9659,7 @@ sccs_clean(sccs *s, u32 flags)
 
 	unless (HAS_GFILE(s)) {
 		free_pfile(&pf);
-		unlink(s->pfile);
+		xfile_delete(s->gfile, 'p');
 		s->state &= ~S_PFILE;
 		verbose((stderr, "cleaning plock for %s\n", s->gfile));
 		return (0);
@@ -9731,7 +9722,7 @@ sccs_clean(sccs *s, u32 flags)
 		if (streq(s->symlink, SYMLINK(s, d))) {
 			verbose((stderr, "Clean %s\n", s->gfile));
 			unless (flags & CLEAN_CHECKONLY) {
-				unlink(s->pfile);
+				xfile_delete(s->gfile, 'p');
 				s->state &= ~S_PFILE;
 				unlinkGfile(s);
 			}
@@ -9762,7 +9753,7 @@ sccs_clean(sccs *s, u32 flags)
 	    case 1:		/* no diffs */
 nodiffs:	verbose((stderr, "Clean %s\n", s->gfile));
 		unless (flags & CLEAN_CHECKONLY) {
-			unlink(s->pfile);
+			xfile_delete(s->gfile, 'p');
 			s->state &= ~S_PFILE;
 			unlinkGfile(s);
 		}
@@ -9867,7 +9858,7 @@ reget:		if (unlinkGfile(s)) return (1);
 		 */
 		if (proj_hasOldSCCS(s->proj)) utime(s->sfile, 0);
 	}
-	unlink(s->pfile);
+	xfile_delete(s->gfile, 'p');
 	s->state &= ~S_PFILE;
 	if (getFlags) {
 		if (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-")) {
@@ -9889,21 +9880,14 @@ reget:		if (unlinkGfile(s)) return (1);
 private void
 _print_pfile(sccs *s)
 {
-	FILE	*f;
+	char	*t;
 	char	buf[MAXPATH];
 
+	t = xfile_fetch(s->gfile, 'p');
+	chomp(t);
 	sprintf(buf, "%s:", s->gfile);
-	printf("%-23s ", buf);
-	f = fopen(s->pfile, "r");
-	if (fgets(buf, sizeof(buf), f)) {
-		char	*s;
-		for (s = buf; *s && *s != '\n'; ++s);
-		*s = 0;
-		fputs(buf, stdout);
-	} else {
-		printf("(can't read pfile)\n");
-	}
-	fclose(f);
+	printf("%-23s %s", buf, t ? t : "(can't read pfile)\n");
+	free(t);
 }
 
 private void
@@ -10221,7 +10205,7 @@ updatePending(sccs *s)
 	char	*path, *dir;
 
 	if (CSET(s) && !proj_isComponent(s->proj)) return;
-	touch(sccsXfile(s, 'd'),  GROUP_MODE);
+	xfile_store(s->sfile, 'd', ""); /* this can't be s->gfile */
 
 	if (proj_isResync(s->proj)) return;
 
@@ -13728,34 +13712,29 @@ out:
 int
 sccs_read_pfile(char *who, sccs *s, pfile *pf)
 {
-	int	fsize = size(s->pfile);
+	char	*pfile;
+	int	fsize;
 	char	*iLst, *xLst;
 	char	*mRev = malloc(MAXREV+1);
 	char	c1 = 0, c2 = 0, c3 = 0;
 	int	e;
-	FILE	*tmp;
 	char	oldrev[MAXREV], newrev[MAXREV];
 	char	date[10], time[10], user[40];
 
 	bzero(pf, sizeof(*pf));
-	if (!fsize) {
-		fprintf(stderr, "Empty p.file %s - aborted.\n", s->pfile);
+	unless (pfile = xfile_fetch(s->gfile, 'p')) {
+		fprintf(stderr, "Empty p.file %s - aborted.\n", s->sfile);
 		return (-1);
 	}
-	unless (tmp = fopen(s->pfile, "r")) {
-		fprintf(stderr, "pfile: can't open %s\n", s->pfile);
-		free(mRev);
-		return (-1);
-	}
+	fsize = strlen(pfile);
 	iLst = malloc(fsize);
 	xLst = malloc(fsize);
 	iLst[0] = xLst[0] = 0;
-	e = fscanf(tmp, "%s %s %s %s %s -%c%s -%c%s -%c%s",
+	e = sscanf(pfile, "%s %s %s %s %s -%c%s -%c%s -%c%s",
 	    oldrev, newrev, user, date, time, &c1, iLst, &c2, xLst,
 	    &c3, mRev);
 	pf->oldrev = strdup(oldrev);
 	pf->newrev = strdup(newrev);
-	fclose(tmp);
 
 	/*
 	 * mRev always means there is at least an include -
@@ -13812,12 +13791,13 @@ sccs_read_pfile(char *who, sccs *s, pfile *pf)
 		free(iLst);
 		free(xLst);
 		fprintf(stderr,
-		    "%s: can't get revision info from %s\n", who, s->pfile);
+		    "%s: can't get revision info from %s\n", who, s->sfile);
 		return (-1);
 	}
 	pf->iLst = iLst;
 	pf->xLst = xLst;
 	pf->mRev = mRev;
+	free(pfile);
 	debug((stderr, "pfile(%s, %s, %s, %s, %s, %s, %s)\n",
     	    pf->oldrev, pf->newrev, user, date,
 	    notnull(pf->iLst), notnull(pf->xLst), notnull(pf->mRev)));
@@ -14133,7 +14113,7 @@ out:
 				error = -2;
 				goto out;
 			}
-			unlink(s->pfile);
+			xfile_delete(s->gfile, 'p');
 			unless (flags & DELTA_SAVEGFILE) unlinkGfile(s);
 			error = -3;
 			goto out;
@@ -14274,7 +14254,7 @@ out:
 		}
 	}
 	if (sccs_finishWrite(s)) OUT;
-	unlink(s->pfile);
+	xfile_delete(s->gfile, 'p');
 	comments_cleancfile(s);
 	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) {
 		 updatePending(s);
@@ -16310,7 +16290,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		names	*n;
 
 		unless (s->rrevs) {
-			s->rrevs = res_getnames(sccsXfile(s, 'r'), 'r');
+			s->rrevs = res_getnames(s, 'r');
 		}
 		n = (names *)s->rrevs;
 		if (n && n->remote) {
@@ -16324,7 +16304,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		names	*n;
 
 		unless (s->rrevs) {
-			s->rrevs = res_getnames(sccsXfile(s, 'r'), 'r');
+			s->rrevs = res_getnames(s, 'r');
 		}
 		n = (names *)s->rrevs;
 		if (n && n->local) {
@@ -16338,7 +16318,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		names	*n;
 
 		unless (s->rrevs) {
-			s->rrevs = res_getnames(sccsXfile(s, 'r'), 'r');
+			s->rrevs = res_getnames(s, 'r');
 		}
 		n = (names *)s->rrevs;
 		if (n && n->gca) {
@@ -16352,7 +16332,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		names	*n;
 
 		unless (s->rrevs) {
-			s->rrevs = res_getnames(sccsXfile(s, 'r'), 'r');
+			s->rrevs = res_getnames(s, 'r');
 		}
 		n = (names *)s->rrevs;
 		if (n && n->remote &&
@@ -16367,7 +16347,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		names	*n;
 
 		unless (s->rrevs) {
-			s->rrevs = res_getnames(sccsXfile(s, 'r'), 'r');
+			s->rrevs = res_getnames(s, 'r');
 		}
 		n = (names *)s->rrevs;
 		if (n && n->local &&
@@ -16382,7 +16362,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		names	*n;
 
 		unless (s->rrevs) {
-			s->rrevs = res_getnames(sccsXfile(s, 'r'), 'r');
+			s->rrevs = res_getnames(s, 'r');
 		}
 		n = (names *)s->rrevs;
 		if (n && n->gca && (d = findrev(s, n->gca)) && HAS_PATHNAME(s, d)) {
@@ -17164,10 +17144,10 @@ sccs_findtips(sccs *s, ser_t *a, ser_t *b)
 int
 sccs_resolveFiles(sccs *s)
 {
-	FILE	*f = 0;
 	ser_t	p, g = 0, a = 0, b = 0;
 	char	*n[3];
 	int	retcode = -1;
+	char	buf[MAXLINE];
 
 	if (s->defbranch) {
 		fprintf(stderr, "resolveFiles: defbranch set.  "
@@ -17211,10 +17191,6 @@ err:
 	g = gca2(s, a, b);
 	assert(g);
 
-	unless (f = fopen(sccsXfile(s, 'r'), "w")) {
-		perror("r.file");
-		goto err;
-	}
 	/*
 	 * Always put the local stuff on the left, if there
 	 * is any.
@@ -17222,17 +17198,20 @@ err:
 	unless (FLAGS(s, a) & D_REMOTE) {
 		s->local = a;
 		s->remote = b;
-		fprintf(f, "merge deltas %s %s %s %s %s\n",
+		sprintf(buf, "merge deltas %s %s %s %s %s\n",
 		    REV(s, a), REV(s, g), REV(s, b),
 		    sccs_getuser(), time2date(time(0)));
 	} else {
 		s->local = b;
 		s->remote = a;
-		fprintf(f, "merge deltas %s %s %s %s %s\n",
+		sprintf(buf, "merge deltas %s %s %s %s %s\n",
 		    REV(s, b), REV(s, g), REV(s, a),
 		    sccs_getuser(), time2date(time(0)));
 	}
-	fclose(f);
+	if (xfile_store(s->gfile, 'r', buf)) {
+		perror("r.file");
+		goto err;
+	}
 	unless (streq(PATHNAME(s, g), PATHNAME(s, a)) &&
 	    streq(PATHNAME(s, g), PATHNAME(s, b))) {
  rename:	n[1] = name2sccs(PATHNAME(s, g));
@@ -17243,12 +17222,11 @@ err:
 			n[0] = name2sccs(PATHNAME(s, a));
 			n[2] = name2sccs(PATHNAME(s, b));
 		}
-		unless (f = fopen(sccsXfile(s, 'm'), "w")) {
+		sprintf(buf, "rename %s|%s|%s\n", n[0], n[1], n[2]);
+		if (xfile_store(s->gfile, 'm', buf)) {
 			perror("m.file");
 			goto err;
 		}
-		fprintf(f, "rename %s|%s|%s\n", n[0], n[1], n[2]);
-		fclose(f);
 		free(n[0]);
 		free(n[1]);
 		free(n[2]);
@@ -18171,7 +18149,7 @@ out:
 		sccs_abortWrite(s);
 	} else {
 		if (FLAGS(s, e) & D_CSET) {
-			unlink(sccsXfile(s, 'd')); /* unlink d.file */
+			xfile_delete(s->gfile, 'd'); /* unlink d.file */
 		}
 	}
 	debug((stderr, "stripdel returns %d\n", error));

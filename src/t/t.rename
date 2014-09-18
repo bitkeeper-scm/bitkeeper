@@ -98,15 +98,12 @@ cd "$HERE"
 tar cf chkpt.tar a b
 echo $N resync a to b ...............................................$NL
 cd b
-bk pull -R $Q "$HERE/a"
-bk resolve $Q >resolve.out 2>&1 <<EOF
+bk pull -R $Q "$HERE/a" || fail
+bk resolve -l -d $Q >resolve.out 2>&1 <<EOF || fail -f resolve.out
 m
 C
 u
 EOF
-if [ $? != 0 ]
-then	echo failed; cat resolve.out; exit 1;
-fi
 cat > PRS <<EOF
 P src/t/regression.sh
 EOF

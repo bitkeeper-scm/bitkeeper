@@ -59,11 +59,9 @@ echo OK
 echo $N Now run fix -c in product ...................................$NL
 # redo collapse
 bk ci $Q -i -c gcc_file
-bk commit -S $Q -YSCCS/c.ChangeSet || fail
-bk _rm SCCS/c.ChangeSet
+bk commit -S $Q -c || fail
 cd ..
-bk commit $Q -YSCCS/c.ChangeSet || fail
-bk _rm SCCS/c.ChangeSet
+bk commit $Q -c || fail
 bk --cd=gcc fix -c $Q || fail
 bk sfiles -p > GOT
 test -s GOT && fail

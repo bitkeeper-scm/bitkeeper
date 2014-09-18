@@ -33,6 +33,7 @@ echo $N Attr comment bug ............................................$NL
 bk rm -f BitKeeper/etc/attr
 echo hi > c
 bk _mv c BitKeeper/etc/SCCS/c.attr
+test -f c && fail c still there
 echo junk > file2
 bk new $Q file2 || fail
 bk commit $Q -yjunk || fail

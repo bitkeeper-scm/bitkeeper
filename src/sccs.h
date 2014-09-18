@@ -625,6 +625,7 @@ typedef	struct sccs sccs;
 
 #include "proj.h"
 #include "bk-features.h"
+#include "xfile.h"
 
 extern	jmp_buf	exit_buf;
 extern	char *upgrade_msg;
@@ -696,7 +697,6 @@ struct sccs {
 	FILE	*outfh;		/* fh for writing x.file (may be stacked) */
 	char	*sfile;		/* SCCS/s.foo.c */
 	char	*fullsfile;	/* full pathname to sfile */
-	char	*pfile;		/* SCCS/p.foo.c */
 	char	*gfile;		/* foo.c */
 	char	*symlink;	/* if gfile is a sym link, the destination */
 	char	**usersgroups;	/* lm, beth, staff, etc */

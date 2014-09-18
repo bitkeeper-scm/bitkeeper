@@ -484,25 +484,8 @@ bk -r check -a >OUT 2>ERRS
 bk _cp ../project/SCCS/s.ChangeSet SCCS/s.ChangeSet
 echo OK
 
-echo $N Make sure .bk_skip and SCCS/.bk_skip works ..................$NL
-# this one should not cause a warning, but the check will complain about
-# missing files
-cd "$HERE/clone"
-bk _touch d1/sub1/SCCS/.bk_skip
-bk -r check -a >OUT 2>ERRS && fail
-grep -q 'sfiles: d1/sub1/SCCS/.bk_skip when .bk/d1/sub1/SCCS exists' ERRS || {
-     fail -f ERRS
-}
-grep -v 'sfiles: d1/sub1/SCCS/.bk_skip when .bk/d1/sub1/SCCS exists' ERRS |
-     grep -v '^Missing file' |
-     grep -v 'At least some of the chk3' |
-     grep -v 'or a .bk_skip file' > ERRS2
-test -s ERRS2 && fail -f ERRS2 wrong error messages
-echo OK
-
 echo $N bk check should detect new sfiles in a .bk_skip or -prune ...$NL
 # In a remapped repo, there should be no .bk/path/to if -f path/to/.bk_skip
-# But that code is not there yet, so this test fails.
 cd "$HERE"
 commercial proj2
 mkdir tmp

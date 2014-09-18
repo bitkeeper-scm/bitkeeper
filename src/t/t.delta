@@ -432,14 +432,14 @@ then #------------------------------------------------------------------
 echo $N Make sure we don\'t allow files with \|\'s .....................$NL
 touch 'test|file'
 bk new $Q 'test|file' 2>new.out && fail -f new.out should fail
-grep -q "new: illegal filename" new.out || fail -f new.out wrong message
+grep -q "bad file name" new.out || fail -f new.out wrong message
 echo OK
 
 echo $N Make sure we don\'t allow pathnames with \|\'s .................$NL
 mkdir 'bad|dir'
 touch 'bad|dir/test'
 bk new $Q 'bad|dir/test' 2>new.out && fail -f new.out should fail
-grep -q "new: illegal filename" new.out || fail -f new.out wrong message
+grep -q "bad file name" new.out || fail -f new.out wrong message
 cd 'bad|dir'
 bk new $Q test 2>new.out && fail -f new.out should fail
 grep -q "new: illegal filename" new.out || fail -f new.out wrong message

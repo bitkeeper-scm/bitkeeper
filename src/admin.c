@@ -271,9 +271,10 @@ admin_main(int ac, char **av)
 			if (EDITED(sc)) {
 				was_edited = 1;
 				sccs_read_pfile("admin", sc, &pf);
-				if (unlink(sc->pfile)) {
+				if (xfile_delete(sc->gfile, 'p')) {
 					fprintf(stderr,
-					"admin: cannot unlink %s\n", sc->pfile);
+					"admin: cannot delete p state for %s\n",
+					    sc->gfile);
 					goto next;
 				}
 			} else {

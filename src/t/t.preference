@@ -455,7 +455,7 @@ cd "$HERE"
 find edit_1 edit_2 -type f > L
 grep SCCS L > L1
 grep -v SCCS L >> L1
-_BK_FSLAYER_SKIP=1 bk sfio -qom <L1 > SFIO
+_BK_FSLAYER_SKIP=1 bk sfio --raw -qom <L1 > SFIO
 echo $N checkout:EDIT w resolve automerge and autorename change .....$NL
 cd "$HERE/edit_1/src"
 echo new3 >> foo1.c
@@ -476,7 +476,7 @@ echo OK
 
 cd "$HERE"
 rm -rf edit_1 edit_2
-_BK_FSLAYER_SKIP=1 bk sfio -qim <SFIO
+_BK_FSLAYER_SKIP=1 bk sfio --raw -qim <SFIO
 
 echo $N checkout:EDIT w resolve automerge content change ............$NL
 cd "$HERE/edit_1/src"

@@ -125,7 +125,7 @@ c_quit(resolve *rs)
 			rs->s = sccs_restart(rs->s);
 			sccs_unedit(rs->s, SILENT);
 		} else {
-			touch(sccs_Xfile(rs->s, 'a'), 0666);
+			xfile_store(rs->s->gfile, 'a', "");
 		}
 	}
 	assert(exists(RESYNC2ROOT "/" ROOT2RESYNC));
@@ -433,7 +433,7 @@ c_skip(resolve *rs)
 		 * Mark to be able to find it next time, since
 		 * conflict() will skip it because of a pfile.
 		 */
-		touch(sccs_Xfile(rs->s, 'a'), 0666);
+		xfile_store(rs->s->gfile, 'a', "");
 	}
 	++rs->opts->hadConflicts;
 	rs->opts->notmerged =

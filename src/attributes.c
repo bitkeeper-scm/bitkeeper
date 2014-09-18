@@ -40,7 +40,7 @@ attr_update(void)
 	rc = sccs_delta(s, dflags, 0, 0, 0, 0);
 	if (rc == -2) {
 		/* no delta if no diffs in file */
-		unlink(s->pfile);
+		xfile_delete(s->gfile, 'p');
 		unlink(s->gfile);
 		rc = 0;
 	} else if (rc) {

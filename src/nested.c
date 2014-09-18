@@ -571,8 +571,8 @@ compMarkPending(comp *c)
 
 	c->_pending = 0;
 	unless (proj = proj_isResync(c->n->proj)) proj = c->n->proj;
-	sprintf(buf, "%s/%s/SCCS/d.ChangeSet", proj_root(proj), c->path);
-	if (C_PRESENT(c) && exists(buf)) {
+	sprintf(buf, "%s/%s/ChangeSet", proj_root(proj), c->path);
+	if (C_PRESENT(c) && xfile_exists(buf, 'd')) {
 		/*
 		 * c->path came from idcache in case of rename
 		 * so we can trust it.

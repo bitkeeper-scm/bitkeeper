@@ -350,18 +350,25 @@ err:		freeLines(envVar, free);
 		}
 		if (opts.portNoCommit) {
 			FILE	*f1, *f2;
+			char	*cset, *t;
+
 			/*
 			 * Just append the comments to the ChangeSet file's
 			 * comments
 			 */
-			p = aprintf("%s/SCCS/c.ChangeSet",
+			cset = aprintf("%s/ChangeSet",
 			    proj_root(proj_product(0)));
-			f1 = fopen(p, "a");
-			free(p);
+			f1 = fmem();
+			if (t = xfile_fetch(cset, 'c')) {
+				fputs(t, f1);
+				free(t);
+			}
 			f2 = fopen(tmpfile, "r");
 			assert(f1 && f2);
 			while (p = fgetline(f2)) fprintf(f1, "%s\n", p);
 			fclose(f2);
+			xfile_store(cset, 'c', fmem_peek(f1, 0));
+			free(cset);
 			fclose(f1);
 		} else {
 			char	buf[MAXPATH];
@@ -718,7 +725,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar,
 			goto done;
 		}
 		if (opts.port) {
-			touch("RESYNC/SCCS/d.ChangeSet", 0666);
+			xfile_store("RESYNC/ChangeSet", 'd', "");
 			touch("RESYNC/BitKeeper/log/port", 0666);
 		}
 		if (opts.product) {
@@ -1458,7 +1465,6 @@ takepatch(remote *r)
 private void
 resolve_comments(remote *r)
 {
-	FILE	*f;
 	char	*u, *c;
 	char	*cpath = 0;
 	char	*h = sccs_gethost();
@@ -1482,15 +1488,8 @@ resolve_comments(remote *r)
 	}
 	free(u);
 	sprintf(buf, "%s/%s", ROOT2RESYNC, CHANGESET);
-	assert(exists(buf));
-	u = strrchr(buf, '/');
-	u[1] = 'c';
-	if (f = fopen(buf, "w")) {
-		fputs(c, f);
-		fclose(f);
-	} else {
-		perror(buf);
-	}
+	assert(sfile_exists(0, buf));
+	if (xfile_store(buf, 'c', c)) perror(buf);
 	free(c);
 	FREE(cpath);
 }

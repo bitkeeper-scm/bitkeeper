@@ -1565,7 +1565,6 @@ nt_rename(const char *oldf, const char *newf)
 		return (-1);
 	}
 	if ((attribs = GetFileAttributes(oldf)) == INVALID_FILE_ATTRIBUTES) {
-		fprintf(stderr, "rename: no source %s\n", oldf);
 		errno = ENOENT;
 		return (-1);
 	}

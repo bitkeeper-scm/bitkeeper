@@ -27,9 +27,9 @@
 #include "nested.h"
 
 private	void	commit(opts *opts);
-private	void	conflict(opts *opts, char *rfile);
+private	void	conflict(opts *opts, char *sfile);
 private	int	create(resolve *rs);
-private	void	edit_tip(resolve *rs, char *sf, ser_t d, char *rf, int which);
+private	void	edit_tip(resolve *rs, char *sf, ser_t d, int which);
 private	void	freeStuff(opts *opts);
 private	int	nameOK(opts *opts, sccs *s);
 private	void	pass1_renames(opts *opts, sccs *s);
@@ -41,7 +41,7 @@ private	int	pending(int checkComments);
 private	int	pendingEdits(void);
 private	int	pendingRenames(void);
 private void	checkins(opts *opts, char *comment);
-private	void	rename_delta(resolve *rs, char *sf, ser_t d, char *rf, int w);
+private	void	rename_delta(resolve *rs, char *sf, ser_t d, int w);
 private	int	rename_file(resolve *rs);
 private void	resolve_post(opts *o, int c);
 private void	unapply(char **applied);
@@ -354,7 +354,7 @@ err:		if (p) fclose(p);
 		saveKey(opts, path, s->sfile);
 
 		/* if files are already resolved, remember that */
-		if (!CSET(s) && exists(sccs_Xfile(s, 'd'))) opts->resolved++;
+		if (!CSET(s) && xfile_exists(s->gfile, 'd')) opts->resolved++;
 
 		/* If we aren't doing pass 1, just remember the key */
 		unless (opts->pass1) {
@@ -513,7 +513,7 @@ resolve_components(opts *opts)
 {
 	char	**unresolved = 0, **revs = 0;
 	char	*compCset = 0, *resync = 0, *compCset2 = 0;
-	char	*cwd, *p;
+	char	*cwd;
 	comp	*c;
 	int	errors = 0, status = 0;
 	int	i;
@@ -590,10 +590,7 @@ missing:		fprintf(stderr, "%s: component %s is missing!\n", prog,
 		FREE(compCset2);
 		compCset2 = aprintf("%s/" CHANGESET, c->path);
 		if (exists(compCset)) {
-			p = strrchr(compCset, '/');
-			assert(p);
-			p[1] = 'd';
-			unless (exists(compCset)) {
+			unless (xfile_exists(compCset, 'd')) {
 				/*
 				 * A component's ChangeSet file is here
 				 * with no dfile means that this
@@ -603,7 +600,6 @@ missing:		fprintf(stderr, "%s: component %s is missing!\n", prog,
 				 */
 				continue;
 			}
-			p[1] = 's';
 			/*
 			 * Already resolved with merge. Verify that
 			 * the component's actual ChangeSet file
@@ -798,11 +794,9 @@ pass1_renames(opts *opts, sccs *s)
 {
 	char	path[MAXPATH];
 	static	int filenum;
-	char	*mfile;
-	char	*rfile;
 
 	if (nameOK(opts, s)) {
-		unlink(sccs_Xfile(s, 'm'));
+		xfile_delete(s->gfile, 'm');
 		sccs_free(s);
 		return;
 	}
@@ -814,41 +808,17 @@ pass1_renames(opts *opts, sccs *s)
 	do {
 		sprintf(path, "BitKeeper/RENAMES/SCCS/s.%d", ++filenum);
 	} while (exists(path));
-	mfile = strdup(sccs_Xfile(s, 'm'));
-	rfile = strdup(sccs_Xfile(s, 'r'));
 	sccs_close(s);
 	if (opts->debug) {
 		fprintf(stderr, "%s -> %s\n", s->sfile, path);
 	}
-	if (rename(s->sfile, path)) {
+	if (sfile_move(s->proj, s->sfile, path)) {
 		fprintf(stderr, "Unable to rename(%s, %s)\n", s->sfile, path);
 		resolve_cleanup(opts, 0);
 	} else if (opts->log) {
 		fprintf(opts->log, "rename(%s, %s)\n", s->sfile, path);
 	}
-	if (exists(mfile)) {
-		sprintf(path, "BitKeeper/RENAMES/SCCS/m.%d", filenum);
-		if (rename(mfile, path)) {
-			fprintf(stderr,
-			    "Unable to rename(%s, %s)\n", mfile, path);
-			resolve_cleanup(opts, 0);
-		} else if (opts->log) {
-			fprintf(opts->log, "rename(%s, %s)\n", mfile, path);
-		}
-	}
-	if (exists(rfile)) {
-		sprintf(path, "BitKeeper/RENAMES/SCCS/r.%d", filenum);
-		if (rename(rfile, path)) {
-			fprintf(stderr,
-			    "Unable to rename(%s, %s)\n", rfile, path);
-			resolve_cleanup(opts, 0);
-		} else if (opts->log) {
-			fprintf(opts->log, "rename(%s, %s)\n", rfile, path);
-		}
-	}
 	sccs_free(s);
-	free(mfile);
-	free(rfile);
 	opts->renames++;
 }
 
@@ -956,19 +926,16 @@ out:		resolve_free(rs);
  * r.file: merge deltas 1.491 1.489 1.489.1.21 lm 00/01/08 10:39:11
  */
 names	*
-res_getnames(char *path, int type)
+res_getnames(sccs *sc, int type)
 {
-	FILE	*f = fopen(path, "r");
 	names	*names = 0;
 	char	*s, *t;
 	char	buf[MAXPATH*3];
 
-	unless (f) return (0);
-	unless (fnext(buf, f)) {
-out:		fclose(f);
-		freenames(names, 1);
-		return (0);
-	}
+	unless (t = xfile_fetch(sc->gfile, type)) return (0);
+	strcpy(buf, t);
+	free(t);
+
 	unless (names = calloc(1, sizeof(*names))) goto out;
 	if (type == 'm') {
 		unless (strneq("rename ", buf, 7)) {
@@ -1012,8 +979,9 @@ out:		fclose(f);
 		}
 		unless (names->remote = strdup(t)) goto out;
 	}
-	fclose(f);
 	return (names);
+out:	freenames(names, 0);
+	return (0);
 }
 
 /*
@@ -1107,7 +1075,7 @@ again:	if (how = slotTaken(rs, rs->dname, 0)) {
 		rs->snames->gca    = name2sccs(rs->gnames->gca);
 		rs->snames->remote = name2sccs(rs->gnames->remote);
 		sccs_free(local);
-		assert(!exists(sccs_Xfile(rs->s, 'm')));
+		assert(!xfile_exists(rs->s->gfile, 'm'));
 		return (rename_file(rs));
 	}
 
@@ -1115,12 +1083,9 @@ again:	if (how = slotTaken(rs, rs->dname, 0)) {
 	 * OK, looking like a real create.
 	 */
 	sccs_close(rs->s);
-	if (ret = rename(rs->s->sfile, rs->dname)) {
-		mkdirf(rs->dname);
-		ret = rename(rs->s->sfile, rs->dname);
-	}
+	ret = sfile_move(rs->s->proj, rs->s->sfile, rs->dname);
 	if (rs->opts->log) {
-		fprintf(rs->opts->log, "rename(%s, %s) = %d\n", 
+		fprintf(rs->opts->log, "rename(%s, %s) = %d\n",
 		    rs->s->gfile, PATHNAME(rs->s, rs->d), ret);
 	}
 	if (opts->debug) {
@@ -1194,45 +1159,27 @@ again:
 		if (how = slotTaken(rs, to, 0)) to = 0;
 	}
 	if (to) {
-		char	*mfile;
-
 		sccs_close(rs->s); /* for win32 */
-		if (rename(rs->s->sfile, to)) {
-			mkdirf(to);
-			if (rename(rs->s->sfile, to)) return (-1);
-		}
-		mfile = strdup(sccs_Xfile(rs->s, 'm'));
+		if (sfile_move(rs->s->proj, rs->s->sfile, to)) return (-1);
+		xfile_delete(to, 'm');
 		if (rs->revs) {
 			ser_t	d;
-			char	rfile[MAXPATH];
-			char	*t = strrchr(to, '/');
+			char	*t;
 
-			t[1] = 'r';
-			strcpy(rfile, to);
-			t[1] = 's';
-			if (rename(sccs_Xfile(rs->s, 'r'), rfile)) {
-				free(mfile);
-				return (-1);
-			}
-			if (rs->opts->log) {
-				fprintf(rs->opts->log,
-				    "rename(%s, %s)\n",
-				    sccs_Xfile(rs->s, 'r'), rfile);
-			}
 			sccs_free(rs->s);
 			rs->s = sccs_init(to, INIT_NOCKSUM);
 			d = sccs_findrev(rs->s, rs->revs->local);
 			assert(d);
 			t = name2sccs(PATHNAME(rs->s, d));
 			unless (streq(t, to)) {
-				rename_delta(rs, to, d, rfile, LOCAL);
+				rename_delta(rs, to, d, LOCAL);
 			}
 			free(t);
 			d = sccs_findrev(rs->s, rs->revs->remote);
 			assert(d);
 			t = name2sccs(PATHNAME(rs->s, d));
 			unless (streq(t, to)) {
-				rename_delta(rs, to, d, rfile, REMOTE);
+				rename_delta(rs, to, d, REMOTE);
 			}
 			free(t);
 		}
@@ -1241,8 +1188,6 @@ again:
 			    "rename(%s, %s)\n", rs->s->sfile, to);
 		}
 		opts->renames2++;
-		(void)unlink(mfile);	/* may not exist */
-		free(mfile);
 	    	return (0);
 	}
 
@@ -1279,7 +1224,6 @@ move_remote(resolve *rs, char *sfile)
 	int	ret;
 	char	*gfile;
 	ser_t	d;
-	char	rfile[MAXPATH];
 	MDBM	*idDB;
 
 	if (rs->opts->debug) {
@@ -1287,47 +1231,33 @@ move_remote(resolve *rs, char *sfile)
 	}
 
 	sccs_close(rs->s);
-	if (ret = rename(rs->s->sfile, sfile)) {
-		mkdirf(sfile);
-		if (ret = rename(rs->s->sfile, sfile)) return (ret);
-	}
-	unlink(sccs_Xfile(rs->s, 'm'));
+	if (ret = sfile_move(rs->s->proj, rs->s->sfile, sfile)) return (ret);
+	xfile_delete(sfile, 'm');
 	if (rs->opts->resolveNames) rs->opts->renames2++;
-	if (rs->opts->log) {
-		fprintf(rs->opts->log, "rename(%s, %s)\n", rs->s->sfile, sfile);
-	}
 
 	/*
 	 * If we have revs, then there is an r.file, so move it too.
 	 * And delta the tips if they need it.
 	 */
 	if (rs->revs) {
-		char	*t = strrchr(sfile, '/');
+		char	*t;
 
-		t[1] = 'r';
-		strcpy(rfile, sfile);
-		t[1] = 's';
-		if (ret = rename(sccs_Xfile(rs->s, 'r'), rfile)) return (ret);
-		if (rs->opts->log) {
-			fprintf(rs->opts->log,
-			    "rename(%s, %s)\n", sccs_Xfile(rs->s, 'r'), rfile);
-		}
 		d = sccs_findrev(rs->s, rs->revs->local);
 		assert(d);
 		t = name2sccs(PATHNAME(rs->s, d));
 		unless (streq(t, sfile)) {
-			rename_delta(rs, sfile, d, rfile, LOCAL);
+			rename_delta(rs, sfile, d, LOCAL);
 		}
 		free(t);
 		d = sccs_findrev(rs->s, rs->revs->remote);
 		assert(d);
 		t = name2sccs(PATHNAME(rs->s, d));
 		unless (streq(t, sfile)) {
-			rename_delta(rs, sfile, d, rfile, REMOTE);
+			rename_delta(rs, sfile, d, REMOTE);
 		}
 		free(t);
 	} else unless (streq(rs->dname, sfile)) {
-		rename_delta(rs, sfile, rs->d, 0, 0);
+		rename_delta(rs, sfile, rs->d, 0);
 	}
 
 	/* idcache -- so post-commit check can find if a path conflict */
@@ -1345,7 +1275,7 @@ move_remote(resolve *rs, char *sfile)
  * Add a null rename delta to the specified tip.
  */
 private	void
-rename_delta(resolve *rs, char *sfile, ser_t d, char *rfile, int which)
+rename_delta(resolve *rs, char *sfile, ser_t d, int which)
 {
 	char	*t;
 	char	buf[MAXPATH+100];
@@ -1355,7 +1285,7 @@ rename_delta(resolve *rs, char *sfile, ser_t d, char *rfile, int which)
 		    REV(rs->s, d), PATHNAME(rs->s, d),
 		    which == LOCAL ? "local" : "remote");
 	}
-	edit_tip(rs, sfile, d, rfile, which);
+	edit_tip(rs, sfile, d, which);
 	t = sccs2name(sfile);
 	sprintf(buf, "-PyMerge rename: %s -> %s", PATHNAME(rs->s, d), t);
 	free(t);
@@ -1380,7 +1310,7 @@ rename_delta(resolve *rs, char *sfile, ser_t d, char *rfile, int which)
  */
 void
 type_delta(resolve *rs,
-	char *sfile, ser_t l, ser_t r, char *rfile, int winner)
+	char *sfile, ser_t l, ser_t r, int winner)
 {
 	char	buf[MAXPATH+100];
 	char	*g = sccs2name(sfile);
@@ -1407,7 +1337,7 @@ type_delta(resolve *rs,
 		o = l;
 		n = r;
 	}
-	edit_tip(rs, sfile, o, rfile, loser);
+	edit_tip(rs, sfile, o, loser);
 	if (S_ISREG(MODE(rs->s, n))) {
 		/* bk _get -kpqr{n->rev} sfile > g */
 		sprintf(buf, "-kpqr%s", REV(rs->s, n));
@@ -1454,7 +1384,7 @@ type_delta(resolve *rs,
  * Add a null permissions delta to the specified tip.
  */
 void
-mode_delta(resolve *rs, char *sfile, ser_t d, mode_t m, char *rfile, int which)
+mode_delta(resolve *rs, char *sfile, ser_t d, mode_t m, int which)
 {
 	char	*a = mode2a(m);
 	char	buf[MAXPATH], opt[100];
@@ -1465,7 +1395,7 @@ mode_delta(resolve *rs, char *sfile, ser_t d, mode_t m, char *rfile, int which)
 		    sfile, REV(rs->s, d), a,
 		    which == LOCAL ? "local" : "remote");
 	}
-	edit_tip(rs, sfile, d, rfile, which);
+	edit_tip(rs, sfile, d, which);
 	/* bk delta -[q]Py'Change mode to {a}' -M{a} sfile */
 	sprintf(buf, "-%sPyChange mode to %s", rs->opts->log ? "" : "q", a);
 	sprintf(opt, "-M%s", a);
@@ -1493,7 +1423,7 @@ mode_delta(resolve *rs, char *sfile, ser_t d, mode_t m, char *rfile, int which)
  */
 void
 flags_delta(resolve *rs,
-	char *sfile, ser_t d, int flags, char *rfile, int which)
+	char *sfile, ser_t d, int flags, int which)
 {
 	char	*av[40];
 	char	buf[MAXPATH];
@@ -1507,7 +1437,7 @@ flags_delta(resolve *rs,
 		    sfile, REV(rs->s, d), bits,
 		    which == LOCAL ? "local" : "remote");
 	}
-	edit_tip(rs, sfile, d, rfile, which);
+	edit_tip(rs, sfile, d, which);
 	sys("bk", "clean", sfile, SYS);
 	av[n=0] = "bk";
 	av[++n] = "admin";
@@ -1562,12 +1492,12 @@ flags_delta(resolve *rs,
  * If the which value is negative, it means don't get the data.
  */
 private	void
-edit_tip(resolve *rs, char *sfile, ser_t d, char *rfile, int which)
+edit_tip(resolve *rs, char *sfile, ser_t d, int which)
 {
 	char	buf[MAXPATH+100];
 	char	opt[100];
-	FILE	*f;
 	char	*t;
+	char	*pfile;
 	char	*newrev;
 
 	if (rs->opts->debug) {
@@ -1583,18 +1513,13 @@ edit_tip(resolve *rs, char *sfile, ser_t d, char *rfile, int which)
 		resolve_cleanup(rs->opts, 0);
 	}
 	if (which) {
-		t = strrchr(sfile, '/');
-		assert(t && (t[1] == 's'));
-		t[1] = 'p';
-		f = fopen(sfile, "r");
-		t[1] = 's';
-		fnext(buf, f);
-		fclose(f);
-		newrev = strchr(buf, ' ');
+		pfile = xfile_fetch(sfile, 'p');
+		newrev = strchr(pfile, ' ');
+		assert(newrev);
 		newrev++;
 		t = strchr(newrev, ' ');
 		*t = 0;
-		f = fopen(rfile, "w");
+
 		/* 0123456789012
 		 * merge deltas 1.9 1.8 1.8.1.3 lm 00/01/15 00:25:18
 		 */
@@ -1605,9 +1530,11 @@ edit_tip(resolve *rs, char *sfile, ser_t d, char *rfile, int which)
 			free(rs->revs->remote);
 			rs->revs->remote = strdup(newrev);
 		}
-		fprintf(f, "merge deltas %s %s %s\n",
+		free(pfile);
+		t = aprintf("merge deltas %s %s %s\n",
 		    rs->revs->local, rs->revs->gca, rs->revs->remote);
-		fclose(f);
+		if (xfile_store(sfile, 'r', t)) assert(0);
+		free(t);
 	}
 }
 
@@ -2024,17 +1951,21 @@ err:		unless (opts->autoOnly) {
 	 * or commit.
 	 */
 	if (opts->partial) goto nocommit;
-	if (mustCommit = exists("SCCS/r.ChangeSet")) {
+	if (mustCommit = xfile_exists(CHANGESET, 'r')) {
 		sccs	*s;
 		resolve	*rs;
+		char	*t;
 
 		s = sccs_init(s_cset, INIT_NOCKSUM);
 		rs = resolve_init(opts, s);
 		edit(rs);
 		/* We may restore it if we bail early */
-		fileMove(sccs_Xfile(s, 'r'), "BitKeeper/tmp/SCCS/r.ChangeSet");
+		t = xfile_fetch(CHANGESET, 'r');
+		xfile_store("BitKeeper/tmp/SCCS/r.ChangeSet", 'r', t);
+		free(t);
+		xfile_delete(CHANGESET, 'r');
 		resolve_free(rs);
-	} else if (exists("SCCS/p.ChangeSet")) {
+	} else if (xfile_exists(CHANGESET, 'p')) {
 		/*
 		 * The only way I can think of this happening is if we are
 		 * coming back in after passing the above clause on an
@@ -2050,13 +1981,7 @@ err:		unless (opts->autoOnly) {
 	freeLines(conflicts, free);
 	opts->remerge = 1;  /* Make sure we catch all r.files */
 	conflicts = find_files(opts, 0);
-	EACH(conflicts) {
-		char	*t = strrchr(conflicts[i], '/');
-
-		t[1] = 'r';
-		if (exists(conflicts[i])) unlink(conflicts[i]);
-		t[1] = 's';
-	}
+	EACH(conflicts) xfile_delete(conflicts[i], 'r');
 nocommit:
 
 
@@ -2105,7 +2030,7 @@ nocommit:
 		proj_free(proj);
 
 		if (opts->partial) {
-			char	*p, **av, **pfiles = 0;
+			char	**av, **pfiles = 0;
 			int	j = 0;
 
 			/* Save off the files that need deltas so we
@@ -2136,13 +2061,9 @@ nocommit:
 			 * files that no longer need a delta.
 			 */
 			EACH(pfiles) {
-				p = strrchr(pfiles[i], '/');
-				p[1] = 'p';
-				unless (exists(pfiles[i])) {
-					p[1] = 'r';
-					unlink(pfiles[i]);
+				unless (xfile_exists(pfiles[i], 'p')) {
+					xfile_delete(pfiles[i], 'r');
 				}
-				p[1] = 's';
 			}
 			freeLines(pfiles, free);
 		} else {
@@ -2196,7 +2117,7 @@ do_delta(opts *opts, sccs *s, char *comment)
 		fprintf(stderr, "Delta of %s failed\n", s->gfile);
 		resolve_cleanup(opts, 0);
 	} else {
-		unlink(sccs_Xfile(s, 'r'));
+		xfile_delete(s->gfile, 'r');
 	}
 }
 
@@ -2235,8 +2156,7 @@ conflict(opts *opts, char *sfile)
 	sccs	*s;
 	resolve	*rs;
 	deltas	d;
-	char	*p;
-	
+
 	s = sccs_init(sfile, INIT_NOCKSUM);
 
 	rs = resolve_init(opts, s);
@@ -2333,20 +2253,16 @@ err:		resolve_free(rs);
 			goto err;
 		}
 	    	rs->opts->resolved++;
-		unlink(sccs_Xfile(rs->s, 'r'));
+		xfile_delete(rs->s->gfile , 'r');
 		resolve_free(rs);
 		return;
 	}
-	
+
 	/*
 	 * If the a.file (a for again) was created, delete here as
 	 * we have reached the point where we are doing it again.
 	 */
-	p = strrchr(sfile, '/');
-	assert(p);
-	p[1] = 'a';
-	unlink(sfile);
-	p[1] = 's';
+	xfile_delete(sfile, 'a');
 
 	if (opts->automerge) {
 		automerge(rs, 0, 0);
@@ -2477,7 +2393,7 @@ same:		if (!LOCKED(rs->s) && edit(rs)) return;
 			return;
 		}
 	    	rs->opts->resolved++;
-		unlink(sccs_Xfile(rs->s, 'r'));
+		xfile_delete(rs->s->gfile, 'r');
 		return;
 	}
 	rs->opts->notmerged =
@@ -2613,7 +2529,6 @@ private	void
 commit(opts *opts)
 {
 	int	i;
-	FILE	*cmtfile;
 	char	*cmds[12], *cmt = 0;
 
 	cmds[i = 0] = "bk";
@@ -2630,11 +2545,10 @@ commit(opts *opts)
 		if (opts->comment[0]) {
 			cmt = cmds[++i] = aprintf("-y%s", opts->comment);
 		}
-	} else if (size("SCCS/c.ChangeSet") > 0) {
+	} else if (xfile_exists(CHANGESET, 'c')) {
 		cmds[++i] = "-c";
-	} else if (cmtfile = fopen("SCCS/c.ChangeSet", "w")) {
-		fputs("Merge\n", cmtfile);
-		fclose(cmtfile);
+	} else {
+		xfile_store(CHANGESET, 'c', "Merge\n");
 	}
 	cmds[++i] = 0;
 	i = spawnvp(_P_WAIT, "bk", cmds);
@@ -2943,8 +2857,8 @@ err:			unapply(applied);
 	}
 	fclose(f);
 
-	if (exists("RESYNC/SCCS/d.ChangeSet")) {
-		touch("SCCS/d.ChangeSet", 0644);
+	if (xfile_exists("RESYNC/ChangeSet", 'd')) {
+		xfile_store("ChangeSet", 'd', "");
 		proj_dirstate(0, ".", DS_PENDING, 1);
 	}
 	if (exists("RESYNC/BitKeeper/log/TIP")) {
@@ -2998,7 +2912,7 @@ err:			unapply(applied);
 		system("bk clean BitKeeper/etc");
 		goto err;
 	}
-	if (exists("SCCS/d.ChangeSet") && proj_isComponent(0) &&
+	if (xfile_exists("ChangeSet", 'd') && proj_isComponent(0) &&
 	    !exists("RESYNC/BitKeeper/log/port")) {
 		if (moveupComponent()) goto err;
 	}
@@ -3100,6 +3014,7 @@ resolve_cleanup(opts *opts, int what)
 	char	buf[MAXPATH];
 	char	pendingFile[MAXPATH];
 	FILE	*f;
+	char	*t;
 	int	rc = 1;
 
 	if (opts->progress) progress_restoreStderr();
@@ -3177,8 +3092,8 @@ resolve_cleanup(opts *opts, int what)
 		mkdir(dir, 0777);
 		sccs_mkroot(dir);
 		cmd = aprintf("bk --cd='%s' _find . -type f | "
-		    "bk --cd='%s' sfio -qmo | "
-		    "bk --cd='%s' sfio -qmi",
+		    "bk --cd='%s' sfio --raw -qmo | "
+		    "bk --cd='%s' sfio --raw -qmi",
 		    ROOT2RESYNC,
 		    ROOT2RESYNC,
 		    dir);
@@ -3191,11 +3106,16 @@ resolve_cleanup(opts *opts, int what)
 		}
 		free(dir);
 	} else {
-		if (exists(ROOT2RESYNC "/SCCS/p.ChangeSet")) {
+		if (xfile_exists(ROOT2RESYNC "/" CHANGESET, 'p')) {
 			assert(!exists("RESYNC/ChangeSet"));
-			unlink(ROOT2RESYNC "/SCCS/p.ChangeSet");
-			rename(ROOT2RESYNC "/BitKeeper/tmp/SCCS/r.ChangeSet",
-			    ROOT2RESYNC "/SCCS/r.ChangeSet");
+			xfile_delete(ROOT2RESYNC "/" CHANGESET, 'p');
+			if (t = xfile_fetch(ROOT2RESYNC
+				"/BitKeeper/tmp/ChangeSet", 'r')) {
+				xfile_store(ROOT2RESYNC "/" CHANGESET, 'r', t);
+				free(t);
+				xfile_delete(ROOT2RESYNC
+				    "/BitKeeper/tmp/ChangeSet", 'r');
+			}
 		}
 		unless (what & CLEAN_NOSHOUT) {
 			unless (opts->progress) {
@@ -3267,18 +3187,14 @@ resolvewalk(char *file, char type, void *data)
 	file += 2;
 	assert(p[1] = 's');
 	if (opts->partial && streq(file, "SCCS/s.ChangeSet")) return (0);
-	p[1] = 'm';
-	if (opts->automerge && exists(file)) goto out;
-	p[1] = 'r';
-	unless (ci->pfiles_only || exists(file)) goto out;
-	p[1] = 'p';
-	e = exists(file);
-	if (ci->pfiles_only && !e) goto out;
+	if (opts->automerge && xfile_exists(file, 'm')) return (0);
+	unless (ci->pfiles_only || xfile_exists(file, 'r')) return (0);
+	e = xfile_exists(file, 'p');
+	if (ci->pfiles_only && !e) return (0);
 	if (!ci->pfiles_only && !opts->remerge && e) {
-		p[1] = 'a';	/* Skip makes an a.file (a for again) */
-		unless (exists(file)) goto out;
+		/* Skip makes an a.file (a for again) */
+		unless (xfile_exists(file, 'a')) return (0);
 	}
-	p[1] = 's';
 	q = sccs2name(file);
 
 	/* just like in export -tpatch */
@@ -3302,7 +3218,6 @@ resolvewalk(char *file, char type, void *data)
 		ci->files = addLine(ci->files, strdup(file));
 	}
 	free(q);
-out:	p[1] = 's';
 	return (0);
 }
 
@@ -3332,7 +3247,6 @@ moveupComponent(void)
 	int	rc = 0;
 	MDBM	*idDB;
 	char	*t, *from, *to;
-	char	*dfile_to, *dfile_from;
 	char	buf[MAXPATH];
 
 	concat_path(buf, proj_root(proj_product(comp)), ROOT2RESYNC);
@@ -3350,25 +3264,16 @@ moveupComponent(void)
 	free(t);
 
 	to = aprintf("%s/%s", cpath, CHANGESET);
-	t = strrchr(to, '/');
-	*(++t) = 'd';
-	dfile_to = strdup(to);
-	*t = 's';
-
 	from = aprintf("%s/%s/%s", RESYNC2ROOT,
 	    cpath, CHANGESET);
-	t = strrchr(from, '/');
-	*(++t) = 'd';
-	dfile_from = strdup(from);
-	*t = 's';
 
 	if (fileLink(from, to)) {
 		fprintf(stderr, "Could not copy '%s' to "
 		    "'%s'\n", from, to);
 		rc = 1;
 	} else {
-		if (exists(dfile_from)) {
-			touch(dfile_to, GROUP_MODE);
+		if (xfile_exists(from, 'd')) {
+			xfile_store(to, 'd', "");
 			proj_dirstate(comp, ".", DS_PENDING, 1);
 		}
 		free(from);
@@ -3382,8 +3287,6 @@ moveupComponent(void)
 			unlink(to);
 		}
 	}
-	free(dfile_from);
-	free(dfile_to);
 	free(from);
 	free(to);
 	if (rc) return (rc);

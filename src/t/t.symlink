@@ -34,16 +34,14 @@ echo OK
 rm -f symlink
 echo $N Create a symlink with admin -i ..............................$NL
 ln -s /what/ever link222
-bk admin $Q -ilink222 link-name
-if [ $? != 0 ]
-then	echo admin failed to exit 0; exit 1
-fi
+bk admin $Q -ilink222 link-name || fail
 if bk _test ! -f SCCS/s.link-name
 then	echo failed to create link; exit 1
 fi
 test `bk prs -hnd:SYMLINK: -r+ link-name` = /what/ever || fail
 bk admin -h link-name 2> ${DEV_NULL}
 if [ $? -ne 0 ]; then echo bad sfile.; exit 1; fi
+bk repocheck $Q || fail
 echo OK
 
 rm -f symlink

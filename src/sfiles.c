@@ -26,7 +26,7 @@ private void	file(char *f);
 private void	print_it(STATE state, char *file, char *rev);
 private	void	print_summary(void);
 private void	uprogress(void);
-private	void	sccsdir(winfo *wi);
+private	int	sccsdir(char *dir, void *data);
 private void	walk(char *dir);
 private	void	load_project(char *dir);
 private	void	free_project(void);
@@ -372,7 +372,7 @@ out:
 		}
 
 		if ((state & DS_PENDING) && proj_isComponent(0) &&
-		    exists("SCCS/d.ChangeSet")) {
+		    xfile_exists(CHANGESET, 'd')) {
 			/*
 			 * The component cset file has a dfile so it
 			 * is pending in the product so we don't want
@@ -464,11 +464,9 @@ chk_sfile(char *name, STATE state)
 				sc = 0;
 			}
 		}
-		s[1] = 'c';
-		if (exists(name)) state[YSTATE] = 'y';
-		s[1] = 'p';
+		if (xfile_exists(name, 'c')) state[YSTATE] = 'y';
 		state[TSTATE] = 's';
-		if (exists(name)) {
+		if (xfile_exists(name, 'p')) {
 			state[LSTATE] = 'l';
 			if (DOIT && sc && chk_diffs(sc)) {
 				state[CSTATE] = 'c';
@@ -476,7 +474,6 @@ chk_sfile(char *name, STATE state)
 		} else {
 			state[LSTATE] = 'u';
 		}
-		s[1] = 's';
 		if (DOIT && sc) {
 			d = sccs_top(sc);
 			gname = sccs2name(name);
@@ -511,14 +508,10 @@ int
 sccs_isPending(char *gfile)
 {
 	char	*sfile = name2sccs(gfile);
-	char	*t;
 	sccs	*s;
 	int	rc = 0;
 
-	t = strrchr(sfile, '/');
-	t[1] = 'd';
-	unless (exists(sfile)) goto out; /* look for dfile */
-	t[1] = 's';
+	unless (xfile_exists(gfile, 'd')) goto out; /* look for dfile */
 	unless (s = sccs_init(sfile, SILENT|INIT_NOCKSUM|INIT_MUSTEXIST)) {
 		goto out;
 	}
@@ -533,7 +526,7 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 {
 	ser_t	d;
 	int	local_s = 0, printed = 0;
-	char	buf[MAXPATH], *dfile = 0, *p;
+	char	buf[MAXPATH];
 
 	if (streq(gfile, "./ChangeSet")) {
 		state[PSTATE] = ' ';
@@ -550,11 +543,7 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 				return;
 			}
 		} else {
-			dfile = name2sccs(gfile);
-			p = basenm(dfile);
-			*p = 'd';
-			unless (exists(dfile)) {
-				free(dfile);
+			unless (xfile_exists(gfile, 'd')) {
 				state[PSTATE] = ' ';
 				do_print(state, gfile, 0);
 				return;
@@ -569,17 +558,10 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 			fprintf(stderr, "sfiles: %s: bad sfile\n", sfile);
 			free(sfile);
 			if (s) sccs_free(s);
-			if (dfile) free(dfile);
 			return;
 		}
 		free(sfile);
 		local_s = 1;
-	}
-
-	unless (dfile) {
-		dfile = name2sccs(gfile);
-		p = basenm(dfile);
-		*p = 'd';
 	}
 
 	/*
@@ -623,15 +605,13 @@ out:	unless (printed) do_print(state, gfile, 0);
 	/*
 	 * Do not sccs_free() if it is passed in from outside
 	 */
-	assert(dfile);
 	if (state[PSTATE] == 'p') {
 		/* add missing dfile */
 		if (opts.fixdfile) updatePending(s);
 	} else {
 		/* No pending delta, remove redundant d.file */
-		unlink(dfile);
+		xfile_delete(gfile, 'd');
 	}
-	free(dfile);
 	if (local_s) sccs_free(s);
 }
 
@@ -700,8 +680,7 @@ file(char *f)
 		unless (exists(sfile)) {
 			state[TSTATE] = 'x';
 			s = strrchr(sfile, '/');
-			s[1] = 'c';
-			if (exists(sfile)) state[YSTATE] = 'y';
+			if (xfile_exists(sfile, 'c')) state[YSTATE] = 'y';
 		} else {
 			sc = chk_sfile(sfile, state);
 		}
@@ -790,86 +769,31 @@ print_summary(void)
  * a call to sccsdir().
  */
 struct winfo {
-	char	**sfiles;	/* The sfiles in the current directory */
-	MDBM	*sDB;		/* all files in the SCCS subdirectory */
 	MDBM	*gDB;		/* all files in the current directory */
-	char	*sccsdir;	/* path to dir this data represents */
 	int	seenfirst;	/* flag for -1 (one level) */
 	int	rootlen;	/* length of directory passed to walkdir */
 	char	*proj_prefix;	/* prefex needed to get sfile relpath */
 };
 
 private void
-add_to_winfo(winfo *wi, char *file, int sccs)
-{
-	unless (wi->sDB) wi->sDB = mdbm_mem();
-	unless (wi->gDB) wi->gDB = mdbm_mem();
-
-	if (sccs && pathneq("s.", file, 2)) {
-		wi->sfiles = addLine(wi->sfiles, strdup(file));
-	}
-	if (sccs && (file[1] == '.') &&
-	    ((file[0] == '1') || (file[0] == '2'))) {
-		return;		/* ignore the heap files */
-	}
-	mdbm_store_str((sccs ? wi->sDB : wi->gDB), file, "", MDBM_INSERT);
-}
-
-private void
 winfo_free(winfo *wi)
 {
 	mdbm_close(wi->gDB);
 	wi->gDB = 0;
-	mdbm_close(wi->sDB);
-	wi->sDB = 0;
-	freeLines(wi->sfiles, free);
-	wi->sfiles = 0;
-	free(wi->sccsdir);
-	wi->sccsdir = 0;
 }
-
 
 private int
 sfiles_walk(char *file, char type, void *data)
 {
 	winfo	*wi = (winfo *)data;
 	char	*p;
-	int	sccs;
 	int	n, nonsccs;
 	char	buf[MAXPATH];
 
 	p = strrchr(file, '/');
 	if ((p - file) < wi->rootlen) p = 0;
-
-	/* make 'buf' match the directory we are in */
 	if (type == 'd') {
-		if (p) {
-			strncpy(buf, file, p-file);
-			buf[p-file] = 0;
-		} else {
-			strcpy(buf, file);
-		}
-	} else {
-		assert(p);
-		*p++ = 0;
-		if ((p - file) > 6 && streq(p-6, "/SCCS")) {
-			strncpy(buf, file, p-file-6);
-			buf[p-file-6] = 0;
-		} else {
-			strcpy(buf, file);
-		}
-	}
-	/* if directory has changed then process old directory */
-	if (wi->sccsdir) {
-		unless (patheq(buf, wi->sccsdir)) {
-			sccsdir(wi);
-			wi->sccsdir = strdup(buf);
-		}
-	}
-	unless (wi->sccsdir) wi->sccsdir = strdup(buf);
-
-	if (type == 'd') {
-		if (p && patheq(p, "/SCCS")) return (0);
+		if (p && patheq(p, "/SCCS")) return (-1);
 		if (p &&((p-file) > wi->rootlen) && patheq(p+1, "BitKeeper")) {
 			/*
 			 * Do not cross into other package roots
@@ -918,21 +842,17 @@ sfiles_walk(char *file, char type, void *data)
 			wi->seenfirst = 1;
 		}
 	} else {
+		assert(p);
+		*p++ = 0;
 		if (!opts.no_bkskip && patheq(p, BKSKIP)) {
 			/* abort current dir */
 			// if remap and dir exists in .bk, trouble?
 			winfo_free(wi);
 			return (-2);
 		}
-		if (((p - file) > 6) && patheq(p - 6, "/SCCS")) {
-			sccs = 1;
-			p[-6] = 0;
-		} else {
-			sccs = 0;
-		}
-		add_to_winfo(wi, p, sccs);
+		unless (wi->gDB) wi->gDB = mdbm_mem();
+		mdbm_store_str(wi->gDB, p, "", MDBM_INSERT);
 		p[-1] = '/';
-		if (sccs) p[-6] = '/';
 	}
 	return (0);
 }
@@ -1125,8 +1045,8 @@ walk(char *indir)
 		}
 		free(p);
 	}
-	walkdir(dir, (walkfns){ .file = sfiles_walk }, &wi);
-	if (wi.sccsdir) sccsdir(&wi);
+	walkdir(dir,
+	    (walkfns){ .file = sfiles_walk, .dir = sccsdir }, &wi);
 	if (proj) free(wi.proj_prefix);
 	unless (opts.onelevel) print_components(dir);
 	if (opts.timestamps && timestamps && proj) {
@@ -1395,17 +1315,18 @@ do_print(STATE buf, char *gfile, char *rev)
 /*
  * Called for each directory traversed by sfiles_walk()
  */
-private void
-sccsdir(winfo *wi)
+private int
+sccsdir(char *dir, void *data)
 {
-	char	*dir = wi->sccsdir;
-	char	**slist = wi->sfiles;
+	winfo	*wi = (winfo *)data;
+	char	**slist = 0;
 	char	**gfiles = 0;
 	MDBM	*gDB = wi->gDB;
-	MDBM	*sDB = wi->sDB;
+	MDBM	*sDB = 0;
 	char	*relp, *p, *gfile;
 	kvpair  kv;
 	sccs	*s = 0;
+	char	**t;
 	ser_t	d;
 	int	i;
 	int	saw_locked = 0;
@@ -1414,6 +1335,26 @@ sccsdir(winfo *wi)
 	char	buf1[MAXPATH];
 
 	if (opts.progress) uprogress();
+
+	if (t = sdir_getdir(proj, dir)) {
+		char	*sfile;
+
+		sDB = mdbm_mem();
+		EACH(t) {
+			sfile = t[i];
+
+			if (isdigit(sfile[0]) &&
+			    patheq(sfile+1, ".ChangeSet")) {
+				/* ignore heap files */
+				continue;
+			}
+			if (pathneq("s.", sfile, 2)) {
+				slist = addLine(slist, strdup(sfile));
+			}
+			mdbm_store_str(sDB, sfile, "", MDBM_INSERT);
+		}
+		freeLines(t, free);
+	}
 
 	/*
 	 * First eliminate as much as we can from SCCS dir;
@@ -1596,7 +1537,10 @@ sccsdir(winfo *wi)
 		opts.saw_locked |= saw_locked;
 		opts.saw_pending |= saw_pending;
 	}
+	freeLines(slist, free);
+	mdbm_close(sDB);
 	winfo_free(wi);
+	return (0);
 }
 
 /*
@@ -1619,10 +1563,45 @@ struct sinfo {
 	void	*data;		/* pass this to the fn() */
 	int	rootlen;	/* the len of the dir passed to walksfiles() */
 	char	*proj_prefix;	/* the prefix needed to make a relpath */
-	hash	*dfiles;	/* remember dfiles seen in this dir */
 	u32	is_clone:1;	/* special clone walkfn */
 	u32	skip_etc:1;	/* skip BitKeeper/etc */
 };
+
+private int
+findsfiles_sdir(char *dir, void *data)
+{
+	sinfo	*si = (sinfo *)data;
+	char	**sdir;
+	char	*t;
+	int	ret, i;
+	char	buf[MAXPATH];
+
+	sdir = sdir_getdir(proj, dir);
+	ret = 0;
+	EACH(sdir) {
+		t = sdir[i];
+		unless (pathneq(t, "s.", 2) ||
+		    (si->is_clone && pathneq(t, "d.", 2))) {
+			continue;
+		}
+
+		/*
+		 * skip SCCS/s.ChangeSet at root of
+		 * repo in clone (we insert it manually)
+		 */
+		if (si->is_clone && streq(dir, ".") &&
+		    patheq(t, "s.ChangeSet")) {
+			continue;
+		}
+		concat_path(buf, dir, "SCCS");
+		concat_path(buf, buf, t);
+		ret = si->fn(buf, 'f', si->data);
+		if (ret) break;
+	}
+	freeLines(sdir, free);
+	return (ret);
+}
+
 
 private int
 findsfiles(char *file, char type, void *data)
@@ -1632,13 +1611,9 @@ findsfiles(char *file, char type, void *data)
 	char	buf[MAXPATH];
 	char	tmp[MAXPATH];
 
-	unless (p) return (0);
 	if (type == 'd') {
-		if (si->dfiles) {
-			hash_free(si->dfiles);
-			si->dfiles = 0;
-		}
-		if (p - file > si->rootlen && patheq(p+1, "BitKeeper")) {
+		if (p && patheq(p+1, "SCCS")) return (-1);
+		if (p && (p - file > si->rootlen) && patheq(p+1, "BitKeeper")) {
 			/*
 			 * Do not cross into other package roots
 			 * (e.g. RESYNC).
@@ -1686,30 +1661,8 @@ findsfiles(char *file, char type, void *data)
 			}
 		}
 	} else {
-		if ((p - file >= 6) && pathneq(p - 5, "/SCCS/s.", 8)) {
-			/*
-			 * skip SCCS/s.ChangeSet at root of
-			 * repo in clone (we insert it manually)
-			 */
-			if (si->is_clone && patheq(file+2, CHANGESET)) {
-				return (0);
-			}
-			if (si->dfiles && hash_fetchStr(si->dfiles, p+3)) {
-				/* clone includes d.files too */
-				p[1] = 'd';
-				si->fn(file, 'f', si->data);
-				p[1] = 's';
-			}
-			return (si->fn(file, type, si->data));
-		} else if (si->is_clone &&
-		    (p - file >= 6) && pathneq(p - 5, "/SCCS/d.", 8)) {
-			/*
-			 * remember we saw this dfile, this trims
-			 * dangling dfiles without extra stats
-			 */
-			unless(si->dfiles) si->dfiles = hash_new(HASH_MEMHASH);
-			hash_storeStr(si->dfiles, p+3, 0);
-		} else if (!opts.no_bkskip && patheq(p+1, BKSKIP)) {
+		assert(p);
+		if (!opts.no_bkskip && patheq(p+1, BKSKIP)) {
 			/*
 			 * Skip directory containing a .bk_skip file
 			 */
@@ -1760,7 +1713,8 @@ walksfiles(char *dir, filefn *fn, void *data)
 		}
 		free(p);
 	}
-	rc = walkdir(dir, (walkfns){ .file = findsfiles }, &si);
+	rc = walkdir(dir,
+	    (walkfns){ .file = findsfiles, .dir = findsfiles_sdir }, &si);
 	if (proj) free(si.proj_prefix);
 	freeLines(components, free);	/* set by walk_deepComponents() */
 	components = 0;
@@ -1839,13 +1793,18 @@ sfiles_clone_main(int ac, char **av)
 	concat_path(buf, "BitKeeper/etc/SCCS", "x.dfile");
 	if (exists(buf)) puts(buf);
 
-	rc = walkdir("./BitKeeper/etc", (walkfns){.file = findsfiles}, &si);
+	rc = walkdir("./BitKeeper/etc",
+	    (walkfns){ .file = findsfiles, .dir = findsfiles_sdir }, &si);
 	if (mark2) puts("||");
 	if (exists(CHANGESET_H1)) puts(CHANGESET_H1);
 	if (exists(CHANGESET_H2)) puts(CHANGESET_H2);
 	puts(CHANGESET);
 	si.skip_etc = 1;
-	unless (rc) rc = walkdir(".", (walkfns){.file = findsfiles}, &si);
+	unless (rc) {
+		rc = walkdir(".",
+		    (walkfns){ .file = findsfiles, .dir = findsfiles_sdir },
+		    &si);
+	}
 	free_project();
 	return (rc);
 }
@@ -1888,16 +1847,13 @@ print_components(char *path)
 		state[TSTATE] = 's';
 		if (proj_isComponent(comp)) {
 			if (opts.pending) {
-				p = strrchr(buf, '/');
-				p[1] = 'd';
-				if (exists(buf)) {
+				if (xfile_exists(buf, 'd')) {
 					state[PSTATE] = 'p';
 					sprintf(buf, "%s/ChangeSet", gfile);
 					chk_pending(0, buf, state, 0, 0);
 					proj_free(comp);
 					continue;
 				}
-				p[1] = 's';
 			}
 			if (opts.names) {
 				unless (patheq(components[i],

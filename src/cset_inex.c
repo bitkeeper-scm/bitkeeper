@@ -7,7 +7,6 @@ private int	doit(int flags, char *file, char *op, char *revs);
 private	int	commit(int quiet, char **cmts);
 private	char	**getComments(char *op, char *revs);
 private void	clean(char *file);
-private void	unedit(void);
 private int	mergeInList(sccs *s, char *revs);
 
 /*
@@ -80,7 +79,7 @@ cset_inex(int flags, char *op, char *revs)
 					 * ChangeSet file is never edited
 					 * in a normal tree.
 					 */
-					unedit();
+					xfile_delete(CHANGESET, 'p');
 					free(revbuf);
 					return (undoit(m));
 				}
@@ -101,7 +100,7 @@ cset_inex(int flags, char *op, char *revs)
 		rlist = 0;
 		if (doit(flags, file, op, revbuf)) {
 			clean(file);
-			unedit();
+			xfile_delete(CHANGESET, 'p');
 			free(revbuf);
 			return (undoit(m));
 		}
@@ -124,12 +123,6 @@ clean(char *file)
 	av[++i] = file;
 	av[++i] = 0;
 	spawnvp(_P_WAIT, "bk", av);
-}
-
-private void
-unedit(void)
-{
-	unlink("SCCS/p.ChangeSet");
 }
 
 private	char **
