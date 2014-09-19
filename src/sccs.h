@@ -1529,6 +1529,7 @@ u32	sccs_addStr(sccs *s, char *str);
 void	sccs_appendStr(sccs *s, char *str);
 u32	sccs_addUniqStr(sccs *s, char *str);
 u32	sccs_addUniqKey(sccs *s, char *key);
+int	sccs_hasRootkey(sccs *s, char *key);
 typedef	struct MAP MAP;
 void	*dataAlloc(u32 esize, u32 nmemb);
 void	datamap(char *name, void *start, int len,

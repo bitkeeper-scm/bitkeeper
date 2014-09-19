@@ -104,6 +104,47 @@ sccs_addUniqStr(sccs *s, char *str)
 	return (off);
 }
 
+private void
+loadRootkeys(sccs *s)
+{
+	hash	*h;
+	u32	off;
+
+	unless (h = s->uniqheap) h = s->uniqheap = hash_new(HASH_MEMHASH);
+	s->uniqkeys = 1;
+	T_PERF("%s: loading existing rootkey data", s->gfile);
+	/*
+	 * This is the first time we have added a rootkey so
+	 * we need to walk the list of existing rootkeys and
+	 * add them to the uniq hash
+	 */
+	for (off = s->rkeyHead; off; off = RKNEXT(s, off)) {
+		hash_insertStrI32(h, KEYSTR(s, off), off);
+	}
+	T_PERF("done rootkey data");
+}
+
+/*
+ * Return true if this ChangeSet file has seen this key as a rootkey
+ * in the past.  It may return a false positive and say a key is
+ * included in the weave when it isn't actually there.  For example
+ * after an undo before the dataheap has been repacked to remove the
+ * discarded rootkeys.  If we don't know, return true.
+ * True == 1;
+ */
+int
+sccs_hasRootkey(sccs *s, char *key)
+{
+	hash	*h;
+
+	unless (BWEAVE(s)) return (1);	/* don't know */
+
+	unless (s->uniqkeys) loadRootkeys(s);
+	h = s->uniqheap;
+
+	return (hash_fetchStr(h, key) != 0);
+}
+
 /*
  * Used for rootkeys in the weave, add the key to the heap and collapse
  * duplicates together.
@@ -114,20 +155,8 @@ sccs_addUniqKey(sccs *s, char *key)
 	hash	*h;
 	u32	off, le32;
 
-	unless (h = s->uniqheap) h = s->uniqheap = hash_new(HASH_MEMHASH);
-	unless (s->uniqkeys) {
-		s->uniqkeys = 1;
-		T_PERF("%s: loading existing rootkey data", s->gfile);
-		/*
-		 * This is the first time we have added a rootkey so
-		 * we need to walk the list of existing rootkeys and
-		 * add them to the uniq hash
-		 */
-		for (off = s->rkeyHead; off; off = RKNEXT(s, off)) {
-			hash_insertStrI32(h, KEYSTR(s, off), off);
-		}
-		T_PERF("done rootkey data");
-	}
+	unless (s->uniqkeys) loadRootkeys(s);
+	h = s->uniqheap;
 	if (hash_insertStrI32(h, key, 0)) {
 		/* new string */
 

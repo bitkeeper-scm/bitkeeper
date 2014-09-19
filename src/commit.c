@@ -2,6 +2,7 @@
 #include "sccs.h"
 #include "logging.h"
 #include "nested.h"
+#include "range.h"
 #include <time.h>
 
 /*
@@ -470,6 +471,7 @@ err:		rc = 1;
 			rc = 1;
 		}
 	}
+	T_PERF("after_check");
 	if (!rc && opts.resync) {
 		char	key[MAXPATH];
 		FILE	*f;
@@ -537,9 +539,7 @@ private int
 getfilekey(char *sfile, char *rev, sccs *cset, ser_t cset_d, char ***keys)
 {
 	sccs	*s;
-	u8	*v, *p;
 	ser_t	d;
-	u32	sum = 0;
 	u8	buf[MAXLINE];
 
 	unless (s = sccs_init(sfile, 0)) {
@@ -560,31 +560,109 @@ getfilekey(char *sfile, char *rev, sccs *cset, ser_t cset_d, char ***keys)
 	}
 	assert(!(FLAGS(s, d) & D_CSET));
 
-	/*
-	 * XXX For non-merge deltas we don't need cset->mdbm so we can
-	 * avoid reading the old weave.  Instead we can just find the latest
-	 * marked delta key and use that.
-	 */
 	sccs_sdelta(s, sccs_ino(s), buf);
 	*keys = addLine(*keys, strdup(buf));
-	if (v = mdbm_fetch_str(cset->mdbm, buf)) {
-		/* subtract off old value */
-		for (p = v; *p; sum -= *p++);
-	} else {
-		/* new file (need sum of rootkey) */
-		for (p = buf; *p; sum += *p++);
-		sum += ' ' + '\n';
-	}
 	sccs_sdelta(s, d, buf);
 	*keys = addLine(*keys, strdup(buf));
-	for (p = buf; *p; p++) sum += *p; /* sum of new deltakey */
 	sccs_free(s);
+	return (0);
+}
+
+/*
+ * We are about to create a new cset 'd' with 'keys' in the weave.
+ * This function computes the new SUM() for 'd'.  The changeset checksum
+ * is the sum of the list of all rk/dk pairs for the current tip, so
+ * we need to add the new files and then for updated files subtract the
+ * old keys and add the new keys.
+ *
+ * Where possible we as little of the existing weave as possible to get
+ * the data needed.
+ */
+private void
+updateCsetChecksum(sccs *cset, ser_t d, char **keys)
+{
+	hash	*h = hash_new(HASH_MEMHASH);
+	int	i, cnt = 0, todo = 0;
+	u32	sum = 0;
+	char	*rk, *dk;
+	u8	*p;
+	ser_t	e, red;
+	hash	*seen = 0;
+
+	EACH(keys) {
+		++cnt;
+		rk = keys[i++];
+		dk = keys[i];
+
+		for (p = dk; *p; p++) sum += *p; /* sum of new deltakey */
+		hash_storeStrSet(h, rk);
+
+		/* count keys we must find in weave */
+		if (sccs_hasRootkey(cset, rk)) ++todo;
+	}
+	if (MERGE(cset, d)) {
+		/*
+		 * Add in some MERGE side keys (colored RED)
+		 * to todo list.
+		 */
+		cset->rstart = 0;
+		range_walkrevs(cset,
+		    PARENT(cset, d), 0, MERGE(cset, d), 0,
+		    walkrevs_setFlags, uint2p(D_RED));
+		if (cset->rstart) seen = hash_new(HASH_MEMHASH);
+	}
+	if (todo || seen) {
+		sccs_rdweaveInit(cset);
+		red = 0;
+		while (e = cset_rdweavePair(cset, 0, &rk, &dk)) {
+			if (FLAGS(cset, e) & D_RED) {
+				if (red != e) {
+					if (red) FLAGS(cset, red) &= ~D_RED;
+					red = e;
+				}
+				/* if RED seen first and not in commit; add */
+				if (hash_insertStrSet(seen, rk) &&
+				    hash_insertStrSet(h, rk)) {
+					++todo;
+					for (p = dk; *p; p++) sum += *p;
+				}
+				continue;
+			}
+			unless (hash_deleteStr(h, rk)) {
+				/*
+				 * found previous deltakey for one of my files,
+				 * subtract off old key
+				 */
+				for (p = dk; *p; sum -= *p++);
+				--todo;
+			}
+			if (seen && (e >= cset->rstart)) {
+				/* still in merge region so remember rks */
+				hash_insertStrSet(seen, rk);
+			} else if (!todo) {
+				/* no more rootkeys to find, done. */
+				break;
+			}
+		}
+		if (red) FLAGS(cset, red) &= ~D_RED;
+		if (seen) hash_free(seen);
+		sccs_rdweaveDone(cset);
+	}
+	/*
+	 * Any keys that remain in my hash must be new files so we
+	 * need to add in the rootkey checksums.
+	 */
+	EACH_HASH(h) {
+		rk = h->kptr;
+		for (p = rk; *p; p++) sum += *p;
+		sum += ' ' + '\n';
+	}
+	hash_free(h);
 
 	/* update delta checksum */
-	SUM_SET(cset, cset_d, (u16)(SUM(cset, cset_d) + sum));
-	SORTSUM_SET(cset, cset_d, SUM(cset, cset_d));
-	ADDED_SET(cset, cset_d, ADDED(cset, cset_d) + 1);
-	return (0);
+	SUM_SET(cset, d, (u16)(SUM(cset, d) + sum));
+	SORTSUM_SET(cset, d, SUM(cset, d));
+	ADDED_SET(cset, d, cnt);
 }
 
 /*
@@ -596,7 +674,7 @@ getfilekey(char *sfile, char *rev, sccs *cset, ser_t cset_d, char ***keys)
 private ser_t
 mkChangeSet(sccs *cset, char *files, char ***keys)
 {
-	ser_t	d, p;
+	ser_t	d, d2, p;
 	char	*line, *rev, *t;
 	int	flags = GET_HASHONLY|GET_SUM|GET_SHUTUP|SILENT;
 	FILE	*f;
@@ -612,14 +690,6 @@ mkChangeSet(sccs *cset, char *files, char ***keys)
 		flags |= GET_EDIT;
 		memset(&pf, 0, sizeof(pf));
 		pf.oldrev = strdup("+");
-	}
-	if (HASGRAPH(cset) &&
-	    sccs_get(cset, pf.oldrev, pf.mRev, 0, 0, flags, "-")) {
-		unless (BEEN_WARNED(cset)) {
-			fprintf(stderr, "cset: get -eg of ChangeSet failed\n");
-		}
-		free_pfile(&pf);
-		return (0);
 	}
 	d = sccs_dInit(0, 'D', cset, 0);
 	if (d == TREE(cset)) {
@@ -654,8 +724,14 @@ mkChangeSet(sccs *cset, char *files, char ***keys)
 		R0_SET(cset, d, R0(cset, p));	/* so renumber() is happy */
 		XFLAGS(cset, d) = XFLAGS(cset, p);
 
-		/* set initial key, getfilekey() updates diff from merge */
-		SUM_SET(cset, d, cset->dsum);
+		/*
+		 * set initial sum to parent, in updateCsetChecksum we update
+		 */
+		if (d2 = sccs_getCksumDelta(cset, p)) {
+			SUM_SET(cset, d, SUM(cset, d2));
+		} else {
+			SUM_SET(cset, d, 0);
+		}
 
 		/*
 		 * bk normally doesn't set the MODE() for the
@@ -703,6 +779,7 @@ mkChangeSet(sccs *cset, char *files, char ***keys)
 			getfilekey(line, rev, cset, d, keys);
 		}
 		fclose(f);
+		updateCsetChecksum(cset, d, *keys);
 	}
 
 	if (d == TREE(cset)) {
