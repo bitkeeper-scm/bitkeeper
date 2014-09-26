@@ -61,6 +61,14 @@ bk -A admin -z
 .SH NOTE
 This command works only on filesystems which support hard links,
 and only if both repositories are in the same file system.
+.LP
+On recent (2014) versions of Ubuntu (and other Linux distributions),
+the use of hardlinks has been curtailed for security reasons.
+See
+http://man7.org/linux/man-pages/man5/proc.5.html
+and search for
+.BR protected_hardlinks .
+The relink command will fail in this case.
 .SH "SEE ALSO"
 .SA clone
 .SH CATEGORY
