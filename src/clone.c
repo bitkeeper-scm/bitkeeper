@@ -1768,7 +1768,13 @@ relink(char *a, char *b)
 			return (-1);
 		}
 		if (link(b, a)) {
-			perror(a);
+			if (errno == EPERM) {
+				fprintf(stderr,
+				    "%s: hardlinks to '%s' not permitted\n",
+				    prog, a);
+			} else {
+				perror(a);
+			}
 			unlink(a);
 			if (rename(buf, a)) {
 				fprintf(stderr, "Unable to restore %s\n", a);
