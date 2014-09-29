@@ -163,7 +163,7 @@ r2c(char *file, RANGE *rarg)
 	int	i;
 	int	redo = 0;
 	time_t	oldest, candidate;
-	char	*rkey, *dkey;
+	u32	rkoff, dkoff;
 	char	buf[MAXKEY*2];
 
 	name = name2sccs(file);
@@ -248,8 +248,8 @@ again:	sccs_rdweaveInit(cset);
 		}
 		cset_firstPairReverse(cset, d); /* old to new */
 	}
-	while (d = cset_rdweavePair(cset, 0, &rkey, &dkey)) {
-		unless (hash_deleteStr(keys, dkey)) {
+	while (d = cset_rdweavePair(cset, 0, &rkoff, &dkoff)) {
+		unless (hash_deleteStr(keys, HEAP(cset, dkoff))) {
 			serlist = addSerial(serlist, d);
 			unless (hash_count(keys)) break;
 		}

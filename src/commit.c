@@ -585,6 +585,7 @@ updateCsetChecksum(sccs *cset, ser_t d, char **keys)
 	int	i, cnt = 0, todo = 0;
 	u32	sum = 0;
 	char	*rk, *dk;
+	u32	rkoff, dkoff;
 	u8	*p;
 	ser_t	e, red;
 	hash	*seen = 0;
@@ -595,10 +596,14 @@ updateCsetChecksum(sccs *cset, ser_t d, char **keys)
 		dk = keys[i];
 
 		for (p = dk; *p; p++) sum += *p; /* sum of new deltakey */
-		hash_storeStrSet(h, rk);
-
-		/* count keys we must find in weave */
-		if (sccs_hasRootkey(cset, rk)) ++todo;
+		if (rkoff = sccs_hasRootkey(cset, rk)) {
+			++todo;
+			hash_insert(h, &rkoff, sizeof(rkoff), 0, 0);
+		} else {
+			/* new file, just add rk now */
+			for (p = rk; *p; p++) sum += *p;
+			sum += ' ' + '\n';
+		}
 	}
 	if (MERGE(cset, d)) {
 		/*
@@ -614,31 +619,35 @@ updateCsetChecksum(sccs *cset, ser_t d, char **keys)
 	if (todo || seen) {
 		sccs_rdweaveInit(cset);
 		red = 0;
-		while (e = cset_rdweavePair(cset, 0, &rk, &dk)) {
+		while (e = cset_rdweavePair(cset, 0, &rkoff, &dkoff)) {
 			if (FLAGS(cset, e) & D_RED) {
 				if (red != e) {
 					if (red) FLAGS(cset, red) &= ~D_RED;
 					red = e;
 				}
 				/* if RED seen first and not in commit; add */
-				if (hash_insertStrSet(seen, rk) &&
-				    hash_insertStrSet(h, rk)) {
+				if (hash_insert(seen,
+				    &rkoff, sizeof(rkoff), 0, 0) &&
+				    hash_insert(h, 
+				    &rkoff, sizeof(rkoff), 0, 0)) {
 					++todo;
-					for (p = dk; *p; p++) sum += *p;
+					for (p = HEAP(cset, dkoff); *p; p++) {
+						sum += *p;
+					}
 				}
 				continue;
 			}
-			unless (hash_deleteStr(h, rk)) {
+			unless (hash_delete(h, &rkoff, sizeof(rkoff))) {
 				/*
 				 * found previous deltakey for one of my files,
 				 * subtract off old key
 				 */
-				for (p = dk; *p; sum -= *p++);
+				for (p = HEAP(cset, dkoff); *p; sum -= *p++);
 				--todo;
 			}
 			if (seen && (e >= cset->rstart)) {
 				/* still in merge region so remember rks */
-				hash_insertStrSet(seen, rk);
+				hash_insert(seen, &rkoff, sizeof(rkoff), 0, 0);
 			} else if (!todo) {
 				/* no more rootkeys to find, done. */
 				break;
@@ -653,8 +662,8 @@ updateCsetChecksum(sccs *cset, ser_t d, char **keys)
 	 * need to add in the rootkey checksums.
 	 */
 	EACH_HASH(h) {
-		rk = h->kptr;
-		for (p = rk; *p; p++) sum += *p;
+		rkoff = *(u32 *)h->kptr;
+		for (p = HEAP(cset, rkoff); *p; p++) sum += *p;
 		sum += ' ' + '\n';
 	}
 	hash_free(h);

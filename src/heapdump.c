@@ -283,6 +283,12 @@ dumpStats(sccs *s)
 		    cnt, (double)len/cnt);
 		tsize -= len;
 	}
+	if (t = hash_fetchStr(s->heapmeta, "HASHBITS")) {
+		len = sizeof(u32) * (1 << atoi(t));
+		printf("%10s: %7s %4.1f%%\n",
+		    "uniqhash", psize(len),  (100.0 * len) / s->heap.len);
+		tsize -= len;
+	}
 	if (tsize) {
 		printf("%10s: %7s %4.1f%%\n",
 		    "unused", psize(tsize),

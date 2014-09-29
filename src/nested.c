@@ -212,6 +212,7 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	ser_t	d, left, right;
 	int	i;
 	char	*t, *v;
+	u32	rkoff, dkoff;
 	kvpair	kv;
 	MDBM	*idDB = 0, *revsDB = 0;
 	project	*proj;
@@ -341,7 +342,9 @@ err:				if (revsDB) mdbm_close(revsDB);
 
 	sccs_rdweaveInit(cset);
 	/* t = root, v = deltakey */
-	while (d = cset_rdweavePair(cset, 0, &t, &v)) {
+	while (d = cset_rdweavePair(cset, 0, &rkoff, &dkoff)) {
+		t = HEAP(cset, rkoff);
+		v = HEAP(cset, dkoff);
 		unless (componentKey(v)) continue;
 		if (!revs && !(FLAGS(cset, (d)) & D_RED)) continue;
 		unless (c = nested_findKey(n, t)) {

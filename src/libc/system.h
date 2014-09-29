@@ -90,6 +90,23 @@
 #define	isDriveColonPath(p)	(isalpha((p)[0]) && ((p)[1] == ':'))
 #define	executable(p)	((access(p, X_OK) == 0) && !isdir(p))
 
+/*
+ * ceiling log power 2
+ *
+ * round x to the next higher power of two
+ *
+ * from: Hacker's Delight p48
+ *   or: http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
+ */
+#define        clp2(x) \
+	({ u32 v = (x)-1; \
+	v |= (v >> 1); \
+	v |= (v >> 2); \
+	v |= (v >> 4); \
+	v |= (v >> 8); \
+	v |= (v >> 16); \
+	(v + 1); })
+
 /* cleanpath.c */
 char	*basenm(char *s);
 void	cleanPath(char *path, char cleanPath[]);

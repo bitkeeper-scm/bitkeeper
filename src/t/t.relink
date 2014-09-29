@@ -21,6 +21,7 @@ echo 'binfile:no!' > "`bk dotbk`"/config
 echo $N Create initial repositories .................................$NL
 fresh_commercial project
 bk -r check -ac	# Add's rootlog
+bk -r admin -z   # make sure all files use canonical packing size
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 cd ..

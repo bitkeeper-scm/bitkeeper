@@ -371,7 +371,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	Sse	snew;
 	u32	**csetlist = 0;	/* csetlist[d] = list{ rkid's touched by d } */
 	ser_t	start;
-	char	*rkey, *dkey;
+	u32	rkoff, dkoff;
 	u8	*e;
 	u16	sum;
 	int	bits, cnt, i, added, orderIndex;
@@ -401,15 +401,16 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	sccs_rdweaveInit(s);
 	cnt = 1;
 	growArray(&csetlist, TABLE(s));
-	while (d = cset_rdweavePair(s, 0, &rkey, &dkey)) {
-		if (hash_insertStrU32(root2id, rkey, cnt)) {
+	while (d = cset_rdweavePair(s, 0, &rkoff, &dkoff)) {
+		if (hash_insert(root2id,
+		    &rkoff, sizeof(rkoff), &cnt, sizeof(cnt))) {
 			addArray(&rkarray, 0);
 			cnt++;
 		}
 		rkid = *(u32 *)root2id->vptr;
 		sum = 0;
-		for (e = rkey; *e; e++) sum += *e;
-		for (e = dkey; *e; e++) sum += *e;
+		for (e = HEAP(s, rkoff); *e; e++) sum += *e;
+		for (e = HEAP(s, dkoff); *e; e++) sum += *e;
 		sum += ' ' + '\n';
 		snew.ser = d;
 		snew.sum = sum;

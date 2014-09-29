@@ -585,9 +585,13 @@ sccs_freetable(sccs *s)
 	TABLE_SET(s, 0);
 	if (s->heap.buf) free(s->heap.buf);
 	memset(&s->heap, 0, sizeof(DATA));
-	if (s->uniqheap) {
-		hash_free(s->uniqheap);
-		s->uniqheap = 0;
+	nokey_free(s->uniq1);
+	s->uniq1 = 0;
+	nokey_free(s->uniq2);
+	s->uniq2 = 0;
+	if (s->heapmeta) {
+		hash_free(s->heapmeta);
+		s->heapmeta = 0;
 	}
 }
 
@@ -2043,15 +2047,15 @@ sccs_nextdata(sccs *s)
 {
 	char	*buf;
 	size_t	i;
-	char	*dkey;
 	u32	rkoff;
 
 	if (s->rdweave && BWEAVE(s)) {
 		buf = s->w_buf;
 		if (s->w_off) {
 			if (rkoff = RKOFF(s, s->w_off)) {
-				dkey = KEYSTR(s, s->w_off);
-				sprintf(buf, "%s %s", KEYSTR(s, rkoff), dkey);
+				sprintf(buf, "%s %s",
+				    HEAP(s, KEYSTR(rkoff)),
+				    HEAP(s, KEYSTR(s->w_off)));
 				s->w_off = NEXTKEY(s, s->w_off);
 			} else {
 				sprintf(buf, "\001E %d", s->w_d);
@@ -2109,9 +2113,9 @@ sccs_nextdata(sccs *s)
  *     of the current delta.
  */
 ser_t
-cset_rdweavePair(sccs *s, u32 flags, char **rkey, char **dkey)
+cset_rdweavePair(sccs *s, u32 flags, u32 *rkoff, u32 *dkoff)
 {
-	char	*buf;
+	char	*buf, *dk;
 
 	assert(CSET(s) && s->rdweave);
 	if (BWEAVE(s)) {
@@ -2130,8 +2134,8 @@ cset_rdweavePair(sccs *s, u32 flags, char **rkey, char **dkey)
 				continue;
 			}
 			if (roff = RKOFF(s, s->w_off)) {
-				*rkey = KEYSTR(s, roff);
-				*dkey = KEYSTR(s, s->w_off);
+				*rkoff = KEYSTR(roff);
+				*dkoff = KEYSTR(s->w_off);
 				s->w_off = NEXTKEY(s, s->w_off);
 				s->w_d = d;
 				return (d);
@@ -2171,10 +2175,11 @@ eof:		s->rdweaveEOF = 1;
 	}
 	assert(s->w_d);
 	if ((flags & RWP_DSET) && !(FLAGS(s, s->w_d) & D_SET)) goto again;
-	*rkey = buf;
-	buf = separator(buf);
-	*buf++ = 0;
-	*dkey = buf;
+	dk = separator(buf);
+	*dk++ = 0;
+	/* mimic BWEAVE by storing keys on heap and returning offsets */
+	*rkoff = sccs_addUniqStr(s, buf);
+	*dkoff = sccs_addUniqStr(s, dk);
 	return (s->w_d);
 }
 
@@ -3538,6 +3543,10 @@ err:		fprintf(stderr, "%s: failed to load %s\n", prog, s->sfile);
 			}
 			goto err;
 		}
+	}
+	if ((s->heap.len >= 2) && (s->heap.buf[1] == '%')) {
+		s->heapmeta = hash_new(HASH_MEMHASH);
+		hash_fromStr(s->heapmeta, s->heap.buf+2);
 	}
 }
 
@@ -8703,6 +8712,7 @@ cvt2bweave(sccs *s)
 	char	**keys = 0;
 
 	T_PERF("cvt");
+	bin_heapRepack(s);	/* strip out rdweavePair keys */
 	sccs_rdweaveInit(s);
 	while (t = sccs_nextdata(s)) {
 		unless (isData(t)) {

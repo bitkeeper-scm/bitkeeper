@@ -970,6 +970,7 @@ loadcset(sccs *cset)
 	char	**keylist = 0;
 	char	*keypath, *pipe;
 	char	*t;
+	u32	rkoff, dkoff;
 	char	*rkey, *dkey;
 	hash	*db;
 	int	files = 0, inc = 0, exc = 0;
@@ -998,8 +999,10 @@ loadcset(sccs *cset)
 	sccs_rdweaveInit(cset);
 	if (BWEAVE(cset)) cset_firstPair(cset, cset->rstop);
 	last = 0;
-	while (d = cset_rdweavePair(cset, RWP_DSET, &rkey, &dkey)) {
+	while (d = cset_rdweavePair(cset, RWP_DSET, &rkoff, &dkoff)) {
 		if (d < cset->rstart) break;
+		rkey = HEAP(cset, rkoff);
+		dkey = HEAP(cset, dkoff);
 		if (d != last) {
 			if (keylist) {
 				cstate	cs = { keylist, files, inc, exc };

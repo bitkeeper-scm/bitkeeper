@@ -1038,13 +1038,13 @@ char **
 cset_mkList(sccs *cset)
 {
 	ser_t	d;
-	char	*rkey, *dkey;
+	u32	rkoff, dkoff;
 	char	**list = 0;
 
 	sccs_rdweaveInit(cset);
-	while (d = cset_rdweavePair(cset, RWP_DSET, &rkey, &dkey)) {
-		list = addLine(list,
-		    aprintf("%d\t%s %s", d, rkey, dkey));
+	while (d = cset_rdweavePair(cset, RWP_DSET, &rkoff, &dkoff)) {
+		list = addLine(list, aprintf("%d\t%s %s",
+		    d, HEAP(cset, rkoff), HEAP(cset, dkoff)));
 	}
 	sccs_rdweaveDone(cset);
 	return (list);

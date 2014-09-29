@@ -274,7 +274,7 @@ int	checking_rmdir(char *dir);
 
 /*
  * Flags (FLAGS(s, d)) that indicate some state on the delta.
- * When changing also update delta_flagNames in dataheap.c.
+ * When changing also update delta_flagNames in heapdump.c.
  */
 /* flags that are written to disk (don't renumber) */
 #define	D_INARRAY	0x00000001	/* part of s->slist array */
@@ -669,6 +669,8 @@ typedef	struct {
 	ser_t	siblings;
 } KIDS;
 
+typedef struct nokey nokey;
+
 /*
  * struct sccs - the delta tree, the data, and associated junk.
  */
@@ -686,7 +688,10 @@ struct sccs {
 	DATA	heap;		/* all strings in delta structs */
 	u32	heap_loadsz;	/* size of heap at load time */
 	u32	heapsz1;	/* size of SCCS/1.ChangeSet */
-	hash	*uniqheap;	/* help collapse unique strings in hash */
+	hash	*heapmeta;	/* metadata from start of heap */
+	nokey	*uniq1;		/* uniq hash in heap1 */
+	u32	uniq1off;	/* uniq1 hash covers objects <off in heap */
+	nokey	*uniq2;		/* remember uniq objects not in uniq1 */
 	u32	rkeyHead;	/* head of linked list of rootkeys in heap */
 	u32	*mg_symname;	/* symbol list use by mkgraph() */
 	FILE	*pagefh;	/* fh for paging from sfile */
@@ -770,8 +775,9 @@ struct sccs {
 	u32	ckwrap:1;	/* running with fopen_cksum */
 	u32	w_reverse:1;	/* csetPair walk in reverse order */
 	/* heap releated bit fields */
-	u32	uniqkeys:1;	/* rkeys loaded in uniqheap */
-	u32	uniqdeltas:1;	/* deltas loaded in uniqheap */
+	u32	uniq1init:1;	/* we have looked for uniq1 in heap? */
+	u32	uniq2keys:1;	/* rkeys loaded in uniq2 */
+	u32	uniq2deltas:1;	/* deltas loaded in uniq2 */
 };
 
 typedef struct {
@@ -984,9 +990,9 @@ u32	_heap_u32load(void *ptr);
 #define	HEAP(s, off)	((s)->heap.buf + (off))
 #define	RKOFF(s, off)	(HEAP_U32LOAD(HEAP(s, off)))
 #define	RKNEXT(s, off)	RKOFF(s, off)
-#define	KEYSTR(s, off)	(HEAP(s, off) + sizeof(u32))
+#define	KEYSTR(off)	((off) + sizeof(u32))
 /* Given an offset, skip to the next consecutive key */
-#define	NEXTKEY(s, off)	(off + sizeof(u32) + strlen(KEYSTR(s, off)) + 1)
+#define	NEXTKEY(s, off)	(KEYSTR(off) + strlen(HEAP(s, KEYSTR(off))) + 1)
 
 int	sccs_admin(sccs *sc, ser_t d, u32 flgs,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
@@ -1468,7 +1474,7 @@ char	*sccs_nextdata(sccs *s);
 
 #define	RWP_DSET	0x00000001 /* only walk D_SET deltas */
 #define	RWP_ONE		0x00000002 /* stop at end of current delta */
-ser_t	cset_rdweavePair(sccs *s, u32 flags, char **rkey, char **dkey);
+ser_t	cset_rdweavePair(sccs *s, u32 flags, u32 *rkoff, u32 *dkoff);
 void	cset_firstPair(sccs *s, ser_t first);
 void	cset_firstPairReverse(sccs *s, ser_t first);
 int	sccs_rdweaveDone(sccs *s);
@@ -1528,8 +1534,7 @@ void	bk_setConfig(char *key, char *val);
 u32	sccs_addStr(sccs *s, char *str);
 void	sccs_appendStr(sccs *s, char *str);
 u32	sccs_addUniqStr(sccs *s, char *str);
-u32	sccs_addUniqKey(sccs *s, char *key);
-int	sccs_hasRootkey(sccs *s, char *key);
+u32	sccs_hasRootkey(sccs *s, char *key);
 typedef	struct MAP MAP;
 void	*dataAlloc(u32 esize, u32 nmemb);
 void	datamap(char *name, void *start, int len,
@@ -1547,6 +1552,14 @@ int	repogca(char **urls, char *dspec, u32 flags, FILE *out);
 u64	maxrss(void);
 char	*formatBits(u32 bits, ...);
 int	bk_gzipLevel(void);
+
+nokey	*nokey_newStatic(u32 data, u32 bits);
+nokey	*nokey_newAlloc(void);
+u32	nokey_log2size(nokey *h);
+u32	*nokey_data(nokey *h);
+void	nokey_free(nokey *h);
+u32	nokey_lookup(nokey *h, char *heap, char *key);
+void	nokey_insert(nokey *h, char *heap, u32 key);
 
 extern	char	*editor;
 extern	char	*bin;
