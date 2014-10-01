@@ -34,6 +34,7 @@ bk difftool \- \*(BK graphical differences viewer
 .OPTreq \-r @cset2
 .br
 .B bk difftool [<opts>]
+.[B] \-S
 .OPTopt \-L url
 .SH DESCRIPTION
 .LP
@@ -44,11 +45,27 @@ being compared in separate windows. The differences are color coded,
 but as you move to a new diff, that diff becomes highlighted in a
 bold font.  You can move back and forth through the diffs using the
 keys described below.
-
 .SH "OPTIONS"
-.tp
+.TP "\-\-standalone "
 .B \-b
 Ignore changes in amount of white space.
+.tp
+.OPTopt \-L url
+Show changes that are unique to this repository relative to the
+(outgoing) parent or 
+.ARG url .
+.tp
+.OPTreq \-s comp
+In a nested collection, limit the files processed to the set of 
+component[s] (or aliases of components) specified.  This option
+may repeat.
+.tp
+.B \-S
+.tp
+.B \-\-standalone
+When  used in a nested collection, treat  the  repository as  if  it were
+detached rather than as part of the  collection.  This option limits the
+files  being  considered to those in the current component (or product).
 .tp
 .B \-w
 Ignore white space when comparing lines.
@@ -77,20 +94,6 @@ takes a list of files to view from stdin. For example,
 $ bk gfiles -cU | bk difftool -
 $ bk -cgU difftool
 .DE
-.if \n[NESTED] \{\
-In a nested collection, one way to limit the files processed by 
-.B bk difftool
-is select an alias or component to diff:
-.DS
-$ bk -cgU -s\*<alias\*> difftool
-.DE
-In a future release 
-.B bk difftool
-will be able to do that directly with
-.DS
-$ bk difftool -s\*<alias\*>
-.DE
-but for now you need to have \*[BK] feed the list of files to the command.
 .LP
 If only one file is specified and that file is a locked and modified file,
 .B bk difftool
@@ -145,6 +148,9 @@ bk difftool -r@`bk repogca [\*<url\*>]` -r@+
 but not identical in that the -L option will also show any work in
 progress, such as files that are modified or have pending deltas (not
 yet committed to a changeset).
+.LP
+Use \-S with \-L when in a nested component and you want the component
+to act like a standalone repository.
 .SH "DISCARDING FILES"
 When a file that is being viewed is in the checked out state, a button
 labelled
@@ -163,8 +169,25 @@ button, or wait 10 seconds, the discard will be cancelled.
 Once a file has been discarded, it's corresponding entry in the
 .Q Files
 menu will be disabled. 
-
-
+.SH EXAMPLES
+To see all the changes between two arbitrary changesets:
+.DS
+bk difftool -r@<rev1> -r@<rev2>
+.DE
+That form can be useful to "collapse" multiple changesets that may have
+added and then deleted content to the same file[s].
+.LP
+In a nested collection, to do the same as the previous example but limit
+the output to a particular component or alias:
+.DS
+bk difftool -s<alias> -r@<rev1> -r@<rev2>
+.DE
+.LP
+In a nested collection, to limit showing changes to a particular component
+or alias:
+.DS
+bk difftool -s<alias> 
+.DE
 .SH "KEY BINDINGS"
 .TP 16
 .B Home

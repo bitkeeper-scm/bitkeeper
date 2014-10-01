@@ -312,7 +312,7 @@ test opts-8 {test -poly command-line option} -setup {
 } -output "4\n4\n"
 
 test opts-8.1 {test -version command-line option} -setup {
-	set fname [makeFile { puts("bad"); } opts8.1.l .]
+	set fname [makeFile { puts("opts-8.1 bad"); } opts8.1.l .]
 } -body {
 #lang L
 void opts_8_1()
@@ -324,7 +324,7 @@ void opts_8_1()
 	ret = system(cmd, undef, &out, &err);
 	unless (ret == 0) puts("bad 1.1");
 	if (err) puts("bad 1.2");
-	if (out =~ /bad/) puts("bad 1.3");
+	if (out =~ /opts-8.1 bad/) puts("bad 1.3");
 	unless (out =~ /L version is/) puts("bad 1.4");
 	unless (out =~ /Built by:/) puts("bad 1.5");
 	unless (out =~ /Built in:/) puts("bad 1.6");
@@ -334,7 +334,7 @@ void opts_8_1()
 	ret = system(cmd, undef, &out, &err);
 	unless (ret == 0) puts("bad 1.1");
 	if (err) puts("bad 1.2");
-	if (out =~ /bad/) puts("bad 1.3");
+	if (out =~ /opts-8.1 bad/) puts("bad 1.3");
 	unless (out =~ /L version is/) puts("bad 1.4");
 	unless (out =~ /Built by:/) puts("bad 1.5");
 	unless (out =~ /Built on:/) puts("bad 1.6");

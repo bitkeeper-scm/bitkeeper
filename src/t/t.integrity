@@ -16,7 +16,6 @@ bk admin -z noseek noseek.bam
 # Before corrupting, run a verify that 'seek' files do 'xor close' pass:
 bk --trace=fs --trace-file="$HERE/OUT" -r check -ac
 sed -n 's?.*xor \([pc][^ ]*\).*/\(.*\)?\1 \2?p' ../OUT > GOT
-cp GOT ~/p
 cat <<EOF > WANT
 passed! 1.ChangeSet
 passed! 2.ChangeSet

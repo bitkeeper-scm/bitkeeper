@@ -93,7 +93,7 @@ ftrunc(FILE *f, off_t offset)
 	FMEM	*fm;
 	int	rc;
 
-	unless (f->_flags & __SWR) {
+	unless (f->_flags & (__SWR|__SRW)) {
 		errno = EBADF;
 		return (-1);
 	}
@@ -381,6 +381,24 @@ fmem_tests(void)
 	p = fmem_peek(f, &len);
 	assert(len == 1);
 	assert(streq(p, "h"));
+	rc = fclose(f);
+	assert(rc == 0);
+
+	/* write; rewind; read; trunc, repeat */
+	f = fmem();
+	fputs("x\n", f);
+	rewind(f);
+	p = fgetline(f);
+	assert(*p == 'x');
+	p = fgetline(f);
+	assert(p == 0);
+	ftrunc(f, 0);
+	fputs("m\n", f);
+	rewind(f);
+	p = fgetline(f);
+	assert(*p == 'm');
+	p = fgetline(f);
+	assert(p == 0);
 	rc = fclose(f);
 	assert(rc == 0);
 }

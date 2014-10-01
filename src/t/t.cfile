@@ -147,10 +147,7 @@ bk edit $Q blech
 echo hi there >> blech
 bk ci $Q -ywhatever blech
 bk commit $Q -c || exit 1
-bk _test -f SCCS/c.ChangeSet && {
-	echo not unlinked
-	exit 1
-}
+bk _test -f SCCS/c.ChangeSet && fail not unlinked
 test `bk changes -r+ -d:C:` = "whatever" || {
 	echo bad comments stored
 	bk changes -r+ -nd:C:
@@ -186,4 +183,24 @@ echo more stuff >> blech
 echo $NX more stuff comment$NXL > c
 bk _mv c SCCS/c.blech || exit 1
 bk ci $Q -c blech || exit 1
+echo OK
+
+echo $N Dump out file data ..........................................$NL
+for f in a b c
+do	echo this is comment for file $f | bk cfile save $f
+done
+printf "a\nb\nc\n" > D
+bk cfile dump < D > GOT
+cat <<EOF > WANT
+a
+  this is comment for file a
+
+b
+  this is comment for file b
+
+c
+  this is comment for file c
+
+EOF
+cmpfiles WANT GOT
 echo OK

@@ -1,0 +1,120 @@
+echo $N See that -S works with -L to act as if comp is standalone ...$NL
+BK_CONFIG='checkout:edit!'
+export BK_CONFIG
+nested project
+cd gcc
+touch foo
+bk new $Q foo
+bk commit $Q -f
+for r in 1 2 3 4 5
+do	bk clone $Q .. "$HERE"/repo.$r
+done
+bk detach $Q . "$HERE"/gcc
+echo new data > foo
+bk delta $Q -y'more edits' foo
+bk commit $Q -y'more csets'
+echo work in progress > foo
+# Now see how everything looks
+for cmd in diffs range log sccslog
+do	bk $cmd --standalone -L"$HERE"/gcc foo > GOT$cmd
+done
+REV=`bk repogca -S --only-one "$HERE/gcc"`
+# diffs is a little different, because it does tip
+bk diffs -r@@$REV foo > WANT
+cmpfiles WANT GOTdiffs
+# now do the rest
+for cmd in range log sccslog
+do	bk $cmd -r@@$REV.. foo > WANT
+	cmpfiles WANT GOT$cmd
+done
+bk unedit $Q foo
+echo OK
+
+# At least at this time, illegal usage
+echo $N Illegal to use -S without -L, such as to contextualize -r ...$NL
+# Conceptually it could be legal to use -S with other options, ...
+for cmd in diffs range log sccslog
+do	bk $cmd -S -r@$REV.. foo 2> GOT
+	echo "$cmd: -S only can be used if -L is also used" > WANT
+	cmpfiles WANT GOT
+done
+echo OK
+
+echo $N Fail using a setup with multiple nodes in the gca ...........$NL
+cd "$HERE"
+for r in 1 2 3
+do	(
+	cd repo.$r/gcc
+	bk delta $Q -fy'more edits' foo
+	bk commit $Q -y"more csets in $r"
+	)
+done
+for x in 4 5
+do	(
+	cd repo.$x
+	bk gate $Q .
+	for r in 1 2 3
+	do	bk pull $Q ../repo.$r
+	done
+	)
+done
+cd gcc
+bk port $Q ../repo.4/gcc
+cd ../project
+bk pull $Q ../repo.5
+cd gcc
+for cmd in diffs range log sccslog
+do	bk $cmd -S -L"$HERE"/gcc 2> GOT
+	echo "$cmd: non-unique baseline revision" > WANT
+	cmpfiles WANT GOT
+done
+echo OK
+
+echo $N Test -SL with no file list ..................................$NL
+cd "$HERE"/repo.5
+bk parent $Q ../repo.3
+cd gcc
+echo dataland > foo
+bk delta $Q -ydata foo
+echo new bar > bar
+bk new $Q bar
+bk commit $Q -y'lock it in'
+# Test using parent
+bk range -SL > GOT
+cat <<EOF > WANT
+bar set: 1.1
+foo set: 1.5 1.4 1.3 1.1.1.1 1.2
+EOF
+cmpfiles WANT GOT
+# Explicit path to repo product root
+bk range -SL"$HERE/repo.3" > GOT
+cmpfiles WANT GOT
+# Explicit path to repo component root
+bk range -SL"$HERE/repo.3/gcc" > GOT
+cmpfiles WANT GOT
+# Now test using parent, sccslog, log, and diffs
+bk sccslog -SL -nd':GFILE:|:I:' | bk _sort > GOT
+cat <<EOF > WANT
+bar|1.1
+foo|1.1.1.1
+foo|1.2
+foo|1.3
+foo|1.4
+foo|1.5
+EOF
+cmpfiles WANT GOT
+#
+bk log -SL -nd':GFILE:|:I:' | bk _sort > GOT
+cmpfiles WANT GOT
+#
+bk diffs -nSL > GOT
+cat <<EOF > WANT
+===== bar 1.0 vs edited =====
+a0 1
+new bar
+===== foo 1.1.2.1 vs edited =====
+a0 1
+dataland
+EOF
+cmpfiles WANT GOT
+echo OK

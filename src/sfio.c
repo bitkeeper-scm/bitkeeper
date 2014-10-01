@@ -992,13 +992,9 @@ in_hardlink(char *file, int pathlen, int extract)
 	buf[pathlen] = 0;
 	sum = adler32(0, buf, pathlen);
 	if (extract) {
-		if (link(buf, file)) {
-			mkdirf(file);
-			if (opts->force) unlink(file);
-			if (link(buf, file)) {
-				perror(file);
-				return (1);
-			}
+		if (fileLink(buf, file)) {
+			perror(file);
+			return (1);
 		}
 	}
 	if (fread(buf, 1, 10, stdin) != 10) {

@@ -170,6 +170,7 @@ void	try_clone1_2(int quiet, int gzip,
 int	remote_lock_fail(char *buf, int verbose);
 void	drainErrorMsg(remote *r, char *buf, int bsize);
 int	listType(char *type);
+int	bkd_isSafe(char *file);
 int	unsafe_cd(char *path);
 int	bkd_seed(char *oldseed, char *newval, char **newout);
 void	bkd_saveSeed(char *repoid, char *seed);

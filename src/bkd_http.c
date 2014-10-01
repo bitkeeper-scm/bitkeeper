@@ -1386,30 +1386,28 @@ http_error(int status, char *fmt, ...)
 	    "\r\n",
 	    status, http_time(), BKWEB_SERVER_VERSION);
 
-	strcpy(buf, "<html><head><title>Error!</title></head>\n"
-	    "<body alink=black link=black bgcolor=white>\n");
-	sprintf(buf+strlen(buf), "<h2>Error %d</h2>\n", status);
-	size = strlen(buf);
+	puts("<html><head><title>Error!</title></head>\n"
+	    "<body alink=black link=black bgcolor=white>");
 
+	size = sizeof(buf);
 	va_start(ptr,fmt);
-	ct = vsnprintf(buf+size, sizeof buf-size-1, fmt, ptr);
+	ct = vsnprintf(buf, size, fmt, ptr);
 	va_end(ptr);
 
 	if (ct == -1) {
-		/* buffer overflow -- we didn't really need that message */
-		buf[size] = 0;
-	} else {
-		strcat(buf, "\n");
+		/* vsnprintf hit a problem other than truncation */
+		strcpy(buf, "unknown error");
 	}
 	puts("<center>\n"
             "<table>\n"
 	    "<tr bgcolor=red fgcolor=white>\n"
-	    "  <td align=center>\n");
+	    "  <td align=center>");
+	printf("<br>\n<h2>Error %d</h2>\n", status);
 	puts(buf);
 	puts("  </td>\n"
 	    "</tr>\n"
 	    "</table>\n"
-            "</center>\n");
+            "</center>");
 
 	puts("<hr>\n"
 	    "<table width=100%>\n"
@@ -1421,8 +1419,8 @@ http_error(int status, char *fmt, ...)
 	    "  </a>"
 	    "  </td>\n"
 	    "</tr>\n"
-	    "</table>\n");
-	puts("</body>\n");
+	    "</table>");
+	puts("</body></html>");
 	flushExit(1);
 }
 
@@ -1460,6 +1458,12 @@ parseurl(char *url)
 	 * Handle directries without slashes.
 	 */
 	dir = (!*url || isdir(url));
+
+	unless (bkd_isSafe(url)) {
+		http_error(403,
+		    "BK/Web cannot access data outside of "
+		    "the directory where the bkd was started.");
+	}
 	if (*url && (url[strlen(url)-1] != '/') && dir) {
 		/* redirect with trailing / */
 		printf("HTTP/1.0 301\r\n"
@@ -1900,6 +1904,7 @@ http_cat(char *page)
 	FILE	*f;
 	int	i;
 	char	*cmd, *file;
+	int	hdr = 0;
 	char	buf[MAXLINE];
 	char	*rev = hash_fetchStr(qin, "REV");
 
@@ -1918,12 +1923,16 @@ http_cat(char *page)
 	f = popen(cmd, "r");
 	free(cmd);
 	unless (f) http_error(404, "unknown file");
-	httphdr(file);
 
 	while ((i = fread(buf, 1, sizeof(buf), f)) > 0) {
+		unless (hdr) {
+			httphdr(file);
+			hdr = 1;
+		}
 		fwrite(buf, 1, i, stdout);
 	}
-	pclose(f);
+	if (pclose(f) && !hdr) http_error(404, "unknown file");
+	unless (hdr) httphdr(file); /* empty file */
 }
 
 private void
