@@ -16,10 +16,13 @@
 BK_NO_HARDLINK_CLONE=1
 export BK_NO_HARDLINK_CLONE
 
-echo 'binfile:no!' > "`bk dotbk`"/config
+echo 'BAM:no!' > "`bk dotbk`"/config
 
 echo $N Create initial repositories .................................$NL
 fresh_commercial project
+echo hi > ff
+bk new $Q ff
+bk commit $Q -yff || fail
 bk -r check -ac	# Add's rootlog
 bk -r admin -z   # make sure all files use canonical packing size
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -36,10 +39,7 @@ test -d project/.bk -a "$PLATFORM" = "WIN32" && exit 0
 echo $N Try to relink them ..........................................$NL
 NFILE=`bk sfiles project | wc -l`
 NFILE=`expr $NFILE + 0`	# trim the white space
-bk relink clone project 2>OUT || {
-	cat OUT
-	exit 1
-}
+bk relink clone project 2>OUT || fail -f OUT
 grep -q "relinked $NFILE/$NFILE files, 0 different, 0 already linked." OUT || {
 	echo Bad status message
 	cat OUT
@@ -166,4 +166,12 @@ test `wc -l < OUT` -eq 2 || {
 	cat OUT
 	exit 1
 }
+echo OK
+
+echo $N Setup timestamp error........................................$NL
+cd "$HERE"
+bk --cd=clone3 admin -z ff
+bk relink project clone3 2>OUT || fail
+echo "project: relinked 1/7 files, 0 different, 6 already linked." > WANT
+cmpfiles OUT WANT
 echo OK

@@ -1777,10 +1777,11 @@ relink(char *a, char *b)
 			}
 			return (-1);
 		}
-		if (sa.st_mtime < sb.st_mtime) {
+		if ((sa.st_mtime < sb.st_mtime) && proj_hasOldSCCS(0)) {
 			/*
 			 * Sfile timestamps can only go backwards. So
-			 * move b if a was older.
+			 * move b if a was older.  But don't bother in
+			 * a remapped tree, no one sees the time.
 			 */
 			ut.actime = ut.modtime = sa.st_mtime;
 			utime(b, &ut);
