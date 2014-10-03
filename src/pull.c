@@ -387,8 +387,9 @@ err:		freeLines(envVar, free);
 	if (!rc && pstats_beforeTIP) {
 		proj_reset(0);
 		unless (streq(pstats_beforeTIP, proj_tipmd5key(0))) {
-			systemf("bk rset -Hr%s..+ | bk diffs --stats-only -",
-			    pstats_beforeTIP);
+			systemf("bk rset %s -Hr%s..+ "
+			    "| bk diffs --stats-only -",
+			    opts.port ? "-S" : "", pstats_beforeTIP);
 		}
 	}
 done:	freeLines(envVar, free);
