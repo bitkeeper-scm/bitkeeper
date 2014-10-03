@@ -889,7 +889,7 @@ bk _rm -f 'SCCS/r.space file'
 cd ..
 bk get $Q -eM -g ChangeSet
 bk commit $Q -R -c 2>ERR && fail -f ERR
-grep -q 'check: ChangeSet 1.18 is a merge but is missing a required merge delta' ERR || fail -f ERR wrong error
+grep -q 't: ChangeSet is a merge but is missing' ERR || fail -f ERR wrong error
 echo OK
 
 echo $N Automerge a trigger after automerging gone ..................$NL

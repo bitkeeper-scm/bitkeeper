@@ -569,27 +569,71 @@ getfilekey(char *sfile, char *rev, sccs *cset, ser_t cset_d, char ***keys)
 }
 
 /*
+ * If lots of gone open tips, then we'll want to keep the gone DB open.
+ * Similar logic to open tip error handling in check.c:buildKeys().
+ */
+private	int
+missingMerge(sccs *cset, u32 rkoff)
+{
+	MDBM	*goneDB = loadDB(GONE, 0, DB_GONE);
+	int	ret = 0;
+
+	unless (mdbm_fetch_str(goneDB, HEAP(cset, rkoff))) {
+		fprintf(stderr,
+		    "commit: ChangeSet is a merge but is missing\n"
+		    "a required merge delta for this rootkey\n");
+		fprintf(stderr, "\t%s\n", HEAP(cset, rkoff));
+		ret = 1;
+	}
+	mdbm_close(goneDB);
+	return (ret);
+}
+
+/*
  * We are about to create a new cset 'd' with 'keys' in the weave.
  * This function computes the new SUM() for 'd'.  The changeset checksum
  * is the sum of the list of all rk/dk pairs for the current tip, so
  * we need to add the new files and then for updated files subtract the
  * old keys and add the new keys.
  *
+ * SUM(cset, d) has been preset to the PARENTs checksum.  That's why
+ * the MERGE case is asymmetrical - scanning RED for new and BLUE for
+ * matches.
+ *
  * Where possible we as little of the existing weave as possible to get
  * the data needed.
+ *
+ * seen hash: keys are rootkey offset in heap; values are 0, RED, BLUE
+ * corresponding to tip, branch and trunk as where this rootkey was
+ * first spotted.  While in one region we see it was first seen in
+ * another region, report error.
  */
-private void
+private int
 updateCsetChecksum(sccs *cset, ser_t d, char **keys)
 {
 	hash	*h = hash_new(HASH_MEMHASH);
 	int	i, cnt = 0, todo = 0;
 	u32	sum = 0;
+	u32	color = 0;
 	char	*rk, *dk;
 	u32	rkoff, dkoff;
 	u8	*p;
-	ser_t	e, red;
+	ser_t	e, old;
 	hash	*seen = 0;
+	int	ret = 0;
 
+	if (MERGE(cset, d)) {
+		/*
+		 * Add in some MERGE side keys (colored RED)
+		 * to todo list.  Also color PARENT side BLUE and
+		 * use the seen hash both for computing what csets in RED
+		 * to add to todo, as well as look for non merged tips.
+		 */
+		cset->rstart = 0;
+		range_walkrevs(cset,
+		    PARENT(cset, d), 0, MERGE(cset, d), WR_BOTH, 0, 0);
+		if (cset->rstart) seen = hash_new(HASH_MEMHASH);
+	}
 	EACH(keys) {
 		++cnt;
 		rk = keys[i++];
@@ -599,43 +643,57 @@ updateCsetChecksum(sccs *cset, ser_t d, char **keys)
 		if (rkoff = sccs_hasRootkey(cset, rk)) {
 			++todo;
 			hash_insert(h, &rkoff, sizeof(rkoff), 0, 0);
+			if (seen) {
+				hash_insert(seen,
+				    &rkoff, sizeof(rkoff), 0, sizeof(color));
+			}
 		} else {
 			/* new file, just add rk now */
 			for (p = rk; *p; p++) sum += *p;
 			sum += ' ' + '\n';
 		}
 	}
-	if (MERGE(cset, d)) {
-		/*
-		 * Add in some MERGE side keys (colored RED)
-		 * to todo list.
-		 */
-		cset->rstart = 0;
-		range_walkrevs(cset,
-		    PARENT(cset, d), 0, MERGE(cset, d), 0,
-		    walkrevs_setFlags, uint2p(D_RED));
-		if (cset->rstart) seen = hash_new(HASH_MEMHASH);
-	}
 	if (todo || seen) {
 		sccs_rdweaveInit(cset);
-		red = 0;
+		old = d;
 		while (e = cset_rdweavePair(cset, 0, &rkoff, &dkoff)) {
-			if (FLAGS(cset, e) & D_RED) {
-				if (red != e) {
-					if (red) FLAGS(cset, red) &= ~D_RED;
-					red = e;
+			if (seen && (old != e)) {
+				/* also clear colors for csets with no data */
+				for (old--; old >= e; old--) {
+					color =
+					    FLAGS(cset, old) & (D_RED|D_BLUE);
+					FLAGS(cset, old) &= ~(D_RED|D_BLUE);
 				}
-				/* if RED seen first and not in commit; add */
+				old = e;
+				if (e < cset->rstart) {
+					/* all clean and done with merge */
+					hash_free(seen);
+					seen = 0;
+				}
+				/* leave with color set to cset e */
+			}
+			if (color) { /* in non-gca region of merge */
 				if (hash_insert(seen,
-				    &rkoff, sizeof(rkoff), 0, 0) &&
-				    hash_insert(h, 
-				    &rkoff, sizeof(rkoff), 0, 0)) {
-					++todo;
-					for (p = HEAP(cset, dkoff); *p; p++) {
-						sum += *p;
+				    &rkoff, sizeof(rkoff),
+				    &color, sizeof(color))) {
+					/* first time this rk was seen... */
+					if ((color & D_RED) &&
+					    hash_insert(h, &rkoff,sizeof(rkoff),
+						0, 0)) {
+						/* In merge and not in commit */
+						++todo;
+						p = HEAP(cset, dkoff);
+						while (*p) sum += *p++;
 					}
+				} else if (!ret && *(u32 *)seen->vptr &&
+				    (color != *(u32 *)seen->vptr)) {
+					/*
+					 * Not in commit, but included in both
+					 * local and remote side of merge
+					 */
+					ret = missingMerge(cset, rkoff);
 				}
-				continue;
+				if (color & D_RED) continue;
 			}
 			unless (hash_delete(h, &rkoff, sizeof(rkoff))) {
 				/*
@@ -645,15 +703,17 @@ updateCsetChecksum(sccs *cset, ser_t d, char **keys)
 				for (p = HEAP(cset, dkoff); *p; sum -= *p++);
 				--todo;
 			}
-			if (seen && (e >= cset->rstart)) {
-				/* still in merge region so remember rks */
-				hash_insert(seen, &rkoff, sizeof(rkoff), 0, 0);
+			if (seen) {
+				/* save if GCA region (no color) first to see */
+				unless (color) {
+					hash_insert(seen, &rkoff,
+					    sizeof(rkoff), 0, sizeof(color));
+				}
 			} else if (!todo) {
 				/* no more rootkeys to find, done. */
 				break;
 			}
 		}
-		if (red) FLAGS(cset, red) &= ~D_RED;
 		if (seen) hash_free(seen);
 		sccs_rdweaveDone(cset);
 	}
@@ -672,6 +732,7 @@ updateCsetChecksum(sccs *cset, ser_t d, char **keys)
 	SUM_SET(cset, d, (u16)(SUM(cset, d) + sum));
 	SORTSUM_SET(cset, d, SUM(cset, d));
 	ADDED_SET(cset, d, cnt);
+	return (ret);
 }
 
 /*
@@ -685,7 +746,6 @@ mkChangeSet(sccs *cset, char *files, char ***keys)
 {
 	ser_t	d, d2, p;
 	char	*line, *rev, *t;
-	int	flags = GET_HASHONLY|GET_SUM|GET_SHUTUP|SILENT;
 	FILE	*f;
 	pfile	pf;
 	char	buf[MAXLINE];
@@ -696,7 +756,6 @@ mkChangeSet(sccs *cset, char *files, char ***keys)
 	if (LOCKED(cset)) {
 		if (sccs_read_pfile("commit", cset, &pf)) return (0);
 	} else {
-		flags |= GET_EDIT;
 		memset(&pf, 0, sizeof(pf));
 		pf.oldrev = strdup("+");
 	}
@@ -788,7 +847,7 @@ mkChangeSet(sccs *cset, char *files, char ***keys)
 			getfilekey(line, rev, cset, d, keys);
 		}
 		fclose(f);
-		updateCsetChecksum(cset, d, *keys);
+		if (updateCsetChecksum(cset, d, *keys)) return (0);
 	}
 
 	if (d == TREE(cset)) {

@@ -170,3 +170,53 @@ cmpfiles WANT GOT
 bk sfiles -P > GOT
 cmpfiles WANT GOT
 echo OK
+
+echo $N Test out broken merge detection .............................$NL
+# Setup this and next test for bad merge detection
+cd "$HERE"
+commercial base
+touch foo bar
+bk new $Q -l foo bar
+bk commit $Q -f
+bk clone $Q --checkout=edit . ../merge
+bk delta $Q -lfynull foo bar
+bk commit $Q -f
+cd ../merge
+echo content > bar
+bk delta $Q -fynull foo bar
+bk commit $Q -f
+bk _rm SCCS/s.foo
+bk -r check -ag | bk gone $Q -
+bk commit $Q -f
+cd ../base
+bk delta $Q -fynull foo bar
+bk commit $Q -f
+bk _rm SCCS/s.foo
+bk -r check -ag | bk gone $Q -
+bk commit $Q -f
+bk clone $Q . ../stuff
+cd ../stuff
+touch zoo
+bk new $Q zoo
+bk commit $Q -f
+cd ../merge
+bk pull $Q -R
+# The gone file is in place, so the resolve would normally work.
+# Reach in through the resolve and zero it.
+# A conflict was set up in meaningless file 'bar'. Just sccs merge it.
+bk resolve <<EOF 2> ERR && fail -f ERR
+!bk edit -q BitKeeper/etc/gone
+!echo > BitKeeper/etc/gone
+!bk delta -q -ygone BitKeeper/etc/gone
+s
+C
+EOF
+grep -q "commit: ChangeSet is a merge but is missing" ERR || fail -f ERR
+# restore gone, it commits!
+bk edit $Q -x+ RESYNC/BitKeeper/etc/gone
+bk resolve $Q || fail
+echo OK
+
+echo $N Test out broken merge in the past does not break things .....$NL
+bk pull $Q ../stuff || fail
+echo OK

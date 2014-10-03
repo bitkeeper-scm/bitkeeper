@@ -29,7 +29,8 @@ echo 'SCCS/s.foo|+' | bk commit $Q -y'foo' - || fail
 bk pull -q 2> GOT && fail -f GOT
 sanitize GOT
 cat <<EOF > WANT
-check: ChangeSet 1.4 is a merge but is missing a required merge delta for this rootkey
+commit: ChangeSet is a merge but is missing
+a required merge delta for this rootkey
 	<foo>
 The commit is aborted.
 Commit aborted, no changes applied.
