@@ -1977,12 +1977,14 @@ sccs_rdweaveInit(sccs *s)
 	assert(!s->rdweave);
 	s->rdweave = 1;
 	if (CSET(s)) T_PERF("%s", s->gfile);
+	s->w_d = TABLE(s);	/* default start */
 	if (BWEAVE(s)) {
-		s->w_d = TABLE(s);
 		s->w_off = 0;
 		s->w_buf = malloc(2*MAXKEY + 64);
 		s->w_reverse = 0;
 		return;
+	} else {
+		s->w_cur = TABLE(s);
 	}
 	unless (s->fh) {
 		if (sccs_open(s)) {
@@ -2131,6 +2133,10 @@ cset_rdweavePair(sccs *s, u32 flags, u32 *rkoff, u32 *dkoff)
 			}
 			unless (s->w_off || (s->w_off = WEAVE_INDEX(s, d))) {
 				/* skip tags and empty csets */
+				if (flags & RWP_ONE) {
+					s->w_d = s->w_reverse ? ++d : --d;
+					return (0);
+				}
 				continue;
 			}
 			if (roff = RKOFF(s, s->w_off)) {
@@ -2152,18 +2158,24 @@ cset_rdweavePair(sccs *s, u32 flags, u32 *rkoff, u32 *dkoff)
 		s->rdweaveEOF = 1;
 		return (0);
 	}
-again:	unless (buf = fgetline(s->fh)) {
+	/* Old style cset weave */
+again:	if ((flags & RWP_ONE) && (s->w_cur < s->w_d)) {
+		assert(!s->w_reverse);
+		s->w_d--;
+		return (0);
+	}
+
+	unless (buf = fgetline(s->fh)) {
 eof:		s->rdweaveEOF = 1;
 		return (0);
 	}
 	if (buf[0] == '\001') {
 		if (buf[1] == 'I') {
-			s->w_d = atoi(buf+3);
-			if (s->remap) s->w_d = s->remap[s->w_d];
+			s->w_cur = atoi(buf+3);
+			if (s->remap) s->w_cur = s->remap[s->w_cur];
 			goto again;
 		} else if (buf[1] == 'E') {
-			s->w_d = 0;
-			if (flags & RWP_ONE) return (0);
+			s->w_cur--;
 			goto again;
 		} else if (buf[1] == 'Z') {
 			goto eof;
@@ -2173,7 +2185,9 @@ eof:		s->rdweaveEOF = 1;
 			assert(0);
 		}
 	}
-	assert(s->w_d);
+	assert(s->w_d && s->w_cur);
+	if (s->w_cur > s->w_d) goto again;
+	s->w_d = s->w_cur;
 	if ((flags & RWP_DSET) && !(FLAGS(s, s->w_d) & D_SET)) goto again;
 	dk = separator(buf);
 	*dk++ = 0;
@@ -2192,6 +2206,7 @@ cset_firstPairReverse(sccs *s, ser_t first)
 {
 	assert(BWEAVE(s));
 	s->w_d = first;
+	s->w_off = 0;
 	s->w_reverse = 1;
 }
 
@@ -2203,6 +2218,7 @@ void
 cset_firstPair(sccs *s, ser_t first)
 {
 	s->w_d = first;
+	s->w_off = 0;
 	s->w_reverse = 0;
 }
 
@@ -6152,7 +6168,7 @@ sccs_impliedList(sccs *s, char *who, char *base, char *rev)
 	/* XXX: This can go away when serialmap does this directly
 	 */
 
-	unless (baseRev = findrev(s, base)) {
+	unless (baseRev = sccs_findrev(s, base)) {
 		fprintf(stderr,
 		    "%s: cannot find base rev %s in %s\n",
 		    who, base, s->sfile);
@@ -6162,7 +6178,7 @@ err:		s->state |= S_WARNED;
 		if (slist) free(slist);
 		return (0);
 	}
-	unless (mRev = findrev(s, rev)) {
+	unless (mRev = sccs_findrev(s, rev)) {
 		fprintf(stderr,
 		    "%s: cannot find merge rev %s in %s\n",
 		    who, rev, s->sfile);
@@ -6473,47 +6489,6 @@ getSymlnkCksumDelta(sccs *s, ser_t d)
 	return (d);
 }
 
-/*
- * fail if
- *   - the file for rk is there, and delta dk is missing and gone
- *   - the rk is gone and the file is missing
- * goneDB normally doesn't use the hash value.  Here it stores a "1"
- * in place of the default "" to mean really gone (not in file system).
- */
-private	int
-deltaChk(sccs *cset, char *rk, char *dk)
-{
-	sccs	*s;
-	char	*rkgone;
-	int	rc = 0;
-	char	buf[MAXPATH];
-
-	unless ((rkgone = mdbm_fetch_str(cset->goneDB, rk)) ||
-	    mdbm_fetch_str(cset->goneDB, dk)) {
-	    	return (0);
-	}
-	if (rkgone && (*rkgone == '1')) return (1);
-	unless (cset->idDB) {
-		concat_path(buf, proj_root(cset->proj), getIDCACHE(cset->proj));
-		unless (cset->idDB = loadDB(buf, 0, DB_IDCACHE)) {
-			perror(buf);
-			exit(1);
-		}
-	}
-	if (s = sccs_keyinit(cset->proj, rk, SILENT, cset->idDB)) {
-		/* if file there, but key is missing, ignore line. */
-		unless (sccs_findKey(s, dk)) rc = 1;
-		sccs_free(s);
-	} else if (rkgone) {
-		/* if no file, mark goneDB that it was really gone */
-		mdbm_store_str(cset->goneDB, rk, "1", MDBM_REPLACE);
-		rc = 1;
-	} else {
-		// not rk gone but no keyinit -- let rset fail => rc = 0;
-	}
-	return (rc);
-}
-
 private int
 getKey(sccs *s, MDBM *DB, char *data, int hashFlags, int flags, hashpl *dbstate)
 {
@@ -6531,13 +6506,8 @@ getKey(sccs *s, MDBM *DB, char *data, int hashFlags, int flags, hashpl *dbstate)
 		return (-1);
 	}
 	*v++ = 0;
-	if (flags & GET_SKIPGONE) {
-		if (mdbm_fetch_str(DB, k) || deltaChk(s, k, v)) {
-			goto skip;
-		}
-	}
 	if (mdbm_store_str(DB, k, v, MDBM_INSERT) && (errno == EEXIST)) {
-skip:		rc = 0;
+		rc = 0;
 	} else {
 		rc = 1;
 	}
@@ -6889,7 +6859,7 @@ get_reg(sccs *s, char *printOut, int flags, ser_t d,
 	}
 	/* we're changing the meaning of the file, checksum would be invalid */
 	if (HASH(s)) {
-		if (flags & (GET_NOHASH|GET_SKIPGONE)) flags &= ~NEWCKSUM;
+		if (flags & (GET_NOHASH)) flags &= ~NEWCKSUM;
 	}
 
 	if ((HASH(s) || DB(s)) && !(flags & GET_NOHASH)) {
@@ -7302,7 +7272,7 @@ get_bp(sccs *s, char *printOut, int flags, ser_t d,
 	 */
 #define	BAD	(GET_PREFIX|GET_ASCII|GET_ALIGN|\
 		GET_NOHASH|GET_HASHONLY|GET_DIFFS|GET_BKDIFFS|\
-		GET_SKIPGONE|GET_SEQ)
+		GET_SEQ)
 	if (flags & BAD) {
 		fprintf(stderr,
 		    "get: bad flags on get for %s: %x\n", s->gfile, flags);
@@ -18019,6 +17989,71 @@ sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB)
 	localkey = 0;
 out:	if (s) sccs_free(s);
 	return (0);
+}
+
+/*
+ * Cache the sccs struct to avoid re-initing the same sfile
+ */
+sccs	*
+sccs_keyinitAndCache(project *proj, char *key, u32 flags, MDBM *sDB, MDBM *idDB)
+{
+	datum	k, v;
+	sccs	*s;
+	char	*path, *here;
+	project	*prod;
+
+	k.dptr = key;
+	k.dsize = strlen(key);
+	v = mdbm_fetch(sDB, k);
+	if (v.dptr) { /* cache hit */
+		memcpy(&s, v.dptr, sizeof (sccs *));
+		return (s);
+	}
+	s = sccs_keyinit(proj, key, flags|INIT_NOWARN, idDB);
+
+	/*
+	 * When running in a nested product's RESYNC tree we we can
+	 * descend to the fake component's directories and won't be
+	 * able to find files in those components.
+	 * (ex: 'bk changes -v' in post-commit trigger after merge)
+	 * In this case the resolve of components have already been
+	 * completed so we just look for the already resolved file
+	 * in the original tree.
+	 * NOTE: nothing here is optimized
+	 */
+	if (!s && (prod = proj_product(proj)) &&
+	    (prod = proj_isResync(prod))) {
+		MDBM	*idDB, *goneDB;	// local to this block
+
+		here = strdup(proj_cwd());
+		chdir(proj_root(prod));
+		idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+		goneDB = loadDB(GONE, 0, DB_GONE);
+		if (path = key2path(proj_rootkey(proj), idDB, goneDB, 0)) {
+			mdbm_close(idDB);
+			proj = proj_init(path);
+			chdir(path);
+			free(path);
+			idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+			chdir(proj_root(prod));
+			s = sccs_keyinit(proj, key, flags|INIT_NOWARN, idDB);
+			proj_free(proj);
+		}
+		mdbm_close(idDB);
+		mdbm_close(goneDB);
+		chdir(here);
+		free(here);
+	}
+	v.dptr = (void *) &s;
+	v.dsize = sizeof (sccs *);
+	/* cache the new entry */
+	if (mdbm_store(sDB, k, v, MDBM_INSERT)) {
+		perror("sccs_keyinitAndCache");
+	}
+	if (s) {
+		sccs_close(s); /* we don't need the delta body */
+	}
+	return (s);
 }
 
 void

@@ -863,72 +863,6 @@ dumplog(char **list, sccs *sc, ser_t cset, char *dspec, int flags, FILE *f)
 }
 
 /*
- * Cache the sccs struct to avoid re-initing the same sfile
- */
-private sccs *
-sccs_keyinitAndCache(project *proj, char *key, int flags, struct rstate *rs)
-{
-	datum	k, v;
-	sccs	*s;
-	char	*path, *here;
-	project	*prod;
-
-	k.dptr = key;
-	k.dsize = strlen(key);
-	v = mdbm_fetch(rs->graphDB, k);
-	if (v.dptr) { /* cache hit */
-		memcpy(&s, v.dptr, sizeof (sccs *));
-		return (s);
-	}
-	s = sccs_keyinit(proj, key, flags|INIT_NOWARN, rs->idDB);
-
-	/*
-	 * When running in a nested product's RESYNC tree we we can
-	 * descend to the fake component's directories and won't be
-	 * able to find files in those components.
-	 * (ex: 'bk changes -v' in post-commit trigger after merge)
-	 * In this case the resolve of components have already been
-	 * completed so we just look for the already resolved file
-	 * in the original tree.
-	 * NOTE: nothing here is optimized
-	 */
-	if (!s && (prod = proj_product(proj)) &&
-	    (prod = proj_isResync(prod))) {
-		MDBM	*idDB, *goneDB;	// local to this block
-
-		here = strdup(proj_cwd());
-		chdir(proj_root(prod));
-		idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
-		goneDB = loadDB(GONE, 0, DB_GONE);
-		if (path = key2path(proj_rootkey(proj), idDB, goneDB, 0)) {
-			mdbm_close(idDB);
-			proj = proj_init(path);
-			chdir(path);
-			free(path);
-			idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
-			chdir(proj_root(prod));
-			s = sccs_keyinit(proj, key, flags|INIT_NOWARN, idDB);
-			proj_free(proj);
-		}
-		mdbm_close(idDB);
-		mdbm_close(goneDB);
-		chdir(here);
-		free(here);
-	}
-	v.dptr = (void *) &s;
-	v.dsize = sizeof (sccs *);
-	/* cache the new entry */
-	if (mdbm_store(rs->graphDB, k, v, MDBM_INSERT)) {
-		perror("sccs_keyinitAndCache");
-	}
-	if (s) {
-		sccs_close(s); /* we don't need the delta body */
-		if (opts.doComp) s->prs_indentC = 1;
-	}
-	return (s);
-}
-
-/*
  * Given a "top" delta "d", this function computes ChangeSet boundaries
  * It collect all the deltas inside a changeset and stuff them to "list".
  */
@@ -1296,7 +1230,8 @@ cset(hash *state, sccs *sc, char *compKey, char *pkey, FILE *f, char *dspec)
 					hasComps = 1;
 				}
 			}
-			s = sccs_keyinitAndCache(sc->proj, rkey, iflags,rstate);
+			s = sccs_keyinitAndCache(sc->proj, rkey, iflags,
+			    rstate->graphDB, rstate->idDB);
 			unless (s) {
 				unless (gone(rkey, rstate->goneDB)) {
 					fprintf(stderr,
@@ -1305,6 +1240,7 @@ cset(hash *state, sccs *sc, char *compKey, char *pkey, FILE *f, char *dspec)
 				}
 				continue;
 			}
+			if (opts.doComp) s->prs_indentC = 1;
 			if (CSET(s) && !proj_isComponent(s->proj)) continue;
 			unless (d = sccs_findKey(s, dkey)) {
 				if (gone(dkey, rstate->goneDB)) continue;
@@ -1380,7 +1316,9 @@ cset(hash *state, sccs *sc, char *compKey, char *pkey, FILE *f, char *dspec)
 		foundComps = 0;
 		EACH(complist) {
 			rkey = keys[p2int(complist[i])];
-			s = sccs_keyinitAndCache(sc->proj, rkey, iflags,rstate);
+			s = sccs_keyinitAndCache(sc->proj, rkey, iflags,
+			    rstate->graphDB, rstate->idDB);
+			if (s && opts.doComp) s->prs_indentC = 1;
 
 			dkey = rkey + strlen(rkey) + 1;
 			assert(dkey);

@@ -10,6 +10,7 @@ struct	range {
 
 #define RANGE_ENDPOINTS	0x10	/* just return s->rstart s->rstop */
 #define	RANGE_SET	0x20	/* return S_SET */
+#define	RANGE_RSTART2	0x40	/* allow s->rstart2 */
 
 #define	WR_BOTH		0x01	/* keep RED and BLUE; callback on both */
 #define	WR_GCA		0x02	/* Callback only on the gca deltas */

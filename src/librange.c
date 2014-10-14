@@ -243,8 +243,19 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 	}
 	if (flags & RANGE_ENDPOINTS) {
 		unless (rargs->rstart) return (0);
+		rev = 0;
+		if (flags & RANGE_RSTART2) {
+			if (rev = strchr(rargs->rstart, ',')) *rev = 0;
+		}
 		unless (s->rstart = getrev(me, s, flags, rargs->rstart)) {
+			if (rev) *rev = ',';
 			goto out;
+		}
+		if (rev) {
+			*rev++ = ',';
+			unless (s->rstart2 = getrev(me, s, flags, rev)) {
+				goto out;
+			}
 		}
 		if (rargs->rstop &&
 		    !(s->rstop = getrev(me, s, flags, rargs->rstop))) {

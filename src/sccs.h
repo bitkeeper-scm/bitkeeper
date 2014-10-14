@@ -89,7 +89,7 @@ int	checking_rmdir(char *dir);
 #define GET_NOREGET	0x00000400	/* get -S: skip gfiles that exist */
 #define	GET_LINENAME	0x00000800	/* get -O: prefix with line name */
 #define	GET_RELPATH	0x00000010	/* like GET_MODNAME but full relative */
-#define	GET_SKIPGONE	0x00000020	/* ignore gone deltas in HASH */
+/* Unused		0x00000020 */
 #define	GET_SEQ		0x00000040	/* sccs_get: prefix with sequence no */
 /* Unused		0x00000080 */
 #define	GET_PREFIX	\
@@ -714,11 +714,13 @@ struct sccs {
 	mode_t	mode;		/* mode of the gfile */
 	off_t	data;		/* offset to data in file */
 	ser_t	rstart;	/* start of a range (1.1 - oldest) */
+	ser_t	rstart2;	/* handle merge range: rstart,rstart2..rstop */
 	ser_t	rstop;		/* end of range (1.5 - youngest) */
 	ser_t	remote;	/* sccs_resolveFiles() sets this */
 	ser_t	local;		/* sccs_resolveFiles() sets this */
 	ser_t	*remap;		/* scompress remap old ser to new ser */
 	ser_t	w_d;		/* current d for cset_rdweavePair() */
+	ser_t	w_cur;		/* locator in non BWEAVE cset file */
 	u32	w_off;		/* next weave line for sccs_nextdata() */
 	char	*w_buf;		/* buf for weave line in sccs_nextdata() */
 	sum_t	 cksum;		/* SCCS chksum */
@@ -1138,6 +1140,8 @@ int	sccs_reCache(int quiet);
 int	sccs_findtips(sccs *s, ser_t *a, ser_t *b);
 int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB);
+sccs	*sccs_keyinitAndCache(
+	    project *proj, char *key, u32 flags, MDBM *sDB, MDBM *idDB);
 
 int	sccs_lockfile(char *lockfile, int wait, int quiet);
 int	sccs_stalelock(char *lockfile, int discard);

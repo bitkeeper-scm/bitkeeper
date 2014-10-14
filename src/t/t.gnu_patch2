@@ -206,7 +206,7 @@ bk export -tpatch -rCSET_B,BADCSET 2> OUT && {
 	echo export should not have worked
 	exit 1
 }
-grep -q "Cannot find revision.*BADCSET" OUT || {
+grep -q "rset: no such delta \`\`BADCSET'' in ChangeSet" OUT || {
 	echo Didn\'t find expected error message
 	cat OUT
 	exit 1
@@ -215,7 +215,7 @@ bk export -tpatch -rBADCSET,CSET_B 2> OUT && {
 	echo export should not have worked
 	exit 1
 }
-grep -q "Cannot find revision.*BADCSET" OUT || {
+grep -q "rset: no such delta \`\`BADCSET'' in ChangeSet" OUT || {
 	echo Didn\'t find expected error message
 	cat OUT
 	exit 1
