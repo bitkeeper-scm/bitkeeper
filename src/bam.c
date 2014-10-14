@@ -2414,7 +2414,7 @@ bam_convert_main(int ac, char **av)
 
 	/* force new cset file to be written in SCCS format */
 	s->encoding_out = sccs_encoding(s, 0, 0);
-	s->encoding_out &= ~(E_BK|E_BWEAVE);
+	s->encoding_out &= ~E_FILEFORMAT;
 	sccs_startWrite(s);
 	delta_table(s, 0);
 	sccs_rdweaveInit(s);

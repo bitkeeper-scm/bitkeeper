@@ -766,7 +766,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		features_set(0, FEAT_REMAP, !proj_hasOldSCCS(0));
 		if (opts->bkfile != -1) {
 			features_set(0,
-			    FEAT_BKFILE|FEAT_BWEAVE|FEAT_SCANDIRS, opts->bkfile);
+			    FEAT_FILEFORMAT|FEAT_SCANDIRS, opts->bkfile);
 		}
 	}
 
@@ -846,8 +846,8 @@ clone(char **av, remote *r, char *local, char **envVar)
 	 * we need to do is to disable partial_check and the repository
 	 * will become the correct format.
 	 */
-	if ((features_bits(0) & (FEAT_BKFILE|FEAT_BWEAVE)) !=
-	    (rmt_features & (FEAT_BKFILE|FEAT_BWEAVE))) {
+	if ((features_bits(0) & FEAT_FILEFORMAT) !=
+	    (rmt_features & FEAT_FILEFORMAT)) {
 		p = features_fromBits(features_bits(0));
 		/* switch to (or from) binary */
 		T_PERF("switch sfile formats to %s", p);
@@ -1882,7 +1882,7 @@ attach(void)
 		fprintf(stderr, "attach: %s is already a component\n", relpath);
 		return (RET_ERROR);
 	}
-	orig_features = features_bits(0) & (FEAT_BKFILE|FEAT_BWEAVE);
+	orig_features = features_bits(0) & FEAT_FILEFORMAT;
 	/* remove any existing parent */
 	system("bk parent -qr");
 
@@ -1989,7 +1989,7 @@ attach(void)
 		 * formats wrong.  If so we need to rewrite all files
 		 * to make sure they are in the correct format.
 		 */
-		new_features = features_bits(0) & (FEAT_BKFILE|FEAT_BWEAVE);
+		new_features = features_bits(0) & FEAT_FILEFORMAT;
 		if (orig_features != new_features) {
 			system("bk -?BK_NO_REPO_LOCK=YES -r admin -Zsame");
 		}

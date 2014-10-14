@@ -349,12 +349,11 @@ check_main(int ac, char **av)
 			if (chk_BAM(s, &bp_missing)) ferr++, errors |= 0x04;
 		}
 		/* set BKFILE & BWEAVE according to repository feature file */
-		repo_feat = features_bits(0) & (FEAT_BKFILE|FEAT_BWEAVE);
+		repo_feat = features_bits(0) & FEAT_FILEFORMAT;
 		unless (CSET(s)) repo_feat &= ~FEAT_BWEAVE;
 
 		/* set BKFILE & BWEAVE accord to file encoding */
-		file_feat = (BKFILE(s) ? FEAT_BKFILE : 0) |
-		    (BWEAVE(s) ? FEAT_BWEAVE : 0);
+		file_feat = features_fromEncoding(s, s->encoding_in);
 
 		/* fix if they differ */
 		if ((repo_feat != file_feat) && !getenv("_BK_MIXED_FORMAT")) {

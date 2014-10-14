@@ -269,7 +269,7 @@ features_bkdCheck(int bkd, int no_repo)
 	features = features_bits(0);
 	/* remove local-only features */
 	features &= ~(FEAT_REMAP|FEAT_SCANDIRS);
-	features &= ~(FEAT_BKFILE|FEAT_BWEAVE);
+	features &= ~FEAT_FILEFORMAT;
 	features &= ~rmt_features;
 
 	/*
@@ -488,4 +488,36 @@ features_dumpMinRelease(void)
 	}
 	putchar('\n');
 	freeLines(list, 0);
+}
+
+/*
+ * generate feature bits from sfile encoding field
+ */
+u32
+features_fromEncoding(sccs *s, u32 encoding)
+{
+	u32	bits = 0;
+
+	if (encoding & E_BK) bits |= FEAT_BKFILE;
+	if (CSET(s)) {
+		if (encoding & E_BWEAVE) bits |= FEAT_BWEAVE;
+	}
+	return (bits);
+}
+
+/*
+ * generate sfile encoding file from feature bits
+ */
+u32
+features_toEncoding(sccs *s, u32 bits)
+{
+	u32	encoding = 0;
+
+	if (bits & FEAT_BKFILE) encoding |= E_BK;
+	if (CSET(s)) {
+		if (bits & FEAT_BWEAVE) {
+			encoding |= E_BWEAVE;
+		}
+	}
+	return (encoding);
 }

@@ -8327,7 +8327,7 @@ delta_table(sccs *s, int willfix)
 		 * don't change the ascii format.  (BKFILE is so _scat works)
 		 */
 		if (features_bits(s->proj) &
-		    ~(FEAT_BKFILE|FEAT_BWEAVE|FEAT_REMAP|FEAT_SAMv3|
+		    ~(FEAT_FILEFORMAT|FEAT_REMAP|FEAT_SAMv3|
 		      FEAT_SCANDIRS|FEAT_ALWAYS)) {
 			fputs(BKID_STR "\n", out);
 		}
@@ -11690,21 +11690,18 @@ sccs_encoding(sccs *sc, off_t size, char *encp)
 	}
 
 	if (sc && sc->proj) {
-		encoding &= ~(E_BK|E_BWEAVE|E_COMP);
-		if (features_test(sc->proj, FEAT_BKFILE)) {
-			encoding |= E_BK;
-			if (CSET(sc) &&
-			    features_test(sc->proj, FEAT_BWEAVE)) {
-				encoding |= E_BWEAVE;
-			}
-		}
+		encoding &= ~E_FILEFORMAT;
+		encoding |= features_toEncoding(sc, features_bits(sc->proj));
+
+		encoding &= ~E_COMP;
 		unless (encoding & (E_BK|E_BAM)) {
 			compp = proj_configval(sc->proj, "compression");
 
 			if (!*compp || streq(compp, "gzip")) {
 				encoding |= E_GZIP;
 			} else if (!streq(compp, "none")) {
-				fprintf(stderr, "%s: unknown compression format %s\n",
+				fprintf(stderr,
+				    "%s: unknown compression format %s\n",
 				    prog, compp);
 				return (-1);
 			}

@@ -159,7 +159,7 @@ setup_main(int ac, char **av)
 		    features_test(in_prod, FEAT_BWEAVE));
 	} else {
 		features_set(0,
-		    FEAT_BKFILE|FEAT_BWEAVE|FEAT_SCANDIRS, !sccs_compat);
+		    FEAT_FILEFORMAT|FEAT_SCANDIRS, !sccs_compat);
 	}
 
 	unless (config_path) config_path = strdup(DEVNULL_RD);

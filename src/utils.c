@@ -929,7 +929,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 			 * can encode them
 			 */
 			unless (flags & SENDENV_SENDFMT) {
-				bits &= ~(FEAT_BKFILE|FEAT_BWEAVE);
+				bits &= ~FEAT_FILEFORMAT;
 			}
 			t = features_fromBits(bits);
 		}
@@ -1185,7 +1185,7 @@ sendServerInfo(u32 cmdlog_flags)
 	} else {
 		/* remove local-only features */
 		bits &= ~(FEAT_REMAP|FEAT_SCANDIRS);
-		bits &= ~(FEAT_BKFILE|FEAT_BWEAVE);
+		bits &= ~FEAT_FILEFORMAT;
 		p = features_fromBits(bits);
 	}
 	out("\nFEATURES_REQUIRED=");

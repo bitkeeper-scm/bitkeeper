@@ -228,6 +228,9 @@ int	checking_rmdir(char *dir);
 #define	E_BK		0x08		/* new binary sfile format */
 #define	E_BWEAVE	0x10		/* binary weave encoding */
 
+// mask of bits used for sfile format that map to feature bits
+#define	E_FILEFORMAT	(E_BK|E_BWEAVE)
+
 #define	HAS_GFILE(s)	((s)->state & S_GFILE)
 #define	HAS_PFILE(s)	((s)->state & S_PFILE)
 #define	HAS_SFILE(s)	((s)->state & S_SFILE)

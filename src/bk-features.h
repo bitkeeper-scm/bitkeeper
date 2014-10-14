@@ -1,4 +1,3 @@
-
 /*
  * SCCS version string to indicate that BitKeeper/log/features must be
  * obeyed.
@@ -60,6 +59,9 @@ enum {
 #undef X
 };
 
+// features related to file format
+#define	FEAT_FILEFORMAT	(FEAT_BKFILE | FEAT_BWEAVE)
+
 int	bk_hasFeature(int f);
 int	bkd_hasFeature(int f);
 
@@ -74,3 +76,6 @@ u32	features_toBits(char *features, char *bad);
 char	*features_fromBits(u32 bits);
 int	features_minrelease(project *proj, char ***list);
 void	features_dumpMinRelease(void);
+
+u32	features_toEncoding(sccs *s, u32 bits);
+u32	features_fromEncoding(sccs *s, u32 encoding);
