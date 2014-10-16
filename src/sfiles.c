@@ -1611,9 +1611,10 @@ findsfiles(char *file, char type, void *data)
 	char	buf[MAXPATH];
 	char	tmp[MAXPATH];
 
+	unless (p) return (0);
 	if (type == 'd') {
-		if (p && patheq(p+1, "SCCS")) return (-1);
-		if (p && (p - file > si->rootlen) && patheq(p+1, "BitKeeper")) {
+		if (patheq(p+1, "SCCS")) return (-1);
+		if ((p - file > si->rootlen) && patheq(p+1, "BitKeeper")) {
 			/*
 			 * Do not cross into other package roots
 			 * (e.g. RESYNC).
@@ -1661,7 +1662,6 @@ findsfiles(char *file, char type, void *data)
 			}
 		}
 	} else {
-		assert(p);
 		if (!opts.no_bkskip && patheq(p+1, BKSKIP)) {
 			/*
 			 * Skip directory containing a .bk_skip file

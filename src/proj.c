@@ -1790,6 +1790,7 @@ proj_dirstate(project *p, char *dir, u32 state, int set)
 		assert(state);
 		dirs = 0;
 		EACH_HASH(p->scandirs) {
+			if (streq(p->scandirs->kptr, "DIRTY")) continue;
 			dirs = addLine(dirs, p->scandirs->kptr);
 		}
 		/* clear bits for all existing dirs */
