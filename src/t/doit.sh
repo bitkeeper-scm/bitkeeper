@@ -168,9 +168,10 @@ unix_common_setup()
 	done
 	export BK_LIMITPATH
 
-	# Use bash on MacOS, their ksh is broken.
+	# on MacOS, ...
 	test "X`uname`" = XDarwin &&
-	    test -x /bin/bash && ln -s /bin/bash "$BK_LIMITPATH/bash"
+		# Use bash; their ksh is broken.
+		test -x /bin/bash && ln -s /bin/bash "$BK_LIMITPATH/bash"
 }
 
 bad_mount()
@@ -498,6 +499,15 @@ clean_up()
 	if [ "$PLATFORM" = "UNIX" ]
 	then
 		bk _find "$BK_REGRESSION" -name '*core' > "$BK_REGRESSION/cores"
+		test -n "$_BK_MAC_CORES" && {
+			# Add in any new MacOS cores
+			find /cores -type f -name 'core*' 2>$DEV_NULL \
+				| bk _sort > "$BK_REGRESSION/cores.macos"
+			comm -13 \
+				"$_BK_MAC_CORES" \
+				"$BK_REGRESSION/cores.macos" \
+				>> "$BK_REGRESSION/cores"
+		}
 		if [ -s "$BK_REGRESSION/cores" ]
 		then	 # ls -l `cat "$BK_REGRESSION/cores"`
 			cat "$BK_REGRESSION/cores" | 
@@ -600,6 +610,13 @@ init_main_loop()
 	export BK_GLOB_EQUAL
 	export BK_BIN
 	mkdir -p "$BK_CACHE"
+	test "X`uname`" = XDarwin && {
+		# Save a baseline of core files; then later look for new
+		_BK_MAC_CORES="$BK_CACHE/macos_cores"
+		export _BK_MAC_CORES
+		find /cores -type f -name 'core*' 2>$DEV_NULL | \
+		    bk _sort > "$_BK_MAC_CORES"
+	}
 }
 
 #
@@ -855,6 +872,12 @@ I hope your testing experience was positive! :-)
 		test $KEEP_GOING = NO && {
 			test $PLATFORM = WIN32 && win32_regRestore
 			bk _find "$BK_REGRESSION" -name '*core'
+			test -n "$_BK_MAC_CORES" && {
+				# Add in any new MacOS cores
+				find /cores -type f -name 'core*' 2>$DEV_NULL \
+					| bk _sort > "$BK_CACHE/XXX.macos"
+				comm -13 "$_BK_MAC_CORES" "$BK_CACHE/XXX.macos"
+			}
 			exit $EXIT
 		}
 		FAILED="$i $FAILED"

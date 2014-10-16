@@ -22,6 +22,12 @@ cores()
 
 	OUT="$BK_REGRESSION/cores"
 	find "$BK_REGRESSION" -name core -print > "$OUT"
+	test -n "$_BK_MAC_CORES" && {
+		# Add in any new MacOS cores
+		find /cores -type f -name 'core*' 2>$DEV_NULL \
+			| bk _sort > "$OUT".macos
+		comm -13 "$_BK_MAC_CORES" "$OUT".macos >> "$OUT"
+	}
 	if [ -s "$OUT" ]
 	then    ls -l "`cat "$OUT"`"
 		file "`cat "$OUT"`"
