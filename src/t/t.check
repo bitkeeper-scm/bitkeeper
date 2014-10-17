@@ -942,6 +942,18 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
+echo $N Test two new files with same rootkey ........................$NL
+# This is why checkKeys() has a sccs_addUniqStr for the rootkey
+cd "$HERE/proj2"
+touch twin1
+bk new $Q twin1
+bk _cp SCCS/s.twin1 SCCS/s.twin2
+bk edit $Q twin2
+_BK_MV_OK=1 bk delta $Q -fyrename twin2
+bk -r check 2> ERR && fail -f ERR
+grep -q "Same key" ERR || fail -f ERR
+echo OK
+
 test -d "$TESTDATA/key_format2" && {
 echo $N Test KEY_FORMAT2 code .......................................$NL
 # Hit a problem with /home/bk/homepage ; test repo is a csetprune of that repo

@@ -156,6 +156,18 @@ sccs_resum(sccs *s, ser_t d, int diags, int fix)
 		SUM_SET(s, d, 0);
 		return (0);
 	}
+	if (CSET(s) && (diags <= 1) && !fix) {
+		u32	sum;
+
+		sum = rset_checksum(s, d, 0);
+		if (sum != SUM(s, d)) {
+			fprintf(stderr,
+			    "Bad checksum %05u:%05u in %s|%s\n",
+			    SUM(s, d), sum, s->gfile, REV(s, d));
+			return (2);
+		}
+		return (0);
+	}
 	if (BAM(s) && !HAS_BAMHASH(s, d)) return (0);
 
 	if (S_ISLNK(MODE(s, d))) {
@@ -351,6 +363,11 @@ xorDelta(sccs *s, ser_t d, void *token)
 }
 
 typedef	struct {
+	u32	index;		/* index into rkarray */
+	u16	sum;		/* sum of rootkey + " \n" */
+} rkinfo;
+
+typedef	struct {
 	ser_t	ser;		/* which cset serial */
 	u16	sum;		/* sum of that cset line */
 } Sse;
@@ -366,8 +383,8 @@ int
 cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 {
 	hash	*root2id = hash_new(HASH_MEMHASH);
-	int	rkid;		/* rkid = root2id{rkey} */
-	rkdata	*rkarray = 0;	/* rkarray[rkid] = per-rk-stuff */
+	rkinfo	*rkid;		/* rkid->index = root2id{rkey} */
+	rkdata	*rkarray = 0;	/* rkarray[rkid->index] = per-rk-stuff */
 	Sse	snew;
 	u32	**csetlist = 0;	/* csetlist[d] = list{ rkid's touched by d } */
 	ser_t	start;
@@ -386,7 +403,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	u32	index;
 	ticker	*tick = 0;
 
-	T_SCCS("file=%s", s->gfile);
+	T_PERF("file=%s", s->gfile);
 
 	if (spinners) {
 		if (takepatch) {
@@ -402,20 +419,23 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	cnt = 1;
 	growArray(&csetlist, TABLE(s));
 	while (d = cset_rdweavePair(s, 0, &rkoff, &dkoff)) {
-		if (hash_insert(root2id,
-		    &rkoff, sizeof(rkoff), &cnt, sizeof(cnt))) {
+		if (rkid = hash_insert(root2id,
+		    &rkoff, sizeof(rkoff), 0, sizeof(*rkid))) {
 			addArray(&rkarray, 0);
-			cnt++;
+			rkid->index = cnt++;
+			sum = 0;
+			for (e = HEAP(s, rkoff); *e; e++) sum += *e;
+			sum += ' ' + '\n';
+			rkid->sum = sum;
+		} else {
+			rkid = (rkinfo *)root2id->vptr;
+			sum = rkid->sum;
 		}
-		rkid = *(u32 *)root2id->vptr;
-		sum = 0;
-		for (e = HEAP(s, rkoff); *e; e++) sum += *e;
 		for (e = HEAP(s, dkoff); *e; e++) sum += *e;
-		sum += ' ' + '\n';
 		snew.ser = d;
 		snew.sum = sum;
-		addArray(&rkarray[rkid].sse, &snew);
-		addArray(&csetlist[d], &rkid);
+		addArray(&rkarray[rkid->index].sse, &snew);
+		addArray(&csetlist[d], &rkid->index);
 	}
 	hash_free(root2id);
 	if (sccs_rdweaveDone(s)) {
@@ -562,5 +582,6 @@ again:
 	free(rkarray);
 	EACH(csetlist) free(csetlist[i]);
 	free(csetlist);
+	T_PERF("done");
 	return (found);
 }
