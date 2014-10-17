@@ -937,9 +937,7 @@ echo OK
 
 echo $N Test --checksum on repo with gone data ......................$NL
 cd "$HERE"/goneclient
-bk rset --no-print -rTAG,+ --checksum 2> ERR && fail -f ERR
-grep -q "### Checksum in repo for 1.5" ERR || fail -f ERR wrong message
-bk rset --show-gone --no-print -rTAG,+ --checksum || fail
+bk rset --no-print -rTAG,+ --checksum || fail
 echo OK
 
 echo $N Check short circuiting edges ................................$NL

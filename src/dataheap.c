@@ -210,14 +210,15 @@ sccs_hasRootkey(sccs *s, char *key)
 /*
  * Used for rootkeys in the weave, add the key to the heap and collapse
  * duplicates together.
- * Str hashes point to string; to get key offset, need to back up u32.
+ * Returns an offset to the key on the heap, but the previous 4 bytes
+ * is the offset of the rkeyHead linked list.
  */
-private u32
-addUniqKey(sccs *s, char *key)
+u32
+sccs_addUniqKey(sccs *s, char *key)
 {
 	u32	off, le32;
 
-	if (off = findUniq1Str(s, key)) return (off - sizeof(u32));
+	if (off = findUniq1Str(s, key)) return (off);
 	unless (s->uniq2keys) loadRootkeys(s);
 
 	unless (off = nokey_lookup(s->uniq2, HEAP(s, 0), key)) {
@@ -235,7 +236,7 @@ addUniqKey(sccs *s, char *key)
 
 		TRACE("add(%s) = %d", key, off);
 	}
-	return (off - sizeof(u32));
+	return (off);
 }
 
 /*
@@ -253,7 +254,7 @@ weave_set(sccs *s, ser_t d, char **keys)
 
 	/* All dkeys need to be concatenated; write all rkeys to heap first */
 	EACH(keys) {
-		le32 = htole32(addUniqKey(s, keys[i]));
+		le32 = htole32(sccs_addUniqKey(s, keys[i]) - sizeof(u32));
 		data_append(&w, &le32, sizeof(le32));
 		data_append(&w, keys[i+1], strlen(keys[i+1]) + 1);
 		++i;

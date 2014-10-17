@@ -60,6 +60,7 @@ typedef struct {
 
 private void	rel_diffs(Opts *opts, rset *data);
 private void	rel_list(Opts *opts, rset *data);
+private	sum_t	dodiff(sccs *s, u32 rkoff, u32 loff, u32 roff);
 private rset	*weaveExtract(sccs *s,
 		    ser_t left1, ser_t left2, ser_t right, Opts *opts);
 private	rset	*initrset(sccs *s,
@@ -285,6 +286,36 @@ out:
 	if (opts->n) nested_free(opts->n);
 	free(opts);
 	return (rc);
+}
+
+/*
+ * Get checksum of cset d relative to cset base (or root if no base)
+ */
+u32
+rset_checksum(sccs *cset, ser_t d, ser_t base)
+{
+	Opts	opts = {0};
+	rset	*data = 0;
+	rfile	*file;
+	u32	sum = 0;
+
+	opts.chksum = 1;
+
+	if (base && (base = sccs_getCksumDelta(cset, base))) {
+		sum = SUM(cset, base);
+	}
+
+	data = weaveExtract(cset, base, 0, d, &opts);
+	assert(data);
+
+	EACH_HASH(data->keys) {
+		file = (rfile *)data->keys->vptr;
+		sum += dodiff(cset, file->rkoff, file->left1, file->right);
+	}
+	sum = (sum_t)sum;	/* truncate */
+
+	freeRset(data);
+	return (sum);
 }
 
 /*
@@ -948,7 +979,7 @@ weaveExtract(sccs *s, ser_t left1, ser_t left2, ser_t right, Opts *opts)
 			unless (newseen = (active & ~seen)) continue;
 			/* XXX: skip all same in face of comp renames ? */
 			if (newseen == all) continue;
-			unless (opts->show_gone) {
+			unless (opts->show_gone || opts->chksum) {
 				if (deltaSkip(s, sDB, rkoff, dkoff)) continue;
 			}
 			unless (file) {
