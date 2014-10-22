@@ -6,7 +6,7 @@ Speed up checksums
 Takepatch has been enhanced over time to bring a whole sfio
 when it is a new file and stream of patches when it is not.
 The stream of patches can be injected into the weave in one pass,
-saving the overhead of the original stripdel and repatching.
+saving the overhead of the original stripdel and re-patching.
 
 This moved the overhead in a big pull to the checksum verification for
 each delta brought over in the patch.  In takepatch there is a loop
@@ -18,14 +18,14 @@ was walking the whole weave on each call.
 To speed up the process, fastsum() was wired into get_reg() if the
 conditions were just right (basically, the conditions that
 sccs_resum() sets up).  The first time fastsum is called, it sets up a
-cache of the weave where datablocks are replaced with checksums and
-linecounts of the blocks.  Subsequent calls then use the cache to
+cache of the weave where data blocks are replaced with checksums and
+line counts of the blocks.  Subsequent calls then use the cache to
 compute d->sum, d->added, d->same, and d->deleted.
 
 Handling a no newline file
 --------------------------
 
-The cache needs to run the same nonewline state machine that get_reg()
+The cache needs to run the same no newline state machine that get_reg()
 does but gets to cheat a little.  When we are writing a file out, we
 can't put the newline out until we are in the right place in the file.
 Calculating a checksum, we can add the newline in right away, then
@@ -183,3 +183,158 @@ verifies this assumption.
 
 The compression works with no newline by only collapsing
 I<serial>[N] if neither have the N or both have the N.
+
+== Version 4
+
+Look at the weave as a sequence of data blocks, and the conditions
+which make them active.  Turn the conditions into a hash key,
+and accumulate checksum metadata about blocks with the same key.
+Then make that into a sorter to sort the blocks and some
+logic to avoid looking at some of the blocks, and we have
+the basis for a fast file checksum.
+
+This will be presented in 3 parts: the hash, the sorted list,
+and the way to limit how much of the sorted list is walked.
+
+But first...
+
+REVIEW of the changestate() array
+
+The array is an ordered list of serials, going low to high,
+and augmented with the high bit set if the serial corresponds
+to I (add) block.
+
+The weave is a combination of two structures: blocks added (^AI - ^AE in the
+weave) and range deleted (^AD - ^AE), the latter building on the first.
+
+Added blocks form a nested structure:
+
+ ^AI <serial N>
+ line of text from serial N
+ line 2 of text from serial N
+   ^AI <serial N+m>
+   a new line of text from serial N+m
+   ^AE <serial N+m>
+ an additional lines of text from serial N
+ ^AE <serial N>
+
+changestate() could track that would be a pure stack:
+push serial with ^AI and pop with ^AE.  The top of stack
+would be the serial corresponding to any text seen.
+
+Delete regions are laid across this structure:
+
+ ^AI <serial N>
+ line of text from serial N
+ ^AD <serial N+k> --------------------- start deleting if N+k active
+ line 2 of text from serial N
+   ^AI <serial N+m>
+   a new line of text from serial N+m
+   ^AE <serial N+m>
+ an additional lines of text from serial N
+ ^AD <serial N+k> --------------------- stop deleting
+ ^AE <serial N>
+
+There can be two conditions here: (k > m) || (k < m).
+A delete region _only_ deletes lines from lines from lower serials.
+
+changestate() handles that with 2 additions: it needs to be able
+to insert the serial into an ordered list, and it needs to
+distinguish I from D entries, which is done by setting the high
+bit on the I entries.
+
+HERE'S THE INTERESTING PART...
+
+In get_reg(), when walking the weave to generate a particular version,
+a text block is seen as active if the newest I on the changestate array
+is in the active serial map and none of the larger serial Ds are active.
+The smaller I and D entries are ignored.
+
+That means the only interesting part of the changestate array is
+from the last I until the end of the list (which will be 0 or more Ds).
+
+And now the new stuff...
+
+HASH
+
+We use the interesting segment of the changestate array as
+a variable length hash key.
+
+In changestate, the I entries are marked with the hibit set
+to dinstinguish them from D entries.  In the hash key, the
+first entry will always be an I and the zero or more rest
+will always be D.  When making the hash key, we turn off
+the hibit on I entry to make them just a list of serials
+with known structure.
+
+Then each datablock is checksummed, and line counted, then
+saved in the hash with the described key.  This means data
+for different blocks with the same conditions for becoming
+active, will be accumulated in the same hash value.
+
+Example: say the original file is at serial 2 (aka 1.1).
+Serial 3 adds a big block near the beginning of the file,
+and a smaller block at the end.  Serial 4 deletes a portion
+in the middle of the first block of serial 3:
+
+|---         ----- serial 1 ----------     -----------|
+   |---------|     serial 2          |-----|
+       xxx         serial 3
+
+Nothing in serial 1 is deleted.  All 4 blocks will have the
+same key {1}, and will only have 1 entry in the hash.
+Serial 2's first block will be cut into 3: before the delete,
+the delete, and after the delete.  They will collapse into
+to hash entries: {2} and {2,3}.  The last block in 2 will
+also use key {2}.  Serial 3 has no data blocks and therefore
+no hash entries.
+
+Advanced topic: no line feed state machine.  Each hash val
+tracks the seq number of the last line accumulated, and
+whether it is associated with a no-newline block.  When
+we evaluate all blocks in light of a given serialmap,
+we save the highest sequence number of an active block,
+and whether has no terminating line feed.  After processing
+all hash entries, we'll know if the file ended in newline.
+
+LIST
+
+Just the above is enough to improve fastsum by doing
+an EACH_HASH and processing all the blocks in the context
+of a serialmap.  But that's not where the big gains are.
+Better to see if we can avoid processing all blocks.
+
+We also konw that processors like to read sequential
+data.  So what we can do is create an array of hash
+values sorted by their first key serial (the I entry).
+Then we can create an array of the keys laid out in
+a row, and either do start/len or put in a terminator.
+
+Now we can do the equivalent of walking the hash
+by walking two sequential lists.
+
+WALK
+
+If we are computing for serial N, we know there will be
+no serials active in the serialmap greater than N.
+
+Sorting the list from low to high lets us stop doing
+the walk when we get to the serial for the delta we
+are computing.
+
+There are other walks you can probably think of which
+also have the trait of skipping entries.  That's the
+power of post processing the hashed data to make things
+faster.
+
+For example, we can now think about doing a relative
+checksum, by taking the serialmap of desired, and
+a symdiff with the base version.  We can then arrange
+the data as an interval tree (don't need a full red black,
+as we don't need to support insert).  Then we can start
+later than the beginning of the list, and end at the
+same spot.  This will help checksum grow linearly instead
+of N^2.
+
+The first cut of the code doesn't do relative, just
+full checksums, using the early termination from the walk.

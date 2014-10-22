@@ -5151,7 +5151,8 @@ sccs_free(sccs *s)
 	if (s->proj) proj_free(s->proj);
 	if (s->kidlist) free(s->kidlist);
 	if (s->rrevs) freenames(s->rrevs, 1);
-	if (s->fastsum) free(s->fastsum);
+	if (s->fastsum) freeLines(s->fastsum, 0);
+	if (s->fastsumhash) hash_free(s->fastsumhash);
 	if (s->remap) free(s->remap);
 	bzero(s, sizeof(*s));
 	free(s);
@@ -5828,15 +5829,6 @@ changestate(ser_t *state, char type, ser_t serial)
 }
 
 private int
-topstate(ser_t *state)
-{
-	int	i;
-
-	i = nLines(state);
-	return (i ? SL_SER(state[i]): 0);
-}
-
-private int
 whodelstate(ser_t *state, u8 *slist)
 {
 	int	i;
@@ -5885,6 +5877,18 @@ visitedstate(ser_t *state, u8 *slist)
 
 	/* when ignoring D, is this block active? (for annotate) */
 	return (((ser = whatstate(state)) && slist[ser]) ? ser : 0);
+}
+
+private int
+iIndex(ser_t *state)
+{
+	int	i;
+
+	/* Loop until an I */
+	EACH_REVERSE(state) {
+		if (SL_INS(state[i])) break;
+	}
+	return (i);
 }
 
 private int
@@ -6540,47 +6544,34 @@ get_lineName(sccs *s, ser_t ser, MDBM *db, u32 lnum, char *buf)
 }
 
 /*
- * Array contents:
- *   31 = set if command ; not if data
- * CMD
- *   30,29
- *    0  0 - D
- *    0  1 - E (only for D)
- *    1  0 - I (all I-E pairs translated to I<cur> - I<prev>)
- *    1  1 - N (E (now I) with nonewline tag)
- *   0-28 = serial
- * DATA
- *   30-16 = block line count
- *   0-15 = block checksum
+ * Fastsum data structures and routine.
+ * See Notes/FASTSUM, version 4.
  */
+typedef	struct {
+	u32	*kptr;		/* copy of kptr */
+	u32	keylen;		/* number of u32 entries in key */
+	u32	sum;		/* 16 bit additive checksum; XXX: use sum_t? */
+	u32	linecount;	/* how many lines in this block */
+	u32	seq;		/* seq + no_lf hibit; used for no LF calc */
+} sumdata;
 
-/* command defines */
-#define	SUM_CMD		0x80000000
-#define	SUM_I		0x40000000
-#define	SUM_E		0x20000000
-#define	SUM_N		0x20000000
-
-#define	SUM_LAST	0x20000000
-#define	SUM_MAXSER	(SUM_LAST - 1)
-
-/* data defines - 1 bit CMD; 15 bits linecount; 16 bits sum */
-#define	SUM_SIZE	(sizeof(sum_t) * 8)
-#define	SUM_MAXCOUNT	((1 << (32 - SUM_SIZE - 1)) - 1)
-#define	SUM_MASK	((1 << SUM_SIZE) - 1)
-
+/* walk weave and build hash */
 private	int
 fastsum_load(sccs *s)
 {
-	sum_t	sum = 0;
-	u32	linecount = 0;
-	ser_t	*state = 0;
-	u32	*fast = 0;
+	int	start;		/* index of where 'I' is in 'state' */
+	u32	sum = 0;	/* checksum of a data block */
+	u32	linecount = 0;	/* number of lines in a data block */
+	u32	seq = 0;	/* seq # of last data line in block */
+	ser_t	*state = 0;	/* changestate array */
+	hash	*h = hash_new(HASH_MEMHASH);	/* var length key hash */
+	sumdata	*data;		/* data for next stage */
+	char	**stack = 0;	/* hash value correspond to no LF */
 	u8	*buf, *p;	/* need u8 for summing so no sign extend */
 	char	type, *n;	/* u8 but get api type matching */
-	/* really serials */
-	u32	ser, cur = 0, last = SUM_MAXSER + 1;
-	/* u32 array entries */
-	u32	x, top = 0;
+	ser_t	ser, cur = 0;	/* control data ser and what block in */
+	u32	len;
+	char	**blocks = 0;
 
 	sccs_rdweaveInit(s);
 	while (buf = (u8 *)sccs_nextdata(s)) {
@@ -6590,158 +6581,136 @@ fastsum_load(sccs *s)
 			while (*p) sum += *p++;
 			sum += '\n';
 			linecount++;
-			if (linecount < SUM_MAXCOUNT) continue;
+			continue;
 		}
 		if (linecount) {
-			x = (linecount << SUM_SIZE) | sum;
-			addArray(&fast, &x);
-			top = x;
+			/*
+			 * Compute hash key as a sub-array of changestate
+			 * starting at first I, through the end.  Clear
+			 * the I marker, so key is just list of serials.
+			 * Put I marker back when done.
+			 */
+			start = iIndex(state);
+			assert(start);
+			len = nLines(state) + 1 - start;
+			state[start] = SL_SER(state[start]);	/* just ser */
+			if (data = hash_insert(h,
+			    &state[start], len*sizeof(u32),
+			    0, sizeof(sumdata))) {
+				blocks = addLine(blocks, data);
+				data->kptr = h->kptr;
+				data->keylen = len;
+			}
+			state[start] = SL_SET(state[start], 1);	/* restore */
+			data = h->vptr;
+			/* accumulate with block meta data */
+			data->sum += sum;
+			data->linecount += linecount;
+			/*
+			 * The no-line-feed state machine.  We don't know
+			 * until later that this block is no line feed.
+			 * Save the most recent block associated with
+			 * the I serial for later use.
+			 */
+			seq += linecount;
+			data->seq = seq;	/* also clears no LF flag */
+			stack[nLines(stack)] = (char *)data;
+			/* prep for next round */
 			sum = 0;
 			linecount = 0;
-			if (isData(buf)) continue;
-			last = SUM_MAXSER + 1;	/* all "data ^AI" okay */
 		}
 		type = buf[1];
 		n = &buf[3];
 		ser = atoi_p(&n);
-		assert(ser <= SUM_MAXSER);
-		/* pack command into array */
-		x = SUM_CMD;
+		state = changestate(state, type, ser);
 		switch (type) {
 		    case 'E':
 			if (ser == cur) {
-				last = cur;
-				/* change I<cur>-E<cur> to I<cur>-I<prev> */
-				state = changestate(state, 'E', cur);
-				ser = whatstate(state);
-				assert(ser < cur);
-				cur = ser;
-				x |= SUM_I;
+				/* dropping to lower I serial. Find it */
+				cur = whatstate(state);
+				data = (sumdata *)popLine(stack);
+				assert(data);
 				if (*n == 'N') {
-					x |= SUM_N;
-					/* for check.c to know to check */
-					s->has_nonl = 1;
+					/* tag last block as no line feed */
+					assert(data != INVALID);
+					data->seq = SL_SET(data->seq, 1);
 				}
-			} else {
-				x |= SUM_E;
 			}
 			break;
 		    case 'I':
-			assert(cur < ser);
-			assert(ser < last); /* Ia..EaIb..Eb -> b < a */
-			state = changestate(state, 'I', ser);
 			cur = ser;
-			x |= SUM_I;
+			stack = pushLine(stack, INVALID); /* 0 ignored */
 			break;
-		    case 'D':
-			/* D == (!E && !I) so nothing set */
-		    	break;
 		}
-		x |= ser;
-		/* compress I - if top of cache is also I (and N matches) */
-		if ((x & SUM_I) &&
-		    ((x & (SUM_CMD|SUM_I|SUM_N)) ==
-		    (top & (SUM_CMD|SUM_I|SUM_N)))) {
-			fast[nLines(fast)] = x;
-		} else {
-			addArray(&fast, &x);
-		}
-		top = x;
 	}
+	assert(!nLines(stack));
 	assert(!linecount && !sum);
 	free(state);
+	freeLines(stack, 0);
+
 	if (sccs_rdweaveDone(s)) {
-		free(fast);
+		hash_free(h);
+		freeLines(blocks, 0);
 		s->io_error = s->io_warned = 1;
-		return (1);
+		return (-1);
 	}
-	s->fastsum = fast;
+	/* return empty list rather than 0 to running this again */
+	s->fastsum = blocks ? blocks : allocArray(0, sizeof(*blocks), 0);
+	s->fastsumhash = h;
 	return (0);
 }
 
+/*
+ * Given a file, serialmap and a rev, compute sum and lines added, del, same.
+ * Walk blocks added by serials in low to high, and see that the block
+ * is active.
+ */
 private int
-fastsum(sccs *s, u8 *slist, int this)
+fastsum(sccs *s, u8 *slist, ser_t this)
 {
-	ser_t	*state = 0;
-	sum_t	sum = 0;
-	u32	linecount = 0, added = 0, deleted = 0, same = 0;
-	u32	x;
-	char	type;
-	int	i;
+	u32	sum = 0;
+	u32	added = 0, deleted = 0, same = 0;
+	u32	seq = 0;
 	int	no_lf = 0;	/* boolean */
-	/* serials */
-	u32	dstate = 0, cur = 0, lf_pend = 0;
-	u32	ser;
+	sumdata	*data;
+	ser_t	d, e;
+	int	i, j;
 
 	if (!s->fastsum && fastsum_load(s)) return (1);
 
-	EACH(s->fastsum) {
-		x = s->fastsum[i];
-		unless (x & SUM_CMD) {
-			unless (slist[cur]) continue;
+	assert(s->fastsum);
 
-			linecount = (x >> SUM_SIZE);
-			if (dstate < cur) {
-				no_lf = 0;
-				lf_pend = cur;
-				sum += (x & SUM_MASK);
-				if (cur == this) {
-					added += linecount;
-				} else {
-					same += linecount;
-				}
-			} else {
-				if (cur == lf_pend) lf_pend = 0;
-				/* delstate() on steroids */
-				if ((dstate == this) &&
-				    (topstate(state) < cur)) {
-					deleted += linecount;
-				}
-			}
-			continue;
+	EACH(s->fastsum) {
+		data = (sumdata *)s->fastsum[i];
+		d = *data->kptr;
+		assert(d && (d >= TREE(s)) && (d <= TABLE(s)));
+		if (d == this) {
+			added += data->linecount;
+			goto save;
 		}
-		ser = x & SUM_MAXSER;
-		if (x & SUM_I) {
-			/* a step down means the block ended */
-			if (ser < lf_pend) {
-				lf_pend = 0;
-				if (x & SUM_N) no_lf = 1;
+		unless (slist[d]) continue;
+		for (j = 1; j < data->keylen; j++) {
+			e = data->kptr[j];
+			if (e == this) {
+				deleted += data->linecount;
+				break;
 			}
-			cur = ser;
-		} else if (slist[ser]) {
-			/*
-			 * Ignore inactive deletes.  Only process active.
-			 * dstate has newest; state has rest.
-			 * that adds complex logic below and pays off
-			 * with fewer changestate calls and with the
-			 * simple deleted linecount logic above.
-			 */
-			type = (x & SUM_E) ? 'E' : 'D';
-			if (ser > dstate) {
-				assert(type == 'D');	/* push */
-				if (dstate) {
-					state =
-					    changestate(state, 'D', dstate);
-				}
-				dstate = ser;
-			} else if (ser == dstate) { 
-				assert(type == 'E');	/* pop */
-				if (dstate = topstate(state)) {
-					state =
-					    changestate(state, 'E', dstate);
-				}
-			} else {
-				/* non-top insert and rm */
-				state = changestate(state, type, ser);
+			if (slist[e]) break;
+		}
+		if (j >= data->keylen) {
+			same += data->linecount;
+ save:			sum += data->sum;
+			if (seq < SL_SER(data->seq)) {
+				seq = SL_SER(data->seq);
+				no_lf = SL_INS(data->seq);
 			}
 		}
 	}
 	if (no_lf) sum -= '\n';
-	s->dsum = sum;
+	s->dsum = (sum_t)sum;
 	s->added = added;
 	s->deleted = deleted;
 	s->same = same;
-	free(state);
 	return (0);
 }
 
@@ -6893,7 +6862,7 @@ get_reg(sccs *s, char *printOut, int flags, ser_t d,
 	 */
 	if (!hash &&
 	    ((flags & (fastflags|GET_HASHONLY)) == fastflags) &&
-	    ((encoding & E_DATAENC) == E_ASCII)) {
+	    ((encoding & E_DATAENC) != E_BAM)) {
 		int	rc = fastsum(s, slist, d);
 
 		free(slist);

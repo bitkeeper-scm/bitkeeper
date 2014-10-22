@@ -739,7 +739,8 @@ struct sccs {
 	ser_t	mdbm_ser;	/* Which rev of mdbm was saved */
 	MDBM	*goneDB;	/* GoneDB used in the get_reg() setup */
 	MDBM	*idDB;		/* id cache used in the get_reg() setup */
-	u32	*fastsum;	/* Cache a lines array of the weave sums */
+	char	**fastsum;	/* pointers to data about weave block sums */
+	hash	*fastsumhash;	/* the storage of the data being pointed to */
 	project	*proj;		/* If in BK mode, pointer to project */
 	ser_t	whodel;		/* reference rev when doing who deleted */
 	void	*rrevs;		/* If has conflicts, revs in conflict */
