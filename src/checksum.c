@@ -137,6 +137,8 @@ sccs_resum(sccs *s, ser_t d, int diags, int fix)
 	int	err = 0;
 	char	before[43];	/* 4000G/4000G/4000G will fit */
 	char	after[43];
+	ser_t	e;
+	sum_t	want;
 
 	T_SCCS("file=%s", s->gfile);
 	unless (d) d = sccs_top(s);
@@ -159,11 +161,13 @@ sccs_resum(sccs *s, ser_t d, int diags, int fix)
 	if (CSET(s) && (diags <= 1) && !fix) {
 		u32	sum;
 
+		e = sccs_getCksumDelta(s, d);
+		want = e ? SUM(s, e) : 0;
 		sum = rset_checksum(s, d, 0);
-		if (sum != SUM(s, d)) {
+		if (sum != want) {
 			fprintf(stderr,
 			    "Bad checksum %05u:%05u in %s|%s\n",
-			    SUM(s, d), sum, s->gfile, REV(s, d));
+			    want, sum, s->gfile, REV(s, d));
 			return (2);
 		}
 		return (0);
@@ -173,7 +177,6 @@ sccs_resum(sccs *s, ser_t d, int diags, int fix)
 	if (S_ISLNK(MODE(s, d))) {
 		u8	*t;
 		sum_t	sum = 0;
-		ser_t	e;
 
 		/* don't complain about these, old BK binaries did this */
 		e = getSymlnkCksumDelta(s, d);
@@ -252,12 +255,26 @@ sccs_resum(sccs *s, ser_t d, int diags, int fix)
 	 * checksum which is correct by default.
 	 * NOTE: check using newly computed added and deleted (in *s)
 	 */
-	unless (s->added || s->deleted || HAS_CLUDES(s, d)) return (err);
-	if (SUM(s, d) == s->dsum) return (err);
+	e = sccs_getCksumDelta(s, d);
+	want = e ? SUM(s, e) : 0;
+	if (want == s->dsum) return (err);
 	unless (fix) {
+		if (d != e) {
+			fprintf(stderr,
+			    "Bad checksum %05u:%05u in baseline %s|%s\n",
+			    SUM(s, d), s->dsum, s->gfile,
+			    e ? REV(s, e) : "0");
+		} else {
+			fprintf(stderr,
+			    "Bad checksum %05u:%05u in %s|%s\n",
+			    SUM(s, d), s->dsum, s->gfile, REV(s, d));
+		}
+		return (2);
+	}
+	if (d != e) {
 		fprintf(stderr,
-		    "Bad checksum %05u:%05u in %s|%s\n",
-		    SUM(s, d), s->dsum, s->gfile, REV(s, d));
+		    "Not fixing bad checksum in baseline %s|%s\n",
+		    s->gfile, e ? REV(s, e) : "0");
 		return (2);
 	}
 	if (diags > 1) {

@@ -138,3 +138,8 @@ bk tag $Q TOP
 test "`bk changes -ar=5 -d':DT:-:DS:'`" = T-5 || fail 4 no longer a tag
 bk checksum -r=5 ChangeSet || fail tag checksum wrong
 echo OK
+
+echo $N Test an empty cset causes no problems .......................$NL
+bk commit $Q -Ff --tag=EMPTY || fail commit failed
+bk checksum -rEMPTY ChangeSet || fail empty checksum wrong
+echo OK

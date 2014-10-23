@@ -729,8 +729,13 @@ updateCsetChecksum(sccs *cset, ser_t d, char **keys)
 	hash_free(h);
 
 	/* update delta checksum */
-	SUM_SET(cset, d, (u16)(SUM(cset, d) + sum));
-	SORTSUM_SET(cset, d, SUM(cset, d));
+	if (!cnt && !MERGE(cset, d) && !HAS_CLUDES(cset, d)) {
+		sum = almostUnique();
+	} else {
+		sum = (sum_t)(SUM(cset, d) + sum);
+	}
+	SUM_SET(cset, d, sum);
+	SORTSUM_SET(cset, d, sum);
 	ADDED_SET(cset, d, cnt);
 	return (ret);
 }
