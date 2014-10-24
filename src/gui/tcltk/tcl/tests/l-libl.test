@@ -3282,6 +3282,29 @@ void system9()
 system9();
 } -output {}
 
+test system-10 {test indirectly passed undef references for out and err args} -body {
+#lang L
+/*
+ * The omitted _optional call-by-reference reference arg is passed on
+ * to system() which used to crash because it tried to reference it
+ * without checking for undef first.
+ */
+void system10_out(_optional string &s)
+{
+	if (system("perl -e exit 0", undef, &s, undef)) puts("bad 1");
+}
+void system10_err(_optional string &s)
+{
+	if (system("perl -e exit 0", undef, undef, &s)) puts("bad 2");
+}
+void system10()
+{
+	system10_out();
+	system10_err();
+}
+system10();
+} -output {}
+
 test symlink-1 {test symlink} -setup {
 	set fname [makeFile {test} linktest .]
 	file delete -force linktest2
