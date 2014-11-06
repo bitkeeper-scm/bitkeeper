@@ -11,30 +11,30 @@ cd "$HERE"
 commercial standalone
 cd "$HERE"
 nested nested
-bk attach $Q ../standalone c1 || exit 1
+bk attach $Q ../standalone c1 || fail
 #
-cd c1 || exit 1
-touch c1-file-1 || exit 1
-bk new $Q c1-file-1 || exit 1
-bk commit -S $Q -y'add c1-file-1' || exit 1
-cd .. || exit 1
+cd c1 || fail
+touch c1-file-1 || fail
+bk new $Q c1-file-1 || fail
+bk commit -S $Q -y'add c1-file-1' || fail
+cd .. || fail
 #
-bk detach $Q c1 "$HERE/c1-detached" || exit 1
+bk detach $Q c1 "$HERE/c1-detached" || fail
 #
-cd "$HERE/c1-detached" || exit 1
-touch c1-detached-file || exit 1
-bk new $Q c1-detached-file || exit 1
-bk commit -S $Q -y'add c1-detached-file' || exit 1
+cd "$HERE/c1-detached" || fail
+touch c1-detached-file || fail
+bk new $Q c1-detached-file || fail
+bk commit -S $Q -y'add c1-detached-file' || fail
 #
-cd "$HERE/nested/c1" || exit 1
-touch c1-file-2 || exit 1
-bk new $Q c1-file-2 || exit 1
-bk commit -S $Q -y'add c1-file-2' || exit 1
+cd "$HERE/nested/c1" || fail
+touch c1-file-2 || fail
+bk new $Q c1-file-2 || fail
+bk commit -S $Q -y'add c1-file-2' || fail
 #
-cd "$HERE/standalone" || exit 1
-touch standalone-file || exit 1
-bk new $Q standalone-file || exit 1
-bk commit $Q -y'add standalone-file' || exit 1
+cd "$HERE/standalone" || fail
+touch standalone-file || fail
+bk new $Q standalone-file || fail
+bk commit $Q -y'add standalone-file' || fail
 echo OK
 
 echo $N Changes -L stand-alone, from component ......................$NL

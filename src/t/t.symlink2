@@ -26,9 +26,9 @@ ln -s testfile ./link.to.testfile
 bk new $Q link.to.testfile
 bk commit $S -yxxx
 bk clone $Q "$HERE/project" "$HERE/copy"
-bk -r check || exit 1
+bk -r check || fail
 bk admin -fEXPAND1 link.to.testfile
-bk -r check || exit 1
+bk -r check || fail
 bk edit $Q link.to.testfile
 rm -f ./link.to.testfile
 ln -s target1 ./link.to.testfile
@@ -42,7 +42,7 @@ bk edit $Q link.to.testfile
 rm -f ./link.to.testfile
 ln -s target2 ./link.to.testfile
 bk delta $Q -yxxx link.to.testfile
-bk -r check || exit 1
+bk -r check || fail
 bk commit $S -ytarget2
 # We should get a merge conflict here
 bk pull $Q "$HERE/project" 
@@ -112,9 +112,9 @@ bk new $Q link-to-file
 bk edit $Q link-to-file
 rm link-to-file
 echo file > link-to-file
-BK_NO_TYPECHECK=1 bk delta $Q -yfoo link-to-file || exit 1
+BK_NO_TYPECHECK=1 bk delta $Q -yfoo link-to-file || fail
 bk get $Q link-to-file
-test -f link-to-file || exit 1
+test -f link-to-file || fail
 echo OK
 
 echo $N Switch a file into a symlink using BK_NO_TYPECHECK ..........$NL
@@ -123,7 +123,7 @@ bk new $Q file-to-link
 bk edit $Q file-to-link
 rm file-to-link
 ln -s foo file-to-link
-BK_NO_TYPECHECK=1 bk delta $Q -yfoo file-to-link || exit 1
+BK_NO_TYPECHECK=1 bk delta $Q -yfoo file-to-link || fail
 bk get $Q file-to-link
-test -h file-to-link || exit 1
+test -h file-to-link || fail
 echo OK

@@ -2,15 +2,15 @@ echo ---- hash file read tests
 
 echon empty file ..................................................
 touch empty
-bk _hashfile_test -r empty >got || exit 1
-test -z "`cat got`" || exit 2
+bk _hashfile_test -r empty >got || fail
+test -z "`cat got`" || fail
 echo OK
 
 echon two null hashes .............................................
 cat <<EOF >in
 @
 EOF
-bk _hashfile_test -r in >got || exit 1
+bk _hashfile_test -r in >got || fail
 cat <<EOF >want
 ---
 EOF
@@ -23,7 +23,7 @@ cat <<EOF >in
 @key
 hash2
 EOF
-bk _hashfile_test -r in >got || exit 1
+bk _hashfile_test -r in >got || fail
 cat <<EOF >want
 ---
 key => hash2
@@ -42,7 +42,7 @@ hash2
 @key
 hash3
 EOF
-bk _hashfile_test -r in >got || exit 1
+bk _hashfile_test -r in >got || fail
 cat <<EOF >want
  => old file
 ---
@@ -63,7 +63,7 @@ value1
 @key2
 value2
 EOF
-bk _hashfile_test -r in >got || exit 1
+bk _hashfile_test -r in >got || fail
 cat <<EOF >want
 key1 => value1
 ---
@@ -76,7 +76,7 @@ echon one value, no key ...........................................
 cat <<EOF >in
 value1
 EOF
-bk _hashfile_test -r in >got || exit 1
+bk _hashfile_test -r in >got || fail
 cat <<EOF >want
  => value1
 EOF
@@ -88,7 +88,7 @@ cat <<EOF >in
 value1
 @
 EOF
-bk _hashfile_test -r in >got || exit 1
+bk _hashfile_test -r in >got || fail
 cat <<EOF >want
  => value1
 ---
@@ -101,7 +101,7 @@ cat <<EOF >in
 @key1
 value1
 EOF
-bk _hashfile_test -r in >got || exit 1
+bk _hashfile_test -r in >got || fail
 cat <<EOF >want
 key1 => value1
 EOF
@@ -114,7 +114,7 @@ cat <<EOF >in
 value1
 
 EOF
-bk _hashfile_test -r in >got || exit 1
+bk _hashfile_test -r in >got || fail
 cat <<EOF >want
 key1 => value1
 
@@ -129,7 +129,7 @@ value1
 
 
 EOF
-bk _hashfile_test -r in >got || exit 1
+bk _hashfile_test -r in >got || fail
 cat <<EOF >want
 key1 => value1
 
@@ -144,7 +144,7 @@ cat <<EOF >in
 @has	tab
 value
 EOF
-bk _hashfile_test -r in >got || exit 1
+bk _hashfile_test -r in >got || fail
 cat <<EOF >want
 has	tab => value
 EOF
@@ -154,7 +154,7 @@ echo OK
 echon key with unprintable character ..............................
 printf "@has\001ctrlA\n" >in
 echo value >>in
-bk _hashfile_test -r in >got || exit 1
+bk _hashfile_test -r in >got || fail
 printf "has\001ctrlA => value\n" >want
 cmpfiles want got
 echo OK
@@ -166,7 +166,7 @@ cat <<EOF >in
 @@@line2
 @@@@line3
 EOF
-bk _hashfile_test -r in >got || exit 1
+bk _hashfile_test -r in >got || fail
 cat <<EOF >want
 key1 => @line1
 @@line2
@@ -216,7 +216,7 @@ cat <<EOF >in
 @key1 base64
 `echo this is short | bk base64`
 EOF
-bk _hashfile_test -r in >got || exit 1
+bk _hashfile_test -r in >got || fail
 cat <<EOF >want
 key1 => this is short
 
@@ -236,7 +236,7 @@ cat <<EOF >in
 @key1 base64
 `bk base64 <data`
 EOF
-bk _hashfile_test -r in >got || exit 1
+bk _hashfile_test -r in >got || fail
 cat <<EOF >want
 key1 => this is a somewhat long line and it is line 1
 this is a somewhat long line and it is line 2
@@ -255,7 +255,7 @@ value1
 @key2
 value2
 EOF
-bk _hashfile_test -r in >got || exit 1
+bk _hashfile_test -r in >got || fail
 cat <<EOF >want
 key1 => value1
 key2 => value2
@@ -298,7 +298,7 @@ value2
 @key1
 value1
 EOF
-bk _hashfile_test -w in >got || exit 1
+bk _hashfile_test -w in >got || fail
 cat <<EOF >want
 @key1
 value1
@@ -313,7 +313,7 @@ cat <<EOF >in
 @key1
 value1
 EOF
-bk _hashfile_test -w in >got || exit 1
+bk _hashfile_test -w in >got || fail
 cmpfiles in got
 echo OK
 
@@ -323,7 +323,7 @@ cat <<EOF >in
 value1
 
 EOF
-bk _hashfile_test -w in >got || exit 1
+bk _hashfile_test -w in >got || fail
 cmpfiles in got
 echo OK
 
@@ -334,7 +334,7 @@ value1-1
 value2-2
 value3-3
 EOF
-bk _hashfile_test -w in >got || exit 1
+bk _hashfile_test -w in >got || fail
 cmpfiles in got
 echo OK
 
@@ -343,7 +343,7 @@ cat <<EOF >in
 @key1
 @@value1-1
 EOF
-bk _hashfile_test -w in >got || exit 1
+bk _hashfile_test -w in >got || fail
 cmpfiles in got
 echo OK
 
@@ -353,7 +353,7 @@ cat <<EOF >in
 @@value1-1
 @@value1-2
 EOF
-bk _hashfile_test -w in >got || exit 1
+bk _hashfile_test -w in >got || fail
 cmpfiles in got
 echo OK
 
@@ -363,7 +363,7 @@ cat <<EOF >in
 @key1
 1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456
 EOF
-bk _hashfile_test -w in >got || exit 1
+bk _hashfile_test -w in >got || fail
 cmpfiles in got
 echo OK
 
@@ -375,7 +375,7 @@ cat <<EOF >in
 1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456
 
 EOF
-bk _hashfile_test -w in >got || exit 1
+bk _hashfile_test -w in >got || fail
 cmpfiles in got
 echo OK
 
@@ -402,10 +402,10 @@ cat <<EOF >in
 12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567
 
 EOF
-bk _hashfile_test -w in >got || exit 1
-grep -q 'base64' got || exit 2
+bk _hashfile_test -w in >got || fail
+grep -q 'base64' got || fail
 # now dump the base64-encoded file and check the value
-bk _hashfile_test -r got >out || exit 3
+bk _hashfile_test -r got >out || fail
 cat <<EOF >want
 key1 => 12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567
 
@@ -416,11 +416,11 @@ echo OK
 echon value with non-printables gets base64 encoded ...............
 echo @key1 >in
 printf "has\001ctrlA\n" >>in
-bk _hashfile_test -w in >got || exit 1
-grep -q 'base64' got || exit 2
+bk _hashfile_test -w in >got || fail
+grep -q 'base64' got || fail
 # now dump the base64-encoded file and check the value
-bk _hashfile_test -r got >out || exit 3
-grep -q 'key1 => has.ctrlA' out || exit 4
+bk _hashfile_test -r got >out || fail
+grep -q 'key1 => has.ctrlA' out || fail
 echo OK
 
 echon show various empty values ...................................

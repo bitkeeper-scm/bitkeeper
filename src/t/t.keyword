@@ -54,7 +54,7 @@ echo OK
 
 echo $N Check files get keywords expanded by \'bk new\' ...............$NL
 echo %F% > fff
-bk new $Q fff || exit 1
+bk new $Q fff || fail
 if [ `cat fff` != "SCCS/s.fff" ]; then
 	echo keyword expansion failed
 	cat fff
@@ -64,7 +64,7 @@ echo OK
 
 echo $N "Check expansion of '% %Z%%M%' ...............................$NL"
 echo '% %Z%%M%' > gil
-bk new $Q gil || exit 1
+bk new $Q gil || fail
 str=`cat gil`
 test "X$str" != 'X% @(#)gil' && {
 	echo wrong expansion
@@ -74,10 +74,10 @@ echo OK
 
 
 echo $N Check RCS keyword expansion .................................$NL
-bk admin -FEXPAND1 data || exit 1
+bk admin -FEXPAND1 data || fail
 mkdir src
-bk mv data src/data || exit 1
-bk edit $Q src/data || exit 1
+bk mv data src/data || fail
+bk edit $Q src/data || fail
 cat > src/data <<'EOF'
 $Date$
 # $Author$ $Author:  foofsdf$
@@ -100,7 +100,7 @@ $Date$
 # $Author sdljf $Author: sldfj $
 # $Author$$Author $Author: df $
 EOF
-bk ci $Q -yjj src/data || exit 1
+bk ci $Q -yjj src/data || fail
 bk get $Q src/data
 date=`head -1 src/data | sed -e 's/\$Date: //' -e 's/ \$$//' -e 's/\//\\\\\//g'`
 sed -e "s/$date/DATE/g" < src/data > CMP1
@@ -126,7 +126,7 @@ $Date: DATE $
 # $Author sdljf $Author: bk@bk_regression.bk $
 # $Author: bk@bk_regression.bk $$Author $Author: bk@bk_regression.bk $
 EOF
-bk diff -u CMP1 CMP2 || exit 1
+bk diff -u CMP1 CMP2 || fail
 echo OK
 
 echo $N Check RCS and SCCS keyword expansion on the same line .......$NL

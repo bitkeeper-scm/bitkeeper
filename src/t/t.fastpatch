@@ -86,28 +86,28 @@ patchcount fullpatch 7
 echo OK
 
 echo $N Corrupted file checksum and makepatch does not core dump ....$NL
-bk makepatch -F -r+ > patch || exit 1
+bk makepatch -F -r+ > patch || fail
 # put in something greater than 16 bit so it will never collide
 bk _scat SCCS/s.foo | perl -pe 's/^\001H...../\001H83452/' | bk undos > x
 bk _mv SCCS/s.foo save
 bk _mv x SCCS/s.foo
 bk _chmod 444 SCCS/s.foo
-bk makepatch -r+ > junk 2> ERR && exit 1
-grep -q "Bad checksum" ERR || exit 2
+bk makepatch -r+ > junk 2> ERR && fail
+grep -q "Bad checksum" ERR || fail
 # Now test fast checksum
-bk makepatch -F -r+ > junk 2> ERR && exit 3
-grep -q "Bad checksum" ERR || exit 4
+bk makepatch -F -r+ > junk 2> ERR && fail
+grep -q "Bad checksum" ERR || fail
 # Leave set up for takepatch to test and then fix..
 echo OK
 
 echo -------------- takepatch tests
 echo $N Corrupted file checksum and takepatch notices ...............$NL
-bk takepatch < patch 2> ERR && exit 1
-test -d RESYNC && exit 2
-grep -q "Bad checksum for SCCS/s.foo" ERR || exit 3
+bk takepatch < patch 2> ERR && fail
+test -d RESYNC && fail
+grep -q "Bad checksum for SCCS/s.foo" ERR || fail
 # See that it works again
 bk _mv save SCCS/s.foo
-bk makepatch -F -r+ > patch || exit 5
+bk makepatch -F -r+ > patch || fail
 patchcount patch 1
 echo OK
 
@@ -118,7 +118,7 @@ cd project.sfiles
 cd ..
 mkdir empty
 cd empty
-bk takepatch -ia < ../project/fullpatch || exit 1
+bk takepatch -ia < ../project/fullpatch || fail
 bk -r | while read file; do
 	bk _scat $file > tp
 	bk _scat ../project.sfiles/$file > mp
@@ -145,7 +145,7 @@ echo OK
 echo $N sfiles end early ............................................$NL
 # XXX not comprehensive, but give some testing to the EOF handling
 cd "$HERE"
-cd project || exit 1
+cd project || fail
 bk edit $Q foo
 cat <<EOF > foo
 one
@@ -167,29 +167,29 @@ echo four >> foo
 bk delta $Q -yinsert foo
 bk commit $Q -yfoo
 bk makepatch -F -r+ > ../bork/append
-cd ../bork || exit 1
+cd ../bork || fail
 bk _scat SCCS/s.foo > sfile
 # chop at ^AT -- no weave body
 chopfile sfile SCCS/s.foo 0
 # This puts a patch at the head of the weave, so we notice a problem
 # because the checksum
-bk takepatch < insert 2> ERR && exit 1
-grep -q "computed sum 458 and patch sum 1692" ERR || exit 2
-test -d RESYNC && exit 10
+bk takepatch < insert 2> ERR && fail
+grep -q "computed sum 458 and patch sum 1692" ERR || fail
+test -d RESYNC && fail
 # This one goes to move in the weave but it is not there, so notices EOF
-bk takepatch < append 2> ERR && exit 3
-grep -q "Unexpected EOF in RESYNC/SCCS/s.foo" ERR || exit 4
-test -d RESYNC && exit 10
+bk takepatch < append 2> ERR && fail
+grep -q "Unexpected EOF in RESYNC/SCCS/s.foo" ERR || fail
+test -d RESYNC && fail
 # chop off after the two:
 chopfile sfile SCCS/s.foo 3 
-test `bk _scat SCCS/s.foo | tail -1` = two || exit 5
-bk takepatch < insert 2> ERR && exit 6
-grep -q "Unexpected EOF in RESYNC/SCCS/s.foo" ERR || exit 7
-test -d RESYNC && exit 10
+test `bk _scat SCCS/s.foo | tail -1` = two || fail
+bk takepatch < insert 2> ERR && fail
+grep -q "Unexpected EOF in RESYNC/SCCS/s.foo" ERR || fail
+test -d RESYNC && fail
 # file ends before we get to the line we want
-bk takepatch < append 2> ERR && exit 6
-grep -q "Unexpected EOF in RESYNC/SCCS/s.foo" ERR || exit 7
-test -d RESYNC && exit 10
+bk takepatch < append 2> ERR && fail
+grep -q "Unexpected EOF in RESYNC/SCCS/s.foo" ERR || fail
+test -d RESYNC && fail
 echo OK
 
 echo $N See that csets-in is set correctly when some new, some old ..$NL
@@ -197,7 +197,7 @@ cd "$HERE/project"
 bk clone $Q . ../csets-in
 cd ../csets-in
 REV=`bk changes -r+ -nd:I:`
-test "$REV" = 1.5 || exit 1
+test "$REV" = 1.5 || fail
 bk changes -r1.5 -nd:KEY: > WANT
 bk makepatch -r1.3.. > slow
 bk makepatch -F -r1.3.. > fast
@@ -218,13 +218,13 @@ printf "\001control that data\n" > foo
 bk delta $Q -y^A foo
 bk commit $Q -y^A
 cd ../copy
-bk pull $Q || exit 1
+bk pull $Q || fail
 echo OK
 
 echo $N Corrupt source sfile with no data in patch triggers err .....$NL
 cd "$HERE"
 bk clone $Q project corrupt
-cd corrupt || exit 1
+cd corrupt || fail
 bk edit $Q foo
 echo delete all > foo
 bk delta $Q -yone-liner foo
@@ -236,18 +236,18 @@ bk _mv newfoo SCCS/s.foo
 bk _chmod 444 SCCS/s.foo
 bk admin -z foo
 cd ../copy
-bk pull $Q ../corrupt 2> ERR && exit 2
-grep -q "computed sum 4357 and patch sum 4011" ERR || exit 3
-test -d RESYNC && exit 10
+bk pull $Q ../corrupt 2> ERR && fail
+grep -q "computed sum 4357 and patch sum 4011" ERR || fail
+test -d RESYNC && fail
 echo OK
 
 echo $N Corrupt source sfile with data in the patch triggers err ....$NL
 # take out the control A stuff locally,
 # a pull will now include the corrupted data
 bk undo $Q -sfr+
-bk pull $Q ../corrupt 2> ERR && exit 2
-grep -q "Bad checksum 01687:01341 in RESYNC/foo" ERR || exit 3
-test -d RESYNC && exit 10
+bk pull $Q ../corrupt 2> ERR && fail
+grep -q "Bad checksum 01687:01341 in RESYNC/foo" ERR || fail
+test -d RESYNC && fail
 echo OK
 
 echo $N Show sfio mode in pull can propagate corrupt data ...........$NL
@@ -284,8 +284,8 @@ bk delta $Q -ystuff foo
 bk commit $Q -ystuff
 bk makepatch -F -r+ > ../control.bkp
 cd ../corrupt
-bk takepatch < ../control.bkp 2> ERR && exit 2
-grep -q 'computed sum 3595 and patch sum 3941' ERR || exit 3
+bk takepatch < ../control.bkp 2> ERR && fail
+grep -q 'computed sum 3595 and patch sum 3941' ERR || fail
 echo OK
 
 echo $N Test all stopping conditions in a fastpatch weave ...........$NL
@@ -504,9 +504,9 @@ echo $N Test patching in data that is already there .................$NL
 printf "s\nC\nu\n" | bk resolve -a 2> ERR > OUT
 # both patchs are now integrated -- retake and see no RESYNC dir
 bk takepatch < ../chicago.bkp
-test -d RESYNC && exit 2
+test -d RESYNC && fail
 bk takepatch < ../boston.bkp
-test -d RESYNC && exit 3
+test -d RESYNC && fail
 # make a patch with new and old data
 cat <<EOF > file
 base 1
@@ -613,19 +613,19 @@ bk unpull $Q -sf
 # show old style patch inflates things
 bk takepatch -a < old.bkp
 bk _cp SCCS/s.ChangeSet cmp
-cmp -s cmp reference && exit 2
+cmp -s cmp reference && fail
 # "for i in 1 2; do ..." unwound because freebsd3 and set -e pickiness
 bk _cp SCCS/s.ChangeSet oldref
 bk unpull $Q -sf
 bk takepatch -a < old.bkp
 bk _cp SCCS/s.ChangeSet cmp
-cmp -s cmp oldref && exit 4
+cmp -s cmp oldref && fail
 # again
 bk _cp SCCS/s.ChangeSet oldref
 bk unpull $Q -sf
 bk takepatch -a < old.bkp
 bk _cp SCCS/s.ChangeSet cmp
-cmp -s cmp oldref && exit 5
+cmp -s cmp oldref && fail
 # again
 # put an exit 1 here and go look at the file -- it's quite inflated.
 bk unpull $Q -sf

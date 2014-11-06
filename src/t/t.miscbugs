@@ -13,17 +13,17 @@ echon Running msys doesn\'t move dotbk .............................
 PATH1=`BK_DOTBK= TMP= TMPDIR= bk dotbk | tr '[A-Z]' '[a-z]'`
 PATH2=`BK_DOTBK= TMP= TMPDIR= bk bk dotbk | tr '[A-Z]' '[a-z]'`
 # cmp lowercase to avoid problems on Win32
-test "$PATH1" = "$PATH2" || exit 1
+test "$PATH1" = "$PATH2" || fail
 echo OK
 
 echon Max line length .............................................
 commercial project
 awk 'BEGIN {for (i = 0; i < 2047; i++) printf "."; printf "\n"}' >long
 cp long foo
-bk new $Q foo || exit 1
-bk commit $Q -ylong || exit 1
-bk check -c foo || exit 1
-bk get $Q foo || exit 1
+bk new $Q foo || fail
+bk commit $Q -ylong || fail
+bk check -c foo || fail
+bk get $Q foo || fail
 cmp -s foo long || {
 	echo file changed
 	exit 1
@@ -32,10 +32,10 @@ echo OK
 
 echon Max line length compressed ..................................
 cp long bar
-bk new $Q -Zgzip bar || exit 1
-bk commit $Q -ylong2 || exit 1
-bk check -c bar || exit 1
-bk get $Q bar || exit 1
+bk new $Q -Zgzip bar || fail
+bk commit $Q -ylong2 || fail
+bk check -c bar || fail
+bk get $Q bar || fail
 cmp -s foo long || {
 	echo file changed
 	exit 1
@@ -43,14 +43,14 @@ cmp -s foo long || {
 echo OK
 
 echon Test creating tags with spaces ..............................
-bk tag $Q -r1.2 'a b' || exit 1
+bk tag $Q -r1.2 'a b' || fail
 rev=`bk prs -r'a b' -hnd:REV: ChangeSet`
 test $rev = '1.2' || {
 	echo failed
 	exit 1
 }
 cd "$HERE"
-bk clone $Q -r'a b' project copy || exit 1
+bk clone $Q -r'a b' project copy || fail
 cd copy
 rev=`bk prs -r+ -hnd:REV: ChangeSet`
 test $rev = '1.2' || {
@@ -60,28 +60,28 @@ test $rev = '1.2' || {
 echo OK
 
 echon Try pulling files will really long lines and edited gfile ...
-bk pull $Q || exit 1
+bk pull $Q || fail
 cd "$HERE/project"
 LONGER="$HERE/longer"
 awk 'BEGIN {for (i = 0; i < 7000; i++) printf "."; printf "\n"}' > "$LONGER"
-bk edit $Q foo || exit 1
+bk edit $Q foo || fail
 cat "$LONGER" > foo
-bk delta $Q -ylonger foo || exit 1
-bk commit $Q -ylonger || exit 1
+bk delta $Q -ylonger foo || fail
+bk commit $Q -ylonger || fail
 cd "$HERE/copy"
-bk edit $Q foo || exit 1
+bk edit $Q foo || fail
 echo 1 > foo
 bk pull $Q 2>ERR && {
 	echo should have failed
 	exit 1
 }
-grep -q "The following files are modified locally and in the" ERR || exit 1
-grep -q "	foo" ERR || exit 1
-grep -q "Assertion" ERR && exit 1
+grep -q "The following files are modified locally and in the" ERR || fail
+grep -q "	foo" ERR || fail
+grep -q "Assertion" ERR && fail
 echo OK
 
 echon Test hash_toStr API .........................................
-bk _hashstr_test || exit 1
+bk _hashstr_test || fail
 echo OK
 
 echon Test deep recursion .........................................

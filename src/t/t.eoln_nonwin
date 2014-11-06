@@ -34,10 +34,10 @@ echo $N Check new and co with files having termination CRLF .........$NL
 printf 'data\r\r\n' > data
 echo 'data' > data.ref
 bk ci $Q -i data
-bk co $Q data || exit 1
+bk co $Q data || fail
 cmp -s data data.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-bk edit $Q data || exit 1
+bk edit $Q data || fail
 cmp -s data data.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
@@ -50,7 +50,7 @@ test -s emptylist && fail -f emptylist
 printf 'last line\r\r\n' >> data
 echo 'last line' >> data.ref
 bk ci $Q -m'newlastline' data
-bk co $Q data || exit 1
+bk co $Q data || fail
 cmp -s data data.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 bk edit $Q data
@@ -63,7 +63,7 @@ echo $N Check edit and co with files having midline CR ..............$NL
 echo -e 'last line\ranother last line' >> data
 cp data data.ref
 bk ci $Q -m'anothernewlastline' data
-bk co $Q data  || exit 1
+bk co $Q data  || fail
 cmp -s data data.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 bk edit $Q data
@@ -81,16 +81,16 @@ cat <<EOF | bk undos -r > testfile
 5
 EOF
 cp testfile WANT
-_BK_CRNL_BUG=1 bk new $Q testfile || exit 1
-bk get $Q testfile || exit 1
-bk checksum testfile || exit 1
+_BK_CRNL_BUG=1 bk new $Q testfile || fail
+bk get $Q testfile || fail
+bk checksum testfile || fail
 
 # we don't fix old bug, so the next line isn't needed
 #bk undos < testfile > WANT
 # but we do want to check our assumptions about the checked out file
 checkfiles testfile WANT
 
-bk -r check -ac || exit 1
+bk -r check -ac || fail
 echo OK
 
 echo $N Test hasDiffs with CRLF in weave ............................$NL
@@ -101,8 +101,8 @@ test -s OUT && fail -f OUT should not have modified files
 echo OK
 
 echo $N Pull cset with CRLF in weave ................................$NL
-bk clone $Q . ../copy || exit 1
-bk commit $Q -yjunk || exit 1
+bk clone $Q . ../copy || fail
+bk commit $Q -yjunk || fail
 cd ../copy
-bk pull $Q || exit 1
+bk pull $Q || fail
 echo OK

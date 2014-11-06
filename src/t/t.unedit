@@ -56,18 +56,18 @@ echo OK
 
 echo $N checkout:edit with no gfile should restore the gfile ........$NL
 rm foo.c
-bk unedit foo.c || exit 1
+bk unedit foo.c || fail
 test -f foo.c || { echo failed no file; exit 1; }
 echo OK
 
 echo $N checkout:edit with -x+ and no gfile should clear -x+ ........$NL
 bk edit $Q -x+ foo.c
-cmp -s foo.c foo.ref && exit 1
+cmp -s foo.c foo.ref && fail
 rm foo.c
-bk clean $Q foo.c && exit 1
-bk unedit foo.c || exit 1
+bk clean $Q foo.c && fail
+bk unedit foo.c || fail
 test -f foo.c || { echo failed no file; exit 1; }
-cmp -s foo.c foo.ref || exit 1
+cmp -s foo.c foo.ref || fail
 echo OK
 
 echo $N  checkout:last with unedit on a RW file ......................$NL

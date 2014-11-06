@@ -140,10 +140,10 @@ DATA="$HERE"/data
 perl -e 'sysread(STDIN, $buf, 81920);
 syswrite(STDOUT, $buf, 81920);' < $BK > "$DATA"
 cp "$DATA" data
-bk new $Q data || exit 1
+bk new $Q data || fail
 perl -e 'printf "Hi there\x0\n";' > small
 BK_CONFIG='BAM:1k!' bk new $Q small
-test -d BitKeeper/BAM || exit 1
+test -d BitKeeper/BAM || fail
 bk edit $Q data
 echo newline >> data
 bk ci $Q -ydifferent data

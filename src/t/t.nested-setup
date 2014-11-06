@@ -188,7 +188,7 @@ touch foo
 bk new $Q foo
 bk commit $Q -f
 cd ..
-bk attach $Q -N s-expr || exit 1
+bk attach $Q -N s-expr || fail
 cd s-expr
 bk -cpr
 cd ../..

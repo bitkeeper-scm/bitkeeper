@@ -29,7 +29,7 @@ bk lease flush
 bk delta $Q -y'non-airgap: what most customers have' BitKeeper/etc/config
 touch a b c d
 bk new $Q a b c d
-TZ=EST bk commit $Q --tag=BASETAG -y1.2 || exit 1
+TZ=EST bk commit $Q --tag=BASETAG -y1.2 || fail
 bk prs -h -r+ -d':ROOTKEY:\n' a c > ../KEYS
 echo OK
 
@@ -41,14 +41,14 @@ bk clone $Q simple line
 cd line
 bk edit $Q a
 bk delta $Q -fy1.2 a
-bk commit $Q -y1.3 || exit 1
+bk commit $Q -y1.3 || fail
 bk edit $Q b
 bk delta $Q -fy1.3 b
-bk commit $Q -y1.4 || exit 1
+bk commit $Q -y1.4 || fail
 bk edit $Q a
 bk delta $Q -fy1.4 a
-bk commit $Q -y1.5 || exit 1
-bk commit $Q -F -yempty || exit 1
+bk commit $Q -y1.5 || fail
+bk commit $Q -F -yempty || fail
 OLD=`bk id`
 bk admin -Zgzip ChangeSet
 bk csetprune $Q -r+ -w'demo' < ../KEYS
@@ -79,7 +79,7 @@ echo $N Remove empty csets just as bk-4 did .........................$NL
 bk edit $Q d
 bk delta $Q -fy d
 bk commit $Q -yd
-bk commit $Q -F -yempty || exit 1
+bk commit $Q -F -yempty || fail
 bk csetprune -q -S - < /dev/null || fail
 tip=`bk prs -h -r+ -d':I:\n' ChangeSet`
 test "$tip" = 1.4 || fail wrong tip $tip is not 1.4

@@ -291,7 +291,7 @@ echo $N pull from read-only server should work fine .................$NL
 cd "$HERE/project"
 echo hi > test
 bk new $Q test
-bk commit $Q -ytt || exit 1
+bk commit $Q -ytt || fail
 bk _chmod 555 SCCS
 cd "$HERE/copy2"
 bk pull $Q || {

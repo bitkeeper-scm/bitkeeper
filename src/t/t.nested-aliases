@@ -189,7 +189,7 @@ echo OK
 
 echo $N Clone backwards, getting just libc, populate junk ...........$NL
 cd "$HERE"
-bk clone $Q -r1.8 -s./path/to/libc project behind || exit 1
+bk clone $Q -r1.8 -s./path/to/libc project behind || fail
 cd behind
 test -d junk && {
 	echo should not have junk
@@ -207,7 +207,7 @@ test $TIP = `bk changes -Sqr+ -d:REV: junk` && {
 	echo failed to roll back junk
 	exit 1
 }
-bk -e -qr check -ac || exit 1
+bk -e -qr check -ac || fail
 echo OK
 
 echo $N Test -s./gcc/nm .............................................$NL
@@ -225,7 +225,7 @@ echo OK
 
 echo $N Set up by populating all ....................................$NL
 cd project-nm
-bk alias set $Q HERE DEFAULT || exit 1
+bk alias set $Q HERE DEFAULT || fail
 cat > WANT <<EOF
 ./gcc
 ./gcc/nm
@@ -239,13 +239,13 @@ echo OK
 
 echo $N Test a default that is just gdb .............................$NL
 cd ..
-bk clone -s./gdb $Q project-nm project-just-gdb || exit 1
+bk clone -s./gdb $Q project-nm project-just-gdb || fail
 cd project-just-gdb
 bk alias -k here > GOT
 (cd gdb; echo PRODUCT; bk id -S) > WANT
 cmpfiles GOT WANT
-bk alias set DEFAULT ./gdb || exit 1
-bk alias set $Q here DEFAULT || exit 1
+bk alias set DEFAULT ./gdb || fail
+bk alias set $Q here DEFAULT || fail
 bk here > GOT
 cat << EOF > WANT
 DEFAULT
@@ -311,7 +311,7 @@ bk alias set $Q HERE ./no-such-dir 2>ERR && {
 	cat ERR
 	exit 1
 }
-bk comps -h || exit 1
+bk comps -h || fail
 echo OK
 
 echo $N Same thing with a glob ......................................$NL
@@ -320,7 +320,7 @@ bk alias set here './no-such-dir*' > OUT 2>&1 && {
 	cat OUT
 	exit 1
 }
-bk comps -h || exit 1
+bk comps -h || fail
 echo OK
 
 echo $N Populate junk, run populate, should do nothing ..............$NL
@@ -328,15 +328,15 @@ bk here add $Q ./junk || {
 	echo should not have failed
 	exit 1
 }
-test -d junk || exit 1
-bk here add $Q || exit 1
+test -d junk || fail
+bk here add $Q || fail
 bk alias -k here | bk _sort > GOT
 (echo PRODUCT; cd junk; bk id -S) | bk _sort > WANT
 cmpfiles GOT WANT
 echo OK
 
 echo $N Same thing with a glob that matches junk when we have junk ..$NL
-test -d junk || exit 1
+test -d junk || fail
 bk here add $Q './junk*' || {
 	echo populate should not have failed
 	exit 1
@@ -385,7 +385,7 @@ bk alias -e alias1 2> ERR && {
 	cat GOT
 	exit 1
 }
-grep -q 'recursive alias definition' ERR || exit 1
+grep -q 'recursive alias definition' ERR || fail
 echo OK
 
 echo $N Remove all aliases...........................................$NL
@@ -517,14 +517,14 @@ cd ../gdb
 bk id -S
 ) | bk _sort > ../WANT
 cd "$HERE"
-bk clone $Q -s. project sparse || exit 1
-cd sparse || exit 1
+bk clone $Q -s. project sparse || fail
+cd sparse || fail
 test -d gcc && {
 	echo should not have gcc
 	exit 1
 }
 # Note: trying both forms of "dir" and "./dir"
-bk alias new sparse ./gcc gdb || exit 1
+bk alias new sparse ./gcc gdb || fail
 bk alias -ek sparse > GOT
 cmpfiles ../WANT GOT
 echo OK
@@ -540,7 +540,7 @@ grep -q "conflict was found while trying to commit" ERR || fail -f ERR
 cd gcc
 mkdir nm
 echo hi > nm/foo
-bk new $Q nm/foo || exit 1
+bk new $Q nm/foo || fail
 bk commit -q -S -ybadfile 2>ERR && fail -f ERR should have failed
 grep -q "conflict was found while trying to commit" ERR || fail -f ERR
 echo OK
@@ -641,7 +641,7 @@ echo OK
 echo $N Alias -a of missing components and check fails ..............$NL
 cd "$HERE/project-nm"
 bk -e changes -Sr+ -nd:ROOTKEY: | bk alias set -C DEFAULT -
-bk -r check || exit 1
+bk -r check || fail
 rm -fr junk
 bk -r check 2> ERR && { echo fix test; exit 1; }
 grep -q "error expanding alias 'DEFAULT' because 'junk' is not present" ERR || {

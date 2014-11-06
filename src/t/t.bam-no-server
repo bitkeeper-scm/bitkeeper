@@ -157,8 +157,8 @@ chmod -w "$FOOPATH"
 bk push $Q ../push_corrupt 2>ERR && fail should have failed
 grep -q "Checksum mismatch" ERR || fail
 # XXX: the push creates unused directories BAM/03/, so skip test
-# cd ../push_corrupt || exit 1
-# test -d BitKeeper/BAM && exit 1
+# cd ../push_corrupt || fail
+# test -d BitKeeper/BAM && fail
 echo OK
 
 echo $N Check that we did not leave remote locked ...................$NL
@@ -214,8 +214,8 @@ cd "$HERE"
 bk clone $Q project2_corrupt clone_corrupt 2> ERR && fail clone worked
 grep -q "Checksum mismatch" ERR || fail
 # XXX repo is there and passes check, but has no BAM data
-# cd clone_corrupt || exit 1
-# bk get $Q || exit 1
+# cd clone_corrupt || fail
+# bk get $Q || fail
 echo OK
 
 echo $N Check rcloning a repo with a corrupt BAM file ...............$NL
@@ -228,8 +228,8 @@ bk _kill bk://localhost:$P ||
 test $RC -ne 0 || fail
 grep -q "Checksum mismatch" ERR || fail
 # XXX repo is there and passes check, but has no BAM data
-# cd rclone_corrupt || exit 1
-# bk get $Q || exit 1
+# cd rclone_corrupt || fail
+# bk get $Q || fail
 echo OK
 
 echo $N Check a repo with a missing BAM file ........................$NL

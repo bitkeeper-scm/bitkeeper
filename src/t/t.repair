@@ -16,7 +16,7 @@
 
 trap 'test -n "$PORT" && bk _kill bk://localhost:$PORT' 0
 cd "$HERE"
-bk bkd -dq -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
+bk bkd -dq -aPORT -ikill > "$HERE/BKD" 2>&1 || fail
 PORT=`cat PORT`
 
 echo $N Make sure we can restore an identical ChangeSet file ........$NL
@@ -25,8 +25,8 @@ for i in foo bar blech whatsit
 do	echo $i > $i
 	bk new $Q $i
 done
-bk commit $Q -ycomment || exit 1
-bk clone $Q "$HERE/repair1" "$HERE/repair2" || exit 1
+bk commit $Q -ycomment || fail
+bk clone $Q "$HERE/repair1" "$HERE/repair2" || fail
 cd "$HERE"/repair2
 bk _rm SCCS/s.ChangeSet
 bk repair > OUT 2>&1 || {
@@ -34,8 +34,8 @@ bk repair > OUT 2>&1 || {
 	cat OUT
 	exit 1
 }
-bk -r check -ac || exit 1
-bk changes -r`head -1 BitKeeper/log/TIP` > /dev/null || exit 1
+bk -r check -ac || fail
+bk changes -r`head -1 BitKeeper/log/TIP` > /dev/null || fail
 echo OK
 
 echo $N Make sure we can restore an identical file ..................$NL
@@ -45,8 +45,8 @@ bk repair > OUT 2>&1 || {
 	cat OUT
 	exit 1
 }
-bk -r check -ac || exit 1
-bk changes -r`head -1 BitKeeper/log/TIP` > /dev/null || exit 1
+bk -r check -ac || fail
+bk changes -r`head -1 BitKeeper/log/TIP` > /dev/null || fail
 echo OK
 
 echo $N Make sure we can restore a ChangeSet file which is ahead ....$NL
@@ -56,7 +56,7 @@ do	bk edit $Q $i
 	echo $i >> $i
 	bk delta -ywhatever $Q $i
 done
-bk commit $Q -ycomment || exit 1
+bk commit $Q -ycomment || fail
 cd "$HERE/repair2"
 bk _rm SCCS/s.ChangeSet
 bk repair > OUT 2>&1 || {
@@ -64,8 +64,8 @@ bk repair > OUT 2>&1 || {
 	cat OUT
 	exit 1
 }
-bk -r check -ac || exit 1
-bk changes -r`head -1 BitKeeper/log/TIP` > /dev/null || exit 1
+bk -r check -ac || fail
+bk changes -r`head -1 BitKeeper/log/TIP` > /dev/null || fail
 echo OK
 
 echo $N Make sure we can restore a file which is ahead...............$NL
@@ -75,8 +75,8 @@ bk repair > OUT 2>&1 || {
 	cat OUT
 	exit 1
 }
-bk -r check -ac || exit 1
-bk changes -r`head -1 BitKeeper/log/TIP` > /dev/null || exit 1
+bk -r check -ac || fail
+bk changes -r`head -1 BitKeeper/log/TIP` > /dev/null || fail
 echo OK
 
 echo $N Make sure we can restore multiple files which are ahead .....$NL
@@ -86,8 +86,8 @@ bk repair > OUT 2>&1 || {
 	cat OUT
 	exit 1
 }
-bk -r check -ac || exit 1
-bk changes -r`head -1 BitKeeper/log/TIP` > /dev/null || exit 1
+bk -r check -ac || fail
+bk changes -r`head -1 BitKeeper/log/TIP` > /dev/null || fail
 echo OK
 
 echo $N Sane error message if the parent file is behind..............$NL
@@ -96,7 +96,7 @@ do	bk edit $Q $i
 	echo $i >> $i
 	bk delta -ywhatever $Q $i
 done
-bk commit $Q -yahead || exit 1
+bk commit $Q -yahead || fail
 bk _mv SCCS/s.foo save.foo
 bk repair > OUT 2>&1 && fail -f OUT should fail
 grep -q 'Missing delta (bk help chk2) in BitKeeper/repair/foo' OUT || fail -f OUT
@@ -106,11 +106,11 @@ test -d BitKeeper/repair && {
 }
 bk _mv save.foo SCCS/s.foo 
 bk -r check -ac || fail
-bk changes -r`head -1 BitKeeper/log/TIP` > /dev/null || exit 1
+bk changes -r`head -1 BitKeeper/log/TIP` > /dev/null || fail
 echo OK
 
 echo $N Sane error message if the parent ChangeSet is behind ........$NL
-bk clone $Q "$HERE/repair2" "$HERE/repair3" || exit 1
+bk clone $Q "$HERE/repair2" "$HERE/repair3" || fail
 bk _rm SCCS/s.ChangeSet
 bk repair > OUT 2>&1 && {
 	echo failed
@@ -152,8 +152,8 @@ bk repair -@"$HERE"/repair3 > OUT 2>&1 || {
 	bk changes -r+ "$HERE"/repair3 
 	exit 1
 }
-bk -r check -ac || exit 1
-bk changes -r`head -1 BitKeeper/log/TIP` > /dev/null || exit 1
+bk -r check -ac || fail
+bk changes -r`head -1 BitKeeper/log/TIP` > /dev/null || fail
 echo OK
 
 echo $N Create initial repository for awc gone test .................$NL

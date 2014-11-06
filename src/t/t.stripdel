@@ -121,7 +121,7 @@ bk admin $Q -Sright ChangeSet
 cd "$HERE/proj"
 bk pull $Q "$HERE/copy2"
 bk admin $Q -Sleft ChangeSet
-bk pull $Q "$HERE/copy1" || exit 1
+bk pull $Q "$HERE/copy1" || fail
 if [ $? -ne 0 ]; then echo failed pull; exit 1; fi
 echo OK
 
@@ -154,9 +154,9 @@ if [ $? -ne 0 ]; then echo failed bar diff; exit 1; fi
 echo OK
 
 echo $N Try stripdel of edited file .................................$NL
-bk edit $Q bar || exit 1
+bk edit $Q bar || fail
 echo junk >> bar
-bk ci -l -y"add junk" $Q bar || exit 1
+bk ci -l -y"add junk" $Q bar || fail
 echo more junk >> bar
 bk stripdel $Q -r1.2 bar 2>ERR && {
 	echo stripdel should have failed
@@ -170,7 +170,7 @@ echo OK
 
 echo $N Try stripdel of edited file w/o gfile........................$NL
 echo junk >> bar
-bk ci -l -y"add junk" $Q bar || exit 1
+bk ci -l -y"add junk" $Q bar || fail
 rm bar
 # See that stripdel does not honor checkout mode
 BK_CONFIG='checkout:get!' bk stripdel $Q -r+ bar || fail

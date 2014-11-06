@@ -35,12 +35,12 @@ grep -q "Please answer yes or no" import.out && {
 	exit 1
 }
 cd "$HERE/project/src"
-bk _test -f SCCS/s.foo.c || exit 1
+bk _test -f SCCS/s.foo.c || fail
 bk get $Q foo.c
 cmp -s foo.c "$HERE/import_dir/src/foo.c"
-bk _test -f SCCS/s.boo.c || exit 1
+bk _test -f SCCS/s.boo.c || fail
 bk get $Q boo.c
-cmp boo.c "$HERE/import_dir/src/boo.c" || exit 1
+cmp boo.c "$HERE/import_dir/src/boo.c" || fail
 echo OK
 
 echo $N Check prompts to edit files .................................$NL
@@ -87,7 +87,7 @@ EOF
 bk diffs -u > BitKeeper/tmp/P
 bk unedit $Q foo
 bk edit $Q foo
-bk import $Q -tpatch BitKeeper/tmp/P . || exit 1
+bk import $Q -tpatch BitKeeper/tmp/P . || fail
 echo OK
 
 echo $N Test import of a patch with p0 ..............................$NL
@@ -103,7 +103,7 @@ G
 EOF
 bk get $Q foo
 bk diff -ruN foo BitKeeper/tmp/foo > BitKeeper/tmp/P
-bk import $Q -tpatch -p0 BitKeeper/tmp/P . || exit 1
+bk import $Q -tpatch -p0 BitKeeper/tmp/P . || fail
 echo OK
 
 echo $N Make sure an import does not commit unrelated deltas ........$NL
@@ -266,7 +266,7 @@ E
 EOF
 bk diff -Nur A B >> "$HERE/patch"
 cd "$HERE/EDIT"
-bk import $Q -tpatch  "$HERE/patch"  "$HERE/EDIT" || exit 1
+bk import $Q -tpatch  "$HERE/patch"  "$HERE/EDIT" || fail
 cat > bar.ref <<EOF
 B
 C
@@ -431,8 +431,8 @@ echo "checkout:get!" >> BitKeeper/etc/config
 cd "$HERE"
 mkdir -p import1/src
 echo foo > import1/src/foo.c
-bk import -tplain $Q -f import1 projc || exit 1
-test -f projc/src/foo.c || exit 1
+bk import -tplain $Q -f import1 projc || fail
+test -f projc/src/foo.c || fail
 echo OK
 
 echo $N Verify checkout:get with patch import .......................$NL
@@ -441,10 +441,10 @@ cp -rp import1 import2
 echo bar >> import2/src/foo.c
 echo baz > import2/src/baz.c
 bk diff -Nur import1 import2 > patch || : # legitimately exits 1
-bk clean $Q projc/src/foo.c || exit 1
-bk import -tpatch $Q -f patch projc || exit 1
-test -f projc/src/foo.c || exit 1
-test -f projc/src/baz.c || exit 1
+bk clean $Q projc/src/foo.c || fail
+bk import -tpatch $Q -f patch projc || fail
+test -f projc/src/foo.c || fail
+test -f projc/src/baz.c || fail
 rm -rf import1 import2 projc
 echo OK
 
@@ -481,7 +481,7 @@ cd "$HERE"
 	exit 1
 }
 cd "$HERE/co_get/src"
-test -f bar.c || exit 1
+test -f bar.c || fail
 bk get $Q bar.c "$HERE/import_sccs/src/bar.c"
 bk undos bar.c > X
 bk undos "$HERE/import_sccs/src/bar.c" > Y
@@ -505,7 +505,7 @@ test -d SCCS || { echo fix blobbed test; exit 1; }
 rm -fr SCCS
 ln -s ../../import_sccs/src/SCCS SCCS
 bk get $Q
-test -f bar.c || exit 1
+test -f bar.c || fail
 cd "$HERE"
 # auto-exit-on-fail is active, so turn off for a command
 set +e
@@ -894,8 +894,8 @@ test -d $TESTDATA/lmbench && {
 echo $N Make sure that traditional RCS imports works ................$NL
 cd "$HERE"
 commercial import-lmbench
-bk import $Q -ftRCS $TESTDATA/lmbench . || exit 1
-bk _test -f results/SCCS/s.Makefile || exit 1
+bk import $Q -ftRCS $TESTDATA/lmbench . || fail
+bk _test -f results/SCCS/s.Makefile || fail
 echo OK
 }
 
@@ -906,7 +906,7 @@ test -d $TESTDATA/import-RCS+x && {
 echo $N Make import w/ undos does not lose execute bits .............$NL
 cd "$HERE"
 commercial import-RCS+x
-bk import -quftRCS $TESTDATA/import-RCS+x . || exit 1
+bk import -quftRCS $TESTDATA/import-RCS+x . || fail
 bk get -q 
 test -x ixadm.cgi || {
 	echo lost execute bits on ixadm.cgi
@@ -934,7 +934,7 @@ test -d $TESTDATA/import-CVS.1 && {
 echo $N Make sure that import handles Attic files ...................$NL
 cd "$HERE"
 commercial import-CVS.1
-bk import -quftCVS $TESTDATA/import-CVS.1 . || exit 1
+bk import -quftCVS $TESTDATA/import-CVS.1 . || fail
 bk get -q
 P1=`bk sfiles BitKeeper/deleted | grep "s.pkginfo~"`
 bk _test -f "$P1" || {
@@ -968,7 +968,7 @@ cd "$HERE"
 commercial import-CVS.2
 bk edit $Q BitKeeper/etc/config
 echo "checkout:get!" >> BitKeeper/etc/config
-bk import -quftCVS $TESTDATA/import-CVS.1 . || exit 1
+bk import -quftCVS $TESTDATA/import-CVS.1 . || fail
 test -f COPYING || {
 	echo failed to get COPYING after import
 	exit 1

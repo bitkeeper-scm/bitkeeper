@@ -30,7 +30,7 @@ exit 0
 }
 
 # Run a bkd
-bk bkd -q -U -d -aPORT -ikill || exit 1
+bk bkd -q -U -d -aPORT -ikill || fail
 P=`cat PORT`
 
 echo $N Check the remote command ....................................$NL
@@ -41,7 +41,7 @@ rm -f "$HERE/DONE"
 bk -q@bk://localhost:$P/project sh ./test.remote
 test -f "$HERE/DONE" || {
 	echo FAILED
-	bk _kill bk://localhost:$P || exit 1
+	bk _kill bk://localhost:$P || fail
 	exit 1
 }
 echo OK
@@ -88,7 +88,7 @@ echo OK
 
 echo $N Rclone a BAM repository .....................................$NL
 # rename the trigger for this test
-cd BitKeeper/triggers || exit 1
+cd BitKeeper/triggers || fail
 bk mv -f pre-resolve.delay post-incoming.delay
 bk commit $Q -yrename
 cd ../..
@@ -97,9 +97,9 @@ rm -f "$HERE/DONE"
 bk clone $Q . bk://localhost:$P/rcopy
 test -f "$HERE/DONE" || {
 	echo failed
-	bk _kill bk://localhost:$P || exit 1
+	bk _kill bk://localhost:$P || fail
 	exit 1
 }
 echo OK
 
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail

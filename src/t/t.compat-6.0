@@ -55,56 +55,56 @@ echo OK
 
 echo -------------- crypto tests
 echo $N New and old version should generate the same signature ......$NL
-$OLDBK/bk crypto -s $OLDBK/my.sec < "$BIN2" > sig1 || exit 1
-bk crypto -s $OLDBK/my.sec < "$BIN2" > sig2 || exit 1
+$OLDBK/bk crypto -s $OLDBK/my.sec < "$BIN2" > sig1 || fail
+bk crypto -s $OLDBK/my.sec < "$BIN2" > sig2 || fail
 echo OK
 
 echo $N New and old versions should validate signature ..............$NL
-$OLDBK/bk crypto -v $OLDBK/my.pub sig1 < "$BIN2" || exit 1
-bk crypto -v $OLDBK/my.pub sig1 < "$BIN2" || exit 1
-$OLDBK/bk crypto -v $OLDBK/my.pub sig2 < $BIN2 || exit 1
-bk crypto -v $OLDBK/my.pub sig2 < "$BIN2" || exit 1
+$OLDBK/bk crypto -v $OLDBK/my.pub sig1 < "$BIN2" || fail
+bk crypto -v $OLDBK/my.pub sig1 < "$BIN2" || fail
+$OLDBK/bk crypto -v $OLDBK/my.pub sig2 < $BIN2 || fail
+bk crypto -v $OLDBK/my.pub sig2 < "$BIN2" || fail
 echo OK
 
 echo $N Old version encrypts and new version decrypts ...............$NL
-$OLDBK/bk crypto -e $OLDBK/my.pub < "$BIN2" > enc || exit 1
-bk crypto -d $OLDBK/my.sec < enc > out || exit 1
-cmp -s "$BIN2" out || exit 1
+$OLDBK/bk crypto -e $OLDBK/my.pub < "$BIN2" > enc || fail
+bk crypto -d $OLDBK/my.sec < enc > out || fail
+cmp -s "$BIN2" out || fail
 rm -f enc out
 echo OK
 
 echo $N New version encrypts and old version decrypts ...............$NL
-bk crypto -e $OLDBK/my.pub < "$BIN2" > enc || exit 1
-$OLDBK/bk crypto -d $OLDBK/my.sec < enc > out || exit 1
-cmp -s "$BIN2" out || exit 1
+bk crypto -e $OLDBK/my.pub < "$BIN2" > enc || fail
+$OLDBK/bk crypto -d $OLDBK/my.sec < enc > out || fail
+cmp -s "$BIN2" out || fail
 rm -f enc out
 echo OK
 
 KEY=64338d0365e3c7da
 echo $N New and old versions should symetric encrypt to same data ...$NL
-$OLDBK/bk crypto -E $KEY < "$BIN2" > enc1 || exit 1
-bk crypto -E $KEY < "$BIN2" > enc2 || exit 1
-cmp -s enc1 enc2 || exit 1
+$OLDBK/bk crypto -E $KEY < "$BIN2" > enc1 || fail
+bk crypto -E $KEY < "$BIN2" > enc2 || fail
+cmp -s enc1 enc2 || fail
 rm -f enc2
 echo OK
 
 echo $N Both versions should be able to decrypt data ................$NL
-$OLDBK/bk crypto -D $KEY < enc1 > out || exit 1
-cmp -s "$BIN2" out || exit 1
-bk crypto -D $KEY < enc1 > out || exit 1
-cmp -s "$BIN2" out || exit 1
+$OLDBK/bk crypto -D $KEY < enc1 > out || fail
+cmp -s "$BIN2" out || fail
+bk crypto -D $KEY < enc1 > out || fail
+cmp -s "$BIN2" out || fail
 rm -f enc1 out
 echo OK
 
 echo $N Check hashing with new and old versions .....................$NL
 $OLDBK/bk crypto -h - < "$BIN2" > hash1
-bk crypto -h - < "$BIN2" > hash2 || exit 1
+bk crypto -h - < "$BIN2" > hash2 || fail
 cmpfiles hash1 hash2
 echo OK
 
 echo $N Check hmacs with new and old versions .......................$NL
 $OLDBK/bk crypto -h - key < "$BIN2" > hash1
-bk crypto -h - key < "$BIN2" > hash2 || exit 1
+bk crypto -h - key < "$BIN2" > hash2 || fail
 cmpfiles hash1 hash2
 echo OK
 

@@ -32,7 +32,7 @@ echo OK
 
 echo $N Clone the product using rclone ..............................$NL
 cd "$HERE"
-bk bkd -d -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
+bk bkd -d -aPORT -ikill > "$HERE/BKD" 2>&1 || fail
 PORT=`cat PORT`
 trap "bk _kill bk://localhost:$PORT" 0
 bk clone $Q project bk://localhost:$PORT/copy || {
@@ -41,7 +41,7 @@ bk clone $Q project bk://localhost:$PORT/copy || {
 	bk cmdlog -a
 	exit 1
 }
-cd copy || exit 1
+cd copy || fail
 bk $Q -e -r check -a || {
 	echo failed
 	exit 1
@@ -60,7 +60,7 @@ echo OK
 echo $N Clone the product using rclone -r ...........................$NL
 cd "$HERE"
 bk clone $Q -rTIP project bk://localhost:$PORT/rollback || fail
-cd rollback || exit 1
+cd rollback || fail
 bk $Q -e -r check -a || {
 	echo failed
 	exit 1
@@ -68,10 +68,10 @@ bk $Q -e -r check -a || {
 echo OK
 
 echo $N Test that components have no parent pointer..................$NL
-cd "$HERE/copy" || exit 1
+cd "$HERE/copy" || fail
 for r in gcc gdb
 do
-	cd $r || exit 1
+	cd $r || fail
 	P=`bk parent -l`
 	EP="This repository has no parent."
 	test "$P" = "$EP" || {
@@ -106,13 +106,13 @@ bk clone $Q -sgdb copy bk://localhost:$PORT/copy2 || {
 	bk cmdlog -a
 	exit 1
 }
-cd copy2 || exit 1
+cd copy2 || fail
 bk $Q -e -r check -a || {
 	echo failed
 	exit 1
 }
-test -d gdb || exit 1
-test -d gcc && exit 1
+test -d gdb || fail
+test -d gcc && fail
 echo OK
 
 echo $N Test that -skey clones work .................................$NL
@@ -143,7 +143,7 @@ echo OK
 echo $N Test that we can clone using the COMPONENTS file ............$NL
 rm -rf mynewgcc
 cd project
-bk alias new justgcc gcc || exit 1
+bk alias new justgcc gcc || fail
 cd ..
 bk clone $Q -sjustgcc project bk://localhost:$PORT/mynewgcc || {
 	echo failed

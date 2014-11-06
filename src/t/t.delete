@@ -77,13 +77,13 @@ cd "$HERE/project/src"
 bk rm foo.c
 bk edit $Q h.h
 echo i > h.h
-bk ci -yi $Q h.h || exit 1
-bk commit $Q -ycset1 || exit 1
+bk ci -yi $Q h.h || fail
+bk commit $Q -ycset1 || fail
 cd "$HERE/clone/src"
 bk edit $Q h.h
 echo j > h.h
-bk ci -yj $Q h.h || exit 1
-bk commit $Q -ycset2 || exit 1
+bk ci -yj $Q h.h || fail
+bk commit $Q -ycset2 || fail
 cd "$HERE/clone"
 _BK_PREVENT_RESOLVE_RERUN=1 bk pull $Q >resync.log 2>&1
 if [ $? -ne 1 ]; then echo failed; cat resync.log; exit 1; fi

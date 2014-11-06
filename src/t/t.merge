@@ -101,7 +101,7 @@ v6
 
 EOF
 
-bk merge -hs left gca right out || exit 1
+bk merge -hs left gca right out || fail
 
 cat <<EOF > want
 @2new-diff
@@ -137,7 +137,7 @@ v7
 EOF
 cmpfiles out want
 
-bk merge -h left gca right out || exit 1
+bk merge -h left gca right out || fail
 sed -e 's/^<.*/<<<< left/' -e 's/^>.*/>>>> right/' < out > got
 
 cat <<EOF > want
@@ -398,7 +398,7 @@ bk cat afile | grep -q "this line changed by C" || {
 	exit 1
 }
 cd "$HERE"/F
-bk pull $Q ../D || exit 1
+bk pull $Q ../D || fail
 echo q | bk pull $Q ../E 2>ERR && {
 	echo should have failed
 	exit 1

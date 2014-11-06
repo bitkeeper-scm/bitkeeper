@@ -86,10 +86,10 @@ bk edit $Q config
 grep -v checkout config > c
 cat c > config
 echo "checkout:get" >> config
-bk delta $Q -ycheckout config || exit 1
+bk delta $Q -ycheckout config || fail
 bk commit $Q -ycheckout
 cd "$HERE"
-bk clone $Q -l project checkout || exit 1
+bk clone $Q -l project checkout || fail
 test -f checkout/src/'F!O#O$ B%A^R&RR(R)RR' || {
 	echo failed to check out user file in src
 	exit 1
@@ -133,8 +133,8 @@ test $R = 0 || {
 echo OK
 
 echo $N Check that clone -l -r works ................................$NL
-bk clone $Q -l -r1.1 "$HERE/project" "$HERE/undo" || exit 1
-cd "$HERE/undo" || exit 1
+bk clone $Q -l -r1.1 "$HERE/project" "$HERE/undo" || fail
+cd "$HERE/undo" || fail
 REV=`bk prs -hr+ -d:I: ChangeSet`
 test X$REV = X1.1 || {
 	echo failed to roll backwards
@@ -146,12 +146,12 @@ echo $N Check the s.file updates break links ........................$NL
 # I wish we could use 'test file1 -ef file2' to verify that the
 # files are really linked and unlinked, but that is not portable.
 cd "$HERE"
-bk clone $Q -l "$HERE/project" "$HERE/markers" || exit 1
+bk clone $Q -l "$HERE/project" "$HERE/markers" || fail
 bk _cp project/src/SCCS/s.h.h h1
 bk _cp markers/src/SCCS/s.h.h h2
 bk _cp trigger/src/SCCS/s.h.h h3
-cmp -s h1 h2 || exit 1
-cmp -s h2 h3 || exit 1
+cmp -s h1 h2 || fail
+cmp -s h2 h3 || fail
 cd project
 bk admin -fRCS src/h.h
 cd "$HERE"
@@ -160,7 +160,7 @@ cmp -s h1 h2 && {
 	echo failed to break link
 	exit 1
 }
-cmp h2 h3 || exit 1
+cmp h2 h3 || fail
 echo OK
 #BUG: 2003-03-04-003
 echo $N Clone with links and bad rev does not create dir ............$NL

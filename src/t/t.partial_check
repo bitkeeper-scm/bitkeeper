@@ -36,8 +36,8 @@ bk mv file file2
 bk commit $Q -yy
 cd ../project
 # update the check timestamp
-bk -r check -ac || exit 1
-bk pull $Q ../copy || exit 1
+bk -r check -ac || fail
+bk pull $Q ../copy || fail
 bk _cat $IDCACHE | grep -q '|file|.* file2' || {
 	echo idcache not updated!
 }
@@ -69,7 +69,7 @@ tar cf TAR project
 # okay, do this test
 THEN=`expr $CUR - \( 23 \* 3600 \)`
 cd project
-bk takepatch -af PATCH || exit 1
+bk takepatch -af PATCH || fail
 echo OK
 
 echo $N check_frequency = 1 days and test 25 hours - F ..............$NL
@@ -79,8 +79,8 @@ tar xf TAR
 cd project
 THEN=`expr $CUR - \( 25 \* 3600 \)`
 echo $THEN > $CHECKED
-BK_CONFIG="check_frequency: 1! " bk takepatch -af PATCH 2> ERR && exit 1
-grep -q "Missing file.*keywords" ERR || exit 1
+BK_CONFIG="check_frequency: 1! " bk takepatch -af PATCH 2> ERR && fail
+grep -q "Missing file.*keywords" ERR || fail
 echo OK
 
 echo $N Make sure partial check is full at 7+ days old - F ..........$NL
@@ -90,8 +90,8 @@ tar xf TAR
 cd project
 THEN=`expr $CUR - \( 7 \* 24 \* 3600 + 100 \)`
 echo $THEN > $CHECKED
-bk takepatch -af PATCH 2> ERR && exit 1
-grep -q "Missing file.*keywords" ERR || exit 1
+bk takepatch -af PATCH 2> ERR && fail
+grep -q "Missing file.*keywords" ERR || fail
 echo OK
 
 echo $N check_frequency = 13 days and test 12 days 23 hours - P .....$NL
@@ -101,7 +101,7 @@ tar xf TAR
 cd project
 THEN=`expr $CUR - \( 13 \* 24 \* 3600 \) + 3600`
 echo $THEN > $CHECKED
-BK_CONFIG="check_frequency: 13! " bk takepatch -af PATCH || exit 1
+BK_CONFIG="check_frequency: 13! " bk takepatch -af PATCH || fail
 echo OK
 
 echo $N check_frequency = 13 days and test 13 days 1 hour - F .......$NL
@@ -111,8 +111,8 @@ tar xf TAR
 cd project
 THEN=`expr $CUR - \( 13 \* 24 \* 3600 \) - 3600`
 echo $THEN > $CHECKED
-BK_CONFIG="check_frequency: 13! " bk takepatch -af PATCH 2> ERR && exit 1
-grep -q "Missing file.*keywords" ERR || exit 1
+BK_CONFIG="check_frequency: 13! " bk takepatch -af PATCH 2> ERR && fail
+grep -q "Missing file.*keywords" ERR || fail
 echo OK
 
 echo $N check_frequency = 15 days and test 13 days 23 hours - P .....$NL
@@ -122,7 +122,7 @@ tar xf TAR
 cd project
 THEN=`expr $CUR - \( 14 \* 24 \* 3600 \) + 3600`
 echo $THEN > $CHECKED
-BK_CONFIG="check_frequency: 15! " bk takepatch -af PATCH || exit 1
+BK_CONFIG="check_frequency: 15! " bk takepatch -af PATCH || fail
 echo OK
 
 echo $N check_frequency = 15 days and test 14 days 1 hour - F .......$NL
@@ -132,8 +132,8 @@ tar xf TAR
 cd project
 THEN=`expr $CUR - \( 14 \* 24 \* 3600 \) - 3600`
 echo $THEN > $CHECKED
-BK_CONFIG="check_frequency: 15! " bk takepatch -af PATCH 2> ERR && exit 1
-grep -q "Missing file.*keywords" ERR || exit 1
+BK_CONFIG="check_frequency: 15! " bk takepatch -af PATCH 2> ERR && fail
+grep -q "Missing file.*keywords" ERR || fail
 echo OK
 
 # For clone performance, check out an n-dim matrix of

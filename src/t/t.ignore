@@ -11,7 +11,7 @@
 
 echo $N Verify setting ignore globs through the command line ........$NL
 commercial project
-bk ignore '*.o' '*out -prune' || exit 1
+bk ignore '*.o' '*out -prune' || fail
 cat > WANT <<EOF
 *.o
 *out -prune
@@ -22,7 +22,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Verify reading ignore settings ..............................$NL
-bk ignore > GOT || exit 1
+bk ignore > GOT || fail
 cmpfiles BitKeeper/etc/ignore GOT
 echo OK
 

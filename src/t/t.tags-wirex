@@ -51,7 +51,7 @@ do	echo foo > $i
 	bk commit $Q -y$i
 done
 #bk tag $Q 'after merge'
-bk admin -hhh || exit 1
+bk admin -hhh || fail
 echo OK
 
 echo $N Add a cset in the parent and add a tag ......................$NL
@@ -60,13 +60,13 @@ echo foo > parent
 bk new $Q parent
 bk commit $Q -yparent
 bk tag $Q parent
-bk admin -hhh || exit 1
+bk admin -hhh || fail
 echo OK
 
 echo $N Pull and make sure it automerged the tag graph ..............$NL
 cd "$HERE/tags"
-bk pull $Q || exit 1
-bk admin -hhh || exit 1
+bk pull $Q || fail
+bk admin -hhh || fail
 bk _scat SCCS/s.ChangeSet | grep -q '^.cS14 9 l' || {
 	echo expected serials 14 and 9 to be merged and a tag leaf
 	bk _scat SCCS/s.ChangeSet | grep '^.cS'

@@ -128,7 +128,7 @@ echo OK
 echo $N Modify the binary in both, resync it, check merge ...........$NL
 cd "$HERE"
 rm -rf */RESYNC */PENDING
-bk edit $Q copy/binary project/binary || exit 1
+bk edit $Q copy/binary project/binary || fail
 cp -f "$BIN2" copy/binary
 cp -f "$BIN3" project/binary
 for i in copy project
@@ -173,8 +173,8 @@ bk cat file | grep -q copy || {
 	bk cat file
 	exit 1
 }
-test "`bk prs -r+ -hnd:C: binary`" != "Use local binary" && exit 1
-test "`bk prs -r+ -hnd:C: file`" != "Use local file" && exit 1
+test "`bk prs -r+ -hnd:C: binary`" != "Use local binary" && fail
+test "`bk prs -r+ -hnd:C: file`" != "Use local file" && fail
 echo OK
 
 echo $N Make sure ur works ..........................................$NL
@@ -206,8 +206,8 @@ bk cat file | grep -q project || {
 	bk cat file
 	exit 1
 }
-test "`bk prs -r+ -hnd:C: binary`" != "Use remote binary" && exit 1
-test "`bk prs -r+ -hnd:C: file`" != "Use remote file" && exit 1
+test "`bk prs -r+ -hnd:C: binary`" != "Use remote binary" && fail
+test "`bk prs -r+ -hnd:C: file`" != "Use remote file" && fail
 echo OK
 
 echo $N Make sure shell escapes to use local works ..................$NL
@@ -238,8 +238,8 @@ bk cat file | grep -q copy || {
 	bk cat file
 	exit 1
 }
-test "`bk prs -r+ -hnd:C: binary`" != "Use local binary" && exit 1
-test "`bk prs -r+ -hnd:C: file`" != "Use local file" && exit 1
+test "`bk prs -r+ -hnd:C: binary`" != "Use local binary" && fail
+test "`bk prs -r+ -hnd:C: file`" != "Use local file" && fail
 echo OK
 
 echo $N Make sure shell escapes to use remote works .................$NL
@@ -270,8 +270,8 @@ bk cat file | grep -q project || {
 	bk cat file
 	exit 1
 }
-test "`bk prs -r+ -hnd:C: binary`" != "Use remote binary" && exit 1
-test "`bk prs -r+ -hnd:C: file`" != "Use remote file" && exit 1
+test "`bk prs -r+ -hnd:C: binary`" != "Use remote binary" && fail
+test "`bk prs -r+ -hnd:C: file`" != "Use remote file" && fail
 echo OK
 
 echo $N Make sure we can force text resolution ......................$NL

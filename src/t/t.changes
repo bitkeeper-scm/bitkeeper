@@ -875,7 +875,7 @@ cmpfiles WANT GOT
 # with a \ escape.
 bk edit $Q f
 BK_USER=fourth bk delta $Q -fy'Fourth checkin' f
-BK_USER=fourth bk commit $Q --tag='f/ourth' -y'Fourth checkin' || exit 1
+BK_USER=fourth bk commit $Q --tag='f/ourth' -y'Fourth checkin' || fail
 bk changes -/f\/ourth/t -nd:SYMBOL: > GOT
 echo f/ourth > WANT
 cmpfiles WANT GOT

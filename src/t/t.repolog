@@ -40,12 +40,12 @@ echo $N Check that if we cannot make the dir, all is okay ...........$NL
 BLOCK="`bk dotbk`/repos/$HASH/$HOST"
 rm -fr "$BLOCK"
 touch "$BLOCK"
-bk -r check -ac || exit 1
+bk -r check -ac || fail
 echo OK
 
 echo $N Check that if we cannot make the dir, all is okay ...........$NL
 BLOCK="`bk dotbk`/repos"
 rm -fr "$BLOCK"
 touch "$BLOCK"
-bk -r check -ac || exit 1
+bk -r check -ac || fail
 echo OK

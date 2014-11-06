@@ -55,7 +55,7 @@ cd "$HERE/copy"
 ls > file
 bk new $Q file
 bk commit $Q -ywhatever
-bk push $Q || exit 1
+bk push $Q || fail
 echo OK
 
 echo $N Push should fail to lower level repo ........................$NL
@@ -150,7 +150,7 @@ echo OK
 # Setup bkd and try pulls and pushes again
 trap 'test -n "$P" && bk _kill bk://localhost:$P' 0
 cd "$HERE"
-bk bkd -dq -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
+bk bkd -dq -aPORT -ikill > "$HERE/BKD" 2>&1 || fail
 P=`cat PORT`
 
 echo $N Pull to a lower level nested repo through bkd should fail ...$NL
@@ -282,7 +282,7 @@ echo OK
 echo $N Make sure remote level setting is allowed on unsafe bkds ....$NL
 bk _kill bk://localhost:$P
 cd "$HERE"
-bk bkd -dq -U -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
+bk bkd -dq -U -aPORT -ikill > "$HERE/BKD" 2>&1 || fail
 P=`cat PORT`
 bk -@bk://localhost:$P/copy2 level 5 2>ERR || fail -f ERR "should have worked"
 echo OK

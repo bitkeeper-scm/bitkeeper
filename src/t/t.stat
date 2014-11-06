@@ -103,7 +103,7 @@ $now = time;
 die "wrong f3 mtime" unless abs($1 - $now) < 1000;
 die "wrong f2 atime" unless abs($2 - $now) < 24*3600 + 1000;
 EOF
-bk _stattest | perl test.pl || exit 1
+bk _stattest | perl test.pl || fail
 echo OK
 
 echo $N Test stat and lstat for doing what we would expect ..........$NL

@@ -38,7 +38,7 @@ cores
 echo $N rcheck via bk:// ............................................$NL
 cd "$HERE"
 rm -rf copy copy2
-bk bkd -q -aPORT -ikill || exit 1
+bk bkd -q -aPORT -ikill || fail
 P=`cat PORT`
 bk clone $Q "$HERE/project" bk://localhost:$P/"$HERE/copy"
 bk _test -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || { echo failed; exit 1; }
@@ -73,6 +73,6 @@ bk rcheck http://localhost:$P/"$HERE/copy2" |
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 bk rcheck http://localhost:$P/"$HERE/copy2" > /dev/null
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 echo OK
 # TODO test virtual host/root support

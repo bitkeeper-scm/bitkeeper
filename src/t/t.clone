@@ -40,9 +40,9 @@ echo OK
 
 echo $N Clone with all pending deltas................................$NL
 cd "$HERE"
-bk clone $Q project copy || exit 1
+bk clone $Q project copy || fail
 # the entire src directory should be gone
-[ -d copy/src ] && exit 1
+[ -d copy/src ] && fail
 echo OK
 
 echo $N Test clone to illegal directory .............................$NL
@@ -112,7 +112,7 @@ test "$PLATFORM" = "WIN32" || {
 
 echo $N Test clone from source which is a symlink ...................$NL
 ln -s project symlink
-bk bkd -q -aPORT -ikill || exit 1
+bk bkd -q -aPORT -ikill || fail
 P=`cat PORT`
 mkdir dest
 cd dest
@@ -166,7 +166,7 @@ bk parent $Q ../project
 bk parent -l > WANT
 cmpfiles WANT GOT
 bk changes -qLR > CHANGES
-test -s CHANGES && exit 1
+test -s CHANGES && fail
 cd ..
 echo OK
 
@@ -183,7 +183,7 @@ bk parent $Q ../project
 bk parent -l > WANT
 cmpfiles WANT GOT
 bk changes -qLR > CHANGES
-test -s CHANGES && exit 1
+test -s CHANGES && fail
 cd ..
 echo OK
 
@@ -222,7 +222,7 @@ bk parent $Q ../project
 bk parent -l > WANT
 cmpfiles WANT GOT
 bk changes -qLR > CHANGES
-test -s CHANGES && exit 1
+test -s CHANGES && fail
 cd ..
 echo OK
 
@@ -253,13 +253,13 @@ bk parent $Q ../project
 bk parent -l > WANT
 cmpfiles WANT GOT
 bk changes -qLR > CHANGES
-test -s CHANGES && exit 1
+test -s CHANGES && fail
 cd ..
 echo OK
 
 echo $N Test clonemod without a remote basename .....................$NL
 cd "$HERE"
-bk bkd -q -aPORT -ikill || exit 1
+bk bkd -q -aPORT -ikill || fail
 P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
 mkdir foo
@@ -271,12 +271,12 @@ echo OK
 echo $N Test clone with 1 arg and trailing slash ....................$NL
 mkdir foo
 cd foo
-bk clone $Q "$HERE"/project/ || exit 1
+bk clone $Q "$HERE"/project/ || fail
 echo OK
 
 echo $N Test clone into an existing directory........................$NL
 cd "$HERE"
-mkdir existing || exit 1
+mkdir existing || fail
 cd existing
 bk clone "$HERE/project" . >"$HERE"/OUT 2>&1 || {
 	echo failed

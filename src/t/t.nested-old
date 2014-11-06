@@ -2,35 +2,35 @@ echo $N Setup .......................................................$NL
 commercial project
 mkdir nest
 touch nest/foo
-bk new $Q nest/foo || exit 1
-bk commit $Q -y1 || exit 1
-bk clone $Q ../project ../copy || exit 1
-bk edit $Q nest/foo || exit 1
+bk new $Q nest/foo || fail
+bk commit $Q -y1 || fail
+bk clone $Q ../project ../copy || fail
+bk edit $Q nest/foo || fail
 echo hi > nest/foo
-bk delta $Q -y2 nest/foo || exit 1
-bk commit $Q -y2 || exit 1
+bk delta $Q -y2 nest/foo || fail
+bk commit $Q -y2 || fail
 
-bk _mv nest old || exit 1
+bk _mv nest old || fail
 commercial nest
 mkdir nest
 bk _mkdir nest/SCCS
 bk _mv ../old/SCCS/s.foo nest/SCCS/s.foo
-bk admin -D nest/foo || exit 1
+bk admin -D nest/foo || fail
 bk sfiles -P > /dev/null
-bk mv nest/foo foo || exit 1
-bk commit -ynest $Q || exit 1
+bk mv nest/foo foo || fail
+bk commit -ynest $Q || fail
 cd ..
 
 KEY=`bk prs -hnd:KEY: -r1.0 nest/foo`
-bk gone $Q $KEY || exit 1
-bk commit $Q -ygone || exit 1
-bk -r check -acf || exit 1
+bk gone $Q $KEY || fail
+bk commit $Q -ygone || fail
+bk -r check -acf || fail
 echo OK
 
 echo $N Do pull .....................................................$NL
 cd "$HERE"/copy
 bk pending
-BK_CONFIG=partial_check:off! bk pull $Q 2> GOT || exit 1
+BK_CONFIG=partial_check:off! bk pull $Q 2> GOT || fail
 cat > WANT <<EOF
 Marked gone (bk help chk1): nest/foo
 EOF

@@ -54,7 +54,7 @@ END
 bk new $Q foo
 bk commit $Q -ystart
 cd "$HERE"
-bk clone $Q project copy || exit 1
+bk clone $Q project copy || fail
 cd project
 bk edit $Q foo
 cat <<END > foo

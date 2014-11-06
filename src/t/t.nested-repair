@@ -8,19 +8,19 @@ for i in foo
 do
 	touch file$i
 	echo "stuff $i" > file$i
-	bk new $Q -y"add" file$i || exit 1
+	bk new $Q -y"add" file$i || fail
 done
-bk commit -S $Q -y"Add $i to file$i" || exit 1
+bk commit -S $Q -y"Add $i to file$i" || fail
 cd ../gdb
 for i in foo
 do
 	touch file$i
 	echo "stuff $i" > file$i
-	bk new $Q -y"add" file$i || exit 1
-	bk commit -S $Q -y"add file $i" || exit 1
+	bk new $Q -y"add" file$i || fail
+	bk commit -S $Q -y"add file $i" || fail
 done
-bk -P commit $Q -y"add files" || exit 1
-bk clone $Q  "$HERE"/project "$HERE"/copy || exit 1
+bk -P commit $Q -y"add files" || fail
+bk clone $Q  "$HERE"/project "$HERE"/copy || fail
 echo OK
 
 echo $N Make sure we can restore an identical ChangeSet file ........$NL

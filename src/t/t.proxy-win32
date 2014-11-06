@@ -24,7 +24,7 @@ val=4bb5f2fdo8gygVILi-QNt65reicE1g
 test "$PLATFORM" = "WIN32" || exit 0
 
 cleanup() {
-	bk _registry set "$KEY" ProxyEnable dword:0 || exit 1
+	bk _registry set "$KEY" ProxyEnable dword:0 || fail
 	bk _registry delete "$KEY" ProxyOverride 2>/dev/null
 	bk _registry delete "$KEY" ProxyServer 2>/dev/null
 	bk _registry delete "$KEY" AutoConfigURL 2>/dev/null
@@ -43,8 +43,8 @@ bk gethost -r | grep -q bitmover.com || {
 	exit 0
 }
 
-bk _registry set "$KEY" ProxyEnable dword:1 || exit 1
-bk _registry set "$KEY" ProxyServer "data.bitmover.com:3128" || exit 1
+bk _registry set "$KEY" ProxyEnable dword:1 || fail
+bk _registry set "$KEY" ProxyServer "data.bitmover.com:3128" || fail
 
 # the host proxytest only exists on 'work', so if you don't use
 # the proxy it work work.
@@ -73,7 +73,7 @@ grep -q "direct connection" ERR && {
 echo OK
 
 echo $N Test AutoConfigURL settings .................................$NL
-bk _registry set "$KEY" ProxyEnable dword:1 || exit 1
+bk _registry set "$KEY" ProxyEnable dword:1 || fail
 bk _registry delete "$KEY" ProxyServer
 bk _registry set "$KEY" AutoConfigURL http://wpad.bitmover.com/wpad.dat
 
@@ -110,7 +110,7 @@ bk _registry setbit \
 	"$KEY\\"Connections DefaultConnectionSettings 0103 >/dev/null 2>&1
 if [ $? -eq 0 ]
 then
-bk _registry set "$KEY" ProxyEnable dword:0 || exit 1
+bk _registry set "$KEY" ProxyEnable dword:0 || fail
 bk _registry delete "$KEY" AutoConfigURL
 
 

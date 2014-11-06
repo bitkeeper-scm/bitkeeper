@@ -344,13 +344,13 @@ then #-------------------------------------------------------------------
 echo $N Export should work if source is a symlink to a directory ....$NL
 cd "$HERE"
 ln -s project projlink
-bk export projlink fromlink || exit 1
-cd fromlink || exit 1
-test -f lod.c || exit 1
+bk export projlink fromlink || fail
+cd fromlink || fail
+test -f lod.c || fail
 cd ..
 ln -s fromlink/lod.c filelink
-bk export filelink fromlink 2>ERR && exit 1
-grep -q "not a directory" ERR || exit 1
+bk export filelink fromlink 2>ERR && fail
+grep -q "not a directory" ERR || fail
 echo OK
 
 echo $N Check export \-w with symlink ................................$NL

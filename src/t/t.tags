@@ -117,7 +117,7 @@ bk _scat SCCS/s.ChangeSet | grep -q '^.cS[0-9]' && {
 	bk _scat SCCS/s.ChangeSet
 	exit 1
 }
-bk admin -hhhq || exit 1
+bk admin -hhhq || fail
 echo OK
 
 echo $N Add new style tags ..........................................$NL
@@ -157,14 +157,14 @@ cmp -s SAVE2 SAVE || {
 	exit 1
 }
 rm SAVE2
-bk admin -hhhq || exit 1
+bk admin -hhhq || fail
 echo OK
 
 echo $N Add same tag to a new cset as part of the cset ..............$NL
 ls > RST
 bk new $Q RST
-bk commit $Q --tag=NEW -yNEW2 || exit 1
-bk admin -hhhq || exit 1
+bk commit $Q --tag=NEW -yNEW2 || fail
+bk admin -hhhq || fail
 echo OK
 
 echo $N Clone repository ............................................$NL
@@ -193,7 +193,7 @@ bk _scat SCCS/s.ChangeSet | grep -q '^.cS[0-9]' && {
 	bk _scat SCCS/s.ChangeSet
 	exit 1
 }
-bk admin -hhhq || exit 1
+bk admin -hhhq || fail
 bk admin -z
 bk _scat SCCS/s.ChangeSet | grep -q '^.cS[0-9]' && {
 	echo added a tag graph node after the admin -z
@@ -208,7 +208,7 @@ bk pull $Q || { echo failed; exit 1; }
 revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 bk _scat SCCS/s.ChangeSet | grep -q 'NOT IN TAG' || { echo did not propogate tag; exit 1; }
-bk admin -hhhq || exit 1
+bk admin -hhhq || fail
 echo OK
 
 echo $N Resolve a tag conflict, pick remote, see if it sticks .......$NL
@@ -548,7 +548,7 @@ echo OK
 test -x /usr/bin/ruby && {
 echo $N Test ruby script to archive tagged csets ....................$NL
 cd "$HERE"
-bk clone $Q -r1.2 project tagexport || exit 1
+bk clone $Q -r1.2 project tagexport || fail
 mkdir tagexport/BitKeeper/triggers
 cat > tagexport/BitKeeper/triggers/post-incoming.release <<'EOF'
 #!/usr/bin/ruby -w
@@ -577,18 +577,18 @@ tags.each_key {|tag|
 }
 exit 0
 EOF
-chmod +x tagexport/BitKeeper/triggers/post-incoming.release || exit 1
+chmod +x tagexport/BitKeeper/triggers/post-incoming.release || fail
 cd project
 echo "I love ruby" > language
 bk new $Q language
-bk commit $Q -yruby || exit 1
+bk commit $Q -yruby || fail
 bk tag $Q ruby
 mkdir ../release
-bk push $Q ../tagexport 2> OUT || exit 1
-test -f ../release/prog-ruby.tar.gz || exit 1
+bk push $Q ../tagexport 2> OUT || fail
+test -f ../release/prog-ruby.tar.gz || fail
 bk tag $Q newstuff
-bk push $Q ../tagexport 2> OUT || exit 1
-test -f ../release/prog-newstuff.tar.gz || exit 1
+bk push $Q ../tagexport 2> OUT || fail
+test -f ../release/prog-newstuff.tar.gz || fail
 echo OK
 }
 
@@ -636,12 +636,12 @@ echo OK
 echo $N Create tag graph with multiple tips .........................$NL
 commercial tipbase
 cd ..
-bk clone $Q tipbase tips || exit 1
-bk clone $Q tipbase tipsave || exit 1
+bk clone $Q tipbase tips || fail
+bk clone $Q tipbase tipsave || fail
 cd tipbase
 touch foo
 bk new $Q foo
-bk commit $Q -yfoo || exit 1
+bk commit $Q -yfoo || fail
 cd ..
 for d in 1 2; do bk clone $Q tipbase tip$d || exit 1; done
 cd tipbase
@@ -656,8 +656,8 @@ cd ../tipbase
 for d in 1 2; do bk pull $Q ../tip$d || exit 1; done
 cd ../tips
 bk tag $Q -r1.1 BAR
-bk pull $Q || exit 1
-bk undo $Q -fr+ || exit 1
+bk pull $Q || fail
+bk undo $Q -fr+ || fail
 bk _scat SCCS/s.ChangeSet | grep -q '^.cS0 l' || {
 	echo 'Failed'
 	echo In problem setup, expected tag leaf to have parent 0
@@ -684,7 +684,7 @@ echo OK
 
 echo $N Fix tag graph by tagmerge ...................................$NL
 PREFIX=`bk _scat SCCS/s.ChangeSet | grep '^.cS[0-9][0-9]* [0-9][0-9]*' | wc -l`
-bk tagmerge > OUT 2> ERR || exit 1
+bk tagmerge > OUT 2> ERR || fail
 POSTFIX=`bk _scat SCCS/s.ChangeSet | grep '^.cS[0-9][0-9]* [0-9][0-9]*' | wc -l`
 test "$PREFIX" -eq 0 -a "$POSTFIX" -eq 2 || {
 	echo 'Failed'

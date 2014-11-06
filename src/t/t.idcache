@@ -48,7 +48,7 @@ then	echo commit failed
 fi
 bk rm bar.c
 bk commit $S -y"rm"
-bk -r check -a || exit 1
+bk -r check -a || fail
 echo OK
 
 echo $N corrupt the idcache, should rebuild .........................$NL
@@ -57,7 +57,7 @@ echo "hi mom" > X
 bk _cat X $IDCACHE > Y
 bk _mv Y $IDCACHE
 cd "$HERE/project/src"
-bk -r check -a 2>OUT || exit 1
+bk -r check -a 2>OUT || fail
 grep -q 'Rebuilding idcache' OUT || {
 	echo Bad error message
 	cat OUT
@@ -73,7 +73,7 @@ bk _cat X $IDCACHE > Y
 chmod -w Y
 bk _mv Y $IDCACHE
 cd "$HERE/project/src"
-bk -r check -a 2>OUT || exit 1
+bk -r check -a 2>OUT || fail
 grep -q 'Rebuilding idcache' OUT || {
 	echo Bad error message
 	cat OUT

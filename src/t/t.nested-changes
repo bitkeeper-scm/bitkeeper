@@ -6,44 +6,44 @@ bk new $Q prod_file
 bk commit -S $Q -yfile
 BASEP=`bk changes -r+ -nd:MD5KEY:`
 BASEGCC=`cd gcc; bk changes -r+ -nd:MD5KEY:`
-bk clone $Q  "$HERE"/project "$HERE"/copy || exit 1
+bk clone $Q  "$HERE"/project "$HERE"/copy || fail
 # add some files
 cd gcc
 for i in 1 2 3
 do
 	touch file$i
 	echo "stuff $i" > file$i
-	bk new $Q -y"add" file$i || exit 1
+	bk new $Q -y"add" file$i || fail
 done
-bk commit -S $Q -y"Add $i to file$i" || exit 1
-bk -P commit $Q -y"Commit cset in gcc" || exit 1
+bk commit -S $Q -y"Add $i to file$i" || fail
+bk -P commit $Q -y"Commit cset in gcc" || fail
 cd ../gdb
 for i in 1 2 3 
 do
 	touch file$i
 	echo "stuff $i" > file$i
-	bk new $Q -y"add" file$i || exit 1
-	bk commit -S $Q -y"add file $i" || exit 1
+	bk new $Q -y"add" file$i || fail
+	bk commit -S $Q -y"add file $i" || fail
 done
-bk -P commit $Q -y"add csets to gdb" || exit 1
+bk -P commit $Q -y"add csets to gdb" || fail
 cd ../../copy/gcc
 touch local1
 echo "stuff 1" > local1
-bk new $Q -yadd local1 || exit 1
-bk commit -S $Q -yaddlocal || exit 1
+bk new $Q -yadd local1 || fail
+bk commit -S $Q -yaddlocal || fail
 bk edit $Q ../prod_file
 echo 1 >> ../prod_file
-bk ci $Q -yupdate ../prod_file || exit 1
-bk -P commit $Q -ylocal || exit 1
-bk edit $Q local1 || exit 1
+bk ci $Q -yupdate ../prod_file || fail
+bk -P commit $Q -ylocal || fail
+bk edit $Q local1 || fail
 echo new >> local1
-bk delta $Q -ynewlocal || exit 1
-bk commit -S $Q -ynew || exit 1
+bk delta $Q -ynewlocal || fail
+bk commit -S $Q -ynew || fail
 echo OK
 
 echo $N Run project level changes ...................................$NL
 bk -P changes  -nd':INDENT::REV: :DPN: :C:' |
-    sed 's/BitKeeper file.*/new/' > OUT || exit 1
+    sed 's/BitKeeper file.*/new/' > OUT || fail
 cat <<EOF > WANT
 1.4 ChangeSet local
 1.3 ChangeSet file
@@ -56,7 +56,7 @@ echo OK
 
 echo $N Run project level changes -v.................................$NL
 bk -P changes  -v -nd':INDENT::REV: :DPN: :C:' |
-    sed 's/BitKeeper file.*/new/' > OUT || exit 1
+    sed 's/BitKeeper file.*/new/' > OUT || fail
 cat <<EOF > WANT
 1.4 ChangeSet local
   1.2 prod_file update
@@ -106,12 +106,12 @@ echo OK
 
 echo $N Run project level changes -v from component .................$NL
 bk changes  -v -nd':INDENT::REV: :DPN: :C:' |
-    sed 's/BitKeeper file.*/new/' > OUT || exit 1
+    sed 's/BitKeeper file.*/new/' > OUT || fail
 cmpfiles WANT OUT
 echo OK
 
 echo $N Project level changes -vv ...................................$NL
-bk -P changes -vv -r+ > OUT || exit 1
+bk -P changes -vv -r+ > OUT || fail
 grep -q "1.1/gcc/local1" OUT || {
 	echo wrong diff header
 	cat OUT
@@ -296,7 +296,7 @@ echo OK
 
 echo $N Run project level changes -V.................................$NL
 bk -P changes  -V -nd':INDENT::REV: :DPN: :C:' |
-    sed 's/BitKeeper file.*/new/' > OUT || exit 1
+    sed 's/BitKeeper file.*/new/' > OUT || fail
 cat <<EOF > WANT
 1.4 ChangeSet local
   1.2 gcc/ChangeSet addlocal
@@ -314,7 +314,7 @@ echo OK
 
 echo $N Run project level changes -P.................................$NL
 bk -P changes  -P -nd':INDENT::REV: :DPN: :C:' |
-    sed 's/BitKeeper file.*/new/' > OUT || exit 1
+    sed 's/BitKeeper file.*/new/' > OUT || fail
 cat <<EOF > WANT
 1.4 ChangeSet local
 1.3 ChangeSet file
@@ -327,7 +327,7 @@ echo OK
 
 echo $N Run project level changes -V -v..............................$NL
 bk -P changes  -V -v -nd':INDENT::REV: :DPN: :C:' |
-    sed 's/BitKeeper file.*/new/' > OUT || exit 1
+    sed 's/BitKeeper file.*/new/' > OUT || fail
 cat <<EOF > WANT
 1.4 ChangeSet local
   1.2 prod_file update
@@ -377,7 +377,7 @@ echo OK
 
 echo $N Run project level changes -P -v..............................$NL
 bk -P changes  -P -v -nd':INDENT::REV: :DPN: :C:' |
-    sed 's/BitKeeper file.*/new/' > OUT || exit 1
+    sed 's/BitKeeper file.*/new/' > OUT || fail
 cat <<EOF > WANT
 1.4 ChangeSet local
   1.2 prod_file update
@@ -404,7 +404,7 @@ echo OK
 
 echo $N Run project level changes -icomp_file........................$NL
 bk -P changes  -igcc/local1 -nd':INDENT::REV: :DPN: :C:' |
-    sed 's/BitKeeper file.*/new/' > OUT || exit 1
+    sed 's/BitKeeper file.*/new/' > OUT || fail
 cat <<EOF > WANT
 1.4 ChangeSet local
 EOF
@@ -414,7 +414,7 @@ echo OK
 echo $N Run component level changes -icomp_file......................$NL
 cd ..
 bk --cd=gcc changes -S -ilocal1 -nd':INDENT::REV: :DPN: :C:' |
-    sed 's/BitKeeper file.*/new/' > OUT || exit 1
+    sed 's/BitKeeper file.*/new/' > OUT || fail
 cat <<EOF > WANT
 1.3 ChangeSet new
 1.2 ChangeSet addlocal
@@ -425,7 +425,7 @@ echo OK
 
 echo $N Run project level changes -V -icomp_file.....................$NL
 bk -P changes  -igcc/local1 -V -nd':INDENT::REV: :DPN: :C:' |
-    sed 's/BitKeeper file.*/new/' > OUT || exit 1
+    sed 's/BitKeeper file.*/new/' > OUT || fail
 cat <<EOF > WANT
 1.4 ChangeSet local
   1.2 gcc/ChangeSet addlocal
@@ -435,7 +435,7 @@ echo OK
 
 echo $N Run project level changes -P -icomp_file.....................$NL
 bk -P changes  -P -igcc/local1 -nd':INDENT::REV: :DPN: :C:' |
-    sed 's/BitKeeper file.*/new/' > OUT || exit 1
+    sed 's/BitKeeper file.*/new/' > OUT || fail
 cat <<EOF > WANT
 1.4 ChangeSet local
 EOF
@@ -444,7 +444,7 @@ echo OK
 
 echo $N Run project level changes -v -icomp_file.....................$NL
 bk -P changes  --filter -v -igcc/local1 -nd':INDENT::REV: :DPN: :C:' |
-    sed 's/BitKeeper file.*/new/' > OUT || exit 1
+    sed 's/BitKeeper file.*/new/' > OUT || fail
 cat <<EOF > WANT
 1.4 ChangeSet local
   1.2 gcc/ChangeSet addlocal
@@ -456,7 +456,7 @@ echo OK
 
 echo $N Run component level changes .................................$NL
 bk changes --standalone -nd':INDENT::REV: :DPN: :C:' |
-    sed 's/BitKeeper file.*/new/' > OUT || exit 1
+    sed 's/BitKeeper file.*/new/' > OUT || fail
 cat <<EOF > WANT
 1.3 ChangeSet new
 1.2 ChangeSet addlocal
@@ -468,19 +468,19 @@ echo OK
 
 echo $N Run component level changes -P...............................$NL
 bk changes --standalone -P -nd':INDENT::REV: :DPN: :C:' |
-    sed 's/BitKeeper file.*/new/' > OUT || exit 1
+    sed 's/BitKeeper file.*/new/' > OUT || fail
 cmpfiles OUT WANT
 echo OK
 
 echo $N Run component level changes -V...............................$NL
 bk changes --standalone -V -nd':INDENT::REV: :DPN: :C:' |
-    sed 's/BitKeeper file.*/new/' > OUT || exit 1
+    sed 's/BitKeeper file.*/new/' > OUT || fail
 cmpfiles OUT WANT
 echo OK
 
 echo $N Run component level changes -v...............................$NL
 bk changes --standalone -v -nd':INDENT::REV: :DPN: :C:' |
-    sed 's/BitKeeper file.*/new/' > OUT || exit 1
+    sed 's/BitKeeper file.*/new/' > OUT || fail
 cat <<EOF > WANT
 1.3 ChangeSet new
   1.2 local1 newlocal
@@ -503,7 +503,7 @@ echo OK
 
 echo $N Run project level changes -r+................................$NL
 # expect on component csets that are committed in project
-bk -P changes  -r+ -Pqvnd':GFILE: :C:' > OUT || exit 1
+bk -P changes  -r+ -Pqvnd':GFILE: :C:' > OUT || fail
 cat <<EOF > WANT
 ChangeSet local
 prod_file update
@@ -527,7 +527,7 @@ echo OK
 
 echo $N Run project level changes -L ................................$NL
 # again only commited stuff
-bk -P changes -L -qvnd':GFILE: :C:' > OUT || exit 1
+bk -P changes -L -qvnd':GFILE: :C:' > OUT || fail
 cat <<EOF > WANT
 ChangeSet local
 prod_file update
@@ -540,7 +540,7 @@ echo OK
 
 echo $N Run changes -L in component .................................$NL
 # should compare matching component and show pending csets
-bk changes --standalone -L -qvnd':GFILE: :C:' > OUT || exit 1
+bk changes --standalone -L -qvnd':GFILE: :C:' > OUT || fail
 cat <<EOF > WANT
 ChangeSet new
 local1 newlocal
@@ -553,7 +553,7 @@ echo OK
 
 echo $N Run changes -L in product ...................................$NL
 cd ..
-bk changes -L -Pqvnd':GFILE: :C:' > OUT || exit 1
+bk changes -L -Pqvnd':GFILE: :C:' > OUT || fail
 cat <<EOF > WANT
 ChangeSet local
 prod_file update
@@ -595,7 +595,7 @@ echo OK
 echo $N Test filtering of csets .....................................$NL
 cd project
 bk changes -v --filter -i'*gone' \
-  -nd':GFILE:@:REV:$if(:CHANGESET:){ :C:}'  > GOT || exit 1
+  -nd':GFILE:@:REV:$if(:CHANGESET:){ :C:}'  > GOT || fail
 cat <<EOF > WANT
 ChangeSet@1.2 attach gcc, gdb
 gcc/ChangeSet@1.1 Initial repository create
@@ -618,8 +618,8 @@ touch prod_file
 bk new $Q prod_file
 bk commit $Q -y'file it'
 bk changes -v -i'prod_file' \
-    -nd'$if(:CHANGESET:){:GFILE:@:REV:}' > WANT || exit 1
-bk changes -i'prod_file' -nd':GFILE:@:REV:' > GOT || exit 1
+    -nd'$if(:CHANGESET:){:GFILE:@:REV:}' > WANT || fail
+bk changes -i'prod_file' -nd':GFILE:@:REV:' > GOT || fail
 cmpfiles GOT WANT
 echo OK
 
@@ -633,19 +633,19 @@ bk delta $Q -fynull gcc/file1
 bk commit $Q -y"prod_file and gcc"
 bk tag $Q TAG
 bk changes -v --filter -i'prod_file' \
-    -nd'$if(:CHANGESET:){:GFILE:@:REV:}' > GOT || exit 1
+    -nd'$if(:CHANGESET:){:GFILE:@:REV:}' > GOT || fail
 cat <<EOF > WANT
 ChangeSet@1.6
 ChangeSet@1.3
 EOF
 cmpfiles WANT GOT
-bk changes --filter -i'prod_file' -nd':GFILE:@:REV:' > GOT || exit 1
+bk changes --filter -i'prod_file' -nd':GFILE:@:REV:' > GOT || fail
 cat <<EOF > WANT
 ChangeSet@1.6
 ChangeSet@1.3
 EOF
 cmpfiles GOT WANT
-bk changes -i'prod_file' -nd':GFILE:@:REV:' > GOT || exit 1
+bk changes -i'prod_file' -nd':GFILE:@:REV:' > GOT || fail
 cmpfiles GOT WANT
 echo OK
 
@@ -657,7 +657,7 @@ cmpfiles WANT GOT
 # okay, now test it out
 KEY=`bk log -r+ -nd:ROOTKEY: prod_file`
 bk _rm -f prod_file SCCS/s.prod_file
-bk gone "$KEY" > OUT 2> ERR || exit 1
+bk gone "$KEY" > OUT 2> ERR || fail
 bk commit $Q -ygone
 bk changes -i'prod_file' -nd:I: > GOT
 cmpfiles WANT GOT
@@ -665,13 +665,13 @@ echo OK
 
 echo $N Test filtering of files in components .......................$NL
 # output nothing because these aren't in the product repo
-bk changes --filter -igcc/file1 -nd':GFILE:@:REV:' > GOT || exit 1
+bk changes --filter -igcc/file1 -nd':GFILE:@:REV:' > GOT || fail
 cat <<'EOF' > WANT
 ChangeSet@1.6
 ChangeSet@1.4
 EOF
 cmpfiles WANT GOT
-bk changes -V --filter -igcc/file1 -nd':GFILE:@:REV:' > GOT || exit 1
+bk changes -V --filter -igcc/file1 -nd':GFILE:@:REV:' > GOT || fail
 cat <<'EOF' > WANT
 ChangeSet@1.6
 gcc/ChangeSet@1.3
@@ -679,7 +679,7 @@ ChangeSet@1.4
 gcc/ChangeSet@1.2
 EOF
 cmpfiles WANT GOT
-bk changes --filter -vigcc/file1 -nd':GFILE:@:REV:' > GOT || exit 1
+bk changes --filter -vigcc/file1 -nd':GFILE:@:REV:' > GOT || fail
 cat <<'EOF' > WANT
 ChangeSet@1.6
 gcc/ChangeSet@1.3
@@ -741,7 +741,7 @@ echo OK
 echo $N Test renaming file and component and :GFILE: changes ........$NL
 # for next test, save the GFILE data:
 bk changes -vrTAG -nd:GFILE: > gfile.AFTER
-cmp -s gfile.BEFORE gfile.AFTER && exit 1
+cmp -s gfile.BEFORE gfile.AFTER && fail
 cat << EOF > WANT
 ChangeSet
 newcc/ChangeSet

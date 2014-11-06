@@ -24,7 +24,7 @@ The quick foxy
 brown
 fox
 EOF
-bk new $Q file1 || exit 1
+bk new $Q file1 || fail
 mkdir dir1
 cat <<EOF > dir1/file2
 jumped foxily
@@ -32,7 +32,7 @@ over
 the lazy
 dog
 EOF
-bk new $Q dir1/file2 || exit 1
+bk new $Q dir1/file2 || fail
 mkdir subdir
 cd subdir
 cat <<EOF > old
@@ -54,7 +54,7 @@ cd ..
 echo OK
 
 echo $N grep ........................................................$NL
-bk grep fox > OUT || exit 1
+bk grep fox > OUT || fail
 cat <<EOF > expected
 file1:The quick foxy
 file1:fox
@@ -63,7 +63,7 @@ checkfiles OUT expected
 echo OK
 
 echo $N grep ^fox....................................................$NL
-bk grep ^fox > OUT || exit 1
+bk grep ^fox > OUT || fail
 cat <<EOF > expected
 file1:fox
 EOF
@@ -71,7 +71,7 @@ checkfiles OUT expected
 echo OK
 
 echo $N recursive grep ..............................................$NL
-bk -r grep fox > OUT || exit 1
+bk -r grep fox > OUT || fail
 cat <<EOF > expected
 file1:The quick foxy
 file1:fox
@@ -269,7 +269,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N recursive grep ..............................................$NL
-bk -U grep fox > OUT || exit 1
+bk -U grep fox > OUT || fail
 cat <<EOF > expected
 file1:The quick foxy
 file1:fox
@@ -279,7 +279,7 @@ checkfiles OUT expected
 echo OK
 
 echo $N recursive grep without file names ...........................$NL
-bk -U grep -h fox > OUT || exit 1
+bk -U grep -h fox > OUT || fail
 cat <<EOF > expected
 The quick foxy
 fox
@@ -289,7 +289,7 @@ checkfiles OUT expected
 echo OK
 
 echo $N Implied list of files .......................................$NL
-bk grep '[1x]' > OUT || exit 1
+bk grep '[1x]' > OUT || fail
 cat <<EOF > expected
 file:line1
 file1:The quick foxy
@@ -468,7 +468,7 @@ echo OK
 
 echo $N grep file without a trailing newline ........................$NL
 echo $NX line without newline$NXL > f3
-bk grep line f3 > /dev/null || exit 1
+bk grep line f3 > /dev/null || fail
 echo OK
 
 # This used to fail on some but not all platforms.

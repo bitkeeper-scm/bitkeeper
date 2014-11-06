@@ -29,8 +29,8 @@ test -s "$HERE/OUT" && {
 echo OK
 
 echo $N Make sure clean removes the ChangeSet files in an extra .....$NL
-mv ../nm . || exit 1
-cd nm || exit 1
+mv ../nm . || fail
+cd nm || fail
 test -f ChangeSet || {
 	echo "failed -- no ChangeSet"
 	exit 1

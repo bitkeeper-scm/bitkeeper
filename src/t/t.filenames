@@ -140,12 +140,12 @@ echo $N Pull changes with spaces to another repo ....................$NL
 cd "$HERE"
 bk clone $Q project copy
 cd copy
-bk undo $Q -fr+ || exit 1
+bk undo $Q -fr+ || fail
 bk pull -v > /dev/null 2>OUT || {
 	echo pull should have worked
 	exit 1
 }
-bk -r check -af || exit 1
+bk -r check -af || fail
 grep -q '^Updating src/a a a' OUT || {
 	echo filename wrong in output
 	cat OUT

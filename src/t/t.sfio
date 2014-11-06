@@ -19,7 +19,7 @@ echo wears army boots > rw/c
 echo yo poppa likes it > rw/d
 find ro rw -type f | bk sfio -o $Q > SFIO
 chmod 555 ro
-bk sfio -i < SFIO 2>ERR || exit 1
+bk sfio -i < SFIO 2>ERR || fail
 grep -q 'ro/a existed but contents match, skipped.' ERR || {
 	echo bad error message
 	cat ERR

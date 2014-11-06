@@ -19,7 +19,7 @@ echo OK
 
 echo $N Test that bk changes does not include attr file .............$NL
 cd "$HERE/clone"
-bk pull $Q || exit 1
+bk pull $Q || fail
 bk changes -vr+ > GOT 2>&1
 grep -q BitKeeper/etc/attr GOT && {
 	echo failed on bk changes -vr+

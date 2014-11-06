@@ -36,8 +36,8 @@ cat > gca <<EOF
    won't change
    won't change
 EOF
-bk new $Q gca || exit 1
-bk edit $Q gca || exit 1
+bk new $Q gca || fail
+bk edit $Q gca || fail
 cat > gca <<EOF
    won't change
    won't change either
@@ -54,8 +54,8 @@ cat > gca <<EOF
    won't change
    won't change
 EOF
-bk delta $Q -yremote gca || exit 1
-bk _get -e $Q -r1.1 gca || exit 1
+bk delta $Q -yremote gca || fail
+bk _get -e $Q -r1.1 gca || fail
 cat > gca <<EOF
    won't change
    won't change either
@@ -73,7 +73,7 @@ cat > gca <<EOF
    won't change
 EOF
 cp gca V1.1.1.1
-bk delta $Q -ylocal gca || exit 1
+bk delta $Q -ylocal gca || fail
 echo OK
 
 echo $N Check default smerge output .................................$NL
@@ -126,7 +126,7 @@ echo OK
 
 echo $N Check gca smerge output .....................................$NL
 #also edit file
-bk edit $Q gca || exit 1
+bk edit $Q gca || fail
 bk smerge -g -l1.2 -r1.1.1.1 gca > out
 if [ $? -ne 1 ]; then echo failed; exit 1; fi
 bk smerge $D3 -g -l1.2 -r1.1.1.1 gca > out.open
@@ -253,8 +253,8 @@ cmpfiles want out
 echo OK
 
 echo $N Setup a set GCA baseline ....................................$NL
-bk clean gca || exit 1
-bk _get $Q -e -M1.1.1.1 -r1.2 gca || exit 1
+bk clean gca || fail
+bk _get $Q -e -M1.1.1.1 -r1.2 gca || fail
 cat > gca <<EOF
    won't change
    won't change either
@@ -271,8 +271,8 @@ cat > gca <<EOF
    won't change
    won't change
 EOF
-bk delta $Q -y1.3 gca || exit 1
-bk _get $Q -e -r1.2 -M1.1.1.1 gca || exit 1
+bk delta $Q -y1.3 gca || fail
+bk _get $Q -e -r1.2 -M1.1.1.1 gca || fail
 cat > gca <<EOF
    won't change
    won't change either
@@ -289,7 +289,7 @@ cat > gca <<EOF
    won't change
    won't change
 EOF
-bk delta $Q -y1.1.1.2 gca || exit 1
+bk delta $Q -y1.1.1.2 gca || fail
 bk smerge -g -Aall -a9 -l1.2.1.1 -r1.3 gca > out
 # exit 1
 sed 's/^\\//' > out2 <<EOF
@@ -346,7 +346,7 @@ echo OK
 echo $N Check handling of bad versions ..............................$NL
 bk smerge -n -l1.2 -r1.1.1.3 gca > out 2> err
 if [ $? -ne 2 ]; then echo failed; exit 1; fi
-grep -q 'ERROR: couldn.t find 1.1.1.3' err || exit 1
+grep -q 'ERROR: couldn.t find 1.1.1.3' err || fail
 echo OK
 
 echo $N Trying adding annotations ...................................$NL
@@ -403,8 +403,8 @@ if [ $? -ne 0 ]; then echo failed; sdiff out new; exit 1; fi
 echo OK
 
 echo $N Test automerging ............................................$NL
-bk unedit $Q gca || exit 1
-bk _get -e $Q -r1.1 gca || exit 1
+bk unedit $Q gca || fail
+bk _get -e $Q -r1.1 gca || fail
 cat > gca <<EOF
    won't change much
    won't change either
@@ -422,7 +422,7 @@ cat > gca <<EOF
    won't change
    won't change
 EOF
-bk delta $Q -ylocal2 gca || exit 1
+bk delta $Q -ylocal2 gca || fail
 bk smerge -l1.1.2.1 -r1.1.1.1 gca > out
 if [ $? -ne 0 ]; then echo failed; cat out; exit 1; fi
 bk smerge $D3 -l1.1.2.1 -r1.1.1.1 gca > out.open
@@ -510,26 +510,26 @@ echo OK
 
 echo $N "Check version argument parsing...............................$NL"
 # too many versions
-bk smerge -l1.1.2.1 -r1.1.1.1 gca 1 2> err && exit 1
+bk smerge -l1.1.2.1 -r1.1.1.1 gca 1 2> err && fail
 # too few versions
-bk smerge -l1.1.2.1 gca 2> err && exit 1
+bk smerge -l1.1.2.1 gca 2> err && fail
 # bad string
 #bk smerge -l1.1.2.1 -r1.1.b gca 2> err
-#grep -q 'ERROR: Unable to parse version' err || exit 1
+#grep -q 'ERROR: Unable to parse version' err || fail
 echo OK
 
 echo $N "Check files that don't end with a newline ...................$NL"
 echo $NX line without NL $NXL > bar
-bk new $Q bar || exit 1
-bk edit $Q bar || exit 1
+bk new $Q bar || fail
+bk edit $Q bar || fail
 echo a > bar
 echo $NX line without NL $NXL >> bar
-bk delta $Q -yremote bar || exit 1
-bk _get -e $Q -r1.1 bar || exit 1
+bk delta $Q -yremote bar || fail
+bk _get -e $Q -r1.1 bar || fail
 echo b > bar
 echo $NX line without NL $NXL >> bar
 cp bar bar.want
-bk delta $Q -ylocal bar || exit 1
+bk delta $Q -ylocal bar || fail
 bk smerge -l1.1 -r1.1.1.1 bar > bar.out
 cmp -s bar.out bar.want || { echo Failed to get correct merge; exit 1; }
 bk smerge $D3 -l1.1 -r1.1.1.1 bar > bar.out.open

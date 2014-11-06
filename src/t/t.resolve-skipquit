@@ -32,8 +32,8 @@ commercial proj
 for x in $list; do
 	echo base > $x
 done
-bk new $Q $list || exit 1
-bk commit $Q -ystart || exit 1
+bk new $Q $list || fail
+bk commit $Q -ystart || fail
 cd "$HERE"
 bk clone $Q proj copy
 cd proj
@@ -41,8 +41,8 @@ bk edit $Q $list
 for x in $list; do
 	echo project >> $x
 done
-bk delta $Q -ywhatever $list || exit 1
-bk commit $Q -ynew_remote || exit 1
+bk delta $Q -ywhatever $list || fail
+bk commit $Q -ynew_remote || fail
 cd "$HERE/copy"
 bk edit $Q $list
 for x in $list; do
@@ -53,27 +53,27 @@ bk unedit $Q 3
 bk edit $Q 3
 printf "copy\nbase\n" > 3
 #
-bk delta $Q -ywhatever $list || exit 1
-bk commit $Q -ynew_local || exit 1
+bk delta $Q -ywhatever $list || fail
+bk commit $Q -ynew_local || fail
 echo OK
 
 echo $N Skip 5 files and resolve one -- file 2 -- text env ..........$NL
 # don't need to abort because this is first pull
-bk pull -R $Q || exit 2
+bk pull -R $Q || fail
 # This should loop through all once, and then sccs resolve file 2
 _dores "S,S,S,S,S,s" "-T"
 cd RESYNC
-test ! -f 1 -a -f 2 -a ! -f 3 -a ! -f 4 || exit 1
+test ! -f 1 -a -f 2 -a ! -f 3 -a ! -f 4 || fail
 # no a.files, because no edited files are created.
-bk _test ! -f SCCS/a.1 -a -f SCCS/a.2 -a ! -f SCCS/a.3 -a ! -f SCCS/a.4 || exit 2
+bk _test ! -f SCCS/a.1 -a -f SCCS/a.2 -a ! -f SCCS/a.3 -a ! -f SCCS/a.4 || fail
 cd ..
 printf "base\ncopy\nproject\n" > WANT
 cmpfiles WANT RESYNC/2
 # go ahead and check in 2 - no comment because no merge diffs with 's'
 _dores "S,C" "-T"
 cd RESYNC
-test ! -f 1 -a ! -f 2 -a ! -f 3 -a ! -f 4 || exit 3
-bk _test ! -f SCCS/a.1 -a ! -f SCCS/a.2 -a ! -f SCCS/a.3 -a ! -f SCCS/a.4 || exit 4
+test ! -f 1 -a ! -f 2 -a ! -f 3 -a ! -f 4 || fail
+bk _test ! -f SCCS/a.1 -a ! -f SCCS/a.2 -a ! -f SCCS/a.3 -a ! -f SCCS/a.4 || fail
 cd ..
 echo OK
 
@@ -83,17 +83,17 @@ bk pull $Q -R
 # This should loop through all once, and then sccs resolve file 2
 _dores "S,S,S,S,S,s"
 cd RESYNC
-test ! -f 1 -a -f 2 -a ! -f 3 -a ! -f 4 || exit 1
+test ! -f 1 -a -f 2 -a ! -f 3 -a ! -f 4 || fail
 # no a.files, because no edited files are created.
-bk _test ! -f SCCS/a.1 -a -f SCCS/a.2 -a ! -f SCCS/a.3 -a ! -f SCCS/a.4 || exit 2
+bk _test ! -f SCCS/a.1 -a -f SCCS/a.2 -a ! -f SCCS/a.3 -a ! -f SCCS/a.4 || fail
 cd ..
 cmpfiles WANT RESYNC/2
 # go ahead and check in 2
 _dores "S,C"
 cd RESYNC
 # In this case, the '2' is still there because checkin delayed
-test ! -f 1 -a -f 2 -a ! -f 3 -a ! -f 4 || exit 3
-bk _test ! -f SCCS/a.1 -a ! -f SCCS/a.2 -a ! -f SCCS/a.3 -a ! -f SCCS/a.4 || exit 4
+test ! -f 1 -a -f 2 -a ! -f 3 -a ! -f 4 || fail
+bk _test ! -f SCCS/a.1 -a ! -f SCCS/a.2 -a ! -f SCCS/a.3 -a ! -f SCCS/a.4 || fail
 cd ..
 echo OK
 
@@ -103,16 +103,16 @@ bk pull $Q -R
 # This should loop through all once, and then sccs resolve file 2
 _dores "m,S,m,S,m,S,m,S,m,S,s" "-T"
 cd RESYNC
-test -f 1 -a -f 2 -a -f 3 -a -f 4 || exit 1
+test -f 1 -a -f 2 -a -f 3 -a -f 4 || fail
 # no a.files, because no edited files are created.
-bk _test -f SCCS/a.1 -a -f SCCS/a.2 -a -f SCCS/a.3 -a -f SCCS/a.4 || exit 2
+bk _test -f SCCS/a.1 -a -f SCCS/a.2 -a -f SCCS/a.3 -a -f SCCS/a.4 || fail
 cd ..
 cmpfiles WANT RESYNC/2
 # go ahead and check in 2
 _dores "S,C" "-T"
 cd RESYNC
-test -f 1 -a ! -f 2 -a -f 3 -a -f 4 || exit 3
-bk _test -f SCCS/a.1 -a ! -f SCCS/a.2 -a -f SCCS/a.3 -a -f SCCS/a.4 || exit 4
+test -f 1 -a ! -f 2 -a -f 3 -a -f 4 || fail
+bk _test -f SCCS/a.1 -a ! -f SCCS/a.2 -a -f SCCS/a.3 -a -f SCCS/a.4 || fail
 cd ..
 echo OK
 
@@ -122,16 +122,16 @@ bk pull $Q -R
 # This should loop through all once, and then sccs resolve file 2
 _dores "m,S,m,S,m,S,m,S,m,S,s"
 cd RESYNC
-test -f 1 -a -f 2 -a -f 3 -a -f 4 || exit 1
+test -f 1 -a -f 2 -a -f 3 -a -f 4 || fail
 # no a.files, because no edited files are created.
-bk _test -f SCCS/a.1 -a -f SCCS/a.2 -a -f SCCS/a.3 -a -f SCCS/a.4 || exit 2
+bk _test -f SCCS/a.1 -a -f SCCS/a.2 -a -f SCCS/a.3 -a -f SCCS/a.4 || fail
 cd ..
 cmpfiles WANT RESYNC/2
 # go ahead and check in 2
 _dores "S,C"
 cd RESYNC
-test -f 1 -a -f 2 -a -f 3 -a -f 4 || exit 3
-bk _test -f SCCS/a.1 -a ! -f SCCS/a.2 -a -f SCCS/a.3 -a -f SCCS/a.4 || exit 4
+test -f 1 -a -f 2 -a -f 3 -a -f 4 || fail
+bk _test -f SCCS/a.1 -a ! -f SCCS/a.2 -a -f SCCS/a.3 -a -f SCCS/a.4 || fail
 cd ..
 echo OK
 
@@ -141,9 +141,9 @@ bk pull $Q -R
 # This should loop through all once, and then sccs resolve file 2
 _dores "S,S,ul,comment,." "-Ta"
 cd RESYNC
-test ! -f 1 -a ! -f 2 -a ! -f 3 -a ! -f 4 || exit 1
+test ! -f 1 -a ! -f 2 -a ! -f 3 -a ! -f 4 || fail
 # no a.files, because no edited files are created.
-bk _test ! -f SCCS/a.1 -a ! -f SCCS/a.2 -a ! -f SCCS/a.3 -a ! -f SCCS/a.4 || exit 2
+bk _test ! -f SCCS/a.1 -a ! -f SCCS/a.2 -a ! -f SCCS/a.3 -a ! -f SCCS/a.4 || fail
 cd ..
 printf "base\ncopy\n" > WANT
 bk get $Q -p RESYNC/4 > GOT
@@ -157,9 +157,9 @@ bk pull $Q -R
 _dores "S,S,ul" "-a"
 cd RESYNC
 # 4 still there because ul does not check in the file in gui mode
-test ! -f 1 -a ! -f 2 -a ! -f 3 -a -f 4 || exit 1
+test ! -f 1 -a ! -f 2 -a ! -f 3 -a -f 4 || fail
 # no a.files, because no edited files are created.
-bk _test ! -f SCCS/a.1 -a ! -f SCCS/a.2 -a ! -f SCCS/a.3 -a ! -f SCCS/a.4 || exit 2
+bk _test ! -f SCCS/a.1 -a ! -f SCCS/a.2 -a ! -f SCCS/a.3 -a ! -f SCCS/a.4 || fail
 cd ..
 cmpfiles WANT RESYNC/4
 echo OK

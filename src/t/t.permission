@@ -264,7 +264,7 @@ bk chmod 0140770 prog 2>ERR && {
    echo should not pass
    exit 1
 }
-grep -q "admin: prog: Illegal file mode" ERR || exit 1
+grep -q "admin: prog: Illegal file mode" ERR || fail
 echo OK
 
 # Tests here are require a bkdcp command which is setuid version of cp

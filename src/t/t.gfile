@@ -42,7 +42,7 @@ echo OK
 echo $N Check missing gfile case ....................................$NL
 bk edit $Q
 $RM -f keywords none flagsonly
-bk -r check -a || exit 1
+bk -r check -a || fail
 for i in keywords none flagsonly
 do	bk _test -f SCCS/p.$i && { echo p.$i; exit 1; }
 done
@@ -51,16 +51,16 @@ echo OK
 echo $N Check missing pfile case 1, i.e., chmod +w ..................$NL
 bk get $Q
 chmod +w keywords none flagsonly
-bk -r check -a || exit 1
+bk -r check -a || fail
 for i in keywords none
-do	test -w $i || exit 1
+do	test -w $i || fail
 	test '%M%' = `cat $i` || {
 		echo bad contents in $i
 		cat $i
 		exit 1
 	}
 done
-test -w flagsonly || exit 1
+test -w flagsonly || fail
 bk unedit keywords none flagsonly
 echo OK
 
@@ -69,16 +69,16 @@ bk edit $Q
 for i in keywords none flagsonly
 do	bk _rm SCCS/p.$i
 done
-bk -r check -a || exit 1
+bk -r check -a || fail
 for i in keywords none
-do	test -w $i || exit 1
+do	test -w $i || fail
 	test '%M%' = `cat $i` || {
 		echo bad contents in $i
 		cat $i
 		exit 1
 	}
 done
-test -w flagsonly || exit 1
+test -w flagsonly || fail
 bk unedit keywords none flagsonly
 echo OK
 
@@ -122,7 +122,7 @@ bk _test -f SCCS/p.flagsonly || {
 	exit 1
 }
 for i in keywords none flagsonly
-do	test -w $i || exit 1
+do	test -w $i || fail
 	cmp -s $i $i.cmp || {
 		echo bad contents in $i
 		diff $i $i.cmp
@@ -168,7 +168,7 @@ bk _test -f SCCS/p.flagsonly || {
 	exit 1
 }
 for i in keywords none flagsonly
-do	test -w $i || exit 1
+do	test -w $i || fail
 	cmp -s $i $i.cmp || {
 		echo bad contents in $i
 		diff $i $i.cmp

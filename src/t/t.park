@@ -46,13 +46,13 @@ bk _cp SCCS/c.bar.c "$HERE/c.ref"
 bk _cp "$HERE/project/SCCS/c.ChangeSet" "$HERE/cc.ref"
 cp foo.c "$HERE/foo.sav"
 cp bar.c "$HERE/bar.sav"
-bk park -y 2> /dev/null || exit 1
+bk park -y 2> /dev/null || fail
 NUM=`bk sfiles -c | wc -l`
 if [ $NUM -ne 0 ]; then echo failed; exit 1; fi;
 if bk _test -f SCCS/c.bar.c; then echo failed; exit 1; fi
 if bk _test -f "$HERE/project/SCCS/c.ChangeSet"; then echo failed; exit 1; fi
 bk edit $Q bar.c
-bk unpark 2> /dev/null 1>&2 || exit 1
+bk unpark 2> /dev/null 1>&2 || fail
 cmp -s foo.c "$HERE/foo.sav"
 if [ $? -ne 0 ]; then echo failed 1; exit 1; fi
 cmp -s bar.c "$HERE/bar.sav" 
@@ -70,9 +70,9 @@ rm -f c.ChangeSet
 echo OK
 
 echo $N Check basic park/unpark via stdin ...........................$NL
-bk park -y"hi mom" 2> /dev/null || exit 1
+bk park -y"hi mom" 2> /dev/null || fail
 mv "$HERE/project/BitKeeper/tmp/parkfile_1.sfio" "$HERE/parkfile"$$
-bk unpark - < "$HERE/parkfile"$$ 2>/dev/null 1>&2 || exit 1
+bk unpark - < "$HERE/parkfile"$$ 2>/dev/null 1>&2 || fail
 cmp -s foo.c "$HERE/foo.sav"
 if [ $? -ne 0 ]; then echo failed 1; exit 1; fi
 echo OK
@@ -163,8 +163,8 @@ echo OK
 bk park -c
 echo $N Check unpark with moved binary file .........................$NL
 rm -f binary
-bk mv binary binary_moved || exit 1
-bk unpark  2>/dev/null 1>&2 || exit 1
+bk mv binary binary_moved || fail
+bk unpark  2>/dev/null 1>&2 || fail
 if [ -f binary ]; then echo failed; exit 1; fi
 cmp -s "$BIN2" binary_moved || { echo failed; exit 1; }
 if [ ! -f extra ]; then echo failed; exit 1; fi
@@ -172,10 +172,10 @@ cmp -s extra "$HERE/extra.ref" || { echo failed 3; exit 1; }
 echo OK
 
 echo $N Should failed unpark binary changed delta ...................$NL
-bk park -y -a 2> /dev/null || exit 1
+bk park -y -a 2> /dev/null || fail
 bk edit $Q binary_moved
 cp "$BIN3" binary_moved
-bk delta  $Q -uy"new" binary_moved || exit 1
+bk delta  $Q -uy"new" binary_moved || fail
 if [ ! -f binary_moved ]; then echo failed; exit 1; fi
 bk unpark 2> unpark.out 1>&2
 grep -q "unsafe to unpark over changed binary file" unpark.out || {

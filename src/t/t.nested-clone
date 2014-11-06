@@ -16,7 +16,7 @@ bk bkd -q -aPORT -ikill
 M=localhost:`cat PORT`
 trap "bk _kill bk://$M" 0
 nested project
-test -d gcc/BitKeeper/tmp -a -d gdb/BitKeeper/tmp || exit 1
+test -d gcc/BitKeeper/tmp -a -d gdb/BitKeeper/tmp || fail
 # Now add some stuff
 for r in gcc gdb
 do
@@ -192,9 +192,9 @@ cd ..
 
 echo $N Show that I can clone a product under another product .......$NL
 cd project
-bk clone $Q ../copy junk || exit 1
-cd junk || exit 2
-bk parent -l | grep -q copy || exit 3
+bk clone $Q ../copy junk || fail
+cd junk || fail
+bk parent -l | grep -q copy || fail
 cd ..
 rm -rf junk
 cd ..
@@ -203,9 +203,9 @@ echo OK
 echo $N Show that I can clone a standalone repo undo a product ......$NL
 commercial standalone
 cd ../project
-bk clone $Q ../standalone junk2 || exit 1
-cd junk2 || exit 2
-bk parent -l | grep -q standalone || exit 3
+bk clone $Q ../standalone junk2 || fail
+cd junk2 || fail
+bk parent -l | grep -q standalone || fail
 cd ..
 rm -rf junk2
 cd ..
@@ -243,7 +243,7 @@ echo OK
 echo $N Test that we can clone using the COMPONENTS file.............$NL
 rm -rf mynewgcc
 cd project
-bk alias new justgcc gcc || exit 1
+bk alias new justgcc gcc || fail
 cd ..
 bk clone $Q -sjustgcc project mynewgcc || {
 	echo failed
@@ -292,7 +292,7 @@ echo OK
 
 echo $N Make sure that the COMPONENTS file propagates on clone ......$NL
 cd "$HERE"
-bk clone -shere $Q mynewgcc mynewgcc2 || exit 1
+bk clone -shere $Q mynewgcc mynewgcc2 || fail
 cd mynewgcc2
 (cd ../mynewgcc; bk alias -k here) > BEFORE
 bk alias -k here > AFTER
@@ -301,7 +301,7 @@ echo OK
 
 echo $N Add a component with components add ./gdb ...................$NL
 cd "$HERE/mynewgcc"
-bk here add $Q ./gdb || exit 1
+bk here add $Q ./gdb || fail
 test -d gdb || {
 	echo failed to get gdb
 	exit 1
@@ -316,7 +316,7 @@ echo OK
 
 echo $N Check that components is idempotent .........................$NL
 cd "$HERE/mynewgcc"
-bk here add $Q ./gdb || exit 1
+bk here add $Q ./gdb || fail
 test -d gdb || {
 	echo failed to get gdb
 	exit 1
@@ -341,7 +341,7 @@ echo $N Pull in new cset without component, then populate ...........$NL
 cd "$HERE/mynewgcc2"
 bk pull --unsafe -q || fail
 BEFORE=`bk changes -r+ -nd:I:`
-bk here add $Q -@"$HERE/mynewgcc" ./gdb  || exit 1
+bk here add $Q -@"$HERE/mynewgcc" ./gdb  || fail
 AFTER=`bk changes -r+ -nd:I:`
 test "$BEFORE" != "$AFTER" && {
 	echo was $BEFORE and now $AFTER
@@ -411,10 +411,10 @@ rm -rf mynewgcc4
 echo OK
 
 echo $N Check that we can populate gdb from elsewhere ...............$NL
-bk clone -shere $Q mynewgcc3 mynewgcc4 || exit 1
-cd mynewgcc4 || exit 1
+bk clone -shere $Q mynewgcc3 mynewgcc4 || fail
+cd mynewgcc4 || fail
 rm -rf gdb
-bk here add $Q -@../mynewgcc ./gdb  || exit 1
+bk here add $Q -@../mynewgcc ./gdb  || fail
 bk _test -d gdb -a -f gdb/SCCS/s.ChangeSet || {
 	echo failed
 	cat OUT
@@ -453,7 +453,7 @@ echo OK
 
 echo $N Test that we can run changes -R in a component ..............$NL
 cd gcc
-bk changes -SR > OUT || exit 1
+bk changes -SR > OUT || fail
 grep -q "Add 4 to file4" OUT || {
 	echo failed
 	cat OUT
@@ -465,7 +465,7 @@ echo $N Test clone through a bkd.....................................$NL
 cd "$HERE/project"
 # what is coming out stdout? and stderr?
 # bk bkd -q -d -p$P -ikill > "$HERE/BKD" 2>&1
-bk bkd -q -d -aPORT -ikill || exit 1
+bk bkd -q -d -aPORT -ikill || fail
 P=`cat PORT`
 cd "$HERE"
 bk clone $Q bk://localhost:$P clone3 || {
@@ -473,7 +473,7 @@ bk clone $Q bk://localhost:$P clone3 || {
 	cat OUT
 	exit 1
 }
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 echo OK
 
 echo $N Test lclone..................................................$NL
@@ -580,7 +580,7 @@ echo OK
 # gdb
 echo $N Test populate with no args ..................................$NL
 cd "$HERE"
-bk clone $Q -s. project product || exit 1
+bk clone $Q -s. project product || fail
 cd product
 bk comps -h > LIST
 test -s LIST && {
@@ -588,7 +588,7 @@ test -s LIST && {
 	cat LIST
 	exit 1
 }
-bk here add $Q DEFAULT || exit 1
+bk here add $Q DEFAULT || fail
 bk comps -h > GOT
 cat > WANT <<EOF
 ./gcc
@@ -599,12 +599,12 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test populate in repair mode with nothing to do .............$NL
-bk here add $Q || exit 1
+bk here add $Q || fail
 echo OK
 
 echo $N Test populate in repair mode with gdb missing ...............$NL
 rm -rf gdb
-bk here add $Q || exit 1
+bk here add $Q || fail
 bk comps -h > GOT
 cat > WANT <<EOF
 ./gcc
@@ -616,7 +616,7 @@ echo OK
 
 echo $N Test populate in repair mode with gcc/deep missing ..........$NL
 rm -rf gcc/deep
-bk here add $Q || exit 1
+bk here add $Q || fail
 bk comps -h > GOT
 cat > WANT <<EOF
 ./gcc
@@ -628,7 +628,7 @@ echo OK
 
 echo $N Test populate in repair mode with gcc/deep and gcc missing ..$NL
 rm -rf gcc
-bk here add $Q || exit 1
+bk here add $Q || fail
 bk comps -h > GOT
 cat > WANT <<EOF
 ./gcc
@@ -653,7 +653,7 @@ echo OK
 
 echo $N Test populate in repair mode with all components missing ....$NL
 echo DEFAULT > BitKeeper/log/HERE
-bk here add $Q || exit 1
+bk here add $Q || fail
 bk comps -h > GOT
 cat > WANT <<EOF
 ./gcc
@@ -671,7 +671,7 @@ echo OK
 
 echo $N Test populate -r with url ...................................$NL
 rm -rf gcc gdb
-bk here add $Q -@../project || exit 1
+bk here add $Q -@../project || fail
 bk comps -h > GOT
 cat > WANT <<EOF
 ./gcc
@@ -683,7 +683,7 @@ echo OK
 
 echo $N Test populate with url ......................................$NL
 rm -rf gcc gdb
-bk here add $Q -@../project || exit 1
+bk here add $Q -@../project || fail
 bk comps -h > GOT
 cat > WANT <<EOF
 ./gcc
@@ -731,8 +731,8 @@ echo OK
 
 echo $N Test unpopulate with local cset .............................$NL
 bk parent $Q ../project
-bk here add $Q all || exit 1
-test -d gdb || exit 1
+bk here add $Q all || fail
+test -d gdb || fail
 (cd gdb
 echo foo > foo
 bk new $Q foo

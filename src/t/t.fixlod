@@ -35,10 +35,10 @@ echo OK
 
 echo $N Commit the data .............................................$NL
 bk commit $S --tag=BASE -yCset
-bk edit $Q d1/a || exit 1
+bk edit $Q d1/a || fail
 echo foo >> d1/a
-bk delta $Q -fy'new lod' d1/a || exit 1
-bk commit $S -yCset || exit 1
+bk delta $Q -fy'new lod' d1/a || fail
+bk commit $S -yCset || fail
 test `bk sfiles -pC | wc -l` -eq 0 || {
 	echo failed to commit all files
 	exit 1
@@ -48,14 +48,14 @@ echo OK
 echo $N Try making version 1 LOD structures -- now fails ............$NL
 bk clone $Q . ../lod
 cd ../lod
-bk edit $Q d1/a || exit 1
+bk edit $Q d1/a || fail
 # redhat 62 wants a different form.
 if bk version | grep -q " for x86-glibc21-linux"
 then	printf "bar\0377\n" >> d1/a
 else	printf "bar\377\n" >> d1/a
 fi
-bk delta $Q -fy'new lod' d1/a || exit 1
-bk commit $S -ynew-lod || exit 1
+bk delta $Q -fy'new lod' d1/a || fail
+bk commit $S -ynew-lod || fail
 rev=`bk prs -r+ -hnd:I: ChangeSet`
 bk _scat ChangeSet | perl -pe "binmode(STDOUT); s/ D $rev / D 2.1 /" > tmp2
 chmod 444 tmp2

@@ -11,9 +11,9 @@ bk commit $Q -yfoo
 cd ../tag
 bk tag $Q TAGIT
 bk changes -qk > WANT
-bk pull $Q || exit 1
+bk pull $Q || fail
 bk changes -qk > WANT2
-bk unpull $Q -f || exit 1
+bk unpull $Q -f || fail
 bk changes -qk > GOT
 checkfiles WANT GOT
 bk takepatch -af BitKeeper/tmp/unpull.patch
@@ -31,9 +31,9 @@ touch bar
 bk new $Q bar
 bk commit $Q -ybar
 bk changes -qk > WANT
-bk pull $Q || exit 1
+bk pull $Q || fail
 bk changes -qk > WANT2
-bk unpull $Q -f || exit 1
+bk unpull $Q -f || fail
 bk changes -qk > GOT
 checkfiles WANT GOT
 bk takepatch -af BitKeeper/tmp/unpull.patch
@@ -51,7 +51,7 @@ bk tag $Q TAGONLY
 bk changes -qk > WANT
 bk pull $Q
 bk changes -qk > WANT2
-bk unpull $Q -f || exit 1
+bk unpull $Q -f || fail
 bk changes -qk > GOT
 checkfiles WANT GOT
 bk takepatch -af BitKeeper/tmp/unpull.patch
@@ -93,7 +93,7 @@ bk commit $Q -yfoo --tag=SECOND
 cd ../resolve-tag
 ORIG=`_tagkeys SECOND | head -1`
 bk pull $Q -R
-{ echo l; echo l; } | bk resolve $Q 2> ERR || exit 1
+{ echo l; echo l; } | bk resolve $Q 2> ERR || fail
 cp BitKeeper/etc/csets-in save-csets-in
 bk _scat SCCS/s.ChangeSet > cs
 bk unpull $Q -f
@@ -105,7 +105,7 @@ test "$ORIG" = "$FINAL" || {
 	exit 1
 }
 # Roll forward, both to test and to set up the next test
-bk takepatch -af BitKeeper/tmp/unpull.patch || exit 1
+bk takepatch -af BitKeeper/tmp/unpull.patch || fail
 bk _scat SCCS/s.ChangeSet > csB
 checkfiles cs csB
 cp BitKeeper/etc/csets-in save-csets-in

@@ -42,7 +42,7 @@ echo "licsign1: $BKL_P1" >> c
 echo "licsign2: $BKL_P2" >> c
 echo "licsign3: $BKL_P3" >> c
 DOTBK=`bk dotbk`
-mv c "$DOTBK"/config || exit 1
+mv c "$DOTBK"/config || fail
 
 if [ X$PLATFORM = X"WIN32" ]
 then #-------------------- WIN32 tests ---------------------
@@ -249,7 +249,7 @@ cp accepted.academic.saved "$DOTBK"/accepted
 }
 # XXX: careful leaving this setting: in -u,
 # bk.sh _install tests for the var = 1
-bk _registry set $SHELLXKEY LocalDrive 100 || exit 1
+bk _registry set $SHELLXKEY LocalDrive 100 || fail
 # We need the new BK to come first in the path, so we mangle it by hand
 P=`bk _registry get "$SYSPATHKEY" Path`
 P="$HERE/DEAD BEEF;$P"
@@ -279,7 +279,7 @@ bk _registry get "$SYSPATHKEY" Path | grep "DEAD BEEF" >TEXT || {
 	tail -16 OUT
 	exit 1
 }
-KEY1=`bk _registry get "$SHELLXKEY" LocalDrive` || exit 1
+KEY1=`bk _registry get "$SHELLXKEY" LocalDrive` || fail
 
 if [ $KEY1 -ne 100 ]; then
 	echo failed
@@ -296,7 +296,7 @@ echo $N Make sure the installer accepts command line options.........$NL
 	cat OUT
 	exit 1
 }
-KEY1=`bk _registry get "$SHELLXKEY" LocalDrive` || exit 1
+KEY1=`bk _registry get "$SHELLXKEY" LocalDrive` || fail
 
 if [ $KEY1 -ne 1 ]; then
 	echo failed
@@ -305,10 +305,10 @@ if [ $KEY1 -ne 1 ]; then
 fi
 #CTRLPROV="HKEY_LOCAL_MACHINE\\Software\\SourceCodeControlProvider"
 #INSTPROV="HKEY_LOCAL_MACHINE\\Software\\SourceCodeControlProvider\\InstalledSCCProviders"
-#SCCKEY1=`bk _registry get "$BMKEY" SCCServerName` || exit 1
-#SCCKEY2=`bk _registry get "$BMKEY" SCCserverPath` || exit 1
-#PROVKEY1=`bk _registry get "$CTRLPROV" ProviderRegkey` || exit 1
-#PROVKEY2=`bk _registry get "$INSTPROV" BitKeeper` || exit 1
+#SCCKEY1=`bk _registry get "$BMKEY" SCCServerName` || fail
+#SCCKEY2=`bk _registry get "$BMKEY" SCCserverPath` || fail
+#PROVKEY1=`bk _registry get "$CTRLPROV" ProviderRegkey` || fail
+#PROVKEY2=`bk _registry get "$INSTPROV" BitKeeper` || fail
 #SCCPATH=`bk pwd -w "$HERE/DEAD2"`\\bkscc.dll
 
 # test "$SCCKEY1" = "BitKeeper" || {
@@ -336,7 +336,7 @@ echo OK
 
 echo $N Make sure -l will stomp previous setting.....................$NL
 OP=`bk _registry get "$SYSPATHKEY" Path`
-bk _registry set $SHELLXKEY LocalDrive 100 || exit 1
+bk _registry set $SHELLXKEY LocalDrive 100 || fail
 # Depends on $P from above, make the path same as it was
 # before the first -u test else the uninstall test fails
 bk _registry set "$SYSPATHKEY" Path expand_sz:"$P"
@@ -347,7 +347,7 @@ PATH="$P" ./bk-academic-licensed -u -l > OUT 2>&1 || {
 	cat OUT
 	exit 1
 }
-KEY1=`bk _registry get "$SHELLXKEY" LocalDrive` || exit 1
+KEY1=`bk _registry get "$SHELLXKEY" LocalDrive` || fail
 test $KEY1 -eq 1 || {
 	bk _registry set "$SYSPATHKEY" Path expand_sz:"$OP"
 	echo failed
@@ -427,7 +427,7 @@ echo OK
 
 echo $N Restoring registry...........................................$NL
 # we know we corrupt the registry, so put it back
-win32_regRestore || exit 1
+win32_regRestore || fail
 echo OK
 
 else #-------------------- UNIX tests ---------------------
@@ -541,6 +541,6 @@ fi
 #####################################################################
 # Careful!!!!
 #####################################################################
-cd "$HERE" || exit 1
+cd "$HERE" || fail
 chmod -R +w * >/dev/null 2>&1	# SCO's chmod barfs
 bk _rm -rf *

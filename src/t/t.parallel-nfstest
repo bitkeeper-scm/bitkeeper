@@ -64,7 +64,7 @@ echo OK
 
 echo $N Same thing with . being NFS .................................$NL
 cd $NFSROOT
-echo y | bk clone $Q $TESTDATA/bitcluster 2> /dev/null || exit 1
+echo y | bk clone $Q $TESTDATA/bitcluster 2> /dev/null || fail
 SFIO=`grep 'sfio -iq --Nway --checkout = 0' bitcluster/BitKeeper/log/cmd_log|wc -l`
 test $SFIO = 8 || fail wrong number $SFIO
 rm -rf $NFSROOT/bitcluster
@@ -74,7 +74,7 @@ echo $N Same thing with . being NFS and named dest ..................$NL
 export BK_CONFIG
 rm -rf $NFSROOT/bitcluster
 cd $NFSROOT
-echo y | bk clone $Q $TESTDATA/bitcluster clone 2> /dev/null || exit 1
+echo y | bk clone $Q $TESTDATA/bitcluster clone 2> /dev/null || fail
 SFIO=`grep 'sfio -iq --Nway --checkout = 0' clone/BitKeeper/log/cmd_log|wc -l`
 test $SFIO = 8 || fail wrong number $SFIO
 rm -rf $NFSROOT/clone

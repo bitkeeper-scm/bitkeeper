@@ -16,7 +16,7 @@ bk version | grep -q " for x86-glibc23-linux" || {
 	echo skipped
 	exit 0
 }
-bk get -Sq "$DO_CNT" || exit 1
+bk get -Sq "$DO_CNT" || fail
 BK_CONFIG="license:$BKL_PRO!;licsign1:$BKL_P1!;licsign2:$BKL_P2!;licsign3:$BKL_P3!"
 export BK_CONFIG
 echo y | bk clone --hide-sccs-dirs $Q $TESTDATA/perf project > OUT 2>&1 || {
@@ -30,7 +30,7 @@ cat <<EOF > BitKeeper/etc/ignore
 3
 EOF
 bk ci -yignore1 -u $Q BitKeeper/etc/ignore
-bk commit $Q -yignore1 || exit 1
+bk commit $Q -yignore1 || fail
 echo OK
 
 # I couldn't get Wayne's counter to work for this stuff so I went to strace(1)
@@ -59,8 +59,8 @@ echo OK
 
 echo $N "Count the syscalls for a 'bk clone'.........................."$NL
 rm -f "$FILE"
-BK_STRACE="$FILE" bk clone -j1 $Q ../project ../copy || exit 1
-"$DO_CNT" clone "$FILE" || exit 1
+BK_STRACE="$FILE" bk clone -j1 $Q ../project ../copy || fail
+"$DO_CNT" clone "$FILE" || fail
 echo OK
 
 echo $N "Count the syscalls for a 'bk commit' ........................"$NL
@@ -74,21 +74,21 @@ cat <<EOF > BitKeeper/etc/ignore
 EOF
 bk ci -yignore2 -u $Q BitKeeper/etc/ignore
 rm -f "$FILE"
-BK_STRACE="$FILE" bk commit $Q -ycommit || exit 1
-"$DO_CNT" commit "$FILE" || exit 1
+BK_STRACE="$FILE" bk commit $Q -ycommit || fail
+"$DO_CNT" commit "$FILE" || fail
 echo OK
 
 echo $N "Count the syscalls for a 'bk changes -L' ...................."$NL
 cd ../copy
 rm -f "$FILE"
-BK_STRACE="$FILE" bk changes -L > OUT || exit 1
-"$DO_CNT" changes-l "$FILE" || exit 1
+BK_STRACE="$FILE" bk changes -L > OUT || fail
+"$DO_CNT" changes-l "$FILE" || fail
 echo OK
 
 echo $N "Count the syscalls for a 'bk changes -R' ...................."$NL
 rm -f "$FILE"
-BK_STRACE="$FILE" bk changes -R > OUT || exit 1
-"$DO_CNT" changes-r "$FILE" || exit 1
+BK_STRACE="$FILE" bk changes -R > OUT || fail
+"$DO_CNT" changes-r "$FILE" || fail
 echo OK
 
 echo $N "Count the syscalls for a 'bk pull' .........................."$NL
@@ -99,16 +99,16 @@ cat <<EOF > BitKeeper/etc/ignore
 3
 EOF
 bk ci -yignore3 -u $Q BitKeeper/etc/ignore
-bk commit $Q -yignore1 || exit 1
+bk commit $Q -yignore1 || fail
 rm -f "$FILE"
-BK_STRACE="$FILE" bk pull $Q || exit 1
-"$DO_CNT" pull "$FILE" || exit 1
+BK_STRACE="$FILE" bk pull $Q || fail
+"$DO_CNT" pull "$FILE" || fail
 echo OK
 
 echo $N "Count the syscalls for a 'bk unpull' ........................"$NL
 rm -f "$FILE"
-BK_STRACE="$FILE" bk unpull -f $Q || exit 1
-"$DO_CNT" unpull "$FILE" || exit 1
+BK_STRACE="$FILE" bk unpull -f $Q || fail
+"$DO_CNT" unpull "$FILE" || fail
 echo OK
 
 echo $N "Count the syscalls for a 'bk pull -R' ......................."$NL
@@ -119,34 +119,34 @@ cat <<EOF > BitKeeper/etc/ignore
 3
 EOF
 bk ci -yignore3 -u $Q BitKeeper/etc/ignore
-bk commit $Q -yignore1 || exit 1
+bk commit $Q -yignore1 || fail
 rm -f "$FILE"
-BK_STRACE="$FILE" bk pull -R $Q || exit 1
-"$DO_CNT" pull-r "$FILE" || exit 1
+BK_STRACE="$FILE" bk pull -R $Q || fail
+"$DO_CNT" pull-r "$FILE" || fail
 echo OK
 
 echo $N "Count the syscalls for a 'bk resolve' ......................."$NL
 rm -f "$FILE"
-BK_STRACE="$FILE" bk resolve $Q || exit 1
-"$DO_CNT" resolve "$FILE" || exit 1
+BK_STRACE="$FILE" bk resolve $Q || fail
+"$DO_CNT" resolve "$FILE" || fail
 echo OK
 
 echo $N "Count the syscalls for a 'bk push' .........................."$NL
 rm -f "$FILE"
-BK_STRACE="$FILE" bk push $Q || exit 1
-"$DO_CNT" push "$FILE" || exit 1
+BK_STRACE="$FILE" bk push $Q || fail
+"$DO_CNT" push "$FILE" || fail
 echo OK
 
 echo $N Count the calls in a large sccs_init ........................$NL
-bk _cp "`bk bin`"/SCCS/s.slib.c SCCS/s.slib.c || exit 1
+bk _cp "`bk bin`"/SCCS/s.slib.c SCCS/s.slib.c || fail
 # delta past the bk-4.1.1 version of slib.c
 BK411=47bc54abUWkbJUWx3UjQ3LB-mJ6wtQ
-bk prs  -r$BK411.. -hnd'slib.c|:REV:' slib.c > REVS || exit 2
-bk stripdel -Cq - < REVS || exit 3
+bk prs  -r$BK411.. -hnd'slib.c|:REV:' slib.c > REVS || fail
+bk stripdel -Cq - < REVS || fail
 bk renumber -q slib.c
 rm -f "$FILE"
-BK_STRACE="$FILE" bk prs slib.c > OUT || exit 1
-grep -q '^D.* 2008/02/20 11:26:19-05:00' OUT || exit 5
-"$DO_CNT" mkgraph "$FILE" || exit 1
+BK_STRACE="$FILE" bk prs slib.c > OUT || fail
+grep -q '^D.* 2008/02/20 11:26:19-05:00' OUT || fail
+"$DO_CNT" mkgraph "$FILE" || fail
 bk _rm -f SCCS/s.slib.c
 echo OK

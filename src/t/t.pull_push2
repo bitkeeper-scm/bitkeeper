@@ -36,7 +36,7 @@ echo new > bar.c
 echo new > h.h
 bk delta $Q -ynew_stuff bar.c h.h
 bk commit $S -ynew_stuff
-bk mv h.h h.newname || exit 1
+bk mv h.h h.newname || fail
 cd "$HERE/copy/src"
 bk edit $Q bar.c h.h
 echo new2 > bar.c
@@ -56,8 +56,8 @@ bk push "$HERE/copy" > push.out 2>&1 && {
 	cat push.out
 	exit 1
 }
-grep -q "The following files are modified locally and in" push.out || exit 1
-grep -q "	src/bar.c" push.out || exit 1
+grep -q "The following files are modified locally and in" push.out || fail
+grep -q "	src/bar.c" push.out || fail
 echo OK
 
 echo $N pull into repo with edited non-locked files overwrites.......$NL
@@ -65,15 +65,15 @@ cd "$HERE"
 rm -rf *
 commercial project
 echo bar > bar
-bk new $Q bar || exit 1
-bk commit $Q -ywhat || exit 1
+bk new $Q bar || fail
+bk commit $Q -ywhat || fail
 cd "$HERE"
 bk clone $Q project copy
 cd project
 bk edit $Q bar
 echo foo >> bar
-bk delta $Q -ywhat2 bar || exit 1
-bk commit $Q -ywhat3 || exit 1
+bk delta $Q -ywhat2 bar || fail
+bk commit $Q -ywhat3 || fail
 cd "$HERE/copy"
 bk get $Q bar
 chmod +w bar
@@ -94,17 +94,17 @@ rm -rf *
 commercial project
 mkdir src
 echo bar > src/bar
-bk new $Q src/bar || exit 1
-bk commit $Q -ywhat1 || exit 1
-bk edit $Q src/bar || exit 1
+bk new $Q src/bar || fail
+bk commit $Q -ywhat1 || fail
+bk edit $Q src/bar || fail
 echo foo >> src/bar
-bk delta $Q -ysecond src/bar || exit 1
-bk commit $Q -ywhat1 || exit 1
+bk delta $Q -ysecond src/bar || fail
+bk commit $Q -ywhat1 || fail
 cd ..
 bk clone $Q project copy
 cd copy
 bk stripdel $Q -Cr+ ChangeSet
-bk pull $Q || exit 1
+bk pull $Q || fail
 echo OK
 
 OS=`uname -s`
@@ -136,8 +136,8 @@ echo $N check pull -s with -i .......................................$NL
 cd "$HERE"
 bk clone $Q project copy3
 cd copy3
-bk pull $Q -si 2> ERR && exit 1
-grep -q "cannot be used together" ERR || exit 1
+bk pull $Q -si 2> ERR && fail
+grep -q "cannot be used together" ERR || fail
 echo OK
 
 echo $N check pull -s with automergable change ......................$NL
@@ -152,8 +152,8 @@ bk edit $Q src/bar
 echo last >> src/bar
 bk delta $Q -ylast src/bar
 bk commit $Q -ylast
-bk pull $Q -s || exit 1
-test -d RESYNC && exit 1
+bk pull $Q -s || fail
+test -d RESYNC && fail
 echo OK
 
 echo $N check pull -s with non-automergable change ..................$NL
@@ -173,5 +173,5 @@ grep -q "RESYNC directory left intact" ERR || {
 	echo failed
 	exit 1
 }
-test -d RESYNC || exit 1
+test -d RESYNC || fail
 echo OK

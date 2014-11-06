@@ -89,11 +89,11 @@ echo OK
 echo $N Make sure -p works ..........................................$NL
 rm -rf A	# may be the "a" dir from previous test (case folding)
 bk get $Q -p -r1.1 date > A
-test -f A || exit 1
-grep -q Hallo A || exit 1
+test -f A || fail
+grep -q Hallo A || fail
 rm -f A
 bk get $Q -p -r1.1 bam > A
-test -f A || exit 1
+test -f A || fail
 printf "bam\0data\0" > WANT
 checkfiles WANT A
 echo OK
@@ -204,15 +204,15 @@ echo OK
 echo $N Get -er will roll back to rev r .............................$NL
 rm -f olddate
 bk get $Q -Golddate -k -r1.4 date
-bk edit $Q -r1.4 date || exit 1
+bk edit $Q -r1.4 date || fail
 if ! cmp olddate date; then echo Fail; exit 1; fi
-bk delta $Q -y1.4 date || exit 1
+bk delta $Q -y1.4 date || fail
 if [ "`bk prs -r+ -hnd:DI: date`" != '-6,7' ]; then echo Fail; exit 1; fi
 rm -f olddate
 bk get $Q -Golddate -k -r1.6 date
-bk edit $Q -r1.6 date || exit 1
+bk edit $Q -r1.6 date || fail
 if ! cmp olddate date; then echo Fail; exit 1; fi
-bk delta $Q -y1.6 date || exit 1
+bk delta $Q -y1.6 date || fail
 if [ "`bk prs -r+ -hnd:DI: date`" != '-8' ]; then echo Fail; exit 1; fi
 echo OK
 
@@ -532,7 +532,7 @@ echo newfoo.c > foo.c
 bk delta $Q -ynew foo.c
 bk get $Q -e foo.c
 # assert data is different
-cmp -s WANT foo.c && exit 1
+cmp -s WANT foo.c && fail
 bk unedit foo.c
 bk get $Q -e -x+ foo.c
 checkfiles WANT foo.c
@@ -547,29 +547,29 @@ echo "failed (bug not filed)"
 echo $N Check get -e when running checkout: edit ....................$NL
 BK_CONFIG="checkout:edit! "
 export BK_CONFIG
-bk get $Q -e foo.c || exit 1
+bk get $Q -e foo.c || fail
 # trying to re-edit fails
-bk get $Q -e foo.c && exit 1
-bk get -e foo.c 2> ERR && exit 1
-grep -q 'Writable foo\.c exists' ERR || exit 1
+bk get $Q -e foo.c && fail
+bk get -e foo.c 2> ERR && fail
+grep -q 'Writable foo\.c exists' ERR || fail
 # trying to add -x+ passes
-bk get $Q -e -x+ foo.c || exit 1
+bk get $Q -e -x+ foo.c || fail
 checkfiles foo.c WANT
 # but if we do it again -- fail
-bk get $Q -e -x+ foo.c && exit 1
-bk get -e -x+ foo.c 2> ERR && exit 1
-grep -q 'Writable foo\.c exists' ERR || exit 1
+bk get $Q -e -x+ foo.c && fail
+bk get -e -x+ foo.c 2> ERR && fail
+grep -q 'Writable foo\.c exists' ERR || fail
 # switching back to plain edit fails
-bk get $Q -e foo.c && exit 1
+bk get $Q -e foo.c && fail
 # reset to just edited, then modify and retest
 bk unedit foo.c
 echo x > foo.c
-bk get $Q -e foo.c 2> ERR && exit 1
-bk get -e foo.c 2> ERR && exit 1
-grep -q 'Writable foo\.c exists' ERR || exit 1
-bk get $Q -e -x+ foo.c && exit 1
-bk get -e -x+ foo.c 2> ERR && exit 1
-grep -q 'Writable foo\.c exists' ERR || exit 1
+bk get $Q -e foo.c 2> ERR && fail
+bk get -e foo.c 2> ERR && fail
+grep -q 'Writable foo\.c exists' ERR || fail
+bk get $Q -e -x+ foo.c && fail
+bk get -e -x+ foo.c 2> ERR && fail
+grep -q 'Writable foo\.c exists' ERR || fail
 # set to just edit, mv foo.c bar.c and test
 bk unedit foo.c
 test -f bar.c && exit 1		# shouldn't be there; just checking
@@ -577,12 +577,12 @@ mv foo.c bar.c
 bk _mv SCCS/s.foo.c SCCS/s.bar.c
 bk _mv SCCS/p.foo.c SCCS/p.bar.c
 bk _mv SCCS/d.foo.c SCCS/d.bar.c
-bk get -e -x+ bar.c 2> ERR && exit 1
-grep -q 'Writable bar\.c exists' ERR || exit 1
-bk get $Q -e -x+ foo.c 2> ERR && exit 1
-bk get -e bar.c 2> ERR && exit 1
-grep -q 'Writable bar\.c exists' ERR || exit 1
-bk get $Q -e bar.c 2> ERR && exit 1
+bk get -e -x+ bar.c 2> ERR && fail
+grep -q 'Writable bar\.c exists' ERR || fail
+bk get $Q -e -x+ foo.c 2> ERR && fail
+bk get -e bar.c 2> ERR && fail
+grep -q 'Writable bar\.c exists' ERR || fail
+bk get $Q -e bar.c 2> ERR && fail
 echo OK
 
 echo $N Check that get cleans up pfile...............................$NL

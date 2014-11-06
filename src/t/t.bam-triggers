@@ -1572,7 +1572,7 @@ echo $N Check delta does NOT work with trigger NOT checked out ......$NL
 cd "$HERE/proj3"
 # we have to ignore the pre-delta trigger (since it exit 1) when
 # checking in the pre-delta trigger...
-BK_NO_TRIGGERS=1 bk new $Q BitKeeper/triggers/pre-delta || exit 1
+BK_NO_TRIGGERS=1 bk new $Q BitKeeper/triggers/pre-delta || fail
 bk edit $Q foo 
 bk delta $Q -f -ybar foo 2>/dev/null && fail "failed (bug 2005-04-13-001)"
 echo OK

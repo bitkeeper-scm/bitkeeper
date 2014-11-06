@@ -24,7 +24,7 @@ a
 
 test
 
-' || exit 1
+' || fail
 bk prs -r+ -hd':COMMENTS:' ChangeSet > GOT
 bk undos <<EOF > WANT
 C this
@@ -74,7 +74,7 @@ bk sfiles -pA > BEFORE
 echo 'SCCS/s.file|1.4' | bk commit $Q -ywhatever -
 bk sfiles -pA > AFTER
 bk pending > LEFT
-grep -q 1.5 LEFT || exit 1
+grep -q 1.5 LEFT || fail
 cmp -s BEFORE AFTER && {
 	echo failed
 	cat BEFORE

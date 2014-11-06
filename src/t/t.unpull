@@ -42,9 +42,9 @@ bk edit $Q bar.c
 bk delta $Q -fynull bar.c
 bk commit $S -yCset
 cd "$HERE/copy"
-bk pull $Q || exit 1
+bk pull $Q || fail
 bk _test -f SCCS/s.foo.c || { echo no foo.c; exit 1; }
-bk unpull -f $Q || exit 1
+bk unpull -f $Q || fail
 bk _test -f SCCS/s.foo.c && { echo failed to remove foo.c; exit 1; }
 bk _scat SCCS/s.bar.c | grep -q 'D 1.2' && {
 	echo failed to remove 1.2 delta in bar.c
@@ -53,11 +53,11 @@ bk _scat SCCS/s.bar.c | grep -q 'D 1.2' && {
 echo OK
 
 echo $N Check that the unpull prompt works ..........................$NL
-bk pull $Q || exit 1
+bk pull $Q || fail
 bk _test -f SCCS/s.foo.c || { echo no foo.c; exit 1; }
-echo n | bk unpull $Q > OUT && exit 1
-bk _test -f SCCS/s.foo.c || exit 1
-echo y | bk unpull $Q > OUT || exit 1
+echo n | bk unpull $Q > OUT && fail
+bk _test -f SCCS/s.foo.c || fail
+echo y | bk unpull $Q > OUT || fail
 bk _test -f SCCS/s.foo.c && { echo failed to remove foo.c; exit 1; }
 bk _scat SCCS/s.bar.c | grep -q 'D 1.2' && {
 	echo failed to remove 1.2 delta in bar.c
@@ -70,22 +70,22 @@ cd "$HERE/copy"
 echo snafu > snafu.c
 bk ci $Q -i snafu.c 
 bk commit $S -yCset
-bk pull $Q || exit 1
+bk pull $Q || fail
 bk _test -f SCCS/s.foo.c || { echo no foo.c; exit 1; }
-bk unpull -f $Q || exit 1
+bk unpull -f $Q || fail
 bk _test -f SCCS/s.foo.c && { echo failed to remove foo.c; exit 1; }
 bk _scat SCCS/s.bar.c | grep -q 'D 1.2' && {
 	echo failed to remove 1.2 delta in bar.c
 	exit 1
 }
 bk _test -f SCCS/s.snafu.c || { echo snafu.c got removed; exit 1; }
-bk -r check -ac || exit 1
+bk -r check -ac || fail
 echo OK
 
 # 3) pull, add a cset, make sure unpull fails
 echo $N Pull, add local cset, unpull should fail ....................$NL
 cd "$HERE/copy"
-bk pull $Q || exit 1
+bk pull $Q || fail
 bk _test -f SCCS/s.foo.c || { echo no foo.c; exit 1; }
 bk edit $Q snafu.c
 bk delta $Q -fynull snafu.c
@@ -102,9 +102,9 @@ echo OK
 
 # 4) undo the locally added cset, unpull again, should fail, csets-in gone
 echo $N Undo locally added cset, try unpull, should fail ............$NL
-test -f BitKeeper/etc/csets-in || exit 1
-bk undo $Q -fr+ || exit 1
-test -f BitKeeper/etc/csets-in && exit 1
+test -f BitKeeper/etc/csets-in || fail
+bk undo $Q -fr+ || fail
+test -f BitKeeper/etc/csets-in && fail
 bk unpull -f $Q > OUT 2>&1 && {
 	echo should not have worked
 	cat OUT
@@ -118,28 +118,28 @@ echo $N Pull new file with local conflict, then unpull ..............$NL
 cd "$HERE"
 commercial project2
 cd ..
-bk clone $Q project2 copy2 || exit 1
+bk clone $Q project2 copy2 || fail
 cd project2
 echo from project2 >file
-bk new $Q file || exit 2
-bk commit $Q -y'add file' || exit 3
+bk new $Q file || fail
+bk commit $Q -y'add file' || fail
 cd ../copy2
 echo from copy2 >file
-bk new $Q file || exit 4
-bk commit $Q -y'add file' || exit 5
-bk pull $Q -R ../project2 || exit 6
+bk new $Q file || fail
+bk commit $Q -y'add file' || fail
+bk pull $Q -R ../project2 || fail
 # rl is to remove local file.
-bk resolve -a $Q <<EOF > OUT 2>&1 || exit 7
+bk resolve -a $Q <<EOF > OUT 2>&1 || fail
 rl
 y
 EOF
-bk changes -fr1.2,1.3 -nd:KEY: > WANT || exit 8
+bk changes -fr1.2,1.3 -nd:KEY: > WANT || fail
 cmpfiles WANT BitKeeper/etc/csets-in
-test "`bk log -r1.3 -nd:MERGE:`" = "1.3" || exit 10
-bk cat file | grep -q 'from project2' || exit 11
-bk unpull -f $Q || exit 12
-test `bk changes -r+ -nd:REV:` = 1.2 || exit 13
-bk cat file | grep -q 'from copy2' || exit 14
+test "`bk log -r1.3 -nd:MERGE:`" = "1.3" || fail
+bk cat file | grep -q 'from project2' || fail
+bk unpull -f $Q || fail
+test `bk changes -r+ -nd:REV:` = 1.2 || fail
+bk cat file | grep -q 'from copy2' || fail
 cd "$HERE"
 rm -rf project2 copy2
 echo OK
@@ -150,16 +150,16 @@ echo $N Pull new file with local uncommitted conflict, then unpull ..$NL
 cd "$HERE"
 commercial project2
 cd ..
-bk clone $Q project2 copy2 || exit 1
+bk clone $Q project2 copy2 || fail
 cd project2
 echo from project2 >file
-bk new $Q file || exit 2
-bk commit $Q -y'add file' || exit 3
+bk new $Q file || fail
+bk commit $Q -y'add file' || fail
 cd ../copy2
 echo from copy2 >file
 # Add but do not commit "file" this time.
-bk new $Q file || exit 4
-bk pull $Q -R ../project2 || exit 5
+bk new $Q file || fail
+bk pull $Q -R ../project2 || fail
 # rl is to remove local file.
 cat <<EOF > IN
 rl
@@ -170,12 +170,12 @@ bk resolve -a $Q < IN > OUT 2>&1 || {
 	cat OUT
 	exit 6
 }
-bk changes -fr1.2,1.3 -nd:KEY: > WANT || exit 7
+bk changes -fr1.2,1.3 -nd:KEY: > WANT || fail
 cmpfiles WANT BitKeeper/etc/csets-in
-test "`bk log -r1.3 -nd:MERGE:`" = "" || exit 9
-bk cat file | grep -q 'from project2' || exit 10
-bk unpull -f $Q || exit 11
-test `bk changes -r+ -nd:REV:` = 1.1 || exit 12
+test "`bk log -r1.3 -nd:MERGE:`" = "" || fail
+bk cat file | grep -q 'from project2' || fail
+bk unpull -f $Q || fail
+test `bk changes -r+ -nd:REV:` = 1.1 || fail
 # The local file was never committed.  Should it be there now?
 # XXX figure out and enable one of these.
 #bk cat file | grep -q 'from copy2' && exit 13   # no
