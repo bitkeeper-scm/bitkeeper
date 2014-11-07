@@ -1,0 +1,80 @@
+Early cut at aliases (subsets)
+==============================
+
+For modules, we want to record the module name[s] used, if and only if it
+was symbolic, in BitKeeper/log/MODULES.  The reason for this is so that
+subsequent pulls need to use this file, unioned with any components not
+implied by the file, so that they get any new components, i.e., if a
+module "tools" started with gcc, someone clones, the parent adds gdb,
+the child pulls, then the child should get a new gdb repo.
+
+This opens up a few questions:
+
+    - Do we support pull -M?  Ans: no, it's implied from the MODULES file.
+
+    - how do we handle the case that someone did a
+      clone -Mtools -Mtool-docs
+      and later did a 
+      clone of a component?
+      Ans: We don't allow clones of components, they have to do
+      -Mcomponent/ if that's what they want so we just add that into the
+      BitKeeper/log/MODULES file. [done]
+
+    - when cloning a tree that was limited to a subset of components,
+      make sure the MODULES file is sent as well. [done]
+
+    - when pulling a tree that had a MODULES file, suppose that the parent
+      has added another module.  We're deciding that you just pull whatever
+      is in your MODULES file and that's it.  As a feature, we could add
+      a warning that says your MODULES are different and we could add a
+      populate command that takes an optional URL and it fetches everything
+      that URL has including the MODULES file.  Not for 1.0.
+
+    - If an ensemble is sparse, i.e., has MODULES file, then imply the 
+      contents of that file on clone if and only if they did not 
+      specify any -M on the command line.  If they did, honor theirs.
+      [done]
+
+    - check should assert that the MODULES file and the subset present
+      matches.
+
+    - bkd_clone could check that set of ensemble_list elements are present.
+
+    - when adding in a component with bk clone -Mgdb/ we probably want to
+      not allow you to specify the parent or the destination.  Or we want 
+      to make this a different command (Oscar likes populate).  So we're
+      headed towards
+
+      	bk populate -Mmodule [-Mmod2 ...] [URL]
+
+      which is an alias for
+        
+	bk clone -Mmodule [-Mmod2 ...] URL | `bk parent -l`
+      [done]
+      
+    - we need an unpopulate -Mmodule ... which says "get rid of this
+      part of my ensemble, I don't need it".  That command needs to
+      make sure that the world will be sane after running it.  It
+      also needs to verify there is no local only work (unless -f).
+      This does mean that if I do "rm -rf really_big_comp" and then do a
+      pull, it's just coming back again.  So use the command.
+
+    - what happens if we populate a MODULES file to the extent that it
+      implies all modules?  I believe that at that point we should just
+      remove it.  Something for check.
+
+
+We need test cases for:
+
+    - clone -Mtools (tools -> gcc)
+      pull after tools was updated to include gdb
+      should clone in gdb.
+
+    - pull after gdb is deleted from tools, should do what?
+      Warn them?
+      Delete if no local work?
+      What if local only work?
+
+    - merge conflict in module db
+
+    - clone a product under a product.  Those should never recurse.

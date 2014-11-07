@@ -1,0 +1,76 @@
+Old guidelines for timestamps
+=============================
+
+ [XXX - this is out of date]
+
+In all places where we write the s.file
+    call sccs_setStime()
+    
+In check, check for bad timestamps.
+
+In sccs_setStime()
+        - make sure we have a gtime (just always save this but reset it when
+          when we write a gfile)
+        - get the time to use from the last delta that was "content bearing"
+          Use the unfudged date - 2 sec as the timestamp
+        - Set the time if and only if
+          + time(0) >= timestamp + 2
+          + mtime(gfile) >= timestamp + 2
+          + mtime(sfile) != timestamp
+    
+In get, if file is locked and timestamps are such that it's likely make
+is calling get, then do a warning but not a failure.  Call sccs_setStime()
+to fix the timestamps.
+
+I need to go walk the places we call init w/ INIT_FIXSTIME and see why.
+It seems fairly random.
+
+s/INIT_FIXDTIME/INIT_USEDTIME/?
+
+INIT_FIXSTIME	- now the default, only set by check
+INIT_FIXDTIME	- used by delta, undocumented -G option, could be gflags
+		  Gets passed down to sccs_dInit() which means use the 
+		  gfile mtime as checkin time rather than now.
+		- also looks like it was used in sccs_dInit() to make the
+		  checkin time be the file timestamp.
+GET_DTIME	- same as INIT_FIXDTIME (not true)
+
+The rules are:
+	- never touch a gfile timestamp except at checkout & GET_DTIME
+
+Goal:
+	use the gfile mtime such that a clone w/ checkout:edit gets you an
+	identical tree w/ identical mtimes.
+
+For ci, always use the gfile timestamp subject to:
+	if (timestamp <= time(0)) timestamp = time(0);	// truncate
+
+For commit, always make sure
+	timestamp = max(now(), greatest(all t of all d)) + 1;
+
+
+----------------------
+INIT_FIXDTIME is gone, we do that by default now if we have a gfile.
+INIT_FIXSTIME is used only by check, the behaviour is default now.
+----------------------
+
+Goals:
+	- s.file time is always sccs_timestamp(s)->date - 2 where
+	  sccs_timestamp() is the first "content bearing" delta in
+	  the table (li/ld OR merge OR rename BUT NOT xflag/tag)
+
+	- never touch gfile timestamps unless we are [re]writing gfile
+
+	- use the gfile timestamp for checkins if possible (truncate down
+	  to now, truncate up to last cset + 1 second)
+
+	- previous goal means that we need to assert that s.ChangeSet always
+	  == time of last cset - 2.  So we can get the timestamp w/o initing
+	  the file.  Either that, or we stuff a TIP_TIMESTAMP file in 
+	  BitKeeper/log and init the changeset if that is missing or is older
+	  than s.ChangeSet.
+
+	- make commit use now() as it's timestamp
+
+	- simplify all the *TIME* flags
+	  INIT_FIXDTIME goes away, it's now the default unless

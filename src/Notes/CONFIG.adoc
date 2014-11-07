@@ -1,0 +1,34 @@
+Managing configuration options
+==============================
+
+BK behavior on a local and macro scale is influenced by
+configuration that can exist in files and an environment
+variable.
+
+To see all the documented options can be configured, look at
+
+    bk help config-etc
+
+To see all the places this config file can live:
+
+    bk help config
+
+To see all options (please fix if this misses any):
+
+    bk -r grep proj_conf \
+        | perl -ne 'print "$1\n" if /proj_conf\S*\([^,]+,\s*"(\S+)"/' \
+	| sort -u
+
+A user can fetch a template to help them:
+
+    bk setup -p > template
+
+At this time, that's a minimal template
+
+We might think about support alternate ways to support the user.
+Examples:
+
+   bk config --show-template[=basic,admin,full] > template
+
+   bk configtool (then select which level you want to see)
+

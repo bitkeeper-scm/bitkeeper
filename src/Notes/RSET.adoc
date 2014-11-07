@@ -1,0 +1,31 @@
+given a cset range, list endpoints of files that are different.
+===============================================================
+
+use:
+    bk rset -l$REV
+    Basically like 'bk get -r$REV ChangeSet' with rootkey replaces by path
+    and deltakey in MD5 form.
+
+    bk rset -r$LOWER..$UPPER
+    List only files that have different deltakeys
+
+    bk rset -r$LOWER1,$LOWER2..$UPPER
+    Handles a merge with 2 merge parents (new to bk-7)
+
+Performance:
+
+Up through bk-6.x, rset walked the cset weave once for -l, twice for -r,
+and 3 times if --show-gone .  In bk-7, the weave is only walked once
+in all cases, with effort taken to walk a minimal part of the weave.
+
+This is achieved by having a copy / customized version of walkrevs().
+Walkrevs() has a limition of tracking 2 versions.  Rset needs to track
+3 to correctly handle -r$MERGE.  More could be handled, but use case
+hasn't presented itself yet.  The routine is weaveExtract().
+
+
+Todo: Mark new files in the weave.  Currently, if all a cset
+did was introduce a new file, the weave is walked from that
+cset on to root, because weaveExtract() is looking for a lower
+bound.  If new file entries had some type of special annotation
+in the weave, then the walk could stop after reading one line.

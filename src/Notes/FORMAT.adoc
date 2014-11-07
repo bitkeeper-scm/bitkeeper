@@ -1,0 +1,35 @@
+Relating to FLAGS file, extensions to ATT SCCS for state capture
+================================================================
+
+My file format differs from the ATT SCCS file format in the following ways:
+
+I have the following extra information in the file:
+
+	Pathname
+	RCS style tags
+	hostname of the machine making the delta
+	timezone of the delta 
+
+I want file format compatibility with AT&T SCCS so here's how that happened.
+Rochkind knew I was coming and he passes unknown flags through his SCCS 
+parser.  So the new flags are
+
+	...
+    	^Af h <rev> hostname
+	^Af P <rev> pathname
+	^Af w <rev> minuteswest of GMT
+    	^Af s <rev> symbol
+    	^Af R
+	...
+
+The hostname/pathname/minuteswest "inherit".  What this means is that if
+all the deltas were made in PST, then the only minuteswest entry would
+look like
+
+	^Af w 1.1 8:00
+
+Binary encodings:
+	
+	^Af e 0			# means no encoding, just ascii
+	^Af e 1			# traditional uuencoding
+	^af e 2			# gzipped, uuencoded

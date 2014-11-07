@@ -1,0 +1,56 @@
+Tags in components
+==================
+
+Nested collections have some issues with tags:
+
+    - tags in components vs tags in the product
+      problem: "stable" in gcc can't be different than "stable" in the
+      product.
+
+      solution: all components must have a BitKeeper/etc/config var
+      called tag_prefix that is automagically prepended.  It is set
+      on attach and defaults to the basename of the component and
+      attach will fail if that name is already taken in this product.
+
+      :TAG: becomes <prefix>.<tag>
+
+      even if tag_prefix is not defined.
+
+      The prefix may be different in different products, we don't 
+      really care about it other than maybe some work to make sure
+      that if we pull a change to the prefix we check that it is
+      still unique.
+      
+    - tagging a sparse collection ("sparse tags")
+      a) At least for tags, and ideally for all csets, we record what was here.
+      b) bk clone --identical means give me what was in that tree as of the 
+         implied or specified rev.  So if I tag (or if wayne does his magic,
+         commit) in a sparse tree and then clone --identical, the HERE file 
+         is the same (modulo aliases vs rootkeys) in the clone as it was in
+         the tree when the commit happened.
+         --identical is mutually exclusive with -s.
+      c) -s@TAG (or likely any rev w/ wayne magic) means the HERE file as of
+         that tag or rev.  In fact, bk clone --identical is really just 
+         bk clone -s@<implied|specified rev>
+
+	    bk clone --identical		== bk clone -s@+
+	    bk clone --identical -rTAG	== bk clone -rTAG -s@TAG
+
+         To get the subset as of any rev/tag do:
+
+	    bk here set @TAG
+	    bk here set @<rev>
+
+nested 1.0 requirements:
+    - implement :TAG: 
+    - block tags in components until this is complete.
+    - sparse tags can come later
+    - figure out the bk tag syntax 
+      cd gcc
+      bk tag gcc.stable		# works, has the right prefix
+      bk tag stable		# either is a product tag or is an error
+      perhaps
+      bk tag ./stable		# means tag this component
+      bk changes -r./stable	# means gcc.stable
+      bk -A tag ./stable	# do a tag in everything (for detach)
+      				# makes ./<tag> pretty compelling

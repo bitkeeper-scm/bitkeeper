@@ -1,0 +1,218 @@
+Early bk partition notes file
+=============================
+
+Partition - split up a standalone repo into a nested collection
+
+Partition makes a directory of csetpruned components, moves
+them into place, then stitches them together into a product.
+
+If partition were perfect, it could produce the same tree that would
+be produced by working in a nested collection all along.  It would
+work as well as a standalone repo that could be rolled back to any
+point and give the same file layout.
+
+Version 1.0 is not perfect, but pragmatic.
+This document has 2 parts: corners that were cut and overview of process.
+
+Version 1.0 Corners that were cut
+---------------------------------
+Cross component file moves -- not handled at all.  All user sfiles
+will look as though each spent its whole life in one component.
+The time where it was not in that component will be look like
+"BitKeeper/moved/<same-name-deleted-uses>" in that component.
+
+Which component does a user sfile live in?  There is the notion of
+a partition point -- the first partition.  In that partition, the
+deleted files are removed.  That's a reliable hack to get rid of
+trying to figure out what component(s) a deleted file lives in.
+The rest of the files are easy to categorize:
+	BitKeeper/triggers - product
+	BitKeeper - all components
+	A/foo - A (if A is listed in the components file)
+
+Incremental partitions use the name space defined by the partition
+point.  Sfiles that are now deleted will be deleted in the same
+component(s) as the partition point.  An sfile never changes components.
+
+It is an error if a file moves across components between the first
+partition and an incremental partition.  To address the error, the
+sfile can be moved back or deleted.  The user really wants a cross
+component move in the incremental, he or she can do a bk cp and a
+bk rm of the original.  Not ideal, but at least the user can keep working.
+
+Larry mentioned providing a trigger could be pushed out into the standalones
+to recognize cross component file moves.  That work has not been done.
+
+Where the bookkeeping is weird: say we have two components, A and B,
+and foo moves from A to B.  Partition is run, so it will look like foo
+always lived in B.  A 'bk changes' run in B will show foo's changeset
+comments, and 'bk changes' run in A will have nothing.
+
+Options for the future?  We might be able to clean up the
+bookkeeping in the future by using the :SORTKEY: to recover where
+the files in moved really lived.  So we have at least left some
+bread crumbs to put things elsewhere.
+
+Overview of Partition
+---------------------
+The first partition and incremental partition are roughly the same.
+The main difference is for step one, the first partition defines
+what is in the gone and deleted list, and incremental partitions
+use that as a basis.
+
+The steps:
+
+1. Make a work area
+2. The 'cleanup' prune of the standalone - remove gone and BitKeeper/deleted
+3. Make components: clone and csetprune out non-component sfiles
+4. Move components into place and gather up all their cset keys
+5. Prune product and inject component csetkeys into product weave.
+6. Attach (only on the first partition)
+
+Work Area
+---------
+Partition clones a source repo to the location that will become the
+nested collection.   In that cloned repo, a work area is setup in:
+
+BitKeeper/tmp/partition.d
+
+Most of the time in partition.c, the current directory is that work area.
+The macros WA and WA2PROD are used like ROOT2RESYNC and RESYNC2ROOT.
+
+Cleanup
+-------
+In the first partition, partition.c computes the gone list.
+See partition.c:cleanGone() for that.
+Incremental partitions use that same list.
+
+csetprune.c:filterWeave() handles the removal of BitKeeper/deleted
+at the time of the partition point.  Not a straightforward read,
+but it's in there.
+
+Also all BitKeeper/etc/gone files are replaced with one empty one
+that looks like it has been there for all time.
+
+Making Components
+-----------------
+See partition.c:mkComps()
+
+Components can be made in parallel by cloning the cleaned repo,
+then removing everything that is not in that component,
+and remapping the name of everything left.
+
+For all names that are not in the component, csetprune.c:key2delName()
+is used to compute BitKeeper/moved/<same-as-deleted>
+
+Each component at this stage is a functioning standalone repo:
+no BitKeeper/log/COMPONENTS or other meta data.  It does not
+look like a detached; more like a pre-attached repo.
+
+IMPORTANT: csetprune left serials alone (using -N), so all the serials
+across all the repos line up.
+
+Moving components
+-----------------
+See partition.c:moveComps()
+
+All the components get moved into place and their internals
+fixed up to look like a component with BitKeeper/log/COMPONENTS,
+and internal changeset file path names fixed.
+
+Also all changeset keys are gathered up with:
+  serial <tab> rootkey <space> deltakey
+
+After those are gathered, the component changeset files are
+bk _scompress'd, so serials no longer line up.
+
+Product Prune
+-------------
+A csetprune is done to get the same name mapping done for files
+in the product that had cross component history.  Otherwise, the
+names will be the same.
+
+Unique to this csetprune is the -W"PRODWEAVE" option, which injects
+into the weave, the keys gathered up in the previous stage.  The
+effect is to replace all the file keys with corresponding component
+keys.  This works because serials are kept constant in the component
+creation, so each component key will find the right product cset to
+live in.
+
+Attach
+------
+Coverity suggested storing all components in the COMPS file passed
+to partition -- both those being created by the prune and also
+attaches to be done.  That way, everything is in one file.
+
+This is done by filtering out all comps listed as '<path>|<url>'
+and running those as attaches after the product prune as been done.
+
+=== Problems ==
+New Gone'd files
+----------------
+New gone'd file -- if after the first partition, files in the original
+standalone repo are gone'd, then an incremental partition is done,
+a new cset will be created which is an update to the gone files in
+the corresponding component.  This works now.
+
+The problem with making that new cset is every incremental partition
+done after this will also created a new cset with the same gone content.
+
+Cross component file moves
+--------------------------
+After the first partition, if a user does a cross component file move
+in the standalone repo, an incremental partition will fail.  The
+user will have the choice of moving the file back or to 'bk rm' the file.
+
+If a cross component move is needed, the user can introduce a new file by
+moving the file to a different name, and doing a 'bk cp' to the new name,
+and doing a 'bk rm' on the old name.  That will work in an incremental
+partition and support in the user's mind that it is a different file.
+
+A trigger could be added to the standalone to detect the cross component
+move and either automate the shuffling or instruct the user on how to fix.
+
+That trigger has not been written at this time.
+
+Collisions between file and components
+--------------------------------------
+Long ago, a repo made have had a file called 'doc'.  At some point,
+that file was renamed, and a directory created called 'doc'.  Today,
+we want 'doc' to be a component.  Running a partition fails because
+a file delta 'doc' overlaps with the component 'doc'.
+
+That will be fixed to in some cases, just work, and in some cases,
+map the name to the 'BitKeeper/moved' directory.  More will be detailed
+when that work is done.
+
+5.0 could ship without it, since it will trigger a failure if it hits
+this condition and work without it.  And we haven't seen the condition
+tripped in the wild, and the beta's have that wired to fail.
+
+Unforeseen
+----------
+There will be unknown problems.  As part of moving the partition code
+from shell to C, more staff understands the details.  Hopefully, at
+worst, it may meaning take a partitioned repo a customer has and
+helping them pull data out of it into a new partition.
+
+Perf
+-----
+It can be made to go faster.  Doing a clone and csetprune is inefficient.
+To do the unlink, each sfile is init'd to see that it is the correct file.
+There's pretty simple changes to get it to skip the clone and init the file
+in the product repo.  BK does that type of thing now in takepatch.c in
+applyCsetPatch to init the file in the main repo and write it in the RESYNC.
+
+Not needed for 5.0, but certainly a good idea as far as future cleanups.
+
+Other perf improvement is calculating csetfile checksum.  That code has
+already had some pretty incredible perf work done.  Try to read it without
+a piece of paper to draw out the data structures.  Easy .. for Leonardo.
+Improvement can be done by making a more complex data structure to
+support incremental accumulation.  Lotso work which only helps partition,
+and possibly huge pulls (through using cset_resum() in takepatch).
+
+Probably better to put engineering time chaining to give a fast repo
+to users after the partition, instead of speeding up partition.
+However, if a compelling request comes in to make partition faster,
+know that it can be done.

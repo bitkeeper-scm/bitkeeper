@@ -1,0 +1,66 @@
+Thinking about merging data & meta data changes
+===============================================
+
+ [Sun Jun 20 01:41:50 PDT 1999]
+
+Revisioning multiple attributes of a file.
+	Contents
+	Pathnames
+	Permissions
+	Symbols
+
+Symbols are weird because they are something which can move around;
+the other ones have a 1:1 binding.  So we're gonna leave symbols 
+alone for now except that we need to change the way we do resyncs
+to include metadata deltas in the calculation.
+
+For the other stuff, think about it like this:
+
+    a) all changes are deltas.  If they are path/permission changes, they
+       are null deltas, but deltas all the same.
+
+    b) think of a file as 
+
+    		# Pathname (don't remove this comment)
+		src/slib.c
+		# Permissions (don't remove this comment)
+		-rw-rw-r--
+		# Contents (don't remove this comment)
+		/*
+		 * slib.c - this is all of SCCS....
+		 */
+
+       so if you were to diff that file, you'd get diffs on the contents and
+       the other stuff as well.
+
+    c) define a conflict to be a conflict between items of the same type
+       so a path:path, perm:perm, or content:content conflict are "real"
+       but a path:content conflict is not "real".  If there are no real
+       conflicts, then (a) takepatch should not say there are, 
+       (b) takepatch should not spit out a r.file unless there are conflicts,
+       (b) resolve should just apply it.
+
+This means that when we do a resync, takepatch needs to remember what
+type of delta has been seen on each side (local & remote).  Note that
+a delta can be a content and pathname change (currently can't also be
+a permission change but that could happen later).
+
+I need to make a matrix of all possible cases and test them.  
+
+Possible states for each (src & dest) repository:
+
+ Test#	path changed	perm changed	contents changed
+ 1	y		n		n
+ 2	y		n		y
+ 3	y		y		n
+ 4	y		y		y
+ 5	n		n		n
+ 6	n		n		y
+ 7	n		y		n
+ 8	n		y		y
+
+Wack resolve to do the right thing in all cases and test *ALL* cases.
+
+Also wack resolve to show diffs as in the file format above, and wack
+filemerge to have fields for permissions and file names with the 
+merge ones editable.

@@ -1,0 +1,63 @@
+Handling of patches
+===================
+
+INCOMING PATCHES
+----------------
+
+Test case: give me a shell script, testpatch:
+
+	testpatch [repository] -r<rev1> -r<rev2>
+
+The revs are cset revs, earlier followed by later.
+
+The test does the following:
+
+	if they specified repository
+	then	cd there
+	fi
+	bk export -kwr<rev1> /tmp/tp1$$
+	bk export -kwr<rev2> /tmp/tp2$$
+	bk resync -r..<rev1> /tmp/tpr$$
+	cd /tmp
+	diff -Nru tp1$$ tp2$$ > /tmp/P$$
+	cd tpr$$
+	bk -r edit -q
+	patch -p1 < ../P
+	# Freak out if there are .rej
+	cd /tmp
+	diff -Nru <whatever option it is to ignore SCCS> tpr$$ tp2$$
+	# freak out if not the same
+
+RENAMES
+-------
+	Construct some little test cases (or find them in our tree) where
+	the following happens:
+
+	a) a file is deleted
+		XXX - make sure that if patch deletes a file which has an
+		s.file and a p.file associated with it, that patch doesn't
+		screw with those.
+	b) a file is moved someplace else
+	c) a file is deleted and a new file is created on top
+	d) a file is deleted and another file is moved on top of it
+
+	------
+
+	Next step is to pick up /home/bk/lm/src/gnu and figure out how to
+	extract the creates and deletes from patch.  Run with --verbose 
+	and the information you want is printed, mixed in with a bunch of
+	other garbage.  
+
+	First, extract the create/delete events from the patch output.
+	Second, construct information for renametool so that you can
+	hand it the lists.  It wants a file like this on stdin
+
+	file/which/was/deleted
+	another/delete
+	and/one/more
+
+	file/which/was/added
+	another/add
+	another/file/added
+	and/one/more
+

@@ -1,0 +1,29 @@
+Some notes about file poly
+==========================
+
+File poly (ie, not component poly -- see Notes/POLY for components)
+
+== Error cases:
+
+commit - one key in the tip cset, one elsewhere
+
+check in resync - one key in remote and the other key in local
+
+commit in the resync - commit + check in resync conditions
+
+
+== Non-error cases:
+
+Complain about all duplicates of "rkey dkey" in the weave.
+
+Non-error cases can be quieted by putting "dkey" in the etc/ignore-poly
+file
+
+
+== BitKeeper/etc/ignore-poly file
+
+* converge code - does (in essence) a sort -u as part of the converge.
+  (really, a merge -s, for set based (hash) merge)
+
+* when reading from the RESYNC, read the resync dir first, then main repo
+  Follow 'bk cat' rules for reading file.

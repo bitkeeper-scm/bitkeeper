@@ -1,0 +1,105 @@
+sccs_lockfile() working over NFS notes
+======================================
+
+ [Wed Nov  9 18:01:44 PST 2005]
+
+This is a brain dump to summarize the effort that has been put into
+making the sccs_lockfile() interface work over NFS as well as try and
+capture what I've learned in the process.
+
+First, the test setup.  I have something I call a string mapper (smapper)
+in /home/bk/lm/bitcluster/cmd/smapper on work.  It's somewhat similar
+to C Linda which was a distributed tuple space that never caught on.
+You can think of it as a network interface to an MDBM, or a network
+based registry.  You can talk to it with telnet to run commands.
+
+Our test setup uses only two of the commands, "setx" and "rmx".  These
+interfaces map to mdbm_store(..., MDBM_INSERT) which means it will error
+if the entry already exists; and a specialized form of mdbm_delete where
+we pass both the key and the value and the delete succeeds if and only
+if both match.
+
+This forms the basis for a network based lock manager.  The invariants
+are that setx should always succeed if all accesses are serialized and
+rmx should always succeed as well.
+
+The client side of the test setup, run with bk _locktest -n path/to/lock,
+has the following loop body:
+
+	sccs_lockfile();
+	setx();                 // sets the lock, should succeed
+	sleep a while so other people can try and get in
+	rmx();
+	sccs_unlockfile();
+
+and we can run this across the unix part of the build cluster (I have a
+"unix" entry in my .clusters so you can do clogin unix) on an NFS file.
+I use /home/tmp_aix/LOCK.
+
+
+Now the results and all the weirdnesses.
+
+The test is testing things out of our control, i.e., the NFS client
+and server side.  The server side we own, that's work.  The clients
+are whatever we have in our build cluster and the following have NFS
+implementations that don't work:
+
+	redhat52 (Linux 2.0.36, a 1998 kernel)
+	hp (HPUX 10.20, a 1999 kernel)
+	sgi (IRIX 6.5, a 2001 kernel, shame on them)
+	redhat9 (Linux 2.4.20, probably redhat's fault)
+
+In fairness to SGI, they do work better than the other two but putting
+them in the mix will eventually cause a failure.
+
+All of those platforms are "don't cares" except for redhat9.  That one is
+probably OK because I think it is a kernel bug caused by load.
+
+Here are the weirdnesses I saw during testing:
+
+    - OpenBSD sometimes said that the link failed when it actually worked.
+      Fix: ignore the link status, count on stat to tell us what we need.
+
+    - I don't remember which platform, but sometimes I saw that the link
+      worked, the inode numbers were the same, but the link count was 1.
+      Fix: loop on inodes being equal and linkcount being 1.
+
+    - Some NFS implementations handle deletes by a rename to .nfs... and
+      I've seen that turn into a linkcount of 3, the deleted, the uniq,
+      and the lock.
+      Fix: toss the unique file and retry.
+
+    - It is quite common to fail one of the conditions even though we really
+      won so we get into sccs_stalelock() and we are the owner of the lock.
+      Fix: sleep a while and retry.  That was easier than unraveling and
+      deciding we won.
+
+    - redhat9 would sometimes get the lock incorrectly, usually after hanging
+      in the kernel for a while.  Sometimes it hung forever.
+
+But that's about it.  If I toss out the lame client side platforms I can
+run
+
+	( for i in 1 2 3 4 5 6 7 8 9 0
+	do ./bk _locktest -n /home/tmp_aix/LOCK 100 &
+	done
+	wait
+	echo All done
+	)
+
+on all the other platforms over and over and it works.  It's sort of cool
+in that it generates a huge load on work:
+
+load free cach swap pgin  pgou dk0 dk1 dk2 dk3 ipkt opkt  int  ctx  usr sys idl
+5.75   0    0    0    0     0    0   0   0   0   55K  50K   0    0    1 123  76
+5.75   0    0    0    0     0    0   0   0   0   55K  50K   0    0    1 120  79
+
+  PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND
+20696 root      15   0     0    0    0 S 23.2  0.0  27:07.96 nfsd  
+20691 root      15   0     0    0    0 S 22.9  0.0  27:30.91 nfsd   
+20695 root      16   0     0    0    0 R 22.9  0.0  26:20.44 nfsd
+20693 root      16   0     0    0    0 R 22.9  0.0  25:08.86 nfsd
+20689 root      15   0     0    0    0 S 22.5  0.0  26:18.06 nfsd
+20694 root      16   0     0    0    0 R 21.9  0.0  25:46.82 nfsd
+20690 root      16   0     0    0    0 R 21.9  0.0  26:45.03 nfsd
+20692 root      16   0     0    0    0 R 21.2  0.0  26:48.83 nfsd

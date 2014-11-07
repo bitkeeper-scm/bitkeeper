@@ -1,0 +1,111 @@
+How to find components when repos are sparse
+============================================
+
+A nested repository is allowed to be sparse, that means it has
+components that are not present.  Each of the missing component is
+identified by a rootkey/deltakey pair for that component.
+
+Populate needs to know where to find any components that are missing
+from the current repository.  Those components can come from any
+product that has that component with the deltakey we need.
+
+We want to maintain a minimal list of nested URLs that we can search
+to find all the missing components in this repository.  This is
+similar to the parent list, but is separate and may be totally
+different.  Note the URLs in this list are product-level URLs.
+
+To verify this list, perhaps as part of a full repository check, we
+send the list of missing rootkey/deltakey pairs to each of these URLs
+and get back a list of which keys are present from each one.  All
+missing repos should be found or we have a problem.  And if any URLs
+are redundant then they can be removed from the list.  URLs that
+satisfy the least number of components should be removed first.
+Probably each URL should be annotated with which components can be
+fetched from there.  This would save time in populate.
+
+This list is maintained as follows:
+
+* clone
+  The initial list is copied from the list maintained in the source
+  repository.  The URL cloned may need to be added to that list if all
+  of the components present in the source are not included in the
+  clone.
+
+* populate
+  (Populate will be changed to use this list by default, and not the
+  pull parents.)
+  If populate is given an optional URL to fetch components then that
+  URL is added to the list if the populate succeeds.
+
+* pull
+  If a pull updates the tip key of a component that is not present in
+  the local repository then we need to re-verify that our list is still
+  accurate.  The pull URL or items from the pull source's list may
+  need to be added to local list to be able to find that new tipkey.
+
+* push
+  If a push moves a local only cset out into the world, then that
+  url needs to be remembered as having a copy.
+
+* unpopulate
+  An unpopulate potentionally adds a new entry to the list for where
+  to find the component we are removing.  We can't allow an
+  unpopulate if we can't verify that the data being removed exists
+  somewhere else.
+  This potentially changes the unpopulate command line to add that URL
+  so that the command can be allowed.
+
+  ex:
+     $ bk unpopulate -s./src/win32/msys
+     unpopulate: unable to find rev 1.343 of src/win32/msys in other
+                 source repos, aborting...
+     $ bk unpopulate -@bk://work/rick/bk-msysfix -s./src/win32/msys
+     removing modules src/win32/msys
+
+* commit
+  A component commit makes a new deltakey in that components and so
+  deletes all URLs remembered for that component.
+  See push for restoring URLs when the cset propagates.
+
+Proxies
+-------
+
+In some cases the list of URLs for a repository will not be accessable
+from another machine after that repo is cloned.   We solve this by
+having some generic mechinism for bkd connections to be proxied via
+another bkd.  So after a clone if all the missing components cannot be
+found and we had some URLs which were inaccessable, we try retry those
+URLs by proxying the URL for the clone.  These proxied connections are
+less desirable so the code should try to replace them with direct
+connections as they are found.
+
+
+Issues
+------
+
+  * Unlike BAM, we won't know if a repository is being depended on to
+    satisfy missing components in another repository.  So things can
+    be broken when whole repos are deleted.
+    In theory an unpopulate is OK because we can still redirect
+    incoming requests to a place were he component can be found.
+
+  * Normally the user shouldn't need to see or maintain this list of
+    URLs, but perhaps there should be some utility function like
+    'bk parent' to change the list.
+
+  * Deleting URLs from a list can be a problem as machines can
+    change networks as well as csets can move around behind the
+    scenes so checking a repo which didn't have it can then reveal it.
+
+Protocol
+--------
+
+clone - bkd side puts URLLIST and HERE file into the sfio, and sends
+@PRODUCT@ back if the clone source is a product.  Note: the client
+side moves the HERE file because it doesn't have that HERE file as
+its HERE file.  It passes that on to components to populate.
+Removed - the -s option to send and validate the components/alias list.
+This is how HERE was implemented in the past.
+
+pull - optionally send a @URLLIST@ and contents of file, if that file
+exists.

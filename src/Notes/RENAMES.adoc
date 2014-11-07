@@ -1,0 +1,131 @@
+Rename conflicts and resolution
+===============================
+
+Cases
+-----
+
+    This is supposedly a list of all cases and how we handle them, it's
+    probably incomplete.  In all cases which have an sfile on both sides,
+    it's implied that they are different root inodes.
+
+    local repo			remote repo		action
+    ----------			-----------		------
+    no file			create			autocreate
+    no file			rename			autorename
+    gfile, no sfile		create			interactive resolve
+    gfile, no sfile		rename			interactive resolve
+    sfile			create			interactive resolve
+    sfile			rename			interactive resolve
+    rename			sfile			interactive resolve
+    rename			no file			copy to RESYNC
+
+    create			create			interactive resolve
+    create			rename			interactive resolve
+    rename			create			interactive resolve
+    rename			rename			interactive resolve
+
+-----------------------------------------------------------------------------
+
+One way of dealing with some of the complexity is to divide up the space
+into:
+
+	a) files which are the same in local & remote
+	   and have no pending renames
+	b) files with pending renames (all remote by definition)
+
+This leaves some unfinished business:
+
+	c) files which are moved in remote and have to be moved locally
+	d) files which are in the way and are going to be moved locally
+	   to make room for a new remote (or for that matter a moved local)
+	   file.
+
+What I think might be a good approach is to move all the renames to their
+own namespace and resolve them from RENAMES to RESYNC.  As we hit files 
+which we don't have in either RENAMES or RESYNC but we are moving, add
+them to the RESYNC directory in their new location.  So when we get done
+resolving, we know that 
+
+	a) the RESYNC dir has all resolved names (if this is not true, they
+	   are in the RENAMES dir)
+	b) for every file in the repository which is to be moved, there is a
+	   copy of that file in the RESYNC dir so we can overwrite files at
+	   will.
+
+This means when we are looking for namespace conflicts, we first look in 
+RESYNC and if that is OK, then we look in the repository.  We still have
+a problem in that there can be false conflicts: src/a can be in the repository
+but it is src/moved_to_make_space_for_new_a in the RESYNC dir.  Yuck.
+
+----------------------
+
+OK, so how about this?
+
+    a) pull everything out of RESYNC into RENAMES which has pending name changes
+    b) build a DBM of rootkeys true/false of all the files in the RESYNC dir
+       (takepatch could do this and leave it in BitKeeper/tmp).
+    c) process the files in RENAMES, resolving any conflicts, and put the file
+       in RESYNC - not overwriting any files.
+    d) before putting the file in RESYNC, if the same pathname is taken in the
+       repository and the rootkey of that file is not in our list, then ask
+       the user if they want to move the other file out of the way or move
+       this file somewhere else.  If somewhere else is chosen, repeat process
+       using that name.  If move is chosen, then copy the file to RENAMES and
+       put this file in RESYNC.
+    e) repeat RENAMES processing until RENAMES dir is empty.  Potentially all
+       files could pass through RENAMES.
+    f) move each file from RESYNC to repository, making sure that if the file
+       exists in the repository, we have either overwritten it or deleted it.
+
+
+
+	Local		Remote		Case #
+	not moved	not moved	1
+	not moved	moved		2
+	moved		not moved	3
+	moved		moved		4
+
+Case #
+	a) does the user get involved?
+	b) what happens?
+
+Case 1
+	Do nothing, no renames in either
+
+Case 2
+	a) user is not involved, but is warned that move is happening
+	b) Make an rfile with a rename entry
+
+Case 3
+	a) user is not involved, but is warned
+	b) Make an rfile with a rename entry
+
+Case 4
+	a) user needs to be consulted to see which to use
+	   user can also pick a new name completely, so checks for
+	   conflicts in others that exist need to be done.
+	   This may cause a copy of sfiles from Local into RESYNC,
+	   if the user wants to rename something not involved in the
+	   patch (creating an additional case 4 entry from something
+	   that had been case 1). 
+	b) Make an rfile with a rename entry
+
+The format of the rename (R.file) is
+
+	local	gca	remote
+
+After processing all sfiles,
+    do for all files that have rfiles with rename entries:
+
+ 	move rfile and sfile to $PROJROOT/BitKeeper/rename/
+	move them back to the RESYNC directory with the new name
+	add deltas to the local and or remote branch so each match new name
+	move over the wall into Local repository
+
+Assumptions: Local and Remote are in same LOD
+
+Notes from design discussion:
+There are 4 namespaces: Remote, Local(before), Local(after), RESYNC.
+
+RESYNC namespace is initially same as Remote.
+After the move to and from BitKeeper/rename, RESYNC becomes Local(after).

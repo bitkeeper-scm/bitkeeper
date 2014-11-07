@@ -1,0 +1,16 @@
+A plan for handling files too big for an sfile
+==============================================
+
+The plan for arbitrarily large files
+------------------------------------
+
+This plan currently only handles the case that each delta is not stored
+as diffs.  The diffs part is a refinement to come later.
+
+Suppose the file is "foo", the sfile is "SCCS/s.foo".
+
+If the file gets too large, then SCCS/s.foo becomes SCCS/d.foo, which is a
+directory.  In that directory, you will find
+
+	SCCS/d.foo/s.foo	- this is the delta table graph.
+	SCCS/d.foo/#.foo	- serial number # contents

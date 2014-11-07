@@ -1,0 +1,19 @@
+Thoughts on revision number mapping when importing RCS / ATT SCCS
+=================================================================
+
+The only hard part about converting is getting the revision numbers 
+correct.  Because of the differences in RCS/SCCS revision numbering,
+there can't be a 1:1 mapping.
+
+We punt in the following way:  sort the revisions by date and check them
+in in that order.  That way, the revisions will probably be numbered the
+same but may not be on bushy RCS files.
+
+In order to convert, I need a rev/parent rev/date tuple.  I sort on date
+and then check them in oldest to newest.
+
+For RCS, I can get 2/3's of what I want from rlog; I have to parse the
+RCS file to get the rest.
+
+For SCCS, I can get the parent/child relationship from sids, and the rest
+from prs.

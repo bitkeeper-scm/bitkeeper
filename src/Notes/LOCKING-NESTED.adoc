@@ -1,0 +1,164 @@
+Nested locking model
+====================
+
+Reader/writer locking in a nested collection
+
+Also See:
+	http://dev-wiki.bitmover.com/Nested/Locking
+	http://dev-wiki.bitmover.com/Nested/Transactions
+
+[Wed Sep 30 11:11:05 PDT 2009] - I don't know how current those
+are when you are looking at them, but at least now they provide
+a variety of insight to what has been thought or tried.
+
+== Really Quick Intro ==
+
+The basic idea of NESTED LOCKING is to piggyback on normal repository
+locking with the following assumptions:
+
+ * We don't have to worry about individual repositories (product,
+   components) since normal locking takes care of those.
+
+ * Most operations are '-r' operations done by key. Meaning that even
+   if a particular repository has been updated from the time we
+   calculated which key we want to fetch, the key will still be
+   there. (Exception: Undo)
+
+ * The RESYNC directory effectively acts like a readlock.
+
+Based on these assumptions, we have to consider the following
+repository wide operations and what they do with the local and remote
+sides.
+
+ * abort - similar to undo - go backwards and return to consistent state
+ * clone - can call undo
+ * commit - component level still takes a nested write lock (yes?)
+ * push - remote nested write lock
+ * pull - can call commit
+ * rclone - can call undo
+ * undo - can interfere with clone/pull -r, so ideally block all?
+
+Not nested wide, but works with locking
+
+ * changes - read lock of sorts
+ * populate - calls clone -r at the component level
+
+Intro
+-----
+
+The safeguarding of nested operations is built on repository locking.
+See the src/Notes/LOCKING file for a description of the single repository
+locking setup.
+
+The nested collection locking scheme is based on maintaining a RESYNC
+directory in the product along with a way to know which job owns the
+RESYNC.
+
+The idea is that a RESYNC directory is like a read lock: pulls and
+clones can occur.
+
+In addition to that, we'd also like component repository updates
+(push, pull) to happen -- if the RESYNC lock is ours.
+
+To have this work, the meaning of repository locked includes seeing
+if the product repository has a RESYNC directory.  And if we are seeking
+to get a component repository write lock, if the RESYNC directory is ours.
+Look in locking.c for nested_mine() calls.
+
+File(s)
+	Mark that a nested write is in progress
+	#define NESTED_WRITER_LOCK "BitKeeper/writer/nested_lock"
+
+It contains a Lock ID (LID) read getLID() in locking.c for the
+authoritative version of what's in there, but as of this writing:
+
+	rand_getBytes((void *)&random, 4);
+
+	if (getenv("_BK_IN_BKD")) {
+		user = getenv("BK_REALUSER");
+		host = getenv("BK_REALHOST");
+	} else {
+		user = sccs_user();
+		host = sccs_host();
+	}
+
+	http = getenv("BKD_HTTP") ? 'h' : 'n';
+	return(aprintf("%c|%c|%s|%s|%s|%d|%u|%u",
+		kind, http, user, host, prog,
+		time(0), getpid(), random));
+
+
+This is then also kept in an enviroment variable, NESTED_LOCK or
+BKD_NESTED_LOCK, which is passed back and forth between bk and bkd.
+The env variable must match the NESTED_WRITER_LOCK file contents or
+write access is denied.
+
+The locking.c:nested_*() doesn't have any fancy locking of its own, but
+works in the window when the product repository is write locked.
+After the RESYNC directory has been created, the repository can then
+be unlocked for others to use it as a resource for reading, until the
+nested function is ready to end, in which the product repo gets write
+locked again.
+
+Implementation
+
+The nested locking is only on the write side of a push, pull, clone
+or undo.
+
+The passing of the NESTED_LOCK and BKD_NESTED_LOCK is in the sendEnv and
+sendServerInfoBlock pair in utils.c
+
+Changes to how the product RESYNC is taken into account for repository
+locking is in locking.c (see nested_mine calls)
+
+See 'bk grep nested_wrlock' for where the setting of the RESYNC ownership
+is done.   And nested_commit and nested_abort for termination of ownership.
+The client side can call cmd_nested in the bkd with options
+'commit' or 'abort'.
+
+== Alternatives ==
+
+For http, add a token to the NESTED_WRITER_LOCK file that this is an
+http lock and therefore can't use pid to stale the lock, but can use a
+time window.  Mentioned in one of the emails shown in :
+	http://dev-wiki.bitmover.com/Nested/Transactions
+
+Building on that, the cmd_log() table could drop unlock and
+instead just list locks on each step.  The lock would not only
+take if it already had it, it would update the time so that a
+long held http lock would work if there were many subrepos.
+Anyway, that's drifting a bit from here.
+
+Of Note
+
+There's a comment in utils.c :
+	If we ever talk to two different bkd's from the same bk process
+	then we need to clear BKD_NESTED_LOCK so a new lock can be acquired. 
+
+Make sure to consider this.  BAM operations can talk to multiple bkds
+in a single process (bk bam server bk://other/bam).  Locking is not really
+an issue.  Oh, but good in doing push to multiple places that an env var
+can be pushed.  So make sure to run all commands with BAM and URLLIST
+and multiple parents to see that env vars don't leak.
+
+== Environment Variable Naming ==
+
+The Environment variable is called NESTED_LOCK because it's used both
+in the bk and the bkd side. For instance, both bkd_push.c and pull.c
+end up calling takepatch, so takepatch can just use _NESTED_LOCK
+regardless of where it's being called from.
+
+This is a little different from normal BK convetion (BKD_* on the bkd
+side and BK_* on the bk side), but there is a good reason for it. Only
+the local side (bk side) needs to handle both variables (_NESTED_LOCK
+and BKD_NESTED_LOCK) and it only ever looks at the _NESTED_LOCK one,
+the BKD_NESTED_LOCK variable is just passed back and forth in the
+protocol such that the remote side (bkd) can end up with its own
+_NESTED_LOCK environment variable.
+
+One alternative that was considered and discarded was to have the
+normal meaning (BKD_* for the bkd side and BK_* for the bk side) with
+an accessor function that looked at _BK_IN_BKD to differentiate. It
+was discarded because if the bkd side ever needs to talk to another
+bkd (think BAM) it would get confused. This doesn't happen with the
+current approach.

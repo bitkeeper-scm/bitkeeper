@@ -1,0 +1,22 @@
+Differences from the original SCCS
+==================================
+
+	. SCCS/s.file is the only supported sort of name.  Use
+	  "ln -s SCCS ." if you want s.files with your source.
+	
+	. get /full/path/SCCS/s.foo puts the file in /full/path/foo
+	  not ./foo.   I'm not sure if this is a problem, if it is 
+	  it is easy to fix.  Need to see how this interacts w/ make
+	  and viewpaths etc.
+	
+	. delta works like the RCS ci - if there are no differences
+	  then the file is unedited instead of adding an empty delta.
+	  Use "delta -f" to force a delta.
+
+	. branch flag is unsupported at this time.
+
+	. get supports a -R<rev> which forces the next rev to be whatever
+	  you specify.  For testing only, use at your own risk.
+
+	. new program, parent, gives you the parent of a particular 
+	  delta.  Usage "parent <rev> filename".

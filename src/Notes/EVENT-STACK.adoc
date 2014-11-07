@@ -1,0 +1,34 @@
+The linear sequence of states a repo has been in.
+=================================================
+
+The ability to record and make use of the linear sequence of states
+a repository has been in.
+
+For example:
+
+post-commit and post-incoming trigger which take some index, add 1
+and make a tag ${BRANCH}_$INDEX .
+
+Only have that trigger on master repos, to save from everyone propagating
+their personal event stack around.
+
+Note that a node could have more than one tag on it: at some point bugfix
+becomes dev so the tip would have both bugfix.xxx and dev.zzz .
+
+--
+Alternative from Wayne:
+
+Just calling creating a new 'dev' tag everytime the tip of -dev
+changes would do the same thing.  The previous values of dev are still
+recorded as the old bk-tag-del RTI shows.
+
+--
+
+Queries
+-------
+
+When did this bugfix cset make it into dev?
+  bk set -tt -l -r${BUGFIX}_$INDEX | grep '^dev_[^_]*$' | tail -1
+
+Bisect going only over this repo's event stack. I.e. don't jump around
+branches, just test the merges and print the branc this was merged from.

@@ -1,0 +1,488 @@
+document the SCCS weave
+=======================
+
+SCCS Weave
+
+This covers the nature and attributes of the SCCS weave.  While not
+being about or going into weaves in general, some general concepts
+of weaves are illustrated in order to talk about SCCS.
+
+Let's start out with a simple SCCS file to give some context.
+
+The file history is linear: 1.1->1.2->1.3
+The character control-A ('\001') has been replace by two chars "^A".
+
+^AH41861
+^As 1/2/2                                   
+^Ad D 1.3 09/12/26 11:21:35 rick 4 3	<-- rev 1.3, serial 4, parent 3
+^Ac third change
+^AcK04692
+^Ae
+^As 2/1/2
+^Ad D 1.2 09/12/26 11:20:59 rick 3 2	<-- rev 1.2, serial 3, parent 2
+^Ac first-change
+^AcK03837
+^Ae
+^As 3/0/0
+^Ad D 1.1 09/12/26 11:19:41 rick 2 1	<-- rev 1.2, serial 2, parent 1
+^Ac BitKeeper file /home/bk/rick/fastpatch-weave-D/src/foo
+^AcF1
+^AcK01234
+^AcO-rw-rw-r--
+^Ae
+^As 0/0/0
+^Ad D 1.0 09/12/26 11:19:41 rick 1 0	<-- root 1.0, serial 1, no parent
+^AcBlm@lm.bitmover.com|ChangeSet|19990319224848|02682
+^AcHwork.bitmover.com
+^AcK14085
+^AcPsrc/foo
+^AcR16a32aed49f14fe1
+^AcV4
+^AcX0xb1
+^AcZ-08:00
+^Ae
+^Au
+^AU
+^Af e 0
+^Af x 0xb1
+^At
+^AT		<-- The end of title block (^At-^AT) marks beginning of weave
+^AI 4
+start change 3 with new line
+^AE 4
+^AI 2
+one
+^AI 3
+^AD 4
+first new line
+^AE 3
+two
+^AE 4
+^AD 3
+three
+^AE 3
+^AI 3
+replace third line
+^AE 3
+^AE 2
+^AI 1
+^AE 1
+
+Line based
+----------
+SCCS is line based, meaning each token in an SCCS file is a newline
+terminated string of chars.   NULL ('\0') is an illegal char.  All
+others are legal.  That means UTF16 won't work, but UTF8 does.
+
+4 Parts
+-------
+^AHddddd - file checksum
+<delta table> - the DAG, with version numbers, parents, etc
+<global state> - things like binary encoding flags
+<weave>	- what this file is about: the interleaved delta weave
+
+Activation set
+--------------
+Beyond the scope of this doc, but basically slib.c:serialmap(), which
+takes in a version, say 1.13.1.4, and turns it into a binary array,
+which index maps to serial and value is whether that serial is active
+or not in the version being generated.  With no include exclude processing,
+think of it as a transitive closure coloring between that version and
+root 1.0 delta.
+
+Interleaved delta
+-----------------
+SCCS weave interleaves data with commands, which when process with
+an activation set, produces a version of a file.  That's described later.
+(XXX: Or maybe not in this document, we'll see).
+
+Lines: cmd and data
+-------------------
+Command tokens begin with control-A (^A, '\001'), and have a second
+character which is not control-A.
+
+Data token are lines that don't begin with control-A or have the
+first two characters control-A, of which the first is not part
+of the data token, only part of the encoding of a data token
+that begins with control-A.  See the isData() macro in the code.
+
+There are no tokens which can be considered data and command.
+
+Examples:
+
+cmd:
+	^AI 44
+data:
+	this is data
+	^A^Athis is data that begins with ^A
+
+Commands: I, D, and E
+---------------------
+Weave command lines take the form:
+	^A<cmd-char><space><serial-number><option-char>
+
+Where cmd-char can be I, D, or E.
+	^AI 42
+
+And option char is a BitKeeper extension and only used in no newline
+encoding, using the char N on an E command.  See section on "No Newline
+Encoding" for details:
+	^AE 42N
+
+I: insert a new block of data (0 or more lines)
+D: delete existing region data (1 or more lines)
+E: end of insert block or delete region
+
+Data
+----
+A data line is a sequence of non null bytes.
+since all tokens are newline terminated, a line that doesn't
+terminate in newline is handled as a special case.  It was not handled
+in original SCCS: all lines were newline terminated.  As an advanced
+topic, it will be present later under "No Newline Encoding".
+All we need to know for now: _all_ data lines in the weave are newline
+terminated.
+
+In BitKeeper, CR ('\r') are stripped from the end of the data tokens
+before storing (s/\r+\n/\n/).  An old bug was that the \r was not
+stripped in the initial checkin.  For that reason, new versions of bk
+need to be able to store and keep the \r in the weave, as it was part of
+the file checksum.  That doesn't matter much for weave discussion, just
+a nuance in the structure of a BK data token.  BTW, new versions of bk
+do strip the \r on initial checkin. 
+
+Weave creation
+--------------
+In SCCS, the simplest form of adding a new block of data is creating
+the initial file (the weave part done in slib.c:checkin()).
+
+The new delta is assigned the first serial number: 1
+The data is wrapped in an I-E pair
+
+^AI 1
+line 1
+line 2
+line 3
+^AE 1
+
+An empty file is encoded with no data:
+^AI 1
+^AE 1
+
+In BK, the first delta is the rootkey, and has no data.  The first data
+bearing delta is serial 2.  This lead to BK files taking the above ideas,
+and with the first serial being 2 and an empty 1 block at the end:
+
+^AI 2
+line 1
+line 2
+line 3
+^AE 2
+^AI 1
+^AE 1
+
+And an empty file looks like
+
+^AI 2
+^AE 2
+^AI 1
+^AE 1
+
+At some conceptual level, none of these lines are needed, but since they
+are there, we can build into integrity checkers that they must be there.
+The only reason they must be there, is because they happened to be there,
+and that fact relied on.
+
+Along the same lines, the only empty data block to be encoded is an
+empty new file.  It is this way because a new file is basically:
+	printf("\001I 2\n");
+	system("cat file");
+	printf("\001E 2\n");
+	printf("\001I 1\n");
+	printf("\001E 1\n");
+The I-E pair could have been skipped by seeing that the data file was
+zero size.
+
+diff -an
+--------
+Most modern version control systems (not git) can be built on the
+output of "diff -an old new".  This is the RCS version of diff,
+though RCS on the trunk does "diff -an new old".
+
+Example: we add a new line to the start:
+
+new line
+line 1
+line 2
+line 3
+
+diff -an output:
+
+a0 1
+new line
+
+The weave function (slib.c:delta_body()) reads that as "go after line 0,
+and add one line.  Line 0 is the start of the file.  The new weave
+then looks like:
+
+^AI 3
+new line
+^AE 3
+^AI 2
+line 1
+line 2
+line 3
+^AE 2
+^AI 1
+^AE 1
+
+Let's do it again.  Add a line after our new line:
+new line
+another new line
+line 1
+line 2
+line 3
+
+diff -an output:
+
+a1 1
+another new line
+
+Weave:
+
+^AI 3
+new line
+^AI 4
+another new line
+^AE 4
+^AE 3
+^AI 2
+line 1
+line 2
+line 3
+^AE 2
+^AI 1
+^AE 1
+
+Notice the "another new line" got added after "new line" and not
+before "line 1".  Looking at the weave is a good way to find that out.
+
+Parallel work.  Say I deactivate 4 and make another change like that.
+new line
+a parallel new line
+line 1
+line 2
+line 3
+
+gives me:
+
+^AI 3
+new line
+^AI 5
+a parallel new line
+^AE 5
+^AI 4
+another new line
+^AE 4
+^AE 3
+^AI 2
+line 1
+line 2
+line 3
+^AE 2
+^AI 1
+^AE 1
+
+Note, if I had no deactivated serial 4 and had a file:
+
+new line
+a parallel new line
+another new line
+line 1
+line 2
+line 3
+
+We would get the same weave.  This is a big point: the weave doesn't
+record what is active at the time: no mention of what is the line following
+new lines.  To be taken advantage of later.
+
+So that's it for adds -- go to a line, put I .. data .. E
+
+Delete
+------
+
+Let's remove line 2:
+
+new line
+a parallel new line
+another new line
+line 1
+line 3
+
+diff -an:
+d5 1
+
+Reads as delete line 5 in the old file for 1 line.
+
+In SCCS, deletes are done by putting the D command before the desired
+data and E after the desired token:
+
+^AI 3
+new line
+^AI 5
+a parallel new line
+^AE 5
+^AI 4
+another new line
+^AE 4
+^AE 3
+^AI 2
+line 1
+^AD 6		<---- here's the new stuff
+line 2
+^AE 6		<---- here's the new stuff
+line 3
+^AE 2
+^AI 1
+^AE 1
+
+Now, being brilliant as you are, you are thinking, but what if
+I deactivate 6, add a new block after line 2, and reactivate 6?
+Looking like:
+
+^AI 3
+new line
+^AI 5
+a parallel new line
+^AE 5
+^AI 4
+another new line
+^AE 4
+^AE 3
+^AI 2
+line 1
+^AD 6
+line 2
+^AI 7		<---- here's the new stuff
+sneak line in
+^AE 7		<---- here's the new stuff
+^AE 6
+line 3
+^AE 2
+^AI 1
+^AE 1
+
+You see correctly that the new block resides within the delete region.
+But Marc Rochkind and friends had a trick up their sleeves - delete
+regions only apply to lines from smaller serials than the delete
+region.  So D6 doesn't delete lines from I7.
+
+Fastpatch weaving
+-----------------
+Fastpatch weaves deltas into the history as though they were woven
+in time order.  That means it needs to create the above weave
+no matter how the parts come together.
+
+A Fastpatch command has 3 parts:
+<cmd><serial> <line>
+
+cmd ::= I|D|E
+serial is serial in the patch file, and gets translated to a real serial
+through the patchmap.
+line is a line in the weave, but unlike in diff where the line number
+refers to the old file, these line numbers refer to the new file.
+
+The main magic is in weaveMove() which is called by doFast().  The doFast()
+processes the fastpatch.  weaveMove() moves in the existing weave.
+
+Two commands in weaveMove -- after or before -- or in the command line
+parameters: before or not before.
+
+Let's do some examples:
+
+D1 1 - weave a D for serial 1 before line 1.
+
+Now, say the weave looks like:
+
+^AI 12
+^AD 17
+line one
+^AE 17
+^AE 12
+
+And patchmap says serial 1 maps to serial 15.  Well, from above, we'd
+do something like:
+
+^AI 12
+^AD 17
+^AD 15
+line one
+^AE 15
+^AE 17
+^AE 12
+
+However, if we were to weave it incrementally, we'd get something like:
+
+^AI 12
+^AD 15
+^AD 17
+line one
+^AE 17
+^AE 15
+^AE 12
+
+Because we would have done 15 first, then when we would have done 17,
+it would have gone to before the line.
+
+So we see that to fastpatch a D, we need to stop at either the data line
+of interest or a D with a bigger serial.
+
+Likewise of the 'E' commands closing the D, we see that our E15 doesn't
+go right after the token but is also in a sorted order of E's.  The rule
+for moves after a token is a little more complex:
+
+Move to after the token, then move stopping before:
+An I or E of lower serial number.
+A data line not in an I .. E block of higher serial which is being skipped.
+Any D not in an I .. E block of higher serial being skipped.
+
+In the above case, the E15 being woven goes after the "line one" token,
+and sees a E17 next, which is a larger serial, so it skips it, and sees
+a E12, so it writes itself out there.
+
+What if we want to put an E15 into this:
+
+^AI 12
+^AD 15
+^AD 17
+line one
+^AE 17
+^AI 16
+^AD 21
+some new line since deleted
+^AE 21
+^AE 16
+^AE 12
+
+using the rules, we hit the I16, it's bigger, so we skip it, and not
+only skip it, but remember it and ignore everything until E16.  While
+D lines normally mean stop, they are skipped inside a skipblock.  Same
+goes for the data line "some new line since deleted".  When we get
+to the E16, we start doing the rules again, seeing the next line is
+E12, we put our E15 there:
+
+^AI 12
+^AD 15
+^AD 17
+line one
+^AE 17
+^AI 16
+^AD 21
+some new line since deleted
+^AE 21
+^AE 16
+^AE 15	<---- here
+^AE 12
+
+You now have enough knowledge to go read slib.c:weaveMove(), t.fastpatch,
+and Notes/FASTPATCH.

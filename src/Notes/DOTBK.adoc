@@ -1,0 +1,7 @@
+Map from old to new form of .files moving to .bk/files
+======================================================
+
+OLD			NEW			USER
+.bk_keys 		~/.bk/bk_keys		unique key processing
+.bkaccepted		~/.bk/accepted		license acceptance
+NONE			~/.bk/lease		current leases

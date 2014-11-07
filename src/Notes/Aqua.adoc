@@ -1,0 +1,57 @@
+Porting guis to Aqua on mac os
+==============================
+
+Notes on the Aqua Port
+----------------------
+
+Both the Aqua and X11 version of Tk are shipped on Mac OS X. The presence
+of the DISPLAY environment variable determines at runtime which version of
+Tk to use.
+
+The GUIs on Aqua look the same as on X11. However, a minimal menubar is
+provided because on Aqua there is _always_ a menubar.
+
+ABOUT BUTTONS
+-------------
+
+Buttons can't have colors in Aqua. Thus, citool's prompt lose their
+colors. 
+
+Buttons can't have multiple lines of text in Aqua. This might be 
+a Tk bug or a restriction of the Aqua widgets. Using Interface Builder
+I couldn't create a multiline 'push button'. The vertical size is 
+fixed. However, I could create a multiline 'rounded button'. I suspect
+Tk is using the latter because the buttons appear taller when they are
+multi-line, but only the first line of text shows up. While this is
+sorted out, we should only put a single line of text in buttons.
+
+ABOUT TEAR-OFF MENUS
+--------------------
+
+Tear-off menus were removed in Aqua where possible and dissabled 
+where not.
+
+We can't just remove all tear-off menus using the options
+database because difftool has logic that depends on the indices
+of the menu items starting at 1 (the tearoff takes the 
+zeroth position). In the particular case of difftool, we just
+disable the tear-off to keep the indices the same.
+
+Windows and Unix still have tear-offs.
+
+NOTES
+-----
+
+- There is a bad interaction with what Mac OS X deffines as "an application"
+  and the way we exec bk to launch other GUIs. For example, running citool
+  and getting a message (via 'exec bk msgtool') results in launching a new
+  with shell which blocks the old wish shell (the old wish shell appears to
+  be hosed because it's not responging to GUI events) until the user dismisses
+  msgtool. Combine that with the fact that new apps sometimes appear _under_
+  the currently selected app and you get very confused users.
+
+  Also, exec'ing on Mac OS is not as fast as it is on Linux.
+
+- Automatic regressions (src/t/g.*) do not work on Aqua. The problem has to
+  do with event generation in Tk/Aqua, and it was decided not to delay the
+  Aqua port.

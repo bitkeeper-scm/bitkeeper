@@ -1,0 +1,54 @@
+Basic locking model - not nested
+================================
+
+Reader/writer locking in BK.
+
+This is single repository wide locking, not individual file locking.
+
+Writer lock
+-----------
+
+Lock files are maintained in BitKeeper/writer.  Currently there
+are two files hardlinked to each other:
+	BitKeeper/writer/${pid}@${host}.lock (AKA - uniq)
+	BitKeeper/writer/lock
+
+Content:
+	pid <space> host <space> time(0)
+
+On unix, create uniq, then hard link to 'lock'.
+On windows, use win32 api to create 'lock'.
+Either way, should get some peace of mind that the lock has been grabbed.
+See sccs_lockfile() for more.
+
+Reader lock
+-----------
+
+Lock files are maintained in BitKeeper/readers.
+There can be many files of the form:
+	BitKeeper/readers/${pid}@${host}.lock (AKA - uniq)
+
+RESYNC dir
+----------
+
+The RESYNC directory gets created by takepatch and by various operations
+when hitting an error.  The RESYNC directory acts like a read lock,
+blocking write operations, and allowing readlocks to be taken.
+
+Locking stuff
+-------------
+
+When trying to get a writer lock, walk the reader list and kill 0 each
+of them that are on the same host.  If they are all gone, then remove
+them and let the lock succeed.
+
+This means that the process who created the lock can't exit until all
+of the child processes are done.
+
+Places we need to lock:
+
+	clone/rclone
+	resolve (both its own, and in pass4, grabs a repo write lock)
+	pull
+	push
+	undo

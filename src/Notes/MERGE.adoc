@@ -1,0 +1,31 @@
+The smerge/nmerge structure .
+=============================
+
+<fill in SMERGE and NMERGE notes here>
+
+Some snippet of IRC which might be woven into this Notes file:
+
+<lm> ob, the whole point of pluggable is that you don't.  It seems like the
+focus is on some mythical right answer for automerge; I think looking at
+how you handle the non-automerge case is the point
+<ob> and if you automerge wrong?
+<lm> you deal, as has been noted anything will automerge wrong.  
+<ob> who are you and what have you done with lm?
+<lm> I never advocated for a perfect automerge, I've been trying to move
+focus to the conflicts for *years*
+<lm> The old approach w/ smerge was we had all these algs that were
+disabled, we turned them off one by one as we found cases where they did
+the wrong thing.  But that also means we are leaving any benefits from
+those algs on the table.  The place you realize those benefits is in
+fm3tool and you need a way to cycle through the algs to do so.  That's what
+I've been pushing for for years.
+<lm> I do not believe I've ever argued we should turn on the stuff that
+works sometimes by default, you need to look at those.
+
+
+Guess
+
+The smerge works by first line up sequence numbers (order that line
+appears in weave) as a quick way to anchor diff region.  Then run
+a set of heuristics over the remaining hunks to reduce, split, join,
+and generally make for a more pleasant conflict resolving experience.

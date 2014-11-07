@@ -1,0 +1,75 @@
+A list of dspecs and their descriptions
+=======================================
+
+A - what string
+B - branch
+BAM - returns 1 if sfile is BAM, null otherwise
+BAMENTRY
+BAMFILE
+BAMHASH
+BAMLOG
+BAMSIZE
+BD - unimplemented, remove or leave undoc
+BF - branch flag, remove or leave undoc
+CB - unimplemented, remove or leave undoc
+COMPONENT - returns path/to/component/ or null
+COMPONENT_V - internal, used by changes I believe
+CSET_MD5ROOTKEY - md5 rootkey of the changeset
+DEFAULT - shorthand for prs default (leave undoc-ed)
+DFB - default branch, remove or leave undoc
+Dg - unimplemented, remove or leave undoc
+Ds - unimplemented, remove or leave undoc
+EVEN - used for even/odd coloring, should doc
+FALSE - don't document, TRUE/FALSE are for t.prs
+FB - unimplemented, remove or leave undoc
+FD - should probably be TEXT except we have shoved the newroot log in there
+FILE - this is for the component file name I believe, internal
+FL - flag list, leave undoc
+GET_SETGCA - internal?
+GET_SETGCA301 - internal?
+GET_SETGCA302 - internal?
+GPN - I dunno what this is
+HT - alias for HOST, leave undoc
+I - alias for REV, leave undoc
+INDENT - internal, for prs/changes or something
+J - unimplemented, remove or leave undoc
+JOIN - we should doc this, but I think it should be COMMA (and $end doesn't work)
+KF - unimplemented, remove or leave undoc
+KV - unimplemented, remove or leave undoc
+LK - unimplemented, remove or leave undoc
+LOG - I think we can lose this, this on disk now
+LPN - local pathname?  I think it's internal for resolve
+M - sort of implemented, remove or leave undoc
+MF - unimplemented, remove or leave undoc
+MP - unimplemented, remove or leave undoc
+MR - unimplemented, remove or leave undoc
+ND - unimplemented, remove or leave undoc
+ODD - used for even/odd coloring, should doc
+P - alias for USER, leave undoc
+PATH - unfortunate name use, it does "P pathname", but leave it.
+PN - same as SFILE, leave undoc
+Q - unimplemented, remove or leave undoc
+REPO_ID - this is bk id -r, we need to decide if we want this name
+RM_NAME - the name where the file lives as a deleted file.  Doc?
+ROOTLOG - spits out the rootlog, do not doc yet
+RPN - remote path name?  I think it's internal for resolve
+SETGCA - internal?
+SHORTKEY - for the love of god, do not doc.  Die, shortkeys, die!
+SORTKEY - this is the original, pre-partition key.  Doc?
+SPACE - " ".  Why is this useful?  Looks like I added and said no docs.
+SYMBOL - alias for TAG, leave undoc
+SYMBOLS - alias for TAGS, leave undoc
+TAG_MREV - internal for walking tag graph
+TAG_MSERIAL - internal for walking tag graph
+TAG_PREV - internal for walking tag graph
+TAG_PSERIAL - internal for walking tag graph
+TRUE - don't document, TRUE/FALSE are for t.prs
+TYPE - BK or SCCS, don't document, I want to lose RW SCCS, just RO supported
+UN - unimplemented, remove or leave undoc
+UNRM_NAME - internal, gets _a_ name that was not removed
+W - says lose in 2008.
+XFLAGS - symbolic xflags, if we doc any this is the one.  Should doc.
+X_FLAGS - 0x%x for delta xflags
+X_XFLAGS - 0x%x for sfile xflags
+Y - unimplemented, remove or leave undoc
+Z - more what nonsense

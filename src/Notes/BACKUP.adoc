@@ -1,0 +1,45 @@
+Saving things before throwing over the wall in pass4
+====================================================
+
+-------------------------------------------------------
+Foreach s.file in RESYNC {
+	if (l = key_init(s.file in Repository) {
+		clean || abort
+		add l->sfile to backup list
+	}
+}
+
+flush
+bk sfio -o < backuplist > BitKeeper/tmp/backup.sfio
+foreach s.file in backup list {
+	rm_sfile(s.file)
+}
+
+foreach file in RESYNC {
+	copy to Repository
+	add to applied list
+}
+
+if bk check fails 
+	foreach file in applied list {
+		rm_sfile($file)
+	}
+	sfio -i < BitKeeper/tmp/backup.sfio
+	bk -r check -a
+	if this exits 0, then remove the backup.sfio
+	else {
+		tell them that it is there and how to apply it
+	}
+} else {
+	blow away RESYNC tree
+}
+
+rm_sfile(s.file) {
+	unlink(s.file)
+	if emptydir(SCCS) {
+		unlink(SCCS)
+		try unlink parent.
+		etc.
+	}
+}
+-------------------------------------------------------

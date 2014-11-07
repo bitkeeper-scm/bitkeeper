@@ -1,0 +1,85 @@
+Porting of NetBSD stdio
+=======================
+
+In src/libc/stdio we have a customized version of the NetBSD stdio
+library.  NetBSD was chosen because it is considered the most
+portable of the BSD's.
+
+The cset before the one where this file was created contains an import
+of the unmodified library.  The initial history was imported from the
+SCCS files in the 4.4BSD release and then the NetBSD history was
+imported on top.  The netbsd-stdio-import.sh script shows how import
+was done.
+
+On top of that, the code was ported to compile with BK and run on all
+platforms in the build cluster.  The goal was to find the minimal set
+of changes that would build on all platforms so it some cases code was
+commented out with '#ifdef NOTBK'.  This wasn't always pretty.
+
+Issues encountered:
+
+  - Header files.
+    In general the #includes need to be removed because the BSD
+    defaults don't work on all platforms.  We include
+    src/libc/system.h in src/libc/stdio/local.h and then include
+    local.h in all stdio.h files.  We have previously tuned system.h
+    to get most everything needed.
+
+  - types
+    Several BSD typedefs like u_long could not be defined on all
+    platforms and needed to be replaced.
+
+  - floating point
+    The printf FP support assumed stuff from the netbsd C library that
+    we couldn't use.  So minimal support for the %f format was added.
+
+  - symbol conflicts
+    The function names and global variables conflict with stdio from
+    the system's C library, and unlike the string library the overlap
+    was only partial which lead to problems.  We solved this by adding
+    stdio_remap.h that replaces all stdio functions with new names
+    starting with bk_*.  As a result C code compiled with the
+    libc/stdio.h needs to be linked with libc/libc.a, and FILE*'s from
+    our stdio cannot be passed to code that uses the system's stdio.
+ 
+  - tommath
+    The tommath library is shared with Tcl so we can't compile it
+    using our stdio library.  As a result we needed to remove FILE*'s
+    from functions in the tommath API.
+
+  - fgetline()
+    I added a new fgetline() API which returns a null-terminated line
+    from a file with the newlines removed.  And since the line is
+    usually not copied from the stdio buffer this interface is faster
+    than fnext() and should be used in new code.
+
+  - wide char support
+    BK does not need 16-bit character support so these files were not
+    compiled and other places were it is used were commented out.  For
+    example stdio.h defines WCIO_FREE() and _SET_ORIENTATION() to
+    empty macros.
+
+  - fcntl()
+    Windows doesn't support fcntl() so the error checking in fdopen()
+    using fcntl() was disabled under windows.
+
+  - NONBLOCK
+    NetBSD has an extension where the 'f' mode character sets
+    O_NONBLOCK on file opens and means only regular files can be
+    opened.  I believe that open() ignores NONBLOCK for regular files
+    so this is just a hack to pass the mode to fopen() from flags.c.
+    Windows can't handle this so 'f' is ignored on windows.  We may
+    want to just remove this completely.
+
+  - blksize
+    The stdio library sets its buffer size according to st_blksize in
+    'struct stat'.  Windows doesn't have this field so we hardcode
+    this to 8k.
+
+  - locking
+    The existing library supports locking for multi-threaded use.  This
+    is ignored in the current code.
+
+  - See the attached manpages for docs of new interfaces.  For example
+    the docs for the new fgetline() function notes the returned pointer
+    is invalid after the next IO operation.

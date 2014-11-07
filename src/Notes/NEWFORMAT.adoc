@@ -1,0 +1,75 @@
+Thoughts about sfile internal formats
+=====================================
+
+A list of things to do when we revise the file format.
+
+* Have a real magic number for the file format, and a format version.
+
+* Use a better checksum.  At least crc32.  Consider SHA.  It might be
+  a good idea to put it at the _end_ of the file so we can calculate
+  it as we write.
+
+* Every piece of modifiable data in the file should be versioned.  Hm.
+  What about information like the lock flag and the default
+  branch/LOD?  Need to make a distinction between data we version and
+  propagate, and data that's strictly local-configuration (should be a
+  very short list).  Maybe local configuration info doesn't belong in
+  the s.file?
+
+* Put the file description in the commentary of the 1.0 delta.
+  Chuck the file description and allowed users segments.  Tighten up
+  the delta table: get rid of ^Ae lines, etc.
+
+* Support no newline at EOF.  Cheesy implementation: tack an extra
+  newline on the end of the file before checking it in; strip it off
+  again on checkout.
+
+* Get rid of the two-digit years.  Actually, why not store raw time_t
+  stamps in UTC?  Pretend time_t is 64 bits and trim the leading
+  zeroes.  This cuts the timestamp size in half (for times around now)
+  and we won't have this problem again till after the sun burns out...
+
+* Figure a way to get the ^As out of the file, so it will be
+  7-bit printable ASCII iff the contents are.  This is easy.  Add a
+  count field to ^AI and ^AD lines, which list the number of lines
+  following the marker to insert or delete.  (So ^AI 12 1 would insert
+  one line in delta #12.)  Throw away all the ^AE lines, they are no
+  longer necessary.  Now you don't ever need to search for /^\001/ and
+  the file can be parsed unambiguously if the ^As are removed.
+
+* Support binary data better.  Several schemes:
+   - Boneheaded: If \010\001 is not an escape sequence, and if GNU diff
+     is used, and if the code doesn't mangle strings with embedded
+     NULs, then we can just pretend the file is text.  This works
+     great for files that are "almost text": e.g. text in some
+     encoding other than ASCII (as long as \010 is newline) and text
+     with magic control characters (s.files).
+   - Forcible line splitting: If \010 is too rare to use the above,
+     insert it every 80 characters whether we need to or not.  Then
+     take it back out again on output.
+   - Filters.  They transform a non-text file into a text file in some
+     intelligent fashion.  The existing uuencode operation and the
+     force line breaks idea are special cases of this.
+
+* Support line endings other than \010 better.  Needed for non-Unix
+  platforms and for weird charsets (SJIS).  The problem can be split
+  into three cases:
+  - I am extracting this ASCII (or superset) file on a system in which 
+    newline is \013\010.
+  - This file is in charset X which uses \123 for newline.
+  - This file is in charset Y which uses \010 for newline but
+    only if not immediately preceded by \123 through \177.
+  Possible approach:  In the s.file, always store newline as \010.  On
+  systems where newline is something else, convert on the fly in
+  get/delta.  This can be disabled by settings in .sccsrc, command
+  line options, or markers in the s.file such as "This is binary" or
+  "This file must always use \123 for newline."
+
+* Both the delta table and the contents section grow over time.  Might
+  be a good idea to split the contents to a separate file, especially
+  if null deltas are used for symbol and metadata versioning; then
+  delta-table-only ops don't have to rewrite the entire contents
+  section.  Alternative: put a gap in the file between table and
+  contents.  (Won't help much if it's too small; will bloat filesize
+  if it's too large, or cause OS to use sparse file representation
+  which plays hell with backups.)

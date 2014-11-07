@@ -1,0 +1,140 @@
+A scheme to use repo name in place of leading 1. in a revision
+==============================================================
+
+------------------------------------------------------------------
+There are two naming models that have emerged:
+* static - a branch name given at the time a cset is created.
+* dynamic - a floating tag naming the current tip of something.
+
+For discussion on a type of dynamic naming, see Notes/EVENT-STACK
+
+Naming revisions with new static branching model.
+('I' == Wayne)
+
+The idea here is that every repository as has a symbolic branch name
+that is used to label all csets created in that repository. These
+names are attached to the cset and propagate, and are static.
+
+The current proposal is that the base name of the current repository
+becomes this branch name.
+
+The name will be stored in R0() part of the revision that currently
+contains the '1', as in 1.2.3.4.  This will be compatible with older
+repositories because '1' will be considered the branch name and it
+is still a valid format.
+
+The above implies that if I intentionally force every repository to
+use '1' as the branch name it should have the same revision naming
+scheme as BK does now.
+
+Previously Rick has proposed that I use a revision name of NAME.<serial>
+where all csets with the same branch name or just numbered serially
+in time order.  I am not sure this really works in a repository containing
+a mix of csets from multiple places.
+
+1.0 --dev.1 -- dev.2 ----dev.3 --------------------------- dev-merge.1 -- dev.5
+    \               \------ dev.2.1.1 -- mydev.1 -- dev.4 -/              /
+      \ 1.1 --- 1.2 ------ 1.3-------------------- 1.4 ------------------/
+                   \ --------1.2.1.1 --------------/
+Rule: 
+version 1:
+    any time your parent has a different branch name then the rev is
+    BANME.N+1 were N is the last R1 used for this branch.
+version 2:
+    if R0(parent) != R0:
+        if R0(merge) == R0:
+            increment R0(merge) rev
+        else:
+              BNAME.N+1
+
+Kinda thinking #1 above is fine
+Rick didn't like this version because the 'dev' tree can have a non-trunk tip
+which is not bk-like. Yeah, version 2 can do that. #1 seems okay.
+I think it will be okay.  I altered the example to show dev.4 on the branch,
+as that's what I understand a gap would do in numbering.
+[rick]Consistent with my view as well.
+
+There's some checks in slib that may fail, as far as seeing that numbering has
+some properties. I remembering fiddling to use merge and parent bookkeep what
+was local in a merge, and have renumber work topologically, and a bunch of
+checks got uppity.
+
+I can possibly have a hybrid solution where the '1' branch has one
+numbering scheme and other named branches has the simpler version. 
+BTW in the ASCII sfile and the bk patch format the branch name is saved
+because the string 'dev.3' is the actual revision name in the file.
+(which of course enables an incompatible feature bit)
+
+ [rick]
+renumber can be extended to work on many branches at the same time with
+two additions.  One is a hash which tracks root node numbering.  When a
+branch is hit, if no hash, then it is the first root.  That hash has a
+val which is a struct of ser_t of the first node and u32 of the current
+R2 value.  The R2 value can get swapped with the nextbranch[1] entry,
+and 1 used for the parent.  That will cover naming of roots.  Swap back
+the nextbranch[1] value when done, and update the entry in the hash. 
+
+hash val:
+struct {
+    ser_t first;
+    u32 branch;
+}
+
+The other function is to compute the parent.  Make another struct which
+is the ser_t entry out of the hash, and ser_t that will become parent. 
+
+struct {
+    ser_t stop;
+    ser_t parent;
+}
+To compute parent
+
+    struct.parent = d;
+
+    range_walkrevs(s, 0, 0, d, WR_STOP, callback, &struct).
+
+The callback does something like:
+    if (d < token->first) return (-1); // nothing older found; we are done
+    // unless() then not same branch
+    unless (R0(s, d) == R0(s, first) && (d != token->parent) return (0);
+    token->parent = d;  // get oldest
+    return (1);
+
+This will give BK numbering over N branches with a cost of a bunch of
+walkrevs walking as little of the graph as possible.
+
+ [wscott]
+Not sure I appreciate the complexity above.  You certainly don't need
+that for generating the Rev numbers so I suspect it is needed for
+swapping parent/merge in which case the code seems like it should be
+unchanged from the current version.  (but can't use REV in the
+calculation) parent merge is independent of numbering.
+
+--
+Issues:
+
+    Normalize base name with s/./_/g
+
+    -rdev might be a branch name or a tag, we can prevent creating new tags
+
+   with the same names as an existing branch, but not sure we can do the
+   reverse.  And naming a repository by the tag seems pretty natural.
+
+ [ob]
+A couple of ideas:
+
+  1. Can tags have dots in them? If not, -rdev is a tag, -rdev.4 is a rev.
+     [rick] sccs_badTag() - yes, just not two in a row.  So 'dev.4' is legal.
+     It does look to be legal to end a tag with a '.'.  So dev.4..foo is
+     ambiguous.  A tag can't begin with a '.', so that helps.
+
+  2. Maybe have a notation for naming tags vs revs? Seems to me we'll have
+     to tweak ranges as well.
+
+     bk cmd -rdev.1..mydev.5
+     bk clone -r%tagname (or something other than %)
+     [rick] nice! So if it looks like a rev, the rev space is searched,
+     and if nothing, the tag space is searched, unless %, then search
+     only the tagspace?
+
+------------------------------------------------------------------
