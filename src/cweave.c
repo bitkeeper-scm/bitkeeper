@@ -51,6 +51,7 @@
 #include "range.h"
 
 private	int	fastWeave(sccs *s);
+private	void	fix(sccs *s);
 
 /*
  * Initialize the structure used by cset_insert according to how
@@ -119,7 +120,7 @@ earlier(sccs *s, ser_t a, ser_t b)
 ser_t
 cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 {
-	int	i, error, sign, added = 0;
+	int	i, error, added = 0;
 	ser_t	d, e, p;
 	ser_t	serial = 0; /* serial number for 'd' */ 
 	char	*t, *dkey;
@@ -127,7 +128,6 @@ cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 	char	key[MAXKEY];
 	int	keep;
 	symbol	*sym;
-	FILE	*f = 0;
 
 	unless (iF) {	
 		/* ignore in patch: like if in skipkeys */
@@ -228,32 +228,6 @@ cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 		}
 	}
 	d = sccs_insertdelta(s, d, serial);
-
-	/*
-	 * Update all reference to the moved serial numbers
-	 */
-	f = fmem();
-	for (e = d + 1; e <= TABLE(s); e += 1) {
-
-		if (HAS_CLUDES(s, e)) {
-			assert(INARRAY(s, e));
-			t = CLUDES(s, e);
-			while (i = sccs_eachNum(&t, &sign)) {
-				if (i >= serial) i++;
-				sccs_saveNum(f, i, sign);
-			}
-			t = fmem_peek(f, 0);
-			unless (streq(t, CLUDES(s, e))) {
-				CLUDES_SET(s, e, t);
-			}
-			ftrunc(f, 0);
-		}
-		if (PARENT(s, e) >= serial) PARENT_SET(s, e, PARENT(s, e)+1);
-		if (MERGE(s, e) >= serial) MERGE_SET(s, e, MERGE(s, e)+1);
-		if (PTAG(s, e) >= serial) PTAG_SET(s, e, PTAG(s, e)+1);
-		if (MTAG(s, e) >= serial) MTAG_SET(s, e, MTAG(s, e)+1);
-	}
-	fclose(f);
 	if (d != TABLE(s)) {
 		EACHP_REVERSE(s->symlist, sym) {
 			if (sym->ser >= serial) sym->ser++;
@@ -273,7 +247,6 @@ cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 	 * is a duplicate.
 	 */
 	EACH(syms) addsym(s, d, 0, syms[i]);
-	if (syms) freeLines(syms, free);
 
 done:
 	/*
@@ -316,7 +289,55 @@ done:
 		}
 	}
 	s->iloc++;
+	if (syms) freeLines(syms, free);
 	return (d);
+}
+
+private	void
+fix(sccs *s)
+{
+	ser_t	d, e;
+	ser_t	base;
+	ser_t	*remap = 0;
+	char	*p;
+	int	sign;
+	int	i;
+	FILE	*f = fmem();
+
+#define	SERMAP(x) (remap[(x) - base])
+
+	/* find first patch that was inserted */
+	for (d = 0, i = 1; i < s->iloc; i++) {
+		if ((d = s->locs[i].serial) && (FLAGS(s, d) & D_REMOTE)) break;
+	}
+	unless (d  && (FLAGS(s, d) & D_REMOTE)) return;
+	/* 'base' okay to be 0; newest local delta that needs no change */
+	base = d - 1;
+
+	/*
+	 * Update the internals of all local deltas.
+	 */
+	for (d++; d <= TABLE(s); d++) {
+		if (FLAGS(s, d) & D_REMOTE) continue;
+		addArray(&remap, &d);
+		if (HAS_CLUDES(s, d)) {
+			assert(INARRAY(s, d));
+			p = CLUDES(s, d);
+			while (e = sccs_eachNum(&p, &sign)) {
+				if (e > base) e = SERMAP(e);
+				sccs_saveNum(f, e, sign);
+			}
+			p = fmem_peek(f, 0);
+			unless (streq(p, CLUDES(s, d))) CLUDES_SET(s, d, p);
+			ftrunc(f, 0);
+		}
+		if ((e = PARENT(s, d)) > base) PARENT_SET(s, d, SERMAP(e));
+		if ((e = MERGE(s, d)) > base) MERGE_SET(s, d, SERMAP(e));
+		if ((e = PTAG(s, d)) > base) PTAG_SET(s, d, SERMAP(e));
+		if ((e = MTAG(s, d)) > base) MTAG_SET(s, d, SERMAP(e));
+	}
+	fclose(f);
+	free(remap);
 }
 
 /*
@@ -328,6 +349,9 @@ cset_write(sccs *s, int spinners, int fast)
 	assert(s);
 	// assert(s->state & S_CSET);
 	assert(s->locs);
+
+	/* finish up table remapping */
+	fix(s);
 
 	/*
 	 * Call sccs_renumber() before writing out the new cset file.
