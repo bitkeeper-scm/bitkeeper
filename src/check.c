@@ -266,7 +266,7 @@ check_main(int ac, char **av)
 	}
 	/* This can legitimately return NULL */
 	goneDB = loadDB(GONE, 0, DB_GONE);
-	r2deltas = hash_new(HASH_MEMHASH);
+	r2deltas = hash_new(HASH_U32HASH, sizeof(u32), sizeof(rkdata));
 	if (all) {
 		//getlock();	/* uncomment for testing */
 		/*

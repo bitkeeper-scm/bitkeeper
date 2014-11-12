@@ -939,7 +939,7 @@ weaveExtract(sccs *s, ser_t left1, ser_t left2, ser_t right, Opts *opts)
 	sccs_rdweaveInit(s);
 	if (opts->show_gone) {
 		upper = TABLE(s);
-		showgone = hash_new(HASH_MEMHASH);
+		showgone = hash_new(HASH_U32HASH, sizeof(u32), sizeof(u32));
 	} else {
 		sDB = mdbm_mem();	/* a cache of sccs_init() for files */
 	}
@@ -1058,7 +1058,7 @@ initrset(sccs *s, ser_t left1, ser_t left2, ser_t right, Opts *opts)
 	ser_t	d;
 	int	dopath = (opts->prefix && proj_isComponent(s->proj));
 
-	data->keys = hash_new(HASH_MEMHASH);
+	data->keys = hash_new(HASH_U32HASH, sizeof(u32), sizeof(rfile));
 	if (opts->chksum) {
 		if (left2 || !right) {
 			fprintf(stderr,

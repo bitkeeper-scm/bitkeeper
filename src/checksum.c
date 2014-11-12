@@ -399,7 +399,7 @@ typedef	struct {		/* data remembered per-rootkey */
 int
 cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 {
-	hash	*root2id = hash_new(HASH_MEMHASH);
+	hash	*root2id = hash_new(HASH_U32HASH, sizeof(u32), sizeof(rkinfo));
 	rkinfo	*rkid;		/* rkid->index = root2id{rkey} */
 	rkdata	*rkarray = 0;	/* rkarray[rkid->index] = per-rk-stuff */
 	Sse	snew;

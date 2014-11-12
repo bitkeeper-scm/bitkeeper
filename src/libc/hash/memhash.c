@@ -17,8 +17,8 @@ struct memhash {
 
 struct node {
 	node	*next;		/* next element in same hash bucket */
-	int	klen;		/* key len */
-	int	dlen;		/* data len */
+	u32	klen;		/* key len */
+	u32	dlen;		/* data len */
 	char	key[0];		/* key and data stored here */
 };
 
@@ -62,7 +62,7 @@ memhash_new(va_list ap)
 	ret = new(memhash);
 	ret->nodes = 0;
 	ret->mask = 63;
-	ret->arr = calloc(ret->mask + 1, sizeof(node));
+	ret->arr = calloc(ret->mask + 1, sizeof(*ret->arr));
 	return ((hash *)ret);
 }
 
@@ -257,9 +257,11 @@ memhash_next(hash *_h)
 	if (n) n = n->next;
 	unless (n) {
 		i = h->lastidx + 1;
-		while (i <= h->mask && !h->arr[i]) i++;
-		h->lastidx = i;
-		n = h->arr[i];
+		while ((i <= h->mask) && !h->arr[i]) i++;
+		if (i <= h->mask) {
+			h->lastidx = i;
+			n = h->arr[i];
+		}
 	}
 	if (h->lastnode = n) {
 		h->hdr.kptr = n->key;
@@ -288,7 +290,7 @@ memhash_split(memhash *h)
 	node	**newarr;
 	uint32	hash;
 
-	newarr = calloc(newmask+1, sizeof(node));
+	newarr = calloc(newmask+1, sizeof(*newarr));
 	for (i = 0; i <= h->mask; i++) {
 		n = h->arr[i];
 		while (n) {

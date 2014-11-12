@@ -10,6 +10,7 @@ typedef	struct	hashops	hashops;
 
 #define	HASH_MDBM	0	/* A file-based DB */
 #define	HASH_MEMHASH	1	/* a in-memory hash */
+#define	HASH_U32HASH	2	/* key is u32, val is fixed size, no deletes  */
 
 /*
  * User visible hash struct.  This contains the ops struct with the per-class
@@ -74,7 +75,7 @@ int	hash_close(hash *h);
  *   operation that modifies the hash. (store/insert/delete).
  *
  * methods:
- *   memhash_fetch wrapmdbm_fetch
+ *   memhash_fetch wrapmdbm_fetch u32hash_fetch
  */
 private inline void *
 hash_fetch(hash *h, void *key, int klen)
@@ -98,7 +99,7 @@ hash_fetch(hash *h, void *key, int klen)
  *   pointer to where 'val' was stored in the hash, or NULL for error.
  *
  * methods:
- *   memhash_store wrapmdbm_store
+ *   memhash_store wrapmdbm_store u32hash_store
  */
 private inline void *
 hash_store(hash *h, void *key, int klen, void *val, int vlen)
@@ -121,7 +122,7 @@ hash_store(hash *h, void *key, int klen, void *val, int vlen)
  *   exists.
  *
  * methods:
- *   memhash_insert wrapmdbm_insert
+ *   memhash_insert wrapmdbm_insert u32hash_insert
  */
 private inline void *
 hash_insert(hash *h, void *key, int klen, void *val, int vlen)
@@ -159,7 +160,7 @@ hash_delete(hash *h, void *key, int klen)
  *   A pointer to the data for the first item, or NULL if the hash is empty.
  *
  * methods:
- *   memhash_first wrapmdbm_first
+ *   memhash_first wrapmdbm_first u32hash_first
  */
 private inline void *
 hash_first(hash *h)
@@ -177,7 +178,7 @@ hash_first(hash *h)
  *   A pointer to the data for that item, or NULL of no items remain in hash.
  *
  * methods:
- *   memhash_next wrapmdbm_next
+ *   memhash_next wrapmdbm_next u32hash_next
  */
 private inline void *
 hash_next(hash *h)

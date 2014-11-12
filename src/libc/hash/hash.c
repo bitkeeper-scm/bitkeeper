@@ -1,6 +1,7 @@
 #include "system.h"
 #include "wrapmdbm.h"
 #include "memhash.h"
+#include "u32hash.h"
 
 struct hashops	ops[] = {
 	{	"mdbm",		/* type 0 */
@@ -33,6 +34,21 @@ struct hashops	ops[] = {
 		0,		/* prev */
 		memhash_count,
 	},
+	{	"u32",		/* type 3 */
+		u32hash_new,
+		0,		/* open */
+		0,		/* close */
+		u32hash_free,
+		u32hash_fetch,
+		u32hash_store,
+		u32hash_insert,
+		0,
+		u32hash_first,
+		u32hash_next,
+		0,		/* last */
+		0,		/* prev */
+		u32hash_count,
+	},
 };
 
 /*
@@ -41,7 +57,7 @@ struct hashops	ops[] = {
  * Any arguments after 'type' are passed to the creation methods.
  *
  * methods:
- *   memhash_new wrapmdbm_new
+ *   memhash_new wrapmdbm_new u32hash_new
  */
 hash *
 hash_new(int type, ...)
@@ -100,7 +116,7 @@ hash_close(hash *h)
  * Free a hash.  Should only be called on hash's created with hash_new()
  *
  * methods:
- *   memhash_free wrapmdbm_free
+ *   memhash_free wrapmdbm_free u32hash_free
  */
 int
 hash_free(hash *h)

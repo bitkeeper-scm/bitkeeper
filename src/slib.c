@@ -6684,11 +6684,11 @@ fastsum(sccs *s, u8 *slist, ser_t this)
 		data = (sumdata *)s->fastsum[i];
 		d = *data->kptr;
 		assert(d && (d >= TREE(s)) && (d <= TABLE(s)));
+		unless (slist[d]) continue;
 		if (d == this) {
 			added += data->linecount;
 			goto save;
 		}
-		unless (slist[d]) continue;
 		for (j = 1; j < data->keylen; j++) {
 			e = data->kptr[j];
 			if (e == this) {
