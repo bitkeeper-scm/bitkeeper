@@ -8,6 +8,18 @@ bk pull
       multiple parents or URLs.
 
 ============================================================================
+Release notes for BitKeeper version 6.1.1 (released Nov 11, 2014)
+
+    This is a bugfix release to handle a large pull into a large
+    repo that involved shuffling around many merge csets.  Each
+    step of the shuffling was causing the heap to grow.  Now,
+    the heap is only updated once at the end.
+
+Commands impacted:
+
+    bk pull
+    
+============================================================================
 Release notes for BitKeeper version 6.1 (released Oct 16, 2014)
 
     This is mostly a bugfix release plus we upgraded the regular
