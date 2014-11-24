@@ -5188,6 +5188,7 @@ int end_2_f(int end) {
 	unless ({7,8,9}[END] == 9) puts("bad f.1");
 	return (end);
 }
+int[] end_2_foo(int x) { return ({x,x+1,x+2}); }
 void end_2()
 {
 	int	e1, e2, e3, i1, i2, i3;
@@ -5244,6 +5245,12 @@ void end_2()
 	e1 = e2 = -1;
 	unless (aa[e1=END][e2=END] == 12) puts("bad 5.1");
 	unless ((e1 == 3) && (e2 == 2)) puts("bad 5.2");
+
+	/* Check a[f(END)[b..c]] */
+	a = { 1,2,3 };
+	e1 = -1;
+	a[e1=end_2_foo(END+0)[0..1][0]];
+	unless (e1 == 2) puts("bad 7.1");
 }
 end_2();
 } -output {}
@@ -5444,10 +5451,15 @@ void end_12()
 {
 	int	a[] = { 1, 2, 3 };
 	int	i;
+	struct {
+		string	h{string}[];
+	} st;
 
 	// END in an arg list
 	a[end_12f(END,2)];
 	a[end_12f(2,END)];
+	a[end_12f(END+0,2)];
+	a[end_12f(2,0+END)];
 
 	// END is an id, array index
 	i = a[END];
@@ -5471,6 +5483,13 @@ void end_12()
 	i = 0;
 	a[END==2 ? (i=END) : (i=0)];
 	unless (i == 2) puts("bad 5");
+
+	// A regression test for a bug that used to crash the compiler
+	// when it looked for END in an index expression that has a cast.
+	push(&st.h{(string)0}, "x");
+	push(&st.h{(string)0}, "y");
+	push(&st.h{(string)0}, "z");
+	unless (st.h{"0"} == {"x","y","z"}) puts("bad 6");
 }
 end_12();
 } -output {}

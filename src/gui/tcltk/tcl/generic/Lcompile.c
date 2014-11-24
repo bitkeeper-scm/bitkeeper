@@ -5074,7 +5074,7 @@ has_END(Expr *expr)
 	switch (expr->kind) {
 	    case L_EXPR_FUNCALL:
 		for (p = expr->b; p; p = p->next) {
-			if (isid(p, "END")) return (1);
+			if (has_END(p)) return (1);
 		}
 		return (0);
 	    case L_EXPR_CONST:
@@ -5085,16 +5085,20 @@ has_END(Expr *expr)
 	    case L_EXPR_UNOP:
 		return (has_END(expr->a));
 	    case L_EXPR_BINOP:
-		if (expr->op == L_OP_POINTS) {
+		switch (expr->op) {
+		    case L_OP_ARRAY_INDEX:
 			/* END in a nested index refers to another array. */
-			return (0);
-		} else {
+			return (has_END(expr->a));
+		    case L_OP_CAST:
+			/* A cast is special: expr->a is a type not an expr. */
+			return (has_END(expr->b));
+		    default:
 			return (has_END(expr->a) || has_END(expr->b));
 		}
 	    case L_EXPR_TRINOP:
 		if (expr->op == L_OP_ARRAY_SLICE) {
 			/* END in a nested index refers to another array. */
-			return (0);
+			return (has_END(expr->a));
 		} else {
 			return (has_END(expr->a) || has_END(expr->b) ||
 				has_END(expr->c));
