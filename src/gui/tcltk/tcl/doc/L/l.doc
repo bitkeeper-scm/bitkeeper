@@ -2140,6 +2140,8 @@ second in the sort order, +1 if the first comes after the second, and
 
 Execute a command in background.  All forms return either a process id or
 undef to indicate an error.
+In the error case the STATUS argument is set, otherwise it remains untouched
+and the status can be reaped by waitpid().
 
 See the system() function for information about the arguments.
 
@@ -2272,7 +2274,7 @@ is produced, then C<out> or C<err> are C<undef> upon return.
 The optional last argument is a reference to the following structure:
 
     typedef struct {
-	string	name;	// name of the exe as passed in
+	string	argv[];	// args passed in
 	string	path;	// if defined, this is the path to the exe
 			// if undef, the executable was not found
 	int	exit;	// if defined, the process exited with this value
@@ -2303,7 +2305,7 @@ Examples:
     		warn("%s not found or bad perm\n", status.path);
     	}
     	if (defined(status.signal)) {
-    		warn("%s killed with %d\n", status.name, status.signal);
+    		warn("%s killed with %d\n", status.argv[0], status.signal);
     	}
     }
 

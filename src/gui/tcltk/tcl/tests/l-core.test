@@ -10958,6 +10958,56 @@ void reference_1_2()
 reference_1_2();
 } -output {}
 
+test reference-1.2.1 {test deep-dive copy in/out with built-in compiler functions} -body {
+#lang L --line=1
+void reference_1_2_1()
+{
+	string	cmd, s[];
+	STATUS	st[];
+	FILE	f;
+	int	pid, ret;
+
+	/*
+	 * These tests pass array or hash elements as reference
+	 * parameters.  The compiler implements these as
+	 * copy-in/copy-out parameters and these used to not work
+	 * with compiler built-ins.
+	 */
+
+	// check system(): out/err/STATUS args
+	cmd = <<'END'
+	perl -e 'print "test32"; print STDERR "yes1"; exit(0);'
+	END;
+	ret = system(cmd, undef, &s[0], &s[1], &st[0]);
+	unless (ret == 0) puts("bad 1.1");
+	unless (s[0] == "test32") puts("bad 1.2");
+	unless (s[1] == "yes1") puts("bad 1.3");
+	unless (st[0].argv[0] == "perl") puts("bad 1.4");
+
+	// check read(): buf arg
+	unless (Fprintf("ref-1-2-1.txt", "654321") == 0) puts("bad 2.1");
+	unless (f = fopen("ref-1-2-1.txt", "r")) puts("bad 2.2");
+	unless (read(f, &s[0]) == 6) puts("bad 2.3");
+	unless (s[0] == "654321") pust("bad 2.4");
+	fclose(f);
+	unlink("ref-1-2-1.txt");
+
+	// check spawn(): when the STATUS arg gets set
+	cmd = "not-perl -e 'exit(123);'";
+	pid = spawn(cmd, undef, undef, undef, &st[0]);
+	if (defined(pid)) puts("bad 3.1");
+	unless (st[0].argv == {"not-perl","-e","exit(123);"}) puts("bad 3.3");
+
+	// check waitpid(): STATUS arg
+	cmd = "perl -e 'exit(123);'";
+	pid = spawn(cmd);
+	unless (defined(pid)) puts("bad 4.1");
+	unless (waitpid(pid, &st[0], 0) == pid) puts("bad 4.2");
+	unless (st[0].argv == {"perl","-e","exit(123);"}) puts("bad 4.3");
+}
+reference_1_2_1();
+} -output {}
+
 test reference-1.3 {test copy in/out semantics} -body {
 #lang L --line=1
 string g_ref13[];
@@ -19140,6 +19190,21 @@ void builtin_19_2()
 .*8: L Error: incorrect # args to max
 .*9: L Error: expected type int or float but got string in min/max
 .*10: L Error: expected type int or float but got string in min/max
+}
+
+test builtin-20 {check (expand) operator in built-ins} -body {
+#lang L --line=1
+void builtin_20()
+{
+	string	res[];
+	string  sa[] = { "123", "3", "987" };
+	string  opts[] = { "-decreasing", "-integer" };
+
+	res = sort((expand)opts, sa);
+	unless (eq(res, {"3","123","987"})) puts("bad 1.1");
+}
+builtin_20();
+} -returnCodes {error} -match regexp -result {.*7: L Error: \(expand\) illegal with this function
 }
 
 test line-file-1 {test __LINE__ and __FILE__} -body {

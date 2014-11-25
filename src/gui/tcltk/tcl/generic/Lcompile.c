@@ -239,6 +239,7 @@ private void	compile_varDecl(VarDecl *decl);
 private void	compile_varDecls(VarDecl *decls);
 private int	compile_warn(Expr *expr);
 private int	compile_write(Expr *expr);
+private void	copyout_parms(Expr *actuals);
 private Tcl_Obj	*do_getline(Tcl_Interp *interp, Tcl_Channel chan);
 private void	emit_globalUpvar(Sym *sym);
 private void	emit_instrForLOp(Expr *expr, Type *type);
@@ -3129,21 +3130,12 @@ compile_fnCall(Expr *expr)
 	int	num_parms = 0, typchk = FALSE;
 	char	*name;
 	char	*defchk = NULL;  // name for definedness chk before main() runs
-	Expr	*actual, *foo, *Foo_star, *opts, *p;
+	Expr	*foo, *Foo_star, *opts, *p;
 	Sym	*sym;
 	VarDecl	*formals = NULL;
 
 	ASSERT(expr->a->kind == L_EXPR_ID);
 	name = expr->a->str;
-
-	/* Check for an L built-in function. */
-	for (i = 0; i < sizeof(builtins)/sizeof(builtins[0]); ++i) {
-		if (!strcmp(builtins[i].name, name)) {
-			return (builtins[i].fn(expr));
-		}
-	}
-
-	level = fnCallBegin();
 
 	/* Check for an (expand) in the arg list. */
 	expand = 0;
@@ -3155,6 +3147,24 @@ compile_fnCall(Expr *expr)
 		}
 	}
 
+	/*
+	 * Check for an L built-in function. XXX change the array to
+	 * a hash if the number of built-ins grows much more.
+	 */
+	for (i = 0; i < sizeof(builtins)/sizeof(builtins[0]); ++i) {
+		if (!strcmp(builtins[i].name, name)) {
+			if (expand) {
+				L_errf(expr, "(expand) illegal with "
+				       "this function");
+			}
+			i = builtins[i].fn(expr);
+			/* Copy out hash/array elements passed by reference. */
+			copyout_parms(expr->b);
+			return (i);
+		}
+	}
+
+	level = fnCallBegin();
 	sym = sym_lookup(expr->a, L_NOWARN);
 
 	if (sym && isfntype(sym->type)) {
@@ -3233,21 +3243,10 @@ compile_fnCall(Expr *expr)
 	}
 
 	/*
-	 * Copy out any deep-dive expressions that were passed with &.
-	 * For these, the actual's value was copied into a temp var
-	 * and its name passed.  Copy that temp back out.
+	 * Handle the copy-out part of copy in/out parameters.
+	 * These are any deep-dive expressions that are passed by reference.
 	 */
-	for (actual = expr->b; actual; actual = actual->next) {
-		Expr *arg = actual->a;
-		unless (isaddrof(actual) && (arg->flags & L_EXPR_DEEP)) {
-			continue;
-		}
-		emit_load_scalar(arg->u.deepdive.val->idx);
-		compile_assignFromStack(arg, arg->type, NULL, L_REUSE_IDX);
-		emit_pop();
-		tmp_free(arg->u.deepdive.val);
-		arg->u.deepdive.val = NULL;
-	}
+	copyout_parms(expr->b);
 
 	if (typchk) L_typeck_fncall(formals, expr);
 	fnCallEnd(level);
@@ -3265,6 +3264,29 @@ compile_fnCall(Expr *expr)
 			      TCL_GLOBAL_ONLY);
 	}
 	return (1);  // stack effect
+}
+
+private void
+copyout_parms(Expr *actuals)
+{
+	Expr	*actual, *arg;
+
+	/*
+	 * Copy out any deep-dive expressions that were passed with &.
+	 * For these, the actual's value was copied into a temp var
+	 * and its name passed.  Copy that temp back out.
+	 */
+	for (actual = actuals; actual; actual = actual->next) {
+		arg = actual->a;
+		unless (isaddrof(actual) && (arg->flags & L_SAVE_IDX)) {
+			continue;
+		}
+		emit_load_scalar(arg->u.deepdive.val->idx);
+		compile_assignFromStack(arg, arg->type, NULL, L_REUSE_IDX);
+		emit_pop();
+		tmp_free(arg->u.deepdive.val);
+		arg->u.deepdive.val = NULL;
+	}
 }
 
 private int
