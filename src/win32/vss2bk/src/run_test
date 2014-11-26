@@ -1,0 +1,51 @@
+#!/bin/bash
+# A sample script to run the vss2bk converter
+
+# Tunable parameter
+TST_DIR=c:/tmp
+BK_REPO="$TST_DIR/vss2bk_tst"	# Path to the test BitKeeper repository
+CRED='userA,passwordA'		# Update this line with your user/passwd value
+SSDIR=c:/test/vss		# point this to your VSS DB
+export SSDIR
+
+
+#
+# Creat a test bk repository with single user and no-logginng option.
+# 
+mkTestRepo() {
+        echo "logging: none" > c
+        echo "single_user: bk" >> c
+        echo "single_host: free.bk" >> c
+        echo "description: VSS2BK converter test" >> c
+        echo "email: nobody@nowhere.bk" >> c
+        echo "keyword: sccs" >> c
+        bk setup -f -cc $1 || { echo "Setup failed!"; exit 1; }
+}
+
+#
+# Creat a production bk repository 
+# XXX You need to fill in the XXX entried below.
+#
+mkProductionRepo()
+{
+        echo "logging: none" > c
+        echo "description: XXX put your project description here" >> c
+        echo "email: XXX put yor email here" >> c
+	echo "license:  XXX Put your key here"
+	echo "licsign1: XXX Put your key here"
+	echo "licsign2: XXX Put your key here"
+	echo "licsign3: XXX Put your key here"
+        echo "keyword: sccs" >> c
+        bk setup -f -cc $1 || { echo "Setup failed!"; exit 1; }
+}
+
+V2B_PATH=`pwd`
+mkdir -p $TST_DIR
+cd $TST_DIR
+rm -rf "$BK_REPO" 	# careful
+
+# XXX If you intend to use the converted repo in production mode.
+# XXX call mkProductionRepo instead
+mkTestRepo "$BK_REPO"
+#mkProductionRepo "$BK_REPO"
+$V2B_PATH/vss2bk -L$CRED '$/' "$BK_REPO"

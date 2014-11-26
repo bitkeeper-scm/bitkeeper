@@ -162,6 +162,7 @@ OBJ =	bkver.o cmd.o \
 	converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	dataheap.o dbfile.o delta.o diff.o diffs.o diffsplit.o dspec.o \
+	dumpconfig.o \
 	eula.o export.o \
 	features.o findmerge.o \
 	find.o findcset.o fixtool.o fsl.o fslayer.o \
@@ -453,6 +454,11 @@ bkver.c: utils/bk_version FORCE
 	$(Q)mv -f bk.v bkver.c
 
 bkver.o: bkver.c
+
+dumpconfig.c: $(filter-out dumpconfig.c, $(SRCS)) config_check.pl
+	perl config_check.pl > $@
+
+dumpconfig.o: dumpconfig.c
 
 %: %.sh
 	$(if $(Q),@echo Building $@,)

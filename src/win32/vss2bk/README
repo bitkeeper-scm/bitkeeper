@@ -1,0 +1,20 @@
+This is a Visual SourceSafe to BitKeeper converter. This program uses
+the VSS command line interface "ss.exe" to extract data from VSS,
+and uses BitKeeper's "bk.exe" * interface to import data into BitKeeper
+It uses only three "ss" sub-commands:
+1) ss dir proj -R
+2) ss histry
+3) ss get
+You may need to set SSDIR to point ss.exe to the vss database.
+
+Note: This proggram does only one thing: it converts a VSS delta to
+a BitKeeper delta.
+It does not commit the deltas nor detect changeset boundaries.
+
+To compile this program, you need
+a) The cygwin "make" command
+b) mingw gcc compiler
+c) To compile:
+	i)   cd to vss2bk/src
+	ii)  bk -r get 
+	iii) make

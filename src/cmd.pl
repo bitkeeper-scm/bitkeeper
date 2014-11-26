@@ -218,6 +218,7 @@ delta
 diffs
 diffsplit
 dotbk
+_dumpconfig
 _eula
 _exists
 export
