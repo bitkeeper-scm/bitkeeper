@@ -4350,6 +4350,7 @@ loadConfig(project *p, int forcelocal)
 	char	**empty = 0;
 	int	i;
 	kvpair	kv;
+	int	defaults = (getenv("_BK_CONFIG_DEFAULTS") != 0);
 
 	/*
 	 * Support for a magic way to set clone default
@@ -4380,7 +4381,19 @@ loadConfig(project *p, int forcelocal)
 	loadEnvConfig(db);
 
 	/* now remove any empty keys */
-	EACH_KV(db) if (kv.val.dsize == 1) empty = addLine(empty, kv.key.dptr);
+	EACH_KV(db) {
+		if (kv.val.dsize == 1) empty = addLine(empty, kv.key.dptr);
+		/*
+		 * Testing: if _BK_CONFIG_DEFAULTS is set, remove
+		 * every config variable, except for the license.
+		 *
+		 * See t.config-defaults
+		 */
+		if (defaults &&
+		    (kv.key.dsize > 3) && !strneq(kv.key.dptr, "lic", 3)) {
+			empty = addLine(empty, kv.key.dptr);
+		}
+	}
 	EACH(empty) mdbm_delete_str(db, empty[i]);
 	freeLines(empty, 0);
 
