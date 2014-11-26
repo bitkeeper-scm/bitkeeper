@@ -19,13 +19,16 @@ compression:
 description: 
 eoln: 
 fakegrafts: off
+legacyguis: off
 license: 
 lockwait: 
 mail_proxy: 
 monotonic: 
+no_graphverify: off
 parallel: 
 partial_check: on
 poly: off
+stats_after_pull: off
 sync: off
 triggers: 
 upgrade_url: 
@@ -55,13 +58,16 @@ compression:
 description: 
 eoln: 
 fakegrafts: off
+legacyguis: off
 license: 
 lockwait: 
 mail_proxy: 
 monotonic: 
+no_graphverify: off
 parallel: 
 partial_check: on
 poly: off
+stats_after_pull: off
 sync: off
 triggers: 
 upgrade_url: 
@@ -91,13 +97,16 @@ compression:
 description: 
 eoln: 
 fakegrafts: off
+legacyguis: off
 license: 
 lockwait: 
 mail_proxy: 
 monotonic: 
+no_graphverify: off
 parallel: 
 partial_check: on
 poly: off
+stats_after_pull: off
 sync: off
 triggers: 
 upgrade_url: 
@@ -190,13 +199,16 @@ compression:
 description: 
 eoln: 
 fakegrafts: off
+legacyguis: off
 license: 
 lockwait: 
 mail_proxy: 
 monotonic: 
+no_graphverify: off
 parallel: 
 partial_check: on
 poly: off
+stats_after_pull: off
 sync: off
 triggers: 
 upgrade_url: 
@@ -227,13 +239,16 @@ compression:
 description: 
 eoln: 
 fakegrafts: off
+legacyguis: off
 license: 
 lockwait: 
 mail_proxy: 
 monotonic: 
+no_graphverify: off
 parallel: 
 partial_check: on
 poly: off
+stats_after_pull: off
 sync: off
 triggers: 
 upgrade_url: 
@@ -259,13 +274,16 @@ compression:
 description: 
 eoln: 
 fakegrafts: off
+legacyguis: off
 license: 
 lockwait: 
 mail_proxy: 
 monotonic: 
+no_graphverify: off
 parallel: 
 partial_check: on
 poly: off
+stats_after_pull: off
 sync: off
 triggers: 
 upgrade_url: 
@@ -310,13 +328,16 @@ compression:
 description: BitKeeper Test repository
 eoln: unix
 fakegrafts: off
-license: BKL654f56ea8368c808000012fdfffff42e572b43
+legacyguis: off
+license: BKL655ad8ade368c808000012fdfffff42e572b43
 lockwait: 0
 mail_proxy: 
 monotonic: 
+no_graphverify: off
 parallel: 
 partial_check: off
 poly: off
+stats_after_pull: off
 sync: off
 triggers: 
 upgrade_url: 
@@ -341,13 +362,16 @@ compression:
 description: BitKeeper Test repository
 eoln: unix
 fakegrafts: off
-license: BKL654f56ea8368c808000012fdfffff42e572b43
+legacyguis: off
+license: BKL655ad8ade368c808000012fdfffff42e572b43
 lockwait: 0
 mail_proxy: 
 monotonic: 
+no_graphverify: off
 parallel: 
 partial_check: off
 poly: off
+stats_after_pull: off
 sync: off
 triggers: 
 upgrade_url: 
