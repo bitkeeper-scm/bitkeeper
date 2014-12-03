@@ -13,11 +13,14 @@ typedef struct {
 	u32	resync:1;
 	u32	standalone:1;
 	u32	clean_PENDING:1;	// if successful, clean PENDING marks
+	u32	ci:1;			// do the ci/new as well if needed
 } c_opts;
 
 
 private int	do_commit(char **av, c_opts opts, char *sym,
-					char *pendingFiles, int dflags);
+			char *pendingFiles, char **modFiles, int dflags);
+private int	do_ci(char **modFiles, char *commentFile);
+private void	do_unmark(char **modFiles);
 private	void	commitSnapshot(void);
 private	void	commitRestore(int rc);
 
@@ -26,6 +29,7 @@ private	int	csetCreate(sccs *cset, int flags, char *files, char **syms);
 int
 commit_main(int ac, char **av)
 {
+	FILE	*f, *fin;
 	int	i, c, doit = 0, force = 0;
 	int	subCommit = 0;	/* commit called itself */
 	char	**aliases = 0;
@@ -36,13 +40,16 @@ commit_main(int ac, char **av)
 	int	do_stdin;
 	int	nested;		/* commiting all components? */
 	c_opts	opts  = {0, 0};
-	char	*sfopts;
 	char	pendingFiles[MAXPATH] = "";
+	char	*cmd, *p, *bufp;
+	char	**modFiles = 0;
+	int	offset;
 	longopt	lopts[] = {
 		{ "standalone", 'S' },		/* new -S option */
 		{ "subset", 's' },		/* aliases */
 		{ "tag:", 300 },		/* old -S option */
 		{ "sub-commit", 301 },		/* calling myself */
+		{ "ci", 302 },			/* ci/new as needed */
 		{ 0, 0 }
 	};
 	char	buf[MAXLINE];
@@ -117,6 +124,9 @@ commit_main(int ac, char **av)
 		    case 301:	/* --sub-commit */
 			opts.standalone = subCommit = 1;
 			break;
+		    case 302:	/* --ci */
+			opts.ci = 1;
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -189,45 +199,74 @@ commit_main(int ac, char **av)
 	if (pendingFiles[0] && do_stdin) {
 		fprintf(stderr, "commit: can't use -l when using \"-\"\n");
 		return (1);
-	} else {
-		if (pendingFiles[0] || do_stdin) {
-			FILE	*f, *fin;
+	}
+	f = fmem();
+	assert(f);
+	if (pendingFiles[0] || do_stdin) {
 
-			unless (dflags & (DELTA_DONTASK|DELTA_CFILE)) {
-				fprintf(stderr,
-				    "You must use one of the -c, -Y or -y "
-				    "options when using \"-\"\n");
+		unless (dflags & (DELTA_DONTASK|DELTA_CFILE)) {
+			fprintf(stderr,
+			    "You must use one of the -c, -Y or -y "
+			    "options when using \"-\"\n");
+			return (1);
+		}
+		if (pendingFiles[0]) {
+			unless (fin = fopen(pendingFiles, "r")) {
+				perror(pendingFiles);
 				return (1);
 			}
-			if (pendingFiles[0]) {
-				unless (fin = fopen(pendingFiles, "r")) {
-					perror(pendingFiles);
-					return (1);
-				}
-			} else {
-				fin = stdin;
-			}
-			bktmp(pendingFiles);
-			setmode(0, _O_TEXT);
-			f = fopen(pendingFiles, "w");
-			assert(f);
-			while (fgets(buf, sizeof(buf), fin)) {
-				fputs(buf, f);
-			}
-			fclose(f);
-			if (fin != stdin) fclose(fin);
 		} else {
-			bktmp(pendingFiles);
-			sfopts = opts.resync ? "-rpC" : "-pC";
-			if (sysio(0,
-			    pendingFiles, 0, "bk", "sfiles", sfopts, SYS)) {
-				unlink(pendingFiles);
-				getMsg("duplicate_IDs", 0, 0, stdout);
-				return (1);
+			fin = stdin;
+		}
+		setmode(0, _O_TEXT);
+		while (bufp = fgetline(fin)) {
+			if (strstr(bufp, "SCCS/s.") == 0) {
+				bufp = name2sccs(bufp);
+				fprintf(f, "%s\n", bufp);
+				free(bufp);
+			} else {
+				fprintf(f, "%s\n", bufp);
 			}
-			opts.clean_PENDING = 1;
+		}
+		if (fin != stdin) fclose(fin);
+		offset = 0;
+	} else {
+		cmd = aprintf("bk sfiles -v%s%spC",
+		    opts.resync ? "r" : "",
+		    opts.ci ? "c" : "");
+		fin = popen(cmd, "r");
+		assert(fin);
+		while (bufp = fgetline(fin)) {
+			fprintf(f, "%s\n", bufp);
+		}
+		if (pclose(fin)) {
+			fclose(f);
+			free(cmd);
+			getMsg("duplicate_IDs", 0, 0, stdout);
+			return (1);
+		}
+		free(cmd);
+		opts.clean_PENDING = 1;
+		offset = 8;
+	}
+	// parse fmem
+	fin = f;
+	rewind(fin);
+	bktmp(pendingFiles);
+	f = fopen(pendingFiles, "w");
+	assert(f);
+	while (bufp = fgetline(fin)) {
+		p = strchr(bufp+offset, '|');
+		if (((offset == 8) && bufp[2] == 'c') || (p == 0)) {
+			if (p) *p = 0;
+			modFiles = addLine(modFiles,
+			    strdup(bufp+offset));
+			fprintf(f, "%s|+\n", bufp+offset);
+		} else {
+			fprintf(f, "%s\n", bufp+offset);
 		}
 	}
+	fclose(fin); fclose(f);
 	if (!force && (size(pendingFiles) == 0)) {
 		unless (opts.quiet) fprintf(stderr, "Nothing to commit\n");
 		unlink(pendingFiles);
@@ -303,7 +342,7 @@ commit_main(int ac, char **av)
 	}
 	unlink("ChangeSet");
 	T_PERF("before do_commit");
-	return (do_commit(av, opts, sym, pendingFiles, dflags));
+	return (do_commit(av, opts, sym, pendingFiles, modFiles, dflags));
 }
 
 /*
@@ -352,7 +391,8 @@ modified_pending(u32 flags)
 
 private int
 do_commit(char **av,
-	c_opts opts, char *sym, char *pendingFiles, int dflags)
+	c_opts opts, char *sym, char *pendingFiles,
+	char **modFiles, int dflags)
 {
 	int	rc, i;
 	sccs	*cset;
@@ -415,9 +455,15 @@ err:		rc = 1;
 	safe_putenv("BK_COMMENTFILE=%s", commentFile);
 
 	if (rc = trigger(opts.resync ? "merge" : av[0], "pre")) goto done;
+	if (modFiles && (rc = do_ci(modFiles, commentFile))) {
+		rc = 1;
+		do_unmark(modFiles);
+		goto done;
+	}
 	comments_done();
 	if (comments_savefile(commentFile)) {
 		rc = 1;
+		if (modFiles) do_unmark(modFiles);
 		goto done;
 	}
 	if (opts.quiet) dflags |= SILENT;
@@ -504,6 +550,7 @@ err:		rc = 1;
 	}
 	putenv("BK_STATUS=OK");
 	if (rc) {
+		if (modFiles) do_unmark(modFiles);
 		fprintf(stderr, "The commit is aborted.\n");
 		putenv("BK_STATUS=FAILED");
 	} else if (opts.clean_PENDING) {
@@ -521,6 +568,7 @@ done:	if (unlink(pendingFiles)) perror(pendingFiles);
 	sccs_free(cset);
 	freeLines(list, free);
 	commitRestore(rc);
+	freeLines(modFiles, free);
 	/*
 	 * If we are doing a commit in RESYNC or the commit failed, do
 	 * not log the cset. Let the resolver do it after it moves the
@@ -528,6 +576,25 @@ done:	if (unlink(pendingFiles)) perror(pendingFiles);
 	 */
 	unless (opts.resync || rc) logChangeSet();
 	T_PERF("done");
+	return (rc);
+}
+
+private int
+do_ci(char **modFiles, char *commentFile)
+{
+	int	i, rc = 0;
+	char	*cmd;
+	FILE	*f;
+
+	cmd = aprintf("bk -?BK_NO_REPO_LOCK=YES ci -q -a "
+	    "--prefer-cfile --csetmark -Y\"%s\" -", commentFile);
+
+	f = popen(cmd, "w");
+	assert(f);
+	EACH(modFiles) fprintf(f, "%s\n", modFiles[i]);
+	rc = (pclose(f) != 0);
+
+	free(cmd);
 	return (rc);
 }
 
@@ -558,7 +625,7 @@ getfilekey(char *sfile, char *rev, sccs *cset, ser_t cset_d, char ***keys)
 		fprintf(stderr, "cset: can't find %s in %s\n", rev, sfile);
 		return (1);
 	}
-	assert(!(FLAGS(s, d) & D_CSET));
+	//assert(!(FLAGS(s, d) & D_CSET));
 
 	sccs_sdelta(s, sccs_ino(s), buf);
 	*keys = addLine(*keys, strdup(buf));
@@ -1060,6 +1127,32 @@ commitRestore(int rc)
 			fileMove(save, SATTR);
 		} else {
 			unlink(save);
+		}
+	}
+}
+
+private void
+do_unmark(char **modFiles)
+{
+	int	i;
+	sccs	*s;
+	ser_t	d;
+
+	EACH(modFiles) {
+		unless (s = sccs_init(modFiles[i], INIT_MUSTEXIST)) {
+			perror(modFiles[i]);
+			continue;
+		}
+		d = sccs_findrev(s, "+");
+		if (FLAGS(s, d) & D_CSET) {
+			FLAGS(s, d) &= ~D_CSET;
+			if (sccs_newchksum(s)) {
+				perror(modFiles[i]);
+				sccs_free(s);
+				continue;
+			}
+			updatePending(s);
+			sccs_free(s);
 		}
 	}
 }

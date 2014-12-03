@@ -142,7 +142,13 @@ delta_main(int ac, char **av)
 	int	dash, dbsort = 1, errors = 0, fire, dangling;
 	off_t	sz;
 	project	*locked_proj = 0;
+	int	prefer_cfile = 0;
 	char	here[MAXPATH];
+	longopt	lopts[] = {
+		{ "csetmark", 301 },
+		{ "prefer-cfile", 302 },
+		{ 0, 0 }
+	};
 
 	prog = strrchr(av[0], '/');
 	if (prog) prog++;
@@ -159,7 +165,7 @@ delta_main(int ac, char **av)
 	}
 
 	while ((c =
-	    getopt(ac, av, "abcCdD:E|fGI;ilm|M;npPqRsSTuy|Y|Z|", 0)) != -1) {
+	    getopt(ac, av, "abcCdD:E|fGI;ilm|M;npPqRsSTuy|Y|Z|", lopts)) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;	/* undoc? 2.0 */
@@ -229,6 +235,10 @@ delta_main(int ac, char **av)
 			break;
 		    case 'E': encp = optarg; break; 		/* doc 2.0 */
 		    case 'S': dbsort = 0; break;		/* undoc */
+		    case 301:	// --csetmark
+			dflags |= DELTA_CSETMARK; break;	/* undoc */
+		    case 302:	// --prefer-cfile
+			prefer_cfile = 1; break;		/* undoc */
 
 		    default: bk_badArg(c, av);
 		}
@@ -265,6 +275,11 @@ delta_main(int ac, char **av)
 	    dash && name && !(dflags & (NEWFILE|DELTA_CFILE)) && sfileNext()) {
 		fprintf(stderr,
 "%s: only one file may be specified without a checkin comment\n", av[0]);
+		usage();
+	}
+	if (!comments_got() && prefer_cfile) {
+		fprintf(stderr,
+		    "%s: must have -y or -Y when using --prefer-cfile\n", prog);
 		usage();
 	}
 	if (initFile && (dflags & DELTA_DONTASK)) {
@@ -366,6 +381,7 @@ delta_main(int ac, char **av)
 				errors |= 1;
 				break;
 			}
+			if (prefer_cfile) comments_readcfile(s, 0, d);
 		}
 		if (fire && proj_root(s->proj) &&
 		    (locked_proj != s->proj)) {
@@ -492,5 +508,3 @@ next:		if (init) fclose(init);
 	comments_done();
 	return (errors);
 }
-
-

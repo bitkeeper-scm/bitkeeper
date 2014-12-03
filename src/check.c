@@ -2392,20 +2392,20 @@ check(sccs *s, MDBM *idDB)
 	 */
 	if (doMarks && (t = sfileRev())) {
 		d = sccs_findrev(s, t);
-		FLAGS(s, d) |= D_CSET;
-		if (sccs_newchksum(s)) {
-			fprintf(stderr, "Could not mark %s. Perhaps it "
-				"is locked by some other process?\n",
-				s->gfile);
-			errors++;
-		} else {
-			doMarks = addLine(doMarks,
-			    aprintf("%s|%s", s->sfile, REV(s, d)));
+		unless (FLAGS(s, d) & D_CSET) {
+			FLAGS(s, d) |= D_CSET;
+			if (sccs_newchksum(s)) {
+				fprintf(stderr, "Could not mark %s. Perhaps it "
+				    "is locked by some other process?\n",
+				    s->gfile);
+				errors++;
+			} else {
+				doMarks = addLine(doMarks,
+				    aprintf("%s|%s", s->sfile, REV(s, d)));
+			}
+			sccs_restart(s);
+			if (d == sccs_top(s)) xfile_delete(s->gfile, 'd');
 		}
-		sccs_restart(s);
-		if (d == sccs_top(s)) xfile_delete(s->gfile, 'd');
-		doMarks = addLine(doMarks,
-		    aprintf("%s|%s", s->sfile, REV(s, d)));
 	}
 	for (d = TABLE(s); d >= TREE(s); d--) {
 		if (verbose > 3) {

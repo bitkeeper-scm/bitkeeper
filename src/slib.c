@@ -14191,6 +14191,7 @@ out:
 	}
 
 	FLAGS(s, n) |= D_FIXUPS;
+	if (flags&DELTA_CSETMARK) FLAGS(s, n) |= D_CSET;
 	if (delta_write(s, n, diffs, &added, &deleted, &unchanged)) {
 		OUT;
 	}
