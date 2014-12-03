@@ -726,6 +726,9 @@ then	if [ "$GUI_TEST" = YES ]
 	fi
 fi
 
+TOTAL=`echo $list | wc -w`
+CUR=0
+
 setup_env
 
 if [ -f $START ]
@@ -755,6 +758,7 @@ FAILED=
 FAILCNT=0
 for i in $list
 do
+	CUR=`expr $CUR + 1`
 	test -f /build/die && {
 		echo Forced shutdown, dieing.
 		test $PLATFORM = WIN32 && bk bkd -R
@@ -764,9 +768,10 @@ do
 	test -n "${i##*~}" || continue
 	echo ''
 	LEN=`echo ${i#t.} | wc -c`
-	LEN=`expr 40 - $LEN`
+	PROGRESS=`printf "(%d/%d)" $CUR $TOTAL`
+	LEN=`expr 40 - $LEN - ${#PROGRESS} - 1`
 	printf "================="
-	printf " %s test " ${i#t.}
+	printf " %s test $PROGRESS " ${i#t.}
 	printf "%.${LEN}s\n" "================================================"
 
 	mkdir -p "$HERE" || exit 1
