@@ -7,11 +7,13 @@ cat > BitKeeper/triggers/post-incoming <<EOF
 if [ -d "$HERE/mirror" ];
 then
 	(
+	  trap '' SIGHUP
 	  bk lock -U
 	  bk push "$HERE/mirror"
 	) > "$HERE/OUT" 2>&1 &
 else
 	(
+	  trap '' SIGHUP
 	  bk lock -U
 	  bk clone . "$HERE/mirror"
 	) > "$HERE/OUT" 2>&1 &
