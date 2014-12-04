@@ -1,4 +1,5 @@
 commercial throwaway
+bk lease renew -w $Q   # get a lease so the following tests pass
 
 echo $N Test config defaults when no repo............................$NL
 cd "$HERE"
