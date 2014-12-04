@@ -764,12 +764,14 @@ clone(char **av, remote *r, char *local, char **envVar)
 		    rmt_features, !proj_hasOldSCCS(0), opts->bkfile);
 		features_setAll(0, rmt_features);
 		features_set(0, FEAT_REMAP, !proj_hasOldSCCS(0));
-		if (opts->bkfile != -1) {
+		if (opts->bkfile == 1) {
 			features_set(0,
-			    FEAT_FILEFORMAT|FEAT_SCANDIRS, opts->bkfile);
+			    (FEAT_FILEFORMAT|FEAT_SCANDIRS) & ~FEAT_BWEAVEv2, 1);
+		} else if (opts->bkfile == 0) {
+			features_set(0,
+			    FEAT_FILEFORMAT|FEAT_SCANDIRS, 0);
 		}
 	}
-
 	if (opts->parallel == 0) opts->parallel = parallel(".");
 	retrc = RET_ERROR;
 
@@ -850,7 +852,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	    (rmt_features & FEAT_FILEFORMAT)) {
 		p = features_fromBits(features_bits(0));
 		/* switch to (or from) binary */
-		T_PERF("switch sfile formats to %s", p);
+		T_PERF("switch sfile formats to %s", *p ? p : "ascii");
 		free(p);
 		bk_setConfig("partial_check", "0");
 		opts->no_lclone = 1;

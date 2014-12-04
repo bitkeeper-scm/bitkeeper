@@ -436,6 +436,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	cnt = 1;
 	growArray(&csetlist, TABLE(s));
 	while (d = cset_rdweavePair(s, 0, &rkoff, &dkoff)) {
+		unless (dkoff) continue; /* last key */
 		if (rkid = hash_insert(root2id,
 		    &rkoff, sizeof(rkoff), 0, sizeof(*rkid))) {
 			addArray(&rkarray, 0);

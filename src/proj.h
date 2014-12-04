@@ -86,6 +86,7 @@ char		**proj_scanComps(project *p, u32 state);
 /* the features.c subset of project* */
 typedef	struct {
 	u32	bits;	/* bitfield of current features in repo */
+	u32	new:1;	/* force write of features */
 } p_feat;
 
 p_feat*		proj_features(project *p);

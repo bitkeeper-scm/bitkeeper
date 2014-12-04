@@ -1043,6 +1043,7 @@ cset_mkList(sccs *cset)
 
 	sccs_rdweaveInit(cset);
 	while (d = cset_rdweavePair(cset, RWP_DSET, &rkoff, &dkoff)) {
+		unless (dkoff) continue; /* last key */
 		list = addLine(list, aprintf("%d\t%s %s",
 		    d, HEAP(cset, rkoff), HEAP(cset, dkoff)));
 	}

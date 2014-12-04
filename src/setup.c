@@ -157,9 +157,16 @@ setup_main(int ac, char **av)
 		    features_test(in_prod, FEAT_BKFILE));
 		features_set(0, FEAT_BWEAVE,
 		    features_test(in_prod, FEAT_BWEAVE));
+		features_set(0, FEAT_BWEAVEv2,
+		    features_test(in_prod, FEAT_BWEAVEv2));
 	} else {
-		features_set(0,
-		    FEAT_FILEFORMAT|FEAT_SCANDIRS, !sccs_compat);
+		if (sccs_compat) {
+			features_set(0, FEAT_FILEFORMAT|FEAT_SCANDIRS, 0);
+		} else {
+			features_set(0,
+			    (FEAT_FILEFORMAT & ~FEAT_BWEAVEv2) | FEAT_SCANDIRS,
+			    1);
+		}
 	}
 
 	unless (config_path) config_path = strdup(DEVNULL_RD);
@@ -194,9 +201,6 @@ setup_main(int ac, char **av)
 		 * so the initial ChangeSet path will be correct
 		 */
 		nested_makeComponent(".");
-		if (features_test(0, FEAT_BKFILE)) {
-			unlink("BitKeeper/log/features");
-		}
 	}
 
 	features_set(0, FEAT_REMAP, !proj_hasOldSCCS(0));

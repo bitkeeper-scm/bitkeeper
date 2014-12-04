@@ -343,10 +343,17 @@ err:				if (revsDB) mdbm_close(revsDB);
 	sccs_rdweaveInit(cset);
 	/* t = root, v = deltakey */
 	while (d = cset_rdweavePair(cset, 0, &rkoff, &dkoff)) {
-		t = HEAP(cset, rkoff);
-		v = HEAP(cset, dkoff);
-		unless (componentKey(v)) continue;
+		unless (dkoff) continue; /* last key */
 		if (!revs && !(FLAGS(cset, (d)) & D_RED)) continue;
+		t = HEAP(cset, rkoff);
+		unless (changesetKey(t)) continue;
+		v = HEAP(cset, dkoff);
+		/*
+		 * It would be even better if we could identify component
+		 * rootkeys and had a separate predicate to do that
+		 * test.
+		 */
+		unless (componentKey(v)) continue;
 		unless (c = nested_findKey(n, t)) {
 			c = new(comp);
 			c->n = n;

@@ -1,6 +1,7 @@
 #include "sccs.h"
 
-#define	HEAP_VER	"2"
+#define	HEAP_VER	"4"
+#define	UNIQHASH_VER	4
 #define	IN_HEAP(s, x)	(((x) >= HEAP(s, 0)) && ((x) < HEAP(s, s->heap.len)))
 
 /*
@@ -68,7 +69,9 @@ findUniq1Str(sccs *s, char *key)
 	u32	off;
 
 	unless (s->uniq1init) {
-		if (t = hash_fetchStr(s->heapmeta, "HASH")) {
+		/* only trust if a reliable version did last repack */
+		if ((hash_fetchStrNum(s->heapmeta, "VER") >= UNIQHASH_VER) &&
+		    (t = hash_fetchStr(s->heapmeta, "HASH"))) {
 			off = strtoul(t, 0, 16);
 			j = atoi(hash_fetchStr(s->heapmeta, "HASHBITS"));
 			s->uniq1 = nokey_newStatic(off, j);
@@ -171,8 +174,8 @@ loadRootkeys(sccs *s)
 	 * we need to walk the list of existing rootkeys and
 	 * add them to the uniq hash
 	 */
-	for (off = s->rkeyHead; off; off = RKNEXT(s, off)) {
-		ptr = KEYSTR(off);
+	for (off = s->rkeyHead; off; off = KOFF(s, off)) {
+		ptr = off+4;
 		if (ptr < hlen) break; /* uniq1 gets from here on */
 		nokey_insert(s->uniq2, HEAP(s, 0), ptr);
 	}
@@ -197,9 +200,6 @@ sccs_hasRootkey(sccs *s, char *key)
 {
 	u32	ret;
 
-	/* If we don't know, then cache it and say it is there */
-	unless (BWEAVE(s)) return (sccs_addUniqStr(s, key));
-
 	/* look in uniqhash first */
 	if (ret = findUniq1Str(s, key)) return (ret);
 
@@ -214,7 +214,7 @@ sccs_hasRootkey(sccs *s, char *key)
  * is the offset of the rkeyHead linked list.
  */
 u32
-sccs_addUniqKey(sccs *s, char *key)
+sccs_addUniqRootkey(sccs *s, char *key)
 {
 	u32	off, le32;
 
@@ -227,7 +227,7 @@ sccs_addUniqKey(sccs *s, char *key)
 		// update rkey list
 		off = s->heap.len;
 		le32 = htole32(s->rkeyHead);
-		data_append(&s->heap, &le32, sizeof(le32));
+		data_append(&s->heap, &le32, 4);
 		s->rkeyHead = off;
 		// add string to heap
 		off = s->heap.len;
@@ -240,30 +240,169 @@ sccs_addUniqKey(sccs *s, char *key)
 }
 
 /*
+ * Load a hash from a known place in the heap set up by bin_heapRepack()
+ */
+void
+sccs_loadHeapMeta(sccs *s)
+{
+	if ((s->heap.len >= 5) && (strneq(HEAP(s, 1), "GEN=", 4))) {
+		s->heapmeta = hash_new(HASH_MEMHASH);
+		hash_fromStr(s->heapmeta, s->heap.buf+1);
+	}
+}
+
+/*
+ * Convert between BWEAVEv2 and BWEAVEv3 in memory
+ */
+void
+weave_cvt(sccs *s)
+{
+	ser_t	d;
+	u32	off, rkoff, dkoff;
+	char	dkey[MAXKEY];
+
+	assert(BWEAVE2(s) != BWEAVE2_OUT(s));
+	T_PERF("weave_cvt(%d)", (BWEAVE2(s) ? 2 : 3));
+	/*
+	 * walk the old binary weave and generate a block in the heap
+	 * that will continue the new weave layout.
+	 */
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (off = WEAVE_INDEX(s, d)) continue;
+		WEAVE_SET(s, d, s->heap.len);
+		while (off = RKDKOFF(s, off, rkoff, dkoff)) {
+			unless (dkoff) continue; /* skip last key marker */
+			if (BWEAVE2_OUT(s)) {
+				/* point rk at nextkey */
+				rkoff = htole32(rkoff - 4);
+				data_append(&s->heap, &rkoff, 4);
+
+				/*
+				 * copy key because a heap realloc
+				 * could move it.
+				 */
+				strcpy(dkey, HEAP(s, dkoff));
+				data_append(&s->heap, dkey, strlen(dkey) + 1);
+			} else {
+				rkoff = htole32(rkoff);
+				data_append(&s->heap, &rkoff, 4);
+				dkoff = htole32(dkoff);
+				data_append(&s->heap, &dkoff, 4);
+			}
+		}
+		rkoff = 0;
+		data_append(&s->heap, &rkoff, 4);
+	}
+	s->encoding_in &= ~(E_BWEAVE2|E_BWEAVE3);
+	s->encoding_in |= (BWEAVE2_OUT(s) ? E_BWEAVE2 : E_BWEAVE3);
+	T_PERF("done");
+}
+
+/*
  * New weave entry for d.  The 'keys' array alternates root and delta
- * keys.  Write _all_ the rootkeys first as the delta keys for a cset
- * need to be written concatenated.  It wouldn't work if rootkeys and
- * delta keys were written interleaved.
+ * keys. We write the keys to the heap and then the weave entry that
+ * refers to the keys.  Note: rootkeys use a different API because
+ * they are deduplicatied.
  */
 void
 weave_set(sccs *s, ser_t d, char **keys)
 {
-	int	i;
-	u32	le32;
+	int	i, mark;
+	char	*rkey, *dkey;
+	u32	rkoff, dkoff;
+	int	added = 0;
 	DATA	w = {0};
 
-	/* All dkeys need to be concatenated; write all rkeys to heap first */
+	/* write keys to heap first and save weave */
 	EACH(keys) {
-		le32 = htole32(sccs_addUniqKey(s, keys[i]) - sizeof(u32));
-		data_append(&w, &le32, sizeof(le32));
-		data_append(&w, keys[i+1], strlen(keys[i+1]) + 1);
-		++i;
+		rkey = keys[i];
+		dkey = keys[++i];
+		++added;
+		rkoff = sccs_addUniqRootkey(s, rkey);
+		if (mark = (*dkey == '|')) ++dkey;
+		if (BWEAVE2(s)) {
+			rkoff = htole32(rkoff - 4);
+			data_append(&w, &rkoff, 4);
+			data_append(&w, dkey, strlen(dkey)+1);
+		} else {
+			rkoff = htole32(rkoff);
+			data_append(&w, &rkoff, 4);
+			dkoff = htole32(sccs_addStr(s, dkey));
+			data_append(&w, &dkoff, 4);
+			if (mark) {	/* last key marker */
+				data_append(&w, &rkoff, 4);
+				dkoff = 0;
+				data_append(&w, &dkoff, 4);
+			}
+		}
 	}
 	WEAVE_SET(s, d, s->heap.len);
 	data_append(&s->heap, w.buf, w.len);
 	free(w.buf);
+	rkoff = 0;
+	data_append(&s->heap, &rkoff, 4);
+	ADDED_SET(s, d, added);
+	DELETED_SET(s, d, 0);
+
+	/* Normal non-1.0 non-TAG csets have same==1 */
+	if ((d == TREE(s) && !added) || TAG(s, d)) {
+		SAME_SET(s, d, 0);
+	} else {
+		SAME_SET(s, d, 1);
+	}
+}
+
+/*
+ * If we notice after the fact that a delta key in the cset weave
+ * has the wrong end marker, this changes it.
+ * add==1, add the marker, else remove it
+ */
+void
+weave_updateMarker(sccs *s, ser_t d, u32 rk, int add)
+{
+	DATA	w = {0};
+	u32	woff, rkoff, dkoff, le32;
+	int	sawrkey = 0;
+
+	unless (BWEAVE3(s)) return;
+
+	woff = WEAVE_INDEX(s, d);
+	while (woff = RKDKOFF(s, woff, rkoff, dkoff)) {
+		le32 = htole32(rkoff);
+		data_append(&w, &le32, 4);
+		le32 = htole32(dkoff);
+		data_append(&w, &le32, 4);
+		if (rkoff == rk) {
+			assert(dkoff);
+			if (add) {
+				/*
+				 * if this delta was already marked
+				 * then the code that called this has
+				 * a bug.
+				 */
+				assert(KOFF(s, woff) != rk);
+
+				/* add marker */
+				le32 = htole32(rkoff);
+				data_append(&w, &le32, 4);
+				le32 = 0;
+				data_append(&w, &le32, 4);
+			} else {
+				/* make sure we had marker */
+				assert(KOFF(s, woff) == rk);
+				assert(KOFF(s, woff+4) == 0);
+
+				woff += 8; /* skip the marker */
+			}
+			sawrkey = 1;
+		}
+	}
+	assert(sawrkey);
+	WEAVE_SET(s, d, s->heap.len);
+	data_append(&s->heap, w.buf, w.len);
+	free(w.buf);
 	le32 = 0;
-	data_append(&s->heap, &le32, sizeof(le32));
+	data_append(&s->heap, &le32, 4);
 }
 
 private void
@@ -686,31 +825,51 @@ bin_needHeapRepack(sccs *s)
 	return (0);
 }
 
+typedef	struct {
+	u32	newrk;
+	u32	oldestdk;
+} Pair;
 
 /*
- * reorder the data heap in memory to atempt to reduce the number of pages
- * that are needed for common operations.
+ * reorder the data heap in memory to attempt to reduce the number of
+ * pages that are needed for common operations.
+ * v2 - bk-6.0 header
+ *   0 - first byte is null string
+ *   hash - keys = {GEN, LEN, TIP, VER} (hash string sorted alphabetically)
+ *   s->rkeyHead = heap offset gets stored in on disk init table
+ *   (this can contain keys from later revs if downgrading)
+ * v3 and a version that started with %GEN= were never shipped
+ * v4 post 6.0 header
+ *   0 - first byte is null string
+ *   hash - keys = {GEN, HASH, HASHBITS, LEN, TIP, VER}
+ *	new are HASH and HASHBITS, which only work if VER >= UNIQHASH_VER
+ *   s->rkeyHead = heap offset gets stored in on disk init table
  */
 void
 bin_heapRepack(sccs *s)
 {
 	int	i, old;
 	ser_t	d, ds;
-	u32	size, len, off, le32, rkey, nrkey;
+	u32	size, len, off;
+	u32	rkoff, dkoff;
+	char	*rkey, *dkey;
 	u32	uhash;
 	u32	metalen;
+	Pair	*pair;
 	int	bits;
-	char	**rkeys = 0;
 	DATA	oldheap;
+	DATA	tipkeys = {0};	/* deltakey tipkey array */
+	DATA	rest = {0};	/* rest of deltakey array */
+	DATA	*dkeys;		/* pointer to 1 or 2 */
+	int	dkeys_start;
+	u32	*weave = 0;	/* array of u32's containing weave */
 	hash	*meta;
 	char	*t;
 	char	buf[MAXLINE];
 
 /* Local versions of sccs.h macros for a copy of the heap */
 #define	OLDHEAP(x)	(oldheap.buf + (x))
-#define	OLDRKOFF(x)	HEAP_U32LOAD(OLDHEAP(x))
-#define	OLDRKNEXT(x)	OLDRKOFF(x)
-#define	OLDNEXTKEY(x)	(KEYSTR(x) + strlen(OLDHEAP(KEYSTR(x))) + 1)
+#define	OLDKOFF(x)	HEAP_U32LOAD(OLDHEAP(x))
 
 	// safety net and for testing
 	if (getenv("_BK_HEAP_NOREPACK")) return;
@@ -723,8 +882,10 @@ bin_heapRepack(sccs *s)
 	s->heapmeta = meta;
 
 	/* remember the tip when we last repacked */
-	sccs_sdelta(s, sccs_top(s), buf);
-	hash_storeStr(meta, "TIP", buf);
+	if (HASGRAPH(s)) {
+		sccs_sdelta(s, sccs_top(s), buf);
+		hash_storeStr(meta, "TIP", buf);
+	}
 
 	/*
 	 * placeholders for the heap size and hash offset after the
@@ -740,6 +901,7 @@ bin_heapRepack(sccs *s)
 	hash_storeStr(meta, "VER", HEAP_VER);
 
 	/* clean old data */
+	unless (s->heap.len) data_append(&s->heap, "", 1);
 	oldheap = s->heap;
 	memset(&s->heap, 0, sizeof(s->heap));
 	nokey_free(s->uniq1);
@@ -750,12 +912,12 @@ bin_heapRepack(sccs *s)
 	s->uniq2 = nokey_newAlloc();
 	s->uniq2deltas = 1;	/* don't reload */
 	s->uniq2keys = 1;	/* don't reload */
+	s->rkeyHead = 0;
 
 	/* write header to heap */
-	sccs_addStr(s, "%");
 	t = hash_toStr(meta);
 	metalen = strlen(t);
-	sccs_appendStr(s, t);
+	sccs_addStr(s, t);
 	free(t);
 
 #define FIELD(x) \
@@ -806,50 +968,130 @@ bin_heapRepack(sccs *s)
 #undef UFIELD
 
 	/* finally the cset content */
-	if (BWEAVE(s)) {
-		/* now the rootkeys from the weave */
-		for (off = s->rkeyHead; off; off = OLDRKNEXT(off)) {
-			rkeys = addLine(rkeys, OLDHEAP(KEYSTR(off)));
-		}
-		s->rkeyHead = s->heap.len;
-		sortLines(rkeys, key_sort);
-		EACH(rkeys) {
-			/*
-			 * Linked list order flipped (for perf reasons?)
-			 * new keys will be added to the end, but will point
-			 * to the beginning.
-			 */
-			if (i < nLines(rkeys)) {
-				le32 = htole32(s->heap.len + sizeof(u32) +
-				    strlen(rkeys[i]) + 1);
-			} else {
-				le32 = 0;
-			}
-			data_append(&s->heap, &le32, sizeof(le32));
-			off = s->heap.len;
-			sccs_addUniqStr(s, rkeys[i]);
-			assert(s->heap.len > off); // this should insert
-		}
-		freeLines(rkeys, 0);
-
+	if (BWEAVE2(s)) {
+		/*
+		 * for BWEAVEv2 just dump the full weave in order
+		 */
 		for (d = TABLE(s); d >= TREE(s); d--) {
-			unless (WEAVE_INDEX(s, d)) continue;
-			off = WEAVE_INDEX(s, d);
-			assert(off < oldheap.len);
-			WEAVE_SET(s, d, s->heap.len);
-			while (rkey = OLDRKOFF(off)) {
-				assert(rkey < oldheap.len);
-				nrkey = nokey_lookup(s->uniq2,
-				    HEAP(s, 0), OLDHEAP(KEYSTR(rkey)));
-				assert(nrkey);
-				nrkey = htole32(nrkey - sizeof(u32));
-				data_append(&s->heap, &nrkey, sizeof(nrkey));
-				sccs_addStr(s, OLDHEAP(KEYSTR(off)));
-				off = OLDNEXTKEY(off);
+			char	**w = 0;
+
+			unless (off = WEAVE_INDEX(s, d)) continue;
+			while (rkoff = OLDKOFF(off)) {
+				rkoff += 4;
+				w = addLine(w, OLDHEAP(rkoff));
+				w = addLine(w, (t = OLDHEAP(off + 4)));
+				off += 4 + strlen(t) + 1;
+			}
+			weave_set(s, d, w);
+			freeLines(w, 0);
+		}
+	} else if (CSET(s)) {
+		hash	*rkh =
+			    hash_new(HASH_U32HASH, sizeof(u32), sizeof(Pair));
+		Pair	p = {0};
+
+		/*
+		 * walk the weave oldest to newest to identify the
+		 * oldest dkey for each rkey
+		 */
+		for (d = TREE(s); d <= TABLE(s); d++) {
+			unless (off = WEAVE_INDEX(s, d)) continue;
+			while (rkoff = OLDKOFF(off)) {
+				if ((p.oldestdk = OLDKOFF(off+4)) != 0) {
+					hash_insert(rkh, &rkoff, sizeof(rkoff),
+					    &p, sizeof(p));
+				}
+				off += 8;
+			}
+		}
+
+		/*
+		 * walk weave and save rootkeys to heap, buffer
+		 * deltakeys and generate weave data.  The weave data
+		 * will need to be renumbered before writing out.  The
+		 * offsets to the weave in the delta table also need
+		 * to get offset once we know where they start. (The
+		 * +1 prevents us from using 0.)
+		 */
+#define	HIBIT	0x80000000UL
+		for (d = TABLE(s); d >= TREE(s); d--) {
+			unless (off = WEAVE_INDEX(s, d)) continue;
+			WEAVE_SET(s, d, 4*nLines(weave)+1);
+			while (rkoff = OLDKOFF(off)) {
+				dkoff = OLDKOFF(off+4);
+				unless (dkoff) {/* skip old last key marker */
+					off += 8;
+					continue;
+				}
+				dkey = OLDHEAP(dkoff);
+				pair = hash_fetch(rkh, &rkoff, sizeof(rkoff));
+				assert(pair);
+				unless (pair->newrk) {
+					rkey = OLDHEAP(rkoff);
+					pair->newrk =
+					    sccs_addUniqRootkey(s, rkey);
+					dkeys = &tipkeys;
+					len = 0;
+				} else {
+					/* mark dkoff in weave as 'rest' */
+					dkeys = &rest;
+					len = HIBIT;
+				}
+				/* build up the weave table */
+				addArray(&weave, &pair->newrk);
+				len += dkeys->len + 1;
+				addArray(&weave, &len);
+				data_append(dkeys, dkey, strlen(dkey)+1);
+				if (dkoff == pair->oldestdk) {
+					/* mark oldest delta */
+					addArray(&weave, &pair->newrk);
+					len = 0;
+					addArray(&weave, &len);
+				}
+				off += 8;
+				assert(!(dkeys->len & HIBIT));
 				assert(off < oldheap.len);
 			}
-			data_append(&s->heap, &rkey, sizeof(rkey));
+			addArray(&weave, &rkoff);	/* null terminate */
 		}
+		hash_free(rkh);
+
+		/* write delta keys array to heap */
+		dkeys_start = s->heap.len - 1;
+		data_append(&s->heap, tipkeys.buf, tipkeys.len);
+		data_append(&s->heap, rest.buf, rest.len);
+		free(tipkeys.buf);
+		free(rest.buf);
+
+		/* update offset to weave */
+		for (d = TABLE(s); d >= TREE(s); d--) {
+			if (off = WEAVE_INDEX(s, d)) {
+				WEAVE_SET(s, d, off + s->heap.len-1);
+			}
+		}
+
+		/* update offsets in weave */
+		EACH(weave) {
+			if (weave[i]) {
+				weave[i] = htole32(weave[i]); /* rkey */
+				++i;
+				/* dkey */
+				if (weave[i] & HIBIT) {
+					/* fixup rest; it's after tipkeys */
+					weave[i] +=
+					    dkeys_start + tipkeys.len - HIBIT;
+				} else if (weave[i]) {
+					/* fixup tipkeys */
+					weave[i] += dkeys_start;
+				}
+				weave[i] = htole32(weave[i]);
+			}
+		}
+
+		/* write weave to heap */
+		data_append(&s->heap, &weave[1], nLines(weave)*4);
+		free(weave);
+		weave = 0;
 	}
 
 	/*
@@ -867,7 +1109,7 @@ bin_heapRepack(sccs *s)
 	uhash = s->heap.len;
 	bits = nokey_log2size(s->uniq2);
 	len = (1 << bits);
-	size = len * sizeof(u32);
+	size = len * 4;
 	s->heap.len += size;
 	data_resize(&s->heap, s->heap.len);
 	memcpy(HEAP(s, uhash), nokey_data(s->uniq2), size);
@@ -881,7 +1123,8 @@ bin_heapRepack(sccs *s)
 	hash_storeStr(meta, "LEN", buf);
 	t = hash_toStr(meta);
 	assert(strlen(t) == metalen);
-	strcpy(HEAP(s, 2), t);
+	assert(strneq(t, "GEN=", 4));
+	strcpy(HEAP(s, 1), t);
 	free(t);
 
 	/* clear caches */
@@ -892,9 +1135,7 @@ bin_heapRepack(sccs *s)
 	s->uniq2keys = 0;
 
 #undef	OLDHEAP
-#undef	OLDRKNEXT
-#undef	OLDRKOFF
-#undef	OLDNEXTKEY
+#undef	OLDKOFF
 
 	/* now free the old data, have to unmap first */
 	if (BWEAVE(s)) {

@@ -56,6 +56,7 @@ typedef struct {
 #define	LEFT1	0x01
 #define	LEFT2	0x02
 #define	RIGHT	0x04
+#define	LAST	0x08
 } rfile;
 
 private void	rel_diffs(Opts *opts, rset *data);
@@ -875,7 +876,7 @@ weaveExtract(sccs *s, ser_t left1, ser_t left2, ser_t right, Opts *opts)
 	u8	*state = 0;
 	u8	active;
 	u32	seen, newseen;
-	u32	rkoff, dkoff, *offp;
+	u32	rkoff, dkoff;
 	rfile	*file;
 	MDBM	*sDB = 0;
 	sccs	*sc;
@@ -891,6 +892,9 @@ weaveExtract(sccs *s, ser_t left1, ser_t left2, ser_t right, Opts *opts)
 		_state |= _bits;		\
 		if (NONGCA(_state)) _counter++;	\
 	} while (0)
+
+#define	ONE_SIDE(_state)	/* something but not both */	\
+    (_state && !((_state & (LEFT1|LEFT2)) && (_state & RIGHT)))
 
 	/*
 	 * The hack that puts 1.0 as a lower bound sucks, as component path
@@ -967,8 +971,7 @@ weaveExtract(sccs *s, ser_t left1, ser_t left2, ser_t right, Opts *opts)
 			assert(d == e);	/* end of using 'e'; used to fail */
 			data->weavelines++;	/* stats */
 			if (showgone) {
-				hash_insert(showgone, &rkoff, sizeof(rkoff),
-				    &dkoff, sizeof(dkoff));
+				hash_insertU32U32(showgone, rkoff, dkoff);
 				if (!active ||
 				    ((active == all) && !needOther)) {
 					continue;
@@ -976,6 +979,14 @@ weaveExtract(sccs *s, ser_t left1, ser_t left2, ser_t right, Opts *opts)
 			}
 			file = hash_fetch(data->keys, &rkoff, sizeof(rkoff));
 			seen = file ? file->seen : 0;
+			assert(!(seen & LAST));
+			unless (dkoff) {
+				if (file) {
+					if (ONE_SIDE(seen)) needOther--;
+					file->seen |= LAST;
+				}
+				continue;
+			}
 			unless (newseen = (active & ~seen)) continue;
 			/* XXX: skip all same in face of comp renames ? */
 			if (newseen == all) continue;
@@ -988,10 +999,8 @@ weaveExtract(sccs *s, ser_t left1, ser_t left2, ser_t right, Opts *opts)
 				    0, sizeof(rfile));
 				file->rkoff = rkoff;
 				if (showgone) {
-					offp = hash_fetch(
-					    showgone, &rkoff, sizeof(rkoff));
-					assert(offp);
-					file->tipoff = *offp;
+					file->tipoff =
+					   hash_fetchU32U32(showgone, rkoff);
 				}
 			}
 			/* if new left and not in the history of the other */
@@ -1013,9 +1022,6 @@ weaveExtract(sccs *s, ser_t left1, ser_t left2, ser_t right, Opts *opts)
 				assert(!file->right);
 				file->right = dkoff;
 			}
-
-#define	ONE_SIDE(_state)	/* something but not both */	\
-    (_state && !((_state & (LEFT1 | LEFT2)) && (_state & RIGHT)))
 
 			if (ONE_SIDE(seen)) needOther--;
 			seen |= newseen;

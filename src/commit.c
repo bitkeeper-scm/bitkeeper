@@ -667,131 +667,186 @@ missingMerge(sccs *cset, u32 rkoff)
  * the MERGE case is asymmetrical - scanning RED for new and BLUE for
  * matches.
  *
- * Where possible we as little of the existing weave as possible to get
+ * Where possible we walk as little of the existing weave as possible to get
  * the data needed.
  *
- * seen hash: keys are rootkey offset in heap; values are 0, RED, BLUE
- * corresponding to tip, branch and trunk as where this rootkey was
- * first spotted.  While in one region we see it was first seen in
- * another region, report error.
+ * hash: keys are rootkey offset in heap; values are what region
+ * we were in when we first saw it, and an index to change the deltakey,
+ * if it is the oldest.  If we first see in one side of the merge,
+ * then again in the other side of the merge, without being in the merge,
+ * then report error.
  */
 private int
 updateCsetChecksum(sccs *cset, ser_t d, char **keys)
 {
-	hash	*h = hash_new(HASH_MEMHASH);
 	int	i, cnt = 0, todo = 0;
 	u32	sum = 0;
-	u32	color = 0;
+	u32	seen;
 	char	*rk, *dk;
 	u32	rkoff, dkoff;
 	u8	*p;
 	ser_t	e, old;
-	hash	*seen = 0;
 	int	ret = 0;
+	int	merge = 0;
+	struct	{
+		u32	n;
+		u8	seen;
+#define	S_REMOTE	0x01	/* first seen in remote */
+#define	S_LOCAL		0x02	/* first seen in local */
+#define	S_DONE		0x04	/* not looking for this key anymore */
+#define	S_INREMOTE	0x08	/* seen in remote */
+	} *rinfo;
+	hash	*h = hash_new(HASH_U32HASH, sizeof(u32), sizeof(*rinfo));
 
 	if (MERGE(cset, d)) {
 		/*
 		 * Add in some MERGE side keys (colored RED)
 		 * to todo list.  Also color PARENT side BLUE and
-		 * use the seen hash both for computing what csets in RED
+		 * use the hash both for computing what csets in RED
 		 * to add to todo, as well as look for non merged tips.
 		 */
 		cset->rstart = 0;
 		range_walkrevs(cset,
 		    PARENT(cset, d), 0, MERGE(cset, d), WR_BOTH, 0, 0);
-		if (cset->rstart) seen = hash_new(HASH_MEMHASH);
+		if (cset->rstart) {
+			merge = 1;
+			todo++;
+		}
 	}
 	EACH(keys) {
 		++cnt;
 		rk = keys[i++];
 		dk = keys[i];
-
 		for (p = dk; *p; p++) sum += *p; /* sum of new deltakey */
 		if (rkoff = sccs_hasRootkey(cset, rk)) {
 			++todo;
-			hash_insert(h, &rkoff, sizeof(rkoff), 0, 0);
-			if (seen) {
-				hash_insert(seen,
-				    &rkoff, sizeof(rkoff), 0, sizeof(color));
-			}
+			rinfo = hash_insert(h, &rkoff, sizeof(rkoff),
+			    0, sizeof(*rinfo));
+			rinfo->n = i;
 		} else {
 			/* new file, just add rk now */
 			for (p = rk; *p; p++) sum += *p;
 			sum += ' ' + '\n';
+			dk = aprintf("|%s", keys[i]);
+			free(keys[i]);
+			keys[i] = dk;
 		}
 	}
-	if (todo || seen) {
-		sccs_rdweaveInit(cset);
-		old = d;
-		while (e = cset_rdweavePair(cset, 0, &rkoff, &dkoff)) {
-			if (seen && (old != e)) {
-				/* also clear colors for csets with no data */
-				for (old--; old >= e; old--) {
-					color =
-					    FLAGS(cset, old) & (D_RED|D_BLUE);
-					FLAGS(cset, old) &= ~(D_RED|D_BLUE);
-				}
-				old = e;
-				if (e < cset->rstart) {
-					/* all clean and done with merge */
-					hash_free(seen);
-					seen = 0;
-				}
-				/* leave with color set to cset e */
+	sccs_rdweaveInit(cset);
+	old = d;
+	seen = 0;
+	while (todo && (e = cset_rdweavePair(cset, 0, &rkoff, &dkoff))) {
+		if (merge && (old != e)) {
+			switch (FLAGS(cset, e) & (D_RED|D_BLUE)) {
+			    case D_RED: seen = S_REMOTE; break;
+			    case D_BLUE: seen = S_LOCAL; break;
+			    default: seen = 0; break;
+                        }
+			/* clear colors for this cset and csets with no data */
+			for (old--; old >= e; old--) {
+				FLAGS(cset, old) &= ~(D_RED|D_BLUE);
 			}
-			if (color) { /* in non-gca region of merge */
-				if (hash_insert(seen,
-				    &rkoff, sizeof(rkoff),
-				    &color, sizeof(color))) {
-					/* first time this rk was seen... */
-					if ((color & D_RED) &&
-					    hash_insert(h, &rkoff,sizeof(rkoff),
-						0, 0)) {
-						/* In merge and not in commit */
-						++todo;
-						p = HEAP(cset, dkoff);
-						while (*p) sum += *p++;
-					}
-				} else if (!ret && *(u32 *)seen->vptr &&
-				    (color != *(u32 *)seen->vptr)) {
-					/*
-					 * Not in commit, but included in both
-					 * local and remote side of merge
-					 */
-					ret = missingMerge(cset, rkoff);
-				}
-				if (color & D_RED) continue;
-			}
-			unless (hash_delete(h, &rkoff, sizeof(rkoff))) {
-				/*
-				 * found previous deltakey for one of my files,
-				 * subtract off old key
-				 */
-				for (p = HEAP(cset, dkoff); *p; sum -= *p++);
+			old = e;
+			if (e < cset->rstart) {
+				/* all clean and done with merge */
+				merge = 0;
 				--todo;
 			}
-			if (seen) {
-				/* save if GCA region (no color) first to see */
-				unless (color) {
-					hash_insert(seen, &rkoff,
-					    sizeof(rkoff), 0, sizeof(color));
+		}
+		/* allocate rinfo */
+		if (merge) {
+			if (rinfo = hash_insert(h, &rkoff, sizeof(rkoff),
+				0, sizeof(*rinfo))) {
+				/* new rk first seen in merge (not in commit) */
+
+				assert(dkoff);
+				if (seen & S_REMOTE) {
+					/* must be a delta on remote only */
+					rinfo->seen = S_REMOTE;
+					p = HEAP(cset, dkoff);
+					while (*p) sum += *p++;
+					++todo;
+				} else {
+					rinfo->seen = seen | S_DONE;
 				}
-			} else if (!todo) {
-				/* no more rootkeys to find, done. */
-				break;
+			}
+			rinfo = h->vptr;
+			/* in one region and first seen in the other region */
+			if (!ret &&
+			    (((seen|rinfo->seen) & (S_LOCAL|S_REMOTE)) ==
+				(S_LOCAL|S_REMOTE))) {
+				/*
+				 * Not in commit, but included in both
+				 * local and remote side of merge
+				 */
+				ret = missingMerge(cset, rkoff);
+			}
+		} else {
+			unless (rinfo = hash_fetch(h, &rkoff, sizeof(rkoff))) {
+				// don't care about this key
+				continue;
 			}
 		}
-		if (seen) hash_free(seen);
-		sccs_rdweaveDone(cset);
+		if (rinfo->seen & S_DONE) continue; /* done with this rk */
+
+		if (seen & S_REMOTE) {
+			if (!dkoff) {
+				/* new file */
+				p = HEAP(cset, rkoff);
+				while (*p) sum += *p++;
+				sum += ' ' + '\n';
+
+				rinfo->seen |= S_DONE;
+				--todo;
+			} else {
+				// maybe a new file
+				rinfo->seen |= S_INREMOTE;
+				rinfo->n = e;
+			}
+		} else {
+			assert(dkoff);
+			/*
+			 * found previous deltakey for one of my files,
+			 * subtract off old key
+			 */
+			for (p = HEAP(cset, dkoff); *p; sum -= *p++);
+			--todo;
+			rinfo->seen |= S_DONE;
+		}
 	}
+	sccs_rdweaveDone(cset);
 	/*
 	 * Any keys that remain in my hash must be new files so we
 	 * need to add in the rootkey checksums.
 	 */
-	EACH_HASH(h) {
+	if (todo) EACH_HASH(h) {
 		rkoff = *(u32 *)h->kptr;
+		rinfo = h->vptr;
+		if (rinfo->seen & S_DONE) continue;
+
 		for (p = HEAP(cset, rkoff); *p; p++) sum += *p;
 		sum += ' ' + '\n';
+		assert(rinfo->n);
+		if (rinfo->seen & S_INREMOTE) {
+			/*
+			 * file from weave was actually new
+			 * Could update markers, but better to flush out
+			 * when this happens and plug the holes.
+			 */
+			if (BWEAVE3(cset) && getenv("_BK_DEVELOPER")) {
+				fprintf(stderr,
+				    "serial =%d, oldest rk %s\n",
+				    rinfo->n, HEAP(cset, rkoff));
+				ret++;
+			}
+		} else {
+			/* committed file was really new */
+			i = rinfo->n;
+			dk = aprintf("|%s", keys[i]);
+			free(keys[i]);
+			keys[i] = dk;
+		}
+		if (--todo == 0) break;
 	}
 	hash_free(h);
 
@@ -803,7 +858,6 @@ updateCsetChecksum(sccs *cset, ser_t d, char **keys)
 	}
 	SUM_SET(cset, d, sum);
 	SORTSUM_SET(cset, d, sum);
-	ADDED_SET(cset, d, cnt);
 	return (ret);
 }
 
@@ -1011,7 +1065,7 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	sccs_insertdelta(cset, d, d);
 	sccs_renumber(cset, 0);
 	sccs_startWrite(cset);
-	if (BWEAVE_OUT(cset)) weave_set(cset, d, keys);
+	weave_set(cset, d, keys);
 	EACH (syms) addsym(cset, d, 1, syms[i]);
 	if (delta_table(cset, 0)) {
 		perror("table");
@@ -1020,20 +1074,12 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	}
 	unless (BWEAVE_OUT(cset)) {
 		out = sccs_wrweaveInit(cset);
-		fprintf(out, "\001I %d\n", d);
-		EACH(keys) {
-			fprintf(out, "%s %s\n", keys[i], keys[i+1]);
-			i++;
+		sccs_rdweaveInit(cset);
+		while (line = sccs_nextdata(cset)) {
+			fputs(line, out);
+			fputc('\n', out);
 		}
-		fprintf(out, "\001E %d\n", d);
-		unless (flags & DELTA_EMPTY) {
-			sccs_rdweaveInit(cset);
-			while (line = sccs_nextdata(cset)) {
-				fputs(line, out);
-				fputc('\n', out);
-			}
-			sccs_rdweaveDone(cset);
-		}
+		sccs_rdweaveDone(cset);
 		sccs_wrweaveDone(cset);
 	}
 	if (sccs_finishWrite(cset)) {
@@ -1060,7 +1106,6 @@ cset_setup(int flags)
 	sccs	*cset;
 	int	rc;
 
-	flags |= DELTA_EMPTY;
 	cset = sccs_csetInit(SILENT);
 	assert(cset->state & S_CSET);
 	cset->xflags |= X_LONGKEY;

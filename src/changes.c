@@ -931,9 +931,10 @@ loadcset(sccs *cset)
 	}
 	db = hash_new(HASH_MEMHASH);
 	sccs_rdweaveInit(cset);
-	if (BWEAVE(cset)) cset_firstPair(cset, cset->rstop);
+	cset_firstPair(cset, cset->rstop);
 	last = 0;
 	while (d = cset_rdweavePair(cset, RWP_DSET, &rkoff, &dkoff)) {
+		unless (dkoff) continue; /* last key */
 		if (d < cset->rstart) break;
 		rkey = HEAP(cset, rkoff);
 		dkey = HEAP(cset, dkoff);

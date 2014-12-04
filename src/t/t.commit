@@ -221,6 +221,40 @@ echo $N Test out broken merge in the past does not break things .....$NL
 bk pull $Q ../stuff || fail
 echo OK
 
+echo $N Show new files are created with 1.1 marks ...................$NL
+# in merge
+bk clone $Q . ../side
+# need to make a merge
+echo h > ff
+bk new $Q ff
+bk commit $Q -yff || fail
+cd ../side
+echo hi > newfile
+bk new $Q newfile
+bk commit $Q -yn1 || fail
+# show new file has 1.1 mark
+bk _heapdump -e ChangeSet | grep -q newfile || fail missing mark
+# recreate cset where rootkey is not unique
+bk fix -c -d || fail
+bk commit $Q -yn2 || fail
+# the file still has mark from different code
+bk _heapdump -e ChangeSet | grep -q newfile || fail missing mark
+echo OK
+
+echo $N Show new files in merge get 1.1 marks added .................$NL
+bk edit $Q newfile
+echo h >> newfile
+bk ci $Q -y2 newfile
+bk commit $Q -y2 || fail
+bk clone --compat $Q . ../side.ascii
+
+# ascii files don't have 1.1 marks
+cd ../merge
+bk pull $Q ../side.ascii
+# but we added the mark during the merge
+bk _heapdump -e ChangeSet | grep -q newfile || fail missing mark
+echo OK
+
 echo $N Test that delta/new are implied with stdin ..................$NL
 cd "$HERE"
 commercial proj-cm

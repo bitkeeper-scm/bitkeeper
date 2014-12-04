@@ -1,0 +1,168 @@
+Intro to binary weave
+---------------------
+
+With the binary sfile format we also enable BWEAVE in the ChangeSet
+file.
+
+With BWEAVE the ChangeSet weave section of the `s.ChangeSet` file is
+empty, instead each cset delta gets a `WEAVE()` offset where the weave
+is stored in the heap.
+
+`WEAVE_INDEX(s, d) == offset` in heap for the weave part of this delta
+
+List of rootkeys
+~~~~~~~~~~~~~~~~
+
+The rootkeys included in the ChangeSet weave occur multiple times so
+they are only stored once in the heapfile.  This is done using a
+linked list of rootkeys in the heap.  The field `s->rkeyHead` is
+loaded from the `sccs_perfile()` section of the `s.ChangeSet` file and
+points at the most recently added rootkey in the file. The rootkeys
+are stored in the heap as a u32 binary offset to the next key followed
+by the actual null terminated key.  As follows:
+
+ <u32 nextkey><rootkey>\0
+
+The last key in the list has a 0 for the nextkey pointer.
+
+When a new file is to be added for a commit, list is walked to find
+the existing rootkey. See the link:HEAPFILE.html[HEAPFILE] for more
+information on how this information is optimized.
+
+BWEAVEv2
+~~~~~~~~
+
+The original binary weave format is known as BWEAVEv2 and includes a
+repository feature bit.  The heap at that offset contains at list of
+rootkey/deltakey pairs, the rootkeys are stored as offsets to the heap
+so they can be deduplicated. The deltakeys are stored null-terminated
+directly in the heap. The end of the list is marked by a 0 rootkey
+offset.
+
+ <rk1 off><dk1 ...>\0
+ <rk2 off><dk2 ...>\0
+ <0 u32>
+
+The rootkey offset in the weave points at the 'nextkey' field of the
+rootkey linked list.  So the actual rootkey is at `HEAP(s, off+4)`.
+
+This format shipped in bk-6 .
+
+BWEAVEv3
+~~~~~~~~
+
+In v3 the format of the binary weave changes.  Now both the rootkeys
+and the delta keys are stored loose in the heap and the actual weave
+data is just rk/dk pairs written as 32-bit offsets.
+
+ <rk1 off><dk1 off>
+ <rk2 off><dk2 off>
+ <0 u32>			# no deltakey here
+
+In this version both offsets point directly at the keys and so for the
+rootkey the offset is right after the 'nextkey' field.
+
+This is larger than BWEAVEv2 as it uses 4 more byte per line in the
+weave. It also means that when reading the entire weave we stride two
+regions of memory instead of just one.  But in the case where the cset
+weave needs to be scanned for certain rootkeys, the size of the data
+to be traversed is significantly smaller.
+
+The difference between BWEAVEv2 and BWEAVEv3 can be see by looking at
+the heap usage on the ChangeSet file on the linux-2.6 repository.
+
+* BWEAVEv2
+
+ sfile: 11.4M->31.8M
+ heap1: 87.1M->207M
+     cludes:   2.19M  1.1%  25694  89.3
+   comments:    122M 59.1% 297952 429.4
+      weave:   75.4M 36.5% 281343 281.1
+     random:      17  0.0%      1  17.0
+   userhost:    919K  0.4%  28768  32.7
+   pathname:      10  0.0%      1  10.0
+       zone:     147  0.0%     21   7.0
+   csetFile:      78  0.0%      1  78.0
+   symnames:   1.86K  0.0%    192   9.9
+   rootkeys:   5.46M  2.6%  54890 104.2
+   uniqhash:    512K  0.2%
+     unused:     130  0.0%
+   table1:   4.55M
+   table2:   27.3M
+  symlist:   2.29K
+
+* BWEAVEv3
+
+ sfile: 11.3M->31.8M
+ heap1: 93.0M->210M
+     cludes:   2.19M  1.0%  25694  89.3
+   comments:    122M 58.0% 297952 429.4
+      weave:   8.61M  4.1% 281343  32.1
+     random:      17  0.0%      1  17.0
+   userhost:    919K  0.4%  28768  32.7
+   pathname:      10  0.0%      1  10.0
+       zone:     147  0.0%     21   7.0
+   csetFile:      78  0.0%      1  78.0
+  deltakeys:   70.8M 33.7% 988490  75.2
+   symnames:   1.86K  0.0%    192   9.9
+   rootkeys:   5.46M  2.6%  54890 104.2
+   uniqhash:    512K  0.2%
+     unused:       0  0.0%
+   table1:   4.55M
+   table2:   27.3M
+  symlist:   2.29K
+
+NOTE: The 75M weave was replaced with a 8.6M weave and a 71M
+      table of delta keys.
+
+Upgrading to BWEAVEv3
+~~~~~~~~~~~~~~~~~~~~~
+
+For traditional ascii and BWEAVEv2, sfiles the upgrade path in identical.
+Clone with `--upgrade` will write a BKFILE `s.ChangeSet` file and enable
+BWEAVEv3.
+
+To revert to an ascii repository `bk clone --compat` continues to
+work. To revert to a BWEAVEv2 repository the user would need to use
+`--compat` with the new bk and then `--upgrade` with bk-6.x.
+
+Implementation details
+~~~~~~~~~~~~~~~~~~~~~~
+
+For ascii ChangeSet files the existing ascii weave is walked
+unconditionally at the end of `sccs_init()`. Then the weave is built
+on the fly into the in-memory copy of the heap. When writing an ascii
+ChangeSet weave the `sccs_nextdata()` function produces the old ascii
+weave on the fly.  This means the BitKeeper is actually slower when
+reading ascii repositories with big ChangeSet files.  This is most
+noticiable when running commands that read information from the delta
+table of the ChangeSet file, like in the GUI tools.
+
+The reading and write v2 vs. v3 is hidden in the RKDKOFF macro on
+the read side and weave_set() function on the write side.
+
+If the format that is read differs from the format written, then
+weave_cvt() will be called to generate v3 and weave_cvt2() will
+be called to generate v2.
+
+Storing 1.0 markers in the weave
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Commands like rset can be made faster if the cset weave indicated when
+a new file was created. Currently you have to walk the entire weave to
+know that a given rootkey will not be used again.
+
+As part of the BWEAVEv3 code, the weave encoding can also include
+markers like this:
+
+ <u32 rkoff><u32 dkoff>   # normal rootkey/deltakey part for 1.1
+ <u32 rkoff><u32 0>	  # 0 means this rootkey won't appear again
+
+So the last time each rootkey appears in the weave we have an
+additional weave line that mark this.  This always code looking for
+information about a certain file to stop processing the weave when no
+more history for that file appears.
+
+This information is added to the weave by commit, takepatch and repack.
+At the moment the information is advisory.  The marker isn't always
+present, but if it is present it is correct.  Check verifies that.

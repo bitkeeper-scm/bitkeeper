@@ -56,8 +56,10 @@ echo data > base
 bk delta $Q -fyuniq base
 bk mv base project
 touch new.project
-bk new $Q new.project
+bk new $Q -l new.project
 bk commit $Q --tag=TWO -f
+bk delta $Q -fynull new.project
+bk commit $Q -f
 cd ../copy
 bk edit $Q base
 bk delta $Q -fyuniq base
@@ -448,7 +450,7 @@ bam|bam|1.1
 merge|copy|1.1.1.2
 new.copy|new.copy|1.1
 # bk rset -rFOUR
-ChangeSet|1.3,1.2.1.1..1.4
+ChangeSet|1.4,1.2.1.1..1.5
 merge|1.3,1.1.1.2..1.5
 # bk rset -lFOUR
 ChangeSet|FOUR
@@ -460,7 +462,7 @@ BitKeeper/triggers/pre-delta|1.2
 bam|1.1
 merge|1.5
 new.copy|1.1
-new.project|1.1
+new.project|1.2
 # bk rset -HrFOUR
 merge|1.3,1.1.1.2..1.5
 # bk rset -HlFOUR
@@ -472,9 +474,9 @@ BitKeeper/triggers/pre-delta|1.2
 bam|1.1
 merge|1.5
 new.copy|1.1
-new.project|1.1
+new.project|1.2
 # bk rset -hrFOUR
-ChangeSet|ChangeSet|1.3|ChangeSet|1.2.1.1|ChangeSet|1.4
+ChangeSet|ChangeSet|1.4|ChangeSet|1.2.1.1|ChangeSet|1.5
 merge|project|1.3|copy|1.1.1.2|merge|1.5
 # bk rset -hlFOUR
 ChangeSet|ChangeSet|FOUR
@@ -486,7 +488,7 @@ BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
 bam|bam|1.1
 merge|merge|1.5
 new.copy|new.copy|1.1
-new.project|new.project|1.1
+new.project|new.project|1.2
 # bk rset -hHrFOUR
 merge|project|1.3|copy|1.1.1.2|merge|1.5
 # bk rset -hHlFOUR
@@ -498,9 +500,9 @@ BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
 bam|bam|1.1
 merge|merge|1.5
 new.copy|new.copy|1.1
-new.project|new.project|1.1
+new.project|new.project|1.2
 # bk rset -arFOUR
-ChangeSet|1.3,1.2.1.1..1.4
+ChangeSet|1.4,1.2.1.1..1.5
 merge|1.3,1.1.1.2..1.5
 # bk rset -alFOUR
 ChangeSet|FOUR
@@ -514,7 +516,7 @@ BitKeeper/triggers/pre-delta|1.2
 bam|1.1
 merge|1.5
 new.copy|1.1
-new.project|1.1
+new.project|1.2
 # bk rset -aHrFOUR
 merge|1.3,1.1.1.2..1.5
 # bk rset -aHlFOUR
@@ -528,9 +530,9 @@ BitKeeper/triggers/pre-delta|1.2
 bam|1.1
 merge|1.5
 new.copy|1.1
-new.project|1.1
+new.project|1.2
 # bk rset -ahrFOUR
-ChangeSet|ChangeSet|1.3|ChangeSet|1.2.1.1|ChangeSet|1.4
+ChangeSet|ChangeSet|1.4|ChangeSet|1.2.1.1|ChangeSet|1.5
 merge|project|1.3|copy|1.1.1.2|merge|1.5
 # bk rset -ahlFOUR
 ChangeSet|ChangeSet|FOUR
@@ -544,7 +546,7 @@ BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
 bam|bam|1.1
 merge|merge|1.5
 new.copy|new.copy|1.1
-new.project|new.project|1.1
+new.project|new.project|1.2
 # bk rset -ahHrFOUR
 merge|project|1.3|copy|1.1.1.2|merge|1.5
 # bk rset -ahHlFOUR
@@ -558,7 +560,7 @@ BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
 bam|bam|1.1
 merge|merge|1.5
 new.copy|new.copy|1.1
-new.project|new.project|1.1
+new.project|new.project|1.2
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -657,41 +659,41 @@ merge|project|1.3|copy|1.1.1.2
 new.copy|new.copy|1.0|new.copy|1.1
 new.project|new.project|1.1|new.project|1.0
 # bk rset -rTHREE..FOUR
-ChangeSet|1.2.1.1..1.4
+ChangeSet|1.2.1.1..1.5
 ${RMNAME}|1.1..1.2
 merge|1.1.1.2..1.5
-new.project|1.0..1.1
+new.project|1.0..1.2
 # bk rset -HrTHREE..FOUR
 ${RMNAME}|1.1..1.2
 merge|1.1.1.2..1.5
-new.project|1.0..1.1
+new.project|1.0..1.2
 # bk rset -hrTHREE..FOUR
-ChangeSet|ChangeSet|1.2.1.1|ChangeSet|1.4
+ChangeSet|ChangeSet|1.2.1.1|ChangeSet|1.5
 ${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|copy|1.1.1.2|merge|1.5
-new.project|new.project|1.0|new.project|1.1
+new.project|new.project|1.0|new.project|1.2
 # bk rset -hHrTHREE..FOUR
 ${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|copy|1.1.1.2|merge|1.5
-new.project|new.project|1.0|new.project|1.1
+new.project|new.project|1.0|new.project|1.2
 # bk rset -arTHREE..FOUR
-ChangeSet|1.2.1.1..1.4
+ChangeSet|1.2.1.1..1.5
 ${RMNAME}|1.1..1.2
 merge|1.1.1.2..1.5
-new.project|1.0..1.1
+new.project|1.0..1.2
 # bk rset -aHrTHREE..FOUR
 ${RMNAME}|1.1..1.2
 merge|1.1.1.2..1.5
-new.project|1.0..1.1
+new.project|1.0..1.2
 # bk rset -ahrTHREE..FOUR
-ChangeSet|ChangeSet|1.2.1.1|ChangeSet|1.4
+ChangeSet|ChangeSet|1.2.1.1|ChangeSet|1.5
 ${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|copy|1.1.1.2|merge|1.5
-new.project|new.project|1.0|new.project|1.1
+new.project|new.project|1.0|new.project|1.2
 # bk rset -ahHrTHREE..FOUR
 ${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|copy|1.1.1.2|merge|1.5
-new.project|new.project|1.0|new.project|1.1
+new.project|new.project|1.0|new.project|1.2
 EOF
 cmpfiles WANT GOT1
 echo OK
@@ -839,7 +841,7 @@ Kmerge=`bk prs -hr+ -d:MD5KEY: merge`
 # For files, the newer of the PARENT and MPARENT is used
 bk rset --compat -rFOUR > GOT
 cat <<EOF > WANT
-ChangeSet|1.3+1.2.1.1..1.4
+ChangeSet|1.4+1.2.1.1..1.5
 merge|$Kcopy..$Kmerge
 EOF
 cmpfiles WANT GOT
@@ -847,14 +849,14 @@ cmpfiles WANT GOT
 # that have a PARENT and MPARENT that aren't in the history of each other
 bk rset -rFOUR > GOT
 cat <<EOF > WANT
-ChangeSet|1.3,1.2.1.1..1.4
+ChangeSet|1.4,1.2.1.1..1.5
 merge|$Kproject,$Kcopy..$Kmerge
 EOF
 cmpfiles WANT GOT
 # old history assumes same name for PARENT and MPARENT
 bk rset --compat -hrFOUR > GOT
 cat <<EOF > WANT
-ChangeSet|ChangeSet|1.3+1.2.1.1|ChangeSet|1.4
+ChangeSet|ChangeSet|1.4+1.2.1.1|ChangeSet|1.5
 merge|copy|$Kcopy|merge|$Kmerge
 EOF
 cmpfiles WANT GOT
@@ -864,7 +866,7 @@ cmpfiles WANT GOT
 #   ChangeSet|ChangeSet|1.3|ChangeSet|1.2.1.1..ChangeSet|1.4
 bk rset -hrFOUR > GOT
 cat <<EOF > WANT
-ChangeSet|ChangeSet|1.3|ChangeSet|1.2.1.1|ChangeSet|1.4
+ChangeSet|ChangeSet|1.4|ChangeSet|1.2.1.1|ChangeSet|1.5
 merge|project|$Kproject|copy|$Kcopy|merge|$Kmerge
 EOF
 cmpfiles WANT GOT
@@ -872,14 +874,14 @@ cmpfiles WANT GOT
 # the merge does not alter the content of file 'merge', yet it is listed
 bk rset --compat --elide -rFOUR > GOT
 cat <<EOF > WANT
-ChangeSet|1.3+1.2.1.1..1.4
+ChangeSet|1.4+1.2.1.1..1.5
 merge|$Kcopy..$Kmerge
 EOF
 cmpfiles WANT GOT
 # new elide -- does an sccs merge of the sides, and diffs that: no 'merge'
 bk rset --elide -rFOUR > GOT
 cat <<EOF > WANT
-ChangeSet|1.3,1.2.1.1..1.4
+ChangeSet|1.4,1.2.1.1..1.5
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -897,27 +899,31 @@ bk rset --no-print --stats -rTHREE..FOUR 2>> GOT || fail -f GOT
 # weave from start, including inactive, with the same termination
 # criteria (which is why line 3 is not 15).
 cat <<EOF > WANT
-      15 weave data lines read in repo for 1.4
+       8 weave data lines read in repo for 1.5
+       9 weave data lines read in repo for 1.5
+       9 weave data lines read in repo for 1.5
+
+       6 weave data lines read in repo for 1.2.1.1
+       6 weave data lines read in repo for 1.2.1.1
+      12 weave data lines read in repo for 1.2.1.1
+
+       2 weave data lines read in repo for 1.4
+       2 weave data lines read in repo for 1.4
        6 weave data lines read in repo for 1.4
-       6 weave data lines read in repo for 1.4
 
-      11 weave data lines read in repo for 1.2.1.1
-      11 weave data lines read in repo for 1.2.1.1
-      15 weave data lines read in repo for 1.2.1.1
+       9 weave data lines read in repo for 1.3
+       9 weave data lines read in repo for 1.3
+      14 weave data lines read in repo for 1.3
 
-      12 weave data lines read in repo for 1.3
-      12 weave data lines read in repo for 1.3
-      15 weave data lines read in repo for 1.3
+       8 weave data lines read in repo for 1.2
+       8 weave data lines read in repo for 1.2
+      17 weave data lines read in repo for 1.2
 
-       9 weave data lines read in repo for 1.2
-       9 weave data lines read in repo for 1.2
-      15 weave data lines read in repo for 1.2
+      10 weave data lines read in repo for 1.1
+      10 weave data lines read in repo for 1.1
+      27 weave data lines read in repo for 1.1
 
-       5 weave data lines read in repo for 1.1
-       5 weave data lines read in repo for 1.1
-      15 weave data lines read in repo for 1.1
-
-      14 weave data lines read in repo for 1.4
+      12 weave data lines read in repo for 1.5
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -932,7 +938,34 @@ do	bk rset --no-print --stats --checksum -r$rev || fail
 	echo 1>&2
 done 2> GOT || fail -f GOT
 bk rset --no-print --stats -rTHREE..FOUR 2>> GOT || fail -f GOT
-cmpfiles ../copy/WANT GOT
+cat <<EOF > WANT
+      16 weave data lines read in repo for 1.5
+       7 weave data lines read in repo for 1.5
+       7 weave data lines read in repo for 1.5
+
+      11 weave data lines read in repo for 1.2.1.1
+      11 weave data lines read in repo for 1.2.1.1
+      16 weave data lines read in repo for 1.2.1.1
+
+       2 weave data lines read in repo for 1.4
+       2 weave data lines read in repo for 1.4
+       5 weave data lines read in repo for 1.4
+
+      12 weave data lines read in repo for 1.3
+      12 weave data lines read in repo for 1.3
+      16 weave data lines read in repo for 1.3
+
+       9 weave data lines read in repo for 1.2
+       9 weave data lines read in repo for 1.2
+      16 weave data lines read in repo for 1.2
+
+       5 weave data lines read in repo for 1.1
+       5 weave data lines read in repo for 1.1
+      16 weave data lines read in repo for 1.1
+
+      15 weave data lines read in repo for 1.5
+EOF
+cmpfiles WANT GOT
 echo OK
 
 echo $N Test --checksum on repo with gone data ......................$NL

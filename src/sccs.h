@@ -216,20 +216,40 @@ int	checking_rmdir(char *dir);
  * Bit 0 and 1 are data encoding
  * Bit 2 is compression mode (gzip or none)
  * Bit 3 is binary file format
+ * Bit 4 and 5 are weave format
  */
 #define	E_ALWAYS	0x1000		/* set so encoding is non-zero */
-#define E_DATAENC	0x3
-#define E_COMP		0x4
 
+#define E_DATAENC	0x3
 #define	E_ASCII		0x00		/* no encoding */
 #define	E_UUENCODE	0x01		/* uuenecode it (traditional) */
 #define	E_BAM		0x02		/* store data in BAM pool */
+#define	ASCII(s)	(((s)->encoding_in & E_DATAENC) == E_ASCII)
+#define	BINARY(s)	(((s)->encoding_in & E_DATAENC) != E_ASCII)
+#define	BAM(s)		(((s)->encoding_in & E_DATAENC) == E_BAM)
+#define	UUENCODE(s)	(((s)->encoding_in & E_DATAENC) == E_UUENCODE)
+
+#define E_COMP		0x4
 #define	E_GZIP		0x04		/* gzip the data */
+#define	GZIP(s)		(((s)->encoding_in & E_COMP) == E_GZIP)
+#define	GZIP_OUT(s)	(((s)->encoding_out & E_COMP) == E_GZIP)
+
 #define	E_BK		0x08		/* new binary sfile format */
-#define	E_BWEAVE	0x10		/* binary weave encoding */
+#define	BKFILE(s)	(((s)->encoding_in & E_BK) != 0)
+#define	BKFILE_OUT(s)	(((s)->encoding_out & E_BK) != 0)
+
+#define	E_WEAVE		0x030
+#define	E_AWEAVE	0x000		/* ascii weave encoding */
+#define	E_BWEAVE2	0x010		/* old binary weave encoding */
+#define	E_BWEAVE3	0x020		/* binary weave encoding */
+#define	BWEAVE(s)	(((s)->encoding_in & E_WEAVE) != E_AWEAVE)
+#define	BWEAVE2(s)	(((s)->encoding_in & E_WEAVE) == E_BWEAVE2)
+#define	BWEAVE3(s)	(((s)->encoding_in & E_WEAVE) == E_BWEAVE3)
+#define	BWEAVE2_OUT(s)	(((s)->encoding_out & E_WEAVE) == E_BWEAVE2)
+#define	BWEAVE_OUT(s)	(((s)->encoding_out & E_WEAVE) != E_AWEAVE)
 
 // mask of bits used for sfile format that map to feature bits
-#define	E_FILEFORMAT	(E_BK|E_BWEAVE)
+#define	E_FILEFORMAT	(E_BK|E_WEAVE)
 
 #define	HAS_GFILE(s)	((s)->state & S_GFILE)
 #define	HAS_PFILE(s)	((s)->state & S_PFILE)
@@ -238,16 +258,6 @@ int	checking_rmdir(char *dir);
 #define	WRITABLE(s)	((s)->mode & 0200)
 #define EDITED(s)	((((s)->state&S_EDITED) == S_EDITED) && WRITABLE(s))
 #define LOCKED(s)	(((s)->state&S_LOCKED) == S_LOCKED)
-#define	ASCII(s)	(((s)->encoding_in & E_DATAENC) == E_ASCII)
-#define	BINARY(s)	(((s)->encoding_in & E_DATAENC) != E_ASCII)
-#define	BAM(s)		(((s)->encoding_in & E_DATAENC) == E_BAM)
-#define	UUENCODE(s)	(((s)->encoding_in & E_DATAENC) == E_UUENCODE)
-#define	GZIP(s)		(((s)->encoding_in & E_COMP) == E_GZIP)
-#define	GZIP_OUT(s)	(((s)->encoding_out & E_COMP) == E_GZIP)
-#define	BKFILE(s)	(((s)->encoding_in & E_BK) != 0)
-#define	BKFILE_OUT(s)	(((s)->encoding_out & E_BK) != 0)
-#define	BWEAVE(s)	(((s)->encoding_in & E_BWEAVE) != 0)
-#define	BWEAVE_OUT(s)	(((s)->encoding_out & E_BWEAVE) != 0)
 #define	CSET(s)		((s)->state & S_CSET)
 #define	CONFIG(s)	((s)->state & S_CONFIG)
 #define	READ_ONLY(s)	((s)->state & S_READ_ONLY)
@@ -784,7 +794,7 @@ struct sccs {
 	u32	uniq1init:1;	/* we have looked for uniq1 in heap? */
 	u32	uniq2keys:1;	/* rkeys loaded in uniq2 */
 	u32	uniq2deltas:1;	/* deltas loaded in uniq2 */
-};
+}; /* struct sccs */
 
 typedef struct {
 	int	flags;		/* ADD|DEL|FORCE */
@@ -994,11 +1004,23 @@ typedef struct {
 u32	_heap_u32load(void *ptr);
 
 #define	HEAP(s, off)	((s)->heap.buf + (off))
-#define	RKOFF(s, off)	(HEAP_U32LOAD(HEAP(s, off)))
-#define	RKNEXT(s, off)	RKOFF(s, off)
-#define	KEYSTR(off)	((off) + sizeof(u32))
-/* Given an offset, skip to the next consecutive key */
-#define	NEXTKEY(s, off)	(KEYSTR(off) + strlen(HEAP(s, KEYSTR(off))) + 1)
+#define	KOFF(s, off)	(HEAP_U32LOAD(HEAP(s, off)))
+
+/* while (off = RKDKOFF(s, off, rkoff, dkoff)) {} */
+#define	RKDKOFF(s, off, rkoff, dkoff)					\
+	({	u32 _ret;						\
+		unless ((rkoff) = KOFF(s, (off))) {			\
+			_ret = 0;					\
+		} else if (BWEAVE2(s)) {				\
+			(rkoff) += 4;					\
+			(dkoff) = (off) + 4;				\
+			_ret = (off) + 4 + strlen(HEAP(s, dkoff)) + 1;	\
+		} else {						\
+			(dkoff) = KOFF(s, (off)+4);			\
+			_ret = (off) + 8;				\
+		}							\
+		_ret;							\
+	})
 
 int	sccs_admin(sccs *sc, ser_t d, u32 flgs,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
@@ -1327,6 +1349,8 @@ int	cset_write(sccs *s, int spinners, int fast);
 sccs	*cset_fixLinuxKernelChecksum(sccs *s);
 int	cweave_init(sccs *s, int extras);
 void	weave_set(sccs *s, ser_t d, char **keys);
+void	weave_cvt(sccs *s);
+void	weave_updateMarker(sccs *s, ser_t d, u32 rk, int add);
 int	isNullFile(char *rev, char *file);
 u32	rset_checksum(sccs *cset, ser_t d, ser_t base);
 unsigned long	ns_sock_host2ip(char *host, int trace);
@@ -1425,9 +1449,7 @@ int	restore_backup(char *backup_sfio, int overwrite);
 char	*parent_normalize(char *);
 int	annotate_args(int flags, char *args);
 void	platformInit(char **av);
-int	sccs_csetPatchWeave(sccs *s);
-int	sccs_fastWeave(sccs *s, ser_t *weavemap, ser_t *patchmap,
-	    FILE *fastpatch);
+int	sccs_fastWeave(sccs *s, FILE *fastpatch);
 void	sccs_clearbits(sccs *s, u32 flags);
 MDBM	*db_load(char *gfile, sccs *s, char *rev, MDBM *m);
 int	db_sort(char *gfile_in, char *gfile_out);
@@ -1543,8 +1565,9 @@ void	bk_setConfig(char *key, char *val);
 u32	sccs_addStr(sccs *s, char *str);
 void	sccs_appendStr(sccs *s, char *str);
 u32	sccs_addUniqStr(sccs *s, char *str);
-u32	sccs_addUniqKey(sccs *s, char *key);
+u32	sccs_addUniqRootkey(sccs *s, char *key);
 u32	sccs_hasRootkey(sccs *s, char *key);
+void	sccs_loadHeapMeta(sccs *s);
 typedef	struct MAP MAP;
 void	*dataAlloc(u32 esize, u32 nmemb);
 void	datamap(char *name, void *start, int len,

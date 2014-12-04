@@ -498,4 +498,44 @@ hash_deleteStr(hash *h, char *key)
 	return (h->ops->delete(h, key, strlen(key) + 1));
 }
 
+private inline u32
+hash_fetchU32U32(hash *h, u32 key)
+{
+	unless (h) {
+		errno = EINVAL;
+		return (0);
+	}
+	if (h->ops->fetch(h, &key, sizeof(key))) {
+		return (*(u32 *)h->vptr);
+	} else {
+		/*
+		 * Return 0 when the key isn't found.  The user can
+		 * test h->kptr to distingush from a real 0 stored in
+		 * the hash.
+		 */
+		return (0);
+	}
+}
+
+private inline u32 *
+hash_insertU32U32(hash *h, u32 key, u32 val)
+{
+	assert(h);
+	return (h->ops->insert(h, &key, sizeof(key), &val, sizeof(val)));
+}
+
+private inline u32 *
+hash_storeU32U32(hash *h, u32 key, u32 val)
+{
+	assert(h);
+	return (h->ops->store(h, &key, sizeof(key), &val, sizeof(val)));
+}
+
+private inline int
+hash_deleteU32(hash *h, u32 key)
+{
+	assert(h);
+	return (h->ops->delete(h, &key, sizeof(key)));
+}
+
 #endif

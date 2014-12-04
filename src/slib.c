@@ -1971,20 +1971,18 @@ sccs_rdweaveInit(sccs *s)
 {
 	char	*t;
 
-	TRACE("%s GZIP=%d BWEAVE=%d",
-	    s->gfile, (GZIP(s) != 0), (BWEAVE(s) != 0));
+	TRACE("%s GZIP=%d",
+	    s->gfile, (GZIP(s) != 0));
 	s->rdweaveEOF = 0;
 	assert(!s->rdweave);
 	s->rdweave = 1;
-	if (CSET(s)) T_PERF("%s", s->gfile);
-	s->w_d = TABLE(s);	/* default start */
-	if (BWEAVE(s)) {
+	if (CSET(s)) {
 		s->w_off = 0;
 		s->w_buf = malloc(2*MAXKEY + 64);
 		s->w_reverse = 0;
+		s->w_d = TABLE(s);	/* default start */
+		T_PERF("%s", s->gfile);
 		return;
-	} else {
-		s->w_cur = TABLE(s);
 	}
 	unless (s->fh) {
 		if (sccs_open(s)) {
@@ -2049,31 +2047,31 @@ sccs_nextdata(sccs *s)
 {
 	char	*buf;
 	size_t	i;
-	u32	rkoff;
+	u32	rkoff, dkoff;
 
-	if (s->rdweave && BWEAVE(s)) {
+	if (s->rdweave && CSET(s)) {
 		buf = s->w_buf;
 		if (s->w_off) {
-			if (rkoff = RKOFF(s, s->w_off)) {
+next:			if ((s->w_off != 1) &&
+			    (s->w_off = RKDKOFF(s, s->w_off, rkoff, dkoff))) {
+				/* skip last key markers */
+				unless (dkoff) goto next;
 				sprintf(buf, "%s %s",
-				    HEAP(s, KEYSTR(rkoff)),
-				    HEAP(s, KEYSTR(s->w_off)));
-				s->w_off = NEXTKEY(s, s->w_off);
+				    HEAP(s, rkoff), HEAP(s, dkoff));
 			} else {
 				sprintf(buf, "\001E %d", s->w_d);
 				--s->w_d;
 				s->w_off = 0;
 			}
 		} else {
-			while (s->w_d &&
-			    !(s->w_off = WEAVE_INDEX(s, s->w_d))) {
-				--s->w_d;
-			}
 			if (s->w_d) {
+				unless (s->w_off = WEAVE_INDEX(s, s->w_d)) {
+					s->w_off = 1;	/* empty weave */
+				}
 				sprintf(buf, "\001I %d", s->w_d);
 			} else {
 				s->rdweaveEOF = 1;
-				buf = 0;
+				return (0);
 			}
 		}
 	} else {
@@ -2087,7 +2085,7 @@ sccs_nextdata(sccs *s)
 			fprintf(stderr,
 			    "error, truncated sccs file '%s', exiting.\n",
 			    s->sfile);
-			abort();
+			exit(1);
 		}
 		buf[i] = 0;
 	}
@@ -2117,84 +2115,38 @@ sccs_nextdata(sccs *s)
 ser_t
 cset_rdweavePair(sccs *s, u32 flags, u32 *rkoff, u32 *dkoff)
 {
-	char	*buf, *dk;
+	ser_t	d;
 
 	assert(CSET(s) && s->rdweave);
-	if (BWEAVE(s)) {
-		ser_t	d;
-		u32	roff;
-
-		for (d = s->w_d;
-		    (s->w_reverse ? (d <= TABLE(s)) : (d >= TREE(s)));
-		    (s->w_reverse ? d++ : d--)) {
-			if ((flags & RWP_DSET) && !(FLAGS(s, d) & D_SET)) {
-				assert(!s->w_off);
-				continue;
-			}
-			unless (s->w_off || (s->w_off = WEAVE_INDEX(s, d))) {
-				/* skip tags and empty csets */
-				if (flags & RWP_ONE) {
-					s->w_d = s->w_reverse ? ++d : --d;
-					return (0);
-				}
-				continue;
-			}
-			if (roff = RKOFF(s, s->w_off)) {
-				*rkoff = KEYSTR(roff);
-				*dkoff = KEYSTR(s->w_off);
-				s->w_off = NEXTKEY(s, s->w_off);
-				s->w_d = d;
-				return (d);
-			}
-			s->w_off = 0;
+	for (d = s->w_d;
+	     (s->w_reverse ? (d <= TABLE(s)) : (d >= TREE(s)));
+	     (s->w_reverse ? d++ : d--)) {
+		if ((flags & RWP_DSET) && !(FLAGS(s, d) & D_SET)) {
+			assert(!s->w_off);
+			continue;
+		}
+		unless (s->w_off || (s->w_off = WEAVE_INDEX(s, d))) {
+			/* skip tags and empty csets */
 			if (flags & RWP_ONE) {
 				s->w_d = s->w_reverse ? ++d : --d;
 				return (0);
 			}
+			continue;
 		}
-		s->w_d = 0;
-		s->w_off = 0;
-		s->w_reverse = 0;
-		s->rdweaveEOF = 1;
-		return (0);
-	}
-	/* Old style cset weave */
-again:	if ((flags & RWP_ONE) && (s->w_cur < s->w_d)) {
-		assert(!s->w_reverse);
-		s->w_d--;
-		return (0);
-	}
-
-	unless (buf = fgetline(s->fh)) {
-eof:		s->rdweaveEOF = 1;
-		return (0);
-	}
-	if (buf[0] == '\001') {
-		if (buf[1] == 'I') {
-			s->w_cur = atoi(buf+3);
-			if (s->remap) s->w_cur = s->remap[s->w_cur];
-			goto again;
-		} else if (buf[1] == 'E') {
-			s->w_cur--;
-			goto again;
-		} else if (buf[1] == 'Z') {
-			goto eof;
-		} else if (buf[1] == '\001') {
-			buf += 1;
-		} else {
-			assert(0);
+		if (s->w_off = RKDKOFF(s, s->w_off, *rkoff, *dkoff)) {
+			s->w_d = d;
+			return (d);
+		}
+		if (flags & RWP_ONE) {
+			s->w_d = s->w_reverse ? ++d : --d;
+			return (0);
 		}
 	}
-	assert(s->w_d && s->w_cur);
-	if (s->w_cur > s->w_d) goto again;
-	s->w_d = s->w_cur;
-	if ((flags & RWP_DSET) && !(FLAGS(s, s->w_d) & D_SET)) goto again;
-	dk = separator(buf);
-	*dk++ = 0;
-	/* mimic BWEAVE by storing keys on heap and returning offsets */
-	*rkoff = sccs_addUniqStr(s, buf);
-	*dkoff = sccs_addUniqStr(s, dk);
-	return (s->w_d);
+	s->w_d = 0;
+	s->w_off = 0;
+	s->w_reverse = 0;
+	s->rdweaveEOF = 1;
+	return (0);
 }
 
 /*
@@ -2204,7 +2156,7 @@ eof:		s->rdweaveEOF = 1;
 void
 cset_firstPairReverse(sccs *s, ser_t first)
 {
-	assert(BWEAVE(s));
+	assert(s->rdweave && CSET(s));
 	s->w_d = first;
 	s->w_off = 0;
 	s->w_reverse = 1;
@@ -2234,17 +2186,17 @@ sccs_rdweaveDone(sccs *s)
 	assert(s->rdweave);
 	s->rdweave = 0;
 	unless (s->rdweaveEOF) ret = 1;
-	if (BWEAVE(s)) {
+	if (CSET(s)) {
 		FREE(s->w_buf);
 		s->w_d = 0;
 		s->w_off = 0;
+		T_PERF("%s", s->gfile);
 	} else {
 		ret = ferror(s->fh);
+		if (GZIP(s)) ret = fpop(&s->fh);
 	}
-	if (GZIP(s)) ret = fpop(&s->fh);
 	TRACE("ret=%d GZIP=%d BWEAVE=%d",
 	    ret, (GZIP(s) != 0), (BWEAVE(s) != 0));
-	if (CSET(s)) T_PERF("%s", s->gfile);
 	return (ret);
 }
 
@@ -2261,8 +2213,25 @@ sccs_startWrite(sccs *s)
 	int	fd;
 
 	T_SCCS("file=%s", s->gfile);
-	unless (s->encoding_out) {
-		s->encoding_out = sccs_encoding(s, 0, 0);
+	unless (s->encoding_out) s->encoding_out = sccs_encoding(s, 0, 0);
+	if (CSET(s) && (s->encoding_in != s->encoding_out)) {
+		/* mark code paths we don't want to support */
+		if (BKFILE_OUT(s) && !BWEAVE_OUT(s)) {
+			fprintf(stderr,
+			    "%s: cannot create BK cset file without bweave\n",
+			    prog);
+			return (0);
+		}
+		/*
+		 * If the format of the BWEAVE changes then it needs
+		 * to be converted in memory first. Note that ascii
+		 * ChangeSet files use BWEAVE3 in memory so this
+		 * happens when upgrading ascii to bweave2 but not
+		 * when upgrading ascii to bweave3.
+		 * ascii->bweave2 can only happen when populating a
+		 * component.
+		 */
+		if (BWEAVE2(s) != BWEAVE2_OUT(s)) weave_cvt(s);
 	}
 	xfile = sccsXfile(s, 'x');
 	if (s->mem_out) {
@@ -3449,8 +3418,10 @@ bin_mkgraph(sccs *s)
 
 		assert(CSET(s));
 		/* load heap from SCCS/[12].ChangeSet */
-		f1 = fopen_bkfile(bin_heapfile(s, '1'), "r", 0, chkxor);
-		assert(f1);
+		unless (f1 = fopen_bkfile(bin_heapfile(s, '1'), "r", 0, chkxor)) {
+			perror(bin_heapfile(s, '1'));
+			goto err;
+		}
 		if (fseek(f1, 0, SEEK_END)) {
 			/* XXX seek errors don't show up in ferror()? */
 			assert(!ferror(f1));
@@ -3560,10 +3531,7 @@ err:		fprintf(stderr, "%s: failed to load %s\n", prog, s->sfile);
 			goto err;
 		}
 	}
-	if ((s->heap.len >= 2) && (s->heap.buf[1] == '%')) {
-		s->heapmeta = hash_new(HASH_MEMHASH);
-		hash_fromStr(s->heapmeta, s->heap.buf+2);
-	}
+	sccs_loadHeapMeta(s);
 }
 
 /*
@@ -4846,6 +4814,7 @@ sccs_init(char *name, u32 flags)
 			debug((stderr, "%s doesn't exist\n", s->sfile));
 			s->cksumok = 1;		/* but not done */
 			s->encoding_in = sccs_encoding(s, 0, 0);
+			if (BWEAVE(s)) bin_heapRepack(s);
 			goto out;
 		} else {
 			unless (flags & INIT_NOWARN) {
@@ -4918,9 +4887,48 @@ sccs_init(char *name, u32 flags)
 			if (s->text[i][0] == '@') break;
 		}
 	}
+	if (CSET(s) && !BWEAVE(s)) {
+		char	**keys = 0;
+		char	*dkey;
+
+		/* it is possible for bk-6 to leave garbage in WEAVE ptr */
+		if (BKFILE(s)) {
+			for (d = TABLE(s); d >= TREE(s); d--) {
+				WEAVE_SET(s, d, 0);
+			}
+		}
+
+		/* read the old weave in to memory in the BWEAVE format */
+		s->state &= ~S_CSET; /* trick into read weave */
+		sccs_rdweaveInit(s);
+		while (t = sccs_nextdata(s)) {
+			unless (isData(t)) {
+				if (t[1] == 'I') {
+					d = atoi(t+3);
+					assert(WEAVE_INDEX(s, d) == 0);
+				} else if (keys) {
+					// \001E <ser>
+					// skip null weaves
+					weave_set(s, d, keys);
+					freeLines(keys, free);
+					keys = 0;
+				}
+			} else {
+				unless (dkey = separator(t)) {
+					fprintf(stderr, "bad weave data\n");
+					return (0);
+				}
+				*dkey++ = 0;
+				keys = addLine(keys, strdup(t));
+				keys = addLine(keys, strdup(dkey));
+			}
+		}
+		sccs_rdweaveDone(s);
+		s->state |= S_CSET;
+	}
 	/* test lease after we have PATHNAME(s, TABLE(s)) */
 	lease_check(s->proj, O_RDONLY, s);
-     
+
  out:
 	if (fixstime) sccs_setStime(s, s->stime); /* only make older */
 	return (s);
@@ -8653,42 +8661,6 @@ bin_deltaSum(sccs *s, ser_t d)
 }
 
 /*
- * Read the existing ascii weave and add the data to heap and link
- * to the delta table
- */
-private void
-cvt2bweave(sccs *s)
-{
-	ser_t	d = 0;
-	char	*t, *dkey;
-	char	**keys = 0;
-
-	T_PERF("cvt");
-	bin_heapRepack(s);	/* strip out rdweavePair keys */
-	sccs_rdweaveInit(s);
-	while (t = sccs_nextdata(s)) {
-		unless (isData(t)) {
-			if (t[1] == 'I') {
-				d = atoi(t+3);
-				assert(WEAVE_INDEX(s, d) == 0);
-			} else if (keys) {
-				// \001E <ser>
-				// skip null weaves
-				weave_set(s, d, keys);
-				freeLines(keys, free);
-				keys = 0;
-			}
-		} else {
-			dkey = separator(t);
-			*dkey++ = 0;
-			keys = addLine(keys, strdup(t));
-			keys = addLine(keys, strdup(dkey));
-		}
-	}
-	sccs_rdweaveDone(s);
-}
-
-/*
  * Move 'file' off to the side to be saved and
  * add to the 'save' list.
  */
@@ -8820,8 +8792,6 @@ bin_deltaTable(sccs *s)
 	int	i;
 	FILE	*out = s->outfh; /* cache of s->outfh */
 	FILE	*perfile;
-
-	if ((TABLE(s) > 1) && !BWEAVE(s) && BWEAVE_OUT(s)) cvt2bweave(s);
 
 	if (!CSET(s) && bin_needHeapRepack(s)) bin_heapRepack(s);
 
@@ -12331,7 +12301,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		OUT;
 	}
 	unless (sccs_startWrite(sc)) {
-		fprintf(stderr, "admin: can't create %s: ", sccsXfile(sc, 'x'));
+		fprintf(stderr, "admin: can't create %s\n", sccsXfile(sc, 'x'));
 		OUT;
 	}
 	if (delta_table(sc, 0)) {
@@ -12358,9 +12328,9 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		if (obscure_it) {
 			buf = obscure(rmlicense, UUENCODE(sc), buf);
 		}
-		if (flags & ADMIN_ADD1_0) {
+		if (!CSET(sc) && (flags & ADMIN_ADD1_0)) {
 			fputbumpserial(sc, buf, 1);
-		} else if (flags & ADMIN_RM1_0) {
+		} else if (!CSET(sc) && (flags & ADMIN_RM1_0)) {
 			if (streq(buf, "\001I 1")) {
 				buf = sccs_nextdata(sc);
 				assert(streq(buf, "\001E 1"));
@@ -12403,12 +12373,32 @@ scompressGraph(sccs *s)
 	int	sign;
 	ser_t	d, e, x;
 	ser_t	*remap = 0;
+	hash	*h = 0;
+	u32	rkoff, dkoff;
 
 	growArray(&remap, TABLE(s));
 	assert(f && remap);
+	if (CSET(s)) sccs_rdweaveInit(s);
 	for (e = TREE(s), d = e - 1; e <= TABLE(s); e++) {
 		unless (FLAGS(s, e)) /* <- keep this test */ continue;
+		if (CSET(s)) {
+			cset_firstPair(s, e);
+			while (cset_rdweavePair(s, RWP_ONE, &rkoff, &dkoff)) {
+				if (FLAGS(s, e) & D_GONE) {
+					if (dkoff) continue;
+					unless (h) {
+						h = hash_new(HASH_U32HASH,
+						 sizeof(u32), sizeof(u32));
+					}
+					hash_insertU32U32(h, rkoff, 1);
+				} else if (h && hash_fetchU32U32(h, rkoff)) {
+					*(u32 *)h->vptr = 0;
+					weave_updateMarker(s, e, rkoff, 1);
+				}
+			}
+		}
 		if (FLAGS(s, e) & D_GONE) {
+			/* Then go to end looking for things to tag */
 			freeExtra(s, e);
 			continue;
 		}
@@ -12437,6 +12427,10 @@ scompressGraph(sccs *s)
 			}
 			ftrunc(f, 0);
 		}
+	}
+	if (CSET(s)) {
+		sccs_rdweaveDone(s);
+		hash_free(h);
 	}
 	fclose(f);
 	/* clear old deltas */
@@ -12471,14 +12465,70 @@ struct weave {
 };
 
 int
-sccs_fastWeave(sccs *s, ser_t *weavemap, ser_t *patchmap, FILE *fastpatch)
+sccs_fastWeave(sccs *s, FILE *fastpatch)
 {
 	int	i;
-	ser_t	d;
+	u32	base = 0, index = 0, offset = 0;
+	loc	*lp;
+	ser_t	d, e;
 	weave	*w = 0;
 	int	rc = 0;
+	ser_t	*weavemap = 0;
+	ser_t	*patchmap = 0;
 
 	assert(s);
+	assert(!CSET(s));
+	assert(s->locs);
+	lp = s->locs;
+
+	/*
+	 * weavemap is used to renumber serials in the weave
+	 * map(A) -> B, where map(A) is weavemap[A - map[0]],
+	 * meaning weavemap[0] is A; ie, A maps to itself.
+	 * And serials > A map to a big number to create the
+	 * holes filled in by the new data coming in.
+	 *
+	 * patchmap is addLines mapping patch serial number (1..n) to
+	 * serial to use in the weave.  It does this by being an addLines
+	 * of pointers to d, then uses d->serial to write the weave.
+	 * Note: patchmap could be empty if say, if we are updating
+	 * a dangling delta pointer or cset mark.
+	 */
+	for (i = 1; i < s->iloc; i++) {
+		unless (d = lp[i].serial) {
+			d = D_INVALID;
+			addArray(&patchmap, &d);
+			continue;
+		}
+		addArray(&patchmap, &d);
+		unless (FLAGS(s, d) & D_REMOTE) continue;
+		unless (weavemap) {
+			/*
+			 * allocating more than needed.  We don't know until
+			 * the end how many are wasted: it's in 'offset'.
+			 */
+			base = d - 1;
+			weavemap = (ser_t *)calloc(
+			    (TABLE(s) + 1 - base), sizeof(ser_t));
+			assert(weavemap);
+			index = d;
+			weavemap[0] = base;
+			offset = 0;
+		}
+		while (index + offset < d) {
+			e = index + offset;
+			weavemap[index - base] = e;
+			index++;
+		}
+		offset++;
+	}
+	if (weavemap) {
+		while (index + offset <= TABLE(s)) {
+			e = index + offset;
+			weavemap[index - base] = e;
+			index++;
+		}
+	}
 
 	w = new(weave);
 	w->s = s;
@@ -12490,16 +12540,14 @@ sccs_fastWeave(sccs *s, ser_t *weavemap, ser_t *patchmap, FILE *fastpatch)
 		if ((d = patchmap[i]) == D_INVALID) continue;
 		w->slist[d] = 1;
 	}
-	unless (CSET(s)) {
-		/* transitive close if not the cset file */
-		for (d = TABLE(s); d >= TREE(s); d--) {
-			unless (w->slist[d]) continue;
-			if (PARENT(s, d)) {
-				w->slist[PARENT(s, d)] = 1;
-			}
-			if (MERGE(s, d)) {
-				w->slist[MERGE(s, d)] = 1;
-			}
+	/* transitive close if not the cset file */
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (w->slist[d]) continue;
+		if (PARENT(s, d)) {
+			w->slist[PARENT(s, d)] = 1;
+		}
+		if (MERGE(s, d)) {
+			w->slist[MERGE(s, d)] = 1;
 		}
 	}
 	if (HAS_SFILE(s)) {
@@ -12516,6 +12564,8 @@ sccs_fastWeave(sccs *s, ser_t *weavemap, ser_t *patchmap, FILE *fastpatch)
 	sccs_wrweaveDone(s);
 	if (w->slist) free(w->slist);
 	if (w->state) free(w->state);
+	if (weavemap) free(weavemap);
+	if (patchmap) free(patchmap);
 	free(w);
 	return (rc);
 }
@@ -13172,116 +13222,6 @@ err:
 	if (ret) sccs_abortWrite(s);
 
 	return (ret);
-}
-
-/*
- * Patch format is a little different, it looks like
- * 0a0
- * > key
- * > key
- * 
- * We need to strip out all the non-key stuff: 
- * a) "0a0"
- * b) "> "
- *
- * We want the output to look like:
- * ^AI serial
- * key
- * key
- * ^AE
- */
-private void
-patchweave(sccs *s, FILE *dF, u8 *buf)
-{
-	u8	*p;
-	FILE	*out = s->outfh;
-
-	fprintf(out, "\001I %s\n", buf);
-	if (dF) {
-		p = fgetline(dF);
-		assert(p && streq(p, "0a0"));
-		while (p = fgetline(dF)) {
-			assert(strneq("> ", p, 2));
-			p += 2; /* skip "> " */
-			fputs(p, out);
-			fputc('\n', out);
-		}
-	}
-	fprintf(out, "\001E %s\n", buf);
-}
-
-/*
- * sccs_csetPatchWeave()
- * This is similar to delta body, and makes use of many of the I/O
- * functions, which is why it is here.  The purpose is to weave in
- * patch items to the weave as it is copied to the output file.
- * This is useful for fast-takepatch operation for cset file.
- */
-
-int
-sccs_csetPatchWeave(sccs *s)
-{
-	u8	buf[20];
-	u8	*line;
-	u32	i;
-	u32	ser;
-	loc	*lp;
-	FILE	*out = 0;
-
-	assert(s);
-	assert(s->state & S_CSET);
-	assert(s->locs);
-	T_SCCS("file=%s", s->gfile);
-	lp = s->locs;
-	i = s->iloc - 1; /* set index to final element in array */
-	assert(i > 0); /* base 1 data structure */
-	unless (out = sccs_wrweaveInit(s)) return (1);
-	unless (HAS_SFILE(s)) goto skip;
-
-	sccs_rdweaveInit(s);
-	while (line = sccs_nextdata(s)) {
-		assert(strneq(line, "\001I ", 3));
-		ser = atoi(&line[3]);
-
-		for ( ; i ; i--) {
-			if (ser + i > lp[i].serial) break;
-			unless (lp[i].dF || lp[i].serial == 1) continue;
-			sertoa(buf, lp[i].serial);
-			patchweave(s, lp[i].dF, buf);
-		}
-		unless (i) break;
-
-		/* bump the serial number up by # of items we have left */
-		ser += i;
-		sertoa(buf, ser);
-		fputs("\001I ", out);
-		fputs(buf, out);
-		fputc('\n', out);
-		while (line = sccs_nextdata(s)) {
-			if (*line == '\001') break;
-			fputs(line, out);
-			fputc('\n', out);
-		}
-		assert(strneq(line, "\001E ", 3));
-		fputs("\001E ", out);
-		fputs(buf, out);
-		fputc('\n', out);
-	}
-	assert(!(i && line));
-	/* No translation of serial numbers needed for remainder of file */
-	for ( ; line; line = sccs_nextdata(s)) {
-		fputs(line, out);
-		fputc('\n', out);
-	}
-	sccs_rdweaveDone(s);
-	/* Print out remaining, forcing serial 1 block at the end */
-skip:	for ( ; i ; i--) {
-		unless (lp[i].dF || lp[i].serial == 1) continue;
-		sertoa(buf, lp[i].serial);
-		patchweave(s, lp[i].dF, buf);
-	}
-	sccs_wrweaveDone(s);
-	return (0);
 }
 
 int
@@ -15594,7 +15534,8 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		    E_BAM, "BAM",
 		    E_GZIP, "gzip",
 		    E_BK, "BK",
-		    E_BWEAVE, "bweave",
+		    E_BWEAVE2, "BWEAVEv2",
+		    E_BWEAVE3, "bweave",
 		    0, 0);
 
 		if (!enc || (enc == E_GZIP)) {
@@ -16676,9 +16617,9 @@ sccs_perfile(sccs *s, FILE *out, int patch)
 		enc = sccs_encoding(s, 0, 0);
 	}
 	enc &= ~E_ALWAYS;
-	if (patch) enc &= ~(E_BK|E_BWEAVE);
+	if (patch) enc &= ~(E_BK|E_BWEAVE2|E_BWEAVE3);
 	if (enc) fprintf(out, "f e %d\n", enc);
-	if (!patch && s->rkeyHead && (enc & E_BWEAVE)) {
+	if (!patch && s->rkeyHead && (enc & (E_BWEAVE2|E_BWEAVE3))) {
 		fprintf(out, "f w %u\n", s->rkeyHead);
 	}
 	EACH(s->text) fprintf(out, "T %s\n", s->text[i]);
@@ -18107,18 +18048,13 @@ sccs_stripdel(sccs *s, char *who)
 {
 	int	error = 0;
 	ser_t	e, *remap = 0;
+	char	*t;
+	FILE	*f;
 
 #define	OUT	\
 	do { error = -1; s->state |= S_WARNED; goto out; } while (0)
 
 	assert(s && HASGRAPH(s));
-
-	/* Unsupported: compress and switch format at the same time */
-	unless (s->encoding_out) s->encoding_out = sccs_encoding(s, 0, 0);
-	if (BWEAVE(s) != BWEAVE_OUT(s)) {
-		fprintf(stderr, "%s: format conversion %s\n", who, s->sfile);
-		OUT;
-	}
 
 	T_SCCS("file=%s", s->gfile);
 	if (HAS_PFILE(s) && sccs_clean(s, SILENT)) return (-1);
@@ -18160,7 +18096,18 @@ sccs_stripdel(sccs *s, char *who)
 	}
 
 	/* write out the lower half */
-	if (!BWEAVE_OUT(s) && stripDeltas(s, remap)) {
+	if (BWEAVE_OUT(s)) {
+		// no weave
+	} else if (CSET(s)) {
+		sccs_rdweaveInit(s);
+		f = sccs_wrweaveInit(s);
+		while (t = sccs_nextdata(s)) {
+			fputs(t, f);
+			fputc('\n', f);
+		}
+		sccs_rdweaveDone(s);
+		sccs_wrweaveDone(s);
+	} else if (stripDeltas(s, remap)) {
 		fprintf(stderr,
 		    "%s: can't write delta body for %s\n", who, s->sfile);
 		OUT;

@@ -30,6 +30,7 @@
 #define	RK_TIP		0x08
 #define	RK_GCA		0x10
 #define	DK_DUP		0x20
+#define	RK_DONE		0x40   /* seen end marker for this rk */
 #define	RK_BOTH		(RK_PARENT|RK_MERGE)
 
 typedef	struct	rkdata {
@@ -358,7 +359,7 @@ check_main(int ac, char **av)
 		}
 		/* set BKFILE & BWEAVE according to repository feature file */
 		repo_feat = features_bits(0) & FEAT_FILEFORMAT;
-		unless (CSET(s)) repo_feat &= ~FEAT_BWEAVE;
+		unless (CSET(s)) repo_feat &= ~(FEAT_BWEAVE|FEAT_BWEAVEv2);
 
 		/* set BKFILE & BWEAVE accord to file encoding */
 		file_feat = features_fromEncoding(s, s->encoding_in);
@@ -366,6 +367,7 @@ check_main(int ac, char **av)
 		/* fix if they differ */
 		if ((repo_feat != file_feat) && !getenv("_BK_MIXED_FORMAT")) {
 			getlock();
+			T_PERF("fmt cvt %s", s->gfile);
 			if (getenv("_BK_DEVELOPER")) {
 				fprintf(stderr,
 				    "sfile format wrong %s, %x %x\n",
@@ -1422,7 +1424,7 @@ checkKeys(sccs *s)
 	 * Store the root keys. We want all of them to be unique.
 	 */
 	sccs_sdelta(s, sccs_ino(s), key);
-	rkoff = sccs_addUniqKey(cset, key);
+	rkoff = sccs_addUniqRootkey(cset, key);
 	assert(rkoff);
 	unless (rkd = hash_insert(r2deltas,
 		&rkoff, sizeof(u32), 0, sizeof(rkdata))) {
@@ -1678,7 +1680,8 @@ buildKeys(MDBM *idDB)
 					    (rkd->mask & (RK_BOTH|RK_INTIP))) {
 						continue;
 					}
-					rkey = HEAP(cset, *(u32*)r2deltas->kptr);
+					rkey =
+					    HEAP(cset, *(u32*)r2deltas->kptr);
 					if (mdbm_fetch_str(goneDB, rkey)) {
 						continue;
 					}
@@ -1714,6 +1717,18 @@ buildKeys(MDBM *idDB)
 			}
 		}
 		rkd = r2deltas->vptr;
+		if (rkd->mask & RK_DONE) {
+			fprintf(stderr,
+			    "error: a key was found after last key marker.\n"
+			    "Rootkey: %s\ndeltakey: %s\n"
+			    "found in %s.\n",
+			    rkey, dkey, REV(cset, d));
+			e++;
+		}
+		unless (dkoff) {
+			rkd->mask |= RK_DONE;
+			continue;
+		}
 		if (oldest) rkd->mask |= mask;
 
 		/*

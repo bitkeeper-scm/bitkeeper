@@ -169,7 +169,8 @@ features_setMask(project *p, u32 bits, u32 mask)
 	nbits = (obits & ~mask) | bits;
 	TRACE("%x + %x/%x => %x", obits, bits, mask, nbits);
 
-	if (obits == nbits) {
+	pf = proj_features(p);
+	if (!pf->new && (obits == nbits)) {
 		/* already set correctly */
 		if (freep) proj_free(freep);
 		return;
@@ -194,8 +195,8 @@ features_setMask(project *p, u32 bits, u32 mask)
 		// bk-5.x doesn't like an empty file
 		unlink(ffile);
 	}
-	pf = proj_features(p);
 	pf->bits = nbits;
+	pf->new = 0;
 
 	/*
 	 * For compatibility reasons we keep a copy of the product
@@ -332,6 +333,24 @@ features_bits(project *p)
 			exit(101);
 		}
 		free(here);
+		// some features imply the older features
+		if (pf->bits & (FEAT_BWEAVE|FEAT_BWEAVEv2)) {
+			// either BWEAVE implies BKFILE
+			pf->bits |= FEAT_BKFILE;
+			pf->new = 1;
+		}
+		if ((pf->bits & (FEAT_BKFILE|FEAT_BWEAVE|FEAT_BWEAVEv2)) ==
+		    FEAT_BKFILE) {
+			// BKFILE must have one of the BWEAVE features
+			pf->bits |= FEAT_BWEAVEv2;
+			pf->new = 1;
+		}
+		// some features replace older features
+		if ((pf->bits & (FEAT_BWEAVE|FEAT_BWEAVEv2)) ==
+		    (FEAT_BWEAVE|FEAT_BWEAVEv2)) {
+			pf->bits &= ~FEAT_BWEAVEv2;
+			pf->new = 1;
+		}
 		here = features_fromBits(pf->bits);
 		TRACE("loaded %s=%s", proj_root(p), here);
 		free(here);
@@ -500,7 +519,11 @@ features_fromEncoding(sccs *s, u32 encoding)
 
 	if (encoding & E_BK) bits |= FEAT_BKFILE;
 	if (CSET(s)) {
-		if (encoding & E_BWEAVE) bits |= FEAT_BWEAVE;
+		if ((encoding & E_WEAVE) == E_BWEAVE2) {
+			bits |= FEAT_BWEAVEv2;
+		} else if ((encoding & E_WEAVE) == E_BWEAVE3) {
+			bits |= FEAT_BWEAVE;
+		}
 	}
 	return (bits);
 }
@@ -516,7 +539,9 @@ features_toEncoding(sccs *s, u32 bits)
 	if (bits & FEAT_BKFILE) encoding |= E_BK;
 	if (CSET(s)) {
 		if (bits & FEAT_BWEAVE) {
-			encoding |= E_BWEAVE;
+			encoding |= E_BWEAVE3;
+		} else if (bits & FEAT_BWEAVEv2) {
+			encoding |= E_BWEAVE2;
 		}
 	}
 	return (encoding);

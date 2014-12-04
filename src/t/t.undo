@@ -239,6 +239,13 @@ TIP=`bk log -r+ -nd:I: foo`
 test "$TIP" = 1.1 || fail
 bk commit $Q -ybranch || fail
 BK_CONFIG='fakegrafts: 1' bk pull $Q || fail
+
+# cset weave should have 4 lines for foo last one marked
+bk _heapdump ChangeSet | grep foo > L
+test `wc -l <L` -eq 4 || fail -f L
+test `grep " END" L | wc -l` -eq 1 || fail -f L
+tail -1 L | grep -q " END" || fail -f L
+
 TIP=`bk log -r+ -nd:I: foo`
 test "$TIP" = 1.2 || fail
 bk unpull $Q -f || fail
