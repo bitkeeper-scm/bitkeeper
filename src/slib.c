@@ -8647,6 +8647,7 @@ cvt2bweave(sccs *s)
 		}
 	}
 	sccs_rdweaveDone(s);
+	s->encoding_in |= E_BWEAVE;
 }
 
 /*
@@ -17988,7 +17989,7 @@ stripDeltas(sccs *s, ser_t *remap)
 	int	ser;
 	FILE	*out;
 
-	assert(!BWEAVE(s));
+	assert(!BWEAVE(s) || !remap);
 	sccs_rdweaveInit(s);
 	out = sccs_wrweaveInit(s);
 	while (buf = sccs_nextdata(s)) {
@@ -18036,12 +18037,7 @@ sccs_stripdel(sccs *s, char *who)
 
 	assert(s && HASGRAPH(s));
 
-	/* Unsupported: compress and switch format at the same time */
 	unless (s->encoding_out) s->encoding_out = sccs_encoding(s, 0, 0);
-	if (BWEAVE(s) != BWEAVE_OUT(s)) {
-		fprintf(stderr, "%s: format conversion %s\n", who, s->sfile);
-		OUT;
-	}
 
 	T_SCCS("file=%s", s->gfile);
 	if (HAS_PFILE(s) && sccs_clean(s, SILENT)) return (-1);
@@ -18052,6 +18048,7 @@ sccs_stripdel(sccs *s, char *who)
 	}
 	if (stripChecks(s, 0, who)) OUT;
 	unless (sccs_startWrite(s)) OUT;
+	if ((TABLE(s) > 1) && !BWEAVE(s) && BWEAVE_OUT(s)) cvt2bweave(s);
 
 	/*
 	 * Find the new top-of-trunk.
@@ -18083,7 +18080,7 @@ sccs_stripdel(sccs *s, char *who)
 	}
 
 	/* write out the lower half */
-	if (!BWEAVE_OUT(s) && stripDeltas(s, remap)) {
+	if (!BWEAVE_OUT(s) && stripDeltas(s, BWEAVE(s) ? 0 : remap)) {
 		fprintf(stderr,
 		    "%s: can't write delta body for %s\n", who, s->sfile);
 		OUT;
