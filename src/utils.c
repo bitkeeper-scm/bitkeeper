@@ -2,6 +2,9 @@
 #include "logging.h"
 #include "progress.h"
 #include "nested.h"
+#ifdef WIN32
+#include "Winbase.h"
+#endif
 
 bkdopts	Opts;	/* has to be declared here, other people use this code */
 
@@ -2045,6 +2048,24 @@ bk_setConfig(char *key, char *val)
 	} else {
 		safe_putenv("BK_CONFIG=%s:%s!", key, val);
 	}
+}
+
+/*
+ * Return the number of cpus
+ */
+int
+cpus(void)
+{
+#ifdef WIN32
+	SYSTEM_INFO info;
+
+	GetSystemInfo(&info);
+	return (info.dwNumberOfProcessors);
+#else
+	int	n = sysconf(_SC_NPROCESSORS_CONF);
+
+	return (n);
+#endif
 }
 
 /*

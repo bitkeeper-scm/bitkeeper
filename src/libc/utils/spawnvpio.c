@@ -1,5 +1,14 @@
 #include "system.h"
 
+/*
+ * On Windows, select() works only for sockets, so use a TCP socket
+ * pair instead of a pipe.
+ */
+#ifdef WIN32
+#undef mkpipe
+#define mkpipe(p,sz)	tcp_pair(p)
+#endif
+
 pid_t
 spawnvpio(int *fd0, int *fd1, int *fd2, char *av[])
 {
@@ -67,7 +76,7 @@ spawnvpio(int *fd0, int *fd1, int *fd2, char *av[])
 		}
 	}
 	if (fd2) {
-		rc = dup2(old2, 0); assert(rc != -1);
+		rc = dup2(old2, 2); assert(rc != -1);
 		(close)(old2);
 		*fd2 = p2[0];
 		if (pid < 0) {

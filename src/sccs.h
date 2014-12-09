@@ -1206,6 +1206,7 @@ char	*findBin(void);
 int 	prompt(char *msg, char *buf);
 void	parse_url(char *url, char *host, char *path);
 int	parallel(char *path);
+int	cpus(void);
 char	*sccs_saveStr(sccs *s, char *str);
 char	*sccs_Xfile(sccs *s, char type);
 FILE	*sccs_startWrite(sccs *s);
