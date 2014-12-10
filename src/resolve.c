@@ -155,6 +155,7 @@ resolve_main(int ac, char **av)
 	if (opts.progress && !opts.verbose) {
 		opts.quiet = 1;
 	}
+	T_PERF("resolve_main");
 	unless (opts.mergeprog) opts.mergeprog = getenv("BK_RESOLVE_MERGEPROG");
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind++]);
 	while (av[optind]) {
@@ -297,6 +298,7 @@ passes(opts *opts)
 		fprintf(stderr, "%s: Unresolved components.\n", prog);
 		resolve_cleanup(opts, 0);
 	}
+	T_PERF("before check");
 	unless (opts->from_pullpush ||
 	    (sys("bk", "-?BK_NO_REPO_LOCK=YES",
 		"-r", "check", "-acR", SYS) == 0)) {
@@ -308,6 +310,7 @@ passes(opts *opts)
 	/*
 	 * Pass 1 - move files to RENAMES and/or build up rootDB
 	 */
+	T_PERF("pass1");
 	opts->pass = 1;
 	bktmp(flist);
 	if (sysio(0, flist, 0, "bk", "sfiles", SYS)) {
@@ -399,6 +402,7 @@ that will work too, it just gets another patch.\n");
 	/*
 	 * Pass 2 - move files back into RESYNC
 	 */
+	T_PERF("pass2");
 	if (opts->pass2) {
 		int	save, old, n = -1;
 
@@ -478,11 +482,13 @@ that will work too, it just gets another patch.\n");
 	/*
 	 * Pass 3 - resolve content/permissions/flags conflicts.
 	 */
-pass3:	if (opts->pass3 && (rc = pass3_resolve(opts))) return (rc);
+pass3:	T_PERF("pass3");
+	if (opts->pass3 && (rc = pass3_resolve(opts))) return (rc);
 
 	/*
 	 * Pass 4 - apply files to repository.
 	 */
+	T_PERF("pass4");
 	if (opts->pass4) pass4_apply(opts);  /* never returns */
 	
 	freeStuff(opts);

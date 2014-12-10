@@ -944,6 +944,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	char	csets_in[MAXPATH];
 	char	buf[MAXKEY];
 
+	if (s && CSET(s)) T_PERF("applyCsetPatch(start)");
 	reversePatch();
 	unless (p = opts->patchList) return (0);
 
@@ -1159,6 +1160,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		fprintf(stderr, "takepatch: can't update %s\n", s->sfile);
 		goto err;
 	}
+	if (CSET(s)) T_PERF("cset_write");
 	s = sccs_restart(s);
 	assert(s);
 
@@ -1292,7 +1294,8 @@ markup:
 		/* this shouldn't be needed... */
 		if (touch(BAM_MARKER, 0664)) perror(BAM_MARKER);
 	}
-done:	sccs_free(s);
+done:	if (CSET(s)) T_PERF("done cset");
+	sccs_free(s);
 	s = 0;
 	if (opts->noConflicts && opts->conflicts) {
 		errorMsg("tp_noconflicts", 0, 0);
