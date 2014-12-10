@@ -602,3 +602,40 @@ test -n "`bk -P changes -qR ../child`" && fail local changes found
 cd "$HERE/child"
 bk -e -r check -ac >ERR 2>&1 || fail -f ERR
 echo OK
+
+echo $N Push from bweave to ascii such that comp uses clone -r ......$NL
+cd "$HERE"
+commercial stand
+printf "a\nb\nc\n" > foo
+bk new $Q foo
+bk commit $Q -f
+cd ..
+nested ug
+bk gate $Q -r
+bk clone $Q --downgrade . ../dg
+bk clone $Q . ../ug-copy
+bk attach $Q ../stand ug-comp
+cd ../stand
+bk edit $Q foo
+printf "0\na\nb\nc\n" > foo
+bk delta $Q -ya foo
+bk commit $Q -f
+cd ../ug
+bk edit $Q ug-comp/foo
+printf "a\nb\nc\n10\n" > ug-comp/foo
+bk delta $Q -yb ug-comp/foo
+bk commit $Q -f
+bk --cd=ug-comp port $Q "$HERE"/stand
+bk clone $Q --downgrade . ../dg-copy
+# Leave the component intact, causing a clone -r to remote
+bk portal $Q -r
+bk fix -cdP
+bk push $Q ../dg || fail
+echo OK
+
+echo $N Push from ascii to bweave such that comp uses clone -r ......$NL
+cd ../dg-copy
+# Leave the component intact, causing a clone -r to remote
+bk fix -cdP
+bk push $Q ../ug-copy || fail
+echo OK
