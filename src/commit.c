@@ -12,6 +12,7 @@ typedef struct {
 	u32	quiet:1;
 	u32	resync:1;
 	u32	standalone:1;
+	u32	import:1;
 	u32	clean_PENDING:1;	// if successful, clean PENDING marks
 	u32	ci:1;			// do the ci/new as well if needed
 } c_opts;
@@ -24,7 +25,8 @@ private void	do_unmark(char **modFiles);
 private	void	commitSnapshot(void);
 private	void	commitRestore(int rc);
 
-private	int	csetCreate(sccs *cset, int flags, char *files, char **syms);
+private	int	csetCreate(c_opts opts, sccs *cset, int flags,
+    char *files, char **syms);
 
 int
 commit_main(int ac, char **av)
@@ -47,6 +49,8 @@ commit_main(int ac, char **av)
 	longopt	lopts[] = {
 		{ "standalone", 'S' },		/* new -S option */
 		{ "subset", 's' },		/* aliases */
+
+		{ "import", 290 },     /* part of an import */
 		{ "tag:", 300 },		/* old -S option */
 		{ "sub-commit", 301 },		/* calling myself */
 		{ "ci", 302 },			/* ci/new as needed */
@@ -117,6 +121,9 @@ commit_main(int ac, char **av)
 			dflags |= DELTA_DONTASK;
 			free(cmtsFile);
 			break;
+		    case 290:	/* --import */
+			opts.import = 1;
+			break;
 		    case 300:	/* --tag=TAG */
 			sym = optarg;
 			if (sccs_badTag("commit", sym, 0)) exit (1);
@@ -153,6 +160,7 @@ commit_main(int ac, char **av)
 		freeLines(aliases, free);
 		aliases = 0;
 	}
+	if (opts.import && opts.resync) usage();
 	if (sym && proj_isComponent(0)) {
 		unless (subCommit) {
 			fprintf(stderr,
@@ -388,6 +396,22 @@ modified_pending(u32 flags)
 	return (aliases);
 }
 
+private int
+pathCmp(const void *va, const void *vb)
+{
+	char	*a = *(char **)va;
+	char	*b = *(char **)vb;
+	char	*ta, *tb;
+	int	ret;
+
+	if (ta = strchr(a, '|')) *ta = 0;
+	if (tb = strchr(b, '|')) *tb = 0;
+	ret = strcmp(a, b);
+	if (ta) *ta = '|';
+	if (tb) *tb = '|';
+	return (ret);
+}
+
 
 private int
 do_commit(char **av,
@@ -499,10 +523,42 @@ err:		rc = 1;
 			}
 		}
 	}
-	rc = csetCreate(cset, dflags, pendingFiles, syms);
+	rc = csetCreate(opts, cset, dflags, pendingFiles, syms);
+	if (rc) goto fail;
+	if (opts.import) {
+		/*
+		 * We are skipping the check, but still need to
+		 * mark sfiles.  Some marks may already have been
+		 * applied by do_ci(), so skip them (after checking)
+		 */
+		sccs	*s;
+		ser_t	d;
+		char	**marklist = 0;
 
-	// run check
-	unless (rc) {
+		marklist = file2Lines(0, pendingFiles);
+		sortLines(marklist, 0);
+		sortLines(modFiles, 0);
+		pruneLines(marklist, modFiles, pathCmp, 0);
+		EACH(marklist) {
+			p = marklist[i];
+			t = strchr(p, '|');
+			*t++ = 0;
+			s = sccs_init(p, INIT_MUSTEXIST);
+			d = sccs_findrev(s, t);
+			assert(!(FLAGS(s, d) & D_CSET));
+			FLAGS(s, d) |= D_CSET;
+			sccs_newchksum(s);
+			sccs_free(s);
+		}
+		freeLines(marklist, free);
+		if (bin_needHeapRepack(cset)) {
+			if (run_check(opts.quiet, 0, 0, 0, 0)) {
+				rc = 1;
+				goto fail;
+			}
+		}
+	} else {
+		// run check
 		/*
 		 * Note: by having no |+, the check.c:check() if (doMark...)
 		 * code will skip trying to mark the ChangeSet file.
@@ -515,10 +571,11 @@ err:		rc = 1;
 		    "bk", "-?BK_NO_REPO_LOCK=YES", "check",
 		    opts.resync ? "-cMR" : "-cM", "-", SYS)) {
 			rc = 1;
+			goto fail;
 		}
 	}
 	T_PERF("after_check");
-	if (!rc && opts.resync) {
+	if (opts.resync) {
 		char	key[MAXPATH];
 		FILE	*f;
 
@@ -534,7 +591,7 @@ err:		rc = 1;
 			fclose(f);
 		}
 	}
-	if (!rc && proj_isComponent(0)) {
+	if (proj_isComponent(0)) {
 		hash	*urllist;
 		char	*file = proj_fullpath(proj_product(0), NESTED_URLLIST);
 
@@ -549,7 +606,7 @@ err:		rc = 1;
 		}
 	}
 	putenv("BK_STATUS=OK");
-	if (rc) {
+fail:	if (rc) {
 		if (modFiles) do_unmark(modFiles);
 		fprintf(stderr, "The commit is aborted.\n");
 		putenv("BK_STATUS=FAILED");
@@ -868,7 +925,7 @@ updateCsetChecksum(sccs *cset, ser_t d, char **keys)
  * Close the cset sccs* when done.
  */
 private ser_t
-mkChangeSet(sccs *cset, char *files, char ***keys)
+mkChangeSet(c_opts opts, sccs *cset, char *files, char ***keys)
 {
 	ser_t	d, d2, p;
 	char	*line, *rev, *t;
@@ -949,7 +1006,6 @@ mkChangeSet(sccs *cset, char *files, char ***keys)
 	}
 	free_pfile(&pf);
 
-	if (uniq_open()) assert(0);
 	if (TABLE(cset) && (DATE(cset, d) <= DATE(cset, TABLE(cset)))) {
 		time_t	tdiff;
 
@@ -957,6 +1013,7 @@ mkChangeSet(sccs *cset, char *files, char ***keys)
 		DATE_SET(cset, d, DATE(cset, d) + tdiff);
 		DATE_FUDGE_SET(cset, d, DATE_FUDGE(cset, d) + tdiff);
 	}
+	if (uniq_open()) assert(0);
 	uniq_adjust(cset, d);
 	uniq_close();
 
@@ -1010,7 +1067,7 @@ mkChangeSet(sccs *cset, char *files, char ***keys)
 }
 
 private int
-csetCreate(sccs *cset, int flags, char *files, char **syms)
+csetCreate(c_opts opts, sccs *cset, int flags, char *files, char **syms)
 {
 	ser_t	d;
 	int	i, error = 0;
@@ -1027,7 +1084,7 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	}
 
 	/* write change set to diffs */
-	unless (d = mkChangeSet(cset, files, &keys)) {
+	unless (d = mkChangeSet(opts, cset, files, &keys)) {
 		freeLines(keys, free);
 		return (-1);
 	}
@@ -1105,11 +1162,12 @@ cset_setup(int flags)
 {
 	sccs	*cset;
 	int	rc;
+	c_opts	opts = {0};
 
 	cset = sccs_csetInit(SILENT);
 	assert(cset->state & S_CSET);
 	cset->xflags |= X_LONGKEY;
-	rc = csetCreate(cset, flags, 0, 0);
+	rc = csetCreate(opts, cset, flags, 0, 0);
 	sccs_free(cset);
 	return (rc);
 }
