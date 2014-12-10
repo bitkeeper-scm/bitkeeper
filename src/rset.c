@@ -695,9 +695,14 @@ sortKeys(Opts *opts, rset *data)
 
 	EACH_HASH(db) {
 		file = db->vptr;
-		if (!file->left1 && !file->left2 && !file->right) continue;
-		if (!data->left2 && file->left1 && file->right &&
-		    (file->left1 == file->right)) {
+		/*
+		 * First round of pruning (more in process())
+		 * Prune where left and right have same content.
+		 * Keep where left1 == left2, but != right.
+		 */
+		if (((file->left1 == file->right) && !file->left2) ||
+		    ((file->left2 == file->right) &&
+		    (!file->left1 || (file->left1 == file->left2)))) {
 			continue;
 		}
 		list = addRline(list, opts, file);
@@ -956,15 +961,10 @@ weaveExtract(sccs *s, ser_t left1, ser_t left2, ser_t right, Opts *opts)
 			if (e = MERGE(s, d)) MARK(state[e], active, nongca);
 		}
 		/*
-		 * show_gone must read the weave to get current location
-		 * !active - not active so skip delta
-		 * active == all && !needOther - common and not looking,
-		 * so nothing to find in this cset block. Skip.
+		 * show_gone needs to log the first (possibly bogus) dkey
+		 * to guess at current path. Otherwise, prune inactive.
 		 */
-		if (!opts->show_gone &&
-		    (!active || ((active == all) && !needOther))) {
-			continue;
-		}
+		unless (active || opts->show_gone) continue;
 
 		cset_firstPair(s, d);
 		while (e = cset_rdweavePair(s, RWP_ONE, &rkoff, &dkoff)) {
@@ -972,10 +972,7 @@ weaveExtract(sccs *s, ser_t left1, ser_t left2, ser_t right, Opts *opts)
 			data->weavelines++;	/* stats */
 			if (showgone) {
 				hash_insertU32U32(showgone, rkoff, dkoff);
-				if (!active ||
-				    ((active == all) && !needOther)) {
-					continue;
-				}
+				unless (active) continue;
 			}
 			file = hash_fetch(data->keys, &rkoff, sizeof(rkoff));
 			seen = file ? file->seen : 0;
@@ -988,8 +985,7 @@ weaveExtract(sccs *s, ser_t left1, ser_t left2, ser_t right, Opts *opts)
 				continue;
 			}
 			unless (newseen = (active & ~seen)) continue;
-			/* XXX: skip all same in face of comp renames ? */
-			if (newseen == all) continue;
+			if (!nongca && (newseen == all)) continue;
 			unless (opts->show_gone || opts->chksum) {
 				if (deltaSkip(s, sDB, rkoff, dkoff)) continue;
 			}
@@ -1028,14 +1024,7 @@ weaveExtract(sccs *s, ser_t left1, ser_t left2, ser_t right, Opts *opts)
 			if (ONE_SIDE(seen)) needOther++;
 
 			file->seen = seen;
-			if (!needOther && (active == all)) {
-				/*
-				 * No more to find in this cset, unless
-				 * there possibly is more data in other csets,
-				 * and we need to track current path. 
-				 */
-				unless (opts->show_gone && nongca) break;
-			}
+			if (!needOther && !nongca) break; /* if done, stop */
 		}
 		/* if done processing a nongca cset, then one less remains */
 		if (NONGCA(active)) nongca--;

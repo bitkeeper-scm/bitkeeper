@@ -923,7 +923,7 @@ cat <<EOF > WANT
       10 weave data lines read in repo for 1.1
       27 weave data lines read in repo for 1.1
 
-      12 weave data lines read in repo for 1.5
+      14 weave data lines read in repo for 1.5
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -963,7 +963,7 @@ cat <<EOF > WANT
        5 weave data lines read in repo for 1.1
       16 weave data lines read in repo for 1.1
 
-      15 weave data lines read in repo for 1.5
+      16 weave data lines read in repo for 1.5
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -994,4 +994,25 @@ alpha|1.2..1.1.1.1
 beta|1.2..1.1
 EOF
 cmpfiles WANT GOT
+echo OK
+
+echo $N Check unmerged rootkey interacting with short circuit .......$NL
+cd "$HERE"
+commercial foogone
+touch foo
+bk new $Q foo
+bk prs -r+ -hnd:ROOTKEY: foo | bk gone $Q -
+bk commit $Q -f
+bk clone $Q . ../foobar
+bk mv foo byebye
+bk commit $Q -f
+bk rm byebye
+bk _rm -fr BitKeeper/deleted
+cd ../foobar
+bk mv foo bar
+bk commit $Q -f
+bk pull -q 2> ERR
+grep -q "Marked gone (bk help chk1): bar" ERR || fail -f ERR
+# This would fail the checksum without the accompanying rset.c change
+bk rset -r1.2.1.1..1.4 --no-print --checksum || fail
 echo OK

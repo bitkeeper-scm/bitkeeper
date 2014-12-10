@@ -294,8 +294,8 @@ cat <<EOF > WANT
        6 weave data lines read in gcc-old/ for 1.6
       10 weave data lines read in repo for 1.9
 
-       2 weave data lines read in foo,bar/ for 1.4
-       2 weave data lines read in gcc-old/ for 1.5
+       4 weave data lines read in foo,bar/ for 1.4
+       4 weave data lines read in gcc-old/ for 1.5
       13 weave data lines read in repo for 1.8
        4 weave data lines read in foo,bar/ for 1.4
        4 weave data lines read in gcc-old/ for 1.5
