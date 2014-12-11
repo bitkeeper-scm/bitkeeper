@@ -843,15 +843,15 @@ _links() {		# /* doc 3.0 */
 		echo "bk links: cannot write to ${BIN}; links not created" 1>&2
 		exit 2
 	}
-	for i in admin get delta unget rmdel prs bk
-	do	test -f "$BIN/$i" && {
-			echo Saving "$BIN/$i" in "$BIN/${i}.ORIG"
-			/bin/mv -f "$BIN/$i" "$BIN/${i}.ORIG"
+	for i in admin get delta unget rmdel prs
+	do	test -h "$BIN/$i" && ls -l "$BIN/$i" | grep -q bitkeeper && {
+			echo Removing "$BIN/$i"
+			/bin/rm -f "$BIN/$i"
 		}
-		/bin/rm -f "$BIN/$i"
-		echo "ln -s $BK/$i $BIN/$i"
-		ln -s "$BK/$i" "$BIN/$i"
 	done
+	echo "ln -s $BK/bk $BIN/bk"
+	/bin/rm -f "$BIN/bk"
+	ln -s "$BK/bk" "$BIN/bk"
 }
 
 __init() {
@@ -1294,12 +1294,6 @@ __install()
 	then	EXE=.exe
 	else	EXE=
 	fi
-	# This does the right thing on Windows (msys)
-	for prog in admin get delta unget rmdel prs
-	do
-		test $VERBOSE = YES && echo ln "$DEST"/bk$EXE "$DEST"/$prog$EXE
-		ln "$DEST"/bk$EXE "$DEST"/$prog$EXE
-	done
 
 	# symlinks to /usr/bin
 	if [ "$DOSYMLINKS" = "YES" ]
@@ -1323,10 +1317,6 @@ __install()
 		INSTALL_LOG="$DEST"/install.log
 		echo "Installdir=\"$DEST\"" > "$INSTALL_LOG"
 		(cd "$SRC"; find .) >> "$INSTALL_LOG";
-		for prog in admin get delta unget rmdel prs
-		do
-			echo $prog$EXE >> "$INSTALL_LOG"
-		done
 	fi
 
 	# permissions

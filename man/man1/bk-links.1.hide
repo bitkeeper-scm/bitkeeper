@@ -1,0 +1,21 @@
+.so ../bk-macros
+.TH "bk links" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk links \- make links to the \*(BK binary installation directory
+.SH SYNOPSIS
+.\"
+.B bk links
+.ARG public_dir
+.SH DESCRIPTION
+Creates symbolic links from \*(BK commands in the specified public
+directory to the executables for the version of \*(BK being run.
+This is typically used after installing \*(BK as a non-root user.
+.SH EXAMPLE
+.DS
+$ /usr/libexec/bitkeeper/bk links /usr/local/bin
+ln -s /usr/libexec/bitkeeper/bk /usr/local/bin/bk
+.DE
+.SH SEE ALSO
+.SA bin
+.SH CATEGORY
+.B Utility

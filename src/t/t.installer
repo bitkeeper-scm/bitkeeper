@@ -467,23 +467,38 @@ test -d "$HERE/DEADBEEF" && {
 }
 echo OK
 
-echo $N Make sure uninstaller removes symlinks.......................$NL
+echo $N Make sure installer and bk links adds functioning symlinks ..$NL
 BIN="$HERE/DEADBEEF.1"
 ./bk-academic-licensed "$BIN" >OUT 2>&1
-test -f "$BIN/bk" || {
-	echo failed
-	echo installer failed
-	cat OUT
-	exit 1
-}
+test -f "$BIN/bk" || fail -f OUT bk file missing
+test -f "$BIN/prs" && fail -f OUT ATT SCCS still there
+"$BIN/bk" version -s > WANT || fail
 mkdir "$HERE/bin"
-"$BIN/bk" links "$HERE/bin" >OUT 2>&1 || {
-	echo failed
-	echo could not create symlinks
-	cat OUT
-	exit 1
-}
-export PATH="$HERE/bin:$PATH"
+"$BIN/bk" links "$HERE/bin" >OUT 2>&1 || fail -f OUT could not create symlinks
+# try out a symlink
+"$HERE/bin/bk" version -s > GOT || fail
+cmpfiles WANT GOT
+echo OK
+
+OLDBK=/build/bitkeeper-6.0
+test -d $OLDBK && {
+echo $N Make sure installer cleans up from old bk ...................$NL
+mkdir "$HERE/oldbin"
+"$OLDBK/bk" links "$HERE/oldbin" >OUT 2>&1 || fail -f OUT oldbk did not work
+test -h "$HERE/oldbin/prs" || fail no prs
+"$BIN/bk" links "$HERE/oldbin" >OUT 2>&1 || fail -f OUT newbk did not work
+# try out a symlink
+"$HERE/oldbin/bk" version -s > GOT || fail
+cmpfiles WANT GOT
+# See that other things not there
+test -h "$HERE/oldbin/prs" && fail still prs
+echo OK
+} # end of test only if bk-6.0 is lying around in /build
+
+echo $N Make sure uninstaller removes symlinks.......................$NL
+OLDPATH="$PATH"
+PATH="$HERE/bin:$PATH"
+export PATH
 "$BIN/bk" uninstall -f || {
 	echo failed
 	echo bk uninstall failed
@@ -496,6 +511,7 @@ test -h "$HERE/bin/bk" && {
 	echo ""
 	exit 1
 }
+PATH="$OLDPATH"
 echo OK
 
 echo $N Uninstaller in upgrade mode should not remove symlinks.......$NL
@@ -514,13 +530,17 @@ test -f "$BIN/bk" || {
 	cat OUT
 	exit 1
 }
-export PATH="$HERE/bin:$PATH"
+test -h "$HERE/bin/bk" || fail
+OLDPATH="$PATH"
+PATH="$HERE/bin:$PATH"
+export PATH
 "$BIN/bk" uninstall -u >OUT 2>&1 || {
 	echo failed
 	echo Uninstaller in upgrade mode failed
 	cat OUT
 	exit 1
 }
+PATH="$OLDPATH"
 times=2
 while [ -d "$BIN" ]; do
 	test $times -eq 0 && {
@@ -530,11 +550,7 @@ while [ -d "$BIN" ]; do
 	times=`expr $times - 1`
 	sleep 1
 done
-test -h "$HERE/bin/admin" || {
-	echo failed
-	echo Uninstaller in upgrade mode removed symlinks
-	exit 1
-}
+test -h "$HERE/bin/bk" || fail Uninstaller in upgrade mode removed symlinks
 echo OK
 fi
 
