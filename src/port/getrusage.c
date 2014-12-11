@@ -22,10 +22,18 @@ maxrss(void)
 u64
 maxrss(void)
 {
-	struct rusage ru;
+	struct rusage	ru;
+#if defined(sun)
+	int		factor = getpagesize();
+#elif defined(__APPLE__)
+	int	factor = 1;
+#else
+	int	factor = 1024;
+#endif
 
-	if (!getrusage(RUSAGE_SELF, &ru)) return (1024 * ru.ru_maxrss);
-	return (0);
+	if (getrusage(RUSAGE_SELF, &ru)) return (0);
+
+	return (ru.ru_maxrss * factor);
 }
 
 #endif
