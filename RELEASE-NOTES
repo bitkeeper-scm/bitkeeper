@@ -1,3 +1,13 @@
+bk -U -j cmd
+
+   Enable running command in parallel.
+   XXX add description here.
+
+   NOTE: The -j option to 'bk' has changed.  In bk-6.x and eariler it
+   would list 'junk' file. This is files in bk's internal storage
+   space that were not written by bk.  This was deemed not useful and
+   so the command line option was reused.
+
 bk pull
 
     - New option --stats that prints difffstat output after finishing

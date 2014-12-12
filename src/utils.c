@@ -2061,10 +2061,12 @@ cpus(void)
 
 	GetSystemInfo(&info);
 	return (info.dwNumberOfProcessors);
-#else
+#elif defined(_SC_NPROCESSORS_CONF)
 	int	n = sysconf(_SC_NPROCESSORS_CONF);
 
 	return (n);
+#else
+	return (1);
 #endif
 }
 
