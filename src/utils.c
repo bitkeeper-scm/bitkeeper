@@ -131,14 +131,18 @@ fd2file(int from, char *to)
 /*
  * Currently very lame because it does 1 byte at a time I/O
  * Usually used in bkd.
+ * XXX:
+ * If first parameter gets used, change its name.
+ * If there is some massive cleanup, drop the first parameter.
  */
 int
-getline(int in, char *buf, int size)
+getline(int unused, char *buf, int size)
 {
 	int	i = 0;
 	int	c;
 	static	int echo = -1;
 
+	assert(unused == 0);
 	if (echo == -1) {
 		echo = getenv("BK_GETLINE") != 0;
 		if (getenv("BK_GETCHAR")) echo = 2;

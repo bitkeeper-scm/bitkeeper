@@ -9,13 +9,11 @@ int
 cmd_push_part1(int ac, char **av)
 {
 	char	*p, **aliases;
-	int	i, c, n, status;
+	int	i, c, status;
+	size_t	n;
 	int	debug = 0, gzip = 0, product = 0;
-	MMAP    *m;
-	FILE	*l;
-	char	*lktmp;
-	int	ret;
-	char	buf[MAXKEY], cmd[MAXPATH];
+	FILE	*fout;
+	sccs	*cset;
 
 	while ((c = getopt(ac, av, "dnPz|", 0)) != -1) {
 		switch (c) {
@@ -62,22 +60,19 @@ cmd_push_part1(int ac, char **av)
 
 	if (trigger(av[0], "pre")) return (1);
 	if (debug) fprintf(stderr, "cmd_push_part1: calling listkey\n");
-	lktmp = bktmp(0);
-	sprintf(cmd, "bk _listkey > '%s'", lktmp);
-	l = popen(cmd, "w");
-	while ((n = getline(0, buf, sizeof(buf))) > 0) {
-		if (debug) fprintf(stderr, "cmd_push_part1: %s\n", buf);
-		fprintf(l, "%s\n", buf);
-		if (streq("@END PROBE@", buf)) break;
-	}
 
-	status = pclose(l);
-	if (!WIFEXITED(status) || (WEXITSTATUS(status) > 1)) {
-		perror(cmd);
-		sprintf(buf, "ERROR-listkey failed (status=%d)\n",
-		    WEXITSTATUS(status));
-		out(buf);
-		unlink(lktmp);
+	unless (cset = sccs_csetInit(INIT_MUSTEXIST)) {
+		/* Historical response from bk _listkey is 3 */
+		out("ERROR-listkey failed (status=3)\n");
+		return (1);
+	}
+	Opts.use_stdio = 1;	/* bkd.c: getav() - set up to drain buf */
+	fout = fmem();
+	status = listkey(cset, 0, stdin, fout);
+	sccs_free(cset);
+	if (status > 1) {
+		error("listkey failed (status=%d)\n", status);
+		fclose(fout);
 		return (1);
 	}
 
@@ -92,27 +87,14 @@ cmd_push_part1(int ac, char **av)
 	}
 
 	out("@OK@\n");
-	m = mopen(lktmp, "r");
-	unless (m && msize(m)) {
-		if (m) mclose(m);
-		out("@END@\n");
-		out("ERROR-listkey empty\n");
+	p = fmem_peek(fout, &n);
+	unless (writen(1, p, n) == n) {
+		fclose(fout);
 		return (1);
 	}
-	if (debug) {
-		fprintf(stderr, "cmd_push_part1: sending key list\n");
-		writen(2, m->where,  msize(m));
-	}
-	ret = 0;
-	unless (writen(1, m->where,  msize(m)) == msize(m)) {
-		perror("write");
-		ret = 1;
-	}
-	mclose(m);
-	unlink(lktmp);
-	free(lktmp);
+	fclose(fout);
 	if (debug) fprintf(stderr, "cmd_push_part1: done\n");
-	return (ret);
+	return (0);
 }
 
 int
@@ -276,7 +258,7 @@ bkd_doResolve(char *me, int quiet, int verbose)
 	 * Fire up the pre-trigger
 	 */
 	trigger_setQuiet(quiet);
-	putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
+	putenv("BK_CSETLIST=" CSETS_IN);
 	if (c = trigger("remote resolve",  "pre")) {
 		if (c == 2) {
 			system("bk -?BK_NO_REPO_LOCK=YES abort -fp");

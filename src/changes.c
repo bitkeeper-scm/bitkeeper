@@ -549,7 +549,7 @@ _doit_local(char **nav, char *url)
 
 	bktmp(tmpf);
 	p = fopen(tmpf, "w");
-	rc = synckeys(r, s_cset, PK_LKEY|PK_SYNCROOT, p);
+	rc = synckeys(r, s_cset, SK_LKEY|SK_SYNCROOT, p);
 	fclose(p);
 	remote_free(r);
 	p = fopen(tmpf, "r");
@@ -1463,7 +1463,7 @@ send_part1_msg(remote *r, char **av)
 	if (opts.remote) {
 		probef = bktmp(0);
 		if (f = fopen(probef, "wb")) {
-			rc = probekey(s_cset, 0, 1, f);
+			rc = probekey(s_cset, 0, SK_SYNCROOT, f);
 			fclose(f);
 			extra = size(probef);
 		} else {
@@ -1601,8 +1601,8 @@ changes_part1(remote *r, char **av, char *key_list)
 	 */
 	bktmp(key_list);
 	fd = open(key_list, O_CREAT|O_WRONLY, 0644);
-	flags = PK_REVPREFIX|PK_RKEY|PK_SYNCROOT;
-	rc = prunekey(s_cset, r, seen, fd, flags, 0, NULL, &rcsets, &rtags);
+	flags = SK_REVPREFIX|SK_RKEY|SK_SYNCROOT;
+	rc = prunekey(s_cset, r, seen, fd, flags, NULL, &rcsets, &rtags);
 	if (rc < 0) {
 		switch (rc) {
 		    case -2:

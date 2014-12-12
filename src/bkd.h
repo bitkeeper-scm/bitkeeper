@@ -28,13 +28,6 @@
 #undef	BSIZE		/* hpux exposes it; they shouldn't */
 #define	BSIZE		(32<<10)
 
-/*
- * Options for prunekey()
- */
-#define	PK_REVPREFIX	0x00001 /* input key has rev + tag prefix */
-#define	PK_LKEY		0x00008 /* want local cset in key format */
-#define	PK_RKEY		0x00040	/* want remote cset in key format */
-#define	PK_SYNCROOT	0x00080	/* use sccs_syncRoot(), not newest */
 
 /*
  * Functions take (int ac, char **av)
@@ -147,9 +140,25 @@ void	disconnect(remote *r);
 void	drain(void);
 char	**getClientInfoBlock(void);
 int	sendServerInfo(u32 cmdlog_flags);
-int	probekey(sccs *s, char *rev, int syncroot, FILE *f);
+
+/*
+ * Options for probekey, listkey & prunekey()
+ * The lowest nibble is left clear similar to the bit fields in sccs.h
+ * to leave room for common flags.  Of the common flags, SILENT is used.
+ */
+#define	SK_REVPREFIX	0x00000010	/* input key has rev + tag prefix */
+#define	SK_LKEY		0x00000080	/* want local cset in key format */
+#define	SK_RKEY		0x00000400	/* want remote cset in key format */
+#define	SK_SYNCROOT	0x00000800	/* use sccs_syncRoot(), not newest */
+#define	SK_FORCEFULL	0x00001000	/* force a "makepatch -r.. */
+#define	SK_SENDREV	0x00002000	/* listkey send rev */
+#define	SK_OKAY		0x00004000	/* send @OK@ if no error */
+int	probekey(sccs *s, char *rev, u32 flags, FILE *fout);
+int	listkey(sccs *s, u32 flags, FILE *fin, FILE *fout);
+int	prunekey(sccs *s, remote *r, hash *skip, int outfd, u32 flags,
+	    int *local_only, int *remote_csets, int *remote_tags);
 int	synckeys(remote *r, sccs *s, int flags, FILE *fout);
-int	prunekey(sccs *, remote *, hash *, int, int, int, int *, int *, int *);
+
 int	buf2fd(int gzip, char *buf, int len, int fd);
 void	add_cd_command(FILE *f, remote *r);
 int	skip_http_hdr(remote *r);

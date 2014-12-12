@@ -6,18 +6,17 @@
 int
 cmd_synckeys(int ac, char **av)
 {
-	char	*p, buf[MAXKEY], cmd[MAXPATH];
-	int	c, n, status;
-	MMAP    *m;
-	FILE	*l;
-	char	*lktmp;
-	int	ret;
-	int	syncRoot = 0;
+	char	*p;
+	int	c, status;
+	size_t	n;
+	FILE	*fout;
+	sccs	*cset;
+	u32	flags = SK_SENDREV;
 
 	while ((c = getopt(ac, av, "S", 0)) != -1) {
 	    switch (c) {
 		case 'S':	/* look through the root log for a match */
-		    syncRoot = 1;
+		    flags |= SK_SYNCROOT;
 		    break;
 		default: bk_badArg(c, av);
 	    }
@@ -51,34 +50,29 @@ cmd_synckeys(int ac, char **av)
 		out("@END@\n");
 		return (1);
 	}
-
-	lktmp = bktmp(0);
-	sprintf(cmd, "bk _listkey -r %s > '%s'", syncRoot?"-S":"", lktmp);
-	l = popen(cmd, "w");
-	while ((n = getline(0, buf, sizeof(buf))) > 0) {
-		fprintf(l, "%s\n", buf);
-		if (streq("@END PROBE@", buf)) break;
+	unless (cset = sccs_csetInit(0)) {
+		/* Historical response from bk _listkey is 3 */
+		out("@END@\n");
+		out("ERROR-listkey failed (status=3)\n");
+		return (1);
 	}
-
-	status = pclose(l);
-	if (!WIFEXITED(status) || (WEXITSTATUS(status) > 1)) {
-		perror(cmd);
+	Opts.use_stdio = 1;	/* bkd.c: getav() - set up to drain buf */
+	fout = fmem();
+	status = listkey(cset, flags, stdin, fout);
+	sccs_free(cset);
+	if (status > 1) {
 		out("@END@\n"); /* just in case list key did not send one */
-		sprintf(buf, "ERROR-listkey failed (status==%d)\n",
-		    WEXITSTATUS(status));
-		out(buf);
+		error("listkey failed (status=%d)\n", status);
+		fclose(fout);
 		return (1);
 	}
 
 	out("@OK@\n");
-	m = mopen(lktmp, "r");
-	ret = 0;
-	unless (writen(1, m->where,  msize(m)) == msize(m)) {
-		perror("write");
-		ret = 1;
+	p = fmem_peek(fout, &n);
+	unless (writen(1, p, n) == n) {
+		fclose(fout);
+		return (1);
 	}
-	mclose(m);
-	unlink(lktmp);
-	free(lktmp);
-	return (ret);
+	fclose(fout);
+	return (0);
 }

@@ -2697,7 +2697,7 @@ pass4_apply(opts *opts)
 	 * Call the pre-apply trigger if there is one so that we have
 	 * one last chance to bail out.
 	 */
-	putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
+	putenv("BK_CSETLIST=" CSETS_IN);
 	if (getenv("_BK_IN_BKD")) {
 		cmd = "remote apply";
 	} else {

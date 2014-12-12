@@ -2,7 +2,7 @@
 close 6
 fstat 7
 lseek 3
-lstat 14
+lstat 13
 open 8
 read 75
 stat 2

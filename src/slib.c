@@ -17344,15 +17344,11 @@ delta_sdate(sccs *s, ser_t d)
 void
 sccs_pdelta(sccs *s, ser_t d, FILE *out)
 {
-	char	utctime[32];
+	char	key[MAXKEY];
 
 	assert(d);
-	fprintf(out, "%s|%s|%s|%05u",
-	    USERHOST(s, d),
-	    PATHNAME(s, d),
-	    sccs_utctime(s, d, utctime),
-	    SUM(s, d));
-	if (HAS_RANDOM(s, d)) fprintf(out, "|%s", RANDOM(s, d));
+	sccs_sdelta(s, d, key);
+	fputs(key, out);
 }
 
 /* Get the checksum of the 5 digit checksum */

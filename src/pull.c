@@ -329,7 +329,7 @@ err:		freeLines(envVar, free);
 				backtick("bk changes -Sr+ "
 				    "-nd'$if(:MERGE:){1}$else{0}'", 0),
 				0, 10);
-			csets_in = file2Lines(0, "BitKeeper/etc/csets-in");
+			csets_in = file2Lines(0, CSETS_IN);
 			fprintf(tmpf, "  Ported%s %d cset%s from %s\n",
 			    merged ? " and merged" : "",
 			    nLines(csets_in) - merged,
@@ -567,10 +567,12 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 private int
 send_keys_msg(remote *r, char probe_list[], char **envVar)
 {
-	char	msg_file[MAXPATH], buf[MAXPATH * 2];
-	FILE	*f;
+	char	msg_file[MAXPATH];
+	FILE	*f, *fin;
 	char	*t;
-	int	status, rc;
+	int	rc = -1;
+	sccs	*cset;
+	u32	flags = 0;
 
 	bktmp(msg_file);
 	f = fopen(msg_file, "w");
@@ -591,14 +593,23 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 	if (opts.transaction) fprintf(f, " -N");
 	if (opts.update_only) fprintf(f, " -u");
 	fputs("\n", f);
+
+	unless (fin = fopen(probe_list, "r")) {
+		/* mimic system() failure if '<' file won't open */
+		perror(probe_list);
+		// rc = -1; /* already set */
+	} else unless (cset = sccs_csetInit(0)) {
+		fprintf(stderr, "Can't init changeset\n");
+		rc = 3;	/* historically returned from bk _listkey */
+	} else {
+		if (opts.fullPatch) flags |= SK_FORCEFULL;
+		if (opts.port) flags |= SK_SYNCROOT;
+		rc = listkey(cset, flags, fin, f);
+		sccs_free(cset);
+	}
+	if (fin) fclose(fin);
 	fclose(f);
 
-	sprintf(buf, "bk _listkey %s %s -q < '%s' >> '%s'",
-	    opts.fullPatch ? "-F" : "",
-	    opts.port ? "-S" : "",
-	    probe_list, msg_file);
-	status = system(buf);
-	rc = WEXITSTATUS(status);
 	if (opts.debug) fprintf(stderr, "listkey returned %d\n", rc);
 	switch (rc) {
 	    case 0:
@@ -609,15 +620,13 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 		}
 		/*FALLTHROUGH*/
 	    default:
-		unlink(msg_file);
 		/* tell remote */
 		if ((t = getenv("BKD_REPOTYPE")) && streq(t, "product")) {
 			pull_finish(r, 1, envVar);
 		}
-		return (-1);
+		rc = -1;
 	}
-
-	rc = send_file(r, msg_file, 0);
+	unless (rc) rc = send_file(r, msg_file, 0);
 	unlink(msg_file);
 	return (rc);
 }
@@ -1309,7 +1318,7 @@ pull(char **av, remote *r, char **envVar)
 		/*
 		 * We are about to run resolve, fire pre trigger
 		 */
-		putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
+		putenv("BK_CSETLIST=" CSETS_IN);
 		if ((i = trigger("resolve", "pre"))) {
 			putenv("BK_STATUS=LOCAL TRIGGER FAILURE");
 			rc = 2;

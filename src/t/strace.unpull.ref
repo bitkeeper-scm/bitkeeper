@@ -5,11 +5,11 @@ close 239
 fstat 155
 getdir 12
 link 3
-lseek 129
-lstat 389
+lseek 134
+lstat 375
 mkdir 12
 open 213
-read 229
+read 239
 rename 13
 rmdir 5
 stat 14

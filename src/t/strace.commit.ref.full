@@ -1,10 +1,10 @@
 lstat(/build/.regression wscott/sandbox/project/BitKeeper/log/PRODUCT, {}) = -1
 open(/build/.regression wscott/sandbox/project/BitKeeper/log/COMPONENT, 0, 666) = -1
 open(/build/.regression wscott/sandbox/project/BitKeeper/log/cmd_log, 1089, 666) = 4
-lseek(4, 0, 2) = 6249
+lseek(4, 0, 2) = 6267
 write(4, buf, 72) = 72
 close(4) = 0
-stat(/build/.regression wscott/sandbox/project/BitKeeper/log/cmd_log, {mode=100666, size=6321}) = 0
+stat(/build/.regression wscott/sandbox/project/BitKeeper/log/cmd_log, {mode=100666, size=6339}) = 0
 open(/build/.regression wscott/sandbox/project/BitKeeper/log/features, 0, 666) = 4
 fstat(4, {mode=100664, size=6}) = 0
 fstat(4, {mode=100664, size=6}) = 0
@@ -27,20 +27,16 @@ lstat(/etc/BitKeeper/locks/rdlock, {}) = -1
 lstat(/build/.regression wscott/sandbox/project/RESYNC, {}) = -1
 getdir(/build/.regression wscott/sandbox/project/BitKeeper/readers) = list{0}
 open(/build/.regression wscott/sandbox/project/BitKeeper/log/cmd_log, 1089, 666) = 4
-lseek(4, 0, 2) = 6321
-write(4, buf, 80) = 80
+lseek(4, 0, 2) = 6339
+write(4, buf, 81) = 81
 close(4) = 0
-stat(/build/.tmp wscott, {mode=40775}) = 0
-open(/build/.tmp wscott/bk_commit;219_07756a, 194, 666) = 4
-close(4) = 0
-close(1) = 0
-open(/build/.tmp wscott/bk_commit;219_07756a, 577, 664) = 1
+close(5) = 0
 access(bk, 1) = -1
-access(/build/dev-xfile-wscott/src/bk, 1) = 0
-lstat(/build/dev-xfile-wscott/src/bk, {mode=100775, size=5771344}) = 0
+access(/build/dev-keysync-perf/src/bk, 1) = 0
+lstat(/build/dev-keysync-perf/src/bk, {mode=100775, size=5847702}) = 0
 open(/build/.regression wscott/sandbox/project/BitKeeper/log/cmd_log, 1089, 666) = 4
-lseek(4, 0, 2) = 6401
-write(4, buf, 66) = 66
+lseek(4, 0, 2) = 6420
+write(4, buf, 67) = 67
 close(4) = 0
 lstat(BitKeeper/etc, {mode=40775}) = 0
 lstat(/build/.regression wscott/sandbox/project/BitKeeper/log/PRODUCT, {}) = -1
@@ -81,7 +77,7 @@ open(/build/.regression wscott/sandbox/.bk/lease/debian40.bitkeeper.com, 0, 666)
 fstat(5, {mode=100664, size=307}) = 0
 read(5, buf, 4096) = 307
 close(5) = 0
-fstat(1, {mode=100664, size=0}) = 0
+fstat(1, {mode=10600}) = 0
 close(4) = 0
 getdir(./BitKeeper) = list{6}
 getdir(./BitKeeper/SCCS) = 0
@@ -89,46 +85,68 @@ getdir(./BitKeeper/deleted) = list{1}
 getdir(./BitKeeper/deleted/SCCS) = list{0}
 getdir(./BitKeeper/etc) = list{5}
 getdir(./BitKeeper/etc/SCCS) = list{8}
-lstat(BitKeeper/etc/SCCS/s.ignore, {mode=100444, size=686}) = 0
+lstat(BitKeeper/etc/SCCS/s.ignore, {mode=100444, size=676}) = 0
 lstat(BitKeeper/etc/ignore, {mode=100444, size=6}) = 0
 open(/build/.regression wscott/sandbox/project/BitKeeper/etc/SCCS/s.ignore, 0, 666) = 4
-fstat(4, {mode=100444, size=686}) = 0
-read(4, buf, 4096) = 686
-lseek(4, 0, 1) = 686
+fstat(4, {mode=100444, size=676}) = 0
+read(4, buf, 4096) = 676
+lseek(4, 0, 1) = 676
 close(4) = 0
+lstat(BitKeeper, {mode=40775}) = 0
+lstat(BitKeeper/etc, {mode=40775}) = 0
+lstat(BitKeeper/etc/level, {mode=100664, size=49}) = 0
+lstat(/build/.regression wscott/sandbox/project/BitKeeper/etc/level, {mode=100664, size=49}) = 0
 getdir(./src) = list{1}
 getdir(./src/SCCS) = list{1}
 open(/build/.regression wscott/sandbox/project/BitKeeper/log/cmd_log, 1089, 666) = 4
-lseek(4, 0, 2) = 6467
-write(4, buf, 70) = 70
+lseek(4, 0, 2) = 6487
+write(4, buf, 71) = 71
 close(4) = 0
-lstat(/build/.regression wscott/sandbox/project/BitKeeper/readers/7757@debian40.bitkeeper.com.lock, {}) = -1
+lstat(/build/.regression wscott/sandbox/project/BitKeeper/readers/28803@debian40.bitkeeper.com.lock, {}) = -1
 open(/build/.regression wscott/sandbox/project/BitKeeper/writer/lock, 0, 0) = 4
-fstat(4, {mode=100644, size=39}) = 0
-read(4, buf, 39) = 39
+fstat(4, {mode=100644, size=40}) = 0
+read(4, buf, 40) = 40
 close(4) = 0
+close(5) = 0
+close(7) = 0
+close(8) = 0
+close(5) = -1
+close(6) = 0
+fstat(4, {mode=10600}) = 0
+read(4, buf, 4096) = 64
+read(4, buf, 4096) = 0
 close(4) = 0
-lstat(/build/.tmp wscott/bk_commit;219_07756a, {mode=100664, size=48}) = 0
+stat(/build/.tmp wscott, {mode=40775}) = 0
+open(/build/.tmp wscott/bk_commit;263_28802a, 194, 666) = 4
+close(4) = 0
+open(/build/.tmp wscott/bk_commit;263_28802a, 577, 666) = 4
+fstat(4, {mode=100664, size=0}) = 0
+write(4, buf, 48) = 48
+close(4) = 0
+lstat(/build/.tmp wscott/bk_commit;263_28802a, {mode=100664, size=48}) = 0
 unlink(ChangeSet) = -1
-lstat(SCCS/s.ChangeSet, {mode=100444, size=1215}) = 0
-lstat(SCCS/s.ChangeSet, {mode=100444, size=1215}) = 0
+lstat(SCCS/s.ChangeSet, {mode=100444, size=1204}) = 0
+lstat(SCCS/s.ChangeSet, {mode=100444, size=1204}) = 0
 lstat(BitKeeper/etc, {mode=40775}) = 0
 lstat(ChangeSet, {}) = -1
 lstat(SCCS/p.ChangeSet, {}) = -1
 open(/build/.regression wscott/sandbox/project/SCCS/s.ChangeSet, 0, 666) = 4
-fstat(4, {mode=100444, size=1215}) = 0
-read(4, buf, 4096) = 1215
-lseek(4, 0, 1) = 1215
+fstat(4, {mode=100444, size=1204}) = 0
+read(4, buf, 4096) = 1204
+lseek(4, 0, 1) = 1204
 read(4, buf, 4096) = 0
 lseek(4, 0, 0) = 0
-read(4, buf, 4096) = 1215
+read(4, buf, 4096) = 1204
+lseek(4, 0, 0) = 0
+read(4, buf, 4096) = 1204
+read(4, buf, 28672) = 0
 open(/build/.regression wscott/sandbox/.bk/lease/debian40.bitkeeper.com, 0, 666) = 5
 fstat(5, {mode=100664, size=307}) = 0
 read(5, buf, 4096) = 307
 close(5) = 0
 lstat(/build/.regression wscott/sandbox/.bk/accepted, {mode=100664, size=45}) = 0
 stat(/build/.regression wscott/sandbox/.bk, {mode=40775}) = 0
-lstat(/build/dev-xfile-wscott/src/Pro.lic, {mode=100664, size=35993}) = 0
+lstat(/build/dev-keysync-perf/src/Pro.lic, {mode=100664, size=35993}) = 0
 open(/build/.regression wscott/sandbox/.bk/accepted, 0, 666) = 5
 fstat(5, {mode=100664, size=45}) = 0
 read(5, buf, 4096) = 45
@@ -153,7 +171,7 @@ read(6, buf, 4096) = 365
 read(6, buf, 4096) = 0
 close(6) = 0
 open(/build/.regression wscott/sandbox/.bk/config, 0, 666) = -1
-open(/build/dev-xfile-wscott/src/config, 0, 666) = -1
+open(/build/dev-keysync-perf/src/config, 0, 666) = -1
 lstat(/build/.regression wscott/sandbox/project/BitKeeper/log/config, {}) = -1
 write(5, buf, 148) = 148
 close(5) = 0
@@ -184,22 +202,22 @@ lstat(BitKeeper/etc, {mode=40775}) = 0
 lstat(BitKeeper/etc/SCCS, {mode=40775}) = 0
 lstat(/build/.regression wscott/sandbox/project/SCCS/S.ChangeSet, {}) = -1
 stat(/build/.tmp wscott, {mode=40775}) = 0
-open(/build/.tmp wscott/bk_slib;9538_07756b, 194, 666) = 6
+open(/build/.tmp wscott/bk_slib;9470_28802b, 194, 666) = 6
 close(6) = 0
 stat(/build/.tmp wscott, {mode=40775}) = 0
-open(/build/.tmp wscott/bk_slib;9477_07756c, 194, 666) = 6
+open(/build/.tmp wscott/bk_slib;9409_28802c, 194, 666) = 6
 close(6) = 0
-open(/build/.tmp wscott/bk_slib;9477_07756c, 577, 666) = 6
+open(/build/.tmp wscott/bk_slib;9409_28802c, 577, 666) = 6
 lseek(5, 0, 0) = 0
 read(5, buf, 4096) = 630
 read(5, buf, 28672) = 0
 fstat(6, {mode=100664, size=0}) = 0
 write(6, buf, 148) = 148
 close(6) = 0
-open(/build/.tmp wscott/bk_slib;9538_07756b, 577, 666) = 6
-stat(/build/.tmp wscott/bk_slib;9477_07756c, {mode=100664, size=148}) = 0
+open(/build/.tmp wscott/bk_slib;9470_28802b, 577, 666) = 6
+stat(/build/.tmp wscott/bk_slib;9409_28802c, {mode=100664, size=148}) = 0
 stat(BitKeeper/etc/attr, {mode=100664, size=148}) = 0
-open(/build/.tmp wscott/bk_slib;9477_07756c, 0, 666) = 7
+open(/build/.tmp wscott/bk_slib;9409_28802c, 0, 666) = 7
 fstat(7, {mode=100664, size=148}) = 0
 fstat(7, {mode=100664, size=148}) = 0
 read(7, buf, 4096) = 148
@@ -210,34 +228,26 @@ fstat(7, {mode=100664, size=148}) = 0
 read(7, buf, 4096) = 148
 close(7) = 0
 close(6) = 0
-unlink(/build/.tmp wscott/bk_slib;9477_07756c) = 0
-unlink(/build/.tmp wscott/bk_slib;9538_07756b) = 0
+unlink(/build/.tmp wscott/bk_slib;9409_28802c) = 0
+unlink(/build/.tmp wscott/bk_slib;9470_28802b) = 0
 unlink(BitKeeper/etc/SCCS/p.attr) = 0
 unlink(BitKeeper/etc/attr) = 0
 close(5) = 0
 stat(/build/.tmp wscott, {mode=40775}) = 0
-open(/build/.tmp wscott/bk_commit;399_07756d, 194, 666) = 5
+open(/build/.tmp wscott/bk_commit;464_28802d, 194, 666) = 5
 close(5) = 0
-open(/build/.tmp wscott/bk_commit;399_07756d.tmp.7756, 577, 666) = 5
+open(/build/.tmp wscott/bk_commit;464_28802d.tmp.28802, 577, 666) = 5
 fstat(5, {mode=100664, size=0}) = 0
 write(5, buf, 7) = 7
 close(5) = 0
-rename(/build/.tmp wscott/bk_commit;399_07756d.tmp.7756, /build/.tmp wscott/bk_commit;399_07756d) = 0
+rename(/build/.tmp wscott/bk_commit;464_28802d.tmp.28802, /build/.tmp wscott/bk_commit;464_28802d) = 0
 lstat(/build/.regression wscott/sandbox/project/BitKeeper/triggers, {}) = -1
-open(/build/.tmp wscott/bk_commit;399_07756d, 0, 666) = 5
+open(/build/.tmp wscott/bk_commit;464_28802d, 0, 666) = 5
 fstat(5, {mode=100664, size=7}) = 0
 fstat(5, {mode=100664, size=7}) = 0
 read(5, buf, 4096) = 7
 close(5) = 0
 open(SCCS/t.ChangeSet, 0, 666) = -1
-open(SCCS/p.ChangeSet, 577, 664) = 5
-write(5, buf, 29) = 29
-close(5) = 0
-lstat(SCCS, {mode=40775}) = 0
-lstat(/build/.regression wscott/sandbox/project/SCCS/s.ChangeSet, {mode=100444, size=1215}) = 0
-lseek(4, 0, 0) = 0
-read(4, buf, 4096) = 1215
-read(4, buf, 28672) = 0
 lstat(SCCS, {mode=40775}) = 0
 lstat(/build/.regression wscott/sandbox/.bk/bk-keys/debian40.bitkeeper.com, {mode=100664, size=840}) = 0
 open(/build/.regression wscott/sandbox/.bk/bk-keys/debian40.bitkeeper.com, 0, 666) = 5
@@ -246,15 +256,15 @@ read(5, buf, 4096) = 840
 read(5, buf, 4096) = 0
 close(5) = 0
 open(/tmp/.bk-keys-wscott, 0, 666) = -1
-open(/build/.regression wscott/sandbox/.bk/bk-keys/debian40.bitkeeper.com.debian40.bitkeeper.com.7756, 577, 666) = 5
+open(/build/.regression wscott/sandbox/.bk/bk-keys/debian40.bitkeeper.com.debian40.bitkeeper.com.28802, 577, 666) = 5
 fstat(5, {mode=100664, size=0}) = 0
 write(5, buf, 943) = 943
 close(5) = 0
-rename(/build/.regression wscott/sandbox/.bk/bk-keys/debian40.bitkeeper.com.debian40.bitkeeper.com.7756, /build/.regression wscott/sandbox/.bk/bk-keys/debian40.bitkeeper.com) = 0
-unlink(/tmp/7756@debian40.bitkeeper.com..uniq_keys_wscott) = 0
+rename(/build/.regression wscott/sandbox/.bk/bk-keys/debian40.bitkeeper.com.debian40.bitkeeper.com.28802, /build/.regression wscott/sandbox/.bk/bk-keys/debian40.bitkeeper.com) = 0
+unlink(/tmp/28802@debian40.bitkeeper.com..uniq_keys_wscott) = 0
 unlink(/tmp/.uniq_keys_wscott) = 0
 unlink(/tmp/.bk-keys-wscott) = -1
-open(/build/.tmp wscott/bk_commit;219_07756a, 0, 666) = 5
+open(/build/.tmp wscott/bk_commit;263_28802a, 0, 666) = 5
 fstat(5, {mode=100664, size=48}) = 0
 read(5, buf, 4096) = 48
 lstat(SCCS/s.file, {mode=100444, size=472}) = 0
@@ -268,16 +278,16 @@ read(6, buf, 4096) = 0
 lseek(6, 0, 0) = 0
 read(6, buf, 4096) = 472
 close(6) = 0
-lstat(BitKeeper/etc/SCCS/s.ignore, {mode=100444, size=686}) = 0
+lstat(BitKeeper/etc/SCCS/s.ignore, {mode=100444, size=676}) = 0
 lstat(BitKeeper/etc/ignore, {mode=100444, size=6}) = 0
 lstat(BitKeeper/etc/SCCS/p.ignore, {}) = -1
 open(/build/.regression wscott/sandbox/project/BitKeeper/etc/SCCS/s.ignore, 0, 666) = 6
-fstat(6, {mode=100444, size=686}) = 0
-read(6, buf, 4096) = 686
-lseek(6, 0, 1) = 686
+fstat(6, {mode=100444, size=676}) = 0
+read(6, buf, 4096) = 676
+lseek(6, 0, 1) = 676
 read(6, buf, 4096) = 0
 lseek(6, 0, 0) = 0
-read(6, buf, 4096) = 686
+read(6, buf, 4096) = 676
 close(6) = 0
 read(5, buf, 4096) = 0
 close(5) = 0
@@ -288,39 +298,36 @@ open(SCCS/x.ChangeSet, 577, 444) = 5
 fstat(5, {mode=100444, size=0}) = 0
 write(5, buf, 8) = 8
 lseek(5, 0, 1) = 8
-lseek(4, 0, 0) = 0
-read(4, buf, 4096) = 1215
-read(4, buf, 28672) = 0
-write(5, buf, 1334) = 1334
+write(5, buf, 1325) = 1325
 lseek(5, 0, 0) = 0
 write(5, buf, 8) = 8
 close(5) = 0
 close(4) = 0
 unlink(SCCS/s.ChangeSet) = 0
 rename(SCCS/x.ChangeSet, SCCS/s.ChangeSet) = 0
-lstat(SCCS/s.ChangeSet, {mode=100444, size=1342}) = 0
-open(./BitKeeper/log/TIP.new.7756, 577, 666) = 4
+lstat(SCCS/s.ChangeSet, {mode=100444, size=1333}) = 0
+open(./BitKeeper/log/TIP.new.28802, 577, 666) = 4
 fstat(4, {mode=100664, size=0}) = 0
-lstat(SCCS/s.ChangeSet, {mode=100444, size=1342}) = 0
+lstat(SCCS/s.ChangeSet, {mode=100444, size=1333}) = 0
 write(4, buf, 132) = 132
 close(4) = 0
-rename(./BitKeeper/log/TIP.new.7756, ./BitKeeper/log/TIP) = 0
+rename(./BitKeeper/log/TIP.new.28802, ./BitKeeper/log/TIP) = 0
 unlink(ChangeSet) = -1
-unlink(SCCS/p.ChangeSet) = 0
-open(/build/.tmp wscott/bk_commit;219_07756a, 1089, 666) = 4
+unlink(SCCS/p.ChangeSet) = -1
+open(/build/.tmp wscott/bk_commit;263_28802a, 1089, 666) = 4
 lseek(4, 0, 2) = 48
 fstat(4, {mode=100664, size=48}) = 0
 write(4, buf, 17) = 17
 close(4) = 0
 close(0) = 0
-open(/build/.tmp wscott/bk_commit;219_07756a, 0, 0) = 0
+open(/build/.tmp wscott/bk_commit;263_28802a, 0, 0) = 0
 access(bk, 1) = -1
-access(/build/dev-xfile-wscott/src/bk, 1) = 0
-lstat(/build/dev-xfile-wscott/src/bk, {mode=100775, size=5771344}) = 0
+access(/build/dev-keysync-perf/src/bk, 1) = 0
+lstat(/build/dev-keysync-perf/src/bk, {mode=100775, size=5847702}) = 0
 lstat(/build/.regression wscott/sandbox/project/BitKeeper/log/PRODUCT, {}) = -1
 open(/build/.regression wscott/sandbox/project/BitKeeper/log/COMPONENT, 0, 666) = -1
 open(/build/.regression wscott/sandbox/project/BitKeeper/log/cmd_log, 1089, 666) = 4
-lseek(4, 0, 2) = 6537
+lseek(4, 0, 2) = 6558
 write(4, buf, 67) = 67
 close(4) = 0
 lstat(., {mode=40775}) = 0
@@ -348,8 +355,8 @@ lstat(BitKeeper/log, {mode=40775}) = 0
 lstat(BitKeeper/log, {mode=40775}) = 0
 lstat(BitKeeper/log, {mode=40775}) = 0
 access(BitKeeper/log, 2) = 0
-lstat(BitKeeper/log/cmd_log, {mode=100666, size=6604}) = 0
-lstat(BitKeeper/log/cmd_log, {mode=100666, size=6604}) = 0
+lstat(BitKeeper/log/cmd_log, {mode=100666, size=6625}) = 0
+lstat(BitKeeper/log/cmd_log, {mode=100666, size=6625}) = 0
 access(BitKeeper/log/cmd_log, 2) = 0
 lstat(BitKeeper/log/repo_log, {mode=100666, size=368}) = 0
 lstat(BitKeeper/log/repo_log, {mode=100666, size=368}) = 0
@@ -359,7 +366,7 @@ lstat(SCCS, {mode=40775}) = 0
 lstat(SCCS, {mode=40775}) = 0
 lstat(SCCS, {mode=40775}) = 0
 access(SCCS, 2) = 0
-lstat(SCCS/s.ChangeSet, {mode=100444, size=1342}) = 0
+lstat(SCCS/s.ChangeSet, {mode=100444, size=1333}) = 0
 lstat(., {mode=40775}) = 0
 lstat(., {mode=40775}) = 0
 lstat(., {mode=40775}) = 0
@@ -385,8 +392,8 @@ lstat(BitKeeper/log, {mode=40775}) = 0
 lstat(BitKeeper/log, {mode=40775}) = 0
 lstat(BitKeeper/log, {mode=40775}) = 0
 access(BitKeeper/log, 2) = 0
-lstat(BitKeeper/log/cmd_log, {mode=100666, size=6604}) = 0
-lstat(BitKeeper/log/cmd_log, {mode=100666, size=6604}) = 0
+lstat(BitKeeper/log/cmd_log, {mode=100666, size=6625}) = 0
+lstat(BitKeeper/log/cmd_log, {mode=100666, size=6625}) = 0
 access(BitKeeper/log/cmd_log, 2) = 0
 lstat(BitKeeper/log/repo_log, {mode=100666, size=368}) = 0
 lstat(BitKeeper/log/repo_log, {mode=100666, size=368}) = 0
@@ -396,15 +403,15 @@ lstat(SCCS, {mode=40775}) = 0
 lstat(SCCS, {mode=40775}) = 0
 lstat(SCCS, {mode=40775}) = 0
 access(SCCS, 2) = 0
-unlink(BitKeeper/tmp/a7758) = -1
-unlink(BitKeeper/tmp/b7758) = -1
-open(BitKeeper/tmp/a7758, 65, 666) = 4
+unlink(BitKeeper/tmp/a28804) = -1
+unlink(BitKeeper/tmp/b28804) = -1
+open(BitKeeper/tmp/a28804, 65, 666) = 4
 close(4) = 0
-link(BitKeeper/tmp/a7758, BitKeeper/tmp/b7758) = 0
-unlink(BitKeeper/tmp/a7758) = 0
-unlink(BitKeeper/tmp/b7758) = 0
-lstat(SCCS/s.ChangeSet, {mode=100444, size=1342}) = 0
-lstat(SCCS/s.ChangeSet, {mode=100444, size=1342}) = 0
+link(BitKeeper/tmp/a28804, BitKeeper/tmp/b28804) = 0
+unlink(BitKeeper/tmp/a28804) = 0
+unlink(BitKeeper/tmp/b28804) = 0
+lstat(SCCS/s.ChangeSet, {mode=100444, size=1333}) = 0
+lstat(SCCS/s.ChangeSet, {mode=100444, size=1333}) = 0
 lstat(BitKeeper/etc/SCCS/s.config, {mode=100664, size=899}) = 0
 lstat(/build/.regression wscott/sandbox/project/BitKeeper/etc/config, {mode=100444, size=365}) = 0
 open(/build/.regression wscott/sandbox/project/BitKeeper/etc/config, 0, 666) = 4
@@ -414,7 +421,7 @@ read(4, buf, 4096) = 0
 close(4) = 0
 lstat(/build/.regression wscott/sandbox/.bk, {mode=40775}) = 0
 open(/build/.regression wscott/sandbox/.bk/config, 0, 666) = -1
-open(/build/dev-xfile-wscott/src/config, 0, 666) = -1
+open(/build/dev-keysync-perf/src/config, 0, 666) = -1
 lstat(/build/.regression wscott/sandbox/project/BitKeeper/log/config, {}) = -1
 open(/build/.regression wscott/sandbox/project/BitKeeper/log/features, 0, 666) = 4
 fstat(4, {mode=100664, size=6}) = 0
@@ -426,18 +433,21 @@ fstat(4, {mode=100664, size=98}) = 0
 fstat(4, {mode=100664, size=98}) = 0
 read(4, buf, 4096) = 98
 close(4) = 0
-lstat(SCCS/s.ChangeSet, {mode=100444, size=1342}) = 0
-lstat(SCCS/s.ChangeSet, {mode=100444, size=1342}) = 0
+lstat(SCCS/s.ChangeSet, {mode=100444, size=1333}) = 0
+lstat(SCCS/s.ChangeSet, {mode=100444, size=1333}) = 0
 lstat(BitKeeper/etc, {mode=40775}) = 0
 lstat(ChangeSet, {}) = -1
 lstat(SCCS/p.ChangeSet, {}) = -1
 open(/build/.regression wscott/sandbox/project/SCCS/s.ChangeSet, 0, 666) = 4
-fstat(4, {mode=100444, size=1342}) = 0
-read(4, buf, 4096) = 1342
-lseek(4, 0, 1) = 1342
+fstat(4, {mode=100444, size=1333}) = 0
+read(4, buf, 4096) = 1333
+lseek(4, 0, 1) = 1333
 read(4, buf, 4096) = 0
 lseek(4, 0, 0) = 0
-read(4, buf, 4096) = 1342
+read(4, buf, 4096) = 1333
+lseek(4, 0, 0) = 0
+read(4, buf, 4096) = 1333
+read(4, buf, 28672) = 0
 lstat(/build/.regression wscott/sandbox/.bk/lease, {mode=40775}) = 0
 open(/build/.regression wscott/sandbox/.bk/lease/debian40.bitkeeper.com, 0, 666) = 5
 fstat(5, {mode=100664, size=307}) = 0
@@ -455,7 +465,6 @@ read(5, buf, 4096) = 0
 close(5) = 0
 fstat(0, {mode=100664, size=65}) = 0
 read(0, buf, 4096) = 65
-lstat(file, {}) = -1
 lstat(SCCS/s.file, {mode=100444, size=472}) = 0
 lstat(file, {}) = -1
 lstat(SCCS/p.file, {}) = -1
@@ -489,19 +498,18 @@ lstat(SCCS/s.file, {mode=100444, size=476}) = 0
 lstat(SCCS/p.file, {}) = -1
 unlink(SCCS/d.file) = 0
 lstat(SCCS/d.file, {}) = -1
-lstat(BitKeeper/etc/ignore, {mode=100444, size=6}) = 0
-lstat(BitKeeper/etc/SCCS/s.ignore, {mode=100444, size=686}) = 0
+lstat(BitKeeper/etc/SCCS/s.ignore, {mode=100444, size=676}) = 0
 lstat(BitKeeper/etc/ignore, {mode=100444, size=6}) = 0
 lstat(BitKeeper/etc/SCCS/p.ignore, {}) = -1
 open(/build/.regression wscott/sandbox/project/BitKeeper/etc/SCCS/s.ignore, 0, 666) = 5
-fstat(5, {mode=100444, size=686}) = 0
-read(5, buf, 4096) = 686
-lseek(5, 0, 1) = 686
+fstat(5, {mode=100444, size=676}) = 0
+read(5, buf, 4096) = 676
+lseek(5, 0, 1) = 676
 read(5, buf, 4096) = 0
 lseek(5, 0, 0) = 0
-read(5, buf, 4096) = 686
+read(5, buf, 4096) = 676
 lseek(5, 0, 0) = 0
-read(5, buf, 4096) = 686
+read(5, buf, 4096) = 676
 read(5, buf, 28672) = 0
 lstat(BitKeeper/SCCS/s.etc, {}) = -1
 lstat(SCCS/s.BitKeeper, {}) = -1
@@ -511,30 +519,23 @@ fstat(6, {mode=100444, size=0}) = 0
 write(6, buf, 8) = 8
 lseek(6, 0, 1) = 8
 lseek(5, 0, 0) = 0
-read(5, buf, 4096) = 686
+read(5, buf, 4096) = 676
 read(5, buf, 28672) = 0
-write(6, buf, 682) = 682
+write(6, buf, 672) = 672
 lseek(6, 0, 0) = 0
 write(6, buf, 8) = 8
 close(6) = 0
 close(5) = 0
 unlink(BitKeeper/etc/SCCS/s.ignore) = 0
 rename(BitKeeper/etc/SCCS/x.ignore, BitKeeper/etc/SCCS/s.ignore) = 0
-lstat(BitKeeper/etc/SCCS/s.ignore, {mode=100444, size=690}) = 0
+lstat(BitKeeper/etc/SCCS/s.ignore, {mode=100444, size=680}) = 0
 lstat(BitKeeper/etc/ignore, {mode=100444, size=6}) = 0
-lstat(BitKeeper/etc/SCCS/s.ignore, {mode=100444, size=690}) = 0
+lstat(BitKeeper/etc/SCCS/s.ignore, {mode=100444, size=680}) = 0
 lstat(BitKeeper/etc/SCCS/p.ignore, {}) = -1
 unlink(BitKeeper/etc/SCCS/d.ignore) = 0
 lstat(BitKeeper/etc/SCCS/d.ignore, {}) = -1
-lstat(ChangeSet, {}) = -1
-lseek(4, 0, 0) = 0
-read(4, buf, 4096) = 1342
-read(4, buf, 28672) = 0
 lstat(SCCS/d.ChangeSet, {}) = -1
 read(0, buf, 4096) = 0
-lseek(4, 0, 0) = 0
-read(4, buf, 4096) = 1342
-read(4, buf, 28672) = 0
 lstat(/build/.regression wscott/sandbox/.bk/repos/fe/debian40.bitkeeper.com/path.log, {mode=100664, size=42}) = 0
 lstat(/build/.regression wscott/sandbox/project/SCCS/S.ChangeSet, {}) = -1
 open(/build/.regression wscott/sandbox/.bk/repos/fe/debian40.bitkeeper.com/path.log, 0, 666) = 5
@@ -542,10 +543,10 @@ fstat(5, {mode=100664, size=42}) = 0
 read(5, buf, 4096) = 42
 close(5) = 0
 access(bk, 1) = -1
-access(/build/dev-xfile-wscott/src/bk, 1) = 0
-lstat(/build/dev-xfile-wscott/src/bk, {mode=100775, size=5771344}) = 0
+access(/build/dev-keysync-perf/src/bk, 1) = 0
+lstat(/build/dev-keysync-perf/src/bk, {mode=100775, size=5847702}) = 0
 open(/build/.regression wscott/sandbox/project/BitKeeper/log/cmd_log, 1089, 666) = 4
-lseek(4, 0, 2) = 6604
+lseek(4, 0, 2) = 6625
 write(4, buf, 62) = 62
 close(4) = 0
 lstat(., {mode=40775}) = 0
@@ -573,8 +574,8 @@ lstat(BitKeeper/log, {mode=40775}) = 0
 lstat(BitKeeper/log, {mode=40775}) = 0
 lstat(BitKeeper/log, {mode=40775}) = 0
 access(BitKeeper/log, 2) = 0
-lstat(BitKeeper/log/cmd_log, {mode=100666, size=6666}) = 0
-lstat(BitKeeper/log/cmd_log, {mode=100666, size=6666}) = 0
+lstat(BitKeeper/log/cmd_log, {mode=100666, size=6687}) = 0
+lstat(BitKeeper/log/cmd_log, {mode=100666, size=6687}) = 0
 access(BitKeeper/log/cmd_log, 2) = 0
 lstat(BitKeeper/log/repo_log, {mode=100666, size=368}) = 0
 lstat(BitKeeper/log/repo_log, {mode=100666, size=368}) = 0
@@ -584,15 +585,15 @@ lstat(SCCS, {mode=40775}) = 0
 lstat(SCCS, {mode=40775}) = 0
 lstat(SCCS, {mode=40775}) = 0
 access(SCCS, 2) = 0
-unlink(BitKeeper/tmp/a7759) = -1
-unlink(BitKeeper/tmp/b7759) = -1
-open(BitKeeper/tmp/a7759, 65, 666) = 4
+unlink(BitKeeper/tmp/a28805) = -1
+unlink(BitKeeper/tmp/b28805) = -1
+open(BitKeeper/tmp/a28805, 65, 666) = 4
 close(4) = 0
-link(BitKeeper/tmp/a7759, BitKeeper/tmp/b7759) = 0
-unlink(BitKeeper/tmp/a7759) = 0
-unlink(BitKeeper/tmp/b7759) = 0
-lstat(SCCS/s.ChangeSet, {mode=100444, size=1342}) = 0
-lstat(SCCS/s.ChangeSet, {mode=100444, size=1342}) = 0
+link(BitKeeper/tmp/a28805, BitKeeper/tmp/b28805) = 0
+unlink(BitKeeper/tmp/a28805) = 0
+unlink(BitKeeper/tmp/b28805) = 0
+lstat(SCCS/s.ChangeSet, {mode=100444, size=1333}) = 0
+lstat(SCCS/s.ChangeSet, {mode=100444, size=1333}) = 0
 lstat(BitKeeper/etc/SCCS/s.config, {mode=100664, size=899}) = 0
 lstat(/build/.regression wscott/sandbox/project/BitKeeper/etc/config, {mode=100444, size=365}) = 0
 open(/build/.regression wscott/sandbox/project/BitKeeper/etc/config, 0, 666) = 4
@@ -604,7 +605,7 @@ lstat(/build/.regression wscott/sandbox/project/BitKeeper/log/PRODUCT, {}) = -1
 open(/build/.regression wscott/sandbox/project/BitKeeper/log/COMPONENT, 0, 666) = -1
 lstat(/build/.regression wscott/sandbox/.bk, {mode=40775}) = 0
 open(/build/.regression wscott/sandbox/.bk/config, 0, 666) = -1
-open(/build/dev-xfile-wscott/src/config, 0, 666) = -1
+open(/build/dev-keysync-perf/src/config, 0, 666) = -1
 lstat(/build/.regression wscott/sandbox/project/BitKeeper/log/config, {}) = -1
 open(/build/.regression wscott/sandbox/project/BitKeeper/log/features, 0, 666) = 4
 fstat(4, {mode=100664, size=6}) = 0
@@ -617,69 +618,72 @@ fstat(4, {mode=100664, size=98}) = 0
 read(4, buf, 4096) = 98
 close(4) = 0
 open(/build/.regression wscott/sandbox/project/BitKeeper/log/cmd_log, 1089, 666) = 4
-lseek(4, 0, 2) = 6666
+lseek(4, 0, 2) = 6687
 write(4, buf, 66) = 66
 close(4) = 0
-lstat(/build/.regression wscott/sandbox/project/BitKeeper/readers/7759@debian40.bitkeeper.com.lock, {}) = -1
+lstat(/build/.regression wscott/sandbox/project/BitKeeper/readers/28805@debian40.bitkeeper.com.lock, {}) = -1
 open(/build/.regression wscott/sandbox/project/BitKeeper/writer/lock, 0, 0) = 4
-fstat(4, {mode=100644, size=39}) = 0
-read(4, buf, 39) = 39
+fstat(4, {mode=100644, size=40}) = 0
+read(4, buf, 40) = 40
 close(4) = 0
-open(./BitKeeper/log/TIP.new.7758, 577, 666) = 5
+open(./BitKeeper/log/TIP.new.28804, 577, 666) = 5
 fstat(5, {mode=100664, size=0}) = 0
-lstat(SCCS/s.ChangeSet, {mode=100444, size=1342}) = 0
+lstat(SCCS/s.ChangeSet, {mode=100444, size=1333}) = 0
 write(5, buf, 132) = 132
 close(5) = 0
-rename(./BitKeeper/log/TIP.new.7758, ./BitKeeper/log/TIP) = 0
+rename(./BitKeeper/log/TIP.new.28804, ./BitKeeper/log/TIP) = 0
 close(4) = 0
 open(/build/.regression wscott/sandbox/project/BitKeeper/log/cmd_log, 1089, 666) = 4
-lseek(4, 0, 2) = 6732
+lseek(4, 0, 2) = 6753
 write(4, buf, 71) = 71
 close(4) = 0
-lstat(/build/.regression wscott/sandbox/project/BitKeeper/readers/7758@debian40.bitkeeper.com.lock, {}) = -1
+lstat(/build/.regression wscott/sandbox/project/BitKeeper/readers/28804@debian40.bitkeeper.com.lock, {}) = -1
 open(/build/.regression wscott/sandbox/project/BitKeeper/writer/lock, 0, 0) = 4
-fstat(4, {mode=100644, size=39}) = 0
-read(4, buf, 39) = 39
+fstat(4, {mode=100644, size=40}) = 0
+read(4, buf, 40) = 40
 close(4) = 0
 close(4) = 0
 open(/build/.regression wscott/sandbox/project/BitKeeper/writer/lock, 0, 0) = 4
-fstat(4, {mode=100644, size=39}) = 0
-read(4, buf, 39) = 39
+fstat(4, {mode=100644, size=40}) = 0
+read(4, buf, 40) = 40
 close(4) = 0
 lstat(/build/.regression wscott/sandbox/project/BitKeeper/readers, {mode=40777}) = 0
-open(/build/.regression wscott/sandbox/project/BitKeeper/readers/7756@debian40.bitkeeper.com.lock, 577, 666) = 4
+open(/build/.regression wscott/sandbox/project/BitKeeper/readers/28802@debian40.bitkeeper.com.lock, 577, 666) = 4
 close(4) = 0
-lstat(/build/.regression wscott/sandbox/project/BitKeeper/readers/7756@debian40.bitkeeper.com.lock, {mode=100664, size=0}) = 0
+lstat(/build/.regression wscott/sandbox/project/BitKeeper/readers/28802@debian40.bitkeeper.com.lock, {mode=100664, size=0}) = 0
 open(/build/.regression wscott/sandbox/project/BitKeeper/writer/lock, 0, 0) = 4
-fstat(4, {mode=100644, size=39}) = 0
-read(4, buf, 39) = 39
+fstat(4, {mode=100644, size=40}) = 0
+read(4, buf, 40) = 40
 close(4) = 0
-unlink(/build/.regression wscott/sandbox/project/BitKeeper/writer/7756@debian40.bitkeeper.com.lock) = 0
+unlink(/build/.regression wscott/sandbox/project/BitKeeper/writer/28802@debian40.bitkeeper.com.lock) = 0
 unlink(/build/.regression wscott/sandbox/project/BitKeeper/writer/lock) = 0
 open(/build/.regression wscott/sandbox/project/BitKeeper/log/cmd_log, 1089, 666) = 4
-lseek(4, 0, 2) = 6803
-write(4, buf, 75) = 75
+lseek(4, 0, 2) = 6824
+write(4, buf, 76) = 76
 close(4) = 0
 rmdir(/build/.regression wscott/sandbox/project/BitKeeper/writer) = 0
 open(/build/.regression wscott/sandbox/project/BitKeeper/log/cmd_log, 1089, 666) = 4
-lseek(4, 0, 2) = 6878
-write(4, buf, 83) = 83
+lseek(4, 0, 2) = 6900
+write(4, buf, 84) = 84
 close(4) = 0
 lstat(/build/.regression wscott/sandbox/project/BitKeeper/triggers, {}) = -1
-unlink(/build/.tmp wscott/bk_commit;219_07756a) = 0
-unlink(/build/.tmp wscott/bk_commit;399_07756d) = 0
+unlink(/build/.tmp wscott/bk_commit;263_28802a) = 0
+unlink(/build/.tmp wscott/bk_commit;464_28802d) = 0
 unlink(BitKeeper/tmp/SCCS/commit.cset.backup.s) = 0
 lstat(BitKeeper/tmp/SCCS/commit.cset.backupattr.s, {mode=100444, size=630}) = 0
 unlink(BitKeeper/tmp/SCCS/commit.cset.backupattr.s) = 0
-lstat(SCCS/s.ChangeSet, {mode=100444, size=1342}) = 0
-lstat(SCCS/s.ChangeSet, {mode=100444, size=1342}) = 0
+lstat(SCCS/s.ChangeSet, {mode=100444, size=1333}) = 0
+lstat(SCCS/s.ChangeSet, {mode=100444, size=1333}) = 0
 lstat(BitKeeper/etc, {mode=40775}) = 0
 lstat(ChangeSet, {}) = -1
 lstat(SCCS/p.ChangeSet, {}) = -1
 open(/build/.regression wscott/sandbox/project/SCCS/s.ChangeSet, 0, 666) = 4
-fstat(4, {mode=100444, size=1342}) = 0
-read(4, buf, 4096) = 1342
-lseek(4, 0, 1) = 1342
+fstat(4, {mode=100444, size=1333}) = 0
+read(4, buf, 4096) = 1333
+lseek(4, 0, 1) = 1333
+lseek(4, 0, 0) = 0
+read(4, buf, 4096) = 1333
+read(4, buf, 28672) = 0
 open(BitKeeper/etc/SCCS/x.cmark, 0, 666) = 5
 fstat(5, {mode=100664, size=75}) = 0
 fstat(5, {mode=100664, size=75}) = 0
@@ -687,21 +691,21 @@ read(5, buf, 4096) = 75
 close(5) = 0
 close(4) = 0
 open(/build/.regression wscott/sandbox/project/BitKeeper/log/cmd_log, 1089, 666) = 4
-lseek(4, 0, 2) = 6961
+lseek(4, 0, 2) = 6984
 write(4, buf, 76) = 76
 close(4) = 0
-stat(/build/.regression wscott/sandbox/project/BitKeeper/log/cmd_log, {mode=100666, size=7037}) = 0
+stat(/build/.regression wscott/sandbox/project/BitKeeper/log/cmd_log, {mode=100666, size=7060}) = 0
 open(/build/.regression wscott/sandbox/project/BitKeeper/log/repo_log, 1089, 666) = 4
 lseek(4, 0, 2) = 368
 write(4, buf, 76) = 76
 close(4) = 0
 stat(/build/.regression wscott/sandbox/project/BitKeeper/log/repo_log, {mode=100666, size=444}) = 0
-unlink(/build/.regression wscott/sandbox/project/BitKeeper/readers/7756@debian40.bitkeeper.com.lock) = 0
+unlink(/build/.regression wscott/sandbox/project/BitKeeper/readers/28802@debian40.bitkeeper.com.lock) = 0
 open(/build/.regression wscott/sandbox/project/BitKeeper/log/cmd_log, 1089, 666) = 4
-lseek(4, 0, 2) = 7037
-write(4, buf, 72) = 72
+lseek(4, 0, 2) = 7060
+write(4, buf, 73) = 73
 close(4) = 0
-stat(/build/.regression wscott/sandbox/project/BitKeeper/log/cmd_log, {mode=100666, size=7109}) = 0
+stat(/build/.regression wscott/sandbox/project/BitKeeper/log/cmd_log, {mode=100666, size=7133}) = 0
 open(/build/.regression wscott/sandbox/project/BitKeeper/writer/lock, 0, 0) = -1
-lstat(/build/.regression wscott/sandbox/project/BitKeeper/readers/7756@debian40.bitkeeper.com.lock, {}) = -1
+lstat(/build/.regression wscott/sandbox/project/BitKeeper/readers/28802@debian40.bitkeeper.com.lock, {}) = -1
 open(/build/.regression wscott/sandbox/project/BitKeeper/writer/lock, 0, 0) = -1
