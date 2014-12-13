@@ -747,12 +747,11 @@ clone(char **av, remote *r, char *local, char **envVar)
 		free(p);
 	}
 	if (proj_isComponent(0)) {
-		/* components use product's features, but a component
-		 * may add some features.
+		/*
+		 * components just use the product features,
+		 * but after unpacking we may add some features
+	 	 * below.
 		 */
-		if (rmt_features & FEAT_SORTKEY) {
-			features_set(0, FEAT_SORTKEY, 1);
-		}
 	} else if (opts->attach) {
 		/*
 		 * when doing an attach we need to use the same features
@@ -834,6 +833,18 @@ clone(char **av, remote *r, char *local, char **envVar)
 		free(nlid);
 	}
 	proj_reset(0);
+
+	if (proj_isComponent(0)) {
+		/*
+		 * When we just populated a component, we might be adding some
+		 * new features to the collection.  We couldn't do this above
+		 * because the new component wasn't in a valid state yet.
+		 */
+		if (rmt_features & FEAT_SORTKEY) {
+			features_set(0, FEAT_SORTKEY, 1);
+		}
+	}
+
 	/*
 	 * Above we set the sfile format features for this repository
 	 * to what we want them to be:

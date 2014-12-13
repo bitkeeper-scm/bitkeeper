@@ -327,42 +327,43 @@ features_bits(project *p)
 		return (ret);
 	}
 	if (here = loadfile(proj_fullpath(p, "BitKeeper/log/features"), 0)) {
-		pf->bits = features_toBits(here, here);
+		ret = pf->bits = features_toBits(here, here);
 		if (*here) {
 			getMsg("repo_feature", here, '=', stderr);
 			exit(101);
 		}
 		free(here);
 		// some features imply the older features
-		if (pf->bits & (FEAT_BWEAVE|FEAT_BWEAVEv2)) {
+		if (ret & (FEAT_BWEAVE|FEAT_BWEAVEv2)) {
 			// either BWEAVE implies BKFILE
-			pf->bits |= FEAT_BKFILE;
-			pf->new = 1;
+			ret |= FEAT_BKFILE;
 		}
-		if ((pf->bits & (FEAT_BKFILE|FEAT_BWEAVE|FEAT_BWEAVEv2)) ==
+		if ((ret & (FEAT_BKFILE|FEAT_BWEAVE|FEAT_BWEAVEv2)) ==
 		    FEAT_BKFILE) {
 			// BKFILE must have one of the BWEAVE features
-			pf->bits |= FEAT_BWEAVEv2;
-			pf->new = 1;
+			ret |= FEAT_BWEAVEv2;
 		}
 		// some features replace older features
-		if ((pf->bits & (FEAT_BWEAVE|FEAT_BWEAVEv2)) ==
+		if ((ret & (FEAT_BWEAVE|FEAT_BWEAVEv2)) ==
 		    (FEAT_BWEAVE|FEAT_BWEAVEv2)) {
-			pf->bits &= ~FEAT_BWEAVEv2;
+			ret &= ~FEAT_BWEAVEv2;
+		}
+		if (ret != pf->bits) {
+			// we updated this list, force a rewrite
+			pf->bits = ret;
 			pf->new = 1;
 		}
 		here = features_fromBits(pf->bits);
 		TRACE("loaded %s=%s", proj_root(p), here);
 		free(here);
 	} else {
-		pf->bits = 1;  /* none */
+		ret = pf->bits = 1;  /* none */
 	}
 
 	/* enforce nested restrictions */
 	if (proj_isEnsemble(p) && bk_notLicensed(p, LIC_SAM, 0)) {
 		exit(100);
 	}
-	ret = pf->bits;
 	if (freep) proj_free(freep);
 	return (ret);
 }
