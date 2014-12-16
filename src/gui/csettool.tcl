@@ -84,8 +84,8 @@ proc dotFile {{line {}}} \
 	# busy is put after we change the selection. This is because busy
 	# causes a screen update and we want the selection set quickly to make
 	# the user think we're responsive.
+	if {![regexp "^  $file_stop" "$file" -> file rev]} { return }
 	busy 1
-	regexp "^  $file_stop" "$file" -> file rev
 	set    dspec ":PARENT:\\n"
 	append dspec ":T|PARENT: :Dd|PARENT::DM|PARENT::Dy|PARENT:\\n"
 	append dspec ":T: :Dd::DM::Dy:"

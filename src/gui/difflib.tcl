@@ -144,8 +144,10 @@ proc prev {} \
 	if {$lastDiff <= 1} {
 		if {[prevFile] == 0} {return}
 		set lastDiff $diffCount
-		dot
-		yscroll see $DiffsEnd($lastDiff)
+		if {[info exists DiffsEnd($lastDiff)]} {
+			dot
+			yscroll see $DiffsEnd($lastDiff)
+		}
 		return
 	}
 	incr lastDiff -1
