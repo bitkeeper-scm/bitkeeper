@@ -1255,7 +1255,7 @@ do_unmark(char **modFiles)
 				continue;
 			}
 			updatePending(s);
-			sccs_free(s);
 		}
+		sccs_free(s);
 	}
 }
