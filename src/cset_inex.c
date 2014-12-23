@@ -334,7 +334,8 @@ err:		sccs_free(s);
 		fprintf(stderr, "cset: could not delta %s\n", s->gfile);
 		goto err;
 	}
-	do_checkout(s);
+	sccs_restart(s);
+	do_checkout(s, 0, 0);
 ok:	sccs_free(s);
 	return (0);
 }

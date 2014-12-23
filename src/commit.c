@@ -937,7 +937,7 @@ mkChangeSet(c_opts opts, sccs *cset, char *files, char ***keys)
 	 * Edit the ChangeSet file - we need it edited to modify it as well
 	 */
 	if (LOCKED(cset)) {
-		if (sccs_read_pfile("commit", cset, &pf)) return (0);
+		if (sccs_read_pfile(cset, &pf)) return (0);
 	} else {
 		memset(&pf, 0, sizeof(pf));
 		pf.oldrev = strdup("+");

@@ -279,6 +279,7 @@ int	checking_rmdir(char *dir);
 #define	CSETMARKED(s)	((s)->xflags & X_CSETMARKED)
 #define	HASH(s)		((s)->xflags & X_HASH)
 #define	SCCS(s)		((s)->xflags & X_SCCS)
+#define	HAS_KEYWORDS(s)	((s)->xflags & (X_RCS|X_SCCS))
 #define	EOLN_NATIVE(s)	((s)->xflags & X_EOLN_NATIVE)
 #define	DB(s)		((s)->xflags & X_DB)
 #define	NOMERGE(s)	((s)->xflags & X_NOMERGE)
@@ -1193,7 +1194,7 @@ char    *mode2FileType(mode_t m);
 int	getline(int in, char *buf, int size);
 void	explodeKey(char *key, char *parts[6]);
 void	free_pfile(pfile *pf);
-int	sccs_read_pfile(char *who, sccs *s, pfile *pf);
+int	sccs_read_pfile(sccs *s, pfile *pf);
 int	sccs_rewrite_pfile(sccs *s, pfile *pf);
 int	sccs_isleaf(sccs *s, ser_t d);
 int	emptyDir(char *dir);
@@ -1376,7 +1377,7 @@ int	chk_user(void);
 int	chk_nlbug(sccs *s);
 int	chk_permissions(void);
 int	fix_gmode(sccs *s, int gflags);
-int	do_checkout(sccs *s);
+int	do_checkout(sccs *s, u32 getFlags, char ***bamFiles);
 int	unsafe_path(char *s);
 int	hasTriggers(char *cmd, char *when);
 void	comments_cleancfile(sccs *s);

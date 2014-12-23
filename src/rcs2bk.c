@@ -274,7 +274,7 @@ rcs2bk(RCS *rcs, char *sfile)
 	}
 	free(g);
 	ret = 0;
-	if (do_checkout(s)) ret = 1;
+	if (do_checkout(s, 0, 0)) ret = 1;
 	sccs_free(s);
 	return (ret);
 }

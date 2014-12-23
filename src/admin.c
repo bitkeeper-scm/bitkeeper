@@ -270,7 +270,7 @@ admin_main(int ac, char **av)
 		if (new_delta) {
 			if (EDITED(sc)) {
 				was_edited = 1;
-				sccs_read_pfile("admin", sc, &pf);
+				sccs_read_pfile(sc, &pf);
 				if (xfile_delete(sc->gfile, 'p')) {
 					fprintf(stderr,
 					"admin: cannot delete p state for %s\n",

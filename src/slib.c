@@ -6894,7 +6894,7 @@ get_reg(sccs *s, char *printOut, int flags, ser_t d,
 	if (BINARY(s) || (hash && !(flags & (PRINT|GET_HASHONLY)))) {
 		flags &= ~(GET_EXPAND|GET_PREFIX);
 	}
-	unless (SCCS(s) || RCS(s)) flags &= ~GET_EXPAND;
+	unless (HAS_KEYWORDS(s)) flags &= ~GET_EXPAND;
 
 	if (flags & GET_LINENAME) {
 		lnum = calloc(TABLE(s) + 1, sizeof(*lnum));
@@ -7511,7 +7511,7 @@ err:		if (i2) free(i2);
 		 * lose merge pointers.
 		 */
 		if (streq(gfile, s->gfile) &&
-		    (sccs_read_pfile("co", s, &pf) == 0)) {
+		    (sccs_read_pfile(s, &pf) == 0)) {
 			rc = 0;
 			if (pf.mRev || pf.iLst || pf.xLst) {
 			    rc = 1;
@@ -9209,7 +9209,7 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 
 	unless (HAS_GFILE(s) && HAS_PFILE(s)) return (0);
 
-	if (sccs_read_pfile("hasDiffs", s, &pf)) return (-1);
+	if (sccs_read_pfile(s, &pf)) return (-1);
 	unless (d = findrev(s, pf.oldrev)) {
 		verbose((stderr,
 		    "diffs: can't find %s in %s\n", pf.oldrev, s->gfile));
@@ -9578,7 +9578,7 @@ sccs_clean(sccs *s, u32 flags)
 		return (1);
 	}
 
-	if (sccs_read_pfile("clean", s, &pf)) return (1);
+	if (sccs_read_pfile(s, &pf)) return (1);
 	if (pf.mRev || pf.iLst || pf.xLst) {
 		unless (flags & CLEAN_SHUTUP) {
 			fprintf(stderr,
@@ -9766,7 +9766,7 @@ sccs_unedit(sccs *s, u32 flags)
 	}
 	if (!modified && getFlags &&
 	    (getFlags == currState ||
-		(currState != 0 && !(SCCS(s) || RCS(s))))) {
+		(currState != 0 && !HAS_KEYWORDS(s)))) {
 		if ((getFlags & GET_EDIT) && !WRITABLE(s)) {
 			/*
 			 * With GET_SKIPGET, sccs_get will unlink
@@ -13609,7 +13609,7 @@ out:
  * Returns 0 if OK, -1 on error.  Warns on all errors.
  */
 int
-sccs_read_pfile(char *who, sccs *s, pfile *pf)
+sccs_read_pfile(sccs *s, pfile *pf)
 {
 	char	*pfile;
 	int	fsize;
@@ -13690,7 +13690,7 @@ sccs_read_pfile(char *who, sccs *s, pfile *pf)
 		free(iLst);
 		free(xLst);
 		fprintf(stderr,
-		    "%s: can't get revision info from %s\n", who, s->sfile);
+		    "%s: can't read pfile for %s\n", prog, s->gfile);
 		return (-1);
 	}
 	pf->iLst = iLst;
@@ -13948,7 +13948,7 @@ out:
 	/*
 	 * OK, checking done, start the delta.
 	 */
-	if (sccs_read_pfile("delta", s, &pf)) OUT;
+	if (sccs_read_pfile(s, &pf)) OUT;
 	unless (d = findrev(s, pf.oldrev)) {
 		fprintf(stderr,
 		    "delta: can't find %s in %s\n", pf.oldrev, s->gfile);
@@ -14448,7 +14448,7 @@ mapRev(sccs *s, char *r1, char *r2,
 		if (r1) {
 			lrev = r1;
 		} else {
-			if (sccs_read_pfile("diffs", s, pf)) return (-1);
+			if (sccs_read_pfile(s, pf)) return (-1);
 			lrev = pf->oldrev;
 			lrevM = pf->mRev;
 		}

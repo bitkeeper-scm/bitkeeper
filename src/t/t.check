@@ -964,4 +964,32 @@ bk cat BitKeeper/etc/config > "$BK_DOTBK"/config
 bk --cd="$TESTDATA/key_format2" repocheck $Q || fail
 echo OK
 }
-exit 0
+
+echo $N Show that bk flags bad pfiles ...............................$NL
+cd "$HERE"
+bk clone $Q good badpfile || fail
+cd badpfile
+bk edit $Q foo || fail
+bk repocheck $Q || fail
+echo junk > f
+bk _mv f SCCS/p.foo
+bk repocheck -q 2>ERR && fail -f ERR should fail
+echo "check: can't read pfile for foo" > WANT
+cmpfiles ERR WANT
+echo OK
+
+echo $N Switching checkout modes should not refetch gfile............$NL
+bk _rm SCCS/p.foo
+rm -f foo
+bk admin -FSCCS foo || fail
+bk get $Q foo || fail
+test -d SCCS && bk _touch -t 10000 SCCS/s.foo
+bk _touch -t 10002 foo
+chmod +w foo
+# trim ctime off stat info
+bk _lstat foo | sed 's/|[0-9]*|foo$/|foo/' > WANT
+chmod -w foo
+bk --config=checkout:edit repocheck $Q || fail
+bk _lstat foo | sed 's/|[0-9]*|foo$/|foo/' > B
+cmpfiles B WANT
+echo OK

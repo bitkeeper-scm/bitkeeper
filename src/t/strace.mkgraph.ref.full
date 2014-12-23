@@ -1,8 +1,8 @@
 open(/build/.regression wscott/sandbox/copy/BitKeeper/log/cmd_log, 1089, 666) = 4
-lseek(4, 0, 2) = 18897
+lseek(4, 0, 2) = 18899
 write(4, buf, 64) = 64
 close(4) = 0
-stat(/build/.regression wscott/sandbox/copy/BitKeeper/log/cmd_log, {mode=100666, size=18961}) = 0
+stat(/build/.regression wscott/sandbox/copy/BitKeeper/log/cmd_log, {mode=100666, size=18963}) = 0
 lstat(/build/.regression wscott/sandbox/copy/BitKeeper/etc/dspec-prs, {}) = -1
 lstat(/build/.regression wscott/sandbox/copy/BitKeeper/etc/SCCS/s.dspec-prs, {}) = -1
 lstat(/build/.regression wscott/sandbox/copy/BitKeeper/log/PRODUCT, {}) = -1
@@ -10,8 +10,8 @@ open(/build/.regression wscott/sandbox/copy/BitKeeper/log/COMPONENT, 0, 666) = -
 lstat(/build/.regression wscott/sandbox/.bk, {mode=40775}) = 0
 lstat(/build/.regression wscott/sandbox/.bk/dspec-prs, {}) = -1
 lstat(/etc/BitKeeper/etc/dspec-prs, {}) = -1
-lstat(/build/dev-keysync-perf/src/dspec-prs, {mode=100444, size=113}) = 0
-open(/build/dev-keysync-perf/src/dspec-prs, 0, 666) = 4
+lstat(/build/dev-check-corners/src/dspec-prs, {mode=100444, size=113}) = 0
+open(/build/dev-check-corners/src/dspec-prs, 0, 666) = 4
 fstat(4, {mode=100444, size=113}) = 0
 fstat(4, {mode=100444, size=113}) = 0
 read(4, buf, 4096) = 113
@@ -198,9 +198,9 @@ write(1, buf, 4096) = 4096
 write(1, buf, 4096) = 4096
 close(4) = 0
 open(/build/.regression wscott/sandbox/copy/BitKeeper/log/cmd_log, 1089, 666) = 4
-lseek(4, 0, 2) = 18961
+lseek(4, 0, 2) = 18963
 write(4, buf, 68) = 68
 close(4) = 0
-stat(/build/.regression wscott/sandbox/copy/BitKeeper/log/cmd_log, {mode=100666, size=19029}) = 0
-lstat(/build/.regression wscott/sandbox/copy/BitKeeper/readers/29030@debian40.bitkeeper.com.lock, {}) = -1
+stat(/build/.regression wscott/sandbox/copy/BitKeeper/log/cmd_log, {mode=100666, size=19031}) = 0
+lstat(/build/.regression wscott/sandbox/copy/BitKeeper/readers/31241@debian40.bitkeeper.com.lock, {}) = -1
 open(/build/.regression wscott/sandbox/copy/BitKeeper/writer/lock, 0, 0) = -1

@@ -132,7 +132,7 @@ err:		if (sname) free(sname);
 	if (HAS_PFILE(s)) {
 		was_edited = 1;
 		has_diffs = sccs_hasDiffs(s, SILENT, 1);
-		if (sccs_read_pfile("mvdir", s, &pf)) {
+		if (sccs_read_pfile(s, &pf)) {
 			error |= 1;
 			fprintf(stderr, "%s: bad pfile\n", s->gfile);
 			goto out;
@@ -201,7 +201,7 @@ out:	if (s) sccs_free(s);
 	/* honor checkout modes when running on behalf of unrm */
 	if (isUnDelete) {
 		s = sccs_init(sfile, INIT_NOCKSUM);
-		do_checkout(s);
+		do_checkout(s, 0, 0);
 		sccs_free(s);
 	}
 	if (ogfile) free(ogfile);

@@ -728,7 +728,7 @@ if [ $SKIP_BAM = NO ]; then
 	_BK_DEVELOPER='' BK_CONFIG='BAM_checkout:edit!' bk -r check -acv 2>OUT || \
 	    fail -f OUT
 	chkoutput OUT || fail $msg
-	chkpasses OUT 'check' 'checkout' || fail $msg
+	chkpasses OUT 'check' || fail $msg
 	chknumbars OUT 1 || fail $msg
 	chkblanks OUT 0 || fail $msg
 	echo OK

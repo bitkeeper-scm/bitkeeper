@@ -3,12 +3,6 @@
 #include "sccs.h"
 #include "logging.h"
 
-private int
-hasKeyword(sccs *s)
-{
-	return (s->xflags & (X_RCS|X_SCCS));
-}
-
 int
 fix_gmode(sccs *s, int gflags)
 {
@@ -358,7 +352,7 @@ delta_main(int ac, char **av)
 				df |= DELTA_SAVEGFILE;
 				reget = 1;	/* to write pfile */
 			} else if (co & CO_GET) {
-				if (hasKeyword(s))  {
+				if (HAS_KEYWORDS(s))  {
 					gf |= GET_EXPAND;
 					reget = 1;
 				} else {
@@ -370,7 +364,7 @@ delta_main(int ac, char **av)
 
 		nrev = NULL;
 		if (HAS_PFILE(s)) {
-			if (sccs_read_pfile("delta", s, &pf)) {
+			if (sccs_read_pfile(s, &pf)) {
 				errors |= 2;
 				goto next;
 			}
@@ -467,7 +461,7 @@ delta_main(int ac, char **av)
 			 * have set keywords in sccs_delta() so we need to
 			 * check again.
 			 */
-			if (hasKeyword(s) && !(gf & GET_EDIT)) {
+			if (HAS_KEYWORDS(s) && !(gf & GET_EDIT)) {
 				gf |= GET_EXPAND;
 				gf &= ~GET_SKIPGET;
 				reget = 0;

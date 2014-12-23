@@ -73,12 +73,12 @@ private	int	isGone(sccs *s, char *key);
 private	void	listFound(hash *db);
 private	void	listCsetRevs(char *key);
 private int	checkKeys(sccs *s);
-private int	chk_gfile(sccs *s, MDBM *pathDB, int checkout);
+private int	chk_gfile(sccs *s, MDBM *pathDB);
 private int	chk_dfile(sccs *s);
 private int	chk_BAM(sccs *, char ***missing);
 private int	writable_gfile(sccs *s);
-private int	readonly_gfile(sccs *s);
-private int	no_gfile(sccs *s);
+private int	readonly_gfile(sccs *s, pfile *pf);
+private int	no_gfile(sccs *s, pfile *pf);
 private int	chk_eoln(sccs *s, int eoln_unix);
 private int	chk_monotonic(sccs *s);
 private int	chk_merges(sccs *s);
@@ -142,6 +142,7 @@ check_main(int ac, char **av)
 	ticker	*tick = 0;
 	u32	repo_feat, file_feat;
 	int	sawPOLY = 0;
+	pfile	pf;
 	longopt	lopts[] = {
 		{ "use-older-changeset", 300 },
 		{ 0, 0 }
@@ -385,9 +386,18 @@ check_main(int ac, char **av)
 			}
 		}
 		if (IS_POLYPATH(PATHNAME(s, sccs_top(s)))) sawPOLY = 1;
-		if (chk_gfile(s, pathDB, checkout)) ferr++, errors |= 0x08;
-		if (no_gfile(s)) ferr++, errors |= 0x08;
-		if (readonly_gfile(s)) ferr++, errors |= 0x08;
+		if (chk_gfile(s, pathDB)) ferr++, errors |= 0x08;
+		if (HAS_PFILE(s)) {
+			if (sccs_read_pfile(s, &pf)) {
+				ferr++, errors |= 0x08;
+			} else {
+				if (no_gfile(s, &pf)) ferr++, errors |= 0x08;
+				if (readonly_gfile(s, &pf)) {
+					ferr++, errors |= 0x08;
+				}
+				free_pfile(&pf);
+			}
+		}
 		if (writable_gfile(s)) ferr++, errors |= 0x08;
 		if (check_eoln && chk_eoln(s, eoln_native)) {
 			ferr++, errors |= 0x10;
@@ -409,6 +419,11 @@ check_main(int ac, char **av)
 		 */
 		if (checkKeys(s)) ferr++, errors |= 0x01;
 		if (!resync && chk_dfile(s)) ferr++, errors |= 0x10;
+
+		/* if all the other checks have passed, then do checkout */
+		if (!ferr && do_checkout(s, timestamps, &bp_getFiles)) {
+			ferr++, errors |= 0x08;
+		}
 		unless (ferr) {
 			if (verbose>1) fprintf(stderr, "%s is OK\n", s->gfile);
 		}
@@ -701,11 +716,11 @@ chk_dfile(sccs *s)
 }
 
 private int
-chk_gfile(sccs *s, MDBM *pathDB, int checkout)
+chk_gfile(sccs *s, MDBM *pathDB)
 {
 	char	*type;
 	char	*sfile;
-	u32	flags;
+	struct	stat	sb;
 	char	buf[MAXPATH];
 
 	/* check for conflicts in the gfile pathname */
@@ -721,43 +736,12 @@ chk_gfile(sccs *s, MDBM *pathDB, int checkout)
 		}
 		free(sfile);
 	}
-	checkout = BAM(s) ? (checkout >> 4) : (checkout & 0xf);
-	if (CSET(s)) checkout = 0;
-	if (strneq(s->gfile, "BitKeeper/", 10) &&
-	    !strneq(s->gfile, "BitKeeper/triggers/", 19)) {
-		checkout = 0;
-	}
-	if (streq(s->gfile, "BitKeeper/etc/config")) {
-		checkout = CO_GET;
-	}
-	if (((checkout == CO_EDIT) && !EDITED(s)) ||
-	     ((checkout == CO_GET) && !HAS_GFILE(s))) {
-		if (win32() && S_ISLNK(MODE(s, sccs_top(s)))) {
-			/* do nothing, no symlinks on windows */
-		} else {
-			flags = (checkout == CO_EDIT) ? GET_EDIT : GET_EXPAND;
-			if (sccs_get(s, 0, 0, 0, 0,
-			    flags|timestamps|GET_NOREMOTE|SILENT, "-")) {
-				if (s->cachemiss) {
-					bp_getFiles =
-					    addLine(bp_getFiles,
-					    strdup(s->gfile));
-				} else {
-					return (1);
-				}
-			}
-			s = sccs_restart(s);
-		}
-	}
 	unless (HAS_GFILE(s)) return (0);
+	if (lstat(s->gfile, &sb)) return (0);
 
-	/*
-	 * XXX when running in checkout:get mode, these checks are still
-	 * too expensive. Need to do ONE stat.
-	 */
-	if (isreg(s->gfile) || isSymlnk(s->gfile)) return (0);
+	if (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode)) return (0);
 	strcpy(buf, s->gfile);
-	if (isdir(s->gfile)) {
+	if (S_ISDIR(sb.st_mode)) {
 
 		type = "directory";
 err:		getMsg2("file_dir_conflict", buf, type, '=', stderr);
@@ -853,7 +837,7 @@ writable_gfile(sccs *s)
 		 * we have to warn them that they need save the diffs and 
 		 * patch them in minus the keyword expansion.
 		 */
-		if (s->xflags & (X_RCS|X_SCCS)) {
+		if (HAS_KEYWORDS(s)) {
 			if ((diff_gfile(s, &pf, 1, DEVNULL_WR) == 1) ||
 			    (diff_gfile(s, &pf, 0, DEVNULL_WR) == 1)) {
 				if (unlink(s->gfile)) return (1);
@@ -873,14 +857,12 @@ writable_gfile(sccs *s)
 }
 
 private int
-no_gfile(sccs *s)
+no_gfile(sccs *s, pfile *pf)
 {
-	pfile	pf;
 	int	rc = 0;
 
 	unless (HAS_PFILE(s) && !HAS_GFILE(s)) return (0);
-	if (sccs_read_pfile("co", s, &pf)) return (1);
-	if (pf.mRev || pf.iLst || pf.xLst) {
+	if (pf->mRev || pf->iLst || pf->xLst) {
 		fprintf(stderr,
 		    "%s has merge|include|exclude but no gfile.\n", s->gfile);
 		rc = 1;
@@ -892,44 +874,37 @@ no_gfile(sccs *s)
 			s->state &= ~S_PFILE;
 		}
 	}
-	free_pfile(&pf);
 	return (rc);
 }
 
 private int
-gfile_unchanged(sccs *s)
+gfile_unchanged(sccs *s, pfile *pf)
 {
-	pfile	pf;
 	int	rc;
 
-	if (sccs_read_pfile("check", s, &pf)) {
-		fprintf(stderr, "%s: cannot read pfile\n", s->gfile);
-		return (1);
-	}
-	unless (rc = diff_gfile(s, &pf, 0, DEVNULL_WR)) {
+	unless (rc = diff_gfile(s, pf, 0, DEVNULL_WR)) {
 		/*
 		 * If RCS/SCCS keyword enabled, try diff it with
 		 * keyword expanded
 		 */
-		if (SCCS(s) || RCS(s)) rc = diff_gfile(s, &pf, 1, DEVNULL_WR);
+		if (HAS_KEYWORDS(s)) rc = diff_gfile(s, pf, 1, DEVNULL_WR);
 	}
-	free_pfile(&pf);
 	return (rc); /* changed */
 }
 
 private int
-readonly_gfile(sccs *s)
+readonly_gfile(sccs *s, pfile *pf)
 {
 	/* XXX slow in checkout:edit mode */
 	if (HAS_PFILE(s) && HAS_GFILE(s) && !writable(s->gfile)) {
-		if (gfile_unchanged(s) == 1) {
+		if (gfile_unchanged(s, pf) == 1) {
 			if (xfile_delete(s->gfile, 'p')) {
 				perror(s->sfile);
 			} else {
 				s->state &= ~S_PFILE;
 			}
 			if (resync) return (0);
-			do_checkout(s);
+			do_checkout(s, 0, 0);
 			return (0);
 		} else {
 			fprintf(stderr,

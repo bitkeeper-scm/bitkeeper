@@ -531,7 +531,7 @@ do_file(char *file, char *tiprev)
 			rename(gfile, savefile);
 
 			/* calculate any excluded revs */
-			if (HAS_PFILE(s)) sccs_read_pfile("collapse", s, &pf);
+			if (HAS_PFILE(s)) sccs_read_pfile(s, &pf);
 			premap = sccs_set(s, d, pf.iLst, pf.xLst);
 			free_pfile(&pf);
 			EACH(rmdeltas) {
