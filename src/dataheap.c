@@ -808,9 +808,12 @@ bin_needHeapRepack(sccs *s)
 	/* always repack if forced */
 	if (getenv("_BK_FORCE_REPACK")) return (1);
 
+	/* repack if no pack (this creates it) */
+	unless (s->heapmeta) return (1);
+
 	/* always repack if wrong version */
-	unless (s->heapmeta &&
-	    (t = hash_fetchStr(s->heapmeta, "VER")) &&  streq(t, HEAP_VER)) {
+	unless ((t = hash_fetchStr(s->heapmeta, "VER"))
+	    &&  streq(t, HEAP_VER)) {
 		return (1);
 	}
 
@@ -865,6 +868,7 @@ bin_heapRepack(sccs *s)
 	u32	*weave = 0;	/* array of u32's containing weave */
 	hash	*meta;
 	char	*t;
+	int	first_time = (s->heapmeta == 0);
 	char	buf[MAXLINE];
 
 /* Local versions of sccs.h macros for a copy of the heap */
@@ -1158,7 +1162,10 @@ bin_heapRepack(sccs *s)
 	free(oldheap.buf);
 
 	s->heap_loadsz = 0;	/* flag heap to be rewritten */
-	T_PERF("pack %d -> %d", oldheap.len, s->heap.len);
+	unless (first_time) {
+		T_PERF("pack %d -> %d [%s]",
+		    oldheap.len, s->heap.len, s->sfile);
+	}
 }
 
 /*
