@@ -4924,6 +4924,7 @@ sccs_init(char *name, u32 flags)
 			}
 		}
 		sccs_rdweaveDone(s);
+		FREE(s->remap);
 		s->state |= S_CSET;
 	}
 	/* test lease after we have PATHNAME(s, TABLE(s)) */

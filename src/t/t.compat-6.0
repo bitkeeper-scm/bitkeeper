@@ -329,18 +329,10 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo -------------- ascii cset files with holes in the serials
-echo $N Compute a repo with a hole in the serials ...................$NL
-cd newcopy
-$OLDBK/bk undo $Q -sfa1.1.1.1
-bk changes -vr+ -nd':GFILE:|:I:' > GOT
-cat <<EOF > WANT
-ChangeSet|1.2
-foo|1.1
-foo|1.0
-EOF
-cmpfiles WANT GOT
-echo OK
+# echo -------------- ascii cset files with holes in the serials
+# echo $N Compute a repo with a hole in the serials ...................$NL
+# XXX: with compat-6.0, we can no longer use OLDBK to make holes.
+# We need to rely on compat-5.3 for that.
 
 echo -------------- compat '<->' BK testing with clone, push, pull
 echo $N Set up bkfile/bweave format repo called bkfile ..............$NL

@@ -411,9 +411,9 @@ fastCsetWeave(sccs *s, int fast)
 	} else if (!fast) {
 		/* old cset patch, one diff per delta */
 		for (i = s->iloc - 1; i > 0; i--) {
-			unless (lp[i].dF) continue;
 			w = growArray(&weave, 1);
 			w->d = lp[i].serial;
+			unless (lp[i].dF) continue;
 			while (t = fgetline(lp[i].dF)) {
 				if (streq(t, "0a0")) continue;
 				assert(strneq(t, "> ", 2));

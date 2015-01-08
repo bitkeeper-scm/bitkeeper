@@ -322,6 +322,12 @@ echo -------------- ascii cset files with holes in the serials
 echo $N Compute a repo with a hole in the serials ...................$NL
 cd newcopy
 $OLDBK/bk undo $Q -sfa1.1.1.1
+$OLDBK/bk prs -ahnd:DS: ChangeSet > GOT
+cat <<EOF > WANT
+4
+2
+EOF
+cmpfiles WANT GOT
 bk changes -vr+ -nd':GFILE:|:I:' > GOT
 cat <<EOF > WANT
 ChangeSet|1.2
@@ -329,6 +335,7 @@ foo|1.1
 foo|1.0
 EOF
 cmpfiles WANT GOT
+bk _scat ChangeSet > GOT || fail
 echo OK
 
 echo -------------- compat '<->' BK testing with clone, push, pull

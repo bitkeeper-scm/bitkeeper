@@ -526,3 +526,23 @@ Pull failed: takepatch exited 1.
 EOF
 cmpfiles WANT GOT
 echo OK
+
+# No test up to here creates a merge, so adding another test
+echo $N Test bk undo style patches with empty merge node ............$NL
+cd "$HERE"
+commercial mergeproject
+bk clone $Q . ../mergecopy
+touch foo
+bk new $Q -l foo
+bk commit $Q -f --tag=BASE
+cd ../mergecopy
+touch bar
+bk new $Q -l bar
+bk commit $Q -f
+bk pull $Q
+bk cset -Bfm -rBASE.. > ../patch
+cd ../mergeproject
+bk takepatch < ../patch
+cd RESYNC
+bk check ChangeSet || fail -f ERR
+echo OK
