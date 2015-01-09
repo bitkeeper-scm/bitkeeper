@@ -112,8 +112,6 @@ nokey_insert(nokey *h, char *heap, u32 key)
 	unless (v) {
 		h->data[off] = htole32(key);	/* insert key */
 		h->cnt++;
-	} else {
-		assert(v == key);	/* no dups in heap */
 	}
 }
 
