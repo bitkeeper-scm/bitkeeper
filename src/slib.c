@@ -16,6 +16,7 @@
 #include "range.h"
 #include "graph.h"
 #include "bam.h"
+#include "cfg.h"
 
 typedef struct weave weave;
 #define	WRITABLE_REG(s)	(WRITABLE(s) && isRegularFile((s)->mode))
@@ -10377,36 +10378,24 @@ out:		sccs_abortWrite(s);
 	if (!R0(s, n)) revArg(s, n, n0 ? "1.1" : "1.0");
 	if (nodefault) {
 		if (prefilled) s->xflags |= XFLAGS(s, prefilled);
-	} else if (ASCII(s)) {
-		unless (CSET(s)) {
-			/* check eoln preference */
-			s->xflags |= X_DEFAULT;
-			if (s->proj) {
-				db = proj_config(s->proj);
-				if (db) {
-					char *p = mdbm_fetch_str(db, "eoln");
-					if (p && streq("unix", p)) {
-						s->xflags &= ~X_EOLN_NATIVE;
-						s->xflags &= ~X_EOLN_WINDOWS;
-					}
-					if (p && streq("windows", p)) {
-						s->xflags &= ~X_EOLN_NATIVE;
-						s->xflags |= X_EOLN_WINDOWS;
-					}
-
-					if (p = mdbm_fetch_str(db, "keyword")) {
-						if (strstr(p, "sccs")) {
-							s->xflags |= X_SCCS;
-						}
-						if (strstr(p, "rcs")) {
-							s->xflags |= X_RCS;
-						}
-						if (strstr(p, "expand1")) {
-							s->xflags |= X_EXPAND1;
-						}
-					}
-				}
+	} else if (ASCII(s) && !CSET(s)) {
+		char	*p;
+		/* check eoln preference */
+		s->xflags |= X_DEFAULT;
+		if (p = cfg_str(s->proj, CFG_EOLN)) {
+			if (streq("unix", p)) {
+				s->xflags &= ~X_EOLN_NATIVE;
+				s->xflags &= ~X_EOLN_WINDOWS;
 			}
+			if (streq("windows", p)) {
+				s->xflags &= ~X_EOLN_NATIVE;
+				s->xflags |= X_EOLN_WINDOWS;
+			}
+		}
+		if (p = cfg_str(s->proj, CFG_KEYWORD)) {
+			if (strstr(p, "sccs")) s->xflags |= X_SCCS;
+			if (strstr(p, "rcs")) s->xflags |= X_RCS;
+			if (strstr(p, "expand1")) s->xflags |= X_EXPAND1;
 		}
 	}
 	if (FLAGS(s, n) & D_BADFORM) {
@@ -11615,7 +11604,7 @@ int
 sccs_encoding(sccs *sc, off_t size, char *encp)
 {
 	int	enc;
-	int	bam;
+	off_t	bam;
 	int	encoding = sc ? sc->encoding_in : E_ALWAYS;
 	char	*compp;
 
@@ -11623,7 +11612,12 @@ sccs_encoding(sccs *sc, off_t size, char *encp)
 		if (streq(encp, "text")) enc = E_ASCII;
 		else if (streq(encp, "ascii")) enc = E_ASCII;
 		else if (streq(encp, "binary")) {
-			bam = proj_configsize(sc ? sc->proj : 0, "BAM");
+			project	*p = sc ? sc->proj : 0;
+
+			unless (bam = cfg_size(p, CFG_BAM)) {
+				/* BAM=on should use default */
+				bam = cfg_bool(p, CFG_BAM) ? BAM_SIZE : 0;
+			}
 			if (bam && (bam <= size)) {
 				enc = E_BAM;
 			} else {
@@ -11648,7 +11642,7 @@ sccs_encoding(sccs *sc, off_t size, char *encp)
 
 		encoding &= ~E_COMP;
 		unless (encoding & (E_BK|E_BAM)) {
-			compp = proj_configval(sc->proj, "compression");
+			compp = cfg_str(sc->proj, CFG_COMPRESSION);
 
 			if (!*compp || streq(compp, "gzip")) {
 				encoding |= E_GZIP;
@@ -18218,7 +18212,7 @@ generateTimestampDB(project *p)
 	char	buf[MAXLINE];
 
 	assert(p);
-	if (streq(proj_configval(p, "clock_skew"), "off")) return (0);
+	if (streq(cfg_str(p, CFG_CLOCK_SKEW), "off")) return (0);
 
 	tsname = aprintf("%s/%s", proj_root(p), TIMESTAMPS);
 	db = hash_new(HASH_MEMHASH);
@@ -18349,14 +18343,14 @@ updateTimestampDB(sccs *s, hash *timestamps, int different)
 	time_t now;
 
 	assert(s->proj);
-	unless (clock_skew) {
-		char	*p = proj_configval(s->proj, "clock_skew");
 
-		if (streq(p, "off")) {
-			clock_skew = 2147483647;  /* 2^31 */
-		} else {
-			unless (clock_skew = strtoul(p, 0,0)) clock_skew = WEEK;
-		}
+	/*
+	 * We can't get here unless generateTimestampDB() returns something
+	 * so at this point we know CLOCK_SKEW is not "off".
+	 * Anything that isn't a number is assumed to use the default.
+	 */
+	unless (clock_skew = cfg_int(s->proj, CFG_CLOCK_SKEW)) {
+		clock_skew = WEEK;
 	}
 
 	relpath = proj_relpath(s->proj, s->gfile);

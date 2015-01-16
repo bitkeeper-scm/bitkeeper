@@ -2,6 +2,7 @@
 #include "sccs.h"
 #include "bkd.h"
 #include "logging.h"
+#include "cfg.h"
 
 /*
  * TODO
@@ -73,7 +74,7 @@ upgrade_main(int ac, char **av)
 			    urlbase);
 			exit(1);
 		}
-	} else if ((p = proj_configval(0, "upgrade_url")) && *p) {
+	} else if (p = cfg_str(0, CFG_UPGRADE_URL)) {
 		urlbase = p;
 	} else if (test_release) {
 		urlbase = UPGRADETRIAL;

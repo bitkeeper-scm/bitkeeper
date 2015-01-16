@@ -4,7 +4,7 @@ SRC = $(wildcard *.adoc)
 
 all: www/index.html $(patsubst %.adoc,www/%.html,$(SRC))
 
-www/index.html: index.html.pl
+www/index.html: index.html.pl $(SRC)
 	@mkdir -p www
 	perl index.html.pl $(SRC) > $@
 

@@ -12,6 +12,7 @@
 #include "nested.h"
 #include "progress.h"
 #include "poly.h"
+#include "cfg.h"
 
 /*
  * Stuff to remember for each rootkey in the ->mask field:
@@ -280,10 +281,10 @@ check_main(int ac, char **av)
 		idDB = mdbm_mem();
 	}
 	if (check_eoln) {
-		eoln_native = !streq(proj_configval(0, "eoln"), "unix");
+		eoln_native = !streq(cfg_str(0, CFG_EOLN), "unix");
 	}
-	unless (fix) fix = proj_configbool(0, "autofix");
-	unless (streq(proj_configval(0, "monotonic"), "allow")) {
+	unless (fix) fix = cfg_bool(0, CFG_AUTOFIX);
+	unless ((t = cfg_str(0, CFG_MONOTONIC)) && streq(t, "allow")) {
 		check_monotonic = 1;
 	}
 	if (verbose == 1) {
@@ -2647,7 +2648,7 @@ needscheck_main(int ac, char **av)
 		if (verbose) printf("no repo, no check needed.\n");
 		return (1);
 	}
-	if (proj_configbool(0, "partial_check") && full_check()) {
+	if (cfg_bool(0, CFG_PARTIAL_CHECK) && full_check()) {
 		if (verbose) printf("needs check.\n");
 		return (0);
 	}

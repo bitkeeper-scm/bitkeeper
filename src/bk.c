@@ -7,6 +7,7 @@
 #include "tomcrypt/randseed.h"
 #include "nested.h"
 #include "progress.h"
+#include "cfg.h"
 
 #define	BK "bk"
 
@@ -593,11 +594,8 @@ bad_locking:				fprintf(stderr,
 					ret = 1;
 					goto out;
 				}
-			} else if ((p = proj_configval(0, "lockwait")) &&
-			    isdigit(*p)) {
-				waitsecs = atoi(p);
 			} else {
-				waitsecs = 30;
+				waitsecs = cfg_int(0, CFG_LOCKWAIT);
 			}
 			while (1) {
 				if (*locking == 'r') {
@@ -1795,7 +1793,7 @@ launch_wish(char *script, char **av)
 	if (strchr(script, '/')) {
 		strcpy(cmd_path, script);
 	} else {
-		if (proj_configbool(0, "legacyguis")) {
+		if (cfg_bool(0, CFG_LEGACYGUIS)) {
 			sprintf(cmd_path, "%s/gui/lib/legacy/%s", bin, script);
 		} else {
 			sprintf(cmd_path, "%s/gui/lib/%s", bin, script);

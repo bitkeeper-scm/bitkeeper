@@ -1,5 +1,6 @@
 #include "system.h"
 #include "sccs.h"
+#include "cfg.h"
 #include "bkd.h"
 #include "tomcrypt.h"
 #include "range.h"
@@ -204,7 +205,7 @@ bp_get(sccs *s, ser_t din, u32 flags, char *gfile)
 	 * switch test to !stdout.
 	 */
 	if (!(flags & (GET_EDIT|PRINT)) &&
-	    proj_configbool(s->proj, "BAM_hardlinks")) {
+	    cfg_bool(s->proj, CFG_BAM_HARDLINKS)) {
 		struct	stat	statbuf;
 		struct	utimbuf ut;
 

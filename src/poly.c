@@ -2,6 +2,7 @@
 #include "range.h"
 #include "poly.h"
 #include "resolve.h"
+#include "cfg.h"
 
 /*
  *
@@ -679,7 +680,7 @@ findPoly(sccs *s, ser_t local, ser_t remote, ser_t fake)
 
 	if (nLines(gcalist)) {
 		/* if new poly and not allowed - error */
-		unless (proj_configbool(0, "poly")) {
+		unless (cfg_bool(0, CFG_POLY)) {
 			free(gcalist);
 		        getMsg("pull_poly", 0, 0, stderr);
 			return (INVALID);
@@ -727,7 +728,7 @@ polyChk(sccs *cset, ser_t gca)
 
 	if (flags) {
 		assert(FLAGS(cset, gca) & D_CSET);
-		unless (proj_configbool(0, "poly")) {
+		unless (cfg_bool(0, CFG_POLY)) {
 			switch (flags) {
 			    case D_LOCAL: reason = "local"; break;
 			    case D_REMOTE: reason = "remote"; break;
@@ -741,7 +742,7 @@ polyChk(sccs *cset, ser_t gca)
 		return (1);
 	}
 	unless (FLAGS(cset, gca) & D_CSET) {
-		unless (proj_configbool(0, "poly")) {
+		unless (cfg_bool(0, CFG_POLY)) {
 			sccs_sdelta(cset, gca, key);
 			fprintf(stderr, "%s: poly on unmarked key %s\n",
 			    prog, key);

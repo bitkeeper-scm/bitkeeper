@@ -2,6 +2,7 @@
 #include "logging.h"
 #include "progress.h"
 #include "nested.h"
+#include "cfg.h"
 #ifdef WIN32
 #include "Winbase.h"
 #endif
@@ -1153,7 +1154,7 @@ sendServerInfo(u32 cmdlog_flags)
 		sprintf(buf, "NFILES=%u\n", repo_nfiles(0,0));
 		out(buf);
 		sprintf(buf,
-		    "CLONE_DEFAULT=%s\n", proj_configval(0, "clone_default"));
+		    "CLONE_DEFAULT=%s\n", cfg_str(0, CFG_CLONE_DEFAULT));
 		out(buf);
 		sprintf(buf, "TIP_MD5=%s\n", proj_tipmd5key(0));
 		out(buf);
@@ -1553,8 +1554,8 @@ full_check(void)
 	time_t	window;
 	time_t	checkt = 0;	/* time of last full check */
 
-	unless (proj_configbool(0, "partial_check")) return (1);
-	if (window = proj_configsize(0, "check_frequency")) {
+	unless (cfg_bool(0, CFG_PARTIAL_CHECK)) return (1);
+	if (window = cfg_int(0, CFG_CHECK_FREQUENCY)) {
 		window *= DAY;
 	} else {
 		window = WEEK;
@@ -2086,9 +2087,9 @@ parallel(char *path)
 #ifdef	WIN32
 	return (0);
 #endif
-	if ((p = proj_configval(0, "parallel")) && isdigit(*p)) {
-		unless (val = atoi(p)) return (0);
-		if (val) return (min(val, PARALLEL_MAX));
+	if ((p = cfg_str(0, CFG_PARALLEL)) && isdigit(*p)) {
+		val = atoi(p);
+		return (min(val, PARALLEL_MAX));
 	}
 	if (isNetworkFS(path)) {
 		return (PARALLEL_NET);
@@ -2138,9 +2139,5 @@ formatBits(u32 bits, ...)
 int
 bk_gzipLevel(void)
 {
-	int	level = 0;	/* default to no compression; */
-	char	*t;
-
-	if (t = proj_configval(0, "bkd_gzip")) level = atoi(t);
-	return (level);
+	return (cfg_int(0, CFG_BKD_GZIP));
 }

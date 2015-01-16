@@ -1,384 +1,90 @@
 commercial throwaway
 bk lease renew -w $Q   # get a lease so the following tests pass
 
-echo $N Test config defaults when no repo............................$NL
+echo $N Test config defaults in setup................................$NL
 cd "$HERE"
+rm -f c ; touch c
+bk setup -fcc arepo
+cd arepo
 bk _dumpconfig > GOT
 cat <<EOF > WANT
-checkout: CO_NONE CO_BAM_NONE 
-BAM: 0
-BAM_hardlinks: off
-auto-populate: off
-auto_populate: off
 autofix: off
-autopopulate: off
-bkd_gzip: 
-check_frequency: 0
-clock_skew: 
-clone_default: ALL
-compression: 
-description: 
-eoln: 
-fakegrafts: off
-legacyguis: off
-license: 
-lockwait: 
-mail_proxy: 
-monotonic: 
-no_graphverify: off
-parallel: 
-partial_check: on
-poly: off
-stats_after_pull: off
-sync: off
-triggers: 
-upgrade_url: 
-EOF
-cmpfiles WANT GOT
-echo OK
-
-echo $N Test config defaults in standard commercial repo.............$NL
-cd "$HERE"
-touch c
-bk setup -fcc project
-cd project
-bk _dumpconfig > GOT
-cat <<EOF > WANT
-checkout: CO_NONE CO_BAM_NONE 
-BAM: 0
-BAM_hardlinks: off
-auto-populate: off
 auto_populate: off
-autofix: off
-autopopulate: off
-bkd_gzip: 
-check_frequency: 0
-clock_skew: 
-clone_default: ALL
-compression: 
-description: 
-eoln: 
-fakegrafts: off
-legacyguis: off
-license: 
-lockwait: 
-mail_proxy: 
-monotonic: 
-no_graphverify: off
-parallel: 
-partial_check: on
-poly: off
-stats_after_pull: off
-sync: off
-triggers: 
-upgrade_url: 
-EOF
-cmpfiles WANT GOT
-echo OK
-
-echo $N Test config defaults in standard nested repo.................$NL
-cd "$HERE"
-touch c
-bk setup -fcc -P product
-cd product
-bk _dumpconfig > GOT
-cat <<EOF > WANT
-checkout: CO_NONE CO_BAM_NONE 
-BAM: 0
+BAM: off
 BAM_hardlinks: off
-auto-populate: off
-auto_populate: off
-autofix: off
-autopopulate: off
-bkd_gzip: 
-check_frequency: 0
-clock_skew: 
-clone_default: ALL
-compression: 
-description: 
-eoln: 
-fakegrafts: off
-legacyguis: off
-license: 
-lockwait: 
-mail_proxy: 
-monotonic: 
-no_graphverify: off
-parallel: 
-partial_check: on
-poly: off
-stats_after_pull: off
-sync: off
-triggers: 
-upgrade_url: 
-EOF
-cmpfiles WANT GOT
-echo OK
-
-echo $N Test config defaults in a component..........................$NL
-cd "$HERE"/product
-touch c
-bk setup -fcc -C gcc
-cd gcc
-bk _dumpconfig > GOT
-cmpfiles ../WANT GOT
-echo OK
-
-echo $N Test changing defaults in product also changes component.....$NL
-cd "$HERE/product"
-bk edit $Q BitKeeper/etc/config
-cat <<EOF > BitKeeper/etc/config
-checkout: edit
-EOF
-bk ci $Q -y. BitKeeper/etc/config
-bk commit $Q -y.
-cd gcc
-bk _dumpconfig | grep checkout > GOT
-echo "checkout: CO_EDIT CO_BAM_EDIT " > WANT
-cmpfiles WANT GOT
-echo OK
-
-echo $N Test changing component overrides product....................$NL
-cd "$HERE/product/gcc"
-bk edit $Q BitKeeper/etc/config
-cat <<EOF > BitKeeper/etc/config
-checkout: get
-EOF
-bk ci $Q -y. BitKeeper/etc/config
-bk commit $Q -y.
-bk _dumpconfig | grep checkout > GOT
-echo "checkout: CO_GET CO_BAM_GET " > WANT
-cmpfiles WANT GOT
-echo OK
-
-echo $N Unless product has \!.........................................$NL
-cd "$HERE/product"
-bk edit $Q BitKeeper/etc/config
-cat <<EOF > BitKeeper/etc/config
-checkout: edit!
-EOF
-bk ci $Q -y. BitKeeper/etc/config
-bk commit $Q -y.
-cd gcc
-bk _dumpconfig | grep checkout > GOT
-echo "checkout: CO_EDIT CO_BAM_EDIT " > WANT
-cmpfiles WANT GOT
-echo OK
-
-echo $N Even if the component has \! the product overrides............$NL
-cd "$HERE/product/gcc"
-bk edit $Q BitKeeper/etc/config
-cat <<EOF > BitKeeper/etc/config
-checkout: get!
-EOF
-bk ci $Q -y. BitKeeper/etc/config
-bk commit $Q -y.
-bk _dumpconfig | grep checkout > GOT
-echo "checkout: CO_EDIT CO_BAM_EDIT " > WANT
-cmpfiles WANT GOT
-echo OK
-
-echo $N Test config defaults in a fresh bk setup.....................$NL
-cd "$HERE"
-touch c
-bk setup -fcc repo
-cd repo
-bk _dumpconfig > GOT
-cat <<EOF > WANT
-checkout: CO_NONE CO_BAM_NONE 
-BAM: 0
-BAM_hardlinks: off
-auto-populate: off
-auto_populate: off
-autofix: off
-autopopulate: off
-bkd_gzip: 
-check_frequency: 0
-clock_skew: 
-clone_default: ALL
-compression: 
-description: 
-eoln: 
-fakegrafts: off
-legacyguis: off
-license: 
-lockwait: 
-mail_proxy: 
-monotonic: 
-no_graphverify: off
-parallel: 
-partial_check: on
-poly: off
-stats_after_pull: off
-sync: off
-triggers: 
-upgrade_url: 
-EOF
-cmpfiles WANT GOT
-echo OK
-
-echo $N Again, but with a license....................................$NL
-cd "$HERE"
-touch c
-BK_CONFIG="license:$BKL_PRO;licsign1:$BKL_P1;licsign2:$BKL_P2;licsign3:$BKL_P3" \
-	bk setup -fcc repo_lic
-cd repo_lic
-bk _dumpconfig > GOT
-cat <<EOF > WANT
-checkout: CO_NONE CO_BAM_NONE 
-BAM: 0
-BAM_hardlinks: off
-auto-populate: off
-auto_populate: off
-autofix: off
-autopopulate: off
-bkd_gzip: 
-check_frequency: 0
-clock_skew: 
-clone_default: ALL
-compression: 
-description: 
-eoln: 
-fakegrafts: off
-legacyguis: off
-license: 
-lockwait: 
-mail_proxy: 
-monotonic: 
-no_graphverify: off
-parallel: 
-partial_check: on
-poly: off
-stats_after_pull: off
-sync: off
-triggers: 
-upgrade_url: 
-EOF
-cmpfiles WANT GOT
-echo OK
-
-echo $N Test defaults without loading any of the configs.............$NL
-_BK_CONFIG_DEFAULTS=1 bk _dumpconfig > GOT
-cat <<EOF > WANT
-checkout: CO_NONE CO_BAM_NONE 
-BAM: 0
-BAM_hardlinks: off
-auto-populate: off
-auto_populate: off
-autofix: off
-autopopulate: off
-bkd_gzip: 
-check_frequency: 0
-clock_skew: 
-clone_default: ALL
-compression: 
-description: 
-eoln: 
-fakegrafts: off
-legacyguis: off
-license: 
-lockwait: 
-mail_proxy: 
-monotonic: 
-no_graphverify: off
-parallel: 
-partial_check: on
-poly: off
-stats_after_pull: off
-sync: off
-triggers: 
-upgrade_url: 
-EOF
-cmpfiles WANT GOT
-echo OK
-
-
-echo $N Test defaults using setup -p \(setuptool\).....................$NL
-cd "$HERE"
-bk setup -p > GOT
-cat <<EOF > WANT
-description: 
-email: 
-autofix: yes
-BAM: on
-checkout: get
+bkd_gzip: 0
+bkweb: (null)
+category: (null)
+check_frequency: (null)
 clock_skew: on
+clone_default: ALL
+contact: (null)
 compression: gzip
+description: (null)
+diffgap: -1
+email: (null)
+eoln: native
+fakegrafts: off
+homepage: (null)
+keyword: none
+legacyguis: off
+license: (null)
+licenseurl: (null)
+lockwait: 30
+mail_proxy: (null)
+master: (null)
+monotonic: (null)
+no_graphverify: off
+parallel: (null)
 partial_check: on
+poly: off
+stats_after_pull: off
+sync: off
+triggers: \$PRODUCT|.
+upgrade_url: (null)
 EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N Test the settings in the regressions.........................$NL
+echo $N Test config defaults in our commercial repo..................$NL
 cd "$HERE"
-commercial reg_repo
+commercial proj
 bk _dumpconfig > GOT
 cat <<EOF > WANT
-checkout: CO_NONE CO_BAM_NONE 
+autofix: off
+auto_populate: off
 BAM: 1
 BAM_hardlinks: off
-auto-populate: off
-auto_populate: off
-autofix: off
-autopopulate: off
-bkd_gzip: 
-check_frequency: 0
-clock_skew: 
+bkd_gzip: 0
+bkweb: (null)
+category: (null)
+check_frequency: (null)
+clock_skew: on
 clone_default: ALL
-compression: 
+contact: (null)
+compression: gzip
 description: BitKeeper Test repository
+diffgap: -1
+email: nobody@nowhere.bk
 eoln: unix
 fakegrafts: off
+homepage: (null)
+keyword: sccs
 legacyguis: off
 license: BKL655ad8ade368c808000012fdfffff42e572b43
+licenseurl: (null)
 lockwait: 0
-mail_proxy: 
-monotonic: 
+mail_proxy: (null)
+master: (null)
+monotonic: (null)
 no_graphverify: off
-parallel: 
+parallel: (null)
 partial_check: off
 poly: off
 stats_after_pull: off
 sync: off
-triggers: 
-upgrade_url: 
+triggers: \$PRODUCT|.
+upgrade_url: (null)
 EOF
 cmpfiles WANT GOT
-cd "$HERE"
-nested reg_nested
-bk _dumpconfig > GOT
-cat <<EOF > WANT
-checkout: CO_NONE CO_BAM_NONE 
-BAM: 1
-BAM_hardlinks: off
-auto-populate: off
-auto_populate: off
-autofix: off
-autopopulate: off
-bkd_gzip: 
-check_frequency: 0
-clock_skew: 
-clone_default: DEFAULT
-compression: 
-description: BitKeeper Test repository
-eoln: unix
-fakegrafts: off
-legacyguis: off
-license: BKL655ad8ade368c808000012fdfffff42e572b43
-lockwait: 0
-mail_proxy: 
-monotonic: 
-no_graphverify: off
-parallel: 
-partial_check: off
-poly: off
-stats_after_pull: off
-sync: off
-triggers: 
-upgrade_url: 
-EOF
-cmpfiles WANT GOT
-cd gcc
-bk _dumpconfig > GOT
-cmpfiles ../WANT GOT
 echo OK

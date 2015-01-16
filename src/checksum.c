@@ -4,6 +4,7 @@
 #include "progress.h"
 #include "graph.h"
 #include "range.h"
+#include "cfg.h"
 
 private	int	do_chksum(int fd, int off, int *sump);
 private	int	chksum_sccs(char **files, char *offset);
@@ -416,7 +417,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	ser_t	d, prev;
 	int	found = 0;
 	int	n = 0;
-	int	verify = !proj_configbool(s->proj, "no_graphverify");
+	int	verify = !cfg_bool(s->proj, CFG_NOGRAPHVERIFY);
 	u32	index;
 	ticker	*tick = 0;
 

@@ -1,7 +1,7 @@
 #include "bkd.h"
 #include "range.h"
 #include "nested.h"
-
+#include "cfg.h"
 
 private	int	checkAlias(sccs *cset, char *rev, char ***comps);
 
@@ -265,7 +265,7 @@ cmd_pull_part2(int ac, char **av)
 			 * of takepatch, so provide a way for Bluearc to
 			 * keep this feature.
 			 */
-			if (proj_configbool(0, "fakegrafts")) {
+			if (cfg_bool(0, CFG_FAKEGRAFTS)) {
 				makepatch[n++] = "-C";
 			}
 		} else {

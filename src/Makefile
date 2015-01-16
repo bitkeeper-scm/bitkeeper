@@ -153,7 +153,7 @@ OBJ =	bkver.o cmd.o \
 	bkd_r2c.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
 	bkusers.o \
-	cat.o cfile.o changes.o \
+	cat.o cfile.o changes.o cfg.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
 	cmdlog.o \
 	collapse.o comment.o comments.o commit.o comps.o compress.o \
@@ -162,7 +162,6 @@ OBJ =	bkver.o cmd.o \
 	converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	dataheap.o dbfile.o delta.o diff.o diffs.o diffsplit.o dspec.o \
-	dumpconfig.o \
 	eula.o export.o \
 	features.o findmerge.o \
 	find.o findcset.o fixtool.o fsl.o fslayer.o \
@@ -253,7 +252,7 @@ RANLIB	= ranlib
 # list of C sources in bk
 SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
-HDRS	= bam.h bkd.h bk-features.h diff.h fsfuncs.h \
+HDRS	= bam.h bkd.h bk-features.h cfg.h confvars.h diff.h fsfuncs.h \
 	  graph.h logging.h nested.h \
 	  progress.h purify.h range.h rcs.h resolve.h sccs.h \
 	  cmd.h poly.h proj.h redblack.h inskeys.h libc/system.h xfile.h
@@ -454,11 +453,6 @@ bkver.c: utils/bk_version FORCE
 	$(Q)mv -f bk.v bkver.c
 
 bkver.o: bkver.c
-
-dumpconfig.c: $(filter-out dumpconfig.c, $(SRCS)) config_check.pl
-	perl config_check.pl > $@
-
-dumpconfig.o: dumpconfig.c
 
 %: %.sh
 	$(if $(Q),@echo Building $@,)

@@ -1,5 +1,5 @@
-#include "system.h"
 #include "sccs.h"
+#include "cfg.h"
 
 /*
  * This struct is for diff -p, so we can save where
@@ -202,7 +202,7 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 	}
 
 	fop.dop = *dop;
-	fop.diffgap = proj_configint(0, "diffgap", -1);
+	fop.diffgap = cfg_int(0, CFG_DIFFGAP);
 
 	for (i = 0; i < 2; i++) {
 		if (stat(files[i], &sb[i])) {
