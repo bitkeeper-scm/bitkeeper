@@ -10471,6 +10471,7 @@ out:		sccs_abortWrite(s);
 		added = s->added = ADDED(s, n);
 	}
 	FLAGS(s, n) |= D_FIXUPS;
+	if (flags & DELTA_CSETMARK) FLAGS(s, n) |= D_CSET;
 	if (delta_table(s, 1)) {
 		error++;
 		goto out;

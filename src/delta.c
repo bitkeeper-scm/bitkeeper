@@ -125,6 +125,7 @@ delta_main(int ac, char **av)
 	int	sflags = SF_GFILE|SF_WRITE_OK|SF_NOHASREVS;
 	int	checkout = 0, ignorePreference = 0;
 	int	c, rc;
+	char	*didciFile = 0;
 	char	*initFile = 0;
 	char	*diffsFile = 0;
 	char	*prog, *name;
@@ -132,6 +133,7 @@ delta_main(int ac, char **av)
 	char	*mode = 0;
 	FILE	*diffs = 0;
 	FILE	*init = 0;
+	FILE	*didci = 0;
 	pfile	pf = {0};
 	int	dash, dbsort = 1, errors = 0, fire, dangling;
 	off_t	sz;
@@ -141,6 +143,7 @@ delta_main(int ac, char **av)
 	longopt	lopts[] = {
 		{ "csetmark", 301 },
 		{ "prefer-cfile", 302 },
+		{ "did-ci;", 303 },
 		{ 0, 0 }
 	};
 
@@ -233,6 +236,9 @@ delta_main(int ac, char **av)
 			dflags |= DELTA_CSETMARK; break;	/* undoc */
 		    case 302:	// --prefer-cfile
 			prefer_cfile = 1; break;		/* undoc */
+		    case 303:	// --did-ci=
+			didciFile = optarg;
+			break;
 
 		    default: bk_badArg(c, av);
 		}
@@ -294,6 +300,11 @@ delta_main(int ac, char **av)
 	if (initFile && !(init = fopen(initFile, "r"))) {
 		fprintf(stderr,"%s: init file '%s': %s.\n",
 			av[0], initFile, strerror(errno));
+		return (1);
+	}
+	if (didciFile && !(didci = fopen(didciFile, "w"))) {
+		fprintf(stderr, "%s: didci file '%s': %s.\n",
+		    av[0], didciFile, strerror(errno));
 		return (1);
 	}
 	if (fire = (getenv("_IN_DELTA") == 0)) putenv("_IN_DELTA=YES");
@@ -426,6 +437,11 @@ delta_main(int ac, char **av)
 			goto next;
 		}
 
+		if (didci) {
+			fprintf(didci, "%s|%s\n",
+			    s->sfile, REV(s, sccs_top(s)));
+		}
+
 		if (dangling) {
 			sccs_free(s);
 			strip_danglers(name, dflags);
@@ -492,6 +508,7 @@ next:		if (init) fclose(init);
 		unless (df & DELTA_DONTASK) comments_done();
 		name = sfileNext();
 	}
+	if (didci) fclose(didci);
 	if (sfileDone()) errors |= 64;
 	if (locked_proj) {
 		chdir(proj_root(locked_proj));

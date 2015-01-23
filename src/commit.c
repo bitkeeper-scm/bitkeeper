@@ -9,6 +9,7 @@
  * commit options
  */
 typedef struct {
+	u32	force:1;
 	u32	quiet:1;
 	u32	resync:1;
 	u32	standalone:1;
@@ -20,7 +21,7 @@ typedef struct {
 
 private int	do_commit(char **av, c_opts opts, char *sym,
 			char *pendingFiles, char **modFiles, int dflags);
-private int	do_ci(char **modFiles, char *commentFile);
+private int	do_ci(char ***modFiles, char *commentFile, char *pendingFiles);
 private void	do_unmark(char **modFiles);
 private	void	commitSnapshot(void);
 private	void	commitRestore(int rc);
@@ -32,7 +33,7 @@ int
 commit_main(int ac, char **av)
 {
 	FILE	*f, *fin;
-	int	i, c, doit = 0, force = 0;
+	int	i, c, doit = 0;
 	int	subCommit = 0;	/* commit called itself */
 	char	**aliases = 0;
 	char	*cmtsFile;
@@ -41,7 +42,7 @@ commit_main(int ac, char **av)
 	char	**nav = 0;
 	int	do_stdin;
 	int	nested;		/* commiting all components? */
-	c_opts	opts  = {0, 0};
+	c_opts	opts  = {0};
 	char	pendingFiles[MAXPATH] = "";
 	char	*cmd, *p, *bufp;
 	char	**modFiles = 0;
@@ -69,7 +70,7 @@ commit_main(int ac, char **av)
 			doit = 1; break;			/* doc 2.0 */
 		    case 'l':					/* doc */
 			strcpy(pendingFiles, optarg); break;
-		    case 'F':	force = 1; break;		/* undoc */
+		    case 'F':	opts.force = 1; break;		/* undoc */
 		    case 'R':	opts.resync = 1;		/* doc 2.0 */
 				break;
 		    case 's':
@@ -269,13 +270,12 @@ commit_main(int ac, char **av)
 			if (p) *p = 0;
 			modFiles = addLine(modFiles,
 			    strdup(bufp+offset));
-			fprintf(f, "%s|+\n", bufp+offset);
 		} else {
 			fprintf(f, "%s\n", bufp+offset);
 		}
 	}
 	fclose(fin); fclose(f);
-	if (!force && (size(pendingFiles) == 0)) {
+	if (!opts.force && (size(pendingFiles) == 0 && modFiles == 0)) {
 		unless (opts.quiet) fprintf(stderr, "Nothing to commit\n");
 		unlink(pendingFiles);
 		return (0);
@@ -419,6 +419,7 @@ do_commit(char **av,
 	char **modFiles, int dflags)
 {
 	int	rc, i;
+	int	ntc = 0;	// nothing to commit
 	sccs	*cset;
 	char	**syms = 0;
 	char	*p;
@@ -478,12 +479,19 @@ err:		rc = 1;
 	}
 	safe_putenv("BK_COMMENTFILE=%s", commentFile);
 
-	if (rc = trigger(opts.resync ? "merge" : av[0], "pre")) goto done;
-	if (modFiles && (rc = do_ci(modFiles, commentFile))) {
+	if (modFiles && (rc = do_ci(&modFiles, commentFile, pendingFiles))) {
 		rc = 1;
 		do_unmark(modFiles);
 		goto done;
 	}
+	if (!opts.force && (size(pendingFiles) == 0 && modFiles == 0)) {
+		unless (opts.quiet) fprintf(stderr, "Nothing to commit\n");
+		ntc = 1;
+		rc = 0;
+		goto done;
+	}
+
+	if (rc = trigger(opts.resync ? "merge" : av[0], "pre")) goto done;
 	comments_done();
 	if (comments_savefile(commentFile)) {
 		rc = 1;
@@ -620,7 +628,7 @@ fail:	if (rc) {
 	trigger(opts.resync ? "merge" : av[0], "post");
 done:	if (unlink(pendingFiles)) perror(pendingFiles);
 	// Someone else created the c.file, unlink only on success
-	if ((dflags & DELTA_CFILE) && !rc) comments_cleancfile(cset);
+	if ((dflags & DELTA_CFILE) && !rc && !ntc) comments_cleancfile(cset);
 	if (*commentFile) unlink(commentFile);
 	sccs_free(cset);
 	freeLines(list, free);
@@ -637,21 +645,34 @@ done:	if (unlink(pendingFiles)) perror(pendingFiles);
 }
 
 private int
-do_ci(char **modFiles, char *commentFile)
+do_ci(char ***modFiles, char *commentFile, char *pendingFiles)
 {
 	int	i, rc = 0;
-	char	*cmd;
+	char	*cmd, **mlist = *modFiles;
 	FILE	*f;
+	char	didciFile[MAXPATH];
 
+	bktmp(didciFile);
 	cmd = aprintf("bk -?BK_NO_REPO_LOCK=YES ci -q -a "
-	    "--prefer-cfile --csetmark -Y\"%s\" -", commentFile);
+	    "--prefer-cfile --csetmark --did-ci=\"%s\" -Y\"%s\" -",
+	    didciFile, commentFile);
 
 	f = popen(cmd, "w");
 	assert(f);
-	EACH(modFiles) fprintf(f, "%s\n", modFiles[i]);
+	EACH(mlist) fprintf(f, "%s\n", mlist[i]);
 	rc = (pclose(f) != 0);
-
 	free(cmd);
+
+	freeLines(mlist, free);
+	mlist = file2Lines(0, didciFile);
+	*modFiles = mlist;
+	unlink(didciFile);
+
+	f = fopen(pendingFiles, "a");
+	assert(f);
+	EACH(mlist) fprintf(f, "%s\n", mlist[i]);
+	fclose(f);
+
 	return (rc);
 }
 
@@ -1240,13 +1261,18 @@ do_unmark(char **modFiles)
 	int	i;
 	sccs	*s;
 	ser_t	d;
+	char	*rev, *p;
 
 	EACH(modFiles) {
+		p = strchr(modFiles[i], '|');
+		assert(p);
+		*p = 0;
+		rev = p+1;
 		unless (s = sccs_init(modFiles[i], INIT_MUSTEXIST)) {
 			perror(modFiles[i]);
 			continue;
 		}
-		d = sccs_findrev(s, "+");
+		d = sccs_findrev(s, rev);
 		if (FLAGS(s, d) & D_CSET) {
 			FLAGS(s, d) &= ~D_CSET;
 			if (sccs_newchksum(s)) {

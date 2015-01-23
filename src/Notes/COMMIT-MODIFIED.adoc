@@ -30,6 +30,13 @@ time.
   cfiles that already exist (such as citool might create) should be
   honoured.
 
+`delta --did-ci`::
+  When commit feeds delta a list of files on stdin, it has
+  no way of knowing whether or not delta will actually delta the
+  file (perhaps there are no diffs).  The --did-ci option takes
+  a filename argument and will write "path|rev" into that file
+  for each file it successfully processes.
+
 Changes to check
 ----------------
 
@@ -46,8 +53,8 @@ Changes to commit
      its own list of files to commit (but note that we do not automagically
      include extra files, those have to be specified).
 
-   - Apply delta to modified files (with --csetmark and --prefer-cfile
-     options).
+   - Apply delta to modified files (with --csetmark, --prefer-cfile
+     and --did-ci options).
 
    - in the event of a failure, we need to rollback the automatic
      deltas.  The current thinking is to simply remove the added cset
