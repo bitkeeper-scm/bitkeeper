@@ -43,7 +43,7 @@ else
 	SHARED := --disable-shared
 	PCRE_OBJ:= bin/tclsh
 	ifeq "$(shell uname)" "Darwin"
-		AQUA := --enable-aqua
+		AQUA := 1
 		XFTSUPPORT :=
 		BKAPP=bin/BitKeeper.app
 		SO := .dylib
@@ -105,10 +105,12 @@ all: version.sh ../../tclkey.h
 	else	unset CC LD CCXTRA CFLAGS MAKEFLAGS; \
 		$(MAKE) Q=$(Q) populate ; \
 		$(MAKE) Q=$(Q) bin/tclsh$(EXE) || exit 1; \
-		$(MAKE) Q=$(Q) bin/bkgui$(EXE) $(EXTENSIONS) || exit 1; \
-		test "X$(AQUA)" = X && exit 0; \
-		$(MAKE) Q=$(Q) $(BKAPP)/Contents/MacOS/BitKeeper || exit 1; \
-		$(MAKE) Q=$(Q) $(AQUAEXTENSIONS) || exit 1; \
+		if [ "X$(AQUA)" = X ] ; \
+		then $(MAKE) Q=$(Q) bin/bkgui$(EXE) $(EXTENSIONS) || exit 1; \
+		else \
+			$(MAKE) Q=$(Q) $(BKAPP)/Contents/MacOS/BitKeeper || exit 1; \
+			$(MAKE) Q=$(Q) $(AQUAEXTENSIONS) || exit 1; \
+		fi \
 	fi
 	$(Q)$(MAKE) verify
 	$(Q)$(MAKE) rm_doc
@@ -136,7 +138,7 @@ tcl/$S/Makefile: tcl/$S/configure $(LIBPCRE) Makefile
 tk/$S/Makefile: tk/$S/configure Makefile
 	$(if $(Q),@echo Configuring Tk,)
 	$(Q)cd tk/$S; \
-	./configure $(QUIET) --with-tcl=../../tcl/$S $(AQUA) \
+	./configure $(QUIET) --with-tcl=../../tcl/$S \
 	    $(ENABLE_64BIT) $(XSSSUPPORT) $(XFTSUPPORT) $(SHARED) $(SYMBOLS)
 
 populate:
@@ -316,13 +318,13 @@ bin/bkgui$(EXE): tk/$S/Makefile bin/tclsh$(EXE)
 mkapp: FORCE
 	-bk get mkapp
 
-bin/BitKeeper.app/Contents/MacOS/BitKeeper: bin/tclsh$(EXE) bin/bkgui$(EXE) mkapp
+bin/BitKeeper.app/Contents/MacOS/BitKeeper: bin/tclsh$(EXE) mkapp
 	$(MAKE) -C tcl/macosx XLIBS="$(LIBTOMCRYPT)" \
 	    EXTRA_CONFIGURE_ARGS="--with-bk=$(BKROOT) --disable-info-body \
 	    --enable-pcre=default --with-pcre=../../../pcre/local \
 	    --with-tommath=$(TOMMATH)" embedded
 	$(MAKE) -C tk/macosx XLIBS="$(LIBTOMCRYPT) $(LIBPCRE)" \
-	    EXTRA_CONFIGURE_ARGS="--with-bk=$(BKROOT)" embedded
+	    EXTRA_CONFIGURE_ARGS="--with-bk=$(BKROOT) --enable-aqua" embedded
 	./mkapp BitKeeper 1.0 BkAp "BitMover, Inc" com.bitmover.bk "$(WISHPATH)"
 
 clean-obj: FORCE
@@ -355,13 +357,14 @@ test:
 	test -d tk && cd tk/$S && $(MAKE) test
 
 verify: FORCE
-	test -d lib/$(TKTABLE) || exit 1
-	test -f lib/$(BWIDGET)/pkgIndex.tcl || exit 1
 	if [ "X$(AQUA)" != X ]; \
 	then \
 	    test -d $(BKAPP)/Contents/lib/$(TKTABLE) || exit 1 ; \
 	    test -f $(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl \
 		|| exit 1 ; \
+	else \
+		test -d lib/$(TKTABLE) || exit 1 ; \
+		test -f lib/$(BWIDGET)/pkgIndex.tcl || exit 1 ; \
 	fi
 
 FORCE:

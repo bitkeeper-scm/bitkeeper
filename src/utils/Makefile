@@ -21,6 +21,7 @@ ifeq "$(OSTYPE)" "msys"
 	CERT=../win32/bitmover-cert.p12
 	PASS=BMstuff1
 	TSURL=http://timestamp.comodoca.com/authenticode
+	BKGUI=$(BINDIR)/gui/bin/bkgui$(EXE)
 else
         SYS=unix
 	EXE=
@@ -31,9 +32,11 @@ else
 	RESOURCES=
 	SO=dll
 	STRIPOPTS=
+	BKGUI=$(BINDIR)/gui/bin/bkgui$(EXE)
 	ifeq "$(shell uname)" "Darwin"
 		SO=dylib
 		STRIPOPTS=-x
+		BKGUI=$(BINDIR)/gui/bin/BitKeeper.app/Contents/MacOS/BitKeeper
 	endif
 endif
 SYSTEM_OBJS=../libc/libc.a
@@ -60,7 +63,7 @@ _data.o: sfio$(EXE) munge$(EXE) zz$(EXE) sfioball.zz
 	@./munge sfio.zz sfioball.zz
 	@$(RM) -f sfio.zz sfioball.zz
 
-sfioball.zz: installtool $(BINDIR) $(BINDIR)/gui/bin/bkgui$(EXE) zz$(EXE)
+sfioball.zz: installtool $(BINDIR) $(BKGUI) zz$(EXE)
 	@echo Creating sfioball.zz from BK in $(BINDIR) ...
 	@cp installtool $(BINDIR)/gui/lib/installtool
 	@find $(BINDIR) -type f -name \*.$(SO) | while read x; \
