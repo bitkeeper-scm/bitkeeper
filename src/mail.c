@@ -30,7 +30,7 @@ mail_main(int ac, char **av)
 	unless (av[optind]) usage();
 	for (c = optind; av[c]; c++) to = addLine(to, strdup(av[c]));
 
-	unless (url = cfg_str(0, CFG_MAIL_PROXY)) {
+	unless (url || (url = cfg_str(0, CFG_MAIL_PROXY))) {
 		fprintf(stderr, "mail: failed must provide mail proxy\n");
 		return (1);
 	}
