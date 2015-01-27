@@ -31,6 +31,7 @@ gui_useAqua(void)
 {
 #ifdef	__APPLE__
 	return (1);
-#endif
+#else
 	return (0);
+#endif
 }
