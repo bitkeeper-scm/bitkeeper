@@ -435,6 +435,7 @@ edit => get
 comment => comments	# alias for Linus, remove...
 identity => id
 info => sinfo
+uniq_server => info_server
 init => setup
 _key2path => key2path
 _mail => mail

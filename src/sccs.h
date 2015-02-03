@@ -165,7 +165,6 @@ int	checking_rmdir(char *dir);
 #define S_READ_ONLY	0x00000800	/* force read only mode */
 #define	S_SET		0x00002000	/* the tree is marked with a set */
 #define S_CACHEROOT	0x00004000	/* don't free the root entry */
-#define S_IMPORT	0x00080000	/* import mode */
 
 /*
  * Date handling.
@@ -262,7 +261,6 @@ int	checking_rmdir(char *dir);
 #define	CONFIG(s)	((s)->state & S_CONFIG)
 #define	READ_ONLY(s)	((s)->state & S_READ_ONLY)
 #define	SET(s)		((s)->state & S_SET)
-#define	IMPORT(s)	((s)->state & S_IMPORT)
 #define	MK_GONE(s, d)	do {(s)->hasgone = 1; FLAGS(s, d) |= D_GONE;} while (0)
 #define	TREE(s)		(1)			// s->tree serial
 #define	TABLE(s)	(0 + (s)->tip)		// s->table serial
@@ -1084,13 +1082,13 @@ void	sccs_md5delta(sccs *s, ser_t d, char *b64);
 void	sccs_sortkey(sccs *s, ser_t d, char *buf);
 void	sccs_key2md5(char *deltakey, char *b64);
 void	sccs_setPath(sccs *s, ser_t d, char *newpath);
-void	sccs_syncRoot(sccs *s, char *key);
+int	sccs_syncRoot(sccs *s, char *key);
 ser_t	sccs_csetBoundary(sccs *s, ser_t, u32 flags);
 int	poly_pull(int got_patch, char *mergefile);
 void	poly_range(sccs *s, ser_t d, char *pkey);
 char	**poly_save(char **list, sccs *cset, ser_t d, char *ckey, int side);
 int	poly_r2c(sccs *cset, ser_t d, char ***pcsets);
-void	sccs_shortKey(sccs *s, ser_t, char *);
+int	sccs_shortKey(sccs *s, ser_t, char *);
 int	sccs_resum(sccs *s, ser_t d, int diags, int dont);
 int	cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch);
 char	**cset_mkList(sccs *cset);
@@ -1145,7 +1143,6 @@ char	*p2str(void *p);
 int	sccs_filetype(char *name);
 int	isValidHost(char *h);
 int	isValidUser(char *u);
-int	readable(char *f);
 char	*sccs2name(char *);
 char	*name2sccs(char *);
 int	diff(char *lfile, char *rfile, u32 kind, char *out);
@@ -1214,10 +1211,7 @@ FILE	*sccs_startWrite(sccs *s);
 int	sccs_finishWrite(sccs *s);
 void	sccs_abortWrite(sccs *s);
 int	uniq_adjust(sccs *s, ser_t d);
-char	*uniq_keysHome(void);
-int	uniq_open(void);
-time_t	uniq_drift(void);
-int	uniq_close(void);
+char	*uniq_dbdir(char *dir);
 time_t	sccs_date2time(char *date, char *zone);
 pid_t	smtpmail(char **to, char *subject, char *file);
 int	connect_srv(char *srv, int port, int trace);

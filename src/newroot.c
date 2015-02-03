@@ -249,8 +249,9 @@ update_rootlog(sccs *s, char *key, char *comments, char *who)
  * This means walking the ROOTLOG from newest to oldest and returning
  * the first rootkey found that is not an attach or detach (or any later
  * transform we do that is "invisible").
+ * returns length of key
  */
-void
+int
 sccs_syncRoot(sccs *s, char *key)
 {
 	int	i, x, keepit = 0;
@@ -296,13 +297,13 @@ foundit:
 			x = 0;
 			if (keepit) {
 				strcpy(key, p);
-				return;
+				return (strlen(key));
 			}
 		    	break;
 		}
 	}
 nolog:	/* no ROOTLOG, just return old rootkey */
-	sccs_sdelta(s, sccs_ino(s), key);
+	return (sccs_sdelta(s, sccs_ino(s), key));
 }
 
 

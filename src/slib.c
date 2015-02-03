@@ -73,7 +73,7 @@ private	void	taguncolor(sccs *s, ser_t d);
 private	void	prefix(sccs *s, ser_t d, int whodel,
 		    u32 flags, int lines, char *name, FILE *out);
 private	int	sccs_meta(char *m, sccs *s, ser_t parent,
-		    char *init, int fixDates);
+		    char *init);
 private	int	misc(sccs *s);
 private	char	*bin_heapfile(sccs *s, int name);
 private	int	bin_deltaTable(sccs *s);
@@ -723,9 +723,7 @@ dinsert(sccs *s, ser_t d, int fixDate)
 		s->grafted = 1;
 	}
 	sccs_inherit(s, d);
-	if (fixDate) {
-		uniqDelta(s);
-	}
+	if (fixDate) uniqDelta(s);
 	return (d);
 }
 
@@ -913,12 +911,8 @@ uniqRoot(sccs *s)
 	assert(TREE(s) == TABLE(s));
 	d = TREE(s);
 
-	/* 
-	 * Both of these are noisy if they fail now, so just exit 1.
-	 */
-	if (uniq_open()) exit(1);
+	/* This is noisy if it fails so just exit 1. */
 	if (uniq_adjust(s, d)) exit(1);
-	if (getenv("BK_UNIQDB_NO_CACHE")) uniq_close();
 }
 
 /*
@@ -956,15 +950,7 @@ uniqDelta(sccs *s)
 		DATE_FUDGE_SET(s, d, (DATE_FUDGE(s, d) + tdiff));
 	}
 
-	/*
-	 * We want the import convertor to produce the same tree
-	 * when ran multiple times. Do not enforce unique key
-	 * across different repository;
-	 */
-	if (IMPORT(s)) return;
-	if (uniq_open()) exit(1);
 	if (uniq_adjust(s, d)) exit(1);
-	if (getenv("BK_UNIQDB_NO_CACHE")) uniq_close();
 }
 
 private int
@@ -2829,7 +2815,7 @@ resyncMeta(sccs *s, ser_t d, char *buf)
 	char	key[MAXKEY];
 
 	/* note: this rewrites the s.file, and does a sccs_close() */
-	if (sccs_meta("resolve", s, d, buf, 1)) {
+	if (sccs_meta("resolve", s, d, buf)) {
 		fprintf(stderr, "resolve: failed to make tag merge\n");
 		return (1);
 	}
@@ -10251,10 +10237,6 @@ checkin(sccs *s,
 	char	buf[MAXLINE];
 	int	no_lf = 0;
 	int	error = 0;
-	MDBM	*db;
-	static	int fixDate = -1;
-
-	if (fixDate == -1) fixDate = (getenv("_BK_NO_UNIQUE") == 0);
 
 	assert(s);
 	debug((stderr, "checkin %s %x\n", s->gfile, flags));
@@ -10348,7 +10330,7 @@ out:		sccs_abortWrite(s);
 		XFLAGS(s, n0) |= X_REQUIRED;
 		SUM_SET(s, n0, almostUnique());
 		SORTSUM_SET(s, n0, SUM(s, n0));
-		first = n0 = dinsert(s, n0, fixDate && !(flags & DELTA_PATCH));
+		first = n0 = dinsert(s, n0, !(flags & DELTA_PATCH));
 
 		n = prefilled ? prefilled : sccs_newdelta(s);
 		PARENT_SET(s, n, 1);
@@ -10439,7 +10421,7 @@ out:		sccs_abortWrite(s);
 		}
 	}
 	/* need to recover 'first' after a possible malloc */
-	n = dinsert(s, n, fixDate && !(flags & DELTA_PATCH));
+	n = dinsert(s, n, !(flags & DELTA_PATCH));
 	EACH(syms) addsym(s, n, !(flags & DELTA_PATCH), syms[i]);
 	if (BITKEEPER(s)) {
 		s->version = SCCS_VERSION;
@@ -13737,7 +13719,7 @@ isValidUser(char *u)
  * which can handle all of those cases.
  */
 private int
-sccs_meta(char *me, sccs *s, ser_t parent, char *init, int fixDate)
+sccs_meta(char *me, sccs *s, ser_t parent, char *init)
 {
 	ser_t	m;
 	FILE	*iF;
@@ -13761,7 +13743,7 @@ sccs_meta(char *me, sccs *s, ser_t parent, char *init, int fixDate)
 	R2_SET(s, m, R2(s, parent));
 	R3_SET(s, m, R3(s, parent));
 	PARENT_SET(s, m, parent);
-	m = dinsert(s, m, fixDate);
+	m = dinsert(s, m, 1);
 	EACH(syms) addsym(s, m, 0, syms[i]);
 	freeLines(syms, free);
 	/*
@@ -17536,15 +17518,22 @@ sccs_metafile(char *file)
 	return (streq(file, ATTR));
 }
 
-void
+/*
+ * shortkey == user@host|path|date
+ * returns length of key
+ */
+int
 sccs_shortKey(sccs *s, ser_t d, char *buf)
 {
+	int	len;
 	char	utctime[32];
+
 	assert(d);
-	sprintf(buf, "%s|%s|%s",
+	len = sprintf(buf, "%s|%s|%s",
 	    USERHOST(s, d),
 	    PATHNAME(s, d),
 	    sccs_utctime(s, d, utctime));
+	return (len);
 }
 
 /*

@@ -262,6 +262,18 @@ _BK_NO_ATTR=1 BK_DATE_TIME_ZONE=$DAT $OLDBK/bk commit $Q -yfoo
 cd ../newcopy
 echo b > bar
 BK_DATE_TIME_ZONE=$DAT BK_RANDOM=1234567890abcdef $OLDBK/bk new $Q bar
+
+# the pre-7.0 code had a bug where the timestamp it attached to each
+# key in bk-keys was the delta timestamp. When BK_DATE_TIME_ZONE was
+# used then that date can be way in the past. In bk-6.x the file is
+# pruned at load time so if you write a key in the past it will never
+# be seen by a followup process.
+# We 'fix' this by recreating the parallel key creation record but
+# use a current timestamp so it won't get pruned.
+T=`bk prs -r+ -hnd:TIME_T: ../nest/ChangeSet`
+bk prs -hnd":SHORTKEY: $T 1234567890abcdef" ../newrepo/ChangeSet \
+   >> "$BK_DOTBK"/bk-keys/`bk gethost -r`
+
 _BK_NO_ATTR=1 BK_DATE_TIME_ZONE=$DAT $OLDBK/bk commit $Q -ybar
 _BK_NO_ATTR=1 BK_DATE_TIME_ZONE=$DAT $OLDBK/bk pull $Q
 cd ..

@@ -1027,16 +1027,6 @@ mkChangeSet(c_opts opts, sccs *cset, char *files, char ***keys)
 	}
 	free_pfile(&pf);
 
-	if (TABLE(cset) && (DATE(cset, d) <= DATE(cset, TABLE(cset)))) {
-		time_t	tdiff;
-
-		tdiff = DATE(cset, TABLE(cset)) - DATE(cset, d) + 1;
-		DATE_SET(cset, d, DATE(cset, d) + tdiff);
-		DATE_FUDGE_SET(cset, d, DATE_FUDGE(cset, d) + tdiff);
-	}
-	if (uniq_open()) assert(0);
-	uniq_adjust(cset, d);
-	uniq_close();
 
 	if (files) {
 		/*
@@ -1062,6 +1052,13 @@ mkChangeSet(c_opts opts, sccs *cset, char *files, char ***keys)
 		SAME_SET(cset, d, 1);
 	}
 
+	if (TABLE(cset) && (DATE(cset, d) <= DATE(cset, TABLE(cset)))) {
+		time_t	tdiff;
+
+		tdiff = DATE(cset, TABLE(cset)) - DATE(cset, d) + 1;
+		DATE_SET(cset, d, DATE(cset, d) + tdiff);
+		DATE_FUDGE_SET(cset, d, DATE_FUDGE(cset, d) + tdiff);
+	}
 #ifdef CRAZY_WOW
 	Actually, this isn't so crazy wow.  I don't know what problem this
 	caused but I believe the idea was that we wanted time increasing
@@ -1084,6 +1081,7 @@ mkChangeSet(c_opts opts, sccs *cset, char *files, char ***keys)
 		DATE_SET(cset, d, (DATE(cset, d) + DATE_FUDGE(cset, d)));
 	}
 #endif
+	if (uniq_adjust(cset, d)) return (0);
 	return (d);
 }
 

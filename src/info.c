@@ -4,7 +4,6 @@
 #include "sccs.h"
 #include "pcre.h"
 
-#define	INFO_TABLE	1	/* open / create a table */
 #define	INFO_DELETE	2	/* delete items */
 #define	INFO_GET	3	/* print items */
 #define	INFO_INSERT	4	/* insert if not already there */
@@ -12,90 +11,361 @@
 #define	INFO_UNIQUE	6	/* return a unique integer */
 #define	INFO_VERSION	7	/* print info version */
 #define	INFO_COUNT	8	/* count up items matching a regexp */
+#define	INFO_INSERT_KEY	9	/* uniq db delta-key insert */
 
-/* All hidden (metadata) entries start with space */
+/* Keys that start with a space are hidden metadata. */
 #define	DB_VERSION	" version"
 #define	DB_UNIQUE	" unique"
+
+/*
+ * This hidden metadata key is written to the uniqdb and must have
+ * valid bk6 uniqdb key syntax. Its value is the time_t - 1year of the
+ * last time bk6 touched its uniqdb. This always gets pruned from the
+ * uniqdb by bk6 but bk7 leaves it.
+ */
+#define	DB_MODTIME	"uniqdb@bitkeeper.com|METADATA|00000000000001"
 
 /* if this doesn't match we need to do a conversion */
 #define	VERSION		"1.0"
 
 #define	PORT		0x6569	/* Wayne's birthday 6/5/69 */
 
-private	int	info_cmds(FILE *in, FILE *out, int x);
-private	void	op(FILE *o, FILE *l, int cmd, hash *db, hash *h, char *regexp);
-private	void	unique(FILE *out, FILE *log, hash *db, char *arg);
-private	void	version(FILE *out, hash *db);
-private	int	flags;
-private	int	do_sync = 1;
+/* options and global state */
+typedef struct {
+	char	*dir;		/* dir containing db, port, and lock files */
+	FILE	*db_primf;	/* the open uniqdb, primary */
+	FILE	*db_backf;	/* the open uniqdb, backup */
+	FILE	*fin;		/* from client stdout */
+	FILE	*fout;		/* to client stdin */
+	FILE	*logf;
+	int	logfd;
+	hash	*db;
+	u32	uniq_daemon:1;	/* =1 if run as bk uniq_daemon */
+	u32	do_sync:1;	/* open logfile with O_SYNC */
+	u32	log:1;		/* maintain backup logfile */
+	u32	dashx:1;	/* -x echo input read */
+	u32	nolock:1;	/* don't use a lock file */
+	u32	quiet:1;
+	u32	quit:1;		/* tell the running server to quit */
+	u32	exit:1;		/* exit after processing current request */
+} Opts;
+
+private void	db_close(Opts *opts);
+private int	db_open(Opts *opts);
+private void	inc_date(char *p);
+private	int	info_cmds(Opts *opts);
+private	void	op(Opts *opts, int cmd, hash *h, char *regexp);
+private int	quit(int quiet);
+private void	uniqdb_append(Opts *opts, char *kptr, char *vptr);
+private void	uniqdb_close(Opts *opts);
+private int	uniqdb_old_lock(void);
+private char	*uniqdb_old_lock_path(void);
+private int	uniqdb_old_unlock(void);
+private int	uniqdb_open(Opts *opts);
+private void	uniqdb_prune(hash *db);
+private time_t	uniqdb_read(Opts *opts);
+private void	uniqdb_sync(Opts *opts);
+private void	uniqdb_write(Opts *opts);
+private int	uniqdb_write_file(Opts *opts, char *path);
+private void	uniqdb_write_rec(FILE *f, char *k, char *v);
+private	void	unique(Opts *opts, char *arg);
+private time_t	uniq_drift(void);
+private	void	version(hash *db, FILE *fout);
 
 int
 info_server_main(int ac, char **av)
 {
-	int	c, sock, nsock;
-	int	port = PORT;
-	int	dashx = 0;
-	char	*peer;
-	FILE	*fin, *fout;
+	int	rc = 1, c, sock = -1, tcpsock = -1, udpsock = -1;
+	int	keys_since_sync = 0;
+	int	port = 0;
+	char	*peer = 0;
+	int	idle = 0;
+	int	startsock = 0;
+	fd_set	fds;
+	FILE	*f;
+	struct timeval delay;
+	time_t	t;
+	Opts	opts = {0};
+	char	buf[1<<16];
+	longopt	lopts[] = {
+		{ "idle;", 300 },
+		{ "no-log", 310 },
+		{ "startsock;", 320 },
+		{ "dir;", 330 },
+		{ "no-lock", 340 },
+		{ "quit", 350 },
+		{ 0, 0 }
+	};
 
-	while ((c = getopt(ac, av, "fp:qx", 0)) != EOF) {
+	opts.do_sync = 0;
+	opts.log = 1;
+	if (streq(prog, "uniq_server")) {
+		opts.uniq_daemon = 1;
+		opts.log = 0;
+		idle = getenv("BK_REGRESSION") ? 10 : 10*MINUTE;
+	}
+	while ((c = getopt(ac, av, "fp:qx", lopts)) != EOF) {
 		switch (c) {
-		    case 'f': do_sync = 0; break;
+		    case 'f': opts.do_sync = 1; break;
 		    case 'p': port = atoi(optarg); break;
-		    case 'q': flags |= SILENT; break;
-		    case 'x': dashx = 1; break;
+		    case 'q': opts.quiet = 1; break;
+		    case 'x': opts.dashx = 1; break;
+		    case 300:	// --idle=<secs>
+			idle = atoi(optarg);
+			if (idle <= 0) usage();
+			break;
+		    case 310:	// --no-log
+			opts.log = 0;
+			break;
+		    case 320:	// --startsock=<port>
+			startsock = atoi(optarg);
+			break;
+		    case 330:	// --dir=<db-directory>
+			opts.dir = strdup(optarg);
+			break;
+		    case 340:	// --no-lock
+			opts.nolock = 1;
+			break;
+		    case 350:	// --quit
+			opts.quit = 1;
+			break;
+		    default: bk_badArg(c, av);
 		}
 	}
-	sock = tcp_server(0, port, 0);
-	if (sock == -1) exit(1);
-	verbose((stderr, "started server on port %d\n", sockport(sock)));
 
-	while (1) {
-		if ((nsock = tcp_accept(sock)) < 0) continue;
-		peer = peeraddr(nsock);
-		verbose((stderr, "connection from %s\n", peer));
-		fin = fdopen(nsock, "r");
-		fout = fdopen(nsock, "w");
-		info_cmds(fin, fout, dashx);
-		fclose(fin);
-		fclose(fout);
-		verbose((stderr, "%s is done\n", peer));
+	/*
+	 * Change to the db directory (opts.dir) and stay there.
+	 * The db directory is determined in the following order:
+	 *
+	 *   if env var _BK_UNIQ_DIR is defined, use that
+	 *   if --dir was specified, use that
+	 *   if "uniqdb" config option exists, use <config>/%HOST
+	 *   if /netbatch/.bk-%USER/bk-keys-db/%HOST is writable, use that
+	 *   use <dotbk>/bk-keys-db/%HOST
+	 *
+	 * If a writable directory can't be found, it's a fatal error.
+	 */
+	opts.dir = uniq_dbdir(opts.dir);
+	mkdirp(opts.dir);
+	unless (writable(opts.dir)) {
+		fprintf(stderr, "%s not writable for uniqdb\n", opts.dir);
+		T_DEBUG("dir %s not writable", opts.dir);
+		if (startsock) {
+			if ((sock = tcp_connect("127.0.0.1", startsock)) >= 0){
+				f = fdopen(sock, "w");
+				fprintf(f, "ERROR-no writable directory\n");
+				fflush(f);
+				fclose(f);
+				closesocket(sock);
+			}
+		}
+		return (1);
 	}
-	return (1);
+	chdir(opts.dir);
+	T_DEBUG("using dir %s", opts.dir);
+
+	if (opts.quit) return (quit(opts.quiet));
+
+	/*
+	 * Use a lock file to ensure at most one instance of this
+	 * daemon is ever running and servicing requests. One might
+	 * get started and then exit quickly if it's unable to acquire
+	 * the lock, but that's OK since it will have no side effects
+	 * (beyond the startsock handshake if the client requests it).
+	 */
+	if (opts.nolock || !sccs_lockfile("lock", 0, 1)) {
+		if ((tcpsock = tcp_server(0, port, 0)) < 0) goto out;
+		if ((udpsock = udp_server(0, port, 0)) < 0) goto out;
+		T_DEBUG("started server on port (%d tcp) (%d udp)",
+		    sockport(tcpsock), sockport(udpsock));
+		Fprintf("port", "%d\n%d\n",
+		    sockport(tcpsock), sockport(udpsock));
+	} else {
+		T_DEBUG("another server instance already running");
+	}
+	if (startsock) {
+		/* handshake to know portfile has been written */
+		T_DEBUG("contacting start sock on port %d", startsock);
+		if ((sock = tcp_connect("127.0.0.1", startsock)) >= 0) {
+			f = fdopen(sock, "w");
+			fprintf(f, "OK-daemon started in %s\n", opts.dir);
+			fflush(f);
+			fclose(f);
+			T_DEBUG("sent signal");
+			closesocket(sock);
+		}
+	}
+	if (tcpsock < 0) return (0);  // another instance already running
+
+	/*
+	 * For uniqdb interop with older bk, acquire and hold the
+	 * oldbk uniqdb lock file the entire time we're running. This
+	 * locks out an older bk from accessing the db so we can
+	 * safely read it here.
+	 */
+	if (opts.uniq_daemon) {
+		uniqdb_old_lock();
+		uniqdb_open(&opts);
+		t = uniqdb_read(&opts);
+		if ((time(0) - t) < 1*DAY) {
+			T_DEBUG("bk6 touched uniqdb (%ld), using 10s timeout",
+				time(0)-t);
+			idle = 10;
+		}
+	}
+
+	T_DEBUG("starting loop");
+	while (1) {
+		FD_ZERO(&fds);
+		FD_SET(tcpsock, &fds);
+		FD_SET(udpsock, &fds);
+		delay.tv_sec = idle ? idle : 60;
+		delay.tv_usec = 0;
+		rc = select(max(tcpsock, udpsock)+1, &fds, 0, 0, &delay);
+		if (rc < 0) {
+			perror("sock");
+			rc = 1;
+			break;
+		} else if ((rc == 0) && idle) {
+			/* timeout occurred */
+			rc = 0;
+			break;
+		}
+		if (FD_ISSET(tcpsock, &fds)) {
+			if ((sock = tcp_accept(tcpsock)) < 0) continue;
+			peer = peeraddr(sock);
+			T_DEBUG("tcp connection from %s", peer);
+			opts.fin = fdopen(sock, "r");
+			opts.fout = fdopen(sock, "w");
+			setlinebuf(opts.fin);
+			unless (db_open(&opts)) {
+				info_cmds(&opts);
+			}
+			db_close(&opts);
+			if (opts.exit) break;
+			fclose(opts.fin);
+			fclose(opts.fout);
+			close(sock);
+			T_DEBUG("%s tcp is done", peer);
+		}
+		if (FD_ISSET(udpsock, &fds)) {
+			int	len, n;
+			size_t	rlen;
+			char	*resp, *md5sum;
+			struct	sockaddr_in cliaddr;
+
+			len = sizeof(cliaddr);
+			n = recvfrom(udpsock, buf, sizeof(buf), 0,
+			    (struct sockaddr*)&cliaddr, &len);
+			if (n < 0) {
+				perror("recvfrom");
+				T_DEBUG("n=%d err=%s", n, strerror(errno));
+				continue;
+			}
+			T_DEBUG("udp connection from %s",
+			    inet_ntoa(cliaddr.sin_addr));
+			opts.fin = fmem_buf(buf, n);
+			opts.fout = fmem();
+			md5sum = hashstr(buf, n);
+			fprintf(opts.fout, "%s\n", md5sum);
+			free(md5sum);
+
+			unless (db_open(&opts)) {
+				info_cmds(&opts);
+			}
+			db_close(&opts);
+			if (opts.exit) break;
+			fclose(opts.fin);
+			resp = fmem_close(opts.fout, &rlen);
+			n = sendto(udpsock, resp, rlen, 0,
+				(struct sockaddr*)&cliaddr, len);
+			T_DEBUG("n=%d %s udp is done",
+			    n, inet_ntoa(cliaddr.sin_addr));
+		}
+		/* periodically sync or close/open the uniqdb */
+		if (opts.uniq_daemon && (++keys_since_sync > 20)) {
+			if (proj_sync(0)) {
+				uniqdb_sync(&opts);
+			} else {
+				uniqdb_close(&opts);
+				uniqdb_open(&opts);
+			}
+			keys_since_sync = 0;
+		}
+	}
+	T_DEBUG("cleaning up (port %d, dir %s)...", sockport(sock), opts.dir);
+	if (opts.uniq_daemon) {
+		uniqdb_prune(opts.db);
+		uniqdb_close(&opts);
+		uniqdb_write(&opts);
+		uniqdb_old_unlock();
+	}
+	unlink("port");
+	unless (opts.nolock) sccs_unlockfile("lock");
+	if (opts.exit) {
+		T_DEBUG("%s requested exit", peer);
+		fprintf(opts.fout, "OK-exiting\n");
+		fflush(opts.fout);
+		fclose(opts.fin);
+		fclose(opts.fout);
+		close(sock);
+	}
+	T_DEBUG("exiting...");
+out:	unless (tcpsock < 0) closesocket(tcpsock);
+	unless (udpsock < 0) closesocket(udpsock);
+	return (rc);
 }
 
 int
 info_shell_main(int ac, char **av)
 {
 	int	c;
-	int	dashx = 0;
+	Opts	opts = {0};
+	longopt	lopts[] = {
+		{ "dir;", 330 },
+		{ "uniqdb", 340 },
+		{ 0, 0 }
+	};
 
-	while ((c = getopt(ac, av, "fx", 0)) != EOF) {
+	opts.do_sync = 1;
+	opts.log = 1;
+	while ((c = getopt(ac, av, "fx", lopts)) != EOF) {
 		switch (c) {
-		    case 'f': do_sync = 0; break;
-		    case 'x': dashx = 1; break;
+		    case 'f': opts.do_sync = 0; break;
+		    case 'x': opts.dashx = 1; break;
+		    case 330:	// --dir=<db-directory>
+			opts.dir = strdup(optarg);
+			break;
+		    case 340:	// --uniqdb
+			opts.uniq_daemon = 1;
+			break;
 		}
 	}
-	info_cmds(stdin, stdout, dashx);
+	unless (opts.dir || opts.uniq_daemon) {
+		fprintf(stderr, "--dir or --uniqdb option required\n");
+		return (1);
+	}
+	if (opts.uniq_daemon) {
+		uniqdb_read(&opts);
+	} else {
+		mkdirp(opts.dir);
+		chdir(opts.dir);
+	}
+	opts.fin = stdin;
+	opts.fout = stdout;
+	unless (db_open(&opts)) {
+		info_cmds(&opts);
+	}
+	db_close(&opts);
 	return (0);
 }
 
 private int
-info_cmds(FILE *in, FILE *out, int dashx)
+info_cmds(Opts *opts)
 {
-	int	fd, cmd, space, new;
+	int	cmd, space;
 	char	*p, *t, *arg;
 	hash	*h = 0;
-	hash	*db = 0;
-	char	*here;
-	int	oflags = O_WRONLY|O_APPEND|O_CREAT;
-	FILE	*log = 0;
-
-#ifdef	O_SYNC
-	if (do_sync) oflags |= O_SYNC;
-#endif
-	setlinebuf(in);
-	here = strdup(proj_cwd());
 
 	/*
 	 * Parse the command and put the trailing, if any, in arg.
@@ -103,13 +373,14 @@ info_cmds(FILE *in, FILE *out, int dashx)
 	 * Then do the command.
 	 */
 	while (1) {
-		fflush(out);
-		if (log) fflush(log);
+		fflush(opts->fout);
+		if (opts->log) fflush(opts->logf);
 #ifndef	O_SYNC
-		if (log) fsync(fileno(log));
+		if (opts->log && opts->do_sync) fsync(opts->logfd);
 #endif
-		unless (p = fgetline(in)) break;
-		if (dashx) fprintf(out, "IN-%s\n", p);
+		unless (p = fgetline(opts->fin)) break;
+		T_DEBUG("got '%s'", p);
+		if (opts->dashx) fprintf(opts->fout, "IN-%s\n", p);
 		arg = 0;
 		space = 0;
 		for (t = p; *t && !isspace(*t); t++);
@@ -117,14 +388,14 @@ info_cmds(FILE *in, FILE *out, int dashx)
 			space = *t;
 			*t = 0;
 		}
-		if (streq(p, "table")) {
-			cmd = INFO_TABLE;
-		} else if (streq(p, "delete")) {
+		if (streq(p, "delete")) {
 			cmd = INFO_DELETE;
 		} else if (streq(p, "get")) {
 			cmd = INFO_GET;
 		} else if (streq(p, "insert")) {
 			cmd = INFO_INSERT;
+		} else if (streq(p, "insert-key")) {
+			cmd = INFO_INSERT_KEY;
 		} else if (streq(p, "set")) {
 			cmd = INFO_SET;
 		} else if (streq(p, "unique")) {
@@ -134,11 +405,14 @@ info_cmds(FILE *in, FILE *out, int dashx)
 		} else if (streq(p, "count")) {
 			cmd = INFO_COUNT;
 		} else if (streq(p, "quit")) {
-			fprintf(out, "OK-Good Bye\n");
+			fprintf(opts->fout, "OK-Good Bye\n");
+			break;
+		} else if (streq(p, "exit")) {
+			opts->exit = 1;
 			break;
 		} else {
 			if (space) *t = space;
-bad:			fprintf(out,
+bad:			fprintf(opts->fout,
 			    "ERROR-bad cmd '%s' (%u bytes)\n",
 			    p, (u32)strlen(p));
 			continue;
@@ -150,98 +424,52 @@ bad:			fprintf(out,
 		}
 
 		switch (cmd) {
-		    case INFO_TABLE:
-			if (db) hash_close(db);
-			if (log) fclose(log);
-			log = 0;
-			db = 0;
-			(void)chdir(here);
-			unless (arg) goto bad;
-			mkdirp(arg);
-			if (chdir(arg)) {
-				fprintf(out, "ERROR-table %s not found\n", arg);
-				continue;
-			}
-			new = !exists("db");
-			db = hash_open(HASH_MDBM, "db", O_RDWR|O_CREAT, 0664);
-			unless (db) {
-				fprintf(out, "ERROR-hash open of %s/db\n", arg);
-				continue;
-			}
-			if (new && !hash_insertStr(db, DB_VERSION, VERSION)) {
-				fprintf(out,
-				    "ERROR-hash store version in %s\n", arg);
-				hash_close(db);
-				db = 0;
-				continue;
-			}
-			fd = open("log", oflags, 0664);
-			unless (log = fdopen(fd, "a")) {
-				fprintf(out, "ERROR-open of %s/log\n", arg);
-				hash_close(db);
-				db = 0;
-				continue;
-			}
-			if (new) fprintf(log, "table %s\n", arg);
-			fprintf(out, "OK-table %s opened\n", arg);
-			break;
-
 		    case INFO_INSERT:
+		    case INFO_INSERT_KEY:
 		    case INFO_SET:
 			if (arg) goto bad;
 		    case INFO_DELETE:
 		    case INFO_GET:
-			unless (db) {
-table_first:			fprintf(out, "ERROR-call table first\n");
-				continue;
-			}
 			if (h) {
 				hash_free(h);
 				h = 0;
 			}
-			unless (arg) h = hash_fromStream(0, in);
-			op(out, log, cmd, db, h, arg);
+			unless (arg) h = hash_fromStream(0, opts->fin);
+			op(opts, cmd, h, arg);
 			break;
 
 		    case INFO_COUNT:
-		    	unless (db) goto table_first;
-			op(out, log, cmd, db, h, arg);
+			op(opts, cmd, h, arg);
 			break;
 
 		    case INFO_UNIQUE:
-		    	unless (db) goto table_first;
-			unique(out, log, db, arg);
+			unique(opts, arg);
 			break;
 
 		    case INFO_VERSION:
-			if (db) {
-				version(out, db);
-			} else {
-				fprintf(out, "OK-info version=%s\n", VERSION);
-			}
+			version(opts->db, opts->fout);
 			break;
 		}
 	}
-	chdir(here);
-	free(here);
-	if (db) hash_close(db);
-	if (log) fclose(log);
-	fflush(out);
+	fflush(opts->fout);
 	return (0);
 }
 
 private void
-op(FILE *out, FILE *log, int cmd, hash *db, hash *h, char *regexp)
+op(Opts *opts, int cmd, hash *h, char *regexp)
 {
 	int	n = 0;
 	hash	*h2 = hash_new(HASH_MEMHASH);
 	pcre	*re = 0;
+	char	*date, *p;
 	const	char	*perr;
-	int	poff;
+	int	fudge, poff;
+	char	buf[32];
+	time_t	t;
 
 	if ((cmd == INFO_COUNT) && !regexp) {
-		EACH_HASH(db) {
-			if (*(char *)db->kptr == ' ') continue;
+		EACH_HASH(opts->db) {
+			if (*(char *)opts->db->kptr == ' ') continue;
 			n++;
 		}
 	}
@@ -252,16 +480,16 @@ op(FILE *out, FILE *log, int cmd, hash *db, hash *h, char *regexp)
 	if (regexp) {
 		assert(!h);
 		unless (re = pcre_compile(regexp, 0, &perr, &poff, 0)) {
-			fprintf(out, "ERROR-bad regexp %s\n", regexp);
+			fprintf(opts->fout, "ERROR-bad regexp %s\n", regexp);
 			goto err;
 		}
 		switch (cmd) {
 		    case INFO_DELETE:
 		    case INFO_GET:
 		    case INFO_COUNT:
-		    	break;
+			break;
 		    default:
-		    	fprintf(out,
+			fprintf(opts->fout,
 			    "ERROR-bad command %d with regexp %s\n",
 			    cmd, regexp);
 			hash_free(h2);
@@ -269,22 +497,23 @@ op(FILE *out, FILE *log, int cmd, hash *db, hash *h, char *regexp)
 			return;
 		}
 		unless (cmd == INFO_COUNT) h = hash_new(HASH_MEMHASH);
-		EACH_HASH(db) {
-			if (*(char *)db->kptr == ' ') continue;
+		EACH_HASH(opts->db) {
+			if (*(char *)opts->db->kptr == ' ') continue;
 			if (pcre_exec(re, 0,
-				db->kptr, strlen(db->kptr),
+				opts->db->kptr, strlen(opts->db->kptr),
 				    0, 0, 0, 0)) continue;
 			if (cmd == INFO_COUNT) {
 				n++;
 			} else {
-				hash_store(h, db->kptr, db->klen, "", 1);
+				hash_store(h, opts->db->kptr, opts->db->klen,
+					   "", 1);
 			}
 		}
 		free(re);
 	}
 
 	if (cmd == INFO_COUNT) {
-		fprintf(out, "OK-%d keys\n", n);
+		fprintf(opts->fout, "OK-%d keys\n", n);
 		hash_free(h2);
 		return;
 	}
@@ -293,16 +522,17 @@ op(FILE *out, FILE *log, int cmd, hash *db, hash *h, char *regexp)
 	 * delete | get | insert | set
 	 */
 	EACH_HASH(h) {
+		if (*(char *)h->kptr == ' ') continue;
 		/* save original value from db */
-		if (hash_fetch(db, h->kptr, h->klen)) {
+		if (hash_fetch(opts->db, h->kptr, h->klen)) {
 			hash_store(h2,
 			    h->kptr, h->klen,
-			    db->vptr, db->vlen);
+			    opts->db->vptr, opts->db->vlen);
 		}
 		switch (cmd) {
 		    case INFO_DELETE:
-			unless (hash_delete(db, h->kptr, h->klen) == 0) {
-				fprintf(out, "ERROR-delete %s failed\n",
+			unless (hash_delete(opts->db, h->kptr, h->klen) == 0) {
+				fprintf(opts->fout, "ERROR-delete %s failed\n",
 				    (char *)h->kptr);
 				goto err;
 			}
@@ -310,23 +540,67 @@ op(FILE *out, FILE *log, int cmd, hash *db, hash *h, char *regexp)
 			break;
 
 		    case INFO_GET:
-			if (db->vlen) n++;	/* XXX: when is vlen 0 ? */
+			if (opts->db->vlen) n++;  /* XXX: when is vlen 0 ? */
 			break;
 
 		    case INFO_INSERT:
-			unless (hash_insert(db,
+			unless (hash_insert(opts->db,
 				h->kptr, h->klen, h->vptr, h->vlen)) {
-				fprintf(out, "ERROR-insert of %s failed\n",
+				fprintf(opts->fout,
+				    "ERROR-insert of %s failed\n",
 				    (char *)h->kptr);
 				goto err;
 			}
 			n++;
 			break;
 
+		    case INFO_INSERT_KEY:
+			/*
+			 * The key is like either of the following:
+			 *   <user@host>|<path>|20141030184638
+			 *   <user@host>|<path>|20141030184638|dd65b79936ebdde5
+			 * where the latter is for a cset. Get a pointer to
+			 * the date part.
+			 */
+			unless ((p = strchr(h->kptr, '|')) &&
+				(date = strchr(p+1, '|')) &&
+				strlen(date) >= 14) {
+				fprintf(opts->fout,
+					"ERROR-insert-key of %s (bad key)",
+					(char *)h->kptr);
+				goto err;
+			}
+			date++;
+			/*
+			 * Insert the key and if it's a dup then increment the
+			 * date by one second and try again. Return the date
+			 * fudge to the client.
+			 */
+			t = strtoul(h->vptr, 0, 16);
+			fudge = 0;
+			while (1) {
+				sprintf(buf, "%lx", t);
+				if (hash_insert(opts->db, h->kptr, h->klen,
+						buf, strlen(buf)+1)) {
+					fprintf(opts->fout, "OK-%d fudge\n",
+						fudge);
+					break;
+				}
+				inc_date(date);
+				fudge++;
+				t++;
+			}
+			/* Append to the on-disk version of the table. */
+			if (opts->uniq_daemon) {
+				uniqdb_append(opts, h->kptr, buf);
+			}
+			n++;
+			break;
+
 		    case INFO_SET:
-			unless (hash_store(db,
+			unless (hash_store(opts->db,
 				h->kptr, h->klen, h->vptr, h->vlen)) {
-				fprintf(out, "ERROR-set of %s failed\n",
+				fprintf(opts->fout, "ERROR-set of %s failed\n",
 				    (char *)h->kptr);
 				goto err;
 			}
@@ -336,24 +610,28 @@ op(FILE *out, FILE *log, int cmd, hash *db, hash *h, char *regexp)
 	}
 	switch (cmd) {
 	    case INFO_INSERT:
-	    	fprintf(log, "insert\n");
+		if (opts->log) fprintf(opts->logf, "insert\n");
 	    case INFO_SET:
-		unless (cmd == INFO_INSERT) fprintf(log, "set\n");
-		hash_toStream(h, log);
-		fprintf(log, "@\n");
-		fprintf(out, "OK-%d %s\n",
+		if (opts->log) {
+			unless (cmd == INFO_INSERT) fprintf(opts->logf,"set\n");
+			hash_toStream(h, opts->logf);
+			fprintf(opts->logf, "@\n");
+		}
+		fprintf(opts->fout, "OK-%d %s\n",
 		    n, cmd == INFO_SET ? "set" : "inserted");
 		break;
 	    case INFO_DELETE:
-		fprintf(log, "delete\n");
-		hash_toStream(h, log);
-		fprintf(log, "@\n");
-		fprintf(out, "OK-%d deleted\n", n);
+		if (opts->log) {
+			fprintf(opts->logf, "delete\n");
+			hash_toStream(h, opts->logf);
+			fprintf(opts->logf, "@\n");
+		}
+		fprintf(opts->fout, "OK-%d deleted\n", n);
 		break;
 	    case INFO_GET:
-		fprintf(out, "OK-%d found\n", n);
-		hash_toStream(h2, out);
-		fprintf(out, "@\n");
+		fprintf(opts->fout, "OK-%d found\n", n);
+		hash_toStream(h2, opts->fout);
+		fprintf(opts->fout, "@\n");
 		break;
 	}
 	hash_free(h2);
@@ -361,35 +639,474 @@ op(FILE *out, FILE *log, int cmd, hash *db, hash *h, char *regexp)
 
 err:	/* restore any entry changed before error */
 	EACH_HASH(h2) {
-		hash_store(db, h2->kptr, h2->klen, h2->vptr, h2->vlen);
+		hash_store(opts->db, h2->kptr, h2->klen, h2->vptr, h2->vlen);
 	}
 	hash_free(h2);
+}
+
+private int
+db_open(Opts *opts)
+{
+	int	oflags;
+
+	if (opts->uniq_daemon) return (0);
+
+	if (opts->db) hash_close(opts->db);
+	opts->db = hash_open(HASH_MDBM, "db", O_RDWR|O_CREAT, 0664);
+	unless (opts->db) {
+		fprintf(opts->fout, "ERROR-hash open of %s/db\n", opts->dir);
+		return (1);
+	}
+	if (!hash_storeStr(opts->db, DB_VERSION, VERSION)) {
+		fprintf(opts->fout, "ERROR-hash store version in %s/db\n",
+			opts->dir);
+err:		hash_close(opts->db);
+		opts->db = 0;
+		return (1);
+	}
+	if (opts->log) {
+		oflags = O_WRONLY | O_APPEND | O_CREAT;
+#ifdef	O_SYNC
+		if (opts->do_sync) oflags |= O_SYNC;
+#endif
+		opts->logfd = open("log", oflags, 0664);
+		unless (opts->logf = fdopen(opts->logfd, "a")) {
+			fprintf(opts->fout, "ERROR-error opening %s/log\n",
+				opts->dir);
+			goto err;
+		}
+	}
+	return (0);
+}
+
+private void
+db_close(Opts *opts)
+{
+	if (opts->uniq_daemon) return;
+	if (opts->log) {
+		fclose(opts->logf);
+		opts->logf = 0;
+		close(opts->logfd);
+		opts->logfd = -1;
+	}
+	hash_close(opts->db);
+	opts->db = 0;
+}
+
+private char *
+uniqdb_old_lock_path(void)
+{
+	/* Check BK_DOTBK to support parallel regressions. */
+	if (getenv("BK_DOTBK")) {
+		return (aprintf("%s/.uniq_keys_%d_%s", TMP_PATH, getpid(),
+				sccs_realuser()));
+	} else {
+		return (aprintf("%s/.uniq_keys_%s", TMP_PATH,
+				sccs_realuser()));
+	}
+}
+
+private char *
+uniqdb_old_backup_path(void)
+{
+	/* Check BK_DOTBK to support parallel regressions. */
+	if (getenv("BK_DOTBK")) {
+		return (aprintf("%s/.bk-keys-%d-%s", TMP_PATH, getpid(),
+				sccs_realuser()));
+	} else {
+		return (aprintf("%s/.bk-keys-%s", TMP_PATH,
+				sccs_realuser()));
+	}
+}
+
+/* Acquire the pre-bk7 uniqdb lock. */
+private int
+uniqdb_old_lock(void)
+{
+	char    *lock;
+	int     rc;
+
+	lock = uniqdb_old_lock_path();
+	rc = sccs_lockfile(lock, -1, 1);
+	free(lock);
+	return (rc);
+}
+
+/* Release the pre-bk7 uniqdb lock. */
+private int
+uniqdb_old_unlock(void)
+{
+	char	*lock;
+	int	rc;
+
+	lock = uniqdb_old_lock_path();
+	rc = sccs_unlockfile(lock);
+	free(lock);
+	return (rc);
+}
+
+/*
+ * Open the uniqdb that we'll be writing to. There can be a primary
+ * (in .bk) and a backup (in /tmp). When reading, both might be read,
+ * but when writing, only one is used. Open that one and keep it open.
+ */
+private int
+uniqdb_open(Opts *opts)
+{
+	int	ret = 0;
+	char	*prim = aprintf("%s/bk-keys/%s", getDotBk(), sccs_realhost());
+	char	*back = uniqdb_old_backup_path();
+
+	if (opts->db_primf) fclose(opts->db_primf);
+	if (opts->db_backf) fclose(opts->db_backf);
+	opts->db_backf = 0;
+
+	if (opts->db_primf = fopen(prim, "r+")) {
+		T_DEBUG("opened primary %s", prim);
+	} else if (opts->db_backf = fopen(back, "r+")) {
+		T_DEBUG("opened backup %s", back);
+	} else {
+		T_DEBUG("error %d opening uniqdb for writing", errno);
+		ret = 1;
+	}
+
+	free(prim);
+	free(back);
+	return (ret);
+}
+
+private void
+uniqdb_close(Opts *opts)
+{
+	char	*prim = aprintf("%s/bk-keys/%s", getDotBk(), sccs_realhost());
+	char	*back = uniqdb_old_backup_path();
+
+	if (opts->db_primf) fclose(opts->db_primf);
+	if (opts->db_backf) fclose(opts->db_backf);
+	opts->db_primf = 0;
+	opts->db_backf = 0;
+	free(prim);
+	free(back);
+}
+
+private void
+uniqdb_sync(Opts *opts)
+{
+	if (opts->db_primf) fsync(fileno(opts->db_primf));
+	if (opts->db_backf) fsync(fileno(opts->db_backf));
+}
+
+/*
+ * Read the ascii uniqdb file into an in-memory hash. Most of this is
+ * from the old unique.c.
+ */
+private void
+uniqdb_load_file(hash *h, char *path)
+{
+	int	klen, pipes, vlen;
+	time_t	t, t2;
+	char	*kptr, *q, *s, *v2;
+	char	buf[MAXPATH*2], vptr[32];
+	FILE	*f;
+
+	T_DEBUG("looking for uniqdb %s", path);
+	unless (f = fopen(path, "r")) return;
+	while (fnext(buf, f)) {
+		/*
+		 * expected format:
+		 * user@host|path|date timet [syncRoot]
+		 *
+		 * Notes:
+		 *   - bk-4.x only parses upto the timet
+		 *   - ChangeSet files will always have path==ChangeSet
+		 *     (no component pathnames)
+		 *   - syncRoot only occurs on ChangeSet files and is
+		 *     the random bits of the syncRoot key
+		 *   - bk-4.x might warn and drop lines that differ by
+		 *     only the syncRoot, but that still gives correct
+		 *     behavior.
+		 */
+		for (pipes = 0, s = buf; *s; s++) {
+			if (*s == '|') pipes++;
+			if ((*s == ' ') && (pipes == 2)) break;
+		}
+		unless ((pipes == 2) &&
+			s && isdigit(s[1]) && (chop(buf) == '\n')) {
+			continue;
+		}
+		*s++ = 0;
+		t = (time_t)strtoul(s, &s, 0);
+		if (*s == ' ') {  /* more data after timestamp */
+			++s;
+			q = buf + strlen(buf);
+			*q++ = '|';
+			while (*s && (*s != '|')) *q++ = *s++;
+			*q = 0;
+		}
+		kptr = buf;
+		klen = strlen(buf) + 1;
+		sprintf(vptr, "%lx", t);
+		vlen = strlen(vptr) + 1;
+		T_DEBUG("read %s %s", kptr, vptr);
+		if (hash_insert(h, kptr, klen, vptr, vlen)) {
+			v2 = hash_fetch(h, kptr, klen);
+			t2 = (time_t)strtoul(v2, 0, 16);
+			if (t > t2) hash_store(h, kptr, klen, vptr, vlen);
+		}
+	}
+	fclose(f);
+}
+
+/*
+ * Read the uniqdb into a hash. Add the DB_MODTIME key if not already
+ * there with a time_t value of t - 1year where t is the last time
+ * that bk6 touched its uniqdb.  Bk7 never purges this key but bk6
+ * always will, so if it's not in the bk6 uniqdb, either bk7 has yet
+ * to run or bk6 was the last to touch its db.
+ */
+private time_t
+uniqdb_read(Opts *opts)
+{
+	char	buf[32], *s;
+	time_t	t1, t2;
+
+	opts->db = hash_new(HASH_MEMHASH);
+
+	/* The main uniqdb. */
+	s = aprintf("%s/bk-keys/%s", getDotBk(), sccs_realhost());
+	uniqdb_load_file(opts->db, s);
+	t1 = mtime(s);
+	free(s);
+
+	/* Possible backup uniqdb. */
+	s = uniqdb_old_backup_path();
+	uniqdb_load_file(opts->db, s);
+	t2 = mtime(s);
+	free(s);
+
+	if (s = hash_fetchStr(opts->db, DB_MODTIME)) {
+		t1 = (time_t)strtoul(s, 0, 16);
+		T_DEBUG("using DB_MODTIME %lx", t1);
+	} else {
+		if (t2 > t1) t1 = t2;
+		if (t1) t1 -= 1*YEAR;
+		sprintf(buf, "%lx", t1);
+		hash_storeStr(opts->db, DB_MODTIME, buf);
+		T_DEBUG("storing DB_MODTIME %s", buf);
+	}
+	return (t1 + 1*YEAR);
+}
+
+private void
+uniqdb_write_rec(FILE *f, char *k, char *v)
+{
+	char	*date, *p, *syncroot;
+	time_t	t;
+
+	if (*k == ' ') return;  // hidden key
+	unless ((p = strchr(k, '|')) && (date = strchr(p+1, '|'))) {
+		return;  // can't happen? bad key
+	}
+	t = (time_t)strtoul(v, 0, 16);
+	/*
+	 * If present, extract the syncRoot part from the delta key
+	 * since older bks expect lines like
+	 *     user@host|path|date time_t [syncRoot]
+	 */
+	if (syncroot = strchr(date+1, '|')) {
+		*syncroot = 0;
+		T_DEBUG("writing %s %ld %s", k, t, syncroot);
+		fprintf(f, "%s %ld %s\n", k, t, syncroot);
+		*syncroot = '|';
+	} else {
+		T_DEBUG("writing %s %ld", k, t);
+		fprintf(f, "%s %ld\n", k, t);
+	}
+}
+
+/*
+ * Write the uniqdb out to an ascii file.
+ */
+private int
+uniqdb_write_file(Opts *opts, char *path)
+{
+	FILE	*f;
+
+	mkdirf(path);
+	unless (f = fopen(path, "w")) return (1);
+	T_DEBUG("writing uniqdb to %s", path);
+	EACH_HASH(opts->db) {
+		uniqdb_write_rec(f, opts->db->kptr, opts->db->vptr);
+	}
+	return (fclose(f));
+}
+
+/*
+ * Write out the in-memory uniqdb hash to an ascii file. If the
+ * primary file location (.bk/bk-keys/HOST) is not writable,
+ * write to the backup location (/tmp/.bk-keys-USER).
+ */
+private void
+uniqdb_write(Opts *opts)
+{
+	char	*prim = aprintf("%s/bk-keys/%s", getDotBk(), sccs_realhost());
+	char	*back = uniqdb_old_backup_path();
+
+	unless (uniqdb_write_file(opts, prim)) {
+		unlink(back);
+	} else {
+		uniqdb_write_file(opts, back);
+	}
+	free(prim);
+	free(back);
+}
+
+private void
+uniqdb_append(Opts *opts, char *kptr, char *vptr)
+{
+	FILE	*f;
+
+	unless ((f = opts->db_primf) || (f = opts->db_primf)) return;
+	unless (fseek(f, 0, SEEK_END)) return;
+	T_DEBUG("appending %s %s", kptr, vptr);
+	uniqdb_write_rec(f, kptr, vptr);
+}
+
+/*
+ * Contact the running info server and ask it to exit and wait for its
+ * acknowledgement. Return 0 on success or if the server wasn't
+ * running to begin with, and 1 if we don't get the ack handshake.
+ */
+private int
+quit(int quiet)
+{
+	char	*msg = 0, *s;
+	int	fd, port, ret;
+	FILE	*fin = 0, *fout = 0;
+
+	unless (s = loadfile("port", 0)) {
+		msg = aprintf("uniq_server not running");
+		ret = 0;
+		goto out;
+	}
+	port = atoi(s);
+	if ((fd = tcp_connect("127.0.0.1", port)) < 0) {
+		msg = aprintf("uniq_server on port %d already stopped", port);
+		ret = 0;
+		goto out;
+	}
+	fin = fdopen(fd, "r");
+	fout = fdopen(fd, "w");
+	setlinebuf(fin);
+	fprintf(fout, "exit\n");
+	fflush(fout);
+	if ((s = fgetline(fin)) && strneq(s, "OK", 2)) {
+		msg = aprintf("uniq_server on port %d stopped", port);
+		ret = 0;
+	} else {
+		msg = aprintf("error stopping uniq_server: %s", s);
+		ret = 1;
+	}
+	if (fin)  fclose(fin);
+	if (fout) fclose(fout);
+	if (fd >= 0) close(fd);
+ out:
+	unless (quiet) printf("%s\n", msg);
+	T_DEBUG("%s", msg);
+	free(msg);
+	return (ret);
 }
 
 /*
  * Return a monotonically increasing integer.
  */
 private	void
-unique(FILE *out, FILE *log, hash *db, char *arg)
+unique(Opts *opts, char *arg)
 {
 	u32	u = 0;
 
-	u = hash_fetchStrNum(db, DB_UNIQUE);
+	u = hash_fetchStrNum(opts->db, DB_UNIQUE);
 	u++;
 	if (arg) u = atoi(arg);
-	fprintf(out, "OK-%u\n", u);
-	fprintf(log, "unique %u\n", u);
-	hash_storeStrNum(db, DB_UNIQUE, u);
+	fprintf(opts->fout, "OK-%u\n", u);
+	if (opts->log) fprintf(opts->logf, "unique %u\n", u);
+	hash_storeStrNum(opts->db, DB_UNIQUE, u);
 }
 
 private	void
-version(FILE *out, hash *db)
+version(hash *db, FILE *fout)
 {
 	char	*v = hash_fetchStr(db, DB_VERSION);
 
 	if (v) {
-		fprintf(out, "OK-stored version=%s\n", v);
+		fprintf(fout, "OK-stored version=%s\n", v);
 	} else {
-		fprintf(out, "ERROR-no stored version\n");
+		fprintf(fout, "ERROR-no stored version\n");
 	}
+}
+
+/*
+ * Prune old keys from the uniq db. Done only when invoked as uniq_server.
+ */
+private void
+uniqdb_prune(hash *db)
+{
+	int	i;
+	char	**todelete = 0;
+	time_t	cutoff, val;
+
+	/* delete keys w/values < cutoff */
+	cutoff = time(0) - uniq_drift();
+	T_DEBUG("pruning keys, now=%ld cutoff=%ld (%ld drift)",
+		cutoff+uniq_drift(), cutoff, uniq_drift());
+	EACH_HASH(db) {
+		if (*(char *)db->kptr == ' ') continue;  // hidden key
+		if (streq(db->kptr, DB_MODTIME)) continue; // never purge this
+		val = (time_t)strtoul(db->vptr, 0, 16);
+		if (val < cutoff) {
+			T_DEBUG("pruning %s (%ld)",
+			    (char *)db->kptr, cutoff-val);
+			todelete = addLine(todelete, strdup(db->kptr));
+		} else {
+			T_DEBUG("keeping %s (%ld)",
+			    (char *)db->kptr, cutoff-val);
+		}
+	}
+	EACH(todelete) hash_deleteStr(db, todelete[i]);
+	freeLines(todelete, free);
+}
+
+private time_t
+uniq_drift(void)
+{
+	static	time_t t = (time_t)-1;
+	char	*drift;
+
+	if (t != (time_t)-1) return (t);
+	if (drift = getenv("CLOCK_DRIFT")) {
+		t = atoi(drift);
+	} else {
+		t = CLOCK_DRIFT;
+	}
+	return (max(t, 120));
+}
+
+/* Increment in-place by one second a string holding a date YYYYMMDDHHMMSS. */
+private void
+inc_date(char *p)
+{
+	char	save;
+	struct	tm *tp;
+
+	tp = utc2tm(sccs_date2time(p, 0) + 1);
+	/* sprintf adds a terminating nul, but we don't want it */
+	save = p[14];
+	sprintf(p, "%4d%02d%02d%02d%02d%02d",
+		tp->tm_year + 1900,
+		tp->tm_mon + 1,
+		tp->tm_mday,
+		tp->tm_hour,
+		tp->tm_min,
+		tp->tm_sec);
+	p[14] = save;
 }

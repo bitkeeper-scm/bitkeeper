@@ -1117,9 +1117,6 @@ bk_cleanup(int ret)
 		buffer = 0;
 	}
 	notifier_flush();
-	if (uniq_close()) {
-		unless (ret) ret = 1;
-	}
 	lockfile_cleanup();
 
 	/*

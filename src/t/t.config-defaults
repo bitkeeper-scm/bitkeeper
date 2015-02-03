@@ -41,6 +41,7 @@ poly: off
 stats_after_pull: off
 sync: off
 triggers: \$PRODUCT|.
+uniqdb: (null)
 upgrade_url: (null)
 EOF
 cmpfiles WANT GOT
@@ -84,6 +85,7 @@ poly: off
 stats_after_pull: off
 sync: off
 triggers: \$PRODUCT|.
+uniqdb: (null)
 upgrade_url: (null)
 EOF
 cmpfiles WANT GOT

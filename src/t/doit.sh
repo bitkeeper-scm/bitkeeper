@@ -495,6 +495,13 @@ EOF
 
 clean_up()
 {
+	# kill the uniq daemon since we're about to delete
+	# the $HERE subdirectory out from under it
+	test -d "$HERE/.bk/bk-keys-db" && {
+		DB=`ls "$HERE/.bk/bk-keys-db"`
+		bk --cd="$HERE/.bk/bk-keys-db" uniq_server -q --dir=$DB --quit
+	}
+
 	# Win32 have no core file
 	if [ "$PLATFORM" = "UNIX" ]
 	then
@@ -882,6 +889,11 @@ I hope your testing experience was positive! :-)
 				find /cores -type f -name 'core*' 2>$DEV_NULL \
 					| bk _sort > "$BK_CACHE/XXX.macos"
 				comm -13 "$_BK_MAC_CORES" "$BK_CACHE/XXX.macos"
+			}
+			# kill the uniq daemon
+			test -d "$HERE/.bk/bk-keys-db" && {
+				DB=`ls "$HERE/.bk/bk-keys-db"`
+				bk --cd="$HERE/.bk/bk-keys-db" uniq_server -q --dir=$DB --quit
 			}
 			exit $EXIT
 		}

@@ -18,7 +18,9 @@
 #define	accept			nt_accept
 #define	bind			nt_bind
 #define	send			nt_send
+#define	sendto			nt_sendto
 #define	recv			nt_recv
+#define	recvfrom		nt_recvfrom
 #define	listen			nt_listen
 #define	connect			nt_connect
 #define	getpeername		nt_getpeername
@@ -35,7 +37,11 @@ int	nt_accept(int s, struct sockaddr *addr, int *addrlen);
 int	nt_bind(int s, const struct sockaddr *addr, int addrlen);
 int	nt_connect(int s, const struct sockaddr *addr, int addrlen);
 int	nt_send(int s, const char *buf, int len, int flags);
+int	nt_sendto(int s, const char *buf, int len, int flags,
+		const struct sockaddr *dst, int dstlen);
 int	nt_recv(int s, char *buf, int len, int flags);
+int	nt_recvfrom(int s, char *buf, int len, int flags,
+		struct sockaddr *src, int *srclen);
 int	nt_listen(int s, int backlog);
 int	nt_getpeername(int s, struct sockaddr *addr, int *addlen);
 int	nt_getsockname(int s, struct sockaddr *addr, int *addrlen);

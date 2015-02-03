@@ -381,5 +381,30 @@ test_gui_result() {
 	}
 	echo "OK"
 }
+
+# Ask and wait for the uniq daemon running in <dir> to exit.
+kill_uniq() {
+	dir=$1; shift
+	test -d "$dir" || return
+	db=`ls "$dir"`
+	test -n "$db" -a -d "$dir/$db" || return
+	bk uniq_server $Q --dir="$dir/$db" --quit
+}
+
+# Remove the uniqdb(s). Normally you want to call kill_uniq first
+# or else the files will reappear when the uniq_daemon exits.
+rm_uniq() {
+	rm -f "`bk dotbk`/bk-keys/`bk gethost -r`"
+	rm -f "/tmp/.bk-keys-$USER"
+}
+
+# Return 1 iff <key> exists in the on-disk uniqdb.
+# Normally you want to call kill_uniq first.
+key_exists()
+{
+	key=$1; shift
+	echo "get .*$key.*" | bk info_shell --uniqdb | grep -q $key
+}
+
 # this next line needs to be last, it's line zero of the script (see doit)
 BOS=$LINENO

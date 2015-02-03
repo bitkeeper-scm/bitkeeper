@@ -122,11 +122,31 @@ nt_send(int s, const char *buf, int len, int flags)
 }
 
 int
+nt_sendto(int s, const char *buf, int len, int flags,
+	const struct sockaddr *dst, int dstlen)
+{
+	int	r;
+
+	SOCK_TEST_ERROR(r = sendto(TO_SOCK(s), buf, len, flags, dst, dstlen));
+	return (r);
+}
+
+int
 nt_recv(int s, char *buf, int len, int flags)
 {
 	int	r;
 
 	SOCK_TEST_ERROR(r = recv(TO_SOCK(s), buf, len, flags));
+	return (r);
+}
+
+int
+nt_recvfrom(int s, char *buf, int len, int flags,
+	struct sockaddr *src, int *srclen)
+{
+	int	r;
+
+	SOCK_TEST_ERROR(r = recvfrom(TO_SOCK(s), buf, len, flags, src, srclen));
 	return (r);
 }
 

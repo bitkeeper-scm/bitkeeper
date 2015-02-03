@@ -1,228 +1,8 @@
-/*
- * In order to ensure that delta keys are unique, we're going to try the
- * following:
- *
- * Create in `bk dotbk`/bk_keys/`bk gethost -r` a file with a list of
- * keys created on this machine.  Only keys created in the last CLOCK_DRIFT
- * seconds (default 2 days) are kept in the file.
- *
- * The list is updated whenever we create a delta, and whenever a new
- * TOT is added by takepatch.
- *
- * The list is consulted in slib.c:checkin() to make sure we are not
- * creating a new root key which matches some other root key.
- *
- * Note that the list is not going to grow without bound - we are only
- * interested in keys which were created on this host, by this user,
- * and for timestamp values in the last CLOCK_DRIFT seconds.
- *
- * W A R N I N G
- * -------------
- *	This code must never core dump or have any fatal error.  This code is
- *	called after we have started writing the s.file.  poor design.
- *
- * LOCKING
- * -------
- *
- * The rules for locking are:
- *
- *     1) the lock file is /tmp/.uniq_keys_$USER
- *     2) the lock is maintained with sccs_lockfile()
- *
- * Copyright (c) 1999-2011 Bitmover, Inc.
- */
-#include "system.h"
 #include "sccs.h"
+#include "cfg.h"
 
-private	char	*keysHome(void);
-
-private	int	dirty;			/* set if we updated the db */
-private	MDBM	*db;
-private	int	is_open;
-private	int	dbg;
-
-private char	*
-keysHome(void)
-{
-	static	char	*keysFile = 0;
-
-	if (keysFile) return (keysFile);
-	// leaks one per process, not sure why to fix that
-	keysFile = aprintf("%s/bk-keys/%s", getDotBk(), sccs_realhost());
-	unless (exists(keysFile)) mkdirf(keysFile);
-	return (keysFile);
-}
-
-/*
- * return a backup keys file just in case we can't write the home
- * directory.
- */
-private char	*
-keysBackup(void)
-{
-	static	char	*keysFile = 0;
-
-	if (keysFile) return (keysFile);
-	keysFile = aprintf("%s/.bk-keys-%s", TMP_PATH, sccs_realuser());
-	return (keysFile);
-}
-
-
-private int
-uniq_lock(void)
-{
-	char    *lock;
-	int     quiet = 0;
-	int     rc;
-
-	/* don't change this name, or we don't lock against old bk's */
-	lock = aprintf("%s/.uniq_keys_%s", TMP_PATH, sccs_realuser());
-
-	if (getenv("_BK_UNIQUE_SHUTUP")) quiet = 1;
-	rc = sccs_lockfile(lock, -1, quiet);
-	free(lock);
-	return (rc);
-}
-
-private int
-uniq_unlock(void)
-{
-	char	*lock;
-	int	rc;
-
-	lock = aprintf("%s/.uniq_keys_%s", TMP_PATH, sccs_realuser());
-	rc = sccs_unlockfile(lock);
-	free(lock);
-	return (rc);
-}
-
-time_t
-uniq_drift(void)
-{
-	static	time_t t = (time_t)-1;
-	char	*drift;
-
-	if (t != (time_t)-1) return (t);
-	if (drift = getenv("CLOCK_DRIFT")) {
-		t = atoi(drift);
-	} else {
-		t = CLOCK_DRIFT;
-	}
-	return (max(t, 120));
-}
-
-int
-uniq_open(void)
-{
-	char	*s, *keys;
-	FILE	*f;
-	time_t	t, cutoff = time(0) - uniq_drift();
-	datum	k, v;
-	int	first = 1;
-	char	buf[MAXPATH*2];
-	int	pipes;
-
-	if (getenv("_BK_NO_UNIQ")) {
-		db = 0;
-		return (0);
-	}
-	dbg = (getenv("_BK_UNIQ_DEBUG") != 0);
-	if (is_open) {
-		assert(db);
-		return (0);
-	}
-#ifdef DEBUG
-	if ((s = getenv("HAS_UNIQLOCK")) && !streq(s, "NO")) {
-		fprintf(stderr,
-		    "uniq_open deadlock! Pid %s already has lock\n", s);
-	} else {
-		safe_putenv("HAS_UNIQLOCK=%u", getpid());
-	}
-#endif
-	if (uniq_lock()) return (-1);
-	unless (keys = keysHome()) return (-1); /* very unlikely */
-	db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-again:
-	if (dbg) fprintf(stderr, "UNIQ OPEN: %s\n", keys);
-
-	/* one day revtool will ignore whitespace but not today. */
-	if (f = fopen(keys, "r")) {
-	    while (fnext(buf, f)) {
-		/*
-		 * expected format:
-		 * user@host|path|date timet [syncRoot]
-		 *
-		 * Notes:
-		 *   - bk-4.x only parses upto the timet
-		 *   - ChangeSet files will always have path==ChangeSet
-		 *     (no component pathnames)
-		 *   - syncRoot only occurs on ChangeSet files and is
-		 *     the random bits of the syncRoot key
-		 *   - bk-4.x might warn and drop lines that differ by
-		 *     only the syncRoot, but that still gives correct
-		 *     behavior.
-		 */
-		for (pipes = 0, s = buf; *s; s++) {
-			if (*s == '|') pipes++;
-			if ((*s == ' ') && (pipes == 2)) break;
-		}
-		unless ((pipes == 2) &&
-		    s && isdigit(s[1]) && (chop(buf) == '\n')) {
-			fprintf(stderr, "skipped line in %s: %s\n",
-			    keys, buf);
-			continue;
-		}
-		*s++ = 0;
-		t = (time_t)strtoul(s, &s, 0);
-
-		/*
-		 * This will prune the old keys.
-		 */
-		if (t < cutoff) {
-			dirty = 1;
-			continue;
-		}
-
-		if (*s == ' ') {
-			char	*q;
-
-			/* more data after timestamp */
-			++s;
-			q = buf + strlen(buf);
-			*q++ = '|';
-			while (*s && (*s != '|')) *q++ = *s++;
-			*q = 0;
-		}
-		k.dptr = buf;
-		k.dsize = strlen(buf) + 1;
-		v.dptr = (char *)&t;
-		v.dsize = sizeof(time_t);
-		if (dbg) fprintf(stderr, "UNIQ LOAD: %s\n", buf);
-
-		/*
-		 * This can happen if an earlier process left a file in /tmp
-		 * that has dups w/ the .bk one.
-		 */
-		if (mdbm_store(db, k, v, MDBM_INSERT)) {
-			datum	v2;
-			time_t	t2;
-
-		    	v2 = mdbm_fetch(db, k);
-			assert(v2.dsize == sizeof(time_t));
-			memcpy(&t2, v2.dptr, sizeof(time_t));
-			if (t > t2) mdbm_store(db, k, v, MDBM_REPLACE);
-		}
-	    }
-	    fclose(f);
-	}
-	if (first) {
-		first = 0;
-		keys = keysBackup();
-		goto again;
-	}
-	is_open = 1;
-	return (0);
-}
+private	int	uniq_open(int force);
+private int	startUniqDaemon(void);
 
 /*
  * Adjust the timestamp on a delta so that it is unique.
@@ -230,147 +10,239 @@ again:
 int
 uniq_adjust(sccs *s, ser_t d)
 {
-	char	*p1, *p2, *extra;
-	datum	k, v;
-	time_t	date;
+	int	fudge, retries = 3;
+	int	force = 0, restart = 3;
+	char	*p1, *p2;
+	char	*t, *msg, *msg_md5;
+	FILE	*fin, *fout;
+	int	socket;
+	int	len, ret;
+	int	rc = 1;
+	size_t	rlen;
+	time_t	now = time(0);
+	char	buf[1<<16];
 	char	key[MAXKEY];
 
-	unless (db) {
-		if (getenv("_BK_NO_UNIQ")) return (0);
-		fprintf(stderr, "%s: uniq_adjust() without db open\n", prog);
-		return (1);
-	}
+	if (getenv("_BK_NO_UNIQ")) return (0);
+restart:if ((socket = uniq_open(force)) < 0) return (1);
+	force = 0;
 
-	while (1) {
-		sccs_shortKey(s, d, key);
-		extra = 0;
-		if (CSET(s)) {
-			char	syncRoot[MAXKEY];
+	fout = fmem();
 
-			if (p1 = strstr(key, "/ChangeSet|")) {
-				/* strip pathname */
-				p2 = strchr(key, '|');
-				assert(p2);
-				++p1; ++p2;
-				while ((*p2++ = *p1++));
-			}
-
-			/* Add rand from syncRoot to cset delta keys */
-			extra = key + strlen(key);
-			sccs_syncRoot(s, syncRoot);
-			p2 = strrchr(syncRoot, '|');
-			strcpy(extra, p2);
+	fprintf(fout, "insert-key\n@");
+	sccs_shortKey(s, d, key);
+	if (CSET(s)) {
+		if (p1 = strstr(key, "/ChangeSet|")) {
+			/* strip pathname */
+			p2 = strchr(key, '|');
+			assert(p2);
+			++p1; ++p2;
+			while ((*p2++ = *p1++));
 		}
-		k.dptr = key;
-		k.dsize = strlen(key) + 1;
-		v.dsize = 0;
-		if (mdbm_fetch(db, k).dptr == 0) {
-			/* no key with syncroot */
-			if (extra) {
-				*extra = 0;
-				k.dsize = strlen(key) + 1;
-				if (mdbm_fetch(db, k).dptr == 0) {
-					/* no key without syncroot either */
-					break;
-				}
-			} else {
-				break;
+	}
+	T_DEBUG("send key %s", key);
+	hash_keyencode(fout, key);
+	if (CSET(s)) {
+		/* Add rand from syncRoot to cset delta keys */
+		sccs_syncRoot(s, key);
+		p2 = strrchr(key, '|');
+		fputs(p2, fout);
+	}
+	if (DATE(s, d) > now) now = DATE(s, d);
+	fprintf(fout, "\n%lx\n@\n", now);
+
+	/* send the message */
+	msg = fmem_close(fout, &rlen);
+	msg_md5 = hashstr(msg, rlen);
+
+again:	if (send(socket, msg, rlen, 0) < 0) {
+		perror("send");
+		goto out;
+	}
+
+	/* wait up to 10sec for response */
+	if ((ret = readable(socket, 10)) < 0) {
+		perror("select");
+		goto out;
+	}
+	if (ret == 0) {
+		/* timeout */
+		if (retries--) goto again;
+		if (restart--) {
+			force = 1;
+			retries = 3;
+			if (restart == 1) {
+				/* a hack to enable debugging before we fail */
+				putenv("BK_TRACE_BITS=debug");
+				trace_init(prog);
+				putenv("BK_TRACE_BITS=");
 			}
+			goto restart;
 		}
-		/* keydup, try again */
-		DATE_SET(s, d, DATE(s, d)+1);
-		DATE_FUDGE_SET(s, d, DATE_FUDGE(s, d)+1);
+		goto out;
 	}
-	if (extra) {
-		*extra = '|';
-		k.dsize = strlen(key) + 1;
+
+	/* we know this won't block */
+	if ((len = recv(socket, buf, sizeof(buf), 0)) < 0) {
+		/* this shouldn't have failed, but if so, try again */
+		T_DEBUG("recv failed (%s)", strerror(errno));
+		closesocket(socket);
+		goto restart;
 	}
-	date = DATE(s, d);
-	v.dsize = sizeof(time_t);
-	v.dptr = (char *)&date;
-	if (mdbm_store(db, k, v, MDBM_INSERT)) {
-		perror("mdbm key store");
-		return (-1);
+	fin = fmem_buf(buf, len);
+	if ((t = fgetline(fin)) && !streq(t, msg_md5)) {
+		/* answer to the wrong question */
+		T_DEBUG("discarding mismatched response: %s %s\n",
+		    msg_md5, t);
+		fclose(fin);
+		closesocket(socket);
+		goto restart;
 	}
-	if (dbg) fprintf(stderr, "UNIQ NEW:  %s\n", key);
-	dirty = 1;
-	return (0);
+	free(msg_md5);
+	if ((t = fgetline(fin)) && strneq(t, "OK", 2)) {
+		T_DEBUG("got %s", t);
+		if (fudge = atoi(t+3)) {
+			DATE_SET(s, d, DATE(s, d)+fudge);
+			DATE_FUDGE_SET(s, d, DATE_FUDGE(s, d)+fudge);
+		}
+		rc = 0;
+	} else {
+		T_DEBUG("got bad response %s", t);
+		fprintf(stderr, "uniqdb gave bad response: %s\n", buf);
+	}
+	fclose(fin);
+out:	closesocket(socket);
+	return (rc);
+}
+
+private int
+startUniqDaemon(void)
+{
+	int	ret, startsock, nsock;
+	char	**cmd, *s;
+	pid_t	pid;
+	FILE	*fin;
+
+	if ((startsock = tcp_server("127.0.0.1", 0, 0)) < 0) {
+		fprintf(stderr, "uniq: failed to start startsock.\n");
+		exit(1);
+	}
+	cmd = 0;
+	cmd = addLine(cmd, strdup("bk"));
+	cmd = addLine(cmd, strdup("uniq_server"));
+	cmd = addLine(cmd,
+	    aprintf("--startsock=%d", sockport(startsock)));
+	cmd = addLine(cmd, 0);
+	pid = spawnvp(P_DETACH, "bk", cmd+1);
+	freeLines(cmd, free);
+	T_DEBUG("pid=%u", pid);
+	if (pid < 0) return (-1);
+
+	T_DEBUG("waiting for start sock on port %d....", sockport(startsock));
+	if ((nsock = tcp_accept(startsock)) >= 0) {
+		T_DEBUG("got start sock");
+		fin = fdopen(nsock, "r");
+		setlinebuf(fin);
+		s = fgetline(fin);
+		if (s && strneq(s, "OK", 2)) {
+			T_DEBUG("daemon started OK");
+			ret = 0;
+		} else {
+			T_DEBUG("daemon start error: %s", (s ? s : "EOF"));
+			ret = -1;
+		}
+		fclose(fin);
+		closesocket(nsock);
+		closesocket(startsock);
+	} else {
+		T_DEBUG("accept error");
+		ret = -1;
+	}
+	return (ret);
+}
+
+private int
+uniq_open(int force)
+{
+	char	*t;
+	int	fd, port, retries = 0;
+	char	*portfile, *lockfile;
+	char	**ports = 0;
+
+	T_DEBUG("open");
+again:	port = 0;
+	t = uniq_dbdir(0);
+	portfile = aprintf("%s/port", t);
+	lockfile = aprintf("%s/lock", t);
+	free(t);
+	t = 0;
+	T_DEBUG("looking for port file %s", portfile);
+	if (!force && (t = loadfile(portfile, 0)) &&
+	    (exists(lockfile) && !sccs_stalelock(lockfile, 1))) {
+		ports = splitLine(t, "\n", 0);
+		if (nLines(ports) < 2) {
+			T_DEBUG("Too few lines!");
+			fd = -1;
+			goto out;
+		}
+		port = atoi(ports[2]);
+		T_DEBUG("found port file, port %d", port);
+		if ((fd = udp_connect("127.0.0.1", port)) < 0) {
+			T_DEBUG("udp_connect: port %d errno %d", port, errno);
+		}
+	} else {
+		/* failed to find existing uniq server */
+		if (startUniqDaemon()) {
+			fprintf(stderr, "error starting uniq_server\n");
+			fd = -1;
+			goto out;
+		}
+		if (++retries > 20) {
+			fprintf(stderr, "could not start uniq_server "
+				"after %d tries\n", retries);
+			fd = -1;
+			goto out;
+		}
+		free(t);
+		free(portfile);
+		free(lockfile);
+		force = 0;
+		goto again;
+	}
+	T_DEBUG("started");
+out:	free(t);
+	free(portfile);
+	free(lockfile);
+	return (fd);
 }
 
 /*
- * Rewrite the file.  The database is locked.
+ * Determine the db directory, in the following order:
+ *
+ *   if env var _BK_UNIQ_DIR is defined, use that
+ *   if "dir" is passed in, use that
+ *   if "uniqdb" config option exists, use <config>/%HOST
+ *   if /netbatch/.bk-%USER/bk-keys-db/%HOST is writable, use that
+ *   use <dotbk>/bk-keys-db/%HOST
  */
-int
-uniq_close(void)
+char *
+uniq_dbdir(char *dir)
 {
-	FILE	*f = 0;
-	kvpair	kv;
-	time_t	t;
-	int	rc = 0;
-	int	first = 1;
-	char	*keyf, *rand;
-	char	key[MAXKEY];
-	char	tmpf[MAXPATH];
+	char	*ret, *s;
 
-	unless (is_open) return (0);
-	T_SHIP("closing uniq %d %s", dirty, prog);
-	unless (dirty) goto close;
-	unless (keyf = keysHome()) {
-		fprintf(stderr, "uniq_close: cannot find keyHome");
-		return (-1);
+	if (s = getenv("_BK_UNIQ_DIR")) {
+		ret = strdup(s);
+	} else if (dir) {
+		ret = strdup(dir);
+	} else if (s = cfg_str(0, CFG_UNIQDB)) {
+		ret = aprintf("%s/%s",
+		    s, sccs_realhost());
+	} else if (writable("/netbatch")) {
+		ret = aprintf("/netbatch/.bk-%s/bk-keys-db/%s",
+		    sccs_realuser(), sccs_realhost());
+	} else {
+		ret = aprintf("%s/bk-keys-db/%s",
+		    getDotBk(), sccs_realhost());
 	}
-again:
-	sprintf(tmpf, "%s.%s.%u", keyf, sccs_realhost(), getpid());
-	unless (f = fopen(tmpf, "w")) {
-		perror(tmpf);
-		goto err;
-	}
-	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
-		strcpy(key, kv.key.dptr);
-		if (strcnt(key, '|') > 2) {
-
-			rand = strrchr(key, '|');
-			*rand++ = 0;
-		} else {
-			rand = 0;
-		}
-		assert(sizeof(time_t) == kv.val.dsize);
-		memcpy(&t, kv.val.dptr, sizeof(time_t));
-		fprintf(f, "%s %lu", key, t);
-		if (rand) fprintf(f, " %s", rand);
-		fputc('\n', f);
-		if (dbg) fprintf(stderr, "UNIQ SAVE: %s\n", key);
-	}
-	if (fclose(f)) {
-		perror(tmpf);
-		goto err;
-	}
-	f = 0;
-	if (rename(tmpf, keyf)) {
-		perror(tmpf);
-		goto err;
-	}
-close:  mdbm_close(db);
-	db = 0;
-	dirty = 0;
-	if (uniq_unlock()) {
-		fprintf(stderr, "%s: uniq_unlock() failed\n", prog);
-		rc = -1;
-	}
-	is_open = 0;
-#ifdef DEBUG
-	putenv("HAS_UNIQLOCK=NO");
-#endif
-	unless (rc) unlink(keysBackup());
-	return (rc);
-err:
-	// we set rc so this will ultimately fail
-	rc = 1;
-	if (first) {
-		first = 0;
-		keyf = keysBackup();
-		if (f) fclose(f);
-		goto again;
-	}
-	goto close;
+	return (ret);
 }
