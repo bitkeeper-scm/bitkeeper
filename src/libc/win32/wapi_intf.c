@@ -736,31 +736,15 @@ win_verstr(void)
 
 	major = osinfo.dwMajorVersion;
 	minor = osinfo.dwMinorVersion;
-	if (osinfo.dwPlatformId == VER_PLATFORM_WIN32_NT) {
-		/* Win/XP, Win/2K, Win/NT */
-		if ((major == 4) && (minor == 0)) {
-			p = strdup("Windows/NT");
-		} else if ((major == 5) && (minor == 0)) {
-			p = strdup("Windows/2000");
-		} else if ((major == 5) && (minor == 1)) {
-			p = strdup("Windows/XP");
-		} else if ((major == 5) && (minor == 2)) {
-			p = strdup("Windows/2003");
-		} else if ((major == 6) && (minor == 0)) {
-			p = reg_get(CUR_VER, "ProductName", 0);
-			if (p && strstr(p, "Server")) {
-				p = strdup("Windows/2008-Server");
-			} else {
-				p = strdup("Windows/Vista");
-			}
-		} else if ((major == 6) && (minor == 1)) {
-			p = strdup("Windows/7");
-		}  else {
-			p = aprintf("NT-%d.%d", major, minor);
+	p = reg_get(CUR_VER, "ProductName", 0);
+	if (p) {
+		for (t = p; *t; t++) {
+			if (*t == ' ') *t = '_';
 		}
-	}  else {
+	} else {
 		p = aprintf("unknown-%d.%d", major, minor);
 	}
+
 	if (osinfo.wServicePackMajor) {
 		t = p;
 		p = aprintf("%s-sp%d", t, osinfo.wServicePackMajor);
