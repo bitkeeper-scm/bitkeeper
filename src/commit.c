@@ -397,23 +397,6 @@ modified_pending(u32 flags)
 }
 
 private int
-pathCmp(const void *va, const void *vb)
-{
-	char	*a = *(char **)va;
-	char	*b = *(char **)vb;
-	char	*ta, *tb;
-	int	ret;
-
-	if (ta = strchr(a, '|')) *ta = 0;
-	if (tb = strchr(b, '|')) *tb = 0;
-	ret = strcmp(a, b);
-	if (ta) *ta = '|';
-	if (tb) *tb = '|';
-	return (ret);
-}
-
-
-private int
 do_commit(char **av,
 	c_opts opts, char *sym, char *pendingFiles,
 	char **modFiles, int dflags)
@@ -536,21 +519,32 @@ err:		rc = 1;
 	if (opts.import) {
 		/*
 		 * We are skipping the check, but still need to
-		 * mark sfiles.  Some marks may already have been
-		 * applied by do_ci(), so skip them (after checking)
+		 * mark sfiles.
 		 */
 		sccs	*s;
 		ser_t	d;
 		char	**marklist = 0;
+		hash	*h = hash_new(HASH_MEMHASH);
 
+		EACH(modFiles) {
+			/*
+			 * If we delta'ed the file, then the files
+			 * already have cset marks and can be skipped.
+			 * Remember these files.
+			 */
+			p = modFiles[i];
+			t = strchr(p, '|');
+			assert(t);
+			*t = 0;
+			hash_insertStrSet(h, p);
+			*t = '|';
+		}
 		marklist = file2Lines(0, pendingFiles);
-		sortLines(marklist, 0);
-		sortLines(modFiles, 0);
-		pruneLines(marklist, modFiles, pathCmp, 0);
 		EACH(marklist) {
 			p = marklist[i];
 			t = strchr(p, '|');
 			*t++ = 0;
+			if (hash_fetchStr(h, p)) continue; /* already marked */
 			s = sccs_init(p, INIT_MUSTEXIST);
 			d = sccs_findrev(s, t);
 			assert(!(FLAGS(s, d) & D_CSET));
@@ -559,6 +553,7 @@ err:		rc = 1;
 			sccs_free(s);
 		}
 		freeLines(marklist, free);
+		hash_free(h);
 		if (bin_needHeapRepack(cset)) {
 			if (run_check(opts.quiet, 0, 0, 0, 0)) {
 				rc = 1;

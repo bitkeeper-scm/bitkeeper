@@ -677,58 +677,6 @@ shellSplit(const char *line)
 }
 
 /*
- * Assuming sorted arrays representing a set, subtract from 'space'
- * items that exist in 'remove'.  'space' is modified, and 'remove'
- * isn't.
- *
- * returns number of items removed from space
- */
-int
-pruneLines(char **space, char **remove,
-    int (*compar)(const void *, const void *), void(*freep)(void *ptr))
-{
-	int	i, j;
-	int	newj;
-	int	cmp;
-	int	removed = 0;
-
-	if (emptyLines(space)) goto out;
-	unless (compar) compar = string_sort;
-	newj = j = 1;
-	EACH(remove) {
-		while (1) {
-			while ((cmp = compar(&space[j], &remove[i])) < 0) {
-				/* skip item from space */
-				if (j > newj) space[newj] = space[j];
-				newj++;
-				j++;
-				unless (j <= _LLEN(space)) {
-					/* done with space */
-					goto out;
-				}
-			}
-			if (cmp > 0) break; /* need next remove item */
-
-			/* matched, remove item */
-			if (freep) freep(space[j]);
-			j++;
-			removed++;
-			unless (j <= _LLEN(space)) {
-				/* done with space */
-				goto out;
-			}
-		}
-	}
-out:	if (removed) {
-		while (j <= _LLEN(space)) {
-			space[newj++] = space[j++];
-		}
-		truncLines(space, newj-1);
-	}
-	return (removed);
-}
-
-/*
  * Return an array allocated by different means.
  * While it has no data, it will look like it does (nLines == len).
  * The caller is expected to fill before using as an array.

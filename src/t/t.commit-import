@@ -9,6 +9,13 @@ do
 	echo $i > nonpending$i
 	echo nonpending$i >> LIST
 done
+echo hi > file2-sortfun
+bk new $Q file2-sortfun
+echo "file2-sortfun|+" >> LIST
+echo hi > nonpending2-sortfun
+bk new $Q nonpending2-sortfun
+echo "nonpending2-sortfun|+" >> LIST
+
 bk commit $Q --import --ci -yfiles -lLIST || fail
 bk changes -r+ -vnd:INDENT:\ :DPN:\ :REV: > GOT
 cat <<EOF > WANT
@@ -17,6 +24,8 @@ cat <<EOF > WANT
    file1 1.0
    file2 1.1
    file2 1.0
+   file2-sortfun 1.1
+   file2-sortfun 1.0
    file3 1.1
    file3 1.0
    file4 1.1
@@ -27,6 +36,8 @@ cat <<EOF > WANT
    nonpending1 1.0
    nonpending2 1.1
    nonpending2 1.0
+   nonpending2-sortfun 1.1
+   nonpending2-sortfun 1.0
    nonpending3 1.1
    nonpending3 1.0
    nonpending4 1.1
