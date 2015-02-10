@@ -68,7 +68,7 @@ private int	weaveMove(weave *w, int line, int before, ser_t patchserial);
 private int	doFast(weave *w, ser_t *patchmap, FILE *diffs);
 private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
-private	void	parseConfig(char *buf, MDBM *db);
+private	void	parseConfig(char *buf, MDBM *db, int stripbang);
 private	void	taguncolor(sccs *s, ser_t d);
 private	void	prefix(sccs *s, ser_t d, int whodel,
 		    u32 flags, int lines, char *name, FILE *out);
@@ -4132,7 +4132,7 @@ parseConfigKV(char *buf, int nofilter, char **kp, char **vp)
 
 	if (streq(buf, "logging_ok")) return (0);
 
-	*kp = buf;
+	*kp = cfg_alias(buf);
 	*vp = p;
 
 	/*
@@ -4148,7 +4148,7 @@ parseConfigKV(char *buf, int nofilter, char **kp, char **vp)
  * parse a line of config file and insert that line into 'db'.
  */
 private void
-parseConfig(char *buf, MDBM *db)
+parseConfig(char *buf, MDBM *db, int stripbang)
 {
 	char	*k, *v, *p;
 	int	flags = MDBM_INSERT;
@@ -4157,7 +4157,7 @@ parseConfig(char *buf, MDBM *db)
 	if (*v) {
 		for (p = v; p[1]; p++);	/* find end of value */
 		if (*p == '!') {
-			*p = 0;
+			if (stripbang) *p = 0;
 			flags = MDBM_REPLACE;
 		}
 	}
@@ -4171,7 +4171,7 @@ config2mdbm(MDBM *db, char *config)
 	char 	buf[MAXLINE];
 
 	if (f = fopen(config, "rt")) {
-		while (fnext(buf, f)) parseConfig(buf, db);
+		while (fnext(buf, f)) parseConfig(buf, db, 1);
 		fclose(f);
 	}
 }
@@ -4313,7 +4313,7 @@ loadEnvConfig(MDBM *db)
 	unless (env) return (db);
 	assert(db);
 	values = splitLine(env, ";", 0);
-	EACH (values) parseConfig(values[i], db);
+	EACH (values) parseConfig(values[i], db, 1);
 	freeLines(values, free);
 	return (db);
 }
@@ -4332,10 +4332,10 @@ loadConfig(project *p, int forcelocal)
 	char	**empty = 0;
 	int	i;
 	kvpair	kv;
-	int	defaults = (getenv("_BK_CONFIG_DEFAULTS") != 0);
 
 	/*
 	 * Support for a magic way to set clone default
+	 * (set via sendServerInfo() in the clone bkd)
 	 */
 	if (t = getenv("BKD_CLONE_DEFAULT")) {
 		mdbm_store_str(db, "clone_default", t, MDBM_INSERT);
@@ -4365,16 +4365,6 @@ loadConfig(project *p, int forcelocal)
 	/* now remove any empty keys */
 	EACH_KV(db) {
 		if (kv.val.dsize == 1) empty = addLine(empty, kv.key.dptr);
-		/*
-		 * Testing: if _BK_CONFIG_DEFAULTS is set, remove
-		 * every config variable, except for the license.
-		 *
-		 * See t.config-defaults
-		 */
-		if (defaults &&
-		    (kv.key.dsize > 3) && !strneq(kv.key.dptr, "lic", 3)) {
-			empty = addLine(empty, kv.key.dptr);
-		}
 	}
 	EACH(empty) mdbm_delete_str(db, empty[i]);
 	freeLines(empty, 0);
@@ -4398,17 +4388,14 @@ printconfig(char *file, MDBM *db, MDBM *cfg)
 
 		if (f = fopen(file, "rt")) {
 			while (fnext(buf, f)) {
-				unless (parseConfigKV(buf, 0, &k, &v1)) {
-					continue;
-				}
-				mdbm_store_str(db, k, v1, MDBM_INSERT);
+				parseConfig(buf, db, 0);
 			}
 			fclose(f);
 		}
 	}
 	EACH_KV(db) keys = addLine(keys, kv.key.dptr);
 	unless (keys) goto out;
-	sortLines(keys, 0);
+	sortLines(keys, stringcase_sort);
 	printf("%s:\n", file);
 	EACH(keys) {
 		k = keys[i];
@@ -4498,7 +4485,7 @@ int
 config_main(int ac, char **av)
 {
 	char	*root, *file, *env;
-	MDBM	*db;
+	MDBM	*db, *db1;
 	MDBM	*cfg = proj_config(0);
 	char	**values = 0;
 	char	*k, *v;
@@ -4521,8 +4508,24 @@ config_main(int ac, char **av)
 	}
 	unless (verbose) {
 		if (av[optind]) {
+
 			if (av[optind+1]) usage();
-			if (v = mdbm_fetch_str(cfg, av[optind])) {
+			k = cfg_alias(av[optind]);
+			/*
+			 * This is preserving existing behavior where
+			 * if the user puts an unknown config variable
+			 * somewhere, we keep it. E.g. 'foo: bar' is
+			 * preserved. I'm not sure that's a good idea
+			 * but there are regressions testing for it.
+			 *
+			 * Also, the licsig* fields fall under this
+			 * category.
+			 */
+			if (v = mdbm_fetch_str(cfg, k)) {
+				puts(v);
+				return (0);
+			} else if (((i = cfg_findVar(k)) >= 0) &&
+			    (v = cfg_str(0, i))) {
 				puts(v);
 				return (0);
 			} else {
@@ -4598,6 +4601,17 @@ config_main(int ac, char **av)
 	printconfig("$BK_CONFIG", db, cfg);
 	mdbm_close(db);
 
+	/*
+	 * Print defaults (can't use printconfig() because it assumes
+	 * 'db' was already loaded into 'cfg' and we can't do that for
+	 * defaults.
+	 */
+	db = mdbm_mem();
+	db1 = mdbm_mem();
+	cfg_printDefaults(cfg, db, db1);
+	printconfig("defaults", db, db1);
+	mdbm_close(db);
+	mdbm_close(db1);
 	return (0);
 }
 

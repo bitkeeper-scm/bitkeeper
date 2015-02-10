@@ -680,7 +680,7 @@ echo $N check that config overriding and bk config -v work ..........$NL
 bk edit $Q BitKeeper/etc/config || fail
 perl -e '@a=("", "!", "foo", "foo!"); for $i (0..3) { for $j (0..3) { print "t$i$j:$a[$i]\n" } }' >> BitKeeper/etc/config
 perl -e '@a=("", "!", "bar", "bar!"); for $i (0..3) { for $j (0..3) { print "t$i$j:$a[$j]\n" } }' > "`bk dotbk`/config"
-bk config -v | perl -ne 'print if /^#?\tt/' > GOT
+bk config -v | perl -ne 'print if /^#?\tt[0-3]/' > GOT
 
 cat <<EOF > WANT
 	t00:            
@@ -718,7 +718,7 @@ cat <<EOF > WANT
 EOF
 cmpfiles WANT GOT
 
-bk config | grep '^t' > GOT
+bk config | grep '^t[0-3]' > GOT
 cat <<EOF > WANT
 t03: bar
 t13: bar
@@ -737,7 +737,7 @@ echo $N check again with BK_CONFIG ..................................$NL
 rm "`bk dotbk`/config"
 BK_CONFIG=`perl -e '@a=("", "!", "bar", "bar!"); for $i (0..3) { for $j (0..3) { push(@b, "t$i$j:$a[$j]") } } print join(";", @b)'`
 export BK_CONFIG
-bk config -v | perl -ne 'print if /^#?\tt/ || /\$/' > GOT
+bk config -v | perl -ne 'print if /^#?\tt[0-3]/ || /^\$/' > GOT
 
 cat <<EOF > WANT
 	t00:            

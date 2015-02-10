@@ -8,6 +8,11 @@ bk -U -j cmd
    space that were not written by bk.  This was deemed not useful and
    so the command line option was reused.
 
+bk config <var>
+   This used to show what var was set to in a config file.
+   If var wasn't in any config file, then nothing would be shown.
+   This now shows the default state of var.
+
 bk pull
 
     - New option --stats that prints difffstat output after finishing

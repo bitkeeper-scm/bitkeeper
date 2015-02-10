@@ -203,6 +203,16 @@ string_sort(const void *a, const void *b)
 }
 
 int
+stringcase_sort(const void *a, const void *b)
+{
+	char	*l, *r;
+
+	l = *(char**)a;
+	r = *(char**)b;
+	return (strcasecmp(l, r));
+}
+
+int
 string_sortrev(const void *a, const void *b)
 {
 	char	*l, *r;

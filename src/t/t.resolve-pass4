@@ -30,7 +30,7 @@ bk resolve $Q -4 -a
 # Too bad - it gets deleted, not in the first round, but by the restore
 # cleanup which calls rm_sfiles on the destination list.
 echo toast > bar
-bk resolve $Q -123 2> ERR && fail -f ERR
+bk --config=autofix:off resolve $Q -123 2> ERR && fail -f ERR
 grep -q "writable but not locked" ERR || fail -f ERR
 test -f bar && fail fix test as file is still there
 # The decision made was to lose the file and keep the stat count down.

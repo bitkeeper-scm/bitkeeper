@@ -2,10 +2,11 @@
 #include "sccs.h"
 #include "logging.h"
 #include "nested.h"
+#include "cfg.h"
 
-private int	mkconfig(FILE *out, MDBM *flist, int verbose);
+private MDBM	*mkconfig(FILE *out, MDBM *flist, int verbose);
 private void	defaultFiles(int);
-private MDBM	*addField(MDBM *flist, char *field);
+private MDBM	*addField(MDBM *flist, char *field, int replace);
 
 int
 setup_main(int ac, char **av)
@@ -21,10 +22,8 @@ setup_main(int ac, char **av)
 	sccs	*s;
 	MDBM	*m = 0, *flist = 0;
 	int	status;
-	int	print = 0;
-	int	product = 0;
-	int	noCommit = 0;
-	int	sccs_compat = 0;
+	int	print = 0, product = 0, noCommit = 0,
+		sccs_compat = 0, verbose = 0;
 	filecnt	nf;
 	longopt	lopts[] = {
 		{ "sccs-compat", 300 }, /* old compat option */
@@ -32,7 +31,7 @@ setup_main(int ac, char **av)
 		{ 0, 0 }
 	};
 
-	while ((c = getopt(ac, av, "aCc:ePfF:p", lopts)) != -1) {
+	while ((c = getopt(ac, av, "aCc:ePfF:pv", lopts)) != -1) {
 		switch (c) {
 		    case 'a': accept = 1; break;
 		    case 'C':
@@ -51,8 +50,9 @@ setup_main(int ac, char **av)
 		    case 'P': product = 1; break;
 		    case 'e': break;
 		    case 'f': break;
-		    case 'F': flist = addField(flist, optarg); break;
+		    case 'F': flist = addField(flist, optarg, 1); break;
 		    case 'p': print = 1; break;
+		    case 'v': verbose = 1; break;
 		    case 300: sccs_compat = 1;  break;
 		    default: bk_badArg(c, av);
 		}
@@ -67,8 +67,10 @@ setup_main(int ac, char **av)
 			fprintf(stderr, "setup: can't mix -c and -p.\n");
 			exit(1);
 		}
-		mkconfig(stdout, flist, 0);
-		if (flist) mdbm_close(flist);
+		if (flist = mkconfig(stdout, flist, verbose)) {
+			mdbm_close(flist);
+			flist = 0;
+		}
 		exit(0);
 	}
 
@@ -169,10 +171,19 @@ setup_main(int ac, char **av)
 		}
 	}
 
-	unless (config_path) config_path = strdup(DEVNULL_RD);
+	if (config_path) {
+		if (fileCopy(config_path, config)) exit(1);
+	} else {
+		FILE	*f;
 
-	if (fileCopy(config_path, config)) exit(1);
-
+		f = fopen(config, "w");
+		assert(f);
+		if (flist = mkconfig(f, flist, 1)) {
+			mdbm_close(flist);
+			flist = 0;
+		}
+		fclose(f);
+	}
 	unless (m = loadConfig(in_prod, 1)) {
 		fprintf(stderr, "No config file found\n");
 		exit(1);
@@ -247,6 +258,7 @@ err:	unlink("BitKeeper/etc/config");
 	unlink("BitKeeper/log/cmd_log");
 	unlink("BitKeeper/log/features");
 	if (m) mdbm_close(m);
+	if (flist) mdbm_close(flist);
 	sccs_unmkroot("."); /* reverse  sccs_mkroot */
 	proj_reset(0);	/* acts as proj_free(proj) */
 	unless (streq(package_path, "."))  {
@@ -290,7 +302,7 @@ defaultFiles(int product)
 }
 
 private MDBM *
-addField(MDBM *flist, char *field)
+addField(MDBM *flist, char *field, int replace)
 {
 	char	*p;
 
@@ -304,7 +316,14 @@ addField(MDBM *flist, char *field)
 		return (flist);
 	}
 	*p++ = 0;
-	mdbm_store_str(flist, field, p, MDBM_REPLACE);
+	if (strchr(field, '[')) {
+		p[-1] = '=';
+		fprintf(stderr,
+		    "setup: filters not supported; \"%s\" ignored\n", field);
+		return (flist);
+	}
+	field = cfg_alias(field);
+	mdbm_store_str(flist, field, p, replace ? MDBM_REPLACE : MDBM_INSERT);
 	return (flist);
 }
 
@@ -315,14 +334,14 @@ private FILE	*
 config_template(void)
 {
 	FILE	*f;
-	char	*home = getenv("HOME");
+	char	*dotbk = getDotBk();
 	char	path[MAXPATH];
 
 	/* don't look for templates during regressions, that will hose us */
 	if (getenv("BK_REGRESSION")) return (0);
 
-	if (home) {
-		sprintf(path, "%s/.bk/config.template", home);
+	if (dotbk) {
+		sprintf(path, "%s/config.template", dotbk);
 		if (f = fopen(path, "rt")) return (f);
 	}
 	sprintf(path, "%s/BitKeeper/etc/config.template", globalroot());
@@ -332,16 +351,17 @@ config_template(void)
 	return (0);
 }
 
-private int
+private MDBM *
 mkconfig(FILE *out, MDBM *flist, int verbose)
 {
 	FILE	*in;
-	int	found = 0;
-	int	first = 1;
 	char	*p, *val;
-	kvpair	kv;
 	char	*key;
 	u32	bits = 0;
+	char	**keys = 0;
+	datum	k;
+	int	i, idx;
+	char	*def;
 	char	buf[1000], pattern[200];
 
 	/* get a lease, but don't fail */
@@ -349,53 +369,27 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 		bits = license_bklbits(key);
 		free(key);
 	}
+
 	if (in = config_template()) {
 		while (fnext(buf, in)) {
+			/*
+			 * XXX: parseConfigKV(buf, 1, *key, &p)
+			 * might do a better job of parsing
+			 */
 			if (buf[0] == '#') continue;
 			unless (p = strrchr(buf, ':')) continue;
 			chop(p);
 			for (*p++ = 0; *p && isspace(*p); p++);
 			unless (*p) continue;
-			/* command line stuff overrides */
-			if (flist && mdbm_fetch_str(flist, buf)) {
-				continue;
-			}
 			p = aprintf("%s=%s", buf, p);
-			flist = addField(flist, p);
+			flist = addField(flist, p, 0);
 			free(p);
 		}
 		fclose(in);
 	}
 
-	sprintf(buf, "%s/bkmsg.txt", bin);
-	unless (in = fopen(buf, "rt")) {
-		fprintf(stderr, "Unable to open %s\n", buf);
-		return (-1);
-	}
 	if (verbose) {
 		getMsgP("config_preamble", 0, "# ", 0, out);
-		fputs("\n", out);
-	}
-
-	/*
-	 * look for config template
-	 */
-	while (fgets(buf, sizeof(buf), in)) {
-		if (streq("#config_template\n", buf)) {
-			found = 1;
-			break;
-		}
-	}
-	unless (found) {
-		fclose(in);
-		return (-1);
-	}
-
-	val = flist ? mdbm_fetch_str(flist, "autofix") : 0;
-	/* force autofix to default on */
-	unless (val && *val) {
-		char fld[] =  "autofix=yes";
-		flist = addField(flist, fld);
 	}
 
 	val = flist ? mdbm_fetch_str(flist, "BAM") : 0;
@@ -404,76 +398,45 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 		char	fld[100];
 
 		sprintf(fld, "%s", (bits & LIC_BAM) ? "BAM=on" : "BAM=off");
-		flist = addField(flist, fld);
+		flist = addField(flist, fld, 0);
 	}
 
-	val = flist ? mdbm_fetch_str(flist, "checkout") : 0;
-	/* force checkout to default edit */
-	unless (val && *val) {
-		char fld[] =  "checkout=get";
-		flist = addField(flist, fld);
-	}
-
-	val = flist ? mdbm_fetch_str(flist, "clock_skew") : 0;
-	/* force checkout to default edit */
-	unless (val && *val) {
-		char fld[] =  "clock_skew=on";
-		flist = addField(flist, fld);
-	}
-
-	val = flist ? mdbm_fetch_str(flist, "compression") : 0;
-	/* force compression to default on */
-	unless (val && *val) {
-		char fld[] =  "compression=gzip";
-		flist = addField(flist, fld);
-	}
-
-	val = flist ? mdbm_fetch_str(flist, "partial_check") : 0;
-	/* force compression to default on */
-	unless (val && *val) {
-		char fld[] =  "partial_check=on";
-		flist = addField(flist, fld);
-	}
+	unless (flist) flist = mdbm_mem();
+	cfg_loadSetup(flist);
 
 	/*
 	 * Now print the help message for each config entry
 	 */
-	while (fgets(buf, sizeof(buf), in)) {
-		if (first && (buf[0] == '#')) continue;
-		first = 0;
-		if (streq("$\n", buf)) break;
+	EACH_KEY(flist) keys = addLine(keys, k.dptr);
+	sortLines(keys, stringcase_sort);
+	EACH(keys) {
+		char	*key = keys[i];
+		char	*val = mdbm_fetch_str(flist, key);
+		char	**bkargs = 0;
+		char	*comment = "";
 
-		/*
-		 * If we found a license somewhere just use that, it's
-		 * probably what they want.  If that is wrong they can
-		 * edit the config file later.
-		 *
-		 * Nota bene: we add some other config that starts w/ "lic"
-		 * and this is busted.
-		 */
-		if (bits && strneq(buf, "lic", 3)) continue;
-
-		chop(buf);
 		if (verbose) {
-			sprintf(pattern, "config_%s", buf);
-			getMsgP(pattern, 0, "# ", 0, out);
+			fputc('\n', out);
+			def = 0;
+			comment = "";
+			if ((idx = cfg_findVar(key)) >= 0) {
+				def = cfg_def(idx);
+			}
+			unless (def) {
+				def = "empty";
+				comment = "# ";
+			}
+			sprintf(pattern, "config_%s", key);
+			unless (getMsgP(pattern, def, "# ", 0, out)) {
+				bkargs = addLine(bkargs, key);
+				bkargs = addLine(bkargs, def);
+				getMsgv("config_undoc", bkargs, "# ", 0, out);
+				freeLines(bkargs, 0);
+				bkargs = 0;
+			}
 		}
-		if (flist && (val = mdbm_fetch_str(flist, buf))) {
-			fprintf(out, "%s: %s\n", buf, val);
-			mdbm_delete_str(flist, buf);
-		} else {
-			fprintf(out, "%s: \n", buf);
-		}
+		fprintf(out, "%s%s: %s\n", comment, key, val);
 	}
-	fclose(in);
-
-	unless (flist) return (0);
-
-	/*
-	 * Append user supplied field which have no overlap in template file
-	 */
-	for (kv = mdbm_first(flist); kv.key.dsize; kv = mdbm_next(flist)) {
-		fprintf(out, "%s: %s\n", kv.key.dptr, kv.val.dptr);
-	}
-	return (0);
+	freeLines(keys, 0);
+	return (flist);
 }

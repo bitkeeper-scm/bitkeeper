@@ -446,35 +446,25 @@ proj_config(project *p)
 int
 proj_checkout(project *p)
 {
-	MDBM	*db;
 	char	*s;
 	int	bits;
 
 	unless (p || (p = curr_proj())) return (CO_NONE|CO_BAM_NONE);
 	if (proj_isResync(p)) return (CO_NONE|CO_BAM_NONE);
 	if (p->co) return (p->co);
-	db = proj_config(p);
-	assert(db);
-	/*
-	 * If this default changes, then src/gui/ide/emacs/vc-bk.el
-	 * will need to be changed as well (specifically, the
-	 * vc-bk-checkout-model function).
-	 */
-	bits = CO_NONE|CO_BAM_NONE; /* default */
-	if (s = mdbm_fetch_str(db, "checkout")) {
-		bits = 0;
-		if (strieq(s, "get")) bits = CO_GET|CO_BAM_GET;
-		if (strieq(s, "edit")) bits = CO_EDIT|CO_BAM_EDIT;
-		if (strieq(s, "last")) bits = CO_LAST|CO_BAM_LAST;
-		if (strieq(s, "none")) bits = CO_NONE|CO_BAM_NONE;
-		unless (bits) {
-			fprintf(stderr,
-			    "WARNING: checkout: should be get|edit|last|none.\n"
-			    "Meaning of '%s' unknown. Assuming edit.\n", s);
-			bits = CO_EDIT|CO_BAM_EDIT;
-		}
+	s = cfg_str(p, CFG_CHECKOUT);
+	assert(s);		/* must have default */
+	if (strieq(s, "get")) bits = CO_GET|CO_BAM_GET;
+	if (strieq(s, "edit")) bits = CO_EDIT|CO_BAM_EDIT;
+	if (strieq(s, "last")) bits = CO_LAST|CO_BAM_LAST;
+	if (strieq(s, "none")) bits = CO_NONE|CO_BAM_NONE;
+	unless (bits) {
+		fprintf(stderr,
+		    "WARNING: checkout: should be get|edit|last|none.\n"
+		    "Meaning of '%s' unknown. Assuming edit.\n", s);
+		bits = CO_EDIT|CO_BAM_EDIT;
 	}
-	if (s = mdbm_fetch_str(db, "BAM_checkout")) {
+	if (s = cfg_str(p, CFG_BAM_CHECKOUT)) {
 		bits &= 0xf;
 		if (strieq(s, "get")) bits |= CO_BAM_GET;
 		if (strieq(s, "edit")) bits |= CO_BAM_EDIT;

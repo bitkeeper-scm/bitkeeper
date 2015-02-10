@@ -157,7 +157,7 @@ echo hi >> BitKeeper/etc/collapsed
 bk ci $Q -yy -u BitKeeper/etc/collapsed
 chmod +w BitKeeper/etc/collapsed
 # force an attr file update to show it gets reverted
-_BK_ATTR_TEST=foo bk commit $Q -yy > ERR 2>&1 && fail -f ERR should fail
+_BK_ATTR_TEST=foo bk --config=autofix:off commit $Q -yy > ERR 2>&1 && fail -f ERR should fail
 rm BitKeeper/etc/collapsed
 bk repocheck $Q || fail
 bk sfiles -p > GOT

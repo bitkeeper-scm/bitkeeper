@@ -1391,11 +1391,11 @@ bk commit $Q -f
 test -f gdb/bar && chmod +w gdb/bar
 echo blart >> gdb/bar
 # this fails so set -e not so much
-printf "q\nrl\ny\n" | bk pull $Q 2>OUT && fail -f OUT
+printf "q\nrl\ny\n" | bk --config=autofix:off pull $Q 2>OUT && fail -f OUT
 # Do what the error message said to do
 bk edit $Q -g gdb/bar
 # Run resolve again
-printf "q\n" | bk resolve $Q 2>OUT2 && fail -f OUT2
+printf "q\n" | bk --config=autofix:off resolve $Q 2>OUT2 && fail -f OUT2
 grep -q "KEY MISMATCH" OUT2 && fail -f OUT2
 bk abort $Q -f
 echo OK

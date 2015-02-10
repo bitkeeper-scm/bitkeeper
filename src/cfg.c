@@ -4,21 +4,36 @@
 #include "cfg.h"
 
 struct {
-	int	type;
 	char	*defval;
-	char	*names[CFG_MAX_ALIASES];
+	char	*insetup;
+	char	*name;
 } cfg[] = {
 
-#define CONFVAR(def, type, defval, defival, ...)	\
-	{CFG_##type, defval, defival, __VA_ARGS__},
+#define CONFVAR(def, defval, insetup, name)	\
+	{defval, insetup, name},
 #include "confvars.h"
 #undef CONFVAR
 
 };
 
+struct alias {
+	char	*alias;
+	int	idx;
+} alias[] = {
+	{"autopopulate",	CFG_AUTOPOPULATE},
+	{"auto-populate",	CFG_AUTOPOPULATE},
+	{"binpool_hardlinks",	CFG_BAM_HARDLINKS},
+	{"trust_window",	CFG_CLOCK_SKEW},
+	{"clone-default",	CFG_CLONE_DEFAULT},
+	{"mail-proxy",		CFG_MAIL_PROXY},
+	{"upgrade-url",		CFG_UPGRADE_URL},
+	{0,			-1}
+};
+
 private	void	dumpvar(int idx, int defaults);
 private	int	isOn(char *str);
 private	int	isBoolean(char *str);
+private	void	dbSetup(MDBM *db, int idx);
 
 int
 dumpconfig_main(int ac, char **av)
@@ -39,6 +54,16 @@ dumpconfig_main(int ac, char **av)
 			break;
 		}
 	}
+	if (av[optind]) {
+		int	idx;
+
+		if (av[optind+1]) usage();
+		if ((idx = cfg_findVar(av[optind])) < 0) {
+			return (1);
+		}
+		puts(cfg_str(0, idx));
+		return (0);
+	}
 
 #define CONFVAR(def, ...) dumpvar(CFG_##def, defaults);
 #include "confvars.h"
@@ -46,13 +71,73 @@ dumpconfig_main(int ac, char **av)
 	return (0);
 }
 
+/*
+ * Load variables that should be included in the config file created
+ * by "bk setup" into an MDBM.
+ */
+MDBM *
+cfg_loadSetup(MDBM *db)
+{
+	assert(db);
+#define CONFVAR(def, ...) dbSetup(db, CFG_##def);
+#include "confvars.h"
+#undef CONFVAR
+	return (db);
+}
+
+/*
+ * Helper for cfg_loadSetup
+ * Note: this will not be directly used by config mechanism,
+ * and is only for setup to write out a config file.
+ * In particular, it is okay to have a null string in the db.
+ */
+private void
+dbSetup(MDBM *db, int idx)
+{
+	char	*def;
+
+	unless (cfg[idx].insetup) return;
+
+	def = *cfg[idx].insetup ? cfg[idx].insetup : notnull(cfg[idx].defval);
+	mdbm_store_str(db, cfg[idx].name, def, MDBM_INSERT);
+}
+
+/*
+ * Helper for dumpvars_main()
+ */
 private void
 dumpvar(int idx, int defaults)
 {
 	char	*val;
 
 	val = defaults ? cfg[idx].defval : cfg_str(0, idx);
-	printf ("%s: %s\n", cfg[idx].names[0], val ? val : "(null)");
+	printf ("%s: %s\n", cfg[idx].name, val ? val : "(null)");
+}
+
+/*
+ * See if name is an alias.  If so, return the core name.
+ */
+char *
+cfg_alias(char *name)
+{
+	struct	alias	*x;
+
+	for (x = alias; x->alias; x++) {
+		if (streq(name, x->alias)) return (cfg[x->idx].name);
+	}
+	return (name);
+}
+
+/*
+ * Return the default value of the `idx` variable.
+ * It can be 0, or string, but not "".
+ */
+char *
+cfg_def(int idx)
+{
+	assert(cfg[idx].name);
+	assert(!cfg[idx].defval || *cfg[idx].defval);	/* "" illegal */
+	return (cfg[idx].defval);
 }
 
 /*
@@ -63,16 +148,13 @@ dumpvar(int idx, int defaults)
 char *
 cfg_str(project *p, int idx)
 {
-	int	i;
 	char	*val;
 	MDBM	*db;
 
 	db = proj_config(p);
 	assert(db);
-	assert(cfg[idx].names[0]);
-	for (i = 0; (i < CFG_MAX_ALIASES) && cfg[idx].names[i] ; i++) {
-		if (val = mdbm_fetch_str(db, cfg[idx].names[i])) return (val);
-	}
+	assert(cfg[idx].name);
+	if (val = mdbm_fetch_str(db, cfg[idx].name)) return (val);
 	assert(!cfg[idx].defval || *cfg[idx].defval);	/* "" illegal */
 	return (cfg[idx].defval);
 }
@@ -163,4 +245,55 @@ isOn(char *str)
 	    case 'o': if (strieq(str, "on")) return (1); break;
 	}
 	return (0);
+}
+
+/*
+ * Given a config variable name (e.g. "auto_populate") find its index
+ * by looking through all the different aliases it might have.
+ *
+ * Returns -1 if not found.
+ */
+int
+cfg_findVar(char *name)
+{
+	int	idx;
+	int	n = sizeof(cfg)/sizeof(*cfg);
+
+	for (idx = 0; idx < n; idx++) {
+		if (streq(cfg[idx].name, name)) return (idx); /* found */
+	}
+	return (-1);
+}
+
+/*
+ * Given a config MDBM 'db', generate 2 new dbs -- 'defs' which is just the
+ * defaults, and 'merge' which has keys from defs, and values from db
+ * if different than defs, else defs.
+ *
+ * This is helper function used by "bk config -v" for printing defaults
+ * in the context of the overall config.
+ */
+void
+cfg_printDefaults(MDBM *db, MDBM *defs, MDBM *merge)
+{
+	int	idx;
+	int	n;
+	char	*v;
+
+	assert(db && defs && merge);
+	n = sizeof(cfg)/sizeof(*cfg);
+	for (idx = 0; idx < n; idx++) {
+		unless (cfg[idx].defval) continue;
+		mdbm_store_str(
+		    defs, cfg[idx].name, cfg[idx].defval, MDBM_INSERT);
+		if ((v = mdbm_fetch_str(db, cfg[idx].name)) &&
+		    !streq(v, cfg[idx].defval)) {
+			/* modified */
+			mdbm_store_str(merge, cfg[idx].name, v,
+			    MDBM_INSERT);
+		} else {
+			mdbm_store_str( merge,
+			    cfg[idx].name, cfg[idx].defval, MDBM_INSERT);
+		}
+	}
 }

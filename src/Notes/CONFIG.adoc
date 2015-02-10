@@ -5,6 +5,7 @@ Config variables: API and structures
 
 1. Add your config variable to `src/confvars.h`
 2. There is no step 2, use it through one of the accessors.
+3. Actually, there is a step 2, document the variable in `bkmsg.doc`.
 
 == Background
 
@@ -36,19 +37,32 @@ global enum will be created which *must* be used for accessing the
 config variable using the `cfg_*()` APIs.
 
 2. TYPE: One of the types at the beginning of `cfg.h`. The types are
-described in the <<Design Goals>> Section.
+described in the <<dg,Design goals>> Section.
 
 3. DEFAULT VALUE: This is a C string which will be used as the default
 value if the configuration variable is not found in any of the places
 that are searched.
 
-4. NAMES: This is the list of names by which the configuration
-variable will be searched for. The first match will be used so the
-list needs to be in the right order.
+4. IN SETUP: Whether this variable will be part of the default
+`config` file that `bk setup` puts in new repositories. (This is
+printed by `bk setup -pv`).  It is a string, and if set to `""` then
+the default will be used, otherwise a value other than default can
+be specified, as is done for checkout.  Note that if this field is
+not `0`, the variable *must be documented* in `src/bkmsg.doc` with
+a section called `#config_$var` where `$var` is the name of the
+variable.
+NOTE: Technically, this is not true, as the config.template or command
+line can include items that are not documented. In that case,
+the config_undoc template will be used to print out the variable
+and its default.
+
+5. NAME: This is the name by which the configuration variable will be
+searched for.  Separate from this, there is a place in `cfg.c` to
+store aliases, which map on to these names.
 
 === Example
 
-  CONFVAR(BAM, SIZE, "off", {"BAM"})
+  CONFVAR(BAM, SIZE, "off", "", "BAM")
 
 Will declare a new `CFG_BAM` macro for a configuration variable of
 type __Size__ which will default to "off". When accessed via
@@ -60,11 +74,11 @@ number, then boolean:
 	unless (bam = cfg_size(p, CFG_BAM))
 		bam = cfg_bool(p, CFG_BAM) ? BAM_SIZE : 0;
 
+[[dg]]
 == Design goals
-
 * Support for multiple names for the configuration variable. One
-  example of where this is important is "auto-populate", which has
-  three variants in the config file: "autopopulate", "auto_populate",
+  example of where this is important is "auto_populate", which has
+  three variants in the config file: "auto_populate", "autopopulate",
   and "auto-populate".
 
 * Record the type of the variable. The following variable types are
@@ -98,8 +112,8 @@ number, then boolean:
 
 * Callers should use constants that can be checked at _compile time_
   rather than fail at runtime due to programming errors. E.g. use
-  `CFG_AUTOPOULATE` to access the value of any of the following
-  configuration variables: "autopopulate", "auto-populate", or
+  `CFG_AUTOPOPULATE` to access the value of any of the following
+  configuration variables: "auto_populate", "autopopulate", or
   "auto-populate".
 
 * A single file where *all* the configuration variables are declared and
@@ -113,3 +127,6 @@ number, then boolean:
   be iterable. Note: default strings can be seen, but default integers
   for clock_skew, BAM, and parallel are still specified in code to
   deal with the complexities of backward compatibility.
+
+NOTE: Read through `configvars.h` and `bkmsg.doc` looking for
+`#config_${var}` to see default config values and docs.

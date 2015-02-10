@@ -86,7 +86,7 @@ description: this is the description
 email: nobody@nowhere.bk
 keyword: none
 autofix: yes
-checkout: get
+checkout: edit
 clock_skew: on
 partial_check: on
 license: $BKL_ACADEMIC
@@ -151,7 +151,7 @@ description: this is the description
 email: nobody@nowhere.bk
 keyword: none
 autofix: yes
-checkout: get
+checkout: edit
 clock_skew: on
 partial_check: on
 license: $BKL_BASIC
@@ -216,7 +216,7 @@ description: this is the description
 email: nobody@nowhere.bk
 keyword: none
 autofix: yes
-checkout: get
+checkout: edit
 clock_skew: on
 partial_check: on
 license: $BKL_PRO
@@ -281,7 +281,7 @@ description: this is the description
 email: nobody@nowhere.bk
 keyword: none
 autofix: yes
-checkout: get
+checkout: edit
 clock_skew: on
 partial_check: on
 license: $BKL_ENTERPRISE

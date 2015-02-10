@@ -63,6 +63,10 @@ add() {
 }
 
 echo $N Setup .......................................................$NL
+# Tests assume a config that may shift over time. Stabilize defaults.
+cat <<EOF > .bk/config
+partial_check:off
+EOF
 # we don't do BAM tests on sco.bitmover.com for lack of disk space
 if [ "`bk gethost -r`" = "sco.bitmover.com" ]; then
 	SKIP_BAM=YES
@@ -2949,7 +2953,7 @@ bk delta $Q -yedit for-edit-v || fail
 bk commit $Q -yedit || fail
 cd ../clone0
 bk edit $Q for-edit-v
-echo edit2 >for-edit-q || fail
+echo edit2 >for-edit-v || fail
 bk pull -v ../product0 >OUT 2>&1 && fail -f OUT
 chkoutput OUT || fail $msg
 chkblanks OUT 1 || fail -f OUT $msg

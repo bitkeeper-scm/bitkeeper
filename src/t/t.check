@@ -13,6 +13,8 @@
 # Copyright (c) 2000 Larry McVoy
 # %K%
 
+umask 002
+
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -207,12 +209,8 @@ echo OK
 echo $N Make sure it complains unlocked files with rw gfile .........$NL
 bk get $Q d1/sub1/a
 chmod +w d1/sub1/a
-bk -r check -a > OUT 2>&1
-bk _test -f d1/sub1/SCCS/p.a && {
-	echo should not have created lock file
-	cat OUT
-	exit 1
-}
+bk --config=autofix:off -r check -a > OUT 2>&1
+bk _test -f d1/sub1/SCCS/p.a && fail -f OUT should not have created lock file
 test -w d1/sub1/a || {
 	echo should not have unedited file
 	cat OUT
@@ -557,7 +555,7 @@ bk new $Q -ycomment foo || fail
 bk commit $Q -ycomment || fail
 echo 1 > BitKeeper/log/checked
 bk admin -pbusted foo
-bk -r check -ac 2>ERR && fail -f ERR should fail
+bk --config=autofix:off -r check -ac 2>ERR && fail -f ERR should fail
 # checked file should be gone
 test -f BitKeeper/log/checked && fail
 echo OK
@@ -985,11 +983,11 @@ bk admin -FSCCS foo || fail
 bk get $Q foo || fail
 test -d SCCS && bk _touch -t 10000 SCCS/s.foo
 bk _touch -t 10002 foo
-chmod +w foo
+chmod ug+w foo
 # trim ctime off stat info
 bk _lstat foo | sed 's/|[0-9]*|foo$/|foo/' > WANT
 chmod -w foo
 bk --config=checkout:edit repocheck $Q || fail
-bk _lstat foo | sed 's/|[0-9]*|foo$/|foo/' > B
-cmpfiles B WANT
+bk _lstat foo | sed 's/|[0-9]*|foo$/|foo/' > GOT
+cmpfiles WANT GOT
 echo OK

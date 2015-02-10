@@ -90,6 +90,7 @@ int	removeLine(char **space, char *s, void(*freep)(void *ptr));
 void	reverseLines(char **space);
 #define	sortLines(s, compar)	_sortArray(s, compar, sizeof(char *))
 int	string_sort(const void *a, const void *b);
+int	stringcase_sort(const void *a, const void *b);
 int	string_sortrev(const void *a, const void *b);
 int	number_sort(const void *a, const void *b);
 char	**shellSplit(const char *line);
