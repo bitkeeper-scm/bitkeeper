@@ -311,7 +311,7 @@ compression:
 description: BitKeeper Test repository
 eoln: unix
 fakegrafts: off
-license: BKL654f56ea8368c808000012fdfffff42e572b43
+license: $BKL_PRO
 lockwait: 0
 mail_proxy: 
 monotonic: 
@@ -342,7 +342,7 @@ compression:
 description: BitKeeper Test repository
 eoln: unix
 fakegrafts: off
-license: BKL654f56ea8368c808000012fdfffff42e572b43
+license: $BKL_PRO
 lockwait: 0
 mail_proxy: 
 monotonic: 
