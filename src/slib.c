@@ -18229,14 +18229,16 @@ void
 dumpTimestampDB(project *p, hash *db)
 {
 	FILE	*f = 0;
-	char	*tsname;
+	int	rc;
+	char	*tstmp, *tsname;
 
 	assert(p);
 	unless (timestampDBChanged) return;
 
-	tsname = aprintf("%s/%s", proj_root(p), TIMESTAMPS);
-	unless (f = fopen(tsname, "w")) {
-		free(tsname);
+	tstmp = aprintf("%s/%s.tmp.%u",
+	    proj_root(p), TIMESTAMPS, (u32)getpid());
+	unless (f = fopen(tstmp, "w")) {
+		free(tstmp);
 		return;			/* leave stale timestamp file there */
 	}
 	EACH_HASH(db) {
@@ -18248,14 +18250,15 @@ dumpTimestampDB(project *p, hash *db)
 		    ts->gfile_mtime, ts->gfile_size,
 		    ts->permissions,
 		    ts->sfile_mtime, ts->sfile_size);
-		if (ferror(f)) {
-			/* some error writing the timestamp db so delete it */
-			unlink(tsname);
-			break;
-		}
 	}
-	free(tsname);
-	fclose(f);
+	rc = ferror(f);
+	unless (fclose(f) || rc) {
+		tsname = aprintf("%s/%s",proj_root(p), TIMESTAMPS);
+		rename(tstmp, tsname);
+		free(tsname);
+	}
+	unlink(tstmp);
+	free(tstmp);
 }
 
 void
@@ -18330,6 +18333,8 @@ updateTimestampDB(sccs *s, hash *timestamps, int different)
 
 		if (streq(p, "off")) {
 			clock_skew = 2147483647;  /* 2^31 */
+		} else if (streq(p, "zero")) {
+			clock_skew = 0; /* for testing */
 		} else {
 			unless (clock_skew = strtoul(p, 0,0)) clock_skew = WEEK;
 		}

@@ -1784,18 +1784,15 @@ perl -e 'printf "a\000b\n"' > binary_file
 bk new $Q binary_file
 bk edit $Q binary_file
 chmod 000 binary_file
-bk sfiles -v binary_file >OUT 2>ERR 
-RET=$?
-test $RET -eq 0 || {
-	echo failed
-	cat ERR
-	exit 1
-}
+bk sfiles -v binary_file >OUT 2>ERR && fail
 grep -iq "binary_file: Permission denied" ERR || {
 	echo failed
 	cat ERR
 	exit 1
 }
+# any file causing an error in relation to -c will be listed as -c output
+echo "slcpG-- SCCS/s.binary_file" > WANT
+cmpfiles WANT OUT
 echo OK
 }
 
@@ -1838,3 +1835,31 @@ BitKeeper/etc/SCCS/s.gone|1.1.1.2
 EOF
 cmpfiles WANT GOT
 echo OK
+
+echo $N Try to trip up the timestampDB ..............................$NL
+if [ $PLATFORM != "WIN32" ]
+then
+cd "$HERE"
+BK_CONFIG='clock_skew:zero!'
+export BK_CONFIG
+commercial time
+echo hi > file
+bk new $Q file
+bk commit $Q -ynew || fail
+bk edit $Q file
+echo junk >> file
+chmod 000 .bk/SCCS/file,p
+bk sfiles -c > OUT 2>ERR && fail -f OUT should fail
+echo "SCCS/s.file" > WANT.sfile
+cmpfiles WANT.sfile OUT
+cat <<EOF > WANT
+pfile: can't open SCCS/p.file
+EOF
+cmpfiles WANT ERR
+chmod 0660 .bk/SCCS/file,p
+bk sfiles -c > OUT || fail -f OUT should work
+cmpfiles WANT.sfile OUT
+echo OK
+else
+echo skipped
+fi

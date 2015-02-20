@@ -72,6 +72,7 @@ typedef struct {
 	u32	saw_locked:1;		/* saw a pfile somewhere? */
 	u32	saw_pending:1;		/* saw a dfile somewhere? */
 	u32	no_bkskip:1;		/* ignore .bk_skip */
+	u32	error:1;		/* an error happened */
 
 	char	*relpath;		/* --replath: print relative paths */
 	FILE	*out;			/* -o<file>: send output here */
@@ -385,6 +386,7 @@ out:
 		if (state) proj_dirstate(0, "*", state, 0);
 	}
 	free_project();
+	if (!rc && opts.error) rc = 1;
 	return (rc);
 }
 
@@ -448,6 +450,7 @@ chk_sfile(char *name, STATE state)
 {
 	char	*s, *relp, *gname;
 	ser_t	d;
+	int	rc;
 	sccs	*sc = 0;
 
 	s = strrchr(name, '/');
@@ -470,8 +473,9 @@ chk_sfile(char *name, STATE state)
 		state[TSTATE] = 's';
 		if (exists(name)) {
 			state[LSTATE] = 'l';
-			if (DOIT && sc && chk_diffs(sc)) {
-				state[CSTATE] = 'c';
+			if (DOIT && sc) {
+				if ((rc = chk_diffs(sc)) < 0) opts.error = 1;
+				if (rc) state[CSTATE] = 'c';
 			}
 		} else {
 			state[LSTATE] = 'u';
@@ -1166,10 +1170,11 @@ uprogress(void)
 private int
 chk_diffs(sccs *s)
 {
-	int different;
+	int	rc, different;
 
 	unless (s) return (0);
-	different = (sccs_hasDiffs(s, 0, 1) >= 1);
+	if ((rc = sccs_hasDiffs(s, 0, 1)) < 0) return (rc);
+	different = (rc >= 1);
 	if (timestamps) {
 		updateTimestampDB(s, timestamps, different);
 	}
@@ -1408,6 +1413,7 @@ sccsdir(winfo *wi)
 	sccs	*s = 0;
 	ser_t	d;
 	int	i;
+	int	rc;
 	int	saw_locked = 0;
 	int	saw_pending = 0;
 	char	buf[MAXPATH];
@@ -1468,9 +1474,9 @@ sccsdir(winfo *wi)
 			    (!timestamps ||
 				!timeMatch(proj, gfile, sfile,
 				    timestamps)) &&
-			    (s = init(buf, flags, sDB, 0)) &&
-			    chk_diffs(s)) {
-				state[CSTATE] = 'c';
+			    (s = init(buf, flags, sDB, 0))) {
+				if ((rc = chk_diffs(s)) < 0) opts.error = 1;
+				if (rc) state[CSTATE] = 'c';
 			}
 			free(gfile);
 			if (opts.names) {
