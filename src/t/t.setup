@@ -200,7 +200,7 @@ cat <<EOF > dotbk/config.template
 autopopulate: 1
 auto-populate: 2
 EOF
-BK_REGRESSION= bk setup -F'autopopulate=3' layers 2> ERR || fail
+bk setup -F'autopopulate=3' layers 2> ERR || fail
 cd layers
 bk cat BitKeeper/etc/config | grep populate: > GOT
 # mapped all the above to auto_populate, then took command line one first
@@ -209,3 +209,6 @@ cmpfiles WANT GOT
 echo 'setup: filters not supported; "[build]autopopulate=15" ignored' > WANT
 cmpfiles WANT ../ERR
 echo OK
+
+kill_uniq "$BK_DOTBK"/bk-keys-db   # we used a custom location
+exit 0

@@ -51,17 +51,29 @@ rm -rf "$HERE/keysdb"
 echo OK
 
 echo $N Check purge of old keys .....................................$NL
+echo foo >purge-tst1
+# a time_t of 123 gets pruned; 1577840461 does not
+_BK_UNIQ_TIMET=123 bk new $Q purge-tst1 || fail
+echo foo >purge-tst2
+_BK_UNIQ_TIMET=1577840461 bk new $Q purge-tst2 || fail
+# force the key prune
 kill_uniq "$HERE/.bk/bk-keys-db"
-# add an old key (time_t of 123) by hand
-mkdir -p "`bk dotbk`/bk-keys"
-UNIQDB="`bk dotbk`/bk-keys/`bk gethost -r`"
-echo 'bk@bk_regression.bk|purge-tst|20140119155430 123' >> "$UNIQDB"
-# cause the uniq_daemon to start back up
+echo "get purge-tst" | bk info_shell --uniqdb | grep purge-tst >GOT
+grep -q purge-tst1 GOT && echo key was not purged
+grep -q purge-tst2 GOT || echo key was purged
+echo OK
+
+echo $N Check ChangeSet key regression ..............................$NL
+# Test that a bug causing ChangeSet delta keys to be saved to the uniqdb
+# incorrectly has been fixed.
 cd "$HERE/project"
-echo foo > purge1
-bk new $Q purge1 || fail
-key_exists purge-tst || fail key not in uniqdb
-# now force the uniq_deamon to purge the db and verify that the old key is gone
+echo foo >uniqdb-bug
+bk new $Q uniqdb-bug || fail
+bk commit $Q -ytst || fail
+# Force the uniqdb to be written out and then read the ChangeSet key back.
+# It doesn't matter if there are other ChangeSet keys in the db; any one
+# will do.
 kill_uniq "$HERE/.bk/bk-keys-db"
-key_exists purge-tst && fail key still in uniqdb
+echo "get ChangeSet" | bk info_shell --uniqdb | grep ChangeSet >GOT
+egrep '[^|]+\|ChangeSet\|[^|]+\|[^|]+$' GOT >OUT || fail -f GOT bad key
 echo OK

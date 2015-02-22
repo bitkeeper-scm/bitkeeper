@@ -3,6 +3,8 @@
  */
 #include "sccs.h"
 #include "pcre.h"
+#include "tomcrypt.h"
+#include "tomcrypt/randseed.h"
 
 #define	INFO_DELETE	2	/* delete items */
 #define	INFO_GET	3	/* print items */
@@ -52,15 +54,16 @@ typedef struct {
 
 private void	db_close(Opts *opts);
 private int	db_open(Opts *opts);
+private void	debug_sleep(char *env);
 private void	inc_date(char *p);
 private	int	info_cmds(Opts *opts);
 private	void	op(Opts *opts, int cmd, hash *h, char *regexp);
 private int	quit(int quiet);
 private void	uniqdb_append(Opts *opts, char *kptr, char *vptr);
 private void	uniqdb_close(Opts *opts);
-private int	uniqdb_old_lock(void);
-private char	*uniqdb_old_lock_path(void);
-private int	uniqdb_old_unlock(void);
+private int	uniqdb_lock(void);
+private char	*uniqdb_lock_path(void);
+private int	uniqdb_unlock(void);
 private int	uniqdb_open(Opts *opts);
 private void	uniqdb_prune(hash *db);
 private time_t	uniqdb_read(Opts *opts);
@@ -75,10 +78,11 @@ private	void	version(hash *db, FILE *fout);
 int
 info_server_main(int ac, char **av)
 {
-	int	rc = 1, c, sock = -1, tcpsock = -1, udpsock = -1;
+	int	c, len;
+	int	nreqs = 0, rc = 1, sock = -1, tcpsock = -1, udpsock = -1;
 	int	keys_since_sync = 0;
 	int	port = 0;
-	char	*peer = 0;
+	char	*peer = 0, *s, *lockfile, *portfile;
 	int	idle = 0;
 	int	startsock = 0;
 	fd_set	fds;
@@ -87,6 +91,7 @@ info_server_main(int ac, char **av)
 	time_t	t;
 	Opts	opts = {0};
 	char	buf[1<<16];
+	struct	sockaddr_in cliaddr;
 	longopt	lopts[] = {
 		{ "idle;", 300 },
 		{ "no-log", 310 },
@@ -121,7 +126,7 @@ info_server_main(int ac, char **av)
 			startsock = atoi(optarg);
 			break;
 		    case 330:	// --dir=<db-directory>
-			opts.dir = strdup(optarg);
+			safe_putenv("_BK_UNIQ_DIR=%s", optarg);
 			break;
 		    case 340:	// --no-lock
 			opts.nolock = 1;
@@ -134,20 +139,20 @@ info_server_main(int ac, char **av)
 	}
 
 	/*
-	 * Change to the db directory (opts.dir) and stay there.
-	 * The db directory is determined in the following order:
+	 * Verify the db directory is writable. It's fatal if it
+	 * isn't.  Then change to /tmp and stay there so we have no
+	 * chance of holding the db dir open during our exit path.
+	 * Use the following (see uniq_dbdir()):
 	 *
-	 *   if env var _BK_UNIQ_DIR is defined, use that
-	 *   if --dir was specified, use that
+	 *   if env var _BK_UNIQ_DIR is defined, use that (--dir sets it)
 	 *   if "uniqdb" config option exists, use <config>/%HOST
 	 *   if /netbatch/.bk-%USER/bk-keys-db/%HOST is writable, use that
 	 *   use <dotbk>/bk-keys-db/%HOST
-	 *
-	 * If a writable directory can't be found, it's a fatal error.
 	 */
-	opts.dir = uniq_dbdir(opts.dir);
+	opts.dir = uniq_dbdir();
 	mkdirp(opts.dir);
-	unless (writable(opts.dir)) {
+	opts.dir = fullLink(opts.dir, 0, 1);
+	unless (!chdir(opts.dir) && writable(opts.dir)) {
 		fprintf(stderr, "%s not writable for uniqdb\n", opts.dir);
 		T_DEBUG("dir %s not writable", opts.dir);
 		if (startsock) {
@@ -161,8 +166,10 @@ info_server_main(int ac, char **av)
 		}
 		return (1);
 	}
-	chdir(opts.dir);
-	T_DEBUG("using dir %s", opts.dir);
+	lockfile = aprintf("%s/lock", opts.dir);
+	portfile = aprintf("%s/port", opts.dir);
+	chdir("/tmp");
+	T_DEBUG("using db dir %s but running in /tmp", opts.dir);
 
 	if (opts.quit) return (quit(opts.quiet));
 
@@ -173,12 +180,12 @@ info_server_main(int ac, char **av)
 	 * the lock, but that's OK since it will have no side effects
 	 * (beyond the startsock handshake if the client requests it).
 	 */
-	if (opts.nolock || !sccs_lockfile("lock", 0, 1)) {
+	if (opts.nolock || !sccs_lockfile(lockfile, 0, 1)) {
 		if ((tcpsock = tcp_server(0, port, 0)) < 0) goto out;
 		if ((udpsock = udp_server(0, port, 0)) < 0) goto out;
 		T_DEBUG("started server on port (%d tcp) (%d udp)",
 		    sockport(tcpsock), sockport(udpsock));
-		Fprintf("port", "%d\n%d\n",
+		Fprintf(portfile, "%d\n%d\n",
 		    sockport(tcpsock), sockport(udpsock));
 	} else {
 		T_DEBUG("another server instance already running");
@@ -204,9 +211,9 @@ info_server_main(int ac, char **av)
 	 * safely read it here.
 	 */
 	if (opts.uniq_daemon) {
-		uniqdb_old_lock();
-		uniqdb_open(&opts);
+		uniqdb_lock();
 		t = uniqdb_read(&opts);
+		uniqdb_open(&opts);
 		if ((time(0) - t) < 1*DAY) {
 			T_DEBUG("bk6 touched uniqdb (%ld), using 10s timeout",
 				time(0)-t);
@@ -249,10 +256,9 @@ info_server_main(int ac, char **av)
 			T_DEBUG("%s tcp is done", peer);
 		}
 		if (FD_ISSET(udpsock, &fds)) {
-			int	len, n;
+			int	n;
 			size_t	rlen;
 			char	*resp, *md5sum;
-			struct	sockaddr_in cliaddr;
 
 			len = sizeof(cliaddr);
 			n = recvfrom(udpsock, buf, sizeof(buf), 0,
@@ -262,8 +268,8 @@ info_server_main(int ac, char **av)
 				T_DEBUG("n=%d err=%s", n, strerror(errno));
 				continue;
 			}
-			T_DEBUG("udp connection from %s",
-			    inet_ntoa(cliaddr.sin_addr));
+			peer = inet_ntoa(cliaddr.sin_addr);
+			T_DEBUG("udp request from %s", peer);
 			opts.fin = fmem_buf(buf, n);
 			opts.fout = fmem();
 			md5sum = hashstr(buf, n);
@@ -277,10 +283,10 @@ info_server_main(int ac, char **av)
 			if (opts.exit) break;
 			fclose(opts.fin);
 			resp = fmem_close(opts.fout, &rlen);
+			debug_sleep("_BK_UNIQ_REQ_SLEEP");
 			n = sendto(udpsock, resp, rlen, 0,
 				(struct sockaddr*)&cliaddr, len);
-			T_DEBUG("n=%d %s udp is done",
-			    n, inet_ntoa(cliaddr.sin_addr));
+			T_DEBUG("n=%d %s udp is done", n, peer);
 		}
 		/* periodically sync or close/open the uniqdb */
 		if (opts.uniq_daemon && (++keys_since_sync > 20)) {
@@ -292,18 +298,28 @@ info_server_main(int ac, char **av)
 			}
 			keys_since_sync = 0;
 		}
+		/* possibly bail early for test & debug */
+		if ((s = getenv("_BK_UNIQ_REQS")) && (++nreqs >= atoi(s))) {
+			T_DEBUG("debug exit after %d reqs", nreqs);
+			break;
+		}
 	}
 	T_DEBUG("cleaning up (port %d, dir %s)...", sockport(sock), opts.dir);
+	debug_sleep("_BK_UNIQ_EXIT_SLEEP");
 	if (opts.uniq_daemon) {
 		uniqdb_prune(opts.db);
 		uniqdb_close(&opts);
 		uniqdb_write(&opts);
-		uniqdb_old_unlock();
+		uniqdb_unlock();
 	}
-	unlink("port");
-	unless (opts.nolock) sccs_unlockfile("lock");
+	unlink(portfile);
+	unless (opts.nolock) sccs_unlockfile(lockfile);
 	if (opts.exit) {
+		char	*msg = "OK-exiting\n";
+
 		T_DEBUG("%s requested exit", peer);
+		sendto(udpsock, msg, sizeof(msg), 0,
+		       (struct sockaddr*)&cliaddr, len);
 		fprintf(opts.fout, "OK-exiting\n");
 		fflush(opts.fout);
 		fclose(opts.fin);
@@ -345,10 +361,12 @@ info_shell_main(int ac, char **av)
 		fprintf(stderr, "--dir or --uniqdb option required\n");
 		return (1);
 	}
+	T_DEBUG("info_shell starting");
 	if (opts.uniq_daemon) {
 		uniqdb_read(&opts);
 	} else {
 		mkdirp(opts.dir);
+		opts.dir = fullLink(opts.dir, 0, 1);
 		chdir(opts.dir);
 	}
 	opts.fin = stdin;
@@ -648,11 +666,14 @@ private int
 db_open(Opts *opts)
 {
 	int	oflags;
+	char	*path;
 
 	if (opts->uniq_daemon) return (0);
 
 	if (opts->db) hash_close(opts->db);
-	opts->db = hash_open(HASH_MDBM, "db", O_RDWR|O_CREAT, 0664);
+	path = aprintf("%s/db", opts->dir);
+	opts->db = hash_open(HASH_MDBM, path, O_RDWR|O_CREAT, 0664);
+	free(path);
 	unless (opts->db) {
 		fprintf(opts->fout, "ERROR-hash open of %s/db\n", opts->dir);
 		return (1);
@@ -669,7 +690,9 @@ err:		hash_close(opts->db);
 #ifdef	O_SYNC
 		if (opts->do_sync) oflags |= O_SYNC;
 #endif
-		opts->logfd = open("log", oflags, 0664);
+		path = aprintf("%s/log", opts->dir);
+		opts->logfd = open(path, oflags, 0664);
+		free(path);
 		unless (opts->logf = fdopen(opts->logfd, "a")) {
 			fprintf(opts->fout, "ERROR-error opening %s/log\n",
 				opts->dir);
@@ -694,12 +717,13 @@ db_close(Opts *opts)
 }
 
 private char *
-uniqdb_old_lock_path(void)
+uniqdb_lock_path(void)
 {
+	char	*t;
+
 	/* Check BK_DOTBK to support parallel regressions. */
-	if (getenv("BK_DOTBK")) {
-		return (aprintf("%s/.uniq_keys_%d_%s", TMP_PATH, getpid(),
-				sccs_realuser()));
+	if (t = getenv("BK_DOTBK")) {
+		return (aprintf("%s/bk-keys/%s.lock", t, sccs_realhost()));
 	} else {
 		return (aprintf("%s/.uniq_keys_%s", TMP_PATH,
 				sccs_realuser()));
@@ -707,12 +731,11 @@ uniqdb_old_lock_path(void)
 }
 
 private char *
-uniqdb_old_backup_path(void)
+uniqdb_backup_path(void)
 {
 	/* Check BK_DOTBK to support parallel regressions. */
 	if (getenv("BK_DOTBK")) {
-		return (aprintf("%s/.bk-keys-%d-%s", TMP_PATH, getpid(),
-				sccs_realuser()));
+		return (0);
 	} else {
 		return (aprintf("%s/.bk-keys-%s", TMP_PATH,
 				sccs_realuser()));
@@ -721,12 +744,12 @@ uniqdb_old_backup_path(void)
 
 /* Acquire the pre-bk7 uniqdb lock. */
 private int
-uniqdb_old_lock(void)
+uniqdb_lock(void)
 {
 	char    *lock;
 	int     rc;
 
-	lock = uniqdb_old_lock_path();
+	lock = uniqdb_lock_path();
 	rc = sccs_lockfile(lock, -1, 1);
 	free(lock);
 	return (rc);
@@ -734,12 +757,12 @@ uniqdb_old_lock(void)
 
 /* Release the pre-bk7 uniqdb lock. */
 private int
-uniqdb_old_unlock(void)
+uniqdb_unlock(void)
 {
 	char	*lock;
 	int	rc;
 
-	lock = uniqdb_old_lock_path();
+	lock = uniqdb_lock_path();
 	rc = sccs_unlockfile(lock);
 	free(lock);
 	return (rc);
@@ -755,15 +778,16 @@ uniqdb_open(Opts *opts)
 {
 	int	ret = 0;
 	char	*prim = aprintf("%s/bk-keys/%s", getDotBk(), sccs_realhost());
-	char	*back = uniqdb_old_backup_path();
+	char	*back = uniqdb_backup_path();
 
 	if (opts->db_primf) fclose(opts->db_primf);
 	if (opts->db_backf) fclose(opts->db_backf);
 	opts->db_backf = 0;
 
-	if (opts->db_primf = fopen(prim, "r+")) {
+	mkdirf(prim);
+	if (opts->db_primf = fopen(prim, "a")) {
 		T_DEBUG("opened primary %s", prim);
-	} else if (opts->db_backf = fopen(back, "r+")) {
+	} else if (back && (opts->db_backf = fopen(back, "a"))) {
 		T_DEBUG("opened backup %s", back);
 	} else {
 		T_DEBUG("error %d opening uniqdb for writing", errno);
@@ -778,15 +802,14 @@ uniqdb_open(Opts *opts)
 private void
 uniqdb_close(Opts *opts)
 {
-	char	*prim = aprintf("%s/bk-keys/%s", getDotBk(), sccs_realhost());
-	char	*back = uniqdb_old_backup_path();
-
-	if (opts->db_primf) fclose(opts->db_primf);
-	if (opts->db_backf) fclose(opts->db_backf);
-	opts->db_primf = 0;
-	opts->db_backf = 0;
-	free(prim);
-	free(back);
+	if (opts->db_primf) {
+		fclose(opts->db_primf);
+		opts->db_primf = 0;
+	}
+	if (opts->db_backf) {
+		fclose(opts->db_backf);
+		opts->db_backf = 0;
+	}
 }
 
 private void
@@ -868,7 +891,7 @@ private time_t
 uniqdb_read(Opts *opts)
 {
 	char	buf[32], *s;
-	time_t	t1, t2;
+	time_t	t1, t2 = 0;
 
 	opts->db = hash_new(HASH_MEMHASH);
 
@@ -879,10 +902,11 @@ uniqdb_read(Opts *opts)
 	free(s);
 
 	/* Possible backup uniqdb. */
-	s = uniqdb_old_backup_path();
-	uniqdb_load_file(opts->db, s);
-	t2 = mtime(s);
-	free(s);
+	if (s = uniqdb_backup_path()) {
+		uniqdb_load_file(opts->db, s);
+		t2 = mtime(s);
+		free(s);
+	}
 
 	if (s = hash_fetchStr(opts->db, DB_MODTIME)) {
 		t1 = (time_t)strtoul(s, 0, 16);
@@ -915,8 +939,8 @@ uniqdb_write_rec(FILE *f, char *k, char *v)
 	 */
 	if (syncroot = strchr(date+1, '|')) {
 		*syncroot = 0;
-		T_DEBUG("writing %s %ld %s", k, t, syncroot);
-		fprintf(f, "%s %ld %s\n", k, t, syncroot);
+		T_DEBUG("writing %s %ld %s", k, t, syncroot+1);
+		fprintf(f, "%s %ld %s\n", k, t, syncroot+1);
 		*syncroot = '|';
 	} else {
 		T_DEBUG("writing %s %ld", k, t);
@@ -950,11 +974,11 @@ private void
 uniqdb_write(Opts *opts)
 {
 	char	*prim = aprintf("%s/bk-keys/%s", getDotBk(), sccs_realhost());
-	char	*back = uniqdb_old_backup_path();
+	char	*back = uniqdb_backup_path();
 
 	unless (uniqdb_write_file(opts, prim)) {
-		unlink(back);
-	} else {
+		if (back) unlink(back);
+	} else if (back) {
 		uniqdb_write_file(opts, back);
 	}
 	free(prim);
@@ -967,7 +991,6 @@ uniqdb_append(Opts *opts, char *kptr, char *vptr)
 	FILE	*f;
 
 	unless ((f = opts->db_primf) || (f = opts->db_primf)) return;
-	unless (fseek(f, 0, SEEK_END)) return;
 	T_DEBUG("appending %s %s", kptr, vptr);
 	uniqdb_write_rec(f, kptr, vptr);
 }
@@ -980,40 +1003,26 @@ uniqdb_append(Opts *opts, char *kptr, char *vptr)
 private int
 quit(int quiet)
 {
-	char	*msg = 0, *s;
-	int	fd, port, ret;
-	FILE	*fin = 0, *fout = 0;
+	int	ret;
+	size_t	resplen;
+	char	msg[] = "exit\n";
+	char	resp[64], *out, *s;
+	FILE	*fin;
 
-	unless (s = loadfile("port", 0)) {
-		msg = aprintf("uniq_server not running");
-		ret = 0;
-		goto out;
-	}
-	port = atoi(s);
-	if ((fd = tcp_connect("127.0.0.1", port)) < 0) {
-		msg = aprintf("uniq_server on port %d already stopped", port);
-		ret = 0;
-		goto out;
-	}
-	fin = fdopen(fd, "r");
-	fout = fdopen(fd, "w");
-	setlinebuf(fin);
-	fprintf(fout, "exit\n");
-	fflush(fout);
+	T_DEBUG("sending exit request");
+	resplen = sizeof(resp);
+	if (uniqdb_req(msg, sizeof(msg), resp, &resplen)) return (0);
+	fin = fmem_buf(resp, resplen);
 	if ((s = fgetline(fin)) && strneq(s, "OK", 2)) {
-		msg = aprintf("uniq_server on port %d stopped", port);
+		out = aprintf("uniq_server stopped");
 		ret = 0;
 	} else {
-		msg = aprintf("error stopping uniq_server: %s", s);
+		out = aprintf("error stopping uniq_server: %s", s);
 		ret = 1;
 	}
-	if (fin)  fclose(fin);
-	if (fout) fclose(fout);
-	if (fd >= 0) close(fd);
- out:
-	unless (quiet) printf("%s\n", msg);
-	T_DEBUG("%s", msg);
-	free(msg);
+	unless (quiet) printf("%s\n", out);
+	T_DEBUG("%s", out);
+	free(out);
 	return (ret);
 }
 
@@ -1109,4 +1118,24 @@ inc_date(char *p)
 		tp->tm_min,
 		tp->tm_sec);
 	p[14] = save;
+}
+
+/* Helper for test & debug of race conditions: do a sleep. */
+private void
+debug_sleep(char *env)
+{
+	char		*s;
+	unsigned short	r = 0;
+	time_t		t;
+
+	if (s = getenv(env)) {
+		if (*s == 'r') {
+			rand_getBytes((void *)&r, 2);
+			t = (float)r/65536.0 * atoi(s+1);
+		} else {
+			t = atoi(s);
+		}
+		T_DEBUG("debug usleep %ld", t);
+		usleep(t);
+	}
 }

@@ -32,7 +32,7 @@ case X$PLATFORM in
 		;;
 esac
 [ -z $LNOTBUILT ] || {
-	echo $N L not built, skipping........................................OK
+	echo L not built, skipping........................................OK
 	exit 0
 }
 

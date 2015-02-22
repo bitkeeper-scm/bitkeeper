@@ -20,6 +20,7 @@ _install
 _lconfig
 _locktest
 _newFile
+_popensystem
 _progresstest
 _register
 editor

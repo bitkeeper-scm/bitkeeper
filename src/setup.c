@@ -337,9 +337,6 @@ config_template(void)
 	char	*dotbk = getDotBk();
 	char	path[MAXPATH];
 
-	/* don't look for templates during regressions, that will hose us */
-	if (getenv("BK_REGRESSION")) return (0);
-
 	if (dotbk) {
 		sprintf(path, "%s/config.template", dotbk);
 		if (f = fopen(path, "rt")) return (f);

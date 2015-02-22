@@ -498,8 +498,9 @@ clean_up()
 	# kill the uniq daemon since we're about to delete
 	# the $HERE subdirectory out from under it
 	test -d "$HERE/.bk/bk-keys-db" && {
-		DB=`ls "$HERE/.bk/bk-keys-db"`
-		bk --cd="$HERE/.bk/bk-keys-db" uniq_server -q --dir=$DB --quit
+		DIR="$HERE/.bk/bk-keys-db"
+		DB=`ls "$DIR"`
+		bk uniq_server -q --dir="$DIR/$DB" --quit
 	}
 
 	# Win32 have no core file
@@ -827,6 +828,7 @@ do
 	EXF="$TMPDIR/T.${USER} next"
 	test -f setup || bk get -q setup
 	test -f setup || exit 1
+	export BK_CURRENT_TEST="$i"
 	cat setup "$i" | eval "{ $VALGRIND @TEST_SH@ $dashx; echo \$?>\"$EXF\"; } $OUTPIPE"
 	EXIT="`cat \"$EXF\"`"
 	rm -f "$EXF"
@@ -892,8 +894,9 @@ I hope your testing experience was positive! :-)
 			}
 			# kill the uniq daemon
 			test -d "$HERE/.bk/bk-keys-db" && {
-				DB=`ls "$HERE/.bk/bk-keys-db"`
-				bk --cd="$HERE/.bk/bk-keys-db" uniq_server -q --dir=$DB --quit
+				DIR="$HERE/.bk/bk-keys-db"
+				DB=`ls "$DIR"`
+				bk uniq_server -q --dir="$DIR/$DB" --quit
 			}
 			exit $EXIT
 		}

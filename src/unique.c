@@ -1,7 +1,10 @@
 #include "sccs.h"
 #include "cfg.h"
 
-private	int	uniq_open(int force);
+private int debug_trace = 0;  // for debug
+private	int reopens = 0;
+
+private int	uniqdb_socket(int force);
 private int	startUniqDaemon(void);
 
 /*
@@ -10,25 +13,16 @@ private int	startUniqDaemon(void);
 int
 uniq_adjust(sccs *s, ser_t d)
 {
-	int	fudge, retries = 3;
-	int	force = 0, restart = 3;
-	char	*p1, *p2;
-	char	*t, *msg, *msg_md5;
+	int	fudge, rc;
+	char	*msg, *msg_md5, *p1, *p2, *t;
 	FILE	*fin, *fout;
-	int	socket;
-	int	len, ret;
-	int	rc = 1;
-	size_t	rlen;
+	size_t	msglen, resplen;
 	time_t	now = time(0);
-	char	buf[1<<16];
-	char	key[MAXKEY];
+	char	key[MAXKEY], resp[64];
 
 	if (getenv("_BK_NO_UNIQ")) return (0);
-restart:if ((socket = uniq_open(force)) < 0) return (1);
-	force = 0;
 
 	fout = fmem();
-
 	fprintf(fout, "insert-key\n@");
 	sccs_shortKey(s, d, key);
 	if (CSET(s)) {
@@ -49,56 +43,29 @@ restart:if ((socket = uniq_open(force)) < 0) return (1);
 		fputs(p2, fout);
 	}
 	if (DATE(s, d) > now) now = DATE(s, d);
+	if (t = getenv("_BK_UNIQ_TIMET")) now = atoi(t);  // for test & debug
 	fprintf(fout, "\n%lx\n@\n", now);
+	msg = fmem_close(fout, &msglen);
 
-	/* send the message */
-	msg = fmem_close(fout, &rlen);
-	msg_md5 = hashstr(msg, rlen);
+	/* send the request to the uniq daemon and process the response */
+again:	resplen = sizeof(resp);
+	if (uniqdb_req(msg, msglen, resp, &resplen)) {
+		T_DEBUG("uniqdb send error");
+		free(msg);
+		return (1);
+	}
+	fin = fmem_buf(resp, resplen);
 
-again:	if (send(socket, msg, rlen, 0) < 0) {
-		perror("send");
-		goto out;
-	}
-
-	/* wait up to 10sec for response */
-	if ((ret = readable(socket, 10)) < 0) {
-		perror("select");
-		goto out;
-	}
-	if (ret == 0) {
-		/* timeout */
-		if (retries--) goto again;
-		if (restart--) {
-			force = 1;
-			retries = 3;
-			if (restart == 1) {
-				/* a hack to enable debugging before we fail */
-				putenv("BK_TRACE_BITS=debug");
-				trace_init(prog);
-				putenv("BK_TRACE_BITS=");
-			}
-			goto restart;
-		}
-		goto out;
-	}
-
-	/* we know this won't block */
-	if ((len = recv(socket, buf, sizeof(buf), 0)) < 0) {
-		/* this shouldn't have failed, but if so, try again */
-		T_DEBUG("recv failed (%s)", strerror(errno));
-		closesocket(socket);
-		goto restart;
-	}
-	fin = fmem_buf(buf, len);
+	msg_md5 = hashstr(msg, msglen);
 	if ((t = fgetline(fin)) && !streq(t, msg_md5)) {
 		/* answer to the wrong question */
 		T_DEBUG("discarding mismatched response: %s %s\n",
 		    msg_md5, t);
 		fclose(fin);
-		closesocket(socket);
-		goto restart;
+		goto again;
 	}
 	free(msg_md5);
+
 	if ((t = fgetline(fin)) && strneq(t, "OK", 2)) {
 		T_DEBUG("got %s", t);
 		if (fudge = atoi(t+3)) {
@@ -108,10 +75,89 @@ again:	if (send(socket, msg, rlen, 0) < 0) {
 		rc = 0;
 	} else {
 		T_DEBUG("got bad response %s", t);
-		fprintf(stderr, "uniqdb gave bad response: %s\n", buf);
+		fprintf(stderr, "uniqdb gave bad response: %s\n", resp);
+		rc = 1;
 	}
+
 	fclose(fin);
-out:	closesocket(socket);
+	free(msg);
+	return (rc);
+}
+/*
+ * Send a request to the uniq_daemon and return its response, starting
+ * the daemon if it's not already running.
+ */
+int
+uniqdb_req(char *msg, int msglen, char *resp, size_t *resplen)
+{
+	int	force = 0, rc = 0, resends, ret, sock = -1, timeout;
+	ssize_t	len;
+
+	/*
+	 * Comm with the daemon is via a UDP socket. Resend the
+	 * request if no response is seen within a timeout period,
+	 * starting with a 1-second timeout and backing off
+	 * additively. The send or select (readable() call) below has
+	 * been observed to not fail if the daemon isn't listening any
+	 * more, but the recv will error after the timeout period, so
+	 * go back and look for a port file etc on any error. The
+	 * global variable "reopens" counts the number of such retries
+	 * so we can avoid retrying forever.
+	 */
+
+reopen:	unless (sock < 0) closesocket(sock);
+	if ((sock = uniqdb_socket(force)) < 0) return (1);
+	force = 0;
+	resends = 3;
+	timeout = 1;
+
+resend:	if (send(sock, msg, msglen, 0) < 0) {
+		T_DEBUG("send err %d (%s), resends %d reopens %d",
+			errno, strerror(errno), resends, reopens);
+		force = 1;
+		goto reopen;
+	}
+
+	/* Initially wait up to 1 second for a response but then back off. */
+	ret = readable(sock, timeout);
+	timeout += 3;
+	if (ret < 0) {  /* error */
+		T_DEBUG("select error %d (%s)", errno, strerror(errno));
+		perror("select");
+		rc = 1;
+		goto out;
+	} else if (ret == 0) {  /* timeout */
+		T_DEBUG("readable timeout after %d secs, resends %d reopens %d",
+			timeout-3, resends, reopens);
+		if (resends--) {
+			goto resend;
+		}
+		goto reopen;
+	}
+
+	/* we know this won't block */
+	if ((len = recv(sock, resp, *resplen, 0)) < 0) {
+		T_DEBUG("recv error %d (%s) after %d secs, "
+			"resends %d reopens %d",
+			errno, strerror(errno), timeout-3, resends, reopens);
+		goto reopen;
+	}
+
+	/* success */
+	reopens = 0;
+	*resplen = len;
+
+	if (debug_trace) {
+		T_DEBUG("successful request -- disabling tracing");
+		safe_putenv("BK_TRACE=");
+		safe_putenv("BK_TRACE_BITS=");
+		safe_putenv("BK_TRACE_PIDS=");
+		safe_putenv("BK_TRACE_FILES=");
+		trace_init(prog);
+		debug_trace = 0;
+	}
+
+out:	closesocket(sock);
 	return (rc);
 }
 
@@ -124,23 +170,22 @@ startUniqDaemon(void)
 	FILE	*fin;
 
 	if ((startsock = tcp_server("127.0.0.1", 0, 0)) < 0) {
-		fprintf(stderr, "uniq: failed to start startsock.\n");
-		exit(1);
+		T_DEBUG("error %d creating startsock", errno);
+		fprintf(stderr, "uniq: failed to create startsock.\n");
+		return (-1);
 	}
 	cmd = 0;
 	cmd = addLine(cmd, strdup("bk"));
 	cmd = addLine(cmd, strdup("uniq_server"));
-	cmd = addLine(cmd,
-	    aprintf("--startsock=%d", sockport(startsock)));
+	cmd = addLine(cmd, aprintf("--startsock=%d", sockport(startsock)));
 	cmd = addLine(cmd, 0);
 	pid = spawnvp(P_DETACH, "bk", cmd+1);
 	freeLines(cmd, free);
-	T_DEBUG("pid=%u", pid);
+	T_DEBUG("new uniq_server spawned, pid=%u", pid);
 	if (pid < 0) return (-1);
 
-	T_DEBUG("waiting for start sock on port %d....", sockport(startsock));
+	T_DEBUG("waiting for startsock on port %d", sockport(startsock));
 	if ((nsock = tcp_accept(startsock)) >= 0) {
-		T_DEBUG("got start sock");
 		fin = fdopen(nsock, "r");
 		setlinebuf(fin);
 		s = fgetline(fin);
@@ -153,32 +198,54 @@ startUniqDaemon(void)
 		}
 		fclose(fin);
 		closesocket(nsock);
-		closesocket(startsock);
 	} else {
-		T_DEBUG("accept error");
+		T_DEBUG("startsock accept error");
 		ret = -1;
 	}
+	closesocket(startsock);
 	return (ret);
 }
 
 private int
-uniq_open(int force)
+uniqdb_socket(int force)
 {
 	char	*t;
-	int	fd, port, retries = 0;
-	char	*portfile, *lockfile;
+	int	fd, port, thresh;
+	char	*portfile;
 	char	**ports = 0;
 
-	T_DEBUG("open");
-again:	port = 0;
-	t = uniq_dbdir(0);
+again:	T_DEBUG("retry %d", reopens);
+
+	/*
+	 * Last-ditch effort at getting debug info: if we're starting to
+	 * retry a lot, turn on tracing.
+	 */
+	if (t = getenv("_BK_UNIQ_TRACE_THRESH")) {
+		thresh = atoi(t);
+		if ((reopens >= thresh) && !getenv("BK_TRACE") && !debug_trace){
+			safe_putenv("BK_TRACE=/tmp/uniqdb.log");
+			safe_putenv("BK_TRACE_BITS=debug");
+			safe_putenv("BK_TRACE_PIDS=1");
+			safe_putenv("BK_TRACE_FILES=info.c:unique.c");
+			trace_init(prog);
+			T_DEBUG("retry threshold exceeded -- starting trace");
+			debug_trace = 1;
+		}
+	}
+
+	if (++reopens > 20) {
+		fprintf(stderr, "could not start uniq_server after %d tries\n",
+			reopens);
+		T_DEBUG("failing -- too many retries");
+		return (-1);
+	}
+	port = 0;
+	t = uniq_dbdir();
 	portfile = aprintf("%s/port", t);
-	lockfile = aprintf("%s/lock", t);
 	free(t);
 	t = 0;
 	T_DEBUG("looking for port file %s", portfile);
-	if (!force && (t = loadfile(portfile, 0)) &&
-	    (exists(lockfile) && !sccs_stalelock(lockfile, 1))) {
+	if (!force && (t = loadfile(portfile, 0))) {
 		ports = splitLine(t, "\n", 0);
 		if (nLines(ports) < 2) {
 			T_DEBUG("Too few lines!");
@@ -186,10 +253,16 @@ again:	port = 0;
 			goto out;
 		}
 		port = atoi(ports[2]);
-		T_DEBUG("found port file, port %d", port);
+		/*
+		 * This doesn't really connect. It just binds the
+		 * destination addr/port to the socket. If no
+		 * uniq_daemon is listening on this port any more,
+		 * we'll end up back here to retry.
+		 */
 		if ((fd = udp_connect("127.0.0.1", port)) < 0) {
 			T_DEBUG("udp_connect: port %d errno %d", port, errno);
 		}
+		T_DEBUG("udp socket created, port %d", port);
 	} else {
 		/* failed to find existing uniq server */
 		if (startUniqDaemon()) {
@@ -197,22 +270,13 @@ again:	port = 0;
 			fd = -1;
 			goto out;
 		}
-		if (++retries > 20) {
-			fprintf(stderr, "could not start uniq_server "
-				"after %d tries\n", retries);
-			fd = -1;
-			goto out;
-		}
 		free(t);
 		free(portfile);
-		free(lockfile);
 		force = 0;
 		goto again;
 	}
-	T_DEBUG("started");
 out:	free(t);
 	free(portfile);
-	free(lockfile);
 	return (fd);
 }
 
@@ -220,20 +284,17 @@ out:	free(t);
  * Determine the db directory, in the following order:
  *
  *   if env var _BK_UNIQ_DIR is defined, use that
- *   if "dir" is passed in, use that
  *   if "uniqdb" config option exists, use <config>/%HOST
  *   if /netbatch/.bk-%USER/bk-keys-db/%HOST is writable, use that
  *   use <dotbk>/bk-keys-db/%HOST
  */
 char *
-uniq_dbdir(char *dir)
+uniq_dbdir(void)
 {
 	char	*ret, *s;
 
 	if (s = getenv("_BK_UNIQ_DIR")) {
 		ret = strdup(s);
-	} else if (dir) {
-		ret = strdup(dir);
 	} else if (s = cfg_str(0, CFG_UNIQDB)) {
 		ret = aprintf("%s/%s",
 		    s, sccs_realhost());
