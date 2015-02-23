@@ -18251,14 +18251,16 @@ void
 dumpTimestampDB(project *p, hash *db)
 {
 	FILE	*f = 0;
-	char	*tsname;
+	int	rc;
+	char	*tstmp, *tsname;
 
 	assert(p);
 	unless (timestampDBChanged) return;
 
-	tsname = aprintf("%s/%s", proj_root(p), TIMESTAMPS);
-	unless (f = fopen(tsname, "w")) {
-		free(tsname);
+	tstmp = aprintf("%s/%s.tmp.%u",
+	    proj_root(p), TIMESTAMPS, (u32)getpid());
+	unless (f = fopen(tstmp, "w")) {
+		free(tstmp);
 		return;			/* leave stale timestamp file there */
 	}
 	EACH_HASH(db) {
@@ -18270,14 +18272,15 @@ dumpTimestampDB(project *p, hash *db)
 		    ts->gfile_mtime, ts->gfile_size,
 		    ts->permissions,
 		    ts->sfile_mtime, ts->sfile_size);
-		if (ferror(f)) {
-			/* some error writing the timestamp db so delete it */
-			unlink(tsname);
-			break;
-		}
 	}
-	free(tsname);
-	fclose(f);
+	rc = ferror(f);
+	unless (fclose(f) || rc) {
+		tsname = aprintf("%s/%s",proj_root(p), TIMESTAMPS);
+		rename(tstmp, tsname);
+		free(tsname);
+	}
+	unlink(tstmp);
+	free(tstmp);
 }
 
 void
@@ -18354,7 +18357,11 @@ updateTimestampDB(sccs *s, hash *timestamps, int different)
 	 * Anything that isn't a number is assumed to use the default.
 	 */
 	unless (clock_skew = cfg_int(s->proj, CFG_CLOCK_SKEW)) {
-		clock_skew = WEEK;
+		if (streq(cfg_str(s->proj, CFG_CLOCK_SKEW), "zero")) {
+			clock_skew = 0; /* for testing */
+		} else {
+			clock_skew = WEEK;
+		}
 	}
 
 	relpath = proj_relpath(s->proj, s->gfile);
