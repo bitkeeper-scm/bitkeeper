@@ -1853,7 +1853,7 @@ bk sfiles -c > OUT 2>ERR && fail -f OUT should fail
 echo "SCCS/s.file" > WANT.sfile
 cmpfiles WANT.sfile OUT
 cat <<EOF > WANT
-pfile: can't open SCCS/p.file
+Empty p.file SCCS/s.file - aborted.
 EOF
 cmpfiles WANT ERR
 chmod 0660 .bk/SCCS/file,p
