@@ -1,0 +1,221 @@
+echo "on Windows desktop background, right click and see:"
+cat <<EOF
+--
+BitKeeper ->
+	Clone a Repository...
+	Create a new Repository Here...
+	--
+	Open Command Prompt
+	--
+	Help...
+	About...
+--
+EOF
+cont
+
+echo "in the explorer window, right click on the white background and see:"
+cat <<EOF
+--
+--
+BitKeeper ->
+	Clone a Repository...
+	Create a Repository Here...
+	--
+	Open Command Prompt
+	--
+	Help...
+	About...
+--
+EOF
+cont
+
+echo "double click shellx-testrepos"
+echo "then double click not-a-repo"
+echo "right click on a file and see NO BitKeeper menus"
+echo "--"
+cont
+
+echo "right click dir-1 and see:"
+cat <<EOF
+--
+BitKeeper ->
+	Clone a Repository...
+	Create a Repository Here...
+	--
+	Open Command Prompt...
+	--
+	Help...
+	About...
+--
+EOF
+cont
+
+echo "select multiple files"
+echo "right click and see NO BitKeeper menus"
+echo "--"
+cont
+
+#
+cat <<EOF
+select multiple directories (dir-1 and dir-2)
+right click and see NO BitKeeper menus
+
+EOF
+cont
+
+echo "Press control-A"
+echo "right click and see NO BitKeeper menus"
+echo "--"
+cont
+
+echo "Click back once and double click bkdemorepo"
+echo "right click on a directory and see:"
+cat <<EOF
+--
+BK Checkin Tool...
+BK Diff Directory...
+BitKeeper ->
+	Checkout Files Read-Write (recursive)...
+	Checkout Files Read-Only (recursive)...
+	--
+	Clone a Repository...
+	Create a new Repository Here...
+	--
+	Open Command Prompt...
+	--
+	Help...
+	About...
+--
+EOF
+cont
+
+echo "right click on an extra file and see:"
+cat <<EOF
+--
+BK Checkin Tool...
+BitKeeper ->
+	Add Files
+	--
+	Help...
+	About...
+--
+EOF
+cont
+
+
+echo "right click on an ignored file and see:"
+cat <<EOF
+--
+BK Checkin Tool...
+BitKeeper ->
+	Help...
+	About...
+--
+EOF
+cont
+
+echo "right click on a read-only file and see:"
+cat <<EOF
+--
+BK Checkin Tool...
+BK Edit Files...
+BitKeeper ->
+	Clean Unmodified Files
+	--
+	Revision Tool...
+	--
+	Delete Files
+	--
+	Help...
+	About...
+--
+EOF
+cont
+
+echo "right click on a read-write file and see:"
+cat <<EOF
+--
+BK Checkin Tool...
+BitKeeper ->
+	Clean Unmodified Files
+	--
+	Revision Tool...
+	--
+	Delete Files
+	--
+	Help...
+	About...
+--
+EOF
+cont
+
+
+echo "right click on a modified file and see:"
+cat <<EOF
+--
+BK Checkin Tool...
+BK Diff File...
+BitKeeper ->
+	Revision Tool...
+	--
+	Revert Changes
+	--
+	Help...
+	About...
+--
+EOF
+cont
+
+echo "select all files and right click to see:"
+# XXX
+# Depending on the precise mix of files and directories, a different set
+# of menu items may appear
+cat <<EOF
+--
+BK Checkin Tool...
+BK Edit Files...
+BK Diff Files...
+BitKeeper ->
+	Clean Unmodified Files
+	--
+	Add Files
+	Delete Files
+	Revert Changes
+	--
+	Help...
+	About...
+--
+EOF
+cont
+
+echo "select all directories except the BitKeeper directory and right click to see:"
+cat <<EOF
+--
+BK Checkin Tool...
+BitKeeper ->
+	Help...
+	About...
+--
+EOF
+cont
+
+echo "select a mix of several files and directories; right click to see:"
+# XXX
+# Depending on the precise mix of files and directories, a different set
+# of menu items may appear
+cat <<EOF
+--
+BK Checkin Tool...
+BK Edit Files...
+BitKeeper ->
+	Clean Unmodified Files
+	--
+	Add Files
+	Delete Files
+	Revert Changes
+	--
+	Help...
+	About...
+--
+EOF
+cont

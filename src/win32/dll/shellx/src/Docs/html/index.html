@@ -1,0 +1,319 @@
+<h2>
+<img src="images/bk.jpg"> BitKeeper Windows Explorer Shell Extension
+</h2>
+
+<h3>Table of Contents</h3>
+<ol>
+    <li><a href="#icons">Shellx Icon Overlays</a></li>
+    <li><a href="#menus">Interacting with the Shellx Menus</a></li>
+    <li><a href="#menu-options">Shellx Menu Options</a></li>
+    <li><a href="#screenshots">Screenshots</a></li>
+</ol>
+
+<h3>Introduction</h3>
+<p>
+The BitKeeper shell extension (shellx) is provided as a means for Windows
+users to integrate with the BitKeeper environment in a way that is familiar
+to them through Windows Explorer.  The shellx allows you to browse and
+control your BitKeeper repositories through the standard Windows Explorer
+interface by providing visual feedback and context-sensitive menu
+integration for interaction with your repositories.
+</p>
+
+<a name="icons"><h3>Shellx Icon Overlays</h3></a>
+
+<p>
+When you are browsing inside of a BitKeeper repository, the icons that
+Windows Explorer provides will be augmented by overlays from the shellx
+that give you information about the state of those files within the
+repository.  This lets you know, at a glance, what state your files are in
+and what you can or need to do with them.  The shellx recognizes files in
+the following states:
+</p>
+
+<ul>
+    <li><img src="images/BkFile.jpg"> <b>Editable</b></li>
+	<ul>
+	Files that are part of the current repository and checked out in
+	edit mode are shown with a green check mark.  This means that the
+	file is editable but has no changes.
+	</ul>
+
+    <li><img src="images/BkReadonly.jpg"> <b>Read-Only</b></li>
+	<ul>
+	Files that are checked out in read-only mode will have a green circle
+	with a line through it to signify that the file is part of the
+	repository, but because it is read-only, no action can be taken on it.
+	</ul>
+
+    <li><img src="images/BkModified.jpg"> <b>Modified</b></li>
+	<ul>
+	Files that have been changed will appear with a red circle.
+	</ul>
+
+    <li><img src="images/BkIgnored.jpg"> <b>Ignored</b></li>
+	<ul>
+	Files which are being ignored by BitKeeper will appear with a grey
+	circle.
+	</ul>
+
+    <li><img src="images/BkExtra.jpg"> <b>Extra</b></li>
+	<ul>
+	Any file which is not part of the repository and is not already being
+	ignored is considered to be extra by BitKeeper.  Extra files appear
+	with a blue question mark.
+	</ul>
+</ul>
+
+<a name="menus"><h3>Interacting with the Shellx Menus</h3></a>
+
+<p>
+Right-clicking in Windows Explorer will bring up your context menu
+where you will see a BitKeeper sub-menu that changes dynamically based on
+the state of what you have selected.  The shellx has 4 "states" that it
+considers when the menus are created:
+</p>
+
+<ul>
+    <li>Not in a Repository</li>
+	<ul>
+	When you right-click on or inside a folder which is not a BitKeeper
+	repository, you get a small set of menu options that allow you to
+	clone a new repository in the current location or create a new
+	repository using the setup wizard.
+	</ul>
+
+    <li>In a Repository with Files Selected</li>
+	<ul>
+	Right-clicking on a selection of files will bring up a set of menu
+	options that allow you to operate on the files in various ways
+	depending on the state of the files selected.
+	
+	For example, selecting files which are not part of the current
+	repository (extra files) will give you the option to add the selected
+	files to the repository.  Selecting files that are modified gives you
+	the option to revert the changes in those files back to their previous,
+	unmodified state.
+	</ul>
+
+    <li>In a Repository with Folders Selected</li>
+	<ul>
+	Right-clicking on a selection of folders will add a set of menu options
+	that lets you operate on your repository recursively.  This lets you
+	checkout files for an entire folder structure in one command.
+	</ul>
+
+    <li>In a Repository with the Background of the Current Folder Selected</li>
+	<ul>
+	Right-clicking on the background of a folder will give you means options
+	that let you checkout all of the files in the current folder only.
+	</ul>
+</ul>
+
+
+<a name="menu-options"><h3>Shellx Menu Options</h3></a>
+<p>
+The menu options available when you open the context menu change based
+on the files and folders you have selected.  The following menu items
+are available:
+</p>
+
+<ul>
+    <li><img src="images/checkoutrw.jpg"> <b>BK Edit Files...</b></li>
+    <ul>
+	Shown when clicking the background of a folder or when selected
+	files are read-only.
+	Checkout files in the current folder so that they are editable.
+    </ul>
+    <li><img src="images/checkin.jpg"> <b>BK Checkin Tool...</b></li>
+	<ul>
+	Shown when clicking inside of a repository.
+	Launch the BitKeeper checkin tool.  The checkin tool will scan your
+	repository for files that have changed and allow you to comment and
+	check them in.
+	</ul>
+
+    <li><img src="images/diff.jpg"> <b>BK Diff File...</b></li>
+	<ul>
+	Shown when a single, modified file is selected.
+	Launch the BitKeeper difftool on the selected file.
+	</ul>
+
+    <li><img src="images/diffdir.jpg"> <b>BK Diff Directory...</b></li>
+	<ul>
+	Shown when clicking on the background of a folder with modified files.
+	Launch the BitKeeper difftool and show the differences in modified
+	files in the current repository.
+	</ul>
+
+    <li><img src="images/submenu.jpg"> <b>BitKeeper</b></li>
+    <ul>
+	<li><img src="images/checkoutro.jpg"> <b>Checkout Files Read-Only...</b></li>
+	<ul>
+	    Shown when clicking on the background of a folder.
+	    Checkout files in the current folder in a read-only state.
+	</ul>
+
+	<li><img src="images/checkoutrw.jpg"> <b>Checkout Files Read-Write...</b></li>
+	<ul>
+	    Shown when clicking on the background of a folder.
+	    Checkout files in the current folder in a read-write or
+	    editable state.
+	</ul>
+
+	<li><img src="images/checkoutro.jpg"> <b>Checkout Files Read-Only (recursive)...</b></li>
+	<ul>
+	Shown when selecting a single folder.
+	Checkout all files recursively in a read-only state starting in the
+	selected folder and moving down through all directories that are part
+	of the current repository.
+	</ul>
+
+	<li><img src="images/checkoutrw.jpg"> <b>Checkout Files Read-Write (recursive)...</b></li>
+	<ul>
+	Shown when selecting a single folder.
+	Checkout all files recursively in an editable state starting in the
+	selected folder and moving down through all directories that are part
+	of the current repository.
+	</ul>
+
+	<li><img src="images/revtool.jpg"> <b>Revision Tool...</b></li>
+	<ul>
+	Shown when selecting inside of a repository.
+	Launch the BitKeeper revtool to show the revision history of the current
+	repository.  If a single file is selected, the revision tool will show
+	the revision history for only the selected file instead of the entire
+	repository.
+	</ul>
+
+	<li><img src="images/changes.jpg"> <b>View Local Changesets...</b></li>
+	<ul>
+	Shown when selecting a folder or the background of a folder.
+	Show any changesets which are committed and ready to be pushed to the
+	parent repository.
+	</ul>
+
+	<li><img src="images/changes.jpg"> <b>View Remote Changesets...</b></li>
+	<ul>
+	Shown when selecting a folder or the background of a folder.
+	Show any changesets in the parent repository that have been committed
+	and need to be pulled into the current repository.
+	</ul>
+
+	<li><img src="images/push.jpg"> <b>Push Changesets to Parent</b></li>
+	<ul>
+	Shown when selecting a folder or the background of a folder.
+	Push any local changesets to the parent repository.
+	</ul>
+
+	<li><img src="images/pull.jpg"> <b>Pull Changesets from Parent</b></li>
+	<ul>
+	Shown when selecting a folder or the background of a folder.
+	Pull any new changesets from the parent repository into the local
+	repository.
+	</ul>
+
+	<li><img src="images/add.jpg"> <b>Add Files</b></li>
+	<ul>
+	Shown when selecting one or more files that are not part of the
+	repository.
+	Add the selected files that are not already part of the repository to
+	the current repository.
+	</ul>
+
+	<li><img src="images/delete.jpg"> <b>Delete Files</b></li>
+	<ul>
+	Shown when selecting unmodified files that are part of the repository.
+	Delete the selected files from the repository.
+	</ul>
+
+	<li><img src="images/revert.jpg"> <b>Revert Changes</b></li>
+	<ul>
+	Shown when selecting modified files.
+	Revert any changed files back to their unchanged state.
+	</ul>
+
+	<li><img src="images/clean.jpg"> <b>Clean Unmodified Files</b></li>
+	<ul>
+	Shown when selecting files that are part of the repository.
+	Remove any unmodified files (bk clean).
+	</ul>
+
+	<li><img src="images/clone.jpg"> <b>Clone a Repository...</b></li>
+	<ul>
+	Shown when selecting a folder or the background of a folder.
+	Clone a new repository into the current folder.
+	</ul>
+
+	<li><img src="images/create.jpg"> <b>Create a Repository Here...</b></li>
+	<ul>
+	Shown when selecting a folder that is not part of a repository.
+	Create a new repository in the current folder.
+	</ul>
+
+	<li><img src="images/command.jpg"> <b>Open Command Prompt...</b></li>
+	<ul>
+	Always shown.
+	Open a command prompt window in the current folder.
+	</ul>
+
+	<li><img src="images/help.jpg"> <b>Help...</b></li>
+	<ul>
+	Always shown.
+	Display the BitKeeper helptool.
+	</ul>
+
+	<li><img src="images/about.jpg"> <b>About...</b></li>
+	<ul>
+	Always shown.
+	Display version information about the current shellx.
+	</ul>
+    </ul>
+</ul>
+
+<a name="screenshots"><h3>Screenshots</h3></a>
+
+<table width="840" height="1000">
+<tr>
+<td>
+Shellx Icon Overlays<br/>
+<a href="images/ss_icons.png"><img src="images/ss_icons.png" width="400"
+    height="300" border="0" title="Click for Larger Image"></a>
+</td>
+
+<td>
+Selecting the folder background when not in a repository<br/>
+<a href="images/ss_norepo.png"><img src="images/ss_norepo.png" width="400"
+    height="300" border="0" title="Click for Larger Image"></a>
+</td>
+</tr>
+
+<tr>
+<td>
+Selecting an extra file<br/>
+<a href="images/ss_extra.png"><img src="images/ss_extra.png" width="400"
+    height="300" border="0" title="Click for Larger Image"></a>
+</td>
+
+<td>
+Selecting a modified file<br/>
+<a href="images/ss_modified.png"><img src="images/ss_modified.png" width="400"
+    height="300" border="0" title="Click for Larger Image"></a>
+</td>
+</tr>
+
+<tr>
+<td>
+Selecting a readonly file<br/>
+<a href="images/ss_readonly.png"><img src="images/ss_readonly.png" width="400"
+    height="300" border="0" title="Click for Larger Image"></a>
+</td>
+
+<td>
+Selecting the folder background<br/>
+<a href="images/ss_background.png"><img src="images/ss_background.png"
+    width="400" height="300" border="0" title="Click for Larger Image">
+</a>
+</td>
+</tr>
+</table>

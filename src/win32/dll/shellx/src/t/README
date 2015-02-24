@@ -1,0 +1,12 @@
+Running tests:
+
+Open a cygwin/msys window and type:
+
+    ./doit i.*
+
+The test script will pop up explorer window(s) as necessary and guide you
+through the interactive tests.  The test area is cleaned up after each
+i. script is run so the order isn't strictly important.
+
+
+Separate work proceeds on fully automatic tests.

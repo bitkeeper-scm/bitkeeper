@@ -1,0 +1,242 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "winres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""winres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "1 TYPELIB ""BkShellX.tlb""\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,1
+ PRODUCTVERSION 1,0,0,1
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x2L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "Comments", "Explorer shell extension handlers"
+            VALUE "CompanyName", "BitMover Inc."
+            VALUE "FileDescription", "BkShellX Module"
+            VALUE "FileVersion", "1, 0, 0, 1"
+            VALUE "InternalName", "BkShellX"
+            VALUE "LegalCopyright", "Copyright 2001"
+            VALUE "OriginalFilename", "BkShellX.dll"
+            VALUE "ProductName", "BkShellX Module"
+            VALUE "ProductVersion", "1, 0, 0, 1"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// REGISTRY
+//
+
+IDR_BKROOTICON          REGISTRY                "BkRootIcon.rgs"
+IDR_BKFILEICON          REGISTRY                "BkFileIcon.rgs"
+IDR_BKIGNOREDICON       REGISTRY                "BkIgnoredIcon.rgs"
+IDR_BKMODIFIEDICON      REGISTRY                "BkModifiedIcon.rgs"
+IDR_BKEXTRAICON         REGISTRY                "BkExtraIcon.rgs"
+IDR_BKREADONLYICON      REGISTRY                "BkReadonlyIcon.rgs"
+IDR_BKSHELLEXTHANDLER   REGISTRY                "BkShellExtHandler.rgs"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_CLONE DIALOG  0, 0, 301, 87
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION
+CAPTION "BitKeeper Clone"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "Clone",IDOK,244,7,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,244,24,50,14
+    LTEXT           "Parent folder/url",IDC_CLONE_PARENT_S,7,11,52,8
+    EDITTEXT        IDC_CLONE_PARENT,67,7,164,14,ES_AUTOHSCROLL
+    LTEXT           "Target folder/url",IDC_CLONE_TARGET_S,7,30,54,8
+    EDITTEXT        IDC_CLONE_TARGET,67,27,164,14,ES_AUTOHSCROLL
+    LTEXT           "Rollback Revision",IDC_CLONE_REVISION_S,7,53,58,8
+    EDITTEXT        IDC_CLONE_REVISION,67,50,164,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "Reverse",IDC_REVERSE,244,42,50,14
+    PUSHBUTTON      "Help",IDC_CLONE_HELP,244,59,50,14
+    CONTROL         "Get the demo repository",IDC_CLONE_DEMO,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,71,94,10
+END
+
+IDD_PROPSHEET DIALOG  0, 0, 186, 95
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Dialog"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",1,23,72,50,14
+    PUSHBUTTON      "Cancel",2,127,72,50,14
+    EDITTEXT        IDC_EDIT_PARENT,23,51,154,14,ES_AUTOHSCROLL
+    LTEXT           "Parent",IDC_STATIC_PARENT,23,34,90,8
+END
+
+IDD_PARENTDIALOG DIALOG  0, 0, 247, 61
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Parent"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",1,187,7,50,14
+    PUSHBUTTON      "Cancel",2,187,24,50,14
+    LTEXT           "Target URL",IDC_PARENT_PARENT_S,8,16,38,8
+    EDITTEXT        IDC_PARENT_PARENT,51,14,128,14,ES_AUTOHSCROLL
+    CONTROL         "save this as the new parent",IDC_SAVE_AS_PARENT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,50,41,131,10
+    PUSHBUTTON      "Help",IDC_URL_HELP,187,41,50,14
+END
+
+IDD_OVERWRITEDLG DIALOG  0, 0, 255, 70
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION 
+"This operation will revert the selected files to the last checked in revision. All modification will be removed. Continue?"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",1,54,39,50,14
+    PUSHBUTTON      "Cancel",2,151,39,50,14
+    LTEXT           "This operation will revert the selected files to the last checked in revision. All modification will be removed. Continue?",IDC_OVERWRITE_TEXT,34,14,195,24
+END
+
+IDD_VERSIONDIALOG DIALOGEX 0, 0, 327, 137
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "About..."
+FONT 8, "MS Sans Serif", 0, 0, 0x0
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,123,114,80,16
+    CTEXT           "BitKeeper ShellX Plugin",IDC_STATIC,7,15,313,9
+    EDITTEXT        IDC_BK_VERSION,19,32,288,81,ES_MULTILINE | ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_TRANSPARENT
+END
+
+IDD_ICONHELP DIALOGEX 0, 0, 282, 158
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Help..."
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    PUSHBUTTON      "More Help...",IDC_MOREHELP,91,129,94,14
+    CONTROL         218,IDC_STATIC,"Static",SS_BITMAP | WS_BORDER,7,7,268,115
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO 
+BEGIN
+    IDD_CLONE, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 294
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 80
+    END
+
+    IDD_PARENTDIALOG, DIALOG
+    BEGIN
+        RIGHTMARGIN, 217
+        BOTTOMMARGIN, 51
+    END
+
+    IDD_VERSIONDIALOG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 320
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 130
+    END
+
+    IDD_ICONHELP, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 275
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 151
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+IDB_ICONHELP            BITMAP                  "shellx-help.bmp"
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+1 TYPELIB "BkShellX.tlb"
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

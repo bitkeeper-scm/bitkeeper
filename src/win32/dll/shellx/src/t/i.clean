@@ -1,0 +1,49 @@
+#
+cat << EOF
+double-click on shellx-testrepos
+double-click on repo-last
+select several files
+right-click and select:
+    BitKeeper->Clean Unmodified Files
+
+and see:
+    those files disappear
+
+EOF
+cont
+
+#
+cat << EOF
+right-click on the background and select:
+    BitKeeper->Clean Unmodified Files
+
+and see:
+
+    all the files disappear
+
+EOF
+cont
+
+#
+cd "$HERE"/repo-last
+bk edit -q
+echo foo >> file-1.c
+echo bar >> file-2.c
+cat << EOF
+The files should be back and file-1 and file-2 should be modified.
+
+EOF
+cont
+
+#
+cat << EOF
+right-click the background and select:
+
+    BitKeeper->Clean Unmodified Files
+
+and see:
+
+    all the files disappear but the two modified files.
+
+EOF
+cont

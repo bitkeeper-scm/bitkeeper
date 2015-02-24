@@ -1,0 +1,16 @@
+#!/bin/sh
+
+BK_INSTALLDIR=`bk bin`
+case "X$1" in
+    Xenable)
+	regsvr32 /s $BK_INSTALLDIR/bkshellx.dll
+	echo "This change will take effect after reboot."
+	;;
+    Xdisable)
+	regsvr32 /u /s $BK_INSTALLDIR/bkshellx.dll
+	echo "This change will take effect after reboot."
+	;;
+    *)
+	echo "Usage: bk shellx enable|disable"
+	;;
+esac

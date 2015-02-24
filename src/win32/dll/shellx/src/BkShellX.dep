@@ -1,0 +1,344 @@
+# Microsoft Developer Studio Generated Dependency File, included by BkShellX.mak
+
+.\BitKeeper.cpp : \
+	".\BitKeeper.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\UtlCommon.h"\
+	
+
+.\BkEditIcon.cpp : \
+	".\BitKeeper.h"\
+	".\BkEditIcon.h"\
+	".\BkShellX.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\Unicode.h"\
+	".\Util.h"\
+	".\UtlCommon.h"\
+	
+
+.\BkExtraIcon.cpp : \
+	".\BitKeeper.h"\
+	".\BkExtraIcon.h"\
+	".\BkShellX.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\Unicode.h"\
+	".\Util.h"\
+	".\UtlCommon.h"\
+	
+
+.\BkReadOnlyIcon.cpp : \
+	".\BitKeeper.h"\
+	".\BkReadOnlyIcon.h"\
+	".\BkShellX.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\Unicode.h"\
+	".\Util.h"\
+	".\UtlCommon.h"\
+	
+
+.\BkRootIcon.cpp : \
+	".\BitKeeper.h"\
+	".\BkRootIcon.h"\
+	".\BkShellX.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\Unicode.h"\
+	".\Util.h"\
+	".\UtlCommon.h"\
+	
+
+.\BkShellX.cpp : \
+	".\BkEditIcon.h"\
+	".\BkExtraIcon.h"\
+	".\BkReadOnlyIcon.h"\
+	".\BkRootIcon.h"\
+	".\BkShellX.h"\
+	".\BkShellX_i.c"\
+	".\ContextMenuHandler.h"\
+	".\ContextMenuItemBase.h"\
+	".\CtxSetupTool.h"\
+	".\dlldatax.h"\
+	".\FileFolderSplitter.h"\
+	".\icontextmenuitem.h"\
+	".\IFileFolderSplitter.h"\
+	".\pointainer.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\UtlCommon.h"\
+	
+
+.\BkShellX.rc : \
+	".\BkEditIcon.rgs"\
+	".\BkExtraIcon.rgs"\
+	".\BkReadOnlyIcon.rgs"\
+	".\BkRootIcon.rgs"\
+	".\BkShellExtHandler.rgs"\
+	".\BkShellX.tlb"\
+	
+
+.\ContextMenuHandler.cpp : \
+	".\BitKeeper.h"\
+	".\BkCommandConstants.h"\
+	".\BkShellX.h"\
+	".\ContextMenuHandler.h"\
+	".\ContextMenuItemBase.h"\
+	".\CtxBkSubMenu.h"\
+	".\CtxCi.h"\
+	".\CtxClean.h"\
+	".\CtxDiffTool.h"\
+	".\CtxEdit.h"\
+	".\CtxGet.h"\
+	".\CtxMove.h"\
+	".\CtxNew.h"\
+	".\CtxSetupTool.h"\
+	".\CtxUnedit.h"\
+	".\FileFolderSplitter.h"\
+	".\icontextmenuitem.h"\
+	".\IFileFolderSplitter.h"\
+	".\pointainer.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\UtlCommon.h"\
+	".\utlfunctional.h"\
+	
+
+.\ContextMenuItemBase.cpp : \
+	".\BitKeeper.h"\
+	".\ContextMenuItemBase.h"\
+	".\icontextmenuitem.h"\
+	".\IFileFolderSplitter.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\UtlCommon.h"\
+	
+
+.\CtxBkSubMenu.cpp : \
+	".\ContextMenuItemBase.h"\
+	".\CtxBkSubMenu.h"\
+	".\CtxCitool.h"\
+	".\CtxClone.h"\
+	".\CtxHelpTool.h"\
+	".\CtxPull.h"\
+	".\CtxPush.h"\
+	".\CtxRevtool.h"\
+	".\CtxSetupTool.h"\
+	".\icontextmenuitem.h"\
+	".\IFileFolderSplitter.h"\
+	".\pointainer.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\UtlCommon.h"\
+	".\utlfunctional.h"\
+	
+
+.\CtxCi.cpp : \
+	".\BitKeeper.h"\
+	".\CiDialog.h"\
+	".\ContextMenuItemBase.h"\
+	".\CtxCi.h"\
+	".\icontextmenuitem.h"\
+	".\IFileFolderSplitter.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\UtlCommon.h"\
+	
+
+.\CtxCitool.cpp : \
+	".\BitKeeper.h"\
+	".\ContextMenuItemBase.h"\
+	".\CtxCitool.h"\
+	".\icontextmenuitem.h"\
+	".\IFileFolderSplitter.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\UtlCommon.h"\
+	
+
+.\CtxClean.cpp : \
+	".\BitKeeper.h"\
+	".\ContextMenuItemBase.h"\
+	".\CtxClean.h"\
+	".\icontextmenuitem.h"\
+	".\IFileFolderSplitter.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\UtlCommon.h"\
+	
+
+.\CtxClone.cpp : \
+	".\BitKeeper.h"\
+	".\CloneDialog.h"\
+	".\ContextMenuItemBase.h"\
+	".\CtxClone.h"\
+	".\icontextmenuitem.h"\
+	".\IFileFolderSplitter.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\UtlCommon.h"\
+	
+
+.\CtxDiffTool.cpp : \
+	".\BitKeeper.h"\
+	".\ContextMenuItemBase.h"\
+	".\CtxDiffTool.h"\
+	".\icontextmenuitem.h"\
+	".\IFileFolderSplitter.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\UtlCommon.h"\
+	
+
+.\CtxEdit.cpp : \
+	".\BitKeeper.h"\
+	".\ContextMenuItemBase.h"\
+	".\CtxEdit.h"\
+	".\icontextmenuitem.h"\
+	".\IFileFolderSplitter.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\UtlCommon.h"\
+	
+
+.\CtxGet.cpp : \
+	".\BitKeeper.h"\
+	".\ContextMenuItemBase.h"\
+	".\CtxGet.h"\
+	".\icontextmenuitem.h"\
+	".\IFileFolderSplitter.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\UtlCommon.h"\
+	
+
+.\CtxHelpTool.cpp : \
+	".\BitKeeper.h"\
+	".\ContextMenuItemBase.h"\
+	".\CtxHelpTool.h"\
+	".\icontextmenuitem.h"\
+	".\IFileFolderSplitter.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\UtlCommon.h"\
+	
+
+.\CtxMove.cpp : \
+	".\BitKeeper.h"\
+	".\ContextMenuItemBase.h"\
+	".\CtxMove.h"\
+	".\icontextmenuitem.h"\
+	".\IFileFolderSplitter.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\UtlCommon.h"\
+	
+
+.\CtxNew.cpp : \
+	".\BitKeeper.h"\
+	".\ContextMenuItemBase.h"\
+	".\CtxNew.h"\
+	".\icontextmenuitem.h"\
+	".\IFileFolderSplitter.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\UtlCommon.h"\
+	
+
+.\CtxPull.cpp : \
+	".\BitKeeper.h"\
+	".\ContextMenuItemBase.h"\
+	".\CtxPull.h"\
+	".\icontextmenuitem.h"\
+	".\IFileFolderSplitter.h"\
+	".\ParentDialog.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\UtlCommon.h"\
+	
+
+.\CtxPush.cpp : \
+	".\BitKeeper.h"\
+	".\ContextMenuItemBase.h"\
+	".\CtxPush.h"\
+	".\icontextmenuitem.h"\
+	".\IFileFolderSplitter.h"\
+	".\ParentDialog.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\UtlCommon.h"\
+	
+
+.\CtxRevtool.cpp : \
+	".\BitKeeper.h"\
+	".\ContextMenuItemBase.h"\
+	".\CtxRevtool.h"\
+	".\icontextmenuitem.h"\
+	".\IFileFolderSplitter.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\UtlCommon.h"\
+	
+
+.\CtxSetupTool.cpp : \
+	".\BitKeeper.h"\
+	".\ContextMenuItemBase.h"\
+	".\CtxSetupTool.h"\
+	".\icontextmenuitem.h"\
+	".\IFileFolderSplitter.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\UtlCommon.h"\
+	
+
+.\CtxUnedit.cpp : \
+	".\BitKeeper.h"\
+	".\ContextMenuItemBase.h"\
+	".\CtxUnedit.h"\
+	".\icontextmenuitem.h"\
+	".\IFileFolderSplitter.h"\
+	".\OverWriteDlg.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\UtlCommon.h"\
+	
+
+.\FileFolderSplitter.cpp : \
+	".\BitKeeper.h"\
+	".\FileFolderSplitter.h"\
+	".\IFileFolderSplitter.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\UtlCommon.h"\
+	
+
+.\OverWriteDlg.cpp : \
+	".\OverWriteDlg.h"\
+	
+
+.\propSheet.cpp : \
+	".\propSheet.h"\
+	
+
+.\StdAfx.cpp : \
+	"..\..\program files\microsoft visual studio\vc98\include\basetsd.h"\
+	".\StdAfx.h"\
+	
+
+.\Unicode.cpp : \
+	".\BitKeeper.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\Unicode.h"\
+	".\UtlCommon.h"\
+	
+
+.\Util.cpp : \
+	".\BitKeeper.h"\
+	".\stringizer.h"\
+	".\tstring.h"\
+	".\Util.h"\
+	".\UtlCommon.h"\
+	

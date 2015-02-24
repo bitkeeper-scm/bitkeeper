@@ -1,0 +1,67 @@
+#
+cat << EOF
+double-click on shellx-testrepos
+double-click on bkdemorepo
+double-click on bigdir
+right-click on the background
+select BitKeeper->Checkout Files Read-only
+and see:
+icons with an green dash overlay appear
+
+EOF
+cont
+
+#
+cat << EOF
+right-click on the background
+select BK Edit Files
+Did all the dash marks change to checks?
+
+EOF
+cont
+cd "$HERE"/bkdemorepo/bigdir
+count=`bk sfiles -l | wc -l`
+if [ $count -eq 0 ]; then
+	echo "bk sfiles -l output was empty"
+	echo "previous test FAILed"
+fi
+
+#
+cat << EOF
+Preparing for the next test,
+reverting the files to read-only
+
+EOF
+bk clean; bk get -q
+echo "Did all the checks change back to dashes?"
+cont
+
+#
+cat << EOF
+right-click a single file and select BK Edit Files
+
+Did the dash on that file change to a check?
+
+EOF
+cont
+count=`bk sfiles -l | wc -l`
+if [ $count -ne 1 ]; then
+	echo "bk sfiles -l output line count should be 1"
+	echo "previous test FAILed"
+fi
+
+#
+cat << EOF
+type ctrl-A to select all the files
+right-click and select BK Edit Files
+
+Did all the dash marks change to checks?
+
+EOF
+cont
+cd "$HERE"/bkdemorepo/bigdir
+count=`bk sfiles -l | wc -l`
+if [ $count -le 1 ]; then
+	echo "bk sfiles -l output line count should be > 1"
+	echo "previous test FAILed"
+fi

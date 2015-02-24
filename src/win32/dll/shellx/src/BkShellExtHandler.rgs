@@ -1,0 +1,70 @@
+HKCR
+{
+	BkShellX.ContextMenuHandler.1 = s 'ContextMenuHandler Class'
+	{
+		CLSID = s '{67E86F67-834F-4FF9-910C-CBD6CEA32610}'
+	}
+	BkShellX.ContextMenuHandler = s 'ContextMenuHandler Class'
+	{
+		CLSID = s '{67E86F67-834F-4FF9-910C-CBD6CEA32610}'
+		CurVer = s 'BkShellX.ContextMenuHandler.1'
+	}
+	NoRemove CLSID
+	{
+		ForceRemove {67E86F67-834F-4FF9-910C-CBD6CEA32610} = s 'ContextMenuHandler Class'
+		{
+			ProgID = s 'BkShellX.ContextMenuHandler.1'
+			VersionIndependentProgID = s 'BkShellX.ContextMenuHandler'
+			InprocServer32 = s '%MODULE%'
+			{
+				val ThreadingModel = s 'Apartment'
+			}
+			'TypeLib' = s '{80816027-7D1D-4371-8B35-A78FCB5A3FAF}'
+		}
+	}
+
+  NoRemove AllFileSystemObjects
+  {
+    NoRemove shellex
+    {
+      NoRemove ContextMenuHandlers
+      {
+        ForceRemove 'BitKeeper' = s '{67E86F67-834F-4FF9-910C-CBD6CEA32610}'
+      }
+    }
+  }
+
+  NoRemove Directory
+  {
+	NoRemove Background
+	{
+	  NoRemove shellex
+      {
+        NoRemove ContextMenuHandlers
+        {
+          ForceRemove 'BitKeeper' = s '{67E86F67-834F-4FF9-910C-CBD6CEA32610}'
+        }
+      }
+	}
+  }
+}
+
+HKLM
+{
+	NoRemove Software
+	{
+		NoRemove Classes
+		{
+			NoRemove *
+			{
+				NoRemove shellex
+				{
+					NoRemove PropertySheetHandlers
+					{
+						ForceRemove 'BitKeeper' = s '{67E86F67-834F-4FF9-910C-CBD6CEA32610}'
+					}
+				}
+			}
+		}
+	}
+}
