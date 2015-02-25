@@ -507,7 +507,8 @@ locktest_main(int ac, char **av)
 	}
 	unless (lock = av[1]) exit(1);
 	if (av[2]) n = atoi(av[2]);
-	sprintf(tmp, "/tmp/lock-%s", sccs_getuser());
+	sprintf(tmp, "%s/lock-%s",
+	    getenv("TMP") ? getenv("TMP") : "/tmp", sccs_getuser());
 	if (streq(lock, "O_EXCL")) {
 		unlink(tmp);
 		fd = open(tmp, O_CREAT|O_RDWR|O_EXCL, 0600);
