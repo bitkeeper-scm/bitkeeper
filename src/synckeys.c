@@ -99,6 +99,10 @@ probekey(sccs *s, char *rev, int syncRoot, FILE *f)
 			fprintf(f, "ERROR-Can't find revision %s\n", rev);
 			return (1);
 		}
+		while (TAG(s, d)) {
+			d = PARENT(s, d);
+			assert(d);
+		}
 		range_gone(s, d, D_GONE);
 	} else {
 		d = sccs_top(s);

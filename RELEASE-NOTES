@@ -1,4 +1,17 @@
 ============================================================================
+Release notes for BitKeeper version 6.1.3 (released Feb 28, 2015)
+
+    This is a bugfix release
+
+Bugfixes
+
+  bk pull
+    In some cases 'bk pull -r$TAGKEY' would fail. This fixes that.
+
+  bk checkout
+    Add documetation for this command that has existed since bk-4.1.1
+
+============================================================================
 Release notes for BitKeeper version 6.1.2 (released Feb 25, 2015)
 
     This is a bugfix release

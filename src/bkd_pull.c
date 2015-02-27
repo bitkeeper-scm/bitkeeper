@@ -160,6 +160,10 @@ cmd_pull_part2(int ac, char **av)
 			out("@END@\n");
 			// LMXXX - shouldn't there be a return(1) here?
 		}
+		while (TAG(cset, d)) {
+			d = PARENT(cset, d);
+			assert(d);
+		}
 		/*
 		 * Need the 'gone' region marked RED
 		 */

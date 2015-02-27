@@ -192,6 +192,10 @@ err:		freeLines(envVar, free);
 			fprintf(stderr, "push: can't find rev %s\n", opts.rev);
 			exit(1);
 		}
+		while (TAG(s_cset, opts.d)) {
+			opts.d = PARENT(s_cset, opts.d);
+			assert(opts.d);
+		}
 	}
 	EACH (urls) {
 		if (i > 1) {
