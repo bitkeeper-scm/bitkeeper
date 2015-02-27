@@ -66,6 +66,7 @@ typedef int16_t flex_int16_t;
 typedef uint16_t flex_uint16_t;
 typedef int32_t flex_int32_t;
 typedef uint32_t flex_uint32_t;
+typedef uint64_t flex_uint64_t;
 #else
 typedef signed char flex_int8_t;
 typedef short int flex_int16_t;
@@ -73,6 +74,7 @@ typedef int flex_int32_t;
 typedef unsigned char flex_uint8_t; 
 typedef unsigned short int flex_uint16_t;
 typedef unsigned int flex_uint32_t;
+#endif /* ! C99 */
 
 /* Limits of integral types. */
 #ifndef INT8_MIN
@@ -102,8 +104,6 @@ typedef unsigned int flex_uint32_t;
 #ifndef UINT32_MAX
 #define UINT32_MAX             (4294967295U)
 #endif
-
-#endif /* ! C99 */
 
 #endif /* ! FLEXINT_H */
 
@@ -161,15 +161,7 @@ typedef unsigned int flex_uint32_t;
 
 /* Size of default input buffer. */
 #ifndef YY_BUF_SIZE
-#ifdef __ia64__
-/* On IA-64, the buffer size is 16k, not 8k.
- * Moreover, YY_BUF_SIZE is 2*YY_READ_BUF_SIZE in the general case.
- * Ditto for the __ia64__ case accordingly.
- */
-#define YY_BUF_SIZE 32768
-#else
 #define YY_BUF_SIZE 16384
-#endif /* __ia64__ */
 #endif
 
 /* The state buf must be large enough to hold one state per character in the main buffer.
@@ -181,7 +173,12 @@ typedef unsigned int flex_uint32_t;
 typedef struct yy_buffer_state *YY_BUFFER_STATE;
 #endif
 
-extern int L_leng;
+#ifndef YY_TYPEDEF_YY_SIZE_T
+#define YY_TYPEDEF_YY_SIZE_T
+typedef size_t yy_size_t;
+#endif
+
+extern yy_size_t L_leng;
 
 extern FILE *L_in, *L_out;
 
@@ -207,11 +204,6 @@ extern FILE *L_in, *L_out;
 
 #define unput(c) yyunput( c, (yytext_ptr)  )
 
-#ifndef YY_TYPEDEF_YY_SIZE_T
-#define YY_TYPEDEF_YY_SIZE_T
-typedef size_t yy_size_t;
-#endif
-
 #ifndef YY_STRUCT_YY_BUFFER_STATE
 #define YY_STRUCT_YY_BUFFER_STATE
 struct yy_buffer_state
@@ -229,7 +221,7 @@ struct yy_buffer_state
 	/* Number of characters read into yy_ch_buf, not including EOB
 	 * characters.
 	 */
-	int yy_n_chars;
+	yy_size_t yy_n_chars;
 
 	/* Whether we "own" the buffer - i.e., we know we created it,
 	 * and can realloc() it to grow it, and should free() it to
@@ -299,8 +291,8 @@ static YY_BUFFER_STATE * yy_buffer_stack = 0; /**< Stack as an array. */
 
 /* yy_hold_char holds the character lost when L_text is formed. */
 static char yy_hold_char;
-static int yy_n_chars;		/* number of characters read into yy_ch_buf */
-int L_leng;
+static yy_size_t yy_n_chars;		/* number of characters read into yy_ch_buf */
+yy_size_t L_leng;
 
 /* Points to current character in buffer. */
 static char *yy_c_buf_p = (char *) 0;
@@ -328,7 +320,7 @@ static void L__init_buffer (YY_BUFFER_STATE b,FILE *file  );
 
 YY_BUFFER_STATE L__scan_buffer (char *base,yy_size_t size  );
 YY_BUFFER_STATE L__scan_string (yyconst char *yy_str  );
-YY_BUFFER_STATE L__scan_bytes (yyconst char *bytes,int len  );
+YY_BUFFER_STATE L__scan_bytes (yyconst char *bytes,yy_size_t len  );
 
 void *L_alloc (yy_size_t  );
 void *L_realloc (void *,yy_size_t  );
@@ -386,7 +378,7 @@ static void yy_fatal_error (yyconst char msg[]  );
  */
 #define YY_DO_BEFORE_ACTION \
 	(yytext_ptr) = yy_bp; \
-	L_leng = (size_t) (yy_cp - yy_bp); \
+	L_leng = (yy_size_t) (yy_cp - yy_bp); \
 	(yy_hold_char) = *yy_cp; \
 	*yy_cp = '\0'; \
 	(yy_c_buf_p) = yy_cp;
@@ -1233,7 +1225,7 @@ goto find_rule; \
 #define YY_MORE_ADJ 0
 #define YY_RESTORE_YY_MORE_OFFSET
 char *L_text;
-#line 1 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 #define YY_NO_INPUT 1
 
 
@@ -1251,7 +1243,7 @@ char *L_text;
 
 
 
-#line 24 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 24 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 /*
  * Copyright (c) 2006-2008 BitMover, Inc.
  */
@@ -1260,13 +1252,17 @@ char *L_text;
 #include "tclInt.h"
 #include "Lcompile.h"
 #include "Lgrammar.h"
+#include "blowfish.h"
+#include "tomcrypt.h"
+#include "randseed.h"
 #include "tommath.h"
+extern u8 bkey[];
 
 private void	extract_re_delims(char c);
 private int	include_pop();
-private int	include_push(FILE *f, char *name);
-private FILE *	include_search(char *file, char **path, int cwdOnly);
-private FILE *	include_try(Tcl_Obj *fileObj, int *found);
+private int	include_push(Tcl_Channel chan, char *name);
+private Tcl_Channel include_search(char *file, char **path, int cwdOnly);
+private Tcl_Channel include_try(Tcl_Obj *fileObj, int *found);
 private void	inject(char *s);
 private void	interpol_lbrace();
 private void	interpol_pop();
@@ -1281,7 +1277,6 @@ private void	tally_newlines(char *s, int len, int tally);
 // Stack for tracking include() statements.
 #define INCLUDE_STACK_SZ	10
 typedef struct {
-	FILE	*file;
 	char	*name;
 	char	*dir;
 	int	line;
@@ -1412,14 +1407,14 @@ tally_newlines(char *s, int len, int tally)
 	}
 }
 
-private FILE *
+private Tcl_Channel
 include_try(Tcl_Obj *fileObj, int *found)
 {
-	int	new;
-	FILE	*f;
-	char	*file = Tcl_GetString(fileObj);
-	char	*path;
-	Tcl_Obj	*pathObj;
+	int		new;
+	Tcl_Channel	chan;
+	char		*file = Tcl_GetString(fileObj);
+	char		*path;
+	Tcl_Obj		*pathObj;
 
 	/*
 	 * See if the normalized path has been included before.  If the path
@@ -1433,17 +1428,19 @@ include_try(Tcl_Obj *fileObj, int *found)
 	} else {
 		pathObj = Tcl_ObjPrintf("%s/%s", L->dir, file);
 	}
+	Tcl_IncrRefCount(pathObj);
 
 	path = Tcl_GetString(pathObj);
 	Tcl_CreateHashEntry(include_table, path, &new);
 	if (new) {
-		f = fopen(path, "r");
-		*found = (f != NULL);
-		return (f);
+		chan = Tcl_FSOpenFileChannel(L->interp, pathObj, "r", 0666);
+		*found = (chan != NULL);
+		return (chan);
 	} else {
 		*found = 1;  // already included
 		return (NULL);
 	}
+	Tcl_DecrRefCount(pathObj);
 }
 
 /*
@@ -1455,13 +1452,13 @@ include_try(Tcl_Obj *fileObj, int *found)
  * For #include "file" (cwdOnly == 1) look only in the directory
  * where the script doing the #include resides.
  */
-private FILE *
+private Tcl_Channel
 include_search(char *file, char **path, int cwdOnly)
 {
-	int	found, len;
-	FILE	*f = NULL;
-	Tcl_Obj	*binObj = NULL;
-	Tcl_Obj *fileObj;
+	int		found, len;
+	Tcl_Channel	chan;
+	Tcl_Obj		*binObj = NULL;
+	Tcl_Obj		*fileObj;
 
 	unless (include_table) {
 		include_table = (Tcl_HashTable *)ckalloc(sizeof(Tcl_HashTable));
@@ -1471,7 +1468,7 @@ include_search(char *file, char **path, int cwdOnly)
 	fileObj = Tcl_NewStringObj(file, -1);
 	Tcl_IncrRefCount(fileObj);
 	if ((Tcl_FSGetPathType(fileObj) == TCL_PATH_ABSOLUTE) || cwdOnly) {
-		f = include_try(fileObj, &found);
+		chan = include_try(fileObj, &found);
 	} else {
 		/* Try $BIN/include */
 		binObj = TclGetObjNameOfExecutable();
@@ -1482,20 +1479,20 @@ include_search(char *file, char **path, int cwdOnly)
 			fileObj = TclPathPart(L->interp, binObj,
 			    TCL_PATH_DIRNAME);
 			Tcl_AppendPrintfToObj(fileObj, "/include/%s", file);
-			f = include_try(fileObj, &found);
+			chan = include_try(fileObj, &found);
 			if (found) goto done;
 		}
 		/* Try /usr/local/include/L */
 		Tcl_DecrRefCount(fileObj);
 		fileObj = Tcl_ObjPrintf("/usr/local/include/L/%s", file);
 		Tcl_IncrRefCount(fileObj);
-		f = include_try(fileObj, &found);
+		chan = include_try(fileObj, &found);
 		if (found) goto done;
 		/* Try /usr/include/L */
 		Tcl_DecrRefCount(fileObj);
 		fileObj = Tcl_ObjPrintf("/usr/include/L/%s", file);
 		Tcl_IncrRefCount(fileObj);
-		f = include_try(fileObj, &found);
+		chan = include_try(fileObj, &found);
 	}
  done:
 	unless (found) {
@@ -1503,33 +1500,67 @@ include_search(char *file, char **path, int cwdOnly)
 	}
 	if (path) *path = ckstrdup(Tcl_GetString(fileObj));
 	Tcl_DecrRefCount(fileObj);
-	return (f);
+	return (chan);
 }
 
 private int
-include_push(FILE *f, char *name)
+include_push(Tcl_Channel chan, char *name)
 {
 	YY_BUFFER_STATE buf;
+	Tcl_Obj		*objPtr;
+	char		*dec = NULL, *script;
+	unsigned long	declen;
+	int		len, ret;
+	blf_ctx		C;
 
+	/* Read the file into memory. */
+	objPtr = Tcl_NewObj();
+	Tcl_IncrRefCount(objPtr);
+	if (Tcl_ReadChars(chan, objPtr, -1, 0) < 0) {
+		Tcl_Close(L->interp, chan);
+		L_err("error reading include file %s", name);
+		return (0);
+	}
+	Tcl_Close(L->interp, chan);
+
+	/* If it is encrypted, decrypt it. */
+	script = Tcl_GetStringFromObj(objPtr, &len);
+	if (strncmp(script, "#%-\n", 4) == 0) {
+		dec = ckalloc(len);
+		declen = len;
+		if (base64_decode((unsigned char *)script, len,
+				  (unsigned char *)dec, &declen)) {
+			ckfree(dec);
+			L_err("error decrypting include file %s", name);
+			return (0);
+		}
+		blf_key(&C, bkey, 10);
+		blf_dec(&C, (u32 *)dec, declen/8);
+		script = dec;
+		len = declen;
+	}
+
+	/* Create a new flex buffer with the file contents. */
 	if (include_top >= INCLUDE_STACK_SZ) {
 		L_err("include file nesting too deep -- aborting");
 		while (include_pop()) ;
-		return (0);
+		ret = 0;
 	} else {
-		buf = L__create_buffer(f,YY_BUF_SIZE);
 		++include_top;
-		include_stk[include_top].file = f;
 		include_stk[include_top].name = L->file;
 		include_stk[include_top].dir  = L->dir;
 		include_stk[include_top].line = L->line;
 		include_stk[include_top].buf = YY_CURRENT_BUFFER;
-		L__switch_to_buffer(buf);
+		buf = L__scan_bytes(script,len);
 		L->file = name;
 		L->dir  = L_dirname(L->file);
 		L->line = 1;
 		inject("#line 1\n");
-		return (1);
+		ret = 1;
 	}
+	Tcl_DecrRefCount(objPtr);
+	if (dec) ckfree(dec);
+	return (ret);
 }
 
 private int
@@ -1541,7 +1572,6 @@ include_pop()
 		L->file = include_stk[include_top].name;
 		L->dir  = include_stk[include_top].dir;
 		L->line = include_stk[include_top].line;
-		fclose(include_stk[include_top].file);
 		L__delete_buffer(YY_CURRENT_BUFFER);
 		L__switch_to_buffer(include_stk[include_top].buf);
 		--include_top;
@@ -1583,7 +1613,7 @@ canonical_num(char *num)
 #undef optarg
 #undef optind
 
-#line 1587 "Lscanner.c"
+#line 1617 "Lscanner.c"
 
 #define INITIAL 0
 #define re_delim 1
@@ -1638,7 +1668,7 @@ FILE *L_get_out (void );
 
 void L_set_out  (FILE * out_str  );
 
-int L_get_leng (void );
+yy_size_t L_get_leng (void );
 
 char *L_get_text (void );
 
@@ -1688,12 +1718,7 @@ static int input (void );
     
 /* Amount of stuff to slurp up with each read. */
 #ifndef YY_READ_BUF_SIZE
-#ifdef __ia64__
-/* On IA-64, the buffer size is 16k, not 8k */
-#define YY_READ_BUF_SIZE 16384
-#else
 #define YY_READ_BUF_SIZE 8192
-#endif /* __ia64__ */
 #endif
 
 /* Copy whatever the last rule matched to the standard output. */
@@ -1701,7 +1726,7 @@ static int input (void );
 /* This used to be an fputs(), but since the string might contain NUL's,
  * we now use fwrite().
  */
-#define ECHO do { if (fwrite( L_text, L_leng, 1, L_out )) {} } while (0)
+#define ECHO fwrite( L_text, L_leng, 1, L_out )
 #endif
 
 /* Gets input and stuffs it into "buf".  number of characters read, or YY_NULL,
@@ -1712,7 +1737,7 @@ static int input (void );
 	if ( YY_CURRENT_BUFFER_LVALUE->yy_is_interactive ) \
 		{ \
 		int c = '*'; \
-		size_t n; \
+		yy_size_t n; \
 		for ( n = 0; n < max_size && \
 			     (c = getc( L_in )) != EOF && c != '\n'; ++n ) \
 			buf[n] = (char) c; \
@@ -1797,9 +1822,9 @@ YY_DECL
 	register char *yy_cp, *yy_bp;
 	register int yy_act;
     
-#line 356 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 394 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 
-#line 1803 "Lscanner.c"
+#line 1828 "Lscanner.c"
 
 	if ( !(yy_init) )
 		{
@@ -1870,6 +1895,7 @@ yy_match:
 yy_find_action:
 		yy_current_state = *--(yy_state_ptr);
 		(yy_lp) = yy_accept[yy_current_state];
+goto find_rule; /* Shut up GCC warning -Wall */
 find_rule: /* we branch to this label when backing up */
 		for ( ; ; ) /* until we find what rule we matched */
 			{
@@ -1895,473 +1921,473 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 358 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 396 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LPAREN;
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 359 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 397 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_RPAREN;
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 360 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 398 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 interpol_lbrace(); return T_LBRACE;
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 361 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 399 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LBRACKET;
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 362 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 400 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_RBRACKET;
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 363 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 401 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_COMMA;
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 364 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 402 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BANG;
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 365 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 403 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PLUS;
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 366 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 404 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_MINUS;
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 367 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 405 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_STAR;
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 368 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 406 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_SLASH;
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 369 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 407 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PERC;
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 370 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 408 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQPLUS;
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 371 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 409 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQMINUS;
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 372 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 410 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQSTAR;
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 373 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 411 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQSLASH;
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 374 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 412 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQPERC;
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 375 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 413 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQBITAND;
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 376 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 414 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQBITOR;
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 377 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 415 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQBITXOR;
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 378 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 416 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQLSHIFT;
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 379 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 417 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQRSHIFT;
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 380 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 418 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQDOT;
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 381 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 419 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PLUSPLUS;
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 382 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 420 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_MINUSMINUS;
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 383 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 421 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ANDAND;
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 384 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 422 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_OROR;
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 385 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 423 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BITAND;
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 386 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 424 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BITOR;
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 387 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 425 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BITXOR;
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 388 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 426 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BITNOT;
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 389 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 427 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LSHIFT;
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 390 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 428 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_RSHIFT;
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 391 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 429 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQUALS;
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 392 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 430 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_SEMI;
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 393 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 431 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DOT;
 	YY_BREAK
 case 37:
 /* rule 37 can match eol */
 YY_RULE_SETUP
-#line 394 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 432 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_STRCAT;
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 395 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 433 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DOTDOT;
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 396 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 434 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ELLIPSIS;
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 397 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 435 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_CLASS;
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 398 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 436 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EXTERN;
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 399 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 437 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_RETURN;
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 400 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 438 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_VOID;
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 401 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 439 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_STRING;
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 402 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 440 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_WIDGET;
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 403 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 441 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_INT;
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 404 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 442 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_FLOAT;
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 405 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 443 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_POLY;
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
-#line 406 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 444 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_SPLIT;
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 407 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 445 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_IF;
 	YY_BREAK
 case 51:
 YY_RULE_SETUP
-#line 408 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 446 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ELSE;
 	YY_BREAK
 case 52:
 YY_RULE_SETUP
-#line 409 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 447 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_UNLESS;
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 410 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 448 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_WHILE;
 	YY_BREAK
 case 54:
 YY_RULE_SETUP
-#line 411 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 449 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DO;
 	YY_BREAK
 case 55:
 YY_RULE_SETUP
-#line 412 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 450 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_FOR;
 	YY_BREAK
 case 56:
 YY_RULE_SETUP
-#line 413 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 451 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_STRUCT;
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
-#line 414 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 452 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_TYPEDEF;
 	YY_BREAK
 case 58:
 YY_RULE_SETUP
-#line 415 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 453 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DEFINED;
 	YY_BREAK
 case 59:
 YY_RULE_SETUP
-#line 416 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 454 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_FOREACH;
 	YY_BREAK
 case 60:
 YY_RULE_SETUP
-#line 417 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 455 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BREAK;
 	YY_BREAK
 case 61:
 YY_RULE_SETUP
-#line 418 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 456 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_CONTINUE;
 	YY_BREAK
 case 62:
 YY_RULE_SETUP
-#line 419 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 457 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_INSTANCE;
 	YY_BREAK
 case 63:
 YY_RULE_SETUP
-#line 420 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 458 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PRIVATE;
 	YY_BREAK
 case 64:
 YY_RULE_SETUP
-#line 421 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 459 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PUBLIC;
 	YY_BREAK
 case 65:
 YY_RULE_SETUP
-#line 422 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 460 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_CONSTRUCTOR;
 	YY_BREAK
 case 66:
 YY_RULE_SETUP
-#line 423 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 461 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DESTRUCTOR;
 	YY_BREAK
 case 67:
 YY_RULE_SETUP
-#line 424 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 462 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EXPAND;
 	YY_BREAK
 case 68:
 YY_RULE_SETUP
-#line 425 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 463 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ARGUSED;
 	YY_BREAK
 case 69:
 YY_RULE_SETUP
-#line 426 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 464 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ATTRIBUTE;
 	YY_BREAK
 case 70:
 YY_RULE_SETUP
-#line 427 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 465 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ATTRIBUTE;
 	YY_BREAK
 case 71:
 YY_RULE_SETUP
-#line 428 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 466 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_OPTIONAL;
 	YY_BREAK
 case 72:
 YY_RULE_SETUP
-#line 429 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 467 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_MUSTBETYPE;
 	YY_BREAK
 case 73:
 YY_RULE_SETUP
-#line 430 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 468 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_GOTO;
 	YY_BREAK
 case 74:
 YY_RULE_SETUP
-#line 431 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 469 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_SWITCH;
 	YY_BREAK
 case 75:
 YY_RULE_SETUP
-#line 432 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 470 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_CASE;
 	YY_BREAK
 case 76:
 YY_RULE_SETUP
-#line 433 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 471 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DEFAULT;
 	YY_BREAK
 case 77:
 YY_RULE_SETUP
-#line 434 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 472 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_TRY;
 	YY_BREAK
 case 78:
 YY_RULE_SETUP
-#line 435 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 473 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ARROW;
 	YY_BREAK
 case 79:
 YY_RULE_SETUP
-#line 436 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 474 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQ;
 	YY_BREAK
 case 80:
 YY_RULE_SETUP
-#line 437 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 475 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_NE;
 	YY_BREAK
 case 81:
 YY_RULE_SETUP
-#line 438 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 476 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LT;
 	YY_BREAK
 case 82:
 YY_RULE_SETUP
-#line 439 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 477 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LE;
 	YY_BREAK
 case 83:
 YY_RULE_SETUP
-#line 440 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 478 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_GT;
 	YY_BREAK
 case 84:
 YY_RULE_SETUP
-#line 441 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 479 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_GE;
 	YY_BREAK
 case 85:
 YY_RULE_SETUP
-#line 442 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 480 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQUALEQUAL;
 	YY_BREAK
 case 86:
 YY_RULE_SETUP
-#line 443 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 481 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_NOTEQUAL;
 	YY_BREAK
 case 87:
 YY_RULE_SETUP
-#line 444 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 482 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_GREATER;
 	YY_BREAK
 case 88:
 YY_RULE_SETUP
-#line 445 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 483 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_GREATEREQ;
 	YY_BREAK
 case 89:
 YY_RULE_SETUP
-#line 446 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 484 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LESSTHAN;
 	YY_BREAK
 case 90:
 YY_RULE_SETUP
-#line 447 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 485 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LESSTHANEQ;
 	YY_BREAK
 case 91:
 YY_RULE_SETUP
-#line 448 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 486 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_POINTS;
 	YY_BREAK
 case 92:
 YY_RULE_SETUP
-#line 449 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 487 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_COLON;
 	YY_BREAK
 case 93:
 YY_RULE_SETUP
-#line 450 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 488 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_QUESTION;
 	YY_BREAK
 case 94:
 YY_RULE_SETUP
-#line 451 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 489 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/*
 				 * ?> marks the end of a script or expr
@@ -2383,7 +2409,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 95:
 YY_RULE_SETUP
-#line 469 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 507 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("'and','or','xor','not' are "
 				      "unimplemented reserved words");
@@ -2392,7 +2418,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 96:
 YY_RULE_SETUP
-#line 474 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 512 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("'and','or','xor','not' are "
 				      "unimplemented reserved words");
@@ -2401,7 +2427,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 97:
 YY_RULE_SETUP
-#line 479 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 517 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("'and','or','xor','not' are "
 				      "unimplemented reserved words");
@@ -2410,7 +2436,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 98:
 YY_RULE_SETUP
-#line 484 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 522 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("'and','or','xor','not' are "
 				      "unimplemented reserved words");
@@ -2419,7 +2445,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 99:
 YY_RULE_SETUP
-#line 489 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 527 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				Type *t = L_typedef_lookup(L_text);
 				if (t) {
@@ -2434,7 +2460,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 100:
 YY_RULE_SETUP
-#line 500 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 538 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/*
 				 * Push back the : and return a T_ID
@@ -2452,7 +2478,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 101:
 YY_RULE_SETUP
-#line 514 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 552 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_lval.s = ckstrdup(L_text);
 				return T_PATTERN;
@@ -2460,7 +2486,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 102:
 YY_RULE_SETUP
-#line 518 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 556 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/* Regular expression submatches */
 				L_lval.s = ckstrdup(L_text);
@@ -2469,7 +2495,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 103:
 YY_RULE_SETUP
-#line 523 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 561 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/*
 				 * Skip any leading 0's which would
@@ -2483,7 +2509,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 104:
 YY_RULE_SETUP
-#line 533 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 571 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/*
 				 * Create a leading 0 so it looks like
@@ -2496,7 +2522,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 105:
 YY_RULE_SETUP
-#line 542 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 580 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_lval.s = canonical_num(L_text);
 				return T_INT_LITERAL;
@@ -2504,7 +2530,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 106:
 YY_RULE_SETUP
-#line 546 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 584 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_lval.s = ckstrdup(L_text);
 				return T_FLOAT_LITERAL;
@@ -2513,7 +2539,7 @@ YY_RULE_SETUP
 case 107:
 /* rule 107 can match eol */
 YY_RULE_SETUP
-#line 550 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 588 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				int	line = strtoul(L_text+5, NULL, 10);
 
@@ -2529,7 +2555,7 @@ YY_RULE_SETUP
 case 108:
 /* rule 108 can match eol */
 YY_RULE_SETUP
-#line 561 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 599 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				int	line  = strtoul(L_text+5, NULL, 10);
 				char	*beg  = strchr(L_text, '"') + 1;
@@ -2549,7 +2575,7 @@ YY_RULE_SETUP
 case 109:
 /* rule 109 can match eol */
 YY_RULE_SETUP
-#line 576 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 614 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				--L->line;  // since \n already scanned
 				L_err("malformed #line");
@@ -2558,17 +2584,17 @@ YY_RULE_SETUP
 	YY_BREAK
 case 110:
 YY_RULE_SETUP
-#line 581 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 619 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				char	*beg  = strchr(L_text, '"') + 1;
 				char	*end  = strrchr(L_text, '"');
 				char	*name = ckstrndup(beg, end-beg);
-				FILE	*f;
+				Tcl_Channel chan;
 
-				f = include_search(name, NULL, 1);
+				chan = include_search(name, NULL, 1);
 
 				undo_yy_user_action();
-				if (f && !include_push(f, name)) {
+				if (chan && !include_push(chan, name)) {
 					/* Bail if includes nest too deeply. */
 					yyterminate();
 				}
@@ -2576,19 +2602,19 @@ YY_RULE_SETUP
 	YY_BREAK
 case 111:
 YY_RULE_SETUP
-#line 595 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 633 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				char	*beg  = strchr(L_text, '<') + 1;
 				char	*end  = strrchr(L_text, '>');
 				char	*name = ckstrndup(beg, end-beg);
 				char	*path = NULL;
-				FILE	*f;
+				Tcl_Channel chan;
 
-				f = include_search(name, &path, 0);
+				chan = include_search(name, &path, 0);
 				ckfree(name);
 
 				undo_yy_user_action();
-				if (f && !include_push(f, path)) {
+				if (chan && !include_push(chan, path)) {
 					/* Bail if includes nest too deeply. */
 					yyterminate();
 				}
@@ -2596,7 +2622,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 112:
 YY_RULE_SETUP
-#line 611 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 649 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("malformed #include");
 				yy_push_state(eat_through_eol);
@@ -2604,13 +2630,13 @@ YY_RULE_SETUP
 	YY_BREAK
 case 113:
 YY_RULE_SETUP
-#line 615 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 653 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PRAGMA;
 	YY_BREAK
 case 114:
 /* rule 114 can match eol */
 YY_RULE_SETUP
-#line 616 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 654 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/*
 				 * Rather than using a start condition
@@ -2637,7 +2663,7 @@ YY_RULE_SETUP
 case 115:
 /* rule 115 can match eol */
 YY_RULE_SETUP
-#line 638 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 676 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				--L->line;  // since \n already scanned
 				unless (L->line == 1) {
@@ -2652,44 +2678,44 @@ YY_RULE_SETUP
 case 116:
 /* rule 116 can match eol */
 YY_RULE_SETUP
-#line 648 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 686 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 117:
 YY_RULE_SETUP
-#line 649 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 687 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 118:
 /* rule 118 can match eol */
 YY_RULE_SETUP
-#line 650 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 688 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 119:
 YY_RULE_SETUP
-#line 651 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 689 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_push_state(str_double); STRBUF_START(L->token_off);
 	YY_BREAK
 case 120:
 YY_RULE_SETUP
-#line 652 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 690 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_push_state(str_single); STRBUF_START(L->token_off);
 	YY_BREAK
 case 121:
 YY_RULE_SETUP
-#line 653 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 691 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_push_state(str_backtick); STRBUF_START(L->token_off);
 	YY_BREAK
 case 122:
 YY_RULE_SETUP
-#line 654 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 692 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_push_state(comment);
 	YY_BREAK
 case 123:
 /* rule 123 can match eol */
 YY_RULE_SETUP
-#line 655 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 693 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2703,7 +2729,7 @@ YY_RULE_SETUP
 case 124:
 /* rule 124 can match eol */
 YY_RULE_SETUP
-#line 664 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 702 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2717,7 +2743,7 @@ YY_RULE_SETUP
 case 125:
 /* rule 125 can match eol */
 YY_RULE_SETUP
-#line 673 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 711 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(subst_re);
@@ -2732,7 +2758,7 @@ YY_RULE_SETUP
 case 126:
 /* rule 126 can match eol */
 YY_RULE_SETUP
-#line 683 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 721 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		char	*p, *q;
 
@@ -2759,7 +2785,7 @@ YY_RULE_SETUP
 case 127:
 /* rule 127 can match eol */
 YY_RULE_SETUP
-#line 705 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 743 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		char	*p, *q;
 
@@ -2785,11 +2811,11 @@ YY_RULE_SETUP
 /* illegal here documents (bad stuff before or after the delim) */
 case 128:
 /* rule 128 can match eol */
-#line 728 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 766 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 129:
 /* rule 129 can match eol */
 YY_RULE_SETUP
-#line 728 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 766 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_synerr("<<- unsupported, use =\\n\\t<<END to strip one "
 			 "leading tab");
@@ -2798,7 +2824,7 @@ YY_RULE_SETUP
 case 130:
 /* rule 130 can match eol */
 YY_RULE_SETUP
-#line 732 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 770 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_synerr("illegal characters after here-document delimeter");
 	}
@@ -2806,7 +2832,7 @@ YY_RULE_SETUP
 case 131:
 /* rule 131 can match eol */
 YY_RULE_SETUP
-#line 735 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 773 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_synerr("illegal characters before here-document delimeter");
 	}
@@ -2814,7 +2840,7 @@ YY_RULE_SETUP
 case 132:
 /* rule 132 can match eol */
 YY_RULE_SETUP
-#line 738 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 776 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_synerr("illegal characters after here-document delimeter");
 	}
@@ -2822,7 +2848,7 @@ YY_RULE_SETUP
 case 133:
 /* rule 133 can match eol */
 YY_RULE_SETUP
-#line 741 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 779 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_synerr("illegal characters before here-document delimeter");
 	}
@@ -2837,7 +2863,7 @@ YY_RULE_SETUP
 case 134:
 /* rule 134 can match eol */
 YY_RULE_SETUP
-#line 752 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 790 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		int	line = strtoul(L_text+5, NULL, 10);
 
@@ -2852,7 +2878,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 135:
 YY_RULE_SETUP
-#line 763 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 801 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_lval.s = ckstrdup(STRBUF_STRING());
 		STRBUF_STOP(L_lloc.beg);
@@ -2867,11 +2893,11 @@ YY_RULE_SETUP
 case 136:
 /* rule 136 can match eol */
 YY_RULE_SETUP
-#line 773 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 811 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, L_leng);
 	YY_BREAK
 case YY_STATE_EOF(lhtml):
-#line 774 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 812 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		unless (STRBUF_STARTED()) yyterminate();
 		L_lval.s = ckstrdup(STRBUF_STRING());
@@ -2888,7 +2914,7 @@ case YY_STATE_EOF(lhtml):
 case 137:
 /* rule 137 can match eol */
 YY_RULE_SETUP
-#line 787 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 825 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		unput(L_text[0]);
 		undo_yy_user_action();
@@ -2906,13 +2932,13 @@ YY_RULE_SETUP
 case 138:
 /* rule 138 can match eol */
 YY_RULE_SETUP
-#line 801 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 839 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 /* / starts an RE */
 case 139:
 YY_RULE_SETUP
-#line 803 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 841 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2926,7 +2952,7 @@ YY_RULE_SETUP
 	 */
 case 140:
 YY_RULE_SETUP
-#line 813 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 851 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2937,7 +2963,7 @@ YY_RULE_SETUP
 /* nothing else starts an RE */
 case 141:
 YY_RULE_SETUP
-#line 820 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 858 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		unput(L_text[0]);
 		undo_yy_user_action();
@@ -2954,13 +2980,13 @@ YY_RULE_SETUP
 case 142:
 /* rule 142 can match eol */
 YY_RULE_SETUP
-#line 833 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 871 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 /* / starts an RE */
 case 143:
 YY_RULE_SETUP
-#line 835 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 873 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2976,7 +3002,7 @@ YY_RULE_SETUP
 	 */
 case 144:
 YY_RULE_SETUP
-#line 847 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 885 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2987,7 +3013,7 @@ YY_RULE_SETUP
 /* nothing else starts an RE */
 case 145:
 YY_RULE_SETUP
-#line 854 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 892 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		unput(L_text[0]);
 		undo_yy_user_action();
@@ -2998,14 +3024,14 @@ YY_RULE_SETUP
 
 case 146:
 YY_RULE_SETUP
-#line 862 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 900 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_RBRACE;
 	YY_BREAK
 
 
 case 147:
 YY_RULE_SETUP
-#line 866 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 904 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (interpol_rbrace()) {
 					STRBUF_START(L_lloc.end);
@@ -3023,7 +3049,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 148:
 YY_RULE_SETUP
-#line 880 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 918 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_synerr("illegal character");
 	}
@@ -3032,28 +3058,28 @@ YY_RULE_SETUP
 
 case 149:
 YY_RULE_SETUP
-#line 886 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 924 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\r", 1);
 	YY_BREAK
 case 150:
 YY_RULE_SETUP
-#line 887 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 925 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\n", 1);
 	YY_BREAK
 case 151:
 YY_RULE_SETUP
-#line 888 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 926 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\t", 1);
 	YY_BREAK
 case 152:
-#line 890 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 928 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 153:
-#line 891 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 929 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 154:
-#line 892 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 930 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 155:
 YY_RULE_SETUP
-#line 892 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 930 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				char	buf[TCL_UTF_MAX];
 				int	ch;
@@ -3064,18 +3090,18 @@ YY_RULE_SETUP
 case 156:
 /* rule 156 can match eol */
 YY_RULE_SETUP
-#line 898 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 936 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text+1, 1);
 	YY_BREAK
 case 157:
 YY_RULE_SETUP
-#line 899 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 937 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("$", 1);
 	YY_BREAK
 case 158:
 /* rule 158 can match eol */
 YY_RULE_SETUP
-#line 900 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 938 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("missing string terminator \"");
 				STRBUF_ADD("\n", 1);
@@ -3083,12 +3109,12 @@ YY_RULE_SETUP
 	YY_BREAK
 case 159:
 YY_RULE_SETUP
-#line 904 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 942 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, L_leng);
 	YY_BREAK
 case 160:
 YY_RULE_SETUP
-#line 905 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 943 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3099,12 +3125,12 @@ YY_RULE_SETUP
 case 161:
 /* rule 161 can match eol */
 YY_RULE_SETUP
-#line 911 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 949 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 162:
 YY_RULE_SETUP
-#line 912 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 950 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				yy_pop_state();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3116,45 +3142,45 @@ YY_RULE_SETUP
 
 case 163:
 YY_RULE_SETUP
-#line 921 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 959 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\\", 1);
 	YY_BREAK
 case 164:
 YY_RULE_SETUP
-#line 922 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 960 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("'", 1);
 	YY_BREAK
 case 165:
 /* rule 165 can match eol */
 YY_RULE_SETUP
-#line 923 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 961 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\n", 1);
 	YY_BREAK
 case 166:
 /* rule 166 can match eol */
 YY_RULE_SETUP
-#line 924 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 962 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("missing string terminator \'");
 				STRBUF_ADD("\n", 1);
 			}
 	YY_BREAK
 case 167:
-#line 929 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 967 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 168:
 YY_RULE_SETUP
-#line 929 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 967 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, L_leng);
 	YY_BREAK
 case 169:
 /* rule 169 can match eol */
 YY_RULE_SETUP
-#line 930 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 968 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 170:
 YY_RULE_SETUP
-#line 931 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 969 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				yy_pop_state();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3166,28 +3192,28 @@ YY_RULE_SETUP
 
 case 171:
 YY_RULE_SETUP
-#line 940 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 978 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text+1, 1);
 	YY_BREAK
 case 172:
 /* rule 172 can match eol */
 YY_RULE_SETUP
-#line 941 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 979 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 /* ignore \<newline> */
 	YY_BREAK
 case 173:
-#line 943 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 981 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 174:
-#line 944 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 982 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 175:
 YY_RULE_SETUP
-#line 944 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 982 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, L_leng);
 	YY_BREAK
 case 176:
 /* rule 176 can match eol */
 YY_RULE_SETUP
-#line 945 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 983 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("missing string terminator `");
 				STRBUF_ADD("\n", 1);
@@ -3195,7 +3221,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 177:
 YY_RULE_SETUP
-#line 949 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 987 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3205,7 +3231,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 178:
 YY_RULE_SETUP
-#line 955 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 993 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				yy_pop_state();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3223,7 +3249,7 @@ case 179:
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up L_text again */
 YY_RULE_SETUP
-#line 967 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1005 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				int	len;
 				char	*p = L_text;
@@ -3263,7 +3289,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 180:
 YY_RULE_SETUP
-#line 1003 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1041 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				char	*p = strstr(L_text, here_pfx);
 				if (p == L_text) {
@@ -3278,35 +3304,35 @@ YY_RULE_SETUP
 case 181:
 /* rule 181 can match eol */
 YY_RULE_SETUP
-#line 1013 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1051 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, 1);
 	YY_BREAK
 
 
 case 182:
 YY_RULE_SETUP
-#line 1017 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1055 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\\", 1);
 	YY_BREAK
 case 183:
 YY_RULE_SETUP
-#line 1018 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1056 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("$", 1);
 	YY_BREAK
 case 184:
 YY_RULE_SETUP
-#line 1019 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1057 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("`", 1);
 	YY_BREAK
 case 185:
 /* rule 185 can match eol */
 YY_RULE_SETUP
-#line 1020 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1058 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 // ignore \<newline>
 	YY_BREAK
 case 186:
 YY_RULE_SETUP
-#line 1021 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1059 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3316,7 +3342,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 187:
 YY_RULE_SETUP
-#line 1027 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1065 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_lval.s = ckstrdup(STRBUF_STRING());
 				STRBUF_STOP(L_lloc.beg);
@@ -3330,7 +3356,7 @@ case 188:
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up L_text again */
 YY_RULE_SETUP
-#line 1034 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1072 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				int	len;
 				char	*p = L_text;
@@ -3370,7 +3396,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 189:
 YY_RULE_SETUP
-#line 1070 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1108 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				char	*p = strstr(L_text, here_pfx);
 				if (p == L_text) {
@@ -3385,7 +3411,7 @@ YY_RULE_SETUP
 case 190:
 /* rule 190 can match eol */
 YY_RULE_SETUP
-#line 1080 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1118 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, 1);
 	YY_BREAK
 
@@ -3393,24 +3419,24 @@ STRBUF_ADD(L_text, 1);
 case 191:
 /* rule 191 can match eol */
 YY_RULE_SETUP
-#line 1084 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1122 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 192:
 YY_RULE_SETUP
-#line 1085 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1123 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 193:
 YY_RULE_SETUP
-#line 1086 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1124 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_pop_state();
 	YY_BREAK
 
 
 case 194:
 YY_RULE_SETUP
-#line 1090 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1128 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3420,7 +3446,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 195:
 YY_RULE_SETUP
-#line 1096 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1134 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if ((L_text[1] == re_end_delim) ||
 				    (L_text[1] == re_start_delim)) {
@@ -3433,7 +3459,7 @@ YY_RULE_SETUP
 case 196:
 /* rule 196 can match eol */
 YY_RULE_SETUP
-#line 1104 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1142 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				--L->line;  // since \n already scanned
 				L_err("run-away regular expression");
@@ -3446,7 +3472,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 197:
 YY_RULE_SETUP
-#line 1113 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1151 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				// Convert $3 to \3 (regexp capture reference).
 				STRBUF_ADD("\\", 1);
@@ -3455,7 +3481,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 198:
 YY_RULE_SETUP
-#line 1118 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1156 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (*L_text == re_end_delim) {
 					L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3489,7 +3515,7 @@ YY_RULE_SETUP
 case 199:
 /* rule 199 can match eol */
 YY_RULE_SETUP
-#line 1149 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1187 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				--L->line;  // since \n already scanned
 				L_err("run-away regular expression");
@@ -3500,7 +3526,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 200:
 YY_RULE_SETUP
-#line 1156 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1194 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				extract_re_delims(*L_text);
 				yy_pop_state();
@@ -3510,7 +3536,7 @@ YY_RULE_SETUP
 
 case 201:
 YY_RULE_SETUP
-#line 1163 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1201 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_lval.s = ckstrdup(L_text);
 				yy_pop_state();
@@ -3520,7 +3546,7 @@ YY_RULE_SETUP
 case 202:
 /* rule 202 can match eol */
 YY_RULE_SETUP
-#line 1168 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1206 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				unput(L_text[0]);
 				undo_yy_user_action();
@@ -3533,19 +3559,19 @@ YY_RULE_SETUP
 
 case 203:
 YY_RULE_SETUP
-#line 1178 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1216 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 204:
 /* rule 204 can match eol */
 YY_RULE_SETUP
-#line 1179 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1217 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_pop_state();
 	YY_BREAK
 
 case 205:
 YY_RULE_SETUP
-#line 1182 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1220 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/* This rule matches a char if no other does. */
 				L_synerr("illegal character");
@@ -3568,7 +3594,7 @@ case YY_STATE_EOF(here_doc_interp):
 case YY_STATE_EOF(here_doc_nointerp):
 case YY_STATE_EOF(eat_through_eol):
 case YY_STATE_EOF(lhtml_expr_start):
-#line 1187 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1225 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (in_lhtml) {
 					yy_user_action();  // for line #s
@@ -3579,10 +3605,10 @@ case YY_STATE_EOF(lhtml_expr_start):
 	YY_BREAK
 case 206:
 YY_RULE_SETUP
-#line 1194 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1232 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 ECHO;
 	YY_BREAK
-#line 3586 "Lscanner.c"
+#line 3612 "Lscanner.c"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -3766,7 +3792,7 @@ static int yy_get_next_buffer (void)
 
 	else
 		{
-			int num_to_read =
+			yy_size_t num_to_read =
 			YY_CURRENT_BUFFER_LVALUE->yy_buf_size - number_to_move - 1;
 
 		while ( num_to_read <= 0 )
@@ -3782,7 +3808,7 @@ static int yy_get_next_buffer (void)
 
 		/* Read in more data. */
 		YY_INPUT( (&YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[number_to_move]),
-			(yy_n_chars), (size_t) num_to_read );
+			(yy_n_chars), num_to_read );
 
 		YY_CURRENT_BUFFER_LVALUE->yy_n_chars = (yy_n_chars);
 		}
@@ -3888,7 +3914,7 @@ static int yy_get_next_buffer (void)
 	if ( yy_cp < YY_CURRENT_BUFFER_LVALUE->yy_ch_buf + 2 )
 		{ /* need to shift things up to make room */
 		/* +2 for EOB chars. */
-		register int number_to_move = (yy_n_chars) + 2;
+		register yy_size_t number_to_move = (yy_n_chars) + 2;
 		register char *dest = &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[
 					YY_CURRENT_BUFFER_LVALUE->yy_buf_size + 2];
 		register char *source =
@@ -3937,7 +3963,7 @@ static int yy_get_next_buffer (void)
 
 		else
 			{ /* need more input */
-			int offset = (yy_c_buf_p) - (yytext_ptr);
+			yy_size_t offset = (yy_c_buf_p) - (yytext_ptr);
 			++(yy_c_buf_p);
 
 			switch ( yy_get_next_buffer(  ) )
@@ -3961,7 +3987,7 @@ static int yy_get_next_buffer (void)
 				case EOB_ACT_END_OF_FILE:
 					{
 					if ( L_wrap( ) )
-						return EOF;
+						return 0;
 
 					if ( ! (yy_did_buffer_switch_on_eof) )
 						YY_NEW_FILE;
@@ -4215,7 +4241,7 @@ void L_pop_buffer_state (void)
  */
 static void L_ensure_buffer_stack (void)
 {
-	int num_to_alloc;
+	yy_size_t num_to_alloc;
     
 	if (!(yy_buffer_stack)) {
 
@@ -4307,17 +4333,16 @@ YY_BUFFER_STATE L__scan_string (yyconst char * yystr )
 
 /** Setup the input buffer state to scan the given bytes. The next call to L_lex() will
  * scan from a @e copy of @a bytes.
- * @param yybytes the byte buffer to scan
- * @param _yybytes_len the number of bytes in the buffer pointed to by @a bytes.
+ * @param bytes the byte buffer to scan
+ * @param len the number of bytes in the buffer pointed to by @a bytes.
  * 
  * @return the newly allocated buffer state object.
  */
-YY_BUFFER_STATE L__scan_bytes  (yyconst char * yybytes, int  _yybytes_len )
+YY_BUFFER_STATE L__scan_bytes  (yyconst char * yybytes, yy_size_t  _yybytes_len )
 {
 	YY_BUFFER_STATE b;
 	char *buf;
-	yy_size_t n;
-	int i;
+	yy_size_t n, i;
     
 	/* Get memory for full buffer, including space for trailing EOB's. */
 	n = _yybytes_len + 2;
@@ -4431,7 +4456,7 @@ FILE *L_get_out  (void)
 /** Get the length of the current token.
  * 
  */
-int L_get_leng  (void)
+yy_size_t L_get_leng  (void)
 {
         return L_leng;
 }
@@ -4595,7 +4620,7 @@ void L_free (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 1194 "/home/rob/tcl-upgrade/dev-with-8_6_b3/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1232 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 
 void
