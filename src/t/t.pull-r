@@ -111,3 +111,16 @@ echo l | bk pull $Q -rOLDNAME 2> ERR || {
 	exit 1
 }
 echo OK
+
+echo $N Test pull -r\$TAGKEY..........................................$NL
+cd "$HERE"
+commercial proj2
+bk clone $Q . ../copy2 || fail
+bk tag $Q atag || fail
+cd ../copy2
+KEY=`bk changes -R -qand:MD5KEY:`
+bk pull $Q -r$KEY || fail
+bk changes -R -qa > OUT || fail
+touch EMPTY
+cmpfiles EMPTY OUT || fail should be empty
+echo OK

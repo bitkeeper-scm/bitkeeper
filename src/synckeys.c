@@ -103,6 +103,10 @@ probekey(sccs *s, char *rev, u32 flags, FILE *fout)
 			fprintf(fout, "ERROR-Can't find revision %s\n", rev);
 			return (1);
 		}
+		while (TAG(s, d)) {
+			d = PARENT(s, d);
+			assert(d);
+		}
 		range_gone(s, d, D_GONE);
 	} else {
 		d = sccs_top(s);
