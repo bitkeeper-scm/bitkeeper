@@ -457,9 +457,9 @@ user => users
 citool gui
 csettool gui
 difftool gui
-explorer => helptool
 fm3tool gui
 fmtool gui
+gui => helptool
 helptool gui
 installtool gui
 msgtool gui
