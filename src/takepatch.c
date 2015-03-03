@@ -709,7 +709,7 @@ private	int
 extractDelta(char *name, sccs *sreal, sccs *scratch,
     int newFile, FILE *f, hash *countFiles, int *np)
 {
-	ser_t	d, parent = 0, tmp;
+	ser_t	d, tmp;
 	char	buf[MAXPATH];
 	char	*b, *sep;
 	char	*pid = 0;
@@ -733,8 +733,8 @@ extractDelta(char *name, sccs *sreal, sccs *scratch,
 	 * isn't used by current code (fastpatch+sfio), so this is good
 	 * enough.
 	 */
-	if (parent = sccs_findKey(sreal, b)) {
-		unless (opts->tableGCA) opts->tableGCA = strdup(b);
+	if (!opts->tableGCA && sccs_findKey(sreal, b)) {
+		opts->tableGCA = strdup(b);
 	}
 
 	/* buffer the required init block */
@@ -796,8 +796,14 @@ save:
 			init = 0;
 		}
 		p = new(patch);
-		p->initMem = init;
-		init = 0;
+		if (init) {
+			size_t	len;
+
+			p->initMem.buf = fmem_close(init, &len);
+			p->initMem.len = len;
+			p->initMem.size = len; /* really +1 */
+			init = 0;
+		}
 		if (opts->echo>5) fprintf(stderr, "\n");
 		p->remote = 1;
 		p->pid = pid;
@@ -1021,8 +1027,11 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		 * p->pid won't be set for 1.0 delta.
 		 */
 		dF = p->diffMem;
-		iF = p->initMem;
-		p->initMem = 0;
+		if (p->initMem.buf) {
+			iF = fmem_buf(p->initMem.buf, p->initMem.len);
+		} else {
+			iF = 0;
+		}
 		d = 0;	/* in this case, parent */
 		if (iF && p->pid) {
 			unless (d = sccs_findKey(s, p->pid)) {
@@ -1497,8 +1506,11 @@ apply:
 		if (p->initFile) {
 			iF = fopen(p->initFile, "r");
 		} else {
-			iF = p->initMem;
-			p->initMem = 0;
+			if (p->initMem.buf) {
+				iF = fmem_buf(p->initMem.buf, p->initMem.len);
+			} else {
+				iF = 0;
+			}
 		}
 		if (p->diffFile) {
 			dF = fopen(p->diffFile, "r");
@@ -1551,8 +1563,11 @@ apply:
 		if (p->initFile) {
 			iF = fopen(p->initFile, "r");
 		} else {
-			iF = p->initMem;
-			p->initMem = 0;
+			if (p->initMem.buf) {
+				iF = fmem_buf(p->initMem.buf, p->initMem.len);
+			} else {
+				iF = 0;
+			}
 		}
 		if (p->diffFile) {
 			dF = fopen(p->diffFile, "r");
@@ -1812,7 +1827,7 @@ freePatchList(void)
 			free(p->diffFile);
 		}
 		if (p->localFile) free(p->localFile);
-		if (p->initMem) fclose(p->initMem);
+		if (p->initMem.buf) free(p->initMem.buf);
 		free(p->resyncFile);
 		if (p->pid) free(p->pid);
 		if (p->me) free(p->me);

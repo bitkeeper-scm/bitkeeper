@@ -861,7 +861,7 @@ typedef struct patch {
 	char	*me;		/* unique key of this delta */
 	char	*sortkey;	/* sortable key of this delta, if different */
 	char	*initFile;	/* RESYNC/BitKeeper/init-1, only if !initMem */
-	FILE	*initMem;	/* points into fmem patch */
+	DATA	initMem;	/* block of init data */
 	char	*diffFile;	/* RESYNC/BitKeeper/diff-1, only if !diffMem */
 	FILE	*diffMem;	/* points into mmapped patch */
 	ser_t	serial;		/* in cset path, save the corresponding ser */
