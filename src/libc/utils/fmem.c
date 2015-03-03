@@ -64,20 +64,25 @@ fmem(void)
 	return (f);
 }
 
+/*
+ * Create a FILE* to provide read-only access to a region of memory
+ * The memory is addessed directly by the FILE* so it needs to stay
+ * around until fclose() is called.
+ */
 FILE *
 fmem_buf(void *buf, int len)
 {
-	FILE	*f = fmem();
+	FMEM	*fm = new(FMEM);
+	FILE	*f;
 
-	/*
-	 * This is a hack currently but I can make it do what I want later
-	 */
-	if (len) {
-		fwrite(buf, 1, len, f);
-	} else {
-		fputs(buf, f);
-	}
-	rewind(f);
+	f = funopen(fm, fmemRead, 0, fmemSeek, fmemClose);
+	fm->f = f;
+	fm->d.buf = buf;
+	unless (len) len = strlen(buf);
+	fm->d.len = len;
+	fm->d.size = len+1;
+	fmemSetvbuf(fm);
+	f->_flags |= __SCLN;	/* make fgetline() return copy */
 	return (f);
 }
 
@@ -93,11 +98,8 @@ ftrunc(FILE *f, off_t offset)
 	FMEM	*fm;
 	int	rc;
 
-	unless (f->_flags & (__SWR|__SRW)) {
-		errno = EBADF;
-		return (-1);
-	}
-	fflush(f);
+	assert(f);
+	if (fflush(f)) return (-1);
 	if (f->_close == fmemClose) {
 		/* this is a FMEM*, trunc but don't free memory */
 		fm = f->_cookie;
@@ -130,12 +132,13 @@ fmem_peek(FILE *f, size_t *len)
 	fm = f->_cookie;
 	assert(fm);
 	/* discard/flush any currently buffered data */
-	fflush(f);
+	unless (fflush(f)) {   /* fails if readonly */
+		/* make sure we have room for the null */
+		data_resize(&fm->d, fm->d.len+1);
+		fm->d.buf[fm->d.len] = 0;/* force trailing null (not in len) */
+		fmemSetvbuf(fm);
+	}
 	if (len) *len = fm->d.len; /* optionally return len */
-	/* make sure we have room for the null */
-	data_resize(&fm->d, fm->d.len+1);
-	fm->d.buf[fm->d.len] = 0;	/* force trailing null (not in len) */
-	fmemSetvbuf(fm);
 	return (fm->d.buf);
 }
 
@@ -168,6 +171,11 @@ fmem_close(FILE *f, size_t *len)
 	FMEM	*fm;
 	char	*ret;
 
+	unless (f->_write) {
+		errno = EBADF;
+		fclose(f);
+		return (0);
+	}
 	fm = f->_cookie;
 	assert(fm);
 	/* discard/flush any currently buffered data */
@@ -241,6 +249,10 @@ fmemWrite(void *cookie, const char *buf, int len)
 	size_t	newoff;
 
 	assert(fm);
+	unless (fm->f->_write) {
+		errno = EBADF;
+		return (-1);
+	}
 	newoff = fm->offset + len;
 	if (buf == fm->d.buf + fm->offset) {
 		assert(newoff <= fm->d.size);
@@ -282,10 +294,14 @@ fmemSeek(void *cookie, fpos_t offset, int whence)
 		 */
 		fm->offset = offset;
 		if (offset >= fm->d.len) {
+			unless (fm->f->_write) {
+				errno = EBADF;
+				return (-1);
+			}
 			data_resize(&fm->d, offset + MINSZ);
 			fm->d.len = offset;
+			fmemSetvbuf(fm);
 		}
-		fmemSetvbuf(fm);
 	}
 	return (offset);
 }
@@ -296,7 +312,7 @@ fmemClose(void *cookie)
 	FMEM	*fm = cookie;
 
 	assert(fm);
-	if (fm->d.buf) free(fm->d.buf);
+	if (fm->d.buf && fm->f->_write) free(fm->d.buf);
 	free(fm);
 	return (0);
 }
@@ -399,6 +415,14 @@ fmem_tests(void)
 	assert(*p == 'm');
 	p = fgetline(f);
 	assert(p == 0);
+	rc = fclose(f);
+	assert(rc == 0);
+
+	strcpy(buf, "this is a test");
+	f = fmem_buf(buf, 0);
+	while (fgetc(f) != EOF);
+	rc = fseek(f, 0, SEEK_SET);
+	assert(rc == 0);
 	rc = fclose(f);
 	assert(rc == 0);
 }
