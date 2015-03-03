@@ -140,6 +140,7 @@ resend:	if (send(sock, msg, msglen, 0) < 0) {
 		T_DEBUG("recv error %d (%s) after %d secs, "
 			"resends %d reopens %d",
 			errno, strerror(errno), timeout-3, resends, reopens);
+		force = 1;
 		goto reopen;
 	}
 

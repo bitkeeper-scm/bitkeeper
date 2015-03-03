@@ -300,8 +300,13 @@ info_server_main(int ac, char **av)
 		}
 		/* possibly bail early for test & debug */
 		if ((s = getenv("_BK_UNIQ_REQS")) && (++nreqs >= atoi(s))) {
-			T_DEBUG("debug exit after %d reqs", nreqs);
-			break;
+			if (s[strlen(s)-1] == '!') {
+				T_DEBUG("simulate crash after %d reqs", nreqs);
+				exit(1);
+			} else {
+				T_DEBUG("debug exit after %d reqs", nreqs);
+				break;
+			}
 		}
 	}
 	T_DEBUG("cleaning up (port %d, dir %s)...", sockport(sock), opts.dir);
@@ -1020,6 +1025,7 @@ quit(int quiet)
 		out = aprintf("error stopping uniq_server: %s", s);
 		ret = 1;
 	}
+	fclose(fin);
 	unless (quiet) printf("%s\n", out);
 	T_DEBUG("%s", out);
 	free(out);

@@ -77,3 +77,11 @@ kill_uniq "$HERE/.bk/bk-keys-db"
 echo "get ChangeSet" | bk info_shell --uniqdb | grep ChangeSet >GOT
 egrep '[^|]+\|ChangeSet\|[^|]+\|[^|]+$' GOT >OUT || fail -f GOT bad key
 echo OK
+
+echo $N Check recover from uniq_server crash ........................$NL
+cd "$HERE/project"
+echo foo >uniqdb-crash
+# This causes the uniq_server to process one request and then exit(1)
+# to simulate a crash that leaves around stale lock and port files.
+_BK_UNIQ_REQS=1! bk new $Q uniqdb-crash >OUT 2>&1 || fail -f OUT delta failed
+echo OK
