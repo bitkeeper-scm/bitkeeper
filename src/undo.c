@@ -110,7 +110,7 @@ undo_main(int ac,  char **av)
 	}
 	opts->empty = hash_new(HASH_MEMHASH);
 	trigger_setQuiet(opts->quiet);
-	cmdlog_lock(CMD_WRLOCK|CMD_NESTED_WRLOCK);
+	cmdlog_lock(standalone ? CMD_WRLOCK : (CMD_WRLOCK|CMD_NESTED_WRLOCK));
 	if (undoLimit(0, &must_have)) limitwarning = 1;
 	save_log_markers();
 	// XXX - be nice to do this only if we actually are going to undo

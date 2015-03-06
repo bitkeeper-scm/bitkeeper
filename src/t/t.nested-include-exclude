@@ -1,0 +1,168 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+echo $N Do cset -x+ while in a component with some file unclean .....$NL
+nested project
+touch last
+echo base > gcc/foo
+bk new $Q -l gcc/foo last
+bk commit $Q -f
+echo newfile > gdb/bar
+echo delta > gcc/foo
+bk delta $Q -al -fydelta gcc/foo last gdb/bar
+bk commit $Q -f
+bk clone $Q -s. . ../product
+echo modified > last
+bk cset -x+ 2> ERR && fail -f ERR
+grep -q "Successfully cleaned up all files." ERR || fail -f ERR
+echo OK
+
+echo $N Do cset -x+ while in a component ............................$NL
+bk unedit last
+bk cset $Q -x+ || fail
+bk get $Q gcc/foo
+grep -q base gcc/foo || fail wrong contents
+echo OK
+
+echo $N Sane msg when cset -x in a repo with a unpop comp ...........$NL
+cd "$HERE/product"
+bk cset -x+ 2> ERR && fail -f ERR
+# Because rootkeys don't have comp path, cmpkeys still gives random results
+bk _sort < ERR > GOT
+cat <<EOF > WANT
+
+
+!!! Cset operation failed.  Undoing changes... !!!
+Component 'gcc' not populated.  Populate and try again.
+Component 'gdb' not populated.  Populate and try again.
+Successfully cleaned up all files.
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test a poly cset -x .........................................$NL
+cd "$HERE"
+commercial comp
+echo old > foo
+bk new $Q -l foo
+bk commit $Q -yfoo
+cd ..
+nested nest
+echo 'poly: on!' >> ../.bk/config
+bk attach $Q ../comp comp
+cd ../comp
+bk edit $Q foo
+echo mid > foo
+bk delta $Q -ymid foo
+bk commit $Q -yfoo
+bk tag $Q step1
+bk edit $Q foo
+echo new > foo
+bk delta $Q -ynew foo
+bk commit $Q -yfoo
+bk tag $Q step2
+cd ../nest
+bk clone $Q . ../copy
+bk --cd=comp port $Q -rstep1 "$HERE/comp"
+bk --cd=comp port $Q -rstep2 "$HERE/comp"
+bk tag $Q yourport
+cd ../copy
+bk portal $Q .
+bk --cd=comp port $Q "$HERE/comp"
+bk tag $Q myport
+bk pull $Q
+bk edit $Q -x+ comp/foo
+bk delta $Q -yx+ comp/foo
+bk commit $Q -yexfoo
+bk cset $Q -xmyport
+bk cset $Q -xyourport
+bk prs -hnd':DS: :DI:' comp/foo > GOT
+cat <<EOF > WANT
+7 -4
+6 -3,4
+5 -4
+4 
+3 
+2 
+EOF
+cmpfiles WANT GOT
+echo OK
+
+# Test ported over from t.nested
+echo $N Make sure cset -x works in components and product ...........$NL
+cd "$HERE/project"
+bk setup gcc4
+bk gate $Q -r
+bk portal $Q -r
+# make a couple of csets in components
+echo "aline" > afile
+bk new $Q afile
+cd gdb
+echo "aline" > afile
+bk new $Q afile
+bk commit -S $Q -y"add afile"
+cd ../gcc4
+echo "aline" > afile
+bk new $Q afile
+bk commit -S $Q -y"add afile"
+cd ..
+bk commit $Q -y"added afile to gdb and gcc4"
+# add a content cset since cset -x doesn't support removing new files
+bk edit $Q afile
+echo "lineb" >> afile
+bk delta $Q -y"add lineb" afile
+cd gdb
+bk edit $Q afile
+echo "lineb" >> afile
+bk delta $Q -y"add lineb" afile
+bk commit -S $Q -y"add lineb"
+cd ../gcc4
+bk edit $Q afile
+echo "lineb" >> afile
+bk delta $Q -y"add lineb" afile
+bk commit -S $Q -y"add lineb"
+cd ..
+bk commit $Q -y"add lineb"
+CSET=`bk changes -nd:KEY: -r+`
+# add another cset on top
+bk edit $Q afile
+echo "linec" >> afile
+bk delta $Q -y"add linec"
+cd gdb
+bk edit $Q afile
+echo "linec" >> afile
+bk delta $Q -y"add linec" afile
+bk commit -S $Q -y"add linec"
+cd ../gcc4
+bk edit $Q afile
+echo "linec" >> afile
+bk delta $Q -y"add linec" afile
+bk commit -S $Q -y"add linec"
+cd ..
+bk commit $Q -y"add linec"
+# okay, now test the cset -x
+# in the component, it should work
+cd gdb
+bk cset -qx+ >OUT 2>&1 || fail -f OUT
+# clean it up
+bk undo -qSsfr+ >OUT 2>&1 || fail -f OUT
+# in the product it should fail
+cd ..
+bk cset $Q -x"$CSET" || fail
+# Uncomment these once it's fixed
+bk -e -r check -ac || fail
+# product
+bk changes -nd':COMMENTS:' -r+ | grep -q "Cset exclude" || fail
+cd gdb
+bk changes -nd':COMMENTS:' -r+ | grep -q "Cset exclude" || fail
+cd ..
+bk -U grep -n lineb > OUT && fail -f OUT exclude did not work
+echo OK
