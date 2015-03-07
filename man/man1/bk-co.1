@@ -6,11 +6,19 @@ bk co \- check out \*(BK files
 .B bk co 
 .[B] options
 .BKARGS
+.SH ALTERNATE
+.B bk checkout
+.[B] \-qT
+.BKARGS
 .SH DESCRIPTION
 .LP
 .B bk co
 is used to check out files for viewing or editing.
 By default, files are checked out unlocked and read-only.
+.LP
+.B bk checkout
+is used to to checkout files in the repository's checkout mode (bk co
+defaults to read-only, this form matches the checkout config).
 .SH OPTIONS 
 .TP \-A\*<bdnpru\*>
 .OPTreq \-A bdnpru
@@ -108,8 +116,15 @@ as they are needed.  In order for this to work, the
 command needs to be in your path (see bk help links)
 and the dependencies need to be correct in the Makefile.
 If that is true, a simple \*(lqmake\*(rq will check out and build your product.
+.SH EXAMPLE
+If you are using Gnu Make the following will check out any non-checked out
+files:
+.DS
+JUNK := $(shell bk -Ur. -1 -^G checkout)
+.DE
 .SH "SEE ALSO"
 .BR make (1),
+.SA config-etc
 .SA edit
 .SA keywords
 .SA links
@@ -118,3 +133,4 @@ If that is true, a simple \*(lqmake\*(rq will check out and build your product.
 .br
 .B File
 .\" help://get
+.\" help://checkout

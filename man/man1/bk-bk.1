@@ -131,6 +131,10 @@ and all subdirectories.
 This works by generating a list of files and passing them to
 .ARG command
 on the standard input.
+This option differs from
+.B \-A
+in that it is limited to the current repository only, so if you are
+in a component it will list only files belonging to that component.
 .if \n[NESTED] \{\
 .TPP
 .OPTreq \-s alias
@@ -177,9 +181,12 @@ See \-s above for ways to limit the set of files processed in a nested
 collection.
 .\}
 .TPP
-.B \-1acpx
+.B "\-1acGpx \-^G"
 One or more of these options may be used in combination with 
-.Q \-r
+.QR \-A ,
+.QR \-r ,
+or
+.Q \-U
 to limit the set of files passed to
 .ARG command .
 .\" HEY!  YOU!  Man page hacker.  If you change these make sure you follow
@@ -189,6 +196,12 @@ to limit the set of files passed to
 .B \-1
 Only examine the current (or named) directory.
 Do not go into subdirectories.
+.tp
+.B \-G
+List files only if they are checked out ("gotten").
+.tp
+.B \-^G
+List files only if they are not checked out ("not gotten").
 .tp
 .B \-a
 Examine all files, even if listed in
@@ -215,7 +228,7 @@ Unless otherwise documented, all \*(BK commands return exit status
 .LP
 The following commands are equivalent:
 .DS 6
-bk -r co
+bk -A co
 bk -R sfiles | bk -R co -
 cd \`bk root\`; bk sfiles | bk co -
 .DE
