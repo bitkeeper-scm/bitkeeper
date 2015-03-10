@@ -33,7 +33,7 @@ would list modified files and extra files not yet under \*(BK control.
 When combining options it is best to also add
 .B \-v
 so that what is listed is unambiguous.
-.TP \fB\-p[A|C]\fPnn
+.TP "\-^G "
 .B \-0
 Use a null character (instead of a newline) to separate each filename
 printed.  This is to useful with 
@@ -79,6 +79,9 @@ List the gfile name, not the sfile name.
 .tp
 .B \-G
 List files only if they are checked out ("gotten").
+.tp
+.B \-^G
+List files only if they are not checked out ("not gotten").
 .tp
 .B \-i
 List files which would normally be listed as extras (see

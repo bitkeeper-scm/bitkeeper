@@ -25,6 +25,7 @@ REPO    := $(shell basename "`bk root`")
 URL     := $(shell echo bk://work/`bk root` | sed s,/home/bk/,,)
 LOG	:= $(shell echo LOG-`bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
+JUNK	:= $(shell bk -Ur. -1 -^G checkout)
 
 ifeq "$(OSTYPE)" "msys"
 	SYS=win32
