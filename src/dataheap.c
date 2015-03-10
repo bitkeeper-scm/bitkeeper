@@ -393,6 +393,7 @@ dataunmap(FILE *f, int keep)
 void *
 dataAlloc(u32 esize, u32 nmemb)
 {
+	void	*ret;
 #ifdef	PAGING
 	unless (pagesz) {
 		pagesz = sysconf(_SC_PAGESIZE);
@@ -401,13 +402,20 @@ dataAlloc(u32 esize, u32 nmemb)
 	}
 #endif
 	if (esize == 1) {
-		int	size = 1024;
+		size_t	size;
 
-		while (size < nmemb) size *= 2;
-		return (allocPage(size));
+		if (nmemb >= (1 << 30)) {
+			size = nmemb;
+		} else {
+			size = 1024;
+			while (size <= nmemb) size *= 2;
+		}
+		ret = allocPage(size);
 	} else {
-		return (allocArray(nmemb, esize, allocPage));
+		ret = allocArray(nmemb, esize, allocPage);
 	}
+	assert(ret);
+	return (ret);
 }
 
 /*
@@ -584,7 +592,7 @@ bin_needHeapRepack(sccs *s)
 		assert(heapsz_orig <= s->heap.len);
 
 		/* if new stuff has grown larger than 10% of heap */
-		if (10 * (s->heap.len - heapsz_orig) > s->heap.len) return (1);
+		if ((s->heap.len - heapsz_orig) > s->heap.len/10) return (1);
 	} else {
 		/* the data is from an old version of bk */
 		return (1);
