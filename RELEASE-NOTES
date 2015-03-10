@@ -1,5 +1,5 @@
 ============================================================================
-Release notes for BitKeeper version 6.1.3 (released Feb 28, 2015)
+Release notes for BitKeeper version 6.1.3 (released Mar 11, 2015)
 
     This is a bugfix release
 
@@ -9,7 +9,14 @@ Bugfixes
     In some cases 'bk pull -r$TAGKEY' would fail. This fixes that.
 
   bk checkout
-    Add documetation for this command that has existed since bk-4.1.1
+    Add documentation for this command (it respects the checkout
+    configuration).
+
+  bk sfiles -^G
+    Add documentation for the -^G option in bk and 'bk sfiles' that
+    selects only files that are not checked out. (not gotten)
+
+  Fix some memory allocation issues with extremely large repositories.
 
 ============================================================================
 Release notes for BitKeeper version 6.1.2 (released Feb 25, 2015)
