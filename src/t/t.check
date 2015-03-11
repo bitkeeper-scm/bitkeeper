@@ -618,6 +618,7 @@ cmp -s WANT BitKeeper/log/checked && {
 }
 echo OK
 
+if [ "$PLATFORM" != "WIN32" ]; then
 echo $N Try our pre-outgoing trigger that auto checks ...............$NL
 cd "$HERE/proj4"
 test -d  BitKeeper/triggers || mkdir  BitKeeper/triggers
@@ -660,6 +661,7 @@ bk needscheck && {
 	exit 1
 }
 echo OK
+fi
 
 echo $N Check should clean up any extra dfiles ......................$NL
 cd "$HERE"/proj2
