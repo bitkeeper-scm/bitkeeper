@@ -107,20 +107,18 @@ uniqdb_req(char *msg, int msglen, char *resp, size_t *resplen)
 
 reopen:	unless (sock < 0) closesocket(sock);
 	if ((sock = uniqdb_socket(force)) < 0) return (1);
-	force = 0;
-	resends = 3;
-	timeout = 1;
-
-resend:	if (send(sock, msg, msglen, 0) < 0) {
+	force = 1;		/* restart server if we come around again */
+	resends = 3;		/* try 3 packets before we restart */
+	timeout = -2;
+resend: timeout += 3;		/* timeout 1, 4, 7 secs */
+	if (send(sock, msg, msglen, 0) < 0) {
 		T_DEBUG("send err %d (%s), resends %d reopens %d",
 			errno, strerror(errno), resends, reopens);
-		force = 1;
 		goto reopen;
 	}
 
-	/* Initially wait up to 1 second for a response but then back off. */
+	/* Wait for a response (timeout increases each round) */
 	ret = readable(sock, timeout);
-	timeout += 3;
 	if (ret < 0) {  /* error */
 		T_DEBUG("select error %d (%s)", errno, strerror(errno));
 		perror("select");
@@ -128,19 +126,16 @@ resend:	if (send(sock, msg, msglen, 0) < 0) {
 		goto out;
 	} else if (ret == 0) {  /* timeout */
 		T_DEBUG("readable timeout after %d secs, resends %d reopens %d",
-			timeout-3, resends, reopens);
-		if (resends--) {
-			goto resend;
-		}
+			timeout, resends, reopens);
+		if (resends-- > 0) goto resend;
 		goto reopen;
 	}
 
-	/* we know this won't block */
+	/* this shouldn't normally block */
 	if ((len = recv(sock, resp, *resplen, 0)) < 0) {
 		T_DEBUG("recv error %d (%s) after %d secs, "
 			"resends %d reopens %d",
-			errno, strerror(errno), timeout-3, resends, reopens);
-		force = 1;
+			errno, strerror(errno), timeout, resends, reopens);
 		goto reopen;
 	}
 
