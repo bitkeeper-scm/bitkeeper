@@ -41,6 +41,8 @@ typedef struct {
 	FILE	*fout;		/* to client stdin */
 	FILE	*logf;
 	int	logfd;
+	int	startsock_port;	/* --startsock=port */
+	int	startsock_sock;	/* startsock socket fd, if open */
 	hash	*db;
 	u32	uniq_daemon:1;	/* =1 if run as bk uniq_daemon */
 	u32	do_sync:1;	/* open logfile with O_SYNC */
@@ -59,9 +61,11 @@ private void	inc_date(char *p);
 private	int	info_cmds(Opts *opts);
 private	void	op(Opts *opts, int cmd, hash *h, char *regexp);
 private int	quit(int quiet);
+private void	startsock_close(Opts *opts);
+private void	startsock_printf(Opts *opts, const char *fmt, ...);
 private void	uniqdb_append(Opts *opts, char *kptr, char *vptr);
 private void	uniqdb_close(Opts *opts);
-private int	uniqdb_lock(void);
+private int	uniqdb_lock(Opts *opts);
 private char	*uniqdb_lock_path(void);
 private int	uniqdb_unlock(void);
 private int	uniqdb_open(Opts *opts);
@@ -84,9 +88,7 @@ info_server_main(int ac, char **av)
 	int	port = 0;
 	char	*peer = 0, *s, *lockfile, *portfile;
 	int	idle = 0;
-	int	startsock = 0;
 	fd_set	fds;
-	FILE	*f;
 	struct timeval delay;
 	time_t	t;
 	Opts	opts = {0};
@@ -104,6 +106,7 @@ info_server_main(int ac, char **av)
 
 	opts.do_sync = 0;
 	opts.log = 1;
+	opts.startsock_sock = -1;
 	if (streq(prog, "uniq_server")) {
 		opts.uniq_daemon = 1;
 		opts.log = 0;
@@ -123,7 +126,7 @@ info_server_main(int ac, char **av)
 			opts.log = 0;
 			break;
 		    case 320:	// --startsock=<port>
-			startsock = atoi(optarg);
+			opts.startsock_port = atoi(optarg);
 			break;
 		    case 330:	// --dir=<db-directory>
 			safe_putenv("_BK_UNIQ_DIR=%s", optarg);
@@ -155,15 +158,8 @@ info_server_main(int ac, char **av)
 	unless (!chdir(opts.dir) && writable(opts.dir)) {
 		fprintf(stderr, "%s not writable for uniqdb\n", opts.dir);
 		T_DEBUG("dir %s not writable", opts.dir);
-		if (startsock) {
-			if ((sock = tcp_connect("127.0.0.1", startsock)) >= 0){
-				f = fdopen(sock, "w");
-				fprintf(f, "ERROR-no writable directory\n");
-				fflush(f);
-				fclose(f);
-				closesocket(sock);
-			}
-		}
+		startsock_printf(&opts, "ERROR-no writable directory\n");
+		startsock_close(&opts);
 		return (1);
 	}
 	lockfile = aprintf("%s/lock", opts.dir);
@@ -190,19 +186,13 @@ info_server_main(int ac, char **av)
 	} else {
 		T_DEBUG("another server instance already running");
 	}
-	if (startsock) {
-		/* handshake to know portfile has been written */
-		T_DEBUG("contacting start sock on port %d", startsock);
-		if ((sock = tcp_connect("127.0.0.1", startsock)) >= 0) {
-			f = fdopen(sock, "w");
-			fprintf(f, "OK-daemon started in %s\n", opts.dir);
-			fflush(f);
-			fclose(f);
-			T_DEBUG("sent signal");
-			closesocket(sock);
-		}
+
+	/* Bail if another instance beat us to the lock. */
+	if (tcpsock < 0) {
+		startsock_printf(&opts, "OK-daemon already running\n");
+		startsock_close(&opts);
+		return (0);
 	}
-	if (tcpsock < 0) return (0);  // another instance already running
 
 	/*
 	 * For uniqdb interop with older bk, acquire and hold the
@@ -211,7 +201,13 @@ info_server_main(int ac, char **av)
 	 * safely read it here.
 	 */
 	if (opts.uniq_daemon) {
-		uniqdb_lock();
+		if (uniqdb_lock(&opts)) {
+			T_DEBUG("uniqdb lock timeout -- bailing");
+			fprintf(stderr, "error: uniqdb lock timeout\n");
+			startsock_printf(&opts, "ERROR-uniqdb lock timeout\n");
+			startsock_close(&opts);
+			goto err;
+		}
 		t = uniqdb_read(&opts);
 		uniqdb_open(&opts);
 		if ((time(0) - t) < 1*DAY) {
@@ -220,6 +216,10 @@ info_server_main(int ac, char **av)
 			idle = 10;
 		}
 	}
+
+	/* Handshake to know portfile has been written and locks acquired. */
+	startsock_printf(&opts, "OK-daemon started in %s\n", opts.dir);
+	startsock_close(&opts);
 
 	T_DEBUG("starting loop");
 	while (1) {
@@ -317,7 +317,7 @@ info_server_main(int ac, char **av)
 		uniqdb_write(&opts);
 		uniqdb_unlock();
 	}
-	unlink(portfile);
+err:	unlink(portfile);
 	unless (opts.nolock) sccs_unlockfile(lockfile);
 	if (opts.exit) {
 		char	*msg = "OK-exiting\n";
@@ -747,17 +747,29 @@ uniqdb_backup_path(void)
 	}
 }
 
-/* Acquire the pre-bk7 uniqdb lock. */
+/*
+ * Acquire the pre-bk7 uniqdb lock. Timeout the lock a few times while
+ * surfacing that info to the startsock (so the client can tell the
+ * user), then bail after enough retries.
+ */
 private int
-uniqdb_lock(void)
+uniqdb_lock(Opts *opts)
 {
+	int	timeout = 5, tries_left = 3;
 	char    *lock;
-	int     rc;
 
 	lock = uniqdb_lock_path();
-	rc = sccs_lockfile(lock, -1, 1);
+	mkdirf(lock);
+	while (tries_left--) {
+		if (sccs_lockfile(lock, timeout, 1) == 0) {
+			free(lock);
+			return (0);
+		}
+		startsock_printf(opts, "WARNING-waiting for startsock %s\n", lock);
+		timeout *= 2;
+	}
 	free(lock);
-	return (rc);
+	return (-1);
 }
 
 /* Release the pre-bk7 uniqdb lock. */
@@ -1104,6 +1116,41 @@ uniq_drift(void)
 		t = CLOCK_DRIFT;
 	}
 	return (max(t, 120));
+}
+
+private void
+startsock_printf(Opts *opts, const char *fmt, ...)
+{
+	char	*buf;
+	va_list	ap;
+
+	unless (opts->startsock_port) return;
+	unless (opts->startsock_sock > 0) {
+		T_DEBUG("startsock connecting port %d", opts->startsock_port);
+		opts->startsock_sock = tcp_connect("127.0.0.1",
+						   opts->startsock_port);
+		if (opts->startsock_sock < 0) {
+			T_DEBUG("startsock connect error %d: %s\n", errno,
+				strerror(errno));
+			return;
+		}
+	}
+
+	va_start(ap, fmt);
+	if (vasprintf(&buf, fmt, ap) < 0) buf = 0;
+	va_end(ap);
+	unless (buf) return;
+	write(opts->startsock_sock, buf, strlen(buf));
+	free(buf);
+}
+
+private void
+startsock_close(Opts *opts)
+{
+	if (opts->startsock_sock > 0) {
+		closesocket(opts->startsock_sock);
+		opts->startsock_sock = -1;
+	}
 }
 
 /* Increment in-place by one second a string holding a date YYYYMMDDHHMMSS. */

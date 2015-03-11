@@ -186,22 +186,33 @@ startUniqDaemon(void)
 	if (pid < 0) return (-1);
 
 	T_DEBUG("waiting for startsock on port %d", sockport(startsock));
+	ret = -1;
 	if ((nsock = tcp_accept(startsock)) >= 0) {
 		fin = fdopen(nsock, "r");
 		setlinebuf(fin);
-		s = fgetline(fin);
-		if (s && strneq(s, "OK", 2)) {
-			T_DEBUG("daemon started OK");
-			ret = 0;
-		} else {
-			T_DEBUG("daemon start error: %s", (s ? s : "EOF"));
-			ret = -1;
+		while (s = fgetline(fin)) {
+			T_DEBUG("startsock: %s", s);
+			if (strneq(s, "OK", 2)) {
+				ret = 0;
+				break;
+			} else if (strneq(s, "WARNING-waiting", 15)) {
+				fprintf(stderr,"waiting for uniqdb lock...%s\n",s);
+			} else {
+				break;
+			}
+		}
+		unless (ret == 0) {
+			fprintf(stderr, "error starting uniq_server: ");
+			if (s) {
+				fprintf(stderr, "%s\n", s);
+			} else {
+				fprintf(stderr, "unknown error\n");
+			}
 		}
 		fclose(fin);
 		closesocket(nsock);
 	} else {
 		T_DEBUG("startsock accept error");
-		ret = -1;
 	}
 	closesocket(startsock);
 	return (ret);
@@ -267,7 +278,6 @@ again:	T_DEBUG("retry %d", reopens);
 	} else {
 		/* failed to find existing uniq server */
 		if (startUniqDaemon()) {
-			fprintf(stderr, "error starting uniq_server\n");
 			fd = -1;
 			goto out;
 		}
