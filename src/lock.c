@@ -256,7 +256,7 @@ lock_main(int ac, char **av)
 			usleep(500000);
 			locked = nested
 				? nested_mine(0, nlid, 0)
-				: repository_mine(0, 'r');
+				: repository_mine(0, 'w');
 		} while (locked && !caught);
 		rc = nested
 			? nested_unlock(0, nlid)
