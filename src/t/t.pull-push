@@ -409,7 +409,9 @@ test "$sum" = "$newsum" && {
 	exit 1
 }
 bk _scat ChangeSet > s.ChangeSet
-sed "s/K$sum/K$newsum/" s.ChangeSet > s.NEW_ChangeSet
+# Only change the checksum in the 1.2 cset
+PROG="\$doit = / 1\\.2 / if /^\\001d/; s/K$sum/K$newsum/ if \$doit;"
+perl -pe "$PROG" s.ChangeSet | bk undos > s.NEW_ChangeSet
 cmp -s s.ChangeSet s.NEW_ChangeSet && {
 	echo sed "s/K$sum/K$newsum/" 
 	echo sed failed, the changeset files should be different

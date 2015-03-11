@@ -86,7 +86,9 @@ if [ $DSUM = "41232" ]
 then	NSUM="23765"
 else	NSUM="41232"
 fi
-bk _scat ChangeSet | perl -pe "s/K$DSUM/K$NSUM/" | bk undos > tmp
+# Only change the checksum in 1.2
+PROG="\$doit = / 1\\.2 / if /^\\001d/; s/K$DSUM/K$NSUM/ if \$doit;"
+bk _scat ChangeSet | perl -pe "$PROG" | bk undos > tmp
 chmod 444 tmp
 bk _mv tmp SCCS/s.ChangeSet
 bk admin -z ChangeSet
