@@ -100,7 +100,10 @@ fullLink(char *xfile, char *tmp, int followLink)
 		/*
 		 * either tmp is buf or it is passed it. Either works.
 		 */
-		getcwd(buf, MAXPATH);
+		unless (getcwd(buf, MAXPATH)) {
+			perror("fullname too long");
+			exit(1);
+		}
 		concat_path(tmp, buf, tail);
 	}
 

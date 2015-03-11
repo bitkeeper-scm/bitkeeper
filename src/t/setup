@@ -364,6 +364,19 @@ fail() {
 	test x$BK_REGRESSION_NOFAIL == x && exit 1
 }
 
+# longpath "/prefix/" total_length
+# where prefix can be "" for relative path, or "`/bin/pwd`/" for abs path
+# and total length is the length of the made up path including prefix
+# path is a deep nest of 15 char dirs separated by / and a "xxx..." file
+# name at the end to get the right total size.
+longpath() {
+	PROG='	$x = $ARGV[1] - length($ARGV[0]);
+		$y = int(($x-1)/16);
+		print "$ARGV[0]",
+		    "abcdefg12345679/" x $y, "x" x ($x - 16*$y), "\n";'
+	perl -e "$PROG" "$1" $2
+}
+
 test_gui_result() {
 	rc_got=$1
 	rc_expect=$2

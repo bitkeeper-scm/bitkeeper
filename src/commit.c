@@ -308,7 +308,7 @@ commit_main(int ac, char **av)
 		char	*cmd, *p;
 		FILE	*f, *f1;
 		char	commentFile[MAXPATH];
-		char	buf[512];
+		char	*line;
 
 		bktmp(commentFile);
 		f = popen("bk cat BitKeeper/templates/commit", "r");
@@ -327,11 +327,11 @@ commit_main(int ac, char **av)
 		f = popen(cmd, "w");
 		f1 = fopen(pendingFiles, "rt");
 		assert(f); assert (f1);
-		while (fnext(buf, f1)) {
-			p = strrchr(buf, BK_FS);
+		while (line = fgetline(f1)) {
+			p = strrchr(line, BK_FS);
 			assert(p);
 			*p = 0;
-			fputs(buf, f);
+			fputs(line, f);
 			fputs("\n", f);
 		}
 		fclose(f1);

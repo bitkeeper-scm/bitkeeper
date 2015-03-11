@@ -14,6 +14,17 @@
 
 
 commercial project
+echo $N Test commit with a long file name ...........................$NL
+len=1000
+test "$PLATFORM" = WIN32 && len=240
+file=`longpath "$HERE/project/" $len`
+mkdir -p "`dirname "$file"`"
+echo hi there > "$file"
+bk new $Q "$file" || fail
+# The error was in the commit code which generates comments
+bk commit $Q -f || fail
+echo OK
+
 echo $N Test commit -y with multiline comments ......................$NL
 echo hi there > file
 bk new $Q file
@@ -41,6 +52,13 @@ echo OK
 echo $N Verify commit metadata ......................................$NL
 bk _heapdump ChangeSet | egrep '^([PS]|a/|serial|mode|flags|xflags)' > GOT
 cat <<EOF > WANT
+serial: 4 (1.3)
+PARENT: 3 (1.2)
+a/d/s: 1/0/1
+xflags: 1061 (BITKEEPER,CSETMARKED,HASH)
+flags: 1001 (CSET)
+PATHNAME: ChangeSet
+SORTPATH: ChangeSet
 serial: 3 (1.2)
 PARENT: 2 (1.1)
 a/d/s: 1/0/1
@@ -86,12 +104,12 @@ echo OK
 echo $N Commit in bogus nested alias ................................$NL
 mkdir subdir
 cd subdir
-test 1.3 = `bk prs -r+ -hnd:I: ../ChangeSet` || fail
+test 1.4 = `bk prs -r+ -hnd:I: ../ChangeSet` || fail
 bk commit $Q -sTCLTK -yfile-leftover 2>ERR && fail -f ERR should fail
 echo 'commit: -sALIAS only allowed in product' > WANT
 cmpfiles ERR WANT
 bk commit $Q -sHERE -yfile-leftover || fail
-test 1.4 = `bk prs -r+ -hnd:I: ../ChangeSet` || fail
+test 1.5 = `bk prs -r+ -hnd:I: ../ChangeSet` || fail
 echo OK
 
 echo $N Commit using -S in a standalone repo to see that it works ...$NL

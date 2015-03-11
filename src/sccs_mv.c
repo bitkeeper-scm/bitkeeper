@@ -43,7 +43,7 @@ sccs_mv(char	*name, char *dest,
 	int	flags;
 	pfile   pf;
 	struct	utimbuf	ut;
-	char	buf[1024];
+	char	buf[MAXKEY];
 
 	T_SCCS("(%s, %s, %d, %d, %d)", name, dest, isDir, isDelete,force);
 	sname = name2sccs(name);
