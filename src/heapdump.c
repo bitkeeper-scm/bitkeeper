@@ -206,8 +206,8 @@ delta_print(sccs *s, ser_t d)
 private void
 dumpStats(sccs *s)
 {
-	int	tsize;
-	int	i, len, cnt;
+	u32	tsize;
+	u32	i, len, cnt;
 	u32	off, rkoff, dkoff;
 	char	*t;
 	FILE	*f;

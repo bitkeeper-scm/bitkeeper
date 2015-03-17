@@ -25,7 +25,7 @@
 u32
 sccs_addStr(sccs *s, char *str)
 {
-	int	off;
+	u32	off;
 	char	*old;
 
 	assert(s);
@@ -148,7 +148,7 @@ sccs_addUniqStr(sccs *s, char *str)
 			 * Reuse makes sccs_addStr() happy (see assert there).
 			 * Partition can use a substring of a heap'd pathname.
 			 */
-			off = str - HEAP(s, 0);
+			off = (u32)(str - HEAP(s, 0));
 		} else {
 			/* new string, add to heap */
 			off = sccs_addStr(s, str);
@@ -310,7 +310,7 @@ weave_set(sccs *s, ser_t d, char **keys)
 	int	i, mark;
 	char	*rkey, *dkey;
 	u32	rkoff, dkoff;
-	int	added = 0;
+	u32	added = 0;
 	DATA	w = {0};
 
 	/* write keys to heap first and save weave */
@@ -406,10 +406,10 @@ weave_updateMarker(sccs *s, ser_t d, u32 rk, int add)
 }
 
 private void
-swaparray(void *data, int len)
+swaparray(void *data, u32 len)
 {
 	u32	*p = data;
-	int	i;
+	u32	i;
 
 	assert((len % 4) == 0);
 	len /= 4;
@@ -431,9 +431,9 @@ struct	MAP {
 	FILE	*f;
 	char	*name;
 	u8	*bstart;	/* start of whole block */
-	int	blen;		/* length of whole block */
+	u32	blen;		/* length of whole block */
 	u8	*start;		/* first byte in range */
-	int	len;		/* length of range */
+	u32	len;		/* length of range */
 	long	off;		/* offset in file of 'start' */
 	int	byteswap;	/* byteswap u32's in this region */
 
@@ -501,7 +501,7 @@ private void
 faulthandler(int sig, siginfo_t *si, void *unused)
 {
 	MAP	*map;
-	int	i;
+	u32	i;
 	u8	*addr;		/* the page where the fault occurred */
 	int	found = 0;
 
@@ -570,9 +570,9 @@ faulthandler(int sig, siginfo_t *si, void *unused)
 void
 dataunmap(FILE *f, int keep)
 {
-	int	i;
+	u32	i;
 	MAP	*m;
-	int	cnt = 0;
+	u32	cnt = 0;
 	char	*name = 0;
 
 	EACH_STRUCT(maps, m, i) {
@@ -654,7 +654,7 @@ dataAlloc(u32 esize, u32 nmemb)
  * but only loaded on demand as needed.
  */
 void
-datamap(char *name, void *addr, int len,
+datamap(char *name, void *addr, size_t len,
     FILE *f, long off, int byteswap, int *didpage)
 {
 	u8	*start = addr;
@@ -665,7 +665,7 @@ datamap(char *name, void *addr, int len,
 	u32	*lens = 0;
 	u8	*rstart;
 	u32	rlen;
-	int	i;
+	u32	i;
 
 	struct	sigaction sa;
 #else
@@ -698,8 +698,10 @@ datamap(char *name, void *addr, int len,
 #ifdef PAGING
 nopage:
 #endif
-		fseek(f, off, SEEK_SET);
-		fread(start, 1, len, f);
+		if (fseek(f, off, SEEK_SET) ||
+		    (fread(start, 1, len, f) != len)) {
+			perror("datamap read");
+		}
 		if (byteswap) swaparray(start, len);
 		return;
 	}
@@ -801,7 +803,7 @@ bin_needHeapRepack(sccs *s)
 {
 	project	*prod;
 	char	*t;
-	int	heapsz_orig;
+	u32	heapsz_orig;
 
 	/* only makes since for BK sfiles */
 	unless (BKFILE(s)) return (0);
@@ -859,7 +861,7 @@ typedef	struct {
 void
 bin_heapRepack(sccs *s)
 {
-	int	i, old;
+	u32	i, old;
 	ser_t	d, ds;
 	u32	size, len, off;
 	u32	rkoff, dkoff;
@@ -867,12 +869,12 @@ bin_heapRepack(sccs *s)
 	u32	uhash;
 	u32	metalen;
 	Pair	*pair;
-	int	bits;
+	u32	bits;
 	DATA	oldheap;
 	DATA	tipkeys = {0};	/* deltakey tipkey array */
 	DATA	rest = {0};	/* rest of deltakey array */
 	DATA	*dkeys;		/* pointer to 1 or 2 */
-	int	dkeys_start;
+	u32	dkeys_start;
 	u32	*weave = 0;	/* array of u32's containing weave */
 	hash	*meta;
 	char	*t;
@@ -931,6 +933,14 @@ bin_heapRepack(sccs *s)
 	metalen = strlen(t);
 	sccs_addStr(s, t);
 	free(t);
+
+	/* debug mode to test for signed integer overflow */
+	if (CSET(s) && (t = getenv("_BK_HEAP_ADDJUNK"))) {
+		off = strtoul(t, 0, 0);
+		data_resize(&s->heap, s->heap.len + off);
+		memset(s->heap.buf + s->heap.len, 0, off);
+		s->heap.len += off;
+	}
 
 #define FIELD(x) \
 	if (old = s->slist2[d].x) \

@@ -97,7 +97,7 @@ fread(buf, size, count, fp)
 			size_t osize = fp->_bf._size;
 			fp->_bf._base = p;
 			/* keep reads aligned by bufsize */
-			fp->_bf._size = osize * (resid / osize);
+			fp->_bf._size = osize * (min((1<<30), resid) / osize);
 			eof = __srefill(fp);
 			fp->_bf._base = obuf;
 			fp->_bf._size = osize;

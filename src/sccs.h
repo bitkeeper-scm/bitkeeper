@@ -1567,7 +1567,7 @@ u32	sccs_hasRootkey(sccs *s, char *key);
 void	sccs_loadHeapMeta(sccs *s);
 typedef	struct MAP MAP;
 void	*dataAlloc(u32 esize, u32 nmemb);
-void	datamap(char *name, void *start, int len,
+void	datamap(char *name, void *start, size_t len,
     FILE *f, long off, int byteswap, int *didpage);
 void	dataunmap(FILE *f, int keep);
 FILE	*fopen_bkfile(char *file, char *mode, u64 size, int chkxor);
