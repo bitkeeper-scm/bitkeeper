@@ -1893,7 +1893,7 @@ test unicode-5 {test split built-in with unicode strings} -body {
 #lang L --line=1
 void unicode_5()
 {
-	string	a[];
+	string	a[], s;
 
 	// This contains ASCII spaces.
 	a = split("זו השפה שלנו");
@@ -1922,6 +1922,13 @@ void unicode_5()
 	unless (a[0] eq "זו") puts("bad 4.2");
 	unless (a[1] eq "השפה") puts("bad 4.3");
 	unless (a[2] eq "שלנו") puts("bad 4.4");
+
+	// Split a string containing nulls.
+	s = Binary_format("a*a2a*", "x", "b", "yd");  // xb\0yd
+	a = split(/\0/, s);
+	unless (length(a) == 2) puts("bad 5.1");
+	unless (a[0] eq "xb") puts("bad 5.2");
+	unless (a[1] eq "yd") puts("bad 5.3");
 }
 unicode_5();
 } -output {}

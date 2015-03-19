@@ -7214,7 +7214,11 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 	} else {
 		objPtr = strobj;
 	}
-	str = TclGetStringFromObj(objPtr, &len);
+	if (objPtr->typePtr == &tclByteArrayType) {
+		str = (char *)Tcl_GetByteArrayFromObj(objPtr, &len);
+	} else {
+		str = Tcl_GetStringFromObj(objPtr, &len);
+	}
 
 	listPtr = Tcl_NewObj();
 	matches = 0;

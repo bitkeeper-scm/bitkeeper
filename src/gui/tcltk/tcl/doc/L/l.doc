@@ -2195,6 +2195,12 @@ is restricted:
     split(m);               // splits the variable "m" -- ok
     split(m(arg));          // splits the result of m(arg) -- ok
 
+Regular expressions, and the strings to split,
+both can contain unicode characters or binary data as well as ASCII:
+
+    split(/\0/, string_with_nulls);  // split on null
+    split(/ש/, "זו השפה שלנו");      // unicode regexp and string
+
 =proto string sprintf(string fmt, ...args)
 
 Format arguments and return a formatted string like sprintf(3).
@@ -2572,6 +2578,14 @@ Some brief examples:
     while (buf = <stdin>) {
         unless (buf =~ /^$/) puts(buf);
     }
+
+=item Unicode
+
+Both regular expressions and the strings they are matched against
+can contain unicode characters or binary data.
+This example looks for a null byte in a string:
+
+    if (s =~ /\0/) puts("has a null");
 
 =item Parentheses for capturing
 
