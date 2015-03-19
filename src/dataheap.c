@@ -857,6 +857,30 @@ typedef	struct {
  *   hash - keys = {GEN, HASH, HASHBITS, LEN, TIP, VER}
  *	new are HASH and HASHBITS, which only work if VER >= UNIQHASH_VER
  *   s->rkeyHead = heap offset gets stored in on disk init table
+ *
+ * HEAP LAYOUT
+ *   meta hash
+ *   one 'page' of data for the top csets (about 500)
+ *   All remaining data for the following fields in table order
+ *     RANDOM
+ *     PATHNAME
+ *     SORTPATH
+ *     ZONE
+ *     SYMLINK
+ *     CSETFILE
+ *     USER@HOST
+ *     INCLUDES/EXCLUDES
+ *     BAMHASH
+ *     All tag names
+ *     COMMENTS
+ *
+ *   For BWEAVE3 ChangeSet files:
+ *     non-tip deltakeys in weave order
+ *     deltakeys in tip cset in weave order
+ *     rootkeys in weave order
+ *     actual weave data
+ *
+ *   nokey hash of unique data
  */
 void
 bin_heapRepack(sccs *s)
@@ -872,9 +896,9 @@ bin_heapRepack(sccs *s)
 	u32	bits;
 	DATA	oldheap;
 	DATA	tipkeys = {0};	/* deltakey tipkey array */
-	DATA	rest = {0};	/* rest of deltakey array */
-	DATA	*dkeys;		/* pointer to 1 or 2 */
-	u32	dkeys_start;
+	DATA	*dkeys;
+	u32	*rkeys = 0;	/* list of rkoff's in old heap */
+	u32	tipkeys_start;
 	u32	*weave = 0;	/* array of u32's containing weave */
 	hash	*meta;
 	char	*t;
@@ -1011,6 +1035,7 @@ bin_heapRepack(sccs *s)
 		hash	*rkh =
 			    hash_new(HASH_U32HASH, sizeof(u32), sizeof(Pair));
 		Pair	p = {0};
+		hash	*tiphash;
 
 		/*
 		 * walk the weave oldest to newest to identify the
@@ -1035,7 +1060,6 @@ bin_heapRepack(sccs *s)
 		 * to get offset once we know where they start. (The
 		 * +1 prevents us from using 0.)
 		 */
-#define	HIBIT	0x80000000UL
 		for (d = TABLE(s); d >= TREE(s); d--) {
 			unless (off = WEAVE_INDEX(s, d)) continue;
 			WEAVE_SET(s, d, 4*nLines(weave)+1);
@@ -1049,19 +1073,17 @@ bin_heapRepack(sccs *s)
 				pair = hash_fetch(rkh, &rkoff, sizeof(rkoff));
 				assert(pair);
 				unless (pair->newrk) {
-					rkey = OLDHEAP(rkoff);
-					pair->newrk =
-					    sccs_addUniqRootkey(s, rkey);
+					addArray(&rkeys, &rkoff);
+					pair->newrk = nLines(rkeys);
 					dkeys = &tipkeys;
-					len = 0;
 				} else {
 					/* mark dkoff in weave as 'rest' */
-					dkeys = &rest;
-					len = HIBIT;
+					dkeys = &s->heap;
 				}
+				assert(pair->newrk);
 				/* build up the weave table */
 				addArray(&weave, &pair->newrk);
-				len += dkeys->len + 1;
+				len = dkeys->len + 1;
 				addArray(&weave, &len);
 				data_append(dkeys, dkey, strlen(dkey)+1);
 				if (dkoff == pair->oldestdk) {
@@ -1071,19 +1093,22 @@ bin_heapRepack(sccs *s)
 					addArray(&weave, &len);
 				}
 				off += 8;
-				assert(!(dkeys->len & HIBIT));
 				assert(off < oldheap.len);
 			}
 			addArray(&weave, &rkoff);	/* null terminate */
 		}
 		hash_free(rkh);
 
-		/* write delta keys array to heap */
-		dkeys_start = s->heap.len - 1;
+		/* write tip delta keys array to heap */
+		tipkeys_start = s->heap.len;
 		data_append(&s->heap, tipkeys.buf, tipkeys.len);
-		data_append(&s->heap, rest.buf, rest.len);
 		free(tipkeys.buf);
-		free(rest.buf);
+
+		/* write rootkeys to heap */
+		EACH(rkeys) {
+			rkey = OLDHEAP(rkeys[i]);
+			rkeys[i] = sccs_addUniqRootkey(s, rkey);
+		}
 
 		/* update offset to weave */
 		for (d = TABLE(s); d >= TREE(s); d--) {
@@ -1093,22 +1118,24 @@ bin_heapRepack(sccs *s)
 		}
 
 		/* update offsets in weave */
+		tiphash = hash_new(HASH_U32HASH, sizeof(u32), sizeof(u32));
 		EACH(weave) {
-			if (weave[i]) {
-				weave[i] = htole32(weave[i]); /* rkey */
-				++i;
-				/* dkey */
-				if (weave[i] & HIBIT) {
-					/* fixup rest; it's after tipkeys */
-					weave[i] +=
-					    dkeys_start + tipkeys.len - HIBIT;
-				} else if (weave[i]) {
-					/* fixup tipkeys */
-					weave[i] += dkeys_start;
-				}
-				weave[i] = htole32(weave[i]);
+			unless (rkoff = weave[i]) {
+				continue; /* ignore list term */
 			}
+			weave[i] = htole32(rkeys[rkoff]);
+			unless (dkoff = weave[++i]) {
+				continue; /* ignore last key marker */
+			}
+			dkoff -= 1; /* remove offset */
+			if (hash_insertU32U32(tiphash, rkoff, 0)) {
+				/* a tipkey so use second array */
+				dkoff += tipkeys_start;
+			}
+			weave[i] = htole32(dkoff);
 		}
+		hash_free(tiphash);
+		free(rkeys);
 
 		/* write weave to heap */
 		data_append(&s->heap, &weave[1], nLines(weave)*4);
