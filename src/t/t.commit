@@ -172,11 +172,13 @@ echo $N Setup a failing commit that updates the attr file ...........$NL
 bk abort -f
 bk edit $Q BitKeeper/etc/collapsed
 echo hi >> BitKeeper/etc/collapsed
-bk ci $Q -yy -u BitKeeper/etc/collapsed
-chmod +w BitKeeper/etc/collapsed
+bk ci $Q -yy BitKeeper/etc/collapsed
+bk _mv BitKeeper/etc/SCCS/s.collapsed BitKeeper/etc/SCCS/s.collapsed3
+bk _mv BitKeeper/etc/SCCS/d.collapsed BitKeeper/etc/SCCS/d.collapsed3
 # force an attr file update to show it gets reverted
 _BK_ATTR_TEST=foo bk --config=autofix:off commit $Q -yy > ERR 2>&1 && fail -f ERR should fail
-rm BitKeeper/etc/collapsed
+bk _mv BitKeeper/etc/SCCS/s.collapsed3 BitKeeper/etc/SCCS/s.collapsed
+bk _mv BitKeeper/etc/SCCS/d.collapsed3 BitKeeper/etc/SCCS/d.collapsed
 bk repocheck $Q || fail
 bk sfiles -p > GOT
 cat <<EOF > WANT

@@ -210,17 +210,9 @@ echo $N Make sure it complains unlocked files with rw gfile .........$NL
 bk get $Q d1/sub1/a
 chmod +w d1/sub1/a
 bk --config=autofix:off -r check -a > OUT 2>&1
-bk _test -f d1/sub1/SCCS/p.a && fail -f OUT should not have created lock file
-test -w d1/sub1/a || {
-	echo should not have unedited file
-	cat OUT
-	exit 1
-}
-grep -q 'writable but not locked.' OUT || {
-	echo bad error message
-	cat OUT
-	exit 1
-}
+bk _test -f d1/sub1/SCCS/P.a && fail -f OUT should not have created lock file
+test -w d1/sub1/a || fail -f OUT should not have unedited file
+grep -q 'writable but not locked.' OUT || fail -f OUT
 echo OK
 
 echo $N Make sure it fixes unlocked files with rw gfile with -f .....$NL

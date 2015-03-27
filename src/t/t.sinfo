@@ -9,3 +9,13 @@ foo:                    1.1 1.2
 EOF
 cmpfiles WANT GOT
 echo OK
+
+echo $N try sfio again with magic pfile .............................$NL
+bk admin -FSCCS foo || fail
+bk _test -w foo -a \! -s SCCS/p.foo || fail
+bk sinfo foo | sed 's/ bk.*//' > GOT
+cat <<EOF > WANT
+foo:                    1.2 1.3
+EOF
+cmpfiles WANT GOT
+echo OK

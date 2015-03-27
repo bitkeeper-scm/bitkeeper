@@ -316,7 +316,6 @@ setup_env()
 	_BK_GEOM=+1+1
 	export _BK_GEOM
 
-	unset _BK_GMODE_DEBUG
 	BK_REGRESSION="`cd "$TST_DIR"; bk pwd -s`/.regression $USER"
 	BK_CACHE="$BK_REGRESSION/cache"
 	HERE="$BK_REGRESSION/sandbox"

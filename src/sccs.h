@@ -55,7 +55,7 @@ int	checking_rmdir(char *dir);
 #define	INIT_NOSTAT	0x01000000	/* do not look for {p,x,z,c} files */
 #define	INIT_HAScFILE	0x02000000	/* has c.file */
 #define	INIT_HASgFILE	0x04000000	/* has g.file */
-#define	INIT_HASpFILE	0x08000000	/* has p.file */
+#define	INIT_HASpFILE	0x08000000	/* has physical p.file */
 #define	INIT_HASxFILE	0x00100000	/* has x.file */
 #define	INIT_NOGCHK	0x00800000	/* do not fail on gfile checks */
 #define	INIT_CHK_STIME	0x00010000	/* check that s.file <= gfile */
@@ -813,6 +813,7 @@ typedef struct {
 	char	*iLst;		/* include revs for delta */
 	char	*xLst;		/* exclude revs for delta */
 	char	*mRev;		/* merge rev for delta */
+	u32	magic:1;	/* no pfile, so data is faked */
 } pfile;
 
 /*

@@ -334,11 +334,12 @@ filstat(char *nm, enum token mode)
 
 	xfile = is_xfile(nm);
 
-	if (xfile) {
-		memset(&s, 0, sizeof(s));
-	} else {
-		if (mode == FILSYM ? lstat(nm, &s) : stat(nm, &s))
+	if (mode == FILSYM ? lstat(nm, &s) : stat(nm, &s)) {
+		if (xfile) {
+			memset(&s, 0, sizeof(s));
+		} else {
 			return 0;
+		}
 	}
 
 	switch (mode) {

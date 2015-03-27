@@ -160,6 +160,24 @@ writable(char *s)
 	return (0);
 }
 
+/*
+ * Similar to writable() above, but also must be a 'regular' file.
+ * (not symlink and not directory)
+ */
+int
+writableReg(char *s)
+{
+	struct  stat sbuf;
+
+	if (lstat(s, &sbuf)) return (0);
+	if (S_ISREG(sbuf.st_mode) && (sbuf.st_mode & 0222)) return (1);
+
+	/* Set errno like access(2) because we use this as an error check */
+	errno = EACCES;
+	return (0);
+}
+
+
 #ifdef WIN32
 off_t
 fsize(int fd)

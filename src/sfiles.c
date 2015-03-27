@@ -847,7 +847,7 @@ sfiles_walk(char *file, char type, void *data)
 		}
 	} else {
 		assert(p);
-		*p++ = 0;
+		p++;
 		if (!opts.no_bkskip && patheq(p, BKSKIP)) {
 			/* abort current dir */
 			// if remap and dir exists in .bk, trouble?
@@ -855,8 +855,8 @@ sfiles_walk(char *file, char type, void *data)
 			return (-2);
 		}
 		unless (wi->gDB) wi->gDB = mdbm_mem();
-		mdbm_store_str(wi->gDB, p, "", MDBM_INSERT);
-		p[-1] = '/';
+		mdbm_store_str(wi->gDB,
+		    p, (writableReg(file) ? "1" : ""), MDBM_INSERT);
 	}
 	return (0);
 }
@@ -1373,7 +1373,8 @@ sccsdir(char *dir, void *data)
 	 */
 	sortLines(slist, 0);	/* walkdir() has a funny sort */
 	EACH (slist) {
-		char 	*file;
+		char	*file;
+		char	*magicPfile;
 		u32	flags = INIT_NOCKSUM;
 		STATE	state = "       ";
 
@@ -1383,16 +1384,17 @@ sccsdir(char *dir, void *data)
 		gfile = &file[2];
 
 		state[TSTATE] = 's';
-		if (mdbm_fetch_str(gDB, gfile)) {
+		if (magicPfile = mdbm_fetch_str(gDB, gfile)) {
 			state[GSTATE] = 'G';
 			flags = INIT_HASgFILE;
+			unless (*magicPfile) magicPfile = 0;
 		}
 
 		/*
 		 * look for p.file,
 		 */
 		file[0] = 'p';
-		if (mdbm_fetch_str(sDB, file)) {
+		if (magicPfile || mdbm_fetch_str(sDB, file)) {
 			char *gfile;	/* a little bit of scope hiding ... */
 			char *sfile;
 

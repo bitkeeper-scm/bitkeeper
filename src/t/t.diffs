@@ -532,7 +532,7 @@ chmod +w foo
 echo goodbye > foo
 bk diffs --normal foo > GOT
 cat <<EOF > WANT
-===== foo 1.2 vs ? (writable without lock!)  =====
+===== foo 1.2 vs edited =====
 1c1
 < bye
 ---
@@ -543,7 +543,7 @@ bk diffs --normal -r+ foo > GOT
 cmpfiles WANT GOT
 bk diffs --normal -r1.1 foo > GOT
 cat <<EOF > WANT
-===== foo 1.1 vs ? (writable without lock!)  =====
+===== foo 1.1 vs edited =====
 1c1
 < hello
 ---
@@ -555,7 +555,7 @@ echo OK
 echo $N Test diffs -s................................................$NL
 COLUMNS=46 bk diffs -s foo > GOT
 cat <<EOF > WANT
-===== foo 1.2 vs ? (writable without lock!)  =====
+===== foo 1.2 vs edited =====
 bye                   | goodbye
 EOF
 cmpfiles WANT GOT

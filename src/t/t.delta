@@ -51,7 +51,6 @@ bk get $S -e T
 if writable T; then :; else echo Get failed to get file writeable; exit 1; fi
 _BK_MV_OK=1 bk delta $S -fly T
 if [ "`bk _scat SCCS/s.T | wc -c`" = "$X" ]; then echo Failed to create delta; exit 1; fi
-if bk _test ! -f SCCS/p.T; then echo Failed to leave file locked; exit 1; fi
 if [ ! -f T ]; then echo Failed to get file; exit 1; fi
 if writable T; then :; else echo Failed to leave file writeable; exit 1; fi
 echo OK
@@ -60,11 +59,9 @@ echo $N Make sure delta -il works ...................................$NL
 echo delta -il > init2
 bk delta $S -il init2
 if bk _test ! -f SCCS/s.init2; then echo failed to create file; exit 1; fi
-if bk _test ! -f SCCS/p.init2; then echo failed to lock file; exit 1; fi
 bk clean init2
 echo OK
 
-bk _rm T SCCS/p.T
 echo $N Make sure delta -I works with good file .....................$NL
 cat > INITX <<EOF
 D 1.1 97/05/28 23:49:57 joe_user@joes_hostname 0 0 0/0/0
@@ -264,7 +261,6 @@ export BK_USER BK_HOST
 cd "$HERE/project"
 echo hi > hi.c
 bk ci $Q -i hi.c
-if bk _test -f SCCS/p.hi.c; then echo failed; exit 1; fi
 bk edit $Q BitKeeper/etc/config
 grep -v checkout BitKeeper/etc/config > config.sav
 bk co $Q -l hi.c
@@ -277,7 +273,6 @@ do
 	echo hello > hi.c
 	bk delta $Q -fyhello hi.c
 	if [ $? -ne 0 ]; then echo failed; exit 1; fi
-	if bk _test ! -f SCCS/p.hi.c; then echo failed; exit 1; fi
 	if [ ! -f hi.c ]; then echo failed; exit 1; fi
 	writable hi.c || { echo failed; exit 1; }
 done
@@ -290,7 +285,6 @@ echo lo > lo.c
 chmod -w lo.c
 bk ci $Q -i lo.c
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-if bk _test ! -f SCCS/p.lo.c; then echo failed; exit 1; fi
 if [ ! -f lo.c ]; then echo failed; exit 1; fi
 writable lo.c || { echo failed; exit 1; }
 echo OK
@@ -302,10 +296,8 @@ echo mid > mid.c
 echo low > low.c
 bk sfiles -x mid.c low.c | bk ci $Q -i -
 if [ ! -f mid.c ]; then echo failed; exit 1; fi
-if bk _test -f SCCS/p.mid.c; then echo failed; exit 1; fi
 if writable mid.c; then echo failed; exit 1; fi
 if [ ! -f low.c ]; then echo failed; exit 1; fi
-if bk _test -f SCCS/p.low.c; then echo failed; exit 1; fi
 if writable low.c; then echo failed; exit 1; fi
 echo OK
 
@@ -315,10 +307,8 @@ echo mid2 > mid.c
 echo low2 > low.c
 bk sfiles -c mid.c low.c | bk ci $Q -ynew -
 if [ ! -f mid.c ]; then echo failed; exit 1; fi
-if bk _test -f SCCS/p.mid.c; then echo failed; exit 1; fi
 if writable mid.c; then echo failed; exit 1; fi
 if [ ! -f low.c ]; then echo failed; exit 1; fi
-if bk _test -f SCCS/p.low.c; then echo failed; exit 1; fi
 if writable low.c; then echo failed; exit 1; fi
 echo OK
 
@@ -337,10 +327,6 @@ echo low3 > low.c
 bk sfiles -c mid.c low.c | bk ci $Q -G -ynew3 -
 test -f mid.c -a -f low.c || {
 	echo failed to leave the files
-	exit 1
-}
-bk _test -f SCCS/p.mid.c -a -f SCCS/p.low.c || {
-	echo failed to leave the p.files
 	exit 1
 }
 test -w mid.c -a -w low.c || {
@@ -499,8 +485,8 @@ echo OK
 
 echo $N Check that bad p.file revisions are caught and fixed ........$NL
 cd "$HERE/project"
-bk edit $Q init3
-bk _mv SCCS/p.init3 P
+bk edit $Q -x+ init3
+bk _mv SCCS/p.init3 P || fail
 sed s/1.2/1.1/ < P > tmp
 bk _mv tmp SCCS/p.init3
 bk delta $Q -fybad init3 > OUT 2>&1 || fail
@@ -754,16 +740,10 @@ echo $N But that updates to files can\'t be read-only ................$NL
 bk edit $Q bnew || fail
 echo hi > bnew
 chmod 444 bnew
-echo bnew | bk ci $Q -a -ynew - 2>ERR && {
-	echo should fail
-	cat ERR
-	exit 1
-}
-grep -q "delta: bnew is locked but not writable" ERR || {
-       echo wrong err
-       cat ERR
-       exit 1
-}
+echo bnew | bk ci $Q -a -ynew - 2>ERR && fail -f ERR should fail
+grep -q "delta: bnew is locked but not writable" ERR || fail -f ERR
+echo hi > WANT
+cmpfiles bnew WANT
 echo OK
 
 HP=`bk gethost -r | sed 's/hp.*/hp/p'`

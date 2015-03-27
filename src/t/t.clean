@@ -22,11 +22,13 @@ bk get $Q -e Y
 bk clean
 if [ -f X ] || [ -f Y ]; then	echo failed; exit 1; fi
 echo OK
+
 echo $N Remove only files on command line ...........................$NL
 bk get $Q X Y
 bk clean X
 if [ -f X ] || [ ! -f Y ]; then	echo failed; exit 1; fi
 echo OK
+
 echo $N unedit should remove even modified files ....................$NL
 bk get $Q -e X
 echo more text >>X
@@ -34,18 +36,19 @@ bk unedit X
 if [ -f X ]; then echo failed; exit 1; fi
 if bk _test -f SCCS/p.X; then echo failed - still locked; exit 1; fi
 echo OK
+
 echo $N unedit should not autoexpand file names .....................$NL
 for i in R S T U V
 do	ls > $i
 	bk new $Q $i
     	bk edit $Q $i
-done
+	echo "sl-pG-- $i"
+done > WANT
+bk sfiles -vlg > A
+cmpfiles WANT A
 bk unedit 2>/dev/null
-for i in R S T U V
-do	if bk _test ! -f SCCS/p.$i -o ! -w $i
-	then	echo failed on $i; exit 1
-	fi
-done
+bk sfiles -vlg > B
+cmpfiles A B
 echo OK
 
 echo $N clean should autoexpand file names ..........................$NL
@@ -58,6 +61,7 @@ done
 echo OK
 
 bk _rm -f CMP1 CMP2 X Y SCCS/s.X SCCS/s.Y
+
 # Test internal compare for RCS, SCCS, EXPAND1, nonewline, binary, longline
 # and hash data.  Uses clean to test diffs (in some cases uses sfiles -c
 fail=no
@@ -94,9 +98,11 @@ mv sccsexp.expn sccsexp
 chmod +w sccsexp
 result=`bk sfiles -c sccsexp | wc -l`
 if [ $result -ne 1 ] ; then echo failed; fail=yes; else echo OK; fi
+
 echo $N No change to SCCS expand file .. check clean ................$NL
 bk clean sccsexp 2>ERR && fail
 echo OK
+
 echo $N No change to RCS expand file ....check sfiles -c ............$NL
 echo '$Revision$' > rcsexp
 bk ci $Q -i rcsexp
@@ -109,11 +115,13 @@ mv rcsexp.expn rcsexp
 chmod +w rcsexp
 result=`bk sfiles -c rcsexp | wc -l`
 if [ $result -ne 1 ] ; then echo failed; fail=yes; else echo OK; fi
+
 echo $N No change to RCS expand file ....check clean ................$NL
 bk unedit rcsexp
 bk edit $Q rcsexp
 bk clean $Q rcsexp
 if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
+
 echo $N No change to expand first keyword only .. check sfiles -c ...$NL
 echo %""@% > exp1 
 echo %""K% >> exp1 
@@ -126,9 +134,11 @@ mv exp1.expn exp1
 chmod +w exp1
 result=`bk sfiles -c exp1 | wc -l`
 if [ $result -ne 1 ] ; then echo failed; fail=yes; else echo OK; fi
+
 echo $N No change to expand first keyword only .. check clean .......$NL
 bk clean $Q exp1 && fail
 echo OK
+
 echo $N Removing the newline from a file which used to have one .....$NL
 echo hadnl > hadnl
 bk ci $Q -i hadnl
@@ -167,14 +177,8 @@ echo $N Check cleaning of a chmod +w sccs keywords file .............$NL
 bk unedit sccsexp || fail
 bk get $Q sccsexp || fail
 chmod +w sccsexp
-bk clean sccsexp || {
-	echo failed to clean sccsexp
-	exit 1
-}
-test -f sccsexp && {
-	echo failed to clean sccsexp
-	exit 1
-}
+bk clean sccsexp || fail failed to clean sccsexp
+test -f sccsexp && fail failed to clean sccsexp
 echo OK
 
 echo $N Check cleaning of a chmod +w sccs keywords file with changes.$NL

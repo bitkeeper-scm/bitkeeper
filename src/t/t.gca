@@ -12,6 +12,8 @@
 # Copyright (c) 2000 Larry McVoy
 # %K%
 
+set -e
+
 # Test the operation of various gca operations
 # These are not BK specific, per se
 commercial project

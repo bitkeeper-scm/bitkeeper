@@ -19,7 +19,7 @@
 #include "cfg.h"
 
 typedef struct weave weave;
-#define	WRITABLE_REG(s)	(WRITABLE(s) && isRegularFile((s)->mode))
+#define	WRITABLE_REG(s)	(WRITABLE(s) && S_ISREG((s)->mode))
 private ser_t	rfind(sccs *s, char *rev);
 private ser_t	dinsert(sccs *s, ser_t d, int fixDate);
 private int	samebranch(sccs *s, ser_t a, ser_t b);
@@ -56,7 +56,6 @@ private time_t	date2time(char *asctime, char *z, int roundup);
 private int	addSym(char *name, sccs *sc, int flags, admin *l, int *ep);
 private int	sameFileType(sccs *s, ser_t d);
 private int	uuexpand_gfile(sccs *s, char *tmpfile);
-private int	isRegularFile(mode_t m);
 private void	sccs_freetable(sccs *s);
 private ser_t	gca(sccs *, ser_t left, ser_t right);
 private ser_t	gca2(sccs *s, ser_t left, ser_t right);
@@ -4787,6 +4786,17 @@ sccs_init(char *name, u32 flags)
 			}
 			fixstime = 1;
 		}
+		/* =========== Magic Pfile logic block */
+		if (WRITABLE_REG(s)) {
+			s->state |= S_PFILE;	/* the magic condition */
+		} else if (flags & INIT_NOSTAT) {
+			/* flag set for physical pfile */
+			if (flags & INIT_HASpFILE) s->state |= S_PFILE;
+		} else {
+			/* test for 'P'hysical pfile */
+			if (xfile_exists(s->gfile, 'P')) s->state |= S_PFILE;
+		}
+		/* =========== End of Magic Pfile logic block */
 	} else if (CSET(s)) {
 		int	bad;
 		/* t still points at last slash in s->sfile */
@@ -4801,11 +4811,6 @@ sccs_init(char *name, u32 flags)
 "Please run 'bk support' to request assistance.\n");
 			goto err;
 		}
-	}
-	if (flags & INIT_NOSTAT) {
-		if (flags & INIT_HASpFILE) s->state |= S_PFILE;
-	} else {
-		if (xfile_exists(s->gfile, 'p')) s->state |= S_PFILE;
 	}
 	debug((stderr, "init(%s) -> %s, %s\n", s->gfile, s->sfile, s->gfile));
 	if (lstat_rc || sccs_open(s)) {
@@ -5058,48 +5063,6 @@ sccs_writeHere(sccs *s, char *new)
 }
 
 /*
- * a) If gfile exists and writable, insist p.file exist
- * b) If p.file exists, insist gfile writable or absent
- * Note 1: "delta -n" and "admin -i" violate  'a'
- * Note 2: "edit -g" may violate 'b'
- */
-private void
-chk_gmode(sccs *s)
-{
-	struct	stat sbuf;
-	int	pfileExists, gfileExists, gfileWritable;
-	char 	*gfile;
-
-	unless (getenv("_BK_GMODE_DEBUG")) return;
-	if (!s || !HASGRAPH(s)) return; /* skip new file */
-
-	gfile = sccs2name(s->sfile); /* Don't trust s->gfile, see bk admin -i */
-	gfileExists = !lstat(gfile, &sbuf);
-	gfileWritable = (gfileExists && (sbuf.st_mode & 0200));
-	if (S_ISLNK(sbuf.st_mode)) return; /* skip smylink */
-	pfileExists = xfile_exists(s->gfile, 'p');
-
-	if (gfileWritable) {
-		unless (pfileExists) {
-			fprintf(stderr,
-			    "ERROR: %s: writable gfile with no p.file\n",
-			    gfile);
-			assert("writable gfile with no p.file" == 0);
-		};
-	}
-
-	if (pfileExists) {
-		if (gfileExists && !gfileWritable) {
-			fprintf(stderr,
-			    "ERROR: %s: p.file with read only gfile\n",
-			    gfile);
-			assert("p.file with read only gfile" == 0);
-		}
-	}
-	free(gfile);
-}
-
-/*
  * Free up all resources associated with the file.
  * This is the last thing you do.
  */
@@ -5120,7 +5083,6 @@ sccs_free(sccs *s)
 		    prog, s->sfile);
 		sccs_abortWrite(s);
 	}
-	chk_gmode(s);
 
 	/*
 	 * If we modified the s.file and we're in checkout:edit|last
@@ -6283,32 +6245,21 @@ write_pfile(sccs *s, int flags, ser_t d,
 	char	*tmp, *tmp2;
 	char	*path, *dir;
 
-	if (WRITABLE_REG(s) && HAS_PFILE(s) && (iLst || i2 || xLst)) {
-		/* going from plain edit to -i/-x -- need to clean first */
-		if (sccs_clean(s, CLEAN_SHUTUP|SILENT)) {
-			verbose((stderr,
-			    "Writable %s exists which cannot be cleaned, "
-			    "skipping it.\n", s->gfile));
-			s->state |= S_WARNED;
-			return (-1);
-		}
-	} else if ((WRITABLE_REG(s) ||
-		S_ISLNK(s->mode) && HAS_GFILE(s) && HAS_PFILE(s)) && 
-	    !(flags & GET_SKIPGET)) {
-		verbose((stderr,
-		    "Writable %s exists, skipping it.\n", s->gfile));
-		s->state |= S_WARNED;
-		return (-1);
-	} else if (HAS_PFILE(s) && (!HAS_GFILE(s) || !WRITABLE_REG(s))) {
-		/* bk edit foo; rm or chmod 444 foo => cleanup SCCS/p.foo */
-		if (sccs_clean(s, CLEAN_SHUTUP|(flags & SILENT))) {
-			s->state |= S_WARNED;
-			return (-1);
-		}
-	}
 	if (READ_ONLY(s)) {
 		fprintf(stderr, "get: read-only %s\n", s->gfile);
 		return (-1);
+	}
+	xfile_delete(s->sfile, 'p');
+	if (BITKEEPER(s) && (!(flags & GET_SKIPGET) || WRITABLE_REG(s)) &&
+	    HASGRAPH(s) && (d == sccs_top(s)) &&
+	    !i2 && !iLst && !xLst && !mRev &&
+	    S_ISREG(MODE(s, d)) && !HAS_KEYWORDS(s) &&
+	    features_test(s->proj, FEAT_PFILE)) {
+		/*
+		 * Unless we are writing something interesting we
+		 * don't need to write the pfile at all
+		 */
+		goto out;
 	}
 	tmp2 = time2date(time(0));
 	assert(sccs_getuser() != 0);
@@ -6358,7 +6309,7 @@ write_pfile(sccs *s, int flags, ser_t d,
 	}
 	free(tmp);
 
-	if (s->proj) {
+out:	if (s->proj) {
 		path = proj_relpath(s->proj, s->sfile);
 		dir = dirname(dirname(path)); /* strip SCCS/s.file */
 		proj_dirstate(s->proj, dir, DS_EDITED, 1);
@@ -6427,7 +6378,7 @@ setupOutput(sccs *s, char *printOut, int flags, ser_t d)
 		f = printOut;
 	} else {
 		if (flags & GET_NOREGET) flags |= SILENT;
-		if (WRITABLE_REG(s) && writable(s->gfile)) {
+		if (WRITABLE_REG(s)) {
 			verbose((stderr, "Writable %s exists\n", s->gfile));
 			s->state |= S_WARNED;
 			return ((flags & GET_NOREGET) ? 0 : (char*)-1);
@@ -7404,6 +7355,7 @@ get_link(sccs *s, char *printOut, int flags, ser_t d, int *ln)
 #endif
 			return 1;
 		}
+		check_gfile(s, 0);	/* fix GFILE, mode, and s->symlink */
 		*ln = 0;
 	}
 	return 0;
@@ -7421,6 +7373,10 @@ sccs_get(sccs *s, char *rev,
 	ser_t	d;
 	int	lines = -1, locked = 0, error;
 	char	*i2 = 0;
+
+// flags where we won't be fetching a new gfile
+#define	NOGFILE	(PRINT | GET_SKIPGET | \
+		GET_HASHONLY | GET_DIFFS | GET_BKDIFFS)
 
 	T_SCCS("(%s, %s, %s, %s, %s, %x, %s)",
 	    s->sfile, notnull(rev), notnull(mRev),
@@ -7489,14 +7445,44 @@ err:		if (i2) free(i2);
 	}
 	unless (d) goto err;
 
-	if ((flags & (GET_EDIT|PRINT)) == GET_EDIT) {
+	if ((flags & ~GET_SKIPGET & (GET_EDIT|NOGFILE)) == GET_EDIT) {
+		if (WRITABLE_REG(s) && HAS_PFILE(s) && (iLst || i2 || xLst) &&
+		    !(flags & GET_SKIPGET)) {
+			/*
+			 * going from plain edit to -i/-x
+			 *  -- need to clean first
+			 */
+			if (sccs_clean(s, CLEAN_SHUTUP|SILENT)) {
+				verbose((stderr,
+					"Writable %s exists which cannot be "
+					"cleaned, skipping it.\n", s->gfile));
+				s->state |= S_WARNED;
+				goto err;
+			}
+		} else if ((WRITABLE_REG(s) ||
+			(S_ISLNK(s->mode) && HAS_GFILE(s) && HAS_PFILE(s))) &&
+		    !(flags & GET_SKIPGET)) {
+			verbose((stderr,
+			    "Writable %s exists, skipping it.\n", s->gfile));
+			s->state |= S_WARNED;
+			goto err;
+		} else if (HAS_PFILE(s) &&
+		    (!HAS_GFILE(s) || !WRITABLE_REG(s))) {
+			/*
+			 * bk edit foo
+			 * rm or chmod 444 foo
+			 * => cleanup SCCS/p.foo
+			 */
+			if (sccs_clean(s, CLEAN_SHUTUP|(flags & SILENT))) {
+				s->state |= S_WARNED;
+				goto err;
+			}
+		}
 		if (write_pfile(s, flags, d, rev, iLst, i2, xLst, mRev)) {
 			goto err;
 		}
 		locked = 1;
-	} 
-#define	NOGFILE	(PRINT | GET_SKIPGET | \
-		GET_HASHONLY | GET_DIFFS | GET_BKDIFFS)
+	}
 	else if (HAS_PFILE(s) && !HAS_GFILE(s) && !(flags & NOGFILE)) {
 		pfile	pf;
 		int	rc;
@@ -7574,6 +7560,8 @@ err:		if (i2) free(i2);
 	    default:
 		assert("bad error return in get" == 0);
 	}
+	unless (error || (flags & NOGFILE)) s->state |= S_GFILE;
+
 	/* Win32 restriction, must do this before we chmod to read only */
 	if (!S_ISLNK(MODE(s, d)) && (flags & GET_DTIME)) {
 		char	*fname = (flags&PRINT) ? printOut : s->gfile;
@@ -7617,6 +7605,7 @@ err:		if (i2) free(i2);
 			    "get_reg: cannot chmod %s\n", fname);
 			perror(fname);
 		}
+		s->mode = mode;
 	}
 	debug((stderr, "GET done\n"));
 
@@ -9252,13 +9241,6 @@ uuexpand_gfile(sccs *s, char *tmpfile)
 	return (0);
 }
 
-
-private int
-isRegularFile(mode_t m)
-{
-	return ((m == 0) || S_ISREG(m));
-}
-
 /*
  * Check mode/symlink changes
  * Changes in permission are ignored
@@ -9381,7 +9363,7 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	/*
 	 * set up the "new" file
 	 */
-	if (isRegularFile(s->mode)) {
+	if (S_ISREG(s->mode)) {
 		if (UUENCODE(s)) {
 			unless (bktmp(new)) return (-1);
 			if (uuexpand_gfile(s, new)) {
@@ -9407,7 +9389,7 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	}
 	flags =  GET_ASCII|SILENT|PRINT;
 	if (expandKeyWord) flags |= GET_EXPAND;
-	if (isRegularFile(MODE(s, d)) && !BAM(s)) {
+	if ((!MODE(s, d) || S_ISREG(MODE(s, d))) && !BAM(s)) {
 		unless (bktmp(old)) return (-1);
 		if (sccs_get(s, pf->oldrev, pf->mRev, pf->iLst, pf->xLst,
 		    flags, old)) {
@@ -9468,7 +9450,7 @@ diff_g(sccs *s, pfile *pf, char **tmpfile)
 	*tmpfile = DEVNULL_WR;
 	switch (diff_gmode(s, pf)) {
 	    case 0: 		/* no mode change */
-		if (!isRegularFile(s->mode)) return 1;
+		unless (HAS_GFILE(s) && S_ISREG(s->mode)) return (1);
 		*tmpfile  = bktmp(tmpname);
 		assert(*tmpfile);
 		return (diff_gfile(s, pf, 0, *tmpfile));
@@ -9550,10 +9532,11 @@ sccs_clean(sccs *s, u32 flags)
 		return (0);
 	}
 
-	unless (HAS_PFILE(s)) {
+	if (HAS_PFILE(s) && sccs_read_pfile(s, &pf)) return (1);
+	if (!HAS_PFILE(s) || (pf.magic && HAS_KEYWORDS(s))) {
 		pfile	dummy = { "+", "?", 0, 0, 0 };
 
-		if (isRegularFile(s->mode) && !WRITABLE(s)) {
+		if (HAS_GFILE(s) && S_ISREG(s->mode) && !WRITABLE(s)) {
 			verbose((stderr, "Clean %s\n", s->gfile));
 			unless (flags & CLEAN_CHECKONLY) unlinkGfile(s);
 			return (0);
@@ -9580,7 +9563,6 @@ sccs_clean(sccs *s, u32 flags)
 		return (1);
 	}
 
-	if (sccs_read_pfile(s, &pf)) return (1);
 	if (pf.mRev || pf.iLst || pf.xLst) {
 		unless (flags & CLEAN_SHUTUP) {
 			fprintf(stderr,
@@ -9818,7 +9800,7 @@ _print_pfile(sccs *s)
 	char	buf[MAXPATH];
 
 	t = xfile_fetch(s->gfile, 'p');
-	chomp(t);
+	if (t) chomp(t);
 	sprintf(buf, "%s:", s->gfile);
 	printf("%-23s %s", buf, t ? t : "(can't read pfile)\n");
 	free(t);
@@ -10270,7 +10252,7 @@ out:		sccs_abortWrite(s);
 			    s->gfile);
 			goto out;
 		}
-	} else if (isRegularFile(s->mode)) {
+	} else if (HAS_GFILE(s) && S_ISREG(s->mode)) {
 		openInput(s, flags, &gfile);
 		if (BAM(s) && bk_notLicensed(s->proj, LIC_BAM, 1)) goto out;
 		unless (gfile || BAM(s)) {
@@ -13613,7 +13595,18 @@ sccs_read_pfile(sccs *s, pfile *pf)
 	char	date[10], time[10], user[40];
 
 	bzero(pf, sizeof(*pf));
-	unless (pfile = xfile_fetch(s->gfile, 'p')) {
+	/* 'P' only read 'P'hysical pfile */
+	unless (pfile = xfile_fetch(s->gfile, 'P')) {
+		if ((errno == ENOENT) && HASGRAPH(s) && WRITABLE_REG(s)) {
+			char	*rev = 0;
+			ser_t	d = sccs_getedit(s, &rev);
+
+			/* magic pfile */
+			pf->oldrev = strdup(REV(s, d));
+			pf->newrev = strdup(rev);
+			pf->magic = 1;
+			return (0);
+		}
 		fprintf(stderr, "Empty p.file %s - aborted.\n", s->sfile);
 		return (-1);
 	}
@@ -13902,7 +13895,8 @@ out:
 		OUT;
 	}
 
-	unless (HAS_PFILE(s)) {
+	unless (HAS_PFILE(s) &&
+	    (!HAS_KEYWORDS(s) || xfile_exists(s->sfile, 'P'))) {
 		if (WRITABLE(s)) {
 			fprintf(stderr,
 			    "delta: %s writable but not checked out?\n",

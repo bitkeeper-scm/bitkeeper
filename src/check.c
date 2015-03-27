@@ -77,7 +77,7 @@ private int	checkKeys(sccs *s);
 private int	chk_gfile(sccs *s, MDBM *pathDB);
 private int	chk_dfile(sccs *s);
 private int	chk_BAM(sccs *, char ***missing);
-private int	writable_gfile(sccs *s);
+private int	writable_gfile(sccs *s, pfile *pf);
 private int	readonly_gfile(sccs *s, pfile *pf);
 private int	no_gfile(sccs *s, pfile *pf);
 private int	chk_eoln(sccs *s, int eoln_unix);
@@ -389,6 +389,7 @@ check_main(int ac, char **av)
 		if (IS_POLYPATH(PATHNAME(s, sccs_top(s)))) sawPOLY = 1;
 		if (chk_gfile(s, pathDB)) ferr++, errors |= 0x08;
 		if (HAS_PFILE(s)) {
+			/* test BWEAVEv3 and magic pfile fixing */
 			if (sccs_read_pfile(s, &pf)) {
 				ferr++, errors |= 0x08;
 			} else {
@@ -396,10 +397,12 @@ check_main(int ac, char **av)
 				if (readonly_gfile(s, &pf)) {
 					ferr++, errors |= 0x08;
 				}
+				if (writable_gfile(s, &pf)) {
+					ferr++, errors |= 0x08;
+				}
 				free_pfile(&pf);
 			}
 		}
-		if (writable_gfile(s)) ferr++, errors |= 0x08;
 		if (check_eoln && chk_eoln(s, eoln_native)) {
 			ferr++, errors |= 0x10;
 		}
@@ -801,12 +804,16 @@ keywords(sccs *s)
 	return (!same);
 }
 
+/*
+ * Look for missing physical pfile when there should be one there.  Cases:
+ * KEYWORDS(s) - chmod +w gfile can overwrite keywords with expansion
+ * FEAT_PFILE - changing from BWEAVEv3 to v2 should just autofix
+ */
 private int
-writable_gfile(sccs *s)
+writable_gfile(sccs *s, pfile *pf)
 {
-	if (!HAS_PFILE(s) && S_ISREG(s->mode) && WRITABLE(s)) {
-		pfile	pf = { "+", "?", NULL, NULL, NULL };
-
+	if (pf->magic &&
+	    (HAS_KEYWORDS(s) || !(features_bits(s->proj) & FEAT_PFILE))) {
 		if (badWritable) {
 			printf("%s\n", s->gfile);
 			return (0);
@@ -839,8 +846,8 @@ writable_gfile(sccs *s)
 		 * patch them in minus the keyword expansion.
 		 */
 		if (HAS_KEYWORDS(s)) {
-			if ((diff_gfile(s, &pf, 1, DEVNULL_WR) == 1) ||
-			    (diff_gfile(s, &pf, 0, DEVNULL_WR) == 1)) {
+			if ((diff_gfile(s, pf, 1, DEVNULL_WR) == 1) ||
+			    (diff_gfile(s, pf, 0, DEVNULL_WR) == 1)) {
 				if (unlink(s->gfile)) return (1);
 				sys("bk", "edit", "-q", s->gfile, SYS);
 				return (0);

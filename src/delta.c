@@ -462,11 +462,14 @@ delta_main(int ac, char **av)
 		}
 		if (df & DELTA_SAVEGFILE) {
 			/*
+			 * If delta -Ddiffs with no gfile, then no GFILE,
+			 * and we'd like to get one.
+			 *
 			 * fix_gmode() will fail if we don't own
 			 * the gfile, in that case set the stage
 			 * to re-get it
 			 */
-			if (fix_gmode(s, gf)) {
+			if (!HAS_GFILE(s) || fix_gmode(s, gf)) {
 				reget = 1;
 				gf &= ~GET_SKIPGET;
 			}

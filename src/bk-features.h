@@ -61,6 +61,8 @@ enum {
 #undef X
 };
 
+#define	FEAT_PFILE	FEAT_BWEAVE
+
 // features related to file format
 #define	FEAT_FILEFORMAT	(FEAT_BKFILE | FEAT_BWEAVE | FEAT_BWEAVEv2)
 

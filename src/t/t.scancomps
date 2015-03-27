@@ -61,10 +61,8 @@ touch gcc/afile
 bk new $Q gcc/afile
 bk commit $Q -yafile
 cat <<EOF > WANT
-@.
-e
 @gcc
-pe
+p
 EOF
 cmpfiles BitKeeper/log/scancomps WANT
 bk -Apc	# clear scancomps
@@ -114,10 +112,7 @@ echo OK
 echo $N Testing that sfiles clears it................................$NL
 bk commit $Q -y1
 bk --cd=gcc sfiles -p -c
-cat <<EOF > WANT
-@.
-e
-EOF
+cat </dev/null > WANT
 cmpfiles BitKeeper/log/scancomps WANT
 echo OK
 

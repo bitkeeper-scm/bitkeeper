@@ -1167,13 +1167,12 @@ again:
 	if (to) {
 		sccs_close(rs->s); /* for win32 */
 		if (sfile_move(rs->s->proj, rs->s->sfile, to)) return (-1);
+		sccs_writeHere(rs->s , to);
 		xfile_delete(to, 'm');
 		if (rs->revs) {
 			ser_t	d;
 			char	*t;
 
-			sccs_free(rs->s);
-			rs->s = sccs_init(to, INIT_NOCKSUM);
 			d = sccs_findrev(rs->s, rs->revs->local);
 			assert(d);
 			t = name2sccs(PATHNAME(rs->s, d));
@@ -1238,6 +1237,7 @@ move_remote(resolve *rs, char *sfile)
 
 	sccs_close(rs->s);
 	if (ret = sfile_move(rs->s->proj, rs->s->sfile, sfile)) return (ret);
+	sccs_writeHere(rs->s, sfile);
 	xfile_delete(sfile, 'm');
 	if (rs->opts->resolveNames) rs->opts->renames2++;
 
@@ -1503,8 +1503,7 @@ edit_tip(resolve *rs, char *sfile, ser_t d, int which)
 	char	buf[MAXPATH+100];
 	char	opt[100];
 	char	*t;
-	char	*pfile;
-	char	*newrev;
+	pfile	pf;
 
 	if (rs->opts->debug) {
 		fprintf(stderr, "edit_tip(%s %s %s)\n",
@@ -1519,24 +1518,20 @@ edit_tip(resolve *rs, char *sfile, ser_t d, int which)
 		resolve_cleanup(rs->opts, 0);
 	}
 	if (which) {
-		pfile = xfile_fetch(sfile, 'p');
-		newrev = strchr(pfile, ' ');
-		assert(newrev);
-		newrev++;
-		t = strchr(newrev, ' ');
-		*t = 0;
+		sccs_restart(rs->s);
+		if (sccs_read_pfile(rs->s, &pf)) {
+			perror(rs->s->sfile);
+			resolve_cleanup(rs->opts, 0);
+		}
 
-		/* 0123456789012
-		 * merge deltas 1.9 1.8 1.8.1.3 lm 00/01/15 00:25:18
-		 */
 		if (abs(which) == LOCAL) {
 			free(rs->revs->local);
-			rs->revs->local = strdup(newrev);
+			rs->revs->local = strdup(pf.newrev);
 		} else {
 			free(rs->revs->remote);
-			rs->revs->remote = strdup(newrev);
+			rs->revs->remote = strdup(pf.newrev);
 		}
-		free(pfile);
+		free_pfile(&pf);
 		t = aprintf("merge deltas %s %s %s\n",
 		    rs->revs->local, rs->revs->gca, rs->revs->remote);
 		if (xfile_store(sfile, 'r', t)) assert(0);
