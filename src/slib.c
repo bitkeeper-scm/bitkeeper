@@ -8704,11 +8704,20 @@ bin_writeHeap(sccs *s, char ***save)
 
 	assert(save && (*save == 0));
 
+	/*
+	 * The INIT_CHKXOR condition below is because we can't allow
+	 * s->heapfh[2] to stay open if it will reread the entire heap
+	 * file on close if we are modifying the heapfile out from
+	 * underneath it.  This blocks more than just the problem
+	 * case.
+	 */
+
 	file = bin_heapfile(s, '2');
 	// heap goes in external file
 	if (s->heap_loadsz == s->heap.len) {
 		// nothing new, skip heap
 	} else if (s->heap_loadsz &&
+	    !(s->initFlags & INIT_CHKXOR) && /* not revalidating whole heap */
 	    !lstat(file, &sb) &&	 /* 2.ChagneSet exists */
 	    S_ISREG(sb.st_mode) &&	 /* is a normal file */
 	    (sb.st_mode & 0222) &&	 /* is writable */
