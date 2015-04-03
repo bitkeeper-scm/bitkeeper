@@ -61,7 +61,7 @@ int	checking_rmdir(char *dir);
 #define	INIT_CHK_STIME	0x00010000	/* check that s.file <= gfile */
 #define	INIT_WACKGRAPH	0x00020000	/* we're wacking the graph, no errors */
 #define	INIT_MUSTEXIST	0x00040000	/* the sfile must exist or we fail */
-#define	INIT_CHKXOR	0x00040000	/* verify crc and xor of sfile */
+#define	INIT_CHKXOR	0x00080000	/* verify crc and xor of sfile */
 
 /* shared across get/diffs/getdiffs */
 #define	GET_EDIT	0x10000000	/* get -e: get for editting */
