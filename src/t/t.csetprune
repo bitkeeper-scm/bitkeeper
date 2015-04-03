@@ -704,6 +704,32 @@ bk changes -rTIPPER -nd+:I: > WANT
 cmpfiles WANT GOT
 echo OK
 
+echo $N Test the file sort order ....................................$NL
+cd "$HERE/trunk"
+bk -r prs -hnd':GFILE:|:ROOTKEY:' > WANT
+bk csetprune --test-bypath=WANT > GOT || fail
+cmpfiles WANT GOT
+# test edges including things that can't happen, but can with gone files
+cat <<EOF > WANT
+a|rk
+a|rk
+ab|rk
+a/b/c|rk
+ab/c|rk
+EOF
+bk csetprune --test-bypath=WANT > GOT || fail
+cmpfiles WANT GOT
+cat <<EOF > unsorted
+a|rk
+a/b/c|rk
+a|rk
+ab/c|rk
+ab|rk
+EOF
+bk csetprune --test-bypath=unsorted > GOT || fail
+cmpfiles WANT GOT
+echo OK
+
 # echo $N More things that can be done that were not completed ........$NL
 # cd ../work2
 # bk csetprune $Q -S -k123456789abcdef0 < ../list2

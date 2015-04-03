@@ -252,7 +252,7 @@ clone(Opts *opts, char *from, char *to, int fullcheck)
 	cmd = addLine(cmd, "clone");
 	if (flags & SILENT) cmd = addLine(cmd, "-q");
 	cmd = addLine(cmd, "-Bnone");
-	cmd = addLine(cmd, "--hide-sccs-dirs");	/* default is to hide */
+	cmd = addLine(cmd, "--upgrade");	/* default to latest */
 	cmd = addLine(cmd, from);
 	cmd = addLine(cmd, to);
 	cmd = addLine(cmd, 0);

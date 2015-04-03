@@ -491,6 +491,12 @@ typedef struct delta {
  	u32	csetFile;		/* id for ChangeSet file */
 } d2_t;
 
+typedef struct {
+	ser_t	ser;
+	u32	rkoff;
+	u32	dkoff;
+} weave;
+
 #define	XFLAGS(s, d)		((s)->slist2[d].xflags)
 #define	FLAGS(s, d)		((s)->slist1[d].flags)
 
@@ -1056,7 +1062,7 @@ void	sccs_freedelta(sccs *s, ser_t d);
 ser_t	sccs_insertdelta(sccs *s, ser_t d, ser_t serial);
 void	sccs_close(sccs *);
 void	sccs_writeHere(sccs *s, char *new);
-int	sccs_csetWrite(sccs *s, char **cweave);
+int	sccs_csetWrite(sccs *s, weave *cweave);
 sccs	*sccs_csetInit(u32 flags);
 char	**sccs_files(char **, int);
 ser_t	sccs_parseArg(sccs *s, ser_t d, char what, char *arg, int defaults);
@@ -1092,9 +1098,7 @@ int	poly_r2c(sccs *cset, ser_t d, char ***pcsets);
 int	sccs_shortKey(sccs *s, ser_t, char *);
 int	sccs_resum(sccs *s, ser_t d, int diags, int dont);
 int	cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch);
-char	**cset_mkList(sccs *cset);
-int	cset_bykeys(const void *a, const void *b);
-int	cset_byserials(const void *a, const void *b);
+weave	*cset_mkList(sccs *cset);
 int	sccs_newchksum(sccs *s);
 ser_t	sccs_getCksumDelta(sccs *s, ser_t d);
 ser_t	*addSerial(ser_t *space, ser_t s);

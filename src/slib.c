@@ -18,7 +18,7 @@
 #include "bam.h"
 #include "cfg.h"
 
-typedef struct weave weave;
+typedef struct fweave fweave;
 #define	WRITABLE_REG(s)	(WRITABLE(s) && S_ISREG((s)->mode))
 private ser_t	rfind(sccs *s, char *rev);
 private ser_t	dinsert(sccs *s, ser_t d, int fixDate);
@@ -63,8 +63,8 @@ private ser_t	gca3(sccs *s, ser_t left, ser_t right, char **i, char **e);
 private int	compressmap(sccs *s, ser_t d, u8 *set, char **i, char **e);
 private	void	uniqDelta(sccs *s);
 private	void	uniqRoot(sccs *s);
-private int	weaveMove(weave *w, int line, int before, ser_t patchserial);
-private int	doFast(weave *w, ser_t *patchmap, FILE *diffs);
+private int	weaveMove(fweave *w, int line, int before, ser_t patchserial);
+private int	doFast(fweave *w, ser_t *patchmap, FILE *diffs);
 private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private	void	parseConfig(char *buf, MDBM *db, int stripbang);
@@ -12427,7 +12427,7 @@ scompressGraph(sccs *s)
 }
 
 #define	MAXCMD	20
-struct weave {
+struct fweave {
 	sccs	*s;		// backpointer
 	char	*buf;		// current data line
 	ser_t	*wmap;		// weave map - renumber serials in weave
@@ -12445,7 +12445,7 @@ sccs_fastWeave(sccs *s, FILE *fastpatch)
 	u32	base = 0, index = 0, offset = 0;
 	loc	*lp;
 	ser_t	d, e;
-	weave	*w = 0;
+	fweave	*w = 0;
 	int	rc = 0;
 	ser_t	*weavemap = 0;
 	ser_t	*patchmap = 0;
@@ -12504,7 +12504,7 @@ sccs_fastWeave(sccs *s, FILE *fastpatch)
 		}
 	}
 
-	w = new(weave);
+	w = new(fweave);
 	w->s = s;
 	w->wmap = weavemap;
 
@@ -12545,7 +12545,7 @@ sccs_fastWeave(sccs *s, FILE *fastpatch)
 }
 
 private int
-doFast(weave *w, ser_t *patchmap, FILE *diffs)
+doFast(fweave *w, ser_t *patchmap, FILE *diffs)
 {
 	int	lineno, lcount = 0, serial, pmapsize;
 	int	gotK = 0;
@@ -12650,7 +12650,7 @@ err:
  * patchserial	current serial being processed
  */
 private int
-weaveMove(weave *w, int line, int before, ser_t patchserial)
+weaveMove(fweave *w, int line, int before, ser_t patchserial)
 {
 	sccs	*s = w->s;
 	int	finish = (line < 0);
@@ -13115,87 +13115,6 @@ newcmd:
 		goto again;
 	}
 	return (0);
-}
-
-/*
- * Dump a cset weave file out: format is from cset_mkList() ...
- * <serial> tab <rootkey> space <deltakey>
- *
- * Note: Damages the data; don't expect valid data after this call.
- */
-int
-sccs_csetWrite(sccs *s, char **cweave)
-{
-	int	i, ret = -1;
-	char	*keys, *dkey;
-	char	**keylist = 0;
-	ser_t	d;
-	FILE	*out = 0;
-	char	*ser, *oldser = 0;
-
-	T_SCCS("file=%s", s->gfile);
-	if (READ_ONLY(s)) {
-		fprintf(stderr, "%s: read-only %s\n", prog, s->gfile);
-		return (-1);
-	}
-	unless (sccs_startWrite(s)) goto err;
-
-	if (BWEAVE_OUT(s)) {
-		// yeah we duplicate all the weave data
-		for (d = 1; d <= TABLE(s); d++) WEAVE_SET(s, d, 0);
-		EACH(cweave) {
-			/* skip deleted entries */
-			unless (cweave[i][0]) continue;
-			ser = cweave[i];
-			keys = strchr(ser, '\t');
-			*keys++ = 0;
-			unless (oldser && streq(ser, oldser)) {
-				if (oldser) {
-					weave_set(s, atoi(oldser), keylist);
-					truncLines(keylist, 0);
-				}
-				oldser = ser;
-			}
-			dkey = separator(keys);
-			*dkey++ = 0;	// XXX: damages weave; don't use again
-			keylist = addLine(keylist, keys);
-			keylist = addLine(keylist, dkey);
-		}
-		if (oldser) {
-			weave_set(s, atoi(oldser), keylist);
-		}
-		freeLines(keylist, 0);
-	}
-
-	if (delta_table(s, 0)) goto err;
-
-	if (BWEAVE_OUT(s)) goto skip_weave;
-	out = sccs_wrweaveInit(s);
-	EACH(cweave) {
-		unless (cweave[i][0]) continue;	/* skip deleted entries */
-		ser = cweave[i];
-		keys = strchr(ser, '\t');
-		*keys++ = 0;
-		unless (oldser && streq(ser, oldser)) {
-			if (oldser) fprintf(out, "\001E %s\n", oldser);
-			oldser = ser;
-			fprintf(out, "\001I %s\n", ser);
-		}
-		fputs(keys, out);
-		fputc('\n', out);
-	}
-	if (oldser) fprintf(out, "\001E %s\n", oldser);
-	fputs("\001I 1\n", out);
-	fputs("\001E 1\n", out);
-	sccs_wrweaveDone(s);
-	out = 0;
-skip_weave:
-	if (sccs_finishWrite(s)) goto err;
-	ret = 0;
-err:
-	if (ret) sccs_abortWrite(s);
-
-	return (ret);
 }
 
 int

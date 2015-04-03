@@ -405,6 +405,74 @@ weave_updateMarker(sccs *s, ser_t d, u32 rk, int add)
 	data_append(&s->heap, &le32, 4);
 }
 
+/*
+ * Dump a cset weave file out: format is from cset_mkList() ...
+ */
+int
+sccs_csetWrite(sccs *s, weave *cweave)
+{
+	int	ret = -1;
+	u32	off;
+	weave	*item;
+	ser_t	d = 0;
+	hash	*first = hash_new(HASH_U32HASH, sizeof(u32), sizeof(u32));
+	char	key[MAXKEY];
+
+	T_SCCS("file=%s", s->gfile);
+	if (READ_ONLY(s)) {
+		fprintf(stderr, "%s: read-only %s\n", prog, s->gfile);
+		return (-1);
+	}
+
+	// yeah we duplicate all the weave table
+	for (d = TREE(s); d <= TABLE(s); d++) WEAVE_SET(s, d, 0);
+	unless (BWEAVE2_OUT(s)) {
+		/* compute rootkey termination - first in reverse */
+		EACHP_REVERSE(cweave, item) {
+			hash_insertU32U32(first, item->rkoff, item->ser);
+		}
+	}
+	d = 0;
+	EACHP(cweave, item) {
+		if (d != item->ser) {
+			if (d) {	/* terminate if prev entry */
+				off = 0;
+				data_append(&s->heap, &off, 4);
+			}
+			d = item->ser;
+			WEAVE_SET(s, d, s->heap.len);
+		}
+		if (BWEAVE2_OUT(s)) {
+			off = htole32(item->rkoff-4);
+			data_append(&s->heap, &off, 4);
+			/* Caution: heap could realloc; pass in copy */
+			strcpy(key, HEAP(s, item->dkoff));
+			data_append(&s->heap, key, strlen(key) + 1);
+		} else {
+			off = htole32(item->rkoff);
+			data_append(&s->heap, &off, 4);
+			off = htole32(item->dkoff);
+			data_append(&s->heap, &off, 4);
+			if (hash_fetchU32U32(first, item->rkoff) == item->ser) {
+				/* mark termination */
+				off = htole32(item->rkoff);
+				data_append(&s->heap, &off, 4);
+				off = 0;
+				data_append(&s->heap, &off, 4);
+			}
+		}
+	}
+	if (d) {
+		/* if we made an entry, terminate it */
+		off = 0;
+		data_append(&s->heap, &off, 4);
+	}
+	hash_free(first);
+
+	unless (sccs_newchksum(s)) ret = 0;
+	return (ret);
+}
+
 private void
 swaparray(void *data, u32 len)
 {
