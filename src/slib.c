@@ -2227,7 +2227,7 @@ sccs_startWrite(sccs *s)
 	} else {
 		// better be write locked if we are writing xfile
 		assert(wrlocked(s));
-		if ((fd = open(xfile, O_CREAT|O_TRUNC|O_WRONLY, 0444)) < 0) {
+		if ((fd = open(xfile, O_CREAT|O_TRUNC|O_WRONLY, 0666)) < 0) {
 			sfile = 0;
 			goto out;
 		}
@@ -2324,6 +2324,9 @@ sccs_finishWrite(sccs *s)
 			 * Fool it into not doing that.
 			 */
 			(void)unlink(s->sfile);
+		}
+		if (proj_hasOldSCCS(s->proj)) {
+			if (chmod(xfile, 0444)) perror(xfile);
 		}
 		if (rc = rename(xfile, s->sfile)) {
 			fprintf(stderr,

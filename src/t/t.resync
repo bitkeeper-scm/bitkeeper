@@ -60,15 +60,7 @@ if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -d BitKeeper/tmp ]; then echo failed to make BitKeeper/tmp; exit 1; fi
 if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 if [ ! -f BitKeeper/log/parent ]; then echo failed to record parent; exit 1; fi
-P=`bk _stat SCCS/s.ChangeSet | awk -F\| '{ print $3 }'`
-case "$P" in
-100444) echo OK
-	;;
-*)
-	echo failed
-	exit 1
-	;;
-esac
+echo OK
 cd "$HERE"
 bk clone $Q project copy
 echo $N Should not be able to resync unrelated repositories .........$NL

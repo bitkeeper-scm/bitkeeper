@@ -5,10 +5,8 @@ _commercial_config > c
 bk setup -a -f -cc --sccs-compat noremap || fail
 cd noremap
 # This should NOT be bk _test
-test ! -f SCCS/s.ChangeSet && {
-	echo failed
-	exit 1
-}
+test ! -f SCCS/s.ChangeSet && fail
+test -w SCCS/s.ChangeSet || fail sfiles should be read-only
 mkdir -p dir/subdir
 touch dir/subdir/foo
 bk new $Q dir/subdir/foo
