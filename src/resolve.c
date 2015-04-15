@@ -2304,6 +2304,8 @@ automerge(resolve *rs, names *n, int identical)
 	char	cmd[MAXPATH*4];
 	int	ret;
 	char	*name = basenm(PATHNAME(rs->s, rs->d));
+	char	*merge_msg = 0;
+	char	*l, *r;
 	names	tmp;
 	int	do_free = 0;
 	int	flags;
@@ -2334,48 +2336,45 @@ automerge(resolve *rs, names *n, int identical)
 		do_free = 1;
 	}
 
+	merge_msg = strdup("Auto merged");
 	unless (unlink(rs->s->gfile)) rs->s = sccs_restart(rs->s);
 	if (identical || sameFiles(n->local, n->remote)) {
 		assert(n);
 		fileCopy(n->local, rs->s->gfile);
-		goto same;
+		goto merged;
 	}
 
-	if (BINARY(rs->s)) {
-		unless (rs->opts->quiet) {
+	if (BINARY(rs->s) || NOMERGE(rs->s)) {
+		if (BINARY(rs->s) && !rs->opts->quiet) {
 			fprintf(stderr,
 			    "Not automerging binary '%s'\n", rs->s->gfile);
 		}
-nomerge:	rs->opts->hadConflicts++;
-		return;
+		rs->opts->hadConflicts++;
+		goto out;
 	}
-	if (NOMERGE(rs->s)) goto nomerge;
 
-	/*
-	 * The interface to the merge program is
-	 * "smerge -lleft_ver -rright_ver"
-	 * and the program must return as follows:
-	 * 0 for no overlaps, 1 for some overlaps, 2 for errors.
-	 */
-	if (rs->opts->mergeprog) {
-		ret = sys("bk", rs->opts->mergeprog,
+	/* Run smerge first */
+	l = aprintf("-l%s", rs->revs->local);
+	r = aprintf("-r%s", rs->revs->remote);
+	ret = sysio(0,
+	    rs->s->gfile, 0, "bk", "smerge", l, r, rs->s->gfile, SYS);
+	free(l);
+	free(r);
+
+	if ((ret != 0) && rs->opts->mergeprog) {
+		/*
+		 * If smerge didn't work, and the user gave us a merge
+		 * program, try that.
+		 */
+		ret = sys(rs->opts->mergeprog,
 		    n->local, n->gca, n->remote, rs->s->gfile, SYS);
-	} else {
-		char	*l = aprintf("-l%s", rs->revs->local);
-		char	*r = aprintf("-r%s", rs->revs->remote);
-
-		ret = sysio(0,
-		    rs->s->gfile, 0, "bk", "smerge", l, r, rs->s->gfile, SYS);
-		free(l);
-		free(r);
+		if (ret == 0) {
+			free(merge_msg);
+			merge_msg = aprintf("Auto merged using: %s",
+			    rs->opts->mergeprog);
+		}
 	}
 
-	if (do_free) {
-		unlink(tmp.local);
-		unlink(tmp.gca);
-		unlink(tmp.remote);
-		freenames(&tmp, 0);
-	}
 	if (ret == 0) {
 		ser_t	d;
 
@@ -2383,27 +2382,29 @@ nomerge:	rs->opts->hadConflicts++;
 			fprintf(stderr,
 			    "Content merge of %s OK\n", rs->s->gfile);
 		}
-same:		if (!LOCKED(rs->s) && edit(rs)) return;
-		comments_save("Auto merged");
+merged:		if (!LOCKED(rs->s) && edit(rs)) goto out;
+		comments_save(merge_msg);
 		d = comments_get(0, 0, rs->s, 0);
 		rs->s = sccs_restart(rs->s);
 		flags = DELTA_DONTASK|DELTA_FORCE|SILENT;
 		if (sccs_delta(rs->s, flags, d, 0, 0, 0)) {
 			sccs_whynot("delta", rs->s);
 			rs->opts->errors = 1;
-			return;
+			goto out;
 		}
-	    	rs->opts->resolved++;
+		rs->opts->resolved++;
 		xfile_delete(rs->s->gfile, 'r');
-		return;
+		goto out;
 	}
+
+	/* We could not merge this one. */
 	rs->opts->notmerged =
 	    addLine(rs->opts->notmerged,strdup(rs->s->gfile));
 	unless (WIFEXITED(ret)) {
 		fprintf(stderr, "Unknown merge status: 0x%x\n", ret);
 		rs->opts->errors = 1;
 		unlink(rs->s->gfile);
-		return;
+		goto out;
 	}
 	if (WEXITSTATUS(ret) == 1) {
 		unless (rs->opts->autoOnly) {
@@ -2413,13 +2414,20 @@ same:		if (!LOCKED(rs->s) && edit(rs)) return;
 		}
 		rs->opts->hadConflicts++;
 		unlink(rs->s->gfile);
-		return;
+		goto out;
 	}
 	fprintf(stderr,
 	    "Automerge of %s failed for unknown reasons\n", rs->s->gfile);
 	rs->opts->errors = 1;
 	unlink(rs->s->gfile);
-	return;
+
+out:	if (do_free) {
+		unlink(tmp.local);
+		unlink(tmp.gca);
+		unlink(tmp.remote);
+		freenames(&tmp, 0);
+	}
+	free(merge_msg);
 }
 
 /*

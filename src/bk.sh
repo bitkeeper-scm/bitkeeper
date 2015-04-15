@@ -1781,7 +1781,7 @@ shift
 test "X$BK_USEMSYS" = "X" && PATH="$BK_OLDPATH"
 if type "$cmd" > /dev/null 2>&1
 then
-	exec $cmd "$@"
+	exec "$cmd" "$@"
 else
 	echo "$cmd: command not found" 1>&2
 	exit 1

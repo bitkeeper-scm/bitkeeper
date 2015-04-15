@@ -1,0 +1,86 @@
+echo $N Test a custom merge program..................................$NL
+commercial proj
+echo common > afile
+cat <<EOF > bfile
+common
+common
+common
+common
+common
+common
+EOF
+bk new $Q afile bfile
+bk commit $Q -ybase
+bk clone $Q . ../copy
+bk edit $Q afile bfile
+echo remote > afile
+cat <<EOF > bfile
+remote
+common
+common
+common
+common
+common
+common
+EOF
+bk ci $Q -yremote afile bfile
+bk commit $Q -yremote
+cd ../copy
+bk edit $Q afile bfile
+echo local > afile
+cat <<EOF > bfile
+common
+common
+common
+common
+common
+common
+local
+EOF
+bk ci $Q -ylocal afile bfile
+bk commit $Q -ylocal
+cat <<'EOF' > "$HERE/merge"
+#!/bin/sh
+echo merged > $4
+exit 0
+EOF
+chmod +x "$HERE/merge"
+BK_RESOLVE_MERGEPROG="$HERE/merge"
+export BK_RESOLVE_MERGEPROG
+bk pull --batch $Q || fail
+echo 'merged' > WANT
+bk edit $Q afile bfile
+cmpfiles WANT afile
+cmp -s WANT bfile && fail Should have automerged bfile
+bk log -nd'$each(:C:){(:C:)\n}' -r+ afile > GOT
+cat <<EOF > WANT
+Auto merged using: $HERE/merge
+
+EOF
+cmpfiles WANT GOT
+bk log -nd'$each(:C:){(:C:)\n}' -r+ bfile > GOT
+cat <<EOF > WANT
+Auto merged
+
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Again, but with failed merge.................................$NL
+bk unpull -q -f || fail
+cat <<'EOF' > "$HERE/merge"
+#!/bin/sh
+exit 1
+EOF
+chmod +x "$HERE/merge"
+BK_RESOLVE_MERGEPROG="$HERE/merge"
+export BK_RESOLVE_MERGEPROG
+echo q | bk pull $Q -T 2>GOT && fail
+cat <<EOF > WANT
+Conflicts during automerge of afile
+resolve: 1 unresolved conflicts, starting manual resolve process for:
+	afile
+EOF
+printf "(content conflict) afile>> " >> WANT
+cmpfiles WANT GOT
+echo OK
