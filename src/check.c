@@ -1528,7 +1528,8 @@ next:		if (color) {
 						addArray(&rkd->gca, &idx);
 						addArray(&rkd->gcamask, 0);
 					}
-				} else {
+				} else unless (d == (TREE(s)+1)) {
+					/* Skip shared component 1.1 */
 					/* gca unmarked - must be poly */
 					rkd->poly =
 					    addLine(rkd->poly, strdup(key));
