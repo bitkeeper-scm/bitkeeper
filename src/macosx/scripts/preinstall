@@ -1,0 +1,14 @@
+#!/bin/bash
+#
+# Pre-install script for BitKeeper's OS X package installer.  Save any
+# pre-existing bk installation for use by the postinstall script.
+
+BUNDLE="$DSTROOT/BitKeeper.app"
+CONFIG="$BUNDLE/Contents/Resources/bitkeeper/config"
+if [ -f "$CONFIG" ]; then
+	/bin/cp -p "$CONFIG" "$INSTALLER_TEMP"
+fi
+if [ -d "$BUNDLE" ]; then
+	/usr/bin/tar -C "$DSTROOT" -cf "$INSTALLER_TEMP/oldbk.tar" BitKeeper.app
+fi
+exit 0

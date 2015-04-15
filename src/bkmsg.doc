@@ -1576,6 +1576,13 @@ If the upgrade command is given the -a option to request the binary
 for another architecture, then installation is not allowed, please
 add -d and try again.
 $
+#upgrade-pre-bundle
+You are trying to upgrade a Mac OS X bundled application to a version
+of BitKeeper that did not support bundles. Please use the -fd flags to
+download the old installer, manually remove the bundle located at
+	 #BKARG#
+and run the installer.
+$
 #license-restricted
 A license request was rejected by the license server.
 

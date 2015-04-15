@@ -346,7 +346,7 @@ uninstall(char *path, int upgrade)
 	char	**dirs = 0, **links = 0;
 	char	*buf = 0;
 	char	*me = "bk";
-	char	*cmd;
+	char	*cmd, *p;
 	int	rc = 1;
 	int	dobk = 0;
 	int	bgrmdir = 1;
@@ -358,9 +358,9 @@ uninstall(char *path, int upgrade)
 
 	if (chdir(path) || !(dirs = getdir("."))) {
 		fprintf(stderr,
-		    "You do not have permission cd to or read %s\n", path);
+		    "You do not have permissions on %s\n", path);
 		if (dfd)fprintf(dfd,
-		    "You do not have permission cd to or read %s\n", path);
+		    "You do not have permissions on %s\n", path);
 		goto out;
 	}
 	if (lstat(".", &statbuf)) {
@@ -409,6 +409,7 @@ uninstall(char *path, int upgrade)
 		}
 	}
 	chdir("..");
+
 	if (rmdir(path) && bgrmdir) {
 		cmd = aprintf("( while kill -0 %lu; do sleep 1; done; "
 		    "rmdir \"%s\" ) "
@@ -417,6 +418,32 @@ uninstall(char *path, int upgrade)
 		(system)(cmd);
 		free(cmd);
 	}
+
+	if (macosx()) {
+		/* figure out if we're in a bundle or not */
+		char	*bundle = fullname(bin, 0);
+
+		if (p = strstr(bundle, "BitKeeper.app")) {
+			/* we know the app name, we want the dir where
+			 * it goes */
+			*(p+13) = 0; /* NULL at end of BitKeeper.app */
+			chdir("/tmp");  /* cd out of the bundle first */
+			if (rmtree(bundle)) {
+				fprintf(stderr,
+				    "Could not remove %s\n", bundle);
+				if (dfd) fprintf(dfd,
+				    "Could not remove %s\n", bundle);
+				goto out;
+			}
+			/* remove the package receipt */
+			cmd = aprintf("/usr/sbin/pkgutil "
+				      "--forget com.bitkeeper.bk "
+				      ">/dev/null 2>&1");
+			(system)(cmd);
+			free(cmd);
+		}
+	}
+
 	if (upgrade) {
 		/* preserve user's symlinks as they might be in a
 		 * different path than /usr/bin

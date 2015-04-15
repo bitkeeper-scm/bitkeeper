@@ -16,6 +16,7 @@ ifeq "$(OSTYPE)" "msys"
 	RESOURCES=resources.o
 	SO=so
 	STRIPOPTS=
+	DARWIN=NO
 	# SIGNTOOL path also in t.installer, so keep in sync
 	SIGNTOOL=/c/Program Files/Microsoft SDKs/Windows/v7.1/Bin/signtool.exe
 	CERT=../win32/bitmover-cert.p12
@@ -33,16 +34,24 @@ else
 	SO=dll
 	STRIPOPTS=
 	BKGUI=$(BINDIR)/gui/bin/bkgui$(EXE)
+	DARWIN=NO
 	ifeq "$(shell uname)" "Darwin"
 		SO=dylib
 		STRIPOPTS=-x
 		BKGUI=$(BINDIR)/gui/bin/BitKeeper.app/Contents/MacOS/BitKeeper
+		DARWIN=YES
+# CERT is the Common Name of the Developer ID Installer
+# certificate issued to us by Apple for code signing our Mac OS X
+# installer package. It need not be installed on your machine; the
+# build will simply not sign the .pkg file.
+		CERT='Developer ID Installer: BitMover, Inc. (2265G6A886)'
 	endif
 endif
 SYSTEM_OBJS=../libc/libc.a
 SFIO=sfio$(EXE)
 CPPFLAGS=-I../libc
 VERS	:= $(shell test -x vers || bk get vers; BINDIR=$(BINDIR) ./vers)
+VERS_NO := $(subst bk-,,$(VERS))
 IMGBASE:= $(shell bk get -qS bk_version; echo $(VERS)-`./bk_version`)
 IMAGE:= $(IMGBASE)$(EXT)
 IMAGE_NAME:= $(IMGBASE)-setup
@@ -56,6 +65,35 @@ $(IMAGE): installer.manifest extractor.o $(SYSTEM_OBJS) _data.o $(RESOURCES)
 	$(LD) $(LDFLAGS) extractor.o $(SYSTEM_OBJS) _data.o $(LIBS) \
 	    $(RESOURCES) -o $@
 	@$(RM) -f _data.o
+	@if [ $(DARWIN) = YES ] ; \
+	then \
+		echo Creating Mac OS X installer package ; \
+		echo version will be "$(VERS_NO)" ; \
+		$(RM) -rf BitKeeper; \
+		mkdir -p BitKeeper; \
+		mv $(BINDIR)/gui/bin/BitKeeper.app BitKeeper ; \
+		mv $(BINDIR) BitKeeper/BitKeeper.app/Contents/Resources ; \
+		ln -s ../../../../../../BitKeeper.app \
+		    BitKeeper/BitKeeper.app/Contents/Resources/bitkeeper/gui/bin ; \
+		mkdir BitKeeper/BitKeeper.app/Contents/Resources/Scripts ; \
+		bk get -qS ../macosx/AppMain.tcl ; \
+		cp ../macosx/AppMain.tcl \
+		    BitKeeper/BitKeeper.app/Contents/Resources/Scripts ; \
+		pkgbuild --install-location /Applications \
+			--identifier com.bitkeeper.bk \
+			--version $(VERS_NO) \
+			--scripts ../macosx/scripts \
+			--root BitKeeper/ \
+			--component-plist component.plist \
+			bk.pkg ; \
+		productbuild --distribution distribution.xml \
+			$(IMGBASE).pkg ; \
+		rm bk.pkg ; \
+	fi
+	-@if [ $(DARWIN) = YES ] ; \
+	then \
+		productsign --sign $(CERT) $(IMGBASE).pkg $(IMGBASE)-signed.pkg ; \
+	fi
 
 _data.o: sfio$(EXE) munge$(EXE) zz$(EXE) sfioball.zz
 	@echo Compressing data
@@ -116,7 +154,8 @@ zz$(EXE): zz.o
 clean:
 	$(RM) -f _data _data.c _data.o a.out munge$(EXE) zz \
 		core* bk-*.bin *.o *.exe *.obj *.pdb *.ilk sfio *.zz \
-		installtool inskeys
+		installtool inskeys *.pkg
+	$(RM) -rf BitKeeper
 
 clobber: clean
 	-bk clean

@@ -174,6 +174,13 @@ case $CMD in
 			echo "Could not $CP $IMG to $DEST"
 			exit 1
 		}
+		if [ `uname -s` = Darwin ] ;
+		then	# we're on Mac OS
+			$CP /build/.images/"$TAG-$ARCH-signed.pkg" $DEST || {
+				echo "Could not $CP $TAG-$ARCH-signed.pkg to $DEST"
+				exit 1
+			}
+		fi
 	}
 	# Leave the directory there only if they asked for a saved build
 	test $CMD = save || {
