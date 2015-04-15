@@ -62,6 +62,7 @@ again:	resplen = sizeof(resp);
 		T_DEBUG("discarding mismatched response: %s %s\n",
 		    msg_md5, t);
 		fclose(fin);
+		free(msg_md5);
 		goto again;
 	}
 	free(msg_md5);

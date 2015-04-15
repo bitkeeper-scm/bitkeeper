@@ -23,6 +23,7 @@ _newFile
 _popensystem
 _progresstest
 _register
+_unittests
 editor
 graft
 gvim

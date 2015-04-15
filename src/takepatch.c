@@ -826,7 +826,7 @@ save:
 				sep = separator(&b[i]);
 				assert(sep);
 				*sep = 0;
-				if (!changesetKey(&b[1]) &&
+				if (!changesetKey(&b[i]) &&
 				    hash_insertStr(countFiles, &b[i], 0)) {
 					opts->N++;  /* for progress bar */
 				}

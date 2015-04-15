@@ -1164,7 +1164,7 @@ csetCreate(c_opts opts, sccs *cset, int flags, char *files, char **syms)
 
 out:	unless (error || (flags & SILENT)) {
 		fprintf(stderr, "ChangeSet revision %s: +%d\n",
-		    REV(cset, cset->tip), nLines(keys));
+		    REV(cset, cset->tip), nLines(keys)/2);
 	}
 	freeLines(keys, free);
 	comments_done();
