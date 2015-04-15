@@ -15239,8 +15239,31 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 
 	case KW_GB: /* GB */ {
 		/* Gotten body */
+		char	*tmpf;
+		FILE	*f;
+		size_t	len;
+		char	*buf[2048];
+
+		/*
+		 * sccs_get writes to stdout or filesys.
+		 * This needs to write file to 'out'.
+		 * XXX: What do do with errors?
+		 */
 		sccs_restart(s);
-		sccs_get(s, REV(s, d), 0, 0, 0, GET_EXPAND|SILENT|PRINT, "-");
+		tmpf = bktmp(0);
+		sccs_get(s, REV(s, d), 0, 0, 0, GET_EXPAND|SILENT|PRINT, tmpf);
+		unless (f = fopen(tmpf, "r")) {
+			perror(tmpf);
+			unlink(tmpf);
+			free(tmpf);
+			return (nullVal);
+		}
+		while (len = fread(buf, 1, sizeof(buf), f)) {
+			fwrite(buf, 1, len, out);
+		}
+		fclose(f);
+		unlink(tmpf);
+		free(tmpf);
 		return (strVal);
 	}
 
