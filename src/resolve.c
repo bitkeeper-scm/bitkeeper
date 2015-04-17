@@ -2320,7 +2320,9 @@ automerge(resolve *rs, names *n, int identical)
 	}
 	if (rs->opts->debug) fprintf(stderr, "automerge %s\n", name);
 
-	unless (n) {
+	if (!n &&
+	    (rs->opts->mergeprog ||
+	     identical || BINARY(rs->s) || NOMERGE(rs->s))) {
 		sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->local);
 		tmp.local = strdup(cmd);
 		sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->gca);
@@ -2338,7 +2340,9 @@ automerge(resolve *rs, names *n, int identical)
 
 	merge_msg = strdup("Auto merged");
 	unless (unlink(rs->s->gfile)) rs->s = sccs_restart(rs->s);
-	if (identical || sameFiles(n->local, n->remote)) {
+	if (identical ||
+	    ((BINARY(rs->s) || NOMERGE(rs->s)) &&
+	      sameFiles(n->local, n->remote))) {
 		assert(n);
 		fileCopy(n->local, rs->s->gfile);
 		goto merged;
