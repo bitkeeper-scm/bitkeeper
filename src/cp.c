@@ -47,7 +47,10 @@ cp(char *from, char *to, int force, int quiet)
 		return (1);
 	}
 	sfile = name2sccs(from);
-	unless (s = sccs_init(sfile, 0)) return (1);
+	unless (s = sccs_init(sfile, INIT_MUSTEXIST)) {
+		fprintf(stderr, "%s: %s: No such file\n", prog, from);
+		return (1);
+	}
 	unless (HASGRAPH(s) && s->cksumok) {
 err:		sccs_free(s);
 		return (1);
