@@ -16976,6 +16976,36 @@ sccs_findtips(sccs *s, ser_t *a, ser_t *b)
 }
 
 /*
+ * Use resolve's automerge to see if we can merge the files as
+ * part of takepatch.
+ */
+private	int
+tryMerge(sccs *s, ser_t local, ser_t remote)
+{
+	ser_t	tmp;
+	char	*file;
+
+	if (CSET(s) || BINARY(s) || NOMERGE(s) || getenv("_BK_NOMERGE")) {
+		return (1);
+	}
+	unless (streq(PATHNAME(s, local), PATHNAME(s, remote))) return (1);
+	unless (XFLAGS(s, local) == XFLAGS(s, remote)) return (1);
+	unless (MODE(s, local) == MODE(s, remote)) return (1);
+
+	file = strneq(s->gfile, "RESYNC/", 7) ? s->gfile + 7 : s->gfile;
+	if (isConvergeFile(file)) return (1);
+
+	unless (FLAGS(s, remote) & D_REMOTE) {
+		tmp = remote;
+		remote = local;
+		local = tmp;
+	}
+	unless (FLAGS(s, remote) & D_REMOTE) return (1);
+
+	return (resolve_automerge(s, local, remote));
+}
+
+/*
  * Create resolve file.
  * The order of the deltas in the file is important - the "branch"
  * should be last.
@@ -16983,7 +17013,7 @@ sccs_findtips(sccs *s, ser_t *a, ser_t *b)
  * XXX - this is also where we would handle pathnames, symbols, etc.
  */
 int
-sccs_resolveFiles(sccs *s)
+sccs_resolveFiles(sccs *s, int merge)
 {
 	ser_t	p, g = 0, a = 0, b = 0;
 	char	*n[3];
@@ -17026,6 +17056,7 @@ err:
 			    "request assistance.\n");
 			goto err;
 		}
+		if (merge && tryMerge(s, a, b) == 0) return (1);
 		retcode = 1;
 	}
 

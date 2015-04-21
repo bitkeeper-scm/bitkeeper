@@ -220,7 +220,7 @@ touch zoo
 bk new $Q zoo
 bk commit $Q -f
 cd ../merge
-bk pull $Q -R
+bk pull $Q -Ri
 # The gone file is in place, so the resolve would normally work.
 # Reach in through the resolve and zero it.
 # A conflict was set up in meaningless file 'bar'. Just sccs merge it.

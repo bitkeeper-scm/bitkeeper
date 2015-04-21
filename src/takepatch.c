@@ -29,6 +29,7 @@
 #define	CLEAN_RESYNC	1	/* blow away the RESYNC dir */
 #define	CLEAN_PENDING	2	/* blow away the PENDING dir */
 #define	CLEAN_OK	4	/* but exit 0 anyway */
+#define	CLEAN_FLAGS	8	/* Note that nway return are clean flags */
 #define	SHOUT() fputs("\n=================================== "\
 		    "ERROR ====================================\n", stderr);
 #define	SHOUT2() fputs("======================================="\
@@ -57,15 +58,22 @@ private	void	getChangeSet(void);
 private	void	loadskips(void);
 private	int	sfio(FILE *m, int files);
 private	int	parseFeatures(char *next);
+private	int	sendPatch(char *name, FILE *in);
+private	int	stopNway(int n, int *conflicts, int *numcsets);
 
 typedef struct {
 	/* command line options */
 	int	pbars;		/* --progress: progress bars, default is off */
 	int	mkpatch;	/* -m: act like makepatch verbose */
 	int	collapsedups;	/* -D: allow csets in BitKeeper/etc/collapsed */
+	int	parallel;	/* -j: do N takepatches in parallel */
+	int	nway;		/* This is one of the parallel threads */
+	int	automerge;	/* do automerging */
 
 	/* global state */
 	u64	N;		/* number of ticks */
+	FILE	**outlist;	/* parallel popen file handles */
+	int	*sent;		/* how many bytes written to each channel */
 
 	/* modes enabled in patch */
 	u8	fast;		/* Fast patch mode */
@@ -127,6 +135,7 @@ takepatch_main(int ac, char **av)
 	FILE 	*f;
 	char	*buf;
 	int	c;
+	int	rc;
 	int	files = 0;
 	char	*t;
 	int	error = 0;
@@ -136,13 +145,18 @@ takepatch_main(int ac, char **av)
 	ticker	*tick = 0;
 	longopt	lopts[] = {
 		{ "progress", 300, },
+		{ "Nway", 310, },
+		{ "port", 315, },
+		{ "fast", 320, },
+		{ "no-automerge", 325, },
 		{ 0, 0 },
 	};
 
 	setmode(0, O_BINARY); /* for win32 */
 	opts = new(Opts);
 	opts->input = "-";
-	while ((c = getopt(ac, av, "acDFf:iLmqsStTvy;", lopts)) != -1) {
+	opts->automerge = 1;
+	while ((c = getopt(ac, av, "acDFf:ij;LmqsStTvy;", lopts)) != -1) {
 		switch (c) {
 		    case 'q':					/* undoc 2.0 */
 		    case 's':					/* undoc 2.0 */
@@ -156,6 +170,14 @@ takepatch_main(int ac, char **av)
 			    opts->input = optarg;
 			    break;
 		    case 'i': opts->newProject++; break;	/* doc 2.0 */
+		    case 'j':
+			if ((opts->parallel = atoi(optarg)) <= 1) {
+				/* if they set it to <= 1 then disable */
+				opts->parallel = -1;
+			} else if (opts->parallel > PARALLEL_MAX) {
+				opts->parallel = PARALLEL_MAX;	/* cap it */
+			}
+			break;
 		    case 'm': opts->mkpatch++; break;		/* doc 2.0 */
 		    case 'S': opts->saveDirs++; break;		/* doc 2.0 */
 		    case 'T': textOnly++; break;		/* doc 2.0 */
@@ -165,9 +187,24 @@ takepatch_main(int ac, char **av)
 			break;
 		    case 'y': opts->comments = optarg; break;
 		    case 300: opts->pbars = 1; break;
+		    case 310: opts->nway = 1; break;
+		    case 315: opts->port = 1; break;
+		    case 320: opts->fast = 1; break;
+		    case 325: opts->automerge = 0; break;
 		    default: bk_badArg(c, av);
 		}
 	}
+	if (opts->newProject) putenv("_BK_NEWPROJECT=YES");
+	if (opts->nway) {
+		unless (getenv("_BK_CALLSTACK")) {
+			fprintf(stderr, "--Nway is internal option\n");
+			free(opts);
+			return (-1);
+		}
+		opts->p = stdin;
+		goto doit;
+	}
+	unless (opts->parallel) opts->parallel = parallel(".");
 	if (getenv("TAKEPATCH_SAVEDIRS")) opts->saveDirs++;
 	if ((t = getenv("BK_NOTTY")) && *t && (opts->echo == 3)) {
 		opts->echo = 2;
@@ -178,10 +215,9 @@ takepatch_main(int ac, char **av)
 	if (streq(getenv("_BK_CALLSTACK"), "takepatch")) opts->needlock = 1;
 
 	opts->p = init(opts->input);
-	if (opts->newProject) putenv("_BK_NEWPROJECT=YES");
-	if (sane(0, 0)) exit(1);
+	if (sane(0, 0)) exit(1);	/* uses _BK_NEWPROJECT */
 
-	if (opts->newProject) {
+doit:	if (opts->newProject || getenv("_BK_NEWPROJECT")) {
 		unless (opts->idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
 			perror("mdbm_open");
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
@@ -203,8 +239,6 @@ takepatch_main(int ac, char **av)
 	 * Find a file and go do it.
 	 */
 	while (buf = fgetline(opts->p)) {
-		int	rc;
-
 		++opts->line;
 		unless (strncmp(buf, "== ", 3) == 0) {
 			if (opts->echo > 7) {
@@ -235,9 +269,16 @@ takepatch_main(int ac, char **av)
 			cleanup(CLEAN_RESYNC);
 		}
 		*t = 0;
-		t = name2sccs(&buf[3]);
-		rc = extractPatch(t, opts->p);
-		free(t);
+		t = &buf[3];	/* gfile */
+		/* SFIO needs rootkey, so unpack ChangeSet in this thread */
+		if ((opts->parallel > 0) &&
+		    (!streq(t, GCHANGESET) || !getenv("_BK_NEWPROJECT"))) {
+			rc = sendPatch(t, opts->p);
+		} else {
+			t = name2sccs(t);
+			rc = extractPatch(t, opts->p);
+			free(t);
+		}
 		if (!files && opts->pbars) {
 			tick = progress_start(PROGRESS_BAR, opts->N);
 		}
@@ -249,7 +290,12 @@ takepatch_main(int ac, char **av)
 		}
 		remote += rc;
 	}
-	if (fclose(opts->p)) {
+	if (opts->parallel > 0) {
+		if (rc = stopNway(opts->parallel, &opts->conflicts, &remote)) {
+			error = rc;
+		}
+	}
+	if ((opts->p != stdin) && fclose(opts->p)) {
 		perror(opts->input);
 		opts->p = 0;	/* don't try to close again */
 		cleanup(CLEAN_RESYNC);
@@ -265,6 +311,11 @@ takepatch_main(int ac, char **av)
 #ifdef	SIGXFSZ
 	if (getenv("_BK_SUICIDE")) kill(getpid(), SIGXFSZ);
 #endif
+	if (opts->nway) {
+		if (remote) printf("r %d\n", remote);
+		if (opts->conflicts) printf("c %u\n", opts->conflicts);
+		goto done;
+	}
 	if (opts->echo || opts->pbars) {
 		files = 0;
 		if (f = popen("bk sfiles RESYNC", "r")) {
@@ -336,6 +387,8 @@ takepatch_main(int ac, char **av)
 		unless (WIFEXITED(i)) return (-1);
 		error = WEXITSTATUS(i);
 	}
+done:	freeLines(opts->errfiles, free);
+	freeLines(opts->edited, free);
 	free(opts);
 	return (error);
 }
@@ -952,7 +1005,10 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 
 	if (s && CSET(s)) T_PERF("applyCsetPatch(start)");
 	reversePatch();
-	unless (p = opts->patchList) return (0);
+	unless (p = opts->patchList) {
+		sccs_free(s);
+		return (0);
+	}
 
 	if (opts->echo > 7) {
 		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",
@@ -1292,7 +1348,9 @@ markup:
 		}
 	}
 
-	if ((confThisFile = sccs_resolveFiles(s)) < 0) goto err;
+	if ((confThisFile = sccs_resolveFiles(s, opts->automerge)) < 0) {
+		goto err;
+	}
 	if (!confThisFile && (s->state & S_CSET) && 
 	    sccs_adminFlag(s, SILENT|ADMIN_BK)) {
 	    	confThisFile++;
@@ -1613,7 +1671,7 @@ apply:
 		getMsg("tp_uncommitted", localPath, 0, stderr);
 		return (-1);
 	}
-	if ((confThisFile = sccs_resolveFiles(s)) < 0) {
+	if ((confThisFile = sccs_resolveFiles(s, opts->automerge)) < 0) {
 		sccs_free(s);
 		return (-1);
 	}
@@ -2020,7 +2078,7 @@ sfio(FILE *m, int files)
 		 * does the right thing with or without D_LOCAL.
 		 */
 		FLAGS(s, d) |= D_LOCAL;
-		if (sccs_resolveFiles(sr) < 0) goto err;
+		if (sccs_resolveFiles(sr, opts->automerge) < 0) goto err;
 		sccs_free(s);
 		sccs_free(sr);
 		s = sr = 0;
@@ -2478,7 +2536,7 @@ cleanup(int what)
 	int	i, rc = 1;
 
 	if (opts->p) {
-		if (fclose(opts->p)) {
+		if ((opts->p != stdin) && fclose(opts->p)) {
 			fprintf(stderr,
 			    "takepatch: failed closing input stream.\n");
 		}
@@ -2487,11 +2545,18 @@ cleanup(int what)
 	if (opts->patchList) freePatchList();
 	if (opts->idDB) mdbm_close(opts->idDB);
 	if (opts->goneDB) mdbm_close(opts->goneDB);
+	for (i = 3; i < 20; ++i) close(i);
+	if (opts->nway) {
+		EACH(opts->errfiles) printf("e %s\n", opts->errfiles[i]);
+		freeLines(opts->errfiles, free);
+		EACH(opts->edited) printf("p %s\n", opts->edited[i]);
+		freeLines(opts->edited, free);
+		exit(what | CLEAN_FLAGS);
+	}
 	if (opts->saveDirs) {
 		fprintf(stderr, "takepatch: neither directory removed.\n");
 		goto done;
 	}
-	for (i = 3; i < 20; ++i) close(i);
 	if (what & CLEAN_RESYNC) {
 		rmtree(ROOT2RESYNC);
 	} else {
@@ -2526,6 +2591,7 @@ done:
 			}
 			fprintf(stderr,
 			    "For more information run \"bk help tp1\"\n");
+			freeLines(opts->edited, free);
 		}
 		SHOUT2();
 		if (opts->errfiles) {
@@ -2573,4 +2639,201 @@ parseFeatures(char *next)
 		}
 	}
 	return (0);
+}
+
+private	FILE **
+startNway(int n)
+{
+	int	i;
+	char	*cmd;
+	char	*counter;
+
+	opts->outlist = calloc(n, sizeof(FILE *));
+	opts->sent = calloc(n, sizeof(int));
+	cmd = aprintf("bk takepatch --Nway%s%s%s%s "
+	    "> RESYNC/BitKeeper/tmp/nwayXXXXX",
+	    opts->collapsedups ? " -D" : "",
+	    opts->fast ? " --fast" : "",
+	    opts->port ? " --port" : "",
+	    opts->automerge ? "" : " --no-automerge");
+	counter = cmd + strlen(cmd) - 5;
+	for (i = 0; i < n; i++) {
+		sprintf(counter, "%05d", i);
+		unless (opts->outlist[i] = popen(cmd, "w")) {
+			stopNway(n, 0, 0);
+			break;
+		}
+	}
+	free(cmd);
+	return (opts->outlist);
+}
+
+private	int
+stopNway(int n, int *confp, int *numcsetsp)
+{
+	int	i, j, conf = 0, numcsets = 0;
+	int	cleanFlags = 0;
+	int	ret, rc = 0;
+	char	file[] = "RESYNC/BitKeeper/tmp/nwayXXXXX";
+	char	*counter, **data = 0;
+	char	cmd, *param;
+
+	FREE(opts->sent);
+	unless (opts->outlist) return (0);
+	counter = file + strlen(file) - 5;
+
+	for (i = 0; i < n; i++) {
+		if (opts->outlist[i] && (ret = pclose(opts->outlist[i]))) {
+			unless (WIFEXITED(ret)) {
+				rc = -1;
+				continue;
+			}
+			ret = WEXITSTATUS(ret);
+			if (ret & CLEAN_FLAGS) {
+				ret &= ~CLEAN_FLAGS;
+				/* prefer ERROR to OK */
+				if (!cleanFlags ||
+				    ((cleanFlags & CLEAN_OK) &&
+				    !(ret & CLEAN_OK))) {
+					cleanFlags = ret;
+				}
+			} else {
+				rc = -1;
+			}
+		}
+		sprintf(counter, "%05d", i);
+		data = file2Lines(data, file);
+		EACH_INDEX(data, j) {
+			cmd = *data[j];
+			param = &data[j][2];
+			switch (cmd) {
+			    case 'c' :	/* conflict */
+				conf += atoi(param);
+				break;
+			    case 'e' :	/* error */
+				opts->errfiles =
+				    addLine(opts->errfiles, strdup(param));
+			    	break;
+			    case 'p' :	/* edited (pfile) */
+				opts->edited =
+				    addLine(opts->edited, strdup(param));
+			    	break;
+			    case 'r' :	/* csets taken in from remote */
+				numcsets += atoi(param);
+				break;
+			}
+			free(data[j]);
+		}
+		truncLines(data, 0);
+	}
+	freeLines(data, 0);
+	if (confp) *confp += conf;
+	if (numcsetsp) *numcsetsp += numcsets;
+	free(opts->outlist);
+	opts->outlist = 0;
+	if (cleanFlags) cleanup(cleanFlags);
+	return (rc);
+}
+
+/*
+ * See if parallel started.
+ *   start it up.
+ * Find one with smallest sent (sfio code), send to it.
+ * if ChangeSet, count files in patch.
+ * Stop with = or # as first char.
+ * XXX: Can a key begin with # ?
+ */
+private	int
+sendPatch(char *name, FILE *in)
+{
+	int	i, c, n, cur, sent;
+	int	rc = -1;
+	char	*line;
+	size_t	len;
+	hash	*rk = 0;
+	FILE	*out;
+
+	n = opts->parallel;
+	if (!opts->outlist && !(opts->outlist = startNway(n))) return (-1);
+
+	if (streq(name, GCHANGESET)) {
+		opts->N++;
+		rk = hash_new(HASH_MEMHASH);
+	}
+
+	cur = 0;
+	for (i = 0; i < n; i++) {
+		if (opts->sent[i] < opts->sent[cur]) cur = i;
+	}
+	out = opts->outlist[cur];
+
+	if (opts->echo > 1) fprintf(stderr, "Updating %s\n", name);
+	sent = fprintf(out, "== %s ==\n", name);
+
+again:
+	line = fgetln(in, &len);
+	unless (len) {
+err:	
+		if (ferror(out)) {
+			fprintf(stderr, "slurp rest of file\n");
+			// slurp rest of data and wind down
+		}
+		return (-1);
+	}
+	if ((len > 17) &&
+	    strneq(line, "# Patch checksum=", 17)) {
+		rc = 0;
+		goto done;
+	}
+	unless (len == fwrite(line, 1, len, out)) return (-1);
+
+	/* delta meta data block */
+	while(line = fgetln(in, &len)) {
+		assert(len);
+		unless (len == fwrite(line, 1, len, out)) goto err;
+		sent += len;
+		if (*line == '\n') break;
+	}
+	unless (len) goto err;
+
+	/* delta data block */
+	while(line = fgetln(in, &len)) {
+		assert(len);
+		unless (len == fwrite(line, 1, len, out)) goto err;
+		sent += len;
+		if (*line == '\n') break;
+		if (rk && (*line == '>')) {
+			char	*rkstart, *rkend;
+
+			assert(line[len - 1] == '\n');
+			line[len - 1] = 0;	/* just a safety net */
+			rkend = separator(line);
+			assert(rkend);
+			*rkend = 0;
+			rkstart = line + (opts->fast ? 1 : 2);
+			if (!changesetKey(rkstart) &&
+			    hash_insert(rk, rkstart, rkend-rkstart+1, 0, 0)) {
+				opts->N++;
+			}
+			*rkend = ' ';
+			line[len - 1] = '\n';
+		}
+	}
+	unless (len) goto err;
+
+	if ((c = getc(in)) == EOF) goto done;
+	ungetc(c, in);
+	if (c != '=') goto again;
+	rc = 0;
+done:
+	opts->sent[cur] += sent;
+
+	// opts->sent[cur]++;	/* round robin */
+
+	// From sfio.c - see comment in sfio_in_Nway() - look for '20'
+	// opts->sent[cur] += 20;
+	// opts->sent[cur] += sent / (25<<10);
+
+	if (rk) hash_free(rk);
+	return (rc);
 }

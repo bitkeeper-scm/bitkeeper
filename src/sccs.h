@@ -1167,7 +1167,7 @@ ser_t	sccs_prev(sccs *s, ser_t d);
 ser_t	sccs_next(sccs *s, ser_t d);
 int	sccs_reCache(int quiet);
 int	sccs_findtips(sccs *s, ser_t *a, ser_t *b);
-int	sccs_resolveFiles(sccs *s);
+int	sccs_resolveFiles(sccs *s, int merge);
 sccs	*sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB);
 sccs	*sccs_keyinitAndCache(
 	    project *proj, char *key, u32 flags, MDBM *sDB, MDBM *idDB);
@@ -1459,6 +1459,7 @@ int	db_store(char *gfile, MDBM *m);
 char	**getParkComment(int *err);
 int	launch_wish(char *script, char **av);
 void	converge_hash_files(void);
+int	isConvergeFile(char *file);
 int	getMsg(char *msg_name, char *bkarg, char b, FILE *outf);
 int	getMsg2(char *msg_name, char *arg, char *arg2, char b, FILE *outf);
 int	getMsgP(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);

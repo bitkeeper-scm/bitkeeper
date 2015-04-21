@@ -2296,9 +2296,44 @@ get_revs(resolve *rs, names *n)
 }
 
 /*
- * Try to automerge.
+ * Wrap resolve.c: automerge() so takepatch can use it without knowing
+ * about resolve data structures.
  */
-void
+int
+resolve_automerge(sccs *s, ser_t local, ser_t remote)
+{
+	int	ret;
+	resolve	*rs;
+	names	*revs;
+	opts	opts = {0};
+
+	rs = new(resolve);
+	revs = new(names);
+
+	revs->local = strdup(REV(s, local));
+	revs->remote = strdup(REV(s, remote));
+	revs->gca = strdup(REV(s, sccs_gca(s, local, remote, 0, 0)));
+	rs->revs = revs;
+	rs->opts = &opts;
+	rs->s = s;
+	rs->d = sccs_top(s);
+	opts.quiet = 1;
+	opts.autoOnly = 1;
+	opts.mergeprog = getenv("BK_RESOLVE_MERGEPROG");
+
+	ret = automerge(rs, 0, 0);
+
+	/* keep the 's', clean everything else */
+	rs->s = 0;
+	resolve_free(rs);
+	if (opts.notmerged) freeLines(opts.notmerged, free);
+	return (ret);
+}
+
+/*
+ * Try to automerge. 0 == auto-merged, 1 == did not auto-merge, -1 == error
+ */
+int
 automerge(resolve *rs, names *n, int identical)
 {
 	char	cmd[MAXPATH*4];
@@ -2308,6 +2343,7 @@ automerge(resolve *rs, names *n, int identical)
 	char	*l, *r;
 	names	tmp;
 	int	do_free = 0;
+	int	automerged = -1;
 	int	flags;
 	ser_t	a, b;
 
@@ -2316,7 +2352,7 @@ automerge(resolve *rs, names *n, int identical)
 			fprintf(stderr, "'%s' already merged\n",
 			    rs->s->gfile);
 		}
-		return;
+		return (0);
 	}
 	if (rs->opts->debug) fprintf(stderr, "automerge %s\n", name);
 
@@ -2332,7 +2368,7 @@ automerge(resolve *rs, names *n, int identical)
 		if (get_revs(rs, &tmp)) {
 			rs->opts->errors = 1;
 			freenames(&tmp, 0);
-			return;
+			return (-1);
 		}
 		n = &tmp;
 		do_free = 1;
@@ -2354,6 +2390,7 @@ automerge(resolve *rs, names *n, int identical)
 			    "Not automerging binary '%s'\n", rs->s->gfile);
 		}
 		rs->opts->hadConflicts++;
+		automerged = 1;
 		goto out;
 	}
 
@@ -2398,6 +2435,7 @@ merged:		if (!LOCKED(rs->s) && edit(rs)) goto out;
 		}
 		rs->opts->resolved++;
 		xfile_delete(rs->s->gfile, 'r');
+		automerged = 0;
 		goto out;
 	}
 
@@ -2418,6 +2456,7 @@ merged:		if (!LOCKED(rs->s) && edit(rs)) goto out;
 		}
 		rs->opts->hadConflicts++;
 		unlink(rs->s->gfile);
+		automerged = 1;
 		goto out;
 	}
 	fprintf(stderr,
@@ -2432,6 +2471,7 @@ out:	if (do_free) {
 		freenames(&tmp, 0);
 	}
 	free(merge_msg);
+	return (automerged);
 }
 
 /*
