@@ -2633,14 +2633,14 @@ unfinished(opts *opts)
 }
 
 /*
- * Remove a sfile, if its parent is empty, remove them too.
- * We leave stuff in place if we are being called from apply;
- * if we are called from unapply, we try and clean up everything.
+ * Remove a sfile, and matching gfile.
+ * Remember the directories so we can remove them too
  */
 private int
-rm_sfile(char *sfile, int leavedirs)
+rm_sfile(char *sfile, hash *emptydirs)
 {
 	char	*p;
+	char	buf[MAXPATH];
 
 	assert(!IsFullPath(sfile));
 	if (unlink(sfile)) {
@@ -2652,29 +2652,8 @@ rm_sfile(char *sfile, int leavedirs)
 	unlink(p);
 	free(p);
 
-	p = strrchr(sfile, '/');
-	unless (p) {
-		/* This should never happen, we at least have SCCS/ */
-		fprintf(stderr, "No slash in %s??\n", sfile);
-		return (-1);
-	}
-	while (p > sfile) {
-		*p-- = 0;
-		if (!streq(sfile, "SCCS") && isdir(sfile)) {
-			char	rdir[MAXPATH];
-
-			if (leavedirs) {
-				sprintf(rdir, "%s/%s", ROOT2RESYNC, sfile);
-				if (isdir(rdir)) break;
-			}
-			/* careful */
-			if (emptyDir(sfile) && rmdir(sfile)) {
-				perror(sfile);
-				return (-1);
-			}
-		}
-		while ((p > sfile) && (*p != '/')) p--;
-	}
+	strcpy(buf, sfile);
+	hash_storeStr(emptydirs, dirname(buf), 0);
 	return (0);
 }
 
@@ -2713,6 +2692,7 @@ pass4_apply(opts *opts)
 	sccs	*r, *l;
 	int	offset = strlen(ROOT2RESYNC) + 1;	/* RESYNC/ */
 	int	eperm = 0, flags, nold = 0, ret;
+	int	i;
 	FILE	*f = 0;
 	FILE	*save = 0;
 	char	**applied = 0;
@@ -2721,6 +2701,8 @@ pass4_apply(opts *opts)
 	MDBM	*permDB = mdbm_mem();
 	char	*cmd;
 	char	*p;
+	hash	*emptydirs;
+	char	**dirlist;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 4 ====\n");
 	opts->pass = 4;
@@ -2861,17 +2843,31 @@ pass4_apply(opts *opts)
 		save = fopen(BACKUP_LIST, "rt");
 		assert(save);
 		progress_adjustMax(tick, nfiles - nold);
+		emptydirs = hash_new(HASH_MEMHASH);
 		while (fnext(buf, save)) {
 			if (opts->progress) progress(tick, ++nticks);
 			chop(buf);
 			if (opts->log) fprintf(stdlog, "unlink(%s)\n", buf);
-			if (rm_sfile(buf, 1)) {
+			if (rm_sfile(buf, emptydirs)) {
 				fclose(save);
 				restore_backup(BACKUP_SFIO, 0);
 				resolve_cleanup(opts, 0);
 			}
 		}
 		fclose(save);
+
+		/* remove empty directories, but keep ones used in RESYNC */
+		dirlist = 0;
+		EACH_HASH(emptydirs) {
+			concat_path(buf, ROOT2RESYNC, emptydirs->kptr);
+			if (isdir(buf)) {
+				dirlist = addLine(dirlist, emptydirs->kptr);
+			}
+		}
+		EACH(dirlist) hash_deleteStr(emptydirs, dirlist[i]);
+		freeLines(dirlist, 0);
+		rmEmptyDirs(emptydirs);
+		hash_free(emptydirs);
 	}
 
 	/*
@@ -3035,8 +3031,11 @@ private void
 unapply(char **applied)
 {
 	int	i;
+	hash	*emptydirs = hash_new(HASH_MEMHASH);
 
-	EACH(applied) rm_sfile(applied[i], 0);
+	EACH(applied) rm_sfile(applied[i], emptydirs);
+	rmEmptyDirs(emptydirs);
+	hash_free(emptydirs);
 }
 
 private	void
