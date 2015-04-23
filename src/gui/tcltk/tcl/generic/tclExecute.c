@@ -8448,7 +8448,6 @@ TEBCresume(
 				       objc, objv);
 		}
 		Tcl_IncrRefCount(oldvalObj);
-		Tcl_IncrRefCount(oldvalObj);
 		break;
 	    }
 	    case L_DELETE:

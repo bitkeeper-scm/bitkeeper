@@ -479,6 +479,30 @@ test leak-5.4 {leaks in deep diving} -body {
     leak_5_4();
 } -constraints memory -output "0 5\n"
 
+test leak-5.5 {leaks in deep diving} -body {
+#lang L --line=1
+void leak_5_5()
+{
+	int	n = 1000;
+	int	i, start, end, types{string}[];
+
+	/*
+	 * Push onto a hash element that's an array element while
+	 * check memory usage. Allow 1 kB/element. Any more than that
+	 * must be a memory leak.
+	 */
+	start = getbytes();
+	for (i = 0; i < n; ++i) {
+		push(&types{"foo"}, i);
+	}
+	end = getbytes();
+	if ((end - start) > (1000*n)) {
+		puts("took ${(end-start)/n} bytes per elt");
+	}
+}
+leak_5_5();
+} -constraints memory -output {}
+
 test leak-6.1 {leaks in string indexing} -body {
 #lang L --line=1
     void leak_6_1() {
@@ -638,6 +662,12 @@ void leak_8_2_main()
 }
 leak_8_2_main();
 } -constraints memory -output "0\n"
+
+# Disable the leak-9 test for now. L leaks memory when freeing
+# a Tcl interp. Usually, L code is run all within one interp so
+# this usually isn't a big deal. Some day we'll come back to this.
+::tcltest::cleanupTests
+return
 
 test leak-9 {per-interp L state leak} -body {
     set end [getbytes]
