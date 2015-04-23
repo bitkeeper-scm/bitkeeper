@@ -371,7 +371,7 @@ err:		if (p) fclose(p);
 			continue;
 		}
 
-		sccs_close(s);
+		unless (CSET(s)) sccs_close(s);
 		pass1_renames(opts, s);
 	}
 	fclose(p);
@@ -814,7 +814,6 @@ pass1_renames(opts *opts, sccs *s)
 	do {
 		sprintf(path, "BitKeeper/RENAMES/SCCS/s.%d", ++filenum);
 	} while (exists(path));
-	sccs_close(s);
 	if (opts->debug) {
 		fprintf(stderr, "%s -> %s\n", s->sfile, path);
 	}

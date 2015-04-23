@@ -556,14 +556,6 @@ check_main(int ac, char **av)
 	}
 	hash_free(r2deltas);
 
-	if (resync) {
-		chdir(RESYNC2ROOT);
-		if (sys("bk", "sane", SYS)) errors |= 0x80;
-		chdir(ROOT2RESYNC);
-	} else {
-		if (sys("bk", "sane", SYS)) errors |= 0x80;
-	}
-
 	/* fix up repository features */
 	unless (errors) {
 		features_set(0, FEAT_SAMv3, proj_isEnsemble(0));
