@@ -739,3 +739,23 @@ remap
 EOF
 cmpfiles BitKeeper/log/features WANT
 echo OK
+
+echo -------------- Partition features compat tests
+echo $N Test partition with ref repo with KEEPDEL fails using bk6 ...$NL
+cd "$HERE"
+fresh_commercial --compat part-base
+mkdir src
+cd src
+touch a b
+bk new $Q a b
+bk commit $Q -f
+bk rm a
+bk commit $Q -f
+cd "$HERE"
+echo src > comps
+bk partition $Q --keep-deleted -Ccomps part-base part-nest || fail
+$OLDBK/bk partition $Q \
+    -@bk://localhost:$NEWP/part-nest part-base part-compat \
+    2> ERR && fail -f ERR
+grep -q "partition: Unknown feature 'KEEPDEL'" ERR || fail -f ERR
+echo OK

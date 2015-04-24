@@ -46,6 +46,7 @@ typedef struct {
 	u32	standalone:1;	// --standalone
 	u32	bk4:1;		// --bk4
 	u32	nocommit:1;	// --no-commit
+	u32	keepdel:1;	// deleted in component
 } Opts;
 
 private	int	csetprune(Opts *opts);
@@ -99,10 +100,12 @@ csetprune_main(int ac, char **av)
 		{ "revfile;", 300 },	/* file to store rev key */
 		{ "no-commit", 305 },	/* --no-commit because -C taken */
 		{ "tag-csets", 310 },	/* collapse tag graph onto D graph */
-		{ "bk4", 320},		/* bk4 compat on a standalone */
 		{ "standalone", 'S'},
 		{ "version:", 311 },	/* --version=%d for old trees */
+		{ "bk4", 320},		/* bk4 compat on a standalone */
 		{ "test-bypath:", 321 },/* to test 'bypath' sorter */
+		{ "keep-deleted", 325},	/* keep del in comp instead of prune */
+		{ "keep-deletes", 325},	/* alias to match partition */
 		{ 0, 0 }
 	};
 
@@ -141,6 +144,9 @@ csetprune_main(int ac, char **av)
 			break;
 		    case 321: /* --test-bypath=file */
 			return (test_bypath(optarg));
+		    case 325: /* --keep-deleted */
+			opts->keepdel = 1;
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -1034,6 +1040,10 @@ del:		hash_storeStr(opts->prunekeys, rk, 0);
 
 		which = whichComp(HEAP(cset, dkoff), opts->complist);
 		if (which == INVALID) goto err;
+		if (opts->keepdel && streq(which, "|deleted")) {
+			/* find first undeleted to know which comp */
+			continue;
+		}
 		break;
 	}
 	if ((!(flags & PRUNE_DELCOMP) && streq(which, "|deleted")) ||
