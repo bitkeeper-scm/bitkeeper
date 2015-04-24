@@ -42,8 +42,8 @@ private void	errorMsg(char *msg, char *arg1, char *arg2);
 private	int	extractPatch(char *name, FILE *p);
 private	int	extractDelta(char *name, sccs *sreal, sccs *scratch,
 		    int newFile, FILE *f, hash *countFiles, int *np);
-private	int	applyPatch(char *local, sccs *perfile);
-private	int	applyCsetPatch(sccs *s, int *nfound, sccs *perfile);
+private	int	applyPatch(char *local, FILE *perfile);
+private	int	applyCsetPatch(sccs *s, int *nfound, int newFile);
 private	int	getLocals(sccs *s, char *name);
 private	void	insertPatch(patch *p, int strictOrder);
 private	int	reversePatch(void);
@@ -102,7 +102,6 @@ typedef struct {
 	char	**errfiles;	/* files had errors during apply */
 	char	**edited;	/* files that were in modified state */
 
-	sccs	*fake;
 	int	needlock;	/* we're top-level, grab a lock */
 } Opts;
 private Opts *opts;
@@ -464,8 +463,8 @@ private	int
 extractPatch(char *name, FILE *p)
 {
 	ser_t	tmp;
-	sccs	*s = 0, *scratch = 0;
-	sccs	*perfile = 0;
+	sccs	*s = 0, *new_s = 0, *scratch = 0;
+	FILE	*perfile = 0;
 	int	newFile = 0;
 	int	cset;
 	char	*gfile = 0;
@@ -498,8 +497,28 @@ extractPatch(char *name, FILE *p)
 	t = fgetline(p);
 	opts->line++;
 	if (strneq("New file: ", t, 10)) {
+		char	*resyncFile;
+
 		newFile = 1;
-		perfile = sccs_getperfile(0, p, &opts->line);
+		perfile = fmem();
+		while (t = fgetline(p)) {
+			fputs(t, perfile);
+			fputc('\n', perfile);
+			unless (*t) break;
+		}
+		rewind(perfile);
+		resyncFile = aprintf(ROOT2RESYNC "/%s", name);
+		unless (new_s = sccs_init(resyncFile, NEWFILE|SILENT)) {
+			SHOUT();
+			fprintf(stderr,
+			    "takepatch: can't create %s\n", resyncFile);
+			free(resyncFile);
+			goto error;
+		}
+		new_s->bitkeeper = 1;	/* XXX: not set in sccs_init ?? */
+		free(resyncFile);
+		if (sccs_getperfile(new_s, perfile, &opts->line)) goto error;
+		rewind(perfile);
 		t = fgetline(p);
 		opts->line++;
 	}
@@ -524,7 +543,7 @@ extractPatch(char *name, FILE *p)
 	 * b) move the file and send a new file over and make sure it finds
 	 *    it.
 	 */
-	unless (s || opts->newProject || newFile) {
+	unless (s || new_s) {
 		if (gone(t, opts->goneDB)) {
 			if (getenv("BK_GONE_OK")) {
 				skipPatch(p);
@@ -536,7 +555,8 @@ extractPatch(char *name, FILE *p)
 		SHOUT();
 		fprintf(stderr,
 		    "takepatch: can't find key '%s' in id cache\n", t);
-error:		if (perfile) sccs_free(perfile);
+error:		if (new_s && (new_s != s)) sccs_free(new_s);
+		if (perfile) fclose(perfile);
 		if (gfile) free(gfile);
 		free(t);
 		if (s) sccs_free(s);
@@ -608,6 +628,7 @@ error:		if (perfile) sccs_free(perfile);
 		 * it is safe to assume there is no
 		 * name conflict for the ChangeSet file.
 		 */
+		assert(new_s);
 		if (streq(name, "SCCS/s.ChangeSet") &&
 		    exists("SCCS/s.ChangeSet")) {
 			errorMsg("tp_changeset_exists", 0, 0);
@@ -618,12 +639,8 @@ error:		if (perfile) sccs_free(perfile);
 		}
 	}
 	opts->tableGCA = 0;
-	unless (s) {
-		opts->fake = new(sccs);
-		s = opts->fake;
-		if (streq(name, CHANGESET)) s->state |= S_CSET;
-	}
-	if (opts->pbars && CSET(s)) {
+	cset = s ? CSET(s) : CSET(new_s);
+	if (opts->pbars && cset) {
 		countFiles = hash_new(HASH_MEMHASH);
 		opts->N++;	/* count the cset file */
 	}
@@ -640,13 +657,17 @@ error:		if (perfile) sccs_free(perfile);
 	gfile = sccs2name(name);
 	if (opts->echo > 1) fprintf(stderr, "Updating %s", gfile);
 
-	cset = s ? CSET(s) : streq(name, CHANGESET);
 	if (opts->fast || cset) {
-		rc = applyCsetPatch(s, &nfound, perfile);
+		int	newsfile = !s;
+
+		unless (s) {
+			s = new_s;
+			new_s = 0;
+		}
+		rc = applyCsetPatch(s, &nfound, newsfile);
 		s = 0;		/* applyCsetPatch calls sccs_free */
 		unless (cset) nfound = 0;	/* only count csets */
 	} else {
-		if (s == opts->fake) s = 0;
 		if (opts->patchList && opts->tableGCA) getLocals(s, name);
 		rc = applyPatch(s ? s->sfile : 0, perfile);
 		if (rc < 0) {
@@ -657,7 +678,7 @@ error:		if (perfile) sccs_free(perfile);
 	}
 	FREE(opts->tableGCA);
 	if (opts->echo > 1) fputc('\n', stderr);
-	if (perfile) sccs_free(perfile);
+	if (perfile) fclose(perfile);
 	if (streq(gfile, "BitKeeper/etc/config")) {
 		/*
 		 * If we have rewritten the config file we need to
@@ -668,29 +689,13 @@ error:		if (perfile) sccs_free(perfile);
 	}
 	free(gfile);
 	free(t);
+	if (new_s) sccs_free(new_s);
 	if (s) sccs_free(s);
 	if (rc < 0) {
 		cleanup(CLEAN_RESYNC);
 		return (rc);
 	}
 	return (nfound);
-}
-
-private	int
-sccscopy(sccs *to, sccs *from)
-{
-	unless (to && from) return (-1);
-	to->state |= from->state;
-	unless (to->defbranch) {
-		to->defbranch = from->defbranch;
-		from->defbranch = 0;
-	}
-	to->encoding_in = from->encoding_in;
-	unless (to->text) {
-		to->text = from->text;
-		from->text = 0;
-	}
-	return (0);
 }
 
 #define SKIPKEYS	"BitKeeper/etc/skipkeys"
@@ -786,7 +791,7 @@ extractDelta(char *name, sccs *sreal, sccs *scratch,
 	 * isn't used by current code (fastpatch+sfio), so this is good
 	 * enough.
 	 */
-	if (!opts->tableGCA && sccs_findKey(sreal, b)) {
+	if (sreal && !opts->tableGCA && sccs_findKey(sreal, b)) {
 		opts->tableGCA = strdup(b);
 	}
 
@@ -807,7 +812,7 @@ delta1:	while ((b = fgetline(f)) && *b) {
 	rewind(init);
 	sccs_sdelta(scratch, d, buf);
 	if (opts->fast) {
-		if (skipkey(sreal, buf)) ignore = 1;
+		if (sreal && skipkey(sreal, buf)) ignore = 1;
 		goto save;
 	}
 	/*
@@ -817,14 +822,15 @@ delta1:	while ((b = fgetline(f)) && *b) {
 	 * applying the patch will clear the flag and the code paths
 	 * are all happier this way.
 	 */
-	if ((tmp = sccs_findKey(sreal, buf)) && !DANGLING(sreal, tmp)) {
+	if (sreal &&
+	    (tmp = sccs_findKey(sreal, buf)) && !DANGLING(sreal, tmp)) {
 		if (opts->echo > 3) {
 			fprintf(stderr,
 			    "takepatch: delta %s already in %s, skipping it.\n",
 			    REV(sreal, tmp), sreal->sfile);
 		}
 		skip++;
-	} else if (skipkey(sreal, buf)) {
+	} else if (sreal && skipkey(sreal, buf)) {
 		if (opts->echo>6) {
 			fprintf(stderr,
 			    "takepatch: skipping marked delta in %s\n",
@@ -864,13 +870,10 @@ save:
 		p->me = strdup(buf);
 		sccs_sortkey(scratch, d, buf);
 		p->sortkey = strdup(buf);
-		p->localFile = (sreal && (sreal != opts->fake)) ?
-		    strdup(sreal->sfile) : 0;
+		p->localFile = sreal ? strdup(sreal->sfile) : 0;
 		sprintf(buf, "RESYNC/%s", name);
 		p->resyncFile = strdup(buf);
 		p->order = DATE(scratch, d);
-		if (opts->echo>6) fprintf(stderr, "REM: %s %s %lu\n",
-		    REV(sreal, d), p->me, p->order);
 		c = opts->line;
 		while ((b = fgetline(f)) && *b) {
 			unless (p->diffMem) p->diffMem = fmem();
@@ -985,7 +988,7 @@ badXsum(int a, int b)
  * is possible to only write the file once.
  */
 private	int
-applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
+applyCsetPatch(sccs *s, int *nfound, int newFile)
 {
 	patch	*p;
 	FILE	*iF;
@@ -1003,7 +1006,8 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	char	csets_in[MAXPATH];
 	char	buf[MAXKEY];
 
-	if (s && CSET(s)) T_PERF("applyCsetPatch(start)");
+	assert(s);
+	if (CSET(s)) T_PERF("applyCsetPatch(start)");
 	reversePatch();
 	unless (p = opts->patchList) {
 		sccs_free(s);
@@ -1025,7 +1029,9 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			return (-1);
 		}
 	}
-	if (s && (s != opts->fake) && getenv("_BK_COPY_SFILE")) {
+	if (newFile) {
+		/* good to go */
+	} else if (getenv("_BK_COPY_SFILE")) {
 		if (fileCopy(s->sfile, p->resyncFile)) {
 			fprintf(stderr, "Copy of %s to %s failed",
 			    s->sfile, p->resyncFile);
@@ -1044,22 +1050,8 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			cmdlog_addnote(
 			    "_BK_COPY_SFILE", getenv("_BK_COPY_SFILE"));
 		}
-	} else if (s && (s != opts->fake)) {
-		sccs_writeHere(s, p->resyncFile);
 	} else {
-		unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
-			SHOUT();
-			fprintf(stderr,
-			    "takepatch: can't create %s\n", p->resyncFile);
-			goto err;
-		}
-		s->heap = opts->fake->heap;
-		FREE(opts->fake);
-		s->bitkeeper = 1;
-		if (perfile) {
-			sccscopy(s, perfile);
-			s->encoding_in = sccs_encoding(s, 0, 0);
-		}
+		sccs_writeHere(s, p->resyncFile);
 	}
 	/* serial is not stable */
 	if (top = sccs_top(s)) {
@@ -1446,7 +1438,7 @@ out:	free(resync);
  * the list.
  */
 private	int
-applyPatch(char *localPath, sccs *perfile)
+applyPatch(char *localPath, FILE *perfile)
 {
 	patch	*p;
 	FILE	*iF;
@@ -1555,11 +1547,10 @@ apply:
 			    p->resyncFile);
 			return -1;
 		}
-		s->heap = opts->fake->heap;
-		FREE(opts->fake);
-		s->bitkeeper = 1;
-		if (perfile) {
-			sccscopy(s, perfile);
+		assert(perfile);
+		if (sccs_getperfile(s, perfile, 0)) {
+			sccs_free(s);
+			return (-1);
 		}
 		if (p->initFile) {
 			iF = fopen(p->initFile, "r");
@@ -1587,7 +1578,13 @@ apply:
 		if (s->bad_dsum || s->io_error) return (-1);
 		fclose(iF);	/* dF done by delta() */
 		sccs_free(s);
-		s = sccs_init(p->resyncFile, INIT_NOCKSUM|SILENT);
+		unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|SILENT)) {
+			SHOUT();
+			fprintf(stderr,
+			    "takepatch: can't create %s\n",
+			    p->resyncFile);
+			return -1;
+		}
 		p = p->next;
 	}
 	while (p) {
@@ -1913,6 +1910,15 @@ initProject(void)
 		exit(1);
 	}
 	sccs_mkroot(".");
+	/*
+	 * Make new repo with new features
+	 * Who uses takepatch -i to make a repo?
+	 * XXX: doesn't work correctly with nested.
+	 *
+	 * From setup.c, in the non-compat, non-component case.
+	 * There's more code in setup.c to do nested component.
+	 */
+	features_set(0, (FEAT_FILEFORMAT & ~FEAT_BWEAVEv2) | FEAT_SCANDIRS, 1);
 }
 
 private void

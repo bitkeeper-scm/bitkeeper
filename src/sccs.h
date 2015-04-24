@@ -1103,7 +1103,7 @@ int	sccs_newchksum(sccs *s);
 ser_t	sccs_getCksumDelta(sccs *s, ser_t d);
 ser_t	*addSerial(ser_t *space, ser_t s);
 void	sccs_perfile(sccs *s, FILE *out, int patch);
-sccs	*sccs_getperfile(sccs *, FILE *, int *);
+int	sccs_getperfile(sccs *, FILE *, int *);
 char	*sccs_gethost(void);
 char	*sccs_realhost(void);
 char	*sccs_host(void);

@@ -3371,7 +3371,7 @@ bin_mkgraph(sccs *s)
 	u32	heapsz, deltasz, symsz;
 	u32	off_h, off_d, off_s;
 	int	deltas;
-	int	line = 1, len;
+	int	len;
 	char	*perfile, *header;
 	ser_t	d;
 	int	didpage = 0, pageheap;
@@ -3386,7 +3386,7 @@ bin_mkgraph(sccs *s)
 	perfile = malloc(len);
 	fread(perfile, 1, len, s->fh);
 	f1 = fmem_buf(perfile, len);
-	unless (sccs_getperfile(s, f1, &line)) {
+	if (sccs_getperfile(s, f1, 0)) {
 		fprintf(stderr, "%s: failed to load %s\n", prog, s->sfile);
 		exit(1);
 	}
@@ -16570,62 +16570,63 @@ sccs_perfile(sccs *s, FILE *out, int patch)
 #define	FLAG(c)	((buf[0] == 'f') && (buf[1] == ' ') &&\
 		(buf[2] == c) && (buf[3] == ' '))
 
-sccs	*
-sccs_getperfile(sccs *s_in, FILE *in, int *lp)
+/*
+ * Load 'perfile' data into sccs*
+ * return -1 on failure
+ */
+int
+sccs_getperfile(sccs *s, FILE *in, int *linep)
 {
-	sccs	*s;
 	int	unused = 1;
+	int	line = 0;
 	char	*buf;
 
-	s = s_in ? s_in : new(sccs);
-	unless (buf = fgetline(in)) goto err;
-	unless (buf[0]) {
-		unless (s_in) free(s);
-		return (0);
+	unless (buf = fgetline(in)) {
+err:		fprintf(stderr,
+			"takepatch: file format error near line %d\n", line);
+		if (linep) *linep += line;
+		return (-1);
 	}
-	(*lp)++;
+	line++;
 	if (FLAG('d')) {
 		unused = 0;
 		s->defbranch = strdup(&buf[4]);
-		unless (buf = fgetline(in)) {
-err:			fprintf(stderr,
-			    "takepatch: file format error near line %d\n", *lp);
-			unless (s_in) free(s);
-			return (0);
-		}
-		(*lp)++;
+		unless (buf = fgetline(in)) goto err;
+		line++;
 	}
 	if (FLAG('e')) {
 		unused = 0;
 		s->encoding_in |= atoi(&buf[4]) | E_ALWAYS;
-		unless (buf = fgetline(in)) goto err; (*lp)++;
+		unless (buf = fgetline(in)) goto err;
+		line++;
 	}
 	if (FLAG('x')) {
 		/* Ignored */
-		unless (buf = fgetline(in)) goto err; (*lp)++;
+		unless (buf = fgetline(in)) goto err;
+		line++;
 	}
 	if (FLAG('w')) {
 		s->rkeyHead = atoi(&buf[4]);
-		unless (buf = fgetline(in)) goto err; (*lp)++;
+		unless (buf = fgetline(in)) goto err;
+		line++;
 	}
 	while (strneq(buf, "T ", 2)) {
 		unused = 0;
 		s->text = addLine(s->text, strdup(&buf[2]));
-		unless (buf = fgetline(in)) goto err; (*lp)++;
+		unless (buf = fgetline(in)) goto err;
+		line++;
 	}
 	if (strneq(buf, "V ", 2)) {
 		unused = 0;
 		s->version = atoi(&buf[2]);
-		unless (buf = fgetline(in)) goto err; (*lp)++;
+		unless (buf = fgetline(in)) goto err;
+		line++;
 	}
 	unless (s->version) s->version = SCCS_VERSION;
 	if (buf[0]) goto err;		/* should be empty */
-
-	if (unused) {
-		unless (s_in) free(s);
-		return (0);
-	}
-	return (s);
+	if (linep) *linep += line;
+	if (unused) return (-1);
+	return (0);
 }
 
 private int
