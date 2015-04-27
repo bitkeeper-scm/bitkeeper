@@ -56,6 +56,7 @@ u32hash_free(hash *_h)
 	u32hash	*h = (u32hash *)_h;
 
 	free(h->table);
+	if (h->hdr.vlen > sizeof(u32)) free(h->vals[0].buf);
 	return (0);
 }
 
