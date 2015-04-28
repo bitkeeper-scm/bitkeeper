@@ -6765,7 +6765,7 @@ get_reg(sccs *s, char *printOut, int flags, ser_t d,
 	u32	fastflags = (NEWCKSUM|GET_SUM|GET_SHUTUP|SILENT|PRINT);
 
 	assert(!BAM(s));
-	if (EOLN_WINDOWS(s)) eol = "\r\n";
+	if ((d ? XFLAGS(s, d) : s->xflags) & X_EOLN_WINDOWS) eol = "\r\n";
 	slist = d ? serialmap(s, d, iLst, xLst, &error)
 		  : setmap(s, D_SET, 0);
 	if (error) {
