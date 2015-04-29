@@ -67,7 +67,7 @@ isNetworkFS(char *path)
 	while (fnext(buf, f)) {
 		v = splitLine(buf, " \t\r\n", 0);
 		mountpoint = 0;
-		if ((nLines(v) >= 3) && streq(v[3], "nfs")) {
+		if ((nLines(v) >= 3) && strneq(v[3], "nfs", 3)) {
 			mountpoint = v[2];
 		}
 		if (mountpoint && (mountpoint[0] == '/')) {
