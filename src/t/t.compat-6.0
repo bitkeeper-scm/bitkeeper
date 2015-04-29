@@ -7,6 +7,9 @@ OLDBK=/build/bitkeeper-$OLDVER
 _BK_FORCE_NETFS=YES
 export _BK_FORCE_NETFS
 
+# kill any uniq_server that may be running out of ~/.bk
+BK_DOTBK="$HOME/.bk" bk uniq_server $Q --dir="$HOME/.bk/bk-keys-db/`bk gethost -r`" --quit
+
 echo $N Check bitkeeper 6.0 installation ............................$NL
 if [ -n "$BK_DEV_SKIPTEST" ]; then echo skipped; exit 0; fi
 # Skip this test for Windows VISTA
