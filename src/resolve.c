@@ -2239,7 +2239,7 @@ err:		resolve_free(rs);
 		ser_t	e;
 
 		assert(MODE(s, d.local) == MODE(s, d.remote));
-		if (sccs_get(rs->s, 0, 0, 0, 0, SILENT, "-")) {
+		if (sccs_get(rs->s, 0, 0, 0, 0, SILENT, s->gfile, 0)) {
 			sccs_whynot("delta", rs->s);
 			goto err;
 		}
@@ -2276,18 +2276,18 @@ err:		resolve_free(rs);
 int
 get_revs(resolve *rs, names *n)
 {
-	int	flags = PRINT | (rs->opts->debug ? 0 : SILENT);
+	int	flags = (rs->opts->debug ? 0 : SILENT);
 
-	if (sccs_get(rs->s, rs->revs->local, 0, 0, 0, flags, n->local)) {
+	if (sccs_get(rs->s, rs->revs->local, 0, 0, 0, flags, n->local, 0)) {
 		fprintf(stderr, "Unable to get %s\n", n->local);
 		return (-1);
 	}
 
-	if (sccs_get(rs->s, rs->revs->gca, 0, 0, 0, flags, n->gca)) {
+	if (sccs_get(rs->s, rs->revs->gca, 0, 0, 0, flags, n->gca, 0)) {
 		fprintf(stderr, "Unable to get %s\n", n->gca);
 		return (-1);
 	}
-	if (sccs_get(rs->s, rs->revs->remote, 0, 0, 0, flags, n->remote)) {
+	if (sccs_get(rs->s, rs->revs->remote, 0, 0, 0, flags, n->remote, 0)) {
 		fprintf(stderr, "Unable to get %s\n", n->remote);
 		return (-1);
 	}
@@ -2489,7 +2489,7 @@ edit(resolve *rs)
 	} else {
 		branch = rs->revs->remote;
 	}
-	if (sccs_get(rs->s, 0, branch, 0, 0, flags, "-")) {
+	if (sccs_get(rs->s, 0, branch, 0, 0, flags, 0, 0)) {
 		fprintf(stderr,
 		    "resolve: cannot edit/merge %s\n", rs->s->sfile);
 		rs->opts->errors = 1;

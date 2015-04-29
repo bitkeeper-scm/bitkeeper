@@ -190,7 +190,7 @@ if [ '$Id$' = "`cat date`" ]; then echo Failed.; exit 1; fi
 echo OK
 
 echo $N Get -ep should fail .........................................$NL
-bk get $S -ep date > junk 2>junk2
+bk get $S -ep date > junk 2>&1 && fail -f junk
 if bk _test -f "SCCS/p.date"; then echo failed, created p.file; exit 1; fi
 echo OK
 

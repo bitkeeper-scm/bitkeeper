@@ -167,9 +167,9 @@ export_main(int ac,  char **av)
 		unless (vflag) flags |= SILENT;
 		unless (kflag) flags |= GET_EXPAND;
 		if (opts->tflag) flags |= GET_DTIME;
-		flags |= GET_PERMS|PRINT;
+		flags |= GET_PERMS;
 		mkdirf(output);
-		if (sccs_get(s, rev, 0, 0, 0, flags, output)) {
+		if (sccs_get(s, rev, 0, 0, 0, flags, output, 0)) {
 			fprintf(stderr, "cannot export to %s\n", output);
 			ret = 1;
 			sccs_free(s);

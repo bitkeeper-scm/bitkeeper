@@ -295,8 +295,8 @@ admin_main(int ac, char **av)
 			nrev =
 			    sccs_findrev(sc, pf.newrev) ? pf.newrev: pf.oldrev;
 			if (sccs_get(sc, nrev,
-			    pf.mRev, pf.iLst, pf.xLst, gflags, "-")) {
-				fprintf(stderr, "cannot adjust p file\n");	
+			    pf.mRev, pf.iLst, pf.xLst, gflags, 0, 0)) {
+				fprintf(stderr, "cannot adjust p file\n");
 			}
 		}
 next:		sccs_free(sc);

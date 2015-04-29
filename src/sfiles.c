@@ -913,7 +913,7 @@ ignore_file(char *file)
 			free(dir);
 			return;
 		}
-		if (writable(dir)) get(file, SILENT, "-");
+		if (writable(dir)) get(file, SILENT);
 		free(dir);
 	}
 	if (exists(file)) {

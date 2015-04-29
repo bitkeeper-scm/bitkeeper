@@ -7,7 +7,7 @@
 #include "sccs.h"
 #include "range.h"
 
-#define	BASE_FLAGS	(GET_EXPAND|PRINT|SILENT)
+#define	BASE_FLAGS	(GET_EXPAND|SILENT)
 #define	ME		"annotate"
 
 int
@@ -118,9 +118,9 @@ err:			errors = 1;
 			}
 		}
 		if (range) {
-			c = sccs_cat(s, flags, "-");
+			c = sccs_cat(s, flags, stdout);
 		} else {
-			c = sccs_get(s, rev, 0, 0, 0, flags, "-");
+			c = sccs_get(s, rev, 0, 0, 0, flags, 0, stdout);
 		}
 		if (c) {
 			unless (BEEN_WARNED(s)) {

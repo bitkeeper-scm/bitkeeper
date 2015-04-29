@@ -727,7 +727,7 @@ same3(sccs *s, MMAP *m)
 	int	rc;
 
 	bktmp(unpark_tmp);
-	sccs_get(s, 0, 0, 0, 0, SILENT, unpark_tmp); 
+	sccs_get(s, 0, 0, 0, 0, SILENT, unpark_tmp, 0);
 	rc = same2(unpark_tmp, m);
 	unlink(unpark_tmp);
 	return (rc);

@@ -60,7 +60,7 @@ do_checkout(sccs *s, u32 getFlags, char ***bamFiles)
 	} else {
 		if (HAS_GFILE(s)) return (0);
 	}
-	if (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-")) {
+	if (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, s->gfile, 0)) {
 		if (bamFiles && s->cachemiss) {
 			*bamFiles = addLine(*bamFiles, strdup(s->gfile));
 		} else {

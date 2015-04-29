@@ -1130,7 +1130,7 @@ clone2(remote *r)
 			if (opts->identical) {
 				FILE	*f;
 
-				get("BitKeeper/etc/attr", SILENT, "-");
+				get("BitKeeper/etc/attr", SILENT);
 				f = popen("bk _getkv BitKeeper/etc/attr HERE",
 				    "r");
 				while (p = fgetline(f)) {

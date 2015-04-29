@@ -474,7 +474,8 @@ do_file(char *file, char *tiprev)
 	 * need keyword expansion.)
 	 */
 	unless (EDITED(s) || CSET(s)) {
-		if (sccs_get(s, 0,0,0,0, SILENT|GET_EDIT|GET_NOREGET, "-")) {
+		if (sccs_get(s, 0,0,0,0,
+		    SILENT|GET_EDIT|GET_NOREGET, s->gfile, 0)) {
 			fprintf(stderr, "%s: unable to edit %s\n", me, gfile);
 			rc = 1;
 			goto done;
@@ -602,12 +603,13 @@ do_file(char *file, char *tiprev)
 		}
 
 		/* regenerate new p.file */
-		unless (CSET(s) || streq(s->gfile, ATTR) || IS_POLYPATH(s->gfile)) {
+		unless (CSET(s) || streq(s->gfile, ATTR) ||
+		    IS_POLYPATH(s->gfile)) {
 			rename(savefile, gfile);
 			free(savefile);
 			savefile = 0;
 			if (sccs_get(s, "+", 0, inc, exc,
-				SILENT|GET_EDIT|GET_SKIPGET, "-")) {
+			    SILENT|GET_EDIT|GET_SKIPGET, 0, 0)) {
 				fprintf(stderr, "%s: get -g %s failed\n",
 				    me, gfile);
 			}
@@ -834,7 +836,7 @@ update_collapsed_file(char *newcsets)
 	char	**csets = 0;
 	char	buf[MAXLINE];
 
-	get(COLLAPSED, SILENT|GET_EDIT, "-");
+	get(COLLAPSED, SILENT|GET_EDIT);
 	if (f = fopen(COLLAPSED, "r")) {
 		while (fnext(buf, f)) {
 			chomp(buf);

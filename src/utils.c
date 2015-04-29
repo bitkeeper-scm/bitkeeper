@@ -1879,14 +1879,14 @@ bk_searchFile(char *base)
 	if (root = proj_root(0)) {
 		sprintf(buf, "%s/BitKeeper/etc/%s", root, base);
 		if (exists(buf) ||
-		    !get(buf, SILENT|GET_EXPAND, "-")) {
+		    !get(buf, SILENT|GET_EXPAND)) {
 			return (strdup(buf));
 		}
 	}
 	if (proj_isComponent(0) && (root = proj_root(proj_product(0)))) {
 		sprintf(buf, "%s/BitKeeper/etc/%s", root, base);
 		if (exists(buf) ||
-		    !get(buf, SILENT|GET_EXPAND, "-")) {
+		    !get(buf, SILENT|GET_EXPAND)) {
 			return (strdup(buf));
 		}
 	}

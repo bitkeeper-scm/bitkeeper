@@ -254,7 +254,7 @@ converge(State *g, char *gfile, char *opts)
 
 	/* get contents of old version */
 	bktmp(tmp);
-	rc = sccs_get(srm, "+", 0, 0, 0, SILENT|PRINT, tmp);
+	rc = sccs_get(srm, "+", 0, 0, 0, SILENT, tmp, 0);
 	assert(!rc);
 	sccs_free(srm);
 

@@ -493,7 +493,7 @@ delta_main(int ac, char **av)
 			// XXX - what if we are dangling?
 			// The pf.oldrev is definitely wrong.
 			if (rc == -3) nrev = pf.oldrev;
-			if (sccs_get(s, nrev, 0, 0, 0, gf, "-")) {
+			if (sccs_get(s, nrev, 0, 0, 0, gf, s->gfile, 0)) {
 				unless (BEEN_WARNED(s)) {
 					fprintf(stderr,
 					    "get of %s failed, skipping it.\n",

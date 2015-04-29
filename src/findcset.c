@@ -798,7 +798,7 @@ preloadView(sccs *s, MDBM *db, ser_t d)
 	sum_t	linesum, sumch;
 	u8	*ch;
 
-	if (sccs_get(s, REV(s, d), 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
+	if (sccs_get(s, REV(s, d), 0, 0, 0, SILENT|GET_HASHONLY, 0, 0)) {
 		assert("cannot get hash" == 0);
 	}
 	EACH_KV(s->mdbm) {

@@ -206,7 +206,7 @@ sccs_resum(sccs *s, ser_t d, int diags, int fix)
 	 */
 
 	if (sccs_get(s,
-	    REV(s, d), 0, 0, 0, GET_SUM|GET_SHUTUP|SILENT|PRINT, "-")) {
+	    REV(s, d), 0, 0, 0, GET_SUM|GET_SHUTUP|SILENT, 0, 0)) {
 		fprintf(stderr, "get of %s:%s failed, skipping it.\n",
 		    s->gfile, REV(s, d));
 		return (4);

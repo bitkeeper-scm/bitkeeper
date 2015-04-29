@@ -37,8 +37,8 @@ res_diffCommon(resolve *rs,
 
 		bktmp(right);
 		if (rs->revs) rev = rs->revs->remote;
-		if (sccs_get(rs->s, rev, 0, 0, 0, SILENT|PRINT, right)) {
-		    	fprintf(stderr, "get failed, can't diff.\n");
+		if (sccs_get(rs->s, rev, 0, 0, 0, SILENT, right, 0)) {
+			fprintf(stderr, "get failed, can't diff.\n");
 			return (0);
 		}
 		chdir(RESYNC2ROOT);
@@ -55,9 +55,9 @@ res_diffCommon(resolve *rs,
 		bktmp(left);
 		bktmp(right);
 		if (rs->revs) rev = rs->revs->remote;
-		if (sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, left) ||
-		    sccs_get(rs->s, rev, 0, 0, 0, SILENT|PRINT, right)) {
-		    	fprintf(stderr, "get failed, can't diff.\n");
+		if (sccs_get(s, 0, 0, 0, 0, SILENT, left, 0) ||
+		    sccs_get(rs->s, rev, 0, 0, 0, SILENT, right, 0)) {
+			fprintf(stderr, "get failed, can't diff.\n");
 			unlink(left);
 			return (0);
 		}
@@ -227,7 +227,7 @@ res_vl(resolve *rs)
 		if (rs->revs) rev = rs->revs->local;
 	}
 	bktmp(left);
-	if (sccs_get(s, rev, 0, 0, 0, SILENT|PRINT, left)) {
+	if (sccs_get(s, rev, 0, 0, 0, SILENT, left, 0)) {
 		    fprintf(stderr, "get failed, can't view.\n");
 		return (0);
 	}
@@ -555,7 +555,7 @@ gc_sameFiles(resolve *rs)
 	int	same;
 
 	bktmp(buf);
-	if (sccs_get(rs->s, 0, 0, 0, 0, SILENT|PRINT, buf)) {
+	if (sccs_get(rs->s, 0, 0, 0, 0, SILENT, buf, 0)) {
 		fprintf(stderr, "get failed, can't diff.\n");
 		return (0);
 	}

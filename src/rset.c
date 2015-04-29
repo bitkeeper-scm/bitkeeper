@@ -397,7 +397,10 @@ isIdenticalData(sccs *cset, char *file, u32 start, u32 start2, u32 end)
 {
 	sccs	*s;
 	ser_t	d1, d2;
-	char	*file_1 = 0, *file_2 = 0, *sfile;
+	FILE	*file_1 = 0, *file_2 = 0;
+	char	*f1d, *f2d;
+	size_t	f1s, f2s;
+	char	*sfile;
 	int	same = 0;
 
 	sfile = name2sccs(file);
@@ -419,26 +422,22 @@ isIdenticalData(sccs *cset, char *file, u32 start, u32 start2, u32 end)
 		/* .. or if we know they will be different */
 		if (SUM(s, d1) != SUM(s, d2)) goto out;
 	}
-	file_1 = bktmp(0);
+	file_1 = fmem();
 	if (sccs_get(s, HEAP(cset, start), HEAP(cset, start2),
-	    0, 0, SILENT|PRINT, file_1)) {
+	    0, 0, SILENT, 0, file_1)) {
 		goto out;
 	}
-	file_2 = bktmp(0);
-	if (sccs_get(s, HEAP(cset, end), 0, 0, 0, SILENT|PRINT, file_2)) {
+	file_2 = fmem();
+	if (sccs_get(s, HEAP(cset, end), 0, 0, 0, SILENT, 0, file_2)) {
 		goto out;
 	}
-	same = sameFiles(file_1, file_2);
+	f1d = fmem_peek(file_1, &f1s);
+	f2d = fmem_peek(file_2, &f2s);
+	same = ((f1s == f2s) && !memcmp(f1d, f2d, f1s));
 out:
 	sccs_free(s);
-	if (file_1) {
-		unlink(file_1);
-		free(file_1);
-	}
-	if (file_2) {
-		unlink(file_2);
-		free(file_2);
-	}
+	if (file_1) fclose(file_1);
+	if (file_2) fclose(file_2);
 	return (same);
 }
 

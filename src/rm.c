@@ -264,7 +264,7 @@ sccs_gone(int quiet, FILE *f)
 	assert(s);
 	if (exists(s_gone)) {
 		unless (EDITED(s)) {
-			sccs_get(s, 0, 0, 0, 0, SILENT|GET_EDIT, "-"); 
+			sccs_get(s, 0, 0, 0, 0, SILENT|GET_EDIT, s->gfile, 0);
 		}
 		g = fopen(g_gone, "r");
 		while (fnext(key, g)) mdbm_store_str(db, key, "", MDBM_INSERT);

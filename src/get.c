@@ -32,8 +32,9 @@ get_main(int ac, char **av)
 	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	int	ac_optend;
 	int	rollback = 0;
+	FILE	*fout = 0;
 	MDBM	*realNameCache = 0;
-	char	*out = "-";
+	char	*out = 0;
 	char	**bp_files = 0;
 	char	**bp_keys = 0;
 	project	*bp_proj = 0;
@@ -108,6 +109,12 @@ get_main(int ac, char **av)
 		    case 310: skip_bam++; break;		// --skip-bam
 		    default: bk_badArg(c, av);
 		}
+	}
+	if (flags & PRINT) {
+		if (flags & (GET_EDIT|GET_SKIPGET|GET_NOREGET|GET_DTIME)) {
+			usage();
+		}
+		fout = stdout;
 	}
 	ac_optend = optind;
 	if (Gname && (flags & PRINT)) {
@@ -329,7 +336,8 @@ err:			sccs_free(s);
 		}
 		if ((flags & (GET_DIFFS|GET_BKDIFFS))
 		    ? sccs_getdiffs(s, rev, flags, out)
-		    : sccs_get(s, rev, mRev, iLst, xLst, flags, out)) {
+		    : sccs_get(s, rev, mRev, iLst, xLst,
+			flags, (out||fout) ? out : s->gfile, fout)) {
 			if (s->cachemiss && !recursed) {
 				if (skip_bam) goto next;
 				if (bp_proj && (s->proj != bp_proj)) {

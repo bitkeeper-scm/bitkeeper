@@ -252,7 +252,7 @@ sfiles(char **av)
 	 * Avoids ugly error message.
 	 */
 	if (!exists(ignore) && writable("BitKeeper/etc")) {
-		get(ignore, SILENT, "-");
+		get(ignore, SILENT);
 	}
 	if ((spid = spawnvpio(0, &pfd, 0, av)) == -1) {
 		fprintf(stderr, "cannot spawn bk sfiles\n");

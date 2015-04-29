@@ -4204,7 +4204,7 @@ private int
 loadRepoConfig(MDBM *DB, char *root)
 {
 	sccs	*s;
-	char	*tmpf;
+	FILE	*tmpf;
 	char	config[MAXPATH];
 
 	unless (root) return (-1);
@@ -4231,16 +4231,18 @@ loadRepoConfig(MDBM *DB, char *root)
 	concat_path(config, root, "BitKeeper/etc/SCCS/s.config");
 	if (s = sccs_init(config, SILENT|INIT_MUSTEXIST|INIT_WACKGRAPH)) {
 		int	ret = 0;
+		char	*t;
 
-		tmpf = bktmp(0);
-		if (sccs_get(s, 0, 0, 0, 0, SILENT|PRINT|GET_EXPAND, tmpf)) {
-			perror(tmpf);
+		tmpf = fmem();
+		if (sccs_get(s, 0, 0, 0, 0,
+		    SILENT|GET_EXPAND, 0, tmpf)) {
+			perror("fmem");
 			ret = 1;
 		} else {
-			config2mdbm(DB, tmpf);
+			rewind(tmpf);
+			while (t = fgetline(tmpf)) parseConfig(t, DB, 1);
 		}
-		unlink(tmpf);
-		free(tmpf);
+		fclose(tmpf);
 		sccs_free(s);
 		return (ret);
 	}
@@ -4548,7 +4550,7 @@ config_main(int ac, char **av)
 	/* repo config */
 	if (root = proj_root(0)) {
 		file = aprintf("%s/BitKeeper/etc/config", root);
-		unless (exists(file)) get(file, SILENT|GET_EXPAND, "-");
+		unless (exists(file)) get(file, SILENT|GET_EXPAND);
 		printconfig(file, 0, cfg);
 		free(file);
 	}
@@ -4556,7 +4558,7 @@ config_main(int ac, char **av)
 	/* product config */
 	if (proj_isComponent(0) && (root = proj_root(proj_product(0)))) {
 		file = aprintf("%s/BitKeeper/etc/config", root);
-		unless (exists(file)) get(file, SILENT|GET_EXPAND, "-");
+		unless (exists(file)) get(file, SILENT|GET_EXPAND);
 		printconfig(file, 0, cfg);
 		free(file);
 	}
@@ -6129,7 +6131,7 @@ openOutput(sccs *s, int encode, char *file, FILE **op)
 		mode = "wt";
 	}
 	if (toStdout) {
-		*op = stdout;
+		unless (*op) *op = stdout;
 	} else {
 		unless (*op = fopen(file, mode)) {
 			mkdirf(file);
@@ -6736,7 +6738,7 @@ whodisabled(sccs *s, ser_t tip, ser_t serial, u8 *slist)
 }
 
 private int
-get_reg(sccs *s, char *printOut, int flags, ser_t d,
+get_reg(sccs *s, char *printOut, FILE *out, int flags, ser_t d,
 		int *ln, char *iLst, char *xLst)
 {
 	u32	*state = 0;
@@ -6748,7 +6750,6 @@ get_reg(sccs *s, char *printOut, int flags, ser_t d,
 	int	whodel = 0;
 	unsigned int sum;
 	u32	same, added, deleted, other, *counter;
-	FILE 	*out = 0;
 	char	*buf, *name = 0, *gfile = 0;
 	MDBM	*DB = 0;
 	int	hash = 0;
@@ -7198,7 +7199,7 @@ write:
 }
 
 private int
-get_bp(sccs *s, char *printOut, int flags, ser_t d,
+get_bp(sccs *s, char *printOut, FILE *out, int flags, ser_t d,
 		int *ln, char *iLst, char *xLst)
 {
 	char	*gfile = 0;
@@ -7217,8 +7218,7 @@ get_bp(sccs *s, char *printOut, int flags, ser_t d,
 	 * GET_SUM
 	 */
 #define	BAD	(GET_PREFIX|GET_ASCII|GET_ALIGN|\
-		GET_NOHASH|GET_HASHONLY|GET_DIFFS|GET_BKDIFFS|\
-		GET_SEQ)
+		GET_NOHASH|GET_HASHONLY|GET_DIFFS|GET_BKDIFFS)
 	if (flags & BAD) {
 		fprintf(stderr,
 		    "get: bad flags on get for %s: %x\n", s->gfile, flags);
@@ -7242,7 +7242,7 @@ get_bp(sccs *s, char *printOut, int flags, ser_t d,
 			/* technically there are no recorded modes for 1.0 */
 			touch(gfile, 0664);
 		}
-	} else if (error = bp_get(s, d, flags, gfile)) {
+	} else if (error = bp_get(s, d, flags, gfile, out)) {
 		unless (error == EAGAIN) return (1);
 		if (flags & GET_NOREMOTE) {
 			s->cachemiss = 1;
@@ -7250,7 +7250,7 @@ get_bp(sccs *s, char *printOut, int flags, ser_t d,
 		} else if (bp_fetch(s, d)) {
 			fprintf(stderr, "BAM: fetch failed for %s\n", s->gfile);
 			return (1);
-		} else if (error = bp_get(s, d, flags, gfile)) {
+		} else if (error = bp_get(s, d, flags, gfile, out)) {
 			fprintf(stderr,
 			    "BAM: get after fetch failed for %s\n", s->gfile);
 			return (1);
@@ -7277,7 +7277,7 @@ get_bp(sccs *s, char *printOut, int flags, ser_t d,
 }
 
 private int
-get_link(sccs *s, char *printOut, int flags, ser_t d, int *ln)
+get_link(sccs *s, char *printOut, FILE *out, int flags, ser_t d, int *ln)
 {
 	char *f = setupOutput(s, printOut, flags, d);
 	u8 *t;
@@ -7306,7 +7306,6 @@ get_link(sccs *s, char *printOut, int flags, ser_t d, int *ln)
 	}
 	if ((flags & PRINT) && !(flags & GET_PERMS)) {
 		int	ret;
-		FILE 	*out;
 
 		ret = openOutput(s, E_ASCII, f, &out);
 		assert(ret == 0);
@@ -7366,12 +7365,25 @@ get_link(sccs *s, char *printOut, int flags, ser_t d, int *ln)
 
 /*
  * get the specified revision.
- * The output file is passed in so that callers can redirect it.
+ *
+ * rev, mRev, iLst & xLst which which 'rev' to fetch
  * iLst and xLst are malloced and get() frees them.
+ *
+ * flags passes options, GET_* defined in sccs.h
+ *
+ * Output is selected by printOut & out:
+ * printOut: s->gfile  out: 0
+ *    Write to the gfile
+ * printOUT: tmpfile   out: 0
+ *    Write to file
+ * printOut: 0    out: FILE*
+ *    Write to a data stream
+ * printOut: 0    out: 0
+ *    No data written, used for side-effects like GET_HASHONLY
  */
 int
-sccs_get(sccs *s, char *rev,
-	char *mRev, char *iLst, char *xLst, u32 flags, char *printOut)
+sccs_get(sccs *s, char *rev, char *mRev, char *iLst, char *xLst,
+    u32 flags, char *printOut, FILE *out)
 {
 	ser_t	d;
 	int	lines = -1, locked = 0, error;
@@ -7383,7 +7395,40 @@ sccs_get(sccs *s, char *rev,
 
 	T_SCCS("(%s, %s, %s, %s, %s, %x, %s)",
 	    s->sfile, notnull(rev), notnull(mRev),
-	    notnull(iLst), notnull(xLst), flags, printOut);
+	    notnull(iLst), notnull(xLst), flags, notnull(printOut));
+
+	if ((flags & GET_SKIPGET) && printOut) printOut = 0;
+	if (out) {
+		/*
+		 * if the user passes 'out' then only certain flags
+		 * make sense
+		 * PRINT allowed, but already assumed
+		 */
+		assert(!printOut);
+		assert(!(flags & (GET_DTIME|GET_PERMS|GET_SUM|
+			GET_EDIT|GET_SKIPGET)));
+		flags |= PRINT;
+		printOut = "-";	/* XXX: for now */
+	} else if (printOut) {
+		/* writing to filename */
+		if (printOut == s->gfile) {
+			assert(!(flags & NOGFILE));
+		} else {
+			/* PRINT is assumed when writing to a tmpfile */
+			flags |= PRINT;
+		}
+	} else {
+		/* writing nothing */
+
+		/* GET_SUM needs PRINT, nothing else does */
+		if (flags & GET_SUM) {
+			flags |= PRINT;
+		} else {
+			flags &= ~PRINT;
+		}
+		assert(flags & NOGFILE);
+		printOut = "-";	/* XXX: for now */
+	}
 	if (BITKEEPER(s) && !HAS_PATHNAME(s, TREE(s))) {
 		fprintf(stderr, "get: no pathname for %s\n", s->sfile);
 		return (-1);
@@ -7542,14 +7587,16 @@ err:		if (i2) free(i2);
 	    case 0:		/* uninitialized mode, assume regular file */
 	    case S_IFREG:	/* regular file */
 		if (BAM(s)) {
-			error = get_bp(s, printOut, flags, d, &lines, 0, 0);
+			error = get_bp(s, printOut, out, flags,
+			    d, &lines, 0, 0);
 			break;
 		}
 		error =
-		    get_reg(s, printOut, flags, d, &lines, i2? i2 : iLst, xLst);
+		    get_reg(s, printOut, out, flags,
+			d, &lines, i2? i2 : iLst, xLst);
 		break;
 	    case S_IFLNK:	/* symlink */
-		error = get_link(s, printOut, flags, d, &lines);
+		error = get_link(s, printOut, out, flags, d, &lines);
 		break;
 	    default:
 		fprintf(stderr, "get unsupported file type %d\n",
@@ -7572,6 +7619,7 @@ err:		if (i2) free(i2);
 		time_t	now;
 		struct	utimbuf ut;
 
+		assert(!out);
 		/*
 		 * If we are doing a regular SCCS/s.foo -> foo get then
 		 * we set the gfile time iff we can set the sfile time.
@@ -7712,13 +7760,14 @@ prefix(sccs *s, ser_t d, int whodel, u32 flags, int lines, char *name,
  * cat the delta body formatted according to flags.
  */
 int
-sccs_cat(sccs *s, u32 flags, char *printOut)
+sccs_cat(sccs *s, u32 flags, FILE *out)
 {
 	int	lines = 0, error;
 
 	T_SCCS("file=%s flags=%x", s->gfile, flags);
+	assert(out);
 	debug((stderr, "annotate(%s, %x, %s)\n",
-	    s->sfile, flags, printOut));
+	    s->sfile, flags));
 	unless (s->cksumok) {
 		fprintf(stderr, "annotate: bad chksum on %s\n", s->sfile);
 err:		return (-1);
@@ -7739,7 +7788,7 @@ err:		return (-1);
 		s->state |= S_WARNED;
 		goto err;
 	}
-	error = get_reg(s, printOut, flags, 0, &lines, 0, 0);
+	error = get_reg(s, "-", out, flags|PRINT, 0, &lines, 0, 0);
 	if (error) return (-1);
 
 	debug((stderr, "SCCSCAT done\n"));
@@ -7865,6 +7914,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	ser_t	serial;
 	int	ret = -1;
 
+	unless (printOut) printOut = "-";
 	unless (s->cksumok) {
 		fprintf(stderr, "getdiffs: bad chksum on %s\n", s->sfile);
 		s->state |= S_WARNED;
@@ -9399,12 +9449,12 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 		    s->sfile, pf->oldrev);
 		return (-1);
 	}
-	flags =  GET_ASCII|SILENT|PRINT;
+	flags =  GET_ASCII|SILENT;
 	if (expandKeyWord) flags |= GET_EXPAND;
 	if ((!MODE(s, d) || S_ISREG(MODE(s, d))) && !BAM(s)) {
 		unless (bktmp(old)) return (-1);
 		if (sccs_get(s, pf->oldrev, pf->mRev, pf->iLst, pf->xLst,
-		    flags, old)) {
+		    flags, old, 0)) {
 			unlink(old);
 			return (-1);
 		}
@@ -9789,7 +9839,7 @@ reget:		if (unlinkGfile(s)) return (1);
 	xfile_delete(s->gfile, 'p');
 	s->state &= ~S_PFILE;
 	if (getFlags) {
-		if (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-")) {
+		if (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, s->gfile, 0)) {
 			return (1);
 		}
 		s = sccs_restart(s);
@@ -13136,7 +13186,7 @@ sccs_hashcount(sccs *s)
 	kvpair	kv;
 
 	unless (HASH(s)) return (0);
-	if (sccs_get(s, "+", 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
+	if (sccs_get(s, "+", 0, 0, 0, SILENT|GET_HASHONLY, 0, 0)) {
 		sccs_whynot("get", s);
 		return (0);
 	}
@@ -14447,7 +14497,7 @@ mkDiffTarget(sccs *s,
 			char	buf[MAXPATH];
 			FILE	*f;
 			int	len;
-			
+
 			len = readlink(s->gfile, buf, sizeof(buf));
 			if (len <= 0) return (-1);
 			buf[len] = 0; /* stupid readlink... */
@@ -14460,7 +14510,7 @@ mkDiffTarget(sccs *s,
 			strcpy(target, s->gfile);
 		}
 	} else if (sccs_get(s, rev, revM, pf ? pf->iLst : 0,
-		    pf ? pf->xLst : 0, flags|SILENT|PRINT|GET_DTIME, target)) {
+	    pf ? pf->xLst : 0, flags|SILENT|GET_DTIME, target, 0)) {
 		return (-1);
 	}
 	return (0);
@@ -15239,31 +15289,8 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 
 	case KW_GB: /* GB */ {
 		/* Gotten body */
-		char	*tmpf;
-		FILE	*f;
-		size_t	len;
-		char	*buf[2048];
-
-		/*
-		 * sccs_get writes to stdout or filesys.
-		 * This needs to write file to 'out'.
-		 * XXX: What do do with errors?
-		 */
 		sccs_restart(s);
-		tmpf = bktmp(0);
-		sccs_get(s, REV(s, d), 0, 0, 0, GET_EXPAND|SILENT|PRINT, tmpf);
-		unless (f = fopen(tmpf, "r")) {
-			perror(tmpf);
-			unlink(tmpf);
-			free(tmpf);
-			return (nullVal);
-		}
-		while (len = fread(buf, 1, sizeof(buf), f)) {
-			fwrite(buf, 1, len, out);
-		}
-		fclose(f);
-		unlink(tmpf);
-		free(tmpf);
+		sccs_get(s, REV(s, d), 0, 0, 0, GET_EXPAND|SILENT, 0, out);
 		return (strVal);
 	}
 
@@ -17688,7 +17715,7 @@ recache:		first = 0;
 		}
 		t = name2sccs(file);
 		if (first && exists(t)) {
-			get(t, SILENT, "-");
+			get(t, SILENT);
 			free(t);
 			first = 0;
 			goto again;

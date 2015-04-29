@@ -1033,7 +1033,8 @@ restoreCO(sccs *s, int co, int dtime)
 		assert(0);
 	}
 	unless (getFlags) return (0);
-	unless (sccs_get(s, 0, 0, 0, 0, SILENT|GET_NOREMOTE|getFlags, "-")) {
+	unless (sccs_get(s, 0, 0, 0, 0, SILENT|GET_NOREMOTE|getFlags,
+	    s->gfile, 0)) {
 		return (0);
 	}
 	if (s->cachemiss) {
@@ -1442,7 +1443,7 @@ proj_cset2key(project *p, char *csetrev, char *rootkey)
 		/* fetch MDBM from ChangeSet */
 		concat_path(buf, p->root, CHANGESET);
 		unless (sc = sccs_init(buf, SILENT|INIT_NOCKSUM)) goto ret;
-		if (sccs_get(sc, csetrev, 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
+		if (sccs_get(sc, csetrev, 0, 0, 0, SILENT|GET_HASHONLY, 0, 0)) {
 			csetm = 0;
 		} else {
 			csetm = sc->mdbm;

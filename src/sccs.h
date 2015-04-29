@@ -66,35 +66,34 @@ int	checking_rmdir(char *dir);
 /* shared across get/diffs/getdiffs */
 #define	GET_EDIT	0x10000000	/* get -e: get for editting */
 #define	GET_EXPAND	0x20000000	/* expand keywords */
-#define	GET_REVNUMS	0x40000000	/* get -m: prefix each line with rev */
-#define GET_USER	0x80000000	/* get -u: prefix with user name */
-#define GET_SKIPGET	0x01000000	/* get -g: don't get the file */
-#define	GET_NOREMOTE	0x02000000	/* do not go remote for BAM */
-#define	GET_ASCII	0x04000000	/* Do not gunzip/uudecode */
-#define	GET_LINENUM	0x08000000	/* get -N: show line numbers */
-#define	GET_MODNAME	0x00100000	/* get -n: prefix with %M */
-#define	GET_PREFIXDATE	0x00200000	/* get -d: show date */
-#define	GET_SERIAL	0x00400000	/* serial annotate */
-#define	GET_SHUTUP	0x00800000	/* quiet on certain errors */
-#define	GET_ALIGN	0x00010000	/* nicely align prefix output */
-#define	GET_FORCE	0x00020000	/* do it even with errors */
-#define	GET_MD5KEY	0x00040000	/* get -5: prefix line with md5key */
-#define	GET_DTIME	0x00080000	/* gfile get delta's mode time */
-#define	GET_NOHASH	0x00001000	/* force regular file, ignore S_HASH */
-#define	GET_HASHONLY	0x00002000	/* skip the file */
-#define	GET_DIFFS	0x00004000	/* get -D, regular diffs */
-#define	GET_BKDIFFS	0x00008000	/* get -DD, BK (rick's) diffs */
-#define	GET_PERMS	0x00000100	/* extract perms for non gfile */
-#define	GET_SUM		0x00000200	/* used to force dsum in getRegBody */
-#define GET_NOREGET	0x00000400	/* get -S: skip gfiles that exist */
-#define	GET_LINENAME	0x00000800	/* get -O: prefix with line name */
-#define	GET_RELPATH	0x00000010	/* like GET_MODNAME but full relative */
-/* Unused		0x00000020 */
-#define	GET_SEQ		0x00000040	/* sccs_get: prefix with sequence no */
-/* Unused		0x00000080 */
+#define	GET_SKIPGET	0x40000000	/* get -g: don't get the file */
+#define	GET_NOREMOTE	0x80000000	/* do not go remote for BAM */
+#define	GET_ASCII	0x01000000	/* Do not gunzip/uudecode */
+#define	GET_SHUTUP	0x02000000	/* quiet on certain errors */
+#define	GET_FORCE	0x04000000	/* do it even with errors */
+#define	GET_DTIME	0x08000000	/* gfile get delta's mode time */
+#define	GET_NOHASH	0x00100000	/* force regular file, ignore S_HASH */
+#define	GET_HASHONLY	0x00200000	/* skip the file */
+#define	GET_DIFFS	0x00400000	/* get -D, regular diffs */
+#define	GET_BKDIFFS	0x00800000	/* get -DD, BK (rick's) diffs */
+#define	GET_PERMS	0x00010000	/* extract perms for non gfile */
+#define	GET_SUM		0x00020000	/* used to force dsum in getRegBody */
+#define	GET_NOREGET	0x00040000	/* get -S: skip gfiles that exist */
+
 #define	GET_PREFIX	\
     (GET_REVNUMS|GET_MD5KEY|GET_USER|GET_LINENUM|GET_MODNAME|\
      GET_RELPATH|GET_PREFIXDATE|GET_SEQ|GET_LINENAME|GET_SERIAL)
+#define	GET_ALIGN	0x00002000	/* nicely align prefix output */
+#define	GET_REVNUMS	0x00004000	/* get -m: prefix each line with rev */
+#define	GET_USER	0x00008000	/* get -u: prefix with user name */
+#define	GET_LINENUM	0x00000100	/* get -N: show line numbers */
+#define	GET_MODNAME	0x00000200	/* get -n: prefix with %M */
+#define	GET_PREFIXDATE	0x00000400	/* get -d: show date */
+#define	GET_SERIAL	0x00000800	/* get -aS: prefix with serial */
+#define	GET_MD5KEY	0x00000010	/* get -5: prefix line with md5key */
+#define	GET_LINENAME	0x00000020	/* get -O: prefix with line name */
+#define	GET_SEQ		0x00000040	/* sccs_get: prefix with sequence no */
+#define	GET_RELPATH	0x00000080	/* like GET_MODNAME but full relative */
 
 #define CLEAN_SHUTUP	0x20000000	/* clean -Q: quiet mode */
 #define	CLEAN_SKIPPATH	0x40000000	/* ignore path change; for log tree */
@@ -1031,7 +1030,7 @@ u32	_heap_u32load(void *ptr);
 int	sccs_admin(sccs *sc, ser_t d, u32 flgs,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_adminFlag(sccs *sc, u32 flags);
-int	sccs_cat(sccs *s, u32 flags, char *printOut);
+int	sccs_cat(sccs *s, u32 flags, FILE *out);
 char	*sccs_scat(sccs *s, size_t *len);
 int	sccs_delta(sccs *s, u32 flags, ser_t d, FILE *init, FILE *diffs,
 		   char **syms);
@@ -1039,8 +1038,8 @@ int	sccs_diffs(sccs *s, char *r1, char *r2, df_opt *dop, FILE *)
 	__attribute__((nonnull (1, 4)))
 ;
 int	sccs_encoding(sccs *s, off_t size, char *enc);
-int	sccs_get(sccs *s,
-	    char *rev, char *mRev, char *i, char *x, u32 flags, char *out);
+int	sccs_get(sccs *s, char *rev, char *mRev, char *i, char *x,
+    u32 flags, char *outfile, FILE *out);
 int	sccs_hashcount(sccs *s);
 int	sccs_clean(sccs *s, u32 flags);
 int	sccs_unedit(sccs *s, u32 flags);
@@ -1221,7 +1220,7 @@ int	uniqdb_req(char *msg, int msglen, char *resp, size_t *resplen);
 time_t	sccs_date2time(char *date, char *zone);
 pid_t	smtpmail(char **to, char *subject, char *file);
 int	connect_srv(char *srv, int port, int trace);
-int	get(char *path, int flags, char *output);
+int	get(char *path, int flags);
 int	gethelp(char *helptxt, char *help_name, char *bkarg, char *prefix, FILE *f);
 void	status(int verbose, FILE *out);
 void	notify(void);
@@ -1481,7 +1480,7 @@ ser_t	bp_fdelta(sccs *s, ser_t d);
 int	bp_fetch(sccs *s, ser_t din);
 int	bp_fetchData(void);
 int	bp_fetchkeys(char *me, project *p, int quiet, char **keys, u64 todo);
-int	bp_get(sccs *s, ser_t d, u32 flags, char *out);
+int	bp_get(sccs *s, ser_t d, u32 flags, char *outf, FILE *out);
 int	bp_delta(sccs *s, ser_t d);
 int	bp_diff(sccs *s, ser_t d, char *gfile);
 int	bp_updateServer(char *range, char *list, int quiet);

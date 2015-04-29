@@ -18,7 +18,7 @@ do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out)
 }
 
 int
-get(char *path, int flags, char *output)
+get(char *path, int flags)
 {
 	sccs *s;
 	int ret;
@@ -35,7 +35,7 @@ get(char *path, int flags, char *output)
 		if (s) sccs_free(s);
 		return (-1);
 	}
-	ret = sccs_get(s, 0, 0, 0, 0, flags, output);
+	ret = sccs_get(s, 0, 0, 0, 0, flags, s->gfile, 0);
 	sccs_free(s);
 	return (ret ? -1 : 0);
 }

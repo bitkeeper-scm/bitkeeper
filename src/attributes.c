@@ -32,7 +32,7 @@ attr_update(void)
 	if (HASGRAPH(s)) {
 		/* edit the file */
 		unless (HAS_PFILE(s)) {
-			rc = sccs_get(s, 0, 0, 0, 0, gflags, "-");
+			rc = sccs_get(s, 0, 0, 0, 0, gflags, 0, 0);
 			//assert(rc == 0);
 		}
 	} else {

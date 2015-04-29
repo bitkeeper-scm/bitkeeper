@@ -1611,7 +1611,7 @@ apply:
 		assert(!p->meta); /* this is not the cset file */
 		newflags = GET_FORCE|GET_SKIPGET|GET_EDIT;
 		unless (opts->echo > 6) newflags |= SILENT;
-		if (sccs_get(s, REV(s, d), 0, 0, 0, newflags, "-")) {
+		if (sccs_get(s, REV(s, d), 0, 0, 0, newflags, 0, 0)) {
 			perror("get");
 			return (-1);
 		}

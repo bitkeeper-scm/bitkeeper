@@ -134,7 +134,7 @@ bp_fdelta(sccs *s, ser_t d)
  * return EAGAIN if not in BAM storage
  */
 int
-bp_get(sccs *s, ser_t din, u32 flags, char *gfile)
+bp_get(sccs *s, ser_t din, u32 flags, char *gfile, FILE *out)
 {
 	ser_t	d;
 	char	*dfile, *p;
@@ -145,6 +145,7 @@ bp_get(sccs *s, ser_t din, u32 flags, char *gfile)
 	int	use_stdout;
 	char	hash[10];
 
+	if (out) assert(streq(gfile, "-") && (flags & PRINT));
 	s->bamlink = 0;
 	unless (d = bp_fdelta(s, din)) return (-1);
 	unless (dfile = bp_lookup(s, d)) return (EAGAIN);
@@ -253,28 +254,27 @@ copy:	/* try copying the file */
 	assert(MODE(s, din));
 	use_stdout = ((flags & PRINT) && streq(gfile, "-"));
 	if (use_stdout) {
-		fd = 1;
+		unless (out) out = stdout;
 	} else {
 		unlink(gfile);
 		assert(MODE(s, din) & 0200);
 		(void)mkdirf(gfile);
-		fd = open(gfile, O_WRONLY|O_CREAT, MODE(s, din));
+		if ((fd = open(gfile, O_WRONLY|O_CREAT, MODE(s, din))) < 0) {
+			perror(gfile);
+			goto done;
+		}
+		out = fdopen(fd, "w");
 	}
-	if (fd == -1) {
-		perror(gfile);
-		goto done;
-	}
-	if (writen(fd, m->mmap, m->size) != m->size) {
-		perror(gfile);
+	if (fwrite(m->mmap, 1, m->size, out) != m->size) {
+		perror(gfile ? gfile : "out");
 		unless (use_stdout) {
+			fclose(out);
 			unlink(gfile);
-			close(fd);
 		}
 		goto done;
 	}
-	unless (use_stdout) close(fd);
 	rc = 0;
-
+	unless (use_stdout) rc = fclose(out);
 done:	unless (n = m->size) n = 1;	/* zero is bad */
 	s->dsum = sum & 0xffff;
 	s->added = n;
@@ -2357,7 +2357,7 @@ bam_convert_main(int ac, char **av)
 	 * LMXXX - be nice to have a better error message.
 	 */
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
-	unless (exists(GONE)) get(GONE, SILENT, "-");
+	unless (exists(GONE)) get(GONE, SILENT);
 	gone = file2Lines(0, GONE);
 	EACH(gone) {
 		s = sccs_keyinit(0, gone[i], INIT_NOCKSUM|INIT_MUSTEXIST, idDB);
@@ -2371,7 +2371,9 @@ bam_convert_main(int ac, char **av)
 			sccs_free(s);
 			continue;
 		}
-		if (sccs_get(s, "1.1", 0, 0, 0, SILENT, "-")) return (8);
+		if (sccs_get(s, "1.1", 0, 0, 0, SILENT, s->gfile, 0)) {
+			return (8);
+		}
 		sz = size(s->gfile);
 		unlink(s->gfile);
 		if (sz >= bam_size) {
@@ -2522,7 +2524,9 @@ uu2bp(sccs *s, int bam_size, char ***keysp)
 		/* nothing */
 		;
 	} else {
-		if (sccs_get(s, "1.1", 0, 0, 0, SILENT, "-")) return (8);
+		if (sccs_get(s, "1.1", 0, 0, 0, SILENT, s->gfile, 0)) {
+			return (8);
+		}
 		sz = size(s->gfile);
 		unlink(s->gfile);
 		if (sz < bam_size) goto out;
@@ -2538,7 +2542,9 @@ uu2bp(sccs *s, int bam_size, char ***keysp)
 	fprintf(stderr, "Converting %s ", s->gfile);
 	for (n = 0, d = TABLE(s); d >= TREE(s); d--) {
 		assert(!TAG(s, d));
-		if (sccs_get(s, REV(s, d), 0, 0, 0, SILENT, "-")) return (8);
+		if (sccs_get(s, REV(s, d), 0, 0, 0, SILENT, s->gfile, 0)) {
+			return (8);
+		}
 
 		/*
 		 * XXX - if this logic is wrong then we lose data.
