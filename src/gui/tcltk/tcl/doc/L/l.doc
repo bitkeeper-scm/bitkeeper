@@ -1797,11 +1797,31 @@ per element) as follows:
 The function returns the name of the next recognized option or
 undef if no more options exist.
 The global variable C<optind> is set to the next av[] index to
-process, and C<optarg> is set to the option value (if any).
+process.
+If the option has no arg, C<optarg> is set to C<undef>.
 
 If an unrecognized option is seen, the empty string ("") is returned
 and the global variable C<optopt> is set to the name of the
 offending option (unless the option is a long option).
+
+This example shows a typical usage of both short and long options.
+
+    int     debug_level, verbose;
+    string  c, lopts[] = { "verbose" };
+
+    while (c = getopt(av, "d|v", lopts)) {
+        switch (c) {
+            case "d":
+                if (optarg) debug_level = (int)optarg;
+                break;
+            case "v":
+            case "verbose":
+                verbose = 1;
+                break;
+            default:
+                die("unrecognized option ${optopt}");
+        }
+    }
 
 =proto int getpid()
 

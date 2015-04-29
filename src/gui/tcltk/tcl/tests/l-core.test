@@ -2745,6 +2745,37 @@ void main()
 .*7: L Error: function main already declared
 }
 
+test decl-1.10.1 {argc, argv, or env should never cause unused-variable warning} -setup {
+	# Put these in their own files since only one main() can be defined.
+	makeFile {
+		void main(string argv[]) {}
+	} decl-1.10.1-1.l
+	makeFile {
+		void main(int argc, string argv[]) {}
+	} decl-1.10.1-2.l
+	makeFile {
+		void main(int argc, string argv[], string env{string}) {}
+	} decl-1.10.1-3.l
+} -body {
+#lang L --line=1
+void decl_1_10_1()
+{
+	int	ret;
+	string	tclsh = interpreter();
+	string	out, err;
+
+	ret = system({tclsh, "decl-1.10.1-1.l"}, undef, &out, &err);
+	unless (ret == 0) puts("bad 1.1: ${out} ${err}");
+
+	ret = system({tclsh, "decl-1.10.1-2.l"}, undef, &out, &err);
+	unless (ret == 0) puts("bad 2.1: ${out} ${err}");
+
+	ret = system({tclsh, "decl-1.10.1-3.l"}, undef, &out, &err);
+	unless (ret == 0) puts("bad 3.1: ${out} ${err}");
+}
+decl_1_10_1();
+} -output {}
+
 test decl-1.11.1 {private globals 1} -body {
 #lang L --line=1
 private string priv_global = "test 1";

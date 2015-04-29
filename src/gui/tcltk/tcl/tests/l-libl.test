@@ -852,7 +852,11 @@ private string doit(string av[], string opts, string lopts[])
 			s .= "<${optopt}|err>";
 			break;
 		} else {
-			s .= "<${c}|${optarg}|${optind}>";
+			if (optarg) {
+				s .= "<${c}|${optarg}|${optind}>";
+			} else {
+				s .= "<${c}|#|${optind}>";
+			}
 		}
 	}
 	return (s);
@@ -871,7 +875,7 @@ void getopt1()
 
 	/* opt a */
 	s = doit({"a.out","-a","x"}, "a", {});
-	unless (s eq "<a||2>") puts("bad 3.1");
+	unless (s eq "<a|#|2>") puts("bad 3.1");
 
 	/* opt a: */
 	s = doit({"a.out","-a","x"}, "a:", {});
@@ -895,11 +899,11 @@ void getopt1()
 	s = doit({"a.out","-ax"}, "a|", {});
 	unless (s eq "<a|x|2>") puts("bad 6.1");
 	s = doit({"a.out","-a","x"}, "a|", {});
-	unless (s eq "<a||2>") puts("bad 6.2");
+	unless (s eq "<a|#|2>") puts("bad 6.2");
 
 	/* longopt long */
 	s = doit({"a.out","--long", "x"}, "", {"long"});
-	unless (s eq "<long||2>") puts("bad 7.1");
+	unless (s eq "<long|#|2>") puts("bad 7.1");
 
 	/* longopt long: */
 	s = doit({"a.out","--long", "x"}, "", {"long:"});
@@ -921,11 +925,11 @@ void getopt1()
 
 	/* longopt long| */
 	s = doit({"a.out","--long", "x"}, "", {"long|"});
-	unless (s eq "<long||2>") puts("bad 10.1");
+	unless (s eq "<long|#|2>") puts("bad 10.1");
 	s = doit({"a.out","--long=x"}, "", {"long|"});
 	unless (s eq "<long|x|2>") puts("bad 10.2");
 	s = doit({"a.out","--long"}, "", {"long|"});
-	unless (s eq "<long||2>") puts("bad 10.3");
+	unless (s eq "<long|#|2>") puts("bad 10.3");
 }
 getopt1();
 } -output {}
@@ -944,7 +948,7 @@ void getopt2()
 	getoptReset();
 	if (optind) puts("bad 0.1");
 	unless (optopt == "") puts("bad 0.2");
-	unless (optarg == "") puts("bad 0.3");
+	if (optarg) puts("bad 0.3");
 
 	while (c = getopt(av, "abc", undef)) {
 		switch (c) {

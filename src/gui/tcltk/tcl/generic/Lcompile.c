@@ -7532,7 +7532,12 @@ Tcl_GetOptObjCmd(
 	s = cksprintf("%c", optopt);
 	Tcl_SetVar(interp, "optopt", s, TCL_GLOBAL_ONLY);
 	ckfree(s);
-	Tcl_SetVar(interp, "optarg", optarg, TCL_GLOBAL_ONLY);
+	if (optarg) {
+		Tcl_SetVar(interp, "optarg", optarg, TCL_GLOBAL_ONLY);
+	} else {
+		Tcl_SetVar2Ex(interp, "optarg", NULL, *L_undefObjPtrPtr(),
+			      TCL_GLOBAL_ONLY);
+	}
  done:
 	ckfree((char *)av);
 	ckfree((char *)lopts);
@@ -7553,7 +7558,8 @@ Tcl_GetOptResetObjCmd(
 	getoptReset();
 	Tcl_SetVar(interp, "optind", "0", TCL_GLOBAL_ONLY);
 	Tcl_SetVar(interp, "optopt", "", TCL_GLOBAL_ONLY);
-	Tcl_SetVar(interp, "optarg", "", TCL_GLOBAL_ONLY);
+	Tcl_SetVar2Ex(interp, "optarg", NULL, *L_undefObjPtrPtr(),
+		      TCL_GLOBAL_ONLY);
 	return (TCL_OK);
 }
 
