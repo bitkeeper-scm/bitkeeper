@@ -1497,6 +1497,31 @@ void popen5_2()
 popen5_2();
 } -output {}
 
+test popen-5.3 {test stderr callback that closes the pipe} -body {
+#lang L --line=1
+/*
+ * This tests a stderr callback that closes the read end of
+ * the pipe. It used to cause lib L to thrown an exception.
+ */
+int popen_5_3_called = 0;
+void popen_5_3_cb(_argused string cmd, FILE f)
+{
+	++popen_5_3_called;
+	close(f);
+}
+void popen_5_3()
+{
+	FILE	f;
+	string	cmd = "perl -e 'print STDERR \"to err\";'";
+
+	f = popen(cmd, "r", &popen_5_3_cb);
+	unless (f) puts("bad 1.1");
+	if (pclose(f)) puts("bad 1.2");
+	unless (popen_5_3_called == 1) puts("bad 1.3: ${popen_5_3_called}");
+}
+popen_5_3();
+} -output {}
+
 test popen-6 {test popen stderr ignore} -setup {
 	set fname [makeFile {
 		string	cmd;

@@ -600,9 +600,9 @@ stderr_cb_(stderr_ctxt_t ctxt)
 {
 	if (Chan_names(ctxt.pipe) == "") return;  // if closed
 	eval({ctxt.cb, ctxt.cmd, ctxt.pipe});
-	if (eof(ctxt.pipe)) {
-		::close(ctxt.pipe);
-	}
+	try {
+		if (eof(ctxt.pipe)) ::close(ctxt.pipe);
+	} catch {}
 }
 
 private void
