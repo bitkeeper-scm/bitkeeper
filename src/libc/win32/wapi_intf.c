@@ -669,23 +669,13 @@ get_osinfo(void)
 }
 
 /*
- * Return false if OS is Win98 (or older) (Including WinNT)
+ * Return false if OS is too old.
  */
 int
 win_supported(void)
 {
 	get_osinfo();
-	return (osinfo.dwMajorVersion > 4); /* older than win2k: unsupported */
-}
-
-/*
- * Return true if OS is Windows 2000 (only)
- */
-int
-isWin2000(void)
-{
-	get_osinfo();
-	return ((osinfo.dwMajorVersion == 5) && (osinfo.dwMinorVersion == 0));
+	return (osinfo.dwMajorVersion > 5); /* older than Vista unsupported */
 }
 
 /*

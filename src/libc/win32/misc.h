@@ -41,7 +41,6 @@ extern int sigcaught(int);
 extern int hasConsole(void);
 
 int	win_unsupported(void);
-int	isWin2000(void);
 int	is_vista(void);
 int	alarm(int seconds);
 int	sync(void);

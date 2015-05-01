@@ -62,7 +62,7 @@ platformInit(char **av)
 
 	unless (win_supported()) {
 		fprintf(stderr,
-		    "This version of BK requires Windows 2000 or later.\n");
+		    "This version of BK requires Windows Vista or later.\n");
 		exit(1);
 	}
 

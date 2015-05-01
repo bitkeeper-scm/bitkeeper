@@ -54,7 +54,6 @@
 #define	linkcount(a, b)	(b)->st_nlink
 
 #define	win32()		0
-#define	isWin2000()	0
 #define	win_supported()	1
 
 
