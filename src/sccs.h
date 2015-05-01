@@ -490,6 +490,13 @@ typedef struct delta {
  	u32	csetFile;		/* id for ChangeSet file */
 } d2_t;
 
+typedef struct rset_df {
+	u32	rkoff;
+	u32	dkleft1;
+	u32	dkleft2;
+	u32	dkright;
+} rset_df;
+
 typedef struct {
 	ser_t	ser;
 	u32	rkoff;
@@ -1354,6 +1361,8 @@ void	weave_cvt(sccs *s);
 void	weave_updateMarker(sccs *s, ser_t d, u32 rk, int add);
 int	isNullFile(char *rev, char *file);
 u32	rset_checksum(sccs *cset, ser_t d, ser_t base);
+rset_df	*rset_diff(sccs *cset,
+    ser_t left, ser_t left2, ser_t right, int showgone);
 unsigned long	ns_sock_host2ip(char *host, int trace);
 unsigned long	host2ip(char *host, int trace);
 int	fileTypeOk(mode_t m);

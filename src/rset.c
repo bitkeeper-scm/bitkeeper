@@ -290,6 +290,35 @@ out:
 }
 
 /*
+ * List the rset output for a cset range left1,left2..right
+ * For compactness, keep things in heap offset form.
+ */
+rset_df *
+rset_diff(sccs *cset, ser_t left1, ser_t left2, ser_t right, int showgone)
+{
+	Opts	opts = {0};
+	rset	*data = 0;
+	rfile	*file;
+	rset_df	*diff = 0, *d;
+
+	opts.show_gone = showgone;
+	data = weaveExtract(cset, left1, left2, right, &opts);
+	assert(data);
+
+	EACH_HASH(data->keys) {
+		file = (rfile *)data->keys->vptr;
+		d = addArray(&diff, 0);
+		d->rkoff = file->rkoff;
+		d->dkleft1 = file->left1;
+		d->dkleft2 = file->left2;
+		d->dkright = file->right;
+	}
+
+	freeRset(data);
+	return (diff);
+}
+
+/*
  * Get checksum of cset d relative to cset base (or root if no base)
  */
 u32

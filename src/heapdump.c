@@ -232,7 +232,7 @@ dumpStats(sccs *s)
 	fseek(f, 0, SEEK_END);
 	printf("%s\n", s->sfile);
 	printf("sfile: %s", psize(s->size));
-	if (abs(s->size - ftell(f)) > 100) {
+	if (llabs(s->size - ftell(f)) > 100) {
 		printf("->%s", psize(ftell(f)));
 	} else if (s->encoding_in & E_GZIP) {
 		printf(" (gzip)");
