@@ -62,7 +62,7 @@ while (<DATA>) {
     next if /^\s*$/;		# ignore blank lines
 
     # handle aliases
-    if (/(\w+) => (\w+)/) {
+    if (/([\-\w]+) => (\w+)/) {
 	print C "$1, CMD_ALIAS, 0, \"$2\", 0, 0\n";
 	next;
     }
@@ -222,6 +222,7 @@ _dumpconfig
 _eula
 _exists
 export
+_fastexport
 _fgzip
 features
 _filtertest1
@@ -432,6 +433,7 @@ _get => get
 co => get
 checkout => get
 edit => get
+fast-export => _fastexport
 comment => comments	# alias for Linus, remove...
 identity => id
 info => sinfo
