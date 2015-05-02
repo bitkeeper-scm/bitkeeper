@@ -15105,6 +15105,15 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		return (strVal);
 	}
 
+	case KW_CHASH: /* CHASH */ {
+		/* comments hash */
+		unless (t = COMMENTS(s, d)) return (nullVal);
+		p = hashstr(t, strlen(t));
+		fs(p);
+		free(p);
+		return (strVal);
+	}
+
 	case KW_HTML_C: /* HTML_C */ {
 		char	html_ch[20];
 		unsigned char *p;

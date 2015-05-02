@@ -496,3 +496,4 @@ sdiff cprog
 # L scripts
 hello lscript
 pull-size lscript
+check_comments lscript
