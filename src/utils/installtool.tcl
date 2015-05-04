@@ -224,21 +224,47 @@ proc homedir {} \
 	}
 }
 
-proc validateLicense {args} \
+proc validateLicense {} \
 {
+	global	widgets wizData
+
+	if {![winfo exists $widgets(license)]} { return }
+
+	## Don't fire any further events while we're working in here.
+	bind $widgets(license) <<Modified>> ""
+
 	# This doesn't validate the license per se,
 	# only whether the user has entered one. Validation
 	# is expensive, so we'll only do it when the user
 	# presses "Next"
-	if {$::wizData(license)  eq "" ||
-	    $::wizData(licsign1) eq "" ||
-	    $::wizData(licsign2) eq "" ||
-	    $::wizData(licsign3) eq "" ||
-	    (![string match "BKL*" $::wizData(license)])} {
-		. configure -state pending
-	} else {
+
+	set wizData(license)  ""
+	set wizData(licsign1) ""
+	set wizData(licsign2) ""
+	set wizData(licsign3) ""
+
+	set data [string trim [$widgets(license) get 1.0 end]]
+	set lines [split $data \n]
+
+	set line1 [lindex $lines 0]
+	if {[llength $lines] == 4 && ([string match "BKL*" $line1]
+	    || [string match "license: BKL*" $line1])} {
+		set wizData(license)  [lindex $lines 0]
+		set wizData(licsign1) [lindex $lines 1]
+		set wizData(licsign2) [lindex $lines 2]
+		set wizData(licsign3) [lindex $lines 3]
 		. configure -state normal
+	} else {
+		. configure -state pending
 	}
+
+	insertLicense
+	
+	## Reset the modified state so our event will fire again.
+	$widgets(license) edit modified 0
+	
+	## Re-validate every time the text in the widget changes.
+	bind $widgets(license) <<Modified>> [list after idle validateLicense]
 }
 
 # This not only sets the focus, but attempts to put the cursor in
@@ -252,45 +278,61 @@ proc focusEntry {w} \
 	}
 }
 
-proc parseLicenseData {type} \
+proc insertLicense {} {
+	global	widgets wizData
+
+	if {$wizData(license) eq ""} { return }
+
+	## Take the license we have stored and insert it into
+	## the license text widget.
+	$widgets(license) delete 1.0 end
+	$widgets(license) insert end $wizData(license)\n
+	$widgets(license) insert end $wizData(licsign1)\n
+	$widgets(license) insert end $wizData(licsign2)\n
+	$widgets(license) insert end $wizData(licsign3)
+}
+
+proc get_license_from_file {} \
 {
-	global wizData
+	global	widgets wizData
+
+	set types {
+		{{All Files} *}
+		{{License Files} {.lic}}
+		{{Text Files} {.txt}}
+	}
+
+	set file [tk_getOpenFile -filetypes $types -parent .]
+	if {$file eq "" || ![file readable $file]} { return }
+
 	set data ""
-
-	if {$type == "clipboard"} {
-		# this is experimental... It needs a lot of testing on
-		# our supported platforms before we bless it. 
-		if {[catch {selection get -displayof . -selection PRIMARY} data]} {
-			catch {clipboard get} data
-		}
-
-	} elseif {$type == "file"} {
-		set types {
-			{{All Files} *}
-			{{License Files} {.lic}}
-			{{Text Files} {.txt}}
-		}
-		set file [tk_getOpenFile -filetypes $types -parent .]
-		if {$file != "" && 
-		    [file exists $file] && 
-		    [file readable $file]} {
-
-			catch {
-				set f [open $file r]
-				set data [read $f]
-				close $f
-			}
-		}
+	catch {
+		set f [open $file r]
+		set data [read $f]
+		close $f
 	}
 
-	foreach line [split $data \n] {
-		if {[regexp {license: *(BKL.+)$} $line -> value]} {
-			set wizData(license) $value
+	set lines [split $data \n]
+	if {![llength $lines]} { return }
+
+	foreach line $lines {
+		if {[regexp {^license: } $line]} {
+			set lines [lreplace $lines 0 $i-1]
+			break
 		}
-		if {[regexp {(licsign[123]): *(.*)$} $line -> key value]} {
-			set wizData($key) $value
-		}
+		incr i
 	}
+
+	set fields {license licsign1 licsign2 licsign3}
+
+	foreach line $lines field $fields {
+		regexp "$field:(.+)\$" $line -> line
+		set line [string trim $line]
+		set wizData($field) $line
+		$widgets(license) insert end $line\n
+	}
+
+	insertLicense
 }
 
 # Insert a step right after the current step
@@ -389,53 +431,28 @@ proc widgets {} \
 
 		set w [$this info workarea]
 
-		set ::widgets(license)  $w.license
-		set ::widgets(licsign1) $w.licsign1Entry
-		set ::widgets(licsign2) $w.licsign2Entry
-		set ::widgets(licsign3) $w.licsign3Entry
+		set ::widgets(license) $w.license
 
 		ttk::label $w.keyLabel -text "License Key:"
-		ttk::entry $w.keyEntry  -textvariable wizData(license)
-		ttk::button $w.fileButton -text "From file..." \
-		    -command {parseLicenseData file}
-		ttk::label $w.licsign1Label -text "Key Signature #1:"
-		ttk::entry $w.licsign1Entry -textvariable wizData(licsign1)
-		ttk::label $w.licsign2Label -text "Key Signature #2:"
-		ttk::entry $w.licsign2Entry -textvariable wizData(licsign2)
-		ttk::label $w.licsign3Label -text "Key Signature #3:"
-		ttk::entry $w.licsign3Entry -textvariable wizData(licsign3)
+		text $w.license -height 4 -relief sunken -borderwidth 1 \
+		    -highlightthickness 0
+		ttk::button $w.fileButton -text "Load from file..." \
+		    -command get_license_from_file
 
-		grid $w.keyLabel       -row 0 -column 0 -sticky e
-		grid $w.keyEntry       -row 0 -column 1 -sticky ew -pady 2
-		grid $w.fileButton     -row 0 -column 2 -sticky w -padx 2
-		grid $w.licsign1Label  -row 1 -column 0 -sticky e 
-		grid $w.licsign1Entry  -row 1 -column 1 -sticky ew -pady 2
-		grid $w.licsign2Label  -row 2 -column 0 -sticky e
-		grid $w.licsign2Entry  -row 2 -column 1 -sticky ew -pady 2
-		grid $w.licsign3Label  -row 3 -column 0 -sticky e
-		grid $w.licsign3Entry  -row 3 -column 1 -sticky ew -pady 3
+		grid $w.keyLabel   -row 0 -column 0 -sticky w  -padx 2
+		grid $w.license    -row 1 -column 0 -sticky ew -pady 2
+		grid $w.fileButton -row 2 -column 0 -sticky sw -padx 2 -pady 5
 
-		grid columnconfigure $w 0 -weight 0
-		grid columnconfigure $w 1 -weight 1
-		grid columnconfigure $w 2 -weight 0
-		grid rowconfigure $w 0 -weight 0
-		grid rowconfigure $w 1 -weight 0
-		grid rowconfigure $w 2 -weight 0
-		grid rowconfigure $w 3 -weight 0
-		grid rowconfigure $w 4 -weight 1
+		grid columnconfigure $w $w.license -weight 1
 
-		bind $w.keyEntry <<Paste>> {parseLicenseData clipboard}
+		insertLicense
 
 		# running the validate command will set the wizard buttons to 
 		# the proper state; this is mostly useful if they enter
 		# a license, go to the next step, then come back.
 		validateLicense
-		trace variable wizData(license) w [list validateLicense $w]
-		trace variable wizData(licsign1) w [list validateLicense $w]
-		trace variable wizData(licsign2) w [list validateLicense $w]
-		trace variable wizData(licsign3) w [list validateLicense $w]
 
-		after idle [list focusEntry $w.keyEntry]
+		after idle [list focus $w.license]
 	}
 
 	#-----------------------------------------------------------------------
@@ -911,13 +928,13 @@ proc widgets {} \
 					. configure -path new
 				}
 			}
-			EULA {exec bk _eula -a}
+			EULA {
+				if {[catch {exec bk _eula -a}]} {
+					exit 1
+				}
+			}
 			LicenseKey {
-				if {![checkLicense \
-				    $::wizData(license) \
-				    $::wizData(licsign1) \
-				    $::wizData(licsign2) \
-				    $::wizData(licsign3)]} {
+				if {![checkLicense {*}[lic_lines]]} {
 					# we don't need to do anything here
 					# because checkLicense warns the user
 					# if the license is invalid
@@ -932,20 +949,12 @@ proc widgets {} \
 					close $fd
 				}
 				set fd [open $cfgpath w]
-				puts $fd [join [list \
-				    "license: $::wizData(license)" \
-				    "licsign1: $::wizData(licsign1)" \
-				    "licsign2: $::wizData(licsign2)" \
-				    "licsign3: $::wizData(licsign3)"] \n]
+				puts $fd [join [lic_lines 1] \n]
 				if {[info exists data]} {puts $fd $data}
 				catch {close $fd}
 				if {![info exists ::licenseInfo(text)] ||
 				    $::licenseInfo(text) eq ""} {
-					if {[getEulaText \
-					     $::wizData(license) \
-					     $::wizData(licsign1) \
-					     $::wizData(licsign2) \
-					     $::wizData(licsign3) \
+					if {[getEulaText {*}[lic_lines] \
 					     ::licenseInfo(text)]} {
 						break
 					}
@@ -956,7 +965,7 @@ proc widgets {} \
 				}
 			}
 			Welcome {
-				if {[eula_u b]} {
+				if {![existingLicense]} {
 					# No license found, so prompt for it
 					wizInsertStep LicenseKey
 					. configure -step LicenseKey
@@ -964,7 +973,7 @@ proc widgets {} \
 				}
 				if {![info exists ::licenseInfo(text)] ||
 				    $::licenseInfo(text) eq ""} {
-					set ::licenseInfo(text) $b
+					eula_u ::licenseInfo(text)
 				}
 				if {$::licenseInfo(text) ne ""} {
 					# Insert EULA step into path
@@ -975,12 +984,26 @@ proc widgets {} \
 	}
 }
 
+# Return 1 if there's a config file anywhere with a license key
+# or a licenseurl. This tells us whether to prompt the user
+# for a license.
+proc existingLicense {} \
+{
+	if {![catch {exec bk config license} license] ||
+	    ![catch {exec bk config licenseurl} licenseurl]} {
+		return 1
+	} else {
+		return 0
+	}
+}
+
 proc eula_u {text} \
 {
 	upvar 1 $text t
 	set ::env(BK_NO_GUI_PROMPT) 1	;# make bk _eula shut up
 	set r [catch {exec bk _eula -u} t]
 	unset ::env(BK_NO_GUI_PROMPT)
+	return 1
 	return $r
 }
 
@@ -1267,6 +1290,27 @@ proc usage {} \
 {
 	set image "\[installer\]"
 	puts stderr "usage: $image ?directory?"
+}
+
+proc lic_lines {{withPrefix 0}} \
+{
+	global	wizData
+
+	set fields {license licsign1 licsign2 licsign3}
+	foreach var $fields {
+		set line $wizData($var)
+		regsub {^lic(ense|sign1|sign2|sign3):\s+} $line "" line
+		set line [string trimright $line !]
+		lappend lines $line
+	}
+
+	if {$withPrefix} {
+		foreach prefix $fields line $lines {
+			lappend newlines "$prefix: $line"
+		}
+		set lines $newlines
+	}
+	return $lines
 }
 
 # these strings will be reformatted; the newlines and leading spaces
