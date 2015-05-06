@@ -467,6 +467,8 @@ AC_CHECK_TYPE([uintptr_t], [
 
 AC_CHECK_FUNC(opendir, , [AC_DEFINE(USE_DIRENT2_H, 1, [May we include <dirent2.h>?])])
 
+AC_STRUCT_DIRENT_D_TYPE
+
 #--------------------------------------------------------------------
 #	The check below checks whether <sys/wait.h> defines the type
 #	"union wait" correctly.  It's needed because of weirdness in

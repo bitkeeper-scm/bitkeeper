@@ -7965,3 +7965,203 @@ Tcl_LGetNextLine(
 	Tcl_SetObjResult(interp, *L_undefObjPtrPtr());
 	return (TCL_OK);
 }
+
+#ifdef _WIN32
+
+int
+Tcl_LGetDirX(
+    ClientData dummy,		/* Not used. */
+    Tcl_Interp *interp,		/* Current interpreter. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])	/* Argument objects. */
+{
+	int		len, ret;
+	Tcl_Obj		*argv[2], *dirObjs, *eltObjs[3], *fileObjs, *listObj;
+	char		*buf, *dir, *type, *utfname;
+	Tcl_DString	ds;
+	HANDLE		hFind;
+	WIN32_FIND_DATA	f;
+
+	if (objc != 2) {
+		Tcl_WrongNumArgs(interp, 1, objv, "directory");
+		return (TCL_ERROR);
+	}
+
+	// Append \* to the given directory path.
+	dir = cksprintf("%s\\*", Tcl_GetString(objv[1]));
+	Tcl_WinUtfToTChar(dir, -1, &ds);
+
+	hFind = FindFirstFile((TCHAR *)Tcl_DStringValue(&ds), &f);
+	if (hFind == INVALID_HANDLE_VALUE) {
+		TclWinConvertError(GetLastError());
+		FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+			       FORMAT_MESSAGE_FROM_SYSTEM |
+			       FORMAT_MESSAGE_IGNORE_INSERTS,
+			       NULL,
+			       GetLastError(),
+			       MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+			       (char *)&buf,
+			       0, NULL);
+		// Chomp the cr,lf that windows added to buf.
+		len = strlen(buf);
+		if (len > 2) buf[len-2] = 0;
+		Tcl_SetVar(interp, "::stdio_lasterr",
+			   buf,
+			   TCL_GLOBAL_ONLY);
+		Tcl_SetObjResult(interp, *L_undefObjPtrPtr());
+		LocalFree(buf);
+		return (TCL_OK);
+	}
+	ckfree(dir);
+	Tcl_DStringFree(&ds);
+
+	fileObjs = Tcl_NewListObj(0, NULL);
+	dirObjs  = Tcl_NewListObj(0, NULL);
+	do {
+		utfname = Tcl_WinTCharToUtf(f.cFileName, -1, &ds);
+		eltObjs[0] = Tcl_NewStringObj(utfname, -1);
+		if (f.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+			type = "directory";
+		} else {
+			type = "file";
+		}
+		eltObjs[1] = Tcl_NewStringObj(type, -1);
+		if ((f.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) ||
+		    (*utfname == '.')) {
+			eltObjs[2] = Tcl_NewIntObj(1);
+		} else {
+			eltObjs[2] = Tcl_NewIntObj(0);
+		}
+		listObj = Tcl_NewListObj(3, eltObjs);
+		if (f.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+			Tcl_ListObjAppendElement(interp, dirObjs, listObj);
+		} else {
+			Tcl_ListObjAppendElement(interp, fileObjs, listObj);
+		}
+		Tcl_DStringFree(&ds);
+	} while (FindNextFile(hFind, &f));
+	FindClose(hFind);
+
+	// Sort the lists.
+	argv[1] = dirObjs;
+	Tcl_IncrRefCount(dirObjs);
+	Tcl_ResetResult(interp);
+	ret = Tcl_LsortObjCmd(NULL, interp, 2, argv);
+	Tcl_DecrRefCount(dirObjs);
+	if (ret == TCL_OK) {
+		dirObjs = Tcl_DuplicateObj(Tcl_GetObjResult(interp));
+	}
+
+	argv[1] = fileObjs;
+	Tcl_IncrRefCount(fileObjs);
+	Tcl_ResetResult(interp);
+	ret = Tcl_LsortObjCmd(NULL, interp, 2, argv);
+	Tcl_DecrRefCount(fileObjs);
+	if (ret == TCL_OK) {
+		fileObjs = Tcl_GetObjResult(interp);
+	}
+
+	// Return a list with the file names after all the dir names.
+	Tcl_ListObjAppendList(interp, dirObjs, fileObjs);
+	Tcl_SetObjResult(interp, dirObjs);
+	return (TCL_OK);
+}
+
+#else  // #ifdef WIN32
+
+int
+Tcl_LGetDirX(
+    ClientData dummy,		/* Not used. */
+    Tcl_Interp *interp,		/* Current interpreter. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])	/* Argument objects. */
+{
+	int		ret;
+	Tcl_Obj		*argv[2], *dirObjs, *eltObjs[3], *fileObjs, *listObj;
+	DIR		*d;
+	struct dirent	*dent;
+	char		*dir, *type;
+#ifndef HAVE_STRUCT_DIRENT_D_TYPE
+	char		*path;
+	struct stat	st;
+#endif
+
+	if (objc != 2) {
+		Tcl_WrongNumArgs(interp, 1, objv, "directory");
+		return (TCL_ERROR);
+	}
+
+	dir = Tcl_GetString(objv[1]);
+	d = opendir(dir);
+	unless (d) {
+		Tcl_SetVar(interp, "::stdio_lasterr",
+			   strerror(errno),
+			   TCL_GLOBAL_ONLY);
+		Tcl_SetObjResult(interp, *L_undefObjPtrPtr());
+		return (TCL_OK);
+	}
+
+	fileObjs = Tcl_NewListObj(0, NULL);
+	dirObjs  = Tcl_NewListObj(0, NULL);
+	while (dent = readdir(d)) {
+		eltObjs[0] = Tcl_NewStringObj(dent->d_name, -1);
+#ifdef HAVE_STRUCT_DIRENT_D_TYPE
+		switch (dent->d_type) {
+		    case DT_REG: type = "file";      break;
+		    case DT_DIR: type = "directory"; break;
+		    default:     type = "other";     break;
+		}
+#else
+		path = cksprintf("%s/%s", dir, dent->d_name);
+		if (stat(path, &st)) {
+			type = "unknown";
+		} else if (S_ISREG(st.st_mode)) {
+			type = "file";
+		} else if (S_ISDIR(st.st_mode)) {
+			type = "directory";
+		} else {
+			type = "other";
+		}
+		ckfree(path);
+#endif
+		eltObjs[1] = Tcl_NewStringObj(type, -1);
+		if (*dent->d_name == '.') {
+			eltObjs[2] = Tcl_NewIntObj(1);
+		} else {
+			eltObjs[2] = Tcl_NewIntObj(0);
+		}
+		listObj = Tcl_NewListObj(3, eltObjs);
+		if (*type == 'd') {
+			Tcl_ListObjAppendElement(interp, dirObjs, listObj);
+		} else {
+			Tcl_ListObjAppendElement(interp, fileObjs, listObj);
+		}
+	}
+	closedir(d);
+
+	// Sort the lists.
+	argv[1] = dirObjs;
+	Tcl_IncrRefCount(dirObjs);
+	Tcl_ResetResult(interp);
+	ret = Tcl_LsortObjCmd(NULL, interp, 2, argv);
+	Tcl_DecrRefCount(dirObjs);
+	if (ret == TCL_OK) {
+		dirObjs = Tcl_DuplicateObj(Tcl_GetObjResult(interp));
+	}
+
+	argv[1] = fileObjs;
+	Tcl_IncrRefCount(fileObjs);
+	Tcl_ResetResult(interp);
+	ret = Tcl_LsortObjCmd(NULL, interp, 2, argv);
+	Tcl_DecrRefCount(fileObjs);
+	if (ret == TCL_OK) {
+		fileObjs = Tcl_GetObjResult(interp);
+	}
+
+	// Return a list with the file names after all the dir names.
+	Tcl_ListObjAppendList(interp, dirObjs, fileObjs);
+	Tcl_SetObjResult(interp, dirObjs);
+	return (TCL_OK);
+}
+
+#endif  // #ifdef WIN32

@@ -97,6 +97,12 @@ typedef struct {
 	string	error;	// if defined, an error message or output from stderr
 } STATUS;
 
+typedef struct dirent {
+	string	name;
+	string	type;
+	int	hidden;
+} dirent;
+
 FILE    stdin  = "stdin";
 FILE    stderr = "stderr";
 FILE    stdout = "stdout";
@@ -110,6 +116,7 @@ extern	string	errorCode[];
 int	optind = 0;
 string	optarg, optopt;
 
+extern dirent[]	getdirx(string path);
 extern string	getopt(string av[], string opts, string lopts[]);
 extern void	getoptReset(void);
 

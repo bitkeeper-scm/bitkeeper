@@ -1721,6 +1721,24 @@ Return the files in the given directory, as a sorted string array.
 Optionally filter the list by C<pattern> which is a glob and may
 contain the following special characters:
 
+=proto dirent[] getdirx(string dir)
+
+Return the files in the given directory as an array of structs, with
+the directories sort and coming first in the array followed by
+the sorted file names.
+Return undef on error.
+The C<dirent> struct is defined as follows:
+
+=over 4
+
+    typedef struct dirent {
+	string	name;
+	string	type;    // "file", "directory", "other"
+	int	hidden;
+    } dirent;
+
+=back
+
 =over 4 
 
 =item ?

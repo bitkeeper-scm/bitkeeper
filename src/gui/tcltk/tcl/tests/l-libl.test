@@ -840,6 +840,101 @@ getdir1();
 	file delete -force getdirtest
 } -output {}
 
+test getdirx-1 {test getdirx} -setup {
+	file delete -force getdirx1-tst
+	file mkdir getdirx1-tst
+} -body {
+#lang L --line=1
+int getdirx1_compar(dirent d1, dirent d2)
+{
+	if (d1.name < d2.name) {
+		return (-1);
+	} else if (d1.name > d2.name) {
+		return (1);
+	} else {
+		return (0);
+	}
+}
+void getdirx1()
+{
+	dirent	files[];
+
+	cd("getdirx1-tst");
+
+	if (mkdir("files-only")) puts("bad 1.1");
+	cd("files-only");
+	Fprintf("f2", "file2");
+	Fprintf(".h1", "hidden1");
+	Fprintf("f1", "file1");
+	cd("..");
+
+	if (mkdir("dirs-only")) puts("bad 2.1");
+	cd("dirs-only");
+	mkdir(".hd1");
+	mkdir("d2");
+	mkdir("d1");
+	cd("..");
+
+	if (mkdir("mix")) puts("bad 3.1");
+	cd("mix");
+	mkdir(".hd2");
+	mkdir("d6");
+	mkdir("d5");
+	Fprintf(".h2", "hidden2");
+	Fprintf("f6", "file6");
+	Fprintf("f5", "file5");
+	cd("..");
+
+	files = sort(command: &getdirx1_compar, getdirx("."));
+	unless (length(files) == 5) puts("bad 10.1");
+	unless (files[0] == {".","directory",1}) puts("bad 10.2");
+	unless (files[1] == {"..","directory",1}) puts("bad 10.3");
+	unless (files[2] == {"dirs-only","directory",0}) puts("bad 10.4");
+	unless (files[3] == {"files-only","directory",0}) puts("bad 10.5");
+	unless (files[4] == {"mix","directory",0}) puts("bad 10.6");
+
+	files = sort(command: &getdirx1_compar, getdirx("dirs-only"));
+	unless (length(files) == 5) puts("bad 11.1");
+	unless (files[0] == {".","directory",1}) puts("bad 11.2");
+	unless (files[1] == {"..","directory",1}) puts("bad 11.3");
+	unless (files[2] == {".hd1","directory",1}) puts("bad 11.4");
+	unless (files[3] == {"d1","directory",0}) puts("bad 11.5");
+	unless (files[4] == {"d2","directory",0}) puts("bad 11.6");
+
+	files = sort(command: &getdirx1_compar, getdirx("files-only"));
+	unless (length(files) == 5) puts("bad 12.1");
+	unless (files[0] == {".","directory",1}) puts("bad 12.2");
+	unless (files[1] == {"..","directory",1}) puts("bad 12.3");
+	unless (files[2] == {".h1","file",1}) puts("bad 12.4");
+	unless (files[3] == {"f1","file",0}) puts("bad 12.5");
+	unless (files[4] == {"f2","file",0}) puts("bad 12.6");
+
+	files = sort(command: &getdirx1_compar, getdirx("mix"));
+	unless (length(files) == 8) puts("bad 13.1");
+	unless (files[0] == {".","directory",1}) puts("bad 13.2");
+	unless (files[1] == {"..","directory",1}) puts("bad 13.3");
+	unless (files[2] == {".h2","file",1}) puts("bad 13.7");
+	unless (files[3] == {".hd2","directory",1}) puts("bad 13.4");
+	unless (files[4] == {"d5","directory",0}) puts("bad 13.5");
+	unless (files[5] == {"d6","directory",0}) puts("bad 13.6");
+	unless (files[6] == {"f5","file",0}) puts("bad 13.8");
+	unless (files[7] == {"f6","file",0}) puts("bad 13.9");
+
+	// error case
+	stdio_lasterr = "";
+	if (defined(getdirx("does-not-exist"))) puts("bad 20.1");
+	unless ((stdio_lasterr =~ /no such file/i) ||
+		(stdio_lasterr =~ /cannot find/i)) {
+		puts("bad 20.2: '${stdio_lasterr}'");
+	}
+
+	cd("..");
+}
+getdirx1();
+} -cleanup {
+	file delete -force getdirx1-tst
+} -output {}
+
 test getopt-1 {test getopt} -body {
 #lang L --line=1
 private string doit(string av[], string opts, string lopts[])
