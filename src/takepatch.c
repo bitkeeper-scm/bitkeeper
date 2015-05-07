@@ -216,7 +216,7 @@ takepatch_main(int ac, char **av)
 	opts->p = init(opts->input);
 	if (sane(0, 0)) exit(1);	/* uses _BK_NEWPROJECT */
 
-doit:	if (opts->newProject || getenv("_BK_NEWPROJECT")) {
+doit:	if (opts->newProject) {
 		unless (opts->idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
 			perror("mdbm_open");
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
@@ -271,7 +271,7 @@ doit:	if (opts->newProject || getenv("_BK_NEWPROJECT")) {
 		t = &buf[3];	/* gfile */
 		/* SFIO needs rootkey, so unpack ChangeSet in this thread */
 		if ((opts->parallel > 0) &&
-		    (!streq(t, GCHANGESET) || !getenv("_BK_NEWPROJECT"))) {
+		    (!streq(t, GCHANGESET) || !opts->newProject)) {
 			rc = sendPatch(t, opts->p);
 		} else {
 			t = name2sccs(t);
@@ -2656,9 +2656,10 @@ startNway(int n)
 
 	opts->outlist = calloc(n, sizeof(FILE *));
 	opts->sent = calloc(n, sizeof(int));
-	cmd = aprintf("bk takepatch --Nway%s%s%s%s "
+	cmd = aprintf("bk takepatch --Nway%s%s%s%s%s "
 	    "> RESYNC/BitKeeper/tmp/nwayXXXXX",
 	    opts->collapsedups ? " -D" : "",
+	    opts->newProject ? " -i" : "",
 	    opts->fast ? " --fast" : "",
 	    opts->port ? " --port" : "",
 	    opts->automerge ? "" : " --no-automerge");

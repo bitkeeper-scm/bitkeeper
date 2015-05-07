@@ -19,12 +19,13 @@ if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 mkdir src
 cd src
 echo foo > 'F!O#O$ B%A^R&RR(R)RR'
-echo bar > bar.c
+echo bar > beam.c
 echo h > CHANGESET
-bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c CHANGESET
+bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' beam.c CHANGESET
+bk mv beam.c bar.c
 if bk _test ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR'; then echo failed to create history; exit 1; fi
 P=`bk pending | wc -l`
-if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+if [ $P -ne 18 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 # setup for a later clone -r test
 cat > INITX <<EOF
 D 1.1 97/05/28 23:49:57 joe_user@joes_hostname 0 0 0/0/0

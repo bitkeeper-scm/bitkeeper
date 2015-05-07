@@ -2191,6 +2191,7 @@ clonemod_part2(char **envVar)
 
 	av = addLine(0, strdup("bk"));
 	av = addLine(av, strdup("-?BK_NO_TRIGGERS=1"));
+	av = addLine(av, strdup("-?_BK_NEWPROJECT="));
 	av = addLine(av, strdup("pull"));
 	av = addLine(av, strdup("--unsafe"));
 	av = addLine(av, strdup("--clone@"));
