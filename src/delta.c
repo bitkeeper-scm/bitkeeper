@@ -184,9 +184,9 @@ delta_main(int ac, char **av)
 			      sflags |= SF_NODIREXPAND;
 			      sflags &= ~SF_WRITE_OK;
 			      break;
-		    case 'l': checkout = CO_EDIT;		/* doc 2.0 */ 
+		    case 'l': checkout |= CO_EDIT;		/* doc 2.0 */ 
 			      break;
-		    case 'u': checkout = CO_GET;		/* doc 2.0 */
+		    case 'u': checkout |= CO_GET;		/* doc 2.0 */
 			      break;
 
 		    /* LM flags */
@@ -287,7 +287,7 @@ delta_main(int ac, char **av)
 		    "%s: only init file or comment, not both.\n", av[0]);
 		usage();
 	}
-	if ((gflags & GET_EXPAND) && (gflags & GET_EDIT)) {
+	if ((checkout & CO_GET) && (checkout & CO_EDIT)) {
 		fprintf(stderr, "%s: -l and -u are mutually exclusive.\n",
 			av[0]);
 		usage();

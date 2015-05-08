@@ -152,8 +152,13 @@ bk _scat SCCS/s.init | grep -q '^.c second comment$'
 if [ $? -eq 0 ]; then echo Added unwanted second comment to init; exit 1; fi
 echo OK
 
-echo $N Make sure ci -u with no change works ........................$NL
+echo $N Make sure ci -u -l fails ....................................$NL
 bk get $S -e init2
+bk ci -q -l -u init2 2>ERR && fail -f ERR
+grep -q "ci: -l and -u are mutually exclusive." ERR || fail -f ERR
+echo OK
+
+echo $N Make sure ci -u with no change works ........................$NL
 bk ci $Q -u init2 2> ${DEV_NULL}
 if [ ! -f init2 ]; then echo File not checked out.; exit 1; fi
 if writable init2; then echo File not read only.; exit 1; fi
