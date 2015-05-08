@@ -774,6 +774,7 @@ extractDelta(char *name, sccs *sreal, sccs *scratch,
 	int	c, i;
 	int	skip = 0;
 	int	ignore = 0;
+	size_t	len;
 	patch	*p;
 	FILE	*init = 0;
 
@@ -875,7 +876,10 @@ save:
 		p->resyncFile = strdup(buf);
 		p->order = DATE(scratch, d);
 		c = opts->line;
-		while ((b = fgetline(f)) && *b) {
+		while (b = fgetln(f, &len)) {
+			if (len && (b[len-1] == '\n')) --len;
+			b[len] = 0;
+			unless (len) break;
 			unless (p->diffMem) p->diffMem = fmem();
 			if (countFiles && (*b == '>')) {
 				i = opts->fast ? 1 : 2;

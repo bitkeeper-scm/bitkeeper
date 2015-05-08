@@ -2,7 +2,7 @@ commercial project
 # This test case shows a bug of the strncmp() function supplied by MS C libary
 # bk.exe will be aborted by the OS unless we use our own strncmp().
 echo $N show XP strncmp bug .........................................$NL
-cp /dev/null test.c
+touch test.c
 bk new $Q -l test.c
 rm -f test.c
 echo "0a1,279" > diffs
@@ -17,4 +17,40 @@ done
 echo "> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" >> diffs
 echo "> " >> diffs
 bk delta $Q -y -Ddiffs test.c || { echo failed; exit 1; }
+echo OK
+
+echo $N Verify that no carriage returns injected through delta -D ...$NL
+cat <<EOF > file
+line 1
+line 2
+line 3
+EOF
+bk undos -r < file > dosfile
+# Newfile code path
+touch null
+bk diff null dosfile > diffs
+bk diff -n null dosfile > diffs.rcs
+bk delta $Q -i -ynewfile -Ddiffs plain || fail
+bk delta $Q -i -ynewfile -Ddiffs.rcs rcs || fail
+bk _scat plain > splain
+bk _scat rcs > srcs
+bk undos < splain > splain.unix
+bk undos < srcs > srcs.unix
+checkfiles splain splain.unix
+checkfiles srcs srcs.unix
+# Delta code path
+echo line 4 >> file
+bk undos -r < file > dosfile2
+bk diff dosfile dosfile2 > diffs
+bk diff -n dosfile dosfile2 > diffs.rcs
+bk edit $Q -g plain
+bk delta $Q -ynewfile -Ddiffs plain || fail
+bk edit $Q -g rcs
+bk delta $Q -ynewfile -Ddiffs.rcs rcs || fail
+bk _scat plain > splain
+bk _scat rcs > srcs
+bk undos < splain > splain.unix
+bk undos < srcs > srcs.unix
+# checkfiles splain splain.unix
+checkfiles srcs srcs.unix
 echo OK

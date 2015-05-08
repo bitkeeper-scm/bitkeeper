@@ -12613,6 +12613,7 @@ doFast(fweave *w, ser_t *patchmap, FILE *diffs)
 	int	gotK = 0;
 	int	inpatch = 0;
 	int	ignore = 0;
+	size_t	len;
 	char	*p, *b;
 	char	type;
 	ser_t	d;
@@ -12625,7 +12626,9 @@ doFast(fweave *w, ser_t *patchmap, FILE *diffs)
 	assert(patchmap);	/* if diffs, then there's a map */
 	pmapsize = nLines(patchmap);
 
-	while (b = fgetline(diffs)) {
+	while (b = fgetln(diffs, &len)) {
+		if (len && (b[len-1] == '\n')) --len;
+		b[len] = 0;
 		p = &b[1];
 		if (*b == 'F') continue;
 		if (*b == 'K') {
@@ -12693,9 +12696,10 @@ done:
 	if (weaveMove(w, -1, 0, 0)) goto err;
 	if (gotK && ((w->sum != sum) || (lcount != w->line))) {
 		fprintf(stderr,
-		    "computed sum %u and patch sum %u\n", w->sum, sum);
+		    "%s:\n\tcomputed sum %u and patch sum %u\n",
+		    w->s->gfile, w->sum, sum);
 		fprintf(stderr,
-		    "computed linecount %u and patch linecount %u\n",
+		    "\tcomputed linecount %u and patch linecount %u\n",
 		    w->line, lcount);
 		goto err;
 	}
@@ -12981,6 +12985,7 @@ delta_write(sccs *s, ser_t n, FILE *diffs, int *ap, int *dp, int *up)
 	int	last;
 	int	lastdel;
 	int	fixdel = 0;
+	size_t	len;
 	char	*addthis;
 	char	**savenext;
 	int	added, deleted, unchanged;
@@ -13116,7 +13121,14 @@ newcmd:
 			ctrl("\001I ", n, "");
 			while (howmany--) {
 				/* XXX: not break but error */
-				unless (b = fgetline(diffs)) break;
+				if (what == 'i') {
+					unless (b = fgetline(diffs)) break;
+				} else {
+					/* bk patch could have \r\n */
+					unless (b = fgetln(diffs, &len)) break;
+					if (len && (b[len-1] == '\n')) --len;
+					b[len] = 0;
+				}
 				if (what != 'i' && b[0] == '\\') {
 					fix_cntl_a(s, &b[1]);
 					s->dsum += str_cksum(&b[1]);

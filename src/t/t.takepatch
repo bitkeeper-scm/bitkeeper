@@ -529,6 +529,16 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
+# take a patch which has \r in it
+test -f "$TESTDATA/linux-patch-with-cr" && {
+echo $N Test taking a patch with carriage returns in it .............$NL
+# Old bk would put \r in a file into the 1.1 delta
+cd "$HERE/project"
+bk takepatch < "$TESTDATA/linux-patch-with-cr" || fail
+bk takepatch < "$TESTDATA/linux-patch-with-cr.compat" || fail
+echo OK
+}
+
 # No test up to here creates a merge, so adding another test
 echo $N Test bk undo style patches with empty merge node ............$NL
 cd "$HERE"
