@@ -462,6 +462,41 @@ grep -q "bad host name" new.out || {
 }
 echo OK
 
+echo $N Test other bad pathnames ....................................$NL
+cat <<EOF >BAD
+.bk/foo
+dir/.bk
+dir/.bk/foo
+dir/ChangeSet
+dir/ChangeSet/foo
+dir/.bk_skip
+dir/.bk_skip/foo
+dir/BitKeeper/etc
+dir/BitKeeper/etc/foo
+EOF
+
+cat <<EOF >GOOD
+dir/BitKeeper/etc2/foo
+dir/BitKeeper/etc3/foo
+EOF
+
+cat BAD | while read f
+do	d=`dirname "$f"`
+	mkdir -p "$d"
+	echo hi > "$f"
+	bk new $Q "$f" 2>ERR && fail -f ERR name $f should fail
+	grep -q 'illegal filename' ERR || fail -f ERR
+	bk _rm -rf dir
+done || fail
+
+cat GOOD | while read f
+do	d=`dirname "$f"`
+	test -d "$d" || mkdir -p "$d"
+	echo hi > "$f"
+	bk new $Q "$f" || fail
+done || fail
+echo OK
+
 echo $N Check compression: gzip preference ..........................$NL
 cd "$HERE"
 bk clone $Q --compat project project.ascii || fail

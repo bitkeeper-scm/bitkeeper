@@ -121,7 +121,7 @@ err:		if (sname) free(sname);
 	oldpath = getRelativeName(sname, s->proj);
 	newpath = getRelativeName(destfile, s->proj);
 
-	if (bk_badFilename(newpath)) {
+	if (bk_badFilename(s->proj, newpath)) {
 		fprintf(stderr, "sccsmv: destination cannot be "
 		    "named: %s\n", newpath);
 		free(oldpath);

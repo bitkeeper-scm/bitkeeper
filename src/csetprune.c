@@ -1005,7 +1005,7 @@ zero:		EACH(list) cweave[list[i]].ser = 0;
 	rnew = getPath(rk, &rend);
 	*rend = 0;
 	hash_fetchStr(opts->prunekeys, rnew);
-	badname = bk_badFilename(rnew);
+	badname = bk_badFilename(0, rnew);
 	*rend = '|';
 	if (opts->prunekeys->vptr) {
 		/* mark for rmKeys() to delete */
@@ -1063,7 +1063,7 @@ prune:
 		}
 		dnew = getPath(dk, &dend);
 		*dend = 0;
-		badname = bk_badFilename(dnew);
+		badname = bk_badFilename(0, dnew);
 		if (hash_fetchStr(opts->prunekeys, dnew)) {
 			if (keyExists(rk, dnew)) goto err;
 		}

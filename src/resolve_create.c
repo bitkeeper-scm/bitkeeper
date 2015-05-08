@@ -144,7 +144,7 @@ res_mr(resolve *rs)
 	char	*t, *why = 0;
 
 	unless (prompt("Move file to:", buf)) return (0);
-	if (bk_badFilename(buf)) {
+	if (bk_badFilename(0, buf)) {
 		fprintf(stderr, "Illegal filename: %s\n", buf);
 		return (0);
 	}
@@ -435,7 +435,7 @@ common_ml(resolve *rs, char *p, char *buf)
 	char	*t;
 
 	unless (prompt(p, buf)) return (1);
-	if (bk_badFilename(buf)) {
+	if (bk_badFilename(0, buf)) {
 		fprintf(stderr, "Illegal filename: %s\n", buf);
 		return (0);
 	}
@@ -785,7 +785,7 @@ sc_ml(resolve *rs)
 	sccs	*s;
 
 	unless (prompt("Move local file to:", buf)) return (0);
-	if (bk_badFilename(buf)) {
+	if (bk_badFilename(0, buf)) {
 		fprintf(stderr, "Illegal filename: %s\n", buf);
 		return (0);
 	}
@@ -954,7 +954,7 @@ rc_ml(resolve *rs)
 	char	*to, *tmp;
 
 	unless (prompt("Move left file to:", buf)) return (0);
-	if (bk_badFilename(buf)) {
+	if (bk_badFilename(0, buf)) {
 		fprintf(stderr, "Illegal filename: %s\n", buf);
 		return (0);
 	}

@@ -1561,7 +1561,7 @@ char	*file_fanout(char *file);
 void	upgrade_maybeNag(char *out);
 int	attr_update(void);
 int	attr_write(char *file);
-int	bk_badFilename(char *name);
+int	bk_badFilename(project *p, char *name);
 
 #ifdef	WIN32
 void	notifier_changed(char *fullpath);

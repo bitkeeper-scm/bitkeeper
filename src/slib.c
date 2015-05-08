@@ -10256,9 +10256,17 @@ toobig(sccs *s)
  * determine if the filename should be legal.
  */
 int
-bk_badFilename(char *name)
+bk_badFilename(project *proj, char *name)
 {
-	char	*base = basenm(name);
+	char	**path;
+	int	i, j;
+	char	*bad[] = {  /* these should not appear in path */
+		GCHANGESET,
+		".bk",
+		".", "..",
+		BKSKIP,
+		0
+	};
 
 	if (getenv("_BK_BADNAME")) return (0);
 	/*
@@ -10266,12 +10274,39 @@ bk_badFilename(char *name)
 	 * Some day we may allow caller to escape the BK_FS character
 	 */
 	if (strchr(name, BK_FS)) return (1);
+	if (streq(name, GCHANGESET)) return (0);
 
-	if (streq(base, BKSKIP)) return (1);
-	if (streq(base, GCHANGESET) && !streq(name, GCHANGESET)) return (1);
-	if (streq(base, ".bk")) return (1);
-	if (streq(base, ".") || streq(base, "..")) return (1);
+	/*
+	 *  If a path starts with BitKeeper/etc/, then there must be a
+	 *  cset file. Because the proj code will turn
+	 *  dir/BitKeeper/etc/file into thinking dir is a new
+	 *  repository and we will see BitKeeper/etc/file relative to
+	 *  that new repo.
+	 */
+	if (begins_with(name, BKROOT "/") &&
+	    !exists(proj_fullpath(proj, CHANGESET))) {
+		return (1);
+	}
 
+	path = splitLine(name, "/", 0);
+	EACH(path) {
+		for (j = 0; bad[j]; j++) {
+			if (streq(path[i], bad[j])) {
+				freeLines(path, free);
+				return (1);
+			}
+		}
+		/* Disallow BitKeeper/etc except at the very beginning.
+		 * This is resolve_conflicts and cset prune case which
+		 * isn't computing _relativeName().
+		 */
+		if ((i > 1) && (i < nLines(path)) &&
+		    streq(path[i], "BitKeeper") && streq(path[i+1], "etc")) {
+			freeLines(path, free);
+			return (1);
+		}
+	}
+	freeLines(path, free);
 	return (0);
 }
 
@@ -10344,7 +10379,7 @@ out:		sccs_abortWrite(s);
 	assert(t);
 	strcpy(buf, t);
 
-	if (bk_badFilename(buf)) {
+	if (bk_badFilename(s->proj, buf)) {
 		fprintf(stderr, "%s: illegal filename: %s\n", prog, buf);
 		goto out;
 	}
