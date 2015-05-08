@@ -239,6 +239,8 @@ gitExport(opts *op)
 	rset_df	*rset;
 	int	i;
 	char	**gitOps;
+	symbol	*sym;
+	hash	*tags;
 	char	rk[MAXKEY];
 	char	dk[MAXKEY];
 
@@ -361,27 +363,26 @@ gitExport(opts *op)
 		EACH(gitOps) fputs(gitOps[i], stdout);
 		freeLines(gitOps, free);
 
-		if (FLAGS(s, d) |= D_SYMBOLS) {
-			symbol	*sym;
-
-			EACHP_REVERSE(s->symlist, sym) {
-				unless (d == sym->ser) continue;
-				printf("tag %s\n", SYMNAME(s, sym));
-				printf("from :%llu\n", mark + d);
-				md = sym->meta_ser;
-				tz = gitTZ(s, md);
-				printf("tagger <%s@%s> %d %s\n", USER(s, md),
-				    HOSTNAME(s, md), (int)DATE(s, md), tz);
-				free(tz);
-				printf("data 0\n");
-			}
-		}
-
 		if ((++progress % 1000) == 0) {
 			printf("progress %llu csets done\n", progress);
 		}
 	}
 	fclose(f1);
+	printf("progress Processing Tags\n");
+
+	tags = hash_new(HASH_MEMHASH);
+	EACHP_REVERSE(s->symlist, sym) {
+		unless (hash_insertStrSet(tags, SYMNAME(s, sym))) continue;
+		printf("tag %s\n", SYMNAME(s, sym));
+		printf("from :%llu\n", mark + sym->ser);
+		md = sym->meta_ser;
+		tz = gitTZ(s, md);
+		printf("tagger <%s@%s> %d %s\n", USER(s, md),
+		    HOSTNAME(s, md), (int)DATE(s, md), tz);
+		free(tz);
+		printf("data 0\n");
+	}
+	hash_free(tags);
 	sccs_free(s);
 	mdbm_close(op->idDB);
 	mdbm_close(op->goneDB);

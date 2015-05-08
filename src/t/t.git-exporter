@@ -139,6 +139,28 @@ GIT_TAG=`git log -1 --pretty=%s OLD_TAG`
 test "$BK_TAG" = "$GIT_TAG" || fail Could not find tag OLD_TAG
 echo OK
 
+echo $N Test same tag in different places............................$NL
+cd "$HERE"
+rm -rf project.copy
+bk clone $Q project project.copy
+cd project
+echo stuff > xxx.file
+bk new $Q xxx.file
+bk commit $Q --tag=X_TAG -yfirst_tag
+cd "$HERE/project.copy"
+echo stuff > yyy.file
+bk new $Q yyy.file
+bk commit $Q --tag=X_TAG -ysecond_tag
+cd "$HERE/project"
+echo m | bk pull $Q ../project.copy >OUT 2>ERR || fail -f ERR pull failed
+BK_TAG=`bk changes -d:MD5KEY: -rX_TAG`
+cd "$HERE"
+do_export project project.git || fail
+cd project.git
+GIT_TAG=`git log -1 --pretty=%s X_TAG`
+test "$BK_TAG" = "$GIT_TAG" || fail Could not find tag X_TAG
+echo OK
+
 echo $N Move a file _inside_ BitKeeper...............................$NL
 cd "$HERE/project"
 bk mv -f bfile.moved BitKeeper/etc/
