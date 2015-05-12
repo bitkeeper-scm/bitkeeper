@@ -228,6 +228,10 @@ main(int volatile ac, char **av, char **env)
 			system("bk help bk");
 			return (0);
 		}
+		if (av[1] && streq(av[1], "--version") && !av[2]) {
+			system("bk version");
+			return (0);
+		}
 		is_bk = 1;
 		nav = addLine(nav, strdup("bk"));
 		/* adding options with args should update remote_bk() */
