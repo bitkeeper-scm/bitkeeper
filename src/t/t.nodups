@@ -12,7 +12,7 @@ echo $N Show how relative order of dups impacts outcome .............$NL
 # They merge.  In foo, 1.1 is not in the tip because -x is newer.
 # In bar, 1.1 is in the tip because -i in 1.3 is newer than -x in 1.1.1.2
 #
-commercial project
+fresh_commercial --compat project
 touch foo bar
 bk new $Q foo bar
 bk edit $Q -i1.1 foo
@@ -35,14 +35,30 @@ ELEM=`bk set -e -r1.1 -r+ bar`
 test "$ELEM" = 1.1 || fail 1.1 is in not the tip of bar
 echo OK
 
-echo $N Detect dups .................................................$NL
-_BK_CHK_IE_DUPS=1 bk repocheck $Q 2> GOT || fail -f GOT
+echo $N Transform back and forth, and see no change .................$NL
+bk commit $Q -f
+cd ..
+# Dump list of dups as part of the clone, to verify dups are there
+_BK_SHOWDUPS=1 bk clone -q --upgrade project clean-merges 2> ERR || fail -f ERR
 cat <<EOF > WANT
-bar: dup parent/inc in 1.2 of 1.1
-bar: dup exc in 1.1.1.2 of 1.1
-bar: dup inc in 1.3 of 1.1
-foo: dup parent/inc in 1.2 of 1.1
-foo: dup exc in 1.1.1.2 of 1.1
+bar: duplicate include in 1.2 of 1.1 and in parent 1.1
+bar: duplicate exclude in 1.1.1.2 of 1.1 and in 1.1.1.1
+bar: duplicate include in 1.3 of 1.1 and in 1.2
+foo: duplicate include in 1.2 of 1.1 and in parent 1.1
+foo: duplicate exclude in 1.1.1.2 of 1.1 and in 1.1.1.1
 EOF
-cmpfiles WANT GOT
+cmpfiles WANT ERR
+# flip back
+bk clone $Q --downgrade clean-merges downgrade
+echo +4,5 > WANT
+for f in foo bar
+do	# downgrade / compat files have real SCCS dirs
+	test -f project/SCCS/s.$f -a -f downgrade/SCCS/s.$f || fail
+	cmpfiles project/SCCS/s.$f downgrade/SCCS/s.$f
+	bk prs -hnd'$if(:MERGE:){:DI:}' project/$f > GOT
+	cmpfiles WANT GOT
+	# show merges -i in old and not in new
+	bk prs -hnd'$if(:MERGE:){:DI:}' clean-merges/$f > CLEAN
+	test -s CLEAN && fail -f CLEAN not clean
+done
 echo OK

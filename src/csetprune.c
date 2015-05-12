@@ -1767,18 +1767,18 @@ _pruneEmpty(sccs *s, ser_t d, u8 *slist, ser_t **sd)
 	 * See if node is a keeper ...
 	 * Inside knowledge: no sd entry is the same as no include
 	 * or exclude list, because of how the sd entry uses pserial too.
-	 * Clear out inc and exc -- if keeping, they'll get recomputed.
-	 * and if tossing, they are empty (no sd[serial]) but haven't
-	 * been cleared.
+	 * If recomputing, leave CLUDES set in case there is no change.
 	 */
-	CLUDES_SET(s, d, 0);
 	if (ADDED(s, d) || MERGE(s, d) || sd[d]) {
 		if (sd[d]) {
 			/* regen old style SCCS inc and excl lists */
 			graph_symdiff(s, d, PARENT(s, d), 0, slist, sd, 0, 0);
+		} else {
+			CLUDES_SET(s, d, 0);
 		}
 		return;
 	}
+	CLUDES_SET(s, d, 0);	/* need unless removing assert in fixTags */
 
 	/* Not a keeper, so re-wire around it later by marking gone now */
 	debug((stderr, "RMDELTA(%s)\n", d->rev));

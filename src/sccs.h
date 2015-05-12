@@ -139,6 +139,13 @@ int	checking_rmdir(char *dir);
 #define SINFO_TERSE	0x10000000	/* print in terse format: sinfo -t */
 
 /*
+ * sccs_cat output format; not a bitmap
+ */
+#define	SCAT_SCCS	0x10000000	/* -i list in the merge nodes */
+#define	SCAT_BK		0x20000001	/* use merge edge like parent edge */
+#define	SCAT_ACTUAL	0x40000002	/* just dump the file as it is */
+
+/*
  * flags passed to sfileFirst
  */
 #define	SF_GFILE	0x00000001	/* gfile should be readable */
@@ -215,6 +222,7 @@ int	checking_rmdir(char *dir);
  * Bit 2 is compression mode (gzip or none)
  * Bit 3 is binary file format
  * Bit 4 and 5 are weave format
+ * Bit 6 is serialmap using merge edges
  */
 #define	E_ALWAYS	0x1000		/* set so encoding is non-zero */
 
@@ -246,8 +254,12 @@ int	checking_rmdir(char *dir);
 #define	BWEAVE2_OUT(s)	(((s)->encoding_out & E_WEAVE) == E_BWEAVE2)
 #define	BWEAVE_OUT(s)	(((s)->encoding_out & E_WEAVE) != E_AWEAVE)
 
+#define	E_BKMERGE	0x40		/* interpret merge as a graph edge */
+#define	BKMERGE(s)	(((s)->encoding_in & E_BKMERGE) != 0)
+#define	BKMERGE_OUT(s)	(((s)->encoding_out & E_BKMERGE) != 0)
+
 // mask of bits used for sfile format that map to feature bits
-#define	E_FILEFORMAT	(E_BK|E_WEAVE)
+#define	E_FILEFORMAT	(E_BK|E_WEAVE|E_BKMERGE)
 
 #define	HAS_GFILE(s)	((s)->state & S_GFILE)
 #define	HAS_PFILE(s)	((s)->state & S_PFILE)
@@ -826,6 +838,7 @@ typedef struct {
 	char	*xLst;		/* exclude revs for delta */
 	char	*mRev;		/* merge rev for delta */
 	u32	magic:1;	/* no pfile, so data is faked */
+	u32	formatErr:1;	/* Is the pfile formatted wrong? */
 } pfile;
 
 /*
@@ -1038,7 +1051,7 @@ int	sccs_admin(sccs *sc, ser_t d, u32 flgs,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_adminFlag(sccs *sc, u32 flags);
 int	sccs_cat(sccs *s, u32 flags, FILE *out);
-char	*sccs_scat(sccs *s, size_t *len);
+char	*sccs_scat(sccs *s, int format, size_t *len);
 int	sccs_delta(sccs *s, u32 flags, ser_t d, FILE *init, FILE *diffs,
 		   char **syms);
 int	sccs_diffs(sccs *s, char *r1, char *r2, df_opt *dop, FILE *)
@@ -1297,7 +1310,7 @@ char	*sccs_zone(time_t tt);
 MDBM	*sccs_tagConflicts(sccs *s);
 int	sccs_tagMerge(sccs *s, ser_t d, char *tag);
 int	sccs_tagleaves(sccs *, ser_t *, ser_t *);
-u8	*sccs_set(sccs *, ser_t, char *iLst, char *xLst);
+u8	*sccs_set(sccs *s, ser_t d, ser_t m, char *iLst, char *xLst);
 int	sccs_graph(sccs *s, ser_t d, u8 *map, char **inc, char **exc);
 int	sccs_setCludes(sccs *sc, ser_t d, char *iLst, char *xLst);
 int	sccs_isPending(char *gfile);

@@ -161,6 +161,8 @@ setup_main(int ac, char **av)
 		    features_test(in_prod, FEAT_BWEAVE));
 		features_set(0, FEAT_BWEAVEv2,
 		    features_test(in_prod, FEAT_BWEAVEv2));
+		features_set(0, FEAT_BKMERGE,
+		    features_test(in_prod, FEAT_BKMERGE));
 	} else {
 		if (sccs_compat) {
 			features_set(0, FEAT_FILEFORMAT|FEAT_SCANDIRS, 0);

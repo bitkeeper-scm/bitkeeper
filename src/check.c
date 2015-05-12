@@ -139,7 +139,6 @@ check_main(int ac, char **av)
 	int	BAM = 0;
 	int	doBAM = 0;
 	int	forceCsetFetch = 0;
-	int	noDups = 0;
 	ticker	*tick = 0;
 	u32	repo_feat, file_feat;
 	int	sawPOLY = 0;
@@ -292,7 +291,6 @@ check_main(int ac, char **av)
 		if (!title && (name = getenv("_BK_TITLE"))) title = name;
 		tick = progress_start(PROGRESS_BAR, nfiles);
 	}
-	noDups = (getenv("_BK_CHK_IE_DUPS") != 0);
 	for (n = 0, name = sfileFirst("check", &av[optind], 0);
 	    name; n++, name = sfileNext()) {
 		ferr = 0;
@@ -390,7 +388,19 @@ check_main(int ac, char **av)
 		if (chk_gfile(s, pathDB)) ferr++, errors |= 0x08;
 		if (HAS_PFILE(s)) {
 			/* test BWEAVEv3 and magic pfile fixing */
-			if (sccs_read_pfile(s, &pf)) {
+			if ((i = sccs_read_pfile(s, &pf)) &&
+			    pf.formatErr && (fix > 1)) {
+				/* Using -ff to try to fix pfile format */
+				getlock();
+				unless (graph_convert(s, 0) ||
+				    graph_convert(s, 1) ||
+				    sccs_read_pfile(s, &pf)) {
+					i = 0;
+					fprintf(stderr,
+					    "%s: p.file fixed\n", s->gfile);
+				}
+			}
+			if (i) {
 				ferr++, errors |= 0x08;
 			} else {
 				if (no_gfile(s, &pf)) ferr++, errors |= 0x08;
@@ -413,8 +423,6 @@ check_main(int ac, char **av)
 		if (check_monotonic && chk_monotonic(s)) {
 			ferr++, errors |= 0x08;
 		}
-
-		if (noDups) graph_checkdups(s);
 		if (check(s, idDB)) ferr++, errors |= 0x40;
 
 		/*

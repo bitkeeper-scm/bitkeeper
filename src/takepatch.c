@@ -6,6 +6,7 @@
 #include <time.h>
 #include "range.h"
 #include "progress.h"
+#include "graph.h"
 
 /*
  * takepatch - apply a BitKeeper patch file
@@ -78,6 +79,7 @@ typedef struct {
 	/* modes enabled in patch */
 	u8	fast;		/* Fast patch mode */
 	u8	port;		/* patch created with 'bk port' */
+	u8	bkmerge;	/* bk-style includes */
 
 	/* The patch from stdin or file */
 	FILE 	*p;
@@ -114,6 +116,7 @@ private struct {
 	int	offset;
 } features[] = {
 	{"PORT", offsetof(Opts, port)},
+	{"BKMERGE", offsetof(Opts, bkmerge)},
 	{0}
 };
 
@@ -147,6 +150,7 @@ takepatch_main(int ac, char **av)
 		{ "Nway", 310, },
 		{ "port", 315, },
 		{ "fast", 320, },
+		{ "bkmerge", 321, },
 		{ "no-automerge", 325, },
 		{ 0, 0 },
 	};
@@ -189,6 +193,7 @@ takepatch_main(int ac, char **av)
 		    case 310: opts->nway = 1; break;
 		    case 315: opts->port = 1; break;
 		    case 320: opts->fast = 1; break;
+		    case 321: opts->bkmerge = 1; break;
 		    case 325: opts->automerge = 0; break;
 		    default: bk_badArg(c, av);
 		}
@@ -668,7 +673,6 @@ error:		if (new_s && (new_s != s)) sccs_free(new_s);
 		s = 0;		/* applyCsetPatch calls sccs_free */
 		unless (cset) nfound = 0;	/* only count csets */
 	} else {
-		if (opts->patchList && opts->tableGCA) getLocals(s, name);
 		rc = applyPatch(s ? s->sfile : 0, perfile);
 		if (rc < 0) {
 			opts->errfiles =
@@ -1064,6 +1068,13 @@ applyCsetPatch(sccs *s, int *nfound, int newFile)
 		top = 0;
 	}
 	assert(s);
+	if (opts->bkmerge != BKMERGE(s)) {
+		/*
+		 * Take the patch in the remote repo's format.
+		 * sccs_startWrite will put the file back in the local form.
+		 */
+		if (graph_convert(s, 0)) goto err;
+	}
 	cweave_init(s, psize);
 	*nfound = 0;
 	while (p) {
@@ -1457,10 +1468,9 @@ applyPatch(char *localPath, FILE *perfile)
 	int	flags = opts->echo ? 0 : SILENT;
 	ticker	*tick = 0;
 
-	nump = reversePatch();
 	p = opts->patchList;
+
 	if (!p && localPath) return (noupdates(localPath));
-	if (opts->echo == 3) tick = progress_start(PROGRESS_MINI, nump);
 
 	if (opts->echo > 7) {
 		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",
@@ -1493,9 +1503,17 @@ applyPatch(char *localPath, FILE *perfile)
 		return -1;
 	}
 	assert(!CSET(s));
-	/* convert to uncompressed, it's faster, we saved the mode above */
+
+	/* flip format before putting local files out in a patch form */
+	if (opts->bkmerge != BKMERGE(s)) {
+		if (graph_convert(s, 0)) return (-1);
+		/* Override storage format from repo default */
+		s->encoding_out = s->encoding_in;
+	}
 	unless (s) return (-1);
 	unless (opts->tableGCA) goto apply;
+	assert(p && localPath);
+	getLocals(s, localPath);
 	if (opts->echo > 6) {
 		fprintf(stderr,
 		    "stripdel %s from %s\n", opts->tableGCA, s->sfile);
@@ -1537,8 +1555,9 @@ applyPatch(char *localPath, FILE *perfile)
 		return -1;
 	}
 apply:
-
+	nump = reversePatch();
 	p = opts->patchList;
+	if (opts->echo == 3) tick = progress_start(PROGRESS_MINI, nump);
 	if (p && !p->pid) {
 		/* initial file create */
 		n++;
@@ -1645,6 +1664,9 @@ apply:
 		fclose(iF);
 		p = p->next;
 	}
+	/* Put the storage style back to match the repo */
+	s->encoding_out = sccs_encoding(s, 0, 0);
+	if (BKMERGE(s) != BKMERGE_OUT(s)) sccs_newchksum(s);
 	sccs_free(s);
 	s = sccs_init(opts->patchList->resyncFile, SILENT);
 	assert(s);
@@ -1978,7 +2000,8 @@ sfio(FILE *m, int files)
 	size_t	n;
 	char	*flist;
 	int	rc = -1, rlen;
-	int	bkfile = features_test(0, FEAT_BKFILE);
+	int	bkfile = (features_test(0, FEAT_BKFILE) != 0);
+	int	bkmerge = (features_test(0, FEAT_BKMERGE) != 0);
 	char	buf[MAXLINE];
 	char	key[MAXKEY];
 
@@ -2031,8 +2054,8 @@ sfio(FILE *m, int files)
 			fprintf(stderr, "takepatch: can't open %s\n", buf);
 			goto err;
 		}
-		if ((!bkfile && BKFILE(sr)) || (bkfile && !BKFILE(sr))) {
-			sccs_newchksum(sr);
+		if ((bkfile != BKFILE(sr)) || (bkmerge != BKMERGE(sr))) {
+			sccs_newchksum(sr);	/* fix format */
 		}
 		sccs_sdelta(sr, sccs_ino(sr), key); /* rootkey */
 
@@ -2660,11 +2683,12 @@ startNway(int n)
 
 	opts->outlist = calloc(n, sizeof(FILE *));
 	opts->sent = calloc(n, sizeof(int));
-	cmd = aprintf("bk takepatch --Nway%s%s%s%s%s "
+	cmd = aprintf("bk takepatch --Nway%s%s%s%s%s%s "
 	    "> RESYNC/BitKeeper/tmp/nwayXXXXX",
 	    opts->collapsedups ? " -D" : "",
 	    opts->newProject ? " -i" : "",
 	    opts->fast ? " --fast" : "",
+	    opts->bkmerge ? " --bkmerge" : "",
 	    opts->port ? " --port" : "",
 	    opts->automerge ? "" : " --no-automerge");
 	counter = cmd + strlen(cmd) - 5;

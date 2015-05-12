@@ -551,9 +551,9 @@ bk delta $Q -yex f || fail
 bk commit -y2 $Q || fail
 bk edit -x1.4 $Q f
 bk collapse $Q -ea$REV || fail
-X=`bk _cat SCCS/p.f | sed 's/.*-x/-x/'`
+X=`bk _cat SCCS/p.f | sed 's/.*-X/-x/'`
 test X$X = X-x1.2,1.4 || fail
 bk collapse -ea$REV 2>/dev/null || fail
-X=`bk _cat SCCS/p.f | sed 's/.*-x/-x/'`
+X=`bk _cat SCCS/p.f | sed 's/.*-X/-x/'`
 test X$X = X-x1.2,1.4 || fail
 echo OK

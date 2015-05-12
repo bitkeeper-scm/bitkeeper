@@ -2219,6 +2219,9 @@ sccs_startWrite(sccs *s)
 		 */
 		if (BWEAVE2(s) != BWEAVE2_OUT(s)) weave_cvt(s);
 	}
+	if ((BKMERGE(s) != BKMERGE_OUT(s)) && graph_convert(s, !s->mem_out)) {
+		return (0);
+	}
 	xfile = sccsXfile(s, 'x');
 	if (s->mem_out) {
 		assert(!BKFILE_OUT(s)); /* for now */
@@ -3866,7 +3869,7 @@ misc(sccs *s)
 			}
 			continue;
 		} else if (strneq(buf, "\001f e ", 5)) {
-			switch (atoi(&buf[5])) {
+			switch (atoi(&buf[5]) & ~E_BKMERGE) {
 			    case E_ASCII:
 			    case E_ASCII|E_GZIP:
 			    case E_UUENCODE:
@@ -5613,9 +5616,9 @@ compressmap(sccs *s, ser_t d, u8 *set, char **inc, char **exc)
 		/* Set up parent ancestory for this node */
 		if ((slist[tser] & S_PAR) && PARENT(s, t)) {
 			slist[PARENT(s, t)] |= S_PAR;
-#ifdef MULTIPARENT
-			if (MERGE(s, t)) slist[MERGE(s, t)] |= S_PAR;
-#endif
+			if (BKMERGE(s) && MERGE(s, t)) {
+				slist[MERGE(s, t)] |= S_PAR;
+			}
 		}
 
 		/* if a parent and not excluded, or if included */
@@ -5677,10 +5680,10 @@ compressmap(sccs *s, ser_t d, u8 *set, char **inc, char **exc)
  * across calls.
  */
 private u8 *
-serialmap(sccs *s, ser_t d, char *iLst, char *xLst, int *errp)
+serialmap(sccs *s, ser_t d, ser_t m, char *iLst, char *xLst, int *errp)
 {
 	u8	*slist;
-	ser_t	t, start = d;
+	ser_t	t, start = max(d, m);
 	char	*p;
 	int	i, sign;
 	ser_t	tser;
@@ -5730,6 +5733,7 @@ serialmap(sccs *s, ser_t d, char *iLst, char *xLst, int *errp)
 
 	/* Seed the graph thread */
 	slist[d] |= S_PAR;
+	if (m) slist[m] |= S_PAR;
 
 	for (t = start; t > TREE(s); t--) {
 		if (TAG(s, t)) continue;
@@ -5738,9 +5742,9 @@ serialmap(sccs *s, ser_t d, char *iLst, char *xLst, int *errp)
 		/* Set up parent ancestory for this node */
 		if ((slist[tser] & S_PAR) && PARENT(s, t)) {
 			slist[PARENT(s, t)] |= S_PAR;
-#ifdef MULTIPARENT
-			if (MERGE(s, t)) slist[MERGE(s, t)] |= S_PAR;
-#endif
+			if (BKMERGE(s) && MERGE(s, t)) {
+				slist[MERGE(s, t)] |= S_PAR;
+			}
 		}
 
 		/* if an ancestor and not excluded, or if included */
@@ -5771,11 +5775,11 @@ sccs_graph(sccs *s, ser_t d, u8 *map, char **inc, char **exc)
 }
 
 u8 *
-sccs_set(sccs *s, ser_t d, char *iLst, char *xLst)
+sccs_set(sccs *s, ser_t d, ser_t m, char *iLst, char *xLst)
 {
 	int	junk = 0;
 
-	return (serialmap(s, d, iLst, xLst, &junk));
+	return (serialmap(s, d, m, iLst, xLst, &junk));
 }
 
 
@@ -6191,9 +6195,9 @@ err:		s->state |= S_WARNED;
 		/* Set up parent ancestory for this node */
 		if ((slist[tser] & S_PAR) && PARENT(s, t)) {
 			slist[PARENT(s, t)] |= S_PAR;
-#ifdef MULTIPARENT
-			if (MERGE(s, t)) slist[MERGE(s, t)] |= S_PAR;
-#endif
+			if (BKMERGE(s) && MERGE(s, t)) {
+				slist[MERGE(s, t)] |= S_PAR;
+			}
 		}
 
 		/* if a parent and not excluded, or if included */
@@ -6292,18 +6296,18 @@ write_pfile(sccs *s, int flags, ser_t d,
 	tmp = malloc(len);
 	sprintf(tmp, "%s %s %s %s", REV(s, d), rev, sccs_getuser(), tmp2);
 	if (i2) {
-		strcat(tmp, " -i");
+		strcat(tmp, BKMERGE(s) ? " -I" : " -i");
 		strcat(tmp, i2);
 	} else if (iLst) {
-		strcat(tmp, " -i");
+		strcat(tmp, BKMERGE(s) ? " -I" : " -i");
 		strcat(tmp, iLst);
 	}
 	if (xLst) {
-		strcat(tmp, " -x");
+		strcat(tmp, BKMERGE(s) ? " -X" : " -x");
 		strcat(tmp, xLst);
 	}
 	if (mRev) {
-		strcat(tmp, " -m");
+		strcat(tmp, BKMERGE(s) ? " -M" : " -m");
 		strcat(tmp, mRev);
 	}
 	strcat(tmp, "\n");
@@ -6345,15 +6349,15 @@ sccs_rewrite_pfile(sccs *s, pfile *pf)
 	sprintf(tmp, "%s %s %s %s",
 	    pf->oldrev, pf->newrev, user, date);
 	if (pf->iLst) {
-		strcat(tmp, " -i");
+		strcat(tmp, BKMERGE(s) ? " -I" : " -i");
 		strcat(tmp, pf->iLst);
 	}
 	if (pf->xLst) {
-		strcat(tmp, " -x");
+		strcat(tmp, BKMERGE(s) ? " -X" : " -x");
 		strcat(tmp, pf->xLst);
 	}
 	if (pf->mRev) {
-		strcat(tmp, " -m");
+		strcat(tmp, BKMERGE(s) ? " -M" : " -m");
 		strcat(tmp, pf->mRev);
 	}
 	strcat(tmp, "\n");
@@ -6433,7 +6437,8 @@ sccs_getCksumDelta(sccs *s, ser_t d)
 	ser_t	t;
 
 	for (t = d; t; t = PARENT(s, t)) {
-		if (HAS_CLUDES(s, t) || ADDED(s, t) || DELETED(s, t)) {
+		if (HAS_CLUDES(s, t) ||
+		    ADDED(s, t) || DELETED(s, t) || MERGE(s, t)) {
 			return (t);
 		}
 	}
@@ -6738,7 +6743,7 @@ whodisabled(sccs *s, ser_t tip, ser_t serial, u8 *slist)
 }
 
 private int
-get_reg(sccs *s, char *printOut, FILE *out, int flags, ser_t d,
+get_reg(sccs *s, char *printOut, FILE *out, int flags, ser_t d, ser_t m,
 		int *ln, char *iLst, char *xLst)
 {
 	u32	*state = 0;
@@ -6767,7 +6772,7 @@ get_reg(sccs *s, char *printOut, FILE *out, int flags, ser_t d,
 
 	assert(!BAM(s));
 	if ((d ? XFLAGS(s, d) : s->xflags) & X_EOLN_WINDOWS) eol = "\r\n";
-	slist = d ? serialmap(s, d, iLst, xLst, &error)
+	slist = d ? serialmap(s, d, m, iLst, xLst, &error)
 		  : setmap(s, D_SET, 0);
 	if (error) {
 		assert(!slist);
@@ -6797,11 +6802,11 @@ get_reg(sccs *s, char *printOut, FILE *out, int flags, ser_t d,
 		s->state |= S_WARNED;
 		return 1;
 	}
-	if (s->whodel) blist = serialmap(s, s->whodel, 0, 0, &error);
+	if (s->whodel) blist = serialmap(s, s->whodel, 0, 0, 0, &error);
 	assert(!error);	/* errors are only for iLst and xLst */
 	if (flags & GET_SUM) {
 		flags |= NEWCKSUM;
-	} else if (d && BITKEEPER(s) && !iLst && !xLst) {
+	} else if (d && BITKEEPER(s) && !iLst && !xLst && !m) {
 		flags |= NEWCKSUM;
 	}
 	/* we're changing the meaning of the file, checksum would be invalid */
@@ -7385,7 +7390,7 @@ int
 sccs_get(sccs *s, char *rev, char *mRev, char *iLst, char *xLst,
     u32 flags, char *printOut, FILE *out)
 {
-	ser_t	d;
+	ser_t	d, m = 0;
 	int	lines = -1, locked = 0, error;
 	char	*i2 = 0;
 
@@ -7462,17 +7467,26 @@ err:		if (i2) free(i2);
 	if (mRev) {
 		char *tmp;
 
-		tmp = sccs_impliedList(s, "get", rev, mRev);
+		if (BKMERGE(s)) {
+			unless (m = sccs_findrev(s, mRev)) {
+				fprintf(stderr,
+				    "get: can't find merge revision "
+				    "%s in %s\n",
+				    notnull(mRev), s->sfile);
+				s->state |= S_WARNED;
+			}
+		} else if (tmp = sccs_impliedList(s, "get", rev, mRev)) {
 #ifdef  CRAZY_WOW
 		// XXX: why was this here?  Should revisions that are
 		// inline (get -e -R1.7 -M1.5 foo) be an error?
 		// Needed to take this out because valid merge set
 		// could be empty (see t.merge for example)
-		unless (tmp) goto err;
+			unless (tmp) goto err;
 #endif
-		/* XXX this is bogus if tmp==0 and iLst is set */
-		i2 = strconcat(tmp, iLst, ",");
-		if (tmp && i2 != tmp) free(tmp);
+			/* XXX this is bogus if tmp==0 and iLst is set */
+			i2 = strconcat(tmp, iLst, ",");
+			if (tmp && i2 != tmp) free(tmp);
+		}
 	}
 	if (rev && streq(rev, "+")) rev = 0;
 	if ((flags & (GET_EDIT|PRINT)) == GET_EDIT) {
@@ -7592,8 +7606,8 @@ err:		if (i2) free(i2);
 			break;
 		}
 		error =
-		    get_reg(s, printOut, out, flags,
-			d, &lines, i2? i2 : iLst, xLst);
+		    get_reg(s, printOut, out, flags, d, m,
+		        &lines, i2? i2 : iLst, xLst);
 		break;
 	    case S_IFLNK:	/* symlink */
 		error = get_link(s, printOut, out, flags, d, &lines);
@@ -7663,6 +7677,9 @@ err:		if (i2) free(i2);
 skip_get:
 	if (!(flags&SILENT)) {
 		fprintf(stderr, "%s %s", s->gfile, REV(s, d));
+		if (m) {
+			fprintf(stderr, " mrg: %s", REV(s, m));
+		}
 		if (i2) {
 			fprintf(stderr, " inc: %s", i2);
 		} else if (iLst) {
@@ -7788,7 +7805,7 @@ err:		return (-1);
 		s->state |= S_WARNED;
 		goto err;
 	}
-	error = get_reg(s, "-", out, flags|PRINT, 0, &lines, 0, 0);
+	error = get_reg(s, "-", out, flags|PRINT, 0, 0, &lines, 0, 0);
 	if (error) return (-1);
 
 	debug((stderr, "SCCSCAT done\n"));
@@ -7947,7 +7964,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		s->state |= S_WARNED;
 		goto done2;
 	}
-	slist = serialmap(s, d, 0, 0, &error);
+	slist = serialmap(s, d, 0, 0, 0, &error);
 	sccs_rdweaveInit(s);
 	side = NEITHER;
 	nextside = NEITHER;
@@ -9039,6 +9056,7 @@ _hasDiffs(sccs *s, ser_t d, u32 flags, int inex, pfile *pf)
 	MDBM	*shash = 0;
 	ser_t	*state = 0;
 	u8	*slist = 0;
+	ser_t	m = 0;
 	int	print = 0, different;
 	char	sbuf[MAXLINE];
 	char	*name = 0, *mode = "rb";
@@ -9113,7 +9131,8 @@ _hasDiffs(sccs *s, ser_t d, u32 flags, int inex, pfile *pf)
 		verbose((stderr, "can't open %s\n", name));
 		RET(-1);
 	}
-	slist = serialmap(s, d, pf->iLst, pf->xLst, &error);
+	if (pf->mRev) m = sccs_findrev(s, pf->mRev);
+	slist = serialmap(s, d, m, pf->iLst, pf->xLst, &error);
 	assert(!error);
 	sccs_rdweaveInit(s);
 	while (fbuf = sccs_nextdata(s)) {
@@ -13064,7 +13083,7 @@ again:
 	 */
 	sccs_rdweaveInit(s);
 	out = sccs_wrweaveInit(s);
-	slist = serialmap(s, n, 0, 0, 0);	/* XXX - -gLIST */
+	slist = serialmap(s, n, 0, 0, 0, 0);	/* XXX - -gLIST */
 	s->dsum = 0;
 	while (b = fgetline(diffs)) {
 		int	where;
@@ -13647,7 +13666,24 @@ sccs_read_pfile(sccs *s, pfile *pf)
 	    &c3, mRev);
 	pf->oldrev = strdup(oldrev);
 	pf->newrev = strdup(newrev);
+	pf->formatErr = 0;
+	if (e >= 7) {
+		int	bkmerge = 0;
 
+		if (isupper(c1)) {
+			bkmerge = 1;
+			c1 = tolower(c1);
+			if (e >= 9) c2 = tolower(c2);
+			if (e >= 11) c3 = tolower(c3);
+		}
+		if (bkmerge != BKMERGE(s)) {
+			pf->formatErr = 1;
+			fprintf(stderr,
+			    "Wrong p.file format in %s (want %s)\n",
+			    s->gfile, BKMERGE(s) ? "bk" : "sccs");
+			goto err;
+		}
+	}
 	/*
 	 * mRev always means there is at least an include -
 	 * we already expolded it in get and wrote it out.
@@ -13700,10 +13736,11 @@ sccs_read_pfile(sccs *s, pfile *pf)
 		assert(c3 == 'm');
 		break;
 	    default:
-		free(iLst);
-		free(xLst);
 		fprintf(stderr,
 		    "%s: can't read pfile for %s\n", prog, s->gfile);
+err:		free(iLst);
+		free(xLst);
+		free(mRev);
 		return (-1);
 	}
 	pf->iLst = iLst;
@@ -14241,7 +14278,8 @@ end(sccs *s, ser_t n, int flags, int add, int del, int same)
 			 * but we can't do that because we use the inc/ex
 			 * in sccs_getCksumDelta().
 			 */
-			if (add || del || HAS_CLUDES(s, n) || S_ISLNK(MODE(s, n))) {
+			if (add || del || HAS_CLUDES(s, n) ||
+			    MERGE(s, n) || S_ISLNK(MODE(s, n))) {
 				SUM_SET(s, n, s->dsum);
 			} else {
 				SUM_SET(s, n, almostUnique());
@@ -15559,6 +15597,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		    E_BK, "BK",
 		    E_BWEAVE2, "BWEAVEv2",
 		    E_BWEAVE3, "bweave",
+		    E_BKMERGE, "bkmerge",
 		    0, 0);
 
 		if (!enc || (enc == E_GZIP)) {
@@ -16640,7 +16679,10 @@ sccs_perfile(sccs *s, FILE *out, int patch)
 		enc = sccs_encoding(s, 0, 0);
 	}
 	enc &= ~E_ALWAYS;
-	if (patch) enc &= ~(E_BK|E_BWEAVE2|E_BWEAVE3);
+	if (patch) {
+		enc &= ~(E_FILEFORMAT);
+		enc |= s->encoding_in & E_BKMERGE;
+	}
 	if (enc) fprintf(out, "f e %d\n", enc);
 	if (!patch && s->rkeyHead && (enc & (E_BWEAVE2|E_BWEAVE3))) {
 		fprintf(out, "f w %u\n", s->rkeyHead);

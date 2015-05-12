@@ -196,6 +196,8 @@ regen(sccs *s, int verbose, char *key)
 		sys("bk", "-?BK_NO_REPO_LOCK=YES", "delta",
 		    "-fq", "-RiISCCS/.init", gfile, SYS);
 	}
+	/* read_pfile needs to be match format with sfile */
+	if (features_bits(0) & FEAT_BKMERGE) s->encoding_in |= E_BKMERGE;
 	for (i = 0; i < n; ++i) {
 		d = table[i];
 		mkinit(s, d, 0, 0);

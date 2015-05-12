@@ -170,7 +170,8 @@ clone_sfioCompat(int bkd)
 
 	compat = (NOT_THERE(FEAT_BKFILE) ||
 	    NOT_THERE(FEAT_BWEAVE) ||
-	    NOT_THERE(FEAT_BWEAVEv2));
+	    NOT_THERE(FEAT_BWEAVEv2) ||
+	    NOT_THERE(FEAT_BKMERGE));
 	return (compat != 0);
 }
 

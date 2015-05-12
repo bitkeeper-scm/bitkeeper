@@ -9,6 +9,8 @@ private	int	v2Left(sccs *s, ser_t d, void *token);
 
 private	void	loadKids(sccs *s);
 private	int	bigFirst(const void *a, const void *b);
+private	void	foundDup(sccs *s, u32 bits,
+		    ser_t tip, ser_t other, ser_t dup, ser_t **dups);
 
 #define	S_DIFF		0x01	/* final active states differ */
 #define	SR_PAR		0x02	/* Right side parent lineage */
@@ -32,6 +34,8 @@ private	int	bigFirst(const void *a, const void *b);
 
 /* non zero if SL and SR have different states */
 #define	S_DIFFERENT(x)	(((x) ^ ((x) >> 4)) & (SR_PAR|SR_INC|SR_EXCL))
+
+#define	HIBIT		0x80000000UL
 
 /*
  * Compute or collapse the symmetric difference between two nodes.
@@ -83,21 +87,41 @@ private	int	bigFirst(const void *a, const void *b);
  * of a megabyte. At some point, this may help caches.
  *
  */
-
 int
-graph_symdiff(sccs *s, ser_t left, ser_t right, ser_t *list, u8 *slist,
-    ser_t **sd, int count, int flags)
+graph_symdiff(sccs *s, ser_t left, ser_t right, void *token1, u8 *slist,
+    void *token2, int count, int flags)
 {
 	ser_t	ser, lower = 0;
 	u8	bits, newbits;
 	int	marked = 0;
 	int	expand = (count < 0);
 	int	sign;
+	ser_t	*list = 0;
+	ser_t	**dups = 0;
+	int	freelist = 0;
 	int	i, activeLeft, activeRight;
 	char	*p;
 	ser_t	*include = 0, *exclude = 0;
+	u32	*cludes = 0;
+	u32	orig = 0;
+	ser_t	**sd = 0;
 	ser_t	t = 0, x;
+	int	calcDups = 0;
 
+	if (token1) {
+		if (flags & SD_MERGE) {
+			list = (ser_t *)token1;
+		} else {
+			dups = (ser_t **)token1;
+		}
+	}
+	if (token2) {
+		if (flags & SD_CLUDES) {
+			cludes = (u32 *)token2;
+		} else {
+			sd = (ser_t **)token2;
+		}
+	}
 	if (flags & SD_MERGE) {
 		assert(!left && !right);
 		left = nLines(list) ? list[1] : 0;
@@ -107,14 +131,17 @@ graph_symdiff(sccs *s, ser_t left, ser_t right, ser_t *list, u8 *slist,
 	} else {
 		assert(!list);
 		addArray(&list, &left);
+		freelist = 1;
 	}
 
 	if (expand) {
 		count = 0;
+		calcDups = dups != 0;
 	} else {
 		assert(left);
 		if (sd) assert(count == 0);
 		marked = count;
+		orig = CLUDES_INDEX(s, left);
 		CLUDES_SET(s, left, 0);
 	}
 	/* init the array with the starting points */
@@ -130,6 +157,11 @@ graph_symdiff(sccs *s, ser_t left, ser_t right, ser_t *list, u8 *slist,
 		slist[ser] |= bits;
 		if (!t || (t < x)) t = x;
 		if (!lower || (lower > ser)) lower = ser;
+	}
+	if (freelist) {
+		free(list);
+		freelist = 0;
+		list = 0;
 	}
 	if (right) {
 		bits = SR_PAR;
@@ -220,11 +252,25 @@ graph_symdiff(sccs *s, ser_t left, ser_t right, ser_t *list, u8 *slist,
 			}
 		}
 
+		/*
+		 * During expand, see if there is a duplicate between 
+		 * an include in the tip, and this node being on the parent
+		 * line(sccs)/dag(bk), or an exclude and not a parent.
+		 */
+		if (bits & SL_DUP) {
+			marked--;
+			if (((bits & SL_PAR) && (bits & SL_INC)) ||
+			    (!(bits & SL_PAR) && (bits & SL_EXCL))) {
+				foundDup(s, bits, left, t, t, dups);
+			}
+		}
+
 		/* Set up parent ancestory for this node */
 		if (newbits = (bits & (SL_PAR|SR_PAR))) {
-			if (ser = PARENT(s, t)) {
+			for (i = BKMERGE(s), ser = PARENT(s, t);
+			    ser;
+			    ser = i-- ? MERGE(s, t) : 0) {
 				bits = slist[ser];
-				/* XXX if !MULTIPARENT, same as if (1) */
 				if ((bits & newbits) != newbits) {
 					if (S_DIFFERENT(bits)) marked--;
 					bits |= newbits;
@@ -233,17 +279,37 @@ graph_symdiff(sccs *s, ser_t left, ser_t right, ser_t *list, u8 *slist,
 					if (lower > ser) lower = ser;
 				}
 			}
-#ifdef MULTIPARENT
-			/* same stuff for merge */
-#endif
 		}
 
 		if (activeLeft || activeRight) {
+			int	chkDup = calcDups && (t == left);
+
 			/* alter only if item hasn't been set yet */
-			p = CLUDES(s, t);
+			p = cludes ? HEAP(s, cludes[t]) : CLUDES(s, t);
 			while (ser = sccs_eachNum(&p, &sign)) {
 				newbits = 0;
 				bits = slist[ser];
+				/* Mark inc/exc in tip for dup consideration */
+				if (chkDup) {
+					if (bits & SL_DUP) {
+						/* dups in the list itself */
+						foundDup(s, bits,
+						    left, left, ser, dups);
+					} else {
+						newbits = SL_DUP;
+						marked++;
+					}
+				} else if (activeLeft && (bits & SL_DUP)) {
+					/* Inc already inc'd; exc already.. */
+					if (((sign > 0) && (bits & SL_INC)) ||
+					    ((sign < 0) && (bits & SL_EXCL))) {
+						foundDup(s, bits,
+						    left, t, ser, dups);
+					}
+					bits &= ~SL_DUP;
+					slist[ser] = bits;
+					marked--;
+				}
 				if (sign > 0) {
 					if (activeLeft &&
 					    !(bits & (SL_INC|SL_EXCL))) {
@@ -273,12 +339,29 @@ graph_symdiff(sccs *s, ser_t left, ser_t right, ser_t *list, u8 *slist,
 			}
 		}
 	}
+	if (!expand && dups && nLines(*dups)) {
+		ser_t	*x = *dups;
+
+		EACH(x) {
+			ser = x[i];
+			if (ser & HIBIT) {
+				exclude = addSerial(exclude, ser & ~HIBIT);
+			} else {
+				include = addSerial(include, ser);
+			}
+		}
+	}
 	if (include || exclude) {
 		FILE	*f = fmem();
 
 		EACH(include) sccs_saveNum(f, include[i], 1);
 		EACH(exclude) sccs_saveNum(f, exclude[i], -1);
-		CLUDES_SET(s, left, fmem_peek(f, 0));
+		p = fmem_peek(f, 0);
+		if (streq(p, HEAP(s, orig))) {
+			CLUDES_INDEX(s, left) = orig;
+		} else {
+			CLUDES_SET(s, left, p);
+		}
 		fclose(f);
 		FREE(include);
 		FREE(exclude);
@@ -293,88 +376,123 @@ graph_symdiff(sccs *s, ser_t left, ser_t right, ser_t *list, u8 *slist,
 	return (count);
 }
 
-private	int
-checkDups(sccs *s, ser_t d, u8 *slist)
+private	void
+foundDup(sccs *s, u32 bits, ser_t tip, ser_t other, ser_t dup, ser_t **dups)
 {
-	ser_t	stop, clean, e, t;
-	char	*p;
-	int	sign;
-	u32	bits;
-	int	rc = 0;
+	if (bits & SL_EXCL) dup |= HIBIT;
+	addArray(dups, &dup);
+	unless (getenv("_BK_SHOWDUPS")) return;
 
-	stop = clean = d;
-	slist[d] |= SL_PAR;
-	for (t = d; t >= stop; t--) {
-		unless (bits = slist[t]) continue;
-		slist[t] = 0;
-		if (bits & SL_PAR) {
-			if ((bits & (SL_PAR|SL_DUP|SL_INC)) ==
-			    (SL_PAR|SL_DUP|SL_INC)) {
-				fprintf(stderr,
-				    "%s: dup parent/inc in %s of %s\n",
-		    		    s->gfile, REV(s, d), REV(s, t));
-				rc = 1;
-			}
-			if (e = PARENT(s, t)) {
-				slist[e] |= SL_PAR;
-				if (clean > e) clean = e;
-			}
-		}
-		unless ((bits & (SL_PAR|SL_INC)) && !(bits & SL_EXCL)) {
-			continue;
-		}
-		p = CLUDES(s, t);
-		while (e = sccs_eachNum(&p, &sign)) {
-			bits = slist[e];
-			if (bits & SL_DUP) {
-				bits &= ~SL_DUP;
-				if ((sign > 0) && (bits & SL_INC)) {
-					fprintf(stderr,
-					    "%s: dup inc in %s of %s\n",
-			    		    s->gfile, REV(s, d), REV(s, e));
-					rc = 1;
-				} else if ((sign < 0) && (bits & SL_EXCL)) {
-					fprintf(stderr,
-					    "%s: dup exc in %s of %s\n",
-			    		    s->gfile, REV(s, d), REV(s, e));
-					rc = 1;
-				}
-			} else if (t == d) {
-				bits |= SL_DUP;
-				if (stop > e) stop = e;
-			}
-			unless (bits & (SL_INC|SL_EXCL)) {
-				bits |= (sign > 0) ? SL_INC : SL_EXCL;
-			}
-			slist[e] = bits;
-			if (clean > e) clean = e;
-		}
+	dup &= ~HIBIT;
+	fprintf(stderr, "%s: duplicate %s in %s of %s",
+	    s->gfile, (bits & SL_EXCL) ? "exclude" : "include",
+	    REV(s, tip), REV(s, dup));
+
+	if (tip == other) {
+		fputc('\n', stderr);
+	} else if (other == dup) {
+		fprintf(stderr, " and in %sparent %s\n",
+		   (bits & SL_PAR) ? "" : "non-", REV(s, dup));
+	} else {
+		fprintf(stderr, " and in %s\n", REV(s, other));
 	}
-	if (t && clean) {
-		for (/* t */; t >= clean; t--) {
-			slist[t] = 0;
-		}
-	}
-	return (rc);
 }
 
 /*
- * Look for dups
+ * Flip style that graph is stored in: original SCCS and new BK
  */
 int
-graph_checkdups(sccs *s)
+graph_convert(sccs *s, int fixpfile)
 {
-	ser_t	d;
-	u8	*slist;
-	int	rc = 0;
+	ser_t	d, fixup = 0;
+	u8	*slist = 0;
+	u32	*cludes = 0;
+	u32	*dups = 0;
+	int	count;
+	int	rc = 1;
+	pfile	pf = {0};
 
-	slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
-	for (d = TREE(s); d <= TABLE(s) ; d++) {
-		if (HAS_CLUDES(s, d)) {
-			rc |= checkDups(s, d, slist);
+	if (fixpfile && HAS_PFILE(s) && !sccs_read_pfile(s, &pf) &&
+	    (pf.iLst || pf.xLst || pf.mRev)) {
+		fixup = sccs_newdelta(s);
+		sccs_insertdelta(s, fixup, fixup);
+		unless (d = sccs_findrev(s, pf.oldrev)) {
+			fprintf(stderr,
+			    "%s: rev %s not found\n", s->gfile, pf.oldrev);
+			goto err;
+		}
+		PARENT_SET(s, fixup, d);
+		if (pf.mRev) {
+			unless (d = sccs_findrev(s, pf.mRev)) {
+				fprintf(stderr,
+				    "%s: rev %s not found\n",
+				    s->gfile, pf.mRev);
+				goto err;
+			}
+			MERGE_SET(s, fixup, d);
+		}
+		if (sccs_setCludes(s, fixup, pf.iLst, pf.xLst)) {
+			fprintf(stderr,
+			    "%s: bad list -i%s -x%s not found\n",
+			    s->gfile, notnull(pf.iLst), notnull(pf.xLst));
+			goto err;
 		}
 	}
+
+	slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
+	cludes = (u32 *)calloc(TABLE(s) + 1, sizeof(u32));
+	assert(cludes && slist);
+
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		if (TAG(s, d) || (FLAGS(s, d) & D_GONE) ||
+		    (!MERGE(s, d) && !CLUDES_INDEX(s, d))) {
+		    	continue;
+		}
+		cludes[d] = CLUDES_INDEX(s, d);
+		count = graph_symdiff(s, d, PARENT(s, d),
+		    &dups, slist, cludes, -1, SD_CLUDES);
+
+		s->encoding_in ^= E_BKMERGE;	/* compress in other format */
+		graph_symdiff(s, d, PARENT(s, d), &dups, slist, 0, count, 0);
+		s->encoding_in ^= E_BKMERGE;	/* restore expand format */
+		truncArray(dups, 0);
+	}
+	s->encoding_in ^= E_BKMERGE;	/* new style */
+
+	if (fixup) {
+		char	*p, **inc = 0, **exc = 0;
+		int	sign;
+		
+		p = CLUDES(s, fixup);
+		while (d = sccs_eachNum(&p, &sign)) {
+			if (sign > 0) {
+				inc = addLine(inc, REV(s, d));
+			} else {
+				exc = addLine(exc, REV(s, d));
+			}
+		}
+		free(pf.iLst);
+		free(pf.xLst);
+		pf.iLst = joinLines(",", inc);
+		pf.xLst = joinLines(",", exc);
+
+		if (sccs_rewrite_pfile(s, &pf)) {
+			fprintf(stderr,
+			    "%s: no update to pfile\n", s->gfile);
+			goto err;
+		}
+	}
+	rc = 0;
+err:
+	if (fixup) {	/* Done with fixup holding pfile data */
+		FLAGS(s, fixup) &= ~D_INARRAY;
+		sccs_freedelta(s, fixup);
+		TABLE_SET(s, nLines(s->slist1));
+	}
+	free_pfile(&pf);
+	free(dups);
 	free(slist);
+	free(cludes);
 	return (rc);
 }
 

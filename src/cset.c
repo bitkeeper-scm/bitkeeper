@@ -2,6 +2,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
+#include "graph.h"
 #include "nested.h"
 #include "progress.h"
 #include "poly.h"
@@ -25,6 +26,7 @@ typedef	struct cset {
 	int	compat;		/* do not send new sfiles in sfio */
 	int	fastpatch;	/* enable fast patch mode */
 	int	fail;		/* let all failures be flushed out */
+	int	bkmerge;	/* Patch is sending patches in bkmerge */
 
 	/* numbers */
 	int	tooMany;	/* send whole sfiles if # deltas > tooMany */
@@ -585,15 +587,27 @@ csetlist(cset_t *cs, sccs *cset)
 	}
 again:	/* doDiffs can make it two pass */
 	if (!cs->doDiffs && cs->makepatch) {
-		fputs("\n", stdout);
+		int	didfeature = 0;
+
+		fputc('\n', stdout);
 		fputs(PATCH_PATCH, stdout);
 		fputs(cs->fastpatch ? PATCH_FAST : PATCH_CURRENT, stdout);
 		if (copts.csetkey) {
-			fputs(PATCH_FEATURES "PORT\n", stdout);
+			fputs(((didfeature++) ? "," : PATCH_FEATURES), stdout);
+			fputs("PORT", stdout);
+		}
+		if (copts.fastpatch && !copts.compat &&
+		    features_test(cset->proj, FEAT_BKMERGE)) {
+			fputs(((didfeature++) ? "," : PATCH_FEATURES), stdout);
+			fputs("BKMERGE", stdout);
+			copts.bkmerge = 1;
+		}
+		if (didfeature) {
+			fputc('\n', stdout);
 		} else {
 			fputs(PATCH_REGULAR, stdout);
 		}
-		fputs("\n", stdout);
+		fputc('\n', stdout);
 	}
 
 	/*
@@ -855,6 +869,11 @@ sccs_patch(sccs *s, cset_t *cs)
 	}
 
 	if (cs->verbose>1) fprintf(stderr, "makepatch: %s", s->gfile);
+
+	/* see that we are sending patches in all the same format */
+	if ((cs->bkmerge != BKMERGE(s)) && graph_convert(s, 0)) {
+		cset_exit(1);
+	}
 
 	/*
 	 * Build a list of the deltas we're sending

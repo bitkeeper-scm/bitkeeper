@@ -433,7 +433,7 @@ private int
 do_file(char *file, char *tiprev)
 {
 	sccs	*s;
-	ser_t	d, e, tipd;
+	ser_t	d, e, m, tipd;
 	char	*pathname, *savefile = 0, *cmd;
 	mode_t	mode;
 	u32	xflags, flagdiffs;
@@ -533,7 +533,12 @@ do_file(char *file, char *tiprev)
 
 			/* calculate any excluded revs */
 			if (HAS_PFILE(s)) sccs_read_pfile(s, &pf);
-			premap = sccs_set(s, d, pf.iLst, pf.xLst);
+			m = 0;
+			if (pf.mRev) {
+				m = sccs_findrev(s, pf.mRev);
+				unless (m) goto done;
+			}
+			premap = sccs_set(s, d, m, pf.iLst, pf.xLst);
 			free_pfile(&pf);
 			EACH(rmdeltas) {
 				e = rmdeltas[i];
