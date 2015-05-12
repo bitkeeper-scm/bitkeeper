@@ -38,6 +38,7 @@ ifeq "$(OSTYPE)" "msys"
 	INSTALL=installdir
 	RESOURCE=bkres.o
 	UWT_C=$(patsubst %,win32/uwtlib/%.c, wapi_intf wcrt_intf)
+	BKGUI=bkg$(EXE)
 else
 	SYS=unix
 	EXE=
@@ -62,7 +63,7 @@ ifndef V
 endif
 
 GET=	$(Q)bk get -sS
-BK=	bk$(EXE) 
+BK=	bk$(EXE)
 LD	=cc
 G	=-g
 TRIAL	=0
@@ -140,7 +141,7 @@ CC_DEBUG=$(GCCOPTS) $G $(WARNINGS) $(TRACE)
 CC_FAST_DEBUG=$(GCCOPTS) $G -O2 $(WARNINGS) $(TRACE)
 CC_FAST	=$(CC_FAST_DEBUG)
 CC_WALL=$(GCCOPTS) $G -DLINT $(WARNINGS) $(TRACE)
-BINS	= $(BK) inskeys$(EXE)
+BINS	= $(BK) $(BKGUI) inskeys$(EXE)
 
 # List of all objects in bk other than bk.o. Keep it sorted.
 # But put bkver.o/cmd.o first, they generate headers.
@@ -418,6 +419,11 @@ bk.ico: win32/data/bk.ico
 $(BK): $(LIBS) bk.o $(RESOURCE) $(OBJ)
 	$(if $(Q),@echo LINKING $(BK),)
 	$(Q)$(LD) $(LDFLAGS) -o $@ bk.o $(OBJ) $(RESOURCE) $(LIBS) $(PCRELIB) $(XLIBS)
+
+# Windows only rule, BKGUI should be blank on other platforms
+$(BKGUI): bkg.o $(RESOURCE)
+	$(if $(Q),@echo LINKING $(BKGUI),)
+	$(Q)$(LD) $(LDFLAGS) -o $@ bkg.o $(RESOURCE) -Llibc -lc -mwindows $(XLIBS)
 
 inskeys$(EXE): inskeys.o inskeys_main.o $(LIBS)
 	$(LD) $(LDFLAGS) -o $@ inskeys.o inskeys_main.o $(LIBS) $(XLIBS)
