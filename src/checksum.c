@@ -358,7 +358,7 @@ setOrder(sccs *s, ser_t d, void *token)
 	FLAGS(s, d) &= ~D_SET;
 
 	if (TAG(s, d)) return (0);
-	unless (ADDED(s, d) || HAS_CLUDES(s, d)) return (0);
+	unless (ADDED(s, d) || HAS_CLUDES(s, d) || MERGE(s, d)) return (0);
 
 	addArray(order, &d);
 	return (0);
