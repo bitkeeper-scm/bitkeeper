@@ -236,7 +236,7 @@ PSCR	= t/doit t/guitest
 PROGS	= hidestring libc/mtst$(EXE)
 LIBS	= libc/libc.a tomcrypt/libtomcrypt.a tommath/libtommath.a
 PCRELIB = gui/tcltk/pcre/local/lib/libpcre.a
-DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
+DATA	= bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
 	Academic.lic Essentials.lic Pro.lic Enterprise.lic MLA.lic bkcl.lic \
 	Premier.lic \
@@ -267,7 +267,7 @@ SCRSRCS	= bk.sh import.sh kwextract.pl uuwrap.sh unuuwrap.sh \
 	  substvars.sh b64wrap.sh gzip_b64wrap.sh \
 	  unb64wrap.sh ungzip_b64wrap.sh \
 	  $(LSCRIPTS)
-MISC	= bkmsg.doc bitkeeper.config t/doit.sh
+MISC	= bkmsg.doc t/doit.sh
 
 export	GET
 
