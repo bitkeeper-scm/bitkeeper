@@ -793,7 +793,7 @@ proc AboutAqua {} \
 	    -font {Helvetica 12 normal} \
 	    -justify left
 	label .aboutaqua.f.copyright \
-	    -text "Copyright 2005 BitMover, Inc." \
+	    -text "Copyright 2015 BitKeeper Inc." \
 	    -font {Helvetica 11 normal} \
 	    -justify center
 	grid .aboutaqua.f.title -pady 2

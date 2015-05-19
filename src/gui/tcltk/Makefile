@@ -324,7 +324,7 @@ bin/BitKeeper.app/Contents/MacOS/BitKeeper: bin/tclsh$(EXE) mkapp
 	    --with-tommath=$(TOMMATH) $(SYMBOLS)" embedded
 	$(MAKE) -C tk/macosx XLIBS="$(LIBTOMCRYPT) $(LIBPCRE)" \
 	    EXTRA_CONFIGURE_ARGS="--with-bk=$(BKROOT) $(SYMBOLS) --enable-aqua" embedded
-	./mkapp BitKeeper 1.0 BkAp "BitMover, Inc" com.bitmover.bk "$(WISHPATH)"
+	./mkapp BitKeeper 1.0 BkAp "BitKeeper Inc" com.bitmover.bk "$(WISHPATH)"
 
 clean-obj: FORCE
 	-test -d tcl && cd tcl/$S && test -f Makefile && $(MAKE) distclean

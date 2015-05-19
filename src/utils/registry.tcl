@@ -108,7 +108,7 @@ proc registry_install {destination} \
 	reg set $HKLMS\\$MWC\\Uninstall\\$id
 	reg set $HKLMS\\$MWC\\Uninstall\\$id DisplayName "BitKeeper $version"
 	reg set $HKLMS\\$MWC\\Uninstall\\$id DisplayVersion $version
-	reg set $HKLMS\\$MWC\\Uninstall\\$id Publisher "BitMover, Inc."
+	reg set $HKLMS\\$MWC\\Uninstall\\$id Publisher "BitKeeper Inc."
 
 	reg set $HKLMS\\$MWC\\Uninstall\\$id UninstallString \
 	    "$destination\\bk uninstall"

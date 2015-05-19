@@ -765,7 +765,7 @@ keyExists(char *rk, char *path)
 		    "%s: delta found for path '%s' which has "
 		    "rootkey\n\t%s\nfrom a different path\n"
 		    "To fix, remove sfile %s and mark it gone "
-		    "and rerun, or send mail to support@bitmover.com\n",
+		    "and rerun, or send mail to support@bitkeeper.com\n",
 		    prog, path, rk, s->sfile);
 		sccs_free(s);
 		return (1);

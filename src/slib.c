@@ -8392,7 +8392,7 @@ delta_table(sccs *s, int willfix)
 		if (BITKEEPER(s) && TAG(s, d) &&
 		    (!CSET(s) || !(FLAGS(s, d) & (D_SYMBOLS|D_SYMGRAPH)))) {
 			fprintf(stderr, "Illegal tag/removed deltas in %s\n"
-			    "Please write support@bitmover.com\n", s->gfile);
+			    "Please write support@bitkeeper.com\n", s->gfile);
 			exit (1);
 		}
 
@@ -8904,7 +8904,7 @@ bin_deltaTable(sccs *s)
 		    (!CSET(s) || !(i & (D_SYMBOLS|D_SYMGRAPH)))) {
 			fprintf(stderr,
 			    "Illegal tag/removed deltas in a binary sfile %s\n"
-			    "Please write support@bitmover.com\n", s->gfile);
+			    "Please write support@bitkeeper.com\n", s->gfile);
 			return (1);
 		}
 		FLAGS(s, d) &= 0x000FFFFF; /* only write some flags */

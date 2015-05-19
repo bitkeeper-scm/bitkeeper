@@ -110,7 +110,7 @@ delim $$
 .AU
 Larry McVoy
 .AI
-lm@bitmover.com
+lm@bitkeeper.com
 415-401-8808
 .AB
 \*(BK\** is a distributed source management system.  Because \*(BK is truly 

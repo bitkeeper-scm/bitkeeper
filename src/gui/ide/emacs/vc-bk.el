@@ -14,8 +14,8 @@
 ;; directory, but be advised it won't get updated automatically
 ;; when you upgrade BitKeeper.
 ;;
-;; Author: Oscar Bonilla <ob@bitmover.com>
-;;         Georg Nikodym <georgn@bitmover.com>
+;; Author: Oscar Bonilla <ob@bitkeeper.com>
+;;         Georg Nikodym <georgn@bitkeeper.com>
 
 (eval-when-compile (require 'cl) (require 'vc))
 

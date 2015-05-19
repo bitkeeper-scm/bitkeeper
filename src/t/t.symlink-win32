@@ -10,7 +10,7 @@ echo OK
 
 echo $N Checking symlink get on Windows passes, but is quiet .......$NL
 cd "$HERE"
-bk clone $Q bk://data.bitmover.com/test_data/symlink
+bk clone $Q bk://data.bitkeeper.com/test_data/symlink
 cd symlink
 bk get $Q foo 2>OUT || fail -f OUT should have passed
 test -s OUT && fail -f OUT OUT file should be empty

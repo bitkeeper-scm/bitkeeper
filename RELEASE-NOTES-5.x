@@ -1064,7 +1064,7 @@ The product feature makes it possible, even pleasant, to manage large
 collections of files with good performance.  
 
 A more detailed overview of the technology is available; contact
-sales@bitmover.com for more info.
+sales@bitkeeper.com for more info.
 
 Backwards compatibility
 -----------------------
@@ -1117,7 +1117,8 @@ bk clone
 bk csetprune
     The 5.0 csetprune fixes some rare bugs but in doing so creates
     repositories that 4.x will not read.  The bugs, while rare, are real
-    and BitMover recommends that all csetprune operations be done with 5.x.
+    and the BitKeeper support team recommends that all csetprune
+    operations be done with 5.x.
 
 bk id
     New option '-5' - return the repo rootkey as an md5key.

@@ -6,7 +6,7 @@ The version number of this test suite will be 1.0 when there is widespread
 agreement that these are the "right" set of benchmarks, much like lmbench
 was the "right" set of benchmarks for operating systems.
 
-We (BitMover) are using it to benchmark our scripting language, you can
+We (BitKeeper Inc) are using it to benchmark our scripting language, you can
 use it for whatever you like.
 
 You may use for langbench any purpose provided that if you use the
@@ -52,5 +52,5 @@ Input data is a million lines of code generated like this:
 	do	cat tcl/generic/*.[ch]
 	done | head -1000000 > DATA
 
-This file and tests are at http://www.bitmover.com/lm/langbench.shar
+This file and tests are at http://www.bitkeeper.com/lm/langbench.shar
 

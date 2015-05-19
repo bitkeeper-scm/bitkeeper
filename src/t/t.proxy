@@ -14,7 +14,7 @@ test_proxy() {
 	GOT=`cat OUT`
 	test "$GOT" = 42f14254IYxNQ5WXknkqGmR_SESatA -o \
 	     "$GOT" = 42f14254DlrMo6smkgf-qL6nG6TcJg || fail -f OUT
-	grep -q "trying PROXY data.bitmover.com:3128" ERR || {
+	grep -q "trying PROXY data.bitkeeper.com:3128" ERR || {
 		echo did not use proxy
 		cat ERR
 		exit 1
@@ -27,15 +27,15 @@ test_proxy() {
 }
 
 echo $N Verify that bkd access works through a proxy ................$NL
-test_proxy http://data.bitmover.com:3128
+test_proxy http://data.bitkeeper.com:3128
 echo OK
 
 echo $N Repeat without http:// ......................................$NL
-test_proxy data.bitmover.com:3128
+test_proxy data.bitkeeper.com:3128
 echo OK
 
-echo $N Repeat with http://data.bitmover.com \(missing port\) .........$NL
-http_proxy=http://data.bitmover.com
+echo $N Repeat with http://data.bitkeeper.com \(missing port\) ........$NL
+http_proxy=http://data.bitkeeper.com
 export http_proxy
 bk changes -qrbk-3.2.5 -nd:MD5KEY: http://proxytest:14690/bk-3.2.x >OUT 2>ERR
 grep -q 'bk: ignoring malformed proxy' ERR || {

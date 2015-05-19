@@ -455,7 +455,7 @@ local parent: 1.2
 remote parent: <collide> (remote)
 local merge: none
 remote merge: none ()
-Please send the output to support@bitmover.com
+Please send the output to support@bitkeeper.com
 ==============================================================================
 Pull failed: takepatch exited 1.
 EOF
@@ -469,7 +469,7 @@ local parent: 1.3
 remote parent: <collide> (1.2)
 local merge: none
 remote merge: none ()
-Please send the output to support@bitmover.com
+Please send the output to support@bitkeeper.com
 ==============================================================================
 Pull failed: takepatch exited 1.
 EOF
@@ -508,7 +508,7 @@ local parent: 1.3
 remote parent: <collide> (1.3)
 local merge: 1.1.1.1
 remote merge: <collide> (remote)
-Please send the output to support@bitmover.com
+Please send the output to support@bitkeeper.com
 ==============================================================================
 Pull failed: takepatch exited 1.
 EOF
@@ -522,7 +522,7 @@ local parent: 1.3
 remote parent: <collide> (1.3)
 local merge: 1.1.1.2
 remote merge: <collide> (1.1.1.1)
-Please send the output to support@bitmover.com
+Please send the output to support@bitkeeper.com
 ==============================================================================
 Pull failed: takepatch exited 1.
 EOF

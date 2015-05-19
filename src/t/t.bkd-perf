@@ -7,7 +7,7 @@ unset DISPLAY
 
 echo $N Create initial repository ...................................$NL
 # No point running performance numbers across the cluster
-test "$HOSTNAME" = "redhat71.bitmover.com" || {
+test "$HOSTNAME" = "redhat71.bitkeeper.com" || {
 	echo skipped
 	exit 0
 }

@@ -1955,7 +1955,7 @@ processDups(char *rkey, char *dkey, u8 prev, u8 cur, MDBM *idDB)
 		free(a);
 		listCsetRevs(dkey);
 		fprintf(stderr,
-		    "Please write support@bitmover.com with the above\n"
+		    "Please write support@bitkeeper.com with the above\n"
 		    "%s about duplicate deltas\n",
 		    ret ? "error" : "warning");
 	}
@@ -2356,7 +2356,7 @@ polyChk(char *rkey, rkdata *rkd, hash *newpoly)
 	}
 	if (errors) {
 		fprintf(stderr,
-		    "Please write support@bitmover.com with the above\n"
+		    "Please write support@bitkeeper.com with the above\n"
 		    "information about poly on key\n");
 	}
 	return (errors);
@@ -2526,7 +2526,7 @@ chk_merges(sccs *s)
 		if (sccs_needSwap(s, p, m, 1)) {
 			fprintf(stderr,
 			    "%s|%s: %s/%s graph corrupted.\n"
-			    "Please write support@bitmover.com\n",
+			    "Please write support@bitkeeper.com\n",
 			    s->gfile, REV(s, d), REV(s, p), REV(s, m));
 			return (1);
 		}

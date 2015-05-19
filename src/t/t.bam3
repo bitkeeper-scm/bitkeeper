@@ -210,7 +210,7 @@ echo "binary data" > WANT
 # See the README files in the /home/bk/test_data/file-url* repos for
 # details.  Test all the permutations I saw: file:// file:/// and /...
 for f in 2-slash 3-slash abs-path; do
-	bk clone $Q bk://data.bitmover.com/test_data/file-url-$f || fail on $f
+	bk clone $Q bk://data.bitkeeper.com/test_data/file-url-$f || fail on $f
 	cd file-url-$f || fail on $f
 	bk get $Q bam || fail on $f
 	cmpfiles ../WANT bam

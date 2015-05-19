@@ -1426,7 +1426,7 @@ Installation of
 
 %v
 
-is complete. Enjoy BitKeeper and send support@bitmover.com
+is complete. Enjoy BitKeeper and send support@bitkeeper.com
 any questions. Don't forget to try the quick and informative
 demo at http://www.bitkeeper.com/Test.html
 
@@ -1436,7 +1436,7 @@ The BitKeeper Team
 set strings(SummaryInstalled) {
     BitKeeper setup is complete.
 
-    Enjoy BitKeeper and send support@bitmover.com
+    Enjoy BitKeeper and send support@bitkeeper.com
     any questions. Don't forget to try the quick and informative
     demo at http://www.bitkeeper.com/Test.html
 

@@ -296,7 +296,7 @@ could be regenerated.  Not seen as useful at the moment.
 - file format / data structures
   - bookkeeping mentioned below
 - possible riders
-  - http://dev-wiki.bitmover.com/NewGraph
+  - http://dev-wiki.bitkeeper.com/NewGraph
   - bookkeeping for local/remote in s.file for resolve?
   - mparents
   - none?

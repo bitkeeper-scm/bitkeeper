@@ -5,7 +5,7 @@
 # Standard copyright law applies.
 #
 # Redistribution in modified form is prohibited with one exception:
-#    proposed modifications may be sent back to dev@bitmover.com for
+#    proposed modifications may be sent back to dev@bitkeeper.com for
 #    possible inclusion in future releases.  Sending such modifications
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
@@ -72,7 +72,7 @@ win32_common_setup()
 
 	# test data loaded on this machine
 	TESTDATA=/c/test_data
-	BKTESTDATA=bk://data.bitmover.com/test_data
+	BKTESTDATA=bk://data.bitkeeper.com/test_data
 	export TESTDATA BKTESTDATA
 
 	B=`bk bin`
@@ -328,10 +328,10 @@ setup_env()
 	# default to BK, but use ascii on a couple machines
 	test -z "$_BKFILE_REGRESSIONS" && {
 		case "`bk gethost`" in
-		    debian50.bitmover.com) _BKFILE_REGRESSIONS=no;;
-		    debian60-64.bitmover.com) _BKFILE_REGRESSIONS=no;;
-		    aix5.bitmover.com) _BKFILE_REGRESSIONS=no;;
-		    win2008.bitmover.com) _BKFILE_REGRESSIONS=no;;
+		    debian50.bitkeeper.com) _BKFILE_REGRESSIONS=no;;
+		    debian60-64.bitkeeper.com) _BKFILE_REGRESSIONS=no;;
+		    aix5.bitkeeper.com) _BKFILE_REGRESSIONS=no;;
+		    win2008.bitkeeper.com) _BKFILE_REGRESSIONS=no;;
 		    *) _BKFILE_REGRESSIONS=yes;;
 		esac
 		export _BKFILE_REGRESSIONS

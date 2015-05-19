@@ -112,7 +112,7 @@ EOF
 		}
 		s/</\&lt;/g;
 		s/>/\&gt;/g;
-		if (/^[A-Z]+.*/ && !/^BitMover/) {
+		if (/^[A-Z]+.*/ && !/^BitKeeper/) {
 			chop;
 			print O "<strong>$_</strong>\n";
 		} elsif (/(.*)(BitKeeper User's Manual)(.*)/) {

@@ -121,15 +121,15 @@ Example CCT file:
 # Some comment about this file format
 # and version of bk that created it
 V 1.0
-C ask@bitmover.com|ChangeSet|20001030171131|10528
-R lm@bitmover.com
+C ask@bitkeeper.com|ChangeSet|20001030171131|10528
+R lm@bitkeeper.com
 d 30OCT2000  (should be a real date format)
 <==>
-F ask@bitmover.com|srg/gui/setuptool|20000209033051|20390|8b828de3ce7fe93d
+F ask@bitkeeper.com|srg/gui/setuptool|20000209033051|20390|8b828de3ce7fe93d
 D 3
 c Move the globals into an array variable
 <==>
-F ask@bitmover.com|srg/gui/citool|20000209033051|20390|8b828de3ce7fe93d
+F ask@bitkeeper.com|srg/gui/citool|20000209033051|20390|8b828de3ce7fe93d
 D 1
 c Use a better font on NT
 

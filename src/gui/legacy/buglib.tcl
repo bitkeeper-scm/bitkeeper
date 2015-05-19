@@ -604,13 +604,13 @@ proc bugs:check_config {} \
 
 #
 # display the OS and bk release in the appropriate fields.
-# default to bitkeeper-bugs@bitmover.com
+# default to bitkeeper-bugs@bitkeeper.com
 #
 proc bugs:populateInfo {} \
 {
 	global	gc bt_cinfo env
 
-	$gc(v_ef_projemail) insert 1 "bitkeeper-bugs@bitmover.com"
+	$gc(v_ef_projemail) insert 1 "bitkeeper-bugs@bitkeeper.com"
 	$gc(v_ef_project) insert 1 "BitKeeper"
 	if {[info exists bt_cinfo(projemail)]} {
 		   $gc(v_ef_projemail) delete 0 end
@@ -750,7 +750,7 @@ proc bugs:submitBug {} \
 {
 	global gc fields bt_cinfo
 
-	set address "bitkeeper-bugs@bitmover.com"
+	set address "bitkeeper-bugs@bitkeeper.com"
 	set attachment 0
 	# before doing anything, check the attachment. If not valid,
 	# error and return so that the user can update. If we do this

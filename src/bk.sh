@@ -495,8 +495,8 @@ _superset() {
 	exit 1
 }
 
-# Ping bitmover to tell them what bkd version we are running.
-# This is used so BitMover can tell the customer when that bkd needs
+# Ping bitkeeper.com to tell them what bkd version we are running.
+# This is used so BitKeeper can tell the customer when that bkd needs
 # to be upgraded.
 __bkdping() {
 	( 
@@ -653,7 +653,7 @@ _vi() {
 	_editor "$@"
 }
 
-# For sending repositories back to BitMover, this removes all comments
+# For sending repositories back to BitKeeper Inc., this removes all comments
 # and obscures data contents.
 _obscure() {
 	ARG=--I-know-this-destroys-my-tree

@@ -57,7 +57,8 @@ source in the repository.  This is known as
 .I importing.
 BitKeeper can import regular files, RCS files, CVS files, SCCS files,
 and Teamware files.  There is an experimental version of the import code
-which finds changeset boundaries, contact BitMover for more information.
+which finds changeset boundaries, contact support@bitkeeper.com
+for more information.
 To learn how to use the import tools, run
 .CS
 bk help import

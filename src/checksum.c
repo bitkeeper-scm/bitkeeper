@@ -545,7 +545,7 @@ again:
 				}
 				if (fix) {
 					fprintf(stderr, "Unfixable.\n"
-					    "Write support@bitmover.com\n");
+					    "Write support@bitkeeper.com\n");
 					exit(1);
 				}
 				/* checksum is really just serial map */

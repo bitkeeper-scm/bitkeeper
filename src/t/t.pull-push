@@ -4,7 +4,7 @@
 # Standard copyright law applies.
 # 
 # Redistribution in modified form is prohibited with one exception:
-#    proposed modifications may be sent back to dev@bitmover.com for
+#    proposed modifications may be sent back to dev@bitkeeper.com for
 #    possible inclusion in future releases.  Sending such modifications
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
@@ -495,7 +495,7 @@ echo OK
 echo $N Push to something that is not there using BK_RSH ............$NL
 # run anything that doesn't work
 BK_RSH="bk _usleep 1000" \
-    bk push $Q bkd@data.bitmover.com:no-such-repo 2>ERR && fail -f ERR
+    bk push $Q bkd@data.bitkeeper.com:no-such-repo 2>ERR && fail -f ERR
 # Test should have fixed this one
 grep -q "Assertion" ERR && fail -f ERR
 # two possible error messages
@@ -505,7 +505,7 @@ echo OK
 
 echo $N Pull from something that is not there using BK_RSH ..........$NL
 BK_RSH="bk _usleep 1000" \
-    bk pull $Q bkd@data.bitmover.com:no-such-repo 2>ERR && fail -f ERR
+    bk pull $Q bkd@data.bitkeeper.com:no-such-repo 2>ERR && fail -f ERR
 
 # two possible error messages
 grep -q "no-such-repo: pull: write to remote failed" ERR || \

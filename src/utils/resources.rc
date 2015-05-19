@@ -6,9 +6,9 @@ CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "installer.manifest"
 
 159 ICON "../win32/data/box_software.ico"
 
-#define	VER_COMPANYNAME_STR	"BitKeeper, Inc.\0"
+#define	VER_COMPANYNAME_STR	"BitKeeper Inc.\0"
 #define VER_FILEDESCRIPTION_STR	"BitKeeper Installer\0"
-#define VER_LEGALCOPYRIGHT_STR 	"Copyright (c) 2014, BitKeeper, Inc.\nAll Rights Reserved.\0"
+#define VER_LEGALCOPYRIGHT_STR 	"Copyright (c) 2015, BitKeeper Inc.\nAll Rights Reserved.\0"
 #define VER_PRODUCTNAME_STR	"BitKeeper\0"
 
 #ifndef DEBUG
