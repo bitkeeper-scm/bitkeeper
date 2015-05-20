@@ -557,3 +557,20 @@ bk collapse -ea$REV 2>/dev/null || fail
 X=`bk _cat SCCS/p.f | sed 's/.*-X/-x/'`
 test X$X = X-x1.2,1.4 || fail
 echo OK
+
+echo $N Try collapse of gone file ...................................$NL
+REV=`bk changes -r+ -k`
+echo hi > file1
+bk new -l $Q file1
+bk commit $Q -y1 || fail
+echo bye >> file1
+bk ci $Q -y2 file1 || fail
+bk commit $Q -y2 || fail
+bk edit $Q BitKeeper/etc/gone || fail
+bk prs -hnd:KEY: -r1.0 file1 >> BitKeeper/etc/gone
+bk ci $Q -y3 BitKeeper/etc/gone
+bk commit $Q -y3 || fail
+bk rmgone $Q || fail
+bk collapse $Q -ea"$REV" || fail
+test -f file1 && fail should be gone
+echo OK
