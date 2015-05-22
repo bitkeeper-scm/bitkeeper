@@ -13,9 +13,12 @@ proc main {} \
 
 	set runtime(installed) 0
 	if {[set x [lsearch -exact $argv "--installed"]] > -1} {
-	    ## If they already have a valid license, we have
-	    ## nothing to show them.
-	    if {![eula_u eulaText]} { exit 0 }
+	    ## If they already have accepted the eula and have
+	    ## a valid license, we have nothing to show them.
+	    eula_u licText
+	    if {[existingLicense] && ($licText eq "")} {
+		exit 0
+	    }
 
 	    set runtime(installed) 1
 	    set argv [lreplace $argv $x $x]
@@ -298,8 +301,6 @@ proc get_license_from_file {} \
 
 	set types {
 		{{All Files} *}
-		{{License Files} {.lic}}
-		{{Text Files} {.txt}}
 	}
 
 	set file [tk_getOpenFile -filetypes $types -parent .]
@@ -315,6 +316,7 @@ proc get_license_from_file {} \
 	set lines [split $data \n]
 	if {![llength $lines]} { return }
 
+	set i 0
 	foreach line $lines {
 		if {[regexp {^license: } $line]} {
 			set lines [lreplace $lines 0 $i-1]
@@ -1003,7 +1005,6 @@ proc eula_u {text} \
 	set ::env(BK_NO_GUI_PROMPT) 1	;# make bk _eula shut up
 	set r [catch {exec bk _eula -u} t]
 	unset ::env(BK_NO_GUI_PROMPT)
-	return 1
 	return $r
 }
 

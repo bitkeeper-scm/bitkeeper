@@ -16,7 +16,9 @@ string	runit(string cmd);
 int
 main(_argused int ac, _argused string av[], string env{string})
 {
-	string	dotbk, dstroot, home, oldbk, out, path, paths[], tmp, user;
+	string	dotbk, dstroot, oldbk, out, path, paths[], tmp;
+	string	home = env{"HOME"};
+	string	user = env{"USER"};
 
 	wm("withdraw", ".");
 	noprompt = exists("/tmp/_bk_install_no_prompt");
@@ -26,32 +28,30 @@ main(_argused int ac, _argused string av[], string env{string})
 	 * directory desired by the user. Bail if it's not set.
 	 */
 	dstroot = getenv("DSTROOT");
-	log("bk installer starting: dstroot ${dstroot} noprompt ${noprompt}");
+	log("bk installer: user ${user} home ${home} "
+	    "dstroot ${dstroot} noprompt ${noprompt}");
 	unless (dstroot) exit(1);
-	newbk = "${dstroot}/BitKeeper.app/Contents/Resources/bitkeeper/bk";
-	runit("'${newbk}' version");  // for the install log
 
 	/*
-	 * Flush any leases held by the user who ran the installer,
-	 * then remove their ~/.bk/accepted file, per lm.
+	 * Make the user own the entire application bundle. bk
+	 * installtool writes the config there.
 	 */
-	user = env{"USER"};
-	home = env{"HOME"};
 	if (user) {
-		if (isreg("${home}/.bk/accepted")) {
-			runit("/bin/rm -f '${home}/.bk/accepted'");
-		} else if (isreg("/tmp/.bk/${user}/accepted")) {
-			runit("/bin/rm -f '/tmp/.bk/${user}/accepted'");
-		}
-		runit("sudo -u '${user}' '${newbk}' lease flush -a");
+		runit("/usr/sbin/chown -R '${user}' '${dstroot}/BitKeeper.app'");
 	}
 
+	newbk = "${dstroot}/BitKeeper.app/Contents/Resources/bitkeeper/bk";
+	dotbk = `sudo -u '${user}' '${newbk}' dotbk`;
+
+	/* For the install log. */
+	runit("sudo -u '${user}' '${newbk}' version");
+	log("dotbk ${dotbk}");
 	/*
-	 * Remove the accepted file for the elevated priv, so that the EULA
-	 * is popped up every time by installtool.
+	 * runit() has the side-effect of logging the output of the
+	 * commands it runs, which is what we use in this case.
 	 */
-	dotbk = `${newbk} dotbk`;
-	runit("/bin/rm -f '${dotbk}/accepted'");
+	runit("sudo -u '${user}' '${newbk}' config license");
+	runit("sudo -u '${user}' '${newbk}' config licenseurl");
 
 	/*
 	 * The preinstall script looks for a pre-existing config file and
@@ -61,6 +61,8 @@ main(_argused int ac, _argused string av[], string env{string})
 	if (isreg("${tmp}/config")) {
 		runit("/bin/mv -f '${tmp}/config' "
 		    "'${dstroot}/BitKeeper.app/Contents/Resources/bitkeeper'");
+		runit("/usr/sbin/chown '${user}' "
+		    "'${dstroot}/BitKeeper.app/Contents/Resources/bitkeeper/config'");
 	}
 
 	/*
@@ -69,7 +71,7 @@ main(_argused int ac, _argused string av[], string env{string})
 	 * or quit the installation, so restore the old app bundle (if any)
 	 * and bail.
 	 */
-	rc = system("'${newbk}' -?BK_DOTBK='${home}/.bk' installtool --installed",
+	rc = system("sudo -u '${user}' '${newbk}' installtool --installed",
 		    undef, &out, &err);
 	log("bk installtool: ${rc} '${out}' '${err}'");
 	unless (rc == 0) {
@@ -94,11 +96,6 @@ main(_argused int ac, _argused string av[], string env{string})
 	oldbk = runit("/usr/bin/readlink -n /usr/bin/bk");
 	unless (oldbk == newbk) {
 		create_bklink();
-	}
-
-	/* Make the user the app owner. */
-	if (user) {
-		runit("/usr/sbin/chown -R '${user}' '${dstroot}/BitKeeper.app'");
 	}
 
 	/* Call exit here, not return. */

@@ -470,6 +470,9 @@ Tk_GetOpenFileObjCmd(
 		}
 	    }
 	}
+	if (![fileTypes count]) {
+		fileTypes = nil;
+	}
     }
     [panel setAllowsMultipleSelection:multiple];
     if (cmdObj) {
