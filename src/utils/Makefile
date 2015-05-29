@@ -89,10 +89,10 @@ $(IMAGE): installer.manifest extractor.o $(SYSTEM_OBJS) _data.o $(RESOURCES)
 		productbuild --distribution distribution.xml \
 			$(IMGBASE).pkg ; \
 		rm bk.pkg ; \
-	fi
-	-@if [ $(DARWIN) = YES ] ; \
-	then \
 		productsign --sign $(CERT) $(IMGBASE).pkg $(IMGBASE)-signed.pkg ; \
+		if [ $$? -eq 0 ] ; then \
+			mv $(IMGBASE)-signed.pkg $(IMGBASE).pkg ; \
+		fi \
 	fi
 
 _data.o: sfio$(EXE) munge$(EXE) zz$(EXE) sfioball.zz
