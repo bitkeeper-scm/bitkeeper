@@ -657,7 +657,7 @@ given revision as follows:
 .DE
 For example:
 .DS
-bk -r log -r+ -hnd'$if(:DPN|1.0: != :DPN:){rename :DPN|1.0: => :DPN:}'
+bk -U log -r+ -hnd'$if(:DPN|1.0: != :DPN:){rename :DPN|1.0: => :DPN:}'
 .DE
 .SH EXAMPLES
 To extract a key, which is a stable internal name for a changeset:
@@ -666,7 +666,7 @@ bk changes -r1.234 -nd:MD5KEY:
 .DE
 To count up all the deltas in all user files:
 .DS
-bk -Ur log -nd:REV: | wc -l
+bk -U log -nd:REV: | wc -l
 .DE
 List users who have made changes in a subdirectory in the last month:
 .DS
@@ -678,11 +678,11 @@ bk changes -nd'$if(:MERGE:){merge}' | wc -l
 .DE
 To see the number of merges in user files:
 .DS
-bk -Ur log -nd'$if(:MERGE:){merge}' | wc -l
+bk -U log -nd'$if(:MERGE:){merge}' | wc -l
 .DE
 Count up lines inserted by a particular user in all non-merge deltas:
 .DS
-bk -Ur log -nd'$if(:USER: = joe && !:MERGE:){:LI:}' |
+bk -U log -nd'$if(:USER: = joe && !:MERGE:){:LI:}' |
 awk '{ lines += $1 } END { print lines }'
 .DE
 Note that the preceding example uses new features in the 

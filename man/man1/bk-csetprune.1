@@ -79,7 +79,7 @@ created in the
 subdirectory, including all deleted and/or moved
 files:
 .DS
-bk -r log -hr+ -nd:ROOTKEY: | grep '|junk/'
+bk -A log -hr+ -nd:ROOTKEY: | grep '|junk/'
 .DE
 .SH EXAMPLE
 .LP
@@ -109,10 +109,10 @@ bk clone master src
 bk clone master docs
 # Remove the docs files from the src repository
 cd src
-bk -r log -hr+ -nd:ROOTKEY: | grep '|docs/' | bk csetprune
+bk -A log -hr+ -nd:ROOTKEY: | grep '|docs/' | bk csetprune
 # Remove the src files from the docs repository
 cd ../docs
-bk -r log -hr+ -nd:ROOTKEY: | grep '|src/' | bk csetprune
+bk -A log -hr+ -nd:ROOTKEY: | grep '|src/' | bk csetprune
 .DE
 .SH "SEE ALSO"
 .SA newroot

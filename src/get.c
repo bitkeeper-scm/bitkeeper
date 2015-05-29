@@ -63,7 +63,7 @@ get_main(int ac, char **av)
 	}
 
 	while ((c =
-	    getopt(ac, av, "A;a;BCDeFgG:hi;klM|N;pPqr;RSstTUx;", lopt)) != -1) {
+	    getopt(ac, av, "A;a;BDeFgG:hi;klM|N;pPqr;RSstTUx;", lopt)) != -1) {
 		if (checkout && (c != 310) && !strchr("NqRTU", c)) {
 			fprintf(stderr, "checkout: no options allowed\n");
 			exit(1);
@@ -77,7 +77,6 @@ get_main(int ac, char **av)
 			if (flags == -1) usage();
 			break;
 		    case 'B': skip_bin = 1; break;
-		    case 'C': getMsg("get_C", 0, 0, stdout); return (1);
 		    case 'D': getdiff++; break;			/* doc 2.0 */
 		    case 'l':					/* doc 2.0 co */
 		    case 'e': flags |= GET_EDIT; break;		/* doc 2.0 */

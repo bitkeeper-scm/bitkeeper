@@ -85,7 +85,7 @@ diffs_main(int ac, char **av)
 	unless (getenv("_BK_OLDSTYLE_DIFFS")) dop.out_unified = 1;
 	dop.out_header = 1;
 	while ((c = getopt(ac, av,
-		    "@|a;A;bBcC|d;eF:fhHL|l|nNpr;R|s|Su|vw", lopts)) != -1) {
+		    "@|a;A;bBcd;eF:fhHL|l|nNpr;R|s|Su|vw", lopts)) != -1) {
 		switch (c) {
 		    case 'A':
 			flags |= GET_ALIGN;
@@ -97,7 +97,6 @@ diffs_main(int ac, char **av)
 		    case 'b': dop.ignore_ws_chg = 1; break;	/* doc 2.0 */
 		    case 'B': /* unimplemented */    break;	/* doc 2.0 */
 		    case 'c': dop.out_unified = 0;   break;	/* doc 2.0 */
-		    case 'C': getMsg("diffs_C", 0, 0, stdout); exit(0);
 		    case 'e': empty = 1; break;			/* don't doc */
 		    case 'F': pattern = strdup(optarg); break;
 		    case 'f': force = 1; break;

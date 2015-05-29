@@ -61,7 +61,7 @@ ls /BitKeeper/tmp	# look for parkfile-NUM
 mv problem_file problem_file.tmp
 bk clean
 bk unlock problem_file
-bk -r check -ac
+bk repocheck
 bk status		# make sure no new changes have been made
 bk unpull
 bk unpark
