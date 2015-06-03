@@ -1350,6 +1350,7 @@ __install()
 				__register_dll "$DEST"/BkShellX64.dll
 			fi
 		fi
+		test X$UPGRADE != X && { echo;  bk version; }
 	fi
 
 	test $CRANKTURN = YES && exit 0

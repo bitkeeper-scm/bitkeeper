@@ -12,7 +12,7 @@ endif
 REPO   := $(shell basename "`bk -P root`")
 LIBDIR	= lib
 GUIS	= revtool citool helptool difftool csettool fmtool fm3tool \
-	  msgtool renametool setuptool installtool
+	  msgtool renametool setuptool installtool outputtool
 TCLWRAP	= ../tclwrap
 DOIT	= ../t/doit
 GUITEST = ../t/guitest.tcl
@@ -141,3 +141,14 @@ installtool: ../port/$(SYS)_platform.tcl ../utils/installtool.tcl \
 	@(echo 'wm withdraw .' ; cat $^ ;\
 	 echo "image create photo bklogo -data {`../bk base64<../gui/imgsrc/bklogo.gif`}";\
 	 echo 'main') | $(TCLWRAP) > $(LIBDIR)/installtool
+
+outputtool: $(COMMON) outputtool.l
+	@(	echo 'wm withdraw .' ;		\
+		cat $(filter %.tcl,$^) ;	\
+		echo ; echo 'L {' ; echo ;	\
+		for f in $(filter %.l,$^) ; do	\
+			echo "#line 1 \"$$f\"";	\
+			cat $$f ;		\
+		done ;				\
+		echo '}' ; 		\
+	) | $(TCLWRAP) > $(LIBDIR)/outputtool

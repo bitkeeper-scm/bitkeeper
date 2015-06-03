@@ -166,7 +166,7 @@ echo $N Create local upgrade area ...................................$NL
 cd "$HERE"
 BK_INSTALLER=
 # Lazy way to get full path
-find "$BKSRC"/utils -name 'bk*.exe' -o -name 'bk*.bin' > /tmp/bk$$
+find "$BKSRC"/utils -name 'bk*-console-setup.exe' -o -name 'bk*.bin' > /tmp/bk$$
 test `wc -l < /tmp/bk$$` -gt 1 && {
 	echo skipped
 	$RM -f /tmp/bk$$

@@ -12,8 +12,10 @@ ifeq "$(OSTYPE)" "msys"
 	H=../win32.h
 	CFLAGS=-Os
 	LD=$(CC)
-	LIBS = -lws2_32
+	LIBS = -lws2_32 -lcomctl32
 	RESOURCES=resources.o
+	PROGRESS=progress.o
+	WINAPP=-mwindows
 	SO=so
 	STRIPOPTS=
 	DARWIN=NO
@@ -23,6 +25,9 @@ ifeq "$(OSTYPE)" "msys"
 	PASS=BMstuff1
 	TSURL=http://timestamp.comodoca.com/authenticode
 	BKGUI=$(BINDIR)/gui/bin/bkgui$(EXE)
+	EXTRACT_OBJ=extractor.o extractor-console.o
+	MANIFEST=installer.manifest
+	CONSOLE_IMAGE=$(IMGBASE)-console$(EXT)
 else
         SYS=unix
 	EXE=
@@ -31,6 +36,8 @@ else
 	CFLAGS=-Os
 	LD=$(CC)
 	RESOURCES=
+	PROGRESS=
+	WINAPP=
 	SO=dll
 	STRIPOPTS=
 	BKGUI=$(BINDIR)/gui/bin/bkgui$(EXE)
@@ -46,6 +53,9 @@ else
 # build will simply not sign the .pkg file.
 		CERT='Developer ID Installer: BitMover, Inc. (2265G6A886)'
 	endif
+	EXTRACT_OBJ=extractor.o
+	MANIFEST=
+	CONSOLE_IMAGE=
 endif
 SYSTEM_OBJS=../libc/libc.a
 SFIO=sfio$(EXE)
@@ -55,15 +65,23 @@ VERS_NO := $(subst bk-,,$(VERS))
 IMGBASE:= $(shell bk get -qS bk_version; echo $(VERS)-`./bk_version`)
 IMAGE:= $(IMGBASE)$(EXT)
 IMAGE_NAME:= $(IMGBASE)-setup
+IMAGEDEPS:= $(RESOURCES) $(PROGRESS) _data.o
 
 all image: $(BINDIR)/bk$(EXE) $(IMAGE)
-	strip $(IMAGE)
-	@test ! -x "$(SIGNTOOL)" || \
-	    "$(SIGNTOOL)" sign -t $(TSURL) -f $(CERT) -p $(PASS) $(IMAGE)
+	strip $(IMAGE) $(CONSOLE_IMAGE)
+	@test ! -x "$(SIGNTOOL)" || { \
+	    "$(SIGNTOOL)" sign -t $(TSURL) -f $(CERT) -p $(PASS) $(IMAGE) ; \
+	    "$(SIGNTOOL)" sign -t $(TSURL) -f $(CERT) -p $(PASS) $(CONSOLE_IMAGE) ; \
+	}
 
-$(IMAGE): installer.manifest extractor.o $(SYSTEM_OBJS) _data.o $(RESOURCES)
-	$(LD) $(LDFLAGS) extractor.o $(SYSTEM_OBJS) _data.o $(LIBS) \
-	    $(RESOURCES) -o $@
+$(IMAGE): $(MANIFEST) $(EXTRACT_OBJ) $(SYSTEM_OBJS) $(IMAGEDEPS)
+	$(LD) $(LDFLAGS) extractor.o $(SYSTEM_OBJS) _data.o \
+	    $(RESOURCES) $(PROGRESS) -o $@ $(WINAPP) $(LIBS)
+ifeq ("$(OSTYPE)","msys")
+	@echo Building Windows Console Image
+	$(LD) $(LDFLAGS) extractor-console.o $(SYSTEM_OBJS) _data.o \
+	    $(RESOURCES) -o $(CONSOLE_IMAGE) $(LIBS)
+endif
 	@$(RM) -f _data.o
 	@if [ $(DARWIN) = YES ] ; \
 	then \
@@ -118,6 +136,19 @@ rcver.h: FORCE
 	$(Q)echo '#define VER_ORIGINALFILENAME_STR "$(IMAGE)\0"' >> $@
 	$(Q)../bk.exe L ./rcversion.l >> $@
 
+count.h: FORCE
+	echo "#define NUMFILES " \
+	    `find ../tmp/bitkeeper -type f | wc -l` > count.h
+
+progress.o: count.h progress.h resources.h progress.c
+	$(CC) -c $(CFLAGS) $(CPPFLAGS) progress.c
+
+extractor.o: progress.h resources.h extractor.c
+	$(CC) -c $(CFLAGS) $(CPPFLAGS) extractor.c
+
+extractor-console.o: progress.h resources.h extractor.c
+	$(CC) -o $@ -c $(CFLAGS) -DCONSOLE $(CPPFLAGS) extractor.c
+
 sfio_unpack.o: sfio_unpack.c
 	$(CC) -c $(CFLAGS) $(CPPFLAGS) -I.. sfio_unpack.c
 
@@ -152,7 +183,8 @@ zz$(EXE): zz.o
 
 .PHONY: clean
 clean:
-	$(RM) -f _data _data.c _data.o a.out munge$(EXE) zz \
+	$(RM) -f _data _data.c _data.o a.out count.h rcver.h \
+		munge$(EXE) zz \
 		core* bk-*.bin *.o *.exe *.obj *.pdb *.ilk sfio *.zz \
 		installtool inskeys *.pkg
 	$(RM) -rf BitKeeper

@@ -1,0 +1,64 @@
+Improving the Windows Installer
+===============================
+
+.tl;dr Proposing that we build both a console (text)
+and a GUI installer on Windows.
+
+The following is a bit of history/rationale for the work in
+http://work:9000/RTI/2006-01-06-002[RTI 2006-01-06-002]
+
+On Windows, an executable may or may not have a console allocated to
+it.  In Windows parlance, a console is a terminal style window that
+can deal with the standard input and output handles.  If the
+executable is started from an application that is not a console (such
+as Explorer) then a console window is created.
+
+Oddly, this console allocation is a linker option.
+
+To date, our installer has been a console application and all of the
+output from the unpacking of the installation-ware has been directed
+at that console window.  After this activity ends, our own TCL
+installtool is run (usually) and the window remains on the screen
+until the installation is complete or aborted.
+
+The feeling is that this is ugly and undesirable.
+
+Absent the console window, the interval from installer start to GUI
+appearing is too long (order 5+ seconds).  In answer, code was added
+to add progress and informational dialogs to let the user know that
+things were happening.
+
+For the use-case of a person downloading the installer and running it,
+we're done.  Of course, we have other use-cases.
+
+One of them is upgrade.  In the upgrade case, the installer is invoked
+with the `-u` option and it will not open our installtool GUI.
+Rather, it will output to the console in which it was started.  The
+bad news is that if the installer is linked such that there is no
+console then the output is "lost" _and_ the program runs
+asynchronously (equivalent of unix `&`).  The GUI progress dialogs
+appear during the unpack but nothing else.  That lead to the birth of the
+"Upgrading..." dialog.  After that the lack of information about
+success or failure lead to `outputtool`.
+
+None of this works, however, if the user is not using _the_ console
+but is rather connected remotely via `ssh/rsh`.  The code for the GUI
+elements does run but it not displayed anywhere (Google hints that
+there are rumours that those windows are sent to something a special
+session and a registry tweak could make them visible but we are deep
+into the weeds).  Moreover, dialogs/windows in this particular limbo
+that require feedback (such as a click on OK) have no way of getting
+that leading to the appearance of a hung or stuck process.
+
+Additionally,  because  the  GUI  app handles  the  license  prompting
+differently, our own installer regression  fails as it cannot test for
+that license prompting.
+
+Finally, all of this is incompatible with our cluster.
+
+Thus it seems that a GUI installer (ie without console) seems
+fundamentally incompatible with much of our infrastructure.
+
+An obvious alternative is to have both.  A GUI installer for the
+"average Windows user" case and the original console installer for the
+"upgrade/remote/cluster" case.

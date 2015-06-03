@@ -3,13 +3,18 @@
  * Copyright (c) 1999 Larry McVoy
  */
 #include "system.h"
+#if defined(WIN32) && !defined(CONSOLE)
+#include "resources.h"
+#include "progress.h"
+#endif
 
 #ifndef MAXPATH
 #define	MAXPATH		1024
 #endif
 #ifdef	WIN32
 #define	PFKEY		"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion"
-#define	WIN_UNSUPPORTED	"Windows 2000 or later required to install BitKeeper"
+#define	WIN_UNSUPPORTED	"Windows Vista or later required to install BitKeeper"
+#define	WIN_SFIOERROR	"There was an error extracting BitKeeper. Sfio failed."
 #endif
 #define	TMP		"bksetup"
 
@@ -67,7 +72,10 @@ int
 main(int ac, char **av)
 {
 	int	i, c;
-	int	rc = 0, dolinks = 0, embeddedkey = 0;
+	int	rc = 0, embeddedkey = 0;
+#ifndef	WIN32
+	int	dolinks = 0;
+#endif
 	pid_t	pid = getpid();
 	FILE	*f;
 	char	*dest = 0, *bkpath = 0, *tmp = findtmp();
@@ -75,39 +83,50 @@ main(int ac, char **av)
 	char	*p;
 	opts	opts;
 #ifdef	WIN32
+#ifndef	CONSOLE
+	int	stdinfd, stdoutfd, stderrfd;
+	char	*fakestdin, *winlog;
+	FILE	*sfiofd;
+#endif
 	HCURSOR h;
 
 	/* Refuse to install on unsupported versions of Windows */
 
-	/* The following code has been commented out because right now the
-	 * bk installer is a Console application (i.e. if it doesn't have
-	 * a console because the user double-clicked on the icon, a console
-	 * is created. There's a cset in the RTI queue (2005-08-18-001) that
-	 * GUIfies the installer. When that cset gets pulled, this code should
-	 * be used instead of the next block.
-	 *
-	 *unless (win_supported()) {
-	 *	if (hasConsole()) {
-	 *		fprintf(stderr, "%s\n", WIN_UNSUPPORTED);
-	 *		exit(1);
-	 *	} else {
-	 *		MessageBox(0, WIN_UNSUPPORTED, 0, 
-	 *		    MB_OK | MB_ICONERROR);
-	 *		exit(1);
-	 *	}
-	 *}
-	 */
-	 unless (win_supported()) {
-		MessageBox(0, WIN_UNSUPPORTED, 0, MB_OK | MB_ICONERROR);
+	unless (win_supported()) {
+		if (hasConsole()) {
+			fprintf(stderr, "%s\n", WIN_UNSUPPORTED);
+			exit(1);
+		} else {
+			MessageBox(0, WIN_UNSUPPORTED, 0, 
+			    MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
+			exit(1);
+		}
+	}
+
+	if ((p = getenv("OSTYPE")) && streq(p, "msys")
+	    && !getenv("BK_REGRESSION")) {
+		fprintf(stderr, MSYS_ERROR);
 		exit(1);
-	 }
-	 if ((p = getenv("OSTYPE")) && streq(p, "msys")
-	      && !getenv("BK_REGRESSION")) {
-		 fprintf(stderr, MSYS_ERROR);
-		 exit(1);
-	 }
+	}
 	_fmode = _O_BINARY;
-#endif
+#ifndef	CONSOLE
+	close(0);
+	close(1);
+	close(2);
+	fakestdin = aprintf("%s/bk-inst-devnull", tmp);
+	stdinfd = open(fakestdin, O_RDWR | O_CREAT | O_TRUNC, 0664);
+	/*
+	 * should not happen but...
+	 * if we don't get the fds we want, just ignore
+	 */
+	//if (stdinfd != 0) exit(1);
+	winlog = aprintf("%s/bitkeeper_install.log", tmp);
+	stdoutfd = open(winlog, O_WRONLY | O_CREAT | O_TRUNC, 0664);
+	//if (stdoutfd != 1) exit(1);
+	stderrfd = dup(1);
+	//if (stderrfd != 2) exit(1);
+#endif	// !CONSOLE
+#endif	// WIN32
 
 	bzero(&opts, sizeof(opts));
 	prog = av[0];
@@ -176,6 +195,26 @@ main(int ac, char **av)
 	extract("sfioball", data_data, data_size, tmpdir);
 
 	/* Unpack the sfio file, this creates ./bitkeeper/ */
+#if defined(WIN32) && !defined(CONSOLE)
+	/* Windows is slow; output status */
+	progressStart();
+	unless (sfiofd = popen("sfio.exe -im < sfioball", "r")) {
+		progressDone();
+		MessageBox(0, WIN_SFIOERROR, 0, MB_OK | MB_ICONERROR |
+			   MB_SYSTEMMODAL);
+		exit(1);
+	}
+	/* Make stream unbuffered for a smoother progress bar */
+	setvbuf(sfiofd, 0, _IONBF, 0);
+	while (fnext(buf, sfiofd)) {
+		progressStep();
+	}
+	if (pclose(sfiofd)) {
+		perror("sfio");
+		exit(1);
+	}
+	progressDone();
+#else
 	if (system("sfio.exe -imq < sfioball")) {
 		if (errno == EPERM) {
 			fprintf(stderr,
@@ -189,6 +228,7 @@ main(int ac, char **av)
 		exit(1);
 	}
 	symlinks();
+#endif
 
 	/*
 	 * extract the embedded config file
@@ -244,7 +284,9 @@ main(int ac, char **av)
 #endif
 
 	if (dest) {
+#if defined(WIN32) && defined(CONSOLE)
 		putenv("BK_NO_GUI_PROMPT=1");
+#endif
 		buf[0] = 0;
 		/*
 		 * This is silent unless we have an error.  And if there is
@@ -255,8 +297,12 @@ main(int ac, char **av)
 			    goto out;
 		}
 		fprintf(stderr, "Installing BitKeeper in %s\n", dest);
-#ifdef WIN32
-		sprintf(buf, "bk _install %s %s %s \"%s\"",
+#ifdef	WIN32
+		sprintf(buf,
+#ifndef	CONSOLE
+		    "bk outputtool --wait --title=\"BK Install\" "
+#endif
+		    "bk _install -vf %s %s %s \"%s\"",
 		    opts.shellx ? "-l" : "",
 		    opts.scc ? "-s" : "",
 		    opts.upgrade ? "-u" : "",
@@ -286,7 +332,7 @@ main(int ac, char **av)
 #ifdef	WIN32
 		fprintf(stderr, "Running installer...\n");
 		SetCursor(h);
-#endif
+#endif	// WIN32
 		rc = system(buf);
 	}
 
@@ -336,6 +382,16 @@ out:	cd(tmpdir);
 	/*
 	 * Bitchin'
 	 */
+#if defined(WIN32) && !defined(CONSOLE)
+	close(0);
+	unlink(fakestdin);
+	free(fakestdin);
+	fflush(stdout);
+	close(1);
+	close(2);
+	unless (rc) unlink(winlog);
+	free(winlog);
+#endif
 	exit(rc);
 }
 
