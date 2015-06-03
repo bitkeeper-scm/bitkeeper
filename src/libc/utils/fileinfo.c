@@ -254,21 +254,15 @@ Reserved(char *baseName)
  * handles.
  *
  * On Vista, _get_osfhandle() which is documented to return INVALID_HANDLE_VALUE
- * has been observed to return -2.  Grr.
+ * has been observed to return -2.  Grr.  So just close if < 0.
  */
-#define INVALID_HANDLE_VALUE_VISTA ((HANDLE)-2)
 void
 closeBadFds(void)
 {
 	int	i;
-	HANDLE	fh;
 
 	for (i = 0; i < 3; i++) {
-		fh = (HANDLE)_get_osfhandle(i);
-		if ((fh == INVALID_HANDLE_VALUE) ||
-		    (is_vista() && (fh == (HANDLE)INVALID_HANDLE_VALUE_VISTA))) {
-			close(i);
-		}
+		if (_get_osfhandle(i) < 0) close(i);
 	}
 }
 #endif

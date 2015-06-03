@@ -679,15 +679,15 @@ win_supported(void)
 }
 
 /*
- * Return true if OS is Vista
+ * Return true if OS is Vista, win7, win8...
+ * XXX What is this for and is it or will it be invalid?
  */
 int
-is_vista(void)
+has_UAC(void)
 {
 	get_osinfo();
-	return (osinfo.dwMajorVersion == 6);
+	return (osinfo.dwMajorVersion >= 6);
 }
-
 
 /* from http://msdn.microsoft.com/en-us/library/ms684139(VS.85).aspx */
 

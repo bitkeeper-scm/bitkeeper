@@ -22,14 +22,13 @@ private	FILE *dfd;	/* Debug FD */
 			"\\Control\\Session Manager\\Environment"
 #define	USRENVKEY	HKCU "\\Environment"
 
-private void	delete_onReboot(char *path);
 private	char	*path_sansBK(char *path);
 private int	unregister_shellx(char *path);
 
 int
 uninstall(char *path, int upgrade)
 {
-	char	*bkmenu, *data, *envpath, *old_ver, *uninstall_cmd;
+	char	*data, *envpath, *old_ver, *uninstall_cmd;
 	char	**keys = 0, **values = 0;
 	int	i;
 	char	buf[MAXPATH];
@@ -244,31 +243,10 @@ uninstall(char *path, int upgrade)
 		}
 		freeLines(keys, free);
 	}
-	/* Remove Start Menu shortcuts */
-	for (i = 0; i < 2; i++) {
-		bkmenu = bkmenupath(i, 0);
-		if (!bkmenu) continue;
-		sprintf(buf, "%s.old%d", bkmenu, getpid());
-		if (rename(bkmenu, buf)) {
-			/* XXX - complain? */
-			free(bkmenu);
-			continue;
-		}
-		free(bkmenu);
-		if (rmtree(buf)) {
-			fprintf(stderr,
-			    "Could not delete BitKeeper start menus:\n"
-			    "\t%s\nWill be deleted on next reboot.\n",
-			    buf);
-			if (dfd) fprintf(dfd,
-			    "Could not delete BitKeeper start menus:\n"
-			    "\t%s\nWill be deleted on next reboot.\n",
-			    buf);
-			delete_onReboot(buf);
-		}
-	}
 
-	/* Finally remove the BitKeeper_nul file creted by getnull.c */
+	startmenu_uninstall(dfd);
+
+	/* Finally remove the BitKeeper_nul file created by getnull.c */
 	if (GetTempPath(sizeof(buf), buf)) {
 		strcat(buf, "/BitKeeper_nul");
 		if (unlink(buf)) {
@@ -308,7 +286,7 @@ path_sansBK(char *path)
 	return (path);
 }
 
-private void
+void
 delete_onReboot(char *path)
 {
 	char	*id, *cmd;

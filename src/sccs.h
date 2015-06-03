@@ -1489,6 +1489,7 @@ int	getMsgv(char *msg_name, char **bkarg, char *prefix, char b, FILE *outf);
 void	randomBits(char *buf);
 sum_t	almostUnique(void);
 int	uninstall(char *path, int upgrade);
+void	delete_onReboot(char *path);
 int	remote_bk(int quiet, int ac, char **av);
 void	dspec_eval(FILE * out, sccs *s, ser_t d, char *start);
 void	dspec_printline(sccs *s, FILE *out);
@@ -1543,11 +1544,25 @@ int	keycmp(const void *k1, const void *k2);
 int	keycmp_nopath(char *k1, char *k2);
 int	key_sort(const void *a, const void *b);
 int	earlier(sccs *s, ser_t a, ser_t b);
+#ifdef	WIN32
 int	startmenu_list(u32, char *);
 int	startmenu_rm(u32, char *);
 int	startmenu_get(u32, char *path);
-int	startmenu_set(u32, char *, char *, char *, char *);
-char	*bkmenupath(u32, int);
+int	startmenu_set(u32, char *, char *, char *, char *, char *);
+void	startmenu_install(char *dest);
+void	startmenu_uninstall(FILE *log);
+char	*bkmenupath(u32 user, int create, int isthere);
+#else
+int	__startmenu_generic(void);
+void	*__startmenu_generic_ptr(void);
+#define	startmenu_list(...)		__startmenu_generic()
+#define	startmenu_rm(...)		__startmenu_generic()
+#define	startmenu_get(...)		__startmenu_generic()
+#define	startmenu_set(...)		__startmenu_generic()
+#define	startmenu_install(...)		__startmenu_generic()
+#define	startmenu_uninstall(...)	__startmenu_generic()
+#define	bkmenupath(...)			__startmenu_generic_ptr()
+#endif
 void	repos_update(sccs *cset);
 char	*bk_searchFile(char *base);
 void	dspec_collapse(char **dspec, char **begin, char **end);

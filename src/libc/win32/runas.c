@@ -28,7 +28,7 @@ runas(char *cmd, char *param, int async)
 	memset(&seinfo, 0, sizeof(SHELLEXECUTEINFO));
 	seinfo.cbSize = sizeof(SHELLEXECUTEINFO);
 	seinfo.fMask = SEE_MASK_NOCLOSEPROCESS;
-	if (is_vista()) {
+	if (has_UAC()) {
 		seinfo.lpVerb = "runas";
 	} else {
 		seinfo.lpVerb = "open";
