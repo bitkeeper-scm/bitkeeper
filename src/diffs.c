@@ -7,6 +7,7 @@
 typedef	struct dstat {
 	char	*name;		   /* name of the file */
 	int	adds, dels, mods;  /* lines added/deleted/modified */
+	u32	bin_files:1;	   /* binary files differ */
 } dstat;
 
 private int	nulldiff(char *name, df_opt *dop);
@@ -351,11 +352,14 @@ err:		FREE(pattern);
 		 * XXX - need to catch a request for annotations w/o 2 revs.
 		 */
 		dop.adds = dop.dels = dop.mods = 0;
+		dop.bin_files = 0;
 		if (whodel) s->whodel = sccs_findrev(s, r2);
 		rc = sccs_diffs(s, r1, r2, &dop, fout);
-		if (dop.out_diffstat && (dop.adds || dop.dels || dop.mods)) {
+		if (dop.out_diffstat &&
+		    (dop.adds || dop.dels || dop.mods || dop.bin_files)) {
 			ds = addArray(&diffstats, 0);
 			ds->name = strdup(s->gfile);
+			ds->bin_files = dop.bin_files;
 			ds->adds = dop.adds;
 			ds->dels = dop.dels;
 			ds->mods = dop.mods;
@@ -480,10 +484,14 @@ printHistogram(dstat *diffstats)
 		m = (int)((double)ds->dels * factor);
 		for (i = 0; i < m; i++) hist[n++] = '-';
 		hist[n] = 0;
-		printf("%-*.*s | %*d %s\n", maxlen, maxlen,
-		    ds->name,
-		    DIGITS(maxdiffs),
-		    ds->adds + ds->dels + ds->mods, hist);
+		if (ds->bin_files) {
+			printf("%-*.*s |binary\n", maxlen, maxlen, ds->name);
+		} else {
+			printf("%-*.*s | %*d %s\n", maxlen, maxlen,
+			    ds->name,
+			    DIGITS(maxdiffs),
+			    ds->adds + ds->dels + ds->mods, hist);
+		}
 		files++;
 		adds += ds->adds;
 		dels += ds->dels;

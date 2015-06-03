@@ -1001,6 +1001,7 @@ typedef struct {
 typedef struct {
 	int	flags;			/* flags (transitional) */
 	int	adds, dels, mods;	/* lines added/deleted/modified */
+	u32	bin_files:1;		/* Binary files differ */
 	char	*out_define;		/* diff -D */
 	pcre	*pattern;		/* compiled pattern for diff -p */
 	int	context;		/* context for unified output
