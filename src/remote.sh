@@ -157,9 +157,18 @@ case $CMD in
 				rm -rf /build/.tmp-$BK_USER
 				exit 0
 			}
+			## Make sure the permissions are right for the key
+			COPY=ssh-keys/images.secret
+			bk get -qp ssh-keys/images.key > $COPY
+			chmod 600 $COPY
 			IMG=$TAG-${ARCH}-setup.exe
-			DEST="work:$DEST"
-			CP=rcp
+			DEST="images@work:$DEST"
+			CP="scp -i $COPY"
+			# fix windows perms
+			chmod 755 /build/.images/$IMG || {
+				echo "Could not find image /build/.images/$IMG"
+				exit 1
+			}
 		else
 			IMG=$TAG-$ARCH.bin
 			test -d $DEST || mkdir $DEST
