@@ -14532,7 +14532,7 @@ getHistoricPath(sccs *s, char *rev)
 	ser_t	d;
 	char	*p, *ret;
 
-	d = sccs_findrev(s, rev);
+	d = findrev(s, rev);
 	if (d && HAS_PATHNAME(s, d)) {
 		/*
 		 * bk changes sets s->comppath which will cause :DPN:
