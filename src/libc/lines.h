@@ -25,6 +25,8 @@
  * buf = joinLines(":", s)
  *	return one string which is all the strings glued together with ":"
  *	does not free s, caller must free s.
+ * buf = findLine(lines, needle);
+ *	Return the index the line in lines that matches needle
  */
 #ifndef	_LIB_LINES_H
 #define	_LIB_LINES_H
@@ -100,6 +102,7 @@ int	lines2File(char **space, char *file);
 void	uniqLines(char **space, void(*freep)(void *ptr));
 int	sameLines(char **p, char **p2);
 char	*shellquote(char *in);
+int	findLine(char **haystack, char *needle);
 
 int	parallelLines(char **a, char **b,
     int (*compar)(const void *, const void *),

@@ -89,6 +89,17 @@ addLine(char **space, void *line)
 	return (space);
 }
 
+int
+findLine(char **haystack, char *needle)
+{
+	int	i;
+
+	EACH(haystack) {
+		if (streq(needle, haystack[i])) return (i);
+	}
+	return (0);
+}
+
 /*
  * Adds 1 new element to array and copies 'x' into, if
  * x==0 then the new item is cleared.

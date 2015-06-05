@@ -170,8 +170,7 @@ do_export project project.git || fail
 cmp_repos project project.git || fail
 echo OK
 
-
-### NESTED TESTS
+echo ---- nested tests
 
 echo $N Test a simple nested export..................................$NL
 cd "$HERE"
@@ -229,3 +228,110 @@ do_export product product.git || fail
 cmp_repos product product.git || fail
 echo OK
 
+echo ---- license checks
+
+echo $N Set up a repo that does not support fast-export .............$NL
+cd "$HERE"
+commercial no-export
+bk edit $Q BitKeeper/etc/config
+grep -v lic < BitKeeper/etc/config > BitKeeper/etc/config.new
+cat >> BitKeeper/etc/config.new <<EOF
+license:$BKL_pro
+licsign1:$BKL_p1
+licsign2:$BKL_p2
+licsign3:$BKL_p3
+EOF
+mv BitKeeper/etc/config.new BitKeeper/etc/config
+bk lease flush -a
+echo OK
+
+echo $N Test that we have no fast-export command ....................$NL
+bk fast-export > GOT 2>&1
+echo 'fast-export: command not found' > WANT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test bk fast-export --help does not work ....................$NL
+bk fast-export --help > GOT 2>&1
+echo 'No help for fast-export, check spelling.' > WANT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test bk help fast-export does not work ......................$NL
+bk help fast-export > GOT 2>&1
+echo 'No help for fast-export, check spelling.' > WANT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test bk help -k fast-export does not work ...................$NL
+bk help -k fast-export > GOT 2>&1
+rm WANT
+touch WANT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test bk help -p All does not list fast-export ...............$NL
+bk help -p All > GOT 2>&1
+grep -q 'fast-export' GOT && fail
+echo OK
+
+# See man/man2help/help2sum.pl for where this list of aliases came from
+echo $N Test bk help -p topic does not list fast-export .............$NL
+bk help -p topic > GOT 2>&1
+grep -q 'fast-export' GOT && fail
+echo OK
+
+echo $N Test bk help -p topics does not list fast-export ............$NL
+bk help -p topics > GOT 2>&1
+grep -q 'fast-export' GOT && fail
+echo OK
+
+echo $N Test bk help -p command does not list fast-export ...........$NL
+bk help -p command > GOT 2>&1
+grep -q 'fast-export' GOT && fail
+echo OK
+
+echo $N Test bk help -p commands does not list fast-export ..........$NL
+bk help -p commands > GOT 2>&1
+grep -q 'fast-export' GOT && fail
+echo OK
+
+echo $N Test bk help -p Utility does not list fast-export ...........$NL
+bk help -p All > GOT 2>&1
+grep -q 'fast-export' GOT && fail
+echo OK
+
+echo $N Set up a repo that does support fast-export .................$NL
+cd "$HERE"
+commercial export
+echo OK
+
+echo $N Test that we have fast-export command .......................$NL
+bk fast-export > GOT 2>&1
+test -s GOT || fail
+echo OK
+
+echo $N Test bk fast-export --help works ............................$NL
+bk fast-export --help > GOT 2>&1
+grep -i -q git GOT || fail
+echo OK
+
+echo $N Test bk help fast-export works ..............................$NL
+bk help fast-export > GOT 2>&1
+grep -i -q git GOT || fail
+echo OK
+
+echo $N Test bk help -k fast-export works ...........................$NL
+bk help -k fast-export > GOT 2>&1
+grep -q 'bk fast-export' GOT || fail
+echo OK
+
+echo $N Test bk help -p All lists fast-export .......................$NL
+bk help -p All > GOT 2>&1
+grep -q 'bk fast-export' GOT || fail
+echo OK
+
+echo $N Test bk help -p Utility lists fast-export ...................$NL
+bk help -p All > GOT 2>&1
+grep -q 'bk fast-export' GOT || fail
+echo OK
