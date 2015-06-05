@@ -1,15 +1,17 @@
 #include "system.h"
 #include "sccs.h"
+#include "logging.h"
 
 int
 help_main(int ac,  char **av)
 {
 	FILE	*f, *f1;
 	pid_t	pid = 0;
-	int	c, i = 0, use_pager = 1;
+	int	c, i = 0, use_pager = 1, grep = 0;
 	char	*opt = 0, *synopsis = "";
 	char	*file = 0;
 	char 	*new_av[2] = {"help", 0 };
+	char	**ALL = 0;
 	char	buf[MAXLINE];
 	char	out[MAXPATH];
 
@@ -24,6 +26,15 @@ help_main(int ac,  char **av)
 		    default: bk_badArg(c, av);
 		}
 	}
+
+	/* Needs to match what is in man/man2help/help2sum.pl */
+	ALL = addLine(ALL, "All");
+	ALL = addLine(ALL, "topic");
+	ALL = addLine(ALL, "topics");
+	ALL = addLine(ALL, "command");
+	ALL = addLine(ALL, "commands");
+	ALL = addLine(ALL, "Utility");
+
 	bktmp(out);
 	if (av[i=optind] && 
 	    (streq(av[i], "bkl") ||
@@ -42,6 +53,10 @@ help_main(int ac,  char **av)
 	}
 	if (opt) {
 		for (i = optind; av[i]; i++) {
+			if (streq("fast-export", av[i]) &&
+			    bk_notLicensed(0, LIC_EXPORT, 1)) {
+				continue;
+			}
 			if (file) {
 				sprintf(buf,
 				    "bk helpsearch -f'%s' -%s '%s' >> '%s'",
@@ -57,6 +72,13 @@ help_main(int ac,  char **av)
 	}
 	upgrade_maybeNag(out);
 	for (i = optind; av[i]; i++) {
+		if (streq("fast-export", av[i]) &&
+		    bk_notLicensed(0, LIC_EXPORT, 1)) {
+			fprintf(stderr,
+			    "No help for %s, check spelling.\n", av[i]);
+			continue;
+		}
+		if (findLine(ALL, av[i])) grep = 1;
 		if (file) {
 			sprintf(buf,
 			    "bk gethelp %s -f'%s' '%s' '%s' >> '%s'",
@@ -79,7 +101,14 @@ print:
 	if (use_pager) pid = mkpager();
 	f = fopen(out, "rt");
 	f1 = (*synopsis) ? stderr : stdout;
+	/*
+	 * We don't call bk_notLicensed() here because we don't want
+	 * to fetch a new lease every time when it not license.  This
+	 * will fetch a new lease daily
+	 */
+	if (grep && (LIC_EXPORT & lease_bklCurrentBits(0))) grep = 0;
 	while (fgets(buf, sizeof(buf), f)) {
+		if (grep && strstr(buf, "fast-export")) continue;
 		fputs(buf, f1);
 		if (fflush(f1)) break;	/* so the pager can quit */
 	}

@@ -408,11 +408,11 @@ EOF
 	BKL_I2=bLldWb1QchmZ3I6eJ6bBdMBrMbi0eFAwo3vdnYiTHPwSjCbW4CbeqjqQtMrPrnRU
 	BKL_I3=+TXE6KhXDsgvFut4axrE5RMvAN5/D6S3XtVxskbE15EMuNVowtDovnbIg3CWvw==
 
-	# Valid PRO P --airgap --bkweb --bugdb --import --bam --eula=pro --nested --nested2
-	BKL_PRO=BKL655ad8ade368c808000012fdfffff42e572b43
-	BKL_P1=YgAAAo4AAAADgQAAAABmjwgkn1bhM3atjSaJI1x9fJM3BYmVghxiYPtJ25y0P6dh
-	BKL_P2=1LDvtP8H26zLmgCcBDZBXjdvnwR29STGef6BB1SR0Ok3ZK1sRglO6Mk0ic26x+Xl
-	BKL_P3=cNMne0IAuy1kG+PmZhQMli/aIgdUOVB4HKOllukgw3jmSGU7La8m3LWCsq8RZQ==
+	# Valid PRO P --airgap --bkweb --bugdb --import --bam --eula=pro --nested --nested2 --adm --et --export
+	BKL_PRO=BKL657536f3a368c808000012fdfffff42e572b430023
+	BKL_P1=YgAAAo4AAAADgQAAAAMGeTn0WZEdyu3wiHJUj1H5tXxqM1XbjgDxvFLlK8xH2Sbu
+	BKL_P2=XIyo6q1CXLDhF/OwBC8P7pjgJL1zozkM2KGJAGO6l8wQ70itmisba3UIouCClnwv
+	BKL_P3=hX7tMVwUG5hbXUhwxmTGSdzMkUcdc9BgEj5XEQL60Z8uZaTo7FMF6uQ9YHlQyw==
 
 	# Valid pro p --airgap --bkweb --bugdb --import --eula=pro
 	BKL_pro=BKL655ad8adf368c8080000121dfffff42e572b43
