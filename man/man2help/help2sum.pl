@@ -83,6 +83,7 @@ sub summary
 	open(F, ">$section.done");
 	print F "help://$section\n";
 	print F "help://$section.sum\n";
+	# If you change this list then change help.c and t.git-exporter
 	if ($section eq "All") {
 		print F "help://topics\n";
 		print F "help://topic\n";

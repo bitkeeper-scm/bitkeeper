@@ -23,11 +23,7 @@
 # if it does not, we know that it didn't do the right thing.
 
 echo $N Make sure bk help works .....................................$NL
-bk help bk > OUT 2> ERR || {
-	echo failed
-	echo OUT
-	exit 1
-}
+bk help bk > OUT || fail -f OUT
 head -1 < OUT | grep -q '^bk' || {
 	echo failed
 	echo Expected to start with bk
