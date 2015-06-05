@@ -35,6 +35,20 @@ else
 fi
 
 failed() {
+	test x$1 = x-f && {
+		__outfile=$2
+		shift;shift;
+	}
+	case "X$BASH_VERSION" in
+		X[234]*) eval 'echo failed in line $((${BASH_LINENO[0]} - $BOS))';;
+		*) echo failed ;;
+	esac
+	test "$*" && echo $*
+	test "$__outfile" && {
+		echo ----------
+		cat "$__outfile"
+		echo ----------
+	}
 	echo '*****************'
 	echo '!!!! Failed! !!!!'
 	echo '*****************'
@@ -42,7 +56,7 @@ failed() {
 }
 
 case $CMD in
-    build|save|release|trial)
+    build|save|release|trial|nightly)
 	eval $TS > $START
 	exec 3>&2
 	exec > /build/$LOG 2>&1
@@ -91,7 +105,7 @@ case $CMD in
 
 	cd $BKDIR/src
 	# If tagged tree, clear obj cache
-	test "`bk changes -r+ -d'$if(:SYMBOL:){1}'`" && {
+	test $CMD != nightly -a "`bk changes -r+ -d'$if(:SYMBOL:){1}'`" && {
 		echo Tagged tree: removing /build/obj
 		/bin/rm -rf /build/obj/*
 		# On Windows the obj cache might be somewhere else
@@ -102,32 +116,35 @@ case $CMD in
 	bk -U get -qST || true
 	make build || failed
 	./build image || failed
-	./build install || failed
-	test $CMD = trial && {
+	test $CMD != nightly && { ./build install || failed ; }
+	test $CMD = trial -o $CMD = nightly && {
 		# Note: install non-trial bits in case we
 		# don't crank for 3 weeks!  Then build the trial image:
 		./build trial-image || failed
 	}
-	# run tests
-	{ ./build test 2>&1 || failed; } | \
-		while read line
-		do
-			echo "$line"
-			TEST=`echo "$line" | sed -n 's/ERROR: Test \(.*\) failed with.*/\1/p'`
-			if [ -n "$TEST" ]
-			then
-				(
-				printf "%-14s failed %-10s" $host $TEST
-				if [ -s "$ELAPSED" ]
+	if [ $CMD != nightly ]
+	then
+		# run tests
+		{ ./build test 2>&1 || failed; } | \
+			while read line
+			do
+				echo "$line"
+				TEST=`echo "$line" | sed -n 's/ERROR: Test \(.*\) failed with.*/\1/p'`
+				if [ -n "$TEST" ]
 				then
-					printf " %s elapsed\n" \
-						`cat "$ELAPSED"`
-				else
-					echo
+					(
+					printf "%-14s failed %-10s" $host $TEST
+					if [ -s "$ELAPSED" ]
+					then
+						printf " %s elapsed\n" \
+							`cat "$ELAPSED"`
+					else
+						echo
+					fi
+					) 1>&3
 				fi
-				) 1>&3
-			fi
-		done
+			done
+	fi
 
 	# this should never match because it will cause build to exit
 	# non-zero
@@ -135,7 +152,7 @@ case $CMD in
 
 	test -d /build/.images || mkdir /build/.images
 	cp utils/bk-* /build/.images
-	test $CMD = release -o $CMD = trial && {
+	test $CMD = release -o $CMD = trial -o $CMD = nightly && {
 		# Copy the image to /home/bk/<repo name>
 		TAG=`bk changes -r+ -d:TAG:`
 		test x$TAG = x && {
@@ -149,6 +166,7 @@ case $CMD in
 		}
 		DEST="/home/bk/images/$TAG"
 		test $CMD = trial && DEST="$DEST-trial"
+		test $CMD = nightly && DEST="/home/bk/images/nightly"
 		if [ X$OSTYPE = Xmsys -o X$OSTYPE = Xcygwin ] ; 
 		then	# we're on Windows
 			# We only want images done on win7-vm
@@ -200,6 +218,10 @@ case $CMD in
 		test X$OSTYPE = Xcygwin || rm -f /build/.${BKDIR}.$BK_USER
 	}
 	rm -rf /build/.tmp-$BK_USER
+	test $CMD = nightly && {
+		# make status happy
+		echo "All requested tests passed, must be my lucky day"
+	}
 	;;
 
     clean)

@@ -474,8 +474,12 @@ upgrade_maybeNag(char *out)
 	if (getenv("_BK_ALWAYS_NAG")) goto donag;
 	if (strcmp(new_utc, bk_utc) <= 0) return;
 
-	/* wait for the new bk to be out for a while */
-	if (((now - sccs_date2time(bk_utc, 0)) > MONTH) &&
+	/*
+	 * Wait for the new bk to be out for a while, unless we are a
+	 * beta version.
+	 */
+	if (!strstr(bk_vers, "-beta-") &&
+	    ((now - sccs_date2time(bk_utc, 0)) > MONTH) &&
 	    ((now - sccs_date2time(new_utc, 0)) < MONTH)) {
 		return;
 	}

@@ -27,6 +27,9 @@ LOG	:= $(shell echo LOG-`bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 JUNK	:= $(shell bk -Ur. -1 -^G checkout)
 
+## Which hosts are used for producing nightly builds
+NIGHTLY_HOSTS	:= macos106 win7-vm debian40 debian40-64
+
 ifeq "$(OSTYPE)" "msys"
 	SYS=win32
 	EXE=.exe
@@ -541,30 +544,48 @@ cranksave: crank.sh remote.sh
 crankstatus: crank.sh remote.sh
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh status
 
-crankrelease cranktrial: crank.sh remote.sh
+crankrelease cranktrial nightly: crank.sh remote.sh
 	@(TAG=$(shell bk changes -r+ -d:TAG:) ; \
 	test x$$TAG = x && { \
 		echo Cannot crankrelease with a non-tagged tip ; \
 		exit 1 ; \
 	} ; \
-	if [ $@ = cranktrial ]; \
-	then	TYPE=trial; DIR=/home/bk/images/$$TAG-trial; \
-	else	TYPE=release; DIR=/home/bk/images/$$TAG; \
-	fi; \
+	case $@ in \
+	cranktrial ) \
+		TYPE=trial; DIR=/home/bk/images/$$TAG-trial; \
+		;; \
+	crankrelease ) \
+		TYPE=release; DIR=/home/bk/images/$$TAG; \
+		;; \
+	nightly ) \
+		TYPE=nightly; DIR=/home/bk/images/nightly; \
+		HOSTS="$(NIGHTLY_HOSTS)" ; \
+		;; \
+	esac ; \
 	test -d $$DIR || mkdir -p $$DIR ; \
-	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh \
+	REPO=$(REPO) URL=$(URL) HOSTS=$$HOSTS REMOTE=remote.sh \
 	    LOG=$(LOG) bash crank.sh $$TYPE ; \
 	bk -R get -qS RELEASE-NOTES ; \
 	cp ../RELEASE-NOTES $$DIR ; \
-	cd $$DIR && chmod +rx bk-* ; \
+	SAVED_WD=$(shell pwd) ; \
+	cd $$DIR && chmod +rx bk-* >/dev/null 2>&1 ; \
 	rm -f MD5SUMS ; \
 	md5sum bk-* >> MD5SUMS ; \
 	echo "Your images are in $$DIR" ; \
-	if [ $@ = cranktrial ]; \
-	then echo "Run './mkupgrades --trial $$TAG' to create upgrade area."; \
-	else echo "Run './mkupgrades $$TAG' to create upgrade area."; \
-	     echo "Run './mkrelease $$TAG' to release this version of bk."; \
-	fi)
+	case $@  in  \
+	cranktrial ) \
+		echo "Run './mkupgrades --trial $$TAG' to create upgrade area."; \
+		;; \
+	crankrelease ) \
+		echo "Run './mkupgrades $$TAG' to create upgrade area."; \
+	     	echo "Run './mkrelease $$TAG' to release this version of bk."; \
+		;; \
+	nightly ) \
+		cd $$SAVED_WD ; \
+		chmod 600 ssh-keys/upgrades.key ; \
+		./mkupgrades --nightly $$TAG ; \
+		;; \
+	esac)
 
 crankclean: crank.sh remote.sh
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh clean
