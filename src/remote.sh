@@ -256,3 +256,4 @@ case $CMD in
 	cat $LOG
 	;;
 esac
+exit 0
