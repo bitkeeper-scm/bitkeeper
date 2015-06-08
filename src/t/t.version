@@ -16,6 +16,8 @@ bk version bk://foo.foo.foo.foo.bitkeeper.com/bar 2> ERR && {
 	fail -f ERR should fail
 }
 grep -q "Cannot resolve host 'foo.foo.foo.foo.bitkeeper.com'" ERR || fail
+# deal with some race on win8-vm
+bk _rm remver.raw
 # Now use the bkd we set up
 bk version bk://localhost:$P > remver.raw
 perl -pe 's/\d+ \S+ ago/5 secs ago/' < remver.raw > remver
