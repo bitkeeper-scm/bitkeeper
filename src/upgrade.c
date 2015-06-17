@@ -328,7 +328,8 @@ proceed:
 		goto out;
 	}
 	fclose(f);
-	unless (macosx() || getenv("_BK_UPGRADE_NOINSKEYS")) {
+	unless (!fetchonly || macosx() || win32() ||
+	    getenv("_BK_UPGRADE_NOINSKEYS")) {
 		rc = inskeys(data[1], licf);
 		unlink(licf);
 		free(licf);
