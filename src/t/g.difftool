@@ -45,8 +45,9 @@ echo OK
 # save the prefs unless the GUI fully starts up.
 echo $N Create dotbk/diff.rc ........................................$NL
 test -f "$RC" && rm -f "$RC"
-echo "this is file 1" > file1
-echo "this is file 2" > file2
+bk get $Q file1 file2
+# echo "this is file 1" > file1
+# echo "this is file 2" > file2
 bk guitest difftool file1 file2 >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
 EOF
@@ -444,7 +445,7 @@ cd "$HERE"
 bk clone $Q clone clone2
 cd clone2
 bk edit $Q dir/foo
-echo foo >> foo
+echo foo >> dir/foo
 bk parent $Q -ao "$HERE/project"
 bk guitest difftool -L >"$OUT" 2>&1 <<EOF
 	test_buttonPress Quit

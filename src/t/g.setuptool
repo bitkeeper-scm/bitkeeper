@@ -65,6 +65,7 @@ bk guitest setuptool >"$OUT" 2>&1 <<EOF
     test_inputString nobody@nowhere.bk
     test_buttonPress "Next >"  ;# takes us to keyword expansion
     test_buttonPress "Next >"  ;# takes us to checkout mode
+    test_buttonPress "Next >"  ;# takes us to timestamp database
     test_buttonPress "Next >"  ;# takes us to partial check options
     test_buttonPress "Next >"  ;# takes us to last step
     test_buttonPress "Finish"  ;# do it!
@@ -130,6 +131,7 @@ bk guitest setuptool >"$OUT" 2>&1 <<EOF
     test_inputString nobody@nowhere.bk
     test_buttonPress "Next >"  ;# takes us to keyword expansion
     test_buttonPress "Next >"  ;# takes us to checkout mode
+    test_buttonPress "Next >"  ;# takes us to timestamp database
     test_buttonPress "Next >"  ;# takes us to partial check options
     test_buttonPress "Next >"  ;# takes us to last step
     test_buttonPress "Finish"  ;# do it!
@@ -195,6 +197,7 @@ bk guitest setuptool >"$OUT" 2>&1 <<EOF
     test_inputString nobody@nowhere.bk
     test_buttonPress "Next >"  ;# takes us to keyword expansion
     test_buttonPress "Next >"  ;# takes us to checkout mode
+    test_buttonPress "Next >"  ;# takes us to timestamp database
     test_buttonPress "Next >"  ;# takes us to partial check options
     test_buttonPress "Next >"  ;# takes us to last step
     test_buttonPress "Finish"  ;# do it!
@@ -260,6 +263,7 @@ bk guitest setuptool >"$OUT" 2>&1 <<EOF
     test_inputString nobody@nowhere.bk
     test_buttonPress "Next >"  ;# takes us to keyword expansion
     test_buttonPress "Next >"  ;# takes us to checkout mode
+    test_buttonPress "Next >"  ;# takes us to timestamp database
     test_buttonPress "Next >"  ;# takes us to partial check options
     test_buttonPress "Next >"  ;# takes us to last step
     test_buttonPress "Finish"  ;# do it!

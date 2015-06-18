@@ -1390,8 +1390,10 @@ _L() {
 
 _wish() {
 	AQUAWISH="$BK_BIN/gui/bin/BitKeeper.app/Contents/MacOS/BitKeeper"
-	if [ \( -z "$DISPLAY" -o "`echo $DISPLAY | cut -c1-11`" = "/tmp/launch" \) \
-	    -a -x "$AQUAWISH" ] ; then
+	test -n "$DISPLAY" && {
+		echo $DISPLAY | grep -q "/tmp/[a-z.]*launch" || AQUAWISH=
+	}
+	if [ -n "$AQUAWISH" -a -x "$AQUAWISH" ] ; then
 		WISH="$AQUAWISH"
 	else
 		TCL_LIBRARY=$BK_BIN/gui/lib/tcl8.5
