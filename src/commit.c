@@ -127,7 +127,7 @@ commit_main(int ac, char **av)
 			break;
 		    case 300:	/* --tag=TAG */
 			sym = optarg;
-			if (sccs_badTag("commit", sym, 0)) exit (1);
+			if (sccs_badTag(sym, ADMIN_NEWTAG)) exit (1);
 			break;
 		    case 301:	/* --sub-commit */
 			opts.standalone = subCommit = 1;

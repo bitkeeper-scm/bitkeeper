@@ -1,0 +1,57 @@
+Tag Rules
+=========
+
+== Pre BK-7.0
+
+* Tags can't start with a digit.
+[NOTE]
+====
+I think this is to make it easy to tell tags apart from revision
+numbers or from serial numbers.
+====
+* Tags can't start with the characters: '`@`', '`=`', '`-`', '`+`', or
+'`.`'
+[NOTE]
+====
+@ is due to ChangeSet revs and/or product revs. +
+= is due to serials +
+- is due to command line argument parsing (guess) +
++ is to avoid confusing with '+' as tip. +
+. is to avoid ambiguity of A...B; also want '-r.' to mean gfile
+====
+* Tags can't contain "`..`", "`.,`", "`,.`", or "`,,`"
+[NOTE]
+====
+This is all due to ranges.
+====
+* Tags can't contain the control characters: '`\001`', '`|`', '`\n`',
+or '`\r`'
+[NOTE]
+====
+These just because they're weird.
+====
+
+.Problems
+Dash is allowed in the middle of a tag, yet causes a parsing error
+in some cases, like 'bk edit -xA-B', but not 'bk cset -xA-B'.
+Read slib.c:walkList; dash is used for a linear range.
+Depracate that form of range?  (which should be done anyway).
+Prioritize TAGS in the parsing?
+
+== Post BK-7.0
+
+__Same rules as above__ plus:
+
+* Tags can't have a '`?`' or '`*`'
+[NOTE]
+====
+? is when we don't have a revision +
+* is due to regex/globs
+====
+* Tags can't contain ASCII characters lower than `\040`
+  or any of the characters in the following list: ``|?*\177~^:;/!\"'$%&\\()[]{}` ''
+
+[NOTE]
+====
+All of these are trying to filter out the weird.
+====

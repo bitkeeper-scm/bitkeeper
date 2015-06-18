@@ -13,6 +13,12 @@ bk config <var>
    If var wasn't in any config file, then nothing would be shown.
    This now shows the default state of var.
 
+bk tag
+   The rules for valid tags names have been restricted to more normal
+   looking identifiers to avoid compatibility issues in the future.
+   (see 'bk help tag' for the new rules)
+   Existing tags that break these rules will continue to be supported.
+
 bk pull
 
     - New option --stats that prints difffstat output after finishing

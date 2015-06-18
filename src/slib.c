@@ -3110,56 +3110,62 @@ checktags(sccs *s, ser_t leaf, int flags)
 }
 
 int
-sccs_badTag(char *me, char *tag, int flags)
+sccs_badTag(char *tag, u32 flags)
 {
-	char	*p;
+	int	i;
 
-	if (isdigit(*tag)) {
+	if (isdigit(tag[0])) {
 		verbose((stderr,
-		    "%s: %s: tags can't start with a digit.\n", me, tag));
+		    "%s: %s: tags can't start with a digit.\n", prog, tag));
 		return (1);
 	}
-	switch (*tag) {
+	switch (tag[0]) {
 	    case '@':
 	    case '=':
 	    case '-':
 	    case '+':
 	    case '.':
-		verbose((stderr,
-		    "%s: %s: tags can't start with a '%c'.\n", me, tag, *tag));
+		verbose((stderr, "%s: %s: tags can't start with a '%c'.\n",
+			prog, tag, *tag));
 		return (1);
 	}
-	if (strstr(tag, "..")) {
-		verbose((stderr,
-		    "%s: tag %s cannot contain '..'\n", me, tag));
-		return (1);
-	}
-	if (strstr(tag, ".,")) {
-		verbose((stderr,
-		    "%s: tag %s cannot contain '.,'\n", me, tag));
-		return (1);
-	}
-	if (strstr(tag, ",.")) {
-		verbose((stderr,
-		    "%s: tag %s cannot contain ',.'\n", me, tag));
-		return (1);
-	}
-	if (strstr(tag, ",,")) {
-		verbose((stderr,
-		    "%s: tag %s cannot contain ',,'\n", me, tag));
-		return (1);
-	}
-	p = tag;
-	while (*p) {
-		switch (*p++) {
+	for (i = 0; tag[i]; i++) {
+		switch (tag[i]) {
 		    case '\001':
 		    case '|':
 		    case '\n':
 		    case '\r':
 			verbose((stderr,
 			    "%s: tag %s cannot contain \"^A,|\\n\\r\"\n",
-			    me, tag));
+			    prog, tag));
 			return (1);
+		    case '.': case ',':
+			if ((tag[i+1] == '.') || (tag[i+1] == ',')) {
+				verbose((stderr,
+					"%s: tag %s cannot contain '%.2s'\n",
+					prog, tag, tag+i));
+				return (1);
+			}
+			break;
+		}
+	}
+	if (flags & ADMIN_NEWTAG) {
+		/* restricted testing for new post-7.0 tags */
+		for (i = 0; tag[i]; i++) {
+			char	*invalid = "|?*\177~^:;/!\"'$%&\\()[]{}` ";
+
+			if (tag[i] < 040) {
+				verbose((stderr,
+					"%s: tag %s cannot contain '\\%03o'\n",
+					prog, tag, tag[i]));
+				return (1);
+			}
+			if (strchr(invalid, tag[i])) {
+				verbose((stderr,
+					"%s: tag %s cannot contain '%c'\n",
+					prog, tag, tag[i]));
+				return (1);
+			}
 		}
 	}
 	return (0);
@@ -3182,7 +3188,7 @@ checkTags(sccs *s, int flags)
 	EACHP_REVERSE(s->symlist, sym) {
 		unless (sym->symname) continue;
 		/* XXX - not really "check" all the time */
-		if (sccs_badTag("check", SYMNAME(s, sym), flags)) bad = 1;
+		if (sccs_badTag(SYMNAME(s, sym), flags)) bad = 1;
 	}
 	if (bad) return (128);
 
@@ -11500,7 +11506,10 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 			continue;
 		}
 		if (!rev || !*rev) rev = REV(sc, d);
-		if (sccs_badTag(me, sym, flags)) goto sym_err;
+		/* enable new tag testing and don't hide errors */
+		if (sccs_badTag(sym, (flags|ADMIN_NEWTAG) & ~SILENT)) {
+			goto sym_err;
+		}
 		if (dupSym(sc, sym, rev)) {
 			verbose((stderr,
 			    "%s: symbol %s exists on %s\n", me, sym, rev));

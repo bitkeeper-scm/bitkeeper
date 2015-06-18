@@ -871,14 +871,6 @@ cmpfiles WANT GOT
 bk changes -/t*i/gt -nd:SYMBOL: > GOT
 echo third > WANT
 cmpfiles WANT GOT
-# This tests a tag with a /, which can be specified in the regexp only
-# with a \ escape.
-bk edit $Q f
-BK_USER=fourth bk delta $Q -fy'Fourth checkin' f
-BK_USER=fourth bk commit $Q --tag='f/ourth' -y'Fourth checkin' || fail
-bk changes -/f\/ourth/t -nd:SYMBOL: > GOT
-echo f/ourth > WANT
-cmpfiles WANT GOT
 echo OK
 
 echo $N Test a comment with slashes..................................$NL

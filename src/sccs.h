@@ -125,6 +125,7 @@ int	checking_rmdir(char *dir);
 #define	ADMIN_NEWPATH	0x00400000	/* path changed, add a new null delta */
 #define	ADMIN_DELETE	0x00800000	/* file deleted, add a new null delta */
 #define	ADMIN_RMLICENSE	0x00010000	/* Obscure licenses in repo config */
+#define	ADMIN_NEWTAG	0x00020000	/* restricted tag rules */
 
 #define	ADMIN_CHECKS	(ADMIN_FORMAT|ADMIN_TIME|ADMIN_BK)
 
@@ -1128,7 +1129,7 @@ char	*sccs_gethost(void);
 char	*sccs_realhost(void);
 char	*sccs_host(void);
 char	**sccs_getComments(char *prompt);
-int	sccs_badTag(char *, char *, int);
+int	sccs_badTag(char *tag, u32 flags);
 MDBM    *sccs_keys2mdbm(FILE *f);
 void	sfileUnget(void);
 char	*sfileNext(void);

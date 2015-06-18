@@ -29,7 +29,7 @@ bk ci $Q -i 'I am foo.c' bar.c h.h
 if bk _test ! -f SCCS/s.'I am foo.c'; then echo failed to create history; exit 1; fi
 echo OK
 echo $N Commit the files ............................................$NL
-bk commit $S -yCset --tag="Hi there this is a changeset"
+bk commit $S -yCset --tag="Hi_there_this-is-a-changeset"
 if [ $? != 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Check the repository ........................................$NL

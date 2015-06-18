@@ -35,21 +35,9 @@ echo $N Check pending ...............................................$NL
 P=`bk pending | wc -l`
 if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 echo OK
-echo $N Create a change set with a symbol with spaces in it .........$NL
-bk commit $S -yCset --tag="Hi there this is a changeset"
-P=`bk pending | wc -l`
-if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
-bk -R get $S -p ChangeSet > TOT
-bk -R get $S -pr"Hi there this is a changeset" ChangeSet > SYM
-cmp -s TOT SYM
-if [ $? != 0 ]
-then	echo failed
-	diff TOT SYM
-	exit 1
-fi
-echo OK
 
 echo $N Try to commit an empty cset .................................$NL
+bk commit $S -yCset --tag="Hi-there-this-is-a-changeset"
 cd "$HERE/project"
 bk edit $Q ChangeSet
 bk commit $Q

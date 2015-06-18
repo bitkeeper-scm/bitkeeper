@@ -25,7 +25,7 @@ bk delta -fy12 $Q file1 || fail
 echo 3 > file3
 bk new $Q file3
 bk commit --tag=t2 -y2 $Q || fail
-bk tag $Q t2/again || fail
+bk tag $Q t2-again || fail
 bk edit $Q file2 file3
 bk delta -fy233 $Q file2 file3 || fail
 bk commit -y3 $Q
@@ -51,10 +51,10 @@ then	echo wrong: $x
 	bk changes -v -rt2 | cat
 	exit 1
 fi
-x=`bk prs -r@t2/again -hd:GFILE::REV: file1 file2 file3`
+x=`bk prs -r@t2-again -hd:GFILE::REV: file1 file2 file3`
 if [ "$x" != "file11.2file21.1file31.1" ]
 then	echo wrong: $x
-	bk changes -v -rt2/again | cat
+	bk changes -v -rt2-again | cat
 	exit 1
 fi
 x=`bk prs -r@1.4 -hd:GFILE::REV: file1 file2 file3`
