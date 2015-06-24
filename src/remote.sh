@@ -69,6 +69,7 @@ case $CMD in
 	}
 	sleep 5		# give the other guys time to get rcp'ed and started
 
+	ulimit -c unlimited 2>/dev/null
 	echo y | \
 	    BK_NOTTY=YES bk clone -sdefault -z0 $URL $BKDIR || {
 	        DIR=upgrade-$BK_USER
