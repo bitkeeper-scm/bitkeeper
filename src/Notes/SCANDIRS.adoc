@@ -1,0 +1,96 @@
+SCANDIRS cache
+==============
+
+== Summary
+
+Currently +BitKeeper/log/scandirs+ lives in each component and
+remembers flags about of each directory.
+The +<prod>/BitKeeper/etc/scancomps+ file lives in the product and
+is updated whenever scandirs is updated.
+So if +src/libc/hash/hash.c+ is edited, then `hash' is updated in
++src/libc/BitKeeper/log/scandirs+ and `src/libc' is updated in
++BitKeeper/log/scancomps+.
+
+Currently the flags tracked by this system are:
+
+* +e+: This directory contains `edited' files.
+* +p+: This directory contains `pending' files.
+
+The cache is stored in the project struct and is loaded on first
+access, modified in memory, and written when the struct is
+deallocated.
+
+A special `*` key existing in the files to indicate that all directories are
+set. For instance a checkout:edit clone will set '*' to 'e'.
+
+== Who writes cache
+
+The cache is written by the +proj_dirstate()+ function and is written
+by the following operations:
+
+* +write_pfile()+ marks that directory as edited
+* +updatePending()+ (which creates the d.file) marks that directory as pending
+* clone can set '*' to 'e' if checkout:edit
+* commit can clear all pending flags if it included all files in a cset
+* a component commit will mark that component as pending
+* resolve can leave components pending in a couple places
+* +sfiles+ notices when a directory doesn't have any pfiles or dfiles and clears
+  the flags as needed.
+
+== Who reads cache
+
+The +proj_scanDirs()+ function returns the list of directories
+matching a certain state using the +scandirs+ file. It is only used by
+the fast path in +sfiles+. So for example 'bk sfiles -c' will only
+look in the directories containing edited files.
+
+The +proj_scanComps()+ function is used to get a list of components that may
+match a certain pattern. It is used in the following places:
+
+* +commit+: only walk components with pending files
+* +bk -Up+ or +bk -Uc+: only some components
+* +citool+: skip uninteresting component
+* +sfiles -p+: to quickly get the pending component csets files
+
+Both of the above return 0 when a reduced list is not known and all
+components/directories need to be searched. For example, this is used
+for checkout:edit or an older repository without the SCANDIRS feature
+bit enabled.
+
+== Parallel updates
+
+These files are currently maintained in proj.c and attached
+to the project struct. The files are loaded on first access
+and then modified in memory and when the project struct
+is deallocated (usually at exit), then the modified struct
+is written back out to disk.
+
+When doing a parallel repocheck that needs to edit files
+to satisfy the checkout rules, the parallel updates to
+'scancomps' will stomp on each other and updates are lost.
+
+Similarly if you tried to run 'bk -Uc -j delta -ysave'
+then the parallel updates to the 'scandirs' files would
+stomp on each other.
+
+The code tracks the modified directories in the current process and
+instead of writing the in-memory hash to disk on close, it uses a
++sccs_lockfile()+ and does a read/modify/write operation.  Only
+changes to directories modified by this process are copied to the
+ondisk hash. In this way changes can happen in parallel as long as
+parallel operations are doing the same type of changes to the hash.
+So parallel setting or clearing of flags will work, but if one
+process is clearing flags while another is setting them this approach
+will fail.
+
+== What happens if the cache becomes corrupted?
+
+If the cache is wrong then +sfiles+ starts returning the wrong answer
+and users complain that +bk+ doesn't see their changes.
+
+The sfiles code will repair the hash if you run it without the fast path code.
+Like this: +bk -R sfiles --no-cache -p+ .
+But it won't fix the `*` key.
+
+I don't believe a normal +repocheck+ will notice or repair problems
+with the scandirs cache.
