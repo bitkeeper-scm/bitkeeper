@@ -2031,10 +2031,12 @@ load_logfile(MDBM *m, FILE *f)
 int
 sfiles_bam_main(int ac, char **av)
 {
-	FILE	*f, *fsfiles;
+	FILE	*fsfiles;
 	char	*p, *sfile;
+	sccs	*s;
+	hash	*h;
+	u32	rkoff, dkoff;
 	MDBM	*idDB, *goneDB;
-	char	buf[4096];	// maxline is too short
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "Must be in repository.\n");
@@ -2048,30 +2050,33 @@ sfiles_bam_main(int ac, char **av)
 	goneDB = loadDB(GONE, 0, DB_GONE);
 
 	/* find all BAM sfiles in committed csets */
-	if (f = popen("bk get -qkpr+ ChangeSet", "r")) {
-		while (fnext(buf, f)) {
-			if (p = separator(buf)) *p = 0;
-			if (changesetKey(buf)) continue;
-			while ((--p > buf) && (*p != '|'));
-			unless (strneq(p, "|B:", 3)) continue;
-			unless (p = key2path(buf, idDB, goneDB, 0)) continue;
+	s = sccs_init(CHANGESET, INIT_MUSTEXIST);
+	assert(s);
+	h = hash_new(HASH_U32HASH, sizeof(u32), sizeof(u32));
+	sccs_rdweaveInit(s);
+	while (cset_rdweavePair(s, 0, &rkoff, &dkoff)) {
+		unless (hash_insertU32U32(h, rkoff, 0)) continue;
+		unless (weave_isBAM(s, rkoff)) continue;
+
+		if (p = key2path(HEAP(s, rkoff), idDB, goneDB, 0)) {
 			sfile = name2sccs(p);
 			if (exists(sfile)) puts(p);
 			free(p);
 			free(sfile);
 		}
-		pclose(f);
 	}
+	hash_free(h);
+	sccs_rdweaveDone(s);
+	sccs_free(s);
 	mdbm_close(idDB);
 	mdbm_close(goneDB);
 
 	/* find any pending 1.0 deltas */
 	if (fsfiles) {
-		while (fnext(buf, fsfiles)) {
-			chomp(buf);
-			if ((p = strchr(buf, '|')) && streq(p+1, "1.0")) {
+		while (sfile = fgetline(fsfiles)) {
+			if ((p = strchr(sfile, '|')) && streq(p+1, "1.0")) {
 				*p = 0;
-				puts(buf);
+				puts(sfile);
 			}
 		}
 		pclose(fsfiles);

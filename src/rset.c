@@ -483,7 +483,7 @@ process(Opts *opts, rset *data, rfile *file)
 	char	*path0 = 0, *path1 = 0, *path1_2 = 0, *path2 = 0;
 	u32	start, start2, end;
 	char	*comppath, *comppath2;
-	char	*p, *here, *t;
+	char	*here, *t;
 	int	i;
 	u32	rkoff = file->rkoff;
 	char	smd5[MD5LEN], smd5_2[MD5LEN], emd5[MD5LEN];
@@ -554,11 +554,7 @@ process(Opts *opts, rset *data, rfile *file)
 	}
 	path2 = key2path(HEAP(opts->s, end), 0, 0, 0);
 	if (opts->no_print) goto done;
-	if (opts->BAM) {
-		/* only allow if random field starts with B: */
-		p = strrchr(HEAP(opts->s, rkoff), '|');
-		unless (p && strneq(p+1, "B:", 2)) goto done;
-	}
+	if (opts->BAM && !weave_isBAM(opts->s, rkoff)) goto done;
 	if (!opts->show_all && sccs_metafile(path0)) goto done;
 	if (opts->hide_comp && streq(basenm(path0), GCHANGESET)) goto done;
 	unless (opts->show_all) {

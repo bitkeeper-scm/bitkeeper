@@ -1375,6 +1375,8 @@ void	weave_set(sccs *s, ser_t d, char **keys);
 void	weave_cvt(sccs *s);
 void	weave_updateMarker(sccs *s, ser_t d, u32 rk, int add);
 int	isNullFile(char *rev, char *file);
+int	weave_iscomp(sccs *s, u32 rkoff);
+int	weave_isBAM(sccs *s, u32 rkoff);
 u32	rset_checksum(sccs *cset, ser_t d, ser_t base);
 rset_df	*rset_diff(sccs *cset,
     ser_t left, ser_t left2, ser_t right, int showgone);

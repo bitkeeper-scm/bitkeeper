@@ -473,6 +473,30 @@ sccs_csetWrite(sccs *s, weave *cweave)
 	return (ret);
 }
 
+/* returns 1 if rkoff is a component, will be fast in future */
+int
+weave_iscomp(sccs *s, u32 rkoff)
+{
+	char	*rkey = HEAP(s, rkoff);
+
+	return (changesetKey(rkey));
+}
+
+/* returns 1 if rkoff is a BAM file, will be fast in future */
+int
+weave_isBAM(sccs *s, u32 rkoff)
+{
+	char	*rkey = HEAP(s, rkoff);
+	char	*p;
+
+	/* BAM files can be identified with B: at start of random bits */
+	unless ((p = strrchr(rkey, '|')) && strneq(p, "|B:", 3)) return (0);
+
+	/* component keys can also have "B:" in randbits */
+	if (weave_iscomp(s, rkoff)) return (0);
+	return (1);
+}
+
 private void
 swaparray(void *data, u32 len)
 {
