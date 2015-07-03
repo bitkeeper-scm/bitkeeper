@@ -796,7 +796,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 			features_set(0, FEAT_BKMERGE, opts->bkmerge);
 		}
 	}
-	if (opts->parallel == 0) opts->parallel = parallel(".");
+	if (opts->parallel == 0) opts->parallel = parallel(".", WRITER);
 	retrc = RET_ERROR;
 
 	/* eat the data */

@@ -184,7 +184,7 @@ cmd_rclone_part2(int ac, char **av)
 		free(path);
 		return (1);
 	}
-	jobs = opts.jobs ? opts.jobs : parallel(".");
+	jobs = opts.jobs ? opts.jobs : parallel(".", WRITER);
 
 	getline(0, buf, sizeof(buf));
 	if (!streq(buf, "@SFIO@")) {

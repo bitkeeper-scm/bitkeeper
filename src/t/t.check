@@ -683,11 +683,13 @@ BK_NOTTY= bk repocheck > OUT 2> ERR || fail -f ERR
 # gcc                                100% |==============================| OK
 # gdb                                100% |==============================| OK
 # .                                  100% |==============================| OK
-grep -q 'gcc.*100%.*OK$' ERR || fail -f ERR
+grep -q 'gcc.*OK$' ERR || fail -f ERR
 # Bork the repo and see that it says it is borked
 rm -fr ../gcc
 bk repocheck -q 2> ERR && fail -f ERR
-grep -q "check: Not populated: gcc" ERR || fail -f ERR
+grep -q "check: Not populated: gcc" ERR || 
+grep -q "missing components!" ERR ||
+fail -f ERR
 echo OK
 
 echo $N Test check fixes missing directories in remapped repo .......$NL

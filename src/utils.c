@@ -2073,29 +2073,79 @@ cpus(void)
 #endif
 }
 
-/*
- * Return reasonable values for parallel sfio/checkouts/etc.
- */
 int
-parallel(char *path)
+cpus_main(int ac, char **av)
 {
-	char	*p;
-	int	val = 0;
-
-#ifdef	WIN32
+	printf("%d\n", cpus());
 	return (0);
-#endif
-	if ((p = cfg_str(0, CFG_PARALLEL)) && isdigit(*p)) {
-		val = atoi(p);
-		return (min(val, PARALLEL_MAX));
-	}
-	if (isNetworkFS(path)) {
-		return (PARALLEL_NET);
-	} else {
-		return (PARALLEL_LOCAL);
-	}
 }
 
+/*
+ * Return reasonable values for parallel sfio/checkouts/etc.
+ *
+ * 'flags' is used to pass modifiers based on contect
+ *         Current:
+ *             WRITER this process is mostly writing new data to disk
+ */
+int
+parallel(char *path, int flags)
+{
+	int	p;
+	char	*t;
+	int	val = 1;
+
+#ifdef	WIN32
+	return (val);
+#endif
+	if ((t = cfg_str(0, CFG_PARALLEL)) && isdigit(*t)) {
+		val = atoi(t);
+		return (min(val, PARALLEL_MAX));
+	}
+	p = fstype(path);
+	if (p == FS_NFS) {
+		/*
+		 * A good NFS server likes parallel accesses to
+		 * reducely latency. It has less to do with the client
+		 * so we hardcode a value.
+		 * XXX shouldn't writes be a tad higher than reads?
+		 */
+		val = 8;
+	} else if (p == FS_SSD) {
+		/*
+		 * SSDs are happy to handle lots of parallel requests
+		 * so we mostly just want to keep the CPUs busy.
+		 */
+		val = cpus();
+	} else {
+		/*
+		 * assert((p == FS_DISK) || (p == FS_UNKOWN));
+		 * When writing to a local spinning disk it is good to
+		 * have a couple outstanding writes to allow the
+		 * kernel to reorder them.  For reads we go in order
+		 * to prevent thrashing.
+		 */
+		val = (flags & WRITER) ? 3 : 1;
+	}
+	return (val);
+}
+
+int
+parallel_main(int ac, char **av)
+{
+	u32	flags = READER;
+	int	c;
+
+	while ((c = getopt(ac, av, "w", 0)) != -1) {
+		switch (c) {
+		    case 'w': flags = WRITER; break;
+		    default: bk_badArg(c, av);
+		}
+	}
+	if (av[optind]) usage();
+
+	printf("%d\n", parallel(".", flags));
+	return (0);
+}
 /*
  * Given a number encoded as a bitfield and a list of names for each
  * bit position return a malloc'ed strict with comma separated names

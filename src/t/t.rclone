@@ -197,11 +197,8 @@ test 0 = `grep "sfio -iq --Nway" cmd_log | wc -l` || fail
 cd "$HERE"/bork-part2-2/BitKeeper/log
 test 2 = `grep "sfio -iq --Nway --checkout = 0" cmd_log | wc -l` || fail
 test 2 = `grep "checkout -Tq --skip-bam - = 0" cmd_log | wc -l` || fail
-# The default is platform dependent
-if [ X$PLATFORM = X"WIN32" ]
-then J=0
-else J=3
-fi
+J=`bk _parallel -w`
+test $J -eq 1 && J=0
 cd "$HERE"/bork-part3/BitKeeper/log
 test $J = `grep "sfio -iq --Nway --checkout = 0" cmd_log | wc -l` || fail
 echo OK

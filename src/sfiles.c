@@ -73,6 +73,7 @@ typedef struct {
 	u32	saw_pending:1;		/* saw a dfile somewhere? */
 	u32	no_bkskip:1;		/* ignore .bk_skip */
 	u32	error:1;		/* an error happened */
+	u32	cold:1;			/* prefault each sfile printed */
 
 	char	*relpath;		/* --replath: print relative paths */
 	FILE	*out;			/* -o<file>: send output here */
@@ -122,6 +123,24 @@ init(char *name, int flags, MDBM *sDB, MDBM *gDB)
         return (s);
 }
 
+private void
+willneed(char *sfile)
+{
+#ifdef	MADV_WILLNEED
+	int	fd;
+	size_t	len;
+	char	*map;
+
+	if ((fd = open(sfile, O_RDONLY, 0)) < 0) return;
+	len = fsize(fd);
+	if ((map = mmap(0, len, PROT_READ, MAP_SHARED, fd, 0)) != MAP_FAILED) {
+		madvise(map, len, MADV_WILLNEED);
+		munmap(map, len);
+	}
+	close(fd);
+#endif
+}
+
 private int
 fastprint(char *file, char type, void *data)
 {
@@ -133,6 +152,7 @@ fastprint(char *file, char type, void *data)
 		unless (strneq(file, "BitKeeper/", 10)) ++fc->usr;
 	}
 	puts(file);
+	if (opts.cold) willneed(file);
 	return (0);
 }
 
@@ -152,9 +172,14 @@ sfiles_main(int ac, char **av)
 		{ "no-progress", 302 },	// use after --gui for no P|
 		{ "no-bkskip", 305 },
 		{ "no-cache", 310 },
+		{ "cold", 315 },
 		{ 0, 0 },
 	};
 
+	if (av[1] && streq(av[1], "--cold")) { /* for the fast case below */
+		opts.cold = 1;
+		av++, ac--;
+	}
 	if (ac == 1)  {
 		opts.sfiles = 1;
 		memset(&fc, 0, sizeof(fc));
@@ -245,6 +270,9 @@ sfiles_main(int ac, char **av)
 			break;
 		    case 310: /* --no-cache */
 			no_cache = 1;
+			break;
+		    case 315: /* --cold */
+			opts.cold = 1;
 			break;
 		    default: bk_badArg(c, av);
 		}
@@ -1244,6 +1272,7 @@ do_print(STATE buf, char *gfile, char *rev)
 {
 	STATE	state;
 	int	doit;
+	char	*sname;
 
 	gfile =  strneq("./",  gfile, 2) ? &gfile[2] : gfile;
 	strcpy(state, buf);	/* So we have writable strings */
@@ -1314,7 +1343,14 @@ do_print(STATE buf, char *gfile, char *rev)
 		(state[TSTATE] == 's') && (state[GSTATE] != 'G')) ||
 	    ((state[NSTATE] == 'n') && opts.names) ||
 	    ((state[YSTATE] == 'y') && opts.cfiles);
-	if (doit) print_it(state, gfile, rev);
+	if (doit) {
+		if (opts.cold) {
+			sname = name2sccs(gfile);
+			willneed(sname);
+			free(sname);
+		}
+		print_it(state, gfile, rev);
+	}
 }
 
 /*
@@ -1757,13 +1793,19 @@ sfiles_clone_main(int ac, char **av)
 		"pull-parent",
 		"push-parent",
 	};
+	longopt	lopts[] = {
+		{ "cold",   300 },
+		{ 0, 0 }
+	};
 
-	while ((c = getopt(ac, av, "2Lmp", 0)) != -1) {
+
+	while ((c = getopt(ac, av, "2Lmp", lopts)) != -1) {
 		switch (c) {
 		    case '2': mark2 = 1; break;
 		    case 'L': lclone = 1; break;
 		    case 'm': modes = 1; break;
 		    case 'p': do_parents = 1; break;
+		    case 300: opts.cold = 1; break;
 		    default: bk_badArg(c, av);
 		}
 	}

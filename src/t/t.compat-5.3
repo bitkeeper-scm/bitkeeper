@@ -6,8 +6,8 @@ OLDVER=5.3
 OLDBK=/build/bitkeeper-$OLDVER
 
 # use new parallel clone in tests
-_BK_FORCE_NETFS=YES
-export _BK_FORCE_NETFS
+_BK_FSTYPE=nfs
+export _BK_FSTYPE
 
 echo $N Check bitkeeper 5.3 installation ............................$NL
 if [ -n "$BK_DEV_SKIPTEST" ]; then echo skipped; exit 0; fi
@@ -120,9 +120,6 @@ trap "bk _kill bk://localhost:$OLDP; bk _kill bk://localhost:$NEWP" 0
 echo OK
 
 echo -------------- clone compat tests
-# use new parallel clone in tests
-_BK_FORCE_NETFS=YES
-export _BK_FORCE_NETFS
 
 echo $N Clone from old bkd and make sure we do checkouts ............$NL
 cd "$HERE"

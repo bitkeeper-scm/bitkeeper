@@ -52,43 +52,6 @@ __feature_test() {
 	bk --cd="$dir" prs -hd' ' -r+ $file >/dev/null || exit 1
 }
 
-# faster way to get repository status
-_repocheck() {
-	V=-v
-	EACH=--each-repo
-	P=-P
-	while getopts qS opt
-	do
-		case "$opt" in
-		    q)	V="";;
-		    S)	EACH=""; P=-R;;
-		    X*)	echo "Invalid option: $1"
-	    		echo "Usage: bk repocheck [-Sq]"
-			printf "This checks repository integrity by running: "
-			echo "bk -e -r check -aBcv"
-			echo Use -q to run quietly
-			echo "    -S only check current component"
-			exit 1;;
-		esac
-	done
-	shift `expr $OPTIND - 1`
-	test "X$2" != X && {
-		echo "repocheck: too many arguments"
-		exit 1
-	}
-	test "X$1" != X && {
-		test -d "$1" || {
-			echo "$1 is not a directory"
-			exit 1
-		}
-		cd "$1" || exit 1
-		__feature_test
-	}
-	# check output goes to stderr, so put this to stderr too
-	test "X$V" != X && echo === Checking `bk $P pwd` === 1>&2
-	bk $EACH -r check -aBc $V
-}
-
 # Remove anything found in our main parent and repull.
 # Don't doc until 5.3ish so we can get some usage.
 _repull() {

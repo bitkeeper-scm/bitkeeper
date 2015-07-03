@@ -25,8 +25,8 @@ cd ..
 echo $N Clone repo, should run in parallel ..........................$NL
 BK_CONFIG="license:$BKL_PRO;licsign1:$BKL_P1$BKL_P2$BKL_P3;checkout:none!"
 export BK_CONFIG
-_BK_FORCE_NETFS=YES
-export _BK_FORCE_NETFS
+_BK_FSTYPE=nfs
+export _BK_FSTYPE
 bk clone $Q $TESTDATA/bitcluster parallel || fail
 SFIO=`grep 'sfio -i' parallel/BitKeeper/log/cmd_log|wc -l`
 test $SFIO = 18 || fail wrong number $SFIO
@@ -138,7 +138,7 @@ bk edit $Q STATE || fail
 echo junk >> STATE
 bk ci -yjunk $Q STATE || file
 cd ..
-_BK_FORCE_NETFS=YES bk clone $Q bitcluster no-pending || fail
+_BK_FSTYPE=nfs bk clone $Q bitcluster no-pending || fail
 cd no-pending
 bk sfiles -p > OUT
 test -s OUT && fail -f OUT should have nothing pending after clone

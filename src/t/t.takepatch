@@ -171,8 +171,7 @@ cd copy
 for m in "" -m; do
     for v in "" -v -vv -vvv; do
 	test -d RESYNC && bk abort -f
-	BK_NOTTY= bk --config=parallel:0 \
-	    takepatch $v $m < ../PATCH3 2> LOG$m$v || fail
+	BK_NOTTY= bk takepatch -j0 $v $m < ../PATCH3 2> LOG$m$v || fail
 	perl -pe '1 while s/[^\010]\010//g' < LOG$m$v > LOG$m$v-filt
     done
 done

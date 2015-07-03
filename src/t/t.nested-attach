@@ -567,8 +567,9 @@ bk rm foo || fail
 # it would be nice if this failed
 bk attach -q "$HERE"/stand2 foo || fail
 
-bk repocheck $Q 2> ERR && fail -f should fail
+bk repocheck -j2 $Q 2> ERR && fail -f should fail
 cat <<EOF > WANT
+check in 'gcc' exited 64, error output:
 A path-conflict was found in existing csets
   component at ./foo
 conflicts with existing:
@@ -588,8 +589,9 @@ bk portal $Q . || fail
 bk rmdir bar || fail
 # it would be nice if this failed
 bk attach -q "$HERE"/stand2 bar || fail
-bk repocheck $Q 2> ERR && fail -f should fail
+bk repocheck -j2 $Q 2> ERR && fail -f should fail
 cat <<EOF > WANT
+check in 'gcc' exited 64, error output:
 A path-conflict was found in existing csets
   component at ./bar
 conflicts with existing:

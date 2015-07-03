@@ -208,7 +208,12 @@ takepatch_main(int ac, char **av)
 		opts->p = stdin;
 		goto doit;
 	}
-	unless (opts->parallel) opts->parallel = parallel(".");
+	unless (opts->parallel) opts->parallel = parallel(".", WRITER);
+	/*
+	 * I want to revisit this, this change breaks regressions but
+	 * I think it was good for 20% on pulls.  Need to remeasure.
+	unless (opts->parallel) opts->parallel = cpus();
+	 */
 	if (getenv("TAKEPATCH_SAVEDIRS")) opts->saveDirs++;
 	if ((t = getenv("BK_NOTTY")) && *t && (opts->echo == 3)) {
 		opts->echo = 2;
