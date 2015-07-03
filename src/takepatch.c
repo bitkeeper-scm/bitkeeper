@@ -1328,8 +1328,11 @@ markup:
 		}
 		if (!(FLAGS(s, top) & D_CSET) && sccs_isleaf(s, top)) {
 			/* uncommitted error for dangling is backward compat */
+			char	*t = sccs2name(opts->patchList->localFile);
+
 			SHOUT();
-			getMsg("tp_uncommitted", s->gfile, 0, stderr);
+			getMsg("tp_uncommitted", t, 0, stderr);
+			free(t);
 			goto err;
 		}
 	}
@@ -1689,9 +1692,12 @@ apply:
 		if (sccs_isleaf(s, d) && !(FLAGS(s, d) & D_CSET)) pending++;
 	}
 	if (pending) {
+		char	*t = sccs2name(localPath);
+
 		sccs_free(s);
 		SHOUT();
-		getMsg("tp_uncommitted", localPath, 0, stderr);
+		getMsg("tp_uncommitted", t, 0, stderr);
+		free(t);
 		return (-1);
 	}
 	if ((confThisFile = sccs_resolveFiles(s, opts->automerge)) < 0) {
@@ -2094,7 +2100,7 @@ sfio(FILE *m, int files)
 			/* because of pending deltas? */
 			unless (FLAGS(s, TABLE(s)) & D_CSET) {
 				SHOUT();
-				getMsg("tp_uncommitted", s->sfile, 0, stderr);
+				getMsg("tp_uncommitted", s->gfile, 0, stderr);
 			} else {
 				fprintf(stderr,
 				    "takepatch: key '%s' not found "
