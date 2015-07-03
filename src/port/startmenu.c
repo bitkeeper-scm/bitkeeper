@@ -45,9 +45,9 @@ private struct smenu {
 } menulist[] = {
 	{
 		.menuname = "BitKeeper",
-		.target = "%s/bkg.exe",
+		.target = "http://bitkeeper.com/start",
 		.icon = "%s/bk.ico",
-		.cmd = "gui",
+		.cmd = "",
 		.wdenv = "HOMEPATH",
 		.enabled = 1
 	},

@@ -31,14 +31,7 @@ if {[info exists env(BK_GUI)]} {
 		cd $env(HOME)
 		source $script
 	} else {
-		# bk explorer not found (give them the lame!)
-		tk_messageBox -default ok -icon error \
-		    -message "Thank you for installing BitKeeper.\
-		      To start using BitKeeper, please open a\
-		      Terminal.app window and type 'bk helptool'" \
-		    -title "Error" \
-		    -type ok
-		exit 0
+		exec open http://bitkeeper.com/start
 	}
 }
 
