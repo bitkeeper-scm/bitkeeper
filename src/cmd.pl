@@ -351,6 +351,7 @@ repogca
 repostats
 repotype
 relink
+repos
 resolve
 restore
 _reviewmerge

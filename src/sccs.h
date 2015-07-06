@@ -1579,7 +1579,7 @@ void	*__startmenu_generic_ptr(void);
 #define	startmenu_uninstall(...)	__startmenu_generic()
 #define	bkmenupath(...)			__startmenu_generic_ptr()
 #endif
-void	repos_update(sccs *cset);
+void	repos_update(project *proj);
 char	*bk_searchFile(char *base);
 void	dspec_collapse(char **dspec, char **begin, char **end);
 void	fslayer_cleanup(void);

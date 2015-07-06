@@ -540,7 +540,7 @@ check_main(int ac, char **av)
 			goto out;
 		}
 	}
-	repos_update(cset);
+	repos_update(cset->proj);
 	if (errors && fix) {
 		// LMXXX - how lame is this?
 		// We could keep track of a fixnames, fixxflags, etc

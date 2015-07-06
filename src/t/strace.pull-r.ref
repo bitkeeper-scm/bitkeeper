@@ -9,7 +9,7 @@ lseek 154
 lstat 425
 mkdir 14
 open 285
-read 4932
+read 4972
 rename 6
 rmdir 2
 stat 19
