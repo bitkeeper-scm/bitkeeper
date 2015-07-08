@@ -1,76 +1,106 @@
-proposal to find all repos
-==========================
+The BK Repos Command
+====================
 
- [Wed Mar 25 09:49:27 PDT 2009]
+Background
+----------
 
-We've long wanted a way to "know" where our repos are, this a strawman
-proposal on how we might do that.  It's not perfect, there is no
-guarantee that you will see all repos, you only see the ones you have
-touched.  That's a pretty big limitation, we might want to kill this
-idea because of that.
+The BK gui/explorer needs a way to "know" where repos are.  This is
+the proposal describing a `bk repos` command, what it does and how it
+will work.
 
-User interface
+Command syntax
+--------------
 
-    The intent is that this is modeled on ls(1).
+  bk repos [-c REPO | --check-all][[-a|--atime]|[-m|--mtime]][-v]
 
-    bk repos [opts] [repo]
+    List cached repo pathnames.
 
-    With no options, lists urls to each repo accessed from this host.
+    Sorted by pathname by default. -a sorts by ATIME, -m sorts by
+    MTIME (newest first).
 
-    -a	read all files (see on disk format below) instead of just `bk gethost`
-    -l	long listing
-    -p	restrict listing to urls which are paths, not bk:// or ssh:// etc
-    -r	recursive listing (? is this weird)
-    -t	sort by cset_time
-    -u	sort by bk_time
+    -v is a long listing that includes the times in the output.
 
-    The long listing format is undecided, I'm really not sure what it should
-    be.  If we ever implement access control then we'd want the perms but
-    right now we side step that.
+    --check-all Check and update the entire repos cache.
+                Delete repos that are no longer around.
 
-On disk format
+    -c Check and update the REPO in the cache (make sure that a repo
+       is there, and update the MTIME and ATIME -- see below for
+       definitions)
 
-    `bk dotbk`/repos/`bk gethost`/path.log - a list of paths to
-    repositories, first released in bk-4.4, and updated in check.
-    This is just a list of repos accessed since the last time we've
-    generated the detailed file (repos below).
+Update events
+-------------
 
-    To come: running 'bk repos' will use the above file to generate `bk
-    dotbk`/repos/`bk gethost`/repos, and then delete the path.log file.
-    The repos file has multiple KV records, each recording:
+It is assumed that the only way repositories come into existence is by
+bk setup or bk clone.
 
-    	url => /home/bk/ob/whatever
-	bk_time => time_t of last bk cmd
-	cset_time => time_t of last changeset
-	s_time => time_t of the s.ChangeSet file so we don't always init
-	csets => number of changesets
-	repoid => `bk id -r`
-	id => `bk id`
-	description => `bk config description`
-	type => regular | product | component
+Repositories are added to the cache with a call to repos_update().
 
-Recording repos
+Historically, that was only done by check.  However, going forward,
+clone will also make this call.
 
-    Any command which alters the tipkey (commit, push, pull, undo) will
-    alter the path.log (someday after bk repos is implemented).
+Additionally, the repos -c option calls repos_update(). As currently
+implemented, it doubles as an "add" function.  Someone could
+manually copy a repository and run repos -c on the copy and the cache
+will be correctly updated.
 
-    Use kv{cset_time} to not bother
-    initting the changeset file to record kv{ctime} unless it's changed.
-    LMXXX - I'm thinking that this is too much work, flip it around and
-    only update the file when we have the changeset file initted (and
-    only consider doing it when (a) we are writing the changeset file
-    or (b) we are a top level (not spawned) bk and we're more recent
-    than the record (requires a read of the KV file).
+It is intended that BK gui/explorer could call repos with --check-all
+at startup and then with -c when a repo is selected (in the repos tab).
 
-    I wouldn't get excited about locking, slurp it in an addlines of
-    KV records, update the one you care about, write it out to a tmp
-    file, unlink, rename.  If there is a race, you may lose one repo
-    but it will come back.  First release of path.log writer does locking.
+On-disk Format
+--------------
 
-XXX's
-    We need a way to refresh the list, a recache or something.
+Repos are listed in:
 
-In case there are problems and we need to disable in the field:
+	$BK_DOTBK/repos/XX/REALHOST/path.log
 
-    touch $BK_DOTBK/repos -- this will cause error in mkdirf and
-    stop the update.
+XX is a two character string made by file_fanout(sccs_realhost())
+
+Note: strings are same lengths.  Nice for being able to switch paths.
+
+To date, the path.log file has been populated by check calling
+repos.c:repos_update() and the format has simply been a single
+directory path per line.
+
+Going forward, each line will be in the form:
+
+	PATH|ATIME|MTIME|MD5ROOTKEY
+
+Updates to the files are wrapped by sccs_lockfile().
+Lock failures mean the update will be lost.
+
+Compatibility
+-------------
+
+Older versions of BK will read the new path.log file and not
+recognize new style entries.  These older versions will then
+simply add a new un-adorned single pathname to the end of the
+file.
+
+This is harmless as the new code will simply read these paths,
+determine the timestamps, and update the in memory hash.
+
+Definitions
+-----------
+
+  PATHNAME	full path to the directory containing the repository
+  		(either standalone or product, no components)
+  MTIME		delta time of tip cset
+  ATIME		access time on the repo
+  MD5ROOTKEY	ID of repo; used to collect project instances.
+
+Access time on the repo is open for discussion.  One proposal is to
+use the most recent mtime of cmd_log, scandirs, and scancomps
+(combined with possibly suppressing cmd logging for certain operations
+inside our gui/explorer).  The actual updating of the file is done as
+a side-effect of running the command.
+
+The mtime is currently lifted from BitKeeper/log/TIP.  Perhaps a
+better answer is to update the cache at the time we update the TIP
+file?
+
+Another proposal was scan all the bk commands in cmd.pl and identify
+ones for which it makes sense to update the ATIME and then make code
+changes to always keep the paths.log file up-to-date.  My intuition is
+that we should not do this because it will have bad performance
+implications (contention for the paths.log file itself) for
+information that is only required by our gui/explorer.

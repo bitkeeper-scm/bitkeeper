@@ -5,6 +5,8 @@ main(int volatile ac, char **av, char **env)
 {
 	char	*p;
 
+	putenv("BK_GUI=YES");
+
 	/* s/bkg\.exe$/bk.exe/ */
 	if ((p = strrchr(av[0], 'g')) &&
 	    (p - 2 >= av[0]) && strneq(p-2, "bkg", 3)) {

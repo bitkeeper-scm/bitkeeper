@@ -1,15 +1,15 @@
 # baseline data for t.strace-cnt
 access 23
 chmod 1
-close 76
-fstat 58
+close 77
+fstat 59
 getdir 11
 link 3
 lseek 49
-lstat 180
+lstat 181
 mkdir 2
-open 80
-read 81
+open 81
+read 84
 rename 6
 rmdir 1
 stat 11

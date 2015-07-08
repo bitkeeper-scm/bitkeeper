@@ -203,6 +203,7 @@ components	# old compat code
 comps
 config
 cp
+_cpus
 partition
 create
 crypto
@@ -246,6 +247,7 @@ _fslrm
 _rm => _fslrm
 _fslrmdir
 _rmdir => _fslrmdir
+fstype
 gca
 get
 _getdir
@@ -277,7 +279,6 @@ idcache
 info_server
 info_shell
 isascii
-_isnetwork
 inskeys
 key2rev
 key2path
@@ -315,6 +316,7 @@ newroot pro
 nfiles
 opark
 ounpark
+_parallel
 parent
 park
 path
@@ -349,6 +351,7 @@ repogca
 repostats
 repotype
 relink
+repos
 resolve
 restore
 _reviewmerge
@@ -497,4 +500,5 @@ sdiff cprog
 # L scripts
 hello lscript
 pull-size lscript
+repocheck lscript
 check_comments lscript

@@ -1359,6 +1359,7 @@ again:
 					    INVALID_FILE_ATTRIBUTES) {
 						/* nope, not empty */
 						freeLines(files, free);
+						errno = ENOTEMPTY;
 						goto err;
 					}
 				}

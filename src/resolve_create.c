@@ -616,6 +616,16 @@ getFileConflict(resolve *rs, char *gfile, char *path)
 }
 
 private int
+walk_print(char *path, char type, void *data)
+{
+	char	***files = (char ***)data;
+
+	if ((type == 'd') || isSCCS(path)) return (0);
+	*files = addLine(*files, strdup(path));
+	return (0);
+}
+
+private int
 dc_remove(resolve *rs)
 {
 	char	buf[MAXPATH];
@@ -628,8 +638,28 @@ dc_remove(resolve *rs)
 	}
 	getFileConflict(rs, PATHNAME(rs->s, rs->d), path);
 	sprintf(buf, "%s/%s", RESYNC2ROOT, path);
-	ret = rmdir(buf);
-	if (opts->log) fprintf(stdlog, "rmdir(%s) = %d\n", buf, ret);
+	if (ret = rmdir(buf)) {
+		int	i, n, saved_errno;
+		char	**files = 0;
+
+		saved_errno = errno;
+
+		if ((errno == ENOTEMPTY) || (errno == EACCES)) {
+			walkdir(buf, (walkfns){ .file = walk_print}, &files);
+			unless (n = nLines(files)) {
+				errno = saved_errno;
+				goto out;
+			}
+			fprintf(stderr, "Could not remove '%s' because "
+			    "of the following file%s:\n", buf,
+			    (n == 1) ? "" : "s");
+			EACH(files) fprintf(stderr, "  %s\n", files[i]);
+			freeLines(files, free);
+		} else {
+			perror(buf);
+		}
+	}
+out:	if (opts->log) fprintf(stdlog, "rmdir(%s) = %d\n", buf, ret);
 	return (EAGAIN);
 }
 

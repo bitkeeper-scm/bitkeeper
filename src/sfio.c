@@ -326,7 +326,11 @@ sfio_out(void)
 	if (opts->clone) {
 		av = addLine(av, "bk");
 		av = addLine(av, "_sfiles_clone");
-		if (opts->lclone) av = addLine(av, "-L");
+		if (opts->lclone) {
+			av = addLine(av, "-L");
+		} else {
+			av = addLine(av, "--cold");
+		}
 		if (opts->doModes) av = addLine(av, "-m2");
 		if (opts->parents) av = addLine(av, "-p");
 		av = addLine(av, 0);

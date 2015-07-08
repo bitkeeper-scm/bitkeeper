@@ -170,6 +170,7 @@ int	checking_rmdir(char *dir);
 #define	S_CSET		0x00000200	/* this is a changeset file */
 #define S_MAPPRIVATE	0x00000400	/* hack for hpux */
 #define S_READ_ONLY	0x00000800	/* force read only mode */
+#define	S_LOCKFILE	0x00001000	/* unlock on free */
 #define	S_SET		0x00002000	/* the tree is marked with a set */
 #define S_CACHEROOT	0x00004000	/* don't free the root entry */
 
@@ -355,6 +356,17 @@ typedef	enum {
 } retrc;
 
 /*
+ * Exit codes for 'bk fstype' as well as internal uses.
+ * List organized to be extensible.
+ * Roughly patterned after 'bk repotype'.
+ */
+#define	FS_UNKNOWN	0
+#define	FS_ERROR	1
+#define	FS_DISK		2
+#define	FS_SSD		3
+#define	FS_NFS		4
+
+/*
  * Hash behaviour.  Bitmask, although some of these are
  * mutually exclusive.
  */
@@ -411,9 +423,9 @@ typedef	enum {
  * Constants for running some parallel processes, sfio, checkout,
  * to overcome NFS latency.
  */
-#define	PARALLEL_NET		8
-#define	PARALLEL_LOCAL		3
 #define	PARALLEL_MAX		64
+#define	READER			1	/* parallel processes mostly reading */
+#define	WRITER			2	/* ... writing */
 
 #define	MINUTE	(60)
 #define	HOUR	(60*MINUTE)
@@ -1229,7 +1241,8 @@ char	*_relativeName(char *gName, int isDir,
 char	*findBin(void);
 int 	prompt(char *msg, char *buf);
 void	parse_url(char *url, char *host, char *path);
-int	parallel(char *path);
+int	parallel(char *path, int write);
+int	fstype(char *path);
 int	cpus(void);
 char	*sccs_saveStr(sccs *s, char *str);
 char	*sccs_Xfile(sccs *s, char type);
@@ -1375,6 +1388,8 @@ void	weave_set(sccs *s, ser_t d, char **keys);
 void	weave_cvt(sccs *s);
 void	weave_updateMarker(sccs *s, ser_t d, u32 rk, int add);
 int	isNullFile(char *rev, char *file);
+int	weave_iscomp(sccs *s, u32 rkoff);
+int	weave_isBAM(sccs *s, u32 rkoff);
 u32	rset_checksum(sccs *cset, ser_t d, ser_t base);
 rset_df	*rset_diff(sccs *cset,
     ser_t left, ser_t left2, ser_t right, int showgone);
@@ -1564,7 +1579,7 @@ void	*__startmenu_generic_ptr(void);
 #define	startmenu_uninstall(...)	__startmenu_generic()
 #define	bkmenupath(...)			__startmenu_generic_ptr()
 #endif
-void	repos_update(sccs *cset);
+void	repos_update(project *proj);
 char	*bk_searchFile(char *base);
 void	dspec_collapse(char **dspec, char **begin, char **end);
 void	fslayer_cleanup(void);

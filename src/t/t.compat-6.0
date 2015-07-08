@@ -4,8 +4,8 @@ OLDVER=6.0
 OLDBK=/build/bitkeeper-$OLDVER
 
 # use new parallel clone in tests
-_BK_FORCE_NETFS=YES
-export _BK_FORCE_NETFS
+_BK_FSTYPE=nfs
+export _BK_FSTYPE
 
 # kill any uniq_server that may be running out of ~/.bk
 BK_DOTBK="$HOME/.bk" bk uniq_server $Q --dir="$HOME/.bk/bk-keys-db/`bk gethost -r`" --quit
@@ -123,9 +123,6 @@ trap "bk _kill bk://localhost:$OLDP; bk _kill bk://localhost:$NEWP" 0
 echo OK
 
 echo -------------- clone compat tests
-# use new parallel clone in tests
-_BK_FORCE_NETFS=YES
-export _BK_FORCE_NETFS
 
 echo $N Clone from old bkd and make sure we do checkouts ............$NL
 cd "$HERE"

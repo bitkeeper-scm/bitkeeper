@@ -792,11 +792,7 @@ bk edit $Q foo
 printf "a\nq\nk\nm\nv\n" > foo
 bk delta $Q -yfoo foo
 bk commit $Q -yfoo
-printf "ul\n.\n" | bk pull $Q 2> ERR || {
-	echo failed
-	cat ERR
-	exit 1
-}
+printf "ul\n.\n" | bk pull $Q 2> ERR || fail -f ERR
 echo OK
 
 echo $N Test out merge_with_following_gca ...........................$NL

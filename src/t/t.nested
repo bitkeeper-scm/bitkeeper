@@ -586,15 +586,17 @@ cd ..
 cp BitKeeper/log/HERE SAVE
 KEY='lm@lm.bitmover.com|ChangeSet|19990319224848|02682|B:1000:6a5ce40345b2dee1'
 echo $KEY >> BitKeeper/log/HERE
-bk repocheck -q 2>ERR && fail -f ERR should fail
+bk repocheck -j2 -q 2>ERR && fail -f ERR should fail
 cat <<EOF > WANT
+check in '.' exited 1, error output:
 check: not a component rootkey: $KEY
 check: current aliases not valid.
 EOF
 checkfiles WANT ERR
 cat < /dev/null > BitKeeper/log/HERE
-bk repocheck -q 2>ERR && fail -f ERR should fail
+bk repocheck -j2 -q 2>ERR && fail -f ERR should fail
 cat <<EOF > WANT
+check in '.' exited 1, error output:
 check: comp 'gcc4' is present and not included in current aliases.
 check: comp 'gdb' is present and not included in current aliases.
 check: missing components!

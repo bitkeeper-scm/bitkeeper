@@ -2345,6 +2345,8 @@ automerge(resolve *rs, names *n, int identical)
 	int	automerged = -1;
 	int	flags;
 	ser_t	a, b;
+	char	**av = 0;
+	int	fd, oldfd;
 
 	unless (sccs_findtips(rs->s, &a, &b)) {
 		unless (rs->opts->quiet) {
@@ -2394,12 +2396,25 @@ automerge(resolve *rs, names *n, int identical)
 	}
 
 	/* Run smerge first */
-	l = aprintf("-l%s", rs->revs->local);
-	r = aprintf("-r%s", rs->revs->remote);
-	ret = sysio(0,
-	    rs->s->gfile, 0, "bk", "smerge", l, r, rs->s->gfile, SYS);
+	fflush(stdout);
+	oldfd = dup(1);
+	close(1);
+	fd = open(rs->s->gfile, O_CREAT|O_TRUNC|O_WRONLY, 0666);
+	assert(fd == 1);
+	av = addLine(av, "smerge");
+	av = addLine(av, (l = aprintf("-l%s", rs->revs->local)));
+	av = addLine(av, (r = aprintf("-r%s", rs->revs->remote)));
+	av = addLine(av, rs->s->gfile);
+	av = addLine(av, 0);
+	getoptReset();
+	ret = smerge_main(nLines(av), &av[1]);
 	free(l);
 	free(r);
+	freeLines(av, 0);
+	fflush(stdout);
+	close(fd);
+	dup2(oldfd, 1);
+	close(oldfd);
 
 	if ((ret != 0) && rs->opts->mergeprog) {
 		/*
@@ -2408,6 +2423,7 @@ automerge(resolve *rs, names *n, int identical)
 		 */
 		ret = sys(rs->opts->mergeprog,
 		    n->local, n->gca, n->remote, rs->s->gfile, SYS);
+		ret = WIFEXITED(ret) ? WEXITSTATUS(ret) : 2;
 		if (ret == 0) {
 			free(merge_msg);
 			merge_msg = aprintf("Auto merged using: %s",
@@ -2441,13 +2457,7 @@ merged:		if (!LOCKED(rs->s) && edit(rs)) goto out;
 	/* We could not merge this one. */
 	rs->opts->notmerged =
 	    addLine(rs->opts->notmerged,strdup(rs->s->gfile));
-	unless (WIFEXITED(ret)) {
-		fprintf(stderr, "Unknown merge status: 0x%x\n", ret);
-		rs->opts->errors = 1;
-		unlink(rs->s->gfile);
-		goto out;
-	}
-	if (WEXITSTATUS(ret) == 1) {
+	if (ret == 1) {
 		unless (rs->opts->autoOnly) {
 			fprintf(stderr,
 			    "Conflicts during automerge of %s\n",
@@ -2456,6 +2466,11 @@ merged:		if (!LOCKED(rs->s) && edit(rs)) goto out;
 		rs->opts->hadConflicts++;
 		unlink(rs->s->gfile);
 		automerged = 1;
+		goto out;
+	} else if (ret != 0) {
+		fprintf(stderr, "Unknown merge status: 0x%x\n", ret);
+		rs->opts->errors = 1;
+		unlink(rs->s->gfile);
 		goto out;
 	}
 	fprintf(stderr,

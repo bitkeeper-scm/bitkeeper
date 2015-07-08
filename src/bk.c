@@ -102,6 +102,7 @@ main(int volatile ac, char **av, char **env)
 		{ "diffable", 335 },
 		{ "trace-file;", 340 },
 		{ "parallel|", 'j' },
+		{ "cold", 345 },
 		{ 0, 0 },
 	};
 
@@ -402,6 +403,9 @@ baddir:						fprintf(stderr,
 					safe_putenv("BK_TRACE=%s", p);
 					free(p);
 				}
+				break;
+			    case 345: /* --cold */
+				sopts = addLine(sopts, strdup("--cold"));
 				break;
 			    default: bk_badArg(c, av);
 			}
@@ -1601,7 +1605,7 @@ write_log(char *file, char *format, ...)
 	gettimeofday(&tv, 0);
 	sprintf(nformat, "%c%s %lu.%06lu %s %s: %*s%s\n",
 	    log_versions[LOGVER],
-	    sccs_user(), tv.tv_sec, (unsigned long)tv.tv_usec,
+	    sccs_getuser(), tv.tv_sec, (unsigned long)tv.tv_usec,
 	    milli(), bk_vers, indent(), "", format);
 	va_start(ap, format);
 	vfprintf(f, nformat, ap);

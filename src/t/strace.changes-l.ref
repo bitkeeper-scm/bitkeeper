@@ -7,7 +7,7 @@ getdir 1
 lseek 22
 lstat 64
 open 58
-read 2230
+read 2250
 stat 6
 unlink 3
 write 56

@@ -791,7 +791,10 @@ void
 proj_flush(project *p)
 {
 	if (p) {
-		if (p->scancomps || p->scandirs) proj_dirstate(p, 0, 0, -1);
+		if (p->scancomps || p->scandirs) {
+			proj_dirstate(p, 0, 0, -1);
+			assert(!p->scancomps && !p->scandirs);
+		}
 	} else {
 		EACH_HASH(proj.cache) {
 			proj_flush(*(project **)proj.cache->vptr);
@@ -1605,6 +1608,48 @@ scanFromBits(u32 bits, char *out)
 }
 
 /*
+ * Update a scandir or scancomps file with changes.
+ * We might be doing multiple updates in parallel so we need to do
+ * a read/modify/write operation under a lock.
+ * returns -1 if a problem occurred.
+ */
+private int
+scanfWrite(char *file, hash *new, char **keys)
+{
+	int	i, rc;
+	char	*k, *v;
+	hash	*old;
+	char	lock[MAXPATH], tmpf[MAXPATH];
+
+	sprintf(lock, "%s.lock", file);
+	if (sccs_lockfile(lock, 16, 0)) {
+		fprintf(stderr, "Not updating %s due to locking.\n", file);
+		return (-1);
+	}
+	old = hash_fromFile(hash_new(HASH_MEMHASH), file);
+	EACH(keys) {
+		k = keys[i];
+		assert(!streq(k, "DIRTY"));
+		if (v = hash_fetchStr(new, k)) {
+			hash_storeStr(old, k, v);
+		} else {
+			hash_deleteStr(old, k);
+		}
+	}
+	sprintf(tmpf, "%s.tmp", file);
+	rc = hash_toFile(old, tmpf) || rename(tmpf, file);
+	hash_free(old);
+	if (rc) {
+		perror(tmpf);
+		unlink(tmpf);
+		sccs_unlockfile(lock);
+		return (-1);
+	}
+	if (sccs_unlockfile(lock)) return (-1);
+	return (0);
+}
+
+/*
  * helper function for proj_dirstate() below.
  *
  * it loads the hash file at 'file' into *h and updates 'dir'
@@ -1613,14 +1658,18 @@ private void
 scanfUpdate(project *p, char *file, hash **h, char *dir, u32 state, int set)
 {
 	u32	ostate, nstate;
+	char	***dirty, **keys;
 	char	buf[16];
 
 	if (set == -1) {
 		/* flush cache */
-		if (*h && !hash_deleteStr(*h, "DIRTY")) {
-			if (hash_toFile(*h, file)) {
-				perror(file);
+		if (*h) {
+			if (keys = hash_fetchStrPtr(*h, "DIRTY")) {
+				scanfWrite(file, *h, keys);
+				freeLines(keys, free);
 			}
+			hash_free(*h);
+			*h = 0;
 		}
 	} else {
 		unless (*h) *h = hash_fromFile(hash_new(HASH_MEMHASH), file);
@@ -1634,13 +1683,17 @@ scanfUpdate(project *p, char *file, hash **h, char *dir, u32 state, int set)
 		ostate = scanToBits(hash_fetchStr(*h, dir));
 		nstate = (ostate & ~state) | (set * state);
 		if (ostate != nstate) {
+
+			hash_insertStrPtr(*h, "DIRTY", 0);
+			dirty = (*h)->vptr;
+			*dirty = addLine(*dirty, strdup(dir));
+
 			if (nstate) {
 				scanFromBits(nstate, buf);
 				hash_storeStr(*h, dir, buf);
 			} else {
 				hash_deleteStr(*h, dir);
 			}
-			hash_insertStr(*h, "DIRTY", 0);
 		}
 	}
 }

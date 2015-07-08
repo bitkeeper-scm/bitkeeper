@@ -431,7 +431,7 @@ done
 bk here add $Q subprimes || fail now it should have worked
 echo OK
 
-echo ---- Test very deeply nested deep nests........................
+echo ---- Test very deeply nested deep nests
 echo $N Setup the repo...............................................$NL
 cd "$HERE/project"
 for i in 1 2 3 4 5
@@ -575,7 +575,7 @@ rm deep1/deep2/deep3/deep4/deep5
 echo OK
 fi
 
-echo ---- Test unmapped repos ......................................
+echo ---- Test unmapped repos
 echo $N Create an not-remapped component ............................$NL
 # in a remapped product...
 cd "$HERE"
@@ -705,5 +705,28 @@ echo "Cannot remove components in a gate." > WANT
 bk here set PRODUCT 2> GOT && fail -f GOT
 cmpfiles WANT GOT
 bk here set -f PRODUCT 2> GOT && fail -f GOT
+cmpfiles WANT GOT
+echo OK
+
+echo ---- Test parallel populate
+echo $N Parallel repocheck that does an edit ........................$NL
+cd "$HERE"/project
+bk comps | while read c
+do
+	echo hi > $c/test
+	bk new $Q $c/test || fail
+done
+bk commit $Q -ytest || fail
+cd ..
+bk --config=checkout:none clone $Q project p-none || fail
+cd p-none
+bk --config=checkout:edit repocheck -j10 $Q || fail
+rm -f WANT
+bk comps | while read c
+do
+	echo ignore:me >> $c/test
+	echo $c/test | sed 's/\.\///' >> WANT
+done
+bk -Uc > GOT
 cmpfiles WANT GOT
 echo OK

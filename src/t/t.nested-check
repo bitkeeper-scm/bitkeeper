@@ -35,6 +35,8 @@ bk commit -S -d $Q -y'added foo' 2>OUT && fail -f OUT
 # to fix HERE file or else populate will not work
 mv BitKeeper/log/HERE-sav BitKeeper/log/HERE
 bk populate $Q gdb 2>OUT || fail -f OUT
+HOWMANY=`bk repocheck -S 2>&1 | perl -ne '$x++; sub END {print "$x\n"}'`
+test "$HOWMANY" -eq 1 || fail Expected 1, got "$HOWMANY" components
 bk repocheck >OUT 2>&1 || fail -f OUT
 echo OK
 

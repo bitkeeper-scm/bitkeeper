@@ -14,6 +14,10 @@
 #include "poly.h"
 #include "cfg.h"
 
+#define	sccs_init		die("use locked_init instead sccs_init")
+#define	sccs_free		die("use locked_free instead sccs_free")
+#define	sccs_csetInit(x)	die("don't use sccs_csetInit here")
+
 /*
  * Stuff to remember for each rootkey in the ->mask field:
  *  0x1 parent side of merge changes this rk
@@ -93,6 +97,8 @@ private	int	polyChk(char *rkey, rkdata *rkd, hash *newpoly);
 private	int	stripdelFile(sccs *s, rkdata *rkd, char *tip);
 private	int	keyFind(rkdata *rkd, char *key);
 private	void	getlock(void);
+private	sccs	*locked_init(char *name, u32 flags);
+private	int	locked_free(sccs *s);
 
 private	int	verbose;
 private	int	details;	/* if set, show more information */
@@ -118,6 +124,7 @@ private	u32	timestamps;
 private	char	**bp_getFiles;
 private	int	bp_fullcheck;	/* do bam CRC */
 private	char	**subrepos = 0;
+private	int	lock_csets = 0;	/* --parallel */
 
 int
 check_main(int ac, char **av)
@@ -144,6 +151,7 @@ check_main(int ac, char **av)
 	int	sawPOLY = 0;
 	pfile	pf;
 	longopt	lopts[] = {
+		{ "parallel", 290 },
 		{ "use-older-changeset", 300 },
 		{ 0, 0 }
 	};
@@ -172,6 +180,8 @@ check_main(int ac, char **av)
 		    case 'u': undoMarks++; break;		/* doc 2.0 */
 		    case 'v': verbose++; break;			/* doc 2.0 */
 		    case 'w': badWritable++; break;		/* doc 2.0 */
+		    case 290:	/* --parallel */
+			lock_csets = 1;	break;
 		    case 300:	/* --use-older-changeset */
 			forceCsetFetch++; break;
 		    default: bk_badArg(c, av);
@@ -226,7 +236,7 @@ check_main(int ac, char **av)
 	checkout = proj_checkout(0);
 
 	/* revtool: the code below is restored from a previous version */
-	unless ((cset = sccs_csetInit(flags)) && HASGRAPH(cset)) {
+	unless ((cset = locked_init(CHANGESET, flags|INIT_MUSTEXIST))) {
 		fprintf(stderr, "Can't init ChangeSet\n");
 		return (1);
 	}
@@ -297,7 +307,7 @@ check_main(int ac, char **av)
 		if (streq(name, CHANGESET)) {
 			s = cset;
 		} else {
-			s = sccs_init(name, flags);
+			s = locked_init(name, flags);
 		}
 		unless (s) {
 			if (all) fprintf(stderr, "%s init failed.\n", name);
@@ -311,7 +321,7 @@ check_main(int ac, char **av)
 			fprintf(stderr,
 			    "%s: bad file checksum, corrupted file?\n",
 			    s->gfile);
-			unless (s == cset) sccs_free(s);
+			unless (s == cset) locked_free(s);
 			errors |= 1;
 			continue;
 		}
@@ -322,7 +332,7 @@ check_main(int ac, char **av)
 			} else {
 				perror(s->gfile);
 			}
-			unless (s == cset) sccs_free(s);
+			unless (s == cset) locked_free(s);
 			errors |= 1;
 			continue;
 		}
@@ -439,7 +449,7 @@ check_main(int ac, char **av)
 		unless (ferr) {
 			if (verbose>1) fprintf(stderr, "%s is OK\n", s->gfile);
 		}
-		if ((s != cset) && sccs_free(s)) {
+		if ((s != cset) && locked_free(s)) {
 			ferr++, errors |= 0x01;
 		}
 	}
@@ -530,7 +540,7 @@ check_main(int ac, char **av)
 			goto out;
 		}
 	}
-	repos_update(cset);
+	repos_update(cset->proj);
 	if (errors && fix) {
 		// LMXXX - how lame is this?
 		// We could keep track of a fixnames, fixxflags, etc
@@ -586,7 +596,7 @@ check_main(int ac, char **av)
 		}
 		cset_savetip(cset);
 	}
-out:	if (sccs_free(cset)) {
+out:	if (locked_free(cset)) {
 		ferr++, errors |= 0x01;
 	}
 	cset = 0;
@@ -669,16 +679,22 @@ void
 touch_checked(void)
 {
 	FILE	*f;
+	char	*tmp = aprintf("%s.%u@%s", CHECKED, getpid(), sccs_realhost());
 
 	/* update timestamp of CHECKED file */
-	unless (f = fopen(CHECKED, "w")) {
-		unlink(CHECKED);
-		f = fopen(CHECKED, "w");
+	unless (f = fopen(tmp, "w")) {
+		unlink(tmp);
+		f = fopen(tmp, "w");
 	}
 	if (f) {
 		fprintf(f, "%u\n", (u32)time(0));
 		fclose(f);
+		if (rename(tmp, CHECKED)) {
+			unlink(CHECKED);
+			rename(tmp, CHECKED);
+		}
 	}
+	free(tmp);
 }
 
 private int
@@ -1063,9 +1079,9 @@ listFound(hash *db)
 	pclose(f);
 
 	EACH_HASH(h) {
-		if (s = sccs_init(h->kptr, SILENT|INIT_MUSTEXIST)) {
+		if (s = locked_init(h->kptr, SILENT|INIT_MUSTEXIST)) {
 			sccs_sdelta(s, sccs_ino(s), key);
-			sccs_free(s);
+			locked_free(s);
 			if (hash_fetchStr(db, key)) {
 				fprintf(stderr,
 				    "At least some of the chk3 errors above "
@@ -1317,7 +1333,7 @@ fetch_changeset(int forceCsetFetch)
 		fprintf(stderr, "Unable to retrieve ChangeSet, sorry.\n");
 		exit(0x40);
 	}
-	unless (s = sccs_init(CHANGESET, INIT_MUSTEXIST)) {
+	unless (s = locked_init(CHANGESET, INIT_MUSTEXIST)) {
 		fprintf(stderr, "Can't initialize ChangeSet file\n");
 		exit(1);
 	}
@@ -1332,7 +1348,7 @@ fetch_changeset(int forceCsetFetch)
 	range_gone(s, d, D_SET);
 	(void)stripdel_fixTable(s, &i);
 	unless (i) {
-		sccs_free(s);
+		locked_free(s);
 		goto done;
 	}
 	if (verbose > 1) fprintf(stderr, "Stripping %d csets/tags\n", i);
@@ -1340,7 +1356,7 @@ fetch_changeset(int forceCsetFetch)
 		fprintf(stderr, "stripdel failed\n");
 		exit(0x40);
 	}
-	sccs_free(s);
+	locked_free(s);
 	if (system("bk -?BK_NO_REPO_LOCK=YES renumber -q ChangeSet") != 0) {
 		fprintf(stderr, "Giving up, sorry.\n");
 		exit(0x40);
@@ -2100,7 +2116,7 @@ pathConflictError(MDBM *goneDB, MDBM *idDB, tipdata *td[2])
 		fprintf(stderr, "Must include other renames in commit.\n");
 	}
 done:	for (i = 0; i < 2; i++) {
-		if (k[i].s && (k[i].s != INVALID)) sccs_free(k[i].s);
+		if (k[i].s && (k[i].s != INVALID)) locked_free(k[i].s);
 		free(k[i].path);
 	}
 	if (prod_idDB) mdbm_close(prod_idDB);
@@ -2160,7 +2176,7 @@ getFile(char *root, MDBM *idDB)
 	} else {
 		t = strdup(s->sfile);
 	}
-	sccs_free(s);
+	locked_free(s);
 	return (t);
 }
 
@@ -2182,7 +2198,7 @@ getRev(char *root, char *key, MDBM *idDB)
 	} else {
 		t = strdup(REV(s, d));
 	}
-	sccs_free(s);
+	locked_free(s);
 	return (t);
 }
 
@@ -2215,7 +2231,7 @@ missingDelta(rkdata *rkd)
 	char	*sfile;
 
 	sfile = name2sccs(rkd->pathname);
-	s = sccs_init(sfile, INIT_MUSTEXIST|INIT_NOCKSUM);
+	s = locked_init(sfile, INIT_MUSTEXIST|INIT_NOCKSUM);
 	assert(s);
 	EACH(rkd->missing) {
 		dcset = strtoul(rkd->missing[i], &dkey, 10);
@@ -2310,7 +2326,7 @@ missingDelta(rkdata *rkd)
 			errors++;
 		}
 	}
-	sccs_free(s);
+	locked_free(s);
 	return (errors);
 }
 
@@ -2677,11 +2693,72 @@ undoDoMarks(void)
 		rev = strchr(sfile, '|');
 		*rev++ = 0;
 
-		unless (s = sccs_init(sfile, INIT_MUSTEXIST)) continue;
+		unless (s = locked_init(sfile, INIT_MUSTEXIST)) continue;
 		d = sccs_findrev(s, rev);
 		FLAGS(s, d) &= ~D_CSET;
 		sccs_newchksum(s);
 		updatePending(s);
-		sccs_free(s);
+		locked_free(s);
 	}
+}
+
+#undef	sccs_init
+#undef	sccs_free
+
+private void
+lockfile(char *path, char *lockfile)
+{
+	char	*p;
+
+	if (streq(path, CHANGESET)) {
+		strcpy(lockfile, "BitKeeper/tmp/ChangeSet.lock");
+	} else {
+		p = strstr(path, "/SCCS/s.ChangeSet");
+		*p = 0;
+		sprintf(lockfile, "%s/BitKeeper/tmp/ChangeSet.lock", path);
+		*p = '/';
+	}
+}
+
+/*
+ * Force exclusive access to comp changeset files because we may repack.
+ */
+private sccs *
+locked_init(char *name, u32 flags)
+{
+	sccs	*s;
+	char	*p;
+	char	lock[MAXPATH];
+
+	unless (lock_csets) return (sccs_init(name, flags));
+	p = strrchr(name, '/');
+	unless (p && streq(p, "/s.ChangeSet")) return (sccs_init(name, flags));
+
+	assert(proj_isEnsemble(0));
+
+	// Only lock component changesets
+	if (proj_isProduct(0)) {
+		if (streq(name, CHANGESET)) return (sccs_init(name, flags));
+	}
+	lockfile(name, lock);
+	if (sccs_lockfile(lock, -1, 0)) return (0);
+	if (s = sccs_init(name, flags)) {
+		s->state |= S_LOCKFILE;
+		assert(CSET(s));
+	} else {
+		sccs_unlockfile(lock);
+	}
+	return (s);
+}
+
+private int
+locked_free(sccs *s)
+{
+	char	lock[MAXPATH];
+
+	if (s && (s->state & S_LOCKFILE)) {
+		lockfile(s->sfile, lock);
+		sccs_unlockfile(lock);
+	}
+	return (sccs_free(s));
 }

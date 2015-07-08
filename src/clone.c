@@ -255,6 +255,7 @@ clone_main(int ac, char **av)
 		}
 		bam_url = "none";
 		opts->no_lclone = 1;
+		putenv("_BK_REPOS_SKIP=1");   // don't add to repos.log
 	}
 	if (opts->detach) opts->no_lclone = 1;
 	trigger_setQuiet(opts->quiet);
@@ -796,7 +797,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 			features_set(0, FEAT_BKMERGE, opts->bkmerge);
 		}
 	}
-	if (opts->parallel == 0) opts->parallel = parallel(".");
+	if (opts->parallel == 0) opts->parallel = parallel(".", WRITER);
 	retrc = RET_ERROR;
 
 	/* eat the data */
@@ -1058,6 +1059,8 @@ clone2(remote *r)
 		free(url);
 		if (p) free(p);
 	}
+
+	repos_update(0);
 
 	sccs_rmUncommitted(!opts->verbose, &checkfiles);
 
@@ -2031,6 +2034,8 @@ attach(void)
 		if (orig_features != new_features) {
 			system("bk -?BK_NO_REPO_LOCK=YES -r admin -Zsame");
 		}
+		/* remove comp from repos list if there */
+		sys("bk", "repos", "-qc", proj_cwd(), SYS);
 	}
 	if (opts->nocommit) {
 		cset = sccs_csetInit(INIT_MUSTEXIST|INIT_NOCKSUM);

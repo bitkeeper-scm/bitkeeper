@@ -345,8 +345,8 @@ err:				if (revsDB) mdbm_close(revsDB);
 	while (d = cset_rdweavePair(cset, 0, &rkoff, &dkoff)) {
 		unless (dkoff) continue; /* last key */
 		if (!revs && !(FLAGS(cset, (d)) & D_RED)) continue;
+		unless (weave_iscomp(cset, rkoff)) continue;
 		t = HEAP(cset, rkoff);
-		unless (changesetKey(t)) continue;
 		v = HEAP(cset, dkoff);
 		/*
 		 * It would be even better if we could identify component
