@@ -1185,11 +1185,9 @@ proj_isProduct(project *p)
 int
 proj_isComponent(project *p)
 {
-	project	*prod;
-
 	unless (p || (p = curr_proj())) return (0);
 	if (p->rparent) p = p->rparent;
-	return ((prod = proj_product(p)) && (prod != p));
+	return (proj_comppath(p) != 0);
 }
 
 int

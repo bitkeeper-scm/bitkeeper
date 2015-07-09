@@ -1516,7 +1516,7 @@ findDir(nested *n, char *cwd, char *dir)
 	if (cwd && !IsFullPath(dir)) {
 		dir = p = aprintf("%s/%s", cwd, dir);
 	}
-	dir = proj_relpath(0, dir);
+	dir = proj_relpath(n->proj, dir);
 	if (p) free(p);
 	c = nested_findDir(n, dir, exact);
 	free(dir);

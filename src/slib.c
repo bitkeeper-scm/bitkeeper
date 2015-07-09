@@ -1751,11 +1751,11 @@ sccs_findrev(sccs *s, char *rev)
 	}
 again:	if (revtype != PLAINREV) {
 		if (revtype == PRODREV) {
-			unless (proj_isComponent(s->proj)) {
+			unless (proj_isComponent(s->proj) &&
+			    (proj = proj_product(s->proj))) {
 				revtype = REPOREV;
 				goto again;
 			}
-			proj = proj_product(s->proj);
 			if (CSET(s)) goto atrev;
 			rev = csetdk = proj_cset2key(proj,
 			    rev, proj_rootkey(s->proj));

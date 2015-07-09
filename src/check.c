@@ -271,10 +271,17 @@ check_main(int ac, char **av)
 		if (proj_isProduct(0) && exists(ROOT2RESYNC "/" CHANGESET)) {
 			pull_inProgress = 1;
 		}
-		n = nested_init(proj_isProduct(0) ? cset : 0,
-		    0, 0, NESTED_PENDING|NESTED_FIXIDCACHE);
-		subrepos = nested_complist(n, 0);
-		nested_free(n);
+		unless (proj_product(0)) {
+			t = proj_comppath(0);
+			fprintf(stderr,
+			    "Component %s not inside a product\n", t);
+			errors |= 1;
+		} else {
+			n = nested_init(proj_isProduct(0) ? cset : 0,
+			    0, 0, NESTED_PENDING|NESTED_FIXIDCACHE);
+			subrepos = nested_complist(n, 0);
+			nested_free(n);
+		}
 	}
 	/* This can legitimately return NULL */
 	goneDB = loadDB(GONE, 0, DB_GONE);
@@ -2465,8 +2472,11 @@ check(sccs *s, MDBM *idDB)
 		} else {
 			lines = addLine(0, x);
 		}
-		lines2File(lines,
-		    proj_fullpath(s->proj, "BitKeeper/log/COMPONENT"));
+		unless (((t = proj_comppath(s->proj)) && streq(t, lines[1])) ||
+		    !proj_product(s->proj)) {
+			lines2File(lines,
+			    proj_fullpath(s->proj, "BitKeeper/log/COMPONENT"));
+		}
 		freeLines(lines, 0);
 		free(x);
 		if (proj_isProduct(0)) strcat(PATHNAME(s, d), "/ChangeSet");
