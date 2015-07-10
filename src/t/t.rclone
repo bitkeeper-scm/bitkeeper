@@ -40,6 +40,8 @@ cd "$HERE"
 if [ X$PLATFORM = X"WIN32" ]; then SLASH="//"; else SLASH="/"; fi
 bk _rclone $Q "$HERE/project" file:$SLASH"$HERE/copy" || { echo failed; exit 1; }
 bk _test -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || { echo failed; exit 1; }
+cmpfiles project/BitKeeper/log/features copy/BitKeeper/log/features
+
 bk _rclone $Q -r1.1 "$HERE/project" "$HERE/copy2" || { echo failed; exit 1; }
 [ -d copy2 ] || { echo failed; exit 1; }
 bk _test ! -f copy2/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || { echo failed; exit 1; }
