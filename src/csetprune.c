@@ -366,7 +366,8 @@ csetprune(Opts *opts)
 	EACH_REVERSE(cweave) if (cweave[i].ser) break;
 	truncArray(cweave, i);	/* chop deleted nodes from end of list */
 	empty_nodes = fixAdded(cset, cweave);
-	if (sccs_csetWrite(cset, cweave)) goto err;
+	weave_replace(cset, cweave);
+	if (sccs_newchksum(cset)) goto err;
 	sccs_free(cset);
 	cset = 0;
 	free(cweave);

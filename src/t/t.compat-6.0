@@ -758,3 +758,19 @@ $OLDBK/bk partition $Q \
     2> ERR && fail -f ERR
 grep -q "partition: Unknown feature 'KEEPDEL'" ERR || fail -f ERR
 echo OK
+
+echo $N Test csetprune current bk on bk 6 repo ......................$NL
+cd "$HERE"
+# Save the key for a file to prune
+bk --cd=part-base/src prs -r1.0 -hnd:KEY: b > BKEY
+# Make a couple of BWEAVEv2 repos
+$OLDBK/bk clone $Q --upgrade part-base bk6-prune
+$OLDBK/bk clone $Q bk6-prune bk7-prune
+# prune
+cd bk6-prune
+$OLDBK/bk csetprune $Q -k1234567890abcdef - < ../BKEY || fail
+cd ../bk7-prune
+bk csetprune $Q -k1234567890abcdef - < ../BKEY || fail
+bk changes -qaLR ../bk6-prune > DIFF
+test -s DIFF && fail -f DIFF should be no diffs
+echo OK
