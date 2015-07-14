@@ -1,0 +1,27 @@
+BitKeeper performance tuning hints
+----------------------------------
+
+* checkout:get
+* nested
+** Users should have few files in product
+** aliases + clone_defaults + clone -s<alias|THERE>
+* turn off 'sync' config
+* use timestampdb (make 'clock_skew' lower)
+* enable 'partial_check'
+** set 'check_frequency' to 7
+** run checks at night time
+* clone --upgrade
+** bk status to see if upgrades are needed
+* TMPDIR=/ssd
+* BAM
+** bam_checkout
+** maintaining a local BAM server
+* don't use keywords
+* parallel operations
+** bk fstype
+** 'parallel' config
+* commit
+** --import
+** --ci
+* citool --no-extras
+http://man7.org/linux/manpages/man5/proc.5.html & search for protected_hardlinks
