@@ -266,7 +266,7 @@ commit_main(int ac, char **av)
 	assert(f);
 	while (bufp = fgetline(fin)) {
 		p = strchr(bufp+offset, '|');
-		if (((offset == 8) && bufp[2] == 'c') || (p == 0)) {
+		if (((offset == 8) && bufp[2] == 'c' && opts.ci) || (p == 0)) {
 			if (p) *p = 0;
 			modFiles = addLine(modFiles,
 			    strdup(bufp+offset));

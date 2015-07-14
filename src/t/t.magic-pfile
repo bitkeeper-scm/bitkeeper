@@ -133,6 +133,7 @@ echo OK
 
 echo $N Test check fixing a v3 repo in a bad state ..................$NL
 cd "$HERE/BWEAVEv3"
+bk unedit $Q switch || fail
 bk -r clean $Q || fail
 bk get $Q kw plain
 bk _test -s SCCS/p.kw -o -s SCCS/p.plain && fail

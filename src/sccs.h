@@ -1256,7 +1256,6 @@ pid_t	smtpmail(char **to, char *subject, char *file);
 int	connect_srv(char *srv, int port, int trace);
 int	get(char *path, int flags);
 int	gethelp(char *helptxt, char *help_name, char *bkarg, char *prefix, FILE *f);
-void	status(int verbose, FILE *out);
 void	notify(void);
 char	*package_name(void);
 int	bkusers(sccs *s, char *prefix, FILE *out);
