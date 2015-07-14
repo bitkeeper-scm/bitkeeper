@@ -1,0 +1,61 @@
+echo $N Test bk status in a repository with no parents...............$NL
+commercial proj
+bk status > GOT || fail
+H=`bk gethost -r`
+P=`bk root`
+V=`bk version -s`
+cat <<EOF > WANT
+Repo: $H:$P
+This repository has no parent.
+BK version: $V (repository requires bk-7.0 or later)
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N A simple tests with some changes ............................$NL
+bk clone $Q . ../copy
+bk tag $Q foo
+cd ../copy
+echo 4 > F
+bk new $Q -l F
+echo 3 >> F   # modified file
+bk commit $Q -yy || fail
+bk clone $Q . ../copy2
+bk parent $Q -ai ../copy2
+Pc2=`bk --cd=../copy2 root`
+echo 5 > F2
+bk new $Q F2   # pending file
+echo 6 > F3    # extra file
+bk level 2     # change level
+
+bk status > GOT || fail
+P2=`bk root`
+cat <<EOF > WANT
+Repo: $H:$P2
+Push/pull parent: file://$P
+	1 csets can be pushed
+	1 csets can be pulled
+Pull parent: file://$Pc2
+	(up to date)
+1 locally modified files
+1 locally pending files
+Repo attributes: level=2
+BK version: $V (repository requires bk-7.0 or later)
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Show status output for a nested repo ........................$NL
+cd ..
+nested nest
+bk status > GOT || fail
+P2=`bk root`
+cat <<EOF > WANT
+Repo: $H:$P2
+Nested repo: 3/3 components present
+This repository has no parent.
+Repo attributes: GATE, PORTAL
+BK version: $V (repository requires bk-7.0 or later)
+EOF
+cmpfiles WANT GOT
+echo OK
