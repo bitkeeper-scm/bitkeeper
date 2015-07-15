@@ -3,7 +3,7 @@ commercial proj
 bk status > GOT || fail
 H=`bk gethost -r`
 P=`bk root`
-V=`bk version -s`
+V=`bk version | perl -lne 'print $1 if /version is (\S+).*? for/'`
 cat <<EOF > WANT
 Repo: $H:$P
 This repository has no parent.
