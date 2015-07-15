@@ -182,10 +182,6 @@ proc app_init {} \
 		clock_skew    "on"
 		partial_check "on"
 		closeOnCreate 1
-		keyword,sccs  0
-		keyword,rcs   0
-		keyword,expand1 0
-		keyword       "none"
 
 		license		""
 		licsign1	""
@@ -365,7 +361,7 @@ proc widgets {} \
 
 	set common {
 		RepoInfo
-		KeywordExpansion CheckoutMode Partial_Check
+		CheckoutMode Partial_Check
 		Finish
 	}
 	
@@ -578,80 +574,6 @@ proc widgets {} \
 		# the proper state
 		validate repoInfo
 
-	}
-
-	#-----------------------------------------------------------------------
-	# The description for the keywords requires a bit of extra
-	# formatting, so we'll do that manually
-	. add step KeywordExpansion \
-	    -title "Keyword Expansion" \
-	    -description [wrap [getmsg setuptool_step_KeywordExpansion]]
-
-	. stepconfigure KeywordExpansion -body {
-		global widgets
-
-		set w [$this info workarea]
-		set widgets(KeywordExpansion) $w
-
-		$this configure -defaultbutton next
-
-		# keywords is a weird beast, in that the mechanics to 
-		# represent the value is a set of checkboxes rather 
-		# than a single entry or optionmenu. So, we need to parse 
-		# the keyword value to set some variables used by the 
-		# checkboxes.
-		set ::wizData(keyword,sccs) 0
-		set ::wizData(keyword,rcs) 0
-		set ::wizData(keyword,expand1) 0
-		if {$::wizData(keyword) != "none"} {
-			foreach value [split $::wizData(keyword) ", "] {
-				set value [string trim $value]
-				if {$value == "sccs" || 
-				    $value == "rcs" ||
-				    $value == "expand1"} {
-					set ::wizData(keyword,$value) 1
-				}
-			}
-		}
-
-		ttk::label $w.keywordLabel -text "Keyword Expansion:"
-		ttk::checkbutton $w.sccsCheckbutton \
-		    -text "SCCS" \
-		    -onvalue 1 \
-		    -offvalue 0 \
-		    -variable wizData(keyword,sccs) \
-		    -command updateKeyword
-		ttk::checkbutton $w.rcsCheckbutton \
-		    -text "RCS" \
-		    -onvalue 1 \
-		    -offvalue 0 \
-		    -variable wizData(keyword,rcs) \
-		    -command updateKeyword
-		ttk::checkbutton $w.expand1Checkbutton \
-		    -text "EXPAND1" \
-		    -onvalue 1 \
-		    -offvalue 0 \
-		    -variable wizData(keyword,expand1) \
-		    -command updateKeyword
-		ttk::button $w.moreInfoKeywords \
-		    -text "More info" \
-		    -command [list moreInfo keywords]
-
-
-		grid $w.keywordLabel       -row 0 -column 0 -sticky e -pady 4
-		grid $w.expand1Checkbutton -row 1 -column 0 -sticky w -padx 16
-		grid $w.rcsCheckbutton     -row 2 -column 0 -sticky w -padx 16
-		grid $w.sccsCheckbutton    -row 3 -column 0 -sticky w -padx 16
-		grid $w.moreInfoKeywords   -row 1 -column 1 -sticky w 
-
-		grid rowconfigure $w 0 -weight 0
-		grid rowconfigure $w 1 -weight 0
-		grid rowconfigure $w 2 -weight 0
-		grid rowconfigure $w 3 -weight 0
-		grid rowconfigure $w 4 -weight 1
-
-		grid columnconfigure $w 0 -weight 0
-		grid columnconfigure $w 1 -weight 1
 	}
 
 	#-----------------------------------------------------------------------
@@ -893,7 +815,7 @@ proc createConfigData {} \
 
 	foreach key {
 		description email
-		keyword autofix checkout clock_skew partial_check
+		autofix checkout clock_skew partial_check
 	} {
 		append configData "$key: $wizData($key)\n"
 	}
@@ -934,23 +856,6 @@ proc createRepo {errorVar} \
 	}
 
 	return 1
-}
-
-proc updateKeyword {} \
-{
-	global wizData
-
-	set keywords [list]
-
-	if {$wizData(keyword,rcs)}     {lappend keywords rcs}
-	if {$wizData(keyword,sccs)}    {lappend keywords sccs}
-	if {$wizData(keyword,expand1)} {lappend keywords expand1}
-
-	if {[llength $keywords] == 0} {
-		set wizData(keyword) "none"
-	} else {
-		set wizData(keyword) [join $keywords ", "]
-	}
 }
 
 proc popupMessage {args} \
@@ -1038,7 +943,6 @@ proc moreInfo {which {search {}}} {
 
 	switch -exact -- $which {
 		commercial	{set topic licensing}
-		keywords	{set topic keywords}
 		default		{set topic config-etc}
 	}
 

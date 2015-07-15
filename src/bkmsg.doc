@@ -873,18 +873,6 @@ file at BitKeeper/etc/config; it can be edited later to make changes. See the
 config-etc man page for detailed information on the format and options that
 are supported. 
 $
-#setuptool_step_KeywordExpansion
-BitKeeper can automatically expand SCCS or RCS keywords in files when they are 
-checked out in read-only mode. This feature is off by default, but you can
-change this behavior by selecting the expansion options that best meet your 
-needs.
-
-Select the "sccs" and/or "rcs" options to have the appropriate
-keywords expanded. In addition, you can select "expand1" to mean you
-only want keywords to be expanded in the first line that contains
-keywords. This helps avoid conflicts with printf statements or other
-code that may contain strings that look like keywords.
-$
 #setuptool_step_CheckoutMode
 BitKeeper supports check out modes of "none", "get", or "edit".
 These modes control how the files will appear (or not appear) in your
