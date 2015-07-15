@@ -242,7 +242,7 @@ PCRELIB = gui/tcltk/pcre/local/lib/libpcre.a
 DATA	= bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
 	Academic.lic Essentials.lic Pro.lic Enterprise.lic MLA.lic bkcl.lic \
-	Premier.lic \
+	Premier.lic 2015.lic \
 	dspec-changes dspec-changes-vv dspec-changes-h dspec-changes-hv \
 	dspec-changes-3.2 dspec-changes-4.0 dspec-prs dspec-log
 CONTRIB = gui/ide/emacs/vc-bk.el
