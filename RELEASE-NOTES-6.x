@@ -1,33 +1,3 @@
-bk -U -j cmd
-
-   Enable running command in parallel.
-   XXX add description here.
-
-   NOTE: The -j option to 'bk' has changed.  In bk-6.x and eariler it
-   would list 'junk' file. This is files in bk's internal storage
-   space that were not written by bk.  This was deemed not useful and
-   so the command line option was reused.
-
-bk config <var>
-   This used to show what var was set to in a config file.
-   If var wasn't in any config file, then nothing would be shown.
-   This now shows the default state of var.
-
-bk tag
-   The rules for valid tags names have been restricted to more normal
-   looking identifiers to avoid compatibility issues in the future.
-   (see 'bk help tag' for the new rules)
-   Existing tags that break these rules will continue to be supported.
-
-bk pull
-
-    - New option --stats that prints difffstat output after finishing
-      the pull. It can also be permanently enabled by setting the
-      config variable stats_after_pull to true.
-
-    - Fix a bug where pull was not disallowing the -R option with
-      multiple parents or URLs.
-
 ============================================================================
 Release notes for BitKeeper version 6.1.3 (released Mar 11, 2015)
 

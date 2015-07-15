@@ -16,32 +16,6 @@ The following list describes the purpose of each file:
 \*(lqsfile\*(rq \-
 the revision history of all versions of the gfile
 .tp
-.OPTreq SCCS/p.\| foo
-\*(lqpfile\*(rq \- the lock file, created when the file is edited.
-The pfile contains the following columns:
-.nf
-.if n .ta .3i +0i +1.1i +1i +.8i
-.if n .sp
-.if t .ta .3i +0i +.75i +.75i +.75i
-.if t .in +2
-.if t .ft CW
-	parent	new	
-	revision	revision	user	date/time
-	1.5	1.6	lm	01/01/2000 12:43:54
-.fi
-.if n .sp
-.if t .in
-.if t .ft
-This file is an exclusive lock whose existence indicates 
-that the gfile has been checked out for editing.  Unlike 
-ATT SCCS, \*(BK allows only one locker at a time within a
-single repository.
-.tp
-.OPTreq SCCS/z.\| foo
-\*(lqzfile\*(rq \- a lock file created when locking or checking 
-in a new version. This is an exclusive lock used when
-updating or locking the sfile.  
-.tp
 .OPTreq SCCS/x.\| foo
 \*(lqxfile\*(rq \- a temporary file which contains the new version
 of the sfile under construction.  When the check-in is
@@ -57,9 +31,8 @@ currently used only by
 \*(lqdfile\*(rq \- a temporary file that indicates there is at least one
 pending delta in the sfile.
 .SH FUTURE DIRECTIONS
-Depending on these files, other than the gfile, actually existing should
-not be done.
-In the future, all of the meta-files will be virtual.  At that point, 
+Other than the gfile, accessing any of these files directly is discouraged.
+In the future, all of the meta-files will be \fBvirtual\fR.  At that point,
 there will be interfaces to read them, test for their presence, and
 write them.
 .SH CATEGORY
