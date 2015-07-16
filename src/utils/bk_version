@@ -1554,6 +1554,7 @@ OS=`sh /tmp/gnu-os$$ |
 	-e s/hppa2.0/hppa/ \
 	-e s/powerpc-darwin.*/powerpc-macosx/ \
 	-e s/x86-darwin.*/x86-macosx/ \
+	-e s/x86_64-darwin.*/x86_64-macosx/ \
 	-e s/sparc64-/sparc-/ \
 	-e s/openbsd.../openbsd/ \
 	-e s/netbsdelf/netbsd/ \
