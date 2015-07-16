@@ -252,10 +252,10 @@ proc validateLicense {} \
 	set line1 [lindex $lines 0]
 	if {[llength $lines] == 4 && ([string match "BKL*" $line1]
 	    || [string match "license: BKL*" $line1])} {
-		set wizData(license)  [lindex $lines 0]
-		set wizData(licsign1) [lindex $lines 1]
-		set wizData(licsign2) [lindex $lines 2]
-		set wizData(licsign3) [lindex $lines 3]
+		set wizData(license)  [string trim [lindex $lines 0]]
+		set wizData(licsign1) [string trim [lindex $lines 1]]
+		set wizData(licsign2) [string trim [lindex $lines 2]]
+		set wizData(licsign3) [string trim [lindex $lines 3]]
 		. configure -state normal
 	} else {
 		. configure -state pending
