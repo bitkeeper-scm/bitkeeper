@@ -1352,6 +1352,9 @@ _L() {
 }
 
 _wish() {
+	BK_GUI="YES"
+	export BK_GUI
+
 	AQUAWISH="$BK_BIN/gui/bin/BitKeeper.app/Contents/MacOS/BitKeeper"
 	test -n "$DISPLAY" && {
 		echo $DISPLAY | grep -q "/tmp/[a-z.]*launch" || AQUAWISH=
