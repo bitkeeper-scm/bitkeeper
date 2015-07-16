@@ -2,14 +2,12 @@
 
 # Remove -psn_* from ::argv, if present. You get this when invoked
 # via the Finder.
-set launched_from_bundle 0
 if {[regexp {^-psn_} [lindex $argv end]]} {
-	set launched_from_bundle 1
 	set argv [lrange $argv 0 end-1]
 	incr argc -1
 }
 
-if {[info exists env(BK_GUI)] || !$launched_from_bundle} {
+if {[info exists env(BK_GUI)]} {
 	# we're being called from BitKeeper, pass through any args and
 	# source the real script
 	if {[llength $argv]} {
@@ -39,5 +37,6 @@ if {[info exists env(BK_GUI)] || !$launched_from_bundle} {
 		source $script
 	} else {
 		exec open http://bitkeeper.com/start
+		exit
 	}
 }
