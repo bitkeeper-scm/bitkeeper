@@ -582,7 +582,6 @@ crankrelease cranktrial nightly: crank.sh remote.sh
 		;; \
 	nightly ) \
 		cd $$SAVED_WD ; \
-		chmod 600 ssh-keys/upgrades.key ; \
 		./mkupgrades --nightly $$TAG ; \
 		;; \
 	esac)

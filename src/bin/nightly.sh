@@ -46,13 +46,11 @@ rm -f /tmp/OUT.$$
 ## finally, change the symlink on upgrades.bitkeeper.com to point to the right
 ## place.
 ## Make sure the key is usable:
-KEYFILE=ssh-keys/upgrades.key
-COPY=ssh-keys/upgrades.secret
-test -r $COPY || {
-	rm -f $COPY
-	bk get -qp $KEYFILE > $COPY
-}
-chmod 600 $COPY || fail chmod 600 $COPY
-ssh -i $COPY \
+KEYSRC=ssh-keys/upgrades.key
+KEY=$KEYSRC.me
+cp $KEYSRC $KEY
+chmod 600 $KEY || fail
+trap "rm -f '$KEY'" 0 1 2 3 15
+ssh -i $KEY \
 	upgrades@upgrades.bitkeeper.com \
 	"(cd www ; rm -f upgrades.nightly ; ln -s upgrades.7.0.${DATE}beta upgrades.nightly )"

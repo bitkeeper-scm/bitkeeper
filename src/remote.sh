@@ -177,12 +177,14 @@ case $CMD in
 				exit 0
 			}
 			## Make sure the permissions are right for the key
-			COPY=ssh-keys/images.secret
-			bk get -qp ssh-keys/images.key > $COPY
-			chmod 600 $COPY
+			KEYSRC=ssh-keys/images.key
+			KEY=$KEYSRC.me
+			cp $KEYSRC $KEY
+			chmod 600 $KEY
+			trap "rm -f '$KEY'" 0 1 2 3 15
 			IMG=$TAG-${ARCH}-setup.exe
 			DEST="images@work:$DEST"
-			CP="scp -i $COPY"
+			CP="scp -i $KEY"
 			# fix windows perms
 			chmod 755 /build/.images/$IMG || {
 				echo "Could not find image /build/.images/$IMG"
