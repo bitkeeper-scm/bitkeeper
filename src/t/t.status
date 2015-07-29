@@ -49,13 +49,35 @@ echo $N Show status output for a nested repo ........................$NL
 cd ..
 nested nest
 bk status > GOT || fail
-P2=`bk root`
+Pn=`bk root`
 cat <<EOF > WANT
-Repo: $H:$P2
+Repo: $H:$Pn
 Nested repo: 3/3 components present
 This repository has no parent.
 Repo attributes: GATE, PORTAL
 BK version: $V (repository requires bk-7.0 or later)
 EOF
 cmpfiles WANT GOT
+echo OK
+
+echo $N Show status with a bad URL ..................................$NL
+cd ../copy
+echo $HERE/junk >> BitKeeper/log/pull-parent
+bk status > GOT || fail
+J=`echo $P2 | sed 's/copy/junk/'`
+cat <<EOF > WANT
+Repo: $H:$P2
+Push/pull parent: file://$P
+	1 csets can be pushed
+	1 csets can be pulled
+Pull parent: $J
+	ERROR-cannot cd to $J (illegal, nonexistent, or not package root)
+Pull parent: file://$Pc2
+	(up to date)
+1 locally modified files
+1 locally pending files
+Repo attributes: level=2
+BK version: $V (repository requires bk-7.0 or later)
+EOF
+cmpfiles GOT WANT
 echo OK
