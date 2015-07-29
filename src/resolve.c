@@ -2714,7 +2714,6 @@ pass4_apply(opts *opts)
 	char	key[MAXKEY];
 	MDBM	*permDB = mdbm_mem();
 	char	*cmd;
-	char	*p;
 	hash	*emptydirs;
 	char	**dirlist;
 
@@ -2826,7 +2825,7 @@ pass4_apply(opts *opts)
 			 * This little chunk of magic is to detect BAM files
 			 * and respect BAM_checkout.
 			 */
-			if ((p = strrchr(key, '|')) && strneq(p, "|B:", 3)) {
+			if (BAMkey(key)) {
 				proj_saveCOkey(0, key, proj_checkout(0) >> 4);
 			} else {
 				proj_saveCOkey(0, key, proj_checkout(0) & 0xf);
