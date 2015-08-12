@@ -235,16 +235,13 @@ TkpInit(
 
 	if (!uname(&name)) {
 	    tkMacOSXMacOSXVersion = (strtod(name.release, NULL) + 96) * 10;
-	    /*
-	     * Version # encoding changed in OS X 10.10: 10.9 is 1090
-	     * but 10.10 is 101000.
-	     */
-	    if (tkMacOSXMacOSXVersion >= 1100) {
-		    tkMacOSXMacOSXVersion += 99900;
-	    }
 	}
-	if (tkMacOSXMacOSXVersion &&
-		tkMacOSXMacOSXVersion/10 < MAC_OS_X_VERSION_MIN_REQUIRED/10) {
+	/* Check for new versioning scheme on Yosemite (10.10) and later */
+	if (MAC_OS_X_VERSION_MIN_REQUIRED > 100000) {
+	    tkMacOSXMacOSXVersion = MAC_OS_X_VERSION_MIN_REQUIRED/100;
+	}
+	if (tkMacOSXMacOSXVersion && MAC_OS_X_VERSION_MIN_REQUIRED < 100000 &&
+	  tkMacOSXMacOSXVersion/10 < MAC_OS_X_VERSION_MIN_REQUIRED/10) {
 	    Tcl_Panic("Mac OS X 10.%d or later required !",
 		    (MAC_OS_X_VERSION_MIN_REQUIRED/10)-100);
 	}
