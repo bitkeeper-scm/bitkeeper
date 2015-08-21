@@ -443,9 +443,9 @@ bkhelp.txt: FORCE
 	@cp ../man/man2help/helptxt bkhelp.txt
 
 ../doc/bk_refcard.ps: FORCE
-	echo building $@
-	-bk -r../doc co -qS
-	$(MAKE) -C ../doc all
+	$(Q)echo building $@
+	$(Q)-bk -r../doc co -qS
+	$(Q)$(MAKE) -C ../doc all
 
 ../doc/bk_refcard.pdf: ../doc/bk_refcard.ps
 
