@@ -450,7 +450,6 @@ delta_main(int ac, char **av)
 			d = TABLE(s);
 			assert(d);
 			assert(!TAG(s, d));
-			nrev = REV(s, d);
 		} else {
 			s = sccs_restart(s);
 		}
@@ -492,7 +491,7 @@ delta_main(int ac, char **av)
 		if (reget) {
 			// XXX - what if we are dangling?
 			// The pf.oldrev is definitely wrong.
-			if (rc == -3) nrev = pf.oldrev;
+			nrev = (rc == -3) ? pf.oldrev : REV(s, TABLE(s));
 			if (sccs_get(s, nrev, 0, 0, 0, gf, s->gfile, 0)) {
 				unless (BEEN_WARNED(s)) {
 					fprintf(stderr,

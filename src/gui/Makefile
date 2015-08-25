@@ -40,26 +40,26 @@ gui guis:  ../tclwrap lib images ordered
 	@echo GUIs are up-to-date
 
 lib:
-	test -d lib || mkdir lib
+	$(Q)test -d lib || mkdir lib
 
 nowrap gui-nowrap: 
 	$(MAKE) clean-here
 	$(MAKE) TCLWRAP=cat gui
 
 images: FORCE
-	rm -rf images
-	test -d images || mkdir images
-	bk -rimgsrc co -S
-	bk -grimgsrc sfio -oq | (cd images && bk sfio -iq)
-	test "X$(ICONS)" = X || cp $(ICONS) images
-	chmod 664 images/*.gif
+	$(Q)rm -rf images
+	$(Q)test -d images || mkdir images
+	$(Q)bk -rimgsrc co -S
+	$(Q)bk -grimgsrc sfio -oq | (cd images && bk sfio -iq)
+	$(Q)test "X$(ICONS)" = X || cp $(ICONS) images
+	$(Q)chmod 664 images/*.gif
 
 ../tclwrap:
 	@cd .. && $(MAKE) tclwrap
 
 tcltk: FORCE
-	test -f tcltk/Makefile || bk co -q tcltk
-	$(MAKE) -Ctcltk
+	$(Q)test -f tcltk/Makefile || bk co -q tcltk
+	$(Q)$(MAKE) -Ctcltk
 
 test: lib $(GUIS) $(DOIT) $(GUITEST) ../t/setup
 	@bk get -S ../t/SCCS/s.g.* 

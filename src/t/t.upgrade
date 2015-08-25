@@ -162,6 +162,9 @@ test -x /usr/bin/perl || exit 0
 # Not everyone has strict.pm or understands it.
 test `uname` = NetBSD && exit 0
 
+# MacOS does not do the inskeys thing.
+test `uname` = Darwin && exit 0
+
 echo $N Create local upgrade area ...................................$NL
 cd "$HERE"
 BK_INSTALLER=

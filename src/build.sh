@@ -182,5 +182,5 @@ test "X$MAKE" = X && {
 test "x$BK_VERBOSE_BUILD" != "x" && { V="V=1"; }
 # If the current build process needs to use current bk, use "$HERE/bk"
 export PATH HERE
-make $JOBS -e $V "MAKE=$MAKE" "CC=$CC $CCXTRA" "G=$G" "LD=$LD" \
+make --no-print-directory $JOBS -e $V "MAKE=$MAKE" "CC=$CC $CCXTRA" "G=$G" "LD=$LD" \
 	"XLIBS=$XLIBS" "$@"
