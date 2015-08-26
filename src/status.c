@@ -18,9 +18,12 @@ status_main(int ac, char **av)
 	FILE	*fchg, *fsfile;
 	char	**parents = 0;
 	hash	*pcount;
-	i32	*pcnt;
 	u32	bits;
 	char	**attr = 0;
+	struct item {
+		int	cnt[2];
+		char	*err;
+	} *pi = 0;
 	longopt	lopts[] = {
 		{ "compat", 300 },
 		{ 0, 0 }
@@ -51,7 +54,7 @@ status_main(int ac, char **av)
 	isnest = bk_nested2root(0);
 
 	/* start these early to reduce latency */
-	fchg = popen("bk changes -aLR -nd. 2>" DEVNULL_WR, "r");
+	fchg = popen("bk changes -aLR -nd. 2>&1", "r");
 	fsfile = popen("bk -e sfiles -Ucgvhp", "r"); /* XXX no scancomps */
 
 	printf("Repo: %s:%s\n", sccs_realhost(), proj_root(0));
@@ -71,11 +74,8 @@ status_main(int ac, char **av)
 	pcount = hash_new(HASH_MEMHASH);
 	pcount->vptr = 0;
 	c = 0;		/* for compiler */
-	pcnt = 0;
 	while (p = fgetline(fchg)) {
 		if (strneq(p, "==== changes -", 14)) {
-			i32	cnt[2] = {-1, -1};
-
 			/* get URL and reset counters */
 			i = strlen(p);
 			assert(streq(p+i-5, " ===="));
@@ -83,41 +83,58 @@ status_main(int ac, char **av)
 			c = (p[14] == 'R'); /* 0 == L, 1 == R */
 
 			/* save in hash */
-			if (hash_insert(pcount,
+			if (pi = hash_insert(pcount,
 				p+16, strlen(p+16)+1,
-				cnt, sizeof(cnt))) {
+				0, sizeof(*pi))) {
 				/* new parent, save order */
 				parents = addLine(parents, pcount->kptr);
+				pi->cnt[0] = pi->cnt[1] = -1;
 			}
-			pcnt = pcount->vptr;
-			pcnt[c] = 0;
+			pi = pcount->vptr;
+			pi->cnt[c] = 0;
 		} else if (streq(p, ".")) {	/* one cset per line */
-			++pcnt[c];
+			++pi->cnt[c];
+		} else if (begins_with(p, "This repository has no parent")) {
+			fgetline(fchg);	/* ignore next line too */
+		} else if (begins_with(p, "ERROR")) {
+			unless (pi->err) pi->err = strdup(p);
 		} else {
-			assert(0); /* bad output */
+			fprintf(stderr, "%s: ignoring unexpected line: %s\n",
+			    prog, p);
 		}
 	}
 	EACH(parents) {
-		pcnt = (i32 *)hash_fetchStr(pcount, parents[i]);
-		assert(pcnt);
-		if (pcnt[0] >= 0) {
-			if (pcnt[1] >= 0) {
+		pi = (struct item *)hash_fetchStr(pcount, parents[i]);
+		assert(pi);
+		if (pi->cnt[0] >= 0) {
+			if (pi->cnt[1] >= 0) {
 				printf("Push/pull parent: ");
 			} else {
 				printf("Push parent: ");
 			}
 		} else {
-			if (pcnt[1] >= 0) {
+			if (pi->cnt[1] >= 0) {
 				printf("Pull parent: ");
 			} else {
 				assert(0);
 			}
 		}
 		printf("%s\n", parents[i]);
-		if (pcnt[0] > 0) printf("\t%d csets can be pushed\n", pcnt[0]);
-		if (pcnt[1] > 0) printf("\t%d csets can be pulled\n", pcnt[1]);
-		if ((pcnt[0] <= 0) && (pcnt[1] <= 0)) {
-			printf("\t(up to date)\n");
+		if (pi->err) {
+			printf("\t%s\n", pi->err);
+			free(pi->err);
+		} else {
+			if (pi->cnt[0] > 0) {
+				printf("\t%d csets can be pushed\n",
+				    pi->cnt[0]);
+			}
+			if (pi->cnt[1] > 0) {
+				printf("\t%d csets can be pulled\n",
+				    pi->cnt[1]);
+			}
+			if ((pi->cnt[0] <= 0) && (pi->cnt[1] <= 0)) {
+				printf("\t(up to date)\n");
+			}
 		}
 	}
 	unless (parents) {

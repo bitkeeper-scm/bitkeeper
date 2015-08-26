@@ -516,6 +516,8 @@ normalize(char *url, int check)
 	remote	*r = 0;
 	char	*p, *newurl = 0;
 
+	localName2bkName(url, url);
+
 	unless (r = remote_parse(url, REMOTE_BKDURL)) {
 		fprintf(stderr, "Invalid parent address: %s\n", url);
 		goto done;
