@@ -312,3 +312,35 @@ bk get $Q symlink 2>ERR || {
 	exit 1
 }
 echo OK
+
+echo $N Try a bunch of symlink types ................................$NL
+cd "$HERE"
+commercial proj3
+bk edit $Q BitKeeper/etc/config
+echo 'checkout:edit!' >> BitKeeper/etc/config
+touch file
+ln -s file sym1
+bk new $Q sym1
+mkdir dir
+ln -s dir sym2
+bk new $Q sym2
+touch ../project/file
+ln -s ../project/file sym3
+bk new $Q sym3
+mkdir ../project/dir
+ln -s ../project/dir sym4
+bk new $Q sym4
+ln -s . sym6
+ln -s sym6 sym5
+bk new $Q sym5 sym6
+cd dir
+ln -s .. sym7
+bk new $Q sym7
+bk mv sym7 sym8
+cd ..
+bk mv dir src
+bk sfiles -cg > OUT || fail
+echo 'BitKeeper/etc/config' > WANT
+checkfiles WANT OUT
+bk repocheck $Q || fail
+echo OK

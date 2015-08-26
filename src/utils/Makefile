@@ -52,6 +52,8 @@ else
 # installer package. It need not be installed on your machine; the
 # build will simply not sign the .pkg file.
 		CERT='Developer ID Installer: BitMover, Inc. (2265G6A886)'
+		APPCERT='3rd Party Mac Developer Application: BitMover, Inc. (2265G6A886)'
+		DEEP=$(shell test `uname -r | awk -F. '{print $$1}'` -gt 10 && echo --deep)
 	endif
 	EXTRACT_OBJ=extractor.o
 	MANIFEST=
@@ -97,6 +99,14 @@ endif
 		bk get -qS ../macosx/AppMain.tcl ; \
 		cp ../macosx/AppMain.tcl \
 		    BitKeeper/BitKeeper.app/Contents/Resources/Scripts ; \
+		codesign -s $(APPCERT) BitKeeper/BitKeeper.app/Contents/Resources/bitkeeper/bk || { \
+			echo "Signing bk binary failed" ; \
+			exit 1; \
+		} ; \
+		codesign -s $(APPCERT) BitKeeper/BitKeeper.app $(DEEP) || { \
+			echo "Signing the app bundle failed" ; \
+			exit 1; \
+		} ; \
 		pkgbuild --install-location /Applications \
 			--identifier com.bitkeeper.bk \
 			--version $(VERS_NO) \
@@ -107,11 +117,12 @@ endif
 		productbuild --distribution distribution.xml \
 			$(IMGBASE).pkg ; \
 		rm bk.pkg ; \
-		productsign --sign $(CERT) $(IMGBASE).pkg $(IMGBASE)-signed.pkg ; \
-		if [ $$? -eq 0 ] ; then \
-			mv $(IMGBASE)-signed.pkg $(IMGBASE).pkg ; \
-		fi \
-	fi
+		productsign --sign $(CERT) $(IMGBASE).pkg $(IMGBASE)-signed.pkg || { \
+			echo "Signing the installer failed" ; \
+			exit 1; \
+		} ; \
+		mv $(IMGBASE)-signed.pkg $(IMGBASE).pkg ; \
+	fi || exit 1
 
 _data.o: sfio$(EXE) munge$(EXE) zz$(EXE) sfioball.zz
 	@echo Compressing data
