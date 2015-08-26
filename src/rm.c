@@ -155,12 +155,15 @@ int
 sccs_rm(char *name, int force, MDBM *idDB)
 {
 	char	*rmName;
-	char	*sfile;
+	char	*sfile, *t;
 	int	error = 0;
 	sccs	*s;
 
 	T_SCCS("file=%s", name);
 	sfile = name2sccs(name);
+	t = fullname(sfile, 0);
+	free(sfile);
+	sfile = t;
 	s = sccs_init(sfile, 0);
 	unless (s && HASGRAPH(s) && BITKEEPER(s)) {
 		fprintf(stderr,

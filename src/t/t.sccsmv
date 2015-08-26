@@ -164,15 +164,8 @@ bk rm foo > OUT 2>&1 && {
 	cat OUT
 	exit 1
 }
-grep -q 'rm: foo is modified' OUT || {
-	echo bad error message
-	cat OUT
-	exit 1
-}
-bk rm -f foo || {
-	echo rm -f should have worked
-	exit 1
-}
+grep -q "rm: $HERE/project/foo is modified" OUT || fail -f OUT
+bk rm -f foo || fail
 delfile=`bk sfiles -p BitKeeper/deleted | grep 's.foo~'`
 bk _test -f "$delfile" || {
 	echo failed to move file to deleted

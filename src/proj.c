@@ -386,7 +386,7 @@ proj_relpath(project *p, char *in_path)
 	char	path[MAXPATH];
 
 	assert(root);
-	fullname_expand(in_path, path);
+	fullname(in_path, path);
 	T_PROJ("in=%s, path=%s", in_path, path);
 	len = strlen(root);
 	if (pathneq(root, path, len)) {

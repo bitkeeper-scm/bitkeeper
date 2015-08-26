@@ -18424,6 +18424,7 @@ timeMatch(project *proj, char *gfile, char *sfile, hash *timestamps)
 
 	assert(proj);
 	relpath = proj_relpath(proj, gfile);
+	assert(relpath);
 	ts = (tsrec *)hash_fetchStr(timestamps, relpath);
 	free(relpath);
 	unless (ts) goto out;			/* no entry for file */
