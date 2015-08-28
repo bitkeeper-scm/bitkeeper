@@ -197,7 +197,7 @@ case $CMD in
 			if [ `uname -s` = Darwin ]
 			then	# we're on Mac OS X
 				# but we only want the pkg from macos109
-				test $HOSTNAME = macos109 || exit 0
+				test $HOSTNAME = macos109.bitkeeper.com || exit 0
 				IMG="$TAG-$ARCH.pkg"
 			fi
 		fi
