@@ -418,6 +418,8 @@ typedef	enum {
 #define	BKSKIP		".bk_skip"
 #define	GROUP_MODE	0664
 #define	BAM_DSPEC	"$if(:BAMHASH:){:BAMHASH: :KEY: :MD5KEY|1.0:}"
+#define	MAC_PHDIR	"/etc/paths.d"
+#define	MAC_PHFILE	"/etc/paths.d/10-BitKeeper"
 
 /*
  * Constants for running some parallel processes, sfio, checkout,

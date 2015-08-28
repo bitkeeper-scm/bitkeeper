@@ -324,15 +324,37 @@ uninstall(char *path, int upgrade)
 	char	**dirs = 0, **links = 0;
 	char	*buf = 0;
 	char	*me = "bk";
-	char	*cmd, *p;
+	char	*cmd, *p, *ph;
 	int	rc = 1;
 	int	dobk = 0;
 	int	bgrmdir = 1;
 	int	i, j;
+	int	removeph = 0;
 
 	/* set up logging */
 
 	dfd = efopen("BK_UNINSTALL_LOG");
+
+	if (macosx() && exists(MAC_PHFILE)) {
+		ph = backtick("cat " MAC_PHFILE, 0);
+		/*
+		 * Ensure that
+		 *  a) the bk we are uninstalling is the one
+		 *     that the path helper is pointing
+		 *  b) make sure we have perms to remove path helper
+		 */
+		if (streq(path, ph)) {
+			removeph = 1;
+			if (access(MAC_PHDIR, W_OK) == -1) {
+#define	MAC_PHDIR_MSG	"You do not have permissions on " MAC_PHDIR "\n"
+				fprintf(stderr, MAC_PHDIR_MSG);
+				if (dfd) fprintf(dfd, MAC_PHDIR_MSG);
+				free(ph);
+				goto out;
+			}
+		}
+		free(ph);
+	}
 
 	if (chdir(path) || !(dirs = getdir("."))) {
 		fprintf(stderr,
@@ -456,6 +478,10 @@ uninstall(char *path, int upgrade)
 			if (dfd) fprintf(dfd, "not a symlink to this bk\n");
 			free(buf);
 		}
+	}
+	/* On OS X, bk 7.0.1 and later use path_helper(8). Remove that crumb. */
+	if (macosx() && removeph) {
+		unlink(MAC_PHFILE);
 	}
 	rc = 0;
 out:
