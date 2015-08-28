@@ -12,7 +12,8 @@ endif
 REPO   := $(shell basename "`bk -P root`")
 LIBDIR	= lib
 GUIS	= revtool citool helptool difftool csettool fmtool fm3tool \
-	  msgtool renametool setuptool installtool outputtool
+	  msgtool renametool setuptool installtool outputtool bugform \
+	  supportform
 TCLWRAP	= ../tclwrap
 DOIT	= ../t/doit
 GUITEST = ../t/guitest.tcl
@@ -34,7 +35,6 @@ default: notes/BUILD
 ordered:
 	$(Q)$(MAKE) tcltk
 	$(Q)$(MAKE) $(GUIS)
-	$(Q)(cd legacy && make)
 
 gui guis:  ../tclwrap lib images ordered
 	@echo GUIs are up-to-date
@@ -97,6 +97,12 @@ wc: $(SRC)
 	@wc -l $(SRC)
 
 FORCE:
+
+bugform: $(COMMON) search.tcl appState.tcl buglib.tcl bugform.tcl
+	@(echo 'wm withdraw .' ;  cat $^) | $(TCLWRAP) > $(LIBDIR)/bugform
+
+supportform: $(COMMON) search.tcl appState.tcl supportlib.tcl supportform.tcl
+	@(echo 'wm withdraw .' ;  cat $^) | $(TCLWRAP) > $(LIBDIR)/supportform
 
 citool: $(COMMON) appState.tcl ciedit.tcl $(LCOMMON) listbox.l citool.l
 	@(	echo 'wm withdraw .' ;		\

@@ -142,17 +142,9 @@ proc bugs:bugList {{wid {}}} \
 	}
 
 	scrollbar $w(b_vsb) -orient vertical \
-	    -takefocus 0 \
-	    -wid $gc($app.scrollWidth) \
-	    -background $gc($app.scrollColor) \
-	    -troughcolor $gc($app.troughColor) \
-	    -command [list $w(b_tbl) yview] 
+	    -takefocus 0 -command [list $w(b_tbl) yview] 
 	scrollbar $w(b_hsb) -orient horizontal \
-	    -takefocus 0 \
-	    -wid $gc($app.scrollWidth) \
-	    -background $gc($app.scrollColor) \
-	    -troughcolor $gc($app.troughColor) \
-	    -command [list $w(b_tbl) xview]
+	    -takefocus 0 -command [list $w(b_tbl) xview]
 
 	foreach l [$w(b_tbl) labels] {
 		bind $l <Configure> [list bugs:updateItems $w(b_tbl)]
@@ -353,17 +345,9 @@ proc bugs:bugForm {wid {purpose {view}}} \
 		-xscrollcommand [list $w(v_hsb) set] \
 		-yscrollcommand [list $w(v_vsb) set]
 	    scrollbar $w(v_vsb) -orient vertical \
-	        -takefocus 0 \
-		-wid $gc($app.scrollWidth) \
-		-background $gc($app.scrollColor) \
-		-troughcolor $gc($app.troughColor) \
-		-command [list $w(v_frame).c yview] 
+	        -takefocus 0 -command [list $w(v_frame).c yview] 
 	    scrollbar $w(v_hsb) -orient horizontal \
-	        -takefocus 0 \
-		-wid $gc($app.scrollWidth) \
-		-background $gc($app.scrollColor) \
-		-troughcolor $gc($app.troughColor) \
-		-command [list $w(v_frame).c xview]
+	        -takefocus 0 -command [list $w(v_frame).c xview]
 	    grid $w(v_c) $w(v_vsb) -sticky news
 	    grid $w(v_hsb) -sticky news
 	    grid rowconfigure $w(v_frame) 0 -weight 1
@@ -783,7 +767,7 @@ proc bugs:submitBug {} \
 	if {$bt_cinfo(PROJEMAIL) ne ""} {
 		set address $bt_cinfo(PROJEMAIL)
 	}
-	catch {exec bk mail -u http://bitmover.com/cgi-bin/bkdmail -s support_request $address < $bugfile } 
+	catch {exec bk mail -u http://bitmover.com/cgi-bin/bkdmail -s "SUPPORT: $bt_cinfo(SUMMARY)" $address < $bugfile } 
 	catch {exec rm -rf $bd $bugfile} err
 	displayMessage "Your support request has been sent. Thank you for taking
 the time to fill out this form. "
