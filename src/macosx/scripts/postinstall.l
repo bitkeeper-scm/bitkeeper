@@ -161,11 +161,29 @@ void
 create_bklink(void)
 {
 	string	msg;
+	FILE	f;
 
-	/* Don't ask the user, just create the link if possible. */
-	unless (runit("'${newbk}' links /usr/bin") || noprompt) {
-		msg = "Unable to create symbolic link /usr/bin/bk. "
-		      "You will need to add ${dirname(newbk)} to your PATH manually.";
+	if (File_writable("/usr/bin")) {
+		unless (runit("'${newbk}' links /usr/bin")) {
+			msg = "Unable to create symbolic link /usr/bin/bk. "
+			      "You will need to add ${dirname(newbk)} to "
+			      "your PATH manually.";
+		}
+	} else {
+		/*
+		 * On el Capitan, /usr/bin is not writable so use
+		 * infrastructure provided by path_helper(8).
+		 */
+		if (f = fopen("/etc/paths.d/10-BitKeeper", "w")) {
+			fprintf(f, "${dirname(newbk)}\n");
+			fclose(f);
+		} else {
+			msg = "Unable to write into /etc/paths.d. "
+			      "You will need to add ${dirname(newbk)} to "
+			      "your PATH manually.";
+		}
+	}
+	if (msg && !noprompt) {
 		tk_messageBox(default: "ok", icon: "error", type: "ok",
 			      title: "Error", message: msg);
 	}

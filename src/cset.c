@@ -9,24 +9,25 @@
 
 typedef	struct cset {
 	/* bits */
-	int	makepatch;	/* if set, act like makepatch */
-	int	listeach;	/* if set, list revs 1/line */
-	int	mark;		/* act like csetmark used to act */
-	int	doDiffs;	/* prefix with unified diffs */
-	int	force;		/* if set, then force past errors */
-	int	remark;		/* clear & redo all the ChangeSet marks */
-	int	dash;
-	int	historic;	/* list the historic name */
-	int	hide_comp;	/* exclude comp from file@rev list */
-	int	include;	/* create new cset with includes */
-	int	exclude;	/* create new cset with excludes */
-	int	serial;		/* the revs passed in are serial numbers */
-	int	md5out;		/* the revs printed are as md5keys */
-	int	doBAM;		/* send BAM data */
-	int	compat;		/* do not send new sfiles in sfio */
-	int	fastpatch;	/* enable fast patch mode */
-	int	fail;		/* let all failures be flushed out */
-	int	bkmerge;	/* Patch is sending patches in bkmerge */
+	u32	makepatch:1;	/* if set, act like makepatch */
+	u32	listeach:1;	/* if set, list revs 1/line */
+	u32	mark:1;		/* act like csetmark used to act */
+	u32	doDiffs:1;	/* prefix with unified diffs */
+	u32	force:1;	/* if set, then force past errors */
+	u32	remark:1;	/* clear & redo all the ChangeSet marks */
+	u32	dash:1;
+	u32	historic:1;	/* list the historic name */
+	u32	hide_comp:1;	/* exclude comp from file@rev list */
+	u32	include:1;	/* create new cset with includes */
+	u32	exclude:1;	/* create new cset with excludes */
+	u32	serial:1;	/* the revs passed in are serial numbers */
+	u32	md5out:1;	/* the revs printed are as md5keys */
+	u32	doBAM:1;	/* send BAM data */
+	u32	compat:1;	/* do not send new sfiles in sfio */
+	u32	fastpatch:1;	/* enable fast patch mode */
+	u32	fail:1;		/* let all failures be flushed out */
+	u32	bkmerge:1;	/* Patch is sending patches in bkmerge */
+	u32	standalone:1;	/* Patch is sending patches in bkmerge */
 
 	/* numbers */
 	int	tooMany;	/* send whole sfiles if # deltas > tooMany */
@@ -136,13 +137,15 @@ cset_main(int ac, char **av)
 	RANGE	rargs = {0};
 	longopt	lopts[] = {
 		{ "show-comp", 300 },		/* undo hide_comp */
+		{ "standalone", 'S' },		/* this repo only */
 		{ 0, 0 }
 	};
 
 	if (streq(av[0], "makepatch")) copts.makepatch = 1;
 	copts.notty = (getenv("BK_NOTTY") != 0);
 
-	while ((c = getopt(ac, av, "5BCd|DFfhi;lm|M;N;|qr|svx;", lopts)) != -1){
+	while (
+	    (c = getopt(ac, av, "5BCd|DFfhi;lm|M;N;|qr|Ssvx;", lopts)) != -1){
 		switch (c) {
 		    case 'B': copts.doBAM = 1; break;
 		    case 'D': ignoreDeleted++; break;		/* undoc 2.0 */
@@ -196,6 +199,7 @@ cset_main(int ac, char **av)
 				copts.force++;
 			}
 			break;
+		    case 'S': copts.standalone = 1; break;	/* doc 7.0.1 */
 		    case 'q':					/* doc 2.0 */
 		    case 's': flags |= SILENT; break;		/* undoc? 2.0 */
 		    case '5': copts.md5out = 1; break;		/* undoc 4.0 */
@@ -255,8 +259,13 @@ cset_main(int ac, char **av)
 	/*
 	 * If doing include/exclude, go do it.
 	 */
+	if (copts.include || copts.exclude) bk_nested2root(copts.standalone);
 	if (copts.include) return (cset_inex(flags, "-i", rargs.rstart));
 	if (copts.exclude) return (cset_inex(flags, "-x", rargs.rstart));
+	if (copts.standalone) {
+		fprintf(stderr, "cset: -S requires -i or -x\n");
+		return (1);
+	}
 
 	cset = sccs_init(csetFile, 0);
 	if (!cset) return (101);

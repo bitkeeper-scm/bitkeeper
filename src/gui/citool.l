@@ -3362,6 +3362,7 @@ main(_argused int argc, string argv[])
 
 	debug_init(getenv("BK_DEBUG_CITOOL"));
 
+	display_text_sizes(0);
 	bk_init();
 	gui();
 	update();
@@ -3474,6 +3475,7 @@ main(_argused int argc, string argv[])
 	initMsgs();
 	createImages();
 	processFiles(self.filelist);
+	display_text_sizes(1);
 	if (quit) exit();
 	readBackupComments();
 }

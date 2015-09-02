@@ -312,8 +312,8 @@ doit(int flags, char *file, char *op, char *revs)
 			ret = 1;
 		} else {
 			ret = systemf(
-			    "bk --cd='%s' bk cset %s%s%s",
-			    file, (flags & SILENT) ? "-q " : "", op, revs);
+			    "bk --cd='%s' bk cset -S%s %s%s",
+			    file, (flags & SILENT) ? "q" : "", op, revs);
 		 }
 		*p = '/';
 		free(sfile);

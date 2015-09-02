@@ -63,20 +63,21 @@ else
 	export CCACHE_DISABLE
 fi
 
-KEYFILE=/home/bk/internal/.wish-key
 case "X`uname -s`" in
-    *_NT*|*_98*)
-	KEYFILE=/c/home/bk/internal/.wish-key
-    	;;
+    XCYGWIN*|XMINGW*)
+	;;
+    XDarwin)
+	# Create fresh, clean path, prepending ccache
+	eval `/usr/libexec/path_helper`
+	PATH=${CCLINKS}:${PATH}
+	;;
     *)	AR=/usr/ccs/bin
 	GREP=/usr/xpg4/bin:/usr/xpg2/bin
 	GNU=/opt/gnu/bin:/usr/local/bin:/usr/gnu/bin:/usr/freeware/bin
 	PATH=${GREP}:${CCLINKS}:/bin:/usr/bin:/usr/bsd:${GNU}:${AR}:/usr/bin/X11
 	export PATH
-	if [ X$1 = X"-u" ]; then shift; fi; # -u option is ignored on Unix  
 	;;
 esac
-export KEYFILE
 case "X`uname -s`" in
 	XAIX)	CCXTRA="-DHAVE_LOCALZONE -DNOPROC -mminimal-toc"
 		;;
@@ -89,7 +90,6 @@ case "X`uname -s`" in
 		export CC LD
 		CCXTRA="-Qunused-arguments -DHAVE_GMTOFF -DNOPROC -no-cpp-precomp"
 		XLIBS="-lresolv"
-		PATH="/usr/local/bin:${PATH}:/usr/X11R6/bin"
 		;;
 	XFreeBSD)
 		CCXTRA="-DNOPROC -DHAVE_GMTOFF"
