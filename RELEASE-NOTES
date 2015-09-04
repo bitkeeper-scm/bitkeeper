@@ -1,0 +1,280 @@
+============================================================================
+Release notes for BitKeeper version 7.0.1 (released Sep 4, 2015)
+
+  See our Tips & FAQ page at:       http://www.bitkeeper.com/tips
+  Follow us on Twitter:             https://twitter.com/BitKeeper
+
+Bugs fixed:
+
+ - bk version would report an incorrect "Latest version" when a
+   licenseurl proxy was being used.
+ - bk status would fail when one of the parents was not readable.
+ - bk parent would not correctly normalize a Windows (DOS) path.
+ - Revision controlled symlinks between repositories could cause
+   'bk sfiles' to fail.
+ - Reinstate the bk sendbug and support commands (they were
+   temporarily removed for internal reasons).
+ - Prevent the text window size tooltips from appearing and
+   obscuring the comment pane in citool.
+
+Additions:
+
+ - Add -S option to bk cset command. This allows users to constrain
+   including or excluding a cset to the current component.
+   For example, to exclude the top cset in componentA, as opposed to
+   the whole nested collection
+
+     cd componentA; bk cset -S -x+
+
+OS X changes:
+
+ - Our minimum supported MacOS version is 10.9 (Mavericks). We do
+   still build on 10.6 (Snow Leopard) and can supply those images on
+   request.
+ - Sign both the application binary and bundle so that the firewall
+   would not keep asking if it was ok to accept incoming connections.
+ - Stop putting a config file inside the bundle
+   (/Applications/BitKeeper.app) and put them in ~/.bk/config
+   instead. Typically, this config file would only contain the license
+   keys.
+ - When upgrading, transfer config contents from the bundle to the new
+   location.
+
+ - Stop using bk links during install.  Traditionally, bk links has
+   been used to install a /usr/bin/bk symlink that points into the
+   install location. This was handy since it allowed users to use bk
+   immediately without modifying their PATH. Starting in MacOS 10.11
+   (el Capitan), writing into /usr is disallowed.  Now the installer
+   will use the path_helper(8) infrastructure to add bk to the
+   PATH. Since path_helper is run by /etc/profile, users will only see
+   the updated PATH in new shells.
+
+   Emacs users may want to add something like this to their .emacs:
+
+    ;; get the output of path_helper (which is meant to be interpreted
+    ;; by a shell), remove the MANPATH setting if any, then capture
+    ;; the PATH value and stuff that into the environment
+    (let ((path (shell-command-to-string "/usr/libexec/path_helper")))
+      (progn
+	(setq path (replace-regexp-in-string "^MANPATH=.*$\n" "" path)
+	      path (replace-regexp-in-string
+		    "PATH=\"\\([^;]*\\)\".*\n" "\\1" path))
+	(setenv "PATH" path)))
+
+============================================================================
+Release notes for BitKeeper version 7.0 (released Jul 16, 2015)
+
+This version includes a significant internals rewrite for performance.
+The on-disk repository format has changed.  You can take advantage of these
+changes by replacing your existing repositories with upgraded clones:
+
+     bk clone --parents -sTHERE --upgrade existing-repo new-repo
+
+Implications of upgrading
+
+    Upgrading some but not all of your repositories can make performance
+    worse for some operations between repositories of different formats.
+    The operations will still work.  There is a bk clone --downgrade that
+    goes back to the old ASCII format (somewhat SCCS compatible) that all
+    versions of BitKeeper support.
+
+    Example:
+    * You have a bkd running bk-7, and have upgraded all the repositories
+      being served by the bkd.
+    * You have a user running bk-6 who does a clone.
+
+    The bkd will downgrade the repository before sending out clone data, and
+    the user's bk-6 will upgrade the repository to the new format.
+
+    If the user upgrades to the new repository format using bk-7, then neither
+    of the transformations are done and the clone returns to running quickly.
+
+    bk-6 will not be able to access new format repositories directly, but it
+    can still access them by using a version 7.0 bkd.
+
+Performance changes
+-------------------
+
+File format
+    The ChangeSet file has been reworked for more performance.  Operations
+    that search the history for particular files and/or deltas are significantly
+    faster.  This benefits csettool, revtool, rset, and changes.
+    bk rset is the utility command used by other commands to expand a
+    changeset.  In a Linux kernel repo:
+
+	bk-6.x rset -r+ takes 1243 milliseconds
+	bk-7.0 rset -r+ takes   90 milliseconds
+
+    Commit is also faster:
+
+	bk-6.x commit takes 2213 milliseconds
+	bk-7.0 commit takes  734 milliseconds
+
+    The size of your history will determine how much the performance changes
+    help you; they are geared towards larger repositories with more
+    changesets and more files.
+
+"checkout: edit" mode
+    Previously, running in this mode impacted performance of commands
+    such as 'bk citool'.
+    Changes were made to how BK stores metadata about editable files
+    to help it go faster.
+
+    An implication of this is that user software that relies on
+    detecting or examining paths in the form "SCCS/p.file" may not
+    work as expected.  Contact support@bitkeeper.com if this is a problem.
+
+Performance improvements on NFS
+    We created a realistic repository simulator and generated a repository
+    with one million changesets and 230,000 files (4GB of history).  We
+    created identical BitKeeper and Git repositories.  We then benchmarked
+    them on a pair of Intel i7-5930K 6 core/12 thread CPUs, 64GB of ram,
+    rotating disk. The client file system was NFS version 3 with ext3 as the
+    backing file system on the server. The benchmark was run on machines
+    (client and server) with all of the data in cache (if we had done it
+    cold cache Git looks much worse, Git is optimized for all your data in
+    memory.)
+
+    The results below speak for themselves.  Your results may vary, we have
+    found that on smaller repos, hot cache and/or SSD, Git is comparable to
+    BK except for things that search the history (bk annotate, bk grep) or
+    the integrity check.  BK is much much faster when you are looking
+    through the history and is much faster for an integrity check or garbage
+    collection.  If you are using BK/Nested the performance wins are even
+    larger.
+
+    Truth in advertising: the diff changed files is only that fast if you
+    run in checkout:get - that mode lets us remember each file you edited
+    and not scan the whole tree.  That's why we suggest checkout:get for
+    really large trees.
+
+    What                      BK              GIT         How much faster is BK?
+    ----------------------------------------------------------------------------
+    simulate 1M csets        7.5 hours        165 hours          22 times faster
+    clone                  210 seconds      338 seconds         1.6 times faster
+    clone 1 component      6.5 seconds             N.A.                      N.A
+    list changed files     0.3 seconds     40.6 seconds         135 times faster
+    diff changed files     0.9 seconds     34.6 seconds          38 times faster
+    commit                 4.8 seconds     42.5 seconds           9 times faster
+    changes -R             0.6 seconds     21.6 seconds          36 times faster
+    update-only pull       7.3 seconds     42.3 seconds           6 times faster
+    log of 1 file         0.01 seconds      1.6 seconds         160 times faster
+    annotate/blame        0.01 seconds     32.3 seconds        3230 times faster
+    search history        0.01 seconds    138.9 seconds       13890 times faster
+    integrity check      206.5 seconds   6576.2 seconds          32 times faster
+
+New features
+------------
+
+bk annotate
+    Added -w option to show "who deleted" annotations. 
+
+bk bisect
+    New command to help find a changeset that introduced a bug.
+
+bk commit --ci
+    Check in edited files as part of a commit. 
+
+bk csets
+    New option --stats that prints statistics about what was pulled.
+
+bk -j<arg> cmd
+    The -j option to 'bk' has changed.  In bk-6.x and earlier it
+    would list 'junk' files (extra files in the SCCS directory). This
+    is files in bk's internal storage space that were not written by bk.
+    This was deemed not useful and so the command line option was reused
+    for an internal option.
+
+bk config <var>
+    This used to show what <var> was set to in a config file.
+    If <var> wasn't in any config file, then nothing would be shown.
+    This now shows the default value for <var>.
+
+bk config -v
+    This command now shows the default values for all config variables.
+
+    The following defaults have changed:
+     autofix now defaults to "on"
+     parallel now defaults to "on"
+
+bk findmerge
+    New command for showing which cset was the first to merge two
+    other csets.
+
+bk fm3tool
+    Added "who deleted" annotation when you turn on annotations.
+    Uses the "who deleted" information to show the delta comments
+    for the delta that did the delete in the comments window (formerly it
+    showed the delta that added the deleted line, which is far
+    less useful).
+
+bk partition
+    New option --keep-deleted that does not prune out the deleted history
+    as part of the partition.
+
+bk pull
+    New option --stats that prints statistics about what was pulled.
+    It can also be permanently enabled by setting the
+    config variable stats_after_pull to "on".
+
+    Fix a bug where pull was not disallowing the -R option with
+    multiple parents or URLs.
+
+bk repocheck
+    Now runs in parallel automatically when used on a nested collection.
+    On a fast machine this can be about a 6x speedup (hot cache) and
+    13x speedup (cold cache, SSD).
+
+bk repos
+    New command to show a list of your repositories.
+
+bk revtool
+    Added "who deleted" annotation.
+
+bk rset
+    Rewritten to be faster on traditional repositories, and massively
+    faster on new format repositories.
+
+bk setup
+    No longer interactive by default. Running 'bk setup' will now turn
+    the current working directory into a new BitKeeper repository.
+
+bk status
+    The old 'bk status' output wasn't very useful so the command was
+    rewritten to provide more useful information about the current 
+    repository status.
+    See 'bk help status' for details.
+
+bk tag
+    The rules for valid tags names have been restricted to more normal
+    looking identifiers to avoid compatibility issues in the future.
+    See 'bk help tag' for the new rules.
+
+    Existing tags that break these rules will continue to be supported
+    but new tags need to follow the new rules.
+
+bk takepatch
+    An internal command used by pull.  Enhanced to do resolve automerging
+    in cases where only content merging needs to be done. Enhanced with
+    parallel operation, meaning each file-patch and automerge is handled
+    in a sub-process.
+
+Bugfixes
+--------
+
+- 'bk cset -x' works in a BK/Nested product.
+- 'bk cp' now correctly handles BAM binary files.
+- Several more tricky merge conflicts are now handled automatically.
+- 'bk collapse' now preserves file deltas that exclude other deltas.
+- 'bk lock -w' in non-nested was terminating before lock was fully released.
+- Fix failures caused by extremely long filenames or extremely large
+  repositories.
+- 'bk rset -r$MERGE_CSET' now correctly lists merge revisions of files.
+
+Platforms
+---------
+Minimum Windows version supported is Windows Vista.
+
+We continue to support Linux, Windows, MacOS, Solaris, and several
+BSDs on x86.  We can add back in any other major platform if needed,
+just let us know.
