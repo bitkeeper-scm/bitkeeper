@@ -88,12 +88,6 @@ main(int volatile ac, char **av, char **env)
 		{ "config;", 307 },	// override config options
 		{ "ibuf;", 310 },
 		{ "obuf;", 320 },
-
-		/* long aliases for some options */
-		{ "all-files", 'A' },
-		{ "user-files", 'U' },
-		{ "each-repo", 'e' },
-		{ "subset|", 's' },
 		{ "trace;", 330 },
 		{ "files;", 331 },
 		{ "funcs;", 332 },
@@ -101,8 +95,15 @@ main(int volatile ac, char **av, char **env)
 		{ "pids", 334 },
 		{ "diffable", 335 },
 		{ "trace-file;", 340 },
-		{ "parallel|", 'j' },
 		{ "cold", 345 },
+		{ "no-log", 350 },
+
+		/* long aliases for some options */
+		{ "all-files", 'A' },
+		{ "user-files", 'U' },
+		{ "each-repo", 'e' },
+		{ "subset|", 's' },
+		{ "parallel|", 'j' },
 		{ 0, 0 },
 	};
 
@@ -406,6 +407,9 @@ baddir:						fprintf(stderr,
 				break;
 			    case 345: /* --cold */
 				sopts = addLine(sopts, strdup("--cold"));
+				break;
+			    case 350: /* --no-log */
+				putenv("_BK_CMD_NOLOG=1");
 				break;
 			    default: bk_badArg(c, av);
 			}
@@ -1279,6 +1283,7 @@ cmdlog_start(char **av, int bkd_cmd)
 		}
 		break;
 	}
+	if (cmdlog_flags & CMD_NOLOG) putenv("_BK_CMD_NOLOG=1");
 	if (cmdlog_flags && proj_root(0)) {
 		/*
 		 * When in http mode, each connection of push will be
@@ -1312,7 +1317,7 @@ cmdlog_start(char **av, int bkd_cmd)
 		cmdlog_lock(cmdlog_flags);
 	}
 
-	unless (cmdlog_flags & CMD_NOLOG) {
+	unless (getenv("_BK_CMD_NOLOG")) {
 		for (len = 1, i = 0; av[i]; i++) {
 			quoted = shellquote(av[i]);
 			len += strlen(quoted) + 1;
@@ -1585,6 +1590,7 @@ write_log(char *file, char *format, ...)
 	char	path[MAXPATH], nformat[MAXPATH];
 	va_list	ap;
 
+	if (getenv("_BK_CMD_NOLOG")) return (0);
 	unless (root = proj_root(0)) return (1);
 	strcpy(path, root);
 	if (proj_isResync(0)) concat_path(path, path, RESYNC2ROOT);
@@ -1665,7 +1671,7 @@ cmdlog_end(int ret, int bkd_cmd)
 	assert(len < savelen);
 	mdbm_close(notes);
 	notes = 0;
-	unless (cmdlog_flags & CMD_NOLOG) {
+	unless (getenv("_BK_CMD_NOLOG")) {
 		write_log("cmd_log", "%s", log);
 		if (cmdlog_repolog) {
 			/*
