@@ -18,8 +18,7 @@ commercial project
 echo data > foo.c
 bk ci $Q -i foo.c
 bk _mv SCCS/s.foo.c SCCS/s.bar.c
-bk names bar.c 2> /dev/null
-if [ $? -ne 0 ]; then echo fail; fi
+bk names bar.c 2> /dev/null || fail
 if bk _test ! -f SCCS/s.foo.c; then echo fail; fi
 bk commit $Q -ywhatever
 echo OK
@@ -33,26 +32,12 @@ bk new $Q date
 bk commit $Q -ywhatever
 bk cat date > "$HERE/clone/date"
 bk get $Q date
-cmp -s date "$HERE/clone/date" || {
-	echo data files should be the same
-	diff date "$HERE/clone/date" 
-	exit 1
-}
+cmpfiles  date "$HERE/clone/date"
 cd "$HERE/clone"
-bk _test -f SCCS/s.date && {
-	echo should not have data file
-	exit 1
-}
-echo q | bk pull $Q > OUT 2>&1
-test -s OUT && { 
-	echo Resolve should not produce any output 
-	cat OUT
-	exit 1
-}
-bk _test -f SCCS/s.date || {
-	echo failed to propogate data
-	exit 1
-}
+bk _test -f SCCS/s.date && fail
+echo q | bk pull -q > OUT 2>&1
+test -s OUT && fail -f OUT Resolve should not produce any output
+bk _test -f SCCS/s.date || fail failed to propogate data
 echo OK
 
 echo $N Different gfile conflict should not autoresolve .............$NL
@@ -62,24 +47,116 @@ bk new $Q A
 bk commit $Q -ywhatever
 echo B > "$HERE/clone/A"
 cd "$HERE/clone"
-bk _test -f SCCS/s.A && {
-	echo should not have data file
-	exit 1
-}
+bk _test -f SCCS/s.A && fail
 bk pull -R $Q
 ( echo ""
   echo q ) | bk resolve $Q > OUT 2>&1
-grep -q 'has a name conflict with a file with the same name' OUT || {
-	bad diagnostic from resolve
-	cat OUT
-	exit 1
-}
-test -d RESYNC || {
-	echo should have left the RESYNC dir
-	exit 1
-}
-bk _test -f SCCS/s.A && {
-	echo should not have data file
-	exit 1
-}
+grep -q 'has a name conflict with a file with the same name' OUT || fail -f OUT
+test -d RESYNC || fail
+bk _test -f SCCS/s.A && fail
+echo OK
+
+echo $N Setup circular rename .......................................$NL
+cd ../project
+bk rm A || fail     # avoid file case conflict
+mkdir -p a/c/b
+echo hi > a/c/b/d
+bk new $Q a/c/b/d
+echo d > a/c/b2
+bk new $Q a/c/b2
+bk _mv a/c/b/SCCS/s.d a/SCCS/s.c
+bk _mv a/c/SCCS/s.b2 a/SCCS/s.b
+bk _rm -rf a/c
+bk get $Q a
+bk -r prs -r+ -hnd'$if(:GFILE:!=:DPN:){:GFILE: -> :DPN:}' > GOT
+cat <<EOF > WANT
+a/b -> a/c/b2
+a/c -> a/c/b/d
+EOF
+cmpfiles GOT WANT
+bk -r names -v 2>OUT || fail -f OUT
+cat <<EOF > WANT
+names: a/SCCS/s.b -> BitKeeper/RENAMES/SCCS/s.1
+names: a/SCCS/s.c -> a/c/b/SCCS/s.d
+names: BitKeeper/RENAMES/SCCS/s.1 -> a/c/SCCS/s.b2
+names: all rename problems corrected.
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N Special sequence where during rename, a gfile is a dir ......$NL
+bk _mv a/c/b/SCCS/s.d a/SCCS/s.c
+bk _mv a/c/SCCS/s.b2 a/SCCS/s.b
+bk _rm -rf a/c
+bk clean $Q a
+bk -r names -v 2>OUT || fail -f OUT
+
+# It works, but has a moment where a gfile is a dir and prints a msg.
+cat <<EOF > WANT
+names: a/SCCS/s.b -> a/c/SCCS/s.b2
+a/c has different file types, treating this file as read only.
+names: a/SCCS/s.c -> a/c/b/SCCS/s.d
+EOF
+cmpfiles OUT WANT
+
+# this bug exists in released versions of bk
+# but the released bk silently passes without fixing problems
+echo OK
+
+echo $N Repeat circular rename with block to require unwind .........$NL
+bk _mv a/c/b/SCCS/s.d a/SCCS/s.c
+bk _mv a/c/SCCS/s.b2 a/SCCS/s.b
+bk _rm -rf a/c
+mkdir b
+bk clean date
+bk _mv SCCS/s.date b/SCCS/s.date
+mkdir date
+bk clean $Q a
+bk -r names -v 2>OUT && fail -f OUT
+
+cat <<EOF > WANT
+names: a/SCCS/s.b -> a/c/SCCS/s.b2
+a/c has different file types, treating this file as read only.
+names: a/SCCS/s.c -> a/c/b/SCCS/s.d
+names: b/SCCS/s.date -> BitKeeper/RENAMES/SCCS/s.1
+names: can't rename BitKeeper/RENAMES/1 -> date
+names: failed to rename files, restoring files to original locations
+names: BitKeeper/RENAMES/SCCS/s.1 -> b/SCCS/s.date
+names: a/c/b/SCCS/s.d -> a/SCCS/s.c
+names: a/c/SCCS/s.b2 -> a/SCCS/s.b
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo -------------- nested tests
+
+echo $N Swap components around ......................................$NL
+cd "$HERE"
+nested nest
+# Make markers so I know if right directory is restored.
+touch gcc/gcc gdb/gdb
+mv gcc x
+mv gdb gcc
+mv x gdb
+bk -r names $Q || fail
+test -f gcc/gcc || fail
+test -f gdb/gdb || fail
+echo OK
+
+echo $N Move components, but add a block to the fixing ..............$NL
+mv gcc x
+mv gdb gcc
+touch gdb
+bk -r names -v  2> ERR && fail -f ERR
+cat <<EOF > WANT
+names: gcc -> BitKeeper/RENAMES/repo.1
+names: x -> gcc
+names: can't rename BitKeeper/RENAMES/repo.1 -> gdb
+names: failed to rename files, restoring files to original locations
+names: gcc -> x
+names: BitKeeper/RENAMES/repo.1 -> gcc
+EOF
+cmpfiles ERR WANT
+test -f x/gcc || fail
+test -f gcc/gdb || fail
 echo OK

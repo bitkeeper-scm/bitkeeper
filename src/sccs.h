@@ -1543,6 +1543,7 @@ sum_t	str_cksum(u8 *buf);
 char	*psize(u64 bytes);
 u64	scansize(char *bytes);
 void	idcache_update(char **files);
+int	idcache_item(MDBM *idDB, char *rkey, char *path);
 int	idcache_write(project *p, MDBM *idDB);
 void	cset_savetip(sccs *s);
 void	cset_updatetip(void);

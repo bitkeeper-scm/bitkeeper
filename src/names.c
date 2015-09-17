@@ -2,9 +2,11 @@
  * names.c - make sure all files are where they are supposed to be.
  *
  * Alg: for each file, if it is in the right place, skip it, if not,
- * move it to a temp name in BitKeeper/RENAMES and leave it for pass 2.
- * In pass 2, move each file out of BitKeeper/RENAMES to where it wants
- * to be, erroring if there is some other file in that place.
+ * try to remove it to the right place and if that doesn't work move
+ * it to a temp name in BitKeeper/RENAMES and leave it for pass 2.  In
+ * pass 2, delete any directories that are now empty and then move
+ * each file out of BitKeeper/RENAMES to where it wants to be,
+ * erroring if there is some other file in that place.
  */
 #include "system.h"
 #include "sccs.h"
@@ -12,15 +14,18 @@
 #include "progress.h"
 
 typedef struct {
-	u32	flags;
+	u32	flags;		/* sccs_init flags */
 	int	filenum;	/* BitKeeper/RENAMES/<NUM> */
 	hash	*empty;		/* dirs that may need to be deleted */
+	char	**rename_stack;	/* sequence of renames */
+	MDBM	*idDB;
 } options;
 
-private	void	pass1(options *opts, sccs *s);
-private	void	pass2(options *opts);
+private	int	pass1(options *opts, sccs *s);
+private	int	pass2(options *opts);
 private	int	try_rename(options *opts, sccs *s, ser_t d, int dopass1);
 private	void	saveRenames(options *opts, char *src, char *dst);
+private	int	names_undo(options *opts);
 
 int
 names_main(int ac, char **av)
@@ -29,13 +34,13 @@ names_main(int ac, char **av)
 	ser_t	d;
 	char	*p;
 	int	nfiles = 0, n = 0;
-	int	c, todo = 0, error = 0;
+	int	c, error = 0;
 	options	*opts;
 	ticker	*tick = 0;
+	char	rkey[MAXKEY];
 
 	opts = new(options);
 	opts->flags = SILENT;
-	opts->empty = hash_new(HASH_MEMHASH);
 	while ((c = getopt(ac, av, "N;qv", 0)) != -1) {
 		switch (c) {
 		    case 'N': nfiles = atoi(optarg); break;
@@ -44,46 +49,72 @@ names_main(int ac, char **av)
 		    default: bk_badArg(c, av);
 		}
 	}
+	opts->flags |= INIT_NOCKSUM|INIT_MUSTEXIST|INIT_NOGCHK;
 	if (proj_cd2root()) {
-		fprintf(stderr, "names: cannot find project root.\n");
+		fprintf(stderr, "%s: cannot find project root.\n", prog);
 		return (1);
 	}
 	if (nfiles) tick = progress_start(PROGRESS_BAR, nfiles);
 	for (p = sfileFirst("names", &av[optind], 0); p; p = sfileNext()) {
 		if (tick) progress(tick, ++n);
 		if (streq(p, CHANGESET)) continue;
-		unless (s = sccs_init(p, INIT_MUSTEXIST)) continue;
-		unless (d = sccs_top(s)) {
-			sccs_free(s);
-			continue;
+		unless (s = sccs_init(p, opts->flags)) {
+			fprintf(stderr, "%s: init of %s failed\n", prog, p);
+			error |= 1;
+			break;
 		}
+		d = sccs_top(s);
+		assert(d);
 		if (sccs_patheq(PATHNAME(s, d), s->gfile)) {
 			sccs_free(s);
 			continue;
 		}
-		if (sccs_clean(s, SILENT|CLEAN_SKIPPATH)) {
+		if (!isdir(s->gfile) && sccs_clean(s, SILENT|CLEAN_SKIPPATH)) {
 			fprintf(stderr,
-			    "names: %s is edited and modified\n", s->gfile);
-			fprintf(stderr, "Wimping out on this rename\n");
+			    "%s: %s is edited and modified\n", prog, s->gfile);
 			sccs_free(s);
 			error |= 2;
-			continue;
+			break;
 		}
 		sccs_close(s); /* for win32 */
-		todo += try_rename(opts, s, d, 1);
+
+		unless (opts->idDB) opts->idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+		sccs_sdelta(s, sccs_ino(s), rkey);
+		idcache_item(opts->idDB, rkey, PATHNAME(s, d));
+		if (try_rename(opts, s, d, 1)) error |= 2;
 		sccs_free(s);
+		if (error) break;
 	}
 	if (sfileDone()) error |= 4;
-	if (todo) pass2(opts);
-	rmEmptyDirs(opts->empty);
-	hash_free(opts->empty);
+	if (opts->empty) {
+		rmEmptyDirs(opts->empty);
+		hash_free(opts->empty);
+		opts->empty = 0;
+	}
+	if (!error && opts->filenum && pass2(opts)) error |= 8;
+	if (error) {
+		fprintf(stderr, "%s: failed to rename files, "
+		    "restoring files to original locations\n", prog);
+		names_undo(opts);
+	} else {
+		/* names passed */
+		if (opts->idDB) idcache_write(0, opts->idDB);
+	}
+	if (opts->empty) {
+		rmEmptyDirs(opts->empty);
+		hash_free(opts->empty);
+		opts->empty = 0;
+	}
+	freeLines(opts->rename_stack, free);
+	if (opts->idDB) mdbm_close(opts->idDB);
 	if (tick) progress_done(tick, error ? "FAILED" : "OK");
 	return (error);
 }
 
-private	void
+private	int
 pass1(options *opts, sccs *s)
 {
+	char	*curpath;
 	char	path[MAXPATH];
 
 	unless (opts->filenum) {
@@ -91,70 +122,63 @@ pass1(options *opts, sccs *s)
 		mkdir("BitKeeper/RENAMES/SCCS", 0777);
 	}
 	if (CSET(s) && proj_isComponent(s->proj)) {
+		curpath = s->gfile;
 		sprintf(path, "BitKeeper/RENAMES/repo.%d", ++opts->filenum);
-		if (rename(s->gfile, path)) {
-			fprintf(stderr,
-			    "Unable to rename(%s, %s)\n", s->gfile, path);
-			exit(1);
-		}
-		return;
+	} else {
+		curpath = s->sfile;
+		sprintf(path, "BitKeeper/RENAMES/SCCS/s.%d", ++opts->filenum);
 	}
-	sprintf(path, "BitKeeper/RENAMES/SCCS/s.%d", ++opts->filenum);
-	if (rename(s->sfile, path)) {
-		fprintf(stderr, "Unable to rename(%s, %s)\n", s->sfile, path);
-		exit(1);
+	if (rename(curpath, path)) {
+		fprintf(stderr, "Unable to rename(%s, %s)\n", curpath, path);
+		return (1);
 	}
-	saveRenames(opts, s->sfile, path);
+	saveRenames(opts, curpath, path);
+	return (0);
 }
 
-private	void
+private	int
 pass2(options *opts)
 {
 	char	path[MAXPATH];
 	sccs	*s;
 	ser_t	d;
-	int	worked = 0, failed = 0;
+	int	failed = 0;
 	int	i;
-	u32	flags = opts->flags;
 
-	unless (opts->filenum) return;
+	/* save marker for names_undo() */
+	opts->rename_stack =  addLine(opts->rename_stack, strdup(""));
+
 	for (i = 1; i <= opts->filenum; ++i) {
-		sprintf(path, "BitKeeper/RENAMES/repo.%d/SCCS/s.ChangeSet", i);
-		unless ((s = sccs_init(path, INIT_MUSTEXIST)) && HASGRAPH(s)) {
-			sccs_free(s);
-			sprintf(path, "BitKeeper/RENAMES/SCCS/s.%d", i);
-			s = sccs_init(path, 0);
+		/* file || component - more likely to be file */
+		sprintf(path, "BitKeeper/RENAMES/SCCS/s.%d", i);
+		unless (s = sccs_init(path, opts->flags)) {
+			sprintf(path,
+			    "BitKeeper/RENAMES/repo.%d/SCCS/s.ChangeSet", i);
+			s = sccs_init(path, opts->flags);
 		}
 		unless (s) {
 			fprintf(stderr, "Unable to init %s\n", path);
 			failed++;
-			continue;
+			break;
 		}
-		unless (d = sccs_top(s)) {
-			/* should NEVER happen */
-			fprintf(stderr, "Can't find TOT in %s\n", path);
-			fprintf(stderr, "ERROR: File left in %s\n", path);
-			sccs_free(s);
-			failed++;
-			continue;
-		}
+		/* Note to Wayne: clean up since same assert in main loop */
+		d = sccs_top(s);
+		assert(d);
+
 		sccs_close(s); /* for Win32 NTFS */
 		if (try_rename(opts, s, d, 0)) {
-			fprintf(stderr, "Can't rename %s -> %s\n",
-			    s->gfile, PATHNAME(s, d));
-			fprintf(stderr, "ERROR: File left in %s\n", path);
+			fprintf(stderr, "%s: can't rename %s -> %s\n",
+			    prog, s->gfile, PATHNAME(s, d));
 			sccs_free(s);
 			failed++;
-			continue;
+			break;
 		}
 		sccs_free(s);
-		worked++;
 	}
-	if (failed) {
-		fprintf(stderr, "Failed to fix %d renames\n", failed);
-	} else {
-		verbose((stderr, "names: all renames problems corrected.\n"));
+	if (!failed && !(opts->flags & SILENT)) {
+		fprintf(stderr, "names: all rename problems corrected.\n");
 	}
+	return (failed);
 }
 
 /*
@@ -166,7 +190,6 @@ try_rename(options *opts, sccs *s, ser_t d, int dopass1)
 {
 	int	ret;
 	char	*sfile;
-	u32	flags = opts->flags;
 
 	/* Handle components */
 	if (CSET(s) && proj_isComponent(s->proj)) {
@@ -175,42 +198,38 @@ try_rename(options *opts, sccs *s, ser_t d, int dopass1)
 		s->state |= S_READ_ONLY;	// don't put those names back
 		if (exists(PATHNAME(s, d))) {
 			/* circular or deadlock */
-			if (dopass1) pass1(opts, s);
-			return (1);
+			return (dopass1 ? pass1(opts, s) : 1);
 		}
 		mkdirf(PATHNAME(s, d));
 		if (rename(s->gfile, PATHNAME(s, d))) {
 			fprintf(stderr,
 			    "%s->%s failed?\n", s->gfile, PATHNAME(s, d));
 			// dunno, we'll try later
-			if (dopass1) pass1(opts, s);
-			return (1);
+			return (dopass1 ? pass1(opts, s) : 1);
 		}
-		verbose((stderr, "names: %s -> %s\n",
-			s->gfile, PATHNAME(s, d)));
+		saveRenames(opts, s->gfile, PATHNAME(s, d));
 		return (0);
 	}
 
+	if (exists(PATHNAME(s, d))) {
+		/* gfile in way */
+		return (dopass1 ? pass1(opts, s) : 1);
+	}
 	sfile = name2sccs(PATHNAME(s, d));
 	assert(sfile);
 	if (exists(sfile)) {
 		/* circular or deadlock */
 		free(sfile);
-		if (dopass1) pass1(opts, s);
-		return (1);
+		return (dopass1 ? pass1(opts, s) : 1);
 	}
 	mkdirf(sfile);
 	if (rename(s->sfile, sfile)) {
 		free(sfile);
-		if (dopass1) pass1(opts, s);
-		return (1);
-	}
-	unless (flags & SILENT) {
-		fprintf(stderr, "names: %s -> %s\n", s->sfile, sfile);
+		return (dopass1 ? pass1(opts, s) : 1);
 	}
 	saveRenames(opts, s->sfile, sfile);
 
-	s = sccs_init(sfile, flags|INIT_NOCKSUM);
+	s = sccs_init(sfile, opts->flags);
 	free(sfile);
 	unless (s) return (1);
 	ret = 0;
@@ -224,6 +243,14 @@ saveRenames(options *opts, char *src, char *dst)
 {
 	char *dir;
 
+	unless (opts->flags & SILENT) {
+		fprintf (stderr, "%s: %s -> %s\n", prog, src, dst);
+	}
+
+	opts->rename_stack =
+	    addLine(opts->rename_stack, aprintf("%s|%s", src, dst));
+
+	unless (opts->empty) opts->empty = hash_new(HASH_MEMHASH);
 	/* src dir may be empty */
 	dir = dirname_alloc(src);
 	hash_insertStrSet(opts->empty, dir);
@@ -232,4 +259,40 @@ saveRenames(options *opts, char *src, char *dst)
 	dir = dirname_alloc(dst);
 	hash_deleteStr(opts->empty, dir);
 	free(dir);
+}
+
+/*
+ * Take the list of renames performed so far and perform them in reverse
+ * so the repository is restored to its original condition.
+ */
+private int
+names_undo(options *opts)
+{
+	int     i;
+	char    *p;
+	char	**list = opts->rename_stack;
+
+	opts->rename_stack = 0;
+
+	EACH_REVERSE(list) {
+		unless (list[i][0]) {
+			rmEmptyDirs(opts->empty);
+			hash_free(opts->empty);
+			opts->empty = 0;
+			continue;
+		}
+		p = strchr(list[i], '|');
+		assert(p);
+		*p++ = 0;
+		mkdirf(list[i]);
+		if (rename(p, list[i])) {
+			fprintf(stderr,
+			    "%s: mv %s->%s failed, unable to restore changes\n",
+			    prog, p, list[i]);
+			return(1);
+		}
+		saveRenames(opts, p, list[i]);
+	}
+	freeLines(list, free);
+	return (0);
 }

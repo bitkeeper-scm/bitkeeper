@@ -161,7 +161,7 @@ merge(State *g, char *gfile, char *pathname, char *opts)
 		move_remote(rs, t); /* fine if this doesn't move */
 
 		/* mark that it moved */
-		mdbm_store_str(g->idDB, rootkey, s->gfile, MDBM_REPLACE);
+		idcache_item(g->idDB, rootkey, s->gfile);
 	}
 
 	/* handle contents conflicts */
@@ -272,7 +272,7 @@ converge(State *g, char *gfile, char *opts)
 		assert(!rs->snames);
 		move_remote(rs, sfile);
 		rs->s = 0;
-		mdbm_store_str(g->idDB, key_keep, gfile, MDBM_REPLACE);
+		idcache_item(g->idDB, key_keep, gfile);
 		resolve_free(rs);
 	}
 	sccs_free(skeep);	/* done with skeep */
@@ -350,7 +350,7 @@ copy_to_resync(State *g, sccs *s)
 	move_remote(rs, rmName);
 	resolve_free(rs);
 	s = sccs_init(rmName, g->iflags);
-	mdbm_store_str(g->idDB, rootkey, s->gfile, MDBM_REPLACE);
+	idcache_item(g->idDB, rootkey, s->gfile);
 	free(rmName);
 	return(s);
 }
@@ -369,7 +369,7 @@ free_slot(State *g, sccs *s)
 	move_remote(rs, rmName);
 	t = sccs2name(rmName);
 	free(rmName);
-	mdbm_store_str(g->idDB, key, t, MDBM_REPLACE);
+	idcache_item(g->idDB, key, t);
 	free(t);
 	rs->s = 0;
 	resolve_free(rs);

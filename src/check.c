@@ -2500,19 +2500,15 @@ check(sccs *s, MDBM *idDB)
 			}
 		}
 	}
-	sccs_sdelta(s, ino = sccs_ino(s), buf);
 
 	/*
 	 * Rebuild the id cache if we are running in -a mode.
 	 */
 	if (all) {
+		ino = sccs_ino(s);
 		do {
 			sccs_sdelta(s, ino, buf);
-			if (s->grafted ||
-			    !sccs_patheq(PATHNAME(s, ino), s->gfile)) {
-				mdbm_store_str(idDB, buf, s->gfile,
-				    MDBM_REPLACE);
-			}
+			idcache_item(idDB, buf, s->gfile);
 			unless (s->grafted) break;
 			while (ino = sccs_prev(s, ino)) {
 				if (HAS_RANDOM(s, ino)) break;
@@ -2586,47 +2582,15 @@ isGone(sccs *s, char *key)
 private int
 update_idcache(MDBM *idDB)
 {
-	kvpair	kv;
 	rkdata	*rkd;
 	int	updated = 0;
 	char	*rkey;
-	char	*p, *e;
-	char	*cached;	/* idcache idea of where the file is */
-	char	*found;		/* where we found the gfile */
-	int	inkeyloc;	/* is gfile in inode location? */
 
 	EACH_HASH(r2deltas) {
 		rkd = r2deltas->vptr;
 		unless (rkd->keys) continue;  // only files actually read
 		rkey = HEAP(cset, *(u32*)r2deltas->kptr);
-		p = strchr(rkey, '|');
-		assert(p);
-		p++;
-		e = strchr(p, '|');
-		assert(e);
-		*e = 0;
-		found = rkd->pathname;
-		inkeyloc = streq(p, found);
-		*e = '|';
-		cached = mdbm_fetch_str(idDB, rkey);
-		/* FIXUP idDB if it is wrong */
-		if (inkeyloc) {
-			if (cached) {
-				unless(streq(cached, found)) updated = 1;
-				kv.key.dptr = rkey;
-				kv.key.dsize = strlen(rkey)+1;
-				mdbm_delete(idDB, kv.key);
-			}
-		} else {
-			if (!cached || !streq(cached, found)) {
-				updated = 1;
-				kv.key.dptr = rkey;
-				kv.key.dsize = strlen(rkey)+1;
-				kv.val.dptr = rkd->pathname;
-				kv.val.dsize = strlen(rkd->pathname)+1;
-				mdbm_store(idDB, kv.key, kv.val, MDBM_REPLACE);
-			}
-		}
+		if (idcache_item(idDB, rkey, rkd->pathname)) updated = 1;
 	}
 	return (updated);
 }

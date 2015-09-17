@@ -149,7 +149,7 @@ err:		if (sname) free(sname);
 	if (error) goto out;
 	/* update idcache */
 	sccs_sdelta(s, sccs_ino(s), buf);
-	mdbm_store_str(idDB, buf, newpath, MDBM_REPLACE);
+	idcache_item(idDB, buf, newpath);
 	sccs_free(s);
 	/* For split root config; We recompute sfile here */
 	/* we don't want the sPath() adjustment		  */
