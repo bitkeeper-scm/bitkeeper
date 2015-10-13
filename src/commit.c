@@ -192,7 +192,8 @@ commit_main(int ac, char **av)
 		nav = unshiftLine(nav, strdup("commit"));
 		nav = unshiftLine(nav, strdup("bk"));
 
-		unless (aliases) aliases = modified_pending(DS_PENDING);
+		unless (aliases) aliases = modified_pending(opts.ci ?
+		    DS_PENDING|DS_EDITED : DS_PENDING);
 		rc = nested_each(opts.quiet, nav, aliases);
 		freeLines(aliases, free);
 		freeLines(nav, free);
@@ -614,7 +615,8 @@ fail:	if (rc) {
 		fprintf(stderr, "The commit is aborted.\n");
 		putenv("BK_STATUS=FAILED");
 	} else if (opts.clean_PENDING) {
-		proj_dirstate(0, "*", DS_PENDING, 0);
+		proj_dirstate(0, "*",
+		    opts.ci ? DS_PENDING|DS_EDITED : DS_PENDING, 0);
 		if (proj_isComponent(0)) {
 			/* this component is still pending */
 			proj_dirstate(0, ".", DS_PENDING, 1);
