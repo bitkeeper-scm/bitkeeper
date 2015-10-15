@@ -76,10 +76,11 @@ EOF
 cmpfiles GOT WANT
 bk -r names -v 2>OUT || fail -f OUT
 cat <<EOF > WANT
-names: a/SCCS/s.b -> BitKeeper/RENAMES/SCCS/s.1
-names: a/SCCS/s.c -> a/c/b/SCCS/s.d
-names: BitKeeper/RENAMES/SCCS/s.1 -> a/c/SCCS/s.b2
-names: all rename problems corrected.
+names: a/b -> BitKeeper/RENAMES/1
+names: a/c -> BitKeeper/RENAMES/2
+names: BitKeeper/RENAMES/1 -> a/c/b2
+names: BitKeeper/RENAMES/2 -> a/c/b/d
+names: all rename problems corrected
 EOF
 cmpfiles OUT WANT
 echo OK
@@ -93,9 +94,10 @@ bk -r names -v 2>OUT || fail -f OUT
 
 # It works, but has a moment where a gfile is a dir and prints a msg.
 cat <<EOF > WANT
-names: a/SCCS/s.b -> a/c/SCCS/s.b2
+names: a/b -> a/c/b2
 a/c has different file types, treating this file as read only.
-names: a/SCCS/s.c -> a/c/b/SCCS/s.d
+names: a/c -> a/c/b/d
+names: all rename problems corrected
 EOF
 cmpfiles OUT WANT
 
@@ -109,21 +111,23 @@ bk _mv a/c/SCCS/s.b2 a/SCCS/s.b
 bk _rm -rf a/c
 mkdir b
 bk clean date
-bk _mv SCCS/s.date b/SCCS/s.date
-mkdir date
+bk mv SCCS/s.date date2/c/d/SCCS/s.date || fail
+bk _mv date2/c/d/SCCS/s.date SCCS/s.xxx
+bk _rm -rf date2/c
+touch date2/c
 bk clean $Q a
 bk -r names -v 2>OUT && fail -f OUT
 
 cat <<EOF > WANT
-names: a/SCCS/s.b -> a/c/SCCS/s.b2
+names: xxx -> BitKeeper/RENAMES/1
+names: a/b -> a/c/b2
 a/c has different file types, treating this file as read only.
-names: a/SCCS/s.c -> a/c/b/SCCS/s.d
-names: b/SCCS/s.date -> BitKeeper/RENAMES/SCCS/s.1
-names: can't rename BitKeeper/RENAMES/1 -> date
+names: a/c -> a/c/b/d
+names: can't rename BitKeeper/RENAMES/1 -> date2/c/d/date
 names: failed to rename files, restoring files to original locations
-names: BitKeeper/RENAMES/SCCS/s.1 -> b/SCCS/s.date
-names: a/c/b/SCCS/s.d -> a/SCCS/s.c
-names: a/c/SCCS/s.b2 -> a/SCCS/s.b
+names: a/c/b/d -> a/c
+names: a/c/b2 -> a/b
+names: BitKeeper/RENAMES/1 -> xxx
 EOF
 cmpfiles OUT WANT
 echo OK
@@ -147,14 +151,14 @@ echo $N Move components, but add a block to the fixing ..............$NL
 mv gcc x
 mv gdb gcc
 touch gdb
-bk -r names -v  2> ERR && fail -f ERR
+bk -r names -v 2> ERR && fail -f ERR
 cat <<EOF > WANT
-names: gcc -> BitKeeper/RENAMES/repo.1
-names: x -> gcc
-names: can't rename BitKeeper/RENAMES/repo.1 -> gdb
+names: gcc/ChangeSet -> BitKeeper/RENAMES/1/ChangeSet
+names: x/ChangeSet -> gcc/ChangeSet
+names: can't rename BitKeeper/RENAMES/1/ChangeSet -> gdb/ChangeSet
 names: failed to rename files, restoring files to original locations
-names: gcc -> x
-names: BitKeeper/RENAMES/repo.1 -> gcc
+names: gcc/ChangeSet -> x/ChangeSet
+names: BitKeeper/RENAMES/1/ChangeSet -> gcc/ChangeSet
 EOF
 cmpfiles ERR WANT
 test -f x/gcc || fail
