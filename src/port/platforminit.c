@@ -134,9 +134,33 @@ platformInit(char **av)
 		if (t = strchr(av[0], '/')) {
 			verbose((stderr, "PARTIAL '%s'\n", av[0]));
 			strcpy(buf, av[0]);
+#ifdef	WIN32
+		} else if (executable(av[0])) {
+			char	*b;
+			/*
+			 * windows always acts like it has '.' on PATH
+			 *
+			 * the cwd contains an executable bk.exe,
+			 * test if we have set BK_BIN (meaning we are
+			 * likely a child bk process) then make sure
+			 * that we are running the correct bk binary.
+			 * Re-spawn if not.
+			 */
+			if ((b = getenv("BK_BIN")) && *b) {
+				sprintf(buf, "%s/bk", b);
+				localName2bkName(buf, buf);
+				for (t = buf; *t; t++) *t = tolower(*t);
+				unless (streq(buf, av[0])) {
+					av[0] = strdup(buf);
+					exit(bk_spawnvp(P_WAIT, buf, av));
+				}
+			}
+			verbose((stderr, "WIN32 dotpath '%s'\n", av[0]));
+			strcpy(buf, av[0]);
+#endif
 		} else {
 			s = p;
-			verbose((stderr, "SEARCH '%s'\n", p));
+			verbose((stderr, "SEARCH '%s'\n", s));
 			while (1) {
 				if (t = strchr(s, PATH_DELIM)) *t = 0;
 				if (s[0] == '~') got_tilda = 1;
