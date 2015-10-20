@@ -1734,7 +1734,8 @@ Tcl_FSEvalFileEx(
     Tcl_Channel chan;
     Tcl_Obj *objPtr;
 #ifdef	BK
-    int	oldbk;
+    int	enclen, oldbk;
+    char *enc;
 #endif
 
     if (Tcl_FSGetNormalizedPath(interp, pathPtr) == NULL) {
@@ -1811,8 +1812,6 @@ Tcl_FSEvalFileEx(
 	goto end;
     }
 
-    objPtr = FsMaybeWrapInLLang(interp, objPtr, Tcl_GetString(pathPtr));
-
     iPtr = (Interp *) interp;
     oldScriptFile = iPtr->scriptFile;
     iPtr->scriptFile = pathPtr;
@@ -1842,47 +1841,37 @@ Tcl_FSEvalFileEx(
     } else {
 	    oldbk = enable_secure_bk_calls;
     }
-    string = Tcl_GetStringFromObj(objPtr, &length);
-
-    if ((strncmp(string, "#%-\n", 4) == 0) && oldbk) {
-	FILE *f;
-	unsigned len;
-	unsigned long outlen;
-	char buf[8196], out[8196];
+    enc = Tcl_GetStringFromObj(objPtr, &enclen);
+    if (strncmp(enc, "#%-\n", 4) == 0) {
+	char *dec;
+	unsigned long declen;
 	blf_ctx C;
-	char	*s = malloc(length);
 
-	assert(s);
-	f = fopen(Tcl_GetString(pathPtr), "rb");
-	length = 0;
-	while (fgets(buf, sizeof(buf), f)) {
-		len = strlen(buf);
-		outlen = sizeof(out);
-		if (base64_decode((unsigned char *)buf,
-		    len, (unsigned char *)out, &outlen)) {
-			fclose(f);
-			Tcl_ResetResult(interp);
-			Tcl_AppendResult(interp,
-			    "couldn't decode file \"", Tcl_GetString(pathPtr),
-			      "\": ", Tcl_PosixError(interp), (char *) NULL);
-			goto end;
-		}
-		memcpy((s + length), out, outlen);
-		length += outlen;
+	dec = ckalloc(enclen);
+	declen = enclen;
+	if (base64_decode((unsigned char *)enc, enclen,
+			  (unsigned char *)dec, &declen)) {
+		ckfree(dec);
+		Tcl_ResetResult(interp);
+		Tcl_AppendResult(interp,
+			"couldn't decode file \"", Tcl_GetString(pathPtr),
+			"\": ", Tcl_PosixError(interp), (char *) NULL);
+		goto end;
 	}
-	fclose(f);
 	blf_key(&C, bkey, 10);
-	blf_dec(&C, (u32 *)(s), length/8);
-
+	blf_dec(&C, (u32 *)dec, declen/8);
 	/* put the decrypted script back into the Tcl_Obj */
-	Tcl_SetStringObj(objPtr, s, length);
-	free(s);
+	Tcl_SetStringObj(objPtr, dec, declen);
+	ckfree(dec);
 	enable_secure_bk_calls = 1;
     } else {
 	enable_secure_bk_calls = 0;
     }
 #endif
-    string = Tcl_GetString(objPtr);
+
+    objPtr = FsMaybeWrapInLLang(interp, objPtr, Tcl_GetString(pathPtr));
+
+    string = Tcl_GetStringFromObj(objPtr, &length);
     /* TIP #280 Force the evaluator to open a frame for a sourced
      * file. */
     iPtr->evalFlags |= TCL_EVAL_FILE;
@@ -1937,7 +1926,8 @@ TclNREvalFile(
     Tcl_Channel chan;
     const char *string;
 #ifdef	BK
-    int	length, oldbk;
+    int	enclen, oldbk;
+    char *enc;
 #endif
 
     if (Tcl_FSGetNormalizedPath(interp, pathPtr) == NULL) {
@@ -2017,8 +2007,6 @@ TclNREvalFile(
 	return TCL_ERROR;
     }
 
-    objPtr = FsMaybeWrapInLLang(interp, objPtr, Tcl_GetString(pathPtr));
-
     iPtr = (Interp *) interp;
     oldScriptFile = iPtr->scriptFile;
     iPtr->scriptFile = pathPtr;
@@ -2052,46 +2040,35 @@ TclNREvalFile(
     } else {
 	    oldbk = enable_secure_bk_calls;
     }
-    string = Tcl_GetStringFromObj(objPtr, &length);
-
-    if ((strncmp(string, "#%-\n", 4) == 0) && oldbk) {
-	FILE *f;
-	unsigned len;
-	unsigned long outlen;
-	char buf[8196], out[8196];
+    enc = Tcl_GetStringFromObj(objPtr, &enclen);
+    if (strncmp(enc, "#%-\n", 4) == 0) {
+	char *dec;
+	unsigned long declen;
 	blf_ctx C;
-	char	*s = malloc(length);
 
-	assert(s);
-	f = fopen(Tcl_GetString(pathPtr), "rb");
-	length = 0;
-	while (fgets(buf, sizeof(buf), f)) {
-		len = strlen(buf);
-		outlen = sizeof(out);
-		if (base64_decode((unsigned char *)buf,
-		    len, (unsigned char *)out, &outlen)) {
-			fclose(f);
-			Tcl_ResetResult(interp);
-			Tcl_AppendResult(interp,
-			    "couldn't decode file \"", Tcl_GetString(pathPtr),
-			      "\": ", Tcl_PosixError(interp), (char *) NULL);
-			return TCL_ERROR;
-		}
-		memcpy((s + length), out, outlen);
-		length += outlen;
+	dec = ckalloc(enclen);
+	declen = enclen;
+	if (base64_decode((unsigned char *)enc, enclen,
+			  (unsigned char *)dec, &declen)) {
+		ckfree(dec);
+		Tcl_ResetResult(interp);
+		Tcl_AppendResult(interp,
+			"couldn't decode file \"", Tcl_GetString(pathPtr),
+			"\": ", Tcl_PosixError(interp), (char *) NULL);
+		return (TCL_ERROR);
 	}
-	fclose(f);
 	blf_key(&C, bkey, 10);
-	blf_dec(&C, (u32 *)(s), length/8);
-
+	blf_dec(&C, (u32 *)dec, declen/8);
 	/* put the decrypted script back into the Tcl_Obj */
-	Tcl_SetStringObj(objPtr, s, length);
-	free(s);
+	Tcl_SetStringObj(objPtr, dec, declen);
+	ckfree(dec);
 	enable_secure_bk_calls = 1;
     } else {
 	enable_secure_bk_calls = 0;
     }
 #endif
+
+    objPtr = FsMaybeWrapInLLang(interp, objPtr, Tcl_GetString(pathPtr));
 
     /*
      * TIP #280: Force the evaluator to open a frame for a sourced file.

@@ -89,16 +89,6 @@ platformInit(char **av)
 	putKV("BK_WEBMAIL_URL", "http://webmail.bitkeeper.com:80");
 
 #ifdef WIN32
-	/*
-	 * Force mkstemp() in uwtlib to use dir argument
-	 */
-	putenv("TMP=");
-
-	/*
-	 * If we don't have a /tmp on Windows, try and make one.
-	 */
-	unless (exists("/tmp")) mkdir("/tmp", 0777);
-
  	/*
 	 * Default to binary mode on all files
 	 */

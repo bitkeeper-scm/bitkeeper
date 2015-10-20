@@ -1,4 +1,3 @@
-
 /*
  * SCCS version string to indicate that BitKeeper/log/features must be
  * obeyed.
@@ -20,6 +19,7 @@
  *   BKFILE	repo uses BK format sfiles
  *   POLY	at least one comp cset was ported in twice (polyDB exists)
  *   BWEAVE	store cset weave in separate heap file
+ *   BWEAVEv2	old encoding for BWEAVE
  *   PARENTS	bkd knows how to send parent files
  *   SCANDIRS   maintains the scancomps/scandirs files
  */
@@ -49,9 +49,10 @@
 	X( 8, SORTKEY, "sortkey", 1, 0, 5)	\
 	X( 9, POLY, "POLY", 1, 0, 6)		\
 	X(10, BKFILE, "BKFILE", 1, 0, 6)	\
-	X(11, BWEAVE, "BWEAVEv2", 1, 0, 6)	\
+	X(11, BWEAVEv2, "BWEAVEv2", 1, 1, 6)	\
 	X(12, PARENTS, "PARENTS", 0, 0, 6)	\
 	X(13, SCANDIRS, "SCANDIRS", 1, 0, 6)	\
+	X(14, BWEAVE, "BWEAVEv3", 1, 0, 7)	\
 
 enum {
 	FEAT_ALWAYS = 1,		/* bit0 is always set */
@@ -59,6 +60,9 @@ enum {
 	FEATURES
 #undef X
 };
+
+// features related to file format
+#define	FEAT_FILEFORMAT	(FEAT_BKFILE | FEAT_BWEAVE | FEAT_BWEAVEv2)
 
 int	bk_hasFeature(int f);
 int	bkd_hasFeature(int f);
@@ -74,3 +78,6 @@ u32	features_toBits(char *features, char *bad);
 char	*features_fromBits(u32 bits);
 int	features_minrelease(project *proj, char ***list);
 void	features_dumpMinRelease(void);
+
+u32	features_toEncoding(sccs *s, u32 bits);
+u32	features_fromEncoding(sccs *s, u32 encoding);

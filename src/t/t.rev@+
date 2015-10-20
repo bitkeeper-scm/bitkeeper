@@ -10,17 +10,14 @@
 #    modifications under any license.
 
 echo $N Create initial repository ...................................$NL
-KEYS=`bk dotbk`/bk-keys/`bk gethost -r`
-rm -f "$KEYS"
 fresh_commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
-test -f "$KEYS" -a ! -z "$KEYS" || {
-	echo failed to add keys to .bk_keys
-	exit 1
-}
+kill_uniq "$HERE/.bk/bk-keys-db"
+echo 'get .*' | bk info_shell --uniqdb | grep '^@.' >KEYS
+test `cat KEYS | wc -l` -gt 1 || fail failed to add keys
 echo OK
 
 echo $N Add a delta to be sure there are pending deltas .............$NL

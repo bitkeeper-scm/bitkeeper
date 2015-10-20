@@ -403,13 +403,13 @@ fslayer_symlink(const char *old, const char *new)
 }
 
 char **
-fslayer__getdir(char *dir, struct stat *sb)
+fslayer_getdir(char *dir)
 {
 	char	**ret;
 	Fp	fp;
 
 	if (noloop) {
-		ret = _getdir(dir, sb);
+		ret = getdir(dir);
 	} else {
 		noloop = 1;
 
@@ -417,9 +417,9 @@ fslayer__getdir(char *dir, struct stat *sb)
 			ret = fp.funcs->_getdir(fp.proj, fp.rel);
 			fp_free(&fp);
 		} else {
-			ret = _getdir(dir, sb);
+			ret = getdir(dir);
 		}
-		STRACE((strace, "_getdir(%s, sb) = ", dir));
+		STRACE((strace, "getdir(%s) = ", dir));
 		if (ret) {
 			STRACE((strace, "list{%d}\n", nLines(ret)));
 		} else {

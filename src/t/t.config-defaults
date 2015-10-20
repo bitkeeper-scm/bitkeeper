@@ -1,0 +1,142 @@
+commercial throwaway
+bk lease renew -w $Q   # get a lease so the following tests pass
+
+echo $N Test config defaults in setup................................$NL
+cd "$HERE"
+rm -f c ; touch c
+bk setup -fcc arepo
+cd arepo
+bk _dumpconfig > GOT
+cat <<EOF > WANT
+autofix: on
+auto_populate: off
+BAM: off
+BAM_checkout: (null)
+BAM_hardlinks: off
+bkd_gzip: 0
+bkweb: (null)
+category: (null)
+check_frequency: (null)
+checkout: none
+clock_skew: on
+clone_default: ALL
+contact: (null)
+compression: gzip
+description: (null)
+diffgap: -1
+email: (null)
+eoln: native
+fakegrafts: off
+homepage: (null)
+keyword: none
+legacyguis: off
+license: (null)
+licenseurl: (null)
+lockwait: 30
+mail_proxy: (null)
+master: (null)
+monotonic: (null)
+no_graphverify: off
+parallel: on
+partial_check: on
+poly: off
+stats_after_pull: off
+sync: off
+triggers: \$PRODUCT|.
+uniqdb: (null)
+upgrade_url: (null)
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test config defaults in our commercial repo..................$NL
+cd "$HERE"
+commercial proj
+bk _dumpconfig > GOT
+cat <<EOF > WANT
+autofix: on
+auto_populate: off
+BAM: 1
+BAM_checkout: (null)
+BAM_hardlinks: off
+bkd_gzip: 0
+bkweb: (null)
+category: (null)
+check_frequency: (null)
+checkout: none
+clock_skew: on
+clone_default: ALL
+contact: (null)
+compression: gzip
+description: BitKeeper Test repository
+diffgap: -1
+email: nobody@nowhere.bk
+eoln: unix
+fakegrafts: off
+homepage: (null)
+keyword: sccs
+legacyguis: off
+license: $BKL_PRO
+licenseurl: (null)
+lockwait: 0
+mail_proxy: (null)
+master: (null)
+monotonic: (null)
+no_graphverify: off
+parallel: on
+partial_check: off
+poly: off
+stats_after_pull: off
+sync: off
+triggers: \$PRODUCT|.
+uniqdb: (null)
+upgrade_url: (null)
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test for undocumented config options.........................$NL
+cd "$HERE"
+bk setup -pv > OUT
+grep -q Undocumented OUT && fail -f OUT Undocumented config options found
+echo OK
+
+echo $N Make sure bk setup adds docs.................................$NL
+mkdir new_repo
+cd new_repo
+bk setup .
+bk grep -q '^#' BitKeeper/etc/config || fail No docs in config file
+echo OK
+
+echo $N bk config -v now parses same as bk does internally...........$NL
+bk edit $Q BitKeeper/etc/config
+cat <<EOF >> BitKeeper/etc/config
+checkout: edit
+checkout: get!
+EOF
+bk config -v | grep checkout > GOT
+cat <<EOF > WANT
+	checkout:       get!
+#	checkout:       none
+EOF
+cmpfiles WANT GOT
+bk unedit $Q BitKeeper/etc/config
+echo OK
+
+echo $N See that aliases are folded together in db keys .............$NL
+# Show that keys are sanitized on input - that the only one name is
+# put into the db, as opposed to all names put in and canonical checked
+# first.
+bk edit $Q BitKeeper/etc/config
+cat <<EOF >> BitKeeper/etc/config
+auto-populate: off
+auto_populate: maybe
+autopopulate: on!
+EOF
+bk config -v | grep auto_populate > GOT
+cat <<EOF > WANT
+	auto_populate:  on!
+#	auto_populate:  off
+EOF
+cmpfiles WANT GOT
+echo OK

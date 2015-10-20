@@ -1,0 +1,169 @@
+Document sh.exe dump core seen on windows
+=========================================
+
+We've had some problems where users were seeing sh.exe core dump on Windows.
+
+See http://db.bitkeeper.com/cgi-bin/view.cgi?id=2006-08-30-001
+
+It could be that there is a bug in MSYS (see email below explaining what
+the bug could be). But it could also be that the Logitech QuickCam stuff
+does nasty things to the win32 API calls.
+
+ =========================================================================
+
+From: Oscar Bonilla <ob@bitmover.com>
+Date: January 10, 2007 5:58:13 AM PST
+To: MinGW Users List <mingw-users@lists.sourceforge.net>
+Cc: dev <dev@bitmover.com>
+Subject: Re: [Mingw-users] Fork bug?
+
+I reread my email and realized I didn't explain the problem enough.  
+Let me try again:
+
+Let's assume there are two machines, one is called "works" because it  
+works, and the other is called "fails" because it, uh, fails.
+
+Fact #1: "works" loads less DLLs than "fails". This is because  
+"fails" has a lot more software installed (e.g. Google Desktop  
+Search, Skype, etc. no anti-virus though). I'm seeing this by using  
+ProcessExplorer (from SysInternals.com) and pointing it to bash.exe.
+
+Fact #2: on "fails" I sometimes get the coredump below. Which, if I  
+compile my msys-1.0.dd with -D_CYG_THREAD_FAILSAFE, produces the  
+message:
+
+   81568 [main] sh 10860 _reent_clib: local thread storage not inited
+
+I tracked down the problem to an invalid TLS index being used in  
+_reent_clib(). I figured this out by adding system_printf's to where  
+user_data->threadinterface->reent_index is being set (in MTinterface- 
+ >Init()) and where it's being used (_reent_clib()). This is what I got:
+
+   95853 [unknown (0x3BB0)] us 0 MTinterface::Init: [15280] 7 <-  
+710DA038
+     580 [unknown (0x327C)] us 0 MTinterface::Init: [12924] 5 <-  
+710DA038
+   47533 [main] sh 13488 _reent_clib: local thread storage not inited  
+[12924] 7 -> 0
+
+   [#] is GetCurrentThreadId()
+   X <- X is the call to TlsSetValue(reent_index, &reents) in  
+MTinterface::Init
+   X -> X is the call to TlsGetValue(reent_index) in _reent_clib()
+
+What this tells me is that thread 15280 called TlsAlloc() (in  
+thread.cc:270) and got 7, where it put &reents (710DA038). Thread  
+12924 did the same, and got 5. Now notice that when thread 12924  
+tries to use TlsGetValue() to retrieve the pointer it tries to use 7  
+(what the previous thread put in) instead of 5 (what it itself put in).
+
+Here's my theory about how this can happen.
+
+When the shell calls fork(), fork() is creating a new process and  
+copying over the address space to the child. Then it starts the  
+child. The reent_index in question is initialized in MTinterface::Init 
+() which is called from dll_crt0_1(). It seems to me that the latter  
+is getting called before we copy over the user_data to the child, and  
+when the user_data is copied, it stomps on it.
+
+Note that the problem doesn't happen on "works" because the TLS  
+indices happen to line up (i.e. both the parent and child get the  
+same slot). I suspect this is because of other DLLs also using Thread  
+Local Storage.
+
+If I mark _mtinterf as NO_COPY the problem goes away, but I'm sure  
+not copying _mtinterf is not the right answer as it probably defeats  
+the thread subsystem (or does it?). I can probably figure it out in  
+another day or two of poking at it, but if anyone knows that code  
+better, I'd appreciate some help.
+
+Thanks,
+
+-Oscar
+
+----------------------------------
+On Jan 9, 2007, at 8:03 PM, Oscar Bonilla wrote:
+
+> I have a reproducible bug on some windos machines where bash coredumps
+> like this:
+>
+> MSYS-1.0.11 Build:2004-03-25 09:45
+> Exception: STATUS_ACCESS_VIOLATION at eip=710641C3
+> eax=7FFDF000 ebx=00000000 ecx=00000000 edx=0022E69C esi=00000000  
+> edi=0022E630
+> ebp=0022E1A0 esp=0022E17C program=c:\gnu\bin\sh.exe
+> cs=001B ds=0023 es=0023 fs=003B gs=0000 ss=0023
+> Stack trace:
+> Frame Function Args
+> 0022E1A0 710641C3 (0022E69C, 00000001, 00000728, 00000000)
+> 0022E64C 71026F7E (0022E7CC, 0022E7D0, 0022E7D4, 0022E674)
+> 0022E7DC 71027792 (00000000, 10027030, 10026FE8, 0041664D)
+> 0022E80C 0041A60F (100272A0, 00000000, 0022E84C, 00411F9E)
+> 0022E84C 00412024 (10026F58, 00000000, 10026FE8, FFFFFFFF)
+> 0022E8CC 00411695 (1005F9B0, FFFFFFFF, FFFFFFFF, 00000000)
+> 0022E92C 0040E94D (1005F998, 00000000, FFFFFFFF, FFFFFFFF)
+> 0022E97C 0040E24F (1005F998, 00000000, 00000000, 00473ADC)
+> 0022E9BC 0040FAD7 (1005FF70, 00000000, FFFFFFFF, FFFFFFFF)
+> 0022EA1C 0040EB6F (1005FF70, 00000000, FFFFFFFF, FFFFFFFF)
+> 0022EA6C 0040F5F0 (1005FF48, 00000000, FFFFFFFF, FFFFFFFF)
+> 0022EAD8 0040E657 (1005FF48, 00000000, FFFFFFFF, FFFFFFFF)
+> 0022EB28 0040E24F (1005FF48, 10060048, 00000000, 0047378C)
+> 0022EB58 0041099A (10060060, 00000001, 00000001, 00000000)
+> 0022EBA8 0040EAF6 (10060048, 00000000, FFFFFFFF, FFFFFFFF)
+> 0022EC08 0040EB54 (10060020, 00000000, FFFFFFFF, FFFFFFFF)
+> End of stack trace (more stack frames may be present)
+>
+> I've traced it back to what appears to be a problem in fork.cc. From
+> what I can tell, the problem is that
+> user_data->threadinterface->reent_index gets overwritten (as part of
+> fork copying the address space) with an invalid Thread Local Storaga
+> index. I have managed to "fix" it by marking _mtinterf as NO_COPY,
+> like so,
+>
+> work cygwin $ cvs diff -u dcrt0.cc
+> Index: dcrt0.cc
+> ===================================================================
+> RCS file: /home/bk/imports/cvs/mingw/msys/rt/src/winsup/cygwin/ 
+> dcrt0.cc,v
+> retrieving revision 1.9
+> diff -u -r1.9 dcrt0.cc
+> --- dcrt0.cc    15 Mar 2004 11:51:36 -0000      1.9
+> +++ dcrt0.cc    10 Jan 2007 04:01:50 -0000
+> @@ -71,7 +71,7 @@
+>  unsigned NO_COPY int signal_shift_subtract = 1;
+>
+>  ResourceLocks _reslock NO_COPY;
+> -MTinterface _mtinterf;
+> +MTinterface NO_COPY _mtinterf;
+>
+>  bool NO_COPY _cygwin_testing;
+>
+> but I'm afraid that _mtinterf does indeed need to be copied for the
+> thread subsystem to work. I'm wondering if anyone who knows threads
+> and the fork internals would be interested in lending a hand in
+> squashing this nasty bug.
+>
+> Thanks,
+>
+> -Oscar
+>
+> -- 
+> pgp fingerprint: BC64 2E7A CAEF 39E1 9544  80CA F7D5 784D FB46 16C1
+>
+> ---------------------------------------------------------------------- 
+> ---
+> Take Surveys. Earn Cash. Influence the Future of IT
+> Join SourceForge.net's Techsay panel and you'll get the chance to  
+> share your
+> opinions on IT & business topics through brief surveys - and earn cash
+> http://www.techsay.com/default.php? 
+> page=join.php&p=sourceforge&CID=DEVDEV
+> _______________________________________________
+> MinGW-users mailing list
+> MinGW-users@lists.sourceforge.net
+>
+> You may change your MinGW Account Options or unsubscribe at:
+> https://lists.sourceforge.net/lists/listinfo/mingw-users
+--
+pgp fingerprint: BC64 2E7A CAEF 39E1 9544  80CA F7D5 784D FB46 16C1
+----------------------------------

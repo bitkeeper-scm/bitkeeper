@@ -22,12 +22,12 @@ line3
 EOF
 BK_DATE_TIME_ZONE="04/08/01 13:13:13-8:00" BK_USER=joe BK_HOST=blow.com \
     bk new $Q file
-bk commit $Q -yfirst || exit 1
+bk commit $Q -yfirst || fail
 bk edit $Q file
 echo line4 >> file
 BK_DATE_TIME_ZONE="04/08/23 14:14:14-8:00" BK_USER=jane BK_HOST=shoes.com \
     bk delta -ywhatever $Q file || fail
-bk commit $Q -ysecond || exit 1
+bk commit $Q -ysecond || fail
 echo OK
 
 echo $N Check bk annotate ...........................................$NL
@@ -197,32 +197,20 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Check that bk annotate -r and -R are mutually exclusive .....$NL
-bk annotate -R+ -r+ file > GOT 2>&1 && {
-	echo should have failed
-	exit 1
-}
+bk annotate -R+ -r+ file > GOT 2>&1 && fail should have failed
 echo OK
 
 echo $N Check that bk annotate -c and -R are mutually exclusive .....$NL
-bk annotate -R+ -c2004 file > GOT 2>&1 && {
-	echo should have failed
-	exit 1
-}
+bk annotate -R+ -c2004 file > GOT 2>&1 && fail should have failed
 echo OK
 
 # XXX - doesn't actually test ranges, we do that elsewhere
 echo $N Check that bk annotate -c accepts ranges ....................$NL
-bk annotate -c2004..2004 file > GOT 2>&1 || {
-	echo should not have failed
-	exit 1
-}
+bk annotate -c2004..2004 file > GOT 2>&1 || fail should not have failed
 echo OK
 
 echo $N Check that bk annotate -r does not accept ranges ............$NL
-bk annotate -r1.1..+ file > GOT 2>&1 && {
-	echo should have failed
-	exit 1
-}
+bk annotate -r1.1..+ file > GOT 2>&1 && fail should have failed
 echo OK
 
 echo $N Make sure that we can use annotate -R -h like sccscat -h ....$NL

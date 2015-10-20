@@ -102,12 +102,9 @@ merge(State *g, char *gfile, char *pathname, char *opts)
 	char	rootkey[MAXKEY];
 
 	/* skip files with no conflicts */
-	t = strrchr(sfile, '/'), t[1] = 'r';
-	unless (exists(sfile)) {	 /* rfile */
-		t[1] = 'm';
-		unless (exists(sfile)) goto out;
+	unless (xfile_exists(sfile, 'r')) {	 /* rfile */
+		unless (xfile_exists(sfile, 'm')) goto out;
 	}
-	t[1] = 's';
 
 	/* only merge file if it is for the right pathname */
 	s = sccs_init(sfile, g->iflags);
@@ -183,9 +180,7 @@ merge(State *g, char *gfile, char *pathname, char *opts)
 		assert(!rc);
 
 		/* delete rfile */
-		t = strrchr(s->sfile, '/'), t[1] = 'r';
-		unlink(s->sfile);
-		t[1] = 's';
+		xfile_delete(s->sfile, 'r');
 	}
 	resolve_free(rs);	/* free 's' too */
 out:	free(sfile);

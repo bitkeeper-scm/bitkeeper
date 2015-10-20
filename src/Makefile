@@ -25,6 +25,7 @@ REPO    := $(shell basename "`bk root`")
 URL     := $(shell echo bk://work/`bk root` | sed s,/home/bk/,,)
 LOG	:= $(shell echo LOG-`bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
+JUNK	:= $(shell bk -Ur. -1 -^G checkout)
 
 ifeq "$(OSTYPE)" "msys"
 	SYS=win32
@@ -153,7 +154,7 @@ OBJ =	bkver.o cmd.o \
 	bkd_r2c.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
 	bkusers.o \
-	cat.o cfile.o changes.o \
+	cat.o cfile.o changes.o cfg.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
 	cmdlog.o \
 	collapse.o comment.o comments.o commit.o comps.o compress.o \
@@ -168,6 +169,7 @@ OBJ =	bkver.o cmd.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o \
+	hash_nokey.o \
 	heapdump.o help.o here.o here_check.o hostme.o http.o \
 	idcache.o isascii.o info.o inskeys.o \
 	key2rev.o key2path.o kill.o kv.o \
@@ -218,7 +220,7 @@ OBJ =	bkver.o cmd.o \
 	unique.o uninstall.o unlink.o unlock.o unpull.o unrm.o unwrap.o upgrade.o \
 	urlinfo.o \
 	utils.o uu.o what.o which.o \
-	xflags.o \
+	xfile.o xflags.o \
 	zone.o
 SCRIPTS	= applypatch bk.script import \
 	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
@@ -251,10 +253,10 @@ RANLIB	= ranlib
 # list of C sources in bk
 SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
-HDRS	= bam.h bkd.h bk-features.h diff.h fsfuncs.h \
+HDRS	= bam.h bkd.h bk-features.h cfg.h confvars.h diff.h fsfuncs.h \
 	  graph.h logging.h nested.h \
 	  progress.h purify.h range.h rcs.h resolve.h sccs.h \
-	  cmd.h poly.h proj.h redblack.h inskeys.h libc/system.h
+	  cmd.h poly.h proj.h redblack.h inskeys.h libc/system.h xfile.h
 
 # list of non-C sources in bk
 SCRSRCS	= bk.sh import.sh kwextract.pl uuwrap.sh unuuwrap.sh \

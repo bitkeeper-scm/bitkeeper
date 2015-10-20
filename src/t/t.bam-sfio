@@ -2,7 +2,7 @@
 echo $N Test bam sfio in a standalone ...............................$NL
 commercial project
 # nested project
-# cd gcc || exit 1
+# cd gcc || fail
 echo BAM > foo
 cp foo bar
 bk new $Q -b foo bar
@@ -22,7 +22,7 @@ echo $N Test bam sfio in a product component ........................$NL
 cd "$HERE"
 nested nested
 cwd="$HERE"/nested
-cd gcc || exit 1
+cd gcc || fail
 echo BAM > foo
 cp foo bar
 bk new $Q -b foo bar

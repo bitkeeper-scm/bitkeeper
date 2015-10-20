@@ -50,7 +50,8 @@
 #include "sccs.h"
 #include "range.h"
 
-private	int	fastWeave(sccs *s);
+private	int	fastCsetWeave(sccs *s, int fast);
+private	void	fix(sccs *s);
 
 /*
  * Initialize the structure used by cset_insert according to how
@@ -119,17 +120,15 @@ earlier(sccs *s, ser_t a, ser_t b)
 ser_t
 cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 {
-	int	i, error, sign, added = 0;
+	int	i, error;
 	ser_t	d, e, p;
 	ser_t	serial = 0; /* serial number for 'd' */ 
-	char	*t, *dkey;
 	char	**syms = 0;
 	char	key[MAXKEY];
 	int	keep;
 	symbol	*sym;
-	FILE	*f = 0;
 
-	unless (iF) {	
+	unless (iF) {
 		/* ignore in patch: like if in skipkeys */
 		assert(fast);
 		d = 0;
@@ -228,32 +227,6 @@ cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 		}
 	}
 	d = sccs_insertdelta(s, d, serial);
-
-	/*
-	 * Update all reference to the moved serial numbers
-	 */
-	f = fmem();
-	for (e = d + 1; e <= TABLE(s); e += 1) {
-
-		if (HAS_CLUDES(s, e)) {
-			assert(INARRAY(s, e));
-			t = CLUDES(s, e);
-			while (i = sccs_eachNum(&t, &sign)) {
-				if (i >= serial) i++;
-				sccs_saveNum(f, i, sign);
-			}
-			t = fmem_peek(f, 0);
-			unless (streq(t, CLUDES(s, e))) {
-				CLUDES_SET(s, e, t);
-			}
-			ftrunc(f, 0);
-		}
-		if (PARENT(s, e) >= serial) PARENT_SET(s, e, PARENT(s, e)+1);
-		if (MERGE(s, e) >= serial) MERGE_SET(s, e, MERGE(s, e)+1);
-		if (PTAG(s, e) >= serial) PTAG_SET(s, e, PTAG(s, e)+1);
-		if (MTAG(s, e) >= serial) MTAG_SET(s, e, MTAG(s, e)+1);
-	}
-	fclose(f);
 	if (d != TABLE(s)) {
 		EACHP_REVERSE(s->symlist, sym) {
 			if (sym->ser >= serial) sym->ser++;
@@ -265,7 +238,6 @@ cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 	PARENT_SET(s, d, parent);
 
 	sccs_inherit(s, d);
-	if (!fast && !TAG(s, d) && (TREE(s) != d)) SAME_SET(s, d, 1);
 
 	/*
 	 * Fix up tag/symbols
@@ -273,7 +245,6 @@ cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 	 * is a duplicate.
 	 */
 	EACH(syms) addsym(s, d, 0, syms[i]);
-	if (syms) freeLines(syms, free);
 
 done:
 	/*
@@ -282,41 +253,57 @@ done:
 	 */
 	assert(s->iloc < s->nloc);
 	s->locs[s->iloc].serial = serial;
-	if (!fast && dF && BWEAVE(s)) {
-		char	**keys = 0;
-
-		//assert(!fast);
-		while (t = fgetline(dF)) {
-			if (streq(t, "0a0")) continue;
-			++added;
-			assert(strneq(t, "> ", 2));
-			t += 2;
-			dkey = separator(t);
-			*dkey++ = 0;
-			keys = addLine(keys, strdup(t));
-			keys = addLine(keys, strdup(dkey));
-		}
-		ADDED_SET(s, d, added);
-		weave_set(s, d, keys);
-		freeLines(keys, free);
-	} else if (s->locs[s->iloc].dF = dF) {
-		unless (fast) {
-			/*
-			 * Fix up ADDED(s, d)
-			 * If not fast, then it must be a cset, and
-			 * it can't be empty (because dF is set)
-			 * so it will have one insert block that is
-			 * a command line and the rest of the lines
-			 * are data lines.
-			 */
-			while ((i = getc(dF)) != EOF) if (i == '\n') added++;
-			assert(added);
-			ADDED_SET(s, d, added - 1);
-			rewind(dF);
-		}
-	}
+	s->locs[s->iloc].dF = dF;
 	s->iloc++;
+	if (syms) freeLines(syms, free);
 	return (d);
+}
+
+private	void
+fix(sccs *s)
+{
+	ser_t	d, e;
+	ser_t	base;
+	ser_t	*remap = 0;
+	char	*p;
+	int	sign;
+	int	i;
+	FILE	*f = fmem();
+
+#define	SERMAP(x) (remap[(x) - base])
+
+	/* find first patch that was inserted */
+	for (d = 0, i = 1; i < s->iloc; i++) {
+		if ((d = s->locs[i].serial) && (FLAGS(s, d) & D_REMOTE)) break;
+	}
+	unless (d  && (FLAGS(s, d) & D_REMOTE)) return;
+	/* 'base' okay to be 0; newest local delta that needs no change */
+	base = d - 1;
+
+	/*
+	 * Update the internals of all local deltas.
+	 */
+	for (d++; d <= TABLE(s); d++) {
+		if (FLAGS(s, d) & D_REMOTE) continue;
+		addArray(&remap, &d);
+		if (HAS_CLUDES(s, d)) {
+			assert(INARRAY(s, d));
+			p = CLUDES(s, d);
+			while (e = sccs_eachNum(&p, &sign)) {
+				if (e > base) e = SERMAP(e);
+				sccs_saveNum(f, e, sign);
+			}
+			p = fmem_peek(f, 0);
+			unless (streq(p, CLUDES(s, d))) CLUDES_SET(s, d, p);
+			ftrunc(f, 0);
+		}
+		if ((e = PARENT(s, d)) > base) PARENT_SET(s, d, SERMAP(e));
+		if ((e = MERGE(s, d)) > base) MERGE_SET(s, d, SERMAP(e));
+		if ((e = PTAG(s, d)) > base) PTAG_SET(s, d, SERMAP(e));
+		if ((e = MTAG(s, d)) > base) MTAG_SET(s, d, SERMAP(e));
+	}
+	fclose(f);
+	free(remap);
 }
 
 /*
@@ -325,9 +312,13 @@ done:
 int
 cset_write(sccs *s, int spinners, int fast)
 {
+	int	i;
+
 	assert(s);
-	// assert(s->state & S_CSET);
 	assert(s->locs);
+
+	/* finish up table remapping */
+	fix(s);
 
 	/*
 	 * Call sccs_renumber() before writing out the new cset file.
@@ -343,14 +334,18 @@ cset_write(sccs *s, int spinners, int fast)
 
 	unless (sccs_startWrite(s)) goto err;
 	s->state |= S_PFILE;
-	if (fast) {
-		if (fastWeave(s)) goto err;
+	if (CSET(s)) {
+		if (fastCsetWeave(s, fast)) goto err;
 	} else {
+		/* non-cset files should always be in fast mode */
+		assert(fast);
 		if (delta_table(s, 0)) {
 			perror("table");
 			goto err;
 		}
-		if (!BWEAVE_OUT(s) && sccs_csetPatchWeave(s)) goto err;
+		i = s->iloc - 1; /* set index to final element in array */
+		assert(i > 0); /* base 1 data structure */
+		if (sccs_fastWeave(s, s->locs[i].dF)) goto err;
 	}
 	if (sccs_finishWrite(s)) goto err;
 	return (0);
@@ -364,78 +359,32 @@ err:	sccs_abortWrite(s);
  * and connect it to the new interface way
  */
 private	int
-fastWeave(sccs *s)
+fastCsetWeave(sccs *s, int fast)
 {
-	u32	i;
-	u32	base = 0, index = 0, offset = 0;
-	ser_t	d, e;
+	int	i, cnt;
+	ser_t	d = 0;
 	loc	*lp;
-	ser_t	*weavemap = 0;
-	ser_t	*patchmap = 0;
 	int	rc = 1;
+	FILE	*f;
+	char	*t;
+	char	*rkey, *dkey;
+	char	**keys = 0;
+	hash	*h;
+	u32	first, rkoff, dkoff;
+	struct {
+		char	**keys;
+		ser_t	d;
+	} *weave = 0, *w;
 
 	assert(s);
-	// assert(s->state & S_CSET);
+	assert(CSET(s));
 	assert(s->locs);
 	lp = s->locs;
-
-	/*
-	 * weavemap is used to renumber serials in the weave
-	 * map(A) -> B, where map(A) is weavemap[A - map[0]],
-	 * meaning weavemap[0] is A; ie, A maps to itself.
-	 * And serials > A map to a big number to create the
-	 * holes filled in by the new data coming in.
-	 *
-	 * patchmap is addLines mapping patch serial number (1..n) to
-	 * serial to use in the weave.  It does this by being an addLines
-	 * of pointers to d, then uses d->serial to write the weave.
-	 * Note: patchmap could be empty if say, if we are updating
-	 * a dangling delta pointer or cset mark.
-	 */
-	for (i = 1; i < s->iloc; i++) {
-		unless (d = lp[i].serial) {
-			d = D_INVALID;
-			addArray(&patchmap, &d);
-			continue;
-		}
-		addArray(&patchmap, &d);
-		unless (FLAGS(s, d) & D_REMOTE) continue;
-		unless (weavemap) {
-			/*
-			 * allocating more than needed.  We don't know until
-			 * the end how many are wasted: it's in 'offset'.
-			 */
-			base = d - 1;
-			weavemap = (ser_t *)calloc(
-			    (TABLE(s) + 1 - base), sizeof(ser_t));
-			assert(weavemap);
-			index = d;
-			weavemap[0] = base;
-			offset = 0;
-		}
-		while (index + offset < d) {
-			e = index + offset;
-			weavemap[index - base] = e;
-			index++;
-		}
-		offset++;
-	}
-	if (weavemap) {
-		while (index + offset <= TABLE(s)) {
-			e = index + offset;
-			weavemap[index - base] = e;
-			index++;
-		}
-	}
 	i = s->iloc - 1; /* set index to final element in array */
 	assert(i > 0); /* base 1 data structure */
 
-	if (BWEAVE_OUT(s) && lp[i].dF) {
-		char	*t;
-		int	added = 0;
-		char	*rkey, *dkey;
-		char	**keys = 0;
-
+	if (fast && lp[i].dF) {
+		/* extract cset weave updates */
 		while (t = fgetline(lp[i].dF)) {
 			if (t[0] == 'I') {
 				/*
@@ -444,10 +393,8 @@ fastWeave(sccs *s)
 				 */
 				d = lp[atoi(t+1)].serial;
 				unless (d && (FLAGS(s, d) & D_REMOTE)) d = 0;
-				added = 0;
 			} else if (t[0] == '>') {
 				unless (d) continue;
-				++added;
 				rkey = t+1;
 				dkey = separator(rkey);
 				*dkey++ = 0;
@@ -455,27 +402,110 @@ fastWeave(sccs *s)
 				keys = addLine(keys, strdup(dkey));
 			} else if (t[0] == 'E') {
 				unless (d) continue;
-				assert(!WEAVE_INDEX(s, d));
-				ADDED_SET(s, d, added);
-				weave_set(s, d, keys);
-				freeLines(keys, free);
+				w = growArray(&weave, 1);
+				w->d = d;
+				w->keys = keys;
 				keys = 0;
 			}
 		}
+	} else if (!fast) {
+		/* old cset patch, one diff per delta */
+		for (i = s->iloc - 1; i > 0; i--) {
+			w = growArray(&weave, 1);
+			w->d = lp[i].serial;
+			unless (lp[i].dF) continue;
+			while (t = fgetline(lp[i].dF)) {
+				if (streq(t, "0a0")) continue;
+				assert(strneq(t, "> ", 2));
+				rkey = t+2;
+				dkey = separator(t);
+				*dkey++ = 0;
+				w->keys = addLine(w->keys, strdup(rkey));
+				w->keys = addLine(w->keys, strdup(dkey));
+			}
+		}
 	}
+	/*
+	 * install cweave from oldest to newest so we can set
+	 * the markers for new files correctly.
+	 */
+	cnt = 0;
+	h = hash_new(HASH_U32HASH, sizeof(u32), sizeof(u32));
+	EACHP_REVERSE(weave, w) {
+		EACH(w->keys) {
+			rkey = w->keys[i];
+			dkey = w->keys[++i];
+			if (rkoff = sccs_hasRootkey(s, rkey)) {
+				/*
+				 * remember first serial where we
+				 * added this rootkey. It is possible
+				 * this really is a new file and needs a
+				 * marker, but we don't know. Later we
+				 * will make sure deltas for this file
+				 * newer than here don't have a
+				 * marker.
+				 */
+				if (hash_insertU32U32(h, rkoff, w->d)) cnt++;
+			} else {
+				/* first time for this rootkey, new file */
+				rkoff = sccs_addUniqRootkey(s, rkey);
+				hash_insertU32U32(h, rkoff, 0);
+				w->keys[i] = aprintf("|%s", dkey);
+				free(dkey);
+			}
+		}
+	}
+
+	/*
+	 * Now for the files a just added, walk the weave for newer csets
+	 * add see if any of those csets have a weave end marker that needs
+	 * to be cleared.
+	 */
+	if (cnt) {
+		sccs_rdweaveInit(s);
+		while (d = cset_rdweavePair(s, 0, &rkoff, &dkoff)) {
+			unless (first = hash_fetchU32U32(h, rkoff)) continue;
+			if (d > first) {
+				if (dkoff) continue;
+				weave_updateMarker(s, d, rkoff, 0);
+			} else {
+				*(u32 *)h->vptr = 0;	/* we are not oldest */
+			}
+			unless (--cnt) break;
+		}
+		sccs_rdweaveDone(s);
+	}
+	EACHP_REVERSE(weave, w) {
+		EACH(w->keys) {
+			rkey = w->keys[i];
+			dkey = w->keys[++i];
+			if ((rkoff = sccs_hasRootkey(s, rkey)) &&
+			    hash_fetchU32U32(h, rkoff)) {
+				w->keys[i] = aprintf("|%s", dkey);
+				free(dkey);
+				*(u32 *)h->vptr = 0;
+			}
+		}
+		assert(!WEAVE_INDEX(s, w->d));
+		weave_set(s, w->d, w->keys);
+		freeLines(w->keys, free);
+	}
+	hash_free(h);
 
 	if (delta_table(s, 0)) {
 		perror("table");
 		goto err;
 	}
-
-	/* doit */
-	if (BWEAVE_OUT(s)) {
-		rc = 0;
-	} else {
-		rc = sccs_fastWeave(s, weavemap, patchmap, lp[i].dF);
+	unless (BWEAVE_OUT(s)) {
+		sccs_rdweaveInit(s);
+		f = sccs_wrweaveInit(s);
+		while (t = sccs_nextdata(s)) {
+			fputs(t, f);
+			fputc('\n', f);
+		}
+		sccs_rdweaveDone(s);
+		sccs_wrweaveDone(s);
 	}
-err:	free(patchmap);
-	if (weavemap) free(weavemap);
-	return (rc);
+	rc = 0;
+err:	return (rc);
 }

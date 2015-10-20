@@ -8,23 +8,23 @@ echo ---- Server S w/ client C1 to a serverless client C2 ..........
 # any BAM data until the user requests a checkout.  And also that
 # only the checked out versions are sent.
 echo $N Set up a repo with some binary data .........................$NL
-bk bkd -d -aPORT -ikill  || exit 1
+bk bkd -d -aPORT -ikill  || fail
 P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
 commercial S
-bk bam server $Q . || exit 1
+bk bam server $Q . || fail
 BK="`bk bin`/bk"
 test $PLATFORM = WIN32 && BK=${BK}.exe
 DATA="$HERE"/data
 perl -e 'sysread(STDIN, $buf, 81920);
 syswrite(STDOUT, $buf, 81920);' < $BK > "$DATA"
 cp "$DATA" data
-bk new $Q data || exit 1
-test -d BitKeeper/BAM || exit 1
+bk new $Q data || fail
+test -d BitKeeper/BAM || fail
 bk commit $Q -ywhatever
 cp "$DATA" moredata
 echo foo >> moredata
-bk new $Q moredata || exit 1
+bk new $Q moredata || fail
 bk edit $Q data
 echo bar >> data
 bk delta $Q -ychanged data
@@ -35,10 +35,7 @@ echo $N clone within domain should not replicate the BAM data .......$NL
 cd "$HERE"
 bk clone $Q bk://localhost:$P/S C1
 cd C1
-test -d BitKeeper/BAM && {
-	echo should not have BAM directory yet
-	exit 1
-}
+test -d BitKeeper/BAM && fail should not have BAM directory yet
 echo OK
 
 echo $N clone to serverless domain should replicate the BAM data ....$NL
@@ -50,15 +47,8 @@ while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
 test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM is missing >> OUT
-grep -q missing OUT && {
-	echo failed
-	cat OUT
-	exit 1
-}
-test -f BitKeeper/log/BAM_SERVER && {
-	echo should not have BAM server
-	exit 1
-}
+grep -q missing OUT && fail -f OUT
+test -f BitKeeper/log/BAM_SERVER && fail should not have BAM server
 echo OK
 
 echo $N rclone to serverless domain should replicate the BAM data ...$NL
@@ -71,15 +61,8 @@ while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
 test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM is missing >> OUT
-grep -q missing OUT && {
-	echo failed
-	cat OUT
-	exit 1
-}
-test -f BitKeeper/log/BAM_SERVER && {
-	echo should not have BAM server
-	exit 1
-}
+grep -q missing OUT && fail -f OUT
+test -f BitKeeper/log/BAM_SERVER && fail should not have BAM server
 echo OK
 
 echo $N lclone should replicate the BAM data ........................$NL
@@ -92,21 +75,14 @@ while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
 test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM is missing >> OUT
-grep -q missing OUT && {
-	echo failed
-	cat OUT
-	exit 1
-}
+grep -q missing OUT && fail -f OUT
 echo OK
 
 echo $N Check that pull from server to serverless gets BAM data .....$NL
 cd "$HERE"
 bk _rm -rf C2
-bk clone $Q -Bnone -r1.1 S C2 || exit 1
-test -d C2/BitKeeper/BAM && {
-	echo should not have BAM directory yet
-	exit 1
-}
+bk clone $Q -Bnone -r1.1 S C2 || fail
+test -d C2/BitKeeper/BAM && fail should not have BAM directory yet
 cd C2
 bk pull $Q
 (cd ../S && find BitKeeper/BAM -type f -print ) |
@@ -115,25 +91,18 @@ do	test -f $x || echo $x is missing
 done > OUT 2>&1
 test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM is missing >> OUT
 grep -q missing OUT && {
-	echo failed
-	cat OUT
-	ls BitKeeper/log
-	exit 1
+	cat OUT > ERR
+	ls BitKeeper/log >> ERR
+	fail -f ERR
 }
-test -f BitKeeper/log/BAM_SERVER && {
-	echo should not have BAM server
-	exit 1
-}
+test -f BitKeeper/log/BAM_SERVER && fail should not have BAM server
 echo OK
 
 echo $N Check that push from server to serverless sends BAM data ....$NL
 cd "$HERE"
 bk _rm -rf C2
 bk clone $Q -Bnone -r1.1 S C2
-test -d C2/BitKeeper/BAM && {
-	echo should not have BAM directory yet
-	exit 1
-}
+test -d C2/BitKeeper/BAM && fail should not have BAM directory yet
 cd S
 bk push $Q ../C2
 cd ../C2
@@ -143,25 +112,18 @@ do	test -f $x || echo $x is missing
 done > OUT 2>&1
 test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM is missing >> OUT
 grep -q missing OUT && {
-	echo failed
-	cat OUT
-	ls BitKeeper/log
-	exit 1
+	cat OUT > ERR
+	ls BitKeeper/log >> ERR
+	fail -f ERR
 }
-test -f BitKeeper/log/BAM_SERVER && {
-	echo should not have BAM server
-	exit 1
-}
+test -f BitKeeper/log/BAM_SERVER && fail should not have BAM server
 echo OK
 
 echo $N Check that pull can recurse thru C1 to S to get BAM data ....$NL
 cd "$HERE"
 bk _rm -rf C2
 bk clone $Q -Bnone -r1.1 S C2
-test -d C2/BitKeeper/BAM && {
-	echo should not have BAM directory yet
-	exit 1
-}
+test -d C2/BitKeeper/BAM && fail should not have BAM directory yet
 cd C2
 bk pull $Q ../C1
 (cd ../S && find BitKeeper/BAM -type f -print ) |
@@ -169,23 +131,13 @@ while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
 test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM is missing >> OUT
-grep -q missing OUT && {
-	echo failed
-	cat OUT
-	exit 1
-}
-test -f BitKeeper/log/BAM_SERVER && {
-	echo should not have BAM server
-	exit 1
-}
+grep -q missing OUT && fail -f OUT
+test -f BitKeeper/log/BAM_SERVER && fail should not have BAM server
 echo OK
 
 echo $N Same thing with part of the data in C1 and rest in S ........$NL
 cd "$HERE/C1"
-test -d BitKeeper/BAM && {
-	echo expected C1 to have no BAM data
-	exit 1
-}
+test -d BitKeeper/BAM && fail expected C1 to have no BAM data
 cp "$DATA" data.c1
 echo blah >> data.c1
 bk new $Q data.c1
@@ -197,36 +149,22 @@ cd "$HERE"
 tar cf TAR S C1
 bk _rm -rf C2
 bk clone $Q -Bnone -r1.1 S C2
-test -d C2/BitKeeper/BAM && {
-	echo should not have BAM directory yet
-	exit 1
-}
+test -d C2/BitKeeper/BAM && fail should not have BAM directory yet
 cd C2
 bk pull $Q ../C1
-test -f BitKeeper/log/BAM_SERVER && {
-	echo should not have BAM server
-	exit 1
-}
-bk bam check -q || {
-	echo failed to get all BAM data
-	exit 1
-}
+test -f BitKeeper/log/BAM_SERVER && fail should not have BAM server
+bk bam check -q || fail failed to get all BAM data
 test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM is missing > "$HERE"/OUT
 cd ../S
 cat "$HERE/BAMFILES" | while read x
 do	test -f "$x" || echo $x is missing
 done >> "$HERE/OUT" 2>&1 
 grep -q missing "$HERE/OUT" && {
-	echo failed to update the server from C1
-	cat "$HERE/OUT"
-	exit 1
+	fail -f "$HERE/OUT" failed to update the server from C1
 }
 cd ../C2
 bk co $Q
-test -f data -a -f moredata -a -f data.c1 || {
-	echo co failed
-	exit 1
-}
+test -f data -a -f moredata -a -f data.c1 || fail co failed
 echo OK
 
 echo $N Clone C1 to C2 with part in C1 and rest in S ................$NL
@@ -235,30 +173,19 @@ rm -rf S C1 C2
 tar xf TAR
 bk clone $Q -Bnone C1 C2
 cd C2
-test -f BitKeeper/log/BAM_SERVER && {
-	echo should not have BAM server
-	exit 1
-}
-bk bam check -q || {
-	echo failed to get all BAM data
-	exit 1
-}
+test -f BitKeeper/log/BAM_SERVER && fail should not have BAM server
+bk bam check -q || fail failed to get all BAM data
 test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM is missing > "$HERE"/OUT
 cd ../S
 cat "$HERE/BAMFILES" | while read x
 do	test -f $x || echo $x is missing
 done >> "$HERE/OUT" 2>&1 
 grep -q missing "$HERE/OUT" && {
-	echo failed to update the server from C1
-	cat "$HERE/OUT"
-	exit 1
+	fail -f "$HERE/OUT" failed to update the server from C1
 }
 cd ../C2
 bk co $Q
-test -f data -a -f moredata -a -f data.c1 || {
-	echo co failed
-	exit 1
-}
+test -f data -a -f moredata -a -f data.c1 || fail co failed
 echo OK
 
 echo $N rClone C1 to C2 with part in C1 and rest in S ...............$NL
@@ -267,30 +194,19 @@ bk _rm -rf S C1 C2
 tar xf TAR
 bk clone $Q -Bnone C1 bk://localhost:$P/C2
 cd C2
-test -f BitKeeper/log/BAM_SERVER && {
-	echo should not have BAM server
-	exit 1
-}
-bk bam check -q || {
-	echo failed to get all BAM data
-	exit 1
-}
+test -f BitKeeper/log/BAM_SERVER && fail should not have BAM server
+bk bam check -q || fail failed to get all BAM data
 test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM is missing > "$HERE"/OUT
 cd ../S
 cat "$HERE/BAMFILES" | while read x
 do	test -f $x || echo $x is missing
 done >> "$HERE/OUT" 2>&1 
 grep -q missing "$HERE/OUT" && {
-	echo failed to update the server from C1
-	cat "$HERE/OUT"
-	exit 1
+	fail -f "$HERE/OUT" failed to update the server from C1
 }
 cd ../C2
 bk co $Q
-test -f data -a -f moredata -a -f data.c1 || {
-	echo co failed
-	exit 1
-}
+test -f data -a -f moredata -a -f data.c1 || fail co failed
 echo OK
 
 echo $N Push C1 to C2 with part in C1 and rest in S .................$NL
@@ -301,30 +217,19 @@ bk clone -r1.1 $Q -Bnone C1 C2
 cd C1
 bk push $Q ../C2
 cd ../C2
-test -f BitKeeper/log/BAM_SERVER && {
-	echo should not have BAM server
-	exit 1
-}
-bk bam check -q || {
-	echo failed to get all BAM data
-	exit 1
-}
+test -f BitKeeper/log/BAM_SERVER && fail should not have BAM server
+bk bam check -q || fail failed to get all BAM data
 test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM is missing > "$HERE"/OUT
 cd ../S
 cat "$HERE/BAMFILES" | while read x
 do	test -f $x || echo $x is missing
 done >> "$HERE/OUT" 2>&1 
 grep -q missing "$HERE/OUT" && {
-	echo failed to update the server from C1
-	cat "$HERE/OUT"
-	exit 1
+	fail -f "$HERE/OUT" failed to update the server from C1
 }
 cd ../C2
 bk co $Q
-test -f data -a -f moredata -a -f data.c1 || {
-	echo co failed
-	exit 1
-}
+test -f data -a -f moredata -a -f data.c1 || fail co failed
 echo OK
 
 echo ---- Serverless C2 to C1 ......................................
@@ -339,26 +244,26 @@ bk commit -ywhatever $Q
 cd ..
 bk clone $Q -Bbk://localhost:$P/S C2 C1
 cd C1
-bk bam check -q || exit 1
+bk bam check -q || fail
 # The data.c2 file is the only one unique to C2 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
 test `find BitKeeper/BAM/*/?? -type f -print | wc -l` -eq 1 || {
-	echo unexpected BAM files
-	find BitKeeper/BAM/*/?? -type f -print
-	exit 1
+	find BitKeeper/BAM/*/?? -type f -print > ERR
+	fail -f ERR unexpected BAM files
 }
 for i in BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
 do	test -f $i || echo $i
 done >> OUT
 grep -q missing OUT && {
-	echo failed
-	cat OUT
-	echo C1
-	find BitKeeper/BAM -type f -print
-	cd ../C2
-	echo C2
-	find BitKeeper/BAM -type f -print
-	exit 1
+	(
+		cat OUT
+		echo C1
+		find BitKeeper/BAM -type f -print
+		cd ../C2
+		echo C2
+		find BitKeeper/BAM -type f -print
+	) > ERR
+	fail -f ERR
 }
 echo OK
 
@@ -367,26 +272,26 @@ cd "$HERE"
 rm -rf C1
 bk clone $Q -Bbk://localhost:$P/S C2 bk://localhost:$P/C1
 cd C1
-bk bam check -q || exit 1
+bk bam check -q || fail
 # The data.c2 file is the only one unique to C2 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
 test `find BitKeeper/BAM/*/?? -type f -print | wc -l` -eq 1 || {
-	echo unexpected BAM files
-	find BitKeeper/BAM/*/?? -type f -print
-	exit 1
+	find BitKeeper/BAM/*/?? -type f -print > ERR
+	fail -f ERR unexpected BAM files
 }
 for i in BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
 do	test -f $i || echo $i is missing
 done >> OUT
 grep -q missing OUT && {
-	echo failed
-	cat OUT
-	echo C1
-	find BitKeeper/BAM -type f -print
-	cd ../C2
-	echo C2
-	find BitKeeper/BAM -type f -print
-	exit 1
+	(
+		cat OUT
+		echo C1
+		find BitKeeper/BAM -type f -print
+		cd ../C2
+		echo C2
+		find BitKeeper/BAM -type f -print
+	) > ERR
+	fail -f ERR
 }
 echo OK
 
@@ -396,26 +301,26 @@ bk _rm -rf C1
 bk clone -Bbk://localhost:$P/S -r1.1 $Q C2 C1
 cd C1
 bk pull $Q
-bk bam check -q || exit 1
+bk bam check -q || fail
 # The data.c2 file is the only one unique to C2 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
 test `find BitKeeper/BAM/*/?? -type f -print | wc -l` -eq 1 || {
-	echo unexpected BAM files
-	find BitKeeper/BAM/*/?? -type f -print
-	exit 1
+	find BitKeeper/BAM/*/?? -type f -print > ERR
+	fail -f ERR unexpected BAM files
 }
 for i in BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
 do	test -f $i || echo $i is missing
 done >> OUT
 grep -q missing OUT && {
-	echo failed
-	cat OUT
-	echo C1
-	find BitKeeper/BAM -type f -print
-	cd ../C2
-	echo C2
-	find BitKeeper/BAM -type f -print
-	exit 1
+	(
+		cat OUT
+		echo C1
+		find BitKeeper/BAM -type f -print
+		cd ../C2
+		echo C2
+		find BitKeeper/BAM -type f -print
+	) > ERR
+	fail -f ERR
 }
 echo OK
 
@@ -425,58 +330,44 @@ bk _rm -rf C1
 bk clone -Bbk://localhost:$P/S -r1.1 $Q C2 C1
 cd C1
 bk _kill bk://localhost:$P
-bk pull $Q 2> ERR && {
-	echo fix test
-	exit 1
-}
-grep -q "nt_unlink" ERR && {
-	echo failed
-	cat ERR
-	exit 1
-}
-grep -q "BAM fetch failed, aborting pull" ERR || {
-	echo wrong msg
-	cat ERR
-	exit 2
-}
+bk pull $Q 2> ERR && fail fix test
+grep -q "nt_unlink" ERR && fail -f ERR
+grep -q "BAM fetch failed, aborting pull" ERR || fail -f ERR wrong msg
 # restart BKD
 # From here on out we need to reset the BAM server after each untar
 cd "$HERE"
-bk bkd -d -aPORT -ikill  || exit 1
+bk bkd -d -aPORT -ikill  || fail
 P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
 echo "failed (bug should fetch BAM data)"
 
 echo $N Push C2 to C1, should send unique BAM data ..................$NL
 cd "$HERE"
-bk _rm -rf C1 || {
-	echo failed rm
-	exit 12
-}
+bk _rm -rf C1 || fail failed rm
 bk clone -Bbk://localhost:$P/S -r1.1 $Q C2 C1
 cd C2
 bk push $Q ../C1
 cd ../C1
-bk bam check -q || exit 1
+bk bam check -q || fail
 # The data.c2 file is the only one unique to C2 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
 test `find BitKeeper/BAM/*/?? -type f -print | wc -l` -eq 1 || {
-	echo unexpected BAM files
-	find BitKeeper/BAM/*/?? -type f -print
-	exit 1
+	find BitKeeper/BAM/*/?? -type f -print > ERR
+	fail -f ERR unexpected BAM files
 }
 for i in BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
 do	test -f $i || echo $i is missing
 done >> OUT
 grep -q missing OUT && {
-	echo failed
-	cat OUT
-	echo C1
-	find BitKeeper/BAM -type f -print
-	cd ../C2
-	echo C2
-	find BitKeeper/BAM -type f -print
-	exit 1
+	(
+		cat OUT
+		echo C1
+		find BitKeeper/BAM -type f -print
+		cd ../C2
+		echo C2
+		find BitKeeper/BAM -type f -print
+	) > ERR
+	fail -f ERR
 }
 echo OK
 
@@ -485,20 +376,14 @@ echo $N Set up second server, should send all BAM data ..............$NL
 cd "$HERE"
 bk clone $Q -B. S S3
 cd S3
-bk bam check -q || {
-	echo failed
-	exit 1
-}
+bk bam check -q || fail
 echo OK
 
 echo $N Set up client, no BAM data should be sent ...................$NL
 cd "$HERE"
 bk clone $Q S3 C3
 cd C3
-test -d BitKeeper/BAM && {
-	echo should not have BAM dir
-	exit 1
-}
+test -d BitKeeper/BAM && fail should not have BAM dir
 cp "$DATA" data.c3
 echo data.c3 >> data.c3
 bk new $Q data.c3
@@ -513,38 +398,34 @@ cd C4
 # The data.c3 file is the only one unique to C3 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
 test `find BitKeeper/BAM/*/?? -type f -print | wc -l` -eq 1 || {
-	echo unexpected BAM files
-	find BitKeeper/BAM/*/?? -type f -print
-	exit 1
+	find BitKeeper/BAM/*/?? -type f -print > ERR
+	fail -f ERR unexpected BAM files
 }
 for i in BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
 do	test -f $i || echo $i is missing
 done >> OUT
 grep -q missing OUT && {
-	echo failed
-	cat OUT
-	echo C1
-	find BitKeeper/BAM -type f -print
-	cd ../C2
-	echo C2
-	find BitKeeper/BAM -type f -print
-	exit 1
+	(
+		cat OUT
+		echo C1
+		find BitKeeper/BAM -type f -print
+		cd ../C2
+		echo C2
+		find BitKeeper/BAM -type f -print
+	) > ERR
+	fail -f ERR
 }
 cd ..
 find S3/BitKeeper/BAM -type f -print > AFTER
-cmp -s BEFORE AFTER && {
-	echo failed to update server
-	exit 1
-}
+cmp -s BEFORE AFTER && fail failed to update server
 echo OK
 
 echo $N Flush the local data so we know we go to the server .........$NL
 cd "$HERE/C3"
 bk bam clean -a $Q
 test `find BitKeeper/BAM -type f -print | wc -l` -eq 2 || {
-	echo failed to flush
-	find BitKeeper/BAM -type f -print
-	exit 1
+	find BitKeeper/BAM -type f -print > ERR
+	fail -f ERR failed to flush
 }
 echo OK
 
@@ -556,29 +437,26 @@ cd C4
 # The data.c3 file is the only one unique to C3 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
 test `find BitKeeper/BAM/*/?? -type f -print | wc -l` -eq 1 || {
-	echo unexpected BAM files
-	find BitKeeper/BAM/*/?? -type f -print
-	exit 1
+	find BitKeeper/BAM/*/?? -type f -print > ERR
+	fail -f ERR unexpected BAM files
 }
 for i in BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
 do	test -f $i || echo $i is missing
 done >> OUT
 grep -q missing OUT && {
-	echo failed
-	cat OUT
-	echo C1
-	find BitKeeper/BAM -type f -print
-	cd ../C2
-	echo C2
-	find BitKeeper/BAM -type f -print
-	exit 1
+	(
+		cat OUT
+		echo C1
+		find BitKeeper/BAM -type f -print
+		cd ../C2
+		echo C2
+		find BitKeeper/BAM -type f -print
+	) > ERR
+	fail -f ERR
 }
 cd ..
 find S3/BitKeeper/BAM -type f -print > AFTER
-cmp -s BEFORE AFTER && {
-	echo failed to update server
-	exit 1
-}
+cmp -s BEFORE AFTER && fail failed to update server
 echo OK
 
 echo $N rClone C3 to other server domain, unique data should go .....$NL
@@ -588,40 +466,39 @@ cd C5
 # The data.c3 file is the only one unique to C3 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
 test `find BitKeeper/BAM/*/?? -type f -print | wc -l` -eq 1 || {
-	echo unexpected BAM files
-	find BitKeeper/BAM/*/?? -type f -print
-	exit 1
+	find BitKeeper/BAM/*/?? -type f -print > ERR
+	fail -f ERR unexpected BAM files
 }
 for i in BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
 do	test -f $i || echo $i is missing
 done >> OUT
 grep -q missing OUT && {
-	echo failed
-	cat OUT
-	echo C1
-	find BitKeeper/BAM -type f -print
-	cd ../C2
-	echo C2
-	find BitKeeper/BAM -type f -print
-	exit 1
+	(
+		cat OUT
+		echo C1
+		find BitKeeper/BAM -type f -print
+		cd ../C2
+		echo C2
+		find BitKeeper/BAM -type f -print
+	) > ERR
+	fail -f ERR
 }
 echo OK
 
 echo $N Push across domains, unique data should go ..................$NL
 cd "$HERE/C5"
-bk undo -fsa1.1 $Q || exit 1
+bk undo -fsa1.1 $Q || fail
 bk _rm -rf BitKeeper/BAM
-bk bam check -q 2> ERR|| exit 1
-grep -q "no BAM data" ERR || exit 1
+bk bam check -q 2> ERR|| fail
+grep -q "no BAM data" ERR || fail
 cd ../C3
-bk push $Q ../C5 || exit 1
+bk push $Q ../C5 || fail
 cd ../C5
 # The data.c3 file is the only one unique to C3 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
 test `find BitKeeper/BAM/*/?? -type f -print | wc -l` -eq 1 || {
-	echo unexpected BAM files
-	find BitKeeper/BAM/*/?? -type f -print
-	exit 1
+	find BitKeeper/BAM/*/?? -type f -print > ERR
+	fail -f ERR unexpected BAM files
 }
 echo OK
 
@@ -629,15 +506,14 @@ echo $N Pull across domains, unique data should go ..................$NL
 cd "$HERE/C5"
 bk undo -fsa1.1 $Q
 bk _rm -rf BitKeeper/BAM
-bk bam check -q 2> ERR|| exit 1
-grep -q "no BAM data" ERR || exit 1
+bk bam check -q 2> ERR|| fail
+grep -q "no BAM data" ERR || fail
 bk pull $Q ../C3
 # The data.c3 file is the only one unique to C3 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
 test `find BitKeeper/BAM/*/?? -type f -print | wc -l` -eq 1 || {
-	echo unexpected BAM files
-	find BitKeeper/BAM/*/?? -type f -print
-	exit 1
+	find BitKeeper/BAM/*/?? -type f -print > ERR
+	fail -f ERR unexpected BAM files
 }
 echo OK
 
@@ -651,14 +527,11 @@ L=`cd S ; bk lock -wt`
 bk clone -Bnone C1 C2 > OUT 2>&1
 bk _kill $L
 test -d C2 && {
-	echo should not have cloned
-	find C2 -print
-	exit 1
+	find C2 -print > ERR
+	fail -f ERR should not have cloned
 }
 grep -q "ERROR-unable to update BAM server bk://localhost:$P/S (can't get lock)" OUT || {
-	echo wrong error message
-	cat OUT
-	exit 1
+	fail -f OUT wrong error message
 }
 echo OK
 
@@ -668,14 +541,11 @@ L=`cd S ; bk lock -rt`
 bk clone -Bnone C1 C2 > OUT 2>&1
 bk _kill $L
 test -d C2 && {
-	echo should not have cloned
-	find C2 -print
-	exit 1
+	find C2 -print > ERR
+	fail -f ERR should not have cloned
 }
 grep -q "ERROR-unable to update BAM server bk://localhost:$P/S (can't get lock)" OUT || {
-	echo wrong error message
-	cat OUT
-	exit 1
+	fail -f OUT wrong error message
 }
 echo OK
 
@@ -689,14 +559,11 @@ L=`cd S ; bk lock -wt`
 bk clone -Bnone C1 C2 > OUT 2>&1
 bk _kill $L
 test -d C2 && {
-	echo should not have cloned
-	find C2 -print
-	exit 1
+	find C2 -print > ERR
+	fail -f ERR should not have cloned
 }
 grep -q "ERROR-unable to update BAM server bk://localhost:$P/S (can't get lock)" OUT || {
-	echo wrong error message
-	cat OUT
-	exit 1
+	fail -f OUT wrong error message
 }
 echo OK
 
@@ -705,8 +572,7 @@ cd "$HERE"
 L=`cd S ; bk lock -rt`
 bk clone -Bnone $Q C1 C2 || {
 	bk _kill $L
-	echo clone should have worked
-	exit 1
+	fail clone should have worked
 }
 bk _kill $L
 echo OK
@@ -722,14 +588,11 @@ bk _kill $L
 # This one will leave an empty repo, can't be helped if we want to do it 
 # post pre-incoming triggers.
 bk _test -f C2/SCCS/s.ChangeSet && {
-	echo should not have cloned
-	find C2 -print
-	exit 1
+	find C2 -print > ERR
+	fail -f ERR should not have cloned
 }
 grep -q "Unable to update BAM server bk://localhost:$P/S (can't get lock)" OUT || {
-	echo wrong error message
-	cat OUT
-	exit 1
+	fail -f OUT wrong error message
 }
 echo OK
 
@@ -741,14 +604,11 @@ bk _kill $L
 # This one will leave an empty repo, can't be helped if we want to do it 
 # post pre-incoming triggers.
 bk _test -f C2/SCCS/s.ChangeSet && {
-	echo should not have cloned
-	find C2 -print
-	exit 1
+	find C2 -print > ERR
+	fail -f ERR should not have cloned
 }
 grep -q "Unable to update BAM server bk://localhost:$P/S (can't get lock)" OUT || {
-	echo wrong error message
-	cat OUT
-	exit 1
+	fail -f OUT wrong error message
 }
 echo OK
 
@@ -767,14 +627,11 @@ bk _kill $L
 # This one will leave an empty repo, can't be helped if we want to do it 
 # post pre-incoming triggers.
 bk _test -f C2/SCCS/s.ChangeSet && {
-	echo should not have cloned
-	find C2 -print
-	exit 1
+	find C2 -print > ERR
+	fail -f ERR should not have cloned
 }
 grep -q "Unable to update BAM server bk://localhost:$P/S (can't get lock)" OUT || {
-	echo wrong error message
-	cat OUT
-	exit 1
+	fail -f OUT wrong error message
 }
 echo OK
 
@@ -783,8 +640,7 @@ cd "$HERE"
 L=`cd S ; bk lock -rt`
 bk clone -Bnone $Q C1 bk://localhost:$P/C2 || {
 	bk _kill $L
-	echo clone should have worked
-	exit 1
+	fail clone should have worked
 }
 bk _kill $L
 echo OK
@@ -800,14 +656,9 @@ cd C1
 bk push ../C2 > OUT 2>&1
 bk _kill $L
 bk changes -L ../C2 > LOCAL
-test -s LOCAL || {
-	echo should not have sent csets without BAM data
-	exit 1
-}
+test -s LOCAL || fail should not have sent csets without BAM data
 grep -q "unable to update BAM server bk://localhost:$P/S (can't get lock)" OUT || {
-	echo wrong error message
-	cat OUT
-	exit 1
+	fail -f OUT wrong error message
 }
 echo OK
 
@@ -818,14 +669,9 @@ cd C1
 bk push ../C2 > OUT 2>&1
 bk _kill $L
 bk changes -L ../C2 > LOCAL
-test -s LOCAL || {
-	echo should not have sent csets without BAM data
-	exit 1
-}
+test -s LOCAL || fail should not have sent csets without BAM data
 grep -q "unable to update BAM server bk://localhost:$P/S (can't get lock)" OUT || {
-	echo wrong error message
-	cat OUT
-	exit 1
+	fail -f OUT wrong error message
 }
 echo OK
 
@@ -838,14 +684,9 @@ L=`cd ../S ; bk lock -wt`
 bk push ../C2 > OUT 2>&1
 bk _kill $L
 bk changes -L ../C2 > LOCAL
-test -s LOCAL || {
-	echo should not have sent csets without BAM data
-	exit 1
-}
+test -s LOCAL || fail should not have sent csets without BAM data
 grep -q "unable to update BAM server bk://localhost:$P/S (can't get lock)" OUT || {
-	echo wrong error message
-	cat OUT
-	exit 1
+	fail -f OUT wrong error message
 }
 echo OK
 
@@ -855,8 +696,7 @@ L=`cd S ; bk lock -rt`
 cd C1
 bk push $Q ../C2 || {
 	bk _kill $L
-	echo push should work
-	exit 1
+	fail push should work
 }
 bk _kill $L
 echo OK
@@ -872,14 +712,9 @@ cd C2
 bk pull ../C1 > OUT 2>&1
 bk _kill $L
 bk changes -R ../C1 > LOCAL
-test -s LOCAL || {
-	echo should not have sent csets without BAM data
-	exit 1
-}
+test -s LOCAL || fail should not have sent csets without BAM data
 grep -q "Unable to update remote BAM server bk://localhost:$P/S (can't get lock)" OUT || {
-	echo wrong error message
-	cat OUT
-	exit 1
+	fail -f OUT wrong error message
 }
 echo OK
 
@@ -890,14 +725,9 @@ cd C2
 bk pull ../C1 > OUT 2>&1
 bk _kill $L
 bk changes -L ../C1 > LOCAL
-test -s LOCAL || {
-	echo should not have sent csets without BAM data
-	exit 1
-}
+test -s LOCAL || fail should not have sent csets without BAM data
 grep -q "Unable to update remote BAM server bk://localhost:$P/S (can't get lock)" OUT || {
-	echo wrong error message
-	cat OUT
-	exit 1
+	fail -f OUT wrong error message
 }
 echo OK
 
@@ -911,14 +741,9 @@ cd ../C2
 bk pull ../C1 > OUT 2>&1
 bk _kill $L
 bk changes -L ../C1 > LOCAL
-test -s LOCAL || {
-	echo should not have sent csets without BAM data
-	exit 1
-}
+test -s LOCAL || fail should not have sent csets without BAM data
 grep -q "Unable to update remote BAM server bk://localhost:$P/S (can't get lock)" OUT || {
-	echo wrong error message
-	cat OUT
-	exit 1
+	fail -f OUT wrong error message
 }
 echo OK
 
@@ -928,8 +753,7 @@ L=`cd S ; bk lock -rt`
 cd C2
 bk pull $Q ../C1 || {
 	bk _kill $L
-	echo push should work
-	exit 1
+	fail push should work
 }
 bk _kill $L
 echo OK

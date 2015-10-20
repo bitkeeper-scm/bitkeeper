@@ -11,6 +11,7 @@
 #include "logging.h"
 #include "tomcrypt.h"
 #include "tomcrypt/randseed.h"
+#include "cfg.h"
 
 #if (defined(__GNUC__) && \
     ((__GNUC_MINOR__ > 99) || (__GNUC_PATCHLEVEL__ > 99)))
@@ -91,7 +92,7 @@ sane(int readonly, int resync)
 				    "sane: no BitKeeper/etc/config file.\n");
 				errors++;
 			}
-			if (proj_configsize(0, "BAM") &&
+			if (cfg_size(0, CFG_BAM) &&
 			    bk_notLicensed(0, LIC_BAM, 1)) {
 				fprintf(stderr,
 				    "BAM is enabled in config "

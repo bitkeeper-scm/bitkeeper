@@ -14,6 +14,7 @@ touch_main(int ac, char **av)
 	int	c, i, fd, rval = 0;
 	char	*fn, *err;
 	opts	opts;
+	int	type;
 	struct	utimbuf	ut;
 	struct	stat	sb;
 
@@ -46,6 +47,10 @@ touch_main(int ac, char **av)
 		ut.actime = ut.modtime = time(0);
 	}
 	for (i = optind; fn = av[i]; i++) {
+		if (type = is_xfile(fn)) {
+			xfile_store(fn, type, "");
+			continue;
+		}
 		if (stat(fn, &sb)) {
 			unless (opts.create) continue;
 			fd = open(fn, O_WRONLY | O_CREAT, 0644);

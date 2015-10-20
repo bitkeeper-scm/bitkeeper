@@ -30,7 +30,7 @@ echo OK
 
 echo $N Clone -r backwards a forward file, check for danglers .......$NL
 cd "$HERE"
-bk clone $Q -r1.1 project clone || exit 1
+bk clone $Q -r1.1 project clone || fail
 cd clone
 test `bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l` -eq 2 || {
 	echo should have had 2 dangling deltas
@@ -49,7 +49,7 @@ esac
 echo OK
 
 echo $N Pull to fill in missing csets, check for no danglers ........$NL
-bk pull $Q || exit 1
+bk pull $Q || fail
 test `bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l` -eq 0 || {
 	echo should have had 0 dangling deltas
 	bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config
@@ -64,7 +64,7 @@ bk edit $Q BitKeeper/etc/config
 bk delta -fypending $Q BitKeeper/etc/config
 TOP=`bk prs -hr+ -nd:I: BitKeeper/etc/config`
 cd "$HERE"
-bk clone $Q project pending || exit 1
+bk clone $Q project pending || fail
 cd pending
 test `bk prs -hr+ -nd:I: BitKeeper/etc/config` != $TOP || {
 	echo Failed to strip pending deltas
@@ -79,7 +79,7 @@ echo OK
 
 echo $N Clone -r backwards a forward file, check for danglers .......$NL
 cd "$HERE"
-bk clone $Q -r1.1 project clone2 || exit 1
+bk clone $Q -r1.1 project clone2 || fail
 cd clone2
 test `bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l` -eq 2 || {
 	echo should have had 2 dangling deltas
@@ -91,7 +91,7 @@ echo OK
 # XXX - this is a pretty pointless test, we're just making sure we don't send
 # the dangling delta in a pull, which has little to do with danglers.
 echo $N Pull to fill in missing csets, check for no danglers ........$NL
-bk pull $Q || exit 1
+bk pull $Q || fail
 test `bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l` -eq 0 || {
 	echo should have had 0 dangling deltas
 	bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config
@@ -145,7 +145,7 @@ test `bk prs -hnd':I:' BitKeeper/etc/config | wc -l` -gt $DELTAS || {
 	exit 1
 }
 BEFORE=`bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l`
-bk pull $Q ../middle || exit 1
+bk pull $Q ../middle || fail
 AFTER=`bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l`
 test $BEFORE -gt $AFTER || {
 	echo should have filled in some danglers
@@ -155,7 +155,7 @@ test $BEFORE -gt $AFTER || {
 echo OK
 
 echo $N Pull csets which fill in the rest of the danglers, check ....$NL
-bk pull $Q "$HERE/project" || exit 1
+bk pull $Q "$HERE/project" || fail
 test `bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l` -eq 0 || {
 	echo should have had 0 dangling deltas
 	bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config
@@ -192,7 +192,7 @@ echo whatever >> BitKeeper/etc/config
 bk _rm BitKeeper/etc/SCCS/p.config
 REV=`bk prs -hnd'$unless(:DANGLING:){:I:}' BitKeeper/etc/config | tail -1`
 bk _get $Q -ger$REV BitKeeper/etc/config
-bk delta $Q -yaddition BitKeeper/etc/config || exit 1
+bk delta $Q -yaddition BitKeeper/etc/config || fail
 bk prs -hnd'$if(:DANGLING:){:GFILE:|:I:}' BitKeeper/etc/config | 
     bk stripdel -dC $Q -
 test `bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l` -eq 0 || {
@@ -220,7 +220,7 @@ test `bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l` -eq 0 && {
 # bk prs -nd':I: :FLAGS: :DANGLING:' BitKeeper/etc/config
 bk edit $Q BitKeeper/etc/config
 echo whatever >> BitKeeper/etc/config
-bk delta $Q -yaddition BitKeeper/etc/config || exit 1
+bk delta $Q -yaddition BitKeeper/etc/config || fail
 test `bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l` -eq 0 || {
 	echo should not have had dangling deltas
 	bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config
@@ -259,7 +259,7 @@ test `bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l` -eq 0 && {
 	exit 1
 }
 bk edit $Q BitKeeper/etc/config
-test -w BitKeeper/etc/config || exit 1
+test -w BitKeeper/etc/config || fail
 echo foo >> BitKeeper/etc/config
 test `bk diffs -h BitKeeper/etc/config | wc -c` -eq 0 && {
 	echo should have had diffs
@@ -270,9 +270,9 @@ echo OK
 
 echo $N Unedit, re-edit, run diffs, should be empty .................$NL
 bk unedit $Q BitKeeper/etc/config
-test -w BitKeeper/etc/config && exit 1
+test -w BitKeeper/etc/config && fail
 bk edit $Q BitKeeper/etc/config
-test -w BitKeeper/etc/config || exit 1
+test -w BitKeeper/etc/config || fail
 test `bk diffs -h BitKeeper/etc/config | wc -c` -eq 0 || {
 	echo had diffs
 	bk diffs -h BitKeeper/etc/config
@@ -283,9 +283,9 @@ echo OK
 echo $N Run diffs against real parent, should have diffs ............$NL
 PARENT=`bk prs -hnd'$unless(:DANGLING:){:I:}' BitKeeper/etc/config | head -1`
 bk get $Q -kpr+ BitKeeper/etc/config > TOP
-cmp -s TOP BitKeeper/etc/config || exit 1
+cmp -s TOP BitKeeper/etc/config || fail
 bk get $Q -kpr$PARENT BitKeeper/etc/config > PARENT
-cmp -s PARENT BitKeeper/etc/config && exit 1
+cmp -s PARENT BitKeeper/etc/config && fail
 test `bk diffs -hr$PARENT BitKeeper/etc/config | wc -c` -eq 0 && {
 	echo should have had diffs against $PARENT
 	bk diffs -r$PARENT BitKeeper/etc/config
@@ -298,7 +298,7 @@ test `bk diffs -hr$PARENT BitKeeper/etc/config | wc -c` -eq 0 && {
 echo OK
 
 echo $N Run clean, should clean it ..................................$NL
-bk clean $Q BitKeeper/etc/config || exit 1
+bk clean $Q BitKeeper/etc/config || fail
 test -f BitKeeper/etc/config && {
 	echo failed to clean file without changes
 	exit 1
@@ -325,9 +325,9 @@ test `bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l` -eq 0 && {
 bk edit $Q BitKeeper/etc/config
 PARENT=`bk prs -hnd'$unless(:DANGLING:){:I:}' BitKeeper/etc/config | head -1`
 bk get $Q -kpr$PARENT BitKeeper/etc/config > XXX
-cmp -s BitKeeper/etc/config XXX && exit 1
+cmp -s BitKeeper/etc/config XXX && fail
 mv XXX BitKeeper/etc/config
-bk clean $Q BitKeeper/etc/config || exit 1
+bk clean $Q BitKeeper/etc/config || fail
 test -f BitKeeper/etc/config && {
 	echo failed to clean file without changes
 	exit 1
@@ -337,7 +337,7 @@ echo OK
 echo $N Make sure sfiles -c thinks it is unmodified .................$NL
 bk edit $Q BitKeeper/etc/config
 bk get $Q -kpr$PARENT BitKeeper/etc/config > XXX
-cmp -s BitKeeper/etc/config XXX && exit 1
+cmp -s BitKeeper/etc/config XXX && fail
 mv XXX BitKeeper/etc/config
 test `bk sfiles -c BitKeeper/etc/config | wc -c` -eq 0 || {
 	echo sfiles thinks it is modified

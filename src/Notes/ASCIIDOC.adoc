@@ -1,0 +1,8 @@
+AsciiDoc introduction
+=====================
+
+The documents in this directory are formatted using
+link:http://asciidoc.org/[AsciiDoc].
+
+A good cheatsheet for formatting is can be found
+link:http://powerman.name/doc/asciidoc[here].

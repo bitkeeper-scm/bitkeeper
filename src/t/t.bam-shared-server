@@ -6,23 +6,23 @@ echo ---- Server to client tests ...................................
 # any BAM data until the user requests a checkout.  And also that
 # only the checked out versions are sent.
 echo $N Set up a repo with some binary data .........................$NL
-bk bkd -d -aPORT -ikill -l"$HERE/XXX" || exit 1
+bk bkd -d -aPORT -ikill -l"$HERE/XXX" || fail
 P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
 commercial project
-bk bam server $Q . || exit 1
+bk bam server $Q . || fail
 BK="`bk bin`/bk"
 test $PLATFORM = WIN32 && BK=${BK}.exe
 DATA="$HERE"/data
 perl -e 'sysread(STDIN, $buf, 81920);
 syswrite(STDOUT, $buf, 81920);' < $BK > "$DATA"
 cp "$DATA" data
-bk new $Q data || exit 1
-test -d BitKeeper/BAM || exit 1
+bk new $Q data || fail
+test -d BitKeeper/BAM || fail
 bk commit $Q -ywhatever
 cp "$DATA" moredata
 echo foo >> moredata
-bk new $Q moredata || exit 1
+bk new $Q moredata || fail
 bk edit $Q data
 echo bar >> data
 bk delta $Q -ychanged data
@@ -33,23 +33,16 @@ echo $N clone should not replicate the BAM data .....................$NL
 cd "$HERE"
 bk clone $Q project clone
 cd clone
-test -d BitKeeper/BAM && {
-	echo should not have BAM directory yet
-	exit 1
-}
+test -d BitKeeper/BAM && fail should not have BAM directory yet
 echo OK
 
 echo $N Checkout should fetch data but only top deltas ..............$NL
 bk co $Q
-test -f data -a -f moredata || {
-	echo co failed
-	exit 1
-}
+test -f data -a -f moredata || fail co failed
 # 2 files and the index.db
 test `find BitKeeper/BAM -type f -print | wc -l` -eq 4 || {
-	echo fetched too much data
-	find BitKeeper/BAM -type f -print
-	exit 1
+	find BitKeeper/BAM -type f -print > ERR
+	fail -f ERR fetched too much data
 }
 echo OK
 
@@ -63,17 +56,11 @@ cp "$BK" a
 bk new $Q -b a
 bk commit $Q -ybig
 bk push $Q bk://localhost:$P/clone 2> ERR && {
-	echo should have failed
-	cat ERR
 	bk _kill $L
-	exit 1
+	fail -f ERR should have failed
 }
 bk _kill $L
-grep -q "can't get lock" ERR || {
-	echo wrong msg
-	cat ERR
-	exit 1
-}
+grep -q "can't get lock" ERR || fail -f ERR wrong msg
 echo OK
 
 echo $N lclone should replicate the BAM data ........................$NL
@@ -88,93 +75,62 @@ done > OUT 2>&1
 for i in BitKeeper/BAM/$RK/BAM.index BitKeeper/log/BAM
 do	test -f $i || echo $i
 done >> OUT
-test -s OUT && {
-	echo failed
-	cat OUT
-	exit 1
-}
+test -s OUT && fail -f OUT
 echo OK
 
 echo $N Check that pull does not bring in BAM data ..................$NL
 cd "$HERE"
 bk clone $Q -r1.1 project pull
-test -d pull/BitKeeper/BAM && {
-	echo should not have BAM directory yet
-	exit 1
-}
+test -d pull/BitKeeper/BAM && fail should not have BAM directory yet
 cd pull
 bk pull $Q
-test -d BitKeeper/BAM && {
-	echo should not have BAM directory yet
-	exit 1
-}
+test -d BitKeeper/BAM && fail should not have BAM directory yet
 echo OK
 
 echo $N Checkout should fetch data but only top deltas ..............$NL
 bk co $Q
-test -f data -a -f moredata || {
-	echo co failed
-	exit 1
-}
+test -f data -a -f moredata || fail co failed
 # 2 files and index.db & BAM.index
 test `find BitKeeper/BAM -type f -print | wc -l` -eq 4 || {
-	echo fetched too much data
-	find BitKeeper/BAM -type f
-	exit 1
+	find BitKeeper/BAM -type f > ERR
+	fail -f ERR fetched too much data
 }
 echo OK
 
 echo $N Check that push does not send BAM data ......................$NL
 cd "$HERE"
 bk clone $Q -r1.1 project push
-test -d push/BitKeeper/BAM && {
-	echo should not have BAM directory yet
-	exit 1
-}
+test -d push/BitKeeper/BAM && fail should not have BAM directory yet
 cd project
 bk push $Q ../push
 cd ../push
-test -d BitKeeper/BAM && {
-	echo should not have BAM directory yet
-	exit 1
-}
+test -d BitKeeper/BAM && fail should not have BAM directory yet
 echo OK
 
 echo $N Checkout should fetch data but only top deltas ..............$NL
 bk co $Q
-test -f data -a -f moredata || {
-	echo co failed
-	exit 1
-}
+test -f data -a -f moredata || fail co failed
 # 2 files and the index.db
 test `find BitKeeper/BAM -type f -print | wc -l` -eq 4 || {
-	echo fetched too much data
-	exit 1
+	fail fetched too much data
 }
 echo OK
 
 echo $N Check that rclone does not send BAM data ....................$NL
 cd "$HERE"
 bk clone $Q -Bbk://localhost:$P/project project bk://localhost:$P/rclone || {
-	exit 1
+	fail
 }
 cd rclone
-test -d BitKeeper/BAM && {
-	echo should not have BAM directory yet
-	exit 1
-}
+test -d BitKeeper/BAM && fail should not have BAM directory yet
 echo OK
 
 echo $N Checkout should fetch data but only top deltas ..............$NL
 bk co $Q
-test -f data -a -f moredata || {
-	echo co failed
-	exit 1
-}
+test -f data -a -f moredata || fail co failed
 # 2 files and the index.db
 test `find BitKeeper/BAM -type f -print | wc -l` -eq 4 || {
-	echo fetched too much data
-	exit 1
+	fail fetched too much data
 }
 echo OK
 
@@ -194,9 +150,7 @@ done
 bk commit $Q -ymore
 find BitKeeper/BAM -type f -print | grep -v index.db | grep -v BAM.index > ../LIST
 test `wc -l < ../LIST` -eq 2 || {
-	echo did not create the right number of BAM files
-	cat ../LIST
-	exit 1
+	fail -f ../LIST  did not create the right number of BAM files
 }
 cd "$HERE"
 bk clone $Q clone clone2
@@ -204,29 +158,18 @@ cd project
 cat ../LIST | while read x
 do	test -f $x || echo $x is missing
 done > OUT
-test -s OUT && {
-	echo failed
-	cat OUT
-	exit 1
-}
+test -s OUT && fail -f OUT
 cd ../clone2
-test -d BitKeeper/BAM && {
-	echo should not have BAM directory yet
-	exit 1
-}
+test -d BitKeeper/BAM && fail should not have BAM directory yet
 echo OK
 
 echo $N Checkout should fetch data but only top deltas ..............$NL
 bk co $Q
-test -f data -a -f moredata -a -f data.1 -a -f data.2 || {
-	echo co failed
-	exit 1
-}
+test -f data -a -f moredata -a -f data.1 -a -f data.2 || fail co failed
 # 4 files and the index.db
 test `find BitKeeper/BAM -type f -print | wc -l` -eq 6 || {
-	echo fetched too much data
-	find BitKeeper/BAM -type f -print
-	exit 1
+	find BitKeeper/BAM -type f -print > ERR
+	fail -f ERR fetched too much data
 }
 echo OK
 
@@ -237,39 +180,25 @@ cd "$HERE"
 cd project; rm -f `cat ../LIST`; cd ..
 rm -rf pull
 bk clone $Q -r1.1 project pull
-test -d pull/BitKeeper/BAM && {
-	echo should not have BAM directory yet
-	exit 1
-}
+test -d pull/BitKeeper/BAM && fail should not have BAM directory yet
 cd pull
-bk pull $Q ../clone || exit 1
-test -d BitKeeper/BAM && {
-	echo should not have BAM directory yet
-	exit 1
-}
+bk pull $Q ../clone || fail
+test -d BitKeeper/BAM && fail should not have BAM directory yet
 cd ../project
 cat ../LIST | while read x
 do	test -f $x || echo $x is missing
 done > OUT
-test -s OUT && {
-	echo failed
-	cat OUT
-	exit 1
-}
+test -s OUT && fail -f OUT
 echo OK
 
 echo $N Checkout should fetch data but only top deltas ..............$NL
 cd ../pull
 bk co $Q
-test -f data -a -f moredata -a -f data.1 -a -f data.2 || {
-	echo co failed
-	exit 1
-}
+test -f data -a -f moredata -a -f data.1 -a -f data.2 || fail co failed
 # 4 files and the index.db
 test `find BitKeeper/BAM -type f -print | wc -l` -eq 6 || {
-	echo fetched too much data
-	find BitKeeper/BAM -type f -print
-	exit 1
+	find BitKeeper/BAM -type f -print > ERR
+	fail -f ERR fetched too much data
 }
 echo OK
 
@@ -278,40 +207,26 @@ cd "$HERE"
 cd project; rm -f `cat ../LIST`; cd ..
 rm -rf push
 bk clone $Q -r1.1 project push
-test -d push/BitKeeper/BAM && {
-	echo should not have BAM directory yet
-	exit 1
-}
+test -d push/BitKeeper/BAM && fail should not have BAM directory yet
 cd clone
 bk push $Q ../push
 cd ../push
-test -d BitKeeper/BAM && {
-	echo should not have BAM directory yet
-	exit 1
-}
+test -d BitKeeper/BAM && fail should not have BAM directory yet
 cd ../project
 cat ../LIST | while read x
 do	test -f $x || echo $x is missing
 done > OUT
-test -s OUT && {
-	echo failed
-	cat OUT
-	exit 1
-}
+test -s OUT && fail -f OUT
 echo OK
 
 echo $N Checkout should fetch data but only top deltas ..............$NL
 cd ../push
 bk co $Q
-test -f data -a -f moredata -a -f data.1 -a -f data.2 || {
-	echo co failed
-	exit 1
-}
+test -f data -a -f moredata -a -f data.1 -a -f data.2 || fail co failed
 # 4 files and the index.db
 test `find BitKeeper/BAM -type f -print | wc -l` -eq 6 || {
-	echo fetched too much data
-	find BitKeeper/BAM -type f -print
-	exit 1
+	find BitKeeper/BAM -type f -print > ERR
+	echo -f ERR fetched too much data
 }
 echo OK
 
@@ -321,33 +236,22 @@ rm -rf rclone
 cd project; rm -f `cat ../LIST`; cd ..
 bk clone $Q clone bk://localhost:$P/rclone
 cd rclone
-test -d BitKeeper/BAM && {
-	echo should not have BAM directory yet
-	exit 1
-}
+test -d BitKeeper/BAM && fail should not have BAM directory yet
 cd ../project
 cat ../LIST | while read x
 do	test -f $x || echo $x is missing
 done > OUT
-test -s OUT && {
-	echo failed
-	cat OUT
-	exit 1
-}
+test -s OUT && fail -f OUT
 echo OK
 
 echo $N Checkout should fetch data but only top deltas ..............$NL
 cd ../rclone
 bk co $Q
-test -f data -a -f moredata -a -f data.1 -a -f data.2 || {
-	echo co failed
-	exit 1
-}
+test -f data -a -f moredata -a -f data.1 -a -f data.2 || fail co failed
 # 4 files and the index.db
 test `find BitKeeper/BAM -type f -print | wc -l` -eq 6 || {
-	echo fetched too much data
-	find BitKeeper/BAM -type f -print
-	exit 1
+	find BitKeeper/BAM -type f -print > ERR
+	fail -f ERR fetched too much data
 }
 echo OK
 
@@ -361,15 +265,11 @@ echo $N Pull with local data should update server ...................$NL
 cd "$HERE"
 cd project
 rm -f `cat ../LIST`
-bk pull $Q ../clone || exit 1
+bk pull $Q ../clone || fail
 cat ../LIST | while read x
 do	test -f $x || echo $x is missing
 done > OUT
-test -s OUT && {
-	echo failed
-	cat OUT
-	exit 1
-}
+test -s OUT && fail -f OUT
 echo OK
 
 echo $N Push with local data should update server ...................$NL
@@ -383,11 +283,7 @@ cd ../project
 cat ../LIST | while read x
 do	test -f $x || echo $x is missing
 done > OUT
-test -s OUT && {
-	echo failed
-	cat OUT
-	exit 1
-}
+test -s OUT && fail -f OUT
 echo OK
 
 bk _kill bk://localhost:$P 

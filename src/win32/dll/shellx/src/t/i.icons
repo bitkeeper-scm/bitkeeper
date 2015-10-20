@@ -1,0 +1,192 @@
+#
+cat << EOF
+
+double-click shellx-testrepos
+See a number of directory icons with
+BitKeeper delta icon overlays
+not-a-repo should not have the BitKeeper overlay
+
+EOF
+cont
+
+#
+cat << EOF
+
+On Windows 2008, click the Views button a few times and
+See that the BitKeeper delta icon overlay is visible on all
+icon sizes.
+
+On XP, this same function is under the View menu.  Make
+the same verification.
+
+EOF
+cont
+
+#
+cat << EOF
+double-click bkdemorepo
+See:
+
+  ignore.o	with a grey icon overlay
+  modified	with a red icon overlay
+  newfile	with a blue icon overlay
+  readonly	with a green (dash) icon overlay
+  writable	with a green (checkmark) icon overlay
+
+EOF
+cont
+
+#
+cd "$HERE"/bkdemorepo
+bk edit $Q readonly
+cat << EOF
+Checked out the readonly file for editing.
+
+See that it now has a green checkmark icon overlay.
+
+
+EOF
+cont
+
+#
+cd "$HERE"/bkdemorepo
+echo stuff >> readonly
+cat << EOF
+Changed the readonly file.
+
+See that it now has a red icon overlay.
+
+EOF
+cont
+
+#
+cd "$HERE"/bkdemorepo
+bk ci $Q -y'Added stuff' readonly
+bk get $Q readonly
+cat << EOF
+Delta'ed the readonly file.
+
+See that it now has green dash icon.
+
+EOF
+cont
+
+#
+cat << EOF
+double click the bigdir directory
+
+See that it's empty
+
+EOF
+cont
+
+#
+cd "$HERE"/bkdemorepo/bigdir
+bk get $Q
+cat << EOF
+Files have now been checked out read-only.
+
+See many files appear with green dash icon overlays.
+
+EOF
+cont
+
+#
+bk edit $Q
+cat << EOF
+Files have now been checked out for editing.
+
+See that the icon overlays have changed to green checkmarks.
+
+EOF
+cont
+
+#
+for file in file*
+do
+	echo stuff >> $file
+done
+cat << EOF
+All the files have been modified.
+
+See that the icon overlays have changes to red dashes.
+
+EOF
+cont
+
+#
+bk ci $Q -y'Added stuff' file*
+cat << EOF
+All the files have been checked in.
+
+See all the files disappear again (checkout: none)
+
+EOF
+cont
+
+#
+cat << EOF
+click back twice (to shellx-testrepos)
+double-click repo-last
+
+See many files in read-write mode.
+
+EOF
+cont
+
+#
+cd "$HERE"/repo-last
+for file in file*
+do
+	echo stuff >> $file
+done
+cat << EOF
+All the files have been modified.
+
+See, again, that the icon overlays change to red dashes.
+
+EOF
+cont
+
+#
+bk ci $Q -y'Added stuff' file*
+cat << EOF
+All the files have been checked in (this repo is checkout:last).
+
+See all the icon overlays return to green checkmarks.
+
+EOF
+cont
+
+#
+cat << EOF
+click back once (to shellx-testrepos)
+double-click repo-BAM
+
+See 10 binary files in read-write mode.
+
+EOF
+cont
+
+#
+cd "$HERE"/repo-BAM
+cat file-0.bin file-1.bin > foo
+cp foo file-0.bin
+rm foo
+cat << EOF
+file-0.bin has been changed.
+
+See the icon overlay change to the red dash.
+
+EOF
+cont
+
+#
+bk ci -q'merged file-0 and file-1' file-0.bin
+cat << EOF
+file-0.bin has been delta'ed (checkout:none, BAM_checkout:last)
+
+See the icon overlay change back to the green checkmark.
+
+EOF
+cont

@@ -1,0 +1,405 @@
+ShellX Test Plan
+
+0. Setup:
+
+0.1 Test directory containing:
+
+shellx-test-repos (tree diagram)
+
+0.2 Test Platforms
+
+ - Windows XP
+ - Windows XP with Studio installed
+ - Windows 2000
+ - Windows 2000 with Studio
+ - Vista
+ - Vista with Studio
+ - Windows XP x64
+ - Windows XP x64 with Studio
+
+1. Icons:
+
+1.1: These icon overlays should be visible in 
+
+		none	get	edit	last
+Repo		__	__	__	__
+Readonly	NA	NA		NA
+Editable	NA	__	__	NA
+Modified	__	__	__	__
+Ignored		__	__	__	__
+Extra		__	__	__	__
+
+1.2 For each of the checkout:* repos
+    point an explorer window at the repo and in separate
+    command window, cd to that repo and:
+
+1.2.1  bk get file (may already be there)
+
+File icon should appear with the readonly overlay.
+
+1.2.2  bk edit file (may already be there)
+
+Icon overlay should switch to r/w.
+
+1.2.3  echo "stuff" >> file
+
+Icon overlay should switch to modified.
+
+1.2.4  bk ci -y'Added stuff' file
+
+Icon overlay should change to one appropriate to checkout: (but not
+stay modified).
+
+1.2.5  touch extra2
+
+extra2 should appear with extra overlay
+
+1.2.6  bk new extra2
+
+extra2 icon overlay should change appropriate to checkout:
+
+[grid of checkboxes here]
+
+1.2.7  chmod +w readonly2
+
+some sort of icon / barfer?  Shellx could recognize the problem at least,
+and put a X or something on the file?
+
+1.3  touch ignored2
+
+[needs only to be one of the test repos, as it doesn't depend on
+checkout: config]
+ignored2 should appear with the ignored overlay
+
+2. Menus
+
+2.1  Contextual tests
+
+Contexts in which a right click will result in a context menu coming
+appearing:
+
+Standard:
+  FM - explorer File menu
+  DB - desktop background
+  EB - explorer background
+  D  - directory
+  Ex - extra file
+  I  - ignored file
+  RO - R/O gfile
+  RW - R/W gfile
+  Mo - modified gfile
+  MF - selection of multiple files
+  MD - selection of multiple directories
+  Mix - selection of a mix of files and directories
+  (any others?)
+
+"Special" contexts
+  Start Menu
+  In repo vs. not
+  (any others?)
+
+We insert items directly into the context menu and additionally insert
+a BitKeeper submenu.  Which items are inserted into the main or the
+sub-menu depend on the context and the state of the file(s) or
+directoy(ies) selected.
+
+					In Repo Contexts
+			FM DB  EB  D   Ex  Ig  RO  RW  Mo  MF  MD  Mix
+
+BK Edit Files		?  no  yes yes no  no  yes no  no  *   yes yes
+BK Checkin Tool		?  no  yes yes yes yes yes yes yes yes yes yes
+BK Diff File		?  no  no  no  no  no  no  no  yes *   *   *
+BK Diff Directory	?  no  yes yes no  no  no  no  no  no  *   *
+BitKeeper->		?  yes yes yes yes yes yes yes yes yes yes yes
+Chkout Files R/O	?  no  yes no  no  no  no  no  no  no  no  no
+Chkout Files R/O (rec)  ?  no  no  yes no  no  no  no  no  no  yes yes
+Chkout Files R/W (rec)  ?  no  no  yes no  no  no  no  no  no  yes yes
+Revision Tool		?  no  yes yes no  no  yes yes yes no  no  no
+View Local Csets	?  no  yes yes no  no  no  no  no  no  no  no
+View Remote Csets       ?  no  yes yes no  no  no  no  no  no  no  no
+Push Changesets		?  no  yes yes no  no  no  no  no  no  no  no
+Pull Changesets         ?  no  yes yes no  no  no  no  no  no  no  no
+Add Files               ?  no  no  no  yes no  no  no  no  *   no  *
+Delete Files            ?  no  no  no  no  no  yes yes yes *   no  yes
+Revert Changes          ?  no  no  no  no  no  no  no  yes *   no  no
+Clone a Repo		?  yes yes yes no  no  no  no  no  no  yes yes
+Create a Repo           ?  yes no  no  no  no  no  no  no  no  no  no 
+Open Command Prompt     ?  yes yes yes yes yes yes yes yes yes yes yes
+Help                    ?  yes yes yes yes yes yes yes yes yes yes yes
+About                   ?  yes yes yes yes yes yes yes yes yes yes yes
+
+* depends on the members of the selected set of files/dirs
+? the File menu's behaviour was not explicitly designed and appears to
+  be buggy in the current beta code...
+
+
+			    Not in Repo Contexts
+			FM DB  EB D   F	MF  MD  Mix
+
+BK Edit Files		?  no  no  no  no  no  no  no
+BK Checkin Tool		?  no  no  no  no  no  no  no
+BK Diff File		?  no  no  no  no  no  no  no
+BK Diff Directory	?  no  no  no  no  no  no  no
+
+BitKeeper->		?  yes yes yes no  no  no  no
+Chkout Files R/O	?  no  no  no  no  no  no  no
+Chkout Files R/O (rec)  ?  no  no  no  no  no  no  no
+Chkout Files R/W (rec)  ?  no  no  no  no  no  no  no
+Revision Tool		?  no  no  no  no  no  no  no
+View Local Csets	?  no  no  no  no  no  no  no
+View Remote Csets       ?  no  no  no  no  no  no  no
+Push Changesets		?  no  no  no  no  no  no  no
+Pull Changesets         ?  no  no  no  no  no  no  no
+Add Files               ?  no  no  no  no  no  no  no
+Delete Files            ?  no  no  no  no  no  no  no
+Revert Changes          ?  no  no  no  no  no  no  no
+Clone a Repo		?  yes yes yes no  no  no  no
+Create a Repo           ?  yes yes yes no  no  no  no
+Open Command Prompt     ?  yes yes yes no  no  no  no
+Help                    ?  yes yes yes no  no  no  no
+About                   ?  yes yes yes no  no  no  no
+
+
+2.1.1 Icons on the menu items
+
+Each menu item has an icon.  Checklist to make sure that they are correct.
+
+BK Edit Files
+BK Checkin Tool
+BK Diff File
+BK Diff Directory
+
+Checkout Files Read-Only
+Checkout Files Read-Only (recursive)
+Checkout Files Read-Write (recursive)
+Revision Tool
+View Local Changesets
+View Remote Changesets
+Push Changesets to Parent
+Pull Changesets from Parent
+Add Files
+Delete Files
+Revert Changes
+Clone a Repository
+Create a Repository Here
+Open Command Prompt
+Help
+About
+
+2.2 Operation of menu items
+
+[table of tests for each menu item]
+
+2.2.1 BK Edit Files
+
+Is supposed to run "bk edit -S" on the selected files.
+
+2.2.1.1 Right click a file, select edit
+
+Expect:
+ - icon overlay to change
+ - file to be editable (r/w, a pfile, sfiles -l, etc)
+
+2.2.1.2 Repeat for mulitple files
+
+2.2.1.3 Repeat for directory
+
+
+2.2.2 BK Checkin Tool
+
+Expect: citool to appear
+
+2.2.3 BK Diff File
+
+Expect: difftool to appear for selected file
+
+2.2.4 BK Diff Directory
+
+Expect: difftool to appear for current directory
+
+2.2.5 Checkout Files Read-Only
+
+Expect:
+
+ - runs "bk get -S"
+
+2.2.6 Checkout Files Read-Only (recursive)
+
+ - runs "bk sfiles -U | bk get -S -"
+
+2.2.7 Checkout Files Read-Write (recursive)
+
+ - runs "bk sfiles -U | bk edit -S -"
+
+2.2.8 Revision Tool
+
+Expect:
+
+ - launches revtool on either file or ChangeSet
+
+2.2.9 View Local Changesets
+
+Expect:
+
+ - bk changes -L launched in a command window
+ - less is the pager, pressing 'q' dismisses the window
+
+2.2.10 View Remote Changesets
+
+Expect:
+
+ - bk changes -R launched in a command window
+ - less is the pager, pressing 'q' dismisses the window
+	
+2.2.11 Push Changesets to Parent
+
+Expect:
+
+ - dialog with:
+   - Target URL text entry field filled with current parent
+   - "save this as the new parent" checkbox
+   - 3 buttons, OK,Cancel, Help
+
+ - OK launchs the push in a separate command window that should stay
+   after the push completes
+ - Cancel dismisses the dialog
+ - Help launches helptool
+
+ - checking the new parent checkbox will set the parent
+ - give a bad url - is there a chance to fix it?  F3?
+
+
+2.2.12 Pull Changesets from Parent
+
+Expect:
+
+ - dialog with:
+   - Target URL text entry field filled with current parent
+   - "save this as the new parent" checkbox
+   - 3 buttons, OK,Cancel, Help
+
+ - OK launchs the pull in a separate command window that should stay
+   after the pull completes
+ - Cancel dismisses the dialog
+ - Help launches helptool
+
+ - checking the new parent checkbox will set the parent
+
+
+2.2.13 Add Files
+
+ - icon overlay should change from extra to one appropriate to
+   checkout: setting
+ - citool should show the pending new file
+
+2.2.14 Delete Files
+
+Expect:
+
+ - the file icon to disappear
+ - citool should show the pending delete
+
+2.2.15 Revert Changes
+
+Expect:
+
+ - icon overlay to change
+ - gfile to be in a state appropriate to checkout: setting
+
+2.2.16 Clone a Repository
+
+Expect:
+
+ - a dialog with the following components:
+   - Parent folder/url text entry field
+   - Target folder/url text entry field
+   - Rollback Revision text entry field
+   - Get the demo repository checkbox
+   - 4 buttons, Clone, Cancel, Reverse, Help
+
+ - upon filling the text fields, clicking the clone button will launch
+   the clone in another cmd window
+ - cancel dismisses the dialog
+ - reverse ???
+ - clicking the help button launches helptool
+
+2.2.17 Create a Repository Here
+
+Expect: BK Setup Wizard will appear.
+
+2.2.18 Open Command Prompt
+
+Expect:
+
+A command window with the cwd set to the directory of the launch
+context.
+
+2.2.19 Help
+
+Expect:
+
+ - a dialog window showing the file icons and their meaning
+ - a button labelled "More Help..." which, when pressed, launches
+   helptool
+
+
+2.2.20 About
+
+Expect:
+
+ - a dialog window showing "BitKeeper ShellX Plugin" and a UTC of the
+   tip cset.
+ - an OK button
+
+
+3. Stress testing
+
+3.1 Operations on many (up to 1000) files
+
+3.1.1 Operate on 1000 files and observe/validate the icon changes.
+
+ - with an explorer window watching big repo
+ - run in a cygwin window, operations in the form:
+
+     for i in $(seq 1 1000)
+     do
+         bk edit $i
+     done
+
+   and observe changes in the explorer window
+
+3.1.2
+
+ - select 1000 files in big repo select "BK Edit Files"
+
+3.1.3
+ - files start in different states and operated on in a collection.
+   errors - stop in middle or go until completion?
+
+3.2 Multiple explorer windows.
+
+3.2.1 async operations
+
+ - one explorer watching one big repo
+ - another explorer window watching a different big repo
+ - in a cygwin window, do things like:
+
+     bk clean; bk get
+     pushd $other_repo
+     bk edit
+     pushd
+     bk edit
+
+ - include ci/delta in one of the tests (where checkout: is edit or
+   last)
+
+4. Logging?
+
+4.1 Create c:\temp\bkshellx.log, do stuff and marvel at the trace.
+
+5. White Box Testing
+
+ - knowing something about the structure of the code, tests that tax
+   various areas of concern.  For example, there is an in memory cache
+   of sfiles output and we should have tests that attempt to validate
+   the coherency of that(those) cache(s)

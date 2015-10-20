@@ -2,19 +2,18 @@
 #include "sccs.h"
 #include "logging.h"
 #include "nested.h"
+#include "cfg.h"
 
-private int	mkconfig(FILE *out, MDBM *flist, int verbose);
+private MDBM	*mkconfig(FILE *out, MDBM *flist, int verbose);
 private void	defaultFiles(int);
-private void	printField(FILE *out, MDBM *flist, char *field);
-private MDBM	*addField(MDBM *flist, char *field);
-private	int	licensebad(MDBM *m);
+private MDBM	*addField(MDBM *flist, char *field, int replace);
 
 int
 setup_main(int ac, char **av)
 {
-	int	force = 0, allowNonEmptyDir = 0, accept = 0, c;
+	int	accept = 0, c;
 	char	*package_path = 0, *config_path = 0;
-	char	buf[MAXLINE], my_editor[1024];
+	char	buf[MAXLINE];
 	char	here[MAXPATH];
 	char 	s_config[] = "BitKeeper/etc/SCCS/s.config";
 	char 	config[] = "BitKeeper/etc/config";
@@ -22,12 +21,9 @@ setup_main(int ac, char **av)
 	project	*proj;
 	sccs	*s;
 	MDBM	*m = 0, *flist = 0;
-	FILE	*f, *f1;
 	int	status;
-	int	print = 0;
-	int	product = 0;
-	int	noCommit = 0;
-	int	sccs_compat = 0;
+	int	print = 0, product = 0, noCommit = 0,
+		sccs_compat = 0, verbose = 0;
 	filecnt	nf;
 	longopt	lopts[] = {
 		{ "sccs-compat", 300 }, /* old compat option */
@@ -35,15 +31,15 @@ setup_main(int ac, char **av)
 		{ 0, 0 }
 	};
 
-	while ((c = getopt(ac, av, "aCc:ePfF:p", lopts)) != -1) {
+	while ((c = getopt(ac, av, "aCc:ePfF:pv", lopts)) != -1) {
 		switch (c) {
 		    case 'a': accept = 1; break;
 		    case 'C':
-		    	noCommit = 1;
+			noCommit = 1;
 			break;
 		    case 'c':
-		    	unless(exists(optarg)) {
-				fprintf(stderr, 
+			unless(exists(optarg)) {
+				fprintf(stderr,
 				    "setup: %s doesn't exist. Exiting\n",
 				    optarg);
 				exit(1);
@@ -52,10 +48,11 @@ setup_main(int ac, char **av)
 			config_path = fullname(optarg, 0);
 			break;
 		    case 'P': product = 1; break;
-		    case 'e': allowNonEmptyDir = 1; break;
-		    case 'f': force = 1; break;
-		    case 'F': flist = addField(flist, optarg); break;
+		    case 'e': break;
+		    case 'f': break;
+		    case 'F': flist = addField(flist, optarg, 1); break;
 		    case 'p': print = 1; break;
+		    case 'v': verbose = 1; break;
 		    case 300: sccs_compat = 1;  break;
 		    default: bk_badArg(c, av);
 		}
@@ -70,17 +67,42 @@ setup_main(int ac, char **av)
 			fprintf(stderr, "setup: can't mix -c and -p.\n");
 			exit(1);
 		}
-		mkconfig(stdout, flist, 0);
-		if (flist) mdbm_close(flist);
+		if (flist = mkconfig(stdout, flist, verbose)) {
+			mdbm_close(flist);
+			flist = 0;
+		}
 		exit(0);
 	}
 
-	unless (package_path = av[optind]) {
-		printf("Usage: bk setup [-c<config file>] directory\n");
-		exit (0);
+	unless (package_path = av[optind]) package_path = ".";
+
+	if (streq(package_path, "") || streq(package_path, "-")) {
+		usage();
+		return (1);
 	}
 
-	proj = proj_init(package_path);
+	/*
+	 * If in a repo, be it product, component or standalone, see
+	 * that there are no sfiles from package_path on down to next repo.
+	 */
+	if ((proj = proj_init(package_path)) && isdir(package_path)) {
+		FILE	*f;
+		int	any = 0;
+
+		sprintf(buf, "bk --cd='%s' sfiles -d", package_path);
+		if (f = popen(buf, "r")) {
+			while (fread(buf, 1, sizeof(buf), f)) any = 1;
+			pclose(f); /* ignore errors */
+		}
+		if (any) {
+			fprintf(stderr,
+			    "The directory '%s' has existing "
+			    "version control files in or under it.\n"
+			    "Aborting\n", package_path);
+			proj_free(proj);
+			return (1);
+		}
+	}
 	if (sccs_compat) {
 		if (!product && proj_product(proj)) {
 			fprintf(stderr,
@@ -89,16 +111,6 @@ setup_main(int ac, char **av)
 			exit(1);
 		}
 		proj_remapDefault(0);
-	}
-	if (exists(package_path) && !allowNonEmptyDir) {
-		printf("bk: %s exists already, setup fails.\n", package_path);
-		exit (1);
-	}
-	unless (force) {
-		getMsg("setup_1", 0, '-', stdout);
-		printf("Create new package? [no] ");
-		if (fgets(buf, sizeof(buf), stdin) == NULL) buf[0] = 'n';
-		if ((buf[0] != 'y') && (buf[0] != 'Y')) exit (0);
 	}
 
 	unless (product) {
@@ -147,83 +159,35 @@ setup_main(int ac, char **av)
 		    features_test(in_prod, FEAT_BKFILE));
 		features_set(0, FEAT_BWEAVE,
 		    features_test(in_prod, FEAT_BWEAVE));
+		features_set(0, FEAT_BWEAVEv2,
+		    features_test(in_prod, FEAT_BWEAVEv2));
 	} else {
-		features_set(0,
-		    FEAT_BKFILE|FEAT_BWEAVE|FEAT_SCANDIRS, !sccs_compat);
-	}
-
-	if (exists(s_config)) {
-		fprintf(stderr,
-		    "bk: %s is already a BitKeeper repository, setup fails.\n",
-		    package_path);
-		exit (1);
-	}
-
-	if (config_path == 0) {
-		getMsg("setup_3", 0, '-', stdout);
-		/* notepad.exe wants text mode */
-		f = fopen("BitKeeper/etc/config", "wt");
-		assert(f);
-		mkconfig(f, flist, 1);
-		fclose(f);
-		if (flist) mdbm_close(flist);
-		chmod("BitKeeper/etc/config", 0664);
-again:		
-		/*
-		 * Yes, I know this is ugly but it replaces a zillion error
-		 * path gotos below.
-		 */
-		if (config_path) goto err;
-		printf("Editor to use [%s] ", editor);
-		unless (fgets(my_editor, sizeof(my_editor), stdin)) {
-			my_editor[0] = '\0';
-		}
-		chop(my_editor);
-		if (my_editor[0] != 0) {
-			sprintf(buf, "%s BitKeeper/etc/config", my_editor);
+		if (sccs_compat) {
+			features_set(0, FEAT_FILEFORMAT|FEAT_SCANDIRS, 0);
 		} else {
-			sprintf(buf, "%s BitKeeper/etc/config", editor);
+			features_set(0,
+			    (FEAT_FILEFORMAT & ~FEAT_BWEAVEv2) | FEAT_SCANDIRS,
+			    1);
 		}
-		system(buf);
+	}
+
+	if (config_path) {
+		if (fileCopy(config_path, config)) exit(1);
 	} else {
-		unless (f1 = fopen(config_path, "rt")) {
-			perror(config_path);
-			fprintf(stderr, "setup: can't open %s\n", config_path);
-			fprintf(stderr, "You need to use a fullpath\n");
-			exit(1);
-	    	}
+		FILE	*f;
+
 		f = fopen(config, "w");
 		assert(f);
-		while (fnext(buf, f1)) printField(f, flist, buf);
+		if (flist = mkconfig(f, flist, 1)) {
+			mdbm_close(flist);
+			flist = 0;
+		}
 		fclose(f);
-		fclose(f1);
 	}
-
 	unless (m = loadConfig(in_prod, 1)) {
 		fprintf(stderr, "No config file found\n");
 		exit(1);
 	}
-
-	/* When eula_name() stopped returning bkl on invalid signatures
-	 * we needed this to force a good error message.
-	 */
-	if (mdbm_fetch_str(m, "license") && licensebad(m)) {
-		if (config_path) {
-err:			unlink("BitKeeper/etc/config");
-			unlink("BitKeeper/log/cmd_log");
-			if (m) mdbm_close(m);
-			if (allowNonEmptyDir) {
-				sccs_unmkroot("."); /* reverse  sccs_mkroot */
-			} else {
-				chdir(here);
-				if (rmtree(package_path)) perror(package_path);
-			}
-			exit(1);
-		}
-		goto again;
-	}
-	mdbm_close(m);
-	m = 0;
 
 	if (product && bk_notLicensed(0, LIC_SAM, 0)) goto err;
 
@@ -248,9 +212,6 @@ err:			unlink("BitKeeper/etc/config");
 		 * so the initial ChangeSet path will be correct
 		 */
 		nested_makeComponent(".");
-		if (features_test(0, FEAT_BKFILE)) {
-			unlink("BitKeeper/log/features");
-		}
 	}
 
 	features_set(0, FEAT_REMAP, !proj_hasOldSCCS(0));
@@ -271,10 +232,10 @@ err:			unlink("BitKeeper/etc/config");
 		fprintf(stderr, "setup: bk commit failed.\n");
 		return (1);
 	}
- 	if (proj_cd2root()) {
-                fprintf(stderr, "setup: cannot find package root.\n");
-                return (1);
-        }
+	if (proj_cd2root()) {
+		fprintf(stderr, "setup: cannot find package root.\n");
+		return (1);
+	}
 	enableFastPendingScan();
 	logChangeSet();
 	nf.tot = product ? NFILES_PROD : NFILES_SA;
@@ -289,10 +250,22 @@ err:			unlink("BitKeeper/etc/config");
 		}
 		nf.tot = NFILES_COMP;
 	}
-	proj_reset(0);
+	proj_reset(0);	/* acts as proj_free(proj) */
 	repo_nfilesUpdate(&nf);	/* update product level nfiles */
 	if (config_path) free(config_path);
 	return (0);
+err:	unlink("BitKeeper/etc/config");
+	unlink("BitKeeper/log/cmd_log");
+	unlink("BitKeeper/log/features");
+	if (m) mdbm_close(m);
+	if (flist) mdbm_close(flist);
+	sccs_unmkroot("."); /* reverse  sccs_mkroot */
+	proj_reset(0);	/* acts as proj_free(proj) */
+	unless (streq(package_path, "."))  {
+		chdir(here);
+		if (rmtree(package_path)) perror(package_path);
+	}
+	return (1);
 }
 
 private void
@@ -329,7 +302,7 @@ defaultFiles(int product)
 }
 
 private MDBM *
-addField(MDBM *flist, char *field)
+addField(MDBM *flist, char *field, int replace)
 {
 	char	*p;
 
@@ -343,29 +316,15 @@ addField(MDBM *flist, char *field)
 		return (flist);
 	}
 	*p++ = 0;
-	mdbm_store_str(flist, field, p, MDBM_REPLACE);
-	return (flist);
-}
-
-private void
-printField(FILE *out, MDBM *flist, char *field)
-{
-	char	*p, *val;
-
-	unless (flist) {
-use_default:	fputs(field, out);
-		return;
+	if (strchr(field, '[')) {
+		p[-1] = '=';
+		fprintf(stderr,
+		    "setup: filters not supported; \"%s\" ignored\n", field);
+		return (flist);
 	}
-
-	unless (p = strrchr(field, ':')) goto use_default;
-	*p = 0;
-	unless (val = mdbm_fetch_str(flist, field)) goto use_default;
-
-	/*
-	 * If we get here, user wants to override the default value
-	 */
-	fprintf(out, "%s: %s\n", field, val);
-	mdbm_delete_str(flist, field);
+	field = cfg_alias(field);
+	mdbm_store_str(flist, field, p, replace ? MDBM_REPLACE : MDBM_INSERT);
+	return (flist);
 }
 
 /*
@@ -375,14 +334,11 @@ private FILE	*
 config_template(void)
 {
 	FILE	*f;
-	char	*home = getenv("HOME");
+	char	*dotbk = getDotBk();
 	char	path[MAXPATH];
 
-	/* don't look for templates during regressions, that will hose us */
-	if (getenv("BK_REGRESSION")) return (0);
-
-	if (home) {
-		sprintf(path, "%s/.bk/config.template", home);
+	if (dotbk) {
+		sprintf(path, "%s/config.template", dotbk);
 		if (f = fopen(path, "rt")) return (f);
 	}
 	sprintf(path, "%s/BitKeeper/etc/config.template", globalroot());
@@ -392,16 +348,17 @@ config_template(void)
 	return (0);
 }
 
-private int
+private MDBM *
 mkconfig(FILE *out, MDBM *flist, int verbose)
 {
 	FILE	*in;
-	int	found = 0;
-	int	first = 1;
 	char	*p, *val;
-	kvpair	kv;
 	char	*key;
 	u32	bits = 0;
+	char	**keys = 0;
+	datum	k;
+	int	i, idx;
+	char	*def;
 	char	buf[1000], pattern[200];
 
 	/* get a lease, but don't fail */
@@ -409,53 +366,27 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 		bits = license_bklbits(key);
 		free(key);
 	}
+
 	if (in = config_template()) {
 		while (fnext(buf, in)) {
+			/*
+			 * XXX: parseConfigKV(buf, 1, *key, &p)
+			 * might do a better job of parsing
+			 */
 			if (buf[0] == '#') continue;
 			unless (p = strrchr(buf, ':')) continue;
 			chop(p);
 			for (*p++ = 0; *p && isspace(*p); p++);
 			unless (*p) continue;
-			/* command line stuff overrides */
-			if (flist && mdbm_fetch_str(flist, buf)) {
-				continue;
-			}
 			p = aprintf("%s=%s", buf, p);
-			flist = addField(flist, p);
+			flist = addField(flist, p, 0);
 			free(p);
 		}
 		fclose(in);
 	}
 
-	sprintf(buf, "%s/bkmsg.txt", bin);
-	unless (in = fopen(buf, "rt")) {
-		fprintf(stderr, "Unable to open %s\n", buf);
-		return (-1);
-	}
 	if (verbose) {
 		getMsgP("config_preamble", 0, "# ", 0, out);
-		fputs("\n", out);
-	}
-
-	/*
-	 * look for config template
-	 */
-	while (fgets(buf, sizeof(buf), in)) {
-		if (streq("#config_template\n", buf)) {
-			found = 1;
-			break;
-		}
-	}
-	unless (found) {
-		fclose(in);
-		return (-1);
-	}
-
-	val = flist ? mdbm_fetch_str(flist, "autofix") : 0;
-	/* force autofix to default on */
-	unless (val && *val) {
-		char fld[] =  "autofix=yes";
-		flist = addField(flist, fld);
 	}
 
 	val = flist ? mdbm_fetch_str(flist, "BAM") : 0;
@@ -464,89 +395,45 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 		char	fld[100];
 
 		sprintf(fld, "%s", (bits & LIC_BAM) ? "BAM=on" : "BAM=off");
-		flist = addField(flist, fld);
+		flist = addField(flist, fld, 0);
 	}
 
-	val = flist ? mdbm_fetch_str(flist, "checkout") : 0;
-	/* force checkout to default edit */
-	unless (val && *val) {
-		char fld[] =  "checkout=get";
-		flist = addField(flist, fld);
-	}
-
-	val = flist ? mdbm_fetch_str(flist, "clock_skew") : 0;
-	/* force checkout to default edit */
-	unless (val && *val) {
-		char fld[] =  "clock_skew=on";
-		flist = addField(flist, fld);
-	}
-
-	val = flist ? mdbm_fetch_str(flist, "compression") : 0;
-	/* force compression to default on */
-	unless (val && *val) {
-		char fld[] =  "compression=gzip";
-		flist = addField(flist, fld);
-	}
-
-	val = flist ? mdbm_fetch_str(flist, "partial_check") : 0;
-	/* force compression to default on */
-	unless (val && *val) {
-		char fld[] =  "partial_check=on";
-		flist = addField(flist, fld);
-	}
+	unless (flist) flist = mdbm_mem();
+	cfg_loadSetup(flist);
 
 	/*
 	 * Now print the help message for each config entry
 	 */
-	while (fgets(buf, sizeof(buf), in)) {
-		if (first && (buf[0] == '#')) continue;
-		first = 0;
-		if (streq("$\n", buf)) break;
+	EACH_KEY(flist) keys = addLine(keys, k.dptr);
+	sortLines(keys, stringcase_sort);
+	EACH(keys) {
+		char	*key = keys[i];
+		char	*val = mdbm_fetch_str(flist, key);
+		char	**bkargs = 0;
+		char	*comment = "";
 
-		/*
-		 * If we found a license somewhere just use that, it's
-		 * probably what they want.  If that is wrong they can
-		 * edit the config file later.
-		 *
-		 * Nota bene: we add some other config that starts w/ "lic"
-		 * and this is busted.
-		 */
-		if (bits && strneq(buf, "lic", 3)) continue;
-
-		chop(buf);
 		if (verbose) {
-			sprintf(pattern, "config_%s", buf);
-			getMsgP(pattern, 0, "# ", 0, out);
+			fputc('\n', out);
+			def = 0;
+			comment = "";
+			if ((idx = cfg_findVar(key)) >= 0) {
+				def = cfg_def(idx);
+			}
+			unless (def) {
+				def = "empty";
+				comment = "# ";
+			}
+			sprintf(pattern, "config_%s", key);
+			unless (getMsgP(pattern, def, "# ", 0, out)) {
+				bkargs = addLine(bkargs, key);
+				bkargs = addLine(bkargs, def);
+				getMsgv("config_undoc", bkargs, "# ", 0, out);
+				freeLines(bkargs, 0);
+				bkargs = 0;
+			}
 		}
-		if (flist && (val = mdbm_fetch_str(flist, buf))) {
-			fprintf(out, "%s: %s\n", buf, val);
-			mdbm_delete_str(flist, buf);
-		} else {
-			fprintf(out, "%s: \n", buf);
-		}
+		fprintf(out, "%s%s: %s\n", comment, key, val);
 	}
-	fclose(in);
-
-	unless (flist) return (0);
-
-	/*
-	 * Append user supplied field which have no overlap in template file
-	 */
-	for (kv = mdbm_first(flist); kv.key.dsize; kv = mdbm_next(flist)) {
-		fprintf(out, "%s: %s\n", kv.key.dptr, kv.val.dptr);
-	}
-	return (0);
-}
-
-private int
-licensebad(MDBM *m)
-{
-	hash	*req = hash_new(HASH_MEMHASH);
-	char	*err;
-	int	rc = !getlicense(m, req);
-
-	if (err = hash_fetchStr(req, "ERROR")) lease_printerr(err);
-	hash_free(req);
-
-	return (rc);
+	freeLines(keys, 0);
+	return (flist);
 }

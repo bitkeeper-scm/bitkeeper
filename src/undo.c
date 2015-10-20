@@ -21,7 +21,7 @@ typedef struct {
 	hash	*empty;		/* dirs that may need to be deleted */
 } options;
 
-private char	**getrev(options *opts, char *rev, int aflg);
+private char	**getrev(char *rev, int aflg);
 private int	clean_file(char **, options *opts);
 private	int	moveAndSave(options *opts, char **fileList);
 private int	move_file(options *opts, char ***checkfiles);
@@ -110,7 +110,7 @@ undo_main(int ac,  char **av)
 	}
 	opts->empty = hash_new(HASH_MEMHASH);
 	trigger_setQuiet(opts->quiet);
-	cmdlog_lock(CMD_WRLOCK|CMD_NESTED_WRLOCK);
+	cmdlog_lock(standalone ? CMD_WRLOCK : (CMD_WRLOCK|CMD_NESTED_WRLOCK));
 	if (undoLimit(0, &must_have)) limitwarning = 1;
 	save_log_markers();
 	// XXX - be nice to do this only if we actually are going to undo
@@ -119,7 +119,7 @@ undo_main(int ac,  char **av)
 	 * Get a list of <file>|<key> entries, one per delta,
 	 * so it may have multiple entries for the same file.
 	 */
-	unless (filesNrevs = getrev(opts, rev, aflg)) {
+	unless (filesNrevs = getrev(rev, aflg)) {
 		/* No revs we are done. */
 		freeLines(nav, free);
 		if (must_have) free(must_have);
@@ -658,13 +658,13 @@ check_patch(char *patch)
 }
 
 private char **
-getrev(options *opts, char *top_rev, int aflg)
+getrev(char *top_rev, int aflg)
 {
 	char	*cmd, *rev;
 	int	status;
 	char	**list = 0;
 	FILE	*f;
-	char	revline[MAXKEY];
+	char	*revline;
 
 	if (aflg) {
 		rev = aprintf("-r'%s..'", top_rev);
@@ -683,8 +683,7 @@ getrev(options *opts, char *top_rev, int aflg)
 	free(rev);
 	f = popen(cmd, "r");
 	free(cmd);
-	while (fnext(revline, f)) {
-		chomp(revline);
+	while (revline = fgetline(f)) {
 		list = addLine(list, strdup(revline));
 	}
 	status = pclose(f);

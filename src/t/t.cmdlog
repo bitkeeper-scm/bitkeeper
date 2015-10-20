@@ -55,7 +55,7 @@ echo $N Verify the pull gets logged in both cmd_log and repo_log ....$NL
 cd "$HERE"
 bk clone $Q project copy
 cd copy
-bk pull $Q || exit 1
+bk pull $Q || fail
 tail -1 BitKeeper/log/repo_log | grep -q ": pull" || {
 	echo pull was not logged in repo_log
 	tail -1 BitKeeper/log/repo_log

@@ -1,6 +1,6 @@
 #include "sccs.h"
 
-private	int	unrm(char *file, struct stat *sb, void *data);
+private	int	unrm(char *file, char type, void *data);
 
 private	char	**deletes = 0;
 
@@ -115,7 +115,7 @@ done:	freeLines(deletes, free);
 
 
 private int
-unrm(char *file, struct stat *sb, void *data)
+unrm(char *file, char type, void *data)
 {
 	char	*path = data, *drev = 0;
 	sccs	*s;

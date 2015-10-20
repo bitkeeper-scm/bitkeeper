@@ -29,13 +29,17 @@ HEX	[a-fA-F0-9]
 #include "tclInt.h"
 #include "Lcompile.h"
 #include "Lgrammar.h"
+#include "blowfish.h"
+#include "tomcrypt.h"
+#include "randseed.h"
 #include "tommath.h"
+extern u8 bkey[];
 
 private void	extract_re_delims(char c);
 private int	include_pop();
-private int	include_push(FILE *f, char *name);
-private FILE *	include_search(char *file, char **path, int cwdOnly);
-private FILE *	include_try(Tcl_Obj *fileObj, int *found);
+private int	include_push(Tcl_Channel chan, char *name);
+private Tcl_Channel include_search(char *file, char **path, int cwdOnly);
+private Tcl_Channel include_try(Tcl_Obj *fileObj, int *found);
 private void	inject(char *s);
 private void	interpol_lbrace();
 private void	interpol_pop();
@@ -50,7 +54,6 @@ private void	tally_newlines(char *s, int len, int tally);
 // Stack for tracking include() statements.
 #define INCLUDE_STACK_SZ	10
 typedef struct {
-	FILE	*file;
 	char	*name;
 	char	*dir;
 	int	line;
@@ -181,14 +184,14 @@ tally_newlines(char *s, int len, int tally)
 	}
 }
 
-private FILE *
+private Tcl_Channel
 include_try(Tcl_Obj *fileObj, int *found)
 {
-	int	new;
-	FILE	*f;
-	char	*file = Tcl_GetString(fileObj);
-	char	*path;
-	Tcl_Obj	*pathObj;
+	int		new;
+	Tcl_Channel	chan;
+	char		*file = Tcl_GetString(fileObj);
+	char		*path;
+	Tcl_Obj		*pathObj;
 
 	/*
 	 * See if the normalized path has been included before.  If the path
@@ -202,17 +205,19 @@ include_try(Tcl_Obj *fileObj, int *found)
 	} else {
 		pathObj = Tcl_ObjPrintf("%s/%s", L->dir, file);
 	}
+	Tcl_IncrRefCount(pathObj);
 
 	path = Tcl_GetString(pathObj);
 	Tcl_CreateHashEntry(include_table, path, &new);
 	if (new) {
-		f = fopen(path, "r");
-		*found = (f != NULL);
-		return (f);
+		chan = Tcl_FSOpenFileChannel(L->interp, pathObj, "r", 0666);
+		*found = (chan != NULL);
+		return (chan);
 	} else {
 		*found = 1;  // already included
 		return (NULL);
 	}
+	Tcl_DecrRefCount(pathObj);
 }
 
 /*
@@ -224,13 +229,13 @@ include_try(Tcl_Obj *fileObj, int *found)
  * For #include "file" (cwdOnly == 1) look only in the directory
  * where the script doing the #include resides.
  */
-private FILE *
+private Tcl_Channel
 include_search(char *file, char **path, int cwdOnly)
 {
-	int	found, len;
-	FILE	*f = NULL;
-	Tcl_Obj	*binObj = NULL;
-	Tcl_Obj *fileObj;
+	int		found, len;
+	Tcl_Channel	chan;
+	Tcl_Obj		*binObj = NULL;
+	Tcl_Obj		*fileObj;
 
 	unless (include_table) {
 		include_table = (Tcl_HashTable *)ckalloc(sizeof(Tcl_HashTable));
@@ -240,7 +245,7 @@ include_search(char *file, char **path, int cwdOnly)
 	fileObj = Tcl_NewStringObj(file, -1);
 	Tcl_IncrRefCount(fileObj);
 	if ((Tcl_FSGetPathType(fileObj) == TCL_PATH_ABSOLUTE) || cwdOnly) {
-		f = include_try(fileObj, &found);
+		chan = include_try(fileObj, &found);
 	} else {
 		/* Try $BIN/include */
 		binObj = TclGetObjNameOfExecutable();
@@ -251,20 +256,20 @@ include_search(char *file, char **path, int cwdOnly)
 			fileObj = TclPathPart(L->interp, binObj,
 			    TCL_PATH_DIRNAME);
 			Tcl_AppendPrintfToObj(fileObj, "/include/%s", file);
-			f = include_try(fileObj, &found);
+			chan = include_try(fileObj, &found);
 			if (found) goto done;
 		}
 		/* Try /usr/local/include/L */
 		Tcl_DecrRefCount(fileObj);
 		fileObj = Tcl_ObjPrintf("/usr/local/include/L/%s", file);
 		Tcl_IncrRefCount(fileObj);
-		f = include_try(fileObj, &found);
+		chan = include_try(fileObj, &found);
 		if (found) goto done;
 		/* Try /usr/include/L */
 		Tcl_DecrRefCount(fileObj);
 		fileObj = Tcl_ObjPrintf("/usr/include/L/%s", file);
 		Tcl_IncrRefCount(fileObj);
-		f = include_try(fileObj, &found);
+		chan = include_try(fileObj, &found);
 	}
  done:
 	unless (found) {
@@ -272,33 +277,67 @@ include_search(char *file, char **path, int cwdOnly)
 	}
 	if (path) *path = ckstrdup(Tcl_GetString(fileObj));
 	Tcl_DecrRefCount(fileObj);
-	return (f);
+	return (chan);
 }
 
 private int
-include_push(FILE *f, char *name)
+include_push(Tcl_Channel chan, char *name)
 {
 	YY_BUFFER_STATE buf;
+	Tcl_Obj		*objPtr;
+	char		*dec = NULL, *script;
+	unsigned long	declen;
+	int		len, ret;
+	blf_ctx		C;
 
+	/* Read the file into memory. */
+	objPtr = Tcl_NewObj();
+	Tcl_IncrRefCount(objPtr);
+	if (Tcl_ReadChars(chan, objPtr, -1, 0) < 0) {
+		Tcl_Close(L->interp, chan);
+		L_err("error reading include file %s", name);
+		return (0);
+	}
+	Tcl_Close(L->interp, chan);
+
+	/* If it is encrypted, decrypt it. */
+	script = Tcl_GetStringFromObj(objPtr, &len);
+	if (strncmp(script, "#%-\n", 4) == 0) {
+		dec = ckalloc(len);
+		declen = len;
+		if (base64_decode((unsigned char *)script, len,
+				  (unsigned char *)dec, &declen)) {
+			ckfree(dec);
+			L_err("error decrypting include file %s", name);
+			return (0);
+		}
+		blf_key(&C, bkey, 10);
+		blf_dec(&C, (u32 *)dec, declen/8);
+		script = dec;
+		len = declen;
+	}
+
+	/* Create a new flex buffer with the file contents. */
 	if (include_top >= INCLUDE_STACK_SZ) {
 		L_err("include file nesting too deep -- aborting");
 		while (include_pop()) ;
-		return (0);
+		ret = 0;
 	} else {
-		buf = yy_create_buffer(f, YY_BUF_SIZE);
 		++include_top;
-		include_stk[include_top].file = f;
 		include_stk[include_top].name = L->file;
 		include_stk[include_top].dir  = L->dir;
 		include_stk[include_top].line = L->line;
 		include_stk[include_top].buf = YY_CURRENT_BUFFER;
-		yy_switch_to_buffer(buf);
+		buf = yy_scan_bytes(script, len);
 		L->file = name;
 		L->dir  = L_dirname(L->file);
 		L->line = 1;
 		inject("#line 1\n");
-		return (1);
+		ret = 1;
 	}
+	Tcl_DecrRefCount(objPtr);
+	if (dec) ckfree(dec);
+	return (ret);
 }
 
 private int
@@ -310,7 +349,6 @@ include_pop()
 		L->file = include_stk[include_top].name;
 		L->dir  = include_stk[include_top].dir;
 		L->line = include_stk[include_top].line;
-		fclose(include_stk[include_top].file);
 		yy_delete_buffer(YY_CURRENT_BUFFER);
 		yy_switch_to_buffer(include_stk[include_top].buf);
 		--include_top;
@@ -582,12 +620,12 @@ canonical_num(char *num)
 				char	*beg  = strchr(yytext, '"') + 1;
 				char	*end  = strrchr(yytext, '"');
 				char	*name = ckstrndup(beg, end-beg);
-				FILE	*f;
+				Tcl_Channel chan;
 
-				f = include_search(name, NULL, 1);
+				chan = include_search(name, NULL, 1);
 
 				undo_yy_user_action();
-				if (f && !include_push(f, name)) {
+				if (chan && !include_push(chan, name)) {
 					/* Bail if includes nest too deeply. */
 					yyterminate();
 				}
@@ -597,13 +635,13 @@ canonical_num(char *num)
 				char	*end  = strrchr(yytext, '>');
 				char	*name = ckstrndup(beg, end-beg);
 				char	*path = NULL;
-				FILE	*f;
+				Tcl_Channel chan;
 
-				f = include_search(name, &path, 0);
+				chan = include_search(name, &path, 0);
 				ckfree(name);
 
 				undo_yy_user_action();
-				if (f && !include_push(f, path)) {
+				if (chan && !include_push(chan, path)) {
 					/* Bail if includes nest too deeply. */
 					yyterminate();
 				}

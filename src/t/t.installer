@@ -42,10 +42,11 @@ echo "licsign1: $BKL_P1" >> c
 echo "licsign2: $BKL_P2" >> c
 echo "licsign3: $BKL_P3" >> c
 DOTBK=`bk dotbk`
-mv c "$DOTBK"/config || exit 1
+mv c "$DOTBK"/config || fail
 
 if [ X$PLATFORM = X"WIN32" ]
 then #-------------------- WIN32 tests ---------------------
+
 echo $N Check registry is good and has been saved....................$NL
 # make sure we haven't hosed the registry up to this point
 . win32_common
@@ -55,7 +56,23 @@ win32_regDiff || {
 	exit 1
 }
 echo OK
+
+# signtool path is also listed in src/utils/Makefile; keep in sync.
+SIGNTOOL="/c/Program Files/Microsoft SDKs/Windows/v7.1/Bin/signtool.exe"
+if [ -x "$SIGNTOOL" ]
+then
+	echo $N Check that installer is signed ..............................$NL
+	"$SIGNTOOL" verify -pa "$BK_INSTALLER" >OUT 2>&1 || fail -f OUT
+elif [ `bk gethost` = "win7-vm.bitkeeper.com" ]
+then
+	echo $N Check that signtool is installed on release machine .........$NL
+	fail No v7.1 of signtool
+else
+	echo $N Skipping installer signed test as no signtool ...............$NL
 fi
+echo OK
+
+fi	# end of WIN32 tests
 
 echo $N Relative path installation, no config file...................$NL
 rm -f "$DOTBK"/accepted
@@ -232,7 +249,7 @@ cp accepted.academic.saved "$DOTBK"/accepted
 }
 # XXX: careful leaving this setting: in -u,
 # bk.sh _install tests for the var = 1
-bk _registry set $SHELLXKEY LocalDrive 100 || exit 1
+bk _registry set $SHELLXKEY LocalDrive 100 || fail
 # We need the new BK to come first in the path, so we mangle it by hand
 P=`bk _registry get "$SYSPATHKEY" Path`
 P="$HERE/DEAD BEEF;$P"
@@ -262,7 +279,7 @@ bk _registry get "$SYSPATHKEY" Path | grep "DEAD BEEF" >TEXT || {
 	tail -16 OUT
 	exit 1
 }
-KEY1=`bk _registry get "$SHELLXKEY" LocalDrive` || exit 1
+KEY1=`bk _registry get "$SHELLXKEY" LocalDrive` || fail
 
 if [ $KEY1 -ne 100 ]; then
 	echo failed
@@ -279,7 +296,7 @@ echo $N Make sure the installer accepts command line options.........$NL
 	cat OUT
 	exit 1
 }
-KEY1=`bk _registry get "$SHELLXKEY" LocalDrive` || exit 1
+KEY1=`bk _registry get "$SHELLXKEY" LocalDrive` || fail
 
 if [ $KEY1 -ne 1 ]; then
 	echo failed
@@ -288,10 +305,10 @@ if [ $KEY1 -ne 1 ]; then
 fi
 #CTRLPROV="HKEY_LOCAL_MACHINE\\Software\\SourceCodeControlProvider"
 #INSTPROV="HKEY_LOCAL_MACHINE\\Software\\SourceCodeControlProvider\\InstalledSCCProviders"
-#SCCKEY1=`bk _registry get "$BMKEY" SCCServerName` || exit 1
-#SCCKEY2=`bk _registry get "$BMKEY" SCCserverPath` || exit 1
-#PROVKEY1=`bk _registry get "$CTRLPROV" ProviderRegkey` || exit 1
-#PROVKEY2=`bk _registry get "$INSTPROV" BitKeeper` || exit 1
+#SCCKEY1=`bk _registry get "$BMKEY" SCCServerName` || fail
+#SCCKEY2=`bk _registry get "$BMKEY" SCCserverPath` || fail
+#PROVKEY1=`bk _registry get "$CTRLPROV" ProviderRegkey` || fail
+#PROVKEY2=`bk _registry get "$INSTPROV" BitKeeper` || fail
 #SCCPATH=`bk pwd -w "$HERE/DEAD2"`\\bkscc.dll
 
 # test "$SCCKEY1" = "BitKeeper" || {
@@ -319,7 +336,7 @@ echo OK
 
 echo $N Make sure -l will stomp previous setting.....................$NL
 OP=`bk _registry get "$SYSPATHKEY" Path`
-bk _registry set $SHELLXKEY LocalDrive 100 || exit 1
+bk _registry set $SHELLXKEY LocalDrive 100 || fail
 # Depends on $P from above, make the path same as it was
 # before the first -u test else the uninstall test fails
 bk _registry set "$SYSPATHKEY" Path expand_sz:"$P"
@@ -330,7 +347,7 @@ PATH="$P" ./bk-academic-licensed -u -l > OUT 2>&1 || {
 	cat OUT
 	exit 1
 }
-KEY1=`bk _registry get "$SHELLXKEY" LocalDrive` || exit 1
+KEY1=`bk _registry get "$SHELLXKEY" LocalDrive` || fail
 test $KEY1 -eq 1 || {
 	bk _registry set "$SYSPATHKEY" Path expand_sz:"$OP"
 	echo failed
@@ -410,7 +427,7 @@ echo OK
 
 echo $N Restoring registry...........................................$NL
 # we know we corrupt the registry, so put it back
-win32_regRestore || exit 1
+win32_regRestore || fail
 echo OK
 
 else #-------------------- UNIX tests ---------------------
@@ -450,23 +467,38 @@ test -d "$HERE/DEADBEEF" && {
 }
 echo OK
 
-echo $N Make sure uninstaller removes symlinks.......................$NL
+echo $N Make sure installer and bk links adds functioning symlinks ..$NL
 BIN="$HERE/DEADBEEF.1"
 ./bk-academic-licensed "$BIN" >OUT 2>&1
-test -f "$BIN/bk" || {
-	echo failed
-	echo installer failed
-	cat OUT
-	exit 1
-}
+test -f "$BIN/bk" || fail -f OUT bk file missing
+test -f "$BIN/prs" && fail -f OUT ATT SCCS still there
+"$BIN/bk" version -s > WANT || fail
 mkdir "$HERE/bin"
-"$BIN/bk" links "$HERE/bin" >OUT 2>&1 || {
-	echo failed
-	echo could not create symlinks
-	cat OUT
-	exit 1
-}
-export PATH="$HERE/bin:$PATH"
+"$BIN/bk" links "$HERE/bin" >OUT 2>&1 || fail -f OUT could not create symlinks
+# try out a symlink
+"$HERE/bin/bk" version -s > GOT || fail
+cmpfiles WANT GOT
+echo OK
+
+OLDBK=/build/bitkeeper-6.0
+test -d $OLDBK && {
+echo $N Make sure installer cleans up from old bk ...................$NL
+mkdir "$HERE/oldbin"
+"$OLDBK/bk" links "$HERE/oldbin" >OUT 2>&1 || fail -f OUT oldbk did not work
+test -h "$HERE/oldbin/prs" || fail no prs
+"$BIN/bk" links "$HERE/oldbin" >OUT 2>&1 || fail -f OUT newbk did not work
+# try out a symlink
+"$HERE/oldbin/bk" version -s > GOT || fail
+cmpfiles WANT GOT
+# See that other things not there
+test -h "$HERE/oldbin/prs" && fail still prs
+echo OK
+} # end of test only if bk-6.0 is lying around in /build
+
+echo $N Make sure uninstaller removes symlinks.......................$NL
+OLDPATH="$PATH"
+PATH="$HERE/bin:$PATH"
+export PATH
 "$BIN/bk" uninstall -f || {
 	echo failed
 	echo bk uninstall failed
@@ -479,6 +511,7 @@ test -h "$HERE/bin/bk" && {
 	echo ""
 	exit 1
 }
+PATH="$OLDPATH"
 echo OK
 
 echo $N Uninstaller in upgrade mode should not remove symlinks.......$NL
@@ -497,13 +530,17 @@ test -f "$BIN/bk" || {
 	cat OUT
 	exit 1
 }
-export PATH="$HERE/bin:$PATH"
+test -h "$HERE/bin/bk" || fail
+OLDPATH="$PATH"
+PATH="$HERE/bin:$PATH"
+export PATH
 "$BIN/bk" uninstall -u >OUT 2>&1 || {
 	echo failed
 	echo Uninstaller in upgrade mode failed
 	cat OUT
 	exit 1
 }
+PATH="$OLDPATH"
 times=2
 while [ -d "$BIN" ]; do
 	test $times -eq 0 && {
@@ -513,17 +550,13 @@ while [ -d "$BIN" ]; do
 	times=`expr $times - 1`
 	sleep 1
 done
-test -h "$HERE/bin/admin" || {
-	echo failed
-	echo Uninstaller in upgrade mode removed symlinks
-	exit 1
-}
+test -h "$HERE/bin/bk" || fail Uninstaller in upgrade mode removed symlinks
 echo OK
 fi
 
 #####################################################################
 # Careful!!!!
 #####################################################################
-cd "$HERE" || exit 1
+cd "$HERE" || fail
 chmod -R +w * >/dev/null 2>&1	# SCO's chmod barfs
 bk _rm -rf *

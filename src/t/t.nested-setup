@@ -188,7 +188,7 @@ touch foo
 bk new $Q foo
 bk commit $Q -f
 cd ..
-bk attach $Q -N s-expr || exit 1
+bk attach $Q -N s-expr || fail
 cd s-expr
 bk -cpr
 cd ../..
@@ -233,4 +233,26 @@ cd product
 bk setup -fc"$HERE/empty" ../sa3 || fail
 cd ../sa3
 test `bk repotype` = "traditional" || fail
+echo OK
+
+echo $N Check that bk setup works as long as sfiles not masked ......$NL
+SHALLOW=a/b
+DEEP=$SHALLOW/c/d
+DEEPER=$DEEP/e/f
+nested proj123
+cd gcc
+bk setup $DEEPER || fail
+# sfile in dir where we want component
+touch $SHALLOW/foo
+bk new $Q $SHALLOW/foo
+bk setup $SHALLOW 2>ERR && fail -f ERR file in new comp root
+grep -q "existing version control files" ERR || fail -f ERR wrong one
+# put the file under where new componet is going
+bk mv $SHALLOW/foo $DEEP/foo
+bk setup $SHALLOW 2>ERR && fail -f ERR file under new comp
+grep -q "existing version control files" ERR || fail -f ERR wrong two
+# remove blockage, and component can get created
+bk rm $DEEP/foo
+bk setup $SHALLOW || fail
+bk repocheck -q || fail repocheck failed
 echo OK

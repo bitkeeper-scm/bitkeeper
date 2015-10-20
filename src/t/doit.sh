@@ -168,9 +168,10 @@ unix_common_setup()
 	done
 	export BK_LIMITPATH
 
-	# Use bash on MacOS, their ksh is broken.
+	# on MacOS, ...
 	test "X`uname`" = XDarwin &&
-	    test -x /bin/bash && ln -s /bin/bash "$BK_LIMITPATH/bash"
+		# Use bash; their ksh is broken.
+		test -x /bin/bash && ln -s /bin/bash "$BK_LIMITPATH/bash"
 }
 
 bad_mount()
@@ -409,28 +410,28 @@ EOF
 	BKL_I3=+TXE6KhXDsgvFut4axrE5RMvAN5/D6S3XtVxskbE15EMuNVowtDovnbIg3CWvw==
 
 	# Valid PRO P --airgap --bkweb --bugdb --import --bam --eula=pro --nested --nested2
-	BKL_PRO=BKL654f56ea8368c808000012fdfffff42e572b43
-	BKL_P1=YgAAAo4AAAADgQAAAAGMJx5HdXopqrLsmdzZSH5fAuNKKLP/zwS7JXTMHLpWCamJ
-	BKL_P2=VxEkN6ZXYrtVt2NKXWIYgpc+jZJgEJwkf70tDydBxS9L3FOwjlK/hwXiT98cFwEw
-	BKL_P3=PbHMBlMbwua1/Q0fmDQTePAzz6HPU6FdlCd7kW4Hi8PDNwYlUsyHADJppwHX9g==
+	BKL_PRO=BKL655ad8ade368c808000012fdfffff42e572b43
+	BKL_P1=YgAAAo4AAAADgQAAAABmjwgkn1bhM3atjSaJI1x9fJM3BYmVghxiYPtJ25y0P6dh
+	BKL_P2=1LDvtP8H26zLmgCcBDZBXjdvnwR29STGef6BB1SR0Ok3ZK1sRglO6Mk0ic26x+Xl
+	BKL_P3=cNMne0IAuy1kG+PmZhQMli/aIgdUOVB4HKOllukgw3jmSGU7La8m3LWCsq8RZQ==
 
 	# Valid pro p --airgap --bkweb --bugdb --import --eula=pro
-	BKL_pro=BKL654f56ea9368c8080000121dfffff42e572b43
-	BKL_p1=YgAAAo4AAAADgQAAAAFaxiRwJArVHAwHHuwG3Wk4QNpc7uMzs8KEz7ncr/GiQ40A
-	BKL_p2=8HZU8AUYZGJdv4BCsAl7C8a31pPNNtuVJv8QE3dCSEOzkf73ubhcLtbhvL7a+kwD
-	BKL_p3=j4jptz59XiyDyTTFugFphYQ1Sxn/Xzc/59JS8VRL/aS5IcInFxlWpZ3Jr20YlA==
+	BKL_pro=BKL655ad8adf368c8080000121dfffff42e572b43
+	BKL_p1=YgAAAo4AAAADgQAAAACDIFPUb31q3owp7S4wEFcQI3+e6SnmODKRa2SaRLN1Mfim
+	BKL_p2=1jSZvV1nMen1JBq97bEOkdnyWPX5fjCUeVvSsXaQXefTmMkA9A77mMnhsOIPO7cV
+	BKL_p3=EI3QtoKJZ3bJmxaU8nrvpRYwtG9z3kBFxDQuVwGbMzXOWJ6PQIUTIVSqtq7m0w==
 
 	# Valid ENTERPRISE E --airgap --eula=enterprise
-	BKL_ENTERPRISE=BKL654f56eab368c8080000121cfffff42e572b44
-	BKL_E1=YgAAAo4AAAADgQAAAAFWwof7m3x8NU/VwtVTEin9Pk/MH/iCPFl7uOhU8BKmx2HA
-	BKL_E2=BQ6c6aP8SLX8ClHXBkpy14rAolvCeDCanLZfBJurTafaziAmYzKaDk1RqL4pLKap
-	BKL_E3=IE/8g6dP8H1LagYeT+8zv3O49vRDFh29a+O4R/514lDZu9I/8PJQZWsUj7RIiA==
+	BKL_ENTERPRISE=BKL655ad8ae0368c8080000121cfffff42e572b44
+	BKL_E1=YgAAAo4AAAADgQAAAABZgSlIu7g0bsHJnyFqxgU+1krgDa77iJ/uUke4McOftmy9
+	BKL_E2=XnNIeoceeKvRaMPXdf46TNBJ7OW7tRKmGt6VVX9J11HU7ZBZQUcNzC9hN69tL5WK
+	BKL_E3=t+YNlXKT6c/MKlqaPWGvVPc6pshB+12/WACL0vyKjufeYF0MkEpVSdkam7g5zQ==
 
 	# Valid MLA M --airgap --eula=mla
-	BKL_MLA=BKL654f56eac368c8080000121cfffff42e572b45
-	BKL_M1=YgAAAo4AAAADgQAAAAMIJNrnhhvMpVwv+QhynZaz6iYy3mZwutoIWOlzGkq84cRF
-	BKL_M2=3U0X5H+VCn11vm+5dP/Rg7l/i1V+7CvZhjSj+nUVfW7g+5+Z7RmzUGn0mcQlZcfx
-	BKL_M3=Vnb6okcmAA7kg2ERPP9O5vhFrAeHmO/9rjU4j54ABEjnthEdX967j+/6JJAKDA==
+	BKL_MLA=BKL655ad8ae1368c8080000121cfffff42e572b45
+	BKL_M1=YgAAAo4AAAADgQAAAAJwL+1aUTeYmWwjL5heYt16tF2sxTHrtT1Vkt+cwkl8Er1x
+	BKL_M2=2ofWxj/yCVdZlNtGC0T5qFDPcucwrZrVIPn3PhKX5d7XPQW8VgeLqsZssxPott6n
+	BKL_M3=ITO4+nJqckHk46l7ZrbUZj8qqGuDwfHbgCgToTmNnpxA4gaaCGgTOvY8AtVlLw==
 
 	# Expired license (airgap)
 	BKL_EX=BKL63b174b80393618000001210fffff42e572b43
@@ -459,11 +460,17 @@ EOF
 	BKL_33=iI8hVqWnHKXORC/7v3hxpnrlq9BXSjNHntPbyHF11VAC/dLOm/mUR3c7TaqvOA==
 
 	# Valid 7 7 --bkl=7 --airgap --bkweb --eula=pro
-	BKL_7=BKL754f56ead368c8080000121dfffff42e572b43
-	BKL_71=YgAAAo4AAAADgQAAAAJcno9ufMuF59GyY5+91hzmnQxYqlji0ehOuMACslXeIwx7
-	BKL_72=IPlO3VSah/st/F3q5iJ53dDpeHbGSoH1+IVmuR94QEI1UCiBNbXRUCcS7oO415C6
-	BKL_73=vISGvOvxXcoiwe8tDnZgsKaKYBhjPbqMLaOxPFdc+KLKbRo8iD4xOCri5TMvqQ==
+	BKL_7=BKL755ad8ae1368c8080000121dfffff42e572b43
+	BKL_71=YgAAAo4AAAADgQAAAAJXUqjoDwztu5c6HpXm9FqI8LJ1ri3KyuFxNShEbgaUnmPd
+	BKL_72=nmXb97MTLD2bAytIrr/x3cdnxZpiAkbzi6x/dY0bdxm58FHYJ8/FV+zWVXHa+x6k
+	BKL_73=MDP8XaieevLD7XQXKtIJO+7F3pMI+MoF8rVgVtp6+lIPfcEEPsAproFnSIwidg==
 
+	# License with 3 users max
+	# Valid Zmax3 Z --airgap --eula=basic --seats=3
+	BKL_Zmax3=BKL655ad8ae2368c8080000121cffffc42e572b420010
+	BKL_Z1=YgAAAo4AAAADgQAAAAAgBs7uWEnXmT8KEQD5967aB74Cju/DXX7w/u5au8BCnMAF
+	BKL_Z2=e3vZa0RrVedSmsDlGIp0pK9Ae+JAKQyYn5b0KvXJdsTxpLhe7/0lq/Y1NOQtYMLd
+	BKL_Z3=5xHRw5kkwgW7UQH/MB7zcXVBvMmeTzqrEP7yq4gD6Qhyu9byksYFoYPN8rR5GA==
 
 	test "$GUI_TEST" = YES || {
 		BK_NO_GUI_PROMPT=YES
@@ -488,10 +495,27 @@ EOF
 
 clean_up()
 {
+	# kill the uniq daemon since we're about to delete
+	# the $HERE subdirectory out from under it
+	test -d "$HERE/.bk/bk-keys-db" && {
+		DIR="$HERE/.bk/bk-keys-db"
+		DB=`ls "$DIR"`
+		bk uniq_server -q --dir="$DIR/$DB" --quit
+	}
+
 	# Win32 have no core file
 	if [ "$PLATFORM" = "UNIX" ]
 	then
 		bk _find "$BK_REGRESSION" -name '*core' > "$BK_REGRESSION/cores"
+		test -n "$_BK_MAC_CORES" && {
+			# Add in any new MacOS cores
+			find /cores -type f -name 'core*' 2>$DEV_NULL \
+				| bk _sort > "$BK_REGRESSION/cores.macos"
+			comm -13 \
+				"$_BK_MAC_CORES" \
+				"$BK_REGRESSION/cores.macos" \
+				>> "$BK_REGRESSION/cores"
+		}
 		if [ -s "$BK_REGRESSION/cores" ]
 		then	 # ls -l `cat "$BK_REGRESSION/cores"`
 			cat "$BK_REGRESSION/cores" | 
@@ -590,9 +614,17 @@ init_main_loop()
 	export BKL_REMOTEEX BKL_RE1 BKL_RE2 BKL_RE3
 	export BKL_3 BKL_31 BKL_32 BKL_33
 	export BKL_7 BKL_71 BKL_72 BKL_73
+	export BKL_Zmax3 BKL_Z1 BKL_Z2 BKL_Z3
 	export BK_GLOB_EQUAL
 	export BK_BIN
 	mkdir -p "$BK_CACHE"
+	test "X`uname`" = XDarwin && {
+		# Save a baseline of core files; then later look for new
+		_BK_MAC_CORES="$BK_CACHE/macos_cores"
+		export _BK_MAC_CORES
+		find /cores -type f -name 'core*' 2>$DEV_NULL | \
+		    bk _sort > "$_BK_MAC_CORES"
+	}
 }
 
 #
@@ -702,6 +734,9 @@ then	if [ "$GUI_TEST" = YES ]
 	fi
 fi
 
+TOTAL=`echo $list | wc -w`
+CUR=0
+
 setup_env
 
 if [ -f $START ]
@@ -731,6 +766,7 @@ FAILED=
 FAILCNT=0
 for i in $list
 do
+	CUR=`expr $CUR + 1`
 	test -f /build/die && {
 		echo Forced shutdown, dieing.
 		test $PLATFORM = WIN32 && bk bkd -R
@@ -740,9 +776,10 @@ do
 	test -n "${i##*~}" || continue
 	echo ''
 	LEN=`echo ${i#t.} | wc -c`
-	LEN=`expr 40 - $LEN`
+	PROGRESS=`printf "(%d/%d)" $CUR $TOTAL`
+	LEN=`expr 40 - $LEN - ${#PROGRESS} - 1`
 	printf "================="
-	printf " %s test " ${i#t.}
+	printf " %s test $PROGRESS " ${i#t.}
 	printf "%.${LEN}s\n" "================================================"
 
 	mkdir -p "$HERE" || exit 1
@@ -791,7 +828,8 @@ do
 	EXF="$TMPDIR/T.${USER} next"
 	test -f setup || bk get -q setup
 	test -f setup || exit 1
-	cat setup "$i" | eval "{ @TEST_SH@ $dashx; echo \$?>\"$EXF\"; } $OUTPIPE"
+	export BK_CURRENT_TEST="$i"
+	cat setup "$i" | eval "{ $VALGRIND @TEST_SH@ $dashx; echo \$?>\"$EXF\"; } $OUTPIPE"
 	EXIT="`cat \"$EXF\"`"
 	rm -f "$EXF"
 	BAD=0
@@ -848,6 +886,18 @@ I hope your testing experience was positive! :-)
 		test $KEEP_GOING = NO && {
 			test $PLATFORM = WIN32 && win32_regRestore
 			bk _find "$BK_REGRESSION" -name '*core'
+			test -n "$_BK_MAC_CORES" && {
+				# Add in any new MacOS cores
+				find /cores -type f -name 'core*' 2>$DEV_NULL \
+					| bk _sort > "$BK_CACHE/XXX.macos"
+				comm -13 "$_BK_MAC_CORES" "$BK_CACHE/XXX.macos"
+			}
+			# kill the uniq daemon
+			test -d "$HERE/.bk/bk-keys-db" && {
+				DIR="$HERE/.bk/bk-keys-db"
+				DB=`ls "$DIR"`
+				bk uniq_server -q --dir="$DIR/$DB" --quit
+			}
 			exit $EXIT
 		}
 		FAILED="$i $FAILED"

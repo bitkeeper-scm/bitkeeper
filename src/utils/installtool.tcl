@@ -6,10 +6,20 @@ catch {wm withdraw .}
 
 proc main {} \
 {
-	global	argv env options installer runtime fixedFont
+	global	argv runtime fixedFont
 
 	bk_init
 	initGlobals
+
+	set runtime(installed) 0
+	if {[set x [lsearch -exact $argv "--installed"]] > -1} {
+	    ## If they already have a valid license, we have
+	    ## nothing to show them.
+	    if {![eula_u eulaText]} { exit 0 }
+
+	    set runtime(installed) 1
+	    set argv [lreplace $argv $x $x]
+	}
 
 	if {[llength $argv] == 1} {
 		set runtime(destination) [lindex $argv 0]
@@ -182,7 +192,9 @@ proc findOldInstall {} \
 	global env
 	set oldinstall ""
 	set PATH $env(PATH)
-	set env(PATH) $env(_BK_ITOOL_OPATH)
+	if {[info exists env(_BK_ITOOL_OPATH)]} {
+		set env(PATH) $env(_BK_ITOOL_OPATH)
+	}
 	set pwd [pwd] ;# too bad tcl's cd doesn't have a "cd -" equivalent
 	cd /
 	if {![catch {exec bk bin} result]} {
@@ -309,7 +321,7 @@ proc wizInsertStep {step} \
 proc widgets {} \
 {
 	global tcl_platform
-	global paths
+	global	paths runtime
 
 	option add *Entry*BorderWidth            1 startupFile
 	option add *WizSeparator*stripe          #00008b startupFile
@@ -321,7 +333,10 @@ proc widgets {} \
 
 	. buttonconfigure finish -text "Done"
 
-	if {$tcl_platform(platform) eq "windows"} {
+	if {$runtime(installed)} {
+		set paths(new) {Welcome SummaryInstalled}
+		. add path new -steps $paths(new)
+	} elseif {$tcl_platform(platform) eq "windows"} {
 		set paths(new) {Welcome PickPlace InstallDLLs Install Summary}
 		. add path new -steps $paths(new)
 		set paths(existing) \
@@ -356,6 +371,7 @@ proc widgets {} \
 				]
 
 		    set p $tcl_platform(platform)
+		    if {$::runtime(installed)} { set p "installed" }
 		    set d [string map $map $::strings(Welcome.$p)]
 		    $this stepconfigure Welcome -description [unwrap $d]
 	    }
@@ -842,7 +858,16 @@ proc widgets {} \
 		$this buttonconfigure cancel -state disabled
                 $this configure -defaultbutton finish
 	}
-	    
+	#-----------------------------------------------------------------------
+	. add step SummaryInstalled \
+	    -title "Setup Complete" \
+	    -body {
+		    set desc [unwrap $::strings(SummaryInstalled)]
+		    $this stepconfigure SummaryInstalled -description $desc
+		    $this buttonconfigure cancel -state disabled
+		    $this configure -defaultbutton finish
+	    }
+
 	bind . <<WizCancel>> {set ::done 1}
 	bind . <<WizFinish>> {set ::done 0}
 
@@ -1273,6 +1298,15 @@ set strings(Welcome.unix) {
 	When you are ready to continue, press Next.
 }
 
+set strings(Welcome.installed) {
+	Thank you for installing BitKeeper.
+
+	We just need to get your license key installed, and you'll be
+	all set to go.
+
+	When you are ready to continue, press Next.
+}
+
 set strings(PickPlace.unix) {
 	The installation directory can be anywhere, 
 	/usr/libexec/bitkeeper is recommended.  
@@ -1353,4 +1387,14 @@ any questions. Don't forget to try the quick and informative
 demo at http://www.bitkeeper.com/Test.html
 
 The BitKeeper Team
+}
+
+set strings(SummaryInstalled) {
+    BitKeeper setup is complete.
+
+    Enjoy BitKeeper and send support@bitmover.com
+    any questions. Don't forget to try the quick and informative
+    demo at http://www.bitkeeper.com/Test.html
+
+    The BitKeeper Team
 }

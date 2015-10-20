@@ -6,6 +6,7 @@
 #include "bam.h"
 #include "nested.h"
 #include "progress.h"
+#include "cfg.h"
 
 private	struct {
 	u32	no_parent:1;		/* -p: do not set parent pointer */
@@ -747,12 +748,11 @@ clone(char **av, remote *r, char *local, char **envVar)
 		free(p);
 	}
 	if (proj_isComponent(0)) {
-		/* components use product's features, but a component
-		 * may add some features.
+		/*
+		 * components just use the product features,
+		 * but after unpacking we may add some features
+	 	 * below.
 		 */
-		if (rmt_features & FEAT_SORTKEY) {
-			features_set(0, FEAT_SORTKEY, 1);
-		}
 	} else if (opts->attach) {
 		/*
 		 * when doing an attach we need to use the same features
@@ -764,12 +764,14 @@ clone(char **av, remote *r, char *local, char **envVar)
 		    rmt_features, !proj_hasOldSCCS(0), opts->bkfile);
 		features_setAll(0, rmt_features);
 		features_set(0, FEAT_REMAP, !proj_hasOldSCCS(0));
-		if (opts->bkfile != -1) {
+		if (opts->bkfile == 1) {
 			features_set(0,
-			    FEAT_BKFILE|FEAT_BWEAVE|FEAT_SCANDIRS, opts->bkfile);
+			    (FEAT_FILEFORMAT|FEAT_SCANDIRS) & ~FEAT_BWEAVEv2, 1);
+		} else if (opts->bkfile == 0) {
+			features_set(0,
+			    FEAT_FILEFORMAT|FEAT_SCANDIRS, 0);
 		}
 	}
-
 	if (opts->parallel == 0) opts->parallel = parallel(".");
 	retrc = RET_ERROR;
 
@@ -832,6 +834,18 @@ clone(char **av, remote *r, char *local, char **envVar)
 		free(nlid);
 	}
 	proj_reset(0);
+
+	if (proj_isComponent(0)) {
+		/*
+		 * When we just populated a component, we might be adding some
+		 * new features to the collection.  We couldn't do this above
+		 * because the new component wasn't in a valid state yet.
+		 */
+		if (rmt_features & FEAT_SORTKEY) {
+			features_set(0, FEAT_SORTKEY, 1);
+		}
+	}
+
 	/*
 	 * Above we set the sfile format features for this repository
 	 * to what we want them to be:
@@ -846,11 +860,11 @@ clone(char **av, remote *r, char *local, char **envVar)
 	 * we need to do is to disable partial_check and the repository
 	 * will become the correct format.
 	 */
-	if ((features_bits(0) & (FEAT_BKFILE|FEAT_BWEAVE)) !=
-	    (rmt_features & (FEAT_BKFILE|FEAT_BWEAVE))) {
+	if ((features_bits(0) & FEAT_FILEFORMAT) !=
+	    (rmt_features & FEAT_FILEFORMAT)) {
 		p = features_fromBits(features_bits(0));
 		/* switch to (or from) binary */
-		T_PERF("switch sfile formats to %s", p);
+		T_PERF("switch sfile formats to %s", *p ? p : "ascii");
 		free(p);
 		bk_setConfig("partial_check", "0");
 		opts->no_lclone = 1;
@@ -940,7 +954,7 @@ clone_defaultAlias(nested *n)
 	 * if they want.
 	 */
 	proj_reset(n->proj);
-	defalias = proj_configval(n->proj, "clone_default");
+	defalias = cfg_str(n->proj, CFG_CLONE_DEFAULT);
 
 	t = defalias + strlen(defalias);
 	while (isspace(t[-1])) *--t = 0;
@@ -1501,10 +1515,7 @@ sccs_rmUncommitted(int quiet, char ***stripped)
 		 * This can be removed if stripdel were to hand unlinking
 		 * of dfile in all cases.
 		 */
-		s = strrchr(files[i], '/');
-		assert(s[1] == 's');
-		s[1] = 'd';
-		unlink(files[i]);
+		xfile_delete(files[i], 'd');
 	}
 	freeLines(files, free);
 
@@ -1766,7 +1777,13 @@ relink(char *a, char *b)
 			return (-1);
 		}
 		if (link(b, a)) {
-			perror(a);
+			if (errno == EPERM) {
+				fprintf(stderr,
+				    "%s: hardlinks to '%s' not permitted\n",
+				    prog, a);
+			} else {
+				perror(a);
+			}
 			unlink(a);
 			if (rename(buf, a)) {
 				fprintf(stderr, "Unable to restore %s\n", a);
@@ -1774,10 +1791,11 @@ relink(char *a, char *b)
 			}
 			return (-1);
 		}
-		if (sa.st_mtime < sb.st_mtime) {
+		if ((sa.st_mtime < sb.st_mtime) && proj_hasOldSCCS(0)) {
 			/*
 			 * Sfile timestamps can only go backwards. So
-			 * move b if a was older.
+			 * move b if a was older.  But don't bother in
+			 * a remapped tree, no one sees the time.
 			 */
 			ut.actime = ut.modtime = sa.st_mtime;
 			utime(b, &ut);
@@ -1878,7 +1896,7 @@ attach(void)
 		fprintf(stderr, "attach: %s is already a component\n", relpath);
 		return (RET_ERROR);
 	}
-	orig_features = features_bits(0) & (FEAT_BKFILE|FEAT_BWEAVE);
+	orig_features = features_bits(0) & FEAT_FILEFORMAT;
 	/* remove any existing parent */
 	system("bk parent -qr");
 
@@ -1985,7 +2003,7 @@ attach(void)
 		 * formats wrong.  If so we need to rewrite all files
 		 * to make sure they are in the correct format.
 		 */
-		new_features = features_bits(0) & (FEAT_BKFILE|FEAT_BWEAVE);
+		new_features = features_bits(0) & FEAT_FILEFORMAT;
 		if (orig_features != new_features) {
 			system("bk -?BK_NO_REPO_LOCK=YES -r admin -Zsame");
 		}

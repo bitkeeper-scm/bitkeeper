@@ -26,16 +26,9 @@ unbk_main(int ac, char **av)
 			errors |= 1;
 			continue;
 		}
-		if (BWEAVE(s)) {
-			/* need to convert to ascii weave first */
-			s->encoding_out = sccs_encoding(s, 0, 0);
-			s->encoding_out &= ~E_BWEAVE;
-			sccs_adminFlag(s, NEWCKSUM);
-			s = sccs_reopen(s);
-		}
 		s->bitkeeper = 0;
 		s->encoding_out = sccs_encoding(s, 0, 0);
-		s->encoding_out &= ~(E_BK|E_BWEAVE|E_COMP);
+		s->encoding_out &= ~(E_BK|E_BWEAVE2|E_BWEAVE3|E_COMP);
 		sccs_adminFlag(s, NEWCKSUM|ADMIN_RM1_0);
 		sccs_free(s);
 	}

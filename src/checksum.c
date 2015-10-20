@@ -3,6 +3,8 @@
 #include "logging.h"
 #include "progress.h"
 #include "graph.h"
+#include "range.h"
+#include "cfg.h"
 
 private	int	do_chksum(int fd, int off, int *sump);
 private	int	chksum_sccs(char **files, char *offset);
@@ -136,6 +138,8 @@ sccs_resum(sccs *s, ser_t d, int diags, int fix)
 	int	err = 0;
 	char	before[43];	/* 4000G/4000G/4000G will fit */
 	char	after[43];
+	ser_t	e;
+	sum_t	want;
 
 	T_SCCS("file=%s", s->gfile);
 	unless (d) d = sccs_top(s);
@@ -155,12 +159,25 @@ sccs_resum(sccs *s, ser_t d, int diags, int fix)
 		SUM_SET(s, d, 0);
 		return (0);
 	}
+	if (CSET(s) && (diags <= 1) && !fix) {
+		u32	sum;
+
+		e = sccs_getCksumDelta(s, d);
+		want = e ? SUM(s, e) : 0;
+		sum = rset_checksum(s, d, 0);
+		if (sum != want) {
+			fprintf(stderr,
+			    "Bad checksum %05u:%05u in %s|%s\n",
+			    want, sum, s->gfile, REV(s, d));
+			return (2);
+		}
+		return (0);
+	}
 	if (BAM(s) && !HAS_BAMHASH(s, d)) return (0);
 
 	if (S_ISLNK(MODE(s, d))) {
 		u8	*t;
 		sum_t	sum = 0;
-		ser_t	e;
 
 		/* don't complain about these, old BK binaries did this */
 		e = getSymlnkCksumDelta(s, d);
@@ -239,12 +256,26 @@ sccs_resum(sccs *s, ser_t d, int diags, int fix)
 	 * checksum which is correct by default.
 	 * NOTE: check using newly computed added and deleted (in *s)
 	 */
-	unless (s->added || s->deleted || HAS_CLUDES(s, d)) return (err);
-	if (SUM(s, d) == s->dsum) return (err);
+	e = sccs_getCksumDelta(s, d);
+	want = e ? SUM(s, e) : 0;
+	if (want == s->dsum) return (err);
 	unless (fix) {
+		if (d != e) {
+			fprintf(stderr,
+			    "Bad checksum %05u:%05u in baseline %s|%s\n",
+			    SUM(s, d), s->dsum, s->gfile,
+			    e ? REV(s, e) : "0");
+		} else {
+			fprintf(stderr,
+			    "Bad checksum %05u:%05u in %s|%s\n",
+			    SUM(s, d), s->dsum, s->gfile, REV(s, d));
+		}
+		return (2);
+	}
+	if (d != e) {
 		fprintf(stderr,
-		    "Bad checksum %05u:%05u in %s|%s\n",
-		    SUM(s, d), s->dsum, s->gfile, REV(s, d));
+		    "Not fixing bad checksum in baseline %s|%s\n",
+		    s->gfile, e ? REV(s, e) : "0");
 		return (2);
 	}
 	if (diags > 1) {
@@ -332,6 +363,27 @@ setOrder(sccs *s, ser_t d, void *token)
 	addArray(order, &d);
 	return (0);
 }
+/* save the graph symmetric difference */
+typedef	struct {
+	u8	*symdiff;
+	u32	bits;
+} sdrange;
+
+private	int
+xorDelta(sccs *s, ser_t d, void *token)
+{
+	sdrange *r = (sdrange *)token;
+
+	FLAGS(s, d) &= ~(D_RED|D_BLUE);
+	unless (r->symdiff[d]) r->bits++;
+	r->symdiff[d] |= 2;
+	return (0);
+}
+
+typedef	struct {
+	u32	index;		/* index into rkarray */
+	u16	sum;		/* sum of rootkey + " \n" */
+} rkinfo;
 
 typedef	struct {
 	ser_t	ser;		/* which cset serial */
@@ -348,13 +400,13 @@ typedef	struct {		/* data remembered per-rootkey */
 int
 cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 {
-	hash	*root2id = hash_new(HASH_MEMHASH);
-	int	rkid;		/* rkid = root2id{rkey} */
-	rkdata	*rkarray = 0;	/* rkarray[rkid] = per-rk-stuff */
+	hash	*root2id = hash_new(HASH_U32HASH, sizeof(u32), sizeof(rkinfo));
+	rkinfo	*rkid;		/* rkid->index = root2id{rkey} */
+	rkdata	*rkarray = 0;	/* rkarray[rkid->index] = per-rk-stuff */
 	Sse	snew;
 	u32	**csetlist = 0;	/* csetlist[d] = list{ rkid's touched by d } */
 	ser_t	start;
-	char	*rkey, *dkey;
+	u32	rkoff, dkoff;
 	u8	*e;
 	u16	sum;
 	int	bits, cnt, i, added, orderIndex;
@@ -365,10 +417,11 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	ser_t	d, prev;
 	int	found = 0;
 	int	n = 0;
+	int	verify = !cfg_bool(s->proj, CFG_NOGRAPHVERIFY);
 	u32	index;
 	ticker	*tick = 0;
 
-	T_SCCS("file=%s", s->gfile);
+	T_PERF("file=%s", s->gfile);
 
 	if (spinners) {
 		if (takepatch) {
@@ -383,20 +436,25 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	sccs_rdweaveInit(s);
 	cnt = 1;
 	growArray(&csetlist, TABLE(s));
-	while (d = cset_rdweavePair(s, 0, &rkey, &dkey)) {
-		if (hash_insertStrU32(root2id, rkey, cnt)) {
+	while (d = cset_rdweavePair(s, 0, &rkoff, &dkoff)) {
+		unless (dkoff) continue; /* last key */
+		if (rkid = hash_insert(root2id,
+		    &rkoff, sizeof(rkoff), 0, sizeof(*rkid))) {
 			addArray(&rkarray, 0);
-			cnt++;
+			rkid->index = cnt++;
+			sum = 0;
+			for (e = HEAP(s, rkoff); *e; e++) sum += *e;
+			sum += ' ' + '\n';
+			rkid->sum = sum;
+		} else {
+			rkid = (rkinfo *)root2id->vptr;
+			sum = rkid->sum;
 		}
-		rkid = *(u32 *)root2id->vptr;
-		sum = 0;
-		for (e = rkey; *e; e++) sum += *e;
-		for (e = dkey; *e; e++) sum += *e;
-		sum += ' ' + '\n';
+		for (e = HEAP(s, dkoff); *e; e++) sum += *e;
 		snew.ser = d;
 		snew.sum = sum;
-		addArray(&rkarray[rkid].sse, &snew);
-		addArray(&csetlist[d], &rkid);
+		addArray(&rkarray[rkid->index].sse, &snew);
+		addArray(&csetlist[d], &rkid->index);
 	}
 	hash_free(root2id);
 	if (sccs_rdweaveDone(s)) {
@@ -423,21 +481,29 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	EACH_INDEX(order, orderIndex) {
 		d = order[orderIndex];
 
-		/* serialmap[i] = slist[i] ^ symdiff[i] */
+		/* serialmap[i] = (slist[i] ^ symdiff[i]) & 1 */
 		bits = graph_symdiff(s, d, prev, 0, symdiff, 0, -1, 0);
 		start = (d > prev) ? d : prev;
+		/* closure[i] = (slist[i] ^ symdiff[i]) & 2 */
+		if (verify) {
+			sdrange	r = {symdiff, bits};
+
+			range_walkrevs( s, prev, 0, d, WR_BOTH, xorDelta, &r);
+			bits = r.bits;
+		}
 
 		if (tick) progress(tick, ++n);
 		added = 0;
 		for (i = start; bits; i--) {
 			unless (symdiff[i]) continue;
-			slist[i] ^= 1;	/* transition slist from prev to d */
+			/* transition slist from prev to d */
+			slist[i] ^= symdiff[i];
 			symdiff[i] = 0;
 			bits--;
 
 			/* get list of files changed by serial 'i' */
 			EACH_INDEX(csetlist[i], index) {
-				ser_t	ser;
+				ser_t	ser = 0;
 				int	j;
 				int	num;
 
@@ -454,6 +520,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 				while ((j > 1) && (item->sse[j-1].ser <= d)) {
 					--j;
 				}
+again:
 				for (; j <= num; ++j) {
 					ser = item->sse[j].ser;
 					if ((ser <= d) &&
@@ -464,6 +531,31 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 					}
 				}
 				item->last = j;
+				/* written for branch predictor */
+				unless (verify && (j <= num) && 
+				    ((slist[ser] ^ symdiff[ser]) != 3)) {
+					continue;
+				}
+				/* mismatch between graph and serialmap */
+				unless (found++) {
+					fprintf(stderr,
+					    "closure failure %s(%s)\n",
+					    s->gfile,
+					    REV(s, d));
+				}
+				if (fix) {
+					fprintf(stderr, "Unfixable.\n"
+					    "Write support@bitmover.com\n");
+					exit(1);
+				}
+				/* checksum is really just serial map */
+				unless ((slist[ser] ^ symdiff[ser]) & 1) {
+					/* false hit: undo and keep looking */
+					sum -= item->sse[j].sum;
+					if (ser == d) --added;
+					j++;
+					goto again;
+				}
 			}
 		}
 		prev = d;
@@ -509,5 +601,6 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	free(rkarray);
 	EACH(csetlist) free(csetlist[i]);
 	free(csetlist);
+	T_PERF("done");
 	return (found);
 }

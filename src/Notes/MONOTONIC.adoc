@@ -1,0 +1,133 @@
+Monotonically increasing files in BitKeeper
+===========================================
+Files in BitKeeper are currently TimeSafe which means if the repository
+rolls backwards, the files also roll backwards.  In almost all cases
+this is the correct behaviour, but there are exceptions.
+
+We'd like to have a file type which only increases for things like
+the config file (license keys, configuration changes) and tags.
+
+Implementation
+--------------
+X_MONOTONIC is a new xflag which can be added to an existing file.
+
+The effect is that committed deltas are not stripped on a clone -r, an
+undo, or a stripdel.   The non-stripped deltas have a new name, they are
+"dangling deltas".
+
+We allow edits on files with dangling deltas, but delta gets some
+additional features.  The behaviour we want is to maintain all the BK
+invariants but get the effect of modifying the rolled-foward delta.
+Here's how we do that.  We allow edit to run against a file with
+dangling deltas.  The p.file is as if there were no dangling deltas,
+which means that clean, diffs, et al just work.  The hard part is in
+sccs_delta().  There we have to get the diffs twice, once against the
+parent in the p.file to see if there is work to do and once against
+the non-dangling parent to get the real diffs.
+
+The only thing which is changes is delta.  The work is split between
+delta.c and slib.c; delta.c strips off the dangling deltas after the
+delta is complete.  slib.c makes sure we diff against the right baseline.
+sccs_hasDiffs() returns 0 if either parent results in no diffs.
+
+The reason it is done this way is that this way we end up with a
+file/ChangeSet relationship which makes sense.  If we added the new
+delta on top of the danglers, we'll commit it in a ChangeSet that is in
+the wrong place.  If we branched and merged, we're merging as a commit,
+also weird.
+
+Interface changes
+-----------------
+    bk admin -fMONOTONIC file
+    bk stripdel -d		strips deltas even on MONOTONIC files
+
+TESTING:
+    a) create a repo with a MONOTONIC file,
+       add some csets containing that file,
+       clone -r backwards.  Validate that
+       - the deltas were not stripped
+       - the deltas are marked (add a :DANGLING: dspec)
+    b) pull, make sure that the deltas are no longer marked.
+    c) add an uncommitted delta, clone that tree, make sure the pending
+       delta is removed.
+    d) create a pull which fills in part of the dangling deltas, make sure
+       that just the parts which are pulled have the marks removed.
+    e) edit/delta a dangling delta, make sure that all the danglers are 
+       stripped.
+    f) edit a file with dangling deltas, make sure that "clean" cleans
+    g) edit a file with dangling deltas, make sure that "diff" shows nothing
+    h) edit a file with dangling deltas, change the contents back to
+       what it was as of last non-dangler, "clean" should clean.
+    i) as above, run delta, only effect should be to stripdel the 
+       the deltas off.
+    j) make sure sfiles -c works
+
+XXX - make sure that we disallow diffs passed in on dangling deltas.
+
+XXX - if you have some dangling deltas, how do you find the delta which is
+not dangling to act as the basis for an edit?  I'm using the first I find
+in the table (XXX - make sure it is a 'D' type)
+
+XXX - what if we have a file that was always roll forwards and 100% of the
+deltas are dangling?  And we want to edit it?  That should fail.  [Later]
+No, it should succeed, the delta should fail.  Think checkout:edit.
+
+Fri Jul 11 07:53:41 PDT 2003
+----------------------------
+
+Suppose I start with a file like so
+
+        1.5 BITKEEPER,CSETMARKED,SCCS,SINGLE,MONOTONIC *DANGLING*
+        1.4 BITKEEPER,CSETMARKED,SCCS,SINGLE,MONOTONIC *DANGLING*
+        1.3 BITKEEPER,CSETMARKED,SCCS,SINGLE,MONOTONIC *DANGLING*
+        1.2 BITKEEPER,CSETMARKED,SCCS,SINGLE,MONOTONIC *DANGLING*
+        1.1 BITKEEPER,CSETMARKED,SCCS,SINGLE
+        
+What's that mean?  Delta 1.2 turned on the monotonic flag and then a pile
+of deltas were added, then in the repo where this file lives *all* of the
+deltas marked as monotonic are dangling, i.e., we've cloned back to a 
+point before they existed.  Fair enough.
+
+Now I delta the file.  The monotonic work is split between slib and delta.c,
+slib just does the normal delta and I get:
+
+        1.6 BITKEEPER,CSETMARKED,SCCS,SINGLE
+        1.5 BITKEEPER,CSETMARKED,SCCS,SINGLE,MONOTONIC
+        1.4 BITKEEPER,CSETMARKED,SCCS,SINGLE,MONOTONIC
+        1.3 BITKEEPER,CSETMARKED,SCCS,SINGLE,MONOTONIC
+        1.2 BITKEEPER,CSETMARKED,SCCS,SINGLE,MONOTONIC
+        1.1 BITKEEPER,CSETMARKED,SCCS,SINGLE
+        
+Two things to note: (a) 1.6's parent is 1.1, not 1.5, this hasn't been 
+stripped or renumbered yet; (b) 1.6 does not have the MONOTONIC flag
+(and therein lies the bug).
+
+1.6 points at 1.1 because all the others are danglers, that's the work that
+slib does.  Now delta is going to clean up the mess and remove the danglers
+and renumber and we get
+
+        1.2 BITKEEPER,CSETMARKED,SCCS,SINGLE
+        1.1 BITKEEPER,CSETMARKED,SCCS,SINGLE
+        
+I had to change code to get this to work - I was using prs to figure out 
+which deltas are dangling and the code for the :DANGLING: flag was like
+
+        if (MONOTONIC(s) && d->dangling) {
+                print it
+        }
+        
+and that code failed to print anything because the file was no longer 
+monotonic, the flag disappeared when we added that delta below 1.1, 
+1.1 didn't have the monotonic flag.  Arg.
+
+In addition delta.c had a logic bug, it was looking at
+
+        if (MONOTONIC(s) && sccs_top(s)->dangling) {
+
+*after* the new delta had been added and now neither were true.  Ooops.
+So I cached that info before the delta.
+
+All of this boils down to one question, if I'm adding a delta to what is
+a monotonic file but as in this case the flag disappears, should I add
+it to the file?
+

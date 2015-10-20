@@ -56,19 +56,19 @@ echo OK
 
 echo $N Clone a nested repository ...................................$NL
 cd "$HERE/project/src"
-bk clone $Q "$HERE/project" sub_proj || exit 1
+bk clone $Q "$HERE/project" sub_proj || fail
 if [ ! -d "$HERE/project/src/sub_proj" ]; then echo failed; exit 1; fi
 rm -rf "$HERE/project/src/sub_proj"
 echo OK
 
 echo $N Pull with no changes in child ...............................$NL
 cd "$HERE/project/src"
-bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR' || exit 1
+bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR' || fail
 echo delta two >> 'F!O#O$ B%A^R&RR(R)RR'
-bk delta $Q -y2 'F!O#O$ B%A^R&RR(R)RR' || exit 1
-bk commit $Q -y2 || exit 1
+bk delta $Q -y2 'F!O#O$ B%A^R&RR(R)RR' || fail
+bk commit $Q -y2 || fail
 cd "$HERE/copy"
-bk pull -u -q || exit 1
+bk pull -u -q || fail
 WANT=`bk changes -qd:MD5KEY: -r+ "$HERE/project"`
 GOT=`bk changes -qd:MD5KEY: -r+`
 test "$WANT" = "$GOT" || {
@@ -203,7 +203,7 @@ mv h.x h.h
 bk delta $Q -ydvorak h.h
 cd ..
 bk commit $Q -yzxcvbnm
-bk parent $Q "$HERE/copy" || exit 1
+bk parent $Q "$HERE/copy" || fail
 bk push $Q -a "$HERE/project" 2>ERR || {
 	echo push w/ autopull failed
 	exit 1
@@ -213,7 +213,7 @@ grep -q "The repository you are pushing to is 1 csets/tags" ERR || {
 	cat ERR
 	exit 1
 }
-bk parent $Q "$HERE/project" || exit 1
+bk parent $Q "$HERE/project" || fail
 bk findkey $KEY > foo
 if [ ! -s foo ]; then echo bad push; exit 1; fi
 cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
@@ -243,7 +243,7 @@ KEY2="`bk prs -hd:KEY: -r+ "$HERE/project/ChangeSet"`"
 echo OK
 
 echo $N Make sure we left the c.ChangeSet file there ................$NL
-bk _test -f RESYNC/SCCS/c.ChangeSet || exit 1
+bk _test -f RESYNC/SCCS/c.ChangeSet || fail
 echo OK
 
 echo $N Resolve by hand and push again ..............................$NL
@@ -278,8 +278,8 @@ bk changes -r+ -d'$each(:C:){(:C:)\n}' > GOT
 # If the paths put into urls were sanatized we wouldn't need this hack
 if [ X$PLATFORM = XWIN32 ]
 then
-	grep -q '^Merge ' GOT || exit 1
-	grep -q '^into  ' GOT || exit 1
+	grep -q '^Merge ' GOT || fail
+	grep -q '^into  ' GOT || fail
 else
 	(cd ../project && echo "Merge bk_regression.bk:`pwd`";
 	cd ../copy && echo "into  bk_regression.bk:`pwd`") > WANT
@@ -373,7 +373,7 @@ echo $N pull from read-only server should work fine .................$NL
 cd "$HERE/project"
 echo hi > test
 bk new $Q test
-bk commit $Q -ytt || exit 1
+bk commit $Q -ytt || fail
 oldmode=`bk _stat SCCS | awk -F\| '{ print substr($3, 3) }'`
 bk _chmod 555 SCCS
 cd "$HERE/copy2"
@@ -409,7 +409,9 @@ test "$sum" = "$newsum" && {
 	exit 1
 }
 bk _scat ChangeSet > s.ChangeSet
-sed "s/K$sum/K$newsum/" s.ChangeSet > s.NEW_ChangeSet
+# Only change the checksum in the 1.2 cset
+PROG="\$doit = / 1\\.2 / if /^\\001d/; s/K$sum/K$newsum/ if \$doit;"
+perl -pe "$PROG" s.ChangeSet | bk undos > s.NEW_ChangeSet
 cmp -s s.ChangeSet s.NEW_ChangeSet && {
 	echo sed "s/K$sum/K$newsum/" 
 	echo sed failed, the changeset files should be different

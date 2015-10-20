@@ -1,0 +1,174 @@
+echo $N Test that commit --import commits............................$NL
+cd "$HERE"
+commercial proj
+for i in 1 2 3 4 5
+do
+	echo $i > file$i
+	bk new $Q file$i
+	echo "file$i|+" >> LIST
+	echo $i > nonpending$i
+	echo nonpending$i >> LIST
+done
+echo hi > file2-sortfun
+bk new $Q file2-sortfun
+echo "file2-sortfun|+" >> LIST
+echo hi > nonpending2-sortfun
+bk new $Q nonpending2-sortfun
+echo "nonpending2-sortfun|+" >> LIST
+
+bk commit $Q --import --ci -yfiles -lLIST || fail
+bk changes -r+ -vnd:INDENT:\ :DPN:\ :REV: > GOT
+cat <<EOF > WANT
+ ChangeSet 1.2
+   file1 1.1
+   file1 1.0
+   file2 1.1
+   file2 1.0
+   file2-sortfun 1.1
+   file2-sortfun 1.0
+   file3 1.1
+   file3 1.0
+   file4 1.1
+   file4 1.0
+   file5 1.1
+   file5 1.0
+   nonpending1 1.1
+   nonpending1 1.0
+   nonpending2 1.1
+   nonpending2 1.0
+   nonpending2-sortfun 1.1
+   nonpending2-sortfun 1.0
+   nonpending3 1.1
+   nonpending3 1.0
+   nonpending4 1.1
+   nonpending4 1.0
+   nonpending5 1.1
+   nonpending5 1.0
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test that unchanged files get safely ignored.................$NL
+# First time, change one of two files
+bk -U edit $Q
+echo stuff >> file1
+cat <<EOF > LIST2
+file1
+file2
+EOF
+bk commit $Q --import --ci -ystuff -lLIST2 || fail
+# Second time, change nothing
+bk -U edit $Q
+bk commit --import --ci -ystuff -lLIST2 >OUT 2>&1 || fail
+grep -q "Nothing to commit" OUT || fail -f OUT
+bk changes -r+ -vnd:INDENT:\ :DPN:\ :REV: > GOT
+cat <<EOF > WANT
+ ChangeSet 1.3
+   file1 1.2
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test commit --import works for nested........................$NL
+cd "$HERE"
+nested product
+for c in gcc gdb .
+do
+	for i in 1 2 3
+	do
+		echo $c$i > $c/file$i
+		bk new $Q $c/file$i
+	done
+done
+bk commit $Q --import -yfiles || fail
+bk changes -r+ -vnd:INDENT:\ :DPN:\ :REV: > GOT
+cat <<EOF > WANT
+ ChangeSet 1.3
+   file1 1.1
+   file1 1.0
+   file2 1.1
+   file2 1.0
+   file3 1.1
+   file3 1.0
+   gcc/ChangeSet 1.2
+     gcc/file1 1.1
+     gcc/file1 1.0
+     gcc/file2 1.1
+     gcc/file2 1.0
+     gcc/file3 1.1
+     gcc/file3 1.0
+   gdb/ChangeSet 1.2
+     gdb/file1 1.1
+     gdb/file1 1.0
+     gdb/file2 1.1
+     gdb/file2 1.0
+     gdb/file3 1.1
+     gdb/file3 1.0
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Add a test with half checked-in half pending and --ci........$NL
+cd "$HERE"
+cd product
+for c in gcc gdb .
+do
+	for i in 1 2 3 4 5
+	do
+		echo $c$i > $c/pending$i
+		bk new $Q $c/pending$i
+		echo $c$i > $c/modified$i
+		bk new $Q $c/modified$i
+	done
+done
+bk commit $Q -yadd_files || fail
+for c in gcc gdb .
+do
+	for i in 1 2 3 4 5
+	do
+		bk edit $Q $c/pending$i
+		echo $c$i line 2 > $c/pending$i
+		bk ci $Q -yline2 $c/pending$i
+		bk edit $Q $c/modified$i
+		echo $c$i line 2 > $c/modified$i
+	done
+done
+bk commit --import --ci -ycommit $Q || fail
+bk changes -r+ -vnd:INDENT:\ :DPN:\ :REV: > GOT
+cat <<EOF > WANT
+ ChangeSet 1.5
+   modified1 1.2
+   modified2 1.2
+   modified3 1.2
+   modified4 1.2
+   modified5 1.2
+   pending1 1.2
+   pending2 1.2
+   pending3 1.2
+   pending4 1.2
+   pending5 1.2
+   gcc/ChangeSet 1.4
+     gcc/modified1 1.2
+     gcc/modified2 1.2
+     gcc/modified3 1.2
+     gcc/modified4 1.2
+     gcc/modified5 1.2
+     gcc/pending1 1.2
+     gcc/pending2 1.2
+     gcc/pending3 1.2
+     gcc/pending4 1.2
+     gcc/pending5 1.2
+   gdb/ChangeSet 1.4
+     gdb/modified1 1.2
+     gdb/modified2 1.2
+     gdb/modified3 1.2
+     gdb/modified4 1.2
+     gdb/modified5 1.2
+     gdb/pending1 1.2
+     gdb/pending2 1.2
+     gdb/pending3 1.2
+     gdb/pending4 1.2
+     gdb/pending5 1.2
+EOF
+cmpfiles WANT GOT
+echo OK

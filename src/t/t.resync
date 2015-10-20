@@ -407,8 +407,8 @@ rm -rf "$HERE/copy"
 tar xmf chkpoint.tar
 bk clean "$HERE/copy/src"
 cd "$HERE/copy/src"
-bk pull $Q -R "$HERE/project" || exit 1
-bk resolve $L $Q $L || exit 1
+bk pull $Q -R "$HERE/project" || fail
+bk resolve $L $Q $L || fail
 KDST=`bk prs -r+ -hnd:MD5KEY: a.c`
 test $KSRC = $KDST || {
      echo failed to restore pre-moved delta
@@ -466,7 +466,7 @@ cp "$BIN2" bdata
 bk ci $Q -y bdata
 bk commit $S --tag=binary2 -ybinary2
 cd  "$HERE/copy/src"
-bk pull $Q -R "$HERE/project" || exit 1
+bk pull $Q -R "$HERE/project" || fail
 bk resolve $L $Q
 test -d RESYNC && {
 	echo failed to finish resolve

@@ -13,17 +13,17 @@ echo $N Setup .......................................................$NL
 cd "$HERE"
 commercial standalone1
 echo file1 >file1
-bk new -q -b file1 || exit 1
-bk commit -q -y'add file1' || exit 2
+bk new -q -b file1 || fail
+bk commit -q -y'add file1' || fail
 cd "$HERE"
 commercial standalone2
 cd "$HERE"
 nested nested1
-bk attach --force -q "$HERE/standalone1" component1 || exit 3
+bk attach --force -q "$HERE/standalone1" component1 || fail
 cd "$HERE"
 nested nested2
 cd "$HERE"
-bk bkd -q -aPORT -ikill || exit 4
+bk bkd -q -aPORT -ikill || fail
 P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
 echo OK
@@ -44,7 +44,7 @@ echo OK
 
 echo $N Test detaching a stand-alone repo error, local dest .........$NL
 cd "$HERE/nested1"
-bk clone -q ../standalone1 || exit 1
+bk clone -q ../standalone1 || fail
 bk detach standalone1 bad 2>GOT && {
 	echo should have failed
 	cat GOT
@@ -101,9 +101,9 @@ bk detach -q component1 ../detached1 2>GOT 1>&2 || {
 	exit 1
 }
 # Check that component1 is still in the product.
-bk comps | grep -q component1 || exit 1
-cd component1 || exit 1
-bk cat file1 >GOT || exit 1
+bk comps | grep -q component1 || fail
+cd component1 || fail
+bk cat file1 >GOT || fail
 cat <<EOF >WANT
 file1
 EOF
@@ -118,7 +118,7 @@ test -f BitKeeper/log/COMPONENT && {
 	echo COMPONENT file not removed by detach
 	exit 1
 }
-bk cat file1 >GOT || exit 1
+bk cat file1 >GOT || fail
 cat <<EOF >WANT
 file1
 EOF
@@ -161,7 +161,7 @@ bk clone -q detached1 detached1-clone || {
 	exit 1
 }
 cd detached1-clone
-bk cat file1 >GOT || exit 1
+bk cat file1 >GOT || fail
 cat <<EOF >WANT
 file1
 EOF
@@ -173,9 +173,9 @@ echo $N Check re-attaching a detached repo ..........................$NL
 # You wouldn't necessarily do this normally in practice, but it
 # helps check that a detached repo isn't totally messed up.
 cd "$HERE/nested1"
-bk attach --force -q ../detached1 reattached1 || exit 1
-bk detach -q reattached1 ../detached1b || exit 1
-bk attach --force -q ../detached1b reattached2 || exit 1
+bk attach --force -q ../detached1 reattached1 || fail
+bk detach -q reattached1 ../detached1b || fail
+bk attach --force -q ../detached1b reattached2 || fail
 echo OK
 
 echo $N Check clone -r of detached repo .............................$NL
@@ -194,19 +194,19 @@ bk detach -q "$HERE/nested1/component1" 2>GOT 1>&2 || {
 	exit 1
 }
 cd "$HERE/nested1"
-bk comps | grep -q component1 || exit 1
-cd component1 || exit 1
-bk cat file1 >GOT || exit 1
+bk comps | grep -q component1 || fail
+cd component1 || fail
+bk cat file1 >GOT || fail
 cat <<EOF >WANT
 file1
 EOF
 cmpfiles GOT WANT
-cd "$HERE/component1" || exit 1
+cd "$HERE/component1" || fail
 test -f BitKeeper/log/COMPONENT && {
 	echo COMPONENT file not removed by detach
 	exit 1
 }
-bk cat file1 >GOT || exit 1
+bk cat file1 >GOT || fail
 cat <<EOF >WANT
 file1
 EOF
@@ -222,19 +222,19 @@ bk detach -q "$HERE/nested1/component1" detached2 2>GOT 1>&2 || {
 	exit 1
 }
 cd "$HERE/nested1"
-bk comps | grep -q component1 || exit 1
-cd component1 || exit 1
-bk cat file1 >GOT || exit 1
+bk comps | grep -q component1 || fail
+cd component1 || fail
+bk cat file1 >GOT || fail
 cat <<EOF >WANT
 file1
 EOF
 cmpfiles GOT WANT
-cd "$HERE/detached2" || exit 1
+cd "$HERE/detached2" || fail
 test -f BitKeeper/log/COMPONENT && {
 	echo COMPONENT file not removed by detach
 	exit 1
 }
-bk cat file1 >GOT || exit 1
+bk cat file1 >GOT || fail
 cat <<EOF >WANT
 file1
 EOF
@@ -250,19 +250,19 @@ bk detach -q "$HERE/nested1/component1" "$HERE/detached3" 2>GOT 1>&2 || {
 	exit 1
 }
 cd "$HERE/nested1"
-bk comps | grep -q component1 || exit 1
-cd component1 || exit 1
-bk cat file1 >GOT || exit 1
+bk comps | grep -q component1 || fail
+cd component1 || fail
+bk cat file1 >GOT || fail
 cat <<EOF >WANT
 file1
 EOF
 cmpfiles GOT WANT
-cd "$HERE/detached3" || exit 1
+cd "$HERE/detached3" || fail
 test -f BitKeeper/log/COMPONENT && {
 	echo COMPONENT file not removed by detach
 	exit 1
 }
-bk cat file1 >GOT || exit 1
+bk cat file1 >GOT || fail
 cat <<EOF >WANT
 file1
 EOF
@@ -278,14 +278,14 @@ bk detach -q component1 bk://localhost:$P/detached4 2>GOT 1>&2 || {
 	exit 1
 }
 cd "$HERE/nested1"
-bk comps | grep -q component1 || exit 1
-cd component1 || exit 1
-bk cat file1 >GOT || exit 1
+bk comps | grep -q component1 || fail
+cd component1 || fail
+bk cat file1 >GOT || fail
 cat <<EOF >WANT
 file1
 EOF
 cmpfiles GOT WANT
-cd "$HERE/detached4" || exit 1
+cd "$HERE/detached4" || fail
 test -f BitKeeper/log/COMPONENT && {
 	echo COMPONENT file not removed by detach
 	exit 1
@@ -305,8 +305,8 @@ bk detach -q -r1.1 component1 ../standalone1-1.1 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk comps | grep -q component1 || exit 1
-cd "$HERE/standalone1-1.1" || exit 1
+bk comps | grep -q component1 || fail
+cd "$HERE/standalone1-1.1" || fail
 test "`bk log -d:REV: -r+ ChangeSet`" = "1.1" || {
 	echo bad rev
 	exit 1

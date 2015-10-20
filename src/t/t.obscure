@@ -60,7 +60,7 @@ echo OK
 
 echo $N Obscure tree, check contents ................................$NL
 test -f foo || bk get $Q foo
-bk obscure --I-know-this-destroys-my-tree > OUT 2>&1 || exit 1
+bk obscure --I-know-this-destroys-my-tree > OUT 2>&1 || fail
 test 'This is revision 1.1' = "`bk prs -hr1.1 -nd:C: foo`" && {
 	echo failed to obscure comments
 	cat OUT
@@ -130,7 +130,7 @@ bk grep -qR lic baz || {
 }
 bk _scat baz > ORIG
 WANT=`wc -c < ORIG`
-BK_FORCE=1 bk admin $Q -Olicense baz || exit 1
+BK_FORCE=1 bk admin $Q -Olicense baz || fail
 bk grep -qR lic baz && {
 	echo expected output to be obscured
 	exit 1
@@ -143,17 +143,17 @@ test $WANT -eq $GOT || {
 	exit 1
 }
 bk get $Q baz
-grep -q "description: BitKeeper Test repository" baz || exit 1
+grep -q "description: BitKeeper Test repository" baz || fail
 bk diff -a ORIG NEW > DIFF
-test `wc -l < DIFF` -eq 10 || exit 1
-test `grep "^< lic" DIFF | wc -l` -eq 4 || exit 1
-test `grep "^> #" DIFF | wc -l` -eq 4 || exit 1
+test `wc -l < DIFF` -eq 10 || fail
+test `grep "^< lic" DIFF | wc -l` -eq 4 || fail
+test `grep "^> #" DIFF | wc -l` -eq 4 || fail
 echo OK
 
 echo $N Obscure a license for a user that is buried in history ......$NL
 cd "$HERE/project"
 bk _rm baz ORIG NEW SCCS/s.baz
-bk cp BitKeeper/etc/config baz > OUT 2> ERR || exit 1
+bk cp BitKeeper/etc/config baz > OUT 2> ERR || fail
 bk edit $Q baz
 # stick in a comment line and a user on the description and a user
 bk cat BitKeeper/etc/config \
@@ -169,7 +169,7 @@ bk grep -qR '^\[some-user\]license:' baz || {
 }
 bk _scat baz > ORIG
 WANT=`wc -c < ORIG`
-BK_FORCE=1 bk admin $Q -Olicense baz || exit 1
+BK_FORCE=1 bk admin $Q -Olicense baz || fail
 bk grep -qR '^\[some-user\]license:' baz && {
 	echo expected output to be obscured
 	exit 1
@@ -183,7 +183,7 @@ test $WANT -eq $GOT || {
 }
 bk get $Q baz
 bk diff -a ORIG NEW > DIFF
-test `wc -l < DIFF` -eq 16 || exit 1
-test `grep "^< lic" DIFF | wc -l` -eq 4 || exit 1
-test `grep "^> #" DIFF | wc -l` -eq 5 || exit 1
+test `wc -l < DIFF` -eq 16 || fail
+test `grep "^< lic" DIFF | wc -l` -eq 4 || fail
+test `grep "^> #" DIFF | wc -l` -eq 5 || fail
 echo OK

@@ -55,56 +55,56 @@ echo OK
 
 echo -------------- crypto tests
 echo $N New and old version should generate the same signature ......$NL
-$OLDBK/bk crypto -s $OLDBK/my.sec < "$BIN2" > sig1 || exit 1
-bk crypto -s $OLDBK/my.sec < "$BIN2" > sig2 || exit 1
+$OLDBK/bk crypto -s $OLDBK/my.sec < "$BIN2" > sig1 || fail
+bk crypto -s $OLDBK/my.sec < "$BIN2" > sig2 || fail
 echo OK
 
 echo $N New and old versions should validate signature ..............$NL
-$OLDBK/bk crypto -v $OLDBK/my.pub sig1 < "$BIN2" || exit 1
-bk crypto -v $OLDBK/my.pub sig1 < "$BIN2" || exit 1
-$OLDBK/bk crypto -v $OLDBK/my.pub sig2 < $BIN2 || exit 1
-bk crypto -v $OLDBK/my.pub sig2 < "$BIN2" || exit 1
+$OLDBK/bk crypto -v $OLDBK/my.pub sig1 < "$BIN2" || fail
+bk crypto -v $OLDBK/my.pub sig1 < "$BIN2" || fail
+$OLDBK/bk crypto -v $OLDBK/my.pub sig2 < $BIN2 || fail
+bk crypto -v $OLDBK/my.pub sig2 < "$BIN2" || fail
 echo OK
 
 echo $N Old version encrypts and new version decrypts ...............$NL
-$OLDBK/bk crypto -e $OLDBK/my.pub < "$BIN2" > enc || exit 1
-bk crypto -d $OLDBK/my.sec < enc > out || exit 1
-cmp -s "$BIN2" out || exit 1
+$OLDBK/bk crypto -e $OLDBK/my.pub < "$BIN2" > enc || fail
+bk crypto -d $OLDBK/my.sec < enc > out || fail
+cmp -s "$BIN2" out || fail
 rm -f enc out
 echo OK
 
 echo $N New version encrypts and old version decrypts ...............$NL
-bk crypto -e $OLDBK/my.pub < "$BIN2" > enc || exit 1
-$OLDBK/bk crypto -d $OLDBK/my.sec < enc > out || exit 1
-cmp -s "$BIN2" out || exit 1
+bk crypto -e $OLDBK/my.pub < "$BIN2" > enc || fail
+$OLDBK/bk crypto -d $OLDBK/my.sec < enc > out || fail
+cmp -s "$BIN2" out || fail
 rm -f enc out
 echo OK
 
 KEY=64338d0365e3c7da
 echo $N New and old versions should symetric encrypt to same data ...$NL
-$OLDBK/bk crypto -E $KEY < "$BIN2" > enc1 || exit 1
-bk crypto -E $KEY < "$BIN2" > enc2 || exit 1
-cmp -s enc1 enc2 || exit 1
+$OLDBK/bk crypto -E $KEY < "$BIN2" > enc1 || fail
+bk crypto -E $KEY < "$BIN2" > enc2 || fail
+cmp -s enc1 enc2 || fail
 rm -f enc2
 echo OK
 
 echo $N Both versions should be able to decrypt data ................$NL
-$OLDBK/bk crypto -D $KEY < enc1 > out || exit 1
-cmp -s "$BIN2" out || exit 1
-bk crypto -D $KEY < enc1 > out || exit 1
-cmp -s "$BIN2" out || exit 1
+$OLDBK/bk crypto -D $KEY < enc1 > out || fail
+cmp -s "$BIN2" out || fail
+bk crypto -D $KEY < enc1 > out || fail
+cmp -s "$BIN2" out || fail
 rm -f enc1 out
 echo OK
 
 echo $N Check hashing with new and old versions .....................$NL
 $OLDBK/bk crypto -h - < "$BIN2" > hash1
-bk crypto -h - < "$BIN2" > hash2 || exit 1
+bk crypto -h - < "$BIN2" > hash2 || fail
 cmpfiles hash1 hash2
 echo OK
 
 echo $N Check hmacs with new and old versions .......................$NL
 $OLDBK/bk crypto -h - key < "$BIN2" > hash1
-bk crypto -h - key < "$BIN2" > hash2 || exit 1
+bk crypto -h - key < "$BIN2" > hash2 || fail
 cmpfiles hash1 hash2
 echo OK
 
@@ -262,6 +262,18 @@ _BK_NO_ATTR=1 BK_DATE_TIME_ZONE=$DAT $OLDBK/bk commit $Q -yfoo
 cd ../newcopy
 echo b > bar
 BK_DATE_TIME_ZONE=$DAT BK_RANDOM=1234567890abcdef $OLDBK/bk new $Q bar
+
+# the pre-7.0 code had a bug where the timestamp it attached to each
+# key in bk-keys was the delta timestamp. When BK_DATE_TIME_ZONE was
+# used then that date can be way in the past. In bk-6.x the file is
+# pruned at load time so if you write a key in the past it will never
+# be seen by a followup process.
+# We 'fix' this by recreating the parallel key creation record but
+# use a current timestamp so it won't get pruned.
+T=`bk prs -r+ -hnd:TIME_T: ../nest/ChangeSet`
+bk prs -hnd":SHORTKEY: $T 1234567890abcdef" ../newrepo/ChangeSet \
+   >> "$BK_DOTBK"/bk-keys/`bk gethost -r`
+
 _BK_NO_ATTR=1 BK_DATE_TIME_ZONE=$DAT $OLDBK/bk commit $Q -ybar
 _BK_NO_ATTR=1 BK_DATE_TIME_ZONE=$DAT $OLDBK/bk pull $Q
 cd ..
@@ -329,23 +341,15 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo -------------- ascii cset files with holes in the serials
-echo $N Compute a repo with a hole in the serials ...................$NL
-cd newcopy
-$OLDBK/bk undo $Q -sfa1.1.1.1
-bk changes -vr+ -nd':GFILE:|:I:' > GOT
-cat <<EOF > WANT
-ChangeSet|1.2
-foo|1.1
-foo|1.0
-EOF
-cmpfiles WANT GOT
-echo OK
+# echo -------------- ascii cset files with holes in the serials
+# echo $N Compute a repo with a hole in the serials ...................$NL
+# XXX: with compat-6.0, we can no longer use OLDBK to make holes.
+# We need to rely on compat-5.3 for that.
 
 echo -------------- compat '<->' BK testing with clone, push, pull
 echo $N Set up bkfile/bweave format repo called bkfile ..............$NL
 cd "$HERE"
-bk clone $Q --upgrade-repo bk://localhost:$OLDP/newrepo bkfile || fail
+$OLDBK/bk clone $Q --upgrade bk://localhost:$OLDP/newrepo bkfile || fail
 bk clone $Q --compat bkfile bkfile--compat || fail
 $OLDBK/bk --cd=bkfile--compat repocheck $Q || fail
 echo OK
@@ -493,17 +497,18 @@ nested clone-base
 touch gcc/foo
 bk new $Q gcc/foo
 bk commit $Q -yfoo
-bk clone $Q . ../upgraded
+bk clone $Q . ../upgraded.v3
 bk edit $Q gcc/foo
 bk delta $Q -fyempty gcc/foo
 bk commit $Q -yfoo
-cd ../upgraded
+cd ../upgraded.v3
 bk edit $Q gcc/foo
 bk delta $Q -fyempty gcc/foo
 bk commit $Q --tag=BASE -yfoo
 bk pull $Q || fail
 bk clone $Q --downgrade . ../downgraded
 cd "$HERE"
+$OLDBK/bk clone $Q --upgrade downgraded upgraded
 echo OK
 
 echo $N Test straight clone .........................................$NL
@@ -624,4 +629,113 @@ $OLDBK/bk pull -q -rDG_NEWCOMP \
 grep -q 'clone -r cannot be used by a bk-6.0 client' ERR || fail -f ERR
 # works to flip old and new here
 bk pull -q -rDG_NEWCOMP bk://localhost:$OLDP/downgraded || fail
+echo OK
+
+echo $N Test pull new comp upgraded.v3 to v2 ........................$NL
+cd ../upgraded.v3
+bk portal $Q .
+bk setup -f v3-newcomp
+bk tag $Q V3_NEWCOMP
+touch v3-newcomp/foo
+bk new $Q v3-newcomp/foo
+bk commit $Q -yfoo
+cd ../upgraded
+bk pull $Q -rV3_NEWCOMP ../upgraded.v3 || fail
+echo OK
+
+clean() {
+    # prune percentages, unused, and uniqheap
+    perl -ne 'next if /^heap|u/; chomp; @_=split; print "$_[0] $_[1] $_[3]\n"'
+}
+echo -------------- BWEAVEv3 compat tests
+echo $N clone --upgrade from bweave2 to bweave3 .....................$NL
+cd "$HERE"
+$OLDBK/bk setup -f -cempty bkfile2 || fail
+bk clone $Q bkfile2 bkfile2.new || fail
+cd bkfile2.new
+bk features | grep -q BWEAVEv2 || fail
+$OLDBK/bk -r check -ac
+# See that generation doesn't get reset by a repack
+bk _heapdump -s | clean > DUMP1
+_BK_FORCE_REPACK=1 bk -r check -ac || fail
+bk _heapdump -s | clean > DUMP2
+bk diff DUMP1 DUMP2 > GOT
+cat <<EOF > WANT
+3c3
+< generation: 1 
+---
+> generation: 2 
+EOF
+cmpfiles WANT GOT
+bk features | grep -q BWEAVEv2 || fail
+$OLDBK/bk -r check -ac
+# See that generation doesn't get reset by a bk-6 repack
+_BK_FORCE_REPACK=1 $OLDBK/bk -r check -ac || fail
+bk _heapdump -s | clean > DUMP3
+bk diff DUMP1 DUMP3 > GOT
+cat <<EOF > WANT
+3c3
+< generation: 1 
+---
+> generation: 3 
+EOF
+cmpfiles WANT GOT
+cd ..
+bk clone $Q --upgrade bkfile2 bkfile3.convert || fail
+cd bkfile3.convert
+bk features | grep -q BWEAVEv3 || fail
+bk repocheck $Q || fail
+echo OK
+
+echo $N Test running collapse on bweave2 repository .................$NL
+cd ../bkfile2
+echo hi > f1
+echo bye > f2
+$OLDBK/bk new $Q -l f1 f2
+$OLDBK/bk commit $Q -yn || fail
+echo ddd >> f1
+$OLDBK/bk ci $Q -yff f1
+$OLDBK/bk mv f2 f3
+$OLDBK/bk commit $Q -yupdate || fail
+cd ..
+$OLDBK/bk clone $Q bkfile2 bkfile3.collapse
+cd bkfile3.collapse
+bk collapse -er+ || fail
+bk -Uc ci $Q -a -yci || fail
+bk commit $Q -yredo || fail
+bk repocheck $Q || fail
+echo OK
+
+echo $N Operate on a BKFILE repository without BWEAVEv2 .............$NL
+# old bk's could create this hybrid
+cd BitKeeper/log
+grep -v BWEAVE features > f
+cat f > features
+cd ../..
+$OLDBK/bk -r admin -Zsame || fail
+cat <<EOF > WANT
+BKFILE
+SCANDIRS
+remap
+EOF
+cmpfiles BitKeeper/log/features WANT
+
+# show that the new bk is happy with this
+bk changes -r+ > OUT || fail
+bk _heapdump ChangeSet | head -1 > OUT
+echo "encoding: 1008 (BK)" > WANT
+cmpfiles OUT WANT
+
+# and that upgrades the file
+_BK_DEVELOPER= bk repocheck $Q || fail
+bk _heapdump ChangeSet | head -1 > OUT
+echo "encoding: 1018 (BK,BWEAVEv2)" > WANT
+cmpfiles OUT WANT
+cat <<EOF > WANT
+BKFILE
+BWEAVEv2
+SCANDIRS
+remap
+EOF
+cmpfiles BitKeeper/log/features WANT
 echo OK

@@ -1,0 +1,213 @@
+Info server
+===========
+
+ [Tue Mar 20 10:18:22 PDT 2012]
+
+BK Information Server notes
+
+We have a number of places where it would be nice to have a centralized
+key value server.  The idea is to have on disk MDBM's plus an ascii log
+of the updates such that the log can be replayed to recreate the MDBM.
+
+URLS
+----
+Imagine that you have an info server directory.  You run a bkd in it.
+To get at a particular table, name it in the URL
+
+ bk://host/com.bitkeeper/RTI/<repo_id>
+
+Files / data structures
+-----------------------
+
+Each URL names a directory.  In that directory are two files
+
+log::
+  an ascii log of all write operations (inserts, deletes)
+db::
+  a binary MDBM of the KV pairs.  This is a cache, you can recreate it
+  from the log.
+
+Naming
+------
+
+We reserve the prefix com.bitkeeper/ - customers may not use that.
+Customers may use anything else but we suggest the reverse domain
+partitioning such as abcdefghijkGZ.
+
+For repository specific information, we can use
+
+ com.bitkeeper/RTI/<repo_id>/
+
+Commands
+--------
+
+Commands take one of 3 forms:
+
+ <command>
+ OR
+ <command> <arg>
+ OR
+ <command>
+ <hash>
+
+Hashes end in @ so that the receiving side knows when to stop reading.
+Even empty responses send the @ so
+
+    get no_such_key
+    OK-0 found
+    @
+
+Be careful about the get example above, the arg to get is a regexp, not
+a match.  If you want an exact match you would do
+
+    get
+    @match_this_exactly
+    @
+
+table - set the active table
+
+    Send:
+	table <path>
+    Recv:
+	OK-opened table %s
+
+delete - delete one or more keys
+
+    Send:
+	delete
+	@K1
+	@K2
+	@K3
+	...
+	@
+    OR
+	delete <regexp>
+    Recv:
+	OK-%d deleted
+	ERROR-why it failed
+
+get - get one or more keys
+
+    Send:
+	get
+	@K1
+	@K2
+	@K3
+	...
+	@
+    OR
+	get <regexp>
+    Recv:
+	OK-%d found
+	<hashToStream of KV pairs found>
+	@
+	ERROR-<perror output>
+    Notes:
+	Not found keys are not reported as errors, if you sent 3 and want
+	all 3, you need to look for "OK-3 found".
+
+insert - same as set except NONE of the keys may not exist already
+
+    It's all or nothing on the insert.  It errors on the first pre-existing
+    key, no others are listed (we could add an exists verb).
+    See set below.
+
+set - set one or more KV pairs, replacing any existing values
+
+    Send:
+	set
+	<KV>
+	@
+    Recv:
+	OK-%d set
+	ERROR-<perror output>
+
+unique - allocate a unique integer and return it
+
+    Send:
+	unique
+    Recv:
+	OK-%d
+	ERROR-<perror output>
+
+Use for portal
+--------------
+This may be useful if we want to limit the number of portals.  Not sure
+we want this if we have ported/ below.
+
+ com.bitkeeper/portals/product_id
+	{compkey} =>
+		user@host
+		/full/path/to/portal
+		date
+
+Use for ported
+--------------
+
+ com.bitkeeper/ported/<product_id>/
+	# XXX - sortkey vs standalone key?
+	{rootkey.ported_key} => <id>
+	{<id>} =>
+		/full/path/to/repo
+		date
+		product_cset_key that points at this ported cset
+
+We check for these keys on port but we insert them (not set) on
+product commit.  That means we have to keep a log that this is
+a commit of ported csets (probably comp/BitKeeper/log/PORTED tmp file)
+
+Use for global write locks
+--------------------------
+
+ com.bitkeeper/locks/repo_id/
+	{rootkey} =>
+		user@host
+		/full/path/to/repo
+		date
+		[optional reason]
+
+ # Lock it
+ bk lock -y'About to rewrite' src/foo.c
+
+ # Show what is locked
+ bk locked
+ src/foo.c by user@host in /path/to/repo on date because
+ "About to rewrite"
+
+ # Show only those files locked in this repo (or nested collection)
+ # Implies a list in BitKeeper/log
+ bk locked --here
+
+ # Force unlock
+ bk unlock --force src/foo.c
+
+ # Implied unlock (or should it be commit that unlocks?)
+ bk delta -y'all done' src/foo.c
+
+ # Leave it locked
+ bk delta --keep-lock -y'not yet' src/foo.c
+
+Use for collapse
+----------------
+
+ com.bitkeeper/collapsed/repo_id/
+	{collapsed_cset} => 
+		orig1
+		orig2
+		orig3
+
+Use for lm's STATE files
+------------------------
+
+ com.bitkeeper/STATE/repo_id
+	{state} => 
+		user@host
+		/full/path/to/repo
+		date
+		<text>
+
+bk state - dumps
+
+bk state -s < STATE - sets it
+
+XXX - we want a way to do this in citool, dump state and then click save state ?

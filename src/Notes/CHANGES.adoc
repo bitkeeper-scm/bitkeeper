@@ -1,0 +1,37 @@
+Flushing out bk changes in a nested repo
+========================================
+
+		[none]		-v		-[ix]
+Standalone	csets		csets + files	csets that touch files
+
+Product		P csets		P+C csets	list P csets which touch any file in any P+C repo; no C csets listed unless -v/-vv
+				P+C files
+
+Component	C csets		C csets		C csets that touch files
+		  		C files
+
+Product + -V	P+C csets	P+C csets	Differs from Product case in that C csets are listed as well in no -v case
+				P+C files
+
+Product + -P	P csets		P csets		P csets, only P files searched
+				P files
+
+NOTE:
+  - in the -P case C csets are not listed
+  - the -V case is only useful without -v
+  - very common:  bk changes -r+ -nd:KEY:
+  
+  ------
+  
+Existing version:
+  
+  		[none]		-v		-[ix]
+Standalone	csets		files		csets that touch files
+
+Product		P csets		P+C csets	list P csets which touch files in P that match
+				P files
+
+Component	C csets		C files		C csets that touch files
+
+Product + -V	P+C csets	P+C csets	list P+C csets that touch files in P+C that match
+				P+C files

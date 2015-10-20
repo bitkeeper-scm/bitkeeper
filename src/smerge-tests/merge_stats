@@ -1,6 +1,8 @@
 #!/bin/sh
 
-nbk=../bk
+obk=bk     # original bk for comparison
+#obk=$HOME/bk/bk-dev/src/bk
+nbk=../bk  # this new bk
 
 check()
 {
@@ -24,7 +26,7 @@ do	bk prs -hnd'$if(:MERGE:){:REV: :PARENT: :MPARENT: :GCA2:}' $f |
 	while read r p m gca
 	do	
 		args="-g -l$p -r$m $f"
-		bk smerge $args > myfile
+		$obk smerge $args > myfile
 		$nbk smerge $args > myfile2
 
 		# skip merges were installed smerge is the same

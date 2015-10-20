@@ -221,8 +221,8 @@ remap_rmdir(project *proj, char *dir)
 	t = buf + strlen(buf);
 	while (1) {
 		while (*t != '/') --t;
-		*t = 0;
 		if (streq(t, "/.bk")) break;
+		*t = 0;
 		if (rmdir(buf)) break;
 	}
 	return (0);
@@ -292,7 +292,7 @@ remap_getdir(project *p, char *dir)
 	char	buf[MAXPATH];
 
 	sccs = fullRemapPath(buf, p, dir);
-	ret = _getdir(buf, 0);
+	ret = getdir(buf);
 	if (sccs) {
 		EACH(ret) unremap_name(ret[i]);
 	} else {
@@ -302,7 +302,7 @@ remap_getdir(project *p, char *dir)
 		opts.add = 0;
 
 		sprintf(buf, "%s/.bk/%s", proj_root(p), dir);
-		if (mapdir = _getdir(buf, 0)) {
+		if (mapdir = getdir(buf)) {
 			parallelLines(ret, mapdir, 0, getdirMerge, &opts);
 			freeLines(mapdir, 0); /* mapdir items freed in getdirMerge */
 		}

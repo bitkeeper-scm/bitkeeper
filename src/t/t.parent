@@ -43,9 +43,9 @@ echo $N Make sure that we have incoming, outgoing parent set ........$NL
 cd "$HERE/clone"
 mkdir src
 cd src
-bk parent -iq || exit 1
-bk parent -oq || exit 1
-bk parent -q || exit 1
+bk parent -iq || fail
+bk parent -oq || fail
+bk parent -q || fail
 PARENT=$PREFIX/project
 IL_PARENT="`bk parent -il`"
 OL_PARENT="`bk parent -ol`"
@@ -56,41 +56,41 @@ test "$PLATFORM" = "WIN32" && {
 	OL_PARENT="`echo $OL_PARENT | tr '[a-z]' '[A-Z]'`"
 	L_PARENT="`echo $L_PARENT | tr '[a-z]' '[A-Z]'`"
 }
-test "$PARENT" = "$IL_PARENT" || exit 1
-test "$PARENT" = "$OL_PARENT" || exit 1
-test "$PARENT" = "$L_PARENT" || exit 1
+test "$PARENT" = "$IL_PARENT" || fail
+test "$PARENT" = "$OL_PARENT" || fail
+test "$PARENT" = "$L_PARENT" || fail
 echo OK
 
 echo $N Make sure we have the compat single parent pointer ..........$NL
 cd "$HERE/clone"
-test -f BitKeeper/log/parent || exit 1
+test -f BitKeeper/log/parent || fail
 FILE="`cat BitKeeper/log/parent`"
 test "$PLATFORM" = "WIN32" && FILE="`echo $FILE | tr '[a-z]' '[A-Z]'`"
-test "$PARENT" = "$FILE" || exit 1
+test "$PARENT" = "$FILE" || fail
 echo OK
 
 echo $N Make sure we do not have the new pull/push pointers .........$NL
-test -f BitKeeper/log/pull_parent && exit 1
-test -f BitKeeper/log/push_parent && exit 1
+test -f BitKeeper/log/pull_parent && fail
+test -f BitKeeper/log/push_parent && fail
 echo OK
 
 echo $N Test backwards compat way of setting parent pointer .........$NL
-bk parent -q bk://some.host.com || exit 1
+bk parent -q bk://some.host.com || fail
 PARENT=bk://some.host.com
-test "$PARENT" = "`bk parent -il`" || exit 1
-test "$PARENT" = "`bk parent -ol`" || exit 1
-test "$PARENT" = "`bk parent -l`" || exit 1
+test "$PARENT" = "`bk parent -il`" || fail
+test "$PARENT" = "`bk parent -ol`" || fail
+test "$PARENT" = "`bk parent -l`" || fail
 bk parent -qr
-bk parent -q bk://different.host.com || exit 1
+bk parent -q bk://different.host.com || fail
 PARENT=bk://different.host.com
-test "$PARENT" = "`bk parent -il`" || exit 1
-test "$PARENT" = "`bk parent -ol`" || exit 1
-test "$PARENT" = "`bk parent -l`" || exit 1
+test "$PARENT" = "`bk parent -il`" || fail
+test "$PARENT" = "`bk parent -ol`" || fail
+test "$PARENT" = "`bk parent -l`" || fail
 echo OK
 
 echo $N Backwards compat should only work with no or one parent .....$NL
-bk parent -aq bk://some.host.com || exit 1
-bk parent -q bk://host.com 1>/dev/null 2>&1 && exit 1
+bk parent -aq bk://some.host.com || fail
+bk parent -q bk://host.com 1>/dev/null 2>&1 && fail
 bk parent -qsi bk://host.com
 cat > WANT <<EOF
 Pull parent: bk://host.com
@@ -100,18 +100,18 @@ cmp -s WANT GOT || {
 	echo failed to set incoming only parent
 	cat GOT
 }
-test -f BitKeeper/log/parent && exit 1
-bk parent -q bk://host.com 1>/dev/null 2>&1 && exit 1
+test -f BitKeeper/log/parent && fail
+bk parent -q bk://host.com 1>/dev/null 2>&1 && fail
 echo OK
 
 echo $N Set single parent, make sure it overrides ...................$NL
 bk parent -sq bk://somewhere.org
-test `bk parent -l` = bk://somewhere.org || exit 1
+test `bk parent -l` = bk://somewhere.org || fail
 echo OK
 
 echo $N Set several parents, make sure they are all recorded ........$NL
 PARENT="$PREFIX/project"
-bk parent -sq "$PARENT" bozo@somewhere.com://tmp bk://ibm.com/a/b/c || exit 1
+bk parent -sq "$PARENT" bozo@somewhere.com://tmp bk://ibm.com/a/b/c || fail
 bk parent -l > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
@@ -122,7 +122,7 @@ cmp -s GOT WANT || { echo failed; diff -ur GOT WANT; exit 1; }
 echo OK
 
 echo $N Set incoming parents, make sure they are all recorded .......$NL
-bk parent -isq bozo@somewhere.com://tmp bk://ibm.com/a/b/c || exit 1
+bk parent -isq bozo@somewhere.com://tmp bk://ibm.com/a/b/c || fail
 bk parent -l > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
@@ -137,7 +137,7 @@ cmp -s GOT WANT || { echo failed; diff -ur GOT WANT; exit 1; }
 echo OK
 
 echo $N Set outgoing parents, make sure they are all recorded .......$NL
-bk parent -osq bozo@somewhere.com://tmp bk://ibm.com/a/b/c || exit 1
+bk parent -osq bozo@somewhere.com://tmp bk://ibm.com/a/b/c || fail
 bk parent -ol > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
@@ -153,13 +153,13 @@ echo OK
 
 echo $N Set single parent, make sure it overrides ...................$NL
 bk parent -sq bk://somewhere.org
-test `bk parent -l` = bk://somewhere.org || exit 1
+test `bk parent -l` = bk://somewhere.org || fail
 echo OK
 
 echo $N Add several parents, make sure they are all recorded ........$NL
 bk parent -qr
-bk parent -q "$HERE/project" || exit 1
-bk parent -aq bozo@somewhere.com://tmp bk://ibm.com/a/b/c || exit 1
+bk parent -q "$HERE/project" || fail
+bk parent -aq bozo@somewhere.com://tmp bk://ibm.com/a/b/c || fail
 bk parent -l > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
@@ -174,11 +174,11 @@ cmp -s GOT WANT || {
 echo OK
 
 echo $N Make sure the compat single parent pointer is removed .......$NL
-test -f BitKeeper/log/parent && exit 1
+test -f BitKeeper/log/parent && fail
 echo OK
 
 echo $N Add incoming only parent, check recording and listing .......$NL
-bk parent -aiq bk://oneway.com/incoming || exit 1
+bk parent -aiq bk://oneway.com/incoming || fail
 bk parent -l > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
@@ -211,11 +211,11 @@ cmp -s GOT WANT || {
 echo OK
 
 echo $N Print just the first parent .................................$NL
-test "`bk parent -1l`" = "bk://ibm.com/a/b/c" || exit 1
+test "`bk parent -1l`" = "bk://ibm.com/a/b/c" || fail
 echo OK
 
 echo $N Add outgoing only parent, check recording and listing .......$NL
-bk parent -aoq bk://oneway.com/outgoing || exit 1
+bk parent -aoq bk://oneway.com/outgoing || fail
 bk parent -l > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
@@ -296,7 +296,7 @@ cmp -s GOT WANT || {
 echo OK
 
 echo $N Remove one parent, check recording and listing ..............$NL
-bk parent -rq "$PARENT" || exit 1
+bk parent -rq "$PARENT" || fail
 bk parent -l > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
@@ -331,11 +331,11 @@ cmp -s GOT WANT || {
 	cat GOT
 	exit 1
 }
-test -f BitKeeper/log/parent && exit 1
+test -f BitKeeper/log/parent && fail
 echo OK
 
 echo $N Remove incoming parent, check recording and listing .........$NL
-bk parent -rq bk://oneway.com/incoming || exit 1
+bk parent -rq bk://oneway.com/incoming || fail
 bk parent -l > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
@@ -368,11 +368,11 @@ cmp -s GOT WANT || {
 	cat GOT
 	exit 1
 }
-test -f BitKeeper/log/parent && exit 1
+test -f BitKeeper/log/parent && fail
 echo OK
 
 echo $N Remove outgoing parent, check recording and listing .........$NL
-bk parent -rq bk://oneway.com/outgoing || exit 1
+bk parent -rq bk://oneway.com/outgoing || fail
 bk parent -l > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
@@ -403,11 +403,11 @@ cmp -s GOT WANT || {
 	cat GOT
 	exit 1
 }
-test -f BitKeeper/log/parent && exit 1
+test -f BitKeeper/log/parent && fail
 echo OK
 
 echo $N Convert parent to incoming, check recording and listing .....$NL
-bk parent -roq bk://ibm.com/a/b/c || exit 1
+bk parent -roq bk://ibm.com/a/b/c || fail
 bk parent -l > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
@@ -437,11 +437,11 @@ cmp -s GOT WANT || {
 	cat GOT
 	exit 1
 }
-test -f BitKeeper/log/parent && exit 1
+test -f BitKeeper/log/parent && fail
 echo OK
 
 echo $N Convert parent to outgoing, check recording and listing .....$NL
-bk parent -riq bozo@somewhere.com://tmp || exit 1
+bk parent -riq bozo@somewhere.com://tmp || fail
 bk parent -l > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
@@ -470,11 +470,11 @@ cmp -s GOT WANT || {
 	cat GOT
 	exit 1
 }
-test -f BitKeeper/log/parent && exit 1
+test -f BitKeeper/log/parent && fail
 echo OK
 
 echo $N Convert to single outgoing, check recording and listing .....$NL
-bk parent -rq bk://ibm.com/a/b/c || exit 1
+bk parent -rq bk://ibm.com/a/b/c || fail
 bk parent -l > GOT
 cat > WANT <<EOF
 bozo@somewhere.com://tmp
@@ -502,11 +502,11 @@ cmp -s GOT WANT || {
 	cat GOT
 	exit 1
 }
-test -f BitKeeper/log/parent && exit 1
+test -f BitKeeper/log/parent && fail
 echo OK
 
 echo $N Convert to incoming to bidirectional, check .................$NL
-bk parent -aq bozo@somewhere.com://tmp || exit 1
+bk parent -aq bozo@somewhere.com://tmp || fail
 bk parent -l > GOT
 cat > WANT <<EOF
 bozo@somewhere.com://tmp
@@ -537,22 +537,22 @@ cmp -s GOT WANT || {
 echo OK
 
 echo $N Make sure we put back the compat parent file ................$NL
-test -f BitKeeper/log/parent || exit 1
+test -f BitKeeper/log/parent || fail
 echo OK
 
 echo $N Try remove non-existent parent, check status ................$NL
-bk parent -nrq bogus 2> ERR && exit 1
-grep -q "parent: Can't remove 'bogus'" ERR || exit 1
-bk parent -nriq bogus 2> ERR && exit 1
-grep -q "parent: Can't remove 'bogus'" ERR || exit 1
-bk parent -nroq bogus 2> ERR && exit 1
-grep -q "parent: Can't remove 'bogus'" ERR || exit 1
+bk parent -nrq bogus 2> ERR && fail
+grep -q "parent: Can't remove 'bogus'" ERR || fail
+bk parent -nriq bogus 2> ERR && fail
+grep -q "parent: Can't remove 'bogus'" ERR || fail
+bk parent -nroq bogus 2> ERR && fail
+grep -q "parent: Can't remove 'bogus'" ERR || fail
 echo OK
 
 echo $N Try adding non-existent parent, check status ................$NL
 bk parent -q || { echo "missing a parent"; exit 1; }
 bk parent bogus 2> ERR && { echo failed; cat ERR; exit 1; }
-grep -q "Not a repository: 'bogus'" ERR || exit 1
+grep -q "Not a repository: 'bogus'" ERR || fail
 bk parent -q || { echo "erased parent"; exit 1; }
 echo OK
 
@@ -564,7 +564,7 @@ test -f BitKeeper/log/parent && { ls BitKeeper/log; exit 1; }
 echo OK
 
 echo $N Make sure we normalize parent pointers by default ...........$NL
-bk parent -q ../project || exit 1
+bk parent -q ../project || fail
 PARENT=$PREFIX/project
 IL_PARENT="`bk parent -il`"
 OL_PARENT="`bk parent -ol`"
@@ -575,24 +575,24 @@ test "$PLATFORM" = "WIN32" && {
 	OL_PARENT="`echo $OL_PARENT | tr '[a-z]' '[A-Z]'`"
 	L_PARENT="`echo $L_PARENT | tr '[a-z]' '[A-Z]'`"
 }
-test "$PARENT" = "$IL_PARENT" || exit 1
-test "$PARENT" = "$OL_PARENT" || exit 1
-test "$PARENT" = "$L_PARENT" || exit 1
-test -f BitKeeper/log/parent || exit 1
+test "$PARENT" = "$IL_PARENT" || fail
+test "$PARENT" = "$OL_PARENT" || fail
+test "$PARENT" = "$L_PARENT" || fail
+test -f BitKeeper/log/parent || fail
 echo OK
 
 echo $N Make sure we can force non-normalized pointers ..............$NL
-bk parent -rq || exit 1
-bk parent -nq ../project || exit 1
+bk parent -rq || fail
+bk parent -nq ../project || fail
 PARENT=../project
-test "$PARENT" = "`bk parent -il`" || exit 1
-test "$PARENT" = "`bk parent -ol`" || exit 1
-test "$PARENT" = "`bk parent -l`" || exit 1
-test -f BitKeeper/log/parent || exit 1
+test "$PARENT" = "`bk parent -il`" || fail
+test "$PARENT" = "`bk parent -ol`" || fail
+test "$PARENT" = "`bk parent -l`" || fail
+test -f BitKeeper/log/parent || fail
 echo OK
 
 echo $N Make sure the addition of a normalized one is not factored ..$NL
-bk parent -aq ../project || exit 1
+bk parent -aq ../project || fail
 cat > WANT <<EOF
 ../project
 $PREFIX/project
@@ -625,11 +625,11 @@ cmp -s WANT GOT || {
 	cat GOT
 	exit 1
 }
-test -f BitKeeper/log/parent && exit 1
+test -f BitKeeper/log/parent && fail
 echo OK
 
 echo $N Remove a normalized pointer with a non-normalized one .......$NL
-bk parent -rq ../project || exit 1
+bk parent -rq ../project || fail
 cat > WANT <<EOF
 ../project
 EOF
@@ -660,12 +660,12 @@ cmp -s WANT GOT || {
 	cat GOT
 	exit 1
 }
-test -f BitKeeper/log/parent || exit 1
-bk parent -aq ../project || exit 1
+test -f BitKeeper/log/parent || fail
+bk parent -aq ../project || fail
 echo OK
 
 echo $N Remove a non-normalized pointer with a non-normalized one ...$NL
-bk parent -nrq ../project || exit 1
+bk parent -nrq ../project || fail
 cat > WANT <<EOF
 $PREFIX/project
 EOF
@@ -696,13 +696,13 @@ cmp -s WANT GOT || {
 	cat GOT
 	exit 1
 }
-test -f BitKeeper/log/parent || exit 1
-bk parent -naq ../project || exit 1
+test -f BitKeeper/log/parent || fail
+bk parent -naq ../project || fail
 echo OK
 
 echo $N Make sure that file://relpath is treated as absolute ........$NL
 RELPATH=`echo "$HERE" | sed 's?^/??'`
-bk parent -nsq file://"$RELPATH"/project || exit 1
+bk parent -nsq file://"$RELPATH"/project || fail
 cd ../project
 ID=`bk id -r`
 cd ../clone
@@ -716,7 +716,7 @@ test X"$ID" = X"$GOT" || {
 echo OK
 
 echo $N Make sure that file://abspath is treated as absolute ........$NL
-bk parent -nsq file://"$HERE"/project || exit 1
+bk parent -nsq file://"$HERE"/project || fail
 GOT=`bk -@ -q id -r`
 test X"$ID" = X"$GOT" || {
 	echo failed
@@ -728,12 +728,12 @@ echo OK
 
 echo $N Show that relative paths from a subdirectory ................$NL
 cd src
-bk parent $Q -s ../../project || exit 1
-bk -R parent $Q -s ../project || exit 1
+bk parent $Q -s ../../project || fail
+bk -R parent $Q -s ../project || fail
 echo OK
 
 echo $N Verify that -n is legal only from product root...............$NL
-bk parent $Q -n ../../project 2>/dev/null && exit 1
+bk parent $Q -n ../../project 2>/dev/null && fail
 echo OK
 
 echo $N Check that non-normalized parent can be removed without -n ..$NL

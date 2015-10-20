@@ -249,7 +249,7 @@ bk commit $S -yperm2
 cd "$HERE/copy/src"
 bk admin $Q -fEXPAND1 -FSCCS foo.c
 bk commit $S -yperm3
-bk pull $Q "$HERE/project" || exit 1
+bk pull $Q "$HERE/project" || fail
 FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
 if [ "$FLAGS" != "BITKEEPER,RCS,YEAR4,EXPAND1,CSETMARKED,EOLN_NATIVE" ]
 then	echo failed with mode $FLAGS

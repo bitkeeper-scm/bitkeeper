@@ -281,7 +281,7 @@ cat cmds | perl -ne '
 		exit(1);
 	}
 	print "OK\n";
-' || exit 1
+' || fail
 
 ########################################################################
 # Check $each statement.  Create a multi-line comment and iterate
@@ -347,7 +347,7 @@ cat cmds | perl -ne '
 		exit(1);
 	}
 	print "OK\n";
-' || exit 1
+' || fail
 
 ########################################################################
 # Check incorrect syntax.  These should all fail with error status.
@@ -392,7 +392,7 @@ cat cmds | perl -ne '
 	$got .= $_ while <PRS>;
 	die "\ncommand should not have worked got <$got>\n" if close(PRS);
 	print "OK\n";
-' || exit 1
+' || fail
 
 ########################################################################
 # Check some of the meta-data keywords.
@@ -867,7 +867,7 @@ fi
 echo OK
 
 echo $N checking expression "\$if(:TAG:!='')" ..........................$NL
-bk prs -d"\$if(:TAG:!=''){:TAG:}" FILE > /dev/null || exit 1
+bk prs -d"\$if(:TAG:!=''){:TAG:}" FILE > /dev/null || fail
 echo OK
 
 echo $N checking regular diffs ......................................$NL
@@ -981,7 +981,7 @@ echo OK
 echo $N checking prs -C on pending deltas returns an empty list .....$NL
 bk edit $Q newbar
 bk delta $Q -fybar newbar
-bk prs -hC+ -nd:I: newbar > GOT || exit 1
+bk prs -hC+ -nd:I: newbar > GOT || fail
 test -s GOT && {
 	echo failed
 	echo expected nothing, got

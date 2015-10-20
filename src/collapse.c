@@ -441,7 +441,7 @@ do_file(char *file, char *tiprev)
 	ser_t	*rmdeltas = 0;
 	int	i;
 	pfile	pf = {0};
-	char	*sfile = 0, *gfile = 0, *pfile = 0, *dfile = 0;
+	char	*sfile = 0, *gfile = 0;
 	u8	*premap;
 	char	*inc, *exc = 0;
 	time_t	gtime = 0;
@@ -454,8 +454,6 @@ do_file(char *file, char *tiprev)
 		goto done;
 	}
 	gfile = strdup(s->gfile);
-	pfile = strdup(s->pfile);
-	dfile = strdup(sccs_Xfile(s, 'd'));
 	d = sccs_findrev(s, "+");
 	tipd = tiprev ? sccs_findrev(s, tiprev) : parent_of_tip(s);
 	unless (tipd) goto done;
@@ -533,7 +531,7 @@ do_file(char *file, char *tiprev)
 			rename(gfile, savefile);
 
 			/* calculate any excluded revs */
-			if (HAS_PFILE(s)) sccs_read_pfile("collapse", s, &pf);
+			if (HAS_PFILE(s)) sccs_read_pfile(s, &pf);
 			premap = sccs_set(s, d, pf.iLst, pf.xLst);
 			free_pfile(&pf);
 			EACH(rmdeltas) {
@@ -544,8 +542,8 @@ do_file(char *file, char *tiprev)
 			free(premap);
 		}
 		/* remove p.file */
-		unlink(pfile);
-		unlink(dfile);
+		xfile_delete(gfile, 'p');
+		xfile_delete(gfile, 'd');
 		s->state &= ~S_PFILE;
 
 		/* mark deltas to remove. */
@@ -619,12 +617,18 @@ do_file(char *file, char *tiprev)
 		}
 		sccs_setStime(s, 0);
 	} else {
-		/* delete the entire sfile */
-		unlink(pfile);
-		unlink(dfile);
+		char	*t;
+
 		sccs_free(s);
 		s = 0;
-		unlink(sfile);
+
+		/* delete the entire sfile, but save c.file */
+		t = xfile_fetch(gfile, 'c');
+		sfile_delete(0, gfile);
+		if (t) {
+			xfile_store(gfile, 'c', t);
+			free(t);
+		}
 	}
 	rc = 0;
  done:
@@ -636,8 +640,6 @@ do_file(char *file, char *tiprev)
 	}
 	free(sfile);
 	free(gfile);
-	free(pfile);
-	free(dfile);
 	return (rc);
 }
 
@@ -675,7 +677,6 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 	const	char *perr;
 	int	poff;
 	char	*cmts;
-	char	*cfile = sccs_Xfile(s, 'c');
 	char	*p;
 	FILE	*f;
 	pcre	*re;
@@ -716,14 +717,15 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 		chomp(p);
 		comments = addLine(comments, p);
 	}
-	if (p = loadfile(cfile, 0)) {
+	if (p = xfile_fetch(s->gfile, 'c')) {
 		chomp(p);
-		comments = addLine(comments, p);
+		comments = addLine(comments, strdup(p));
+		free(p);
 	}
 	free(re);
 
 	if (comments) {
-		f = fopen(cfile, "w");
+		f = fmem();
 		assert(f);
 		EACH (comments) {
 			if (i > 1) fputs("---\n", f);
@@ -732,6 +734,9 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 			free(comments[i]);
 		}
 		freeLines(comments, 0);
+		if (p = fmem_peek(f, 0)) {
+			xfile_store(s->gfile, 'c', p);
+		}
 		fclose(f);
 	}
 	return (0);

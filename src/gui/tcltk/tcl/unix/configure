@@ -7092,6 +7092,14 @@ $as_echo "no" >&6; }
 
 $as_echo "#define TCL_CFG_OPTIMIZED 1" >>confdefs.h
 
+    elif test "$tcl_ok" = "all-with-O2"; then
+	CFLAGS_DEFAULT='$(CFLAGS_OPTIMIZE)'
+	LDFLAGS_DEFAULT='$(LDFLAGS_OPTIMIZE)'
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: all-with-O2 (all debugging but with -O2 optimization)" >&5
+$as_echo "all-with-O2 (all debugging but with -O2 optimization)" >&6; }
+
+$as_echo "#define TCL_CFG_OPTIMIZED 1" >>confdefs.h
+
     else
 	CFLAGS_DEFAULT='$(CFLAGS_DEBUG)'
 	LDFLAGS_DEFAULT='$(LDFLAGS_DEBUG)'
@@ -7103,13 +7111,13 @@ $as_echo "yes (standard debugging)" >&6; }
 
 
 
-    if test "$tcl_ok" = "mem" -o "$tcl_ok" = "all"; then
+    if test "$tcl_ok" = "mem" -o "$tcl_ok" = "all" -o "$tcl_ok" = "all-with-O2"; then
 
 $as_echo "#define TCL_MEM_DEBUG 1" >>confdefs.h
 
     fi
 
-    	if test "$tcl_ok" = "compile" -o "$tcl_ok" = "all"; then
+    	if test "$tcl_ok" = "compile" -o "$tcl_ok" = "all" -o "$tcl_ok" = "all-with-O2"; then
 
 $as_echo "#define TCL_COMPILE_DEBUG 1" >>confdefs.h
 
@@ -7122,7 +7130,7 @@ $as_echo "#define TCL_COMPILE_STATS 1" >>confdefs.h
 	if test "$tcl_ok" = "all"; then
 	    { $as_echo "$as_me:${as_lineno-$LINENO}: result: enabled symbols mem compile debugging" >&5
 $as_echo "enabled symbols mem compile debugging" >&6; }
-	else
+	elif test "$tcl_ok" != "all-with-O2"; then
 	    { $as_echo "$as_me:${as_lineno-$LINENO}: result: enabled $tcl_ok debugging" >&5
 $as_echo "enabled $tcl_ok debugging" >&6; }
 	fi
@@ -10144,6 +10152,10 @@ if test $tcl_cv_isnan = no; then
 $as_echo "#define NO_ISNAN 1" >>confdefs.h
 
 fi
+
+#--------------------------------------------------------------------
+# Work around apparent fork() problem on netbsd 4.
+#--------------------------------------------------------------------
 
 if test "`uname -s`" = "NetBSD" ; then
 

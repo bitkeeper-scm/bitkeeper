@@ -72,7 +72,7 @@ echo OK
 }
 
 echo $N Check dbimplode .............................................$NL 
-bk dbimplode $Q dbfile || exit 1
+bk dbimplode $Q dbfile || fail
 cmpfiles dbfile dbfile.ref
 test -d dbfile_db.bk_skip && fail dbfile_db.bk_skip still there
 echo OK
@@ -83,12 +83,12 @@ echo 1 > d/field1
 echo 2 > d/field2
 bk dbimplode $Q -dd file1
 test $PLATFORM != "WIN32" && chmod 444 file1
-bk dbnew $Q file1 || exit 1
+bk dbnew $Q file1 || fail
 test -f d/field1 -o -f d/field2 && {
 	echo files should have been deleted
 	exit 1
 }
-bk dbexplode $Q -dd file1 || exit 1
+bk dbexplode $Q -dd file1 || fail
 test `cat d/field1` != "1" && {
 	echo failed to explode fields
 	exit 1
@@ -107,14 +107,14 @@ echo $N Check that get -eg works for a DB file ......................$NL
 mkdir file2.d
 touch file2.d/nullfield
 bk dbimplode $Q -dfile2.d file2
-bk dbnew $Q file2 || exit 1
+bk dbnew $Q file2 || fail
 mkdir file2.d
 echo ONE > file2.d/field1
 echo TWO > file2.d/field2
 touch file2.d/nullfield
-bk get $Q -eg file2 || exit 1
+bk get $Q -eg file2 || fail
 bk dbimplode $Q -dfile2.d file2
-bk delta $Q -ystuff6 file2 || exit 1
+bk delta $Q -ystuff6 file2 || fail
 bk dbexplode $Q -dfile2.d file2
 test `cat file2.d/field2` = "TWO" || {
 	echo wrong contents
@@ -129,7 +129,7 @@ echo OK
 echo $N Check prs with db sfile .....................................$NL 
 bk dbexplode $Q -dref dbfile
 bk dbnew $Q dbfile
-test -e dbfile && exit 1
+test -e dbfile && fail
 VAL=`bk prs -hnr+ -d':%field1::%no_such_field:' dbfile`
 test "$VAL" = "data1" || { echo failed val; exit 1; }
 bk prs -hnr+ -d':%field1:' dbfile > val1
@@ -139,7 +139,7 @@ cmpfiles val2 ref/field2
 echo OK
 
 echo $N Check field access with prs .................................$NL
-bk prs -r+ -hd":%field1: :%nullfield: :%field2:\n" file1 > PRS || exit 1
+bk prs -r+ -hd":%field1: :%nullfield: :%field2:\n" file1 > PRS || fail
 bk undos <<EOF >"$HERE/REF"
 1  2
 EOF
@@ -147,14 +147,14 @@ diff PRS "$HERE/REF" || { echo prs has wrong stuff; exit 1; }
 echo OK
 
 echo $N Check prs FIELDS dspec ......................................$NL
-bk prs -r+ -hd:FIELDS: file2 > FIELDS || exit 1
+bk prs -r+ -hd:FIELDS: file2 > FIELDS || fail
 bk undos <<EOF >"$HERE/REF"
 field1
 field2
 nullfield
 EOF
 diff FIELDS "$HERE/REF" || { echo produced wrong fields; exit 1; }
-bk prs -r+ -hd:FIELDS: dbfile > FIELDS || exit 1
+bk prs -r+ -hd:FIELDS: dbfile > FIELDS || fail
 bk undos <<EOF >"$HERE/REF"
 check.dot
 field1
@@ -296,7 +296,7 @@ echo OK
 
 echo $N Make sure explode from s.file defaults to read-only .........$NL 
 bk unedit dbfile
-bk dbexplode $Q -dd dbfile || exit 1
+bk dbexplode $Q -dd dbfile || fail
 for i in check.dot field1 field2
 do	test -f d/$i || { echo failed to explode $i; exit 1; }
 	test -w d/$i && { echo failed to explode $i read-only; exit 1; }
@@ -307,8 +307,8 @@ echo OK
 
 echo $N Make sure explode copies read-only modes ....................$NL 
 bk unedit dbfile
-bk get $Q dbfile || exit 1
-bk dbexplode $Q -dd dbfile || exit 1
+bk get $Q dbfile || fail
+bk dbexplode $Q -dd dbfile || fail
 for i in check.dot field1 field2
 do	test -f d/$i || { echo failed to explode $i; exit 1; }
 	test -w d/$i && { echo failed to explode $i read-only; exit 1; }
@@ -317,8 +317,8 @@ echo OK
 
 echo $N Make sure explode copies read-write modes ...................$NL 
 rm -rf d
-bk get $Q -e dbfile || exit 1
-bk dbexplode $Q -dd dbfile || exit 1
+bk get $Q -e dbfile || fail
+bk dbexplode $Q -dd dbfile || fail
 for i in check.dot field1 field2
 do	test -f d/$i || { echo failed to explode $i; exit 1; }
 	test -w d/$i || { echo failed to explode $i read-write; exit 1; }
@@ -327,11 +327,11 @@ echo OK
 
 echo $N Check delta dbfile ..........................................$NL 
 bk unedit dbfile
-bk get $Q -e dbfile || exit 1
-bk dbexplode $Q dbfile || exit 1
+bk get $Q -e dbfile || fail
+bk dbexplode $Q dbfile || fail
 echo data1-2 > 'dbfile_db.bk_skip'/field1
-bk dbimplode $Q dbfile || exit 1
-bk delta $Q -yimplode dbfile || exit 1
+bk dbimplode $Q dbfile || fail
+bk delta $Q -yimplode dbfile || fail
 if [ -f 'dbfile_db.bk_skip'/field1 ]; then echo failed; exit 1; fi
 VAL=`bk prs -hnr+ -d':%field1:' dbfile`
 if [ "$VAL" != "data1-2" ]; then echo failed val; exit 1; fi
@@ -351,7 +351,7 @@ bk undos > ref <<EOF
 EOF
 cmpfiles foo ref
 bk dbexplode $Q foo
-cmp -s 'foo_db.bk_skip'/1 /dev/null || exit 1
+cmp -s 'foo_db.bk_skip'/1 /dev/null || fail
 echo OK
 
 echo $N Check operations in a subdirectory ..........................$NL 
@@ -362,8 +362,8 @@ do	echo @$f >> subdir/dbfile
 	echo $f >> subdir/dbfile
 	echo >> subdir/dbfile
 done
-bk dbnew $Q subdir/dbfile || exit 1
-bk get $Q -e subdir/dbfile || exit 1
+bk dbnew $Q subdir/dbfile || fail
+bk get $Q -e subdir/dbfile || fail
 bk dbexplode $Q subdir/dbfile
 test -f subdir/dbfile_db.bk_skip/a || {
 	echo failed to get file
@@ -383,22 +383,22 @@ echo OK
 
 echo $N Check cloning a project with DB files........................$NL 
 cd "$HERE"/project
-bk edit $Q dbfile || exit 1
-bk delta $Q -f -ynewdb dbfile || exit 1
-bk commit $Q -ywhatever || exit 1
+bk edit $Q dbfile || fail
+bk delta $Q -f -ynewdb dbfile || fail
+bk commit $Q -ywhatever || fail
 cd "$HERE"
-bk clone $Q project copy || exit 1
+bk clone $Q project copy || fail
 echo OK
 
 echo $N Try pushing DB updates ......................................$NL 
 cd copy
-bk get $Q -e dbfile || exit 1
+bk get $Q -e dbfile || fail
 bk dbexplode $Q dbfile
 echo new > 'dbfile_db.bk_skip'/ANOTHERFIELD
 bk dbimplode $Q dbfile
-bk ci $Q -yfoo dbfile || exit 1
-bk commit $Q -yfoo2 || exit 1
-bk push $Q || exit 1
+bk ci $Q -yfoo dbfile || fail
+bk commit $Q -yfoo2 || fail
+bk push $Q || fail
 echo OK
 
 echo $N Check implode explode preserving data .......................$NL
@@ -414,19 +414,19 @@ echo "@@@fields with lots of @'s" > foo.d/fff
 touch foo.d/NULL
 cp -rp foo.d t
 bk dbimplode $Q -dfoo.d foo
-test -f foo || exit 1
-test -d foo.d && exit 1
+test -f foo || fail
+test -d foo.d && fail
 bk dbexplode $Q -dt2 foo
 diff -r t t2 || { echo Diffs found; exit 1; }
 echo OK
 
 echo $N Check deltas  ................................................$NL
-bk dbnew $Q foo || exit 1
-bk edit $Q foo || exit 1
+bk dbnew $Q foo || fail
+bk edit $Q foo || fail
 echo > foo
-bk delta $Q -yempty foo || exit 1
+bk delta $Q -yempty foo || fail
 touch bar
-bk dbnew $Q bar || exit 1
+bk dbnew $Q bar || fail
 echo OK
 
 echo $N Check committing an unsorted DB file ........................$NL
@@ -440,7 +440,7 @@ l
 @a
 a
 EOF
-bk dbnew -l $Q sort || exit 1
+bk dbnew -l $Q sort || fail
 cat > sorted <<EOF
 @a
 a

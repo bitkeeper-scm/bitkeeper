@@ -100,7 +100,7 @@ export _BK_DEVELOPER
 bk check keyword 2> ERR && { echo expected check to fail; exit 1; }
 grep -q "timestamp keyword" ERR || { echo bad error message; cat ERR; exit 1; }
 unset _BK_DEVELOPER
-bk check keyword || exit 1
+bk check keyword || fail
 test -n "$OLDEV" && {
 	_BK_DEVELOPER="$OLDEV"
 	export _BK_DEVELOPER
@@ -142,14 +142,14 @@ bk edit $Q keyword
 echo foo >> keyword
 bk _touch -t $T21 keyword
 BK_DATE_TIME_ZONE="$DTZ22" bk delta $Q -yfoo keyword
-test -f keyword && exit 1
+test -f keyword && fail
 test $T22 -ge `_mtime SCCS/s.keyword`	|| { echo failed; exit 1; }
 # -u - with keyword expansion
 bk edit $Q keyword
 echo foo >> keyword
 bk _touch -t $T21 keyword
 BK_DATE_TIME_ZONE="$DTZ22" bk delta $Q -u -yfoo keyword
-test -f keyword || exit 1
+test -f keyword || fail
 test $T22 -ge `_mtime SCCS/s.keyword`	|| { echo failed; exit 1; }
 test `_mtime keyword` -ge `_mtime now`	|| { echo failed; exit 1; }
 # -u - w/o keyword expansion -- like above, but could be just -l w/ a chmod
@@ -157,7 +157,7 @@ bk edit $Q nokeyword
 echo foo >> nokeyword
 bk _touch -t $T21 nokeyword
 BK_DATE_TIME_ZONE="$DTZ22" bk delta $Q -u -yfoo nokeyword
-test -f nokeyword || exit 1
+test -f nokeyword || fail
 test $T22 -ge `_mtime SCCS/s.nokeyword`		|| { echo failed; exit 1; }
 test `_mtime nokeyword` -ge `_mtime now`	|| { echo failed; exit 1; }
 # checkout:get - w/o keyword expansion -- like above
@@ -166,7 +166,7 @@ echo foo >> nokeyword
 bk _touch -t $T21 nokeyword
 BK_CONFIG='checkout:get!' BK_DATE_TIME_ZONE="$DTZ22" \
     bk delta $Q -yfoo nokeyword
-test -f nokeyword || exit 1
+test -f nokeyword || fail
 test $T22 -ge `_mtime SCCS/s.nokeyword`		|| { echo failed; exit 1; }
 test `_mtime nokeyword` -ge `_mtime now`	|| { echo failed; exit 1; }
 # -l - leaves gfile timestamp alone, so will move sfile back
@@ -174,7 +174,7 @@ bk edit $Q keyword
 echo foo >> keyword
 bk _touch -t $T21 keyword
 BK_DATE_TIME_ZONE="$DTZ22" bk delta $Q -l -yfoo keyword
-test -f keyword || exit 1
+test -f keyword || fail
 test $T21 -ge `_mtime SCCS/s.keyword`	|| { echo failed; exit 1; }
 test $T21 -eq `_mtime keyword`		|| { echo failed; exit 1; }
 # -G
@@ -354,14 +354,14 @@ echo OK
 echo $N Test collapse with renames ..................................$NL
 # collapse - leaves thing in an edited state - what about time?
 echo hi > foo
-bk new $Q -u foo || exit 1
-bk commit $Q -y1 || exit 1
-bk mv foo bar || exit 1
-bk commit $Q -y2 || exit 1
-bk edit $Q bar || exit 1
-bk _touch -t $T11 bar || exit 1
-bk collapse $Q -e || exit 1
-test $T11 -ge `_mtime SCCS/s.bar` || exit 1
+bk new $Q -u foo || fail
+bk commit $Q -y1 || fail
+bk mv foo bar || fail
+bk commit $Q -y2 || fail
+bk edit $Q bar || fail
+bk _touch -t $T11 bar || fail
+bk collapse $Q -e || fail
+test $T11 -ge `_mtime SCCS/s.bar` || fail
 echo OK
 
 if [ $WINDOWS = YES ]; then

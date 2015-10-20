@@ -63,6 +63,10 @@ add() {
 }
 
 echo $N Setup .......................................................$NL
+# Tests assume a config that may shift over time. Stabilize defaults.
+cat <<EOF > .bk/config
+partial_check:off
+EOF
 # we don't do BAM tests on sco.bitmover.com for lack of disk space
 if [ "`bk gethost -r`" = "sco.bitmover.com" ]; then
 	SKIP_BAM=YES
@@ -728,7 +732,7 @@ if [ $SKIP_BAM = NO ]; then
 	_BK_DEVELOPER='' BK_CONFIG='BAM_checkout:edit!' bk -r check -acv 2>OUT || \
 	    fail -f OUT
 	chkoutput OUT || fail $msg
-	chkpasses OUT 'check' 'checkout' || fail $msg
+	chkpasses OUT 'check' || fail $msg
 	chknumbars OUT 1 || fail $msg
 	chkblanks OUT 0 || fail $msg
 	echo OK
@@ -1114,7 +1118,7 @@ echo "----- Stand-alone repo tests, -v"
 echo $N "clone (checkout:none) .......................................$NL"
 cd "$HERE"
 bk _rm -rf clone
-bk clone -v standalone clone >OUT 2>&1 || fail -f OUT
+bk clone -v -j1 standalone clone >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
 chkpasses OUT || fail $msg
 chknumbars OUT 0 || fail $msg
@@ -1123,26 +1127,7 @@ echo OK
 
 echo $N "clone (checkout:edit) .......................................$NL"
 cd "$HERE"
-bk _rm -rf clone
-BK_CONFIG='partial_check:on!;checkout:edit!' bk clone -v standalone clone-edit >OUT 2>&1 || fail -f OUT
-chkoutput OUT || fail $msg
-chknumbars OUT 0 || fail $msg
-chkblanks OUT 0 || fail $msg
-bk _rm -rf clone-edit
-echo OK
-
-echo $N "clone -j (checkout:none) ....................................$NL"
-cd "$HERE"
-bk clone -v -j3 standalone clone >OUT 2>&1 || fail -f OUT
-chkoutput OUT || fail $msg
-chkpasses OUT || fail $msg
-chknumbars OUT 0 || fail $msg
-chkblanks OUT 0 || fail $msg
-echo OK
-
-echo $N "clone -j (checkout:edit) ....................................$NL"
-cd "$HERE"
-BK_CONFIG='partial_check:on!;checkout:edit!' bk clone -v -j3 standalone clone-edit >OUT 2>&1 || fail -f OUT
+BK_CONFIG='partial_check:on!;checkout:edit!' bk clone -v -j1 standalone clone-edit >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
 chknumbars OUT 0 || fail $msg
 chkblanks OUT 0 || fail $msg
@@ -1161,7 +1146,7 @@ echo OK
 
 echo $N rclone ......................................................$NL
 cd "$HERE"
-bk clone -v standalone bk://localhost:$P/rclone >OUT 2>&1 || fail -f OUT
+bk clone -v -j1 standalone bk://localhost:$P/rclone >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf rclone
@@ -1169,7 +1154,7 @@ echo OK
 
 echo $N rclone -r ...................................................$NL
 cd "$HERE"
-bk clone -v -r1.1 clone bk://localhost:$P/rclone-1.1 >OUT 2>&1 || fail -f OUT
+bk clone -v -j1 -r1.1 clone bk://localhost:$P/rclone-1.1 >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf rclone-1.1
@@ -1177,7 +1162,7 @@ echo OK
 
 echo $N clone -r ....................................................$NL
 cd "$HERE"
-bk clone -v -r1.1 clone clone-1.1 >OUT 2>&1 || fail -f OUT
+bk clone -v -j1 -r1.1 clone clone-1.1 >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
 chkpasses OUT || fail -f OUT $msg
 chknumbars OUT 0 || fail $msg
@@ -1297,7 +1282,7 @@ echo OK
 
 echo $N clone w/pre triggers ........................................$NL
 cd "$HERE"
-bk clone -v standalone clone >OUT 2>&1 || fail -f OUT
+bk clone -v -j1 standalone clone >OUT 2>&1 || fail -f OUT
 bk grep -q ">> Trigger \"pre-outgoing\"" OUT || fail -f OUT
 chkoutput OUT || fail $msg
 chkblanks OUT 0 || fail $msg
@@ -1305,7 +1290,7 @@ echo OK
 
 echo $N rclone w/pre triggers .......................................$NL
 cd "$HERE"
-bk clone -v standalone bk://localhost:$P/rclone >OUT 2>&1 || fail -f OUT
+bk clone -v -j1 standalone bk://localhost:$P/rclone >OUT 2>&1 || fail -f OUT
 bk grep -q pre-outgoing OUT || fail -f OUT
 chkoutput OUT || fail $msg
 chkblanks OUT 0 || fail $msg
@@ -1336,7 +1321,7 @@ cd bad-clone
 add check-new || fail
 bk _mv SCCS/s.check-new x || fail
 cd ..
-bk clone -v bad-clone bad-clone2 >OUT 2>&1 && fail -f OUT
+bk clone -v -j1 bad-clone bad-clone2 >OUT 2>&1 && fail -f OUT
 bk grep -q 'check failed' OUT || fail -f OUT
 chkoutput OUT || fail $msg
 chkblanks OUT 0 || fail $msg
@@ -1347,7 +1332,7 @@ if [ $SKIP_BAM = NO ]; then
 	cd "$HERE/bam"
 	bk bam server $Q -f -r || fail
 	cd ..
-	bk clone -v bam bam-clone >OUT 2>&1 || fail -f OUT
+	bk clone -v -j1 bam bam-clone >OUT 2>&1 || fail -f OUT
 	chkoutput OUT || fail $msg
 	chkblanks OUT 0 || fail $msg
 	bk _rm -rf bam-clone
@@ -1359,7 +1344,7 @@ fi
 echo $N BAM rclone, no BAM server ...................................$NL
 if [ $SKIP_BAM = NO ]; then
 	cd "$HERE"
-	bk clone -v bam bk://localhost:$P/bam-clone >OUT 2>&1 || fail -f OUT
+	bk clone -v -j1 bam bk://localhost:$P/bam-clone >OUT 2>&1 || fail -f OUT
 	chkoutput OUT || fail $msg
 	chkblanks OUT 0 || fail $msg
 	echo OK
@@ -1400,7 +1385,7 @@ if [ $SKIP_BAM = NO ]; then
 	cd "$HERE/bam"
 	bk bam server $Q . || fail
 	cd ..
-	bk clone -v bam bam-clone >OUT 2>&1 || fail -f OUT
+	bk clone -v -j1 bam bam-clone >OUT 2>&1 || fail -f OUT
 	chkoutput OUT || fail $msg
 	chkblanks OUT 0 || fail $msg
 	echo OK
@@ -2617,40 +2602,40 @@ echo "----- Nested repo tests, -v"
 
 echo $N "clone, 0 components (checkout:none) .........................$NL"
 cd "$HERE"
-bk clone -v product0 clone0 >OUT 2>&1 || fail -f OUT
+bk clone -v -j1 product0 clone0 >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N "clone, 0 components (checkout:edit) .........................$NL"
 cd "$HERE"
-BK_CONFIG='partial_check:on!;checkout:edit!' bk clone -v product0 clone0-edit >OUT 2>&1 || fail -f OUT
+BK_CONFIG='partial_check:on!;checkout:edit!' bk clone -v -j1 product0 clone0-edit >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf clone0-edit
 echo OK
 
 echo $N "clone, 1 component (checkout:none) ..........................$NL"
-bk clone -v product1 clone1 >OUT 2>&1 || fail -f OUT
+bk clone -v -j1 product1 clone1 >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N "clone, 1 component (checkout:edit) ..........................$NL"
-BK_CONFIG='partial_check:on!;checkout:edit!' bk clone -v product1 clone1-edit >OUT 2>&1 || fail -f OUT
+BK_CONFIG='partial_check:on!;checkout:edit!' bk clone -v -j1 product1 clone1-edit >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf clone1-edit
 echo OK
 
 echo $N "clone, 3 components (checkout:none) .........................$NL"
-bk clone -v product3 clone3 >OUT 2>&1 || fail -f OUT
+bk clone -v -j1 product3 clone3 >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N "clone, 3 components (checkout:edit) .........................$NL"
-BK_CONFIG='partial_check:on!;checkout:edit!' bk clone -v product3 clone3-edit >OUT 2>&1 || fail -f OUT
+BK_CONFIG='partial_check:on!;checkout:edit!' bk clone -v -j1 product3 clone3-edit >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf clone3-edit
@@ -2666,7 +2651,7 @@ echo OK
 
 echo $N rclone, product only ........................................$NL
 cd "$HERE"
-bk clone -v product0 bk://localhost:$P/rclone0 >OUT 2>&1 || fail -f OUT
+bk clone -v -j1 product0 bk://localhost:$P/rclone0 >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf rclone0
@@ -2674,7 +2659,7 @@ echo OK
 
 echo $N rclone -r, product only .....................................$NL
 cd "$HERE"
-bk clone -v -r1.1 clone0 bk://localhost:$P/rclone0-1.1 >OUT 2>&1 || fail -f OUT
+bk clone -v -j1 -r1.1 clone0 bk://localhost:$P/rclone0-1.1 >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf rclone0-1.1
@@ -2682,7 +2667,7 @@ echo OK
 
 echo $N clone -r product only .......................................$NL
 cd "$HERE"
-bk clone -v -r1.1 clone0 clone0-1.1 >OUT 2>&1 || fail -f OUT
+bk clone -v -j1 -r1.1 clone0 clone0-1.1 >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf clone0-1.1
@@ -2715,7 +2700,7 @@ echo OK
 
 echo $N rclone, 1 component .........................................$NL
 cd "$HERE"
-bk clone -v clone1 bk://localhost:$P/rclone1 >OUT 2>&1 || fail -f OUT
+bk clone -v -j1 clone1 bk://localhost:$P/rclone1 >OUT 2>&1 || fail -f OUT
 chkoutput OUT comp1 || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf rclone1
@@ -2723,7 +2708,7 @@ echo OK
 
 echo $N rclone -r, 1 component ......................................$NL
 cd "$HERE"
-bk clone -v -r1.2 clone1 bk://localhost:$P/rclone1-1.2 >OUT 2>&1 || fail -f OUT
+bk clone -v -j1 -r1.2 clone1 bk://localhost:$P/rclone1-1.2 >OUT 2>&1 || fail -f OUT
 chkoutput OUT comp1 || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf rclone1-1.2
@@ -2731,7 +2716,7 @@ echo OK
 
 echo $N clone -r component only .....................................$NL
 cd "$HERE"
-bk clone -v -r1.2 clone1 clone1-1.2 >OUT 2>&1 || fail -f OUT
+bk clone -v -j1 -r1.2 clone1 clone1-1.2 >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
 chkblanks OUT 2 || fail $msg
 bk _rm -rf clone1-1.2
@@ -2807,7 +2792,7 @@ echo OK
 
 echo $N rclone, 3 components ........................................$NL
 cd "$HERE"
-bk clone -v clone3 bk://localhost:$P/rclone3 >OUT 2>&1 || fail -f OUT
+bk clone -v -j1 clone3 bk://localhost:$P/rclone3 >OUT 2>&1 || fail -f OUT
 chkoutput OUT comp1 comp2 comp3 || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf rclone3
@@ -2815,7 +2800,7 @@ echo OK
 
 echo $N rclone -r, 3 components .....................................$NL
 cd "$HERE"
-bk clone -v -r1.4 clone3 bk://localhost:$P/rclone3-1.4 >OUT 2>&1 || fail -f OUT
+bk clone -v -j1 -r1.4 clone3 bk://localhost:$P/rclone3-1.4 >OUT 2>&1 || fail -f OUT
 chkoutput OUT comp1 comp2 comp3 || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf rclone3-1.4
@@ -2823,7 +2808,7 @@ echo OK
 
 echo $N clone -r three components ...................................$NL
 cd "$HERE"
-bk clone -v -r1.4 clone3 clone3-1.4 >OUT 2>&1 || fail -f OUT
+bk clone -v -j1 -r1.4 clone3 clone3-1.4 >OUT 2>&1 || fail -f OUT
 chkoutput OUT  || fail $msg
 chkblanks OUT 6 || fail $msg
 bk _rm -rf clone3-1.4
@@ -2968,7 +2953,7 @@ bk delta $Q -yedit for-edit-v || fail
 bk commit $Q -yedit || fail
 cd ../clone0
 bk edit $Q for-edit-v
-echo edit2 >for-edit-q || fail
+echo edit2 >for-edit-v || fail
 bk pull -v ../product0 >OUT 2>&1 && fail -f OUT
 chkoutput OUT || fail $msg
 chkblanks OUT 1 || fail -f OUT $msg
@@ -3022,7 +3007,7 @@ bk comps -h | bk here set - || fail
 bk here rm $Q -f comp1 || fail
 cd ..
 mv product3 product3-renamed
-bk clone -v clone3 clone3-clone >OUT 2>&1 && fail -f OUT
+bk clone -v -j1 clone3 clone3-clone >OUT 2>&1 && fail -f OUT
 grep -q 'No other sources for ./comp1 known' OUT || fail -f OUT
 chkoutput OUT  || fail -f OUT $msg
 chkblanks OUT 0 || fail -f OUT $msg
@@ -3032,14 +3017,14 @@ echo OK
 echo $N clone w/pre triggers ........................................$NL
 cd "$HERE"
 bk _rm -rf clone3
-bk clone -v product3 clone3 >OUT 2>&1 || fail -f OUT
+bk clone -v -j1 product3 clone3 >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N rclone w/pre triggers .......................................$NL
 cd "$HERE"
-bk clone -v product3 bk://localhost:$P/rclone >OUT 2>&1 || fail -f OUT
+bk clone -v -j1 product3 bk://localhost:$P/rclone >OUT 2>&1 || fail -f OUT
 chkoutput OUT comp1 comp2 comp3 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -3074,7 +3059,7 @@ cd bad-product0
 add check-new || fail
 bk _mv SCCS/s.check-new x || fail
 cd ..
-bk clone -v bad-product0 bad-product0-2 >OUT 2>&1 && fail -f OUT
+bk clone -v -j1 bad-product0 bad-product0-2 >OUT 2>&1 && fail -f OUT
 grep -q 'Missing file' OUT || fail
 grep -q 'check failed' OUT || fail
 chkoutput OUT  || fail $msg
@@ -3088,7 +3073,7 @@ cd bad-product3/comp2
 add check-new || fail
 bk _mv SCCS/s.check-new x || fail
 cd ../..
-bk clone -v bad-product3 bad-product3-2 >OUT 2>&1 && fail -f OUT
+bk clone -v -j1 bad-product3 bad-product3-2 >OUT 2>&1 && fail -f OUT
 grep -q 'Missing file' OUT || fail
 grep -q 'check failed' OUT || fail
 chkoutput OUT || fail $msg

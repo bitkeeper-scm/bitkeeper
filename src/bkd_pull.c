@@ -1,29 +1,26 @@
 #include "bkd.h"
 #include "range.h"
 #include "nested.h"
-
+#include "cfg.h"
 
 private	int	checkAlias(sccs *cset, char *rev, char ***comps);
 
 int
 cmd_pull_part1(int ac, char **av)
 {
-	char	*p, buf[4096];
-	char	**probekey_av = 0;
-	int	status;
+	char	*p;
 	int	rc = 1;
-	FILE	*f;
 	int	nlid = 0;
 	int	port = 0;
 	int	c;
+	sccs	*cset;
+	char	*rev = 0;
+	u32	flags = SK_OKAY;
 
-	probekey_av = addLine(probekey_av, strdup("bk"));
-	probekey_av = addLine(probekey_av, strdup("_probekey"));
 	while ((c = getopt(ac, av, "denNlqr;z|", 0)) != -1) {
 		switch (c) {
 		    case 'r':
-			probekey_av = addLine(probekey_av,
-			    aprintf("-r%s", optarg));
+			rev = optarg;
 			break;
 		    case 'N':
 			nlid = 1;
@@ -39,7 +36,7 @@ cmd_pull_part1(int ac, char **av)
 
 	if (getenv("BK_PORT_ROOTKEY")) {
 		port = 1;
-		probekey_av = addLine(probekey_av, strdup("-S"));
+		flags |= SK_SYNCROOT;
 	}
 	if (!nlid && !port && proj_isComponent(0)) {
 		out("ERROR-component-only pulls are not allowed.\n");
@@ -65,27 +62,19 @@ cmd_pull_part1(int ac, char **av)
 		    "(4.1.1 or later)\n");
 		return (1);
 	}
-	probekey_av = addLine(probekey_av, 0);
-	f = popenvp(probekey_av+1, "r");
-	freeLines(probekey_av, free);
-	/* look to see if probekey returns an error */
-	unless (fnext(buf, f) && streq("@LOD PROBE@\n", buf)) {
-		fputs(buf, stdout);
-		goto done;
+	unless (cset = sccs_csetInit(0)) {
+		/*
+		 * In the old code, probekey_main() also put out a @END@,
+		 * but the pass through code didn't read it, but left it
+		 * in the buffer which was then closed.  So that's why
+		 * it is in probkey_main() and not here.
+		 */
+		out("ERROR-Can't init changeset\n");
+	} else {
+		rc = probekey(cset, rev, flags, stdout);
+		sccs_free(cset);
 	}
-	fputs("@OK@\n", stdout);
-	fputs(buf, stdout);	/* @LOD_PROBE@ */
-	while (fnext(buf, f)) {
-		fputs(buf, stdout);
-	}
-	rc = 0;
-done:
-	status = pclose(f);
-	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
-		printf("ERROR-probekey failed (status=%d)\n@END@\n",
-		    WEXITSTATUS(status));
-		rc = 1;
-	}
+	if (rc) printf("ERROR-probekey failed (status=%d)\n@END@\n", rc);
 	return (rc);
 }
 
@@ -104,7 +93,7 @@ cmd_pull_part2(int ac, char **av)
 	FILE	*f;
 	sccs	*cset;
 	ser_t	d;
-	int	pkflags = PK_LKEY;
+	int	pkflags = SK_LKEY|SILENT;
 	remote	r;
 	pid_t	pid;
 	char	buf[MAXKEY];
@@ -135,7 +124,7 @@ cmd_pull_part2(int ac, char **av)
 			out("ERROR-port source must be a gate\n");
 			return (1);
 		}
-		pkflags |= PK_SYNCROOT;
+		pkflags |= SK_SYNCROOT;
 	}
 	if (hasLocalWork(GONE)) {
 		out("ERROR-must commit local changes to ");
@@ -160,6 +149,10 @@ cmd_pull_part2(int ac, char **av)
 			out("@END@\n");
 			// LMXXX - shouldn't there be a return(1) here?
 		}
+		while (TAG(cset, d)) {
+			d = PARENT(cset, d);
+			assert(d);
+		}
 		/*
 		 * Need the 'gone' region marked RED
 		 */
@@ -175,7 +168,7 @@ cmd_pull_part2(int ac, char **av)
 	 */
 	keys = bktmp(0);
 	fd = open(keys, O_WRONLY, 0);
- 	if (prunekey(cset, &r, 0, fd, pkflags, 1, &local, &rem, &rtags) < 0) {
+ 	if (prunekey(cset, &r, 0, fd, pkflags, &local, &rem, &rtags) < 0) {
 		local = 0;	/* not set on error */
 		sccs_free(cset);
 		close(fd);
@@ -276,7 +269,7 @@ cmd_pull_part2(int ac, char **av)
 			 * of takepatch, so provide a way for Bluearc to
 			 * keep this feature.
 			 */
-			if (proj_configbool(0, "fakegrafts")) {
+			if (cfg_bool(0, CFG_FAKEGRAFTS)) {
 				makepatch[n++] = "-C";
 			}
 		} else {

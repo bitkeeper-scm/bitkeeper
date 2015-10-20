@@ -1,0 +1,132 @@
+Config variables: API and structures
+====================================
+
+== TL;DR
+
+1. Add your config variable to `src/confvars.h`
+2. There is no step 2, use it through one of the accessors.
+3. Actually, there is a step 2, document the variable in `bkmsg.doc`.
+
+== Background
+
+BK behavior on a local and macro scale is influenced by configuration
+that can exist in files and an environment variable.
+
+To see all the documented options can be configured, look at
+
+    bk help config-etc
+
+To see all the places this config file can live:
+
+    bk help config
+
+To see how that happens in code, see slib.c:loadConfig(),
+which calls the individual loaders.
+
+Of interest there is that an empty value can be used to block
+or overwrite entries, and that at the end of the process, if
+any key has an empty value, the key is deleted from the hash.
+
+== Description of the fields
+
+In `src/confvars.h` each call to the `CONFVAR()` macro must have the
+following fields:
+
+1. NAME: this is the name of the configuration variable. A `CFG_NAME`
+global enum will be created which *must* be used for accessing the
+config variable using the `cfg_*()` APIs.
+
+2. TYPE: One of the types at the beginning of `cfg.h`. The types are
+described in the <<dg,Design goals>> Section.
+
+3. DEFAULT VALUE: This is a C string which will be used as the default
+value if the configuration variable is not found in any of the places
+that are searched.
+
+4. IN SETUP: Whether this variable will be part of the default
+`config` file that `bk setup` puts in new repositories. (This is
+printed by `bk setup -pv`).  It is a string, and if set to `""` then
+the default will be used, otherwise a value other than default can
+be specified, as is done for checkout.  Note that if this field is
+not `0`, the variable *must be documented* in `src/bkmsg.doc` with
+a section called `#config_$var` where `$var` is the name of the
+variable.
+NOTE: Technically, this is not true, as the config.template or command
+line can include items that are not documented. In that case,
+the config_undoc template will be used to print out the variable
+and its default.
+
+5. NAME: This is the name by which the configuration variable will be
+searched for.  Separate from this, there is a place in `cfg.c` to
+store aliases, which map on to these names.
+
+=== Example
+
+  CONFVAR(BAM, SIZE, "off", "", "BAM")
+
+Will declare a new `CFG_BAM` macro for a configuration variable of
+type __Size__ which will default to "off". When accessed via
+the `cfg_bool()` API, it will be treated as a boolean, but when
+accessed via the `cfg_size()` API, it will return its value, if it is
+numeric (including the values "1" and "0"). To use, first check for
+number, then boolean:
+
+	unless (bam = cfg_size(p, CFG_BAM))
+		bam = cfg_bool(p, CFG_BAM) ? BAM_SIZE : 0;
+
+[[dg]]
+== Design goals
+* Support for multiple names for the configuration variable. One
+  example of where this is important is "auto_populate", which has
+  three variants in the config file: "auto_populate", "autopopulate",
+  and "auto-populate".
+
+* Record the type of the variable. The following variable types are
+  proposed:
+
+  ** Bool: Returns 1 on "1", "on", "true", and "yes", returns 0 on "0",
+    "off", "false", and "no". Gives an error otherwise.
++
+    Use `cfg_bool()` for access.
+
+  ** Int: Returns an integer converted using strtoll(). It returns 0 on
+   error or if the configuration variable is not found.
++
+   Use `cfg_int()` for access.
+
+  ** Size: Returns a positive 64-bit integer that can be specified as a
+    number followed by one of the following 3 letters: "K", "M", or
+    "G". The configuration value is converted using strtoull() and the
+    suffix multiplies it by 2^10^, 2^20^, and 2^30^ respectively.
++
+   If the number cannot be converted, or the configuration variable is
+    not found, 0 is returned.
++
+   Use `cfg_size()` for access.
+
+  ** Str: Returns a `char *` with the value specified for the
+    configuration variable. If the configuration variable is not
+    found, 0 is returned.
++
+    Use `cfg_str()` for access.
+
+* Callers should use constants that can be checked at _compile time_
+  rather than fail at runtime due to programming errors. E.g. use
+  `CFG_AUTOPOPULATE` to access the value of any of the following
+  configuration variables: "auto_populate", "autopopulate", or
+  "auto-populate".
+
+* A single file where *all* the configuration variables are declared and
+  their default value is specified.
+
+* O(1) access from the `cfg_*()` accessors.
+
+* A way to print all of the configuration variables and both their
+  default values and what the current values are as returned by the
+  `cfg_*()` accessors. I.e. the list of configuration variables should
+  be iterable. Note: default strings can be seen, but default integers
+  for clock_skew, BAM, and parallel are still specified in code to
+  deal with the complexities of backward compatibility.
+
+NOTE: Read through `configvars.h` and `bkmsg.doc` looking for
+`#config_${var}` to see default config values and docs.

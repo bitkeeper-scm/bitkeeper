@@ -214,7 +214,7 @@ try_rename(options *opts, sccs *s, ser_t d, int dopass1)
 	free(sfile);
 	unless (s) return (1);
 	ret = 0;
-	if (do_checkout(s)) ret = 1;
+	if (do_checkout(s, 0, 0)) ret = 1;
 	sccs_free(s);
 	return (ret);
 }

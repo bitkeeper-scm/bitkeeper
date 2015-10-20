@@ -10,7 +10,7 @@
  * Design supports multiple LODs.
  */
 private void
-lod_probekey(sccs *s, ser_t d, int syncRoot, FILE *f)
+lod_probekey(sccs *s, ser_t d, u32 flags, FILE *f)
 {
 	int	i, j;
 	char	key[MAXKEY];
@@ -19,12 +19,13 @@ lod_probekey(sccs *s, ser_t d, int syncRoot, FILE *f)
 	 * Phase 1, send the probe keys.
 	 * NB: must be in most recent to least recent order.
 	 */
+	fputs("@LOD PROBE@\n", f);
 	for (i = 1; d && (d != TREE(s)); i *= 2) {
 		for (j = i; d && --j; d = PARENT(s, d));
 		if (d) {
 			assert(!TAG(s, d));
-			sccs_sdelta(s, d, key);
-			fprintf(f, "%s\n", key);
+			sccs_pdelta(s, d, f);
+			putc('\n', f);
 		}
 	}
 
@@ -32,7 +33,7 @@ lod_probekey(sccs *s, ser_t d, int syncRoot, FILE *f)
 	 * Always send the root key because we want to force a match.
 	 * No match is a error condition.
 	 */
-	if (syncRoot) {
+	if (flags & SK_SYNCROOT) {
 		/*
 		 * We want to send the sync rootkey instead of the
 		 * current rootkey.
@@ -49,7 +50,6 @@ tag_probekey(sccs *s, FILE *f)
 {
 	ser_t	d;
 	int	i, j;
-	char	key[MAXKEY];
 
 	for (d = TABLE(s); d >= TREE(s); d--) {
 		/* Optimization: only tagprobe if tag with parent tag */
@@ -60,8 +60,8 @@ tag_probekey(sccs *s, FILE *f)
 	fputs("@TAG PROBE@\n", f);
 	for (i = 1; d; i *= 2) {
 		for (j = i; PTAG(s, d) && --j; d = PTAG(s, d));
-		sccs_sdelta(s, d, key);
-		fprintf(f, "%s\n", key);
+		sccs_pdelta(s, d, f);
+		putc('\n', f);
 		unless (PTAG(s, d)) return;
 	}
 }
@@ -71,11 +71,12 @@ probekey_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*rev = 0;
-	int	rc, c, syncRoot = 0;
+	int	rc, c;
+	u32	flags = 0;
 
 	while ((c = getopt(ac, av, "Sr;", 0)) != -1) {
 		switch (c) {
-		    case 'S': syncRoot = 1; break;
+		    case 'S': flags |= SK_SYNCROOT; break;
 		    case 'r': rev = optarg; break;
 		    default: bk_badArg(c, av);
 		}
@@ -84,29 +85,36 @@ probekey_main(int ac, char **av)
 		out("ERROR-Can't init changeset\n@END@\n");
 		return (1);
 	}
-	rc = probekey(s, rev, syncRoot, stdout);
+	rc = probekey(s, rev, flags, stdout);
 	sccs_free(s);
 	return (rc);
 }
 
 int
-probekey(sccs *s, char *rev, int syncRoot, FILE *f)
+probekey(sccs *s, char *rev, u32 flags, FILE *fout)
 {
 	ser_t	d;
 
+	// only support these flags
+	assert((flags & ~(SK_SYNCROOT|SK_OKAY)) == 0);
+
 	if (rev) {
 		unless (d = sccs_findrev(s, rev)) {
-			fprintf(f, "ERROR-Can't find revision %s\n", rev);
+			fprintf(fout, "ERROR-Can't find revision %s\n", rev);
 			return (1);
+		}
+		while (TAG(s, d)) {
+			d = PARENT(s, d);
+			assert(d);
 		}
 		range_gone(s, d, D_GONE);
 	} else {
 		d = sccs_top(s);
 	}
-	fputs("@LOD PROBE@\n", f);
-	lod_probekey(s, d, syncRoot, f);
-	tag_probekey(s, f);
-	fputs("@END PROBE@\n", f);
+	if (flags & SK_OKAY) fputs("@OK@\n", fout);
+	lod_probekey(s, d, flags, fout);
+	tag_probekey(s, fout);
+	fputs("@END PROBE@\n", fout);
 
 	return (0);
 }
@@ -161,187 +169,197 @@ int
 listkey_main(int ac, char **av)
 {
 	sccs	*s;
-	ser_t	d = 0;
-	int	i, c, debug = 0, quiet = 0, nomatch = 1;
-	int	sndRev = 0;
-	int	ForceFullPatch = 0; /* force a "makepatch -r.." */
-	int	syncRoot = 0;
-	char	key[MAXKEY], rootkey[MAXKEY], synckey[MAXKEY];
-	char	s_cset[] = CHANGESET;
-	char	**lines = 0;
-	char	*tag;
-	int	sum;
-	char	*note;
+	int	c;
+	int	rc;
+	u32	flags = 0;
 
-#define OUT(s)  unless(ForceFullPatch) out(s)
-
-	while ((c = getopt(ac, av, "dqrFS", 0)) != -1) {
+	while ((c = getopt(ac, av, "FqrS", 0)) != -1) {
 		switch (c) {
-		    case 'd':	debug = 1; break;
-		    case 'q':	quiet = 1; break;
-		    case 'r':	sndRev = 1; break;
-		    case 'F':   ForceFullPatch = 1; break;
-		    case 'S':   syncRoot = 1; break;
+		    case 'q':	flags |= SILENT; break;
+		    case 'r':	flags |= SK_SENDREV; break;
+
+			/* force a "makepatch -r.." */
+		    case 'F':   flags |= SK_FORCEFULL; break;
+		    case 'S':   flags |= SK_SYNCROOT; break;
 		    default: bk_badArg(c, av);
 		}
 	}
-	unless ((s = sccs_init(s_cset, 0)) && HASGRAPH(s)) {
+	unless ((s = sccs_csetInit(0)) && HASGRAPH(s)) {
 		fprintf(stderr, "Can't init changeset\n");
 		return(3); /* cset error */
 	}
+	rc = listkey(s, flags, stdin, stdout);
+	sccs_free(s);
+	return (rc);
+}
+
+/*
+ * reads probekey output on 'fin' and writes the list of
+ * keys not implied by the probe to 'fout'
+ *
+ * We read this:
+ * @LOD PROBE@
+ * <key>
+ * <key>
+ * ...
+ * <rootkey>
+ * @TAG PROBE@		// optional
+ * <key>
+ * <key>
+ * ...
+ * <key>
+ * @END PROBE@
+ *
+ * We produce this:
+ * @LOD MATCH@
+ * <key>
+ * @TAG MATCH@		// optional
+ * <tag key>
+ * @END MATCHES@
+ * <key>
+ * <key>
+ * ...
+ * @END@
+ */
+int
+listkey(sccs *s, u32 flags, FILE *fin, FILE *fout)
+{
+	int	i;
+	ser_t	d = 0;
+	ser_t	probed = 0;		/* first key in probe matched */
+	ser_t	tagd = 0;		/* first key matched in tag probe */
+	int	saw_rootkey = 0;
+	char	*tag;
+	int	sum;
+	char	*note;
+	char	*key;
+	char	rootkey[MAXKEY], synckey[MAXKEY];
+	char	buf[MAXKEY];
+
+	// only support these flags
+	assert((flags &
+	    ~(SILENT|SK_SENDREV|SK_FORCEFULL|SK_SYNCROOT)) == 0);
+
 	sccs_sdelta(s, sccs_ino(s), rootkey);
-	if (syncRoot) {
+	if (flags & SK_SYNCROOT) {
 		sccs_syncRoot(s, synckey);
-		if (streq(rootkey, synckey)) syncRoot = 0;
+		if (streq(rootkey, synckey)) flags &= ~SK_SYNCROOT;
 	}
 
 	/*
 	 * Phase 1, get the probe keys.
 	 */
-	if (getline(0, key, sizeof(key)) <= 0) {
-		unless (quiet) {
+	unless (key = fgetline(fin)) {
+		unless (flags & SILENT) {
 			fprintf(stderr, "Expected \"@LOD PROBE@\", Got EOF\n");
 		}
-		sccs_free(s);
 		return (2);
 	}
 	unless (streq("@LOD PROBE@", key)) {
-		unless (quiet) {
+		unless (flags & SILENT) {
 			fprintf(stderr,
 			    "Expected \"@LOD PROBE@\", Got \"%s\"\n", key);
 		}
-		sccs_free(s);
-		return(3); /* protocol error or repo locked */
+		return (3); /* protocol error or repo locked */
 	}
+	TRACE("looking for match key");
 
-	if (debug) fprintf(stderr, "listkey: looking for match key\n");
-
-	/*
-	 * Save the data in a lines list and then reprocess it.
-	 * We need two passes because we need to know if the root key
-	 * matched.
-	 */
+	/* process lod probe */
 	sum = i = 0;
-	while (getline(0, key, sizeof(key)) > 0) {
-		lines = addLine(lines, strdup(key));
+	while (key = fgetline(fin)) {
+		if (key[0] == '@') break;
 		++i;
 		sum += strlen(key);
-		if (streq("@END PROBE@", key) || streq("@TAG PROBE@", key)) {
-			break;
-		}
+		if ((flags & SK_SYNCROOT) && streq(key, synckey)) key = rootkey;
+		unless (probed) probed = sccs_findKey(s, key);
+		strcpy(buf, key); /* save last key */
 	}
-	unless (lines && lines[1]) goto mismatch;	/* sort of */
+	if (streq(buf, rootkey)) saw_rootkey = 1;
 	note = aprintf("%u(%u)", sum, i);
 	cmdlog_addnote("keysin", note);
 	free(note);
 
-	/*
-	 * Make sure that one of the keys match the root key and that the
-	 * next item is one of the @ commands.
-	 */
-	nomatch = 1;
-	EACH(lines) {
-		if (syncRoot && streq(lines[i], synckey)) {
-			free(lines[i]);
-			lines[i] = strdup(rootkey);
-		}
-		unless (streq(lines[i], rootkey)) continue;
-		unless (lines[i+1]) break;
-		if (streq(lines[i+1], "@END PROBE@") ||
-		    streq(lines[i+1], "@TAG PROBE@") ||
-		    streq(lines[i+1], "@LOD PROBE@")) {
-		    	nomatch = 0;
+	if (streq(key, "@TAG PROBE@")) {
+		while (key = fgetline(fin)) {
+			if (key[0] == '@') break;
+			unless (tagd) tagd = sccs_findKey(s, key);
 		}
 	}
-	if (nomatch) {
-mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
-		out("@NO MATCH@\n");
-		out("@END@\n");
-		sccs_free(s);
+	unless (streq("@END PROBE@", key)) {
+		unless (flags & SILENT) {
+			fprintf(stderr,
+			    "Expected \"@END PROBE@\", Got \"%s\"\n",
+			    (key ? key : "EOF"));
+		}
+		return (3); /* protocol error or repo locked */
+	}
+	unless (probed && saw_rootkey) {
+		TRACE("no match key");
+		fputs("@NO MATCH@\n", fout);
+		fputs("@END@\n", fout);
 		return (1); /* package key mismatch */
 	}
 
-	/*
-	 * Now do the real processing.
-	 */
-	nomatch = 1;
-	EACH(lines) {
-		if (streq("@LOD PROBE@", lines[i])) {
-			d = 0;
-			continue;
+	fputs("@LOD MATCH@\n", fout);
+	unless (flags & SK_FORCEFULL) {
+		if (flags & SK_SENDREV) {
+			assert(R0(s, probed));
+			fputs(REV(s, probed), fout);
+			putc('|', fout);
+			if (tag = sccs_d2tag(s, probed)) fputs(tag, fout);
+			putc('|', fout);
 		}
-		if (!d && (d = sccs_findKey(s, lines[i]))) {
-			sccs_color(s, d);
-			if (debug) {
-				fprintf(stderr, "listkey: found a match key\n");
-			}
-			if (nomatch) out("@LOD MATCH@\n");	/* aka first */
-			if (sndRev) {
-				assert(R0(s, d));
-				OUT(REV(s, d));
-				OUT("|");
-				if (tag = sccs_d2tag(s, d)) out(tag);
-				OUT("|");
-			}
-			if (syncRoot && (d == sccs_ino(s))) {
-				OUT(synckey);
-			} else {
-				OUT(lines[i]);
-			}
-			OUT("\n");
-			nomatch = 0;
+		if ((flags & SK_SYNCROOT) && (probed == sccs_ino(s))) {
+			fputs(synckey, fout);
+		} else {
+			sccs_pdelta(s, probed, fout);
 		}
+		putc('\n', fout);
 	}
-
-	if (streq("@TAG PROBE@", lines[--i])) {
-		d = 0;
-		while (getline(0, key, sizeof(key)) > 0) {
-			if (streq("@END PROBE@", key)) break;
-			if (!d && (d = sccs_findKey(s, key))) {
-				sccs_tagcolor(s, d);
-				out("@TAG MATCH@\n");
-				if (sndRev) {
-					assert(R0(s, d));
-					OUT(REV(s, d));
-					OUT("|");
-					if (tag = sccs_d2tag(s, d)) out(tag);
-					out("|");
-				}
-				sccs_sdelta(s, d, key);
-				OUT(key);
-				OUT("\n");
+	if (tagd && !(flags & SK_FORCEFULL)) {
+		fputs("@TAG MATCH@\n", fout);
+		if (flags & SK_SENDREV) {
+			assert(R0(s, tagd));
+			fputs(REV(s, tagd), fout);
+			putc('|', fout);
+			if (tag = sccs_d2tag(s, tagd)) {
+				fputs(tag, fout);
 			}
+			fputc('|', fout);
 		}
+		sccs_pdelta(s, tagd, fout);
+		putc('\n', fout);
 	}
-	out("@END MATCHES@\n");
-	freeLines(lines, free);
+	fputs("@END MATCHES@\n", fout);
 
 	/*
 	 * Phase 2, send the non marked keys.
 	 */
-	sum = i = 0;
-	for (d = TABLE(s); d >= TREE(s); d--) {
-		if (FLAGS(s, d) & D_RED) continue;
-		if (sndRev) {
-			assert(R0(s, d));
-			OUT(REV(s, d));
-			OUT("|");
-			if (tag = sccs_d2tag(s, d)) {
-				OUT(tag);
+	unless (flags & SK_FORCEFULL) {
+		sum = i = 0;
+		sccs_color(s, probed);
+		if (tagd) sccs_tagcolor(s, tagd);
+		for (d = TABLE(s); d >= TREE(s); d--) {
+			if (FLAGS(s, d) & D_RED) continue;
+			if (flags & SK_SENDREV) {
+				assert(R0(s, d));
+				fputs(REV(s, d), fout);
+				putc('|', fout);
+				if (tag = sccs_d2tag(s, d)) {
+					fputs(tag, fout);
+				}
+				putc('|', fout);
 			}
-			OUT("|");
+			sccs_pdelta(s, d, fout);
+			putc('\n', fout);
+			++i;
+			sum += strlen(buf);
 		}
-		sccs_sdelta(s, d, key);
-		OUT(key);
-		OUT("\n");
-		++i;
-		sum += strlen(key);
+		note = aprintf("%u(%u)", sum, i);
+		cmdlog_addnote("keysout", note);
+		free(note);
 	}
-	out("@END@\n");
-	sccs_free(s);
-	note = aprintf("%u(%u)", sum, i);
-	cmdlog_addnote("keysout", note);
-	free(note);
+	fputs("@END@\n", fout);
 	return (0);
 }
 
@@ -350,7 +368,7 @@ get_key(char *buf, int flags)
 {
 	char	*p;
 
-	unless (flags & PK_REVPREFIX)  return (buf);
+	unless (flags & SK_REVPREFIX)  return (buf);
 	p = strchr(buf, '|'); /* skip rev */
 	assert(p);
 	p = strchr(++p, '|'); /* skip tag */
@@ -367,12 +385,12 @@ skipit(hash *skip, char *key)
 }
 
 /*
- * If there are multiple lods and a tag "lod" then we expect this:
+ * We expect this:
  * @LOD MATCH@
  * <key>
  * <key>
  * ...
- * @TAG MATCH@
+ * @TAG MATCH@		// optional
  * <tag key>
  * @END MATCHES@
  * <key>
@@ -381,14 +399,21 @@ skipit(hash *skip, char *key)
  * @END@
  */
 int
-prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
-	int quiet, int *local_only, int *remote_csets, int *remote_tags)
+prunekey(sccs *s, remote *r, hash *skip, int outfd, u32 flags,
+	int *local_only, int *remote_csets, int *remote_tags)
 {
+	FILE	*f;
 	ser_t	d;
 	int	rc = 0, rcsets = 0, rtags = 0, local = 0;
+	int	quiet = flags & SILENT;
 	char	*k;
-	char	key[MAXKEY + 512] = ""; /* rev + tag + key */
+	char	*key;
 	char	synckey[MAXKEY];
+	char	buf[MAXKEY];
+
+	// only support these flags
+	assert(
+	    (flags & ~(SILENT|SK_REVPREFIX|SK_LKEY|SK_RKEY|SK_SYNCROOT)) == 0);
 
 #define	ERR(r)	rc = r; goto out
 	T_CMD("prunekey");
@@ -399,8 +424,9 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 	 */
 	unless (r->rf) r->rf = fdopen(r->rfd, "r");
 	assert(r->rf);
+	f = r->rf;
 
-	unless (getline2(r, key, sizeof(key)) > 0) {
+	unless (key = fgetline(f)) {
 		unless (quiet) {
 			fprintf(stderr,
 			    "prunekey: expected @CMD@, got nothing.\n");
@@ -423,18 +449,19 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 		}
 		ERR(-1);
 	}
-	if (flags & PK_SYNCROOT) sccs_syncRoot(s, synckey);
+	if (flags & SK_SYNCROOT) sccs_syncRoot(s, synckey);
 
 	/* Work through the LOD key matches and color the graph. */
 	for ( ;; ) {
-		unless (getline2(r, key, sizeof(key)) > 0) {
+		unless (key = fgetline(f)) {
 			perror("prunekey: expected key | @");
 			ERR(-3);
 		}
 		if (key[0] == '@') break;
 		k = get_key(key, flags);
 		d = sccs_findKey(s, k);
-		if (!d && (flags & PK_SYNCROOT)) {
+
+		if (!d && (flags & SK_SYNCROOT)) {
 			if (streq(k, synckey)) d = sccs_ino(s);
 		}
 		/*
@@ -452,7 +479,7 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 	/* Work through the tag key matches and color the tag graph. */
 	if (streq(key, "@TAG MATCH@")) {
 		for ( ;; ) {
-			unless (getline2(r, key, sizeof(key)) > 0) {
+			unless (key = fgetline(f)) {
 				perror("prunekey: expected key | @");
 				exit(2);
 			}
@@ -468,7 +495,7 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 	}
 
 	for ( ;; ) {
-		unless (getline2(r, key, sizeof(key)) > 0) {
+		unless (key = fgetline(f)) {
 			perror("prunekey: expected key | @");
 			exit(2);
 		}
@@ -476,13 +503,13 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 		k = get_key(key, flags);
 		if (d = sccs_findKey(s, k)) {
 			FLAGS(s, d) |= D_RED;
-		} else if (!skipit(skip, k)) { 
+		} else if (!skipit(skip, k)) {
 			if (sccs_istagkey(k)) {
 				rtags++;
 			} else {
 				rcsets++;
 			}
-			if (flags & PK_RKEY) {
+			if (flags & SK_RKEY) {
 				writen(outfd, k, strlen(k));
 				write(outfd, "\n", 1);
 			}
@@ -497,9 +524,9 @@ empty:	for (d = TABLE(s); d >= TREE(s); d--) {
 			FLAGS(s, d) &= ~D_RED;
 			continue;
 		}
-		if (flags & PK_LKEY) {
-			sccs_md5delta(s, d, key);
-			writen(outfd, key, strlen(key));
+		if (flags & SK_LKEY) {
+			sccs_md5delta(s, d, buf);
+			writen(outfd, buf, strlen(buf));
 			write(outfd, "\n", 1);
 		}
 		local++;
@@ -509,7 +536,7 @@ empty:	for (d = TABLE(s); d >= TREE(s); d--) {
 	if (local_only) *local_only = local;
 	safe_putenv("BK_LOCALCSETS=%d", local);
 	safe_putenv("BK_REMOTECSETS=%d", rcsets);
-	rc = local; 
+	rc = local;
 
 out:	T_CMD("prunekey = %d", rc);
 	return (rc);
@@ -542,13 +569,12 @@ prunekey_main(int ac, char **av)
 		if (s) sccs_free(s);
 		return (-1);
 	}
-	prunekey(s, &r, NULL, -1, 0, 0, 0, 0, 0);
+	prunekey(s, &r, NULL, -1, 0, 0, 0, 0);
 	s->state &= ~S_SET;
 	for (d = TABLE(s); d >= TREE(s); d--) {
 		if (FLAGS(s, d) & D_RED) continue;
 		s->rstart = s->rstop = d;
 		sccs_prs(s, PRS_ALL, 0, dspec, stdout);
-		FLAGS(s, d) &= ~D_SET;
 	}
 	sccs_free(s);
 	return (0);
@@ -569,11 +595,11 @@ send_sync_msg(remote *r, sccs *s, int flags)
 	assert(f);
 	sendEnv(f, NULL, r, 0);
 	add_cd_command(f, r);
-	fprintf(f, "synckeys %s\n", (flags & PK_SYNCROOT) ? "-S" : "");
+	fprintf(f, "synckeys %s\n", (flags & SK_SYNCROOT) ? "-S" : "");
 	fclose(f);
 
 	f = fmem();
-	probekey(s, 0, (flags & PK_SYNCROOT), f);
+	probekey(s, 0, (flags & SK_SYNCROOT), f);
 	probe = fmem_peek(f, &probelen);
 	rc = send_file(r, buf, probelen);
 	unlink(buf);
@@ -619,9 +645,9 @@ synckeys(remote *r, sccs *s, int flags, FILE *fout)
 	/*
 	 * What we want is: "remote => bk _prunekey => stdout"
 	 */
-	flags |= PK_REVPREFIX;
+	flags |= SK_REVPREFIX;
 	fflush(fout);
-	i = prunekey(s, r, NULL, fileno(fout), flags, 0, NULL, NULL, NULL);
+	i = prunekey(s, r, NULL, fileno(fout), flags, NULL, NULL, NULL);
 	if (i < 0) {
 		switch (i) {
 		    case -2:	/* needed to force bkd unlock */
@@ -653,9 +679,9 @@ synckeys_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "lSr", 0)) != -1) {
 		switch (c) {
-		    case 'l': flags |= PK_LKEY; break;
-		    case 'S': flags |= PK_SYNCROOT; break;
-		    case 'r': flags |= PK_RKEY; break;
+		    case 'l': flags |= SK_LKEY; break;
+		    case 'S': flags |= SK_SYNCROOT; break;
+		    case 'r': flags |= SK_RKEY; break;
 		    default: bk_badArg(c, av);
 		}
 	}

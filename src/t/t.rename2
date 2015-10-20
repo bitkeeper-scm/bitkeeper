@@ -46,17 +46,17 @@ cd "$HERE"
 rm -rf copy
 bk clone $Q project copy
 cd project/src
-bk mv bar.c tmp.c || exit 1
+bk mv bar.c tmp.c || fail
 mkdir bar.c
-bk mv tmp.c bar.c/bar.c || exit 1
-bk commit $S -yCset2 || exit 1
+bk mv tmp.c bar.c/bar.c || fail
+bk commit $S -yCset2 || fail
 cd "$HERE/copy/src"
 bk get $Q bar.c
-bk pull $Q || exit 1
+bk pull $Q || fail
 echo OK
 
 echo $N test undoing file to directory rename .......................$NL
-bk undo $Q -arename -f || exit 1
+bk undo $Q -arename -f || fail
 echo OK
 
 echo $N Make sure delta does not rename, must use bk mv .............$NL

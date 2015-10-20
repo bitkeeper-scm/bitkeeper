@@ -10,6 +10,7 @@ struct	range {
 
 #define RANGE_ENDPOINTS	0x10	/* just return s->rstart s->rstop */
 #define	RANGE_SET	0x20	/* return S_SET */
+#define	RANGE_RSTART2	0x40	/* allow s->rstart2 */
 
 #define	WR_BOTH		0x01	/* keep RED and BLUE; callback on both */
 #define	WR_GCA		0x02	/* Callback only on the gca deltas */
@@ -40,7 +41,7 @@ struct	range {
 
 int	range_process(char *me, sccs *s, u32 flags, RANGE *rargs);
 int	range_addArg(RANGE *rargs, char *arg, int isdate);
-int	range_urlArg(RANGE *rargs, char *url);
+int	range_urlArg(RANGE *rargs, char *url, int standalone);
 
 void	range_cset(sccs *s, ser_t d);
 ser_t	range_findMerge(sccs *s, ser_t d1, ser_t d2, ser_t **mlist);

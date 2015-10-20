@@ -9,31 +9,30 @@ bk setup \- create a new \*(BK package
 .el .[B] \-fp
 .[OPTreq] \-F key\fB=\fIval
 .[OPTreq] \-c config_file
-.ARG directory
+.[ARG] directory
 .SH DESCRIPTION
 There is a graphical version of this command,
 .BR "bk setuptool" .
 .LP
 To set up a \*(BK package, you need to create and populate an initial tree.
-The 
+If the
+.ARG directory
+argument is supplied, the 
 .B bk setup 
 command will create a mostly empty package tree containing a
-few files and directories that are used by \*(BK.
-.LP
-The setup command will prompt you for a description of the package as
-well as other information about your new package.
+few files and directories that are used by \*(BK. Otherwise, a new
+\*(BK package will be created in place.
 .LP
 A system wide default config template file may be created in either
-.B $HOME/.bk/config.template 
-or in
-.B /etc/BitKeeper/etc/config.template
-or in
+.BR "\`bk\ dotbk\`/etc/config.template" ,
+.BR /etc/BitKeeper/etc/config.template ,
+or
 .BR "\`bk\ bin\`/etc/config.template" .
-If this file is detected when 
+If any of these files is detected when 
 .B bk setup
 is run, without the
 .Q \-c
-option, it will be used as the default
+option, the keys in it will be used as the defaults in the
 .B BitKeeper/etc/config
 file automatically.
 The first file found is used.
@@ -85,6 +84,9 @@ The following shows the directory structure of a new package.
 .B mypackage/
 .RS 8
 .TP 18
+.B .bk/
+Directory for storing BitKeeper metadata.
+.tp
 .B ChangeSet
 Index of all changes to the repository.
 .tp

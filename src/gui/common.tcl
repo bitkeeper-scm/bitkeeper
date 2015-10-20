@@ -1582,14 +1582,16 @@ highlightStacked(widget w, string start, string stop, int prefix)
 			if (l < length(lines)) continue;
 		}
 		if (defined(addlines) && defined(sublines)) {
-			int	i = 0;
+			int	i;
 			hunk	h, hunks[];
 			int	lineA, lineB;
 			int	llen, rlen;
 
-			for (; hunkstart < l; ++hunkstart, ++i) {
+			for (i = 0; hunkstart < l; ++hunkstart, ++i) {
 				unless (defined(addlines[i])) break;
 				unless (defined(sublines[i])) break;
+				if (strlen(sublines[i]) > 1000 ||
+				    strlen(addlines[i]) > 1000) break;
 				hunks = diff(sublines[i], addlines[i]);
 				lineA = hunkstart;
 				lineB = hunkstart + length(sublines);

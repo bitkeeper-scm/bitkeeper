@@ -811,7 +811,7 @@ putpair(MDBM *db, char *pag, datum key, datum val)
 	off += key.dsize;
 	INO(pag, n + 1) = hton_idx(off);
 	off = ALGNED(db, off);
-	(void) memcpy(t + off, val.dptr, val.dsize);
+	(void) memmove(t + off, val.dptr, val.dsize);
 	off += val.dsize;
 	INO(pag, n + 2) = hton_idx(off);
 	INO(pag, 0) = hton_idx((idx_t) (n + 2)); /* adjust item count */

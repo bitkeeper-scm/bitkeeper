@@ -210,7 +210,7 @@ echo $N Try a push through the BKD...................................$NL
 cd "$HERE"
 bk clone $Q -l null-push project
 cd "$HERE/project"
-bk bkd -q -d -aPORT -ikill || exit 1
+bk bkd -q -d -aPORT -ikill || fail
 P=`cat PORT`
 cd "$HERE/copy"
 bk push bk://localhost:$P >OUT 2>&1 || {
@@ -218,7 +218,7 @@ bk push bk://localhost:$P >OUT 2>&1 || {
 	cat OUT
 	exit 1
 }
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 echo OK
 
 echo $N Try a push using HTTP........................................$NL
@@ -226,11 +226,11 @@ cd "$HERE"
 rm -rf project
 bk clone $Q -l null-push project
 cd "$HERE/project"
-bk bkd -q -d -aPORT -ikill || exit 1
+bk bkd -q -d -aPORT -ikill || fail
 P=`cat PORT`
 cd "$HERE/copy"
 bk push http://localhost:$P >OUT 2>&1 || fail -f OUT
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 test -f "$HERE/project/BitKeeper/writer/nested_lock" && fail leaked lock
 echo OK
 
@@ -260,7 +260,7 @@ cd "$HERE"
 rm -rf project
 bk clone $Q -l null-push project
 cd "$HERE/null-push"
-bk bkd -q -d -aPORT -ikill || exit 1
+bk bkd -q -d -aPORT -ikill || fail
 P=`cat PORT`
 cd "$HERE/project"
 bk push http://localhost:$P >OUT 2>&1 || fail -f OUT
@@ -288,7 +288,7 @@ chmod +x post-incoming.push
 bk new $Q post-incoming.push
 bk commit $Q -y'trigger'
 cd ../..
-bk push $Q ../project || exit 1
+bk push $Q ../project || fail
 cd ../project
 grep -q '_BK_TRANSACTION=.' ENV && {
 	echo failed
@@ -313,7 +313,7 @@ chmod +x post-incoming.push2
 bk new $Q post-incoming.push2
 bk commit $Q -y'trigger2'
 cd ../..
-bk push $Q ../project || exit 1
+bk push $Q ../project || fail
 test -f "$HERE/FAIL" && {
 	echo failed
 	echo Product triggers running twice
@@ -489,12 +489,12 @@ test `bk prs -hnd:REV: -roldtag ChangeSet` = 1.3 || fail
 echo OK
 
 echo $N Now push tag along with another cset ........................$NL
-bk unpull -f $Q || exit 1
+bk unpull -f $Q || fail
 cd ../full
 touch tagf
-bk new $Q tagf || exit 2
-bk commit $Q -ytagf || exit 3
-bk push $Q || exit 4
+bk new $Q tagf || fail
+bk commit $Q -ytagf || fail
+bk push $Q || fail
 echo OK
 
 echo $N Try same push through a BKD..................................$NL
@@ -502,7 +502,7 @@ cd "$HERE"
 rm -rf project
 bk clone $Q null-push project
 cd "$HERE"/project
-bk bkd -q -d -aPORT -ikill || exit 1
+bk bkd -q -d -aPORT -ikill || fail
 P=`cat PORT`
 cd "$HERE/copy"
 bk push bk://localhost:$P >OUT 2>&1 || {
@@ -510,7 +510,7 @@ bk push bk://localhost:$P >OUT 2>&1 || {
 	cat OUT
 	exit 1
 }
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 cd "$HERE"/project
 test -d libc || {
 	echo failed
@@ -601,4 +601,41 @@ test -n "`bk -P changes -qR ../child`" && fail local changes found
 # destination repo should be fine
 cd "$HERE/child"
 bk -e -r check -ac >ERR 2>&1 || fail -f ERR
+echo OK
+
+echo $N Push from bweave to ascii such that comp uses clone -r ......$NL
+cd "$HERE"
+commercial stand
+printf "a\nb\nc\n" > foo
+bk new $Q foo
+bk commit $Q -f
+cd ..
+nested ug
+bk gate $Q -r
+bk clone $Q --downgrade . ../dg
+bk clone $Q . ../ug-copy
+bk attach $Q ../stand ug-comp
+cd ../stand
+bk edit $Q foo
+printf "0\na\nb\nc\n" > foo
+bk delta $Q -ya foo
+bk commit $Q -f
+cd ../ug
+bk edit $Q ug-comp/foo
+printf "a\nb\nc\n10\n" > ug-comp/foo
+bk delta $Q -yb ug-comp/foo
+bk commit $Q -f
+bk --cd=ug-comp port $Q "$HERE"/stand
+bk clone $Q --downgrade . ../dg-copy
+# Leave the component intact, causing a clone -r to remote
+bk portal $Q -r
+bk fix -cdP
+bk push $Q ../dg || fail
+echo OK
+
+echo $N Push from ascii to bweave such that comp uses clone -r ......$NL
+cd ../dg-copy
+# Leave the component intact, causing a clone -r to remote
+bk fix -cdP
+bk push $Q ../ug-copy || fail
 echo OK

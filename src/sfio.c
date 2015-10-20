@@ -50,6 +50,7 @@ private	void	optsFree(void);
 private	int	sfio_out(void);
 private int	out_file(char *file, struct stat *, off_t *byte_count,
 		    int useDsum, u32 dsum);
+private int	out_xfile(char *file, int type, off_t *byte_count);
 private int	out_bptuple(char *tuple, off_t *byte_count);
 private int	out_symlink(char *file, struct stat *, off_t *byte_count);
 private int	out_hardlink(char *file,
@@ -58,6 +59,7 @@ private	int	sfio_in(int extract, int justone);
 private int	in_bptuple(char *file, char *datalen, int extract);
 private int	in_symlink(char *file, int todo, int extract);
 private int	in_hardlink(char *file, int todo, int extract);
+private int	in_xfile(char *file, int type, u32 todo, int extract);
 private int	in_file(char *file, u32 todo, int extract);
 private	int	mkfile(char *file);
 private	void	send_eof(int status);
@@ -85,6 +87,7 @@ private	struct {
 	u32	clone:1;	/* --clone: use 'bk _sfiles_clone' */
 	u32	parents:1;	/* --parents */
 	u32	doubleKeys:1;	/* bam recurse is sending double len keys */
+	u32	raw:1;		/* operate on raw files without magic */
 	int	mode;		/* M_IN, M_OUT, M_LIST */
 	char	**more;		/* additional list of files to send */
 	char	*prefix;	/* dir prefix to put on the file listing */
@@ -98,6 +101,7 @@ private	struct {
 	int	prevlen;	/* length of previously printed line */
 	u32	compat;		/* send sfile in compat form */
 	ticker	*tick;		/* progress bar */
+	hash	*dirs;		/* mkdir() list */
 } *opts;
 
 #define M_IN	1
@@ -115,6 +119,7 @@ sfio_main(int ac, char **av)
 		{ "mark-no-dfiles", 320 },
 		{ "Nway", 330 },
 		{ "parents", 335 },
+		{ "raw", 337 },		// operate on raw files without magic
 		{ "takepatch", 340 },
 		{ 0, 0 }
 	};
@@ -189,6 +194,9 @@ sfio_main(int ac, char **av)
 			break;
 		    case 335:	/* --parents */
 			opts->parents = 1;
+			break;
+		    case 337:	/* --raw */
+			opts->raw = 1;
 			break;
 		    case 340:	/* --takepatch */
 			opts->takepatch = 1;
@@ -274,6 +282,7 @@ optsFree(void)
 	if (opts->more) freeLines(opts->more, free);
 	if (opts->sent) hash_free(opts->sent);
 	if (opts->lastdir) free(opts->lastdir);
+	if (opts->dirs) hash_free(opts->dirs);
 	free(opts);
 }
 
@@ -310,6 +319,7 @@ sfio_out(void)
 	MDBM	*idDB = 0;
 	MDBM	*goneDB = 0;
 	int	fout;
+	int	xfile;
 	char	**av = 0;
 	char	ln[32];
 
@@ -357,6 +367,7 @@ sfio_out(void)
 			}
 			continue;
 		}
+		xfile = opts->raw ? 0 : is_xfile(buf);
 		if (opts->key2path) {
 			unless (gfile = key2path(buf, idDB, goneDB, 0)) {
 				continue;
@@ -377,7 +388,7 @@ sfio_out(void)
 				}
 			}
 		} else {
-			if (lstat(buf, &sb)) {
+			if (!xfile && lstat(buf, &sb)) {
 				perror(buf);
 				send_eof(SFIO_LSTAT);
 				return (SFIO_LSTAT);
@@ -385,7 +396,7 @@ sfio_out(void)
 			cleanPath(buf, buf);  /* avoid stuff like ./file */
 		}
 		byte_count += printf("%04d%s", (int)strlen(buf), buf);
-		if (opts->hardlinks) {
+		if (opts->hardlinks && !xfile) {
 			sprintf(ln, "%x %x", (u32)sb.st_dev, (u32)sb.st_ino);
 			unless (hash_insertStr(links, ln, buf)) {
 				n = out_hardlink(buf, &sb, &byte_count,
@@ -398,7 +409,8 @@ sfio_out(void)
 				continue;
 			}
 		}
-		if (opts->lclone && !strneq(buf, "BitKeeper/log/", 14)) {
+		if (opts->lclone && !xfile &&
+		    !strneq(buf, "BitKeeper/log/", 14)) {
 			/*
 			 * In lclone-mode every file is a "hardlink" to
 			 * the absolute path of the file in the original
@@ -414,7 +426,12 @@ sfio_out(void)
 			}
 			continue;
 		}
-		if (S_ISLNK(sb.st_mode)) {
+		if (xfile) {
+			if (n = out_xfile(buf, xfile, &byte_count)) {
+				send_eof(n);
+				return (n);
+			}
+		} else if (S_ISLNK(sb.st_mode)) {
 			unless (opts->doModes) {
 				fprintf(stderr,
 				"Warning: symlink %s sent as regular file.\n",
@@ -498,6 +515,35 @@ out_hardlink(char *file, struct stat *sp, off_t *byte_count, char *linkMe)
 	*byte_count += printf("%010u", sum);
 	if (opts->doModes) *byte_count += printf("%03o", sp->st_mode & 0777);
 	print_status(file, 0);
+	return (0);
+}
+
+private int
+out_xfile(char *file, int type, off_t *byte_count)
+{
+	u32	sum, sz;
+	char	*data;
+
+	data = xfile_fetch(file, type);
+	unless (data) {
+		perror(file);
+		return (SFIO_OPEN);
+	}
+	sz = strlen(data);
+	*byte_count += printf("%010u", sz);
+	if (fwrite(data, 1, sz, stdout) != sz) {
+		if ((errno != EPIPE) || getenv("BK_SHOWPROC")) {
+			perror(file);
+		}
+		free(data);
+		return (1);
+	}
+	sum = adler32(0, data, sz);
+	free(data);
+	*byte_count += sz;
+	*byte_count += printf("%010u", sum);
+	if (opts->doModes) *byte_count += printf("%03o", 0664);
+	print_status(file, sz);
 	return (0);
 }
 
@@ -725,6 +771,7 @@ sfio_in(int extract, int justone)
 	FILE	*co = 0;
 	char	**save = 0;
 	char	*p;
+	int	xfile;
 	char	buf[MAXPATH];
 	char	datalen[11];
 
@@ -816,6 +863,7 @@ eof:			if (co) {
 		byte_count += len;
 		buf[len] = 0;
 		perfile(buf);
+		xfile = opts->raw ? 0 : is_xfile(buf);
 		if (fread(datalen, 1, 10, stdin) != 10) {
 			perror("fread");
 			return (1);
@@ -834,6 +882,9 @@ eof:			if (co) {
 		} else if (strneq("HLNK00", datalen, 6)) {
 			sscanf(&datalen[6], "%04d", &len);
 			if (in_hardlink(buf, len, extract)) return (1);
+		} else if (xfile) {
+			sscanf(datalen, "%010u", &ulen);
+			if (in_xfile(buf, xfile, ulen, extract)) return (1);
 		} else {
 			sscanf(datalen, "%010u", &ulen);
 			if (in_file(buf, ulen, extract)) return (1);
@@ -1048,13 +1099,9 @@ in_hardlink(char *file, int pathlen, int extract)
 	buf[pathlen] = 0;
 	sum = adler32(0, buf, pathlen);
 	if (extract) {
-		if (link(buf, file)) {
-			mkdirf(file);
-			if (opts->force) unlink(file);
-			if (link(buf, file)) {
-				perror(file);
-				return (1);
-			}
+		if (fileLink(buf, file)) {
+			perror(file);
+			return (1);
 		}
 	}
 	if (fread(buf, 1, 10, stdin) != 10) {
@@ -1091,6 +1138,58 @@ in_hardlink(char *file, int pathlen, int extract)
 err:
 	if (extract) unlink(file);
 	return (1);
+}
+
+private int
+in_xfile(char *file, int type, u32 todo, int extract)
+{
+	char	*data;
+	int	rc = 1;
+	u32	sum, sum2;
+	char	*dir;
+	char	buf[MAXLINE];
+
+	data = malloc(todo+1);
+	if (todo && (fread(data, 1, todo, stdin) != todo)) {
+		fprintf(stderr, "Premature EOF of %s\n", file);
+		goto err;
+		free(data);
+		return (1);
+	}
+	sum = adler32(0, data, todo);
+	data[todo] = 0;
+
+	if (fread(buf, 1, 10, stdin) != 10) {
+		perror("chksum read");
+		goto err;
+	}
+	buf[10] = 0;
+	sscanf(buf, "%010u", &sum2);
+	if ((sum != sum2) && !getenv("_BK_ALLOW_BAD_CRC")) {
+		fprintf(stderr,
+		    "Checksum mismatch %u:%u for %s\n", sum, sum2, file);
+		goto err;
+	}
+	if (opts->doModes) {
+		if (fread(buf, 1, 3, stdin) != 3) {
+			perror("mode read");
+			goto err;
+		}
+	}
+	if (extract) {
+		strcpy(buf, file);
+		dir = dirname(buf); /* strip x.file */
+		dir = dirname(dir); /* strip SCCS */
+		unless (opts->dirs) opts->dirs = hash_new(HASH_MEMHASH);
+		if (hash_insertStrSet(opts->dirs, dir)) mkdirp(dir);
+		if (xfile_store(file, type, data)) {
+			perror(file);
+			goto err;
+		}
+	}
+	rc = 0;
+err:	free(data);
+	return (rc);
 }
 
 private int
@@ -1219,7 +1318,8 @@ int
 mkfile(char *file)
 {
 	int	fd;
-	int	first = 1;
+	char	*dir;
+	char	buf[MAXPATH];
 
 	if (reserved(basenm(file))) {
 bad_name:	getMsg("reserved_name", file, '=', stderr);
@@ -1235,7 +1335,17 @@ bad_name:	getMsg("reserved_name", file, '=', stderr);
 		getMsg("win_trailing_dot", file, '=', stderr);
 	}
 #endif
-again:	fd = open(file, O_CREAT|O_EXCL|O_WRONLY, 0666);
+	strcpy(buf, file);
+	dir = dirname(buf);
+	unless (opts->dirs) opts->dirs = hash_new(HASH_MEMHASH);
+	if (hash_insertStrSet(opts->dirs, dir)) {
+		if (mkdirp(dir) && (errno != EEXIST)) {
+			fputs("\n", stderr);
+			perror(file);
+			if (errno == EINVAL) goto bad_name;
+		}
+	}
+	fd = open(file, O_CREAT|O_EXCL|O_WRONLY, 0666);
 	if (fd >= 0) {
 		setmode(fd, _O_BINARY);
 		return (fd);
@@ -1248,21 +1358,9 @@ again:	fd = open(file, O_CREAT|O_EXCL|O_WRONLY, 0666);
 		unless (streq(file, realname)) {
 			getMsg2("case_conflict", file, realname, '=', stderr);
 			errno = EINVAL;
-		} else if (first && opts->force) {
-			unlink(file);
-			first = 0;
-			goto again;
 		} else {
 			errno = EEXIST;	/* restore errno */
 		}
-	} else if (first) {
-		if (mkdirf(file)) {
-			fputs("\n", stderr);
-			perror(file);
-			if (errno == EINVAL) goto bad_name;
-		}
-		first = 0;
-		goto again;
 	}
 	return (-1);
 }

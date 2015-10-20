@@ -81,7 +81,7 @@ diff_items(hunk *range, int minimal,
 	dc->dcost = dcost;
 	dc->extra = extra;
 	/* Both have content, do the diff. */
-	dc->h = hash_new(HASH_MEMHASH);
+	dc->h = hash_new(HASH_U32HASH, sizeof(u32), sizeof(thing));
 	hashThings(dc, DF_LEFT);
 	hashThings(dc, DF_RIGHT);
 	/* Now that both hashes are filled */

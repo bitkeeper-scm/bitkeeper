@@ -17,6 +17,16 @@
 # BAM files - nope
 # Binary files - nope
 
+# Replace revs except 1.0 with MD5KEY, except for ChangeSet file
+# Dup'd in t.nested-rset
+rev2md5() {
+	perl -ne '
+	    print, next if /^#/;
+	    ($file) = /^([^|]+)/;
+	    print, next if $file eq "ChangeSet";
+	    s/(1\.[1-9](\.\d+)*)/:MD5KEY|$1:/g;
+	    system("bk", "prs", "-hr+", "-d$_", $file);'
+}
 
 set -e
 echo $N Create initial repository ...................................$NL
@@ -42,11 +52,14 @@ bk clone $Q project copy
 cd project
 bk rm deleted
 bk edit $Q base
+echo data > base
 bk delta $Q -fyuniq base
 bk mv base project
 touch new.project
-bk new $Q new.project
+bk new $Q -l new.project
 bk commit $Q --tag=TWO -f
+bk delta $Q -fynull new.project
+bk commit $Q -f
 cd ../copy
 bk edit $Q base
 bk delta $Q -fyuniq base
@@ -54,7 +67,7 @@ bk mv base copy
 touch new.copy
 bk new $Q new.copy
 bk commit $Q --tag=THREE -f
-{ echo m; echo merge; } | bk pull $Q 2> ERR || fail -f ERR
+{ echo m; echo merge; echo m; echo C; } | bk pull $Q 2> ERR || fail -f ERR
 bk tag $Q FOUR
 echo OK
 
@@ -75,7 +88,7 @@ for v in ONE TWO THREE FOUR; do
 done > GOT
 # Big HERE document -- look for EOF to skip over it.
 # :g/d\~[^|]*/s//d\~${RAND}/g - works on itself
-cat << EOF > WANT
+rev2md5 << EOF > WANT
 # bk rset -rONE
 ChangeSet|1.1..1.2
 ${RMNAME}|1.0..1.1
@@ -437,8 +450,8 @@ bam|bam|1.1
 merge|copy|1.1.1.2
 new.copy|new.copy|1.1
 # bk rset -rFOUR
-ChangeSet|1.3+1.2.1.1..1.4
-merge|1.1.1.2..1.5
+ChangeSet|1.4,1.2.1.1..1.5
+merge|1.3,1.1.1.2..1.5
 # bk rset -lFOUR
 ChangeSet|FOUR
 BitKeeper/etc/collapsed|1.1
@@ -449,9 +462,9 @@ BitKeeper/triggers/pre-delta|1.2
 bam|1.1
 merge|1.5
 new.copy|1.1
-new.project|1.1
+new.project|1.2
 # bk rset -HrFOUR
-merge|1.1.1.2..1.5
+merge|1.3,1.1.1.2..1.5
 # bk rset -HlFOUR
 BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|1.1
@@ -461,10 +474,10 @@ BitKeeper/triggers/pre-delta|1.2
 bam|1.1
 merge|1.5
 new.copy|1.1
-new.project|1.1
+new.project|1.2
 # bk rset -hrFOUR
-ChangeSet|ChangeSet|1.3+1.2.1.1|ChangeSet|1.4
-merge|copy|1.1.1.2|merge|1.5
+ChangeSet|ChangeSet|1.4|ChangeSet|1.2.1.1|ChangeSet|1.5
+merge|project|1.3|copy|1.1.1.2|merge|1.5
 # bk rset -hlFOUR
 ChangeSet|ChangeSet|FOUR
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
@@ -475,9 +488,9 @@ BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
 bam|bam|1.1
 merge|merge|1.5
 new.copy|new.copy|1.1
-new.project|new.project|1.1
+new.project|new.project|1.2
 # bk rset -hHrFOUR
-merge|copy|1.1.1.2|merge|1.5
+merge|project|1.3|copy|1.1.1.2|merge|1.5
 # bk rset -hHlFOUR
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|BitKeeper/etc/config|1.1
@@ -487,10 +500,10 @@ BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
 bam|bam|1.1
 merge|merge|1.5
 new.copy|new.copy|1.1
-new.project|new.project|1.1
+new.project|new.project|1.2
 # bk rset -arFOUR
-ChangeSet|1.3+1.2.1.1..1.4
-merge|1.1.1.2..1.5
+ChangeSet|1.4,1.2.1.1..1.5
+merge|1.3,1.1.1.2..1.5
 # bk rset -alFOUR
 ChangeSet|FOUR
 ${RMNAME}|1.2
@@ -503,9 +516,9 @@ BitKeeper/triggers/pre-delta|1.2
 bam|1.1
 merge|1.5
 new.copy|1.1
-new.project|1.1
+new.project|1.2
 # bk rset -aHrFOUR
-merge|1.1.1.2..1.5
+merge|1.3,1.1.1.2..1.5
 # bk rset -aHlFOUR
 ${RMNAME}|1.2
 BitKeeper/etc/attr|1.1
@@ -517,10 +530,10 @@ BitKeeper/triggers/pre-delta|1.2
 bam|1.1
 merge|1.5
 new.copy|1.1
-new.project|1.1
+new.project|1.2
 # bk rset -ahrFOUR
-ChangeSet|ChangeSet|1.3+1.2.1.1|ChangeSet|1.4
-merge|copy|1.1.1.2|merge|1.5
+ChangeSet|ChangeSet|1.4|ChangeSet|1.2.1.1|ChangeSet|1.5
+merge|project|1.3|copy|1.1.1.2|merge|1.5
 # bk rset -ahlFOUR
 ChangeSet|ChangeSet|FOUR
 ${RMNAME}|${RMNAME}|1.2
@@ -533,9 +546,9 @@ BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
 bam|bam|1.1
 merge|merge|1.5
 new.copy|new.copy|1.1
-new.project|new.project|1.1
+new.project|new.project|1.2
 # bk rset -ahHrFOUR
-merge|copy|1.1.1.2|merge|1.5
+merge|project|1.3|copy|1.1.1.2|merge|1.5
 # bk rset -ahHlFOUR
 ${RMNAME}|${RMNAME}|1.2
 BitKeeper/etc/attr|BitKeeper/etc/attr|1.1
@@ -547,10 +560,9 @@ BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
 bam|bam|1.1
 merge|merge|1.5
 new.copy|new.copy|1.1
-new.project|new.project|1.1
+new.project|new.project|1.2
 EOF
-perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
-cmpfiles WANT2 GOT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Test diffs across various ranges ............................$NL
@@ -565,7 +577,7 @@ for v in ONE..TWO TWO..THREE THREE..FOUR; do
     done
   done
 done > GOT1
-cat << EOF > WANT
+rev2md5 << EOF > WANT
 # bk rset -rONE..TWO
 ChangeSet|1.2..1.3
 ${RMNAME}|1.1..1.2
@@ -647,76 +659,73 @@ merge|project|1.3|copy|1.1.1.2
 new.copy|new.copy|1.0|new.copy|1.1
 new.project|new.project|1.1|new.project|1.0
 # bk rset -rTHREE..FOUR
-ChangeSet|1.2.1.1..1.4
+ChangeSet|1.2.1.1..1.5
 ${RMNAME}|1.1..1.2
 merge|1.1.1.2..1.5
-new.project|1.0..1.1
+new.project|1.0..1.2
 # bk rset -HrTHREE..FOUR
 ${RMNAME}|1.1..1.2
 merge|1.1.1.2..1.5
-new.project|1.0..1.1
+new.project|1.0..1.2
 # bk rset -hrTHREE..FOUR
-ChangeSet|ChangeSet|1.2.1.1|ChangeSet|1.4
+ChangeSet|ChangeSet|1.2.1.1|ChangeSet|1.5
 ${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|copy|1.1.1.2|merge|1.5
-new.project|new.project|1.0|new.project|1.1
+new.project|new.project|1.0|new.project|1.2
 # bk rset -hHrTHREE..FOUR
 ${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|copy|1.1.1.2|merge|1.5
-new.project|new.project|1.0|new.project|1.1
+new.project|new.project|1.0|new.project|1.2
 # bk rset -arTHREE..FOUR
-ChangeSet|1.2.1.1..1.4
+ChangeSet|1.2.1.1..1.5
 ${RMNAME}|1.1..1.2
 merge|1.1.1.2..1.5
-new.project|1.0..1.1
+new.project|1.0..1.2
 # bk rset -aHrTHREE..FOUR
 ${RMNAME}|1.1..1.2
 merge|1.1.1.2..1.5
-new.project|1.0..1.1
+new.project|1.0..1.2
 # bk rset -ahrTHREE..FOUR
-ChangeSet|ChangeSet|1.2.1.1|ChangeSet|1.4
+ChangeSet|ChangeSet|1.2.1.1|ChangeSet|1.5
 ${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|copy|1.1.1.2|merge|1.5
-new.project|new.project|1.0|new.project|1.1
+new.project|new.project|1.0|new.project|1.2
 # bk rset -ahHrTHREE..FOUR
 ${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|copy|1.1.1.2|merge|1.5
-new.project|new.project|1.0|new.project|1.1
+new.project|new.project|1.0|new.project|1.2
 EOF
-perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
-cmpfiles WANT2 GOT1
+cmpfiles WANT GOT1
 echo OK
 
 echo $N Try other rev ranges ........................................$NL
 bk rset -rONE,TWO > OUT
-cat <<EOF > WANT
+rev2md5 <<EOF > WANT
 ChangeSet|1.2..1.3
 ${RMNAME}|1.1..1.2
 merge|1.1..1.3
 new.project|1.0..1.1
 EOF
-perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
-cmpfiles OUT WANT2
+cmpfiles OUT WANT
 bk rset -rONE..TWO > OUT
-cmpfiles OUT WANT2
+cmpfiles OUT WANT
 bk rset -rONE -rTWO > OUT
-cmpfiles OUT WANT2
+cmpfiles OUT WANT
 echo OK
 
 echo $N Again, with -s. and -sHERE ..................................$NL
 bk rset -rONE,TWO > OUT
-cat <<EOF > WANT
+rev2md5 <<EOF > WANT
 ChangeSet|1.2..1.3
 ${RMNAME}|1.1..1.2
 merge|1.1..1.3
 new.project|1.0..1.1
 EOF
-perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
-cmpfiles OUT WANT2
+cmpfiles OUT WANT
 bk rset -s. -rONE..TWO > OUT
-cmpfiles OUT WANT2
+cmpfiles OUT WANT
 bk rset -sHERE -rONE -rTWO > OUT
-cmpfiles OUT WANT2
+cmpfiles OUT WANT
 bk rset -sOTHER -rONE -rTWO 2> ERR && fail -f ERR should have failed
 grep -q 'rset: -sALIAS only allowed in product' ERR || fail -f ERR
 echo OK
@@ -816,31 +825,194 @@ bk rset --elide -r@1.3 -r@+ > OUT
 grep -q afile OUT && fail -f OUT afile should not have been in rset
 echo OK
 
-echo $N Test rset --elide in nested..................................$NL
-nested elide-nested
-touch gcc/afile gcc/bfile gdb/afile gdb/bfile
-bk new $Q gcc/afile gcc/bfile gdb/afile gdb/bfile
-bk commit $Q -yfiles
-bk edit $Q gcc/afile gcc/bfile gdb/afile gdb/bfile
-echo "STUFF" > gcc/afile
-echo "STUFF" > gcc/bfile
-echo "STUFF" > gdb/afile
-echo "STUFF" > gdb/bfile
-bk delta $Q -y. gcc/afile gcc/bfile gdb/afile gdb/bfile
-bk commit $Q -y.
-REV=`bk changes -nd:REV: -r+`
-bk edit $Q gcc/afile gcc/bfile gdb/afile gdb/bfile
-echo "DIFFERENT STUFF" > gcc/afile
-echo "DIFFERENT STUFF" > gcc/bfile
-echo "DIFFERENT STUFF" > gdb/afile
-echo "DIFFERENT STUFF" > gdb/bfile
-bk delta $Q -y. gcc/afile gcc/bfile gdb/afile gdb/bfile
-bk commit $Q -y.
-bk edit $Q gcc/afile gcc/bfile gdb/afile gdb/bfile
-echo "STUFF" > gcc/afile
-echo "STUFF" > gdb/afile
-bk delta $Q -y. gcc/afile gcc/bfile gdb/afile gdb/bfile
-bk commit $Q -y.
-bk rset --elide -r@$REV -r@+ > OUT
-grep -q afile OUT && fail -f OUT afile should not be in rset output
+echo $N Test elide on moved file with same content ..................$NL
+bk mv bfile cfile
+bk commit $Q -f
+bk rset --elide -r+ | grep -v ChangeSet > OUT || true
+test -s OUT && fail -f OUT should be no files listed
+echo OK
+
+echo $N Merge node now supported ....................................$NL
+cd "$HERE"/copy
+Kcopy=`bk prs -hr1.1.1.2 -d:MD5KEY: merge`
+Kproject=`bk prs -hr1.3 -d:MD5KEY: merge`
+Kmerge=`bk prs -hr+ -d:MD5KEY: merge`
+# old used '+' to list PARENT and MPARENT, but only for ChangeSet
+# For files, the newer of the PARENT and MPARENT is used
+bk rset --compat -rFOUR > GOT
+cat <<EOF > WANT
+ChangeSet|1.4+1.2.1.1..1.5
+merge|$Kcopy..$Kmerge
+EOF
+cmpfiles WANT GOT
+# new uses ',' to list PARENT and MPARENT for all files
+# that have a PARENT and MPARENT that aren't in the history of each other
+bk rset -rFOUR > GOT
+cat <<EOF > WANT
+ChangeSet|1.4,1.2.1.1..1.5
+merge|$Kproject,$Kcopy..$Kmerge
+EOF
+cmpfiles WANT GOT
+# old history assumes same name for PARENT and MPARENT
+bk rset --compat -hrFOUR > GOT
+cat <<EOF > WANT
+ChangeSet|ChangeSet|1.4+1.2.1.1|ChangeSet|1.5
+merge|copy|$Kcopy|merge|$Kmerge
+EOF
+cmpfiles WANT GOT
+# new history has 2 extra fields to accomodate name changes.
+# Note, if enhanced to allow arbitrary number on left and right, might
+# be better to put '..' in list, like
+#   ChangeSet|ChangeSet|1.3|ChangeSet|1.2.1.1..ChangeSet|1.4
+bk rset -hrFOUR > GOT
+cat <<EOF > WANT
+ChangeSet|ChangeSet|1.4|ChangeSet|1.2.1.1|ChangeSet|1.5
+merge|project|$Kproject|copy|$Kcopy|merge|$Kmerge
+EOF
+cmpfiles WANT GOT
+# old elide -- arbitrarily wrong, depending on which side got diff'd
+# the merge does not alter the content of file 'merge', yet it is listed
+bk rset --compat --elide -rFOUR > GOT
+cat <<EOF > WANT
+ChangeSet|1.4+1.2.1.1..1.5
+merge|$Kcopy..$Kmerge
+EOF
+cmpfiles WANT GOT
+# new elide -- does an sccs merge of the sides, and diffs that: no 'merge'
+bk rset --elide -rFOUR > GOT
+cat <<EOF > WANT
+ChangeSet|1.4,1.2.1.1..1.5
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test --checksum and --stats .................................$NL
+bk prs -hnd:I: ChangeSet | while read rev
+do	bk rset --no-print --stats --checksum -r$rev || fail
+	bk rset --no-print --stats -r$rev || fail
+	bk rset --show-gone --no-print --stats -r$rev || fail
+	echo 1>&2
+done 2> GOT || fail -f GOT
+bk rset --no-print --stats -rTHREE..FOUR 2>> GOT || fail -f GOT
+# checksum ignores MPARENT, which is why first 2 lines are different.
+# Third line in each set shows cost of show-gone, which needs to walk all of
+# weave from start, including inactive, with the same termination
+# criteria (which is why line 3 is not 15).
+cat <<EOF > WANT
+       8 weave data lines read in repo for 1.5
+       9 weave data lines read in repo for 1.5
+       9 weave data lines read in repo for 1.5
+
+       6 weave data lines read in repo for 1.2.1.1
+       6 weave data lines read in repo for 1.2.1.1
+      12 weave data lines read in repo for 1.2.1.1
+
+       2 weave data lines read in repo for 1.4
+       2 weave data lines read in repo for 1.4
+       6 weave data lines read in repo for 1.4
+
+       9 weave data lines read in repo for 1.3
+       9 weave data lines read in repo for 1.3
+      14 weave data lines read in repo for 1.3
+
+       8 weave data lines read in repo for 1.2
+       8 weave data lines read in repo for 1.2
+      17 weave data lines read in repo for 1.2
+
+      10 weave data lines read in repo for 1.1
+      10 weave data lines read in repo for 1.1
+      27 weave data lines read in repo for 1.1
+
+      14 weave data lines read in repo for 1.5
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Same test on a compat repo ..................................$NL
+bk clone $Q --compat . ../copy-compat
+cd ../copy-compat
+bk prs -hnd:I: ChangeSet | while read rev
+do	bk rset --no-print --stats --checksum -r$rev || fail
+	bk rset --no-print --stats -r$rev || fail
+	bk rset --show-gone --no-print --stats -r$rev || fail
+	echo 1>&2
+done 2> GOT || fail -f GOT
+bk rset --no-print --stats -rTHREE..FOUR 2>> GOT || fail -f GOT
+cat <<EOF > WANT
+      16 weave data lines read in repo for 1.5
+       7 weave data lines read in repo for 1.5
+       7 weave data lines read in repo for 1.5
+
+      11 weave data lines read in repo for 1.2.1.1
+      11 weave data lines read in repo for 1.2.1.1
+      16 weave data lines read in repo for 1.2.1.1
+
+       2 weave data lines read in repo for 1.4
+       2 weave data lines read in repo for 1.4
+       5 weave data lines read in repo for 1.4
+
+      12 weave data lines read in repo for 1.3
+      12 weave data lines read in repo for 1.3
+      16 weave data lines read in repo for 1.3
+
+       9 weave data lines read in repo for 1.2
+       9 weave data lines read in repo for 1.2
+      16 weave data lines read in repo for 1.2
+
+       5 weave data lines read in repo for 1.1
+       5 weave data lines read in repo for 1.1
+      16 weave data lines read in repo for 1.1
+
+      16 weave data lines read in repo for 1.5
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test --checksum on repo with gone data ......................$NL
+cd "$HERE"/goneclient
+bk rset --no-print -rTAG,+ --checksum || fail
+echo OK
+
+echo $N Check short circuiting edges ................................$NL
+cd "$HERE"
+commercial x
+touch alpha beta
+bk new $Q -l alpha beta
+bk commit $Q -f
+bk clone $Q . ../z
+bk delta $Q -fynull alpha beta
+bk commit $Q -f --tag=X
+cd ../z
+bk edit $Q alpha
+bk delta $Q -fynull alpha
+bk commit $Q -f --tag=Z
+bk pull $Q
+bk rset -rX..Z > GOT
+rev2md5 << EOF > WANT
+ChangeSet|1.3..1.2.1.1
+alpha|1.2..1.1.1.1
+beta|1.2..1.1
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check unmerged rootkey interacting with short circuit .......$NL
+cd "$HERE"
+commercial foogone
+touch foo
+bk new $Q foo
+bk prs -r+ -hnd:ROOTKEY: foo | bk gone $Q -
+bk commit $Q -f
+bk clone $Q . ../foobar
+bk mv foo byebye
+bk commit $Q -f
+bk rm byebye
+bk _rm -fr BitKeeper/deleted
+cd ../foobar
+bk mv foo bar
+bk commit $Q -f
+bk pull -q 2> ERR
+grep -q "Marked gone (bk help chk1): bar" ERR || fail -f ERR
+# This would fail the checksum without the accompanying rset.c change
+bk rset -r1.2.1.1..1.4 --no-print --checksum || fail
 echo OK

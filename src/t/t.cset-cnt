@@ -30,13 +30,13 @@ cat <<EOF > BitKeeper/etc/ignore
 3
 EOF
 bk ci -yignore1 -u $Q BitKeeper/etc/ignore
-bk commit $Q -yignore1 || exit 1
+bk commit $Q -yignore1 || fail
 echo OK
 
 CNT=1
 echo $N "Count the inits for a 'bk clone' ($CNT)........................."$NL
 rm "$FILE"
-bk clone $Q ../project ../copy || exit 1
+bk clone $Q ../project ../copy || fail
 check_cnt
 echo OK
 
@@ -52,7 +52,7 @@ cat <<EOF > BitKeeper/etc/ignore
 EOF
 bk ci -yignore2 -u $Q BitKeeper/etc/ignore
 rm "$FILE"
-bk commit $Q -ycommit || exit 1
+bk commit $Q -ycommit || fail
 check_cnt
 echo OK
 
@@ -60,14 +60,14 @@ CNT=3
 echo $N "Count the inits for a 'bk changes -L' ($CNT)...................."$NL
 cd ../copy
 rm "$FILE"
-bk changes -L > OUT || exit 1
+bk changes -L > OUT || fail
 check_cnt
 echo OK
 
 CNT=3
 echo $N "Count the inits for a 'bk changes -R' ($CNT)...................."$NL
 rm "$FILE"
-bk changes -R > OUT || exit 1
+bk changes -R > OUT || fail
 check_cnt
 echo OK
 
@@ -80,16 +80,16 @@ cat <<EOF > BitKeeper/etc/ignore
 3
 EOF
 bk ci -yignore3 -u $Q BitKeeper/etc/ignore
-bk commit $Q -yignore1 || exit 1
+bk commit $Q -yignore1 || fail
 rm "$FILE"
-BK_CONFIG=partial_check:off! bk pull $Q || exit 1
+BK_CONFIG=partial_check:off! bk pull $Q || fail
 check_cnt
 echo OK
 
 CNT=9
 echo $N "Count the inits for a 'bk unpull' ($CNT)........................"$NL
 rm "$FILE"
-bk unpull -f $Q || exit 1
+bk unpull -f $Q || fail
 check_cnt
 echo OK
 
@@ -102,23 +102,23 @@ cat <<EOF > BitKeeper/etc/ignore
 3
 EOF
 bk ci -yignore3 -u $Q BitKeeper/etc/ignore
-bk commit $Q -yignore1 || exit 1
+bk commit $Q -yignore1 || fail
 rm "$FILE"
-bk pull -R $Q || exit 1
+bk pull -R $Q || fail
 check_cnt
 echo OK
 
 CNT=10
 echo $N "Count the inits for a 'bk resolve' ($CNT)......................"$NL
 rm "$FILE"
-bk resolve $Q || exit 1
+bk resolve $Q || fail
 check_cnt
 echo OK
 
 CNT=10
 echo $N "Count the inits for a 'bk push' ($CNT)........................."$NL
 rm "$FILE"
-bk push $Q || exit 1
+bk push $Q || fail
 check_cnt
 echo OK
 
@@ -146,7 +146,7 @@ cd "$HERE"
 nested nest
 bk gate $Q -r
 rm "$FILE"
-bk clone $Q . ../nest2 || exit 1
+bk clone $Q . ../nest2 || fail
 check_cnt
 echo OK
 
@@ -156,14 +156,14 @@ cd gcc
 echo hi > file1
 bk new $Q file1
 rm "$FILE"
-bk commit -S $Q -ynew || exit 1
+bk commit -S $Q -ynew || fail
 check_cnt
 echo OK
 
 CNT=6
 echo $N "Count the inits for a 'bk -P commit' ($CNT) ...................."$NL
 rm -f "$FILE"
-bk -P commit $Q -ynew || exit 1
+bk -P commit $Q -ynew || fail
 check_cnt
 echo OK
 
@@ -186,18 +186,18 @@ echo $N "Count the inits for a 'bk -P changes -v' ($CNT)................."$NL
 # create new component
 cd "$HERE"/nest
 touch c
-bk setup -cc -f docs || exit 1
+bk setup -cc -f docs || fail
 cd docs
 echo hi > doc
 bk new $Q doc
-bk commit -S $Q -ydoc || exit 1
+bk commit -S $Q -ydoc || fail
 cd ..
 cd gdb
 echo ss > gdbfile
 bk new $Q gdbfile
-bk commit -S $Q -ygdb || exit 1
+bk commit -S $Q -ygdb || fail
 cd ..
-bk commit $Q -ytop || exit 1
+bk commit $Q -ytop || fail
 
 rm "$FILE"
 bk changes -v > /dev/null
@@ -208,21 +208,21 @@ CNT=6
 echo $N "Count the inits for a 'bk changes -Rv' ($CNT)..................."$NL
 cd "$HERE"/nest2
 rm "$FILE"
-bk changes -Rv > /dev/null || exit 1
+bk changes -Rv > /dev/null || fail
 check_cnt
 echo OK
 
 CNT=47
 echo $N "Count the inits for a 'bk pull -u' ($CNT)......................"$NL
 rm "$FILE"
-bk pull -u $Q || exit 1
+bk pull -u $Q || fail
 check_cnt
 echo OK
 
 CNT=31
 echo $N "Count the inits for a 'bk unpull -fs' ($CNT)..................."$NL
 rm "$FILE"
-bk unpull -fs $Q || exit 1
+bk unpull -fs $Q || fail
 check_cnt
 echo OK
 
@@ -230,27 +230,27 @@ CNT=62
 echo $N "Count the inits for a 'bk pull' w merge ($CNT)................."$NL
 bk portal $Q .
 touch c
-bk setup -f -cc www || exit 1
+bk setup -f -cc www || fail
 cd www
 echo kk > 1.html
 bk new $Q 1.html
-bk commit -S -ywww $Q || exit 1
+bk commit -S -ywww $Q || fail
 cd ../gdb
 echo hi > new
-bk new $Q new || exit 1
-bk commit -S -ynew $Q || exit 1
+bk new $Q new || fail
+bk commit -S -ynew $Q || fail
 cd ..
-bk commit -ylocal $Q || exit 1
+bk commit -ylocal $Q || fail
 
 rm "$FILE"
-bk pull $Q || exit 1
+bk pull $Q || fail
 check_cnt
 echo OK
 
 CNT=32
 echo $N "Count the inits for a 'bk push' ($CNT)........................."$NL
 rm "$FILE"
-bk push $Q || exit 1
+bk push $Q || fail
 check_cnt
 echo OK
 

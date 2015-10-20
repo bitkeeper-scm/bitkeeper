@@ -163,7 +163,7 @@ r2c(char *file, RANGE *rarg)
 	int	i;
 	int	redo = 0;
 	time_t	oldest, candidate;
-	char	*rkey, *dkey;
+	u32	rkoff, dkoff;
 	char	buf[MAXKEY*2];
 
 	name = name2sccs(file);
@@ -227,7 +227,7 @@ r2c(char *file, RANGE *rarg)
 
 	/* Stick the non-poly prod csets in the answer */
 again:	sccs_rdweaveInit(cset);
-	if (!redo && BWEAVE(cset)) { /* Perf: limit cset content read */
+	unless (redo) { /* Perf: limit cset content read */
 		char	*skewstr = getenv("BK_R2C_CLOCKSKEW");
 		int	skew = skewstr ? atoi(skewstr) : HOUR;
 
@@ -248,14 +248,15 @@ again:	sccs_rdweaveInit(cset);
 		}
 		cset_firstPairReverse(cset, d); /* old to new */
 	}
-	while (d = cset_rdweavePair(cset, 0, &rkey, &dkey)) {
-		unless (hash_deleteStr(keys, dkey)) {
+	while (d = cset_rdweavePair(cset, 0, &rkoff, &dkoff)) {
+		unless (dkoff) continue; /* last key */
+		unless (hash_deleteStr(keys, HEAP(cset, dkoff))) {
 			serlist = addSerial(serlist, d);
 			unless (hash_count(keys)) break;
 		}
 	}
 	sccs_rdweaveDone(cset);
-	if (hash_count(keys) && !redo && BWEAVE(cset)) {
+	if (hash_count(keys) && !redo) {
 		redo = 1;
 		goto again;	/* full weave this time */
 	}
@@ -279,4 +280,3 @@ out:	FREE(name);
 	sccs_free(cset);
 	return (ret);
 }
-

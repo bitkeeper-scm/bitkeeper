@@ -71,7 +71,7 @@ ft_local(resolve *rs)
 	ser_t	r = sccs_findrev(rs->s, rs->revs->remote);
 
 	sccs_close(rs->s);	/* for windows */
-	type_delta(rs, rs->s->sfile, l, r, sccs_Xfile(rs->s, 'r'), LOCAL);
+	type_delta(rs, rs->s->sfile, l, r, LOCAL);
 	return (1);
 }
 
@@ -83,7 +83,7 @@ ft_remote(resolve *rs)
 	ser_t	r = sccs_findrev(rs->s, rs->revs->remote);
 
 	sccs_close(rs->s);	/* for windows */
-	type_delta(rs, rs->s->sfile, l, r, sccs_Xfile(rs->s, 'r'), REMOTE);
+	type_delta(rs, rs->s->sfile, l, r, REMOTE);
 	return (1);
 }
 

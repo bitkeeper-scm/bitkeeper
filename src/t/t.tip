@@ -15,7 +15,7 @@ echo OK
 
 echo $N Clone and see if we update the checked file .................$NL
 cd "$HERE"
-bk clone $Q project copy || exit 1
+bk clone $Q project copy || fail
 cd project
 test -f BitKeeper/log/checked || fail
 # This is TIP file at the pre-outgoing trigger, after sendServerInfo

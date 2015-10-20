@@ -6,14 +6,14 @@ mkdir src1
 touch src1/"foo .c"
 mkdir src2
 touch src2/"foo .c"
-bk new $Q src1/"foo .c" src2/"foo .c" || exit 1
-bk commit --tag=mkfoo -ymkfoo $Q || exit 1
-bk rm src1/"foo .c" src2/"foo .c" || exit 1
-bk commit -yrmfoo $Q || exit 1
-(echo n; echo n) | bk unrm "foo .c" >OUT || exit 1
-grep -q "Match 1 of 2" OUT || exit 1
-grep -q "^src1/foo .c 1.1" OUT || exit 1
-grep -q "^src2/foo .c 1.1" OUT || exit 1
+bk new $Q src1/"foo .c" src2/"foo .c" || fail
+bk commit --tag=mkfoo -ymkfoo $Q || fail
+bk rm src1/"foo .c" src2/"foo .c" || fail
+bk commit -yrmfoo $Q || fail
+(echo n; echo n) | bk unrm "foo .c" >OUT || fail
+grep -q "Match 1 of 2" OUT || fail
+grep -q "^src1/foo .c 1.1" OUT || fail
+grep -q "^src2/foo .c 1.1" OUT || fail
 echo OK
 
 echo $N Unrm of a basename will offer options .......................$NL
@@ -25,7 +25,7 @@ echo $N Unrm in subdir will pick out correct file ...................$NL
 # mkdir necessary because bk rm above implicitly removes src1
 mkdir src1
 cd src1
-bk unrm "foo .c" >OUT || exit 1
+bk unrm "foo .c" >OUT || fail
 grep -q 'Moving "BitKeeper\/deleted\/.*foo \.c~.*" -> "src1\/foo \.c"' OUT || \
 	fail -f OUT "wrong output"
 cd ..
@@ -33,39 +33,39 @@ echo OK
 
 echo $N Unrm with a full pathname and a single match won\'t prompt ...$NL
 bk rm src1/"foo .c"
-bk unrm src1/"foo .c" > OUT || exit 1
+bk unrm src1/"foo .c" > OUT || fail
 grep -q "Moving.*foo.*src1/foo .c" OUT || fail -f OUT
-bk get $Q src1/"foo .c" || exit 1
+bk get $Q src1/"foo .c" || fail
 echo OK
 
 echo $N A file updated after deleted will still restore .............$NL
 # 2004-09-02-002
 # 2007-03-01-001
 cd ..
-bk clone $Q -rmkfoo project copy || exit 1
+bk clone $Q -rmkfoo project copy || fail
 cd copy
 bk edit $Q src2/"foo .c"
 echo hi >> src2/"foo .c"
-bk ci $Q -yadd src2/"foo .c" || exit 1
-bk commit $Q -yadd || exit 1
+bk ci $Q -yadd src2/"foo .c" || fail
+bk commit $Q -yadd || fail
 cd ../project
-bk pull $Q ../copy || exit 1
-echo y | bk unrm "foo .c" > OUT || exit 1
-bk get $Q src2/"foo .c" || exit 1
+bk pull $Q ../copy || fail
+echo y | bk unrm "foo .c" > OUT || fail
+bk get $Q src2/"foo .c" || fail
 echo OK
 
 echo $N Show that unrm can restore triggers .........................$NL
 # 2003-10-19-002
 mkdir BitKeeper/triggers
 touch BitKeeper/triggers/foo.post-incoming
-bk new $Q BitKeeper/triggers/foo.post-incoming || exit 1
-bk commit -y2 $Q || exit 1
-bk rm -f BitKeeper/triggers/foo.post-incoming || exit 1
-bk commit -y3 $Q || exit 1
-bk unrm BitKeeper/triggers/foo.post-incoming >OUT || exit 1
-test `wc -l < OUT` -eq 1 || exit 1
-grep -q "Moving" OUT || exit 1
-bk get $Q BitKeeper/triggers/foo.post-incoming || exit 1
+bk new $Q BitKeeper/triggers/foo.post-incoming || fail
+bk commit -y2 $Q || fail
+bk rm -f BitKeeper/triggers/foo.post-incoming || fail
+bk commit -y3 $Q || fail
+bk unrm BitKeeper/triggers/foo.post-incoming >OUT || fail
+test `wc -l < OUT` -eq 1 || fail
+grep -q "Moving" OUT || fail
+bk get $Q BitKeeper/triggers/foo.post-incoming || fail
 echo OK
 
 echo $N Show that unrm will not throw away my hard labor ............$NL

@@ -1021,15 +1021,31 @@ system_(poly argv, poly in, poly &out_ref, poly &err_ref, STATUS &status_ref,
 	STATUS	status;
 
 	/*
-	 * This aliases our locals "err" and "out" to the values of
-	 * the "&err_ref" and "&out_ref" actuals, letting us access their
-	 * values if they are strings (call-by-value) and not variable
-	 * names (call-by-reference).  The flags arg tells us which
-	 * are which.
+	 * Alias our locals "err" and "out" to the values of
+	 * the "&err_ref" and "&out_ref" actuals. This lets us access
+	 * these parameters whether they are passed by value or by
+	 * reference. The system() API allows either and the flags arg
+	 * tells us what the user passed in (the by-reference
+	 * flavors are when you pass a string or array by reference,
+	 * to get stdout or stderr; the by-value flavors are when you
+	 * pass a file name or handle).
 	 */
 	eval('unset err out');
 	eval('upvar 0 &err_ref err');
 	eval('upvar 0 &out_ref out');
+
+	/*
+	 * If out or err were passed in by reference, check that the
+	 * reference is defined.  If not, then just ignore it.
+	 */
+	if ((flags & (SYSTEM_OUT_STRING__ | SYSTEM_OUT_ARRAY__)) &&
+	    !defined(&out_ref)) {
+		flags &= ~(SYSTEM_OUT_STRING__ | SYSTEM_OUT_ARRAY__);
+	}
+	if ((flags & (SYSTEM_ERR_STRING__ | SYSTEM_ERR_ARRAY__)) &&
+	    !defined(&err_ref)) {
+		flags &= ~(SYSTEM_ERR_STRING__ | SYSTEM_ERR_ARRAY__);
+	}
 
 	unless (flags & SYSTEM_ARGV__) {
 		try {

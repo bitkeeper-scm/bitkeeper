@@ -169,7 +169,8 @@ features_setMask(project *p, u32 bits, u32 mask)
 	nbits = (obits & ~mask) | bits;
 	TRACE("%x + %x/%x => %x", obits, bits, mask, nbits);
 
-	if (obits == nbits) {
+	pf = proj_features(p);
+	if (!pf->new && (obits == nbits)) {
 		/* already set correctly */
 		if (freep) proj_free(freep);
 		return;
@@ -194,8 +195,8 @@ features_setMask(project *p, u32 bits, u32 mask)
 		// bk-5.x doesn't like an empty file
 		unlink(ffile);
 	}
-	pf = proj_features(p);
 	pf->bits = nbits;
+	pf->new = 0;
 
 	/*
 	 * For compatibility reasons we keep a copy of the product
@@ -269,7 +270,7 @@ features_bkdCheck(int bkd, int no_repo)
 	features = features_bits(0);
 	/* remove local-only features */
 	features &= ~(FEAT_REMAP|FEAT_SCANDIRS);
-	features &= ~(FEAT_BKFILE|FEAT_BWEAVE);
+	features &= ~FEAT_FILEFORMAT;
 	features &= ~rmt_features;
 
 	/*
@@ -326,24 +327,43 @@ features_bits(project *p)
 		return (ret);
 	}
 	if (here = loadfile(proj_fullpath(p, "BitKeeper/log/features"), 0)) {
-		pf->bits = features_toBits(here, here);
+		ret = pf->bits = features_toBits(here, here);
 		if (*here) {
 			getMsg("repo_feature", here, '=', stderr);
 			exit(101);
 		}
 		free(here);
+		// some features imply the older features
+		if (ret & (FEAT_BWEAVE|FEAT_BWEAVEv2)) {
+			// either BWEAVE implies BKFILE
+			ret |= FEAT_BKFILE;
+		}
+		if ((ret & (FEAT_BKFILE|FEAT_BWEAVE|FEAT_BWEAVEv2)) ==
+		    FEAT_BKFILE) {
+			// BKFILE must have one of the BWEAVE features
+			ret |= FEAT_BWEAVEv2;
+		}
+		// some features replace older features
+		if ((ret & (FEAT_BWEAVE|FEAT_BWEAVEv2)) ==
+		    (FEAT_BWEAVE|FEAT_BWEAVEv2)) {
+			ret &= ~FEAT_BWEAVEv2;
+		}
+		if (ret != pf->bits) {
+			// we updated this list, force a rewrite
+			pf->bits = ret;
+			pf->new = 1;
+		}
 		here = features_fromBits(pf->bits);
 		TRACE("loaded %s=%s", proj_root(p), here);
 		free(here);
 	} else {
-		pf->bits = 1;  /* none */
+		ret = pf->bits = 1;  /* none */
 	}
 
 	/* enforce nested restrictions */
 	if (proj_isEnsemble(p) && bk_notLicensed(p, LIC_SAM, 0)) {
 		exit(100);
 	}
-	ret = pf->bits;
 	if (freep) proj_free(freep);
 	return (ret);
 }
@@ -488,4 +508,42 @@ features_dumpMinRelease(void)
 	}
 	putchar('\n');
 	freeLines(list, 0);
+}
+
+/*
+ * generate feature bits from sfile encoding field
+ */
+u32
+features_fromEncoding(sccs *s, u32 encoding)
+{
+	u32	bits = 0;
+
+	if (encoding & E_BK) bits |= FEAT_BKFILE;
+	if (CSET(s)) {
+		if ((encoding & E_WEAVE) == E_BWEAVE2) {
+			bits |= FEAT_BWEAVEv2;
+		} else if ((encoding & E_WEAVE) == E_BWEAVE3) {
+			bits |= FEAT_BWEAVE;
+		}
+	}
+	return (bits);
+}
+
+/*
+ * generate sfile encoding file from feature bits
+ */
+u32
+features_toEncoding(sccs *s, u32 bits)
+{
+	u32	encoding = 0;
+
+	if (bits & FEAT_BKFILE) encoding |= E_BK;
+	if (CSET(s)) {
+		if (bits & FEAT_BWEAVE) {
+			encoding |= E_BWEAVE3;
+		} else if (bits & FEAT_BWEAVEv2) {
+			encoding |= E_BWEAVE2;
+		}
+	}
+	return (encoding);
 }

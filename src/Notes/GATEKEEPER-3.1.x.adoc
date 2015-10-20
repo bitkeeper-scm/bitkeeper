@@ -1,0 +1,26 @@
+Rick's crappy notes about some release process
+==============================================
+
+on some machine (work, disks)
+___ move approved changes from /home/bk/bk-3.1.x-queue/ready to .../processing
+
+on disks: in /update/rick/bk-3.1.x-staging
+___ pull /home/bk/bk-3.0.x to get any new stuff
+___ pull in changes from /home/bk/bk-3.1.x-queue/processing
+___ "make p test" there, tag bk-3.1pre{X} where X is next digit.
+    When we enter Release Candidate phase, start the bk-3.1RC{X} tagging
+___ bk push to /home/bk/rick/bk-3.1.x
+
+on work:
+___ cd to /home/bk/rick/stuff
+___ sh clean - clean out the build directory on all build machines
+___ cd ../bk-3.1.x
+___ make cranktry 2>&1 | tee cranking.log
+___ cd ../stuff; sh cmd  --- this says if it was successful on platforms
+___ winxp - in my ~/bin to log onto win machine
+___ cd /build; rm -fr bk-3.1.x-rick LOG-rick; sh cmd-rick
+___ if that works out, swell!
+___ exit winxp machine
+___ cd ../bk-3.1.x
+___ bk push
+___ mv /home/bk/bk-3.1.x-queue/processing/* /home/bk/bk-3.1.x-queue/done

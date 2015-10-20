@@ -2,30 +2,38 @@
 #include "sccs.h"
 #include "logging.h"
 #include "nested.h"
+#include "range.h"
 #include <time.h>
 
 /*
  * commit options
  */
 typedef struct {
+	u32	force:1;
 	u32	quiet:1;
 	u32	resync:1;
 	u32	standalone:1;
+	u32	import:1;
 	u32	clean_PENDING:1;	// if successful, clean PENDING marks
+	u32	ci:1;			// do the ci/new as well if needed
 } c_opts;
 
 
 private int	do_commit(char **av, c_opts opts, char *sym,
-					char *pendingFiles, int dflags);
+			char *pendingFiles, char **modFiles, int dflags);
+private int	do_ci(char ***modFiles, char *commentFile, char *pendingFiles);
+private void	do_unmark(char **modFiles);
 private	void	commitSnapshot(void);
 private	void	commitRestore(int rc);
 
-private	int	csetCreate(sccs *cset, int flags, char *files, char **syms);
+private	int	csetCreate(c_opts opts, sccs *cset, int flags,
+    char *files, char **syms);
 
 int
 commit_main(int ac, char **av)
 {
-	int	i, c, doit = 0, force = 0;
+	FILE	*f, *fin;
+	int	i, c, doit = 0;
 	int	subCommit = 0;	/* commit called itself */
 	char	**aliases = 0;
 	char	*cmtsFile;
@@ -34,14 +42,19 @@ commit_main(int ac, char **av)
 	char	**nav = 0;
 	int	do_stdin;
 	int	nested;		/* commiting all components? */
-	c_opts	opts  = {0, 0};
-	char	*sfopts;
+	c_opts	opts  = {0};
 	char	pendingFiles[MAXPATH] = "";
+	char	*cmd, *p, *bufp;
+	char	**modFiles = 0;
+	int	offset;
 	longopt	lopts[] = {
 		{ "standalone", 'S' },		/* new -S option */
 		{ "subset", 's' },		/* aliases */
+
+		{ "import", 290 },     /* part of an import */
 		{ "tag:", 300 },		/* old -S option */
 		{ "sub-commit", 301 },		/* calling myself */
+		{ "ci", 302 },			/* ci/new as needed */
 		{ 0, 0 }
 	};
 	char	buf[MAXLINE];
@@ -57,7 +70,7 @@ commit_main(int ac, char **av)
 			doit = 1; break;			/* doc 2.0 */
 		    case 'l':					/* doc */
 			strcpy(pendingFiles, optarg); break;
-		    case 'F':	force = 1; break;		/* undoc */
+		    case 'F':	opts.force = 1; break;		/* undoc */
 		    case 'R':	opts.resync = 1;		/* doc 2.0 */
 				break;
 		    case 's':
@@ -109,12 +122,18 @@ commit_main(int ac, char **av)
 			dflags |= DELTA_DONTASK;
 			free(cmtsFile);
 			break;
+		    case 290:	/* --import */
+			opts.import = 1;
+			break;
 		    case 300:	/* --tag=TAG */
 			sym = optarg;
 			if (sccs_badTag("commit", sym, 0)) exit (1);
 			break;
 		    case 301:	/* --sub-commit */
 			opts.standalone = subCommit = 1;
+			break;
+		    case 302:	/* --ci */
+			opts.ci = 1;
 			break;
 		    default: bk_badArg(c, av);
 		}
@@ -142,6 +161,7 @@ commit_main(int ac, char **av)
 		freeLines(aliases, free);
 		aliases = 0;
 	}
+	if (opts.import && opts.resync) usage();
 	if (sym && proj_isComponent(0)) {
 		unless (subCommit) {
 			fprintf(stderr,
@@ -188,46 +208,74 @@ commit_main(int ac, char **av)
 	if (pendingFiles[0] && do_stdin) {
 		fprintf(stderr, "commit: can't use -l when using \"-\"\n");
 		return (1);
-	} else {
-		if (pendingFiles[0] || do_stdin) {
-			FILE	*f, *fin;
+	}
+	f = fmem();
+	assert(f);
+	if (pendingFiles[0] || do_stdin) {
 
-			unless (dflags & (DELTA_DONTASK|DELTA_CFILE)) {
-				fprintf(stderr,
-				    "You must use one of the -c, -Y or -y "
-				    "options when using \"-\"\n");
+		unless (dflags & (DELTA_DONTASK|DELTA_CFILE)) {
+			fprintf(stderr,
+			    "You must use one of the -c, -Y or -y "
+			    "options when using \"-\"\n");
+			return (1);
+		}
+		if (pendingFiles[0]) {
+			unless (fin = fopen(pendingFiles, "r")) {
+				perror(pendingFiles);
 				return (1);
 			}
-			if (pendingFiles[0]) {
-				unless (fin = fopen(pendingFiles, "r")) {
-					perror(pendingFiles);
-					return (1);
-				}
-			} else {
-				fin = stdin;
-			}
-			bktmp(pendingFiles);
-			setmode(0, _O_TEXT);
-			f = fopen(pendingFiles, "w");
-			assert(f);
-			while (fgets(buf, sizeof(buf), fin)) {
-				fputs(buf, f);
-			}
-			fclose(f);
-			if (fin != stdin) fclose(fin);
 		} else {
-			bktmp(pendingFiles);
-			sfopts = opts.resync ? "-rpC" : "-pC";
-			if (sysio(0,
-			    pendingFiles, 0, "bk", "sfiles", sfopts, SYS)) {
-				unlink(pendingFiles);
-				getMsg("duplicate_IDs", 0, 0, stdout);
-				return (1);
+			fin = stdin;
+		}
+		setmode(0, _O_TEXT);
+		while (bufp = fgetline(fin)) {
+			if (strstr(bufp, "SCCS/s.") == 0) {
+				bufp = name2sccs(bufp);
+				fprintf(f, "%s\n", bufp);
+				free(bufp);
+			} else {
+				fprintf(f, "%s\n", bufp);
 			}
-			opts.clean_PENDING = 1;
+		}
+		if (fin != stdin) fclose(fin);
+		offset = 0;
+	} else {
+		cmd = aprintf("bk sfiles -v%s%spC",
+		    opts.resync ? "r" : "",
+		    opts.ci ? "c" : "");
+		fin = popen(cmd, "r");
+		assert(fin);
+		while (bufp = fgetline(fin)) {
+			fprintf(f, "%s\n", bufp);
+		}
+		if (pclose(fin)) {
+			fclose(f);
+			free(cmd);
+			getMsg("duplicate_IDs", 0, 0, stdout);
+			return (1);
+		}
+		free(cmd);
+		opts.clean_PENDING = 1;
+		offset = 8;
+	}
+	// parse fmem
+	fin = f;
+	rewind(fin);
+	bktmp(pendingFiles);
+	f = fopen(pendingFiles, "w");
+	assert(f);
+	while (bufp = fgetline(fin)) {
+		p = strchr(bufp+offset, '|');
+		if (((offset == 8) && bufp[2] == 'c') || (p == 0)) {
+			if (p) *p = 0;
+			modFiles = addLine(modFiles,
+			    strdup(bufp+offset));
+		} else {
+			fprintf(f, "%s\n", bufp+offset);
 		}
 	}
-	if (!force && (size(pendingFiles) == 0)) {
+	fclose(fin); fclose(f);
+	if (!opts.force && (size(pendingFiles) == 0 && modFiles == 0)) {
 		unless (opts.quiet) fprintf(stderr, "Nothing to commit\n");
 		unlink(pendingFiles);
 		return (0);
@@ -237,14 +285,20 @@ commit_main(int ac, char **av)
 	 * Prompt though, that's what we do in delta.
 	 */
 	unless (dflags & (DELTA_DONTASK|DELTA_CFILE)) {
-		if (size("SCCS/c.ChangeSet") > 0) {
+		if (xfile_exists(CHANGESET, 'c')) {
+			char	*t;
+
 			bktmp_local(buf);
-			fileCopy("SCCS/c.ChangeSet", buf);
+			t = xfile_fetch(CHANGESET, 'c');
+			Fprintf(buf, "%s", t);
+			free(t);
 			if (!doit && comments_prompt(buf)) {
 				fprintf(stderr, "Commit aborted.\n");
 				return (1);
 			}
-			fileCopy(buf, "SCCS/c.ChangeSet");
+			t = loadfile(buf, 0);
+			xfile_store(CHANGESET, 'c', t);
+			free(t);
 			unlink(buf);
 			dflags |= DELTA_CFILE;
 		}
@@ -254,7 +308,7 @@ commit_main(int ac, char **av)
 		char	*cmd, *p;
 		FILE	*f, *f1;
 		char	commentFile[MAXPATH];
-		char	buf[512];
+		char	*line;
 
 		bktmp(commentFile);
 		f = popen("bk cat BitKeeper/templates/commit", "r");
@@ -273,11 +327,11 @@ commit_main(int ac, char **av)
 		f = popen(cmd, "w");
 		f1 = fopen(pendingFiles, "rt");
 		assert(f); assert (f1);
-		while (fnext(buf, f1)) {
-			p = strrchr(buf, BK_FS);
+		while (line = fgetline(f1)) {
+			p = strrchr(line, BK_FS);
 			assert(p);
 			*p = 0;
-			fputs(buf, f);
+			fputs(line, f);
 			fputs("\n", f);
 		}
 		fclose(f1);
@@ -296,7 +350,7 @@ commit_main(int ac, char **av)
 	}
 	unlink("ChangeSet");
 	T_PERF("before do_commit");
-	return (do_commit(av, opts, sym, pendingFiles, dflags));
+	return (do_commit(av, opts, sym, pendingFiles, modFiles, dflags));
 }
 
 /*
@@ -342,12 +396,13 @@ modified_pending(u32 flags)
 	return (aliases);
 }
 
-
 private int
 do_commit(char **av,
-	c_opts opts, char *sym, char *pendingFiles, int dflags)
+	c_opts opts, char *sym, char *pendingFiles,
+	char **modFiles, int dflags)
 {
 	int	rc, i;
+	int	ntc = 0;	// nothing to commit
 	sccs	*cset;
 	char	**syms = 0;
 	char	*p;
@@ -392,23 +447,38 @@ err:		rc = 1;
 	/* XXX could avoid if we knew if a trigger would fire... */
 	bktmp(commentFile);
 	if (dflags & DELTA_CFILE) {
-		p = sccs_Xfile(cset, 'c');
-		unless (size(p) > 0) {
+		unless (p = xfile_fetch(cset->sfile, 'c')) {
 			fprintf(stderr, "commit: saved comments not found.\n");
 			rc = 1;
 			goto done;
 		}
 		cset->used_cfile = 1;
-		fileCopy(p, commentFile);
+		f = fopen(commentFile, "w");
+		fputs(p, f);
+		free(p);
+		fclose(f);
 	} else {
 		comments_writefile(commentFile);
 	}
 	safe_putenv("BK_COMMENTFILE=%s", commentFile);
 
+	if (modFiles && (rc = do_ci(&modFiles, commentFile, pendingFiles))) {
+		rc = 1;
+		do_unmark(modFiles);
+		goto done;
+	}
+	if (!opts.force && (size(pendingFiles) == 0 && modFiles == 0)) {
+		unless (opts.quiet) fprintf(stderr, "Nothing to commit\n");
+		ntc = 1;
+		rc = 0;
+		goto done;
+	}
+
 	if (rc = trigger(opts.resync ? "merge" : av[0], "pre")) goto done;
 	comments_done();
 	if (comments_savefile(commentFile)) {
 		rc = 1;
+		if (modFiles) do_unmark(modFiles);
 		goto done;
 	}
 	if (opts.quiet) dflags |= SILENT;
@@ -444,10 +514,54 @@ err:		rc = 1;
 			}
 		}
 	}
-	rc = csetCreate(cset, dflags, pendingFiles, syms);
+	rc = csetCreate(opts, cset, dflags, pendingFiles, syms);
+	if (rc) goto fail;
+	if (opts.import) {
+		/*
+		 * We are skipping the check, but still need to
+		 * mark sfiles.
+		 */
+		sccs	*s;
+		ser_t	d;
+		char	**marklist = 0;
+		hash	*h = hash_new(HASH_MEMHASH);
 
-	// run check
-	unless (rc) {
+		EACH(modFiles) {
+			/*
+			 * If we delta'ed the file, then the files
+			 * already have cset marks and can be skipped.
+			 * Remember these files.
+			 */
+			p = modFiles[i];
+			t = strchr(p, '|');
+			assert(t);
+			*t = 0;
+			hash_insertStrSet(h, p);
+			*t = '|';
+		}
+		marklist = file2Lines(0, pendingFiles);
+		EACH(marklist) {
+			p = marklist[i];
+			t = strchr(p, '|');
+			*t++ = 0;
+			if (hash_fetchStr(h, p)) continue; /* already marked */
+			s = sccs_init(p, INIT_MUSTEXIST);
+			d = sccs_findrev(s, t);
+			assert(!(FLAGS(s, d) & D_CSET));
+			FLAGS(s, d) |= D_CSET;
+			sccs_newchksum(s);
+			sccs_free(s);
+		}
+		freeLines(marklist, free);
+		hash_free(h);
+		if (bin_needHeapRepack(cset)) {
+			if (run_check(opts.quiet, 0, 0, 0, 0)) {
+				rc = 1;
+				goto fail;
+			}
+		}
+	} else {
+		// run check
 		/*
 		 * Note: by having no |+, the check.c:check() if (doMark...)
 		 * code will skip trying to mark the ChangeSet file.
@@ -460,9 +574,11 @@ err:		rc = 1;
 		    "bk", "-?BK_NO_REPO_LOCK=YES", "check",
 		    opts.resync ? "-cMR" : "-cM", "-", SYS)) {
 			rc = 1;
+			goto fail;
 		}
 	}
-	if (!rc && opts.resync) {
+	T_PERF("after_check");
+	if (opts.resync) {
 		char	key[MAXPATH];
 		FILE	*f;
 
@@ -478,7 +594,7 @@ err:		rc = 1;
 			fclose(f);
 		}
 	}
-	if (!rc && proj_isComponent(0)) {
+	if (proj_isComponent(0)) {
 		hash	*urllist;
 		char	*file = proj_fullpath(proj_product(0), NESTED_URLLIST);
 
@@ -493,7 +609,8 @@ err:		rc = 1;
 		}
 	}
 	putenv("BK_STATUS=OK");
-	if (rc) {
+fail:	if (rc) {
+		if (modFiles) do_unmark(modFiles);
 		fprintf(stderr, "The commit is aborted.\n");
 		putenv("BK_STATUS=FAILED");
 	} else if (opts.clean_PENDING) {
@@ -506,11 +623,12 @@ err:		rc = 1;
 	trigger(opts.resync ? "merge" : av[0], "post");
 done:	if (unlink(pendingFiles)) perror(pendingFiles);
 	// Someone else created the c.file, unlink only on success
-	if ((dflags & DELTA_CFILE) && !rc) comments_cleancfile(cset);
+	if ((dflags & DELTA_CFILE) && !rc && !ntc) comments_cleancfile(cset);
 	if (*commentFile) unlink(commentFile);
 	sccs_free(cset);
 	freeLines(list, free);
 	commitRestore(rc);
+	freeLines(modFiles, free);
 	/*
 	 * If we are doing a commit in RESYNC or the commit failed, do
 	 * not log the cset. Let the resolver do it after it moves the
@@ -518,6 +636,38 @@ done:	if (unlink(pendingFiles)) perror(pendingFiles);
 	 */
 	unless (opts.resync || rc) logChangeSet();
 	T_PERF("done");
+	return (rc);
+}
+
+private int
+do_ci(char ***modFiles, char *commentFile, char *pendingFiles)
+{
+	int	i, rc = 0;
+	char	*cmd, **mlist = *modFiles;
+	FILE	*f;
+	char	didciFile[MAXPATH];
+
+	bktmp(didciFile);
+	cmd = aprintf("bk -?BK_NO_REPO_LOCK=YES ci -q -a "
+	    "--prefer-cfile --csetmark --did-ci=\"%s\" -Y\"%s\" -",
+	    didciFile, commentFile);
+
+	f = popen(cmd, "w");
+	assert(f);
+	EACH(mlist) fprintf(f, "%s\n", mlist[i]);
+	rc = (pclose(f) != 0);
+	free(cmd);
+
+	freeLines(mlist, free);
+	mlist = file2Lines(0, didciFile);
+	*modFiles = mlist;
+	unlink(didciFile);
+
+	f = fopen(pendingFiles, "a");
+	assert(f);
+	EACH(mlist) fprintf(f, "%s\n", mlist[i]);
+	fclose(f);
+
 	return (rc);
 }
 
@@ -529,9 +679,7 @@ private int
 getfilekey(char *sfile, char *rev, sccs *cset, ser_t cset_d, char ***keys)
 {
 	sccs	*s;
-	u8	*v, *p;
 	ser_t	d;
-	u32	sum = 0;
 	u8	buf[MAXLINE];
 
 	unless (s = sccs_init(sfile, 0)) {
@@ -550,33 +698,240 @@ getfilekey(char *sfile, char *rev, sccs *cset, ser_t cset_d, char ***keys)
 		fprintf(stderr, "cset: can't find %s in %s\n", rev, sfile);
 		return (1);
 	}
-	assert(!(FLAGS(s, d) & D_CSET));
+	//assert(!(FLAGS(s, d) & D_CSET));
 
-	/*
-	 * XXX For non-merge deltas we don't need cset->mdbm so we can
-	 * avoid reading the old weave.  Instead we can just find the latest
-	 * marked delta key and use that.
-	 */
 	sccs_sdelta(s, sccs_ino(s), buf);
 	*keys = addLine(*keys, strdup(buf));
-	if (v = mdbm_fetch_str(cset->mdbm, buf)) {
-		/* subtract off old value */
-		for (p = v; *p; sum -= *p++);
-	} else {
-		/* new file (need sum of rootkey) */
-		for (p = buf; *p; sum += *p++);
-		sum += ' ' + '\n';
-	}
 	sccs_sdelta(s, d, buf);
 	*keys = addLine(*keys, strdup(buf));
-	for (p = buf; *p; p++) sum += *p; /* sum of new deltakey */
 	sccs_free(s);
+	return (0);
+}
+
+/*
+ * If lots of gone open tips, then we'll want to keep the gone DB open.
+ * Similar logic to open tip error handling in check.c:buildKeys().
+ */
+private	int
+missingMerge(sccs *cset, u32 rkoff)
+{
+	MDBM	*goneDB = loadDB(GONE, 0, DB_GONE);
+	int	ret = 0;
+
+	unless (mdbm_fetch_str(goneDB, HEAP(cset, rkoff))) {
+		fprintf(stderr,
+		    "commit: ChangeSet is a merge but is missing\n"
+		    "a required merge delta for this rootkey\n");
+		fprintf(stderr, "\t%s\n", HEAP(cset, rkoff));
+		ret = 1;
+	}
+	mdbm_close(goneDB);
+	return (ret);
+}
+
+/*
+ * We are about to create a new cset 'd' with 'keys' in the weave.
+ * This function computes the new SUM() for 'd'.  The changeset checksum
+ * is the sum of the list of all rk/dk pairs for the current tip, so
+ * we need to add the new files and then for updated files subtract the
+ * old keys and add the new keys.
+ *
+ * SUM(cset, d) has been preset to the PARENTs checksum.  That's why
+ * the MERGE case is asymmetrical - scanning RED for new and BLUE for
+ * matches.
+ *
+ * Where possible we walk as little of the existing weave as possible to get
+ * the data needed.
+ *
+ * hash: keys are rootkey offset in heap; values are what region
+ * we were in when we first saw it, and an index to change the deltakey,
+ * if it is the oldest.  If we first see in one side of the merge,
+ * then again in the other side of the merge, without being in the merge,
+ * then report error.
+ */
+private int
+updateCsetChecksum(sccs *cset, ser_t d, char **keys)
+{
+	int	i, cnt = 0, todo = 0;
+	u32	sum = 0;
+	u32	seen;
+	char	*rk, *dk;
+	u32	rkoff, dkoff;
+	u8	*p;
+	ser_t	e, old;
+	int	ret = 0;
+	int	merge = 0;
+	struct	{
+		u32	n;
+		u8	seen;
+#define	S_REMOTE	0x01	/* first seen in remote */
+#define	S_LOCAL		0x02	/* first seen in local */
+#define	S_DONE		0x04	/* not looking for this key anymore */
+#define	S_INREMOTE	0x08	/* seen in remote */
+	} *rinfo;
+	hash	*h = hash_new(HASH_U32HASH, sizeof(u32), sizeof(*rinfo));
+
+	if (MERGE(cset, d)) {
+		/*
+		 * Add in some MERGE side keys (colored RED)
+		 * to todo list.  Also color PARENT side BLUE and
+		 * use the hash both for computing what csets in RED
+		 * to add to todo, as well as look for non merged tips.
+		 */
+		cset->rstart = 0;
+		range_walkrevs(cset,
+		    PARENT(cset, d), 0, MERGE(cset, d), WR_BOTH, 0, 0);
+		if (cset->rstart) {
+			merge = 1;
+			todo++;
+		}
+	}
+	EACH(keys) {
+		++cnt;
+		rk = keys[i++];
+		dk = keys[i];
+		for (p = dk; *p; p++) sum += *p; /* sum of new deltakey */
+		if (rkoff = sccs_hasRootkey(cset, rk)) {
+			++todo;
+			rinfo = hash_insert(h, &rkoff, sizeof(rkoff),
+			    0, sizeof(*rinfo));
+			rinfo->n = i;
+		} else {
+			/* new file, just add rk now */
+			for (p = rk; *p; p++) sum += *p;
+			sum += ' ' + '\n';
+			dk = aprintf("|%s", keys[i]);
+			free(keys[i]);
+			keys[i] = dk;
+		}
+	}
+	sccs_rdweaveInit(cset);
+	old = d;
+	seen = 0;
+	while (todo && (e = cset_rdweavePair(cset, 0, &rkoff, &dkoff))) {
+		if (merge && (old != e)) {
+			switch (FLAGS(cset, e) & (D_RED|D_BLUE)) {
+			    case D_RED: seen = S_REMOTE; break;
+			    case D_BLUE: seen = S_LOCAL; break;
+			    default: seen = 0; break;
+                        }
+			/* clear colors for this cset and csets with no data */
+			for (old--; old >= e; old--) {
+				FLAGS(cset, old) &= ~(D_RED|D_BLUE);
+			}
+			old = e;
+			if (e < cset->rstart) {
+				/* all clean and done with merge */
+				merge = 0;
+				--todo;
+			}
+		}
+		/* allocate rinfo */
+		if (merge) {
+			if (rinfo = hash_insert(h, &rkoff, sizeof(rkoff),
+				0, sizeof(*rinfo))) {
+				/* new rk first seen in merge (not in commit) */
+
+				assert(dkoff);
+				if (seen & S_REMOTE) {
+					/* must be a delta on remote only */
+					rinfo->seen = S_REMOTE;
+					p = HEAP(cset, dkoff);
+					while (*p) sum += *p++;
+					++todo;
+				} else {
+					rinfo->seen = seen | S_DONE;
+				}
+			}
+			rinfo = h->vptr;
+			/* in one region and first seen in the other region */
+			if (!ret &&
+			    (((seen|rinfo->seen) & (S_LOCAL|S_REMOTE)) ==
+				(S_LOCAL|S_REMOTE))) {
+				/*
+				 * Not in commit, but included in both
+				 * local and remote side of merge
+				 */
+				ret = missingMerge(cset, rkoff);
+			}
+		} else {
+			unless (rinfo = hash_fetch(h, &rkoff, sizeof(rkoff))) {
+				// don't care about this key
+				continue;
+			}
+		}
+		if (rinfo->seen & S_DONE) continue; /* done with this rk */
+
+		if (seen & S_REMOTE) {
+			if (!dkoff) {
+				/* new file */
+				p = HEAP(cset, rkoff);
+				while (*p) sum += *p++;
+				sum += ' ' + '\n';
+
+				rinfo->seen |= S_DONE;
+				--todo;
+			} else {
+				// maybe a new file
+				rinfo->seen |= S_INREMOTE;
+				rinfo->n = e;
+			}
+		} else {
+			assert(dkoff);
+			/*
+			 * found previous deltakey for one of my files,
+			 * subtract off old key
+			 */
+			for (p = HEAP(cset, dkoff); *p; sum -= *p++);
+			--todo;
+			rinfo->seen |= S_DONE;
+		}
+	}
+	sccs_rdweaveDone(cset);
+	/*
+	 * Any keys that remain in my hash must be new files so we
+	 * need to add in the rootkey checksums.
+	 */
+	if (todo) EACH_HASH(h) {
+		rkoff = *(u32 *)h->kptr;
+		rinfo = h->vptr;
+		if (rinfo->seen & S_DONE) continue;
+
+		for (p = HEAP(cset, rkoff); *p; p++) sum += *p;
+		sum += ' ' + '\n';
+		assert(rinfo->n);
+		if (rinfo->seen & S_INREMOTE) {
+			/*
+			 * file from weave was actually new
+			 * Could update markers, but better to flush out
+			 * when this happens and plug the holes.
+			 */
+			if (BWEAVE3(cset) && getenv("_BK_DEVELOPER")) {
+				fprintf(stderr,
+				    "serial =%d, oldest rk %s\n",
+				    rinfo->n, HEAP(cset, rkoff));
+				ret++;
+			}
+		} else {
+			/* committed file was really new */
+			i = rinfo->n;
+			dk = aprintf("|%s", keys[i]);
+			free(keys[i]);
+			keys[i] = dk;
+		}
+		if (--todo == 0) break;
+	}
+	hash_free(h);
 
 	/* update delta checksum */
-	SUM_SET(cset, cset_d, (u16)(SUM(cset, cset_d) + sum));
-	SORTSUM_SET(cset, cset_d, SUM(cset, cset_d));
-	ADDED_SET(cset, cset_d, ADDED(cset, cset_d) + 1);
-	return (0);
+	if (!cnt && !MERGE(cset, d) && !HAS_CLUDES(cset, d)) {
+		sum = almostUnique();
+	} else {
+		sum = (sum_t)(SUM(cset, d) + sum);
+	}
+	SUM_SET(cset, d, sum);
+	SORTSUM_SET(cset, d, sum);
+	return (ret);
 }
 
 /*
@@ -586,11 +941,10 @@ getfilekey(char *sfile, char *rev, sccs *cset, ser_t cset_d, char ***keys)
  * Close the cset sccs* when done.
  */
 private ser_t
-mkChangeSet(sccs *cset, char *files, char ***keys)
+mkChangeSet(c_opts opts, sccs *cset, char *files, char ***keys)
 {
-	ser_t	d, p;
+	ser_t	d, d2, p;
 	char	*line, *rev, *t;
-	int	flags = GET_HASHONLY|GET_SUM|GET_SHUTUP|SILENT;
 	FILE	*f;
 	pfile	pf;
 	char	buf[MAXLINE];
@@ -599,19 +953,10 @@ mkChangeSet(sccs *cset, char *files, char ***keys)
 	 * Edit the ChangeSet file - we need it edited to modify it as well
 	 */
 	if (LOCKED(cset)) {
-		if (sccs_read_pfile("commit", cset, &pf)) return (0);
+		if (sccs_read_pfile(cset, &pf)) return (0);
 	} else {
-		flags |= GET_EDIT;
 		memset(&pf, 0, sizeof(pf));
 		pf.oldrev = strdup("+");
-	}
-	if (HASGRAPH(cset) &&
-	    sccs_get(cset, pf.oldrev, pf.mRev, 0, 0, flags, "-")) {
-		unless (BEEN_WARNED(cset)) {
-			fprintf(stderr, "cset: get -eg of ChangeSet failed\n");
-		}
-		free_pfile(&pf);
-		return (0);
 	}
 	d = sccs_dInit(0, 'D', cset, 0);
 	if (d == TREE(cset)) {
@@ -646,8 +991,14 @@ mkChangeSet(sccs *cset, char *files, char ***keys)
 		R0_SET(cset, d, R0(cset, p));	/* so renumber() is happy */
 		XFLAGS(cset, d) = XFLAGS(cset, p);
 
-		/* set initial key, getfilekey() updates diff from merge */
-		SUM_SET(cset, d, cset->dsum);
+		/*
+		 * set initial sum to parent, in updateCsetChecksum we update
+		 */
+		if (d2 = sccs_getCksumDelta(cset, p)) {
+			SUM_SET(cset, d, SUM(cset, d2));
+		} else {
+			SUM_SET(cset, d, 0);
+		}
 
 		/*
 		 * bk normally doesn't set the MODE() for the
@@ -671,16 +1022,6 @@ mkChangeSet(sccs *cset, char *files, char ***keys)
 	}
 	free_pfile(&pf);
 
-	if (uniq_open()) assert(0);
-	if (TABLE(cset) && (DATE(cset, d) <= DATE(cset, TABLE(cset)))) {
-		time_t	tdiff;
-
-		tdiff = DATE(cset, TABLE(cset)) - DATE(cset, d) + 1;
-		DATE_SET(cset, d, DATE(cset, d) + tdiff);
-		DATE_FUDGE_SET(cset, d, DATE_FUDGE(cset, d) + tdiff);
-	}
-	uniq_adjust(cset, d);
-	uniq_close();
 
 	if (files) {
 		/*
@@ -695,6 +1036,7 @@ mkChangeSet(sccs *cset, char *files, char ***keys)
 			getfilekey(line, rev, cset, d, keys);
 		}
 		fclose(f);
+		if (updateCsetChecksum(cset, d, *keys)) return (0);
 	}
 
 	if (d == TREE(cset)) {
@@ -705,6 +1047,13 @@ mkChangeSet(sccs *cset, char *files, char ***keys)
 		SAME_SET(cset, d, 1);
 	}
 
+	if (TABLE(cset) && (DATE(cset, d) <= DATE(cset, TABLE(cset)))) {
+		time_t	tdiff;
+
+		tdiff = DATE(cset, TABLE(cset)) - DATE(cset, d) + 1;
+		DATE_SET(cset, d, DATE(cset, d) + tdiff);
+		DATE_FUDGE_SET(cset, d, DATE_FUDGE(cset, d) + tdiff);
+	}
 #ifdef CRAZY_WOW
 	Actually, this isn't so crazy wow.  I don't know what problem this
 	caused but I believe the idea was that we wanted time increasing
@@ -727,11 +1076,12 @@ mkChangeSet(sccs *cset, char *files, char ***keys)
 		DATE_SET(cset, d, (DATE(cset, d) + DATE_FUDGE(cset, d)));
 	}
 #endif
+	if (uniq_adjust(cset, d)) return (0);
 	return (d);
 }
 
 private int
-csetCreate(sccs *cset, int flags, char *files, char **syms)
+csetCreate(c_opts opts, sccs *cset, int flags, char *files, char **syms)
 {
 	ser_t	d;
 	int	i, error = 0;
@@ -748,7 +1098,7 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	}
 
 	/* write change set to diffs */
-	unless (d = mkChangeSet(cset, files, &keys)) {
+	unless (d = mkChangeSet(opts, cset, files, &keys)) {
 		freeLines(keys, free);
 		return (-1);
 	}
@@ -786,7 +1136,7 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	sccs_insertdelta(cset, d, d);
 	sccs_renumber(cset, 0);
 	sccs_startWrite(cset);
-	if (BWEAVE_OUT(cset)) weave_set(cset, d, keys);
+	weave_set(cset, d, keys);
 	EACH (syms) addsym(cset, d, 1, syms[i]);
 	if (delta_table(cset, 0)) {
 		perror("table");
@@ -795,20 +1145,12 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	}
 	unless (BWEAVE_OUT(cset)) {
 		out = sccs_wrweaveInit(cset);
-		fprintf(out, "\001I %d\n", d);
-		EACH(keys) {
-			fprintf(out, "%s %s\n", keys[i], keys[i+1]);
-			i++;
+		sccs_rdweaveInit(cset);
+		while (line = sccs_nextdata(cset)) {
+			fputs(line, out);
+			fputc('\n', out);
 		}
-		fprintf(out, "\001E %d\n", d);
-		unless (flags & DELTA_EMPTY) {
-			sccs_rdweaveInit(cset);
-			while (line = sccs_nextdata(cset)) {
-				fputs(line, out);
-				fputc('\n', out);
-			}
-			sccs_rdweaveDone(cset);
-		}
+		sccs_rdweaveDone(cset);
 		sccs_wrweaveDone(cset);
 	}
 	if (sccs_finishWrite(cset)) {
@@ -817,7 +1159,7 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	}
 	T_PERF("wrote weave");
 	unlink(cset->gfile);
-	unlink(cset->pfile);
+	xfile_delete(cset->gfile, 'p');
 	cset->state &= ~(S_GFILE|S_PFILE);
 
 out:	unless (error || (flags & SILENT)) {
@@ -834,17 +1176,20 @@ cset_setup(int flags)
 {
 	sccs	*cset;
 	int	rc;
+	c_opts	opts = {0};
 
-	flags |= DELTA_EMPTY;
 	cset = sccs_csetInit(SILENT);
 	assert(cset->state & S_CSET);
 	cset->xflags |= X_LONGKEY;
-	rc = csetCreate(cset, flags, 0, 0);
+	rc = csetCreate(opts, cset, flags, 0, 0);
 	sccs_free(cset);
 	return (rc);
 }
 
 #define	CSET_BACKUP	"BitKeeper/tmp/SCCS/commit.cset.backup"
+
+static	char	*save_pfile;
+static	char	*save_cfile;
 
 /*
  * Save SCCS/?.ChangeSet files so we can restore them later if commit
@@ -853,10 +1198,7 @@ cset_setup(int flags)
 private void
 commitSnapshot(void)
 {
-	char	*ext = "scp";	/* file exensions to backup */
-	int	i;
-	char	file[MAXPATH];
-	char	save[MAXPATH];
+	char	*t;
 
 	/*
 	 * We don't save a backup of the ChangeSet heaps in
@@ -868,13 +1210,9 @@ commitSnapshot(void)
 	 * the file when it need to append new data to the end.
 	 */
 	mkdir("BitKeeper/tmp/SCCS", 0777);
-	for (i = 0; ext[i]; i++) {
-		sprintf(file, "SCCS/%c.ChangeSet", ext[i]);
-		if (exists(file)) {
-			sprintf(save, CSET_BACKUP ".%c", ext[i]);
-			fileLink(file, save);
-		}
-	}
+	fileLink("SCCS/s.ChangeSet", CSET_BACKUP ".s");
+	if (t = xfile_fetch(CHANGESET, 'p')) save_pfile = t;
+	if (t = xfile_fetch(CHANGESET, 'c')) save_cfile = t;
 	if (exists(SATTR)) fileLink(SATTR, CSET_BACKUP "attr.s");
 }
 
@@ -885,23 +1223,21 @@ commitSnapshot(void)
 private void
 commitRestore(int rc)
 {
-	char	*ext = "scp";	/* file exensions to backup */
-	int	i;
-	char	file[MAXPATH];
 	char	save[MAXPATH];
 
-	for (i = 0; ext[i]; i++) {
-		sprintf(save, CSET_BACKUP ".%c", ext[i]);
-		if (exists(save)) {
-			sprintf(file, "SCCS/%c.ChangeSet", ext[i]);
-			if (rc) {
-				fileMove(save, file);
-				unlink("BitKeeper/log/TIP");
-			} else {
-				unlink(save);
-			}
+	if (rc) {
+		if (exists(CSET_BACKUP ".s")) {
+			fileMove(CSET_BACKUP ".s", "SCCS/s.ChangeSet");
 		}
+		unlink("BitKeeper/log/TIP");
+		if (save_pfile) xfile_store(CHANGESET, 'p', save_pfile);
+		if (save_cfile) xfile_store(CHANGESET, 'c', save_cfile);
+	} else {
+		unlink(CSET_BACKUP ".s");
 	}
+	FREE(save_pfile);
+	FREE(save_cfile);
+
 	strcpy(save, CSET_BACKUP "attr.s");
 	if (exists(save)) {
 		if (rc) {
@@ -909,5 +1245,36 @@ commitRestore(int rc)
 		} else {
 			unlink(save);
 		}
+	}
+}
+
+private void
+do_unmark(char **modFiles)
+{
+	int	i;
+	sccs	*s;
+	ser_t	d;
+	char	*rev, *p;
+
+	EACH(modFiles) {
+		p = strchr(modFiles[i], '|');
+		assert(p);
+		*p = 0;
+		rev = p+1;
+		unless (s = sccs_init(modFiles[i], INIT_MUSTEXIST)) {
+			perror(modFiles[i]);
+			continue;
+		}
+		d = sccs_findrev(s, rev);
+		if (FLAGS(s, d) & D_CSET) {
+			FLAGS(s, d) &= ~D_CSET;
+			if (sccs_newchksum(s)) {
+				perror(modFiles[i]);
+				sccs_free(s);
+				continue;
+			}
+			updatePending(s);
+		}
+		sccs_free(s);
 	}
 }

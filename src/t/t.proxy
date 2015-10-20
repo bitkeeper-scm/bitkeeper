@@ -59,44 +59,44 @@ export http_proxy
 HOST=`bk gethost -r`
 
 echo $N Test rclone .................................................$NL
-bk clone $Q project http://$HOST:$P/copy || exit 1
+bk clone $Q project http://$HOST:$P/copy || fail
 echo OK
 
 echo $N Test clone ..................................................$NL
-bk clone $Q http://$HOST:$P/copy copy2 || exit 1
+bk clone $Q http://$HOST:$P/copy copy2 || fail
 echo OK
 
 echo $N Test pull ...................................................$NL
 cd project
 echo hi > file
-bk new -b $Q file || exit 1
-bk commit $Q -ybam || exit 2
+bk new -b $Q file || fail
+bk commit $Q -ybam || fail
 cd ../copy
-bk pull $Q http://$HOST:$P/project || exit 1
+bk pull $Q http://$HOST:$P/project || fail
 bk lock -U ../project
 echo OK
 
 echo $N Test push ...................................................$NL
-bk push $Q http://$HOST:$P/copy2 || exit 1
+bk push $Q http://$HOST:$P/copy2 || fail
 bk lock -U
 echo OK
 
 echo $N Test changes -L .............................................$NL
 cd ../project
 echo hi > bar
-bk new $Q bar || exit 1
-bk commit $Q -ybar || exit 2
+bk new $Q bar || fail
+bk commit $Q -ybar || fail
 KEY1=`bk prs -hnd:KEY: -r+ ChangeSet`
 cd ../copy
 echo hi > baz
-bk new $Q baz || exit 3
-bk commit $Q -ybaz || exit 4
+bk new $Q baz || fail
+bk commit $Q -ybaz || fail
 KEY2=`bk prs -hnd:KEY: -r+ ChangeSet`
 KEY=`bk changes -qnd:KEY: -L http://$HOST:$P/project`
-test "$KEY" = "$KEY2" || exit 5
+test "$KEY" = "$KEY2" || fail
 echo OK
 
 echo $N Test changes -R .............................................$NL
 KEY=`bk changes -qnd:KEY: -R http://$HOST:$P/project`
-test "$KEY" = "$KEY1" || exit 1
+test "$KEY" = "$KEY1" || fail
 echo OK

@@ -2,6 +2,7 @@
 #include "sccs.h"
 #include "logging.h"
 #include "bam.h"
+#include "cfg.h"
 
 /*
  * This file contains a series of accessor functions for the project
@@ -439,134 +440,31 @@ proj_config(project *p)
 	return (p->config);
 }
 
-char *
-proj_configval(project *p, char *key)
-{
-	char	*ret;
-	MDBM	*db = proj_config(p);
-
-	assert(db);
-	unless (ret = mdbm_fetch_str(db, key)) {
-		/* compat with old versions */
-		if (streq(key, "clock_skew")) {
-			ret = mdbm_fetch_str(db, "trust_window");
-		}
-		if (streq(key, "mail_proxy")) {
-			ret = mdbm_fetch_str(db, "mail-proxy");
-		}
-		if (streq(key, "upgrade_url")) {
-			ret = mdbm_fetch_str(db, "upgrade-url");
-		}
-		if (streq(key, "clone_default")) ret = "ALL";
-	}
-	return (ret ? ret : "");
-}
-
-int
-proj_configint(project *p, char *key, int defval)
-{
-	char	*val;
-	MDBM	*db = proj_config(p);
-
-	assert(db);
-	unless (val = mdbm_fetch_str(db, key)) return(defval);
-	return (strtol(val, 0, 10));
-}
-
-u32
-proj_configsize(project *p, char *key)
-{
-	char	*ret;
-	u32	sz;
-	MDBM	*db = proj_config(p);
-
-	assert(db);
-	unless ((ret = mdbm_fetch_str(db, key)) && *ret) return (0);
-	/* If they gave us a bool for BAM give them some reasonable defaults */
-	if (streq(key, "BAM") && !isdigit(*ret)) {
-		return (proj_configbool(p, key) ? BAM_SIZE : 0);
-	}
-	sz = atoi(ret);
-	while (isdigit(*ret)) ret++;
-	switch (*ret) {
-	    case 'k': case 'K': return (sz << 10);
-	    case 'm': case 'M': return (sz << 20);
-	    case 0:
-	    	return (sz);
-	    default:
-	    	return (0);
-	}
-	/* NOT REACHED */
-}
-
-int
-proj_configbool(project *p, char *key)
-{
-	char	*val;
-	MDBM	*db = proj_config(p);
-
-	assert(db);
-	unless (val = mdbm_fetch_str(db, key)) {
-		if (streq(key, "BAM_hardlinks")) {
-			val = mdbm_fetch_str(db, "binpool_hardlinks");
-		}
-		/* defaults */
-		if (streq(key, "partial_check")) return (1);;
-	}
-	unless (val) return (0);
-	switch(tolower(*val)) {
-	    case '0': if (streq(val, "0")) return (0); break;
-	    case '1': if (streq(val, "1")) return (1); break;
-	    case 'f': if (strieq(val, "false")) return (0); break;
-	    case 't': if (strieq(val, "true")) return (1); break;
-	    case 'n': if (strieq(val, "no")) return (0); break;
-	    case 'y': if (strieq(val, "yes")) return (1); break;
-	    case 'o':
-		if (strieq(val, "on")) return (1);
-		if (strieq(val, "off")) return (0);
-		break;
-	}
-	fprintf(stderr,
-	    "WARNING: config key '%s' should be a boolean.\n"
-	    "Meaning of '%s' unknown. Assuming false.\n", key, val);
-	return (0);
-}
-
 /*
  * returns the checkout state for the current repository
  */
 int
 proj_checkout(project *p)
 {
-	MDBM	*db;
 	char	*s;
 	int	bits;
 
 	unless (p || (p = curr_proj())) return (CO_NONE|CO_BAM_NONE);
 	if (proj_isResync(p)) return (CO_NONE|CO_BAM_NONE);
 	if (p->co) return (p->co);
-	db = proj_config(p);
-	assert(db);
-	/*
-	 * If this default changes, then src/gui/ide/emacs/vc-bk.el
-	 * will need to be changed as well (specifically, the
-	 * vc-bk-checkout-model function).
-	 */
-	bits = CO_NONE|CO_BAM_NONE; /* default */
-	if (s = mdbm_fetch_str(db, "checkout")) {
-		bits = 0;
-		if (strieq(s, "get")) bits = CO_GET|CO_BAM_GET;
-		if (strieq(s, "edit")) bits = CO_EDIT|CO_BAM_EDIT;
-		if (strieq(s, "last")) bits = CO_LAST|CO_BAM_LAST;
-		if (strieq(s, "none")) bits = CO_NONE|CO_BAM_NONE;
-		unless (bits) {
-			fprintf(stderr,
-			    "WARNING: checkout: should be get|edit|last|none.\n"
-			    "Meaning of '%s' unknown. Assuming edit.\n", s);
-			bits = CO_EDIT|CO_BAM_EDIT;
-		}
+	s = cfg_str(p, CFG_CHECKOUT);
+	assert(s);		/* must have default */
+	if (strieq(s, "get")) bits = CO_GET|CO_BAM_GET;
+	if (strieq(s, "edit")) bits = CO_EDIT|CO_BAM_EDIT;
+	if (strieq(s, "last")) bits = CO_LAST|CO_BAM_LAST;
+	if (strieq(s, "none")) bits = CO_NONE|CO_BAM_NONE;
+	unless (bits) {
+		fprintf(stderr,
+		    "WARNING: checkout: should be get|edit|last|none.\n"
+		    "Meaning of '%s' unknown. Assuming edit.\n", s);
+		bits = CO_EDIT|CO_BAM_EDIT;
 	}
-	if (s = mdbm_fetch_str(db, "BAM_checkout")) {
+	if (s = cfg_str(p, CFG_BAM_CHECKOUT)) {
 		bits &= 0xf;
 		if (strieq(s, "get")) bits |= CO_BAM_GET;
 		if (strieq(s, "edit")) bits |= CO_BAM_EDIT;
@@ -1256,7 +1154,7 @@ proj_sync(project *p)
 
 	if (p->rparent) return (0); /* no syncs in RESYNC */
 
-	if (p->sync == -1) p->sync = proj_configbool(p, "sync");
+	if (p->sync == -1) p->sync = cfg_bool(p, CFG_SYNC);
 	return (p->sync);
 }
 
@@ -1790,6 +1688,7 @@ proj_dirstate(project *p, char *dir, u32 state, int set)
 		assert(state);
 		dirs = 0;
 		EACH_HASH(p->scandirs) {
+			if (streq(p->scandirs->kptr, "DIRTY")) continue;
 			dirs = addLine(dirs, p->scandirs->kptr);
 		}
 		/* clear bits for all existing dirs */

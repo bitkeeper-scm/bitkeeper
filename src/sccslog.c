@@ -52,16 +52,19 @@ sccslog_main(int ac, char **av)
 	char	*name;
 	int	errors = 0;
 	int	local = 0;
+	int	standalone = 0;
+	char	*url = 0;
 	int	c, flags = SILENT;
 	RANGE	rargs = {0};
 	longopt	lopts[] = {
 		{ "dspecf;", 300 },		/* let user pass in dspec */
+		{ "standalone", 'S' },		/* alias */
 		{ 0, 0 }
 	};
 
 	opts.prs_flags = PRS_ALL;
 	setmode(1, _O_TEXT);
-	while ((c = getopt(ac, av, "AbCc;d|Dfi;L|nr|s", lopts)) != -1) {
+	while ((c = getopt(ac, av, "AbCc;d|Dfi;L|nr|sS", lopts)) != -1) {
 		switch (c) {
 		    case 'A': opts.uncommitted = 1; break;	/* doc 2.0 */
 		    case 'b': opts.basenames = 1; break;	/* doc 2.0 */
@@ -77,11 +80,8 @@ sccslog_main(int ac, char **av)
 			opts.indentOpt = 1;
 			break;
 		    case 'L':
-			local = 0;
-			if (range_urlArg(&rargs, optarg) ||
-			    range_addArg(&rargs, "+", 0)) {
-				usage();
-			}
+			local = 1;
+			url = optarg;
 			break;
 		    case 'n': opts.prs_flags |= PRS_LF; break;
 		    case 's': opts.sort = 1; break;		/* doc 2.0 */
@@ -90,6 +90,9 @@ sccslog_main(int ac, char **av)
 			break;
 		    case 'r':
 			if (range_addArg(&rargs, optarg, 0)) usage();
+			break;
+		    case 'S':
+		    	standalone = 1;
 			break;
 		    case 300:	/* --dspecf */
 			if (opts.dspec) usage();
@@ -104,9 +107,23 @@ sccslog_main(int ac, char **av)
 		}
 	}
 	if (local && opts.changeset) usage();
+	if (local) {
+		if (opts.changeset) usage();
+		if (range_urlArg(&rargs, url, standalone) ||
+		    range_addArg(&rargs, "+", 0)) {
+			return (1);
+		}
+	} else if (standalone) {
+		fprintf(stderr,
+		    "%s: -S only can be used if -L is also used\n", prog);
+		return (1);
+	}
 	if (opts.dspec) dspec_collapse(&opts.dspec, 0, 0);
 	if (local && !av[optind]) {
-		name = sfiles_local(rargs.rstart, "rm");
+		char	*slopts = aprintf("rm%s", standalone ? "S" : "");
+
+		name = sfiles_local(rargs.rstart, slopts);
+		free(slopts);
 	} else {
 		name = sfileFirst(av[0], &av[optind], 0);
 	}

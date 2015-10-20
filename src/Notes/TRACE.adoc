@@ -1,0 +1,32 @@
+Internal tracing mechanism
+==========================
+
+BK Internal Tracing.  How to instrument the code to be able to
+track what is going on in a multi process setup.
+
+The core of the code is in src/libc/utils/trace.c
+
+To use, set up an environment variable.  If set to an absolute
+path, the output will be put in a file.  Other wise it will
+be put to /dev/tty, and if that doesn't work, stderr
+(well, not stderr, but unbuffered fd = 2).
+
+The env variables, in order they are tested (first one used):
+
+BK_DTRACE - terse (please fill in what that means)
+BK_TTRACE - time trace 
+BK_TRACE - trace with pid
+
+Also supporting the operations to limit what is traced are env
+variables set to a colon separated list of ...
+
+BK_TRACE_PROGS - 'prog' variable (av[0]) globs
+BK_TRACE_FILES - file globs
+BK_TRACE_FUNCS - func globs
+
+Under the hood...
+
+Trace uses efopen(), which takes an env variable,
+and if it is an absolute path, writes in it,
+and if not, then tries to open TTY and if it can't,
+just writes to stderr (really, unbuffered fd = 2).

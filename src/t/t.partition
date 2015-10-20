@@ -115,15 +115,15 @@ EOF
 echo OK
 
 echo $N Test out command line .......................................$NL
-bk partition 2> ERR && exit 1
+bk partition 2> ERR && fail
 grep -q "partition: must list source and destination" ERR || fail -f ERR
-bk partition a b 2> ERR && exit 1
+bk partition a b 2> ERR && fail
 grep -q "partition: Must use -C or -@" ERR || fail -f ERR
-bk partition -Cnotthere a b 2> ERR && exit 1
+bk partition -Cnotthere a b 2> ERR && fail
 grep -q "partition: (-C) No notthere file found" ERR || fail -f ERR
-bk partition -q -Cmapfile notthere b 2> ERR && exit 1
+bk partition -q -Cmapfile notthere b 2> ERR && fail
 grep -q "clone: can't find repository" ERR || fail -f ERR
-bk partition -Cmapfile project project 2> ERR && exit 1
+bk partition -Cmapfile project project 2> ERR && fail
 grep -q "partition: destination 'project' exists" ERR || fail -f ERR
 # collide file namespace with component namespace in different ways
 bk partition $Q -Cbadmap.cset project copy-bad.cset 2> ERR && fail -f ERR
@@ -149,7 +149,7 @@ umask 000
 echo OK
 
 echo $N Run a simple test ...........................................$NL
-bk partition $Q -Cmapfile project copy || exit 1
+bk partition $Q -Cmapfile project copy || fail
 cd copy
 TOP=`bk changes -r+ -nd:DS:`
 COMP=`bk --cd=doc changes -S -r+ -nd:DS:`
@@ -253,7 +253,7 @@ test -f copy/src/b && {
 }
 rm -fr copy
 BK_CONFIG="checkout: get! " \
-    bk partition $Q -Cmapfile project copy || exit 1
+    bk partition $Q -Cmapfile project copy || fail
 test -f copy/src/b || {
 	echo failed
 	echo no file checked out when one expected
@@ -265,7 +265,7 @@ echo $N Again, but not using BK_CONFIG ..............................$NL
 rm -fr copy
 test -f "$BK_DOTBK"/config && fail fix test to save and restore config
 echo checkout: get >> "$BK_DOTBK"/config
-bk partition $Q -Cmapfile project copy || exit 1
+bk partition $Q -Cmapfile project copy || fail
 rm "$BK_DOTBK"/config
 test -f copy/src/b || {
 	echo failed
@@ -290,14 +290,14 @@ cd ..
 echo OK
 
 echo $N Test rollback generating an error ...........................$NL
-bk partition $Q -Cmapfile project xcomps || exit 1
+bk partition $Q -Cmapfile project xcomps || fail
 cd xcomps
 bk undo $Q -sfaROOT 2> WARN && fail -f WARN
 grep -q "undo is rolling back before the partition" WARN || fail -f WARN
 echo OK
 
 echo $N Test again with override and see src/a is not there .........$NL
-_BK_UNDO_OK=1 bk undo $Q -sfaROOT 2> WARN || exit 1
+_BK_UNDO_OK=1 bk undo $Q -sfaROOT 2> WARN || fail
 bk _test -f src/SCCS/s.a && {
 	echo there
 	exit 1
@@ -312,7 +312,7 @@ bk edit $Q a
 bk delta $Q -fynull a
 bk commit $Q -ya
 cd ..
-bk partition $Q -@copy project copy2 || exit 1
+bk partition $Q -@copy project copy2 || fail
 cd copy2
 bk pull $Q ../copy 2> ERR || {
    echo push failed
@@ -366,7 +366,7 @@ echo $N Delete as a component .......................................$NL
 cd "$HERE"
 cp mapfile mapfile.delete
 echo BitKeeper/delcomp >> mapfile.delete
-bk partition $Q -Cmapfile.delete project copy.delete || exit 1
+bk partition $Q -Cmapfile.delete project copy.delete || fail
 cd copy.delete || fail
 test "`bk changes -rDELTAG -nd:SORTKEY:`" = "$DELKEY" || fail
 cd BitKeeper/delcomp || fail
@@ -384,7 +384,7 @@ echo OK
 echo $N Remove empty components .....................................$NL
 cd "$HERE"
 echo empty/repo > emptymap
-bk partition $Q -Cemptymap project empty || exit 1
+bk partition $Q -Cemptymap project empty || fail
 test -d empty/empty && {
 	echo failed
 	exit 1

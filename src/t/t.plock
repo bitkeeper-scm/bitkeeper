@@ -36,37 +36,37 @@ tar xf project.tar
 cd project/src
 BK_CONFIG="checkout: $TYPE! "
 export BK_CONFIG
-bk clean -v none || exit 1
-bk clean -v get 2> ERR || exit 1
-grep -q "Clean get" ERR || exit 1
-test -f get && exit 1
-bk clean -v edit 2> ERR || exit 1
-grep -q "Clean edit" ERR || exit 1
-test -f edit && exit 1
-bk clean -v modified 2> ERR && exit 1
-grep -q "modified has been modified, needs delta" ERR || exit 1
-test -f modified || exit 1
-bk clean -v pnog 2> ERR || exit 1
-grep -q "cleaning plock for pnog" ERR || exit 1
-bk _test -f SCCS/p.pnog && exit 1
-bk clean -v dashx 2> ERR && exit 1
-grep -q "dashx has merge|include|exclude, not cleaned" ERR || exit 1
-bk clean -v dashxnog 2> ERR && exit 1
-grep -q "dashxnog has merge|include|exclude, not cleaned" ERR || exit 1
-bk _test -f SCCS/p.dashxnog || exit 1
-bk clean -v writable 2> ERR || exit 1
-grep -q "Clean writable" ERR || exit 1
-test -f writable && exit 1
-bk clean -v writablechg 2> ERR && exit 1
-grep -q "writablechg writable, with changes, but not edited" ERR || exit 1
-test -f writablechg || exit 1
-bk clean -v keywords 2> ERR || exit 1
-grep -q "Clean keywords" ERR || exit 1
-test -f keywords && exit 1
-bk clean -v keywordschg 2> ERR && exit 1
-grep -q "keywordschg writable, with changes, but not edited" ERR || exit 1
-test -f keywordschg || exit 1
-) || exit 1
+bk clean -v none || fail
+bk clean -v get 2> ERR || fail
+grep -q "Clean get" ERR || fail
+test -f get && fail
+bk clean -v edit 2> ERR || fail
+grep -q "Clean edit" ERR || fail
+test -f edit && fail
+bk clean -v modified 2> ERR && fail
+grep -q "modified has been modified, needs delta" ERR || fail
+test -f modified || fail
+bk clean -v pnog 2> ERR || fail
+grep -q "cleaning plock for pnog" ERR || fail
+bk _test -f SCCS/p.pnog && fail
+bk clean -v dashx 2> ERR && fail
+grep -q "dashx has merge|include|exclude, not cleaned" ERR || fail
+bk clean -v dashxnog 2> ERR && fail
+grep -q "dashxnog has merge|include|exclude, not cleaned" ERR || fail
+bk _test -f SCCS/p.dashxnog || fail
+bk clean -v writable 2> ERR || fail
+grep -q "Clean writable" ERR || fail
+test -f writable && fail
+bk clean -v writablechg 2> ERR && fail
+grep -q "writablechg writable, with changes, but not edited" ERR || fail
+test -f writablechg || fail
+bk clean -v keywords 2> ERR || fail
+grep -q "Clean keywords" ERR || fail
+test -f keywords && fail
+bk clean -v keywordschg 2> ERR && fail
+grep -q "keywordschg writable, with changes, but not edited" ERR || fail
+test -f keywordschg || fail
+) || fail
 echo OK
 
 echo $N Test unedit and checkout: "$NAME" ..............................$NL
@@ -82,16 +82,16 @@ for file in $list; do
 	then	THERE=1
 	else	THERE=0
 	fi
-	bk unedit $file || exit 1
+	bk unedit $file || fail
 	if [ "$TYPE" = "none" ]
-	then	test -f $file && exit 1
+	then	test -f $file && fail
 	elif [ "$TYPE" = "last" ]
 	then	if [ $THERE = 1 ]
-		then	test -f $file || exit 1
-		else	test -f $file && exit 1
-			bk _test -f SCCS/p.$file && exit 1
+		then	test -f $file || fail
+		else	test -f $file && fail
+			bk _test -f SCCS/p.$file && fail
 		fi
-	else	test -f $file || exit 1
+	else	test -f $file || fail
 	fi
 done
 exit 0
@@ -110,16 +110,16 @@ for file in $list; do
 	# Yay: pnog is not in the list of cases where 'bk edit' fails!
 	bk edit $Q $file || {
 		test $file = edit -o $file = modified -o $file = readmod \
-		    -o $file = dashx -o $file = dashxnog || exit 1
+		    -o $file = dashx -o $file = dashxnog || fail
 	}
 	test -f $file || {
-		test $file = dashxnog || exit 1
+		test $file = dashxnog || fail
 	}
 done
 for file in $glist; do
 	# XXX: disagree with some of these: "bk edit writable" should work
-	bk edit $Q $file && exit 1
-	test -f $file || exit 1
+	bk edit $Q $file && fail
+	test -f $file || fail
 done
 exit 0
 ) || { cat "$HERE/project/src/ERR"; exit 1; }
@@ -137,10 +137,10 @@ for file in $list; do
 	bk edit $Q -x+ $file || {
 		# different from previous test in that 'bk edit -x+ edit' works
 		test $file = modified -o $file = readmod \
-		    -o $file = dashx -o $file = dashxnog || exit 1
+		    -o $file = dashx -o $file = dashxnog || fail
 	}
 	test -f $file || {
-		test $file = dashxnog || exit 1
+		test $file = dashxnog || fail
 	}
 done
 exit 0

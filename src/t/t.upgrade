@@ -131,7 +131,7 @@ echo OK
 
 echo $N Test upgrade using a license proxy ..........................$NL
 cd "$HERE/junk2"
-bk bkd -q -d -aPORT -ikill || exit 1
+bk bkd -q -d -aPORT -ikill || fail
 P=`cat PORT`
 
 cd "$HERE"
@@ -198,7 +198,7 @@ grep -q "New version of bk fetched: $INSTALLER" OUT || {
 }
 cp ../$INSTALLER foo
 bk _preference | grep ^lic > foo.keys
-bk inskeys foo foo.keys >/dev/null || exit 1
+bk inskeys foo foo.keys >/dev/null || fail
 cmp -s $INSTALLER foo-licensed || {
 	echo wrong file
 	exit 1
@@ -220,5 +220,5 @@ bk upgrade -df "$HERE/upgrade" 2>ERR && {
 	cat OUT
 	exit 1
 }
-grep -q "rejected by the license server" ERR || exit 1
+grep -q "rejected by the license server" ERR || fail
 echo OK

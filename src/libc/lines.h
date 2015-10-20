@@ -90,6 +90,7 @@ int	removeLine(char **space, char *s, void(*freep)(void *ptr));
 void	reverseLines(char **space);
 #define	sortLines(s, compar)	_sortArray(s, compar, sizeof(char *))
 int	string_sort(const void *a, const void *b);
+int	stringcase_sort(const void *a, const void *b);
 int	string_sortrev(const void *a, const void *b);
 int	number_sort(const void *a, const void *b);
 char	**shellSplit(const char *line);
@@ -97,8 +98,6 @@ char	**prog2Lines(char **space, char *file);
 char	**file2Lines(char **space, char *file);
 int	lines2File(char **space, char *file);
 void	uniqLines(char **space, void(*freep)(void *ptr));
-int	pruneLines(char **space, char **remove,
-    int (*compar)(const void *, const void *), void(*freep)(void *ptr));
 int	sameLines(char **p, char **p2);
 char	*shellquote(char *in);
 

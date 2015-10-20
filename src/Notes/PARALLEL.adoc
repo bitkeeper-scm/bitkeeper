@@ -1,0 +1,53 @@
+Details about clone -j
+======================
+
+Parallel clones
+
+The idea here is to send the BitKeeper/etc and /log dirs first, in their own
+sfio, then send the rest in a second sfio.  The end of the first is marked
+with SFIO_MORE so we keep going (old bk's that don't know about parallel
+will just keep going).
+
+bk _sfiles_clone has been wacked so that it spits out a || as a file name
+where the EOF should go.  Sfio sees this and uses it to stick SFIO_MORE
+so it is all contained on the sending side.  You can run _sfiles_clone -2
+to see what it does.
+
+On the receiving side we unpack the first one, look at proj_co, and spawn
+bk checkout's if needed.  So each parallel sfio now has a checkout.  This
+means that clone -j2 is really 2 sfio's and 2 checkouts, but whatever.
+
+We've found that even for local file systems the parallel is a win, see
+below, we're defaulting to -j3 for local, j8 for NFS.  Yes, you could get
+better results in local hardlink with a higher number but I wanted to not
+beat the crap out of old underpowered machines.
+
+BAM files are left until later which may or may not be the right answer
+since they might be large.  If we could know what BAM files to fetch
+from the changeset file we could get that going while the rest of the
+work is going.
+
+x6:/tmp # disk to disk
+x6:/tmp rmr linux-2.6/;sync;sleep 1;for i in 0 2 3 4 6 12 ; do /usr/bin/time -f "$i %e" $BK clone -j$i -q /build/linux-2.6/; rm -rf linux-2.6; sync; sleep 1; done
+0 11.93
+2 7.46
+3 6.41
+4 6.08
+6 6.34
+12 6.78
+x6:/tmp # no-hardlinks
+x6:/tmp $BK clone -q /build/linux-2.6/; sync; sleep 1;for i in 0 2 3 4 6 12 ; do /usr/bin/time -f "$i %e" $BK clone --no-hardlinks -j$i -q linux-2.6 clone; rm -rf clone; sync; sleep 1; done
+0 13.10
+2 8.62
+3 6.74
+4 6.10
+6 6.36
+12 6.74
+x6:/tmp # hardlinks
+x6:/tmp for i in 0 2 3 4 6 12 ; do /usr/bin/time -f "$i %e" $BK clone -j$i -q linux-2.6 clone; rm -rf clone; sync; sleep 1; done0 8.60
+2 4.86
+3 3.62
+4 3.08
+6 2.69
+12 2.75
+x6:/tmp 

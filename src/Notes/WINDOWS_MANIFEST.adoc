@@ -1,0 +1,65 @@
+Special Treatment for Windows Executables
+=========================================
+
+Background
+----------
+
+On Windows, the installer executable has some special requirements.
+
+It needs to be built with additional things that UNIX executables
+do not require.
+
+ 1. A manifest file.  This is an XML file that provides metadata
+    about the executable:
+
+     - priviledge required, does it need admin? (we use this to
+       demand admin privs for the installer)
+     - version info (optional)
+     - compatibility info (what Windows versions is the executable
+       supposed to work with -- optional but see [1])
+
+ 2. A resources file.  This is a special source file that gets compiled
+    and embedded into the executable.  Our contains:
+
+     - definitions for gui elements (icon, progress bar, dialogs)
+     - version information (can be viewed by examining file properties
+       in Explorer
+
+Version Information
+-------------------
+
+Windows executables express their version in terms of a series of
+four 16-bit integers.  I propose to map our BK versioning onto
+that scheme in the following ways:
+
+Tagged release:
+
+  bk-6.0.3		-> 6, 0, 3, 0
+  bk-6.0.2c		-> 6, 0, 2, 3 ('c' - ('a' - 1))
+  bk-6.0		-> 6, 0, 0, 0
+  bk-6.0.0-pre1		-> 6, 0, 0, 421 (simple csum of '-pre1')
+
+Untagged release:
+
+  20140513123448	-> 2014, 05, 13, 1234 (drop the seconds)
+
+To support this mapping, I've added src/utils/rcversion.l and added
+the necessary make(1) magic.
+
+Code Signing the Installer Executable
+-------------------------------------
+
+We have purchased a code signing certificate from Comodo.  The
+certificate lives in src/win32/bitmover-cert.p12 and the actual
+signing logic is encoded in src/util/Makefile.
+
+Without a signed installer binary then at install time, when Windows
+displays the privilege elevation dialog, it shows "Unknown publisher".
+
+Footnotes:
+
+[1] If your manifest does not explicitly declare compat with Windows
+    8.1 then the GetVersionEx() call will lie and report Windows 8
+    even on an 8.1 machine.  Of course, it cannot be that easy. I have
+    hacked a manifest file that makes a bk.exe that reports 8.1
+    correctly but as soon as that binary is moved it stops working.

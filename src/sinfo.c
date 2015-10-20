@@ -25,30 +25,18 @@ sinfo_main(int ac, char **av)
 	for (name = sfileFirst("info", &av[optind], sf_flags);
 	    name; name = sfileNext()) {
 		if (fast) {
-			FILE	*f;
 			char	buf[100];
 			char	*gfile = sccs2name(name);
 			char	*s;
 
 			sprintf(buf, "%s:", gfile);
 			printf("%-23s ", gfile);
-			if ((s = rindex(name, '/'))) {
-				s++;
-			} else {
-				s = name;
+			if (s = xfile_fetch(gfile, 'p')) {
+				chomp(s);
+				fputs(s, stdout);
+				free(s);
 			}
-			*s = 'p'; /* open p file */
-			f = fopen(name, "r");
-			unless (f) goto done;
-			if (fgets(buf, sizeof(buf), f)) {
-				char	*s;
-				for (s = buf; *s && *s != '\n'; ++s)
-					;
-				*s = 0;
-				fputs(buf, stdout);
-			}
-			fclose(f);
-done:			if (gfile) free(gfile);
+			if (gfile) free(gfile);
 			printf("\n");
 			continue;
 		}

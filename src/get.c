@@ -13,7 +13,7 @@ get_main(int ac, char **av)
 	sccs	*s;
 	int	iflags = 0, flags = GET_EXPAND|GET_NOREMOTE, c, errors = 0;
 	char	*iLst = 0, *xLst = 0, *name, *rev = 0;
-	char	*gfile = 0, *pfile = 0, *p;
+	char	*gfile = 0;
 	char	*prog;
 	char	*mRev = 0, *Rev = 0;
 	ser_t	d;
@@ -199,11 +199,7 @@ onefile:	fprintf(stderr,
 		if (flags & GET_NOREGET) {
 			gfile = sccs2name(name);
 			if (flags & GET_EDIT) {
-				pfile = strdup(name);
-				p = strrchr(pfile, '/');
-				p[1] = 'p';
-				c = (writable(gfile) && exists(pfile));
-				free(pfile);
+				c = (writable(gfile) && xfile_exists(gfile, 'p'));
 			} else {
 				c = exists(gfile);
 			}

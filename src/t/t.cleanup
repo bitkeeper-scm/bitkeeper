@@ -44,7 +44,7 @@ bk new $Q B C D E
 bk commit $S -y"This is a \"Change Set\""
 cd "$HERE/clone"
 bk _mv SCCS/s.A SCCS/s.WRONG_PLACE
-BK_CONFIG=partial_check:off! bk pull $Q > OUT 2>&1
+BK_CONFIG='partial_check:off!;autofix:off!' bk pull $Q > OUT 2>&1
 if [ $? -eq 0 ]
 then	echo failed to exit non-zero
 	exit 1
@@ -72,7 +72,7 @@ bk new $Q personality
 bk commit $Q -ynasty
 cd "$HERE/clone"
 bk abort -f
-BK_CONFIG=partial_check:off! bk pull -q > OUT 2>&1
+BK_CONFIG='partial_check:off!;autofix:off!' bk pull -q > OUT 2>&1
 if [ $? -eq 0 ]
 then	echo failed to exit non-zero
 	exit 1

@@ -16,4 +16,29 @@ afile     | 1 +
 
 EOF
 cmpfiles WANT GOT
+bk ci $Q -yfiles afile gcc/afile gdb/afile
+bk commit $Q -yfiles
+echo OK
+
+echo $N Test diffstat in a port......................................$NL
+cd "$HERE/prod"
+bk detach $Q gcc "$HERE/gcc" || fail
+cd "$HERE/gcc"
+bk edit $Q afile
+echo stuff >> afile
+bk ci -y. $Q afile
+bk commit $Q -yafile
+touch bfile
+bk new $Q bfile
+bk commit $Q -ybfile
+cd "$HERE/prod/gcc"
+bk port --stats "$HERE/gcc" 2>$DEV_NULL > GOT || fail
+cat <<EOF > WANT
+Port file://$HERE/gcc
+  -> file://$HERE/prod/gcc
+afile | 1 +
+1 files changed, 1 insertions(+)
+
+EOF
+cmpfiles WANT GOT
 echo OK

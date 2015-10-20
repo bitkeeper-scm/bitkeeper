@@ -1,13 +1,12 @@
 /* Copyright (c) 2000 Larry McVoy */
-#include "system.h"
 #include "sccs.h"
+#include "nested.h"
 
 private int	undoit(MDBM *m);
 private int	doit(int flags, char *file, char *op, char *revs);
 private	int	commit(int quiet, char **cmts);
 private	char	**getComments(char *op, char *revs);
 private void	clean(char *file);
-private void	unedit(void);
 private int	mergeInList(sccs *s, char *revs);
 
 /*
@@ -37,6 +36,7 @@ cset_inex(int flags, char *op, char *revs)
 	av[i = 0] = "bk";
 	av[++i] = "-?BK_NO_REPO_LOCK=YES";
 	av[++i] = "cset";
+	av[++i] = "--show-comp";
 	revarg = aprintf("-r%s", revs);
 	av[++i] = revarg;
 	av[++i] = 0;
@@ -51,6 +51,7 @@ cset_inex(int flags, char *op, char *revs)
 	cmts = getComments(op, revarg);
 	free(revarg);
 
+	START_TRANSACTION();
 	file[0] = 0;
 	while (fgets(buf, sizeof(buf), f)) {
 #ifdef OLD_LICENSE
@@ -80,7 +81,7 @@ cset_inex(int flags, char *op, char *revs)
 					 * ChangeSet file is never edited
 					 * in a normal tree.
 					 */
-					unedit();
+					xfile_delete(CHANGESET, 'p');
 					free(revbuf);
 					return (undoit(m));
 				}
@@ -94,20 +95,23 @@ cset_inex(int flags, char *op, char *revs)
 			rlist = addLine(rlist, strdup(&t[1]));
 		}
 	}
-	pclose(f);
+	if (pclose(f)) {
+		return (undoit(m));
+	}
 	if (file[0]) {
 		revbuf = joinLines(",", rlist);
 		freeLines(rlist, free);
 		rlist = 0;
 		if (doit(flags, file, op, revbuf)) {
 			clean(file);
-			unedit();
+			xfile_delete(CHANGESET, 'p');
 			free(revbuf);
 			return (undoit(m));
 		}
 		mdbm_store_str(m, file, "", 0);
 		free(revbuf);
 	}
+	STOP_TRANSACTION();
 	mdbm_close(m);
 	return (commit(flags & SILENT, cmts));
 }
@@ -124,12 +128,6 @@ clean(char *file)
 	av[++i] = file;
 	av[++i] = 0;
 	spawnvp(_P_WAIT, "bk", av);
-}
-
-private void
-unedit(void)
-{
-	unlink("SCCS/p.ChangeSet");
 }
 
 private	char **
@@ -211,7 +209,7 @@ private int
 undoit(MDBM *m)
 {
 	int	i, rc, worked = 1;
-	char	*t;
+	char	*t, *p;
 	FILE	*f;
 	char	*av[10];
 	char	rev[MAXREV+10];
@@ -233,6 +231,15 @@ undoit(MDBM *m)
 		assert(t);
 		*t = 0;
 		unless (mdbm_fetch_str(m, buf)) continue;
+		if ((p = strstr(buf, "/" GCHANGESET)) &&
+		    streq(p, "/" GCHANGESET)) {
+			*p = 0;
+			i = systemf(
+			    "bk --cd='%s' bk undo -fSr%s", buf, &t[1]);
+			*p = '/';
+			if (i) worked = 0;
+			continue;
+		}
 		av[i=0] = "bk";
 		av[++i] = "-?BK_NO_REPO_LOCK=YES";
 		av[++i] = "stripdel";
@@ -289,12 +296,30 @@ doit(int flags, char *file, char *op, char *revs)
 {
 	sccs	*s;
 	ser_t	d = 0;
-	char	*sfile;
+	char	*sfile, *p;
 	int	ret;
 
-	flags |= GET_EDIT;
 	sfile = name2sccs(file);
 	assert(sfile);
+	if ((p = strstr(file, "/" GCHANGESET)) && streq(p, "/" GCHANGESET)) {
+		/* Got a component ChangeSet file */
+		*p = 0;
+		unless (exists(sfile)) {
+			/* Belts and Suspenders: failure caught in cset.c */
+			fprintf(stderr,
+			    "Component '%s' not populated.  "
+			    "Populate and try again.\n", file);
+			ret = 1;
+		} else {
+			ret = systemf(
+			    "bk --cd='%s' bk cset %s%s%s",
+			    file, (flags & SILENT) ? "-q " : "", op, revs);
+		 }
+		*p = '/';
+		free(sfile);
+		return (ret);
+	}
+	flags |= GET_EDIT;
 	unless (s = sccs_init(sfile, 0)) {
 		fprintf(stderr, "cset: could not init %s\n", sfile);
 		free(sfile);
@@ -341,7 +366,8 @@ err:		sccs_free(s);
 		fprintf(stderr, "cset: could not delta %s\n", s->gfile);
 		goto err;
 	}
-	do_checkout(s);
+	sccs_restart(s);
+	do_checkout(s, 0, 0);
 ok:	sccs_free(s);
 	return (0);
 }

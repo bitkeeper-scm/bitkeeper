@@ -161,10 +161,10 @@ echo OK
 echo $N Try a commit -Yfile .........................................$NL
 cd "$HERE/project"
 echo arg > foo
-bk new $Q foo || exit 1
+bk new $Q foo || fail
 echo line1 > comment
 echo line2 >> comment
-bk commit $Q -Ycomment || exit 1
+bk commit $Q -Ycomment || fail
 if [ ! -f comment ]; then echo dont delete file; exit 1; fi
 bk prs -r+ -hd:COMMENTS: ChangeSet > C1
 bk undos > C2 <<EOF
@@ -179,11 +179,11 @@ echo $N Try a commit -Ymissingfile ..................................$NL
 cd "$HERE/project"
 bk edit $Q foo || exit
 echo arg2 >> foo
-bk delta $Q -yjunk foo || exit 1
+bk delta $Q -yjunk foo || fail
 bk commit $Q -Ynocomment 2> /dev/null
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 bk pending > C
-grep 'foo@1.2' C > /dev/null || exit 1
+grep 'foo@1.2' C > /dev/null || fail
 echo OK
 
 cleanf() {

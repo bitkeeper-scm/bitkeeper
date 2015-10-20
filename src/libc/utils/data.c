@@ -22,20 +22,21 @@ data_resize(DATA *d, u32 newlen)
 	u32	size;
 
 	if (d->size < newlen) {
-		assert(newlen < (3 << 30));	// 3G max
-		if (newlen > (2 << 30)) {
-			size = (3 << 30);
-		} else {
+		if (newlen <= (2 << 30)) {
 			size = 64;
 			while (size < newlen) size *= 2;
+		} else if (newlen < (3 << 30)) {
+			size = (3 << 30);
+		} else {
+			assert(newlen < 0xfff00000);	// 3.99G max
+			size = 0xfff0000;
 		}
-
 		data_setSize(d, size);
 	}
 }
 
 void
-data_append(DATA *d, void *data, int len)
+data_append(DATA *d, void *data, u32 len)
 {
 	u32	newlen = d->len + len;
 

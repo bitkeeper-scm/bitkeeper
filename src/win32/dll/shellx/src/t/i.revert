@@ -1,0 +1,36 @@
+#
+bk edit -q bkdemorepo/BitKeeper/etc/config
+cat >> bkdemorepo/BitKeeper/etc/config << EOF
+checkout:get
+EOF
+#
+cat << EOF
+double-click on shellx-testrepos
+double-click on bkdemorepo
+right-click on the file "modified"
+select BK Diff File...
+Did a diff pop up?
+EOF
+cont
+
+cat << EOF
+right-click on the background
+select BK Diff Directory...
+Do you see a diff for the file "modified"?
+EOF
+cont
+
+cat << EOF
+right-click on the file "modified"
+select BitKeeper -> Revert Changes
+select yes when the pop up pops up
+Did the red circle on the file change?
+EOF
+cont
+
+cat << EOF
+right-click on the background
+select BK Diff Directory...
+Do you see a diff for the file "chg/modified"?
+EOF
+cont

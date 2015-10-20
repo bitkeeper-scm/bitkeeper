@@ -1,0 +1,43 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+commercial project
+echo $N Make sure delta --parallel works ............................$NL
+for i in 1 2 3 4 5 6 7
+do	echo foo > file$i
+done
+bk extras | bk -Lw --parallel delta -l -ayxxx $Q - || exit 1
+test `bk sfiles -p | wc -l` -eq 7 || fail
+echo OK
+
+echo $N Make sure delta --parallel works when there are too few args.$NL
+for i in 1 2 3 4 5 6 7
+do	echo foo >> file$i
+done
+bk -cU | bk -Lw --parallel=10 delta -l -ayxxx $Q - || exit 1
+echo OK
+cd ..
+rm -rf project
+commercial project
+echo $N Make sure delta -j works ....................................$NL
+for i in 1 2 3 4 5 6 7
+do	echo foo > file$i
+done
+bk extras | bk -Lw -j delta -l -ayxxx $Q - || exit 1
+test `bk sfiles -p | wc -l` -eq 7 || fail
+echo OK
+
+echo $N Make sure delta -j works when there are too few args ........$NL
+for i in 1 2 3 4 5 6 7
+do	echo foo >> file$i
+done
+bk -cU | bk -Lw -j10 delta -l -ayxxx $Q - || exit 1
+echo OK

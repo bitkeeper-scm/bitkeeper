@@ -1,0 +1,222 @@
+An old update to the symbol format and what the update means
+============================================================
+
+ [ Tue Dec  5 15:39:58 PST 2000 ]
+
+We can't ever convert the existing symbols, those are stuck because 
+we can't know if we have them all and we have to have them all to construct
+a graph.  So they are always just dangling.
+
+Graph vs old format
+
+    Both old and new do the symbolic names like so
+
+	^AcSi_am_the_symbol_name
+
+    Symbols in the graph also have a line like one of the following:
+
+    leaf node, not a merge: 
+	^AcS22 l
+    leaf node, merged serials 10 and 20: 
+	^AcS10 20 l
+    none leaf node, non merge, someone points at me, my parent is 24:
+	^Ac24
+    none leaf node, merges 101, someone points at me, my parent is 99:
+	^Ac99 101
+    top level node, points at non-existent parent
+	^AcS0
+
+Data structures:
+    d->ptag		/* set if I'm in the graph and have a real parent */
+    d->mtag		/* set if I am a symbol merge delta */
+    d->symLeaf		/* set if I am a leaf node in the sym graph */
+    d->symGraph		/* set if I participate in the sym graph */
+
+    IN_SYMGRAPH(d)	(d->ptag || d->symLeaf)
+
+Patch format:
+    S name		/* this is the name of the symbol */
+    s g			/* delta is part of the symbol graph */
+    s l			/* delta is a leaf in the tag graph */
+    s key		/* key for the parent delta */
+    s key		/* key for the merge parent delta */
+
+Adding an old style symbol:
+    just add the entry to the symbol table as usual
+
+Adding a new style symbol
+    add to symbol table,
+    if there is a leaf, find it, clear it, point to it
+    else point to 1
+    set symLeaf flag
+
+Note: we do not handle LODs yet.
+
+Compat issues:
+    A) old tags stay as they are regardless of what code touches them
+    B) if old code pulls from a new code
+       . translate the file format back to V3
+       . do not transmit any new tags
+    C) if new code does an opush then
+       . translate file format back to V3
+       . do not transmit any new tags
+       . do warn about none transmitted tags
+
+Variables are
+    BK version:		1.x | 2.x
+    file version:	V3 | V4
+    tags:		original | graph
+    cmd:		1.x pull|push | 2.x opull|opush | 2x pull|push
+
+Tests:
+    Make sure we can create old style tags using new code 	[x]
+    Make sure we can 1.x pull from new to old
+    - get the csets 						[x]
+    - get the old style tags 					[x]
+    - don't get the new style tags 				[x]
+    Make sure we can 2.x opull from new to old
+    - get the csets 						[x]
+    - get the old style tags 					[x]
+    - don't get the new style tags 				[x]
+    Make sure we can 1.x push from old to new
+    - send the csets						[x]
+    - send the old style tags					[x]
+    Same idea using opush from old to old (hence no new tags present)
+    - send the csets						[x]
+    - send the old style tags					[x]
+    Same idea using opush from new to old tree
+    - send the csets						[x]
+    - send the old style tags					[x]
+    - don't send the new style tags				[x]
+    - translate file versions back to V3			[x]
+
+TODO:
+
+.. Allow _BK_NO_TAG_GRAPH to override adding nodes to the graph, just add
+   them without the pointers.
+   Needs test case [x]
+
+.. Always use the 1.0 delta as the ultimate graph root for the symbol tree.
+   This means any time we add a tag with the new code, we root it there.
+   Needs test case [ ]
+
+.. Need to make sure admin doesn't whine about tags not in the graph.
+   Needs test case [ ]
+
+.. May want to have a file flags mode which doesn't allow a tag graph for
+   transition period.
+
+Symbol graph notes, Sun Oct 29 11:29:36 PST 2000
+
+We have numerous problems resulting from the symbols not participating in 
+the graph the way the regular deltas do.  We can't merge conflicts, we
+can't brobe the symbol space for fast pulls, etc.
+
+Proposed fix:
+
+add a graph structure as follows
+	^AcS<parent serial>
+	^AcS<parent serial> <merge parent serial>
+
+The structure defines a graph similar to the regular graph.
+
+C DATA STRUCTURES
+    struct delta {
+    	...
+	ser_t	ptag;	/* the parent of this tag */
+	ser_t	mtag;	/* the merge parent of this tag */
+    	...
+    }
+
+    When we read in the delta table, we fill these in; when we write it out,
+    we save these as described above.
+
+    0 in these fields means there is no parent/merge parent.
+
+COVERSION FROM EXISTING FORMAT
+    Construct a straightline graph in time order.  So just walk the
+    table in table order (newest to oldest) and for each delta which
+    has a tag, find the next delta which has a tag, and then  use that
+    as the ptag value.
+    [ Tue Dec  5 15:40:05 PST 2000 ]
+    This turned out to be WRONG.  You can't autoconvert without having all
+    the data and you can never know that you have all the data.  Wrong.
+
+LOD IMPLICATIONS
+    We need to allow multiple open tips so long as the there is exactly one
+    open tip per lod.  In other words, when we write a resolver for this
+    stuff, we need to not merge across lod boundries.
+
+PULL / PUSH
+    We have to probe the tag graph the same we probe the delta graph.
+
+BACKWARDS COMPAT
+    This has to be a file format rev.
+
+TODO
+    + Pass the tags pointers in the patch file.
+    + Bump the version number
+    + Make sure the tag parent gets set when you add a tag (I think there
+      are multiple ways to add a tag).
+      [done, I think]
+    + admin -hhh needs to check the tag graph for multiple open tips
+    + need an admin command to fake merge nodes for the tags; autoinvoke
+      this when bumping the file format.
+
+INVARIANTS
+    Once a tag has a parent/merge parent, those links never change, just like
+    in the regular graph.
+
+RESOLVER
+    We need to walk both branches and if there is the same tag on both,
+    invoke an interactive resolver.
+    If there is not, we can "automerge".
+
+    We need some sort of interface to do a tag merge delta.
+
+IMPLEMENTATION NOTES
+    I need to make public the interface which tells me there are tag 
+    conflicts so if that is the only thing which changed, I know it.
+
+    We need a multiple tip probe protocol sort of
+
+    @PROBE@
+    key
+    key
+    key
+    @PROBE@
+    key
+    key
+    @PROBE@
+    key
+    key
+    @PROBE END@
+
+    Eventually we may want this to be smart about not probing up the trunk
+    each time.
+
+    For the match[es] we just respond with all the matches we found and color
+    up from each of the matches.
+
+QUESTIONS
+---------
+
+In lmsccs, symbols are used in one of two ways:
+
+	. to name an absolute revision, i.e., 1.1 or 1.9.2.2 but not 1 or 1.2.1
+
+	. to name a line of development (a branch or trunk), i.e, 1, 2 or 1.2.1
+
+The first is the same as RCS.
+
+The second can be the same as RCS if the RCS flag is bit 2 set.  
+
+If the RCS compat mode is off, then we are in new territory with SCCS
+line of development (LOD) naming.  The idea is pretty simple.  A symbol
+names a new LOD and revisions start at 1 in that LOD.  It's a naming system
+layered on top of the more arcane a.b.c.d naming system that SCCS has.  
+So if I tag rev 1.20 as NEW then I can get at rev 1.21 as either "1.21" or
+"NEW.1".
+
+XXX - to make this work, advisory messages should use the tag naming, not
+the rev naming to educate people.

@@ -1,0 +1,84 @@
+How to find who deleted a line?
+===============================
+
+How to find out who deleted or excluded a line
+
+Background
+----------
+bk annotate has 2 modes:
+
+-r$rev (the default mode if no command line options -r+)::
+This is a +bk get -pr$rev -aur $file+ - an annotated listing
+of that file with keywords expanded.
+
+-R[$rev..$rev]::
+This is an annotated +bk sccscat+ -- a list by default of
+the whole weave, annotated with what rev authored that line.
+Deletes are disabled.  If a range is specified, only lines
+originated by that range are printed.
+
+New Option -w
+-------------
+The +-w[$rev]+ option will put out the same bk annotate lines.
+The only impact is to change what the 'r' annotate outputs.
+
+If a line in the annotate output is not in the -w rev
+because it was deleted by or in the history of -w rev,
+then a +-d$rev+ is appended to the rev printed.
+
+If a line is not there because it was excluded by or in the
+history of -w  rev, then a +-x$rev+ is appended to
+the rev printed for which cset excluded it.
+
+If the line is not in -w rev because it never was (ie,
+-w rev is on a branch and -r rev is on the trunk), then
+nothing is appended to the revision.
+
+XXX: Should there be?  Would you want to know that or
+is it obvious when looking at a diff?  After looking
+at things in revtool, I'm going with obvious.
+
+Revtool
+-------
+These changes to annotate show up in revtool in two ways.
+
+1. When doing a diff (right click on one rev, left click on another)
+the annotations will be extended as a above.  Something like:
++
+     bk annotate -Aur -w$NEW -r$OLD > OLD
+     bk annotate -Aur -w$NEW -r$NEW > NEW
+     diff -p -C10000000 OLD NEW
++
+NOTE: in the second line, $NEW is listed twice.  This is in a sense
+a NOP because nothing will be in NEW which is not in NEW.  But this
+will cause the extra wide spacing in the annotation field, which
+lines up with the OLD computation.
++
+NOTE: revtool actually calls +bk diffs --who-deleted ...+ which
+in a sense does the same thing.
+
+2. Pressing 'c' will show the 'sccscat' form (bk annotate -R) annotated
+with -w+ so you can see what lines existed but aren't in the tip and
+why they are not in the tip.
++
+XXX: If the file has two tips, this can be misleading as tip will be
+trunk.  Do an sccsmerge of the two tips as the +-w$rev+?
++
+NOTE: clicking on a line that has an extended annotation will go
+to the -x$rev or -w$rev instead of the rev that added the line.
+This is often what you want.
+
+Under the hood
+--------------
+In +get_reg()+, a blist is created which is the serialmap
+for the '-w${rev-"+"}' rev.  If the line printed is not
+in the -w rev, then annotations are extended to say why.
+Note, if the line is in the -w rev or never was in the -w rev,
+there is no change to what is currently printed.
+
+This works pretty easily as 'state' (maintained by changestate())
+is only about where we are in the weave and independent about
+what version is being generated.  This makes it pretty easy
+to do two things at once.  slist is used for the current function,
+and blist (which was for 'base' revision, from the origins of
+this cset).

@@ -33,6 +33,7 @@ echo $N Attr comment bug ............................................$NL
 bk rm -f BitKeeper/etc/attr
 echo hi > c
 bk _mv c BitKeeper/etc/SCCS/c.attr
+test -f c && fail c still there
 echo junk > file2
 bk new $Q file2 || fail
 bk commit $Q -yjunk || fail
@@ -45,8 +46,7 @@ BK_ATTR=
 fresh_commercial monolithic
 bk gfiles > XXX
 grep -q BitKeeper/etc/attr XXX && {
-	echo failed
-	find . -type f
-	exit 1
+	find . -type f > ERR
+	fail -f ERR
 }
 echo OK

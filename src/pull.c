@@ -7,6 +7,7 @@
 #include "nested.h"
 #include "progress.h"
 #include "range.h"
+#include "cfg.h"
 
 private struct {
 	u32	automerge:1;		/* -i: turn off automerge */
@@ -200,9 +201,7 @@ pull_main(int ac, char **av)
 	}
 
 	if (opts.product = bk_nested2root(opts.transaction || opts.port)) {
-		if (proj_configbool(0, "autopopulate") ||	// compat
-		    proj_configbool(0, "auto-populate") ||	// compat
-		    proj_configbool(0, "auto_populate")) {      // in docs
+		if (cfg_bool(0, CFG_AUTOPOPULATE)) {
 			opts.autoPopulate = 1;
 		}
 	}
@@ -256,7 +255,7 @@ err:		freeLines(envVar, free);
 	}
 
 	if (!opts.transaction && !opts.quiet && !opts.noresolve &&
-	    (opts.stats || proj_configbool(0, "stats_after_pull"))) {
+	    (opts.stats || cfg_bool(0, CFG_STATS_AFTER_PULL))) {
 		pstats_beforeTIP = strdup(proj_tipmd5key(0));
 	}
 
@@ -329,7 +328,7 @@ err:		freeLines(envVar, free);
 				backtick("bk changes -Sr+ "
 				    "-nd'$if(:MERGE:){1}$else{0}'", 0),
 				0, 10);
-			csets_in = file2Lines(0, "BitKeeper/etc/csets-in");
+			csets_in = file2Lines(0, CSETS_IN);
 			fprintf(tmpf, "  Ported%s %d cset%s from %s\n",
 			    merged ? " and merged" : "",
 			    nLines(csets_in) - merged,
@@ -350,18 +349,25 @@ err:		freeLines(envVar, free);
 		}
 		if (opts.portNoCommit) {
 			FILE	*f1, *f2;
+			char	*cset, *t;
+
 			/*
 			 * Just append the comments to the ChangeSet file's
 			 * comments
 			 */
-			p = aprintf("%s/SCCS/c.ChangeSet",
+			cset = aprintf("%s/ChangeSet",
 			    proj_root(proj_product(0)));
-			f1 = fopen(p, "a");
-			free(p);
+			f1 = fmem();
+			if (t = xfile_fetch(cset, 'c')) {
+				fputs(t, f1);
+				free(t);
+			}
 			f2 = fopen(tmpfile, "r");
 			assert(f1 && f2);
 			while (p = fgetline(f2)) fprintf(f1, "%s\n", p);
 			fclose(f2);
+			xfile_store(cset, 'c', fmem_peek(f1, 0));
+			free(cset);
 			fclose(f1);
 		} else {
 			char	buf[MAXPATH];
@@ -380,8 +386,9 @@ err:		freeLines(envVar, free);
 	if (!rc && pstats_beforeTIP) {
 		proj_reset(0);
 		unless (streq(pstats_beforeTIP, proj_tipmd5key(0))) {
-			systemf("bk rset -Hr%s..+ | bk diffs --stats-only -",
-			    pstats_beforeTIP);
+			systemf("bk rset %s -Hr%s..+ "
+			    "| bk diffs --stats-only -",
+			    opts.port ? "-S" : "", pstats_beforeTIP);
 		}
 	}
 done:	freeLines(envVar, free);
@@ -559,10 +566,12 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 private int
 send_keys_msg(remote *r, char probe_list[], char **envVar)
 {
-	char	msg_file[MAXPATH], buf[MAXPATH * 2];
-	FILE	*f;
+	char	msg_file[MAXPATH];
+	FILE	*f, *fin;
 	char	*t;
-	int	status, rc;
+	int	rc = -1;
+	sccs	*cset;
+	u32	flags = 0;
 
 	bktmp(msg_file);
 	f = fopen(msg_file, "w");
@@ -583,14 +592,23 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 	if (opts.transaction) fprintf(f, " -N");
 	if (opts.update_only) fprintf(f, " -u");
 	fputs("\n", f);
+
+	unless (fin = fopen(probe_list, "r")) {
+		/* mimic system() failure if '<' file won't open */
+		perror(probe_list);
+		// rc = -1; /* already set */
+	} else unless (cset = sccs_csetInit(0)) {
+		fprintf(stderr, "Can't init changeset\n");
+		rc = 3;	/* historically returned from bk _listkey */
+	} else {
+		if (opts.fullPatch) flags |= SK_FORCEFULL;
+		if (opts.port) flags |= SK_SYNCROOT;
+		rc = listkey(cset, flags, fin, f);
+		sccs_free(cset);
+	}
+	if (fin) fclose(fin);
 	fclose(f);
 
-	sprintf(buf, "bk _listkey %s %s -q < '%s' >> '%s'",
-	    opts.fullPatch ? "-F" : "",
-	    opts.port ? "-S" : "",
-	    probe_list, msg_file);
-	status = system(buf);
-	rc = WEXITSTATUS(status);
 	if (opts.debug) fprintf(stderr, "listkey returned %d\n", rc);
 	switch (rc) {
 	    case 0:
@@ -601,15 +619,13 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 		}
 		/*FALLTHROUGH*/
 	    default:
-		unlink(msg_file);
 		/* tell remote */
 		if ((t = getenv("BKD_REPOTYPE")) && streq(t, "product")) {
 			pull_finish(r, 1, envVar);
 		}
-		return (-1);
+		rc = -1;
 	}
-
-	rc = send_file(r, msg_file, 0);
+	unless (rc) rc = send_file(r, msg_file, 0);
 	unlink(msg_file);
 	return (rc);
 }
@@ -718,7 +734,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar,
 			goto done;
 		}
 		if (opts.port) {
-			touch("RESYNC/SCCS/d.ChangeSet", 0666);
+			xfile_store("RESYNC/ChangeSet", 'd', "");
 			touch("RESYNC/BitKeeper/log/port", 0666);
 		}
 		if (opts.product) {
@@ -1301,7 +1317,7 @@ pull(char **av, remote *r, char **envVar)
 		/*
 		 * We are about to run resolve, fire pre trigger
 		 */
-		putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
+		putenv("BK_CSETLIST=" CSETS_IN);
 		if ((i = trigger("resolve", "pre"))) {
 			putenv("BK_STATUS=LOCAL TRIGGER FAILURE");
 			rc = 2;
@@ -1458,7 +1474,6 @@ takepatch(remote *r)
 private void
 resolve_comments(remote *r)
 {
-	FILE	*f;
 	char	*u, *c;
 	char	*cpath = 0;
 	char	*h = sccs_gethost();
@@ -1482,15 +1497,8 @@ resolve_comments(remote *r)
 	}
 	free(u);
 	sprintf(buf, "%s/%s", ROOT2RESYNC, CHANGESET);
-	assert(exists(buf));
-	u = strrchr(buf, '/');
-	u[1] = 'c';
-	if (f = fopen(buf, "w")) {
-		fputs(c, f);
-		fclose(f);
-	} else {
-		perror(buf);
-	}
+	assert(sfile_exists(0, buf));
+	if (xfile_store(buf, 'c', c)) perror(buf);
 	free(c);
 	FREE(cpath);
 }

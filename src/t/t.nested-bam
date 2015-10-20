@@ -1,9 +1,9 @@
 echo $N Create initial repository and clone .........................$NL
 nested server
 bk $Q bam server $Q .
-bk clone $Q ../server ../clone || exit 1
+bk clone $Q ../server ../clone || fail
 # clone shouldn't have BAM data yet
-test -d ../clone/BitKeeper/BAM && exit 1
+test -d ../clone/BitKeeper/BAM && fail
 echo OK
 
 echo $N Create some binary data and check BAM .......................$NL
@@ -14,9 +14,9 @@ DATA="$HERE"/data
 perl -e 'sysread(STDIN, $buf, 81920);
 syswrite(STDOUT, $buf, 81920);' < $BK > "$DATA"
 cp "$DATA" data
-bk new $Q data || exit 1
+bk new $Q data || fail
 RK=`bk -R prs -hnd:SYNCROOT: -r+ ChangeSet | sed 's/|/-/g'`
-test -d ../BitKeeper/BAM/$RK || exit 1
+test -d ../BitKeeper/BAM/$RK || fail
 bk commit -S $Q -ybam
 cd ..
 bk commit $Q -ybam
@@ -24,7 +24,7 @@ echo OK
 
 echo $N Clone ensemble with BAM data ................................$NL
 cd ..
-bk clone $Q server clone2 || exit 1
+bk clone $Q server clone2 || fail
 echo OK
 
 echo $N Show that BAM clean works in a component ....................$NL
@@ -44,7 +44,7 @@ echo OK
 
 echo $N Create some binary data and check BAM .......................$NL
 cd "$HERE"/clone
-bk pull $Q || exit 1
+bk pull $Q || fail
 test -d BitKeeper/BAM && {
 	echo should not have bam dir
 	find BitKeeper/BAM
@@ -54,30 +54,30 @@ echo OK
 
 echo $N Create a new component with BAM data ........................$NL
 bk portal $Q .
-bk setup -f bam_comp || exit 1
+bk setup -f bam_comp || fail
 cd bam_comp
 RK=`bk -R prs -hnd:SYNCROOT: -r+ ChangeSet | sed 's/|/-/g'`
 echo junk > file1
-bk new $Q -b file1 || exit
-bk commit -S $Q -ybam2 || exit 1
-bk -P commit $Q -ybam2 || exit 1
+bk new $Q -b file1 || fail
+bk commit -S $Q -ybam2 || fail
+bk -P commit $Q -ybam2 || fail
 echo OK
 
 echo $N Pull repo with new BAM component ............................$NL
 cd "$HERE"/clone2
-bk pull $Q ../clone || exit 1
+bk pull $Q ../clone || fail
 echo OK
 
 echo $N Check that data from new component was pushed to server .....$NL
 # server should have bam data for bam_comp
-test -d ../server/BitKeeper/BAM/$RK || exit 1
+test -d ../server/BitKeeper/BAM/$RK || fail
 # but shouldn't have bam_comp itself
-test -d ../server/bam_comp && exit 1
+test -d ../server/bam_comp && fail
 echo OK
 
 echo $N Clone of repo with new BAM component ........................$NL
 cd ..
-bk clone $Q clone clone3 || exit 1
+bk clone $Q clone clone3 || fail
 echo OK
 
 echo $N Switching server will populate bam data in component ........$NL
@@ -94,27 +94,27 @@ echo OK
 echo $N Pushing a updates to non-BAM components with a BAM product ..$NL
 cd clone3
 echo hi > prod_bam
-bk new $Q -b prod_bam || exit 1
-bk commit -S $Q -yprod || exit 1
-bk push $Q || exit 1
+bk new $Q -b prod_bam || fail
+bk commit -S $Q -yprod || fail
+bk push $Q || fail
 cd gcc
 touch hi > nonbam
-bk new $Q nonbam || exit 1
-bk commit -S $Q -ynonbam || exit 1
-bk -P commit $Q -yprod_gcc || exit 1
-bk -P push $Q || exit 1
+bk new $Q nonbam || fail
+bk commit -S $Q -ynonbam || fail
+bk -P commit $Q -yprod_gcc || fail
+bk -P push $Q || fail
 echo OK
 
 echo $N Try an rclone ...............................................$NL
 cd "$HERE"
-bk bkd -q -d -aPORT -ikill || exit 1
+bk bkd -q -d -aPORT -ikill || fail
 P=`cat PORT`
 bk clone $Q clone3 bk://localhost:$P/clone4 || {
 	echo rclone failed
 	bk _kill bk://localhost:$P
 	exit 1
 }
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 echo OK
 
 echo $N Try a push via HTTP with BAM data............................$NL

@@ -5,9 +5,9 @@ bk gate $Q -r
 bk portal $Q -r
 cd gcc
 echo hi > gcc_file
-bk new $Q gcc_file || exit 1
-bk commit -S -yadd $Q || exit 1
-bk -P commit -yadd $Q || exit 1
+bk new $Q gcc_file || fail
+bk commit -S -yadd $Q || fail
+bk -P commit -yadd $Q || fail
 echo OK
 
 echo $N Try an empty collapse .......................................$NL
@@ -25,7 +25,7 @@ bk fix -Sc 2>ERR && {
 	cat ERR
 	exit 1
 }
-grep -q "cannot strip component cset" ERR || exit 1
+grep -q "cannot strip component cset" ERR || fail
 (cd ..; bk pending)
 bk changes -r+ -v  > GOT
 cmpfiles GOT WANT
@@ -33,8 +33,8 @@ echo OK
 
 echo $N Try to collapse top cset in product .........................$NL
 cd ..
-bk fix $Q -Pc || exit 1
-bk -r check -a || exit 1
+bk fix $Q -Pc || fail
+bk -r check -a || fail
 bk sfiles -p > GOT
 echo gcc/SCCS/s.ChangeSet > WANT
 cmpfiles GOT WANT
@@ -42,7 +42,7 @@ echo OK
 
 echo $N Now collapse top cset in component ..........................$NL
 cd gcc
-bk fix -Sc || exit 1
+bk fix -Sc || fail
 bk sfiles -x > GOT
 cat <<EOF > WANT
 ERR
@@ -51,7 +51,7 @@ WANT
 gcc_file
 EOF
 cmpfiles GOT WANT
-bk _test -e SCCS/c.gcc_file || exit 1
+bk _test -e SCCS/c.gcc_file || fail
 echo add > WANT
 cmpsfiles SCCS/c.ChangeSet WANT
 echo OK
@@ -59,11 +59,9 @@ echo OK
 echo $N Now run fix -c in product ...................................$NL
 # redo collapse
 bk ci $Q -i -c gcc_file
-bk commit -S $Q -YSCCS/c.ChangeSet || fail
-bk _rm SCCS/c.ChangeSet
+bk commit -S $Q -c || fail
 cd ..
-bk commit $Q -YSCCS/c.ChangeSet || fail
-bk _rm SCCS/c.ChangeSet
+bk commit $Q -c || fail
 bk --cd=gcc fix -c $Q || fail
 bk sfiles -p > GOT
 test -s GOT && fail
@@ -76,7 +74,7 @@ WANT
 gcc_file
 EOF
 cmpfiles GOT WANT
-bk _test -e SCCS/c.gcc_file || exit 1
+bk _test -e SCCS/c.gcc_file || fail
 echo add > WANT
 cmpsfiles SCCS/c.ChangeSet WANT
 echo OK

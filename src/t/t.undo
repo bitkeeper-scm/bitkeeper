@@ -105,7 +105,7 @@ bk delta $Q -fywhatever file
 bk commit -ywhatever $Q
 bk tag $Q RELEASE
 bk tag $Q -r1.2 RELEASE
-bk undo $Q -fr1.3 || exit 1
+bk undo $Q -fr1.3 || fail
 bk _scat SCCS/s.ChangeSet | grep -q 'R 1.2' && {
 	echo failed to remove the dangling tag
 	exit 1
@@ -127,7 +127,7 @@ do	cd "$HERE"/$i
 	bk commit -y$i $Q
 done
 cd "$HERE/merge-clone"
-bk pull $Q || exit 1
+bk pull $Q || fail
 bk undo -sfr+ > OUT 2>&1 && {
 	echo undo should have failed
 	cat OUT
@@ -145,7 +145,7 @@ commercial rename
 echo a > a
 echo b > b
 bk new $Q a b
-bk commit --tag=c1 -yc1 $Q || exit 1
+bk commit --tag=c1 -yc1 $Q || fail
 cd ..
 bk clone $Q rename rename2
 cd rename
@@ -154,12 +154,12 @@ echo a >> a
 bk delta $Q -yd1 a 
 bk commit --tag=c2 -yc2 $Q
 cd ../rename2
-bk mv a t || exit 1
-bk mv b a || exit 1
-bk mv t b || exit 1
-bk commit --tag=c3 -yc3 $Q || exit 1
-bk pull $Q || exit 1
-bk undo $Q -f -ac3 || exit 1
+bk mv a t || fail
+bk mv b a || fail
+bk mv t b || fail
+bk commit --tag=c3 -yc3 $Q || fail
+bk pull $Q || fail
+bk undo $Q -f -ac3 || fail
 echo OK
 
 echo $N Undo should not touch files when it fails ...................$NL
@@ -198,19 +198,19 @@ echo $N checkout:get should resurrect deleted files after undo ......$NL
 cd "$HERE"
 rm -rf project
 commercial project
-bk edit $Q BitKeeper/etc/config || exit 1
+bk edit $Q BitKeeper/etc/config || fail
 echo "checkout: get!" >> BitKeeper/etc/config
 echo "partial_check: yes" >> BitKeeper/etc/config
 bk ci $Q -y'Added checkout:get' BitKeeper/etc/config
-bk commit $Q -y'Added checkout:get' || exit 1
+bk commit $Q -y'Added checkout:get' || fail
 echo foo > foo
-bk new $Q foo || exit 1
-bk commit $Q -y'Added foo' || exit 1
-bk rm foo || exit 1
-bk commit $Q -y'Removed foo' || exit 1
-bk clean BitKeeper/deleted || exit 1
-bk -r check -ac || exit 1
-bk undo $Q -fa1.3 || exit 1
+bk new $Q foo || fail
+bk commit $Q -y'Added foo' || fail
+bk rm foo || fail
+bk commit $Q -y'Removed foo' || fail
+bk clean BitKeeper/deleted || fail
+bk -r check -ac || fail
+bk undo $Q -fa1.3 || fail
 test -f foo || {
 	echo failed
 	exit 1
@@ -223,23 +223,30 @@ rm -fr project copy
 umask 0
 commercial project
 touch foo
-bk new $Q foo || exit 1
+bk new $Q foo || fail
 cd ..
 cp -r project copy
 cd project
 rm BitKeeper/log/repo_id
 bk commit $Q -ytrunk
 cd ../copy
-bk parent $Q ../project || exit 1
-bk stripdel $Q -r+ foo || exit 1
+bk parent $Q ../project || fail
+bk stripdel $Q -r+ foo || fail
 TIP=`bk log -r+ -nd:I: foo`
-test "$TIP" = 1.0 || exit 1
-bk chmod 666 foo || exit 1
+test "$TIP" = 1.0 || fail
+bk chmod 666 foo || fail
 TIP=`bk log -r+ -nd:I: foo`
-test "$TIP" = 1.1 || exit 1
-bk commit $Q -ybranch || exit 1
-BK_CONFIG='fakegrafts: 1' bk pull $Q || exit 1
+test "$TIP" = 1.1 || fail
+bk commit $Q -ybranch || fail
+BK_CONFIG='fakegrafts: 1' bk pull $Q || fail
+
+# cset weave should have 4 lines for foo last one marked
+bk _heapdump ChangeSet | grep foo > L
+test `wc -l <L` -eq 4 || fail -f L
+test `grep " END" L | wc -l` -eq 1 || fail -f L
+tail -1 L | grep -q " END" || fail -f L
+
 TIP=`bk log -r+ -nd:I: foo`
-test "$TIP" = 1.2 || exit 1
-bk unpull $Q -f || exit 1
+test "$TIP" = 1.2 || fail
+bk unpull $Q -f || fail
 echo OK

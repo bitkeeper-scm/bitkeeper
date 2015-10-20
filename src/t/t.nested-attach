@@ -18,8 +18,8 @@ bk bam server $Q ../bam_server
 echo bam > bam
 _BK_BAM_V2=1 bk new $Q -b bam
 echo file1 >file1
-bk new -q file1 || exit 1
-bk commit -q -y'add file1' || exit 1
+bk new -q file1 || fail
+bk commit -q -y'add file1' || fail
 bk bam push $Q || fail
 bk bam clean -a $Q || fail
 cd "$HERE"
@@ -28,7 +28,7 @@ cd "$HERE"
 nested nested1
 # test attach where product has no BAM dir initially
 test -d BitKeeper/BAM && fail product BAM directory there
-bk attach -q "$HERE/standalone1" component1 || exit 1
+bk attach -q "$HERE/standalone1" component1 || fail
 RSTRING=`bk --cd=component1 prs -r1.0 -hnd':RANDOM:' ChangeSet`
 test X"$RSTRING" = X0 && fail zero random string
 bk -e -r check -ac || fail
@@ -38,7 +38,7 @@ bk bam check $Q || fail
 cd "$HERE"
 nested nested2
 cd "$HERE"
-bk bkd -q -aPORT -ikill || exit 1
+bk bkd -q -aPORT -ikill || fail
 P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
 echo OK
@@ -89,7 +89,7 @@ echo OK
 
 echo $N Attach to inside a non-repo .................................$NL
 cd "$HERE"
-mkdir not-a-repo || exit 1
+mkdir not-a-repo || fail
 bk attach --force -q "$HERE/standalone1" "$HERE/not-a-repo" 2>GOT && {
 	echo should have failed
 	exit 1
@@ -205,31 +205,31 @@ echo OK
 
 echo $N Test attach -N errors .......................................$NL
 cd "$HERE"
-bk clone -N standalone1 bad 2>GOT && exit 1
-grep -q "\-N valid only in attach command" GOT || exit 1
+bk clone -N standalone1 bad 2>GOT && fail
+grep -q "\-N valid only in attach command" GOT || fail
 cd nested1
 touch not-a-dir
-bk attach --force -N not-a-dir 2>GOT && exit 1
-grep -q "not a BitKeeper repository" GOT || exit 1
+bk attach --force -N not-a-dir 2>GOT && fail
+grep -q "not a BitKeeper repository" GOT || fail
 mkdir not-a-repo
 cd not-a-repo
-bk attach --force -N not-a-dir 2>GOT && exit 1
-grep -q "not a BitKeeper repository" GOT || exit 1
+bk attach --force -N not-a-dir 2>GOT && fail
+grep -q "not a BitKeeper repository" GOT || fail
 cd ..
-bk detach -N component1 ../bad 2>GOT && exit 1
-grep -q "\-N valid only in attach command" GOT || exit 1
-bk attach --force -N -Burl ../standalone1 2>GOT && exit 1
-grep -q "\-N illegal with other options" GOT || exit 1
-bk attach --force -N -p ../standalone1 2>GOT && exit 1
-grep -q "\-N illegal with other options" GOT || exit 1
-bk attach --force -N -r1.1 ../standalone1 2>GOT && exit 1
-grep -q "\-N illegal with other options" GOT || exit 1
-bk attach --force -N -sbad ../standalone1 2>GOT && exit 1
-grep -q "\-N illegal with other options" GOT || exit 1
-bk attach --force -N bk://localhost/bad 2>GOT && exit 1
-grep -q "source must be local" GOT || exit 1
-bk attach --force -N ../standalone1 bad 2>GOT && exit 1
-grep -q "only one repo valid with -N" GOT || exit 1
+bk detach -N component1 ../bad 2>GOT && fail
+grep -q "\-N valid only in attach command" GOT || fail
+bk attach --force -N -Burl ../standalone1 2>GOT && fail
+grep -q "\-N illegal with other options" GOT || fail
+bk attach --force -N -p ../standalone1 2>GOT && fail
+grep -q "\-N illegal with other options" GOT || fail
+bk attach --force -N -r1.1 ../standalone1 2>GOT && fail
+grep -q "\-N illegal with other options" GOT || fail
+bk attach --force -N -sbad ../standalone1 2>GOT && fail
+grep -q "\-N illegal with other options" GOT || fail
+bk attach --force -N bk://localhost/bad 2>GOT && fail
+grep -q "source must be local" GOT || fail
+bk attach --force -N ../standalone1 bad 2>GOT && fail
+grep -q "only one repo valid with -N" GOT || fail
 echo OK
 
 echo $N Test component already there error ..........................$NL
@@ -285,9 +285,9 @@ bk attach --force -q "$HERE/standalone1" component1 2>GOT 1>&2 || {
 }
 bk -e -r check -ac || fail
 test -d component1/BitKeeper/BAM && fail BAM directory still there
-bk comps | grep -q component1 || exit 1
-cd component1 || exit 1
-bk cat file1 >GOT || exit 1
+bk comps | grep -q component1 || fail
+cd component1 || fail
+bk cat file1 >GOT || fail
 cat <<EOF >WANT
 file1
 EOF
@@ -300,16 +300,16 @@ echo OK
 
 echo $N Check 'attach <dir> <dir>' functionality ......................$NL
 cd "$HERE"
-bk clone -q standalone1 nested2/dir1 || exit 1
+bk clone -q standalone1 nested2/dir1 || fail
 cd nested2
 bk attach --force -q dir1 component2 2>GOT 1>&2 || {
 	echo should have worked
 	cat GOT
 	exit 1
 }
-bk comps | grep -q component2 || exit 1
-cd component2 || exit 1
-bk cat file1 >GOT || exit 1
+bk comps | grep -q component2 || fail
+cd component2 || fail
+bk cat file1 >GOT || fail
 cat <<EOF >WANT
 file1
 EOF
@@ -323,9 +323,9 @@ bk attach --force -q dir1 a/b/component2b 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk comps | grep -q component2b || exit 1
-cd a/b/component2b || exit 1
-bk cat file1 >GOT || exit 1
+bk comps | grep -q component2b || fail
+cd a/b/component2b || fail
+bk cat file1 >GOT || fail
 cat <<EOF >WANT
 file1
 EOF
@@ -339,9 +339,9 @@ bk attach --force -q dir1 "$HERE/nested2/c/d/component2c" 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk comps | grep -q component2c || exit 1
-cd c/d/component2c || exit 1
-bk cat file1 >GOT || exit 1
+bk comps | grep -q component2c || fail
+cd c/d/component2c || fail
+bk cat file1 >GOT || fail
 cat <<EOF >WANT
 file1
 EOF
@@ -355,9 +355,9 @@ bk attach --force -q "$HERE/standalone1" component3 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk comps | grep -q component3 || exit 1
-cd component3 || exit 1
-bk cat file1 >GOT || exit 1
+bk comps | grep -q component3 || fail
+cd component3 || fail
+bk cat file1 >GOT || fail
 cat <<EOF >WANT
 file1
 EOF
@@ -371,9 +371,9 @@ bk attach --force -q "$HERE/standalone1" e/f/component3b 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk comps | grep -q component3b || exit 1
-cd e/f/component3b || exit 1
-bk cat file1 >GOT || exit 1
+bk comps | grep -q component3b || fail
+cd e/f/component3b || fail
+bk cat file1 >GOT || fail
 cat <<EOF >WANT
 file1
 EOF
@@ -387,9 +387,9 @@ bk attach --force -q "$HERE/standalone1" "$HERE/nested2/component4" 2>GOT 1>&2 |
 	cat GOT
 	exit 1
 }
-bk comps | grep -q component4 || exit 1
-cd component4 || exit 1
-bk cat file1 >GOT || exit 1
+bk comps | grep -q component4 || fail
+cd component4 || fail
+bk cat file1 >GOT || fail
 cat <<EOF >WANT
 file1
 EOF
@@ -403,9 +403,9 @@ bk attach --force -q "bk://localhost:$P/standalone1" 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk comps | grep -q standalone1 || exit 1
-cd standalone1 || exit 1
-bk cat file1 >GOT || exit 1
+bk comps | grep -q standalone1 || fail
+cd standalone1 || fail
+bk cat file1 >GOT || fail
 cat <<EOF >WANT
 file1
 EOF
@@ -419,9 +419,9 @@ bk attach --force -q "bk://localhost:$P/$HERE/standalone1" component5 2>GOT 1>&2
 	cat GOT
 	exit 1
 }
-bk comps | grep -q component5 || exit 1
-cd component5 || exit 1
-bk cat file1 >GOT || exit 1
+bk comps | grep -q component5 || fail
+cd component5 || fail
+bk cat file1 >GOT || fail
 cat <<EOF >WANT
 file1
 EOF
@@ -432,7 +432,7 @@ echo $N Check 'attach <dir> nested/<dir>' functionality ...............$NL
 cd "$HERE"
 bk attach --force $Q standalone1 nested2/component5.5 || fail
 cd nested2
-bk comps | grep -q component5.5 || exit 1
+bk comps | grep -q component5.5 || fail
 echo OK
 
 echo $N Check 'attach <dir> nested/trad/<dir>' functionality ..........$NL
@@ -457,13 +457,13 @@ bk attach --force -q -C "$HERE/standalone1" component6 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk sfiles -p >GOT || exit 1
+bk sfiles -p >GOT || fail
 cat <<EOF >WANT
 component6/SCCS/s.ChangeSet
 EOF
 cmpfiles GOT WANT
-bk commit -q -y'attach component6' || exit 1
-bk comps | grep -q component6 || exit 1
+bk commit -q -y'attach component6' || fail
+bk comps | grep -q component6 || fail
 echo OK
 
 echo $N Check attach -C and commit with others ......................$NL
@@ -473,7 +473,7 @@ bk attach --force -q -C "$HERE/standalone1" component6a 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk sfiles -p >GOT || exit 1
+bk sfiles -p >GOT || fail
 cat <<EOF >WANT
 component6a/SCCS/s.ChangeSet
 EOF
@@ -483,15 +483,15 @@ bk attach --force -q -C "$HERE/standalone1" component6b 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk sfiles -p >GOT || exit 1
+bk sfiles -p >GOT || fail
 cat <<EOF >WANT
 component6a/SCCS/s.ChangeSet
 component6b/SCCS/s.ChangeSet
 EOF
 cmpfiles GOT WANT
-bk commit -q -y'attach component6a and component6b' || exit 1
-bk comps | grep -q component6a || exit 1
-bk comps | grep -q component6b || exit 1
+bk commit -q -y'attach component6a and component6b' || fail
+bk comps | grep -q component6a || fail
+bk comps | grep -q component6b || fail
 echo OK
 
 echo $N Check attach -r .............................................$NL
@@ -501,8 +501,8 @@ bk attach --force -q -r1.1 "$HERE/standalone1" component7 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk comps | grep -q component7 || exit 1
-cd component7 || exit 1
+bk comps | grep -q component7 || fail
+cd component7 || fail
 test "`bk log -d:REV: -r+ ChangeSet`" = "1.1" || {
 	echo bad rev
 	exit 1

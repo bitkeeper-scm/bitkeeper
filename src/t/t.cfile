@@ -3,142 +3,77 @@ commercial project
 
 echo $N Make sure cfile command can create a c.file .................$NL
 echo comments | bk cfile save foo
-bk _test -f SCCS/c.foo || {
-	echo "failed (did not create c.file)"
-	exit 1
-}
+bk _test -f SCCS/c.foo || fail "failed (did not create c.file)"
 echo OK
 
 echo $N Make sure cfile command can print a c.file ..................$NL
 bk cfile print foo > OUT
-grep -q comments OUT || {
-	echo failed
-	cat OUT
-	exit 1
-}
+grep -q comments OUT || fail -f OUT
 echo OK
 
 echo $N Make sure cfile command can remove a c.file .................$NL
 bk cfile rm foo
-bk _test -f SCCS/c.foo && {
-	echo "failed (did not unlink c.file)"
-	exit 1
-}
+bk _test -f SCCS/c.foo && fail "failed (did not unlink c.file)"
 echo OK
 
 echo $N Make sure bk new -c unlinks the c.file ......................$NL
 echo hi there > foo
 echo comments | bk cfile save foo
-bk new -c $Q foo > OUT 2>&1 || {
-	echo should not have failed
-	cat OUT
-	exit 1
-}
-bk _test -f SCCS/c.foo && {
-	echo did not unlink on new
-	exit 1
-}
+bk new -c $Q foo > OUT 2>&1 || fail -f OUT should not have failed
+bk _test -f SCCS/c.foo && fail did not unlink on new
 echo OK
 
 echo $N Make sure delta -c unlinks the c.file .......................$NL
 bk edit $Q foo
 echo hi there >> foo
 echo comments | bk cfile save foo
-bk delta -c $Q foo > OUT 2>&1 || {
-	echo should not have failed
-	cat OUT
-	exit 1
-}
-bk _test -f SCCS/c.foo && {
-	echo did not unlink on new
-	exit 1
-}
+bk delta -c $Q foo > OUT 2>&1 || fail -f OUT should not have failed
+bk _test -f SCCS/c.foo && fail did not unlink on new
 echo OK
 
 echo $N Make sure bk new unlinks the c.file after prompting .........$NL
 echo hi there > bar
 echo comments | bk cfile save bar
-echo u | bk new $Q bar > OUT 2>&1 || {
-	echo should not have failed
-	cat OUT
-	exit 1
-}
-bk _test -f SCCS/c.bar && {
-	echo did not unlink on new
-	exit 1
-}
-grep -q 'Use these comments:' OUT || {
-	echo bad prompt
-	cat OUT
-	exit 1
-}
+echo u | bk new $Q bar > OUT 2>&1 || fail -f OUT should not have failed
+bk _test -f SCCS/c.bar && fail did not unlink on new
+grep -q 'Use these comments:' OUT || fail -f OUT bad prompt
 echo OK
 
 echo $N Make sure delta unlinks the c.file after prompting ..........$NL
 bk edit $Q bar
 echo hi there >> bar
 echo comments | bk cfile save bar
-echo u | bk delta $Q bar > OUT 2>&1 || {
-	echo should not have failed
-	cat OUT
-	exit 1
-}
-bk _test -f SCCS/c.bar && {
-	echo did not unlink
-	exit 1
-}
-grep -q 'Use these comments:' OUT || {
-	echo bad prompt
-	cat OUT
-	exit 1
-}
+echo u | bk delta $Q bar > OUT 2>&1 || fail -f OUT should not have failed
+bk _test -f SCCS/c.bar && fail did not unlink
+grep -q 'Use these comments:' OUT || fail -f OUT bad prompt
 echo OK
 
 echo $N Make sure bk new -y does not unlink the c.file ..............$NL
 echo hi there > blech
 echo comments | bk cfile save blech
-bk new -ywhatever $Q blech > OUT 2>&1 || {
-	echo should not have failed
-	cat OUT
-	exit 1
-}
-bk _test -f SCCS/c.blech || {
-	echo should not have unlinked
-	exit 1
-}
+bk new -ywhatever $Q blech > OUT 2>&1 || fail -f OUT should not have failed
+bk _test -f SCCS/c.blech || fail should not have unlinked
 echo OK
 
 echo $N Make sure delta does not unlink the c.file ..................$NL
 bk edit $Q blech
 echo hi there >> blech
 echo comments | bk cfile save blech
-bk delta -ywhatever $Q blech > OUT 2>&1 || {
-	echo should not have failed
-	cat OUT
-	exit 1
-}
-bk _test -f SCCS/c.blech || {
-	echo should not have unlinked
-	exit 1
-}
+bk delta -ywhatever $Q blech > OUT 2>&1 || fail -f OUT should not have failed
+bk _test -f SCCS/c.blech || fail should not have unlinked
 echo OK
 
 echo $N Make sure commit -y does not unlink a c.ChangeSet ...........$NL
 echo whatever | bk cfile save ChangeSet
-bk commit $Q -yblah || exit 1
-bk _test -f SCCS/c.ChangeSet || {
-	echo unlinked
-	exit 1
-}
+bk commit $Q -yblah || fail
+bk _test -f SCCS/c.ChangeSet || fail unlinked
 test `bk changes -r+ -d:C:` = "blah" || {
-	echo bad comments stored
-	bk changes -r+ -nd:C:
-	exit 1
+	bk changes -r+ -nd:C: > ERR
+	fail -f ERR bad comments stored
 }
 test `bk _cat SCCS/c.ChangeSet` = whatever || {
-	echo stomped on SCCS/c.ChangeSet
-	bk _cat SCCS/c.ChangeSet
-	exit 1
+	bk _cat SCCS/c.ChangeSet > ERR
+	fail -f ERR stomped on SCCS/c.ChangeSet
 }
 echo OK
 
@@ -146,12 +81,11 @@ echo $N Make sure commit -c does unlink c.ChangeSet .................$NL
 bk edit $Q blech
 echo hi there >> blech
 bk ci $Q -ywhatever blech
-bk commit $Q -c || exit 1
+bk commit $Q -c || fail
 bk _test -f SCCS/c.ChangeSet && fail not unlinked
 test `bk changes -r+ -d:C:` = "whatever" || {
-	echo bad comments stored
-	bk changes -r+ -nd:C:
-	exit 1
+	bk changes -r+ -nd:C: > ERR
+	fail -f ERR bad comments stored
 }
 echo OK
 
@@ -160,27 +94,39 @@ bk edit $Q blech
 echo hi there >> blech
 bk ci $Q -ywhatever blech
 echo whatever2 | bk cfile save ChangeSet
-echo u | bk commit $Q > OUT 2>&1 || exit 1
-bk _test -f SCCS/c.ChangeSet && {
-	echo not unlinked
-	exit 1
-}
+echo u | bk commit $Q > OUT 2>&1 || fail
+bk _test -f SCCS/c.ChangeSet && fail not unlinked
 test `bk changes -r+ -d:C:` = "whatever2" || {
-	echo bad comments stored
-	bk changes -r+ -nd:C:
-	exit 1
+	bk changes -r+ -nd:C: > ERR
+	fail -f ERR bad comments stored
 }
-grep -q 'Use these comments:' OUT || {
-	echo bad prompt
-	cat OUT
-	exit 1
-}
+grep -q 'Use these comments:' OUT || fail -f OUT bad prompt
 echo OK
 
 echo $N Check cfile with missing newline ............................$NL
 bk edit $Q blech
 echo more stuff >> blech
 echo $NX more stuff comment$NXL > c
-bk _mv c SCCS/c.blech || exit 1
-bk ci $Q -c blech || exit 1
+bk _mv c SCCS/c.blech || fail
+bk ci $Q -c blech || fail
+echo OK
+
+echo $N Dump out file data ..........................................$NL
+for f in a b c
+do	echo this is comment for file $f | bk cfile save $f
+done
+printf "a\nb\nc\n" > D
+bk cfile dump < D > GOT
+cat <<EOF > WANT
+a
+  this is comment for file a
+
+b
+  this is comment for file b
+
+c
+  this is comment for file c
+
+EOF
+cmpfiles WANT GOT
 echo OK

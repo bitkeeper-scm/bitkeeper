@@ -1,0 +1,1260 @@
+# Microsoft Developer Studio Generated NMAKE File, Based on BkShellX.dsp
+!IF "$(CFG)" == ""
+CFG=BkShellX - Win32 Debug
+!MESSAGE No configuration specified. Defaulting to BkShellX - Win32 Debug.
+!ENDIF 
+
+!IF "$(CFG)" != "BkShellX - Win32 Debug" && "$(CFG)" != "BkShellX - Win32 Unicode Debug" && "$(CFG)" != "BkShellX - Win32 Release MinSize" && "$(CFG)" != "BkShellX - Win32 Release MinDependency" && "$(CFG)" != "BkShellX - Win32 Unicode Release MinSize" && "$(CFG)" != "BkShellX - Win32 Unicode Release MinDependency"
+!MESSAGE Invalid configuration "$(CFG)" specified.
+!MESSAGE You can specify a configuration when running NMAKE
+!MESSAGE by defining the macro CFG on the command line. For example:
+!MESSAGE 
+!MESSAGE NMAKE /f "BkShellX.mak" CFG="BkShellX - Win32 Debug"
+!MESSAGE 
+!MESSAGE Possible choices for configuration are:
+!MESSAGE 
+!MESSAGE "BkShellX - Win32 Debug" (based on "Win32 (x86) Dynamic-Link Library")
+!MESSAGE "BkShellX - Win32 Unicode Debug" (based on "Win32 (x86) Dynamic-Link Library")
+!MESSAGE "BkShellX - Win32 Release MinSize" (based on "Win32 (x86) Dynamic-Link Library")
+!MESSAGE "BkShellX - Win32 Release MinDependency" (based on "Win32 (x86) Dynamic-Link Library")
+!MESSAGE "BkShellX - Win32 Unicode Release MinSize" (based on "Win32 (x86) Dynamic-Link Library")
+!MESSAGE "BkShellX - Win32 Unicode Release MinDependency" (based on "Win32 (x86) Dynamic-Link Library")
+!MESSAGE 
+!ERROR An invalid configuration is specified.
+!ENDIF 
+
+!IF "$(OS)" == "Windows_NT"
+NULL=
+!ELSE 
+NULL=nul
+!ENDIF 
+
+!IF  "$(CFG)" == "BkShellX - Win32 Debug"
+
+OUTDIR=.\Debug
+INTDIR=.\Debug
+
+ALL : ".\BkShellX.dll" ".\Debug\regsvr32.trg"
+
+
+CLEAN :
+	-@erase "$(INTDIR)\BitKeeper.obj"
+	-@erase "$(INTDIR)\BkEditIcon.obj"
+	-@erase "$(INTDIR)\BkExtraIcon.obj"
+	-@erase "$(INTDIR)\BkReadOnlyIcon.obj"
+	-@erase "$(INTDIR)\BkRootIcon.obj"
+	-@erase "$(INTDIR)\BkShellX.obj"
+	-@erase "$(INTDIR)\BkShellX.pch"
+	-@erase "$(INTDIR)\BkShellX.res"
+	-@erase "$(INTDIR)\ContextMenuHandler.obj"
+	-@erase "$(INTDIR)\ContextMenuItemBase.obj"
+	-@erase "$(INTDIR)\CtxBkSubMenu.obj"
+	-@erase "$(INTDIR)\CtxCi.obj"
+	-@erase "$(INTDIR)\CtxCitool.obj"
+	-@erase "$(INTDIR)\CtxClean.obj"
+	-@erase "$(INTDIR)\CtxClone.obj"
+	-@erase "$(INTDIR)\CtxDiffTool.obj"
+	-@erase "$(INTDIR)\CtxEdit.obj"
+	-@erase "$(INTDIR)\CtxGet.obj"
+	-@erase "$(INTDIR)\CtxHelpTool.obj"
+	-@erase "$(INTDIR)\CtxMove.obj"
+	-@erase "$(INTDIR)\CtxNew.obj"
+	-@erase "$(INTDIR)\CtxPull.obj"
+	-@erase "$(INTDIR)\CtxPush.obj"
+	-@erase "$(INTDIR)\CtxRevtool.obj"
+	-@erase "$(INTDIR)\CtxSetupTool.obj"
+	-@erase "$(INTDIR)\CtxUnedit.obj"
+	-@erase "$(INTDIR)\FileFolderSplitter.obj"
+	-@erase "$(INTDIR)\OverWriteDlg.obj"
+	-@erase "$(INTDIR)\propSheet.obj"
+	-@erase "$(INTDIR)\StdAfx.obj"
+	-@erase "$(INTDIR)\Unicode.obj"
+	-@erase "$(INTDIR)\Util.obj"
+	-@erase "$(INTDIR)\vc60.idb"
+	-@erase "$(INTDIR)\vc60.pdb"
+	-@erase "$(OUTDIR)\BkShellX.exp"
+	-@erase "$(OUTDIR)\BkShellX.lib"
+	-@erase "$(OUTDIR)\BkShellX.pdb"
+	-@erase ".\BkShellX.dll"
+	-@erase ".\BkShellX.h"
+	-@erase ".\BkShellX.ilk"
+	-@erase ".\BkShellX.tlb"
+	-@erase ".\BkShellX_i.c"
+	-@erase ".\Debug\regsvr32.trg"
+
+"$(OUTDIR)" :
+    if not exist "$(OUTDIR)/$(NULL)" mkdir "$(OUTDIR)"
+
+CPP=cl.exe
+CPP_PROJ=/nologo /MTd /W3 /Gm /GX /ZI /Od /D "_DEBUG" /D "_MBCS" /D "WIN32" /D "_WINDOWS" /D "_USRDLL" /D "_ATL_NO_UUIDOF" /Fp"$(INTDIR)\BkShellX.pch" /Yu"stdafx.h" /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /GZ /c 
+
+.c{$(INTDIR)}.obj::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cpp{$(INTDIR)}.obj::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cxx{$(INTDIR)}.obj::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.c{$(INTDIR)}.sbr::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cpp{$(INTDIR)}.sbr::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cxx{$(INTDIR)}.sbr::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+MTL=midl.exe
+MTL_PROJ=
+RSC=rc.exe
+RSC_PROJ=/l 0x409 /fo"$(INTDIR)\BkShellX.res" /d "_DEBUG" 
+BSC32=bscmake.exe
+BSC32_FLAGS=/nologo /o"$(OUTDIR)\BkShellX.bsc" 
+BSC32_SBRS= \
+	
+LINK32=link.exe
+LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib comctl32.lib /nologo /subsystem:windows /dll /incremental:yes /pdb:"$(OUTDIR)\BkShellX.pdb" /debug /machine:I386 /def:".\BkShellX.def" /out:"BkShellX.dll" /implib:"$(OUTDIR)\BkShellX.lib" /pdbtype:sept 
+DEF_FILE= \
+	".\BkShellX.def"
+LINK32_OBJS= \
+	"$(INTDIR)\BitKeeper.obj" \
+	"$(INTDIR)\BkEditIcon.obj" \
+	"$(INTDIR)\BkExtraIcon.obj" \
+	"$(INTDIR)\BkReadOnlyIcon.obj" \
+	"$(INTDIR)\BkRootIcon.obj" \
+	"$(INTDIR)\BkShellX.obj" \
+	"$(INTDIR)\ContextMenuHandler.obj" \
+	"$(INTDIR)\ContextMenuItemBase.obj" \
+	"$(INTDIR)\CtxBkSubMenu.obj" \
+	"$(INTDIR)\CtxCi.obj" \
+	"$(INTDIR)\CtxCitool.obj" \
+	"$(INTDIR)\CtxClean.obj" \
+	"$(INTDIR)\CtxClone.obj" \
+	"$(INTDIR)\CtxDiffTool.obj" \
+	"$(INTDIR)\CtxEdit.obj" \
+	"$(INTDIR)\CtxGet.obj" \
+	"$(INTDIR)\CtxHelpTool.obj" \
+	"$(INTDIR)\CtxMove.obj" \
+	"$(INTDIR)\CtxNew.obj" \
+	"$(INTDIR)\CtxPull.obj" \
+	"$(INTDIR)\CtxPush.obj" \
+	"$(INTDIR)\CtxRevtool.obj" \
+	"$(INTDIR)\CtxSetupTool.obj" \
+	"$(INTDIR)\CtxUnedit.obj" \
+	"$(INTDIR)\FileFolderSplitter.obj" \
+	"$(INTDIR)\OverWriteDlg.obj" \
+	"$(INTDIR)\propSheet.obj" \
+	"$(INTDIR)\StdAfx.obj" \
+	"$(INTDIR)\Unicode.obj" \
+	"$(INTDIR)\Util.obj" \
+	"$(INTDIR)\BkShellX.res"
+
+".\BkShellX.dll" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
+    $(LINK32) @<<
+  $(LINK32_FLAGS) $(LINK32_OBJS)
+<<
+
+OutDir=.\Debug
+TargetPath=.\BkShellX.dll
+InputPath=.\BkShellX.dll
+SOURCE="$(InputPath)"
+
+"$(OUTDIR)\regsvr32.trg" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	<<tempfile.bat 
+	@echo off 
+	regsvr32 /s /c "$(TargetPath)" 
+	echo regsvr32 exec. time > "$(OutDir)\regsvr32.trg" 
+<< 
+	
+
+!ELSEIF  "$(CFG)" == "BkShellX - Win32 Unicode Debug"
+
+OUTDIR=.\DebugU
+INTDIR=.\DebugU
+# Begin Custom Macros
+OutDir=.\DebugU
+# End Custom Macros
+
+ALL : "$(OUTDIR)\BkShellX.dll" ".\BkShellX.tlb" ".\BkShellX.h" ".\BkShellX_i.c" ".\DebugU\regsvr32.trg"
+
+
+CLEAN :
+	-@erase "$(INTDIR)\BitKeeper.obj"
+	-@erase "$(INTDIR)\BkEditIcon.obj"
+	-@erase "$(INTDIR)\BkExtraIcon.obj"
+	-@erase "$(INTDIR)\BkReadOnlyIcon.obj"
+	-@erase "$(INTDIR)\BkRootIcon.obj"
+	-@erase "$(INTDIR)\BkShellX.obj"
+	-@erase "$(INTDIR)\BkShellX.pch"
+	-@erase "$(INTDIR)\BkShellX.res"
+	-@erase "$(INTDIR)\ContextMenuHandler.obj"
+	-@erase "$(INTDIR)\ContextMenuItemBase.obj"
+	-@erase "$(INTDIR)\CtxBkSubMenu.obj"
+	-@erase "$(INTDIR)\CtxCi.obj"
+	-@erase "$(INTDIR)\CtxCitool.obj"
+	-@erase "$(INTDIR)\CtxClean.obj"
+	-@erase "$(INTDIR)\CtxClone.obj"
+	-@erase "$(INTDIR)\CtxDiffTool.obj"
+	-@erase "$(INTDIR)\CtxEdit.obj"
+	-@erase "$(INTDIR)\CtxGet.obj"
+	-@erase "$(INTDIR)\CtxHelpTool.obj"
+	-@erase "$(INTDIR)\CtxMove.obj"
+	-@erase "$(INTDIR)\CtxNew.obj"
+	-@erase "$(INTDIR)\CtxPull.obj"
+	-@erase "$(INTDIR)\CtxPush.obj"
+	-@erase "$(INTDIR)\CtxRevtool.obj"
+	-@erase "$(INTDIR)\CtxSetupTool.obj"
+	-@erase "$(INTDIR)\CtxUnedit.obj"
+	-@erase "$(INTDIR)\FileFolderSplitter.obj"
+	-@erase "$(INTDIR)\OverWriteDlg.obj"
+	-@erase "$(INTDIR)\propSheet.obj"
+	-@erase "$(INTDIR)\StdAfx.obj"
+	-@erase "$(INTDIR)\Unicode.obj"
+	-@erase "$(INTDIR)\Util.obj"
+	-@erase "$(INTDIR)\vc60.idb"
+	-@erase "$(INTDIR)\vc60.pdb"
+	-@erase "$(OUTDIR)\BkShellX.dll"
+	-@erase "$(OUTDIR)\BkShellX.exp"
+	-@erase "$(OUTDIR)\BkShellX.ilk"
+	-@erase "$(OUTDIR)\BkShellX.lib"
+	-@erase "$(OUTDIR)\BkShellX.pdb"
+	-@erase ".\BkShellX.h"
+	-@erase ".\BkShellX.tlb"
+	-@erase ".\BkShellX_i.c"
+	-@erase ".\DebugU\regsvr32.trg"
+
+"$(OUTDIR)" :
+    if not exist "$(OUTDIR)/$(NULL)" mkdir "$(OUTDIR)"
+
+CPP=cl.exe
+CPP_PROJ=/nologo /MTd /W3 /Gm /GX /ZI /Od /D "_DEBUG" /D "_UNICODE" /D "WIN32" /D "_WINDOWS" /D "_USRDLL" /D "_ATL_NO_UUIDOF" /Fp"$(INTDIR)\BkShellX.pch" /Yu"stdafx.h" /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /GZ /c 
+
+.c{$(INTDIR)}.obj::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cpp{$(INTDIR)}.obj::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cxx{$(INTDIR)}.obj::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.c{$(INTDIR)}.sbr::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cpp{$(INTDIR)}.sbr::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cxx{$(INTDIR)}.sbr::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+MTL=midl.exe
+MTL_PROJ=
+RSC=rc.exe
+RSC_PROJ=/l 0x409 /fo"$(INTDIR)\BkShellX.res" /d "_DEBUG" 
+BSC32=bscmake.exe
+BSC32_FLAGS=/nologo /o"$(OUTDIR)\BkShellX.bsc" 
+BSC32_SBRS= \
+	
+LINK32=link.exe
+LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /dll /incremental:yes /pdb:"$(OUTDIR)\BkShellX.pdb" /debug /machine:I386 /def:".\BkShellX.def" /out:"$(OUTDIR)\BkShellX.dll" /implib:"$(OUTDIR)\BkShellX.lib" /pdbtype:sept 
+DEF_FILE= \
+	".\BkShellX.def"
+LINK32_OBJS= \
+	"$(INTDIR)\BitKeeper.obj" \
+	"$(INTDIR)\BkEditIcon.obj" \
+	"$(INTDIR)\BkExtraIcon.obj" \
+	"$(INTDIR)\BkReadOnlyIcon.obj" \
+	"$(INTDIR)\BkRootIcon.obj" \
+	"$(INTDIR)\BkShellX.obj" \
+	"$(INTDIR)\ContextMenuHandler.obj" \
+	"$(INTDIR)\ContextMenuItemBase.obj" \
+	"$(INTDIR)\CtxBkSubMenu.obj" \
+	"$(INTDIR)\CtxCi.obj" \
+	"$(INTDIR)\CtxCitool.obj" \
+	"$(INTDIR)\CtxClean.obj" \
+	"$(INTDIR)\CtxClone.obj" \
+	"$(INTDIR)\CtxDiffTool.obj" \
+	"$(INTDIR)\CtxEdit.obj" \
+	"$(INTDIR)\CtxGet.obj" \
+	"$(INTDIR)\CtxHelpTool.obj" \
+	"$(INTDIR)\CtxMove.obj" \
+	"$(INTDIR)\CtxNew.obj" \
+	"$(INTDIR)\CtxPull.obj" \
+	"$(INTDIR)\CtxPush.obj" \
+	"$(INTDIR)\CtxRevtool.obj" \
+	"$(INTDIR)\CtxSetupTool.obj" \
+	"$(INTDIR)\CtxUnedit.obj" \
+	"$(INTDIR)\FileFolderSplitter.obj" \
+	"$(INTDIR)\OverWriteDlg.obj" \
+	"$(INTDIR)\propSheet.obj" \
+	"$(INTDIR)\StdAfx.obj" \
+	"$(INTDIR)\Unicode.obj" \
+	"$(INTDIR)\Util.obj" \
+	"$(INTDIR)\BkShellX.res"
+
+"$(OUTDIR)\BkShellX.dll" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
+    $(LINK32) @<<
+  $(LINK32_FLAGS) $(LINK32_OBJS)
+<<
+
+OutDir=.\DebugU
+TargetPath=.\DebugU\BkShellX.dll
+InputPath=.\DebugU\BkShellX.dll
+SOURCE="$(InputPath)"
+
+"$(OUTDIR)\regsvr32.trg" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	<<tempfile.bat 
+	@echo off 
+	if "%OS%"=="" goto NOTNT 
+	if not "%OS%"=="Windows_NT" goto NOTNT 
+	regsvr32 /s /c "$(TargetPath)" 
+	echo regsvr32 exec. time > "$(OutDir)\regsvr32.trg" 
+	goto end 
+	:NOTNT 
+	echo Warning : Cannot register Unicode DLL on Windows 95 
+	:end 
+<< 
+	
+
+!ELSEIF  "$(CFG)" == "BkShellX - Win32 Release MinSize"
+
+OUTDIR=.\ReleaseMinSize
+INTDIR=.\ReleaseMinSize
+# Begin Custom Macros
+OutDir=.\ReleaseMinSize
+# End Custom Macros
+
+ALL : "$(OUTDIR)\BkShellX.dll" ".\BkShellX.tlb" ".\BkShellX.h" ".\BkShellX_i.c" ".\ReleaseMinSize\regsvr32.trg"
+
+
+CLEAN :
+	-@erase "$(INTDIR)\BitKeeper.obj"
+	-@erase "$(INTDIR)\BkEditIcon.obj"
+	-@erase "$(INTDIR)\BkExtraIcon.obj"
+	-@erase "$(INTDIR)\BkReadOnlyIcon.obj"
+	-@erase "$(INTDIR)\BkRootIcon.obj"
+	-@erase "$(INTDIR)\BkShellX.obj"
+	-@erase "$(INTDIR)\BkShellX.pch"
+	-@erase "$(INTDIR)\BkShellX.res"
+	-@erase "$(INTDIR)\ContextMenuHandler.obj"
+	-@erase "$(INTDIR)\ContextMenuItemBase.obj"
+	-@erase "$(INTDIR)\CtxBkSubMenu.obj"
+	-@erase "$(INTDIR)\CtxCi.obj"
+	-@erase "$(INTDIR)\CtxCitool.obj"
+	-@erase "$(INTDIR)\CtxClean.obj"
+	-@erase "$(INTDIR)\CtxClone.obj"
+	-@erase "$(INTDIR)\CtxDiffTool.obj"
+	-@erase "$(INTDIR)\CtxEdit.obj"
+	-@erase "$(INTDIR)\CtxGet.obj"
+	-@erase "$(INTDIR)\CtxHelpTool.obj"
+	-@erase "$(INTDIR)\CtxMove.obj"
+	-@erase "$(INTDIR)\CtxNew.obj"
+	-@erase "$(INTDIR)\CtxPull.obj"
+	-@erase "$(INTDIR)\CtxPush.obj"
+	-@erase "$(INTDIR)\CtxRevtool.obj"
+	-@erase "$(INTDIR)\CtxSetupTool.obj"
+	-@erase "$(INTDIR)\CtxUnedit.obj"
+	-@erase "$(INTDIR)\FileFolderSplitter.obj"
+	-@erase "$(INTDIR)\OverWriteDlg.obj"
+	-@erase "$(INTDIR)\propSheet.obj"
+	-@erase "$(INTDIR)\StdAfx.obj"
+	-@erase "$(INTDIR)\Unicode.obj"
+	-@erase "$(INTDIR)\Util.obj"
+	-@erase "$(INTDIR)\vc60.idb"
+	-@erase "$(OUTDIR)\BkShellX.dll"
+	-@erase "$(OUTDIR)\BkShellX.exp"
+	-@erase "$(OUTDIR)\BkShellX.lib"
+	-@erase ".\BkShellX.h"
+	-@erase ".\BkShellX.tlb"
+	-@erase ".\BkShellX_i.c"
+	-@erase ".\ReleaseMinSize\regsvr32.trg"
+
+"$(OUTDIR)" :
+    if not exist "$(OUTDIR)/$(NULL)" mkdir "$(OUTDIR)"
+
+CPP=cl.exe
+CPP_PROJ=/nologo /MD /W3 /GX /O1 /D "NDEBUG" /D "_MBCS" /D "_ATL_DLL" /D "WIN32" /D "_WINDOWS" /D "_USRDLL" /D "_ATL_NO_UUIDOF" /Fp"$(INTDIR)\BkShellX.pch" /Yu"stdafx.h" /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /c 
+
+.c{$(INTDIR)}.obj::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cpp{$(INTDIR)}.obj::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cxx{$(INTDIR)}.obj::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.c{$(INTDIR)}.sbr::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cpp{$(INTDIR)}.sbr::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cxx{$(INTDIR)}.sbr::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+MTL=midl.exe
+MTL_PROJ=
+RSC=rc.exe
+RSC_PROJ=/l 0x409 /fo"$(INTDIR)\BkShellX.res" /d "NDEBUG" 
+BSC32=bscmake.exe
+BSC32_FLAGS=/nologo /o"$(OUTDIR)\BkShellX.bsc" 
+BSC32_SBRS= \
+	
+LINK32=link.exe
+LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib comctl32.lib /nologo /subsystem:windows /dll /incremental:no /pdb:"$(OUTDIR)\BkShellX.pdb" /machine:I386 /def:".\BkShellX.def" /out:"$(OUTDIR)\BkShellX.dll" /implib:"$(OUTDIR)\BkShellX.lib" 
+DEF_FILE= \
+	".\BkShellX.def"
+LINK32_OBJS= \
+	"$(INTDIR)\BitKeeper.obj" \
+	"$(INTDIR)\BkEditIcon.obj" \
+	"$(INTDIR)\BkExtraIcon.obj" \
+	"$(INTDIR)\BkReadOnlyIcon.obj" \
+	"$(INTDIR)\BkRootIcon.obj" \
+	"$(INTDIR)\BkShellX.obj" \
+	"$(INTDIR)\ContextMenuHandler.obj" \
+	"$(INTDIR)\ContextMenuItemBase.obj" \
+	"$(INTDIR)\CtxBkSubMenu.obj" \
+	"$(INTDIR)\CtxCi.obj" \
+	"$(INTDIR)\CtxCitool.obj" \
+	"$(INTDIR)\CtxClean.obj" \
+	"$(INTDIR)\CtxClone.obj" \
+	"$(INTDIR)\CtxDiffTool.obj" \
+	"$(INTDIR)\CtxEdit.obj" \
+	"$(INTDIR)\CtxGet.obj" \
+	"$(INTDIR)\CtxHelpTool.obj" \
+	"$(INTDIR)\CtxMove.obj" \
+	"$(INTDIR)\CtxNew.obj" \
+	"$(INTDIR)\CtxPull.obj" \
+	"$(INTDIR)\CtxPush.obj" \
+	"$(INTDIR)\CtxRevtool.obj" \
+	"$(INTDIR)\CtxSetupTool.obj" \
+	"$(INTDIR)\CtxUnedit.obj" \
+	"$(INTDIR)\FileFolderSplitter.obj" \
+	"$(INTDIR)\OverWriteDlg.obj" \
+	"$(INTDIR)\propSheet.obj" \
+	"$(INTDIR)\StdAfx.obj" \
+	"$(INTDIR)\Unicode.obj" \
+	"$(INTDIR)\Util.obj" \
+	"$(INTDIR)\BkShellX.res"
+
+"$(OUTDIR)\BkShellX.dll" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
+    $(LINK32) @<<
+  $(LINK32_FLAGS) $(LINK32_OBJS)
+<<
+
+OutDir=.\ReleaseMinSize
+TargetPath=.\ReleaseMinSize\BkShellX.dll
+InputPath=.\ReleaseMinSize\BkShellX.dll
+SOURCE="$(InputPath)"
+
+"$(OUTDIR)\regsvr32.trg" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	<<tempfile.bat 
+	@echo off 
+	regsvr32 /s /c "$(TargetPath)" 
+	echo regsvr32 exec. time > "$(OutDir)\regsvr32.trg" 
+<< 
+	
+
+!ELSEIF  "$(CFG)" == "BkShellX - Win32 Release MinDependency"
+
+OUTDIR=.\ReleaseMinDependency
+INTDIR=.\ReleaseMinDependency
+# Begin Custom Macros
+OutDir=.\ReleaseMinDependency
+# End Custom Macros
+
+ALL : "$(OUTDIR)\BkShellX.dll" ".\BkShellX.tlb" ".\BkShellX.h" ".\BkShellX_i.c" ".\ReleaseMinDependency\regsvr32.trg"
+
+
+CLEAN :
+	-@erase "$(INTDIR)\BitKeeper.obj"
+	-@erase "$(INTDIR)\BkEditIcon.obj"
+	-@erase "$(INTDIR)\BkExtraIcon.obj"
+	-@erase "$(INTDIR)\BkReadOnlyIcon.obj"
+	-@erase "$(INTDIR)\BkRootIcon.obj"
+	-@erase "$(INTDIR)\BkShellX.obj"
+	-@erase "$(INTDIR)\BkShellX.pch"
+	-@erase "$(INTDIR)\BkShellX.res"
+	-@erase "$(INTDIR)\ContextMenuHandler.obj"
+	-@erase "$(INTDIR)\ContextMenuItemBase.obj"
+	-@erase "$(INTDIR)\CtxBkSubMenu.obj"
+	-@erase "$(INTDIR)\CtxCi.obj"
+	-@erase "$(INTDIR)\CtxCitool.obj"
+	-@erase "$(INTDIR)\CtxClean.obj"
+	-@erase "$(INTDIR)\CtxClone.obj"
+	-@erase "$(INTDIR)\CtxDiffTool.obj"
+	-@erase "$(INTDIR)\CtxEdit.obj"
+	-@erase "$(INTDIR)\CtxGet.obj"
+	-@erase "$(INTDIR)\CtxHelpTool.obj"
+	-@erase "$(INTDIR)\CtxMove.obj"
+	-@erase "$(INTDIR)\CtxNew.obj"
+	-@erase "$(INTDIR)\CtxPull.obj"
+	-@erase "$(INTDIR)\CtxPush.obj"
+	-@erase "$(INTDIR)\CtxRevtool.obj"
+	-@erase "$(INTDIR)\CtxSetupTool.obj"
+	-@erase "$(INTDIR)\CtxUnedit.obj"
+	-@erase "$(INTDIR)\FileFolderSplitter.obj"
+	-@erase "$(INTDIR)\OverWriteDlg.obj"
+	-@erase "$(INTDIR)\propSheet.obj"
+	-@erase "$(INTDIR)\StdAfx.obj"
+	-@erase "$(INTDIR)\Unicode.obj"
+	-@erase "$(INTDIR)\Util.obj"
+	-@erase "$(INTDIR)\vc60.idb"
+	-@erase "$(OUTDIR)\BkShellX.dll"
+	-@erase "$(OUTDIR)\BkShellX.exp"
+	-@erase "$(OUTDIR)\BkShellX.lib"
+	-@erase ".\BkShellX.h"
+	-@erase ".\BkShellX.tlb"
+	-@erase ".\BkShellX_i.c"
+	-@erase ".\ReleaseMinDependency\regsvr32.trg"
+
+"$(OUTDIR)" :
+    if not exist "$(OUTDIR)/$(NULL)" mkdir "$(OUTDIR)"
+
+CPP=cl.exe
+CPP_PROJ=/nologo /MD /W3 /GX /O1 /D "NDEBUG" /D "_MBCS" /D "_ATL_STATIC_REGISTRY" /D "WIN32" /D "_WINDOWS" /D "_USRDLL" /D "_ATL_NO_UUIDOF" /Fp"$(INTDIR)\BkShellX.pch" /Yu"stdafx.h" /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /c 
+
+.c{$(INTDIR)}.obj::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cpp{$(INTDIR)}.obj::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cxx{$(INTDIR)}.obj::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.c{$(INTDIR)}.sbr::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cpp{$(INTDIR)}.sbr::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cxx{$(INTDIR)}.sbr::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+MTL=midl.exe
+MTL_PROJ=
+RSC=rc.exe
+RSC_PROJ=/l 0x409 /fo"$(INTDIR)\BkShellX.res" /d "NDEBUG" 
+BSC32=bscmake.exe
+BSC32_FLAGS=/nologo /o"$(OUTDIR)\BkShellX.bsc" 
+BSC32_SBRS= \
+	
+LINK32=link.exe
+LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib comctl32.lib /nologo /subsystem:windows /dll /incremental:no /pdb:"$(OUTDIR)\BkShellX.pdb" /machine:I386 /def:".\BkShellX.def" /out:"$(OUTDIR)\BkShellX.dll" /implib:"$(OUTDIR)\BkShellX.lib" 
+DEF_FILE= \
+	".\BkShellX.def"
+LINK32_OBJS= \
+	"$(INTDIR)\BitKeeper.obj" \
+	"$(INTDIR)\BkEditIcon.obj" \
+	"$(INTDIR)\BkExtraIcon.obj" \
+	"$(INTDIR)\BkReadOnlyIcon.obj" \
+	"$(INTDIR)\BkRootIcon.obj" \
+	"$(INTDIR)\BkShellX.obj" \
+	"$(INTDIR)\ContextMenuHandler.obj" \
+	"$(INTDIR)\ContextMenuItemBase.obj" \
+	"$(INTDIR)\CtxBkSubMenu.obj" \
+	"$(INTDIR)\CtxCi.obj" \
+	"$(INTDIR)\CtxCitool.obj" \
+	"$(INTDIR)\CtxClean.obj" \
+	"$(INTDIR)\CtxClone.obj" \
+	"$(INTDIR)\CtxDiffTool.obj" \
+	"$(INTDIR)\CtxEdit.obj" \
+	"$(INTDIR)\CtxGet.obj" \
+	"$(INTDIR)\CtxHelpTool.obj" \
+	"$(INTDIR)\CtxMove.obj" \
+	"$(INTDIR)\CtxNew.obj" \
+	"$(INTDIR)\CtxPull.obj" \
+	"$(INTDIR)\CtxPush.obj" \
+	"$(INTDIR)\CtxRevtool.obj" \
+	"$(INTDIR)\CtxSetupTool.obj" \
+	"$(INTDIR)\CtxUnedit.obj" \
+	"$(INTDIR)\FileFolderSplitter.obj" \
+	"$(INTDIR)\OverWriteDlg.obj" \
+	"$(INTDIR)\propSheet.obj" \
+	"$(INTDIR)\StdAfx.obj" \
+	"$(INTDIR)\Unicode.obj" \
+	"$(INTDIR)\Util.obj" \
+	"$(INTDIR)\BkShellX.res"
+
+"$(OUTDIR)\BkShellX.dll" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
+    $(LINK32) @<<
+  $(LINK32_FLAGS) $(LINK32_OBJS)
+<<
+
+OutDir=.\ReleaseMinDependency
+TargetPath=.\ReleaseMinDependency\BkShellX.dll
+InputPath=.\ReleaseMinDependency\BkShellX.dll
+SOURCE="$(InputPath)"
+
+"$(OUTDIR)\regsvr32.trg" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	<<tempfile.bat 
+	@echo off 
+	regsvr32 /s /c "$(TargetPath)" 
+	echo regsvr32 exec. time > "$(OutDir)\regsvr32.trg" 
+<< 
+	
+
+!ELSEIF  "$(CFG)" == "BkShellX - Win32 Unicode Release MinSize"
+
+OUTDIR=.\ReleaseUMinSize
+INTDIR=.\ReleaseUMinSize
+# Begin Custom Macros
+OutDir=.\ReleaseUMinSize
+# End Custom Macros
+
+ALL : "$(OUTDIR)\BkShellX.dll" ".\BkShellX.tlb" ".\BkShellX.h" ".\BkShellX_i.c" ".\ReleaseUMinSize\regsvr32.trg"
+
+
+CLEAN :
+	-@erase "$(INTDIR)\BitKeeper.obj"
+	-@erase "$(INTDIR)\BkEditIcon.obj"
+	-@erase "$(INTDIR)\BkExtraIcon.obj"
+	-@erase "$(INTDIR)\BkReadOnlyIcon.obj"
+	-@erase "$(INTDIR)\BkRootIcon.obj"
+	-@erase "$(INTDIR)\BkShellX.obj"
+	-@erase "$(INTDIR)\BkShellX.pch"
+	-@erase "$(INTDIR)\BkShellX.res"
+	-@erase "$(INTDIR)\ContextMenuHandler.obj"
+	-@erase "$(INTDIR)\ContextMenuItemBase.obj"
+	-@erase "$(INTDIR)\CtxBkSubMenu.obj"
+	-@erase "$(INTDIR)\CtxCi.obj"
+	-@erase "$(INTDIR)\CtxCitool.obj"
+	-@erase "$(INTDIR)\CtxClean.obj"
+	-@erase "$(INTDIR)\CtxClone.obj"
+	-@erase "$(INTDIR)\CtxDiffTool.obj"
+	-@erase "$(INTDIR)\CtxEdit.obj"
+	-@erase "$(INTDIR)\CtxGet.obj"
+	-@erase "$(INTDIR)\CtxHelpTool.obj"
+	-@erase "$(INTDIR)\CtxMove.obj"
+	-@erase "$(INTDIR)\CtxNew.obj"
+	-@erase "$(INTDIR)\CtxPull.obj"
+	-@erase "$(INTDIR)\CtxPush.obj"
+	-@erase "$(INTDIR)\CtxRevtool.obj"
+	-@erase "$(INTDIR)\CtxSetupTool.obj"
+	-@erase "$(INTDIR)\CtxUnedit.obj"
+	-@erase "$(INTDIR)\FileFolderSplitter.obj"
+	-@erase "$(INTDIR)\OverWriteDlg.obj"
+	-@erase "$(INTDIR)\propSheet.obj"
+	-@erase "$(INTDIR)\StdAfx.obj"
+	-@erase "$(INTDIR)\Unicode.obj"
+	-@erase "$(INTDIR)\Util.obj"
+	-@erase "$(INTDIR)\vc60.idb"
+	-@erase "$(OUTDIR)\BkShellX.dll"
+	-@erase "$(OUTDIR)\BkShellX.exp"
+	-@erase "$(OUTDIR)\BkShellX.lib"
+	-@erase ".\BkShellX.h"
+	-@erase ".\BkShellX.tlb"
+	-@erase ".\BkShellX_i.c"
+	-@erase ".\ReleaseUMinSize\regsvr32.trg"
+
+"$(OUTDIR)" :
+    if not exist "$(OUTDIR)/$(NULL)" mkdir "$(OUTDIR)"
+
+CPP=cl.exe
+CPP_PROJ=/nologo /MD /W3 /GX /O1 /D "NDEBUG" /D "_UNICODE" /D "_ATL_DLL" /D "WIN32" /D "_WINDOWS" /D "_USRDLL" /D "_ATL_NO_UUIDOF" /Fp"$(INTDIR)\BkShellX.pch" /Yu"stdafx.h" /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /c 
+
+.c{$(INTDIR)}.obj::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cpp{$(INTDIR)}.obj::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cxx{$(INTDIR)}.obj::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.c{$(INTDIR)}.sbr::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cpp{$(INTDIR)}.sbr::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cxx{$(INTDIR)}.sbr::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+MTL=midl.exe
+MTL_PROJ=
+RSC=rc.exe
+RSC_PROJ=/l 0x409 /fo"$(INTDIR)\BkShellX.res" /d "NDEBUG" 
+BSC32=bscmake.exe
+BSC32_FLAGS=/nologo /o"$(OUTDIR)\BkShellX.bsc" 
+BSC32_SBRS= \
+	
+LINK32=link.exe
+LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /dll /incremental:no /pdb:"$(OUTDIR)\BkShellX.pdb" /machine:I386 /def:".\BkShellX.def" /out:"$(OUTDIR)\BkShellX.dll" /implib:"$(OUTDIR)\BkShellX.lib" 
+DEF_FILE= \
+	".\BkShellX.def"
+LINK32_OBJS= \
+	"$(INTDIR)\BitKeeper.obj" \
+	"$(INTDIR)\BkEditIcon.obj" \
+	"$(INTDIR)\BkExtraIcon.obj" \
+	"$(INTDIR)\BkReadOnlyIcon.obj" \
+	"$(INTDIR)\BkRootIcon.obj" \
+	"$(INTDIR)\BkShellX.obj" \
+	"$(INTDIR)\ContextMenuHandler.obj" \
+	"$(INTDIR)\ContextMenuItemBase.obj" \
+	"$(INTDIR)\CtxBkSubMenu.obj" \
+	"$(INTDIR)\CtxCi.obj" \
+	"$(INTDIR)\CtxCitool.obj" \
+	"$(INTDIR)\CtxClean.obj" \
+	"$(INTDIR)\CtxClone.obj" \
+	"$(INTDIR)\CtxDiffTool.obj" \
+	"$(INTDIR)\CtxEdit.obj" \
+	"$(INTDIR)\CtxGet.obj" \
+	"$(INTDIR)\CtxHelpTool.obj" \
+	"$(INTDIR)\CtxMove.obj" \
+	"$(INTDIR)\CtxNew.obj" \
+	"$(INTDIR)\CtxPull.obj" \
+	"$(INTDIR)\CtxPush.obj" \
+	"$(INTDIR)\CtxRevtool.obj" \
+	"$(INTDIR)\CtxSetupTool.obj" \
+	"$(INTDIR)\CtxUnedit.obj" \
+	"$(INTDIR)\FileFolderSplitter.obj" \
+	"$(INTDIR)\OverWriteDlg.obj" \
+	"$(INTDIR)\propSheet.obj" \
+	"$(INTDIR)\StdAfx.obj" \
+	"$(INTDIR)\Unicode.obj" \
+	"$(INTDIR)\Util.obj" \
+	"$(INTDIR)\BkShellX.res"
+
+"$(OUTDIR)\BkShellX.dll" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
+    $(LINK32) @<<
+  $(LINK32_FLAGS) $(LINK32_OBJS)
+<<
+
+OutDir=.\ReleaseUMinSize
+TargetPath=.\ReleaseUMinSize\BkShellX.dll
+InputPath=.\ReleaseUMinSize\BkShellX.dll
+SOURCE="$(InputPath)"
+
+"$(OUTDIR)\regsvr32.trg" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	<<tempfile.bat 
+	@echo off 
+	if "%OS%"=="" goto NOTNT 
+	if not "%OS%"=="Windows_NT" goto NOTNT 
+	regsvr32 /s /c "$(TargetPath)" 
+	echo regsvr32 exec. time > "$(OutDir)\regsvr32.trg" 
+	goto end 
+	:NOTNT 
+	echo Warning : Cannot register Unicode DLL on Windows 95 
+	:end 
+<< 
+	
+
+!ELSEIF  "$(CFG)" == "BkShellX - Win32 Unicode Release MinDependency"
+
+OUTDIR=.\ReleaseUMinDependency
+INTDIR=.\ReleaseUMinDependency
+# Begin Custom Macros
+OutDir=.\ReleaseUMinDependency
+# End Custom Macros
+
+ALL : "$(OUTDIR)\BkShellX.dll" ".\BkShellX.tlb" ".\BkShellX.h" ".\BkShellX_i.c" ".\ReleaseUMinDependency\regsvr32.trg"
+
+
+CLEAN :
+	-@erase "$(INTDIR)\BitKeeper.obj"
+	-@erase "$(INTDIR)\BkEditIcon.obj"
+	-@erase "$(INTDIR)\BkExtraIcon.obj"
+	-@erase "$(INTDIR)\BkReadOnlyIcon.obj"
+	-@erase "$(INTDIR)\BkRootIcon.obj"
+	-@erase "$(INTDIR)\BkShellX.obj"
+	-@erase "$(INTDIR)\BkShellX.pch"
+	-@erase "$(INTDIR)\BkShellX.res"
+	-@erase "$(INTDIR)\ContextMenuHandler.obj"
+	-@erase "$(INTDIR)\ContextMenuItemBase.obj"
+	-@erase "$(INTDIR)\CtxBkSubMenu.obj"
+	-@erase "$(INTDIR)\CtxCi.obj"
+	-@erase "$(INTDIR)\CtxCitool.obj"
+	-@erase "$(INTDIR)\CtxClean.obj"
+	-@erase "$(INTDIR)\CtxClone.obj"
+	-@erase "$(INTDIR)\CtxDiffTool.obj"
+	-@erase "$(INTDIR)\CtxEdit.obj"
+	-@erase "$(INTDIR)\CtxGet.obj"
+	-@erase "$(INTDIR)\CtxHelpTool.obj"
+	-@erase "$(INTDIR)\CtxMove.obj"
+	-@erase "$(INTDIR)\CtxNew.obj"
+	-@erase "$(INTDIR)\CtxPull.obj"
+	-@erase "$(INTDIR)\CtxPush.obj"
+	-@erase "$(INTDIR)\CtxRevtool.obj"
+	-@erase "$(INTDIR)\CtxSetupTool.obj"
+	-@erase "$(INTDIR)\CtxUnedit.obj"
+	-@erase "$(INTDIR)\FileFolderSplitter.obj"
+	-@erase "$(INTDIR)\OverWriteDlg.obj"
+	-@erase "$(INTDIR)\propSheet.obj"
+	-@erase "$(INTDIR)\StdAfx.obj"
+	-@erase "$(INTDIR)\Unicode.obj"
+	-@erase "$(INTDIR)\Util.obj"
+	-@erase "$(INTDIR)\vc60.idb"
+	-@erase "$(OUTDIR)\BkShellX.dll"
+	-@erase "$(OUTDIR)\BkShellX.exp"
+	-@erase "$(OUTDIR)\BkShellX.lib"
+	-@erase ".\BkShellX.h"
+	-@erase ".\BkShellX.tlb"
+	-@erase ".\BkShellX_i.c"
+	-@erase ".\ReleaseUMinDependency\regsvr32.trg"
+
+"$(OUTDIR)" :
+    if not exist "$(OUTDIR)/$(NULL)" mkdir "$(OUTDIR)"
+
+CPP=cl.exe
+CPP_PROJ=/nologo /MD /W3 /GX /O1 /D "NDEBUG" /D "_UNICODE" /D "_ATL_STATIC_REGISTRY" /D "WIN32" /D "_WINDOWS" /D "_USRDLL" /D "_ATL_NO_UUIDOF" /Fp"$(INTDIR)\BkShellX.pch" /Yu"stdafx.h" /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /c 
+
+.c{$(INTDIR)}.obj::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cpp{$(INTDIR)}.obj::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cxx{$(INTDIR)}.obj::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.c{$(INTDIR)}.sbr::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cpp{$(INTDIR)}.sbr::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+.cxx{$(INTDIR)}.sbr::
+   $(CPP) @<<
+   $(CPP_PROJ) $< 
+<<
+
+MTL=midl.exe
+MTL_PROJ=
+RSC=rc.exe
+RSC_PROJ=/l 0x409 /fo"$(INTDIR)\BkShellX.res" /d "NDEBUG" 
+BSC32=bscmake.exe
+BSC32_FLAGS=/nologo /o"$(OUTDIR)\BkShellX.bsc" 
+BSC32_SBRS= \
+	
+LINK32=link.exe
+LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /dll /incremental:no /pdb:"$(OUTDIR)\BkShellX.pdb" /machine:I386 /def:".\BkShellX.def" /out:"$(OUTDIR)\BkShellX.dll" /implib:"$(OUTDIR)\BkShellX.lib" 
+DEF_FILE= \
+	".\BkShellX.def"
+LINK32_OBJS= \
+	"$(INTDIR)\BitKeeper.obj" \
+	"$(INTDIR)\BkEditIcon.obj" \
+	"$(INTDIR)\BkExtraIcon.obj" \
+	"$(INTDIR)\BkReadOnlyIcon.obj" \
+	"$(INTDIR)\BkRootIcon.obj" \
+	"$(INTDIR)\BkShellX.obj" \
+	"$(INTDIR)\ContextMenuHandler.obj" \
+	"$(INTDIR)\ContextMenuItemBase.obj" \
+	"$(INTDIR)\CtxBkSubMenu.obj" \
+	"$(INTDIR)\CtxCi.obj" \
+	"$(INTDIR)\CtxCitool.obj" \
+	"$(INTDIR)\CtxClean.obj" \
+	"$(INTDIR)\CtxClone.obj" \
+	"$(INTDIR)\CtxDiffTool.obj" \
+	"$(INTDIR)\CtxEdit.obj" \
+	"$(INTDIR)\CtxGet.obj" \
+	"$(INTDIR)\CtxHelpTool.obj" \
+	"$(INTDIR)\CtxMove.obj" \
+	"$(INTDIR)\CtxNew.obj" \
+	"$(INTDIR)\CtxPull.obj" \
+	"$(INTDIR)\CtxPush.obj" \
+	"$(INTDIR)\CtxRevtool.obj" \
+	"$(INTDIR)\CtxSetupTool.obj" \
+	"$(INTDIR)\CtxUnedit.obj" \
+	"$(INTDIR)\FileFolderSplitter.obj" \
+	"$(INTDIR)\OverWriteDlg.obj" \
+	"$(INTDIR)\propSheet.obj" \
+	"$(INTDIR)\StdAfx.obj" \
+	"$(INTDIR)\Unicode.obj" \
+	"$(INTDIR)\Util.obj" \
+	"$(INTDIR)\BkShellX.res"
+
+"$(OUTDIR)\BkShellX.dll" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
+    $(LINK32) @<<
+  $(LINK32_FLAGS) $(LINK32_OBJS)
+<<
+
+OutDir=.\ReleaseUMinDependency
+TargetPath=.\ReleaseUMinDependency\BkShellX.dll
+InputPath=.\ReleaseUMinDependency\BkShellX.dll
+SOURCE="$(InputPath)"
+
+"$(OUTDIR)\regsvr32.trg" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	<<tempfile.bat 
+	@echo off 
+	if "%OS%"=="" goto NOTNT 
+	if not "%OS%"=="Windows_NT" goto NOTNT 
+	regsvr32 /s /c "$(TargetPath)" 
+	echo regsvr32 exec. time > "$(OutDir)\regsvr32.trg" 
+	goto end 
+	:NOTNT 
+	echo Warning : Cannot register Unicode DLL on Windows 95 
+	:end 
+<< 
+	
+
+!ENDIF 
+
+
+!IF "$(NO_EXTERNAL_DEPS)" != "1"
+!IF EXISTS("BkShellX.dep")
+!INCLUDE "BkShellX.dep"
+!ELSE 
+!MESSAGE Warning: cannot find "BkShellX.dep"
+!ENDIF 
+!ENDIF 
+
+
+!IF "$(CFG)" == "BkShellX - Win32 Debug" || "$(CFG)" == "BkShellX - Win32 Unicode Debug" || "$(CFG)" == "BkShellX - Win32 Release MinSize" || "$(CFG)" == "BkShellX - Win32 Release MinDependency" || "$(CFG)" == "BkShellX - Win32 Unicode Release MinSize" || "$(CFG)" == "BkShellX - Win32 Unicode Release MinDependency"
+SOURCE=.\BitKeeper.cpp
+
+"$(INTDIR)\BitKeeper.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\BkEditIcon.cpp
+
+"$(INTDIR)\BkEditIcon.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch" ".\BkShellX.h"
+
+
+SOURCE=.\BkExtraIcon.cpp
+
+"$(INTDIR)\BkExtraIcon.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch" ".\BkShellX.h"
+
+
+SOURCE=.\BkReadOnlyIcon.cpp
+
+"$(INTDIR)\BkReadOnlyIcon.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch" ".\BkShellX.h"
+
+
+SOURCE=.\BkRootIcon.cpp
+
+"$(INTDIR)\BkRootIcon.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch" ".\BkShellX.h"
+
+
+SOURCE=.\BkShellX.cpp
+
+"$(INTDIR)\BkShellX.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch" ".\BkShellX.h" ".\BkShellX_i.c"
+
+
+SOURCE=.\BkShellX.idl
+
+!IF  "$(CFG)" == "BkShellX - Win32 Debug"
+
+MTL_SWITCHES=/tlb ".\BkShellX.tlb" /h "BkShellX.h" /iid "BkShellX_i.c" /Oicf 
+
+".\BkShellX.tlb"	".\BkShellX.h"	".\BkShellX_i.c" : $(SOURCE) "$(INTDIR)"
+	$(MTL) @<<
+  $(MTL_SWITCHES) $(SOURCE)
+<<
+
+
+!ELSEIF  "$(CFG)" == "BkShellX - Win32 Unicode Debug"
+
+MTL_SWITCHES=/tlb ".\BkShellX.tlb" /h "BkShellX.h" /iid "BkShellX_i.c" /Oicf 
+
+".\BkShellX.tlb"	".\BkShellX.h"	".\BkShellX_i.c" : $(SOURCE) "$(INTDIR)"
+	$(MTL) @<<
+  $(MTL_SWITCHES) $(SOURCE)
+<<
+
+
+!ELSEIF  "$(CFG)" == "BkShellX - Win32 Release MinSize"
+
+MTL_SWITCHES=/tlb ".\BkShellX.tlb" /h "BkShellX.h" /iid "BkShellX_i.c" /Oicf 
+
+".\BkShellX.tlb"	".\BkShellX.h"	".\BkShellX_i.c" : $(SOURCE) "$(INTDIR)"
+	$(MTL) @<<
+  $(MTL_SWITCHES) $(SOURCE)
+<<
+
+
+!ELSEIF  "$(CFG)" == "BkShellX - Win32 Release MinDependency"
+
+MTL_SWITCHES=/tlb ".\BkShellX.tlb" /h "BkShellX.h" /iid "BkShellX_i.c" /Oicf 
+
+".\BkShellX.tlb"	".\BkShellX.h"	".\BkShellX_i.c" : $(SOURCE) "$(INTDIR)"
+	$(MTL) @<<
+  $(MTL_SWITCHES) $(SOURCE)
+<<
+
+
+!ELSEIF  "$(CFG)" == "BkShellX - Win32 Unicode Release MinSize"
+
+MTL_SWITCHES=/tlb ".\BkShellX.tlb" /h "BkShellX.h" /iid "BkShellX_i.c" /Oicf 
+
+".\BkShellX.tlb"	".\BkShellX.h"	".\BkShellX_i.c" : $(SOURCE) "$(INTDIR)"
+	$(MTL) @<<
+  $(MTL_SWITCHES) $(SOURCE)
+<<
+
+
+!ELSEIF  "$(CFG)" == "BkShellX - Win32 Unicode Release MinDependency"
+
+MTL_SWITCHES=/tlb ".\BkShellX.tlb" /h "BkShellX.h" /iid "BkShellX_i.c" /Oicf 
+
+".\BkShellX.tlb"	".\BkShellX.h"	".\BkShellX_i.c" : $(SOURCE) "$(INTDIR)"
+	$(MTL) @<<
+  $(MTL_SWITCHES) $(SOURCE)
+<<
+
+
+!ENDIF 
+
+SOURCE=.\BkShellX.rc
+
+"$(INTDIR)\BkShellX.res" : $(SOURCE) "$(INTDIR)" ".\BkShellX.tlb"
+	$(RSC) $(RSC_PROJ) $(SOURCE)
+
+
+SOURCE=.\ContextMenuHandler.cpp
+
+"$(INTDIR)\ContextMenuHandler.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch" ".\BkShellX.h"
+
+
+SOURCE=.\ContextMenuItemBase.cpp
+
+"$(INTDIR)\ContextMenuItemBase.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\CtxBkSubMenu.cpp
+
+"$(INTDIR)\CtxBkSubMenu.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\CtxCi.cpp
+
+"$(INTDIR)\CtxCi.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\CtxCitool.cpp
+
+"$(INTDIR)\CtxCitool.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\CtxClean.cpp
+
+"$(INTDIR)\CtxClean.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\CtxClone.cpp
+
+"$(INTDIR)\CtxClone.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\CtxDiffTool.cpp
+
+"$(INTDIR)\CtxDiffTool.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\CtxEdit.cpp
+
+"$(INTDIR)\CtxEdit.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\CtxGet.cpp
+
+"$(INTDIR)\CtxGet.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\CtxHelpTool.cpp
+
+"$(INTDIR)\CtxHelpTool.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\CtxMove.cpp
+
+"$(INTDIR)\CtxMove.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\CtxNew.cpp
+
+"$(INTDIR)\CtxNew.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\CtxPull.cpp
+
+"$(INTDIR)\CtxPull.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\CtxPush.cpp
+
+"$(INTDIR)\CtxPush.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\CtxRevtool.cpp
+
+"$(INTDIR)\CtxRevtool.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\CtxSetupTool.cpp
+
+"$(INTDIR)\CtxSetupTool.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\CtxUnedit.cpp
+
+"$(INTDIR)\CtxUnedit.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\dlldatax.c
+SOURCE=.\FileFolderSplitter.cpp
+
+"$(INTDIR)\FileFolderSplitter.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\OverWriteDlg.cpp
+
+"$(INTDIR)\OverWriteDlg.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\propSheet.cpp
+
+"$(INTDIR)\propSheet.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\StdAfx.cpp
+
+!IF  "$(CFG)" == "BkShellX - Win32 Debug"
+
+CPP_SWITCHES=/nologo /MTd /W3 /Gm /GX /ZI /Od /D "_DEBUG" /D "_MBCS" /D "WIN32" /D "_WINDOWS" /D "_USRDLL" /D "_ATL_NO_UUIDOF" /Fp"$(INTDIR)\BkShellX.pch" /Yc"stdafx.h" /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /GZ /c 
+
+"$(INTDIR)\StdAfx.obj"	"$(INTDIR)\BkShellX.pch" : $(SOURCE) "$(INTDIR)"
+	$(CPP) @<<
+  $(CPP_SWITCHES) $(SOURCE)
+<<
+
+
+!ELSEIF  "$(CFG)" == "BkShellX - Win32 Unicode Debug"
+
+CPP_SWITCHES=/nologo /MTd /W3 /Gm /GX /ZI /Od /D "_DEBUG" /D "_UNICODE" /D "WIN32" /D "_WINDOWS" /D "_USRDLL" /D "_ATL_NO_UUIDOF" /Fp"$(INTDIR)\BkShellX.pch" /Yc"stdafx.h" /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /GZ /c 
+
+"$(INTDIR)\StdAfx.obj"	"$(INTDIR)\BkShellX.pch" : $(SOURCE) "$(INTDIR)"
+	$(CPP) @<<
+  $(CPP_SWITCHES) $(SOURCE)
+<<
+
+
+!ELSEIF  "$(CFG)" == "BkShellX - Win32 Release MinSize"
+
+CPP_SWITCHES=/nologo /MD /W3 /GX /O1 /D "NDEBUG" /D "_MBCS" /D "_ATL_DLL" /D "WIN32" /D "_WINDOWS" /D "_USRDLL" /D "_ATL_NO_UUIDOF" /Fp"$(INTDIR)\BkShellX.pch" /Yc"stdafx.h" /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /c 
+
+"$(INTDIR)\StdAfx.obj"	"$(INTDIR)\BkShellX.pch" : $(SOURCE) "$(INTDIR)"
+	$(CPP) @<<
+  $(CPP_SWITCHES) $(SOURCE)
+<<
+
+
+!ELSEIF  "$(CFG)" == "BkShellX - Win32 Release MinDependency"
+
+CPP_SWITCHES=/nologo /MD /W3 /GX /O1 /D "NDEBUG" /D "_MBCS" /D "_ATL_STATIC_REGISTRY" /D "WIN32" /D "_WINDOWS" /D "_USRDLL" /D "_ATL_NO_UUIDOF" /Fp"$(INTDIR)\BkShellX.pch" /Yc"stdafx.h" /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /c 
+
+"$(INTDIR)\StdAfx.obj"	"$(INTDIR)\BkShellX.pch" : $(SOURCE) "$(INTDIR)"
+	$(CPP) @<<
+  $(CPP_SWITCHES) $(SOURCE)
+<<
+
+
+!ELSEIF  "$(CFG)" == "BkShellX - Win32 Unicode Release MinSize"
+
+CPP_SWITCHES=/nologo /MD /W3 /GX /O1 /D "NDEBUG" /D "_UNICODE" /D "_ATL_DLL" /D "WIN32" /D "_WINDOWS" /D "_USRDLL" /D "_ATL_NO_UUIDOF" /Fp"$(INTDIR)\BkShellX.pch" /Yc"stdafx.h" /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /c 
+
+"$(INTDIR)\StdAfx.obj"	"$(INTDIR)\BkShellX.pch" : $(SOURCE) "$(INTDIR)"
+	$(CPP) @<<
+  $(CPP_SWITCHES) $(SOURCE)
+<<
+
+
+!ELSEIF  "$(CFG)" == "BkShellX - Win32 Unicode Release MinDependency"
+
+CPP_SWITCHES=/nologo /MD /W3 /GX /O1 /D "NDEBUG" /D "_UNICODE" /D "_ATL_STATIC_REGISTRY" /D "WIN32" /D "_WINDOWS" /D "_USRDLL" /D "_ATL_NO_UUIDOF" /Fp"$(INTDIR)\BkShellX.pch" /Yc"stdafx.h" /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /c 
+
+"$(INTDIR)\StdAfx.obj"	"$(INTDIR)\BkShellX.pch" : $(SOURCE) "$(INTDIR)"
+	$(CPP) @<<
+  $(CPP_SWITCHES) $(SOURCE)
+<<
+
+
+!ENDIF 
+
+SOURCE=.\Unicode.cpp
+
+"$(INTDIR)\Unicode.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+SOURCE=.\Util.cpp
+
+"$(INTDIR)\Util.obj" : $(SOURCE) "$(INTDIR)" "$(INTDIR)\BkShellX.pch"
+
+
+
+!ENDIF 
+

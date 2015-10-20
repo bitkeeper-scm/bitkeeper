@@ -17,7 +17,7 @@ do
 	touch $file
     done
 done
-bk -xr new $Q || exit 1
+bk -xr new $Q || fail
 echo OK
 
 cd ..

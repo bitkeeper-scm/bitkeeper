@@ -1,0 +1,147 @@
+= 2014 Unique db design
+
+== Intro
+
+BK cannot allow duplicate delta keys to be created so on any given
+machine/user combination the keys being created need to be monitored
+and duplicates are prevented by changing the delta timestamp until the
+shortKey (`USER@HOST|PATH|DATE`) is unique.
+
+The uniqdb is an mdbm where each db key is a delta shortKey and the db
+value is the `time_t` of its creation. When the delta's date needs to be
+fudged to create a unique key, its `time_t` also is fudged. Note that
+the db is not going to grow without bound - we are only interested
+in keys which were created on this host, and for timestamp values in
+the last `CLOCK_DRIFT` seconds.  We'll start out with a `CLOCK_DRIFT` of
+48 hours and see if we need to shrink it.  The 48 hours is because
+sometimes people screw up their daylight savings time plus a generous
+amount of slop.
+
+In the previous design, a db in `<dotbk>/bk-keys/HOST` was used (with a
+fallback location of `/tmp/.bk-keys-USER` if unwritable), with a lock
+file in `/tmp/.uniq_keys_USER`. When bk needed a unique delta key it
+would call `uniq_adjust()` which would consult the db and protect the
+transaction with the lock file. This has the performance drawback of
+taking and releasing the lock file on every bk instance that creates a
+delta.
+
+The new design moves uniqdb handling to a background info server which
+acquires the lock file only on startup.
+
+== Interoperability with bk6
+
+The idea for interoperability with bk6 is for bk7 to maintain both bk6
+and bk7's uniqdbs by holding bk6's lock file to lock out bk6 requests
+for delta keys when bk7's uniq_daemon is running. This lets bk7 safely
+read and write both uniqdb's to keep them consistent. Bk6's uniqdb is
+read when bk7's uniq_daemon starts up and is written out on exit.
+
+To avoid locking bk6 out for too long, if bk6 has touched its uniqdb
+within the last day, then the uniq_daemon idle timeout is reduced to
+10 seconds from 10 minutes. To track when to do this, bk7 will write a
+special delta key to bk6's uniqdb with an old timestamp so that bk6
+will always purge it but bk7 will leave it. The timestamp will encode
+the time that bk6 last wrote its uniqdb (Wayne suggested the file mod
+time minus one year). From this timestamp, bk7 can determine how long
+it should run with a reduced idle timeout of 10 seconds.
+
+Here's the logic for this on bk7 uniq_daemon startup:
+- if the bk6 uniqdb has no special key, the last-mod time of the
+  file is when bk6 last wrote it. Write the special key with
+  a timestamp of the last-mod time minus one year. Adjust the
+  idle timeout based on this time.
+- if the special key is there, check whether we're still within 24
+  hours of the encoded last-mod time and adjust the idle
+  timeout accordingly.
+
+This doesn't help the case where someone starts up bk7 for a while,
+like for an import, and then tries to create a delta with bk6. In that
+case bk6 will be locked out until the bk7 uniq_daemon exits. During a
+staff meeting we agreed that this bk6 failure mode was acceptable.
+
+== Server
+
+The `uniq_daemon` server is started by bk when it needs a unique delta
+key and the uniq_daemon isn't already running. The server runs in
+the background and waits for requests over a datagram socket (udp)
+and exits after a certain time of inactivity.
+
+The db file is stored in the following directory:
+- if env var `_BK_UNIQ_DIR` is defined, use that
+- if "`uniqdb`" config option exists, use `<config>/%HOST`
+- if `/netbatch/.bk-%USER/bk-keys-db/%HOST` is writable, use that
+  abcdefghAO
+- else use `<dotbk>/bk-keys-db/%HOST`
+
+A lock file (named "`lock`") and a file containing the uniq_daemon's
+listening UDP port number ("`port`") are stored along side the
+db file ("`db`").
+
+On startup, the lock file is used to ensure that at most one server
+instance is ever handling requests.
+
+If the lock is available, it is acquired and then the server writes
+the `port` file and listens for requests. If `--startsock=<port>` is
+specified on the cmd line, the server makes a TCP connection to `<port>`
+*after* the `port` file is written to disk.
+
+If the lock is busy, it means that another server instance already is
+running and servicing requests, so the daemon exits without incurring
+any db side effects. If `--startsock=<port>` is specified, a TCP
+connection still is made to `<port>`, just before the second instance
+exits.
+
+NOTE: Should the second server verify the first server is actually
+running? What if I `killed -9` the first server and it left the `db`
+locked, or does `sccslock()` already handle that?
+
+So by using `--startsock`, a client knows that, after it has received
+the handshake from the server, a `uniq_daemon` is running and its `port`
+file has been written with the port on which it is listening.
+
+There still is an exit race, where a valid port file can exist but the
+server instance which wrote it is on its shutdown path but has not yet
+removed its port file. In such a case, a client can acquire a
+connection to the server but then see a premature EOF on the socket
+and should retry the connection.
+
+On exit, the server purges old delta keys and compacts the db (by
+copying the data to a fresh mdbm) if it has had over 1 MB of data
+and at least as much data has been deleted as added since the last
+compaction.
+
+== Client
+
+BK determines whether there is a `uniq_daemon` running by looking for
+a `port` file and if found, checking the output of `sccs_stalelock()`
+to determine if the server is still running.
+
+If a `port` file is not found, or the `lock` file is found to be
+stale, a new server instance is spawned in the background.
+
+Once the server is know to be running, bk contacts the `uniq_daemon`
+by sending its queries to `UDP 127.0.0.1:PORT`.
+
+Each query is a single datagram with the following command:
+
+  insert-key\n@<SHORT KEY>\n<TIMESTAMP>\n@\n
+
+Where `<SHORT KEY>` is the simplified version of the key:
+`USER@HOST|PATH|DATE`, and `<TIMESTAMP>` is the current time. The
+client saves the md5 hash of this entire query.
+
+The server's response includes the md5 checksum of the question it is
+answering in the first line. in the above case, it would be:
+
+  <MD5>
+  OK-<FUDGE>
+
+If the server's response's `MD5` doesn't match the `MD5` saved by the
+client, the response is discarded and a new query is sent to the
+server.
+
+The client also implements its own timeout mechanism and will retry
+contacting the server at least three times. In between each, it will
+also check whether a server is present by double checking the `port`
+file and calling `sccs_stalelock()` on the lock again. If no server is
+found, one will be started and the counter will be reset to 3.

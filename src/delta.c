@@ -3,12 +3,6 @@
 #include "sccs.h"
 #include "logging.h"
 
-private int
-hasKeyword(sccs *s)
-{
-	return (s->xflags & (X_RCS|X_SCCS));
-}
-
 int
 fix_gmode(sccs *s, int gflags)
 {
@@ -131,6 +125,7 @@ delta_main(int ac, char **av)
 	int	sflags = SF_GFILE|SF_WRITE_OK|SF_NOHASREVS;
 	int	checkout = 0, ignorePreference = 0;
 	int	c, rc;
+	char	*didciFile = 0;
 	char	*initFile = 0;
 	char	*diffsFile = 0;
 	char	*prog, *name;
@@ -138,11 +133,19 @@ delta_main(int ac, char **av)
 	char	*mode = 0;
 	FILE	*diffs = 0;
 	FILE	*init = 0;
+	FILE	*didci = 0;
 	pfile	pf = {0};
 	int	dash, dbsort = 1, errors = 0, fire, dangling;
 	off_t	sz;
 	project	*locked_proj = 0;
+	int	prefer_cfile = 0;
 	char	here[MAXPATH];
+	longopt	lopts[] = {
+		{ "csetmark", 301 },
+		{ "prefer-cfile", 302 },
+		{ "did-ci;", 303 },
+		{ 0, 0 }
+	};
 
 	prog = strrchr(av[0], '/');
 	if (prog) prog++;
@@ -159,7 +162,7 @@ delta_main(int ac, char **av)
 	}
 
 	while ((c =
-	    getopt(ac, av, "abcCdD:E|fGI;ilm|M;npPqRsSTuy|Y|Z|", 0)) != -1) {
+	    getopt(ac, av, "abcCdD:E|fGI;ilm|M;npPqRsSTuy|Y|Z|", lopts)) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;	/* undoc? 2.0 */
@@ -229,6 +232,13 @@ delta_main(int ac, char **av)
 			break;
 		    case 'E': encp = optarg; break; 		/* doc 2.0 */
 		    case 'S': dbsort = 0; break;		/* undoc */
+		    case 301:	// --csetmark
+			dflags |= DELTA_CSETMARK; break;	/* undoc */
+		    case 302:	// --prefer-cfile
+			prefer_cfile = 1; break;		/* undoc */
+		    case 303:	// --did-ci=
+			didciFile = optarg;
+			break;
 
 		    default: bk_badArg(c, av);
 		}
@@ -267,6 +277,11 @@ delta_main(int ac, char **av)
 "%s: only one file may be specified without a checkin comment\n", av[0]);
 		usage();
 	}
+	if (!comments_got() && prefer_cfile) {
+		fprintf(stderr,
+		    "%s: must have -y or -Y when using --prefer-cfile\n", prog);
+		usage();
+	}
 	if (initFile && (dflags & DELTA_DONTASK)) {
 		fprintf(stderr,
 		    "%s: only init file or comment, not both.\n", av[0]);
@@ -285,6 +300,11 @@ delta_main(int ac, char **av)
 	if (initFile && !(init = fopen(initFile, "r"))) {
 		fprintf(stderr,"%s: init file '%s': %s.\n",
 			av[0], initFile, strerror(errno));
+		return (1);
+	}
+	if (didciFile && !(didci = fopen(didciFile, "w"))) {
+		fprintf(stderr, "%s: didci file '%s': %s.\n",
+		    av[0], didciFile, strerror(errno));
 		return (1);
 	}
 	if (fire = (getenv("_IN_DELTA") == 0)) putenv("_IN_DELTA=YES");
@@ -310,8 +330,8 @@ delta_main(int ac, char **av)
 			}
 			goto next;
 		}
-		if (mode) d = sccs_parseArg(s, d, 'O', mode, 0);
 		lease_check(s->proj, O_WRONLY, s);
+		if (mode) d = sccs_parseArg(s, d, 'O', mode, 0);
 		if (df & DELTA_AUTO) {
 			if (HAS_SFILE(s)) {
 				df &= ~NEWFILE;
@@ -343,7 +363,7 @@ delta_main(int ac, char **av)
 				df |= DELTA_SAVEGFILE;
 				reget = 1;	/* to write pfile */
 			} else if (co & CO_GET) {
-				if (hasKeyword(s))  {
+				if (HAS_KEYWORDS(s))  {
 					gf |= GET_EXPAND;
 					reget = 1;
 				} else {
@@ -355,7 +375,7 @@ delta_main(int ac, char **av)
 
 		nrev = NULL;
 		if (HAS_PFILE(s)) {
-			if (sccs_read_pfile("delta", s, &pf)) {
+			if (sccs_read_pfile(s, &pf)) {
 				errors |= 2;
 				goto next;
 			}
@@ -366,6 +386,7 @@ delta_main(int ac, char **av)
 				errors |= 1;
 				break;
 			}
+			if (prefer_cfile) comments_readcfile(s, 0, d);
 		}
 		if (fire && proj_root(s->proj) &&
 		    (locked_proj != s->proj)) {
@@ -416,6 +437,11 @@ delta_main(int ac, char **av)
 			goto next;
 		}
 
+		if (didci) {
+			fprintf(didci, "%s|%s\n",
+			    s->sfile, REV(s, sccs_top(s)));
+		}
+
 		if (dangling) {
 			sccs_free(s);
 			strip_danglers(name, dflags);
@@ -451,7 +477,7 @@ delta_main(int ac, char **av)
 			 * have set keywords in sccs_delta() so we need to
 			 * check again.
 			 */
-			if (hasKeyword(s) && !(gf & GET_EDIT)) {
+			if (HAS_KEYWORDS(s) && !(gf & GET_EDIT)) {
 				gf |= GET_EXPAND;
 				gf &= ~GET_SKIPGET;
 				reget = 0;
@@ -482,6 +508,7 @@ next:		if (init) fclose(init);
 		unless (df & DELTA_DONTASK) comments_done();
 		name = sfileNext();
 	}
+	if (didci) fclose(didci);
 	if (sfileDone()) errors |= 64;
 	if (locked_proj) {
 		chdir(proj_root(locked_proj));
@@ -492,5 +519,3 @@ next:		if (init) fclose(init);
 	comments_done();
 	return (errors);
 }
-
-

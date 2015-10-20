@@ -554,7 +554,12 @@ cd ../rcopy
 bk portal $Q .
 bk attach $Q ../solo comp
 _BK_DEVELOPER= bk --cd=comp -r check
+bk _heapdump -e ChangeSet | grep comp > GOT.ORIG
+test `wc -l < GOT.ORIG` -eq 1 || fail -f GOT.ORIG not one line long
 bk --config=poly:on pull $Q
+bk _heapdump -e ChangeSet | grep comp > GOT.PULL
+test `wc -l < GOT.PULL` -eq 1 || fail -f GOT.PULL not one line long
+cmp -s GOT.ORIG GOT.PULL && fail -f GOT.PULL should have changed
 bk changes -Vr1.1..+ -nd'$unless(:GFILE:=~*BitKeeper/*){:I:\t:GFILE:}' > GOT
 cat <<EOF > WANT
 1.3	ChangeSet
@@ -573,6 +578,9 @@ echo OK
 echo $N Test out unpull of poly attach ..............................$NL
 bk portal $Q -r
 bk unpull $Q -sf || fail
+bk _heapdump -e ChangeSet | grep comp > GOT.UNPULL
+test `wc -l < GOT.UNPULL` -eq 1 || fail -f GOT.UNPULL not one line long
+cmpfiles GOT.ORIG GOT.UNPULL
 echo OK
 
 echo $N Test out poly db ............................................$NL

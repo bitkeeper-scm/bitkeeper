@@ -1,0 +1,146 @@
+#
+cat << EOF
+double-click shellx-testrepos
+right-click on the explorer background
+select BitKeeper->Create a new Repository Here...
+See:
+
+  the launch of BK Setup Assisstant (Wizard)
+
+EOF
+cont
+
+#
+cat << EOF
+Using the wizard, create a new repository called "created"
+[the options selected are not relevant to this test]
+See:
+
+  a new directory icon appear with the BK delta icon overlay
+
+EOF
+cont
+
+#
+cat << EOF
+right-click the created repo
+select BitKeeper->Clone ...
+See:
+
+   - a dialog with the following components:
+     - Parent folder/url text entry field
+     - Target folder/url text entry field
+     - Rollback Revision text entry field
+     - Get the demo repository checkbox
+     - 4 buttons, Clone, Cancel, Reverse, Help
+
+EOF
+cont
+
+#
+cat << EOF
+Click the Cancel button and see:
+
+  the dialog is dismissed
+
+EOF
+cont
+
+#
+cat << EOF
+Once again, right-click on the explorer background, select:
+
+    BitKeeper->Clone
+
+in the dialog, click Help and see:
+
+    the launch of BK helptool on the bk url manpage
+
+Quit the helptool, the clone dialog should still be there
+EOF
+cont
+
+#
+cat << EOF
+Select the \"Get the demo\" and click Clone
+See:
+
+  a new command window appear,
+  in it, a clone of the demo repo running
+  when the clone completes, the window stays offering a prompt
+
+Type "exit" and press enter.
+
+EOF
+cont
+
+#
+cat << EOF
+Right-click the background, select BitKeeper->Clone
+
+  type "created" into the Parent folder field
+  type "cloned" into the Target folder field
+
+Click the "Reverse" button twice and see:
+
+  The source and target urls swap.
+
+Click the Cancel button.
+
+EOF
+cont
+
+#
+cat << EOF
+Right-click the background, select BitKeeper->Clone
+
+  type "created" into the Parent folder field
+  type "cloned" into the Target folder field
+  Click the "Clone" button.
+  Exit the command window when the clone is complete.
+
+EOF
+cont
+
+#
+cat << EOF
+Right-click the created repo, select BitKeeper->Clone
+
+See:
+  ".../cloned" in the Parent folder/url field.
+  ".../cloned_copy" in the Target folder/url field
+
+Click the "Clone" button.
+
+See:
+
+  the appearance of a clone_copy repo icon
+
+Dismiss the command window.
+
+EOF
+cont
+
+#
+cat << EOF
+Right-click any repo, select BitKeeper->Clone...
+
+See the Parent and Target fields.
+
+Click the "Get the demo repo" button.
+
+See:
+
+    the Parent field rewritten with the demo repo url.
+    the Target field should be cleared.
+
+Type something into the Target field, click the "Get the demo" button.
+
+See:
+
+    both the Parent and Target field should be cleared.
+
+Click Cancel to dismiss the dialog.
+
+EOF
+cont

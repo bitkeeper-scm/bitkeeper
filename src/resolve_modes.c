@@ -67,8 +67,7 @@ m_local(resolve *rs)
 	ser_t	r = sccs_findrev(rs->s, rs->revs->remote);
 
 	sccs_close(rs->s); /* for win32 */
-	mode_delta(rs,
-	    rs->s->sfile, r, MODE(rs->s, l), sccs_Xfile(rs->s, 'r'), REMOTE);
+	mode_delta(rs, rs->s->sfile, r, MODE(rs->s, l), REMOTE);
 	return (1);
 }
 
@@ -80,7 +79,7 @@ m_remote(resolve *rs)
 	ser_t	r = sccs_findrev(rs->s, rs->revs->remote);
 
 	sccs_close(rs->s); /* for win32 */
-	mode_delta(rs, rs->s->sfile, l, MODE(rs->s, r), sccs_Xfile(rs->s, 'r'), LOCAL);
+	mode_delta(rs, rs->s->sfile, l, MODE(rs->s, r), LOCAL);
 	return (1);
 }
 

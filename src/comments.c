@@ -134,7 +134,6 @@ comments_prompt(char *file)
 		printf("-------------------------------------------------\n");
 		printf("Use these comments: (e)dit, (a)bort, (u)se? ");
 		fflush(stdout);
-		uniq_close();	/* don't hold uniqdb lock */
 		unless (getline(0, buf, sizeof(buf)) > 0) return (-1);
 		switch (buf[0]) {
 		    case 'y': 
@@ -155,27 +154,33 @@ comments_prompt(char *file)
 int
 comments_readcfile(sccs *s, int prompt, ser_t d)
 {
-	char	*cfile = sccs_Xfile(s, 'c');
-	FILE	*f, *f2;
-	char	*p;
+	FILE	*f;
+	char	*t;
 	char	**comments = 0;
 	char	tmp[MAXPATH];
 
-	unless (exists(cfile)) return (-1);
+	unless (t = xfile_fetch(s->gfile, 'c')) return (-1);
 	bktmp(tmp);
-	if (fileCopy(cfile, tmp)) perror(tmp);
-	if (prompt && comments_prompt(tmp)) return (-2);
-	unless (f = fopen(tmp, "r")) return (-1);
-	unless (f2 = fopen(cfile, "w")) return (-1);
-	s->used_cfile = 1;
-	while (p = fgetline(f)) {
-		comments = addLine(comments, strdup(p));
-		fprintf(f2, "%s\n", p);
+	unless (f = fopen(tmp, "w")) {
+		free(t);
+		perror(tmp);
+		unlink(tmp);
+		return (-1);
 	}
-	fclose(f2);
+	fputs(t, f);
+	free(t);
+	fclose(f);
+	if (prompt && comments_prompt(tmp)) {
+		unlink(tmp);
+		return (-2);
+	}
+	t = loadfile(tmp, 0);
+	xfile_store(s->gfile, 'c', t);
+	comments = splitLine(t, "\n", 0);
+	free(t);
+	s->used_cfile = 1;
 	comments_set(s, d, comments);
 	freeLines(comments, free);
-	fclose(f);
 	unlink(tmp);
 	return (0);
 }
@@ -184,7 +189,7 @@ void
 comments_cleancfile(sccs *s)
 {
 	unless (s->used_cfile) return;
-	unlink(sccs_Xfile(s, 'c'));
+	xfile_delete(s->gfile, 'c');
 }
 
 void

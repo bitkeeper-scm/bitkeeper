@@ -206,7 +206,7 @@ bk export -tpatch -rCSET_B,BADCSET 2> OUT && {
 	echo export should not have worked
 	exit 1
 }
-grep -q "Cannot find revision.*BADCSET" OUT || {
+grep -q "rset: no such delta \`\`BADCSET'' in ChangeSet" OUT || {
 	echo Didn\'t find expected error message
 	cat OUT
 	exit 1
@@ -215,7 +215,7 @@ bk export -tpatch -rBADCSET,CSET_B 2> OUT && {
 	echo export should not have worked
 	exit 1
 }
-grep -q "Cannot find revision.*BADCSET" OUT || {
+grep -q "rset: no such delta \`\`BADCSET'' in ChangeSet" OUT || {
 	echo Didn\'t find expected error message
 	cat OUT
 	exit 1
@@ -225,12 +225,12 @@ echo OK
 echo $N Test patch using keys .......................................$NL
 KEYA=`bk changes -rCSET_A -k`
 KEYB=`bk changes -rCSET_B -k`
-bk export -T -tpatch -rCSET_A,CSET_B > PATCH1 || exit 1
-bk export -T -tpatch -r"$KEYA","$KEYB" > PATCH2 || exit 1
+bk export -T -tpatch -rCSET_A,CSET_B > PATCH1 || fail
+bk export -T -tpatch -r"$KEYA","$KEYB" > PATCH2 || fail
 cmpfiles PATCH1 PATCH2
 echo OK
 
 echo $N Test with edited file containing exclude ....................$NL
 bk edit $Q -x+ moo.c
-bk export -tpatch -rCSET_A,+ > PATCH1 || exit 1
+bk export -tpatch -rCSET_A,+ > PATCH1 || fail
 echo OK

@@ -90,6 +90,23 @@
 #define	isDriveColonPath(p)	(isalpha((p)[0]) && ((p)[1] == ':'))
 #define	executable(p)	((access(p, X_OK) == 0) && !isdir(p))
 
+/*
+ * ceiling log power 2
+ *
+ * round x to the next higher power of two
+ *
+ * from: Hacker's Delight p48
+ *   or: http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
+ */
+#define        clp2(x) \
+	({ u32 v = (x)-1; \
+	v |= (v >> 1); \
+	v |= (v >> 2); \
+	v |= (v >> 4); \
+	v |= (v >> 8); \
+	v |= (v >> 16); \
+	(v + 1); })
+
 /* cleanpath.c */
 char	*basenm(char *s);
 void	cleanPath(char *path, char cleanPath[]);
@@ -109,7 +126,7 @@ typedef struct {
 
 void	data_setSize(DATA *d, u32 size);
 void	data_resize(DATA *d, u32 newlen);
-void	data_append(DATA *d, void *data, int len);
+void	data_append(DATA *d, void *data, u32 len);
 #define	data_appendStr(f, s)       data_append(f, (s), strlen(s))
 
 /* die.c */
@@ -126,10 +143,16 @@ char	*dirname(char *path);
 char	*dirname_alloc(char *path);
 
 /* dirs.c */
-#define	getdir(dir)	_getdir(dir, 0)
-char	**_getdir(char *dir, struct stat *sb);
-typedef	int	(*walkfn)(char *file, struct stat *statbuf, void *data);
-int	walkdir(char *dir, walkfn fn, void *data);
+char	**getdir(char *dir);
+typedef	int	filefn(char *file, char type, void *data);
+typedef	int	dirfn(char *file, void *data);
+
+typedef struct {
+	filefn	*file;	/* called on each inode in a dir (file, link, dir) */
+	dirfn	*dir;	/* called after all inodes in a dir are done */
+	dirfn	*tail;	/* called after all inodes in the subtree are done */
+} walkfns;
+int walkdir(char *dir, walkfns fn, void *token);
 
 /* efopen.c */
 FILE	*efopen(char *env);
@@ -213,7 +236,8 @@ typedef struct {
 	int	ret;		/* return value from getopt */
 } longopt;
 
-#define	GETOPT_ERR	256
+#define	GETOPT_ERR	256	/* bad option */
+#define	GETOPT_NOARG	257	/* missing argument */
 int	getopt(int ac, char **av, char *opts, longopt *lopts);
 void	getoptReset(void);
 void	getoptConsumed(int n);
@@ -356,6 +380,9 @@ int	tcp_accept(int sock);
 void	tcp_ndelay(int sock, int val);
 void	tcp_reuse(int sock);
 void	tcp_keepalive(int sock);
+int	udp_server(char *addr, int port, int quiet);
+int	udp_connect(char *host, int port);
+int	readable(int fd, int sec);
 int	sockport(int s);
 char	*sockaddr(int);
 int	isLocalHost(char *h);

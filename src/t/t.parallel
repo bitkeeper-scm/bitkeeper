@@ -27,37 +27,37 @@ BK_CONFIG="license:$BKL_PRO;licsign1:$BKL_P1$BKL_P2$BKL_P3;checkout:none!"
 export BK_CONFIG
 _BK_FORCE_NETFS=YES
 export _BK_FORCE_NETFS
-bk clone $Q $TESTDATA/bitcluster parallel || exit 1
+bk clone $Q $TESTDATA/bitcluster parallel || fail
 SFIO=`grep 'sfio -i' parallel/BitKeeper/log/cmd_log|wc -l`
 test $SFIO = 18 || fail wrong number $SFIO
 echo OK
 
 echo $N Clone repo force just one child sfio ........................$NL
 rm -rf showproc
-bk clone -j1 $Q $TESTDATA/bitcluster || exit 1
+bk clone -j1 $Q $TESTDATA/bitcluster || fail
 SFIO=`grep 'sfio -i' bitcluster/BitKeeper/log/cmd_log|wc -l`
 test $SFIO = 2 || fail wrong number $SFIO
 echo OK
 
 echo $N Clone repo force just one sfio via config parallel:0 ........$NL
 rm -rf bitcluster showproc
-bk --config='parallel:0' clone $Q $TESTDATA/bitcluster || exit 1
+bk --config='parallel:0' clone $Q $TESTDATA/bitcluster || fail
 SFIO=`grep 'sfio -i' bitcluster/BitKeeper/log/cmd_log|wc -l`
 test $SFIO = 2 || fail wrong number $SFIO
 echo OK
 
 echo $N Clone repo force just one sfio total ........................$NL
 rm -rf bitcluster showproc
-bk clone -j0 $Q $TESTDATA/bitcluster || exit 1
+bk clone -j0 $Q $TESTDATA/bitcluster || fail
 SFIO=`grep 'sfio -i' bitcluster/BitKeeper/log/cmd_log|wc -l`
 test $SFIO = 2 || fail wrong number $SFIO
 echo OK
 
 echo $N Check that both repos check clean ...........................$NL
 cd parallel
-bk -r check -ac || exit 1
+bk -r check -ac || fail
 cd ../bitcluster
-bk -r check -ac || exit 1
+bk -r check -ac || fail
 echo OK
 
 echo $N Check that both repos have the same data ....................$NL
@@ -98,7 +98,7 @@ esac
 echo $N Clone repo and check that checkout get runs in parallel .....$NL
 rm -rf parallel showproc
 BK_CONFIG="license:$BKL_PRO;licsign1:$BKL_P1$BKL_P2$BKL_P3;checkout:get!;partial_check:on!"
-bk clone $Q $TESTDATA/bitcluster parallel || exit 1
+bk clone $Q $TESTDATA/bitcluster parallel || fail
 CHECKOUT=`grep 'checkout -Tq' parallel/BitKeeper/log/cmd_log|wc -l`
 test $CHECKOUT = 16 || fail wrong number $CHECKOUT
 echo OK
@@ -106,7 +106,7 @@ echo OK
 echo $N Clone non-parallel in checkout mode for diffs ...............$NL
 rm -rf bitcluster
 BK_CONFIG="license:$BKL_PRO;licsign1:$BKL_P1$BKL_P2$BKL_P3;checkout:get!;partial_check:on!"
-bk clone -j0 $Q $TESTDATA/bitcluster || exit 1
+bk clone -j0 $Q $TESTDATA/bitcluster || fail
 CHECKOUT=`grep 'checkout -Tq' bitcluster/BitKeeper/log/cmd_log|wc -l`
 test $CHECKOUT = 2 || fail wrong number $CHECKOUT
 echo OK

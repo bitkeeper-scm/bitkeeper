@@ -36,7 +36,6 @@ sccs_getComments(char *prompt)
 	fprintf(stderr, "End comments with \".\" by itself or a blank line.\n");
 	assert(prompt);
 	fprintf(stderr, "%s>>  ", prompt);
-	uniq_close();	/* don't hold uniqdb lock */
 	catch();
 	while (getline(0, buf2, sizeof(buf2)) > 0) {
 		if ((buf2[0] == 0) || streq(buf2, "."))
@@ -63,7 +62,6 @@ getParkComment(int *err)
 
 	fprintf(stderr, "End comments with \".\" by itself or a blank line.\n");
         fprintf(stderr, "parkfile>>  ");
-	uniq_close();	/* don't hold uniqdb lock */
 	catch();
         while (getline(0, buf2, sizeof(buf2)) > 0) {
                 if ((buf2[0] == 0) || streq(buf2, "."))

@@ -34,7 +34,7 @@ do
 done
 cd "$HERE/project"
 echo hi > bam
-bk new $Q -b bam || exit 1
+bk new $Q -b bam || fail
 bk commit $Q -y"add csets to gdb"
 echo OK
 
@@ -174,13 +174,13 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Unpopulate alias not populated is an error...................$NL
-bk here rm DEFAULT 2>ERR && exit 1
+bk here rm DEFAULT 2>ERR && fail
 grep -q "here: DEFAULT not in HERE" ERR || {
 	echo failed
 	cat ERR
 	exit 1
 }
-bk here rm all 2> ERR && exit 1
+bk here rm all 2> ERR && fail
 grep -q "here: ALL not in HERE" ERR || {
 	echo failed
 	cat ERR
@@ -189,7 +189,7 @@ grep -q "here: ALL not in HERE" ERR || {
 echo OK
 
 echo $N Populate special alias \'ALL\' and unpopulate it...............$NL
-bk here add $Q all || exit 1
+bk here add $Q all || fail
 bk comps -h > GOT
 cat <<EOF > WANT
 ./comp1
@@ -213,7 +213,7 @@ primes
 EOF
 bk alias -k here > GOT
 cmpfiles GOT WANT
-bk here rm $Q all || exit 1
+bk here rm $Q all || fail
 bk comps -h > GOT
 cat <<EOF > WANT
 ./comp2
@@ -231,7 +231,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Populate a glob and unpopulate it............................$NL
-bk here add $Q './g*' || exit 1
+bk here add $Q './g*' || fail
 bk comps -h > GOT
 cat <<EOF > WANT
 ./comp2
@@ -245,7 +245,7 @@ cmpfiles GOT WANT
 (echo PRODUCT; echo primes; cd gcc; bk id -S; cd ../gdb; bk id -S) | bk _sort > WANT
 bk alias -k here > GOT
 cmpfiles GOT WANT
-bk here rm $Q './g*' || exit 1
+bk here rm $Q './g*' || fail
 bk comps -h > GOT
 cat <<EOF > WANT
 ./comp2
@@ -263,7 +263,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Unpopulate primes............................................$NL
-bk here rm $Q primes || exit 1
+bk here rm $Q primes || fail
 bk comps -h > GOT
 cat <<EOF > WANT
 EOF
@@ -276,7 +276,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Unpopulate a component with changes should fail..............$NL
-bk here add $Q primes || exit 1
+bk here add $Q primes || fail
 bk comps -h > GOT
 cat <<EOF > WANT
 ./comp2
@@ -295,7 +295,7 @@ cd comp2
 touch foobar
 bk new $Q foobar
 cd ..
-bk here rm primes 2> ERR && exit 1
+bk here rm primes 2> ERR && fail
 grep -q 'Non-committed file' ERR || {
 	echo failed
 	cat ERR
@@ -317,8 +317,8 @@ done
 cd "$HERE/project"
 bk alias new subprimes $SP
 cd "$HERE/copy"
-bk pull $Q || exit 1
-bk here add $Q subprimes || exit 1
+bk pull $Q || fail
+bk here add $Q subprimes || fail
 bk comps -h > GOT
 cat <<EOF > WANT
 ./comp2
@@ -334,7 +334,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Unpopulate subprimes.........................................$NL
-bk here rm $Q subprimes || exit 1
+bk here rm $Q subprimes || fail
 bk comps -h > GOT
 cat <<EOF > WANT
 ./comp2
@@ -347,7 +347,7 @@ echo OK
 
 echo $N Remove enclosing and populate subcomponents should work......$NL
 bk _rm comp2/SCCS/s.foobar  # crud from above test
-bk alias set $Q HERE subprimes || exit 1
+bk alias set $Q HERE subprimes || fail
 bk comps -h > GOT
 cat <<EOF > WANT
 ./comp2/sub2
@@ -374,7 +374,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Unpopulate of subcomponents should work......................$NL
-bk here rm $Q primes || exit 1
+bk here rm $Q primes || fail
 cat > WANT <<EOF
 PRODUCT
 subprimes
@@ -439,7 +439,7 @@ do	bk setup -C -fc"$HERE/empty" deep$i
 	cd deep$i
 done
 cd "$HERE/project"
-bk commit $Q -y"add deep stuff" || exit 1
+bk commit $Q -y"add deep stuff" || fail
 cd "$HERE/copy"
 # should only have subprimes currently
 bk alias -k here > GOT
@@ -448,8 +448,8 @@ PRODUCT
 subprimes
 EOF
 cmpfiles GOT WANT
-bk pull $Q || exit 1
-bk here rm $Q subprimes || exit 1
+bk pull $Q || fail
+bk here rm $Q subprimes || fail
 # make sure the pull did not bring the deeps stuff
 # since it's not in our aliases file
 bk comps -h > GOT
@@ -465,7 +465,7 @@ echo OK
 
 # now start the deep nest fun
 echo $N Populate deep1/deep2/deep3/deep4/deep5.......................$NL
-bk here add $Q ./deep1/deep2/deep3/deep4/deep5 || exit 1
+bk here add $Q ./deep1/deep2/deep3/deep4/deep5 || fail
 bk comps -h > GOT
 cat > WANT <<EOF
 ./deep1/deep2/deep3/deep4/deep5
@@ -474,7 +474,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Populate deep1/deep2.........................................$NL
-bk here add $Q ./deep1/deep2 || exit 1
+bk here add $Q ./deep1/deep2 || fail
 bk comps -h > GOT
 cat > WANT <<EOF
 ./deep1/deep2
@@ -499,7 +499,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Unpopulate deep1/deep2 should work...........................$NL
-bk here rm $Q ./deep1/deep2 || exit 1
+bk here rm $Q ./deep1/deep2 || fail
 bk comps -h > GOT
 cat > WANT <<EOF
 ./deep1/deep2/deep3/deep4/deep5
@@ -508,7 +508,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Repopulate deep1/deep2 with conflict should fail.............$NL
-mkdir deep1/deep2/conflict || exit 1
+mkdir deep1/deep2/conflict || fail
 bk here add $Q ./deep1/deep2 > ERR 2>&1 && {
 	echo failed
 	exit 1
@@ -521,7 +521,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Remove the conflict, now it works............................$NL
-rmdir deep1/deep2/conflict || exit 1
+rmdir deep1/deep2/conflict || fail
 bk here add $Q ./deep1/deep2
 bk comps -h > GOT
 cat > WANT <<EOF
@@ -544,9 +544,9 @@ echo OK
 
 if [ $WINDOWS = NO ]; then
 echo $N Populate with a symlink -- fails.............................$NL
-bk here rm $Q ./deep1/deep2/deep3/deep4/deep5 || exit 1
-test -d deep1/deep2/deep3/deep4/deep5 && exit 1
-rmdir deep1/deep2/deep3/deep4 || exit 1
+bk here rm $Q ./deep1/deep2/deep3/deep4/deep5 || fail
+test -d deep1/deep2/deep3/deep4/deep5 && fail
+rmdir deep1/deep2/deep3/deep4 || fail
 ln -s ../../../../deep1 deep1/deep2/deep3/deep4
 bk here add $Q ./deep1/deep2/deep3 > ERR 2>&1 && {
 	echo failed
@@ -558,11 +558,11 @@ cat > WANT <<EOF
 EOF
 cmpfiles GOT WANT
 # clean
-rm -f deep1/deep2/deep3/deep4 || exit 1
+rm -f deep1/deep2/deep3/deep4 || fail
 echo OK
 
 echo $N Populate with a symlink in a deeper component -- passes......$NL
-mkdir deep1/deep2/deep3/deep4 || exit 1
+mkdir deep1/deep2/deep3/deep4 || fail
 ln -s ../../../../deep1 deep1/deep2/deep3/deep4/deep5
 bk here add $Q ./deep1/deep2/deep3 > ERR 2>&1 || fail -f ERR
 bk comps -h > GOT
@@ -579,13 +579,13 @@ echo ---- Test unmapped repos ......................................
 echo $N Create an not-remapped component ............................$NL
 # in a remapped product...
 cd "$HERE"
-bk setup --sccs-compat -fcempty not-remapped || exit 1
+bk setup --sccs-compat -fcempty not-remapped || fail
 mv not-remapped copy
 cd copy
 bk portal $Q . || fail
 bk attach -N $Q not-remapped || fail
-test -d not-remapped/SCCS || exit 1
-test -d not-remapped/.bk && exit 1
+test -d not-remapped/SCCS || fail
+test -d not-remapped/.bk && fail
 echo OK
 
 echo $N Try to unpopulate it -- should fail because no parent .......$NL
@@ -601,7 +601,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Try to force unpopulate it ..................................$NL
-bk here rm $Q -f not-remapped || exit 1
+bk here rm $Q -f not-remapped || fail
 echo OK
 
 echo $N Test not-present comps do not interfere with rmcomp..........$NL

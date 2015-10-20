@@ -30,10 +30,10 @@ syswrite(STDOUT, $buf, 81920);' < $BK > "$DATA"
 cp "$DATA" data 
 cp "$DATA" data2 
 echo make me different >> data2
-bk new $Q data data2 || exit 1
+bk new $Q data data2 || fail
 ls > text
-bk new $Q text || exit 1
-test -d BitKeeper/BAM || exit 1
+bk new $Q text || fail
+test -d BitKeeper/BAM || fail
 bk commit $Q -ybaseline
 bk clone $Q . ../clone
 echo OK
@@ -50,46 +50,41 @@ bk -r clean
 bk -r co -q
 for i in data data2 text 
 do	test -f $i -a ! -w $i || {
-		echo $i should be read only
-		ls -l
-		exit 1
+		ls -l > ERR
+		fail -f ERR $i should be read only
 	}
 done
-bk pull $Q || exit 1
+bk pull $Q || fail
 for i in data data2 text 
 do	test -f $i -a ! -w $i || {
-		echo after pull, $i should be read only
-		ls -l
-		exit 1
+		ls -l > ERR
+		fail -f ERR after pull, $i should be read only
 	}
 done
 echo OK
 
 echo $N Check for wagerworks auto-edit bug - with bam server ........$NL
-bk unpull -fsq || exit 1
+bk unpull -fsq || fail
 bk bam server -q ../project
 bk bam clean -a > /dev/null 2>&1
 find BitKeeper/BAM -type f | grep -v index.db | grep -v BAM.index > FILES
 test -s FILES && {
-	echo failed to flush data
+	fail -f FILES failed to flush data
 	cat FILES
-	exit 1
 }
 bk -r clean
 bk -r co -q
 for i in data data2 text 
 do	test -f $i -a ! -w $i || {
-		echo $i should be read only
-		ls -l
-		exit 1
+		ls -l > ERR
+		fail -f ERR $i should be read only
 	}
 done
-bk pull $Q || exit 1
+bk pull $Q || fail
 for i in data data2 text 
 do	test -f $i -a ! -w $i || {
-		echo after pull, $i should be read only
-		ls -l
-		exit 1
+		ls -l > ERR
+		fail -f ERR after pull, $i should be read only
 	}
 done
 echo OK
@@ -105,11 +100,10 @@ BEFORE=`wc -l < BitKeeper/BAM/$RK/BAM.index`
 bk new $Q x y z
 AFTER=`wc -l < BitKeeper/BAM/$RK/BAM.index`
 test `expr $BEFORE + 3` -eq $AFTER || {
-	echo did not add 3 lines to BitKeeper/BAM/$RK/BAM.index
-	exit 1
+	fail did not add 3 lines to BitKeeper/BAM/$RK/BAM.index
 }
 bk commit $Q -yxyz
-bk -r check -ac || exit 1
+bk -r check -ac || fail
 echo OK
 cp BitKeeper/BAM/$RK/BAM.index .
 
@@ -124,7 +118,7 @@ echo $N Make sure fix -c does not confuse BAM .......................$NL
 bk fix -c
 echo u | bk new $Q x y z > OUT 2>&1
 bk commit $Q -yxyz
-bk -r check -acc || exit 1
+bk -r check -acc || fail
 echo OK
 
 echo $N Make sure we can gone bam files and check works .............$NL
@@ -132,10 +126,7 @@ ROOTKEY=`bk prs -hr+ -nd:ROOTKEY: x`
 bk _fslrm -f SCCS/s.x
 bk gone $Q "$ROOTKEY"
 bk commit $Q -ygone
-bk bam check $Q || {
-	echo failed
-	exit 1
-}
+bk bam check $Q || fail
 echo OK
 
 echo $N Again with dups in gone file.................................$NL
@@ -158,17 +149,17 @@ echo 1234 >> data
 cd ../project
 bk delta $Q -ywhatever ../gamelogic/data
 cd ../gamelogic
-bk -r check -ac || exit 1
+bk -r check -ac || fail
 echo OK
 
 echo $N Show that an lclone of an old BAM dir works .................$NL
 cd "$HERE"
-_BK_BAM_V2=1 bk clone $Q project project.old || exit 1
-BK_NO_HARDLINK_CLONE= bk clone $Q -l project.old copy.new || exit 1
+_BK_BAM_V2=1 bk clone $Q project project.old || fail
+BK_NO_HARDLINK_CLONE= bk clone $Q -l project.old copy.new || fail
 cd copy.new
-bk bam check $Q || exit 1
-test -f BitKeeper/BAM/index.db || exit 1
-test `find BitKeeper/BAM -name '*@*' -print | wc -l` = 0 || exit 1
+bk bam check $Q || fail
+test -f BitKeeper/BAM/index.db || fail
+test `find BitKeeper/BAM -name '*@*' -print | wc -l` = 0 || fail
 echo OK
 
 echo $N Make a standalone under a nested with BAM server ............$NL

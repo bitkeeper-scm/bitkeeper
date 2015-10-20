@@ -30,14 +30,13 @@
  * SUCH DAMAGE.
  */
 
-#include "system.h"
+#include "../sccs.h"
 #include "../cmd.h"
 
 int bflag, eflag, nflag, sflag, tflag, vflag;
 int rval;
 char *filename;
 
-static void usage(void);
 static void scanfiles(char *argv[], int cooked);
 static void cook_cat(FILE *);
 static void raw_cat(int);
@@ -88,18 +87,11 @@ catfile_main(int argc, char *argv[])
 }
 
 static void
-usage(void)
-{
-	fprintf(stderr, "usage: cat [-benstuv] [file ...]\n");
-	exit(1);
-	/* NOTREACHED */
-}
-
-static void
 scanfiles(char *argv[], int cooked)
 {
-	int i = 0;
+	int i = 0, type;
 	char *path;
+	char *t;
 	FILE *fp;
 
 	while ((path = argv[i]) != NULL || i == 0) {
@@ -108,6 +100,12 @@ scanfiles(char *argv[], int cooked)
 		if (path == NULL || strcmp(path, "-") == 0) {
 			filename = "stdin";
 			fd = 0;
+		} else if (type = is_xfile(path)) {
+			t = xfile_fetch(path, type);
+			fputs(t, stdout);
+			free(t);
+			++i;
+			continue;
 		} else {
 			filename = path;
 			fd = open(path, O_RDONLY, 0);

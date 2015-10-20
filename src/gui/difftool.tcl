@@ -723,6 +723,8 @@ main(int argc, string argv[])
 	string	rsetOpts = "-H --elide";
 	string	arg, rev1, rev2, path1, path2, localUrl;
 	int	dashs = 0;
+	string	relative = "", alias = "", tmp;
+	string	lopts[] = {"standalone"};
 
 	if (argc > 4) bk_usage();
 
@@ -742,7 +744,7 @@ main(int argc, string argv[])
 	Wm_deiconify(".");
 	update();
 
-	while (arg = getopt(argv, "bwL|r;S", {})) {
+	while (arg = getopt(argv, "bwL|r;Ss;", lopts)) {
 		switch (arg) {
 		    case "b":
 			gc("ignoreWhitespace", 1);
@@ -765,7 +767,13 @@ main(int argc, string argv[])
 				rev2 = optarg;
 			}
 			break;
+		    case "s":
+			relative .= " -s${optarg}";
+			tmp = cleanAlias(optarg);
+			alias .= " -s${tmp}";
+			break;
 		    case "S":
+		    case "standalone":
 			dashs = 1;
 			rsetOpts .= " -S";
 			break;
@@ -777,6 +785,7 @@ main(int argc, string argv[])
 			break;
 		}
 	}
+	if ((length(alias)) > 0 && dashs) bk_usage();
 	path1 = argv[optind];
 	path2 = argv[++optind];
 
@@ -856,7 +865,7 @@ main(int argc, string argv[])
 				cd2product();
 			}
 			fp = popen("bk _sfiles_local "
-				   "--elide ${S} -r${rev1}", "r");
+				   "${alias} --elide ${S} -r${rev1}", "r");
 		} else if (rev1) {
 			// bk difftool -r<@cset1> -r<@cset2>
 			unless (rev2) bk_usage();
@@ -866,10 +875,11 @@ main(int argc, string argv[])
 				cd2product();
 			}
 			rsetOpts .= " -r${rev1}..${rev2}";
-			fp = popen("bk rset ${rsetOpts}", "r");
+			fp = popen("bk rset ${alias} ${rsetOpts}", "r");
 		} else {
-			// bk difftool
-			fp = popen("bk -U --sfiles-opts=cg", "r");
+			// bk difftool [-S] [-salias]
+			if (dashs) relative = "-s.";
+			fp = popen("bk -U ${relative} --sfiles-opts=cg", "r");
 		}
 	}
 
@@ -884,5 +894,42 @@ main(int argc, string argv[])
 	}
 
 	Wm_title(".", "Diff Tool");
+}
+
+// 2 things: see if all the components in the alias are here, and
+// take a relative path and make it from the repo root.
+// If alias is not all here, the command still returns true, just
+// with nothing in the output.  It is meant as a filter: give it
+// N aliases, and it will return the ones that are here.
+// Examples in BK repo in src/ dir:
+//   $ bk here -h BOGUS_ALIAS || echo fail
+//   alias: BOGUS_ALIAS must be either a glob, key, alias, or component.
+//   fail
+//
+//   $ bk here -h t || echo fail
+//   ./src/t
+//
+//   $ bk here -h default || echo fail
+//   default
+//
+//   $ bk here -h ALL || echo fail
+//   
+string
+cleanAlias(string alias)
+{
+	string	out, err;
+
+	switch (system("bk alias -h ${alias}", undef, &out, &err)) {
+	    case undef:
+		bk_usage();
+		break;
+	    case 0:
+		if (out) return (out);	// is a valid alias
+		err = "alias: ${alias} not present";
+		/*FALLTHROUGH*/
+	    default:
+		message(err, exit: 1);
+		break;
+	}
 }
 #lang tcl

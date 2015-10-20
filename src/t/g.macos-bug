@@ -1,0 +1,74 @@
+echo $N Check for OS X menu bug causing Tk crash, one menu item......$NL
+cat >test.tcl <<'EOF'
+package require Tk
+font configure TkDefaultFont -size 10
+ttk::label .status -relief sunken
+menu .mbar
+menu .mbar.apple
+.mbar add cascade -menu .mbar.apple
+.mbar.apple add command -label hello  -command {puts "hello"}
+. configure -menu .mbar
+font configure TkDefaultFont -size 12
+.mbar.apple invoke 0
+update idletasks
+exit 0
+EOF
+bk wish ./test.tcl >GOT 2>&1 || fail -f GOT
+cat >WANT <<'EOF'
+hello
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check for OS X menu bug causing Tk crash, two menu items.....$NL
+cat >test.tcl <<'EOF'
+package require Tk
+font configure TkDefaultFont -size 10
+ttk::label .status -relief sunken
+menu .mbar
+menu .mbar.apple
+.mbar add cascade -menu .mbar.apple
+.mbar.apple add command -label hello  -command {puts "hello"}
+.mbar.apple add command -label hello2 -command {puts "hello2"}
+. configure -menu .mbar
+font configure TkDefaultFont -size 12
+.mbar.apple invoke 0
+.mbar.apple invoke 1
+update idletasks
+exit 0
+EOF
+bk wish ./test.tcl >GOT 2>&1 || fail -f GOT
+cat >WANT <<'EOF'
+hello
+hello2
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check for OS X menu bug causing Tk crash, three menu items...$NL
+cat >test.tcl <<'EOF'
+package require Tk
+font configure TkDefaultFont -size 10
+ttk::label .status -relief sunken
+menu .mbar
+menu .mbar.apple
+.mbar add cascade -menu .mbar.apple
+.mbar.apple add command -label hello  -command {puts "hello"}
+.mbar.apple add command -label hello2 -command {puts "hello2"}
+.mbar.apple add command -label hello3 -command {puts "hello3"}
+. configure -menu .mbar
+font configure TkDefaultFont -size 12
+.mbar.apple invoke 0
+.mbar.apple invoke 1
+.mbar.apple invoke 2
+update idletasks
+exit 0
+EOF
+bk wish ./test.tcl >GOT 2>&1 || fail -f GOT
+cat >WANT <<'EOF'
+hello
+hello2
+hello3
+EOF
+cmpfiles WANT GOT
+echo OK

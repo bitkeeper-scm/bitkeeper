@@ -4,10 +4,10 @@
 bk sccslog \- list deltas sorted by date across all files
 .SH SYNOPSIS
 .B bk sccslog
-.[B] \-bDfn
-.[OPTreq] \-c dates
-.[OPTreq] \-d dspec
-.[OPTopt] \-L url
+.[B] \-bDfnS
+.[OPTreq] \-c d
+.[OPTreq] \-d d
+.[OPTopt] \-L u
 .[OPTreq] \-r r
 .BKARGS
 .SH DESCRIPTION
@@ -91,6 +91,12 @@ Add  a newline to each printed record (sometimes useful with
 .tp
 .OPTreq \-r r
 Specify a revision or a range.
+.tp
+.B \-S
+.tp
+.B \-\-standalone
+Use with -L in a nested component when you want the component to act like
+a standalone repository.
 .SS RANGE SPECIFICATIONS
 .\" XXX format for the below list?
 .TP \fB\-c1992/07.\|.1992\fP

@@ -11,10 +11,6 @@ int		proj_cd2root(void);
 int		proj_cd2product(void);
 int		proj_chdir(char *newdir);
 MDBM*		proj_config(project *p);
-int		proj_configint(project *p, char *key, int defval);
-char*		proj_configval(project *p, char *key);
-int		proj_configbool(project *p, char *key);
-u32		proj_configsize(project *p, char *key);
 
 /*
  * defines for proj_checkout() 
@@ -86,6 +82,7 @@ char		**proj_scanComps(project *p, u32 state);
 /* the features.c subset of project* */
 typedef	struct {
 	u32	bits;	/* bitfield of current features in repo */
+	u32	new:1;	/* force write of features */
 } p_feat;
 
 p_feat*		proj_features(project *p);

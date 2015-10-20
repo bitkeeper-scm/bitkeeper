@@ -24,11 +24,11 @@ for x in 1 2; do
 	bk delta $Q -yokay g$x
 done
 # check a bunch of combinations to see if checksums are good.
-bk checksum -r+ g1 || exit 1
-bk checksum g1 || exit 1
-bk checksum -r+ g1 g2 || exit 1
-bk checksum g1 g2 || exit 1
-bk checksum -v g1 g2 2> GOT || exit 1
+bk checksum -r+ g1 || fail
+bk checksum g1 || fail
+bk checksum -r+ g1 g2 || fail
+bk checksum g1 g2 || fail
+bk checksum -v g1 g2 2> GOT || fail
 cat <<EOF > WANT
 g1: bad metadata in 0 deltas
 g2: bad metadata in 0 deltas
@@ -37,17 +37,17 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Test for specific checksum to be bad ........................$NL
-bk checksum -r+ b1 || exit 1
-bk checksum -r1.1 b1 2> GOT && exit 1
+bk checksum -r+ b1 || fail
+bk checksum -r1.1 b1 2> GOT && fail
 echo 'Bad checksum 00451:00450 in b1|1.1' > WANT
 checkfiles WANT GOT
 echo OK
 
 echo $N Test for finding a bad checksum in a file ...................$NL
-bk checksum b1 2> GOT && exit 1
+bk checksum b1 2> GOT && fail
 echo 'Bad checksum 00451:00450 in b1|1.1' > WANT
 checkfiles WANT GOT
-bk checksum -v b1 b2 2> GOT && exit 1
+bk checksum -v b1 b2 2> GOT && fail
 cat <<EOF > WANT
 Bad checksum 00451:00450 in b1|1.1
 b1: bad metadata in 1 deltas
@@ -58,7 +58,7 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Test for finding a bad checksum in a list of files ..........$NL
-bk checksum -v g1 b1 g2 2> GOT && exit 1
+bk checksum -v g1 b1 g2 2> GOT && fail
 cat <<EOF > WANT
 g1: bad metadata in 0 deltas
 Bad checksum 00451:00450 in b1|1.1
@@ -86,12 +86,14 @@ if [ $DSUM = "41232" ]
 then	NSUM="23765"
 else	NSUM="41232"
 fi
-bk _scat ChangeSet | perl -pe "s/K$DSUM/K$NSUM/" | bk undos > tmp
+# Only change the checksum in 1.2
+PROG="\$doit = / 1\\.2 / if /^\\001d/; s/K$DSUM/K$NSUM/ if \$doit;"
+bk _scat ChangeSet | perl -pe "$PROG" | bk undos > tmp
 chmod 444 tmp
 bk _mv tmp SCCS/s.ChangeSet
 bk admin -z ChangeSet
-bk checksum -r+ ChangeSet || exit 1
-bk checksum -vr+ ChangeSet 2> GOT || exit 1
+bk checksum -r+ ChangeSet || fail
+bk checksum -vr+ ChangeSet 2> GOT || fail
 cat <<EOF > WANT
 ChangeSet: bad metadata in 0 deltas
 EOF
@@ -99,18 +101,18 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Test for cset checksum to be bad ............................$NL
-bk checksum -r1.2 ChangeSet 2> GOT && exit 1
+bk checksum -r1.2 ChangeSet 2> GOT && fail
 echo "Bad checksum $NSUM:$DSUM in ChangeSet|1.2" > WANT
 checkfiles WANT GOT
-bk checksum ChangeSet 2> GOT && exit 1
+bk checksum ChangeSet 2> GOT && fail
 checkfiles WANT GOT
-bk checksum -v ChangeSet 2> GOT && exit 1
+bk checksum -v ChangeSet 2> GOT && fail
 echo "ChangeSet: bad metadata in 1 deltas" >> WANT
 checkfiles WANT GOT
 echo OK
 
 echo $N Fix the files ...............................................$NL
-bk checksum -fv b1 ChangeSet g1 g2 b2 2> GOT || exit 1
+bk checksum -fv b1 ChangeSet g1 g2 b2 2> GOT || fail
 cat <<EOF > WANT
 b1: fixed bad metadata in 1 deltas
 ChangeSet: fixed bad metadata in 1 deltas
@@ -121,8 +123,25 @@ EOF
 checkfiles WANT GOT
 echo OK
 
+test -d "$TESTDATA/xaraya-exclude-merge" && {
+echo $N Test an exclude of a merge fails closure test ...............$NL
+# We can turn off verify checking
+bk --config=no_graphverify:1 --cd="$TESTDATA/xaraya-exclude-merge" \
+    bk checksum ChangeSet || fail
+# Or run with it on
+bk --cd="$TESTDATA/xaraya-exclude-merge" bk checksum ChangeSet 2> GOT && fail
+echo "closure failure ChangeSet(1.482)" > WANT
+cmpfiles WANT GOT
+echo OK
+}
+
 echo $N Test a tag has no checksum problems .........................$NL
 bk tag $Q TOP
 test "`bk changes -ar=5 -d':DT:-:DS:'`" = T-5 || fail 4 no longer a tag
 bk checksum -r=5 ChangeSet || fail tag checksum wrong
+echo OK
+
+echo $N Test an empty cset causes no problems .......................$NL
+bk commit $Q -Ff --tag=EMPTY || fail commit failed
+bk checksum -rEMPTY ChangeSet || fail empty checksum wrong
 echo OK

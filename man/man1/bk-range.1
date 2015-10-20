@@ -4,7 +4,9 @@
 bk range \- demo program to show ranges & dates
 .SH SYNOPSIS
 .B bk range
-.[B] \-q
+.[B] \-qS
+[\c
+.OPTopt \-L url ]
 [\c
 .OPTreq \-c range 
 |
@@ -132,6 +134,12 @@ Specify deltas by revision number
 .tp
 .B \-q
 run quietly; default is to warn about all files which do not match the range
+.tp
+.B \-S
+.tp
+.B \-\-standalone
+Use with -L in a nested component when you want the component to act like
+a standalone repository.
 .SH "SEE ALSO"
 .SA annotate
 .SA changes

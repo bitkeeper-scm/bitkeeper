@@ -52,7 +52,7 @@ if [ -d RESYNC ]
 then	echo Failed to finish resolve
 	exit 1
 fi
-bk admin -qhhh ChangeSet || exit 1
+bk admin -qhhh ChangeSet || fail
 echo OK
 echo $N Add the same tag in each repository, creating conflict ......$NL
 cd "$HERE/project"

@@ -3,7 +3,6 @@
 
 private	char	*getRelativeName(char *, project *proj);
 private	void	rmDir(char *);
-private char	**xfileList(char *sfile);
 
 /*
  * Give a pathname to a file or a dir, remove the SCCS dir, the parent,
@@ -38,14 +37,13 @@ sccs_mv(char	*name, char *dest,
 {
 	char 	*t, *destfile, *oldpath, *newpath, *rev;
 	char	*sname = 0, *gfile = 0, *sfile = 0, *ogfile = 0, *osfile = 0;
-	char	**xlist = NULL;
 	sccs	*s = 0;
 	ser_t	d;
 	int	error = 0, was_edited = 0, has_diffs = 0;
-	int	i, flags;
+	int	flags;
 	pfile   pf;
 	struct	utimbuf	ut;
-	char	buf[1024];
+	char	buf[MAXKEY];
 
 	T_SCCS("(%s, %s, %d, %d, %d)", name, dest, isDir, isDelete,force);
 	sname = name2sccs(name);
@@ -108,7 +106,7 @@ err:		if (sname) free(sname);
 
 	/* XXX - shouldn't this call sccs_clean()? */
 	if (HAS_PFILE(s) && !HAS_GFILE(s)){
-		unlink(s->pfile);
+		xfile_delete(s->gfile, 'p');
 		s->state &= ~S_PFILE;
 	}
 
@@ -134,7 +132,7 @@ err:		if (sname) free(sname);
 	if (HAS_PFILE(s)) {
 		was_edited = 1;
 		has_diffs = sccs_hasDiffs(s, SILENT, 1);
-		if (sccs_read_pfile("mvdir", s, &pf)) {
+		if (sccs_read_pfile(s, &pf)) {
 			error |= 1;
 			fprintf(stderr, "%s: bad pfile\n", s->gfile);
 			goto out;
@@ -143,7 +141,7 @@ err:		if (sname) free(sname);
 
 	/* close the file before we move it - win32 restriction */
 	sccs_close(s);
-	error = fileMove(s->sfile, sfile);
+	error = sfile_move(s->proj, s->sfile, sfile);
 
 	ogfile = strdup(s->gfile);
 	osfile = strdup(s->sfile);
@@ -163,49 +161,6 @@ err:		if (sname) free(sname);
 		ut.actime = ut.modtime = time(0);
 		utime(gfile, &ut);
 	}
-	
-	/*
-	 * Clean up or move the helper file
-	 * a) c.file[@rev] 
-	 * b) d.file
-	 * c) p.file
-	 */
-	xlist = xfileList(osfile);
-	EACH(xlist) {
-		char	nbuf[MAXPATH];
-		char	*obase, *ndir, *nbase, *n_path, *rev;
-		char	prefix;
-
-		obase = basenm(xlist[i]);
-		prefix =obase[0];
-		/* Warn if not a c.file or a d.file */
-		unless (strchr("cdp", prefix)) {
-			fprintf(stderr,
-			    "Warning: unexpected helper file: %s, skipped\n",
-			    xlist[i]);
-			continue;
-		}
-		if (isDelete && (prefix != 'd')) {
-			unlink(xlist[i]);
-		} else {
-			strcpy(nbuf, sfile);
-			nbase = basenm(sfile);
-			ndir = dirname(nbuf);
-			/*
-			 * subsitude old dir with new dir
-			 * subsitude old base name with new base name
-			 * if c.file@rev, glue on the @rev part
-			 */
-			rev = NULL;
-			if (prefix == 'c') rev = strrchr(obase, '@');
-			n_path = aprintf("%s/%c.%s%s",
-				ndir, prefix, &nbase[2], rev ? rev : "");
-			fileMove(xlist[i], n_path);
-			free(n_path);
-		}
-	}
-	freeLines(xlist, free);
-
 	if (isDelete && was_edited) {
 		if (has_diffs) {
 			flags = SILENT|DELTA_FORCE;
@@ -217,7 +172,7 @@ err:		if (sname) free(sname);
 			}
 		}
 		unlink(s->gfile);
-		unlink(s->pfile);
+		xfile_delete(s->gfile, 'p');
 		was_edited = 0;
 	}
 	flags = isDelete ? ADMIN_DELETE : ADMIN_NEWPATH;
@@ -246,7 +201,7 @@ out:	if (s) sccs_free(s);
 	/* honor checkout modes when running on behalf of unrm */
 	if (isUnDelete) {
 		s = sccs_init(sfile, INIT_NOCKSUM);
-		do_checkout(s);
+		do_checkout(s, 0, 0);
 		sccs_free(s);
 	}
 	if (ogfile) free(ogfile);
@@ -280,35 +235,4 @@ rmDir(char *dir)
 	if (streq(".", dir) || samepath(".", dir)) return;
 	debug((stderr, "removing %s\n", dir));
 	rmdir(dir);
-}
-
-/*
- * Get a list of c.file[@rev] files
- * XXX - this should NOT be done like this, there should be a generic API
- * for managing the c.files.
- */
-private char **
-xfileList(char *sfile)
-{
-	char 	*dir, *p, *q, *xname, **d;
-	char	**xlist = NULL;
-	int	i;
-	char	buf[MAXPATH];
-
-	strcpy(buf, sfile);
-	dir =  dirname(buf);
-	p = strrchr(sfile, '/');
-	assert(p);
-	assert(p[1] == 's');
-	xname = &p[2];
-	unless (d = getdir(dir)) return (0);
-	EACH (d) {
-		if (q = strrchr(d[i], '@')) *q = 0;
-		if (streq(xname, &(d[i][1]))) {
-			if (q) *q = '@';
-			xlist = addLine(xlist, aprintf("%s/%s", dir, d[i]));
-		}
-	}
-	freeLines(d, free);
-	return (xlist);
 }

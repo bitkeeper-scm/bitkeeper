@@ -85,12 +85,13 @@ for allowed values.)
 You can specify a default config file to make setup easier
 and more consistent for every repository on the system by creating
 a template in
-.B /etc/BitKeeper/etc/config.template
+.BR "\`bk dotbk\`/config.template" ,
+.BR /etc/BitKeeper/etc/config.template ,
 or
-.BR "\`bk dotbk\`/config.template" .
-If either file exists,
+.BR "\`bk bin\`/config.template" .
+If any of those files exists,
 .B bk setup
-automatically uses that as the 
+automatically uses the keys in the first one found as the 
 .B BitKeeper/etc/config
 file.
 See

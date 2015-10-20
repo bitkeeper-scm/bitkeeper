@@ -4,26 +4,26 @@ commercial testparent
 cd BitKeeper/etc
 bk edit $Q config
 echo 'checkout:edit!' >> config
-bk ci $Q -yco:edit config || exit 1
-bk commit $Q -yco:edit || exit !
+bk ci $Q -yco:edit config || fail
+bk commit $Q -yco:edit || fail
 cd "$HERE"
-bk clone $Q testparent testc1 || exit 1
-bk clone $Q testparent testc2 || exit 1
+bk clone $Q testparent testc1 || fail
+bk clone $Q testparent testc2 || fail
 cd testc1
 echo hi > testfile.cpp
-bk new $Q testfile.cpp || exit 1
-bk commit $Q -ynewfile || exit 1
-bk push $Q || exit 1
+bk new $Q testfile.cpp || fail
+bk commit $Q -ynewfile || fail
+bk push $Q || fail
 cd ../testc2
-bk pull $Q || exit 1
+bk pull $Q || fail
 echo a conflict > testfile.cpp
-bk ci -yconflict $Q testfile.cpp || exit 1
-bk commit $Q -yconflict || exit 1
+bk ci -yconflict $Q testfile.cpp || fail
+bk commit $Q -yconflict || fail
 cd ../testc1
 echo another conflict >> testfile.cpp
-bk ci -yconflict2 $Q testfile.cpp || exit 1
-bk commit $Q -yconflict2 || exit 1
-bk push $Q || exit 1
+bk ci -yconflict2 $Q testfile.cpp || fail
+bk commit $Q -yconflict2 || fail
+bk push $Q || fail
 cd ../testc2
 echo q | bk pull $Q 2> ERR && {
 	echo should error
@@ -37,10 +37,10 @@ echo OK
 
 echo $N checkout:EDIT w resolved simple content conflict on pull ....$NL
 cd "$HERE"
-bk clone $Q -r1.3 testparent testc3 || exit 1
+bk clone $Q -r1.3 testparent testc3 || fail
 cd testc3
 echo 'different conflict' > testfile.cpp
-bk ci $Q -yconflict3 testfile.cpp || exit 1
+bk ci $Q -yconflict3 testfile.cpp || fail
 bk commit $Q -yconflict3
 (echo ul; echo comment; echo .) | bk pull $Q 2> ERR || {
 	echo should pass

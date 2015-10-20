@@ -46,7 +46,7 @@ do	echo $N Set flag $f and make sure it is there .$NL
 	LEN=`expr 25 - $LEN`
 	FILL=`printf "%${LEN}s\n" "" | sed -e 's/ /./g' 2> /dev/null`
 	echo $N $FILL$NL
-	bk admin -f$f xflags || exit 1
+	bk admin -f$f xflags || fail
 	bk flags xflags > FLAGS
 	grep -q $f FLAGS || {
 		echo flag $f not found
@@ -59,7 +59,7 @@ do	echo $N Set flag $f and make sure it is there .$NL
 	LEN=`expr 24 - $LEN`
 	FILL=`printf "%${LEN}s\n" "" | sed -e 's/ /./g' 2> /dev/null`
 	echo $N $FILL$NL
-	bk admin -F$f xflags || exit 1
+	bk admin -F$f xflags || fail
 	bk flags xflags > FLAGS
 	grep -q $f FLAGS && {
 		echo flag $f found
@@ -75,14 +75,14 @@ do	echo $N Make sure we can not change flag $f .$NL
 	LEN=`expr 27 - $LEN`
 	FILL=`printf "%${LEN}s\n" "" | sed -e 's/ /./g' 2> /dev/null`
 	echo $N $FILL$NL
-	bk admin -f$f xflags 2>/dev/null && exit 1
+	bk admin -f$f xflags 2>/dev/null && fail
 	bk flags xflags > FLAGS
 	cmp -s FLAGS START || {
 		echo changed a flag that should not be changed
 		diff START FLAGS
 		exit 1
 	}
-	bk admin -F$f xflags 2>/dev/null && exit 1
+	bk admin -F$f xflags 2>/dev/null && fail
 	bk flags xflags > FLAGS
 	cmp -s FLAGS START || {
 		echo changed a flag that should not be changed
@@ -103,9 +103,9 @@ echo OK
 echo $N Commit, clone, make sure we get the same file ...............$NL
 bk commit $Q -ywhatever
 bk admin -z
-bk clone $Q -r1.1 . ../clone || exit 1
+bk clone $Q -r1.1 . ../clone || fail
 cd ../clone
-bk pull $Q || exit 1
+bk pull $Q || fail
 bk admin -z
 bk _cp SCCS/s.xflags A
 bk _cp ../project/SCCS/s.xflags B
@@ -221,7 +221,7 @@ echo foo > dos
 echo bar >> dos
 bk new $Q dos
 bk admin -fEOLN_WINDOWS dos
-bk -r check -ac || exit 1
+bk -r check -ac || fail
 echo OK
 
 echo $N Test that EOLN_WINDOWS doesn\'t break hasDiffs ...............$NL
@@ -235,25 +235,25 @@ echo OK
 echo $N Check that flags are remembered on branches .................$NL
 touch foo
 bk new $Q foo
-bk admin -fYEAR4 foo 2> OUT || exit 1
+bk admin -fYEAR4 foo 2> OUT || fail
 if [ -s OUT ]; then
 	cat OUT
 	echo failed
 	exit 1
 fi
-bk admin -FYEAR4 foo 2> OUT || exit 1
+bk admin -FYEAR4 foo 2> OUT || fail
 if [ -s OUT ]; then
 	cat OUT
 	echo failed
 	exit 1
 fi
-bk admin -fYEAR4 foo 2> OUT || exit 1
+bk admin -fYEAR4 foo 2> OUT || fail
 if [ -s OUT ]; then
 	cat OUT
 	echo failed
 	exit 1
 fi
-bk admin -r1.3 -fYEAR4 foo 2>OUT || exit 1
+bk admin -r1.3 -fYEAR4 foo 2>OUT || fail
 if [ -s OUT ]; then
 	cat OUT
 	echo failed
@@ -279,7 +279,7 @@ cat - <<EOF > foo
 1
 EOF
 bk delta $Q -y"5 new lines" foo
-bk admin -fEXPAND1 foo 2> OUT || exit 1
+bk admin -fEXPAND1 foo 2> OUT || fail
 same=`bk prs -r+ -hnd:LU: foo`
 test "$same" -eq 1 || {
 	echo Fail

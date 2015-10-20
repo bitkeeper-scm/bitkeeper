@@ -60,63 +60,63 @@ echo $N Create test CVS repository ..................................$NL
 mkdir cvsroot
 export CVSROOT="$HERE/cvsroot"
 test $WINDOWS = YES && CVSROOT=`pwd`/cvsroot
-cvs init || exit 1
+cvs init || fail
 mkdir "$CVSROOT/test"
-cvs $Q co test || exit 1
+cvs $Q co test || fail
 cd test
 # include yucky filename
 if [ $WINDOWS = NO ]
 then
 	echo hi > "\\"
-	cvs -Q new "\\" >/dev/null 2>&1 || exit 1
-	cvs -Q commit -m"funny file" > /dev/null || exit 1
+	cvs -Q new "\\" >/dev/null 2>&1 || fail
+	cvs -Q commit -m"funny file" > /dev/null || fail
 	rm "\\"
-	cvs remove "\\" 2> /dev/null || exit 1
+	cvs remove "\\" 2> /dev/null || fail
 fi
 
 cvsbuild()
 {
 	f="new_$1"
 	echo $NUM > $f
-	cvs -Q new $f >/dev/null 2>&1 || exit 1
+	cvs -Q new $f >/dev/null 2>&1 || fail
 	for p in $*
 	do	f="sub_$p"
 		if [ \! -f $f ]
 		then	echo $NUM > $f
- 			cvs -Q new $f >/dev/null 2>&1 || exit 1
+ 			cvs -Q new $f >/dev/null 2>&1 || fail
 		else
 			echo $NUM >> $f
 		fi
 	done
-	cvs -Q commit -m"commit $1" > /dev/null || exit 1
-	cvs -Q tag "tag_$1" || exit 1
+	cvs -Q commit -m"commit $1" > /dev/null || fail
+	cvs -Q tag "tag_$1" || fail
 	NUM=`expr $NUM + 1`
 }
 
 
 NUM=0
 cvsbuild start
-cvs -Q tag -b branch1 || exit 1
+cvs -Q tag -b branch1 || fail
 sleep 1
 cvsbuild next1 start
-cvs -Q tag -b branch2 || exit 1
+cvs -Q tag -b branch2 || fail
 sleep 1
 cvsbuild end next1 start backport
 cd "$HERE"
-cvs -Q co -dtest.branch1 -rbranch1 test >/dev/null 2>&1 || exit 1
+cvs -Q co -dtest.branch1 -rbranch1 test >/dev/null 2>&1 || fail
 cd test.branch1
 cvsbuild branch1 start
 sleep 1
 cvsbuild next2 branch1 start
-cvs -Q tag -b branch1_1 || exit 1
+cvs -Q tag -b branch1_1 || fail
 sleep 1
 cvsbuild next3 next2 branch1 start
 cd "$HERE"
-cvs -Q co -dtest.branch1_1 -rbranch1_1 test >/dev/null 2>&1 || exit 1
+cvs -Q co -dtest.branch1_1 -rbranch1_1 test >/dev/null 2>&1 || fail
 cd test.branch1_1
 cvsbuild branch1_1 next2 branch1 start
 cd "$HERE"
-cvs -Q co -dtest.branch2 -rbranch2 test >/dev/null 2>&1 || exit 1
+cvs -Q co -dtest.branch2 -rbranch2 test >/dev/null 2>&1 || fail
 cd test.branch2
 cvsbuild branch2 next1 start
 
@@ -126,7 +126,7 @@ cvsbuild branch2 next1 start
 #cvsbuild end1 backport
 #sleep 1
 #cd $HERE/test.branch2
-#cvs -Q update -j HEAD >/dev/null 2>&1 || exit 1
+#cvs -Q update -j HEAD >/dev/null 2>&1 || fail
 #cat <<END > sub_next1
 #1
 #2
@@ -138,23 +138,23 @@ cvsbuild branch2 next1 start
 #2
 #7
 #END
-#cvs -Q commit -m"do merge" || exit 1
+#cvs -Q commit -m"do merge" || fail
 echo OK
 
 echo $N Import CVS trunk ............................................$NL
 cd "$HERE"
 commercial import_trunk
 # verify that checkout:edit doesn't break anything
-bk edit $Q BitKeeper/etc/config || exit 1
+bk edit $Q BitKeeper/etc/config || fail
 echo "checkout:edit" >> BitKeeper/etc/config
-bk import $Q -f -tCVS -g1 -k -Hfree.bk "$CVSROOT/test" . || exit 1
+bk import $Q -f -tCVS -g1 -k -Hfree.bk "$CVSROOT/test" . || fail
 bk -Ur get -S $Q
-bk treediff . "$HERE/test" || exit 1
+bk treediff . "$HERE/test" || fail
 bk pending $Q && {
 	echo shouldn\'t have files pending...
 	exit 1
 }
-bk -r check -a || exit 1
+bk -r check -a || fail
 bk changes -t -nd':REV:$each(:TAG:){ (:TAG:)}' > TAGS
 cat <<EOF > WANT_TAGS
 1.4 tag_end
@@ -174,14 +174,14 @@ echo $N Import CVS branch1...........................................$NL
 cd "$HERE"
 bk clone $Q -r1.1 "$HERE/import_trunk" "$HERE/import_branch1"
 cd "$HERE/import_branch1"
-bk import -bbranch1 $Q -f -tCVS -g1 -k  -Hfree.bk "$CVSROOT/test" . || exit 1
+bk import -bbranch1 $Q -f -tCVS -g1 -k  -Hfree.bk "$CVSROOT/test" . || fail
 bk -Ur get $Q
-bk treediff . "$HERE/test.branch1" || exit 1
+bk treediff . "$HERE/test.branch1" || fail
 bk pending $Q && {
 	echo shouldn\'t have files pending...
 	exit 1
 }
-bk -r check -a || exit 1
+bk -r check -a || fail
 bk changes -t -nd':REV:$each(:TAG:){ (:TAG:)}' > TAGS
 cat <<EOF > WANT_TAGS
 1.5 tag_next3
@@ -196,14 +196,14 @@ echo $N Import CVS branch2...........................................$NL
 cd "$HERE"
 bk clone $Q -r1.1 "$HERE/import_trunk" "$HERE/import_branch2"
 cd "$HERE/import_branch2"
-bk import -bbranch2 $Q -f -tCVS -g1 -k  -Hfree.bk "$CVSROOT/test" . || exit 1
+bk import -bbranch2 $Q -f -tCVS -g1 -k  -Hfree.bk "$CVSROOT/test" . || fail
 bk -Ur get $Q
-bk treediff . "$HERE/test.branch2" || exit 1
+bk treediff . "$HERE/test.branch2" || fail
 bk pending $Q && {
 	echo shouldn\'t have files pending...
 	exit 1
 }
-bk -r check -a || exit 1
+bk -r check -a || fail
 bk changes -t -nd':REV:$each(:TAG:){ (:TAG:)}' > TAGS
 cat <<EOF > WANT_TAGS
 1.4 tag_branch2
@@ -217,14 +217,14 @@ echo $N Import CVS branch1_1.........................................$NL
 cd "$HERE"
 bk clone $Q -r1.1 "$HERE/import_trunk" "$HERE/import_branch1_1"
 cd "$HERE/import_branch1_1"
-bk import -bbranch1_1 $Q -f -tCVS -g1 -k -Hfree.bk "$CVSROOT/test" . || exit 1
+bk import -bbranch1_1 $Q -f -tCVS -g1 -k -Hfree.bk "$CVSROOT/test" . || fail
 bk -Ur get $Q
-bk treediff . "$HERE/test.branch1_1" || exit 1
+bk treediff . "$HERE/test.branch1_1" || fail
 bk pending $Q && {
 	echo shouldn\'t have files pending...
 	exit 1
 }
-bk -r check -a || exit 1
+bk -r check -a || fail
 bk changes -t -nd':REV:$each(:TAG:){ (:TAG:)}' > TAGS
 cat <<EOF > WANT_TAGS
 1.5 tag_branch1_1
@@ -243,16 +243,16 @@ echo 1 > sub_next1
 echo 1 > sub_start
 bk delta $Q -yfix sub_next1 sub_start
 bk commit $Q -yfix
-bk pull $Q ../import_branch2 || exit 1
+bk pull $Q ../import_branch2 || fail
 echo OK
 
 echo $N Try setting up the file1 and file2 do not agree error .......$NL
 cd "$HERE/test"
 echo new >> sub_start
 echo other >> new_start
-cvs -Q commit -mjunk > /dev/null || exit 1
-cvs -Q tag -b fakebranch || exit 1
-cvs -Q admin -Nfakebranch:1.2.0.2 sub_start >/dev/null 2>&1 || exit 1
+cvs -Q commit -mjunk > /dev/null || fail
+cvs -Q tag -b fakebranch || fail
+cvs -Q admin -Nfakebranch:1.2.0.2 sub_start >/dev/null 2>&1 || fail
 cd "$HERE"
 bk clone $Q -r1.1 "$HERE/import_trunk" "$HERE/import_fake"
 cd "$HERE/import_fake"

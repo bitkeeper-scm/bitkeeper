@@ -68,9 +68,9 @@ SCCS/s.s.foo
 bar/SCCS/s.s.foo
 bar/blech/SCCS/s.s.foo
 EOF
-cmp -s GOT WANT
-if [ $? -ne 0 ]; then echo failed; diff GOT WANT; exit 1; fi
+cmpfiles GOT WANT
 echo OK
+
 echo $N Check explicit list with some files left out ................$NL
 sort <<EOF > X
 SCCS/s.ChangeSet
@@ -218,7 +218,7 @@ bar/blech
 bar/SCCS/s.s.foo
 bar/blech/SCCS/s.s.foo
 EOF
-bk sfiles -ycdxGijlnsRuDp | sort > GOT || exit 1
+bk sfiles -ycdxGijlnsRuDp | sort > GOT || fail
 cmpfiles WANT GOT
 echo OK
 
@@ -249,7 +249,7 @@ d------ bar/blech
 slc-G-y bar/SCCS/s.s.foo
 su----- bar/blech/SCCS/s.s.foo
 EOF
-bk sfiles -vE | sort > GOT || exit 1
+bk sfiles -vE | sort > GOT || fail
 cmpfiles WANT GOT
 echo OK
 
@@ -668,7 +668,7 @@ date > file
 bk new $Q file
 bk edit $Q file
 date >> file
-bk sfiles -cg > out || exit 1
+bk sfiles -cg > out || fail
 cat <<EOF > want
 file
 EOF
@@ -710,7 +710,7 @@ cd DIR_WITH_SCCS
 touch NORMAL PENDING MODIFIED LOCKED UNLOCKED GOTTEN NAME MODIFIED_W_COMMENTS
 bk new $Q NORMAL PENDING MODIFIED LOCKED UNLOCKED GOTTEN NAME MODIFIED_W_COMMENTS
 bk ignore '*.o'
-bk commit $Q -ywhatever || exit 1
+bk commit $Q -ywhatever || fail
 bk edit $Q LOCKED PENDING MODIFIED MODIFIED_W_COMMENTS
 bk delta $Q -fywhatever PENDING
 echo foo > MODIFIED
@@ -870,11 +870,11 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for BK directories in argv .............................$NL
-test X`bk sfiles -d DIR_WITH_SCCS` = XDIR_WITH_SCCS || exit 1
+test X`bk sfiles -d DIR_WITH_SCCS` = XDIR_WITH_SCCS || fail
 echo OK
 
 echo $N Look for BK directories in stdin ............................$NL
-test X`echo DIR_WITH_SCCS | bk sfiles -d -` = XDIR_WITH_SCCS || exit 1
+test X`echo DIR_WITH_SCCS | bk sfiles -d -` = XDIR_WITH_SCCS || fail
 echo OK
 
 echo $N Look for non-BK directories from the root ...................$NL
@@ -901,11 +901,11 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for non-BK directories in argv .........................$NL
-test X`bk sfiles -D DIR_WITH_NO_SCCS` = XDIR_WITH_NO_SCCS || exit 1
+test X`bk sfiles -D DIR_WITH_NO_SCCS` = XDIR_WITH_NO_SCCS || fail
 echo OK
 
 echo $N Look for non-BK directories in stdin ........................$NL
-test X`echo DIR_WITH_NO_SCCS | bk sfiles -D -` = XDIR_WITH_NO_SCCS || exit 1
+test X`echo DIR_WITH_NO_SCCS | bk sfiles -D -` = XDIR_WITH_NO_SCCS || fail
 echo OK
 
 echo $N Look for ignored files from the root ........................$NL
@@ -927,11 +927,11 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for ignored files in argv ..............................$NL
-test X`bk sfiles -i ignored.o` = Xignored.o || exit 1
+test X`bk sfiles -i ignored.o` = Xignored.o || fail
 echo OK
 
 echo $N Look for ignored files in stdin .............................$NL
-test X`echo ignored.o | bk sfiles -i -` = Xignored.o || exit 1
+test X`echo ignored.o | bk sfiles -i -` = Xignored.o || fail
 echo OK
 
 echo $N Look for junk files from the root ...........................$NL
@@ -955,7 +955,7 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for junk files in argv .................................$NL
-test X`bk sfiles -j SCCS/JUNK` = XSCCS/JUNK || exit 1
+test X`bk sfiles -j SCCS/JUNK` = XSCCS/JUNK || fail
 test works = not_yet && {
 test X`bk sfiles -j SCCS/c.NO_SFILE_NO_GFILE` = XSCCS/c.NO_SFILE_NO_GFILE || {
 	echo Yup, I thought this would fail
@@ -965,7 +965,7 @@ test X`bk sfiles -j SCCS/c.NO_SFILE_NO_GFILE` = XSCCS/c.NO_SFILE_NO_GFILE || {
 echo OK
 
 echo $N Look for junk files in stdin ................................$NL
-test X`echo SCCS/JUNK | bk sfiles -j -` = XSCCS/JUNK || exit 1
+test X`echo SCCS/JUNK | bk sfiles -j -` = XSCCS/JUNK || fail
 echo OK
 
 echo $N Look for subrepos from the root .............................$NL
@@ -988,11 +988,11 @@ echo OK
 
 test works = not_yet && {
 echo $N Look for subrepos in argv ...................................$NL
-test X`bk sfiles -R subrepo` = Xsubrepo || exit 1
+test X`bk sfiles -R subrepo` = Xsubrepo || fail
 echo OK
 
 echo $N Look for subrepos in stdin ..................................$NL
-test X`echo subrepo | bk sfiles -R -` = Xsubrepo || exit 1
+test X`echo subrepo | bk sfiles -R -` = Xsubrepo || fail
 echo OK
 }
 
@@ -1041,15 +1041,15 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for sfiles in argv .....................................$NL
-test X`bk sfiles -s SCCS/s.ChangeSet` = XSCCS/s.ChangeSet || exit 1
-test X`bk sfiles SCCS/s.ChangeSet` = XSCCS/s.ChangeSet || exit 1
+test X`bk sfiles -s SCCS/s.ChangeSet` = XSCCS/s.ChangeSet || fail
+test X`bk sfiles SCCS/s.ChangeSet` = XSCCS/s.ChangeSet || fail
 echo OK
 
 echo $N Look for sfiles in stdin ....................................$NL
-test X`echo SCCS/s.ChangeSet | bk sfiles -s -` = XSCCS/s.ChangeSet || exit 1
-test X`echo ChangeSet | bk sfiles -s -` = XSCCS/s.ChangeSet || exit 1
-test X`echo SCCS/s.ChangeSet | bk sfiles -` = XSCCS/s.ChangeSet || exit 1
-test X`echo ChangeSet | bk sfiles -` = XSCCS/s.ChangeSet || exit 1
+test X`echo SCCS/s.ChangeSet | bk sfiles -s -` = XSCCS/s.ChangeSet || fail
+test X`echo ChangeSet | bk sfiles -s -` = XSCCS/s.ChangeSet || fail
+test X`echo SCCS/s.ChangeSet | bk sfiles -` = XSCCS/s.ChangeSet || fail
+test X`echo ChangeSet | bk sfiles -` = XSCCS/s.ChangeSet || fail
 echo OK
 
 echo $N Look for extras from the root ...............................$NL
@@ -1077,11 +1077,11 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for extras in argv .....................................$NL
-test X`bk sfiles -x EXTRA1` = XEXTRA1 || exit 1
+test X`bk sfiles -x EXTRA1` = XEXTRA1 || fail
 echo OK
 
 echo $N Look for extras in stdin ....................................$NL
-test X`echo EXTRA1 | bk sfiles -x -` = XEXTRA1 || exit 1
+test X`echo EXTRA1 | bk sfiles -x -` = XEXTRA1 || fail
 echo OK
 
 echo $N Look for all extras from the root ...........................$NL
@@ -1113,13 +1113,13 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for all extras in argv .................................$NL
-test X`bk sfiles -ax EXTRA1` = XEXTRA1 || exit 1
-test X`bk sfiles -ax ignored.o` = Xignored.o || exit 1
+test X`bk sfiles -ax EXTRA1` = XEXTRA1 || fail
+test X`bk sfiles -ax ignored.o` = Xignored.o || fail
 echo OK
 
 echo $N Look for all extras in stdin ................................$NL
-test X`echo EXTRA1 | bk sfiles -ax -` = XEXTRA1 || exit 1
-test X`echo ignored.o | bk sfiles -ax -` = Xignored.o || exit 1
+test X`echo EXTRA1 | bk sfiles -ax -` = XEXTRA1 || fail
+test X`echo ignored.o | bk sfiles -ax -` = Xignored.o || fail
 echo OK
 
 echo $N Look for locked sfiles from the root ........................$NL
@@ -1145,13 +1145,13 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for locked sfiles in argv ..............................$NL
-test X`bk sfiles -l DIR_WITH_SCCS/SCCS/s.LOCKED` = XDIR_WITH_SCCS/SCCS/s.LOCKED || exit 1
-test X`bk sfiles -l DIR_WITH_SCCS/LOCKED` = XDIR_WITH_SCCS/SCCS/s.LOCKED || exit 1
+test X`bk sfiles -l DIR_WITH_SCCS/SCCS/s.LOCKED` = XDIR_WITH_SCCS/SCCS/s.LOCKED || fail
+test X`bk sfiles -l DIR_WITH_SCCS/LOCKED` = XDIR_WITH_SCCS/SCCS/s.LOCKED || fail
 echo OK
 
 echo $N Look for locked sfiles in stdin .............................$NL
-test X`echo DIR_WITH_SCCS/SCCS/s.LOCKED | bk sfiles -l -` = XDIR_WITH_SCCS/SCCS/s.LOCKED || exit 1
-test X`echo DIR_WITH_SCCS/LOCKED | bk sfiles -l -` = XDIR_WITH_SCCS/SCCS/s.LOCKED || exit 1
+test X`echo DIR_WITH_SCCS/SCCS/s.LOCKED | bk sfiles -l -` = XDIR_WITH_SCCS/SCCS/s.LOCKED || fail
+test X`echo DIR_WITH_SCCS/LOCKED | bk sfiles -l -` = XDIR_WITH_SCCS/SCCS/s.LOCKED || fail
 echo OK
 
 echo $N Look for unlocked sfiles from the root ......................$NL
@@ -1193,13 +1193,13 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for unlocked sfiles in argv ............................$NL
-test X`bk sfiles -u SCCS/s.ChangeSet` = XSCCS/s.ChangeSet || exit 1
-test X`bk sfiles -u ChangeSet` = XSCCS/s.ChangeSet || exit 1
+test X`bk sfiles -u SCCS/s.ChangeSet` = XSCCS/s.ChangeSet || fail
+test X`bk sfiles -u ChangeSet` = XSCCS/s.ChangeSet || fail
 echo OK
 
 echo $N Look for unlocked sfiles in stdin ...........................$NL
-test X`echo SCCS/s.ChangeSet | bk sfiles -u -` = XSCCS/s.ChangeSet || exit 1
-test X`echo ChangeSet | bk sfiles -u -` = XSCCS/s.ChangeSet || exit 1
+test X`echo SCCS/s.ChangeSet | bk sfiles -u -` = XSCCS/s.ChangeSet || fail
+test X`echo ChangeSet | bk sfiles -u -` = XSCCS/s.ChangeSet || fail
 echo OK
 
 echo $N Look for changed sfiles from the root .......................$NL
@@ -1223,13 +1223,13 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for changed sfiles in argv .............................$NL
-test X`bk sfiles -c DIR_WITH_SCCS/SCCS/s.MODIFIED` = XDIR_WITH_SCCS/SCCS/s.MODIFIED || exit 1
-test X`bk sfiles -c DIR_WITH_SCCS/MODIFIED` = XDIR_WITH_SCCS/SCCS/s.MODIFIED || exit 1
+test X`bk sfiles -c DIR_WITH_SCCS/SCCS/s.MODIFIED` = XDIR_WITH_SCCS/SCCS/s.MODIFIED || fail
+test X`bk sfiles -c DIR_WITH_SCCS/MODIFIED` = XDIR_WITH_SCCS/SCCS/s.MODIFIED || fail
 echo OK
 
 echo $N Look for changed sfiles in stdin ............................$NL
-test X`echo DIR_WITH_SCCS/SCCS/s.MODIFIED | bk sfiles -c -` = XDIR_WITH_SCCS/SCCS/s.MODIFIED || exit 1
-test X`echo DIR_WITH_SCCS/MODIFIED | bk sfiles -c -` = XDIR_WITH_SCCS/SCCS/s.MODIFIED || exit 1
+test X`echo DIR_WITH_SCCS/SCCS/s.MODIFIED | bk sfiles -c -` = XDIR_WITH_SCCS/SCCS/s.MODIFIED || fail
+test X`echo DIR_WITH_SCCS/MODIFIED | bk sfiles -c -` = XDIR_WITH_SCCS/SCCS/s.MODIFIED || fail
 echo OK
 
 echo $N Look for pending sfiles from the root .......................$NL
@@ -1251,13 +1251,13 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for pending sfiles in argv .............................$NL
-test X`bk sfiles -p DIR_WITH_SCCS/SCCS/s.PENDING` = XDIR_WITH_SCCS/SCCS/s.PENDING || exit 1
-test X`bk sfiles -p DIR_WITH_SCCS/PENDING` = XDIR_WITH_SCCS/SCCS/s.PENDING || exit 1
+test X`bk sfiles -p DIR_WITH_SCCS/SCCS/s.PENDING` = XDIR_WITH_SCCS/SCCS/s.PENDING || fail
+test X`bk sfiles -p DIR_WITH_SCCS/PENDING` = XDIR_WITH_SCCS/SCCS/s.PENDING || fail
 echo OK
 
 echo $N Look for pending sfiles in stdin ............................$NL
-test X`echo DIR_WITH_SCCS/SCCS/s.PENDING | bk sfiles -p -` = XDIR_WITH_SCCS/SCCS/s.PENDING || exit 1
-test X`echo DIR_WITH_SCCS/PENDING | bk sfiles -p -` = XDIR_WITH_SCCS/SCCS/s.PENDING || exit 1
+test X`echo DIR_WITH_SCCS/SCCS/s.PENDING | bk sfiles -p -` = XDIR_WITH_SCCS/SCCS/s.PENDING || fail
+test X`echo DIR_WITH_SCCS/PENDING | bk sfiles -p -` = XDIR_WITH_SCCS/SCCS/s.PENDING || fail
 echo OK
 
 echo $N Look for gotten sfiles from the root ........................$NL
@@ -1291,13 +1291,13 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for gotten sfiles in argv ..............................$NL
-test X`bk sfiles -G DIR_WITH_SCCS/SCCS/s.GOTTEN` = XDIR_WITH_SCCS/SCCS/s.GOTTEN || exit 1
-test X`bk sfiles -G DIR_WITH_SCCS/GOTTEN` = XDIR_WITH_SCCS/SCCS/s.GOTTEN || exit 1
+test X`bk sfiles -G DIR_WITH_SCCS/SCCS/s.GOTTEN` = XDIR_WITH_SCCS/SCCS/s.GOTTEN || fail
+test X`bk sfiles -G DIR_WITH_SCCS/GOTTEN` = XDIR_WITH_SCCS/SCCS/s.GOTTEN || fail
 echo OK
 
 echo $N Look for gotten sfiles in stdin .............................$NL
-test X`echo DIR_WITH_SCCS/SCCS/s.GOTTEN | bk sfiles -G -` = XDIR_WITH_SCCS/SCCS/s.GOTTEN || exit 1
-test X`echo DIR_WITH_SCCS/GOTTEN | bk sfiles -G -` = XDIR_WITH_SCCS/SCCS/s.GOTTEN || exit 1
+test X`echo DIR_WITH_SCCS/SCCS/s.GOTTEN | bk sfiles -G -` = XDIR_WITH_SCCS/SCCS/s.GOTTEN || fail
+test X`echo DIR_WITH_SCCS/GOTTEN | bk sfiles -G -` = XDIR_WITH_SCCS/SCCS/s.GOTTEN || fail
 echo OK
 
 echo $N Look for mislocated files from the root .....................$NL
@@ -1319,13 +1319,13 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for mislocated files in argv ...........................$NL
-test X`bk sfiles -n DIR_WITH_SCCS/SCCS/s.WRONG_NAME` = XDIR_WITH_SCCS/SCCS/s.WRONG_NAME || exit 1
-test X"`bk sfiles -n DIR_WITH_SCCS/GOTTEN DIR_WITH_SCCS/WRONG_NAME`" = XDIR_WITH_SCCS/SCCS/s.WRONG_NAME || exit 1
+test X`bk sfiles -n DIR_WITH_SCCS/SCCS/s.WRONG_NAME` = XDIR_WITH_SCCS/SCCS/s.WRONG_NAME || fail
+test X"`bk sfiles -n DIR_WITH_SCCS/GOTTEN DIR_WITH_SCCS/WRONG_NAME`" = XDIR_WITH_SCCS/SCCS/s.WRONG_NAME || fail
 echo OK
 
 echo $N Look for mislocated files in stdin ..........................$NL
-test X`echo DIR_WITH_SCCS/SCCS/s.WRONG_NAME | bk sfiles -n -` = XDIR_WITH_SCCS/SCCS/s.WRONG_NAME || exit 1
-test X`echo DIR_WITH_SCCS/WRONG_NAME | bk sfiles -n -` = XDIR_WITH_SCCS/SCCS/s.WRONG_NAME || exit 1
+test X`echo DIR_WITH_SCCS/SCCS/s.WRONG_NAME | bk sfiles -n -` = XDIR_WITH_SCCS/SCCS/s.WRONG_NAME || fail
+test X`echo DIR_WITH_SCCS/WRONG_NAME | bk sfiles -n -` = XDIR_WITH_SCCS/SCCS/s.WRONG_NAME || fail
 echo OK
 
 echo $N Look for files with comments from the root ..................$NL
@@ -1348,13 +1348,13 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for files with comments in argv ........................$NL
-test X`bk sfiles -y DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS` = XDIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS || exit 1
-test X`bk sfiles -y DIR_WITH_SCCS/MODIFIED_W_COMMENTS` = XDIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS || exit 1
+test X`bk sfiles -y DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS` = XDIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS || fail
+test X`bk sfiles -y DIR_WITH_SCCS/MODIFIED_W_COMMENTS` = XDIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS || fail
 echo OK
 
 echo $N Look for files with comments in stdin .......................$NL
-test X`echo DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS | bk sfiles -y -` = XDIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS || exit 1
-test X`echo DIR_WITH_SCCS/MODIFIED_W_COMMENTS | bk sfiles -y -` = XDIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS || exit 1
+test X`echo DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS | bk sfiles -y -` = XDIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS || fail
+test X`echo DIR_WITH_SCCS/MODIFIED_W_COMMENTS | bk sfiles -y -` = XDIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS || fail
 echo OK
 
 # LMXXX - should do all of that with -g as well.  Oy.  
@@ -1373,7 +1373,7 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for BK directories in argv from outside repo ...........$NL
-test X`bk sfiles -d lmtest/DIR_WITH_SCCS` = Xlmtest/DIR_WITH_SCCS || exit 1
+test X`bk sfiles -d lmtest/DIR_WITH_SCCS` = Xlmtest/DIR_WITH_SCCS || fail
 echo OK
 
 echo $N Look for non-BK directories from the outside repo ...........$NL
@@ -1387,7 +1387,7 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for non-BK directories in argv from outside repo .......$NL
-test X`bk sfiles -D lmtest/DIR_WITH_NO_SCCS` = Xlmtest/DIR_WITH_NO_SCCS || exit 1
+test X`bk sfiles -D lmtest/DIR_WITH_NO_SCCS` = Xlmtest/DIR_WITH_NO_SCCS || fail
 echo OK
 
 echo $N Look for ignored files from the outside repo ................$NL
@@ -1399,7 +1399,7 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for ignored files in argv from outside repo ............$NL
-test X`bk sfiles -i lmtest/ignored.o` = Xlmtest/ignored.o || exit 1
+test X`bk sfiles -i lmtest/ignored.o` = Xlmtest/ignored.o || fail
 echo OK
 
 echo $N Look for junk files from the outside repo ...................$NL
@@ -1412,7 +1412,7 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for junk files in argv from outside repo ...............$NL
-test X`bk sfiles -j lmtest/SCCS/JUNK` = Xlmtest/SCCS/JUNK || exit 1
+test X`bk sfiles -j lmtest/SCCS/JUNK` = Xlmtest/SCCS/JUNK || fail
 test works = not_yet && {
 test X`bk sfiles -j lmtest/SCCS/c.NO_SFILE_NO_GFILE` = Xlmtest/SCCS/c.NO_SFILE_NO_GFILE || {
 	echo Yup, I thought this would fail
@@ -1431,7 +1431,7 @@ echo OK
 
 test works = not_yet && {
 echo $N Look for subrepos in argv from outside repo .................$NL
-test X`bk sfiles -R lmtest/subrepo` = Xlmtest/subrepo || exit 1
+test X`bk sfiles -R lmtest/subrepo` = Xlmtest/subrepo || fail
 echo OK
 }
 
@@ -1457,8 +1457,8 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for sfiles in argv from outside repo ...................$NL
-test X`bk sfiles -s lmtest/SCCS/s.ChangeSet` = Xlmtest/SCCS/s.ChangeSet || exit 1
-test X`bk sfiles lmtest/SCCS/s.ChangeSet` = Xlmtest/SCCS/s.ChangeSet || exit 1
+test X`bk sfiles -s lmtest/SCCS/s.ChangeSet` = Xlmtest/SCCS/s.ChangeSet || fail
+test X`bk sfiles lmtest/SCCS/s.ChangeSet` = Xlmtest/SCCS/s.ChangeSet || fail
 echo OK
 
 echo $N Look for extra files from the outside repo ..................$NL
@@ -1473,7 +1473,7 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for extra files in argv from outside repo ..............$NL
-test X`bk sfiles -x lmtest/EXTRA1` = Xlmtest/EXTRA1 || exit 1
+test X`bk sfiles -x lmtest/EXTRA1` = Xlmtest/EXTRA1 || fail
 echo OK
 
 echo $N Look for all extras from the outside repo ...................$NL
@@ -1489,8 +1489,8 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for all extras in argv from outside repo ...............$NL
-test X`bk sfiles -ax lmtest/EXTRA1` = Xlmtest/EXTRA1 || exit 1
-test X`bk sfiles -ax lmtest/ignored.o` = Xlmtest/ignored.o || exit 1
+test X`bk sfiles -ax lmtest/EXTRA1` = Xlmtest/EXTRA1 || fail
+test X`bk sfiles -ax lmtest/ignored.o` = Xlmtest/ignored.o || fail
 echo OK
 
 echo $N Look for locked sfiles from the outside repo ................$NL
@@ -1504,8 +1504,8 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for locked sfiles in argv from outside repo ............$NL
-test X`bk sfiles -l lmtest/DIR_WITH_SCCS/SCCS/s.LOCKED` = Xlmtest/DIR_WITH_SCCS/SCCS/s.LOCKED || exit 1
-test X`bk sfiles -l lmtest/DIR_WITH_SCCS/LOCKED` = Xlmtest/DIR_WITH_SCCS/SCCS/s.LOCKED || exit 1
+test X`bk sfiles -l lmtest/DIR_WITH_SCCS/SCCS/s.LOCKED` = Xlmtest/DIR_WITH_SCCS/SCCS/s.LOCKED || fail
+test X`bk sfiles -l lmtest/DIR_WITH_SCCS/LOCKED` = Xlmtest/DIR_WITH_SCCS/SCCS/s.LOCKED || fail
 echo OK
 
 echo $N Look for unlocked sfiles from the outside repo ..............$NL
@@ -1527,8 +1527,8 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for unlocked sfiles in argv from outside repo ..........$NL
-test X`bk sfiles -u lmtest/SCCS/s.ChangeSet` = Xlmtest/SCCS/s.ChangeSet || exit 1
-test X`bk sfiles -u lmtest/ChangeSet` = Xlmtest/SCCS/s.ChangeSet || exit 1
+test X`bk sfiles -u lmtest/SCCS/s.ChangeSet` = Xlmtest/SCCS/s.ChangeSet || fail
+test X`bk sfiles -u lmtest/ChangeSet` = Xlmtest/SCCS/s.ChangeSet || fail
 echo OK
 
 echo $N Look for changed sfiles from the outside repo ...............$NL
@@ -1541,8 +1541,8 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for changed sfiles in argv from outside repo ...........$NL
-test X`bk sfiles -c lmtest/DIR_WITH_SCCS/SCCS/s.MODIFIED` = Xlmtest/DIR_WITH_SCCS/SCCS/s.MODIFIED || exit 1
-test X`bk sfiles -c lmtest/DIR_WITH_SCCS/MODIFIED` = Xlmtest/DIR_WITH_SCCS/SCCS/s.MODIFIED || exit 1
+test X`bk sfiles -c lmtest/DIR_WITH_SCCS/SCCS/s.MODIFIED` = Xlmtest/DIR_WITH_SCCS/SCCS/s.MODIFIED || fail
+test X`bk sfiles -c lmtest/DIR_WITH_SCCS/MODIFIED` = Xlmtest/DIR_WITH_SCCS/SCCS/s.MODIFIED || fail
 echo OK
 
 echo $N Look for pending sfiles from the outside repo ...............$NL
@@ -1554,8 +1554,8 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for pending sfiles in argv from outside repo ...........$NL
-test X`bk sfiles -p lmtest/DIR_WITH_SCCS/SCCS/s.PENDING` = Xlmtest/DIR_WITH_SCCS/SCCS/s.PENDING || exit 1
-test X`bk sfiles -p lmtest/DIR_WITH_SCCS/PENDING` = Xlmtest/DIR_WITH_SCCS/SCCS/s.PENDING || exit 1
+test X`bk sfiles -p lmtest/DIR_WITH_SCCS/SCCS/s.PENDING` = Xlmtest/DIR_WITH_SCCS/SCCS/s.PENDING || fail
+test X`bk sfiles -p lmtest/DIR_WITH_SCCS/PENDING` = Xlmtest/DIR_WITH_SCCS/SCCS/s.PENDING || fail
 echo OK
 
 echo $N Look for gotten sfiles from the outside repo ................$NL
@@ -1573,8 +1573,8 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for gotten sfiles in argv from outside repo ............$NL
-test X`bk sfiles -G lmtest/DIR_WITH_SCCS/SCCS/s.GOTTEN` = Xlmtest/DIR_WITH_SCCS/SCCS/s.GOTTEN || exit 1
-test X`bk sfiles -G lmtest/DIR_WITH_SCCS/GOTTEN` = Xlmtest/DIR_WITH_SCCS/SCCS/s.GOTTEN || exit 1
+test X`bk sfiles -G lmtest/DIR_WITH_SCCS/SCCS/s.GOTTEN` = Xlmtest/DIR_WITH_SCCS/SCCS/s.GOTTEN || fail
+test X`bk sfiles -G lmtest/DIR_WITH_SCCS/GOTTEN` = Xlmtest/DIR_WITH_SCCS/SCCS/s.GOTTEN || fail
 echo OK
 
 echo $N Look for mislocated files from the outside repo .............$NL
@@ -1586,8 +1586,8 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for mislocated files in argv from outside repo .........$NL
-test X`bk sfiles -n lmtest/DIR_WITH_SCCS/SCCS/s.WRONG_NAME` = Xlmtest/DIR_WITH_SCCS/SCCS/s.WRONG_NAME || exit 1
-test X`bk sfiles -n lmtest/DIR_WITH_SCCS/WRONG_NAME` = Xlmtest/DIR_WITH_SCCS/SCCS/s.WRONG_NAME || exit 1
+test X`bk sfiles -n lmtest/DIR_WITH_SCCS/SCCS/s.WRONG_NAME` = Xlmtest/DIR_WITH_SCCS/SCCS/s.WRONG_NAME || fail
+test X`bk sfiles -n lmtest/DIR_WITH_SCCS/WRONG_NAME` = Xlmtest/DIR_WITH_SCCS/SCCS/s.WRONG_NAME || fail
 echo OK
 
 echo $N Look for files with comments from the outside repo ..........$NL
@@ -1599,8 +1599,8 @@ cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for files with comments in argv from outside repo ......$NL
-test X`bk sfiles -y lmtest/DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS` = Xlmtest/DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS || exit 1
-test X`bk sfiles -y lmtest/DIR_WITH_SCCS/MODIFIED_W_COMMENTS` = Xlmtest/DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS || exit 1
+test X`bk sfiles -y lmtest/DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS` = Xlmtest/DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS || fail
+test X`bk sfiles -y lmtest/DIR_WITH_SCCS/MODIFIED_W_COMMENTS` = Xlmtest/DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS || fail
 echo OK
 
 # LMXXX - should do all of that with -g as well.  Oy.  
@@ -1636,7 +1636,7 @@ mkdir skip
 mkdir -p sub/skip
 touch skip/1
 touch sub/skip/2
-bk edit $Q BitKeeper/etc/ignore || exit 1
+bk edit $Q BitKeeper/etc/ignore || fail
 cat <<EOF >WANT
 GOT
 WANT
@@ -1784,18 +1784,15 @@ perl -e 'printf "a\000b\n"' > binary_file
 bk new $Q binary_file
 bk edit $Q binary_file
 chmod 000 binary_file
-bk sfiles -v binary_file >OUT 2>ERR 
-RET=$?
-test $RET -eq 0 || {
-	echo failed
-	cat ERR
-	exit 1
-}
+bk sfiles -v binary_file >OUT 2>ERR && fail
 grep -iq "binary_file: Permission denied" ERR || {
 	echo failed
 	cat ERR
 	exit 1
 }
+# any file causing an error in relation to -c will be listed as -c output
+echo "slcpG-- SCCS/s.binary_file" > WANT
+cmpfiles WANT OUT
 echo OK
 }
 
@@ -1838,3 +1835,31 @@ BitKeeper/etc/SCCS/s.gone|1.1.1.2
 EOF
 cmpfiles WANT GOT
 echo OK
+
+echo $N Try to trip up the timestampDB ..............................$NL
+if [ $PLATFORM != "WIN32" ]
+then
+cd "$HERE"
+BK_CONFIG='clock_skew:zero!'
+export BK_CONFIG
+commercial time
+echo hi > file
+bk new $Q file
+bk commit $Q -ynew || fail
+bk edit $Q file
+echo junk >> file
+chmod 000 .bk/SCCS/file,p
+bk sfiles -c > OUT 2>ERR && fail -f OUT should fail
+echo "SCCS/s.file" > WANT.sfile
+cmpfiles WANT.sfile OUT
+cat <<EOF > WANT
+Empty p.file SCCS/s.file - aborted.
+EOF
+cmpfiles WANT ERR
+chmod 0660 .bk/SCCS/file,p
+bk sfiles -c > OUT || fail -f OUT should work
+cmpfiles WANT.sfile OUT
+echo OK
+else
+echo skipped
+fi

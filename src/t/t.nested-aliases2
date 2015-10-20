@@ -85,12 +85,12 @@ echo OK
 
 #echo $N Move stuff and watch the fur fly ............................$NL
 #cd "$HERE"
-#bk clone $Q -sthere project mangle || exit 1
+#bk clone $Q -sthere project mangle || fail
 #(cd project; bk here) > here.project
 #(cd mangle; bk here) > here.mangle
 #cmpfiles here.project here.mangle
 #cd mangle
-#bk alias new dev ./gcc './gcc/*' gdb || exit 1
+#bk alias new dev ./gcc './gcc/*' gdb || fail
 #bk edit $Q gcc/ChangeSet gcc/nm/ChangeSet gcc/libiberty/ChangeSet gdb/ChangeSet
 #mkdir src
 #mv gcc gdb src
@@ -103,7 +103,7 @@ echo OK
 #cmpfiles WANTERR ERR
 ## next line fails because glob doesn't match, this test won't really work.
 ##bk alias add -C dev './src/gcc/*'
-#bk commit $Q -y'Moved stuff' 2>ERR && exit 1
+#bk commit $Q -y'Moved stuff' 2>ERR && fail
 #cat <<EOF | sort > BAD
 #check: error expanding alias 'default' because 'gcc/nm' is not present
 #check: error expanding alias 'default' because 'gcc/libiberty' is not present
@@ -116,7 +116,7 @@ echo OK
 
 # rest of test that should work someday
 #cd "$HERE"
-#bk clone $Q -r1.11 -sdev mangle proj-rename || exit 1
+#bk clone $Q -r1.11 -sdev mangle proj-rename || fail
 
 echo $N Create a conflict in unpopulated alias, should work .........$NL
 cd "$HERE"
@@ -129,7 +129,7 @@ cd conflict
 bk alias add CONFLICT ./gcc/nm
 cd ../conflict-clone
 bk alias add CONFLICT ./gcc/libiberty
-bk pull $Q || exit 1
+bk pull $Q || fail
 bk alias -k CONFLICT > GOT
 (echo ./gcc/nm; echo ./gcc/libiberty) | bk alias -ek - | sort > WANT
 echo gcc >> WANT
@@ -155,8 +155,8 @@ cd "$HERE"/proj-clone
 bk portal $Q .
 bk attach --force $Q ../libcpp gcc/libcpp
 bk alias add dev ./gcc/libcpp
-bk here add $Q dev || exit 1
-bk pull $Q ../project || exit 1
+bk here add $Q dev || fail
+bk pull $Q ../project || fail
 bk alias -ek - <<EOF > WANT
 ./gcc
 ./gcc/gcov
@@ -175,7 +175,7 @@ echo OK
 
 echo $N Alias clone through bk:// ...................................$NL
 cd "$HERE"
-bk bkd -q -d -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
+bk bkd -q -d -aPORT -ikill > "$HERE/BKD" 2>&1 || fail
 P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0 2
 bk clone $Q -sdev bk://localhost:$P/proj-clone clone1 || {
@@ -331,7 +331,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test alias -he gcc ..........................................$NL
-bk alias -eh gcc  > GOT || exit 1
+bk alias -eh gcc  > GOT || fail
 cat > WANT <<EOF
 ./gcc
 ./gcc/libiberty
@@ -342,7 +342,7 @@ echo OK
 
 echo $N Test alias missing with missing components ..................$NL
 rm -rf gcc/libcpp
-bk alias -em all > GOT || exit 1
+bk alias -em all > GOT || fail
 cat > WANT <<EOF
 ./gcc/libcpp
 ./gcc/libcpp/deep
@@ -351,7 +351,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test alias missing foo with missing components ..............$NL
-bk alias -em dev > GOT || exit 1
+bk alias -em dev > GOT || fail
 cat > WANT <<EOF
 ./gcc/libcpp
 EOF
@@ -359,7 +359,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test alias here foo with unrelated missing components .......$NL
-bk alias -eh gcc > GOT || exit 1
+bk alias -eh gcc > GOT || fail
 cat > WANT <<EOF
 ./gcc
 ./gcc/libiberty
@@ -369,7 +369,7 @@ echo OK
 
 echo $N Test alias here on recursive alias ..........................$NL
 cd "$HERE"
-bk clone $Q proj-clone dash-h2 || exit 1
+bk clone $Q proj-clone dash-h2 || fail
 cd dash-h2
 # Remove old aliases
 bk alias rm -C dev
@@ -397,7 +397,7 @@ echo OK
 
 echo $N Test alias here on recursive alias with a missing comp ......$NL
 rm -rf gcc/libcpp/deep
-bk alias -em enchilada_grande > GOT || exit 1
+bk alias -em enchilada_grande > GOT || fail
 cat > WANT <<EOF
 ./gcc/libcpp/deep
 EOF

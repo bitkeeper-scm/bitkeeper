@@ -56,10 +56,10 @@ echo OK
 
 echo $N make sure bk send xfers tags correctly ......................$NL
 cd "$HERE/copy"
-bk send $Q -u../project  - > "$HERE/patch" || exit 1
+bk send $Q -u../project  - > "$HERE/patch" || fail
 cd "$HERE/project"
 bk takepatch -qay'Hello daddy, hello mama!
-Here I am in Camp Granada!' < "$HERE/patch" || exit 1
+Here I am in Camp Granada!' < "$HERE/patch" || fail
 bk prs -hn -d:TAG: | grep copy1 > OUT2
 test $? -eq 0 || {
 	echo failed

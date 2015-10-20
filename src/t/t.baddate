@@ -28,19 +28,10 @@ AWNYMHg4YjEKAWUKAXUKAVUKAWYgZSAwCgFmIHggMHg4YjEKAXQKAVQKAUkgMQoB
 RSAxCg==
 EOF
 bk _mv tmp SCCS/s.Makefile
-test `bk findkey "Fake@purple.3pardata.com|tpdsrc/kernel/Makefile|19700101000000|00000|00000000"` = "Makefile|1.0" || {
-	echo failed to find the 1.0 delta
-	exit 1
-}
-test `bk findkey "Fake@purple.3pardata.com|tpdsrc/kernel/Makefile|19700101000001|27397"` = "Makefile|1.1" || {
-	echo failed to find the 1.1 delta
-	exit 1
-}
+test `bk findkey "Fake@purple.3pardata.com|tpdsrc/kernel/Makefile|19700101000000|00000|00000000"` = "Makefile|1.0" || fail failed to find the 1.0 delta
+test `bk findkey "Fake@purple.3pardata.com|tpdsrc/kernel/Makefile|19700101000001|27397"` = "Makefile|1.1" || fail failed to find the 1.1 delta
 echo OK
 
 echo $N Make sure we do not find keys w/ a garbage date .............$NL
-test X`bk findkey "Fake@purple.3pardata.com|tpdsrc/kernel/Makefile|0|27397"` = "XMakefile|1.1" && {
-	echo Should not have found the delta
-	exit 1
-}
+test X`bk findkey "Fake@purple.3pardata.com|tpdsrc/kernel/Makefile|0|27397"` = "XMakefile|1.1" && fail Should not have found the delta
 echo OK

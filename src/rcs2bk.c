@@ -123,7 +123,7 @@ doit(char *file, char *cvsbranch)
 		s = sccs_init(sfile, 0);
 		d = sccs_top(s);
 		unless (sccs_patheq(PATHNAME(s, d), s->gfile)) {
-			char	*p, *q;
+			char	*q;
 			int	ret;
 
 			if (sccs_clean(s, SILENT)) {
@@ -134,19 +134,8 @@ doit(char *file, char *cvsbranch)
 			}
 			sccs_close(s);
 			q = name2sccs(PATHNAME(s, d));
-			ret = fileMove(sfile, q);
+			ret = sfile_move(s->proj, sfile, q);
 			assert(ret == 0);
-			/*
-			 * move the d.file
-			 */
-			p = sccs_Xfile(s, 'd');
-			if (exists(p)) {
-				char	*t = rindex(q, '/') + 1;
-
-				*t = 'd';
-				ret = rename(p, q);
-				assert(ret == 0);
-			}
 			free(q);
 		}
 		sccs_free(s);
@@ -285,7 +274,7 @@ rcs2bk(RCS *rcs, char *sfile)
 	}
 	free(g);
 	ret = 0;
-	if (do_checkout(s)) ret = 1;
+	if (do_checkout(s, 0, 0)) ret = 1;
 	sccs_free(s);
 	return (ret);
 }

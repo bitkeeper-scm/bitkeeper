@@ -17,21 +17,21 @@ test "$PLATFORM" = "WIN32" && USER=`bk getuser -r`
 echo $N Test resolving file missing a newline .......................$NL
 commercial proj
 echo line 1 > file
-bk new $Q file || exit 1
-bk commit $Q -ystart || exit 1
+bk new $Q file || fail
+bk commit $Q -ystart || fail
 cd "$HERE"
 bk clone $Q proj copy
 cd proj
 bk edit $Q file
 echo $NX new line without NL $NXL >> file
 cp file ../file.bak
-bk delta $Q -ynonl file || exit 1
-bk commit $Q -ynew_remote || exit 1
+bk delta $Q -ynonl file || fail
+bk commit $Q -ynew_remote || fail
 cd "$HERE/copy"
 bk edit $Q file
 echo new line with NL >> file
-bk delta $Q -ynl file || exit 1
-bk commit $Q -ynew_local || exit 1
+bk delta $Q -ynl file || fail
+bk commit $Q -ynew_local || fail
 _BK_PREVENT_RESOLVE_RERUN=1 bk pull $Q 2> OUT && {
 	echo should not pass
 	exit 1
@@ -47,7 +47,7 @@ echo ur | bk resolve $Q 2>OUT || {
 	cat OUT
 	exit 1
 }
-bk get $Q file || exit 1
+bk get $Q file || fail
 cmp -s file ../file.bak || {
 	echo file did not match remote
 	exit 1
@@ -55,7 +55,7 @@ cmp -s file ../file.bak || {
 echo OK
 
 echo $N Test out aborting a conflict ................................$NL
-bk unpull -f $Q || exit 1
+bk unpull -f $Q || fail
 bk pull $Q -R
 { echo a; echo y; } | bk resolve -q 2> ERR && {
 	echo expected to fail
@@ -68,13 +68,13 @@ grep -q 'Abort patch? (y/n) =*$' ERR || {
 	cat ERR
 	exit 1
 }
-test -d RESYNC && exit 1
-test -d PENDING || exit 1
+test -d RESYNC && fail
+test -d PENDING || fail
 rm -fr PENDING
 echo OK
 
 echo $N Test exiting out a resolve early deleting files .............$NL
-bk edit $Q file || exit 1
+bk edit $Q file || fail
 _BK_PREVENT_RESOLVE_RERUN=1 bk pull $Q 2> OUT && {
 	echo should not pass
 	exit 1
@@ -104,22 +104,22 @@ echo ff > dir1/ff
 mkdir dir2
 echo gg > dir2/gg
 echo "space me" > "dir2/space file"
-bk new $Q dir1/ff dir2/gg "dir2/space file" || exit 1
-bk commit $Q -ystart || exit 1
+bk new $Q dir1/ff dir2/gg "dir2/space file" || fail
+bk commit $Q -ystart || fail
 mkdir dir3
 chmod -w dir3
-bk -r check -ac || exit 1
+bk -r check -ac || fail
 cd ..
-bk clone $Q proj copy2 || exit 1
+bk clone $Q proj copy2 || fail
 cd copy2
-bk edit $Q dir1/ff dir2/gg || exit 1
+bk edit $Q dir1/ff dir2/gg || fail
 echo ff2 >> dir1/ff
 echo gg2 >> dir2/gg
-bk delta $Q -yappend dir1/ff dir2/gg || exit 1
+bk delta $Q -yappend dir1/ff dir2/gg || fail
 mkdir dir3
 mkdir dir3/dir33
 echo hh > dir3/dir33/hh
-bk new $Q dir3/dir33/hh || exit 1
+bk new $Q dir3/dir33/hh || fail
 bk commit $Q -yappend
 bk push > OUT 2>&1
 status=$?
@@ -136,15 +136,15 @@ grep 'No write permission: dir3' OUT > /dev/null || {
 }
 cd "$HERE/proj"
 bk abort -f
-bk -r check -acf || exit 1
+bk -r check -acf || fail
 echo OK
 
 echo $N What if you don\'t have permissions to delete a file..........$NL
 oldmode=`bk _stat dir2/SCCS | awk -F\| '{ print substr($3, 3) }'`
 chmod 555 dir2/SCCS .bk/dir2/SCCS 2> /dev/null
 cd "$HERE/copy2"
-bk mv dir2/gg dir3/gg || exit 1
-bk commit -ymv $Q || exit 1
+bk mv dir2/gg dir3/gg || fail
+bk commit -ymv $Q || fail
 bk push > OUT 2>&1
 status=$?
 test $status != 0 || {
@@ -160,7 +160,7 @@ grep 'No write permission: dir2' OUT > /dev/null || {
 cd "$HERE/proj"
 chmod $oldmode dir2/SCCS .bk/dir2/SCCS 2> /dev/null
 bk abort -f
-bk -r check -acf || exit 1
+bk -r check -acf || fail
 echo OK
 
 echon Test listing of files in conflict ...........................
@@ -168,18 +168,18 @@ cd "$HERE"
 cd proj
 echo foo > uuencode
 bk new $Q -Euuencode uuencode
-bk commit -yuuencode $Q || exit 1
+bk commit -yuuencode $Q || fail
 cd ..
-bk clone $Q proj copy3 || exit 1
+bk clone $Q proj copy3 || fail
 for d in proj copy3; do
 	cd "$HERE"/$d
 	for f in uuencode file dir1/ff dir2/gg "dir2/space file" ; do
 		bk edit $Q "$f"
 		echo $d >> "$f"
-		BK_USER=$d bk delta $Q -y"$d side" "$f" || exit 1
+		BK_USER=$d bk delta $Q -y"$d side" "$f" || fail
 	done
 	bk mv file file.$d
-	BK_USER=$d bk commit -y"$d" $Q || exit 1
+	BK_USER=$d bk commit -y"$d" $Q || fail
 done
 cd "$HERE/copy3"
 bk pull -R $Q
@@ -419,18 +419,18 @@ echo OK
 
 echon Test selective resolve with uncomitted new-file conflict ....
 cd "$HERE"
-bk clone $Q proj copy3b || exit 1
+bk clone $Q proj copy3b || fail
 cd proj
 echo new > newfile
-bk new $Q newfile || exit 2
-bk commit $Q -y'add newfile' || exit 3
+bk new $Q newfile || fail
+bk commit $Q -y'add newfile' || fail
 cd ../copy3b
 echo new > dummy
-bk new $Q dummy || exit 35 
+bk new $Q dummy || fail
 bk commit $Q -f
 echo new > newfile
-bk new $Q newfile || exit 4
-bk pull -R $Q || exit 5
+bk new $Q newfile || fail
+bk pull -R $Q || fail
 cat <<EOF > IN
 rl
 y
@@ -445,11 +445,11 @@ echo OK
 echo $N Do a \'rr\' when given a create/gfile conflict ................$NL
 cd "$HERE"
 rm -rf copy2
-bk clone $Q proj copy2 || exit 1
+bk clone $Q proj copy2 || fail
 cd proj
 echo hh > hh
 bk new $Q hh
-bk commit $Q -ynewhh || exit 1
+bk commit $Q -ynewhh || fail
 cd "$HERE/copy2"
 echo hj > hh
 (echo rr; echo y) | bk pull > OUT 2>&1 || {
@@ -889,7 +889,7 @@ bk _rm -f 'SCCS/r.space file'
 cd ..
 bk get $Q -eM -g ChangeSet
 bk commit $Q -R -c 2>ERR && fail -f ERR
-grep -q 'check: ChangeSet 1.18 is a merge but is missing a required merge delta' ERR || fail -f ERR wrong error
+grep -q 't: ChangeSet is a merge but is missing' ERR || fail -f ERR wrong error
 echo OK
 
 echo $N Automerge a trigger after automerging gone ..................$NL
@@ -907,7 +907,7 @@ EOF
 bk new $Q "$T"
 touch foo
 bk new $Q foo
-bk prs -r+ -hnd:ROOTKEY: foo | bk -R gone - 2>ERR || exit 1
+bk prs -r+ -hnd:ROOTKEY: foo | bk -R gone - 2>ERR || fail
 bk _rm -f foo SCCS/s.foo
 bk commit $Q -ytrig
 cd ..
@@ -925,7 +925,7 @@ EOF
 bk delta $Q -yedit "$T"
 touch foo
 bk new $Q foo
-bk prs -r+ -hnd:ROOTKEY: foo | bk -R gone - 2>ERR || exit 1
+bk prs -r+ -hnd:ROOTKEY: foo | bk -R gone - 2>ERR || fail
 bk _rm -f foo SCCS/s.foo
 bk commit $Q -ytrig
 cd ../trigger-copy
@@ -934,7 +934,7 @@ echo "echo new last line" >> "$T"
 bk delta $Q -yedit "$T"
 touch foo
 bk new $Q foo
-bk prs -r+ -hnd:ROOTKEY: foo | bk -R gone - 2>ERR || exit 1
+bk prs -r+ -hnd:ROOTKEY: foo | bk -R gone - 2>ERR || fail
 bk _rm -f foo SCCS/s.foo
 bk commit $Q -ytrig
 bk pull $Q 2>ERR || {
@@ -1030,7 +1030,7 @@ EOF
 bk new $Q "$T"
 touch foo
 bk new $Q foo
-bk prs -r+ -hnd:ROOTKEY: foo | bk -R gone - 2>ERR || exit 1
+bk prs -r+ -hnd:ROOTKEY: foo | bk -R gone - 2>ERR || fail
 bk _rm -f foo SCCS/s.foo
 bk commit $Q -ytrig
 cd ..
@@ -1041,7 +1041,7 @@ echo "echo new last line" >> "$T"
 bk delta $Q -yedit "$T"
 touch foo
 bk new $Q foo
-bk prs -r+ -hnd:ROOTKEY: foo | bk -R gone - 2>ERR || exit 1
+bk prs -r+ -hnd:ROOTKEY: foo | bk -R gone - 2>ERR || fail
 bk _rm -f foo SCCS/s.foo
 bk commit $Q -ytrig
 cd ../trigger-copy
@@ -1050,7 +1050,7 @@ echo "echo new last line" >> "$T"
 bk delta $Q -yedit "$T"
 touch foo
 bk new $Q foo
-bk prs -r+ -hnd:ROOTKEY: foo | bk -R gone - 2>ERR || exit 1
+bk prs -r+ -hnd:ROOTKEY: foo | bk -R gone - 2>ERR || fail
 bk _rm -f foo SCCS/s.foo
 bk commit $Q -ytrig
 bk pull $Q 2>ERR || {
@@ -1067,16 +1067,16 @@ echo $N Pull with edited cset file and rootkeys with spaces .........$NL
 commercial project
 touch "foo-bar"
 bk new $Q "foo-bar"
-bk commit $Q -yfile-with-space || exit 1
-bk clone $Q ../project ../copy || exit 1
+bk commit $Q -yfile-with-space || fail
+bk clone $Q ../project ../copy || fail
 bk edit $Q "foo-bar"
-bk delta $Q -fynull-delta "foo-bar" || exit 1
-bk commit $Q -ynull-delta || exit 1
+bk delta $Q -fynull-delta "foo-bar" || fail
+bk commit $Q -ynull-delta || fail
 cd ../copy
 touch "foo bar"
-bk new $Q "foo bar"  || exit 1
-bk commit $Q -yfile-with-space || exit 1
-bk edit $Q ChangeSet || exit 1
+bk new $Q "foo bar"  || fail
+bk commit $Q -yfile-with-space || fail
+bk edit $Q ChangeSet || fail
 bk pull $Q || {
 	echo failed
 	exit 1
@@ -1086,7 +1086,7 @@ echo OK
 echo $N Create a resync conflict ....................................$NL
 cd ../project
 bk edit $Q "foo-bar"
-bk delta $Q -fynull-delta "foo-bar" || exit 1
+bk delta $Q -fynull-delta "foo-bar" || fail
 touch lucky
 bk new $Q lucky
 bk commit $Q -f
@@ -1201,7 +1201,7 @@ bk mv foo bar
 bk commit $Q -f
 cd ..
 tar cf TAR local
-cd local || exit 1
+cd local || fail
 { echo rl; echo y; } | bk pull -q 2> ERR || {
 	echo failed
 	cat ERR
@@ -1215,8 +1215,8 @@ echo $N Show duplicate file create/sfile with ml ....................$NL
 # Coincidentally, error matches message Zahy sent in Aug 4
 cd ..
 rm -fr local
-tar xf TAR || exit 1
-cd local || exit 1
+tar xf TAR || fail
+cd local || fail
 { echo ml; echo zoo; } | bk pull -q 2> ERR || {
 	echo failed
 	cat ERR
@@ -1227,8 +1227,8 @@ echo OK
 echo $N Show rename to . with ml bug is fixed .......................$NL
 cd ..
 rm -fr local
-tar xf TAR || exit 1
-cd local || exit 1
+tar xf TAR || fail
+cd local || fail
 { echo ml; echo .; echo q; } | bk pull -q 2> ERR
 grep -q "Illegal filename" ERR || fail -f ERR wrong error message
 echo OK
@@ -1236,8 +1236,8 @@ echo OK
 echo $N Show rename to .. with ml does not ..........................$NL
 cd ..
 rm -fr local
-tar xf TAR || exit 1
-cd local || exit 1
+tar xf TAR || fail
+cd local || fail
 { echo ml; echo ..; echo q; } | bk pull -q 2> ERR
 grep -q "Illegal filename" ERR || fail -f ERR wrong error message
 echo OK
@@ -1245,8 +1245,8 @@ echo OK
 echo $N Show rename to . with mr bug is fixed .......................$NL
 cd ..
 rm -fr local
-tar xf TAR || exit 1
-cd local || exit 1
+tar xf TAR || fail
+cd local || fail
 { echo mr; echo .; echo q; } | bk pull -q 2> ERR
 grep -q "Illegal filename" ERR || fail -f ERR wrong error message
 echo OK
@@ -1254,8 +1254,8 @@ echo OK
 echo $N Show rename to .. with mr does not ..........................$NL
 cd ..
 rm -fr local
-tar xf TAR || exit 1
-cd local || exit 1
+tar xf TAR || fail
+cd local || fail
 { echo mr; echo ..; echo q; } | bk pull -q 2> ERR
 grep -q "Illegal filename" ERR || fail -f ERR wrong error message
 echo OK
@@ -1313,7 +1313,7 @@ echo $N Show unmerged leaf as part of a pull resolve with ml ........$NL
 cd ..
 rm -fr local
 tar xf TAR
-cd local || exit 1
+cd local || fail
 printf "ml\nzoo\nq\n" | bk pull $Q 2> ERR || {
 	echo failed
 	cat ERR

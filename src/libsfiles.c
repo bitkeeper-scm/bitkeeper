@@ -1,4 +1,3 @@
-#include "system.h"
 #include "sccs.h"
 
 /*
@@ -13,28 +12,27 @@
  *	<files> means <files>
  *	- means read files from stdin until EOF.
  *
- * XXX - if you have a file s.foo, "foo" doesn't work.  OK?
- * XXX - if SCCS/SCCS exists, that bites.
- *
  * char	*sfileFirst(av, flags);
  * char	*sfileNext();
+ * char *sfileRev();
  * void sfileDone();
  *
  * It is a fatal error to call sfileFirst() without calling sfileDone() or
  * before sfileNext() returned NULL.
  */
-private	int flags;		/* saved flags */
-private	char **av;		/* saved copy of argv */
-private	int ac;			/* where we are - starts at 0 */
-private	FILE *flist;		/* set if getting files from stdin */
-private	char **d;		/* getdir() of directory we are reading */
-private	int di;			/* index into d */
-private	char prefix[MAXPATH];	/* path/to/dir/SCCS/ */
-private	char buf[MAXPATH];	/* pathname we actually pass back */
-private	int unget;		/* if set, return path again */
-private	char *lprog;		/* av[0], sort of */
-private	char *glob;		/* if set, filter through this */
-private	char rev[MAXKEY];	/* 1.1.1.1, keys, tags, etc - see HASREVS */
+struct opts {
+	int	flags;		/* saved flags */
+	char	**av;		/* saved copy of argv */
+	int	ac;		/* where we are - starts at 0 */
+	FILE	*flist;		/* set if getting files from stdin */
+	char	**d;		/* getdir() of directory we are reading */
+	int	di;		/* index into d */
+	char	*prefix;	/* path/to/dir/SCCS/ */
+	char	sfile[MAXPATH];	/* pathname we actually pass back */
+	char	*lprog;		/* av[0], sort of */
+	char	*glob;		/* if set, filter through this */
+	DATA	rev;		/* 1.1.1.1, keys, tags, etc - see HASREVS */
+} *opts;
 private	pid_t spid;		/* pid of sfiles for -r */
 
 private	int oksccs(char *s, int flags, int complain);
@@ -45,87 +43,82 @@ private	int oksccs(char *s, int flags, int complain);
 char *
 sfileNext(void)
 {
-	char	*name;
+	char	*name, *r;
+	char	*line;
+	size_t	len;
+	char	buf[MAXPATH];
 
-	if (unget) {
-		unget = 0;
-		return (buf);
-	}
-again:
-	if (!flist && !d && !av) {
-		return (0);
-	}
-	if (flist) {
-		unless (fgets(buf, sizeof(buf), flist)) {
-			if (flist != stdin) fclose(flist);
-			flist = 0;
+	assert(opts);
+	if (opts->flist) {
+		unless(line = fgetln(opts->flist, &len)) {
+			if (opts->flist != stdin) fclose(opts->flist);
+			opts->flist = 0;
 			return (0);
 		}
-		unless (chomp(buf)) {
-			/* handle truncated buffer from sfiles being killed */
-			if (feof(flist) && sfilesDied(0, 0)) return (0);
+		/* Inline chomp() since fgetln() doesn't return a NULL
+		 * terminated string. */
+		if (len && (line[len-1] == '\n')) {
+			line[--len] = 0;
+		} else {
+			/* handle truncated line from sfiles being
+			 * killed */
+			if (feof(opts->flist) && sfilesDied(0, 0)) return (0);
 		}
-		localName2bkName(buf, buf);
-		cleanPath(buf, buf);
-		debug((stderr, "sfiles::FILE got %s\n", buf));
-	} else if (d) {
-		while (di <= nLines(d)) {
+		while (len && (line[len-1] == '\r')) line[--len] = 0;
+		debug((stderr, "sfiles::FILE got %s\n", line));
+	} else if (opts->d) {
+		while (opts->di <= nLines(opts->d)) {
 			/*
 			 * readdir returns the base name only, must re-construct
 			 * the relative path. Otherwise oksccs will be checking
 			 * the wrong file.
 			 * See test case "A/" in "basic test" of regression test
 			 */
-			concat_path(buf, prefix, d[di]);
-			di++;
+			concat_path(buf, opts->prefix, opts->d[opts->di]);
+			opts->di++;
 			/* I thought I didn't need this but I was wrong. */
-			unless (oksccs(buf, flags, 0)) continue;
-			if ((flags & SF_NOCSET) && isCsetFile(buf)) {
+			unless (oksccs(buf, opts->flags, 0)) continue;
+			if ((opts->flags & SF_NOCSET) && isCsetFile(buf)) {
 				continue;
 			}
 			debug((stderr, "sfiles::DIR got %s\n", buf));
+			line = buf;
 			goto norev;
 		}
-		freeLines(d, free);
-		d = 0;
 		return (0);
-	} else if (av) {
-		unless (name = av[ac++]) {
-			av = 0;
+	} else if (opts->av) {
+		unless (line = opts->av[opts->ac++]) {
+			opts->av = 0;
 			return (0);
 		}
-		strcpy(buf, name);
-		localName2bkName(buf, buf);
-		cleanPath(buf, buf); /* for win98 */
-		debug((stderr, "sfiles::AV got %s\n", buf));
+		debug((stderr, "sfiles::AV got %s\n", line));
+	} else {
+		/* none of the above */
+		return (0);
 	}
 
-	unless (flags & SF_NOHASREVS)  {
-		char	*r = strchr(buf, BK_FS);
-
-		rev[0] = 0;	/* paranoia is your friend */
-		if (!r) goto norev;
+	if (!(opts->flags & SF_NOHASREVS) && (r = strchr(line, BK_FS))) {
 		*r++ = 0;
-		strcpy(rev, r);
-		debug((stderr, "sfiles::REV got %s\n", rev));
+		data_resize(&opts->rev, strlen(r)+1);
+		strcpy(opts->rev.buf, r);
+		debug((stderr, "sfiles::REV got %s\n", opts->rev));
 		/*
 		 * XXX - this works for diffs but may or may not be the right
 		 * long term answer.
 		 */
-		flags &= ~SF_GFILE;
+		opts->flags &= ~SF_GFILE;
+	} else {
+norev:		if (opts->rev.buf) opts->rev.buf[0] = 0;
 	}
-norev:
+	assert(strlen(line) < MAXPATH);
+	localName2bkName(line, line);
+	cleanPath(line, buf);
 	unless (sccs_filetype(buf) == 's') {
-#ifdef	ATT_SCCS
-		fprintf(stderr, "Not an SCCS file: %s\n", buf);
-		goto again;
-#endif
 		name = name2sccs(buf);
-		unless (name) goto again;
 		strcpy(buf, name);
 		free(name);
 	}
-	if (glob) {
+	if (opts->glob) {
 		char	*f = strrchr(buf, '/');
 
 		if (f) {
@@ -133,18 +126,20 @@ norev:
 		} else {
 			f = &buf[2];
 		}
-		unless (match_one(f, glob, 0)) goto again;
+		unless (match_one(f, opts->glob, 0)) return (sfileNext());
 	}
-	if (oksccs(buf, flags, !(flags & SF_SILENT))) {
-		return (buf);
+	if (oksccs(buf, opts->flags, !(opts->flags & SF_SILENT))) {
+		strcpy(opts->sfile, buf);
+		return (opts->sfile);
 	}
-	goto again;
+	return (sfileNext());
 }
 
 char *
 sfileRev(void)
 {
-	return (rev[0] ? rev : 0);
+	return ((opts && opts->rev.buf && opts->rev.buf[0])
+	    ? opts->rev.buf : 0);
 }
 
 int
@@ -162,76 +157,70 @@ sfiles_glob(char *glob)
 char *
 sfileFirst(char *cmd, char **Av, int Flags)
 {
-	if (sfilesDied(0, 0)) return (0);
-	rev[0] = 0;
-	lprog = cmd;
-	flags = Flags;
-	if (getenv("BK_NODIREXPAND")) flags |= SF_NODIREXPAND;
-	if (Av[0]) {
-		int	i;
+	int	i;
+	char	*dir;
 
+	assert(!opts);
+	opts = new(struct opts);
+	if (sfilesDied(0, 0)) return (0);
+	opts->lprog = cmd;
+	opts->flags = Flags;
+	if (getenv("BK_NODIREXPAND")) opts->flags |= SF_NODIREXPAND;
+	if (Av[0]) {
+		/*
+		 * if the last arg looks like a glob, then save it and
+		 * remove it from the command line.
+		 */
 		for (i = 0; Av[i+1]; ++i);
 		if (streq("-", Av[i])) {
 			if ((i > 0) && sfiles_glob(Av[i-1])) {
-				glob = strdup(Av[i-1]);
+				opts->glob = strdup(Av[i-1]);
 				Av[i-1] = "-";
 				Av[i] = 0;
 			}
 		} else if (sfiles_glob(Av[i])) {
-			glob = strdup(Av[i]);
+			opts->glob = strdup(Av[i]);
 			Av[i] = 0;
 		}
 	}
-	if (Av[0]) {
-		if (streq("-", Av[0])) {
-			if (Av[1]) {
-				fprintf(stderr,
-				    "%s: - option must be alone.\n", lprog);
-				sfileDone();
-				return (0);
-			}
-			flist = stdin;
-			return (sfileNext());
+	if (Av[0]) localName2bkName(Av[0], Av[0]);
+	if (Av[0] && streq("-", Av[0])) {
+		// read from stdin
+		if (Av[1]) {
+			fprintf(stderr,
+			    "%s: - option must be alone.\n",
+			    opts->lprog);
+			return (0);
 		}
-		localName2bkName(Av[0], Av[0]);
-		if (isdir(Av[0])) {
-			if (flags & SF_NODIREXPAND) return (0);
-			if (Av[1]) {
-				fprintf(stderr,
-				    "%s: directory must be alone.\n", lprog);
-				sfileDone();
-				return (0);
-			}
-			concat_path(prefix, Av[0], "SCCS");
-			di = 1;
-			unless (d = getdir(prefix)) {
-				/*
-				 * trim off the "SCCS" part
-				 * and try again
-				 */
-				prefix[strlen(prefix) - 4] = 0;
-				unless (d = getdir(prefix)) {
-					perror(prefix);
-				}
-			}
-			return (sfileNext());
+		opts->flist = stdin;
+	} else if (!Av[0] || isdir(Av[0])) {
+		// single directory (or default to ".")
+		if (opts->flags & SF_NODIREXPAND) return (0);
+		if (Av[0] && Av[1]) {
+			fprintf(stderr,
+			    "%s: directory must be alone.\n",
+			    opts->lprog);
+			return (0);
 		}
-		av = Av;
-		ac = 0;
-		return (sfileNext());
-	}
-	if (flags & SF_NODIREXPAND) return (0);
-	unless (d) {
-		di = 1;
-		strcpy(prefix, "SCCS");
-		unless (d = getdir("SCCS")) {
-			/*
-			 * trim off the "SCCS" part
-			 * and try again
-			 */
-			prefix[0] = 0;
-			d = getdir(".");
+		opts->prefix = Av[0]
+		    ? aprintf("%s/SCCS", Av[0]) : strdup("SCCS");
+		opts->di = 1;
+		unless (opts->d = getdir(opts->prefix)) {
+			/* trim off the "SCCS" part and try again */
+			if (Av[0]) {
+				opts->prefix[strlen(opts->prefix) - 4] = 0;
+			} else {
+				opts->prefix[0] = 0;
+			}
+			dir = opts->prefix[0] ? opts->prefix : ".";
+			unless (opts->d = getdir(dir)) {
+				perror(dir);
+			}
 		}
+	} else {
+		// files on command line
+		opts->av = Av;
+		opts->ac = 0;
 	}
 	return (sfileNext());
 }
@@ -239,19 +228,15 @@ sfileFirst(char *cmd, char **Av, int Flags)
 int
 sfileDone(void)
 {
-	if (av) {
-		av = 0;
-		ac = 0;
-	} else if (d) {
-		freeLines(d, free);
-		d = 0;
-	} else if (flist) {
-		if (flist != stdin) fclose(flist);
-		flist = 0;
-	}
-	if (glob) free(glob);
-	glob = 0;
-	lprog = "";
+	assert(opts);
+	if (opts->rev.buf) free(opts->rev.buf);
+	if (opts->flist && (opts->flist != stdin)) fclose(opts->flist);
+	if (opts->d) freeLines(opts->d, free);
+	if (opts->glob) free(opts->glob);
+	if (opts->prefix) free(opts->prefix);
+	free(opts);
+	opts = 0;
+
 	/* wait for sfiles to exit, kill() if needed */
 	return (sfilesDied(1, 1));
 }
@@ -294,7 +279,7 @@ sfilesDied(int wait, int killit)
 		}
 		if (spid == waitpid(spid, &ret, opt)) {
 err:			if (WIFEXITED(ret)) {
-		    		sfilesRet = WEXITSTATUS(ret);
+				sfilesRet = WEXITSTATUS(ret);
 			} else if (WIFSIGNALED(ret)) {
 				sfilesRet = WTERMSIG(ret);
 			} else {
@@ -306,43 +291,51 @@ err:			if (WIFEXITED(ret)) {
 	return (sfilesRet);
 }
 
+/*
+ * return true if the file is an sfile, plus a couple more optional
+ * checks
+ */
 private int
 oksccs(char *sfile, int flags, int complain)
 {
 	char	*g;
 	int	ok;
+	int	rc = 0;		/* default == no OK */
 	struct	stat sbuf;
 
-	unless (sccs_filetype(buf) == 's') {
+	unless (sccs_filetype(sfile) == 's') {
 		if (complain)
-			fprintf(stderr, "%s: not an s.file: %s\n", lprog, sfile);
+			fprintf(stderr, "%s: not an s.file: %s\n",
+			    opts->lprog, sfile);
 		return (0);
 	}
 	g = sccs2name(sfile);
-	ok = lstat(g, &sbuf) == 0;
+	if (flags & (SF_GFILE|SF_WRITE_OK)) {
+		ok = (lstat(g, &sbuf) == 0);
+	} else {
+		ok = 1;
+	}
 	if ((flags&SF_GFILE) && !ok) {
 		if (complain) {
 			unless (exists(sfile)) {
 				fprintf(stderr,
 				    "%s: neither '%s' nor '%s' exists.\n",
-				    lprog, g, sfile);
+				    opts->lprog, g, sfile);
 			} else {
 				fprintf(stderr,
-				    "%s: no such file: %s\n", lprog, g);
+				    "%s: no such file: %s\n", opts->lprog, g);
 			}
 		}
-		free(g);
-		return (0);
-	}
-	if ((flags&SF_WRITE_OK) && (!ok || !(sbuf.st_mode & 0200))) {
-		if (complain)
+	} else if ((flags&SF_WRITE_OK) && (!ok || !(sbuf.st_mode & 0200))) {
+		if (complain) {
 			fprintf(stderr,
-			    "%s: %s: no write permission\n", lprog, g);
-		free(g);
-		return (0);
+			    "%s: %s: no write permission\n", opts->lprog, g);
+		}
+	} else {
+		rc = 1;
 	}
 	free(g);
-	return (1);
+	return (rc);
 }
 
 #ifdef        MAIN
@@ -358,7 +351,8 @@ main(int ac, char **av)
 			    s->sfile, s->gfile);
 			sccs_free(s);
 		}
+		rev = sfileRev();
 	}
+	sfileDone();
 }
 #endif
-

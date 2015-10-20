@@ -2,7 +2,7 @@
 echo $N Run C-based unit tests ......................................$NL
 commercial project
 # BK_DTRACE defined to a file to test for fh leaks
-BK_DTRACE="$HERE/LOG" bk -R _unittests || exit 1
+BK_DTRACE="$HERE/LOG" bk -R _unittests || fail
 echo OK
 
 echo $N Test getopt parsing .........................................$NL
@@ -52,6 +52,51 @@ nav[19] = --longz
 nav[20] = --longz=argz
 EOF
 cmpfiles OUT WANT
+echo OK
+
+echo $N Test getopt errors ..........................................$NL
+bk _getopt_test -b 2> ERR && fail -f
+head -1 ERR > ERR2
+echo 'bad option -b' > WANT
+cmpfiles ERR2 WANT
+
+bk _getopt_test -x 2> ERR && fail -f
+head -1 ERR > ERR2
+echo '-x missing argument' > WANT
+cmpfiles ERR2 WANT
+
+# Arguably wrong, in the spirit of 'grep -e "-pattern that starts with -" x'
+# Both short and long form of ":" don't allow new words that begin with '-'
+bk _getopt_test -x -f 2> ERR && fail -x
+head -1 ERR > ERR2
+echo '-x missing argument' > WANT
+cmpfiles ERR2 WANT
+
+bk _getopt_test -y d 2> ERR && fail -f
+head -1 ERR > ERR2
+echo '-y missing argument' > WANT
+cmpfiles ERR2 WANT
+
+bk _getopt_test --bad d 2> ERR && fail -f
+head -1 ERR > ERR2
+echo 'bad option --bad' > WANT
+cmpfiles ERR2 WANT
+
+bk _getopt_test --aliasf=foo 2> ERR && fail -f
+head -1 ERR > ERR2
+echo 'bad option --aliasf=foo' > WANT
+cmpfiles ERR2 WANT
+
+bk _getopt_test --aliasx -f 2> ERR && fail -f
+head -1 ERR > ERR2
+echo '--aliasx missing argument' > WANT
+cmpfiles ERR2 WANT
+
+bk _getopt_test --aliasy foo 2> ERR && fail -f
+head -1 ERR > ERR2
+echo '--aliasy missing argument' > WANT
+cmpfiles ERR2 WANT
+
 echo OK
 
 echo $N Test --config ...............................................$NL

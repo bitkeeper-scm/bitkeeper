@@ -1893,7 +1893,7 @@ test unicode-5 {test split built-in with unicode strings} -body {
 #lang L --line=1
 void unicode_5()
 {
-	string	a[];
+	string	a[], s;
 
 	// This contains ASCII spaces.
 	a = split("זו השפה שלנו");
@@ -1922,6 +1922,13 @@ void unicode_5()
 	unless (a[0] eq "זו") puts("bad 4.2");
 	unless (a[1] eq "השפה") puts("bad 4.3");
 	unless (a[2] eq "שלנו") puts("bad 4.4");
+
+	// Split a string containing nulls.
+	s = Binary_format("a*a2a*", "x", "b", "yd");  // xb\0yd
+	a = split(/\0/, s);
+	unless (length(a) == 2) puts("bad 5.1");
+	unless (a[0] eq "xb") puts("bad 5.2");
+	unless (a[1] eq "yd") puts("bad 5.3");
 }
 unicode_5();
 } -output {}
@@ -5188,6 +5195,7 @@ int end_2_f(int end) {
 	unless ({7,8,9}[END] == 9) puts("bad f.1");
 	return (end);
 }
+int[] end_2_foo(int x) { return ({x,x+1,x+2}); }
 void end_2()
 {
 	int	e1, e2, e3, i1, i2, i3;
@@ -5244,6 +5252,12 @@ void end_2()
 	e1 = e2 = -1;
 	unless (aa[e1=END][e2=END] == 12) puts("bad 5.1");
 	unless ((e1 == 3) && (e2 == 2)) puts("bad 5.2");
+
+	/* Check a[f(END)[b..c]] */
+	a = { 1,2,3 };
+	e1 = -1;
+	a[e1=end_2_foo(END+0)[0..1][0]];
+	unless (e1 == 2) puts("bad 7.1");
 }
 end_2();
 } -output {}
@@ -5444,10 +5458,15 @@ void end_12()
 {
 	int	a[] = { 1, 2, 3 };
 	int	i;
+	struct {
+		string	h{string}[];
+	} st;
 
 	// END in an arg list
 	a[end_12f(END,2)];
 	a[end_12f(2,END)];
+	a[end_12f(END+0,2)];
+	a[end_12f(2,0+END)];
 
 	// END is an id, array index
 	i = a[END];
@@ -5471,6 +5490,13 @@ void end_12()
 	i = 0;
 	a[END==2 ? (i=END) : (i=0)];
 	unless (i == 2) puts("bad 5");
+
+	// A regression test for a bug that used to crash the compiler
+	// when it looked for END in an index expression that has a cast.
+	push(&st.h{(string)0}, "x");
+	push(&st.h{(string)0}, "y");
+	push(&st.h{(string)0}, "z");
+	unless (st.h{"0"} == {"x","y","z"}) puts("bad 6");
 }
 end_12();
 } -output {}
@@ -10937,6 +10963,56 @@ void reference_1_2()
 	unless (st.h{"two"} eq "h-2") puts("bad 22.1");
 }
 reference_1_2();
+} -output {}
+
+test reference-1.2.1 {test deep-dive copy in/out with built-in compiler functions} -body {
+#lang L --line=1
+void reference_1_2_1()
+{
+	string	cmd, s[];
+	STATUS	st[];
+	FILE	f;
+	int	pid, ret;
+
+	/*
+	 * These tests pass array or hash elements as reference
+	 * parameters.  The compiler implements these as
+	 * copy-in/copy-out parameters and these used to not work
+	 * with compiler built-ins.
+	 */
+
+	// check system(): out/err/STATUS args
+	cmd = <<'END'
+	perl -e 'print "test32"; print STDERR "yes1"; exit(0);'
+	END;
+	ret = system(cmd, undef, &s[0], &s[1], &st[0]);
+	unless (ret == 0) puts("bad 1.1");
+	unless (s[0] == "test32") puts("bad 1.2");
+	unless (s[1] == "yes1") puts("bad 1.3");
+	unless (st[0].argv[0] == "perl") puts("bad 1.4");
+
+	// check read(): buf arg
+	unless (Fprintf("ref-1-2-1.txt", "654321") == 0) puts("bad 2.1");
+	unless (f = fopen("ref-1-2-1.txt", "r")) puts("bad 2.2");
+	unless (read(f, &s[0]) == 6) puts("bad 2.3");
+	unless (s[0] == "654321") pust("bad 2.4");
+	fclose(f);
+	unlink("ref-1-2-1.txt");
+
+	// check spawn(): when the STATUS arg gets set
+	cmd = "not-perl -e 'exit(123);'";
+	pid = spawn(cmd, undef, undef, undef, &st[0]);
+	if (defined(pid)) puts("bad 3.1");
+	unless (st[0].argv == {"not-perl","-e","exit(123);"}) puts("bad 3.3");
+
+	// check waitpid(): STATUS arg
+	cmd = "perl -e 'exit(123);'";
+	pid = spawn(cmd);
+	unless (defined(pid)) puts("bad 4.1");
+	unless (waitpid(pid, &st[0], 0) == pid) puts("bad 4.2");
+	unless (st[0].argv == {"perl","-e","exit(123);"}) puts("bad 4.3");
+}
+reference_1_2_1();
 } -output {}
 
 test reference-1.3 {test copy in/out semantics} -body {
@@ -18680,7 +18756,7 @@ test builtin-11.5 {check insert built-in} -body {
 #lang L --line=1
 void builtin_11_5()
 {
-	int	a[];
+	int	a[], i;
 	struct {
 		int	a[];
 	} st;
@@ -18736,6 +18812,21 @@ void builtin_11_5()
 	unless (eq(st.a, {3,4,5,2,1})) puts("bad 4.3");
 	insert(&st.a, 0, {5,6,7}, 8, {9,10});
 	unless (eq(st.a, {5,6,7,8,9,10,3,4,5,2,1})) puts("bad 4.4 ${a}");
+
+	/* Check with an expression as the index arg. */
+
+	a = {};
+	i = 0;
+	insert(&a, i, 1);
+	unless (eq(a, {1})) puts("bad 5.1");
+	insert(&a, i, 2);
+	unless (eq(a, {2,1})) puts("bad 5.2");
+	insert(&a, i+1, 3);
+	unless (eq(a, {2,3,1})) puts("bad 5.3");
+	insert(&a, --i, 5);  // try a side effect in the index arg
+	unless (eq(a, {2,3,1,5})) puts("bad 5.4");
+	insert(&a, i+1, 6);
+	unless (eq(a, {6,2,3,1,5})) puts("bad 5.5");
 }
 builtin_11_5();
 } -output {}
@@ -19106,6 +19197,21 @@ void builtin_19_2()
 .*8: L Error: incorrect # args to max
 .*9: L Error: expected type int or float but got string in min/max
 .*10: L Error: expected type int or float but got string in min/max
+}
+
+test builtin-20 {check (expand) operator in built-ins} -body {
+#lang L --line=1
+void builtin_20()
+{
+	string	res[];
+	string  sa[] = { "123", "3", "987" };
+	string  opts[] = { "-decreasing", "-integer" };
+
+	res = sort((expand)opts, sa);
+	unless (eq(res, {"3","123","987"})) puts("bad 1.1");
+}
+builtin_20();
+} -returnCodes {error} -match regexp -result {.*7: L Error: \(expand\) illegal with this function
 }
 
 test line-file-1 {test __LINE__ and __FILE__} -body {
@@ -20184,6 +20290,24 @@ void class_3_9_main()
 }
 class_3_9_main();
 } -output {}
+
+test class-3.10 {check dereferncing struct type name like a class name} -body {
+#lang L --line=1
+/*
+ * This used to assert: declare a typedef for a struct and then
+ * use the struct name like a class name to dereference a class
+ * variable.
+ */
+typedef struct {
+	int	x;
+} class_3_10_var;
+void class_3_10_main()
+{
+	class_3_10_var->x;
+}
+class_3_10_main();
+} -returnCodes {error} -match regexp -result {.*11: L Error: can dereference only class types
+}
 
 test class-4.1 {check scoping of private names in classes} -body {
 #lang L --line=1

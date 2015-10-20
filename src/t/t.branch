@@ -25,12 +25,12 @@ do	bk co -l $Q branch
 done
 bk admin $Q -fd1.2 branch
 bk _scat SCCS/s.branch | grep -q '^.f d 1.2'
-if [ $? -ne 0 ]; then echo Failed to add default branch; exit 1; fi
+if [ $? -ne 0 ]; then fail Failed to add default branch; fi
 echo OK
 echo $N Make sure that it creates a new branch ......................$NL
 bk co $Q -l branch
 bk _cat SCCS/p.branch | grep -q '1.2 1.2.1.1 '
-if [ $? -ne 0 ]; then echo Failed to create new branch; exit 1; fi
+if [ $? -ne 0 ]; then fail Failed to create new branch; fi
 echo OK
 # XXX - need to create a file with 1.1 in it and then set default branch
 # to 1.5.1 and make sure that a co doesn't core dump.
@@ -40,13 +40,13 @@ bk co $Q -l -r1.3 branch
 echo "this is branch 1.3.1.1" > branch
 bk ci $Q -l -y branch
 echo "this is branch 1.3.1.2" > branch
-bk ci $Q -l -y branch || exit 1
+bk ci $Q -l -y branch || fail
 bk clean
 bk co $Q -r1.3.1.2 branch
 echo "this is branch 1.3.1.2" | bk undos > X
 bk undos branch > Y
 cmp -s X Y
-if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+if [ $? -ne 0 ]; then fail; fi
 echo OK
 echo $N Check delta -l on branch ....................................$NL
 bk clean branch
@@ -58,31 +58,17 @@ echo "this is branch 1.3.1.3" | bk undos > X
 bk co $Q -r1.3.1.3 branch
 bk undos branch > Y
 cmp -s  X Y
-if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+if [ $? -ne 0 ]; then fail; fi
 echo OK
 echo $N Test branch setting in BK mode ..............................$NL
 commercial project
 ls > branch
 bk new $Q branch
-bk admin $Q -fd1.2 branch 2> ERR && {
-	echo failed
-	exit 1
-}
-grep -q "nsupported" ERR || {
-	echo failed
-	exit 1
-}
-bk admin $Q -fd branch || {
-	echo failed
-	exit 1
-}
-bk admin $Q -Fd branch || {
-	echo failed
-	exit 1
-}
+bk admin $Q -fd1.2 branch 2> ERR && fail
+grep -q "nsupported" ERR || fail
+bk admin $Q -fd branch || fail
+bk admin $Q -Fd branch || fail
 # These may not make sense: reset with value, but they work as reset.
-bk admin $Q -Fd1.2 branch || {
-	echo failed
-	exit 1
-}
+bk admin $Q -Fd1.2 branch || fail
+
 echo OK

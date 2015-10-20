@@ -16,18 +16,18 @@
 echo $N Create initial repository using setup .......................$NL
 commercial project
 echo 1 > file1
-bk new $Q file1 || exit 1
+bk new $Q file1 || fail
 echo 2 > file2
 bk new $Q file2
-bk commit -y1 $Q || exit 1
-bk edit $Q file1 || exit 1
-bk delta -fy12 $Q file1 || exit 1
+bk commit -y1 $Q || fail
+bk edit $Q file1 || fail
+bk delta -fy12 $Q file1 || fail
 echo 3 > file3
 bk new $Q file3
-bk commit --tag=t2 -y2 $Q || exit 1
-bk tag $Q t2/again || exit 1
+bk commit --tag=t2 -y2 $Q || fail
+bk tag $Q t2/again || fail
 bk edit $Q file2 file3
-bk delta -fy233 $Q file2 file3 || exit 1
+bk delta -fy233 $Q file2 file3 || fail
 bk commit -y3 $Q
 echo OK
 
@@ -66,7 +66,7 @@ fi
 echo OK
 
 echo $N Check -r@ range .............................................$NL
-bk prs -r@1.1..@t2 -hnd:GFILE:@:REV: file1 file2 file3 > GOT || exit 1
+bk prs -r@1.1..@t2 -hnd:GFILE:@:REV: file1 file2 file3 > GOT || fail
 cat <<EOF > WANT
 file1@1.2
 file1@1.1

@@ -1,0 +1,60 @@
+#!/bin/sh
+
+REPOROOT=`bk root`
+TESTDIR="/build/.regression `bk getuser -r`"
+TESTWAD="$TESTDIR/shellx-testrepos"
+
+cleanup(){
+    echo
+    echo "Cleaning up"
+    rm -rf "$TESTWAD"
+    trap - INT EXIT
+    exit
+}
+
+trap cleanup INT EXIT
+
+if [ ! -d /build ]
+then
+    echo "$0: /build directory required"
+    exit 1
+fi
+
+# This is a no-op on 32 bit windows
+if [ "$1" = "-64" ]
+then
+	EXPLORER="c:/windows/explorer.exe"
+	shift
+else
+	# Oddly, on x64 windows, which seems to return the 32bit version
+	EXPLORER=`which explorer`
+fi
+
+# Unpack wad of tests
+mkdir -p "$TESTDIR"
+cd "$TESTDIR"
+bk get -qS "$REPOROOT/shellx-testrepos.sfio"
+# Run the tests
+for t in $*; do
+	rm -rf "$TESTWAD"
+	bk sfio -mq -i < "$REPOROOT/shellx-testrepos.sfio"
+	
+	# Open an explorer window in the demo repo
+	$EXPLORER "`bk pwd -w "$TESTDIR"`" &
+
+	# do a test...
+	(cd "$TESTWAD"; sh "$REPOROOT"/t/setup "$REPOROOT/t/$t")
+	
+	cat <<EOF
+
+End of test.
+Please click back until you have returned to
+
+  $TESTDIR
+
+and close the explorer window
+EOF
+	printf "then press return > "
+	read ans
+	echo
+done

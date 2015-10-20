@@ -36,32 +36,32 @@ echo OK
 
 echo $N Make sure resolve fails if RESYNC is not complete ...........$NL
 cd ../proj
-bk unedit $Q foo5 || exit 1
-bk pull -R $Q ../copy || exit 1
+bk unedit $Q foo5 || fail
+bk pull -R $Q ../copy || fail
 cd RESYNC
-bk _mv SCCS/s.foo5 ../FOO5 || exit 1
+bk _mv SCCS/s.foo5 ../FOO5 || fail
 bk -r check -aR 2>ERR && {
 	echo check -R should have failed
 	exit 1
 }
-grep -q "Missing file.*foo5" ERR || exit 1
+grep -q "Missing file.*foo5" ERR || fail
 cd ..
 bk resolve 2>ERR && {
 	echo should have failed
 	exit 1
 }
-grep -q "Missing file.*foo5" ERR || exit 1
+grep -q "Missing file.*foo5" ERR || fail
 echo OK
 
 echo $N Make sure resolve fails if RESYNC is missing deltas .........$NL
 bk _mv FOO5 RESYNC/SCCS/s.foo5
 cd RESYNC
-bk stripdel $Q -Cr+ foo5 || exit 1
+bk stripdel $Q -Cr+ foo5 || fail
 bk -r check -aR 2>ERR && {
 	echo check -R should have failed
 	exit 1
 }
-grep -q "Missing delta.*foo5" ERR || exit 1
+grep -q "Missing delta.*foo5" ERR || fail
 echo OK
 
 echo $N Pull from a non-existent source..............................$NL

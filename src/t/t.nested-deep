@@ -1,6 +1,6 @@
 echo $N Create initial ensemble......................................$NL
 nested project
-test -d gcc/BitKeeper/tmp -a -d gdb/BitKeeper/tmp || exit 1
+test -d gcc/BitKeeper/tmp -a -d gdb/BitKeeper/tmp || fail
 # Now add some stuff
 cd ..
 commercial nm
@@ -60,8 +60,8 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Check that we do not list non-deep components ...............$NL
-cd "$HERE/project/gcc" || exit 1
-mkdir foo && cd foo || exit 1
+cd "$HERE/project/gcc" || fail
+mkdir foo && cd foo || fail
 bk -r. > OUT
 cd ../..
 grep -q "^gcc$" BitKeeper/log/deep-nests && {
@@ -71,8 +71,8 @@ grep -q "^gcc$" BitKeeper/log/deep-nests && {
 echo OK
 
 echo $N Check that sfiles does not list deep nests always ...........$NL
-bk sfiles foobar > OUT || exit 1
-test -s OUT && exit 1
+bk sfiles foobar > OUT || fail
+test -s OUT && fail
 echo OK
 
 echo $N Check that a deep nest merge makes it back out ..............$NL
@@ -106,8 +106,8 @@ touch bar
 bk new $Q bar
 bk commit -S $Q -f
 bk -P commit $Q -f
-bk -P pull $Q || exit 1
-bk -e -r check -ac || exit 1
+bk -P pull $Q || fail
+bk -e -r check -ac || fail
 echo OK
 
 echo $N Check that bk idcache does not break the repo ...............$NL
@@ -116,7 +116,7 @@ cd "$HERE/project"
 bk idcache $Q
 bk changes -vr+ > GOT
 # this fixes things
-bk -r check -ac || exit 1
+bk -r check -ac || fail
 bk changes -vr+ > WANT
 checkfiles WANT GOT
 echo OK
@@ -195,4 +195,15 @@ src/gui/tcltk/tk/zfile|+
 EOF
 perl -pe '($file) = /^([^|]+)/;s/\+/`bk prs -hd:MD5KEY: -r+ $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
 cmpfiles WANT2 GOT
+echo OK
+
+echo $N See that testing presence does not get fooled by deepness ...$NL
+# clone with partial check copied idcache, which has gcc in it, but the
+# repo doesn't.  Then a check to see if gcc present only checked existence
+# of gcc.  Now it checks gcc/BitKeeper/etc .
+cd "$HERE"
+echo "partial_check:on!" >> "$BK_DOTBK"/config
+bk clone $Q -s./gcc/deepnest project just-deep
+cd just-deep
+bk here add $Q ./gdb || fail
 echo OK

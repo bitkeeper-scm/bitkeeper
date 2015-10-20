@@ -1,0 +1,124 @@
+SCCS, BK graph, with a light covering of symdiff
+================================================
+
+The SCCS graph
+
+Each node has a serial number
+-----------------------------
+All serials are greater than 0, and sorted by age.
+When two nodes are done in parallel, there is an algorithm
+to assign strict ordering by age with tie breaker of sorting
+their deltakeys.
+
+NOTE: This means how we name deltas is wired into
+to the structure of the graph, which gave rise to sortkeys.
+
+Each node has a parent serial number
+------------------------------------
+Every node has 1 parent serial assigned to it.
+For the root node, it has a parent of 0.
+
+The parent link forms a tree graph -- no merges.
+
+Many nodes may have the same parent serial number
+-------------------------------------------------
+N nodes may be based on the same parent node.
+The reverse link of parent is kid for the oldest kid.
+And a link list of x->sliblings for the rest of the kids:
+
+d->kid, d->kid->siblings, d->kid->siblings->siblings, ...
+
+Each node might have a merge serial number
+------------------------------------------
+NOTE: This is only in BK, and not AT&T SCCS.
+A merge can bring together at most 2 nodes.
+One of the nodes is a parent, the other is a merge.
+To figure out which is which, walk the parent node of each
+back to the greatest common ancestor, which will always exist.
+Then see which kid from the GCA is oldest.  The node which
+can reach the older kid is the parent node.  The other is the
+merge node.  Looking at the graph with merge and parent edges,
+it is a DAG.
+
+Each node can be expanded to a set of nodes
+-------------------------------------------
+These are the nodes from a set point of view which make
+up version corresponding to the node.  If there are no
+includes and excludes (covered next), then the set is
+simply the transitive closure under the DAG.
+
+Each node might have an exclude list
+------------------------------------
+If some node A wants to be excluded from the corresponding version of
+a node B, then A can be added to the exclude list for B.
+Note: the node A does not have to be in the corresponding version for
+B to be excluded.
+
+Each node might have an include list
+------------------------------------
+If some node A wants to be included from the corresponding version of
+a node B, then A can be added to the include list for B.
+Note: the node A does not have to be absent in the corresponding version for
+B to be included.
+
+AT&T and BK
+-----------
+BK has more constraints than AT&T SCCS when it comes to the graph.
+
+AT&T does not have merge nodes.
+BK does, but does not use them in corresponding version calculations,
+instead relying solely on AT&T compatible encoding.
+
+BK can have items in the include list that are already included,
+or exclude list that are already excluded, but it can't have items
+in either list that aren't in the DAG lattice of root to this node.
+
+BK can't have items in both the include and exclude list at the same
+time in a given node, nor can that node be in the include or exclude
+list.  Given that, each node in an include and exclude list will be
+older (smaller serial number) than the node.
+
+Expansion of corresponding version
+----------------------------------
+This is a textual description of serialmap().
+
+A data structure is used which has 3 bits associated with every node:
+parent, include, and exclude.  The data structure is initialized
+with the parent bit set for the node being expanded.
+
+NOTE: the graph walk is in time sorted order of the nodes.  The parent
+and merge edges are not used to determine the next node to visit.
+
+There are two parts: state of this node (in or out of the corresponding
+version set) and given the state of this node, setting up older nodes.
+
+State of this node: if marked included or (parent and not excluded),
+then it is in the set.
+
+Setting up other nodes: if this node marked parent, then mark parent
+node as parent.
+If this node is in the corresponding version, then process the include
+and exclude lists by walking the lists : for each node A, if A's include
+and exclude bits aren't set, then set a bit now (include or exclude).
+
+
+Symmetric difference
+--------------------
+To take the symmetric difference of the corresponding version of two nodes,
+left and right, make use of this property of the above expansion:
+The state of the data structure at the start of processing for a node,
+completely determines this node and all older nodes.
+
+So if the two data structures for two nodes are the same, then the
+symmetric difference between the two sets is the empty set.
+
+Therefore, to terminate a symmetric difference without walking the whole
+graph, track how many items are different, and when all the different
+items have been visited, stop.
+
+In graph_symdiff(), 'marked' stores how many serials in the data structure
+are different for left and right.  When it hits zero, we are done.
+
+To make optimal use of memory, 'lower' is used to clear out marking made
+in the data structure that won't be needed.
+

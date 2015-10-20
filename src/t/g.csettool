@@ -165,3 +165,31 @@ repogca: multiple parents, -L requires a url
 EOF
 cmpfiles "$OUT" WANT
 echo OK
+
+echo $N See that -S works with -L to act as if comp is standalone ...$NL
+cd "$HERE"
+BK_CONFIG='checkout:edit!'
+export BK_CONFIG
+nested project-SL
+cd gcc
+touch foo
+bk new $Q foo
+bk commit $Q -f
+bk detach $Q . "$HERE"/gcc
+echo new data > foo
+bk delta $Q -y'more edits' foo
+bk commit $Q -y'more csets'
+bk guitest csettool -S -L"$HERE"/gcc >"$OUT" 2>&1 <<EOF || fail -f "$OUT"
+	test_buttonPress "Quit"
+EOF
+bk guitest csettool --standalone -L"$HERE"/gcc >"$OUT" 2>&1 <<EOF \
+    || fail -f "$OUT"
+	test_buttonPress "Quit"
+EOF
+echo OK
+
+# These pop up a GUI error message, but it is the correct one!
+# echo $N Sanity check command line parsing for -L with -S ............$NL
+# bk csettool -r1.2 -L"$HERE"/gcc 2> "$OUT" && fail -f "$OUT"
+# bk csettool -r1.2 -S -L"$HERE"/gcc 2> "$OUT" && fail -f "$OUT"
+# echo OK

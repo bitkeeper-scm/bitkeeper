@@ -29,43 +29,51 @@ BK_HOST=localhost bk setup -a -f -cc project 2>ERR && {
 	echo "failed"
 	exit 1
 }
-grep -q 'bad host name' ERR || fail
+grep -q 'bad host name' ERR || fail -f ERR
 echo OK
 
 echo $N Check defaults from setup -p ................................$NL
-bk setup -p >OUT || exit 1
+bk setup -p > GOT || fail
 cat <<EOF > WANT
+auto_populate: off
+BAM: off
+checkout: edit
+clock_skew: on
+clone_default: ALL
 description: 
 email: 
-license: 
-licsign1: 
-licsign2: 
-licsign3: 
-autofix: yes
-BAM: off
-checkout: get
-clock_skew: on
-compression: gzip
+eoln: native
+keyword: none
+parallel: on
 partial_check: on
+stats_after_pull: off
+sync: off
+triggers: \$PRODUCT|.
 EOF
-cmpfiles OUT WANT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Check defaults from setup -p w valid license.................$NL
 BK_CONFIG=\
 "license:$BKL_PRO;licsign1:$BKL_P1;licsign2:$BKL_P2;licsign3:$BKL_P3" \
-	bk setup -p >OUT || exit 1
+	bk setup -p >OUT || fail
 cat <<EOF > WANT
+auto_populate: off
+BAM: on
+checkout: edit
+clock_skew: on
+clone_default: ALL
 description: 
 email: 
-autofix: yes
-BAM: on
-checkout: get
-clock_skew: on
-compression: gzip
+eoln: native
+keyword: none
+parallel: on
 partial_check: on
+stats_after_pull: off
+sync: off
+triggers: \$PRODUCT|.
 EOF
-cmpfiles OUT WANT
+cmpfiles WANT OUT
 echo OK
 
 echo $N Check setup -e works ........................................$NL
@@ -76,3 +84,131 @@ bk setup -e -a -f -cc proj2 2>ERR || fail -f ERR "should have worked"
 # Try again, should fail this time
 bk setup -e -a -f -cc proj2 2>ERR && fail -f ERR "should have failed"
 echo OK
+
+echo $N Test setup noargs with a non-existent path...................$NL
+cd "$HERE"
+bk setup new-repo || fail
+cd new-repo
+bk repocheck -q || fail
+echo OK
+
+echo $N Test setup noargs with an existing, empty path...............$NL
+cd "$HERE"
+rm -rf new-repo
+mkdir new-repo
+bk setup new-repo || fail
+cd new-repo
+bk repocheck -q || fail
+echo OK
+
+echo $N Test setup noargs inside an empty directory..................$NL
+cd "$HERE"
+rm -rf new-repo
+mkdir new-repo
+cd new-repo
+bk setup || fail
+bk repocheck -q || fail
+echo OK
+
+echo $N Test setup noargs inside a non-empty directory...............$NL
+cd "$HERE"
+rm -rf new-repo
+mkdir new-repo
+cd new-repo
+mkdir adir
+touch afile
+touch adir/afile
+bk setup || fail
+bk repocheck -q || fail
+bk -Ux > ../GOT
+cat <<EOF > WANT
+afile
+adir/afile
+EOF
+cmpfiles WANT ../GOT
+echo OK
+
+# this test depends on the last
+echo $N Test setup noargs inside of a repo...........................$NL
+cd "$HERE"
+cd new-repo
+bk setup 2>ERR && fail
+grep -q "existing version control files" ERR || fail -f ERR wrong one
+echo OK
+
+# this test builds on the last
+echo $N Test have version controlled files masked by new repo .......$NL
+SHALLOW=a/b
+DEEP=$SHALLOW/c
+DEEPER=$DEEP/d
+# start off with a repo way down there
+bk setup $DEEPER || fail
+# not okay if version controlled file at new root ..
+touch $SHALLOW/foo
+bk new $Q $SHALLOW/foo
+bk setup $SHALLOW 2>ERR && fail -f ERR
+grep -q "existing version control files" ERR || fail -f ERR wrong two
+# not okay if deeper than new root.
+bk mv $SHALLOW/foo $DEEP/foo
+bk setup $SHALLOW 2>ERR && fail -f ERR
+grep -q "existing version control files" ERR || fail -f ERR wrong two
+# okay if just an extra file lying around; just no version controlled ones
+touch $DEEP/bar
+bk rm $DEEP/foo
+bk setup $SHALLOW || fail
+echo OK
+
+echo $N Test default config options in newly created repo............$NL
+cd "$HERE"
+mkdir dotbk
+cat <<EOF > dotbk/config
+license: $BKL_PRO
+licsign1: $BKL_P1
+licsign2: $BKL_P2
+licsign3: $BKL_P3
+EOF
+BK_DOTBK="$HERE/dotbk"
+export BK_DOTBK
+bk _eula -a
+bk setup brand-new
+
+## And the Good Lord spake unto ob, saying: EDIT shall be the default
+## value of checkout and thou shall not change this value for it is
+## hardcoded in many places in the source base. If thou shall decide
+## to ignore this warning and thou change the value of checkout thou
+## shall grep the source for all the concealed places where said value
+## matters and thou shall take it onto thou to support thy customers
+## for I will have exhonerated my loyal pupil ob who heeded my
+## warnings and added the following testcase.
+
+cd brand-new
+touch foobar
+bk new $Q foobar
+test -f foobar || fail not in checkout edit
+E=$(ls -l foobar | \
+	perl -e '@m=split(" ",<>);print @m[0] =~ /..w....../?"y\n":"n\n";')
+test "$E" = y || fail not in checkout edit mode
+
+echo OK
+
+echo $N Test setup layering of config variables .....................$NL
+# still using $HERE/dotbk dir setup above
+cd "$HERE"
+cat <<EOF > dotbk/config.template
+# My template
+[build]autopopulate: 15
+autopopulate: 1
+auto-populate: 2
+EOF
+bk setup -F'autopopulate=3' layers 2> ERR || fail
+cd layers
+bk cat BitKeeper/etc/config | grep populate: > GOT
+# mapped all the above to auto_populate, then took command line one first
+echo 'auto_populate: 3' > WANT
+cmpfiles WANT GOT
+echo 'setup: filters not supported; "[build]autopopulate=15" ignored' > WANT
+cmpfiles WANT ../ERR
+echo OK
+
+kill_uniq "$BK_DOTBK"/bk-keys-db   # we used a custom location
+exit 0

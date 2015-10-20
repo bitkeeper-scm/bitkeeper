@@ -6,7 +6,7 @@ private int	dbimplode(char *file, char *dir, u32 flags);
 private int	do_explode(char *file, char *dir, int mode, MDBM *db,
 			   u32 flags);
 private char	**getFields(char *dir);
-private int	getFields_walkfn(char *path, struct stat *sbufp, void *cookie);
+private int	getFields_walkfn(char *path, char type, void *cookie);
 private MDBM	*gfile2DB(char *gfile, int flags, MDBM *db);
 private int	print_field(char *file, char *dir, mode_t mode, char *field,
 			    u8 *data, int len, u32 flags);
@@ -98,11 +98,11 @@ db_store(char *gfile, MDBM *db)
 }
 
 private int
-getFields_walkfn(char *path, struct stat *sbufp, void *cookie)
+getFields_walkfn(char *path, char type, void *cookie)
 {
 	char	***lp = (char***)cookie;
 
-	unless (S_ISDIR(sbufp->st_mode)) *lp = addLine(*lp, strdup(path));
+	unless (type == 'd') *lp = addLine(*lp, strdup(path));
 	return (0);
 }
 
@@ -114,7 +114,7 @@ getFields(char *dir)
 {
 	char	**lines = 0;
 
-	walkdir(dir, getFields_walkfn, &lines);
+	walkdir(dir, (walkfns){ .file = getFields_walkfn }, &lines);
 	uniqLines(lines, free);
 	reverseLines(lines);
 	return (lines);

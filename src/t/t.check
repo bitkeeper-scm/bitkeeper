@@ -13,6 +13,8 @@
 # Copyright (c) 2000 Larry McVoy
 # %K%
 
+umask 002
+
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -109,18 +111,18 @@ bk -r check -a > OUT 2>&1 || {
 echo OK
 
 echo $N Make sure that check -a does not add a checked timestamp ....$NL
-test -f BitKeeper/log/checked && exit 1
+test -f BitKeeper/log/checked && fail
 echo OK
 
 echo $N Make sure that check -ac does add a checked timestamp .......$NL
 bk -r check -ac
-test -f BitKeeper/log/checked || exit 1
+test -f BitKeeper/log/checked || fail
 echo OK
 
 echo $N Make sure that check -a adds an NFILES ......................$NL
 rm BitKeeper/log/NFILES
 bk -r check -a
-test -f BitKeeper/log/NFILES || exit 1
+test -f BitKeeper/log/NFILES || fail
 echo OK
 
 echo $N Make sure that check -a corrects bad NFILES count ...........$NL
@@ -207,12 +209,8 @@ echo OK
 echo $N Make sure it complains unlocked files with rw gfile .........$NL
 bk get $Q d1/sub1/a
 chmod +w d1/sub1/a
-bk -r check -a > OUT 2>&1
-bk _test -f d1/sub1/SCCS/p.a && {
-	echo should not have created lock file
-	cat OUT
-	exit 1
-}
+bk --config=autofix:off -r check -a > OUT 2>&1
+bk _test -f d1/sub1/SCCS/p.a && fail -f OUT should not have created lock file
 test -w d1/sub1/a || {
 	echo should not have unedited file
 	cat OUT
@@ -309,7 +307,7 @@ cd "$HERE"
 commercial other
 echo hi > foo
 bk commit $Q -yFOO
-bk new $Q foo || exit 1
+bk new $Q foo || fail
 bk commit $Q -yFOO
 cd "$HERE"/project
 bk _cp ../other/SCCS/s.foo SCCS/s.foo
@@ -331,7 +329,7 @@ bk stripdel -qCr+ a
 for i in a b c
 do	bk edit $Q $i
 	echo error >> $i
-	bk delta $Q -y'out of sync' $i || exit 1
+	bk delta $Q -y'out of sync' $i || fail
 done
 bk commit $Q -y'out of sync' > OUT 2>&1 && {
 	echo should have failed the commit
@@ -400,9 +398,9 @@ echo OK
 
 echo $N Make sure check complains is cset marks are missing .........$NL
 cd "$HERE"
-bk clone $Q project bad || exit 1
+bk clone $Q project bad || fail
 cd bad
-bk admin -FSCCS d1/a  || exit 1
+bk admin -FSCCS d1/a  || fail
 bk _rm d1/SCCS/d.a || fail
 bk -r check -a >OUT 2>ERRS && {
 	echo check should have failed
@@ -431,7 +429,7 @@ echo OK
 
 echo $N Make sure check knows about .bk_skip ........................$NL
 cd "$HERE"
-bk clone $Q project clone || exit 1
+bk clone $Q project clone || fail
 cd clone
 # this one should print a warning
 touch d1/sub1/.bk_skip
@@ -471,7 +469,7 @@ true
 echo $N Check without a ChangeSet sfile should give an error ........$NL
 cd "$HERE"
 rm -rf clone
-bk clone $Q project clone || exit 1
+bk clone $Q project clone || fail
 cd clone
 bk _rm SCCS/s.ChangeSet
 bk -r check -a >OUT 2>ERRS
@@ -484,25 +482,8 @@ bk -r check -a >OUT 2>ERRS
 bk _cp ../project/SCCS/s.ChangeSet SCCS/s.ChangeSet
 echo OK
 
-echo $N Make sure .bk_skip and SCCS/.bk_skip works ..................$NL
-# this one should not cause a warning, but the check will complain about
-# missing files
-cd "$HERE/clone"
-bk _touch d1/sub1/SCCS/.bk_skip
-bk -r check -a >OUT 2>ERRS && fail
-grep -q 'sfiles: d1/sub1/SCCS/.bk_skip when .bk/d1/sub1/SCCS exists' ERRS || {
-     fail -f ERRS
-}
-grep -v 'sfiles: d1/sub1/SCCS/.bk_skip when .bk/d1/sub1/SCCS exists' ERRS |
-     grep -v '^Missing file' |
-     grep -v 'At least some of the chk3' |
-     grep -v 'or a .bk_skip file' > ERRS2
-test -s ERRS2 && fail -f ERRS2 wrong error messages
-echo OK
-
 echo $N bk check should detect new sfiles in a .bk_skip or -prune ...$NL
 # In a remapped repo, there should be no .bk/path/to if -f path/to/.bk_skip
-# But that code is not there yet, so this test fails.
 cd "$HERE"
 commercial proj2
 mkdir tmp
@@ -532,13 +513,13 @@ commercial proj3
 bk edit $Q BitKeeper/etc/config
 (grep -v partial_check BitKeeper/etc/config; echo partial_check:yes) > c
 cat c > BitKeeper/etc/config
-test Xyes = X"`bk config partial_check`" || exit 2
+test Xyes = X"`bk config partial_check`" || fail
 echo hi > foo
-bk new $Q -ycomment foo || exit 1
+bk new $Q -ycomment foo || fail
 bk commit $Q -ycomment || fail
 mkdir foo
 echo problem > foo/bar
-bk new $Q -ycomment2 foo/bar || exit 1
+bk new $Q -ycomment2 foo/bar || fail
 bk commit -q -ycomment2 2> ERR && {
 	echo commit should have failed
 	exit 1
@@ -570,11 +551,11 @@ commercial proj4
 bk edit $Q BitKeeper/etc/config
 echo partial_check:yes! >> BitKeeper/etc/config
 echo hi > foo
-bk new $Q -ycomment foo || exit 1
-bk commit $Q -ycomment || exit 1
+bk new $Q -ycomment foo || fail
+bk commit $Q -ycomment || fail
 echo 1 > BitKeeper/log/checked
 bk admin -pbusted foo
-bk -r check -ac 2>ERR && fail -f ERR should fail
+bk --config=autofix:off -r check -ac 2>ERR && fail -f ERR should fail
 # checked file should be gone
 test -f BitKeeper/log/checked && fail
 echo OK
@@ -637,6 +618,7 @@ cmp -s WANT BitKeeper/log/checked && {
 }
 echo OK
 
+if [ "$PLATFORM" != "WIN32" ]; then
 echo $N Try our pre-outgoing trigger that auto checks ...............$NL
 cd "$HERE/proj4"
 test -d  BitKeeper/triggers || mkdir  BitKeeper/triggers
@@ -679,12 +661,13 @@ bk needscheck && {
 	exit 1
 }
 echo OK
+fi
 
 echo $N Check should clean up any extra dfiles ......................$NL
 cd "$HERE"/proj2
 bk _rm -f SCCS/s.foo2	# fixup
 bk _touch SCCS/d.foo
-bk -r check -a || exit 1
+bk -r check -a || fail
 bk _test -f SCCS/d.foo && {
 	echo should have deleted dfile
 	exit 1
@@ -959,6 +942,18 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
+echo $N Test two new files with same rootkey ........................$NL
+# This is why checkKeys() has a sccs_addUniqStr for the rootkey
+cd "$HERE/proj2"
+touch twin1
+bk new $Q twin1
+bk _cp SCCS/s.twin1 SCCS/s.twin2
+bk edit $Q twin2
+_BK_MV_OK=1 bk delta $Q -fyrename twin2
+bk -r check 2> ERR && fail -f ERR
+grep -q "Same key" ERR || fail -f ERR
+echo OK
+
 test -d "$TESTDATA/key_format2" && {
 echo $N Test KEY_FORMAT2 code .......................................$NL
 # Hit a problem with /home/bk/homepage ; test repo is a csetprune of that repo
@@ -969,4 +964,32 @@ bk cat BitKeeper/etc/config > "$BK_DOTBK"/config
 bk --cd="$TESTDATA/key_format2" repocheck $Q || fail
 echo OK
 }
-exit 0
+
+echo $N Show that bk flags bad pfiles ...............................$NL
+cd "$HERE"
+bk clone $Q good badpfile || fail
+cd badpfile
+bk edit $Q foo || fail
+bk repocheck $Q || fail
+echo junk > f
+bk _mv f SCCS/p.foo
+bk repocheck -q 2>ERR && fail -f ERR should fail
+echo "check: can't read pfile for foo" > WANT
+cmpfiles ERR WANT
+echo OK
+
+echo $N Switching checkout modes should not refetch gfile............$NL
+bk _rm SCCS/p.foo
+rm -f foo
+bk admin -FSCCS foo || fail
+bk get $Q foo || fail
+test -d SCCS && bk _touch -t 10000 SCCS/s.foo
+bk _touch -t 10002 foo
+chmod ug+w foo
+# trim ctime off stat info
+bk _lstat foo | sed 's/|[0-9]*|foo$/|foo/' > WANT
+chmod -w foo
+bk --config=checkout:edit repocheck $Q || fail
+bk _lstat foo | sed 's/|[0-9]*|foo$/|foo/' > GOT
+cmpfiles WANT GOT
+echo OK

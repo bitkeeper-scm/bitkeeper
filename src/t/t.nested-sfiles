@@ -12,9 +12,9 @@ cd ..
 bk lease renew -w  # hack!
 mkdir -p a/b
 touch c
-bk setup -cc -f a/b/c || exit 1
+bk setup -cc -f a/b/c || fail
 mkdir a/b/c/d
-bk setup -cc -f a/b/c/d/e || exit 1
+bk setup -cc -f a/b/c/d/e || fail
 mkdir a/b/c1
 echo hi > a/b/c1/f
 bk new $Q a/b/c1/f
@@ -26,11 +26,11 @@ mkdir a/b/c/d/e/f
 echo hi > a/b/c/d/e/f/f
 bk new $Q a/b/c/d/e/f/f
 cd a/b/c/d/e
-bk commit -S -ynew $Q || exit 1
+bk commit -S -ynew $Q || fail
 cd ../..
-bk commit -S -ynew $Q || exit 1
+bk commit -S -ynew $Q || fail
 cd ../../..
-bk commit -ynew $Q || exit 1
+bk commit -ynew $Q || fail
 bk alias new DEV gcc gdb
 echo OK
 

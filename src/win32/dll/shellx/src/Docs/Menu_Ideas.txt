@@ -1,0 +1,131 @@
+
+Icons:
+
+The top-level BitKeeper folder (i.e. the BkShellX folder), should have
+a distinguishing icon.
+
+Files within the BitKeeper folder should have the following types of icons:
+
+    read-only:  File is not checked out
+
+    modified: File is r/w and has changes that need to be checked in
+
+    not a bk file:
+
+    admin file: Have an icon for files like triggers and config file?
+
+    Not user modifiable: icon for SCCS folders and s./p. etc files
+
+Note: shouldn't need to have an icon for read-write since that is the
+probably the normal state for windows users?
+
+
+
+Menu Actions:
+
+Clicking Right on the background of Explorer (when not in a bk
+repository) and then clicking on the "New" menu should add an option to
+the "New" menu for creating a BitKeeper repository (bk setuptool). The
+new menu is currently used to create folders, add new MS docs, Create
+Zip folders, etc.
+
+
+Top-level BitKeeper folder (i.e. the BkShellX folder)
+
+    Icon - little "BK" logo (or some other distinguishing icon) on the folder
+
+    Right-click menu:
+
+	Pull
+	Push
+	Abort Pull (maybe under a sublevel for advanced options?)
+	Clone (I don't think this is needed or desired at this level. Better
+	       using drag-n-drop. If we can clone from local to remote, might
+	       want to have a dialog box for the destination)
+	       
+	Commit Work (citool)
+
+	File bug (for this repo)
+
+	History (brings up revtool)
+	Info (output of 'bk status')
+
+	Preferences 
+	    Brings up dialog to modify the BitKeeper/etc/config file settings
+	    Checkout modes, etc
+	
+
+	Update Status (i.e. are there changes in the parent not in the child)
+
+	    This will bring up a dialog with the pull -nll output or
+	    (resync -nll ???)
+
+	    Clicking this button might change the icon to remind the
+	    user that the repo is ahead/behind of the parent
+
+	Note: The implementation for the push and pull should bring up
+	      a window showing the progress of the operation.
+
+    Drag-n-drop hooks
+	
+	right-dragging the folder to an empty area on the explorer
+	background should invoke the clone menu.
+
+
+Right-clicking on a Folder that is NOT a BK repo
+
+    Icon - Default Folder
+
+    Operations when clicking right:
+
+	Import?  
+	    Dialog pops up prompting for directory where to import
+	    However, this import feature might be better done using
+	    drag-n-drop hooks???
+
+
+
+
+Files within BitKeeper repository
+
+
+    Operations on a file not yet part of a repository:
+
+	Add to Repository (would be nice to be able to add initial comments...)
+
+    Operations on a bitkeeper controlled file
+
+BitKeeper file that is read-only
+
+    Operations when Double Clicking
+	checkout read-write before launching default openning tool
+
+    Operations when clicking Right
+	Checkout read-write
+	History
+
+	Advanced
+	    Delete File
+	    Gone File(?)
+
+
+Folders within BitKeeper repository
+    
+    Ideas:
+
+	Can we prevent people from openning the SCCS dirs when
+	double-clicking on them? If they need to send us the file,
+	maybe they can do it from the cmd.exe shell?
+
+    Operations when clicking Right
+
+	Checkout RO recursively
+	Checkout RW recursively
+
+
+    Drag-n-Drop Hooks
+
+	Draging the folder with the right-mouse clicked brings up a menu
+	with the 'bk mvdir' option. Dragging outside the bk folder or into
+	an SCCS or Admin dir should be caught and disallowed.
+

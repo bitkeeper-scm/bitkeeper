@@ -25,19 +25,78 @@ usage_chmod(void)
 int
 fslcp_main(int ac, char **av)
 {
+	int	rc;
+	int	fd, xfile1, xfile2;
+	char	*data;
+
 	if (ac != 3) usage2(av[0]);
-	if (fileCopy(av[1], av[2])) return (1);
-	return (0);
+
+	xfile1 = is_xfile(av[1]);
+	xfile2 = is_xfile(av[2]);
+	if (xfile1 && xfile2) {
+		data = xfile_fetch(av[1], xfile1);
+		rc = xfile_store(av[2], xfile2, data);
+		free(data);
+	} else if (xfile1) {
+		data = xfile_fetch(av[1], xfile1);
+		fd = open(av[2], O_CREAT|O_WRONLY|O_TRUNC, 0664);
+		if  (fd >= 0) {
+			write(fd, data, strlen(data));
+			close(fd);
+			rc = 0;
+		} else {
+			rc = 1;
+		}
+		free(data);
+	} else if (xfile2) {
+		data = loadfile(av[1], 0);
+		rc = xfile_store(av[2], xfile2, data);
+		free(data);
+	} else {
+		rc = fileCopy(av[1], av[2]);
+	}
+	return (rc);
 }
 
 int
 fslmv_main(int ac, char **av)
 {
 	int	rc;
+	int	fd, xfile1, xfile2;
+	char	*data;
 
 	if (ac != 3) usage2(av[0]);
-	unlink(av[2]);
-	if ((isSCCS(av[1]) == IS_FILE) || (isSCCS(av[2]) == IS_FILE)) {
+	xfile1 = is_xfile(av[1]);
+	xfile2 = is_xfile(av[2]);
+	unless (xfile2) unlink(av[2]);
+
+	/*
+	 * Handle the (uncommon) case in regressions where we are
+	 * using rename to do an xfile <-> regular file conversion.
+	 */
+	if (xfile1 && xfile2) {
+		data = xfile_fetch(av[1], xfile1);
+		rc = xfile_store(av[2], xfile2, data);
+		free(data);
+		xfile_delete(av[1], xfile1);
+	} else if (xfile1) {
+		data = xfile_fetch(av[1], xfile1);
+		fd = open(av[2], O_CREAT|O_WRONLY|O_TRUNC, 0664);
+		if  (fd >= 0) {
+			write(fd, data, strlen(data));
+			close(fd);
+			rc = 0;
+		} else {
+			rc = 1;
+		}
+		free(data);
+		xfile_delete(av[1], xfile1);
+	} else if (xfile2) {
+		data = loadfile(av[1], 0);
+		rc = xfile_store(av[2], xfile2, data);
+		free(data);
+		unlink(av[1]);
+	} else if ((isSCCS(av[1]) == IS_FILE) || (isSCCS(av[2]) == IS_FILE)) {
 		/* can't rename from/to SCCS dirs */
 		rc = fileCopy(av[1], av[2]);
 		unlink(av[1]);
@@ -53,6 +112,7 @@ fslrm_main(int ac, char **av)
 	int	c;
 	int	rc = 0, force = 0;
 	int	recurse = 0;
+	int	xfile;
 
 	while ((c = getopt(ac, av, "fr", 0)) != -1) {
 		switch (c) {
@@ -64,7 +124,13 @@ fslrm_main(int ac, char **av)
 
 	unless (av[optind]) usage1(av[0]);
 	while (--ac >= optind) {
-		if (isdir(av[ac])) {
+		if (xfile = is_xfile(av[ac])) {
+			rc = xfile_delete(av[ac], xfile);
+			if (rc && !force) {
+				perror(av[ac]);
+				break;
+			}
+		} else if (isdir(av[ac])) {
 			if (recurse) {
 				if (rmtree(av[ac]) && !force) {
 					rc = 1;
@@ -117,6 +183,20 @@ fslmkdir_main(int ac, char **av)
 	if (ac < 2) usage1(av[0]);
 	while (--ac) {
 		if (mkdir(av[ac], 0775)) {
+			perror(av[ac]);
+			rc = 1;
+		}
+	}
+	return (rc);
+}
+
+int
+fslrmdir_main(int ac, char **av)
+{
+	int	rc = 0;
+	if (ac < 2) usage1(av[0]);
+	while (--ac) {
+		if (rmdir(av[ac])) {
 			perror(av[ac]);
 			rc = 1;
 		}

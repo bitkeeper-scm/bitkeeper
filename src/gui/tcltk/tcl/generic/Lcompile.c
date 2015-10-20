@@ -239,6 +239,7 @@ private void	compile_varDecl(VarDecl *decl);
 private void	compile_varDecls(VarDecl *decls);
 private int	compile_warn(Expr *expr);
 private int	compile_write(Expr *expr);
+private void	copyout_parms(Expr *actuals);
 private Tcl_Obj	*do_getline(Tcl_Interp *interp, Tcl_Channel chan);
 private void	emit_globalUpvar(Sym *sym);
 private void	emit_instrForLOp(Expr *expr, Type *type);
@@ -1176,6 +1177,7 @@ frame_pop()
 	Proc	*proc  = frame->proc;
 	Sym	*sym;
 	Label	*label;
+	ByteCode *codePtr;
 	Tcl_HashEntry *hPtr;
 	Tcl_HashSearch hSearch;
 
@@ -1252,6 +1254,9 @@ frame_pop()
 							TclObjInterpProc,
 							(ClientData)proc,
 							TclProcDeleteProc);
+		// Don't recompile on compileEpoch changes.
+		codePtr = (ByteCode *)proc->bodyPtr->internalRep.twoPtrValue.ptr1;
+		codePtr->flags |= TCL_BYTECODE_PRECOMPILED;
 		TclFreeCompileEnv(frame->bodyEnvPtr);
 		TclFreeCompileEnv(frame->prologueEnvPtr);
 		ckfree((char *)frame->bodyEnvPtr);
@@ -1975,10 +1980,6 @@ compile_insert_unshift(Expr *expr)
 		L_errf(expr, "first arg to %s not an array reference (&)", opNm);
 		return (0);
 	}
-	unless (isint(index)) {
-		L_errf(expr, "second arg to %s not an int", opNm);
-		return (0);
-	}
 	compile_expr(array, L_PUSH_PTR | L_LVALUE);
 	unless (isarray(array) || ispoly(array)) {
 		L_errf(expr,
@@ -2008,6 +2009,10 @@ compile_insert_unshift(Expr *expr)
 		compile_expr(index, L_PUSH_VAL);
 		emit_store_scalar(idxTmp->idx);
 		emit_pop();
+		unless (isint(index)) {
+			L_errf(expr, "second arg to %s not an int", opNm);
+			return (0);
+		}
 		argTmp = tmp_get(TMP_REUSE);
 		push_lit("");
 		emit_store_scalar(argTmp->idx);
@@ -2060,12 +2065,17 @@ compile_insert_unshift(Expr *expr)
 		}
 		if (array->flags & L_EXPR_DEEP) {
 			TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
-			compile_expr(index, L_PUSH_VAL);
+		}
+		compile_expr(index, L_PUSH_VAL);
+		unless (isint(index)) {
+			L_errf(expr, "second arg to %s not an int", opNm);
+			return (0);
+		}
+		if (array->flags & L_EXPR_DEEP) {
 			TclEmitInstInt4(INST_L_DEEP_WRITE, idx,
 					L->frame->envPtr);
 			TclEmitInt4(flags | L_DISCARD, L->frame->envPtr);
 		} else {
-			compile_expr(index, L_PUSH_VAL);
 			TclEmitInstInt4(INST_L_LIST_INSERT, idx,
 					L->frame->envPtr);
 			TclEmitInt4(flags, L->frame->envPtr);
@@ -2797,7 +2807,7 @@ typeck_spawn(Expr *in, Expr *out, Expr *err)
 	if (!in || isid(in, "undef")) {
 	} else if (typeisf(in, "FILE")) {
 		flags |= SYSTEM_IN_HANDLE;
-	} else if (isstring(in) && isconst(in)) {
+	} else if (isstring(in) && (isconst(in) || isinterp(in))) {
 		flags |= SYSTEM_IN_FILENAME;
 	} else if (isstring(in) || ispoly(in)) {
 		flags |= SYSTEM_IN_STRING;
@@ -2810,7 +2820,7 @@ typeck_spawn(Expr *in, Expr *out, Expr *err)
 	if (!out || isid(out, "undef")) {
 	} else if (typeisf(out, "FILE")) {
 		flags |= SYSTEM_OUT_HANDLE;
-	} else if (isstring(out) && isconst(out)) {
+	} else if (isstring(out) && (isconst(out) || isinterp(out))) {
 		flags |= SYSTEM_OUT_FILENAME;
 	} else {
 		L_errf(out, "third arg must be FILE, or string constant");
@@ -2818,7 +2828,7 @@ typeck_spawn(Expr *in, Expr *out, Expr *err)
 	if (!err || isid(err, "undef")) {
 	} else if (typeisf(err, "FILE")) {
 		flags |= SYSTEM_ERR_HANDLE;
-	} else if (isstring(err) && isconst(err)) {
+	} else if (isstring(err) && (isconst(err) || isinterp(err))) {
 		flags |= SYSTEM_ERR_FILENAME;
 	} else {
 		L_errf(err, "fourth arg must be FILE, or string constant");
@@ -2835,7 +2845,7 @@ typeck_system(Expr *in, Expr *out, Expr *err)
 	if (!in || isid(in, "undef")) {
 	} else if (typeisf(in, "FILE")) {
 		flags |= SYSTEM_IN_HANDLE;
-	} else if (isstring(in) && isconst(in)) {
+	} else if (isstring(in) && (isconst(in) || isinterp(in))) {
 		flags |= SYSTEM_IN_FILENAME;
 	} else if (isstring(in) || ispoly(in)) {
 		flags |= SYSTEM_IN_STRING;
@@ -2848,7 +2858,7 @@ typeck_system(Expr *in, Expr *out, Expr *err)
 	if (!out || isid(out, "undef")) {
 	} else if (typeisf(out, "FILE")) {
 		flags |= SYSTEM_OUT_HANDLE;
-	} else if (isstring(out) && isconst(out)) {
+	} else if (isstring(out) && (isconst(out) || isinterp(out))) {
 		flags |= SYSTEM_OUT_FILENAME;
 	} else if (isaddrof(out) && (isstring(out->a) || ispoly(out->a))) {
 		flags |= SYSTEM_OUT_STRING;
@@ -2861,7 +2871,7 @@ typeck_system(Expr *in, Expr *out, Expr *err)
 	if (!err || isid(err, "undef")) {
 	} else if (typeisf(err, "FILE")) {
 		flags |= SYSTEM_ERR_HANDLE;
-	} else if (isstring(err) && isconst(err)) {
+	} else if (isstring(err) && (isconst(err) || isinterp(err))) {
 		flags |= SYSTEM_ERR_FILENAME;
 	} else if (isaddrof(err) && (isstring(err->a) || ispoly(err->a))) {
 		flags |= SYSTEM_ERR_STRING;
@@ -3120,21 +3130,12 @@ compile_fnCall(Expr *expr)
 	int	num_parms = 0, typchk = FALSE;
 	char	*name;
 	char	*defchk = NULL;  // name for definedness chk before main() runs
-	Expr	*actual, *foo, *Foo_star, *opts, *p;
+	Expr	*foo, *Foo_star, *opts, *p;
 	Sym	*sym;
 	VarDecl	*formals = NULL;
 
 	ASSERT(expr->a->kind == L_EXPR_ID);
 	name = expr->a->str;
-
-	/* Check for an L built-in function. */
-	for (i = 0; i < sizeof(builtins)/sizeof(builtins[0]); ++i) {
-		if (!strcmp(builtins[i].name, name)) {
-			return (builtins[i].fn(expr));
-		}
-	}
-
-	level = fnCallBegin();
 
 	/* Check for an (expand) in the arg list. */
 	expand = 0;
@@ -3146,6 +3147,24 @@ compile_fnCall(Expr *expr)
 		}
 	}
 
+	/*
+	 * Check for an L built-in function. XXX change the array to
+	 * a hash if the number of built-ins grows much more.
+	 */
+	for (i = 0; i < sizeof(builtins)/sizeof(builtins[0]); ++i) {
+		if (!strcmp(builtins[i].name, name)) {
+			if (expand) {
+				L_errf(expr, "(expand) illegal with "
+				       "this function");
+			}
+			i = builtins[i].fn(expr);
+			/* Copy out hash/array elements passed by reference. */
+			copyout_parms(expr->b);
+			return (i);
+		}
+	}
+
+	level = fnCallBegin();
 	sym = sym_lookup(expr->a, L_NOWARN);
 
 	if (sym && isfntype(sym->type)) {
@@ -3224,21 +3243,10 @@ compile_fnCall(Expr *expr)
 	}
 
 	/*
-	 * Copy out any deep-dive expressions that were passed with &.
-	 * For these, the actual's value was copied into a temp var
-	 * and its name passed.  Copy that temp back out.
+	 * Handle the copy-out part of copy in/out parameters.
+	 * These are any deep-dive expressions that are passed by reference.
 	 */
-	for (actual = expr->b; actual; actual = actual->next) {
-		Expr *arg = actual->a;
-		unless (isaddrof(actual) && (arg->flags & L_EXPR_DEEP)) {
-			continue;
-		}
-		emit_load_scalar(arg->u.deepdive.val->idx);
-		compile_assignFromStack(arg, arg->type, NULL, L_REUSE_IDX);
-		emit_pop();
-		tmp_free(arg->u.deepdive.val);
-		arg->u.deepdive.val = NULL;
-	}
+	copyout_parms(expr->b);
 
 	if (typchk) L_typeck_fncall(formals, expr);
 	fnCallEnd(level);
@@ -3256,6 +3264,29 @@ compile_fnCall(Expr *expr)
 			      TCL_GLOBAL_ONLY);
 	}
 	return (1);  // stack effect
+}
+
+private void
+copyout_parms(Expr *actuals)
+{
+	Expr	*actual, *arg;
+
+	/*
+	 * Copy out any deep-dive expressions that were passed with &.
+	 * For these, the actual's value was copied into a temp var
+	 * and its name passed.  Copy that temp back out.
+	 */
+	for (actual = actuals; actual; actual = actual->next) {
+		arg = actual->a;
+		unless (isaddrof(actual) && (arg->flags & L_SAVE_IDX)) {
+			continue;
+		}
+		emit_load_scalar(arg->u.deepdive.val->idx);
+		compile_assignFromStack(arg, arg->type, NULL, L_REUSE_IDX);
+		emit_pop();
+		tmp_free(arg->u.deepdive.val);
+		arg->u.deepdive.val = NULL;
+	}
 }
 
 private int
@@ -5065,7 +5096,7 @@ has_END(Expr *expr)
 	switch (expr->kind) {
 	    case L_EXPR_FUNCALL:
 		for (p = expr->b; p; p = p->next) {
-			if (isid(p, "END")) return (1);
+			if (has_END(p)) return (1);
 		}
 		return (0);
 	    case L_EXPR_CONST:
@@ -5076,16 +5107,20 @@ has_END(Expr *expr)
 	    case L_EXPR_UNOP:
 		return (has_END(expr->a));
 	    case L_EXPR_BINOP:
-		if (expr->op == L_OP_POINTS) {
+		switch (expr->op) {
+		    case L_OP_ARRAY_INDEX:
 			/* END in a nested index refers to another array. */
-			return (0);
-		} else {
+			return (has_END(expr->a));
+		    case L_OP_CAST:
+			/* A cast is special: expr->a is a type not an expr. */
+			return (has_END(expr->b));
+		    default:
 			return (has_END(expr->a) || has_END(expr->b));
 		}
 	    case L_EXPR_TRINOP:
 		if (expr->op == L_OP_ARRAY_SLICE) {
 			/* END in a nested index refers to another array. */
-			return (0);
+			return (has_END(expr->a));
 		} else {
 			return (has_END(expr->a) || has_END(expr->b) ||
 				has_END(expr->c));
@@ -5370,6 +5405,12 @@ compile_clsDeref(Expr *expr, Expr_f flags)
 	ClsDecl	*clsdecl = type->u.class.clsdecl;
 	Tcl_HashEntry *hPtr;
 
+	expr->type = L_poly;
+	unless (isclasstype(type)) {
+		L_errf(expr, "can dereference only class types");
+		return (0);
+	}
+
 	ASSERT(type && clsdecl);
 
 	clsnm = clsdecl->decl->id->str;
@@ -5381,7 +5422,6 @@ compile_clsDeref(Expr *expr, Expr_f flags)
 	hPtr = Tcl_FindHashEntry(clsdecl->symtab, varnm);
 	unless (hPtr) {
 		L_errf(expr, "%s is not a member of class %s", varnm, clsnm);
-		expr->type = L_poly;
 		return (0);
 	}
 	sym = (Sym *)Tcl_GetHashValue(hPtr);
@@ -7174,7 +7214,11 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 	} else {
 		objPtr = strobj;
 	}
-	str = TclGetStringFromObj(objPtr, &len);
+	if (objPtr->typePtr == &tclByteArrayType) {
+		str = (char *)Tcl_GetByteArrayFromObj(objPtr, &len);
+	} else {
+		str = Tcl_GetStringFromObj(objPtr, &len);
+	}
 
 	listPtr = Tcl_NewObj();
 	matches = 0;

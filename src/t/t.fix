@@ -21,7 +21,7 @@ echo "New changes that I want to modify" >> X
 bk undos X > FILE
 cp FILE SAVE
 bk ci $Q -y'Oops' FILE
-bk fix $Q FILE || exit 1
+bk fix $Q FILE || fail
 if bk _test ! -f SCCS/p.FILE; then echo Failed to edit FILE; exit 1; fi
 writable FILE || { echo Failed to edit File; exit 1; }
 cmp -s SAVE FILE
@@ -39,8 +39,8 @@ if [ "X$1" != "X1.1" ]; then echo failed to restore revision; exit 1; fi
 echo OK
 
 echo $N Make sure that we can not fix a committed delta .............$NL
-bk ci $Q -y'OK' FILE || exit 1
-bk commit $Q -y'commit' || exit 1
+bk ci $Q -y'OK' FILE || fail
+bk commit $Q -y'commit' || fail
 echo "fix: can't fix committed delta FILE@1.2" > X
 bk undos X > CMP1
 bk fix $Q FILE 2> CMP2
@@ -128,7 +128,7 @@ cd "$HERE/project"
 echo OK
 
 echo $N Make sure ChangeSet is not left edited by fix -c ............$NL
-bk fix $Q -c || exit 1
+bk fix $Q -c || fail
 bk _test -f SCCS/p.ChangeSet && {
 	echo Left a lock file
 	exit 1
@@ -179,7 +179,7 @@ test -x FILE || {
 	exit 1
 }
 bk clean FILE
-bk fix -c $Q || exit 1
+bk fix -c $Q || fail
 NMODE=`bk prs -hnd:MODE: -r+ FILE`
 test -x FILE -o X"$OMODE" != X"$NMODE" || {
 	echo Did not preserve execute
@@ -248,7 +248,7 @@ ls > NEW
 cp NEW SAVE
 bk delta -i -y"New file" $Q NEW
 bk commit $Q -ynew
-bk fix -c $Q || exit 1
+bk fix -c $Q || fail
 test -f NEW || {
 	echo failed to leave NEW
 	exit 1
@@ -347,7 +347,7 @@ bk stripdel $Q -C -r+ ChangeSet
 bk admin -D foo
 bk cset -M1.1..
 bk -R sfiles -P >/dev/null
-bk -r check -ac || exit 1
+bk -r check -ac || fail
 
 # What is happening is that we are pulling in the data which fills in the
 # changeset around this delta.  The data is already in the local file and
@@ -400,7 +400,7 @@ bk cset -M1.1..
 bk edit $Q foo
 bk delta $Q -fywhatever foo
 bk -R sfiles -P >/dev/null
-bk -r check -ac || exit 1
+bk -r check -ac || fail
 
 bk pull $Q > OUT 2>&1 && {
 	echo should have failed
@@ -477,15 +477,15 @@ echo $N Demonstrate that fix can delete tags ........................$NL
 cd ..
 rm -rf facetime
 cd project
-bk tag $Q this_tag_should_be_there || exit 1
+bk tag $Q this_tag_should_be_there || fail
 bk _scat SCCS/s.ChangeSet | grep -q '^.cS0 l$' || {
 	echo no leaf marker in the tag graph
 	exit 1
 }
 echo nnn > blech
-bk new $Q blech || exit 1
-bk commit -ynnn $Q || exit 1
-bk tag $Q nnn || exit 1
+bk new $Q blech || fail
+bk commit -ynnn $Q || fail
+bk tag $Q nnn || fail
 
 test `bk prs -hnd:REV: -rthis_tag_should_be_there ChangeSet` = 1.3 || {
 	echo tag should exist
@@ -495,7 +495,7 @@ test `bk prs -hnd:REV: -rnnn ChangeSet` = 1.4 || {
 	echo tag should exist
 	exit 1
 }
-bk fix -c $Q || exit 1
+bk fix -c $Q || fail
 test `bk prs -hnd:REV: -rthis_tag_should_be_there ChangeSet` = 1.3 || {
 	echo tag should exist
 	exit 1
@@ -516,18 +516,18 @@ echo $N Test fixing of csets with symlinks ..........................$NL
 touch target1 target11 target2
 ln -s target1 link1
 ln -s target3 link3
-bk new $Q link1 link3 || exit 1
-bk commit -ylink1 $Q || exit 1
-bk edit $Q link1 link3 || exit 1
+bk new $Q link1 link3 || fail
+bk commit -ylink1 $Q || fail
+bk edit $Q link1 link3 || fail
 rm -f link1 link3
 ln -s target11 link1
 ln -s target2 link2
 ln -s target33 link3
 ln -s target4 link4
-bk new $Q link2 link4 || exit 1
-bk ci -ysym $Q link1 link3 || exit 1
-bk commit $Q -ysym || exit 1
-bk fix -c || exit 1
+bk new $Q link2 link4 || fail
+bk ci -ysym $Q link1 link3 || fail
+bk commit $Q -ysym || fail
+bk fix -c || fail
 # existing symlinks should be unchanged
 ls -l link* | sed 's/.*link/link/' > GOT
 cat <<EOF > EXPECTED
@@ -550,25 +550,25 @@ echo $N Test fixing of xflags .......................................$NL
 echo 1 > 1
 echo 2 > 2
 echo 3 > 3
-bk new $Q 1 2 3 || exit 1
-bk admin -fRCS 1 || exit 1
-bk commit -y1 $Q || exit 1
-bk admin -FRCS 1 || exit 1
-bk admin -FSCCS 2 || exit 1
-bk admin -fEOLN_NATIVE 3 || exit 1
-bk admin -fYEAR4 3 || exit 1
-bk commit -y2 $Q || exit 1
+bk new $Q 1 2 3 || fail
+bk admin -fRCS 1 || fail
+bk commit -y1 $Q || fail
+bk admin -FRCS 1 || fail
+bk admin -FSCCS 2 || fail
+bk admin -fEOLN_NATIVE 3 || fail
+bk admin -fYEAR4 3 || fail
+bk commit -y2 $Q || fail
 bk flags 1 2 3 > WANT
-bk fix -c || exit 1
+bk fix -c || fail
 bk flags 1 2 3 > GOT
 cmpfiles GOT WANT
 echo OK
 
 echo $N Fixing a new file should remove it ..........................$NL
 echo junk > foo2
-bk new $Q foo2 || exit 1
-bk fix foo2 || exit 1
-bk _test -f SCCS/s.foo2 && exit 1
-test -w foo2 || exit 1
-test `cat foo2` = junk || exit 1
+bk new $Q foo2 || fail
+bk fix foo2 || fail
+bk _test -f SCCS/s.foo2 && fail
+test -w foo2 || fail
+test `cat foo2` = junk || fail
 echo OK

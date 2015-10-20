@@ -14,74 +14,8 @@
 # This should have everything in bk.c and bk.sh
 # Except stuff like editor/vi/etc that needs a tty
 
-cat <<EOF > SKIP
-_bkdping
-_install
-_lconfig
-_locktest
-_newFile
-_progresstest
-_register
-editor
-graft
-gvim
-indexsvr
-info_shell
-info_server
-jed
-joe
-jove
-latest
-reedit
-regression
-shrink
-testdates
-uninstall
-vi
-vim
-wish
-EOF
+. "$BK_ROOT"/src/t/simple-interface.setup
 
-perl -ne 'print "$1\n" if /^\s+{"(\w+)",/' < "`bk bin`"/cmd.c | sort |
-grep -vf SKIP > "$HERE/.INTERFACES"
-
-dotest()
-{
-	prefix="$1"
-	shift
-	line="$prefix $@ "
-	len=`echo "$line" | wc -c`
-	len=`expr 62 - $len`
-	fill=`printf "%${len}s\n" "" | sed -e 's/ /./g' 2> /dev/null`
-	echo $N "$line$fill"$NL
-	rm -rf "$HERE"/*
-	(	set -x
-		bk "$@" < /dev/null
-		bk "$@" -r+ < /dev/null
-		bk "$@" XYZ < /dev/null
-		bk "$@" "" <  /dev/null
-		bk "$@" --bad-long <  /dev/null
-		echo XYZ > .STDIN
-		bk "$@" - < .STDIN
-	) > OUT 2>&1
-	find . -type f -name 'core*' > XXX
-	test -s XXX && {
-		echo ========
-		echo cores
-		cat XXX
-		echo ========
-		echo output
-		cat OUT
-		return 1
-	}
-	echo OK
-	test "X$Q" = X && cat OUT
-	return 0
-}
-
-BK_EDITOR=cat
-EDITOR=$BK_EDITOR
-export BK_EDITOR EDITOR
 nested .product
 while read i
 do

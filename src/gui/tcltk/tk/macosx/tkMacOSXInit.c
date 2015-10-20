@@ -235,6 +235,13 @@ TkpInit(
 
 	if (!uname(&name)) {
 	    tkMacOSXMacOSXVersion = (strtod(name.release, NULL) + 96) * 10;
+	    /*
+	     * Version # encoding changed in OS X 10.10: 10.9 is 1090
+	     * but 10.10 is 101000.
+	     */
+	    if (tkMacOSXMacOSXVersion >= 1100) {
+		    tkMacOSXMacOSXVersion += 99900;
+	    }
 	}
 	if (tkMacOSXMacOSXVersion &&
 		tkMacOSXMacOSXVersion/10 < MAC_OS_X_VERSION_MIN_REQUIRED/10) {

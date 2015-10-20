@@ -1,0 +1,18 @@
+#
+#  Setup and run the test
+#
+
+cont() {
+	printf "Press return to continue > "
+	read ans
+	bk clear
+}
+
+#
+# XXX - TBD some way to capture/record test results
+#
+
+HERE="$PWD"
+Q="-q"
+
+source ${1+"$@"}

@@ -3,7 +3,7 @@
 
 private	int	dups;		/* duplicate key count */
 private	void	rebuild(void);
-private	int	caches(char *filename, struct stat *sb, void *data);
+private	int	caches(char *filename, char type, void *data);
 
 int
 idcache_main(int ac, char **av)
@@ -108,7 +108,7 @@ save(sccs *sc, MDBM *idDB, char *buf)
 }
 
 private	int
-caches(char *file, struct stat *sb, void *data)
+caches(char *file, char type, void *data)
 {
 	MDBM	*idDB = (MDBM *)data;
 	sccs	*sc;

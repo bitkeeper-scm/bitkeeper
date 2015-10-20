@@ -7,6 +7,7 @@
 #include "tomcrypt/randseed.h"
 #include "nested.h"
 #include "progress.h"
+#include "cfg.h"
 
 #define	BK "bk"
 
@@ -22,6 +23,7 @@ char	*prog;			/* name of the bk command being run, like co */
 char	*title;			/* if set, use this instead of prog for pbars */
 char	*start_cwd;		/* if -R or -P, where did I start? */
 unsigned int turnTransOff;	/* for transactions, see nested.h */
+int	opt_parallel;		/* --parallel[=<n>] */
 
 private	char	*buffer = 0;	/* copy of stdin */
 char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
@@ -62,7 +64,7 @@ int
 main(int volatile ac, char **av, char **env)
 {
 	int	i, c, ret;
-	int	is_bk = 0, dashr = 0, remote = 0;
+	int	is_bk = 0, dashr = 0, remote = 0, dash = 0;
 	int	dashA = 0, dashU = 0, headers = 0;
 	int	each_repo = 0, dashrdir = 0, fast_ok = 1, mp = 0;
 	int	buf_stdin = 0;	/* -Bstdin */
@@ -99,6 +101,7 @@ main(int volatile ac, char **av, char **env)
 		{ "pids", 334 },
 		{ "diffable", 335 },
 		{ "trace-file;", 340 },
+		{ "parallel|", 'j' },
 		{ 0, 0 },
 	};
 
@@ -229,7 +232,7 @@ main(int volatile ac, char **av, char **env)
 		nav = addLine(nav, strdup("bk"));
 		/* adding options with args should update remote_bk() */
 		while ((c = getopt(ac, av,
-			"?;^@|1aAB;cdeDgGhjL|lnpPqr|Rs|uUxz;", lopts)) != -1) {
+			"?;^@|1aAB;cdeDgGhj|L|lnpPqr|Rs|uUxz;", lopts)) != -1) {
 			unless ((c == 'e') || (c == 's') || (c == '?') ||
 			    (c >= 300)) {
 				/* save options for --each */
@@ -244,7 +247,7 @@ main(int volatile ac, char **av, char **env)
 				sopts = bk_saveArg(sopts, av, c);
 				break;
 			    case '1': case 'a': case 'c': case 'd':
-			    case 'D': case 'g': case 'G': case 'j': case 'l':
+			    case 'D': case 'g': case 'G': case 'l':
 			    case 'n': case 'p': case 'u': case 'x': case '^':
 				if (c == 'c') {
 					mp |= DS_EDITED;
@@ -272,6 +275,13 @@ main(int volatile ac, char **av, char **env)
 				each_repo = 1;
 				break;
 			    case 'q': break;	// noop, -q is the default
+			    case 'j': /* --parallel */
+				if (optarg) {
+					opt_parallel = atoi(optarg);
+				} else {
+					opt_parallel = MAX(cpus()-1, 2);
+				}
+				break;
 			    case 'L': locking = optarg; break;
 			    case 'P':				/* doc 2.0 */
 				toroot |= 3;
@@ -404,12 +414,22 @@ baddir:						fprintf(stderr,
 			free(buf);
 			freeLines(lines, 0);
 		}
+		/* remember if we have a trailing dash for parallel below */
+		for (i = 0; av[i]; ++i);
+		if (streq(av[--i], "-")) dash = 1;
+
 		/* if -r, then -U is only passed to sfiles */
 		if (dashr && dashU) dashU = 0;
 
 		// No -A w/ -r, -A is new.
 		if (dashA && dashr) {
 			fprintf(stderr, "bk: -A may not be combined with -r\n");
+			return (1);
+		}
+		// --parallel requires -[AUr] or trailing -
+		if (opt_parallel && !(dashA || dashU || dashr || dash)) {
+			fprintf(stderr,
+			   "bk: --parallel requires -A, -U, -r, or -\n");
 			return (1);
 		}
 		if (each_repo && dashrdir) {
@@ -574,11 +594,8 @@ bad_locking:				fprintf(stderr,
 					ret = 1;
 					goto out;
 				}
-			} else if ((p = proj_configval(0, "lockwait")) &&
-			    isdigit(*p)) {
-				waitsecs = atoi(p);
 			} else {
-				waitsecs = 30;
+				waitsecs = cfg_int(0, CFG_LOCKWAIT);
 			}
 			while (1) {
 				if (*locking == 'r') {
@@ -769,6 +786,159 @@ cmd_canRun(CMD *cmd)
 	return (1);
 }
 
+private int
+cmd_run_parallel(int ac, char **av)
+{
+	int	i, j, c;
+	int	ret = 0, status;
+	pid_t	pids[32] = {0};
+	int	maxfd;
+	char	*p;
+	fd_set	wr, rd;
+	size_t	len;
+	FILE	*save;
+	char	**argv = 0;
+	int	fdin[32] = {0}, fdout[32] = {0};
+	char	*frag[32] = {0}; /* end of line fragments */
+	char	buf[MAXLINE];
+
+	/*
+	 * Make a bk command line for cmd. We already have any
+	 * appropriate locks, so pass -?BK_NO_REPO_LOCK=YES.  Use this
+	 * at your own risk! It doesn't guarantee that the cmds won't
+	 * interfere with each other.
+	 */
+	argv = addLine(argv, "bk");
+	argv = addLine(argv, "-?BK_NO_REPO_LOCK=YES");
+	for (i = 0; av[i]; i++) argv = addLine(argv, av[i]);
+	argv = addLine(argv, 0);
+
+	/*
+	 * Buffer the first few sfiles to see if we
+	 * have fewer than opt_parallel, to avoid
+	 * spawning more cmds than we have sfiles to process.
+	 */
+	if (opt_parallel > sizeof(pids)/sizeof(pids[0])) {
+		opt_parallel = sizeof(pids)/sizeof(pids[0]);
+	}
+	save = fmem();
+	for (i = 0; i < opt_parallel; ++i) {
+		unless (p = fgetln(stdin, &len)) break;
+		fwrite(p, 1, len, save);
+	}
+	opt_parallel = i;
+	p = fmem_peek(save, &len);
+	for (i = len; i > 0; --i) ungetc(p[i-1], stdin);
+	fclose(save);
+
+	/* Spawn opt_parallel cmds. */
+	for (i = 0; i < opt_parallel; ++i) {
+		pids[i] = spawnvpio(&fdin[i], &fdout[i], 0, argv + 1);
+		if (pids[i] < 0) {
+			ret = 126;
+			for (j = 0; j <= i; ++j) {
+				close(fdin[j]);
+				close(fdout[j]);
+			}
+			goto out_parallel;
+		}
+	}
+	freeLines(argv, 0);
+
+	/*
+	 * Fan out the sfiles list to the spawned cmds.  Use select()
+	 * to find a child that's ready to read, and go through those
+	 * round robin.
+	 */
+	while (1) {
+		FD_ZERO(&wr);
+		FD_ZERO(&rd);
+		maxfd = 0;
+		for (i = 0; i < opt_parallel; i++) {
+			if (fdin[i]) {
+				if (fdin[i] > maxfd) maxfd = fdin[i];
+				FD_SET(fdin[i], &wr);
+			}
+			if (fdout[i]) {
+				if (fdout[i] > maxfd) maxfd = fdout[i];
+				FD_SET(fdout[i], &rd);
+			}
+		}
+		unless (maxfd) break; /* done */
+		if (select(maxfd+1, &rd, &wr, 0, 0) < 0) {
+			perror("select");
+			break;
+		}
+		for (i = 0; i < opt_parallel; i++) {
+			if (FD_ISSET(fdin[i], &wr)) {
+				/* send new line to process */
+				if (p = fgetln(stdin, &len)) {
+					(void)writen(fdin[i], p, len);
+				} else {
+					/* done writing */
+					close(fdin[i]);
+					fdin[i] = 0;
+				}
+			}
+			if (FD_ISSET(fdout[i], &rd)) {
+				/* read block of output data */
+				c = 0;
+				if (frag[i]) {
+					/* load old frag to buf */
+					strcpy(buf, frag[i]);
+					c = strlen(buf);
+					assert(c < sizeof(buf));
+					FREE(frag[i]);
+				}
+
+				/* read new stuff to buf */
+				j = read(fdout[i], buf+c, sizeof(buf)-c);
+				if (j <= 0) { /* EOF */
+					if (j < 0) perror("read");
+					close(fdout[i]);
+					fdout[i] = 0;
+					j = 0;
+				}
+				c += j;
+
+				/* print any lines */
+				for (j = c; j > 0; j--) {
+					if (buf[j-1] == '\n') break;
+				}
+				if (j) writen(1, buf, j);
+
+				if (!fdout[i] || (!j && (c == sizeof(buf)))) {
+					/* full buffer, punt */
+					writen(1, buf+j, c - j);
+				} else if (j < c) {
+					/* save leftovers */
+					frag[i] = strndup(buf+j, c - j);
+				}
+			}
+		}
+	}
+out_parallel:
+	/*
+	 * This returns the last exit status that was non-zero.
+	 */
+	for (i = 0; i < opt_parallel; ++i) {
+		if (pids[i] <= 0) continue;
+		if (waitpid(pids[i], &status, 0) != pids[i]) {
+			ret = 127;
+		}
+		if (status) {
+			if (WIFEXITED(status)) {
+				ret = WEXITSTATUS(status);
+			} else if (WIFSIGNALED(status)) {
+				ret = WTERMSIG(status);
+			} else {
+				ret = 128;
+			}
+		}
+	}
+	return (ret);
+}
+
 /*
  * The commands here needed to be spawned, not execed, so command
  * logging works.
@@ -801,8 +971,11 @@ cmd_run(char *prog, int is_bk, int ac, char **av)
 			sys("bk", "help", prog, SYS);
 			return (0);
 		}
-		return (cmd->fcn(ac, av));
-
+		if (opt_parallel) {
+			return (cmd_run_parallel(ac, av));
+		} else {
+			return (cmd->fcn(ac, av));
+		}
 	    case CMD_GUI:		/* Handle Gui script */
 		return (launch_wish(cmd->name, av+1));
 
@@ -944,9 +1117,6 @@ bk_cleanup(int ret)
 		buffer = 0;
 	}
 	notifier_flush();
-	if (uniq_close()) {
-		unless (ret) ret = 1;
-	}
 	lockfile_cleanup();
 
 	/*
@@ -1620,7 +1790,7 @@ launch_wish(char *script, char **av)
 	if (strchr(script, '/')) {
 		strcpy(cmd_path, script);
 	} else {
-		if (proj_configbool(0, "legacyguis")) {
+		if (cfg_bool(0, CFG_LEGACYGUIS)) {
 			sprintf(cmd_path, "%s/gui/lib/legacy/%s", bin, script);
 		} else {
 			sprintf(cmd_path, "%s/gui/lib/%s", bin, script);

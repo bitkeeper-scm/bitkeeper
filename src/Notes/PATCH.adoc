@@ -1,0 +1,61 @@
+Version 1.0 makepatch format
+============================
+
+Patch file format
+
+Anything up to the sequence
+
+	"\nPatch vers:\t<digits>.<digits>\n\n== filename ==\n"
+
+is ignored.
+
+# Patch vers:	1.0
+
+== filename/in/from/repository ==
+<file root key>
+<parent key of this delta>
+D 1.645 00/04/03 11:29:05-07:00 lm@work.bitmover.com +1 -0
+B lm@lm.bitmover.com|ChangeSet|19990319224848
+C
+c This set of fields varies from rev to rev.
+c We never delete, or change the meaning of any field, though we may if we
+c also change the patch version number.
+c The fields are in alphabetical order, sort of.  If there are upper and lower
+c case fields, the upper case are first and then the lower case, like
+c AaBbCc not like ABCabc.
+c The meta data ends with a line of 48 "-"'s and is followed by an empty line.
+c The next line is either another empty line, in which case there are no diffs,
+c or a non-empty line, in which case there is a single block of diffs.
+c A block of diffs is a contiguous sequence of lines with no blank lines; if
+c there were blank lines in the diffs, they have been escaped with a "\".
+c
+c After the diffs there is another blank line and then the pattern either
+c repeats or it ends with a "# Patch checksum=246901c0" line.
+c
+K 13264
+O -rw-rw-r--
+P ChangeSet
+------------------------------------------------
+
+0a0
+> I am some new data.
+> This data is funny looking because it is a hash file.
+
+== src/sccslog.c ==
+lm@lm|src/sccslog.c|19980427072423|45786
+lm@work.bitmover.com|src/sccslog.c|20000318191530|22732
+D 1.49 00/04/03 11:29:03-07:00 lm@work.bitmover.com +2 -1
+B lm@lm.bitmover.com|ChangeSet|19990319224848
+C
+c Change sccslog to include timezone.
+K 24703
+O -rw-r--r--
+P src/sccslog.c
+------------------------------------------------
+
+D151 1
+I151 2
+		printf("%s %s%s %s",
+		    d->rev, d->sdate, d->zone ? d->zone : "", d->user);
+
+# Patch checksum=246901c0

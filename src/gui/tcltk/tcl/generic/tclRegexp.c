@@ -490,6 +490,9 @@ Tcl_RegExpExecObj(
 	int byteOffset, wlen;
 	unsigned long pcreopts;
 
+	if (!(flags & TCL_REG_BYTEOFFSET)) {
+	    wlen = Tcl_GetCharLength(textObj);
+	}
 	if (textObj->typePtr == &tclByteArrayType) {
 	    matchstr = (const char*)Tcl_GetByteArrayFromObj(textObj, &length);
 	} else {
@@ -504,7 +507,6 @@ Tcl_RegExpExecObj(
 
 	if (!(flags & TCL_REG_BYTEOFFSET)) {
 	    /* To handle UTF8, convert offset from a char index to a byte offset. */
-	    wlen = Tcl_GetCharLength(textObj);
 	    if (offset > wlen) {
 		offset = wlen;
 	    }

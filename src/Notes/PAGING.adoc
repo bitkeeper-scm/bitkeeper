@@ -1,0 +1,134 @@
+Sfile paging
+============
+
+I couldn't find a wiki page and have a bunch of state from reading
+the code so will dump it here until something better comes along
+to replace it. [rick]
+
+Demand page loading is supported on platforms that can:
+(from dataheap.c)
+
+#ifdef SA_SIGINFO
+#define PAGING 1
+#endif
+
+The setup is in slib.c:bin_mkgraph() where there are a number
+of calls to dataheap.c:datamap().
+
+datamap() is an allocator of either character or data structure
+arrays.  The allocator will either fill the arrays with data from
+disk, or just allocate the arrays and protect them with mprotect.
+
+If protected, any read or write of protect area will cause a
+block to get paged in using faulthandler().
+
+When paging, s->fh gets set 0 so any reading of the weave will
+sccs_open a new file handle since the s->pagefh file handle will be
+jumping all over to service page faults. s->fh is kept around until
+bin_mkgraph() exits so it can use that for doing D_FIXUPS.
+
+There are two types of unmapping.  One is when the graph is still
+going to be used but the connection to the file is going to be
+closed.  In that case, all the data needs to be read in.
+The other case is sccs_free() which wants to unprotect the soon
+to be freed memory, but not page in the data.
+
+--
+
+valloc is used to give memory that starts on a page boundary.
+This means the start of the array will be the beginning of
+the protected area while the first element of the array will
+be the first spot to be filled from disk.
+
+This means even though allocArray setups up nLines(x) to work,
+after mem has been protected, a nLines will page in the first
+block.  This is seen as not bad as the rootkey will be near
+the bottom.  Also bin_mkgraph() doesn't call nLines to fill
+in TABLE(s), so skips out on triggering that.
+
+--
+
+A gzip file is not seekable everywhere, so a list of seekable
+points was needed.  These may or may not fall on pagesz
+boundaries as fast commit will make variable size blocks.
+
+The faulthandler has a bunch of logic with good comments to
+help understand how previous and next rounds work together
+to handle blocks that share a protected memory area.
+
+If the byte being read from a shared page, both blocks
+will be fully read.  If the byte is being read from a
+different page, only partially filling the last or first
+page, then a new mprotect will be set up just for that page
+so that when it is touched, the other block sharing the page
+will be brought in.
+
+|---- block 1 --------|---- block 2 -------|---- block 3 ----|
+
+|  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |   - page boundaries
+
+block 1 ends in the middle of a page and block 2 starts in the
+same page.  That is what I mean by a shared page.
+
+If we're reading from block 1, there are 2 cases:
+* The byte is on the last page.
+* The byte is not on the last page.
+
+If the byte read is not on the last page,
+then read in all of block 1 and then mprotect the last page
+as block 2 data has not yet been filled in.
+
+If the byte read is on the last page of block 1, then
+both block 1 and block 2 will be paged into memory.
+Then the last page of block 2 will be mprotected because
+it is shared with block 3.
+
+The code for handling these boundary conditions is in
+the faulthandler in dataheap.c 
+
+--
+
+I/O Layers
+
+Paging works through a set of I/O layers:
+user accesses memory -> paging -> fvzip -> CRC -> file system.
+
+CRC - see src/libc/utils/fopen_crc.c
+This chops a file up into blocks.
+Each block has overhead of 6 (4 for CRC; 2 for len) and payload of N - 6.
+An XOR block is added to the end and is pure overhead.
+The XOR includes the CRC field, but not the len; CRC is of XOR block.
+Block size is computed to minimize overhead (above some minimum block size).
+
+ZIP - see src/libc/utils/fopen_vzip.c
+The structure is a set of compressed blocks.
+Since blocks vary in size, a seek wouldn't know where to go;
+a table is added at the end which is a set of block start addresses
+and how much data the uncompressed block produces.
+While the table is sequential, the data blocks pointed do not need
+to be sequential.  This lets us support insert (as long as it is
+at a block boundary) and mean only re-writing the end of the file.
+There is a bit at the start of each compressed block to signal
+that out of order block reads can happen, and the seek table needs
+to be loaded.
+
+--
+
+Appending to a gzip file
+
+To append to a gzip file, the seek table at the end needs to be read,
+then overwritten with new gzip blocks, then the new seek table written
+out.
+
+In the crc layer, this looks like a straight overwrite of the last part
+of the file.  To get the xor block correct, the xor for the initial
+part of the file needs to be computed to combine with the new data
+being used.
+
+XOR = unchanged start ^ changed end => unchanged start = XOR ^ changed end
+
+In words, compute the xor of the existing xor block with the blocks to
+be replaced.  That gives us the xor for the unchanged part without reading
+the unchanged part.
+
+Then xor in the new blocks and write that out as the new xor block.

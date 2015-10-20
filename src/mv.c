@@ -231,7 +231,7 @@ mvdir_main(int ac, char **av)
 		}
 
 		if (fix_pfile = HAS_PFILE(s)) {
-			if (sccs_read_pfile("mvdir", s, &pf)) {
+			if (sccs_read_pfile(s, &pf)) {
 				fprintf(stderr, "%s: bad pfile\n", s->gfile);
 				sccs_free(s);
 				return (1);

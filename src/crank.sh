@@ -35,13 +35,20 @@ U=`bk getuser`
 test "X$LOG" = X && LOG=LOG.${REPO}-$U
 
 remote() {
-	rsh $host "env LOG=$LOG BK_USER=$U URL=$URL REPO=$REPO \
+	$RSH $host "env LOG=$LOG BK_USER=$U URL=$URL REPO=$REPO \
 	    /bin/bash /build/.$REPO.$U $@"
 }
 
 
 for host in $HOSTS
 do	
+	RCP=rcp
+	RSH=rsh
+	if [ "$host" = "macos106" ]
+	then
+		RCP="scp -q"
+		RSH=ssh
+	fi
 	(
 	    test "X$@" = Xstatus && {
 		printf "%-10s %s\n" $host "`remote status`"
@@ -52,8 +59,8 @@ do
 		continue
 	    }
             trap "rm -f .[st].$host; exit" 0 1 2 3 15
-	    rcp $REMOTE ${host}:/build/.$REPO.$U
-	    /usr/bin/time -o .t.$host -f "%E" rsh $host \
+	    $RCP $REMOTE ${host}:/build/.$REPO.$U
+	    /usr/bin/time -o .t.$host -f "%E" $RSH $host \
 		"env LOG=$LOG BK_USER=$U URL=$URL REPO=$REPO \
 		/bin/bash /build/.$REPO.$U $@"
 	    remote status > .s.$host

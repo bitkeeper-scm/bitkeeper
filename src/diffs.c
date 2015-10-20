@@ -60,11 +60,13 @@ diffs_main(int ac, char **av)
 {
 	int	rc, c, i, poff;
 	int	verbose = 0, empty = 0, errors = 0, force = 0;
+	int	standalone = 0;
 	int	local = 0, whodel = 0;
 	u32	flags = SILENT;
 	df_opt	dop = {0};
 	FILE	*fout = stdout;
 	char	*name, *p;
+	char	*url = 0;
 	const	char *perr;
 	char	*Rev = 0, *boundaries = 0, *pattern = 0;
 	dstat	*diffstats = 0, *ds;
@@ -75,6 +77,7 @@ diffs_main(int ac, char **av)
 		{ "stats", 330 },	 /* show diffstat output */
 		{ "stats-only", 340 },	 /* show only diffstat output */
 		{ "who-deleted", 350 },	 /* show who deleted info */
+		{ "standalone", 'S' },	/* alias */
 		{ 0, 0 }
 	};
 	RANGE	rargs = {0};
@@ -82,7 +85,7 @@ diffs_main(int ac, char **av)
 	unless (getenv("_BK_OLDSTYLE_DIFFS")) dop.out_unified = 1;
 	dop.out_header = 1;
 	while ((c = getopt(ac, av,
-		    "@|a;A;bBcC|d;eF:fhHL|l|nNpr;R|s|u|vw", lopts)) != -1) {
+		    "@|a;A;bBcC|d;eF:fhHL|l|nNpr;R|s|Su|vw", lopts)) != -1) {
 		switch (c) {
 		    case 'A':
 			flags |= GET_ALIGN;
@@ -104,7 +107,7 @@ diffs_main(int ac, char **av)
 		    case 'L': case '@':
 			if (rargs.rstart) usage();
 			local = 1;
-			if (range_urlArg(&rargs, optarg)) return (1);
+			url = optarg;
 			break;
 		    case 'n':
 		    	dop.out_rcs = 1;
@@ -123,6 +126,7 @@ diffs_main(int ac, char **av)
 				dop.out_sdiff = 80;
 			}
 			break;		/* doc 2.0 */
+		    case 'S': standalone = 1; break;
 		    case 'u':
 			dop.out_unified = 1;
 			if (optarg && isdigit(optarg[0])) {
@@ -159,6 +163,14 @@ diffs_main(int ac, char **av)
 			break;
 		    default: bk_badArg(c, av);
 		}
+	}
+
+	if (local) {
+		if (range_urlArg(&rargs, url, standalone)) return (1);
+	} else if (standalone) {
+		fprintf(stderr,
+		    "%s: -S only can be used if -L is also used\n", prog);
+		return (1);
 	}
 
 	if (dop.out_show_c_func && pattern) {
@@ -202,7 +214,8 @@ err:		FREE(pattern);
 	}
 
 	if (local && !av[optind]) {
-		p = aprintf("r%s", dop.new_is_null ? "x" : "");
+		p = aprintf("r%s%s",
+		    dop.new_is_null ? "x" : "", standalone ? "S" : "");
 		name = sfiles_local(rargs.rstart, p);
 		free(p);
 	} else {
@@ -394,8 +407,8 @@ sfiles_local(char *rev, char *opts)
 {
 	char    *freeme = 0, *nav[10];
 	int     i, fd;
+	int	standalone = 0;
 
-	bk_nested2root(0);
 	nav[i=0] = "bk";
 	nav[++i] = "_sfiles_local";
 	nav[++i] = freeme = aprintf("-r%s", rev);
@@ -403,11 +416,13 @@ sfiles_local(char *rev, char *opts)
 		switch (*opts++) {
 		    case 'm': nav[++i] = "--no-mods"; break;
 		    case 'r': nav[++i] = "--no-revs"; break;
+		    case 'S': nav[++i] = "-S"; standalone = 1; break;
 		    case 'x': nav[++i] = "--extras" ; break;
 		    default: assert(0 == "nr");
 		}
 	}
 	nav[++i] = 0;
+	bk_nested2root(standalone);
 	spawnvpio(0, &fd, 0, nav);
 	free(freeme);
 	dup2(fd, 0);

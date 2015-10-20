@@ -2,6 +2,10 @@
 #include "logging.h"
 #include "progress.h"
 #include "nested.h"
+#include "cfg.h"
+#ifdef WIN32
+#include "Winbase.h"
+#endif
 
 bkdopts	Opts;	/* has to be declared here, other people use this code */
 
@@ -128,14 +132,18 @@ fd2file(int from, char *to)
 /*
  * Currently very lame because it does 1 byte at a time I/O
  * Usually used in bkd.
+ * XXX:
+ * If first parameter gets used, change its name.
+ * If there is some massive cleanup, drop the first parameter.
  */
 int
-getline(int in, char *buf, int size)
+getline(int unused, char *buf, int size)
 {
 	int	i = 0;
 	int	c;
 	static	int echo = -1;
 
+	assert(unused == 0);
 	if (echo == -1) {
 		echo = getenv("BK_GETLINE") != 0;
 		if (getenv("BK_GETCHAR")) echo = 2;
@@ -291,7 +299,6 @@ prompt(char *msg, char *buf)
 {
 	int	ret;
 
-	uniq_close();	/* don't hold uniqdb lock */
 	caught = 0;
 	sig_catch(abort_prompt);
 
@@ -312,7 +319,6 @@ confirm(char *msg)
 	char	*p, buf[100];
 	int	gotsome;
 
-	uniq_close();	/* don't hold uniqdb lock */
 	caught = 0;
 	sig_catch(abort_prompt);
 
@@ -929,7 +935,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 			 * can encode them
 			 */
 			unless (flags & SENDENV_SENDFMT) {
-				bits &= ~(FEAT_BKFILE|FEAT_BWEAVE);
+				bits &= ~FEAT_FILEFORMAT;
 			}
 			t = features_fromBits(bits);
 		}
@@ -1146,7 +1152,7 @@ sendServerInfo(u32 cmdlog_flags)
 		sprintf(buf, "NFILES=%u\n", repo_nfiles(0,0));
 		out(buf);
 		sprintf(buf,
-		    "CLONE_DEFAULT=%s\n", proj_configval(0, "clone_default"));
+		    "CLONE_DEFAULT=%s\n", cfg_str(0, CFG_CLONE_DEFAULT));
 		out(buf);
 		sprintf(buf, "TIP_MD5=%s\n", proj_tipmd5key(0));
 		out(buf);
@@ -1185,7 +1191,7 @@ sendServerInfo(u32 cmdlog_flags)
 	} else {
 		/* remove local-only features */
 		bits &= ~(FEAT_REMAP|FEAT_SCANDIRS);
-		bits &= ~(FEAT_BKFILE|FEAT_BWEAVE);
+		bits &= ~FEAT_FILEFORMAT;
 		p = features_fromBits(bits);
 	}
 	out("\nFEATURES_REQUIRED=");
@@ -1379,6 +1385,7 @@ spawn_cmd(int flag, char **av)
 			fprintf(stderr,
 			    "%s died from %d\n", av[0], WTERMSIG(ret));
 		}
+		return (127);
 	} else unless (WIFEXITED(ret)) {
 		fprintf(stderr, "bk: cannot spawn %s\n", av[0]);
 		return (127);
@@ -1545,8 +1552,8 @@ full_check(void)
 	time_t	window;
 	time_t	checkt = 0;	/* time of last full check */
 
-	unless (proj_configbool(0, "partial_check")) return (1);
-	if (window = proj_configsize(0, "check_frequency")) {
+	unless (cfg_bool(0, CFG_PARTIAL_CHECK)) return (1);
+	if (window = cfg_int(0, CFG_CHECK_FREQUENCY)) {
 		window *= DAY;
 	} else {
 		window = WEEK;
@@ -1947,6 +1954,13 @@ bk_badArg(int c, char **av)
 			/* unknown --long option */
 			fprintf(stderr, "bad option %s\n", av[optind-1]);
 		}
+	} else if (c == GETOPT_NOARG) {
+		if (optopt) {
+			fprintf(stderr, "-%c missing argument\n", optopt);
+		} else {
+			/* unknown --long option */
+			fprintf(stderr, "%s missing argument\n", av[optind-1]);
+		}
 	} else {
 		/* we shouldn't see these */
 		if (isprint(c)) {
@@ -1986,7 +2000,7 @@ bk_saveArg(char **nav, char **av, int c)
 		/* normal short option */
 		buf = aprintf("-%c%s", c, optarg?optarg:"");
 		nav = addLine(nav, buf);
-	} else if (c > 256) {
+	} else if (c > GETOPT_NOARG) {
 		/* long option */
 		if (optarg && (optarg == av[optind-1])) {
 			/* --long with-arg */
@@ -1995,7 +2009,7 @@ bk_saveArg(char **nav, char **av, int c)
 		nav = addLine(nav, strdup(av[optind-1]));
 	} else {
 		/* getopt error */
-		assert((c == -1) || (c == GETOPT_ERR));
+		assert((c == -1) || (c == GETOPT_ERR) || (c == GETOPT_NOARG));
 	}
 	return (nav);
 }
@@ -2040,6 +2054,26 @@ bk_setConfig(char *key, char *val)
 }
 
 /*
+ * Return the number of cpus
+ */
+int
+cpus(void)
+{
+#ifdef WIN32
+	SYSTEM_INFO info;
+
+	GetSystemInfo(&info);
+	return (info.dwNumberOfProcessors);
+#elif defined(_SC_NPROCESSORS_CONF)
+	int	n = sysconf(_SC_NPROCESSORS_CONF);
+
+	return (n);
+#else
+	return (1);
+#endif
+}
+
+/*
  * Return reasonable values for parallel sfio/checkouts/etc.
  */
 int
@@ -2051,9 +2085,9 @@ parallel(char *path)
 #ifdef	WIN32
 	return (0);
 #endif
-	if ((p = proj_configval(0, "parallel")) && isdigit(*p)) {
-		unless (val = atoi(p)) return (0);
-		if (val) return (min(val, PARALLEL_MAX));
+	if ((p = cfg_str(0, CFG_PARALLEL)) && isdigit(*p)) {
+		val = atoi(p);
+		return (min(val, PARALLEL_MAX));
 	}
 	if (isNetworkFS(path)) {
 		return (PARALLEL_NET);
@@ -2103,9 +2137,5 @@ formatBits(u32 bits, ...)
 int
 bk_gzipLevel(void)
 {
-	int	level = 0;	/* default to no compression; */
-	char	*t;
-
-	if (t = proj_configval(0, "bkd_gzip")) level = atoi(t);
-	return (level);
+	return (cfg_int(0, CFG_BKD_GZIP));
 }

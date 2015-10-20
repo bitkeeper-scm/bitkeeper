@@ -167,8 +167,10 @@ clone_sfioCompat(int bkd)
 
 #define	NOT_THERE(x) \
 	((bits & (x)) && !(bkd ? bk_hasFeature((x)) : bkd_hasFeature((x))))
-	
-	compat = (NOT_THERE(FEAT_BKFILE) || NOT_THERE(FEAT_BWEAVE));
+
+	compat = (NOT_THERE(FEAT_BKFILE) ||
+	    NOT_THERE(FEAT_BWEAVE) ||
+	    NOT_THERE(FEAT_BWEAVEv2));
 	return (compat != 0);
 }
 

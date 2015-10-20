@@ -48,7 +48,7 @@ bk -r check -a 2> ERR && {
 	echo should have failed
 	exit 1
 }
-bk -r check -ag > gonestuff && exit 1
+bk -r check -ag > gonestuff && fail
 echo "$KEY" > wanted
 checkfiles gonestuff wanted
 grep -q 'Missing file (bk help chk3)' ERR || {
@@ -58,12 +58,12 @@ grep -q 'Missing file (bk help chk3)' ERR || {
 }
 bk mv -f BitKeeper/etc/gone gone
 echo "$KEY" > BitKeeper/etc/gone
-bk -r check -a || exit 1
+bk -r check -a || fail
 echo OK
 
 echo $N Makepatch with a gfile gone file, should fail ...............$NL
 cd "$HERE/project"
-bk makepatch $Q -r+ 2> OUT && exit 1
+bk makepatch $Q -r+ 2> OUT && fail
 grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 	cat OUT
 	exit 1
@@ -72,12 +72,12 @@ echo OK
 
 # bkd to test rclone
 cd ..
-bk bkd -q -aPORT -d -ikill > BKD.OUT 2> BKD.ERR || exit 1
+bk bkd -q -aPORT -d -ikill > BKD.OUT 2> BKD.ERR || fail
 P=`cat PORT`
 cd project
 
 echo $N Clone to child with gone as a gfile only, should fail .......$NL
-bk clone $Q . ../copy-clone 2>OUT && exit 1
+bk clone $Q . ../copy-clone 2>OUT && fail
 grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 	cat OUT
 	exit 1
@@ -85,7 +85,7 @@ grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 echo OK
 
 echo $N Lclone to child with gone as a gfile only, should fail ......$NL
-bk clone $Q -l . ../copy-lclone 2>OUT && exit 1
+bk clone $Q -l . ../copy-lclone 2>OUT && fail
 grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 	cat OUT
 	exit 1
@@ -93,7 +93,7 @@ grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 echo OK
 
 echo $N Rclone to child with gone as a gfile only, should fail ......$NL
-bk clone $Q . bk://localhost:$P/copy-rclone 2>OUT && exit 1
+bk clone $Q . bk://localhost:$P/copy-rclone 2>OUT && fail
 grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 	cat OUT
 	exit 1
@@ -101,7 +101,7 @@ grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 echo OK
 
 echo $N Push to child with gone as gfile only, should fail ..........$NL
-bk push $Q ../copy 2>OUT && exit 1
+bk push $Q ../copy 2>OUT && fail
 grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 	cat OUT
 	exit 1
@@ -110,7 +110,7 @@ echo OK
 
 echo $N Bkd clone to child with gone as gfile only, should fail .....$NL
 cd "$HERE"
-bk clone $Q bk://localhost:$P/project copy-bkdclone 2>OUT && exit 1
+bk clone $Q bk://localhost:$P/project copy-bkdclone 2>OUT && fail
 grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 	cat OUT
 	exit 1
@@ -119,7 +119,7 @@ echo OK
 
 echo $N Pull to child with gone as gfile only, should fail ..........$NL
 cd "$HERE/copy"
-bk pull $Q 2>OUT && exit 1
+bk pull $Q 2>OUT && fail
 grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 	cat OUT
 	exit 1
@@ -132,8 +132,8 @@ rm -f BitKeeper/etc/gone
 bk mv -f gone BitKeeper/etc/gone
 bk edit $Q BitKeeper/etc/gone
 echo "$KEY" >> BitKeeper/etc/gone
-bk -r check -a || exit 1
-bk clone $Q . ../copy-clone 2>OUT && exit 1
+bk -r check -a || fail
+bk clone $Q . ../copy-clone 2>OUT && fail
 grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 	cat OUT
 	exit 1
@@ -141,7 +141,7 @@ grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 echo OK
 
 echo $N Lclone to child with edited gone file, should fail ..........$NL
-bk clone $Q -l . ../copy-lclone 2>OUT && exit 1
+bk clone $Q -l . ../copy-lclone 2>OUT && fail
 grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 	cat OUT
 	exit 1
@@ -149,7 +149,7 @@ grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 echo OK
 
 echo $N Rclone to child with edited gone file, should fail ..........$NL
-bk clone $Q . bk://localhost:$P/copy-rclone 2>OUT && exit 1
+bk clone $Q . bk://localhost:$P/copy-rclone 2>OUT && fail
 grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 	cat OUT
 	exit 1
@@ -157,7 +157,7 @@ grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 echo OK
 
 echo $N Push to child with edited gone file, should fail ............$NL
-bk push $Q ../copy 2>OUT && exit 1
+bk push $Q ../copy 2>OUT && fail
 grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 	cat OUT
 	exit 1
@@ -166,7 +166,7 @@ echo OK
 
 echo $N Bkd clone to child with edited gone file, should fail .......$NL
 cd "$HERE"
-bk clone $Q bk://localhost:$P/project copy-bkdclone 2>OUT && exit 1
+bk clone $Q bk://localhost:$P/project copy-bkdclone 2>OUT && fail
 grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 	cat OUT
 	exit 1
@@ -175,7 +175,7 @@ echo OK
 
 echo $N Pull to child with edited gone file, should fail ............$NL
 cd "$HERE/copy"
-bk pull $Q 2>OUT && exit 1
+bk pull $Q 2>OUT && fail
 grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 	cat OUT
 	exit 1
@@ -187,8 +187,8 @@ cd "$HERE/project"
 # theory: wait for bkd to exit.  25 minutes of runs matches theory.
 bk lock -U
 bk delta $Q -y"gone the key" BitKeeper/etc/gone
-bk -r check -a || exit 1
-bk clone $Q . ../copy-clone 2>OUT && exit 1
+bk -r check -a || fail
+bk clone $Q . ../copy-clone 2>OUT && fail
 grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 	cat OUT
 	exit 1
@@ -196,7 +196,7 @@ grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 echo OK
 
 echo $N Lclone to child with pending gone file, should fail .........$NL
-bk clone $Q -l . ../copy-lclone 2>OUT && exit 1
+bk clone $Q -l . ../copy-lclone 2>OUT && fail
 grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 	cat OUT
 	exit 1
@@ -204,7 +204,7 @@ grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 echo OK
 
 echo $N Rclone to child with pending gone file, should fail .........$NL
-bk clone $Q . bk://localhost:$P/copy-rclone 2>OUT && exit 1
+bk clone $Q . bk://localhost:$P/copy-rclone 2>OUT && fail
 grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 	cat OUT
 	exit 1
@@ -212,7 +212,7 @@ grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 echo OK
 
 echo $N Push to child with pending gone file, should fail ...........$NL
-bk push $Q ../copy 2>OUT && exit 1
+bk push $Q ../copy 2>OUT && fail
 grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 	cat OUT
 	exit 1
@@ -221,7 +221,7 @@ echo OK
 
 echo $N Bkd clone to child with pending gone file, should fail ......$NL
 cd "$HERE"
-bk clone $Q bk://localhost:$P/project copy-bkdclone 2>OUT && exit 1
+bk clone $Q bk://localhost:$P/project copy-bkdclone 2>OUT && fail
 grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 	cat OUT
 	exit 1
@@ -230,7 +230,7 @@ echo OK
 
 echo $N Pull to child with pending gone file, should fail ...........$NL
 cd "$HERE/copy"
-bk pull $Q 2>OUT && exit 1
+bk pull $Q 2>OUT && fail
 grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
 	cat OUT
 	exit 1
@@ -271,26 +271,26 @@ echo OK
 
 echo $N Demo pushing new file that replaces a gone\'d file ...........$NL
 cd ../project
-bk -r check -ac || exit 1
+bk -r check -ac || fail
 echo old > lose_this
-bk new $Q lose_this || exit 1
-bk commit $Q -yold || exit 1
+bk new $Q lose_this || fail
+bk commit $Q -yold || fail
 cd ../copy
 bk _rm SCCS/s.foo.c
-bk pull $Q || exit 1
+bk pull $Q || fail
 cd ../project
 KEY="`bk prs -hr+ -d:ROOTKEY: lose_this`"
 bk _rm -f SCCS/s.lose_this
-bk gone $Q "$KEY" || exit 1
+bk gone $Q "$KEY" || fail
 echo new > lose_this
-bk new $Q lose_this || exit 1
-bk commit $Q -ynew || exit 1
+bk new $Q lose_this || fail
+bk commit $Q -ynew || fail
 echo q | bk push ../copy 2>ERR >OUT && {
 	echo should have failed
 	exit 1
 }
-grep -q "name conflict for ..lose_this" ERR || exit 1
-grep -q "pathname is used by an SCCS file that is marked gone" ERR || exit 1
+grep -q "name conflict for ..lose_this" ERR || fail
+grep -q "pathname is used by an SCCS file that is marked gone" ERR || fail
 echo OK
 
 echo $N Try pulling the same cset ...................................$NL
@@ -309,14 +309,14 @@ echo OK
 
 echo $N Test goned deltas ...........................................$NL
 cd "$HERE/project"
-bk edit $Q bar.c || exit 1
+bk edit $Q bar.c || fail
 echo foo >> bar.c
-bk ci $Q -yjj bar.c || exit 1
-bk commit $Q -yjj || exit 1
-bk stripdel $Q -Cr+ bar.c || exit 1
+bk ci $Q -yjj bar.c || fail
+bk commit $Q -yjj || fail
+bk stripdel $Q -Cr+ bar.c || fail
 bk -r check -agg | bk gone $Q -
-bk -r check -af || exit 1
-bk changes -v -r+ -nd:GFILE:@:REV: > OUT || exit 1
+bk -r check -af || fail
+bk changes -v -r+ -nd:GFILE:@:REV: > OUT || fail
 cat <<EOF > WANT
 ChangeSet@1.8
 EOF
@@ -400,23 +400,23 @@ echo $N Demonstrate users pushing deleted goned files ...............$NL
 cd "$HERE"
 rm -rf project copy1 copy2
 commercial project
-bk clone $Q . ../copy2 || exit 1
+bk clone $Q . ../copy2 || fail
 touch foo
-bk new $Q foo || exit 1
-bk commit $Q -yadd || exit 1
+bk new $Q foo || fail
+bk commit $Q -yadd || fail
 cd ..
-bk clone $Q project copy1 || exit 1
+bk clone $Q project copy1 || fail
 cd copy1
 KEY=`bk prs -r1.0 -hnd:KEY: foo`
-bk rm  foo || exit 1
-bk commit $Q -yrm || exit 1
-#bk push $Q || exit 1
+bk rm  foo || fail
+bk commit $Q -yrm || fail
+#bk push $Q || fail
 SFILE=`bk sfiles BitKeeper/deleted`
 rm -rf BitKeeper/deleted
 bk _rm -f "$SFILE"
-bk gone $Q "$KEY" || exit 1
-bk commit $Q -ygone || exit 1
-bk push $Q || exit 1
+bk gone $Q "$KEY" || fail
+bk commit $Q -ygone || fail
+bk push $Q || fail
 cd ../copy2
 # without this cset the following pull will error like this:
 # cset: cannot find
@@ -435,7 +435,7 @@ cd ../copy2
 #takepatch: missing checksum line in patch, aborting.
 #==============================================================================
 #
-bk pull -q 2>ERR || exit 1
+bk pull -q 2>ERR || fail
 cat <<EOF > WANT
 Marked gone (bk help chk1): foo
 EOF
@@ -461,7 +461,7 @@ echo $N Set up staging tree .........................................$NL
 BK_GONE=BitKeeper/etc/gone-outsource
 export BK_GONE
 cd "$HERE"
-bk clone $Q project staging || exit 1
+bk clone $Q project staging || fail
 cd staging
 sfilelist=`bk sfiles secret`
 bk _rm $sfilelist
@@ -489,12 +489,12 @@ bk commit $Q -y'Contractors-R-Us goodness'
 echo OK
 
 echo $N Test push to staging ........................................$NL
-bk push $Q || exit 1
+bk push $Q || fail
 echo OK
 
 echo $N Test push to main ...........................................$NL
 cd "$HERE/staging"
-bk push $Q || exit 1
+bk push $Q || fail
 echo OK
 
 echo $N Make a cset in the full tree ................................$NL
@@ -515,11 +515,11 @@ echo $N Push to staging .............................................$NL
 cd "$HERE/project"
 # This only works because it is a file system push
 # The remote side needs BK_GONE_OK
-BK_GONE_OK=1 bk push $Q "$HERE/staging" || exit 1
+BK_GONE_OK=1 bk push $Q "$HERE/staging" || fail
 echo OK
 
 echo $N Pull from staging to contractor .............................$NL
 cd "$HERE/contractor"
-bk pull $Q || exit 1
+bk pull $Q || fail
 echo OK
 

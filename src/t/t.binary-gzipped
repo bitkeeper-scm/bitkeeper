@@ -88,25 +88,22 @@ BIN1=saved_bin
 cp "$BIN1" uuencode1
 cp "$BIN1" uuencode1z
 # test old auto-binary
-bk new $Q uuencode1 || exit 1
+bk new $Q uuencode1 || fail
 # test old auto-binary zipped
 grep -v compression c > BitKeeper/etc/config
-bk new $Q uuencode1z || exit 1
+bk new $Q uuencode1z || fail
 cp c BitKeeper/etc/config
 echo BAM:1 >> BitKeeper/etc/config
 cp data uuencode2
-bk new $Q -Euuencode uuencode2 || exit 1
+bk new $Q -Euuencode uuencode2 || fail
 cp "$BIN1" bam1
 cp "$BIN1" bam2
 # test auto-binary
-bk new $Q bam1 || exit 1
-bk new $Q -EBAM bam2 || exit 1
+bk new $Q bam1 || fail
+bk new $Q -EBAM bam2 || fail
 for f in uuencode1 uuencode1z uuencode2 bam1 bam2
 do	bk co $Q -l $f
-	cmp -s "$BIN1" $f || {
-		echo failed $f
-		exit 1
-	}
+	cmp -s "$BIN1" $f || fail failed $f
 done
 bk prs -hnr+ -d:COMPRESSION:,:ENC: uuencode1z uuencode1 uuencode2 bam1 bam2 \
     > OUT
@@ -129,38 +126,38 @@ checkfiles d.out d.ref
 echo OK
 
 echo $N Trying to check in unchanged binary data ....................$NL
-bk ci $Q -y uuencode1 || exit 1
-bk co $Q -l uuencode1 || exit 1
+bk ci $Q -y uuencode1 || fail
+bk co $Q -l uuencode1 || fail
 echo OK
 
 echo $N Trying to change some binary data ...........................$NL
 for f in uuencode1 bam1
 do	cp "$BIN2" $f
-	bk ci $Q -y $f || exit 1
-	bk co $Q $f || exit 1
+	bk ci $Q -y $f || fail
+	bk co $Q $f || fail
 	checkfiles "$BIN2" $f
 done
 echo OK
 
 echo $N Checking that revision 1.1 is still OK ......................$NL
 for f in uuencode1 bam1
-do	bk co -r1.1 $Q -G$f $f || exit 1
+do	bk co -r1.1 $Q -G$f $f || fail
 	checkfiles "$BIN1" $f
 done
 echo OK
 
 echo $N Trying to clean an encoded file .............................$NL
 for f in uuencode1 bam1
-do	bk co $Q -l $f || exit 1
-	bk clean $f || exit 1
-	test -f $f && { echo Clean failed ; exit 1; }
+do	bk co $Q -l $f || fail
+	bk clean $f || fail
+	test -f $f && fail Clean failed
 	true
 done
 echo OK
 
 echo $N Trying to compress uuencoded data ...........................$NL
 bk admin -Z uuencode1
-bk co -r1.1 $Q -Guuencode1 uuencode1 || exit 1
+bk co -r1.1 $Q -Guuencode1 uuencode1 || fail
 checkfiles "$BIN1" uuencode1
 echo OK
 
@@ -171,7 +168,7 @@ test "X$ENC" != Xgzip,uuencode && fail Wrong encoding. $ENC
 echo OK
 
 echo $N Make sure -Z is allowed without -i ..........................$NL
-bk get $Q -e data || exit 1
+bk get $Q -e data || fail
 echo '! @ # $ % ^ & * ( )' >>data
 test `bk prs -r+ -hnd:COMPRESSION: data` = gzip || fail
 bk delta $Q -Znone -y data || fail
@@ -185,51 +182,49 @@ cp gzipped ll
 bk ci -i $Q -y -Z gzipped
 bk co $Q gzipped
 cmp -s ll gzipped
-if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
+if [ $? -ne 0 ]; then fail Failed - files differ.; fi
 echo OK
 
 echo $N Trying to clean gzipped data ................................$NL
 bk co $Q -l gzipped
 bk clean gzipped
-if [ $? -ne 0 ]; then echo Clean failed ; exit 1; fi
-if [ -f gzipped ]; then echo Clean failed ; exit 1; fi
+if [ $? -ne 0 ]; then fail Clean failed ; fi
+if [ -f gzipped ]; then fail Clean failed ; fi
 echo OK
 
 echo $N Make a gzipped file ascii ...................................$NL
 bk admin -Znone gzipped
 ENC=`bk prs -hnr+ -d:COMPRESSION:,:ENC: gzipped`
 if [ X$ENC != X"none,ascii" ]
-then	echo Wrong encoding. $ENC
-	exit 1
+then	fail Wrong encoding. $ENC
 fi
 echo OK
 
 echo $N Make sure it still has the same data ........................$NL
 bk co $Q gzipped
 cmp -s ll gzipped
-if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
+if [ $? -ne 0 ]; then fail Failed - files differ.; fi
 echo OK
 
 echo $N Make it gzipped again .......................................$NL
 bk admin -Z gzipped || fail
 ENC=`bk prs -hnr+ -d:COMPRESSION:,:ENC: gzipped`
 if [ X$ENC != X"gzip,ascii" ]
-then	echo Wrong encoding. $ENC
-	exit 1
+then	fail Wrong encoding. $ENC
 fi
 echo OK
 
 echo $N Make sure it still has the same data ........................$NL
 bk co $Q gzipped
 cmp -s ll gzipped
-if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
+if [ $? -ne 0 ]; then fail Failed - files differ.; fi
 echo OK
 
 echo $N Verifying data checksum .....................................$NL
 bk co $Q -kr1.1 -Ggzipped gzipped
 A=`bk prs -r1.1 -hd:DSUM: gzipped`
 B=`bk checksum -s < gzipped`
-if [ $A -ne $B ]; then echo Failed - chksums $A $B differ.; exit 1; fi
+if [ $A -ne $B ]; then fail Failed - chksums $A $B differ.; fi
 echo OK
 
 echo $N Binary data problem: false match ............................$NL
@@ -237,11 +232,11 @@ cd "$HERE"
 commercial project2
 echo 'Binary files foo.c differ' > test
 cd "$HERE"
-bk clone $Q project2 copy || exit 1
+bk clone $Q project2 copy || fail
 cd project2
-bk new $Q test || exit 1
-bk commit $Q -yjunk || exit 1
+bk new $Q test || fail
+bk commit $Q -yjunk || fail
 cd "$HERE/copy"
-bk pull $Q || exit 1
+bk pull $Q || fail
 echo OK
 

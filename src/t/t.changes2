@@ -300,15 +300,8 @@ test 1.3 = "$LIST" || fail
 echo OK
 
 echo $N Check that -/search/junk fails ..............................$NL
-bk changes -/Second/junk -d:I: 2> ERR && {
-	echo failed to fail
-	exit 1
-}
-grep -q '\/j not implemented' ERR || {
-	echo wrong error
-	cat ERR
-	exit 1
-}
+bk changes -/Second/junk -d:I: 2> ERR && fail failed to fail
+grep -q '\/j not implemented' ERR || fail -f ERR wrong error
 echo OK
 
 echo $N Check regex on tags -/pattern/t .............................$NL
@@ -491,17 +484,13 @@ for x in tb1 tb2; do bk clone $Q diamond $x; done
 cd diamond
 for x in ../tb1 ../tb2 ; do bk changes -qL $x; done > SOLO
 test -s SOLO && {
-	echo failed
-	echo test set up failed. Tags showing up in SOLO
-	for x in ../tb1 ../tb2 ; do bk changes -L $x; done
-	exit 1
+	for x in ../tb1 ../tb2 ; do bk changes -L $x; done > ERR
+	fail -f ERR test set up failed. Tags showing up in SOLO
 }
 bk changes -qL ../tb1 ../tb2 > MULTIPLE
 test -s MULTIPLE && {
-	echo failed
-	echo Tags showing up when multiple desinations listed.
-	bk changes -L ../tb1 ../tb2
-	exit 1
+	bk changes -L ../tb1 ../tb2 > ERR
+	fail -f ERR Tags showing up when multiple desinations listed.
 }
 echo OK
 
@@ -509,17 +498,13 @@ echo $N Changes bug when listing -R and multiple repos on the cli ...$NL
 # this wasn't a bug before -- just testing for symmetry sake
 for x in ../tb1 ../tb2 ; do bk changes -qR $x; done > SOLO
 test -s SOLO && {
-	echo failed
-	echo test set up failed. Tags showing up in SOLO
-	for x in ../tb1 ../tb2 ; do bk changes -R $x; done
-	exit 1
+	for x in ../tb1 ../tb2 ; do bk changes -R $x; done > ERR
+	fail -f ERR test set up failed. Tags showing up in SOLO
 }
 bk changes -qR ../tb1 ../tb2 > MULTIPLE
 test -s MULTIPLE && {
-	echo failed
-	echo Tags showing up when multiple desinations listed.
-	bk changes -R ../tb1 ../tb2
-	exit 1
+	bk changes -R ../tb1 ../tb2 > ERR
+	fail -f ERR Tags showing up when multiple desinations listed.
 }
 echo OK
 
@@ -527,10 +512,10 @@ echo OK
 
 echo $N Make some repositories to check out -L and -R ...............$NL
 cd "$HERE"
-bk clone $Q simple clone || exit 1
+bk clone $Q simple clone || fail
 cd clone
-bk undo $Q -sfr+ || exit 1
-bk tag $Q REM || exit 1
+bk undo $Q -sfr+ || fail
+bk tag $Q REM || fail
 echo OK
 
 echo $N Check out a delta difference using -L and -R ................$NL
@@ -619,26 +604,26 @@ echo OK
 
 echo $N Check delta key missing in a file ...........................$NL
 bk stripdel $Q -Cr+ bar
-bk changes -vr"THIS_ONE" -nd:GFILE: > OUT 2> ERR || exit 1
-grep -q "missing delta" ERR || { echo wrong message; exit 1; }
+bk changes -vr"THIS_ONE" -nd:GFILE: > OUT 2> ERR || fail
+grep -q "missing delta" ERR || fail -f ERR wrong message
 echo OK
 
 echo $N Check root key missing in a file ............................$NL
 bk _mv SCCS/s.bar sbar
-bk changes -vr"THIS_ONE" -nd:GFILE: > OUT 2> ERR || exit 1
-grep -q "Cannot sccs_init" ERR || { echo wrong message; exit 1; }
+bk changes -vr"THIS_ONE" -nd:GFILE: > OUT 2> ERR || fail
+grep -q "Cannot sccs_init" ERR || fail -f ERR wrong message
 bk _mv sbar SCCS/s.bar
 echo OK
 
 echo $N Check delta key missing with delta key in gone ..............$NL
 echo "$KEY" >> BitKeeper/etc/gone
-bk changes -vr"THIS_ONE" -nd:GFILE: > OUT || exit 1
+bk changes -vr"THIS_ONE" -nd:GFILE: > OUT || fail
 cp BitKeeper/etc/gone gone.orig
 echo OK
 
 echo $N Check delta key missing with root key in gone ...............$NL
 echo "$ROOTKEY" >> BitKeeper/etc/gone
-bk changes -vr"THIS_ONE" -nd:GFILE: > OUT || exit 1
+bk changes -vr"THIS_ONE" -nd:GFILE: > OUT || fail
 # next case wants ROOTKEY, so leave it
 # cp gone.orig BitKeeper/etc/gone
 echo OK
@@ -647,7 +632,7 @@ echo $N Check root key missing with root key in gone ................$NL
 # set up by previous case:
 # echo "$ROOTKEY" >> BitKeeper/etc/gone
 bk _mv SCCS/s.bar sbar
-bk changes -vr"THIS_ONE" -nd:GFILE: > OUT || exit 1
+bk changes -vr"THIS_ONE" -nd:GFILE: > OUT || fail
 bk _mv sbar SCCS/s.bar
 cp gone.orig BitKeeper/etc/gone
 echo OK

@@ -39,7 +39,7 @@ echo OK
 
 echo $N See that open still works with no retry .....................$NL
 commercial project
-BK_WIN_NORETRY=0 bk changes -r+ -ndx > GOT || exit 1
+BK_WIN_NORETRY=0 bk changes -r+ -ndx > GOT || fail
 echo x > WANT
 cmpfiles WANT GOT
 echo OK
@@ -73,4 +73,24 @@ bk clone $Q --hide-sccs-dirs project clone
 cd clone
 attrib .bk > OUT
 grep -q "    H   [ I] " OUT || fail -f OUT
+echo OK
+
+echo $N Test nt_rmdir retry loop ....................................$NL
+cd "$HERE/clone"
+mkdir rmdir
+cd rmdir
+(
+	while test ! -f "$HERE/stopit"; do
+		bk _usleep 500000
+	done
+) &
+cd ..
+bk _rmdir rmdir > OUT 2>&1 &
+PID=$!
+bk _usleep 10000000
+touch "$HERE/stopit"
+# Harvesting rmdir should mean the interfering process is done
+wait $PID
+test -d rmdir && fail directory still there
+grep -q "retrying lock on rmdir" OUT || fail -f OUT wrong error
 echo OK

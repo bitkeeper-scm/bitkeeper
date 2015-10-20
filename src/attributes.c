@@ -1,5 +1,6 @@
 #include "sccs.h"
 #include "nested.h"
+#include "cfg.h"
 
 /*
  * Update the BitKeeper/etc/attr file with information for the current
@@ -40,7 +41,7 @@ attr_update(void)
 	rc = sccs_delta(s, dflags, 0, 0, 0, 0);
 	if (rc == -2) {
 		/* no delta if no diffs in file */
-		unlink(s->pfile);
+		xfile_delete(s->gfile, 'p');
 		unlink(s->gfile);
 		rc = 0;
 	} else if (rc) {
@@ -127,7 +128,10 @@ attr_write(char *file)
 	 * Unfortunately we don't save the original license key in a
 	 * lease.
 	 */
-	unless (incomp) fprintf(f, "%s\n", proj_configval(proj, "license"));
+	unless (incomp) {
+		t = cfg_str(proj, CFG_LICENSE);
+		fprintf(f, "%s\n", notnull(t));
+	}
 
 	if (getenv("BK_REGRESSION") && (t = getenv("_BK_ATTR_TEST"))) {
 		fprintf(f, "@TEST\n%s\n", t);

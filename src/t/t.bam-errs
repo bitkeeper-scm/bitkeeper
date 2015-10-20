@@ -3,29 +3,26 @@
 echo $N Test BAM errors in resolve.c ................................$NL
 commercial project
 echo 155 > file
-bk new -b $Q file || exit 1
-bk commit -y155 $Q || exit 1
+bk new -b $Q file || fail
+bk commit -y155 $Q || fail
 
 cd ..
 bk clone $Q project copy
 cd project
 bk edit $Q file
 echo 236 > file
-bk ci -y236 $Q file || exit 1
-bk commit $Q -y236 || exit 1
+bk ci -y236 $Q file || fail
+bk commit $Q -y236 || fail
 RK=`bk id | sed 's/|/-/g'`
 rm BitKeeper/BAM/$RK/01/01d700a5.d2
 
 cd ../copy
 bk edit $Q file
 echo 317 > file
-bk ci -y317 $Q file || exit 1
-bk commit $Q -y317 || exit 1
+bk ci -y317 $Q file || fail
+bk commit $Q -y317 || fail
 
-bk pull $Q 2> ERR && {
-	echo should have failed
-	exit 1
-}
+bk pull $Q 2> ERR && fail -f ERR should have failed
 # XXX the error report needs help
 echo OK
 

@@ -3,6 +3,7 @@
  */
 #include "bkd.h"
 #include "logging.h"
+#include "cfg.h"
 
 int
 mail_main(int ac, char **av)
@@ -29,9 +30,7 @@ mail_main(int ac, char **av)
 	unless (av[optind]) usage();
 	for (c = optind; av[c]; c++) to = addLine(to, strdup(av[c]));
 
-	unless (url) url = proj_configval(0, "mail_proxy");
-
-	if (streq(url, "")) {
+	unless (url || (url = cfg_str(0, CFG_MAIL_PROXY))) {
 		fprintf(stderr, "mail: failed must provide mail proxy\n");
 		return (1);
 	}

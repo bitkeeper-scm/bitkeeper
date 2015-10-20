@@ -22,6 +22,12 @@ cores()
 
 	OUT="$BK_REGRESSION/cores"
 	find "$BK_REGRESSION" -name core -print > "$OUT"
+	test -n "$_BK_MAC_CORES" && {
+		# Add in any new MacOS cores
+		find /cores -type f -name 'core*' 2>$DEV_NULL \
+			| bk _sort > "$OUT".macos
+		comm -13 "$_BK_MAC_CORES" "$OUT".macos >> "$OUT"
+	}
 	if [ -s "$OUT" ]
 	then    ls -l "`cat "$OUT"`"
 		file "`cat "$OUT"`"
@@ -358,6 +364,19 @@ fail() {
 	test x$BK_REGRESSION_NOFAIL == x && exit 1
 }
 
+# longpath "/prefix/" total_length
+# where prefix can be "" for relative path, or "`/bin/pwd`/" for abs path
+# and total length is the length of the made up path including prefix
+# path is a deep nest of 15 char dirs separated by / and a "xxx..." file
+# name at the end to get the right total size.
+longpath() {
+	PROG='	$x = $ARGV[1] - length($ARGV[0]);
+		$y = int(($x-1)/16);
+		print "$ARGV[0]",
+		    "abcdefg12345679/" x $y, "x" x ($x - 16*$y), "\n";'
+	perl -e "$PROG" "$1" $2
+}
+
 test_gui_result() {
 	rc_got=$1
 	rc_expect=$2
@@ -375,5 +394,30 @@ test_gui_result() {
 	}
 	echo "OK"
 }
+
+# Ask and wait for the uniq daemon running in <dir> to exit.
+kill_uniq() {
+	dir=$1; shift
+	test -d "$dir" || return
+	db=`ls "$dir"`
+	test -n "$db" -a -d "$dir/$db" || return
+	bk uniq_server $Q --dir="$dir/$db" --quit
+}
+
+# Remove the uniqdb(s). Normally you want to call kill_uniq first
+# or else the files will reappear when the uniq_daemon exits.
+rm_uniq() {
+	rm -f "`bk dotbk`/bk-keys/`bk gethost -r`"
+	rm -f "/tmp/.bk-keys-$USER"
+}
+
+# Return 1 iff <key> exists in the on-disk uniqdb.
+# Normally you want to call kill_uniq first.
+key_exists()
+{
+	key=$1; shift
+	echo "get .*$key.*" | bk info_shell --uniqdb | grep -q $key
+}
+
 # this next line needs to be last, it's line zero of the script (see doit)
 BOS=$LINENO

@@ -42,15 +42,15 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Add some components .........................................$NL
-bk attach --force -C $Q ../gcc gcc || exit 1
-bk attach --force -C $Q ../gdb gdb || exit 1
+bk attach --force -C $Q ../gcc gcc || fail
+bk attach --force -C $Q ../gdb gdb || fail
 bk sfiles -p > GOT
 cat > WANT <<EOF
 gcc/SCCS/s.ChangeSet
 gdb/SCCS/s.ChangeSet
 EOF
 cmpfiles WANT GOT
-bk commit $Q -y'gcc & gdb' || exit 1
+bk commit $Q -y'gcc & gdb' || fail
 bk sfiles -p > PENDING
 test -s PENDING && fail
 rm -f PENDING
@@ -71,7 +71,7 @@ cd ..
 bk -R get $Q -S BitKeeper/etc/config
 bk setup -Cfc"`bk root`"/BitKeeper/etc/config new-comp
 cp -rp new-comp "$HERE/save"
-cd new-comp || exit 1
+cd new-comp || fail
 test "`bk repotype`" = "component" || {
 	echo failed to make it a component
 	ls BitKeeper/log
@@ -138,13 +138,13 @@ echo OK
 echo $N Test that a comp in a prod in a prod gets the right prod ....$NL
 cd "$HERE/project"
 touch c
-bk setup -P -f -cc subproduct || exit 1
+bk setup -P -f -cc subproduct || fail
 rm c
 cd subproduct
 bk portal $Q . || fail
 commercial comp
 cd ..
-bk attach --force $Q -N comp || exit 1
+bk attach --force $Q -N comp || fail
 cd comp
 echo comp > WANT
 bk -P sfiles -R > GOT
@@ -155,7 +155,7 @@ echo OK
 
 echo $N Check nested configs ........................................$NL
 cd "$HERE/project/gcc"
-bk edit $Q BitKeeper/etc/config ../BitKeeper/etc/config || exit 1
+bk edit $Q BitKeeper/etc/config ../BitKeeper/etc/config || fail
 cat <<EOF >> BitKeeper/etc/config
 a: 1
 b: 2
@@ -166,18 +166,18 @@ a: 1p!
 b: 2p
 d: 4p
 EOF
-test X`bk config a` = X1p || exit 1
-test X`bk config b` = X2 || exit 1
-test X`bk config c` = X3 || exit 1
-test X`bk config d` = X4p || exit 1
+test X`bk config a` = X1p || fail
+test X`bk config b` = X2 || fail
+test X`bk config c` = X3 || fail
+test X`bk config d` = X4p || fail
 cd ..
 # make sure the trailing ! gets stripped
-test X`bk config a` = X1p || exit 1
-test X`bk config b` = X2p || exit 1
-test X`bk config c || true` = X || exit 1
-test X`bk config d` = X4p || exit 1
+test X`bk config a` = X1p || fail
+test X`bk config b` = X2p || fail
+test X`bk config c || true` = X || fail
+test X`bk config d` = X4p || fail
 cd gcc
-bk unedit $Q BitKeeper/etc/config ../BitKeeper/etc/config || exit 1
+bk unedit $Q BitKeeper/etc/config ../BitKeeper/etc/config || fail
 echo OK
 
 echo $N Check dspecs ................................................$NL
@@ -449,7 +449,7 @@ bk -r check -ac 2>ERR && {
 echo OK
 
 echo $N Make sure changes -v is OK with missing components ..........$NL
-bk changes -v > OUT || exit 1
+bk changes -v > OUT || fail
 echo OK
 
 echo $N Make sure product check will fail if a component is moved ...$NL
@@ -546,7 +546,7 @@ bk sfiles | grep -q gdb/gcc4 && {
 cd gdb/gcc4
 bk sfiles > /dev/null
 cd ../..
-bk sfiles | grep -q gdb/gcc4 && exit 1
+bk sfiles | grep -q gdb/gcc4 && fail
 # second try to fix, same thing but use 'bk -r' as way to run sfiles
 cd gdb/gcc4
 bk -r > /dev/null
@@ -556,10 +556,10 @@ bk sfiles | grep -q gdb/gcc4 || {
 	echo this one should work
 	exit 1
 }
-rm BitKeeper/log/deep-nests || exit 1
+rm BitKeeper/log/deep-nests || fail
 bk stripdel $Q -r+ gdb/gcc4/ChangeSet
 mv gdb/gcc4 gcc4
-bk -r check -ac || exit 1
+bk -r check -ac || fail
 echo "failed (bug )"
 
 echo $N Make sure that check will fix BitKeeper/log/COMPONENT .......$NL
@@ -617,9 +617,9 @@ done
 cd "$HERE/project"
 bk commit $Q -y"Should be 3 csets"
 bk changes -vr+ > GOT
-grep -q gcc4/ChangeSet@1.8 GOT || exit 1
-grep -q gcc4/ChangeSet@1.7 GOT || exit 1
-grep -q gcc4/ChangeSet@1.6 GOT || exit 1
+grep -q gcc4/ChangeSet@1.8 GOT || fail
+grep -q gcc4/ChangeSet@1.7 GOT || fail
+grep -q gcc4/ChangeSet@1.6 GOT || fail
 echo OK
 
 echo $N See if bk log -r@1.6 maps to 1.8 in the component ...........$NL
@@ -639,7 +639,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Create a pending deep nested component ......................$NL
-cd gdb || exit 1
+cd gdb || fail
 commercial pendingdeepnest
 cd ..
 commercial extradeepnest
@@ -1285,7 +1285,7 @@ grep -q "recursive alias definition" OUT || {
 echo OK
 
 echo $N Try removing alias recursion ................................$NL
-bk alias rm -C recursion || exit 1
+bk alias rm -C recursion || fail
 bk diffs --no-unified -h -R+ BitKeeper/etc/aliases | grep '< ' > GOT
 (
 echo '< @recursion'
@@ -1295,7 +1295,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Try removing alias see_recursion ............................$NL
-bk alias rm -C see_recursion || exit 1
+bk alias rm -C see_recursion || fail
 bk diffs --no-unified -h -R+ BitKeeper/etc/aliases | grep '< ' > GOT
 (
 echo '< @see_recursion'
@@ -1497,7 +1497,7 @@ test "$R" = "$HERE/remote" || fail $R
 echo OK
 
 echo $N Components in idcache .......................................$NL
-cd "$HERE/remote" || exit 1
+cd "$HERE/remote" || fail
 GDBKEY=`bk prs -r+ -hnd:KEY: gdb/ChangeSet`
 GCCKEY=`bk prs -r+ -hnd:KEY: gcc/ChangeSet`
 echo hi > gdb/foo
@@ -1580,75 +1580,6 @@ echo OK
 echo $N Demonstrate that bk -A check is not allowed .................$NL
 bk -A check > OUT 2>&1 && fail
 grep -q "bk: -A/-U option cannot be used with check" OUT || fail
-echo OK
-
-echo $N Make sure cset -x is disabled for products...................$NL
-cd "$HERE/project"
-# make a couple of csets in components
-echo "aline" > afile
-bk new $Q afile
-cd gdb
-echo "aline" > afile
-bk new $Q afile
-bk commit -S $Q -y"add afile"
-cd ../gcc4
-echo "aline" > afile
-bk new $Q afile
-bk commit -S $Q -y"add afile"
-cd ..
-bk commit $Q -y"added afile to gdb and gcc4"
-# add a content cset since cset -x doesn't support removing new files
-bk edit $Q afile
-echo "lineb" >> afile
-bk delta $Q -y"add lineb" afile
-cd gdb
-bk edit $Q afile
-echo "lineb" >> afile
-bk delta $Q -y"add lineb" afile
-bk commit -S $Q -y"add lineb"
-cd ../gcc4
-bk edit $Q afile
-echo "lineb" >> afile
-bk delta $Q -y"add lineb" afile
-bk commit -S $Q -y"add lineb"
-cd ..
-bk commit $Q -y"add lineb"
-CSET=`bk changes -nd:KEY: -r+`
-# add another cset on top
-bk edit $Q afile
-echo "linec" >> afile
-bk delta $Q -y"add linec"
-cd gdb
-bk edit $Q afile
-echo "linec" >> afile
-bk delta $Q -y"add linec" afile
-bk commit -S $Q -y"add linec"
-cd ../gcc4
-bk edit $Q afile
-echo "linec" >> afile
-bk delta $Q -y"add linec" afile
-bk commit -S $Q -y"add linec"
-cd ..
-bk commit $Q -y"add linec"
-# okay, now test the cset -x
-# in the component, it should work
-cd gdb
-bk cset -qx+ >OUT 2>&1 || fail -f OUT
-# clean it up
-bk undo -qSsfr+ >OUT 2>&1 || fail -f OUT
-# in the product it should fail
-cd ..
-bk cset -qx"$CSET" 2>&1 | grep -q "Operation not supported" || fail
-# # Uncomment these once it's fixed
-# cd ..
-# bk -e -r check -ac || fail
-# # product
-# bk changes -nd':COMMENTS:' -r+ | grep -q "Cset exclude" || fail
-# cd gdb
-# bk changes -nd':COMMENTS:' -r+ | grep -q "Cset exclude" || fail
-# cd ../liberty
-# bk changes -nd':COMMENTS:' -r+ | grep -q "Cset exclude" || fail
-# bk -e -Ur. grep -n lineb > OUT || fail -f OUT exclude did not work
 echo OK
 
 echo $N Test that newly created product is a portal and a gate ......$NL

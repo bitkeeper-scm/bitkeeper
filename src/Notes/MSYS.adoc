@@ -1,0 +1,39 @@
+How to build dll for msys
+=========================
+
+Building msys DLL:
+
+   1) delete c:\msys
+   2) install msys
+      http://prdownloads.sf.net/mingw/MSYS-1.0.10-rc-4.exe?download
+   3) start msys bash shell
+   4) install msysDTK
+      http://prdownloads.sf.net/mingw/msysDTK-1.0.1.exe?download
+   5) cd / && tar -zxvf msysDVLPR-1.0.0-alpha-1.tar.gz
+      http://prdownloads.sf.net/mingw/msysDVLPR-1.0.0-alpha-1.tar.gz?download
+   6) rm /lib/gcc-lib/i686-pc-msys/2.95.3-1/include/winnt.h
+   7) cd / && tar -zxvf w32api-2.5.tar.gz
+      http://prdownloads.sf.net/mingw/w32api-2.5.tar.gz?download
+   8) cd $HOME
+   9) bk clone mingw.msys repo
+  10) run mingw.msys/dvlpr/script/msysdvlpr and continue in new window
+  11) cd mingw.msys/rt && mkdir bld && cd bld
+  12) ../src/configure --prefix=/usr
+  13) make
+
+  It shouldn't depend on cygwin or mingw.
+
+
+To use strace:
+
+  Run configure like this:
+
+	CFLAGS="-g -DDEBUGGING=1" CXXFLAGS="-g -DDEBUGGING=1" \
+		../src/configure --prefix=/usr
+
+        make
+	cd i686-pc-msys/winsup/cygwin
+	cp new-msys-1.0.dll <path>/msys/bin
+	../utils/strace <path>/msys/bin/command args
+
+

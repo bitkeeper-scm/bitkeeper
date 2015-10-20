@@ -1,5 +1,6 @@
 #include "system.h"
 #include "sccs.h"
+#include "cfg.h"
 #include "bkd.h"
 #include "tomcrypt.h"
 #include "range.h"
@@ -204,7 +205,7 @@ bp_get(sccs *s, ser_t din, u32 flags, char *gfile)
 	 * switch test to !stdout.
 	 */
 	if (!(flags & (GET_EDIT|PRINT)) &&
-	    proj_configbool(s->proj, "BAM_hardlinks")) {
+	    cfg_bool(s->proj, CFG_BAM_HARDLINKS)) {
 		struct	stat	statbuf;
 		struct	utimbuf ut;
 
@@ -2414,7 +2415,7 @@ bam_convert_main(int ac, char **av)
 
 	/* force new cset file to be written in SCCS format */
 	s->encoding_out = sccs_encoding(s, 0, 0);
-	s->encoding_out &= ~(E_BK|E_BWEAVE);
+	s->encoding_out &= ~E_FILEFORMAT;
 	sccs_startWrite(s);
 	delta_table(s, 0);
 	sccs_rdweaveInit(s);

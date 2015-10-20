@@ -218,6 +218,7 @@ delta
 diffs
 diffsplit
 dotbk
+_dumpconfig
 _eula
 _exists
 export
@@ -242,6 +243,8 @@ _fslmv
 _mv => _fslmv
 _fslrm
 _rm => _fslrm
+_fslrmdir
+_rmdir => _fslrmdir
 gca
 get
 _getdir
@@ -432,6 +435,8 @@ edit => get
 comment => comments	# alias for Linus, remove...
 identity => id
 info => sinfo
+uniq_server => info_server
+init => setup
 _key2path => key2path
 _mail => mail
 aliases => alias
@@ -454,6 +459,7 @@ csettool gui
 difftool gui
 fm3tool gui
 fmtool gui
+gui => helptool
 helptool gui
 installtool gui
 msgtool gui

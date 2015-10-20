@@ -24,6 +24,7 @@ typedef	struct cset {
 	int	doBAM;		/* send BAM data */
 	int	compat;		/* do not send new sfiles in sfio */
 	int	fastpatch;	/* enable fast patch mode */
+	int	fail;		/* let all failures be flushed out */
 
 	/* numbers */
 	int	tooMany;	/* send whole sfiles if # deltas > tooMany */
@@ -128,14 +129,19 @@ cset_main(int ac, char **av)
 	int	flags = 0;
 	int	c, list = 0;
 	int	ignoreDeleted = 0;
+	int	show_comp = 0;
 	char	*cFile = 0;
 	int	rc = 1;
 	RANGE	rargs = {0};
+	longopt	lopts[] = {
+		{ "show-comp", 300 },		/* undo hide_comp */
+		{ 0, 0 }
+	};
 
 	if (streq(av[0], "makepatch")) copts.makepatch = 1;
 	copts.notty = (getenv("BK_NOTTY") != 0);
 
-	while ((c = getopt(ac, av, "5BCd|DFfhi;lm|M;N;|qr|svx;", 0)) != -1) {
+	while ((c = getopt(ac, av, "5BCd|DFfhi;lm|M;N;|qr|svx;", lopts)) != -1){
 		switch (c) {
 		    case 'B': copts.doBAM = 1; break;
 		    case 'D': ignoreDeleted++; break;		/* undoc 2.0 */
@@ -198,11 +204,14 @@ cset_main(int ac, char **av)
 			copts.exclude++;
 			if (range_addArg(&rargs, optarg, 0)) usage();
 			break;
+		    case 300:		/* --show-comp */
+		        show_comp = 1;
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
 
-	if (proj_isProduct(0) && !copts.remark) copts.hide_comp++;
+	if (!show_comp && proj_isProduct(0) && !copts.remark) copts.hide_comp++;
 
 	if (rargs.rstop && (list != 1)) {
 		fprintf(stderr, "%s: only one rev allowed with -t\n", av[0]);
@@ -245,11 +254,6 @@ cset_main(int ac, char **av)
 	/*
 	 * If doing include/exclude, go do it.
 	 */
-	if (proj_isProduct(0) &&
-	    (copts.include || copts.exclude) && !getenv("_BK_TRANSACTION")) {
-		fprintf(stderr, "cset: Operation not supported in Product.\n");
-		return (1);
-	}
 	if (copts.include) return (cset_inex(flags, "-i", rargs.rstart));
 	if (copts.exclude) return (cset_inex(flags, "-x", rargs.rstart));
 
@@ -370,18 +374,29 @@ header(sccs *cset, int diffs)
  * just mark the cset boundry.
  */
 private void
-markThisCset(cset_t *cs, sccs *s, ser_t d)
+markThisCset(cset_t *cs, ser_t d_cset, sccs *s, ser_t d)
 {
 	if (cs->mark || TAG(s, d)) {
 		FLAGS(s, d) |= D_SET;
 		return;
 	}
-	assert(!CSET(s));
-	range_cset(s, d);
+	/*
+	 * Poly - if two product csets include the same component
+	 * cset, and we are going to exclude one of the product
+	 * csets, then exclude the component.
+	 */
+	if (!cs->hide_comp && CSET(s) && (s != cset)) {
+		char	key[MAXKEY];
+
+		sccs_sdelta(cset, d_cset, key);
+		poly_range(s, d, key);
+	} else {
+		range_cset(s, d);
+	}
 }
 
 private int
-doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
+doKey(cset_t *cs, ser_t d_cset, char *key, char *val, MDBM *goneDB)
 {
 	static	MDBM *idDB;
 	static	sccs *sc;
@@ -446,15 +461,31 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 			return (-1);
 		}
 	} else {
-		if (gone(lastkey, goneDB)) {
-			free(lastkey);
-			lastkey = 0;
-			return (0);
-		}
-		fprintf(stderr, "cset: unable to keyinit %s\n", lastkey);
 		free(lastkey);
 		lastkey = 0;
+		if (!cs->hide_comp &&
+		    changesetKey(key) && proj_isProduct(0)) {
+			nested	*n = nested_init(cset, 0, 0, 0);
+			comp	*c = nested_findKey(n, key);
+
+			fprintf(stderr,
+			    "Component '%s' not populated.  "
+			    "Populate and try again.\n",
+			    c->path ? c->path : key);
+			nested_free(n);
+			cs->fail = 1;
+			return (0);
+		}
+		if (gone(key, goneDB)) return (0);
+		fprintf(stderr, "cset: unable to keyinit %s\n", key);
 		return (cs->force ? 0 : -1);
+	}
+	if (cs->fail) {	/* in failure mode, just look for other failures */
+		unless (sc == cset) sccs_free(sc);
+		sc = 0;
+		free(lastkey);
+		lastkey = 0;
+		return (0);
 	}
 markkey:
 	unless (d = sccs_findKey(sc, val)) {
@@ -466,7 +497,7 @@ markkey:
 		return (cs->force ? 0 : -1);
 	}
 	unless (cs->hide_comp && CSET(sc) && proj_isComponent(sc->proj)) {
-		markThisCset(cs, sc, d);
+		markThisCset(cs, d_cset, sc, d);
 	}
 	return (rc);
 }
@@ -633,11 +664,13 @@ again:	/* doDiffs can make it two pass */
 	sortLines(cs->cweave, cset_bykeys); /* sort by rootkeys */
 	EACH (cs->cweave) {
 		if (tick) progress(tick, ++n);
-		rk = strchr(cs->cweave[i], '\t');
+		rk = cs->cweave[i];
+		d = atoi_p(&rk);
+		assert(*rk == '\t');
 		++rk;
 		t = separator(rk); *t++ = 0;
 		if (streq(csetid, rk)) goto next; /* skip ChangeSet */
-		if (doKey(cs, rk, t, goneDB)) {
+		if (doKey(cs, d, rk, t, goneDB)) {
 			fprintf(stderr,
 			    "File named by key\n\t%s\n\tis missing and key is "
 			    "not in gone file, aborting.\n", rk);
@@ -646,13 +679,14 @@ again:	/* doDiffs can make it two pass */
 		}
 next:		t[-1] = ' ';
 	}
+	if (cs->fail) goto fail;
 	if (cs->doDiffs && cs->makepatch) {
-		if (doKey(cs, 0, 0, goneDB)) goto fail;
+		if (doKey(cs, 0, 0, 0, goneDB)) goto fail;
 		cs->doDiffs = 0;
 		fputs(PATCH_END, stdout);
 		goto again;
 	}
-	if (doKey(cs, 0, 0, goneDB)) goto fail;
+	if (doKey(cs, 0, 0, 0, goneDB)) goto fail;
 	freeLines(cs->cweave, free);
 	if (cs->verbose && cs->makepatch) {
 		fprintf(stderr,
@@ -813,7 +847,7 @@ doMarks(cset_t *cs, sccs *s)
 			return (1);
 		} else if (attip) {
 			// remove dfile
-			unlink(sccs_Xfile(s, 'd'));
+			xfile_delete(s->gfile, 'd');
 		}
 		if ((cs->verbose > 1) && did) {
 			fprintf(stderr,
@@ -1038,13 +1072,14 @@ char **
 cset_mkList(sccs *cset)
 {
 	ser_t	d;
-	char	*rkey, *dkey;
+	u32	rkoff, dkoff;
 	char	**list = 0;
 
 	sccs_rdweaveInit(cset);
-	while (d = cset_rdweavePair(cset, RWP_DSET, &rkey, &dkey)) {
-		list = addLine(list,
-		    aprintf("%d\t%s %s", d, rkey, dkey));
+	while (d = cset_rdweavePair(cset, RWP_DSET, &rkoff, &dkoff)) {
+		unless (dkoff) continue; /* last key */
+		list = addLine(list, aprintf("%d\t%s %s",
+		    d, HEAP(cset, rkoff), HEAP(cset, dkoff)));
 	}
 	sccs_rdweaveDone(cset);
 	return (list);

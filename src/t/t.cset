@@ -52,8 +52,8 @@ echo OK
 
 echo $N Make sure that we can include it back again .................$NL
 bk cset $Q -i1.2
-bk get $Q -r1.1 -pam A > A.1 || exit 1
-bk get $Q -pam A > A.+ || exit 1
+bk get $Q -r1.1 -pam A > A.1 || fail
+bk get $Q -pam A > A.+ || fail
 cmp -s A.1 A.+
 if [ $? != 0 ]
 then	echo failed to return A contents correctly

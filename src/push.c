@@ -192,6 +192,10 @@ err:		freeLines(envVar, free);
 			fprintf(stderr, "push: can't find rev %s\n", opts.rev);
 			exit(1);
 		}
+		while (TAG(s_cset, opts.d)) {
+			opts.d = PARENT(s_cset, opts.d);
+			assert(opts.d);
+		}
 	}
 	EACH (urls) {
 		if (i > 1) {
@@ -570,6 +574,7 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 	u32	lcsets = 0;		/* local csets */
 	u32	rcsets = 0;		/* remote csets */
 	u32	rtags = 0;		/* remote tags */
+	u32	pkflags = SK_LKEY;
 	char	buf[MAXPATH];
 
 	if (send_part1_msg(r, envVar)) return (PUSH_ERROR);
@@ -632,8 +637,8 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 	bktmp_local(rev_list);
 	fd = open(rev_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd >= 0);
-	ret = prunekey(s_cset, r, NULL, fd, PK_LKEY,
-		opts.quiet, &lcsets, &rcsets, &rtags);
+	if (opts.quiet) pkflags |= SILENT;
+	ret = prunekey(s_cset, r, NULL, fd, pkflags, &lcsets, &rcsets, &rtags);
 	close(fd);
 	if (ret < 0) {
 		push_rc	rc = PUSH_ABORT;

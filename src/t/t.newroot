@@ -4,51 +4,51 @@
 echo $N Test newroot by default changes random bits .................$NL
 commercial project
 A=`bk changes -r+ -nd:RANDOM:`
-bk newroot $Q || exit 1
+bk newroot $Q || fail
 B=`bk changes -r+ -nd:RANDOM:`
 test "X$A" = "X$B" && { echo failed; exit 1; }
 echo OK
 
 echo $N Test newroot with parameter changes random bits to param ....$NL
 # changes to lower case hex
-bk newroot $Q -kab29387 || exit 1
+bk newroot $Q -kab29387 || fail
 A=`bk changes -r+ -nd:RANDOM:`
 test "X$A" = "Xab29387" || { echo failed; exit 1; }
 echo OK
 
 echo $N Test newroot with illegal character .........................$NL
-bk newroot $Q -kabs29387 2> ERR && exit 1
+bk newroot $Q -kabs29387 2> ERR && fail
 grep -q "16 lower case hex digits" ERR || { echo failed; exit 1; }
 echo OK
 
 echo $N Test newroot switching to having a BAM marker ...............$NL
-bk newroot $Q -kB:2323: || exit 1
+bk newroot $Q -kB:2323: || fail
 A=`bk changes -r+ -nd:RANDOM:`
 test "X$A" = "XB:2323:ab29387" || { echo failed; exit 1; }
 echo OK
 
 echo $N Test newroot changing random bits after BAM marker ..........$NL
-bk newroot $Q -k27 || exit 1
+bk newroot $Q -k27 || fail
 A=`bk changes -r+ -nd:RANDOM:`
 test "X$A" = "XB:2323:27" || { echo failed; exit 1; }
 echo OK
 
 # LMXXX - I didn't test here for it only going down, I do test in bam
 echo $N Test newroot allowing new BAM marker ........................$NL
-bk newroot $Q -kB:75: || exit 1
+bk newroot $Q -kB:75: || fail
 A=`bk changes -r+ -nd:RANDOM:`
 test "X$A" = "XB:75:27" || { echo failed; exit 1; }
 echo OK
 
 echo $N Test newroot failing if the comment has a newline in it .....$NL
-bk newroot $Q -y"`printf "a\nmulti\nline\ncomment\n"`" 2> ERR && exit 1
-grep -q " comment must only be one line" ERR || exit 1
+bk newroot $Q -y"`printf "a\nmulti\nline\ncomment\n"`" 2> ERR && fail
+grep -q " comment must only be one line" ERR || fail
 echo OK
 
 echo $N Test newroot log after a blank comment has 3 more lines .....$NL
 LEN1=`bk changes -r+ -d:ROOTLOG: | wc -l`
 test "$LEN1" -eq 18 || { echo wrong number of start lines: "$LEN1"; exit 1; }
-bk newroot $Q -y "" || exit 1
+bk newroot $Q -y "" || fail
 LEN2=`bk changes -r+ -d:ROOTLOG: | wc -l`
 LEN3=`expr $LEN2 - $LEN1`
 test "$LEN3" -eq 3 || { echo wrong number of new lines: "$LEN3"; exit 1; }
@@ -58,5 +58,5 @@ echo $N Test newroot on a product ...................................$NL
 cd "$HERE"
 nested product
 bk newroot $Q -y"newly minted product"
-bk -r check -ac || exit 1
+bk -r check -ac || fail
 echo OK

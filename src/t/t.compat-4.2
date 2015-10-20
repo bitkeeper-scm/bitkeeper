@@ -55,56 +55,56 @@ echo OK
 
 echo -------------- crypto tests
 echo $N New and old version should generate the same signature ......$NL
-$OLDBK/bk crypto -s $OLDBK/my.sec < "$BIN2" > sig1 || exit 1
-bk crypto -s $OLDBK/my.sec < "$BIN2" > sig2 || exit 1
+$OLDBK/bk crypto -s $OLDBK/my.sec < "$BIN2" > sig1 || fail
+bk crypto -s $OLDBK/my.sec < "$BIN2" > sig2 || fail
 echo OK
 
 echo $N New and old versions should validate signature ..............$NL
-$OLDBK/bk crypto -v $OLDBK/my.pub sig1 < "$BIN2" || exit 1
-bk crypto -v $OLDBK/my.pub sig1 < "$BIN2" || exit 1
-$OLDBK/bk crypto -v $OLDBK/my.pub sig2 < $BIN2 || exit 1
-bk crypto -v $OLDBK/my.pub sig2 < "$BIN2" || exit 1
+$OLDBK/bk crypto -v $OLDBK/my.pub sig1 < "$BIN2" || fail
+bk crypto -v $OLDBK/my.pub sig1 < "$BIN2" || fail
+$OLDBK/bk crypto -v $OLDBK/my.pub sig2 < $BIN2 || fail
+bk crypto -v $OLDBK/my.pub sig2 < "$BIN2" || fail
 echo OK
 
 echo $N Old version encrypts and new version decrypts ...............$NL
-$OLDBK/bk crypto -e $OLDBK/my.pub < "$BIN2" > enc || exit 1
-bk crypto -d $OLDBK/my.sec < enc > out || exit 1
-cmp -s "$BIN2" out || exit 1
+$OLDBK/bk crypto -e $OLDBK/my.pub < "$BIN2" > enc || fail
+bk crypto -d $OLDBK/my.sec < enc > out || fail
+cmp -s "$BIN2" out || fail
 rm -f enc out
 echo OK
 
 echo $N New version encrypts and old version decrypts ...............$NL
-bk crypto -e $OLDBK/my.pub < "$BIN2" > enc || exit 1
-$OLDBK/bk crypto -d $OLDBK/my.sec < enc > out || exit 1
-cmp -s "$BIN2" out || exit 1
+bk crypto -e $OLDBK/my.pub < "$BIN2" > enc || fail
+$OLDBK/bk crypto -d $OLDBK/my.sec < enc > out || fail
+cmp -s "$BIN2" out || fail
 rm -f enc out
 echo OK
 
 KEY=64338d0365e3c7da
 echo $N New and old versions should symetric encrypt to same data ...$NL
-$OLDBK/bk crypto -E $KEY < "$BIN2" > enc1 || exit 1
-bk crypto -E $KEY < "$BIN2" > enc2 || exit 1
-cmp -s enc1 enc2 || exit 1
+$OLDBK/bk crypto -E $KEY < "$BIN2" > enc1 || fail
+bk crypto -E $KEY < "$BIN2" > enc2 || fail
+cmp -s enc1 enc2 || fail
 rm -f enc2
 echo OK
 
 echo $N Both versions should be able to decrypt data ................$NL
-$OLDBK/bk crypto -D $KEY < enc1 > out || exit 1
-cmp -s "$BIN2" out || exit 1
-bk crypto -D $KEY < enc1 > out || exit 1
-cmp -s "$BIN2" out || exit 1
+$OLDBK/bk crypto -D $KEY < enc1 > out || fail
+cmp -s "$BIN2" out || fail
+bk crypto -D $KEY < enc1 > out || fail
+cmp -s "$BIN2" out || fail
 rm -f enc1 out
 echo OK
 
 echo $N Check hashing with new and old versions .....................$NL
 $OLDBK/bk crypto -h - < "$BIN2" > hash1
-bk crypto -h - < "$BIN2" > hash2 || exit 1
+bk crypto -h - < "$BIN2" > hash2 || fail
 cmpfiles hash1 hash2
 echo OK
 
 echo $N Check hmacs with new and old versions .......................$NL
 $OLDBK/bk crypto -h - key < "$BIN2" > hash1
-bk crypto -h - key < "$BIN2" > hash2 || exit 1
+bk crypto -h - key < "$BIN2" > hash2 || fail
 cmpfiles hash1 hash2
 echo OK
 
@@ -194,7 +194,7 @@ cd copy.noremap
 bk parent $Q ../project
 cd ../project
 # verify new style BAM and BLOB
-test -d SCCS && exit 1
+test -d SCCS && fail
 test -d BitKeeper/BAM -a ! -f BitKeeper/BAM/index.db || fail
 touch send-as-sfile send-as-deltas
 bk new $Q send-as-sfile send-as-deltas || fail
@@ -226,7 +226,7 @@ $OLDBK/bk send $Q -r+ - > ../OLDSEND || fail
 cd ..
 cmpfiles SEND OLDSEND
 cmpfiles PATCH-COMPAT OLDPATCH
-cmp -s PATCH OLDPATCH && exit 1
+cmp -s PATCH OLDPATCH && fail
 tar cf copy.tar copy
 tar cf copy.noremap.tar copy.noremap
 cd "$HERE"
@@ -237,7 +237,7 @@ echo OK
 echo $N New patch, old bk, takepatch works, resolve fails ...........$NL
 cd copy.noremap || fail
 $OLDBK/bk takepatch < ../PATCH || fail
-$OLDBK/bk resolve 2> ERR && exit 1
+$OLDBK/bk resolve 2> ERR && fail
 grep -q "Missing file" ERR || fail
 rm -fr RESYNC PENDING
 echo "failed (bug -- should increase PATCH_VER?)"
@@ -329,7 +329,7 @@ echo OK
 
 echo $N Old-bk clone of component behind nested-aware bkd fails .....$NL
 cd "$HERE"
-bk clone $Q bk://localhost:$OLDP/nest/gcc 2> ERR && exit 1
+bk clone $Q bk://localhost:$OLDP/nest/gcc 2> ERR && fail
 grep -q "good error msg" ERR || echo "failed (bug -- need good err msg)"
 
 echo $N New clone -@ with old bkd fails gracefully ..................$NL
@@ -404,16 +404,16 @@ echo "triggers: $HERE" >> .bk/config
 cd copy
 cp ../repoconfig BitKeeper/etc/config
 echo "licenseurl: bk://localhost:$OLDP/licserve" >> BitKeeper/etc/config
-bk lease renew 2> ERR && exit 1
-grep -q "My message" ERR && exit 1
-$OLDBK/bk lease renew 2> ERR && exit 1
-grep -q "My message" ERR && exit 1
+bk lease renew 2> ERR && fail
+grep -q "My message" ERR && fail
+$OLDBK/bk lease renew 2> ERR && fail
+grep -q "My message" ERR && fail
 cp ../repoconfig BitKeeper/etc/config
 echo "licenseurl: bk://localhost:$NEWP/licserve" >> BitKeeper/etc/config
-bk lease renew 2> ERR && exit 1
+bk lease renew 2> ERR && fail
 grep -q "My message" ERR || fail
-$OLDBK/bk lease renew 2> ERR && exit 1
-grep -q "My message" ERR && exit 1
+$OLDBK/bk lease renew 2> ERR && fail
+grep -q "My message" ERR && fail
 echo OK
 
 echo $N Show global lease proxy triggers do not fire if not in repo .$NL
@@ -429,7 +429,7 @@ echo OK
 
 echo $N Check bkd error logs ........................................$NL
 cd "$HERE"
-test -s OLDERR -o -s NEWERR && exit 1
+test -s OLDERR -o -s NEWERR && fail
 echo OK
 
 echo -------------- sortkey repo interacting with old bk

@@ -1,0 +1,74 @@
+if [ X$PLATFORM != X"WIN32" ]
+then
+	echo "For win32 only...............................................skipped"
+	exit 0;
+fi
+
+echo $N Show that rmdir works even when Explorer is looking .........$NL
+nested prod
+bk gate -r $Q
+bk portal -r $Q
+cd ..
+bk clone $Q prod clone
+cd clone
+mkdir dir
+touch dir/foo
+bk new $Q dir/foo
+bk commit -f $Q
+cd ..
+# Make a batch file
+cat > demo.bat <<EOF
+echo off
+start explorer prod
+echo.
+echo Observe "dir" appearing and disappearing, and possible RESYNC and PENDING
+echo.
+pause
+echo.
+echo Try to double click into the "dir" directory
+echo You should see that it's empty and soon you
+echo pop back into the parent directory when it is
+echo removed (else you will see unpull hang in the
+echo rmdir retry loop).
+echo.
+pause
+echo.
+echo Close the explorer window now
+echo.
+pause
+exit
+EOF
+# Run the batch file in a cmd window, it'll start
+# an explorer window.
+cmd //c start demo.bat
+# Do the stuff that will be seen in the explorer window
+cd prod
+bk _usleep 1000000
+bk pull $Q ../clone
+bk _usleep 2000000
+bk unpull -f $Q
+bk _usleep 2000000
+bk pull $Q ../clone
+bk _usleep 2000000
+bk unpull -f $Q
+bk _usleep 2000000
+bk pull $Q ../clone
+bk _usleep 2000000
+bk unpull -f $Q
+bk _usleep 2000000
+bk pull $Q ../clone
+bk _usleep 2000000
+bk unpull -f $Q
+bk _usleep 2000000
+bk pull $Q ../clone
+bk _usleep 2000000
+bk unpull -f $Q
+bk _usleep 2000000
+bk pull $Q ../clone
+bk _usleep 2000000
+bk unpull -f $Q
+bk _usleep 2000000
+bk pull $Q ../clone
+bk _usleep 2000000
+bk unpull -f $Q
+echo OK

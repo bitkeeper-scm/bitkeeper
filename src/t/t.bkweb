@@ -74,9 +74,7 @@ cat <<EOF > WANT2
 <a name="sub">bk/$U 1.1 | int sub2(int a, int b) {</a>
 EOF
 cmp -s GOT WANT2 && {
-	echo fixme
-	echo Congratulations, you fixed a bug. Now fix the testcase.
-	exit 1
+	fail fixme!  Congratulations, you fixed a bug. Now fix the testcase.
 }
 echo failed \(bug \)
 

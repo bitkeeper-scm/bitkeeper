@@ -48,9 +48,9 @@ enum {
 };
 
 enum {
-	LEFT,
+	LEFT,			/* Match DF_LEFT */
+	RIGHT,			/* Match DF_RIGHT */
 	GCA,			/* GCA with whodel relative to LEFT rev */
-	RIGHT,
 	GCAR,			/* GCA with whodel relative to RIGHT rev */
 	NFILES
 };
@@ -1079,6 +1079,8 @@ resolve_conflict(conflct *curr)
 				curr->algos =
 				    addLine(curr->algos, mergefcns[i].fname);
 				changed |= 1;
+				T_DEBUG("%s did change: %d", mergefcns[i].fname,
+				    nLines(curr->merged));
 			}
 			if (curr->merged) break;
 		}
@@ -1096,9 +1098,7 @@ resolve_conflict(conflct *curr)
 			}
 			putchar('\n');
 		}
-		for (p = curr->merged; p->line; p++) {
-			printline(p, 0, (fdiff != 0));
-		}
+		EACHP(curr->merged, p) printline(p, 0, (fdiff != 0));
 		free(curr->merged);
 		if (fdiff) user_conflict_fdiff(curr);
 	} else {
@@ -1677,11 +1677,12 @@ merge_same_changes(conflct *c)
 
 	if (samedata(c, LEFT, RIGHT)) {
 		int	len = c->end[LEFT] - c->start[LEFT];
-		c->merged = calloc(len + 1, sizeof(ld_t));
+
 		for (i = 0; i < len; i++) {
-			c->merged[i] = body[LEFT].lines[c->start[LEFT] + i];
+			addArray(&c->merged,
+			    &body[LEFT].lines[c->start[LEFT] + i]);
 		}
-		c->merged[i].line = 0;
+		unless(c->merged) growArray(&c->merged, 0);
 		return (1);
 	}
 	return (0);
@@ -1697,175 +1698,170 @@ merge_only_one(conflct *c)
 
 	if (samedata(c, GCA, LEFT)) {
 		int	len = c->end[RIGHT] - c->start[RIGHT];
-		c->merged = calloc(len + 1, sizeof(ld_t));
+
 		for (i = 0; i < len; i++) {
-			c->merged[i] = body[RIGHT].lines[c->start[RIGHT] + i];
+			addArray(&c->merged,
+			    &body[RIGHT].lines[c->start[RIGHT] + i]);
 		}
-		c->merged[i].line = 0;
+		unless(c->merged) growArray(&c->merged, 0);
 		return (1);
 	}
 	if (samedata(c, GCAR, RIGHT)) {
 		int	len = c->end[LEFT] - c->start[LEFT];
-		c->merged = calloc(len + 1, sizeof(ld_t));
+
 		for (i = 0; i < len; i++) {
-			c->merged[i] = body[LEFT].lines[c->start[LEFT] + i];
+			addArray(&c->merged,
+			    &body[LEFT].lines[c->start[LEFT] + i]);
 		}
-		c->merged[i].line = 0;
+		unless(c->merged) growArray(&c->merged, 0);
 		return (1);
 	}
 	return (0);
 }
 
 /*
- * Look at a diff and return the list of sequence numbers that were
- * modified in that diff.
- * Return NULL if the diff doesn't match the 'modification' pattern.
- */
-private u32 *
-lines_modified(diffln *diff)
-{
-	u32	*out = 0;
-	u32	*op;
-	int	i;
-	int	saw_deletes;
-	int	saw_adds;
-	diffln	*p;
-
-	/* count number of deleted lines */
-	i = 0;
-	for (p = diff; p->ld; ++p) if (p->c == '-') ++i;
-	out = calloc(i+1, sizeof(u32));
-
-	/* same seq of deleted lines and require right pattern */
-	op = out;
-	saw_adds = saw_deletes = 0;
-	for (p = diff; p->ld; ++p) {
-		switch (p->c) {
-		    case ' ':
-			saw_adds = saw_deletes = 0;
-			break;
-		    case '-':
-			if (saw_adds) goto bad;
-			saw_deletes = 1;
-			*op++ = p->ld->seq;
-			break;
-		    case '+':
-			unless (saw_deletes) goto bad;
-			saw_adds = 1;
-			break;
-		}
-	}
-	*op = 0;
-	return (out);
- bad:
-	free(out);
-	return (0);
-}
-
-/*
- * Take a diff and a list of sequence numbers and determine
- * if those numbers are unmodified in the diff.
+ * Given two diff blocks and the common block between them,
+ * return 1 if the full common block does not exist in either diff block.
  */
 private int
-are_unmodified(diffln *diff, u32 *lines)
+uniqueSeparator(hunk **h, int side, int other)
 {
-	while (diff->ld) {
-		if (*lines < diff->ld->seq) return (0);
-		if (*lines == diff->ld->seq) {
-			if (diff->c != ' ') return (0);
-			++lines;
-			unless (*lines) return (1);
+	ld_t	*common, *diff;
+	int	cstart, clen;	/* common block */
+	int	dstart, dlen;	/* diff block */
+	int	i, j, k;
+
+	common = body[GCA].lines;
+	cstart = DEND(h[side], DF_LEFT);
+	clen = DSTART(h[other], DF_LEFT) - cstart;
+	unless (clen) return (0);
+
+	for (i = 0; i < 2; i++) {
+		diff = body[i].lines;
+		dstart = DSTART(h[i], DF_RIGHT);
+		dlen = DLEN(h[i], DF_RIGHT);
+		for (j = 0; j < dlen-clen+1; j++) {
+			for (k = 0; k < clen; k++) {
+				unless (sameline(
+				    &diff[dstart+j+k], &common[cstart+k])) {
+					break;
+				}
+			}
+			if (k == clen) break;
 		}
-		++diff;
+		if (j < dlen-clen+1) return (0);
 	}
-	return (0);
+	return (1);		/* must be good */
 }
 
+
 /*
- * Determine if both sides made modifications to non-overlapping sections.
- * A modification is a delete of 1 or more lines follow by an addition
- * of 0 or more lines.
+ * Use an actual diff of the contents of both sides, ignoring the
+ * weave, and do a diff3-like merge of the GCA/LEFT and GCA/RIGHT
+ * diffs.  Only when the diff hunks on both sides are completely
+ * non-overlapping do we try to combine them together.  A diff hunk
+ * that inserts lines is only allowed if the lines before and after
+ * the insert are not touched by the other side.
  */
 private int
 merge_content(conflct *c)
 {
-	diffln	*left, *right;
-	diffln	*lp, *rp;
-	u32	*modified;
+	int	ret = 1;
+	hunk	range;
+	hunk	*h[2], *hs[2], *he[2];
+	int	ig;
 	int	i;
-	int	ret = 0;
-	int	ok;
+	int	side, other;
+	smdiff	data;
 
-	left = unidiff(c, GCA, LEFT);
-	right = unidiff(c, GCAR, RIGHT);
+	/* This function makes use of overlap in enum values */
+	assert(((int)LEFT == (int)DF_LEFT) && ((int)RIGHT == (int)DF_RIGHT));
 
-	modified = lines_modified(left);
-	unless (modified) goto bad;
-	ok = are_unmodified(right, modified);
-	free(modified);
-	unless (ok) goto bad;
+	/* we require something to be changed */
+	if (c->start[GCA] == c->end[GCA]) return (0);
 
-	modified = lines_modified(right);
-	unless (modified) goto bad;
-	ok = are_unmodified(left, modified);
-	free(modified);
-	unless (ok) goto bad;
+	range.start[DF_LEFT] = c->start[GCA];
+	range.len[DF_LEFT] = c->end[GCA] - c->start[GCA];
+	data.lines[DF_LEFT] = body[GCA].lines;
 
-	/*
-	 * Allocate room for merged lines.  Worst case we need room for all
-	 * the left and right lines in the output, plus a null
-	 */
-	c->merged = calloc(
-	    (c->end[LEFT] - c->start[LEFT] +
-	     c->end[RIGHT] - c->start[RIGHT] + 1), sizeof(ld_t));
+	for (side = 0; side < 2; side++) {
+		range.start[DF_RIGHT] = c->start[side];
+		range.len[DF_RIGHT] = c->end[side] - c->start[side];
+		data.lines[DF_RIGHT] = body[side].lines;
 
-	/* we are good to go, do merge */
-	i = 0;
-	lp = left;
-	rp = right;
-	while (lp->ld || rp->ld) {
-		if (!rp->ld || lp->ld && lp->ld->seq < rp->ld->seq) {
-			/* line on left */
-			if (lp->c != '+') {
-				/* error? */
-				fprintf(stderr,
-"ERROR: merge_content expected add on left\n");
-				exit(2);
-			}
-			c->merged[i++] = *lp->ld;
-			++lp;
-		} else if (!lp->ld || rp->ld->seq < lp->ld->seq) {
-			/* line on right */
-			if (rp->c != '+') {
-				/* error? */
-				fprintf(stderr,
-"ERROR: merge_content expected add on right\n");
-				exit(2);
-			}
-			c->merged[i++] = *rp->ld;
-			++rp;
+		if (h[side] = diff_items(&range, 1, smergeData,
+		    diff_cmpLine, diff_hashLine, diff_cost, &data)) {
+			hs[side] = h[side];
+			he[side] = h[side] + nLines(h[side]);
+			++h[side];
 		} else {
-			/* matching line */
-			if (lp->c == ' ' && rp->c == ' ') {
-				/* common line add to merge */
-				c->merged[i++] = *lp->ld;
-			} else if ((lp->c == '-' && rp->c == ' ') ||
-			    (lp->c == ' ' && rp->c == '-')) {
-				/* deleted line ignore */
-			} else {
-				fprintf(stderr,
-"ERROR: merge_content can't see adds on matching lines!\n");
-				exit(2);
-			}
-			++lp;
-			++rp;
+			hs[side] = he[side] = 0;
 		}
 	}
-	c->merged[i].line = 0;
-	ret = 1;
- bad:
-	free(left);
-	free(right);
+
+	/*
+	 * only look for diff chunks that don't overlap
+	 */
+	ig = c->start[GCA];		/* lines in gca */
+	while (h[DF_LEFT] || h[DF_RIGHT]) {
+		for (side = 0; side < 2; side++) {
+			other = !side; /* other side */
+
+			if (!h[side]) {
+				/* no hunk to apply */
+				continue;
+
+			} else if (!h[other]) {
+				/* no other hunk, so no conflict */
+
+			} else if (DEND(h[side], DF_LEFT) >
+			    DSTART(h[other], DF_LEFT)) {
+				/* hunks overlap, skip */
+				continue;
+
+			} else if (((DLEN(h[side], DF_LEFT) == 0) ||
+			    (DLEN(h[other], DF_LEFT) == 0)) &&
+			    !uniqueSeparator(h, side, other)) {
+				/*
+				 * If either hunk is an insert, then
+				 * the lines between the two hunks
+				 * cannot also appear inside the lines
+				 * being inserted.
+				 */
+				continue;
+			}
+
+			/* first any GCA before the hunk starts */
+			while (ig < DSTART(h[side], DF_LEFT)) {
+				addArray(&c->merged,
+				    &body[GCA].lines[ig++]);
+			}
+			/* skip GCA lines being deleted */
+			ig += DLEN(h[side], DF_LEFT);
+
+			/* add new lines from hunk */
+			DFOREACH(h[side], DF_RIGHT, i) {
+				addArray(&c->merged, &body[side].lines[i]);
+			}
+			if (++h[side] > he[side]) h[side] = 0;
+			break;
+		}
+		if (side >= 2) {
+			/* hunks overlap, abort */
+			FREE(c->merged);
+			ret = 0;
+			break;
+		}
+	}
+	if (ret) {
+		/* now any GCA lines at end of conflict */
+		while (ig < c->end[GCA]) {
+			addArray(&c->merged, &body[GCA].lines[ig++]);
+		}
+		/* we might automerge to an empty region... */
+		unless (c->merged) growArray(&c->merged, 0);
+	}
+	for (side = 0; side < 2; side++) free(hs[side]);
 	return (ret);
 }
 

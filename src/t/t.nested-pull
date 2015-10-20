@@ -174,7 +174,7 @@ cd ..
 for proj in copy twin
 do
 	# add some csets to gcc
-	cd $proj/gcc || exit 2
+	cd $proj/gcc || fail
 	for i in 1 2 3 4 5
 	do
 		bk edit $Q file$proj$i || true
@@ -212,13 +212,13 @@ bk mv foo bar
 BADRK=`bk prs -r1.0 -hnd:KEY: bar`
 cd ../copy
 RK2=`bk changes -Sq -r1.0 -nd:KEY: ../project?ROOTKEY=$RK`
-test "$RK" = "$RK2" || exit 1
+test "$RK" = "$RK2" || fail
 echo OK
 
 echo $N Test rootkey urls, file url, product root key ...............$NL
 PRK=`bk -R prs -r1.0 -hnd:KEY: ChangeSet`
 RK2=`bk changes -Sq -r1.0 -nd:KEY: ../project?ROOTKEY=$PRK`
-test "$PRK" = "$RK2" || exit 1
+test "$PRK" = "$RK2" || fail
 echo OK
 
 echo $N Test rootkey urls, file url, nonexistant root key ...........$NL
@@ -265,7 +265,7 @@ echo OK
 
 echo $N Test rootkey urls, bk:// url above, component root key ......$NL
 cd "$HERE"
-bk bkd -q -d -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
+bk bkd -q -d -aPORT -ikill > "$HERE/BKD" 2>&1 || fail
 P=`cat PORT`
 RK2=`bk changes -Sq -r1.0 -nd:KEY: bk://localhost:$P/project?ROOTKEY=$RK`
 test "$RK" = "$RK2" || {
@@ -288,7 +288,7 @@ bk _kill bk://localhost:$P
 
 echo $N Test rootkey urls, bk:// url in repo, component root key ....$NL
 cd "$HERE/project"
-bk bkd -q -d -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
+bk bkd -q -d -aPORT -ikill > "$HERE/BKD" 2>&1 || fail
 P=`cat PORT`
 RK2=`bk changes -Sq -r1.0 -nd:KEY: bk://localhost:$P?ROOTKEY=$RK`
 test "$RK" = "$RK2" || {
@@ -359,12 +359,12 @@ cd "$HERE"
 bk clone $Q null-pull remote
 cd remote
 bk portal $Q . || fail
-bk setup -f x/y/z/comp || exit 1
+bk setup -f x/y/z/comp || fail
 bk clone $Q ../remote ../local
 cd x/y/z/comp
 touch f.remote
-bk new $Q f.remote || exit 1
-bk commit -S $Q -yremote || exit 1
+bk new $Q f.remote || fail
+bk commit -S $Q -yremote || fail
 cd "$HERE"/remote
 echo bam > bam
 bk new $Q -b bam
@@ -399,8 +399,8 @@ cp file1 old
 echo "stuff at top" > file1
 cat old >> file1
 rm old
-bk delta $Q -ymodify file1 || exit 1
-bk commit -S $Q -y"modify file1" || exit 1
+bk delta $Q -ymodify file1 || fail
+bk commit -S $Q -y"modify file1" || fail
 cd "$HERE"/local
 bk edit $Q amerge
 bk delta $Q -fyamerge amerge
@@ -498,7 +498,7 @@ echo OK
 
 echo $N Do it again, but in two steps: bk pull -R and bk resolve -a .$NL
 cd "$HERE"/local
-bk unpull $Q -sf || exit 1
+bk unpull $Q -sf || fail
 bk pull $Q -R
 bk resolve $Q -a 2>ERR || fail -f ERR did not resolve
 bk lock -q || fail
@@ -566,14 +566,14 @@ cd ..
 # Pull project2 into copy2 but do not resolve.
 bk pull $Q -R ../project2 || fail pull
 # Resolve in the Product -- rr is to remove remote file.
-bk resolve -a $Q <<EOF > OUT 2>&1 || exit 11
+bk resolve -a $Q <<EOF > OUT 2>&1 || fail
 rr
 y
 EOF
 # Should get the new-file cset and a merge cset.
-bk changes -Sfr1.3,1.4 -nd:KEY: > WANT || exit 12
+bk changes -Sfr1.3,1.4 -nd:KEY: > WANT || fail
 cmpfiles WANT BitKeeper/etc/csets-in
-test "`bk log -r1.4 -nd:MERGE:`" = "1.4" || exit 14
+test "`bk log -r1.4 -nd:MERGE:`" = "1.4" || fail
 bk cat gcc/conflict-test >OUT
 grep -q 'from copy2' OUT || fail -f OUT
 cd "$HERE"
@@ -584,29 +584,29 @@ echo $N Pull with uncomitted new-file conflict in component..........$NL
 cd "$HERE"
 nested project2
 cd ..
-bk clone $Q project2 copy2 || exit 1
+bk clone $Q project2 copy2 || fail
 # Add a new file to project2/gcc.
 cd project2/gcc
 echo "from project2" >conflict-test
-bk new $Q conflict-test || exit 2
-bk commit -S $Q -y'add conflict-test in project2' || exit 3
-bk -P commit $Q -y'add conflict-test in project2/gcc' || exit 4
+bk new $Q conflict-test || fail
+bk commit -S $Q -y'add conflict-test in project2' || fail
+bk -P commit $Q -y'add conflict-test in project2/gcc' || fail
 # Add a new file with the same name to copy2/gcc, but do NOT commit it.
 cd ../../copy2/gcc
 echo "from copy2" >conflict-test
-bk new $Q conflict-test || exit 5
+bk new $Q conflict-test || fail
 cd ..
 # Pull project2 into copy2 but do not resolve.
-bk pull $Q -R ../project2 || exit 6
-bk resolve -a $Q <<EOF > OUT 2>&1 || exit 9
+bk pull $Q -R ../project2 || fail
+bk resolve -a $Q <<EOF > OUT 2>&1 || fail
 rr
 y
 EOF
 # Should get the new-file cset and a merge cset.
-bk changes -Sfr1.3,1.4 -nd:KEY: > WANT || exit 10
+bk changes -Sfr1.3,1.4 -nd:KEY: > WANT || fail
 cmpfiles WANT BitKeeper/etc/csets-in
-test "`bk log -r1.4 -nd:MERGE:`" = "" || exit 12
-bk cat gcc/conflict-test | grep -q 'from copy2' || exit 13
+test "`bk log -r1.4 -nd:MERGE:`" = "" || fail
+bk cat gcc/conflict-test | grep -q 'from copy2' || fail
 cd "$HERE"
 rm -rf project2 copy2
 echo OK
@@ -790,17 +790,17 @@ echo OK
 
 echo $N Do a pull where the remote is using a new alias .............$NL
 cd ../remote
-bk alias new GCC ./gcc || exit 1
-bk here add $Q GCC || exit 1
+bk alias new GCC ./gcc || fail
+bk here add $Q GCC || fail
 cd ../local
-bk pull $Q || exit 1
+bk pull $Q || fail
 echo OK
 
 echo $N Now unpull and setup a conflict in aliases ..................$NL
-bk unpull $Q -f || exit 1
-bk alias new GCC ./gdb || exit 1
-bk here add $Q GCC || exit 1
-bk pull $Q || exit 1
+bk unpull $Q -f || fail
+bk alias new GCC ./gdb || fail
+bk here add $Q GCC || fail
+bk pull $Q || fail
 # show that GCC alias is now the merge of both sides
 bk alias -k GCC > GOT
 (bk --cd=gcc4 id -S; bk --cd=gdb id -S) | bk _sort > WANT
@@ -813,24 +813,24 @@ touch foo
 bk new $Q foo
 bk commit $Q -f
 cd ../local
-bk pull $Q || exit 1
+bk pull $Q || fail
 echo OK
 
 echo $N Try a tag-only pull .........................................$NL
 cd ../remote
-bk tag $Q -r1.3 badbug || exit 1
+bk tag $Q -r1.3 badbug || fail
 cd ../local
-bk pull $Q || exit 2
+bk pull $Q || fail
 echo OK
 
 echo $N Now pull tag along with another cset ........................$NL
-bk unpull -f $Q || exit 1
+bk unpull -f $Q || fail
 cd ../remote
 touch tagf
-bk new $Q tagf || exit 2
-bk commit $Q -ytagf || exit 3
+bk new $Q tagf || fail
+bk commit $Q -ytagf || fail
 cd ../local
-bk pull $Q || exit 4
+bk pull $Q || fail
 echo OK
 
 # XXX - test in product and then test in component
@@ -854,13 +854,13 @@ bk clone -q -r1.8 -sHERE remote local
 cd remote/gcc
 touch gcc-file1
 bk new $Q gcc-file1
-bk commit -S $Q -ygcc || exit 3
+bk commit -S $Q -ygcc || fail
 cd ..
-bk commit $Q -ygcc || exit 3
+bk commit $Q -ygcc || fail
 cd ../local/gcc
 touch gcc-file
 bk new $Q gcc-file
-bk commit -S $Q -ygcc || exit 3
+bk commit -S $Q -ygcc || fail
 cd ..
 bk pull -q -u > OUT 2>&1 && fail -f OUT should have failed
 cat <<EOF > WANT
@@ -1391,11 +1391,11 @@ bk commit $Q -f
 test -f gdb/bar && chmod +w gdb/bar
 echo blart >> gdb/bar
 # this fails so set -e not so much
-printf "q\nrl\ny\n" | bk pull $Q 2>OUT && fail -f OUT
+printf "q\nrl\ny\n" | bk --config=autofix:off pull $Q 2>OUT && fail -f OUT
 # Do what the error message said to do
 bk edit $Q -g gdb/bar
 # Run resolve again
-printf "q\n" | bk resolve $Q 2>OUT2 && fail -f OUT2
+printf "q\n" | bk --config=autofix:off resolve $Q 2>OUT2 && fail -f OUT2
 grep -q "KEY MISMATCH" OUT2 && fail -f OUT2
 bk abort $Q -f
 echo OK
@@ -1448,7 +1448,7 @@ bk edit $Q foo
 echo 4 >> foo
 bk ci -y4 $Q foo
 bk commit -y4 $Q
-bk alias new JUNK ./gcc || exit 3
+bk alias new JUNK ./gcc || fail
 bk here add JUNK
 cd ../local
 BK_GETLINE=1 bk pull -q -r$KEY 2>&1 | stripHere > GOT

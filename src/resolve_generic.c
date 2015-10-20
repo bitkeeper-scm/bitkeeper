@@ -16,13 +16,13 @@ resolve_init(opts *opts, sccs *s)
 	rs->s = s;
 	sccs_sdelta(rs->s, sccs_ino(rs->s), buf);
 	rs->key = strdup(buf);
-	if (rs->snames = res_getnames(sccs_Xfile(rs->s, 'm'), 'm')) {
+	if (rs->snames = res_getnames(rs->s, 'm')) {
 		rs->gnames	   = new(names);
 		rs->gnames->local  = sccs2name(rs->snames->local);
 		rs->gnames->gca    = sccs2name(rs->snames->gca);
 		rs->gnames->remote = sccs2name(rs->snames->remote);
 	}
-	rs->revs = res_getnames(sccs_Xfile(rs->s, 'r'), 'r');
+	rs->revs = res_getnames(rs->s, 'r');
 	rs->pager = pager();
 	unless (rs->editor = getenv("EDITOR")) rs->editor = EDITOR;
 	if (rs->snames && !streq(rs->snames->local, rs->snames->remote)) {
@@ -130,7 +130,6 @@ resolve_loop(char *name, resolve *rs, rfuncs *rf)
 	for (i = 0; rf[i].spec && !streq(rf[i].spec, "!"); i++);
 	if (rf[i].spec) bang = i;
 	while (1) {
-		uniq_close();	/* don't hold uniqdb lock */
 		fprintf(stderr, "(%s) %s>> ", name, rs->prompt);
 		if (getline(0, buf, sizeof(buf)) < 0) strcpy(buf, "q");
 		unless (buf[0]) strcpy(buf, "?");

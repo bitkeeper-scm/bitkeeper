@@ -126,7 +126,7 @@ t_merge(resolve *rs)
 	FILE	*f;
 	tags	*t = (tags *)rs->opaque;
 
-	unless (exists("SCCS/r.ChangeSet")) {
+	unless (xfile_exists(CHANGESET, 'r')) {
 		fprintf(stderr,
 "This is a tag conflict only, there is no merge changeset.\n"
 "You must pick the local or remote tag location.\n");

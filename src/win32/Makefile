@@ -34,7 +34,7 @@ msys: ./msysver.sh FORCE
 	if [ -n "$$MSYSVER" -a -f "$$MSYSVER" ]; \
 	then	tar -C$(MSYSBIN) -xpzf $$MSYSVER; \
 	else	test -d msys || bk here add MSYS || \
-		bk here add -@bk://data.bitmover.com$_BUILD_PORT/bk MSYS; \
+		bk here add -@bk://data.bitkeeper.com$_BUILD_PORT/bk MSYS; \
 		(cd msys && bk -Ugr bk get -S); \
 		(cd msys; bk sfiles -Ug) | \
 			tar -Cmsys -cf- -T- | \
@@ -50,7 +50,7 @@ msys: ./msysver.sh FORCE
 
 populate: FORCE
 	bk here add WIN32_DLL || \
-	  bk here add -@bk://data.bitmover.com$$_BUILD_PORT/bk WIN32_DLL
+	  bk here add -@bk://data.bitkeeper.com$$_BUILD_PORT/bk WIN32_DLL
 	bk -U^G -sWIN32_DLL get -Sq
 
 install: all blat data/bk.ico

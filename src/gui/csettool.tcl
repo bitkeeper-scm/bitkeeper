@@ -84,8 +84,8 @@ proc dotFile {{line {}}} \
 	# busy is put after we change the selection. This is because busy
 	# causes a screen update and we want the selection set quickly to make
 	# the user think we're responsive.
+	if {![regexp "^  $file_stop" "$file" -> file rev]} { return }
 	busy 1
-	regexp "^  $file_stop" "$file" -> file rev
 	set    dspec ":PARENT:\\n"
 	append dspec ":T|PARENT: :Dd|PARENT::DM|PARENT::Dy|PARENT:\\n"
 	append dspec ":T: :Dd::DM::Dy:"
@@ -631,104 +631,8 @@ proc usage {} \
 	exit 1
 }
 
-
-proc main {} \
+proc finish_gui {} \
 {
-	global argv0 argv argc app showAnnotations gc dashs local
-
-	wm title . "Cset Tool"
-	bk_init
-
-	# Set 'app' so that the difflib code knows which global config
-	# vars to read
-	set revs ""
-	set argindex 0
-	set file_rev ""
-	set dashs 0
-	set stdin 0
-	set local 0
-	set opts 0
-
-	while {$argindex < $argc} {
-		set arg [lindex $argv $argindex]
-		switch -regexp -matchvar match -- $arg {
-		    "^-f.*" {
-			incr opts
-			set ftmp [lindex $argv $argindex]
-		   	regexp {^[ \t]*-f(.*)} $ftmp dummy file_rev
-		    }
-		    "^-r.*" {
-			incr opts
-			set rev [lindex $argv $argindex]
-		   	regexp {^[ \t]*-r(.*)} $rev dummy revs
-			# make sure we don't get an empty revision
-			if {$revs eq ""} { usage }
-		    }
-		    "^-S$" {
-			incr opts
-			set dashs 1
-		    }
-		    "^-$" {
-			incr opts
-			set stdin 1
-		    }
-		    "^-L(.*|)$" {
-			incr opts
-			set local 1
-			set localUrl [lindex $match 1]
-		    }
-
-		    default {
-			if {$file_rev ne ""
-			    || $argindex != [expr {$argc - 1}]
-			    || [catch {cd $arg} err]} { usage }
-		    }
-		}
-		incr argindex
-	}
-	if {($local == 1) && ($opts > 1)} {
-		displayMessage "-L cannot be specified with any other option" 1
-	}
-	if {(($revs != "") || ($file_rev != "")) && $stdin} {
-		wm withdraw .
-		displayMessage "Can't use '-' option with any other options"
-		exit
-	}
-	if {$revs == ""} {
-		set revs "+"
-	}
-	#displayMessage "csetttool: revs=($revs) file=($file_rev)"
-
-	if {$dashs} {
-		if {[cd2root [file dirname $file_rev]] == -1} {
-			displayMessage "CsetTool must be run in a repository"
-			exit 0
-		}
-	}  else {
-		cd2product $file_rev
-	}
-
-	loadState cset
-	widgets
-	restoreGeometry cset
-
-	if {$gc(cset.annotation) != ""} {
-		set showAnnotations 1
-	}
-
-	if {$stdin == 1} {
-		getFiles "-"
-	} else {
-		if {$local} {
-			set gca [bk_repogca $dashs $localUrl err]
-			if {![string length $gca]} {
-				message "Could not get repo GCA:\n$err" -exit 1
-			}
-			set revs @$gca..
-		}
-		getFiles $revs $file_rev
-	}
-
 	bind . <Destroy> {
 		if {[string match "." %W]} {
 			saveState cset
@@ -739,4 +643,106 @@ proc main {} \
 	after idle [list focus -force .]
 }
 
-main
+#lang L
+extern	int	dashs;
+extern	int	local;
+extern	int	showAnnotations;
+void
+main(string argv[])
+{
+	int	useStdin;
+	string	arg, revs, file_rev, localUrl;
+	string	lopts[] = {"standalone"};
+
+	Wm_title(".", "Cset Tool");
+	Wm_withdraw(".");
+	bk_init();
+
+	dashs = 0;
+	local = 0;
+	useStdin = 0;
+	revs = "";
+	file_rev = "";
+	localUrl = "";
+
+	while (arg = getopt(argv, "f;L|r;S", lopts)) {
+		switch (arg) {
+		    case "f":
+			file_rev = optarg;
+			break;
+		    case "L":
+			local = 1;
+			if (optarg) localUrl = optarg;
+			break;
+		    case "r":
+			revs = optarg;
+			break;
+		    case "S":
+		    case "standalone":
+			dashs = 1;
+			break;
+		    case "":
+			usage();
+			break;
+		}
+	}
+
+	if (argv[optind]) {
+		arg = argv[optind];
+		if (arg == "-") {
+			useStdin = 1;
+		} else if (length(file_rev) || (chdir(arg) == -1)) {
+			usage();
+		}
+	}
+
+	if (local && (useStdin || length(revs) || length(file_rev))) {
+		message("-L can only be combined with -S", exit: 1);
+	}
+	if (useStdin && (length(revs) || length(file_rev))) {
+		message("Can't use - option with any other options", exit: 1);
+	}
+
+	if (revs == "") {
+		revs = "+";
+	}
+
+	if (dashs) {
+		if (cd2root(dirname(file_rev)) == -1) {
+			message("CsetTool must be run in a repository", exit:0);
+		}
+	}  else {
+		cd2product(file_rev);
+	}
+
+	loadState("cset");
+	widgets();
+	restoreGeometry("cset");
+
+	if (gc("cset.annotation") != "") {
+		showAnnotations = 1;
+	}
+
+	if (useStdin) {
+		getFiles("-");
+	} else {
+		if (local) {
+			string	err;
+			string	gca = bk_repogca(dashs, localUrl, &err);
+
+			unless (length(gca)) {
+				message("Could not get repo GCA:\n${err}",
+				    exit: 1);
+			}
+			if (dashs) {
+				revs = "@@${gca}..";
+			} else {
+				revs = "@${gca}..";
+			}
+		}
+		getFiles(revs, file_rev);
+	}
+
+	finish_gui();
+}
+#lang tcl

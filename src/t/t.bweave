@@ -1,0 +1,61 @@
+echo $N Show new files get marked on pull ...........................$NL
+commercial project
+bk clone $Q . ../copy
+echo hi > foo
+bk new $Q foo
+bk commit $Q -y1 || fail
+# commit sets marker
+bk _heapdump -e ChangeSet | grep -q . || fail
+
+cd ../copy
+bk pull $Q || fail
+# pull also sets marker
+bk _heapdump -e ChangeSet | grep -q . || fail
+echo OK
+
+echo $N Setup parallel nested attach ................................$NL
+
+# create nested tree and standalone repo
+nested nest
+bk get $Q BitKeeper/etc/config
+bk setup -cBitKeeper/etc/config -f ../standalone || fail
+cd ..
+bk clone $Q nest nest2
+
+# attach standalone to nest/comp1
+cd nest
+#bk portal .
+bk attach $Q ../standalone ./comp1 || fail
+K=`bk comps -k -s./comp1`
+bk _heapdump ChangeSet | fgrep "$K" > L
+# one line in weave and mark
+test `wc -l <L` -eq 2 || fail -f L
+grep -q " END" L || fail -f L
+
+# add new cset to standalone
+cd ../standalone
+echo hi > new
+bk new $Q new
+bk commit $Q -y1 || fail
+
+# attach standalone to nest2/comp1
+cd ../nest2
+bk portal $Q .
+bk attach $Q ../standalone ./comp1 || fail
+# one line in weave and mark
+K=`bk comps -k -s./comp1`
+bk _heapdump ChangeSet | fgrep "$K" > L
+test `wc -l <L` -eq 2 || fail -f L
+grep -q " END" L || fail -f L
+
+# now pull them together
+bk --config=poly:yes pull $Q || fail
+
+# three lines in weave, last one marked
+bk _heapdump ChangeSet | fgrep "$K" > L
+test `wc -l <L` -eq 4 || fail -f L
+tail -1 L | grep -q " END" || fail -f L
+echo OK
+
+# for an example where the cunning plan backports of files
+# cause the same problem see t.undo

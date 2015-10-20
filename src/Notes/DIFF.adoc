@@ -1,0 +1,80 @@
+Structure of diff process pipeline
+==================================
+
+Diff is made up a number of pieces:
+
+Front End
+---------
+This knows something about what is being diffed, how it exists in current
+data structures, and what is going to be done with it.
+This provides callbacks to the diff engine for hashing tokens and comparing
+for equality.
+And provides callback to the printing side of things as well.
+
+Diff Engine
+------------
+. Diff 2 sequences of tokens.
+. Return a list of hunks which are corresponding sections which don't match.
+. The hunks right now are numbered like so:
+
+-------------------------------------
+  llno	    rlno  left	  right
+  1	    1	  common  common
+  2	    	  delete
+  3	    2	  common  common
+            3             insert
+  4	    4	  common  common
+  5         5     modL    modR
+  6         6     common  common
+
+  hunks: ((2,1),(2,0)) ((4,0),(3,1)) ((5,1),(5,1))
+
+  That is the line listed in the empty side for deletes/inserts is the
+  _next_ line. This is unlike RCS which lists the previous line.
+-------------------------------------
+
+Print Engine
+------------
+Take the 2 sequences of tokens and hunks and print output
+. rcs, unified, sdiff, stats, fdiff, mdiff, ...
+. for side by side, get the alignment right to enable sub line highlight
+  by tcl. The reason for this is Unicode.
+
+
+Existing Diff Clients (front ends)
+----------------------------------
+
+* ndiff 
+** a diff(1) front end
+** matches up to initial matching line before calling diff
+
+* smerge  
+** text and meta data / annotations
+** setting up merging and conflict resolution
+** diff the data
+** optionally, line up matching sequence numbers
+
+Desire
+------
+ * handle smerge case while limiting the burden on ndiff to setup
+   and teardown data structures.
+ * pass in indexes to diff and have callbacks get at the data.
+
+Full Block vs Incremental
+-------------------------
+Have smerge could call diff incrementally with each region between
+matching sequence numbers.
+Or smerge could create a hunks and call diff once.
+
+Pros and Cons?
+
+* Whole
+** can detect block swap or block move (sort of the same thing)
+** may flow in smerge by being able to take an input list of
+   hunks to focus on.  Kind of like firstDiff, skip over things
+   that are known to match.
+* Increment
+** may take less resource by running diff over smaller chunks.
+** may flow in smerge by isolating a chunk based on seq numbers,
+   then doing like an addArray API: diff(&hunks, chunk, ...)
+   to accumulate hunks.

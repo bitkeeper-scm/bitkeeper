@@ -1,0 +1,72 @@
+HKCR
+{
+	BkShellX.BkModifiedIcon.1 = s 'BkModifiedIcon Class'
+	{
+		CLSID = s '{21433B11-E7F8-4149-A725-AD8843B781FD}'
+	}
+	BkShellX.BkModifiedIcon = s 'BkModifiedIcon Class'
+	{
+		CLSID = s '{21433B11-E7F8-4149-A725-AD8843B781FD}'
+		CurVer = s 'BkShellX.BkModifiedIcon.1'
+	}
+	NoRemove CLSID
+	{
+		ForceRemove {21433B11-E7F8-4149-A725-AD8843B781FD} = s 'BkModifiedIcon Class'
+		{
+			ProgID = s 'BkShellX.BkModifiedIcon.1'
+			VersionIndependentProgID = s 'BkShellX.BkModifiedIcon'
+			ForceRemove 'Programmable'
+			InprocServer32 = s '%MODULE%'
+			{
+				val ThreadingModel = s 'Apartment'
+			}
+			'TypeLib' = s '{80816027-7D1D-4371-8B35-A78FCB5A3FAF}'
+		}
+	}
+}
+
+HKLM
+{
+	NoRemove Software
+	{
+		NoRemove Microsoft
+		{
+			NoRemove Windows
+			{
+				NoRemove CurrentVersion
+				{
+					NoRemove Explorer
+					{
+						ShellIconOverlayIdentifiers
+						{
+							BitKeeperModifiedIcon = s '{21433B11-E7F8-4149-A725-AD8843B781FD}'
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+HKLM
+{
+	NoRemove Software
+	{
+		NoRemove Microsoft
+		{
+			NoRemove Windows
+			{
+				NoRemove CurrentVersion
+				{
+					NoRemove Explorer
+					{
+						ShellIconOverlayIdentifiers
+						{
+							ForceRemove BitKeeperModifiedIcon = s '{21433B11-E7F8-4149-A725-AD8843B781FD}'
+						}
+					}
+				}
+			}
+		}
+	}
+}

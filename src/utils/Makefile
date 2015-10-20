@@ -16,6 +16,12 @@ ifeq "$(OSTYPE)" "msys"
 	RESOURCES=resources.o
 	SO=so
 	STRIPOPTS=
+	# SIGNTOOL path also in t.installer, so keep in sync
+	SIGNTOOL=/c/Program Files/Microsoft SDKs/Windows/v7.1/Bin/signtool.exe
+	CERT=../win32/bitmover-cert.p12
+	PASS=BMstuff1
+	TSURL=http://timestamp.comodoca.com/authenticode
+	BKGUI=$(BINDIR)/gui/bin/bkgui$(EXE)
 else
         SYS=unix
 	EXE=
@@ -26,21 +32,27 @@ else
 	RESOURCES=
 	SO=dll
 	STRIPOPTS=
+	BKGUI=$(BINDIR)/gui/bin/bkgui$(EXE)
 	ifeq "$(shell uname)" "Darwin"
 		SO=dylib
 		STRIPOPTS=-x
+		BKGUI=$(BINDIR)/gui/bin/BitKeeper.app/Contents/MacOS/BitKeeper
 	endif
 endif
 SYSTEM_OBJS=../libc/libc.a
 SFIO=sfio$(EXE)
 CPPFLAGS=-I../libc
 VERS	:= $(shell test -x vers || bk get vers; BINDIR=$(BINDIR) ./vers)
-IMAGE:= $(shell bk get -qS bk_version; echo $(VERS)-`./bk_version`$(EXT) )
+IMGBASE:= $(shell bk get -qS bk_version; echo $(VERS)-`./bk_version`)
+IMAGE:= $(IMGBASE)$(EXT)
+IMAGE_NAME:= $(IMGBASE)-setup
 
 all image: $(BINDIR)/bk$(EXE) $(IMAGE)
 	strip $(IMAGE)
+	@test ! -x "$(SIGNTOOL)" || \
+	    "$(SIGNTOOL)" sign -t $(TSURL) -f $(CERT) -p $(PASS) $(IMAGE)
 
-$(IMAGE): extractor.o $(SYSTEM_OBJS) _data.o $(RESOURCES)
+$(IMAGE): installer.manifest extractor.o $(SYSTEM_OBJS) _data.o $(RESOURCES)
 	$(LD) $(LDFLAGS) extractor.o $(SYSTEM_OBJS) _data.o $(LIBS) \
 	    $(RESOURCES) -o $@
 	@$(RM) -f _data.o
@@ -51,7 +63,7 @@ _data.o: sfio$(EXE) munge$(EXE) zz$(EXE) sfioball.zz
 	@./munge sfio.zz sfioball.zz
 	@$(RM) -f sfio.zz sfioball.zz
 
-sfioball.zz: installtool $(BINDIR) $(BINDIR)/gui/bin/bkgui$(EXE) zz$(EXE)
+sfioball.zz: installtool $(BINDIR) $(BKGUI) zz$(EXE)
 	@echo Creating sfioball.zz from BK in $(BINDIR) ...
 	@cp installtool $(BINDIR)/gui/lib/installtool
 	@find $(BINDIR) -type f -name \*.$(SO) | while read x; \
@@ -59,8 +71,14 @@ sfioball.zz: installtool $(BINDIR) $(BINDIR)/gui/bin/bkgui$(EXE) zz$(EXE)
 	@(cd $(BINDIR)/.. && find `basename $(BINDIR)` -type f | \
 	    bk sfio -mqo) | ./zz sfioball.zz
 
-resources.o: resources.rc ../win32/data/box_software.ico
+resources.o: resources.rc ../win32/data/box_software.ico rcver.h
 	windres -o $@ resources.rc
+
+rcver.h: FORCE
+	$(if $(Q),@echo Building $@,)
+	$(Q)echo '#define VER_INTERNALNAME_STR "$(IMAGE_NAME)\0"' > $@
+	$(Q)echo '#define VER_ORIGINALFILENAME_STR "$(IMAGE)\0"' >> $@
+	$(Q)../bk.exe L ./rcversion.l >> $@
 
 sfio_unpack.o: sfio_unpack.c
 	$(CC) -c $(CFLAGS) $(CPPFLAGS) -I.. sfio_unpack.c
@@ -96,9 +114,12 @@ zz$(EXE): zz.o
 
 .PHONY: clean
 clean:
-	$(RM) _data _data.c _data.o a.out munge$(EXE) zz \
+	$(RM) -f _data _data.c _data.o a.out munge$(EXE) zz \
 		core* bk-*.bin *.o *.exe *.obj *.pdb *.ilk sfio *.zz \
 		installtool inskeys
 
 clobber: clean
 	-bk clean
+
+.PHONY: FORCE
+FORCE:

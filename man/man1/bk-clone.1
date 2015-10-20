@@ -66,6 +66,15 @@ Changes made in the child can be pushed back into the parent by running
 .SH NOTE
 Only completed changesets are cloned.  Any pending deltas are removed
 from the child before the clone completes.
+.LP
+On recent (2014) versions of Ubuntu (and other Linux distributions),
+the use of hardlinks has been curtailed for security reasons.  
+Clone will fall back to using copies, see
+http://man7.org/linux/man-pages/man5/proc.5.html
+and search for
+.BR protected_hardlinks .
+Using copies instead of links is slower and takes more disk space so you
+may want to disable this security feature if all of your users are trusted.
 .SH OPTIONS
 .TP \-\-checkout=<mode>
 .OPTreq \-@ base_url

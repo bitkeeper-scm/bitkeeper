@@ -17,28 +17,22 @@ echo $N Create initial repository ...................................$NL
 commercial project
 echo foo > f
 BK_USER=adam bk delta $Q -i -y'Initial checkin' f
-BK_USER=adam bk commit $Q -y'Initial checkin' || exit 1
+BK_USER=adam bk commit $Q -y'Initial checkin' || fail
 bk edit $Q f
 BK_USER=second bk delta $Q -fy'Second checkin' f
-BK_USER=second bk commit $Q --tag=second -y'Second checkin' || exit 1
+BK_USER=second bk commit $Q --tag=second -y'Second checkin' || fail
 bk edit $Q f
 BK_USER=third bk delta $Q -fy'Third checkin' f
-BK_USER=third bk commit $Q --tag=third -y'Third checkin' || exit 1
+BK_USER=third bk commit $Q --tag=third -y'Third checkin' || fail
 echo OK
 
 echo $N Check that -/search/ works ..................................$NL
 bk changes -/Second/ > XXX
-grep -q ChangeSet@1.3 XXX || {
-	echo failed to match the 1.3 changeset
-	cat XXX
-	exit 1
-}
+grep -q ChangeSet@1.3 XXX || fail -f XXX failed to match the 1.3 changeset
 for r in 1.1 1.2 1.4
 do
 	grep -q ChangeSet@$r XXX && {
-		echo matched the $r changeset
-		cat XXX
-		exit 1
+		fail -f XXX matched the $r changeset
 	}
 done
 bk changes -/second/i > YYY
@@ -47,65 +41,43 @@ echo OK
 
 echo $N Check that -/regex/ works ...................................$NL
 bk changes -'/^S.* checkin$/' > XXX
-grep -q ChangeSet@1.3 XXX || {
-	echo failed to match the 1.3 changeset
-	cat XXX
-	exit 1
-}
+grep -q ChangeSet@1.3 XXX || fail -f XXX failed to match the 1.3 changeset
 for r in 1.1 1.2 1.4
 do	
 	grep -q ChangeSet@$r XXX && {
-		echo matched the $r changeset
-		cat XXX
-		exit 1
+		fail -f XXX matched the $r changeset
 	}
 done
 echo OK
 
 echo $N Check that -/regex/i works ..................................$NL
 bk changes -'/^s.* CHECKIN$/i' > XXX
-grep -q ChangeSet@1.3 XXX || {
-	echo failed to match the 1.3 changeset
-	cat XXX
-	exit 1
-}
+grep -q ChangeSet@1.3 XXX || fail -f XXX failed to match the 1.3 changeset
 for r in 1.1 1.2 1.4
 do	
 	grep -q ChangeSet@$r XXX && {
-		echo matched the $r changeset
-		cat XXX
-		exit 1
+		fail -f XXX matched the $r changeset
 	}
 done
 echo OK
 
 echo $N Check that filtering on included users works ................$NL
 bk changes -usecond > XXX
-grep -q ChangeSet@1.3 XXX || {
-	echo failed to match the 1.3 changeset
-	cat XXX
-	exit 1
-}
+grep -q ChangeSet@1.3 XXX || fail -f XXX failed to match the 1.3 changeset
 for r in 1.1 1.2 1.4
 do	grep -q ChangeSet@$r XXX && {
-		echo matched the $r changeset
-		cat XXX
-		exit 1
+		fail -f XXX matched the $r changeset
 	}
 done
 bk changes -uadam -usecond > XXX
 for r in 1.2 1.3
 do	grep -q ChangeSet@$r XXX || {
-		echo failed to match the $r changeset
-		cat XXX
-		exit 1
+		fail -f XXX failed to match the $r changeset
 	}
 done
 for r in 1.1 1.4
 do	grep -q ChangeSet@$r XXX && {
-		echo matched the $r changeset
-		cat XXX
-		exit 1
+		fail -f XXX matched the $r changeset
 	}
 done
 echo OK
@@ -113,15 +85,11 @@ echo OK
 echo $N Check that filtering on excluded users works ................$NL
 bk changes -Usecond > XXX
 grep -q ChangeSet@1.3 XXX && {
-	echo matched the 1.3 changeset
-	cat XXX
-	exit 1
+	fail -f XXX matched the 1.3 changeset
 }
 for r in 1.1 1.2 1.4
 do	grep -q ChangeSet@$r XXX || {
-		echo did not match the $r changeset
-		cat XXX
-		exit 1
+		fail -f XXX did not match the $r changeset
 	}
 done
 echo OK
@@ -262,7 +230,7 @@ bk delta $Q -ynew f
 bk commit $Q -ynew
 cd "$HERE/project"
 bk changes -R -k "$HERE/clone" "$HERE/clone2" > keylist2
-cmp -s keylist1 keylist2 && { echo new key did not appear; exit 1; }
+cmp -s keylist1 keylist2 && fail new key did not appear
 bk prs -nhr+ -d':KEY:' "$HERE/clone2/ChangeSet" >> keylist1
 bk sort < keylist1 > keylist1sorted
 bk sort < keylist2 > keylist2sorted
@@ -303,16 +271,10 @@ echo OK
 echo $N Check bk changes - url is an error ..........................$NL
 # PWD=project
 echo + > "$HERE"/IN
-bk changes - ../clone 2> ERR <"$HERE"/IN && {
-	echo "failed (it worked)"
-	exit 1
-}
+bk changes - ../clone 2> ERR <"$HERE"/IN && fail "failed (it worked)"
 grep -q "either '-' or URL list" ERR || fail -f ERR
 cd "$HERE"
-bk changes - project 2> ERR <"$HERE"/IN && {
-	echo "failed (it worked)"
-	exit 1
-}
+bk changes - project 2> ERR <"$HERE"/IN && fail "failed (it worked)"
 grep -q "either '-' or URL list" ERR || fail -f ERR
 echo OK
 
@@ -368,10 +330,10 @@ bk commit $Q -yq
 cd "$HERE/p"
 bk commit $Q -ya
 cd "$HERE/c2"
-bk pull $Q || exit 1
+bk pull $Q || fail
 files=`bk changes -r1.1.1.1,1.2 -v -d:DPN:`
 if [ "$files" != "ChangeSetfoofooChangeSetbarbar" ]
-then	echo failed; exit 1;
+then	fail;
 else	echo OK
 fi
 cd "$HERE"
@@ -380,10 +342,7 @@ rm -rf p
 echo $N Does combining restrictions work ............................$NL
 cd project
 revs=`bk changes -c-1Y -ujane -d:REV:`
-test X$revs != X1.5 && {
-	echo failed
-	exit 1
-}
+test X$revs != X1.5 && fail
 echo OK
 
 echo $N "Make sure no auto indent for -d<dspec>"  ......................$NL
@@ -405,10 +364,7 @@ cat <<EOF > expect
 1.5 C clone
  
 EOF
-bk diff -u expect chgs || {
-	echo changes returned wrong data
-	exit 1
-}
+bk diff -u expect chgs || fail changes returned wrong data
 echo OK
 
 echo $N Verify changes -a works with tags ...........................$NL
@@ -449,9 +405,7 @@ key=`bk prs -r+ -hnd:KEY: ChangeSet`
 cd "$HERE"
 key2=`bk changes -r+ -qnd:KEY: clone`
 if [ "$key" != "$key2" ]
-then	echo Remote changes failed
-	echo $key vs $key2
-	exit 1
+then	fail Remote changes failed - $key vs $key2
 fi
 echo OK
 
@@ -465,12 +419,9 @@ bk pull ../clone > junk 2>&1
 
 echo $N Check date formats ..........................................$NL
 Y=`bk prs -Yhnd:Dy: -r+ ChangeSet`
-bk changes -nd:Dy: > OUT || exit 1
-bk changes -v -nd:Dy: >> OUT || exit 1
-test `grep -v 1971 OUT | bk sort -u` = $Y || {
-	echo not all YEAR4 dates
-	exit 1
-}
+bk changes -nd:Dy: > OUT || fail
+bk changes -v -nd:Dy: >> OUT || fail
+test `grep -v 1971 OUT | bk sort -u` = $Y || fail not all YEAR4 dates
 echo OK
 
 echo $N Check that changes -L -R works ..............................$NL
@@ -479,15 +430,15 @@ bk clone $Q project clone1
 cd clone1
 bk edit $Q f
 bk delta $Q -fy'clone1 delta 1' f
-bk commit $Q -y'clone1 checkin 1' || exit 1
+bk commit $Q -y'clone1 checkin 1' || fail
 
 cd "$HERE"
 rm -rf clone2
-bk clone $Q clone1 clone2 || exit 1
-cd clone2 || exit 1
+bk clone $Q clone1 clone2 || fail
+cd clone2 || fail
 bk edit $Q f
 bk delta $Q -fy'clone2 delta' f
-bk commit $Q -y'clone2 checkin' || exit 1
+bk commit $Q -y'clone2 checkin' || fail
 
 (bk changes -kL ../clone1; bk changes -kR ../clone1) > WANT
 bk changes -qand:KEY: -L -R ../clone1 > GOT
@@ -497,8 +448,8 @@ echo OK
 echo $N Test changes -L repo1 repo2 .................................$NL
 cd "$HERE/clone1"
 echo jj > baz
-bk new $Q baz || exit 1
-bk commit $Q -ybaz || exit 1
+bk new $Q baz || fail
+bk commit $Q -ybaz || fail
 bk changes -qand:C: -L ../project > p1
 bk changes -qand:C: -L ../clone2  > c1
 cat p1 c1 > WANT
@@ -627,7 +578,7 @@ bk changes -v -r..1.6 \
 '$else{$if($0!=$1){, $1}}'\
 '$unless(:CHANGESET:){ +:LI: -:LD:}\n'\
 '$unless(:REV: = 1.0 || :REV: = 1.1){$each(:C:){:INDENT:  (:C:)\n}}' > GOT || {
-   exit 1
+   fail
 }
 cat <<EOF >WANT
 ChangeSet@1.4.1.1, DATE, joe@bk_regression.bk
@@ -666,78 +617,61 @@ echo OK
 
 echo $N Test a list of urls, staring with a bad and ending good .....$NL
 bk changes -r+ -ndx /sldfjsdf/some/bad/url "$HERE/clone" > OUT 2> ERR && {
-	echo failed rc=0
-	exit 1
+	fail failed rc=0
 }
 echo OK
 
 echo $N Test :GFILE: in a subdirectory ..............................$NL
 cd html
-bk changes -r+ -nd:GFILE: > OUT || exit 1
-test "`cat OUT`" = ChangeSet || exit 1
-bk changes -qr+ -nd:GFILE: ../../clone1 > OUT || exit 1
-test "`cat OUT`" = ChangeSet || exit 1
-bk changes -qL -nd:GFILE: ../../clone1 > OUT || exit 1
-test "`cat OUT`" = ChangeSet || exit 1
-bk changes -qR -nd:GFILE: ../../clone1 > OUT || exit 1
-test "`head -1 OUT`" = ChangeSet || exit 1
+bk changes -r+ -nd:GFILE: > OUT || fail
+test "`cat OUT`" = ChangeSet || fail
+bk changes -qr+ -nd:GFILE: ../../clone1 > OUT || fail
+test "`cat OUT`" = ChangeSet || fail
+bk changes -qL -nd:GFILE: ../../clone1 > OUT || fail
+test "`cat OUT`" = ChangeSet || fail
+bk changes -qR -nd:GFILE: ../../clone1 > OUT || fail
+test "`head -1 OUT`" = ChangeSet || fail
 echo OK
 
 echo $N Check exit status for changes -L no/such/repo ...............$NL
 bk clone $Q -r1.1 "$HERE/project" "$HERE/superset"
 cd "$HERE/superset"
-bk changes -qL /no/such/repo > OUT 2>&1 && {
-	echo should not have exited 0
-	exit 1
-}
+bk changes -qL /no/such/repo > OUT 2>&1 && fail should not have exited 0
 grep -q "illegal, nonexistent, or not package root" OUT || {
-	echo Wrong message
-	cat OUT
-	exit 1
+	fail -f OUT Wrong message
 }
 echo OK
 
 echo $N Check exit status for changes -R no/such/repo ...............$NL
 bk changes -qR /no/such/repo > OUT 2>&1 && {
-	echo should not have exited 0
-	exit 1
+	fail should not have exited 0
 }
 grep -q "illegal, nonexistent, or not package root" OUT || {
-	echo Wrong message
-	cat OUT
-	exit 1
+	fail -f OUT Wrong message
 }
 echo OK
 
 echo $N Check exit status for changes -L repo/with/lock .............$NL
 L=`cd "$HERE"/project ; bk lock -wt`
 bk changes -qL "$HERE/project" > OUT 2>&1 && {
-	echo should not have exited 0
-	cat OUT
 	bk _kill $L
-	exit 1
+	fail -f OUT should not have exited 0
 }
 grep -q "Can't get read lock on the repository" OUT || {
-	echo Wrong message
-	cat OUT
 	bk _kill $L
-	exit 1
+	fail -f OUT Wrong message
 }
 # keep lock going for next one
 echo OK
 
 echo $N Check exit status for changes -R repo/with/lock .............$NL
 bk changes -qR "$HERE/project" > OUT 2>&1 && {
-	echo should not have exited 0
-	cat OUT
 	bk _kill $L
-	exit 1
+	fail -f OUT should not have exited 0
 }
 grep -q "Can't get read lock on the repository" OUT || {
-	echo Wrong message
-	cat OUT
 	bk _kill $L
-	exit 1
+	fail -f OUT Wrong message
 }
 bk _kill $L
 echo OK
@@ -745,28 +679,18 @@ echo OK
 echo $N Check exit status for changes -L different/package ..........$NL
 # give me a new root, work with old root'd parent
 bk newroot -q
-bk changes -qL > OUT 2>&1 && {
-	echo should not have exited 0
-	cat OUT
-	exit 1
-}
+bk changes -qL > OUT 2>&1 && fail -f OUT should not have exited 0
 grep -q "You are trying to synchronize with an unrelated package" OUT || {
-	echo Wrong message
-	cat OUT
-	exit 1
+	fail -f OUT Wrong message
 }
 echo OK
 
 echo $N Check exit status for changes -R different/package ..........$NL
 bk changes -qR > OUT 2>&1 && {
-	echo should not have exited 0
-	cat OUT
-	exit 1
+	fail -f OUT should not have exited 0
 }
 grep -q "You are trying to synchronize with an unrelated package" OUT || {
-	echo Wrong message
-	cat OUT
-	exit 1
+	fail -f OUT Wrong message
 }
 echo OK
 
@@ -774,10 +698,10 @@ echo $N Tests if changes output is static ...........................$NL
 cd "$HERE"/project
 KEY=`bk changes -r+ -nd:KEY:`
 
-bk changes -r"$KEY" -v > OUT1 || exit 1
-bk mv junk zzz || exit 1
-bk commit $Q -ymv || exit 1
-bk changes -r"$KEY" -v > OUT2 || exit 1
+bk changes -r"$KEY" -v > OUT1 || fail
+bk mv junk zzz || fail
+bk commit $Q -ymv || fail
+bk changes -r"$KEY" -v > OUT2 || fail
 cmpfiles OUT1 OUT2
 echo OK
 
@@ -816,7 +740,7 @@ echo OK
 echo $N Changes should not crash without a cset file ................$NL
 cd "$HERE"/copy
 bk _rm -f SCCS/s.ChangeSet
-bk changes -R 2>ERR && exit 1
+bk changes -R 2>ERR && fail
 cat <<EOF > WANT
 changes: missing ChangeSet file
 EOF
@@ -951,7 +875,7 @@ cmpfiles WANT GOT
 # with a \ escape.
 bk edit $Q f
 BK_USER=fourth bk delta $Q -fy'Fourth checkin' f
-BK_USER=fourth bk commit $Q --tag='f/ourth' -y'Fourth checkin' || exit 1
+BK_USER=fourth bk commit $Q --tag='f/ourth' -y'Fourth checkin' || fail
 bk changes -/f\/ourth/t -nd:SYMBOL: > GOT
 echo f/ourth > WANT
 cmpfiles WANT GOT

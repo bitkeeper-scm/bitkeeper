@@ -388,6 +388,11 @@ iskv(Expr *expr)
 	return ((expr->kind == L_EXPR_BINOP) && (expr->op == L_OP_KV));
 }
 static inline int
+isinterp(Expr *expr)
+{
+	return ((expr->kind == L_EXPR_BINOP) && (expr->op == L_OP_INTERP_STRING));
+}
+static inline int
 isid(Expr *expr, char *s)
 {
 	return ((expr->kind == L_EXPR_ID) && !strcmp(expr->str, s));

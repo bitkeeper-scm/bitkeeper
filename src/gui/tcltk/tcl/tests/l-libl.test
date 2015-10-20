@@ -621,6 +621,7 @@ void file2()
 	fmt = "%s";
 	unless (fprintf(f, fmt) == -1) puts("bad 4.2");
 	fclose(f);
+	unlink("file2tst");
 }
 file2();
 } -output {}
@@ -717,6 +718,8 @@ void Fprintf2()
 	Fprintf("fname", "%s");
 }
 Fprintf2();
+} -cleanup {
+	removeFile "fname"
 } -returnCodes error -match regexp -result {.*3: L Warning: bad format specifier
 }
 
@@ -728,6 +731,8 @@ void Fprintf2_1()
 	unless (Fprintf("fname", fmt) == -1) puts("bad 1");
 }
 Fprintf2_1();
+} -cleanup {
+	removeFile "fname"
 } -output {}
 
 test ftype-1 {test ftpye} -setup {
@@ -2637,6 +2642,24 @@ void system4()
 	unlink("out");
 	unlink("err");
 
+	/* Same, reading and writing to files w/filename in interpolated string. */
+	av = { "perl", "-e", "print uc $_ while (<>)" };
+	tstwritef("in", { "this is line 1", "and line 2", "line 3" });
+	inNm  = "in";
+	outNm = "out";
+	errNm = "err";
+	ret = system(av, "${inNm}", "${outNm}", "${errNm}");
+	unless (ret == 0) puts("bad 3.1");
+	if (tstreadf(outNm, {"THIS IS LINE 1", "AND LINE 2", "LINE 3"})) {
+		puts("bad 3.2");
+	}
+	if (tstreadf("err", {})) {
+		puts("bad 3.3");
+	}
+	unlink(inNm);
+	unlink(outNm);
+	unlink(errNm);
+
 	/* Same, using spawn(). */
 	av = { "perl", "-e", "print uc $_ while (<>)" };
 	tstwritef("in", { "this is line 1", "and line 2", "line 3" });
@@ -2652,6 +2675,25 @@ void system4()
 	unlink("in");
 	unlink("out");
 	unlink("err");
+
+	/* Same, using spawn() w/filename in interpolated string. */
+	av = { "perl", "-e", "print uc $_ while (<>)" };
+	tstwritef("in", { "this is line 1", "and line 2", "line 3" });
+	inNm  = "in";
+	outNm = "out";
+	errNm = "err";
+	pid = spawn(av, "${inNm}", "${outNm}", "${errNm}");
+	unless (defined(pid)) puts("bad 3.10");
+	unless (waitpid(pid, undef, 0) >= 0) puts("bad 3.11");
+	if (tstreadf("out", {"THIS IS LINE 1", "AND LINE 2", "LINE 3"})) {
+		puts("bad 3.12");
+	}
+	if (tstreadf("err", {})) {
+		puts("bad 3.13");
+	}
+	unlink(inNm);
+	unlink(outNm);
+	unlink(errNm);
 
 	/* Same, reading and writing to open file handles. */
 	av   = { "perl", "-e", "print uc $_ while (<>)" };
@@ -3238,6 +3280,29 @@ void system9()
 	unless (err == "err9") puts("bad 1.3 err='${err}'");
 }
 system9();
+} -output {}
+
+test system-10 {test indirectly passed undef references for out and err args} -body {
+#lang L
+/*
+ * The omitted _optional call-by-reference reference arg is passed on
+ * to system() which used to crash because it tried to reference it
+ * without checking for undef first.
+ */
+void system10_out(_optional string &s)
+{
+	if (system("perl -e exit 0", undef, &s, undef)) puts("bad 1");
+}
+void system10_err(_optional string &s)
+{
+	if (system("perl -e exit 0", undef, undef, &s)) puts("bad 2");
+}
+void system10()
+{
+	system10_out();
+	system10_err();
+}
+system10();
 } -output {}
 
 test symlink-1 {test symlink} -setup {

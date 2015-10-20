@@ -427,7 +427,7 @@ grep -q 'Hi there to stderr' ERR || {
 	exit 1
 }
 bk lock -U "$HERE/project"
-bk _kill bk://localhost:$PORT || exit 1
+bk _kill bk://localhost:$PORT || fail
 grep -q '>> Trigger "post-outgoing-noisy"' "$HERE/BKD.log" &&
 grep -q 'This is the post-outgoing-noisy trigger' "$HERE/BKD.log" &&
 grep -q 'Hi there from post-outgoing-noisy to stderr' "$HERE/BKD.log" || {
@@ -1304,7 +1304,7 @@ test -z "$DUMP_VARS" || {
 }
 
 echo $N Make sure we see BK_PATCH in the pre-resolve trigger ........$NL
-cd ../project/PENDING || exit 1
+cd ../project/PENDING || fail
 GOT=`grep BK_PATCH= "$HERE/pre-resolve"`
 test "X$GOT" = X && {
 	echo Failed
@@ -1397,7 +1397,7 @@ cores
 
 echo $N Create trivial server side triggers .........................$NL
 cd "$HERE"
-mkdir project/BitKeeper/triggers || exit 1
+mkdir project/BitKeeper/triggers || fail
 cd project/BitKeeper/triggers
 bk undos > X <<EOF
 #!/bin/sh
@@ -1439,7 +1439,7 @@ echo OK
 
 echo $N Create trivial client side triggers .........................$NL
 cd "$HERE"
-mkdir copy/BitKeeper/triggers || exit 1
+mkdir copy/BitKeeper/triggers || fail
 cd copy/BitKeeper/triggers
 echo "#! /bin/sh"                > good
 echo "echo \$0: trigger fired"	>> good
@@ -1812,7 +1812,7 @@ touch somefile
 bk new $Q somefile
 bk commit $Q -ysomefile
 cd ..
-bk clone $Q -r$TIP undo undo-clone || exit 1
+bk clone $Q -r$TIP undo undo-clone || fail
 test -f undo_clone/UNDO && {
 	echo failed
 	exit 1
@@ -1826,7 +1826,7 @@ while ! bk lock -ls
 do	#echo waiting for the repository to become unlocked
 	sleep 1
 done
-bk clone $Q "$HERE/project" "$HERE/backup" || exit 1
+bk clone $Q "$HERE/project" "$HERE/backup" || fail
 cd "$HERE/project/BitKeeper/triggers"
 cat > post-incoming <<EOF
 #!/bin/bash
@@ -1856,7 +1856,7 @@ while ! bk lock -ls
 do	#echo waiting for the repository to become unlocked
 	sleep 1
 done
-bk clone $Q "$HERE/project" "$HERE/merge" || exit 1
+bk clone $Q "$HERE/project" "$HERE/merge" || fail
 cat > post-commit <<EOF
 #!/bin/bash
 set | grep ^BK > "$HERE/merge-commit"
@@ -1895,7 +1895,7 @@ EOF
 chmod +x $trig/*
 touch foo
 bk new $Q foo
-bk commit $Q -y'upper case' || exit 1
+bk commit $Q -y'upper case' || fail
 bk prs -r+ -hnd:COMMENTS: ChangeSet | grep -q "UPPER CASE" || {
 	echo Failed
 	exit 1
@@ -1977,7 +1977,7 @@ echo $N Check delta does NOT work with trigger NOT checked out ......$NL
 cd "$HERE/proj3"
 # we have to ignore the pre-delta trigger (since it exit 1) when
 # checking in the pre-delta trigger...
-BK_NO_TRIGGERS=1 bk new $Q BitKeeper/triggers/pre-delta || exit 1
+BK_NO_TRIGGERS=1 bk new $Q BitKeeper/triggers/pre-delta || fail
 bk edit $Q foo 
 bk delta $Q -f -ybar foo 2>/dev/null && {
 	echo "failed (bug 2005-04-13-001)"
@@ -1999,14 +1999,14 @@ touch foo
 bk new $Q foo
 bk commit $Q -yfoo
 bk makepatch -r+ > patch
-bk takepatch -af patch || exit 1
+bk takepatch -af patch || fail
 # with no file, no problem
-test -d RESYNC && exit 2
+test -d RESYNC && fail
 # play to the bug: stick a name in a file that goes into BK_PATCH
 echo patch > BitKeeper/tmp/patch
 # with file, there was problem
-bk takepatch -af patch || exit 3
-test -d RESYNC && exit 4
+bk takepatch -af patch || fail
+test -d RESYNC && fail
 echo OK
 
 echo $N Run all triggers with nonewline output and trigger path .....$NL
@@ -2046,7 +2046,7 @@ TRIGS="$TRIGS pre-undo post-undo"
 for f in $TRIGS; do cp X $f; done
 cd ..
 rm -fr "$BK_DOTBK"/BitKeeper
-mkdir "$BK_DOTBK/BitKeeper" || exit 1
+mkdir "$BK_DOTBK/BitKeeper" || fail
 cp -r triggers "$BK_DOTBK"/BitKeeper
 # Okay, triggers created and path set up.  Now fire pre-delta many times:
 cd triggers

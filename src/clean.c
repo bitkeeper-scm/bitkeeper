@@ -49,20 +49,12 @@ private	int
 hasGfile(char *sfile)
 {
 	char	*gfile = sccs2name(sfile);
-	char	*pfile = 0, *p;
 	int	ret;
-	
+
 	assert(gfile);
 	ret = exists(gfile);
+	unless (ret) ret = xfile_exists(gfile, 'p');
 	free(gfile);
-	unless (ret) {
-		pfile = sfile;
-		p = strrchr(pfile, '/');
-		assert(p);
-		p[1] = 'p';
-		ret = exists(pfile);
-		p[1] = 's';
-	}
 	return (ret);
 }
 

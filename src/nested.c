@@ -5,8 +5,8 @@
 
 private	int	compSort(const void *a, const void *b);
 private	void	compFree(void *x);
-private	int	compRemove(char *path, struct stat *statbuf, void *data);
-private	int	empty(char *path, struct stat *statbuf, void *data);
+private	int	compRemove(char *path, char type, void *data);
+private	int	empty(char *path, char type, void *data);
 private	int	nestedLoadCache(nested *n, MDBM *idDB);
 private	void	nestedSaveCache(nested *n);
 
@@ -212,6 +212,7 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	ser_t	d, left, right;
 	int	i;
 	char	*t, *v;
+	u32	rkoff, dkoff;
 	kvpair	kv;
 	MDBM	*idDB = 0, *revsDB = 0;
 	project	*proj;
@@ -341,9 +342,18 @@ err:				if (revsDB) mdbm_close(revsDB);
 
 	sccs_rdweaveInit(cset);
 	/* t = root, v = deltakey */
-	while (d = cset_rdweavePair(cset, 0, &t, &v)) {
-		unless (componentKey(v)) continue;
+	while (d = cset_rdweavePair(cset, 0, &rkoff, &dkoff)) {
+		unless (dkoff) continue; /* last key */
 		if (!revs && !(FLAGS(cset, (d)) & D_RED)) continue;
+		t = HEAP(cset, rkoff);
+		unless (changesetKey(t)) continue;
+		v = HEAP(cset, dkoff);
+		/*
+		 * It would be even better if we could identify component
+		 * rootkeys and had a separate predicate to do that
+		 * test.
+		 */
+		unless (componentKey(v)) continue;
 		unless (c = nested_findKey(n, t)) {
 			c = new(comp);
 			c->n = n;
@@ -571,8 +581,8 @@ compMarkPending(comp *c)
 
 	c->_pending = 0;
 	unless (proj = proj_isResync(c->n->proj)) proj = c->n->proj;
-	sprintf(buf, "%s/%s/SCCS/d.ChangeSet", proj_root(proj), c->path);
-	if (C_PRESENT(c) && exists(buf)) {
+	sprintf(buf, "%s/%s/ChangeSet", proj_root(proj), c->path);
+	if (C_PRESENT(c) && xfile_exists(buf, 'd')) {
 		/*
 		 * c->path came from idcache in case of rename
 		 * so we can trust it.
@@ -596,11 +606,10 @@ compCheckPresent(comp *c)
 	c->_present = 0;
 	unless (proj = proj_isResync(c->n->proj)) proj = c->n->proj;
 	concat_path(buf, proj_root(proj), c->path);
-	if (c->inCache && exists(buf)) {
-		c->_present = 1;
-		return;
-	}
-	if (exists(buf) && (proj = proj_init(buf))) {
+	if (c->inCache) {
+		concat_path(buf, buf, BKROOT);
+		if (isdir(buf)) c->_present = 1;
+	} else if (exists(buf) && (proj = proj_init(buf))) {
 		char	*path = proj_root(proj);
 		char	*rootkey = proj_rootkey(proj);
 
@@ -1052,7 +1061,7 @@ nested_deep(nested *nin, char *path, int present_only)
  * and bail if we find anything else -- then the dir is not empty.
  */
 private	int
-empty(char *path, struct stat *statbuf, void *data)
+empty(char *path, char type, void *data)
 {
 	char	**list = (char **)data;
 	int	i, len;
@@ -1060,7 +1069,7 @@ empty(char *path, struct stat *statbuf, void *data)
 	len = strlen(path);
 
 	/* bail if not a dir -- it's in the region of interest: not empty */
-	unless (statbuf && S_ISDIR(statbuf->st_mode)) {
+	unless (type == 'd') {
 		return (1);
 	}
 	/*
@@ -1085,7 +1094,7 @@ empty(char *path, struct stat *statbuf, void *data)
  * not to touch anything in any deeply nested components' namespaces.
  */
 private int
-compRemove(char *path, struct stat *statbuf, void *data)
+compRemove(char *path, char type, void *data)
 {
 	char	**list = (char **)data;
 	int	i, len;
@@ -1093,7 +1102,7 @@ compRemove(char *path, struct stat *statbuf, void *data)
 	len = strlen(path);
 
 	/* if it's not a dir, just delete it */
-	unless (statbuf && S_ISDIR(statbuf->st_mode)) {
+	unless (type == 'd') {
 		return (unlink(path));
 	}
 	/* it's a dir */
@@ -1116,7 +1125,7 @@ compRemove(char *path, struct stat *statbuf, void *data)
  * components under the given dir.
  */
 private int
-nestedWalkdir(nested *n, char *dir, int present_only, walkfn fn)
+nestedWalkdir(nested *n, char *dir, int present_only, filefn *fn)
 {
 	char	*relpath;
 	int	ret;
@@ -1134,7 +1143,7 @@ nestedWalkdir(nested *n, char *dir, int present_only, walkfn fn)
 	proj_free(p2);
 	list = nested_deep(n, relpath, present_only);
 
-	ret = walkdir(relpath, fn, list);
+	ret = walkdir(relpath, (walkfns){ .file = fn }, list);
 	freeLines(list, free);
 	free(relpath);
 	chdir(cwd);

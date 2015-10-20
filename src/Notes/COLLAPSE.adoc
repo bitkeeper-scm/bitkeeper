@@ -1,0 +1,38 @@
+The structure of collapse command as an enhanced fix -c
+=======================================================
+
+bk collapse
+	-aAFTERREV		# collapse all csets descended from AFTERREV
+	-rLIST_OF_REVS	        # replace all csets named in LIST_OF_REVS
+	-e			# leave open, don't run delta/commit
+	-m			# collapse all csets into first merge on trunk
+	-q 			# silent
+	-s			# don't save backup patch
+	-L			# don't log old keys
+
+With no args we collapse the top cset.  (Without -e we error if no local edits
+or pending deltas.)
+
+Adds new file BitKeeper/etc/collapsed which contains all keys collapsed.
+(unless -L)
+
+-m is just a shorthand for generating the list to pass to -r
+
+bk fix -c	-> bk collapse -r+ -e
+bk fix -c -r1.9	-> bk collapse -a1.9 -e
+bk collapse -r+ -e == bk collapse -e
+
+bk pull
+  .. do merge ..
+make fixup
+bk citool (optional)
+bk collapse -m
+bk comments -C+
+
+1.1 -- 1.2 -- 1.3 -- 1.4
+    \              /
+     - 1.1.1.1 ----
+
+# someday in the future...
+bk collapse -r1.2,1.3
+bk collapse -r1.1.1.1,1.3,1.4

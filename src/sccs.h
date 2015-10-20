@@ -89,7 +89,7 @@ int	checking_rmdir(char *dir);
 #define GET_NOREGET	0x00000400	/* get -S: skip gfiles that exist */
 #define	GET_LINENAME	0x00000800	/* get -O: prefix with line name */
 #define	GET_RELPATH	0x00000010	/* like GET_MODNAME but full relative */
-#define	GET_SKIPGONE	0x00000020	/* ignore gone deltas in HASH */
+/* Unused		0x00000020 */
 #define	GET_SEQ		0x00000040	/* sccs_get: prefix with sequence no */
 /* Unused		0x00000080 */
 #define	GET_PREFIX	\
@@ -106,7 +106,7 @@ int	checking_rmdir(char *dir);
 #define	DELTA_PATCH	0x80000000	/* delta -R: respect rev */
 #define	DELTA_EMPTY	0x01000000	/* initialize with empty file */
 #define	DELTA_FORCE	0x02000000	/* delta -f: force a delta */
-/* AVAILABLE		0x04000000	*/
+#define DELTA_CSETMARK	0x04000000	/* delta --csetmark */
 #define	DELTA_NOPENDING	0x08000000	/* don't create pending marker */
 #define	DELTA_CFILE	0x00100000	/* read cfile and do not prompt */
 #define	DELTA_MONOTONIC	0x00200000	/* preserve MONOTONIC flag */
@@ -165,7 +165,6 @@ int	checking_rmdir(char *dir);
 #define S_READ_ONLY	0x00000800	/* force read only mode */
 #define	S_SET		0x00002000	/* the tree is marked with a set */
 #define S_CACHEROOT	0x00004000	/* don't free the root entry */
-#define S_IMPORT	0x00080000	/* import mode */
 
 /*
  * Date handling.
@@ -216,17 +215,40 @@ int	checking_rmdir(char *dir);
  * Bit 0 and 1 are data encoding
  * Bit 2 is compression mode (gzip or none)
  * Bit 3 is binary file format
+ * Bit 4 and 5 are weave format
  */
 #define	E_ALWAYS	0x1000		/* set so encoding is non-zero */
-#define E_DATAENC	0x3
-#define E_COMP		0x4
 
+#define E_DATAENC	0x3
 #define	E_ASCII		0x00		/* no encoding */
 #define	E_UUENCODE	0x01		/* uuenecode it (traditional) */
 #define	E_BAM		0x02		/* store data in BAM pool */
+#define	ASCII(s)	(((s)->encoding_in & E_DATAENC) == E_ASCII)
+#define	BINARY(s)	(((s)->encoding_in & E_DATAENC) != E_ASCII)
+#define	BAM(s)		(((s)->encoding_in & E_DATAENC) == E_BAM)
+#define	UUENCODE(s)	(((s)->encoding_in & E_DATAENC) == E_UUENCODE)
+
+#define E_COMP		0x4
 #define	E_GZIP		0x04		/* gzip the data */
+#define	GZIP(s)		(((s)->encoding_in & E_COMP) == E_GZIP)
+#define	GZIP_OUT(s)	(((s)->encoding_out & E_COMP) == E_GZIP)
+
 #define	E_BK		0x08		/* new binary sfile format */
-#define	E_BWEAVE	0x10		/* binary weave encoding */
+#define	BKFILE(s)	(((s)->encoding_in & E_BK) != 0)
+#define	BKFILE_OUT(s)	(((s)->encoding_out & E_BK) != 0)
+
+#define	E_WEAVE		0x030
+#define	E_AWEAVE	0x000		/* ascii weave encoding */
+#define	E_BWEAVE2	0x010		/* old binary weave encoding */
+#define	E_BWEAVE3	0x020		/* binary weave encoding */
+#define	BWEAVE(s)	(((s)->encoding_in & E_WEAVE) != E_AWEAVE)
+#define	BWEAVE2(s)	(((s)->encoding_in & E_WEAVE) == E_BWEAVE2)
+#define	BWEAVE3(s)	(((s)->encoding_in & E_WEAVE) == E_BWEAVE3)
+#define	BWEAVE2_OUT(s)	(((s)->encoding_out & E_WEAVE) == E_BWEAVE2)
+#define	BWEAVE_OUT(s)	(((s)->encoding_out & E_WEAVE) != E_AWEAVE)
+
+// mask of bits used for sfile format that map to feature bits
+#define	E_FILEFORMAT	(E_BK|E_WEAVE)
 
 #define	HAS_GFILE(s)	((s)->state & S_GFILE)
 #define	HAS_PFILE(s)	((s)->state & S_PFILE)
@@ -235,21 +257,10 @@ int	checking_rmdir(char *dir);
 #define	WRITABLE(s)	((s)->mode & 0200)
 #define EDITED(s)	((((s)->state&S_EDITED) == S_EDITED) && WRITABLE(s))
 #define LOCKED(s)	(((s)->state&S_LOCKED) == S_LOCKED)
-#define	ASCII(s)	(((s)->encoding_in & E_DATAENC) == E_ASCII)
-#define	BINARY(s)	(((s)->encoding_in & E_DATAENC) != E_ASCII)
-#define	BAM(s)		(((s)->encoding_in & E_DATAENC) == E_BAM)
-#define	UUENCODE(s)	(((s)->encoding_in & E_DATAENC) == E_UUENCODE)
-#define	GZIP(s)		(((s)->encoding_in & E_COMP) == E_GZIP)
-#define	GZIP_OUT(s)	(((s)->encoding_out & E_COMP) == E_GZIP)
-#define	BKFILE(s)	(((s)->encoding_in & E_BK) != 0)
-#define	BKFILE_OUT(s)	(((s)->encoding_out & E_BK) != 0)
-#define	BWEAVE(s)	(((s)->encoding_in & E_BWEAVE) != 0)
-#define	BWEAVE_OUT(s)	(((s)->encoding_out & E_BWEAVE) != 0)
 #define	CSET(s)		((s)->state & S_CSET)
 #define	CONFIG(s)	((s)->state & S_CONFIG)
 #define	READ_ONLY(s)	((s)->state & S_READ_ONLY)
 #define	SET(s)		((s)->state & S_SET)
-#define	IMPORT(s)	((s)->state & S_IMPORT)
 #define	MK_GONE(s, d)	do {(s)->hasgone = 1; FLAGS(s, d) |= D_GONE;} while (0)
 #define	TREE(s)		(1)			// s->tree serial
 #define	TABLE(s)	(0 + (s)->tip)		// s->table serial
@@ -266,6 +277,7 @@ int	checking_rmdir(char *dir);
 #define	CSETMARKED(s)	((s)->xflags & X_CSETMARKED)
 #define	HASH(s)		((s)->xflags & X_HASH)
 #define	SCCS(s)		((s)->xflags & X_SCCS)
+#define	HAS_KEYWORDS(s)	((s)->xflags & (X_RCS|X_SCCS))
 #define	EOLN_NATIVE(s)	((s)->xflags & X_EOLN_NATIVE)
 #define	DB(s)		((s)->xflags & X_DB)
 #define	NOMERGE(s)	((s)->xflags & X_NOMERGE)
@@ -274,7 +286,7 @@ int	checking_rmdir(char *dir);
 
 /*
  * Flags (FLAGS(s, d)) that indicate some state on the delta.
- * When changing also update delta_flagNames in dataheap.c.
+ * When changing also update delta_flagNames in heapdump.c.
  */
 /* flags that are written to disk (don't renumber) */
 #define	D_INARRAY	0x00000001	/* part of s->slist array */
@@ -625,6 +637,7 @@ typedef	struct sccs sccs;
 
 #include "proj.h"
 #include "bk-features.h"
+#include "xfile.h"
 
 extern	jmp_buf	exit_buf;
 extern	char *upgrade_msg;
@@ -668,6 +681,8 @@ typedef	struct {
 	ser_t	siblings;
 } KIDS;
 
+typedef struct nokey nokey;
+
 /*
  * struct sccs - the delta tree, the data, and associated junk.
  */
@@ -685,7 +700,10 @@ struct sccs {
 	DATA	heap;		/* all strings in delta structs */
 	u32	heap_loadsz;	/* size of heap at load time */
 	u32	heapsz1;	/* size of SCCS/1.ChangeSet */
-	hash	*uniqheap;	/* help collapse unique strings in hash */
+	hash	*heapmeta;	/* metadata from start of heap */
+	nokey	*uniq1;		/* uniq hash in heap1 */
+	u32	uniq1off;	/* uniq1 hash covers objects <off in heap */
+	nokey	*uniq2;		/* remember uniq objects not in uniq1 */
 	u32	rkeyHead;	/* head of linked list of rootkeys in heap */
 	u32	*mg_symname;	/* symbol list use by mkgraph() */
 	FILE	*pagefh;	/* fh for paging from sfile */
@@ -696,7 +714,6 @@ struct sccs {
 	FILE	*outfh;		/* fh for writing x.file (may be stacked) */
 	char	*sfile;		/* SCCS/s.foo.c */
 	char	*fullsfile;	/* full pathname to sfile */
-	char	*pfile;		/* SCCS/p.foo.c */
 	char	*gfile;		/* foo.c */
 	char	*symlink;	/* if gfile is a sym link, the destination */
 	char	**usersgroups;	/* lm, beth, staff, etc */
@@ -709,11 +726,13 @@ struct sccs {
 	mode_t	mode;		/* mode of the gfile */
 	off_t	data;		/* offset to data in file */
 	ser_t	rstart;	/* start of a range (1.1 - oldest) */
+	ser_t	rstart2;	/* handle merge range: rstart,rstart2..rstop */
 	ser_t	rstop;		/* end of range (1.5 - youngest) */
 	ser_t	remote;	/* sccs_resolveFiles() sets this */
 	ser_t	local;		/* sccs_resolveFiles() sets this */
 	ser_t	*remap;		/* scompress remap old ser to new ser */
 	ser_t	w_d;		/* current d for cset_rdweavePair() */
+	ser_t	w_cur;		/* locator in non BWEAVE cset file */
 	u32	w_off;		/* next weave line for sccs_nextdata() */
 	char	*w_buf;		/* buf for weave line in sccs_nextdata() */
 	sum_t	 cksum;		/* SCCS chksum */
@@ -729,7 +748,8 @@ struct sccs {
 	ser_t	mdbm_ser;	/* Which rev of mdbm was saved */
 	MDBM	*goneDB;	/* GoneDB used in the get_reg() setup */
 	MDBM	*idDB;		/* id cache used in the get_reg() setup */
-	u32	*fastsum;	/* Cache a lines array of the weave sums */
+	char	**fastsum;	/* pointers to data about weave block sums */
+	hash	*fastsumhash;	/* the storage of the data being pointed to */
 	project	*proj;		/* If in BK mode, pointer to project */
 	ser_t	whodel;		/* reference rev when doing who deleted */
 	void	*rrevs;		/* If has conflicts, revs in conflict */
@@ -770,9 +790,10 @@ struct sccs {
 	u32	ckwrap:1;	/* running with fopen_cksum */
 	u32	w_reverse:1;	/* csetPair walk in reverse order */
 	/* heap releated bit fields */
-	u32	uniqkeys:1;	/* rkeys loaded in uniqheap */
-	u32	uniqdeltas:1;	/* deltas loaded in uniqheap */
-};
+	u32	uniq1init:1;	/* we have looked for uniq1 in heap? */
+	u32	uniq2keys:1;	/* rkeys loaded in uniq2 */
+	u32	uniq2deltas:1;	/* deltas loaded in uniq2 */
+}; /* struct sccs */
 
 typedef struct {
 	int	flags;		/* ADD|DEL|FORCE */
@@ -840,7 +861,7 @@ typedef struct patch {
 	char	*me;		/* unique key of this delta */
 	char	*sortkey;	/* sortable key of this delta, if different */
 	char	*initFile;	/* RESYNC/BitKeeper/init-1, only if !initMem */
-	FILE	*initMem;	/* points into fmem patch */
+	DATA	initMem;	/* block of init data */
 	char	*diffFile;	/* RESYNC/BitKeeper/diff-1, only if !diffMem */
 	FILE	*diffMem;	/* points into mmapped patch */
 	ser_t	serial;		/* in cset path, save the corresponding ser */
@@ -982,11 +1003,23 @@ typedef struct {
 u32	_heap_u32load(void *ptr);
 
 #define	HEAP(s, off)	((s)->heap.buf + (off))
-#define	RKOFF(s, off)	(HEAP_U32LOAD(HEAP(s, off)))
-#define	RKNEXT(s, off)	RKOFF(s, off)
-#define	KEYSTR(s, off)	(HEAP(s, off) + sizeof(u32))
-/* Given an offset, skip to the next consecutive key */
-#define	NEXTKEY(s, off)	(off + sizeof(u32) + strlen(KEYSTR(s, off)) + 1)
+#define	KOFF(s, off)	(HEAP_U32LOAD(HEAP(s, off)))
+
+/* while (off = RKDKOFF(s, off, rkoff, dkoff)) {} */
+#define	RKDKOFF(s, off, rkoff, dkoff)					\
+	({	u32 _ret;						\
+		unless ((rkoff) = KOFF(s, (off))) {			\
+			_ret = 0;					\
+		} else if (BWEAVE2(s)) {				\
+			(rkoff) += 4;					\
+			(dkoff) = (off) + 4;				\
+			_ret = (off) + 4 + strlen(HEAP(s, dkoff)) + 1;	\
+		} else {						\
+			(dkoff) = KOFF(s, (off)+4);			\
+			_ret = (off) + 8;				\
+		}							\
+		_ret;							\
+	})
 
 int	sccs_admin(sccs *sc, ser_t d, u32 flgs,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
@@ -1049,20 +1082,20 @@ void	sccs_md5delta(sccs *s, ser_t d, char *b64);
 void	sccs_sortkey(sccs *s, ser_t d, char *buf);
 void	sccs_key2md5(char *deltakey, char *b64);
 void	sccs_setPath(sccs *s, ser_t d, char *newpath);
-void	sccs_syncRoot(sccs *s, char *key);
+int	sccs_syncRoot(sccs *s, char *key);
 ser_t	sccs_csetBoundary(sccs *s, ser_t, u32 flags);
 int	poly_pull(int got_patch, char *mergefile);
 void	poly_range(sccs *s, ser_t d, char *pkey);
 char	**poly_save(char **list, sccs *cset, ser_t d, char *ckey, int side);
 int	poly_r2c(sccs *cset, ser_t d, char ***pcsets);
-void	sccs_shortKey(sccs *s, ser_t, char *);
+int	sccs_shortKey(sccs *s, ser_t, char *);
 int	sccs_resum(sccs *s, ser_t d, int diags, int dont);
 int	cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch);
 char	**cset_mkList(sccs *cset);
 int	cset_bykeys(const void *a, const void *b);
 int	cset_byserials(const void *a, const void *b);
 int	sccs_newchksum(sccs *s);
-ser_t	getCksumDelta(sccs *s, ser_t d);
+ser_t	sccs_getCksumDelta(sccs *s, ser_t d);
 ser_t	*addSerial(ser_t *space, ser_t s);
 void	sccs_perfile(sccs *s, FILE *out, int patch);
 sccs	*sccs_getperfile(sccs *, FILE *, int *);
@@ -1110,7 +1143,6 @@ char	*p2str(void *p);
 int	sccs_filetype(char *name);
 int	isValidHost(char *h);
 int	isValidUser(char *u);
-int	readable(char *f);
 char	*sccs2name(char *);
 char	*name2sccs(char *);
 int	diff(char *lfile, char *rfile, u32 kind, char *out);
@@ -1132,6 +1164,8 @@ int	sccs_reCache(int quiet);
 int	sccs_findtips(sccs *s, ser_t *a, ser_t *b);
 int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB);
+sccs	*sccs_keyinitAndCache(
+	    project *proj, char *key, u32 flags, MDBM *sDB, MDBM *idDB);
 
 int	sccs_lockfile(char *lockfile, int wait, int quiet);
 int	sccs_stalelock(char *lockfile, int discard);
@@ -1157,7 +1191,7 @@ char    *mode2FileType(mode_t m);
 int	getline(int in, char *buf, int size);
 void	explodeKey(char *key, char *parts[6]);
 void	free_pfile(pfile *pf);
-int	sccs_read_pfile(char *who, sccs *s, pfile *pf);
+int	sccs_read_pfile(sccs *s, pfile *pf);
 int	sccs_rewrite_pfile(sccs *s, pfile *pf);
 int	sccs_isleaf(sccs *s, ser_t d);
 int	emptyDir(char *dir);
@@ -1170,16 +1204,15 @@ char	*findBin(void);
 int 	prompt(char *msg, char *buf);
 void	parse_url(char *url, char *host, char *path);
 int	parallel(char *path);
+int	cpus(void);
 char	*sccs_saveStr(sccs *s, char *str);
 char	*sccs_Xfile(sccs *s, char type);
 FILE	*sccs_startWrite(sccs *s);
 int	sccs_finishWrite(sccs *s);
 void	sccs_abortWrite(sccs *s);
 int	uniq_adjust(sccs *s, ser_t d);
-char	*uniq_keysHome(void);
-int	uniq_open(void);
-time_t	uniq_drift(void);
-int	uniq_close(void);
+char	*uniq_dbdir(void);
+int	uniqdb_req(char *msg, int msglen, char *resp, size_t *resplen);
 time_t	sccs_date2time(char *date, char *zone);
 pid_t	smtpmail(char **to, char *subject, char *file);
 int	connect_srv(char *srv, int port, int trace);
@@ -1294,7 +1327,7 @@ pid_t	mkpager(void);
 int	getRealName(char *path, MDBM *db, char *realname);
 int	addsym(sccs *s, ser_t metad, int graph, char *tag);
 int	delta_table(sccs *s, int willfix);
-int	walksfiles(char *dir, walkfn fn, void *data);
+int	walksfiles(char *dir, filefn *fn, void *data);
 ser_t	getSymlnkCksumDelta(sccs *s, ser_t d);
 hash	*generateTimestampDB(project *p);
 int	timeMatch(project *proj, char *gfile, char *sfile, hash *timestamps);
@@ -1313,7 +1346,10 @@ int	cset_write(sccs *s, int spinners, int fast);
 sccs	*cset_fixLinuxKernelChecksum(sccs *s);
 int	cweave_init(sccs *s, int extras);
 void	weave_set(sccs *s, ser_t d, char **keys);
+void	weave_cvt(sccs *s);
+void	weave_updateMarker(sccs *s, ser_t d, u32 rk, int add);
 int	isNullFile(char *rev, char *file);
+u32	rset_checksum(sccs *cset, ser_t d, ser_t base);
 unsigned long	ns_sock_host2ip(char *host, int trace);
 unsigned long	host2ip(char *host, int trace);
 int	fileTypeOk(mode_t m);
@@ -1336,7 +1372,7 @@ int	chk_user(void);
 int	chk_nlbug(sccs *s);
 int	chk_permissions(void);
 int	fix_gmode(sccs *s, int gflags);
-int	do_checkout(sccs *s);
+int	do_checkout(sccs *s, u32 getFlags, char ***bamFiles);
 int	unsafe_path(char *s);
 int	hasTriggers(char *cmd, char *when);
 void	comments_cleancfile(sccs *s);
@@ -1410,9 +1446,7 @@ int	restore_backup(char *backup_sfio, int overwrite);
 char	*parent_normalize(char *);
 int	annotate_args(int flags, char *args);
 void	platformInit(char **av);
-int	sccs_csetPatchWeave(sccs *s);
-int	sccs_fastWeave(sccs *s, ser_t *weavemap, ser_t *patchmap,
-	    FILE *fastpatch);
+int	sccs_fastWeave(sccs *s, FILE *fastpatch);
 void	sccs_clearbits(sccs *s, u32 flags);
 MDBM	*db_load(char *gfile, sccs *s, char *rev, MDBM *m);
 int	db_sort(char *gfile_in, char *gfile_out);
@@ -1468,7 +1502,7 @@ char	*sccs_nextdata(sccs *s);
 
 #define	RWP_DSET	0x00000001 /* only walk D_SET deltas */
 #define	RWP_ONE		0x00000002 /* stop at end of current delta */
-ser_t	cset_rdweavePair(sccs *s, u32 flags, char **rkey, char **dkey);
+ser_t	cset_rdweavePair(sccs *s, u32 flags, u32 *rkoff, u32 *dkoff);
 void	cset_firstPair(sccs *s, ser_t first);
 void	cset_firstPairReverse(sccs *s, ser_t first);
 int	sccs_rdweaveDone(sccs *s);
@@ -1528,10 +1562,12 @@ void	bk_setConfig(char *key, char *val);
 u32	sccs_addStr(sccs *s, char *str);
 void	sccs_appendStr(sccs *s, char *str);
 u32	sccs_addUniqStr(sccs *s, char *str);
-u32	sccs_addUniqKey(sccs *s, char *key);
+u32	sccs_addUniqRootkey(sccs *s, char *key);
+u32	sccs_hasRootkey(sccs *s, char *key);
+void	sccs_loadHeapMeta(sccs *s);
 typedef	struct MAP MAP;
 void	*dataAlloc(u32 esize, u32 nmemb);
-void	datamap(char *name, void *start, int len,
+void	datamap(char *name, void *start, size_t len,
     FILE *f, long off, int byteswap, int *didpage);
 void	dataunmap(FILE *f, int keep);
 FILE	*fopen_bkfile(char *file, char *mode, u64 size, int chkxor);
@@ -1546,6 +1582,14 @@ int	repogca(char **urls, char *dspec, u32 flags, FILE *out);
 u64	maxrss(void);
 char	*formatBits(u32 bits, ...);
 int	bk_gzipLevel(void);
+
+nokey	*nokey_newStatic(u32 data, u32 bits);
+nokey	*nokey_newAlloc(void);
+u32	nokey_log2size(nokey *h);
+u32	*nokey_data(nokey *h);
+void	nokey_free(nokey *h);
+u32	nokey_lookup(nokey *h, char *heap, char *key);
+void	nokey_insert(nokey *h, char *heap, u32 key);
 
 extern	char	*editor;
 extern	char	*bin;

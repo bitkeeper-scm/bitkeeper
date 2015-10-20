@@ -1,0 +1,136 @@
+// BkShellX.idl : IDL source for BkShellX.dll
+//
+
+// This file will be processed by the MIDL tool to
+// produce the type library (BkShellX.tlb) and marshalling code.
+
+import "oaidl.idl";
+import "ocidl.idl";
+	[
+		object,
+		uuid(A7DDB92B-D8BB-4727-97AA-07FA29C4F6D0),
+		dual,
+		helpstring("IBkRootIcon Interface"),
+		pointer_default(unique)
+	]
+	interface IBkRootIcon : IDispatch
+	{
+	};
+	[
+		object,
+		uuid(B09DF4E8-C27C-4BD8-B0F9-DB8B37803835),
+		dual,
+		helpstring("IBkModifiedIcon Interface"),
+		pointer_default(unique)
+	]
+	interface IBkModifiedIcon : IDispatch
+	{
+	};
+	[
+		object,
+		uuid(C8888318-5059-4754-A750-BADD4C56EB7B),
+		dual,
+		helpstring("IBkFileIcon Interface"),
+		pointer_default(unique)
+	]
+	interface IBkFileIcon : IDispatch
+	{
+	};
+	[
+		object,
+		uuid(FC610784-DC85-4BDC-AD9E-82D2C1AC8395),
+		dual,
+		helpstring("IBkIgnoredIcon Interface"),
+		pointer_default(unique)
+	]
+	interface IBkIgnoredIcon : IDispatch
+	{
+	};
+	[
+		object,
+		uuid(1BBBC9B9-864A-4A55-8BB4-7A213DF9C52D),
+		dual,
+		helpstring("IBkExtraIcon Interface"),
+		pointer_default(unique)
+	]
+	interface IBkExtraIcon : IDispatch
+	{
+	};
+	[
+		object,
+		uuid(5FE1228D-5A3A-49DF-93C2-F4CC9288B67A),
+		dual,
+		helpstring("IBkReadonlyIcon Interface"),
+		pointer_default(unique)
+	]
+	interface IBkReadonlyIcon : IDispatch
+	{
+	};
+
+[
+	uuid(80816027-7D1D-4371-8B35-A78FCB5A3FAF),
+	version(1.0),
+	helpstring("BkShellX 1.0 Type Library")
+]
+library BkShellXLib
+{
+	importlib("stdole32.tlb");
+	importlib("stdole2.tlb");
+
+	[
+		uuid(67E86F67-834F-4FF9-910C-CBD6CEA32610),
+		helpstring("ContextMenuHandler Class")
+	]
+	coclass ContextMenuHandler
+	{
+		[default] interface IUnknown;
+	};
+	[
+		uuid(401FF4FA-D70C-452B-8721-935ED73C8B74),
+		helpstring("BkRootIcon Class")
+	]
+	coclass BkRootIcon
+	{
+		[default] interface IBkRootIcon;
+	};
+	[
+		uuid(21433B11-E7F8-4149-A725-AD8843B781FD),
+		helpstring("BkModifiedIcon Class")
+	]
+	coclass BkModifiedIcon
+	{
+		[default] interface IBkModifiedIcon;
+	};
+	[
+		uuid(9F51C504-4D4D-4B86-9175-CEA499FB558D),
+		helpstring("BkFileIcon Class")
+	]
+	coclass BkFileIcon
+	{
+		[default] interface IBkFileIcon;
+	};
+	[
+		uuid(E0A4353C-1BBB-4959-A18F-584A860AC29B),
+		helpstring("BkIgnoredIcon Class")
+	]
+	coclass BkIgnoredIcon
+	{
+		[default] interface IBkIgnoredIcon;
+	};
+	[
+		uuid(FB96CF75-81FD-4368-9C77-987E91FD589A),
+		helpstring("BkExtraIcon Class")
+	]
+	coclass BkExtraIcon
+	{
+		[default] interface IBkExtraIcon;
+	};
+	[
+		uuid(DD47003F-F2C1-44F1-9248-1EC7332BE103),
+		helpstring("BkReadonlyIcon Class")
+	]
+	coclass BkReadonlyIcon
+	{
+		[default] interface IBkReadonlyIcon;
+	};
+};

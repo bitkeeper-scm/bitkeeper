@@ -432,14 +432,14 @@ then #------------------------------------------------------------------
 echo $N Make sure we don\'t allow files with \|\'s .....................$NL
 touch 'test|file'
 bk new $Q 'test|file' 2>new.out && fail -f new.out should fail
-grep -q "new: illegal filename" new.out || fail -f new.out wrong message
+grep -q "bad file name" new.out || fail -f new.out wrong message
 echo OK
 
 echo $N Make sure we don\'t allow pathnames with \|\'s .................$NL
 mkdir 'bad|dir'
 touch 'bad|dir/test'
 bk new $Q 'bad|dir/test' 2>new.out && fail -f new.out should fail
-grep -q "new: illegal filename" new.out || fail -f new.out wrong message
+grep -q "bad file name" new.out || fail -f new.out wrong message
 cd 'bad|dir'
 bk new $Q test 2>new.out && fail -f new.out should fail
 grep -q "new: illegal filename" new.out || fail -f new.out wrong message
@@ -503,7 +503,7 @@ bk edit $Q init3
 bk _mv SCCS/p.init3 P
 sed s/1.2/1.1/ < P > tmp
 bk _mv tmp SCCS/p.init3
-bk delta $Q -fybad init3 > OUT 2>&1 || exit 1
+bk delta $Q -fybad init3 > OUT 2>&1 || fail
 grep -q 'invalid nextrev 1.1 in p.file, using 1.2 instead' OUT || {
 	echo bad error message
 	cat OUT
@@ -567,7 +567,7 @@ bk edit $Q init3
   echo "And a second line" 
 ) > C
 bk cfile save init3 < C
-echo u | bk delta $Q -f init3 > OUT 2>&1 || exit 1
+echo u | bk delta $Q -f init3 > OUT 2>&1 || fail
 bk _test -f SCCS/p.init3 && {
 	echo failed to delta
 	exit 1
@@ -722,13 +722,13 @@ echo a > WANT
 bk sfiles -gc > GOT
 checkfiles WANT GOT
 # does nothing
-BK_NODIREXPAND=1 bk delta $Q -ycomment || exit 1
+BK_NODIREXPAND=1 bk delta $Q -ycomment || fail
 bk sfiles -gc > GOT
 checkfiles WANT GOT
 # actually checks in files
-bk delta $Q -ycomment || exit 1
+bk delta $Q -ycomment || fail
 bk sfiles -gc > GOT
-test -s GOT && exit 1
+test -s GOT && fail
 echo OK
 
 echo $N Check that p-locked read-only file cannot be checked in .....$NL
@@ -747,11 +747,11 @@ echo OK
 echo $N Check that read-only new files on stdin are ok ..............$NL
 touch bnew
 chmod 444 bnew
-echo bnew | bk ci $Q -a -ynew - || exit 1
+echo bnew | bk ci $Q -a -ynew - || fail
 echo OK
 
 echo $N But that updates to files can\'t be read-only ................$NL
-bk edit $Q bnew || exit 1
+bk edit $Q bnew || fail
 echo hi > bnew
 chmod 444 bnew
 echo bnew | bk ci $Q -a -ynew - 2>ERR && {

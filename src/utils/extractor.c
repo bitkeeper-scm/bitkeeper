@@ -386,8 +386,8 @@ EXP_OPT
 "installing from a non-privileged account, then the installer will only\n"
 "be able to do a partial install.\n"
 #else
-"Normally symlinks are created in /usr/bin for 'bk' and common SCCS\n"
-"tools.  If the user doesn't have permissions to write in /usr/bin\n"
+"Normally symlinks are created in /usr/bin for 'bk'.\n"
+"If the user doesn't have permissions to write in /usr/bin\n"
 "or BK_NOLINKS is set then this step will be skipped.\n"
 #endif
 #if !defined(WIN32) && !defined (__APPLE__)

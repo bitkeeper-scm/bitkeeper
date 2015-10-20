@@ -14,41 +14,41 @@ test "X$BK_TMP" = X && {
 	exit 0
 }
 
-KEYS="`bk dotbk`/bk-keys/`bk gethost -r`"
-
 echo $N Create initial repository ...................................$NL
-rm -f "$KEYS"
+kill_uniq "$HERE/.bk/bk-keys-db"
+rm_uniq
 fresh_commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
-test -f "$KEYS" -a ! -z "$KEYS" || {
-	echo failed to add keys to bk_keys
-	exit 1
-}
+kill_uniq "$HERE/.bk/bk-keys-db"
+echo 'get .*' | bk info_shell --uniqdb | grep '^@.' >KEYS
+[ `cat KEYS | wc -l` -gt 1 ] || fail failed to add keys
 echo OK
 
 echo $N Add a delta to be sure there are keys .......................$NL
 bk edit $Q BitKeeper/etc/config
 bk delta $Q -ywhatever BitKeeper/etc/config
 bk commit $Q -ywhatever
-test -f "$KEYS" -a ! -z "$KEYS" || {
-	echo failed to add keys to bk_keys
-	exit 1
-}
+kill_uniq "$HERE/.bk/bk-keys-db"
+echo 'get .*' | bk info_shell --uniqdb | grep '^@.' >KEYS
+[ `cat KEYS | wc -l` -gt 1 ] || fail failed to add keys
 echo OK
 
 echo $N Make sure we generated the right keys in single user mode ...$NL
-bk sort < "$KEYS" | while read k junk
-do echo "$k"
-done > GOT
-bk -r prs -c90.. -hnd:SHORTKEY: | bk sort > WANT
-cmp -s WANT GOT || {
+# It's possible that the uniqdb can have more keys than those in
+# the repos, because UDP transmit timeouts cause the uniqdb to
+# see the same key multiple times. So just verify that the
+# expected keys are there -- more are OK.
+echo 'get .*' | bk info_shell --uniqdb | grep '^@.' >KEYS
+bk sort <KEYS | grep -v METADATA |
+    sed -e 's/\(.*\)|ChangeSet|\(.*\)|.*$/\1|ChangeSet|\2/' >GOT
+bk -r prs -c90.. -hnd@:SHORTKEY: | bk sort > WANT
+test `comm -13 GOT WANT | wc -l` -eq 0 || {
 	echo failed to regenerate the same keycache
 	diff WANT GOT
 	bk prs -nd:KEY: BitKeeper/etc/config
-    	exit 1
 }
 echo OK
 

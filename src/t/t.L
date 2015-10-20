@@ -13,46 +13,37 @@
 
 # If the tcl component is not populated and if tclsh is not built,
 # then L didn't need to be re-built so tests are unnecessary (they
-# were already run during the last tcl build).
+# were already run during the last tcl build).  Note that the win
+# build does not create a tcltest executable unlike the unix build.
 TCLDIR="$BK_ROOT/src/gui/tcltk/tcl"
 case X$PLATFORM in
 	XUNIX)
 		TCLTEST="$TCLDIR/unix/tcltest"
 		TCLSH="$TCLDIR/unix/tclsh"
+		MAKEFILE="$TCLDIR/unix/Makefile"
+		BUILDDIR="$TCLDIR/unix"
+		[ -x "$TCLTEST" -a -x "$TCLSH" -a -f "$MAKEFILE" ] || LNOTBUILT=1
 		;;
 	XWIN*)
-		TCLTEST="$TCLDIR/win/tcltest.exe"
 		TCLSH="$TCLDIR/win/tclsh.exe"
+		MAKEFILE="$TCLDIR/win/Makefile"
+		BUILDDIR="$TCLDIR/win"
+		[ -x "$TCLSH" -a -f "$MAKEFILE" ] || LNOTBUILT=1
 		;;
 esac
-[ -x "$TCLTEST" -a -x "$TCLSH" ] || {
-	echo $N L not built, skipping........................................OK
+[ -z $LNOTBUILT ] || {
+	echo L not built, skipping........................................OK
 	exit 0
 }
 
-export TCL_LIBRARY="$TCLDIR/library"
-export TCLTEST_SHELL_OPTIONS='-encoding utf-8'
-
-echo $N Test L core..................................................$NL
-"$TCLTEST" "$TCLDIR/tests/all.tcl" -file l-core.test >xyzOUT 2>xyzERR || {
+echo $N Run L tests..................................................$NL
+cd "$BUILDDIR"
+make test-l >xyzOUT 2>xyzERR
+bk grep -q '^all.tcl:.*Failed\t0' xyzOUT || {
+	echo
 	cat xyzOUT
 	echo -------------------
 	fail -f xyzERR
 }
-echo OK
-
-echo $N Test lib L ..................................................$NL
-"$TCLTEST" "$TCLDIR/tests/all.tcl" -file l-libl.test >xyzOUT 2>xyzERR || {
-	cat xyzOUT
-	echo -------------------
-	fail -f xyzERR
-}
-echo OK
-
-echo $N Run old tests................................................$NL
-"$TCLTEST" "$TCLDIR/tests/all.tcl" -file l-regression.test >xyzOUT 2>xyzERR || {
-	cat xyzOUT
-	echo -------------------
-	fail -f xyzERR
-}
+rm -f xyzERR xyzOUT
 echo OK

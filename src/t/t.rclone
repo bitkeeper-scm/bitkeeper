@@ -53,7 +53,7 @@ cd "$HERE"
 (cd project && bk repocheck -q)
 test -f project/BitKeeper/log/checked || fail
 rm -rf copy copy2
-BK_CONFIG='partial_check:on!' bk bkd -q -aPORT -ikill || exit 1
+BK_CONFIG='partial_check:on!' bk bkd -q -aPORT -ikill || fail
 P=`cat PORT`
 bk clone $Q "$HERE/project" bk://localhost:$P/"$HERE/copy"
 bk _test -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || { echo failed; exit 1; }
@@ -97,13 +97,13 @@ grep -q 'illegal cd' OUT || {
        cat OUT
        exit 1
 }
-bk _kill http://localhost:$P || exit 1
+bk _kill http://localhost:$P || fail
 echo OK
 
 echo $N rClone to bk://url without path should fail .................$NL
 mkdir EMPTY
 cd EMPTY
-bk bkd -q -a"$HERE/PORT" -ikill || exit 1
+bk bkd -q -a"$HERE/PORT" -ikill || fail
 P=`cat "$HERE/PORT"`
 cd ..
 bk clone "$HERE/project" bk://localhost:$P 2> OUT && {
@@ -161,7 +161,7 @@ test -d EMPTY/REPO/BitKeeper/etc || {
 }
 echo OK
 
-bk _kill http://localhost:$P || exit 1
+bk _kill http://localhost:$P || fail
 
 echo $N Stress rclone in part2 ......................................$NL
 # Rider: use different -j parallel - for later test
@@ -226,7 +226,7 @@ bk clone -rfoo $Q project clone  2> ERR && {
 	echo No foo -- clone should fail
 	exit 1
 }
-grep -q "^file://.*/project: rev foo doesn't exist" ERR || exit 1
+grep -q "^file://.*/project: rev foo doesn't exist" ERR || fail
 test -d clone && {
 	echo Fail
 	echo dir created

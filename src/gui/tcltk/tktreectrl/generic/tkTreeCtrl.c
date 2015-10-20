@@ -8,8 +8,6 @@
  * Copyright (c) 2003-2005 ActiveState, a division of Sophos
  */
 
-#include "tkTreeCtrl.h"
-
 #ifdef WIN32
 #include <windows.h>
 #endif
@@ -19,6 +17,8 @@
 #if defined(MAC_TK_COCOA)
 #import <Cocoa/Cocoa.h>
 #endif
+
+#include "tkTreeCtrl.h"
 
 /*
  * TIP #116 altered Tk_PhotoPutBlock API to add interp arg.

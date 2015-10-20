@@ -214,7 +214,7 @@ regen(sccs *s, int verbose, char *key)
 			sys("bk", "_get", "-q", a1, gfile, SYS);
 			free(a1);
 		}
-		if (sccs_read_pfile("sccs2bk", s, &pf)) exit(1);
+		if (sccs_read_pfile(s, &pf)) exit(1);
 		unless (streq(REV(s, d), pf.newrev)) {
 			datum	k, v;
 			ser_t	ser;
@@ -325,7 +325,7 @@ out:	unlink("SCCS/.init");
 	unlink(tmp);
 	free(table);
 	mdbm_close(revs);
-	if (do_checkout(s2)) exit(1);
+	if (do_checkout(s2, 0, 0)) exit(1);
 	sccs_free(s2);
 	sccs_free(sget);
 	sccs_free(s);

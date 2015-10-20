@@ -1,0 +1,33 @@
+
+Overview of the menu code:
+=========================
+
+Key Interface: InsertMenu()
+	InsertMenu() took a "offset" parameter to identify the menu entry.
+	This is used by explorer to call the InvokeCommand() interface when
+	we click on a menu item.
+
+Setting up the offset is somewhat elaborate
+a) In BitKeeper.h, there is a enum type for all the offset 
+b) ContextMenuItemBase has a private variable called "_offset"
+c) All the command is a class derived from ContextMenuItemBase,
+   its constructor initializes _offset to the value associated with the command
+   using the enum defined in "a".
+d) When ContextMenuHandler set up the context menu, it set up a list all the
+   commands,  (which is when all the command constructors are called)
+   It then calls the command's queryContextMenu() interface to set up
+   the menu, which in turn calls the InsertMenu() interface.
+e) When a user click on a menu item, explorer calls the InvokeCommand()        
+   interface, which in turn calls the invokeMenuItemByOffset(), which in turn
+   calls the invoke() interface associated with the command.
+
+A note on "offset":
+The _offset variable stored in the command class is a relative offset.
+The InsertMenu() interface wants a "absolute" offset, but when the 
+explorer calls the invokeCommand() interface, it uses the relative offset.
+This means when we call InsertMenu(), we need to convert to absolute
+offset. When we are in invokeCommand(), we need to interpret the 
+offset as relative offset.
+
+
+

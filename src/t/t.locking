@@ -139,19 +139,19 @@ echo OK
 
 echo $N Make sure clone fails with existing write lock in source \#2 .$NL
 cd "$HERE/project"
-bk bkd -d -aPORT -ikill 2>/dev/null || exit 1
+bk bkd -d -aPORT -ikill 2>/dev/null || fail
 P=`cat PORT`
 cd "$HERE"
 bk clone -q bk://localhost:$P clone 2> clone.out
 echo "ERROR-Can't get read lock on the repository." > ref
 cmp -s clone.out ref || {
-	bk _kill bk://localhost:$P || exit 1
+	bk _kill bk://localhost:$P || fail
 	echo Failed
 	diff clone.out ref
 	exit 1
 }
 if [ -d clone ]; then echo clone failed to clean up; exit 1; fi
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 echo OK
 
 echo $N Make sure clone works with existing read lock in source .....$NL
@@ -212,7 +212,7 @@ mv BitKeeper/readers/* BitKeeper/readers/1234@DO_NOT_USE_THIS_NAME.lock
 cd "$HERE/clone"
 bk pull $Q -R 2>/dev/null
 if [ ! -d RESYNC ]; then echo pull failed; exit 1; fi
-bk resolve $Q || exit 1
+bk resolve $Q || fail
 echo OK
 
 echo $N Make sure pull works with existing read lock in source \#2 ...$NL
@@ -446,17 +446,17 @@ then	cp writer/"${PID}@${HOST}.lock" writer/lock
 else	ln writer/"${PID}@${HOST}.lock" writer/lock
 fi
 tar cf ../writer.tar writer
-bk lock -l 2> OUT || exit 1
-grep -q "No active lock in repository" OUT || exit 2
-test -d writer && exit 3
+bk lock -l 2> OUT || fail
+grep -q "No active lock in repository" OUT || fail
+test -d writer && fail
 echo OK
 
 echo $N Stale chk: repository_locked cleans lock and uniq file ......$NL
 rm -fr writer
 tar xf ../writer.tar
-bk lock -lq || exit 1
-test -f writer/lock && exit 2
-test -d writer && exit 3
+bk lock -lq || fail
+test -f writer/lock && fail
+test -d writer && fail
 # clean up
 rm -fr writer ../writer.tar
 echo OK

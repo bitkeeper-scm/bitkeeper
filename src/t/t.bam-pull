@@ -3,52 +3,42 @@ export BK_NO_HARDLINK_CLONE
 
 echo $N Setup master and clone ......................................$NL
 commercial pmaster
-bk bam server $Q . || exit 1
+bk bam server $Q . || fail
 
 cp "$BIN2" bin2
-bk new $Q bin2 || exit 1
-bk commit -ybin $Q || exit 1
-bk clone $Q . pcopy || exit 1
+bk new $Q bin2 || fail
+bk commit -ybin $Q || fail
+bk clone $Q . pcopy || fail
 
 # fake BAM server link
 (echo ..; bk id -r) > pcopy/BitKeeper/log/BAM_SERVER
 
 cd pcopy
-bk -r check -a || exit 1
+bk -r check -a || fail
 echo OK
 
 
 echo $N Do a clone where we cannot read parents BAM server ..........$NL
 cd ../..
-bk clone $Q pmaster/pcopy newcopy 2> ERR || exit 1
+bk clone $Q pmaster/pcopy newcopy 2> ERR || fail
 cd newcopy
-test -f BitKeeper/log/BAM || {
-	echo failed to leave BAM marker
-	exit 1
-}
+test -f BitKeeper/log/BAM || fail failed to leave BAM marker
 grep -q "is inaccessible from this repository" ../ERR || {
-	echo wrong error message
-	cat ../ERR
-	exit 1
+	fail -f ../ERR wrong error message
 }
-bk -r check -a || exit 1
+bk -r check -a || fail
 bk bam check -F $Q 2> ERR && {
-	echo should have errors
-	cat ERR
-	exit 1
+	fail -f ERR should have errors
 }
-bk bam server $Q ../pmaster || exit 1
-bk bam check -F $Q || exit 1
+bk bam server $Q ../pmaster || fail
+bk bam check -F $Q || fail
 echo OK
 
 echo $N Remove my BAM server and pull the needed deltas .............$NL
-bk bam server $Q -sr || exit 1
-bk bam check -F $Q 2> ERR && {
-	echo should have errors
-	exit 1
-}
-bk bam pull $Q ../pmaster || exit 1
-bk bam check -F $Q || exit 1
+bk bam server $Q -sr || fail
+bk bam check -F $Q 2> ERR && fail should have errors
+bk bam pull $Q ../pmaster || fail
+bk bam check -F $Q || fail
 echo OK
 
 
@@ -56,63 +46,33 @@ echo $N Test bk bam push for pending deltas .........................$NL
 # the data for pending deltas should not get pushed to the parent
 cd ../pmaster/pcopy
 echo junk > junk
-bk new -b $Q junk || exit 1
+bk new -b $Q junk || fail
 FILE=`bk prs -hnd:BAMFILE: -r+ junk`
-test -f ../$FILE && {
-	echo should not be in parent
-	exit 1
-}
-bk bam push $Q || exit 1
-test -f ../$FILE && {
-	echo push shouldn\'t send it
-	exit 1
-}
-bk clone $Q -Bnone . ../../pnone || exit 1
-test -f ../$FILE && {
-	echo clone shouldn\'t send it to master
-	exit 1
-}
-test -f ../../pnone/$FILE && {
-	echo or to target
-	exit 1
-}
-bk bam push $Q -a || exit 1
-test -f ../$FILE || {
-	echo push -a should
-	exit 1
-}
+test -f ../$FILE && fail should not be in parent
+bk bam push $Q || fail
+test -f ../$FILE && fail push shouldn\'t send it
+bk clone $Q -Bnone . ../../pnone || fail
+test -f ../$FILE && fail clone shouldn\'t send it to master
+test -f ../../pnone/$FILE && fail or to target
+bk bam push $Q -a || fail
+test -f ../$FILE || fail push -a should
 echo OK
 
 
 echo $N Test that bk clone -r doesn\'t send data to BAM server .......$NL
 cd ..
-test -f $FILE || {
-	echo file should be here
-	exit 1
-}
+test -f $FILE || fail file should be here
 # Some hackery to flush our BAM data
 bk bam server -fr
-bk bam clean $Q || exit 1
+bk bam clean $Q || fail
 bk bam server $Q .
-test -f $FILE && {
-	echo clean should have removed file
-	exit 1
-}
+test -f $FILE && fail clean should have removed file
 cd pcopy
-bk commit -yjunk $Q || exit
+bk commit -yjunk $Q || fail
 rm -rf ../../pnone
-bk clone $Q -r1.2 -Bnone . ../../pnone || exit 1
-test -f ../$FILE && {
-	echo clone shouldn\'t send it to master
-	exit 1
-}
-test -f ../../pnone/$FILE && {
-	echo or to target
-	exit 1
-}
-bk bam push $Q || exit 1
-test -f ../$FILE || {
-	echo push should
-	exit 1
-}
+bk clone $Q -r1.2 -Bnone . ../../pnone || fail
+test -f ../$FILE && fail clone shouldn\'t send it to master
+test -f ../../pnone/$FILE && fail or to target
+bk bam push $Q || fail
+test -f ../$FILE || fail push should
 echo OK

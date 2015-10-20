@@ -1,0 +1,19 @@
+echo $N Test for corrupted component bug ............................$NL
+nested product
+for c in gcc gdb .
+do
+	echo foobar > $c/afile
+	bk new $Q $c/afile
+done
+bk commit $Q -yafile
+bk clone $Q -sPRODUCT . ../copy
+cd gcc
+# bk cp sets sortkey in the feature list
+bk cp $Q afile bfile
+bk commit $Q -ybfile
+cd ..
+bk features | grep -q sortkey || fail no sortkey feature found
+cd "$HERE"
+bk clone $Q copy copy2 2>ERR || fail
+test -s ERR && fail -f ERR errors during clone
+echo OK

@@ -31,6 +31,8 @@ log_main(int ac, char **av)
 	int	rflags = SILENT|RANGE_SET;
 	int	rc = 0;
 	int	local = 0;
+	char	*url = 0;
+	int	standalone = 0;
 	int	c;
 	char	*name;
 	char	*cset = 0, *tip = 0;
@@ -38,12 +40,13 @@ log_main(int ac, char **av)
 	pid_t	pid = 0;	/* pager */
 	longopt	lopts[] = {
 		{ "dspecf;", 300 },		/* let user pass in dspec */
+		{ "standalone", 'S' },		/* alias */
 		{ 0, 0 }
 	};
 
 	opts = new(Opts);
 	opts->doheader = !log;
-	while ((c = getopt(ac, av, "0123456789abc;C;d:DfhL|Mnopr;Y",
+	while ((c = getopt(ac, av, "0123456789abc;C;d:DfhL|MnopSr;Y",
 		    lopts)) != -1) {
 		switch (c) {
 		    case '0': case '1': case '2': case '3': case '4':
@@ -65,10 +68,7 @@ log_main(int ac, char **av)
 		    case 'h': opts->doheader = 0; break;	/* doc 2.0 */
 		    case 'L':
 			local = 1;
-			if (range_urlArg(&opts->rargs, optarg) ||
-			    range_addArg(&opts->rargs, "+", 0)) {
-				usage();
-			}
+			url = optarg;
 			break;
 		    case 'M': 	/* for backward compat, undoc 2.0 */
 			      break;
@@ -78,6 +78,7 @@ log_main(int ac, char **av)
 			     "%s: the -o option has been removed\n", av[0]);
 			 usage();
 		    case 'p': want_parent = 1; break;
+		    case 'S': standalone = 1; break;
 		    case 'x':
 			fprintf(stderr, "prs: -x support dropped\n");
 			usage();
@@ -114,6 +115,16 @@ log_main(int ac, char **av)
 		}
 		free(specf);
 	}
+	if (local) {
+		if (range_urlArg(&opts->rargs, url, standalone) ||
+		    range_addArg(&opts->rargs, "+", 0)) {
+			return (1);
+		}
+	} else if (standalone) {
+		fprintf(stderr,
+		    "%s: -S only can be used if -L is also used\n", prog);
+		return (1);
+	}
 	dspec_collapse(&opts->dspec, 0, 0);
 
 	if (opts->rargs.rstart && (cset || tip)) {
@@ -128,7 +139,10 @@ log_main(int ac, char **av)
 	}
 	if (log) pid = mkpager();
 	if (local && !av[optind]) {
-		name = sfiles_local(opts->rargs.rstart, "rm");
+		char	*slopts = aprintf("rm%s", standalone ? "S" : "");
+
+		name = sfiles_local(opts->rargs.rstart, slopts);
+		free(slopts);
 	} else {
 		name = sfileFirst(av[0], &av[optind], 0);
 	}

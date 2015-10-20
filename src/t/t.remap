@@ -81,7 +81,7 @@ echo OK
 
 cd "$HERE"
 echo $N Verify that a clone from noremap to remap works .............$NL
-bk clone $Q --hide-sccs-dirs noremap remap || exit 1
+bk clone $Q --hide-sccs-dirs noremap remap || fail
 test -d remap/SCCS && {
 	echo failed
 	exit 1
@@ -115,7 +115,7 @@ echo OK
 echo $N Verify that a clone from remap to noremap works .............$NL
 test -f remap/$FEATURES || fail no feature file
 grep -q remap remap/$FEATURES || fail no remap feature
-bk clone --sccs-compat $Q remap noremap2 || exit 1
+bk clone --sccs-compat $Q remap noremap2 || fail
 test -d noremap2/SCCS || {
 	echo failed
 	exit 1
@@ -141,7 +141,7 @@ trap "bk _kill bk://localhost:$P" 0
 
 rm -rf remap
 echo $N Verify that a rclone from noremap to remap works ............$NL
-bk clone $Q --hide-sccs-dirs noremap bk://localhost:$P/remap || exit 1
+bk clone $Q --hide-sccs-dirs noremap bk://localhost:$P/remap || fail
 test -d remap/SCCS && fail
 test -f remap/$FEATURES || fail no feature file
 grep -q remap remap/$FEATURES || fail no remap feature
@@ -157,7 +157,7 @@ rm -rf noremap2
 echo OK
 
 echo $N Verify that a rclone from remap to noremap works ............$NL
-bk clone --sccs-compat  $Q remap bk://localhost:$P/noremap2 || exit 1
+bk clone --sccs-compat  $Q remap bk://localhost:$P/noremap2 || fail
 test -d noremap2/SCCS || fail
 test -f noremap2/$FEATURES && {
 	grep -q remap noremap2/$FEATURES && fail remap feature
@@ -186,3 +186,13 @@ echo OK
 
 bk _kill bk://localhost:$P
 trap "" 0
+
+echo $N Check rmtree on remap does not try to rmdir the root.........$NL
+# This would try to recurse too far backwards up .bk side of things.
+# In windows, this could lead to trying to delete the dir we were in.
+cd "$HERE"/remap
+bk _rm -r dir || fail
+bk _rm -r SCCS || fail
+bk _rm -r BitKeeper || fail
+test `ls | wc -l` -eq 0 || fail
+echo OK

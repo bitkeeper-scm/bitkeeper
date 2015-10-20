@@ -7,7 +7,6 @@ private struct opts {
 	u32	dump:1;
 } *opts;
 
-private	char	*name2cfile(char *name);
 private	int	save(char *cfile);
 
 int
@@ -46,27 +45,34 @@ cfile_main(int ac, char **av)
 
 	unless (opts->dump || av[optind]) usage();
 
-	cfile = av[optind] ? name2cfile(av[optind]) : 0;
+	cfile = av[optind];
 
 	if (opts->print) {
 		assert(cfile);
-		unless (exists(cfile)) {
+		unless (xfile_exists(cfile, 'c')) {
 			rc = 2;		// so callers know there isn't one
-		} else if (cat(cfile)) {
+		} else if (!(t = xfile_fetch(cfile, 'c'))) {
 			rc = 1;		// generic error, like perms
+		} else {
+			fputs(t, stdout);
+			free(t);
 		}
 	} else if (opts->save) {
 		assert(cfile);
 		rc = save(cfile);
 	} else if (opts->rm) {
 		assert(cfile);
-		rc = unlink(cfile);
+		rc = xfile_delete(cfile, 'c');
 	} else if (opts->dump) {
 		if (cfile) exit(1);
+		f = fmem();
 		for (name = sfileFirst(av[0], (char *[]){"-", 0}, sf_flags);
 		     name; name = sfileNext()) {
-			cfile = name2cfile(name);
-			if (f = fopen(cfile, "r")) {
+			if (t = xfile_fetch(name, 'c')) {
+				ftrunc(f, 0);
+				fwrite(t, 1, strlen(t), f);
+				free(t);
+				rewind(f);
 				gfile = sccs2name(name);
 				printf("%-*s%s\n",
 				    prefix, prefix ? " ": "", gfile);
@@ -75,29 +81,16 @@ cfile_main(int ac, char **av)
 					printf("%-*s%s\n", max(2, 2 * prefix),
 					    prefix ? " ": "", t);
 				}
-				fclose(f);
 			} else {
 				printf("\n");
 			}
-			FREE(cfile);
 			printf("\n");
 			fflush(stdout);
 		}
+		fclose(f);
 	}
-	FREE(cfile);
 	free(opts);
 	return (rc);
-}
-
-private	char	*
-name2cfile(char *name)
-{
-	char	*cfile, *c;
-
-	cfile = name2sccs(name);
-	c = strrchr(cfile, '/') + 1;
-	*c = 'c';
-	return (cfile);
 }
 
 private	int
@@ -106,17 +99,15 @@ save(char *cfile)
 	FILE	*f;
 	char	buf[MAXLINE];
 
-	unless (f = fopen(cfile, "w")) {
-		if (mkdirf(cfile) || !(f = fopen(cfile, "w"))) {
-			/* XXX: rm empty dir if mkdirf()? */
-			return (1);
-		}
-	}
-
+	f = fmem();
 	while (fgets(buf, sizeof(buf), stdin)) {
 		fputs(buf, f);
 	}
+	if (xfile_store(cfile, 'c', fmem_peek(f, 0))) {
+		perror(cfile);
+		fclose(f);
+		return (1);
+	}
 	fclose(f);
-
 	return (0);
 }

@@ -81,7 +81,7 @@ if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N check cnt-A when pushing stuff ..............................$NL
 cd "$HERE"
-bk clone $Q project copy || exit 1
+bk clone $Q project copy || fail
 cd "$HERE/project"
 echo foo > foo
 bk new $Q foo
@@ -93,7 +93,7 @@ bk push $Q "$HERE/copy" || { echo failed; exit 1; }
 echo OK
 
 echo $N check cnt-A on delta command line ...........................$NL
-bk edit $Q foo || exit 1
+bk edit $Q foo || fail
 A=`cat foo`
 bk delta $Q -y"$A odd comment" foo 2> "$HERE/out"
 grep -q "Non-printable" "$HERE/out" || { echo failed; exit 1; }
@@ -107,32 +107,32 @@ echo -e "\001" > test2
 echo -e "sdf" >> test2
 echo -e "sss" >> test2
 echo -e "\001" >> test2
-bk ci -i -y1 $Q test2 || exit 1
-bk edit $Q test2 2> get.out || exit 1
+bk ci -i -y1 $Q test2 || fail
+bk edit $Q test2 2> get.out || fail
 cat get.out
-grep -q "bad delta cksum" get.out && exit 1
+grep -q "bad delta cksum" get.out && fail
 echo -e "\001" > test2
 echo -e "sdf" >> test2
 echo -e "sss2" >> test2
 echo -e "\001" >> test2
-bk ci -y2 $Q test2 || exit 1
-bk edit $Q test2 2> get.out || exit 1
+bk ci -y2 $Q test2 || fail
+bk edit $Q test2 2> get.out || fail
 cat get.out
-grep -q "bad delta cksum" get.out && exit 1
+grep -q "bad delta cksum" get.out && fail
 echo -e "sdf" > test2
 echo -e "sss2" >> test2
 echo -e "\001" >> test2
-bk ci -y3 $Q test2 || exit 1
-bk edit $Q test2 2> get.out || exit 1
+bk ci -y3 $Q test2 || fail
+bk edit $Q test2 2> get.out || fail
 cat get.out
-grep -q "bad delta cksum" get.out && exit 1
+grep -q "bad delta cksum" get.out && fail
 echo -e "sdf" > test2
 echo -e "sss2" >> test2
 echo -e "\001a" >> test2
-bk ci -y4 $Q test2 || exit 1
-bk edit $Q test2 2> get.out || exit 1
+bk ci -y4 $Q test2 || fail
+bk edit $Q test2 2> get.out || fail
 cat get.out
-grep -q "bad delta cksum" get.out && exit 1
+grep -q "bad delta cksum" get.out && fail
 echo OK
 
 echo $N check cnt-A in just the right place in a long line ..........$NL
@@ -145,7 +145,7 @@ for i in 1 2 3; do
 	mv B A
 done
 bk new $Q A
-bk checksum -r+ A || exit 1
+bk checksum -r+ A || fail
 echo OK
 
 echo $N check carraige return in just the right place ...............$NL

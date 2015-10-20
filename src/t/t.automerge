@@ -54,7 +54,7 @@ END
 bk new $Q foo
 bk commit $Q -ystart
 cd "$HERE"
-bk clone $Q project copy || exit 1
+bk clone $Q project copy || fail
 cd project
 bk edit $Q foo
 cat <<END > foo
@@ -78,7 +78,7 @@ bk commit $Q -yslave
 echo OK
 
 echo $N do pull .....................................................$NL
-bk pull $Q || exit 1
+bk pull $Q || fail
 bk get $Q foo
 cat <<END > want
 b
@@ -94,24 +94,24 @@ cd ../project
 for f in a.uniq b.uniq c.uniq
 do
 	echo 1 > $f
-	bk new $Q $f || exit 1
+	bk new $Q $f || fail
 done
-bk commit -yinit $Q || exit 2
+bk commit -yinit $Q || fail
 cd ../copy
-bk pull $Q || exit 3
+bk pull $Q || fail
 bk edit $Q b.uniq c.uniq
 echo 2 > b.uniq
 echo 3 >> c.uniq
-bk ci $Q -y2 b.uniq c.uniq || exit 4
-bk commit $Q -y2 || exit 5
+bk ci $Q -y2 b.uniq c.uniq || fail
+bk commit $Q -y2 || fail
 cd ../project
-bk edit $Q a.uniq b.uniq || exit 6
+bk edit $Q a.uniq b.uniq || fail
 echo 4 > a.uniq
 echo 4 >> b.uniq
-bk ci $Q -y4 a.uniq b.uniq || exit 7
-bk commit $Q -y4 || exit 8
+bk ci $Q -y4 a.uniq b.uniq || fail
+bk commit $Q -y4 || fail
 cd ../copy
-echo q | bk pull $Q || exit 9
+echo q | bk pull $Q || fail
 
 bk get $Q || fail
 cat <<EOF > WANT

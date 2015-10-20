@@ -85,6 +85,24 @@ EOF
 if [ -s "$OUT" ] ; then echo failed; cat "$OUT" ; exit 1 ; fi
 echo OK
 
+echo $N Test Select File -\> Current ChangeSet menu item..............$NL
+bk guitest revtool -r1.2 >"$OUT" 2>&1 <<'EOF'
+	global test_menuitems
+	test_getMenus {} {}
+	set got [lsort [array names test_menuitems \
+			    {Select File->Current Changeset->*}]]
+	set got [string map [list {Select File->Current Changeset->} {}] $got]
+	set want {{src/file1@1.0} {src/file1@1.1} {src/file2@1.0} {src/file2@1.1} {src/file3@1.0} {src/file3@1.1} {src/file4@1.0} {src/file4@1.1} {src/file5@1.0} {src/file5@1.1}}
+	if {$want != $got} {
+		puts "bad file list"
+		puts "WANT: $want"
+		puts "GOT : $got"
+	}
+	test_buttonPress Quit
+EOF
+[ -s "$OUT" ] && fail -f "$OUT"
+echo OK
+
 # this does a very shallow test for whether the graph is correct;
 # it simply checks that one data structure has been initialized. 
 echo $N Simple graph test ...........................................$NL

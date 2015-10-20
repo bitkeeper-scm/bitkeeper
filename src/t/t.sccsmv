@@ -43,7 +43,6 @@ bk co $Q -l A/file1
 rm -f BitKeeper/log/x.id_cache
 
 echo "this is a comment for file1" | bk cfile save A/file1
-echo "this is a old comment for file1" | bk cfile save A/file1@1.1
 bk mv A/file1 B/file1
 # We need this on cygwin (dir cache lag?)
 while true
@@ -58,7 +57,6 @@ if [ ! -f B/file1 ]; then echo failed 1; exit 1; fi
 if bk _test ! -f B/SCCS/s.file1; then echo failed 2; exit 1; fi
 if bk _test ! -f B/SCCS/p.file1; then echo failed 3; exit 1; fi
 if bk _test ! -f B/SCCS/c.file1; then echo failed 4; exit 1; fi
-if bk _test ! -f B/SCCS/c.file1@1.1; then echo failed 4; exit 1; fi
 if bk _test ! -f A/SCCS/s.file3; then echo failed 5; exit 1; fi
 # XXX - I think this is right but am not sure.
 DPATH=`bk prs -hr1.5 -d:DPN: B/file1`
@@ -77,7 +75,7 @@ DPATH=`bk prs -hr+ -d:DPN: C/file3`
 if [ ${DPATH}X != "C/file3"X ]; then echo failed; exit 1; fi
 DPATH=`bk prs -hr1.1 -d:DPN: C/file3`
 if [ ${DPATH}X != "B/file2"X ]; then echo failed; exit 1; fi
-bk -r check -a || exit 1
+bk -r check -a || fail
 echo OK
 
 echo $N Make sure we do not dump core if a bad file name is given ...$NL
@@ -97,7 +95,7 @@ if bk _test ! -f C/SCCS/s.file4; then echo failed; exit 1; fi
 if [ -d B ]; then echo failed; exit 1; fi
 mkdir B
 bk mv C/file1 C/file4 B
-bk -r check -a || exit 1
+bk -r check -a || fail
 echo OK
 
 echo $N Test bk mvdir to directory that does not exist ..............$NL
@@ -111,7 +109,7 @@ fi
 if bk _test ! -f "BB BB/CCCC/DDDD/B1/SCCS/s.fileB1"
 then	echo failed to move fileB1; exit 1
 fi
-bk -r check -a || exit 1
+bk -r check -a || fail
 echo OK
 
 echo $N And move it back ............................................$NL
@@ -228,7 +226,6 @@ bk rm A/file4
 bk unrm A/file4 > /dev/null
 if bk _test ! -f A/SCCS/s.file4; then echo failed; exit 1; fi
 if bk _test -f A/SCCS/c.file4; then echo failed; exit 1; fi
-if bk _test -f A/SCCS/c.file4@1.1; then echo failed; exit 1; fi
 XFILES=`bk -R sfiles -x`
 if [ "$XFILES" != "" ]; then echo failed; echo $XFILES; exit 1; fi
 bk rm A/file4
@@ -287,12 +284,12 @@ echo OK
 
 echo $N Test bk rmdir ...............................................$NL
 date > B/B1/fileB2
-bk rmdir B 2>&1 | grep -q "extra" || exit 1
-bk delta $Q -i -l B/B1/fileB2 || exit 1
+bk rmdir B 2>&1 | grep -q "extra" || fail
+bk delta $Q -i -l B/B1/fileB2 || fail
 echo new > B/B1/fileB2
-bk rmdir B 2>&1 | grep -q "edited" || exit 1
-bk delta $Q -y B/B1/fileB2 || exit 1
-bk rmdir B || exit 1
+bk rmdir B 2>&1 | grep -q "edited" || fail
+bk delta $Q -y B/B1/fileB2 || fail
+bk rmdir B || fail
 if [ -d B ]; then echo failed; exit 1; fi
 bk -r check -a
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
@@ -363,7 +360,7 @@ bk new $Q f
 bk edit $Q f
 date >> f
 bk mv f newf
-bk pull $Q || exit 1
+bk pull $Q || fail
 if bk _test ! -f SCCS/s.qqq; then echo failed; exit 1; fi
 echo OK
 
@@ -373,13 +370,13 @@ commercial src
 mkdir foo
 cd foo
 echo bar > bar
-bk new $Q bar || exit 1
+bk new $Q bar || fail
 mkdir sub1
 cd sub1
 echo sub > sub
-bk new $Q sub || exit 1
+bk new $Q sub || fail
 cd ../..
-bk mvdir foo foo2 || exit 1
+bk mvdir foo foo2 || fail
 if bk _test -f foo/sub1/SCCS/s.sub; then echo failed; exit 1; fi
 echo OK
 
@@ -632,13 +629,13 @@ echo $N BugID 2007-02-07-001 - see if bk rm follows symlinks ........$NL
 		    echo should not have pending files
 		    exit 1
 	}
-	bk -r check -ac || exit 1
+	bk -r check -ac || fail
 	cd ../inner
 	test `bk sfiles -p | wc -l` -eq 1 || {
 		    echo should have pending files
 		    exit 1
 	}
 	bk commit $Q -ywhatever
-	bk -r check -ac || exit 1
+	bk -r check -ac || fail
 	echo OK
 fi	#----------------------------------------------------------------

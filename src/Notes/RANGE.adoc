@@ -1,0 +1,110 @@
+Range notation
+==============
+
+Date/revision notation
+
+	d1..d2	gets you everything from d1 to d2, inclusive
+	..d2	is the same as 1.1..d2
+	d1..	is the same as d1..TOT where TOT is the most recent delta
+
+For dates, the start rounds down, the end rounds up.  To override the
+rounding, the dates can be prefixed with "-" or "+" to round down or up,
+respectively.
+
+So the full syntax is
+
+	[-|+]date..[-|+]date
+
+Dates can also be represented as symbols; if the symbol exists in the
+file, then the date from the delta associated with the symbol is used.
+
+Typical specifications are:
+
+	-d<date>[op<date>]
+	-r<rev>[op<rev>]
+
+This does not allow me to specify 
+
+	<rev> .. <symbol>
+
+We do that like so
+
+	cmd -r1.3 -dsym
+
+Date format
+-----------
+	yymmddhhmmss
+	Rounds up at the end, rounds down at the beginning.
+	For month, day, hour, minute, second fields, any
+	value that is too large, is truncated back to its
+	highest value.  This is so you can always use "31"
+	as the last day of the month and the right thing happens.
+
+The range interface will take all of the above and return two revision
+numbers to use as args to the get/diffs/whatever.
+
+Commands which want ranges of some sort:
+
+	diffs - 1 or 2 revs
+	sccslog - 1 or 2 revs
+	prs - 1 or 2 revs
+	get - 1 rev
+	co - 1 rev
+
+    diffs
+    	<>: TOT and clear text file
+	-r: specified rev and clear text file
+	-r -r: specified revs
+	-r -d: specified revs
+	-d -d: specified revs
+
+
+Possible forms:
+
+	-r		implies TOT
+	-r<rev>
+	-r<rev><op>	<rev>. == <rev>; <rev>. == first rev after
+	-r<op><rev>	.<rev> == <rev>; ,<rev> == first rev before
+	-d<date>
+	-d<date><op>	<d>. == <d>; <d>, == first after date
+	-d<op><date>	.<d> == <d>; ,<d> == first before date
+
+get, etc
+	<null>		TOT
+	(A A,		first delta after point A
+	[A A.		first delta at or after point A
+	A) ,A A		first delta before point A
+	A] .A		first delta at or before point A
+
+prs, sccslog
+	(A A,		everything after point A	
+	[A A.		everything after point, including point A
+	A) ,A		everything before point A
+	A] .A A		everything before point A, including point A
+
+diffs, prs, sccslog
+	(A,B) A,,B	everything after A and before B
+	(A,B] A,.B	everything after A and up to and including B
+	[A,B) A.,B	everything from A to before B
+	[A,B] A..B	everything from A to A
+
+Defaults:
+	Inclusive
+	In two item specifications, first rounds down, second rounds up
+	In single item specifications, round up
+
+Testing
+	Add a -1 option to PRS that says just this one.  Then use PRS to 
+	test each case.
+
+	OK, so that works.  Now I need to make 
+
+		prs -c89]
+
+	mean everything up to 89].  In other words, imply -e.
+
+	And 
+
+		prs -c[90
+
+	mean everything after 1990.  That one works already, I think.

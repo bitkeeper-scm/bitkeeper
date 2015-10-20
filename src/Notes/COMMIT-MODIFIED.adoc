@@ -1,0 +1,80 @@
+AUTOMATIC DELTA ON MODIFIED FILES DURING COMMIT
+===============================================
+
+Currently, commit only considers sfiles with pending deltas.  The
+list of files with pending deltas is either supplied on the command
+line, stdin, or derived with `bk sfiles -pC`.
+
+The proposal is to have commit automatically delta modified and/or
+new files prior to making the changeset.
+
+The primary aim is to make large scale benchmarks, imports, etc faster.
+
+Changes to delta
+----------------
+
+Currently, after creating the changeset, commit will run check with
+the -M option to create CSET marks (thus rewriting the sfile).  We
+can skip this step if we modify delta to leave a CSET mark at delta
+time.
+
+`delta --csetmark`::
+  Delta will need to accept a new option to leave a CSET mark in the
+  sfile, thereby allowing commit to drop the -M from the check it
+  runs.
+
+`delta --prefer-cfile`::
+  Delta also needs a new semantic to prefer cfiles over any command
+  line comment.  This is because commit will be calling with the
+  changeset comment supplied via -Y, however, the contents of any
+  cfiles that already exist (such as citool might create) should be
+  honoured.
+
+`delta --did-ci`::
+  When commit feeds delta a list of files on stdin, it has
+  no way of knowing whether or not delta will actually delta the
+  file (perhaps there are no diffs).  The --did-ci option takes
+  a filename argument and will write "path|rev" into that file
+  for each file it successfully processes.
+
+Changes to check
+----------------
+
+The code that processes -M to create CSET marks currently runs
+unconditionally.  Given that some files will be marked via the above
+mechanism, we check for the existence of the mark before proceeding.
+
+Changes to commit
+-----------------
+
+   - Make this the new default behaviour when processing -l or stdin
+
+   - Add a --ci option to enable this behaviour when commit generates
+     its own list of files to commit (but note that we do not automagically
+     include extra files, those have to be specified).
+
+   - Apply delta to modified files (with --csetmark, --prefer-cfile
+     and --did-ci options).
+
+   - in the event of a failure, we need to rollback the automatic
+     deltas.  The current thinking is to simply remove the added cset
+     mark, leaving the delta pending.
+
+   - the syntax for pending files fed to commit via -l or stdin is:
++
+       filename|rev
++
+accept lines without the `|rev` portion and assume that they are
+modified and/or new (to be delta'ed)
++
+Since this is new, accept sfile or gfile names (saves the
+benchmarking script from having to know about sfiles).
+
+   - absent stdin/-l, change the invocation of `bk sfiles -pC` to be
+     `bk sfiles -v -pC -c` and parse the output to separate the
+     modified files from the pending files (allows us to get the list
+     with a single sfiles pass).  Note that this method will not pick
+     up new files.
+
+   - remove the assert the checks that non of the files involved in
+     the commit has a cset mark

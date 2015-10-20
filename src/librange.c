@@ -98,18 +98,21 @@ range_addArg(RANGE *rargs, char *arg, int isdate)
  * elements.  So it will be leaked.
  */
 int
-range_urlArg(RANGE *rargs, char *url)
+range_urlArg(RANGE *rargs, char *url, int standalone)
 {
 	FILE	*f;
 	char	*rev;
 	int	rc = -1;
+	u32	rgca_flags = RGCA_ONLYONE;
 	char	**urls = 0;
 
 	f = fmem();
+	if (standalone) rgca_flags |= RGCA_STANDALONE;
 	if (url) urls = addLine(urls, url);
-	if (repogca(urls, ":REV:\\n", RGCA_ONLYONE, f)) goto out;
+	if (repogca(urls, ":REV:\\n", rgca_flags, f)) goto out;
 	rewind(f);
-	rev = aprintf("@%s", fgetline(f)); /* intentional leak (see above) */
+	/* intentional leak in rev (see above) */
+	rev = aprintf("@%s%s", standalone ? "@" : "", fgetline(f));
 	rc = range_addArg(rargs, rev, 0);
 out:	fclose(f);
 	freeLines(urls, 0);
@@ -240,8 +243,19 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 	}
 	if (flags & RANGE_ENDPOINTS) {
 		unless (rargs->rstart) return (0);
+		rev = 0;
+		if (flags & RANGE_RSTART2) {
+			if (rev = strchr(rargs->rstart, ',')) *rev = 0;
+		}
 		unless (s->rstart = getrev(me, s, flags, rargs->rstart)) {
+			if (rev) *rev = ',';
 			goto out;
+		}
+		if (rev) {
+			*rev++ = ',';
+			unless (s->rstart2 = getrev(me, s, flags, rev)) {
+				goto out;
+			}
 		}
 		if (rargs->rstop &&
 		    !(s->rstop = getrev(me, s, flags, rargs->rstop))) {

@@ -1,20 +1,23 @@
 #include "sccs.h"
 
 private	void	dumpStats(sccs *s);
+private	void	dumpEof(sccs *s);
 
 int
 heapdump_main(int ac, char **av)
 {
 	int	c;
-	int	stats = 0;
+	int	stats = 0, eof = 0;
 	char	*name;
 	sccs	*s;
-	ser_t	d;
+	ser_t	d, lastd;
+	u32	rkoff, dkoff;
 	char	*t;
 	symbol	*sym;
 
-	while ((c = getopt(ac, av, "s", 0)) != -1) {
+	while ((c = getopt(ac, av, "es", 0)) != -1) {
 		switch (c) {
+		    case 'e': eof = 1; break;
 		    case 's': stats = 1; break;
 		    default: bk_badArg(c, av);
 		}
@@ -29,6 +32,11 @@ heapdump_main(int ac, char **av)
 		if (stats) {
 			dumpStats(s);
 			printf("\n");
+			sccs_free(s);
+			continue;
+		}
+		if (eof) {
+			dumpEof(s);
 			sccs_free(s);
 			continue;
 		}
@@ -61,15 +69,28 @@ heapdump_main(int ac, char **av)
 
 		printf("weave:\n");
 		sccs_rdweaveInit(s);
-		while (t = sccs_nextdata(s)) {
-			if (*t == '\001') {
-				printf("^A");
-				++t;
+		if (CSET(s)) {
+			lastd = 0;
+			while (d = cset_rdweavePair(s, 0, &rkoff, &dkoff)) {
+				if (d != lastd) {
+					if (lastd) printf("^AE %d\n", lastd);
+					printf("^AI %d\n", d);
+					lastd = d;
+				}
+				printf("%s ", HEAP(s, rkoff));
+				printf("%s\n", dkoff ? HEAP(s, dkoff) : "END");
 			}
-			printf("%s\n", t);
+			if (lastd) printf("^AE %d\n", lastd);
+		} else {
+			while (t = sccs_nextdata(s)) {
+				if (*t == '\001') {
+					printf("^A");
+					++t;
+				}
+				printf("%s\n", t);
+			}
 		}
 		sccs_rdweaveDone(s);
-
 		sccs_free(s);
 	}
 	return (0);
@@ -185,19 +206,24 @@ delta_print(sccs *s, ser_t d)
 private void
 dumpStats(sccs *s)
 {
-	int	tsize;
-	int	i, len, cnt;
-	u32	off, off2;
+	u32	tsize;
+	u32	i, len, cnt;
+	u32	off, rkoff, dkoff;
 	char	*t;
 	FILE	*f;
 	ser_t	d;
 	char	*names[] = {
 		"cludes", "comments", "bamhash", "random",
 		"userhost", "pathname", "sortPath", "zone",
-		"symlink", "csetFile"
+		"symlink", "csetFile", "deltakeys"
 	};
-	int	htotal[10] = {0};
-	int	hcnt[10] = {0};
+#define	N_BAMHASH	2
+#define	N_WEAVE		2
+#define	N_DELTAKEYS	10
+#define	N_NUMNAMES	(sizeof(names) / sizeof(names[0]))
+	int	numNames = N_NUMNAMES;
+	int	htotal[N_NUMNAMES] = {0};
+	int	hcnt[N_NUMNAMES] = {0};
 	const	char *wfmt = "%10s: %7s %4.1f%% %6d %5.1f\n";
 	hash	*seen = hash_new(HASH_MEMHASH);
 
@@ -212,6 +238,9 @@ dumpStats(sccs *s)
 		printf(" (gzip)");
 	}
 	printf("\n");
+	if (t = hash_fetchStr(s->heapmeta, "GEN")) {
+		printf("%10s: %7s\n", "generation", t);
+	}
 	if (s->heapsz1) {
 		assert(CSET(s));
 		printf("heap1: %s->%s\n",
@@ -224,17 +253,21 @@ dumpStats(sccs *s)
 		printf("heap: %5s (contained in sfile)\n", psize(s->heap.len));
 	}
 
-	if (BWEAVE(s)) names[2] = "weave";
-
+	if (CSET(s)) names[N_BAMHASH] = "weave";  /* shared with bamhash */
 	for (d = TREE(s); d <= TABLE(s); d++) {
-		for (i = 0; i < 10; i++) {
+		for (i = 0; i < numNames; i++) {
+			if (i == N_DELTAKEYS) continue;
 			unless (off = *(&CLUDES_INDEX(s, d) + i)) continue;
-			if ((i == 2) && BWEAVE(s)) {
+			if ((i == N_WEAVE) && CSET(s)) {
 				/* encoded cset weave */
-				while (RKOFF(s, off)) {
-					off2 = NEXTKEY(s, off);
-					htotal[i] += (off2 - off);
-					off = off2;
+				while (off = RKDKOFF(s, off, rkoff, dkoff)) {
+					if (dkoff) {
+						htotal[N_DELTAKEYS] +=
+						    strlen(HEAP(s, dkoff))+1;
+						++hcnt[N_DELTAKEYS];
+					}
+					htotal[i] += 4;
+					unless (BWEAVE2(s)) htotal[i] += 4;
 				}
 				htotal[i] += 4;
 				++hcnt[i];
@@ -247,7 +280,7 @@ dumpStats(sccs *s)
 		}
 	}
 	tsize = s->heap.len;
-	for (i = 0; i < 10; i++) {
+	for (i = 0; i < numNames; i++) {
 		unless (htotal[i]) continue;
 		printf(wfmt,
 		    names[i],					// name
@@ -271,19 +304,27 @@ dumpStats(sccs *s)
 	    cnt, (double)len/cnt);
 	tsize -= len;
 
-	if (BWEAVE(s)) {
+	if (CSET(s)) {
 		cnt = len = 0;
-		for (off = s->rkeyHead; off; off = RKNEXT(s, off)) {
+		for (off = s->rkeyHead; off; off = KOFF(s, off)) {
 			++cnt;
-			off2 = NEXTKEY(s, off);
-			len += (off2 - off);
+			len += strlen(HEAP(s, off+4)) + 1 + 4;
 		}
+		if (cnt) len += 4;
 		printf(wfmt,
 		    "rootkeys", psize(len),  (100.0 * len) / s->heap.len,
 		    cnt, (double)len/cnt);
 		tsize -= len;
 	}
+	if (t = hash_fetchStr(s->heapmeta, "HASHBITS")) {
+		len = sizeof(u32) * (1 << atoi(t));
+		printf("%10s: %7s %4.1f%%\n",
+		    "uniqhash", psize(len),  (100.0 * len) / s->heap.len);
+		tsize -= len;
+	}
 	if (tsize) {
+		fflush(stdout);
+		assert(tsize > 0);
 		printf("%10s: %7s %4.1f%%\n",
 		    "unused", psize(tsize),
 		    (100.0 * tsize) / s->heap.len);
@@ -295,7 +336,7 @@ dumpStats(sccs *s)
 		    psize(nLines(s->symlist) * sizeof(symbol)));
 	}
 	tsize = 0;
-	unless (BWEAVE(s)) {
+	unless (CSET(s)) {
 		sccs_rdweaveInit(s);
 		while (t = sccs_nextdata(s)) {
 			tsize += strlen(t)+1;
@@ -303,4 +344,35 @@ dumpStats(sccs *s)
 		sccs_rdweaveDone(s);
 		printf("   weave: %7s\n", psize(tsize));
 	}
+}
+
+/*
+ * Poly can put the same rootkey deltakey into multiple csets,
+ * so we need to include cset key to disambiguate.
+ *
+ * But when wanting to isolate that component in the ouput using
+ * grep, we need to list delta key, as comp name isn't in rootkey.
+ *
+ * And lastly, we include rootkey for item, as it makes it easier
+ * to track between output, what lines up with what.
+ */
+private	void
+dumpEof(sccs *s)
+{
+	ser_t	d;
+	u32	rkoff, dkoff, prev = 0;
+	char	cset[MAXKEY];
+
+	if (!s || !CSET(s)) return;
+
+	sccs_rdweaveInit(s);
+	while (d = cset_rdweavePair(s, 0, &rkoff, &dkoff)) {
+		if (dkoff) {
+			prev = dkoff;
+			continue;
+		}
+		sccs_sdelta(s, d, cset);
+		printf("%s %s %s\n", HEAP(s, rkoff), HEAP(s, prev), cset);
+	}
+	sccs_rdweaveDone(s);
 }

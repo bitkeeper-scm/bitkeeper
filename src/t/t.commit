@@ -14,6 +14,17 @@
 
 
 commercial project
+echo $N Test commit with a long file name ...........................$NL
+len=1000
+test "$PLATFORM" = WIN32 && len=240
+file=`longpath "$HERE/project/" $len`
+mkdir -p "`dirname "$file"`"
+echo hi there > "$file"
+bk new $Q "$file" || fail
+# The error was in the commit code which generates comments
+bk commit $Q -f || fail
+echo OK
+
 echo $N Test commit -y with multiline comments ......................$NL
 echo hi there > file
 bk new $Q file
@@ -24,7 +35,7 @@ a
 
 test
 
-' || exit 1
+' || fail
 bk prs -r+ -hd':COMMENTS:' ChangeSet > GOT
 bk undos <<EOF > WANT
 C this
@@ -41,6 +52,13 @@ echo OK
 echo $N Verify commit metadata ......................................$NL
 bk _heapdump ChangeSet | egrep '^([PS]|a/|serial|mode|flags|xflags)' > GOT
 cat <<EOF > WANT
+serial: 4 (1.3)
+PARENT: 3 (1.2)
+a/d/s: 1/0/1
+xflags: 1061 (BITKEEPER,CSETMARKED,HASH)
+flags: 1001 (CSET)
+PATHNAME: ChangeSet
+SORTPATH: ChangeSet
 serial: 3 (1.2)
 PARENT: 2 (1.1)
 a/d/s: 1/0/1
@@ -74,7 +92,7 @@ bk sfiles -pA > BEFORE
 echo 'SCCS/s.file|1.4' | bk commit $Q -ywhatever -
 bk sfiles -pA > AFTER
 bk pending > LEFT
-grep -q 1.5 LEFT || exit 1
+grep -q 1.5 LEFT || fail
 cmp -s BEFORE AFTER && {
 	echo failed
 	cat BEFORE
@@ -86,12 +104,12 @@ echo OK
 echo $N Commit in bogus nested alias ................................$NL
 mkdir subdir
 cd subdir
-test 1.3 = `bk prs -r+ -hnd:I: ../ChangeSet` || fail
+test 1.4 = `bk prs -r+ -hnd:I: ../ChangeSet` || fail
 bk commit $Q -sTCLTK -yfile-leftover 2>ERR && fail -f ERR should fail
 echo 'commit: -sALIAS only allowed in product' > WANT
 cmpfiles ERR WANT
 bk commit $Q -sHERE -yfile-leftover || fail
-test 1.4 = `bk prs -r+ -hnd:I: ../ChangeSet` || fail
+test 1.5 = `bk prs -r+ -hnd:I: ../ChangeSet` || fail
 echo OK
 
 echo $N Commit using -S in a standalone repo to see that it works ...$NL
@@ -157,7 +175,7 @@ echo hi >> BitKeeper/etc/collapsed
 bk ci $Q -yy -u BitKeeper/etc/collapsed
 chmod +w BitKeeper/etc/collapsed
 # force an attr file update to show it gets reverted
-_BK_ATTR_TEST=foo bk commit $Q -yy > ERR 2>&1 && fail -f ERR should fail
+_BK_ATTR_TEST=foo bk --config=autofix:off commit $Q -yy > ERR 2>&1 && fail -f ERR should fail
 rm BitKeeper/etc/collapsed
 bk repocheck $Q || fail
 bk sfiles -p > GOT
@@ -169,4 +187,175 @@ cmpfiles WANT GOT
 # check again that all pending are marked
 bk sfiles -P > GOT
 cmpfiles WANT GOT
+echo OK
+
+echo $N Test out broken merge detection .............................$NL
+# Setup this and next test for bad merge detection
+cd "$HERE"
+commercial base
+touch foo bar
+bk new $Q -l foo bar
+bk commit $Q -f
+bk clone $Q --checkout=edit . ../merge
+bk delta $Q -lfynull foo bar
+bk commit $Q -f
+cd ../merge
+echo content > bar
+bk delta $Q -fynull foo bar
+bk commit $Q -f
+bk _rm SCCS/s.foo
+bk -r check -ag | bk gone $Q -
+bk commit $Q -f
+cd ../base
+bk delta $Q -fynull foo bar
+bk commit $Q -f
+bk _rm SCCS/s.foo
+bk -r check -ag | bk gone $Q -
+bk commit $Q -f
+bk clone $Q . ../stuff
+cd ../stuff
+touch zoo
+bk new $Q zoo
+bk commit $Q -f
+cd ../merge
+bk pull $Q -R
+# The gone file is in place, so the resolve would normally work.
+# Reach in through the resolve and zero it.
+# A conflict was set up in meaningless file 'bar'. Just sccs merge it.
+bk resolve <<EOF 2> ERR && fail -f ERR
+!bk edit -q BitKeeper/etc/gone
+!echo > BitKeeper/etc/gone
+!bk delta -q -ygone BitKeeper/etc/gone
+s
+C
+EOF
+grep -q "commit: ChangeSet is a merge but is missing" ERR || fail -f ERR
+# restore gone, it commits!
+bk edit $Q -x+ RESYNC/BitKeeper/etc/gone
+bk resolve $Q || fail
+echo OK
+
+echo $N Test out broken merge in the past does not break things .....$NL
+bk pull $Q ../stuff || fail
+echo OK
+
+echo $N Show new files are created with 1.1 marks ...................$NL
+# in merge
+bk clone $Q . ../side
+# need to make a merge
+echo h > ff
+bk new $Q ff
+bk commit $Q -yff || fail
+cd ../side
+echo hi > newfile
+bk new $Q newfile
+bk commit $Q -yn1 || fail
+# show new file has 1.1 mark
+bk _heapdump -e ChangeSet | grep -q newfile || fail missing mark
+# recreate cset where rootkey is not unique
+bk fix -c -d || fail
+bk commit $Q -yn2 || fail
+# the file still has mark from different code
+bk _heapdump -e ChangeSet | grep -q newfile || fail missing mark
+echo OK
+
+echo $N Show new files in merge get 1.1 marks added .................$NL
+bk edit $Q newfile
+echo h >> newfile
+bk ci $Q -y2 newfile
+bk commit $Q -y2 || fail
+bk clone --compat $Q . ../side.ascii
+
+# ascii files don't have 1.1 marks
+cd ../merge
+bk pull $Q ../side.ascii
+# but we added the mark during the merge
+bk _heapdump -e ChangeSet | grep -q newfile || fail missing mark
+echo OK
+
+echo $N Test that delta/new are implied with stdin ..................$NL
+cd "$HERE"
+commercial proj-cm
+touch foo bar
+# Only foo, bar is a new file that commit should bk new
+bk new $Q foo
+bk edit $Q foo
+echo foo >> foo
+cat <<EOF > list
+SCCS/s.foo
+bar
+EOF
+bk commit $Q -ystuff - < list >OUT 2>&1 || fail -f OUT
+cat <<EOF > WANT
+1.2
+1.1
+EOF
+bk prs -hnd:REV: -r+ foo bar > GOT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test with gfiles on stdin ...................................$NL
+bk edit $Q foo bar
+echo foo >> foo
+echo bar >> bar
+echo baz >> baz
+cat <<EOF > list
+foo
+bar
+baz
+EOF
+bk commit $Q -ystuff - < list >OUT 2>&1 || fail -f OUT
+cat <<EOF > WANT
+1.3
+1.2
+1.1
+EOF
+bk prs -hnd:REV: -r+ foo bar baz > GOT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test --ci with -l ...........................................$NL
+bk edit $Q foo bar
+echo foo >> foo
+echo bar >> bar
+bk ci $Q -ystuff bar
+cat <<EOF > list
+SCCS/s.foo
+SCCS/s.bar|1.3
+EOF
+bk commit $Q -ystuff --ci -llist >OUT 2>&1 || fail -f OUT
+cat <<EOF > WANT
+1.4
+1.3
+EOF
+bk prs -hnd:REV: -r+ foo bar > GOT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test --ci ...................................................$NL
+bk edit $Q foo bar
+echo foo >> foo
+echo bar >> bar
+bk ci $Q -ystuff bar
+bk commit $Q -ystuff --ci >OUT 2>&1 || fail -f OUT
+cat <<EOF > WANT
+1.5
+1.4
+EOF
+bk prs -hnd:REV: -r+ foo bar > GOT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test that --ci honors c-files ...............................$NL
+bk edit $Q foo bar
+echo foo >> foo
+echo bar >> bar
+echo "cfile comment" | bk cfile save foo
+bk commit $Q -ystuff --ci >OUT 2>&1 || fail -f OUT
+cat <<EOF > WANT
+C cfile comment
+C stuff
+EOF
+bk prs -r+ -hd:COMMENTS: foo bar > GOT
+cmpfiles GOT WANT
 echo OK

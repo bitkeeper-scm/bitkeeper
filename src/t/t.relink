@@ -16,17 +16,21 @@
 BK_NO_HARDLINK_CLONE=1
 export BK_NO_HARDLINK_CLONE
 
-echo 'binfile:no!' > "`bk dotbk`"/config
+echo 'BAM:no!' > "`bk dotbk`"/config
 
 echo $N Create initial repositories .................................$NL
 fresh_commercial project
+echo hi > ff
+bk new $Q ff
+bk commit $Q -yff || fail
 bk -r check -ac	# Add's rootlog
+bk -r admin -z   # make sure all files use canonical packing size
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 cd ..
-bk clone -q project clone || exit 1
-bk clone -q project clone2 || exit 1
-bk clone -q project clone3 || exit 1
+bk clone -q project clone || fail
+bk clone -q project clone2 || fail
+bk clone -q project clone3 || fail
 echo OK
 
 # Pointless to check this on windows, it needs fslayer lovin.
@@ -35,10 +39,7 @@ test -d project/.bk -a "$PLATFORM" = "WIN32" && exit 0
 echo $N Try to relink them ..........................................$NL
 NFILE=`bk sfiles project | wc -l`
 NFILE=`expr $NFILE + 0`	# trim the white space
-bk relink clone project 2>OUT || {
-	cat OUT
-	exit 1
-}
+bk relink clone project 2>OUT || fail -f OUT
 grep -q "relinked $NFILE/$NFILE files, 0 different, 0 already linked." OUT || {
 	echo Bad status message
 	cat OUT
@@ -130,7 +131,7 @@ cd "$HERE/clone"
 bk -r admin -z
 MINE=`bk _stat SCCS/s.ChangeSet | awk -F\| '{print $2}'`
 PARENT=`bk _stat "$HERE/project/SCCS/s.ChangeSet" | awk -F\| '{print $2}'`
-bk relink 2>OUT || exit 1
+bk relink 2>OUT || fail
 grep -q "relinked $NFILE/$NFILE files, 0 different, 0 already linked." OUT || {
 	echo Bad status message
 	cat OUT
@@ -154,7 +155,7 @@ echo $N Make sure that no args means relink to all the parents ......$NL
 cd "$HERE/clone"
 bk parent -aq ../clone2
 bk -r admin -z
-bk relink 2>OUT || exit 1
+bk relink 2>OUT || fail
 grep -q "relinked $NFILE/$NFILE files, 0 different, 0 already linked." OUT || {
 	echo Bad status message
 	cat OUT
@@ -165,4 +166,12 @@ test `wc -l < OUT` -eq 2 || {
 	cat OUT
 	exit 1
 }
+echo OK
+
+echo $N Setup timestamp error........................................$NL
+cd "$HERE"
+bk --cd=clone3 admin -z ff
+bk relink project clone3 2>OUT || fail
+echo "project: relinked 1/7 files, 0 different, 6 already linked." > WANT
+cmpfiles OUT WANT
 echo OK

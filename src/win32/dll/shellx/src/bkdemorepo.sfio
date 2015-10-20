@@ -1,0 +1,2157 @@
+SFIO vm1.40038bkdemorepo/BitKeeper/etc/SCCS/d.ignore000000000000000000006660041bkdemorepo/BitKeeper/etc/SCCS/s.collapsed0000000526H35272
+s 1/0/0                                   
+d D 1.1 08/06/24 16:19:12 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-rewrite/bkdemorepo/BitKeeper/etc/collapsed
+cC
+cF1
+cK00010
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/06/24 16:19:12 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK50459
+cPBitKeeper/etc/collapsed
+cR80a62b3cb7de4eff
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+
+E 2
+I 1
+E 1
+14044065584440038bkdemorepo/BitKeeper/etc/SCCS/s.config0000000519H34386
+s 0/0/0                                   
+d D 1.1 08/06/24 16:19:12 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-rewrite/bkdemorepo/BitKeeper/etc/config
+cC
+cF1
+cK10601
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/06/24 16:19:12 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK29065
+cPBitKeeper/etc/config
+cRd54a1754cb338447
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+E 2
+I 1
+E 1
+19313806534440036bkdemorepo/BitKeeper/etc/SCCS/s.gone0000000516H33960
+s 1/0/0                                   
+d D 1.1 08/06/24 16:19:12 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-rewrite/bkdemorepo/BitKeeper/etc/gone
+cC
+cF1
+cK00010
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/06/24 16:19:12 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK64230
+cPBitKeeper/etc/gone
+cR634e7faa26511220
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+
+E 2
+I 1
+E 1
+10508385284440038bkdemorepo/BitKeeper/etc/SCCS/s.ignore0000000604H38742
+s 1/0/1                                   
+d D 1.2 08/06/24 16:19:34 rick 3 2
+c added *.o
+cK00219
+e
+s 1/0/0
+d D 1.1 08/06/24 16:19:12 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-rewrite/bkdemorepo/BitKeeper/etc/ignore
+cC
+cF1
+cK00010
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/06/24 16:19:12 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK58590
+cPBitKeeper/etc/ignore
+cR449cdd8d4d633555
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+
+I 3
+*.o
+E 3
+E 2
+I 1
+E 1
+02771252974440037bkdemorepo/BitKeeper/etc/SCCS/x.cmark0000000080rick@lenox61.bitmover.com|ChangeSet|20080624231913|50850
+t8IvjCIAUrB9kuhlRZYnpg
+13869450566660037bkdemorepo/BitKeeper/etc/SCCS/x.dfile000000000000000000006660040bkdemorepo/BitKeeper/etc/SCCS/x.id_cache0000000262# This is a BitKeeper cache file.
+# If you suspect that the file is corrupted, simply remove it and 
+# and it will be rebuilt as needed.
+# The format of the file is <ID> <PATHNAME>
+# The file is used for performance during makepatch/takepatch commands.
+#$sum$ 0
+08995041046640031bkdemorepo/BitKeeper/etc/config000000000000000000004440029bkdemorepo/BitKeeper/etc/gone0000000002
+00023593194440031bkdemorepo/BitKeeper/etc/ignore0000000007
+*.o
+00599001494440031bkdemorepo/BitKeeper/log/NFILES000000000367
+00184812716640032bkdemorepo/BitKeeper/log/ROOTKEY0000000107rick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+486180f01zdiYdSGmVLneRVcMK2sHg
+14795491526660028bkdemorepo/BitKeeper/log/TIP0000000031486180f1hVdcCtdBISdaIYt8aW4v4g
+24515730986660032bkdemorepo/BitKeeper/log/checked000000000000000000006640032bkdemorepo/BitKeeper/log/cmd_log0000005943!rick 1214349552 bk-4.1.1a: new -Pq BitKeeper/etc/ignore = 0
+!rick 1214349552 bk-4.1.1a: new -Pq BitKeeper/etc/gone = 0
+!rick 1214349552 bk-4.1.1a: new -Pq BitKeeper/etc/collapsed = 0
+!rick 1214349552 bk-4.1.1a: obtain write lock (3484)
+!rick 1214349552 bk-4.1.1a: sfiles -pC = 0
+!rick 1214349552 bk-4.1.1a: write unlock (3484)
+!rick 1214349552 bk-4.1.1a: downgrade write lock (3484)
+!rick 1214349552 bk-4.1.1a: _lconfig = 0
+!rick 1214349552 bk-4.1.1a: commit -qFyInitial repository create = 0
+!rick 1214349552 bk-4.1.1a: read unlock (3484)
+!rick 1214349552 bk-4.1.1a: _lconfig = 0
+!rick 1214349552 bk-4.1.1a: setup -cnil bkdemorepo = 0
+!rick 1214349552 bk-4.1.1a: _lconfig -s = 0
+!rick 1214349552 bk-4.1.1a: _lconfig -s = 0
+!rick 1214349574 bk-4.1.1a: root = 0
+!rick 1214349574 bk-4.1.1a: edit -q BitKeeper/etc/ignore = 0
+!rick 1214349574 bk-4.1.1a: delta -q -yadded *.o BitKeeper/etc/ignore = 0
+!rick 1214349574 bk-4.1.1a: ignore *.o = 0
+!rick 1214349600 bk-4.1.1a: new readonly = 0
+!rick 1214349604 bk-4.1.1a: get readonly = 0
+!rick 1214349668 bk-4.1.1a: new writable = 0
+!rick 1214349670 bk-4.1.1a: edit writable = 0
+!rick 1214349680 bk-4.1.1a: new modified = 0
+!rick 1214349686 bk-4.1.1a: edit modified = 0
+!rick 1214413934 bk-4.1.2: new readonly = 0
+!rick 1214413938 bk-4.1.2: get readonly = 0
+!rick 1214413952 bk-4.1.2: new writable = 0
+!rick 1214413956 bk-4.1.2: edit writable = 0
+!rick 1214413967 bk-4.1.2: new modified = 0
+!rick 1214413971 bk-4.1.2: edit modified = 0
+!rick 1214414073 bk-4.1.2: new readonly writable nogfile = 0
+!rick 1214414078 bk-4.1.2: edit writable = 0
+!rick 1214414081 bk-4.1.2: get readonly = 0
+!rick 1214414090 bk-4.1.2: new nogfile = 0
+!rick 1214414100 bk-4.1.2: new nogfile = 0
+!rick 1214414168 bk-4.1.2: new writable = 0
+!rick 1214414169 bk-4.1.2: edit writable = 0
+!rick 1214414177 bk-4.1.2: get readonly = 1
+!rick 1214414182 bk-4.1.2: new readonly = 0
+!rick 1214414185 bk-4.1.2: get readonly = 0
+!rick 1214414282 bk-4.1.2: obtain write lock (2976)
+!rick 1214414282 bk-4.1.2: sfiles src = 0
+!rick 1214414282 bk-4.1.2: prs -hr1.1 -nd:DPN: - = 0
+!rick 1214414283 bk-4.1.2: sfiles = 0
+!rick 1214414283 bk-4.1.2: sane = 0
+!rick 1214414283 bk-4.1.2: check -a - = 0
+!rick 1214414283 bk-4.1.2: mvdir -l src chg = 1
+!rick 1214414283 bk-4.1.2: write unlock (2976)
+!rick 1214414283 bk-4.1.2: mv src chg = 1
+!rick 1214414304 bk-4.1.2: obtain write lock (2540)
+!rick 1214414304 bk-4.1.2: sfiles src = 0
+!rick 1214414304 bk-4.1.2: prs -hr1.1 -nd:DPN: - = 0
+!rick 1214414304 bk-4.1.2: sfiles = 0
+!rick 1214414304 bk-4.1.2: sane = 0
+!rick 1214414304 bk-4.1.2: check -a - = 0
+!rick 1214414305 bk-4.1.2: write unlock (2540)
+!rick 1214414305 bk-4.1.2: mvdir src chg = 1
+!rick 1214414364 bk-4.1.2: obtain write lock (2692)
+!rick 1214414364 bk-4.1.2: prs -hr1.1 -nd:DPN: - = 0
+!rick 1214414364 bk-4.1.2: sfiles src = 0
+!rick 1214414364 bk-4.1.2: sfiles = 0
+!rick 1214414364 bk-4.1.2: sane = 0
+!rick 1214414364 bk-4.1.2: check -a - = 0
+!rick 1214414364 bk-4.1.2: sfiles chg = 0
+!rick 1214414364 bk-4.1.2: idcache -q = 0
+!rick 1214414364 bk-4.1.2: sfiles = 0
+!rick 1214414364 bk-4.1.2: sane = 0
+!rick 1214414364 bk-4.1.2: check -a - = 0
+!rick 1214414364 bk-4.1.2: mvdir -l src chg = 0
+!rick 1214414364 bk-4.1.2: write unlock (2692)
+!rick 1214414364 bk-4.1.2: mv src chg = 0
+!rick 1214414446 bk-4.1.2: new modifed = 0
+!rick 1214414494 bk-4.1.2: new anotherchg = 0
+!rick 1214414496 bk-4.1.2: edit anotherchg = 0
+!rick 1214414510 bk-4.1.2: diffs = 0
+!rick 1214414611 bk-4.1.2: sfiles -c = 0
+!rick 1214414641 bk-4.1.2: new modified = 0
+!rick 1214414643 bk-4.1.2: edit modified = 0
+!rick 1214414695 bk-4.1.2: new nogfile = 0
+!rick 1214414723 bk-4.1.2: get -S = 0
+!rick 1214414723 bk-4.1.2: bk get -S = 0
+!rick 1214414747 bk-4.1.2: clean = 1
+!rick 1214414811 bk-4.1.2: new readonly writable nogfile = 0
+!rick 1214414816 bk-4.1.2: get readonly = 0
+!rick 1214414820 bk-4.1.2: edit writable = 0
+!rick 1217024002 20080722165650: new -q ./file0.c ./file1.c ./file10.c ./file11.c ./file12.c ./file13.c ./file14.c ./file15.c ./file16.c ./file17.c ./file18.c ./file19.c ./file2.c ./file20.c ./file21.c ./file22.c ./file23.c ./file24.c ./file25.c ./file26.c ./file27.c ./file28.c ./file29.c ./file3.c ./file30.c ./file31.c ./file32.c ./file33.c ./file34.c ./file35.c ./file36.c ./file37.c ./file38.c ./file39.c ./file4.c ./file40.c ./file41.c ./file42.c ./file43.c ./file44.c ./file45.c ./file46.c ./file47.c ./file48.c ./file49.c ./file5.c ./file50.c ./file51.c ./file52.c ./file53.c ./file54.c ./file55.c ./file56.c ./file57.c ./file58.c ./file59.c ./file6.c ./file60.c ./file61.c ./file62.c ./file63.c ./file64.c ./file65.c ./file66.c ./file67.c ./file68.c ./file69.c ./file7.c ./file70.c ./file71.c ./file72.c ./file73.c ./file74.c ./file75.c ./file76.c ./file77.c ./file78.c ./file79.c ./file8.c ./file80.c ./file81.c ./file82.c ./file83.c ./file84.c ./file85.c ./file86.c ./file87.c ./file88.c ./file89.c ./file9.c ./file90.c ./file91.c ./file92.c ./file93.c ./file94.c ./file95.c ./file96.c ./file97.c ./file98.c ./file99.c = 0
+!rick 1217024010 20080722165650: get = 0
+!rick 1217024121 20080722165650: clean = 0
+!rick 1217024185 20080722165650: get = 0
+!rick 1217024212 20080722165650: changes -vr+ = 0
+!georgn 1287154949 bk-4.6b: sfiles = 0
+!georgn 1287154949 bk-4.6b: sane = 0
+!georgn 1287154949 bk-4.6b: check -acv - = 64
+!georgn 1287154961 bk-4.6b: sfiles = 0
+!georgn 1287154961 bk-4.6b: sfiles = 0
+!georgn 1287154961 bk-4.6b: names - = 0
+!georgn 1287154961 bk-4.6b: idcache = 0
+!georgn 1287154961 bk-4.6b: check -acvf - = 2
+!georgn 1287154974 bk-4.6b: sfiles = 0
+!georgn 1287154974 bk-4.6b: sane = 0
+!georgn 1287154974 bk-4.6b: check -acv - = 16
+!georgn 1287155004 bk-4.6b: sfiles -P = 0
+!georgn 1287155010 bk-4.6b: sfiles = 0
+!georgn 1287155010 bk-4.6b: sane = 0
+!georgn 1287155010 bk-4.6b: check -acv - = 0
+!georgn 1287155095 bk-4.6b: sfiles = 0
+!georgn 1287155095 bk-4.6b: sane = 0
+!georgn 1287155095 bk-4.6b: check -acv - = 0
+11556741996660032bkdemorepo/BitKeeper/log/repo_id000000013320080625101803-07:00|lenox61.bitmover.com|C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-rewrite/bkdemorepo|rick|YVyM
+15571473306660033bkdemorepo/BitKeeper/log/repo_log0000000465!rick 1214349552 bk-4.1.1a: commit -qFyInitial repository create = 0
+!rick 1214414283 bk-4.1.2: check -a - = 0
+!rick 1214414304 bk-4.1.2: check -a - = 0
+!rick 1214414364 bk-4.1.2: check -a - = 0
+!rick 1214414364 bk-4.1.2: check -a - = 0
+!georgn 1287154949 bk-4.6b: check -acv - = 64
+!georgn 1287154961 bk-4.6b: check -acvf - = 2
+!georgn 1287154974 bk-4.6b: check -acv - = 16
+!georgn 1287155010 bk-4.6b: check -acv - = 0
+!georgn 1287155095 bk-4.6b: check -acv - = 0
+29961402806660026bkdemorepo/SCCS/d.modified000000000000000000006660025bkdemorepo/SCCS/d.nogfile000000000000000000006660026bkdemorepo/SCCS/d.readonly000000000000000000006660026bkdemorepo/SCCS/d.writable000000000000000000006660026bkdemorepo/SCCS/p.modified00000000311.1 1.2 rick 08/06/24 16:21:26
+18338955646660026bkdemorepo/SCCS/p.writable00000000311.1 1.2 rick 08/06/24 16:21:10
+18329125176660027bkdemorepo/SCCS/s.ChangeSet0000001128H19450
+s 4/0/1                                   
+d D 1.1 08/06/24 16:19:12 rick 2 1
+c Initial repository create
+cC
+cF1
+cK50850
+e
+s 0/0/0
+d D 1.0 08/06/24 16:19:12 rick 1 0
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-rewrite/bkdemorepo/ChangeSet
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK53342
+cPChangeSet
+cR44acf43efe373d38
+cV4
+cX0x1061
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x1061
+t
+T
+I 2
+rick@lenox61.bitmover.com|BitKeeper/etc/collapsed|20080624231912|50459|80a62b3cb7de4eff rick@lenox61.bitmover.com|BitKeeper/etc/collapsed|20080624231913|00010
+rick@lenox61.bitmover.com|BitKeeper/etc/config|20080624231912|29065|d54a1754cb338447 rick@lenox61.bitmover.com|BitKeeper/etc/config|20080624231913|10601
+rick@lenox61.bitmover.com|BitKeeper/etc/gone|20080624231912|64230|634e7faa26511220 rick@lenox61.bitmover.com|BitKeeper/etc/gone|20080624231913|00010
+rick@lenox61.bitmover.com|BitKeeper/etc/ignore|20080624231912|58590|449cdd8d4d633555 rick@lenox61.bitmover.com|BitKeeper/etc/ignore|20080624231913|00010
+E 2
+I 1
+E 1
+24994317754440026bkdemorepo/SCCS/s.modified0000000491H32017
+s 0/0/0                                   
+d D 1.1 08/06/24 16:21:20 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-rewrite/bkdemorepo/modified
+cF1
+cK42099
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/06/24 16:21:20 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK24803
+cPmodified
+cR69d777574215d2bb
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+E 2
+I 1
+E 1
+42613141454440025bkdemorepo/SCCS/s.nogfile0000000489H31810
+s 0/0/0                                   
+d D 1.1 08/06/25 10:15:00 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-rewrite/bkdemorepo/nogfile
+cF1
+cK32739
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/06/25 10:15:00 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK10123
+cPnogfile
+cR6f719715d740c5c3
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+E 2
+I 1
+E 1
+32025143224440026bkdemorepo/SCCS/s.readonly0000000491H32156
+s 0/0/0                                   
+d D 1.1 08/06/24 16:20:00 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-rewrite/bkdemorepo/readonly
+cF1
+cK30098
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/06/24 16:20:00 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK17550
+cPreadonly
+cRe77b3b11de3688c3
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+E 2
+I 1
+E 1
+12115965284440026bkdemorepo/SCCS/s.writable0000000491H32282
+s 0/0/0                                   
+d D 1.1 08/06/24 16:21:08 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-rewrite/bkdemorepo/writable
+cF1
+cK26812
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/06/24 16:21:08 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK23101
+cPwritable
+cRe0d6dca17ef3b1b2
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+E 2
+I 1
+E 1
+21365062224440034bkdemorepo/bigstuff/SCCS/d.file0.c000000000000000000006640034bkdemorepo/bigstuff/SCCS/d.file1.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file10.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file11.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file12.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file13.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file14.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file15.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file16.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file17.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file18.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file19.c000000000000000000006640034bkdemorepo/bigstuff/SCCS/d.file2.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file20.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file21.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file22.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file23.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file24.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file25.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file26.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file27.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file28.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file29.c000000000000000000006640034bkdemorepo/bigstuff/SCCS/d.file3.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file30.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file31.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file32.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file33.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file34.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file35.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file36.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file37.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file38.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file39.c000000000000000000006640034bkdemorepo/bigstuff/SCCS/d.file4.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file40.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file41.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file42.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file43.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file44.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file45.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file46.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file47.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file48.c000000000000000000006640035bkdemorepo/bigstuff/SCCS/d.file49.c000000000000000000006640034bkdemorepo/bigstuff/SCCS/d.file5.c000000000000000000006640034bkdemorepo/bigstuff/SCCS/d.file6.c000000000000000000006640034bkdemorepo/bigstuff/SCCS/d.file7.c000000000000000000006640034bkdemorepo/bigstuff/SCCS/d.file8.c000000000000000000006640034bkdemorepo/bigstuff/SCCS/d.file9.c000000000000000000006640034bkdemorepo/bigstuff/SCCS/s.file0.c0000000527H35204
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:21 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file0.c
+cF1
+cK00619
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:21 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK10332
+cPbigstuff/file0.c
+cR38cd8cc9c3a197a1
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file0.c
+E 2
+I 1
+E 1
+27781721174440034bkdemorepo/bigstuff/SCCS/s.file1.c0000000527H35088
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:21 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file1.c
+cF1
+cK00620
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:21 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK17385
+cPbigstuff/file1.c
+cR19d98f991d0921d9
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file1.c
+E 2
+I 1
+E 1
+23239419954440035bkdemorepo/bigstuff/SCCS/s.file10.c0000000530H35421
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:21 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file10.c
+cF1
+cK00668
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:21 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK07818
+cPbigstuff/file10.c
+cR6e16dfdca66b72e6
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file10.c
+E 2
+I 1
+E 1
+14440559834440035bkdemorepo/bigstuff/SCCS/s.file11.c0000000530H35313
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:21 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file11.c
+cF1
+cK00669
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:21 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK10577
+cPbigstuff/file11.c
+cR631ecc0c1b87e353
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file11.c
+E 2
+I 1
+E 1
+07834529954440035bkdemorepo/bigstuff/SCCS/s.file12.c0000000530H35501
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file12.c
+cF1
+cK00670
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK21914
+cPbigstuff/file12.c
+cRcf4ff4dc7e2b33aa
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file12.c
+E 2
+I 1
+E 1
+18634864624440035bkdemorepo/bigstuff/SCCS/s.file13.c0000000529H35174
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file13.c
+cF1
+cK00671
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK23587
+cPbigstuff/file13.c
+cR68127394d0cd04b
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file13.c
+E 2
+I 1
+E 1
+22685641574440035bkdemorepo/bigstuff/SCCS/s.file14.c0000000530H35285
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file14.c
+cF1
+cK00672
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK09525
+cPbigstuff/file14.c
+cR38ee37b83ef52541
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file14.c
+E 2
+I 1
+E 1
+08836575194440035bkdemorepo/bigstuff/SCCS/s.file15.c0000000530H35206
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file15.c
+cF1
+cK00673
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK11986
+cPbigstuff/file15.c
+cR77861425a7c4787d
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file15.c
+E 2
+I 1
+E 1
+01211460734440035bkdemorepo/bigstuff/SCCS/s.file16.c0000000530H35295
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file16.c
+cF1
+cK00674
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK37823
+cPbigstuff/file16.c
+cR28684a6f3a6148fb
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file16.c
+E 2
+I 1
+E 1
+09693786184440035bkdemorepo/bigstuff/SCCS/s.file17.c0000000530H35390
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file17.c
+cF1
+cK00675
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK28268
+cPbigstuff/file17.c
+cR7dc6b8e59cf1a103
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file17.c
+E 2
+I 1
+E 1
+15274177494440035bkdemorepo/bigstuff/SCCS/s.file18.c0000000530H35221
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file18.c
+cF1
+cK00676
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK10236
+cPbigstuff/file18.c
+cR9cfe31052022027b
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file18.c
+E 2
+I 1
+E 1
+02197777654440035bkdemorepo/bigstuff/SCCS/s.file19.c0000000530H35353
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file19.c
+cF1
+cK00677
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK01898
+cPbigstuff/file19.c
+cR8a42c2a7e832ee92
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file19.c
+E 2
+I 1
+E 1
+12758250074440034bkdemorepo/bigstuff/SCCS/s.file2.c0000000527H35069
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file2.c
+cF1
+cK00621
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK15763
+cPbigstuff/file2.c
+cR4f8373d340247b1d
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file2.c
+E 2
+I 1
+E 1
+22105646954440035bkdemorepo/bigstuff/SCCS/s.file20.c0000000530H35437
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file20.c
+cF1
+cK00669
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK53963
+cPbigstuff/file20.c
+cR3c3f5d796ef1f7fa
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file20.c
+E 2
+I 1
+E 1
+18061424064440035bkdemorepo/bigstuff/SCCS/s.file21.c0000000530H35361
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file21.c
+cF1
+cK00670
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK02558
+cPbigstuff/file21.c
+cRdc3cb383b3b8c914
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file21.c
+E 2
+I 1
+E 1
+11534693024440035bkdemorepo/bigstuff/SCCS/s.file22.c0000000530H35242
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file22.c
+cF1
+cK00671
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK11807
+cPbigstuff/file22.c
+cR8d177568e57d3c66
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file22.c
+E 2
+I 1
+E 1
+03053022694440035bkdemorepo/bigstuff/SCCS/s.file23.c0000000530H35310
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file23.c
+cF1
+cK00672
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK42263
+cPbigstuff/file23.c
+cRad5a31d3118a44f6
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file23.c
+E 2
+I 1
+E 1
+06535606374440035bkdemorepo/bigstuff/SCCS/s.file24.c0000000530H35414
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file24.c
+cF1
+cK00673
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK28210
+cPbigstuff/file24.c
+cRec2ea57b60d095fa
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file24.c
+E 2
+I 1
+E 1
+14827222184440035bkdemorepo/bigstuff/SCCS/s.file25.c0000000530H35277
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file25.c
+cF1
+cK00674
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK14294
+cPbigstuff/file25.c
+cRa11f016b6fa44972
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file25.c
+E 2
+I 1
+E 1
+09066606484440035bkdemorepo/bigstuff/SCCS/s.file26.c0000000530H35219
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file26.c
+cF1
+cK00675
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK49494
+cPbigstuff/file26.c
+cR9648e365b7353a77
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file26.c
+E 2
+I 1
+E 1
+04287065384440035bkdemorepo/bigstuff/SCCS/s.file27.c0000000530H35144
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file27.c
+cF1
+cK00676
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK05540
+cPbigstuff/file27.c
+cR971f008820305b96
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file27.c
+E 2
+I 1
+E 1
+41397479964440035bkdemorepo/bigstuff/SCCS/s.file28.c0000000530H35399
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file28.c
+cF1
+cK00677
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK10694
+cPbigstuff/file28.c
+cR6e6b9815ab1ac89d
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file28.c
+E 2
+I 1
+E 1
+18741687434440035bkdemorepo/bigstuff/SCCS/s.file29.c0000000530H35386
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file29.c
+cF1
+cK00678
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK28843
+cPbigstuff/file29.c
+cR3d1d24a2ad28f3d0
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file29.c
+E 2
+I 1
+E 1
+17084937184440034bkdemorepo/bigstuff/SCCS/s.file3.c0000000527H35035
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file3.c
+cF1
+cK00622
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK41897
+cPbigstuff/file3.c
+cR23790a6650b088a7
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file3.c
+E 2
+I 1
+E 1
+17896269264440035bkdemorepo/bigstuff/SCCS/s.file30.c0000000529H35138
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file30.c
+cF1
+cK00670
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK13307
+cPbigstuff/file30.c
+cR8e7081597e44f87
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file30.c
+E 2
+I 1
+E 1
+20338797054440035bkdemorepo/bigstuff/SCCS/s.file31.c0000000530H35458
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file31.c
+cF1
+cK00671
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK31813
+cPbigstuff/file31.c
+cRf8cc40c6b97ac0af
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file31.c
+E 2
+I 1
+E 1
+19655915184440035bkdemorepo/bigstuff/SCCS/s.file32.c0000000530H35279
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file32.c
+cF1
+cK00672
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK56083
+cPbigstuff/file32.c
+cR6a70f8cf161a8119
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file32.c
+E 2
+I 1
+E 1
+09526013884440035bkdemorepo/bigstuff/SCCS/s.file33.c0000000530H35475
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file33.c
+cF1
+cK00673
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK05674
+cPbigstuff/file33.c
+cRdb7f94abb45ed13f
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file33.c
+E 2
+I 1
+E 1
+21227468624440035bkdemorepo/bigstuff/SCCS/s.file34.c0000000530H35329
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file34.c
+cF1
+cK00674
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK06333
+cPbigstuff/file34.c
+cR67e178194bdbd11d
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file34.c
+E 2
+I 1
+E 1
+10938970504440035bkdemorepo/bigstuff/SCCS/s.file35.c0000000530H35389
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file35.c
+cF1
+cK00675
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK42670
+cPbigstuff/file35.c
+cR108e347fcd9a8a4f
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file35.c
+E 2
+I 1
+E 1
+17025954844440035bkdemorepo/bigstuff/SCCS/s.file36.c0000000530H35440
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file36.c
+cF1
+cK00676
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK28000
+cPbigstuff/file36.c
+cR93d1b4ec59bddf89
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file36.c
+E 2
+I 1
+E 1
+16380425634440035bkdemorepo/bigstuff/SCCS/s.file37.c0000000529H35305
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file37.c
+cF1
+cK00677
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK39616
+cPbigstuff/file37.c
+cRf7183638b4bbfd6
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file37.c
+E 2
+I 1
+E 1
+30978568284440035bkdemorepo/bigstuff/SCCS/s.file38.c0000000529H35290
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file38.c
+cF1
+cK00678
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK64414
+cPbigstuff/file38.c
+cRa5161ab996bbb17
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file38.c
+E 2
+I 1
+E 1
+31462223844440035bkdemorepo/bigstuff/SCCS/s.file39.c0000000529H35204
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file39.c
+cF1
+cK00679
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK45559
+cPbigstuff/file39.c
+cR88d5b3c160133b3
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file39.c
+E 2
+I 1
+E 1
+25056078934440034bkdemorepo/bigstuff/SCCS/s.file4.c0000000527H35073
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file4.c
+cF1
+cK00623
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK47151
+cPbigstuff/file4.c
+cR81cbb544561447d2
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file4.c
+E 2
+I 1
+E 1
+21372299104440035bkdemorepo/bigstuff/SCCS/s.file40.c0000000530H35228
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file40.c
+cF1
+cK00671
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK06858
+cPbigstuff/file40.c
+cR71de61b290281d81
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file40.c
+E 2
+I 1
+E 1
+04059655554440035bkdemorepo/bigstuff/SCCS/s.file41.c0000000530H35316
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file41.c
+cF1
+cK00672
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK22463
+cPbigstuff/file41.c
+cRa21d94f126a52e4f
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file41.c
+E 2
+I 1
+E 1
+08609165534440035bkdemorepo/bigstuff/SCCS/s.file42.c0000000530H35382
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file42.c
+cF1
+cK00673
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK40529
+cPbigstuff/file42.c
+cRdcbc913539bd7c84
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file42.c
+E 2
+I 1
+E 1
+14531654544440035bkdemorepo/bigstuff/SCCS/s.file43.c0000000529H35241
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file43.c
+cF1
+cK00674
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK59413
+cPbigstuff/file43.c
+cR90981abb1279cf7
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file43.c
+E 2
+I 1
+E 1
+25976204754440035bkdemorepo/bigstuff/SCCS/s.file44.c0000000529H35264
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file44.c
+cF1
+cK00675
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK38017
+cPbigstuff/file44.c
+cRe7f969c657c64d9
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file44.c
+E 2
+I 1
+E 1
+29686853354440035bkdemorepo/bigstuff/SCCS/s.file45.c0000000530H35331
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file45.c
+cF1
+cK00676
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK06075
+cPbigstuff/file45.c
+cR5a824c30fae372a6
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file45.c
+E 2
+I 1
+E 1
+09524703574440035bkdemorepo/bigstuff/SCCS/s.file46.c0000000530H35346
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file46.c
+cF1
+cK00677
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK00987
+cPbigstuff/file46.c
+cR5cee4b64c4d13436
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file46.c
+E 2
+I 1
+E 1
+13471937064440035bkdemorepo/bigstuff/SCCS/s.file47.c0000000530H35302
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file47.c
+cF1
+cK00678
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK25495
+cPbigstuff/file47.c
+cRf8c1d202ef031677
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file47.c
+E 2
+I 1
+E 1
+08168108064440035bkdemorepo/bigstuff/SCCS/s.file48.c0000000530H35476
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file48.c
+cF1
+cK00679
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK14792
+cPbigstuff/file48.c
+cRc101cbbdf056d0ca
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file48.c
+E 2
+I 1
+E 1
+22808196964440035bkdemorepo/bigstuff/SCCS/s.file49.c0000000530H35489
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file49.c
+cF1
+cK00680
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK24760
+cPbigstuff/file49.c
+cRb4a72fd9eeb4e30d
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file49.c
+E 2
+I 1
+E 1
+24088770574440034bkdemorepo/bigstuff/SCCS/s.file5.c0000000527H35270
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file5.c
+cF1
+cK00624
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK40153
+cPbigstuff/file5.c
+cRd26bd82dccb485d7
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file5.c
+E 2
+I 1
+E 1
+33265118984440034bkdemorepo/bigstuff/SCCS/s.file6.c0000000527H35082
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file6.c
+cF1
+cK00625
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK03933
+cPbigstuff/file6.c
+cR270765b4df823c31
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file6.c
+E 2
+I 1
+E 1
+22016518074440034bkdemorepo/bigstuff/SCCS/s.file7.c0000000527H35229
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file7.c
+cF1
+cK00626
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK53802
+cPbigstuff/file7.c
+cRf327f3a33d47c4cc
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file7.c
+E 2
+I 1
+E 1
+32333852054440034bkdemorepo/bigstuff/SCCS/s.file8.c0000000527H35168
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file8.c
+cF1
+cK00627
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK31899
+cPbigstuff/file8.c
+cR2b6c60d875f8758d
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file8.c
+E 2
+I 1
+E 1
+29974555464440034bkdemorepo/bigstuff/SCCS/s.file9.c0000000527H35013
+s 1/0/0                                   
+d D 1.1 08/07/25 15:13:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-cmd-line-length/tmp/bkdemorepo/bigstuff/file9.c
+cF1
+cK00628
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/07/25 15:13:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK25765
+cPbigstuff/file9.c
+cR521280379da85475
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+file9.c
+E 2
+I 1
+E 1
+16558679244440030bkdemorepo/chg/SCCS/d.modified000000000000000000006660030bkdemorepo/chg/SCCS/p.modified00000000311.1 1.2 rick 08/06/25 10:24:03
+18316673336660030bkdemorepo/chg/SCCS/s.modified0000000499H32946
+s 0/0/0                                   
+d D 1.1 08/06/25 10:24:01 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-rewrite/bkdemorepo/chg/modified
+cF1
+cK19298
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/06/25 10:24:01 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK43716
+cPchg/modified
+cRd5f82b4cadab1d34
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+E 2
+I 1
+E 1
+02934379654440023bkdemorepo/chg/modified0000000010new stuff
+03567133726660039bkdemorepo/chg/subdir/SCCS/d.anotherchg000000000000000000006660036bkdemorepo/chg/subdir/SCCS/d.nogfile000000000000000000006660039bkdemorepo/chg/subdir/SCCS/p.anotherchg00000000311.1 1.2 rick 08/06/25 10:21:36
+18316673366660039bkdemorepo/chg/subdir/SCCS/s.anotherchg0000000517H34796
+s 0/0/0                                   
+d D 1.1 08/06/25 10:21:34 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-rewrite/bkdemorepo/chg/subdir/anotherchg
+cF1
+cK44416
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/06/25 10:21:34 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK21407
+cPchg/subdir/anotherchg
+cR5efc1c57df3c9c5c
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+E 2
+I 1
+E 1
+35115195644440036bkdemorepo/chg/subdir/SCCS/s.nogfile0000000511H33973
+s 0/0/0                                   
+d D 1.1 08/06/25 10:24:55 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-rewrite/bkdemorepo/chg/subdir/nogfile
+cF1
+cK61220
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/06/25 10:24:55 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK60302
+cPchg/subdir/nogfile
+cR3f32d9828eb470e9
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+E 2
+I 1
+E 1
+22584704174440032bkdemorepo/chg/subdir/anotherchg0000000006diffs
+01362498786660019bkdemorepo/ignore.o000000000000000000006660019bkdemorepo/modified0000000009New data
+02605063506660018bkdemorepo/newfile000000000000000000006660032bkdemorepo/nochg/SCCS/d.readonly000000000000000000006660032bkdemorepo/nochg/SCCS/d.writable000000000000000000006660032bkdemorepo/nochg/SCCS/p.writable00000000311.1 1.2 rick 08/06/25 10:16:09
+18327159166660032bkdemorepo/nochg/SCCS/s.readonly0000000503H33179
+s 0/0/0                                   
+d D 1.1 08/06/25 10:16:22 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-rewrite/bkdemorepo/nochg/readonly
+cF1
+cK26961
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/06/25 10:16:22 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK48750
+cPnochg/readonly
+cR9d2c176424b17737
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+E 2
+I 1
+E 1
+24639249814440032bkdemorepo/nochg/SCCS/s.writable0000000503H33233
+s 0/0/0                                   
+d D 1.1 08/06/25 10:16:08 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-rewrite/bkdemorepo/nochg/writable
+cF1
+cK47425
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/06/25 10:16:08 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK31566
+cPnochg/writable
+cRbc099b92780965a8
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+E 2
+I 1
+E 1
+25323446104440025bkdemorepo/nochg/readonly000000000000000000004440038bkdemorepo/nochg/subdir/SCCS/d.nogfile000000000000000000006660039bkdemorepo/nochg/subdir/SCCS/d.readonly000000000000000000006660039bkdemorepo/nochg/subdir/SCCS/d.writable000000000000000000006660039bkdemorepo/nochg/subdir/SCCS/p.writable00000000311.1 1.2 rick 08/06/25 10:27:00
+18322571576660038bkdemorepo/nochg/subdir/SCCS/s.nogfile0000000515H34331
+s 0/0/0                                   
+d D 1.1 08/06/25 10:26:51 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-rewrite/bkdemorepo/nochg/subdir/nogfile
+cF1
+cK01181
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/06/25 10:26:51 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK10155
+cPnochg/subdir/nogfile
+cR23d43532fa03c050
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+E 2
+I 1
+E 1
+02682735164440039bkdemorepo/nochg/subdir/SCCS/s.readonly0000000517H34565
+s 0/0/0                                   
+d D 1.1 08/06/25 10:26:51 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-rewrite/bkdemorepo/nochg/subdir/readonly
+cF1
+cK37850
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/06/25 10:26:51 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK26238
+cPnochg/subdir/readonly
+cRd5732b9054362e04
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+E 2
+I 1
+E 1
+26451334074440039bkdemorepo/nochg/subdir/SCCS/s.writable0000000517H34710
+s 0/0/0                                   
+d D 1.1 08/06/25 10:26:51 rick 2 1
+c BitKeeper file C:/Documents and Settings/rick/My Virtual/vmshare/bkshellx.bk-rewrite/bkdemorepo/nochg/subdir/writable
+cF1
+cK51685
+cO-rw-rw-rw-
+e
+s 0/0/0
+d D 1.0 08/06/25 10:26:51 rick 1 0
+cBrick@lenox61.bitmover.com|ChangeSet|20080624231912|53342|44acf43efe373d38
+cHlenox61.bitmover.com
+cK14727
+cPnochg/subdir/writable
+cRac4f91cc2e443686
+cV4
+cX0x821
+cZ-07:00
+e
+u
+U
+f e 0
+f x 0x821
+t
+T
+I 2
+E 2
+I 1
+E 1
+32230299924440032bkdemorepo/nochg/subdir/readonly000000000000000000004440032bkdemorepo/nochg/subdir/writable000000000000000000006660025bkdemorepo/nochg/writable000000000000000000006660019bkdemorepo/readonly000000000000000000004440019bkdemorepo/writable00000000000000000000666   0

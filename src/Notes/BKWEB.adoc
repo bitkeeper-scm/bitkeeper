@@ -1,0 +1,53 @@
+A little on BK/Web as well as what a free version would look like.
+==================================================================
+
+In order to get the sorting that Beth wants (and CVSweb does), we need to
+wack sccslog.  There are two changes needed:
+
+a. -r<rev>, this needs to be a range enabled rev.  In the BKweb case,
+   we would always do -r+.
+
+b. -s<sort field> where <sort field> is rev|user|date|filename
+
+c. prs dspec usage for the printing of the results.  This one is a little
+   more complicated, we need to save the sccs *s to make it work.  In order
+   to not run out of memory, we need to sccs_close(s) to do the unmmaps.
+   Then we need a way of going from delta to sccs* so we can pass that in.
+
+
+== How free license handling works.
+
+
+The idea is that a free bkweb can run if it's public;  to do that,
+set up a license server at bitmover and have the bkd query it for
+a license.
+
+The flow of data is
+
+-------------------------------------------------
+browser			bkd		child			license server
+1:   --- GET <blah> -->
+2:		           --- (fork) -->
+3:			   <-- MMI? ---
+4:			   --- NO\0\0 -->
+5:			   -------- GET a.license?server=<server> -->
+6:			   <------- GET license?expires=<when> ------
+7:			   --- (fork) -->
+8:			   <-- S<when> ---
+9:			   <-- MMI? ---
+10:			   --- YES\0 -->
+11: <------ contents of <blah> ---------
+
+1: http: GET
+2: bkd forks a child to handle the request
+3: ipc:  4 bytes (MMI? = Mother May I ?)
+4: ipc:  4 bytes 
+3&4 repeat for 30 seconds, waiting up to 5 seconds between requests.
+5: http: bkd forks a special child, which does a GET to the license server
+6: http: license server connects back to the bkd, does a GET with the license
+7: bkd forks a child to handle the request
+8: ipc: 4 bytes (Sddd, where ddd is the number of minutes the license is valid)
+9: ipc: 4 bytes (first child asks for permission)
+10: ipc: 4 bytes (bkd permits it)
+11: http: first child returns the requested page
+-------------------------------------------------

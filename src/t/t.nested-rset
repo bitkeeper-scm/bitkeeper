@@ -1,4 +1,15 @@
 
+# Replace revs except 1.0 with MD5KEY, except for ChangeSet file
+# Dup'd in t.rset
+rev2md5() {
+	perl -ne '
+	    print, next if /^#/;
+	    ($file) = /^([^|]+)/;
+	    print, next if $file eq "ChangeSet";
+	    s/(1\.[1-9](\.\d+)*)/:MD5KEY|$1:/g;
+	    system("bk", "prs", "-hr+", "-d$_", $file);'
+}
+
 echo $N Pass with component that has a comma in the name ............$NL
 nested product
 bk tag $Q START
@@ -11,7 +22,7 @@ cd ..
 bk commit $Q --tag=END -f
 # does not fail because there is no error handling in recursive sys()
 bk rset -rSTART,END > GOT
-cat >WANT <<EOF
+rev2md5 >WANT <<EOF
 ChangeSet|1.2..1.4
 foo,bar/ChangeSet|1.0..1.2
 foo,bar/BitKeeper/etc/collapsed|1.0..1.1
@@ -20,24 +31,22 @@ foo,bar/BitKeeper/etc/gone|1.0..1.1
 foo,bar/BitKeeper/etc/ignore|1.0..1.1
 foo,bar/x|1.0..1.1
 EOF
-perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
-cmpfiles WANT2 GOT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Try rset -S in product ......................................$NL
 bk rset -rSTART,END -S > GOT
-cat >WANT <<EOF
+rev2md5 >WANT <<EOF
 ChangeSet|1.2..1.4
 foo,bar/ChangeSet|1.0..1.2
 EOF
-perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
-cmpfiles WANT2 GOT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Try rset -S in component ....................................$NL
 cd foo,bar
 bk rset -r1.0..1.2 -S > GOT
-cat >WANT <<EOF
+rev2md5 >WANT <<EOF
 ChangeSet|1.0..1.2
 BitKeeper/etc/collapsed|1.0..1.1
 BitKeeper/etc/config|1.0..1.1
@@ -45,25 +54,29 @@ BitKeeper/etc/gone|1.0..1.1
 BitKeeper/etc/ignore|1.0..1.1
 x|1.0..1.1
 EOF
-perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
-cmpfiles WANT2 GOT
+cmpfiles WANT GOT
 cd ..
 echo OK
 
 echo $N Prune ChangeSet files from the answer .......................$NL
 bk rset -rSTART,END -H > GOT || fail
-cat >WANT <<EOF
+rev2md5 >WANT <<EOF
 foo,bar/BitKeeper/etc/collapsed|1.0..1.1
 foo,bar/BitKeeper/etc/config|1.0..1.1
 foo,bar/BitKeeper/etc/gone|1.0..1.1
 foo,bar/BitKeeper/etc/ignore|1.0..1.1
 foo,bar/x|1.0..1.1
 EOF
-perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
-cmpfiles WANT2 GOT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Test -sALL when not all components are populated ............$NL
+# stash a baseline for later work
+touch gcc/file
+bk new $Q gcc/file
+bk commit $Q -f
+bk clone $Q . ../snap
+# back to the test
 mvcomp gcc gcc-old
 bk commit $Q -y'rename component'
 bk clone -s./foo,bar $Q . ../copy || fail
@@ -87,7 +100,7 @@ echo OK
 
 echo $N Test -s^PRODUCT .............................................$NL
 bk rset -rSTART,END -s^PRODUCT >OUT || fail
-cat <<EOF > WANT
+rev2md5 >WANT <<EOF
 foo,bar/ChangeSet|1.0..1.2
 foo,bar/BitKeeper/etc/collapsed|1.0..1.1
 foo,bar/BitKeeper/etc/config|1.0..1.1
@@ -95,13 +108,12 @@ foo,bar/BitKeeper/etc/gone|1.0..1.1
 foo,bar/BitKeeper/etc/ignore|1.0..1.1
 foo,bar/x|1.0..1.1
 EOF
-perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
-cmpfiles WANT2 OUT
+cmpfiles WANT OUT
 echo OK
 
 echo $N Test -s./comp ...............................................$NL
 bk rset -rSTART,END -sfoo,bar >OUT || fail
-cat <<EOF > WANT
+rev2md5 >WANT <<EOF
 foo,bar/ChangeSet|1.0..1.2
 foo,bar/BitKeeper/etc/collapsed|1.0..1.1
 foo,bar/BitKeeper/etc/config|1.0..1.1
@@ -109,8 +121,7 @@ foo,bar/BitKeeper/etc/gone|1.0..1.1
 foo,bar/BitKeeper/etc/ignore|1.0..1.1
 foo,bar/x|1.0..1.1
 EOF
-perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
-cmpfiles WANT2 OUT
+cmpfiles WANT OUT
 echo OK
 
 
@@ -179,4 +190,182 @@ gcc-old/ChangeSet|gcc/ChangeSet|
 gdb/ChangeSet|gdb/ChangeSet|
 EOF
 cmpfiles WANT OUT
+echo OK
+
+echo $N Test rset --elide in nested..................................$NL
+cd "$HERE"
+nested elide-nested
+touch gcc/afile gcc/bfile gdb/afile gdb/bfile
+bk new $Q gcc/afile gcc/bfile gdb/afile gdb/bfile
+bk commit $Q -yfiles
+bk edit $Q gcc/afile gcc/bfile gdb/afile gdb/bfile
+echo "STUFF" > gcc/afile
+echo "STUFF" > gcc/bfile
+echo "STUFF" > gdb/afile
+echo "STUFF" > gdb/bfile
+bk delta $Q -y. gcc/afile gcc/bfile gdb/afile gdb/bfile
+bk commit $Q -y.
+REV=`bk changes -nd:REV: -r+`
+bk edit $Q gcc/afile gcc/bfile gdb/afile gdb/bfile
+echo "DIFFERENT STUFF" > gcc/afile
+echo "DIFFERENT STUFF" > gcc/bfile
+echo "DIFFERENT STUFF" > gdb/afile
+echo "DIFFERENT STUFF" > gdb/bfile
+bk delta $Q -y. gcc/afile gcc/bfile gdb/afile gdb/bfile
+bk commit $Q -y.
+bk edit $Q gcc/afile gcc/bfile gdb/afile gdb/bfile
+echo "STUFF" > gcc/afile
+echo "STUFF" > gdb/afile
+bk delta $Q -y. gcc/afile gcc/bfile gdb/afile gdb/bfile
+bk commit $Q -y.
+bk rset --elide -r@$REV -r@+ > OUT
+grep -q afile OUT && fail -f OUT afile should not be in rset output
+echo OK
+
+echo $N Test rset in a merge with a component path rename ...........$NL
+cd "$HERE"/snap
+touch gcc/snap foo,bar/snap
+bk new $Q -fynull gcc/snap foo,bar/snap
+bk commit $Q -f
+cd ../product
+touch gcc-old/prod foo,bar/prod
+bk new $Q -fynull gcc-old/prod foo,bar/prod
+bk commit $Q -f
+bk pull $Q ../snap
+bk edit $Q gcc-old/file foo,bar/x
+bk delta $Q -fynull gcc-old/file foo,bar/x
+bk commit $Q -f
+#
+# See last line in data.  Both lower bound revs are the same, but
+# path is different, so both are shown.
+bk rset -hr1.7,1.5.1.1..+ > GOT
+rev2md5 >WANT <<EOF
+ChangeSet|ChangeSet|1.7|ChangeSet|1.5.1.1|ChangeSet|1.9
+foo,bar/ChangeSet|foo,bar/ChangeSet|1.2.1.1|foo,bar/ChangeSet|1.3|foo,bar/ChangeSet|1.5
+foo,bar/x|foo,bar/x|1.1|foo,bar/x|1.2
+gcc-old/ChangeSet|gcc-old/ChangeSet|1.4|gcc/ChangeSet|1.2.1.1|gcc-old/ChangeSet|1.6
+gcc-old/file|gcc-old/file|1.1|gcc/file|1.1|gcc-old/file|1.2
+EOF
+cmpfiles WANT GOT
+#
+# When historical paths are not shown, since keys are same, only one shown.
+# see last line in data.
+bk rset -r1.7,1.5.1.1..+ > GOT
+rev2md5 >WANT <<EOF
+ChangeSet|1.7,1.5.1.1..1.9
+foo,bar/ChangeSet|1.2.1.1,1.3..1.5
+foo,bar/x|1.1..1.2
+gcc-old/ChangeSet|1.4,1.2.1.1..1.6
+gcc-old/file|1.1..1.2
+EOF
+cmpfiles WANT GOT
+#
+# Show the old busted way - no 'snap' files above, but there are below
+#
+bk rset --compat -hr1.7,1.5.1.1..+ > GOT
+rev2md5 >WANT <<EOF
+ChangeSet|ChangeSet|1.7+1.5.1.1|ChangeSet|1.9
+foo,bar/ChangeSet|foo,bar/ChangeSet|1.2.1.1|foo,bar/ChangeSet|1.5
+foo,bar/snap|foo,bar/snap|1.0|foo,bar/snap|1.1
+foo,bar/x|foo,bar/x|1.1|foo,bar/x|1.2
+old/file|gcc-old/file|1.1|gcc-old/file|1.2
+gcc-old/ChangeSet|gcc-old/ChangeSet|1.4|gcc-old/ChangeSet|1.6
+gcc-old/file|gcc-old/file|1.1|gcc-old/file|1.2
+gcc-old/snap|gcc-old/snap|1.0|gcc-old/snap|1.1
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test rset --stats and --checksum ............................$NL
+bk prs -hnd:I: ChangeSet | while read rev
+do	bk rset --no-print --stats --checksum -r$rev || fail
+	bk rset --no-print --stats -r$rev || fail
+	bk rset --show-gone --no-print --stats -r$rev || fail
+	echo 1>&2
+done 2> GOT || fail
+cat <<EOF > WANT
+       6 weave data lines read in foo,bar/ for 1.5
+       6 weave data lines read in gcc-old/ for 1.6
+      10 weave data lines read in repo for 1.9
+       6 weave data lines read in foo,bar/ for 1.5
+       6 weave data lines read in gcc-old/ for 1.6
+      10 weave data lines read in repo for 1.9
+       6 weave data lines read in foo,bar/ for 1.5
+       6 weave data lines read in gcc-old/ for 1.6
+      10 weave data lines read in repo for 1.9
+
+       4 weave data lines read in foo,bar/ for 1.4
+       4 weave data lines read in gcc-old/ for 1.5
+      13 weave data lines read in repo for 1.8
+       4 weave data lines read in foo,bar/ for 1.4
+       4 weave data lines read in gcc-old/ for 1.5
+       8 weave data lines read in repo for 1.8
+       5 weave data lines read in foo,bar/ for 1.4
+       5 weave data lines read in gcc-old/ for 1.5
+      11 weave data lines read in repo for 1.8
+
+       2 weave data lines read in foo,bar/ for 1.2.1.1
+       2 weave data lines read in gcc-old/ for 1.4
+       5 weave data lines read in repo for 1.7
+       2 weave data lines read in foo,bar/ for 1.2.1.1
+       2 weave data lines read in gcc-old/ for 1.4
+       5 weave data lines read in repo for 1.7
+       3 weave data lines read in foo,bar/ for 1.2.1.1
+       3 weave data lines read in gcc-old/ for 1.4
+      13 weave data lines read in repo for 1.7
+
+       2 weave data lines read in foo,bar/ for 1.3
+       2 weave data lines read in gcc-old/ for 1.2.1.1
+       8 weave data lines read in repo for 1.5.1.1
+       2 weave data lines read in foo,bar/ for 1.3
+       2 weave data lines read in gcc-old/ for 1.2.1.1
+       8 weave data lines read in repo for 1.5.1.1
+       5 weave data lines read in foo,bar/ for 1.3
+       5 weave data lines read in gcc-old/ for 1.2.1.1
+      16 weave data lines read in repo for 1.5.1.1
+
+       0 weave data lines read in gcc-old/ for 1.3
+       2 weave data lines read in repo for 1.6
+       0 weave data lines read in gcc-old/ for 1.3
+       2 weave data lines read in repo for 1.6
+       5 weave data lines read in gcc-old/ for 1.3
+      12 weave data lines read in repo for 1.6
+
+       4 weave data lines read in gcc-old/ for 1.2
+       7 weave data lines read in repo for 1.5
+       4 weave data lines read in gcc-old/ for 1.2
+       7 weave data lines read in repo for 1.5
+       9 weave data lines read in gcc-old/ for 1.2
+      18 weave data lines read in repo for 1.5
+
+       4 weave data lines read in foo,bar/ for 1.2
+       2 weave data lines read in repo for 1.4
+       4 weave data lines read in foo,bar/ for 1.2
+       2 weave data lines read in repo for 1.4
+       9 weave data lines read in foo,bar/ for 1.2
+      14 weave data lines read in repo for 1.4
+
+      10 weave data lines read in foo,bar/ for 1.1
+       9 weave data lines read in repo for 1.3
+      10 weave data lines read in foo,bar/ for 1.1
+       9 weave data lines read in repo for 1.3
+      18 weave data lines read in foo,bar/ for 1.1
+      22 weave data lines read in repo for 1.3
+
+      10 weave data lines read in gcc-old/ for 1.1
+      10 weave data lines read in gdb/ for 1.1
+       9 weave data lines read in repo for 1.2
+      10 weave data lines read in gcc-old/ for 1.1
+      10 weave data lines read in gdb/ for 1.1
+       9 weave data lines read in repo for 1.2
+      18 weave data lines read in gcc-old/ for 1.1
+      10 weave data lines read in gdb/ for 1.1
+      25 weave data lines read in repo for 1.2
+
+      12 weave data lines read in repo for 1.1
+      12 weave data lines read in repo for 1.1
+      34 weave data lines read in repo for 1.1
+
+EOF
+cmpfiles WANT GOT
 echo OK

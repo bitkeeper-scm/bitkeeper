@@ -34,16 +34,14 @@ echo OK
 rm -f symlink
 echo $N Create a symlink with admin -i ..............................$NL
 ln -s /what/ever link222
-bk admin $Q -ilink222 link-name
-if [ $? != 0 ]
-then	echo admin failed to exit 0; exit 1
-fi
+bk admin $Q -ilink222 link-name || fail
 if bk _test ! -f SCCS/s.link-name
 then	echo failed to create link; exit 1
 fi
 test `bk prs -hnd:SYMLINK: -r+ link-name` = /what/ever || fail
 bk admin -h link-name 2> ${DEV_NULL}
 if [ $? -ne 0 ]; then echo bad sfile.; exit 1; fi
+bk repocheck $Q || fail
 echo OK
 
 rm -f symlink
@@ -211,7 +209,7 @@ echo $N Check diff of edited symlinks ...............................$NL
 bk edit $Q symlink
 rm symlink
 ln -s junk symlink
-bk diffs --no-unified symlink > GOT || exit 1
+bk diffs --no-unified symlink > GOT || fail
 cat > WANT << EOF
 ===== symlink 1.5 vs edited =====
 1c1
@@ -230,33 +228,33 @@ mkdir dir
 cd dir
 echo hi > file
 bk new $Q file
-bk commit $Q -ywhat || exit 1
+bk commit $Q -ywhat || fail
 cd "$HERE"
-bk clone $Q project copy2 || exit 1
+bk clone $Q project copy2 || fail
 cd copy2
-bk mvdir dir dir2 || exit 1
+bk mvdir dir dir2 || fail
 if [ -d dir ]; then echo failed; exit 1; fi
-ln -s dir2 dir || exit 1
-bk new $Q dir || exit 1
-bk commit $Q -ywhy || exit 1
-bk push $Q || exit 1
+ln -s dir2 dir || fail
+bk new $Q dir || fail
+bk commit $Q -ywhy || fail
+bk push $Q || fail
 echo OK
 
 echo $N Undo last cset ..............................................$NL
 cd ../project
-bk unpull -f $Q || exit 1
+bk unpull -f $Q || fail
 cd ../copy2
-bk undo $Q -f -r+ || exit 1
+bk undo $Q -f -r+ || fail
 if [ -d dir2 ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N Check renaming a dir and replacing with file ................$NL
-bk mvdir dir dir2 || exit 1
+bk mvdir dir dir2 || fail
 if [ -d dir ]; then echo failed; exit 1; fi
 echo hi > dir
-bk new $Q dir || exit 1
-bk commit $Q -ywhy || exit 1
-bk push $Q || exit 1
+bk new $Q dir || fail
+bk commit $Q -ywhy || fail
+bk push $Q || fail
 echo OK
 
 echo $N Pull after replacing a dir with symlink to another repo .....$NL
@@ -268,30 +266,30 @@ touch src/foo
 bk new $Q src/foo
 bk commit $Q -yfoo
 cd ..
-bk clone $Q project copy || exit 1
+bk clone $Q project copy || fail
 
 # Need to have this older, so deleted is the trunk name for foo
 cd copy
 bk rmdir src
 # This is the wacky part - it's a symlink to another repo
 ln -s "$HERE/project/src" src
-bk new $Q src || exit 1
+bk new $Q src || fail
 # Things don't fail if it is not checked out.
 # workaround: bk clean src; bk pull
 bk get $Q src
-bk commit $Q -yfoo || exit 1
+bk commit $Q -yfoo || fail
 
 # Any delta will do -- just need to create a 2 tipped file
 cd ../project
 bk edit $Q src/foo
 bk delta $Q -fyfoo src/foo
-bk commit $Q -yfoo || exit 1
+bk commit $Q -yfoo || fail
 
 # Before fix nameOK would look into other repo and see file is
 # in same place even though it has been deleted in this repo.
 # The M file was then deleted and no action in pass1 or pass2 happened
 cd ../copy
-bk pull $Q || exit 1
+bk pull $Q || fail
 echo OK
 
 echo $N Change file types and see if we can reget ...................$NL

@@ -102,12 +102,18 @@ checkbk nest.bk
 #checkbk nest.ascii/clone.bk
 echo OK
 
-echo $N Setup a mixed/broken nested repository ......................$NL
+echo $N Demonstrate that we can convert to BWEAVEv2 .................$NL
 bk clone $Q nest.ascii nest.ascii.mixed || fail
 cd nest.ascii.mixed/newcomp
 #replace product features
 (echo BKFILE; echo BWEAVEv2; echo SAMv3) > ../BitKeeper/log/features
-bk -r admin -Zsame
+bk -r admin -Zsame || fail
+echo OK
+
+echo $N Setup a mixed/broken nested repository ......................$NL
+#replace product features
+(echo BKFILE; echo BWEAVEv3; echo SAMv3) > ../BitKeeper/log/features
+bk -r admin -Zsame || fail
 #restore
 echo SAMv3 > ../BitKeeper/log/features
 cd ..
@@ -173,16 +179,17 @@ cd nest.oldbk
 echo BKFILE >> BitKeeper/log/features
 _BK_DEVELOPER= bk repocheck $Q || fail
 
+# show that we auto-upgrade to BWEAVEv2
 bk -e --headers prs -hnd:ENCODING: -r+ ChangeSet > GOT || fail
 cat <<EOF > WANT
 #### 1/4 comp.ascii.ascii ####
-BK
+BK,BWEAVEv2
 #### 2/4 comp.ascii.bk ####
-BK
+BK,BWEAVEv2
 #### 3/4 newcomp ####
-BK
+BK,BWEAVEv2
 #### 4/4 . ####
-BK
+BK,BWEAVEv2
 EOF
 cmpfiles GOT WANT
 cd ..
@@ -258,4 +265,23 @@ echo OK
 echo $N Run citool --no-extras on a compat repo .....................$NL
 cd ../nest.ascii
 bk comps -ch --no-extras || fail
+echo OK
+
+echo $N Downgrade repo by by editing features file ..................$NL
+cd ../nest.also-upgraded
+bk repocheck $Q
+rm -f BitKeeper/log/features
+_BK_DEVELOPER= bk repocheck $Q || fail
+cat <<EOF > WANT
+SAMv3
+remap
+EOF
+cmpfiles BitKeeper/log/features WANT
+echo OK
+
+echo $N Add BWEAVEv3 and not BKFILE to features .....................$NL
+echo BWEAVEv3 >> BitKeeper/log/features
+_BK_DEVELOPER= bk repocheck $Q || fail
+ENC=`bk prs -hnd:ENCODING: -r+ ChangeSet`
+test "$ENC" = "BK,bweave" || fail "$ENC"
 echo OK

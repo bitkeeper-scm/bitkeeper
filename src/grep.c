@@ -113,7 +113,7 @@ grep_main(int ac, char **av)
 		aflags = opts.style = opts.before = opts.after = 0;
 		opts.nonames = 1;
 	}
-	unless (av[optind]) exit(2);
+	if (!av[optind] || (!av[optind+1] && streq(av[optind], "-"))) usage();
 	if (opts.nocase) {
 		for (pat = av[optind]; *pat; pat++) *pat = tolower(*pat);
 	}

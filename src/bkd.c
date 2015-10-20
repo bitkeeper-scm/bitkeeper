@@ -546,13 +546,10 @@ getav(FILE *f, int *acp, char ***avp)
 #define	QUOTE(c)	(((c) == '\'') || ((c) == '"'))
 	static	char	**av;
 	char	*buf, *s;
-	remote	r;
 	int	i, inspace, inQuote;
 	int	ac;
 	FILE	*ftmp;
 
-	bzero(&r, sizeof (remote));
-	r.wfd = 1;
 nextline:
 	if (av) {
 		freeLines(av, free);
@@ -617,6 +614,12 @@ nextline:
 	 * real push/pull/clone command
 	 */
 	if ((ac >= 1) && streq("POST", av[1])) {
+		remote	r;
+
+		bzero(&r, sizeof (remote));
+		r.wfd = 1;
+		/* if stdin used, then have read_blk() use stdin */
+		if (Opts.use_stdio) r.rf = f;
 		skip_http_hdr(&r);
 		content_len = r.contentlen;
 		http_hdr();

@@ -1,6 +1,8 @@
 #include "bkd.h"
 #include "logging.h"
 #include "range.h"
+#include "cfg.h"
+
 typedef void (*vfn)(char *page);
 
 private	char	*any2rev(char *any, char *file);
@@ -285,8 +287,7 @@ header(char *color, char *titlestr, char *headerstr, ...)
 	puts("</td></tr>");
 	puts("<tr><td>");
 
-	t = proj_configval(0, "description");
-	if (*t && (strlen(t) < 2000)) {
+	if ((t = cfg_str(0, CFG_DESCRIPTION)) && (strlen(t) < 2000)) {
 		http_title(fmt, t, color);
 	} else {
 		pwd_title(fmt, color);
@@ -1091,7 +1092,6 @@ http_index(char *page)
 	char	buf[MAXPATH*2];
 	char	*email=0, *desc=0, *contact=0, *category=0;
 	char	*bkweb=0, *master=0, *homepage=0;
-	MDBM	*m;
 
 	unless (s  = sccs_csetInit(INIT_NOCKSUM|INIT_NOSTAT|INIT_MUSTEXIST)) {
 		http_error(404, "Unable to find ChangeSet file");
@@ -1141,15 +1141,13 @@ http_index(char *page)
 	}
 	sccs_free(s);
 
-	if (m = proj_config(0)) {
-		desc = mdbm_fetch_str(m, "description");
-		contact = mdbm_fetch_str(m, "contact");
-		email = mdbm_fetch_str(m, "email");
-		category = mdbm_fetch_str(m, "category");
-		bkweb = mdbm_fetch_str(m, "bkweb");
-		master = mdbm_fetch_str(m, "master");
-		homepage = mdbm_fetch_str(m, "homepage");
-	}
+	desc 	 = cfg_str(0, CFG_DESCRIPTION);
+	contact  = cfg_str(0, CFG_CONTACT);
+	email 	 = cfg_str(0, CFG_EMAIL);
+	category = cfg_str(0, CFG_CATEGORY);
+	bkweb 	 = cfg_str(0, CFG_BKWEB);
+	master 	 = cfg_str(0, CFG_MASTER);
+	homepage = cfg_str(0, CFG_HOMEPAGE);
 
 	httphdr(".html");
 	/* don't use header() here; this is one place where the regular

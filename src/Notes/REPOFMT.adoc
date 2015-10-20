@@ -1,0 +1,102 @@
+Proposal to minimize having a zillion flags for clone
+=====================================================
+
+In the current -stable tree we support binary sfile's using the
+'binfile' config variable.  The config is checked whenever a sfile is
+going to be written: if 'binfile' is true then a binary sfile is
+written.  As a result file formats can move back and forth.  For
+example two users can be working in the same repository with different
+values of 'binfile' in their environment and files will move back and
+forth.  This works currently but becomes a problem with the more
+complicated transformations like a binary cset weave or blobs.
+
+I would propose we make the repository format fixed and only allow it
+to change on clone.   We will not support an in-place format change
+even if it is trivial in the code.  By requiring the user to clone to
+change the format we also require them to create a backup.
+
+This is similar to how remap is handled currently.  Right now to
+change remap the user has to clone with --sccs-compat or
+--hide-sccs-dirs.
+
+But we don't want to just keep adding options to clone:
+   --[no-]hide-sccs-dirs
+   --[no-]bweave
+   --[no-]binfile
+   --[no-]blob
+   ...etc...
+
+Our users don't want to think about all that nor do we want to try to
+explain it.
+
+So here is my proposal:
+
+  * We only allow users to select the latest repository format
+    supported by the current bk or a compat format that old bk's
+    understand.
+
+  * 'bk setup' that is creating a new repository (not components)
+    always uses the latest repository format.
+    --compat will force an old format repository
+
+  * 'bk clone' always duplicates the format of the source repository
+    by default.  It has two options to change this --upgrade-repo and
+    --bk-compat.  The first will select the latest format and the
+    second will select the oldest format we still support.
+
+  * If a user wants to support an older bk they should create the repo
+    with the older bk.  Or they have to do a dance like this:
+             bk-new clone --bk-compat repo1 repo2
+         bk-old clone --upgrade-repo repo2 repo3
+
+    That will make repo3 the latest format that the old bk understands.
+
+  * Check will verify all the files match the intended repository format.
+    And it will either fix the files that are wrong or generate an error.
+
+  * All other bk operations will not change the repository format.
+
+Issues:
+
+  * For some people a non-remapped tree could be a feature. (gmake) Do
+    we want to support a non-remapped tree?  I think not because gmake
+    doesn't work with blobs anyway.
+
+
+Notes for nested:
+
+In nested, components ALWAYS use the exact same format as the product
+and so a populate may end up using the doing a partial upgrade or
+downgrade in the clone to make them match.  So we will still need to
+support doing partial changes.  Like for instance binfile without
+blob.
+
+As a result of this I am really thinking we should get rid of the
+in-place attach.  New components should either be created in-place
+with 'bk setup' or cloned with 'bk attach URL comp'.  This would
+simplify some corner cases I have hit with several RTIs lately and
+make it harder to violate the goals for this proposal. 
+
+
+Features:
+
+The existing bSFILEv1 feature flag stored in BitKeeper/log/features
+is being renamed to BKFILE.  Just because bSFILEv1 can sometimes be
+exposed to users in error messages and the user is going to somehow be
+confused that bSFILEv1 implies something.
+
+The new bk will know about the bSFILEv1 feature, but will totally
+ignore it.  When reading from the BitKeeper/log/features file the
+bSFILEv1 feature will be deleted if present and never sent over the
+wire.  If a new bk or bkd receives a bSFILEv1 over the wire from an
+older bk, it will allow it but do nothing.  In this way the new bk
+will assume repositories with bSFIOv1 should be stored in the SCCS
+file format and will act like it is using SCCS files over the wire.
+The check will automatically downgrade any repository back to SCCS
+files.  This can cause errors if pushing to an old bkd with one of our
+internal bk-stable repositories because the features bits won't
+prevent the push, but this is harmless and only impacts us and not
+customers.
+
+The above should totally fix our environment and doesn't impact
+customers.

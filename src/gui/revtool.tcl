@@ -1555,19 +1555,19 @@ proc currentMenu {} \
 	    -state normal
 
 	if {![info exists rev2] || ($rev2 == "") || $rev2 == $rev1} { 
-		set end $rev1 
+		set end ""
 		$gc(fmenu) entryconfigure "Current Changeset*" \
 		    -label "Current Changeset"
 	} else {
 		# don't want to modify global rev2 in this procedure
-		set end $rev2
+		set end "..$rev2"
 		$gc(fmenu) entryconfigure "Current Changeset*" \
 		    -label "Current Changesets"
 	}
 	busy 1
 	revtool_cd2root
 	set currentMenuList {}
-	$gc(current) delete 1 end
+	$gc(current) delete 0 end
 	$gc(current) add command -label "Computing..." -state disabled
 
 	# close any previously opened pipe
@@ -1577,7 +1577,7 @@ proc currentMenu {} \
 	set S ""
 	if {$dashs} { set S "-S" }
 	set fileEventHandle \
-	    [open "| bk changes $S -nd:DPN:@:I: -fv -er$rev1..$end"]
+	    [open "| bk changes $S -nd:DPN:@:I: -fv -er$rev1$end"]
 
 	fconfigure $fileEventHandle -blocking false
 	fileevent $fileEventHandle readable \
@@ -1599,7 +1599,7 @@ proc updateCurrentMenu {fd {cleanup 0}} \
 
 	if {$cleanup} {
 		catch {close $fd}
-		$gc(current) delete 1 end
+		$gc(current) delete 0 end
 		$gc(fmenu) entryconfigure "Current Changeset*" -state normal
 		if {[llength $currentMenuList] > 0} {
 			foreach item [lsort $currentMenuList] {
@@ -2455,7 +2455,7 @@ proc arguments {} \
 					[string range $arg 2 end]
 			    }
 		    }
-		    "^-S$" {
+		    "^-S$" - "^--standalone$" {
 			set dashs 1
 		    }
 		    "^-.*" {

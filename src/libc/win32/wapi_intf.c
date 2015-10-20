@@ -55,9 +55,11 @@
 static	int	win32_flags = WIN32_NOISY | WIN32_RETRY;
 
 /* Win32 Retry Loops */
-static	int	retries = 32;	/* how many times to retry */
+static	int	retries = 16;	/* how many times to retry */
 #define	INC	100	/* milliseconds, we do 100, 200, 300, 400, etc */
 #define	NOISY	10	/* start telling them after NOISY sleeps (~5 sec) */
+
+private	BOOL	IsWow64(void);
 
 /* get, set , and clear the flags for the operation of the win32
  * emulation layer look at the static int above and src/libc/win32.h
@@ -703,7 +705,8 @@ typedef BOOL (WINAPI *LPFN_ISWOW64PROCESS) (HANDLE, PBOOL);
 
 LPFN_ISWOW64PROCESS fnIsWow64Process;
 
-BOOL IsWow64(void)
+private	BOOL
+IsWow64(void)
 {
     BOOL bIsWow64 = FALSE;
 
@@ -733,31 +736,15 @@ win_verstr(void)
 
 	major = osinfo.dwMajorVersion;
 	minor = osinfo.dwMinorVersion;
-	if (osinfo.dwPlatformId == VER_PLATFORM_WIN32_NT) {
-		/* Win/XP, Win/2K, Win/NT */
-		if ((major == 4) && (minor == 0)) {
-			p = strdup("Windows/NT");
-		} else if ((major == 5) && (minor == 0)) {
-			p = strdup("Windows/2000");
-		} else if ((major == 5) && (minor == 1)) {
-			p = strdup("Windows/XP");
-		} else if ((major == 5) && (minor == 2)) {
-			p = strdup("Windows/2003");
-		} else if ((major == 6) && (minor == 0)) {
-			p = reg_get(CUR_VER, "ProductName", 0);
-			if (p && strstr(p, "Server")) {
-				p = strdup("Windows/2008-Server");
-			} else {
-				p = strdup("Windows/Vista");
-			}
-		} else if ((major == 6) && (minor == 1)) {
-			p = strdup("Windows/7");
-		}  else {
-			p = aprintf("NT-%d.%d", major, minor);
+	p = reg_get(CUR_VER, "ProductName", 0);
+	if (p) {
+		for (t = p; *t; t++) {
+			if (*t == ' ') *t = '_';
 		}
-	}  else {
+	} else {
 		p = aprintf("unknown-%d.%d", major, minor);
 	}
+
 	if (osinfo.wServicePackMajor) {
 		t = p;
 		p = aprintf("%s-sp%d", t, osinfo.wServicePackMajor);
@@ -1331,42 +1318,45 @@ int
 nt_rmdir(const char *dir)
 {
 	HANDLE	h;
-	int	err, i = 1, j = 1;
-	char	**files;
+	int	err, save, tries = 0, ret = -1;
+	char	**files, *fmt;
 
 again:
+	/* Attempt to "lock" the dir by opening it */
 	h = CreateFile(dir, GENERIC_READ, FILE_SHARE_DELETE,
-	       0, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
+	    0, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
+	/*
+	 * If it doesn't exist, quit.
+	 */
 	if (h == INVALID_HANDLE_VALUE) {
-		switch (err = GetLastError()) {
-		    case ERROR_FILE_NOT_FOUND:
-		    case ERROR_PATH_NOT_FOUND:
+		save = errno;
+		err = GetLastError();	// set errno
+		if (err == ERROR_FILE_NOT_FOUND ||
+		    err == ERROR_PATH_NOT_FOUND) {
 			return (-1);
-		    default:
-			fprintf(stderr,
-			    "rmdir(%s): unexpected win32 error %d\n",
-			    dir, err);
-			/* FALLTHROUGH */
-		    case ERROR_SHARING_VIOLATION:
-			unless (win32_flags & WIN32_RETRY) {
-fail:				errno = EBUSY;
-				return (-1);
-			}
-			Sleep(i * INC);
-			stuck(err, i, "retrying lock on %s", dir);
-
-			if (i++ > retries) {
-				bail(err, i, "bailing out on %s", dir);
-				goto fail;
-			}
-			goto again;
 		}
+		errno = save; 
 	}
-
+	/*
+	 * The lock attempt may have failed because Explorer
+	 * has a handle.  Experiments show that RemoveDirectory
+	 * will succeed in that case, so go ahead and try.
+	 * If we still fail, then we need to pay attention and
+	 * retry.
+	 */
 	unless (RemoveDirectory(dir)) {
-		(void)GetLastError(); /* set errno */
-		safeCloseHandle(h);
-		switch (err = GetLastError()) {
+		err = GetLastError();  // grab before calling safeCloseHandle()
+		unless (h == INVALID_HANDLE_VALUE) {
+			save = errno;
+			safeCloseHandle(h);
+			errno = save;
+			h = INVALID_HANDLE_VALUE;
+		}
+		switch (err) {
+		    case ERROR_SHARING_VIOLATION:
+			errno = EBUSY;	// XXX: not EACCESS as err2errno sets?
+			fmt = "retrying lock on %s";
+			break;
 		    case ERROR_DIR_NOT_EMPTY:
 			/* See if it's really not empty */
 			if (files = getdir((char *)dir)) {
@@ -1377,40 +1367,43 @@ fail:				errno = EBUSY;
 					concat_path(buf, (char *)dir, files[i]);
 					if (GetFileAttributes(buf) !=
 					    INVALID_FILE_ATTRIBUTES) {
-						/* nope, not emtpy */
+						/* nope, not empty */
 						freeLines(files, free);
-						goto fail2;
+						goto err;
 					}
 				}
 				freeLines(files, free);
 			}
 			/* We might be waiting for an antivirus. */
-			unless (win32_flags & WIN32_RETRY) {
-fail2:				errno = ENOTEMPTY;
-				return (-1);
-			}
-			Sleep(j * INC);
-			stuck(err, j, "retrying on %s", dir);
-			if (j++ > retries) {
-				bail(err, j, "bailing out on %s", dir);
-				goto fail2;
-			}
-			/*
-			 * We've already closed the handle, so we need
-			 * to do the whole thing again.
-			 */
-			goto again;
+			fmt = "retrying on %s";
 			break;
 		    default:
-			fprintf(stderr, "rmdir(%s): failed win32 err %ld\n",
-				dir, GetLastError());
-			errno = EINVAL;
-			break;
+			fprintf(stderr, "rmdir(%s): failed win32 err %d\n",
+			    dir, err);
+			// errno already set
+			goto err;
 		}
-		return (-1);
+		unless (win32_flags & WIN32_RETRY) {
+			goto err;
+		}
+		if (++tries <= retries) {
+			Sleep(tries * INC);
+			stuck(err, tries, fmt, dir);
+			goto again;
+		} else {
+			bail(err, tries, "bailing out on %s", dir);
+			goto err;
+		}
+
 	}
-	safeCloseHandle(h);
-	return (0);
+	ret = 0;
+err:
+	unless (h == INVALID_HANDLE_VALUE) {
+		save = errno;
+		safeCloseHandle(h);
+		errno = save;
+	}
+	return (ret);
 }
 
 int
@@ -1556,7 +1549,6 @@ nt_rename(const char *oldf, const char *newf)
 		return (-1);
 	}
 	if ((attribs = GetFileAttributes(oldf)) == INVALID_FILE_ATTRIBUTES) {
-		fprintf(stderr, "rename: no source %s\n", oldf);
 		errno = ENOENT;
 		return (-1);
 	}

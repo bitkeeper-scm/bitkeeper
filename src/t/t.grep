@@ -24,7 +24,7 @@ The quick foxy
 brown
 fox
 EOF
-bk new $Q file1 || exit 1
+bk new $Q file1 || fail
 mkdir dir1
 cat <<EOF > dir1/file2
 jumped foxily
@@ -32,7 +32,7 @@ over
 the lazy
 dog
 EOF
-bk new $Q dir1/file2 || exit 1
+bk new $Q dir1/file2 || fail
 mkdir subdir
 cd subdir
 cat <<EOF > old
@@ -54,7 +54,7 @@ cd ..
 echo OK
 
 echo $N grep ........................................................$NL
-bk grep fox > OUT || exit 1
+bk grep fox > OUT || fail
 cat <<EOF > expected
 file1:The quick foxy
 file1:fox
@@ -63,7 +63,7 @@ checkfiles OUT expected
 echo OK
 
 echo $N grep ^fox....................................................$NL
-bk grep ^fox > OUT || exit 1
+bk grep ^fox > OUT || fail
 cat <<EOF > expected
 file1:fox
 EOF
@@ -71,7 +71,7 @@ checkfiles OUT expected
 echo OK
 
 echo $N recursive grep ..............................................$NL
-bk -r grep fox > OUT || exit 1
+bk -r grep fox > OUT || fail
 cat <<EOF > expected
 file1:The quick foxy
 file1:fox
@@ -199,7 +199,7 @@ checkfiles WANT GOT
 echo OK
 
 echo $N annotated grep -adpru, recursive ............................$NL
-bk -r grep -apdru bitkeeper > GOT
+bk -Ur grep -apdru bitkeeper > GOT
 cat <<EOF > WANT
 subdir/old:1998/01/11:bk/$USER:1.1:bitkeeper rocks!
 subdir/user:2004/08/23:joe/$USER:1.1:bitkeeper rocks!
@@ -269,7 +269,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N recursive grep ..............................................$NL
-bk -U grep fox > OUT || exit 1
+bk -U grep fox > OUT || fail
 cat <<EOF > expected
 file1:The quick foxy
 file1:fox
@@ -279,7 +279,7 @@ checkfiles OUT expected
 echo OK
 
 echo $N recursive grep without file names ...........................$NL
-bk -U grep -h fox > OUT || exit 1
+bk -U grep -h fox > OUT || fail
 cat <<EOF > expected
 The quick foxy
 fox
@@ -289,7 +289,7 @@ checkfiles OUT expected
 echo OK
 
 echo $N Implied list of files .......................................$NL
-bk grep '[1x]' > OUT || exit 1
+bk grep '[1x]' > OUT || fail
 cat <<EOF > expected
 file:line1
 file1:The quick foxy
@@ -311,6 +311,8 @@ grep -q 'grep.* 2.[4-9]' VERS || grep -q 'grep.* 2.1[0-9]' VERS || {
 	exit 1
 }
 
+if ! grep -q FreeBSD VERS
+then
 echo $N 'exactly 2*C lines between matches, must not print "--" ......'$NL
 echo ' -nC2' > s1.cmd
 cat <<EOF > DATA
@@ -445,6 +447,8 @@ $GREP -nC3 match DATA > WANT
 checkfiles WANT GOT
 echo OK
 
+fi # End of FreeBSD skipped tests
+
 echo $N diff -C matches last line of file 1, do not print file 2 ....$NL
 cat <<EOF > f1
 foo
@@ -464,7 +468,7 @@ echo OK
 
 echo $N grep file without a trailing newline ........................$NL
 echo $NX line without newline$NXL > f3
-bk grep line f3 > /dev/null || exit 1
+bk grep line f3 > /dev/null || fail
 echo OK
 
 # This used to fail on some but not all platforms.
@@ -477,4 +481,22 @@ echo 'This is test line number 1' >>x
 perl -e '$i=104;print("123456789012345678901234567890123456789\n")while($i--)' >>x
 bk grep 'This is test line number 1' >/dev/null x || fail 1
 bk grep -q 'This is test line number 1' x || fail 2
+echo OK
+
+echo $N Dash works as pattern only if files listed ..................$NL
+# The -i in tests is because it downcases pattern in place, which stressed
+# the implementation because the dash added by bk -U was not modifiable.
+bk edit $Q file1
+echo "line with -" > file1
+# this fails as we don't allow '-' as a pattern by itself
+bk -U grep -i 2> ERR && fail -f ERR should fail
+bk help -s grep 2> WANT
+cmpfiles WANT ERR
+bk grep -i - 2> ERR && fail -f ERR should fail
+cmpfiles WANT ERR
+bk -U grep -i - > GOT || fail -f GOT
+echo "file1:line with -" > WANT
+cmpfiles WANT GOT
+bk grep -i - file1 > GOT || fail -f GOT
+cmpfiles file1 GOT
 echo OK

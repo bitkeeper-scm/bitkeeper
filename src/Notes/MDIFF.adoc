@@ -1,0 +1,102 @@
+Marked Diffs - used to for conflict resolving guis
+==================================================
+
+ [Tue Sep  2 08:32:12 PDT 2003]
+
+Marked diffs file format.   This is not completely implemented and this format
+may be slightly off from what we do.  When someone does the context diffs we
+need to update this file.
+
+ < <string>
+    filename and rev of file on left
+ > <string>
+    filename and rev of file on right
+ = <string>
+    filename and rev of gca
+ A 0
+     as the first line tells you that annotations are present.
+     This form is only needed if the first block is a diff block and in
+     that case you'll get an "A 0\n".
+ A <byte count>
+     read(fd, buf, bytecount)
+     put it in both annotation widgets if in whole file mode
+ a <byte count>
+     read(fd, buf, bytecount)
+     both if in whole file mode
+ C <byte count>
+     read(fd, buf, bytecount)
+     put it in both data widgets if in whole file mode
+ c <byte count>
+     read(fd, buf, bytecount)
+     put it in both data widgets
+
+Windows/Unix line ends:
+    This data is always in \n (Unix) line ending mode, never \r\n.
+
+highlighting
+
+    h #-# [#-# ...]
+    +data line ............
+
+    Character offsets start at 0 and the range is starting highlight char
+    .. char *after* the last char you highlight, i.e., up to but not
+    including.  [a,b) is the math notation if I remember correctly.
+
+difftool mode
+
+    L
+    -old version of the data
+    +new version of data
+     unchanged version of data
+    E
+
+fm3tool
+
+    M
+     merged data (note the leading space which must be stripped)
+    L
+    -old version of the data
+    +new version of data
+     unchanged version of data
+    s <this a spacer line - i.e., the leading block square)
+    R
+    -old version of the data
+    +new version of data
+     unchanged version of data
+    s <this a spacer line - i.e., the leading block square)
+    E
+
+In fm3tool you always get and L and an R but M is optional.
+
+    M is optional, that is automerged data.  Not all fm3 blocks start
+    with M, only the ones which have been automerge.  In other words,
+    no "M" means it's a conflict.
+
+In difftool mode, you never get an M or an R, just an L/E pair.
+
+In both modes, the diffblock ends with E and we never have repeats of the
+M/L/R's in a single block.
+
+Sample output from Makefile (no annotations)
+
+ M
+  # @(#) lm@work.bitmover.com|src/Makefile|20010203183456|62861
+ L
+ -# @(#) %K%
+ +# @(#) lm@work.bitmover.com|src/Makefile|20010203183456|62861
+ R
+  # @(#) %K%
+ s
+ E
+
+Sample output from Makefile (with annotations)
+
+ M
+  1.251.1.2     | # @(#) lm@work.bitmover.com|src/Makefile|20010203183456|62861
+ L
+ -1.61          | # @(#) %K%
+ +1.251.1.2     | # @(#) lm@work.bitmover.com|src/Makefile|20010203183456|62861
+ R
+  1.61          | # @(#) %K%
+ s
+ E

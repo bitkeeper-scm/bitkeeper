@@ -1,158 +1,87 @@
-
 echo $N Create initial repositories .................................$NL
 commercial project
 bk clone $Q ../project ../clone
 echo OK
 
-echo $N Create the same file in both repositories ...................$NL
-cd "`bk dotbk`"
-rm -rf bk-keys
+echo $N Check uniq daemon with writable .bk .........................$NL
 cd "$HERE"
+# first stop the uniq daemon (if running) and blow away the current uniqdb
+kill_uniq "$HERE/.bk/bk-keys-db"
+rm -f "`bk dotbk`/bk-keys/`bk gethost -r`"
+rm -f "/tmp/.bk-keys-$USER"
+# create some deltas
 for i in project clone
-do	
+do
 	(cd $i
 	echo foo > foo
 	BK_DATE_TIME_ZONE="2037-02-02 02:02:02-02" bk new $Q foo
 	)
 done
-echo OK
-
-echo $N Make sure the keys are different ............................$NL
+# check that a dir was created in the expected place
+test -d .bk/bk-keys-db || fail no db dir
+# check that the keys are different
 A=`bk log -r+ -nd:KEY: project/foo`
 B=`bk log -r+ -nd:KEY: clone/foo`
-test "$A" = "$B" && fail 
+test "$A" != "$B" || fail keys not different
 echo OK
 
-echo $N Same thing but with bk-keys blocked so we use backup ........$NL
-cd "`bk dotbk`"
-rm -rf bk-keys
-touch bk-keys
+echo $N Check uniq daemon with uniqdb config option .................$NL
 cd "$HERE"
+# first stop the uniq daemon (if running) and blow away its current dir
+kill_uniq "$HERE/.bk/bk-keys-db"
+rm -rf .bk/bk-keys-db
+# create some deltas
 for i in project clone
-do	
+do
 	(cd $i
 	echo foo > foo2
-	BK_DATE_TIME_ZONE="2037-02-02 02:02:02-02" bk new $Q foo2 2>ERR
+	BK_CONFIG="uniqdb:$HERE/keysdb" \
+	  BK_DATE_TIME_ZONE="2037-02-02 02:02:02-02" bk new $Q foo2
 	)
 done
+# check that a dir was created in the expected place
+test -d keysdb || fail no db dir
+test -d .bk/bk-keys-db && fail old uniqdb dir still exists
+# check that the keys are different
+A=`bk log -r+ -nd:KEY: project/foo`
+B=`bk log -r+ -nd:KEY: clone/foo`
+test "$A" != "$B" || fail keys not different
+kill_uniq "$HERE/keysdb"
+rm -rf "$HERE/keysdb"
 echo OK
 
-echo $N Check for error message .....................................$NL
-grep -q unique.c:325 project/ERR || fail -f project/ERR
-grep -q unique.c:325 clone/ERR || fail -f clone/ERR
+echo $N Check purge of old keys .....................................$NL
+echo foo >purge-tst1
+# a time_t of 123 gets pruned; 1577840461 does not
+_BK_UNIQ_TIMET=123 bk new $Q purge-tst1 || fail
+echo foo >purge-tst2
+_BK_UNIQ_TIMET=1577840461 bk new $Q purge-tst2 || fail
+# force the key prune
+kill_uniq "$HERE/.bk/bk-keys-db"
+echo "get purge-tst" | bk info_shell --uniqdb | grep purge-tst >GOT
+grep -q purge-tst1 GOT && echo key was not purged
+grep -q purge-tst2 GOT || echo key was purged
 echo OK
 
-echo $N Make sure the keys are different ............................$NL
-A=`bk log -r+ -nd:KEY: project/foo2`
-B=`bk log -r+ -nd:KEY: clone/foo2`
-test "$A" = "$B" && fail 
+echo $N Check ChangeSet key regression ..............................$NL
+# Test that a bug causing ChangeSet delta keys to be saved to the uniqdb
+# incorrectly has been fixed.
+cd "$HERE/project"
+echo foo >uniqdb-bug
+bk new $Q uniqdb-bug || fail
+bk commit $Q -ytst || fail
+# Force the uniqdb to be written out and then read the ChangeSet key back.
+# It doesn't matter if there are other ChangeSet keys in the db; any one
+# will do.
+kill_uniq "$HERE/.bk/bk-keys-db"
+echo "get ChangeSet" | bk info_shell --uniqdb | grep ChangeSet >GOT
+egrep '[^|]+\|ChangeSet\|[^|]+\|[^|]+$' GOT >OUT || fail -f GOT bad key
 echo OK
 
-echo $N Save backup .................................................$NL
-BACKUP="`bk tmpdir`/.bk-keys-`bk getuser -r`"
-test -f "$BACKUP" || {
-	echo No $BACKUP
-	exit 1
-}
-cp "$BACKUP" bk-keys
-echo OK
-
-echo $N Fix bk-keys, make a delta, make sure the backup is gone .....$NL
-cd "`bk dotbk`"
-rm -rf bk-keys
-cd "$HERE"
-cd project
-echo foo > foo3
-bk new $Q foo3
-test -f "$BACKUP" && {
-	echo should have cleaned up $BACKUP
-	exit 1
-}
-echo OK
-
-echo $N Make sure backup keys were added back in ....................$NL
-KEYS="`bk dotbk`/bk-keys/`bk gethost -r`"
-test `wc -l < "$KEYS"` -eq 1 && {
-	echo failed, just has one
-	exit 1
-}
-echo OK
-
-# echo bk-keys
-# sort < "$KEYS"
-# cd "$HERE"
-# echo backup
-# sort < bk-keys
-
-# Make sure that we don't close uniq file too much - good perf on NFS
-
-echo $N Test number of uniq_close for bk new of 2 files .............$NL
-cd "$HERE"
-commercial remote
-mkdir -p BitKeeper/triggers
-cat <<EOF > BitKeeper/triggers/pre-delta
-#!/bin/sh
-exit 0
-EOF
-chmod +x BitKeeper/triggers/pre-delta
-bk new $Q BitKeeper/triggers/pre-delta
-touch foo f1 f2 f3
-BK_TRACE="$HERE/new-trig.log" BK_TRACE_FUNCS="uniq_close" \
-    bk new $Q foo f1
-BK_NO_TRIGGERS=1 BK_TRACE="$HERE/new-no-trig.log" BK_TRACE_FUNCS="uniq_close" \
-    bk new $Q f2 f3
-bk commit $Q -f
-bk clone $Q . ../local
-# Two files, no triggers, one real close of uniq
-sed "s/.*] //" < ../new-no-trig.log > GOT
-echo "closing uniq 1 new" > WANT
-cmpfiles WANT GOT
-# Two files, with triggers, two real close of uniq
-sed "s/.*] //" < ../new-trig.log > GOT
-echo "closing uniq 1 new" >> WANT
-cmpfiles WANT GOT
-echo OK
-
-echo $N Test number of uniq_close for bk delta of 2 files ...........$NL
-bk edit $Q foo f1 f2 f3
-BK_TRACE="$HERE/ci-trig.log" BK_TRACE_FUNCS="uniq_close" \
-    bk delta $Q -fynull foo f1
-BK_NO_TRIGGERS=1 BK_TRACE="$HERE/ci-no-trig.log" BK_TRACE_FUNCS="uniq_close" \
-    bk delta $Q -fynull f2 f3
-# Two files, no triggers, one real close of uniq
-sed "s/.*] //" < ../ci-no-trig.log > GOT
-echo "closing uniq 1 delta" > WANT
-cmpfiles WANT GOT
-# Two files, with triggers, two real close of uniq
-sed "s/.*] //" < ../ci-trig.log > GOT
-echo "closing uniq 1 delta" >> WANT
-cmpfiles WANT GOT
-echo OK
-
-echo $N Test number of uniq_close for bk pull of 2 files ............$NL
-# Throw in some other tests of resolve changing permission and renaming
-bk chmod +x foo
-bk mv foo bar
-bk commit $Q -f
-cd ../local
-bk edit $Q foo f1 f2 f3
-bk delta $Q -fynone foo f1 f2 f3
-bk commit $Q -f
-BK_TRACE="$HERE/pull-trig.log" BK_TRACE_FUNCS="uniq_close" \
-    bk pull $Q
-bk unpull $Q -sf
-BK_NO_TRIGGERS=1 BK_TRACE="$HERE/pull-no-trig.log" BK_TRACE_FUNCS="uniq_close" \
-    bk pull $Q
-# The two deltas are because each rename/perm change calls bk delta
-sed "s/.*] //" < ../pull-no-trig.log > GOT
-cat <<EOF > WANT
-closing uniq 1 delta
-closing uniq 1 delta
-closing uniq 1 pull
-closing uniq 1 commit
-EOF
-cmpfiles WANT GOT
-# Pull does not run pre-delta triggers in the automated part of resolver
-sed "s/.*] //" < ../pull-trig.log > GOT
-cmpfiles WANT GOT
+echo $N Check recover from uniq_server crash ........................$NL
+cd "$HERE/project"
+echo foo >uniqdb-crash
+# This causes the uniq_server to process one request and then exit(1)
+# to simulate a crash that leaves around stale lock and port files.
+_BK_UNIQ_REQS=1! bk new $Q uniqdb-crash >OUT 2>&1 || fail -f OUT delta failed
 echo OK

@@ -1,0 +1,145 @@
+Types and environment variables
+===============================
+
+ [Mon Mar  5 22:47:34 PST 2001]
+
+I've been testing this by taking two copies of the bitcluster tree, stuff
+the triggers into there, and testing on work and disks.  I need to write
+some tests but have not done so yet.
+
+ [Thu Dec 14 19:40:09 PST 2000]
+
+--------------------------------------------------------------
+
+Basic trigger overview.
+
+Event classes
+    pre-commit
+	- called before a changeset is committed
+    	- exit !0 fails the commit
+	- typically used for integrity checks
+    post-commit
+	- called after a changeset is committed
+	- typically used for notification
+    pre-incoming
+	- called before an incoming push/pull is started
+    	- exit !0 fails the incoming event
+	- typically used for locking down a repository
+    pre-resolve
+	- called after the data has been union-ed in the RESYNC directory
+	- called in the RESYNC directory, not the enclosing repository
+	- exit 0 allows the pull/push
+	- exit 1 fails the entire pull/push
+	- exit 2 fails the entire pull/push but leaves the patch in PENDING
+	- typically used to examine changes before taking them
+    pre-apply [ NOT IMPLEMENTED ]
+	- called in the RESYNC directory, not the enclosing repository
+	- called after the data has been merged in the RESYNC directory
+	  but before it is applied to the tree.  Last chance to say no,
+	  allows examination of the merge changes
+	- exit 0 allows the pull/push
+	- exit 1 fails the entire pull/push
+	- exit 2 fails the pull/push but leaves the patch in PENDING
+	- exit 3 fails the pull/push but leaves the patch in PENDING and
+	  the RESYNC tree in PENDING/RESYNC-<date>
+	- typically used to examine changes before taking them
+    post-incoming
+	- called after the data has been applied to the tree
+	- typically used for notification
+    pre-outgoing
+	- called before an outgoing pull/push/clone event
+	- exit !0 fails the outgoing event
+	- typically used for locking down a repository
+    post-outgoing
+	- called after the outgoing event
+	- typically used for notification
+
+Missing triggers
+    - post-resolve; unlikely to be added, use pre-apply.
+    - post-apply; unlikely to be added, use post-incoming
+    - pre-delta; not implemented, will be implemented at some point
+      We need this for spelling/cstyle/whatever checks.
+
+Difference between pre- and post-
+    pre-triggers may cause events to fail;
+    post-triggers are informational only.
+
+Paranoid mode for gatekeeper trees
+    Because triggers can propogate and because they can do bad things like
+    "rm -rf .", it is a wise idea to put a non-propogating paranoid trigger
+    like so in your tree:
+
+    cat > BitKeeper/triggers/pre-apply-paranoid <<EOF
+    #!/bin/sh
+
+    # This is running in the RESYNC tree, we're looking for any new
+    # triggers and/or changes to triggers.
+    # Done after the resolve stage because they could be sneaky and create
+    # the file in an earlier changeset and then move it and we'd miss it
+    # because it hasn't been moved yet.
+    test `bk sfiles BitKeeper/triggers | wc -l` -gt 0 && {
+    	echo Changes delayed until they are reviewed
+	exit 3
+    }
+    exit 0
+
+
+Trigger catagories:
+    c-	-> pre-commit
+    c+  -> post-commit
+    i-  -> pre-incoming
+    i+  -> post-incoming
+    o-  -> pre-outgoing
+    o+  -> post-outgoing
+    r-  -> pre-resolve
+
+Trigger variable	Valid in	Meaning
+----------------	--------	-------
+BK_CSETLIST		i+, o-, r-	File containing list of cset revs.
+
+BK_CSETS		o-, o+		List of outgoing csets.
+
+BK_EVENT		All		Event type, such as clone.
+
+BK_HOST			All		Client host
+BKD_HOST		i-, i+, o-, o+	Server host
+
+BK_LEVEL		All		The "level" of the client repository.
+BKD_LEVEL		i+, o-, o+	The "level" of the server repository.
+
+BK_LOCALCSETS		o-, o+		The number of csets in outgoing repo
+					not found in incoming repo.
+
+BK_PENDING		c-, c+		File containing the list of deltas
+					about to be committed.
+
+BK_REMOTECSETS		o-, o+		The number of csets in incoming repo
+					not found in outgoing repo.
+
+BK_ROOT			All		Client root
+BKD_ROOT		i-, i+, o-, o+	Server root
+
+BK_SIDE			i-, i+, o-, o+	client|server, indicates which side is
+					running the trigger.
+
+BK_STATUS		c+, i+, o+	OK means the command worked,
+					other values mean an error or a
+					dry run.
+
+BK_TIME_T		All		Date of the BK binary as a time_t.
+BKD_TIME_T		i-, i+, o-, o+	Date of server BK binary as a time_t.
+
+BK_TRIGGER		All		The basename of the trigger program.
+
+BK_USER			All		Client user
+BKD_USER		i-, i+, o-, o+	Server user
+
+BK_UTC			All		Date of the BK binary as YYYYMMDDHHMMSS
+BKD_UTC			i-, i+, o-, o+	Date of the server BK binary 
+
+BK_VERSION		All		Version of the BK binary as the version
+					string which may be a symbolic tag.  If
+					the BK version was not tagged, then the
+					UTC.
+BKD_VERSION		i-, i+, o-, o+	Version of the server BK binary.
+--------------------------------------------------------------

@@ -1,0 +1,173 @@
+COMPILING
+
+You need Visual Studio installed in the default location.  The current version,
+as of this writing, is Visual Studio 8, and it's installed in:
+
+C:/Program Files/Microsoft Visual Studio 8/
+
+From the Visual Studio IDE, you can just load up BkShellX.vcproj and then
+build from there.  This will only build the DLL, it will not register or
+install it.
+
+Building from the command-line is easier.  You'll want to startup the
+Visual Studio Command Prompt that is located in your programs for Visual Studio.
+This will startup a command prompt with all of the paths setup properly.  Then,
+just type:
+
+build
+
+at the command-line.  This will give you the option available.  The easiest
+for use during development is:
+
+build dev
+
+Which will uninstall any current version of the DLL, build the debug version
+for your platform (32 or 64 bit) and then install the new version.
+
+
+THE CODE - WHY??
+
+Why, dear God, do their seem to be so many hacks in this code??
+Well, I'll tell you.  Windows, my friend.  Windows.  What follows is a
+brief explanation of what's going on around here.
+
+The context menus are pretty self-explanatory.  A user right-clicks in a
+directory or on a selection of files, and Windows queries our extension to
+see what menu items should be added to the context menu before posting it.
+The menus themselves are built out from ContextMenuHandler.cpp, and the
+calls to the menu items are handled by the various Ctx*.cpp files.  Each
+menu item gets its own class and methods.
+
+The icons is where most of the hackery lives, so we'll spend more time there.
+Our shell extension creates a couple of icon overlay handlers that are then
+hooked into Explorer (and others, but we're not concerned with them) so that
+Explorer will call our handlers each time it goes to paint an icon.
+
+Explorer calls the IsMember method of each of our overlay classes first to
+determine if it should even use this overlay for the given file.  If we
+determine that the icon should be used, we tell Windows, and it will then
+call the GetOverlayInfo method to get the location of the icon to overlay.
+
+That's all pretty simple.  What we do to determine what icon to draw is where
+some of the hackery comes in.  The first time we request the status of a file
+(using BitKeeper::getStateFromSfiles), we notice that our directory has
+changed, so we call out to 'bk sfiles' to rebuild our cache of information.
+
+The cache is just the full file path along with a state bit that we determine
+from parsing the sfiles output.  Keeping the cache in sync when there are
+changes is where we run into trouble.  Upon entering a new directory, we setup
+a couple of change notify watchers that look for changes in the filesystem.
+One is set on the current directory, and the second is set on the SCCS
+subdirectory.
+
+Since Explorer will automatically refresh any file that changes in the current
+view, the watcher on the working directory is only there to tell us that
+something has changed, and we need to rebuild the cache before we return the
+state.  Explorer doesn't care about the SCCS subdirectory though, so changes
+in that directory will not result in the icons being redrawn in our working
+directory.
+
+For that, we have to register the SCCS watcher to receive notifications when
+the event fires.  Windows will create a new thread to look for changes in
+state of the SCCS watcher and call out to our callback whenever the state
+changes.
+
+Below is an explanation of the functions involved:
+
+BitKeeper::openChangeHandles(const BKUTL::tstring& path)
+    Open change handles for the given path and the SCCS subdirectory.
+
+    This function will automatically close any open handles before
+    opening new ones.  Then, we create our two change notification
+    handles and register the SCCS handle to tell Windows to watch
+    that handle for changes and notify us via callback when something
+    trips its state.
+
+    This creates a new thread in Windows that sits out there monitoring
+    the object for state changes.  Because we're officially in
+    multithreaded land here, we want to be really careful in the rest
+    of our code to make sure that the callbacks only do really benign
+    things because we have no real locking in here.
+
+    This is why our callback only sets a timer to do something in the
+    future and doesn't actually do anything real.  The timer is also
+    in another thread, but all it does is fire off a command to trip
+    the explorer refresh.  All pretty harmless.
+
+BitKeeper::changeCallback(void *param, int timedOut)
+    Callback that is called each time a change is made in the SCCS directory.
+
+    Everytime this is called, we set a timer for 100 milliseconds
+    that will fire off a refresh of the explorer view.  If we receive
+    another event before the timer fires, we delete that timer and
+    set another one.  This will eat up a bunch of file changes that
+    happen at once and only end up issuing a single redraw when it's
+    all done.
+
+    We walk through any and all change notifications on our handle so
+    that we can eat up as many changes in one pass.  This will help
+    us to not be called a bunch of times when there are multiple
+    changes in the SCCS directory.
+
+    Note that we don't care about the parameters passed in here since
+    we already know what we need to know.
+
+BitKeeper::timerCallback(void *param, int timedOut)
+    This is the timer callback that actually does the refresh of Explorer.
+
+    This function is called when the timer set by changeCallback()
+    fires.  It will call refreshExplorerView() to force Explorer to
+    redraw the working view.
+
+    Note that we don't care about the parameters passed in here since
+    we already know what we need to know.
+
+BitKeeper::refreshExplorerView()
+    Force Windows Explorer to redraw the current view.
+
+    We need Windows Explorer to refresh the icons in the current
+    view, and it really doesn't like to do that when you think it
+    should.  So, we need to force it to.
+
+    This is a nasty little hack, so it deserves some explanation.
+    We call out to the attrib command to flip the "Archive" bit of
+    every file in the directory.  Explorer will notice this change
+    of attributes and issue redraws for the items in the view.
+
+    The "Archive" bit in Windows was kind of a lame idea where MS
+    decided that whenever a change is made to a file, you can set
+    this bit that tells backup software that this file should be
+    "archived" on the next pass or whatever.  The problem is that
+    this bit is completely voluntary, so I don't think a single
+    backup program in the world would trust it.
+
+    We're going to take advantage of this meaningless bit and use
+    it to our advantage.  The reason we update the attributes of
+    all of the files instead of just files that have changed is
+    because it's actually faster to call attrib once with a *
+    pattern than it is to walk every file in our directory looking
+    for changes when all we really want is Explorer to redraw the
+    icons.  This may be proven wrong for larger directories.
+
+BitKeeper::rebuildSfilesCache(const BKUTL::tstring& path)
+    Determine if a rebuild of the cache is needed and do it.
+
+    This function is called every time Windows wants to redraw an
+    icon.  We will first determine that the given file is actually
+    a file under BK control, and then ask this function to rebuild
+    the cache before we pass back the state of the file.
+
+    We first check to see if our directory has changed.  If so, we
+    definitely want to rebuild the cache because we've moved to a
+    different directory in Explorer.  We also want to establish new
+    change handles on this new directory.
+
+    The second check looks at our change notify handle for the
+    working directory and looks for any changes.  If anything in
+    our current directory has changed since the last time we were
+    asked, we rebuild the cache.  Notice that we keep looping
+    through the change notifications until we get through them all
+    so that we eat up any multiple changes in one pass.
+
+    If anything has changed, or the _sfiles.needRecache flag has
+    been set (by forcing a redraw), we rebuild the cache.

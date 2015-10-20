@@ -43,7 +43,7 @@ cd ../copy
 bk pull $Q -R
 cd ..
 tar cf copy.tar copy
-bk bkd -q -aPORT -ikill || exit 1
+bk bkd -q -aPORT -ikill || fail
 P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
 # random sanity check

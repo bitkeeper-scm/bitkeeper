@@ -11,8 +11,7 @@ f_local(resolve *rs)
 	ser_t	r = sccs_findrev(rs->s, rs->revs->remote);
 
 	sccs_close(rs->s); /* for win32 */
-	flags_delta(rs, rs->s->sfile,
-	    r, XFLAGS(rs->s, l), sccs_Xfile(rs->s, 'r'), REMOTE);
+	flags_delta(rs, rs->s->sfile, r, XFLAGS(rs->s, l), REMOTE);
 	return (1);
 }
 
@@ -24,8 +23,7 @@ f_remote(resolve *rs)
 	ser_t	r = sccs_findrev(rs->s, rs->revs->remote);
 
 	sccs_close(rs->s); /* for win32 */
-	flags_delta(rs, rs->s->sfile,
-	    l, XFLAGS(rs->s, r), sccs_Xfile(rs->s, 'r'), LOCAL);
+	flags_delta(rs, rs->s->sfile, l, XFLAGS(rs->s, r), LOCAL);
 	return (1);
 }
 
@@ -80,8 +78,7 @@ resolve_flags(resolve *rs)
 	} else {
 		/* add the new modes to the local file */
 		sccs_close(rs->s); /* for win32 */
-		flags_delta(rs, rs->s->sfile, 
-		    l, newflags, sccs_Xfile(rs->s, 'r'), LOCAL);
+		flags_delta(rs, rs->s->sfile, l, newflags, LOCAL);
 		/* remove delta must be refetched after previous delta */
 		r = sccs_findrev(rs->s, rs->revs->remote);
 		sccs_close(rs->s); /*
@@ -89,8 +86,7 @@ resolve_flags(resolve *rs)
 				    * becuase the previous flags_delta()
 				    * called sccs_init()
 				    */
-		flags_delta(rs, rs->s->sfile, 
-		    r, newflags, sccs_Xfile(rs->s, 'r'), REMOTE);
+		flags_delta(rs, rs->s->sfile, r, newflags, REMOTE);
 		unless (rs->opts->quiet) {
 			fprintf(stderr,
 			    "automerge OK. Added merged flags "

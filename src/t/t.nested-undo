@@ -3,20 +3,20 @@ echo $N Test undo of a pending component cset .......................$NL
 nested project
 bk gate $Q -r
 cd gcc
-test `bk changes -Sr+ -nd:REV:` = 1.1 || exit 1
+test `bk changes -Sr+ -nd:REV:` = 1.1 || fail
 echo hi > file
-bk new $Q file || exit 1
-bk commit -S $Q -ynew || exit 1
-test `bk changes -Sr+ -nd:REV:` = 1.2 || exit 1
+bk new $Q file || fail
+bk commit -S $Q -ynew || fail
+test `bk changes -Sr+ -nd:REV:` = 1.2 || fail
 bk undo $Q -Sfsr+ || fail
-test `bk changes -Sr+ -nd:REV:` = 1.1 || exit 1
+test `bk changes -Sr+ -nd:REV:` = 1.1 || fail
 echo OK
 
 echo $N Now test component undo that is already committed ...........$NL
 echo hi > file
-bk new $Q file || exit 1
-bk commit -S $Q -ynew || exit 1
-bk -P commit $Q -yprod || exit 1
+bk new $Q file || fail
+bk commit -S $Q -ynew || fail
+bk -P commit $Q -yprod || fail
 bk undo $Q -Sfsr+ >ERR && fail -f ERR should have failed
 grep -q "can.t remove committed delta ChangeSet@1.2" ERR || {
 	echo wrong error message
@@ -36,46 +36,46 @@ bk portal $Q -r || fail
 echo OK
 
 echo $N Test product undo of a committed component cset .............$NL
-test `bk changes -Sr+ -nd:REV:` = 1.2 || exit 1
-bk -P undo $Q -fsr+ || exit 1
-test `bk changes -Sr+ -nd:REV:` = 1.1 || exit 1
+test `bk changes -Sr+ -nd:REV:` = 1.2 || fail
+bk -P undo $Q -fsr+ || fail
+test `bk changes -Sr+ -nd:REV:` = 1.1 || fail
 echo OK
 
 echo $N Test undo where the HERE file becomes invalid ...............$NL
 cd ..
 echo hi > gcc/new
-bk new $Q gcc/new || exit 1
+bk new $Q gcc/new || fail
 (cd gcc; bk commit -S $Q -ynew)
 bk commit $Q -ynew
-bk alias new GCC ./gcc || exit 1
-bk here add $Q GCC || exit !
+bk alias new GCC ./gcc || fail
+bk here add $Q GCC || fail
 bk undo -fsa1.2 2>ERR && {
 	echo should have failed
 	exit 1
 }
-grep -q "undo: current aliases not valid after undo" ERR || exit 1
+grep -q "undo: current aliases not valid after undo" ERR || fail
 echo OK
 
 echo $N Test undo after adding a new component ......................$NL
 touch c
 bk portal $Q . || fail
 bk alias -k here > OLDHERE
-bk setup -fcc comp1 || exit 1
+bk setup -fcc comp1 || fail
 bk portal $Q -r || fail
-bk undo $Q -fsr+ || exit 1
+bk undo $Q -fsr+ || fail
 test -d comp1 && {
 	echo should have delted comp1
 	exit 1
 }
-bk -r check -ac || exit 1
+bk -r check -ac || fail
 bk alias -k here > GOT
 cmpfiles GOT OLDHERE
 echo OK
 
 echo $N Undo changes alias needing to unpopulate ....................$NL
-bk alias new FOO ./gcc || exit 1
-bk alias set FOO all || exit 1
-bk alias set $Q HERE FOO || exit 1
+bk alias new FOO ./gcc || fail
+bk alias set FOO all || fail
+bk alias set $Q HERE FOO || fail
 bk undo -q -fsr+ 2>ERR && fail -f ERR
 cat <<EOF > WANT
 undo: ./gdb cannot be found at a gate
@@ -97,20 +97,20 @@ echo OK
 
 echo $N Undo changes alias needing to populate ......................$NL
 cd ..
-bk clone $Q project copy || exit 1
+bk clone $Q project copy || fail
 cd copy
 bk portal $Q .
 bk setup -f newcomp
 bk portal $Q -r
 bk alias set FOO all || fail
-bk alias set -C FOO ./gcc ./newcomp || exit 1
+bk alias set -C FOO ./gcc ./newcomp || fail
 cd newcomp
 echo hi > jj
 bk new $Q jj
 bk commit -S $Q -yjj
 cd ..
 bk commit $Q -yjj
-bk alias set $Q HERE FOO || exit 1
+bk alias set $Q HERE FOO || fail
 bk undo -fsr+ 2>OUT || fail
 # check progressbar
 perl -lne 'print $1 if /(\d\/\d)/' OUT > GOT
@@ -123,7 +123,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Undo should not allow deleting pending component csets ......$NL
-bk alias set $Q HERE all || exit 1
+bk alias set $Q HERE all || fail
 cd gdb
 echo hi > file
 bk new $Q file || fail

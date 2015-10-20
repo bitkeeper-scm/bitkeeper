@@ -22,25 +22,25 @@ echo $N Test bk -@ with one parent ..................................$NL
 cd project
 bk pwd > "$HERE"/WANT
 cd "$HERE"/clone
-bk -q -@ pwd > "$HERE"/GOT || exit 1
+bk -q -@ pwd > "$HERE"/GOT || fail
 checkfiles "$HERE"/WANT "$HERE"/GOT
 echo OK
 
 echo $N Test bk -@ with no parent ...................................$NL
 bk parent -rq
-bk -q -@ pwd 2> ERR && exit 1
-grep -q "repository has no parent" ERR || exit 1
+bk -q -@ pwd 2> ERR && fail
+grep -q "repository has no parent" ERR || fail
 echo OK
 
 echo $N Test bk -@ with specified parent ............................$NL
 cd "$HERE"/clone2
-bk -q -@"$HERE"/project pwd > "$HERE"/GOT || exit 1
+bk -q -@"$HERE"/project pwd > "$HERE"/GOT || fail
 checkfiles "$HERE"/WANT "$HERE"/GOT
 echo OK
 
 echo $N Test bk -@ with specified parent outside of any repository ..$NL
 cd "$HERE"
-bk -q -@"$HERE"/project pwd > "$HERE"/GOT || exit 1
+bk -q -@"$HERE"/project pwd > "$HERE"/GOT || fail
 checkfiles "$HERE"/WANT "$HERE"/GOT
 echo OK
 
@@ -52,7 +52,7 @@ bk pwd > "$HERE"/WANT
 cd "$HERE"/project
 bk pwd >> "$HERE"/WANT
 cd "$HERE"/clone2
-bk -q -@ pwd > "$HERE"/GOT || exit 1
+bk -q -@ pwd > "$HERE"/GOT || fail
 checkfiles "$HERE"/WANT "$HERE"/GOT
 echo OK
 
@@ -109,7 +109,7 @@ echo OK
 
 echo $N Test that a long running bkd will not allow remote calls ....$NL
 cd "$HERE"/project
-bk bkd -q -d -aPORT -ikill > "$HERE"/BKD 2>&1 || exit 1
+bk bkd -q -d -aPORT -ikill > "$HERE"/BKD 2>&1 || fail
 P=`cat PORT`
 cd "$HERE"/clone
 bk -@bk://localhost:$P pwd > OUT 2>&1
@@ -126,7 +126,7 @@ grep -q 'remote commands are not enabled.' OUT || {
 echo OK
 
 echo $N Test that individual commands can be enabled ................$NL
-bk -@bk://localhost:$P -q _debugargs 1 2 > GOT || exit 1
+bk -@bk://localhost:$P -q _debugargs 1 2 > GOT || fail
 cat <<EOF > WANT
 0: _debugargs
 1: 1
@@ -137,12 +137,12 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-bk _kill bk://localhost:$P || exit 1
+bk _kill bk://localhost:$P || fail
 
 echo $N Test that we can enable remote calls with -U ................$NL
 cd "$HERE"/project
 bk pwd > "$HERE"/PWD
-bk bkd -U -q -d -aPORT -ikill > "$HERE"/BKD 2>&1 || exit 1
+bk bkd -U -q -d -aPORT -ikill > "$HERE"/BKD 2>&1 || fail
 P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
 cd "$HERE"/clone

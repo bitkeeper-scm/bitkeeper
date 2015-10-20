@@ -1,17 +1,17 @@
 echo $N Push some data and check that BK_NOTTY works ................$NL
 commercial project
 cd "$HERE"
-bk clone $Q project copy || exit 1
+bk clone $Q project copy || fail
 cd copy
 
 for f in 1 2 3 4 5 6 7 8 9
 do	echo hi$f > file$f
 	bk new $Q file$f
 done
-bk commit -ystuff $Q || exit 1
+bk commit -ystuff $Q || fail
 
 unset BK_NOTTY	# set in remote.sh
-bk push > OUT1 2>&1 || exit 1
+bk push > OUT1 2>&1 || fail
 bk grep -q '100%.*===' OUT1 || {
 	cat OUT1
 	exit 1
@@ -19,7 +19,7 @@ bk grep -q '100%.*===' OUT1 || {
 cd ../project
 bk unpull -fq
 cd ../copy
-BK_NOTTY=1 bk push > OUT2 2>&1 || exit 1
+BK_NOTTY=1 bk push > OUT2 2>&1 || fail
 bk grep -q '100%.*===' OUT2 && {
 	cat OUT2
 	exit 1

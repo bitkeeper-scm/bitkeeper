@@ -4,7 +4,7 @@ echo foo > foo
 bk delta -i -l -ywhatever $Q foo
 echo wizbang >> BitKeeper/log/features
 cd ..
-bk clone -q project copy 2>ERR && exit 1
+bk clone -q project copy 2>ERR && fail
 bk getmsg -= repo_feature wizbang > WANT
 cmpfiles ERR WANT
 echo OK
@@ -100,8 +100,11 @@ echo $N standalone ..................................................$NL
 cd "$HERE"
 commercial sa
 bk features -m > OUT
-grep -q "compatible with bk-6.x and later" OUT || fail -f OUT wrong message
-grep -q 'BKFILE, BWEAVEv2, SCANDIRS$' OUT || fail -f OUT wrong message
+cat <<EOF > WANT
+This repository is compatible with bk-7.x and later because of features:
+	BWEAVEv3
+EOF
+cmpfiles OUT WANT
 echo OK
 
 echo $N downgrade ...................................................$NL
@@ -115,8 +118,11 @@ echo $N nested ......................................................$NL
 cd "$HERE"
 nested nest2
 bk features -m > OUT
-grep -q "compatible with bk-6.x and later" OUT || fail -f OUT wrong message
-grep -q 'BKFILE, BWEAVEv2, SCANDIRS$' OUT || fail -f OUT wrong message
+cat <<EOF > WANT
+This repository is compatible with bk-7.x and later because of features:
+	BWEAVEv3
+EOF
+cmpfiles OUT WANT
 echo OK
 
 echo $N downgrade ...................................................$NL

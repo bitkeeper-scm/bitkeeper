@@ -105,7 +105,6 @@ private int
 doit(sccs *s, s_opts opts)
 {
 	ser_t	e;
-	char	*p;
 	int	left, n;
 	int	flags = 0;
 	int	cleanflags = SILENT;
@@ -145,14 +144,7 @@ doit(sccs *s, s_opts opts)
 		/* see ya! */
 		verbose((stderr, "stripdel: remove file %s\n", s->sfile));
 		sccs_close(s); /* for win32 */
-		unlink(s->sfile);
-		/* remove d.file - from [l]clone - so rmEmptyDir works*/
-		p = strrchr(s->sfile, '/');
-		p[1] = 'c';	/* unlink c.file */
-		unlink(s->sfile);
-		p[1] = 'd';	/* unlink d.file */
-		unlink(s->sfile);
-		p[1] = 's';
+		sfile_delete(s->proj, s->gfile);
 		sccs_rmEmptyDirs(s->sfile);
 		return (0);
 	}

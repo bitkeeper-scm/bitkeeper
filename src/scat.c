@@ -35,7 +35,7 @@ sccs_scat(sccs *s, size_t *len)
 	assert(!s->mem_out);
 
 	s->encoding_out = sccs_encoding(s, 0, 0);
-	s->encoding_out &= ~(E_BK|E_BWEAVE|E_COMP);
+	s->encoding_out &= ~(E_FILEFORMAT|E_COMP);
 	s->mem_out = 1;
 	sccs_newchksum(s);
 	ret = fmem_close(s->outfh, len);

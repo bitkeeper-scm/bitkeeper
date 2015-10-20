@@ -1,0 +1,108 @@
+Opportunistic Hardlink
+======================
+
+Up through bk-4.x, hardlinks were only used in a 'must' or 'not' manner:
+'bk clone -l' would use hardlinks and fail if it couldn't.
+'bk clone' would not use hardlinks.
+
+The new model is based on bang for buck opportunistic reasoning:
+use hardlinks if hardlinks can be used, unless told not to, but
+don't go crazy trying to use hardlinks in all cases they could be used.
+
+There are classes of hardlinks in the system:
+1. sfile - break link when sfile is updated
+2. bam files between repos - big file never altered - great candidate
+3. bam files checked out readonly in a repo - supporting this means:
+	* user can chmod +w and modify the copy in the BAM storage area.
+	* two files with same content and different permissions means
+	  storing both in the BAM storage area
+	* Timestamps are meaningless, so if part of a make based system,
+	  make will fight it.
+
+This file is not concerned with the 3rd type of hardlink.
+
+Why opportunistic?
+------------------
+With BK/Nested, a user doesn't know if a certain operation will result in a
+clone or bam fetch, or if it does, where that clone or bam operation will be
+fetching from.
+
+For example, bk alias add TCLTK ./src/gui/tcltk/l-squared
+Or bk edit super-high-density-pic.jpg
+which causes a fetch from the BAM server.
+
+The other big reason is performance -- hardlinks can make things go faster.
+
+When can hardlinks be used?
+---------------------------
+Technically, if the source and destination are in the same file system,
+and that file system supports the hardlink.
+How do we know if they are in the same FS?  Try and see if it works.
+
+Practically, if the remote_parse() has no r->host field returned.
+That means if the user says bk clone /home/bk/bk they may get a hardlinked
+repo, but if they say bk clone bk://work/bk, no hard links even if same
+FS which supports it.
+
+Current plan is to go with practicality.  This means that urllist sorting
+not only same host, but same FS, could improve perf.  Current sorting plan
+is to just go with file based url as reason for prioritizing.
+
+Operations where hard links can be used:
+
+bk clone - as it does now: sfiles and BAM files
+Forms of pull: bk add here; bk alias
+
+bk get - BAM files that are fetched from a remote server
+
+bk pull - bringing in new sfiles or update only sfiles.
+Note: update only sfiles are currently only recognized in an update
+only pull.
+
+When to not hardlink?
+---------------------
+* When user disables. Current means passing --no-hardlinks to clone or
+  setting BK_NO_HARDLINK_CLONE in the environment.
+
+* When user is crossing storage formats - old style SCCS to new style.
+Currently this is used when explicit clone command is given, even if
+the clone style is not a switch.
+It is not used when populating a component that was in one style and 
+the clone source is in another.
+
+How to test if it can?
+----------------------
+In a clone, given a file based URL, try linking the ChangeSet file.
+In a bam case, try the ChangeSet file, because we know where it is.
+
+In a pull, also try the ChangeSet file, as we know that it is a file
+which is there.  We don't know the new files which will be there.
+Or in an advanced case, which non-update pull has update only files.
+
+Design influences: blobs,...
+-----------------------------
+Q: If file is part of a blob (someday) then is it still a candidate
+for hardlinking? Is there a directory on an sfio blob as to where things
+are?
+
+A: Yes.  Blobs have an index that gets you to the latest version of the
+file and that index is a cache that can be rederived from the blob.
+
+QA Testing what we have works
+-----------------------------
+(work has been started here to build this)
+We need something reliable in the cluster to test source and destination
+being on different file systems.  All the non-windows machines
+have /home nfs mounted, so we could put some repos in /home/bk/test-data
+and that would work in a read-only sense (which is all I need).
+We can have repos in the various old and new style of sfile and bam.
+On windows, we can use the f:/ drive on some of the machines to both
+use as the read-only source for the same repos, but also as a writable
+test on a FS which doesn't support hardlinks.
+
+Dimensions of the unpruned problem space:
+old and new style SCCS.
+old and new style BAM.
+Standalone and product
+clone includes components or populate components later.
+clone includes BAM or fetched later with get

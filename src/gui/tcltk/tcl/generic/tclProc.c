@@ -3042,14 +3042,6 @@ Tcl_DisassembleObjCmd(
      * Do the actual disassembly.
      */
 
-    if (((ByteCode *) codeObjPtr->internalRep.twoPtrValue.ptr1)->flags
-	    & TCL_BYTECODE_PRECOMPILED) {
-	Tcl_SetObjResult(interp, Tcl_NewStringObj(
-		"may not disassemble prebuilt bytecode", -1));
-	Tcl_SetErrorCode(interp, "TCL", "OPERATION", "DISASSEMBLE",
-		"BYTECODE", NULL);
-	return TCL_ERROR;
-    }
     Tcl_SetObjResult(interp, TclDisassembleByteCodeObj(codeObjPtr));
     return TCL_OK;
 }

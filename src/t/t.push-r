@@ -79,3 +79,16 @@ grep -q "no such delta.*NOT_THIS" ERR || {
 }
 # XXX: How to test if top tag is marked as a leaf node?
 echo OK
+
+echo $N Test push -r\$TAGKEY..........................................$NL
+cd "$HERE"
+commercial proj3
+bk clone $Q . ../copy3 || fail
+cd ../copy3
+bk tag $Q atag || fail
+KEY=`bk changes -L -qand:MD5KEY:`
+bk push $Q -r$KEY || fail
+bk changes -L -qa > OUT || fail
+touch EMPTY
+cmpfiles EMPTY OUT || fail should be empty
+echo OK

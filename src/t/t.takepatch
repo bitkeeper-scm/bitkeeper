@@ -17,43 +17,43 @@ echo $N Create initial repository ...................................$NL
 commercial project
 echo foo > f
 BK_USER=adam bk delta -f $Q -i -y'Initial checkin' f
-BK_USER=adam bk commit $Q -y'Initial checkin' || exit 1
+BK_USER=adam bk commit $Q -y'Initial checkin' || fail
 bk edit $Q f
 BK_USER=second bk delta -f $Q -y'Second checkin' f
-BK_USER=second bk commit $Q --tag=second -y'Second checkin' || exit 1
+BK_USER=second bk commit $Q --tag=second -y'Second checkin' || fail
 bk edit $Q f
 BK_USER=third bk delta -f $Q -y'Third checkin' f
-BK_USER=third bk commit $Q --tag=third -y'Third checkin' || exit 1
+BK_USER=third bk commit $Q --tag=third -y'Third checkin' || fail
 echo OK
 
 echo $N Test basic takepatch ........................................$NL
 cd "$HERE"
 bk clone $Q -r1.2 project clone1
 cd project
-bk makepatch $Q -d -r1.2..+ > "$HERE/patch" || exit 1
+bk makepatch $Q -d -r1.2..+ > "$HERE/patch" || fail
 cd "$HERE/clone1"
 bk lease flush -a
-bk takepatch $Q < "$HERE/patch" || exit 1
-test -d RESYNC -a -d PENDING || exit 1
-bk abort -f || exit 1
+bk takepatch $Q < "$HERE/patch" || fail
+test -d RESYNC -a -d PENDING || fail
+bk abort -f || fail
 echo OK
 
 echo $N Test basic takepatch with copying sfiles to resync ..........$NL
-_BK_COPY_SFILE=YES bk takepatch $Q < "$HERE/patch" || exit 1
-test -d RESYNC -a -d PENDING || exit 1
+_BK_COPY_SFILE=YES bk takepatch $Q < "$HERE/patch" || fail
+test -d RESYNC -a -d PENDING || fail
 grep -q "takepatch -q = 0 _BK_COPY_SFILE=YES" BitKeeper/log/cmd_log || fail
-bk abort -f || exit 1
+bk abort -f || fail
 echo OK
 
 echo $N Test basic takepatch -a .....................................$NL
-bk takepatch $Q -a < "$HERE/patch" || exit 1
-bk changes -aqL > c1 || exit 1
+bk takepatch $Q -a < "$HERE/patch" || fail
+bk changes -aqL > c1 || fail
 test -s c1 && {
        echo "unexpected output from changes -L:"
        cat c1
        exit 1
 }
-bk changes -aqR > c2 || exit 1
+bk changes -aqR > c2 || fail
 test -s c2 && {
        echo "unexpected output from changes -R:"
        cat c2
@@ -90,13 +90,13 @@ test -s e1 && {
 	cat e1
 	exit 1
 }
-bk changes -aqL > c1 || exit 1
+bk changes -aqL > c1 || fail
 test -s c1 && {
        echo "unexpected output from changes -L:"
        cat c1
        exit 1
 }
-bk changes -aqR > c2 || exit 1
+bk changes -aqR > c2 || fail
 test -s c2 && {
        echo "unexpected output from changes -R:"
        cat c2
@@ -127,27 +127,27 @@ cd "$HERE"
 rm -fr project copy
 commercial project
 touch start-as-sfile send-as-deltas
-bk new $Q start-as-sfile send-as-deltas || exit 1
-bk commit $Q --tag=BASE -yfooze || exit 1
+bk new $Q start-as-sfile send-as-deltas || fail
+bk commit $Q --tag=BASE -yfooze || fail
 cd ..
-bk clone $Q project copy || exit 1
+bk clone $Q project copy || fail
 cd project
 echo BAMBAM > BAM
-bk new $Q -b BAM || exit 1
+bk new $Q -b BAM || fail
 touch newfile
-bk new $Q newfile || exit 1
-bk commit $Q --tag=FIRST -y'new BAM and plain file' || exit 1
+bk new $Q newfile || fail
+bk commit $Q --tag=FIRST -y'new BAM and plain file' || fail
 bk mv start-as-sfile send-as-sfile
-bk edit $Q send-as-sfile send-as-deltas || exit 1
+bk edit $Q send-as-sfile send-as-deltas || fail
 # 9 is the internal baseline for largest that passes as a patch
 for i in 1 2; do
-	bk delta $Q -l -f -ymkdeltas send-as-deltas send-as-sfile || exit 1
+	bk delta $Q -l -f -ymkdeltas send-as-deltas send-as-sfile || fail
 done
-bk unedit $Q send-as-sfile send-as-deltas || exit 1
-bk commit $Q --tag=SECOND -y'deltas to existing files' || exit 1
-bk makepatch $Q -rBASE..+ -M3 > ../PATCH3 || exit 1
-bk makepatch $Q -B -rBASE..+ -M3 > ../BPATCH3 || exit 1
-bk send $Q -rBASE..+ - > ../SEND || exit 1
+bk unedit $Q send-as-sfile send-as-deltas || fail
+bk commit $Q --tag=SECOND -y'deltas to existing files' || fail
+bk makepatch $Q -rBASE..+ -M3 > ../PATCH3 || fail
+bk makepatch $Q -B -rBASE..+ -M3 > ../BPATCH3 || fail
+bk send $Q -rBASE..+ - > ../SEND || fail
 cd ..
 tar cf copy.tar copy
 echo OK
@@ -170,7 +170,7 @@ cd copy
 for m in "" -m; do
     for v in "" -v -vv -vvv; do
 	test -d RESYNC && bk abort -f
-	BK_NOTTY= bk takepatch $v $m < ../PATCH3 2> LOG$m$v || exit 1
+	BK_NOTTY= bk takepatch $v $m < ../PATCH3 2> LOG$m$v || fail
 	perl -pe '1 while s/[^\010]\010//g' < LOG$m$v > LOG$m$v-filt
     done
 done
@@ -255,15 +255,15 @@ cmpsfiles RESYNC/SCCS/m.send-as-sfile WANT
 echo OK
 
 echo $N Resolve fails a makepatch - takepatch because no BAM ........$NL
-bk resolve -a 2>ERR && exit 1
-grep -q "Failed to locate BAM data for the following deltas" ERR || exit 1
+bk resolve -a 2>ERR && fail
+grep -q "Failed to locate BAM data for the following deltas" ERR || fail
 echo OK
 
 echo $N Resolve of a takepatch of send-generated-patch works ........$NL
 bk abort -f
-bk takepatch < ../SEND || exit 1
-bk resolve $Q -a || exit 1
-bk get $Q BAM || exit 1
+bk takepatch < ../SEND || fail
+bk resolve $Q -a || fail
+bk get $Q BAM || fail
 echo BAMBAM > WANT
 cmpfiles BAM WANT
 echo OK
@@ -273,10 +273,10 @@ echo $N Resolve of a takepatch of makepatch -B -M3 patch works ......$NL
 cd ..
 rm -fr copy
 tar xf copy.tar
-cd copy || exit 1
-bk takepatch < ../BPATCH3 || exit 1
-bk resolve $Q -a || exit 1
-bk get $Q BAM || exit 1
+cd copy || fail
+bk takepatch < ../BPATCH3 || fail
+bk resolve $Q -a || fail
+bk get $Q BAM || fail
 echo BAMBAM > WANT
 cmpfiles BAM WANT
 echo OK
@@ -285,38 +285,38 @@ echo $N Pull of newfiles contains SFIO whether local work or not ....$NL
 cd ..
 rm -fr copy
 tar xf copy.tar
-cd copy || exit 1
-bk pull $Q -RrFIRST || exit 1
+cd copy || fail
+bk pull $Q -RrFIRST || fail
 mv PENDING/* update.patch
 rm -fr PENDING RESYNC
 touch localfile
-bk new $Q localfile || exit 1
-bk commit $Q -ylocal-cset || exit 1
-bk pull $Q -RrFIRST || exit 1
+bk new $Q localfile || fail
+bk commit $Q -ylocal-cset || fail
+bk pull $Q -RrFIRST || fail
 mv PENDING/* merge.patch
 rm -fr PENDING RESYNC
 cmpfiles update.patch merge.patch
-grep -q SFIO update.patch || exit 1
+grep -q SFIO update.patch || fail
 echo OK
 
 echo $N Pull of modifications contains SFIO in update case only .....$NL
 cd ..
 rm -fr copy
 tar xf copy.tar
-cd copy || exit 1
-bk pull $Q -rFIRST || exit 1
-_BK_NO_FASTPATCH=1 BK_NOTTY= bk pull -R -v > OUT 2> SPINNERCHECK || exit 1
+cd copy || fail
+bk pull $Q -rFIRST || fail
+_BK_NO_FASTPATCH=1 BK_NOTTY= bk pull -R -v > OUT 2> SPINNERCHECK || fail
 mv PENDING/* update.patch
 rm -fr PENDING RESYNC
 bk edit $Q newfile
 echo stuff > newfile
-bk delta $Q -ycontent newfile || exit 1
-bk commit $Q -ynewcontent || exit 1
-_BK_NO_FASTPATCH=1 bk pull $Q -R || exit 1
+bk delta $Q -ycontent newfile || fail
+bk commit $Q -ynewcontent || fail
+_BK_NO_FASTPATCH=1 bk pull $Q -R || fail
 mv PENDING/* merge.patch
 rm -fr PENDING RESYNC
-grep -q SFIO update.patch || exit 1
-grep -q SFIO merge.patch && exit 1
+grep -q SFIO update.patch || fail
+grep -q SFIO merge.patch && fail
 echo OK
 
 echo $N Resolve SFIO content when it seems the file rolled back .....$NL
@@ -327,7 +327,7 @@ bk takepatch < ../BPATCH3 2>ERR && {
 	echo expect takepatch to fail
 	exit 1
 }
-grep -q "key.* not found in sfile RESYNC/SCCS/s.newfile" ERR || exit 1
+grep -q "key.* not found in sfile RESYNC/SCCS/s.newfile" ERR || fail
 # still a failure
 echo "failed (bug -- when adding a change already there)"
 
@@ -371,7 +371,7 @@ bk new $Q 6
 bk commit $Q -y1.5
 bk pull $Q
 bk unpull $Q -fs
-bk pull -R -rTAG $Q || exit 1
+bk pull -R -rTAG $Q || fail
 echo OK
 
 echo $N Fun with Monotonia ..........................................$NL
@@ -382,15 +382,15 @@ cd copy
 bk admin $Q -fMONOTONIC start-as-sfile
 bk edit $Q start-as-sfile
 bk delta $Q -fyfoo start-as-sfile
-# bk pull $Q 2> FIRSTERR && exit 1
+# bk pull $Q 2> FIRSTERR && fail
 BK_CONFIG=monotonic:allow bk commit $Q -ymono
 BK_CONFIG=monotonic:allow bk undo $Q -sfr+
-bk pull $Q 2> ERR && exit 1
-grep -q 'monotonic file .* has dangling' ERR || exit 1
+bk pull $Q 2> ERR && fail
+grep -q 'monotonic file .* has dangling' ERR || fail
 rm -fr PENDING RESYNC
 # the new takepatch fails the same way
-_BK_NO_PATCHSFIO=1 bk pull $Q 2> ERR && exit 1
-grep -q 'monotonic file .* has dangling' ERR || exit 1
+_BK_NO_PATCHSFIO=1 bk pull $Q 2> ERR && fail
+grep -q 'monotonic file .* has dangling' ERR || fail
 echo "failed (bug -- we just don't update danglers well)"
 
 echo $N Check takepatch checking checksum in sccs_delta .............$NL
@@ -525,4 +525,24 @@ Please send the output to support@bitmover.com
 Pull failed: takepatch exited 1.
 EOF
 cmpfiles WANT GOT
+echo OK
+
+# No test up to here creates a merge, so adding another test
+echo $N Test bk undo style patches with empty merge node ............$NL
+cd "$HERE"
+commercial mergeproject
+bk clone $Q . ../mergecopy
+touch foo
+bk new $Q -l foo
+bk commit $Q -f --tag=BASE
+cd ../mergecopy
+touch bar
+bk new $Q -l bar
+bk commit $Q -f
+bk pull $Q
+bk cset -Bfm -rBASE.. > ../patch
+cd ../mergeproject
+bk takepatch < ../patch
+cd RESYNC
+bk check ChangeSet || fail -f ERR
 echo OK

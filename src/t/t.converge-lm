@@ -53,7 +53,7 @@ bk new $Q LS
 bk commit $Q -yuser-content
 cd ../project
 bk pull -R $Q ../copy
-cd RESYNC || exit 1
+cd RESYNC || fail
 bk _test -f BitKeeper/etc/SCCS/s.ignore && { echo Copied ignore; exit 1; }
 cd ..
 bk abort -f
@@ -114,11 +114,11 @@ cd ..
 bk clone $Q project copy
 cd project
 bk gone $Q 'x@y|fff|19990319224848|02682'
-bk commit $Q -ywhatever2 || exit 1
+bk commit $Q -ywhatever2 || fail
 OLD=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 cd ../copy
 bk gone $Q 'x@y|copydd|19990319224848|02682'
-bk commit $Q -ywhatever2 || exit 1
+bk commit $Q -ywhatever2 || fail
 NEW=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 if [ "$NEW" = "$OLD" ]
 then	echo failed to make different keys
@@ -129,7 +129,7 @@ fi
 echo OK
 # Note that we are in the repository with the newer key in the slot.
 echo $N Pull them, should not ask, should union, oldest in slot .....$NL
-bk pull $Q ../project || exit 1
+bk pull $Q ../project || fail
 test -d RESYNC && {
 	echo failed to use existing gone, left RESYNC
 	cat OUT
@@ -177,7 +177,7 @@ bk _scat SCCS/s.ChangeSet \
 bk _mv tmp SCCS/s.ChangeSet
 bk admin -z ChangeSet
 bk checksum -f ChangeSet 2> /dev/null
-bk -r check -a || exit 1
+bk -r check -a || fail
 NEW=`bk -R prs -hr1.0 '-dD :I: :D: :T:\n' BitKeeper/etc/gone`
 if [ "$NEW" != "$DATE" ]
 then	echo failed to fix the dates
@@ -191,7 +191,7 @@ echo $N Pull them, should not ask, should union, oldest in slot .....$NL
 cd "$HERE"
 tar cf SAVE project copy
 cd copy
-bk pull $Q ../project || exit 1
+bk pull $Q ../project || fail
 test -d RESYNC && {
 	echo failed to use existing gone, left RESYNC
 	exit 1
@@ -214,7 +214,7 @@ cd "$HERE"
 rm -rf project copy
 tar xmf SAVE 
 cd project
-bk pull $Q ../copy || exit 1
+bk pull $Q ../copy || fail
 test -d RESYNC && {
 	echo failed to use existing gone, left RESYNC
 	exit 1
@@ -316,7 +316,7 @@ bk gone $Q 'x@y|project34|19990319224848|02682'
 BK_USER=jane
 BK_HOST=kick.dork.bk_regression.bk
 bk commit -yjane $Q > /dev/null 2>&1 < ../Y
-bk _test -f BitKeeper/etc/SCCS/s.gone || exit 1
+bk _test -f BitKeeper/etc/SCCS/s.gone || fail
 test `bk sfiles -p | wc -l` -eq 0 || {
 	echo failed to commit all files
 	bk sfiles -p
@@ -327,7 +327,7 @@ BK_USER=joe
 BK_HOST=blow.dork.bk_regression.bk
 bk gone $Q 'x@y|copy34|19990319224848|02682'
 bk commit -yjoe $Q > /dev/null 2>&1 < ../Y
-bk _test -f BitKeeper/etc/SCCS/s.gone || exit 1
+bk _test -f BitKeeper/etc/SCCS/s.gone || fail
 test `bk sfiles -p | wc -l` -eq 0 || {
 	echo failed to commit all files
 	bk sfiles -p
@@ -358,7 +358,7 @@ then	echo wrong number of gone files in COPY
 fi
 bk rm -f BitKeeper/etc/gone
 bk gone $Q 'x@y|copy44|19990319224848|02682'
-bk commit $Q -yrm-gone || exit 1
+bk commit $Q -yrm-gone || fail
 NEW=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 if [ "$NEW" = "$OLD" ]
 then	echo failed to move gone into deleted slot and create new one
@@ -409,7 +409,7 @@ bk edit $Q $F
 echo wild >> $F
 bk delta $Q -ywild $F
 bk commit $Q -ywild
-bk pull $Q  || exit 1
+bk pull $Q  || fail
 cat <<EOF > WANT
 
 wild
@@ -426,10 +426,10 @@ mv x $F
 echo wild >> $F
 bk new $Q -ywild $F
 bk commit $Q -ywild
-bk pull -R $Q || exit 1
+bk pull -R $Q || fail
 bk abort -f
-bk -r check -ac || exit 1
-bk pull $Q || exit 1
+bk -r check -ac || fail
+bk pull $Q || fail
 cat <<EOF > WANT
 
 wild
@@ -448,7 +448,7 @@ bk tag $Q SPOT
 # name and the delete gets lost.
 bk rm -f $F
 bk commit $Q -ydel
-bk pull $Q || exit 1
+bk pull $Q || fail
 # The file has been deleted -- it shouldn't be here
 test -f $F || {
 	echo fix test
@@ -464,5 +464,5 @@ echo wild >> $F
 bk new $Q $F
 bk commit $Q -ydel
 cd ../copy
-bk pull $Q  || exit 1
+bk pull $Q  || fail
 echo OK
