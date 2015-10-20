@@ -9,7 +9,7 @@ Possible preparation
 
 When ready
 	tag tree
-	make crankturn on all build machines (bitmover.com is not included)
+	./build crankturn on all build machines
 		roughly, this does a ..
 			make production
 			make install
@@ -17,6 +17,7 @@ When ready
 		it also makes an image file
 		and RPM if appropriate for the platform
 	Proposed release run on bitmover.com as logging server for a week
+		No longer applies - aren't running latest bk for logging
 		This checks stability of release under load - as well
 		as makes it easier to fix if something wrong.
 		Do a bkweb browser restart

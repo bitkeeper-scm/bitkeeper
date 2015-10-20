@@ -78,7 +78,7 @@ d) Make sure it worked:
        untar linux-2.3.134.tgz
        cd /tmp
        diff -r export compare
-       # Flame dev@bitmover.com when there is output from the diff command
+       # Flame dev@bitkeeper.com when there is output from the diff command
 
 f) Update the linux tree
        cd /proj/import

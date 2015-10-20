@@ -60,6 +60,11 @@ The difference is that the bk partition command will provide the stable
 -k parameter to the csetprune enable the resulting repositories to
 communicate with repositories that have gone through the same partitioning.
 .tp
+.B \-\-keep\-deleted
+Normally, partition prunes all deleted files.
+Use \-\-keep\-deleted to keep the deleted history as part of the component
+the file was most recently in before being deleted.
+.tp
 .OPTreq \-j N
 Run the per-component portions of the partition in parallel using N
 processes.  Useful for partitioning on multi-core machines.
@@ -114,5 +119,5 @@ bk lease show
 .DE
 If the options field has "SAM" listed then your
 license has this feature enabled.
-If not, contact BitMover sales.
+If not, contact sales@bitkeeper.com.
 .\}

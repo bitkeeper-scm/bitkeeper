@@ -210,7 +210,7 @@ $(BKAPP)/Contents/lib/$(TKTABLE)/$(LIBTKTABLE): tktable/configure
 		    --with-tcl=$(TCLBUILD) \
 		    --with-tk=$(TKBUILD) \
 		    --with-tclinclude=$(TCLBUILD)/Headers \
-		    --with-tkinclude=$(TKBUILD)/Headers ; \
+		    --with-tkinclude=$(TKBUILD)/Headers $(SYMBOLS) ; \
 	}; \
 	$(MAKE) prefix= exec_prefix= DESTDIR=../$(BKAPP)/Contents/ \
 	    libdir=lib bindir=Resources install
@@ -248,8 +248,8 @@ $(BKAPP)/Contents/lib/GetOpts/pkgIndex.tcl: lib/GetOpts/pkgIndex.tcl \
 	cp -fRPH lib/GetOpts $(BKAPP)/Contents/lib
 
 rm_doc: FORCE
-	rm -rf lib/$(TKTABLE)/html
-	if [ "X$(AQUA)" != X ]; \
+	$(Q)rm -rf lib/$(TKTABLE)/html
+	$(Q)if [ "X$(AQUA)" != X ]; \
 	then \
 	    rm -rf \
 		$(BKAPP)/Contents/lib/$(TKTABLE)/html \
@@ -257,10 +257,10 @@ rm_doc: FORCE
 	fi
 
 install: ./version.sh
-	find bin lib -type d -print | xargs chmod ug+w
-	rm -rf ../bin ../lib
-	tar cf - bin lib | (cd .. && tar xf -)
-	-TCLVER=`./version.sh`; \
+	$(Q)find bin lib -type d -print | xargs chmod ug+w
+	$(Q)rm -rf ../bin ../lib
+	$(Q)tar cf - bin lib | (cd .. && tar xf -)
+	-$(Q)TCLVER=`./version.sh`; \
 	if [ -n "$$TCLVER" -a \! -f "$$TCLVER" ]; \
 	then	test -d /build/obj || { \
 			mkdir /build/obj; \
@@ -294,7 +294,6 @@ bin/tclsh$(EXE): tcl/$S/Makefile Lversion-L.sh Lversion-C.sh
 	if [ -z "$(DEBUG_TCL)" ] ; then \
 		$(STRIP) bin/tclsh$(EXE) ; \
 	fi
-	strings -a $(PCRE_OBJ) | grep -q "pcre_exec"
 
 bin/bkgui$(EXE): tk/$S/Makefile bin/tclsh$(EXE)
 	rm -rf bin/bkgui$(EXE) lib/tk*
@@ -320,12 +319,12 @@ mkapp: FORCE
 
 bin/BitKeeper.app/Contents/MacOS/BitKeeper: bin/tclsh$(EXE) mkapp
 	$(MAKE) -C tcl/macosx XLIBS="$(LIBTOMCRYPT)" \
-	    EXTRA_CONFIGURE_ARGS="--with-bk=$(BKROOT) --disable-info-body \
+	    EXTRA_CONFIGURE_ARGS="--with-bk=$(BKROOT) --disable-info-body $(SYMBOLS) \
 	    --enable-pcre=default --with-pcre=../../../pcre/local \
-	    --with-tommath=$(TOMMATH)" embedded
+	    --with-tommath=$(TOMMATH) $(SYMBOLS)" embedded
 	$(MAKE) -C tk/macosx XLIBS="$(LIBTOMCRYPT) $(LIBPCRE)" \
-	    EXTRA_CONFIGURE_ARGS="--with-bk=$(BKROOT) --enable-aqua" embedded
-	./mkapp BitKeeper 1.0 BkAp "BitMover, Inc" com.bitmover.bk "$(WISHPATH)"
+	    EXTRA_CONFIGURE_ARGS="--with-bk=$(BKROOT) $(SYMBOLS) --enable-aqua" embedded
+	./mkapp BitKeeper 1.0 BkAp "BitKeeper Inc" com.bitmover.bk "$(WISHPATH)"
 
 clean-obj: FORCE
 	-test -d tcl && cd tcl/$S && test -f Makefile && $(MAKE) distclean
@@ -357,7 +356,7 @@ test:
 	test -d tk && cd tk/$S && $(MAKE) test
 
 verify: FORCE
-	if [ "X$(AQUA)" != X ]; \
+	$(Q)if [ "X$(AQUA)" != X ]; \
 	then \
 	    test -d $(BKAPP)/Contents/lib/$(TKTABLE) || exit 1 ; \
 	    test -f $(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl \

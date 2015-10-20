@@ -210,17 +210,9 @@ echo $N Make sure it complains unlocked files with rw gfile .........$NL
 bk get $Q d1/sub1/a
 chmod +w d1/sub1/a
 bk --config=autofix:off -r check -a > OUT 2>&1
-bk _test -f d1/sub1/SCCS/p.a && fail -f OUT should not have created lock file
-test -w d1/sub1/a || {
-	echo should not have unedited file
-	cat OUT
-	exit 1
-}
-grep -q 'writable but not locked.' OUT || {
-	echo bad error message
-	cat OUT
-	exit 1
-}
+bk _test -f d1/sub1/SCCS/P.a && fail -f OUT should not have created lock file
+test -w d1/sub1/a || fail -f OUT should not have unedited file
+grep -q 'writable but not locked.' OUT || fail -f OUT
 echo OK
 
 echo $N Make sure it fixes unlocked files with rw gfile with -f .....$NL
@@ -691,11 +683,13 @@ BK_NOTTY= bk repocheck > OUT 2> ERR || fail -f ERR
 # gcc                                100% |==============================| OK
 # gdb                                100% |==============================| OK
 # .                                  100% |==============================| OK
-grep -q 'gcc.*100%.*OK$' ERR || fail -f ERR
+grep -q 'gcc.*OK$' ERR || fail -f ERR
 # Bork the repo and see that it says it is borked
 rm -fr ../gcc
 bk repocheck -q 2> ERR && fail -f ERR
-grep -q "check: Not populated: gcc" ERR || fail -f ERR
+grep -q "check: Not populated: gcc" ERR || 
+grep -q "missing components!" ERR ||
+fail -f ERR
 echo OK
 
 echo $N Test check fixes missing directories in remapped repo .......$NL
@@ -803,9 +797,6 @@ cmpfiles WANT ERR
 bk -r check -ac || fail
 echo OK
 
-# sgi doesn't do the waits correctly
-test "`bk gethost -r`" != "sgi.bitmover.com" && {
-
 echo $N Setup check/clone race ......................................$NL
 cd "$HERE"
 bk clone $Q --sccsdirs project project.noremap
@@ -827,8 +818,6 @@ wait $CPID2 || fail
 wait $CPID3 || fail
 wait $CPID4 || fail
 echo OK
-
-}
 
 echo $N Test a bad graph structure ..................................$NL
 cd "$HERE"/project
@@ -857,7 +846,7 @@ badgraph: need to swap:
 	trunk: $TRUNK
 	branch: $BRANCH
 badgraph|1.1.1.3: 1.1.1.2/1.3 graph corrupted.
-Please write support@bitmover.com
+Please write support@bitkeeper.com
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -899,7 +888,7 @@ Duplicate delta found in ChangeSet
 	Rev: 1.1  Key: $KEY
 	Both keys in file SCCS/s.bar
 	Same key found in ChangeSet:1.3,1.2
-Please write support@bitmover.com with the above
+Please write support@bitkeeper.com with the above
 error about duplicate deltas
 The commit is aborted.
 EOF
@@ -936,7 +925,7 @@ Warning: Duplicate delta found in ChangeSet
 	Rev: 1.1  Key: $KEY
 	Both keys in file SCCS/s.bar
 	Same key found in ChangeSet:1.1.1.2,1.1.1.1
-Please write support@bitmover.com with the above
+Please write support@bitkeeper.com with the above
 warning about duplicate deltas
 EOF
 cmpfiles WANT GOT

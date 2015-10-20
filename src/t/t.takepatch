@@ -39,9 +39,10 @@ bk abort -f || fail
 echo OK
 
 echo $N Test basic takepatch with copying sfiles to resync ..........$NL
-_BK_COPY_SFILE=YES bk takepatch $Q < "$HERE/patch" || fail
+_BK_COPY_SFILE=YES bk takepatch -j3 -q < "$HERE/patch" || fail
 test -d RESYNC -a -d PENDING || fail
-grep -q "takepatch -q = 0 _BK_COPY_SFILE=YES" BitKeeper/log/cmd_log || fail
+grep -q "takepatch --Nway = 0 _BK_COPY_SFILE=YES" BitKeeper/log/cmd_log \
+    || fail
 bk abort -f || fail
 echo OK
 
@@ -170,7 +171,7 @@ cd copy
 for m in "" -m; do
     for v in "" -v -vv -vvv; do
 	test -d RESYNC && bk abort -f
-	BK_NOTTY= bk takepatch $v $m < ../PATCH3 2> LOG$m$v || fail
+	BK_NOTTY= bk takepatch -j0 $v $m < ../PATCH3 2> LOG$m$v || fail
 	perl -pe '1 while s/[^\010]\010//g' < LOG$m$v > LOG$m$v-filt
     done
 done
@@ -453,7 +454,7 @@ local parent: 1.2
 remote parent: <collide> (remote)
 local merge: none
 remote merge: none ()
-Please send the output to support@bitmover.com
+Please send the output to support@bitkeeper.com
 ==============================================================================
 Pull failed: takepatch exited 1.
 EOF
@@ -467,7 +468,7 @@ local parent: 1.3
 remote parent: <collide> (1.2)
 local merge: none
 remote merge: none ()
-Please send the output to support@bitmover.com
+Please send the output to support@bitkeeper.com
 ==============================================================================
 Pull failed: takepatch exited 1.
 EOF
@@ -506,7 +507,7 @@ local parent: 1.3
 remote parent: <collide> (1.3)
 local merge: 1.1.1.1
 remote merge: <collide> (remote)
-Please send the output to support@bitmover.com
+Please send the output to support@bitkeeper.com
 ==============================================================================
 Pull failed: takepatch exited 1.
 EOF
@@ -520,12 +521,22 @@ local parent: 1.3
 remote parent: <collide> (1.3)
 local merge: 1.1.1.2
 remote merge: <collide> (1.1.1.1)
-Please send the output to support@bitmover.com
+Please send the output to support@bitkeeper.com
 ==============================================================================
 Pull failed: takepatch exited 1.
 EOF
 cmpfiles WANT GOT
 echo OK
+
+# take a patch which has \r in it
+test -f "$TESTDATA/linux-patch-with-cr" && {
+echo $N Test taking a patch with carriage returns in it .............$NL
+# Old bk would put \r in a file into the 1.1 delta
+cd "$HERE/project"
+bk takepatch < "$TESTDATA/linux-patch-with-cr" || fail
+bk takepatch < "$TESTDATA/linux-patch-with-cr.compat" || fail
+echo OK
+}
 
 # No test up to here creates a merge, so adding another test
 echo $N Test bk undo style patches with empty merge node ............$NL

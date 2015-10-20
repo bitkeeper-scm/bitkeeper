@@ -145,9 +145,9 @@ getgfile(sccs *s, char *rev)
 {
 	char	*tmpf = bktmp(0);
 	char	*inc = 0, *exc = 0;
-	int	flags = SILENT|PRINT;
+	int	flags = SILENT;
 
-	if (sccs_get(s, rev, 0, inc, exc, flags, tmpf)) {
+	if (sccs_get(s, rev, 0, inc, exc, flags, tmpf, 0)) {
 		fprintf(stderr, "Fetch of rev %s of %s failed!\n",
 		    rev, s->gfile);
 		exit(1);

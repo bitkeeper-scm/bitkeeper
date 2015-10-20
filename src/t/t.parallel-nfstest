@@ -12,11 +12,7 @@ _BK_SHORT_OK=1
 export _BK_SHORT_OK
 
 echo $N Make sure that /build is local ..............................$NL
-bk _isnetwork $Q /build && {
-	echo failed
-	bk _isnetwork /build
-	exit 1
-}
+test "`bk --cd=/build fstype`" != nfs || fail
 echo OK
 
 # these unix hosts don't get this right.
@@ -26,23 +22,7 @@ case `bk gethost -r` in
 esac
 
 echo $N Make sure that test data is remote ..........................$NL
-bk _isnetwork $Q $TESTDATA || {
-	echo failed
-	bk _isnetwork $TESTDATA
-	exit 1
-}
-echo OK
-
-echo $N Make sure that a non-existant dir is seen as remote .........$NL
-test -e $TESTDATA/no_such_dir && {
-	echo 'ok, funny guy, who put this here?'
-	exit 1
-}
-bk _isnetwork $Q $TESTDATA/no_such_dir || {
-	echo failed
-	bk _isnetwork $TESTDATA/no_such_dir
-	exit 1
-}
+test "`bk --cd=$TESTDATA fstype`" = nfs || fail
 echo OK
 
 test -w $TESTDATA/tmp || exit 0

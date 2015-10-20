@@ -840,6 +840,101 @@ getdir1();
 	file delete -force getdirtest
 } -output {}
 
+test getdirx-1 {test getdirx} -setup {
+	file delete -force getdirx1-tst
+	file mkdir getdirx1-tst
+} -body {
+#lang L --line=1
+int getdirx1_compar(dirent d1, dirent d2)
+{
+	if (d1.name < d2.name) {
+		return (-1);
+	} else if (d1.name > d2.name) {
+		return (1);
+	} else {
+		return (0);
+	}
+}
+void getdirx1()
+{
+	dirent	files[];
+
+	cd("getdirx1-tst");
+
+	if (mkdir("files-only")) puts("bad 1.1");
+	cd("files-only");
+	Fprintf("f2", "file2");
+	Fprintf(".h1", "hidden1");
+	Fprintf("f1", "file1");
+	cd("..");
+
+	if (mkdir("dirs-only")) puts("bad 2.1");
+	cd("dirs-only");
+	mkdir(".hd1");
+	mkdir("d2");
+	mkdir("d1");
+	cd("..");
+
+	if (mkdir("mix")) puts("bad 3.1");
+	cd("mix");
+	mkdir(".hd2");
+	mkdir("d6");
+	mkdir("d5");
+	Fprintf(".h2", "hidden2");
+	Fprintf("f6", "file6");
+	Fprintf("f5", "file5");
+	cd("..");
+
+	files = sort(command: &getdirx1_compar, getdirx("."));
+	unless (length(files) == 5) puts("bad 10.1");
+	unless (files[0] == {".","directory",1}) puts("bad 10.2");
+	unless (files[1] == {"..","directory",1}) puts("bad 10.3");
+	unless (files[2] == {"dirs-only","directory",0}) puts("bad 10.4");
+	unless (files[3] == {"files-only","directory",0}) puts("bad 10.5");
+	unless (files[4] == {"mix","directory",0}) puts("bad 10.6");
+
+	files = sort(command: &getdirx1_compar, getdirx("dirs-only"));
+	unless (length(files) == 5) puts("bad 11.1");
+	unless (files[0] == {".","directory",1}) puts("bad 11.2");
+	unless (files[1] == {"..","directory",1}) puts("bad 11.3");
+	unless (files[2] == {".hd1","directory",1}) puts("bad 11.4");
+	unless (files[3] == {"d1","directory",0}) puts("bad 11.5");
+	unless (files[4] == {"d2","directory",0}) puts("bad 11.6");
+
+	files = sort(command: &getdirx1_compar, getdirx("files-only"));
+	unless (length(files) == 5) puts("bad 12.1");
+	unless (files[0] == {".","directory",1}) puts("bad 12.2");
+	unless (files[1] == {"..","directory",1}) puts("bad 12.3");
+	unless (files[2] == {".h1","file",1}) puts("bad 12.4");
+	unless (files[3] == {"f1","file",0}) puts("bad 12.5");
+	unless (files[4] == {"f2","file",0}) puts("bad 12.6");
+
+	files = sort(command: &getdirx1_compar, getdirx("mix"));
+	unless (length(files) == 8) puts("bad 13.1");
+	unless (files[0] == {".","directory",1}) puts("bad 13.2");
+	unless (files[1] == {"..","directory",1}) puts("bad 13.3");
+	unless (files[2] == {".h2","file",1}) puts("bad 13.7");
+	unless (files[3] == {".hd2","directory",1}) puts("bad 13.4");
+	unless (files[4] == {"d5","directory",0}) puts("bad 13.5");
+	unless (files[5] == {"d6","directory",0}) puts("bad 13.6");
+	unless (files[6] == {"f5","file",0}) puts("bad 13.8");
+	unless (files[7] == {"f6","file",0}) puts("bad 13.9");
+
+	// error case
+	stdio_lasterr = "";
+	if (defined(getdirx("does-not-exist"))) puts("bad 20.1");
+	unless ((stdio_lasterr =~ /no such file/i) ||
+		(stdio_lasterr =~ /cannot find/i)) {
+		puts("bad 20.2: '${stdio_lasterr}'");
+	}
+
+	cd("..");
+}
+getdirx1();
+} -cleanup {
+	file delete -force getdirx1-tst
+} -output {}
+
 test getopt-1 {test getopt} -body {
 #lang L --line=1
 private string doit(string av[], string opts, string lopts[])
@@ -852,7 +947,11 @@ private string doit(string av[], string opts, string lopts[])
 			s .= "<${optopt}|err>";
 			break;
 		} else {
-			s .= "<${c}|${optarg}|${optind}>";
+			if (optarg) {
+				s .= "<${c}|${optarg}|${optind}>";
+			} else {
+				s .= "<${c}|#|${optind}>";
+			}
 		}
 	}
 	return (s);
@@ -871,7 +970,7 @@ void getopt1()
 
 	/* opt a */
 	s = doit({"a.out","-a","x"}, "a", {});
-	unless (s eq "<a||2>") puts("bad 3.1");
+	unless (s eq "<a|#|2>") puts("bad 3.1");
 
 	/* opt a: */
 	s = doit({"a.out","-a","x"}, "a:", {});
@@ -895,11 +994,11 @@ void getopt1()
 	s = doit({"a.out","-ax"}, "a|", {});
 	unless (s eq "<a|x|2>") puts("bad 6.1");
 	s = doit({"a.out","-a","x"}, "a|", {});
-	unless (s eq "<a||2>") puts("bad 6.2");
+	unless (s eq "<a|#|2>") puts("bad 6.2");
 
 	/* longopt long */
 	s = doit({"a.out","--long", "x"}, "", {"long"});
-	unless (s eq "<long||2>") puts("bad 7.1");
+	unless (s eq "<long|#|2>") puts("bad 7.1");
 
 	/* longopt long: */
 	s = doit({"a.out","--long", "x"}, "", {"long:"});
@@ -921,11 +1020,11 @@ void getopt1()
 
 	/* longopt long| */
 	s = doit({"a.out","--long", "x"}, "", {"long|"});
-	unless (s eq "<long||2>") puts("bad 10.1");
+	unless (s eq "<long|#|2>") puts("bad 10.1");
 	s = doit({"a.out","--long=x"}, "", {"long|"});
 	unless (s eq "<long|x|2>") puts("bad 10.2");
 	s = doit({"a.out","--long"}, "", {"long|"});
-	unless (s eq "<long||2>") puts("bad 10.3");
+	unless (s eq "<long|#|2>") puts("bad 10.3");
 }
 getopt1();
 } -output {}
@@ -944,7 +1043,7 @@ void getopt2()
 	getoptReset();
 	if (optind) puts("bad 0.1");
 	unless (optopt == "") puts("bad 0.2");
-	unless (optarg == "") puts("bad 0.3");
+	if (optarg) puts("bad 0.3");
 
 	while (c = getopt(av, "abc", undef)) {
 		switch (c) {
@@ -1491,6 +1590,31 @@ void popen5_2()
 	unless (p52cb_eof) puts("bad 1.4 ${p52cb_eof}");
 }
 popen5_2();
+} -output {}
+
+test popen-5.3 {test stderr callback that closes the pipe} -body {
+#lang L --line=1
+/*
+ * This tests a stderr callback that closes the read end of
+ * the pipe. It used to cause lib L to thrown an exception.
+ */
+int popen_5_3_called = 0;
+void popen_5_3_cb(_argused string cmd, FILE f)
+{
+	++popen_5_3_called;
+	close(f);
+}
+void popen_5_3()
+{
+	FILE	f;
+	string	cmd = "perl -e 'print STDERR \"to err\";'";
+
+	f = popen(cmd, "r", &popen_5_3_cb);
+	unless (f) puts("bad 1.1");
+	if (pclose(f)) puts("bad 1.2");
+	unless (popen_5_3_called == 1) puts("bad 1.3: ${popen_5_3_called}");
+}
+popen_5_3();
 } -output {}
 
 test popen-6 {test popen stderr ignore} -setup {

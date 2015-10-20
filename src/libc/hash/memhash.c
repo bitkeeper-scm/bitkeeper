@@ -189,7 +189,7 @@ void *
 memhash_store(hash *_h, void *kptr, int klen, void *dptr, int dlen)
 {
 	memhash	*h = (memhash *)_h;
-	node	*n, **nn;
+	node	*n, **nn, *nfree = 0;
 	void	*ret = 0;
 
 	nn = find_nodep(h, kptr, klen);
@@ -197,7 +197,7 @@ memhash_store(hash *_h, void *kptr, int klen, void *dptr, int dlen)
 		if (dlen > n->dlen) {
 			*nn = n->next;
 			--h->nodes;
-			free(n);
+			nfree = n;
 		} else {
 			n->dlen = dlen;
 			ret = &n->key[DOFF(klen, dlen)];
@@ -211,6 +211,7 @@ memhash_store(hash *_h, void *kptr, int klen, void *dptr, int dlen)
 			memset(ret, 0, dlen);
 		}
 	}
+	if (nfree) free(nfree);
 	return (ret);
 }
 

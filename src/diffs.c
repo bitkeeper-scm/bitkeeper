@@ -7,6 +7,7 @@
 typedef	struct dstat {
 	char	*name;		   /* name of the file */
 	int	adds, dels, mods;  /* lines added/deleted/modified */
+	u32	bin_files:1;	   /* binary files differ */
 } dstat;
 
 private int	nulldiff(char *name, df_opt *dop);
@@ -85,7 +86,7 @@ diffs_main(int ac, char **av)
 	unless (getenv("_BK_OLDSTYLE_DIFFS")) dop.out_unified = 1;
 	dop.out_header = 1;
 	while ((c = getopt(ac, av,
-		    "@|a;A;bBcC|d;eF:fhHL|l|nNpr;R|s|Su|vw", lopts)) != -1) {
+		    "@|a;A;bBcd;eF:fhHL|l|nNpr;R|s|Su|vw", lopts)) != -1) {
 		switch (c) {
 		    case 'A':
 			flags |= GET_ALIGN;
@@ -97,7 +98,6 @@ diffs_main(int ac, char **av)
 		    case 'b': dop.ignore_ws_chg = 1; break;	/* doc 2.0 */
 		    case 'B': /* unimplemented */    break;	/* doc 2.0 */
 		    case 'c': dop.out_unified = 0;   break;	/* doc 2.0 */
-		    case 'C': getMsg("diffs_C", 0, 0, stdout); exit(0);
 		    case 'e': empty = 1; break;			/* don't doc */
 		    case 'F': pattern = strdup(optarg); break;
 		    case 'f': force = 1; break;
@@ -352,11 +352,14 @@ err:		FREE(pattern);
 		 * XXX - need to catch a request for annotations w/o 2 revs.
 		 */
 		dop.adds = dop.dels = dop.mods = 0;
+		dop.bin_files = 0;
 		if (whodel) s->whodel = sccs_findrev(s, r2);
 		rc = sccs_diffs(s, r1, r2, &dop, fout);
-		if (dop.out_diffstat && (dop.adds || dop.dels || dop.mods)) {
+		if (dop.out_diffstat &&
+		    (dop.adds || dop.dels || dop.mods || dop.bin_files)) {
 			ds = addArray(&diffstats, 0);
 			ds->name = strdup(s->gfile);
+			ds->bin_files = dop.bin_files;
 			ds->adds = dop.adds;
 			ds->dels = dop.dels;
 			ds->mods = dop.mods;
@@ -481,10 +484,14 @@ printHistogram(dstat *diffstats)
 		m = (int)((double)ds->dels * factor);
 		for (i = 0; i < m; i++) hist[n++] = '-';
 		hist[n] = 0;
-		printf("%-*.*s | %*d %s\n", maxlen, maxlen,
-		    ds->name,
-		    DIGITS(maxdiffs),
-		    ds->adds + ds->dels + ds->mods, hist);
+		if (ds->bin_files) {
+			printf("%-*.*s |binary\n", maxlen, maxlen, ds->name);
+		} else {
+			printf("%-*.*s | %*d %s\n", maxlen, maxlen,
+			    ds->name,
+			    DIGITS(maxdiffs),
+			    ds->adds + ds->dels + ds->mods, hist);
+		}
 		files++;
 		adds += ds->adds;
 		dels += ds->dels;

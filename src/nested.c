@@ -345,8 +345,8 @@ err:				if (revsDB) mdbm_close(revsDB);
 	while (d = cset_rdweavePair(cset, 0, &rkoff, &dkoff)) {
 		unless (dkoff) continue; /* last key */
 		if (!revs && !(FLAGS(cset, (d)) & D_RED)) continue;
+		unless (weave_iscomp(cset, rkoff)) continue;
 		t = HEAP(cset, rkoff);
-		unless (changesetKey(t)) continue;
 		v = HEAP(cset, dkoff);
 		/*
 		 * It would be even better if we could identify component
@@ -1224,9 +1224,10 @@ nested_updateIdcache(project *comp)
 
 	concat_path(buf, proj_root(comp),  GCHANGESET);
 	p = proj_relpath(prod, buf);
-	mdbm_store_str(idDB, proj_rootkey(comp), p, MDBM_REPLACE);
+	if (idcache_item(idDB, proj_rootkey(comp), p)) {
+		idcache_write(prod, idDB);
+	}
 	free(p);
-	idcache_write(prod, idDB);
 	mdbm_close(idDB);
 }
 

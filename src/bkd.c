@@ -124,12 +124,6 @@ bkd_main(int ac, char **av)
 	putenv("PAGER=cat");
 	putenv("_BK_IN_BKD=1");
 	if (daemon) {
-		if (daemon && isWin2000() &&
-		    !getenv("BK_ALLOW_BKD") && !getenv("BK_REGRESSION")) {
-			fprintf(stderr,
-			    "bkd: daemon is not supported on Windows 2000\n");
-			return (1);
-		}
 		unless (Opts.portfile) {
 			unless (port) port = BK_PORT;
 			if ((c = tcp_connect("127.0.0.1", port)) > 0) {

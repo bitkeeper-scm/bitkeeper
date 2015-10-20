@@ -1,0 +1,16 @@
+echo $N Demo a confusing error when we pull with pending deltas......$NL
+commercial project
+touch afile
+bk new $Q afile
+bk commit $Q -yafile
+bk clone $Q . ../copy
+bk edit $Q afile
+echo stuff > afile
+bk ci $Q -yafile afile
+bk commit $Q -yafile
+cd ../copy
+bk mv afile bfile
+bk pull > ERR 2>&1 && fail -f ERR should have failed
+## their space. It should say just "afile".
+grep -q 'takepatch: bfile has uncommitted changes.' ERR || fail -f ERR
+echo OK

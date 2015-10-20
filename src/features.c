@@ -519,6 +519,7 @@ features_fromEncoding(sccs *s, u32 encoding)
 	u32	bits = 0;
 
 	if (encoding & E_BK) bits |= FEAT_BKFILE;
+	if (encoding & E_BKMERGE) bits |= FEAT_BKMERGE;
 	if (CSET(s)) {
 		if ((encoding & E_WEAVE) == E_BWEAVE2) {
 			bits |= FEAT_BWEAVEv2;
@@ -538,6 +539,7 @@ features_toEncoding(sccs *s, u32 bits)
 	u32	encoding = 0;
 
 	if (bits & FEAT_BKFILE) encoding |= E_BK;
+	if (bits & FEAT_BKMERGE) encoding |= E_BKMERGE;
 	if (CSET(s)) {
 		if (bits & FEAT_BWEAVE) {
 			encoding |= E_BWEAVE3;

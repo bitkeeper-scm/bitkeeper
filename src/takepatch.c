@@ -6,6 +6,7 @@
 #include <time.h>
 #include "range.h"
 #include "progress.h"
+#include "graph.h"
 
 /*
  * takepatch - apply a BitKeeper patch file
@@ -29,6 +30,7 @@
 #define	CLEAN_RESYNC	1	/* blow away the RESYNC dir */
 #define	CLEAN_PENDING	2	/* blow away the PENDING dir */
 #define	CLEAN_OK	4	/* but exit 0 anyway */
+#define	CLEAN_FLAGS	8	/* Note that nway return are clean flags */
 #define	SHOUT() fputs("\n=================================== "\
 		    "ERROR ====================================\n", stderr);
 #define	SHOUT2() fputs("======================================="\
@@ -41,8 +43,8 @@ private void	errorMsg(char *msg, char *arg1, char *arg2);
 private	int	extractPatch(char *name, FILE *p);
 private	int	extractDelta(char *name, sccs *sreal, sccs *scratch,
 		    int newFile, FILE *f, hash *countFiles, int *np);
-private	int	applyPatch(char *local, sccs *perfile);
-private	int	applyCsetPatch(sccs *s, int *nfound, sccs *perfile);
+private	int	applyPatch(char *local, FILE *perfile);
+private	int	applyCsetPatch(sccs *s, int *nfound, int newFile);
 private	int	getLocals(sccs *s, char *name);
 private	void	insertPatch(patch *p, int strictOrder);
 private	int	reversePatch(void);
@@ -57,19 +59,27 @@ private	void	getChangeSet(void);
 private	void	loadskips(void);
 private	int	sfio(FILE *m, int files);
 private	int	parseFeatures(char *next);
+private	int	sendPatch(char *name, FILE *in);
+private	int	stopNway(int n, int *conflicts, int *numcsets);
 
 typedef struct {
 	/* command line options */
 	int	pbars;		/* --progress: progress bars, default is off */
 	int	mkpatch;	/* -m: act like makepatch verbose */
 	int	collapsedups;	/* -D: allow csets in BitKeeper/etc/collapsed */
+	int	parallel;	/* -j: do N takepatches in parallel */
+	int	nway;		/* This is one of the parallel threads */
+	int	automerge;	/* do automerging */
 
 	/* global state */
 	u64	N;		/* number of ticks */
+	FILE	**outlist;	/* parallel popen file handles */
+	int	*sent;		/* how many bytes written to each channel */
 
 	/* modes enabled in patch */
 	u8	fast;		/* Fast patch mode */
 	u8	port;		/* patch created with 'bk port' */
+	u8	bkmerge;	/* bk-style includes */
 
 	/* The patch from stdin or file */
 	FILE 	*p;
@@ -94,7 +104,6 @@ typedef struct {
 	char	**errfiles;	/* files had errors during apply */
 	char	**edited;	/* files that were in modified state */
 
-	sccs	*fake;
 	int	needlock;	/* we're top-level, grab a lock */
 } Opts;
 private Opts *opts;
@@ -107,6 +116,7 @@ private struct {
 	int	offset;
 } features[] = {
 	{"PORT", offsetof(Opts, port)},
+	{"BKMERGE", offsetof(Opts, bkmerge)},
 	{0}
 };
 
@@ -127,6 +137,7 @@ takepatch_main(int ac, char **av)
 	FILE 	*f;
 	char	*buf;
 	int	c;
+	int	rc;
 	int	files = 0;
 	char	*t;
 	int	error = 0;
@@ -136,13 +147,19 @@ takepatch_main(int ac, char **av)
 	ticker	*tick = 0;
 	longopt	lopts[] = {
 		{ "progress", 300, },
+		{ "Nway", 310, },
+		{ "port", 315, },
+		{ "fast", 320, },
+		{ "bkmerge", 321, },
+		{ "no-automerge", 325, },
 		{ 0, 0 },
 	};
 
 	setmode(0, O_BINARY); /* for win32 */
 	opts = new(Opts);
 	opts->input = "-";
-	while ((c = getopt(ac, av, "acDFf:iLmqsStTvy;", lopts)) != -1) {
+	opts->automerge = 1;
+	while ((c = getopt(ac, av, "acDFf:ij;LmqsStTvy;", lopts)) != -1) {
 		switch (c) {
 		    case 'q':					/* undoc 2.0 */
 		    case 's':					/* undoc 2.0 */
@@ -156,6 +173,14 @@ takepatch_main(int ac, char **av)
 			    opts->input = optarg;
 			    break;
 		    case 'i': opts->newProject++; break;	/* doc 2.0 */
+		    case 'j':
+			if ((opts->parallel = atoi(optarg)) <= 1) {
+				/* if they set it to <= 1 then disable */
+				opts->parallel = -1;
+			} else if (opts->parallel > PARALLEL_MAX) {
+				opts->parallel = PARALLEL_MAX;	/* cap it */
+			}
+			break;
 		    case 'm': opts->mkpatch++; break;		/* doc 2.0 */
 		    case 'S': opts->saveDirs++; break;		/* doc 2.0 */
 		    case 'T': textOnly++; break;		/* doc 2.0 */
@@ -165,9 +190,30 @@ takepatch_main(int ac, char **av)
 			break;
 		    case 'y': opts->comments = optarg; break;
 		    case 300: opts->pbars = 1; break;
+		    case 310: opts->nway = 1; break;
+		    case 315: opts->port = 1; break;
+		    case 320: opts->fast = 1; break;
+		    case 321: opts->bkmerge = 1; break;
+		    case 325: opts->automerge = 0; break;
 		    default: bk_badArg(c, av);
 		}
 	}
+	if (opts->newProject) putenv("_BK_NEWPROJECT=YES");
+	if (opts->nway) {
+		unless (getenv("_BK_CALLSTACK")) {
+			fprintf(stderr, "--Nway is internal option\n");
+			free(opts);
+			return (-1);
+		}
+		opts->p = stdin;
+		goto doit;
+	}
+	unless (opts->parallel) opts->parallel = parallel(".", WRITER);
+	/*
+	 * I want to revisit this, this change breaks regressions but
+	 * I think it was good for 20% on pulls.  Need to remeasure.
+	unless (opts->parallel) opts->parallel = cpus();
+	 */
 	if (getenv("TAKEPATCH_SAVEDIRS")) opts->saveDirs++;
 	if ((t = getenv("BK_NOTTY")) && *t && (opts->echo == 3)) {
 		opts->echo = 2;
@@ -178,10 +224,9 @@ takepatch_main(int ac, char **av)
 	if (streq(getenv("_BK_CALLSTACK"), "takepatch")) opts->needlock = 1;
 
 	opts->p = init(opts->input);
-	if (opts->newProject) putenv("_BK_NEWPROJECT=YES");
-	if (sane(0, 0)) exit(1);
+	if (sane(0, 0)) exit(1);	/* uses _BK_NEWPROJECT */
 
-	if (opts->newProject) {
+doit:	if (opts->newProject) {
 		unless (opts->idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
 			perror("mdbm_open");
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
@@ -203,8 +248,6 @@ takepatch_main(int ac, char **av)
 	 * Find a file and go do it.
 	 */
 	while (buf = fgetline(opts->p)) {
-		int	rc;
-
 		++opts->line;
 		unless (strncmp(buf, "== ", 3) == 0) {
 			if (opts->echo > 7) {
@@ -235,9 +278,16 @@ takepatch_main(int ac, char **av)
 			cleanup(CLEAN_RESYNC);
 		}
 		*t = 0;
-		t = name2sccs(&buf[3]);
-		rc = extractPatch(t, opts->p);
-		free(t);
+		t = &buf[3];	/* gfile */
+		/* SFIO needs rootkey, so unpack ChangeSet in this thread */
+		if ((opts->parallel > 0) &&
+		    (!streq(t, GCHANGESET) || !opts->newProject)) {
+			rc = sendPatch(t, opts->p);
+		} else {
+			t = name2sccs(t);
+			rc = extractPatch(t, opts->p);
+			free(t);
+		}
 		if (!files && opts->pbars) {
 			tick = progress_start(PROGRESS_BAR, opts->N);
 		}
@@ -249,7 +299,12 @@ takepatch_main(int ac, char **av)
 		}
 		remote += rc;
 	}
-	if (fclose(opts->p)) {
+	if (opts->parallel > 0) {
+		if (rc = stopNway(opts->parallel, &opts->conflicts, &remote)) {
+			error = rc;
+		}
+	}
+	if ((opts->p != stdin) && fclose(opts->p)) {
 		perror(opts->input);
 		opts->p = 0;	/* don't try to close again */
 		cleanup(CLEAN_RESYNC);
@@ -265,6 +320,11 @@ takepatch_main(int ac, char **av)
 #ifdef	SIGXFSZ
 	if (getenv("_BK_SUICIDE")) kill(getpid(), SIGXFSZ);
 #endif
+	if (opts->nway) {
+		if (remote) printf("r %d\n", remote);
+		if (opts->conflicts) printf("c %u\n", opts->conflicts);
+		goto done;
+	}
 	if (opts->echo || opts->pbars) {
 		files = 0;
 		if (f = popen("bk sfiles RESYNC", "r")) {
@@ -336,6 +396,8 @@ takepatch_main(int ac, char **av)
 		unless (WIFEXITED(i)) return (-1);
 		error = WEXITSTATUS(i);
 	}
+done:	freeLines(opts->errfiles, free);
+	freeLines(opts->edited, free);
 	free(opts);
 	return (error);
 }
@@ -411,8 +473,8 @@ private	int
 extractPatch(char *name, FILE *p)
 {
 	ser_t	tmp;
-	sccs	*s = 0, *scratch = 0;
-	sccs	*perfile = 0;
+	sccs	*s = 0, *new_s = 0, *scratch = 0;
+	FILE	*perfile = 0;
 	int	newFile = 0;
 	int	cset;
 	char	*gfile = 0;
@@ -445,8 +507,28 @@ extractPatch(char *name, FILE *p)
 	t = fgetline(p);
 	opts->line++;
 	if (strneq("New file: ", t, 10)) {
+		char	*resyncFile;
+
 		newFile = 1;
-		perfile = sccs_getperfile(0, p, &opts->line);
+		perfile = fmem();
+		while (t = fgetline(p)) {
+			fputs(t, perfile);
+			fputc('\n', perfile);
+			unless (*t) break;
+		}
+		rewind(perfile);
+		resyncFile = aprintf(ROOT2RESYNC "/%s", name);
+		unless (new_s = sccs_init(resyncFile, NEWFILE|SILENT)) {
+			SHOUT();
+			fprintf(stderr,
+			    "takepatch: can't create %s\n", resyncFile);
+			free(resyncFile);
+			goto error;
+		}
+		new_s->bitkeeper = 1;	/* XXX: not set in sccs_init ?? */
+		free(resyncFile);
+		if (sccs_getperfile(new_s, perfile, &opts->line)) goto error;
+		rewind(perfile);
 		t = fgetline(p);
 		opts->line++;
 	}
@@ -471,7 +553,7 @@ extractPatch(char *name, FILE *p)
 	 * b) move the file and send a new file over and make sure it finds
 	 *    it.
 	 */
-	unless (s || opts->newProject || newFile) {
+	unless (s || new_s) {
 		if (gone(t, opts->goneDB)) {
 			if (getenv("BK_GONE_OK")) {
 				skipPatch(p);
@@ -483,7 +565,8 @@ extractPatch(char *name, FILE *p)
 		SHOUT();
 		fprintf(stderr,
 		    "takepatch: can't find key '%s' in id cache\n", t);
-error:		if (perfile) sccs_free(perfile);
+error:		if (new_s && (new_s != s)) sccs_free(new_s);
+		if (perfile) fclose(perfile);
 		if (gfile) free(gfile);
 		free(t);
 		if (s) sccs_free(s);
@@ -555,6 +638,7 @@ error:		if (perfile) sccs_free(perfile);
 		 * it is safe to assume there is no
 		 * name conflict for the ChangeSet file.
 		 */
+		assert(new_s);
 		if (streq(name, "SCCS/s.ChangeSet") &&
 		    exists("SCCS/s.ChangeSet")) {
 			errorMsg("tp_changeset_exists", 0, 0);
@@ -565,12 +649,8 @@ error:		if (perfile) sccs_free(perfile);
 		}
 	}
 	opts->tableGCA = 0;
-	unless (s) {
-		opts->fake = new(sccs);
-		s = opts->fake;
-		if (streq(name, CHANGESET)) s->state |= S_CSET;
-	}
-	if (opts->pbars && CSET(s)) {
+	cset = s ? CSET(s) : CSET(new_s);
+	if (opts->pbars && cset) {
 		countFiles = hash_new(HASH_MEMHASH);
 		opts->N++;	/* count the cset file */
 	}
@@ -587,14 +667,17 @@ error:		if (perfile) sccs_free(perfile);
 	gfile = sccs2name(name);
 	if (opts->echo > 1) fprintf(stderr, "Updating %s", gfile);
 
-	cset = s ? CSET(s) : streq(name, CHANGESET);
 	if (opts->fast || cset) {
-		rc = applyCsetPatch(s, &nfound, perfile);
+		int	newsfile = !s;
+
+		unless (s) {
+			s = new_s;
+			new_s = 0;
+		}
+		rc = applyCsetPatch(s, &nfound, newsfile);
 		s = 0;		/* applyCsetPatch calls sccs_free */
 		unless (cset) nfound = 0;	/* only count csets */
 	} else {
-		if (s == opts->fake) s = 0;
-		if (opts->patchList && opts->tableGCA) getLocals(s, name);
 		rc = applyPatch(s ? s->sfile : 0, perfile);
 		if (rc < 0) {
 			opts->errfiles =
@@ -604,7 +687,7 @@ error:		if (perfile) sccs_free(perfile);
 	}
 	FREE(opts->tableGCA);
 	if (opts->echo > 1) fputc('\n', stderr);
-	if (perfile) sccs_free(perfile);
+	if (perfile) fclose(perfile);
 	if (streq(gfile, "BitKeeper/etc/config")) {
 		/*
 		 * If we have rewritten the config file we need to
@@ -615,29 +698,13 @@ error:		if (perfile) sccs_free(perfile);
 	}
 	free(gfile);
 	free(t);
+	if (new_s) sccs_free(new_s);
 	if (s) sccs_free(s);
 	if (rc < 0) {
 		cleanup(CLEAN_RESYNC);
 		return (rc);
 	}
 	return (nfound);
-}
-
-private	int
-sccscopy(sccs *to, sccs *from)
-{
-	unless (to && from) return (-1);
-	to->state |= from->state;
-	unless (to->defbranch) {
-		to->defbranch = from->defbranch;
-		from->defbranch = 0;
-	}
-	to->encoding_in = from->encoding_in;
-	unless (to->text) {
-		to->text = from->text;
-		from->text = 0;
-	}
-	return (0);
 }
 
 #define SKIPKEYS	"BitKeeper/etc/skipkeys"
@@ -716,6 +783,7 @@ extractDelta(char *name, sccs *sreal, sccs *scratch,
 	int	c, i;
 	int	skip = 0;
 	int	ignore = 0;
+	size_t	len;
 	patch	*p;
 	FILE	*init = 0;
 
@@ -733,7 +801,7 @@ extractDelta(char *name, sccs *sreal, sccs *scratch,
 	 * isn't used by current code (fastpatch+sfio), so this is good
 	 * enough.
 	 */
-	if (!opts->tableGCA && sccs_findKey(sreal, b)) {
+	if (sreal && !opts->tableGCA && sccs_findKey(sreal, b)) {
 		opts->tableGCA = strdup(b);
 	}
 
@@ -754,7 +822,7 @@ delta1:	while ((b = fgetline(f)) && *b) {
 	rewind(init);
 	sccs_sdelta(scratch, d, buf);
 	if (opts->fast) {
-		if (skipkey(sreal, buf)) ignore = 1;
+		if (sreal && skipkey(sreal, buf)) ignore = 1;
 		goto save;
 	}
 	/*
@@ -764,14 +832,15 @@ delta1:	while ((b = fgetline(f)) && *b) {
 	 * applying the patch will clear the flag and the code paths
 	 * are all happier this way.
 	 */
-	if ((tmp = sccs_findKey(sreal, buf)) && !DANGLING(sreal, tmp)) {
+	if (sreal &&
+	    (tmp = sccs_findKey(sreal, buf)) && !DANGLING(sreal, tmp)) {
 		if (opts->echo > 3) {
 			fprintf(stderr,
 			    "takepatch: delta %s already in %s, skipping it.\n",
 			    REV(sreal, tmp), sreal->sfile);
 		}
 		skip++;
-	} else if (skipkey(sreal, buf)) {
+	} else if (sreal && skipkey(sreal, buf)) {
 		if (opts->echo>6) {
 			fprintf(stderr,
 			    "takepatch: skipping marked delta in %s\n",
@@ -811,22 +880,22 @@ save:
 		p->me = strdup(buf);
 		sccs_sortkey(scratch, d, buf);
 		p->sortkey = strdup(buf);
-		p->localFile = (sreal && (sreal != opts->fake)) ?
-		    strdup(sreal->sfile) : 0;
+		p->localFile = sreal ? strdup(sreal->sfile) : 0;
 		sprintf(buf, "RESYNC/%s", name);
 		p->resyncFile = strdup(buf);
 		p->order = DATE(scratch, d);
-		if (opts->echo>6) fprintf(stderr, "REM: %s %s %lu\n",
-		    REV(sreal, d), p->me, p->order);
 		c = opts->line;
-		while ((b = fgetline(f)) && *b) {
+		while (b = fgetln(f, &len)) {
+			if (len && (b[len-1] == '\n')) --len;
+			b[len] = 0;
+			unless (len) break;
 			unless (p->diffMem) p->diffMem = fmem();
 			if (countFiles && (*b == '>')) {
 				i = opts->fast ? 1 : 2;
 				sep = separator(&b[i]);
 				assert(sep);
 				*sep = 0;
-				if (!changesetKey(&b[1]) &&
+				if (!changesetKey(&b[i]) &&
 				    hash_insertStr(countFiles, &b[i], 0)) {
 					opts->N++;  /* for progress bar */
 				}
@@ -932,7 +1001,7 @@ badXsum(int a, int b)
  * is possible to only write the file once.
  */
 private	int
-applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
+applyCsetPatch(sccs *s, int *nfound, int newFile)
 {
 	patch	*p;
 	FILE	*iF;
@@ -950,9 +1019,13 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	char	csets_in[MAXPATH];
 	char	buf[MAXKEY];
 
-	if (s && CSET(s)) T_PERF("applyCsetPatch(start)");
+	assert(s);
+	if (CSET(s)) T_PERF("applyCsetPatch(start)");
 	reversePatch();
-	unless (p = opts->patchList) return (0);
+	unless (p = opts->patchList) {
+		sccs_free(s);
+		return (0);
+	}
 
 	if (opts->echo > 7) {
 		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",
@@ -969,7 +1042,9 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			return (-1);
 		}
 	}
-	if (s && (s != opts->fake) && getenv("_BK_COPY_SFILE")) {
+	if (newFile) {
+		/* good to go */
+	} else if (getenv("_BK_COPY_SFILE")) {
 		if (fileCopy(s->sfile, p->resyncFile)) {
 			fprintf(stderr, "Copy of %s to %s failed",
 			    s->sfile, p->resyncFile);
@@ -988,22 +1063,8 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			cmdlog_addnote(
 			    "_BK_COPY_SFILE", getenv("_BK_COPY_SFILE"));
 		}
-	} else if (s && (s != opts->fake)) {
-		sccs_writeHere(s, p->resyncFile);
 	} else {
-		unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
-			SHOUT();
-			fprintf(stderr,
-			    "takepatch: can't create %s\n", p->resyncFile);
-			goto err;
-		}
-		s->heap = opts->fake->heap;
-		FREE(opts->fake);
-		s->bitkeeper = 1;
-		if (perfile) {
-			sccscopy(s, perfile);
-			s->encoding_in = sccs_encoding(s, 0, 0);
-		}
+		sccs_writeHere(s, p->resyncFile);
 	}
 	/* serial is not stable */
 	if (top = sccs_top(s)) {
@@ -1012,6 +1073,13 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		top = 0;
 	}
 	assert(s);
+	if (opts->bkmerge != BKMERGE(s)) {
+		/*
+		 * Take the patch in the remote repo's format.
+		 * sccs_startWrite will put the file back in the local form.
+		 */
+		if (graph_convert(s, 0)) goto err;
+	}
 	cweave_init(s, psize);
 	*nfound = 0;
 	while (p) {
@@ -1265,8 +1333,11 @@ markup:
 		}
 		if (!(FLAGS(s, top) & D_CSET) && sccs_isleaf(s, top)) {
 			/* uncommitted error for dangling is backward compat */
+			char	*t = sccs2name(opts->patchList->localFile);
+
 			SHOUT();
-			getMsg("tp_uncommitted", s->gfile, 0, stderr);
+			getMsg("tp_uncommitted", t, 0, stderr);
+			free(t);
 			goto err;
 		}
 	}
@@ -1292,7 +1363,9 @@ markup:
 		}
 	}
 
-	if ((confThisFile = sccs_resolveFiles(s)) < 0) goto err;
+	if ((confThisFile = sccs_resolveFiles(s, opts->automerge)) < 0) {
+		goto err;
+	}
 	if (!confThisFile && (s->state & S_CSET) && 
 	    sccs_adminFlag(s, SILENT|ADMIN_BK)) {
 	    	confThisFile++;
@@ -1388,7 +1461,7 @@ out:	free(resync);
  * the list.
  */
 private	int
-applyPatch(char *localPath, sccs *perfile)
+applyPatch(char *localPath, FILE *perfile)
 {
 	patch	*p;
 	FILE	*iF;
@@ -1403,10 +1476,9 @@ applyPatch(char *localPath, sccs *perfile)
 	int	flags = opts->echo ? 0 : SILENT;
 	ticker	*tick = 0;
 
-	nump = reversePatch();
 	p = opts->patchList;
+
 	if (!p && localPath) return (noupdates(localPath));
-	if (opts->echo == 3) tick = progress_start(PROGRESS_MINI, nump);
 
 	if (opts->echo > 7) {
 		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",
@@ -1439,9 +1511,17 @@ applyPatch(char *localPath, sccs *perfile)
 		return -1;
 	}
 	assert(!CSET(s));
-	/* convert to uncompressed, it's faster, we saved the mode above */
+
+	/* flip format before putting local files out in a patch form */
+	if (opts->bkmerge != BKMERGE(s)) {
+		if (graph_convert(s, 0)) return (-1);
+		/* Override storage format from repo default */
+		s->encoding_out = s->encoding_in;
+	}
 	unless (s) return (-1);
 	unless (opts->tableGCA) goto apply;
+	assert(p && localPath);
+	getLocals(s, localPath);
 	if (opts->echo > 6) {
 		fprintf(stderr,
 		    "stripdel %s from %s\n", opts->tableGCA, s->sfile);
@@ -1483,8 +1563,9 @@ applyPatch(char *localPath, sccs *perfile)
 		return -1;
 	}
 apply:
-
+	nump = reversePatch();
 	p = opts->patchList;
+	if (opts->echo == 3) tick = progress_start(PROGRESS_MINI, nump);
 	if (p && !p->pid) {
 		/* initial file create */
 		n++;
@@ -1497,11 +1578,10 @@ apply:
 			    p->resyncFile);
 			return -1;
 		}
-		s->heap = opts->fake->heap;
-		FREE(opts->fake);
-		s->bitkeeper = 1;
-		if (perfile) {
-			sccscopy(s, perfile);
+		assert(perfile);
+		if (sccs_getperfile(s, perfile, 0)) {
+			sccs_free(s);
+			return (-1);
 		}
 		if (p->initFile) {
 			iF = fopen(p->initFile, "r");
@@ -1529,7 +1609,13 @@ apply:
 		if (s->bad_dsum || s->io_error) return (-1);
 		fclose(iF);	/* dF done by delta() */
 		sccs_free(s);
-		s = sccs_init(p->resyncFile, INIT_NOCKSUM|SILENT);
+		unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|SILENT)) {
+			SHOUT();
+			fprintf(stderr,
+			    "takepatch: can't create %s\n",
+			    p->resyncFile);
+			return -1;
+		}
 		p = p->next;
 	}
 	while (p) {
@@ -1556,7 +1642,7 @@ apply:
 		assert(!p->meta); /* this is not the cset file */
 		newflags = GET_FORCE|GET_SKIPGET|GET_EDIT;
 		unless (opts->echo > 6) newflags |= SILENT;
-		if (sccs_get(s, REV(s, d), 0, 0, 0, newflags, "-")) {
+		if (sccs_get(s, REV(s, d), 0, 0, 0, newflags, 0, 0)) {
 			perror("get");
 			return (-1);
 		}
@@ -1586,6 +1672,9 @@ apply:
 		fclose(iF);
 		p = p->next;
 	}
+	/* Put the storage style back to match the repo */
+	s->encoding_out = sccs_encoding(s, 0, 0);
+	if (BKMERGE(s) != BKMERGE_OUT(s)) sccs_newchksum(s);
 	sccs_free(s);
 	s = sccs_init(opts->patchList->resyncFile, SILENT);
 	assert(s);
@@ -1608,12 +1697,15 @@ apply:
 		if (sccs_isleaf(s, d) && !(FLAGS(s, d) & D_CSET)) pending++;
 	}
 	if (pending) {
+		char	*t = sccs2name(localPath);
+
 		sccs_free(s);
 		SHOUT();
-		getMsg("tp_uncommitted", localPath, 0, stderr);
+		getMsg("tp_uncommitted", t, 0, stderr);
+		free(t);
 		return (-1);
 	}
-	if ((confThisFile = sccs_resolveFiles(s)) < 0) {
+	if ((confThisFile = sccs_resolveFiles(s, opts->automerge)) < 0) {
 		sccs_free(s);
 		return (-1);
 	}
@@ -1855,6 +1947,15 @@ initProject(void)
 		exit(1);
 	}
 	sccs_mkroot(".");
+	/*
+	 * Make new repo with new features
+	 * Who uses takepatch -i to make a repo?
+	 * XXX: doesn't work correctly with nested.
+	 *
+	 * From setup.c, in the non-compat, non-component case.
+	 * There's more code in setup.c to do nested component.
+	 */
+	features_set(0, (FEAT_FILEFORMAT & ~FEAT_BWEAVEv2) | FEAT_SCANDIRS, 1);
 }
 
 private void
@@ -1910,7 +2011,8 @@ sfio(FILE *m, int files)
 	size_t	n;
 	char	*flist;
 	int	rc = -1, rlen;
-	int	bkfile = features_test(0, FEAT_BKFILE);
+	int	bkfile = (features_test(0, FEAT_BKFILE) != 0);
+	int	bkmerge = (features_test(0, FEAT_BKMERGE) != 0);
 	char	buf[MAXLINE];
 	char	key[MAXKEY];
 
@@ -1963,8 +2065,8 @@ sfio(FILE *m, int files)
 			fprintf(stderr, "takepatch: can't open %s\n", buf);
 			goto err;
 		}
-		if ((!bkfile && BKFILE(sr)) || (bkfile && !BKFILE(sr))) {
-			sccs_newchksum(sr);
+		if ((bkfile != BKFILE(sr)) || (bkmerge != BKMERGE(sr))) {
+			sccs_newchksum(sr);	/* fix format */
 		}
 		sccs_sdelta(sr, sccs_ino(sr), key); /* rootkey */
 
@@ -2003,7 +2105,7 @@ sfio(FILE *m, int files)
 			/* because of pending deltas? */
 			unless (FLAGS(s, TABLE(s)) & D_CSET) {
 				SHOUT();
-				getMsg("tp_uncommitted", s->sfile, 0, stderr);
+				getMsg("tp_uncommitted", s->gfile, 0, stderr);
 			} else {
 				fprintf(stderr,
 				    "takepatch: key '%s' not found "
@@ -2020,7 +2122,7 @@ sfio(FILE *m, int files)
 		 * does the right thing with or without D_LOCAL.
 		 */
 		FLAGS(s, d) |= D_LOCAL;
-		if (sccs_resolveFiles(sr) < 0) goto err;
+		if (sccs_resolveFiles(sr, opts->automerge) < 0) goto err;
 		sccs_free(s);
 		sccs_free(sr);
 		s = sr = 0;
@@ -2478,7 +2580,7 @@ cleanup(int what)
 	int	i, rc = 1;
 
 	if (opts->p) {
-		if (fclose(opts->p)) {
+		if ((opts->p != stdin) && fclose(opts->p)) {
 			fprintf(stderr,
 			    "takepatch: failed closing input stream.\n");
 		}
@@ -2487,11 +2589,18 @@ cleanup(int what)
 	if (opts->patchList) freePatchList();
 	if (opts->idDB) mdbm_close(opts->idDB);
 	if (opts->goneDB) mdbm_close(opts->goneDB);
+	for (i = 3; i < 20; ++i) close(i);
+	if (opts->nway) {
+		EACH(opts->errfiles) printf("e %s\n", opts->errfiles[i]);
+		freeLines(opts->errfiles, free);
+		EACH(opts->edited) printf("p %s\n", opts->edited[i]);
+		freeLines(opts->edited, free);
+		exit(what | CLEAN_FLAGS);
+	}
 	if (opts->saveDirs) {
 		fprintf(stderr, "takepatch: neither directory removed.\n");
 		goto done;
 	}
-	for (i = 3; i < 20; ++i) close(i);
 	if (what & CLEAN_RESYNC) {
 		rmtree(ROOT2RESYNC);
 	} else {
@@ -2526,6 +2635,7 @@ done:
 			}
 			fprintf(stderr,
 			    "For more information run \"bk help tp1\"\n");
+			freeLines(opts->edited, free);
 		}
 		SHOUT2();
 		if (opts->errfiles) {
@@ -2573,4 +2683,203 @@ parseFeatures(char *next)
 		}
 	}
 	return (0);
+}
+
+private	FILE **
+startNway(int n)
+{
+	int	i;
+	char	*cmd;
+	char	*counter;
+
+	opts->outlist = calloc(n, sizeof(FILE *));
+	opts->sent = calloc(n, sizeof(int));
+	cmd = aprintf("bk takepatch --Nway%s%s%s%s%s%s "
+	    "> RESYNC/BitKeeper/tmp/nwayXXXXX",
+	    opts->collapsedups ? " -D" : "",
+	    opts->newProject ? " -i" : "",
+	    opts->fast ? " --fast" : "",
+	    opts->bkmerge ? " --bkmerge" : "",
+	    opts->port ? " --port" : "",
+	    opts->automerge ? "" : " --no-automerge");
+	counter = cmd + strlen(cmd) - 5;
+	for (i = 0; i < n; i++) {
+		sprintf(counter, "%05d", i);
+		unless (opts->outlist[i] = popen(cmd, "w")) {
+			stopNway(n, 0, 0);
+			break;
+		}
+	}
+	free(cmd);
+	return (opts->outlist);
+}
+
+private	int
+stopNway(int n, int *confp, int *numcsetsp)
+{
+	int	i, j, conf = 0, numcsets = 0;
+	int	cleanFlags = 0;
+	int	ret, rc = 0;
+	char	file[] = "RESYNC/BitKeeper/tmp/nwayXXXXX";
+	char	*counter, **data = 0;
+	char	cmd, *param;
+
+	FREE(opts->sent);
+	unless (opts->outlist) return (0);
+	counter = file + strlen(file) - 5;
+
+	for (i = 0; i < n; i++) {
+		if (opts->outlist[i] && (ret = pclose(opts->outlist[i]))) {
+			unless (WIFEXITED(ret)) {
+				rc = -1;
+				continue;
+			}
+			ret = WEXITSTATUS(ret);
+			if (ret & CLEAN_FLAGS) {
+				ret &= ~CLEAN_FLAGS;
+				/* prefer ERROR to OK */
+				if (!cleanFlags ||
+				    ((cleanFlags & CLEAN_OK) &&
+				    !(ret & CLEAN_OK))) {
+					cleanFlags = ret;
+				}
+			} else {
+				rc = -1;
+			}
+		}
+		sprintf(counter, "%05d", i);
+		data = file2Lines(data, file);
+		EACH_INDEX(data, j) {
+			cmd = *data[j];
+			param = &data[j][2];
+			switch (cmd) {
+			    case 'c' :	/* conflict */
+				conf += atoi(param);
+				break;
+			    case 'e' :	/* error */
+				opts->errfiles =
+				    addLine(opts->errfiles, strdup(param));
+			    	break;
+			    case 'p' :	/* edited (pfile) */
+				opts->edited =
+				    addLine(opts->edited, strdup(param));
+			    	break;
+			    case 'r' :	/* csets taken in from remote */
+				numcsets += atoi(param);
+				break;
+			}
+			free(data[j]);
+		}
+		truncLines(data, 0);
+	}
+	freeLines(data, 0);
+	if (confp) *confp += conf;
+	if (numcsetsp) *numcsetsp += numcsets;
+	free(opts->outlist);
+	opts->outlist = 0;
+	if (cleanFlags) cleanup(cleanFlags);
+	return (rc);
+}
+
+/*
+ * See if parallel started.
+ *   start it up.
+ * Find one with smallest sent (sfio code), send to it.
+ * if ChangeSet, count files in patch.
+ * Stop with = or # as first char.
+ * XXX: Can a key begin with # ?
+ */
+private	int
+sendPatch(char *name, FILE *in)
+{
+	int	i, c, n, cur, sent;
+	int	rc = -1;
+	char	*line;
+	size_t	len;
+	hash	*rk = 0;
+	FILE	*out;
+
+	n = opts->parallel;
+	if (!opts->outlist && !(opts->outlist = startNway(n))) return (-1);
+
+	if (streq(name, GCHANGESET)) {
+		opts->N++;
+		rk = hash_new(HASH_MEMHASH);
+	}
+
+	cur = 0;
+	for (i = 0; i < n; i++) {
+		if (opts->sent[i] < opts->sent[cur]) cur = i;
+	}
+	out = opts->outlist[cur];
+
+	if (opts->echo > 1) fprintf(stderr, "Updating %s\n", name);
+	sent = fprintf(out, "== %s ==\n", name);
+
+again:
+	line = fgetln(in, &len);
+	unless (len) {
+err:	
+		if (ferror(out)) {
+			fprintf(stderr, "slurp rest of file\n");
+			// slurp rest of data and wind down
+		}
+		return (-1);
+	}
+	if ((len > 17) &&
+	    strneq(line, "# Patch checksum=", 17)) {
+		rc = 0;
+		goto done;
+	}
+	unless (len == fwrite(line, 1, len, out)) return (-1);
+
+	/* delta meta data block */
+	while(line = fgetln(in, &len)) {
+		assert(len);
+		unless (len == fwrite(line, 1, len, out)) goto err;
+		sent += len;
+		if (*line == '\n') break;
+	}
+	unless (len) goto err;
+
+	/* delta data block */
+	while(line = fgetln(in, &len)) {
+		assert(len);
+		unless (len == fwrite(line, 1, len, out)) goto err;
+		sent += len;
+		if (*line == '\n') break;
+		if (rk && (*line == '>')) {
+			char	*rkstart, *rkend;
+
+			assert(line[len - 1] == '\n');
+			line[len - 1] = 0;	/* just a safety net */
+			rkend = separator(line);
+			assert(rkend);
+			*rkend = 0;
+			rkstart = line + (opts->fast ? 1 : 2);
+			if (!changesetKey(rkstart) &&
+			    hash_insert(rk, rkstart, rkend-rkstart+1, 0, 0)) {
+				opts->N++;
+			}
+			*rkend = ' ';
+			line[len - 1] = '\n';
+		}
+	}
+	unless (len) goto err;
+
+	if ((c = getc(in)) == EOF) goto done;
+	ungetc(c, in);
+	if (c != '=') goto again;
+	rc = 0;
+done:
+	opts->sent[cur] += sent;
+
+	// opts->sent[cur]++;	/* round robin */
+
+	// From sfio.c - see comment in sfio_in_Nway() - look for '20'
+	// opts->sent[cur] += 20;
+	// opts->sent[cur] += sent / (25<<10);
+
+	if (rk) hash_free(rk);
+	return (rc);
 }

@@ -186,7 +186,7 @@ set_get(sccs *s, char *rev)
 		sccs_free(s);
 		exit(1);
 	}
-	map = sccs_set(s, d, 0, 0);
+	map = sccs_set(s, d, 0, 0, 0);
 	for (d = TREE(s); d <= TABLE(s); ++d) {
 		map[d] &= 1;
 	}
@@ -308,7 +308,7 @@ set_list(sccs *s, char *rev, set_pfunc p)
 		if (TAG(s, e)) continue;
 		if (FLAGS(s, e) & D_SET) continue;
 		if (opts.tags && !(FLAGS(s, e) & D_SYMBOLS)) continue;
-		map = sccs_set(s, e, 0, 0);
+		map = sccs_set(s, e, 0, 0, 0);
 		unless (map[d] == 1) {
 			free(map);
 			if (e == d) break;
@@ -334,7 +334,7 @@ set_set(sccs *s, char *rev, set_pfunc p)
 		sccs_free(s);
 		exit(1);
 	}
-	map = sccs_set(s, d, 0, 0);
+	map = sccs_set(s, d, 0, 0, 0);
 	for (d = TREE(s); d <= TABLE(s); ++d) {
 		if (map[d]) p(s, d);
 	}

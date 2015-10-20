@@ -16,6 +16,7 @@ typedef struct {
 	char	*from;
 	char	*to;
 	char	*quiet;		/* fast access to silent */
+	char	*keepdelopt;	/* put deletes in component */
 
 	char	**attach;	/* list of extra comps to attach */
 	char	*oconfig;	/* old BK_CONFIG */
@@ -25,9 +26,11 @@ typedef struct {
 	char	*pver;		/* prune version option to pass to prune */
 	int	flags;		/* SILENT for now */
 
+
 	/* data from partition KV */
 	char	**comps;	/* list of componets */
 	char	**compprune;	/* files to prune from every component */
+	char	*keepdel;	/* keep deletes instead of pruning them */
 	char	**prodprune;	/* files to prune from product */
 	char	**prune;	/* rootkeys to prune from all */
 	char	*prunever;	/* csetprune version */
@@ -51,6 +54,7 @@ const struct {
 	{"COMPLIST", 1, offsetof(Opts, comps)},
 	{"COMPPRUNE",1, offsetof(Opts, compprune)},
 	{"FEATURE",  1, offsetof(Opts, feature)},
+	{"KEEPDEL",  0, offsetof(Opts, keepdel)},
 	{"PRODPRUNE",1, offsetof(Opts, prodprune)},
 	{"PRUNE",    1, offsetof(Opts, prune)},
 	{"PRUNEVER", 0, offsetof(Opts, prunever)},
@@ -90,11 +94,14 @@ partition_main(int ac, char **av)
 	char	buf[MAXLINE];
 	longopt	lopts[] = {
 		{ "version:", 310 },	/* --version=%d for old trees */
+		{ "keep-deleted", 320 },/* put deleted in component */
+		{ "keep-deletes", 320 },/* alias */
 		{ 0, 0 }
 	};
 
 	opts = new(Opts);
 	opts->quiet = "";
+	opts->keepdelopt = "";
 	opts->parallel = 1;
 	opts->pver = "2";
 	while ((c = getopt(ac, av, "@;C;j;P;q", lopts)) != -1) {
@@ -106,6 +113,9 @@ partition_main(int ac, char **av)
 		    case 'q': opts->flags |= SILENT; opts->quiet = "q"; break;
 		    case 310: /* --version=%s */
 			opts->pver = optarg;
+			break;
+		    case 320: /* --keep-deleted */
+			opts->keepdelopt = "--keep-deleted";
 			break;
 		    default: bk_badArg(c, av);
 		}
@@ -181,9 +191,9 @@ partition_main(int ac, char **av)
 
 	verbose((stderr, "\n### Pruning product\n"));
 
-	sprintf(buf, "bk csetprune "
-	    "--version=%s -aS%s -k%s -w'%s' -r'%s' -CCOMPS -c. -WPRODWEAVE -",
-	    opts->pver, opts->quiet,
+	sprintf(buf, "bk csetprune --version=%s "
+	    "-aS%s %s -k%s -w'%s' -r'%s' -CCOMPS -c. -WPRODWEAVE -",
+	    opts->pver, opts->quiet, opts->keepdelopt,
 	    opts->random, opts->rootlog, opts->ptip);
 	f = popen(buf, "w");
 	EACH(opts->prodprune) fprintf(f, "%s\n", opts->prodprune[i]);
@@ -252,7 +262,7 @@ clone(Opts *opts, char *from, char *to, int fullcheck)
 	cmd = addLine(cmd, "clone");
 	if (flags & SILENT) cmd = addLine(cmd, "-q");
 	cmd = addLine(cmd, "-Bnone");
-	cmd = addLine(cmd, "--hide-sccs-dirs");	/* default is to hide */
+	cmd = addLine(cmd, "--upgrade");	/* default to latest */
 	cmd = addLine(cmd, from);
 	cmd = addLine(cmd, to);
 	cmd = addLine(cmd, 0);
@@ -402,6 +412,7 @@ setupWorkArea(Opts *opts, char *repo)
 		opts->pver = strdup(opts->pver);
 		/* don't write out orig so old bk's can read */
 		unless (streq(opts->pver, "1")) opts->prunever = opts->pver;
+		if (*opts->keepdelopt) opts->keepdel = strdup("1");
 		/* pumps up the prune list with gone files and deltas */
 		if (cleanMissing(opts)) goto err;
 		/* Collapsed keys don't apply to post-partition: prune 'em */
@@ -554,6 +565,9 @@ mkComps(Opts *opts)
 		cmd = addLine(cmd, aprintf("--version=%s", opts->pver));
 		cmd = addLine(cmd, strdup("-I../" WA2PROD));
 		cmd = addLine(cmd, aprintf("-atS%s", opts->quiet));
+		if (*opts->keepdelopt) {
+			cmd = addLine(cmd, strdup(opts->keepdelopt));
+		}
 		cmd = addLine(cmd, aprintf("-r%s", opts->ptip));
 		cmd = addLine(cmd, aprintf("-k%s", opts->random));
 		cmd = addLine(cmd, aprintf("-w%s", opts->rootlog));
@@ -834,6 +848,7 @@ readPartitionKV(Opts *opts, hash *ref)
 	 * about prunever.  pver is used in the options.
 	 */
 	opts->pver = opts->prunever ? opts->prunever : "1";
+	opts->keepdelopt = opts->keepdel ? "--keep-deleted" : "";
 	ret = 0;
 err:
 	return (ret);
@@ -907,8 +922,9 @@ firstPrune(Opts *opts)
 	cmdlog_lock(CMD_WRLOCK|CMD_NESTED_WRLOCK);
 	bktmp(tmpf);
 	sprintf(buf,
-	    "bk -?BK_NO_REPO_LOCK=YES csetprune --version=%s -aSK%s -r'%s' --revfile='%s' -CCOMPS -",
-	    opts->pver, opts->quiet, opts->tip, tmpf);
+	    "bk -?BK_NO_REPO_LOCK=YES csetprune "
+	    "--version=%s -aSK%s %s -r'%s' --revfile='%s' -CCOMPS -",
+	    opts->pver, opts->quiet, opts->keepdelopt, opts->tip, tmpf);
 	f = popen(buf, "w");
 	EACH(opts->prune) fprintf(f, "%s\n", opts->prune[i]);
 	if (pclose(f)) {

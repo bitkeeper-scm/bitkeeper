@@ -28,6 +28,7 @@ private	struct {
 	int	delay;			/* wait for (ssh) to drain */
 	int	remap;			/* force remapping? */
 	int	bkfile;			/* force binary sfiles? */
+	int	bkmerge;		/* force bk merge bookkeeping? */
 	int	parallel;		/* -j%d: for NFS */
 	int	comps;			/* remember how many for progress */
 	char	*rev;			/* remove everything after this */
@@ -86,6 +87,8 @@ clone_main(int ac, char **av)
 
 		{ "bk-sfile", 320 },		/* undoc, testing interface */
 		{ "no-bk-sfile", 321},		/* undoc, testing interface */
+		{ "bk-merge", 322 },		/* undoc, testing interface */
+		{ "no-bk-merge", 323},		/* undoc, testing interface */
 
 		{ "sfiotitle;", 302 },		/* title for sfio */
 		{ "no-hardlinks", 303 },	/* never hardlink repo */
@@ -104,6 +107,7 @@ clone_main(int ac, char **av)
 	opts = calloc(1, sizeof(*opts));
 	opts->remap = -1;
 	opts->bkfile = -1;
+	opts->bkmerge = -1;
 	if (streq(prog, "attach")) opts->attach = 1;
 	if (streq(prog, "detach")) opts->detach = 1;
 	unless (win32()) opts->link = 1;	    /* try lclone by default */
@@ -190,12 +194,14 @@ clone_main(int ac, char **av)
 			opts->remap = 0;
 			opts->bkfile = 0;
 			opts->downgrade = 1;
+			opts->bkmerge = 0;
 			break;
 		    case 311: /* --upgrade-repo */
 			// done below if we decide to rewrite files
 			// opts->no_lclone = 1;
 			opts->remap = 1;
 			opts->bkfile = 1;
+			opts->bkmerge = 1;
 			break;
 		    case 320: /* --bk-sfile */
 			opts->no_lclone = 1;
@@ -204,6 +210,16 @@ clone_main(int ac, char **av)
 		    case 321: /* --no-bk-sfile */
 			opts->no_lclone = 1;
 			opts->bkfile = 0;
+			break;
+		    case 322: /* --bk-merge */
+			// done below if we decide to rewrite files
+			// opts->no_lclone = 1;
+			opts->bkmerge = 1;
+			break;
+		    case 323: /* --no-bk-merge */
+			// done below if we decide to rewrite files
+			// opts->no_lclone = 1;
+			opts->bkmerge = 0;
 			break;
 		    default: bk_badArg(c, av);
 	    	}
@@ -223,7 +239,8 @@ clone_main(int ac, char **av)
 		exit(RET_ERROR);
 	}
 	if (opts->attach &&
-	    ((opts->remap != -1) || (opts->bkfile != -1))) {
+	    ((opts->remap != -1) || (opts->bkfile != -1) ||
+	    (opts->bkmerge != -1))) {
 		fprintf(stderr,
 		    "%s: Repository format can't be overriden "
 		    "in a component\n", prog);
@@ -238,6 +255,7 @@ clone_main(int ac, char **av)
 		}
 		bam_url = "none";
 		opts->no_lclone = 1;
+		putenv("_BK_REPOS_SKIP=1");   // don't add to repos.log
 	}
 	if (opts->detach) opts->no_lclone = 1;
 	trigger_setQuiet(opts->quiet);
@@ -771,8 +789,15 @@ clone(char **av, remote *r, char *local, char **envVar)
 			features_set(0,
 			    FEAT_FILEFORMAT|FEAT_SCANDIRS, 0);
 		}
+		if (opts->bkmerge != -1) {
+			/*
+			 * Note: FEAT_FILEFORMAT above contains FEAT_BKMERGE
+			 * By having this after it, this overrides.
+			 */
+			features_set(0, FEAT_BKMERGE, opts->bkmerge);
+		}
 	}
-	if (opts->parallel == 0) opts->parallel = parallel(".");
+	if (opts->parallel == 0) opts->parallel = parallel(".", WRITER);
 	retrc = RET_ERROR;
 
 	/* eat the data */
@@ -1035,6 +1060,8 @@ clone2(remote *r)
 		if (p) free(p);
 	}
 
+	repos_update(0);
+
 	sccs_rmUncommitted(!opts->verbose, &checkfiles);
 
 	if (opts->detach && detach(opts->quiet, opts->verbose)) {
@@ -1130,7 +1157,7 @@ clone2(remote *r)
 			if (opts->identical) {
 				FILE	*f;
 
-				get("BitKeeper/etc/attr", SILENT, "-");
+				get("BitKeeper/etc/attr", SILENT);
 				f = popen("bk _getkv BitKeeper/etc/attr HERE",
 				    "r");
 				while (p = fgetline(f)) {
@@ -2007,6 +2034,8 @@ attach(void)
 		if (orig_features != new_features) {
 			system("bk -?BK_NO_REPO_LOCK=YES -r admin -Zsame");
 		}
+		/* remove comp from repos list if there */
+		sys("bk", "repos", "-qc", proj_cwd(), SYS);
 	}
 	if (opts->nocommit) {
 		cset = sccs_csetInit(INIT_MUSTEXIST|INIT_NOCKSUM);
@@ -2191,6 +2220,7 @@ clonemod_part2(char **envVar)
 
 	av = addLine(0, strdup("bk"));
 	av = addLine(av, strdup("-?BK_NO_TRIGGERS=1"));
+	av = addLine(av, strdup("-?_BK_NEWPROJECT="));
 	av = addLine(av, strdup("pull"));
 	av = addLine(av, strdup("--unsafe"));
 	av = addLine(av, strdup("--clone@"));

@@ -37,70 +37,77 @@ nested nested
 cd "$HERE/project"
 cores
 
+echo --- testing pre-BK-7.0 rules
 echo $N Tags may not start with a digit .............................$NL
-bk tag $Q 1234 && {
-	echo Should have failed
-	exit 1
-}
+for i in 2 2foobar
+do	bk tag $Q $i 2>ERR && fail -f ERR
+	test "`cat ERR`" = "admin: $i: tags can't start with a digit." || fail -f ERR
+done
 echo OK
 
-echo $N "Tags may not start with a  =  ...............................$NL"
-bk tag $Q =1234 && {
-	echo Should have failed
-	exit 1
-}
+echo $N Tags may not start with @ = - + or . ........................$NL
+for i in @ = - + .
+do
+	bk tag $Q -- $i 2>ERR && fail -f ERR
+	test "`cat ERR`" = "admin: $i: tags can't start with a '$i'." || fail -f ERR
+	bk tag $Q -- ${i}foo 2>ERR && fail -f ERR
+	test "`cat ERR`" = "admin: ${i}foo: tags can't start with a '$i'." || fail -f ERR
+done
 echo OK
 
-echo $N "Tags may not start with a  .  ...............................$NL"
-bk tag $Q .1234 && {
-	echo Should have failed
-	exit 1
-}
-echo OK
-
-echo $N "Tags may not start with a  -  ...............................$NL"
-bk tag $Q -- -1234 && {
-	echo Should have failed
-	exit 1
-}
-echo OK
-
-# SGI's getopts doesn't like "+".
-test `uname` = IRIX64 || {
-echo $N "Tags may not be just a  +  ..................................$NL"
-bk tag $Q + && {
-	echo Should have failed
-	exit 1
-}
-echo OK
-}
-
+echo $N Tags may not contain .. ., ,. ,, ............................$NL
 for s in .. ., ,. ,,
 do
-echo $N "Tags may not contain a  $s  .................................$NL"
-bk tag $Q foo${s}bar && {
-	echo Should have failed
-	exit 1
-}
-echo OK
+	bk tag $Q foo${s}bar 2>ERR && fail -f
+	test "`cat ERR`" = "admin: tag foo${s}bar cannot contain '${s}'" || fail -f ERR
 done
-
-echo $N "Tags may not contain a  |  ..................................$NL"
-bk tag $Q 'foo|bar' && {
-	echo Should have failed
-	exit 1
-}
 echo OK
 
-test $PLATFORM != "WIN32" && {
-echo $N "Tags may not contain a newline ..............................$NL"
-bk tag $Q 'foo
-bar' && {
-	echo Should have failed
-	exit 1
-}
+if [ "$PLATFORM" != "WIN32" ]
+then
+echo $N "Tags may not contain the control characters \001 | \\n or \\r .$NL"
+for i in '\001' '\n' '\r' '|'
+do
+	T=`printf "foo${i}bar"`
+	bk tag $Q -r+ "$T" 2>ERR && fail -f ERR "Tagging with $i worked"
+	test "`cat ERR`" = "admin: tag $T cannot contain \"^A,|\n\r\"" || fail -f ERR Wrong error for $i
+done
 echo OK
-}
+fi
+
+echo --- testing BK-7.0 rules
+if [ "$PLATFORM" != "WIN32" -a "`uname -m`" != ppc ]   # msys/ppc shell brain-damage, just skip hard stuff
+then
+echo $N Test tags for invalid characters.............................$NL
+for i in '?' '*' ' ' '~' '^' ':' ';' "'" '"' '(' ')' '[' ']' '{' '}' '/' '!' '$' '&' '\177' '%%' '`'
+do
+	T=`printf "foo${i}bar"`
+	C=`printf "${i}"`
+	bk tag $Q -r+ "$T" 2>ERR && fail -f ERR "Tagging with $i worked"
+	test "`cat ERR`" = "admin: tag $T cannot contain '$C'" || fail -f ERR
+	test "$PLATFORM" = "WIN32" && continue   # /foo becomes C:/foo
+	T=`printf "${i}"`
+	bk tag $Q -r+ "$T" 2>ERR && fail -f ERR "Tagging with $i worked"
+	test "`cat ERR`" = "admin: tag $T cannot contain '$T'" || fail -f ERR
+done
+echo OK
+
+echo $N Tags may not contain characters below \\040...................$NL
+# need to skip newline(10)
+perl -e 'foreach $i (1..32) { next if $i == 10; printf("%d foo%cbar\n", $i, $i); }' |
+while read i tag
+do	bk tag $Q -r+ "$tag" 2>ERR && fail -f OUT "Tagging with ($i) worked: $tag"
+	grep -q 'admin: tag.*cannot contain' ERR || fail -f ERR
+done
+echo OK
+fi
+
+echo $N Tags may not contain a backslash.............................$NL
+T="foo\\bar"
+bk tag $Q -r+ "$T" 2>ERR && fail -f ERR "Tagging with $T worked"
+test "`cat ERR`" = "admin: tag $T cannot contain '\\'" || fail -f ERR
+echo OK
+
 
 echo $N Add old style tags ..........................................$NL
 cd "$HERE"
@@ -132,7 +139,7 @@ bk _scat SCCS/s.ChangeSet | grep -q '^.cS0 l' || {
 	bk _scat SCCS/s.ChangeSet | egrep '^.cS|^.d '
 	exit 1
 }
-bk tag $Q 'NEW TAG'
+bk tag $Q 'NEW=TAG'
 bk _scat SCCS/s.ChangeSet | grep -q '^.cS0' || {
 	echo lost tag pointing to the root node
 	bk _scat SCCS/s.ChangeSet | egrep '^.cS|^.d '
@@ -186,7 +193,7 @@ cd "$HERE/project/src"
 bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'
 echo delta two >> 'F!O#O$ B%A^R&RR(R)RR'
 bk delta $Q -fywhatever 'F!O#O$ B%A^R&RR(R)RR'
-_BK_NO_TAG_GRAPH=YES bk commit $Q -yopull_cset --tag='NOT IN TAG GRAPH'
+_BK_NO_TAG_GRAPH=YES bk commit $Q -yopull_cset --tag='NOT-IN-TAG-GRAPH'
 cd ..
 bk _scat SCCS/s.ChangeSet | grep -q '^.cS[0-9]' && {
 	echo added a tag graph node
@@ -207,7 +214,7 @@ cd "$HERE/copy2"
 bk pull $Q || { echo failed; exit 1; }
 revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
-bk _scat SCCS/s.ChangeSet | grep -q 'NOT IN TAG' || { echo did not propogate tag; exit 1; }
+bk _scat SCCS/s.ChangeSet | grep -q 'NOT-IN-TAG' || { echo did not propogate tag; exit 1; }
 bk admin -hhhq || fail
 echo OK
 
@@ -740,4 +747,20 @@ bk admin -z ChangeSet
 bk changes -rfoo -ndx > GOT || fail
 echo x > WANT
 checkfiles WANT GOT
+echo OK
+
+echo $N Poke at slib.c:walkList range parsing .......................$NL
+cd "$HERE"
+commercial walklist
+touch foo-bar
+bk new $Q foo-bar
+bk commit $Q -f
+bk tag $Q FOOBAR || fail
+bk tag $Q FOO-BAR || fail
+# no '-' in tag, passes
+bk edit $Q -xFOOBAR foo-bar || fail FOOBAR
+bk unedit $Q foo-bar
+# '-' in tag, fails in walkList
+bk edit -q -xFOO-BAR foo-bar 2> ERR && fail -f ERR FOO-BAR passed, fix test
+grep -q 'rev in include/exclude list for SCCS/s.foo-bar' ERR || fail -f ERR
 echo OK

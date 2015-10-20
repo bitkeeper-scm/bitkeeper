@@ -4,8 +4,11 @@ OLDVER=6.0
 OLDBK=/build/bitkeeper-$OLDVER
 
 # use new parallel clone in tests
-_BK_FORCE_NETFS=YES
-export _BK_FORCE_NETFS
+_BK_FSTYPE=nfs
+export _BK_FSTYPE
+
+# kill any uniq_server that may be running out of ~/.bk
+BK_DOTBK="$HOME/.bk" bk uniq_server $Q --dir="$HOME/.bk/bk-keys-db/`bk gethost -r`" --quit
 
 echo $N Check bitkeeper 6.0 installation ............................$NL
 if [ -n "$BK_DEV_SKIPTEST" ]; then echo skipped; exit 0; fi
@@ -29,7 +32,7 @@ test -d $OLDBK || {
 	exit 0
     }
     bk upgrade $Q -f -n $BK_TCOMPAT_ARCH \
-	    http://data.bitmover.com/upgrades.$OLDVER >out 2>ERR || {
+	    http://data.bitkeeper.com/upgrades.$OLDVER >out 2>ERR || {
 	    grep -q "No upgrade for the arch.*found" ERR && {
 		echo skipped
 		exit 0
@@ -120,9 +123,6 @@ trap "bk _kill bk://localhost:$OLDP; bk _kill bk://localhost:$NEWP" 0
 echo OK
 
 echo -------------- clone compat tests
-# use new parallel clone in tests
-_BK_FORCE_NETFS=YES
-export _BK_FORCE_NETFS
 
 echo $N Clone from old bkd and make sure we do checkouts ............$NL
 cd "$HERE"
@@ -351,6 +351,7 @@ echo $N Set up bkfile/bweave format repo called bkfile ..............$NL
 cd "$HERE"
 $OLDBK/bk clone $Q --upgrade bk://localhost:$OLDP/newrepo bkfile || fail
 bk clone $Q --compat bkfile bkfile--compat || fail
+bk clone $Q --upgrade bkfile bkfile--upgrade || fail
 $OLDBK/bk --cd=bkfile--compat repocheck $Q || fail
 echo OK
 
@@ -359,16 +360,14 @@ bk clone -q bk://localhost:$OLDP/bkfile save-this || fail
 bk _rm -r save-this
 echo OK
 
-echo $N Clone from bk/bkfile with bk6 - now passes ..................$NL
-$OLDBK/bk clone -q bk://localhost:$NEWP/bkfile save-this || fail
-mv save-this saved-clone
-cd saved-clone
-cd ..
+echo $N Clone from bk/upgrade with bk6 - now passes .................$NL
+$OLDBK/bk clone -q bk://localhost:$NEWP/bkfile--upgrade save-this || fail
+bk _rm -r save-this
 echo OK
 
-echo $N Rclone with bk/bkfile to bk6 - now passes ...................$NL
-bk clone $Q bkfile bk://localhost:$OLDP/save-this || fail
-mv save-this saved-rclone
+echo $N Rclone with bk/upgrade to bk6 - now passes ..................$NL
+bk clone $Q bkfile--upgrade bk://localhost:$OLDP/save-this || fail
+bk _rm -r save-this
 echo OK
 
 echo $N Rclone with bk6/bkfile to bk - passes .......................$NL
@@ -380,36 +379,36 @@ cd newrepo
 touch newfile-compat
 $OLDBK/bk new $Q newfile-compat
 $OLDBK/bk commit $Q -ynewfile
-cd ../bkfile
+cd ../bkfile--upgrade
 bk pull $Q || fail
 bk repocheck $Q || fail
 echo OK
 
-echo $N Pull from bk/bkfile to bk6/compat ...........................$NL
+echo $N Pull from bk/upgrade to bk6/compat ..........................$NL
 touch newfile-bkfile
 bk new $Q newfile-bkfile
 bk commit $Q -ynewfile-bkfile
 cd ../newrepo
-$OLDBK/bk pull $Q bk://localhost:$NEWP/bkfile || fail
+$OLDBK/bk pull $Q bk://localhost:$NEWP/bkfile--upgrade || fail
 echo OK
 
-echo $N Pull from bk/bkfile to bk/compat ............................$NL
-bk pull $Q bk://localhost:$NEWP/bkfile || fail
+echo $N Pull from bk/upgrade to bk/compat ...........................$NL
+bk pull $Q bk://localhost:$NEWP/bkfile--upgrade || fail
 echo OK
 
-echo $N Push from bk6/compat to bk/bkfile ...........................$NL
+echo $N Push from bk6/compat to bk/upgrade ..........................$NL
 touch newfile-compat-push
 $OLDBK/bk new $Q newfile-compat-push
 $OLDBK/bk commit $Q -ynewfile-compat-push
-$OLDBK/bk push $Q bk://localhost:$NEWP/bkfile || fail
+$OLDBK/bk push $Q bk://localhost:$NEWP/bkfile--upgrade || fail
 echo OK
 
-echo $N Push from bk/compat to bk/bkfile ............................$NL
-bk push $Q bk://localhost:$NEWP/bkfile || fail
+echo $N Push from bk/compat to bk/upgrade ...........................$NL
+bk push $Q bk://localhost:$NEWP/bkfile--upgrade || fail
 echo OK
 
-echo $N Push from bk/bkfile to bk6/compat ...........................$NL
-cd ../bkfile
+echo $N Push from bk/upgrade to bk6/compat ..........................$NL
+cd ../bkfile--upgrade
 touch newfile-bkfile-push
 bk new $Q newfile-bkfile-push
 bk commit $Q -ynewfile-bkfile-push || fail
@@ -738,4 +737,40 @@ SCANDIRS
 remap
 EOF
 cmpfiles BitKeeper/log/features WANT
+echo OK
+
+echo -------------- Partition features compat tests
+echo $N Test partition with ref repo with KEEPDEL fails using bk6 ...$NL
+cd "$HERE"
+fresh_commercial --compat part-base
+mkdir src
+cd src
+touch a b
+bk new $Q a b
+bk commit $Q -f
+bk rm a
+bk commit $Q -f
+cd "$HERE"
+echo src > comps
+bk partition $Q --keep-deleted -Ccomps part-base part-nest || fail
+$OLDBK/bk partition $Q \
+    -@bk://localhost:$NEWP/part-nest part-base part-compat \
+    2> ERR && fail -f ERR
+grep -q "partition: Unknown feature 'KEEPDEL'" ERR || fail -f ERR
+echo OK
+
+echo $N Test csetprune current bk on bk 6 repo ......................$NL
+cd "$HERE"
+# Save the key for a file to prune
+bk --cd=part-base/src prs -r1.0 -hnd:KEY: b > BKEY
+# Make a couple of BWEAVEv2 repos
+$OLDBK/bk clone $Q --upgrade part-base bk6-prune
+$OLDBK/bk clone $Q bk6-prune bk7-prune
+# prune
+cd bk6-prune
+$OLDBK/bk csetprune $Q -k1234567890abcdef - < ../BKEY || fail
+cd ../bk7-prune
+bk csetprune $Q -k1234567890abcdef - < ../BKEY || fail
+bk changes -qaLR ../bk6-prune > DIFF
+test -s DIFF && fail -f DIFF should be no diffs
 echo OK

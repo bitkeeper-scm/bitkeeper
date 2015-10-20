@@ -26,7 +26,7 @@
 
 BK_INSTALLER=
 # Lazy way to get full path
-find "`bk bin`/utils" -name 'bk*.exe' -o -name 'bk*.bin'| grep "`bk version -s`" > /tmp/bk$$
+find "`bk bin`/utils" -name 'bk*win32-console-setup.exe' -o -name 'bk*.bin'| grep "`bk version -s`" > /tmp/bk$$
 test `wc -l < /tmp/bk$$` -gt 1 && {
 	echo You have too many bk images, skipping this test
 	cat /tmp/bk$$
@@ -225,7 +225,6 @@ echo "licsign2: $BKL_P2" >> c
 echo "licsign3: $BKL_P3" >> c
 cp "$BK_INSTALLER" bk-pro
 bk inskeys bk-pro c > OUT 2>&1
-bk _rm -rf "$DOTBK"/*
 cp accepted.saved "$DOTBK"/accepted
 ./bk-pro-licensed "$HERE/DEAD4" > OUT 2>&1 || {
 	echo failed $?
@@ -239,7 +238,6 @@ bk _rm -rf embedded
 if [ X$PLATFORM = X"WIN32" ]
 then #-------------------- WIN32 tests ---------------------
 echo $N Make sure we preserve registry settings and use long paths...$NL
-bk _rm -rf "$DOTBK"/*
 cp accepted.academic.saved "$DOTBK"/accepted
 ./bk-academic-licensed "$HERE/DEAD BEEF" > OUT 2>&1 || {
 	echo failed $?
@@ -553,10 +551,3 @@ done
 test -h "$HERE/bin/bk" || fail Uninstaller in upgrade mode removed symlinks
 echo OK
 fi
-
-#####################################################################
-# Careful!!!!
-#####################################################################
-cd "$HERE" || fail
-chmod -R +w * >/dev/null 2>&1	# SCO's chmod barfs
-bk _rm -rf *

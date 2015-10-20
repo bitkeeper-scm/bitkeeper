@@ -42,20 +42,23 @@ typedef struct {
 	char	*revfile;	// where to put the corresponding rev key
 	project	*refProj;
 	int	version;	// currently 2, --version=1
+	sccs	*cset;
 	u32	standalone:1;	// --standalone
 	u32	bk4:1;		// --bk4
 	u32	nocommit:1;	// --no-commit
+	u32	keepdel:1;	// deleted in component
 } Opts;
 
 private	int	csetprune(Opts *opts);
+private	int	byserials(const void *a, const void *b);
 private	int	fixFiles(Opts *opts, char **deepnest);
 private	int	filterWeave(Opts *opts, sccs *cset,
-		    char **cweave, char **deepnest);
-private	int	filterRootkey(Opts *opts, sccs *cset, char *rk,
-		    char **list, int ret, char **deepnest);
-private	int	fixAdded(sccs *cset, char **cweave);
+		    weave *cweave, char **deepnest);
+private	int	filterRootkey(Opts *opts, sccs *cset, u32 rkoff,
+		    weave *cweave, int *list, int ret, char **deepnest);
+private	int	fixAdded(sccs *cset, weave *cweave);
 private	int	newBKfiles(sccs *cset,
-		    char *comp, hash *prunekeys, char ***cweavep);
+		    char *comp, hash *prunekeys, weave **cweavep);
 private	int	rmKeys(hash *prunekeys);
 private	char	*mkRandom(char *input);
 private	void	_pruneEmpty(sccs *s, ser_t d, u8 *slist, ser_t **sd);
@@ -68,7 +71,9 @@ private	char	**deepPrune(char **map, char *path);
 private	char	*newname( char *delpath, char *comp, char *path, char **deep);
 private	char	*getPath(char *key, char **term);
 private	char	*key2moved(char *rk);
-private	char	**fixupWeave(sccs *cset, char **cweave, char *addweave);
+private	int	fixupWeave(sccs *cset, weave **cweavep, char *addweave);
+private	void	newPath(char *key, char *start, char *end, char *newname);
+private	int	test_bypath(char *file);
 
 private	int	flags;
 private	Opts	*opts;
@@ -95,9 +100,12 @@ csetprune_main(int ac, char **av)
 		{ "revfile;", 300 },	/* file to store rev key */
 		{ "no-commit", 305 },	/* --no-commit because -C taken */
 		{ "tag-csets", 310 },	/* collapse tag graph onto D graph */
-		{ "bk4", 320},		/* bk4 compat on a standalone */
 		{ "standalone", 'S'},
 		{ "version:", 311 },	/* --version=%d for old trees */
+		{ "bk4", 320},		/* bk4 compat on a standalone */
+		{ "test-bypath:", 321 },/* to test 'bypath' sorter */
+		{ "keep-deleted", 325},	/* keep del in comp instead of prune */
+		{ "keep-deletes", 325},	/* alias to match partition */
 		{ 0, 0 }
 	};
 
@@ -133,6 +141,11 @@ csetprune_main(int ac, char **av)
 			break;
 		    case 320: /* --bk4 */
 			opts->bk4 = 1;
+			break;
+		    case 321: /* --test-bypath=file */
+			return (test_bypath(optarg));
+		    case 325: /* --keep-deleted */
+			opts->keepdel = 1;
 			break;
 		    default: bk_badArg(c, av);
 		}
@@ -269,7 +282,7 @@ csetprune(Opts *opts)
 	char	*partition_key = 0;
 	sccs	*cset = 0;
 	char	*p, *p1;
-	char	**cweave = 0;
+	weave	*cweave = 0;
 	char	**deepnest = 0;
 	char	buf[MAXPATH];
 	char	key[MAXKEY];
@@ -317,6 +330,7 @@ csetprune(Opts *opts)
 		fprintf(stderr, "csetinit failed\n");
 		goto err;
 	}
+	opts->cset = cset;
 	unless (opts->bk4) features_set(cset->proj, FEAT_SORTKEY, 1);
 	unless (!opts->rev || (d = sccs_findrev(cset, opts->rev))) {
 		fprintf(stderr,
@@ -327,10 +341,7 @@ csetprune(Opts *opts)
 	/* a hack way to color all D_SET */
 	range_walkrevs(cset, 0, 0, 0, 0, walkrevs_setFlags, int2p(D_SET));
 	cset->state |= S_SET;
-	if ((cweave = cset_mkList(cset)) == (char **)-1) {
-		fprintf(stderr, "cset_mkList failed\n");
-		goto err;
-	}
+	cweave = cset_mkList(cset);
 	if (d) {
 		/* leave just history of rev colored (assuming single tip) */
 		sccs_sortkey(cset, d, key);
@@ -343,7 +354,7 @@ csetprune(Opts *opts)
 	if (filterWeave(opts, cset, cweave, deepnest)) {
 		goto err;
 	}
-	unless (cweave = fixupWeave(cset, cweave, opts->addweave)) {
+	if (fixupWeave(cset, &cweave, opts->addweave)) {
 		goto err;
 	}
 
@@ -351,12 +362,15 @@ csetprune(Opts *opts)
 	if (newBKfiles(cset, opts->comppath, opts->prunekeys, &cweave)) {
 		goto err;
 	}
-	sortLines(cweave, cset_byserials);
+	sortArray(cweave, byserials);	/* weave in new files; put rm at end */
+	EACH_REVERSE(cweave) if (cweave[i].ser) break;
+	truncArray(cweave, i);	/* chop deleted nodes from end of list */
 	empty_nodes = fixAdded(cset, cweave);
-	if (sccs_csetWrite(cset, cweave)) goto err;
+	weave_replace(cset, cweave);
+	if (sccs_newchksum(cset)) goto err;
 	sccs_free(cset);
 	cset = 0;
-	freeLines(cweave, free);
+	free(cweave);
 	cweave = 0;
 
 	/* blow away file cache -- init all sfiles in repo */
@@ -494,6 +508,7 @@ statuschk:	unless (WIFEXITED(status)) goto err;
 	ret = 0;
 
 err:	if (cset) sccs_free(cset);
+	if (cweave) free(cweave);
 	/* ptrs into complist, don't free */
 	if (deepnest) freeLines(deepnest, 0);
 	if (partition_key) free(partition_key);
@@ -501,35 +516,67 @@ err:	if (cset) sccs_free(cset);
 }
 
 /*
+ * sfile order: sort rootkeys by serial first, rootkey
+ * Note: Need to use global state in opts struct because sort has no token
+ */
+private	int
+byserials(const void *a, const void *b)
+{
+	weave	*wa = (weave*)a;
+	weave	*wb = (weave*)b;
+	int	rc;
+
+	/* Sort high to low; leave unsorted block of 0 (deleted) at the end */
+	if ((rc = (wb->ser - wa->ser)) || !wa->ser) return (rc);
+
+	/* Within a serial, order keys nicely to layout in the weave */
+	rc = keycmp(HEAP(opts->cset, wa->rkoff),
+	    HEAP(opts->cset, wb->rkoff));
+	unless (rc) {
+		fprintf(stderr,
+		    "cset changes same rootkey twice\n"
+		    "cset %s\n"
+		    "rootkey: %s\n"
+		    "deltakey 1: %s\n"
+		    "deltakey 2: %s\n",
+		    REV(opts->cset, wa->ser),
+		    HEAP(opts->cset, wa->rkoff),
+		    HEAP(opts->cset, wa->dkoff),
+		    HEAP(opts->cset, wb->dkoff));
+		exit (1);
+	}
+	return (rc);
+}
+
+/*
  * Inject component csetkeys into the product weave.
  *
- * convert :SORTKEY:\t:ROOTKEY: :KEY: to :DS:\t:ROOTKEY: KEY:
+ * convert :SORTKEY:\t:ROOTKEY: :KEY: to struct (serial, rkoff, dkoff)
  *
  * Note: The addweave file is csetkeys from all components and could
  * be a big file.  Doing a sccs_findSortKey() would be a binary search
  * on all keys possibly multiple times; instead build a hash lookup.
  */
-private	char **
-fixupWeave(sccs *cset, char **cweave, char *addweave)
+private	int
+fixupWeave(sccs *cset, weave **cweavep, char *addweave)
 {
 	FILE	*f = 0;
 	hash	*skdb = 0;	// sort key db
 	ser_t	d;
 	char	*sortkey, *line;
-	char	**ret = 0;
-	char	serstring[10];	// serial as decimal ascii string
+	weave  *item;
+	int	ret = 1;
 	char	buf[MAXKEY];	// place to build a sortkey
 
-	assert(cweave);
-	unless (addweave) return (cweave);	// short-circuit
+	assert(cweavep && *cweavep);
+	unless (addweave) return (0);	// short-circuit
 
-	// build hash(sortkey) => ascii serial string
+	// build hash(sortkey) => serial
 	skdb = hash_new(HASH_MEMHASH);
 	for (d = TABLE(cset); d >= TREE(s); d--) {
 		if (TAG(cset, d)) continue;
-		sprintf(serstring, "%u", d);
 		sccs_sortkey(cset, d, buf);
-		unless (hash_insertStr(skdb, buf, serstring)) {
+		unless (hash_insertStrU32(skdb, buf, d)) {
 			fprintf(stderr, "Duplicate sortkey %s\n", buf);
 			goto err;
 		}
@@ -542,20 +589,30 @@ fixupWeave(sccs *cset, char **cweave, char *addweave)
 		line = strchr(sortkey, '\t');
 		assert(line);
 		*line++ = 0;
-		unless (hash_fetchStr(skdb, sortkey)) {
+		unless (d = hash_fetchStrU32(skdb, sortkey)) {
 			fprintf(stderr, "Cannot find sortkey %s\n", sortkey);
 			goto err;
 		}
-		cweave = addLine(cweave,
-		    aprintf("%s\t%s", (char *)skdb->vptr, line));
+		sortkey = separator(line);
+		*sortkey++ = 0;
+		item = addArray(cweavep, 0);
+		item->ser = d;
+		item->rkoff = sccs_addUniqRootkey(cset, line);
+		item->dkoff = sccs_addStr(cset, sortkey);
 	}
-	ret = cweave;
+	ret = 0;
 err:
 	if (f) fclose(f);
 	hash_free(skdb);
 	return (ret);
 }
 
+/*
+ * The reason this is here is to lay things on disk nicely.
+ * Ideally, it would be in sfiles_clone order.
+ * Instead, it is walkdir order foreach dir, files, then walk(dirs)
+ * Data is "path/to/file|rootkey"
+ */
 private	int
 bypath(const void *a, const void *b)
 {
@@ -564,12 +621,39 @@ bypath(const void *a, const void *b)
 	char	*p1, *p2;
 	int	len;
 
-	p1 = strchr(s1, '|');
-	p2 = strchr(s2, '|');
-	len = p1-s1;
-	if ((p2-s2) < len) len = p2-s2;
-	if (len = strncmp(s1, s2, len)) return (len);
-	return ((p1-s1) - (p2-s2));
+	/* find first mismatch, bail if same string */
+	p1 = s1;
+	p2 = s2;
+	while (*p1++ == *p2++) if (p1[-1] == '|') return (0);
+	s1 = p1 - 1;
+	s2 = p2 - 1;
+	/* sort file before dir */
+	p1 = strpbrk(s1, "|/");
+	p2 = strpbrk(s2, "|/");
+	if (*p1 != *p2) return (*p1 == '|' ? -1 : 1);
+	if (p1 == s1) return (-1);
+	if (p2 == s2) return (1);
+	len = strncmp(s1, s2, 1);
+	return (len);
+}
+
+/*
+ * sort should give same as sfiles
+ * bk -r prs -nhd':GFILE:|:ROOTKEY:' > list
+ * bk csetprune --test-bypath=list > sorted
+ * cmp list sorted || fail
+ */
+private	int
+test_bypath(char *file)
+{
+	int	i;
+	char	**list = file2Lines(0, file);
+
+	EACH(list) assert(strchr(list[i], '|'));
+	sortLines(list, bypath);
+	EACH(list) puts(list[i]);
+	freeLines(list, free);
+	return (0);
 }
 
 /*
@@ -682,7 +766,7 @@ keyExists(char *rk, char *path)
 		    "%s: delta found for path '%s' which has "
 		    "rootkey\n\t%s\nfrom a different path\n"
 		    "To fix, remove sfile %s and mark it gone "
-		    "and rerun, or send mail to support@bitmover.com\n",
+		    "and rerun, or send mail to support@bitkeeper.com\n",
 		    prog, path, rk, s->sfile);
 		sccs_free(s);
 		return (1);
@@ -741,17 +825,17 @@ clrFileEnv(char *user, char *host)
 	putenv("_BK_NO_UNIQ=");
 }
 
-private	char	*
-newFile(char *path, char *comp, int ser)
+private	int
+newFile(sccs *cset, char *path, char *comp, u32 *rkoff, u32 *dkoff)
 {
 	FILE	*f;
-	char	*ret = 0, *randin = 0, *line = 0, *cmt = 0;
+	char	*randin = 0, *line = 0, *cmt = 0;
+	int	ret = 1;
 	char	*spath;
 	int	i;
 	sccs	*s;
 	ser_t	d;
-	char	rk[MAXKEY];
-	char	dk[MAXKEY];
+	char	key[MAXKEY];
 
 	spath = name2sccs(path);
 	unlink(path);
@@ -809,12 +893,14 @@ newFile(char *path, char *comp, int ser)
 	}
 	d = sccs_top(s);
 	FLAGS(s, d) |= D_CSET;
-	sccs_sdelta(s, d, dk);
-	sccs_sdelta(s, sccs_ino(s), rk);
+	sccs_sdelta(s, sccs_ino(s), key);
+	*rkoff = sccs_addUniqRootkey(cset, key);
+	sccs_sdelta(s, d, key);
+	*dkoff = sccs_addStr(cset, key);
 	sccs_newchksum(s);
 	xfile_delete(s->gfile, 'd');
 	sccs_free(s);
-	ret = aprintf("%u\t%s %s", ser, rk, dk);
+	ret = 0;
 
 err:
 	if (spath) free(spath);
@@ -854,63 +940,73 @@ whereError(int didHeader, char *orig, char *dk)
  * and a lot of holes in it where keys were deleted.
  */
 private	int
-filterWeave(Opts *opts, sccs *cset, char **cweave, char **deep)
+filterWeave(Opts *opts, sccs *cset, weave *cweave, char **deep)
 {
-	char	*rk, *dk;
-	char	**list;
+	u32	rkoff;
+	int	*list;
 	int	i, ret = 0;
-	hash	*inode = hash_new(HASH_MEMHASH);
+	hash	*inode = hash_new(HASH_U32HASH, sizeof(u32), sizeof(int *));
 
 	EACH(cweave) {
-		rk = strchr(cweave[i], '\t');
-		assert(rk);
-		rk++;
-		dk = separator(rk);
-		*dk++ = 0;
-
+		rkoff = cweave[i].rkoff;
 		/* Wayne's malloc magic */
-		hash_insert(inode, rk, dk-rk, 0, sizeof(char **));
-		*(char ***)inode->vptr =
-		     addLine(*(char ***)inode->vptr, &cweave[i]);
-		dk[-1] = ' ';
+		hash_insert(inode, &rkoff, sizeof(rkoff), 0, sizeof(int *));
+		addArray((int **)inode->vptr, &i);
 	}
 	EACH_HASH(inode) {
-		list = *(char ***)inode->vptr;
+		list = *(int **)inode->vptr;
 		/*
 		 * process all cross component file move errors (ret == 2)
 		 * while skipping if normal error (ret == 1) and just
 		 * doing the freeLines teardown of the rest of the hash.
 		 */
 		unless (ret & 1) {
-			rk = inode->kptr;
-			ret |= filterRootkey(opts, cset, rk, list, ret, deep);
+			rkoff = *(u32 *)inode->kptr;
+			ret |= filterRootkey(
+			    opts, cset, rkoff, cweave, list, ret, deep);
 		}
-		freeLines(list, 0);
+		free(list);
 	}
 	hash_free(inode);
 	return (ret);
 }
 
+/*
+ * Replace file rootkeys / deltakeys with component name.
+ * Since it could write the heap, don't keep pointers to strings
+ * in the heap, as they would be unstable.  Either use rkoff or
+ * copy strings to buffers.  This routine does the latter,
+ * because the strings also get cut up, and not good to do
+ * that in the heap.
+ */
 private	int
-filterRootkey(Opts *opts,
-    sccs *cset, char *rk, char **list, int ret, char **deepnest)
+filterRootkey(Opts *opts, sccs *cset,
+    u32 rkoff, weave *cweave, int *list, int ret, char **deepnest)
 {
 	ser_t	ser;
-	char	*dk, *line;
+	weave	*item;
+	u32	dkoff;
+	u32	newrkoff = 0;
+	char	*p;
 	char	*delpath = 0;
 	char	*rnew, *rend, *dnew, *dend, *which = 0, *cur;
-	int	i, badname, skip, len, origlen;
+	int	i, badname;
 	int	gotTip = 0;
-	char	buf[MAXKEY * 2 + 2];
+	char	rk[MAXKEY];
+	char	dk[MAXKEY];
 
+	/* If pruning rootkey, zero each corresponding item */
+	strcpy(rk, HEAP(cset, rkoff));
 	if (hash_fetchStr(opts->prunekeys, rk)) {
-zero:		EACH(list) (*(char **)list[i])[0] = 0;
+zero:		EACH(list) cweave[list[i]].ser = 0;
 		return (ret);
 	}
+
+	/* If pruning path that is in rootkey, mark rootkey to delete */
 	rnew = getPath(rk, &rend);
 	*rend = 0;
 	hash_fetchStr(opts->prunekeys, rnew);
-	badname = bk_badFilename(rnew);
+	badname = bk_badFilename(0, rnew);
 	*rend = '|';
 	if (opts->prunekeys->vptr) {
 		/* mark for rmKeys() to delete */
@@ -923,8 +1019,6 @@ del:		hash_storeStr(opts->prunekeys, rk, 0);
 		    prog, rk);
 		goto err;
 	}
-
-	skip = strlen(rk) + 2;	/* skip "\t<rk> " to get to deltakey */
 
 	unless (opts->complist) goto prune;
 	/*
@@ -939,14 +1033,18 @@ del:		hash_storeStr(opts->prunekeys, rk, 0);
 	which = whichComp(rk, opts->complist);
 	if (which == INVALID) goto err;
 	EACH(list) {
-		dk = *(char **)list[i];
-		ser = atoi_p(&dk);
-		dk += skip;
-		if (hash_fetchStr(opts->prunekeys, dk)) continue;
+		item = &cweave[list[i]];
+		dkoff = item->dkoff;
+		ser = item->ser;
+		if (hash_fetchStr(opts->prunekeys, HEAP(cset, dkoff))) continue;
 		unless (FLAGS(cset, ser) & D_SET) continue;
 
-		which = whichComp(dk, opts->complist);
+		which = whichComp(HEAP(cset, dkoff), opts->complist);
 		if (which == INVALID) goto err;
+		if (opts->keepdel && streq(which, "|deleted")) {
+			/* find first undeleted to know which comp */
+			continue;
+		}
 		break;
 	}
 	if ((!(flags & PRUNE_DELCOMP) && streq(which, "|deleted")) ||
@@ -957,16 +1055,16 @@ del:		hash_storeStr(opts->prunekeys, rk, 0);
 
 prune:
 	EACH(list) {
-		line = dk = *(char **)list[i];
-		ser = atoi_p(&dk);
-		dk += skip;
+		item = &cweave[list[i]];
+		ser = item->ser;
+		strcpy(dk, HEAP(cset, item->dkoff));
 		if (hash_fetchStr(opts->prunekeys, dk)) {
-			line[0] = 0;
+			item->ser = 0;
 			continue;
 		}
 		dnew = getPath(dk, &dend);
 		*dend = 0;
-		badname = bk_badFilename(dnew);
+		badname = bk_badFilename(0, dnew);
 		if (hash_fetchStr(opts->prunekeys, dnew)) {
 			if (keyExists(rk, dnew)) goto err;
 		}
@@ -1003,41 +1101,35 @@ prune:
 		 * if outside component (okay for old history), then
 		 * map to a deleted path
 		 */
-		origlen = strlen(line);
-
-		/* kind of a hack, but it will skip over serial and tab */
-		rnew = getPath(line, &rend);
-		rnew[-1] = *rend = 0;
-		rnew = newname(delpath, opts->comppath, rnew, deepnest);
-		assert(rnew != INVALID);
-
-		dnew = getPath(dk, &dend);
-		dnew[-1] = *dend = 0;
-		dnew = newname(delpath, opts->comppath, dnew, deepnest);
-		assert(dnew != INVALID);
-
-		unless (rnew && dnew) {
-			/* compute lazily: most files don't need a delpath */
-			delpath = key2moved(rk);
-			unless (rnew) rnew = delpath;
-			unless (dnew) dnew = delpath;
-		}
-
-		/* XXX: better to just aprintf all the time? */
-		len = sprintf(buf, "%s|%s|%s|%s|%s",
-		   line, rnew, rend+1, dnew, dend+1);
-		if (!gotTip) {
+		*dend = 0;	/* have dnew be just the file path */
+		unless (newrkoff) {
 			gotTip = 1;
 			opts->filelist =
 			    addLine(opts->filelist,
 			    aprintf("%s|%s", dnew, rk));
+			*rend = 0;
+			p = newname(delpath, opts->comppath, rnew, deepnest);
+			assert(p != INVALID);
+			*rend = '|';
+			if (p == rnew) {
+				newrkoff = rkoff;
+			} else {
+				unless (p) p = delpath = key2moved(rk);
+				newPath(rk, rnew, rend, p); /* alter rk */
+				newrkoff = sccs_addUniqRootkey(cset, rk);
+				strcpy(rk, HEAP(cset, rkoff)); /* restore rk */
+			}
 		}
-		assert(len < sizeof(buf));
-		if (len <= origlen) {
-			strcpy(line, buf);
-		} else {
-			free(line);
-			*(char **)list[i] = strdup(buf);
+		item->rkoff = newrkoff;
+
+		/* dnew still the file path ... */
+		p = newname(delpath, opts->comppath, dnew, deepnest);
+		assert(p != INVALID);
+		*dend = '|';	/* restore dk to being full deltakey */
+		if (p != dnew) {
+			unless (p) p = delpath = key2moved(rk); /* orig rk */
+			newPath(dk, dnew, dend, p); /* alter dk */
+			item->dkoff = sccs_addStr(cset, dk);
 		}
 	}
 	goto done;
@@ -1048,19 +1140,44 @@ done:	if (delpath) free(delpath);
 }
 
 /*
+ * Take a key and replace the filepath with new file path
+ * which means either shifting the end right, then copying name in,
+ * or copying shorter name in, then shifting the end left.
+ * The name might be a subset of the existing name.
+ */
+private	void
+newPath(char *key, char *start, char *end, char *newname)
+{
+	int	grow;
+
+	*end = 0;
+	grow = strlen(newname) - strlen(start);
+	if (grow <= 0) {
+		/* maybe start < newname < end - use memmove */
+		memmove(start, newname, strlen(newname)); /* no NULL term */
+		*end = '|';
+		memmove(end+grow, end, strlen(end)+1);
+	} else {
+		/* if we are truly growing, name can't be a superset of name */
+		*end = '|';
+		memmove(end+grow, end, strlen(end)+1);
+		memcpy(start, newname, strlen(newname)); /* no NULL term */
+	}
+}
+
+/*
  * fix up the added to be 0 in nodes that are now empty
  * return the number of now empty nodes which will get pruned
  */
 private	int
-fixAdded(sccs *cset, char **cweave)
+fixAdded(sccs *cset, weave *cweave)
 {
 	ser_t	d = TABLE(cset);
 	int	i, ser;
 	int	oldser = 0, cnt = 0, empty = 0;
 
 	EACH(cweave) {
-		unless (cweave[i][0]) continue;
-		ser = atoi(cweave[i]);
+		unless ((ser = cweave[i].ser)) continue;
 		if (ser == oldser) {
 			cnt++;
 			continue;
@@ -1099,12 +1216,14 @@ fixAdded(sccs *cset, char **cweave)
  * and make new ones, shoving their keys into the weave.
  */
 private	int
-newBKfiles(sccs *cset, char *comp, hash *prunekeys, char ***cweavep)
+newBKfiles(sccs *cset, char *comp, hash *prunekeys, weave **cweavep)
 {
 	int	i, ret = 1;
 	ser_t	ser = 0;
+	u32	rkoff, dkoff;
 	mode_t	mask = umask(002);
-	char	*rkdk, **list = 0, *user = 0, *host = 0;
+	weave	*rkdk;
+	char	**list = 0, *user = 0, *host = 0;
 
 	unless (prunekeys) return (0);
 	unless (comp) comp = "";
@@ -1121,8 +1240,11 @@ newBKfiles(sccs *cset, char *comp, hash *prunekeys, char ***cweavep)
 
 	unless (ser = newFileEnv(cset, &user, &host)) goto err;
 	EACH(list) {
-		unless (rkdk = newFile(list[i], comp, ser)) goto err;
-		*cweavep = addLine(*cweavep, rkdk);
+		if (newFile(cset, list[i], comp, &rkoff, &dkoff)) goto err;
+		rkdk = addArray(cweavep, 0);
+		rkdk->ser = ser;
+		rkdk->rkoff = rkoff;
+		rkdk->dkoff = dkoff;
 	}
 	ret = 0;
  err:
@@ -1646,18 +1768,18 @@ _pruneEmpty(sccs *s, ser_t d, u8 *slist, ser_t **sd)
 	 * See if node is a keeper ...
 	 * Inside knowledge: no sd entry is the same as no include
 	 * or exclude list, because of how the sd entry uses pserial too.
-	 * Clear out inc and exc -- if keeping, they'll get recomputed.
-	 * and if tossing, they are empty (no sd[serial]) but haven't
-	 * been cleared.
+	 * If recomputing, leave CLUDES set in case there is no change.
 	 */
-	CLUDES_SET(s, d, 0);
 	if (ADDED(s, d) || MERGE(s, d) || sd[d]) {
 		if (sd[d]) {
 			/* regen old style SCCS inc and excl lists */
 			graph_symdiff(s, d, PARENT(s, d), 0, slist, sd, 0, 0);
+		} else {
+			CLUDES_SET(s, d, 0);
 		}
 		return;
 	}
+	CLUDES_SET(s, d, 0);	/* need unless removing assert in fixTags */
 
 	/* Not a keeper, so re-wire around it later by marking gone now */
 	debug((stderr, "RMDELTA(%s)\n", d->rev));

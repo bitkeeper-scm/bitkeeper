@@ -1443,6 +1443,7 @@ takepatch(remote *r)
 		cmds[++n] = "--progress";
 		progress_nlneeded();
 	}
+	unless (opts.automerge) cmds[++n] = "--no-automerge";
 	cmds[++n] = 0;
 	pid = spawnvpio(&pfd, 0, 0, cmds);
 	f = fdopen(pfd, "wb");

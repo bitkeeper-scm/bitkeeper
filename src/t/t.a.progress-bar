@@ -67,8 +67,8 @@ echo $N Setup .......................................................$NL
 cat <<EOF > .bk/config
 partial_check:off
 EOF
-# we don't do BAM tests on sco.bitmover.com for lack of disk space
-if [ "`bk gethost -r`" = "sco.bitmover.com" ]; then
+# we don't do BAM tests on sco.bitkeeper.com for lack of disk space
+if [ "`bk gethost -r`" = "sco.bitkeeper.com" ]; then
 	SKIP_BAM=YES
 else
 	SKIP_BAM=NO

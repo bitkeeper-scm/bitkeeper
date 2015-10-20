@@ -22,6 +22,7 @@
  *   BWEAVEv2	old encoding for BWEAVE
  *   PARENTS	bkd knows how to send parent files
  *   SCANDIRS   maintains the scancomps/scandirs files
+ *   BKMERGE	serialmap uses merge edge instead of -i, -x
  */
 
 
@@ -53,6 +54,7 @@
 	X(12, PARENTS, "PARENTS", 0, 0, 6)	\
 	X(13, SCANDIRS, "SCANDIRS", 1, 0, 6)	\
 	X(14, BWEAVE, "BWEAVEv3", 1, 0, 7)	\
+	X(15, BKMERGE, "BKMERGE", 1, 0, 7)	\
 
 enum {
 	FEAT_ALWAYS = 1,		/* bit0 is always set */
@@ -61,8 +63,11 @@ enum {
 #undef X
 };
 
+#define	FEAT_PFILE	FEAT_BWEAVE
+
 // features related to file format
-#define	FEAT_FILEFORMAT	(FEAT_BKFILE | FEAT_BWEAVE | FEAT_BWEAVEv2)
+#define	FEAT_FILEFORMAT	\
+	    (FEAT_BKFILE | FEAT_BWEAVE | FEAT_BWEAVEv2 | FEAT_BKMERGE)
 
 int	bk_hasFeature(int f);
 int	bkd_hasFeature(int f);

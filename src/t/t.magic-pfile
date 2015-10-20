@@ -1,0 +1,155 @@
+echo $N Does physical pfile exist and not exist - simple test .......$NL
+commercial BWEAVEv3
+# keyword for file name
+echo %''F% > plain
+echo %''F% > kw
+touch empty-kw
+ln -s kw symlink
+bk new $Q kw plain empty-kw symlink
+bk admin -FSCCS plain
+bk edit $Q kw plain empty-kw symlink
+# No magic - pfile is there
+
+# TRICK: bk _test -s SCCS/p.file   == is the real file present?
+bk _test -s SCCS/p.kw || fail kw physical pfile missing
+bk _test -f SCCS/p.kw || fail logical pfile missing
+bk _test -s SCCS/p.empty-kw || fail empty-kw physical pfile missing
+bk _test -f SCCS/p.empty-kw || fail logical pfile missing
+bk _test -s SCCS/p.symlink || fail symlink physical pfile missing
+bk _test -f SCCS/p.symlink || fail logical pfile missing
+# Magic pfile - not there, but there
+bk _test -s SCCS/p.plain && fail physical pfile missing
+bk _test -f SCCS/p.plain || fail logical pfile missing
+echo OK
+
+echo $N Get file, then edit the file using get -S ...................$NL
+bk -r clean
+bk get $Q kw plain empty-kw symlink
+bk edit $Q -S kw plain empty-kw symlink
+bk sfiles -gl > GOT
+cat <<EOF > WANT
+empty-kw
+kw
+plain
+symlink
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Get file with keywords, chmod, delta ........................$NL
+bk clean $Q kw plain empty-kw
+bk get $Q kw plain empty-kw
+chmod +w kw plain empty-kw
+# play around to show what is going on
+bk -gcr > GOT
+echo kw > WANT
+cmpfiles WANT GOT
+bk -r clean || fail
+test -f plain -o -f kw -o -f empty-kw && fail should be no files
+# start over
+bk get $Q plain empty-kw kw
+chmod +w plain empty-kw kw
+# no keywords works
+bk delta -l -q -fynull plain || fail
+# Make sure we don't overwrite keywords
+bk delta -q -fy'goodbye keywords' kw 2> ERR && fail -f ERR
+grep -q "delta: kw writable but not checked out?" ERR || fail -f ERR
+bk delta -q -fy'goodbye keywords' empty-kw 2> ERR && fail -f ERR
+grep -q "delta: empty-kw writable but not checked out?" ERR || fail -f ERR
+rm kw empty-kw
+bk edit $Q kw plain empty-kw
+echo OK
+
+echo $N Switch keywords on and off, should toggle magic pfile .......$NL
+touch switch
+bk new $Q switch
+bk edit $Q switch
+echo new data >> switch
+bk _cat SCCS/p.switch | sed 's/ bk.*//' > GOT
+echo "1.1 1.2" > WANT
+cmpfiles WANT GOT
+bk admin -FSCCS switch
+bk _test -s SCCS/p.switch && fail physical pfile present
+bk _test -f SCCS/p.switch || fail logical pfile missing
+bk _cat SCCS/p.switch | sed 's/ bk.*//' > GOT
+echo "1.2 1.3" > WANT
+cmpfiles WANT GOT
+bk admin -fRCS switch
+bk _test -s SCCS/p.switch || fail physical pfile missing
+bk _test -f SCCS/p.switch || fail logical pfile missing
+bk _cat SCCS/p.switch | sed 's/ bk.*//' > GOT
+echo "1.3 1.4" > WANT
+cmpfiles WANT GOT
+bk diffs -n switch > GOT
+cat <<EOF > WANT
+===== switch 1.3 vs edited =====
+a0 1
+new data
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N See that switching keeps a -x+ alive ........................$NL
+# meaningless -x+ since -x+ only impacts content.  Toss edits so -x+ works
+bk unedit $Q switch
+bk edit $Q -x+ switch
+bk _cat SCCS/p.switch | sed 's/bk.* -X/-x/' > GOT
+echo "1.3 1.4 -x+" > WANT
+cmpfiles WANT GOT
+bk admin -FRCS switch
+# will still have physical pfile because of the -x+
+bk _test -s SCCS/p.switch || fail physical pfile missing
+bk _cat SCCS/p.switch | sed 's/bk.* -X/-x/' > GOT
+echo "1.4 1.5 -x1.3" > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Switch BWEAVEv3 on and off, should make real pfiles .........$NL
+bk commit $Q -f
+cp BitKeeper/log/features features
+sed s/BWEAVEv3/BWEAVEv2/ < features > BitKeeper/log/features
+# format conversion relies on autofix, which makes sense as it is
+# indistinguashable from chmod +w on a non-kw file.
+_BK_DEVELOPER= bk --config='autofix:off' repocheck -q 2> ERR && fail -f ERR
+grep -q "check: \`\`plain'' writable but not locked" ERR || fail -f ERR
+_BK_DEVELOPER= bk repocheck $Q
+# Magic pfile - not there
+bk _test -s SCCS/p.plain || fail physical pfile missing
+bk _test -f SCCS/p.plain || fail logical pfile missing
+# save v2 for later tests
+bk clone $Q . ../BWEAVEv2
+# put BWEAVEv3 back
+cp features BitKeeper/log/features
+_BK_DEVELOPER= bk repocheck $Q
+# Magic pfile - still not there - too costly to check for this case
+bk _test -s SCCS/p.plain || fail physical pfile missing
+bk _test -f SCCS/p.plain || fail logical pfile missing
+# remove pfiles
+bk -r clean $Q
+bk -r edit $Q
+bk _test -s SCCS/p.plain && fail physical pfile present
+bk _test -f SCCS/p.plain || fail logical pfile missing
+echo OK
+
+echo $N Test check fixing a v3 repo in a bad state ..................$NL
+cd "$HERE/BWEAVEv3"
+bk unedit $Q switch || fail
+bk -r clean $Q || fail
+bk get $Q kw plain
+bk _test -s SCCS/p.kw -o -s SCCS/p.plain && fail
+chmod +w kw plain
+bk -r check -ac || fail
+#Note: it's v3, so plain has a magic pfile; different in next test
+bk _test -s SCCS/p.kw -a ! -s SCCS/p.plain || fail
+echo OK
+
+echo $N Test check fixing a v2 repo in a bad state ..................$NL
+cd "$HERE/BWEAVEv2"
+bk -r clean $Q || fail
+bk get $Q kw plain
+bk _test -s SCCS/p.kw -o -s SCCS/p.plain && fail
+chmod +w kw plain
+bk -r check -ac || fail
+#Note: both have physical pfiles because it's a v2 repo
+bk _test -s SCCS/p.kw -a -s SCCS/p.plain || fail
+echo OK

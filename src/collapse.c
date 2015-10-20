@@ -433,7 +433,7 @@ private int
 do_file(char *file, char *tiprev)
 {
 	sccs	*s;
-	ser_t	d, e, tipd;
+	ser_t	d, e, m, tipd;
 	char	*pathname, *savefile = 0, *cmd;
 	mode_t	mode;
 	u32	xflags, flagdiffs;
@@ -474,7 +474,8 @@ do_file(char *file, char *tiprev)
 	 * need keyword expansion.)
 	 */
 	unless (EDITED(s) || CSET(s)) {
-		if (sccs_get(s, 0,0,0,0, SILENT|GET_EDIT|GET_NOREGET, "-")) {
+		if (sccs_get(s, 0,0,0,0,
+		    SILENT|GET_EDIT|GET_NOREGET, s->gfile, 0)) {
 			fprintf(stderr, "%s: unable to edit %s\n", me, gfile);
 			rc = 1;
 			goto done;
@@ -532,7 +533,12 @@ do_file(char *file, char *tiprev)
 
 			/* calculate any excluded revs */
 			if (HAS_PFILE(s)) sccs_read_pfile(s, &pf);
-			premap = sccs_set(s, d, pf.iLst, pf.xLst);
+			m = 0;
+			if (pf.mRev) {
+				m = sccs_findrev(s, pf.mRev);
+				unless (m) goto done;
+			}
+			premap = sccs_set(s, d, m, pf.iLst, pf.xLst);
 			free_pfile(&pf);
 			EACH(rmdeltas) {
 				e = rmdeltas[i];
@@ -602,12 +608,13 @@ do_file(char *file, char *tiprev)
 		}
 
 		/* regenerate new p.file */
-		unless (CSET(s) || streq(s->gfile, ATTR) || IS_POLYPATH(s->gfile)) {
+		unless (CSET(s) || streq(s->gfile, ATTR) ||
+		    IS_POLYPATH(s->gfile)) {
 			rename(savefile, gfile);
 			free(savefile);
 			savefile = 0;
 			if (sccs_get(s, "+", 0, inc, exc,
-				SILENT|GET_EDIT|GET_SKIPGET, "-")) {
+			    SILENT|GET_EDIT|GET_SKIPGET, 0, 0)) {
 				fprintf(stderr, "%s: get -g %s failed\n",
 				    me, gfile);
 			}
@@ -789,9 +796,10 @@ fix_genlist(char *rev)
 		unless (p = separator(buf)) continue;
 		unless (hash_insert(h, buf, p-buf, 0, 0)) continue;
 		*p = 0;
-		p = key2path(buf, idDB, goneDB, 0);
-		flist = addLine(flist, name2sccs(p));
-		free(p);
+		if (p = key2path(buf, idDB, goneDB, 0)) {
+			flist = addLine(flist, name2sccs(p));
+			free(p);
+		}
 	}
 	status = pclose(f);
 	unless (WIFEXITED(status) && !WEXITSTATUS(status)) {
@@ -834,7 +842,7 @@ update_collapsed_file(char *newcsets)
 	char	**csets = 0;
 	char	buf[MAXLINE];
 
-	get(COLLAPSED, SILENT|GET_EDIT, "-");
+	get(COLLAPSED, SILENT|GET_EDIT);
 	if (f = fopen(COLLAPSED, "r")) {
 		while (fnext(buf, f)) {
 			chomp(buf);

@@ -1,0 +1,32 @@
+echo $N Look for duplicate flag defines in a file like sccs.h .......$NL
+PROG="`bk bin`"/flags.l
+bk tclsh "$PROG" <<EOF 2> GOT
+#define	INIT_NOGCHK	0x00800000	/* do not fail on gfile checks */
+#define	INIT_CHK_STIME	0x00010000	/* check that s.file <= gfile */
+#define	GET_SAME_VALUE	0x00010000	/* dup of INIT field */
+#define	INIT_WACKGRAPH	0x00020000	/* we're wacking the graph, no errors */
+#define	INIT_MUSTEXIST	0x00040000	/* the sfile must exist or we fail */
+#define	INIT_CHKXOR	0x40000		/* verify crc and xor of sfile */
+#define	INIT_INVALID	0x000002	/* defined illegally */
+#define	GET_DUP		0x10000
+
+#define	E_ALWAYS	0x1000		/* set so encoding is non-zero */
+#define E_DATAENC	0x3
+#define E_COMP		0x4
+
+#define	E_ASCII		0x00		/* no encoding */
+#define	E_UUENCODE	0x01		/* uuenecode it (traditional) */
+#define	E_BAM		0x02		/* store data in BAM pool */
+#define	E_GZIP		0x04		/* gzip the data */
+#define	E_BK		0x08		/* new binary sfile format */
+#define	E_BWEAVE	0x10		/* binary weave encoding */
+EOF
+cat <<EOF > WANT
+0x40000 used by INIT_CHKXOR and INIT_MUSTEXIST
+INIT_INVALID may not use 2
+0x10000 used by GET_DUP and GET_SAME_VALUE
+EOF
+cmpfiles WANT GOT
+echo OK
+
+

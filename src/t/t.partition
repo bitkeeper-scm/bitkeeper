@@ -625,3 +625,73 @@ echo OK
 echo $N Show that it is now fixed ...................................$NL
 bk partition $Q -Ccomps . ../import.nested
 echo OK
+
+echo $N Partition creates a poly component - but skip poly db .......$NL
+cd "$HERE"
+commercial polyA
+bk clone $Q . ../polyB
+mkdir src
+touch src/foo
+bk new $Q src/foo
+bk commit $Q -f
+cd ../polyB
+mkdir src
+touch src/bar
+bk new $Q src/bar
+bk commit $Q -f
+bk pull $Q || fail
+cd ..
+echo src > comps
+bk partition $Q -Ccomps polyB poly-nested || fail
+echo OK
+
+echo $N Verify things work ..........................................$NL
+cd "$HERE"
+# We can undo (past the partition point) and not have poly mess it up.
+_BK_UNDO_OK=1 bk clone $Q -r1.1.1.1 poly-nested pn-one 2> ERR || fail -f ERR
+_BK_UNDO_OK=1 bk clone $Q -r1.2 poly-nested pn-two 2> ERR || fail -f ERR
+# list items in a cset which should show poly
+cd poly-nested
+bk changes -Vr1.1.1.1,1.2 -nd':GFILE:|:REV:' > GOT
+cat <<EOF > WANT
+ChangeSet|1.1.1.1
+src/ChangeSet|1.1.1.1
+src/ChangeSet|1.1
+src/ChangeSet|1.0
+ChangeSet|1.2
+src/ChangeSet|1.2
+src/ChangeSet|1.1
+src/ChangeSet|1.0
+EOF
+cmpfiles WANT GOT
+# Get a list of csets containing poly item: 1.1
+cd src
+bk r2c -r1.1 ChangeSet > GOT
+echo 1.1.1.1,1.2 > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Show deletes staying in components ..........................$NL
+cd "$HERE"
+commercial mono
+mkdir comp
+touch prod comp/comp
+bk new $Q prod comp/comp
+bk commit $Q -f
+touch always-deleted
+bk new $Q always-deleted
+bk rm prod comp/comp always-deleted
+bk commit $Q -f
+echo comp > complist
+bk partition $Q -Ccomplist --keep-deleted . ../nested-with-del-in-comp
+cd ../nested-with-del-in-comp
+test `bk sfiles BitKeeper/deleted | wc -l` -eq 1 || fail prod count wrong
+test `bk sfiles comp/BitKeeper/deleted | wc -l` -eq 1 || fail comp count wrong
+echo OK
+
+echo $N Show deletes staying in components works through ref repo ...$NL
+cd "$HERE"
+bk partition $Q -@nested-with-del-in-comp mono nested-keepdel-ref || fail
+cd nested-keepdel-ref
+bk changes $Q -LR ../nested-with-del-in-comp || fail
+echo OK

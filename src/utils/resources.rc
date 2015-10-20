@@ -1,15 +1,27 @@
+#include <windows.h>
+#include <afxres.h>
 #include "winuser.h"
 #include "winver.h"
+#include "resources.h"
 #include "rcver.h"
 
 CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "installer.manifest"
 
-159 ICON "../win32/data/box_software.ico"
+IDC_MYICON ICON "../win32/data/box_software.ico"
 
-#define	VER_COMPANYNAME_STR	"BitKeeper, Inc.\0"
-#define VER_FILEDESCRIPTION_STR	"BitKeeper Installer\0"
-#define VER_LEGALCOPYRIGHT_STR 	"Copyright (c) 2014, BitKeeper, Inc.\nAll Rights Reserved.\0"
-#define VER_PRODUCTNAME_STR	"BitKeeper\0"
+IDD_DIALOG1 DIALOGEX 0, 0, 186, 50
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTER | WS_POPUP | 
+    WS_CAPTION | WS_SYSMENU
+CAPTION "Extracting BitKeeper Installer"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    PUSHBUTTON	"Cancel",IDCANCEL,65,29,50,14
+END
+
+#define	VER_COMPANYNAME_STR	"BitKeeper Inc.\0"
+#define	VER_FILEDESCRIPTION_STR	"BitKeeper Installer\0"
+#define	VER_LEGALCOPYRIGHT_STR 	"Copyright (c) 2015, BitKeeper Inc.\nAll Rights Reserved.\0"
+#define	VER_PRODUCTNAME_STR	"BitKeeper\0"
 
 #ifndef DEBUG
 #define	VER_DEBUG	0
@@ -54,4 +66,3 @@ BEGIN
 
     END
 END
-

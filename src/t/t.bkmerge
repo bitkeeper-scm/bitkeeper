@@ -1,0 +1,29 @@
+# BK MERGE means using the MPARENT instead of -i and -x when computing
+# the active set with serialmap.
+
+echo $N Canonical duplicate bookkeeping .............................$NL
+# If N dups, then keep minimum to mark dup.
+commercial project
+touch foo bar
+bk new $Q foo bar
+bk edit $Q -x1.1,1.1,1.1 foo
+bk edit $Q -i1.1,1.1,1.1 bar
+bk delta $Q -fyfoo foo bar
+bk prs -r+ -hnd":GFILE: :DI:" foo bar > GOT
+cat <<EOF > WANT
+foo -2,2,2
+bar +2,2,2
+EOF
+cmpfiles WANT GOT
+# Flip the storage form
+grep -v BKMERGE BitKeeper/log/features > f
+cp f BitKeeper/log/features
+_BK_DEVELOPER= bk repocheck $Q
+bk prs -r+ -hnd":GFILE: :DI:" foo bar > GOT
+cmpfiles WANT GOT
+# Flip the storage form back
+echo BKMERGE >> BitKeeper/log/features
+_BK_DEVELOPER= bk repocheck $Q
+bk prs -r+ -hnd":GFILE: :DI:" foo bar > GOT
+cmpfiles WANT GOT
+echo OK

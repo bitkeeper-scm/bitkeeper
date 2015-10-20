@@ -5,7 +5,7 @@
 # Standard copyright law applies.
 #
 # Redistribution in modified form is prohibited with one exception:
-#    proposed modifications may be sent back to dev@bitmover.com for
+#    proposed modifications may be sent back to dev@bitkeeper.com for
 #    possible inclusion in future releases.  Sending such modifications
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
@@ -72,7 +72,7 @@ win32_common_setup()
 
 	# test data loaded on this machine
 	TESTDATA=/c/test_data
-	BKTESTDATA=bk://data.bitmover.com/test_data
+	BKTESTDATA=bk://data.bitkeeper.com/test_data
 	export TESTDATA BKTESTDATA
 
 	B=`bk bin`
@@ -157,7 +157,7 @@ unix_common_setup()
 	for f in awk expr sh ksh grep egrep sed env test [ sleep getopts \
 	    basename dirname cat cp cut ln mkdir mv rm rmdir touch wc xargs \
 	    co rcs ssh rsh gzip gunzip remsh rcmd uname xterm vi tar \
-	    chmod perl ls gdb bkdcp
+	    chmod perl ls gdb bkdcp git
 	do	p=`bk which -e $f`
 		if [ $? -eq 0 ]
 		then	ln -s "$p" "$BK_LIMITPATH/$f"
@@ -316,7 +316,6 @@ setup_env()
 	_BK_GEOM=+1+1
 	export _BK_GEOM
 
-	unset _BK_GMODE_DEBUG
 	BK_REGRESSION="`cd "$TST_DIR"; bk pwd -s`/.regression $USER"
 	BK_CACHE="$BK_REGRESSION/cache"
 	HERE="$BK_REGRESSION/sandbox"
@@ -329,10 +328,10 @@ setup_env()
 	# default to BK, but use ascii on a couple machines
 	test -z "$_BKFILE_REGRESSIONS" && {
 		case "`bk gethost`" in
-		    debian50.bitmover.com) _BKFILE_REGRESSIONS=no;;
-		    debian60-64.bitmover.com) _BKFILE_REGRESSIONS=no;;
-		    aix5.bitmover.com) _BKFILE_REGRESSIONS=no;;
-		    win2008.bitmover.com) _BKFILE_REGRESSIONS=no;;
+		    debian50.bitkeeper.com) _BKFILE_REGRESSIONS=no;;
+		    debian60-64.bitkeeper.com) _BKFILE_REGRESSIONS=no;;
+		    aix5.bitkeeper.com) _BKFILE_REGRESSIONS=no;;
+		    win2008.bitkeeper.com) _BKFILE_REGRESSIONS=no;;
 		    *) _BKFILE_REGRESSIONS=yes;;
 		esac
 		export _BKFILE_REGRESSIONS
@@ -409,29 +408,29 @@ EOF
 	BKL_I2=bLldWb1QchmZ3I6eJ6bBdMBrMbi0eFAwo3vdnYiTHPwSjCbW4CbeqjqQtMrPrnRU
 	BKL_I3=+TXE6KhXDsgvFut4axrE5RMvAN5/D6S3XtVxskbE15EMuNVowtDovnbIg3CWvw==
 
-	# Valid PRO P --airgap --bkweb --bugdb --import --bam --eula=pro --nested --nested2
-	BKL_PRO=BKL655ad8ade368c808000012fdfffff42e572b43
-	BKL_P1=YgAAAo4AAAADgQAAAABmjwgkn1bhM3atjSaJI1x9fJM3BYmVghxiYPtJ25y0P6dh
-	BKL_P2=1LDvtP8H26zLmgCcBDZBXjdvnwR29STGef6BB1SR0Ok3ZK1sRglO6Mk0ic26x+Xl
-	BKL_P3=cNMne0IAuy1kG+PmZhQMli/aIgdUOVB4HKOllukgw3jmSGU7La8m3LWCsq8RZQ==
+	# Valid PRO P --airgap --bkweb --bugdb --import --bam --eula=pro --nested --nested2 --adm --et --export
+	BKL_PRO=BKL657ba5407368c808000012fdfffff42e572b430023
+	BKL_P1=YgAAAo4AAAADgQAAAAH25wKkj5S4TqH3lBBbr2ZcvNVtgH945QYa6aZK0XOQuZON
+	BKL_P2=VgIa7srODXebDkbzCJzSt7akBg4KMjkmCx0GI2vAWS4ddnccqRNUG+iNXMCXfXXD
+	BKL_P3=WJk6+SFVwEh1/MsFIxFpc4hSsTF1QAdebtSKPACFhX34zXF8h3stHBiHMPIMmg==
 
 	# Valid pro p --airgap --bkweb --bugdb --import --eula=pro
-	BKL_pro=BKL655ad8adf368c8080000121dfffff42e572b43
-	BKL_p1=YgAAAo4AAAADgQAAAACDIFPUb31q3owp7S4wEFcQI3+e6SnmODKRa2SaRLN1Mfim
-	BKL_p2=1jSZvV1nMen1JBq97bEOkdnyWPX5fjCUeVvSsXaQXefTmMkA9A77mMnhsOIPO7cV
-	BKL_p3=EI3QtoKJZ3bJmxaU8nrvpRYwtG9z3kBFxDQuVwGbMzXOWJ6PQIUTIVSqtq7m0w==
+	BKL_pro=BKL657ba5407368c8080000121dfffff42e572b43
+	BKL_p1=YgAAAo4AAAADgQAAAADguSH0f4PG+KjBubDUSMqndqcvl1UOwOiq/iWTNfNiDrbB
+	BKL_p2=kpLb8ArrftabRckKrClVT5VzU0WCNLuDtV3yg9oegokwEq4XEUNFKlR+ob/USWAY
+	BKL_p3=1xFR07yV3r58HSIwoRJG0duXbTGhIjAS99J1ubJEdPRg5dFemM1h1av4afH0ng==
 
 	# Valid ENTERPRISE E --airgap --eula=enterprise
-	BKL_ENTERPRISE=BKL655ad8ae0368c8080000121cfffff42e572b44
-	BKL_E1=YgAAAo4AAAADgQAAAABZgSlIu7g0bsHJnyFqxgU+1krgDa77iJ/uUke4McOftmy9
-	BKL_E2=XnNIeoceeKvRaMPXdf46TNBJ7OW7tRKmGt6VVX9J11HU7ZBZQUcNzC9hN69tL5WK
-	BKL_E3=t+YNlXKT6c/MKlqaPWGvVPc6pshB+12/WACL0vyKjufeYF0MkEpVSdkam7g5zQ==
+	BKL_ENTERPRISE=BKL657ba5407368c8080000121cfffff42e572b44
+	BKL_E1=YgAAAo4AAAADgQAAAADH/is0CTPyIjBO0d6hBP7CvexY2OfhgjZUir/tkHtiuzDC
+	BKL_E2=PPJyr8H+TaRhphGgT2dFLP35rC8xZvQpY+yvNfTSYzfoR/xxhB6f+S8nbgbkCdz5
+	BKL_E3=fBdU6wW3JOEp4ocHDmMeUjTLkyoEoE4IM+xR34opxhAA2cuNjkm6rqcmTVsWDA==
 
 	# Valid MLA M --airgap --eula=mla
-	BKL_MLA=BKL655ad8ae1368c8080000121cfffff42e572b45
-	BKL_M1=YgAAAo4AAAADgQAAAAJwL+1aUTeYmWwjL5heYt16tF2sxTHrtT1Vkt+cwkl8Er1x
-	BKL_M2=2ofWxj/yCVdZlNtGC0T5qFDPcucwrZrVIPn3PhKX5d7XPQW8VgeLqsZssxPott6n
-	BKL_M3=ITO4+nJqckHk46l7ZrbUZj8qqGuDwfHbgCgToTmNnpxA4gaaCGgTOvY8AtVlLw==
+	BKL_MLA=BKL657ba5407368c8080000121cfffff42e572b45
+	BKL_M1=YgAAAo4AAAADgQAAAAEjy3cFSEcxR7kS7DMgyeXVfBU1uwkB+vxN6JIDrgTXLRRp
+	BKL_M2=GZTPehAEGDHTfFOAAUfoyXp6i9kkw4wmddpg/q/Ph1my32qEOgpczaeutxXzEfyP
+	BKL_M3=btQG4/cIvxMFG8Aa1um2pspBpa0kcM2E25nYdH6/n0jaroHnqOvXFJRG5Ky1jw==
 
 	# Expired license (airgap)
 	BKL_EX=BKL63b174b80393618000001210fffff42e572b43
@@ -460,17 +459,17 @@ EOF
 	BKL_33=iI8hVqWnHKXORC/7v3hxpnrlq9BXSjNHntPbyHF11VAC/dLOm/mUR3c7TaqvOA==
 
 	# Valid 7 7 --bkl=7 --airgap --bkweb --eula=pro
-	BKL_7=BKL755ad8ae1368c8080000121dfffff42e572b43
-	BKL_71=YgAAAo4AAAADgQAAAAJXUqjoDwztu5c6HpXm9FqI8LJ1ri3KyuFxNShEbgaUnmPd
-	BKL_72=nmXb97MTLD2bAytIrr/x3cdnxZpiAkbzi6x/dY0bdxm58FHYJ8/FV+zWVXHa+x6k
-	BKL_73=MDP8XaieevLD7XQXKtIJO+7F3pMI+MoF8rVgVtp6+lIPfcEEPsAproFnSIwidg==
+	BKL_7=BKL757ba5407368c8080000121dfffff42e572b43
+	BKL_71=YgAAAo4AAAADgQAAAAHlwUWjWmFxahXEX0JLEwkmG9CzPcAzENJZgZQummByCRg+
+	BKL_72=mnv+175bQPV2LJlunJcYCPTfjLZS4mKGdcUjbT7g1IxVb8FKEDQ6eQidIjKWd4HF
+	BKL_73=+wQf9P8fBlspbaD874XO9BhE6/1XTe4o7feUhOxo/ZZ9Z8t10XSSWfas+nsaMg==
 
 	# License with 3 users max
 	# Valid Zmax3 Z --airgap --eula=basic --seats=3
-	BKL_Zmax3=BKL655ad8ae2368c8080000121cffffc42e572b420010
-	BKL_Z1=YgAAAo4AAAADgQAAAAAgBs7uWEnXmT8KEQD5967aB74Cju/DXX7w/u5au8BCnMAF
-	BKL_Z2=e3vZa0RrVedSmsDlGIp0pK9Ae+JAKQyYn5b0KvXJdsTxpLhe7/0lq/Y1NOQtYMLd
-	BKL_Z3=5xHRw5kkwgW7UQH/MB7zcXVBvMmeTzqrEP7yq4gD6Qhyu9byksYFoYPN8rR5GA==
+	BKL_Zmax3=BKL657ba5407368c8080000121cffffc42e572b420010
+	BKL_Z1=YgAAAo4AAAADgQAAAAL4O/WAfrAbkrSq3KeyqmeqWut74dDXLbUq2S19/7Ikwtec
+	BKL_Z2=ZbsHFyHIljHXDggLwPK/Jo29O9pk8bzqTj94lOa6I+7hlax4EbDsO//zRMuYet45
+	BKL_Z3=OMdfs7dxttKXy/n7MOoU1aLNbez9MuJ6UsC/PnxhOenGo6jQ3EfsyIMp0I1cmA==
 
 	test "$GUI_TEST" = YES || {
 		BK_NO_GUI_PROMPT=YES

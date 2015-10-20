@@ -102,7 +102,7 @@ commercial sa
 bk features -m > OUT
 cat <<EOF > WANT
 This repository is compatible with bk-7.x and later because of features:
-	BWEAVEv3
+	BWEAVEv3, BKMERGE
 EOF
 cmpfiles OUT WANT
 echo OK
@@ -120,7 +120,7 @@ nested nest2
 bk features -m > OUT
 cat <<EOF > WANT
 This repository is compatible with bk-7.x and later because of features:
-	BWEAVEv3
+	BWEAVEv3, BKMERGE
 EOF
 cmpfiles OUT WANT
 echo OK

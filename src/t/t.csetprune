@@ -17,7 +17,7 @@
 # leave files 'b' and 'd' alone
 
 echo $N Setting up cset split testing respositories .................$NL
-TZ=UTC+0 commercial simple
+TZ=UTC+0 fresh_commercial --compat simple
 bk edit $Q BitKeeper/etc/config
 cat <<EOF >> BitKeeper/etc/config
 license:$BKL_REMOTE!
@@ -567,7 +567,8 @@ PERLFILT='print if s/\001d D ([^ ]*).* (\d+ \d+$)/d $1 $2/ or s/\001([xi])/$1/'
 
 echo $N Create a particular graph using csetprune ...................$NL
 cd "$HERE"
-commercial project
+# Very wacky graph relying on structure of SCCS bookkeeping. Use compat.
+fresh_commercial --compat project
 touch del1 del2 keep
 bk new $Q del1 del2 keep
 bk admin $Q -Znone del1 del2 keep
@@ -623,7 +624,7 @@ echo $N The sets that they expand to do not match ...................$NL
 # use diff -u to see more in context.  It included date which made
 # the regression more a pain to write.
 # This shows that the swap the occurs when 'del1' gets pruned
-# means an extra include is needed (that's the 5 in the 5 9 line)
+# means an extra include is needed (that's the 7 in the 7 11 line)
 # and the missing i 4 is just to demonstrate compression going on
 # of an include that is already included.
 #
@@ -674,7 +675,8 @@ echo $N Change a merge node to normal node plus include .............$NL
 # an exclude is older than an include but the include goes away.
 # the include was in a merge node for bookkeeping sake.
 cd "$HERE"
-commercial branch
+# Very wacky graph relying on structure of SCCS bookkeeping. Use compat.
+fresh_commercial --compat branch
 touch keep del
 bk new $Q keep del
 bk commit $Q -yboth
@@ -701,6 +703,32 @@ bk prs -r+ -hnd:ROOTKEY: del > prune
 bk csetprune $Q < prune
 bk changes -r+ -nd:RI: > GOT
 bk changes -rTIPPER -nd+:I: > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test the file sort order ....................................$NL
+cd "$HERE/trunk"
+bk -r prs -hnd':GFILE:|:ROOTKEY:' > WANT
+bk csetprune --test-bypath=WANT > GOT || fail
+cmpfiles WANT GOT
+# test edges including things that can't happen, but can with gone files
+cat <<EOF > WANT
+a|rk
+a|rk
+ab|rk
+a/b/c|rk
+ab/c|rk
+EOF
+bk csetprune --test-bypath=WANT > GOT || fail
+cmpfiles WANT GOT
+cat <<EOF > unsorted
+a|rk
+a/b/c|rk
+a|rk
+ab/c|rk
+ab|rk
+EOF
+bk csetprune --test-bypath=unsorted > GOT || fail
 cmpfiles WANT GOT
 echo OK
 

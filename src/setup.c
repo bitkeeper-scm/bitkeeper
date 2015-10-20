@@ -161,6 +161,8 @@ setup_main(int ac, char **av)
 		    features_test(in_prod, FEAT_BWEAVE));
 		features_set(0, FEAT_BWEAVEv2,
 		    features_test(in_prod, FEAT_BWEAVEv2));
+		features_set(0, FEAT_BKMERGE,
+		    features_test(in_prod, FEAT_BKMERGE));
 	} else {
 		if (sccs_compat) {
 			features_set(0, FEAT_FILEFORMAT|FEAT_SCANDIRS, 0);
@@ -223,7 +225,7 @@ setup_main(int ac, char **av)
 	sccs_delta(s, SILENT|NEWFILE, 0, 0, 0, 0);
 	s = sccs_restart(s);
 	assert(s);
-	sccs_get(s, 0, 0, 0, 0, SILENT|GET_EXPAND, 0);
+	sccs_get(s, 0, 0, 0, 0, SILENT|GET_EXPAND, s->gfile, 0);
 	sccs_free(s);
 	defaultFiles(product);
 

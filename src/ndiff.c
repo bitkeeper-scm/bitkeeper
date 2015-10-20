@@ -315,6 +315,7 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 			    "Binary files %s and %s differ\n", file1, file2);
 		}
 		rc = 1;
+		dop->bin_files = 1;
 		goto out;
 	}
 

@@ -277,6 +277,7 @@ static const CmdInfo builtInCmds[] = {
     {"Lhtml",		Tcl_LHtmlObjCmd,	NULL,		NULL, 1},
     {"LgetNextLine_",	Tcl_LGetNextLine,	NULL,		NULL, 1},
     {"LgetNextLineInit_",	Tcl_LGetNextLineInit,	NULL,		NULL, 1},
+    {"getdirx",         Tcl_LGetDirX,	        NULL,		NULL, 1},
 
     /*
      * Commands in the OS-interface. Note that many of these are unsafe.

@@ -155,12 +155,15 @@ int
 sccs_rm(char *name, int force, MDBM *idDB)
 {
 	char	*rmName;
-	char	*sfile;
+	char	*sfile, *t;
 	int	error = 0;
 	sccs	*s;
 
 	T_SCCS("file=%s", name);
 	sfile = name2sccs(name);
+	t = fullname(sfile, 0);
+	free(sfile);
+	sfile = t;
 	s = sccs_init(sfile, 0);
 	unless (s && HASGRAPH(s) && BITKEEPER(s)) {
 		fprintf(stderr,
@@ -264,7 +267,7 @@ sccs_gone(int quiet, FILE *f)
 	assert(s);
 	if (exists(s_gone)) {
 		unless (EDITED(s)) {
-			sccs_get(s, 0, 0, 0, 0, SILENT|GET_EDIT, "-"); 
+			sccs_get(s, 0, 0, 0, 0, SILENT|GET_EDIT, s->gfile, 0);
 		}
 		g = fopen(g_gone, "r");
 		while (fnext(key, g)) mdbm_store_str(db, key, "", MDBM_INSERT);

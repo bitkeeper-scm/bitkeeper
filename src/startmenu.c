@@ -7,6 +7,9 @@ struct opts {
 	u32	list:1;
 	u32	user:1;
 	u32	icon:1;
+	u32	install:1;
+	u32	pwd:1;
+	u32	uninstall:1;
 	char	*iconpath;
 };
 
@@ -23,7 +26,10 @@ startmenu_main(int ac, char **av)
 usage:
 		fprintf(stderr,
 		    "usage: bk _startmenu get|set|rm|list [-u] [-iiconpath] "
-		    "[menu] [target] [args]\n");
+		    "[menu] [target] [args]\n"
+		    "       bk _startmenu install <destination>\n"
+		    "       bk _startmenu uninstall\n"
+		    "       bk _startmenu pwd [-u]\n");
 		return (1);
 	}
 
@@ -35,12 +41,13 @@ usage:
 		opts.rm = 1;
 	} else if (streq(av[1], "list")) {
 		opts.list = 1;
+	} else if (streq(av[1], "install")) {
+		opts.install = 1;
+	} else if (streq(av[1], "uninstall")) {
+		opts.uninstall = 1;
+	} else if (streq(av[1], "pwd")) {
+		opts.pwd = 1;
 	} else {
-		goto usage;
-	}
-
-	if (opts.get + opts.set + opts.rm + opts.list > 1) {
-		fprintf(stderr, "Only one of get, set, rm or list allowed\n");
 		goto usage;
 	}
 
@@ -53,13 +60,26 @@ usage:
 		}
 	}
 
+	if (opts.uninstall) {
+		startmenu_uninstall(0);
+		return (0);
+	}
 	if (opts.list) {
 		return (startmenu_list(opts.user, av[optind]));
 	}
+	if (opts.pwd) {
+		if (target = bkmenupath(opts.user, 0, 0)) puts(target);
+		free(target);
+		return (target != 0);
+	}
+	unless(av[optind]) goto usage;
 	if (opts.rm) {
 		return (startmenu_rm(opts.user, av[optind]));
 	}
-	unless(av[optind]) goto usage;
+	if (opts.install) {
+		startmenu_install(av[optind]);
+		return (0);
+	}
 	if (opts.get) {
 		return (startmenu_get(opts.user, av[optind]));
 	}
@@ -73,5 +93,5 @@ usage:
 		goto usage;
 	}
 	return (startmenu_set(opts.user, linkpath, target, opts.iconpath,
-		av[optind]));
+		av[optind], 0));
 }

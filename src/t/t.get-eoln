@@ -1,0 +1,16 @@
+echo $N Test historic eoln...........................................$NL
+commercial proj
+printf 'data\r\n' > data
+bk new $Q data
+
+bk admin -fEOLN_WINDOWS data
+REV=`bk log -nd:REV: -r+ data`
+printf 'data\r\n' > WANT
+bk get -kqpr+ data > GOT
+cmp -s WANT GOT || fail
+
+bk admin -fEOLN_UNIX data
+bk get -kqpr$REV data > GOT
+cmp -s WANT GOT || fail
+
+echo OK

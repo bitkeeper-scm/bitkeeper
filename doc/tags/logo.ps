@@ -2,8 +2,8 @@
 
 /inch { 72 mul } def
 
-% BitMover text
-/BitMover {
+% BitKeeper text
+/BitKeeper {
     4 dict begin
 	/LM_font exch def
 	/LM_B exch def
@@ -14,9 +14,9 @@
 	LM_font findfont LM_B scalefont setfont
 	LM_SP 0 (IT) ashow
 	LM_font findfont LM_A scalefont setfont
-	LM_SP 0 (M) ashow
+	LM_SP 0 (K) ashow
 	LM_font findfont LM_B scalefont setfont
-	LM_SP 0 (OVER) ashow
+	LM_SP 0 (EEPER) ashow
     end
 } bind def
 
@@ -69,7 +69,7 @@
 		0 0 moveto
 		1 dict begin
 		    /LM_savefont exch def
-		    LM_savefont BitMover
+		    LM_savefont BitKeeper
 		    dup dup
 		    0 .5 inch 4.8 .05 Bullet
 		    10 .5 inch 4.8 .05 Bullet

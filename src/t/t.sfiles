@@ -1780,6 +1780,10 @@ echo OK
 test $PLATFORM != WIN32 && {
 
 echo $N Check sfiles -v does not dump core on an unreadable binary ..$NL
+cd "$HERE"
+rm project/test/.bk_skip
+bk clone $Q --downgrade project downgrade
+cd downgrade
 perl -e 'printf "a\000b\n"' > binary_file
 bk new $Q binary_file
 bk edit $Q binary_file

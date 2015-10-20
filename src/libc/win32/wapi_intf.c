@@ -669,35 +669,25 @@ get_osinfo(void)
 }
 
 /*
- * Return false if OS is Win98 (or older) (Including WinNT)
+ * Return false if OS is too old.
  */
 int
 win_supported(void)
 {
 	get_osinfo();
-	return (osinfo.dwMajorVersion > 4); /* older than win2k: unsupported */
+	return (osinfo.dwMajorVersion > 5); /* older than Vista unsupported */
 }
 
 /*
- * Return true if OS is Windows 2000 (only)
+ * Return true if OS is Vista, win7, win8...
+ * XXX What is this for and is it or will it be invalid?
  */
 int
-isWin2000(void)
+has_UAC(void)
 {
 	get_osinfo();
-	return ((osinfo.dwMajorVersion == 5) && (osinfo.dwMinorVersion == 0));
+	return (osinfo.dwMajorVersion >= 6);
 }
-
-/*
- * Return true if OS is Vista
- */
-int
-is_vista(void)
-{
-	get_osinfo();
-	return (osinfo.dwMajorVersion == 6);
-}
-
 
 /* from http://msdn.microsoft.com/en-us/library/ms684139(VS.85).aspx */
 
@@ -1369,6 +1359,7 @@ again:
 					    INVALID_FILE_ATTRIBUTES) {
 						/* nope, not empty */
 						freeLines(files, free);
+						errno = ENOTEMPTY;
 						goto err;
 					}
 				}

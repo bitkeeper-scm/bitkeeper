@@ -38,7 +38,7 @@ sfile2DB(char *root, char *sfile, char *rev, MDBM *db)
 	s->mdbm = db;
 	db = 0;
 	/* GET_HASHONLY|GET_NOREGET means to merge w/existing s->mdbm */
-	if (sccs_get(s, rev, 0, 0, 0, SILENT|GET_HASHONLY|GET_NOREGET, 0)) {
+	if (sccs_get(s, rev, 0, 0, 0, SILENT|GET_HASHONLY|GET_NOREGET, 0, 0)) {
 		sccs_free(s);
 		return (0);
 	}
@@ -66,8 +66,7 @@ db_load(char *file, sccs *s, char *rev, MDBM *db)
 			mdbm_close(s->mdbm);
 			s->mdbm = 0;
 		}
-		if (sccs_get(s, rev, 0, 0, 0, SILENT|GET_HASHONLY,
-			     0)) {
+		if (sccs_get(s, rev, 0, 0, 0, SILENT|GET_HASHONLY, 0, 0)) {
 			s->mdbm = 0;
 		}
 		return (s->mdbm);

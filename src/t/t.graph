@@ -52,3 +52,34 @@ left 1.0
 EOF
 cmpfiles WANT GOT
 echo OK
+
+echo $N Flip format from one way to the other way ...................$NL
+bk edit $Q -i1.1 foo
+bk delta $Q -fydup foo
+bk edit $Q -i1.1 foo
+bk delta $Q -fydup foo
+bk edit $Q -x1.1 foo
+bk delta $Q -fydup foo
+bk edit $Q -x1.1 foo
+bk delta $Q -fydup foo
+bk _get $Q -e -r1.3 foo
+bk delta $Q -fybranch foo
+bk edit $Q -M foo
+bk delta $Q -fymerge foo
+bk commit $Q -f
+bk _scat foo > ../WANT
+bk clone $Q --compat . ../copy || fail
+cd ../copy
+bk _scat foo > ../DIFF
+bk clone $Q --upgrade . ../upgrade || fail
+cd ../upgrade
+bk _scat foo > ../GOT
+cd ..
+cmp -s GOT DIFF && fail old and new format same
+cmpfiles WANT GOT
+# Rider - see that scat doesn't alter pfile
+cd upgrade
+bk edit $Q -r1.1 foo || fail
+bk _scat --sccs foo > /dev/null
+bk check foo || fail
+echo OK

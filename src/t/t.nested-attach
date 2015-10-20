@@ -567,8 +567,9 @@ bk rm foo || fail
 # it would be nice if this failed
 bk attach -q "$HERE"/stand2 foo || fail
 
-bk repocheck $Q 2> ERR && fail -f should fail
+bk repocheck -j2 $Q 2> ERR && fail -f should fail
 cat <<EOF > WANT
+check in 'gcc' exited 64, error output:
 A path-conflict was found in existing csets
   component at ./foo
 conflicts with existing:
@@ -588,8 +589,9 @@ bk portal $Q . || fail
 bk rmdir bar || fail
 # it would be nice if this failed
 bk attach -q "$HERE"/stand2 bar || fail
-bk repocheck $Q 2> ERR && fail -f should fail
+bk repocheck -j2 $Q 2> ERR && fail -f should fail
 cat <<EOF > WANT
+check in 'gcc' exited 64, error output:
 A path-conflict was found in existing csets
   component at ./bar
 conflicts with existing:
@@ -612,7 +614,7 @@ touch pre/src/foo
 bk new $Q pre/src/foo
 bk commit $Q -ygcc/pre/src/foo
 # Make repo A start from this point
-bk --cd="$HERE" clone $Q project copy
+bk --cd="$HERE" clone $Q --upgrade project copy
 # In B, make a new file under same component
 touch pre/src/deep/bar
 bk new $Q pre/src/deep/bar
@@ -757,4 +759,39 @@ conflicts with existing:
 EOF
 head -4 ERR > ERR2
 cmpfiles WANT ERR2
+echo OK
+
+echo $N Attach -N an old repo and see that pfile gets fixed .........$NL
+cd "$HERE"
+bk clone $Q --downgrade standalone1 newcomp
+cd newcomp
+bk edit $Q file1
+bk delta $Q -fynull file1
+bk _get $Q -e -r1.1 file1
+bk delta $Q -fynull file1
+bk edit $Q -M file1
+bk delta $Q -fymerge file1
+bk edit $Q -r1.1 file1
+cd ../copy
+bk abort $Q -f
+bk portal $Q .
+mv ../newcomp .
+cd newcomp
+bk _cp SCCS/p.file1 pfile.orig
+grep -q '^1.3 1.4 .* -x1.2,1.3$' pfile.orig || fail -f pfile.orig
+bk attach $Q -N .
+bk check file1
+bk _cp SCCS/p.file1 pfile.attach
+grep -q '^1.3 1.4 .* -X1.2,1.1.1.1,1.3$' pfile.attach || fail -f pfile.attach
+# Rider: While we are here, break the pfile and fix it.
+bk _cp pfile.orig SCCS/p.file1
+bk check file1 2>ERR && fail -f ERR
+echo "Wrong p.file format in file1 (want bk)" > WANT
+cmpfiles WANT ERR
+# If it does happen in the field, good to have a way to fix it
+bk check -ff file1 2>ERR || fail -f ERR
+echo "file1: p.file fixed" >> WANT
+cmpfiles WANT ERR
+bk _cp SCCS/p.file1 pfile.fixed
+grep -q '^1.3 1.4 .* -X1.2,1.1.1.1,1.3$' pfile.fixed || fail -f pfile.fixed
 echo OK

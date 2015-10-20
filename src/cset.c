@@ -2,29 +2,32 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
+#include "graph.h"
 #include "nested.h"
 #include "progress.h"
 #include "poly.h"
 
 typedef	struct cset {
 	/* bits */
-	int	makepatch;	/* if set, act like makepatch */
-	int	listeach;	/* if set, list revs 1/line */
-	int	mark;		/* act like csetmark used to act */
-	int	doDiffs;	/* prefix with unified diffs */
-	int	force;		/* if set, then force past errors */
-	int	remark;		/* clear & redo all the ChangeSet marks */
-	int	dash;
-	int	historic;	/* list the historic name */
-	int	hide_comp;	/* exclude comp from file@rev list */
-	int	include;	/* create new cset with includes */
-	int	exclude;	/* create new cset with excludes */
-	int	serial;		/* the revs passed in are serial numbers */
-	int	md5out;		/* the revs printed are as md5keys */
-	int	doBAM;		/* send BAM data */
-	int	compat;		/* do not send new sfiles in sfio */
-	int	fastpatch;	/* enable fast patch mode */
-	int	fail;		/* let all failures be flushed out */
+	u32	makepatch:1;	/* if set, act like makepatch */
+	u32	listeach:1;	/* if set, list revs 1/line */
+	u32	mark:1;		/* act like csetmark used to act */
+	u32	doDiffs:1;	/* prefix with unified diffs */
+	u32	force:1;	/* if set, then force past errors */
+	u32	remark:1;	/* clear & redo all the ChangeSet marks */
+	u32	dash:1;
+	u32	historic:1;	/* list the historic name */
+	u32	hide_comp:1;	/* exclude comp from file@rev list */
+	u32	include:1;	/* create new cset with includes */
+	u32	exclude:1;	/* create new cset with excludes */
+	u32	serial:1;	/* the revs passed in are serial numbers */
+	u32	md5out:1;	/* the revs printed are as md5keys */
+	u32	doBAM:1;	/* send BAM data */
+	u32	compat:1;	/* do not send new sfiles in sfio */
+	u32	fastpatch:1;	/* enable fast patch mode */
+	u32	fail:1;		/* let all failures be flushed out */
+	u32	bkmerge:1;	/* Patch is sending patches in bkmerge */
+	u32	standalone:1;	/* Patch is sending patches in bkmerge */
 
 	/* numbers */
 	int	tooMany;	/* send whole sfiles if # deltas > tooMany */
@@ -36,10 +39,8 @@ typedef	struct cset {
 	int	ncsets;
 	int	nfiles;
 	pid_t	pid;		/* adler32 process id */
-	int	lasti;		/* last idx in cweave for cset_diffs */
 
 	char	*csetkey;	/* lie about the cset rootkey */
-	char	**cweave;	/* weave of cset file for this patch */
 	char	**BAM;		/* list of keys we need to send */
 	char	**sfiles;	/* list of whole sfiles we need to send */
 } cset_t;
@@ -51,6 +52,7 @@ private	void	doDiff(sccs *sc);
 private	void	sccs_patch(sccs *, cset_t *);
 private	int	cset_diffs(cset_t *cs, ser_t ser);
 private	void	cset_exit(int n);
+private	int	bykeys(const void *pa, const void *pb);
 private	char	csetFile[] = CHANGESET; /* for win32, need writable buffer */
 private	cset_t	copts;
 
@@ -135,13 +137,15 @@ cset_main(int ac, char **av)
 	RANGE	rargs = {0};
 	longopt	lopts[] = {
 		{ "show-comp", 300 },		/* undo hide_comp */
+		{ "standalone", 'S' },		/* this repo only */
 		{ 0, 0 }
 	};
 
 	if (streq(av[0], "makepatch")) copts.makepatch = 1;
 	copts.notty = (getenv("BK_NOTTY") != 0);
 
-	while ((c = getopt(ac, av, "5BCd|DFfhi;lm|M;N;|qr|svx;", lopts)) != -1){
+	while (
+	    (c = getopt(ac, av, "5BCd|DFfhi;lm|M;N;|qr|Ssvx;", lopts)) != -1){
 		switch (c) {
 		    case 'B': copts.doBAM = 1; break;
 		    case 'D': ignoreDeleted++; break;		/* undoc 2.0 */
@@ -195,6 +199,7 @@ cset_main(int ac, char **av)
 				copts.force++;
 			}
 			break;
+		    case 'S': copts.standalone = 1; break;	/* doc 7.0.1 */
 		    case 'q':					/* doc 2.0 */
 		    case 's': flags |= SILENT; break;		/* undoc? 2.0 */
 		    case '5': copts.md5out = 1; break;		/* undoc 4.0 */
@@ -254,8 +259,13 @@ cset_main(int ac, char **av)
 	/*
 	 * If doing include/exclude, go do it.
 	 */
+	if (copts.include || copts.exclude) bk_nested2root(copts.standalone);
 	if (copts.include) return (cset_inex(flags, "-i", rargs.rstart));
 	if (copts.exclude) return (cset_inex(flags, "-x", rargs.rstart));
+	if (copts.standalone) {
+		fprintf(stderr, "cset: -S requires -i or -x\n");
+		return (1);
+	}
 
 	cset = sccs_init(csetFile, 0);
 	if (!cset) return (101);
@@ -396,26 +406,24 @@ markThisCset(cset_t *cs, ser_t d_cset, sccs *s, ser_t d)
 }
 
 private int
-doKey(cset_t *cs, ser_t d_cset, char *key, char *val, MDBM *goneDB)
+doKey(cset_t *cs, weave *item, MDBM *goneDB)
 {
 	static	MDBM *idDB;
 	static	sccs *sc;
-	static	char *lastkey;
+	static	u32  lastrkoff;
+	char	*key, *val;
 	ser_t	d;
 	int	rc = 0;
 
 	/*
 	 * Cleanup code, called to reset state.
 	 */
-	unless (key) {
+	unless (item) {
 		if (idDB) {
 			mdbm_close(idDB);
 			idDB = 0;
 		}
-		if (lastkey) {
-			free(lastkey);
-			lastkey = 0;
-		}
+		lastrkoff = 0;
 		if (sc) {
 			rc |= doit(cs, sc);
 			unless (sc == cset) sccs_free(sc);
@@ -424,13 +432,14 @@ doKey(cset_t *cs, ser_t d_cset, char *key, char *val, MDBM *goneDB)
 		rc |= doit(cs, 0);
 		return (rc);
 	}
+	key = HEAP(cset, item->rkoff);
 
 	/*
 	 * If we have a match, just mark the delta and return,
 	 * we'll finish later.
 	 *
 	 */
-	if (lastkey && streq(lastkey, key)) goto markkey;
+	if (lastrkoff && (lastrkoff == item->rkoff)) goto markkey;
 
 	/*
 	 * This would be later - do the last file and clean up.
@@ -438,22 +447,21 @@ doKey(cset_t *cs, ser_t d_cset, char *key, char *val, MDBM *goneDB)
 	if (sc) {
 		rc |= doit(cs, sc);
 		unless (sc == cset) sccs_free(sc);
-		free(lastkey);
 		sc = 0;
-		lastkey = 0;
+		lastrkoff = 0;
 	}
 
 	/*
 	 * Set up the new file.
 	 */
-	lastkey = strdup(key);
+	lastrkoff = item->rkoff;
 	unless (idDB || (idDB = loadDB(IDCACHE, 0, DB_IDCACHE))) {
 		perror("idcache");
 	}
-	if (cset && streq(lastkey, proj_rootkey(0))) {
+	if (cset && streq(key, proj_rootkey(0))) {
 		sc = cset;
 	} else {
-		sc = sccs_keyinit(0, lastkey, INIT_NOWARN, idDB);
+		sc = sccs_keyinit(0, key, INIT_NOWARN, idDB);
 	}
 	if (sc) {
 		unless (sc->cksumok) {
@@ -461,8 +469,7 @@ doKey(cset_t *cs, ser_t d_cset, char *key, char *val, MDBM *goneDB)
 			return (-1);
 		}
 	} else {
-		free(lastkey);
-		lastkey = 0;
+		lastrkoff = 0;
 		if (!cs->hide_comp &&
 		    changesetKey(key) && proj_isProduct(0)) {
 			nested	*n = nested_init(cset, 0, 0, 0);
@@ -483,11 +490,11 @@ doKey(cset_t *cs, ser_t d_cset, char *key, char *val, MDBM *goneDB)
 	if (cs->fail) {	/* in failure mode, just look for other failures */
 		unless (sc == cset) sccs_free(sc);
 		sc = 0;
-		free(lastkey);
-		lastkey = 0;
+		lastrkoff = 0;
 		return (0);
 	}
 markkey:
+	val = HEAP(cset, item->dkoff);
 	unless (d = sccs_findKey(sc, val)) {
 		/* OK to have missing keys if the gone file told us so */
 		if (gone(key, goneDB) || gone(val, goneDB)) return (0);
@@ -497,70 +504,23 @@ markkey:
 		return (cs->force ? 0 : -1);
 	}
 	unless (cs->hide_comp && CSET(sc) && proj_isComponent(sc->proj)) {
-		markThisCset(cs, d_cset, sc, d);
+		markThisCset(cs, item->ser, sc, d);
 	}
 	return (rc);
 }
 
 /*
- * sort rootkeys by pathname first
- * lines:
- *    <serial>\t<rootkey> <deltakey>
+ * sort rootkeys by name for determining file order in the patch
+ * Uses global 'cset' to get at heap state.
+ * Note: don't care about order in matching case.
  */
-int
-cset_bykeys(const void *a, const void *b)
+private	int
+bykeys(const void *a, const void *b)
 {
-	char	*s1 = *(char**)a;
-	char	*s2 = *(char**)b;
-	char	*p1 = strchr(s1, '\t');	/* start of rootkey */
-	char	*p2 = strchr(s2, '\t');
-	char	*d1 = separator(p1); /* start of delta key */
-	char	*d2 = separator(p2);
-	int	rc;
+	weave	*wa = (weave*)a;
+	weave	*wb = (weave*)b;
 
-	*d1 = 0;
-	*d2 = 0;
-	rc = keycmp(p1+1, p2+1);
-	*d1 = ' ';
-	*d2 = ' ';
-	return (rc);
-}
-
-/*
- * sfile order: sort rootkeys by serial first, then whole rootkey
- * lines:
- *    <serial>\t<rootkey> <deltakey>\0
- *    initial \0 - means line is deleted
- */
-int
-cset_byserials(const void *a, const void *b)
-{
-	char	*s1 = *(char**)a;
-	char	*s2 = *(char**)b;
-	char	*p1, *p2;
-	char	*d1, *d2;
-	int	rc;
-
-	if (!*s1 || !*s2) return (!*s1 - !*s2);	/* deleted go at end */
-
-	unless (rc = (atoi(s2) - atoi(s1))) {
-		p1 = strchr(s1, '\t');	/* start of rootkey */
-		p2 = strchr(s2, '\t');
-		d1 = separator(p1); /* start of delta key */
-		d2 = separator(p2);
-		*d1 = 0;
-		*d2 = 0;
-		rc = keycmp(p1+1, p2+1);
-		*d1 = ' ';
-		*d2 = ' ';
-		unless (rc) {
-			fprintf(stderr,
-			    "cset changes same rootkey twice\n%s\n%s\n",
-			    s1, s2);
-			exit (1);
-		}
-	}
-	return (rc);
+	return (keycmp(HEAP(cset, wa->rkoff), HEAP(cset, wb->rkoff)));
 }
 
 /*
@@ -570,13 +530,14 @@ cset_byserials(const void *a, const void *b)
 private void
 csetlist(cset_t *cs, sccs *cset)
 {
-	char	*rk, *t;
+	char	*rk;
 	char	buf[MAXPATH*2];
 	char	*csetid;
 	int	status, i, n;
 	ser_t	d;
 	MDBM	*goneDB = 0;
 	ticker	*tick = 0;
+	weave	*cweave = 0;
 
 	if (cs->dash) {
 		while(fgets(buf, sizeof(buf), stdin)) {
@@ -601,13 +562,6 @@ csetlist(cset_t *cs, sccs *cset)
 	/* Save away the cset id */
 	sccs_sdelta(cset, sccs_ino(cset), buf);
 	csetid = strdup(buf);
-
-	if ((cs->cweave = cset_mkList(cset)) == (char **)-1) {
-		goto fail;
-	}
-	if (cs->verbose > 5) {;
-		EACH(cs->cweave) printf("%s\n", cs->cweave[i]);
-	}
 	if (!cs->mark && hasLocalWork(GONE)) {
 		fprintf(stderr,
 		    "cset: must commit local changes to %s\n", GONE);
@@ -632,24 +586,42 @@ csetlist(cset_t *cs, sccs *cset)
 		fputs("\n", stdout);
 		fputs(PATCH_DIFFS, stdout);
 	}
+	cweave = cset_mkList(cset);
+	sortArray(cweave, bykeys);
+	if (cs->verbose > 5) {;
+		EACH(cweave) printf("%u\t%s %s\n",
+		    cweave[i].ser,
+		    HEAP(cset, cweave[i].rkoff),
+		    HEAP(cset, cweave[i].dkoff));
+	}
 again:	/* doDiffs can make it two pass */
 	if (!cs->doDiffs && cs->makepatch) {
-		fputs("\n", stdout);
+		int	didfeature = 0;
+
+		fputc('\n', stdout);
 		fputs(PATCH_PATCH, stdout);
 		fputs(cs->fastpatch ? PATCH_FAST : PATCH_CURRENT, stdout);
 		if (copts.csetkey) {
-			fputs(PATCH_FEATURES "PORT\n", stdout);
+			fputs(((didfeature++) ? "," : PATCH_FEATURES), stdout);
+			fputs("PORT", stdout);
+		}
+		if (copts.fastpatch && !copts.compat &&
+		    features_test(cset->proj, FEAT_BKMERGE)) {
+			fputs(((didfeature++) ? "," : PATCH_FEATURES), stdout);
+			fputs("BKMERGE", stdout);
+			copts.bkmerge = 1;
+		}
+		if (didfeature) {
+			fputc('\n', stdout);
 		} else {
 			fputs(PATCH_REGULAR, stdout);
 		}
-		fputs("\n", stdout);
+		fputc('\n', stdout);
 	}
 
 	/*
 	 * Do the ChangeSet deltas first, takepatch needs it to be so.
 	 */
-	sortLines(cs->cweave, number_sort); /* sort by serials */
-	cs->lasti = 1;
 	doit(cs, cset);
 
 	/*
@@ -657,37 +629,31 @@ again:	/* doDiffs can make it two pass */
 	 */
 	if (cs->progress) {
 		tick = progress_startScaled(PROGRESS_BAR,
-					    nLines(cs->cweave),
+					    nLines(cweave),
 					    cs->progress);
 	}
 	n = 0;
-	sortLines(cs->cweave, cset_bykeys); /* sort by rootkeys */
-	EACH (cs->cweave) {
+	EACH (cweave) {
 		if (tick) progress(tick, ++n);
-		rk = cs->cweave[i];
-		d = atoi_p(&rk);
-		assert(*rk == '\t');
-		++rk;
-		t = separator(rk); *t++ = 0;
-		if (streq(csetid, rk)) goto next; /* skip ChangeSet */
-		if (doKey(cs, d, rk, t, goneDB)) {
+		rk = HEAP(cset, cweave[i].rkoff);
+		if (streq(csetid, rk)) continue; /* skip ChangeSet */
+		if (doKey(cs, &cweave[i], goneDB)) {
 			fprintf(stderr,
 			    "File named by key\n\t%s\n\tis missing and key is "
 			    "not in gone file, aborting.\n", rk);
 			fflush(stderr); /* for win32 */
 			goto fail;
 		}
-next:		t[-1] = ' ';
 	}
 	if (cs->fail) goto fail;
 	if (cs->doDiffs && cs->makepatch) {
-		if (doKey(cs, 0, 0, 0, goneDB)) goto fail;
+		if (doKey(cs, 0, goneDB)) goto fail;
 		cs->doDiffs = 0;
 		fputs(PATCH_END, stdout);
 		goto again;
 	}
-	if (doKey(cs, 0, 0, 0, goneDB)) goto fail;
-	freeLines(cs->cweave, free);
+	if (doKey(cs, 0, goneDB)) goto fail;
+	FREE(cweave);
 	if (cs->verbose && cs->makepatch) {
 		fprintf(stderr,
 		    "makepatch: patch contains %d changesets / %d files\n",
@@ -738,6 +704,7 @@ next:		t[-1] = ' ';
 	return;
 
 fail:
+	free(cweave);
 	if (cs->makepatch) {
 		printf(PATCH_ABORT);
 		fclose(stdout);
@@ -772,7 +739,7 @@ doDiff(sccs *sc)
 	unless (PARENT(sc, e)) {
 		printf("--- New file ---\n+++ %s\t%s\n",
 		    sc->gfile, delta_sdate(sc, sccs_ino(sc)));
-		sccs_get(sc, 0, 0, 0, 0, PRINT|SILENT, "-");
+		sccs_get(sc, 0, 0, 0, 0, SILENT, 0, stdout);
 		printf("\n");
 		return;
 	}
@@ -912,6 +879,11 @@ sccs_patch(sccs *s, cset_t *cs)
 
 	if (cs->verbose>1) fprintf(stderr, "makepatch: %s", s->gfile);
 
+	/* see that we are sending patches in all the same format */
+	if ((cs->bkmerge != BKMERGE(s)) && graph_convert(s, 0)) {
+		cset_exit(1);
+	}
+
 	/*
 	 * Build a list of the deltas we're sending
 	 * Clear the D_SET flag because we need to be able to do one at
@@ -1048,38 +1020,35 @@ sccs_patch(sccs *s, cset_t *cs)
 private int
 cset_diffs(cset_t *cs, ser_t ser)
 {
-	int	i;
-	ser_t	n;
-	char	*t;
+	u32	rkoff, dkoff;
 
 	printf("0a0\n");
-	/* walk annotated list from last match */
-	EACH_START(cs->lasti, cs->cweave, i) {
-		t = cs->cweave[i];
-		n = atoi(t);
-		if (ser == n) {
-			t = strchr(t, '\t');
-			printf("> %s\n", t + 1);
-		} else if (n > ser) {
-			break;
-		}
+	sccs_rdweaveInit(cset);
+	cset_firstPair(cset, ser);
+	while (cset_rdweavePair(cset, RWP_ONE, &rkoff, &dkoff)) {
+		unless (dkoff) continue; /* last key */
+		printf("> %s %s\n",
+		    HEAP(cset, rkoff),
+		    HEAP(cset, dkoff));
 	}
-	cs->lasti = i;		/* save last match */
+	sccs_rdweaveDone(cset);
 	return (0);
 }
 
-char **
+weave *
 cset_mkList(sccs *cset)
 {
 	ser_t	d;
 	u32	rkoff, dkoff;
-	char	**list = 0;
+	weave	*item, *list = 0;
 
 	sccs_rdweaveInit(cset);
 	while (d = cset_rdweavePair(cset, RWP_DSET, &rkoff, &dkoff)) {
 		unless (dkoff) continue; /* last key */
-		list = addLine(list, aprintf("%d\t%s %s",
-		    d, HEAP(cset, rkoff), HEAP(cset, dkoff)));
+		item = addArray(&list, 0);
+		item->ser = d;
+		item->rkoff = rkoff;
+		item->dkoff = dkoff;
 	}
 	sccs_rdweaveDone(cset);
 	return (list);

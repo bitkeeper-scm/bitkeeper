@@ -12,9 +12,11 @@
 # Copyright (c) 2000 Larry McVoy
 # %K%
 
+set -e
+
 # Test the operation of various gca operations
 # These are not BK specific, per se
-commercial project
+fresh_commercial --compat project
 echo $N Create graph with some merge, -i, and -x stuff ..............$NL
 echo foo > foo.c
 bk ci $Q -i foo.c

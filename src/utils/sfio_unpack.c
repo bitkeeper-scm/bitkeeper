@@ -39,6 +39,7 @@ main(int ac, char **av)
 	int	c, mode = 0;
 
 	setmode(0, O_BINARY);
+	setbuf(stdout, 0);
 	while ((c = getopt(ac, av, "efimopq", 0)) != -1) {
 		switch (c) {
 		    case 'e': echo = 1; break;			/* doc 2.3 */
@@ -179,7 +180,7 @@ in_link(char *file, int pathlen, int extract)
 		chmod(file, mode & 0777);
 		 */
 	}
-	unless (quiet) fprintf(stderr, "%s\n", file);
+	unless (quiet) printf("%s\n", file);
 	if (echo) printf("%s\n", file);
 	return (0);
 
@@ -260,7 +261,7 @@ done:	if (readn(0, buf, 10) != 10) {
 			chmod(file, 0444);
 		}
 	}
-	unless (quiet) fprintf(stderr, "%s\n", file);
+	unless (quiet) printf("%s\n", file);
 	return (0);
 
 err:	

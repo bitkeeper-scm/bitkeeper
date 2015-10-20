@@ -18,8 +18,8 @@
 #include "bam.h"
 #include "cfg.h"
 
-typedef struct weave weave;
-#define	WRITABLE_REG(s)	(WRITABLE(s) && isRegularFile((s)->mode))
+typedef struct fweave fweave;
+#define	WRITABLE_REG(s)	(WRITABLE(s) && S_ISREG((s)->mode))
 private ser_t	rfind(sccs *s, char *rev);
 private ser_t	dinsert(sccs *s, ser_t d, int fixDate);
 private int	samebranch(sccs *s, ser_t a, ser_t b);
@@ -56,7 +56,6 @@ private time_t	date2time(char *asctime, char *z, int roundup);
 private int	addSym(char *name, sccs *sc, int flags, admin *l, int *ep);
 private int	sameFileType(sccs *s, ser_t d);
 private int	uuexpand_gfile(sccs *s, char *tmpfile);
-private int	isRegularFile(mode_t m);
 private void	sccs_freetable(sccs *s);
 private ser_t	gca(sccs *, ser_t left, ser_t right);
 private ser_t	gca2(sccs *s, ser_t left, ser_t right);
@@ -64,8 +63,8 @@ private ser_t	gca3(sccs *s, ser_t left, ser_t right, char **i, char **e);
 private int	compressmap(sccs *s, ser_t d, u8 *set, char **i, char **e);
 private	void	uniqDelta(sccs *s);
 private	void	uniqRoot(sccs *s);
-private int	weaveMove(weave *w, int line, int before, ser_t patchserial);
-private int	doFast(weave *w, ser_t *patchmap, FILE *diffs);
+private int	weaveMove(fweave *w, int line, int before, ser_t patchserial);
+private int	doFast(fweave *w, ser_t *patchmap, FILE *diffs);
 private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private	void	parseConfig(char *buf, MDBM *db, int stripbang);
@@ -1752,11 +1751,11 @@ sccs_findrev(sccs *s, char *rev)
 	}
 again:	if (revtype != PLAINREV) {
 		if (revtype == PRODREV) {
-			unless (proj_isComponent(s->proj)) {
+			unless (proj_isComponent(s->proj) &&
+			    (proj = proj_product(s->proj))) {
 				revtype = REPOREV;
 				goto again;
 			}
-			proj = proj_product(s->proj);
 			if (CSET(s)) goto atrev;
 			rev = csetdk = proj_cset2key(proj,
 			    rev, proj_rootkey(s->proj));
@@ -2220,6 +2219,9 @@ sccs_startWrite(sccs *s)
 		 */
 		if (BWEAVE2(s) != BWEAVE2_OUT(s)) weave_cvt(s);
 	}
+	if ((BKMERGE(s) != BKMERGE_OUT(s)) && graph_convert(s, !s->mem_out)) {
+		return (0);
+	}
 	xfile = sccsXfile(s, 'x');
 	if (s->mem_out) {
 		assert(!BKFILE_OUT(s)); /* for now */
@@ -2228,7 +2230,7 @@ sccs_startWrite(sccs *s)
 	} else {
 		// better be write locked if we are writing xfile
 		assert(wrlocked(s));
-		if ((fd = open(xfile, O_CREAT|O_TRUNC|O_WRONLY, 0444)) < 0) {
+		if ((fd = open(xfile, O_CREAT|O_TRUNC|O_WRONLY, 0666)) < 0) {
 			sfile = 0;
 			goto out;
 		}
@@ -2325,6 +2327,9 @@ sccs_finishWrite(sccs *s)
 			 * Fool it into not doing that.
 			 */
 			(void)unlink(s->sfile);
+		}
+		if (proj_hasOldSCCS(s->proj)) {
+			if (chmod(xfile, 0444)) perror(xfile);
 		}
 		if (rc = rename(xfile, s->sfile)) {
 			fprintf(stderr,
@@ -3105,56 +3110,62 @@ checktags(sccs *s, ser_t leaf, int flags)
 }
 
 int
-sccs_badTag(char *me, char *tag, int flags)
+sccs_badTag(char *tag, u32 flags)
 {
-	char	*p;
+	int	i;
 
-	if (isdigit(*tag)) {
+	if (isdigit(tag[0])) {
 		verbose((stderr,
-		    "%s: %s: tags can't start with a digit.\n", me, tag));
+		    "%s: %s: tags can't start with a digit.\n", prog, tag));
 		return (1);
 	}
-	switch (*tag) {
+	switch (tag[0]) {
 	    case '@':
 	    case '=':
 	    case '-':
 	    case '+':
 	    case '.':
-		verbose((stderr,
-		    "%s: %s: tags can't start with a '%c'.\n", me, tag, *tag));
+		verbose((stderr, "%s: %s: tags can't start with a '%c'.\n",
+			prog, tag, *tag));
 		return (1);
 	}
-	if (strstr(tag, "..")) {
-		verbose((stderr,
-		    "%s: tag %s cannot contain '..'\n", me, tag));
-		return (1);
-	}
-	if (strstr(tag, ".,")) {
-		verbose((stderr,
-		    "%s: tag %s cannot contain '.,'\n", me, tag));
-		return (1);
-	}
-	if (strstr(tag, ",.")) {
-		verbose((stderr,
-		    "%s: tag %s cannot contain ',.'\n", me, tag));
-		return (1);
-	}
-	if (strstr(tag, ",,")) {
-		verbose((stderr,
-		    "%s: tag %s cannot contain ',,'\n", me, tag));
-		return (1);
-	}
-	p = tag;
-	while (*p) {
-		switch (*p++) {
+	for (i = 0; tag[i]; i++) {
+		switch (tag[i]) {
 		    case '\001':
 		    case '|':
 		    case '\n':
 		    case '\r':
 			verbose((stderr,
 			    "%s: tag %s cannot contain \"^A,|\\n\\r\"\n",
-			    me, tag));
+			    prog, tag));
 			return (1);
+		    case '.': case ',':
+			if ((tag[i+1] == '.') || (tag[i+1] == ',')) {
+				verbose((stderr,
+					"%s: tag %s cannot contain '%.2s'\n",
+					prog, tag, tag+i));
+				return (1);
+			}
+			break;
+		}
+	}
+	if (flags & ADMIN_NEWTAG) {
+		/* restricted testing for new post-7.0 tags */
+		for (i = 0; tag[i]; i++) {
+			char	*invalid = "|?*\177~^:;/!\"'$%&\\()[]{}` ";
+
+			if (tag[i] < 040) {
+				verbose((stderr,
+					"%s: tag %s cannot contain '\\%03o'\n",
+					prog, tag, tag[i]));
+				return (1);
+			}
+			if (strchr(invalid, tag[i])) {
+				verbose((stderr,
+					"%s: tag %s cannot contain '%c'\n",
+					prog, tag, tag[i]));
+				return (1);
+			}
 		}
 	}
 	return (0);
@@ -3177,7 +3188,7 @@ checkTags(sccs *s, int flags)
 	EACHP_REVERSE(s->symlist, sym) {
 		unless (sym->symname) continue;
 		/* XXX - not really "check" all the time */
-		if (sccs_badTag("check", SYMNAME(s, sym), flags)) bad = 1;
+		if (sccs_badTag(SYMNAME(s, sym), flags)) bad = 1;
 	}
 	if (bad) return (128);
 
@@ -3369,7 +3380,7 @@ bin_mkgraph(sccs *s)
 	u32	heapsz, deltasz, symsz;
 	u32	off_h, off_d, off_s;
 	int	deltas;
-	int	line = 1, len;
+	int	len;
 	char	*perfile, *header;
 	ser_t	d;
 	int	didpage = 0, pageheap;
@@ -3384,7 +3395,7 @@ bin_mkgraph(sccs *s)
 	perfile = malloc(len);
 	fread(perfile, 1, len, s->fh);
 	f1 = fmem_buf(perfile, len);
-	unless (sccs_getperfile(s, f1, &line)) {
+	if (sccs_getperfile(s, f1, 0)) {
 		fprintf(stderr, "%s: failed to load %s\n", prog, s->sfile);
 		exit(1);
 	}
@@ -3864,7 +3875,7 @@ misc(sccs *s)
 			}
 			continue;
 		} else if (strneq(buf, "\001f e ", 5)) {
-			switch (atoi(&buf[5])) {
+			switch (atoi(&buf[5]) & ~E_BKMERGE) {
 			    case E_ASCII:
 			    case E_ASCII|E_GZIP:
 			    case E_UUENCODE:
@@ -4202,7 +4213,7 @@ private int
 loadRepoConfig(MDBM *DB, char *root)
 {
 	sccs	*s;
-	char	*tmpf;
+	FILE	*tmpf;
 	char	config[MAXPATH];
 
 	unless (root) return (-1);
@@ -4229,16 +4240,18 @@ loadRepoConfig(MDBM *DB, char *root)
 	concat_path(config, root, "BitKeeper/etc/SCCS/s.config");
 	if (s = sccs_init(config, SILENT|INIT_MUSTEXIST|INIT_WACKGRAPH)) {
 		int	ret = 0;
+		char	*t;
 
-		tmpf = bktmp(0);
-		if (sccs_get(s, 0, 0, 0, 0, SILENT|PRINT|GET_EXPAND, tmpf)) {
-			perror(tmpf);
+		tmpf = fmem();
+		if (sccs_get(s, 0, 0, 0, 0,
+		    SILENT|GET_EXPAND, 0, tmpf)) {
+			perror("fmem");
 			ret = 1;
 		} else {
-			config2mdbm(DB, tmpf);
+			rewind(tmpf);
+			while (t = fgetline(tmpf)) parseConfig(t, DB, 1);
 		}
-		unlink(tmpf);
-		free(tmpf);
+		fclose(tmpf);
 		sccs_free(s);
 		return (ret);
 	}
@@ -4546,7 +4559,7 @@ config_main(int ac, char **av)
 	/* repo config */
 	if (root = proj_root(0)) {
 		file = aprintf("%s/BitKeeper/etc/config", root);
-		unless (exists(file)) get(file, SILENT|GET_EXPAND, "-");
+		unless (exists(file)) get(file, SILENT|GET_EXPAND);
 		printconfig(file, 0, cfg);
 		free(file);
 	}
@@ -4554,7 +4567,7 @@ config_main(int ac, char **av)
 	/* product config */
 	if (proj_isComponent(0) && (root = proj_root(proj_product(0)))) {
 		file = aprintf("%s/BitKeeper/etc/config", root);
-		unless (exists(file)) get(file, SILENT|GET_EXPAND, "-");
+		unless (exists(file)) get(file, SILENT|GET_EXPAND);
 		printconfig(file, 0, cfg);
 		free(file);
 	}
@@ -4787,6 +4800,17 @@ sccs_init(char *name, u32 flags)
 			}
 			fixstime = 1;
 		}
+		/* =========== Magic Pfile logic block */
+		if (WRITABLE_REG(s)) {
+			s->state |= S_PFILE;	/* the magic condition */
+		} else if (flags & INIT_NOSTAT) {
+			/* flag set for physical pfile */
+			if (flags & INIT_HASpFILE) s->state |= S_PFILE;
+		} else {
+			/* test for 'P'hysical pfile */
+			if (xfile_exists(s->gfile, 'P')) s->state |= S_PFILE;
+		}
+		/* =========== End of Magic Pfile logic block */
 	} else if (CSET(s)) {
 		int	bad;
 		/* t still points at last slash in s->sfile */
@@ -4801,11 +4825,6 @@ sccs_init(char *name, u32 flags)
 "Please run 'bk support' to request assistance.\n");
 			goto err;
 		}
-	}
-	if (flags & INIT_NOSTAT) {
-		if (flags & INIT_HASpFILE) s->state |= S_PFILE;
-	} else {
-		if (xfile_exists(s->gfile, 'p')) s->state |= S_PFILE;
 	}
 	debug((stderr, "init(%s) -> %s, %s\n", s->gfile, s->sfile, s->gfile));
 	if (lstat_rc || sccs_open(s)) {
@@ -5058,48 +5077,6 @@ sccs_writeHere(sccs *s, char *new)
 }
 
 /*
- * a) If gfile exists and writable, insist p.file exist
- * b) If p.file exists, insist gfile writable or absent
- * Note 1: "delta -n" and "admin -i" violate  'a'
- * Note 2: "edit -g" may violate 'b'
- */
-private void
-chk_gmode(sccs *s)
-{
-	struct	stat sbuf;
-	int	pfileExists, gfileExists, gfileWritable;
-	char 	*gfile;
-
-	unless (getenv("_BK_GMODE_DEBUG")) return;
-	if (!s || !HASGRAPH(s)) return; /* skip new file */
-
-	gfile = sccs2name(s->sfile); /* Don't trust s->gfile, see bk admin -i */
-	gfileExists = !lstat(gfile, &sbuf);
-	gfileWritable = (gfileExists && (sbuf.st_mode & 0200));
-	if (S_ISLNK(sbuf.st_mode)) return; /* skip smylink */
-	pfileExists = xfile_exists(s->gfile, 'p');
-
-	if (gfileWritable) {
-		unless (pfileExists) {
-			fprintf(stderr,
-			    "ERROR: %s: writable gfile with no p.file\n",
-			    gfile);
-			assert("writable gfile with no p.file" == 0);
-		};
-	}
-
-	if (pfileExists) {
-		if (gfileExists && !gfileWritable) {
-			fprintf(stderr,
-			    "ERROR: %s: p.file with read only gfile\n",
-			    gfile);
-			assert("p.file with read only gfile" == 0);
-		}
-	}
-	free(gfile);
-}
-
-/*
  * Free up all resources associated with the file.
  * This is the last thing you do.
  */
@@ -5120,7 +5097,6 @@ sccs_free(sccs *s)
 		    prog, s->sfile);
 		sccs_abortWrite(s);
 	}
-	chk_gmode(s);
 
 	/*
 	 * If we modified the s.file and we're in checkout:edit|last
@@ -5646,9 +5622,9 @@ compressmap(sccs *s, ser_t d, u8 *set, char **inc, char **exc)
 		/* Set up parent ancestory for this node */
 		if ((slist[tser] & S_PAR) && PARENT(s, t)) {
 			slist[PARENT(s, t)] |= S_PAR;
-#ifdef MULTIPARENT
-			if (MERGE(s, t)) slist[MERGE(s, t)] |= S_PAR;
-#endif
+			if (BKMERGE(s) && MERGE(s, t)) {
+				slist[MERGE(s, t)] |= S_PAR;
+			}
 		}
 
 		/* if a parent and not excluded, or if included */
@@ -5710,10 +5686,10 @@ compressmap(sccs *s, ser_t d, u8 *set, char **inc, char **exc)
  * across calls.
  */
 private u8 *
-serialmap(sccs *s, ser_t d, char *iLst, char *xLst, int *errp)
+serialmap(sccs *s, ser_t d, ser_t m, char *iLst, char *xLst, int *errp)
 {
 	u8	*slist;
-	ser_t	t, start = d;
+	ser_t	t, start = max(d, m);
 	char	*p;
 	int	i, sign;
 	ser_t	tser;
@@ -5763,6 +5739,7 @@ serialmap(sccs *s, ser_t d, char *iLst, char *xLst, int *errp)
 
 	/* Seed the graph thread */
 	slist[d] |= S_PAR;
+	if (m) slist[m] |= S_PAR;
 
 	for (t = start; t > TREE(s); t--) {
 		if (TAG(s, t)) continue;
@@ -5771,9 +5748,9 @@ serialmap(sccs *s, ser_t d, char *iLst, char *xLst, int *errp)
 		/* Set up parent ancestory for this node */
 		if ((slist[tser] & S_PAR) && PARENT(s, t)) {
 			slist[PARENT(s, t)] |= S_PAR;
-#ifdef MULTIPARENT
-			if (MERGE(s, t)) slist[MERGE(s, t)] |= S_PAR;
-#endif
+			if (BKMERGE(s) && MERGE(s, t)) {
+				slist[MERGE(s, t)] |= S_PAR;
+			}
 		}
 
 		/* if an ancestor and not excluded, or if included */
@@ -5804,11 +5781,11 @@ sccs_graph(sccs *s, ser_t d, u8 *map, char **inc, char **exc)
 }
 
 u8 *
-sccs_set(sccs *s, ser_t d, char *iLst, char *xLst)
+sccs_set(sccs *s, ser_t d, ser_t m, char *iLst, char *xLst)
 {
 	int	junk = 0;
 
-	return (serialmap(s, d, iLst, xLst, &junk));
+	return (serialmap(s, d, m, iLst, xLst, &junk));
 }
 
 
@@ -6164,7 +6141,7 @@ openOutput(sccs *s, int encode, char *file, FILE **op)
 		mode = "wt";
 	}
 	if (toStdout) {
-		*op = stdout;
+		unless (*op) *op = stdout;
 	} else {
 		unless (*op = fopen(file, mode)) {
 			mkdirf(file);
@@ -6224,9 +6201,9 @@ err:		s->state |= S_WARNED;
 		/* Set up parent ancestory for this node */
 		if ((slist[tser] & S_PAR) && PARENT(s, t)) {
 			slist[PARENT(s, t)] |= S_PAR;
-#ifdef MULTIPARENT
-			if (MERGE(s, t)) slist[MERGE(s, t)] |= S_PAR;
-#endif
+			if (BKMERGE(s) && MERGE(s, t)) {
+				slist[MERGE(s, t)] |= S_PAR;
+			}
 		}
 
 		/* if a parent and not excluded, or if included */
@@ -6283,32 +6260,21 @@ write_pfile(sccs *s, int flags, ser_t d,
 	char	*tmp, *tmp2;
 	char	*path, *dir;
 
-	if (WRITABLE_REG(s) && HAS_PFILE(s) && (iLst || i2 || xLst)) {
-		/* going from plain edit to -i/-x -- need to clean first */
-		if (sccs_clean(s, CLEAN_SHUTUP|SILENT)) {
-			verbose((stderr,
-			    "Writable %s exists which cannot be cleaned, "
-			    "skipping it.\n", s->gfile));
-			s->state |= S_WARNED;
-			return (-1);
-		}
-	} else if ((WRITABLE_REG(s) ||
-		S_ISLNK(s->mode) && HAS_GFILE(s) && HAS_PFILE(s)) && 
-	    !(flags & GET_SKIPGET)) {
-		verbose((stderr,
-		    "Writable %s exists, skipping it.\n", s->gfile));
-		s->state |= S_WARNED;
-		return (-1);
-	} else if (HAS_PFILE(s) && (!HAS_GFILE(s) || !WRITABLE_REG(s))) {
-		/* bk edit foo; rm or chmod 444 foo => cleanup SCCS/p.foo */
-		if (sccs_clean(s, CLEAN_SHUTUP|(flags & SILENT))) {
-			s->state |= S_WARNED;
-			return (-1);
-		}
-	}
 	if (READ_ONLY(s)) {
 		fprintf(stderr, "get: read-only %s\n", s->gfile);
 		return (-1);
+	}
+	xfile_delete(s->sfile, 'p');
+	if (BITKEEPER(s) && (!(flags & GET_SKIPGET) || WRITABLE_REG(s)) &&
+	    HASGRAPH(s) && (d == sccs_top(s)) &&
+	    !i2 && !iLst && !xLst && !mRev &&
+	    S_ISREG(MODE(s, d)) && !HAS_KEYWORDS(s) &&
+	    features_test(s->proj, FEAT_PFILE)) {
+		/*
+		 * Unless we are writing something interesting we
+		 * don't need to write the pfile at all
+		 */
+		goto out;
 	}
 	tmp2 = time2date(time(0));
 	assert(sccs_getuser() != 0);
@@ -6336,18 +6302,18 @@ write_pfile(sccs *s, int flags, ser_t d,
 	tmp = malloc(len);
 	sprintf(tmp, "%s %s %s %s", REV(s, d), rev, sccs_getuser(), tmp2);
 	if (i2) {
-		strcat(tmp, " -i");
+		strcat(tmp, BKMERGE(s) ? " -I" : " -i");
 		strcat(tmp, i2);
 	} else if (iLst) {
-		strcat(tmp, " -i");
+		strcat(tmp, BKMERGE(s) ? " -I" : " -i");
 		strcat(tmp, iLst);
 	}
 	if (xLst) {
-		strcat(tmp, " -x");
+		strcat(tmp, BKMERGE(s) ? " -X" : " -x");
 		strcat(tmp, xLst);
 	}
 	if (mRev) {
-		strcat(tmp, " -m");
+		strcat(tmp, BKMERGE(s) ? " -M" : " -m");
 		strcat(tmp, mRev);
 	}
 	strcat(tmp, "\n");
@@ -6358,7 +6324,7 @@ write_pfile(sccs *s, int flags, ser_t d,
 	}
 	free(tmp);
 
-	if (s->proj) {
+out:	if (s->proj) {
 		path = proj_relpath(s->proj, s->sfile);
 		dir = dirname(dirname(path)); /* strip SCCS/s.file */
 		proj_dirstate(s->proj, dir, DS_EDITED, 1);
@@ -6389,15 +6355,15 @@ sccs_rewrite_pfile(sccs *s, pfile *pf)
 	sprintf(tmp, "%s %s %s %s",
 	    pf->oldrev, pf->newrev, user, date);
 	if (pf->iLst) {
-		strcat(tmp, " -i");
+		strcat(tmp, BKMERGE(s) ? " -I" : " -i");
 		strcat(tmp, pf->iLst);
 	}
 	if (pf->xLst) {
-		strcat(tmp, " -x");
+		strcat(tmp, BKMERGE(s) ? " -X" : " -x");
 		strcat(tmp, pf->xLst);
 	}
 	if (pf->mRev) {
-		strcat(tmp, " -m");
+		strcat(tmp, BKMERGE(s) ? " -M" : " -m");
 		strcat(tmp, pf->mRev);
 	}
 	strcat(tmp, "\n");
@@ -6427,7 +6393,7 @@ setupOutput(sccs *s, char *printOut, int flags, ser_t d)
 		f = printOut;
 	} else {
 		if (flags & GET_NOREGET) flags |= SILENT;
-		if (WRITABLE_REG(s) && writable(s->gfile)) {
+		if (WRITABLE_REG(s)) {
 			verbose((stderr, "Writable %s exists\n", s->gfile));
 			s->state |= S_WARNED;
 			return ((flags & GET_NOREGET) ? 0 : (char*)-1);
@@ -6477,7 +6443,8 @@ sccs_getCksumDelta(sccs *s, ser_t d)
 	ser_t	t;
 
 	for (t = d; t; t = PARENT(s, t)) {
-		if (HAS_CLUDES(s, t) || ADDED(s, t) || DELETED(s, t)) {
+		if (HAS_CLUDES(s, t) ||
+		    ADDED(s, t) || DELETED(s, t) || MERGE(s, t)) {
 			return (t);
 		}
 	}
@@ -6782,7 +6749,7 @@ whodisabled(sccs *s, ser_t tip, ser_t serial, u8 *slist)
 }
 
 private int
-get_reg(sccs *s, char *printOut, int flags, ser_t d,
+get_reg(sccs *s, char *printOut, FILE *out, int flags, ser_t d, ser_t m,
 		int *ln, char *iLst, char *xLst)
 {
 	u32	*state = 0;
@@ -6794,7 +6761,6 @@ get_reg(sccs *s, char *printOut, int flags, ser_t d,
 	int	whodel = 0;
 	unsigned int sum;
 	u32	same, added, deleted, other, *counter;
-	FILE 	*out = 0;
 	char	*buf, *name = 0, *gfile = 0;
 	MDBM	*DB = 0;
 	int	hash = 0;
@@ -6811,8 +6777,8 @@ get_reg(sccs *s, char *printOut, int flags, ser_t d,
 	u32	fastflags = (NEWCKSUM|GET_SUM|GET_SHUTUP|SILENT|PRINT);
 
 	assert(!BAM(s));
-	if (EOLN_WINDOWS(s)) eol = "\r\n";
-	slist = d ? serialmap(s, d, iLst, xLst, &error)
+	if ((d ? XFLAGS(s, d) : s->xflags) & X_EOLN_WINDOWS) eol = "\r\n";
+	slist = d ? serialmap(s, d, m, iLst, xLst, &error)
 		  : setmap(s, D_SET, 0);
 	if (error) {
 		assert(!slist);
@@ -6842,11 +6808,11 @@ get_reg(sccs *s, char *printOut, int flags, ser_t d,
 		s->state |= S_WARNED;
 		return 1;
 	}
-	if (s->whodel) blist = serialmap(s, s->whodel, 0, 0, &error);
+	if (s->whodel) blist = serialmap(s, s->whodel, 0, 0, 0, &error);
 	assert(!error);	/* errors are only for iLst and xLst */
 	if (flags & GET_SUM) {
 		flags |= NEWCKSUM;
-	} else if (d && BITKEEPER(s) && !iLst && !xLst) {
+	} else if (d && BITKEEPER(s) && !iLst && !xLst && !m) {
 		flags |= NEWCKSUM;
 	}
 	/* we're changing the meaning of the file, checksum would be invalid */
@@ -7244,7 +7210,7 @@ write:
 }
 
 private int
-get_bp(sccs *s, char *printOut, int flags, ser_t d,
+get_bp(sccs *s, char *printOut, FILE *out, int flags, ser_t d,
 		int *ln, char *iLst, char *xLst)
 {
 	char	*gfile = 0;
@@ -7263,8 +7229,7 @@ get_bp(sccs *s, char *printOut, int flags, ser_t d,
 	 * GET_SUM
 	 */
 #define	BAD	(GET_PREFIX|GET_ASCII|GET_ALIGN|\
-		GET_NOHASH|GET_HASHONLY|GET_DIFFS|GET_BKDIFFS|\
-		GET_SEQ)
+		GET_NOHASH|GET_HASHONLY|GET_DIFFS|GET_BKDIFFS)
 	if (flags & BAD) {
 		fprintf(stderr,
 		    "get: bad flags on get for %s: %x\n", s->gfile, flags);
@@ -7288,7 +7253,7 @@ get_bp(sccs *s, char *printOut, int flags, ser_t d,
 			/* technically there are no recorded modes for 1.0 */
 			touch(gfile, 0664);
 		}
-	} else if (error = bp_get(s, d, flags, gfile)) {
+	} else if (error = bp_get(s, d, flags, gfile, out)) {
 		unless (error == EAGAIN) return (1);
 		if (flags & GET_NOREMOTE) {
 			s->cachemiss = 1;
@@ -7296,7 +7261,7 @@ get_bp(sccs *s, char *printOut, int flags, ser_t d,
 		} else if (bp_fetch(s, d)) {
 			fprintf(stderr, "BAM: fetch failed for %s\n", s->gfile);
 			return (1);
-		} else if (error = bp_get(s, d, flags, gfile)) {
+		} else if (error = bp_get(s, d, flags, gfile, out)) {
 			fprintf(stderr,
 			    "BAM: get after fetch failed for %s\n", s->gfile);
 			return (1);
@@ -7323,7 +7288,7 @@ get_bp(sccs *s, char *printOut, int flags, ser_t d,
 }
 
 private int
-get_link(sccs *s, char *printOut, int flags, ser_t d, int *ln)
+get_link(sccs *s, char *printOut, FILE *out, int flags, ser_t d, int *ln)
 {
 	char *f = setupOutput(s, printOut, flags, d);
 	u8 *t;
@@ -7352,7 +7317,6 @@ get_link(sccs *s, char *printOut, int flags, ser_t d, int *ln)
 	}
 	if ((flags & PRINT) && !(flags & GET_PERMS)) {
 		int	ret;
-		FILE 	*out;
 
 		ret = openOutput(s, E_ASCII, f, &out);
 		assert(ret == 0);
@@ -7404,6 +7368,7 @@ get_link(sccs *s, char *printOut, int flags, ser_t d, int *ln)
 #endif
 			return 1;
 		}
+		check_gfile(s, 0);	/* fix GFILE, mode, and s->symlink */
 		*ln = 0;
 	}
 	return 0;
@@ -7411,20 +7376,70 @@ get_link(sccs *s, char *printOut, int flags, ser_t d, int *ln)
 
 /*
  * get the specified revision.
- * The output file is passed in so that callers can redirect it.
+ *
+ * rev, mRev, iLst & xLst which which 'rev' to fetch
  * iLst and xLst are malloced and get() frees them.
+ *
+ * flags passes options, GET_* defined in sccs.h
+ *
+ * Output is selected by printOut & out:
+ * printOut: s->gfile  out: 0
+ *    Write to the gfile
+ * printOUT: tmpfile   out: 0
+ *    Write to file
+ * printOut: 0    out: FILE*
+ *    Write to a data stream
+ * printOut: 0    out: 0
+ *    No data written, used for side-effects like GET_HASHONLY
  */
 int
-sccs_get(sccs *s, char *rev,
-	char *mRev, char *iLst, char *xLst, u32 flags, char *printOut)
+sccs_get(sccs *s, char *rev, char *mRev, char *iLst, char *xLst,
+    u32 flags, char *printOut, FILE *out)
 {
-	ser_t	d;
+	ser_t	d, m = 0;
 	int	lines = -1, locked = 0, error;
 	char	*i2 = 0;
 
+// flags where we won't be fetching a new gfile
+#define	NOGFILE	(PRINT | GET_SKIPGET | \
+		GET_HASHONLY | GET_DIFFS | GET_BKDIFFS)
+
 	T_SCCS("(%s, %s, %s, %s, %s, %x, %s)",
 	    s->sfile, notnull(rev), notnull(mRev),
-	    notnull(iLst), notnull(xLst), flags, printOut);
+	    notnull(iLst), notnull(xLst), flags, notnull(printOut));
+
+	if ((flags & GET_SKIPGET) && printOut) printOut = 0;
+	if (out) {
+		/*
+		 * if the user passes 'out' then only certain flags
+		 * make sense
+		 * PRINT allowed, but already assumed
+		 */
+		assert(!printOut);
+		assert(!(flags & (GET_DTIME|GET_PERMS|GET_SUM|
+			GET_EDIT|GET_SKIPGET)));
+		flags |= PRINT;
+		printOut = "-";	/* XXX: for now */
+	} else if (printOut) {
+		/* writing to filename */
+		if (printOut == s->gfile) {
+			assert(!(flags & NOGFILE));
+		} else {
+			/* PRINT is assumed when writing to a tmpfile */
+			flags |= PRINT;
+		}
+	} else {
+		/* writing nothing */
+
+		/* GET_SUM needs PRINT, nothing else does */
+		if (flags & GET_SUM) {
+			flags |= PRINT;
+		} else {
+			flags &= ~PRINT;
+		}
+		assert(flags & NOGFILE);
+		printOut = "-";	/* XXX: for now */
+	}
 	if (BITKEEPER(s) && !HAS_PATHNAME(s, TREE(s))) {
 		fprintf(stderr, "get: no pathname for %s\n", s->sfile);
 		return (-1);
@@ -7458,17 +7473,26 @@ err:		if (i2) free(i2);
 	if (mRev) {
 		char *tmp;
 
-		tmp = sccs_impliedList(s, "get", rev, mRev);
+		if (BKMERGE(s)) {
+			unless (m = sccs_findrev(s, mRev)) {
+				fprintf(stderr,
+				    "get: can't find merge revision "
+				    "%s in %s\n",
+				    notnull(mRev), s->sfile);
+				s->state |= S_WARNED;
+			}
+		} else if (tmp = sccs_impliedList(s, "get", rev, mRev)) {
 #ifdef  CRAZY_WOW
 		// XXX: why was this here?  Should revisions that are
 		// inline (get -e -R1.7 -M1.5 foo) be an error?
 		// Needed to take this out because valid merge set
 		// could be empty (see t.merge for example)
-		unless (tmp) goto err;
+			unless (tmp) goto err;
 #endif
-		/* XXX this is bogus if tmp==0 and iLst is set */
-		i2 = strconcat(tmp, iLst, ",");
-		if (tmp && i2 != tmp) free(tmp);
+			/* XXX this is bogus if tmp==0 and iLst is set */
+			i2 = strconcat(tmp, iLst, ",");
+			if (tmp && i2 != tmp) free(tmp);
+		}
 	}
 	if (rev && streq(rev, "+")) rev = 0;
 	if ((flags & (GET_EDIT|PRINT)) == GET_EDIT) {
@@ -7489,14 +7513,44 @@ err:		if (i2) free(i2);
 	}
 	unless (d) goto err;
 
-	if ((flags & (GET_EDIT|PRINT)) == GET_EDIT) {
+	if ((flags & ~GET_SKIPGET & (GET_EDIT|NOGFILE)) == GET_EDIT) {
+		if (WRITABLE_REG(s) && HAS_PFILE(s) && (iLst || i2 || xLst) &&
+		    !(flags & GET_SKIPGET)) {
+			/*
+			 * going from plain edit to -i/-x
+			 *  -- need to clean first
+			 */
+			if (sccs_clean(s, CLEAN_SHUTUP|SILENT)) {
+				verbose((stderr,
+					"Writable %s exists which cannot be "
+					"cleaned, skipping it.\n", s->gfile));
+				s->state |= S_WARNED;
+				goto err;
+			}
+		} else if ((WRITABLE_REG(s) ||
+			(S_ISLNK(s->mode) && HAS_GFILE(s) && HAS_PFILE(s))) &&
+		    !(flags & GET_SKIPGET)) {
+			verbose((stderr,
+			    "Writable %s exists, skipping it.\n", s->gfile));
+			s->state |= S_WARNED;
+			goto err;
+		} else if (HAS_PFILE(s) &&
+		    (!HAS_GFILE(s) || !WRITABLE_REG(s))) {
+			/*
+			 * bk edit foo
+			 * rm or chmod 444 foo
+			 * => cleanup SCCS/p.foo
+			 */
+			if (sccs_clean(s, CLEAN_SHUTUP|(flags & SILENT))) {
+				s->state |= S_WARNED;
+				goto err;
+			}
+		}
 		if (write_pfile(s, flags, d, rev, iLst, i2, xLst, mRev)) {
 			goto err;
 		}
 		locked = 1;
-	} 
-#define	NOGFILE	(PRINT | GET_SKIPGET | \
-		GET_HASHONLY | GET_DIFFS | GET_BKDIFFS)
+	}
 	else if (HAS_PFILE(s) && !HAS_GFILE(s) && !(flags & NOGFILE)) {
 		pfile	pf;
 		int	rc;
@@ -7553,14 +7607,16 @@ err:		if (i2) free(i2);
 	    case 0:		/* uninitialized mode, assume regular file */
 	    case S_IFREG:	/* regular file */
 		if (BAM(s)) {
-			error = get_bp(s, printOut, flags, d, &lines, 0, 0);
+			error = get_bp(s, printOut, out, flags,
+			    d, &lines, 0, 0);
 			break;
 		}
 		error =
-		    get_reg(s, printOut, flags, d, &lines, i2? i2 : iLst, xLst);
+		    get_reg(s, printOut, out, flags, d, m,
+		        &lines, i2? i2 : iLst, xLst);
 		break;
 	    case S_IFLNK:	/* symlink */
-		error = get_link(s, printOut, flags, d, &lines);
+		error = get_link(s, printOut, out, flags, d, &lines);
 		break;
 	    default:
 		fprintf(stderr, "get unsupported file type %d\n",
@@ -7574,6 +7630,8 @@ err:		if (i2) free(i2);
 	    default:
 		assert("bad error return in get" == 0);
 	}
+	unless (error || (flags & NOGFILE)) s->state |= S_GFILE;
+
 	/* Win32 restriction, must do this before we chmod to read only */
 	if (!S_ISLNK(MODE(s, d)) && (flags & GET_DTIME)) {
 		char	*fname = (flags&PRINT) ? printOut : s->gfile;
@@ -7581,6 +7639,7 @@ err:		if (i2) free(i2);
 		time_t	now;
 		struct	utimbuf ut;
 
+		assert(!out);
 		/*
 		 * If we are doing a regular SCCS/s.foo -> foo get then
 		 * we set the gfile time iff we can set the sfile time.
@@ -7617,12 +7676,16 @@ err:		if (i2) free(i2);
 			    "get_reg: cannot chmod %s\n", fname);
 			perror(fname);
 		}
+		s->mode = mode;
 	}
 	debug((stderr, "GET done\n"));
 
 skip_get:
 	if (!(flags&SILENT)) {
 		fprintf(stderr, "%s %s", s->gfile, REV(s, d));
+		if (m) {
+			fprintf(stderr, " mrg: %s", REV(s, m));
+		}
 		if (i2) {
 			fprintf(stderr, " inc: %s", i2);
 		} else if (iLst) {
@@ -7720,13 +7783,14 @@ prefix(sccs *s, ser_t d, int whodel, u32 flags, int lines, char *name,
  * cat the delta body formatted according to flags.
  */
 int
-sccs_cat(sccs *s, u32 flags, char *printOut)
+sccs_cat(sccs *s, u32 flags, FILE *out)
 {
 	int	lines = 0, error;
 
 	T_SCCS("file=%s flags=%x", s->gfile, flags);
+	assert(out);
 	debug((stderr, "annotate(%s, %x, %s)\n",
-	    s->sfile, flags, printOut));
+	    s->sfile, flags));
 	unless (s->cksumok) {
 		fprintf(stderr, "annotate: bad chksum on %s\n", s->sfile);
 err:		return (-1);
@@ -7747,7 +7811,7 @@ err:		return (-1);
 		s->state |= S_WARNED;
 		goto err;
 	}
-	error = get_reg(s, printOut, flags, 0, &lines, 0, 0);
+	error = get_reg(s, "-", out, flags|PRINT, 0, 0, &lines, 0, 0);
 	if (error) return (-1);
 
 	debug((stderr, "SCCSCAT done\n"));
@@ -7873,6 +7937,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	ser_t	serial;
 	int	ret = -1;
 
+	unless (printOut) printOut = "-";
 	unless (s->cksumok) {
 		fprintf(stderr, "getdiffs: bad chksum on %s\n", s->sfile);
 		s->state |= S_WARNED;
@@ -7905,7 +7970,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		s->state |= S_WARNED;
 		goto done2;
 	}
-	slist = serialmap(s, d, 0, 0, &error);
+	slist = serialmap(s, d, 0, 0, 0, &error);
 	sccs_rdweaveInit(s);
 	side = NEITHER;
 	nextside = NEITHER;
@@ -8333,7 +8398,7 @@ delta_table(sccs *s, int willfix)
 		if (BITKEEPER(s) && TAG(s, d) &&
 		    (!CSET(s) || !(FLAGS(s, d) & (D_SYMBOLS|D_SYMGRAPH)))) {
 			fprintf(stderr, "Illegal tag/removed deltas in %s\n"
-			    "Please write support@bitmover.com\n", s->gfile);
+			    "Please write support@bitkeeper.com\n", s->gfile);
 			exit (1);
 		}
 
@@ -8716,11 +8781,20 @@ bin_writeHeap(sccs *s, char ***save)
 
 	assert(save && (*save == 0));
 
+	/*
+	 * The INIT_CHKXOR condition below is because we can't allow
+	 * s->heapfh[2] to stay open if it will reread the entire heap
+	 * file on close if we are modifying the heapfile out from
+	 * underneath it.  This blocks more than just the problem
+	 * case.
+	 */
+
 	file = bin_heapfile(s, '2');
 	// heap goes in external file
 	if (s->heap_loadsz == s->heap.len) {
 		// nothing new, skip heap
 	} else if (s->heap_loadsz &&
+	    !(s->initFlags & INIT_CHKXOR) && /* not revalidating whole heap */
 	    !lstat(file, &sb) &&	 /* 2.ChagneSet exists */
 	    S_ISREG(sb.st_mode) &&	 /* is a normal file */
 	    (sb.st_mode & 0222) &&	 /* is writable */
@@ -8836,7 +8910,7 @@ bin_deltaTable(sccs *s)
 		    (!CSET(s) || !(i & (D_SYMBOLS|D_SYMGRAPH)))) {
 			fprintf(stderr,
 			    "Illegal tag/removed deltas in a binary sfile %s\n"
-			    "Please write support@bitmover.com\n", s->gfile);
+			    "Please write support@bitkeeper.com\n", s->gfile);
 			return (1);
 		}
 		FLAGS(s, d) &= 0x000FFFFF; /* only write some flags */
@@ -8988,6 +9062,7 @@ _hasDiffs(sccs *s, ser_t d, u32 flags, int inex, pfile *pf)
 	MDBM	*shash = 0;
 	ser_t	*state = 0;
 	u8	*slist = 0;
+	ser_t	m = 0;
 	int	print = 0, different;
 	char	sbuf[MAXLINE];
 	char	*name = 0, *mode = "rb";
@@ -9062,7 +9137,8 @@ _hasDiffs(sccs *s, ser_t d, u32 flags, int inex, pfile *pf)
 		verbose((stderr, "can't open %s\n", name));
 		RET(-1);
 	}
-	slist = serialmap(s, d, pf->iLst, pf->xLst, &error);
+	if (pf->mRev) m = sccs_findrev(s, pf->mRev);
+	slist = serialmap(s, d, m, pf->iLst, pf->xLst, &error);
 	assert(!error);
 	sccs_rdweaveInit(s);
 	while (fbuf = sccs_nextdata(s)) {
@@ -9252,13 +9328,6 @@ uuexpand_gfile(sccs *s, char *tmpfile)
 	return (0);
 }
 
-
-private int
-isRegularFile(mode_t m)
-{
-	return ((m == 0) || S_ISREG(m));
-}
-
 /*
  * Check mode/symlink changes
  * Changes in permission are ignored
@@ -9381,7 +9450,7 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	/*
 	 * set up the "new" file
 	 */
-	if (isRegularFile(s->mode)) {
+	if (S_ISREG(s->mode)) {
 		if (UUENCODE(s)) {
 			unless (bktmp(new)) return (-1);
 			if (uuexpand_gfile(s, new)) {
@@ -9405,12 +9474,12 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 		    s->sfile, pf->oldrev);
 		return (-1);
 	}
-	flags =  GET_ASCII|SILENT|PRINT;
+	flags =  GET_ASCII|SILENT;
 	if (expandKeyWord) flags |= GET_EXPAND;
-	if (isRegularFile(MODE(s, d)) && !BAM(s)) {
+	if ((!MODE(s, d) || S_ISREG(MODE(s, d))) && !BAM(s)) {
 		unless (bktmp(old)) return (-1);
 		if (sccs_get(s, pf->oldrev, pf->mRev, pf->iLst, pf->xLst,
-		    flags, old)) {
+		    flags, old, 0)) {
 			unlink(old);
 			return (-1);
 		}
@@ -9468,7 +9537,7 @@ diff_g(sccs *s, pfile *pf, char **tmpfile)
 	*tmpfile = DEVNULL_WR;
 	switch (diff_gmode(s, pf)) {
 	    case 0: 		/* no mode change */
-		if (!isRegularFile(s->mode)) return 1;
+		unless (HAS_GFILE(s) && S_ISREG(s->mode)) return (1);
 		*tmpfile  = bktmp(tmpname);
 		assert(*tmpfile);
 		return (diff_gfile(s, pf, 0, *tmpfile));
@@ -9550,10 +9619,11 @@ sccs_clean(sccs *s, u32 flags)
 		return (0);
 	}
 
-	unless (HAS_PFILE(s)) {
+	if (HAS_PFILE(s) && sccs_read_pfile(s, &pf)) return (1);
+	if (!HAS_PFILE(s) || (pf.magic && HAS_KEYWORDS(s))) {
 		pfile	dummy = { "+", "?", 0, 0, 0 };
 
-		if (isRegularFile(s->mode) && !WRITABLE(s)) {
+		if (HAS_GFILE(s) && S_ISREG(s->mode) && !WRITABLE(s)) {
 			verbose((stderr, "Clean %s\n", s->gfile));
 			unless (flags & CLEAN_CHECKONLY) unlinkGfile(s);
 			return (0);
@@ -9580,7 +9650,6 @@ sccs_clean(sccs *s, u32 flags)
 		return (1);
 	}
 
-	if (sccs_read_pfile(s, &pf)) return (1);
 	if (pf.mRev || pf.iLst || pf.xLst) {
 		unless (flags & CLEAN_SHUTUP) {
 			fprintf(stderr,
@@ -9795,7 +9864,7 @@ reget:		if (unlinkGfile(s)) return (1);
 	xfile_delete(s->gfile, 'p');
 	s->state &= ~S_PFILE;
 	if (getFlags) {
-		if (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-")) {
+		if (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, s->gfile, 0)) {
 			return (1);
 		}
 		s = sccs_restart(s);
@@ -9818,7 +9887,7 @@ _print_pfile(sccs *s)
 	char	buf[MAXPATH];
 
 	t = xfile_fetch(s->gfile, 'p');
-	chomp(t);
+	if (t) chomp(t);
 	sprintf(buf, "%s:", s->gfile);
 	printf("%-23s %s", buf, t ? t : "(can't read pfile)\n");
 	free(t);
@@ -10212,9 +10281,17 @@ toobig(sccs *s)
  * determine if the filename should be legal.
  */
 int
-bk_badFilename(char *name)
+bk_badFilename(project *proj, char *name)
 {
-	char	*base = basenm(name);
+	char	**path;
+	int	i, j;
+	char	*bad[] = {  /* these should not appear in path */
+		GCHANGESET,
+		".bk",
+		".", "..",
+		BKSKIP,
+		0
+	};
 
 	if (getenv("_BK_BADNAME")) return (0);
 	/*
@@ -10222,12 +10299,39 @@ bk_badFilename(char *name)
 	 * Some day we may allow caller to escape the BK_FS character
 	 */
 	if (strchr(name, BK_FS)) return (1);
+	if (streq(name, GCHANGESET)) return (0);
 
-	if (streq(base, BKSKIP)) return (1);
-	if (streq(base, GCHANGESET) && !streq(name, GCHANGESET)) return (1);
-	if (streq(base, ".bk")) return (1);
-	if (streq(base, ".") || streq(base, "..")) return (1);
+	/*
+	 *  If a path starts with BitKeeper/etc/, then there must be a
+	 *  cset file. Because the proj code will turn
+	 *  dir/BitKeeper/etc/file into thinking dir is a new
+	 *  repository and we will see BitKeeper/etc/file relative to
+	 *  that new repo.
+	 */
+	if (begins_with(name, BKROOT "/") &&
+	    !exists(proj_fullpath(proj, CHANGESET))) {
+		return (1);
+	}
 
+	path = splitLine(name, "/", 0);
+	EACH(path) {
+		for (j = 0; bad[j]; j++) {
+			if (streq(path[i], bad[j])) {
+				freeLines(path, free);
+				return (1);
+			}
+		}
+		/* Disallow BitKeeper/etc except at the very beginning.
+		 * This is resolve_conflicts and cset prune case which
+		 * isn't computing _relativeName().
+		 */
+		if ((i > 1) && (i < nLines(path)) &&
+		    streq(path[i], "BitKeeper") && streq(path[i+1], "etc")) {
+			freeLines(path, free);
+			return (1);
+		}
+	}
+	freeLines(path, free);
 	return (0);
 }
 
@@ -10270,7 +10374,7 @@ out:		sccs_abortWrite(s);
 			    s->gfile);
 			goto out;
 		}
-	} else if (isRegularFile(s->mode)) {
+	} else if (HAS_GFILE(s) && S_ISREG(s->mode)) {
 		openInput(s, flags, &gfile);
 		if (BAM(s) && bk_notLicensed(s->proj, LIC_BAM, 1)) goto out;
 		unless (gfile || BAM(s)) {
@@ -10300,7 +10404,7 @@ out:		sccs_abortWrite(s);
 	assert(t);
 	strcpy(buf, t);
 
-	if (bk_badFilename(buf)) {
+	if (bk_badFilename(s->proj, buf)) {
 		fprintf(stderr, "%s: illegal filename: %s\n", prog, buf);
 		goto out;
 	}
@@ -11402,7 +11506,10 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 			continue;
 		}
 		if (!rev || !*rev) rev = REV(sc, d);
-		if (sccs_badTag(me, sym, flags)) goto sym_err;
+		/* enable new tag testing and don't hide errors */
+		if (sccs_badTag(sym, (flags|ADMIN_NEWTAG) & ~SILENT)) {
+			goto sym_err;
+		}
 		if (dupSym(sc, sym, rev)) {
 			verbose((stderr,
 			    "%s: symbol %s exists on %s\n", me, sym, rev));
@@ -12445,7 +12552,7 @@ scompressGraph(sccs *s)
 }
 
 #define	MAXCMD	20
-struct weave {
+struct fweave {
 	sccs	*s;		// backpointer
 	char	*buf;		// current data line
 	ser_t	*wmap;		// weave map - renumber serials in weave
@@ -12463,7 +12570,7 @@ sccs_fastWeave(sccs *s, FILE *fastpatch)
 	u32	base = 0, index = 0, offset = 0;
 	loc	*lp;
 	ser_t	d, e;
-	weave	*w = 0;
+	fweave	*w = 0;
 	int	rc = 0;
 	ser_t	*weavemap = 0;
 	ser_t	*patchmap = 0;
@@ -12522,7 +12629,7 @@ sccs_fastWeave(sccs *s, FILE *fastpatch)
 		}
 	}
 
-	w = new(weave);
+	w = new(fweave);
 	w->s = s;
 	w->wmap = weavemap;
 
@@ -12563,12 +12670,13 @@ sccs_fastWeave(sccs *s, FILE *fastpatch)
 }
 
 private int
-doFast(weave *w, ser_t *patchmap, FILE *diffs)
+doFast(fweave *w, ser_t *patchmap, FILE *diffs)
 {
 	int	lineno, lcount = 0, serial, pmapsize;
 	int	gotK = 0;
 	int	inpatch = 0;
 	int	ignore = 0;
+	size_t	len;
 	char	*p, *b;
 	char	type;
 	ser_t	d;
@@ -12581,7 +12689,9 @@ doFast(weave *w, ser_t *patchmap, FILE *diffs)
 	assert(patchmap);	/* if diffs, then there's a map */
 	pmapsize = nLines(patchmap);
 
-	while (b = fgetline(diffs)) {
+	while (b = fgetln(diffs, &len)) {
+		if (len && (b[len-1] == '\n')) --len;
+		b[len] = 0;
 		p = &b[1];
 		if (*b == 'F') continue;
 		if (*b == 'K') {
@@ -12649,9 +12759,10 @@ done:
 	if (weaveMove(w, -1, 0, 0)) goto err;
 	if (gotK && ((w->sum != sum) || (lcount != w->line))) {
 		fprintf(stderr,
-		    "computed sum %u and patch sum %u\n", w->sum, sum);
+		    "%s:\n\tcomputed sum %u and patch sum %u\n",
+		    w->s->gfile, w->sum, sum);
 		fprintf(stderr,
-		    "computed linecount %u and patch linecount %u\n",
+		    "\tcomputed linecount %u and patch linecount %u\n",
 		    w->line, lcount);
 		goto err;
 	}
@@ -12668,7 +12779,7 @@ err:
  * patchserial	current serial being processed
  */
 private int
-weaveMove(weave *w, int line, int before, ser_t patchserial)
+weaveMove(fweave *w, int line, int before, ser_t patchserial)
 {
 	sccs	*s = w->s;
 	int	finish = (line < 0);
@@ -12937,6 +13048,7 @@ delta_write(sccs *s, ser_t n, FILE *diffs, int *ap, int *dp, int *up)
 	int	last;
 	int	lastdel;
 	int	fixdel = 0;
+	size_t	len;
 	char	*addthis;
 	char	**savenext;
 	int	added, deleted, unchanged;
@@ -12980,7 +13092,7 @@ again:
 	 */
 	sccs_rdweaveInit(s);
 	out = sccs_wrweaveInit(s);
-	slist = serialmap(s, n, 0, 0, 0);	/* XXX - -gLIST */
+	slist = serialmap(s, n, 0, 0, 0, 0);	/* XXX - -gLIST */
 	s->dsum = 0;
 	while (b = fgetline(diffs)) {
 		int	where;
@@ -13072,7 +13184,14 @@ newcmd:
 			ctrl("\001I ", n, "");
 			while (howmany--) {
 				/* XXX: not break but error */
-				unless (b = fgetline(diffs)) break;
+				if (what == 'i') {
+					unless (b = fgetline(diffs)) break;
+				} else {
+					/* bk patch could have \r\n */
+					unless (b = fgetln(diffs, &len)) break;
+					if (len && (b[len-1] == '\n')) --len;
+					b[len] = 0;
+				}
 				if (what != 'i' && b[0] == '\\') {
 					fix_cntl_a(s, &b[1]);
 					s->dsum += str_cksum(&b[1]);
@@ -13135,87 +13254,6 @@ newcmd:
 	return (0);
 }
 
-/*
- * Dump a cset weave file out: format is from cset_mkList() ...
- * <serial> tab <rootkey> space <deltakey>
- *
- * Note: Damages the data; don't expect valid data after this call.
- */
-int
-sccs_csetWrite(sccs *s, char **cweave)
-{
-	int	i, ret = -1;
-	char	*keys, *dkey;
-	char	**keylist = 0;
-	ser_t	d;
-	FILE	*out = 0;
-	char	*ser, *oldser = 0;
-
-	T_SCCS("file=%s", s->gfile);
-	if (READ_ONLY(s)) {
-		fprintf(stderr, "%s: read-only %s\n", prog, s->gfile);
-		return (-1);
-	}
-	unless (sccs_startWrite(s)) goto err;
-
-	if (BWEAVE_OUT(s)) {
-		// yeah we duplicate all the weave data
-		for (d = 1; d <= TABLE(s); d++) WEAVE_SET(s, d, 0);
-		EACH(cweave) {
-			/* skip deleted entries */
-			unless (cweave[i][0]) continue;
-			ser = cweave[i];
-			keys = strchr(ser, '\t');
-			*keys++ = 0;
-			unless (oldser && streq(ser, oldser)) {
-				if (oldser) {
-					weave_set(s, atoi(oldser), keylist);
-					truncLines(keylist, 0);
-				}
-				oldser = ser;
-			}
-			dkey = separator(keys);
-			*dkey++ = 0;	// XXX: damages weave; don't use again
-			keylist = addLine(keylist, keys);
-			keylist = addLine(keylist, dkey);
-		}
-		if (oldser) {
-			weave_set(s, atoi(oldser), keylist);
-		}
-		freeLines(keylist, 0);
-	}
-
-	if (delta_table(s, 0)) goto err;
-
-	if (BWEAVE_OUT(s)) goto skip_weave;
-	out = sccs_wrweaveInit(s);
-	EACH(cweave) {
-		unless (cweave[i][0]) continue;	/* skip deleted entries */
-		ser = cweave[i];
-		keys = strchr(ser, '\t');
-		*keys++ = 0;
-		unless (oldser && streq(ser, oldser)) {
-			if (oldser) fprintf(out, "\001E %s\n", oldser);
-			oldser = ser;
-			fprintf(out, "\001I %s\n", ser);
-		}
-		fputs(keys, out);
-		fputc('\n', out);
-	}
-	if (oldser) fprintf(out, "\001E %s\n", oldser);
-	fputs("\001I 1\n", out);
-	fputs("\001E 1\n", out);
-	sccs_wrweaveDone(s);
-	out = 0;
-skip_weave:
-	if (sccs_finishWrite(s)) goto err;
-	ret = 0;
-err:
-	if (ret) sccs_abortWrite(s);
-
-	return (ret);
-}
-
 int
 sccs_hashcount(sccs *s)
 {
@@ -13223,7 +13261,7 @@ sccs_hashcount(sccs *s)
 	kvpair	kv;
 
 	unless (HASH(s)) return (0);
-	if (sccs_get(s, "+", 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
+	if (sccs_get(s, "+", 0, 0, 0, SILENT|GET_HASHONLY, 0, 0)) {
 		sccs_whynot("get", s);
 		return (0);
 	}
@@ -13613,7 +13651,18 @@ sccs_read_pfile(sccs *s, pfile *pf)
 	char	date[10], time[10], user[40];
 
 	bzero(pf, sizeof(*pf));
-	unless (pfile = xfile_fetch(s->gfile, 'p')) {
+	/* 'P' only read 'P'hysical pfile */
+	unless (pfile = xfile_fetch(s->gfile, 'P')) {
+		if ((errno == ENOENT) && HASGRAPH(s) && WRITABLE_REG(s)) {
+			char	*rev = 0;
+			ser_t	d = sccs_getedit(s, &rev);
+
+			/* magic pfile */
+			pf->oldrev = strdup(REV(s, d));
+			pf->newrev = strdup(rev);
+			pf->magic = 1;
+			return (0);
+		}
 		fprintf(stderr, "Empty p.file %s - aborted.\n", s->sfile);
 		return (-1);
 	}
@@ -13626,7 +13675,24 @@ sccs_read_pfile(sccs *s, pfile *pf)
 	    &c3, mRev);
 	pf->oldrev = strdup(oldrev);
 	pf->newrev = strdup(newrev);
+	pf->formatErr = 0;
+	if (e >= 7) {
+		int	bkmerge = 0;
 
+		if (isupper(c1)) {
+			bkmerge = 1;
+			c1 = tolower(c1);
+			if (e >= 9) c2 = tolower(c2);
+			if (e >= 11) c3 = tolower(c3);
+		}
+		if (bkmerge != BKMERGE(s)) {
+			pf->formatErr = 1;
+			fprintf(stderr,
+			    "Wrong p.file format in %s (want %s)\n",
+			    s->gfile, BKMERGE(s) ? "bk" : "sccs");
+			goto err;
+		}
+	}
 	/*
 	 * mRev always means there is at least an include -
 	 * we already expolded it in get and wrote it out.
@@ -13679,10 +13745,11 @@ sccs_read_pfile(sccs *s, pfile *pf)
 		assert(c3 == 'm');
 		break;
 	    default:
-		free(iLst);
-		free(xLst);
 		fprintf(stderr,
 		    "%s: can't read pfile for %s\n", prog, s->gfile);
+err:		free(iLst);
+		free(xLst);
+		free(mRev);
 		return (-1);
 	}
 	pf->iLst = iLst;
@@ -13902,7 +13969,8 @@ out:
 		OUT;
 	}
 
-	unless (HAS_PFILE(s)) {
+	unless (HAS_PFILE(s) &&
+	    (!HAS_KEYWORDS(s) || xfile_exists(s->sfile, 'P'))) {
 		if (WRITABLE(s)) {
 			fprintf(stderr,
 			    "delta: %s writable but not checked out?\n",
@@ -14219,7 +14287,8 @@ end(sccs *s, ser_t n, int flags, int add, int del, int same)
 			 * but we can't do that because we use the inc/ex
 			 * in sccs_getCksumDelta().
 			 */
-			if (add || del || HAS_CLUDES(s, n) || S_ISLNK(MODE(s, n))) {
+			if (add || del || HAS_CLUDES(s, n) ||
+			    MERGE(s, n) || S_ISLNK(MODE(s, n))) {
 				SUM_SET(s, n, s->dsum);
 			} else {
 				SUM_SET(s, n, almostUnique());
@@ -14472,7 +14541,7 @@ getHistoricPath(sccs *s, char *rev)
 	ser_t	d;
 	char	*p, *ret;
 
-	d = sccs_findrev(s, rev);
+	d = findrev(s, rev);
 	if (d && HAS_PATHNAME(s, d)) {
 		/*
 		 * bk changes sets s->comppath which will cause :DPN:
@@ -14522,7 +14591,7 @@ mkDiffTarget(sccs *s,
 			char	buf[MAXPATH];
 			FILE	*f;
 			int	len;
-			
+
 			len = readlink(s->gfile, buf, sizeof(buf));
 			if (len <= 0) return (-1);
 			buf[len] = 0; /* stupid readlink... */
@@ -14535,7 +14604,7 @@ mkDiffTarget(sccs *s,
 			strcpy(target, s->gfile);
 		}
 	} else if (sccs_get(s, rev, revM, pf ? pf->iLst : 0,
-		    pf ? pf->xLst : 0, flags|SILENT|PRINT|GET_DTIME, target)) {
+	    pf ? pf->xLst : 0, flags|SILENT|GET_DTIME, target, 0)) {
 		return (-1);
 	}
 	return (0);
@@ -15130,6 +15199,15 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		return (strVal);
 	}
 
+	case KW_CHASH: /* CHASH */ {
+		/* comments hash */
+		unless (t = COMMENTS(s, d)) return (nullVal);
+		p = hashstr(t, strlen(t));
+		fs(p);
+		free(p);
+		return (strVal);
+	}
+
 	case KW_HTML_C: /* HTML_C */ {
 		char	html_ch[20];
 		unsigned char *p;
@@ -15315,7 +15393,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	case KW_GB: /* GB */ {
 		/* Gotten body */
 		sccs_restart(s);
-		sccs_get(s, REV(s, d), 0, 0, 0, GET_EXPAND|SILENT|PRINT, "-");
+		sccs_get(s, REV(s, d), 0, 0, 0, GET_EXPAND|SILENT, 0, out);
 		return (strVal);
 	}
 
@@ -15528,6 +15606,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		    E_BK, "BK",
 		    E_BWEAVE2, "BWEAVEv2",
 		    E_BWEAVE3, "bweave",
+		    E_BKMERGE, "bkmerge",
 		    0, 0);
 
 		if (!enc || (enc == E_GZIP)) {
@@ -16609,7 +16688,10 @@ sccs_perfile(sccs *s, FILE *out, int patch)
 		enc = sccs_encoding(s, 0, 0);
 	}
 	enc &= ~E_ALWAYS;
-	if (patch) enc &= ~(E_BK|E_BWEAVE2|E_BWEAVE3);
+	if (patch) {
+		enc &= ~(E_FILEFORMAT);
+		enc |= s->encoding_in & E_BKMERGE;
+	}
 	if (enc) fprintf(out, "f e %d\n", enc);
 	if (!patch && s->rkeyHead && (enc & (E_BWEAVE2|E_BWEAVE3))) {
 		fprintf(out, "f w %u\n", s->rkeyHead);
@@ -16622,62 +16704,63 @@ sccs_perfile(sccs *s, FILE *out, int patch)
 #define	FLAG(c)	((buf[0] == 'f') && (buf[1] == ' ') &&\
 		(buf[2] == c) && (buf[3] == ' '))
 
-sccs	*
-sccs_getperfile(sccs *s_in, FILE *in, int *lp)
+/*
+ * Load 'perfile' data into sccs*
+ * return -1 on failure
+ */
+int
+sccs_getperfile(sccs *s, FILE *in, int *linep)
 {
-	sccs	*s;
 	int	unused = 1;
+	int	line = 0;
 	char	*buf;
 
-	s = s_in ? s_in : new(sccs);
-	unless (buf = fgetline(in)) goto err;
-	unless (buf[0]) {
-		unless (s_in) free(s);
-		return (0);
+	unless (buf = fgetline(in)) {
+err:		fprintf(stderr,
+			"takepatch: file format error near line %d\n", line);
+		if (linep) *linep += line;
+		return (-1);
 	}
-	(*lp)++;
+	line++;
 	if (FLAG('d')) {
 		unused = 0;
 		s->defbranch = strdup(&buf[4]);
-		unless (buf = fgetline(in)) {
-err:			fprintf(stderr,
-			    "takepatch: file format error near line %d\n", *lp);
-			unless (s_in) free(s);
-			return (0);
-		}
-		(*lp)++;
+		unless (buf = fgetline(in)) goto err;
+		line++;
 	}
 	if (FLAG('e')) {
 		unused = 0;
 		s->encoding_in |= atoi(&buf[4]) | E_ALWAYS;
-		unless (buf = fgetline(in)) goto err; (*lp)++;
+		unless (buf = fgetline(in)) goto err;
+		line++;
 	}
 	if (FLAG('x')) {
 		/* Ignored */
-		unless (buf = fgetline(in)) goto err; (*lp)++;
+		unless (buf = fgetline(in)) goto err;
+		line++;
 	}
 	if (FLAG('w')) {
 		s->rkeyHead = atoi(&buf[4]);
-		unless (buf = fgetline(in)) goto err; (*lp)++;
+		unless (buf = fgetline(in)) goto err;
+		line++;
 	}
 	while (strneq(buf, "T ", 2)) {
 		unused = 0;
 		s->text = addLine(s->text, strdup(&buf[2]));
-		unless (buf = fgetline(in)) goto err; (*lp)++;
+		unless (buf = fgetline(in)) goto err;
+		line++;
 	}
 	if (strneq(buf, "V ", 2)) {
 		unused = 0;
 		s->version = atoi(&buf[2]);
-		unless (buf = fgetline(in)) goto err; (*lp)++;
+		unless (buf = fgetline(in)) goto err;
+		line++;
 	}
 	unless (s->version) s->version = SCCS_VERSION;
 	if (buf[0]) goto err;		/* should be empty */
-
-	if (unused) {
-		unless (s_in) free(s);
-		return (0);
-	}
-	return (s);
+	if (linep) *linep += line;
+	if (unused) return (-1);
+	return (0);
 }
 
 private int
@@ -17028,6 +17111,36 @@ sccs_findtips(sccs *s, ser_t *a, ser_t *b)
 }
 
 /*
+ * Use resolve's automerge to see if we can merge the files as
+ * part of takepatch.
+ */
+private	int
+tryMerge(sccs *s, ser_t local, ser_t remote)
+{
+	ser_t	tmp;
+	char	*file;
+
+	if (CSET(s) || BINARY(s) || NOMERGE(s) || getenv("_BK_NOMERGE")) {
+		return (1);
+	}
+	unless (streq(PATHNAME(s, local), PATHNAME(s, remote))) return (1);
+	unless (XFLAGS(s, local) == XFLAGS(s, remote)) return (1);
+	unless (MODE(s, local) == MODE(s, remote)) return (1);
+
+	file = strneq(s->gfile, "RESYNC/", 7) ? s->gfile + 7 : s->gfile;
+	if (isConvergeFile(file)) return (1);
+
+	unless (FLAGS(s, remote) & D_REMOTE) {
+		tmp = remote;
+		remote = local;
+		local = tmp;
+	}
+	unless (FLAGS(s, remote) & D_REMOTE) return (1);
+
+	return (resolve_automerge(s, local, remote));
+}
+
+/*
  * Create resolve file.
  * The order of the deltas in the file is important - the "branch"
  * should be last.
@@ -17035,7 +17148,7 @@ sccs_findtips(sccs *s, ser_t *a, ser_t *b)
  * XXX - this is also where we would handle pathnames, symbols, etc.
  */
 int
-sccs_resolveFiles(sccs *s)
+sccs_resolveFiles(sccs *s, int merge)
 {
 	ser_t	p, g = 0, a = 0, b = 0;
 	char	*n[3];
@@ -17078,6 +17191,7 @@ err:
 			    "request assistance.\n");
 			goto err;
 		}
+		if (merge && tryMerge(s, a, b) == 0) return (1);
 		retcode = 1;
 	}
 
@@ -17708,7 +17822,7 @@ recache:		first = 0;
 		}
 		t = name2sccs(file);
 		if (first && exists(t)) {
-			get(t, SILENT, "-");
+			get(t, SILENT);
 			free(t);
 			first = 0;
 			goto again;
@@ -18310,6 +18424,7 @@ timeMatch(project *proj, char *gfile, char *sfile, hash *timestamps)
 
 	assert(proj);
 	relpath = proj_relpath(proj, gfile);
+	assert(relpath);
 	ts = (tsrec *)hash_fetchStr(timestamps, relpath);
 	free(relpath);
 	unless (ts) goto out;			/* no entry for file */

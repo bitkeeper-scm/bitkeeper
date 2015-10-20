@@ -419,10 +419,11 @@ fgzip_main(int ac, char **av)
 	int	chksums = 0;
 	int	gzip = 0;
 	int	fsize = 0;
+	int	chkxors = 0;
 	char	*mode;
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "a|cdSs;z", 0)) != -1) {
+	while ((c = getopt(ac, av, "a|cdSs;xz", 0)) != -1) {
 		switch (c) {
 		    case 'a':
 			append = 1;
@@ -439,6 +440,9 @@ fgzip_main(int ac, char **av)
 			break;
 		    case 's':
 			est_size = atoi(optarg);
+			break;
+		    case 'x':
+			chkxors = 1;
 			break;
 		    case 'z':
 			gzip = 1;
@@ -460,7 +464,11 @@ fgzip_main(int ac, char **av)
 			f = stdin;
 			fname(f, "stdin");
 		}
-		if (chksums) fpush(&f, fopen_crc(f, "r", 0, 0));
+		if (chksums) {
+			fpush(&f, fopen_crc(f, "r", 0, chkxors));
+		} else {
+			if (chkxors) usage();
+		}
 		if (gzip) fpush(&f, fopen_vzip(f, "r"));
 		if (fsize) {
 			c = fseek(f, 0, SEEK_END);
@@ -476,7 +484,7 @@ fgzip_main(int ac, char **av)
 			fwrite(buf, 1, c, stdout);
 		}
 	} else {
-		if (fsize) usage();
+		if (fsize || chkxors) usage();
 		mode = "w";
 		if (append) mode = "r+";
 		if (av[optind]) {

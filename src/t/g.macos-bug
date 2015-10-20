@@ -1,3 +1,10 @@
+echo $N Determining whether to run this test.........................$NL
+test `uname -s` = Darwin || {
+	echo skipped
+	exit 0
+}
+echo OK
+
 echo $N Check for OS X menu bug causing Tk crash, one menu item......$NL
 cat >test.tcl <<'EOF'
 package require Tk

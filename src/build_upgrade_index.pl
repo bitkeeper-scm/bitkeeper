@@ -52,16 +52,10 @@ foreach $file (@ARGV) {
     die "Can't include $base, all images must be from $version\n"
 	unless $platform;
     
-    if ($seen{$platform}) {
-	die "Only 1 installer for each platform: $base\n";
-    }
-    $seen{$platform} = 1;
-
     print I join(",", $base, $md5sum, $version, $utc, $platform, "bk");
     print I "\n";
 
     foreach (@{$aliasmap{$platform}}) {
-    	$seen{$_} = 1;
         print I join(",", $base, $md5sum, $version, $utc, $_, "bk");
         print I "\n";
     }

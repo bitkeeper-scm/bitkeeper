@@ -35,7 +35,22 @@ bk commit -S -d $Q -y'added foo' 2>OUT && fail -f OUT
 # to fix HERE file or else populate will not work
 mv BitKeeper/log/HERE-sav BitKeeper/log/HERE
 bk populate $Q gdb 2>OUT || fail -f OUT
+HOWMANY=`bk repocheck -S 2>&1 | perl -ne '$x++; sub END {print "$x\n"}'`
+test "$HOWMANY" -eq 1 || fail Expected 1, got "$HOWMANY" components
 bk repocheck >OUT 2>&1 || fail -f OUT
+echo OK
+
+echo $N Check a component without a product fails a check ...........$NL
+cd "$HERE"
+cp -r prod/gcc gcc-comp-no-prod
+# hack to cut out all the bad format messages
+cp prod/BitKeeper/log/features gcc-comp-no-prod/BitKeeper/log/features
+cd gcc-comp-no-prod
+bk -r check 2>GOT && fail -f GOT expected to fail
+echo "Component gcc not inside a product" > WANT
+cmpfiles WANT GOT
+bk -r check 2>GOT && fail -f GOT expected to fail
+cmpfiles WANT GOT
 echo OK
 
 echo $N Manually populate component and try commit ..................$NL

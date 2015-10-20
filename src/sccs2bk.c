@@ -161,8 +161,8 @@ regen(sccs *s, int verbose, char *key)
 	ser_t	*table = malloc((TABLE(s) + 1) * sizeof(ser_t*));
 	int	n = 0;
 	int	i;
-	int	src_flags = PRINT|GET_FORCE|SILENT;
-	int	dest_flags = PRINT|SILENT;
+	int	src_flags = GET_FORCE|SILENT;
+	int	dest_flags = SILENT;
 	char	*sfile = s->sfile;
 	char	*gfile = s->gfile;
 	char	*tmp;
@@ -196,6 +196,8 @@ regen(sccs *s, int verbose, char *key)
 		sys("bk", "-?BK_NO_REPO_LOCK=YES", "delta",
 		    "-fq", "-RiISCCS/.init", gfile, SYS);
 	}
+	/* read_pfile needs to be match format with sfile */
+	if (features_bits(0) & FEAT_BKMERGE) s->encoding_in |= E_BKMERGE;
 	for (i = 0; i < n; ++i) {
 		d = table[i];
 		mkinit(s, d, 0, 0);
@@ -246,7 +248,7 @@ regen(sccs *s, int verbose, char *key)
 		 * Note: if change options here, then change in loop below
 		 */
 		a1 = aprintf("=%d", d);
-		if (sccs_get(sget, a1, 0, 0, 0, src_flags, gfile)) {
+		if (sccs_get(sget, a1, 0, 0, 0, src_flags, gfile, 0)) {
 			fprintf(stderr, "FAIL: get -kPr%s %s\n",
 			    a1, gfile);
 			exit (1);
@@ -275,7 +277,7 @@ regen(sccs *s, int verbose, char *key)
 		a1 = aprintf("%s", rev(revs, s, d));
 		a2 = bktmp(0);
 		assert(a2 && a2[0]);
-		if (sccs_get(s2, a1, 0, 0, 0, dest_flags, a2)) {
+		if (sccs_get(s2, a1, 0, 0, 0, dest_flags, a2, 0)) {
 			fprintf(stderr, "FAIL: get -kpr%s %s\n", a1, gfile);
 			exit (1);
 		}
@@ -284,7 +286,7 @@ regen(sccs *s, int verbose, char *key)
 		a1 = aprintf("=%d", d);
 		a3 = bktmp(0);
 		assert(a3 && a3[0]);
-		if (sccs_get(sget, a1, 0, 0, 0, src_flags, a3)) {
+		if (sccs_get(sget, a1, 0, 0, 0, src_flags, a3, 0)) {
 			fprintf(stderr, "FAIL: get -kPr%s %s\n", a1, gfile);
 			exit (1);
 		}

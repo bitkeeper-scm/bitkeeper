@@ -290,6 +290,35 @@ out:
 }
 
 /*
+ * List the rset output for a cset range left1,left2..right
+ * For compactness, keep things in heap offset form.
+ */
+rset_df *
+rset_diff(sccs *cset, ser_t left1, ser_t left2, ser_t right, int showgone)
+{
+	Opts	opts = {0};
+	rset	*data = 0;
+	rfile	*file;
+	rset_df	*diff = 0, *d;
+
+	opts.show_gone = showgone;
+	data = weaveExtract(cset, left1, left2, right, &opts);
+	assert(data);
+
+	EACH_HASH(data->keys) {
+		file = (rfile *)data->keys->vptr;
+		d = addArray(&diff, 0);
+		d->rkoff = file->rkoff;
+		d->dkleft1 = file->left1;
+		d->dkleft2 = file->left2;
+		d->dkright = file->right;
+	}
+
+	freeRset(data);
+	return (diff);
+}
+
+/*
  * Get checksum of cset d relative to cset base (or root if no base)
  */
 u32
@@ -397,7 +426,10 @@ isIdenticalData(sccs *cset, char *file, u32 start, u32 start2, u32 end)
 {
 	sccs	*s;
 	ser_t	d1, d2;
-	char	*file_1 = 0, *file_2 = 0, *sfile;
+	FILE	*file_1 = 0, *file_2 = 0;
+	char	*f1d, *f2d;
+	size_t	f1s, f2s;
+	char	*sfile;
 	int	same = 0;
 
 	sfile = name2sccs(file);
@@ -419,26 +451,22 @@ isIdenticalData(sccs *cset, char *file, u32 start, u32 start2, u32 end)
 		/* .. or if we know they will be different */
 		if (SUM(s, d1) != SUM(s, d2)) goto out;
 	}
-	file_1 = bktmp(0);
+	file_1 = fmem();
 	if (sccs_get(s, HEAP(cset, start), HEAP(cset, start2),
-	    0, 0, SILENT|PRINT, file_1)) {
+	    0, 0, SILENT, 0, file_1)) {
 		goto out;
 	}
-	file_2 = bktmp(0);
-	if (sccs_get(s, HEAP(cset, end), 0, 0, 0, SILENT|PRINT, file_2)) {
+	file_2 = fmem();
+	if (sccs_get(s, HEAP(cset, end), 0, 0, 0, SILENT, 0, file_2)) {
 		goto out;
 	}
-	same = sameFiles(file_1, file_2);
+	f1d = fmem_peek(file_1, &f1s);
+	f2d = fmem_peek(file_2, &f2s);
+	same = ((f1s == f2s) && !memcmp(f1d, f2d, f1s));
 out:
 	sccs_free(s);
-	if (file_1) {
-		unlink(file_1);
-		free(file_1);
-	}
-	if (file_2) {
-		unlink(file_2);
-		free(file_2);
-	}
+	if (file_1) fclose(file_1);
+	if (file_2) fclose(file_2);
 	return (same);
 }
 
@@ -455,7 +483,7 @@ process(Opts *opts, rset *data, rfile *file)
 	char	*path0 = 0, *path1 = 0, *path1_2 = 0, *path2 = 0;
 	u32	start, start2, end;
 	char	*comppath, *comppath2;
-	char	*p, *here, *t;
+	char	*here, *t;
 	int	i;
 	u32	rkoff = file->rkoff;
 	char	smd5[MD5LEN], smd5_2[MD5LEN], emd5[MD5LEN];
@@ -526,11 +554,7 @@ process(Opts *opts, rset *data, rfile *file)
 	}
 	path2 = key2path(HEAP(opts->s, end), 0, 0, 0);
 	if (opts->no_print) goto done;
-	if (opts->BAM) {
-		/* only allow if random field starts with B: */
-		p = strrchr(HEAP(opts->s, rkoff), '|');
-		unless (p && strneq(p+1, "B:", 2)) goto done;
-	}
+	if (opts->BAM && !weave_isBAM(opts->s, rkoff)) goto done;
 	if (!opts->show_all && sccs_metafile(path0)) goto done;
 	if (opts->hide_comp && streq(basenm(path0), GCHANGESET)) goto done;
 	unless (opts->show_all) {

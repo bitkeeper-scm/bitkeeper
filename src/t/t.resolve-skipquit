@@ -59,7 +59,7 @@ echo OK
 
 echo $N Skip 5 files and resolve one -- file 2 -- text env ..........$NL
 # don't need to abort because this is first pull
-bk pull -R $Q || fail
+bk pull -Ri $Q || fail
 # This should loop through all once, and then sccs resolve file 2
 _dores "S,S,S,S,S,s" "-T"
 cd RESYNC
@@ -79,7 +79,7 @@ echo OK
 
 echo $N Skip 5 files and resolve one -- file 2 -- gui env ...........$NL
 bk abort -f
-bk pull $Q -R
+bk pull $Q -Ri
 # This should loop through all once, and then sccs resolve file 2
 _dores "S,S,S,S,S,s"
 cd RESYNC
@@ -99,7 +99,7 @@ echo OK
 
 echo $N Merge/Skip 5 files and resolve one -- file 2 -- text env ....$NL
 bk abort -f
-bk pull $Q -R
+bk pull $Q -Ri
 # This should loop through all once, and then sccs resolve file 2
 _dores "m,S,m,S,m,S,m,S,m,S,s" "-T"
 cd RESYNC
@@ -118,7 +118,7 @@ echo OK
 
 echo $N Merge/Skip 5 files and resolve one -- file 2 -- gui env .....$NL
 bk abort -f
-bk pull $Q -R
+bk pull $Q -Ri
 # This should loop through all once, and then sccs resolve file 2
 _dores "m,S,m,S,m,S,m,S,m,S,s"
 cd RESYNC

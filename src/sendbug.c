@@ -33,10 +33,10 @@ sendbug_main(int ac,  char **av)
 	}
 	if (streq(name, "support")) {
 		key = "support";
-		email = addLine(0, "bitkeeper-support@bitmover.com");
+		email = addLine(0, "bitkeeper-support@bitkeeper.com");
 	} else {
 		key = "bug";
-		email = addLine(0, "bitkeeper-bugs@bitmover.com");
+		email = addLine(0, "bitkeeper-bugs@bitkeeper.com");
 	}
 
 	if (!textmode && gui_useDisplay()) {

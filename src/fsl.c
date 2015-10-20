@@ -80,7 +80,10 @@ fslmv_main(int ac, char **av)
 		free(data);
 		xfile_delete(av[1], xfile1);
 	} else if (xfile1) {
-		data = xfile_fetch(av[1], xfile1);
+		unless (data = xfile_fetch(av[1], xfile1)) {
+			perror(av[1]);
+			return (1);
+		}
 		fd = open(av[2], O_CREAT|O_WRONLY|O_TRUNC, 0664);
 		if  (fd >= 0) {
 			write(fd, data, strlen(data));

@@ -1,5 +1,5 @@
 #
-# supportlib - a set of procedures to modify and view a bug database
+# buglib - a set of procedures to modify and view a bug database
 # Copyright (c) 2001 by Aaron Kushner; All rights reserved.
 #
 # %W% %@%
@@ -67,8 +67,6 @@ proc bugs:retrieve {{cat {open}}} \
 
 proc bugs:newBug {{wid {}}} \
 {
-	global gc w info bug app
-
 	bugs:bugForm new
 }
 
@@ -79,7 +77,7 @@ proc bugs:newBug {{wid {}}} \
 #
 proc bugs:bugList {{wid {}}} \
 {
-	global gc w info bug app
+	global gc w app
 
 	if {$wid == ""} {
 		set top .__bug_select
@@ -143,13 +141,11 @@ proc bugs:bugList {{wid {}}} \
 
 	scrollbar $w(b_vsb) -orient vertical \
 	    -takefocus 0 \
-	    -wid $gc($app.scrollWidth) \
 	    -background $gc($app.scrollColor) \
 	    -troughcolor $gc($app.troughColor) \
 	    -command [list $w(b_tbl) yview] 
 	scrollbar $w(b_hsb) -orient horizontal \
 	    -takefocus 0 \
-	    -wid $gc($app.scrollWidth) \
 	    -background $gc($app.scrollColor) \
 	    -troughcolor $gc($app.troughColor) \
 	    -command [list $w(b_tbl) xview]
@@ -220,7 +216,7 @@ proc setInfo {l widget cat} \
 #
 proc showHelp {op widget tag} \
 {
-	global gc bt_cinfo app fields
+	global fields
 
 	if {![info exists fields($tag)]} { puts "returning $tag"; return }
 
@@ -251,7 +247,7 @@ proc setHelpText {text} {
 
 proc bugs:bugformMenuBar {} \
 {
-	global	app gc w
+	global	app gc
 	
 	menu .menus -font $gc($app.buttonFont)
 
@@ -266,7 +262,7 @@ proc bugs:bugformMenuBar {} \
 	    -font $gc($app.buttonFont) \
 	    -underline 0
 	    
-	menu .menus.file -tearoff 0 -font $gc($app.buttonFont)
+	menu .menus.file -tearoff 0  -font $gc($app.buttonFont)
 	    if {0} {
 		.menus.file add command \
 		    -label "Restart..." \
@@ -285,9 +281,9 @@ proc bugs:bugformMenuBar {} \
 	    -font $gc($app.buttonFont) \
 	    -tearoff 0 
 	.menus.help add command \
-	    -label "Support Help" \
+	    -label "Sendbug Help" \
 	    -underline 0 \
-	    -command [list exec bk helptool support &]
+	    -command [list exec bk helptool sendbug &]
 	
 	. configure -menu .menus
 }
@@ -309,13 +305,32 @@ proc bugs:bugformDone {} \
 	exit
 }
 
+proc bugs:fileSelect {w} \
+{
+	set types {
+		{{All Files}	*	}
+		{{Text Files}	{.txt}	}
+		{{GIF Files}	{.gif}	GIFF}
+		{{JPEG Files}	{.jpg}	JPEG}
+	}
+	set filename [tk_getOpenFile \
+	    -filetypes $types \
+	    -initialdir [pwd]  \
+	    -title "Attach File..."]
+
+	if {$filename ne ""} {
+		$w delete 0 end
+		$w insert 0 $filename
+	}
+}
+
 #
 # Create the container widget that contains the scrolling entry box
 # of details about a particular bug
 #
 proc bugs:bugForm {wid {purpose {view}}} \
 {
-	global	gc w info bug app order fields bt_cinfo
+	global	gc w bug app order fields bt_cinfo
 
 	if {$wid == ""} {
 		set top .__bug_view
@@ -334,45 +349,22 @@ proc bugs:bugForm {wid {purpose {view}}} \
 	}
 
 	if {$purpose == "view"} {
-		wm title $top "Support Request - $bug(id)"
+		wm title $top "Bug Details - $bug(id)"
 	} else {
-		wm title $top "Support Request - New"
+		wm title $top "Bug Details - New"
 	}
-	wm geometry $top +100+100
 
 	set w(v_frame) $w(v_bugs).frame
-	set w(v_c) $w(v_frame).c
 	set w(v_vsb) $w(v_frame).vsb
 	set w(v_hsb) $w(v_frame).hsb
 
 	bugs:bugformMenuBar
 
-	frame $w(v_frame) -borderwidth 0 -highlightthickness 0
-	    canvas $w(v_c) -width 100 -height 100 -background $gc($app.BG) \
-	        -highlightthickness 0 \
-		-xscrollcommand [list $w(v_hsb) set] \
-		-yscrollcommand [list $w(v_vsb) set]
-	    scrollbar $w(v_vsb) -orient vertical \
-	        -takefocus 0 \
-		-wid $gc($app.scrollWidth) \
-		-background $gc($app.scrollColor) \
-		-troughcolor $gc($app.troughColor) \
-		-command [list $w(v_frame).c yview] 
-	    scrollbar $w(v_hsb) -orient horizontal \
-	        -takefocus 0 \
-		-wid $gc($app.scrollWidth) \
-		-background $gc($app.scrollColor) \
-		-troughcolor $gc($app.troughColor) \
-		-command [list $w(v_frame).c xview]
-	    grid $w(v_c) $w(v_vsb) -sticky news
-	    grid $w(v_hsb) -sticky news
-	    grid rowconfigure $w(v_frame) 0 -weight 1
-	    grid columnconfigure $w(v_frame) 0 -weight 1
-
+	frame $w(v_frame) -bd 0 -bg $gc($app.BG) -padx 5 -pady 5
 	# input (e)ntry frame and (b)utton frame.
 	set gc(v_bf) $w(v_bugs).f
-	set gc(v_ef) [frame $w(v_c).f -bd 0 -bg $gc($app.BG)]
-	#set gc(v_ef) [frame $w(v_c).f -bd 0 -bg black]
+	set gc(v_ef) [frame $w(v_frame).f -bd 0 -bg $gc($app.BG)]
+	#set gc(v_ef) [frame $w(v_frame).f -bd 0 -bg black]
 
 	frame $gc(v_bf) -bg $gc($app.BG)
 	    button $gc(v_bf).submit -text "Submit" -width 10 \
@@ -422,9 +414,9 @@ proc bugs:bugForm {wid {purpose {view}}} \
 	grid columnconfigure $top 0 -weight 1 -pad 20
 
 	$top config -background $gc($app.BG)
-	$w(v_c) create window 4 4 -anchor nw -window $gc(v_ef)
 
 	set order $fields(_order)
+	set auto_expands {}
 	foreach l [split $order] {
 		if {$l == ""} continue
 		if {![info exists fields($l)]} {
@@ -434,13 +426,13 @@ proc bugs:bugForm {wid {purpose {view}}} \
 		set widget [lindex $fields($l) 0]
 		set gc(v_ef_$widget) "$gc(v_ef).l_${widget}"
 		set gc(v_ef_l_$widget) "$gc(v_ef).${widget}"
+		set gc(v_ef_b_$widget) "$gc(v_ef).b_${widget}"
 		set label [lindex $fields($l) 1]
 		set wtype [lindex [lindex $fields($l) 3] 0]
 		set dim [lindex [lindex $fields($l) 3] 1]
 		set row [lindex [lindex $fields($l) 2] 0]
 		set col [lindex [lindex $fields($l) 2] 1]
 		set span [lindex [lindex $fields($l) 2] 2]
-		set state [lindex $fields($l) 5]
 		#puts "row=($row) col=($col) span=($span)"
 		label $gc(v_ef_l_$widget) -text "${label}:" \
 		    -bg $gc($app.BG) \
@@ -452,19 +444,38 @@ proc bugs:bugForm {wid {purpose {view}}} \
 			text $gc(v_ef_$widget) -height $height \
 			    -font $gc($app.fixedFont) \
 			    -borderwidth 1 \
+			    -relief solid \
 			    -wrap none \
 			    -width $width -bg $gc($app.entryColor)
 			bind $gc(v_ef_$widget) <FocusIn> \
 			    "showHelp enter $widget $l"
+			lappend auto_expands $row
 		    }
 		    "entry" {
 			set width [lindex $dim 0]
 			entry $gc(v_ef_$widget) \
 			    -font $gc($app.fixedFont) \
 			    -borderwidth 1 \
+			    -relief solid \
 			    -width $width -bg $gc($app.entryColor)
 			bind $gc(v_ef_$widget) <FocusIn> \
 			    "showHelp enter $widget $l"
+		    }
+		    "fileentry" {
+			set width [lindex $dim 0]
+			set bwidth [lindex $dim 1]
+			entry $gc(v_ef_$widget) \
+			    -font $gc($app.fixedFont) \
+			    -borderwidth 1 \
+			    -relief solid \
+			    -width $width -bg $gc($app.entryColor)
+			bind $gc(v_ef_$widget) <FocusIn> \
+			    "showHelp enter $widget $l"
+			button $gc(v_ef_b_${widget}) \
+			    -font $gc($app.buttonFont) \
+			    -text "..." \
+			    -width $bwidth -bg $gc($app.buttonColor) \
+			    -command [list bugs:fileSelect $gc(v_ef_$widget)]
 		    }
 		    "dropdown" {
 			set gc(bt_$widget) $widget
@@ -511,20 +522,24 @@ proc bugs:bugForm {wid {purpose {view}}} \
 		grid $gc(v_ef_$widget) -row $row \
 		    -column [expr {($col * 2) + 1}] \
 		    -columnspan $span \
-		    -sticky w -padx 1 -pady 1
-
+		    -sticky nsew -padx 1 -pady 1
+		if {[winfo exists $gc(v_ef_b_$widget)]} {
+			grid $gc(v_ef_b_$widget) -row $row \
+			    -column [expr {($col * 2) + 2}] \
+			    -columnspan $span \
+			    -sticky e -padx 1 -pady 1
+		}
 	}
 	# both this and the following update are required to get the 
 	# GUI to start up the right size. When testing don't forget
 	# to blow away your .rc file so you aren't picking up a saved
 	# geometry value.
 	update idletasks
-	set height [winfo reqheight $gc(v_ef)]
-	set width [winfo reqwidth $gc(v_ef)]
-	incr height 8
-	$w(v_c) configure -height $height -width $width
-	$w(v_c) config -scrollregion "0 0 $width $height"
-	update idletasks
+	grid columnconfigure $gc(v_ef) 1 -weight 1 
+	foreach r $auto_expands {
+		grid rowconfigure $gc(v_ef) $r -weight 1
+	}
+	pack $gc(v_ef) -expand yes -fill both
 
 	bugs:populateInfo
 
@@ -550,16 +565,38 @@ proc bugs:bugForm {wid {purpose {view}}} \
 	bind . <Control-q> { bugs:bugformDone }
 
 	if {$purpose == "view"} { bugs:displayBug $gc(v_ef) $type}
-	focus $w(v_bugs).frame.c
+	focus $w(v_bugs).frame
+	update
+	set width [winfo reqwidth $top]
+	set height [winfo reqheight $top]
+	wm minsize $top $width $height
 }
 
 proc bugs:check_config {} \
 {
-	global w gc
+	global bt_cinfo gc fields
 
 	$gc(v_bf).submit configure -state disabled
-	set summary [string trim [$gc(v_ef_summary) get]]
-	if {$summary == ""} { return }
+
+	foreach f $fields(_mandatory) {
+		set type [lindex [lindex $fields($f) 3] 0]
+		switch -exact -- $type {
+			dropdown {
+				if {![info exists bt_cinfo($f)] || 
+				    $bt_cinfo($f) eq ""} {return}
+			}
+			text - entry {
+				set s [string tolower "v_ef_$f"]
+				if {[string trim [$gc($s) get]] eq ""} {
+					return
+				}
+			}
+			default {
+				tk_messageBox -parent . -title "ERROR" \
+				    -message "Unknown type $type" -type ok
+			}
+		}
+	}
 
 	$gc(v_bf).submit configure -state normal
 	return
@@ -567,13 +604,13 @@ proc bugs:check_config {} \
 
 #
 # display the OS and bk release in the appropriate fields.
-# default to bitkeeper-support@bitmover.com
+# default to bitkeeper-bugs@bitkeeper.com
 #
 proc bugs:populateInfo {} \
 {
-	global	gc w info bug app order fields bt_cinfo
+	global	gc bt_cinfo env
 
-	$gc(v_ef_projemail) insert 1 "bitkeeper-support@bitmover.com"
+	$gc(v_ef_projemail) insert 1 "bitkeeper-bugs@bitkeeper.com"
 	$gc(v_ef_project) insert 1 "BitKeeper"
 	if {[info exists bt_cinfo(projemail)]} {
 		   $gc(v_ef_projemail) delete 0 end
@@ -583,10 +620,9 @@ proc bugs:populateInfo {} \
 		   $gc(v_ef_project) delete 0 end
 		   $gc(v_ef_project) insert 1 $bt_cinfo(project)
 	}
-	catch {exec bk getuser} user
-	catch {exec bk gethost} host
-	set submitter "$user@$host"
-	$gc(v_ef_submitter) insert 1 $submitter
+	if {[info exists env(REPLYTO)] && $env(REPLYTO) ne ""} {
+		$gc(v_ef_submitter) insert 1 $env(REPLYTO)
+	}
 	catch {exec bk version | head -1} version
 	$gc(v_ef_release) insert 1 $version
 	catch {exec uname -a} os
@@ -598,7 +634,7 @@ proc bugs:populateInfo {} \
 #
 proc bugs:displayBug {f type} \
 {
-	global w gc info bug
+	global bug
 
 	set dspec "-d\$if(:%BUGID:=$bug(id)){Severity: :%SEVERITY:\\n\\n"
 	append dspec "Priority: :%PRIORITY:\\n\\n"
@@ -658,11 +694,11 @@ proc bugs:displayBug {f type} \
 #
 proc bugs:doAttachment {} \
 {
-	global w gc info bug fields bt_cinfo
+	global gc fields bt_cinfo
 
 	set label [lindex $fields(ATTACHMENT) 0]
 	set bt_cinfo(ATTACHMENT) [string trimright [$gc(v_ef_$label) get]]
-	if {$bt_cinfo(ATTACHMENT) == ""} { return 1}
+	if {$bt_cinfo(ATTACHMENT) eq ""} { return 1 }
 
 	if {![file exists $bt_cinfo(ATTACHMENT)]} {
 		displayMessage "File $bt_cinfo(ATTACHMENT) doesn't exists.\n
@@ -673,10 +709,10 @@ Please enter the full path to the attachment."
 		displayMessage "Attached file must be a plain file and not a directory or symlink."
 		return 2
 	}
-	set outfile [tmpfile supportlib]
+	set outfile [tmpfile buglib]
 	set od [open "$outfile" w]
 	#catch {exec bk uuencode $bt_cinfo(ATTACHMENT) $outfile > $outfile} err
-	set fd [open "|bk uuencode $bt_cinfo(ATTACHMENT) $outfile"]
+	set fd [open [list |bk uuencode $bt_cinfo(ATTACHMENT) $outfile]]
 	set i 0
 	while {[gets $fd l] >= 0} {
 		incr i
@@ -706,17 +742,15 @@ proc lc {a} \
 
 proc bugs:doSubmit {} \
 {
-	global w gc info bug fields bt_cinfo
-
 	set rc [bugs:submitBug]
 	if {$rc == 0} { exit }
 }
 
 proc bugs:submitBug {} \
 {
-	global w gc info bug fields bt_cinfo
+	global gc fields bt_cinfo
 
-	set address "bitkeeper-support@bitmover.com"
+	set address "bitkeeper-bugs@bitkeeper.com"
 	set attachment 0
 	# before doing anything, check the attachment. If not valid,
 	# error and return so that the user can update. If we do this
@@ -728,14 +762,14 @@ proc bugs:submitBug {} \
 		return 1
 	}
 
-	set bd [tmpfile supportlib]
+	set bd [tmpfile buglib]
 	catch {file mkdir $bd} err
 	if {$err != ""} {displayMessage "$err"}
 
 	set order [lsort $fields(_order)]
 	set bugfile [file join $bd "bug"]
 	set kvd [open $bugfile "w"]
-	puts $kvd "VERSION=2"
+	puts $kvd "VERSION=1"
 	puts $kvd "END_HEADER"
 
 	foreach l [split $order] {
@@ -746,24 +780,28 @@ proc bugs:submitBug {} \
 			set e [$gc(v_ef_$label) get 1.0 end]
 			set bt_cinfo($l) $e
 			set len [lc $e]
-			puts $kvd "@$l\n$e"
+			puts -nonewline $kvd "$l\n$len\n$e"
 		    }
 		    "entry" {
 			set e [string trimright [$gc(v_ef_$label) get]]
 			set bt_cinfo($l) $e
+			puts $kvd "$l\n1\n$e"
+		    }
+		    "fileentry" {
+			set e [string trimright [$gc(v_ef_$label) get]]
+			set bt_cinfo($l) $e
 			if {$l == "ATTACHMENT" && ($attachment == 1)} {
-				puts $kvd "@$l"
+				puts $kvd "$l\n$bt_cinfo(ATTACHMENT,lines)"
 				set fd [open "$bt_cinfo(ATTACHMENT,file)" r]
 				while {[gets $fd line] >= 0} {puts $kvd "$line"}
 				catch {close $fd}
 			} else {
-				puts $kvd "@$l\n$e"
+				puts $kvd "$l\n1\n$e"
 			}
-			puts $kvd ""
 		    }
 		    "dropdown" {
 		    	set e $bt_cinfo($l)
-			puts $kvd "@$l\n$e\n"
+			puts $kvd "$l\n1\n$e"
 		    }
 		} 
 		set fd [open [file join $bd "bug.$l"] w]
@@ -778,15 +816,14 @@ proc bugs:submitBug {} \
 #	catch {exec bk _kvimplode $bug } notuse
 # When Merging into dev, ask Aaron to merge this if it is not clear.
 	#kvimplode $bd $bug
-	#puts "bk _mail $bt_cinfo(PROJEMAIL) report $bug"
 	
 	if {$bt_cinfo(PROJEMAIL) ne ""} {
 		set address $bt_cinfo(PROJEMAIL)
 	}
-	catch {exec bk mail -u http://bitmover.com/cgi-bin/bkdmail -s support_request $address < $bugfile } 
+	catch {exec bk mail -u http://bitmover.com/cgi-bin/bkdmail -s "BUG: $bt_cinfo(SUMMARY)" $address < $bugfile }
 	catch {exec rm -rf $bd $bugfile} err
-	displayMessage "Your support request has been sent. Thank you for taking
-the time to fill out this form. "
+	displayMessage "Your bug report has been sent. Thank you for taking
+the time to fill out this report. "
 	return 0
 } ;# bugs:submitBug
 
@@ -799,7 +836,7 @@ proc kvimplode {bd bugfile} \
 
 proc bugs:updateBug {} \
 {
-	global gc w info bug
+	global bug
 
 	if {![info exists bug(id)] || ($bug(id) == "")} { return }
 
@@ -808,7 +845,7 @@ proc bugs:updateBug {} \
 
 proc bugs:closeBug {} \
 {
-	global gc w info bug
+	global bug
 
 	if {![info exists bug(id)] || ($bug(id) == "")} { return }
 
@@ -819,7 +856,7 @@ proc bugs:closeBug {} \
 
 proc bugs:selectBug {wid x y} \
 {
-	global gc w info bug
+	global w bug
 
 	set tbl $w(b_tbl)
 	set curSel [$w(b_tbl) curselection]
@@ -834,7 +871,7 @@ proc bugs:selectBug {wid x y} \
 
 proc bugs:bugPopupMenu {wid x y} \
 {
-	global gc w info bug
+	global w bug
 
 	set tbl $w(b_tbl)
 	set curSel [$w(b_tbl) curselection]

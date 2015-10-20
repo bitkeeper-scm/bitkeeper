@@ -1,4 +1,4 @@
-.\" Copyright (c) 1998-2006 BitMover, Inc.
+.\" Copyright (c) 1998-2015 BitKeeper Inc.
 .\" Do all this stuff only once
 .so ../bkver-macro
 .if !d bk-macros \{\
@@ -40,8 +40,8 @@
 .	if t .sp .5
 ..
 .if n \{\
-.	ds BC BitMover, Inc
-.	ds BM BitMover
+.	ds BC BitKeeper Inc
+.	ds BM BitKeeper
 .	ds BS BitSCCS
 .	ds BK BitKeeper
 .	ds UM \*(BK User's Manual
@@ -52,7 +52,7 @@
 .	ds UNIX UNIX
 .\}
 .if t \{\
-.	ds BM B\s-2IT\s0M\s-2OVER\s0
+.	ds BM B\s-2IT\s0K\s-2EEPER\s0
 .	ds BC \*(BM, \s-2INC.\s0
 .	ds BS \s-1B\s0\s-2IT\s0\s-1SCCS\s0
 .	ds BK B\s-2IT\s0K\s-2EEPER\s0

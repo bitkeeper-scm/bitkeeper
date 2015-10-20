@@ -529,7 +529,7 @@ import_patch() {
 	done < "${TMP}patching$$" > "${TMP}rejects$$"
 	# XXX - this should be unneeded
 	if [ $REJECTS = NO -a -s "${TMP}rejects$$" ]
-	then	echo "import: this should not happen, tell support@bitmover.com"
+	then	echo "import: this should not happen, tell support@bitkeeper.com"
 		patch_undo
 	fi
 	TRIES=0

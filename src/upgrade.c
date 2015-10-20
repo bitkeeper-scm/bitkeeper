@@ -35,14 +35,14 @@ upgrade_main(int ac, char **av)
 	char	*indexfn, *index;
 	char	*p, *e;
 	char	*platform = 0, *version = 0;
-	char	**platforms;
+	char	**platforms, **bininstaller = 0;
 	char	**data = 0;
 	int	len;
 	FILE	*f, *fout;
 	MDBM	*configDB = proj_config(0);
 	char	*licf;
 	int	rc = 2;
-	char	*tmpbin = 0;
+	char	*tmpbin = 0, *bundle = 0;
 	mode_t	myumask;
 	char	buf[MAXLINE];
 
@@ -106,13 +106,24 @@ upgrade_main(int ac, char **av)
 	} else {
 		platform = bk_platform;
 	}
+	if (macosx()) {
+		/* figure out if we're in a bundle or not */
+		bundle = fullname(bin, 0);
+		if (p = strstr(bundle, "BitKeeper.app")) {
+			/* we know the app name, we want the dir where
+			 * it goes */
+			*(p+13) = 0; /* NULL at end of BitKeeper.app */
+		} else {
+			bundle = 0;
+		}
+	}
 	if (win32() && (p = getenv("OSTYPE"))
 	    && streq(p, "msys") && (fetchonly || install)
 	    && !getenv("BK_REGRESSION")) {
 		notice("upgrade-nomsys", 0, "-e");
 		goto out;
 	}
-	if (install && noperms(bin)) {
+	if (!macosx() && install && noperms(bin)) {
 		notice("upgrade-badperms", bin, "-e");
 		goto out;
 	}
@@ -164,6 +175,19 @@ upgrade_main(int ac, char **av)
 			unless (version) version = strdup(data[3]);
 			if (streq(data[5], platform)) {
 				/* found this platform */
+				if (macosx()) {
+					/* if we hit a .bin, skip it. we
+					 * want the .pkg */
+					p = strrchr(data[1], '.');
+					if (streq(p , ".bin")) {
+						/* we want to replicate data */
+						p = joinLines(",", data);
+						bininstaller = splitLine(p,
+						    ",", 0);
+						free(p);
+						goto next;
+					}
+				}
 				freeLines(platforms, free);
 				platforms = 0;
 			} else {
@@ -178,21 +202,32 @@ next:				freeLines(data, free);
 
 	if (platforms) {	/* didn't find this platform */
 		uniqLines(platforms, free);
-		unless (streq(platform, "?")) {
+		if (streq(platform, "?")) {
+			printf("Available architectures for %s:\n", version);
+			EACH(platforms) printf("  %s\n", platforms[i]);
+			rc = 0;
+		} else if (bininstaller) {
+			if (fetchonly || !bundle) {
+				/* it's ok to just fetch the old installer or
+				 * to use an old installer on an old install */
+				freeLines(data, free);
+				data = bininstaller;
+				goto proceed;
+			}
+			notice("upgrade-pre-bundle", bundle, "-e");
+			rc = 1;
+		} else {
 			fprintf(stderr,
 			    "No upgrade for the arch %s found. "
 			    "Available architectures for %s:\n",
 			    platform, version);
 			EACH(platforms) fprintf(stderr, "  %s\n", platforms[i]);
 			rc = 2;
-		} else {
-			printf("Available architectures for %s:\n", version);
-			EACH(platforms) printf("  %s\n", platforms[i]);
-			rc = 0;
 		}
 		freeLines(platforms, free);
 		goto out;
 	}
+proceed:
 	/*
 	 * Look to see if we already have the current version
 	 * installed.  We compare UTC to catch releases that get
@@ -293,7 +328,8 @@ next:				freeLines(data, free);
 		goto out;
 	}
 	fclose(f);
-	unless (getenv("_BK_UPGRADE_NOINSKEYS")) {
+	unless (!fetchonly || macosx() || win32() ||
+	    getenv("_BK_UPGRADE_NOINSKEYS")) {
 		rc = inskeys(data[1], licf);
 		unlink(licf);
 		free(licf);
@@ -315,9 +351,12 @@ next:				freeLines(data, free);
 		fprintf(stderr, "upgrade: install failed\n");
 		goto out;
 	}
-
 #else
-	sprintf(buf, "./%s -u", data[1]);
+	if (macosx()) {
+		sprintf(buf, "/usr/bin/open -W %s", data[1]);
+	} else {
+		sprintf(buf, "./%s -u", data[1]);
+	}
 	if (system(buf)) {
 		fprintf(stderr, "upgrade: install failed\n");
 		goto out;
@@ -327,6 +366,7 @@ next:				freeLines(data, free);
 	rc = 0;
  out:
 	if (version) free(version);
+	if (bundle) free(bundle);
 	if (data) freeLines(data, free);
 	if (tmpbin) {
 		unlink(tmpbin);
@@ -435,8 +475,12 @@ upgrade_maybeNag(char *out)
 	if (getenv("_BK_ALWAYS_NAG")) goto donag;
 	if (strcmp(new_utc, bk_utc) <= 0) return;
 
-	/* wait for the new bk to be out for a while */
-	if (((now - sccs_date2time(bk_utc, 0)) > MONTH) &&
+	/*
+	 * Wait for the new bk to be out for a while, unless we are a
+	 * beta version.
+	 */
+	if (!strstr(bk_vers, "-beta-") &&
+	    ((now - sccs_date2time(bk_utc, 0)) > MONTH) &&
 	    ((now - sccs_date2time(new_utc, 0)) < MONTH)) {
 		return;
 	}

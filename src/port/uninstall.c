@@ -22,14 +22,13 @@ private	FILE *dfd;	/* Debug FD */
 			"\\Control\\Session Manager\\Environment"
 #define	USRENVKEY	HKCU "\\Environment"
 
-private void	delete_onReboot(char *path);
 private	char	*path_sansBK(char *path);
 private int	unregister_shellx(char *path);
 
 int
 uninstall(char *path, int upgrade)
 {
-	char	*bkmenu, *data, *envpath, *old_ver, *uninstall_cmd;
+	char	*data, *envpath, *old_ver, *uninstall_cmd;
 	char	**keys = 0, **values = 0;
 	int	i;
 	char	buf[MAXPATH];
@@ -244,31 +243,10 @@ uninstall(char *path, int upgrade)
 		}
 		freeLines(keys, free);
 	}
-	/* Remove Start Menu shortcuts */
-	for (i = 0; i < 2; i++) {
-		bkmenu = bkmenupath(i, 0);
-		if (!bkmenu) continue;
-		sprintf(buf, "%s.old%d", bkmenu, getpid());
-		if (rename(bkmenu, buf)) {
-			/* XXX - complain? */
-			free(bkmenu);
-			continue;
-		}
-		free(bkmenu);
-		if (rmtree(buf)) {
-			fprintf(stderr,
-			    "Could not delete BitKeeper start menus:\n"
-			    "\t%s\nWill be deleted on next reboot.\n",
-			    buf);
-			if (dfd) fprintf(dfd,
-			    "Could not delete BitKeeper start menus:\n"
-			    "\t%s\nWill be deleted on next reboot.\n",
-			    buf);
-			delete_onReboot(buf);
-		}
-	}
 
-	/* Finally remove the BitKeeper_nul file creted by getnull.c */
+	startmenu_uninstall(dfd);
+
+	/* Finally remove the BitKeeper_nul file created by getnull.c */
 	if (GetTempPath(sizeof(buf), buf)) {
 		strcat(buf, "/BitKeeper_nul");
 		if (unlink(buf)) {
@@ -308,7 +286,7 @@ path_sansBK(char *path)
 	return (path);
 }
 
-private void
+void
 delete_onReboot(char *path)
 {
 	char	*id, *cmd;
@@ -346,21 +324,43 @@ uninstall(char *path, int upgrade)
 	char	**dirs = 0, **links = 0;
 	char	*buf = 0;
 	char	*me = "bk";
-	char	*cmd;
+	char	*cmd, *p, *ph;
 	int	rc = 1;
 	int	dobk = 0;
 	int	bgrmdir = 1;
 	int	i, j;
+	int	removeph = 0;
 
 	/* set up logging */
 
 	dfd = efopen("BK_UNINSTALL_LOG");
 
+	if (macosx() && exists(MAC_PHFILE)) {
+		ph = backtick("cat " MAC_PHFILE, 0);
+		/*
+		 * Ensure that
+		 *  a) the bk we are uninstalling is the one
+		 *     that the path helper is pointing
+		 *  b) make sure we have perms to remove path helper
+		 */
+		if (streq(path, ph)) {
+			removeph = 1;
+			if (access(MAC_PHDIR, W_OK) == -1) {
+#define	MAC_PHDIR_MSG	"You do not have permissions on " MAC_PHDIR "\n"
+				fprintf(stderr, MAC_PHDIR_MSG);
+				if (dfd) fprintf(dfd, MAC_PHDIR_MSG);
+				free(ph);
+				goto out;
+			}
+		}
+		free(ph);
+	}
+
 	if (chdir(path) || !(dirs = getdir("."))) {
 		fprintf(stderr,
-		    "You do not have permission cd to or read %s\n", path);
+		    "You do not have permissions on %s\n", path);
 		if (dfd)fprintf(dfd,
-		    "You do not have permission cd to or read %s\n", path);
+		    "You do not have permissions on %s\n", path);
 		goto out;
 	}
 	if (lstat(".", &statbuf)) {
@@ -409,6 +409,7 @@ uninstall(char *path, int upgrade)
 		}
 	}
 	chdir("..");
+
 	if (rmdir(path) && bgrmdir) {
 		cmd = aprintf("( while kill -0 %lu; do sleep 1; done; "
 		    "rmdir \"%s\" ) "
@@ -417,6 +418,32 @@ uninstall(char *path, int upgrade)
 		(system)(cmd);
 		free(cmd);
 	}
+
+	if (macosx()) {
+		/* figure out if we're in a bundle or not */
+		char	*bundle = fullname(bin, 0);
+
+		if (p = strstr(bundle, "BitKeeper.app")) {
+			/* we know the app name, we want the dir where
+			 * it goes */
+			*(p+13) = 0; /* NULL at end of BitKeeper.app */
+			chdir("/tmp");  /* cd out of the bundle first */
+			if (rmtree(bundle)) {
+				fprintf(stderr,
+				    "Could not remove %s\n", bundle);
+				if (dfd) fprintf(dfd,
+				    "Could not remove %s\n", bundle);
+				goto out;
+			}
+			/* remove the package receipt */
+			cmd = aprintf("/usr/sbin/pkgutil "
+				      "--forget com.bitkeeper.bk "
+				      ">/dev/null 2>&1");
+			(system)(cmd);
+			free(cmd);
+		}
+	}
+
 	if (upgrade) {
 		/* preserve user's symlinks as they might be in a
 		 * different path than /usr/bin
@@ -451,6 +478,10 @@ uninstall(char *path, int upgrade)
 			if (dfd) fprintf(dfd, "not a symlink to this bk\n");
 			free(buf);
 		}
+	}
+	/* On OS X, bk 7.0.1 and later use path_helper(8). Remove that crumb. */
+	if (macosx() && removeph) {
+		unlink(MAC_PHFILE);
 	}
 	rc = 0;
 out:

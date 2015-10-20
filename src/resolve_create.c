@@ -37,8 +37,8 @@ res_diffCommon(resolve *rs,
 
 		bktmp(right);
 		if (rs->revs) rev = rs->revs->remote;
-		if (sccs_get(rs->s, rev, 0, 0, 0, SILENT|PRINT, right)) {
-		    	fprintf(stderr, "get failed, can't diff.\n");
+		if (sccs_get(rs->s, rev, 0, 0, 0, SILENT, right, 0)) {
+			fprintf(stderr, "get failed, can't diff.\n");
 			return (0);
 		}
 		chdir(RESYNC2ROOT);
@@ -55,9 +55,9 @@ res_diffCommon(resolve *rs,
 		bktmp(left);
 		bktmp(right);
 		if (rs->revs) rev = rs->revs->remote;
-		if (sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, left) ||
-		    sccs_get(rs->s, rev, 0, 0, 0, SILENT|PRINT, right)) {
-		    	fprintf(stderr, "get failed, can't diff.\n");
+		if (sccs_get(s, 0, 0, 0, 0, SILENT, left, 0) ||
+		    sccs_get(rs->s, rev, 0, 0, 0, SILENT, right, 0)) {
+			fprintf(stderr, "get failed, can't diff.\n");
 			unlink(left);
 			return (0);
 		}
@@ -144,7 +144,7 @@ res_mr(resolve *rs)
 	char	*t, *why = 0;
 
 	unless (prompt("Move file to:", buf)) return (0);
-	if (bk_badFilename(buf)) {
+	if (bk_badFilename(0, buf)) {
 		fprintf(stderr, "Illegal filename: %s\n", buf);
 		return (0);
 	}
@@ -227,7 +227,7 @@ res_vl(resolve *rs)
 		if (rs->revs) rev = rs->revs->local;
 	}
 	bktmp(left);
-	if (sccs_get(s, rev, 0, 0, 0, SILENT|PRINT, left)) {
+	if (sccs_get(s, rev, 0, 0, 0, SILENT, left, 0)) {
 		    fprintf(stderr, "get failed, can't view.\n");
 		return (0);
 	}
@@ -435,7 +435,7 @@ common_ml(resolve *rs, char *p, char *buf)
 	char	*t;
 
 	unless (prompt(p, buf)) return (1);
-	if (bk_badFilename(buf)) {
+	if (bk_badFilename(0, buf)) {
 		fprintf(stderr, "Illegal filename: %s\n", buf);
 		return (0);
 	}
@@ -555,7 +555,7 @@ gc_sameFiles(resolve *rs)
 	int	same;
 
 	bktmp(buf);
-	if (sccs_get(rs->s, 0, 0, 0, 0, SILENT|PRINT, buf)) {
+	if (sccs_get(rs->s, 0, 0, 0, 0, SILENT, buf, 0)) {
 		fprintf(stderr, "get failed, can't diff.\n");
 		return (0);
 	}
@@ -616,6 +616,16 @@ getFileConflict(resolve *rs, char *gfile, char *path)
 }
 
 private int
+walk_print(char *path, char type, void *data)
+{
+	char	***files = (char ***)data;
+
+	if ((type == 'd') || isSCCS(path)) return (0);
+	*files = addLine(*files, strdup(path));
+	return (0);
+}
+
+private int
 dc_remove(resolve *rs)
 {
 	char	buf[MAXPATH];
@@ -628,8 +638,28 @@ dc_remove(resolve *rs)
 	}
 	getFileConflict(rs, PATHNAME(rs->s, rs->d), path);
 	sprintf(buf, "%s/%s", RESYNC2ROOT, path);
-	ret = rmdir(buf);
-	if (opts->log) fprintf(stdlog, "rmdir(%s) = %d\n", buf, ret);
+	if (ret = rmdir(buf)) {
+		int	i, n, saved_errno;
+		char	**files = 0;
+
+		saved_errno = errno;
+
+		if ((errno == ENOTEMPTY) || (errno == EACCES)) {
+			walkdir(buf, (walkfns){ .file = walk_print}, &files);
+			unless (n = nLines(files)) {
+				errno = saved_errno;
+				goto out;
+			}
+			fprintf(stderr, "Could not remove '%s' because "
+			    "of the following file%s:\n", buf,
+			    (n == 1) ? "" : "s");
+			EACH(files) fprintf(stderr, "  %s\n", files[i]);
+			freeLines(files, free);
+		} else {
+			perror(buf);
+		}
+	}
+out:	if (opts->log) fprintf(stdlog, "rmdir(%s) = %d\n", buf, ret);
 	return (EAGAIN);
 }
 
@@ -785,7 +815,7 @@ sc_ml(resolve *rs)
 	sccs	*s;
 
 	unless (prompt("Move local file to:", buf)) return (0);
-	if (bk_badFilename(buf)) {
+	if (bk_badFilename(0, buf)) {
 		fprintf(stderr, "Illegal filename: %s\n", buf);
 		return (0);
 	}
@@ -954,7 +984,7 @@ rc_ml(resolve *rs)
 	char	*to, *tmp;
 
 	unless (prompt("Move left file to:", buf)) return (0);
-	if (bk_badFilename(buf)) {
+	if (bk_badFilename(0, buf)) {
 		fprintf(stderr, "Illegal filename: %s\n", buf);
 		return (0);
 	}

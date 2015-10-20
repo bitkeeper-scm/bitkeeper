@@ -32,7 +32,7 @@ echo $N Create repository ...........................................$NL
 fresh_commercial project
 echo OK
 
-echo $N Add content to ignore, gone, logging_ok .....................$NL
+echo $N Add content to ignore, gone .................................$NL
 bk ignore '*.o'
 bk gone $Q 'A@b.com|I/am/bogus|19990101000000|12345|random'
 bk commit $Q -ymeta-content
@@ -339,7 +339,7 @@ echo OK
 
 # Should not create two copies of the old logging OK, it should move the
 # old one back and delete the new one.
-echo $N In clone, rm logging_ok, commit a new one, pull .............$NL
+echo $N In clone, rm gone, commit a new one, pull ...................$NL
 cd "$HERE"
 rm -rf project copy
 tar xmf TAR

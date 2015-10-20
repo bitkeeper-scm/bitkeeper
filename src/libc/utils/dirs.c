@@ -182,14 +182,12 @@ getdir(char *dir)
 		if (streq(e->d_name, ".") || streq(e->d_name, "..")) {
 			continue;
 		}
-		type = '?';
-#ifdef	DT_DIR
 		switch (e->d_type) {
 		    case DT_DIR: type = 'd'; break;
 		    case DT_REG: type = 'f'; break;
 		    case DT_LNK: type = 'l'; break;
+		    default: type = '?'; break;
 		}
-#endif
 		lines = addLine(lines, aprintf("%s%c%c", e->d_name, 0, type));
 	}
 	closedir(d);

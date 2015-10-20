@@ -96,6 +96,29 @@ xfile_exists(char *pathname, char key)
 	char	*xfile;
 	int	ret;
 
+	if (key == 'p') {
+		struct	stat	sb;
+		char	*p;
+		char	buf[MAXPATH];
+
+		/*
+		 * A writable gfile implies we have a pfile so we don't
+		 * even look.
+		 */
+		strcpy(buf, pathname);
+		if ((p = strrchr(buf, '/')) &&
+		    strneq(p-4, "SCCS", 4) &&
+		    ((p-4 == buf) || (p[-5] == '/')) &&
+		    (p[2] == '.')) {
+			memmove(p-4, p+3, strlen(p+3)+1);
+		}
+		if (!lstat(buf, &sb) &&
+		    S_ISREG(sb.st_mode) &&
+		    (sb.st_mode & 0200)) {
+			return (1);
+		}
+	}
+	if (key == 'P') key = 'p';	/* P - physical pfile */
 	xfile = getxfile(pathname, key);
 	ret = exists(xfile);
 	free(xfile);
@@ -121,16 +144,35 @@ xfile_delete(char *pathname, char key)
  * fetch will return the data previous accociated with this key
  * NULL indicates no data
  * The data returned is malloc'ed and the user must free()
+ *
+ * NOTE: Some callers of this function assume that if a file doesn't
+ *       exist then zero will be returned and errno==ENOENT
  */
 char *
 xfile_fetch(char *pathname, char key)
 {
 	char	*data;
-	char	*xfile;
+	char	*xfile, *sfile;
+	sccs	*s;
+	pfile	pf;
 
-	xfile = getxfile(pathname, key);
+	xfile = getxfile(pathname, (key == 'P') ? 'p' : key);
 	data = loadfile(xfile, 0);
 	free(xfile);
+	if (!data && (key == 'p') && xfile_exists(pathname, key)) {
+		/* generate fake file */
+		sfile = name2sccs(pathname);
+		s = sccs_init(sfile, INIT_MUSTEXIST);
+		if (s && HAS_PFILE(s) && !sccs_read_pfile(s, &pf)) {
+			assert(pf.magic);
+			data = aprintf("%s %s %s %s\n",
+			    pf.oldrev, pf.newrev,
+			    sccs_getuser(), time2date(time(0)));
+			free_pfile(&pf);
+		}
+		sccs_free(s);
+		free(sfile);
+	}
 	return (data);
 }
 
@@ -200,6 +242,7 @@ sfile_move(project *p, char *from, char *to)
 	char	*s1, *s2, *t;
 	int	rc;
 
+	// XXX can replace an existing sfile2
 	if (rc = fileMove(sfile1, sfile2)) goto out;
 
 	s1 = strrchr(sfile1, '/') + 1;
@@ -242,5 +285,10 @@ out:	free(sfile);
 int
 sfile_exists(project *p, char *path)
 {
-	return (exists(path));
+	char	*sfile = name2sccs(path);
+	int	rc;
+
+	rc = exists(sfile);
+	free(sfile);
+	return (rc);
 }

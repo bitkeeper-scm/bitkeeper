@@ -27,6 +27,9 @@ LOG	:= $(shell echo LOG-`bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 JUNK	:= $(shell bk -Ur. -1 -^G checkout)
 
+## Which hosts are used for producing nightly builds
+NIGHTLY_HOSTS	:= macos106 win7-vm debian40 debian40-64
+
 ifeq "$(OSTYPE)" "msys"
 	SYS=win32
 	EXE=.exe
@@ -38,6 +41,7 @@ ifeq "$(OSTYPE)" "msys"
 	INSTALL=installdir
 	RESOURCE=bkres.o
 	UWT_C=$(patsubst %,win32/uwtlib/%.c, wapi_intf wcrt_intf)
+	BKGUI=bkg$(EXE)
 else
 	SYS=unix
 	EXE=
@@ -62,7 +66,7 @@ ifndef V
 endif
 
 GET=	$(Q)bk get -sS
-BK=	bk$(EXE) 
+BK=	bk$(EXE)
 LD	=cc
 G	=-g
 TRIAL	=0
@@ -140,7 +144,7 @@ CC_DEBUG=$(GCCOPTS) $G $(WARNINGS) $(TRACE)
 CC_FAST_DEBUG=$(GCCOPTS) $G -O2 $(WARNINGS) $(TRACE)
 CC_FAST	=$(CC_FAST_DEBUG)
 CC_WALL=$(GCCOPTS) $G -DLINT $(WARNINGS) $(TRACE)
-BINS	= $(BK) inskeys$(EXE)
+BINS	= $(BK) $(BKGUI) inskeys$(EXE)
 
 # List of all objects in bk other than bk.o. Keep it sorted.
 # But put bkver.o/cmd.o first, they generate headers.
@@ -164,7 +168,7 @@ OBJ =	bkver.o cmd.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	dataheap.o dbfile.o delta.o diff.o diffs.o diffsplit.o dspec.o \
 	eula.o export.o \
-	features.o findmerge.o \
+	fast-export.o features.o findmerge.o \
 	find.o findcset.o fixtool.o fsl.o fslayer.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o gettemp.o getuser.o glob.o \
@@ -235,10 +239,10 @@ PSCR	= t/doit t/guitest
 PROGS	= hidestring libc/mtst$(EXE)
 LIBS	= libc/libc.a tomcrypt/libtomcrypt.a tommath/libtommath.a
 PCRELIB = gui/tcltk/pcre/local/lib/libpcre.a
-DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
+DATA	= bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
 	Academic.lic Essentials.lic Pro.lic Enterprise.lic MLA.lic bkcl.lic \
-	Premier.lic \
+	Premier.lic 2015.lic \
 	dspec-changes dspec-changes-vv dspec-changes-h dspec-changes-hv \
 	dspec-changes-3.2 dspec-changes-4.0 dspec-prs dspec-log
 CONTRIB = gui/ide/emacs/vc-bk.el
@@ -266,7 +270,7 @@ SCRSRCS	= bk.sh import.sh kwextract.pl uuwrap.sh unuuwrap.sh \
 	  substvars.sh b64wrap.sh gzip_b64wrap.sh \
 	  unb64wrap.sh ungzip_b64wrap.sh \
 	  $(LSCRIPTS)
-MISC	= bkmsg.doc bitkeeper.config t/doit.sh
+MISC	= bkmsg.doc t/doit.sh
 
 export	GET
 
@@ -419,6 +423,11 @@ $(BK): $(LIBS) bk.o $(RESOURCE) $(OBJ)
 	$(if $(Q),@echo LINKING $(BK),)
 	$(Q)$(LD) $(LDFLAGS) -o $@ bk.o $(OBJ) $(RESOURCE) $(LIBS) $(PCRELIB) $(XLIBS)
 
+# Windows only rule, BKGUI should be blank on other platforms
+$(BKGUI): bkg.o $(RESOURCE)
+	$(if $(Q),@echo LINKING $(BKGUI),)
+	$(Q)$(LD) $(LDFLAGS) -o $@ bkg.o $(RESOURCE) -Llibc -lc -mwindows $(XLIBS)
+
 inskeys$(EXE): inskeys.o inskeys_main.o $(LIBS)
 	$(LD) $(LDFLAGS) -o $@ inskeys.o inskeys_main.o $(LIBS) $(XLIBS)
 
@@ -434,9 +443,9 @@ bkhelp.txt: FORCE
 	@cp ../man/man2help/helptxt bkhelp.txt
 
 ../doc/bk_refcard.ps: FORCE
-	echo building $@
-	-bk -r../doc co -qS
-	$(MAKE) -C ../doc all
+	$(Q)echo building $@
+	$(Q)-bk -r../doc co -qS
+	$(Q)$(MAKE) -C ../doc all
 
 ../doc/bk_refcard.pdf: ../doc/bk_refcard.ps
 
@@ -535,30 +544,47 @@ cranksave: crank.sh remote.sh
 crankstatus: crank.sh remote.sh
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh status
 
-crankrelease cranktrial: crank.sh remote.sh
+crankrelease cranktrial nightly: crank.sh remote.sh
 	@(TAG=$(shell bk changes -r+ -d:TAG:) ; \
 	test x$$TAG = x && { \
 		echo Cannot crankrelease with a non-tagged tip ; \
 		exit 1 ; \
 	} ; \
-	if [ $@ = cranktrial ]; \
-	then	TYPE=trial; DIR=/home/bk/images/$$TAG-trial; \
-	else	TYPE=release; DIR=/home/bk/images/$$TAG; \
-	fi; \
+	case $@ in \
+	cranktrial ) \
+		TYPE=trial; DIR=/home/bk/images/$$TAG-trial; \
+		;; \
+	crankrelease ) \
+		TYPE=release; DIR=/home/bk/images/$$TAG; \
+		;; \
+	nightly ) \
+		TYPE=nightly; DIR=/home/bk/images/nightly; \
+		HOSTS="$(NIGHTLY_HOSTS)" ; \
+		;; \
+	esac ; \
 	test -d $$DIR || mkdir -p $$DIR ; \
-	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh \
+	REPO=$(REPO) URL=$(URL) HOSTS=$$HOSTS REMOTE=remote.sh \
 	    LOG=$(LOG) bash crank.sh $$TYPE ; \
 	bk -R get -qS RELEASE-NOTES ; \
 	cp ../RELEASE-NOTES $$DIR ; \
-	cd $$DIR && chmod +rx bk-* ; \
+	SAVED_WD=$(shell pwd) ; \
+	cd $$DIR && chmod +rx bk-* >/dev/null 2>&1 ; \
 	rm -f MD5SUMS ; \
 	md5sum bk-* >> MD5SUMS ; \
 	echo "Your images are in $$DIR" ; \
-	if [ $@ = cranktrial ]; \
-	then echo "Run './mkupgrades --trial $$TAG' to create upgrade area."; \
-	else echo "Run './mkupgrades $$TAG' to create upgrade area."; \
-	     echo "Run './mkrelease $$TAG' to release this version of bk."; \
-	fi)
+	case $@  in  \
+	cranktrial ) \
+		echo "Run './mkupgrades --trial $$TAG' to create upgrade area."; \
+		;; \
+	crankrelease ) \
+		echo "Run './mkupgrades $$TAG' to create upgrade area."; \
+	     	echo "Run './mkrelease $$TAG' to release this version of bk."; \
+		;; \
+	nightly ) \
+		cd $$SAVED_WD ; \
+		./mkupgrades --nightly $$TAG ; \
+		;; \
+	esac)
 
 crankclean: crank.sh remote.sh
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh clean

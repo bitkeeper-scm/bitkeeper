@@ -1,0 +1,113 @@
+BK extensions to make SCCS/p.file optional in most cases
+========================================================
+
+Introduction
+------------
+
+This set of changes is called the "magic pfile".  The idea is to make
+the overhead of running in checkout:edit mode match checkout:get by
+removing the need to maintain pfiles.  This is done by making the
+standard pfile in which the tip delta edited just be implied merely by
+the fact that the gfile is writable.  We still use pfiles to record
+merges and excludes, but in the normal case no pfile is required.
+
+Shape of code changes
+---------------------
+
+Much of the code changes are to make sure that all interaction with
+pfiles is done via a fixed set of interfaces.  The presence of a pfile
+should be detected with HAS_PFILE() and xfiles_exists(file, 'p') and
+pfiles should be read and written using sccs_read_pfile() and
+write_pfile().  Ideally all of the logic is hidden inside there after
+that.  In reality, it's close.  The developer still needs to have awareness
+of the model and understanding of what has shifted.
+
+In sccs_init() we set HAS_PFILE() if the sfile exists and the gfile is
+writable and is not a symlink.  The only time we even need to lstat to
+see if the pfile exists is if the gfile is missing, read-only or a symlink.
+
+NOTE: HAS_PFILE() does not include conditions about KEYWORDS(s) or
+if this repo supports magic pfile (FEAT_PFILE which is FEAT_BWEAVEv3).
+This means bk-6 and bk-7 respond a little differently as bk-7 will
+see a magic pfile in a writable file that has keywords but no real
+pfile.  The conditions are tightened in the spots like delta, and unedit.
+
+In sccs_read_pfile() if the open() of p.file fails we look to see
+HASGRAPH(s) && WRITABLE_REG(s) and if so we construct the data for the
+default pfile.
+
+.Conditions to skip writing pfile
+* BITKEEPER(s) -- AT&T sfiles still get pfiles
+* (d == sccs_top(s)) -- must be top delta; true in multi-tip resync
+* !i2 && !iLst && !xLst && !mRev -- We need pfile to store this stuff
+* WRITABLE_REG(s->mode) -- regular writable file
+* !HAS_KEYWORDS(s) -- get and edit produce same file
+* features_test(s->proj, FEAT_PFILE) -- bk-6.x can't operate here
+
+(symlinks always need a pfile since they are always writable)
+
+Notice that none of these operations need any extra syscalls.
+Well, almost none... features_test make a proj struct cache
+on the BitKeeper/log/features file.  It needs to be read once.
+
+Regressions
+-----------
+A place to put things which are different between running bk-6.x
+and bk-7.x in the same conditions.
+
+* bk unedit will now work on a gotten file with keywords and chmod +w.
+
+Keywords
+--------
+
+The problem with keywords is that if a file has them and a user does
+chmod +w gfile the resulting gfile is "wrong", the keywords are
+expanded and we don't want them to be. We address this problem by just
+requiring a pfile for any file that uses keywords. So the logic in
+check.c to repair problems when you find a writable gfile without a
+pfile still exists and is used when keywords are involved.
+
+Compatibility with old bk
+-------------------------
+
+Having the pfiles be optional will be tied to the new BWEAVEv3 feature
+bit. So that the only repositories that use this feature cannot be
+read by old versions of bk.  Internally we will have some unshipped
+versions of bk that won't understand this, but it seems manageable.
+
+In the code, FEAT_PFILE is used, so it can be grepped to see where
+the BWEAVEv3 feature is being relied on for magic pfiles.
+
+Interaction with blob-fs changes
+--------------------------------
+
+The blobfs code currently works like this:
+
+----
+remap_open(project *proj, char *rel, int flags, mode_t mode)
+{
+	int	sccs, ret;
+	char	buf[MAXPATH];
+
+	sccs = fullRemapPath(buf, proj, rel);
+	ret = open(buf, flags, mode);
+	// O_RDWR is actually broken, but we don't use that
+	if ((ret < 0) && sccs && !(flags & (O_WRONLY|O_RDWR))) {
+		ret = blob_open(proj, rel);
+	}
+	return (ret);
+}
+----
+
+(try old location first and _then_ ask blob if it knows)
+
+I am going to move to a new world where after a clone the blobfs is
+the sole owner of information about what is in the SCCS directories
+and we keep a list of directories where we have written data and need
+to revert to the "look first" mode.  So for most of a repository bk
+works without looking at the disk at all.  Only the places where the
+user has been doing work need to be checked with each file access.
+
+However in checkout:edit mode writing a pfile to every directory would
+kill this idea immediately.  So the magic-pfile cset allows the blobfs
+to continue to work the way we intend.

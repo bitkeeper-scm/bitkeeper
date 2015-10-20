@@ -12,10 +12,12 @@ bk -q@bk://localhost:$P version > remver.raw || fail
 perl -pe 's/\d+ \S+ ago/5 secs ago/' < remver.raw > remver
 cmpfiles remver locver
 # Now, test out the param form, starting with a bad name
-bk version bk://foo.foo.foo.foo.bitmover.com/bar 2> ERR && {
+bk version bk://foo.foo.foo.foo.bitkeeper.com/bar 2> ERR && {
 	fail -f ERR should fail
 }
-grep -q "Cannot resolve host 'foo.foo.foo.foo.bitmover.com'" ERR || fail
+grep -q "Cannot resolve host 'foo.foo.foo.foo.bitkeeper.com'" ERR || fail
+# deal with some race on win8-vm
+bk _rm remver.raw
 # Now use the bkd we set up
 bk version bk://localhost:$P > remver.raw
 perl -pe 's/\d+ \S+ ago/5 secs ago/' < remver.raw > remver

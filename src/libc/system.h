@@ -177,6 +177,7 @@ int	isSymlnk(char *s);
 int	hardlinked(char *a, char *b);
 int	perms(char *s);
 int	writable(char *s);
+int	writableReg(char *s);
 off_t	fsize(int fd);
 off_t	size(char *s);
 

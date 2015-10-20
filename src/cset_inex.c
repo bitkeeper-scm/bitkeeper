@@ -312,8 +312,8 @@ doit(int flags, char *file, char *op, char *revs)
 			ret = 1;
 		} else {
 			ret = systemf(
-			    "bk --cd='%s' bk cset %s%s%s",
-			    file, (flags & SILENT) ? "-q " : "", op, revs);
+			    "bk --cd='%s' bk cset -S%s %s%s",
+			    file, (flags & SILENT) ? "q" : "", op, revs);
 		 }
 		*p = '/';
 		free(sfile);
@@ -347,9 +347,9 @@ err:		sccs_free(s);
 		flags |= GET_SKIPGET;
 	}
 	if (streq(op, "-i")) {
-		ret = sccs_get(s, 0, 0, revs, 0, flags, "-");
+		ret = sccs_get(s, 0, 0, revs, 0, flags, s->gfile, 0);
 	} else {
-		ret = sccs_get(s, 0, 0, 0, revs, flags, "-");
+		ret = sccs_get(s, 0, 0, 0, revs, flags, s->gfile, 0);
 	}
 	if (ret) {
 		fprintf(stderr, "cset: get -e of %s failed\n", s->gfile);

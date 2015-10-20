@@ -62,9 +62,8 @@ idcache_update(char **files)
 {
 	MDBM	*idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 	sccs	*s;
-	u8	*u;
 	int	i;
-	int	n = 0;
+	int	changed = 0;
 	char	key[MAXPATH];
 
 	EACH(files) {
@@ -76,15 +75,10 @@ idcache_update(char **files)
 			continue;
 		}
 		sccs_sdelta(s, sccs_ino(s), key);
-		u = mdbm_fetch_str(idDB, key);
-		unless (u && streq(u, s->gfile)) {
-			mdbm_store_str(idDB, key, s->gfile, MDBM_REPLACE);
-			++n;
-		}
+		if (idcache_item(idDB, key, s->gfile)) changed = 1;
 		sccs_free(s);
 	}
-	unless (n) return;
-	idcache_write(0, idDB);
+	if (changed) idcache_write(0, idDB);
 	mdbm_close(idDB);
 }
 
@@ -140,6 +134,31 @@ caches(char *file, char type, void *data)
 	} while (ino);
 	sccs_free(sc);
 	return (0);
+}
+
+/*
+ * Update an item in the idcache.
+ * Returns true if something changed.
+ */
+int
+idcache_item(MDBM *idDB, char *rk, char *path)
+{
+	char	*rkpath = key2path(rk, 0, 0, 0);
+	char	*npath;
+	int	changed = 0;
+
+	npath = mdbm_fetch_str(idDB, rk);
+	if (streq(path, rkpath)) {
+		if (npath) {
+			changed = 1;
+			mdbm_delete_str(idDB, rk);
+		}
+	} else if (!npath || !streq(path, npath)) {
+		changed = 1;
+		mdbm_store_str(idDB, rk, path, MDBM_REPLACE);
+	}
+	free(rkpath);
+	return (changed);
 }
 
 int

@@ -72,17 +72,25 @@ the cset file).
 .SH LEGAL TAGS
 Certain characters are not allowed in tags because they conflict with
 other parts of the \*(BK revision, date, and/or range name spaces.
-Tags may not start with digits, an equal sign \*(lq=\*(rq, a hyphen 
-\*(lq-\*(rq, or a dot \*(lq.\*(rq.
-A tag may not be the plus sign \*(lq+\*(rq since that is used to mean the most
-recent revision.
-A tag may not contain the string \*(lq.\|.\*(rq
-because it is used to specify ranges.
-Tags may not contain any of the following characters: Control-A \*(lq^A\*(rq,
-vertical bar \*(lq|\*(rq, newline \*(lq\\n\*(rq, or carriage 
-return \*(lq\\r\*(rq.
+.PP
+A valid tag has to obey the following rules:
+.IP \[bu]
+Tags can't start with the characters: '@', '=', '-', '+', or '.'.
+.IP \[bu]
+Tags can't start with a digit ('0' to '9').
+.IP \[bu]
+Tags can't contain any character with an ASCII value less than 040
+(octal) or in the following list: '|', '?', '*', the DEL 
+character
+(\\177), '~', '^', ':', ';', '/', '!', '"', '\'', '$', '%', '&', '\\', '(', ')', '[', ']', '{', '}',
+or '`'.
+.IP \[bu]
+Tags can't contain spaces (' ').
+.IP \[bu]
+Tags can't contain the sequences "..", ".,", ",.", or ",,".
+.PP
 In a nested repository, this release only allows tags on the product,
-not any of its components; future releases will allow both.
+not any of its components; future releases may allow both.
 .SH BUGS
 .LP
 Need a way of setting a tag in

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# This is BitMover's way of coming up with a platform identifier.  If
+# This is BitKeeper's way of coming up with a platform identifier.  If
 # you run bk version you'll see the output of this command.  We find
 # it useful and maybe you will as well.
 #
@@ -22,9 +22,9 @@
 # The point is that you may want to tweak this a bit, your needs may be
 # different than ours.
 #
-# The non-gnu stuff is copyright (c) 1999-2009 BitMover, Inc. and is not
+# The non-gnu stuff is copyright (c) 1999-2015 BitKeeper Inc. and is not
 # GPL-ed because these parts are reasonably separable (see GNU GPL Section 2).
-# The BitMover part is everything after "^SHAR_EOF" and is available under
+# The BitKeeper part is everything after "^SHAR_EOF" and is available under
 # the BSD license, have the big fun.  If you are the license police and
 # want us to say that you can have it under the GPL or whatever, that's
 # fine, just ask and it's 99.9% certain we'll give you what you want.
@@ -1554,6 +1554,7 @@ OS=`sh /tmp/gnu-os$$ |
 	-e s/hppa2.0/hppa/ \
 	-e s/powerpc-darwin.*/powerpc-macosx/ \
 	-e s/x86-darwin.*/x86-macosx/ \
+	-e s/x86_64-darwin.*/x86_64-macosx/ \
 	-e s/sparc64-/sparc-/ \
 	-e s/openbsd.../openbsd/ \
 	-e s/netbsdelf/netbsd/ \

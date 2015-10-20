@@ -373,8 +373,8 @@ aliasdb_init(nested *n, project *p, char *rev, int pending, int no_diffs)
 	char	*path = 0;
 	sccs	*s;
 	char	*csetrev = 0;
+	FILE	*tmp;
 	char	buf[MAXPATH];
-	char	tmp[MAXPATH];
 
 	/*
 	 * XXX: if 'p' then assuming product -- error check it?
@@ -415,15 +415,17 @@ aliasdb_init(nested *n, project *p, char *rev, int pending, int no_diffs)
 			}
 			aliasdb = hash_fromFile(0, s->gfile);
 		} else {
-			bktmp(tmp);
-			if (sccs_get(s, csetrev, 0,0,0, SILENT|PRINT, tmp)) {
+			tmp = fmem();
+			if (sccs_get(s, csetrev, 0, 0, 0, SILENT, 0, tmp)) {
 				error("%s: aliases get failed: rev %s\n",
 				    prog, csetrev ? csetrev : "+");
+				fclose(tmp);
 				sccs_free(s);
 				return (0);
 			}
-			aliasdb = hash_fromFile(0, tmp);
-			unlink(tmp);
+			rewind(tmp);
+			aliasdb = hash_fromStream(0, tmp);
+			fclose(tmp);
 		}
 		if (csetrev) free(csetrev);
 		sccs_free(s);
@@ -1514,7 +1516,7 @@ findDir(nested *n, char *cwd, char *dir)
 	if (cwd && !IsFullPath(dir)) {
 		dir = p = aprintf("%s/%s", cwd, dir);
 	}
-	dir = proj_relpath(0, dir);
+	dir = proj_relpath(n->proj, dir);
 	if (p) free(p);
 	c = nested_findDir(n, dir, exact);
 	free(dir);

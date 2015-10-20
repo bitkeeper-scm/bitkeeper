@@ -206,7 +206,7 @@ sccs_resum(sccs *s, ser_t d, int diags, int fix)
 	 */
 
 	if (sccs_get(s,
-	    REV(s, d), 0, 0, 0, GET_SUM|GET_SHUTUP|SILENT|PRINT, "-")) {
+	    REV(s, d), 0, 0, 0, GET_SUM|GET_SHUTUP|SILENT, 0, 0)) {
 		fprintf(stderr, "get of %s:%s failed, skipping it.\n",
 		    s->gfile, REV(s, d));
 		return (4);
@@ -358,7 +358,7 @@ setOrder(sccs *s, ser_t d, void *token)
 	FLAGS(s, d) &= ~D_SET;
 
 	if (TAG(s, d)) return (0);
-	unless (ADDED(s, d) || HAS_CLUDES(s, d)) return (0);
+	unless (ADDED(s, d) || HAS_CLUDES(s, d) || MERGE(s, d)) return (0);
 
 	addArray(order, &d);
 	return (0);
@@ -545,7 +545,7 @@ again:
 				}
 				if (fix) {
 					fprintf(stderr, "Unfixable.\n"
-					    "Write support@bitmover.com\n");
+					    "Write support@bitkeeper.com\n");
 					exit(1);
 				}
 				/* checksum is really just serial map */

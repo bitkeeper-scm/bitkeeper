@@ -42,15 +42,15 @@ cmp -s foo long || {
 }
 echo OK
 
-echon Test creating tags with spaces ..............................
-bk tag $Q -r1.2 'a b' || fail
-rev=`bk prs -r'a b' -hnd:REV: ChangeSet`
+echon Test creating tags with special chars .......................
+bk tag $Q -r1.2 'a_=-+.b0' || fail
+rev=`bk prs -r'a_=-+.b0' -hnd:REV: ChangeSet`
 test $rev = '1.2' || {
 	echo failed
 	exit 1
 }
 cd "$HERE"
-bk clone $Q -r'a b' project copy || fail
+bk clone $Q -r'a_=-+.b0' project copy || fail
 cd copy
 rev=`bk prs -r+ -hnd:REV: ChangeSet`
 test $rev = '1.2' || {

@@ -190,7 +190,7 @@ if [ '$Id$' = "`cat date`" ]; then echo Failed.; exit 1; fi
 echo OK
 
 echo $N Get -ep should fail .........................................$NL
-bk get $S -ep date > junk 2>junk2
+bk get $S -ep date > junk 2>&1 && fail -f junk
 if bk _test -f "SCCS/p.date"; then echo failed, created p.file; exit 1; fi
 echo OK
 
@@ -593,27 +593,21 @@ export BK_CONFIG
 touch foo.c
 bk new $Q foo.c
 bk edit $Q foo.c
-bk _test -f SCCS/p.foo.c || {
-	echo failed
-	echo edit did not create pfile
-	exit 1
-}
+bk _test -f SCCS/p.foo.c || fail
 bk get $Q foo.c && {
 	echo failed
 	echo get should have errored
 	exit 1
 }
 rm -f foo.c
+# because of keywords, it's a physical pfile and it is still there.
+bk _test -f SCCS/p.foo.c || fail
 bk get $Q foo.c || {
 	echo failed
 	echo get should have worked
 	exit 1
 }
-bk _test -f SCCS/p.foo.c && {
-	echo failed
-	echo get did not clean up pfile
-	exit 1
-}
+bk _test -f SCCS/p.foo.c && fail
 echo OK
 
 echo $N Check that get does not clean up when -i/-x .................$NL

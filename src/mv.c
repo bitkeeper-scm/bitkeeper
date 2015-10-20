@@ -258,8 +258,7 @@ mvdir_main(int ac, char **av)
 			free_pfile(&pf);
 		}
 		sccs_sdelta(s, sccs_ino(s), rkey);
-		mdbm_store_str(idDB,
-		    rkey, PATHNAME(s, sccs_top(s)), MDBM_REPLACE);
+		idcache_item(idDB, rkey, PATHNAME(s, sccs_top(s)));
 		sccs_free(s);
 	}
 	pclose(f);

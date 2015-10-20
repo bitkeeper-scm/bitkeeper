@@ -1,0 +1,65 @@
+.so ../bk-macros
+.TH "bk repos" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk repos \- command description
+.SH SYNOPSIS
+.\"
+.B bk repos [\-a | \-m] [\-\-check-all] [\-q] [\-v]
+.br
+.B bk repos [\-c]
+.ARG repo_path
+.br
+.B bk repos [\-\-raw]
+.\"
+.SH DESCRIPTION
+.LP
+BitKeeper remembers where repositories are by keeping a list of
+repository locations. When repositories are created (bk clone or bk
+setup) or are checked (bk repocheck), this list is updated with the
+pathname along with some other metadata.
+.LP
+The
+.B bk repos
+command shows and updates this list of repository locations.
+.LP
+With no options, the command will simply list repositories
+in alphabetic order.  Prior to the output, repositories are
+checked for existence and those found to be missing are pruned.
+.SH OPTIONS
+.TP \-c\*<repo_path\*>
+.B \-\-check-all
+Validate that all the saved repository locations exist and update their
+metadata.  Without the \-q option, output the updated list.
+.tp
+.B \-q
+Allow the list to be updated but do not output anything.
+.tp
+.B \-\-raw
+Output the list of repository locations without checking that each still
+exists.
+Useful in performance sensitive (NFS) environments where testing each
+repository location may be expensive.
+.tp
+.B \-a
+Sort the output on access time.  Access time is defined as the time of
+any bk command having been run inside the repository.
+.tp
+.B \-m
+Sort the output on modification time.  Modification time is defined as
+the timestamp of the tip changeset.
+.tp
+.OPTreq \-c repo_path
+Update the list entry for this repository.
+.tp
+.B \-v
+Output all of the data associated with each repository.  The format is:
+.DS
+PATH|ATIME|MTIME|MD5ROOTKEY
+.DE
+.SH SEE ALSO
+.SA clone
+.SA setup
+.SA repocheck
+.SA id
+.SH CATEGORY
+.B Utility

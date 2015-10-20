@@ -5,9 +5,9 @@ checkbk()
 {
 	bk --cd="$1" features | grep -q BKFILE || fail  missing BKFILE
 	ENC=`bk prs -hnd:ENCODING: -r+ "$1"/ChangeSet`
-	test X"$ENC" = XBK,bweave || fail "$1" not BKfile $ENC
+	test X"$ENC" = XBK,bweave,bkmerge || fail "$1" not BKfile $ENC
 	ENC=`bk prs -hnd:ENCODING: -r+ "$1"/BitKeeper/etc/config`
-	test X"$ENC" = XBK || fail "$1/.../config" not BKfile $ENC
+	test X"$ENC" = XBK,bkmerge || fail "$1/.../config" not BKfile $ENC
 	bk _test -f "$1"/SCCS/1.ChangeSet || fail no heap @ $1
 	test -d "$1"/.bk/SCCS || fail $1 no remap
 

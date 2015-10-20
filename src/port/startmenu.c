@@ -9,38 +9,80 @@ reject(void)
 }
 
 int
-startmenu_list(u32 user, char *path)
+__startmenu_generic(void)
 {
 	reject();
 	return (0);
 }
 
-int
-startmenu_rm(u32 user, char *path)
+void *
+__startmenu_generic_ptr(void)
 {
 	reject();
 	return (0);
 }
 
-int
-startmenu_get(u32 user, char *path)
-{
-	reject();
-	return (0);
-}
-
-int
-startmenu_set(u32 user, char *linkpath, char *target, char *icon, char *args)
-{
-	reject();
-	return (0);
-}
 #else
 
 #include <shlobj.h>
 
+/*
+ * List of start menu items
+ *
+ * This list should never shrink (because the uninstall function will
+ * attempt to remove each one in turn.)
+ * 
+ * When a release decides to remove a menu item, switch the enabled
+ * field to 0 and the menu item will not be created by install.
+ */
+private struct smenu {
+	char	*menuname;
+	char	*target;
+	char	*icon;
+	char	*cmd;
+	char	*wdenv;
+	int	enabled;
+} menulist[] = {
+	{
+		.menuname = "BitKeeper",
+		.target = "http://bitkeeper.com/start",
+		.icon = "%s/bk.ico",
+		.cmd = "",
+		.wdenv = "HOMEPATH",
+		.enabled = 1
+	},
+	{
+		.menuname = "BitKeeper Documentation",
+		.target = "%s/bkg.exe",
+		.icon = "%s/bk.ico",
+		.cmd = "helptool",
+		.wdenv = 0,
+		.enabled = 1
+	},
+	/* things from bk-7.0-alpha to delete */
+	{
+		.menuname = "../BitKeeper",
+		.target = "%s/bk.exe",
+		.icon = "%s/bk.ico",
+		.cmd = "explorer",
+		.wdenv = "HOMEPATH",
+		.enabled = 0
+	},
+	{
+		.menuname = "../BitKeeper Documentation",
+		.target = "%s/bk.exe",
+		.icon = "%s/bk.ico",
+		.cmd = "helptool",
+		.wdenv = 0,
+		.enabled = 0
+	},
+	{
+		.menuname = 0
+	}
+};
+
 char *
-bkmenupath(u32 user, int create)
+bkmenupath(u32 user, int create, int isthere)
 {
 	LPITEMIDLIST	id;
 	int		flag;
@@ -52,8 +94,15 @@ bkmenupath(u32 user, int create)
 	} else {
 		flag = CSIDL_COMMON_PROGRAMS;
 	}
-	SHGetSpecialFolderLocation(NULL, flag, &id);
-	SHGetPathFromIDList(id, pmenupath);
+	unless (SHGetSpecialFolderLocation(NULL, flag, &id) == S_OK) {
+		fprintf(stderr, "_startmenu: could not find your %s menu.\n",
+		    user ? "user start" : "start");
+		return (0);
+	}
+	/* API fills a buffer of minimum Windows MAX_PATH size (260) */
+	unless (SHGetPathFromIDList(id, pmenupath)) {
+		return (0);
+	}
 
 	mpath = aprintf("%s/BitKeeper", pmenupath);
 	localName2bkName(mpath, mpath);
@@ -63,7 +112,7 @@ bkmenupath(u32 user, int create)
 		free(mpath);
 		return (0);
 	}
-	if (!exists(mpath)) {
+	if (isthere && !exists(mpath)) {
 		free(mpath);
 		return (0);
 	}
@@ -71,7 +120,8 @@ bkmenupath(u32 user, int create)
 }
 
 int
-startmenu_set(u32 user, char *menupath, char *target, char *icon, char *args)
+startmenu_set(u32 user, char *menupath, char *target, char *icon, char *args,
+	char *cwd)
 {
 	int		ret = 0;
 	char		*tpath = 0, *linkpath = 0;
@@ -81,7 +131,7 @@ startmenu_set(u32 user, char *menupath, char *target, char *icon, char *args)
 
 	CoInitialize(NULL);
 
-	unless (tpath = bkmenupath(user, 1)) return (1);
+	unless (tpath = bkmenupath(user, 1, 1)) return (1);
 	linkpath = aprintf("%s/%s.lnk", tpath, menupath);
 
 	if (exists(linkpath)) {
@@ -111,6 +161,7 @@ startmenu_set(u32 user, char *menupath, char *target, char *icon, char *args)
 	sl->lpVtbl->SetPath(sl, target);
 	sl->lpVtbl->SetArguments(sl, args);
 	sl->lpVtbl->SetIconLocation(sl, icon, 0);
+	if (cwd) sl->lpVtbl->SetWorkingDirectory(sl, cwd);
 
 	MultiByteToWideChar(CP_ACP, 0, linkpath, -1, wpath, MAX_PATH);
 	if (pf->lpVtbl->Save(pf, wpath, TRUE) != S_OK) {
@@ -144,7 +195,7 @@ startmenu_get(u32 user, char *menu)
 
 	CoInitialize(NULL);
 
-	unless (tpath = bkmenupath(user, 0)) return (1);
+	unless (tpath = bkmenupath(user, 0, 1)) return (1);
 	linkpath = aprintf("%s/%s.lnk", tpath, menu);
 
 	if (!exists(linkpath)) {
@@ -242,32 +293,25 @@ int
 startmenu_rm(u32 user, char *menu)
 {
 	int	ret = 0;
-	char	*tpath = 0, *linkpath = 0, *dirpath = 0;
+	char	*tpath = 0, *linkpath = 0;
 
 	CoInitialize(NULL);
 
-	unless (tpath = bkmenupath(user, 0)) return (1);
-	if (menu) {
-		dirpath = aprintf("%s/%s", tpath, menu);
-	} else {
-		dirpath = strdup(tpath);
+	assert(menu);
+	unless (tpath = bkmenupath(user, 0, 1)) {
+		ret = 1;
+		goto out;
 	}
-	linkpath = aprintf("%s.lnk", dirpath);
+	linkpath = aprintf("%s/%s.lnk", tpath, menu);
 
-	if (isdir(dirpath)) {
-		if (rmtree(dirpath)) {
-			fprintf(stderr,
-			    "_startmenu: %s: rmtree failed, error %ld\n",
-			    dirpath, GetLastError());
-			ret = 1;
-		}
-	} else if (unlink(linkpath)) {
+	if (exists(linkpath) && unlink(linkpath)) {
 		fprintf(stderr,
 		    "_startmenu: %s: unlink failed, error %ld\n",
 		    linkpath, GetLastError());
 		ret = 1;
 	}
-	if (dirpath) free(dirpath);
+
+out:
 	if (linkpath) free(linkpath);
 	if (tpath) free(tpath);
 	CoUninitialize();
@@ -284,7 +328,7 @@ startmenu_list(u32 user, char *menu)
 
 	CoInitialize(NULL);
 
-	unless (tpath = bkmenupath(user, 0)) return (1);
+	unless (tpath = bkmenupath(user, 0, 1)) return (1);
 	if (menu) {
 		dirpath = aprintf("%s/%s", tpath, menu);
 	} else {
@@ -320,6 +364,104 @@ out:
 	if (linkpath) free(linkpath);
 	CoUninitialize();
 	return (ret);
+}
+
+void
+startmenu_install(char *dest)
+{
+	struct smenu	*smp;
+	char		*target, *icon, *t, *home = 0;
+	char		buf[MAXPATH];
+
+	/*
+	 * This hack is necessary because our MSYS mashes
+	 * HOMEPATH to be \
+	 *
+	 * If, in a command prompt window:
+	 *
+	 *   echo %HOMEPATH%
+	 *   bk sh -c "echo $HOMEPATH"
+	 *
+	 * yield similar results then it may be OK to remove.
+	 */
+	if (SUCCEEDED(SHGetFolderPath(0, CSIDL_PROFILE, 0, 0, buf))) {
+		home = buf;
+	}
+
+	for (smp = menulist; smp->menuname; smp++) {
+		unless (smp->enabled) continue;
+		target = aprintf(smp->target, dest);
+		icon = aprintf(smp->icon, dest);
+		if (smp->wdenv && streq(smp->wdenv, "HOMEPATH")) {
+			t = home;
+		} else if (smp->wdenv) {
+			t = getenv(smp->wdenv);
+		} else {
+			t = 0;
+		}
+		startmenu_set(0, smp->menuname, target, icon, smp->cmd, t);
+		free(icon);
+		free(target);
+	}
+}
+
+void
+startmenu_uninstall(FILE *log)
+{
+	int		i;
+	char		*bkmenu;
+	struct smenu	*smp;
+	char		buf[MAXPATH];
+
+	/* Make win32 layer be quiet and not retry */
+	win32flags_clear(WIN32_RETRY | WIN32_NOISY);
+	/*
+	 * Remove *all* Start Menu shortcuts
+	 * (including any legacy items)
+	 */
+	for (i = 0; i < 2; i++) {
+		/*
+		 * Remove everything in our list
+		 * (there may be items outside our BitKeeper
+		 * subdir)
+		 */
+		for (smp = menulist; smp->menuname; smp++) {
+			startmenu_rm(i, smp->menuname);
+		}
+		/*
+		 * Prior to 7.0 alpha, and now, things go in a
+		 * BitKeeper subdir; nuke it -- should get anything
+		 * missed by the above loop (which will be a bunch
+		 * of things from bk versions <= 6)
+		 */
+		unless (bkmenu = bkmenupath(i, 0, 1)) continue;
+		if (!isdir(bkmenu) || !rmtree(bkmenu)) goto next;
+
+		/* rmtree failed; try renaming and deleting on reboot */
+		sprintf(buf, "%s.old%d", bkmenu, getpid());
+		if (rename(bkmenu, buf)) {
+			/* hmm, rename failed too */
+			fprintf(stderr,
+			    "Could not delete or rename BitKeeper "
+			    "start menu directory:\n%s\n",
+			    bkmenu);
+			if (log) fprintf(log,
+			    "Could not delete or rename BitKeeper "
+			    "start menu directory:\n%s\n",
+			    bkmenu);
+			goto next;
+		}
+		fprintf(stderr,
+		    "Could not delete BitKeeper start menus:\n"
+		    "\t%s\nWill be deleted on next reboot.\n",
+		    buf);
+		if (log) fprintf(log,
+		    "Could not delete BitKeeper start menus:\n"
+		    "\t%s\nWill be deleted on next reboot.\n",
+		    buf);
+		delete_onReboot(buf);
+ next:		free(bkmenu);
+	}
 }
 
 #endif	/* WIN32 */

@@ -18,8 +18,8 @@ Requirements:
 From 7/19/02 meeting of Andrew, Wayne and Rick
 Andrew summarizes (Rick's edits):
 
-a) We need Wanye's null sync fix on bitmover.com
-     -- can we upgrade bitmover.com to the bk-2.1.x TOT ?
+a) We need Wanye's null sync fix on bitkeeper.com
+     -- can we upgrade bitkeeper.com to the bk-2.1.x TOT ?
         This pending rick/lm fix the MYSQL issues...
 
 Note:  I tried a more aggressive version of wanye's fix, takepatch/resolve 

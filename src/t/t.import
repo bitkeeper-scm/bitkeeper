@@ -983,8 +983,8 @@ cd "$HERE"
 cp -rp $TESTDATA/import_data import_data
 commercial import
 cd ..
-test `bk gethost -r` = freebsd.bitmover.com && ulimit -u 128
-test `bk gethost -r` = openbsd.bitmover.com && ulimit -p 128
+test `bk gethost -r` = freebsd.bitkeeper.com && ulimit -u 128
+test `bk gethost -r` = openbsd.bitkeeper.com && ulimit -p 128
 LIST="1 2 3 4 5 6"
 for i in $LIST
 do	cp -rp import import$i

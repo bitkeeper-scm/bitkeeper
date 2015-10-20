@@ -1,19 +1,3 @@
-#get_C
-The bk co -C option has been replaced with the -r@rev syntax.
-To get the same effect as
-
-	bk co -p -C foo.c
-try
-	bk -r co -r@+ foo.c
-$
-#diffs_C
-The diffs -C option has been replaced with the -r@rev syntax.  To get the
-same effect as
-
-	bk diffs -C1.123
-try
-	bk -r diffs -r@1.123 -r.
-$
 #monotonic
 If a file is marked as monotonically increasing, and that file has "dangling
 deltas", i.e., deltas which are ahead of the top changeset, then the monotonic
@@ -27,7 +11,7 @@ $
 #chk1
 A file is marked as gone (in BitKeeper/etc/gone) but is present in your
 repository, possibly missing some deltas.  This can happen if a different 
-repository had lost the file, marked it as gone so that "bk -r check -a" 
+repository had lost the file, marked it as gone so that "bk repocheck" 
 would pass, and then your repository was updated with that information.
 Since your repository still has the file, it may be possible to restore
 it in the other repository if you wish.
@@ -62,8 +46,8 @@ To see if any of the deltas exist in another repository, use "bk findkey".
 If the deltas exist in another repository it is possible to migrate them
 into your repository.  The process to do this is to generate the list of 
 changesets which contain the missing deltas, make a patch, and apply the
-patch.  You should probably contact BitMover for help with this the first
-time you try this process.
+patch.  You should probably contact support@bitkeeper.com for help
+with this the first time you try this process.
 
 If the deltas cannot be found in any other repository, then you will
 not be able to completely reproduce that changeset.  You can make
@@ -81,8 +65,8 @@ either accidentally or on purpose.
 If the files exist in another repository it is possible to add them back
 to your repository.  The process is to find the files, copy them into
 your repository, and strip off any extra deltas which should not be part
-of your repository.  You should probably contact BitMover for help with
-this the first time you try this process.
+of your repository.  You should probably contact support@bitkeeper.com
+for help with this the first time you try this process.
 
 If the files cannot be found, or if the files were deliberately removed,
 then the file identifiers (root keys) need to be added to the gone file.
@@ -94,13 +78,13 @@ and then committing the changeset.
 $
 #chk4
 Your repository has a file with an illegal revision numbering.
-vision numbering.  Please write support@bitmover.com for assistance.
+vision numbering.  Please write to support@bitkeeper.com for assistance.
 $
 #chk5
 The ChangeSet file retrieved from your parent appears to be behind the
 files in this repository.  If this repository had changesets that were
 committed here but not pulled elsewhere then the changeset will need to
-be recreated, contact BitMover for assistance.
+be recreated, contact support@bitkeeper.com for assistance.
 
 The repair was NOT complete.
 $
@@ -145,7 +129,7 @@ $
 An attempt was made to include or exclude a merge changeset.
 This is not currently supported.
 If you would like to be able to exclude one side
-of the merge, then please contact BitMover.
+of the merge, then please contact support@bitkeeper.com.
 $
 #write_perms
 One or more directories which need updating do not have write permission.
@@ -162,7 +146,7 @@ The file #BKARG# is corrupted because of a bug in
 BitKeeper version 3.0.1 and earlier.  It was caused by a 
 file on Windows that has a carriage return as the last 
 character of the file without a following new line.
-Please contact BitMover by running 'bk support'
+Please contact the BitKeeper support team by running 'bk support'
 to request help in repairing this file.
 $
 #setup_1
@@ -208,39 +192,39 @@ $
 #license_grace
 Your license for BitKeeper has expired but you are still
 within the grace period.  This changeset will be created
-as normal, but you need to contact BitMover to purchase an
-updated license.
+as normal, but you need to contact sales@bitkeeper.com
+to purchase an updated license.
 
 CustomerID: #BKARG#
 
-BitMover can be reached at:
+BitKeeper Inc. can be reached at:
    +1-408-370-9911 (international and California)
    888-401-8808 (toll free in the US & Canada) 
-during business hours (PST) or via email at sales@bitmover.com.
+during business hours (PST) or via email at sales@bitkeeper.com.
 Thanks!
 $
 #license_almost
 Your evaluation license for BitKeeper is less than one week away from
 expiring.  This changeset will be created as normal, but you need to
-contact BitMover to purchase a commercial license.
+contact sales@bitkeeper.com to purchase a commercial license.
 
-BitMover can be reached at:
+BitKeeper Inc. can be reached at:
    +1-408-370-9911 (international and California)
    888-401-8808 (toll free in the US & Canada) 
-during business hours (PST) or via email at sales@bitmover.com.
+during business hours (PST) or via email at sales@bitkeeper.com.
 Thanks!
 $
 #license-expired
 Your license for BitKeeper has expired.  You are beyond the
 grace period and you may not create any changesets until you
-have contacted BitMover to purchase a new license.
+have contacted sales@bitkeeper.com to purchase a new license.
 
 License key being used: #BKARG#
 
-BitMover can be reached at:
+BitKeeper Inc. can be reached at:
    +1-408-370-9911 (international and California)
    888-401-8808 (toll free in the US & Canada) 
-during business hours (PST) or via email at sales@bitmover.com.
+during business hours (PST) or via email at sales@bitkeeper.com.
 Thanks!
 $
 #license-max-users
@@ -249,10 +233,10 @@ the current repository contains more that the purchased amount.
 
 File: #BKARG#
 
-BitMover can be reached at:
+BitKeeper Inc. can be reached at:
    +1-408-370-9911 (international and California)
    888-401-8808 (toll free in the US & Canada) 
-during business hours (PST) or via email at sales@bitmover.com.
+during business hours (PST) or via email at sales@bitkeeper.com.
 Thanks!
 $
 #lease-loop-blocked
@@ -262,25 +246,25 @@ Please put any files the trigger needs to fetch into the BitKeeper/triggers
 directory.
 
 Tell your site's BitKeeper administrator that you encountered this error
-or send mail to support@bitmover.com.
+or send mail to support@bitkeeper.com.
 $
 #license-none
 You do not have a license for BitKeeper and you need one to create
 any changesets.
 
 You can get a temporary license by sending a mail request
-to sales@bitmover.com.  
+to sales@bitkeeper.com.  
 
-BitMover can be reached at:
+BitKeeper Inc. can be reached at:
    +1-408-370-9911 (international and California)
    888-401-8808 (toll free in the US & Canada) 
-during business hours (PST) or via email at sales@bitmover.com.
+during business hours (PST) or via email at sales@bitkeeper.com.
 Thanks!
 $
 #authentication-failed
 The bkd license proxy had problems determining the version of BitKeeper
-used for this connection.  Please contact BitMover for support at
-support@bitmover.com.
+used for this connection.  Please contact the BitKeeeper support team at
+support@bitkeeper.com.
 $
 #badurl
 The URL provided to contact a bk license proxy cannot be parsed.
@@ -293,7 +277,7 @@ An unexpected error was received from the remote bkd when making a license
 request:
 	#BKARG#
 
-Please correct the problem or contact BitMover for help. support@bitmover.com
+Please correct the problem or contact support@bitkeeper.com for help.
 $
 #lease-msg
 
@@ -304,7 +288,7 @@ An unexpected response was received from the remote bkd when making a license
 request:
 	#BKARG#
 
-Please correct the problem or contact BitMover for help. support@bitmover.com
+Please correct the problem or contact support@bitkeeper.com for help.
 $
 #cannot-connect
 BitKeeper was unable to make a connection to the license server at:
@@ -332,7 +316,7 @@ license request.  The response was:
 	#BKARG#
 
 Perhaps the licenseurl config field was set incorrectly?
-Please correct the problem or contact BitMover for help. support@bitmover.com
+Please correct the problem or contact support@bitkeeper.com for help.
 $
 #missing_config_install
 No config file was found containing a license.  A license is required
@@ -347,16 +331,16 @@ If you have a license that was sent to you, place that license in
 
 and retry the install.
 
-If you have no license then contact BitMover to get one.
+If you have no license then contact sales@bitkeeper.com to get one.
 
-BitMover can be reached at:
+BitKeeper Inc. can be reached at:
    +1-408-370-9911 (international and California)
    888-401-8808 (toll free in the US & Canada)
-during business hours (PST) or via email at sales@bitmover.com.
+during business hours (PST) or via email at sales@bitkeeper.com.
 $
 #seat_info
 Your user count has exceeded the number of purchased licenses.
-To purchase more seats, please email sales@bitmover.com.  Thank you.
+To purchase more seats, please email sales@bitkeeper.com.  Thank you.
 
 $
 #no_accept_no_cset
@@ -375,7 +359,7 @@ b) Problems with the server at www.bitkeeper.com
 
 
 Please run the following command and include in an email to
-support@bitmover.com.
+support@bitkeeper.com.
 
 	bk _lconfig -d
 $
@@ -383,10 +367,10 @@ $
 Error: Evaluation license are limited to #BKARG# changesets.  You are over 
 that limit and you will need to get a commercial license to make any
 more changesets.
-BitMover can be reached at:
+BitKeeper Inc. can be reached at:
    +1-408-370-9911 (international and California)
    888-401-8808 (toll free in the US & Canada) 
-during business hours (PST) or via email at sales@bitmover.com.
+during business hours (PST) or via email at sales@bitkeeper.com.
 Thanks!
 $
 #eval_warn
@@ -394,17 +378,17 @@ Warning: Evaluation licenses have a limited number of changesets. Your
 changeset quota is now down to #BKARG# changesets.  You will not be
 able to commit any more changesets when the quota reaches zero.
 Please upgrade to a commercial license.
-BitMover can be reached at:
+BitKeeper Inc. can be reached at:
    +1-408-370-9911 (international and California)
    888-401-8808 (toll free in the US & Canada) 
-during business hours (PST) or via email at sales@bitmover.com.
+during business hours (PST) or via email at sales@bitkeeper.com.
 Thanks!
 $
 #takepatch-chksum
 Error: A checksum in the patch for the ChangeSet file does not match
 the checksum of the data in the patch.
 Please verify the integrity of the source and destination repositories
-by running "bk -r check -acv" in each.  If that passes, and a pull still
+by running "bk repocheck" in each.  If that passes, and a pull still
 fails, run in the source repository "bk -R checksum ChangeSet".  If the
 source repository has a problem that cannot be fixed, please run
 "bk support" and fill out the form.  If the source repository has no
@@ -889,18 +873,6 @@ file at BitKeeper/etc/config; it can be edited later to make changes. See the
 config-etc man page for detailed information on the format and options that
 are supported. 
 $
-#setuptool_step_KeywordExpansion
-BitKeeper can automatically expand SCCS or RCS keywords in files when they are 
-checked out in read-only mode. This feature is off by default, but you can
-change this behavior by selecting the expansion options that best meet your 
-needs.
-
-Select the "sccs" and/or "rcs" options to have the appropriate
-keywords expanded. In addition, you can select "expand1" to mean you
-only want keywords to be expanded in the first line that contains
-keywords. This helps avoid conflicts with printf statements or other
-code that may contain strings that look like keywords.
-$
 #setuptool_step_CheckoutMode
 BitKeeper supports check out modes of "none", "get", or "edit".
 These modes control how the files will appear (or not appear) in your
@@ -1060,9 +1032,9 @@ it is a contract and you must abide by the terms.  Your acceptance will
 be recorded on this machine and you will not be asked again.
 
 This license was associated with this repository by the party who
-initially created the repository.  Unless BitMover, Inc. created this
-repository, this license was not written by BitMover and BitMover is
-not responsible for the content of the license.
+initially created the repository.  Unless BitKeeper Inc. created this
+repository, this license was not written by BitKeeper Inc. and BitKeeper,
+Inc. is not responsible for the content of the license.
 $
 #repo_upgrade_preamble
 The Repository license associated with the use of this repository has
@@ -1075,11 +1047,11 @@ This repository is configured to use a commercial license
 	#BKARG#
 but does not contain a license key signature in
 the BitKeeper config key: licsign1.
-Please contact BitMover to get a valid license signature.
-BitMover can be reached at:
+Please contact sales@bitkeeper.com to get a valid license signature.
+BitKeeper Inc. can be reached at:
    +1-408-370-9911 (international and California)
    888-401-8808 (toll free in the US & Canada) 
-during business hours (PST) or via email at sales@bitmover.com.
+during business hours (PST) or via email at sales@bitkeeper.com.
 Thanks!
 $
 #invalid-key-sig
@@ -1111,7 +1083,7 @@ $
 #lease-other-error
 The error code returned from BitKeeper was:
 	#BKARG#
-Please send mail to support@bitmover.com to request assistance.
+Please send mail to support@bitkeeper.com to request assistance.
 $
 #timesync
 The time on the local machine is out of sync with your license server.
@@ -1122,7 +1094,7 @@ $
 You are using an evaluation license and it appears that you have  
 reached the usage limit allowed for this license.  To continue  
 your work you will need a commercial license.  Please contact  
-sales@bitmover.com
+sales@bitkeeper.com
 $
 #bkd-err-nolease
 The remote BitKeeper daemon was unable to obtain a valid license for
@@ -1130,9 +1102,9 @@ this operation.
 $
 #bkd-err-other
 The remote BitKeeper daemon for this connection had an error.
-The error code returned from BitMover was:
+The error code returned from BitKeeper was:
 	#BKARG#
-Please send email to support@bitmover.com for assistance.
+Please send email to support@bitkeeper.com for assistance.
 $
 #gui-support-submitter
 Please enter your valid email address here so we can reach you
@@ -1177,7 +1149,8 @@ Please fill in all the fields that you can. You may use the TAB key
 to move between fields. As you move to each field this help window
 will change to describe what it is that you should put in the field.
 Some fields are automatically filled in and may not be editable, but
-are displayed so you can see what will be sent to BitMover.
+are displayed so you can see what will be sent to the BitKeeper support
+team.
 Required fields may appear with a different background color.
 $
 #gui-bug-type
@@ -1372,7 +1345,7 @@ $
 takepatch: porting work on top of a component rename is not supported
 in this version of BitKeeper.
 	Path conflict - "#BKARG#1#" and "#BKARG#2#"
-Please write support@bitmover.com and include this message.
+Please write support@bitkeeper.com and include this message.
 $
 #tp_portself
 You are trying to port changesets that were made in another clone of
@@ -1450,8 +1423,8 @@ repository as part of a different product cset.
 This can happen when more than one portal is used to port from
 other projects.
 
-BitMover recommends that you only use one portal to avoid this
-error.  Please write support@bitmover.com for assistance.
+The BitKeeper support team recommends that you only use one portal to
+avoid this error.  Please write support@bitkeeper.com for assistance.
 -----------------------------------------------------------------
 $
 #no_pull_part1
@@ -1483,7 +1456,7 @@ The integrity check failed after the backup was restored.
 This almost always means that the repository had a problem before
 the previous operation (i.e., clone -r, undo, pull, resolve) started.
 Please examine the error messages produced by check and see if you can
-fix them.  If not, contact BitMover for technical support.
+fix them.  If not, contact support@bitkeeper.com for technical support.
 $
 #case_folding
 BitKeeper has detected a "Case-Folding file system". e.g. FAT and NTFS.
@@ -1552,8 +1525,8 @@ $
 #bad-linux-kern-tree
 This copy of the Linux Kernel tree contains a bad ChangeSet file that
 needs to be repaired manually.  If at all possible please delete this
-repository and clone a new copy.  Otherwise contact BitMover and
-request assistance.
+repository and clone a new copy.  Otherwise contact support@bitkeeper.com
+and request assistance.
 $
 #upgrade-badperms
 The current user does not have permissions to replace the version of
@@ -1576,13 +1549,20 @@ If the upgrade command is given the -a option to request the binary
 for another architecture, then installation is not allowed, please
 add -d and try again.
 $
+#upgrade-pre-bundle
+You are trying to upgrade a Mac OS X bundled application to a version
+of BitKeeper that did not support bundles. Please use the -fd flags to
+download the old installer, manually remove the bundle located at
+	 #BKARG#
+and run the installer.
+$
 #license-restricted
 A license request was rejected by the license server.
 
 If this error occurs in 'bk upgrade' you may be attempting to fetch a release
 with a limited distribution.
 
-Please send mail to support@bitmover.com to request assistance.
+Please send mail to support@bitkeeper.com to request assistance.
 $
 #comments-badfmt
 Illegal format for input to the 'bk comments' command.  Lines should
@@ -1598,7 +1578,7 @@ $
 The license used by this repository is not valid.
 	#BKARG#
 
-Please contact BitMover at sales@bitmover.com and request assistance.
+Please contact sales@bitkeeper.com and request assistance.
 $
 #missing_parent
 This repository has no parent.  You must set a parent with "bk parent" or
@@ -1661,7 +1641,7 @@ $
 #no_shortkey
 This version of Bitkeeper doesn't support repositories with short keys.
 
-Please send mail to support@bitmover.com to request assistance.
+Please send mail to support@bitkeeper.com to request assistance.
 $
 #bisect_script_error
  # BISECT FAILED

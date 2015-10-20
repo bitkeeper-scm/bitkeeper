@@ -27,7 +27,7 @@ open(GCC, "gcc -I.. -Wredundant-decls $tmp 2>&1 |") || die;
 
 # now look for all warnings
 while (<GCC>) {
-    if (/local_string.h:(\d+)/) {
+    if (/local_string.h:(\d+)/ and defined($lines{$1})) {
 	delete $defset{$lines{$1}};
     }
 }

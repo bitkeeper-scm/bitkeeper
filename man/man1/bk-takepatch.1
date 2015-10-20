@@ -18,7 +18,7 @@ Users do not normally invoke this command, it is called directly by
 or
 .BR bk\ receive .
 .SH OPTIONS
-.TP \-f\*<file\*>
+.TP \-\-no\-automerge
 .B \-a
 Apply the changes (call 
 .BR bk\ resolve .)
@@ -33,6 +33,15 @@ and do not save it.
 .tp
 .B \-i
 Initial patch, create a new repository.
+.tp
+.OPTreq \-j N
+Unpack the patch using N parallel sub-processes.
+.tp
+.B \-\-no\-automerge
+Takepatch will try to automerge the file as part of taking the patch.
+This option will delay the merging until the resolve stage.
+.BR bk\ pull\ \-i
+uses this option.
 .tp
 .B \-S
 Save

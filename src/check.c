@@ -14,6 +14,10 @@
 #include "poly.h"
 #include "cfg.h"
 
+#define	sccs_init		die("use locked_init instead sccs_init")
+#define	sccs_free		die("use locked_free instead sccs_free")
+#define	sccs_csetInit(x)	die("don't use sccs_csetInit here")
+
 /*
  * Stuff to remember for each rootkey in the ->mask field:
  *  0x1 parent side of merge changes this rk
@@ -77,7 +81,7 @@ private int	checkKeys(sccs *s);
 private int	chk_gfile(sccs *s, MDBM *pathDB);
 private int	chk_dfile(sccs *s);
 private int	chk_BAM(sccs *, char ***missing);
-private int	writable_gfile(sccs *s);
+private int	writable_gfile(sccs *s, pfile *pf);
 private int	readonly_gfile(sccs *s, pfile *pf);
 private int	no_gfile(sccs *s, pfile *pf);
 private int	chk_eoln(sccs *s, int eoln_unix);
@@ -93,6 +97,8 @@ private	int	polyChk(char *rkey, rkdata *rkd, hash *newpoly);
 private	int	stripdelFile(sccs *s, rkdata *rkd, char *tip);
 private	int	keyFind(rkdata *rkd, char *key);
 private	void	getlock(void);
+private	sccs	*locked_init(char *name, u32 flags);
+private	int	locked_free(sccs *s);
 
 private	int	verbose;
 private	int	details;	/* if set, show more information */
@@ -118,6 +124,7 @@ private	u32	timestamps;
 private	char	**bp_getFiles;
 private	int	bp_fullcheck;	/* do bam CRC */
 private	char	**subrepos = 0;
+private	int	lock_csets = 0;	/* --parallel */
 
 int
 check_main(int ac, char **av)
@@ -139,12 +146,12 @@ check_main(int ac, char **av)
 	int	BAM = 0;
 	int	doBAM = 0;
 	int	forceCsetFetch = 0;
-	int	noDups = 0;
 	ticker	*tick = 0;
 	u32	repo_feat, file_feat;
 	int	sawPOLY = 0;
 	pfile	pf;
 	longopt	lopts[] = {
+		{ "parallel", 290 },
 		{ "use-older-changeset", 300 },
 		{ 0, 0 }
 	};
@@ -173,6 +180,8 @@ check_main(int ac, char **av)
 		    case 'u': undoMarks++; break;		/* doc 2.0 */
 		    case 'v': verbose++; break;			/* doc 2.0 */
 		    case 'w': badWritable++; break;		/* doc 2.0 */
+		    case 290:	/* --parallel */
+			lock_csets = 1;	break;
 		    case 300:	/* --use-older-changeset */
 			forceCsetFetch++; break;
 		    default: bk_badArg(c, av);
@@ -227,7 +236,7 @@ check_main(int ac, char **av)
 	checkout = proj_checkout(0);
 
 	/* revtool: the code below is restored from a previous version */
-	unless ((cset = sccs_csetInit(flags)) && HASGRAPH(cset)) {
+	unless ((cset = locked_init(CHANGESET, flags|INIT_MUSTEXIST))) {
 		fprintf(stderr, "Can't init ChangeSet\n");
 		return (1);
 	}
@@ -262,10 +271,17 @@ check_main(int ac, char **av)
 		if (proj_isProduct(0) && exists(ROOT2RESYNC "/" CHANGESET)) {
 			pull_inProgress = 1;
 		}
-		n = nested_init(proj_isProduct(0) ? cset : 0,
-		    0, 0, NESTED_PENDING|NESTED_FIXIDCACHE);
-		subrepos = nested_complist(n, 0);
-		nested_free(n);
+		unless (proj_product(0)) {
+			t = proj_comppath(0);
+			fprintf(stderr,
+			    "Component %s not inside a product\n", t);
+			errors |= 1;
+		} else {
+			n = nested_init(proj_isProduct(0) ? cset : 0,
+			    0, 0, NESTED_PENDING|NESTED_FIXIDCACHE);
+			subrepos = nested_complist(n, 0);
+			nested_free(n);
+		}
 	}
 	/* This can legitimately return NULL */
 	goneDB = loadDB(GONE, 0, DB_GONE);
@@ -292,14 +308,13 @@ check_main(int ac, char **av)
 		if (!title && (name = getenv("_BK_TITLE"))) title = name;
 		tick = progress_start(PROGRESS_BAR, nfiles);
 	}
-	noDups = (getenv("_BK_CHK_IE_DUPS") != 0);
 	for (n = 0, name = sfileFirst("check", &av[optind], 0);
 	    name; n++, name = sfileNext()) {
 		ferr = 0;
 		if (streq(name, CHANGESET)) {
 			s = cset;
 		} else {
-			s = sccs_init(name, flags);
+			s = locked_init(name, flags);
 		}
 		unless (s) {
 			if (all) fprintf(stderr, "%s init failed.\n", name);
@@ -313,7 +328,7 @@ check_main(int ac, char **av)
 			fprintf(stderr,
 			    "%s: bad file checksum, corrupted file?\n",
 			    s->gfile);
-			unless (s == cset) sccs_free(s);
+			unless (s == cset) locked_free(s);
 			errors |= 1;
 			continue;
 		}
@@ -324,7 +339,7 @@ check_main(int ac, char **av)
 			} else {
 				perror(s->gfile);
 			}
-			unless (s == cset) sccs_free(s);
+			unless (s == cset) locked_free(s);
 			errors |= 1;
 			continue;
 		}
@@ -389,17 +404,32 @@ check_main(int ac, char **av)
 		if (IS_POLYPATH(PATHNAME(s, sccs_top(s)))) sawPOLY = 1;
 		if (chk_gfile(s, pathDB)) ferr++, errors |= 0x08;
 		if (HAS_PFILE(s)) {
-			if (sccs_read_pfile(s, &pf)) {
+			/* test BWEAVEv3 and magic pfile fixing */
+			if ((i = sccs_read_pfile(s, &pf)) &&
+			    pf.formatErr && (fix > 1)) {
+				/* Using -ff to try to fix pfile format */
+				getlock();
+				unless (graph_convert(s, 0) ||
+				    graph_convert(s, 1) ||
+				    sccs_read_pfile(s, &pf)) {
+					i = 0;
+					fprintf(stderr,
+					    "%s: p.file fixed\n", s->gfile);
+				}
+			}
+			if (i) {
 				ferr++, errors |= 0x08;
 			} else {
 				if (no_gfile(s, &pf)) ferr++, errors |= 0x08;
 				if (readonly_gfile(s, &pf)) {
 					ferr++, errors |= 0x08;
 				}
+				if (writable_gfile(s, &pf)) {
+					ferr++, errors |= 0x08;
+				}
 				free_pfile(&pf);
 			}
 		}
-		if (writable_gfile(s)) ferr++, errors |= 0x08;
 		if (check_eoln && chk_eoln(s, eoln_native)) {
 			ferr++, errors |= 0x10;
 		}
@@ -410,8 +440,6 @@ check_main(int ac, char **av)
 		if (check_monotonic && chk_monotonic(s)) {
 			ferr++, errors |= 0x08;
 		}
-
-		if (noDups) graph_checkdups(s);
 		if (check(s, idDB)) ferr++, errors |= 0x40;
 
 		/*
@@ -428,7 +456,7 @@ check_main(int ac, char **av)
 		unless (ferr) {
 			if (verbose>1) fprintf(stderr, "%s is OK\n", s->gfile);
 		}
-		if ((s != cset) && sccs_free(s)) {
+		if ((s != cset) && locked_free(s)) {
 			ferr++, errors |= 0x01;
 		}
 	}
@@ -519,7 +547,7 @@ check_main(int ac, char **av)
 			goto out;
 		}
 	}
-	repos_update(cset);
+	repos_update(cset->proj);
 	if (errors && fix) {
 		// LMXXX - how lame is this?
 		// We could keep track of a fixnames, fixxflags, etc
@@ -553,14 +581,6 @@ check_main(int ac, char **av)
 	}
 	hash_free(r2deltas);
 
-	if (resync) {
-		chdir(RESYNC2ROOT);
-		if (sys("bk", "sane", SYS)) errors |= 0x80;
-		chdir(ROOT2RESYNC);
-	} else {
-		if (sys("bk", "sane", SYS)) errors |= 0x80;
-	}
-
 	/* fix up repository features */
 	unless (errors) {
 		features_set(0, FEAT_SAMv3, proj_isEnsemble(0));
@@ -583,7 +603,7 @@ check_main(int ac, char **av)
 		}
 		cset_savetip(cset);
 	}
-out:	if (sccs_free(cset)) {
+out:	if (locked_free(cset)) {
 		ferr++, errors |= 0x01;
 	}
 	cset = 0;
@@ -666,16 +686,22 @@ void
 touch_checked(void)
 {
 	FILE	*f;
+	char	*tmp = aprintf("%s.%u@%s", CHECKED, getpid(), sccs_realhost());
 
 	/* update timestamp of CHECKED file */
-	unless (f = fopen(CHECKED, "w")) {
-		unlink(CHECKED);
-		f = fopen(CHECKED, "w");
+	unless (f = fopen(tmp, "w")) {
+		unlink(tmp);
+		f = fopen(tmp, "w");
 	}
 	if (f) {
 		fprintf(f, "%u\n", (u32)time(0));
 		fclose(f);
+		if (rename(tmp, CHECKED)) {
+			unlink(CHECKED);
+			rename(tmp, CHECKED);
+		}
 	}
+	free(tmp);
 }
 
 private int
@@ -801,12 +827,16 @@ keywords(sccs *s)
 	return (!same);
 }
 
+/*
+ * Look for missing physical pfile when there should be one there.  Cases:
+ * KEYWORDS(s) - chmod +w gfile can overwrite keywords with expansion
+ * FEAT_PFILE - changing from BWEAVEv3 to v2 should just autofix
+ */
 private int
-writable_gfile(sccs *s)
+writable_gfile(sccs *s, pfile *pf)
 {
-	if (!HAS_PFILE(s) && S_ISREG(s->mode) && WRITABLE(s)) {
-		pfile	pf = { "+", "?", NULL, NULL, NULL };
-
+	if (pf->magic &&
+	    (HAS_KEYWORDS(s) || !(features_bits(s->proj) & FEAT_PFILE))) {
 		if (badWritable) {
 			printf("%s\n", s->gfile);
 			return (0);
@@ -839,8 +869,8 @@ writable_gfile(sccs *s)
 		 * patch them in minus the keyword expansion.
 		 */
 		if (HAS_KEYWORDS(s)) {
-			if ((diff_gfile(s, &pf, 1, DEVNULL_WR) == 1) ||
-			    (diff_gfile(s, &pf, 0, DEVNULL_WR) == 1)) {
+			if ((diff_gfile(s, pf, 1, DEVNULL_WR) == 1) ||
+			    (diff_gfile(s, pf, 0, DEVNULL_WR) == 1)) {
 				if (unlink(s->gfile)) return (1);
 				sys("bk", "edit", "-q", s->gfile, SYS);
 				return (0);
@@ -1056,9 +1086,9 @@ listFound(hash *db)
 	pclose(f);
 
 	EACH_HASH(h) {
-		if (s = sccs_init(h->kptr, SILENT|INIT_MUSTEXIST)) {
+		if (s = locked_init(h->kptr, SILENT|INIT_MUSTEXIST)) {
 			sccs_sdelta(s, sccs_ino(s), key);
-			sccs_free(s);
+			locked_free(s);
 			if (hash_fetchStr(db, key)) {
 				fprintf(stderr,
 				    "At least some of the chk3 errors above "
@@ -1310,7 +1340,7 @@ fetch_changeset(int forceCsetFetch)
 		fprintf(stderr, "Unable to retrieve ChangeSet, sorry.\n");
 		exit(0x40);
 	}
-	unless (s = sccs_init(CHANGESET, INIT_MUSTEXIST)) {
+	unless (s = locked_init(CHANGESET, INIT_MUSTEXIST)) {
 		fprintf(stderr, "Can't initialize ChangeSet file\n");
 		exit(1);
 	}
@@ -1325,7 +1355,7 @@ fetch_changeset(int forceCsetFetch)
 	range_gone(s, d, D_SET);
 	(void)stripdel_fixTable(s, &i);
 	unless (i) {
-		sccs_free(s);
+		locked_free(s);
 		goto done;
 	}
 	if (verbose > 1) fprintf(stderr, "Stripping %d csets/tags\n", i);
@@ -1333,7 +1363,7 @@ fetch_changeset(int forceCsetFetch)
 		fprintf(stderr, "stripdel failed\n");
 		exit(0x40);
 	}
-	sccs_free(s);
+	locked_free(s);
 	if (system("bk -?BK_NO_REPO_LOCK=YES renumber -q ChangeSet") != 0) {
 		fprintf(stderr, "Giving up, sorry.\n");
 		exit(0x40);
@@ -1521,7 +1551,8 @@ next:		if (color) {
 						addArray(&rkd->gca, &idx);
 						addArray(&rkd->gcamask, 0);
 					}
-				} else {
+				} else unless (d == (TREE(s)+1)) {
+					/* Skip shared component 1.1 */
 					/* gca unmarked - must be poly */
 					rkd->poly =
 					    addLine(rkd->poly, strdup(key));
@@ -1947,7 +1978,7 @@ processDups(char *rkey, char *dkey, u8 prev, u8 cur, MDBM *idDB)
 		free(a);
 		listCsetRevs(dkey);
 		fprintf(stderr,
-		    "Please write support@bitmover.com with the above\n"
+		    "Please write support@bitkeeper.com with the above\n"
 		    "%s about duplicate deltas\n",
 		    ret ? "error" : "warning");
 	}
@@ -2092,7 +2123,7 @@ pathConflictError(MDBM *goneDB, MDBM *idDB, tipdata *td[2])
 		fprintf(stderr, "Must include other renames in commit.\n");
 	}
 done:	for (i = 0; i < 2; i++) {
-		if (k[i].s && (k[i].s != INVALID)) sccs_free(k[i].s);
+		if (k[i].s && (k[i].s != INVALID)) locked_free(k[i].s);
 		free(k[i].path);
 	}
 	if (prod_idDB) mdbm_close(prod_idDB);
@@ -2152,7 +2183,7 @@ getFile(char *root, MDBM *idDB)
 	} else {
 		t = strdup(s->sfile);
 	}
-	sccs_free(s);
+	locked_free(s);
 	return (t);
 }
 
@@ -2174,7 +2205,7 @@ getRev(char *root, char *key, MDBM *idDB)
 	} else {
 		t = strdup(REV(s, d));
 	}
-	sccs_free(s);
+	locked_free(s);
 	return (t);
 }
 
@@ -2207,7 +2238,7 @@ missingDelta(rkdata *rkd)
 	char	*sfile;
 
 	sfile = name2sccs(rkd->pathname);
-	s = sccs_init(sfile, INIT_MUSTEXIST|INIT_NOCKSUM);
+	s = locked_init(sfile, INIT_MUSTEXIST|INIT_NOCKSUM);
 	assert(s);
 	EACH(rkd->missing) {
 		dcset = strtoul(rkd->missing[i], &dkey, 10);
@@ -2302,7 +2333,7 @@ missingDelta(rkdata *rkd)
 			errors++;
 		}
 	}
-	sccs_free(s);
+	locked_free(s);
 	return (errors);
 }
 
@@ -2348,7 +2379,7 @@ polyChk(char *rkey, rkdata *rkd, hash *newpoly)
 	}
 	if (errors) {
 		fprintf(stderr,
-		    "Please write support@bitmover.com with the above\n"
+		    "Please write support@bitkeeper.com with the above\n"
 		    "information about poly on key\n");
 	}
 	return (errors);
@@ -2441,8 +2472,11 @@ check(sccs *s, MDBM *idDB)
 		} else {
 			lines = addLine(0, x);
 		}
-		lines2File(lines,
-		    proj_fullpath(s->proj, "BitKeeper/log/COMPONENT"));
+		unless (((t = proj_comppath(s->proj)) && streq(t, lines[1])) ||
+		    !proj_product(s->proj)) {
+			lines2File(lines,
+			    proj_fullpath(s->proj, "BitKeeper/log/COMPONENT"));
+		}
 		freeLines(lines, 0);
 		free(x);
 		if (proj_isProduct(0)) strcat(PATHNAME(s, d), "/ChangeSet");
@@ -2466,19 +2500,15 @@ check(sccs *s, MDBM *idDB)
 			}
 		}
 	}
-	sccs_sdelta(s, ino = sccs_ino(s), buf);
 
 	/*
 	 * Rebuild the id cache if we are running in -a mode.
 	 */
 	if (all) {
+		ino = sccs_ino(s);
 		do {
 			sccs_sdelta(s, ino, buf);
-			if (s->grafted ||
-			    !sccs_patheq(PATHNAME(s, ino), s->gfile)) {
-				mdbm_store_str(idDB, buf, s->gfile,
-				    MDBM_REPLACE);
-			}
+			idcache_item(idDB, buf, s->gfile);
 			unless (s->grafted) break;
 			while (ino = sccs_prev(s, ino)) {
 				if (HAS_RANDOM(s, ino)) break;
@@ -2518,7 +2548,7 @@ chk_merges(sccs *s)
 		if (sccs_needSwap(s, p, m, 1)) {
 			fprintf(stderr,
 			    "%s|%s: %s/%s graph corrupted.\n"
-			    "Please write support@bitmover.com\n",
+			    "Please write support@bitkeeper.com\n",
 			    s->gfile, REV(s, d), REV(s, p), REV(s, m));
 			return (1);
 		}
@@ -2552,47 +2582,15 @@ isGone(sccs *s, char *key)
 private int
 update_idcache(MDBM *idDB)
 {
-	kvpair	kv;
 	rkdata	*rkd;
 	int	updated = 0;
 	char	*rkey;
-	char	*p, *e;
-	char	*cached;	/* idcache idea of where the file is */
-	char	*found;		/* where we found the gfile */
-	int	inkeyloc;	/* is gfile in inode location? */
 
 	EACH_HASH(r2deltas) {
 		rkd = r2deltas->vptr;
 		unless (rkd->keys) continue;  // only files actually read
 		rkey = HEAP(cset, *(u32*)r2deltas->kptr);
-		p = strchr(rkey, '|');
-		assert(p);
-		p++;
-		e = strchr(p, '|');
-		assert(e);
-		*e = 0;
-		found = rkd->pathname;
-		inkeyloc = streq(p, found);
-		*e = '|';
-		cached = mdbm_fetch_str(idDB, rkey);
-		/* FIXUP idDB if it is wrong */
-		if (inkeyloc) {
-			if (cached) {
-				unless(streq(cached, found)) updated = 1;
-				kv.key.dptr = rkey;
-				kv.key.dsize = strlen(rkey)+1;
-				mdbm_delete(idDB, kv.key);
-			}
-		} else {
-			if (!cached || !streq(cached, found)) {
-				updated = 1;
-				kv.key.dptr = rkey;
-				kv.key.dsize = strlen(rkey)+1;
-				kv.val.dptr = rkd->pathname;
-				kv.val.dsize = strlen(rkd->pathname)+1;
-				mdbm_store(idDB, kv.key, kv.val, MDBM_REPLACE);
-			}
-		}
+		if (idcache_item(idDB, rkey, rkd->pathname)) updated = 1;
 	}
 	return (updated);
 }
@@ -2669,11 +2667,72 @@ undoDoMarks(void)
 		rev = strchr(sfile, '|');
 		*rev++ = 0;
 
-		unless (s = sccs_init(sfile, INIT_MUSTEXIST)) continue;
+		unless (s = locked_init(sfile, INIT_MUSTEXIST)) continue;
 		d = sccs_findrev(s, rev);
 		FLAGS(s, d) &= ~D_CSET;
 		sccs_newchksum(s);
 		updatePending(s);
-		sccs_free(s);
+		locked_free(s);
 	}
+}
+
+#undef	sccs_init
+#undef	sccs_free
+
+private void
+lockfile(char *path, char *lockfile)
+{
+	char	*p;
+
+	if (streq(path, CHANGESET)) {
+		strcpy(lockfile, "BitKeeper/tmp/ChangeSet.lock");
+	} else {
+		p = strstr(path, "/SCCS/s.ChangeSet");
+		*p = 0;
+		sprintf(lockfile, "%s/BitKeeper/tmp/ChangeSet.lock", path);
+		*p = '/';
+	}
+}
+
+/*
+ * Force exclusive access to comp changeset files because we may repack.
+ */
+private sccs *
+locked_init(char *name, u32 flags)
+{
+	sccs	*s;
+	char	*p;
+	char	lock[MAXPATH];
+
+	unless (lock_csets) return (sccs_init(name, flags));
+	p = strrchr(name, '/');
+	unless (p && streq(p, "/s.ChangeSet")) return (sccs_init(name, flags));
+
+	assert(proj_isEnsemble(0));
+
+	// Only lock component changesets
+	if (proj_isProduct(0)) {
+		if (streq(name, CHANGESET)) return (sccs_init(name, flags));
+	}
+	lockfile(name, lock);
+	if (sccs_lockfile(lock, -1, 0)) return (0);
+	if (s = sccs_init(name, flags)) {
+		s->state |= S_LOCKFILE;
+		assert(CSET(s));
+	} else {
+		sccs_unlockfile(lock);
+	}
+	return (s);
+}
+
+private int
+locked_free(sccs *s)
+{
+	char	lock[MAXPATH];
+
+	if (s && (s->state & S_LOCKFILE)) {
+		lockfile(s->sfile, lock);
+		sccs_unlockfile(lock);
+	}
+	return (sccs_free(s));
 }

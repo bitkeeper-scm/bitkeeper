@@ -63,7 +63,9 @@ cat_main(int ac, char **av)
 			sccs_free(s);
 			continue;
 		}
-		if (sccs_get(s, 0, 0, 0, 0, aflags|SILENT|PRINT, "-")) rc |= 1;
+		if (sccs_get(s, 0, 0, 0, 0, aflags|SILENT, 0, stdout)) {
+			rc |= 1;
+		}
 		sccs_free(s);
 	}
 	if (sfileDone()) rc = 1;

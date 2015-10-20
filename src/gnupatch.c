@@ -12,7 +12,7 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 {
 	char	tmp_path[MAXPATH];
 	ser_t	d;
-	int	flags = SILENT|PRINT;
+	int	flags = SILENT;
 
 	sprintf(tmp_path, "%s/%s/%s", tmpdir, tag, path);
 	if (isNullFile(rev, path))  return;
@@ -27,7 +27,7 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 	mkdirf(tmp_path);
 	if (fix_mod_time) flags |= GET_DTIME;
 	if (expandkeywords) flags |= GET_EXPAND;
-	if (sccs_get(s, rev, 0, 0, 0, flags, tmp_path)) {
+	if (sccs_get(s, rev, 0, 0, 0, flags, tmp_path, 0)) {
 		fprintf(stderr, "Cannot get %s, rev %s\n",
 							s->sfile, rev);
 		exit(1);

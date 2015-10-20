@@ -12,16 +12,22 @@ ifeq "$(OSTYPE)" "msys"
 	H=../win32.h
 	CFLAGS=-Os
 	LD=$(CC)
-	LIBS = -lws2_32
+	LIBS = -lws2_32 -lcomctl32
 	RESOURCES=resources.o
+	PROGRESS=progress.o
+	WINAPP=-mwindows
 	SO=so
 	STRIPOPTS=
+	DARWIN=NO
 	# SIGNTOOL path also in t.installer, so keep in sync
 	SIGNTOOL=/c/Program Files/Microsoft SDKs/Windows/v7.1/Bin/signtool.exe
 	CERT=../win32/bitmover-cert.p12
 	PASS=BMstuff1
 	TSURL=http://timestamp.comodoca.com/authenticode
 	BKGUI=$(BINDIR)/gui/bin/bkgui$(EXE)
+	EXTRACT_OBJ=extractor.o extractor-console.o
+	MANIFEST=installer.manifest
+	CONSOLE_IMAGE=$(IMGBASE)-console$(EXT)
 else
         SYS=unix
 	EXE=
@@ -30,32 +36,93 @@ else
 	CFLAGS=-Os
 	LD=$(CC)
 	RESOURCES=
+	PROGRESS=
+	WINAPP=
 	SO=dll
 	STRIPOPTS=
 	BKGUI=$(BINDIR)/gui/bin/bkgui$(EXE)
+	DARWIN=NO
 	ifeq "$(shell uname)" "Darwin"
 		SO=dylib
 		STRIPOPTS=-x
 		BKGUI=$(BINDIR)/gui/bin/BitKeeper.app/Contents/MacOS/BitKeeper
+		DARWIN=YES
+# CERT is the Common Name of the Developer ID Installer
+# certificate issued to us by Apple for code signing our Mac OS X
+# installer package. It need not be installed on your machine; the
+# build will simply not sign the .pkg file.
+		CERT='Developer ID Installer: BitMover, Inc. (2265G6A886)'
+		APPCERT='3rd Party Mac Developer Application: BitMover, Inc. (2265G6A886)'
+		DEEP=$(shell test `uname -r | awk -F. '{print $$1}'` -gt 10 && echo --deep)
 	endif
+	EXTRACT_OBJ=extractor.o
+	MANIFEST=
+	CONSOLE_IMAGE=
 endif
 SYSTEM_OBJS=../libc/libc.a
 SFIO=sfio$(EXE)
 CPPFLAGS=-I../libc
 VERS	:= $(shell test -x vers || bk get vers; BINDIR=$(BINDIR) ./vers)
+VERS_NO := $(subst bk-,,$(VERS))
 IMGBASE:= $(shell bk get -qS bk_version; echo $(VERS)-`./bk_version`)
 IMAGE:= $(IMGBASE)$(EXT)
 IMAGE_NAME:= $(IMGBASE)-setup
+IMAGEDEPS:= $(RESOURCES) $(PROGRESS) _data.o
 
 all image: $(BINDIR)/bk$(EXE) $(IMAGE)
-	strip $(IMAGE)
-	@test ! -x "$(SIGNTOOL)" || \
-	    "$(SIGNTOOL)" sign -t $(TSURL) -f $(CERT) -p $(PASS) $(IMAGE)
+	strip $(IMAGE) $(CONSOLE_IMAGE)
+	@test ! -x "$(SIGNTOOL)" || { \
+	    "$(SIGNTOOL)" sign -t $(TSURL) -f $(CERT) -p $(PASS) $(IMAGE) ; \
+	    "$(SIGNTOOL)" sign -t $(TSURL) -f $(CERT) -p $(PASS) $(CONSOLE_IMAGE) ; \
+	}
 
-$(IMAGE): installer.manifest extractor.o $(SYSTEM_OBJS) _data.o $(RESOURCES)
-	$(LD) $(LDFLAGS) extractor.o $(SYSTEM_OBJS) _data.o $(LIBS) \
-	    $(RESOURCES) -o $@
+$(IMAGE): $(MANIFEST) $(EXTRACT_OBJ) $(SYSTEM_OBJS) $(IMAGEDEPS)
+	$(LD) $(LDFLAGS) extractor.o $(SYSTEM_OBJS) _data.o \
+	    $(RESOURCES) $(PROGRESS) -o $@ $(WINAPP) $(LIBS)
+ifeq ("$(OSTYPE)","msys")
+	@echo Building Windows Console Image
+	$(LD) $(LDFLAGS) extractor-console.o $(SYSTEM_OBJS) _data.o \
+	    $(RESOURCES) -o $(CONSOLE_IMAGE) $(LIBS)
+endif
 	@$(RM) -f _data.o
+	@if [ $(DARWIN) = YES ] ; \
+	then \
+		echo Creating Mac OS X installer package ; \
+		echo version will be "$(VERS_NO)" ; \
+		$(RM) -rf BitKeeper; \
+		mkdir -p BitKeeper; \
+		mv $(BINDIR)/gui/bin/BitKeeper.app BitKeeper ; \
+		mv $(BINDIR) BitKeeper/BitKeeper.app/Contents/Resources ; \
+		ln -s ../../../../../../BitKeeper.app \
+		    BitKeeper/BitKeeper.app/Contents/Resources/bitkeeper/gui/bin ; \
+		mkdir BitKeeper/BitKeeper.app/Contents/Resources/Scripts ; \
+		bk get -qS ../macosx/AppMain.tcl ; \
+		cp ../macosx/AppMain.tcl \
+		    BitKeeper/BitKeeper.app/Contents/Resources/Scripts ; \
+		codesign -s $(APPCERT) BitKeeper/BitKeeper.app/Contents/Resources/bitkeeper/bk || { \
+			echo "Signing bk binary failed" ; \
+			exit 1; \
+		} ; \
+		codesign -s $(APPCERT) BitKeeper/BitKeeper.app $(DEEP) || { \
+			echo "Signing the app bundle failed" ; \
+			exit 1; \
+		} ; \
+		pkgbuild --install-location /Applications \
+			--identifier com.bitkeeper.bk \
+			--version $(VERS_NO) \
+			--scripts ../macosx/scripts \
+			--root BitKeeper/ \
+			--component-plist component.plist \
+			bk.pkg ; \
+		productbuild --distribution distribution.xml \
+			$(IMGBASE).pkg ; \
+		rm bk.pkg ; \
+		productsign --sign $(CERT) $(IMGBASE).pkg $(IMGBASE)-signed.pkg || { \
+			echo "Signing the installer failed" ; \
+			exit 1; \
+		} ; \
+		mv $(IMGBASE)-signed.pkg $(IMGBASE).pkg ; \
+	fi || exit 1
 
 _data.o: sfio$(EXE) munge$(EXE) zz$(EXE) sfioball.zz
 	@echo Compressing data
@@ -79,6 +146,19 @@ rcver.h: FORCE
 	$(Q)echo '#define VER_INTERNALNAME_STR "$(IMAGE_NAME)\0"' > $@
 	$(Q)echo '#define VER_ORIGINALFILENAME_STR "$(IMAGE)\0"' >> $@
 	$(Q)../bk.exe L ./rcversion.l >> $@
+
+count.h: FORCE
+	echo "#define NUMFILES " \
+	    `find ../tmp/bitkeeper -type f | wc -l` > count.h
+
+progress.o: count.h progress.h resources.h progress.c
+	$(CC) -c $(CFLAGS) $(CPPFLAGS) progress.c
+
+extractor.o: progress.h resources.h extractor.c
+	$(CC) -c $(CFLAGS) $(CPPFLAGS) extractor.c
+
+extractor-console.o: progress.h resources.h extractor.c
+	$(CC) -o $@ -c $(CFLAGS) -DCONSOLE $(CPPFLAGS) extractor.c
 
 sfio_unpack.o: sfio_unpack.c
 	$(CC) -c $(CFLAGS) $(CPPFLAGS) -I.. sfio_unpack.c
@@ -114,9 +194,11 @@ zz$(EXE): zz.o
 
 .PHONY: clean
 clean:
-	$(RM) -f _data _data.c _data.o a.out munge$(EXE) zz \
+	$(RM) -f _data _data.c _data.o a.out count.h rcver.h \
+		munge$(EXE) zz \
 		core* bk-*.bin *.o *.exe *.obj *.pdb *.ilk sfio *.zz \
-		installtool inskeys
+		installtool inskeys *.pkg
+	$(RM) -rf BitKeeper
 
 clobber: clean
 	-bk clean

@@ -183,3 +183,12 @@ for f in BitKeeper/BAM/*/*/*
 do	test `linkcount $f` = 3 || fail $f bad link count `linkcount $f`
 done
 echo OK
+
+echo $N Test that cp with non-existent source prints error message...$NL
+cd "$HERE/proj5"
+bk cp non-existent another-non-existent > GOT 2>&1 && fail should have failed
+cat <<EOF > WANT
+cp: non-existent: No such file
+EOF
+cmpfiles WANT GOT
+echo OK

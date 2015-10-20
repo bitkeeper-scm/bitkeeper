@@ -60,15 +60,7 @@ if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -d BitKeeper/tmp ]; then echo failed to make BitKeeper/tmp; exit 1; fi
 if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 if [ ! -f BitKeeper/log/parent ]; then echo failed to record parent; exit 1; fi
-P=`bk _stat SCCS/s.ChangeSet | awk -F\| '{ print $3 }'`
-case "$P" in
-100444) echo OK
-	;;
-*)
-	echo failed
-	exit 1
-	;;
-esac
+echo OK
 cd "$HERE"
 bk clone $Q project copy
 echo $N Should not be able to resync unrelated repositories .........$NL
@@ -561,11 +553,11 @@ echo $N Test propagation of a symbol on new changeset ...............$NL
 cd "$HERE/project/src"
 date > symbol_test
 bk new $Q symbol_test
-bk commit $S -y"symbol test" --tag='symbol test'
+bk commit $S -y"symbol+test" --tag='symbol+test'
 cd "$HERE/copy"
 bk pull $Q "$HERE/project"
 if bk _test ! -f src/SCCS/s.symbol_test; then echo failed to send file; exit 1; fi
-bk changes -r'symbol test' > /dev/null || fail
+bk changes -r'symbol+test' > /dev/null || fail
 echo OK
 cores
 
@@ -573,11 +565,11 @@ echo $N Test propagation of a stand alone symbol "(meta delta)" .......$NL
 cd "$HERE/project"
 date > dummy
 bk new $Q dummy
-bk commit $S -y"symbol test2"
-bk admin $Q -S'later symbol' SCCS/s.ChangeSet
+bk commit $S -y"symbol-test2"
+bk admin $Q -S'later+symbol' SCCS/s.ChangeSet
 cd "$HERE/copy"
 bk pull $Q -R "$HERE/project"
-grep -q 'S later symbol' "$HERE/copy/PENDING/"* || {
+grep -q 'S later+symbol' "$HERE/copy/PENDING/"* || {
 	echo symbol not part of the patch
 	cat "$HERE/copy/PENDING/"*
 	exit 1
@@ -585,27 +577,27 @@ grep -q 'S later symbol' "$HERE/copy/PENDING/"* || {
 cp "$HERE/copy/PENDING/"* "$HERE"
 bk resolve -a $Q "$HERE/copy"
 cd "$HERE/copy"
-bk changes -r'later symbol' > /dev/null || fail
+bk changes -r'later+symbol' > /dev/null || fail
 echo OK
 
 echo $N Test propagation of a symbol added later and unrelated data..$NL
 cd "$HERE/project"
-bk admin $Q -S'additional symbol:1.1' SCCS/s.ChangeSet
+bk admin $Q -S'additional-symbol=1.1' SCCS/s.ChangeSet || fail
 bk co $Q -l dummy
 date > dummy
 bk ci $Q -m'additional' dummy
-bk commit $S -y'additional symbol test 2'
+bk commit $S -y'additional-symbol-test-2'
 cd "$HERE/copy"
 bk pull $Q "$HERE/project"
-bk changes -r'additional symbol:1.1' > /dev/null || fail
+bk changes -r'additional-symbol=1.1' > /dev/null || fail
 echo OK
 
 echo $N Test propagation of a symbol added later by itself ..........$NL
 cd "$HERE/project"
-bk admin $Q -S'YAsymbol:1.5' ChangeSet
+bk admin $Q -S'YAsymbol=1.5' ChangeSet
 cd "$HERE/copy"
 bk pull $Q "$HERE/project"
-bk changes -r'YAsymbol:1.5' > /dev/null || fail
+bk changes -r'YAsymbol=1.5' > /dev/null || fail
 echo OK
 cores
 

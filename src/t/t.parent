@@ -742,3 +742,12 @@ bk parent -rq "$HERE/project" || fail # cleanup previous
 echo "$HERE/project" >> BitKeeper/log/parent
 bk parent -rq "$HERE/project" || fail
 echo OK
+
+if test $PLATFORM = WIN32; then
+echo $N Check that Windows paths are normalized .....................$NL
+cd "$HERE/clone"
+bk parent -q "$HERE/project"
+bk parent -ai ..\\project >OUT 2>&1
+test -s OUT && fail -f OUT should not have added parent
+echo OK
+fi	# if WIN32

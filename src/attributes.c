@@ -32,12 +32,15 @@ attr_update(void)
 	if (HASGRAPH(s)) {
 		/* edit the file */
 		unless (HAS_PFILE(s)) {
-			rc = sccs_get(s, 0, 0, 0, 0, gflags, "-");
+			rc = sccs_get(s, 0, 0, 0, 0, gflags, 0, 0);
 			//assert(rc == 0);
 		}
 	} else {
 		dflags |= NEWFILE;  /* XXX: like poly, should add |DELTA_DB; */
 	}
+	/* attr files in the wild can have keywords; not useful */
+	s->xflags &= ~(X_RCS|X_EXPAND1|X_SCCS);
+
 	rc = sccs_delta(s, dflags, 0, 0, 0, 0);
 	if (rc == -2) {
 		/* no delta if no diffs in file */

@@ -227,7 +227,14 @@ L_typeck_main(VarDecl *decl)
 		L_errf(decl, "main must have int or void return type");
 	}
 
-	for (n = 0, v = type->u.func.formals; v; v = v->next) ++n;
+	/*
+	 * Avoid later unused-variable errors on the argc, argv, or
+	 * env formals by marking them as used.
+	 */
+	for (n = 0, v = type->u.func.formals; v; v = v->next, ++n) {
+		v->flags |= DECL_ARGUSED;
+	}
+
 	v = type->u.func.formals;
 	switch (n) {
 	    case 0:

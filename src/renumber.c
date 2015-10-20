@@ -195,7 +195,7 @@ redo(sccs *s, ser_t d, u32 *nextbranch)
 	}
 	if (BITKEEPER(s) && (R0(s, d) != 1)) {
 		fprintf(stderr, "Renumber: lod sfile:\n  %s\n"
-		    "Please write support@bitmover.com\n", s->sfile);
+		    "Please write support@bitkeeper.com\n", s->sfile);
 		exit (1);
 	}
 	if (R0(s, d) != R0(s, p)) return;	/* if ATT SCCS */
@@ -209,7 +209,7 @@ redo(sccs *s, ser_t d, u32 *nextbranch)
 			char	buf[MAXKEY];
 
 			fprintf(stderr, "Renumber: corrupted sfile:\n  %s\n"
-			    "Please write support@bitmover.com\n", s->sfile);
+			    "Please write support@bitkeeper.com\n", s->sfile);
 			fprintf(stderr, "Merge node (%s):\n",
 			    (FLAGS(s, d) & D_REMOTE) ? "remote" : "local");
 			sccs_sdelta(s, d, buf);

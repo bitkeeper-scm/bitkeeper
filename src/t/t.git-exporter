@@ -1,0 +1,337 @@
+# Skip test if no git
+test -x "`bk which git`" || exit 0
+
+function do_export () {
+	repo_bk=$1
+	repo_git=$2
+	rm -rf "$2"
+	git init -q "$repo_git"
+	(cd "$repo_bk" ; bk fast-export --bk-regressions) | \
+	    (cd "$repo_git" ; git fast-import) > "$HERE/GOT" 2>&1 || \
+	    fail -f "$HERE/GOT" export failed
+}
+
+function cmp_repos() {
+	bk_repo=$1
+	git_repo=$2
+	export_git="$HERE/export.git"
+	export_bk="$HERE/export.bk"
+	## build an array of bk revisions mapped to git revisions
+	## I need to build it from the git tree since it's the one
+	## that has the MD5KEYs in the comments.
+	(cd "$git_repo" ; git log --pretty='%H %s' ) | \
+	    while read sha1 md5; 
+	    do 
+		    rm -rf "$export_git" "$export_bk"
+		    (mkdir -p "$export_git" ; cd "$git_repo" ;
+		     git --work-tree="$export_git" checkout -f -q $sha1 ;
+		    )
+		    (cd "$bk_repo" ;
+		     bk export -tplain -kr$md5 "$export_bk" )
+		    diff -Nrq "$export_git" "$export_bk" > OUT || fail -f OUT Diffs found $sha1 $md5
+	    done
+}
+
+echo $N Create a bk tree.............................................$NL
+commercial project
+echo stuff > afile
+echo other stuff > bfile
+bk new $Q afile bfile
+bk commit $Q -y"add files"
+cd "$HERE"
+do_export project project.git || fail
+cmp_repos project project.git || fail
+echo OK
+
+echo $N Test a merge with parallel creates...........................$NL
+cd "$HERE"
+bk clone $Q project project.copy
+cd project
+echo stuff > file.a
+bk new $Q file.a
+bk commit $Q -y"add file.a"
+cd "$HERE/project.copy"
+echo stuff > file.b
+bk new $Q file.b
+bk commit $Q -y"add file b"
+cd "$HERE/project"
+bk pull $Q ../project.copy
+cd "$HERE"
+do_export project project.git || fail
+cmp_repos project project.git || fail
+echo OK
+
+echo $N Test symlinks................................................$NL
+cd "$HERE/project"
+echo real > realfile
+ln -s realfile link
+bk new $Q realfile
+bk new $Q link
+bk commit $Q -ylink
+cd "$HERE"
+do_export project project.git || fail
+cmp_repos project project.git || fail
+echo OK
+
+echo $N Test a simple delete.........................................$NL
+cd "$HERE/project"
+bk rm -f afile
+bk commit $Q -y"delete afile"
+cd "$HERE"
+do_export project project.git || fail
+cmp_repos project project.git || fail
+echo OK
+
+echo $N Test a delta in a deleted file...............................$NL
+cd "$HERE/project.copy"
+bk edit $Q afile
+echo different stuff >> afile
+bk ci $Q -ychange
+bk commit $Q -ychange
+cd "$HERE/project"
+bk pull $Q ../project.copy
+cd "$HERE"
+do_export project project.git || fail
+cmp_repos project project.git || fail
+echo OK
+
+echo $N Test create/delete on branch.................................$NL
+cd "$HERE/project.copy"
+echo stuff > del-in-branch
+bk new $Q del-in-branch
+bk commit $Q -y"add del-in-branch"
+bk rm -f del-in-branch
+bk commit $Q -y"del del-in-branch"
+cd "$HERE/project"
+bk pull $Q ../project.copy
+cd "$HERE"
+do_export project project.git || fail
+cmp_repos project project.git || fail
+echo OK
+
+echo $N Test a simple rename.........................................$NL
+cd "$HERE/project"
+bk mv bfile bfile.moved
+bk commit $Q -y"moved bfile"
+cd "$HERE"
+do_export project project.git || fail
+cmp_repos project project.git || fail
+echo OK
+
+echo $N Make sure tags are imported as well..........................$NL
+cd "$HERE/project"
+bk tag $Q -r+ A_TAG
+BK_TAG=`bk changes -d:MD5KEY: -rA_TAG`
+cd "$HERE"
+do_export project project.git || fail
+cd project.git
+GIT_TAG=`git log -1 --pretty=%s A_TAG`
+test "$BK_TAG" = "$GIT_TAG" || fail Could not find tag A_TAG
+# now tag an older cset
+cd "$HERE/project"
+BK_USER=foo bk tag $Q -r1.3 OLD_TAG
+BK_TAG=`bk changes -d:MD5KEY: -rOLD_TAG`
+bk fast-export | grep tagger | head -1 | grep -q foo || fail
+cd "$HERE"
+do_export project project.git || fail
+cd project.git
+GIT_TAG=`git log -1 --pretty=%s OLD_TAG`
+test "$BK_TAG" = "$GIT_TAG" || fail Could not find tag OLD_TAG
+echo OK
+
+echo $N Test same tag in different places............................$NL
+cd "$HERE"
+rm -rf project.copy
+bk clone $Q project project.copy
+cd project
+echo stuff > xxx.file
+bk new $Q xxx.file
+bk commit $Q --tag=X_TAG -yfirst_tag
+cd "$HERE/project.copy"
+echo stuff > yyy.file
+bk new $Q yyy.file
+bk commit $Q --tag=X_TAG -ysecond_tag
+cd "$HERE/project"
+echo m | bk pull $Q ../project.copy >OUT 2>ERR || fail -f ERR pull failed
+BK_TAG=`bk changes -d:MD5KEY: -rX_TAG`
+cd "$HERE"
+do_export project project.git || fail
+cd project.git
+GIT_TAG=`git log -1 --pretty=%s X_TAG`
+test "$BK_TAG" = "$GIT_TAG" || fail Could not find tag X_TAG
+echo OK
+
+echo $N Move a file _inside_ BitKeeper...............................$NL
+cd "$HERE/project"
+bk mv -f bfile.moved BitKeeper/etc/
+bk commit $Q -y"moved a file into BitKeeper"
+cd "$HERE"
+do_export project project.git || fail
+cmp_repos project project.git || fail
+echo OK
+
+echo ---- nested tests
+
+echo $N Test a simple nested export..................................$NL
+cd "$HERE"
+nested product
+echo stuff > product_file
+echo more stuff > gcc/gcc_file
+echo even more stuff > gdb/gdb_file
+bk new $Q product_file gcc/gcc_file gdb/gdb_file
+bk commit $Q -yfiles
+cd "$HERE"
+do_export product product.git || fail
+cmp_repos product product.git || fail
+echo OK
+
+echo $N Test a nested merge..........................................$NL
+cd "$HERE"
+bk clone $Q product product.copy
+(cd product.copy ; bk portal $Q .)
+cd "$HERE/product"
+echo newfile > gcc/newfile
+bk new $Q gcc/newfile
+bk commit $Q -ynewfile.gcc
+cd "$HERE/product.copy"
+echo new > gdb/newfile
+bk new $Q gdb/newfile
+bk commit $Q -ynewfile.gdb
+bk pull $Q ../product
+cd "$HERE"
+do_export product.copy product.git || fail
+cmp_repos product.copy product.git || fail
+echo OK
+
+echo $N Test symlinks in nested......................................$NL
+cd "$HERE/product"
+echo symlink > realfile
+echo symlink > gcc/realfile
+ln -s realfile link
+(cd gcc ; ln -s realfile link)
+ln -s gcc/realfile gcclink
+bk new $Q realfile gcc/realfile link gcclink gcc/link
+bk commit $Q -ylinks
+cd "$HERE"
+do_export product product.git || fail
+cmp_repos product product.git || fail
+echo OK
+
+echo $N Test deletes in nested.......................................$NL
+cd "$HERE/product"
+bk rm -f product_file
+bk commit $Q -y"delete product_file"
+bk rm -f gcc/gcc_file
+bk commit $Q -y"delete gcc/gcc_file"
+cd "$HERE"
+do_export product product.git || fail
+cmp_repos product product.git || fail
+echo OK
+
+echo ---- license checks
+
+echo $N Set up a repo that does not support fast-export .............$NL
+cd "$HERE"
+commercial no-export
+bk edit $Q BitKeeper/etc/config
+grep -v lic < BitKeeper/etc/config > BitKeeper/etc/config.new
+cat >> BitKeeper/etc/config.new <<EOF
+license:$BKL_pro
+licsign1:$BKL_p1
+licsign2:$BKL_p2
+licsign3:$BKL_p3
+EOF
+mv BitKeeper/etc/config.new BitKeeper/etc/config
+bk lease flush -a
+echo OK
+
+echo $N Test that we have no fast-export command ....................$NL
+bk fast-export > GOT 2>&1
+echo 'fast-export: command not found' > WANT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test bk fast-export --help does not work ....................$NL
+bk fast-export --help > GOT 2>&1
+echo 'No help for fast-export, check spelling.' > WANT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test bk help fast-export does not work ......................$NL
+bk help fast-export > GOT 2>&1
+echo 'No help for fast-export, check spelling.' > WANT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test bk help -k fast-export does not work ...................$NL
+bk help -k fast-export > GOT 2>&1
+rm WANT
+touch WANT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test bk help -p All does not list fast-export ...............$NL
+bk help -p All > GOT 2>&1
+grep -q 'fast-export' GOT && fail
+echo OK
+
+# See man/man2help/help2sum.pl for where this list of aliases came from
+echo $N Test bk help -p topic does not list fast-export .............$NL
+bk help -p topic > GOT 2>&1
+grep -q 'fast-export' GOT && fail
+echo OK
+
+echo $N Test bk help -p topics does not list fast-export ............$NL
+bk help -p topics > GOT 2>&1
+grep -q 'fast-export' GOT && fail
+echo OK
+
+echo $N Test bk help -p command does not list fast-export ...........$NL
+bk help -p command > GOT 2>&1
+grep -q 'fast-export' GOT && fail
+echo OK
+
+echo $N Test bk help -p commands does not list fast-export ..........$NL
+bk help -p commands > GOT 2>&1
+grep -q 'fast-export' GOT && fail
+echo OK
+
+echo $N Test bk help -p Utility does not list fast-export ...........$NL
+bk help -p All > GOT 2>&1
+grep -q 'fast-export' GOT && fail
+echo OK
+
+echo $N Set up a repo that does support fast-export .................$NL
+cd "$HERE"
+commercial export
+echo OK
+
+echo $N Test that we have fast-export command .......................$NL
+bk fast-export > GOT 2>&1
+test -s GOT || fail
+echo OK
+
+echo $N Test bk fast-export --help works ............................$NL
+bk fast-export --help > GOT 2>&1
+grep -i -q git GOT || fail
+echo OK
+
+echo $N Test bk help fast-export works ..............................$NL
+bk help fast-export > GOT 2>&1
+grep -i -q git GOT || fail
+echo OK
+
+echo $N Test bk help -k fast-export works ...........................$NL
+bk help -k fast-export > GOT 2>&1
+grep -q 'bk fast-export' GOT || fail
+echo OK
+
+echo $N Test bk help -p All lists fast-export .......................$NL
+bk help -p All > GOT 2>&1
+grep -q 'bk fast-export' GOT || fail
+echo OK
+
+echo $N Test bk help -p Utility lists fast-export ...................$NL
+bk help -p All > GOT 2>&1
+grep -q 'bk fast-export' GOT || fail
+echo OK

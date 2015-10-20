@@ -7,14 +7,14 @@ typedef struct ld	ld_t;
 typedef struct diffln	diffln;
 typedef struct file	file_t;
 
-private char	*find_gca(char *file, char *left, char *right);
+private char	*find_gca(sccs *s, char *left, char *right);
 private int	do_weave_merge(u32 start, u32 end);
 private conflct	*find_conflicts(void);
 private int	resolve_conflict(conflct *curr);
 private diffln	*unidiff(conflct *curr, int left, int right);
 private diffln	*unidiff_ndiff(conflct *curr, int left, int right);
 private int	sameline(ld_t *left, ld_t *right);
-private	int	file_init(char *file, int side, char *anno, file_t *f);
+private	int	file_init(sccs *s, int side, char *anno, file_t *f);
 private	void	file_free(file_t *f);
 private	int	do_diff_merge(void);
 
@@ -70,8 +70,7 @@ struct diffln {
 };
 
 struct file {
-	char	*tmpfile;
-	MMAP	*m;
+	FILE	*f;		/* fmem of annotated output */
 	ld_t	*lines;
 	int	n;
 };
@@ -96,7 +95,8 @@ smerge_main(int ac, char **av)
 	int	ret = 2;
 	int	do_diff3 = 0;
 	int	identical = 0;
-	char	*p;
+	char	*p, *sfile;
+	sccs	*s;
 	longopt	lopts[] = {
 		{ "show-merge-fn", 310 },
 		{ 0, 0 }
@@ -169,7 +169,11 @@ help:		system("bk help -s smerge");
 	}
 	if (fdiff && mode == MODE_3WAY) mode = MODE_GCA;
 	file = av[optind];
-	revs[GCA] = revs[GCAR] = find_gca(file, revs[LEFT], revs[RIGHT]);
+	sfile = name2sccs(file);
+	unless (s = sccs_init(sfile, INIT_MUSTEXIST)) goto err;
+	free(sfile);
+	revs[GCA] = revs[GCAR] = find_gca(s, revs[LEFT], revs[RIGHT]);
+	unless(revs[GCA]) goto err;
 
 	/*
 	 * Disable the merge_content heuristic if the merge GCA is a
@@ -183,7 +187,7 @@ help:		system("bk help -s smerge");
 	}
 
 	for (i = 0; i < NFILES; i++) {
-		if (file_init(file, i, anno, &body[i])) {
+		if (file_init(s, i, anno, &body[i])) {
 			goto err;
 		}
 	}
@@ -208,6 +212,7 @@ help:		system("bk help -s smerge");
 		ret = do_weave_merge(start, end);
 	}
  err:
+	if (s) sccs_free(s);
 	for (i = 0; i < NFILES; i++) {
 		unless (i == RIGHT && identical) {
 			file_free(&body[i]);
@@ -229,31 +234,23 @@ smerge_saveseq(u32 seq)
  * Open a file and populate the file_t structure.
  */
 private	int
-file_init(char *file, int side, char *anno, file_t *f)
+file_init(sccs *s, int side, char *anno, file_t *f)
 {
 	char	*p;
 	char	*end;
+	size_t	len;
 	int	l;
-	sccs	*s;
-	int	flags = GET_SEQ|SILENT|PRINT;
+	int	flags = GET_SEQ|SILENT;
 	int	i;
-	char	*sfile = name2sccs(file);
 	char	*inc, *exc;
 	char	*rev;
-	char	tmp[MAXPATH];
 
 	if (anno) flags = annotate_args(flags|GET_ALIGN, anno);
 
-	bktmp(tmp);
-	f->tmpfile = strdup(tmp);
-	s = sccs_init(sfile, 0);
-	unless (s && TREE(s)) return (-1);
 	unless (ASCII(s)) {
 		fprintf(stderr, "%s: cannot merge binary file.\n", s->gfile);
-		sccs_free(s);
 		return (-1);
 	}
-	free(sfile);
 	if (side == GCA) {
 		s->whodel = sccs_findrev(s, revs[LEFT]);
 	} else if (side == GCAR){
@@ -269,22 +266,14 @@ file_init(char *file, int side, char *anno, file_t *f)
 	if (inc = strchr(rev, '+')) *inc++ = 0;
 	if (exc = strchr(inc ? inc : rev, '-')) *exc++ = 0;
 
-	if (sccs_get(s, rev, 0, inc, exc, flags, f->tmpfile)) {
+	f->f = fmem();
+	if (sccs_get(s, rev, 0, inc, exc, flags, 0, f->f)) {
 		fprintf(stderr, "Fetch of revision %s failed!\n", rev);
 		free(rev);
 		return (-1);
 	}
 	free(rev);
 	rev = 0;
-	sccs_free(s);
-
-	f->m = mopen(f->tmpfile, "r");
-	unless (f->m) {
-		fprintf(stderr, "Open of %s failed!\n", f->tmpfile);
-		exit(2);
-	}
-
-	end = f->m->end;
 
 	f->n = nLines(seqlist);
 	f->lines = calloc(f->n+1, sizeof(ld_t));
@@ -296,8 +285,9 @@ file_init(char *file, int side, char *anno, file_t *f)
 	seqlist = 0;
 
 	l = 0;
-	p = f->m->where;
-	while (p) {
+	p = fmem_peek(f->f, &len);
+	end = p + len;
+	while (p < end) {
 		char	*start;
 
 		assert(l < f->n);
@@ -313,7 +303,6 @@ file_init(char *file, int side, char *anno, file_t *f)
 		while (p < end && *p++ != '\n');
 		assert(p > start); /* no empty lines */
 		f->lines[l].len = p - start;
-		if (p == end) p = 0;
 		++l;
 	}
 	f->lines[l].seq = ~0;
@@ -332,43 +321,30 @@ file_free(file_t *f)
 		free(f->lines);
 		f->lines = 0;
 	}
-	if (f->m) {
-		mclose(f->m);
-		f->m = 0;
-	}
-	if (f->tmpfile) {
-		unlink(f->tmpfile);
-		free(f->tmpfile);
-		f->tmpfile = 0;
+	if (f->f) {
+		fclose(f->f);
+		f->f = 0;
 	}
 }
 
 private char *
-find_gca(char *file, char *left, char *right)
+find_gca(sccs *s, char *left, char *right)
 {
-	sccs	*s;
-	char	*sfile = name2sccs(file);
 	ser_t	dl, dr, dg;
 	char	*inc = 0, *exc = 0;
 	FILE	*revlist = 0;
 
-	s = sccs_init(sfile, INIT_NOCKSUM);
-	free(sfile);
-	unless (s) {
-		perror(file);
-		exit(2);
-	}
 	dl = sccs_findrev(s, left);
 	unless (dl) {
-		fprintf(stderr, "ERROR: couldn't find %s in %s\n", left, file);
-		sccs_free(s);
-		exit(2);
+		fprintf(stderr, "ERROR: couldn't find %s in %s\n",
+		    left, s->gfile);
+		return (0);
 	}
 	dr = sccs_findrev(s, right);
 	unless (dr) {
-		fprintf(stderr, "ERROR: couldn't find %s in %s\n", right, file);
-		sccs_free(s);
-		exit(2);
+		fprintf(stderr, "ERROR: couldn't find %s in %s\n",
+		    right, s->gfile);
+		return (0);
 	}
 	dg = sccs_gca(s, dl, dr, &inc, &exc);
 	revlist = fmem();
@@ -381,7 +357,6 @@ find_gca(char *file, char *left, char *right)
 		fprintf(revlist, "-%s", exc);
 		free(exc);
 	}
-	sccs_free(s);
 	return (fmem_close(revlist, 0));
 }
 
@@ -690,6 +665,7 @@ merge_conflicts(conflct *head)
 typedef struct difwalk difwalk;
 struct difwalk {
 	FILE	*diff;
+	char	*file[2];	/* tmpfiles being diff'ed */
 	int	offset;		/* difference between gca lineno and right */
 	int	start, end;
 	int	lines;
@@ -790,11 +766,22 @@ diffwalk_new(file_t *left, file_t *right)
 {
 	difwalk	*dw;
 	char	*cmd;
+	FILE	*f;
+	char	*d;
+	size_t	len;
+	int	i;
 
 	dw = new(difwalk);
+	for (i = 0; i < 2; i++) {
+		dw->file[i] = bktmp(0);
+		f = fopen(dw->file[i], "w");
+		d = fmem_peek(((i == 0) ? left : right)->f, &len);
+		fwrite(d, 1, len, f);
+		fclose(f);
+	}
 	cmd = aprintf("bk diff %s '%s' '%s'",
 	    (anno ? "--ignore-to-str='\\| '" : ""),
-	    left->tmpfile, right->tmpfile);
+	    dw->file[0], dw->file[1]);
 	dw->diff = popen(cmd, "r");
 	free(cmd);
 
@@ -870,7 +857,13 @@ diffwalk_range(difwalk *dw, int side, conflct *conf)
 private void
 diffwalk_free(difwalk *dw)
 {
+	int	i;
+
 	pclose(dw->diff);
+	for (i = 0; i < 2; i++) {
+		unlink(dw->file[i]);
+		free(dw->file[i]);
+	}
 	free(dw);
 }
 

@@ -101,9 +101,13 @@ scanfiles(char *argv[], int cooked)
 			filename = "stdin";
 			fd = 0;
 		} else if (type = is_xfile(path)) {
-			t = xfile_fetch(path, type);
-			fputs(t, stdout);
-			free(t);
+			if (t = xfile_fetch(path, type)) {
+				fputs(t, stdout);
+				free(t);
+			} else {
+				perror(path);
+				rval = 1;
+			}
 			++i;
 			continue;
 		} else {

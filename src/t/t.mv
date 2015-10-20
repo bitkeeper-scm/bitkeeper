@@ -78,7 +78,7 @@ if bk _test ! -f SCCS/c.edited; then echo failed; exit 1; fi
 if bk _test ! -f SCCS/p.edited; then echo failed; exit 1; fi
 if bk _test ! -f SCCS/d.edited; then echo failed d; exit 1; fi
 bk _cat SCCS/p.edited | grep -q '^1.4 1.5' || { echo failed 1; exit 1; }
-bk _cat SCCS/p.edited | grep -q ' -i1.1 -x1.2$' || { echo failed 1; exit 1; }
+bk _cat SCCS/p.edited | grep -q ' -I1.1 -X1.2$' || { echo failed 1; exit 1; }
 bk -r check -a || { echo failed; exit 1; }
 echo OK
 echo $N Test bk mvdir with -x -i to exitsing dir ....................$NL
@@ -100,7 +100,7 @@ if bk _test ! -f SCCS/c.edited; then echo failed; exit 1; fi
 if bk _test ! -f SCCS/p.edited; then echo failed; exit 1; fi
 if bk _test ! -f SCCS/d.edited; then echo failed d; exit 1; fi
 bk _cat SCCS/p.edited | grep -q '^1.6 1.7' || { echo failed 1; exit 1; }
-bk _cat SCCS/p.edited | grep -q ' -i1.1 -x1.2$' || { echo failed 1; exit 1; }
+bk _cat SCCS/p.edited | grep -q ' -I1.1 -X1.2$' || { echo failed 1; exit 1; }
 bk -r check -a || { echo failed; exit 1; }
 echo OK
 

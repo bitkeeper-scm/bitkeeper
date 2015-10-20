@@ -364,7 +364,7 @@ polyRemote(polymap *pm, char *rfile)
 		remote = revs->remote;
 		pm->merge = 1;
 	}
-	if (sccs_get(s, remote, 0, 0, 0, SILENT, "-")) {
+	if (sccs_get(s, remote, 0, 0, 0, SILENT, s->gfile, 0)) {
 		goto err;
 	}
 	ret = 0;
@@ -398,7 +398,7 @@ polyLoad(sccs *cset, int side)
 		pm->file = strdup(buf);
 
 		p = pm->file;
-		unless (exists(p)) get(p, SILENT, "-");
+		unless (exists(p)) get(p, SILENT);
 		pm->cpoly = hash_fromFile(hash_new(HASH_MEMHASH), p);
 
 		if (proj_isResync(cset->proj)) {
@@ -568,7 +568,7 @@ polyFlush(void)
 				/* edit the file */
 				unless (HAS_PFILE(s)) {
 					rc = sccs_get(
-					    s, 0, 0, 0, 0, gflags, "-");
+					    s, 0, 0, 0, 0, gflags, 0, 0);
 					//assert(rc == 0);
 				} else {
 					// XXX: Why would there be a pfile?

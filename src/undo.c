@@ -523,6 +523,7 @@ undo_ensemble2(nested *n, options *opts)
 	EACH_STRUCT(n->comps, c, i) {
 		if (c->new && c->included && C_PRESENT(c)) {
 			rmtree(c->path);
+			c->_present = 0;
 		}
 	}
 
@@ -535,7 +536,9 @@ undo_ensemble2(nested *n, options *opts)
 	free(cmd);
 	EACH_STRUCT(n->comps, c, i) {
 		if (c->product) continue;
-		if (c->new || !c->included) continue;
+		unless (C_PRESENT(c)) continue; /* not here */
+		unless (c->included) continue;	/* wasn't modified */
+
 		fprintf(f, "%s/SCCS/s.ChangeSet\n", c->path);
 	}
 	pclose(f);

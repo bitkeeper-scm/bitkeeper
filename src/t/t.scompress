@@ -4,7 +4,7 @@ set -e
 echo $N Scompress a hole ............................................$NL
 commercial project
 cd ..
-bk clone $Q bk://data.bitmover.com/test_data/scompress
+bk clone $Q bk://data.bitkeeper.com/test_data/scompress
 cd scompress
 bk changes -and:I:-:DS: > GOT
 cat <<EOF > WANT

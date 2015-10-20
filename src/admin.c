@@ -16,6 +16,7 @@ private	int	do_checkin(char *nm, int fl,
 		   char *rev, char *newf, char *com);
 private	int	setMerge(sccs *sc, char *merge, char *rev);
 private	void	rootCsetFile(sccs *sc, char *csetFile);
+private	void	replacePlus(sccs *s, pfile *pf);
 
 int
 admin_main(int ac, char **av)
@@ -271,12 +272,7 @@ admin_main(int ac, char **av)
 			if (EDITED(sc)) {
 				was_edited = 1;
 				sccs_read_pfile(sc, &pf);
-				if (xfile_delete(sc->gfile, 'p')) {
-					fprintf(stderr,
-					"admin: cannot delete p state for %s\n",
-					    sc->gfile);
-					goto next;
-				}
+				replacePlus(sc, &pf);
 			} else {
 				was_edited = 0;
 			}
@@ -298,8 +294,9 @@ admin_main(int ac, char **av)
 			sc = sccs_init(name, init_flags);
 			nrev =
 			    sccs_findrev(sc, pf.newrev) ? pf.newrev: pf.oldrev;
-			if (sccs_get(sc, nrev, 0, 0, 0, gflags, "-")) {
-				fprintf(stderr, "cannot adjust p file\n");	
+			if (sccs_get(sc, nrev,
+			    pf.mRev, pf.iLst, pf.xLst, gflags, 0, 0)) {
+				fprintf(stderr, "cannot adjust p file\n");
 			}
 		}
 next:		sccs_free(sc);
@@ -478,4 +475,40 @@ rootCsetFile(sccs *sc, char *csetFile)
 		FLAGS(sc, d) &= ~D_RED;
 	}
 	free(orig);
+}
+
+/*
+ * The pfile can have '+' in it.  The pfile is about to be re-written.
+ * Translate '+' to a revision first.
+ */
+private	void
+_replacePlus(sccs *s, char **listp)
+{
+	char	**revs;
+	char	*list = *listp;
+	int	i, changed = 0;
+
+	unless (list && strchr(list, '+')) return;
+
+	revs = splitLine(list, ",", 0);
+	EACH(revs) {
+		if (streq(revs[i], "+")) {
+			free(revs[i]);
+			revs[i] = strdup(REV(s, sccs_top(s)));
+			changed = 1;
+		}
+	}
+	if (changed) {
+		free(list);
+		*listp = joinLines(",", revs);
+	}
+	freeLines(revs, free);
+}
+
+private	void
+replacePlus(sccs *s, pfile *pf)
+{
+	_replacePlus(s, &pf->mRev);
+	_replacePlus(s, &pf->iLst);
+	_replacePlus(s, &pf->xLst);
 }

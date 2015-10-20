@@ -160,6 +160,24 @@ writable(char *s)
 	return (0);
 }
 
+/*
+ * Similar to writable() above, but also must be a 'regular' file.
+ * (not symlink and not directory)
+ */
+int
+writableReg(char *s)
+{
+	struct  stat sbuf;
+
+	if (lstat(s, &sbuf)) return (0);
+	if (S_ISREG(sbuf.st_mode) && (sbuf.st_mode & 0222)) return (1);
+
+	/* Set errno like access(2) because we use this as an error check */
+	errno = EACCES;
+	return (0);
+}
+
+
 #ifdef WIN32
 off_t
 fsize(int fd)
@@ -236,21 +254,15 @@ Reserved(char *baseName)
  * handles.
  *
  * On Vista, _get_osfhandle() which is documented to return INVALID_HANDLE_VALUE
- * has been observed to return -2.  Grr.
+ * has been observed to return -2.  Grr.  So just close if < 0.
  */
-#define INVALID_HANDLE_VALUE_VISTA ((HANDLE)-2)
 void
 closeBadFds(void)
 {
 	int	i;
-	HANDLE	fh;
 
 	for (i = 0; i < 3; i++) {
-		fh = (HANDLE)_get_osfhandle(i);
-		if ((fh == INVALID_HANDLE_VALUE) ||
-		    (is_vista() && (fh == (HANDLE)INVALID_HANDLE_VALUE_VISTA))) {
-			close(i);
-		}
+		if (_get_osfhandle(i) < 0) close(i);
 	}
 }
 #endif

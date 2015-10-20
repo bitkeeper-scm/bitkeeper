@@ -62,7 +62,7 @@ while (<DATA>) {
     next if /^\s*$/;		# ignore blank lines
 
     # handle aliases
-    if (/(\w+) => (\w+)/) {
+    if (/([\-\w]+) => (\w+)/) {
 	print C "$1, CMD_ALIAS, 0, \"$2\", 0, 0\n";
 	next;
     }
@@ -203,6 +203,7 @@ components	# old compat code
 comps
 config
 cp
+_cpus
 partition
 create
 crypto
@@ -222,6 +223,7 @@ _dumpconfig
 _eula
 _exists
 export
+_fastexport
 _fgzip
 features
 _filtertest1
@@ -245,6 +247,7 @@ _fslrm
 _rm => _fslrm
 _fslrmdir
 _rmdir => _fslrmdir
+fstype
 gca
 get
 _getdir
@@ -276,7 +279,6 @@ idcache
 info_server
 info_shell
 isascii
-_isnetwork
 inskeys
 key2rev
 key2path
@@ -314,6 +316,7 @@ newroot pro
 nfiles
 opark
 ounpark
+_parallel
 parent
 park
 path
@@ -348,6 +351,7 @@ repogca
 repostats
 repotype
 relink
+repos
 resolve
 restore
 _reviewmerge
@@ -432,6 +436,7 @@ _get => get
 co => get
 checkout => get
 edit => get
+fast-export => _fastexport
 comment => comments	# alias for Linus, remove...
 identity => id
 info => sinfo
@@ -469,6 +474,7 @@ revtool gui
 setuptool gui
 showproc gui
 debugtool gui
+outputtool gui
 
 # gui aliases
 csetool => csettool
@@ -494,3 +500,5 @@ sdiff cprog
 # L scripts
 hello lscript
 pull-size lscript
+repocheck lscript
+check_comments lscript

@@ -3,13 +3,13 @@
 
 # This regression expects the following infrastructure to be setup:
 #
-# - a squid proxy running on data.bitmover.com (work) on port 3128
+# - a squid proxy running on data.bitkeeper.com (work) on port 3128
 # - a hostname proxytest that is an alias for work, but only resolves
 #   on work and not on any other machine
 # - a wpad.bitmover.com that serves http://wpad.bitmover.com/wpad.dat
 #   contents of wpad.dat:
 #	function FindProxyForURL(url, host) {
-#		return "PROXY data.bitmover.com:3128; DIRECT";
+#		return "PROXY data.bitkeeper.com:3128; DIRECT";
 #	}
 #   (currently wpad is work)
 # - that the domainname for the machine running this test ends in
@@ -44,7 +44,7 @@ bk gethost -r | grep -q bitmover.com || {
 }
 
 bk _registry set "$KEY" ProxyEnable dword:1 || fail
-bk _registry set "$KEY" ProxyServer "data.bitmover.com:3128" || fail
+bk _registry set "$KEY" ProxyServer "data.bitkeeper.com:3128" || fail
 
 # the host proxytest only exists on 'work', so if you don't use
 # the proxy it work work.
@@ -60,7 +60,7 @@ test "`cat OUT`" = "$val" || {
 	cat OUT
 	exit 1
 }
-grep -q "trying PROXY data.bitmover.com:3128" ERR || {
+grep -q "trying PROXY data.bitkeeper.com:3128" ERR || {
 	echo should use proxy
 	cat ERR
 	exit 1
@@ -91,7 +91,7 @@ test "`cat OUT`" = "$val" || {
 	cat OUT
 	exit 1
 }
-grep -q "proxy==PROXY data.bitmover.com:3128" ERR || {
+grep -q "proxy==PROXY data.bitkeeper.com:3128" ERR || {
 	echo should use proxy
 	cat ERR
 	exit 1
@@ -129,7 +129,7 @@ test "`cat OUT`" = "$val" || {
 	cat OUT
 	exit 1
 }
-grep -q "proxy==PROXY data.bitmover.com:3128" ERR || {
+grep -q "proxy==PROXY data.bitkeeper.com:3128" ERR || {
 	echo should use proxy
 	cat ERR
 	exit 1

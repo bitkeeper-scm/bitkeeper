@@ -184,7 +184,7 @@ cmd_rclone_part2(int ac, char **av)
 		free(path);
 		return (1);
 	}
-	jobs = opts.jobs ? opts.jobs : parallel(".");
+	jobs = opts.jobs ? opts.jobs : parallel(".", WRITER);
 
 	getline(0, buf, sizeof(buf));
 	if (!streq(buf, "@SFIO@")) {
@@ -254,7 +254,9 @@ cmd_rclone_part2(int ac, char **av)
 			rename("BitKeeper/etc/SCCS/x.id_cache", IDCACHE);
 		}
 	}
-	if (!proj_isComponent(0) && (p = getenv("BK_FEATURES_REQUIRED"))) {
+	if (!proj_isComponent(0) &&
+	    ((p = getenv("BK_FEATURES_USED")) ||
+	     (p = getenv("BK_FEATURES_REQUIRED")))) {
 		char	**list = splitLine(p, ",", 0);
 
 		lines2File(list, "BitKeeper/log/features");

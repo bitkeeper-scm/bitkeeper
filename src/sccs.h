@@ -55,46 +55,45 @@ int	checking_rmdir(char *dir);
 #define	INIT_NOSTAT	0x01000000	/* do not look for {p,x,z,c} files */
 #define	INIT_HAScFILE	0x02000000	/* has c.file */
 #define	INIT_HASgFILE	0x04000000	/* has g.file */
-#define	INIT_HASpFILE	0x08000000	/* has p.file */
+#define	INIT_HASpFILE	0x08000000	/* has physical p.file */
 #define	INIT_HASxFILE	0x00100000	/* has x.file */
 #define	INIT_NOGCHK	0x00800000	/* do not fail on gfile checks */
 #define	INIT_CHK_STIME	0x00010000	/* check that s.file <= gfile */
 #define	INIT_WACKGRAPH	0x00020000	/* we're wacking the graph, no errors */
 #define	INIT_MUSTEXIST	0x00040000	/* the sfile must exist or we fail */
-#define	INIT_CHKXOR	0x00040000	/* verify crc and xor of sfile */
+#define	INIT_CHKXOR	0x00080000	/* verify crc and xor of sfile */
 
 /* shared across get/diffs/getdiffs */
 #define	GET_EDIT	0x10000000	/* get -e: get for editting */
 #define	GET_EXPAND	0x20000000	/* expand keywords */
-#define	GET_REVNUMS	0x40000000	/* get -m: prefix each line with rev */
-#define GET_USER	0x80000000	/* get -u: prefix with user name */
-#define GET_SKIPGET	0x01000000	/* get -g: don't get the file */
-#define	GET_NOREMOTE	0x02000000	/* do not go remote for BAM */
-#define	GET_ASCII	0x04000000	/* Do not gunzip/uudecode */
-#define	GET_LINENUM	0x08000000	/* get -N: show line numbers */
-#define	GET_MODNAME	0x00100000	/* get -n: prefix with %M */
-#define	GET_PREFIXDATE	0x00200000	/* get -d: show date */
-#define	GET_SERIAL	0x00400000	/* serial annotate */
-#define	GET_SHUTUP	0x00800000	/* quiet on certain errors */
-#define	GET_ALIGN	0x00010000	/* nicely align prefix output */
-#define	GET_FORCE	0x00020000	/* do it even with errors */
-#define	GET_MD5KEY	0x00040000	/* get -5: prefix line with md5key */
-#define	GET_DTIME	0x00080000	/* gfile get delta's mode time */
-#define	GET_NOHASH	0x00001000	/* force regular file, ignore S_HASH */
-#define	GET_HASHONLY	0x00002000	/* skip the file */
-#define	GET_DIFFS	0x00004000	/* get -D, regular diffs */
-#define	GET_BKDIFFS	0x00008000	/* get -DD, BK (rick's) diffs */
-#define	GET_PERMS	0x00000100	/* extract perms for non gfile */
-#define	GET_SUM		0x00000200	/* used to force dsum in getRegBody */
-#define GET_NOREGET	0x00000400	/* get -S: skip gfiles that exist */
-#define	GET_LINENAME	0x00000800	/* get -O: prefix with line name */
-#define	GET_RELPATH	0x00000010	/* like GET_MODNAME but full relative */
-/* Unused		0x00000020 */
-#define	GET_SEQ		0x00000040	/* sccs_get: prefix with sequence no */
-/* Unused		0x00000080 */
+#define	GET_SKIPGET	0x40000000	/* get -g: don't get the file */
+#define	GET_NOREMOTE	0x80000000	/* do not go remote for BAM */
+#define	GET_ASCII	0x01000000	/* Do not gunzip/uudecode */
+#define	GET_SHUTUP	0x02000000	/* quiet on certain errors */
+#define	GET_FORCE	0x04000000	/* do it even with errors */
+#define	GET_DTIME	0x08000000	/* gfile get delta's mode time */
+#define	GET_NOHASH	0x00100000	/* force regular file, ignore S_HASH */
+#define	GET_HASHONLY	0x00200000	/* skip the file */
+#define	GET_DIFFS	0x00400000	/* get -D, regular diffs */
+#define	GET_BKDIFFS	0x00800000	/* get -DD, BK (rick's) diffs */
+#define	GET_PERMS	0x00010000	/* extract perms for non gfile */
+#define	GET_SUM		0x00020000	/* used to force dsum in getRegBody */
+#define	GET_NOREGET	0x00040000	/* get -S: skip gfiles that exist */
+
 #define	GET_PREFIX	\
     (GET_REVNUMS|GET_MD5KEY|GET_USER|GET_LINENUM|GET_MODNAME|\
      GET_RELPATH|GET_PREFIXDATE|GET_SEQ|GET_LINENAME|GET_SERIAL)
+#define	GET_ALIGN	0x00002000	/* nicely align prefix output */
+#define	GET_REVNUMS	0x00004000	/* get -m: prefix each line with rev */
+#define	GET_USER	0x00008000	/* get -u: prefix with user name */
+#define	GET_LINENUM	0x00000100	/* get -N: show line numbers */
+#define	GET_MODNAME	0x00000200	/* get -n: prefix with %M */
+#define	GET_PREFIXDATE	0x00000400	/* get -d: show date */
+#define	GET_SERIAL	0x00000800	/* get -aS: prefix with serial */
+#define	GET_MD5KEY	0x00000010	/* get -5: prefix line with md5key */
+#define	GET_LINENAME	0x00000020	/* get -O: prefix with line name */
+#define	GET_SEQ		0x00000040	/* sccs_get: prefix with sequence no */
+#define	GET_RELPATH	0x00000080	/* like GET_MODNAME but full relative */
 
 #define CLEAN_SHUTUP	0x20000000	/* clean -Q: quiet mode */
 #define	CLEAN_SKIPPATH	0x40000000	/* ignore path change; for log tree */
@@ -126,6 +125,7 @@ int	checking_rmdir(char *dir);
 #define	ADMIN_NEWPATH	0x00400000	/* path changed, add a new null delta */
 #define	ADMIN_DELETE	0x00800000	/* file deleted, add a new null delta */
 #define	ADMIN_RMLICENSE	0x00010000	/* Obscure licenses in repo config */
+#define	ADMIN_NEWTAG	0x00020000	/* restricted tag rules */
 
 #define	ADMIN_CHECKS	(ADMIN_FORMAT|ADMIN_TIME|ADMIN_BK)
 
@@ -138,6 +138,13 @@ int	checking_rmdir(char *dir);
 #define	PRS_FASTPATCH	0x04000000	/* print in fast patch format */
 
 #define SINFO_TERSE	0x10000000	/* print in terse format: sinfo -t */
+
+/*
+ * sccs_cat output format; not a bitmap
+ */
+#define	SCAT_SCCS	0x10000000	/* -i list in the merge nodes */
+#define	SCAT_BK		0x20000001	/* use merge edge like parent edge */
+#define	SCAT_ACTUAL	0x40000002	/* just dump the file as it is */
 
 /*
  * flags passed to sfileFirst
@@ -163,6 +170,7 @@ int	checking_rmdir(char *dir);
 #define	S_CSET		0x00000200	/* this is a changeset file */
 #define S_MAPPRIVATE	0x00000400	/* hack for hpux */
 #define S_READ_ONLY	0x00000800	/* force read only mode */
+#define	S_LOCKFILE	0x00001000	/* unlock on free */
 #define	S_SET		0x00002000	/* the tree is marked with a set */
 #define S_CACHEROOT	0x00004000	/* don't free the root entry */
 
@@ -216,6 +224,7 @@ int	checking_rmdir(char *dir);
  * Bit 2 is compression mode (gzip or none)
  * Bit 3 is binary file format
  * Bit 4 and 5 are weave format
+ * Bit 6 is serialmap using merge edges
  */
 #define	E_ALWAYS	0x1000		/* set so encoding is non-zero */
 
@@ -247,8 +256,12 @@ int	checking_rmdir(char *dir);
 #define	BWEAVE2_OUT(s)	(((s)->encoding_out & E_WEAVE) == E_BWEAVE2)
 #define	BWEAVE_OUT(s)	(((s)->encoding_out & E_WEAVE) != E_AWEAVE)
 
+#define	E_BKMERGE	0x40		/* interpret merge as a graph edge */
+#define	BKMERGE(s)	(((s)->encoding_in & E_BKMERGE) != 0)
+#define	BKMERGE_OUT(s)	(((s)->encoding_out & E_BKMERGE) != 0)
+
 // mask of bits used for sfile format that map to feature bits
-#define	E_FILEFORMAT	(E_BK|E_WEAVE)
+#define	E_FILEFORMAT	(E_BK|E_WEAVE|E_BKMERGE)
 
 #define	HAS_GFILE(s)	((s)->state & S_GFILE)
 #define	HAS_PFILE(s)	((s)->state & S_PFILE)
@@ -343,6 +356,17 @@ typedef	enum {
 } retrc;
 
 /*
+ * Exit codes for 'bk fstype' as well as internal uses.
+ * List organized to be extensible.
+ * Roughly patterned after 'bk repotype'.
+ */
+#define	FS_UNKNOWN	0
+#define	FS_ERROR	1
+#define	FS_DISK		2
+#define	FS_SSD		3
+#define	FS_NFS		4
+
+/*
  * Hash behaviour.  Bitmask, although some of these are
  * mutually exclusive.
  */
@@ -394,14 +418,16 @@ typedef	enum {
 #define	BKSKIP		".bk_skip"
 #define	GROUP_MODE	0664
 #define	BAM_DSPEC	"$if(:BAMHASH:){:BAMHASH: :KEY: :MD5KEY|1.0:}"
+#define	MAC_PHDIR	"/etc/paths.d"
+#define	MAC_PHFILE	"/etc/paths.d/10-BitKeeper"
 
 /*
  * Constants for running some parallel processes, sfio, checkout,
  * to overcome NFS latency.
  */
-#define	PARALLEL_NET		8
-#define	PARALLEL_LOCAL		3
 #define	PARALLEL_MAX		64
+#define	READER			1	/* parallel processes mostly reading */
+#define	WRITER			2	/* ... writing */
 
 #define	MINUTE	(60)
 #define	HOUR	(60*MINUTE)
@@ -490,6 +516,19 @@ typedef struct delta {
 	u32 	symlink;		/* sym link target */
  	u32	csetFile;		/* id for ChangeSet file */
 } d2_t;
+
+typedef struct rset_df {
+	u32	rkoff;
+	u32	dkleft1;
+	u32	dkleft2;
+	u32	dkright;
+} rset_df;
+
+typedef struct {
+	ser_t	ser;
+	u32	rkoff;
+	u32	dkoff;
+} weave;
 
 #define	XFLAGS(s, d)		((s)->slist2[d].xflags)
 #define	FLAGS(s, d)		((s)->slist1[d].flags)
@@ -701,6 +740,10 @@ struct sccs {
 	u32	heap_loadsz;	/* size of heap at load time */
 	u32	heapsz1;	/* size of SCCS/1.ChangeSet */
 	hash	*heapmeta;	/* metadata from start of heap */
+	struct	{
+	   u32	comp;		/* component rootkey end of table */
+	   u32	bam;		/* bam file rootkey end of table */
+	} rktypeoff;		/* offset to rkeys in heap */
 	nokey	*uniq1;		/* uniq hash in heap1 */
 	u32	uniq1off;	/* uniq1 hash covers objects <off in heap */
 	nokey	*uniq2;		/* remember uniq objects not in uniq1 */
@@ -813,6 +856,8 @@ typedef struct {
 	char	*iLst;		/* include revs for delta */
 	char	*xLst;		/* exclude revs for delta */
 	char	*mRev;		/* merge rev for delta */
+	u32	magic:1;	/* no pfile, so data is faked */
+	u32	formatErr:1;	/* Is the pfile formatted wrong? */
 } pfile;
 
 /*
@@ -975,6 +1020,7 @@ typedef struct {
 typedef struct {
 	int	flags;			/* flags (transitional) */
 	int	adds, dels, mods;	/* lines added/deleted/modified */
+	u32	bin_files:1;		/* Binary files differ */
 	char	*out_define;		/* diff -D */
 	pcre	*pattern;		/* compiled pattern for diff -p */
 	int	context;		/* context for unified output
@@ -1024,16 +1070,16 @@ u32	_heap_u32load(void *ptr);
 int	sccs_admin(sccs *sc, ser_t d, u32 flgs,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_adminFlag(sccs *sc, u32 flags);
-int	sccs_cat(sccs *s, u32 flags, char *printOut);
-char	*sccs_scat(sccs *s, size_t *len);
+int	sccs_cat(sccs *s, u32 flags, FILE *out);
+char	*sccs_scat(sccs *s, int format, size_t *len);
 int	sccs_delta(sccs *s, u32 flags, ser_t d, FILE *init, FILE *diffs,
 		   char **syms);
 int	sccs_diffs(sccs *s, char *r1, char *r2, df_opt *dop, FILE *)
 	__attribute__((nonnull (1, 4)))
 ;
 int	sccs_encoding(sccs *s, off_t size, char *enc);
-int	sccs_get(sccs *s,
-	    char *rev, char *mRev, char *i, char *x, u32 flags, char *out);
+int	sccs_get(sccs *s, char *rev, char *mRev, char *i, char *x,
+    u32 flags, char *outfile, FILE *out);
 int	sccs_hashcount(sccs *s);
 int	sccs_clean(sccs *s, u32 flags);
 int	sccs_unedit(sccs *s, u32 flags);
@@ -1055,7 +1101,6 @@ void	sccs_freedelta(sccs *s, ser_t d);
 ser_t	sccs_insertdelta(sccs *s, ser_t d, ser_t serial);
 void	sccs_close(sccs *);
 void	sccs_writeHere(sccs *s, char *new);
-int	sccs_csetWrite(sccs *s, char **cweave);
 sccs	*sccs_csetInit(u32 flags);
 char	**sccs_files(char **, int);
 ser_t	sccs_parseArg(sccs *s, ser_t d, char what, char *arg, int defaults);
@@ -1091,19 +1136,17 @@ int	poly_r2c(sccs *cset, ser_t d, char ***pcsets);
 int	sccs_shortKey(sccs *s, ser_t, char *);
 int	sccs_resum(sccs *s, ser_t d, int diags, int dont);
 int	cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch);
-char	**cset_mkList(sccs *cset);
-int	cset_bykeys(const void *a, const void *b);
-int	cset_byserials(const void *a, const void *b);
+weave	*cset_mkList(sccs *cset);
 int	sccs_newchksum(sccs *s);
 ser_t	sccs_getCksumDelta(sccs *s, ser_t d);
 ser_t	*addSerial(ser_t *space, ser_t s);
 void	sccs_perfile(sccs *s, FILE *out, int patch);
-sccs	*sccs_getperfile(sccs *, FILE *, int *);
+int	sccs_getperfile(sccs *, FILE *, int *);
 char	*sccs_gethost(void);
 char	*sccs_realhost(void);
 char	*sccs_host(void);
 char	**sccs_getComments(char *prompt);
-int	sccs_badTag(char *, char *, int);
+int	sccs_badTag(char *tag, u32 flags);
 MDBM    *sccs_keys2mdbm(FILE *f);
 void	sfileUnget(void);
 char	*sfileNext(void);
@@ -1162,7 +1205,7 @@ ser_t	sccs_prev(sccs *s, ser_t d);
 ser_t	sccs_next(sccs *s, ser_t d);
 int	sccs_reCache(int quiet);
 int	sccs_findtips(sccs *s, ser_t *a, ser_t *b);
-int	sccs_resolveFiles(sccs *s);
+int	sccs_resolveFiles(sccs *s, int merge);
 sccs	*sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB);
 sccs	*sccs_keyinitAndCache(
 	    project *proj, char *key, u32 flags, MDBM *sDB, MDBM *idDB);
@@ -1203,7 +1246,8 @@ char	*_relativeName(char *gName, int isDir,
 char	*findBin(void);
 int 	prompt(char *msg, char *buf);
 void	parse_url(char *url, char *host, char *path);
-int	parallel(char *path);
+int	parallel(char *path, int write);
+int	fstype(char *path);
 int	cpus(void);
 char	*sccs_saveStr(sccs *s, char *str);
 char	*sccs_Xfile(sccs *s, char type);
@@ -1216,9 +1260,8 @@ int	uniqdb_req(char *msg, int msglen, char *resp, size_t *resplen);
 time_t	sccs_date2time(char *date, char *zone);
 pid_t	smtpmail(char **to, char *subject, char *file);
 int	connect_srv(char *srv, int port, int trace);
-int	get(char *path, int flags, char *output);
+int	get(char *path, int flags);
 int	gethelp(char *helptxt, char *help_name, char *bkarg, char *prefix, FILE *f);
-void	status(int verbose, FILE *out);
 void	notify(void);
 char	*package_name(void);
 int	bkusers(sccs *s, char *prefix, FILE *out);
@@ -1286,7 +1329,7 @@ char	*sccs_zone(time_t tt);
 MDBM	*sccs_tagConflicts(sccs *s);
 int	sccs_tagMerge(sccs *s, ser_t d, char *tag);
 int	sccs_tagleaves(sccs *, ser_t *, ser_t *);
-u8	*sccs_set(sccs *, ser_t, char *iLst, char *xLst);
+u8	*sccs_set(sccs *s, ser_t d, ser_t m, char *iLst, char *xLst);
 int	sccs_graph(sccs *s, ser_t d, u8 *map, char **inc, char **exc);
 int	sccs_setCludes(sccs *sc, ser_t d, char *iLst, char *xLst);
 int	sccs_isPending(char *gfile);
@@ -1347,9 +1390,14 @@ sccs	*cset_fixLinuxKernelChecksum(sccs *s);
 int	cweave_init(sccs *s, int extras);
 void	weave_set(sccs *s, ser_t d, char **keys);
 void	weave_cvt(sccs *s);
+void	weave_replace(sccs *s, weave *cweave);
 void	weave_updateMarker(sccs *s, ser_t d, u32 rk, int add);
 int	isNullFile(char *rev, char *file);
+int	weave_iscomp(sccs *s, u32 rkoff);
+int	weave_isBAM(sccs *s, u32 rkoff);
 u32	rset_checksum(sccs *cset, ser_t d, ser_t base);
+rset_df	*rset_diff(sccs *cset,
+    ser_t left, ser_t left2, ser_t right, int showgone);
 unsigned long	ns_sock_host2ip(char *host, int trace);
 unsigned long	host2ip(char *host, int trace);
 int	fileTypeOk(mode_t m);
@@ -1454,6 +1502,7 @@ int	db_store(char *gfile, MDBM *m);
 char	**getParkComment(int *err);
 int	launch_wish(char *script, char **av);
 void	converge_hash_files(void);
+int	isConvergeFile(char *file);
 int	getMsg(char *msg_name, char *bkarg, char b, FILE *outf);
 int	getMsg2(char *msg_name, char *arg, char *arg2, char b, FILE *outf);
 int	getMsgP(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);
@@ -1461,6 +1510,7 @@ int	getMsgv(char *msg_name, char **bkarg, char *prefix, char b, FILE *outf);
 void	randomBits(char *buf);
 sum_t	almostUnique(void);
 int	uninstall(char *path, int upgrade);
+void	delete_onReboot(char *path);
 int	remote_bk(int quiet, int ac, char **av);
 void	dspec_eval(FILE * out, sccs *s, ser_t d, char *start);
 void	dspec_printline(sccs *s, FILE *out);
@@ -1475,7 +1525,7 @@ ser_t	bp_fdelta(sccs *s, ser_t d);
 int	bp_fetch(sccs *s, ser_t din);
 int	bp_fetchData(void);
 int	bp_fetchkeys(char *me, project *p, int quiet, char **keys, u64 todo);
-int	bp_get(sccs *s, ser_t d, u32 flags, char *out);
+int	bp_get(sccs *s, ser_t d, u32 flags, char *outf, FILE *out);
 int	bp_delta(sccs *s, ser_t d);
 int	bp_diff(sccs *s, ser_t d, char *gfile);
 int	bp_updateServer(char *range, char *list, int quiet);
@@ -1493,6 +1543,7 @@ sum_t	str_cksum(u8 *buf);
 char	*psize(u64 bytes);
 u64	scansize(char *bytes);
 void	idcache_update(char **files);
+int	idcache_item(MDBM *idDB, char *rkey, char *path);
 int	idcache_write(project *p, MDBM *idDB);
 void	cset_savetip(sccs *s);
 void	cset_updatetip(void);
@@ -1515,12 +1566,26 @@ int	keycmp(const void *k1, const void *k2);
 int	keycmp_nopath(char *k1, char *k2);
 int	key_sort(const void *a, const void *b);
 int	earlier(sccs *s, ser_t a, ser_t b);
+#ifdef	WIN32
 int	startmenu_list(u32, char *);
 int	startmenu_rm(u32, char *);
 int	startmenu_get(u32, char *path);
-int	startmenu_set(u32, char *, char *, char *, char *);
-char	*bkmenupath(u32, int);
-void	repos_update(sccs *cset);
+int	startmenu_set(u32, char *, char *, char *, char *, char *);
+void	startmenu_install(char *dest);
+void	startmenu_uninstall(FILE *log);
+char	*bkmenupath(u32 user, int create, int isthere);
+#else
+int	__startmenu_generic(void);
+void	*__startmenu_generic_ptr(void);
+#define	startmenu_list(...)		__startmenu_generic()
+#define	startmenu_rm(...)		__startmenu_generic()
+#define	startmenu_get(...)		__startmenu_generic()
+#define	startmenu_set(...)		__startmenu_generic()
+#define	startmenu_install(...)		__startmenu_generic()
+#define	startmenu_uninstall(...)	__startmenu_generic()
+#define	bkmenupath(...)			__startmenu_generic_ptr()
+#endif
+void	repos_update(project *proj);
 char	*bk_searchFile(char *base);
 void	dspec_collapse(char **dspec, char **begin, char **end);
 void	fslayer_cleanup(void);
@@ -1547,7 +1612,7 @@ char	*file_fanout(char *file);
 void	upgrade_maybeNag(char *out);
 int	attr_update(void);
 int	attr_write(char *file);
-int	bk_badFilename(char *name);
+int	bk_badFilename(project *p, char *name);
 
 #ifdef	WIN32
 void	notifier_changed(char *fullpath);
@@ -1613,6 +1678,8 @@ extern	u32	swapsz;		/* paging blocksize */
 
 #define	componentKey(k) (strstr(k, "/ChangeSet|") != (char*)0)
 #define	changesetKey(k) (strstr(k, "|ChangeSet|") != (char*)0)
+#define	BAMkey(k) ({ \
+	char	*_p; ((_p = strrchr(k, '|')) && strneq(_p+1, "B:", 2)); })
 
 /*
  * Locking flags for cmdlog_start() and cmdlog_lock()

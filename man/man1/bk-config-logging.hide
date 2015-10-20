@@ -18,7 +18,7 @@ $ bk -R get -p BitKeeper/etc/config | grep logging:
 If you do not want Open Logging, you must specify some other email address
 or the word "none" for the logging field, i.e.,
 .DS
-logging:	dev@bitmover.com
+logging:	dev@bitkeeper.com
 .DE
 or
 .DS

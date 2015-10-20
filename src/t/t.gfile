@@ -67,7 +67,7 @@ echo OK
 echo $N Check missing pfile case 2, i.e., rm SCCS/p.whatever ........$NL
 bk edit $Q
 for i in keywords none flagsonly
-do	bk _rm SCCS/p.$i
+do	bk _rm -f SCCS/p.$i
 done
 bk -r check -a || fail
 for i in keywords none
@@ -146,7 +146,7 @@ test '%M%' = `cat none` || {
 	exit 1
 }
 for i in keywords none flagsonly
-do	bk _rm SCCS/p.$i
+do	bk _rm -f SCCS/p.$i
 	echo more >> $i
 	cp $i $i.cmp
 done

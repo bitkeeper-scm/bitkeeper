@@ -10,11 +10,34 @@ typedef struct {
 	opts	opts;		/* resolve options */
 } State;
 
+struct files {
+	char	*file;
+	char	*opts;
+} Files[] = {{ "BitKeeper/etc/aliases", "-hs"},
+	     { ATTR, "ATTR"},
+	     { "BitKeeper/etc/collapsed", "-s" },
+	     { "BitKeeper/etc/gone", "-s" },
+	     { "BitKeeper/etc/ignore", "-s" },
+	     { IGNOREPOLY, "-s" },
+	     { "BitKeeper/etc/skipkeys", "-s"},
+	     { 0, 0 }
+};
+
 private	void	converge(State *g, char *gfile, char *opts);
 private	void	merge(State *g, char *gfile, char *pathname, char *opts);
 private	sccs	*copy_to_resync(State *g, sccs *s);
 private	void	free_slot(State *g, sccs *s);
 
+int
+isConvergeFile(char *file)
+{
+	struct files	*cur;
+
+	for (cur = Files; cur->file; cur++) {
+		if (streq(cur->file, file)) return (1);
+	}
+	return (0);
+}
 /*
  * For certain files in BitKeeper/etc we automerge the contents in
  * takepatch.  Also since these files can be created on the first use
@@ -30,18 +53,6 @@ converge_hash_files(void)
 	int	i;
 	char	*bn, *gfile;
 	State	*g;
-	struct	{
-		char	*file;
-		char	*opts;
-	} files[] = {{ "BitKeeper/etc/aliases", "-hs"},
-		     { ATTR, "ATTR"},
-		     { "BitKeeper/etc/collapsed", "-s" },
-		     { "BitKeeper/etc/gone", "-s" },
-		     { "BitKeeper/etc/ignore", "-s" },
-		     { IGNOREPOLY, "-s" },
-		     { "BitKeeper/etc/skipkeys", "-s"},
-		     { 0, 0 }
-	};
 
 	/* everything in this file is run from the RESYNC dir */
 	chdir(ROOT2RESYNC);
@@ -59,10 +70,10 @@ converge_hash_files(void)
 		bn = basenm(gfile);
 		if (strneq(bn, ".del-", 5)) bn += 5;
 		if (t = strchr(bn, '~')) *t = 0;
-		for (i = 0; files[i].file; i++) {
-			if (streq(bn, basenm(files[i].file))) {
+		for (i = 0; Files[i].file; i++) {
+			if (streq(bn, basenm(Files[i].file))) {
 				if (t) *t = '~'; /* restore gfile */
-				merge(g, gfile, files[i].file, files[i].opts);
+				merge(g, gfile, Files[i].file, Files[i].opts);
 				break;
 			}
 		}
@@ -73,8 +84,8 @@ converge_hash_files(void)
 	 * Now for each file, check to see if we need to converge multiple
 	 * versions.
 	 */
-	for (i = 0; files[i].file; i++) {
-		converge(g, files[i].file, files[i].opts);
+	for (i = 0; Files[i].file; i++) {
+		converge(g, Files[i].file, Files[i].opts);
 	}
 
 	if (g->idDB) {
@@ -149,16 +160,8 @@ merge(State *g, char *gfile, char *pathname, char *opts)
 		}
 		move_remote(rs, t); /* fine if this doesn't move */
 
-		/* 's' is stale, but update s->sfile and s->gfile */
-		if (s->fullsfile != s->sfile) free(s->fullsfile);
-		free(s->sfile);
-		s->sfile = t;
-		s->fullsfile = fullname(t, 0);
-		free(s->gfile);
-		s->gfile = sccs2name(s->sfile);
-
 		/* mark that it moved */
-		mdbm_store_str(g->idDB, rootkey, s->gfile, MDBM_REPLACE);
+		idcache_item(g->idDB, rootkey, s->gfile);
 	}
 
 	/* handle contents conflicts */
@@ -251,7 +254,7 @@ converge(State *g, char *gfile, char *opts)
 
 	/* get contents of old version */
 	bktmp(tmp);
-	rc = sccs_get(srm, "+", 0, 0, 0, SILENT|PRINT, tmp);
+	rc = sccs_get(srm, "+", 0, 0, 0, SILENT, tmp, 0);
 	assert(!rc);
 	sccs_free(srm);
 
@@ -269,7 +272,7 @@ converge(State *g, char *gfile, char *opts)
 		assert(!rs->snames);
 		move_remote(rs, sfile);
 		rs->s = 0;
-		mdbm_store_str(g->idDB, key_keep, gfile, MDBM_REPLACE);
+		idcache_item(g->idDB, key_keep, gfile);
 		resolve_free(rs);
 	}
 	sccs_free(skeep);	/* done with skeep */
@@ -347,7 +350,7 @@ copy_to_resync(State *g, sccs *s)
 	move_remote(rs, rmName);
 	resolve_free(rs);
 	s = sccs_init(rmName, g->iflags);
-	mdbm_store_str(g->idDB, rootkey, s->gfile, MDBM_REPLACE);
+	idcache_item(g->idDB, rootkey, s->gfile);
 	free(rmName);
 	return(s);
 }
@@ -366,7 +369,7 @@ free_slot(State *g, sccs *s)
 	move_remote(rs, rmName);
 	t = sccs2name(rmName);
 	free(rmName);
-	mdbm_store_str(g->idDB, key, t, MDBM_REPLACE);
+	idcache_item(g->idDB, key, t);
 	free(t);
 	rs->s = 0;
 	resolve_free(rs);

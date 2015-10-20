@@ -160,7 +160,8 @@ m(sccs *s, ser_t l, ser_t r)
 	sccs_free(s);
 	system("bk takepatch -vvvf PENDING/tagmerge");
 	if (exists("core") || exists("RESYNC/core")) {
-		fprintf(stderr, "takepatch failed, contact BitMover please.\n");
+		fprintf(stderr, "takepatch failed, "
+		    "contact support@bitkeeper.com please.\n");
 		exit(1);
 	}
 	unlink("SCCS/s.ChangeSet");

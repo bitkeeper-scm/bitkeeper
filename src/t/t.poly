@@ -83,7 +83,7 @@ Duplicate delta found in ChangeSet
 	Rev: 1.2  Key: <foo>
 	Both keys in file SCCS/s.foo
 	Same key found in ChangeSet:1.2.1.1,1.3
-Please write support@bitmover.com with the above
+Please write support@bitkeeper.com with the above
 error about duplicate deltas
 The commit is aborted.
 Commit aborted, no changes applied.

@@ -1052,3 +1052,33 @@ cat <<EOF > WANT
 EOF
 cmpfiles WANT GOT
 echo OK
+
+echo $N See data comes out in right order ...........................$NL
+# sccs_get data was bypassing dspec and going straight out the door
+commercial standalone
+echo A Big Binary File of Data > bin
+echo A Big ASCCI File of Data > asc
+bk new $Q -b bin
+bk new $Q asc
+cat <<'EOF' > myspec
+# dspec-v2
+"And now the data...\n"
+:GB:
+EOF
+bk prs -hr+ --dspecf=myspec asc > got.asc
+bk prs -hr+ --dspecf=myspec bin > got.bin
+#
+cat <<EOF > want.asc
+And now the data...
+A Big ASCCI File of Data
+EOF
+cmpfiles want.asc got.asc
+#
+# Binary data printed first?!
+#
+cat <<EOF > want.bin
+And now the data...
+A Big Binary File of Data
+EOF
+cmpfiles want.bin got.bin
+echo OK

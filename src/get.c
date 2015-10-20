@@ -3,7 +3,7 @@
 #include "sccs.h"
 #include "progress.h"
 
-private int	get_rollback(sccs *s, char *rev,
+private int	get_rollback(sccs *s, char *rev, char *mRev,
 		    char **iLst, char **xLst, char *prog);
 private	int	bam(char *me, int q, char **files, int ac, char **av);
 
@@ -32,8 +32,9 @@ get_main(int ac, char **av)
 	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	int	ac_optend;
 	int	rollback = 0;
+	FILE	*fout = 0;
 	MDBM	*realNameCache = 0;
-	char	*out = "-";
+	char	*out = 0;
 	char	**bp_files = 0;
 	char	**bp_keys = 0;
 	project	*bp_proj = 0;
@@ -62,7 +63,7 @@ get_main(int ac, char **av)
 	}
 
 	while ((c =
-	    getopt(ac, av, "A;a;BCDeFgG:hi;klM|N;pPqr;RSstTUx;", lopt)) != -1) {
+	    getopt(ac, av, "A;a;BDeFgG:hi;klM|N;pPqr;RSstTUx;", lopt)) != -1) {
 		if (checkout && (c != 310) && !strchr("NqRTU", c)) {
 			fprintf(stderr, "checkout: no options allowed\n");
 			exit(1);
@@ -76,7 +77,6 @@ get_main(int ac, char **av)
 			if (flags == -1) usage();
 			break;
 		    case 'B': skip_bin = 1; break;
-		    case 'C': getMsg("get_C", 0, 0, stdout); return (1);
 		    case 'D': getdiff++; break;			/* doc 2.0 */
 		    case 'l':					/* doc 2.0 co */
 		    case 'e': flags |= GET_EDIT; break;		/* doc 2.0 */
@@ -108,6 +108,12 @@ get_main(int ac, char **av)
 		    case 310: skip_bam++; break;		// --skip-bam
 		    default: bk_badArg(c, av);
 		}
+	}
+	if (flags & PRINT) {
+		if (flags & (GET_EDIT|GET_SKIPGET|GET_NOREGET|GET_DTIME)) {
+			usage();
+		}
+		fout = stdout;
 	}
 	ac_optend = optind;
 	if (Gname && (flags & PRINT)) {
@@ -317,7 +323,7 @@ err:			sccs_free(s);
 		if (BITKEEPER(s) && ((flags & (PRINT|GET_EDIT)) == GET_EDIT) &&
 		    rev && !branch_ok) {
 			/* recalc iLst and xLst to be relative to tip */
-			if (get_rollback(s, rev, &iLst, &xLst, av[0])) {
+			if (get_rollback(s, rev, mRev, &iLst, &xLst, av[0])) {
 				goto next;
 			}
 			rollback = 1;
@@ -329,7 +335,8 @@ err:			sccs_free(s);
 		}
 		if ((flags & (GET_DIFFS|GET_BKDIFFS))
 		    ? sccs_getdiffs(s, rev, flags, out)
-		    : sccs_get(s, rev, mRev, iLst, xLst, flags, out)) {
+		    : sccs_get(s, rev, mRev, iLst, xLst,
+			flags, (out||fout) ? out : s->gfile, fout)) {
 			if (s->cachemiss && !recursed) {
 				if (skip_bam) goto next;
 				if (bp_proj && (s->proj != bp_proj)) {
@@ -429,18 +436,24 @@ bam(char *me, int q, char **files, int ac, char **av)
 }
 
 private int
-get_rollback(sccs *s, char *rev, char **iLst, char **xLst, char *me)
+get_rollback(sccs *s, char *rev, char *mRev, char **iLst, char **xLst, char *me)
 {
 	char	*inc = *iLst, *exc = *xLst;
 	u8	*map;
-	ser_t	d;
+	ser_t	d, m;
 
 	*iLst = *xLst = 0;
 	unless (d = sccs_findrev(s, rev)) {
 		fprintf(stderr, "%s: cannot find %s in %s\n", me,rev, s->gfile);
 		return (1);
 	}
-	unless (map = sccs_set(s, d, inc, exc)) return (1);
+	unless (mRev) {
+		m = 0;
+	} else unless (m = sccs_findrev(s, mRev)) {
+		fprintf(stderr, "%s: cannot find %s in %s\n", me,mRev,s->gfile);
+		return (1);
+	}
+	unless (map = sccs_set(s, d, m, inc, exc)) return (1);
 	d = sccs_top(s);
 	if (sccs_graph(s, d, map, iLst, xLst)) {
 		fprintf(stderr, "%s: cannot compute graph from set\n", me);

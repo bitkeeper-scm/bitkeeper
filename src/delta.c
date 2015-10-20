@@ -184,9 +184,9 @@ delta_main(int ac, char **av)
 			      sflags |= SF_NODIREXPAND;
 			      sflags &= ~SF_WRITE_OK;
 			      break;
-		    case 'l': checkout = CO_EDIT;		/* doc 2.0 */ 
+		    case 'l': checkout |= CO_EDIT;		/* doc 2.0 */ 
 			      break;
-		    case 'u': checkout = CO_GET;		/* doc 2.0 */
+		    case 'u': checkout |= CO_GET;		/* doc 2.0 */
 			      break;
 
 		    /* LM flags */
@@ -287,7 +287,7 @@ delta_main(int ac, char **av)
 		    "%s: only init file or comment, not both.\n", av[0]);
 		usage();
 	}
-	if ((gflags & GET_EXPAND) && (gflags & GET_EDIT)) {
+	if ((checkout & CO_GET) && (checkout & CO_EDIT)) {
 		fprintf(stderr, "%s: -l and -u are mutually exclusive.\n",
 			av[0]);
 		usage();
@@ -450,7 +450,6 @@ delta_main(int ac, char **av)
 			d = TABLE(s);
 			assert(d);
 			assert(!TAG(s, d));
-			nrev = REV(s, d);
 		} else {
 			s = sccs_restart(s);
 		}
@@ -462,11 +461,14 @@ delta_main(int ac, char **av)
 		}
 		if (df & DELTA_SAVEGFILE) {
 			/*
+			 * If delta -Ddiffs with no gfile, then no GFILE,
+			 * and we'd like to get one.
+			 *
 			 * fix_gmode() will fail if we don't own
 			 * the gfile, in that case set the stage
 			 * to re-get it
 			 */
-			if (fix_gmode(s, gf)) {
+			if (!HAS_GFILE(s) || fix_gmode(s, gf)) {
 				reget = 1;
 				gf &= ~GET_SKIPGET;
 			}
@@ -489,8 +491,8 @@ delta_main(int ac, char **av)
 		if (reget) {
 			// XXX - what if we are dangling?
 			// The pf.oldrev is definitely wrong.
-			if (rc == -3) nrev = pf.oldrev;
-			if (sccs_get(s, nrev, 0, 0, 0, gf, "-")) {
+			nrev = (rc == -3) ? pf.oldrev : REV(s, TABLE(s));
+			if (sccs_get(s, nrev, 0, 0, 0, gf, s->gfile, 0)) {
 				unless (BEEN_WARNED(s)) {
 					fprintf(stderr,
 					    "get of %s failed, skipping it.\n",

@@ -127,7 +127,7 @@ commit_main(int ac, char **av)
 			break;
 		    case 300:	/* --tag=TAG */
 			sym = optarg;
-			if (sccs_badTag("commit", sym, 0)) exit (1);
+			if (sccs_badTag(sym, ADMIN_NEWTAG)) exit (1);
 			break;
 		    case 301:	/* --sub-commit */
 			opts.standalone = subCommit = 1;
@@ -192,7 +192,8 @@ commit_main(int ac, char **av)
 		nav = unshiftLine(nav, strdup("commit"));
 		nav = unshiftLine(nav, strdup("bk"));
 
-		unless (aliases) aliases = modified_pending(DS_PENDING);
+		unless (aliases) aliases = modified_pending(opts.ci ?
+		    DS_PENDING|DS_EDITED : DS_PENDING);
 		rc = nested_each(opts.quiet, nav, aliases);
 		freeLines(aliases, free);
 		freeLines(nav, free);
@@ -266,7 +267,7 @@ commit_main(int ac, char **av)
 	assert(f);
 	while (bufp = fgetline(fin)) {
 		p = strchr(bufp+offset, '|');
-		if (((offset == 8) && bufp[2] == 'c') || (p == 0)) {
+		if (((offset == 8) && bufp[2] == 'c' && opts.ci) || (p == 0)) {
 			if (p) *p = 0;
 			modFiles = addLine(modFiles,
 			    strdup(bufp+offset));
@@ -614,7 +615,8 @@ fail:	if (rc) {
 		fprintf(stderr, "The commit is aborted.\n");
 		putenv("BK_STATUS=FAILED");
 	} else if (opts.clean_PENDING) {
-		proj_dirstate(0, "*", DS_PENDING, 0);
+		proj_dirstate(0, "*",
+		    opts.ci ? DS_PENDING|DS_EDITED : DS_PENDING, 0);
 		if (proj_isComponent(0)) {
 			/* this component is still pending */
 			proj_dirstate(0, ".", DS_PENDING, 1);
@@ -1164,7 +1166,7 @@ csetCreate(c_opts opts, sccs *cset, int flags, char *files, char **syms)
 
 out:	unless (error || (flags & SILENT)) {
 		fprintf(stderr, "ChangeSet revision %s: +%d\n",
-		    REV(cset, cset->tip), nLines(keys));
+		    REV(cset, cset->tip), nLines(keys)/2);
 	}
 	freeLines(keys, free);
 	comments_done();

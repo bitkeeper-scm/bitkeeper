@@ -371,7 +371,7 @@ err:		if (p) fclose(p);
 			continue;
 		}
 
-		sccs_close(s);
+		unless (CSET(s)) sccs_close(s);
 		pass1_renames(opts, s);
 	}
 	fclose(p);
@@ -814,7 +814,6 @@ pass1_renames(opts *opts, sccs *s)
 	do {
 		sprintf(path, "BitKeeper/RENAMES/SCCS/s.%d", ++filenum);
 	} while (exists(path));
-	sccs_close(s);
 	if (opts->debug) {
 		fprintf(stderr, "%s -> %s\n", s->sfile, path);
 	}
@@ -1167,13 +1166,12 @@ again:
 	if (to) {
 		sccs_close(rs->s); /* for win32 */
 		if (sfile_move(rs->s->proj, rs->s->sfile, to)) return (-1);
+		sccs_writeHere(rs->s , to);
 		xfile_delete(to, 'm');
 		if (rs->revs) {
 			ser_t	d;
 			char	*t;
 
-			sccs_free(rs->s);
-			rs->s = sccs_init(to, INIT_NOCKSUM);
 			d = sccs_findrev(rs->s, rs->revs->local);
 			assert(d);
 			t = name2sccs(PATHNAME(rs->s, d));
@@ -1238,6 +1236,7 @@ move_remote(resolve *rs, char *sfile)
 
 	sccs_close(rs->s);
 	if (ret = sfile_move(rs->s->proj, rs->s->sfile, sfile)) return (ret);
+	sccs_writeHere(rs->s, sfile);
 	xfile_delete(sfile, 'm');
 	if (rs->opts->resolveNames) rs->opts->renames2++;
 
@@ -1269,9 +1268,8 @@ move_remote(resolve *rs, char *sfile)
 	/* idcache -- so post-commit check can find if a path conflict */
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 	gfile = sccs2name(sfile);
-	mdbm_store_str(idDB, rs->key, gfile, MDBM_REPLACE);
+	if (idcache_item(idDB, rs->key, gfile)) idcache_write(0, idDB);
 	free(gfile);
-	idcache_write(0, idDB);
 	mdbm_close(idDB);
 	/* Nota bene: *s is may be out of date */
 	return (0);
@@ -1503,8 +1501,7 @@ edit_tip(resolve *rs, char *sfile, ser_t d, int which)
 	char	buf[MAXPATH+100];
 	char	opt[100];
 	char	*t;
-	char	*pfile;
-	char	*newrev;
+	pfile	pf;
 
 	if (rs->opts->debug) {
 		fprintf(stderr, "edit_tip(%s %s %s)\n",
@@ -1519,24 +1516,20 @@ edit_tip(resolve *rs, char *sfile, ser_t d, int which)
 		resolve_cleanup(rs->opts, 0);
 	}
 	if (which) {
-		pfile = xfile_fetch(sfile, 'p');
-		newrev = strchr(pfile, ' ');
-		assert(newrev);
-		newrev++;
-		t = strchr(newrev, ' ');
-		*t = 0;
+		sccs_restart(rs->s);
+		if (sccs_read_pfile(rs->s, &pf)) {
+			perror(rs->s->sfile);
+			resolve_cleanup(rs->opts, 0);
+		}
 
-		/* 0123456789012
-		 * merge deltas 1.9 1.8 1.8.1.3 lm 00/01/15 00:25:18
-		 */
 		if (abs(which) == LOCAL) {
 			free(rs->revs->local);
-			rs->revs->local = strdup(newrev);
+			rs->revs->local = strdup(pf.newrev);
 		} else {
 			free(rs->revs->remote);
-			rs->revs->remote = strdup(newrev);
+			rs->revs->remote = strdup(pf.newrev);
 		}
-		free(pfile);
+		free_pfile(&pf);
 		t = aprintf("merge deltas %s %s %s\n",
 		    rs->revs->local, rs->revs->gca, rs->revs->remote);
 		if (xfile_store(sfile, 'r', t)) assert(0);
@@ -2245,7 +2238,7 @@ err:		resolve_free(rs);
 		ser_t	e;
 
 		assert(MODE(s, d.local) == MODE(s, d.remote));
-		if (sccs_get(rs->s, 0, 0, 0, 0, SILENT, "-")) {
+		if (sccs_get(rs->s, 0, 0, 0, 0, SILENT, s->gfile, 0)) {
 			sccs_whynot("delta", rs->s);
 			goto err;
 		}
@@ -2282,18 +2275,18 @@ err:		resolve_free(rs);
 int
 get_revs(resolve *rs, names *n)
 {
-	int	flags = PRINT | (rs->opts->debug ? 0 : SILENT);
+	int	flags = (rs->opts->debug ? 0 : SILENT);
 
-	if (sccs_get(rs->s, rs->revs->local, 0, 0, 0, flags, n->local)) {
+	if (sccs_get(rs->s, rs->revs->local, 0, 0, 0, flags, n->local, 0)) {
 		fprintf(stderr, "Unable to get %s\n", n->local);
 		return (-1);
 	}
 
-	if (sccs_get(rs->s, rs->revs->gca, 0, 0, 0, flags, n->gca)) {
+	if (sccs_get(rs->s, rs->revs->gca, 0, 0, 0, flags, n->gca, 0)) {
 		fprintf(stderr, "Unable to get %s\n", n->gca);
 		return (-1);
 	}
-	if (sccs_get(rs->s, rs->revs->remote, 0, 0, 0, flags, n->remote)) {
+	if (sccs_get(rs->s, rs->revs->remote, 0, 0, 0, flags, n->remote, 0)) {
 		fprintf(stderr, "Unable to get %s\n", n->remote);
 		return (-1);
 	}
@@ -2301,29 +2294,71 @@ get_revs(resolve *rs, names *n)
 }
 
 /*
- * Try to automerge.
+ * Wrap resolve.c: automerge() so takepatch can use it without knowing
+ * about resolve data structures.
  */
-void
+int
+resolve_automerge(sccs *s, ser_t local, ser_t remote)
+{
+	int	ret;
+	resolve	*rs;
+	names	*revs;
+	opts	opts = {0};
+
+	rs = new(resolve);
+	revs = new(names);
+
+	revs->local = strdup(REV(s, local));
+	revs->remote = strdup(REV(s, remote));
+	revs->gca = strdup(REV(s, sccs_gca(s, local, remote, 0, 0)));
+	rs->revs = revs;
+	rs->opts = &opts;
+	rs->s = s;
+	rs->d = sccs_top(s);
+	opts.quiet = 1;
+	opts.autoOnly = 1;
+	opts.mergeprog = getenv("BK_RESOLVE_MERGEPROG");
+
+	ret = automerge(rs, 0, 0);
+
+	/* keep the 's', clean everything else */
+	rs->s = 0;
+	resolve_free(rs);
+	if (opts.notmerged) freeLines(opts.notmerged, free);
+	return (ret);
+}
+
+/*
+ * Try to automerge. 0 == auto-merged, 1 == did not auto-merge, -1 == error
+ */
+int
 automerge(resolve *rs, names *n, int identical)
 {
 	char	cmd[MAXPATH*4];
 	int	ret;
 	char	*name = basenm(PATHNAME(rs->s, rs->d));
+	char	*merge_msg = 0;
+	char	*l, *r;
 	names	tmp;
 	int	do_free = 0;
+	int	automerged = -1;
 	int	flags;
 	ser_t	a, b;
+	char	**av = 0;
+	int	fd, oldfd;
 
 	unless (sccs_findtips(rs->s, &a, &b)) {
 		unless (rs->opts->quiet) {
 			fprintf(stderr, "'%s' already merged\n",
 			    rs->s->gfile);
 		}
-		return;
+		return (0);
 	}
 	if (rs->opts->debug) fprintf(stderr, "automerge %s\n", name);
 
-	unless (n) {
+	if (!n &&
+	    (rs->opts->mergeprog ||
+	     identical || BINARY(rs->s) || NOMERGE(rs->s))) {
 		sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->local);
 		tmp.local = strdup(cmd);
 		sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->gca);
@@ -2333,54 +2368,68 @@ automerge(resolve *rs, names *n, int identical)
 		if (get_revs(rs, &tmp)) {
 			rs->opts->errors = 1;
 			freenames(&tmp, 0);
-			return;
+			return (-1);
 		}
 		n = &tmp;
 		do_free = 1;
 	}
 
+	merge_msg = strdup("Auto merged");
 	unless (unlink(rs->s->gfile)) rs->s = sccs_restart(rs->s);
-	if (identical || sameFiles(n->local, n->remote)) {
+	if (identical ||
+	    ((BINARY(rs->s) || NOMERGE(rs->s)) &&
+	      sameFiles(n->local, n->remote))) {
 		assert(n);
 		fileCopy(n->local, rs->s->gfile);
-		goto same;
+		goto merged;
 	}
 
-	if (BINARY(rs->s)) {
-		unless (rs->opts->quiet) {
+	if (BINARY(rs->s) || NOMERGE(rs->s)) {
+		if (BINARY(rs->s) && !rs->opts->quiet) {
 			fprintf(stderr,
 			    "Not automerging binary '%s'\n", rs->s->gfile);
 		}
-nomerge:	rs->opts->hadConflicts++;
-		return;
+		rs->opts->hadConflicts++;
+		automerged = 1;
+		goto out;
 	}
-	if (NOMERGE(rs->s)) goto nomerge;
 
-	/*
-	 * The interface to the merge program is
-	 * "smerge -lleft_ver -rright_ver"
-	 * and the program must return as follows:
-	 * 0 for no overlaps, 1 for some overlaps, 2 for errors.
-	 */
-	if (rs->opts->mergeprog) {
-		ret = sys("bk", rs->opts->mergeprog,
+	/* Run smerge first */
+	fflush(stdout);
+	oldfd = dup(1);
+	close(1);
+	fd = open(rs->s->gfile, O_CREAT|O_TRUNC|O_WRONLY, 0666);
+	assert(fd == 1);
+	av = addLine(av, "smerge");
+	av = addLine(av, (l = aprintf("-l%s", rs->revs->local)));
+	av = addLine(av, (r = aprintf("-r%s", rs->revs->remote)));
+	av = addLine(av, rs->s->gfile);
+	av = addLine(av, 0);
+	getoptReset();
+	ret = smerge_main(nLines(av), &av[1]);
+	free(l);
+	free(r);
+	freeLines(av, 0);
+	fflush(stdout);
+	close(fd);
+	dup2(oldfd, 1);
+	close(oldfd);
+
+	if ((ret != 0) && rs->opts->mergeprog) {
+		/*
+		 * If smerge didn't work, and the user gave us a merge
+		 * program, try that.
+		 */
+		ret = sys(rs->opts->mergeprog,
 		    n->local, n->gca, n->remote, rs->s->gfile, SYS);
-	} else {
-		char	*l = aprintf("-l%s", rs->revs->local);
-		char	*r = aprintf("-r%s", rs->revs->remote);
-
-		ret = sysio(0,
-		    rs->s->gfile, 0, "bk", "smerge", l, r, rs->s->gfile, SYS);
-		free(l);
-		free(r);
+		ret = WIFEXITED(ret) ? WEXITSTATUS(ret) : 2;
+		if (ret == 0) {
+			free(merge_msg);
+			merge_msg = aprintf("Auto merged using: %s",
+			    rs->opts->mergeprog);
+		}
 	}
 
-	if (do_free) {
-		unlink(tmp.local);
-		unlink(tmp.gca);
-		unlink(tmp.remote);
-		freenames(&tmp, 0);
-	}
 	if (ret == 0) {
 		ser_t	d;
 
@@ -2388,29 +2437,26 @@ nomerge:	rs->opts->hadConflicts++;
 			fprintf(stderr,
 			    "Content merge of %s OK\n", rs->s->gfile);
 		}
-same:		if (!LOCKED(rs->s) && edit(rs)) return;
-		comments_save("Auto merged");
+merged:		if (!LOCKED(rs->s) && edit(rs)) goto out;
+		comments_save(merge_msg);
 		d = comments_get(0, 0, rs->s, 0);
 		rs->s = sccs_restart(rs->s);
 		flags = DELTA_DONTASK|DELTA_FORCE|SILENT;
 		if (sccs_delta(rs->s, flags, d, 0, 0, 0)) {
 			sccs_whynot("delta", rs->s);
 			rs->opts->errors = 1;
-			return;
+			goto out;
 		}
-	    	rs->opts->resolved++;
+		rs->opts->resolved++;
 		xfile_delete(rs->s->gfile, 'r');
-		return;
+		automerged = 0;
+		goto out;
 	}
+
+	/* We could not merge this one. */
 	rs->opts->notmerged =
 	    addLine(rs->opts->notmerged,strdup(rs->s->gfile));
-	unless (WIFEXITED(ret)) {
-		fprintf(stderr, "Unknown merge status: 0x%x\n", ret);
-		rs->opts->errors = 1;
-		unlink(rs->s->gfile);
-		return;
-	}
-	if (WEXITSTATUS(ret) == 1) {
+	if (ret == 1) {
 		unless (rs->opts->autoOnly) {
 			fprintf(stderr,
 			    "Conflicts during automerge of %s\n",
@@ -2418,13 +2464,27 @@ same:		if (!LOCKED(rs->s) && edit(rs)) return;
 		}
 		rs->opts->hadConflicts++;
 		unlink(rs->s->gfile);
-		return;
+		automerged = 1;
+		goto out;
+	} else if (ret != 0) {
+		fprintf(stderr, "Unknown merge status: 0x%x\n", ret);
+		rs->opts->errors = 1;
+		unlink(rs->s->gfile);
+		goto out;
 	}
 	fprintf(stderr,
 	    "Automerge of %s failed for unknown reasons\n", rs->s->gfile);
 	rs->opts->errors = 1;
 	unlink(rs->s->gfile);
-	return;
+
+out:	if (do_free) {
+		unlink(tmp.local);
+		unlink(tmp.gca);
+		unlink(tmp.remote);
+		freenames(&tmp, 0);
+	}
+	free(merge_msg);
+	return (automerged);
 }
 
 /*
@@ -2443,7 +2503,7 @@ edit(resolve *rs)
 	} else {
 		branch = rs->revs->remote;
 	}
-	if (sccs_get(rs->s, 0, branch, 0, 0, flags, "-")) {
+	if (sccs_get(rs->s, 0, branch, 0, 0, flags, 0, 0)) {
 		fprintf(stderr,
 		    "resolve: cannot edit/merge %s\n", rs->s->sfile);
 		rs->opts->errors = 1;
@@ -2586,14 +2646,14 @@ unfinished(opts *opts)
 }
 
 /*
- * Remove a sfile, if its parent is empty, remove them too.
- * We leave stuff in place if we are being called from apply;
- * if we are called from unapply, we try and clean up everything.
+ * Remove a sfile, and matching gfile.
+ * Remember the directories so we can remove them too
  */
 private int
-rm_sfile(char *sfile, int leavedirs)
+rm_sfile(char *sfile, hash *emptydirs)
 {
 	char	*p;
+	char	buf[MAXPATH];
 
 	assert(!IsFullPath(sfile));
 	if (unlink(sfile)) {
@@ -2605,29 +2665,8 @@ rm_sfile(char *sfile, int leavedirs)
 	unlink(p);
 	free(p);
 
-	p = strrchr(sfile, '/');
-	unless (p) {
-		/* This should never happen, we at least have SCCS/ */
-		fprintf(stderr, "No slash in %s??\n", sfile);
-		return (-1);
-	}
-	while (p > sfile) {
-		*p-- = 0;
-		if (!streq(sfile, "SCCS") && isdir(sfile)) {
-			char	rdir[MAXPATH];
-
-			if (leavedirs) {
-				sprintf(rdir, "%s/%s", ROOT2RESYNC, sfile);
-				if (isdir(rdir)) break;
-			}
-			/* careful */
-			if (emptyDir(sfile) && rmdir(sfile)) {
-				perror(sfile);
-				return (-1);
-			}
-		}
-		while ((p > sfile) && (*p != '/')) p--;
-	}
+	strcpy(buf, sfile);
+	hash_storeStr(emptydirs, dirname(buf), 0);
 	return (0);
 }
 
@@ -2666,6 +2705,7 @@ pass4_apply(opts *opts)
 	sccs	*r, *l;
 	int	offset = strlen(ROOT2RESYNC) + 1;	/* RESYNC/ */
 	int	eperm = 0, flags, nold = 0, ret;
+	int	i;
 	FILE	*f = 0;
 	FILE	*save = 0;
 	char	**applied = 0;
@@ -2673,7 +2713,8 @@ pass4_apply(opts *opts)
 	char	key[MAXKEY];
 	MDBM	*permDB = mdbm_mem();
 	char	*cmd;
-	char	*p;
+	hash	*emptydirs;
+	char	**dirlist;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 4 ====\n");
 	opts->pass = 4;
@@ -2775,7 +2816,7 @@ pass4_apply(opts *opts)
 			fprintf(save, "%s\n", l->sfile);
 			sccs_free(l);
 			/* buf+7 == skip RESYNC/ */
-			mdbm_store_str(opts->idDB, key, buf + 7, MDBM_REPLACE);
+			idcache_item(opts->idDB, key, buf + 7);
 			++nold;
 		} else {
 			/*
@@ -2783,7 +2824,7 @@ pass4_apply(opts *opts)
 			 * This little chunk of magic is to detect BAM files
 			 * and respect BAM_checkout.
 			 */
-			if ((p = strrchr(key, '|')) && strneq(p, "|B:", 3)) {
+			if (BAMkey(key)) {
 				proj_saveCOkey(0, key, proj_checkout(0) >> 4);
 			} else {
 				proj_saveCOkey(0, key, proj_checkout(0) & 0xf);
@@ -2814,17 +2855,31 @@ pass4_apply(opts *opts)
 		save = fopen(BACKUP_LIST, "rt");
 		assert(save);
 		progress_adjustMax(tick, nfiles - nold);
+		emptydirs = hash_new(HASH_MEMHASH);
 		while (fnext(buf, save)) {
 			if (opts->progress) progress(tick, ++nticks);
 			chop(buf);
 			if (opts->log) fprintf(stdlog, "unlink(%s)\n", buf);
-			if (rm_sfile(buf, 1)) {
+			if (rm_sfile(buf, emptydirs)) {
 				fclose(save);
 				restore_backup(BACKUP_SFIO, 0);
 				resolve_cleanup(opts, 0);
 			}
 		}
 		fclose(save);
+
+		/* remove empty directories, but keep ones used in RESYNC */
+		dirlist = 0;
+		EACH_HASH(emptydirs) {
+			concat_path(buf, ROOT2RESYNC, emptydirs->kptr);
+			if (isdir(buf)) {
+				dirlist = addLine(dirlist, emptydirs->kptr);
+			}
+		}
+		EACH(dirlist) hash_deleteStr(emptydirs, dirlist[i]);
+		freeLines(dirlist, 0);
+		rmEmptyDirs(emptydirs);
+		hash_free(emptydirs);
 	}
 
 	/*
@@ -2988,8 +3043,11 @@ private void
 unapply(char **applied)
 {
 	int	i;
+	hash	*emptydirs = hash_new(HASH_MEMHASH);
 
-	EACH(applied) rm_sfile(applied[i], 0);
+	EACH(applied) rm_sfile(applied[i], emptydirs);
+	rmEmptyDirs(emptydirs);
+	hash_free(emptydirs);
 }
 
 private	void
@@ -3300,8 +3358,9 @@ moveupComponent(void)
 	/* update idcache with the changed location */
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 	concat_path(buf, cpath, GCHANGESET);
-	mdbm_store_str(idDB, proj_rootkey(comp), buf, MDBM_REPLACE);
-	idcache_write(0, idDB);
+	if (idcache_item(idDB, proj_rootkey(comp), buf)) {
+		idcache_write(0, idDB);
+	}
 	mdbm_close(idDB);
 
 	/* go back where we came from */

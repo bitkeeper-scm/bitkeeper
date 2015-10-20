@@ -100,7 +100,7 @@ earlier(sccs *s, ser_t a, ser_t b)
 		fprintf(stderr, "The source repository has had a different "
 		    "transformation,\nlikely involving the presence or "
 		    "absence of a file that\nhas been marked gone.\n"
-		    "Please write support@bitmover.com for assistance.\n\n");
+		    "Please write support@bitkeeper.com for assistance.\n\n");
 		fprintf(stderr, "File: %s\n", s->gfile);
 		fprintf(stderr, "sortkey: %s\n", keya);
 		fprintf(stderr, "sum: %u %u\n", SUM(s, a), SUM(s, b));
@@ -173,7 +173,7 @@ cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 				    ? "remote"
 				    : (rmerge ? REV(s, rmerge) : ""));
 				fprintf(stderr, "Please send "
-				    "the output to support@bitmover.com\n");
+				    "the output to support@bitkeeper.com\n");
 				return (D_INVALID);
 			}
 			keep = 0;

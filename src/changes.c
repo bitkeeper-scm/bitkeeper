@@ -967,19 +967,20 @@ loadcset(sccs *cset)
 			last = d;
 		}
 		if (opts.filt || opts.sel || opts.noMeta) {
-			keypath = strchr(dkey, '|');
-			assert(keypath);
-			keypath++;
-			pipe = strchr(keypath, '|');
-			assert(pipe);
-			unless (componentKey(dkey)) {
-				if (opts.BAM) {
-					/* skip unless rootkey =~ /^B:/ */
-					t = strrchr(rkey, '|');
-					unless (strneq(t, "|B:", 3)) continue;
-				}
+			if (opts.BAM && !weave_isBAM(cset, rkoff)) continue;
+			unless (weave_iscomp(cset, rkoff)) {
+				keypath = strchr(dkey, '|');
+				assert(keypath);
+				keypath++;
+				pipe = strchr(keypath, '|');
+				assert(pipe);
 				strncpy(pathp, keypath, pipe - keypath);
 				pathp[pipe-keypath] = 0;
+				/*
+				 * path == full path from product root
+				 * pathp == path from comp root
+				 * (same for standalone)
+				 */
 				if (skipPath(path, &inc, &exc)) continue;
 				if (opts.noMeta && sccs_metafile(pathp)) {
 					continue;

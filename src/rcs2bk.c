@@ -352,7 +352,7 @@ newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags)
 #endif
 
 	/* bk get $Q -eg $gfile */
-	if (sccs_get(s, 0, 0, 0, 0, flags|GET_EDIT|GET_SKIPGET, "-")) {
+	if (sccs_get(s, 0, 0, 0, 0, flags|GET_EDIT|GET_SKIPGET, 0, 0)) {
 		fprintf(stderr, "Edit of %s failed\n", s->gfile);
 		return (1);
 	}

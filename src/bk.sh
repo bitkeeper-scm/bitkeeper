@@ -52,43 +52,6 @@ __feature_test() {
 	bk --cd="$dir" prs -hd' ' -r+ $file >/dev/null || exit 1
 }
 
-# faster way to get repository status
-_repocheck() {
-	V=-v
-	EACH=--each-repo
-	P=-P
-	while getopts qS opt
-	do
-		case "$opt" in
-		    q)	V="";;
-		    S)	EACH=""; P=-R;;
-		    X*)	echo "Invalid option: $1"
-	    		echo "Usage: bk repocheck [-Sq]"
-			printf "This checks repository integrity by running: "
-			echo "bk -e -r check -aBcv"
-			echo Use -q to run quietly
-			echo "    -S only check current component"
-			exit 1;;
-		esac
-	done
-	shift `expr $OPTIND - 1`
-	test "X$2" != X && {
-		echo "repocheck: too many arguments"
-		exit 1
-	}
-	test "X$1" != X && {
-		test -d "$1" || {
-			echo "$1 is not a directory"
-			exit 1
-		}
-		cd "$1" || exit 1
-		__feature_test
-	}
-	# check output goes to stderr, so put this to stderr too
-	test "X$V" != X && echo === Checking `bk $P pwd` === 1>&2
-	bk $EACH -r check -aBc $V
-}
-
 # Remove anything found in our main parent and repull.
 # Don't doc until 5.3ish so we can get some usage.
 _repull() {
@@ -495,8 +458,8 @@ _superset() {
 	exit 1
 }
 
-# Ping bitmover to tell them what bkd version we are running.
-# This is used so BitMover can tell the customer when that bkd needs
+# Ping bitkeeper.com to tell them what bkd version we are running.
+# This is used so BitKeeper can tell the customer when that bkd needs
 # to be upgraded.
 __bkdping() {
 	( 
@@ -653,7 +616,7 @@ _vi() {
 	_editor "$@"
 }
 
-# For sending repositories back to BitMover, this removes all comments
+# For sending repositories back to BitKeeper Inc., this removes all comments
 # and obscures data contents.
 _obscure() {
 	ARG=--I-know-this-destroys-my-tree
@@ -1337,22 +1300,10 @@ __install()
 	then
 		test $VERBOSE = YES && echo "Updating registry and path ..."
 		gui/bin/tclsh gui/lib/registry.tcl $UPGRADE $DLLOPTS "$DEST"
-		# Clean out existing startmenu
-		bk _startmenu rm
+		# Clean out any old BK menu items
+		bk _startmenu uninstall
 		# Make new entries
-		bk _startmenu set -i"$DEST/bk.ico" \
-			"BitKeeper Documentation" "$DEST/bk.exe" "helptool"
-		bk _startmenu set -i"$DEST/bk.ico" \
-			"Submit bug report" "$DEST/bk.exe" "sendbug"
-		bk _startmenu set -i"$DEST/bk.ico" \
-			"Request BitKeeper Support" "$DEST/bk.exe" "support"
-		bk _startmenu set -i"$DEST/bk.ico" \
-			"Uninstall BitKeeper" "$DEST/bk.exe" "uninstall"
-		bk _startmenu set "Quick Reference" "$DEST/bk_refcard.pdf"
-		bk _startmenu set "BitKeeper on the Web" \
-			"http://www.bitkeeper.com"
-		bk _startmenu set "BitKeeper Test Drive" \
-			"http://www.bitkeeper.com/Test.html"
+		bk _startmenu install "$DEST"
 		if [ "$REGSHELLX" = "YES" ]
 		then
 			__register_dll "$DEST"/BkShellX.dll
@@ -1362,6 +1313,7 @@ __install()
 				__register_dll "$DEST"/BkShellX64.dll
 			fi
 		fi
+		test X$UPGRADE != X && { echo;  bk version; }
 	fi
 
 	test $CRANKTURN = YES && exit 0
@@ -1400,9 +1352,14 @@ _L() {
 }
 
 _wish() {
+	BK_GUI="YES"
+	export BK_GUI
+
 	AQUAWISH="$BK_BIN/gui/bin/BitKeeper.app/Contents/MacOS/BitKeeper"
-	if [ \( -z "$DISPLAY" -o "`echo $DISPLAY | cut -c1-11`" = "/tmp/launch" \) \
-	    -a -x "$AQUAWISH" ] ; then
+	test -n "$DISPLAY" && {
+		echo $DISPLAY | grep -q "/tmp/[a-z.]*launch" || AQUAWISH=
+	}
+	if [ -n "$AQUAWISH" -a -x "$AQUAWISH" ] ; then
 		WISH="$AQUAWISH"
 	else
 		TCL_LIBRARY=$BK_BIN/gui/lib/tcl8.5
@@ -1781,7 +1738,7 @@ shift
 test "X$BK_USEMSYS" = "X" && PATH="$BK_OLDPATH"
 if type "$cmd" > /dev/null 2>&1
 then
-	exec $cmd "$@"
+	exec "$cmd" "$@"
 else
 	echo "$cmd: command not found" 1>&2
 	exit 1

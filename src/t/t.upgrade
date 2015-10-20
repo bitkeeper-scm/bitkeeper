@@ -53,7 +53,7 @@ grep -q "valid commercial license" ERR || {
 }
 echo OK
 
-echo $N Test upgrade to get status from bitmover ....................$NL
+echo $N Test upgrade to get status from bitkeeper ...................$NL
 cd junk2
 bk lease flush -a
 BK_NOTTY=1 bk upgrade -cf >OUT 2>ERR || {
@@ -106,10 +106,10 @@ END
 checkfiles OUT WANT
 echo OK
 
-echo $N Test upgrade to get status from bitmover using a proxy.......$NL
+echo $N Test upgrade to get status from bitkeeper using a proxy .....$NL
 # squid proxy running on work.  Only accepts 10.0.0.0/8 connections.
 # XXX test proxy passwords too?
-http_proxy=http://data.bitmover.com:3128
+http_proxy=http://data.bitkeeper.com:3128
 export http_proxy
 BK_NOTTY=1 bk upgrade -cf >OUT 2>ERR || {
 	echo should not have failed
@@ -162,11 +162,14 @@ test -x /usr/bin/perl || exit 0
 # Not everyone has strict.pm or understands it.
 test `uname` = NetBSD && exit 0
 
+# MacOS does not do the inskeys thing.
+test `uname` = Darwin && exit 0
+
 echo $N Create local upgrade area ...................................$NL
 cd "$HERE"
 BK_INSTALLER=
 # Lazy way to get full path
-find "$BKSRC"/utils -name 'bk*.exe' -o -name 'bk*.bin' > /tmp/bk$$
+find "$BKSRC"/utils -name 'bk*-console-setup.exe' -o -name 'bk*.bin' > /tmp/bk$$
 test `wc -l < /tmp/bk$$` -gt 1 && {
 	echo skipped
 	$RM -f /tmp/bk$$

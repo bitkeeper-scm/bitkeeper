@@ -178,7 +178,8 @@ clean:
 	$(if $(Q),@echo Cleaning tommath,)
 	$(Q)rm -f *.bat *.pdf *.o *.a *.obj *.lib *.exe *.dll etclib/*.o demo/demo.o test ltmtest mpitest mtest/mtest mtest/mtest.exe \
 	tags.local \
-        *.idx *.toc *.log *.aux *.dvi *.lof *.ps *.log *.s mpi.c *.da *.dyn *.dpi `find . -type f | grep [~] | xargs` *.lo *.la
+        *.idx *.toc *.log *.aux *.dvi *.lof *.ps *.log *.s mpi.c \
+	*.da *.dyn *.dpi *.lo *.la
 	$(Q)rm -rf .libs
 	$(Q)cd etc ; MAKE=${MAKE} ${MAKE} clean
 	$(Q)cd pics ; MAKE=${MAKE} ${MAKE} clean

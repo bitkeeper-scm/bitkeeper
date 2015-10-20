@@ -4,8 +4,8 @@ Nested locking model
 Reader/writer locking in a nested collection
 
 Also See:
-	http://dev-wiki.bitmover.com/Nested/Locking
-	http://dev-wiki.bitmover.com/Nested/Transactions
+	http://dev-wiki.bitkeeper.com/Nested/Locking
+	http://dev-wiki.bitkeeper.com/Nested/Transactions
 
 [Wed Sep 30 11:11:05 PDT 2009] - I don't know how current those
 are when you are looking at them, but at least now they provide
@@ -121,7 +121,7 @@ The client side can call cmd_nested in the bkd with options
 For http, add a token to the NESTED_WRITER_LOCK file that this is an
 http lock and therefore can't use pid to stale the lock, but can use a
 time window.  Mentioned in one of the emails shown in :
-	http://dev-wiki.bitmover.com/Nested/Transactions
+	http://dev-wiki.bitkeeper.com/Nested/Transactions
 
 Building on that, the cmd_log() table could drop unlock and
 instead just list locks on each step.  The lock would not only

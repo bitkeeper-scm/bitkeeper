@@ -1,0 +1,154 @@
+PATHLOG=`bk repos --pathlog`
+
+echo $N Create initial repository ...................................$NL
+commercial project
+# -c because the cache might get reused
+bk repos -c../../cache/commercial > GOT
+grep -q "cache/commercial" GOT || fail -f GOT
+# Note: commercial uses 'sfio' so there is no 'project' in cache:
+grep -q "project" GOT && fail -f GOT
+# Simulate more fields on commercial
+sed 's/$/|one|two|three/' "$PATHLOG" > ../longline
+cp ../longline "$PATHLOG"
+bk repos -qc../../cache/commercial
+# see that long line had no truncation
+cmpfiles ../longline "$PATHLOG"
+echo OK
+
+echo $N Check that check updates cache ..............................$NL
+bk repocheck $Q
+bk repos > GOT
+grep -q "project" GOT || fail -f GOT
+echo OK
+
+echo $N Check that long lines stay long, short lines grow back ......$NL
+# Get into canonical order
+cd "$HERE"
+bk clone $Q project project-missing
+# canonical content, but still hash order
+bk repos -q --check-all
+grep -q "missing" "$PATHLOG" || fail no missing
+bk _sort < "$PATHLOG" | grep -v missing > WANT
+# chop last field off project and project_missing
+sed 's/\([^|]*project.*\)|.*/\1/' "$PATHLOG" > shortline
+# Sanity - something changed:
+cmp -s "$PATHLOG" ../shortline && fail
+cp shortline "$PATHLOG"
+rm -fr project-missing
+# long lines stay long, short lines grow back; missing repo deleted
+bk repos -q
+bk _sort < "$PATHLOG" > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check that clone updates cache ..............................$NL
+cd "$HERE"
+bk clone $Q project clone
+bk repos > GOT
+grep -q "clone" GOT || fail -f GOT
+echo OK
+
+echo $N Check that mtime listing works ..............................$NL
+# tickle project mtime
+bk _usleep 1000000
+cd "$HERE/project"
+touch foo
+bk new $Q foo
+bk commit -f $Q
+cd "$HERE" # prevent the following from changing project atime
+# commerical timestamp can mess this up
+bk repos -m | grep -v commercial | while read repo
+do
+	echo `basename "$repo"`
+done > GOT
+cat <<EOF > WANT
+project
+clone
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Check that atime listing works ..............................$NL
+# tickle clone atime
+cd "$HERE/clone"
+bk _usleep 1
+bk _usleep 1000000
+bk repos --check-all -a | while read repo
+do
+	echo `basename "$repo"`
+done > GOT
+cat <<EOF > WANT
+clone
+project
+commercial
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Check repos -c ..............................................$NL
+# tickle project atime
+cd "$HERE/project"
+bk _usleep 1000000
+bdate=`bk _stat "$PATHLOG" | awk -F\| '{ print $10 }'`
+cd "$HERE"
+bk repos -c "$HERE/project" > ${DEV_NULL}
+adate=`bk _stat "$PATHLOG" | awk -F\| '{ print $10 }'`
+test $adate -gt $bdate || fail path.log was not updated
+echo OK
+
+echo $N Check that a line without times will get times ..............$NL
+# as would happen when an old BK adds a line
+echo `bk pwd`"/project" >> "$PATHLOG"
+bk repos -c "$HERE/project" > ${DEV_NULL}
+L=`grep project "$PATHLOG" | tail -1 | grep '|' | wc -l`
+test "$L" -eq 1 || fail
+echo OK
+
+echo $N Test to see if bisect creates litter ........................$NL
+cd "$HERE/project"
+bk tag $Q base
+mkdir src
+touch src/foo
+bk new $Q -l src/foo
+bk commit $Q -f
+echo data > src/foo
+bk delta $Q -ydata src/foo
+bk commit $Q -f
+cat <<EOF > script
+#!/bin/sh
+test -f src/foo || bk get -q src/foo
+test -s src/foo || exit 0
+exit 1
+EOF
+chmod +x script
+bk bisect -q -rbase..+ --cmd="$PWD/script" >CHANGES 2>FOUND|| fail
+bk repos | grep -q 'bisect' && fail bisect litter created
+echo OK
+
+echo $N Test to see if partitions creates litter ....................$NL
+cd "$HERE"
+echo src > comps
+bk partition $Q -Ccomps project nested || fail
+bk repos | grep -q 'partition' && fail partition litter created
+echo OK
+
+echo $N Test to see if attach creates litter ........................$NL
+cd nested
+bk portal $Q .
+bk attach $Q ../project orig || fail
+bk repos | grep -q 'orig' && fail attach comp litter created
+echo OK
+
+echo $N Test to see if attach -N creates litter .....................$NL
+bk clone $Q ../project direct
+bk --cd=direct newroot
+bk attach $Q -N direct || fail
+bk repos | grep -q 'direct' && fail atttach comp litter created
+echo OK
+
+echo $N Test to see that long line is still there ...................$NL
+cd "$HERE"
+bk repos -v | grep "cache/commercial" > GOT
+cmp -s longline GOT && fail -f GOT should be different
+grep -q "`cat longline`" "$PATHLOG" || fail
+echo OK

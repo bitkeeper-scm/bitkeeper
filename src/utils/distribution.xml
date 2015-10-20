@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<installer-gui-script minSpecVersion="1">
+	<title>BitKeeper</title>
+	<pkg-ref id="com.bitkeeper.bk">bk.pkg</pkg-ref>
+	<options customize="never" require-scripts="false"/>
+	<choices-outline>
+		<line choice="default">
+		<line choice="com.bitkeeper.bk"/>
+		</line>
+	</choices-outline>
+	<choice id="default"/>
+	<choice id="com.bitkeeper.bk" visible="false">
+		<pkg-ref id="com.bitkeeper.bk"/>
+	</choice>
+</installer-gui-script>

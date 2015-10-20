@@ -18,7 +18,7 @@ do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out)
 }
 
 int
-get(char *path, int flags, char *output)
+get(char *path, int flags)
 {
 	sccs *s;
 	int ret;
@@ -35,74 +35,9 @@ get(char *path, int flags, char *output)
 		if (s) sccs_free(s);
 		return (-1);
 	}
-	ret = sccs_get(s, 0, 0, 0, 0, flags, output);
+	ret = sccs_get(s, 0, 0, 0, 0, flags, s->gfile, 0);
 	sccs_free(s);
 	return (ret ? -1 : 0);
-}
-
-void
-status(int verbose, FILE *f)
-{
-	char	buf[MAXLINE], parent_file[MAXPATH];
-	char	tmp_file[MAXPATH];
-	FILE	*f1;
-
-	fprintf(f, "Status for BitKeeper repository %s:%s\n",
-	    sccs_gethost(), proj_cwd());
-	bkversion(f);
-	sprintf(parent_file, "%slog/parent", BitKeeper);
-	if (exists(parent_file)) {
-		fprintf(f, "Parent repository is ");
-		f1 = fopen(parent_file, "r");
-		while (fgets(buf, sizeof(buf), f1)) fputs(buf, f);
-		fclose(f1);
-	}
-	unless (repository_lockers(0)) {
-		if (isdir("PENDING")) {
-			fprintf(f, "Pending patches\n");
-		}
-	}
-
-	if (verbose) {
-		bktmp(tmp_file);
-		f1 = fopen(tmp_file, "w");
-		assert(f1);
-		bkusers(0, 0, f1);
-		fclose(f1);
-		f1 = fopen(tmp_file, "rt");
-		while (fgets(buf, sizeof(buf), f1)) {
-			fprintf(f, "User:\t%s", buf);
-		}
-		fclose(f1);
-		sprintf(buf, "bk sfiles -x > '%s'", tmp_file);
-		system(buf);
-		f1 = fopen(tmp_file, "rt");
-		while (fgets(buf, sizeof(buf), f1)) {
-			fprintf(f, "Extra:\t%s", buf);
-		}
-		fclose(f1);
-		sprintf(buf, "bk sfiles -gc > '%s'", tmp_file);
-		system(buf);
-		f1 = fopen(tmp_file, "rt");
-		while (fgets(buf, sizeof(buf), f1)) {
-			fprintf(f, "Modified:\t%s", buf);
-		}
-		fclose(f1);
-		sprintf(buf, "bk sfiles -gpC > '%s'", tmp_file);
-		system(buf);
-		f1 = fopen(tmp_file, "rt");
-		while (fgets(buf, sizeof(buf), f1)) {
-			fprintf(f, "Uncommitted:\t%s", buf);
-		}
-		fclose(f1);
-		unlink(tmp_file);
-	} else {
-		fprintf(f,
-		    "%6d people have made deltas.\n", bkusers(0, 0, 0));
-		f1 = popen("bk sfiles -ES", "r");
-		while (fgets(buf, sizeof (buf), f1)) fputs(buf, f);
-		pclose(f1);
-	}
 }
 
 private void

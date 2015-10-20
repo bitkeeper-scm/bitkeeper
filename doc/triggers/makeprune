@@ -3,7 +3,7 @@
 # Copyright (c) 2003 BitMover Inc.
 # No warranty expressed or implied.
 # DO NOT USE WITHOUT UNDERSTANDING!! ASK QUESTIONS!!
-# Mail: support@bitmover.com
+# Mail: support@bitkeeper.com
 #
 # User is free to modify and use.
 # User must not redistribute in either unchanged or modified form.
@@ -59,10 +59,10 @@ strig=BitKeeper/triggers/SCCS/s.post-incoming.zzzprune
 cat <<'MKEOF' > trig
 #!/bin/sh
 
-# Copyright (c) 2003 BitMover Inc.
+# Copyright (c) 2015 BitKeeper Inc.
 # No warranty expressed or implied.
 # DO NOT USE WITHOUT UNDERSTANDING!! ASK QUESTIONS!!
-# Mail: support@bitmover.com
+# Mail: support@bitkeeper.com
 #
 # User is free to modify and use.
 # User must not redistribute in either unchanged or modified form.

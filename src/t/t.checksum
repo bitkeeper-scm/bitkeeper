@@ -145,3 +145,23 @@ echo $N Test an empty cset causes no problems .......................$NL
 bk commit $Q -Ff --tag=EMPTY || fail commit failed
 bk checksum -rEMPTY ChangeSet || fail empty checksum wrong
 echo OK
+
+echo $N Test that fixing checksums works with bkmerge ...............$NL
+cd "$HERE"
+commercial master
+touch prune
+bk new $Q prune
+bk commit $Q -f
+bk clone $Q --upgrade . ../client
+touch foo
+bk new $Q foo
+bk commit $Q -f
+cd ../client
+touch bar
+bk new $Q bar
+bk commit $Q -f
+bk pull $Q || fail
+bk prs -r+ -hnd:ROOTKEY: prune > keys
+bk csetprune $Q - < keys
+bk checksum -r+ || fail
+echo OK

@@ -167,7 +167,7 @@ proc getRev {file rev checkMods} \
 		catch {close $f}
 	}
 	set tmp [tmpfile difftool]
-	if {[catch {exec bk get -qkTp -r$rev $file > $tmp} msg]} {
+	if {[catch {exec bk get -qkp -r$rev $file > $tmp} msg]} {
 		puts "$msg"
 		exit 1
 	}
@@ -290,6 +290,7 @@ proc selectFile {{file ""}} {
 	if {![dict exists $fileInfo $file]} { return }
 	lassign [dict get $fileInfo $file] lfile rfile fname lr rr
 	set selected $fname
+	wm title . "Diff Tool ($fname)"
 	configureFilesCombo
 
 	if {[getNextFile] ne ""} {
@@ -445,21 +446,23 @@ proc discard {{what firstClick} args} \
 # clears the display since there's nothing left to diff.
 proc doDiscard {file} \
 {
-	global	fileInfo
+	global	files fileInfo
 
 	if {[catch {exec bk unedit $file} message]} {
 		exec bk msgtool -E "error performing the unedit:\n\n$message\n"
 		return
 	}
 
-	dict unset fileInfo $file
-	configureFilesCombo
-
 	set next [getNextFile]
 	if {$next eq ""} { set next [getPrevFile] }
 
+	dict unset fileInfo $file
+	set x [lsearch -exact $files $file]
+	set files [lreplace $files $x $x]
+	configureFilesCombo
+
 	if {$next ne ""} {
-		nextFile
+		selectFile $next
 	} else {
 		clearDisplay
 	}
@@ -481,9 +484,7 @@ proc clearDisplay {} \
 	.diffs.left delete 1.0 end
 	.diffs.right delete 1.0 end
 	.diffs.status.l configure -text ""
-	.diffs.status.l_lnum configure -text ""
 	.diffs.status.r configure -text ""
-	.diffs.status.r_lnum  configure -text ""
 	.diffs.status.middle configure -text "no files"
 	tooltip::tooltip .diffs.status.l ""
 	tooltip::tooltip .diffs.status.r ""
@@ -529,7 +530,7 @@ proc postFilesCombo {} \
 
 proc configureFilesCombo {} \
 {
-	global	files selected
+	global	files selected fileInfo
 
 	set cb .menu.files
 	if {[info exists selected]} {
@@ -540,6 +541,7 @@ proc configureFilesCombo {} \
 		set text "Files ([llength $files])"
 	}
 	$cb selection clear
+	$cb configure -values $files
 	$cb set $text
 }
 
@@ -849,6 +851,11 @@ main(int argc, string argv[])
 			}
 		}
 	} else {
+		if (dashs) {
+			cd2root();
+		} else {
+			cd2product();
+		}
 		if (localUrl) {
 			// bk difftool -L[<URL>]
 			string	err, S = "";
@@ -858,22 +865,12 @@ main(int argc, string argv[])
 				message("Could not get repo GCA:\n${err}",
 				    exit: 1);
 			}
-			if (dashs) {  // revtool_cd2root()
-				cd2root();
-				S = "-S";
-			} else {
-				cd2product();
-			}
+			if (dashs) S = "-S";
 			fp = popen("bk _sfiles_local "
 				   "${alias} --elide ${S} -r${rev1}", "r");
 		} else if (rev1) {
 			// bk difftool -r<@cset1> -r<@cset2>
 			unless (rev2) bk_usage();
-			if (dashs) {  // revtool_cd2root()
-				cd2root();
-			} else {
-				cd2product();
-			}
 			rsetOpts .= " -r${rev1}..${rev2}";
 			fp = popen("bk rset ${alias} ${rsetOpts}", "r");
 		} else {
@@ -892,8 +889,6 @@ main(int argc, string argv[])
 	if (length(files) == 0) {
 		message("No files found with differences", exit: 0);
 	}
-
-	Wm_title(".", "Diff Tool");
 }
 
 // 2 things: see if all the components in the alias are here, and
