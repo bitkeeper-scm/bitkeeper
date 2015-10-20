@@ -18,6 +18,10 @@ whitespace	only	   changes	  should be orange
 	int foo[3];	// the ] should NOT be highlighted
 9
 tab	space tab/space	 space/tab 	tab/tab		space/space  end
+10
+# This next tab to space should be highlighted and in the same line
+	
+11
 EOF
 cat <<EOF > RIGHT
 1
@@ -38,6 +42,10 @@ whitespace	only     changes 	should be orange
 	int foo[NFILES] = {0};	// the ] should NOT be highlighted
 9
 tab space	tab/space 	space/tab	 tab/tab  space/space		end
+10
+# This next tab to space should be highlighted and in the same line
+
+11
 EOF
 bk difftool LEFT RIGHT
 echo OK

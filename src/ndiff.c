@@ -202,7 +202,7 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 	}
 
 	fop.dop = *dop;
-	fop.diffgap = proj_configint(0, "diffgap", 0);
+	fop.diffgap = proj_configint(0, "diffgap", -1);
 
 	for (i = 0; i < 2; i++) {
 		if (stat(files[i], &sb[i])) {
