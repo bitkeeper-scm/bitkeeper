@@ -6,12 +6,12 @@
  * Copyright (c) 2010-2011 Tim Baker
  */
 
-#include "tkTreeCtrl.h"
-#include "tkMacOSXInt.h"
 #import <Carbon/Carbon.h>
 #ifdef MAC_TK_COCOA
 #import <Cocoa/Cocoa.h>
 #endif
+#include "tkTreeCtrl.h"
+#include "tkMacOSXInt.h"
 
 /* CGFloat is available Mac OS X v10.5 and later. */
 #ifndef CGFLOAT_DEFINED
