@@ -87,9 +87,18 @@ case "X`uname -s`" in
 		CC=gcc
 		LD=gcc
 		export CC LD
-		CCXTRA="-Qunused-arguments -DHAVE_GMTOFF -DNOPROC -no-cpp-precomp"
+		CCXTRA="-DHAVE_GMTOFF -DNOPROC -no-cpp-precomp"
 		XLIBS="-lresolv"
 		PATH="/usr/local/bin:${PATH}:/usr/X11R6/bin"
+		case "X`uname -r`" in
+			X7.*)
+				XLIBS="-lresolv"
+				;;
+			*)	CCXTRA="$CCXTRA -m32"
+				LD="$LD -m32"
+				XLIBS="-lresolv"
+				;;
+		esac
 		;;
 	XFreeBSD)
 		CCXTRA="-DNOPROC -DHAVE_GMTOFF"

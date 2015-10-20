@@ -44,6 +44,21 @@ if [ $? -ne 0 ]; then
 fi
 echo "OK"
 
+echo $N Checking for TkTreeCtrl......................................$NL
+bk guitest >"$OUT" 2>&1 <<'EOF'
+	package require treectrl
+	treectrl .t
+	pack .t
+	update
+	after 1000 {exit 0}
+EOF
+if [ $? -ne 0 ]; then 
+	echo failed
+	cat "$OUT"
+	exit 1 
+fi
+echo "OK"
+
 echo $N 'Checking for BWidget.........................................' $NL
 bk guitest >"$OUT" 2>&1 <<'EOF'
     package require BWidget
