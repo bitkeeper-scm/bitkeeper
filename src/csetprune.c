@@ -61,7 +61,7 @@ private	int	newBKfiles(sccs *cset,
 		    char *comp, hash *prunekeys, weave **cweavep);
 private	int	rmKeys(hash *prunekeys);
 private	char	*mkRandom(char *input);
-private	void	_pruneEmpty(sccs *s, ser_t d, u8 *slist, ser_t **sd);
+private	void	_pruneEmpty(sccs *s, ser_t d, u8 *slist, sccs *old);
 private	void	pruneEmpty(sccs *s);
 private	hash	*getKeys(char *file);
 private	int	keeper(char *rk);
@@ -1603,7 +1603,8 @@ fixTags(sccs *s)
 			DELETED_SET(s, md, 0);
 			SAME_SET(s, md, 0);
 			COMMENTS_SET(s, md, 0);
-			assert(!HAS_CLUDES(s, md) && !MERGE(s, md));
+			CLUDES_SET(s, md, 0);
+			assert(!MERGE(s, md));
 		}
 	}
 	/*
@@ -1657,47 +1658,96 @@ fixTags(sccs *s)
 			DELETED_SET(s, d, 0);
 			SAME_SET(s, d, 0);
 			COMMENTS_SET(s, d, 0);
-			assert(!HAS_CLUDES(s, d) && !MERGE(s, d));
+			CLUDES_SET(s, d, 0);
+			assert(!MERGE(s, d));
 		}
 	}
 }
 
 /*
- * replace any D_GONE nodes from d's symdiff list of serials (sd[d->serial])
- * with the symdiff list for the D_GONE node, which will have no D_GONE's
- * in them, because this will have already run on any D_GONE'd nodes.
+ * Functionally, this is ideal: using new parent, expand in old
+ * graph and compress in new graph:
+ *	count = graph_symdiff(old, d, p, 0, slist, 0, -1, 0);
+ *	graph_symdiff(s, d, p, 0, slist, 0, count, 0);
+ * The downside is extremely bad performance relative to the old stuff.
+ * In a million node graph that gets reduced to 100 nodes, that's
+ * 2 million calls to symdiff, with too many having large graph walks.
  *
- * This also serves to collapse any dups that accumulated in calls
- * to symdiff_setParent(), as the call to this is after calls to setParent.
+ * To go fast: avoid calling symdiff, or do call with nodes in close proximity.
+ * Since newp is in the pruned graph, it could be very far from d.
+ * Use oldp as being close to p.  It also gives us more to reason
+ * about in the common case of simple update (no -i or -x).
+ * Note: passing oldp into the new graph compress (last line below) could
+ * mean that the D_GONE check in symdiff() would pop.
+ * Special case this in graph_symdiff().
  */
 private	void
-rmPruned(sccs *s, ser_t d, ser_t **sd)
+fixupGraph(sccs *s, ser_t d, ser_t p, ser_t m, u8 *slist, sccs *old)
 {
-	int	i;
-	ser_t	*new, *sdlist = sd[d];
-	ser_t	t;
+	ser_t	e, oldp, oldm;
+	int	i, count;
 
-	assert(PARENT(s, d) && !(FLAGS(s, PARENT(s, d)) & D_GONE));
-	unless (sdlist) return;
+	oldp = PARENT(s, d);
+	oldm = MERGE(s, d);
+	PARENT_SET(s, d, p);
+	MERGE_SET(s, d, m);
 
-	new = 0;
-	EACH(sdlist) {
-		t = sdlist[i];
-		assert(t);
-		if (FLAGS(s, t) & D_GONE) {
-			new = symdiff_addBVC(sd, new, s, t);
-		} else {
-			new = addSerial(new, t);
+	/*
+	 * Was graph originally a simple update to oldp?
+	 * Note: cludes(s, d) still set to pre-prune value.
+	 */
+	unless (oldm || HAS_CLUDES(s, d)) {
+		/* Yes.  Mimic symdiff returning just 'd' */
+		count = 1;
+		slist[d] = 1;
+	} else {
+		/* No.  Compute difference manually */
+		count = graph_symdiff(old, d, oldp, 0, slist, 0, -1, 0);
+
+		/* Filter out GONE'd items */
+		for (e = d, i = count; (e >= TREE(s)) && i; e--) {
+			unless (slist[e]) continue;
+			i--;
+			if (FLAGS(s, e) & D_GONE) {
+				slist[e] = 0;
+				count--;
+			}
 		}
+		assert(!i);
 	}
-	free(sdlist);
-	sdlist = sd[d] = symdiff_noDup(new);
-	free(new);
-	/* integrity check - no more gone in list */
-	EACH(sdlist) {
-		t = sdlist[i];
-		assert(t && !(FLAGS(s, t) & D_GONE));
+	/*
+	 * Did the node start or wind up as a new simple update to oldp?
+	 * d must be in serialmap(d) and can't be in serialmap(oldp),
+	 * so minimumum xor count is 1. If one, then xor must be slist[d].
+	 */
+	if (!m && (count == 1)) {
+		/* Yes, in the new graph, it's a simple update */
+		assert(slist[d]);
+		slist[d] = 0;	/* leave it clear for next time */
+		if (oldp == p) {
+			CLUDES_INDEX(s, d) = 0; /* simple update to p */
+			return;
+		}
+		/* If new parent is grand parent, inherit cludes */
+		if (PARENT(s, oldp) == p) {
+			assert(!MERGE(s, oldp) && (FLAGS(s, oldp) & D_GONE));
+			/* Then inherit the same new serialmap spec as oldp */
+			CLUDES_INDEX(s, d) = CLUDES_INDEX(s, oldp);
+			return;
+		}
+		slist[d] = 1;	/* restore and manually compute */
 	}
+	/*
+	 * If old parent is gone, then it can't be in d, and must be in oldp,
+	 * so xor must be one.  Set it to keep it out of cludes compression.
+	 */
+	if (FLAGS(s, oldp) & D_GONE) {
+		assert(!slist[oldp]);
+		slist[oldp] = 1;
+		count++;
+	}
+	/* compute and store cludes list in the new graph */
+	graph_symdiff(s, d, oldp, 0, slist, 0, count, 0);
 }
 
 /*
@@ -1707,24 +1757,24 @@ rmPruned(sccs *s, ser_t d, ser_t **sd)
  * written to disk!
  */
 private	void
-_pruneEmpty(sccs *s, ser_t d, u8 *slist, ser_t **sd)
+_pruneEmpty(sccs *s, ser_t d, u8 *slist, sccs *old)
 {
-	ser_t	m;
+	ser_t	p, m;
 
 	debug((stderr, "%s ", d->rev));
 	/* if parent/merge nodes GONE'd, wire around them first */
-	if ((m = PARENT(s, d)) && (FLAGS(s, m) & D_GONE)) {
+	if ((p = PARENT(s, d)) && (FLAGS(s, p) & D_GONE)) {
 		debug((stderr, "%s gets new parent %s (was %s)\n",
-		    d->rev, PARENT(s, m)->rev, m->rev));
-		symdiff_setParent(s, d, PARENT(s, m), sd);
+		    REV(s, d), REV(s, PARENT(s, p)), REV(s, p)));
+		p = PARENT(s, p);
 	}
 	if ((m = MERGE(s, d)) && (FLAGS(s, m) & D_GONE)) {
 		debug((stderr, "%s gets new merge parent %s (was %s)\n",
-		    d->rev, PARENT(s, m)->rev, m->rev));
-		MERGE_SET(s, d, PARENT(s, m));
+		    REV(s, d), REV(s, PARENT(s, m)), REV(s, m)));
+		m = PARENT(s, m);
 	}
 	/* collapse, swap, or leave merge node alone */
-	if (MERGE(s, d)) {
+	if (m) {
 		debug((stderr, "\n"));
 		/*
 		 * cases which can happen:
@@ -1745,41 +1795,23 @@ _pruneEmpty(sccs *s, ser_t d, u8 *slist, ser_t **sd)
 		 *
 		 * Then fix up those pesky include and exclude lists.
 		 */
-		m = MERGE(s, d);
-		if (isReachable(s, PARENT(s, d), m)) {	/* merge collapses */
-			if (MERGE(s, d) > PARENT(s, d)) {
-				symdiff_setParent(s, d, m, sd);
-			}
-			MERGE_SET(s, d, 0);
+		if (isReachable(s, p, m)) {	/* merge collapses */
+			if (m > p) p = m;
+			m = 0;
 		}
 		/* else if merge .. (chk case d and e) */
-		else if (sccs_needSwap(s, PARENT(s, d), m, 0)) {
-			MERGE_SET(s, d, PARENT(s, d));
-			symdiff_setParent(s, d, m, sd);
+		else if (sccs_needSwap(s, p, m, 0)) {
+			ser_t	tmp = p;
+
+			p = m;
+			m = tmp;
 		}
 	}
-	/*
-	 * fix the sd list for d to have no D_GONE, and remove any pairs
-	 * that accumulated in the setParent calls.  As part of the pair
-	 * removal, sd[d->serial] could go away if nothing left.
-	 */
-	rmPruned(s, d, sd);
-	/*
-	 * See if node is a keeper ...
-	 * Inside knowledge: no sd entry is the same as no include
-	 * or exclude list, because of how the sd entry uses pserial too.
-	 * If recomputing, leave CLUDES set in case there is no change.
-	 */
-	if (ADDED(s, d) || MERGE(s, d) || sd[d]) {
-		if (sd[d]) {
-			/* regen old style SCCS inc and excl lists */
-			graph_symdiff(s, d, PARENT(s, d), 0, slist, sd, 0, 0);
-		} else {
-			CLUDES_SET(s, d, 0);
-		}
+	fixupGraph(s, d, p, m, slist, old);
+	/* See if node is a keeper ... */
+	if (ADDED(s, d) || MERGE(s, d) || HAS_CLUDES(s, d)) {
 		return;
 	}
-	CLUDES_SET(s, d, 0);	/* need unless removing assert in fixTags */
 
 	/* Not a keeper, so re-wire around it later by marking gone now */
 	debug((stderr, "RMDELTA(%s)\n", d->rev));
@@ -1793,20 +1825,21 @@ pruneEmpty(sccs *s)
 {
 	ser_t	n;
 	u8	*slist;
-	ser_t	**sd;
+	sccs	*old;
 
 	slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
 	assert(slist);
-	sd = graph_sccs2symdiff(s);
+	unless (old = sccs_init(s->sfile, INIT_MUSTEXIST)) {
+		fprintf(stderr, "pruneEmpty: could not init ChangeSet\n");
+		free(slist);
+		exit(1);
+	}
 	for (n = TREE(s) + 1; n <= TABLE(s); n++) {
 		if (TAG(s, n)) continue;
-		_pruneEmpty(s, n, slist, sd);
+		_pruneEmpty(s, n, slist, old);
 	}
 	free(slist);
-	for (n = TREE(s); n <= TABLE(s); n++) {
-		if (sd[n]) free(sd[n]);
-	}
-	free(sd);
+	sccs_free(old);
 
 	unless (flags & PRUNE_NO_TAG_GRAPH) {
 		verbose((stderr, "Rebuilding Tag Graph...\n"));
