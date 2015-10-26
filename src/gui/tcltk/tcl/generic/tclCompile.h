@@ -49,6 +49,13 @@ MODULE_SCOPE int 	tclTraceCompile;
 
 MODULE_SCOPE int 	tclTraceExec;
 #endif
+
+/*
+ * The type of lambda expressions. Note that every lambda will *always* have a
+ * string representation.
+ */
+
+MODULE_SCOPE const Tcl_ObjType tclLambdaType;
 
 /*
  *------------------------------------------------------------------------
@@ -239,6 +246,16 @@ typedef struct AuxDataType {
     AuxDataPrintProc *printProc;/* Callback function to invoke when printing
 				 * the aux data as part of debugging. NULL
 				 * means that the data can't be printed. */
+    AuxDataPrintProc *disassembleProc;
+				/* Callback function to invoke when doing a
+				 * disassembly of the aux data (like the
+				 * printProc, except that the output is
+				 * intended to be script-readable). The
+				 * appendObj argument should be filled in with
+				 * a descriptive dictionary; it will start out
+				 * with "name" mapped to the content of the
+				 * name field. NULL means that the printProc
+				 * should be used instead. */
 } AuxDataType;
 
 /*
@@ -800,25 +817,30 @@ typedef struct ByteCode {
 #define INST_TRY_CVT_TO_BOOLEAN		183
 #define INST_STR_CLASS			184
 
+#define INST_LAPPEND_LIST		185
+#define INST_LAPPEND_LIST_ARRAY		186
+#define INST_LAPPEND_LIST_ARRAY_STK	187
+#define INST_LAPPEND_LIST_STK		188
+
 /* L stuff */
-#define INST_ROT			185
-#define INST_L_INDEX			186
-#define INST_L_DEEP_WRITE		187
-#define INST_L_SPLIT			188
-#define INST_L_DEFINED			189
-#define INST_L_PUSH_LIST_SIZE		190
-#define INST_L_PUSH_STR_SIZE		191
-#define INST_L_READ_SIZE		192
-#define INST_L_POP_SIZE			193
-#define INST_L_PUSH_UNDEF		194
-#define INST_EXPAND_ROT			195
-#define INST_L_LINDEX_STK		196
-#define INST_L_LIST_INSERT		197
-#define INST_UNSET_LOCAL		198
-#define INST_DIFFERENT_OBJ		199
+#define INST_ROT			189
+#define INST_L_INDEX			190
+#define INST_L_DEEP_WRITE		191
+#define INST_L_SPLIT			192
+#define INST_L_DEFINED			193
+#define INST_L_PUSH_LIST_SIZE		194
+#define INST_L_PUSH_STR_SIZE		195
+#define INST_L_READ_SIZE		196
+#define INST_L_POP_SIZE			197
+#define INST_L_PUSH_UNDEF		198
+#define INST_EXPAND_ROT			199
+#define INST_L_LINDEX_STK		200
+#define INST_L_LIST_INSERT		201
+#define INST_UNSET_LOCAL		202
+#define INST_DIFFERENT_OBJ		203
 
 /* The last opcode */
-#define LAST_INST_OPCODE		199
+#define LAST_INST_OPCODE		203
 
 /*
  * Table describing the Tcl bytecode instructions: their name (for displaying
@@ -845,6 +867,12 @@ typedef enum InstOperandType {
 				 * variable table. */
     OPERAND_AUX4,		/* Four byte unsigned index into the aux data
 				 * table. */
+    OPERAND_OFFSET1,		/* One byte signed jump offset. */
+    OPERAND_OFFSET4,		/* Four byte signed jump offset. */
+    OPERAND_LIT1,		/* One byte unsigned index into table of
+				 * literals. */
+    OPERAND_LIT4,		/* Four byte unsigned index into table of
+				 * literals. */
     OPERAND_SCLS1		/* Index into tclStringClassTable. */
 } InstOperandType;
 
@@ -1178,12 +1206,15 @@ MODULE_SCOPE void	TclVerifyLocalLiteralTable(CompileEnv *envPtr);
 MODULE_SCOPE int	TclWordKnownAtCompileTime(Tcl_Token *tokenPtr,
 			    Tcl_Obj *valuePtr);
 MODULE_SCOPE void	TclLogCommandInfo(Tcl_Interp *interp,
-					  const char *script,
-					  const char *command, int length,
-					  const unsigned char *pc, Tcl_Obj **tosPtr); 
+			    const char *script, const char *command,
+			    int length, const unsigned char *pc,
+			    Tcl_Obj **tosPtr); 
 MODULE_SCOPE Tcl_Obj	*TclGetInnerContext(Tcl_Interp *interp,
-					    const unsigned char *pc, Tcl_Obj **tosPtr);
+			    const unsigned char *pc, Tcl_Obj **tosPtr);
 MODULE_SCOPE Tcl_Obj	*TclNewInstNameObj(unsigned char inst);
+MODULE_SCOPE int	TclPushProcCallFrame(ClientData clientData,
+			    register Tcl_Interp *interp, int objc,
+			    Tcl_Obj *const objv[], int isLambda);
 
 
 /*
@@ -1398,18 +1429,6 @@ MODULE_SCOPE Tcl_Obj	*TclNewInstNameObj(unsigned char inst);
 	} else {						 \
 	    TclEmitInstInt4(INST_PUSH4, objIndexCopy, (envPtr)); \
 	}							 \
-    } while (0)
-
-/*
- * If the expr compiler finished with TRY_CONVERT, macro to remove it when the
- * job is done by the following instruction.
- */
-
-#define TclClearNumConversion(envPtr) \
-    do {								\
-	if (*(envPtr->codeNext - 1) == INST_TRY_CVT_TO_NUMERIC) {	\
-	    envPtr->codeNext--;						\
-	}								\
     } while (0)
 
 /*

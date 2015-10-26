@@ -15,6 +15,9 @@ package require Tcl 8.5
 package require tcltest 2.2
 namespace import tcltest::*
 configure {*}$argv -testdir [file dir [info script]]
+if {[singleProcess]} {
+    interp debug {} -frame 1
+}
 if {[info exists ::env(TCLTEST_SHELL_OPTIONS)]} {
     exit [runAllTests [interpreter] $::env(TCLTEST_SHELL_OPTIONS)]
 } else {
