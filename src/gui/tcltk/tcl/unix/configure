@@ -2327,8 +2327,11 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 TCL_VERSION=8.6
 TCL_MAJOR_VERSION=8
 TCL_MINOR_VERSION=6
-TCL_PATCH_LEVEL=".1"
+TCL_PATCH_LEVEL=".3"
 VERSION=${TCL_VERSION}
+
+EXTRA_INSTALL_BINARIES=${EXTRA_INSTALL_BINARIES:-"@:"}
+EXTRA_BUILD_HTML=${EXTRA_BUILD_HTML:-"@:"}
 
 #------------------------------------------------------------------------
 # Setup configure arguments for bundled packages
@@ -5538,8 +5541,7 @@ fi
 	    LD_SEARCH_FLAGS=""
 	    TCL_NEEDS_EXP_FILE=1
 	    TCL_EXPORT_FILE_SUFFIX='${VERSION}\$\{DBGX\}.dll.a'
-	    TCL_SHLIB_LD_EXTRAS='-Wl,--out-implib,$@.a'
-	    TK_SHLIB_LD_EXTRAS='-Wl,--out-implib,$@.a'
+	    SHLIB_LD_LIBS="${SHLIB_LD_LIBS} -Wl,--out-implib,\$@.a"
 	    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Cygwin version of gcc" >&5
 $as_echo_n "checking for Cygwin version of gcc... " >&6; }
 if ${ac_cv_cygwin+:} false; then :
@@ -5578,9 +5580,9 @@ $as_echo "$ac_cv_cygwin" >&6; }
 	    fi
 	    do64bit_ok=yes
 	    if test "x${SHARED_BUILD}" = "x1"; then
-		echo "running cd ../win; ${CONFIG_SHELL-/bin/sh} ./configure $ac_configure_args"
+		echo "running cd ${TCL_SRC_DIR}/win; ${CONFIG_SHELL-/bin/sh} ./configure $ac_configure_args"
 		# The eval makes quoting arguments work.
-		if cd ../win; eval ${CONFIG_SHELL-/bin/sh} ./configure $ac_configure_args; cd ../unix
+		if cd ${TCL_SRC_DIR}/win; eval ${CONFIG_SHELL-/bin/sh} ./configure $ac_configure_args; cd ../unix
 		then :
 		else
 		    { echo "configure: error: configure failed for ../win" 1>&2; exit 1; }
@@ -6032,7 +6034,14 @@ fi
 		LDFLAGS=""
 		;;
 	    *)
-		SHLIB_CFLAGS="-fPIC"
+		case "$arch" in
+		alpha|sparc64)
+		    SHLIB_CFLAGS="-fPIC"
+		    ;;
+		*)
+		    SHLIB_CFLAGS="-fpic"
+		    ;;
+		esac
 		SHLIB_LD='${CC} -shared ${SHLIB_CFLAGS}'
 		SHLIB_SUFFIX=".so"
 		DL_OBJS="tclLoadDl.o"
@@ -6095,8 +6104,7 @@ fi
 	    # This configuration from FreeBSD Ports.
 	    SHLIB_CFLAGS="-fPIC"
 	    SHLIB_LD="${CC} -shared"
-	    TCL_SHLIB_LD_EXTRAS="-Wl,-soname=\$@"
-	    TK_SHLIB_LD_EXTRAS="-Wl,-soname,\$@"
+	    SHLIB_LD_LIBS="${SHLIB_LD_LIBS} -Wl,-soname,\$@"
 	    SHLIB_SUFFIX=".so"
 	    DL_OBJS="tclLoadDl.o"
 	    DL_LIBS=""
@@ -6937,7 +6945,7 @@ fi
     if test "${SHARED_BUILD}" = 1 -a "${SHLIB_SUFFIX}" != ""; then :
 
         LIB_SUFFIX=${SHARED_LIB_SUFFIX}
-        MAKE_LIB='${SHLIB_LD} -o $@ ${OBJS} ${TCL_SHLIB_LD_EXTRAS} ${SHLIB_LD_LIBS} ${TK_SHLIB_LD_EXTRAS} ${LD_SEARCH_FLAGS}'
+        MAKE_LIB='${SHLIB_LD} -o $@ ${OBJS} ${SHLIB_LD_LIBS} ${TCL_SHLIB_LD_EXTRAS} ${TK_SHLIB_LD_EXTRAS} ${LD_SEARCH_FLAGS}'
         if test "${SHLIB_SUFFIX}" = ".dll"; then :
 
             INSTALL_LIB='$(INSTALL_LIBRARY) $(LIB_FILE) "$(BIN_INSTALL_DIR)/$(LIB_FILE)"'

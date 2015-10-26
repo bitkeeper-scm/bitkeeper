@@ -182,6 +182,7 @@ Tcl_PutsObjCmd(
 	return TCL_ERROR;
     }
 
+    TclChannelPreserve(chan);
     result = Tcl_WriteObj(chan, string);
     if (result < 0) {
 	goto error;
@@ -192,6 +193,7 @@ Tcl_PutsObjCmd(
 	    goto error;
 	}
     }
+    TclChannelRelease(chan);
     return TCL_OK;
 
     /*
@@ -211,6 +213,7 @@ Tcl_PutsObjCmd(
 	Tcl_SetObjResult(interp, Tcl_ObjPrintf("error writing \"%s\": %s",
 		TclGetString(chanObjPtr), Tcl_PosixError(interp)));
     }
+    TclChannelRelease(chan);
     return TCL_ERROR;
 }
 
@@ -258,6 +261,7 @@ Tcl_FlushObjCmd(
 	return TCL_ERROR;
     }
 
+    TclChannelPreserve(chan);
     if (Tcl_Flush(chan) != TCL_OK) {
 	/*
 	 * TIP #219.
@@ -271,8 +275,10 @@ Tcl_FlushObjCmd(
 		    "error flushing \"%s\": %s",
 		    TclGetString(chanObjPtr), Tcl_PosixError(interp)));
 	}
+	TclChannelRelease(chan);
 	return TCL_ERROR;
     }
+    TclChannelRelease(chan);
     return TCL_OK;
 }
 
@@ -305,6 +311,7 @@ Tcl_GetsObjCmd(
     int lineLen;		/* Length of line just read. */
     int mode;			/* Mode in which channel is opened. */
     Tcl_Obj *linePtr, *chanObjPtr;
+    int code = TCL_OK;
 
     if ((objc != 2) && (objc != 3)) {
 	Tcl_WrongNumArgs(interp, 1, objv, "channelId ?varName?");
@@ -321,6 +328,7 @@ Tcl_GetsObjCmd(
 	return TCL_ERROR;
     }
 
+    TclChannelPreserve(chan);
     linePtr = Tcl_NewObj();
     lineLen = Tcl_GetsObj(chan, linePtr);
     if (lineLen < 0) {
@@ -339,20 +347,24 @@ Tcl_GetsObjCmd(
 			"error reading \"%s\": %s",
 			TclGetString(chanObjPtr), Tcl_PosixError(interp)));
 	    }
-	    return TCL_ERROR;
+	    code = TCL_ERROR;
+	    goto done;
 	}
 	lineLen = -1;
     }
     if (objc == 3) {
 	if (Tcl_ObjSetVar2(interp, objv[2], NULL, linePtr,
 		TCL_LEAVE_ERR_MSG) == NULL) {
-	    return TCL_ERROR;
+	    code = TCL_ERROR;
+	    goto done;
 	}
 	Tcl_SetObjResult(interp, Tcl_NewIntObj(lineLen));
     } else {
 	Tcl_SetObjResult(interp, linePtr);
     }
-    return TCL_OK;
+  done:
+    TclChannelRelease(chan);
+    return code;
 }
 
 /*
@@ -459,6 +471,7 @@ Tcl_ReadObjCmd(
 
     resultPtr = Tcl_NewObj();
     Tcl_IncrRefCount(resultPtr);
+    TclChannelPreserve(chan);
     charactersRead = Tcl_ReadChars(chan, resultPtr, toRead, 0);
     if (charactersRead < 0) {
 	/*
@@ -473,6 +486,7 @@ Tcl_ReadObjCmd(
 		    "error reading \"%s\": %s",
 		    TclGetString(chanObjPtr), Tcl_PosixError(interp)));
 	}
+	TclChannelRelease(chan);
 	Tcl_DecrRefCount(resultPtr);
 	return TCL_ERROR;
     }
@@ -491,6 +505,7 @@ Tcl_ReadObjCmd(
 	}
     }
     Tcl_SetObjResult(interp, resultPtr);
+    TclChannelRelease(chan);
     Tcl_DecrRefCount(resultPtr);
     return TCL_OK;
 }
@@ -550,6 +565,7 @@ Tcl_SeekObjCmd(
 	mode = modeArray[optionIndex];
     }
 
+    TclChannelPreserve(chan);
     result = Tcl_Seek(chan, offset, mode);
     if (result == Tcl_LongAsWide(-1)) {
 	/*
@@ -564,8 +580,10 @@ Tcl_SeekObjCmd(
 		    "error during seek on \"%s\": %s",
 		    TclGetString(objv[1]), Tcl_PosixError(interp)));
 	}
+	TclChannelRelease(chan);
 	return TCL_ERROR;
     }
+    TclChannelRelease(chan);
     return TCL_OK;
 }
 
@@ -596,6 +614,7 @@ Tcl_TellObjCmd(
 {
     Tcl_Channel chan;		/* The channel to tell on. */
     Tcl_WideInt newLoc;
+    int code;
 
     if (objc != 2) {
 	Tcl_WrongNumArgs(interp, 1, objv, "channelId");
@@ -611,6 +630,7 @@ Tcl_TellObjCmd(
 	return TCL_ERROR;
     }
 
+    TclChannelPreserve(chan);
     newLoc = Tcl_Tell(chan);
 
     /*
@@ -619,7 +639,10 @@ Tcl_TellObjCmd(
      * them into the regular interpreter result.
      */
 
-    if (TclChanCaughtErrorBypass(interp, chan)) {
+
+    code  = TclChanCaughtErrorBypass(interp, chan);
+    TclChannelRelease(chan);
+    if (code) {
 	return TCL_ERROR;
     }
 
@@ -902,7 +925,7 @@ Tcl_ExecObjCmd(
 	if (string[0] != '-') {
 	    break;
 	}
-	if (Tcl_GetIndexFromObj(interp, objv[skip], options, "switch",
+	if (Tcl_GetIndexFromObj(interp, objv[skip], options, "option",
 		TCL_EXACT, &index) != TCL_OK) {
 	    return TCL_ERROR;
 	}
@@ -916,7 +939,7 @@ Tcl_ExecObjCmd(
 	}
     }
     if (objc <= skip) {
-	Tcl_WrongNumArgs(interp, 1, objv, "?-switch ...? arg ?arg ...?");
+	Tcl_WrongNumArgs(interp, 1, objv, "?-option ...? arg ?arg ...?");
 	return TCL_ERROR;
     }
 
@@ -1679,7 +1702,7 @@ Tcl_FcopyObjCmd(
     toRead = -1;
     cmdPtr = NULL;
     for (i = 3; i < objc; i += 2) {
-	if (Tcl_GetIndexFromObj(interp, objv[i], switches, "switch", 0,
+	if (Tcl_GetIndexFromObj(interp, objv[i], switches, "option", 0,
 		&index) != TCL_OK) {
 	    return TCL_ERROR;
 	}

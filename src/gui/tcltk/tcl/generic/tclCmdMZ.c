@@ -171,7 +171,7 @@ Tcl_RegexpObjCmd(
 	if (name[0] != '-') {
 	    break;
 	}
-	if (Tcl_GetIndexFromObj(interp, objv[i], options, "switch", TCL_EXACT,
+	if (Tcl_GetIndexFromObj(interp, objv[i], options, "option", TCL_EXACT,
 		&index) != TCL_OK) {
 	    goto optionError;
 	}
@@ -236,7 +236,7 @@ Tcl_RegexpObjCmd(
   endOfForLoop:
     if ((objc - i) < (2 - about)) {
 	Tcl_WrongNumArgs(interp, 1, objv,
-	    "?-switch ...? exp string ?matchVar? ?subMatchVar ...?");
+		"?-option ...? exp string ?matchVar? ?subMatchVar ...?");
 	goto optionError;
     }
     objc -= i;
@@ -248,8 +248,8 @@ Tcl_RegexpObjCmd(
      */
 
     if (doinline && ((objc - 2) != 0)) {
-	Tcl_SetObjResult(interp, Tcl_NewStringObj(
-		"regexp match variables not allowed when using -inline", -1));
+	Tcl_SetErrorCode(interp, "TCL", "OPERATION", "REGEXP",
+		"MIX_VAR_INLINE", NULL);
       optionError:
 	if (startIndex) {
 	    Tcl_DecrRefCount(startIndex);
@@ -397,7 +397,7 @@ Tcl_RegsubObjCmd(
 	if (name[0] != '-') {
 	    break;
 	}
-	if (Tcl_GetIndexFromObj(interp, objv[idx], options, "switch",
+	if (Tcl_GetIndexFromObj(interp, objv[idx], options, "option",
 		TCL_EXACT, &index) != TCL_OK) {
 	    goto optionError;
 	}
@@ -462,7 +462,7 @@ Tcl_RegsubObjCmd(
   endOfForLoop:
     if (objc-idx < 3 || objc-idx > 4) {
 	Tcl_WrongNumArgs(interp, 1, objv,
-		"?-switch ...? exp string subSpec ?varName?");
+		"?-option ...? exp string subSpec ?varName?");
     optionError:
 	if (startIndex) {
 	    Tcl_DecrRefCount(startIndex);
@@ -2786,6 +2786,59 @@ StringCmpCmd(
 /*
  *----------------------------------------------------------------------
  *
+ * StringCatCmd --
+ *
+ *	This procedure is invoked to process the "string cat" Tcl command.
+ *	See the user documentation for details on what it does.
+ *
+ * Results:
+ *	A standard Tcl result.
+ *
+ * Side effects:
+ *	See the user documentation.
+ *
+ *----------------------------------------------------------------------
+ */
+
+static int
+StringCatCmd(
+    ClientData dummy,		/* Not used. */
+    Tcl_Interp *interp,		/* Current interpreter. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])	/* Argument objects. */
+{
+    int i;
+    Tcl_Obj *objResultPtr;
+
+    if (objc < 2) {
+	/*
+	 * If there are no args, the result is an empty object.
+	 * Just leave the preset empty interp result.
+	 */
+	return TCL_OK;
+    }
+    if (objc == 2) {
+	/*
+	 * Other trivial case, single arg, just return it.
+	 */
+	Tcl_SetObjResult(interp, objv[1]);
+	return TCL_OK;
+    }
+    objResultPtr = objv[1];
+    if (Tcl_IsShared(objResultPtr)) {
+	objResultPtr = Tcl_DuplicateObj(objResultPtr);
+    }
+    for(i = 2;i < objc;i++) {
+	Tcl_AppendObjToObj(objResultPtr, objv[i]);
+    }
+    Tcl_SetObjResult(interp, objResultPtr);
+    
+    return TCL_OK;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
  * StringBytesCmd --
  *
  *	This procedure is invoked to process the "string bytelength" Tcl
@@ -3278,6 +3331,7 @@ TclInitStringCmd(
 {
     static const EnsembleImplMap stringImplMap[] = {
 	{"bytelength",	StringBytesCmd,	TclCompileBasic1ArgCmd, NULL, NULL, 0},
+	{"cat",		StringCatCmd,	TclCompileStringCatCmd, NULL, NULL, 0},
 	{"compare",	StringCmpCmd,	TclCompileStringCmpCmd, NULL, NULL, 0},
 	{"equal",	StringEqualCmd,	TclCompileStringEqualCmd, NULL, NULL, 0},
 	{"first",	StringFirstCmd,	TclCompileStringFirstCmd, NULL, NULL, 0},
@@ -3341,7 +3395,7 @@ TclSubstOptions(
     for (i = 0; i < numOpts; i++) {
 	int optionIndex;
 
-	if (Tcl_GetIndexFromObj(interp, opts[i], substOptions, "switch", 0,
+	if (Tcl_GetIndexFromObj(interp, opts[i], substOptions, "option", 0,
 		&optionIndex) != TCL_OK) {
 	    return TCL_ERROR;
 	}
@@ -3541,7 +3595,7 @@ TclNRSwitchObjCmd(
   finishedOptions:
     if (objc - i < 2) {
 	Tcl_WrongNumArgs(interp, 1, objv,
-		"?-switch ...? string ?pattern body ...? ?default body?");
+		"?-option ...? string ?pattern body ...? ?default body?");
 	return TCL_ERROR;
     }
     if (indexVarObj != NULL && mode != OPT_REGEXP) {
@@ -3588,7 +3642,7 @@ TclNRSwitchObjCmd(
 
 	if (objc < 1) {
 	    Tcl_WrongNumArgs(interp, 1, savedObjv,
-		    "?-switch ...? string {?pattern body ...? ?default body?}");
+		    "?-option ...? string {?pattern body ...? ?default body?}");
 	    return TCL_ERROR;
 	}
 	objv = listv;
