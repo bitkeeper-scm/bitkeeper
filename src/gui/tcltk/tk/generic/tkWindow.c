@@ -97,9 +97,8 @@ static const XSetWindowAttributes defAtts= {
 
 #define ISSAFE 1
 #define PASSMAINWINDOW 2
-#define NOOBJPROC 4
-#define WINMACONLY 8
-#define USEINITPROC 16
+#define WINMACONLY 4
+#define USEINITPROC 8
 
 typedef int (TkInitProc)(Tcl_Interp *interp, ClientData clientData);
 typedef struct {
@@ -155,8 +154,7 @@ static const TkCmd commands[] = {
     {"panedwindow",	Tk_PanedWindowObjCmd,	ISSAFE},
     {"radiobutton",	Tk_RadiobuttonObjCmd,	ISSAFE},
     {"scale",		Tk_ScaleObjCmd,		ISSAFE},
-    {"scrollbar",	(Tcl_ObjCmdProc *) Tk_ScrollbarCmd,
-					NOOBJPROC|PASSMAINWINDOW|ISSAFE},
+    {"scrollbar",	Tk_ScrollbarObjCmd, PASSMAINWINDOW|ISSAFE},
     {"spinbox",		Tk_SpinboxObjCmd,	ISSAFE},
     {"text",		Tk_TextObjCmd,		PASSMAINWINDOW|ISSAFE},
     {"toplevel",	Tk_ToplevelObjCmd,	0},
@@ -178,8 +176,7 @@ static const TkCmd commands[] = {
     {"::tk::panedwindow",Tk_PanedWindowObjCmd,	ISSAFE},
     {"::tk::radiobutton",Tk_RadiobuttonObjCmd,	ISSAFE},
     {"::tk::scale",	Tk_ScaleObjCmd,		ISSAFE},
-    {"::tk::scrollbar",	(Tcl_ObjCmdProc *) Tk_ScrollbarCmd,
-					NOOBJPROC|PASSMAINWINDOW|ISSAFE},
+    {"::tk::scrollbar",	Tk_ScrollbarObjCmd, PASSMAINWINDOW|ISSAFE},
     {"::tk::spinbox",	Tk_SpinboxObjCmd,	ISSAFE},
     {"::tk::text",	Tk_TextObjCmd,		PASSMAINWINDOW|ISSAFE},
     {"::tk::toplevel",	Tk_ToplevelObjCmd,	0},
@@ -976,9 +973,6 @@ TkCreateMainWindow(
 	}
 	if (cmdPtr->flags & USEINITPROC) {
 	    ((TkInitProc *) cmdPtr->objProc)(interp, clientData);
-	} else if (cmdPtr->flags & NOOBJPROC) {
-	    Tcl_CreateCommand(interp, cmdPtr->name,
-		    (Tcl_CmdProc *) cmdPtr->objProc, clientData, NULL);
 	} else {
 	    Tcl_CreateObjCommand(interp, cmdPtr->name, cmdPtr->objProc,
 		    clientData, NULL);
@@ -1543,11 +1537,11 @@ Tk_DestroyWindow(
 	    if ((winPtr->mainPtr->interp != NULL) &&
 		    !Tcl_InterpDeleted(winPtr->mainPtr->interp)) {
 		for (cmdPtr = commands; cmdPtr->name != NULL; cmdPtr++) {
-		    Tcl_CreateCommand(winPtr->mainPtr->interp, cmdPtr->name,
-			    TkDeadAppCmd, NULL, NULL);
+		    Tcl_CreateObjCommand(winPtr->mainPtr->interp, cmdPtr->name,
+			    TkDeadAppObjCmd, NULL, NULL);
 		}
-		Tcl_CreateCommand(winPtr->mainPtr->interp, "send",
-			TkDeadAppCmd, NULL, NULL);
+		Tcl_CreateObjCommand(winPtr->mainPtr->interp, "send",
+			TkDeadAppObjCmd, NULL, NULL);
 		Tcl_UnlinkVar(winPtr->mainPtr->interp, "tk_strictMotif");
 		Tcl_UnlinkVar(winPtr->mainPtr->interp,
 			"::tk::AlwaysShowSelection");

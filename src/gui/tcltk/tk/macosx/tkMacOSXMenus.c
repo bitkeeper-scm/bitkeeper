@@ -145,10 +145,9 @@ static Tcl_Obj *	GetWidgetDemoPath(Tcl_Interp *interp);
     SEL action = [anItem action];
 
     if (sel_isEqual(action, @selector(preferences:))) {
-	Tcl_CmdInfo dummy;
 
-	return (_eventInterp && Tcl_GetCommandInfo(_eventInterp,
-		"::tk::mac::ShowPreferences", &dummy));
+	return (_eventInterp && Tcl_FindCommand(_eventInterp,
+		"::tk::mac::ShowPreferences", NULL, 0));
     } else if (sel_isEqual(action, @selector(tkDemo:))) {
 	BOOL haveDemo = NO;
 
@@ -169,10 +168,8 @@ static Tcl_Obj *	GetWidgetDemoPath(Tcl_Interp *interp);
 
 - (void) orderFrontStandardAboutPanel: (id) sender
 {
-    Tcl_CmdInfo dummy;
-
-    if (!_eventInterp || !Tcl_GetCommandInfo(_eventInterp, "tkAboutDialog",
-	    &dummy) || (GetCurrentEventKeyModifiers() & optionKey)) {
+    if (!_eventInterp || !Tcl_FindCommand(_eventInterp, "tkAboutDialog",
+	    NULL, 0) || (GetCurrentEventKeyModifiers() & optionKey)) {
 	TkAboutDlg();
     } else {
 	int code = Tcl_EvalEx(_eventInterp, "tkAboutDialog", -1,
@@ -187,10 +184,8 @@ static Tcl_Obj *	GetWidgetDemoPath(Tcl_Interp *interp);
 
 - (void) showHelp: (id) sender
 {
-    Tcl_CmdInfo dummy;
-
-    if (!_eventInterp || !Tcl_GetCommandInfo(_eventInterp,
-	    "::tk::mac::ShowHelp", &dummy)) {
+    if (!_eventInterp || !Tcl_FindCommand(_eventInterp,
+	    "::tk::mac::ShowHelp", NULL, 0)) {
 	[super showHelp:sender];
     } else {
 	int code = Tcl_EvalEx(_eventInterp, "::tk::mac::ShowHelp", -1,

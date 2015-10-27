@@ -77,7 +77,6 @@ static int		FindInterpreterObject(Tcl_Interp *interp,
 static int		Send(LPDISPATCH pdispInterp, Tcl_Interp *interp,
 			    int async, ClientData clientData, int objc,
 			    Tcl_Obj *const objv[]);
-static Tcl_Obj *	Win32ErrorObj(HRESULT hrError);
 static void		SendTrace(const char *format, ...);
 static Tcl_EventProc	SendEventProc;
 
@@ -281,7 +280,7 @@ TkGetInterpNames(
 	if (objList != NULL) {
 	    Tcl_DecrRefCount(objList);
 	}
-	Tcl_SetObjResult(interp, Win32ErrorObj(hr));
+	Tcl_SetObjResult(interp, TkWin32ErrorObj(hr));
 	result = TCL_ERROR;
     }
 
@@ -451,7 +450,7 @@ FindInterpreterObject(
 	pROT->lpVtbl->Release(pROT);
     }
     if (FAILED(hr) && result == TCL_OK) {
-	Tcl_SetObjResult(interp, Win32ErrorObj(hr));
+	Tcl_SetObjResult(interp, TkWin32ErrorObj(hr));
 	result = TCL_ERROR;
     }
     return result;
@@ -804,56 +803,6 @@ Send(
     VariantClear(&vCmd);
 
     return (SUCCEEDED(hr) ? TCL_OK : TCL_ERROR);
-}
-
-/*
- * ----------------------------------------------------------------------
- *
- * Win32ErrorObj --
- *
- *	Returns a string object containing text from a COM or Win32 error code
- *
- * Results:
- *	A Tcl_Obj containing the Win32 error message.
- *
- * Side effects:
- *	Removed the error message from the COM threads error object.
- *
- * ----------------------------------------------------------------------
- */
-
-static Tcl_Obj*
-Win32ErrorObj(
-    HRESULT hrError)
-{
-    LPTSTR lpBuffer = NULL, p = NULL;
-    TCHAR  sBuffer[30];
-    Tcl_Obj* errPtr = NULL;
-
-    FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM
-	    | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, (DWORD)hrError,
-	    LANG_NEUTRAL, (LPTSTR)&lpBuffer, 0, NULL);
-
-    if (lpBuffer == NULL) {
-	lpBuffer = sBuffer;
-	wsprintf(sBuffer, TEXT("Error Code: %08lX"), hrError);
-    }
-
-    if ((p = _tcsrchr(lpBuffer, TEXT('\r'))) != NULL) {
-	*p = TEXT('\0');
-    }
-
-#ifdef _UNICODE
-    errPtr = Tcl_NewUnicodeObj(lpBuffer, (int)wcslen(lpBuffer));
-#else
-    errPtr = Tcl_NewStringObj(lpBuffer, (int)strlen(lpBuffer));
-#endif /* _UNICODE */
-
-    if (lpBuffer != sBuffer) {
-	LocalFree((HLOCAL)lpBuffer);
-    }
-
-    return errPtr;
 }
 
 /*

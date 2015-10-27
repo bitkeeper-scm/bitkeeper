@@ -245,6 +245,7 @@ TkpInit(
 	    Tcl_Panic("Mac OS X 10.%d or later required !",
 		    (MAC_OS_X_VERSION_MIN_REQUIRED/10)-100);
 	}
+	
 
 #ifdef TK_FRAMEWORK
 	/*

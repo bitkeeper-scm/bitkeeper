@@ -823,7 +823,7 @@ Tk_SetAppName(
 	    riPtr->nextPtr = tsdPtr->interpListPtr;
 	    tsdPtr->interpListPtr = riPtr;
 	    riPtr->name = NULL;
-	    Tcl_CreateCommand(interp, "send", Tk_SendCmd, riPtr, DeleteProc);
+	    Tcl_CreateObjCommand(interp, "send", Tk_SendObjCmd, riPtr, DeleteProc);
 	    if (Tcl_IsSafe(interp)) {
 		Tcl_HideCommand(interp, "send", "send");
 	    }
@@ -914,7 +914,7 @@ Tk_SetAppName(
 /*
  *--------------------------------------------------------------
  *
- * Tk_SendCmd --
+ * Tk_SendObjCmd --
  *
  *	This function is invoked to process the "send" Tcl command. See the
  *	user documentation for details on what it does.
@@ -929,20 +929,25 @@ Tk_SetAppName(
  */
 
 int
-Tk_SendCmd(
+Tk_SendObjCmd(
     ClientData clientData,	/* Information about sender (only dispPtr
 				 * field is used). */
     Tcl_Interp *interp,		/* Current interpreter. */
-    int argc,			/* Number of arguments. */
-    const char **argv)		/* Argument strings. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])	/* Argument strings. */
 {
+    enum {
+	SEND_ASYNC, SEND_DISPLAYOF, SEND_LAST
+    };
+    static const char *const sendOptions[] = {
+	"-async",   "-displayof",   "--",  NULL
+    };
     TkWindow *winPtr;
     Window commWindow;
     PendingCommand pending;
     register RegisteredInterp *riPtr;
     const char *destName;
-    int result, c, async, i, firstArg;
-    size_t length;
+    int result, index, async, i, firstArg;
     Tk_RestrictProc *prevProc;
     ClientData prevArg;
     TkDisplay *dispPtr;
@@ -963,43 +968,31 @@ Tk_SendCmd(
     if (winPtr == NULL) {
 	return TCL_ERROR;
     }
-    for (i = 1; i < (argc-1); ) {
-	if (argv[i][0] != '-') {
+    for (i = 1; i < objc; i++) {
+	if (Tcl_GetIndexFromObjStruct(interp, objv[i], sendOptions,
+		sizeof(char *), "option", 0, &index) != TCL_OK) {
 	    break;
 	}
-	c = argv[i][1];
-	length = strlen(argv[i]);
-	if ((c == 'a') && (strncmp(argv[i], "-async", length) == 0)) {
-	    async = 1;
-	    i++;
-	} else if ((c == 'd') && (strncmp(argv[i], "-displayof",
-		length) == 0)) {
-	    winPtr = (TkWindow *) Tk_NameToWindow(interp, argv[i+1],
+	if (index == SEND_ASYNC) {
+	    ++async;
+	} else if (index == SEND_DISPLAYOF) {
+	    winPtr = (TkWindow *) Tk_NameToWindow(interp, Tcl_GetString(objv[++i]),
 		    (Tk_Window) winPtr);
 	    if (winPtr == NULL) {
 		return TCL_ERROR;
 	    }
-	    i += 2;
-	} else if (strcmp(argv[i], "--") == 0) {
+	} else if (index == SEND_LAST) {
 	    i++;
 	    break;
-	} else {
-	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
-		    "bad option \"%s\": must be -async, -displayof, or --",
-		    argv[i]));
-	    Tcl_SetErrorCode(interp, "TK", "SEND", "OPTION", NULL);
-	    return TCL_ERROR;
 	}
     }
 
-    if (argc < (i+2)) {
-	Tcl_SetObjResult(interp, Tcl_ObjPrintf("wrong # args: should be "
-		"\"%s ?-option value ...? interpName arg ?arg ...?\"",
-		argv[0]));
-	Tcl_SetErrorCode(interp, "TCL", "WRONGARGS", NULL);
+    if (objc < (i+2)) {
+	Tcl_WrongNumArgs(interp, 1, objv,
+		"?-option value ...? interpName arg ?arg ...?");
 	return TCL_ERROR;
     }
-    destName = argv[i];
+    destName = Tcl_GetString(objv[i]);
     firstArg = i+1;
 
     dispPtr = winPtr->dispPtr;
@@ -1023,14 +1016,14 @@ Tk_SendCmd(
 	Tcl_Preserve(riPtr);
 	localInterp = riPtr->interp;
 	Tcl_Preserve(localInterp);
-	if (firstArg == (argc-1)) {
-	    result = Tcl_EvalEx(localInterp, argv[firstArg], -1, TCL_EVAL_GLOBAL);
+	if (firstArg == (objc-1)) {
+	    result = Tcl_EvalEx(localInterp, Tcl_GetString(objv[firstArg]), -1, TCL_EVAL_GLOBAL);
 	} else {
 	    Tcl_DStringInit(&request);
-	    Tcl_DStringAppend(&request, argv[firstArg], -1);
-	    for (i = firstArg+1; i < argc; i++) {
+	    Tcl_DStringAppend(&request, Tcl_GetString(objv[firstArg]), -1);
+	    for (i = firstArg+1; i < objc; i++) {
 		Tcl_DStringAppend(&request, " ", 1);
-		Tcl_DStringAppend(&request, argv[i], -1);
+		Tcl_DStringAppend(&request, Tcl_GetString(objv[i]), -1);
 	    }
 	    result = Tcl_EvalEx(localInterp, Tcl_DStringValue(&request), -1, TCL_EVAL_GLOBAL);
 	    Tcl_DStringFree(&request);
@@ -1097,10 +1090,10 @@ Tk_SendCmd(
 	Tcl_DStringAppend(&request, buffer, -1);
     }
     Tcl_DStringAppend(&request, "\0-s ", 4);
-    Tcl_DStringAppend(&request, argv[firstArg], -1);
-    for (i = firstArg+1; i < argc; i++) {
+    Tcl_DStringAppend(&request, Tcl_GetString(objv[firstArg]), -1);
+    for (i = firstArg+1; i < objc; i++) {
 	Tcl_DStringAppend(&request, " ", 1);
-	Tcl_DStringAppend(&request, argv[i], -1);
+	Tcl_DStringAppend(&request, Tcl_GetString(objv[i]), -1);
     }
     (void) AppendPropCarefully(dispPtr->display, commWindow,
 	    dispPtr->commProperty, Tcl_DStringValue(&request),
@@ -1948,44 +1941,55 @@ int
 TkpTestsendCmd(
     ClientData clientData,	/* Main window for application. */
     Tcl_Interp *interp,		/* Current interpreter. */
-    int argc,			/* Number of arguments. */
-    const char **argv)		/* Argument strings. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])		/* Argument strings. */
 {
+    enum {
+	TESTSEND_BOGUS, TESTSEND_PROP, TESTSEND_SERIAL
+    };
+    static const char *const testsendOptions[] = {
+	"bogus",   "prop",   "serial",  NULL
+    };
     TkWindow *winPtr = clientData;
+    int index;
 
-    if (argc < 2) {
-	Tcl_AppendResult(interp, "wrong # args; must be \"", argv[0],
-		" option ?arg ...?\"", NULL);
+    if (objc < 2) {
+	Tcl_WrongNumArgs(interp, 1, objv,
+		"option ?arg ...?");
 	return TCL_ERROR;
     }
 
-    if (strcmp(argv[1], "bogus") == 0) {
+	if (Tcl_GetIndexFromObjStruct(interp, objv[1], testsendOptions,
+		sizeof(char *), "option", 0, &index) != TCL_OK) {
+	    return TCL_ERROR;
+	}
+	if (index == TESTSEND_BOGUS) {
 	XChangeProperty(winPtr->dispPtr->display,
 		RootWindow(winPtr->dispPtr->display, 0),
 		winPtr->dispPtr->registryProperty, XA_INTEGER, 32,
 		PropModeReplace,
 		(unsigned char *) "This is bogus information", 6);
-    } else if (strcmp(argv[1], "prop") == 0) {
+    } else if (index == TESTSEND_PROP) {
 	int result, actualFormat;
 	unsigned long length, bytesAfter;
 	Atom actualType, propName;
 	char *property, **propertyPtr = &property, *p, *end;
 	Window w;
 
-	if ((argc != 4) && (argc != 5)) {
-	    Tcl_AppendResult(interp, "wrong # args; must be \"", argv[0],
-		    " prop window name ?value ?\"", NULL);
+	if ((objc != 4) && (objc != 5)) {
+		Tcl_WrongNumArgs(interp, 1, objv,
+			"prop window name ?value ?");
 	    return TCL_ERROR;
 	}
-	if (strcmp(argv[2], "root") == 0) {
+	if (strcmp(Tcl_GetString(objv[2]), "root") == 0) {
 	    w = RootWindow(winPtr->dispPtr->display, 0);
-	} else if (strcmp(argv[2], "comm") == 0) {
+	} else if (strcmp(Tcl_GetString(objv[2]), "comm") == 0) {
 	    w = Tk_WindowId(winPtr->dispPtr->commTkwin);
 	} else {
-	    w = strtoul(argv[2], &end, 0);
+	    w = strtoul(Tcl_GetString(objv[2]), &end, 0);
 	}
-	propName = Tk_InternAtom((Tk_Window) winPtr, argv[3]);
-	if (argc == 4) {
+	propName = Tk_InternAtom((Tk_Window) winPtr, Tcl_GetString(objv[3]));
+	if (objc == 4) {
 	    property = NULL;
 	    result = XGetWindowProperty(winPtr->dispPtr->display, w, propName,
 		    0, 100000, False, XA_STRING, &actualType, &actualFormat,
@@ -2002,14 +2006,14 @@ TkpTestsendCmd(
 	    if (property != NULL) {
 		XFree(property);
 	    }
-	} else if (argv[4][0] == 0) {
+	} else if (Tcl_GetString(objv[4])[0] == 0) {
 	    XDeleteProperty(winPtr->dispPtr->display, w, propName);
 	} else {
 	    Tcl_DString tmp;
 
 	    Tcl_DStringInit(&tmp);
-	    for (p = Tcl_DStringAppend(&tmp, argv[4],
-		    (int) strlen(argv[4])); *p != 0; p++) {
+	    for (p = Tcl_DStringAppend(&tmp, Tcl_GetString(objv[4]),
+		    (int) strlen(Tcl_GetString(objv[4]))); *p != 0; p++) {
 		if (*p == '\n') {
 		    *p = 0;
 		}
@@ -2020,12 +2024,8 @@ TkpTestsendCmd(
 		    p-Tcl_DStringValue(&tmp));
 	    Tcl_DStringFree(&tmp);
 	}
-    } else if (strcmp(argv[1], "serial") == 0) {
+    } else if (index == TESTSEND_SERIAL) {
 	Tcl_SetObjResult(interp, Tcl_NewIntObj(localData.sendSerial+1));
-    } else {
-	Tcl_AppendResult(interp, "bad option \"", argv[1],
-		"\": must be bogus, prop, or serial", NULL);
-	return TCL_ERROR;
     }
     return TCL_OK;
 }

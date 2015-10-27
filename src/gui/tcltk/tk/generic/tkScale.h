@@ -215,12 +215,6 @@ typedef struct TkScale {
 #define SPACING 2
 
 /*
- * How many characters of space to provide when formatting the scale's value:
- */
-
-#define PRINT_CHARS 150
-
-/*
  * Declaration of procedures used in the implementation of the scale widget.
  */
 

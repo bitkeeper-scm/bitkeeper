@@ -405,7 +405,7 @@ test scrollbar-3.73 {ScrollbarWidgetCmd procedure} {
 } {1 {bad option "bogus": must be activate, cget, configure, delta, fraction, get, identify, or set}}
 test scrollbar-3.74 {ScrollbarWidgetCmd procedure} {
     list [catch {.s c} msg] $msg
-} {1 {bad option "c": must be activate, cget, configure, delta, fraction, get, identify, or set}}
+} {1 {ambiguous option "c": must be activate, cget, configure, delta, fraction, get, identify, or set}}
 
 test scrollbar-4.1 {ScrollbarEventProc procedure} {
     catch {destroy .s1}

@@ -131,7 +131,7 @@ Tcl_AppInit(
      */
 
     /*
-     * Call Tcl_CreateCommand for application-specific commands, if they
+     * Call Tcl_CreateObjCommand for application-specific commands, if they
      * weren't already created by the init procedures called above.
      */
 

@@ -101,8 +101,8 @@ int
 TkpTestembedCmd(
     ClientData clientData,
     Tcl_Interp *interp,
-    int argc,
-    const char **argv)
+    int objc,
+    Tcl_Obj *const objv[])
 {
     return TCL_OK;
 }

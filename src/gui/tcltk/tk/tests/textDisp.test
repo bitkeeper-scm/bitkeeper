@@ -27,9 +27,10 @@ proc scrollError args {
 
 # Create entries in the option database to be sure that geometry options
 # like border width have predictable values.
-
-option add *Text.borderWidth 2
-option add *Text.highlightThickness 2
+set twbw 2
+set twht 2
+option add *Text.borderWidth $twbw
+option add *Text.highlightThickness $twht
 
 # The frame .f is needed to make sure that the overall window is always
 # fairly wide, even if the text window is very narrow.  This is needed
@@ -3366,7 +3367,7 @@ test textDisp-29.1 {miscellaneous: lines wrap but are still too long} {textfonts
     .t2.t window create 1.1 -window .t2.t.f
     update
     list [.t2.t xview] [winfo geom .t2.t.f] [.t2.t bbox 1.3]
-} [list [list 0.0 [expr {14.0/30}]] 300x50+5+[expr {$fixedDiff + 18}] [list 12 [expr {$fixedDiff + 68}] 7 $fixedHeight]]
+} [list [list 0.0 [expr {20.0*$fixedWidth/300}]] 300x50+[expr {$twbw + $twht + 1}]+[expr {$twbw + $twht + $fixedHeight + 1}] [list [expr {$twbw + $twht + $fixedWidth + 1}] [expr {$twbw + $twht + $fixedHeight + 50 + 1}] $fixedWidth $fixedHeight]]
 test textDisp-29.2 {miscellaneous: lines wrap but are still too long} {textfonts} {
     catch {destroy .t2}
     toplevel .t2
@@ -3379,10 +3380,11 @@ test textDisp-29.2 {miscellaneous: lines wrap but are still too long} {textfonts
     .t2.t insert end 123
     frame .t2.t.f -width 300 -height 50 -bd 2 -relief raised
     .t2.t window create 1.1 -window .t2.t.f
+    update
     .t2.t xview scroll 1 unit
     update
     list [.t2.t xview] [winfo geom .t2.t.f] [.t2.t bbox 1.3]
-} [list [list [expr {7.0/300}] 0.49] 300x50+-2+[expr {$fixedDiff + 18}] [list 5 [expr {$fixedDiff + 68}] 7 $fixedHeight]]
+} [list [list [expr {1.0*$fixedWidth/300}] [expr {21.0*$fixedWidth/300}]] 300x50+[expr {$twbw + $twht + 1 - $fixedWidth}]+[expr {$twbw + $twht + $fixedHeight + 1}] [list [expr {$twbw + $twht + $fixedWidth + 1 - $fixedWidth}] [expr {$twbw + $twht + $fixedHeight + 50 + 1}] $fixedWidth $fixedHeight]]
 test textDisp-29.2.1 {miscellaneous: lines wrap but are still too long} {textfonts} {
     catch {destroy .t2}
     toplevel .t2
@@ -3394,6 +3396,7 @@ test textDisp-29.2.1 {miscellaneous: lines wrap but are still too long} {textfon
     pack .t2.s -side bottom -fill x
     .t2.t insert end 1\n
     .t2.t insert end [string repeat "abc" 30]
+    update
     .t2.t xview scroll 5 unit
     update
     .t2.t xview
@@ -3410,10 +3413,11 @@ test textDisp-29.2.2 {miscellaneous: lines wrap but are still too long} {textfon
     .t2.t insert end 123
     frame .t2.t.f -width 300 -height 50 -bd 2 -relief raised
     .t2.t window create 1.1 -window .t2.t.f
+    update
     .t2.t xview scroll 2 unit
     update
     list [.t2.t xview] [winfo geom .t2.t.f] [.t2.t bbox 1.3]
-} [list [list [expr {14.0/300}] [expr {154.0/300}]] 300x50+-9+[expr {$fixedDiff + 18}] {}]
+} [list [list [expr {2.0*$fixedWidth/300}] [expr {22.0*$fixedWidth/300}]] 300x50+[expr {$twbw + $twht + 1 - 2*$fixedWidth}]+[expr {$twbw + $twht + $fixedHeight + 1}] {}]
 test textDisp-29.2.3 {miscellaneous: lines wrap but are still too long} {textfonts} {
     catch {destroy .t2}
     toplevel .t2
@@ -3426,10 +3430,11 @@ test textDisp-29.2.3 {miscellaneous: lines wrap but are still too long} {textfon
     .t2.t insert end 123
     frame .t2.t.f -width 300 -height 50 -bd 2 -relief raised
     .t2.t window create 1.1 -window .t2.t.f
+    update
     .t2.t xview scroll 7 pixels
     update
     list [.t2.t xview] [winfo geom .t2.t.f] [.t2.t bbox 1.3]
-} [list [list [expr {7.0/300}] 0.49] 300x50+-2+[expr {$fixedDiff + 18}] [list 5 [expr {$fixedDiff + 68}] 7 $fixedHeight]]
+} [list [list [expr {7.0/300}] [expr {(20.0*$fixedWidth + 7)/300}]] 300x50+[expr {$twbw + $twht + 1 - 7}]+[expr {$twbw + $twht + $fixedHeight + 1}] [list [expr {$twbw + $twht + $fixedWidth + 1 - 7}] [expr {$twbw + $twht + $fixedHeight + 50 + 1}] $fixedWidth $fixedHeight]]
 test textDisp-29.2.4 {miscellaneous: lines wrap but are still too long} {textfonts} {
     catch {destroy .t2}
     toplevel .t2
@@ -3442,10 +3447,11 @@ test textDisp-29.2.4 {miscellaneous: lines wrap but are still too long} {textfon
     .t2.t insert end 123
     frame .t2.t.f -width 300 -height 50 -bd 2 -relief raised
     .t2.t window create 1.1 -window .t2.t.f
+    update
     .t2.t xview scroll 17 pixels
     update
     list [.t2.t xview] [winfo geom .t2.t.f] [.t2.t bbox 1.3]
-} [list [list [expr {17.0/300}] [expr {157.0/300}]] 300x50+-12+[expr {$fixedDiff + 18}] {}]
+} [list [list [expr {17.0/300}] [expr {(20.0*$fixedWidth + 17)/300}]] 300x50+[expr {$twbw + $twht + 1 - 17}]+[expr {$twbw + $twht + $fixedHeight + 1}] {}]
 test textDisp-29.2.5 {miscellaneous: can show last character} {
     catch {destroy .t2}
     toplevel .t2

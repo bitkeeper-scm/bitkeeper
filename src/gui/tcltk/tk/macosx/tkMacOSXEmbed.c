@@ -563,15 +563,15 @@ int
 TkpTestembedCmd(
     ClientData clientData,	/* Main window for application. */
     Tcl_Interp *interp,		/* Current interpreter. */
-    int argc,			/* Number of arguments. */
-    const char **argv)		/* Argument strings. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])		/* Argument strings. */
 {
     int all;
     Container *containerPtr;
     Tcl_DString dString;
     char buffer[50];
 
-    if ((argc > 1) && (strcmp(argv[1], "all") == 0)) {
+    if ((objc > 1) && (strcmp(Tcl_GetString(objv[1]), "all") == 0)) {
 	all = 1;
     } else {
 	all = 0;

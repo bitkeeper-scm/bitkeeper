@@ -293,7 +293,7 @@ InitFont(
 	    [NSNumber numberWithInt:fmPtr->fixed ? 0 : 1],
 		NSLigatureAttributeName,
 	    [NSNumber numberWithDouble:kern], NSKernAttributeName, nil];
-    fontPtr->nsAttributes = TkMacOSXMakeUncollectableAndRetain(nsAttributes);
+            fontPtr->nsAttributes = TkMacOSXMakeUncollectableAndRetain(nsAttributes);
     #undef nCh
 }
 

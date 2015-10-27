@@ -283,13 +283,11 @@ Tk_ImageObjCmd(
 	 */
 
 	if ((objc == 3) || (*(arg = Tcl_GetString(objv[3])) == '-')) {
-	    Tcl_CmdInfo dummy;
-
 	    do {
 		dispPtr->imageId++;
 		sprintf(idString, "image%d", dispPtr->imageId);
 		name = idString;
-	    } while (Tcl_GetCommandInfo(interp, name, &dummy) != 0);
+	    } while (Tcl_FindCommand(interp, name, NULL, 0) != NULL);
 	    firstOption = 3;
 	} else {
 	    TkWindow *topWin;

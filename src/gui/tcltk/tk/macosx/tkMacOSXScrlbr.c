@@ -21,13 +21,74 @@
 #endif
 */
 
+NSRect                  TkMacOSXGetScrollFrame(TkScrollbar *scrlPtr);
+
+/*
+ * A subclass of NSScroller with sanity checking:
+ *
+ * NSScrollers created by Tk will have their tag set to a pointer to the
+ * TkScrollbar which manages the NSScroller.  This allows an NSScroller to be
+ * aware of the state of its Tk parent.  This subclass overrides the drawRect
+ * method so that it will not draw itself if the widget is completely outside
+ * of its container.
+ */
+
+@interface TkNSScroller: NSScroller
+-(void) drawRect:(NSRect)dirtyRect;
+
+@end
+
+@implementation TkNSScroller
+
+    - (void)drawRect:(NSRect)dirtyRect
+    {
+	NSInteger tag = [self tag];
+	if ( tag != -1) {
+	    TkScrollbar *scrollPtr = (TkScrollbar *)tag;
+	    MacDrawable* macWin = (MacDrawable *)scrollPtr;
+	    Tk_Window tkwin = scrollPtr->tkwin;
+	    NSRect Tkframe = TkMacOSXGetScrollFrame(scrollPtr);
+	    /* Do not draw if the widget is misplaced or unmapped. */
+	    if ( NSIsEmptyRect(Tkframe) || 
+		 ! macWin->winPtr->flags & TK_MAPPED ||
+		 ! NSEqualRects(Tkframe, [self frame]) 
+		 ) {
+		return;
+	    }
+
+	    /*
+	     * Do not draw if the widget is completely outside of its parent.
+	     */
+	    if (tkwin) {
+		int parent_height = Tk_Height(Tk_Parent(tkwin));
+		int widget_height = Tk_Height(tkwin);
+		int y = Tk_Y(tkwin);
+		if ( y > parent_height || y + widget_height < 0 ) {
+		    return;
+		}
+
+		int parent_width = Tk_Width(Tk_Parent(tkwin));
+		int widget_width = Tk_Width(tkwin);
+		int x = Tk_X(tkwin);
+		if (x > parent_width || x + widget_width < 0) {
+		    return;
+		}
+	    }
+	}
+	[super drawRect:dirtyRect];
+    }
+
+@end
+
+
+
 /*
  * Declaration of Mac specific scrollbar structure.
  */
 
 typedef struct MacScrollbar {
     TkScrollbar info;
-    NSScroller	*scroller;
+    TkNSScroller	*scroller;
     int variant;
 } MacScrollbar;
 
@@ -50,6 +111,7 @@ static void		UpdateScrollbarMetrics(void);
 static void		ScrollbarEventProc(ClientData clientData,
 			    XEvent *eventPtr);
 
+
 /*
  * The class procedure table for the scrollbar widget.
  */
@@ -66,7 +128,7 @@ const Tk_ClassProcs tkpScrollbarProcs = {
 #define NSAppleAquaScrollBarVariantChanged @"AppleAquaScrollBarVariantChanged"
 
 @implementation TKApplication(TKScrlbr)
-- (void) tkScroller: (NSScroller *) scroller
+- (void) tkScroller: (TkNSScroller *) scroller
 {
     NSScrollerPart hitPart = [scroller hitPart];
     TkScrollbar *scrollPtr = (TkScrollbar *)[scroller tag];
@@ -254,8 +316,8 @@ TkpDestroyScrollbar(
     TkScrollbar *scrollPtr)
 {
     MacScrollbar *macScrollPtr = (MacScrollbar *) scrollPtr;
-    NSScroller *scroller = macScrollPtr->scroller;
-    [scroller setTag:(NSInteger)0];
+    TkNSScroller *scroller = macScrollPtr->scroller;
+    [scroller setTag:(NSInteger)-1];
 
     TkMacOSXMakeCollectableAndRelease(macScrollPtr->scroller);
 }
@@ -284,7 +346,7 @@ TkpDisplayScrollbar(
 {
     TkScrollbar *scrollPtr = clientData;
     MacScrollbar *macScrollPtr = clientData;
-    NSScroller *scroller = macScrollPtr->scroller;
+    TkNSScroller *scroller = macScrollPtr->scroller;
     Tk_Window tkwin = scrollPtr->tkwin;
     TkWindow *winPtr = (TkWindow *) tkwin;
     MacDrawable *macWin =  (MacDrawable *) winPtr->window;
@@ -333,6 +395,8 @@ TkpDisplayScrollbar(
 
     NSWindow *w = [view window];
 
+    //This uses a private API call that is no longer needed on systems >= 10.7.
+    #if 0
     if ([w showsResizeIndicator]) {
 	NSRect growBox = [view convertRect:[w _growBoxRect] fromView:nil];
 
@@ -348,21 +412,23 @@ TkpDisplayScrollbar(
 	    TkMacOSXSetScrollbarGrow(winPtr, true);
 	}
     }
+    #endif
     if (!NSEqualRects(frame, [scroller frame])) {
 	[scroller setFrame:frame];
     }
     [scroller setEnabled:(knobProportion < 1.0 &&
 	    (scrollPtr->vertical ? frame.size.height : frame.size.width) >
 	    metrics[macScrollPtr->variant].minHeight)];
+    // [scroller setEnabled: YES];
     [scroller setDoubleValue:scrollPtr->firstFraction / (1.0 - knobProportion)];
     [scroller setKnobProportion:knobProportion];
     [scroller displayRectIgnoringOpacity:[scroller bounds]];
     TkMacOSXRestoreDrawingContext(&dc);
-#ifdef TK_MAC_DEBUG_SCROLLBAR
+    #ifdef TK_MAC_DEBUG_SCROLLBAR
     TKLog(@"scroller %s frame %@ width %d height %d",
 	    ((TkWindow *)scrollPtr->tkwin)->pathName, NSStringFromRect(frame),
 	    Tk_Width(tkwin), Tk_Height(tkwin));
-#endif
+    #endif
 }
 
 /*
@@ -390,7 +456,7 @@ TkpComputeScrollbarGeometry(
 				 * changed. */
 {
     MacScrollbar *macScrollPtr = (MacScrollbar *) scrollPtr;
-    NSScroller *scroller = macScrollPtr->scroller;
+    TkNSScroller *scroller = macScrollPtr->scroller;
     int width, height, variant, fieldLength;
 
     if (scrollPtr->highlightWidth < 0) {
@@ -418,7 +484,7 @@ TkpComputeScrollbarGeometry(
     }
     if (!scroller) {
 	if ((width > height) ^ !scrollPtr->vertical) {
-	    /* -[NSScroller initWithFrame:] determines horizonalness for the
+	    /* -[NSScroller initWithFrame:] determines horizontalness for the
 	     * lifetime of the scroller via isHoriz = (width > height) */
 	    if (scrollPtr->vertical) {
 		width = height;
@@ -429,7 +495,7 @@ TkpComputeScrollbarGeometry(
 		width = 2;
 	    }
 	}
-	scroller = [[NSScroller alloc] initWithFrame:
+	scroller = [[TkNSScroller alloc] initWithFrame:
 		NSMakeRect(0, 0, width, height)];
 	macScrollPtr->scroller = TkMacOSXMakeUncollectable(scroller);
 	[scroller setAction:@selector(tkScroller:)];
@@ -550,7 +616,7 @@ TkpScrollbarPosition(
 				/* Scrollbar widget record. */
     int x, int y)		/* Coordinates within scrollPtr's window. */
 {
-    NSScroller *scroller = ((MacScrollbar *) scrollPtr)->scroller;
+    TkNSScroller *scroller = ((MacScrollbar *) scrollPtr)->scroller;
     MacDrawable *macWin =  (MacDrawable *)
 	    ((TkWindow *) scrollPtr->tkwin)->window;
     NSView *view = TkMacOSXDrawableView(macWin);
@@ -611,6 +677,45 @@ ScrollbarEventProc(
 	TkScrollbarEventProc(clientData, eventPtr);
     }
 }
+
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TkMacOSXGetScrollFrame --
+ *
+ *	Computes a frame for an NSScroller that will correspond to where
+ *	Tk thinks the scroller is located.
+ *
+ * Results:
+ *	Returns an NSRect describing a frame for an NSScrollbar.
+ *
+ * Side effects:
+ *	None
+ *
+ *----------------------------------------------------------------------
+ */
+NSRect TkMacOSXGetScrollFrame(
+     TkScrollbar *scrlPtr)
+{
+    MacScrollbar *macscrlPtr = (MacScrollbar *) scrlPtr;
+    Tk_Window tkwin = scrlPtr->tkwin;
+    TkWindow *winPtr = (TkWindow *) tkwin;
+    if (tkwin) {
+	MacDrawable *macWin =  (MacDrawable *) winPtr->window;
+	NSView *view = TkMacOSXDrawableView(macWin);
+	CGFloat viewHeight = [view bounds].size.height;
+	NSRect frame = NSMakeRect(macWin->xOff, macWin->yOff,
+				  Tk_Width(tkwin), Tk_Height(tkwin));
+
+	frame.origin.y = viewHeight - (frame.origin.y + frame.size.height);
+	return frame;
+    } else {
+	return NSZeroRect;
+    }
+}
+
+
 
 /*
  * Local Variables:

@@ -230,6 +230,8 @@ MODULE_SCOPE WindowClass TkMacOSXWindowClass(TkWindow *winPtr);
 MODULE_SCOPE int	TkMacOSXIsWindowZoomed(TkWindow *winPtr);
 MODULE_SCOPE int	TkGenerateButtonEventForXPointer(Window window);
 MODULE_SCOPE EventModifiers TkMacOSXModifierState(void);
+MODULE_SCOPE NSBitmapImageRep* BitmapRepFromDrawableRect(Drawable drawable,
+			    int x, int y, unsigned int width, unsigned int height);
 MODULE_SCOPE int	TkMacOSXSetupDrawingContext(Drawable d, GC gc,
 			    int useCG, TkMacOSXDrawingContext *dcPtr);
 MODULE_SCOPE void	TkMacOSXRestoreDrawingContext(
@@ -318,9 +320,12 @@ VISIBILITY_HIDDEN
 VISIBILITY_HIDDEN
 @interface TKContentView : NSView <NSTextInput> {
 @private
+  /*Remove private API calls.*/
+   #if 0
     id _savedSubviews;
     BOOL _subviewsSetAside;
-    NSString *_workingText;
+    #endif
+    NSString *privateWorkingText;
 }
 @end
 
@@ -358,11 +363,6 @@ VISIBILITY_HIDDEN
 + (id)itemWithTitle:(NSString *)title action:(SEL)action
 	target:(id)target keyEquivalent:(NSString *)keyEquivalent
 	keyEquivalentModifierMask:(NSUInteger)keyEquivalentModifierMask;
-@end
-
-/* From WebKit/WebKit/mac/WebCoreSupport/WebChromeClient.mm: */
-@interface NSWindow(TKGrowBoxRect)
-- (NSRect)_growBoxRect;
 @end
 
 #endif /* _TKMACPRIV */

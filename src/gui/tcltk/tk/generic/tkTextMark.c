@@ -40,9 +40,9 @@ static int		MarkLayoutProc(TkText *textPtr, TkTextIndex *indexPtr,
 			    int maxChars, int noCharsYet, TkWrapMode wrapMode,
 			    TkTextDispChunk *chunkPtr);
 static int		MarkFindNext(Tcl_Interp *interp,
-			    TkText *textPtr, const char *markName);
+			    TkText *textPtr, Tcl_Obj *markName);
 static int		MarkFindPrev(Tcl_Interp *interp,
-			    TkText *textPtr, const char *markName);
+			    TkText *textPtr, Tcl_Obj *markName);
 
 
 /*
@@ -205,13 +205,13 @@ TkTextMarkCmd(
 	    Tcl_WrongNumArgs(interp, 3, objv, "index");
 	    return TCL_ERROR;
 	}
-	return MarkFindNext(interp, textPtr, Tcl_GetString(objv[3]));
+	return MarkFindNext(interp, textPtr, objv[3]);
     case MARK_PREVIOUS:
 	if (objc != 4) {
 	    Tcl_WrongNumArgs(interp, 3, objv, "index");
 	    return TCL_ERROR;
 	}
-	return MarkFindPrev(interp, textPtr, Tcl_GetString(objv[3]));
+	return MarkFindPrev(interp, textPtr, objv[3]);
     case MARK_SET:
 	if (objc != 5) {
 	    Tcl_WrongNumArgs(interp, 3, objv, "markName index");
@@ -805,12 +805,13 @@ static int
 MarkFindNext(
     Tcl_Interp *interp,		/* For error reporting */
     TkText *textPtr,		/* The widget */
-    const char *string)		/* The starting index or mark name */
+    Tcl_Obj *obj)			/* The starting index or mark name */
 {
     TkTextIndex index;
     Tcl_HashEntry *hPtr;
     register TkTextSegment *segPtr;
     int offset;
+    const char *string = Tcl_GetString(obj);
 
     if (!strcmp(string, "insert")) {
 	segPtr = textPtr->insertMarkPtr;
@@ -838,7 +839,7 @@ MarkFindNext(
 	     * right at the index.
 	     */
 
-	    if (TkTextGetIndex(interp, textPtr, string, &index) != TCL_OK) {
+	    if (TkTextGetObjIndex(interp, textPtr, obj, &index) != TCL_OK) {
 		return TCL_ERROR;
 	    }
 	    for (offset = 0, segPtr = index.linePtr->segPtr;
@@ -895,12 +896,13 @@ static int
 MarkFindPrev(
     Tcl_Interp *interp,		/* For error reporting */
     TkText *textPtr,		/* The widget */
-    const char *string)		/* The starting index or mark name */
+    Tcl_Obj *obj)			/* The starting index or mark name */
 {
     TkTextIndex index;
     Tcl_HashEntry *hPtr;
     register TkTextSegment *segPtr, *seg2Ptr, *prevPtr;
     int offset;
+    const char *string = Tcl_GetString(obj);
 
     if (!strcmp(string, "insert")) {
 	segPtr = textPtr->insertMarkPtr;
@@ -925,7 +927,7 @@ MarkFindPrev(
 	     * right at the index.
 	     */
 
-	    if (TkTextGetIndex(interp, textPtr, string, &index) != TCL_OK) {
+	    if (TkTextGetObjIndex(interp, textPtr, obj, &index) != TCL_OK) {
 		return TCL_ERROR;
 	    }
 	    for (offset = 0, segPtr = index.linePtr->segPtr;
