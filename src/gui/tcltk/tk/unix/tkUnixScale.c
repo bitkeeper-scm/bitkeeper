@@ -262,7 +262,7 @@ DisplayVerticalValue(
 {
     register Tk_Window tkwin = scalePtr->tkwin;
     int y, width, length;
-    char valueString[PRINT_CHARS];
+    char valueString[TCL_DOUBLE_SPACE];
     Tk_FontMetrics fm;
 
     Tk_GetFontMetrics(scalePtr->tkfont, &fm);
@@ -341,7 +341,7 @@ DisplayHorizontalScale(
 	 */
 
 	if (tickInterval != 0) {
-	    char valueString[PRINT_CHARS];
+	    char valueString[TCL_DOUBLE_SPACE];
 	    double ticks, maxTicks;
 
 	    /*
@@ -478,7 +478,7 @@ DisplayHorizontalValue(
 {
     register Tk_Window tkwin = scalePtr->tkwin;
     int x, y, length, width;
-    char valueString[PRINT_CHARS];
+    char valueString[TCL_DOUBLE_SPACE];
     Tk_FontMetrics fm;
 
     x = TkScaleValueToPixel(scalePtr, value);
@@ -535,7 +535,7 @@ TkpDisplayScale(
     Tcl_Interp *interp = scalePtr->interp;
     Pixmap pixmap;
     int result;
-    char string[PRINT_CHARS];
+    char string[TCL_DOUBLE_SPACE];
     XRectangle drawnArea;
     Tcl_DString buf;
 

@@ -12,10 +12,6 @@
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
  */
 
-/*
- * TODO: Convert scrollbars to the Tcl_Obj API.
- */
-
 #include "tkInt.h"
 #include "tkScrollbar.h"
 #include "default.h"
@@ -101,16 +97,16 @@ static const Tk_ConfigSpec configSpecs[] = {
  */
 
 static int		ConfigureScrollbar(Tcl_Interp *interp,
-			    TkScrollbar *scrollPtr, int argc,
-			    const char **argv, int flags);
+			    TkScrollbar *scrollPtr, int objc,
+			    Tcl_Obj *const objv[], int flags);
 static void		ScrollbarCmdDeletedProc(ClientData clientData);
-static int		ScrollbarWidgetCmd(ClientData clientData,
-			    Tcl_Interp *, int argc, const char **argv);
+static int		ScrollbarWidgetObjCmd(ClientData clientData,
+			    Tcl_Interp *, int objc, Tcl_Obj *const objv[]);
 
 /*
  *--------------------------------------------------------------
  *
- * Tk_ScrollbarCmd --
+ * Tk_ScrollbarObjCmd --
  *
  *	This function is invoked to process the "scrollbar" Tcl command. See
  *	the user documentation for details on what it does.
@@ -125,25 +121,22 @@ static int		ScrollbarWidgetCmd(ClientData clientData,
  */
 
 int
-Tk_ScrollbarCmd(
+Tk_ScrollbarObjCmd(
     ClientData clientData,	/* Main window associated with interpreter. */
     Tcl_Interp *interp,		/* Current interpreter. */
-    int argc,			/* Number of arguments. */
-    const char **argv)		/* Argument strings. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])		/* Argument strings. */
 {
     Tk_Window tkwin = clientData;
     register TkScrollbar *scrollPtr;
     Tk_Window newWin;
 
-    if (argc < 2) {
-	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
-		"wrong # args: should be \"%s pathName ?-option value ...?\"",
-		argv[0]));
-	Tcl_SetErrorCode(interp, "TCL", "WRONGARGS", NULL);
+    if (objc < 2) {
+	Tcl_WrongNumArgs(interp, 1, objv, "pathName ?-option value ...?");
 	return TCL_ERROR;
     }
 
-    newWin = Tk_CreateWindowFromPath(interp, tkwin, argv[1], NULL);
+    newWin = Tk_CreateWindowFromPath(interp, tkwin, Tcl_GetString(objv[1]), NULL);
     if (newWin == NULL) {
 	return TCL_ERROR;
     }
@@ -162,8 +155,8 @@ Tk_ScrollbarCmd(
     scrollPtr->tkwin = newWin;
     scrollPtr->display = Tk_Display(newWin);
     scrollPtr->interp = interp;
-    scrollPtr->widgetCmd = Tcl_CreateCommand(interp,
-	    Tk_PathName(scrollPtr->tkwin), ScrollbarWidgetCmd,
+    scrollPtr->widgetCmd = Tcl_CreateObjCommand(interp,
+	    Tk_PathName(scrollPtr->tkwin), ScrollbarWidgetObjCmd,
 	    scrollPtr, ScrollbarCmdDeletedProc);
     scrollPtr->vertical = 0;
     scrollPtr->width = 0;
@@ -196,7 +189,7 @@ Tk_ScrollbarCmd(
     scrollPtr->takeFocus = NULL;
     scrollPtr->flags = 0;
 
-    if (ConfigureScrollbar(interp, scrollPtr, argc-2, argv+2, 0) != TCL_OK) {
+    if (ConfigureScrollbar(interp, scrollPtr, objc-2, objv+2, 0) != TCL_OK) {
 	Tk_DestroyWindow(scrollPtr->tkwin);
 	return TCL_ERROR;
     }
@@ -208,7 +201,7 @@ Tk_ScrollbarCmd(
 /*
  *--------------------------------------------------------------
  *
- * ScrollbarWidgetCmd --
+ * ScrollbarWidgetObjCmd --
  *
  *	This function is invoked to process the Tcl command that corresponds
  *	to a widget managed by this module. See the user documentation for
@@ -224,30 +217,44 @@ Tk_ScrollbarCmd(
  */
 
 static int
-ScrollbarWidgetCmd(
+ScrollbarWidgetObjCmd(
     ClientData clientData,	/* Information about scrollbar widget. */
     Tcl_Interp *interp,		/* Current interpreter. */
-    int argc,			/* Number of arguments. */
-    const char **argv)		/* Argument strings. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])		/* Argument strings. */
 {
     register TkScrollbar *scrollPtr = clientData;
     int result = TCL_OK;
-    size_t length;
-    int c;
+    int length, cmdIndex;
+    static const char *const commandNames[] = {
+        "activate", "cget", "configure", "delta", "fraction",
+        "get", "identify", "set", NULL
+    };
+    enum command {
+        COMMAND_ACTIVATE, COMMAND_CGET, COMMAND_CONFIGURE, COMMAND_DELTA,
+        COMMAND_FRACTION, COMMAND_GET, COMMAND_IDENTIFY, COMMAND_SET
+    };
 
-    if (argc < 2) {
-	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
-		"wrong # args: should be \"%s option ?arg ...?\"", argv[0]));
-	Tcl_SetErrorCode(interp, "TCL", "WRONGARGS", NULL);
+    if (objc < 2) {
+	Tcl_WrongNumArgs(interp, 1, objv, "option ?arg ...?");
 	return TCL_ERROR;
     }
-    Tcl_Preserve(scrollPtr);
-    c = argv[1][0];
-    length = strlen(argv[1]);
-    if ((c == 'a') && (strncmp(argv[1], "activate", length) == 0)) {
-	int oldActiveField;
+    /*
+     * Parse the command by looking up the second argument in the list of
+     * valid subcommand names
+     */
 
-	if (argc == 2) {
+    result = Tcl_GetIndexFromObj(interp, objv[1], commandNames,
+	    "option", 0, &cmdIndex);
+    if (result != TCL_OK) {
+	return result;
+    }
+    Tcl_Preserve(scrollPtr);
+    switch (cmdIndex) {
+    case COMMAND_ACTIVATE: {
+	int oldActiveField, c;
+
+	if (objc == 2) {
 	    const char *zone = "";
 
 	    switch (scrollPtr->activeField) {
@@ -258,21 +265,17 @@ ScrollbarWidgetCmd(
 	    Tcl_SetObjResult(interp, Tcl_NewStringObj(zone, -1));
 	    goto done;
 	}
-	if (argc != 3) {
-	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
-		    "wrong # args: should be \"%s activate element\"",
-		    argv[0]));
-	    Tcl_SetErrorCode(interp, "TCL", "WRONGARGS", NULL);
+	if (objc != 3) {
+		Tcl_WrongNumArgs(interp, 1, objv, "activate element");
 	    goto error;
 	}
-	c = argv[2][0];
-	length = strlen(argv[2]);
+	c = Tcl_GetStringFromObj(objv[2], &length)[0];
 	oldActiveField = scrollPtr->activeField;
-	if ((c == 'a') && (strcmp(argv[2], "arrow1") == 0)) {
+	if ((c == 'a') && (strcmp(Tcl_GetString(objv[2]), "arrow1") == 0)) {
 	    scrollPtr->activeField = TOP_ARROW;
-	} else if ((c == 'a') && (strcmp(argv[2], "arrow2") == 0)) {
+	} else if ((c == 'a') && (strcmp(Tcl_GetString(objv[2]), "arrow2") == 0)) {
 	    scrollPtr->activeField = BOTTOM_ARROW;
-	} else if ((c == 's') && (strncmp(argv[2], "slider", length) == 0)) {
+	} else if ((c == 's') && (strncmp(Tcl_GetString(objv[2]), "slider", length) == 0)) {
 	    scrollPtr->activeField = SLIDER;
 	} else {
 	    scrollPtr->activeField = OUTSIDE;
@@ -280,41 +283,40 @@ ScrollbarWidgetCmd(
 	if (oldActiveField != scrollPtr->activeField) {
 	    TkScrollbarEventuallyRedraw(scrollPtr);
 	}
-    } else if ((c == 'c') && (strncmp(argv[1], "cget", length) == 0)
-	    && (length >= 2)) {
-	if (argc != 3) {
-	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
-		    "wrong # args: should be \"%s cget option\"", argv[0]));
-	    Tcl_SetErrorCode(interp, "TCL", "WRONGARGS", NULL);
+	break;
+    }
+    case COMMAND_CGET: {
+	if (objc != 3) {
+		Tcl_WrongNumArgs(interp, 1, objv, "cget option");
 	    goto error;
 	}
 	result = Tk_ConfigureValue(interp, scrollPtr->tkwin,
-		configSpecs, (char *) scrollPtr, argv[2], 0);
-    } else if ((c == 'c') && (strncmp(argv[1], "configure", length) == 0)
-	    && (length >= 2)) {
-	if (argc == 2) {
+		configSpecs, (char *) scrollPtr, Tcl_GetString(objv[2]), 0);
+	break;
+    }
+    case COMMAND_CONFIGURE: {
+	if (objc == 2) {
 	    result = Tk_ConfigureInfo(interp, scrollPtr->tkwin,
 		    configSpecs, (char *) scrollPtr, NULL, 0);
-	} else if (argc == 3) {
+	} else if (objc == 3) {
 	    result = Tk_ConfigureInfo(interp, scrollPtr->tkwin,
-		    configSpecs, (char *) scrollPtr, argv[2], 0);
+		    configSpecs, (char *) scrollPtr, Tcl_GetString(objv[2]), 0);
 	} else {
-	    result = ConfigureScrollbar(interp, scrollPtr, argc-2, argv+2,
-		    TK_CONFIG_ARGV_ONLY);
+	    result = ConfigureScrollbar(interp, scrollPtr, objc-2,
+		    objv+2, TK_CONFIG_ARGV_ONLY);
 	}
-    } else if ((c == 'd') && (strncmp(argv[1], "delta", length) == 0)) {
+	break;
+    }
+    case COMMAND_DELTA: {
 	int xDelta, yDelta, pixels, length;
 	double fraction;
 
-	if (argc != 4) {
-	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
-		    "wrong # args: should be \"%s delta xDelta yDelta\"",
-		    argv[0]));
-	    Tcl_SetErrorCode(interp, "TCL", "WRONGARGS", NULL);
+	if (objc != 4) {
+		Tcl_WrongNumArgs(interp, 1, objv, "delta xDelta yDelta");
 	    goto error;
 	}
-	if ((Tcl_GetInt(interp, argv[2], &xDelta) != TCL_OK)
-		|| (Tcl_GetInt(interp, argv[3], &yDelta) != TCL_OK)) {
+	if ((Tcl_GetIntFromObj(interp, objv[2], &xDelta) != TCL_OK)
+		|| (Tcl_GetIntFromObj(interp, objv[3], &yDelta) != TCL_OK)) {
 	    goto error;
 	}
 	if (scrollPtr->vertical) {
@@ -332,18 +334,18 @@ ScrollbarWidgetCmd(
 	    fraction = ((double) pixels / (double) length);
 	}
 	Tcl_SetObjResult(interp, Tcl_NewDoubleObj(fraction));
-    } else if ((c == 'f') && (strncmp(argv[1], "fraction", length) == 0)) {
+	break;
+    }
+    case COMMAND_FRACTION: {
 	int x, y, pos, length;
 	double fraction;
 
-	if (argc != 4) {
-	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
-		    "wrong # args: should be \"%s fraction x y\"", argv[0]));
-	    Tcl_SetErrorCode(interp, "TCL", "WRONGARGS", NULL);
+	if (objc != 4) {
+		Tcl_WrongNumArgs(interp, 1, objv, "fraction x y");
 	    goto error;
 	}
-	if ((Tcl_GetInt(interp, argv[2], &x) != TCL_OK)
-		|| (Tcl_GetInt(interp, argv[3], &y) != TCL_OK)) {
+	if ((Tcl_GetIntFromObj(interp, objv[2], &x) != TCL_OK)
+		|| (Tcl_GetIntFromObj(interp, objv[3], &y) != TCL_OK)) {
 	    goto error;
 	}
 	if (scrollPtr->vertical) {
@@ -366,13 +368,13 @@ ScrollbarWidgetCmd(
 	    fraction = 1.0;
 	}
 	Tcl_SetObjResult(interp, Tcl_NewDoubleObj(fraction));
-    } else if ((c == 'g') && (strncmp(argv[1], "get", length) == 0)) {
+	break;
+    }
+    case COMMAND_GET: {
 	Tcl_Obj *resObjs[4];
 
-	if (argc != 2) {
-	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
-		    "wrong # args: should be \"%s get\"", argv[0]));
-	    Tcl_SetErrorCode(interp, "TCL", "WRONGARGS", NULL);
+	if (objc != 2) {
+		Tcl_WrongNumArgs(interp, 1, objv, "get");
 	    goto error;
 	}
 	if (scrollPtr->flags & NEW_STYLE_COMMANDS) {
@@ -386,18 +388,18 @@ ScrollbarWidgetCmd(
 	    resObjs[3] = Tcl_NewIntObj(scrollPtr->lastUnit);
 	    Tcl_SetObjResult(interp, Tcl_NewListObj(4, resObjs));
 	}
-    } else if ((c == 'i') && (strncmp(argv[1], "identify", length) == 0)) {
+	break;
+    }
+    case COMMAND_IDENTIFY: {
 	int x, y;
 	const char *zone = "";
 
-	if (argc != 4) {
-	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
-		    "wrong # args: should be \"%s identify x y\"", argv[0]));
-	    Tcl_SetErrorCode(interp, "TCL", "WRONGARGS", NULL);
+	if (objc != 4) {
+		Tcl_WrongNumArgs(interp, 1, objv, "identify x y");
 	    goto error;
 	}
-	if ((Tcl_GetInt(interp, argv[2], &x) != TCL_OK)
-		|| (Tcl_GetInt(interp, argv[3], &y) != TCL_OK)) {
+	if ((Tcl_GetIntFromObj(interp, objv[2], &x) != TCL_OK)
+		|| (Tcl_GetIntFromObj(interp, objv[3], &y) != TCL_OK)) {
 	    goto error;
 	}
 	switch (TkpScrollbarPosition(scrollPtr, x, y)) {
@@ -408,16 +410,18 @@ ScrollbarWidgetCmd(
 	case BOTTOM_ARROW:	zone = "arrow2";  break;
 	}
 	Tcl_SetObjResult(interp, Tcl_NewStringObj(zone, -1));
-    } else if ((c == 's') && (strncmp(argv[1], "set", length) == 0)) {
+	break;
+    }
+    case COMMAND_SET: {
 	int totalUnits, windowUnits, firstUnit, lastUnit;
 
-	if (argc == 4) {
+	if (objc == 4) {
 	    double first, last;
 
-	    if (Tcl_GetDouble(interp, argv[2], &first) != TCL_OK) {
+	    if (Tcl_GetDoubleFromObj(interp, objv[2], &first) != TCL_OK) {
 		goto error;
 	    }
-	    if (Tcl_GetDouble(interp, argv[3], &last) != TCL_OK) {
+	    if (Tcl_GetDoubleFromObj(interp, objv[3], &last) != TCL_OK) {
 		goto error;
 	    }
 	    if (first < 0) {
@@ -435,23 +439,23 @@ ScrollbarWidgetCmd(
 		scrollPtr->lastFraction = last;
 	    }
 	    scrollPtr->flags |= NEW_STYLE_COMMANDS;
-	} else if (argc == 6) {
-	    if (Tcl_GetInt(interp, argv[2], &totalUnits) != TCL_OK) {
+	} else if (objc == 6) {
+	    if (Tcl_GetIntFromObj(interp, objv[2], &totalUnits) != TCL_OK) {
 		goto error;
 	    }
 	    if (totalUnits < 0) {
 		totalUnits = 0;
 	    }
-	    if (Tcl_GetInt(interp, argv[3], &windowUnits) != TCL_OK) {
+	    if (Tcl_GetIntFromObj(interp, objv[3], &windowUnits) != TCL_OK) {
 		goto error;
 	    }
 	    if (windowUnits < 0) {
 		windowUnits = 0;
 	    }
-	    if (Tcl_GetInt(interp, argv[4], &firstUnit) != TCL_OK) {
+	    if (Tcl_GetIntFromObj(interp, objv[4], &firstUnit) != TCL_OK) {
 		goto error;
 	    }
-	    if (Tcl_GetInt(interp, argv[5], &lastUnit) != TCL_OK) {
+	    if (Tcl_GetIntFromObj(interp, objv[5], &lastUnit) != TCL_OK) {
 		goto error;
 	    }
 	    if (totalUnits > 0) {
@@ -474,23 +478,15 @@ ScrollbarWidgetCmd(
 	    }
 	    scrollPtr->flags &= ~NEW_STYLE_COMMANDS;
 	} else {
-	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
-		    "wrong # args: should be "
-		    "\"%s set firstFraction lastFraction\" or "
-		    "\"%s set totalUnits windowUnits firstUnit lastUnit\"",
-		    argv[0], argv[0]));
-	    Tcl_SetErrorCode(interp, "TCL", "WRONGARGS", NULL);
+		Tcl_WrongNumArgs(interp, 1, objv, "set firstFraction lastFraction");
+		Tcl_AppendResult(interp, " or \"", Tcl_GetString(objv[0]),
+			" set totalUnits windowUnits firstUnit lastUnit\"", NULL);
 	    goto error;
 	}
 	TkpComputeScrollbarGeometry(scrollPtr);
 	TkScrollbarEventuallyRedraw(scrollPtr);
-    } else {
-	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
-		"bad option \"%s\": must be activate, cget, configure,"
-		" delta, fraction, get, identify, or set", argv[1]));
-	Tcl_SetErrorCode(interp, "TCL", "LOOKUP", "INDEX", "option",
-		argv[1], NULL);
-	goto error;
+	break;
+    }
     }
 
   done:
@@ -528,12 +524,12 @@ ConfigureScrollbar(
     register TkScrollbar *scrollPtr,
 				/* Information about widget; may or may not
 				 * already have values for some fields. */
-    int argc,			/* Number of valid entries in argv. */
-    const char **argv,		/* Arguments. */
+    int objc,			/* Number of valid entries in argv. */
+    Tcl_Obj *const objv[],		/* Arguments. */
     int flags)			/* Flags to pass to Tk_ConfigureWidget. */
 {
-    if (Tk_ConfigureWidget(interp, scrollPtr->tkwin, configSpecs,
-	    argc, argv, (char *) scrollPtr, flags) != TCL_OK) {
+    if (Tk_ConfigureWidget(interp, scrollPtr->tkwin, configSpecs, objc,
+	    (const char **)objv, (char *) scrollPtr, flags|TK_CONFIG_OBJS) != TCL_OK) {
 	return TCL_ERROR;
     }
 

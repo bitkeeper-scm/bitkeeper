@@ -800,6 +800,9 @@ ComputeFormat(
      */
 
     numDigits = scalePtr->digits;
+    if (numDigits > TCL_MAX_PREC) {
+	numDigits = 0;
+    }
     if (numDigits <= 0) {
 	if (scalePtr->resolution > 0) {
 	    /*
@@ -880,7 +883,7 @@ static void
 ComputeScaleGeometry(
     register TkScale *scalePtr)	/* Information about widget. */
 {
-    char valueString[PRINT_CHARS];
+    char valueString[TCL_DOUBLE_SPACE];
     int tmp, valuePixels, x, y, extraSpace;
     Tk_FontMetrics fm;
 
@@ -1296,7 +1299,7 @@ ScaleSetVariable(
     register TkScale *scalePtr)	/* Info about widget. */
 {
     if (scalePtr->varNamePtr != NULL) {
-	char string[PRINT_CHARS];
+	char string[TCL_DOUBLE_SPACE];
 
 	sprintf(string, scalePtr->format, scalePtr->value);
 	scalePtr->flags |= SETTING_VAR;

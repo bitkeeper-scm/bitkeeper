@@ -873,6 +873,7 @@ test canvText-18.1 {bug fix 2525, find enclosed on text with newlines} -setup {
     .c find enclosed 99 99 [expr $x2 + 1] [expr $y2 + 1]
 } -cleanup {
     destroy .c
+    unset -nocomplain bbox x2 y2
 } -result 1
 
 test canvText-19.1 {patch 1006286, leading space caused wrap under Win32} -setup {

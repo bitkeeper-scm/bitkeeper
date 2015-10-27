@@ -169,6 +169,14 @@ TkTextTagCmd(
 	    return TCL_ERROR;
 	}
 	tagPtr = TkTextCreateTag(textPtr, Tcl_GetString(objv[3]), NULL);
+	if (tagPtr->elide) {
+		/*
+		* Indices are potentially obsolete after adding or removing
+		* elided character ranges, especially indices having "display"
+		* or "any" submodifier, therefore increase the epoch.
+		*/
+		textPtr->sharedTextPtr->stateEpoch++;
+	}
 	for (i = 4; i < objc; i += 2) {
 	    if (TkTextGetObjIndex(interp, textPtr, objv[i],
 		    &index1) != TCL_OK) {

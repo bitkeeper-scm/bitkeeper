@@ -241,7 +241,7 @@ static unsigned isFunctionKey(unsigned int code);
   finishedCompose = YES;
 
   /* first, clear any working text */
-  if (_workingText != nil)
+  if (privateWorkingText != nil)
     [self deleteWorkingText];
 
   /* now insert the string as keystrokes */
@@ -275,13 +275,13 @@ static unsigned isFunctionKey(unsigned int code);
     NSLog (@"setMarkedText '%@' len =%d range %d from %d", str, [str length],
            selRange.length, selRange.location);
 
-  if (_workingText != nil)
+  if (privateWorkingText != nil)
     [self deleteWorkingText];
   if ([str length] == 0)
     return;
 
   processingCompose = YES;
-  _workingText = [str copy];
+  privateWorkingText = [str copy];
 
   //PENDING: insert workingText underlined
 }
@@ -290,12 +290,12 @@ static unsigned isFunctionKey(unsigned int code);
 /* delete display of composing characters [not in <NSTextInput>] */
 - (void)deleteWorkingText
 {
-  if (_workingText == nil)
+  if (privateWorkingText == nil)
     return;
   if (NS_KEYLOG)
-    NSLog(@"deleteWorkingText len = %d\n", [_workingText length]);
-  [_workingText release];
-  _workingText = nil;
+    NSLog(@"deleteWorkingText len = %d\n", [privateWorkingText length]);
+  [privateWorkingText release];
+  privateWorkingText = nil;
   processingCompose = NO;
 
   //PENDING: delete working text
@@ -304,14 +304,14 @@ static unsigned isFunctionKey(unsigned int code);
 
 - (BOOL)hasMarkedText
 {
-  return _workingText != nil;
+  return privateWorkingText != nil;
 }
 
 
 - (NSRange)markedRange
 {
-  NSRange rng = _workingText != nil
-    ? NSMakeRange (0, [_workingText length]) : NSMakeRange (NSNotFound, 0);
+  NSRange rng = privateWorkingText != nil
+    ? NSMakeRange (0, [privateWorkingText length]) : NSMakeRange (NSNotFound, 0);
   if (NS_KEYLOG)
     NSLog (@"markedRange request");
   return rng;

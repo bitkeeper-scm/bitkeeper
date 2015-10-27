@@ -24,6 +24,7 @@
 
 #ifndef _TKMAC
 #include "tkMacOSX.h"
+#import <Cocoa/Cocoa.h>
 #endif
 
 /*
@@ -196,7 +197,7 @@ MODULE_SCOPE void TkpClipDrawableToRect(Display *display, Drawable d, int x,
 	int y, int width, int height);
 MODULE_SCOPE void TkpRetainRegion(TkRegion r);
 MODULE_SCOPE void TkpReleaseRegion(TkRegion r);
-
+MODULE_SCOPE void TkpShiftButton(NSButton *button, NSPoint delta);
 /*
  * Include the stubbed internal platform-specific API.
  */

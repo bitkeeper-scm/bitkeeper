@@ -2094,7 +2094,7 @@ TkGetDisplayOf(
 /*
  *----------------------------------------------------------------------
  *
- * TkDeadAppCmd --
+ * TkDeadAppObjCmd --
  *
  *	If an application has been deleted then all Tk commands will be
  *	re-bound to this function.
@@ -2111,15 +2111,15 @@ TkGetDisplayOf(
 
 	/* ARGSUSED */
 int
-TkDeadAppCmd(
+TkDeadAppObjCmd(
     ClientData clientData,	/* Dummy. */
     Tcl_Interp *interp,		/* Current interpreter. */
-    int argc,			/* Number of arguments. */
-    const char **argv)		/* Argument strings. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])		/* Argument strings. */
 {
     Tcl_SetObjResult(interp, Tcl_ObjPrintf(
 	    "can't invoke \"%s\" command: application has been destroyed",
-	    argv[0]));
+	    Tcl_GetString(objv[0])));
     return TCL_ERROR;
 }
 

@@ -158,6 +158,29 @@ TkUnionRectWithRegion(
 /*
  *----------------------------------------------------------------------
  *
+ * TkMacOSXIsEmptyRegion --
+ *
+ *	Return native region for given tk region.
+ *
+ * Results:
+ *	1 if empty, 0 otherwise.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+int
+TkMacOSXIsEmptyRegion(
+    TkRegion r)
+{
+    return HIShapeIsEmpty((HIMutableShapeRef) r) ? 1 : 0;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
  * TkRectInRegion --
  *
  *	Implements the equivelent of the X window function XRectInRegion. See
@@ -181,12 +204,14 @@ TkRectInRegion(
     unsigned int width,
     unsigned int height)
 {
-    int result;
-    const CGRect r = CGRectMake(x, y, width, height);
-
-    result = HIShapeIntersectsRect((HIShapeRef) region, &r) ?
+    if ( TkMacOSXIsEmptyRegion(region) ) {
+	    return RectangleOut;
+	}
+    else {
+	const CGRect r = CGRectMake(x, y, width, height);
+	return HIShapeIntersectsRect((HIShapeRef) region, &r) ?
 	    RectanglePart : RectangleOut;
-    return result;
+    }
 }
 
 /*
@@ -332,12 +357,11 @@ TkpReleaseRegion(
 {
     CFRelease(r);
 }
-#if 0
 
 /*
  *----------------------------------------------------------------------
  *
- * TkMacOSXEmtpyRegion --
+ * TkMacOSXSetEmptyRegion --
  *
  *	Set region to emtpy.
  *
@@ -351,35 +375,11 @@ TkpReleaseRegion(
  */
 
 void
-TkMacOSXEmtpyRegion(
+TkMacOSXSetEmptyRegion(
     TkRegion r)
 {
     ChkErr(HIShapeSetEmpty, (HIMutableShapeRef) r);
 }
-
-/*
- *----------------------------------------------------------------------
- *
- * TkMacOSXIsEmptyRegion --
- *
- *	Return native region for given tk region.
- *
- * Results:
- *	1 if empty, 0 otherwise.
- *
- * Side effects:
- *	None.
- *
- *----------------------------------------------------------------------
- */
-
-int
-TkMacOSXIsEmptyRegion(
-    TkRegion r)
-{
-    return HIShapeIsEmpty((HIMutableShapeRef) r) ? 1 : 0;
-}
-#endif
 
 /*
  *----------------------------------------------------------------------

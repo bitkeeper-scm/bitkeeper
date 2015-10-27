@@ -3970,6 +3970,15 @@ DisplayText(
     UpdateDisplayInfo(textPtr);
     dInfoPtr->dLinesInvalidated = 0;
 
+#ifdef MAC_OSX_TK
+    /*
+     * Make sure that unmapped subwindows really have been unmapped.
+     * If the unmap request is pending as an idle request, the window
+     * can get redrawn on top of the widget.
+     */
+    while (Tcl_DoOneEvent(TCL_IDLE_EVENTS|TCL_DONT_WAIT)) {}
+#endif
+
     /*
      * See if it's possible to bring some parts of the screen up-to-date by
      * scrolling (copying from other parts of the screen). We have to be
@@ -4035,7 +4044,7 @@ DisplayText(
 	 */
 
 	if ((y + height) > dInfoPtr->maxY) {
-	    height = dInfoPtr->maxY -y;
+	    height = dInfoPtr->maxY - y;
 	}
 	oldY = dlPtr->oldY;
 	if (y < dInfoPtr->y) {

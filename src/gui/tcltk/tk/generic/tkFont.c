@@ -600,40 +600,40 @@ Tk_FontObjCmd(
 	return result;
     }
     case FONT_CONFIGURE: {
-	int result;
-	const char *string;
-	Tcl_Obj *objPtr;
-	NamedFont *nfPtr;
-	Tcl_HashEntry *namedHashPtr;
+    	int result;
+    	const char *string;
+    	Tcl_Obj *objPtr;
+    	NamedFont *nfPtr;
+    	Tcl_HashEntry *namedHashPtr;
 
-	if (objc < 3) {
-	    Tcl_WrongNumArgs(interp, 2, objv, "fontname ?-option value ...?");
-	    return TCL_ERROR;
-	}
-	string = Tcl_GetString(objv[2]);
-	namedHashPtr = Tcl_FindHashEntry(&fiPtr->namedTable, string);
+    	if (objc < 3) {
+    	    Tcl_WrongNumArgs(interp, 2, objv, "fontname ?-option value ...?");
+    	    return TCL_ERROR;
+    	}
+    	string = Tcl_GetString(objv[2]);
+    	namedHashPtr = Tcl_FindHashEntry(&fiPtr->namedTable, string);
 	nfPtr = NULL;		/* lint. */
-	if (namedHashPtr != NULL) {
-	    nfPtr = Tcl_GetHashValue(namedHashPtr);
-	}
-	if ((namedHashPtr == NULL) || nfPtr->deletePending) {
-	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
-		    "named font \"%s\" doesn't exist", string));
-	    Tcl_SetErrorCode(interp, "TK", "LOOKUP", "FONT", string, NULL);
-	    return TCL_ERROR;
-	}
-	if (objc == 3) {
-	    objPtr = NULL;
-	} else if (objc == 4) {
-	    objPtr = objv[3];
-	} else {
-	    result = ConfigAttributesObj(interp, tkwin, objc - 3, objv + 3,
-		    &nfPtr->fa);
-	    UpdateDependentFonts(fiPtr, tkwin, namedHashPtr);
-	    return result;
-	}
-	return GetAttributeInfoObj(interp, &nfPtr->fa, objPtr);
-    }
+    	if (namedHashPtr != NULL) {
+    	    nfPtr = Tcl_GetHashValue(namedHashPtr);
+    	}
+    	if ((namedHashPtr == NULL) || nfPtr->deletePending) {
+    	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+    		    "named font \"%s\" doesn't exist", string));
+    	    Tcl_SetErrorCode(interp, "TK", "LOOKUP", "FONT", string, NULL);
+    	    return TCL_ERROR;
+    	}
+    	if (objc == 3) {
+    	    objPtr = NULL;
+    	} else if (objc == 4) {
+    	    objPtr = objv[3];
+    	} else {
+    	    result = ConfigAttributesObj(interp, tkwin, objc - 3, objv + 3,
+    		    &nfPtr->fa);
+    	    UpdateDependentFonts(fiPtr, tkwin, namedHashPtr);
+    	    return result;
+    	}
+    	return GetAttributeInfoObj(interp, &nfPtr->fa, objPtr);
+     } 
     case FONT_CREATE: {
 	int skip = 3, i;
 	const char *name;

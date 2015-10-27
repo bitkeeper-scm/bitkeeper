@@ -12,7 +12,25 @@ eval tcltest::configure $argv
 tcltest::loadTestedCommands
 
 
-catch {eval font delete [font names]}
+set defaultfontlist [font names]
+
+proc getnondefaultfonts {} {
+    global defaultfontlist
+    set nondeffonts [list ]
+    foreach afont [font names] {
+        if {$afont ni $defaultfontlist} {
+            lappend nondeffonts $afont
+        }
+    }
+    set nondeffonts
+}
+
+proc clearnondefaultfonts {} {
+    foreach afont [getnondefaultfonts] {
+        font delete $afont
+    }
+}
+
 deleteWindows
 # Toplevel used (in some tests) of the whole file
 toplevel .t
@@ -161,12 +179,12 @@ test font-5.4 {font command: configure: get all options} -setup {
 	font delete xyz
 } -result xyz
 test font-5.5 {font command: configure: get one option} -setup {
-    catch {eval font delete [font names]}
+    clearnondefaultfonts
 } -body {
     # (objc == 4) so objPtr = objv[3]
     font create xyz -family xyz
     font configure xyz -family
-	font names
+	getnondefaultfonts
 } -cleanup {
 	font delete xyz
 } -result xyz
@@ -192,34 +210,33 @@ test font-5.7 {font command: configure: bad option} -setup {
 
 
 test font-6.1 {font command: create: make up name} -setup {
-    catch {eval font delete [font names]}
+    clearnondefaultfonts
 } -body {
     # (objc < 3) so name = NULL
     font create
-    font names
+    getnondefaultfonts
 } -cleanup {
     font delete font1
 } -result {font1}
 test font-6.2 {font command: create: name specified} -setup {
-    catch {eval font delete [font names]}
+    clearnondefaultfonts
 } -body {
     # not (objc < 3)
     font create xyz
-    font names
+    getnondefaultfonts
 } -cleanup {
 	font delete xyz
 } -result {xyz}
 test font-6.3 {font command: create: name not really specified} -setup {
-    catch {eval font delete [font names]}
+    clearnondefaultfonts
 } -body {
     # (name[0] == '-') so name = NULL
     font create -family xyz
-    font names
+    getnondefaultfonts
 } -cleanup {
     font delete font1
 } -result {font1}
 test font-6.4 {font command: create: generate name} -setup {
-    catch {eval font delete [font names]}
 } -body {
     # (name == NULL)
     font create -family one
@@ -229,7 +246,7 @@ test font-6.4 {font command: create: generate name} -setup {
     font create -family four
     font configure font2 -family
 } -cleanup {
-    catch {eval font delete [font names]}
+    font delete font1 font2 font3
 } -result {four}
 test font-6.5 {font command: create: bad option creating new font} -setup {
     catch {font delete xyz}
@@ -238,7 +255,7 @@ test font-6.5 {font command: create: bad option creating new font} -setup {
     font create xyz -xyz times
 } -returnCodes error -result {bad option "-xyz": must be -family, -size, -weight, -slant, -underline, or -overstrike}
 test font-6.6 {font command: create: bad option creating new font} -setup {
-    catch {eval font delete [font names]}
+    clearnondefaultfonts
 } -body {
     # name was not specified so skip = 2 
     font create -xyz times
@@ -258,7 +275,7 @@ test font-7.1 {font command: delete: arguments} -body {
     font delete
 } -returnCodes error -result {wrong # args: should be "font delete fontname ?fontname ...?"}
 test font-7.2 {font command: delete: loop test} -setup {
-    catch {eval font delete [font names]}
+    clearnondefaultfonts
 	set x {}
 } -body {
     # for (i = 2; i < objc; i++) 
@@ -267,14 +284,14 @@ test font-7.2 {font command: delete: loop test} -setup {
     font create c -underline 1
     font create d -underline 1
     font create e -underline 1
-    lappend x [lsort [font names]]
+    lappend x [lsort [getnondefaultfonts]]
     font delete a e c b
-    lappend x [lsort [font names]]
+    lappend x [lsort [getnondefaultfonts]]
 } -cleanup {
-    catch {eval font delete [font names]}
+    getnondefaultfonts
 } -result {{a b c d e} d}
 test font-7.3 {font command: delete: loop test} -setup {
-    catch {eval font delete [font names]}
+    clearnondefaultfonts
 	set x {}
 } -body {
     # (namedHashPtr == NULL) in middle of loop
@@ -283,11 +300,11 @@ test font-7.3 {font command: delete: loop test} -setup {
     font create c -underline 1
     font create d -underline 1
     font create e -underline 1
-    lappend x [lsort [font names]]
+    lappend x [lsort [getnondefaultfonts]]
     catch {font delete a d q c e b}
-    lappend x [lsort [font names]]
+    lappend x [lsort [getnondefaultfonts]]
 } -cleanup {
-    catch {eval font delete [font names]}
+    clearnondefaultfonts
 } -result {{a b c d e} {b c e}}
 test font-7.4 {font command: delete: non-existent} -setup {
     catch {font delete xyz}
@@ -434,29 +451,29 @@ test font-11.1 {font command: names: arguments} -body {
     font names xyz
 } -returnCodes error -result {wrong # args: should be "font names"}
 test font-11.2 {font command: names: loop test: no passes} -setup {
-    catch {eval font delete [font names]}
+    clearnondefaultfonts
 } -body {
-    font names
+    getnondefaultfonts
 } -result {}
 test font-11.3 {font command: names: loop test: one pass} -setup {
-    catch {eval font delete [font names]}
+    clearnondefaultfonts
 } -body {
     font create
-    font names
+    getnondefaultfonts
 } -result {font1}
 test font-11.4 {font command: names: loop test: multiple passes} -setup {
-    catch {eval font delete [font names]}
+    clearnondefaultfonts
 } -body {
     font create xyz
     font create abc
     font create def
-    lsort [font names]
+    lsort [getnondefaultfonts]
 } -cleanup {
-    catch {eval font delete [font names]}
+    clearnondefaultfonts
 } -result {abc def xyz}
 test font-11.5 {font command: names: skip deletePending fonts} -setup {
     destroy .t.f
-    catch {eval font delete [font names]}
+    clearnondefaultfonts
     pack [label .t.f]
     update
     set x {}
@@ -464,12 +481,12 @@ test font-11.5 {font command: names: skip deletePending fonts} -setup {
     # (nfPtr->deletePending == 0)
     font create xyz
     font create abc
-    lappend x [lsort [font names]]
+    lappend x [lsort [getnondefaultfonts]]
     .t.f config -font xyz
     font delete xyz
-    lappend x [font names]
+    lappend x [getnondefaultfonts]
 } -cleanup {
-    catch {eval font delete [font names]}
+    clearnondefaultfonts
 } -result {{abc xyz} abc}
 
 
@@ -509,9 +526,9 @@ test font-13.1 {CreateNamedFont: new named font} -setup {
 	set x {}
 } -body {
     # not (new == 0)
-    lappend x [font names]
+    lappend x [getnondefaultfonts]
     font create xyz
-    lappend x [font names]
+    lappend x [getnondefaultfonts]
 } -cleanup {
 	font delete xyz
 } -result {{} xyz}
@@ -646,7 +663,7 @@ test font-15.8 {Tk_AllocFontFromObj procedure: get native font} -constraints {
 	win 
 } -setup {
     destroy .t.f
-	catch {eval font delete [font names]}
+    clearnondefaultfonts
     pack [label .t.f]
     update
 } -body {
@@ -752,7 +769,7 @@ test font-17.3 {Tk_FreeFont procedure: multiple ref} -setup {
 } -result {-family fixed}
 test font-17.4 {Tk_FreeFont procedure: named font} -setup {
     destroy .t.f
-    catch {eval font delete [font names]}
+    clearnondefaultfonts
     pack [label .t.f]
     update
 } -body {
@@ -760,7 +777,7 @@ test font-17.4 {Tk_FreeFont procedure: named font} -setup {
     font create xyz
     .t.f config -font xyz
     destroy .t.f
-    font names
+    getnondefaultfonts
 } -result {xyz}
 test font-17.5 {Tk_FreeFont procedure: named font} -setup {
     destroy .t.f

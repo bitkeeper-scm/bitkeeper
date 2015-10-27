@@ -7073,3 +7073,75 @@ Many revisions to better support a Cygwin environment (nijtmans)
 2013-08-25 (bug fix)[3016181] Cocoa: [destroy $scrollbar] => crash (goddard)
 
 --- Released 8.6.1, September 19, 2013 --- http://core.tcl.tk/tk/ for details
+
+2013-10-27 (bug fix) OSX drawing lags (deily,steffen,walzer)
+
+2013-10-28 (bug fix)[3603436] png wrong component indices (nijtmans)
+
+2013-10-31 (bug fix) C++ friendly stubs struct declarations (nijtmans)
+
+2013-10-31 (bug fix)[c0cc9fd] PNG parser accept uppercase -format (nijtmans)
+
+2013-10-31 (bug fix) double free of a TkFont (nijtmans)
+
+2013-11-03 (bug fix)[1632447] support PPM maxval up to 65535 (fellows)
+
+2013-11-05 (bug fix)[426679e] OpenBSD man page rendering (nijtmans)
+
+2013-11-11 (bug fix)[f214b8a] multi-interp font teardown double free (porter)
+
+2013-11-11 (bug fix)[0aa5e85] option file \n syntax support (nijtmans)
+
+2013-11-20 (platforms) Support for Windows 8.1 (nijtmans)
+
+2014-01-23 (bug fix)[3606644] X: correct fontconfig dependence (venable)
+
+2014-01-23 (bug fix) FreeBSD build fixes (cerutti)
+
+2014-02-06 (bug fix)[3279221] [menu] event race (danckaert,kupries)
+
+2014-02-07 (bug fix)[6867cc1] creative writing in [tk fontchooser] (nijtmans)
+
+2014-02-11 (bug fix)[52ca3e7] XkbOpenDisplay macro correction (nijtmans)
+
+2014-03-16 (bug fix) Xcode 5.1 update; Retina displays (walzer)
+
+2014-03-20 (bug fix)[2f7cbd0] FreeBSD 10.0 build failure (nijtmans)
+
+2014-04-01 (bug fix)[5bcb502] @TK_LIBS@ in pkgconfig (badshah400,nijtmans)
+
+2014-05-27 (bug fix)[a80f5d7] autoscroll initiation (crogers,english)
+
+2014-07-07 (bug fix) OSX alpha channel rendering (culler,walzer)
+
+2014-07-08 (workaround)[4955f5d] Ocaml trouble with tailcall splice (nijtmans)
+
+2014-07-24 (bug fix) OSX [text] image display & scrolling (culler,walzer)
+
+2014-08-01 (bug fix) OSX font config crash (rob@bitkeeper)
+
+--- Released 8.6.2, August 27, 2014 --- http://core.tcl.tk/tk/ for details
+
+2014-08-27 (bug) Cocoa: Crash after [$button destroy] (walzer)
+
+2014-09-23 (bug) Cocoa: button and scroll display fixes (walzer)
+
+2014-09-24 (bug) Cocoa: improved drawing performance (walzer)
+
+2014-10-11 (bug)[9e487e] Phony button clicks from browsers to plugin (nijtmans)
+
+2014-10-11 (bug)[810c43] [text] elide changes advance epoch (vogel)
+
+2014-10-14 (bug)[fb35eb] fix PNG transparency appearance (walton,culler)
+
+2014-10-18 (feature)[TIP 432] Win: updated file dialogs (nadkarni)
+
+2014-10-26 Support for Windows 10 (nijtmans)
+
+2014-10-28 (bug) OSX: Improved ttk notebook tab metrics for Yosemite (walzer)
+
+2014-10-30 (bug)[3417012] [scale -digits $bigValue] segfault (vogel)
+
+2014-11-07 (bug)[3529885] [scale] handling of negative resolution (vogel)
+
+--- Released 8.6.3, November 12, 2014 --- http://core.tcl.tk/tk/ for details

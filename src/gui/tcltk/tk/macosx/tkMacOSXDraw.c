@@ -8,6 +8,7 @@
  * Copyright (c) 1995-1997 Sun Microsystems, Inc.
  * Copyright 2001-2009, Apple Inc.
  * Copyright (c) 2006-2009 Daniel A. Steffen <das@users.sourceforge.net>
+ * Copyright 2014 Marc Culler.
  *
  * See the file "license.terms" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -16,7 +17,7 @@
 #include "tkMacOSXPrivate.h"
 #include "tkMacOSXDebug.h"
 #include "xbytes.h"
-
+#include "tkButton.h"
 
 /*
 #ifdef TK_MAC_DEBUG
@@ -114,10 +115,79 @@ TkMacOSXInitCGDrawing(
 /*
  *----------------------------------------------------------------------
  *
+ * BitmapRepFromDrawableRect
+ *
+ *	Extract bitmap data from a MacOSX drawable as an NSBitmapImageRep.
+ *
+ * Results:
+ *	Returns an autoreleased NSBitmapRep representing the image of the given
+ *      rectangle of the given drawable.
+ *
+ *      NOTE: The x,y coordinates should be relative to a coordinate system with
+ *      origin at the top left, as used by XImage and CGImage, not bottom
+ *      left as used by NSView.
+ *
+ * Side effects:
+ *     None
+ *
+ *----------------------------------------------------------------------
+ */
+NSBitmapImageRep*
+BitmapRepFromDrawableRect(
+        Drawable drawable,
+	int x,
+	int y,
+	unsigned int width,
+	unsigned int height)
+{
+    MacDrawable *mac_drawable = (MacDrawable *) drawable;
+    CGContextRef cg_context=NULL;
+    CGImageRef cg_image=NULL, sub_cg_image=NULL;
+    NSBitmapImageRep *bitmap_rep=NULL;
+    NSView *view=NULL;
+    if ( mac_drawable->flags & TK_IS_PIXMAP ) {
+	/*
+	   This means that the MacDrawable is functioning as a Tk Pixmap, so its view
+	   field is NULL.  It's context field should point to a CGImage.
+	*/
+	cg_context = GetCGContextForDrawable(drawable);
+	CGRect image_rect = CGRectMake(x, y, width, height);
+	cg_image = CGBitmapContextCreateImage( (CGContextRef) cg_context);
+	sub_cg_image = CGImageCreateWithImageInRect(cg_image, image_rect);
+	if ( sub_cg_image ) {
+	    bitmap_rep = [[NSBitmapImageRep alloc] autorelease];
+	    [bitmap_rep initWithCGImage:sub_cg_image];
+	}
+	if ( cg_image ) {
+	    CGImageRelease(cg_image);
+	}
+    } else if ( (view = TkMacOSXDrawableView(mac_drawable)) ) {
+	/* convert top-left coordinates to NSView coordinates */
+	int view_height = [view bounds].size.height;
+	NSRect view_rect = NSMakeRect(x + mac_drawable->xOff,
+				      view_height - height - y - mac_drawable->yOff,
+				      width,height);
+
+	if ( [view lockFocusIfCanDraw] ) {
+	    bitmap_rep = [[NSBitmapImageRep alloc] autorelease];
+	    bitmap_rep = [bitmap_rep initWithFocusedViewRect:view_rect];
+	    [view unlockFocus];
+	} else {
+	    TkMacOSXDbgMsg("Could not lock focus on view.");
+	}
+
+    } else {
+	TkMacOSXDbgMsg("Invalid source drawable");
+    }
+    return bitmap_rep;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
  * XCopyArea --
  *
- *	Copies data from one drawable to another using block transfer
- *	routines.
+ *	Copies data from one drawable to another.
  *
  * Results:
  *	None.
@@ -144,76 +214,50 @@ XCopyArea(
 {
     TkMacOSXDrawingContext dc;
     MacDrawable *srcDraw = (MacDrawable *) src;
+    NSBitmapImageRep *bitmap_rep = NULL;
+    CGImageRef img = NULL;
 
     display->request++;
+
     if (!width || !height) {
-	/* TkMacOSXDbgMsg("Drawing of emtpy area requested"); */
+	/* This happens all the time.
+	TkMacOSXDbgMsg("Drawing of empty area requested");
+	*/
 	return;
     }
-    if (srcDraw->flags & TK_IS_PIXMAP) {
-	if (!TkMacOSXSetupDrawingContext(dst, gc, 1, &dc)) {
-	    return;
-	}
-	if (dc.context) {
-	    CGImageRef img = TkMacOSXCreateCGImageWithDrawable(src);
 
-	    if (img) {
-		DrawCGImage(dst, gc, dc.context, img, gc->foreground,
-			gc->background, CGRectMake(0, 0,
-			srcDraw->size.width, srcDraw->size.height),
+    if (!TkMacOSXSetupDrawingContext(dst, gc, 1, &dc)) {
+	TkMacOSXDbgMsg("Failed to setup drawing context.");
+    }
+
+    if ( dc.context ) {
+	if (srcDraw->flags & TK_IS_PIXMAP) {
+	    img = TkMacOSXCreateCGImageWithDrawable(src);
+	}else if (TkMacOSXDrawableWindow(src)) {
+	    bitmap_rep =  BitmapRepFromDrawableRect(src, src_x, src_y, width, height);
+	    if ( bitmap_rep ) {
+		img = [bitmap_rep CGImage];
+	    }
+	} else {
+	    TkMacOSXDbgMsg("Invalid source drawable - neither window nor pixmap.");
+	}
+
+	if (img) {
+	    DrawCGImage(dst, gc, dc.context, img, gc->foreground, gc->background,
+			CGRectMake(0, 0, srcDraw->size.width, srcDraw->size.height),
 			CGRectMake(src_x, src_y, width, height),
 			CGRectMake(dest_x, dest_y, width, height));
-		CFRelease(img);
-	    } else {
-		TkMacOSXDbgMsg("Invalid source drawable");
-	    }
+	    CFRelease(img);
 	} else {
-	    TkMacOSXDbgMsg("Invalid destination drawable");
+	    TkMacOSXDbgMsg("Failed to construct CGImage.");
 	}
-	TkMacOSXRestoreDrawingContext(&dc);
-    } else if (TkMacOSXDrawableWindow(src)) {
-	NSView *view = TkMacOSXDrawableView(srcDraw);
-	NSWindow *w = [view window];
-	NSInteger gs = [w windowNumber] > 0 ? [w gState] : 0;
-	/* // alternative using per-view gState:
-	NSInteger gs = [view gState];
-	if (!gs) {
-	    [view allocateGState];
-	    if ([view lockFocusIfCanDraw]) {
-		[view unlockFocus];
-	    }
-	    gs = [view gState];
-	}
-	*/
-	if (!gs || !TkMacOSXSetupDrawingContext(dst, gc, 1, &dc)) {
-	    return;
-	}
-	if (dc.context) {
-	    NSGraphicsContext *gc = nil;
-	    CGFloat boundsH = [view bounds].size.height;
-	    NSRect srcRect = NSMakeRect(srcDraw->xOff + src_x, boundsH -
-		    height - (srcDraw->yOff + src_y), width, height);
 
-	    if (((MacDrawable *) dst)->flags & TK_IS_PIXMAP) {
-		gc = [NSGraphicsContext graphicsContextWithGraphicsPort:
-			dc.context flipped:NO];
-		if (gc) {
-		    [NSGraphicsContext saveGraphicsState];
-		    [NSGraphicsContext setCurrentContext:gc];
-		}
-	    }
-	    NSCopyBits(gs, srcRect, NSMakePoint(dest_x,
-		    dc.portBounds.size.height - dest_y));
-	    if (gc) {
-		[NSGraphicsContext restoreGraphicsState];
-	    }
-	} else {
-	    TkMacOSXDbgMsg("Invalid destination drawable");
-	}
-	TkMacOSXRestoreDrawingContext(&dc);
     } else {
-	TkMacOSXDbgMsg("Invalid source drawable");
+	TkMacOSXDbgMsg("Invalid destination drawable - no context.");
+	return;
     }
+
+    TkMacOSXRestoreDrawingContext(&dc);
 }
 
 /*
@@ -254,7 +298,7 @@ XCopyPlane(
 
     display->request++;
     if (!width || !height) {
-	/* TkMacOSXDbgMsg("Drawing of emtpy area requested"); */
+	/* TkMacOSXDbgMsg("Drawing of empty area requested"); */
 	return;
     }
     if (plane != 1) {
@@ -384,13 +428,7 @@ CreateCGImageWithXImage(
     char *data = NULL;
     CGDataProviderReleaseDataCallback releaseData = ReleaseData;
 
-    if (image->obdata) {
-	/*
-	 * Image from XGetImage
-	 */
-
-	img = TkMacOSXCreateCGImageWithDrawable((Pixmap) image->obdata);
-    } else if (image->bits_per_pixel == 1) {
+    if (image->bits_per_pixel == 1) {
 	/*
 	 * BW image
 	 */
@@ -425,7 +463,7 @@ CreateCGImageWithXImage(
 	 * Color image
 	 */
 
-	CGColorSpaceRef colorspace = CGColorSpaceCreateWithName(kCGColorSpaceGenericRGB);
+	CGColorSpaceRef colorspace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
 
 	bitsPerComponent = 8;
 	bitsPerPixel = 32;
@@ -1441,43 +1479,72 @@ TkScrollWindow(
     int dx, int dy,		/* Distance rectangle should be moved. */
     TkRegion damageRgn)		/* Region to accumulate damage in. */
 {
-    MacDrawable *macDraw = (MacDrawable *) Tk_WindowId(tkwin);
+    Drawable drawable = Tk_WindowId(tkwin);
+    MacDrawable *macDraw = (MacDrawable *) drawable; 
     NSView *view = TkMacOSXDrawableView(macDraw);
-    CGRect visRect, srcRect, dstRect;
-    CGFloat boundsH;
-    HIShapeRef dmgRgn, dstRgn;
+    CGRect srcRect, dstRect;
+    HIShapeRef dmgRgn = NULL, extraRgn;
+    NSRect bounds, visRect, scrollSrc, scrollDst;
+    NSPoint delta = NSMakePoint(dx, dy);
     int result;
-
-    if (view && !CGRectIsEmpty(visRect = NSRectToCGRect([view visibleRect]))) {
-	boundsH = [view bounds].size.height;
-	srcRect = CGRectMake(macDraw->xOff + x, boundsH - height -
-		(macDraw->yOff + y), width, height);
-	dstRect = CGRectIntersection(CGRectOffset(srcRect, dx, -dy), visRect);
-	srcRect = CGRectIntersection(srcRect, visRect);
-	if (!CGRectIsEmpty(srcRect) && !CGRectIsEmpty(dstRect)) {
-	    /*
-	    CGRect sRect = CGRectIntersection(CGRectOffset(dstRect, -dx, dy),
-		    srcRect);
-	    NSCopyBits(0, NSRectFromCGRect(sRect),
-		    NSPointFromCGPoint(CGRectOffset(sRect, dx, -dy).origin));
-	    */
-	    [view scrollRect:NSRectFromCGRect(srcRect) by:NSMakeSize(dx, -dy)];
-	}
-	srcRect.origin.y = boundsH - srcRect.size.height - srcRect.origin.y;
-	dstRect.origin.y = boundsH - dstRect.size.height - dstRect.origin.y;
-	srcRect = CGRectUnion(srcRect, dstRect);
-	dmgRgn = HIShapeCreateMutableWithRect(&srcRect);
-	dstRgn = HIShapeCreateWithRect(&dstRect);
-	ChkErr(HIShapeDifference, dmgRgn, dstRgn, (HIMutableShapeRef) dmgRgn);
-	CFRelease(dstRgn);
-	TkMacOSXInvalidateViewRegion(view, dmgRgn);
-    } else {
-	dmgRgn = HIShapeCreateEmpty();
+  
+    if ( view ) {
+  	/*  Get the scroll area in NSView coordinates (origin at bottom left). */
+  	bounds = [view bounds];
+ 	scrollSrc = NSMakeRect(
+			       macDraw->xOff + x, 
+			       bounds.size.height - height - (macDraw->yOff + y),
+			       width, height);
+ 	scrollDst = NSOffsetRect(scrollSrc, dx, -dy);
+  	/* Limit scrolling to the window content area. */
+ 	visRect = [view visibleRect];
+ 	scrollSrc = NSIntersectionRect(scrollSrc, visRect);
+ 	scrollDst = NSIntersectionRect(scrollDst, visRect);
+  
+ 	if ( !NSIsEmptyRect(scrollSrc) && !NSIsEmptyRect(scrollDst) ) {
+  
+  	    /*
+  	     * Mark the difference between source and destination as damaged.
+ 	     * This region is described in the Tk coordinate system.
+  	     */
+  
+ 	    srcRect = CGRectMake(x, y, width, height);
+  	    dstRect = CGRectOffset(srcRect, dx, dy);
+  	    dmgRgn = HIShapeCreateMutableWithRect(&srcRect);
+ 	    extraRgn = HIShapeCreateWithRect(&dstRect);
+ 	    ChkErr(HIShapeDifference, dmgRgn, extraRgn, (HIMutableShapeRef) dmgRgn);
+ 	    CFRelease(extraRgn);
+  	    
+ 	    /* Scroll the rectangle. */
+ 	    [view scrollRect:scrollSrc by:NSMakeSize(dx, -dy)];
+  
+ 	    /* 
+ 	     * Adjust the positions of the button subwindows that meet the scroll
+ 	     * area.
+  	     */
+ 
+  	    for (NSView *subview in [view subviews] ) {
+ 	    	if ( [subview isKindOfClass:[NSButton class]] == YES ) {
+ 		    NSRect subframe = [subview frame];
+ 		    if  ( NSIntersectsRect(scrollSrc, subframe) ||
+ 			  NSIntersectsRect(scrollDst, subframe) ) { 
+ 			TkpShiftButton((NSButton *)subview, delta );
+ 		    }
+ 	    	}
+  	    }
+ 
+ 	    /* Redisplay the scrolled area. */
+ 	    [view displayRect:scrollDst];
+ 
+  	}
+    }
+  
+    if ( dmgRgn == NULL ) {
+  	dmgRgn = HIShapeCreateEmpty();
     }
     TkMacOSXSetWithNativeRegion(damageRgn, dmgRgn);
     result = HIShapeIsEmpty(dmgRgn) ? 0 : 1;
     CFRelease(dmgRgn);
-
     return result;
 }
 

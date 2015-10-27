@@ -9,6 +9,7 @@
  * Copyright (c) 1995-1997 Sun Microsystems, Inc.
  * Copyright 2001-2009, Apple Inc.
  * Copyright (c) 2005-2009 Daniel A. Steffen <das@users.sourceforge.net>
+ * Copyright 2014 Marc Culler.
  *
  * See the file "license.terms" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -782,7 +783,6 @@ XCreateImage(
     int bytes_per_line)
 {
     XImage *ximage;
-
     display->request++;
     ximage = ckalloc(sizeof(XImage));
 
@@ -792,6 +792,7 @@ XCreateImage(
     ximage->xoffset = offset;
     ximage->format = format;
     ximage->data = data;
+    ximage->obdata = NULL;
 
     if (format == ZPixmap) {
 	ximage->bits_per_pixel = 32;
@@ -823,7 +824,6 @@ XCreateImage(
     ximage->red_mask = 0x00FF0000;
     ximage->green_mask = 0x0000FF00;
     ximage->blue_mask = 0x000000FF;
-    ximage->obdata = NULL;
     ximage->f.create_image = NULL;
     ximage->f.destroy_image = DestroyImage;
     ximage->f.get_pixel = ImageGetPixel;
@@ -842,8 +842,9 @@ XCreateImage(
  *	This function copies data from a pixmap or window into an XImage.
  *
  * Results:
- *	Returns a newly allocated image containing the data from the given
- *	rectangle of the given drawable.
+ *	Returns a newly allocated XImage containing the data from the given
+ *	rectangle of the given drawable, or NULL if the XImage could not be
+ *     constructed.
  *
  * Side effects:
  *	None.
@@ -862,60 +863,70 @@ XGetImage(
     unsigned long plane_mask,
     int format)
 {
-    MacDrawable *macDraw = (MacDrawable *) d;
-    XImage *   imagePtr = NULL;
-    Pixmap     pixmap = (Pixmap) NULL;
-    Tk_Window  win = (Tk_Window) macDraw->winPtr;
-    GC	       gc;
-    char *     data = NULL;
-    int	       depth = 32;
-    int	       offset = 0;
-    int	       bitmap_pad = 0;
-    int	       bytes_per_line = 0;
-
+    NSBitmapImageRep *bitmap_rep;
+    XImage *       imagePtr = NULL;
+    char *           bitmap = NULL;
+    char *           image_data=NULL;
+    int	        depth = 32;
+    int	        offset = 0;
+    int	        bitmap_pad = 0;
+    int	        bytes_per_row = 4*width;
+    int                size;
+    TkMacOSXDbgMsg("XGetImage");
     if (format == ZPixmap) {
-	if (width > 0 && height > 0) {
-	    /*
-	     * Tk_GetPixmap fails for zero width or height.
-	     */
-
-	    pixmap = Tk_GetPixmap(display, d, width, height, depth);
+	if (width == 0 || height == 0) {
+	    /* This happens all the time.
+	    TkMacOSXDbgMsg("XGetImage: empty image requested");
+	    */
+	    return NULL;
 	}
-	if (win) {
-	    XGCValues values;
 
-	    gc = Tk_GetGC(win, 0, &values);
-	} else {
-	    gc = XCreateGC(display, pixmap, 0, NULL);
+	bitmap_rep =  BitmapRepFromDrawableRect(d, x, y,width, height);
+
+	if ( bitmap_rep == Nil                        ||
+	     [bitmap_rep bitmapFormat] != 0    ||
+	     [bitmap_rep samplesPerPixel] != 4 ||
+	     [bitmap_rep isPlanar] != 0               ) {
+	    TkMacOSXDbgMsg("XGetImage: Failed to construct NSBitmapRep");
+	    return NULL;
 	}
-	if (pixmap) {
-	    CGContextRef context;
 
-	    XCopyArea(display, d, pixmap, gc, x, y, width, height, 0, 0);
-	    context = ((MacDrawable *) pixmap)->context;
-	    if (context) {
-		data = CGBitmapContextGetData(context);
-		bytes_per_line = CGBitmapContextGetBytesPerRow(context);
+	NSSize image_size = NSMakeSize(width, height);
+	NSImage* ns_image = [[NSImage alloc]initWithSize:image_size];
+	[ns_image addRepresentation:bitmap_rep];
+
+	/* Assume premultiplied nonplanar data with 4 bytes per pixel and alpha last.*/
+	if ( [bitmap_rep bitmapFormat] == 0 &&
+	     [bitmap_rep isPlanar ] == 0 &&
+	     [bitmap_rep samplesPerPixel] == 4 ) {
+	    bytes_per_row = [bitmap_rep bytesPerRow];
+	    size = bytes_per_row*height;
+	    image_data = (char*)[bitmap_rep bitmapData];
+	    if ( image_data ) {
+		int row, n, m;
+		bitmap = ckalloc(size);
+		/*
+		  Oddly enough, the bitmap has the top row at the beginning,
+		  and the pixels are in BGRA format.
+		*/
+		for (row=0, n=0; row<height; row++, n+=bytes_per_row) {
+		    for (m=n; m<n+bytes_per_row; m+=4) {
+			*(bitmap+m)     = *(image_data+m+2);
+			*(bitmap+m+1) = *(image_data+m+1);
+			*(bitmap+m+2) = *(image_data+m);
+			*(bitmap+m+3) = *(image_data+m+3);
+		    }
+		}
 	    }
 	}
-	if (data) {
+	if (bitmap) {
 	    imagePtr = XCreateImage(display, NULL, depth, format, offset,
-		    data, width, height, bitmap_pad, bytes_per_line);
-
-	    /*
-	     * Track Pixmap underlying the XImage in the unused obdata field
-	     * so that we can treat XImages coming from XGetImage specially.
-	     */
-
-	    imagePtr->obdata = (XPointer) pixmap;
-	} else if (pixmap) {
-	    Tk_FreePixmap(display, pixmap);
-	}
-	if (!win) {
-	    XFreeGC(display, gc);
+				    (char*)bitmap, width, height, bitmap_pad, bytes_per_row);
+	    [ns_image removeRepresentation:bitmap_rep]; /*releases the rep*/
+	    [ns_image release];
 	}
     } else {
-	TkMacOSXDbgMsg("Invalid image format");
+	TkMacOSXDbgMsg("Could not extract image from drawable.");
     }
     return imagePtr;
 }
@@ -941,9 +952,7 @@ DestroyImage(
     XImage *image)
 {
     if (image) {
-	if (image->obdata) {
-	    Tk_FreePixmap((Display*) gMacDisplay, (Pixmap) image->obdata);
-	} else if (image->data) {
+	if (image->data) {
 	    ckfree(image->data);
 	}
 	ckfree(image);

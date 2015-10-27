@@ -201,9 +201,15 @@ MODULE_SCOPE void		TkpWinToplevelDetachWindow(TkWindow *winPtr);
 MODULE_SCOPE int		TkpWmGetState(TkWindow *winPtr);
 
 /*
+ * Common routines used in Windows implementation
+ */
+MODULE_SCOPE Tcl_Obj *	        TkWin32ErrorObj(HRESULT hrError);
+
+
+/*
  * The following functions are not present in old versions of Windows
- * API headers but are used in the Tk source to ensure 64bit 
- * compatability.
+ * API headers but are used in the Tk source to ensure 64bit
+ * compatibility.
  */
 
 #ifndef GetClassLongPtr

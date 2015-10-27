@@ -18,8 +18,8 @@
  * Forward declarations of procedures defined later in this file:
  */
 
-static int		DebuggerCmd (ClientData dummy, Tcl_Interp *interp,
-			    int argc, const char **argv);
+static int		DebuggerObjCmd (ClientData dummy, Tcl_Interp *interp,
+			    int objc, Tcl_Obj *const objv[]);
 
 /*
  *----------------------------------------------------------------------
@@ -46,7 +46,7 @@ TkplatformtestInit(
      * Add commands for platform specific tests on MacOS here.
      */
 
-    Tcl_CreateCommand(interp, "debugger", DebuggerCmd,
+    Tcl_CreateObjCommand(interp, "debugger", DebuggerObjCmd,
 	    (ClientData) 0, (Tcl_CmdDeleteProc *) NULL);
 
     return TCL_OK;
@@ -55,7 +55,7 @@ TkplatformtestInit(
 /*
  *----------------------------------------------------------------------
  *
- * DebuggerCmd --
+ * DebuggerObjCmd --
  *
  *	This procedure simply calls the low level debugger.
  *
@@ -69,11 +69,11 @@ TkplatformtestInit(
  */
 
 static int
-DebuggerCmd(
+DebuggerObjCmd(
     ClientData clientData,		/* Not used. */
     Tcl_Interp *interp,			/* Not used. */
-    int argc,				/* Not used. */
-    const char **argv)			/* Not used. */
+    int objc,				/* Not used. */
+    Tcl_Obj *const objv[])			/* Not used. */
 {
     Debugger();
     return TCL_OK;

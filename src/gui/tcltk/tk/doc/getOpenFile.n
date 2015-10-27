@@ -65,8 +65,11 @@ discussion on the contents of \fIfilePatternList\fR.
 \fB\-initialdir\fR \fIdirectory\fR
 .
 Specifies that the files in \fIdirectory\fR should be displayed
-when the dialog pops up. If this parameter is not specified, then
-the files in the current working directory are displayed. If the
+when the dialog pops up. If this parameter is not specified, 
+the initial directory defaults to the current working directory 
+on non-Windows systems and on Windows systems prior to Vista.
+On Vista and later systems, the initial directory defaults to the last
+user-selected directory for the application. If the
 parameter specifies a relative path, the return value will convert the
 relative path to an absolute path.
 .TP

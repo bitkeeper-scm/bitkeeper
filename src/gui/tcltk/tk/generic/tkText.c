@@ -6658,8 +6658,8 @@ int
 TkpTesttextCmd(
     ClientData clientData,	/* Main window for application. */
     Tcl_Interp *interp,		/* Current interpreter. */
-    int argc,			/* Number of arguments. */
-    const char **argv)		/* Argument strings. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])		/* Argument strings. */
 {
     TkText *textPtr;
     size_t len;
@@ -6668,45 +6668,41 @@ TkpTesttextCmd(
     char buf[64];
     Tcl_CmdInfo info;
 
-    if (argc < 3) {
+    if (objc < 3) {
 	return TCL_ERROR;
     }
 
-    if (Tcl_GetCommandInfo(interp, argv[1], &info) == 0) {
+    if (Tcl_GetCommandInfo(interp, Tcl_GetString(objv[1]), &info) == 0) {
 	return TCL_ERROR;
     }
-    if (info.isNativeObjectProc) {
-	textPtr = info.objClientData;
-    } else {
-	textPtr = info.clientData;
-    }
-    len = strlen(argv[2]);
-    if (strncmp(argv[2], "byteindex", len) == 0) {
-	if (argc != 5) {
+    textPtr = info.objClientData;
+    len = strlen(Tcl_GetString(objv[2]));
+    if (strncmp(Tcl_GetString(objv[2]), "byteindex", len) == 0) {
+	if (objc != 5) {
 	    return TCL_ERROR;
 	}
-	lineIndex = atoi(argv[3]) - 1;
-	byteIndex = atoi(argv[4]);
+	lineIndex = atoi(Tcl_GetString(objv[3])) - 1;
+	byteIndex = atoi(Tcl_GetString(objv[4]));
 
 	TkTextMakeByteIndex(textPtr->sharedTextPtr->tree, textPtr, lineIndex,
 		byteIndex, &index);
-    } else if (strncmp(argv[2], "forwbytes", len) == 0) {
-	if (argc != 5) {
+    } else if (strncmp(Tcl_GetString(objv[2]), "forwbytes", len) == 0) {
+	if (objc != 5) {
 	    return TCL_ERROR;
 	}
-	if (TkTextGetIndex(interp, textPtr, argv[3], &index) != TCL_OK) {
+	if (TkTextGetIndex(interp, textPtr, Tcl_GetString(objv[3]), &index) != TCL_OK) {
 	    return TCL_ERROR;
 	}
-	byteOffset = atoi(argv[4]);
+	byteOffset = atoi(Tcl_GetString(objv[4]));
 	TkTextIndexForwBytes(textPtr, &index, byteOffset, &index);
-    } else if (strncmp(argv[2], "backbytes", len) == 0) {
-	if (argc != 5) {
+    } else if (strncmp(Tcl_GetString(objv[2]), "backbytes", len) == 0) {
+	if (objc != 5) {
 	    return TCL_ERROR;
 	}
-	if (TkTextGetIndex(interp, textPtr, argv[3], &index) != TCL_OK) {
+	if (TkTextGetIndex(interp, textPtr, Tcl_GetString(objv[3]), &index) != TCL_OK) {
 	    return TCL_ERROR;
 	}
-	byteOffset = atoi(argv[4]);
+	byteOffset = atoi(Tcl_GetString(objv[4]));
 	TkTextIndexBackBytes(textPtr, &index, byteOffset, &index);
     } else {
 	return TCL_ERROR;

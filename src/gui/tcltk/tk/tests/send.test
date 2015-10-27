@@ -227,7 +227,7 @@ test send-8.3 {Tk_SendCmd procedure, options} {secureserver} {
 } {1 {no application named "-async"}}
 test send-8.4 {Tk_SendCmd procedure, options} {secureserver} {
     list [catch {send -gorp foo bar baz} msg] $msg
-} {1 {bad option "-gorp": must be -async, -displayof, or --}}
+} {1 {no application named "-gorp"}}
 test send-8.5 {Tk_SendCmd procedure, options} {secureserver} {
     list [catch {send -async foo} msg] $msg
 } {1 {wrong # args: should be "send ?-option value ...? interpName arg ?arg ...?"}}

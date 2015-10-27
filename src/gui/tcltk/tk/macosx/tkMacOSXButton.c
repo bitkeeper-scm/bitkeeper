@@ -7,6 +7,7 @@
  * Copyright (c) 1996-1997 by Sun Microsystems, Inc.
  * Copyright 2001-2009, Apple Inc.
  * Copyright (c) 2006-2009 Daniel A. Steffen <das@users.sourceforge.net>
+ * Copyright 2014 Marc Culler.
  *
  * See the file "license.terms" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -23,9 +24,67 @@
 #endif
 */
 
+static NSRect TkMacOSXGetButtonFrame(TkButton *butPtr);
+
+/*
+ * A subclass of NSButton with sanity checking:
+ * NSButtons created by Tk will have their tag set to a pointer to the TkButton
+ * which manages the NSButton.  This allows a TkNSButton to be aware of the
+ * state of its Tk parent.  This subclass overrides the drawRect method
+ * so that it will not draw itself unless the NSButton frame matches
+ * the frame which was installed by DisplayButton, and the TkButton is
+ * mapped.  Also, it will not draw anything if the widget is completely
+ * outside of its container.
+ */
+
+@interface TkNSButton: NSButton
+
+@end
+
+@implementation TkNSButton
+
+    - (void)drawRect:(NSRect)dirtyRect
+    {
+	NSInteger tag = [self tag];
+	if ( tag != -1) {
+	    TkButton *butPtr = (TkButton *)tag;
+	    MacDrawable* macWin = (MacDrawable *)butPtr;
+	    NSRect Tkframe = TkMacOSXGetButtonFrame(butPtr);
+	    Tk_Window tkwin = butPtr->tkwin;
+	    /* Do not draw if the widget is misplaced or unmapped. */
+	    if ( NSIsEmptyRect(Tkframe) || 
+		 ! macWin->winPtr->flags & TK_MAPPED ||
+		 ! NSEqualRects(Tkframe, [self frame]) 
+		 ) {
+		return;
+	    }
+	     /* Do not draw if the widget is completely outside of its parent, or within 20 pixels of the lower border; this prevents buttons from being drawn on peer widgets as scrolling occurs. */
+	    if (tkwin) {
+		int parent_height = Tk_Height(Tk_Parent(tkwin));
+		int widget_height = Tk_Height(tkwin);
+		int y = Tk_Y(tkwin);
+		if ( y > parent_height - 20 || y + widget_height < 0 ) {
+		    return;
+		}
+
+	    /* Do not draw if the widget is completely outside of its parent, or within 50 pixels of the right border; this prevents buttons from being drawn on peer widgets as scrolling occurs. */
+		int parent_width = Tk_Width(Tk_Parent(tkwin));
+		int widget_width = Tk_Width(tkwin);
+		int x = Tk_X(tkwin);
+		if (x > parent_width - 50 || x < 0) { 
+		    return;
+		}
+	    }
+	[super drawRect:dirtyRect];
+    }
+ }
+
+@end
+
+
 typedef struct MacButton {
     TkButton info;
-    NSButton *button;
+    TkNSButton *button;
     NSImage *image, *selectImage, *tristateImage;
 #if TK_MAC_BUTTON_USE_COMPATIBILITY_METRICS
     int fix;
@@ -135,9 +194,10 @@ TkpDestroyButton(
     TkButton *butPtr)
 {
     MacButton *macButtonPtr = (MacButton *) butPtr;
+    [macButtonPtr->button setTag:(NSInteger)-1];
 
     TkMacOSXMakeCollectableAndRelease(macButtonPtr->button);
-    TkMacOSXMakeCollectableAndRelease(macButtonPtr->selectImage);
+    TkMacOSXMakeCollectableAndRelease(macButtonPtr->image);
     TkMacOSXMakeCollectableAndRelease(macButtonPtr->selectImage);
     TkMacOSXMakeCollectableAndRelease(macButtonPtr->tristateImage);
 }
@@ -186,6 +246,45 @@ TkpDisplayButton(
 /*
  *----------------------------------------------------------------------
  *
+ * TkpShiftButton --
+ *
+ *	Moves the frame of an NSButton (or TkNSButton) and in case the tag is
+ *     set, also adjusts the xOff and yOff of the controlling TkButton's
+ *     MacDrawable.  This is used to avoid jitter when scrolling.
+ *
+ * Results:
+ *	None
+ *
+ * Side effects:
+ *	Moves the NSbutton after adjusting the associated MacDrawable.
+ *
+ *----------------------------------------------------------------------
+ */
+void
+TkpShiftButton(
+    NSButton *button,
+    NSPoint delta )
+    {
+	NSPoint origin = [button frame].origin;
+	NSInteger tag = [button tag];
+	if ( tag != -1) {
+	    TkButton* butPtr = (TkButton *)tag;
+	    TkWindow *winPtr = (TkWindow *) (butPtr->tkwin);
+	    if (winPtr) {
+		MacDrawable *macWin =  (MacDrawable *) winPtr->window;
+		macWin->xOff += delta.x;
+		macWin->yOff += delta.y;
+	    }
+	}
+        origin.x += delta.x;
+	origin.y -= delta.y;
+	[button setFrameOrigin:origin];
+    }
+
+
+/*
+ *----------------------------------------------------------------------
+ *
  * TkpComputeButtonGeometry --
  *
  *	After changes in a button's text or bitmap, this procedure
@@ -218,7 +317,8 @@ TkpComputeButtonGeometry(
     case TYPE_CHECK_BUTTON:
     case TYPE_RADIO_BUTTON:
 	if (!macButtonPtr->button) {
-	    NSButton *button = [[NSButton alloc] initWithFrame:NSZeroRect];
+	    TkNSButton *button = [[TkNSButton alloc] initWithFrame:NSZeroRect];
+	    [button setTag:(NSInteger)butPtr];
 	    macButtonPtr->button = TkMacOSXMakeUncollectable(button);
 	}
 	ComputeNativeButtonGeometry(butPtr);
@@ -266,6 +366,52 @@ TkpButtonSetDefaults()
 /*
  *----------------------------------------------------------------------
  *
+ * TkMacOSXGetButtonFrame --
+ *
+ *	Computes a frame for an NSButton that will correspond to where
+ *	Tk thinks the button is located.
+ *
+ * Results:
+ *	Returns an NSRect describing a frame for an NSButton.
+ *
+ * Side effects:
+ *	None
+ *
+ *----------------------------------------------------------------------
+ */
+NSRect TkMacOSXGetButtonFrame(
+     TkButton *butPtr)
+{
+    MacButton *macButtonPtr = (MacButton *) butPtr;
+    Tk_Window tkwin = butPtr->tkwin;
+    TkWindow *winPtr = (TkWindow *) tkwin;
+    if (tkwin) {
+	MacDrawable *macWin =  (MacDrawable *) winPtr->window;
+	NSView *view = TkMacOSXDrawableView(macWin);
+	CGFloat viewHeight = [view bounds].size.height;
+	NSRect frame = NSMakeRect(macWin->xOff, macWin->yOff,
+				  Tk_Width(tkwin), Tk_Height(tkwin));
+
+#if TK_MAC_BUTTON_USE_COMPATIBILITY_METRICS
+	if (tkMacOSXUseCompatibilityMetrics) {
+	    BoundsFix boundsFix = boundsFixes[macButtonPtr->fix];
+	    frame = NSOffsetRect(frame, boundsFix.offsetX, boundsFix.offsetY);
+	    frame.size.height -= boundsFix.shrinkH + NATIVE_BUTTON_EXTRA_H;
+	    frame = NSInsetRect(frame, boundsFix.inset + NATIVE_BUTTON_INSET,
+		boundsFix.inset + NATIVE_BUTTON_INSET);
+	}
+#endif
+
+	frame.origin.y = viewHeight - (frame.origin.y + frame.size.height);
+	return frame;
+    } else {
+	return NSZeroRect;
+    }
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
  * DisplayNativeButton --
  *
  *	This procedure is invoked to display a button widget. It is
@@ -286,7 +432,7 @@ DisplayNativeButton(
     TkButton *butPtr)
 {
     MacButton *macButtonPtr = (MacButton *) butPtr;
-    NSButton *button = macButtonPtr->button;
+    TkNSButton *button = macButtonPtr->button;
     Tk_Window tkwin = butPtr->tkwin;
     TkWindow *winPtr = (TkWindow *) tkwin;
     MacDrawable *macWin =  (MacDrawable *) winPtr->window;
@@ -349,21 +495,8 @@ DisplayNativeButton(
     } else {
 	[button setKeyEquivalent:@""];
     }
-    frame = NSMakeRect(macWin->xOff, macWin->yOff, Tk_Width(tkwin),
-	    Tk_Height(tkwin));
-#if TK_MAC_BUTTON_USE_COMPATIBILITY_METRICS
-    if (tkMacOSXUseCompatibilityMetrics) {
-	BoundsFix boundsFix = boundsFixes[macButtonPtr->fix];
-	frame = NSOffsetRect(frame, boundsFix.offsetX, boundsFix.offsetY);
-	frame.size.height -= boundsFix.shrinkH + NATIVE_BUTTON_EXTRA_H;
-	frame = NSInsetRect(frame, boundsFix.inset + NATIVE_BUTTON_INSET,
-		boundsFix.inset + NATIVE_BUTTON_INSET);
-    }
-#endif
-    frame.origin.y = viewHeight - (frame.origin.y + frame.size.height);
-    if (!NSEqualRects(frame, [button frame])) {
-	[button setFrame:frame];
-    }
+    frame = TkMacOSXGetButtonFrame(butPtr);
+    [button setFrame:frame];
     [button displayRectIgnoringOpacity:[button bounds]];
     TkMacOSXRestoreDrawingContext(&dc);
 #ifdef TK_MAC_DEBUG_BUTTON
@@ -396,7 +529,7 @@ ComputeNativeButtonGeometry(
     TkButton *butPtr)		/* Button whose geometry may have changed. */
 {
     MacButton *macButtonPtr = (MacButton *) butPtr;
-    NSButton *button = macButtonPtr->button;
+    TkNSButton *button = macButtonPtr->button;
     NSButtonCell *cell = [button cell];
     NSButtonType type = -1;
     NSBezelStyle style = 0;
@@ -1169,6 +1302,7 @@ ComputeUnixButtonGeometry(
     Tk_SetInternalBorder(butPtr->tkwin, butPtr->inset);
 }
 
+
 /*
  * Local Variables:
  * mode: objc

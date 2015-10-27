@@ -221,7 +221,7 @@ OappHandler(
     Tcl_Interp *interp = (Tcl_Interp *) handlerRefcon;
 
     if (interp &&
-	    Tcl_GetCommandInfo(interp, "::tk::mac::OpenApplication", &dummy)){
+	    Tcl_FindCommand(interp, "::tk::mac::OpenApplication", NULL, 0)){
 	int code = Tcl_EvalEx(interp, "::tk::mac::OpenApplication", -1, TCL_EVAL_GLOBAL);
 	if (code != TCL_OK) {
 	    Tcl_BackgroundException(interp, code);
@@ -252,13 +252,12 @@ RappHandler(
     AppleEvent *reply,
     SRefCon handlerRefcon)
 {
-    Tcl_CmdInfo dummy;
     Tcl_Interp *interp = (Tcl_Interp *) handlerRefcon;
     ProcessSerialNumber thePSN = {0, kCurrentProcess};
     OSStatus err = ChkErr(SetFrontProcess, &thePSN);
 
-    if (interp && Tcl_GetCommandInfo(interp,
-	    "::tk::mac::ReopenApplication", &dummy)) {
+    if (interp && Tcl_FindCommand(interp,
+	    "::tk::mac::ReopenApplication", NULL, 0)) {
 	int code = Tcl_EvalEx(interp, "::tk::mac::ReopenApplication", -1, TCL_EVAL_GLOBAL);
 	if (code != TCL_OK){
 	    Tcl_BackgroundException(interp, code);
@@ -294,7 +293,7 @@ PrefsHandler(
     Tcl_Interp *interp = (Tcl_Interp *) handlerRefcon;
 
     if (interp &&
-	    Tcl_GetCommandInfo(interp, "::tk::mac::ShowPreferences", &dummy)){
+	    Tcl_FindCommand(interp, "::tk::mac::ShowPreferences", NULL, 0)){
 	int code = Tcl_EvalEx(interp, "::tk::mac::ShowPreferences", -1, TCL_EVAL_GLOBAL);
 	if (code != TCL_OK) {
 	    Tcl_BackgroundException(interp, code);
@@ -333,7 +332,6 @@ OdocHandler(
     long count, index;
     AEKeyword keyword;
     Tcl_DString command, pathName;
-    Tcl_CmdInfo dummy;
     int code;
 
     /*
@@ -342,7 +340,7 @@ OdocHandler(
      */
 
     if (!interp ||
-	    !Tcl_GetCommandInfo(interp, "::tk::mac::OpenDocument", &dummy)) {
+	    !Tcl_FindCommand(interp, "::tk::mac::OpenDocument", NULL, 0)) {
 	return noErr;
     }
 
@@ -433,7 +431,7 @@ PrintHandler(
      */
 
     if (!interp ||
-	    !Tcl_GetCommandInfo(interp, "::tk::mac::PrintDocument", &dummy)) {
+	    !Tcl_FindCommand(interp, "::tk::mac::PrintDocument", NULL, 0)) {
 	return noErr;
     }
 
@@ -623,8 +621,7 @@ ReallyKillMe(
     int flags)
 {
     Tcl_Interp *interp = ((KillEvent *) eventPtr)->interp;
-    Tcl_CmdInfo dummy;
-    int quit = Tcl_GetCommandInfo(interp, "::tk::mac::Quit", &dummy);
+    int quit = Tcl_FindCommand(interp, "::tk::mac::Quit", NULL, 0)!=NULL;
     int code = Tcl_EvalEx(interp, quit ? "::tk::mac::Quit" : "exit", -1, TCL_EVAL_GLOBAL);
 
     if (code != TCL_OK) {

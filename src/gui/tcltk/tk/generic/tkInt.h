@@ -1110,13 +1110,15 @@ MODULE_SCOPE int	Tk_RaiseObjCmd(ClientData clientData,
 MODULE_SCOPE int	Tk_ScaleObjCmd(ClientData clientData,
 			    Tcl_Interp *interp, int objc,
 			    Tcl_Obj *const objv[]);
-MODULE_SCOPE int	Tk_ScrollbarCmd(ClientData clientData,
-			    Tcl_Interp *interp, int argc, const char **argv);
+MODULE_SCOPE int	Tk_ScrollbarObjCmd(ClientData clientData,
+			    Tcl_Interp *interp, int objc,
+			    Tcl_Obj *const objv[]);
 MODULE_SCOPE int	Tk_SelectionObjCmd(ClientData clientData,
 			    Tcl_Interp *interp, int objc,
 			    Tcl_Obj *const objv[]);
-MODULE_SCOPE int	Tk_SendCmd(ClientData clientData,
-			    Tcl_Interp *interp, int argc, const char **argv);
+MODULE_SCOPE int	Tk_SendObjCmd(ClientData clientData,
+			    Tcl_Interp *interp,int objc,
+			    Tcl_Obj *const objv[]);
 MODULE_SCOPE int	Tk_SendObjCmd(ClientData clientData,
 			    Tcl_Interp *interp, int objc,
 			    Tcl_Obj *const objv[]);
@@ -1151,8 +1153,8 @@ MODULE_SCOPE void	TkFreeGeometryMaster(Tk_Window tkwin,
 
 MODULE_SCOPE void	TkEventInit(void);
 MODULE_SCOPE void	TkRegisterObjTypes(void);
-MODULE_SCOPE int	TkDeadAppCmd(ClientData clientData,
-			    Tcl_Interp *interp, int argc, const char **argv);
+MODULE_SCOPE int	TkDeadAppObjCmd(ClientData clientData,
+			    Tcl_Interp *interp, int objc, Tcl_Obj *const argv[]);
 MODULE_SCOPE int	TkCanvasGetCoordObj(Tcl_Interp *interp,
 			    Tk_Canvas canvas, Tcl_Obj *obj,
 			    double *doublePtr);

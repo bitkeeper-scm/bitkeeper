@@ -145,7 +145,7 @@ TkpDisplayScale(
     Tk_Window tkwin = scalePtr->tkwin;
     Tcl_Interp *interp = scalePtr->interp;
     int result;
-    char string[PRINT_CHARS];
+    char string[TCL_DOUBLE_SPACE];
     MacScale *macScalePtr = (MacScale *) clientData;
     Rect r;
     WindowRef windowRef;

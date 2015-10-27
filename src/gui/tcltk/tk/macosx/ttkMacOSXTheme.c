@@ -294,14 +294,22 @@ static Ttk_StateTable TabPositionTable[] = {
  *       TP30000359-TPXREF116>
  */
 
-static const int TAB_HEIGHT = 10;
-static const int TAB_OVERLAP = 10;
+
+int TAB_HEIGHT = 0;
+int TAB_OVERLAP = 0;
 
 static void TabElementSize(
     void *clientData, void *elementRecord, Tk_Window tkwin,
     int *widthPtr, int *heightPtr, Ttk_Padding *paddingPtr)
 {
-    *heightPtr = TAB_HEIGHT + TAB_OVERLAP - 1;
+       TAB_HEIGHT = 10;
+       TAB_OVERLAP = 10;
+       /*Different metrics on 10.10/Yosemite.*/
+    if (MAC_OS_X_VERSION_MIN_REQUIRED > 100000) {
+       TAB_OVERLAP = 5;
+      }
+     *heightPtr = TAB_HEIGHT + TAB_OVERLAP - 1;
+
 }
 
 static void TabElementDraw(
