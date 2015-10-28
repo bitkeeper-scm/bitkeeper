@@ -410,6 +410,22 @@ touch WANT
 cmpfiles WANT GOT
 echo OK
 
+echo $N Test -w hash bug ............................................$NL
+# in the past this hit an assertion
+echo A > A
+echo >> A
+echo B > B
+bk ndiff -w A B > GOT
+cat <<EOF > WANT
+1,2c1
+< A
+< 
+---
+> B
+EOF
+cmpfiles WANT GOT
+echo OK
+
 echo $N Test a diff -p cornercase....................................$NL
 cat <<EOF > A
 int
