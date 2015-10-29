@@ -344,3 +344,14 @@ echo 'BitKeeper/etc/config' > WANT
 checkfiles WANT OUT
 bk repocheck $Q || fail
 echo OK
+
+echo $N Try \'bk diffs -N\' with extra symlink ........................$NL
+ln -s ../project foo
+echo foo | bk diffs -N - > GOT 2>&1 || fail
+sed  's/\t2.*/\tDATE/' < GOT > GOT2
+cat <<EOF > WANT
+===== New file: foo =====
+SYMLINK -> ../project
+EOF
+cmpfiles GOT2 WANT
+echo OK
