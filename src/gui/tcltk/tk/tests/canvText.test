@@ -832,7 +832,7 @@ test canvText-16.1 {GetSelText procedure} -setup {
 
 test canvText-17.1 {TextToPostscript procedure} -setup {
     .c delete all
-    set result {/Courier-Oblique findfont [font actual $font -size] scalefont ISOEncode setfont
+    set result {findfont [font actual $font -size] scalefont ISOEncode setfont
 0.000 0.000 0.000 setrgbcolor AdjustColor
 0 100 200 \[
 \[(000)\]
@@ -856,7 +856,7 @@ end
     .c itemconfig test -font $font -text "00000000" -width [expr 3*$ax]
     .c itemconfig test -anchor n -fill black
     set x [.c postscript]
-    set x [string range $x [string first "/Courier-Oblique" $x] end]
+    set x [string range $x [string first "findfont " $x] end]
     expr {$x eq [subst $result] ? "ok" : $x}
 } -result ok
 

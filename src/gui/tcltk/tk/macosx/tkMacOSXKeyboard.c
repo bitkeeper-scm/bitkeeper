@@ -734,7 +734,8 @@ TkpGetKeySym(
      */
 
     if (eventPtr->xany.send_event == -1) {
-	int modifier = eventPtr->xkey.keycode;
+
+	int modifier = eventPtr->xkey.keycode & NSDeviceIndependentModifierFlagsMask;
 
 	if (modifier == NSCommandKeyMask) {
 	    return XK_Meta_L;

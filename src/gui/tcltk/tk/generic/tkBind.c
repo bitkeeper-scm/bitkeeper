@@ -16,9 +16,9 @@
 
 #ifdef _WIN32
 #include "tkWinInt.h"
-#endif
-
-#if !(defined(_WIN32) || defined(MAC_OSX_TK)) /* UNIX */
+#elif defined(MAC_OSX_TK)
+#include "tkMacOSXInt.h"
+#else
 #include "tkUnixInt.h"
 #endif
 
@@ -167,7 +167,7 @@ typedef struct {
 				 * button (0 means any buttons are OK). For
 				 * virtual events, specifies the Tk_Uid of the
 				 * virtual event name (never 0). */
-} Pattern;
+} TkPattern;
 
 /*
  * The following structure defines a pattern sequence, which consists of one
@@ -209,7 +209,7 @@ typedef struct PatSeq {
 				 * for end of list). Needed to implement
 				 * Tk_DeleteAllBindings. In a virtual event
 				 * table, always NULL. */
-    Pattern pats[1];		/* Array of "numPats" patterns. Only one
+    TkPattern pats[1];		/* Array of "numPats" patterns. Only one
 				 * element is declared here but in actuality
 				 * enough space will be allocated for
 				 * "numPats" patterns. To match, pats[0] must
@@ -612,7 +612,8 @@ static int		DeleteVirtualEvent(Tcl_Interp *interp,
 			    const char *eventString);
 static void		DeleteVirtualEventTable(VirtualEventTable *vetPtr);
 static void		ExpandPercents(TkWindow *winPtr, const char *before,
-			    XEvent *eventPtr,KeySym keySym,Tcl_DString *dsPtr);
+			    XEvent *eventPtr,KeySym keySym,
+			    unsigned int scriptCount, Tcl_DString *dsPtr);
 static PatSeq *		FindSequence(Tcl_Interp *interp,
 			    Tcl_HashTable *patternTablePtr, ClientData object,
 			    const char *eventString, int create,
@@ -635,7 +636,7 @@ static PatSeq *		MatchPatterns(TkDisplay *dispPtr,
 static int		NameToWindow(Tcl_Interp *interp, Tk_Window main,
 			    Tcl_Obj *objPtr, Tk_Window *tkwinPtr);
 static int		ParseEventDescription(Tcl_Interp *interp,
-			    const char **eventStringPtr, Pattern *patPtr,
+			    const char **eventStringPtr, TkPattern *patPtr,
 			    unsigned long *eventMaskPtr);
 static void		DoWarp(ClientData clientData);
 
@@ -1221,6 +1222,7 @@ Tk_BindEvent(
     XEvent *ringPtr;
     PatSeq *vMatchDetailList, *vMatchNoDetailList;
     int flags, oldScreen;
+    unsigned int scriptCount;
     Tcl_Interp *interp;
     Tcl_DString scripts;
     Tcl_InterpState interpState;
@@ -1372,6 +1374,7 @@ Tk_BindEvent(
      * each object.
      */
 
+    scriptCount = 0;
     Tcl_DStringInit(&scripts);
 
     for ( ; numObjects > 0; numObjects--, objectPtr++) {
@@ -1421,7 +1424,7 @@ Tk_BindEvent(
 
 	if (matchPtr != NULL) {
 	    ExpandPercents(winPtr, sourcePtr->script, eventPtr,
-		    detail.keySym, &scripts);
+		    detail.keySym, scriptCount++, &scripts);
 
 	    /*
 	     * A "" is added to the scripts string to separate the various
@@ -1601,7 +1604,7 @@ MatchPatterns(
     for ( ; psPtr != NULL; psPtr = psPtr->nextSeqPtr) {
 	XEvent *eventPtr = &bindPtr->eventRing[bindPtr->curEvent];
 	Detail *detailPtr = &bindPtr->detailRing[bindPtr->curEvent];
-	Pattern *patPtr = psPtr->pats;
+	TkPattern *patPtr = psPtr->pats;
 	Window window = eventPtr->xany.window;
 	int patCount, ringCount, flags, state, modMask, i;
 
@@ -1815,7 +1818,7 @@ MatchPatterns(
 	 */
 
 	if (bestPtr != NULL) {
-	    Pattern *patPtr2;
+	    TkPattern *patPtr2;
 
 	    if (matchPtr->numPats != bestPtr->numPats) {
 		if (bestPtr->numPats > matchPtr->numPats) {
@@ -1903,6 +1906,8 @@ ExpandPercents(
 				 * in % replacements. */
     KeySym keySym,		/* KeySym: only relevant for KeyPress and
 				 * KeyRelease events). */
+    unsigned int scriptCount,	/* The number of script-based binding patterns
+				 * matched so far for this event. */
     Tcl_DString *dsPtr)		/* Dynamic string in which to append new
 				 * command. */
 {
@@ -2184,6 +2189,9 @@ ExpandPercents(
 		}
 	    }
 	    goto doString;
+	case 'M':
+	    number = scriptCount;
+	    goto doNumber;
 	case 'N':
 	    if ((flags & KEY) && (eventPtr->type != MouseWheelEvent)) {
 		number = (int) keySym;
@@ -2879,7 +2887,7 @@ HandleEventGenerate(
     const char *name, *windowName;
     int count, flags, synch, i, number, warp;
     Tcl_QueuePosition pos;
-    Pattern pat;
+    TkPattern pat;
     Tk_Window tkwin, tkwin2;
     TkWindow *mainPtr;
     unsigned long eventMask;
@@ -3618,10 +3626,10 @@ FindSequence(
     unsigned long *maskPtr)	/* *maskPtr is filled in with the event types
 				 * on which this pattern sequence depends. */
 {
-    Pattern pats[EVENT_BUFFER_SIZE];
+    TkPattern pats[EVENT_BUFFER_SIZE];
     int numPats, virtualFound;
     const char *p;
-    Pattern *patPtr;
+    TkPattern *patPtr;
     PatSeq *psPtr;
     Tcl_HashEntry *hPtr;
     int flags, count, isNew;
@@ -3707,7 +3715,7 @@ FindSequence(
     key.type = patPtr->eventType;
     key.detail = patPtr->detail;
     hPtr = Tcl_CreateHashEntry(patternTablePtr, (char *) &key, &isNew);
-    sequenceSize = numPats*sizeof(Pattern);
+    sequenceSize = numPats*sizeof(TkPattern);
     if (!isNew) {
 	for (psPtr = Tcl_GetHashValue(hPtr); psPtr != NULL;
 		psPtr = psPtr->nextSeqPtr) {
@@ -3733,7 +3741,7 @@ FindSequence(
 
 	return NULL;
     }
-    psPtr = ckalloc(sizeof(PatSeq) + (numPats-1)*sizeof(Pattern));
+    psPtr = ckalloc(sizeof(PatSeq) + (numPats-1)*sizeof(TkPattern));
     psPtr->numPats = numPats;
     psPtr->script = NULL;
     psPtr->flags = flags;
@@ -3777,7 +3785,7 @@ ParseEventDescription(
     const char **eventStringPtr,/* On input, holds a pointer to start of event
 				 * string. On exit, gets pointer to rest of
 				 * string after parsed event. */
-    Pattern *patPtr,		/* Filled with the pattern parsed from the
+    TkPattern *patPtr,		/* Filled with the pattern parsed from the
 				 * event string. */
     unsigned long *eventMaskPtr)/* Filled with event mask of matched event. */
 {
@@ -4065,7 +4073,7 @@ static Tcl_Obj *
 GetPatternObj(
     PatSeq *psPtr)
 {
-    Pattern *patPtr;
+    TkPattern *patPtr;
     int patsLeft, needMods;
     const ModInfo *modPtr;
     const EventInfo *eiPtr;
@@ -4113,15 +4121,15 @@ GetPatternObj(
 	Tcl_AppendToObj(patternObj, "<", 1);
 
 	if ((psPtr->flags & PAT_NEARBY) && (patsLeft > 1)
-		&& (memcmp(patPtr, patPtr-1, sizeof(Pattern)) == 0)) {
+		&& (memcmp(patPtr, patPtr-1, sizeof(TkPattern)) == 0)) {
 	    patsLeft--;
 	    patPtr--;
 	    if ((patsLeft > 1) &&
-		    (memcmp(patPtr, patPtr-1, sizeof(Pattern)) == 0)) {
+		    (memcmp(patPtr, patPtr-1, sizeof(TkPattern)) == 0)) {
 		patsLeft--;
 		patPtr--;
 		if ((patsLeft > 1) &&
-			(memcmp(patPtr, patPtr-1, sizeof(Pattern)) == 0)) {
+			(memcmp(patPtr, patPtr-1, sizeof(TkPattern)) == 0)) {
 		    patsLeft--;
 		    patPtr--;
 		    Tcl_AppendToObj(patternObj, "Quadruple-", 10);

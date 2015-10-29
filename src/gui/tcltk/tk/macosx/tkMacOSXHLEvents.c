@@ -217,7 +217,6 @@ OappHandler(
     AppleEvent *reply,
     SRefCon handlerRefcon)
 {
-    Tcl_CmdInfo dummy;
     Tcl_Interp *interp = (Tcl_Interp *) handlerRefcon;
 
     if (interp &&
@@ -289,7 +288,6 @@ PrefsHandler(
     AppleEvent *reply,
     SRefCon handlerRefcon)
 {
-    Tcl_CmdInfo dummy;
     Tcl_Interp *interp = (Tcl_Interp *) handlerRefcon;
 
     if (interp &&
@@ -422,7 +420,6 @@ PrintHandler(
     long count, index;
     AEKeyword keyword;
     Tcl_DString command, pathName;
-    Tcl_CmdInfo dummy;
     int code;
 
     /*
@@ -543,8 +540,12 @@ ScriptHandler(
 
 	    theErr = FSRefToDString(&file, &scriptName);
 	    if (theErr == noErr) {
-		tclErr = Tcl_FSEvalFileEx(interp, Tcl_DStringValue(&scriptName), NULL);
+	        Tcl_Obj *pathName =
+			Tcl_NewStringObj(Tcl_DStringValue(&scriptName), -1);
 		Tcl_DStringFree(&scriptName);
+
+		tclErr = Tcl_FSEvalFile(interp, pathName);
+		Tcl_DecrRefCount(pathName);
 	    } else {
 		sprintf(errString, "AEDoScriptHandler: file not found");
 		AEPutParamPtr(reply, keyErrorString, typeChar, errString,

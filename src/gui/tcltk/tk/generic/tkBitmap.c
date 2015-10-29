@@ -305,7 +305,7 @@ GetBitmap(
     TkBitmap *bitmapPtr, *existingBitmapPtr;
     TkPredefBitmap *predefPtr;
     Pixmap bitmap;
-    int isNew, width, height, dummy2;
+    int isNew, width = 0, height = 0, dummy2;
     TkDisplay *dispPtr = ((TkWindow *) tkwin)->dispPtr;
     ThreadSpecificData *tsdPtr =
 	    Tcl_GetThreadData(&dataKey, sizeof(ThreadSpecificData));

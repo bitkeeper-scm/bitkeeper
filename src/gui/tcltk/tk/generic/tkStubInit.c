@@ -559,6 +559,7 @@ static const TkIntPlatStubs tkIntPlatStubs = {
     0, /* 52 */
     TkpGetMS, /* 53 */
     TkMacOSXDrawable, /* 54 */
+    TkpScanWindowId, /* 55 */
 #endif /* AQUA */
 #if !(defined(_WIN32) || defined(__CYGWIN__) || defined(MAC_OSX_TK)) /* X11 */
     TkCreateXEventSource, /* 0 */

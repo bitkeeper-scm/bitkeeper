@@ -272,8 +272,9 @@ static unsigned isFunctionKey(unsigned int code);
   NSString *str = [aString respondsToSelector: @selector (string)] ?
     [aString string] : aString;
   if (NS_KEYLOG)
-    NSLog (@"setMarkedText '%@' len =%d range %d from %d", str, [str length],
-           selRange.length, selRange.location);
+    NSLog (@"setMarkedText '%@' len =%lu range %lu from %lu", str,
+	   (unsigned long) [str length], (unsigned long) selRange.length,
+	   (unsigned long) selRange.location);
 
   if (privateWorkingText != nil)
     [self deleteWorkingText];
@@ -293,7 +294,8 @@ static unsigned isFunctionKey(unsigned int code);
   if (privateWorkingText == nil)
     return;
   if (NS_KEYLOG)
-    NSLog(@"deleteWorkingText len = %d\n", [privateWorkingText length]);
+    NSLog(@"deleteWorkingText len = %lu\n",
+	    (unsigned long)[privateWorkingText length]);
   [privateWorkingText release];
   privateWorkingText = nil;
   processingCompose = NO;

@@ -53,10 +53,6 @@ static void keyboardChanged(CFNotificationCenterRef center, void *observer, CFSt
 - (void) _setupWindowNotifications;
 @end
 
-@interface TKApplication(TKScrlbr)
-- (void) _setupScrollBarNotifications;
-@end
-
 @interface TKApplication(TKMenus)
 - (void) _setupMenus;
 @end
@@ -91,11 +87,9 @@ static void keyboardChanged(CFNotificationCenterRef center, void *observer, CFSt
 
 - (void) _setupEventLoop
 {
-    _running = 1;
-    if (!_appFlags._hasBeenRun) {
-        _appFlags._hasBeenRun = YES;
-	[self finishLaunching];
-    }
+
+    /*Remove private API flags here.*/
+    [self finishLaunching];
     [self setWindowsNeedUpdate:YES];
 }
 
@@ -110,7 +104,6 @@ static void keyboardChanged(CFNotificationCenterRef center, void *observer, CFSt
 	    selector:@selector(_postedNotification:) name:nil object:nil];
 #endif
     [self _setupWindowNotifications];
-    [self _setupScrollBarNotifications];
     [self _setupApplicationNotifications];
 }
 
@@ -245,7 +238,7 @@ TkpInit(
 	    Tcl_Panic("Mac OS X 10.%d or later required !",
 		    (MAC_OS_X_VERSION_MIN_REQUIRED/10)-100);
 	}
-	
+
 
 #ifdef TK_FRAMEWORK
 	/*

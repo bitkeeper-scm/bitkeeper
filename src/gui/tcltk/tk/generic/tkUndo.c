@@ -392,7 +392,7 @@ TkUndoSetDepth(
 	    prevelem = elem;
 	    elem = elem->next;
 	}
-	CLANG_ASSERT(prevelem); 
+	CLANG_ASSERT(prevelem);
 	prevelem->next = NULL;
 	while (elem != NULL) {
 	    prevelem = elem;

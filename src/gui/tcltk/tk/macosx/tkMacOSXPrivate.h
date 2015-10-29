@@ -180,9 +180,6 @@ MODULE_SCOPE CGFloat tkMacOSXZeroScreenHeight;
 MODULE_SCOPE CGFloat tkMacOSXZeroScreenTop;
 MODULE_SCOPE int tkMacOSXGCEnabled;
 MODULE_SCOPE long tkMacOSXMacOSXVersion;
-#if TK_MAC_BUTTON_USE_COMPATIBILITY_METRICS
-MODULE_SCOPE int tkMacOSXUseCompatibilityMetrics;
-#endif
 
 /*
  * Prototypes for TkMacOSXRegion.c.

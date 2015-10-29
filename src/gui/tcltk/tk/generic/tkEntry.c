@@ -1337,7 +1337,7 @@ ConfigureEntry(
 
 	    double dvalue;
 
-	    if (sscanf(entryPtr->string, "%lf", &dvalue) == 0) {
+	    if (sscanf(entryPtr->string, "%lf", &dvalue) <= 0) {
 		/* Scan failure */
 		dvalue = sbPtr->fromValue;
 	    } else if (dvalue > sbPtr->toValue) {
@@ -4254,7 +4254,7 @@ SpinboxInvoke(
 	} else if (!DOUBLES_EQ(sbPtr->fromValue, sbPtr->toValue)) {
 	    double dvalue;
 
-	    if (sscanf(entryPtr->string, "%lf", &dvalue) == 0) {
+	    if (sscanf(entryPtr->string, "%lf", &dvalue) <= 0) {
 		/*
 		 * If the string doesn't scan as a double value, just
 		 * use the -from value

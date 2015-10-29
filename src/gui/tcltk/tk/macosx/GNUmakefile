@@ -134,7 +134,7 @@ endif
 
 INSTALL_TARGETS		= install-binaries install-libraries install-headers
 ifeq (${EMBEDDED_BUILD},)
-INSTALL_TARGETS		+= install-private-headers install-demos
+INSTALL_TARGETS		+= install-private-headers install-headers install-demos
 endif
 ifeq (${INSTALL_BUILD}_${EMBEDDED_BUILD}_${BUILD_STYLE},1__Deployment)
 INSTALL_TARGETS		+= html-tk

@@ -881,7 +881,7 @@ TextWidgetObjCmd(
 	    } else if (c == 'd' && (length > 8)
 		    && !strncmp("-displaylines", option, (unsigned) length)) {
 		TkTextLine *fromPtr, *lastPtr;
-		TkTextIndex index;
+		TkTextIndex index, index2;
 
 		int compare = TkTextIndexCmp(indexFromPtr, indexToPtr);
 		value = 0;
@@ -916,35 +916,44 @@ TextWidgetObjCmd(
 		/*
 		 * We're going to count up all display lines in the logical
 		 * line of 'indexFromPtr' up to, but not including the logical
-		 * line of 'indexToPtr', and then subtract off what we didn't
-		 * want from 'from' and add on what we didn't count from 'to.
+		 * line of 'indexToPtr' (except if this line is elided), and
+                 * then subtract off what came in too much from elided lines,
+                 * also subtract off what we didn't want from 'from' and add
+		 * on what we didn't count from 'to'.
 		 */
 
-		while (index.linePtr != indexToPtr->linePtr) {
-		    value += TkTextUpdateOneLine(textPtr, fromPtr,0,&index,0);
-
-		    /*
-		     * We might have skipped past indexToPtr, if we have
-		     * multiple logical lines in a single display line.
-		     */
-		    if (TkTextIndexCmp(&index,indexToPtr) > 0) {
-			break;
-		    }
+                while (TkTextIndexCmp(&index,indexToPtr) < 0) {
+		    value += TkTextUpdateOneLine(textPtr, index.linePtr,
+                            0, &index, 0);
 		}
 
-		/*
-		 * Now we need to adjust the count to add on the number of
-		 * display lines in the last logical line, and subtract off
-		 * the number of display lines overcounted in the first
-		 * logical line. This logic is still ok if both indices are in
-		 * the same logical line.
-		 */
+                index2 = index;
 
+                /*
+                 * Now we need to adjust the count to:
+                 *   - subtract off the number of display lines between 
+                 *     indexToPtr and index2, since we might have skipped past
+                 *     indexToPtr, if we have several logical lines in a
+                 *     single display line
+                 *   - subtract off the number of display lines overcounted
+                 *     in the first logical line
+                 *   - add on the number of display lines in the last logical
+                 *     line
+                 * This logic is still ok if both indexFromPtr and indexToPtr
+                 * are in the same logical line.
+                 */
+
+                index = *indexToPtr;
+                index.byteIndex = 0;
+                while (TkTextIndexCmp(&index,&index2) < 0) {
+                    value -= TkTextUpdateOneLine(textPtr, index.linePtr,
+                            0, &index, 0);
+                }
 		index.linePtr = indexFromPtr->linePtr;
 		index.byteIndex = 0;
 		while (1) {
 		    TkTextFindDisplayLineEnd(textPtr, &index, 1, NULL);
-		    if (index.byteIndex >= indexFromPtr->byteIndex) {
+                    if (TkTextIndexCmp(&index,indexFromPtr) >= 0) {
 			break;
 		    }
 		    TkTextIndexForwBytes(textPtr, &index, 1, &index);
@@ -956,7 +965,7 @@ TextWidgetObjCmd(
 		    index.byteIndex = 0;
 		    while (1) {
 			TkTextFindDisplayLineEnd(textPtr, &index, 1, NULL);
-			if (index.byteIndex >= indexToPtr->byteIndex) {
+                        if (TkTextIndexCmp(&index,indexToPtr) >= 0) {
 			    break;
 			}
 			TkTextIndexForwBytes(textPtr, &index, 1, &index);

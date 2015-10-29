@@ -784,6 +784,7 @@ TkWmDeadWindow(
 
     if (window && !Tk_IsEmbedded(winPtr) ) {
 	[[window parentWindow] removeChildWindow:window];
+	[window setExcludedFromWindowsMenu:YES];
 	[window close];
 	TkMacOSXUnregisterMacWindow(window);
 	if (winPtr->window) {
@@ -1655,8 +1656,8 @@ WmForgetCmd(
     if (Tk_IsTopLevel(frameWin)) {
 	MacDrawable *macWin;
 
-	Tk_MakeWindowExist(winPtr);
-	Tk_MakeWindowExist(winPtr->parentPtr);
+	Tk_MakeWindowExist(frameWin);
+	Tk_MakeWindowExist((Tk_Window)winPtr->parentPtr);
 
 	macWin = (MacDrawable *) winPtr->window;
 

@@ -149,7 +149,7 @@ proc ::tk_dialog {w title text bitmap default args} {
     # so we know how big it wants to be, then center the window in the
     # display (Motif style) and de-iconify it.
 
-    ::tk::PlaceWindow $w 
+    ::tk::PlaceWindow $w
     tkwait visibility $w
 
     # 7. Set a grab and claim the focus too.

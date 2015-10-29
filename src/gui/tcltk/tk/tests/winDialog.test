@@ -251,10 +251,14 @@ test winDialog-5.4 {GetFileName: Tcl_GetIndexFromObj() != TCL_OK} -constraints {
 test winDialog-5.5 {GetFileName: Tcl_GetIndexFromObj() == TCL_OK} -constraints {
     nt testwinevent
 } -body {
-    start {tk_getOpenFile -title bar}
-    then {
+    start {set x [tk_getOpenFile -title bar]}
+    set y [then {
         Click cancel
-    }
+    }]
+    # Note this also tests fix for 
+    # http://core.tcl.tk/tk/tktview/4a0451f5291b3c9168cc560747dae9264e1d2ef6
+    # $x is expected to be empty
+    append x $y
 } -result {0}
 test winDialog-5.6 {GetFileName: valid option, but missing value} -constraints {
     nt
@@ -533,10 +537,12 @@ test winDialog-8.1 {OFNHookProc} -constraints {emptyTest nt} -body {}
 test winDialog-9.1 {Tk_ChooseDirectoryObjCmd: no arguments} -constraints {
     nt testwinevent
 } -body {
-    start {tk_chooseDirectory}
-    then {
+    start {set x [tk_chooseDirectory]}
+    set y [then {
         Click cancel
-    }
+    }]
+    # $x should be "" on a Cancel
+    append x $y
 } -result {0}
 test winDialog-9.2 {Tk_ChooseDirectoryObjCmd: one argument} -constraints {
     nt

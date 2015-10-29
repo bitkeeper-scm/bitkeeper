@@ -82,7 +82,7 @@ TkplatformtestInit(
 struct TestFindControlState {
     int  id;
     HWND control;
-};    
+};
 
 /* Callback for window enumeration - used for TestFindControl */
 BOOL CALLBACK TestFindControlCallback(

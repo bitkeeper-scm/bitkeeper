@@ -1066,6 +1066,9 @@ MODULE_SCOPE void	TkTextIndexBackChars(const TkText *textPtr,
 			    TkTextIndex *dstPtr, TkTextCountType type);
 MODULE_SCOPE int	TkTextIndexCmp(const TkTextIndex *index1Ptr,
 			    const TkTextIndex *index2Ptr);
+MODULE_SCOPE int	TkTextIndexCountBytes(const TkText *textPtr,
+			    const TkTextIndex *index1Ptr,
+			    const TkTextIndex *index2Ptr);
 MODULE_SCOPE int	TkTextIndexCount(const TkText *textPtr,
 			    const TkTextIndex *index1Ptr,
 			    const TkTextIndex *index2Ptr,

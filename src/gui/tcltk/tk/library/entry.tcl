@@ -69,8 +69,8 @@ bind Entry <<PasteSelection>> {
 }
 
 bind Entry <<TraverseIn>> {
-    %W selection range 0 end 
-    %W icursor end 
+    %W selection range 0 end
+    %W icursor end
 }
 
 # Standard Motif bindings:

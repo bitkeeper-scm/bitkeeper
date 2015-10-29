@@ -17,6 +17,7 @@
 #-------------------------------------------------------------------------
 
 if {[tk windowingsystem] eq "aqua"} {
+
     bind Radiobutton <Enter> {
 	tk::ButtonEnter %W
     }
@@ -143,7 +144,7 @@ bind Radiobutton <Leave> {
 if {"win32" eq [tk windowingsystem]} {
 
 #########################
-# Windows implementation 
+# Windows implementation
 #########################
 
 # ::tk::ButtonEnter --

@@ -144,7 +144,7 @@ test spinbox-1.8.4 "-validate option: " -setup {
     pack .sb
     .sb set 50
     focus .sb
-    after 100 {set ::spinbox_wait 1} ; vwait ::spinbox_wait
+    after 500 {set ::spinbox_wait 1} ; vwait ::spinbox_wait
     set ::spinbox_test
 } -cleanup {
     destroy .sb

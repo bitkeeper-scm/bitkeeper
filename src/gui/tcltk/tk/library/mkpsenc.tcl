@@ -1163,11 +1163,11 @@ namespace eval ::tk {
 	0 exch 0 exch
 	{
 	    dup type /stringtype eq
-	    { stringwidth } { 
+	    { stringwidth } {
 		currentfont /Encoding get exch 1 exch put (\001)
-		stringwidth 
+		stringwidth
 	    }
-	    ifelse 
+	    ifelse
 	    exch 3 1 roll add 3 1 roll add exch
 	} forall
     }

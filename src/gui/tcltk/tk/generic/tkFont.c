@@ -633,7 +633,7 @@ Tk_FontObjCmd(
     	    return result;
     	}
     	return GetAttributeInfoObj(interp, &nfPtr->fa, objPtr);
-     } 
+     }
     case FONT_CREATE: {
 	int skip = 3, i;
 	const char *name;
@@ -2994,13 +2994,6 @@ PointInQuadrilateral(
 }
 
 static inline int
-sign(
-    double value)
-{
-    return (value < 0.0) ? -1 : (value > 0.0) ? 1 : 0;
-}
-
-static inline int
 SidesIntersect(
     double ax1, double ay1, double ax2, double ay2,
     double bx1, double by1, double bx2, double by2)
@@ -3375,7 +3368,6 @@ ConfigAttributesObj(
 
     for (i = 0; i < objc; i += 2) {
 	optionPtr = objv[i];
-	valuePtr = objv[i + 1];
 
 	if (Tcl_GetIndexFromObj(interp, optionPtr, fontOpt, "option", 1,
 		&index) != TCL_OK) {
@@ -3396,6 +3388,7 @@ ConfigAttributesObj(
 	    }
 	    return TCL_ERROR;
 	}
+	valuePtr = objv[i + 1];
 
 	switch (index) {
 	case FONT_FAMILY:

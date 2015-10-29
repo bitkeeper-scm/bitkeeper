@@ -872,7 +872,21 @@ test btree-14.1 {check tag presence} -setup {
 } -cleanup {
     destroy .t
 } -result {x y z}
-
+test btree-14.2 {TkTextIsElided} -setup {
+    destroy .t
+    text .t
+} -body {
+    .t delete 1.0 end
+    .t tag config hidden -elide 1
+    .t insert end "Line1\nLine2\nLine3\n"
+    .t tag add hidden 2.0 3.0
+    .t tag add sel 1.2 3.2
+    # next line used to panic because of "Bad tag priority being toggled on"
+    # (see bug [382da038c9])
+    .t index "2.0 - 1 display line linestart"
+} -cleanup {
+    destroy .t
+} -result {1.0}
 
 test btree-15.1 {rebalance with empty node} -setup {
     destroy .t

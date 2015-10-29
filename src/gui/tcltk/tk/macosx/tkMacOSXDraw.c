@@ -101,13 +101,6 @@ TkMacOSXInitCGDrawing(
 		(char *) &useThemedFrame, TCL_LINK_BOOLEAN) != TCL_OK) {
 	    Tcl_ResetResult(interp);
 	}
-#if TK_MAC_BUTTON_USE_COMPATIBILITY_METRICS
-	if (Tcl_LinkVar(interp, "::tk::mac::useCompatibilityMetrics",
-		(char *) &tkMacOSXUseCompatibilityMetrics, TCL_LINK_BOOLEAN)
-		!= TCL_OK) {
-	    Tcl_ResetResult(interp);
-	}
-#endif
     }
     return TCL_OK;
 }
@@ -155,7 +148,8 @@ BitmapRepFromDrawableRect(
 	cg_image = CGBitmapContextCreateImage( (CGContextRef) cg_context);
 	sub_cg_image = CGImageCreateWithImageInRect(cg_image, image_rect);
 	if ( sub_cg_image ) {
-	    bitmap_rep = [[NSBitmapImageRep alloc] autorelease];
+	    /*This can be dealloc'ed prematurely if set for autorelease, causing crashes.*/
+	    bitmap_rep = [NSBitmapImageRep alloc];
 	    [bitmap_rep initWithCGImage:sub_cg_image];
 	}
 	if ( cg_image ) {
@@ -169,7 +163,8 @@ BitmapRepFromDrawableRect(
 				      width,height);
 
 	if ( [view lockFocusIfCanDraw] ) {
-	    bitmap_rep = [[NSBitmapImageRep alloc] autorelease];
+	    /*This can be dealloc'ed prematurely if set for autorelease, causing crashes.*/
+	    bitmap_rep = [NSBitmapImageRep alloc];
 	    bitmap_rep = [bitmap_rep initWithFocusedViewRect:view_rect];
 	    [view unlockFocus];
 	} else {
@@ -1480,19 +1475,19 @@ TkScrollWindow(
     TkRegion damageRgn)		/* Region to accumulate damage in. */
 {
     Drawable drawable = Tk_WindowId(tkwin);
-    MacDrawable *macDraw = (MacDrawable *) drawable; 
+    MacDrawable *macDraw = (MacDrawable *) drawable;
     NSView *view = TkMacOSXDrawableView(macDraw);
     CGRect srcRect, dstRect;
     HIShapeRef dmgRgn = NULL, extraRgn;
     NSRect bounds, visRect, scrollSrc, scrollDst;
-    NSPoint delta = NSMakePoint(dx, dy);
     int result;
-  
+
+
     if ( view ) {
   	/*  Get the scroll area in NSView coordinates (origin at bottom left). */
   	bounds = [view bounds];
  	scrollSrc = NSMakeRect(
-			       macDraw->xOff + x, 
+			       macDraw->xOff + x,
 			       bounds.size.height - height - (macDraw->yOff + y),
 			       width, height);
  	scrollDst = NSOffsetRect(scrollSrc, dx, -dy);
@@ -1500,45 +1495,26 @@ TkScrollWindow(
  	visRect = [view visibleRect];
  	scrollSrc = NSIntersectionRect(scrollSrc, visRect);
  	scrollDst = NSIntersectionRect(scrollDst, visRect);
-  
+
  	if ( !NSIsEmptyRect(scrollSrc) && !NSIsEmptyRect(scrollDst) ) {
-  
+
   	    /*
   	     * Mark the difference between source and destination as damaged.
  	     * This region is described in the Tk coordinate system.
   	     */
-  
+
  	    srcRect = CGRectMake(x, y, width, height);
   	    dstRect = CGRectOffset(srcRect, dx, dy);
   	    dmgRgn = HIShapeCreateMutableWithRect(&srcRect);
  	    extraRgn = HIShapeCreateWithRect(&dstRect);
  	    ChkErr(HIShapeDifference, dmgRgn, extraRgn, (HIMutableShapeRef) dmgRgn);
  	    CFRelease(extraRgn);
-  	    
+
  	    /* Scroll the rectangle. */
  	    [view scrollRect:scrollSrc by:NSMakeSize(dx, -dy)];
-  
- 	    /* 
- 	     * Adjust the positions of the button subwindows that meet the scroll
- 	     * area.
-  	     */
- 
-  	    for (NSView *subview in [view subviews] ) {
- 	    	if ( [subview isKindOfClass:[NSButton class]] == YES ) {
- 		    NSRect subframe = [subview frame];
- 		    if  ( NSIntersectsRect(scrollSrc, subframe) ||
- 			  NSIntersectsRect(scrollDst, subframe) ) { 
- 			TkpShiftButton((NSButton *)subview, delta );
- 		    }
- 	    	}
-  	    }
- 
- 	    /* Redisplay the scrolled area. */
- 	    [view displayRect:scrollDst];
- 
   	}
     }
-  
+
     if ( dmgRgn == NULL ) {
   	dmgRgn = HIShapeCreateEmpty();
     }
@@ -1657,13 +1633,13 @@ TkMacOSXSetupDrawingContext(
 	CGContextSetTextDrawingMode(dc.context, kCGTextFill);
 	CGContextConcatCTM(dc.context, t);
 	if (dc.clipRgn) {
-#ifdef TK_MAC_DEBUG_DRAWING
+	    #ifdef TK_MAC_DEBUG_DRAWING
 	    CGContextSaveGState(dc.context);
 	    ChkErr(HIShapeReplacePathInCGContext, dc.clipRgn, dc.context);
 	    CGContextSetRGBFillColor(dc.context, 1.0, 0.0, 0.0, 0.1);
 	    CGContextEOFillPath(dc.context);
 	    CGContextRestoreGState(dc.context);
-#endif /* TK_MAC_DEBUG_DRAWING */
+	    #endif /* TK_MAC_DEBUG_DRAWING */
 	    CGRect r;
 	    if (!HIShapeIsRectangular(dc.clipRgn) || !CGRectContainsRect(
 		    *HIShapeGetBounds(dc.clipRgn, &r),
@@ -1880,9 +1856,9 @@ TkpClipDrawableToRect(
 	macDraw->drawRgn = NULL;
     }
     if (width >= 0 && height >= 0) {
-	CGRect drawRect = CGRectMake(x + macDraw->xOff, y + macDraw->yOff,
+	CGRect clipRect = CGRectMake(x + macDraw->xOff, y + macDraw->yOff,
 		width, height);
-	HIShapeRef drawRgn = HIShapeCreateWithRect(&drawRect);
+	HIShapeRef drawRgn = HIShapeCreateWithRect(&clipRect);
 
 	if (macDraw->winPtr && macDraw->flags & TK_CLIP_INVALID) {
 	    TkMacOSXUpdateClipRgn(macDraw->winPtr);
@@ -1895,9 +1871,9 @@ TkpClipDrawableToRect(
 	    macDraw->drawRgn = drawRgn;
 	}
 	if (view && view != [NSView focusView] && [view lockFocusIfCanDraw]) {
-	    drawRect.origin.y = [view bounds].size.height -
-		    (drawRect.origin.y + drawRect.size.height);
-	    NSRectClip(NSRectFromCGRect(drawRect));
+	    clipRect.origin.y = [view bounds].size.height -
+		    (clipRect.origin.y + clipRect.size.height);
+	    NSRectClip(NSRectFromCGRect(clipRect));
 	    macDraw->flags |= TK_FOCUSED_VIEW;
 	}
     } else {

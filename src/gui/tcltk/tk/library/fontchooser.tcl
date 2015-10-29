@@ -105,7 +105,7 @@ proc ::tk::fontchooser::Configure {args} {
 	    "bad option \"$option\": must be\
             -command, -font, -parent, -title or -visible"
     }
-    
+
     set cache [dict create -parent $S(-parent) -title $S(-title) \
                    -font $S(-font) -command $S(-command)]
     set r [tclParseConfigSpec [namespace which -variable S] $specs "" $args]

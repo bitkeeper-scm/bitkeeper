@@ -7145,3 +7145,25 @@ Many revisions to better support a Cygwin environment (nijtmans)
 2014-11-07 (bug)[3529885] [scale] handling of negative resolution (vogel)
 
 --- Released 8.6.3, November 12, 2014 --- http://core.tcl.tk/tk/ for details
+
+2014-11-14 (bug)[d43a10] shimmer-related crash in [tk_getOpenFile] (nadkarni)
+
+2014-11-23 (bug)[1c0d6e] Win build trouble with SIGDN (keene)
+
+2014-12-03 (bug)[4a0451] [tk_getOpenFile] result (nadkarni)
+
+2014-12-13 fix header files installation on OS X (houben)
+
+2015-01-02 (bug) Stop bit loss in [winfo id] on 64-bit Cocoa (porter)
+
+2015-02-06 (bug) several fixes to elided context in [text] (vogel)
+
+2015-02-06 (new feature)[TIP 433] %M binding substitution (mistachkin)
+        *** POTENTIAL INCOMPATIBILITY ***
+
+2015-02-22 (bug)[ab6dab] corrupt dashed lines in postscript (porter)
+
+Tk Cocoa 2.0: App Store enabled (walzer,culler,desmera,owen,nyberg,reincke)
+        *** POTENTIAL INCOMPATIBILITY ***
+
+--- Released 8.6.4, March 12, 2015 --- http://core.tcl.tk/tk/ for details

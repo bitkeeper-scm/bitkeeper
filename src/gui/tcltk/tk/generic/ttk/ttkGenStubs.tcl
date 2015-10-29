@@ -12,7 +12,7 @@
 #
 # SOURCE: tcl/tools/genStubs.tcl, revision 1.44
 #
-# CHANGES: 
+# CHANGES:
 #	+ Second argument to "declare" is used as a status guard
 #	  instead of a platform guard.
 #	+ Allow trailing semicolon in function declarations
@@ -678,7 +678,7 @@ proc genStubs::addGuard {status text} {
     set upName [string toupper $libraryName]
 
     switch -- $status {
-	current	{ 
+	current	{
 	    # No change
 	}
 	deprecated {
@@ -691,7 +691,7 @@ proc genStubs::addGuard {status text} {
 	    puts stderr "Unrecognized status code $status"
 	}
     }
-    return $text 
+    return $text
 }
 
 proc genStubs::ifdeffed {macro text} {
