@@ -3986,7 +3986,7 @@ re_kind(Expr *re, Tcl_DString *ds)
 		ret |= RE_NEEDS_EVAL | RE_COMPLEX;
 	} else if (isstring(re) &&
 		   (TclReToGlob(NULL, re->str, strlen(re->str),
-				ds, &exact) == TCL_OK) &&
+				ds, &exact, NULL) == TCL_OK) &&
 		   exact) {
 		if (ds == &myds) Tcl_DStringFree(&myds);
 		ret |= RE_CONST;
