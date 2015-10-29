@@ -154,14 +154,13 @@ cd gdb
 bk cset -qSx+ >OUT 2>&1 || fail -f OUT
 # clean it up
 bk undo -qSsfr+ >OUT 2>&1 || fail -f OUT
-# in the product it should pass
-cd ..
+# in the product it should pass (no cd; it will go to product)
 bk cset $Q -x"$CSET" || fail
 bk -e -r check -ac || fail
-# product
+# calling without -S from comp => product
 bk changes -nd':COMMENTS:' -r+ | grep -q "Cset exclude" || fail
-cd gdb
-bk changes -nd':COMMENTS:' -r+ | grep -q "Cset exclude" || fail
+# calling with -S from comp => comp
+bk changes -Snd':COMMENTS:' -r+ | grep -q "Cset exclude" || fail
 cd ..
 bk -U grep -n lineb > OUT && fail -f OUT exclude did not work
 echo OK
