@@ -316,8 +316,7 @@ test textImage-3.1 {image change propagation} -setup {
     image delete vary
 } -result {{base:0 0 5 5} {10:0 0 10 10} {20:0 0 20 20} {40:0 0 40 40}}
 
-# Fails in some environments (both in Linux and winXP)
-test textImage-3.2 {delayed image management} -setup {
+test textImage-3.2 {delayed image management, see also bug 1591493} -setup {
     destroy .t
     set result ""
 } -body {
@@ -329,14 +328,16 @@ test textImage-3.2 {delayed image management} -setup {
     pack .t
     .t image create end -name test
     update
-    lappend result [.t bbox test]
+    foreach {x1 y1 w1 h1} [.t bbox test] {}
+    lappend result [list $x1 $w1 $h1]
     .t image configure test -image small -align top
     update
-    lappend result [.t bbox test]
+    foreach {x2 y2 w2 h2} [.t bbox test] {}
+    lappend result [list [expr {$x1==$x2}] [expr {$w2>0}] [expr {$h2>0}]]
 } -cleanup {
     destroy .t
     image delete small
-} -result {{} {0 0 5 5}}
+} -result {{0 0 0} {1 1 1}}
 
 
 # some temporary random tests

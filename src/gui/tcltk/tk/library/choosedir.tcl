@@ -122,7 +122,7 @@ proc ::tk::dialog::file::chooseDir:: {args} {
 
     # Return value to user
     #
-    
+
     return $Priv(selectFilePath)
 }
 
@@ -164,7 +164,7 @@ proc ::tk::dialog::file::chooseDir::Config {dataName argList} {
     if {$data(-title) eq ""} {
 	set data(-title) "[mc "Choose Directory"]"
     }
-    
+
     # Stub out the -multiple value for the dialog; it doesn't make sense for
     # choose directory dialogs, but we have to have something there because we
     # share so much code with the file dialogs.

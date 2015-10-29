@@ -5,66 +5,70 @@
  *	menubutton widget.
  *
  * Copyright (c) 1996 by Sun Microsystems, Inc.
- * Copyright 2001-2009, Apple Inc.
- * Copyright (c) 2006-2009 Daniel A. Steffen <das@users.sourceforge.net>
+ * Copyright 2001, Apple Computer, Inc.
+ * Copyright (c) 2006-2007 Daniel A. Steffen <das@users.sourceforge.net>
+ * Copyright 2007 Revar Desmera.
+ * Copyright 2015 Kevin Walzer/WordTech Communications LLC.
  *
  * See the file "license.terms" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
+ *
  */
 
 #include "tkMacOSXPrivate.h"
+#include "tkMenu.h"
 #include "tkMenubutton.h"
 #include "tkMacOSXFont.h"
 #include "tkMacOSXDebug.h"
 
-/*
-#ifdef TK_MAC_DEBUG
-#define TK_MAC_DEBUG_MENUBUTTON
-#endif
-*/
+#define FIRST_DRAW	    2
+#define ACTIVE		    4
 
-typedef struct MacMenuButton {
-    TkMenuButton info;
-    NSPopUpButton *button;
-#if TK_MAC_BUTTON_USE_COMPATIBILITY_METRICS
-    int fix;
-#endif
-} MacMenuButton;
-
-#if TK_MAC_BUTTON_USE_COMPATIBILITY_METRICS
-
-/*
- * Use the following heuristic conversion constants to make NSButton-based
- * widget metrics match up with the old Carbon control buttons (for the
- * default Lucida Grande 13 font).
- * TODO: provide a scriptable way to turn this off and use the raw NSButton
- *       metrics (will also need dynamic adjustment of the default padding,
- *       c.f. tkMacOSXDefault.h).
- */
 
 typedef struct {
-    int trimW, trimH, inset, shrinkW, offsetX, offsetY;
-} BoundsFix;
+    Tk_3DBorder border;
+    int relief;
+    GC gc;
+    int hasImageOrBitmap;
+} DrawParams;
 
-#define fixForStyle(style) ( \
-	style == NSRoundedBezelStyle ? 1 : \
-	style == NSRegularSquareBezelStyle ? 2 : \
-	style == NSShadowlessSquareBezelStyle ? 3 : \
-	INT_MIN)
 
-static const BoundsFix boundsFixes[] = {
-    [fixForStyle(NSRoundedBezelStyle)] =	    { 14, 10, -2, -1},
-    [fixForStyle(NSRegularSquareBezelStyle)] =	    {  6, 13, -2,  1, 1},
-    [fixForStyle(NSShadowlessSquareBezelStyle)] =   { 15,  0, 2 },
-};
+/*
+ * Declaration of Mac specific button structure.
+ */
 
-#endif
+typedef struct MacMenuButton {
+    TkMenuButton info;		/* Generic button info. */
+    int flags;
+    ThemeButtonKind btnkind;
+    HIThemeButtonDrawInfo drawinfo;
+    HIThemeButtonDrawInfo lastdrawinfo;
+    DrawParams drawParams;
+} MacMenuButton;
 
 /*
  * Forward declarations for procedures defined later in this file:
  */
 
 static void MenuButtonEventProc(ClientData clientData, XEvent *eventPtr);
+static void MenuButtonBackgroundDrawCB ( MacMenuButton *ptr, SInt16 depth, Boolean isColorDev);
+static void MenuButtonContentDrawCB ( ThemeButtonKind kind, const HIThemeButtonDrawInfo * info, MacMenuButton *ptr, SInt16 depth, Boolean isColorDev);
+static void MenuButtonEventProc ( ClientData clientData, XEvent *eventPtr);
+static void TkMacOSXComputeMenuButtonParams (TkMenuButton * butPtr, ThemeButtonKind* btnkind, HIThemeButtonDrawInfo* drawinfo);
+static int TkMacOSXComputeMenuButtonDrawParams (TkMenuButton * butPtr, DrawParams * dpPtr);
+static void TkMacOSXDrawMenuButton (MacMenuButton *butPtr,
+       GC gc, Pixmap pixmap);
+static void DrawMenuButtonImageAndText(TkMenuButton* butPtr);
+
+/*
+ * The structure below defines menubutton class behavior by means of
+ * procedures that can be invoked from generic window code.
+ */
+
+Tk_ClassProcs tkpMenubuttonClass = {
+    sizeof(Tk_ClassProcs),	/* size */
+    TkMenuButtonWorldChanged,	/* worldChangedProc */
+};
 
 
 /*
@@ -87,12 +91,72 @@ TkMenuButton *
 TkpCreateMenuButton(
     Tk_Window tkwin)
 {
-    MacMenuButton *macButtonPtr = ckalloc(sizeof(MacMenuButton));
+    MacMenuButton *mbPtr = (MacMenuButton *) ckalloc(sizeof(MacMenuButton));
 
-    macButtonPtr->button = nil;
     Tk_CreateEventHandler(tkwin, ActivateMask,
-	    MenuButtonEventProc, (ClientData) macButtonPtr);
-    return (TkMenuButton *) macButtonPtr;
+	    MenuButtonEventProc, (ClientData) mbPtr);
+    mbPtr->flags = FIRST_DRAW;
+    mbPtr->btnkind = kThemePopupButton;
+    bzero(&mbPtr->drawinfo, sizeof(mbPtr->drawinfo));
+    bzero(&mbPtr->lastdrawinfo, sizeof(mbPtr->lastdrawinfo));
+
+    return (TkMenuButton *) mbPtr;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TkpDisplayMenuButton --
+ *
+ *	This procedure is invoked to display a menubutton widget.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	Commands are output to X to display the menubutton in its
+ *	current mode.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TkpDisplayMenuButton(
+    ClientData clientData)	/* Information about widget. */
+{
+    MacMenuButton *mbPtr    = (MacMenuButton *)clientData;
+    TkMenuButton  *butPtr   = (TkMenuButton *) clientData;
+    Tk_Window tkwin         = butPtr->tkwin;
+    Pixmap pixmap;
+    DrawParams* dpPtr = &mbPtr->drawParams;
+
+    butPtr->flags &= ~REDRAW_PENDING;
+    if ((butPtr->tkwin == NULL) || !Tk_IsMapped(tkwin)) {
+        return;
+    }
+
+    pixmap = (Pixmap) Tk_WindowId(tkwin);
+
+    TkMacOSXComputeMenuButtonDrawParams(butPtr, dpPtr);
+
+    /*
+     * set up clipping region.  Make sure the we are using the port
+     * for this button, or we will set the wrong window's clip.
+     */
+
+    TkMacOSXSetUpClippingRgn(pixmap);
+
+    /* Draw the native portion of the buttons. */
+    TkMacOSXDrawMenuButton(mbPtr,  dpPtr->gc, pixmap);
+
+    /* Draw highlight border, if needed. */
+    if (butPtr->highlightWidth < 3) {
+        if ((butPtr->flags & GOT_FOCUS)) {
+            Tk_Draw3DRectangle(tkwin, pixmap, butPtr->normalBorder, 0, 0,
+                Tk_Width(tkwin), Tk_Height(tkwin),
+                butPtr->highlightWidth, TK_RELIEF_SOLID);
+        }
+    }
 }
 
 /*
@@ -115,85 +179,6 @@ void
 TkpDestroyMenuButton(
     TkMenuButton *mbPtr)
 {
-    MacMenuButton *macButtonPtr = (MacMenuButton *) mbPtr;
-    [macButtonPtr->button setTag:(NSInteger)-1];
-
-    TkMacOSXMakeCollectableAndRelease(macButtonPtr->button);
-}
-
-/*
- *----------------------------------------------------------------------
- *
- * TkpDisplayMenuButton --
- *
- *	This function is invoked to display a menubutton widget.
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	Commands are output to X to display the menubutton in its current
- *	mode.
- *
- *----------------------------------------------------------------------
- */
-
-void
-TkpDisplayMenuButton(
-    ClientData clientData)	/* Information about widget. */
-{
-    TkMenuButton *mbPtr = (TkMenuButton *) clientData;
-    MacMenuButton *macButtonPtr = (MacMenuButton *) mbPtr;
-    NSPopUpButton *button = macButtonPtr->button;
-    Tk_Window tkwin = mbPtr->tkwin;
-    TkWindow *winPtr = (TkWindow *) tkwin;
-    MacDrawable *macWin =  (MacDrawable *) winPtr->window;
-    TkMacOSXDrawingContext dc;
-    NSView *view = TkMacOSXDrawableView(macWin);
-    CGFloat viewHeight = [view bounds].size.height;
-    CGAffineTransform t = { .a = 1, .b = 0, .c = 0, .d = -1, .tx = 0,
-	    .ty = viewHeight};
-    NSRect frame;
-    int enabled;
-
-    mbPtr->flags &= ~REDRAW_PENDING;
-    if (!tkwin || !Tk_IsMapped(tkwin) || !view ||
-	    !TkMacOSXSetupDrawingContext((Drawable) macWin, NULL, 1, &dc)) {
-	return;
-    }
-    CGContextConcatCTM(dc.context, t);
-    Tk_Fill3DRectangle(tkwin, (Pixmap) macWin, mbPtr->normalBorder, 0, 0,
-	    Tk_Width(tkwin), Tk_Height(tkwin), 0, TK_RELIEF_FLAT);
-    if ([button superview] != view) {
-	[view addSubview:button];
-    }
-    enabled = !(mbPtr->state == STATE_DISABLED);
-    [button setEnabled:enabled];
-    if (enabled) {
-	[[button cell] setHighlighted:(mbPtr->state == STATE_ACTIVE)];
-    }
-    frame = NSMakeRect(macWin->xOff, macWin->yOff, Tk_Width(tkwin),
-	    Tk_Height(tkwin));
-    frame = NSInsetRect(frame, mbPtr->inset, mbPtr->inset);
-#if TK_MAC_BUTTON_USE_COMPATIBILITY_METRICS
-    if (tkMacOSXUseCompatibilityMetrics) {
-	BoundsFix boundsFix = boundsFixes[macButtonPtr->fix];
-	frame = NSOffsetRect(frame, boundsFix.offsetX, boundsFix.offsetY);
-	frame.size.width -= boundsFix.shrinkW;
-	frame = NSInsetRect(frame, boundsFix.inset, boundsFix.inset);
-    }
-#endif
-    frame.origin.y = viewHeight - (frame.origin.y + frame.size.height);
-    if (!NSEqualRects(frame, [button frame])) {
-	[button setFrame:frame];
-    }
-    [button displayRectIgnoringOpacity:[button bounds]];
-    TkMacOSXRestoreDrawingContext(&dc);
-#ifdef TK_MAC_DEBUG_MENUBUTTON
-    TKLog(@"menubutton %s frame %@ width %d height %d",
-	    ((TkWindow *)mbPtr->tkwin)->pathName, NSStringFromRect(frame),
-	    Tk_Width(tkwin), Tk_Height(tkwin));
-#endif
 }
 
 /*
@@ -201,7 +186,7 @@ TkpDisplayMenuButton(
  *
  * TkpComputeMenuButtonGeometry --
  *
- *	After changes in a menu button's text or bitmap, this function
+ *	After changes in a menu button's text or bitmap, this procedure
  *	recomputes the menu button's geometry and passes this information
  *	along to the geometry manager for the window.
  *
@@ -215,205 +200,504 @@ TkpDisplayMenuButton(
  */
 
 void
-TkpComputeMenuButtonGeometry(
-    TkMenuButton *mbPtr)	/* Widget record for menu button. */
+TkpComputeMenuButtonGeometry(butPtr)
+    register TkMenuButton *butPtr;	/* Widget record for menu button. */
 {
-    MacMenuButton *macButtonPtr = (MacMenuButton *) mbPtr;
-    NSPopUpButton *button = macButtonPtr->button;
-    NSPopUpButtonCell *cell;
-    NSMenuItem *menuItem;
-    NSBezelStyle style = NSRoundedBezelStyle;
-    NSFont *font;
-    NSRect bounds = NSZeroRect, titleRect = NSZeroRect;
-    int haveImage = (mbPtr->image || mbPtr->bitmap != None), haveText = 0;
-    int haveCompound = (mbPtr->compound != COMPOUND_NONE);
-    int width, height;
+    int width, height, avgWidth, haveImage = 0, haveText = 0;
+    MacMenuButton *mbPtr = (MacMenuButton*)butPtr;
+    int txtWidth, txtHeight;
+    Tk_FontMetrics fm;
+    DrawParams drawParams;
+    int paddingx = 0;
+    int paddingy = 0;
 
-    if (!button) {
-	button = [[NSPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:YES];
-	macButtonPtr->button = TkMacOSXMakeUncollectable(button);
-	cell = [button cell];
-	[cell setUsesItemFromMenu:NO];
-	menuItem = [[[NSMenuItem alloc] initWithTitle:@""
-		action:NULL keyEquivalent:@""] autorelease];
-	[cell setMenuItem:menuItem];
+    /*
+     * First figure out the size of the contents of the button.
+     */
+
+    width = 0;
+    height = 0;
+    txtWidth = 0;
+    txtHeight = 0;
+    avgWidth = 0;
+
+    TkMacOSXComputeMenuButtonParams(butPtr, &mbPtr->btnkind, &mbPtr->drawinfo);
+
+    if (butPtr->image != NULL) {
+        Tk_SizeOfImage(butPtr->image, &width, &height);
+        haveImage = 1;
+    } else if (butPtr->bitmap != None) {
+        Tk_SizeOfBitmap(butPtr->display, butPtr->bitmap, &width, &height);
+        haveImage = 1;
+    }
+
+    if (haveImage == 0 || butPtr->compound != COMPOUND_NONE) {
+        Tk_FreeTextLayout(butPtr->textLayout);
+        butPtr->textLayout = Tk_ComputeTextLayout(butPtr->tkfont,
+                butPtr->text, -1, butPtr->wrapLength,
+                butPtr->justify, 0, &butPtr->textWidth, &butPtr->textHeight);
+
+        txtWidth = butPtr->textWidth;
+        txtHeight = butPtr->textHeight;
+        avgWidth = Tk_TextWidth(butPtr->tkfont, "0", 1);
+        Tk_GetFontMetrics(butPtr->tkfont, &fm);
+        haveText = (txtWidth != 0 && txtHeight != 0);
+    }
+
+    /*
+     * If the button is compound (ie, it shows both an image and text),
+     * the new geometry is a combination of the image and text geometry.
+     * We only honor the compound bit if the button has both text and an
+     * image, because otherwise it is not really a compound button.
+     */
+
+    if (butPtr->compound != COMPOUND_NONE && haveImage && haveText) {
+        switch ((enum compound) butPtr->compound) {
+            case COMPOUND_TOP:
+            case COMPOUND_BOTTOM: {
+                /*
+                 * Image is above or below text
+                 */
+
+                height += txtHeight + butPtr->padY;
+                width = (width > txtWidth ? width : txtWidth);
+                break;
+            }
+            case COMPOUND_LEFT:
+            case COMPOUND_RIGHT: {
+                /*
+                 * Image is left or right of text
+                 */
+
+                width += txtWidth + butPtr->padX;
+                height = (height > txtHeight ? height : txtHeight);
+                break;
+            }
+            case COMPOUND_CENTER: {
+                /*
+                 * Image and text are superimposed
+                 */
+
+                width = (width > txtWidth ? width : txtWidth);
+                height = (height > txtHeight ? height : txtHeight);
+                break;
+            }
+            case COMPOUND_NONE: {break;}
+        }
+
+        if (butPtr->width > 0) {
+            width = butPtr->width;
+        }
+        if (butPtr->height > 0) {
+            height = butPtr->height;
+        }
+
     } else {
-	cell = [button cell];
-	menuItem = [cell menuItem];
+        if (haveImage) {
+            if (butPtr->width > 0) {
+                width = butPtr->width;
+            }
+            if (butPtr->height > 0) {
+                height = butPtr->height;
+            }
+        } else {
+            width = txtWidth;
+            height = txtHeight;
+            if (butPtr->width > 0) {
+                width = butPtr->width * avgWidth;
+            }
+            if (butPtr->height > 0) {
+                height = butPtr->height * fm.linespace;
+            }
+        }
     }
-    if (haveImage) {
-	style = NSShadowlessSquareBezelStyle;
-    } else if (!mbPtr->indicatorOn) {
-	style = NSRegularSquareBezelStyle;
-    }
-    [button setBezelStyle:style];
-    [cell setArrowPosition:(mbPtr->indicatorOn ? NSPopUpArrowAtBottom :
-	    NSPopUpNoArrow)];
-#if 0
-    NSControlSize controlSize = NSRegularControlSize;
+    width  += 2 * butPtr->padX - 2;
+    height += 2 * butPtr->padY - 2;
 
-    if (mbPtr->borderWidth <= 2) {
-	controlSize = NSMiniControlSize;
-    } else if (mbPtr->borderWidth == 3) {
-	controlSize = NSSmallControlSize;
-    }
-    [cell setControlSize:controlSize];
-#endif
+    /*Add padding for button arrows.*/
+    width += 22;
 
-    if (mbPtr->text && *(mbPtr->text) && (!haveImage || haveCompound)) {
-	NSString *title = [[NSString alloc] initWithUTF8String:mbPtr->text];
-	[button setTitle:title];
-	[title release];
-	haveText = 1;
-    }
-    haveCompound = (haveCompound && haveImage && haveText);
-    if (haveText) {
-	NSTextAlignment alignment = NSNaturalTextAlignment;
+    /*
+     * Now figure out the size of the border decorations for the button.
+     */
 
-	switch (mbPtr->justify) {
-	case TK_JUSTIFY_LEFT:
-	    alignment = NSLeftTextAlignment;
-	    break;
-	case TK_JUSTIFY_RIGHT:
-	    alignment = NSRightTextAlignment;
-	    break;
-	case TK_JUSTIFY_CENTER:
-	    alignment = NSCenterTextAlignment;
-	    break;
+    if (butPtr->highlightWidth < 0) {
+        butPtr->highlightWidth = 0;
+    }
+    butPtr->inset = 0;
+    butPtr->inset += butPtr->highlightWidth;
+
+    TkMacOSXComputeMenuButtonDrawParams(butPtr,&drawParams);
+
+        HIRect tmpRect;
+	HIRect contBounds;
+
+	tmpRect = CGRectMake(0, 0, width, height);
+
+	HIThemeGetButtonContentBounds(&tmpRect, &mbPtr->drawinfo, &contBounds);
+
+
+
+        /* If the content region has a minimum height, match it. */
+        if (height < contBounds.size.height) {
+	  height = contBounds.size.height;
+        }
+
+        /* If the content region has a minimum width, match it. */
+        if (width < contBounds.size.width) {
+	  width = contBounds.size.width;
+        }
+
+        /* Pad to fill difference between content bounds and button bounds. */
+        paddingx = tmpRect.origin.x - contBounds.origin.x;
+        paddingy = tmpRect.origin.y - contBounds.origin.y;
+
+    if (paddingx > 0) {
+        width += paddingx;
+    }
+    if (paddingy > 0) {
+        height += paddingy;
+    }
+
+    width += butPtr->inset*2;
+    height += butPtr->inset*2;
+
+
+    Tk_GeometryRequest(butPtr->tkwin, width, height);
+    Tk_SetInternalBorder(butPtr->tkwin, butPtr->inset);
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * DrawMenuButtonImageAndText --
+ *
+ *        Draws the image and text associated witha button or label.
+ *
+ * Results:
+ *        None.
+ *
+ * Side effects:
+ *        The image and text are drawn.
+ *
+ *----------------------------------------------------------------------
+ */
+void
+DrawMenuButtonImageAndText(
+    TkMenuButton* butPtr)
+{
+    MacMenuButton *mbPtr = (MacMenuButton*)butPtr;
+    Tk_Window  tkwin  = butPtr->tkwin;
+    Pixmap     pixmap;
+    int        haveImage = 0;
+    int        haveText = 0;
+    int        imageWidth = 0;
+    int        imageHeight = 0;
+    int        imageXOffset = 0;
+    int        imageYOffset = 0;
+    int        textXOffset = 0;
+    int        textYOffset = 0;
+    int        width = 0;
+    int        height = 0;
+    int        fullWidth = 0;
+    int        fullHeight = 0;
+    int        pressed;
+
+    if (tkwin == NULL || !Tk_IsMapped(tkwin)) {
+        return;
+    }
+
+    DrawParams* dpPtr = &mbPtr->drawParams;
+    pixmap = (Pixmap)Tk_WindowId(tkwin);
+
+
+    if (butPtr->image != None) {
+        Tk_SizeOfImage(butPtr->image, &width, &height);
+        haveImage = 1;
+    } else if (butPtr->bitmap != None) {
+        Tk_SizeOfBitmap(butPtr->display, butPtr->bitmap, &width, &height);
+        haveImage = 1;
+    }
+
+    imageWidth  = width;
+    imageHeight = height;
+
+    if (mbPtr->drawinfo.state == kThemeStatePressed) {
+        /* Offset bitmaps by a bit when the button is pressed. */
+        pressed = 1;
+    }
+
+  haveText = (butPtr->textWidth != 0 && butPtr->textHeight != 0);
+   if (butPtr->compound != COMPOUND_NONE && haveImage && haveText) {
+        int x = 0;
+        int y = 0;
+        textXOffset = 0;
+        textYOffset = 0;
+        fullWidth = 0;
+        fullHeight = 0;
+
+        switch ((enum compound) butPtr->compound) {
+            case COMPOUND_TOP:
+            case COMPOUND_BOTTOM: {
+                /* Image is above or below text */
+                if (butPtr->compound == COMPOUND_TOP) {
+                    textYOffset = height + butPtr->padY;
+                } else {
+                    imageYOffset = butPtr->textHeight + butPtr->padY;
+                }
+                fullHeight = height + butPtr->textHeight + butPtr->padY;
+                fullWidth = (width > butPtr->textWidth ? width :
+                        butPtr->textWidth);
+                textXOffset = (fullWidth - butPtr->textWidth)/2;
+                imageXOffset = (fullWidth - width)/2;
+                break;
+            }
+            case COMPOUND_LEFT:
+            case COMPOUND_RIGHT: {
+                /*
+                 * Image is left or right of text
+                 */
+
+                if (butPtr->compound == COMPOUND_LEFT) {
+                    textXOffset = width + butPtr->padX - 2;
+                } else {
+                    imageXOffset = butPtr->textWidth + butPtr->padX;
+                }
+                fullWidth = butPtr->textWidth + butPtr->padX + width;
+                fullHeight = (height > butPtr->textHeight ? height :
+                        butPtr->textHeight);
+                textYOffset = (fullHeight - butPtr->textHeight)/2;
+                imageYOffset = (fullHeight - height)/2;
+                break;
+            }
+            case COMPOUND_CENTER: {
+                /*
+                 * Image and text are superimposed
+                 */
+
+                fullWidth = (width > butPtr->textWidth ? width :
+                        butPtr->textWidth);
+                fullHeight = (height > butPtr->textHeight ? height :
+                        butPtr->textHeight);
+                textXOffset = (fullWidth - butPtr->textWidth)/2;
+                imageXOffset = (fullWidth - width)/2;
+                textYOffset = (fullHeight - butPtr->textHeight)/2;
+                imageYOffset = (fullHeight - height)/2;
+                break;
+            }
+            case COMPOUND_NONE: {break;}
 	}
-	[button setAlignment:alignment];
+
+        TkComputeAnchor(butPtr->anchor, tkwin,
+                butPtr->padX + butPtr->borderWidth,
+                butPtr->padY + butPtr->borderWidth,
+                fullWidth, fullHeight, &x, &y);
+        imageXOffset += x;
+        imageYOffset += y;
+        textYOffset -= 1;
+
+        if (butPtr->image != NULL) {
+                Tk_RedrawImage(butPtr->image, 0, 0, width,
+                        height, pixmap, imageXOffset, imageYOffset);
+        } else {
+            XSetClipOrigin(butPtr->display, dpPtr->gc,
+                    imageXOffset, imageYOffset);
+            XCopyPlane(butPtr->display, butPtr->bitmap, pixmap, dpPtr->gc,
+                    0, 0, (unsigned int) width, (unsigned int) height,
+                    imageXOffset, imageYOffset, 1);
+            XSetClipOrigin(butPtr->display, dpPtr->gc, 0, 0);
+        }
+
+        Tk_DrawTextLayout(butPtr->display, pixmap,
+                dpPtr->gc, butPtr->textLayout,
+                x + textXOffset, y + textYOffset, 0, -1);
+        Tk_UnderlineTextLayout(butPtr->display, pixmap, dpPtr->gc,
+                butPtr->textLayout,
+                x + textXOffset, y + textYOffset,
+                butPtr->underline);
     } else {
-	[button setTitle:@""];
-    }
-    font = TkMacOSXNSFontForFont(mbPtr->tkfont);
-    if (font) {
-	[button setFont:font];
-    }
-    if (haveImage) {
-	int width, height;
-	NSImage *image;
-	NSCellImagePosition pos = NSImageOnly;
+        if (haveImage) {
+            int x = 0;
+            int y;
+            TkComputeAnchor(butPtr->anchor, tkwin,
+                    butPtr->padX + butPtr->borderWidth,
+                    butPtr->padY + butPtr->borderWidth,
+                    width, height, &x, &y);
+	        imageXOffset += x;
+	    	imageYOffset += y;
 
-	if (mbPtr->image) {
-	    Tk_SizeOfImage(mbPtr->image, &width, &height);
-	    image = TkMacOSXGetNSImageWithTkImage(mbPtr->display,
-		    mbPtr->image, width, height);
-	} else {
-	    Tk_SizeOfBitmap(mbPtr->display, mbPtr->bitmap, &width, &height);
-	    image = TkMacOSXGetNSImageWithBitmap(mbPtr->display,
-		    mbPtr->bitmap, mbPtr->normalTextGC, width, height);
-	}
-	if (haveCompound) {
-	    switch ((enum compound) mbPtr->compound) {
-		case COMPOUND_TOP:
-		    pos = NSImageAbove;
-		    break;
-		case COMPOUND_BOTTOM:
-		    pos = NSImageBelow;
-		    break;
-		case COMPOUND_LEFT:
-		    pos = NSImageLeft;
-		    break;
-		case COMPOUND_RIGHT:
-		    pos = NSImageRight;
-		    break;
-		case COMPOUND_CENTER:
-		    pos = NSImageOverlaps;
-		    break;
-		case COMPOUND_NONE:
-		    pos = NSImageOnly;
-		    break;
-	    }
-	}
-	[button setImagePosition:pos];
-	[menuItem setImage:image];
-	bounds.size = cell ? [cell cellSize] : NSZeroSize;
-	if (bounds.size.height < height + 8) { /* workaround AppKit sizing bug */
-	    bounds.size.height = height + 8;
-	}
-#if TK_MAC_BUTTON_USE_COMPATIBILITY_METRICS
-	if (!mbPtr->indicatorOn && tkMacOSXUseCompatibilityMetrics) {
-	    bounds.size.width -= 16;
-	}
-#endif
-    } else {
-	bounds.size = cell ? [cell cellSize] : NSZeroSize;
-    }
-    if (haveText) {
-	titleRect =  cell ? [cell titleRectForBounds:bounds] : NSZeroRect;
-	if (mbPtr->wrapLength > 0 &&
-		titleRect.size.width > mbPtr->wrapLength) {
-	    if (style == NSRoundedBezelStyle) {
-		[button setBezelStyle:(style = NSRegularSquareBezelStyle)];
-		bounds.size = cell ? [cell cellSize] : NSZeroSize;
-		titleRect = cell ? [cell titleRectForBounds:bounds] : NSZeroRect;
-	    }
-	    bounds.size.width -= titleRect.size.width - mbPtr->wrapLength;
-	    bounds.size.height = 40000.0;
-	    [cell setWraps:YES];
-	    bounds.size = cell ? [cell cellSizeForBounds:bounds] : NSZeroSize;
-#ifdef TK_MAC_DEBUG_MENUBUTTON
-	    titleRect = cell ? [cell titleRectForBounds:bounds] : NSZeroRect;
-#endif
-#if TK_MAC_BUTTON_USE_COMPATIBILITY_METRICS
-	    if (tkMacOSXUseCompatibilityMetrics) {
-		bounds.size.height += 3;
-	    }
-#endif
-	}
-    }
-    width = lround(bounds.size.width);
-    height = lround(bounds.size.height);
-#if TK_MAC_BUTTON_USE_COMPATIBILITY_METRICS
-    if (tkMacOSXUseCompatibilityMetrics) {
-	macButtonPtr->fix = fixForStyle(style);
-	width -= boundsFixes[macButtonPtr->fix].trimW;
-	height -= boundsFixes[macButtonPtr->fix].trimH;
-    }
-#endif
+               if (butPtr->image != NULL) {
+		     Tk_RedrawImage(butPtr->image, 0, 0, width, height,
+		         pixmap, imageXOffset, imageYOffset);
+            } else {
+                XSetClipOrigin(butPtr->display, dpPtr->gc, x, y);
+                XCopyPlane(butPtr->display, butPtr->bitmap,
+                        pixmap, dpPtr->gc,
+                        0, 0, (unsigned int) width,
+                        (unsigned int) height,
+                        imageXOffset, imageYOffset, 1);
+                XSetClipOrigin(butPtr->display, dpPtr->gc, 0, 0);
+            }
+        } else {
+	  /*Move x back by eight pixels to give the menubutton arrows room.*/
+	  int x = 0;
+	  int y;
+	  textXOffset = 8;
+	    TkComputeAnchor(butPtr->anchor, tkwin, butPtr->padX, butPtr->padY,
+			    butPtr->textWidth, butPtr->textHeight, &x, &y);
+	    Tk_DrawTextLayout(butPtr->display, pixmap, dpPtr->gc,
+			      butPtr->textLayout, x - textXOffset, y, 0, -1);
+	    y += butPtr->textHeight/2;
+	  }
+   }
+}
 
-    if (haveImage || haveCompound) {
-	if (mbPtr->width > 0) {
-	    width = mbPtr->width;
-	}
-	if (mbPtr->height > 0) {
-	    height = mbPtr->height;
-	}
-    } else {
-	if (mbPtr->width > 0) {
-	    int avgWidth = Tk_TextWidth(mbPtr->tkfont, "0", 1);
-	    width = mbPtr->width * avgWidth;
-	}
-	if (mbPtr->height > 0) {
-	    Tk_FontMetrics fm;
 
-	    Tk_GetFontMetrics(mbPtr->tkfont, &fm);
-	    height = mbPtr->height * fm.linespace;
+
+/*
+ *--------------------------------------------------------------
+ *
+ * TkMacOSXDrawMenuButton --
+ *
+ *        This function draws the tk menubutton using Mac controls
+ *        In addition, this code may apply custom colors passed
+ *        in the TkMenubutton.
+ *
+ * Results:
+ *        None.
+ *
+ * Side effects:
+ *        None.
+ *
+ *--------------------------------------------------------------
+ */
+static void
+TkMacOSXDrawMenuButton(
+    MacMenuButton *mbPtr, /* Mac menubutton. */
+    GC gc,                /* The GC we are drawing into - needed for
+                           * the bevel button */
+    Pixmap pixmap)        /* The pixmap we are drawing into - needed
+                           * for the bevel button */
+
+{
+    TkMenuButton * butPtr = ( TkMenuButton *)mbPtr;
+    TkWindow * winPtr;
+    HIRect       cntrRect;
+    TkMacOSXDrawingContext dc;
+    DrawParams* dpPtr = &mbPtr->drawParams;
+    int useNewerHITools = 1;
+
+    winPtr = (TkWindow *)butPtr->tkwin;
+
+    TkMacOSXComputeMenuButtonParams(butPtr, &mbPtr->btnkind, &mbPtr->drawinfo);
+
+    cntrRect = CGRectMake(winPtr->privatePtr->xOff, winPtr->privatePtr->yOff, Tk_Width(butPtr->tkwin),Tk_Height(butPtr->tkwin));
+
+     cntrRect = CGRectInset(cntrRect,  butPtr->inset, butPtr->inset);
+
+
+    if (useNewerHITools == 1) {
+        HIRect contHIRec;
+        static HIThemeButtonDrawInfo hiinfo;
+
+        MenuButtonBackgroundDrawCB((MacMenuButton*) mbPtr, 32, true);
+
+	if (!TkMacOSXSetupDrawingContext(pixmap, dpPtr->gc, 1, &dc)) {
+	    return;
 	}
-    }
-    if (!haveImage || haveCompound) {
-	width += 2*mbPtr->padX;
-	height += 2*mbPtr->padY;
-    }
-    if (mbPtr->highlightWidth < 0) {
-	mbPtr->highlightWidth = 0;
-    }
-    if (haveImage) {
-	mbPtr->inset = mbPtr->highlightWidth;
-	width += 2*mbPtr->borderWidth;
-	height += 2*mbPtr->borderWidth;
+
+
+        hiinfo.version = 0;
+        hiinfo.state = mbPtr->drawinfo.state;
+        hiinfo.kind  = mbPtr->btnkind;
+        hiinfo.value = mbPtr->drawinfo.value;
+        hiinfo.adornment = mbPtr->drawinfo.adornment;
+        hiinfo.animation.time.current = CFAbsoluteTimeGetCurrent();
+        if (hiinfo.animation.time.start == 0) {
+            hiinfo.animation.time.start = hiinfo.animation.time.current;
+        }
+
+        HIThemeDrawButton(&cntrRect, &hiinfo, dc.context, kHIThemeOrientationNormal, &contHIRec);
+
+	TkMacOSXRestoreDrawingContext(&dc);
+
+        MenuButtonContentDrawCB( mbPtr->btnkind, &mbPtr->drawinfo, (MacMenuButton *)mbPtr, 32, true);
     } else {
-	mbPtr->inset = mbPtr->highlightWidth + mbPtr->borderWidth;
+	if (!TkMacOSXSetupDrawingContext(pixmap, dpPtr->gc, 1, &dc)) {
+	    return;
+	}
+
+
+	TkMacOSXRestoreDrawingContext(&dc);
     }
-    Tk_GeometryRequest(mbPtr->tkwin, width + 2 * mbPtr->inset,
-	    height + 2 * mbPtr->inset);
-    Tk_SetInternalBorder(mbPtr->tkwin, mbPtr->inset);
-#ifdef TK_MAC_DEBUG_MENUBUTTON
-    TKLog(@"menubutton %s bounds %@ titleRect %@ width %d height %d inset %d borderWidth %d",
-	    ((TkWindow *)mbPtr->tkwin)->pathName, NSStringFromRect(bounds),
-	    NSStringFromRect(titleRect), width, height, mbPtr->inset,
-	    mbPtr->borderWidth);
-#endif
+    mbPtr->lastdrawinfo = mbPtr->drawinfo;
+}
+
+/*
+ *--------------------------------------------------------------
+ *
+ * MenuButtonBackgroundDrawCB --
+ *
+ *        This function draws the background that
+ *        lies under checkboxes and radiobuttons.
+ *
+ * Results:
+ *        None.
+ *
+ * Side effects:
+ *        The background gets updated to the current color.
+ *
+ *--------------------------------------------------------------
+ */
+static void
+MenuButtonBackgroundDrawCB (
+    MacMenuButton *ptr,
+    SInt16 depth,
+    Boolean isColorDev)
+{
+    TkMenuButton* butPtr = (TkMenuButton*)ptr;
+    Tk_Window tkwin  = butPtr->tkwin;
+    Pixmap pixmap;
+    if (tkwin == NULL || !Tk_IsMapped(tkwin)) {
+        return;
+    }
+    pixmap = (Pixmap)Tk_WindowId(tkwin);
+
+    Tk_Fill3DRectangle(tkwin, pixmap, butPtr->normalBorder, 0, 0,
+        Tk_Width(tkwin), Tk_Height(tkwin), 0, TK_RELIEF_FLAT);
+}
+
+/*
+ *--------------------------------------------------------------
+ *
+ * MenuButtonContentDrawCB --
+ *
+ *        This function draws the label and image for the button.
+ *
+ * Results:
+ *        None.
+ *
+ * Side effects:
+ *        The content of the button gets updated.
+ *
+ *--------------------------------------------------------------
+ */
+static void
+MenuButtonContentDrawCB (
+    ThemeButtonKind kind,
+    const HIThemeButtonDrawInfo *drawinfo,
+    MacMenuButton *ptr,
+    SInt16 depth,
+    Boolean isColorDev)
+{
+    TkMenuButton  *butPtr = (TkMenuButton *)ptr;
+    Tk_Window  tkwin  = butPtr->tkwin;
+
+    if (tkwin == NULL || !Tk_IsMapped(tkwin)) {
+        return;
+    }
+
+    DrawMenuButtonImageAndText( butPtr);
 }
 
 /*
@@ -428,7 +712,7 @@ TkpComputeMenuButtonGeometry(
  *	None.
  *
  * Side effects:
- *	When activation state changes, it is redisplayed.
+ *	When it gets exposed, it is redisplayed.
  *
  *--------------------------------------------------------------
  */
@@ -438,27 +722,124 @@ MenuButtonEventProc(
     ClientData clientData,	/* Information about window. */
     XEvent *eventPtr)		/* Information about event. */
 {
-    TkMenuButton *mbPtr = (TkMenuButton *) clientData;
+    TkMenuButton *buttonPtr = (TkMenuButton *) clientData;
+    MacMenuButton *mbPtr = (MacMenuButton *) clientData;
 
-    if (!mbPtr->tkwin || !Tk_IsMapped(mbPtr->tkwin)) {
-	return;
-    }
-    switch (eventPtr->type) {
-    case ActivateNotify:
-    case DeactivateNotify:
-	if (!(mbPtr->flags & REDRAW_PENDING)) {
-	    Tcl_DoWhenIdle(TkpDisplayMenuButton, (ClientData) mbPtr);
-	    mbPtr->flags |= REDRAW_PENDING;
+    if (eventPtr->type == ActivateNotify
+	    || eventPtr->type == DeactivateNotify) {
+	if ((buttonPtr->tkwin == NULL) || (!Tk_IsMapped(buttonPtr->tkwin))) {
+	    return;
 	}
-	break;
+	if (eventPtr->type == ActivateNotify) {
+	    mbPtr->flags |= ACTIVE;
+	} else {
+	    mbPtr->flags &= ~ACTIVE;
+	}
+	if ((buttonPtr->flags & REDRAW_PENDING) == 0) {
+	    Tcl_DoWhenIdle(TkpDisplayMenuButton, (ClientData) buttonPtr);
+	    buttonPtr->flags |= REDRAW_PENDING;
+	}
     }
 }
 
 /*
- * Local Variables:
- * mode: objc
- * c-basic-offset: 4
- * fill-column: 79
- * coding: utf-8
- * End:
+ *----------------------------------------------------------------------
+ *
+ * TkMacOSXComputeMenuButtonParams --
+ *
+ *      This procedure computes the various parameters used
+ *        when creating a Carbon Appearance control.
+ *      These are determined by the various tk button parameters
+ *
+ * Results:
+ *        None.
+ *
+ * Side effects:
+ *        Sets the btnkind and drawinfo parameters
+ *
+ *----------------------------------------------------------------------
  */
+
+static void
+TkMacOSXComputeMenuButtonParams(TkMenuButton * butPtr, ThemeButtonKind* btnkind, HIThemeButtonDrawInfo *drawinfo)
+{
+    MacMenuButton *mbPtr = (MacMenuButton *)butPtr;
+
+    if (butPtr->image || butPtr->bitmap) {
+	/* TODO: allow for Small and Mini menubuttons. */
+	*btnkind = kThemePopupButton;
+    } else {
+        if (!butPtr->text || !*butPtr->text) {
+            *btnkind = kThemeArrowButton;
+        } else {
+            *btnkind = kThemePopupButton;
+        }
+    }
+
+    drawinfo->value = kThemeButtonOff;
+
+    if ((mbPtr->flags & FIRST_DRAW) != 0) {
+	mbPtr->flags &= ~FIRST_DRAW;
+	if (Tk_MacOSXIsAppInFront()) {
+	    mbPtr->flags |= ACTIVE;
+	}
+    }
+
+    drawinfo->state = kThemeStateInactive;
+    if ((mbPtr->flags & ACTIVE) == 0) {
+        if (butPtr->state == STATE_DISABLED) {
+            drawinfo->state = kThemeStateUnavailableInactive;
+        } else {
+            drawinfo->state = kThemeStateInactive;
+        }
+    } else if (butPtr->state == STATE_DISABLED) {
+        drawinfo->state = kThemeStateUnavailable;
+    } else {
+        drawinfo->state = kThemeStateActive;
+    }
+
+    drawinfo->adornment = kThemeAdornmentNone;
+    if (butPtr->highlightWidth >= 3) {
+        if ((butPtr->flags & GOT_FOCUS)) {
+            drawinfo->adornment |= kThemeAdornmentFocus;
+        }
+    }
+    drawinfo->adornment |= kThemeAdornmentArrowDoubleArrow;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TkMacOSXComputeMenuButtonDrawParams --
+ *
+ *        This procedure computes the various parameters used
+ *        when drawing a button
+ *      These are determined by the various tk button parameters
+ *
+ * Results:
+ *        1 if control will be used, 0 otherwise.
+ *
+ * Side effects:
+ *        Sets the button draw parameters
+ *
+ *----------------------------------------------------------------------
+ */
+
+static int
+TkMacOSXComputeMenuButtonDrawParams(TkMenuButton * butPtr, DrawParams * dpPtr)
+{
+    dpPtr->hasImageOrBitmap = ((butPtr->image != NULL)
+            || (butPtr->bitmap != None));
+    dpPtr->border = butPtr->normalBorder;
+    if ((butPtr->state == STATE_DISABLED) && (butPtr->disabledFg != NULL)) {
+        dpPtr->gc = butPtr->disabledGC;
+    } else if (butPtr->state == STATE_ACTIVE) {
+        dpPtr->gc = butPtr->activeTextGC;
+        dpPtr->border = butPtr->activeBorder;
+    } else {
+        dpPtr->gc = butPtr->normalTextGC;
+    }
+
+    return 1;
+}
+

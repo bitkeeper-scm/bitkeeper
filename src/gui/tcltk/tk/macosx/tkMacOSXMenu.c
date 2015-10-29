@@ -757,7 +757,7 @@ TkpPostMenu(
 				 * to be posted. */
     int y)			/* The global y-coordinate */
 {
-   
+
 
     /* Get the object that holds this Tk Window.*/
     Tk_Window root;
@@ -765,7 +765,7 @@ TkpPostMenu(
     if (root == NULL) {
 	return TCL_ERROR;
     }
- 
+
     Drawable d = Tk_WindowId(root);
     NSView *rootview = TkMacOSXGetRootControl(d);
     NSWindow *win = [rootview window];

@@ -1432,7 +1432,7 @@ Tk_CanvasPsOutline(
 	char *p = ptr;
 
 	converted = Tcl_ObjPrintf("%d", *p++ & 0xff);
-	for (i = dash->number-1 ; i>=0 ; i--) {
+	for (i = dash->number-1 ; i>0 ; i--) {
 	    Tcl_AppendPrintfToObj(converted, " %d", *p++ & 0xff);
 	}
 	Tcl_AppendObjToObj(psObj, converted);

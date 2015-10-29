@@ -209,19 +209,9 @@ enum OFNOper {
  * older compilers? Should we prefix definitions with Tcl_ instead
  * of using the same names as in the SDK?
  */
-#ifndef __IShellItemArray_INTERFACE_DEFINED__
-#define __IShellItemArray_INTERFACE_DEFINED__
-
-typedef enum SIATTRIBFLAGS {
-    SIATTRIBFLAGS_AND	= 0x1,
-    SIATTRIBFLAGS_OR	= 0x2,
-    SIATTRIBFLAGS_APPCOMPAT	= 0x3,
-    SIATTRIBFLAGS_MASK	= 0x3,
-    SIATTRIBFLAGS_ALLITEMS	= 0x4000
-} SIATTRIBFLAGS;
+#ifndef __IShellItem_INTERFACE_DEFINED__
+#  define __IShellItem_INTERFACE_DEFINED__
 #ifdef __MSVCRT__
-typedef ULONG SFGAOF;
-
 typedef struct IShellItem IShellItem;
 
 typedef enum __MIDL_IShellItem_0001 {
@@ -250,6 +240,21 @@ typedef struct IShellItemVtbl
 struct IShellItem {
     CONST_VTBL struct IShellItemVtbl *lpVtbl;
 };
+#endif
+#endif
+
+#ifndef __IShellItemArray_INTERFACE_DEFINED__
+#define __IShellItemArray_INTERFACE_DEFINED__
+
+typedef enum SIATTRIBFLAGS {
+    SIATTRIBFLAGS_AND	= 0x1,
+    SIATTRIBFLAGS_OR	= 0x2,
+    SIATTRIBFLAGS_APPCOMPAT	= 0x3,
+    SIATTRIBFLAGS_MASK	= 0x3,
+    SIATTRIBFLAGS_ALLITEMS	= 0x4000
+} SIATTRIBFLAGS;
+#ifdef __MSVCRT__
+typedef ULONG SFGAOF;
 #endif /* __MSVCRT__ */
 typedef struct IShellItemArray IShellItemArray;
 typedef struct IShellItemArrayVtbl
@@ -1402,6 +1407,21 @@ static int GetFileNameVista(Tcl_Interp *interp, OFNOpts *optsPtr,
     hr = fdlgIf->lpVtbl->Show(fdlgIf, hWnd);
     Tcl_SetServiceMode(oldMode);
 
+    /*
+     * Ensure that hWnd is enabled, because it can happen that we have updated
+     * the wrapper of the parent, which causes us to leave this child disabled
+     * (Windows loses sync).
+     */
+
+    if (hWnd)
+        EnableWindow(hWnd, 1);
+
+    /*
+     * Clear interp result since it might have been set during the modal loop.
+     * http://core.tcl.tk/tk/tktview/4a0451f5291b3c9168cc560747dae9264e1d2ef6
+     */
+    Tcl_ResetResult(interp);
+
     if (SUCCEEDED(hr)) {
         if ((oper == OFN_FILE_OPEN) && optsPtr->multi) {
             IShellItemArray *multiIf;
@@ -1739,9 +1759,24 @@ static int GetFileNameXP(Tcl_Interp *interp, OFNOpts *optsPtr, enum OFNOper oper
 		    listObjv[ofn.nFilterIndex - 1], &count,
 		    &typeInfo) != TCL_OK) {
 		result = TCL_ERROR;
-	    } else if (Tcl_ObjSetVar2(interp, optsPtr->typeVariableObj, NULL,
-                   typeInfo[0], TCL_GLOBAL_ONLY|TCL_LEAVE_ERR_MSG) == NULL) {
-		result = TCL_ERROR;
+	    } else {
+                /*
+                 * BUGFIX for d43a10ce2fed950e00890049f3c273f2cdd12583
+                 * The original code was broken because it passed typeinfo[0]
+                 * directly into Tcl_ObjSetVar2. In the case of typeInfo[0]
+                 * pointing into a list which is also referenced by
+                 * typeVariableObj, TOSV2 shimmers the object into
+                 * variable intrep which loses the list representation.
+                 * This invalidates typeInfo[0] which is freed but
+                 * nevertheless stored as the value of the variable.
+                 */
+                Tcl_Obj *selFilterObj = typeInfo[0];
+                Tcl_IncrRefCount(selFilterObj);
+                if (Tcl_ObjSetVar2(interp, optsPtr->typeVariableObj, NULL,
+                                   selFilterObj, TCL_GLOBAL_ONLY|TCL_LEAVE_ERR_MSG) == NULL) {
+                    result = TCL_ERROR;
+                }
+                Tcl_DecrRefCount(selFilterObj);
 	    }
 	}
     } else if (cdlgerr == FNERR_INVALIDFILENAME) {

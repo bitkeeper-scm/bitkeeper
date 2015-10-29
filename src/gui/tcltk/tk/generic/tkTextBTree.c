@@ -1879,8 +1879,7 @@ TkBTreePreviousLine(
  *	number of pixels in the widget.
  *
  * Results:
- *	The result is the index of linePtr within the tree, where 0
- *	corresponds to the first line in the tree.
+ *	The result is the pixel height of the top of the given line.
  *
  * Side effects:
  *	None.
@@ -1989,7 +1988,7 @@ TkBTreeLinesTo(
 	}
     }
     if (textPtr != NULL) {
-        /* 
+        /*
          * The index to return must be relative to textPtr, not to the entire
          * tree. Take care to never return a negative index when linePtr
          * denotes a line before -startline, or an index larger than the
@@ -3616,20 +3615,6 @@ TkTextIsElided(
     infoPtr->elidePriority = -1;
     for (i = infoPtr->numTags-1; i >=0; i--) {
 	if (infoPtr->tagCnts[i] & 1) {
-	    /*
-	     * Who would make the selection elided?
-	     */
-
-	    if ((tagPtr == textPtr->selTagPtr)
-		    && !(textPtr->flags & GOT_FOCUS)
-		    && (textPtr->inactiveSelBorder == NULL
-#ifdef MAC_OSX_TK
-		    /* Don't show inactive selection in disabled widgets. */
-		    || textPtr->state == TK_TEXT_STATE_DISABLED
-#endif
-	    )) {
-		continue;
-	    }
 	    infoPtr->elide = infoPtr->tagPtrs[i]->elide;
 
 	    /*

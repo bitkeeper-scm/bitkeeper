@@ -2632,7 +2632,65 @@ test text-10.39 {TextWidgetCmd procedure, "count" option} -setup {
     lappend res [.t count -displaylines 1.19 3.24] [.t count -displaylines 1.0 end]
 } -cleanup {
     destroy .t
-} -result {2 6 2 5}
+} -result {2 6 1 5}
+test text-9.2.45 {TextWidgetCmd procedure, "count" option} -setup {
+    text .t
+    pack .t
+    update
+    set res {}
+} -body {
+    for {set i 1} {$i < 5} {incr i} {
+      .t insert end "Line $i+++Line $i---Line $i///Line $i - This is Line [format %c [expr 64+$i]]\n"
+    }
+    .t tag configure hidden -elide true
+    .t tag add hidden 2.15 3.10
+    .t configure -wrap none
+    set res [.t count -displaylines 2.0 3.0]
+} -cleanup {
+    destroy .t
+} -result {0}
+test text-9.2.46 {TextWidgetCmd procedure, "count" option} -setup {
+    toplevel .mytop
+    pack [text .mytop.t]
+    wm geometry .mytop 100x300+0+0
+    .mytop.t delete 1.0 end
+    update
+    set res {}
+} -body {
+    for {set i 1} {$i < 5} {incr i} {
+      #              0          1          2          3          4
+      #              012345 678901234 567890123 456789012 34567890123456789
+      .mytop.t insert end "Line $i+++Line $i---Line $i///Line $i - This is Line [format %c [expr 64+$i]]\n"
+    }
+    .mytop.t tag configure hidden -elide true
+    .mytop.t tag add hidden 2.15 3.10
+    .mytop.t configure -wrap char
+    lappend res [.mytop.t count -displaylines 2.0 3.0]
+    lappend res [.mytop.t count -displaylines 2.0 3.40]
+} -cleanup {
+    destroy .mytop
+} -result {1 3}
+test text-9.2.47 {TextWidgetCmd procedure, "count" option} -setup {
+    text .t
+    pack .t
+    update
+    set res {}
+} -body {
+    for {set i 1} {$i < 25} {incr i} {
+        .t insert end "Line $i\n"
+    }
+    .t tag configure hidden -elide true
+    .t tag add hidden 5.7 11.0
+    update
+    set y1 [lindex [.t yview] 1]
+    .t count -displaylines 5.0 11.0
+    set y2 [lindex [.t yview] 1]
+    .t count -displaylines 5.0 12.0
+    set y3 [lindex [.t yview] 1]
+    list [expr {$y1 == $y2}] [expr {$y1 == $y3}]
+} -cleanup {
+    destroy .t
+} -result {1 1}
 
 
 test text-11.1 {counting with tag priority eliding} -setup {

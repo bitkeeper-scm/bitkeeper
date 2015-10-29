@@ -25,7 +25,6 @@ foreach event [bind all] {
    bind all $event {}
 }
 
-
 proc unsetBindings {} {
     bind all <Enter> {}
     bind Test <Enter> {}
@@ -2172,6 +2171,48 @@ test bind-16.44 {ExpandPercents procedure} -setup {
     destroy .t.f
 } -result {?? ??}
 
+test bind-16.45 {ExpandPercents procedure} -setup {
+    set savedBind(Entry) [bind Entry <Key>]
+    set savedBind(All) [bind all <Key>]
+    entry .t.e
+    pack .t.e
+    focus -force .t.e
+    foreach p [event info] {event delete $p}
+    update
+} -body {
+    bind .t.e <Key> {set x "%M"}
+    bind Entry <Key> {set y "%M"}
+    bind all <Key> {set z "%M"}
+    set x none; set y none; set z none
+    event gen .t.e <Key-a>
+    list $x $y $z
+} -cleanup {
+    destroy .t.e
+    bind all <Key> $savedBind(All)
+    bind Entry <Key> $savedBind(Entry)
+    unset savedBind
+} -result {0 1 2}
+test bind-16.46 {ExpandPercents procedure} -setup {
+    set savedBind(All) [bind all <Key>]
+    set savedBind(Entry) [bind Entry <Key>]
+    entry .t.e
+    pack .t.e
+    focus -force .t.e
+    foreach p [event info] {event delete $p}
+    update
+} -body {
+    bind all <Key> {set z "%M"}
+    bind Entry <Key> {set y "%M"}
+    bind .t.e <Key> {set x "%M"}
+    set x none; set y none; set z none
+    event gen .t.e <Key-a>
+    list $x $y $z
+} -cleanup {
+    destroy .t.e
+    bind Entry <Key> $savedBind(Entry)
+    bind all <Key> $savedBind(All)
+    unset savedBind
+} -result {0 1 2}
 
 test bind-17.1 {event command} -body {
     event

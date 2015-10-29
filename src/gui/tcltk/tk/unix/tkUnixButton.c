@@ -363,7 +363,7 @@ TkpDisplayButton(
 				 * warning. */
     int y, relief;
     Tk_Window tkwin = butPtr->tkwin;
-    int width, height, fullWidth, fullHeight;
+    int width = 0, height = 0, fullWidth, fullHeight;
     int textXOffset, textYOffset;
     int haveImage = 0, haveText = 0;
     int offset;			/* 1 means this is a button widget, so we

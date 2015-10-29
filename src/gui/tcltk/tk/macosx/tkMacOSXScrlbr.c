@@ -7,79 +7,24 @@
  * Copyright (c) 1996 by Sun Microsystems, Inc.
  * Copyright 2001-2009, Apple Inc.
  * Copyright (c) 2006-2009 Daniel A. Steffen <das@users.sourceforge.net>
- *
+ * Copyright (c) 2015 Kevin Walzer/WordTech Commununications LLC.
  * See the file "license.terms" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
  */
 
-#include "tkMacOSXPrivate.h"
+#include "tkInt.h"
 #include "tkScrollbar.h"
+#include "tkMacOSXPrivate.h"
 
-/*
-#ifdef TK_MAC_DEBUG
-#define TK_MAC_DEBUG_SCROLLBAR
-#endif
-*/
 
-NSRect                  TkMacOSXGetScrollFrame(TkScrollbar *scrlPtr);
+#define MIN_SCROLLBAR_VALUE		0
 
-/*
- * A subclass of NSScroller with sanity checking:
- *
- * NSScrollers created by Tk will have their tag set to a pointer to the
- * TkScrollbar which manages the NSScroller.  This allows an NSScroller to be
- * aware of the state of its Tk parent.  This subclass overrides the drawRect
- * method so that it will not draw itself if the widget is completely outside
- * of its container.
- */
-
-@interface TkNSScroller: NSScroller
--(void) drawRect:(NSRect)dirtyRect;
-
-@end
-
-@implementation TkNSScroller
-
-    - (void)drawRect:(NSRect)dirtyRect
-    {
-	NSInteger tag = [self tag];
-	if ( tag != -1) {
-	    TkScrollbar *scrollPtr = (TkScrollbar *)tag;
-	    MacDrawable* macWin = (MacDrawable *)scrollPtr;
-	    Tk_Window tkwin = scrollPtr->tkwin;
-	    NSRect Tkframe = TkMacOSXGetScrollFrame(scrollPtr);
-	    /* Do not draw if the widget is misplaced or unmapped. */
-	    if ( NSIsEmptyRect(Tkframe) || 
-		 ! macWin->winPtr->flags & TK_MAPPED ||
-		 ! NSEqualRects(Tkframe, [self frame]) 
-		 ) {
-		return;
-	    }
-
-	    /*
-	     * Do not draw if the widget is completely outside of its parent.
-	     */
-	    if (tkwin) {
-		int parent_height = Tk_Height(Tk_Parent(tkwin));
-		int widget_height = Tk_Height(tkwin);
-		int y = Tk_Y(tkwin);
-		if ( y > parent_height || y + widget_height < 0 ) {
-		    return;
-		}
-
-		int parent_width = Tk_Width(Tk_Parent(tkwin));
-		int widget_width = Tk_Width(tkwin);
-		int x = Tk_X(tkwin);
-		if (x > parent_width || x + widget_width < 0) {
-		    return;
-		}
-	    }
-	}
-	[super drawRect:dirtyRect];
-    }
-
-@end
-
+/*Borrowed from ttkMacOSXTheme.c to provide appropriate scaling of scrollbar values.*/
+#ifdef __LP64__
+#define RangeToFactor(maximum) (((double) (INT_MAX >> 1)) / (maximum))
+#else
+#define RangeToFactor(maximum) (((double) (LONG_MAX >> 1)) / (maximum))
+#endif /* __LP64__ */
 
 
 /*
@@ -87,11 +32,26 @@ NSRect                  TkMacOSXGetScrollFrame(TkScrollbar *scrlPtr);
  */
 
 typedef struct MacScrollbar {
-    TkScrollbar info;
-    TkNSScroller	*scroller;
-    int variant;
+    TkScrollbar information;	 /* Generic scrollbar info. */
+    GC troughGC;		/* For drawing trough. */
+    GC copyGC;			/* Used for copying from pixmap onto screen. */
 } MacScrollbar;
 
+/*
+ * The class procedure table for the scrollbar widget. All fields except size
+ * are left initialized to NULL, which should happen automatically since the
+ * variable is declared at this scope.
+ */
+
+const Tk_ClassProcs tkpScrollbarProcs = {
+    sizeof(Tk_ClassProcs),	/* size */
+    NULL,					/* worldChangedProc */
+    NULL,					/* createProc */
+    NULL					/* modalProc */
+};
+
+
+/*Information on scrollbar layout, metrics, and draw info.*/
 typedef struct ScrollbarMetrics {
     SInt32 width, minThumbHeight;
     int minHeight, topArrowHeight, bottomArrowHeight;
@@ -103,170 +63,24 @@ static ScrollbarMetrics metrics[2] = {
     {11, 40, 20, 10, 10, NSSmallControlSize},  /* kThemeScrollBarSmall  */
 };
 
-/*
- * Declarations for functions defined in this file.
- */
-
-static void		UpdateScrollbarMetrics(void);
-static void		ScrollbarEventProc(ClientData clientData,
-			    XEvent *eventPtr);
-
-
-/*
- * The class procedure table for the scrollbar widget.
- */
-
-const Tk_ClassProcs tkpScrollbarProcs = {
-    sizeof(Tk_ClassProcs),	/* size */
-    NULL,					/* worldChangedProc */
-    NULL,					/* createProc */
-    NULL					/* modalProc */
+HIThemeTrackDrawInfo info = {
+    .version = 0,
+    .min = 0.0,
+    .max = 100.0,
+    .attributes = kThemeTrackShowThumb,
+    .kind = kThemeScrollBarMedium,
 };
-
-#pragma mark TKApplication(TKScrlbr)
 
-#define NSAppleAquaScrollBarVariantChanged @"AppleAquaScrollBarVariantChanged"
 
-@implementation TKApplication(TKScrlbr)
-- (void) tkScroller: (TkNSScroller *) scroller
-{
-    NSScrollerPart hitPart = [scroller hitPart];
-    TkScrollbar *scrollPtr = (TkScrollbar *)[scroller tag];
-    Tcl_DString cmdString;
-    Tcl_Interp *interp;
-    int result;
-
-    if (!scrollPtr || !scrollPtr->command || !scrollPtr->commandSize ||
-	    hitPart == NSScrollerNoPart) {
-	return;
-    }
-
-    Tcl_DStringInit(&cmdString);
-    Tcl_DStringAppend(&cmdString, scrollPtr->command,
-	    scrollPtr->commandSize);
-    switch (hitPart) {
-    case NSScrollerKnob:
-    case NSScrollerKnobSlot: {
-	char valueString[TCL_DOUBLE_SPACE];
-
-	Tcl_PrintDouble(NULL, [scroller doubleValue] *
-		(1.0 - [scroller knobProportion]), valueString);
-	Tcl_DStringAppendElement(&cmdString, "moveto");
-	Tcl_DStringAppendElement(&cmdString, valueString);
-	break;
-    }
-    case NSScrollerDecrementLine:
-    case NSScrollerIncrementLine:
-	Tcl_DStringAppendElement(&cmdString, "scroll");
-	Tcl_DStringAppendElement(&cmdString,
-		(hitPart == NSScrollerDecrementLine) ? "-1" : "1");
-	Tcl_DStringAppendElement(&cmdString, "unit");
-	break;
-    case NSScrollerDecrementPage:
-    case NSScrollerIncrementPage:
-	Tcl_DStringAppendElement(&cmdString, "scroll");
-	Tcl_DStringAppendElement(&cmdString,
-		(hitPart == NSScrollerDecrementPage) ? "-1" : "1");
-	Tcl_DStringAppendElement(&cmdString, "page");
-	break;
-    }
-    interp = scrollPtr->interp;
-    Tcl_Preserve(interp);
-    Tcl_Preserve(scrollPtr);
-    result = Tcl_EvalEx(interp, Tcl_DStringValue(&cmdString),
-	    Tcl_DStringLength(&cmdString), TCL_EVAL_GLOBAL);
-    if (result != TCL_OK && result != TCL_CONTINUE && result != TCL_BREAK) {
-	Tcl_AddErrorInfo(interp, "\n    (scrollbar command)");
-	Tcl_BackgroundException(interp, result);
-    }
-    Tcl_Release(scrollPtr);
-    Tcl_Release(interp);
-    Tcl_DStringFree(&cmdString);
-#ifdef TK_MAC_DEBUG_SCROLLBAR
-    TKLog(@"scroller %s value %f knobProportion %f",
-	    ((TkWindow *)scrollPtr->tkwin)->pathName, [scroller doubleValue],
-	    [scroller knobProportion]);
-#endif
-}
-
-- (void) scrollBarVariantChanged: (NSNotification *) notification
-{
-#ifdef TK_MAC_DEBUG_NOTIFICATIONS
-    TKLog(@"-[%@(%p) %s] %@", [self class], self, _cmd, notification);
-#endif
-    UpdateScrollbarMetrics();
-}
-
-- (void) _setupScrollBarNotifications
-{
-    NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
-
-#define observe(n, s) [nc addObserver:self selector:@selector(s) name:(n) object:nil]
-    observe(NSAppleAquaScrollBarVariantChanged, scrollBarVariantChanged:);
-#undef observe
-
-    UpdateScrollbarMetrics();
-}
-@end
-
-#pragma mark -
-
 /*
- *----------------------------------------------------------------------
- *
- * UpdateScrollbarMetrics --
- *
- *	This function retrieves the current system metrics for a scrollbar.
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	Updates the geometry cache info for all scrollbars.
- *
- *----------------------------------------------------------------------
+ * Forward declarations for procedures defined later in this file:
  */
 
-static void
-UpdateScrollbarMetrics(void)
-{
-    const short height = 100, width = 50;
-    HIThemeTrackDrawInfo info = {
-	.version = 0,
-	.bounds = {{0, 0}, {width, height}},
-	.min = 0,
-	.max = 1,
-	.value = 0,
-	.attributes = kThemeTrackShowThumb,
-	.enableState = kThemeTrackActive,
-	.trackInfo.scrollbar = {.viewsize = 1, .pressState = 0},
-    };
-    CGRect bounds;
+static void ScrollbarEventProc(ClientData clientData, XEvent *eventPtr);
+static int ScrollbarPress(TkScrollbar *scrollPtr, XEvent *eventPtr);
+static void UpdateControlValues(TkScrollbar  *scrollPtr);
 
-    ChkErr(GetThemeMetric, kThemeMetricScrollBarWidth, &metrics[0].width);
-    ChkErr(GetThemeMetric, kThemeMetricScrollBarMinThumbHeight,
-	    &metrics[0].minThumbHeight);
-    info.kind = kThemeScrollBarMedium;
-    ChkErr(HIThemeGetTrackDragRect, &info, &bounds);
-    metrics[0].topArrowHeight = bounds.origin.y;
-    metrics[0].bottomArrowHeight = height - (bounds.origin.y +
-	    bounds.size.height);
-    metrics[0].minHeight = metrics[0].minThumbHeight +
-	    metrics[0].topArrowHeight + metrics[0].bottomArrowHeight;
-    ChkErr(GetThemeMetric, kThemeMetricSmallScrollBarWidth, &metrics[1].width);
-    ChkErr(GetThemeMetric, kThemeMetricSmallScrollBarMinThumbHeight,
-	    &metrics[1].minThumbHeight);
-    info.kind = kThemeScrollBarSmall;
-    ChkErr(HIThemeGetTrackDragRect, &info, &bounds);
-    metrics[1].topArrowHeight = bounds.origin.y;
-    metrics[1].bottomArrowHeight = height - (bounds.origin.y +
-	    bounds.size.height);
-    metrics[1].minHeight = metrics[1].minThumbHeight +
-	    metrics[1].topArrowHeight + metrics[1].bottomArrowHeight;
 
-    sprintf(tkDefScrollbarWidth, "%d", (int)(metrics[0].width));
-}
-
 /*
  *----------------------------------------------------------------------
  *
@@ -285,41 +99,17 @@ UpdateScrollbarMetrics(void)
 
 TkScrollbar *
 TkpCreateScrollbar(
-    Tk_Window tkwin)
+		   Tk_Window tkwin)
 {
-    MacScrollbar *scrollPtr = ckalloc(sizeof(MacScrollbar));
 
-    scrollPtr->scroller = nil;
-    Tk_CreateEventHandler(tkwin, StructureNotifyMask|FocusChangeMask|
-	    ActivateMask|ExposureMask, ScrollbarEventProc, scrollPtr);
+    MacScrollbar *scrollPtr = (MacScrollbar *)ckalloc(sizeof(MacScrollbar));
+
+    scrollPtr->troughGC = None;
+    scrollPtr->copyGC = None;
+
+    Tk_CreateEventHandler(tkwin,ExposureMask|StructureNotifyMask|FocusChangeMask|ButtonPressMask|VisibilityChangeMask, ScrollbarEventProc, scrollPtr);
+
     return (TkScrollbar *) scrollPtr;
-}
-
-/*
- *----------------------------------------------------------------------
- *
- * TkpDestroyScrollbar --
- *
- *	Free data structures associated with the scrollbar control.
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	None.
- *
- *----------------------------------------------------------------------
- */
-
-void
-TkpDestroyScrollbar(
-    TkScrollbar *scrollPtr)
-{
-    MacScrollbar *macScrollPtr = (MacScrollbar *) scrollPtr;
-    TkNSScroller *scroller = macScrollPtr->scroller;
-    [scroller setTag:(NSInteger)-1];
-
-    TkMacOSXMakeCollectableAndRelease(macScrollPtr->scroller);
 }
 
 /*
@@ -328,8 +118,8 @@ TkpDestroyScrollbar(
  * TkpDisplayScrollbar --
  *
  *	This procedure redraws the contents of a scrollbar window. It is
- *	invoked as a do-when-idle handler, so it only runs when there's nothing
- *	else for the application to do.
+ *	invoked as a do-when-idle handler, so it only runs when there's
+ *	nothing else for the application to do.
  *
  * Results:
  *	None.
@@ -342,95 +132,74 @@ TkpDestroyScrollbar(
 
 void
 TkpDisplayScrollbar(
-    ClientData clientData)	/* Information about window. */
+		    ClientData clientData)	/* Information about window. */
 {
-    TkScrollbar *scrollPtr = clientData;
-    MacScrollbar *macScrollPtr = clientData;
-    TkNSScroller *scroller = macScrollPtr->scroller;
-    Tk_Window tkwin = scrollPtr->tkwin;
+    register TkScrollbar *scrollPtr = (TkScrollbar *) clientData;
+    register Tk_Window tkwin = scrollPtr->tkwin;
+
+
+    if ((scrollPtr->tkwin == NULL) || !Tk_IsMapped(tkwin)) {
+  	return;
+    }
+
     TkWindow *winPtr = (TkWindow *) tkwin;
     MacDrawable *macWin =  (MacDrawable *) winPtr->window;
     TkMacOSXDrawingContext dc;
     NSView *view = TkMacOSXDrawableView(macWin);
     CGFloat viewHeight = [view bounds].size.height;
     CGAffineTransform t = { .a = 1, .b = 0, .c = 0, .d = -1, .tx = 0,
-	    .ty = viewHeight};
-    NSRect frame;
-    double knobProportion = scrollPtr->lastFraction - scrollPtr->firstFraction;
+			    .ty = viewHeight};
+
 
     scrollPtr->flags &= ~REDRAW_PENDING;
     if (!scrollPtr->tkwin || !Tk_IsMapped(tkwin) || !view ||
-	    !TkMacOSXSetupDrawingContext((Drawable) macWin, NULL, 1, &dc)) {
-	return;
+    	!TkMacOSXSetupDrawingContext((Drawable) macWin, NULL, 1, &dc)) {
+    	return;
     }
+
     CGContextConcatCTM(dc.context, t);
+
+    /*Draw Unix-style scroll trough to provide rect for native scrollbar.*/
     if (scrollPtr->highlightWidth != 0) {
-	GC fgGC, bgGC;
+    	GC fgGC, bgGC;
 
-	bgGC = Tk_GCForColor(scrollPtr->highlightBgColorPtr, (Pixmap) macWin);
-	if (scrollPtr->flags & GOT_FOCUS) {
-	    fgGC = Tk_GCForColor(scrollPtr->highlightColorPtr, (Pixmap) macWin);
-	} else {
-	    fgGC = bgGC;
-	}
-	TkpDrawHighlightBorder(tkwin, fgGC, bgGC, scrollPtr->highlightWidth,
-		(Pixmap) macWin);
+    	bgGC = Tk_GCForColor(scrollPtr->highlightBgColorPtr, (Pixmap) macWin);
+    	if (scrollPtr->flags & GOT_FOCUS) {
+    	    fgGC = Tk_GCForColor(scrollPtr->highlightColorPtr, (Pixmap) macWin);
+    	} else {
+    	    fgGC = bgGC;
+    	}
+    	TkpDrawHighlightBorder(tkwin, fgGC, bgGC, scrollPtr->highlightWidth,
+    			       (Pixmap) macWin);
     }
+
+
     Tk_Draw3DRectangle(tkwin, (Pixmap) macWin, scrollPtr->bgBorder,
-	    scrollPtr->highlightWidth, scrollPtr->highlightWidth,
-	    Tk_Width(tkwin) - 2*scrollPtr->highlightWidth,
-	    Tk_Height(tkwin) - 2*scrollPtr->highlightWidth,
-	    scrollPtr->borderWidth, scrollPtr->relief);
+    		       scrollPtr->highlightWidth, scrollPtr->highlightWidth,
+    		       Tk_Width(tkwin) - 2*scrollPtr->highlightWidth,
+    		       Tk_Height(tkwin) - 2*scrollPtr->highlightWidth,
+    		       scrollPtr->borderWidth, scrollPtr->relief);
     Tk_Fill3DRectangle(tkwin, (Pixmap) macWin, scrollPtr->bgBorder,
-	    scrollPtr->inset, scrollPtr->inset,
-	    Tk_Width(tkwin) - 2*scrollPtr->inset,
-	    Tk_Height(tkwin) - 2*scrollPtr->inset, 0, TK_RELIEF_FLAT);
-    if ([scroller superview] != view) {
-	[view addSubview:scroller];
+    		       scrollPtr->inset, scrollPtr->inset,
+    		       Tk_Width(tkwin) - 2*scrollPtr->inset,
+    		       Tk_Height(tkwin) - 2*scrollPtr->inset, 0, TK_RELIEF_FLAT);
+
+    /*Update values and draw in native rect.*/
+    UpdateControlValues(scrollPtr);
+#if MAC_OS_X_VERSION_MIN_REQUIRED < 1070
+    if (scrollPtr->vertical) {
+      HIThemeDrawTrack (&info, 0, dc.context, kHIThemeOrientationNormal);
+    } else {
+      HIThemeDrawTrack (&info, 0, dc.context, kHIThemeOrientationInverted);
     }
-    frame = NSMakeRect(macWin->xOff, macWin->yOff, Tk_Width(tkwin),
-	    Tk_Height(tkwin));
-    frame = NSInsetRect(frame, scrollPtr->inset, scrollPtr->inset);
-    frame.origin.y = viewHeight - (frame.origin.y + frame.size.height);
-
-    NSWindow *w = [view window];
-
-    //This uses a private API call that is no longer needed on systems >= 10.7.
-    #if 0
-    if ([w showsResizeIndicator]) {
-	NSRect growBox = [view convertRect:[w _growBoxRect] fromView:nil];
-
-	if (NSIntersectsRect(growBox, frame)) {
-	    if (scrollPtr->vertical) {
-		CGFloat y = frame.origin.y;
-
-		frame.origin.y = growBox.origin.y + growBox.size.height;
-		frame.size.height -= frame.origin.y - y;
- 	    } else {
-		frame.size.width = growBox.origin.x - frame.origin.x;
-	    }
-	    TkMacOSXSetScrollbarGrow(winPtr, true);
-	}
-    }
-    #endif
-    if (!NSEqualRects(frame, [scroller frame])) {
-	[scroller setFrame:frame];
-    }
-    [scroller setEnabled:(knobProportion < 1.0 &&
-	    (scrollPtr->vertical ? frame.size.height : frame.size.width) >
-	    metrics[macScrollPtr->variant].minHeight)];
-    // [scroller setEnabled: YES];
-    [scroller setDoubleValue:scrollPtr->firstFraction / (1.0 - knobProportion)];
-    [scroller setKnobProportion:knobProportion];
-    [scroller displayRectIgnoringOpacity:[scroller bounds]];
+#else
+    HIThemeDrawTrack (&info, 0, dc.context, kHIThemeOrientationNormal);
+#endif
     TkMacOSXRestoreDrawingContext(&dc);
-    #ifdef TK_MAC_DEBUG_SCROLLBAR
-    TKLog(@"scroller %s frame %@ width %d height %d",
-	    ((TkWindow *)scrollPtr->tkwin)->pathName, NSStringFromRect(frame),
-	    Tk_Width(tkwin), Tk_Height(tkwin));
-    #endif
+
+    scrollPtr->flags &= ~REDRAW_PENDING;
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -449,123 +218,106 @@ TkpDisplayScrollbar(
  *----------------------------------------------------------------------
  */
 
-void
+extern void
 TkpComputeScrollbarGeometry(
-    register TkScrollbar *scrollPtr)
-				/* Scrollbar whose geometry may have
-				 * changed. */
+			    register TkScrollbar *scrollPtr)
+/* Scrollbar whose geometry may have
+ * changed. */
 {
-    MacScrollbar *macScrollPtr = (MacScrollbar *) scrollPtr;
-    TkNSScroller *scroller = macScrollPtr->scroller;
-    int width, height, variant, fieldLength;
+
+    int variant, fieldLength;
 
     if (scrollPtr->highlightWidth < 0) {
-	scrollPtr->highlightWidth = 0;
+    	scrollPtr->highlightWidth = 0;
     }
     scrollPtr->inset = scrollPtr->highlightWidth + scrollPtr->borderWidth;
-    width = Tk_Width(scrollPtr->tkwin) - 2 * scrollPtr->inset;
-    height = Tk_Height(scrollPtr->tkwin) - 2 * scrollPtr->inset;
-    variant = ((scrollPtr->vertical ?  width : height) < metrics[0].width) ?
-	    1 : 0;
-    macScrollPtr->variant = variant;
-    if (scroller) {
-	NSSize size = [scroller frame].size;
-
-	if ((size.width > size.height) ^ !scrollPtr->vertical) {
-	    /*
-	     * Orientation changed, need new scroller.
-	     */
-
-	    if ([scroller superview]) {
-		[scroller removeFromSuperviewWithoutNeedingDisplay];
-	    }
-	    TkMacOSXMakeCollectableAndRelease(scroller);
-	}
-    }
-    if (!scroller) {
-	if ((width > height) ^ !scrollPtr->vertical) {
-	    /* -[NSScroller initWithFrame:] determines horizontalness for the
-	     * lifetime of the scroller via isHoriz = (width > height) */
-	    if (scrollPtr->vertical) {
-		width = height;
-	    } else if (width > 1) {
-		height = width - 1;
-	    } else {
-		height = 1;
-		width = 2;
-	    }
-	}
-	scroller = [[TkNSScroller alloc] initWithFrame:
-		NSMakeRect(0, 0, width, height)];
-	macScrollPtr->scroller = TkMacOSXMakeUncollectable(scroller);
-	[scroller setAction:@selector(tkScroller:)];
-	[scroller setTarget:NSApp];
-	[scroller setTag:(NSInteger)scrollPtr];
-    }
-    [[scroller cell] setControlSize:metrics[variant].controlSize];
-
+    variant = ((scrollPtr->vertical ? Tk_Width(scrollPtr->tkwin) :
+		Tk_Height(scrollPtr->tkwin)) - 2 * scrollPtr->inset
+	       < metrics[0].width) ? 1 : 0;
     scrollPtr->arrowLength = (metrics[variant].topArrowHeight +
-	    metrics[variant].bottomArrowHeight) / 2;
+			      metrics[variant].bottomArrowHeight) / 2;
     fieldLength = (scrollPtr->vertical ? Tk_Height(scrollPtr->tkwin)
-	    : Tk_Width(scrollPtr->tkwin))
-	    - 2 * (scrollPtr->arrowLength + scrollPtr->inset);
+		   : Tk_Width(scrollPtr->tkwin))
+	- 2 * (scrollPtr->arrowLength + scrollPtr->inset);
     if (fieldLength < 0) {
-	fieldLength = 0;
+    	fieldLength = 0;
     }
     scrollPtr->sliderFirst = fieldLength * scrollPtr->firstFraction;
     scrollPtr->sliderLast = fieldLength * scrollPtr->lastFraction;
 
     /*
-     * Adjust the slider so that some piece of it is always displayed in the
-     * scrollbar and so that it has at least a minimal width (so it can be
-     * grabbed with the mouse).
+     * Adjust the slider so that some piece of it is always
+     * displayed in the scrollbar and so that it has at least
+     * a minimal width (so it can be grabbed with the mouse).
      */
 
     if (scrollPtr->sliderFirst > (fieldLength - 2*scrollPtr->borderWidth)) {
-	scrollPtr->sliderFirst = fieldLength - 2*scrollPtr->borderWidth;
+    	scrollPtr->sliderFirst = fieldLength - 2*scrollPtr->borderWidth;
     }
     if (scrollPtr->sliderFirst < 0) {
-	scrollPtr->sliderFirst = 0;
+    	scrollPtr->sliderFirst = 0;
     }
     if (scrollPtr->sliderLast < (scrollPtr->sliderFirst +
-	    metrics[variant].minThumbHeight)) {
-	scrollPtr->sliderLast = scrollPtr->sliderFirst +
-		metrics[variant].minThumbHeight;
+				 metrics[variant].minThumbHeight)) {
+    	scrollPtr->sliderLast = scrollPtr->sliderFirst +
+	    metrics[variant].minThumbHeight;
     }
     if (scrollPtr->sliderLast > fieldLength) {
-	scrollPtr->sliderLast = fieldLength;
+    	scrollPtr->sliderLast = fieldLength;
     }
     scrollPtr->sliderFirst += scrollPtr->inset +
-	    metrics[variant].topArrowHeight;
+	metrics[variant].topArrowHeight;
     scrollPtr->sliderLast += scrollPtr->inset +
-	    metrics[variant].bottomArrowHeight;
+	metrics[variant].bottomArrowHeight;
 
     /*
-     * Register the desired geometry for the window (leave enough space for
-     * the two arrows plus a minimum-size slider, plus border around the whole
-     * window, if any). Then arrange for the window to be redisplayed.
+     * Register the desired geometry for the window (leave enough space
+     * for the two arrows plus a minimum-size slider, plus border around
+     * the whole window, if any). Then arrange for the window to be
+     * redisplayed.
      */
 
     if (scrollPtr->vertical) {
-	Tk_GeometryRequest(scrollPtr->tkwin, scrollPtr->width +
-		2 * scrollPtr->inset, 2 * (scrollPtr->arrowLength +
-		scrollPtr->borderWidth + scrollPtr->inset) +
-		metrics[variant].minThumbHeight);
+    	Tk_GeometryRequest(scrollPtr->tkwin, scrollPtr->width + 2 * scrollPtr->inset, 2 * (scrollPtr->arrowLength + scrollPtr->borderWidth + scrollPtr->inset) +  metrics[variant].minThumbHeight);
     } else {
-	Tk_GeometryRequest(scrollPtr->tkwin, 2 * (scrollPtr->arrowLength +
-		scrollPtr->borderWidth + scrollPtr->inset) +
-		metrics[variant].minThumbHeight, scrollPtr->width +
-		2 * scrollPtr->inset);
+    	Tk_GeometryRequest(scrollPtr->tkwin, 2 * (scrollPtr->arrowLength + scrollPtr->borderWidth + scrollPtr->inset) + metrics[variant].minThumbHeight, scrollPtr->width + 2 * scrollPtr->inset);
     }
     Tk_SetInternalBorder(scrollPtr->tkwin, scrollPtr->inset);
-#ifdef TK_MAC_DEBUG_SCROLLBAR
-    TKLog(@"scroller %s bounds %@ width %d height %d inset %d borderWidth %d",
-	    ((TkWindow *)scrollPtr->tkwin)->pathName,
-	    NSStringFromRect([scroller bounds]),
-	    width, height, scrollPtr->inset, scrollPtr->borderWidth);
-#endif
+
 }
-
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TkpDestroyScrollbar --
+ *
+ *	Free data structures associated with the scrollbar control.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	Frees the GCs associated with the scrollbar.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TkpDestroyScrollbar(
+		    TkScrollbar *scrollPtr)
+{
+    MacScrollbar *macScrollPtr = (MacScrollbar *)scrollPtr;
+
+    if (macScrollPtr->troughGC != None) {
+	Tk_FreeGC(scrollPtr->display, macScrollPtr->troughGC);
+    }
+    if (macScrollPtr->copyGC != None) {
+	Tk_FreeGC(scrollPtr->display, macScrollPtr->copyGC);
+    }
+
+    macScrollPtr=NULL;
+}
+
 /*
  *----------------------------------------------------------------------
  *
@@ -579,19 +331,20 @@ TkpComputeScrollbarGeometry(
  *	None.
  *
  * Side effects:
- *	None.
+ *	Configuration info may get changed.
  *
  *----------------------------------------------------------------------
  */
 
 void
 TkpConfigureScrollbar(
-    register TkScrollbar *scrollPtr)
-				/* Information about widget; may or may not
-				 * already have values for some fields. */
+		      register TkScrollbar *scrollPtr)
+/* Information about widget; may or may not
+ * already have values for some fields. */
 {
+
 }
-
+
 /*
  *--------------------------------------------------------------
  *
@@ -616,30 +369,159 @@ TkpScrollbarPosition(
 				/* Scrollbar widget record. */
     int x, int y)		/* Coordinates within scrollPtr's window. */
 {
-    TkNSScroller *scroller = ((MacScrollbar *) scrollPtr)->scroller;
-    MacDrawable *macWin =  (MacDrawable *)
-	    ((TkWindow *) scrollPtr->tkwin)->window;
-    NSView *view = TkMacOSXDrawableView(macWin);
 
-    switch ([scroller testPart:NSMakePoint(macWin->xOff + x,
-	    [view bounds].size.height - (macWin->yOff + y))]) {
-    case NSScrollerDecrementLine:
-	return TOP_ARROW;
-    case NSScrollerDecrementPage:
-	return TOP_GAP;
-    case NSScrollerKnob:
-	return SLIDER;
-    case NSScrollerIncrementPage:
-	return BOTTOM_GAP;
-    case NSScrollerIncrementLine:
-	return BOTTOM_ARROW;
-    case NSScrollerKnobSlot:
-    case NSScrollerNoPart:
-    default:
+  /*Using code from tkUnixScrlbr.c because Unix scroll bindings are driving the display at the script level. All the Mac scrollbar has to do is re-draw itself.*/
+
+    int length, width, tmp;
+    register const int inset = scrollPtr->inset;
+
+    if (scrollPtr->vertical) {
+	length = Tk_Height(scrollPtr->tkwin);
+	width = Tk_Width(scrollPtr->tkwin);
+    } else {
+	tmp = x;
+	x = y;
+	y = tmp;
+	length = Tk_Width(scrollPtr->tkwin);
+	width = Tk_Height(scrollPtr->tkwin);
+    }
+
+    if (x<inset || x>=width-inset || y<inset || y>=length-inset) {
 	return OUTSIDE;
     }
+
+    /*
+     * All of the calculations in this procedure mirror those in
+     * TkpDisplayScrollbar. Be sure to keep the two consistent.
+     */
+
+    if (y < inset + scrollPtr->arrowLength) {
+	return TOP_ARROW;
+    }
+    if (y < scrollPtr->sliderFirst) {
+	return TOP_GAP;
+    }
+    if (y < scrollPtr->sliderLast) {
+	return SLIDER;
+    }
+    if (y >= length - (scrollPtr->arrowLength + inset)) {
+	return BOTTOM_ARROW;
+    }
+    return BOTTOM_GAP;
 }
-
+
+/*
+ *--------------------------------------------------------------
+ *
+ * UpdateControlValues --
+ *
+ *	This procedure updates the Macintosh scrollbar control to display the
+ *	values defined by the Tk scrollbar. This is the key interface to the Mac-native *      scrollbar; the Unix bindings drive scrolling in the Tk window and all the Mac
+ *      scrollbar has to do is redraw itself.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	The Macintosh control is updated.
+ *
+ *--------------------------------------------------------------
+ */
+
+static void
+UpdateControlValues(
+		    TkScrollbar *scrollPtr)		/* Scrollbar data struct. */
+{
+
+    Tk_Window tkwin = scrollPtr->tkwin;
+    MacDrawable *macWin = (MacDrawable *) Tk_WindowId(scrollPtr->tkwin);
+    double dViewSize;
+    HIRect  contrlRect;
+    int variant; 
+    short width, height;
+
+    NSView *view = TkMacOSXDrawableView(macWin);
+    CGFloat viewHeight = [view bounds].size.height;
+    NSRect frame;
+    frame = NSMakeRect(macWin->xOff, macWin->yOff, Tk_Width(tkwin),
+		       Tk_Height(tkwin));
+    frame = NSInsetRect(frame, scrollPtr->inset, scrollPtr->inset);
+    frame.origin.y = viewHeight - (frame.origin.y + frame.size.height);
+
+    contrlRect = NSRectToCGRect(frame);
+    info.bounds = contrlRect;
+
+    width = contrlRect.size.width;
+    height = contrlRect.size.height;
+
+    variant = contrlRect.size.width < metrics[0].width ? 1 : 0;
+
+    /*
+     * Ensure we set scrollbar control bounds only once all size adjustments
+     * have been computed.
+     */
+
+    info.bounds = contrlRect;
+    if (!scrollPtr->vertical) {
+    	info.attributes |= kThemeTrackHorizontal;
+    }
+
+    /*
+     * Given the Tk parameters for the fractions of the start and end of the
+     * thumb, the following calculation determines the location for the
+     * Macintosh thumb. The Aqua scroll control works as follows. The
+     * scrollbar's value is the position of the left (or top) side of the view
+     * area in the content area being scrolled. The maximum value of the
+     * control is therefore the dimension of the content area less the size of
+     * the view area.
+     */
+
+    double maximum = 100,  factor;
+    factor = RangeToFactor(maximum);
+    dViewSize = (scrollPtr->lastFraction - scrollPtr->firstFraction)
+	* factor;
+    info.max =  MIN_SCROLLBAR_VALUE +
+	factor - dViewSize;
+    info.trackInfo.scrollbar.viewsize = dViewSize;
+    if (scrollPtr->vertical) {
+	info.value = info.max - factor * scrollPtr->firstFraction;
+    } else {
+	 info.value =  MIN_SCROLLBAR_VALUE + factor * scrollPtr->firstFraction;
+    }
+
+    if((scrollPtr->firstFraction <= 0.0 && scrollPtr->lastFraction >= 1.0)
+       || height <= metrics[variant].minHeight) {
+    	info.enableState = kThemeTrackHideTrack;
+    } else {
+    	info.enableState = kThemeTrackActive;
+    	info.attributes = kThemeTrackShowThumb |  kThemeTrackThumbRgnIsNotGhost;
+    }
+
+}
+
+/*
+ *--------------------------------------------------------------
+ *
+ * ScrollbarPress --
+ *
+ *	This procedure is invoked in response to <ButtonPress> events.
+ *	Enters a modal loop to handle scrollbar interactions.
+ *
+ *--------------------------------------------------------------
+ */
+
+static int
+ScrollbarPress(TkScrollbar *scrollPtr, XEvent *eventPtr)
+{
+
+  if (eventPtr->type == ButtonPress) {
+    UpdateControlValues(scrollPtr);
+  }
+  return TCL_OK;
+}
+
+
+
 /*
  *--------------------------------------------------------------
  *
@@ -660,8 +542,8 @@ TkpScrollbarPosition(
 
 static void
 ScrollbarEventProc(
-    ClientData clientData,	/* Information about window. */
-    XEvent *eventPtr)		/* Information about event. */
+		   ClientData clientData,	/* Information about window. */
+		   XEvent *eventPtr)		/* Information about event. */
 {
     TkScrollbar *scrollPtr = clientData;
 
@@ -673,55 +555,10 @@ ScrollbarEventProc(
     case DeactivateNotify:
 	TkScrollbarEventuallyRedraw(scrollPtr);
 	break;
+    case ButtonPress:
+    	ScrollbarPress(clientData, eventPtr);
+	break;
     default:
 	TkScrollbarEventProc(clientData, eventPtr);
     }
 }
-
-
-/*
- *----------------------------------------------------------------------
- *
- * TkMacOSXGetScrollFrame --
- *
- *	Computes a frame for an NSScroller that will correspond to where
- *	Tk thinks the scroller is located.
- *
- * Results:
- *	Returns an NSRect describing a frame for an NSScrollbar.
- *
- * Side effects:
- *	None
- *
- *----------------------------------------------------------------------
- */
-NSRect TkMacOSXGetScrollFrame(
-     TkScrollbar *scrlPtr)
-{
-    MacScrollbar *macscrlPtr = (MacScrollbar *) scrlPtr;
-    Tk_Window tkwin = scrlPtr->tkwin;
-    TkWindow *winPtr = (TkWindow *) tkwin;
-    if (tkwin) {
-	MacDrawable *macWin =  (MacDrawable *) winPtr->window;
-	NSView *view = TkMacOSXDrawableView(macWin);
-	CGFloat viewHeight = [view bounds].size.height;
-	NSRect frame = NSMakeRect(macWin->xOff, macWin->yOff,
-				  Tk_Width(tkwin), Tk_Height(tkwin));
-
-	frame.origin.y = viewHeight - (frame.origin.y + frame.size.height);
-	return frame;
-    } else {
-	return NSZeroRect;
-    }
-}
-
-
-
-/*
- * Local Variables:
- * mode: objc
- * c-basic-offset: 4
- * fill-column: 79
- * coding: utf-8
- * End:
- */
