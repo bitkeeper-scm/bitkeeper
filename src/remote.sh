@@ -20,7 +20,7 @@ BKDIR=${REPO}-${BK_USER}
 CMD=$1
 test X$CMD = X && CMD=build
 
-host=`uname -n | sed 's/\.bitmover\.com//'`
+host=`uname -n | sed 's/\.bitkeeper\.com//'`
 START="/build/.start-$BK_USER"
 ELAPSED="/build/.elapsed-$BK_USER"
 
@@ -194,6 +194,12 @@ case $CMD in
 			IMG=$TAG-$ARCH.bin
 			test -d $DEST || mkdir $DEST
 			CP=cp
+			if [ `uname -s` = Darwin ]
+			then	# we're on Mac OS X
+				# but we only want the pkg from macos109
+				test $HOSTNAME = macos109.bitkeeper.com || exit 0
+				IMG="$TAG-$ARCH.pkg"
+			fi
 		fi
 		test -f /build/.images/$IMG || {
 			echo "Could not find image /build/.images/$IMG"
@@ -204,13 +210,6 @@ case $CMD in
 			echo "Could not $CP $IMG to $DEST"
 			exit 1
 		}
-		if [ `uname -s` = Darwin ] ;
-		then	# we're on Mac OS
-			$CP /build/.images/"$TAG-$ARCH.pkg" $DEST || {
-				echo "Could not $CP $TAG-$ARCH.pkg to $DEST"
-				exit 1
-			}
-		fi
 	}
 	# Leave the directory there only if they asked for a saved build
 	test $CMD = save || {

@@ -952,15 +952,23 @@ proc isBinary { filename } \
     return [regexp {[\x00-\x08\x0b\x0e-\x1f]} $x]
 }
 
+proc display_text_sizes {{onOrOff ""}} {
+	if {$onOrOff ne ""} { set ::display_text_sizes $onOrOff }
+	return $::display_text_sizes
+}
+
+set ::display_text_sizes on
+
 proc displayTextSize {text w h} \
 {
+	if {!$::display_text_sizes} { return }
 	if {![info exists ::textWidgets($text,w)]} { return }
 
 	set oldW $::textWidgets($text,w)
 	set oldH $::textWidgets($text,h)
 
 	## Check to see if size has changed.
-	if {$w == $oldW && $h == $oldH} { return }
+	if {abs($w - $oldW) <= 2 && abs($h - $oldH) <= 2} { return }
 
 	set ::textWidgets($text,w) $w
 	set ::textWidgets($text,h) $h
@@ -987,7 +995,7 @@ proc displayTextSize {text w h} \
 	place $label -x 0 -y 0
 	$label configure -text "${cwidth}x${cheight}"
 
-	set ::textSize($text) [after 2000 [list hideTextDisplaySize $text]]
+	set ::textSize($text) [after 1000 [list hideTextDisplaySize $text]]
 }
 
 proc hideTextDisplaySize {w} \

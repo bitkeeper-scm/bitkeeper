@@ -361,3 +361,64 @@ EOF
 bk prs -r+ -hd:COMMENTS: foo bar > GOT
 cmpfiles GOT WANT
 echo OK
+
+echo $N Test bk commit --ci in nested................................$NL
+cd "$HERE"
+BK_CONFIG=checkout:edit\!
+export BK_CONFIG
+nested product
+for f in file gcc/file gdb/file
+do
+	echo $f > $f
+	bk new $Q $f
+done
+bk commit $Q -yfirst
+## XXX
+## 
+## Having 'pe' at this point is a probably a bug
+## and the presence of the p flag hides the
+## bug this test was written to illustrate.
+## When this block starts failing, perhaps
+## the bug was fixed and this block needs
+## to be removed or adjusted.
+cat BitKeeper/log/scancomps > "$HERE/GOT"
+cat <<EOF > "$HERE/WANT"
+@.
+e
+@gcc
+pe
+@gdb
+pe
+EOF
+cmpfiles "$HERE/WANT" "$HERE/GOT"
+cd gcc
+echo stuff > file
+cd ..
+# Fix scancomps file
+bk -e sfiles -C -P > "$HERE/junk"
+# Make sure
+cat BitKeeper/log/scancomps > "$HERE/GOT"
+cat <<EOF > "$HERE/WANT"
+@.
+e
+@gcc
+e
+@gdb
+e
+EOF
+cmpfiles "$HERE/WANT" "$HERE/GOT"
+##
+## End of XXX block
+# Ensure bk -Uc sees the modified file
+bk -Uc > "$HERE/GOT"
+cat <<EOF > "$HERE/WANT"
+gcc/file
+EOF
+bk commit $Q --ci -ytop ||  fail
+bk changes -d'$each(:C:){(:C:)\n}' -r+ > "$HERE/GOT"
+cat <<EOF > "$HERE/WANT"
+top
+EOF
+cmpfiles "$HERE/WANT" "$HERE/GOT"
+echo OK
+unset BK_CONFIG

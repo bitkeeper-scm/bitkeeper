@@ -9,7 +9,7 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
-echo $N Do cset -x+ while in a component with some file unclean .....$NL
+echo $N Do cset -x+ while in a product with some file unclean .......$NL
 nested project
 touch last
 echo base > gcc/foo
@@ -25,9 +25,9 @@ bk cset -x+ 2> ERR && fail -f ERR
 grep -q "Successfully cleaned up all files." ERR || fail -f ERR
 echo OK
 
-echo $N Do cset -x+ while in a component ............................$NL
+echo $N Do cset -x+ while in a product ..............................$NL
 bk unedit last
-bk cset $Q -x+ || fail
+bk cset $Q -Sx+ || fail
 bk get $Q gcc/foo
 grep -q base gcc/foo || fail wrong contents
 echo OK
@@ -151,18 +151,16 @@ bk commit $Q -y"add linec"
 # okay, now test the cset -x
 # in the component, it should work
 cd gdb
-bk cset -qx+ >OUT 2>&1 || fail -f OUT
+bk cset -qSx+ >OUT 2>&1 || fail -f OUT
 # clean it up
 bk undo -qSsfr+ >OUT 2>&1 || fail -f OUT
-# in the product it should fail
-cd ..
+# in the product it should pass (no cd; it will go to product)
 bk cset $Q -x"$CSET" || fail
-# Uncomment these once it's fixed
 bk -e -r check -ac || fail
-# product
+# calling without -S from comp => product
 bk changes -nd':COMMENTS:' -r+ | grep -q "Cset exclude" || fail
-cd gdb
-bk changes -nd':COMMENTS:' -r+ | grep -q "Cset exclude" || fail
+# calling with -S from comp => comp
+bk changes -Snd':COMMENTS:' -r+ | grep -q "Cset exclude" || fail
 cd ..
 bk -U grep -n lineb > OUT && fail -f OUT exclude did not work
 echo OK

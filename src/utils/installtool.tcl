@@ -944,12 +944,24 @@ proc widgets {} \
 				}
 				# save a copy of the license in config
 				# so that bk install installs it
-				set cfgpath "[exec bk bin]/config"
+				if {[tk windowingsystem] eq "aqua"} {
+					# On OS X, since we sign the
+					# bundle, we can't change its
+					# contents.
+					set cfgpath "~/.bk/config"
+				} else {
+					set cfgpath "[exec bk bin]/config"
+				}
+				set cfgpath [file normalize $cfgpath]
+
 				if {[file exists $cfgpath]} {
 					set fd [open $cfgpath r]
 					set data [read $fd]
 					close $fd
+				} else {
+				    file mkdir [file dirname $cfgpath]
 				}
+
 				set fd [open $cfgpath w]
 				puts $fd [join [lic_lines 1] \n]
 				if {[info exists data]} {puts $fd $data}

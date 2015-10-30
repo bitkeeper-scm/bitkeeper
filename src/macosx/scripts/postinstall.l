@@ -16,9 +16,10 @@ string	runit(string cmd);
 int
 main(_argused int ac, _argused string av[], string env{string})
 {
-	string	dotbk, dstroot, oldbk, out, path, paths[], tmp;
+	string	buf, c, dotbk, dstroot, oldbk, out, path, paths[], tmp;
 	string	home = env{"HOME"};
 	string	user = env{"USER"};
+	FILE	f;
 
 	wm("withdraw", ".");
 	noprompt = exists("/tmp/_bk_install_no_prompt");
@@ -46,6 +47,7 @@ main(_argused int ac, _argused string av[], string env{string})
 	/* For the install log. */
 	runit("sudo -u '${user}' '${newbk}' version");
 	log("dotbk ${dotbk}");
+
 	/*
 	 * runit() has the side-effect of logging the output of the
 	 * commands it runs, which is what we use in this case.
@@ -58,11 +60,29 @@ main(_argused int ac, _argused string av[], string env{string})
 	 * copies it to $INSTALLER_TEMP. Look for that.
 	 */
 	tmp = getenv("INSTALLER_TEMP");
-	if (isreg("${tmp}/config")) {
-		runit("/bin/mv -f '${tmp}/config' "
-		    "'${dstroot}/BitKeeper.app/Contents/Resources/bitkeeper'");
-		runit("/usr/sbin/chown '${user}' "
-		    "'${dstroot}/BitKeeper.app/Contents/Resources/bitkeeper/config'");
+
+	/*
+	 * bk-7.0 puts the config file inside the bundle (since the
+	 * bundle wasn't signed). If we found a config inside the
+	 * bundle, we append it to the user's dotbk/config and put
+	 * it there.
+	 */
+	if (f = fopen("${tmp}/config", "r")) {
+		read(f, &buf);
+		fclose(f);
+		c = "";
+		if (f = fopen("${dotbk}/config", "r")) {
+			read(f, &c);
+			fclose(f);
+		}
+		if (buf && (length(buf) > 0)) {
+			runit("sudo -u '${user}' mkdir -p '${dotbk}'");
+			c .= "\n";
+			c .= '# Next section copied from `bk bin`/config';
+			c .= "\n" . buf;
+			Fprintf("${dotbk}/config", "%s", c);
+			runit("chown -R '${user}' '${dotbk}/config'");
+		}
 	}
 
 	/*
@@ -141,11 +161,29 @@ void
 create_bklink(void)
 {
 	string	msg;
+	FILE	f;
 
-	/* Don't ask the user, just create the link if possible. */
-	unless (runit("'${newbk}' links /usr/bin") || noprompt) {
-		msg = "Unable to create symbolic link /usr/bin/bk. "
-		      "You will need to add ${dirname(newbk)} to your PATH manually.";
+	if (File_writable("/usr/bin")) {
+		unless (runit("'${newbk}' links /usr/bin")) {
+			msg = "Unable to create symbolic link /usr/bin/bk. "
+			      "You will need to add ${dirname(newbk)} to "
+			      "your PATH manually.";
+		}
+	} else {
+		/*
+		 * On el Capitan, /usr/bin is not writable so use
+		 * infrastructure provided by path_helper(8).
+		 */
+		if (f = fopen("/etc/paths.d/10-BitKeeper", "w")) {
+			fprintf(f, "${dirname(newbk)}\n");
+			fclose(f);
+		} else {
+			msg = "Unable to write into /etc/paths.d. "
+			      "You will need to add ${dirname(newbk)} to "
+			      "your PATH manually.";
+		}
+	}
+	if (msg && !noprompt) {
 		tk_messageBox(default: "ok", icon: "error", type: "ok",
 			      title: "Error", message: msg);
 	}

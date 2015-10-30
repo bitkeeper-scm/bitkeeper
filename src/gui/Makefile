@@ -12,7 +12,8 @@ endif
 REPO   := $(shell basename "`bk -P root`")
 LIBDIR	= lib
 GUIS	= revtool citool helptool difftool csettool fmtool fm3tool \
-	  msgtool renametool setuptool installtool outputtool
+	  msgtool renametool setuptool installtool outputtool bugform \
+	  supportform
 TCLWRAP	= ../tclwrap
 DOIT	= ../t/doit
 GUITEST = ../t/guitest.tcl
@@ -34,32 +35,31 @@ default: notes/BUILD
 ordered:
 	$(Q)$(MAKE) tcltk
 	$(Q)$(MAKE) $(GUIS)
-	$(Q)(cd legacy && make)
 
 gui guis:  ../tclwrap lib images ordered
 	@echo GUIs are up-to-date
 
 lib:
-	test -d lib || mkdir lib
+	$(Q)test -d lib || mkdir lib
 
 nowrap gui-nowrap: 
 	$(MAKE) clean-here
 	$(MAKE) TCLWRAP=cat gui
 
 images: FORCE
-	rm -rf images
-	test -d images || mkdir images
-	bk -rimgsrc co -S
-	bk -grimgsrc sfio -oq | (cd images && bk sfio -iq)
-	test "X$(ICONS)" = X || cp $(ICONS) images
-	chmod 664 images/*.gif
+	$(Q)rm -rf images
+	$(Q)test -d images || mkdir images
+	$(Q)bk -rimgsrc co -S
+	$(Q)bk -grimgsrc sfio -oq | (cd images && bk sfio -iq)
+	$(Q)test "X$(ICONS)" = X || cp $(ICONS) images
+	$(Q)chmod 664 images/*.gif
 
 ../tclwrap:
 	@cd .. && $(MAKE) tclwrap
 
 tcltk: FORCE
-	test -f tcltk/Makefile || bk co -q tcltk
-	$(MAKE) -Ctcltk
+	$(Q)test -f tcltk/Makefile || bk co -q tcltk
+	$(Q)$(MAKE) -Ctcltk
 
 test: lib $(GUIS) $(DOIT) $(GUITEST) ../t/setup
 	@bk get -S ../t/SCCS/s.g.* 
@@ -97,6 +97,12 @@ wc: $(SRC)
 	@wc -l $(SRC)
 
 FORCE:
+
+bugform: $(COMMON) search.tcl appState.tcl buglib.tcl bugform.tcl
+	@(echo 'wm withdraw .' ;  cat $^) | $(TCLWRAP) > $(LIBDIR)/bugform
+
+supportform: $(COMMON) search.tcl appState.tcl supportlib.tcl supportform.tcl
+	@(echo 'wm withdraw .' ;  cat $^) | $(TCLWRAP) > $(LIBDIR)/supportform
 
 citool: $(COMMON) appState.tcl ciedit.tcl $(LCOMMON) listbox.l citool.l
 	@(	echo 'wm withdraw .' ;		\

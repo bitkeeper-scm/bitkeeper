@@ -225,6 +225,7 @@ gitLineComp(opts *op, char ***lines, char *rk, char *dk1, char *dk2)
 		    HEAP(s, rset[i].dkright),
 		    prefix1, prefix2);
 	}
+	free(rset);
 	free(prefix1);
 	free(prefix2);
 }

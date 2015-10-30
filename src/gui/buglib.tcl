@@ -820,7 +820,7 @@ proc bugs:submitBug {} \
 	if {$bt_cinfo(PROJEMAIL) ne ""} {
 		set address $bt_cinfo(PROJEMAIL)
 	}
-	catch {exec bk mail -u http://bitmover.com/cgi-bin/bkdmail -s bug_report $address < $bugfile } 
+	catch {exec bk mail -u http://bitmover.com/cgi-bin/bkdmail -s "BUG: $bt_cinfo(SUMMARY)" $address < $bugfile }
 	catch {exec rm -rf $bd $bugfile} err
 	displayMessage "Your bug report has been sent. Thank you for taking
 the time to fill out this report. "

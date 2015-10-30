@@ -248,8 +248,8 @@ $(BKAPP)/Contents/lib/GetOpts/pkgIndex.tcl: lib/GetOpts/pkgIndex.tcl \
 	cp -fRPH lib/GetOpts $(BKAPP)/Contents/lib
 
 rm_doc: FORCE
-	rm -rf lib/$(TKTABLE)/html
-	if [ "X$(AQUA)" != X ]; \
+	$(Q)rm -rf lib/$(TKTABLE)/html
+	$(Q)if [ "X$(AQUA)" != X ]; \
 	then \
 	    rm -rf \
 		$(BKAPP)/Contents/lib/$(TKTABLE)/html \
@@ -257,10 +257,10 @@ rm_doc: FORCE
 	fi
 
 install: ./version.sh
-	find bin lib -type d -print | xargs chmod ug+w
-	rm -rf ../bin ../lib
-	tar cf - bin lib | (cd .. && tar xf -)
-	-TCLVER=`./version.sh`; \
+	$(Q)find bin lib -type d -print | xargs chmod ug+w
+	$(Q)rm -rf ../bin ../lib
+	$(Q)tar cf - bin lib | (cd .. && tar xf -)
+	-$(Q)TCLVER=`./version.sh`; \
 	if [ -n "$$TCLVER" -a \! -f "$$TCLVER" ]; \
 	then	test -d /build/obj || { \
 			mkdir /build/obj; \
@@ -356,7 +356,7 @@ test:
 	test -d tk && cd tk/$S && $(MAKE) test
 
 verify: FORCE
-	if [ "X$(AQUA)" != X ]; \
+	$(Q)if [ "X$(AQUA)" != X ]; \
 	then \
 	    test -d $(BKAPP)/Contents/lib/$(TKTABLE) || exit 1 ; \
 	    test -f $(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl \

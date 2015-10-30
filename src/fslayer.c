@@ -664,7 +664,8 @@ noproj:		fp->proj = 0;
 		proj_free(fp->proj);
 		goto noproj;
 	}
-	fp->rel = proj_relpath(fp->proj, (char *)path);
+	strcpy(pbuf, path);
+	fp->rel = proj_relpath(fp->proj, pbuf);
 	unless (fp->rel) {
 		fprintf(stderr, "error with file mapping\n"
 		    "dir %s proj %s cwd %s\n",

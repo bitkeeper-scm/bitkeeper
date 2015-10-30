@@ -18,13 +18,12 @@ status_main(int ac, char **av)
 	FILE	*fchg, *fsfile;
 	char	**parents = 0;
 	hash	*pcount;
-	i32	*pcnt;
 	u32	bits;
 	char	**attr = 0;
 	struct item {
 		int	cnt[2];
 		char	*err;
-	} *pi;
+	} *pi = 0;
 	longopt	lopts[] = {
 		{ "compat", 300 },
 		{ 0, 0 }
@@ -75,7 +74,6 @@ status_main(int ac, char **av)
 	pcount = hash_new(HASH_MEMHASH);
 	pcount->vptr = 0;
 	c = 0;		/* for compiler */
-	pcnt = 0;
 	while (p = fgetline(fchg)) {
 		if (strneq(p, "==== changes -", 14)) {
 			/* get URL and reset counters */
@@ -106,7 +104,7 @@ status_main(int ac, char **av)
 		}
 	}
 	EACH(parents) {
-		pi = hash_fetchStr(pcount, parents[i]);
+		pi = (struct item *)hash_fetchStr(pcount, parents[i]);
 		assert(pi);
 		if (pi->cnt[0] >= 0) {
 			if (pi->cnt[1] >= 0) {

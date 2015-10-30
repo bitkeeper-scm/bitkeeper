@@ -12,7 +12,7 @@ CONFIG=--cache-file=../../config.cache --quiet
 	$(Q)bk get -q $@
 
 all: os exe
-	@PATH="..:../..:$(PATH)"; export PATH; \
+	$(Q)PATH="..:../..:$(PATH)"; export PATH; \
 	OS=$(_OS); \
 	for i in $(DIRS); \
 	do	test -d $$i/$$OS || mkdir $$i/$$OS; \
@@ -26,15 +26,15 @@ all: os exe
 		$(MAKE) Q=$(Q) \
 		); \
 	done
-	rm -rf bin
-	mkdir bin
-	cp $(DIFF_BINS) bin
-	cp $(PATCH_BIN) bin/mend$(EXE)
+	$(Q)rm -rf bin
+	$(Q)mkdir bin
+	$(Q)cp $(DIFF_BINS) bin
+	$(Q)cp $(PATCH_BIN) bin/mend$(EXE)
 
 install: all
-	@if [ X$(BINDIR) = X ]; then echo Must set BINDIR; exit 1; fi
-	cp -f $(DIFF_BINS) $(BINDIR)
-	cp -f $(PATCH_BIN) $(BINDIR)/mend$(EXE)
+	$(Q)if [ X$(BINDIR) = X ]; then echo Must set BINDIR; exit 1; fi
+	$(Q)cp -f $(DIFF_BINS) $(BINDIR)
+	$(Q)cp -f $(PATCH_BIN) $(BINDIR)/mend$(EXE)
 
 os: ../utils/bk_version
 	$(Q)(cd ../utils && ./bk_version) > _os
