@@ -248,6 +248,8 @@ Tcl_RegexpObjCmd(
      */
 
     if (doinline && ((objc - 2) != 0)) {
+	Tcl_SetObjResult(interp, Tcl_NewStringObj(
+		"regexp match variables not allowed when using -inline", -1));
 	Tcl_SetErrorCode(interp, "TCL", "OPERATION", "REGEXP",
 		"MIX_VAR_INLINE", NULL);
       optionError:
