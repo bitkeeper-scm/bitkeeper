@@ -18,7 +18,6 @@
 #include <cderr.h>		/* includes the common dialog error codes */
 
 #include <shlobj.h>		/* includes SHBrowseForFolder */
-#include <shobjidl.h>
 
 #ifdef _MSC_VER
 #   pragma comment (lib, "shell32.lib")
