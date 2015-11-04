@@ -895,7 +895,7 @@ FreeRegexpInternalRep(
      * If this is the last reference to the regexp, free it.
      */
 
-    if (--(regexpRepPtr->refCount) <= 0) {
+    if (regexpRepPtr->refCount-- <= 1) {
 	FreeRegexp(regexpRepPtr);
     }
     objPtr->typePtr = NULL;
@@ -1196,7 +1196,7 @@ CompileRegexp(
     if (tsdPtr->patterns[NUM_REGEXPS-1] != NULL) {
 	TclRegexp *oldRegexpPtr = tsdPtr->regexps[NUM_REGEXPS-1];
 
-	if (--(oldRegexpPtr->refCount) <= 0) {
+	if (oldRegexpPtr->refCount-- <= 1) {
 	    FreeRegexp(oldRegexpPtr);
 	}
 	ckfree(tsdPtr->patterns[NUM_REGEXPS-1]);
@@ -1278,7 +1278,7 @@ FinalizeRegexp(
 
     for (i = 0; (i < NUM_REGEXPS) && (tsdPtr->patterns[i] != NULL); i++) {
 	regexpPtr = tsdPtr->regexps[i];
-	if (--(regexpPtr->refCount) <= 0) {
+	if (regexpPtr->refCount-- <= 1) {
 	    FreeRegexp(regexpPtr);
 	}
 	ckfree(tsdPtr->patterns[i]);
