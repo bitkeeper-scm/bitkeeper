@@ -2651,22 +2651,23 @@ test text-9.2.45 {TextWidgetCmd procedure, "count" option} -setup {
 } -result {0}
 test text-9.2.46 {TextWidgetCmd procedure, "count" option} -setup {
     toplevel .mytop
-    pack [text .mytop.t]
-    wm geometry .mytop 100x300+0+0
+    pack [text .mytop.t -font TkFixedFont -bd 0 -padx 0 -wrap char]
+    set spec [font measure TkFixedFont "Line 1+++Line 1---Li"]  ; # 20 chars
+    append spec x300+0+0
+    wm geometry .mytop $spec
     .mytop.t delete 1.0 end
     update
     set res {}
 } -body {
     for {set i 1} {$i < 5} {incr i} {
-      #              0          1          2          3          4
-      #              012345 678901234 567890123 456789012 34567890123456789
+      #                    0          1          2          3          4
+      #                    012345 678901234 567890123 456789012 34567890123456789
       .mytop.t insert end "Line $i+++Line $i---Line $i///Line $i - This is Line [format %c [expr 64+$i]]\n"
     }
     .mytop.t tag configure hidden -elide true
-    .mytop.t tag add hidden 2.15 3.10
-    .mytop.t configure -wrap char
+    .mytop.t tag add hidden 2.30 3.10
     lappend res [.mytop.t count -displaylines 2.0 3.0]
-    lappend res [.mytop.t count -displaylines 2.0 3.40]
+    lappend res [.mytop.t count -displaylines 2.0 3.50]
 } -cleanup {
     destroy .mytop
 } -result {1 3}
@@ -3498,9 +3499,10 @@ Line 4"
     list [.t tag ranges sel] [.t get 1.0 end]
 } -cleanup {
     destroy .t
-} -result {{1.0 3.5} {Line 1
+} -result {{1.0 4.0} {Line 1
 abcde
 12345
+
 }}
 test text-19.9 {DeleteChars procedure} -body {
     text .t
@@ -5556,6 +5558,27 @@ test text-22.217 {TextSearchCmd, elide up to match} -setup {
 } -cleanup {
     destroy .t
 } -result {{} {} 1.0 2.1 2.0 3.1 2.0 3.0}
+test text-22.217.1 {elide up to match, with UTF-8 chars before the match} -setup {
+    pack [text .t]
+    set res {}
+} -body {
+    .t tag configure e -elide 0
+    .t insert end A {} xyz e bb\n
+    .t insert end \u00c4 {} xyz e bb
+    set res {}
+    lappend res [.t search bb 1.0 "1.0 lineend"]
+    lappend res [.t search bb 2.0 "2.0 lineend"]
+    lappend res [.t search -regexp bb 1.0 "1.0 lineend"]
+    lappend res [.t search -regexp bb 2.0 "2.0 lineend"]
+    .t tag configure e -elide 1
+    lappend res [.t search bb 1.0 "1.0 lineend"]
+    lappend res [.t search bb 2.0 "2.0 lineend"]
+    lappend res [.t search -regexp bb 1.0 "1.0 lineend"]
+    lappend res [.t search -regexp -elide bb 2.0 "2.0 lineend"]
+    lappend res [.t search -regexp bb 2.0 "2.0 lineend"]
+} -cleanup {
+    destroy .t
+} -result {1.4 2.4 1.4 2.4 1.4 2.4 1.4 2.4 2.4}
 test text-22.218 {TextSearchCmd, strict limits} -body {
     pack [text .t]
     .t insert 1.0 "Hello world!\nThis is a test\n"
@@ -6171,6 +6194,95 @@ test text-27.18 {patch 1469210 - inserting after undo} -setup {
 } -cleanup {
     destroy .t
 } -result 1
+test text-25.19 {patch 1669632 (i) - undo after <Control-1>} -setup {
+    destroy .t
+} -body {
+    text .t -undo 1
+    .t insert end foo\nbar
+    .t edit reset
+    .t insert 2.2 WORLD
+    event generate .t <Control-1> -x 1 -y 1
+    .t insert insert HELLO
+    .t edit undo
+    .t get 2.2 2.7
+} -cleanup {
+    destroy .t
+} -result WORLD
+test text-25.20 {patch 1669632 (iv) - undo after <<SelectNone>>} -setup {
+    destroy .top .top.t
+} -body {
+    toplevel .top
+    pack [text .top.t -undo 1]
+    .top.t insert end "This is an example text"
+    .top.t edit reset
+    .top.t mark set insert 1.5
+    .top.t insert 1.5 HELLO
+    .top.t tag add sel 1.10 1.12
+    update
+    focus -force .top.t
+    event generate .top.t <<SelectNone>>
+    .top.t insert insert " WORLD "
+    .top.t edit undo
+    .top.t get 1.5 1.10
+} -cleanup {
+    destroy .top.t .top
+} -result HELLO
+test text-25.21 {patch 1669632 (vii) - <<Undo>> shall not remove separators} -setup {
+    destroy .t
+} -body {
+    text .t -undo 1
+    .t insert end "This is an example text"
+    .t edit reset
+    .t insert 1.5 "WORLD "
+    event generate .t <Control-1> -x 1 -y 1
+    .t insert insert HELLO
+    event generate .t <<Undo>>
+    .t insert insert E
+    event generate .t <<Undo>>
+    .t get 1.0 "1.0 lineend"
+} -cleanup {
+    destroy .t
+} -result "This WORLD is an example text"
+test text-25.22 {patch 1669632 (v) - <<Clear>> is atomic} -setup {
+    destroy .t
+} -body {
+    toplevel .top
+    pack [text .top.t -undo 1]
+    .top.t insert end "This is an example text"
+    .top.t edit reset
+    .top.t mark set insert 1.5
+    .top.t insert 1.5 "A"
+    update
+    focus -force .top.t
+    event generate .top.t <Delete>
+    event generate .top.t <<SelectNextChar>>
+    event generate .top.t <<Clear>>
+    event generate .top.t <Delete>
+    event generate .top.t <<Undo>>
+    .top.t get 1.0 "1.0 lineend"
+} -cleanup {
+    destroy .top.t .top
+} -result "This A an example text"
+ test text-25.23 {patch 1669632 (v) - <<Cut>> is atomic} -setup {
+    destroy .t
+} -body {
+    toplevel .top
+    pack [text .top.t -undo 1]
+    .top.t insert end "This is an example text"
+    .top.t edit reset
+    .top.t mark set insert 1.5
+    .top.t insert 1.5 "A"
+    update
+    focus -force .top.t
+    event generate .top.t <Delete>
+    event generate .top.t <<SelectNextChar>>
+    event generate .top.t <<Cut>>
+    event generate .top.t <Delete>
+    event generate .top.t <<Undo>>
+    .top.t get 1.0 "1.0 lineend"
+} -cleanup {
+    destroy .top.t .top
+} -result "This A an example text"
 
 test text-28.1 {bug fix - 624372, ControlUtfProc long lines} -body {
     pack [text .t -wrap none]

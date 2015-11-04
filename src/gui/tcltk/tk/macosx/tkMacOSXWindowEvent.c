@@ -29,7 +29,7 @@
  * Declaration of functions used only in this file
  */
 
-static int		GenerateUpdates(HIMutableShapeRef updateRgn,
+static int		GenerateUpdates(HIShapeRef updateRgn,
 			    CGRect *updateBounds, TkWindow *winPtr);
 static int		GenerateActivateEvents(TkWindow *winPtr,
 			    int activeFlag);
@@ -48,7 +48,7 @@ extern NSString *NSWindowDidOrderOffScreenNotification;
 #endif
 #endif
 
-extern NSString *opaqueTag;
+extern BOOL opaqueTag;
 
 @implementation TKApplication(TKWindowEvent)
 
@@ -315,7 +315,7 @@ extern NSString *opaqueTag;
 
 static int
 GenerateUpdates(
-    HIMutableShapeRef updateRgn,
+    HIShapeRef updateRgn,
     CGRect *updateBounds,
     TkWindow *winPtr)
 {
@@ -763,7 +763,7 @@ Tk_MacOSXIsAppInFront(void)
 
 /*
  * Custom content view for use in Tk NSWindows.
- * 
+ *
  * Since Tk handles all drawing of widgets, we only use the AppKit event loop
  * as a source of input events.  To do this, we overload the NSView drawRect
  * method with a method which generates Expose events for Tk but does no
@@ -782,7 +782,8 @@ Tk_MacOSXIsAppInFront(void)
 
 @interface TKContentView(TKWindowEvent)
 - (void) drawRect: (NSRect) rect;
-- (void) generateExposeEvents: (HIMutableShapeRef) shape;
+- (void) generateExposeEvents: (HIShapeRef) shape;
+- (void) generateExposeEvents: (HIShapeRef) shape childrenOnly: (int) childrenOnly;
 - (void) viewDidEndLiveResize;
 - (void) tkToolbarButton: (id) sender;
 - (BOOL) isOpaque;
@@ -794,7 +795,6 @@ Tk_MacOSXIsAppInFront(void)
 @implementation TKContentView
 @end
 
-
 /*Restrict event processing to Expose events.*/
 static Tk_RestrictAction
 ExposeRestrictProc(
@@ -803,6 +803,15 @@ ExposeRestrictProc(
 {
     return (eventPtr->type==Expose && eventPtr->xany.serial==PTR2UINT(arg)
 	    ? TK_PROCESS_EVENT : TK_DEFER_EVENT);
+}
+
+/*Restrict event processing to ConfigureNotify events.*/
+static Tk_RestrictAction
+ConfigureRestrictProc(
+    ClientData arg,
+    XEvent *eventPtr)
+{
+    return (eventPtr->type==ConfigureNotify ? TK_PROCESS_EVENT : TK_DEFER_EVENT);
 }
 
 @implementation TKContentView(TKWindowEvent)
@@ -830,11 +839,12 @@ ExposeRestrictProc(
 	HIShapeUnionWithRect(drawShape, &r);
     }
     if (CFRunLoopGetMain() == CFRunLoopGetCurrent()) {
-	[self generateExposeEvents:drawShape];
+	[self generateExposeEvents:(HIShapeRef)drawShape];
     } else {
 	[self performSelectorOnMainThread:@selector(generateExposeEvents:)
 		withObject:(id)drawShape waitUntilDone:NO
 		modes:[NSArray arrayWithObjects:NSRunLoopCommonModes,
+
 			NSEventTrackingRunLoopMode, NSModalPanelRunLoopMode,
 			nil]];
     }
@@ -842,62 +852,97 @@ ExposeRestrictProc(
     CFRelease(drawShape);
 }
 
+-(void) setFrameSize: (NSSize)newsize
+{
+    if ( [self inLiveResize] ) {
+	NSWindow *w = [self window];
+	TkWindow *winPtr = TkMacOSXGetTkWindow(w);
+	Tk_Window tkwin = (Tk_Window) winPtr;
+	unsigned int width = (unsigned int)newsize.width;
+	unsigned int height=(unsigned int)newsize.height;
+	ClientData oldArg;
+    	Tk_RestrictProc *oldProc;
+
+	/* Resize the NSView */
+	[super setFrameSize: newsize];
+
+	/* Disable drawing until the window has been completely configured.*/
+	TkMacOSXSetDrawingEnabled(winPtr, 0);
+
+	 /* Generate and handle a ConfigureNotify event for the new size.*/
+	TkGenWMConfigureEvent(tkwin, Tk_X(tkwin), Tk_Y(tkwin), width, height,
+			      TK_SIZE_CHANGED | TK_MACOSX_HANDLE_EVENT_IMMEDIATELY);
+    	oldProc = Tk_RestrictEvents(ConfigureRestrictProc, NULL, &oldArg);
+	while ( Tk_DoOneEvent(TK_X_EVENTS|TK_DONT_WAIT) ) {}
+    	Tk_RestrictEvents(oldProc, oldArg, &oldArg);
+
+	/* Now that Tk has configured all subwindows we can create the clip regions. */
+	TkMacOSXSetDrawingEnabled(winPtr, 1);
+	TkMacOSXInvalClipRgns(tkwin);
+	TkMacOSXUpdateClipRgn(winPtr);
+
+	 /* Finally, generate and process expose events to redraw the window. */
+	HIRect bounds = NSRectToCGRect([self bounds]);
+	HIShapeRef shape = HIShapeCreateWithRect(&bounds);
+	[self generateExposeEvents: shape];
+	while ( Tk_DoOneEvent(TK_ALL_EVENTS|TK_DONT_WAIT) ) {}
+    } else {
+        [super setFrameSize: newsize];
+    }
+}
+
 /*
  * As insurance against bugs that might cause layout glitches during a live
- * resize, we redraw the window at the end of the resize operation.
+ * resize, we redraw the window one more time at the end of the resize
+ * operation.
  */
 
 - (void)viewDidEndLiveResize
 {
     HIRect bounds = NSRectToCGRect([self bounds]);
     HIShapeRef shape = HIShapeCreateWithRect(&bounds);
+    [super viewDidEndLiveResize];
     [self generateExposeEvents: shape];
-
 }
 
-/*Core function of this class, generates expose events for redrawing.*/
-- (void) generateExposeEvents: (HIMutableShapeRef) shape
+/* Core method of this class: generates expose events for redrawing.
+ * Whereas drawRect is intended to be called only from the Appkit event
+ * loop, this can be called from Tk.  If the Tcl_ServiceMode is set to
+ * TCL_SERVICE_ALL then the expose events will be immediately removed
+ * from the Tcl event loop and processed.  Typically, they should be queued,
+ * however.
+ */
+- (void) generateExposeEvents: (HIShapeRef) shape
 {
+    [self generateExposeEvents:shape childrenOnly:0];
+}
 
+- (void) generateExposeEvents: (HIShapeRef) shape
+		 childrenOnly: (int) childrenOnly
+{
     TkWindow *winPtr = TkMacOSXGetTkWindow([self window]);
     unsigned long serial;
     CGRect updateBounds;
+    int updatesNeeded;
 
     if (!winPtr) {
 		return;
     }
 
-
+    /* Generate Tk Expose events. */
     HIShapeGetBounds(shape, &updateBounds);
+    /* All of these events will share the same serial number. */
     serial = LastKnownRequestProcessed(Tk_Display(winPtr));
-    if (GenerateUpdates(shape, &updateBounds, winPtr) &&
-	![[NSRunLoop currentRunLoop] currentMode] &&
-	Tcl_GetServiceMode() != TCL_SERVICE_NONE) {
-    	/*
-    	 * Ensure there are no pending idle-time redraws that could
-         * prevent the just posted Expose events from generating
-         * new redraws.
-    	 */
+    updatesNeeded = GenerateUpdates(shape, &updateBounds, winPtr);
 
-	while (Tcl_DoOneEvent(TCL_IDLE_EVENTS|TCL_DONT_WAIT)) {}
-
-    	/*
-    	 * For smoother drawing, process Expose events and resulting
-         * redraws immediately instead of at idle time.
-    	 */
-
-    	ClientData oldArg;
+    /* Process the Expose events if the service mode is TCL_SERVICE_ALL */
+    if (updatesNeeded && Tcl_GetServiceMode() == TCL_SERVICE_ALL) {
+	ClientData oldArg;
     	Tk_RestrictProc *oldProc = Tk_RestrictEvents(ExposeRestrictProc,
 						     UINT2PTR(serial), &oldArg);
-
     	while (Tcl_ServiceEvent(TCL_WINDOW_EVENTS)) {}
-
     	Tk_RestrictEvents(oldProc, oldArg, &oldArg);
-
-    	while (Tcl_DoOneEvent(TCL_IDLE_EVENTS|TCL_DONT_WAIT)) {}
-
     }
-
 }
 
 /*
@@ -913,7 +958,6 @@ ExposeRestrictProc(
     int x, y;
     TkWindow *winPtr = TkMacOSXGetTkWindow([self window]);
     Tk_Window tkwin = (Tk_Window) winPtr;
-
     bzero(&event, sizeof(XVirtualEvent));
     event.type = VirtualEvent;
     event.serial = LastKnownRequestProcessed(Tk_Display(tkwin));
@@ -935,7 +979,7 @@ ExposeRestrictProc(
 {
     NSWindow *w = [self window];
 
-    if (opaqueTag != NULL) {
+    if (opaqueTag) {
       return YES;
 	} else {
 

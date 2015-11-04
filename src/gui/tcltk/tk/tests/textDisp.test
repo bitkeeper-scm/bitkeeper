@@ -615,6 +615,10 @@ catch {destroy .f2}
 .t configure -borderwidth 0 -wrap char
 wm geom . {}
 update
+set bw [.t cget -borderwidth]
+set px [.t cget -padx]
+set py [.t cget -pady]
+set hlth [.t cget -highlightthickness]
 test textDisp-4.7 {UpdateDisplayInfo, filling in extra vertical space} {
     # This test was failing on Windows because the title bar on .
     # was a certain minimum size and it was interfering with the size
@@ -653,7 +657,7 @@ test textDisp-4.9 {UpdateDisplayInfo, filling in extra vertical space} {textfont
     update
     .t delete 15.0 end
     list [.t bbox 7.0] [.t bbox 12.0]
-} [list [list 3 [expr {2*$fixedDiff + 29}] 7 $fixedHeight] [list 3 [expr {7*$fixedDiff + 94}] 7 $fixedHeight]]
+} [list [list [expr {$hlth + $px + $bw}] [expr {$hlth + $py + $bw + $fixedHeight}] $fixedWidth $fixedHeight] [list [expr {$hlth + $px + $bw}] [expr {$hlth + $py + $bw + 6 * $fixedHeight}] $fixedWidth $fixedHeight]]
 test textDisp-4.10 {UpdateDisplayInfo, filling in extra vertical space} {
     .t delete 1.0 end
     .t insert end "1\n2\n3\n4\n5\nLine 6 is such a long line that it wraps around.\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17"
@@ -662,7 +666,7 @@ test textDisp-4.10 {UpdateDisplayInfo, filling in extra vertical space} {
     .t delete 13.0 end
     update
     list [.t index @0,0] $tk_textRelayout $tk_textRedraw
-} {5.0 {12.0 7.0 6.40 6.20 6.0 5.0} {5.0 6.0 6.20 6.40 7.0 12.0}}
+} {6.0 {13.0 7.0 6.40 6.20 6.0} {6.0 6.20 6.40 7.0 13.0}}
 test textDisp-4.11 {UpdateDisplayInfo, filling in extra vertical space} {
     .t delete 1.0 end
     .t insert end "1\n2\n3\n4\n5\nLine 6 is such a long line that it wraps around, not once but really quite a few times.\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17"
@@ -671,7 +675,7 @@ test textDisp-4.11 {UpdateDisplayInfo, filling in extra vertical space} {
     .t delete 14.0 end
     update
     list [.t index @0,0] $tk_textRelayout $tk_textRedraw
-} {6.40 {13.0 7.0 6.80 6.60 6.40} {6.40 6.60 6.80 7.0 13.0}}
+} {6.60 {14.0 7.0 6.80 6.60} {6.60 6.80 7.0 14.0}}
 test textDisp-4.12 {UpdateDisplayInfo, filling in extra vertical space} {
     .t delete 1.0 end
     .t insert end "1\n2\n3\n4\n5\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16"
@@ -3659,7 +3663,7 @@ test textDisp-28.1 {"yview" option with bizarre scroll command} {
     set result [.t2.t index @0,0]
     update
     lappend result [.t2.t index @0,0]
-} {6.0 1.0}
+} {6.0 2.0}
 
 test textDisp-29.1 {miscellaneous: lines wrap but are still too long} {textfonts} {
     catch {destroy .t2}

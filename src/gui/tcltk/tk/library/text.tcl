@@ -85,7 +85,16 @@ bind Text <ButtonRelease-1> {
 }
 bind Text <Control-1> {
     %W mark set insert @%x,%y
+    # An operation that moves the insert mark without making it
+    # one end of the selection must insert an autoseparator
+    if {[%W cget -autoseparators]} {
+	%W edit separator
+    }
 }
+# stop an accidental double click triggering <Double-Button-1>
+bind Text <Double-Control-1> { # nothing }
+# stop an accidental movement triggering <B1-Motion>
+bind Text <Control-B1-Motion> { # nothing }
 bind Text <<PrevChar>> {
     tk::TextSetCursor %W insert-1displayindices
 }
@@ -245,6 +254,11 @@ bind Text <<SelectAll>> {
 }
 bind Text <<SelectNone>> {
     %W tag remove sel 1.0 end
+    # An operation that clears the selection must insert an autoseparator,
+    # because the selection operation may have moved the insert mark
+    if {[%W cget -autoseparators]} {
+	%W edit separator
+    }
 }
 bind Text <<Cut>> {
     tk_textCut %W
@@ -256,7 +270,15 @@ bind Text <<Paste>> {
     tk_textPaste %W
 }
 bind Text <<Clear>> {
+    # Make <<Clear>> an atomic operation on the Undo stack,
+    # i.e. separate it from other delete operations on either side
+    if {[%W cget -autoseparators]} {
+	%W edit separator
+    }
     catch {%W delete sel.first sel.last}
+    if {[%W cget -autoseparators]} {
+	%W edit separator
+    }
 }
 bind Text <<PasteSelection>> {
     if {$tk_strictMotif || ![info exists tk::Priv(mouseMoved)]
@@ -314,7 +336,16 @@ bind Text <Control-t> {
 }
 
 bind Text <<Undo>> {
+    # An Undo operation may remove the separator at the top of the Undo stack.
+    # Then the item at the top of the stack gets merged with the subsequent changes.
+    # Place separators before and after Undo to prevent this.
+    if {[%W cget -autoseparators]} {
+	%W edit separator
+    }
     catch { %W edit undo }
+    if {[%W cget -autoseparators]} {
+	%W edit separator
+    }
 }
 
 bind Text <<Redo>> {
@@ -543,7 +574,6 @@ proc ::tk::TextAnchor {w} {
 }
 
 proc ::tk::TextSelectTo {w x y {extend 0}} {
-    global tcl_platform
     variable ::tk::Priv
 
     set anchorname [tk::TextAnchor $w]
@@ -1022,9 +1052,18 @@ proc ::tk_textCopy w {
 
 proc ::tk_textCut w {
     if {![catch {set data [$w get sel.first sel.last]}]} {
+        # make <<Cut>> an atomic operation on the Undo stack,
+        # i.e. separate it from other delete operations on either side
+	set oldSeparator [$w cget -autoseparators]
+	if {$oldSeparator} {
+	    $w edit separator
+	}
 	clipboard clear -displayof $w
 	clipboard append -displayof $w $data
 	$w delete sel.first sel.last
+	if {$oldSeparator} {
+	    $w edit separator
+	}
     }
 }
 
@@ -1036,7 +1075,6 @@ proc ::tk_textCut w {
 # w -		Name of a text widget.
 
 proc ::tk_textPaste w {
-    global tcl_platform
     if {![catch {::tk::GetSelection $w CLIPBOARD} sel]} {
 	set oldSeparator [$w cget -autoseparators]
 	if {$oldSeparator} {

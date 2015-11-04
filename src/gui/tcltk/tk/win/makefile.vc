@@ -42,7 +42,7 @@ the build instructions.
 #     turn on the 64-bit compiler, if your SDK has it.
 #
 # 3)  Targets are:
-#	release  -- Builds the core, the shell. (default)
+#	release  -- Builds the core, the shell and the dlls. (default)
 #	dlls     -- Just builds the windows extensions.
 #	shell    -- Just builds the shell and the core.
 #	core     -- Only builds the core [tkXX.(dll|lib)].
@@ -447,7 +447,7 @@ cdebug	= $(OPTIMIZATIONS)
 cdebug	=
 !endif
 !if $(SYMBOLS)
-cdebug = $(cdebug) -Zi
+cdebug	= $(cdebug) -Zi
 !endif
 !else if "$(MACHINE)" == "IA64" || "$(MACHINE)" == "AMD64"
 ### Warnings are too many, can't support warnings into errors.
@@ -480,6 +480,7 @@ CON_CFLAGS	= $(cdebug) $(cflags) $(crt) -DCONSOLE
 WISH_CFLAGS	= $(BASE_CFLAGS) $(TK_DEFINES)
 STUB_CFLAGS     = $(cflags) $(cdebug) $(TK_DEFINES)
 
+
 #---------------------------------------------------------------------
 # Link flags
 #---------------------------------------------------------------------
@@ -500,6 +501,10 @@ lflags	= -nologo -machine:$(MACHINE) $(LINKERFLAGS) $(ldebug)
 lflags	= $(lflags) -profile
 !endif
 
+!if $(MSVCRT) && !($(DEBUG) && !$(UNCHECKED)) && $(VCVERSION) >= 1900
+lflags	= $(lflags) -nodefaultlib:libucrt.lib
+!endif
+
 !if $(ALIGN98_HACK) && !$(STATIC_BUILD)
 ### Align sections for PE size savings.
 lflags	= $(lflags) -opt:nowin98
@@ -518,7 +523,7 @@ guilflags = $(lflags) -subsystem:windows
 
 tcllibs    = $(TCLSTUBLIB) $(TCLIMPLIB)
 
-baselibs   = netapi32.lib kernel32.lib user32.lib advapi32.lib ws2_32.lib
+baselibs   = netapi32.lib kernel32.lib user32.lib advapi32.lib userenv.lib ws2_32.lib
 # Avoid 'unresolved external symbol __security_cookie' errors.
 # c.f. http://support.microsoft.com/?id=894573
 !if "$(MACHINE)" == "IA64" || "$(MACHINE)" == "AMD64"
@@ -526,6 +531,10 @@ baselibs   = netapi32.lib kernel32.lib user32.lib advapi32.lib ws2_32.lib
 baselibs   = $(baselibs) bufferoverflowU.lib
 !endif
 !endif
+!if $(MSVCRT) && !($(DEBUG) && !$(UNCHECKED)) && $(VCVERSION) >= 1900
+baselibs   = $(baselibs) ucrt.lib
+!endif
+
 guilibs	  = $(baselibs) gdi32.lib
 
 

@@ -714,10 +714,6 @@ install-strip:
 		INSTALL_PROGRAM="$(INSTALL_PROGRAM) ${INSTALL_STRIP_PROGRAM}" \
 		INSTALL_LIBRARY="$(INSTALL_LIBRARY) ${INSTALL_STRIP_LIBRARY}"
 
-# Note: before running ranlib below, must cd to target directory because
-# some ranlibs write to current directory, and this might not always be
-# possible (e.g. if installing as root).
-
 install-binaries: $(TK_STUB_LIB_FILE) $(TK_LIB_FILE) ${WISH_EXE}
 	@for i in "$(LIB_INSTALL_DIR)" "$(BIN_INSTALL_DIR)" \
 	    "$(PKG_INSTALL_DIR)" "$(CONFIG_INSTALL_DIR)" ; \
@@ -1583,18 +1579,13 @@ dist:   $(UNIX_DIR)/configure $(UNIX_DIR)/tkConfig.h.in $(UNIX_DIR)/tk.pc.in $(M
 		$(TOP_DIR)/win/aclocal.m4 $(TOP_DIR)/win/tcl.m4 \
 		$(DISTDIR)/win
 	cp -p $(TOP_DIR)/win/*.[ch] $(TOP_DIR)/win/*.bat $(DISTDIR)/win
-	$(TCL_EXE) $(TOOL_DIR)/eolFix.tcl -crlf $(DISTDIR)/win/*.bat
 	cp -p $(TOP_DIR)/win/makefile.* $(DISTDIR)/win
-	$(TCL_EXE) $(TOOL_DIR)/eolFix.tcl -crlf $(DISTDIR)/win/makefile.*
 	cp -p $(TOP_DIR)/win/rules.vc $(DISTDIR)/win
-	$(TCL_EXE) $(TOOL_DIR)/eolFix.tcl -crlf $(DISTDIR)/win/rules.vc
 	cp -p $(TOP_DIR)/win/README $(DISTDIR)/win
 	cp -p $(TOP_DIR)/license.terms $(DISTDIR)/win
 	mkdir $(DISTDIR)/win/rc
 	cp -p $(TOP_DIR)/win/wish.exe.manifest.in $(DISTDIR)/win/
 	cp -p $(TOP_DIR)/win/rc/*.{rc,cur,ico,bmp} $(DISTDIR)/win/rc
-	$(TCL_EXE) $(TOOL_DIR)/eolFix.tcl -crlf $(DISTDIR)/win/rc/*.rc
-	$(TCL_EXE) $(TOOL_DIR)/eolFix.tcl -crlf $(DISTDIR)/win/wish.exe.manifest.in
 	mkdir $(DISTDIR)/macosx
 	cp -p $(MAC_OSX_DIR)/GNUmakefile $(MAC_OSX_DIR)/README \
 		$(MAC_OSX_DIR)/*.icns $(MAC_OSX_DIR)/*.tiff \
@@ -1613,7 +1604,7 @@ dist:   $(UNIX_DIR)/configure $(UNIX_DIR)/tkConfig.h.in $(UNIX_DIR)/tk.pc.in $(M
 		$(DISTDIR)/macosx/Tk.xcodeproj
 	mkdir $(DISTDIR)/compat
 	cp -p $(TOP_DIR)/license.terms $(TCLDIR)/compat/unistd.h \
-		$(TCLDIR)/compat/stdlib.h $(TCLDIR)/compat/limits.h \
+		$(TCLDIR)/compat/stdlib.h \
 		$(DISTDIR)/compat
 	mkdir $(DISTDIR)/xlib
 	cp -p $(XLIB_DIR)/*.[ch] $(DISTDIR)/xlib

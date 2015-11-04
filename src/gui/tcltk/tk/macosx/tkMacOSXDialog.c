@@ -857,6 +857,9 @@ TkAboutDlg(void)
 	    [[[NSAttributedString alloc] initWithString:
 	    [NSString stringWithFormat:
 	    @"%1$C 1987-%2$@ Tcl Core Team." "\n\n"
+		"%1$C 1989-%2$@ Contributors." "\n\n"
+		"%1$C 2011-%2$@ Kevin Walzer/WordTech Communications LLC." "\n\n"
+		"%1$C 2014-%2$@ Marc Culler." "\n\n"
 		"%1$C 2002-%2$@ Daniel A. Steffen." "\n\n"
 		"%1$C 2001-2009 Apple Inc." "\n\n"
 		"%1$C 2001-2002 Jim Ingham & Ian Reid" "\n\n"

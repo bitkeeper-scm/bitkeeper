@@ -3,7 +3,7 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
+'\"
 .TH tk_messageBox n 4.2 Tk "Tk Built-In Commands"
 .so man.macros
 .BS
@@ -50,9 +50,8 @@ displayed.
 .TP
 \fB\-message\fR \fIstring\fR
 .
-Specifies the message to display in this message box. This option is ignored
-on Mac OS X, where platform guidelines forbid the use of a title on this kind
-of dialog.
+Specifies the message to display in this message box. The
+default value is an empty string.
 .TP
 \fB\-parent\fR \fIwindow\fR
 .
@@ -61,8 +60,9 @@ box is displayed on top of its parent window.
 .TP
 \fB\-title\fR \fItitleString\fR
 .
-Specifies a string to display as the title of the message box. The
-default value is an empty string.
+Specifies a string to display as the title of the message box. This option
+is ignored on Mac OS X, where platform guidelines forbid the use of a title
+on this kind of dialog.
 .TP
 \fB\-type\fR \fIpredefinedType\fR
 .

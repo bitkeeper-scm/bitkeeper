@@ -304,15 +304,9 @@ operations on the widget.  It has the following general form:
 determine the exact behavior of the command.
 .PP
 Many of the widget commands for a menu take as one argument an
-indicator of which entry of the menu to operate on.  These
+indicator of which entry of the menu to operate on. These
 indicators are called \fIindex\fRes and may be specified in
 any of the following forms:
-.TP 12
-\fInumber\fR
-.
-Specifies the entry numerically, where 0 corresponds
-to the top-most entry of the menu, 1 to the entry below it, and
-so on.
 .TP 12
 \fBactive\fR
 .
@@ -348,6 +342,12 @@ For example,
 .QW \fB@0\fR
 indicates the top-most entry in the window.
 .TP 12
+\fInumber\fR
+.
+Specifies the entry numerically, where 0 corresponds
+to the top-most entry of the menu, 1 to the entry below it, and
+so on.
+.TP 12
 \fIpattern\fR
 .
 If the index does not satisfy one of the above forms then this
@@ -355,6 +355,9 @@ form is used.  \fIPattern\fR is pattern-matched against the label of
 each entry in the menu, in order from the top down, until a
 matching entry is found.  The rules of \fBstring match\fR
 are used.
+.PP
+If the index could match more than one of the above forms, then
+the form earlier in the above list takes precedence.
 .PP
 The following widget commands are possible for menu widgets:
 .TP

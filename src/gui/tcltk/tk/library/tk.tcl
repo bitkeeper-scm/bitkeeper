@@ -253,7 +253,6 @@ proc ::tk::ScreenChanged screen {
 
     uplevel #0 [list upvar #0 ::tk::Priv.$disp ::tk::Priv]
     variable ::tk::Priv
-    global tcl_platform
 
     if {[info exists Priv]} {
 	set Priv(screen) $screen

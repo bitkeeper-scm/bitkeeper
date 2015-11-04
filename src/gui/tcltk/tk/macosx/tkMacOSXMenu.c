@@ -261,6 +261,7 @@ static int	ModifierCharWidth(Tk_Font tkfont);
 	    /*Add time for errors to fire if necessary. This is sub-optimal but avoids issues with Tcl/Cocoa event loop integration.*/
 	    Tcl_Sleep(100);
 
+	    NSAutoreleasePool *pool = [NSAutoreleasePool new];
 	    Tcl_Preserve(interp);
 	    Tcl_Preserve(menuPtr);
 
@@ -273,6 +274,7 @@ static int	ModifierCharWidth(Tk_Font tkfont);
 	    }
 	    Tcl_Release(menuPtr);
 	    Tcl_Release(interp);
+	    [pool drain];
 	}
     }
 }
@@ -375,6 +377,13 @@ static int	ModifierCharWidth(Tk_Font tkfont);
 
 @implementation TKApplication(TKMenu)
 
+- (void) safeSetMainMenu: (NSMenu *) menu
+{
+    NSAutoreleasePool* pool = [NSAutoreleasePool new];
+    [self setMainMenu: menu];
+    [pool drain];
+}
+
 - (void) menuBeginTracking: (NSNotification *) notification
 {
 #ifdef TK_MAC_DEBUG_NOTIFICATIONS
@@ -466,7 +475,7 @@ static int	ModifierCharWidth(Tk_Font tkfont);
 	[servicesMenuItem setSubmenu:_servicesMenu];
     }
     [self setAppleMenu:applicationMenu];
-    [self setMainMenu:menu];
+    [self safeSetMainMenu:menu];
 }
 @end
 
@@ -496,8 +505,7 @@ TkpNewMenu(
 				 * platform structure for. */
 {
     TKMenu *menu = [[TKMenu alloc] initWithTkMenu:menuPtr];
-    menuPtr->platformData = (TkMenuPlatformData)
-	    TkMacOSXMakeUncollectable(menu);
+    menuPtr->platformData = (TkMenuPlatformData) menu;
     CheckForSpecialMenu(menuPtr);
     return TCL_OK;
 }
@@ -522,7 +530,10 @@ void
 TkpDestroyMenu(
     TkMenu *menuPtr)		/* The common menu structure */
 {
-    TkMacOSXMakeCollectableAndRelease(menuPtr->platformData);
+    NSMenu* nsmenu = (NSMenu*)(menuPtr->platformData);
+
+    [nsmenu release];
+    menuPtr->platformData = NULL;
 }
 
 /*
@@ -555,8 +566,7 @@ TkpMenuNewEntry(
     } else {
 	menuItem = [menu newTkMenuItem:mePtr];
     }
-    mePtr->platformEntryData = (TkMenuPlatformEntryData)
-	    TkMacOSXMakeUncollectable(menuItem);
+    mePtr->platformEntryData = (TkMenuPlatformEntryData) menuItem;
 
     /*
      * Caller TkMenuEntry() already did this same insertion into the generic
@@ -720,16 +730,21 @@ void
 TkpDestroyMenuEntry(
     TkMenuEntry *mePtr)
 {
+    NSMenuItem *menuItem;
+    TKMenu *menu;
+    NSInteger index;
+
     if (mePtr->platformEntryData && mePtr->menuPtr->platformData) {
-	TKMenu *menu = (TKMenu *) mePtr->menuPtr->platformData;
-	NSMenuItem *menuItem = (NSMenuItem *) mePtr->platformEntryData;
-	NSInteger index = [menu indexOfItem:menuItem];
+	menu = (TKMenu *) mePtr->menuPtr->platformData;
+	menuItem = (NSMenuItem *) mePtr->platformEntryData;
+	index = [menu indexOfItem:menuItem];
 
 	if (index > -1) {
 	    [menu removeItemAtIndex:index];
 	}
+	[menuItem release];
+	mePtr->platformEntryData = NULL;
     }
-    TkMacOSXMakeCollectableAndRelease(mePtr->platformEntryData);
 }
 
 /*
@@ -830,11 +845,16 @@ TkpSetWindowMenuBar(
  *	Puts the menu associated with a window into the menubar. Should only
  *	be called when the window is in front.
  *
+ *      This is a no-op on all other platforms.  On OS X it is a no-op when
+ *      passed a NULL menuName or a nonexistent menuName, with an exception
+ *      for the first call in a new interpreter.  In that special case, passing a
+ *      NULL menuName installs the default menu.
+ *
  * Results:
  *	None.
  *
  * Side effects:
- *	The menubar is changed.
+ *	The menubar may be changed.
  *
  *----------------------------------------------------------------------
  */
@@ -843,8 +863,7 @@ void
 TkpSetMainMenubar(
     Tcl_Interp *interp,		/* The interpreter of the application */
     Tk_Window tkwin,		/* The frame we are setting up */
-    const char *menuName)	/* The name of the menu to put in front. If
-				 * NULL, use the default menu bar. */
+    const char *menuName)	/* The name of the menu to put in front. */
 {
     static Tcl_Interp *currentInterp = NULL;
     TKMenu *menu = nil;

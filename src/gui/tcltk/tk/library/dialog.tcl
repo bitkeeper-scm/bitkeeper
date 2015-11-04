@@ -28,7 +28,6 @@
 #		bottom of the dialog box.
 
 proc ::tk_dialog {w title text bitmap default args} {
-    global tcl_platform
     variable ::tk::Priv
 
     # Check that $default was properly given

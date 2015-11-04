@@ -393,7 +393,8 @@ FileReadGIF(
 				 * image being read. */
 {
     int fileWidth, fileHeight, imageWidth, imageHeight;
-    int nBytes, index = 0, argc = 0, i, result = TCL_ERROR;
+    unsigned int nBytes;
+    int index = 0, argc = 0, i, result = TCL_ERROR;
     Tcl_Obj **objv;
     unsigned char buf[100];
     unsigned char *trashBuffer = NULL;
@@ -410,6 +411,7 @@ FileReadGIF(
      * source and not a file.
      */
 
+    memset(colorMap, 0, MAXCOLORMAPSIZE*4);
     memset(gifConfPtr, 0, sizeof(GIFImageConfig));
     if (fileName == INLINE_DATA_BINARY || fileName == INLINE_DATA_BASE64) {
 	gifConfPtr->fromData = fileName;
@@ -425,8 +427,9 @@ FileReadGIF(
 	return TCL_ERROR;
     }
     for (i = 1; i < argc; i++) {
+	int optionIdx;
 	if (Tcl_GetIndexFromObjStruct(interp, objv[i], optionStrings,
-		sizeof(char *), "option name", 0, &nBytes) != TCL_OK) {
+		sizeof(char *), "option name", 0, &optionIdx) != TCL_OK) {
 	    return TCL_ERROR;
 	}
 	if (i == (argc-1)) {
@@ -590,8 +593,14 @@ FileReadGIF(
 	     */
 
 	    if (trashBuffer == NULL) {
+		if (fileWidth > (int)((UINT_MAX/3)/fileHeight)) {
+		    goto error;
+		}
 		nBytes = fileWidth * fileHeight * 3;
 		trashBuffer = ckalloc(nBytes);
+		if (trashBuffer) {
+		    memset(trashBuffer, 0, nBytes);
+		}
 	    }
 
 	    /*
@@ -675,9 +684,18 @@ FileReadGIF(
 	block.offset[1] = 1;
 	block.offset[2] = 2;
 	block.offset[3] = (transparent>=0) ? 3 : 0;
+	if (imageWidth > INT_MAX/block.pixelSize) {
+	    goto error;
+	}
 	block.pitch = block.pixelSize * imageWidth;
+	if (imageHeight > (int)(UINT_MAX/block.pitch)) {
+	    goto error;
+	}
 	nBytes = block.pitch * imageHeight;
 	block.pixelPtr = ckalloc(nBytes);
+	if (block.pixelPtr) {
+	    memset(block.pixelPtr, 0, nBytes);
+	}
 
 	if (ReadImage(gifConfPtr, interp, block.pixelPtr, chan, imageWidth,
 		imageHeight, colorMap, srcX, srcY, BitSet(buf[8], INTERLACE),

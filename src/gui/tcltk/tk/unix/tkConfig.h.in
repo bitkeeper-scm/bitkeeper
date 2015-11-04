@@ -25,9 +25,6 @@
 /* Define to 1 if you have the `Xft' library (-lXft). */
 #undef HAVE_LIBXFT
 
-/* Do we have <limits.h>? */
-#undef HAVE_LIMITS_H
-
 /* Define to 1 if you have the `lseek64' function. */
 #undef HAVE_LSEEK64
 
@@ -114,9 +111,6 @@
 
 /* Do we have fd_set? */
 #undef NO_FD_SET
-
-/* Do we have <limits.h>? */
-#undef NO_LIMITS_H
 
 /* Do we have <stdlib.h>? */
 #undef NO_STDLIB_H

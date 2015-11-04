@@ -221,7 +221,7 @@ proc CreateGUI {} {
     $c bind knight <ButtonPress-1> [namespace code [list DragStart %W %x %y]]
     $c bind knight <Motion> [namespace code [list DragMotion %W %x %y]]
     $c bind knight <ButtonRelease-1> [namespace code [list DragEnd %W %x %y]]
-    
+
     grid $c $f.txt $f.vs  -sticky news
     grid rowconfigure    $f 0 -weight 1
     grid columnconfigure $f 1 -weight 1
@@ -244,7 +244,7 @@ proc CreateGUI {} {
     if {[info exists ::widgetDemo]} {
         grid [addSeeDismiss $dlg.buttons $dlg] - - - - - -sticky ew
     }
-    
+
     grid rowconfigure $dlg 0 -weight 1
     grid columnconfigure $dlg 0 -weight 1
 

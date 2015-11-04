@@ -33,7 +33,7 @@
 
 typedef struct FontFamily {
     struct FontFamily *nextPtr;	/* Next in list of all known font families. */
-    int refCount;		/* How many SubFonts are referring to this
+    size_t refCount;		/* How many SubFonts are referring to this
 				 * FontFamily. When the refCount drops to
 				 * zero, this FontFamily may be freed. */
     /*
@@ -1869,8 +1869,7 @@ FreeFontFamily(
     if (familyPtr == NULL) {
 	return;
     }
-    familyPtr->refCount--;
-    if (familyPtr->refCount > 0) {
+    if (familyPtr->refCount-- > 1) {
     	return;
     }
     for (i = 0; i < FONTMAP_PAGES; i++) {

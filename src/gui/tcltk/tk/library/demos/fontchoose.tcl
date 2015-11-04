@@ -57,7 +57,7 @@ grid columnconfigure $f 0 -weight 1
 grid rowconfigure $f 0 -weight 1
 bind $w <Visibility> {
     bind %W <Visibility> {}
-    grid propagate %W.f 0    
+    grid propagate %W.f 0
 }
 
 ## See Code / Dismiss buttons

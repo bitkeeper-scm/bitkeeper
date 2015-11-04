@@ -23,7 +23,7 @@ pack $btns -side bottom -fill x
 
 text $w.text -yscrollcommand [list $w.scroll set] -setgrid 1 \
 	-height 30 -undo 1 -autosep 1
-scrollbar $w.scroll -command [list $w.text yview]
+ttk::scrollbar $w.scroll -command [list $w.text yview]
 pack $w.scroll -side right -fill y
 pack $w.text -expand yes -fill both
 

@@ -46,7 +46,6 @@ bind Entry <<Copy>> {
     }
 }
 bind Entry <<Paste>> {
-    global tcl_platform
     catch {
 	if {[tk windowingsystem] ne "x11"} {
 	    catch {

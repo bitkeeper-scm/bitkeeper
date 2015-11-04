@@ -129,7 +129,7 @@ static unsigned char w3_bits[] = {
 #	See the user documentation for details on what tk_messageBox does.
 #
 proc ::tk::MessageBox {args} {
-    global tcl_platform tk_strictMotif
+    global tk_strictMotif
     variable ::tk::Priv
 
     set w ::tk::PrivMsgBox

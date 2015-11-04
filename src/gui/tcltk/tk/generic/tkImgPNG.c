@@ -10,6 +10,7 @@
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
  */
 
+#include "assert.h"
 #include "tkInt.h"
 
 #define	PNG_INT32(a,b,c,d)	\
@@ -1846,6 +1847,13 @@ DecodeLine(
     if (UnfilterLine(interp, pngPtr) == TCL_ERROR) {
 	return TCL_ERROR;
     }
+    if (pngPtr->currentLine >= pngPtr->block.height) {
+	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		"PNG image data overflow"));
+	Tcl_SetErrorCode(interp, "TK", "IMAGE", "PNG", "DATA_OVERFLOW", NULL);
+	return TCL_ERROR;
+    }
+
 
     if (pngPtr->interlace) {
 	switch (pngPtr->phase) {
@@ -2175,10 +2183,13 @@ ReadIDAT(
 
 	    /*
 	     * Try to read another line of pixels out of the buffer
-	     * immediately.
+	     * immediately, but don't allow write past end of block.
 	     */
 
-	    goto getNextLine;
+	    if (pngPtr->currentLine < pngPtr->block.height) {
+		goto getNextLine;
+	    }
+
 	}
 
 	/*
@@ -3345,7 +3356,7 @@ EncodePNG(
 	    pngPtr->colorType = PNG_COLOR_RGBA;
 	    pngPtr->bytesPerPixel = 4;
 	} else {
-	    pngPtr->colorType = PNG_COLOR_RGBA;
+	    pngPtr->colorType = PNG_COLOR_RGB;
 	    pngPtr->bytesPerPixel = 3;
 	}
     } else {

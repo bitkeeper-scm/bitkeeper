@@ -28,7 +28,6 @@ static char tkLibPath[PATH_MAX + 1] = "";
 
 static char scriptPath[PATH_MAX + 1] = "";
 
-int tkMacOSXGCEnabled = 0;
 long tkMacOSXMacOSXVersion = 0;
 
 #pragma mark TKApplication(TKInit)
@@ -258,7 +257,6 @@ TkpInit(
 	if (!pool) {
 	    pool = [NSAutoreleasePool new];
 	}
-	tkMacOSXGCEnabled = ([NSGarbageCollector defaultCollector] != nil);
 	[[NSUserDefaults standardUserDefaults] registerDefaults:
 		[NSDictionary dictionaryWithObjectsAndKeys:
 		[NSNumber numberWithBool:YES],
