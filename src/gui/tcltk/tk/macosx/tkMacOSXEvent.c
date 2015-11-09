@@ -31,18 +31,19 @@ enum {
     NSEvent	    *processedEvent = theEvent;
     NSEventType	    type = [theEvent type];
     NSInteger	    subtype;
-    NSUInteger	    flags;
 
     switch ((NSInteger)type) {
     case NSAppKitDefined:
         subtype = [theEvent subtype];
 
 	switch (subtype) {
+	    /* Ignored at the moment. */
 	case NSApplicationActivatedEventType:
 	    break;
 	case NSApplicationDeactivatedEventType:
 	    break;
 	case NSWindowExposedEventType:
+	    break;
 	case NSScreenChangedEventType:
 	    break;
 	case NSWindowMovedEventType:
@@ -53,13 +54,12 @@ enum {
         default:
             break;
 	}
-	break;
+	break; /* AppkitEvent. Return theEvent */
     case NSKeyUp:
     case NSKeyDown:
     case NSFlagsChanged:
-	flags = [theEvent modifierFlags];
 	processedEvent = [self tkProcessKeyEvent:theEvent];
-	break;
+	break; /* Key event.  Return the processed event. */
     case NSLeftMouseDown:
     case NSLeftMouseUp:
     case NSRightMouseDown:
@@ -76,7 +76,7 @@ enum {
     case NSTabletPoint:
     case NSTabletProximity:
 	processedEvent = [self tkProcessMouseEvent:theEvent];
-	break;
+	break; /* Mouse event.  Return the processed event. */
 #if 0
     case NSSystemDefined:
         subtype = [theEvent subtype];
@@ -100,7 +100,7 @@ enum {
 #endif
 
     default:
-	break;
+	break; /* return theEvent */
     }
     return processedEvent;
 }
@@ -113,14 +113,14 @@ enum {
  *
  * TkMacOSXFlushWindows --
  *
- *	This routine flushes all the windows of the application. It is
+ *	This routine flushes all the visible windows of the application. It is
  *	called by XSync().
  *
  * Results:
  *	None.
  *
  * Side effects:
- *	Flushes all Carbon windows
+ *	Flushes all visible Cocoa windows
  *
  *----------------------------------------------------------------------
  */
@@ -128,22 +128,20 @@ enum {
 MODULE_SCOPE void
 TkMacOSXFlushWindows(void)
 {
-    NSInteger windowCount;
-    NSInteger *windowNumbers;
+    /* This can be called from outside the Appkit event loop,
+     * so it needs its own AutoreleasePool.
+     */
+    NSAutoreleasePool *pool = [NSAutoreleasePool new];
+    NSArray *macWindows = [NSApp orderedWindows];
 
-    NSCountWindows(&windowCount);
-    if(windowCount) {
-	windowNumbers = ckalloc(windowCount * sizeof(NSInteger));
-	NSWindowList(windowCount, windowNumbers);
-	for (NSInteger index = 0; index < windowCount; index++) {
-	    NSWindow *w = [NSApp windowWithWindowNumber:windowNumbers[index]];
-	    if (TkMacOSXGetXWindow(w)) {
-		[w flushWindow];
-	    }
+    for (NSWindow *w in macWindows) {
+	if (TkMacOSXGetXWindow(w)) {
+	    [w flushWindow];
 	}
-	ckfree(windowNumbers);
     }
+    [pool drain];
 }
+
 
 /*
  * Local Variables:

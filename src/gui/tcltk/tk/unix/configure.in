@@ -86,12 +86,6 @@ fi
 AC_PROG_CC
 AC_C_INLINE
 
-# limits header checks must come early to prevent
-# an autoconf bug that throws errors on configure
-AC_CHECK_HEADER(limits.h,
-    [AC_DEFINE(HAVE_LIMITS_H, 1, [Do we have <limits.h>?])],
-    [AC_DEFINE(NO_LIMITS_H, 1, [Do we have <limits.h>?])])
-
 #--------------------------------------------------------------------
 # Supply a substitute for stdlib.h if it doesn't define strtol,
 # strtoul, or strtod (which it doesn't in some versions of SunOS).

@@ -70,12 +70,12 @@ typedef struct FilesystemRecord {
 
 typedef struct ThreadSpecificData {
     int initialized;
-    int cwdPathEpoch;
-    int filesystemEpoch;
+    size_t cwdPathEpoch;
+    size_t filesystemEpoch;
     Tcl_Obj *cwdPathPtr;
     ClientData cwdClientData;
     FilesystemRecord *filesystemList;
-    int claims;
+    size_t claims;
 } ThreadSpecificData;
 
 /*
@@ -228,7 +228,7 @@ static FilesystemRecord nativeFilesystemRecord = {
  * trigger cache cleanup in all threads.
  */
 
-static int theFilesystemEpoch = 1;
+static size_t theFilesystemEpoch = 1;
 
 /*
  * Stores the linked list of filesystems. A 1:1 copy of this list is also
@@ -244,7 +244,7 @@ TCL_DECLARE_MUTEX(filesystemMutex)
  */
 
 static Tcl_Obj *cwdPathPtr = NULL;
-static int cwdPathEpoch = 0;
+static size_t cwdPathEpoch = 0;
 static ClientData cwdClientData = NULL;
 TCL_DECLARE_MUTEX(cwdMutex)
 
@@ -658,7 +658,7 @@ FsGetFirstFilesystem(void)
 
 int
 TclFSEpochOk(
-    int filesystemEpoch)
+    size_t filesystemEpoch)
 {
     return (filesystemEpoch == 0 || filesystemEpoch == theFilesystemEpoch);
 }
@@ -679,7 +679,7 @@ Disclaim(void)
     tsdPtr->claims--;
 }
 
-int
+size_t
 TclFSEpoch(void)
 {
     ThreadSpecificData *tsdPtr = TCL_TSD_INIT(&fsDataKey);
@@ -726,7 +726,9 @@ FsUpdateCwd(
 	cwdClientData = TclNativeDupInternalRep(clientData);
     }
 
-    cwdPathEpoch++;
+    if (++cwdPathEpoch == 0) {
+	++cwdPathEpoch;
+    }
     tsdPtr->cwdPathEpoch = cwdPathEpoch;
     Tcl_MutexUnlock(&cwdMutex);
 
@@ -803,7 +805,9 @@ TclFinalizeFilesystem(void)
 	}
 	fsRecPtr = tmpFsRecPtr;
     }
-    theFilesystemEpoch++;
+    if (++theFilesystemEpoch == 0) {
+	++theFilesystemEpoch;
+    }
     filesystemList = NULL;
 
     /*
@@ -836,7 +840,9 @@ void
 TclResetFilesystem(void)
 {
     filesystemList = &nativeFilesystemRecord;
-    theFilesystemEpoch++;
+    if (++theFilesystemEpoch == 0) {
+	++theFilesystemEpoch;
+    }
 
 #ifdef _WIN32
     /*
@@ -921,7 +927,9 @@ Tcl_FSRegister(
      * conceivably now belong to different filesystems.
      */
 
-    theFilesystemEpoch++;
+    if (++theFilesystemEpoch == 0) {
+	++theFilesystemEpoch;
+    }
     Tcl_MutexUnlock(&filesystemMutex);
 
     return TCL_OK;
@@ -986,7 +994,9 @@ Tcl_FSUnregister(
 	     * (which would of course lead to memory exceptions).
 	     */
 
-	    theFilesystemEpoch++;
+	    if (++theFilesystemEpoch == 0) {
+		++theFilesystemEpoch;
+	    }
 
 	    ckfree(fsRecPtr);
 
@@ -1317,7 +1327,9 @@ Tcl_FSMountsChanged(
      */
 
     Tcl_MutexLock(&filesystemMutex);
-    theFilesystemEpoch++;
+    if (++theFilesystemEpoch == 0) {
+	++theFilesystemEpoch;
+    }
     Tcl_MutexUnlock(&filesystemMutex);
 }
 
@@ -3071,9 +3083,13 @@ int
 Tcl_FSChdir(
     Tcl_Obj *pathPtr)
 {
-    const Tcl_Filesystem *fsPtr;
+    const Tcl_Filesystem *fsPtr, *oldFsPtr = NULL;
+    ThreadSpecificData *tsdPtr = TCL_TSD_INIT(&fsDataKey);
     int retVal = -1;
 
+    if (tsdPtr->cwdPathPtr != NULL) {
+	oldFsPtr = Tcl_FSGetFileSystemForPath(tsdPtr->cwdPathPtr);
+    }
     if (Tcl_FSGetNormalizedPath(NULL, pathPtr) == NULL) {
 	Tcl_SetErrno(ENOENT);
 	return retVal;
@@ -3173,7 +3189,6 @@ Tcl_FSChdir(
 	     * instead. This should be examined by someone on Unix.
 	     */
 
-	    ThreadSpecificData *tsdPtr = TCL_TSD_INIT(&fsDataKey);
 	    ClientData cd;
 	    ClientData oldcd = tsdPtr->cwdClientData;
 
@@ -3189,6 +3204,14 @@ Tcl_FSChdir(
 	    }
 	} else {
 	    FsUpdateCwd(normDirName, NULL);
+	}
+
+	/*
+	 * If the filesystem changed between old and new cwd
+	 * force filesystem refresh on path objects.
+	 */
+	if (oldFsPtr != NULL && fsPtr != oldFsPtr) {
+	    Tcl_FSMountsChanged(NULL);
 	}
     }
 
@@ -3331,7 +3354,7 @@ TclSkipUnlink (Tcl_Obj* shlibFile)
      *
      * Ad 2: This variable can disable/override the AUFS detection, i.e. for
      * testing if a newer AUFS does not have the bug any more.
-     * 
+     *
      * Ad 3: This is conditionally compiled in. Condition currently must be set manually.
      *       This part needs proper tests in the configure(.in).
      */
@@ -3412,7 +3435,9 @@ Tcl_LoadFile(
 	    if (*handlePtr == NULL) {
 		return TCL_ERROR;
 	    }
-	    Tcl_ResetResult(interp);
+	    if (interp) {
+		Tcl_ResetResult(interp);
+	    }
 	    goto resolveSymbols;
 	}
 	if (Tcl_GetErrno() != EXDEV) {
@@ -3428,9 +3453,11 @@ Tcl_LoadFile(
      */
 
     if (Tcl_FSAccess(pathPtr, R_OK) != 0) {
-	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
-		"couldn't load library \"%s\": %s",
-		Tcl_GetString(pathPtr), Tcl_PosixError(interp)));
+	if (interp) {
+	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		    "couldn't load library \"%s\": %s",
+		    Tcl_GetString(pathPtr), Tcl_PosixError(interp)));
+	}
 	return TCL_ERROR;
     }
 
@@ -3479,7 +3506,9 @@ Tcl_LoadFile(
     }
 
   mustCopyToTempAnyway:
-    Tcl_ResetResult(interp);
+    if (interp) {
+	Tcl_ResetResult(interp);
+    }
 #endif /* TCL_LOAD_FROM_MEMORY */
 
     /*
@@ -3503,8 +3532,10 @@ Tcl_LoadFile(
 
 	Tcl_FSDeleteFile(copyToPtr);
 	Tcl_DecrRefCount(copyToPtr);
-	Tcl_SetObjResult(interp, Tcl_NewStringObj(
-		"couldn't load from current filesystem", -1));
+	if (interp) {
+	    Tcl_SetObjResult(interp, Tcl_NewStringObj(
+		    "couldn't load from current filesystem", -1));
+	}
 	return TCL_ERROR;
     }
 
@@ -3544,7 +3575,9 @@ Tcl_LoadFile(
      * have stored the number of bytes in the result.
      */
 
-    Tcl_ResetResult(interp);
+    if (interp) {
+	Tcl_ResetResult(interp);
+    }
 
     retVal = Tcl_LoadFile(interp, copyToPtr, symbols, flags, procPtrs,
 	    &newLoadHandle);
@@ -3576,7 +3609,9 @@ Tcl_LoadFile(
 	 */
 
 	*handlePtr = newLoadHandle;
-	Tcl_ResetResult(interp);
+	if (interp) {
+	    Tcl_ResetResult(interp);
+	}
 	return TCL_OK;
     }
 
@@ -3637,11 +3672,13 @@ Tcl_LoadFile(
     divertedLoadHandle->unloadFileProcPtr = DivertUnloadFile;
     *handlePtr = divertedLoadHandle;
 
-    Tcl_ResetResult(interp);
+    if (interp) {
+	Tcl_ResetResult(interp);
+    }
     return retVal;
 
   resolveSymbols:
-    /* 
+    /*
      * At this point, *handlePtr is already set up to the handle for the
      * loaded library. We now try to resolve the symbols.
      */
@@ -3650,7 +3687,7 @@ Tcl_LoadFile(
 	for (i=0 ; symbols[i] != NULL; i++) {
 	    procPtrs[i] = Tcl_FindSymbol(interp, *handlePtr, symbols[i]);
 	    if (procPtrs[i] == NULL) {
-		/* 
+		/*
 		 * At least one symbol in the list was not found.  Unload the
 		 * file, and report the problem back to the caller.
 		 * (Tcl_FindSymbol should already have left an appropriate
@@ -3670,7 +3707,7 @@ Tcl_LoadFile(
  *----------------------------------------------------------------------
  *
  * DivertFindSymbol --
- *	
+ *
  *	Find a symbol in a shared library loaded by copy-from-VFS.
  *
  *----------------------------------------------------------------------

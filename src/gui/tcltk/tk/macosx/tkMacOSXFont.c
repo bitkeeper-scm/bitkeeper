@@ -293,7 +293,7 @@ InitFont(
 	    [NSNumber numberWithInt:fmPtr->fixed ? 0 : 1],
 		NSLigatureAttributeName,
 	    [NSNumber numberWithDouble:kern], NSKernAttributeName, nil];
-            fontPtr->nsAttributes = TkMacOSXMakeUncollectableAndRetain(nsAttributes);
+            fontPtr->nsAttributes = [nsAttributes retain];
     #undef nCh
 }
 
@@ -557,7 +557,8 @@ TkpDeleteFont(
 {
     MacFont *fontPtr = (MacFont *) tkFontPtr;
 
-    TkMacOSXMakeCollectableAndRelease(fontPtr->nsAttributes);
+    [fontPtr->nsAttributes release];
+    fontPtr->nsAttributes = NULL;
     CFRelease(fontPtr->nsFont); /* Either a CTFontRef or a CFRetained NSFont */
 }
 

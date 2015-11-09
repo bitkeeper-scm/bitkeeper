@@ -92,7 +92,7 @@ pack $w.dir.b -side left -fill y    -padx {0 2m} -pady 2m
 labelframe $w.f -text "File:" -padx 2m -pady 2m
 
 listbox $w.f.list -width 20 -height 10 -yscrollcommand "$w.f.scroll set"
-scrollbar $w.f.scroll -command "$w.f.list yview"
+ttk::scrollbar $w.f.scroll -command "$w.f.list yview"
 pack $w.f.list $w.f.scroll -side left -fill y -expand 1
 $w.f.list insert 0 earth.gif earthris.gif teapot.ppm
 bind $w.f.list <Double-1> "loadImage $w %x %y"

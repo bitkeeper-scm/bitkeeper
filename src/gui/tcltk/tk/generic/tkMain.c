@@ -55,7 +55,16 @@ extern int TkCygwinMainEx(int, char **, Tcl_AppInitProc *, Tcl_Interp *);
  * to strcmp here.
  */
 #ifdef _WIN32
-#   include "tclInt.h"
+/*  Little hack to eliminate the need for "tclInt.h" here:
+    Just copy a small portion of TclIntPlatStubs, just
+    enough to make it work. See [600b72bfbc] */
+typedef struct {
+    int magic;
+    void *hooks;
+    void (*dummy[16]) (void); /* dummy entries 0-15, not used */
+    int (*tclpIsAtty) (int fd); /* 16 */
+} TclIntPlatStubs;
+extern const TclIntPlatStubs *tclIntPlatStubsPtr;
 #   include "tkWinInt.h"
 #else
 #   define TCHAR char
@@ -108,9 +117,9 @@ static int WinIsTty(int fd) {
      */
 
 #if !defined(STATIC_BUILD)
-	if (tclStubsPtr->reserved9 && TclpIsAtty) {
+	if (tclStubsPtr->reserved9 && tclIntPlatStubsPtr->tclpIsAtty) {
 	    /* We are running on Cygwin */
-	    return TclpIsAtty(fd);
+	    return tclIntPlatStubsPtr->tclpIsAtty(fd);
 	}
 #endif
     handle = GetStdHandle(STD_INPUT_HANDLE + fd);

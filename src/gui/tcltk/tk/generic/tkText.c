@@ -931,7 +931,7 @@ TextWidgetObjCmd(
 
                 /*
                  * Now we need to adjust the count to:
-                 *   - subtract off the number of display lines between 
+                 *   - subtract off the number of display lines between
                  *     indexToPtr and index2, since we might have skipped past
                  *     indexToPtr, if we have several logical lines in a
                  *     single display line
@@ -3022,11 +3022,9 @@ DeleteIndexRange(
      * The code below is ugly, but it's needed to make sure there is always a
      * dummy empty line at the end of the text. If the final newline of the
      * file (just before the dummy line) is being deleted, then back up index
-     * to just before the newline. If there is a newline just before the first
-     * character being deleted, then back up the first index too, so that an
-     * even number of lines gets deleted. Furthermore, remove any tags that
-     * are present on the newline that isn't going to be deleted after all
-     * (this simulates deleting the newline and then adding a "clean" one back
+     * to just before the newline. Furthermore, remove any tags that are
+     * present on the newline that isn't going to be deleted after all (this
+     * simulates deleting the newline and then adding a "clean" one back
      * again). Note that index1 and index2 might now be equal again which
      * means that no text will be deleted but tags might be removed.
      */
@@ -3041,10 +3039,6 @@ DeleteIndexRange(
 	oldIndex2 = index2;
 	TkTextIndexBackChars(NULL, &oldIndex2, 1, &index2, COUNT_INDICES);
 	line2--;
-	if ((index1.byteIndex == 0) && (line1 != 0)) {
-	    TkTextIndexBackChars(NULL, &index1, 1, &index1, COUNT_INDICES);
-	    line1--;
-	}
 	arrayPtr = TkBTreeGetTags(&index2, NULL, &arraySize);
 	if (arrayPtr != NULL) {
 	    for (i = 0; i < arraySize; i++) {
@@ -4240,7 +4234,11 @@ TextSearchFoundMatch(
 		    matchOffset += Tcl_NumUtfChars(segPtr->body.chars, -1);
 		}
 	    } else {
-		leftToScan -= segPtr->size;
+		if (searchSpecPtr->exact) {
+		    leftToScan -= segPtr->size;
+		} else {
+		    leftToScan -= Tcl_NumUtfChars(segPtr->body.chars, -1);
+		}
 	    }
 	    curIndex.byteIndex += segPtr->size;
 	}

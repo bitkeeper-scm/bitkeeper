@@ -344,7 +344,7 @@ FindCursorByName(
 	macCursor = [[NSCursor alloc] initWithImage:image hotSpot:hotSpot];
 	[image release];
     }
-    macCursorPtr->macCursor = TkMacOSXMakeUncollectable(macCursor);
+    macCursorPtr->macCursor = macCursor;
 }
 
 /*
@@ -454,7 +454,8 @@ TkpFreeCursor(
 {
     TkMacOSXCursor *macCursorPtr = (TkMacOSXCursor *) cursorPtr;
 
-    TkMacOSXMakeCollectableAndRelease(macCursorPtr->macCursor);
+    [macCursorPtr->macCursor release];
+    macCursorPtr->macCursor = NULL;
     if (macCursorPtr == gCurrentCursor) {
 	gCurrentCursor = NULL;
     }

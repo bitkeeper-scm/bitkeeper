@@ -30,10 +30,10 @@
  * Default insets for controls
  */
 
-#define DEF_INSET_LEFT 2
-#define DEF_INSET_RIGHT 2
-#define DEF_INSET_TOP 2
-#define DEF_INSET_BOTTOM 4
+#define DEF_INSET_LEFT 12
+#define DEF_INSET_RIGHT 12
+#define DEF_INSET_TOP 1
+#define DEF_INSET_BOTTOM 1
 
 /*
  * Some defines used to control what type of control is drawn.
@@ -318,8 +318,8 @@ TkpComputeButtonGeometry(
 		Tcl_GetString(butPtr->textPtr), -1, butPtr->wrapLength,
 		butPtr->justify, 0, &butPtr->textWidth, &butPtr->textHeight);
 
-	txtWidth = butPtr->textWidth;
-	txtHeight = butPtr->textHeight;
+	txtWidth = butPtr->textWidth + DEF_INSET_LEFT + DEF_INSET_RIGHT;
+	txtHeight = butPtr->textHeight + DEF_INSET_BOTTOM + DEF_INSET_TOP;
 	charWidth = Tk_TextWidth(butPtr->tkfont, "0", 1);
 	Tk_GetFontMetrics(butPtr->tkfont, &fm);
 	haveText = (txtWidth != 0 && txtHeight != 0);
@@ -387,7 +387,7 @@ TkpComputeButtonGeometry(
 
     butPtr->inset = 0;
     butPtr->inset += butPtr->highlightWidth;
-    
+
     if (TkMacOSXComputeButtonDrawParams(butPtr,&drawParams)) {
         HIRect tmpRect;
     	HIRect contBounds;
@@ -519,7 +519,7 @@ DrawButtonImageAndText(
 	  /*
 	   * Image is left or right of text
 	   */
-	  
+
 	  if (butPtr->compound == COMPOUND_LEFT) {
 	    textXOffset = width + butPtr->padX;
 	  } else {
@@ -536,7 +536,7 @@ DrawButtonImageAndText(
 	  /*
 	   * Image and text are superimposed
 	   */
-	  
+
 	  fullWidth = (width > butPtr->textWidth ? width :
 		       butPtr->textWidth);
 	  fullHeight = (height > butPtr->textHeight ? height :
@@ -593,7 +593,7 @@ DrawButtonImageAndText(
 		     imageXOffset, imageYOffset, 1);
 	  XSetClipOrigin(butPtr->display, dpPtr->gc, 0, 0);
         }
-	
+
         Tk_DrawTextLayout(butPtr->display, pixmap,
                 dpPtr->gc, butPtr->textLayout,
                 x + textXOffset, y + textYOffset, 0, -1);
@@ -618,7 +618,7 @@ DrawButtonImageAndText(
 	imageYOffset += y;
 
 	if (butPtr->image != NULL) {
-	  
+
 	  if ((butPtr->selectImage != NULL) &&
 	      (butPtr->flags & SELECTED)) {
 	    Tk_RedrawImage(butPtr->selectImage, 0, 0, width,
@@ -647,7 +647,7 @@ DrawButtonImageAndText(
 			  butPtr->textHeight, &x, &y);
 	x += butPtr->indicatorSpace;
 	Tk_DrawTextLayout(butPtr->display, pixmap, dpPtr->gc, butPtr->textLayout,
-			  x, y, 0, -1);
+			  x, y - DEF_INSET_BOTTOM, 0, -1);
     }
 
     /*
@@ -807,9 +807,12 @@ TkMacOSXDrawButton(
             hiinfo.animation.time.start = hiinfo.animation.time.current;
         }
 
-	HIThemeDrawButton(&cntrRect, &hiinfo, dc.context, kHIThemeOrientationNormal, &contHIRec);
+	HIThemeDrawButton(&cntrRect, &hiinfo, dc.context, kHIThemeOrientationNormal,
+			  &contHIRec);
+
 	TkMacOSXRestoreDrawingContext(&dc);
-        ButtonContentDrawCB(&contHIRec, mbPtr->btnkind, &mbPtr->drawinfo, (MacButton *)mbPtr, 32, true);
+        ButtonContentDrawCB(&contHIRec, mbPtr->btnkind, &mbPtr->drawinfo,
+			    (MacButton *)mbPtr, 32, true);
 
     } else {
 	if (!TkMacOSXSetupDrawingContext(pixmap, dpPtr->gc, 1, &dc)) {

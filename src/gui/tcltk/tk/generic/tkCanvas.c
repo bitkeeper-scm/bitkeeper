@@ -2447,6 +2447,19 @@ DisplayCanvas(
 	goto done;
     }
 
+#ifdef MAC_OSX_TK
+    /*
+     * If drawing is disabled, all we need to do is
+     * clear the REDRAW_PENDING flag.
+     */
+    TkWindow *winPtr = (TkWindow *)(canvasPtr->tkwin);
+    MacDrawable *macWin = winPtr->privatePtr;
+    if (macWin && (macWin->flags & TK_DO_NOT_DRAW)){
+	canvasPtr->flags &= ~REDRAW_PENDING;
+	return;
+    }
+#endif
+
     /*
      * Choose a new current item if that is needed (this could cause event
      * handlers to be invoked).

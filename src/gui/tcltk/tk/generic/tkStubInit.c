@@ -556,7 +556,7 @@ static const TkIntPlatStubs tkIntPlatStubs = {
     TkGetTransientMaster, /* 49 */
     TkGenerateButtonEvent, /* 50 */
     TkGenWMDestroyEvent, /* 51 */
-    0, /* 52 */
+    TkMacOSXSetDrawingEnabled, /* 52 */
     TkpGetMS, /* 53 */
     TkMacOSXDrawable, /* 54 */
     TkpScanWindowId, /* 55 */

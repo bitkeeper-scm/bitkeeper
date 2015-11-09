@@ -25,7 +25,7 @@ set t $w.f.text
 text $t -yscrollcommand "$w.scroll set" -setgrid true -font $font -width 70 \
 	-height 35 -wrap word -highlightthickness 0 -borderwidth 0
 pack $t -expand  yes -fill both
-scrollbar $w.scroll -command "$t yview"
+ttk::scrollbar $w.scroll -command "$t yview"
 pack $w.scroll -side right -fill y
 panedwindow $w.pane
 pack $w.pane -expand yes -fill both
@@ -166,7 +166,7 @@ $t image create end -image \
 
 
 proc textWindBigB w {
-    $w configure -borderwidth 15 
+    $w configure -borderwidth 15
 }
 
 proc textWindBigH w {
@@ -193,7 +193,7 @@ proc textWindSmallP w {
 proc textWindOn w {
     catch {destroy $w.scroll2}
     set t $w.f.text
-    scrollbar $w.scroll2 -orient horizontal -command "$t xview"
+    ttk::scrollbar $w.scroll2 -orient horizontal -command "$t xview"
     pack $w.scroll2 -after $w.buttons -side bottom -fill x
     $t configure -xscrollcommand "$w.scroll2 set" -wrap none
 }
@@ -230,7 +230,7 @@ proc createPlot {t} {
     $c create line 100 250 400 250 -width 2
     $c create line 100 250 100 50 -width 2
     $c create text 225 20 -text "A Simple Plot" -font $font -fill brown
-    
+
     for {set i 0} {$i <= 10} {incr i} {
 	set x [expr {100 + ($i*30)}]
 	$c create line $x 250 $x 245 -width 2
@@ -241,7 +241,7 @@ proc createPlot {t} {
 	$c create line 100 $y 105 $y -width 2
 	$c create text 96 $y -text [expr {$i*50}].0 -anchor e -font $font
     }
-    
+
     foreach point {
 	{12 56} {20 94} {33 98} {32 120} {61 180} {75 160} {98 223}
     } {
@@ -303,7 +303,7 @@ proc textMakePeer {parent} {
     set t [$parent peer create $w.f.text -yscrollcommand "$w.scroll set" \
 	       -borderwidth 0 -highlightthickness 0]
     pack $t -expand  yes -fill both
-    scrollbar $w.scroll -command "$t yview"
+    ttk::scrollbar $w.scroll -command "$t yview"
     pack $w.scroll -side right -fill y
     pack $w.f -expand yes -fill both
 }

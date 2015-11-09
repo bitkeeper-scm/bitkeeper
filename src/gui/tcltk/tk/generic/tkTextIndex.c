@@ -1683,7 +1683,7 @@ IndexCountBytesOrdered(
         byteCount += segPtr->size;
     }
 
-    linePtr = indexPtr1->linePtr->nextPtr;
+    linePtr = TkBTreeNextLine(textPtr, indexPtr1->linePtr);
     while (linePtr != indexPtr2->linePtr) {
 	for (segPtr = linePtr->segPtr; segPtr != NULL;
                 segPtr = segPtr->nextPtr) {
@@ -2205,7 +2205,7 @@ StartEnd(
     TkText *textPtr,		/* Information about text widget. */
     const char *string,		/* String to parse for additional info about
 				 * modifier (count and units). Points to first
-				 * character of modifer word. */
+				 * character of modifier word. */
     TkTextIndex *indexPtr)	/* Index to modify based on string. */
 {
     const char *p;
@@ -2327,7 +2327,7 @@ StartEnd(
 	int offset;
 
 	if (modifier == TKINDEX_DISPLAY) {
-	    TkTextIndexForwChars(NULL, indexPtr, 0, indexPtr,
+	    TkTextIndexForwChars(textPtr, indexPtr, 0, indexPtr,
 		    COUNT_DISPLAY_INDICES);
 	}
 
@@ -2356,11 +2356,20 @@ StartEnd(
 		}
 		firstChar = 0;
 	    }
-	    offset -= chSize;
-	    indexPtr->byteIndex -= chSize;
+            if (offset == 0) {
+                if (modifier == TKINDEX_DISPLAY) {
+                    TkTextIndexBackChars(textPtr, indexPtr, 1, indexPtr,
+                        COUNT_DISPLAY_INDICES);
+                } else {
+                    TkTextIndexBackChars(NULL, indexPtr, 1, indexPtr,
+                        COUNT_INDICES);
+                }
+            } else {
+                indexPtr->byteIndex -= chSize;
+            }
+            offset -= chSize;
 	    if (offset < 0) {
-		if (indexPtr->byteIndex < 0) {
-		    indexPtr->byteIndex = 0;
+		if (indexPtr->byteIndex == 0) {
 		    goto done;
 		}
 		segPtr = TkTextIndexToSeg(indexPtr, &offset);

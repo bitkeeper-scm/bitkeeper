@@ -26,7 +26,7 @@ pack $btns -side bottom -fill x
 frame $w.frame -borderwidth .5c
 pack $w.frame -side top -expand yes -fill y
 
-scrollbar $w.frame.scroll -command "$w.frame.list yview"
+ttk::scrollbar $w.frame.scroll -command "$w.frame.list yview"
 listbox $w.frame.list -yscroll "$w.frame.scroll set" -setgrid 1 -height 12
 pack $w.frame.scroll -side right -fill y
 pack $w.frame.list -side left -expand 1 -fill both

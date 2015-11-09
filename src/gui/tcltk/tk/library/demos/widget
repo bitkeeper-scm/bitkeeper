@@ -145,7 +145,7 @@ catch {
 }
 
 ttk::frame .textFrame
-scrollbar .s -orient vertical -command {.t yview} -takefocus 1
+ttk::scrollbar .s -orient vertical -command {.t yview} -takefocus 1
 pack .s -in .textFrame -side right -fill y
 text .t -yscrollcommand {.s set} -wrap word -width 70 -height $textheight \
 	-font mainFont -setgrid 1 -highlightthickness 0 \
@@ -565,8 +565,10 @@ proc showCode w {
 		      -xscrollcommand [list $t.xscroll set] \
 		      -yscrollcommand [list $t.yscroll set] \
 		      -setgrid 1 -highlightthickness 0 -pady 2 -padx 3]
-	scrollbar $t.xscroll -command [list $t.text xview] -orient horizontal
-	scrollbar $t.yscroll -command [list $t.text yview] -orient vertical
+	ttk::scrollbar $t.xscroll -command [list $t.text xview] \
+	    -orient horizontal
+	ttk::scrollbar $t.yscroll -command [list $t.text yview] \
+	    -orient vertical
 
 	grid $t.text $t.yscroll -sticky news
 	#grid $t.xscroll

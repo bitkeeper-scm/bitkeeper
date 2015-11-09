@@ -3734,7 +3734,7 @@ WmWaitMapProc(
  *	This function is invoked by a widget when it wishes to set a grid
  *	coordinate system that controls the size of a top-level window. It
  *	provides a C interface equivalent to the "wm grid" command and is
- *	usually asscoiated with the -setgrid option.
+ *	usually associated with the -setgrid option.
  *
  * Results:
  *	None.

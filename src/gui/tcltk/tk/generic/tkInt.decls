@@ -1017,6 +1017,9 @@ declare 50 aqua {
 declare 51 aqua {
     void TkGenWMDestroyEvent(Tk_Window tkwin)
 }
+declare 52 aqua {
+    void TkMacOSXSetDrawingEnabled(TkWindow *winPtr, int flag)
+}
 
 # removed duplicate from tkPlat table (tk.decls)
 #declare 52 aqua {

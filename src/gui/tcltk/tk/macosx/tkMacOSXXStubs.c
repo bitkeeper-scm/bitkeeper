@@ -177,8 +177,7 @@ TkpOpenDisplay(
 	display->proto_minor_version = [[cgVers objectAtIndex:2] integerValue];
     }
     if (!vendor[0]) {
-	snprintf(vendor, sizeof(vendor), "Apple AppKit %s %g",
-		([NSGarbageCollector defaultCollector] ? "GC" : "RR"),
+	snprintf(vendor, sizeof(vendor), "Apple AppKit %g",
 		NSAppKitVersionNumber);
     }
     display->vendor = vendor;

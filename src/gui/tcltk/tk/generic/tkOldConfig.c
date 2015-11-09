@@ -113,6 +113,10 @@ Tk_ConfigureWidget(
 
     staticSpecs = GetCachedSpecs(interp, specs);
 
+    for (specPtr = staticSpecs; specPtr->type != TK_CONFIG_END; specPtr++) {
+	specPtr->specFlags &= ~TK_CONFIG_OPTION_SPECIFIED;
+    }
+
     /*
      * Pass one: scan through all of the arguments, processing those that
      * match entries in the specs.
@@ -167,7 +171,6 @@ Tk_ConfigureWidget(
 	    if ((specPtr->specFlags & TK_CONFIG_OPTION_SPECIFIED)
 		    || (specPtr->argvName == NULL)
 		    || (specPtr->type == TK_CONFIG_SYNONYM)) {
-		specPtr->specFlags &= ~TK_CONFIG_OPTION_SPECIFIED;
 		continue;
 	    }
 	    if (((specPtr->specFlags & needFlags) != needFlags)
@@ -1126,7 +1129,6 @@ GetCachedSpecs(
 		    specPtr->defValue = Tk_GetUid(specPtr->defValue);
 		}
 	    }
-	    specPtr->specFlags &= ~TK_CONFIG_OPTION_SPECIFIED;
 	}
     } else {
 	cachedSpecs = Tcl_GetHashValue(entryPtr);

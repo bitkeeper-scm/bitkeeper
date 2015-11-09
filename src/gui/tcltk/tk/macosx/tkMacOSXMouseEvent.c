@@ -53,19 +53,17 @@ enum {
     case NSCursorUpdate:
 #if 0
 	trackingArea = [theEvent trackingArea];
-#endif
 	/* fall through */
+#endif
     case NSLeftMouseDown:
     case NSLeftMouseUp:
     case NSRightMouseDown:
     case NSRightMouseUp:
     case NSOtherMouseDown:
     case NSOtherMouseUp:
-
     case NSLeftMouseDragged:
     case NSRightMouseDragged:
     case NSOtherMouseDragged:
-
     case NSMouseMoved:
 #if 0
 	eventNumber = [theEvent eventNumber];
@@ -73,22 +71,20 @@ enum {
 	    clickCount = [theEvent clickCount];
 	    buttonNumber = [theEvent buttonNumber];
 	}
+	/* fall through */
 #endif
-
     case NSTabletPoint:
     case NSTabletProximity:
-
     case NSScrollWheel:
-	win = [self windowWithWindowNumber:[theEvent windowNumber]];
         break;
 
-    default:
+    default: /* Unrecognized mouse event. */
 	return theEvent;
-	break;
     }
 
+    /* Create an Xevent to add to the Tk queue. */
+    win = [theEvent window];
     NSPoint global, local = [theEvent locationInWindow];
-
     if (win) {
 	global = [win convertBaseToScreen:local];
 	local.y = [win frame].size.height - local.y;
@@ -105,15 +101,9 @@ enum {
 	tkwin = TkMacOSXGetCapture();
     }
     if (!tkwin) {
-	return theEvent;
+	return theEvent; /* Give up.  No window for this event. */
     }
 
-    /*
-    MacDrawable *macWin = (MacDrawable *) window;
-    NSView *view = TkMacOSXDrawableView(macWin);
-    local = [view convertPoint:local fromView:nil];
-    local.y = NSHeight([view bounds]) - local.y;
-    */
     TkWindow  *winPtr = (TkWindow *) tkwin;
     local.x -= winPtr->wmInfoPtr->xInParent;
     local.y -= winPtr->wmInfoPtr->yInParent;
@@ -127,10 +117,10 @@ enum {
     EventRef eventRef = (EventRef)[theEvent eventRef];
     UInt32 buttons;
     OSStatus err = GetEventParameter(eventRef, kEventParamMouseChord,
-	    typeUInt32, NULL, sizeof(UInt32), NULL, &buttons);
+				     typeUInt32, NULL, sizeof(UInt32), NULL, &buttons);
 
     if (err == noErr) {
-	state |= (buttons & ((1<<5) - 1)) << 8;
+    	state |= (buttons & ((1<<5) - 1)) << 8;
     } else if (button < 5) {
 	switch (type) {
 	case NSLeftMouseDown:
@@ -205,7 +195,6 @@ enum {
 	    Tk_QueueWindowEvent(&xEvent, TCL_QUEUE_TAIL);
 	}
     }
-
     return theEvent;
 }
 @end

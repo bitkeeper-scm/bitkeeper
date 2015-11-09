@@ -20,11 +20,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <fcntl.h>
-#ifndef NO_LIMITS_H
-#   include <limits.h>
-#else
-#   include "../compat/limits.h"
-#endif
+#include <limits.h>
 #include <math.h>
 #include <pwd.h>
 #ifdef NO_STDLIB_H

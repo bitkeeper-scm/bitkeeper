@@ -147,6 +147,10 @@ typedef struct PanedWindow {
     GC gc;			/* Graphics context for copying from
 				 * off-screen pixmap onto screen. */
     int proxyx, proxyy;		/* Proxy x,y coordinates. */
+    Tk_3DBorder proxyBackground;/* Background color used to draw proxy. If NULL, use background. */
+    Tcl_Obj *proxyBorderWidthPtr; /* Tcl_Obj rep for proxyBorderWidth */
+    int proxyBorderWidth;	/* Borderwidth used to draw proxy. */
+    int proxyRelief;		/* Relief used to draw proxy, if TK_RELIEF_NULL then use relief. */
     Slave **slaves;		/* Pointer to array of Slaves. */
     int numSlaves;		/* Number of slaves. */
     int sizeofSlaves;		/* Number of elements in the slaves array. */
@@ -203,6 +207,8 @@ static void		PanedWindowReqProc(ClientData clientData,
 static void		ArrangePanes(ClientData clientData);
 static void		Unlink(Slave *slavePtr);
 static Slave *		GetPane(PanedWindow *pwPtr, Tk_Window tkwin);
+static void		GetFirstLastVisiblePane(PanedWindow *pwPtr,
+			    int *firstPtr, int *lastPtr);
 static void		SlaveStructureProc(ClientData clientData,
 			    XEvent *eventPtr);
 static int		PanedWindowSashCommand(PanedWindow *pwPtr,
@@ -296,6 +302,15 @@ static const Tk_OptionSpec optionSpecs[] = {
     {TK_OPTION_STRING_TABLE, "-orient", "orient", "Orient",
 	 DEF_PANEDWINDOW_ORIENT, -1, Tk_Offset(PanedWindow, orient),
 	 0, orientStrings, GEOMETRY},
+    {TK_OPTION_BORDER, "-proxybackground", "proxyBackground", "ProxyBackground",
+	 0, -1, Tk_Offset(PanedWindow, proxyBackground), TK_OPTION_NULL_OK,
+	 (ClientData) DEF_PANEDWINDOW_BG_MONO},
+    {TK_OPTION_PIXELS, "-proxyborderwidth", "proxyBorderWidth", "ProxyBorderWidth",
+	 DEF_PANEDWINDOW_PROXYBORDER, Tk_Offset(PanedWindow, proxyBorderWidthPtr),
+	 Tk_Offset(PanedWindow, proxyBorderWidth), 0, 0, GEOMETRY},
+    {TK_OPTION_RELIEF, "-proxyrelief", "proxyRelief", "Relief",
+	 0, -1, Tk_Offset(PanedWindow, proxyRelief),
+	 TK_OPTION_NULL_OK, 0, 0},
     {TK_OPTION_RELIEF, "-relief", "relief", "Relief",
 	 DEF_PANEDWINDOW_RELIEF, -1, Tk_Offset(PanedWindow, relief), 0, 0, 0},
     {TK_OPTION_CURSOR, "-sashcursor", "sashCursor", "Cursor",
@@ -682,6 +697,15 @@ PanedWindowWidgetObjCmd(
 	if (objc <= 4) {
 	    tkwin = Tk_NameToWindow(interp, Tcl_GetString(objv[2]),
 		    pwPtr->tkwin);
+            if (tkwin == NULL) {
+                /*
+                 * Just a plain old bad window; Tk_NameToWindow filled in an
+                 * error message for us.
+                 */
+
+                result = TCL_ERROR;
+                break;
+            }
 	    for (i = 0; i < pwPtr->numSlaves; i++) {
 		if (pwPtr->slaves[i]->tkwin == tkwin) {
 		    resultObj = Tk_GetOptionInfo(interp,
@@ -1329,6 +1353,7 @@ PanedWindowEventProc(
     XEvent *eventPtr)		/* Information about event. */
 {
     PanedWindow *pwPtr = clientData;
+    int i;
 
     if (eventPtr->type == Expose) {
 	if (pwPtr->tkwin != NULL && !(pwPtr->flags & REDRAW_PENDING)) {
@@ -1343,6 +1368,14 @@ PanedWindowEventProc(
 	}
     } else if (eventPtr->type == DestroyNotify) {
 	DestroyPanedWindow(pwPtr);
+    } else if (eventPtr->type == UnmapNotify) {
+        for (i = 0; i < pwPtr->numSlaves; i++) {
+            Tk_UnmapWindow(pwPtr->slaves[i]->tkwin);
+        }
+    } else if (eventPtr->type == MapNotify) {
+        for (i = 0; i < pwPtr->numSlaves; i++) {
+            Tk_MapWindow(pwPtr->slaves[i]->tkwin);
+        }
     }
 }
 
@@ -1411,6 +1444,7 @@ DisplayPanedWindow(
     Tk_Window tkwin = pwPtr->tkwin;
     int i, sashWidth, sashHeight;
     const int horizontal = (pwPtr->orient == ORIENT_HORIZONTAL);
+    int first, last;
 
     pwPtr->flags &= ~REDRAW_PENDING;
     if ((pwPtr->tkwin == NULL) || !Tk_IsMapped(tkwin)) {
@@ -1457,9 +1491,10 @@ DisplayPanedWindow(
      * Draw the sashes.
      */
 
+    GetFirstLastVisiblePane(pwPtr, &first, &last);
     for (i = 0; i < pwPtr->numSlaves - 1; i++) {
 	slavePtr = pwPtr->slaves[i];
-	if (slavePtr->hide) {
+	if (slavePtr->hide || i == last) {
 	    continue;
 	}
 	if (sashWidth > 0 && sashHeight > 0) {
@@ -1705,17 +1740,10 @@ ArrangePanes(
     Tcl_Preserve(pwPtr);
 
     /*
-     * Find index of last visible pane.
+     * Find index of first and last visible panes.
      */
 
-    for (i = 0, last = 0, first = -1; i < pwPtr->numSlaves; i++) {
-	if (pwPtr->slaves[i]->hide == 0) {
-	    if (first < 0) {
-		first = i;
-	    }
-	    last = i;
-	}
-    }
+    GetFirstLastVisiblePane(pwPtr, &first, &last);
 
     /*
      * First pass; compute sizes
@@ -2050,6 +2078,41 @@ GetPane(
 	}
     }
     return NULL;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * GetFirstLastVisiblePane --
+ *
+ *	Given panedwindow, find the index of the first and last visible panes
+ *	of that paned window.
+ *
+ * Results:
+ *	Index of the first and last visible panes.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+static void
+GetFirstLastVisiblePane(
+    PanedWindow *pwPtr,		/* Pointer to the paned window info. */
+    int *firstPtr, 		/* Returned index for first. */
+    int *lastPtr)  		/* Returned index for last. */
+{
+    int i;
+
+    for (i = 0, *lastPtr = 0, *firstPtr = -1; i < pwPtr->numSlaves; i++) {
+	if (pwPtr->slaves[i]->hide == 0) {
+	    if (*firstPtr < 0) {
+		*firstPtr = i;
+	    }
+	    *lastPtr = i;
+	}
+    }
 }
 
 /*
@@ -2553,7 +2616,7 @@ MoveSash(
 	    slavePtr->paneWidth = slavePtr->width = slavePtr->sashx
 		    - sashOffset - slavePtr->x - (2 * slavePtr->padx);
 	} else {
-	    slavePtr->paneWidth = slavePtr->height = slavePtr->sashy
+	    slavePtr->paneHeight = slavePtr->height = slavePtr->sashy
 		    - sashOffset - slavePtr->y - (2 * slavePtr->pady);
 	}
     }
@@ -2726,8 +2789,10 @@ DisplayProxyWindow(
      * Redraw the widget's background and border.
      */
 
-    Tk_Fill3DRectangle(tkwin, pixmap, pwPtr->background, 0, 0,
-	    Tk_Width(tkwin), Tk_Height(tkwin), 2, pwPtr->sashRelief);
+    Tk_Fill3DRectangle(tkwin, pixmap,
+	    pwPtr->proxyBackground ? pwPtr->proxyBackground : pwPtr->background,
+	    0, 0, Tk_Width(tkwin), Tk_Height(tkwin), pwPtr->proxyBorderWidth,
+	    (pwPtr->proxyRelief != TK_RELIEF_NULL) ? pwPtr->proxyRelief : pwPtr->sashRelief);
 
 #ifndef TK_NO_DOUBLE_BUFFERING
     /*
@@ -2771,6 +2836,7 @@ PanedWindowProxyCommand(
 	PROXY_COORD, PROXY_FORGET, PROXY_PLACE
     };
     int index, x, y, sashWidth, sashHeight;
+    int internalBW, pwWidth, pwHeight;
     Tcl_Obj *coords[2];
 
     if (objc < 3) {
@@ -2820,11 +2886,16 @@ PanedWindowProxyCommand(
 	    return TCL_ERROR;
 	}
 
+        internalBW = Tk_InternalBorderWidth(pwPtr->tkwin);
 	if (pwPtr->orient == ORIENT_HORIZONTAL) {
 	    if (x < 0) {
 		x = 0;
 	    }
-	    y = Tk_InternalBorderWidth(pwPtr->tkwin);
+            pwWidth = Tk_Width(pwPtr->tkwin) - (2 * internalBW);
+            if (x > pwWidth) {
+                x = pwWidth;
+            }
+            y = Tk_InternalBorderWidth(pwPtr->tkwin);
 	    sashWidth = pwPtr->sashWidth;
 	    sashHeight = Tk_Height(pwPtr->tkwin) -
 		    (2 * Tk_InternalBorderWidth(pwPtr->tkwin));
@@ -2832,6 +2903,10 @@ PanedWindowProxyCommand(
 	    if (y < 0) {
 		y = 0;
 	    }
+            pwHeight = Tk_Height(pwPtr->tkwin) - (2 * internalBW);
+            if (y > pwHeight) {
+                y = pwHeight;
+            }
 	    x = Tk_InternalBorderWidth(pwPtr->tkwin);
 	    sashHeight = pwPtr->sashWidth;
 	    sashWidth = Tk_Width(pwPtr->tkwin) -
@@ -2966,6 +3041,7 @@ PanedWindowIdentifyCoords(
 {
     int i, sashHeight, sashWidth, thisx, thisy;
     int found, isHandle, lpad, rpad, tpad, bpad;
+    int first, last;
 
     if (pwPtr->orient == ORIENT_HORIZONTAL) {
 	if (Tk_IsMapped(pwPtr->tkwin)) {
@@ -3005,10 +3081,11 @@ PanedWindowIdentifyCoords(
 	lpad = rpad = 0;
     }
 
+    GetFirstLastVisiblePane(pwPtr, &first, &last);
     isHandle = 0;
     found = -1;
     for (i = 0; i < pwPtr->numSlaves - 1; i++) {
-	if (pwPtr->slaves[i]->hide) {
+	if (pwPtr->slaves[i]->hide || i == last) {
 	    continue;
 	}
 	thisx = pwPtr->slaves[i]->sashx;

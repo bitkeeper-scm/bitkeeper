@@ -1458,6 +1458,23 @@ test textWind-17.10 {peer widget window configuration} -setup {
     destroy .tt .t
 }  -result {{-window {} {} {} {}} {-window {} {} {} {}} {-window {} {} {} .t.f} {-window {} {} {} .tt.t.f}}
 
+test textWind-18.1 {embedded window deletion triggered by a script bound to <Map>} -setup {
+    catch {destroy .t .f .f2}
+} -body {
+    pack [text .t]
+    for {set i 1} {$i < 100} {incr i} {.t insert end "Line $i\n"}
+    .t window create end -window [frame .f -background red -width 80 -height 80]
+    .t window create end -window [frame .f2 -background blue -width 80 -height 80]
+    bind .f <Map> {.t delete .f}
+    update
+    # this shall not crash (bug 1501749)
+    after 100 {.t yview end}
+    tkwait visibility .f2
+    update
+} -cleanup {
+    destroy .t .f .f2
+} -result {}
+
 option clear
 
 # cleanup

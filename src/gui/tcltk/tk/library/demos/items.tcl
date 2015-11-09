@@ -31,8 +31,8 @@ canvas $c -scrollregion {0c 0c 30c 24c} -width 15c -height 10c \
 	-relief sunken -borderwidth 2 \
 	-xscrollcommand "$w.frame.hscroll set" \
 	-yscrollcommand "$w.frame.vscroll set"
-scrollbar $w.frame.vscroll -command "$c yview"
-scrollbar $w.frame.hscroll -orient horiz -command "$c xview"
+ttk::scrollbar $w.frame.vscroll -command "$c yview"
+ttk::scrollbar $w.frame.hscroll -orient horiz -command "$c xview"
 
 grid $c -in $w.frame \
     -row 0 -column 0 -rowspan 1 -columnspan 1 -sticky news
