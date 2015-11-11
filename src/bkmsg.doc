@@ -682,6 +682,23 @@ conventions, which End-Of-Line marker to use. The options are:
 Default: #BKARG#
 
 $
+#config_no_graphverify
+
+Old BK computed checksums using a set based method and new bk
+computes using a graph based system.  Checksum can look back
+and see that they compute the same thing.  In some rare cases,
+involving an exclude of a merge cset, the two sums might not match.
+
+This option skips running the graph based checksum test on old or
+all depending on how it is set.
+
+  0 (or off)   - run graph verify test on all (the default)
+  1 (or on)    - skip running the verify on all
+  Other number - interpret as a time_t and only run verify on newer csets
+
+Default: #BKARG#
+
+$
 #config_check_frequency
 
 When partial_check is enabled, BitKeeper will perform a full check

@@ -9,6 +9,8 @@
 private	int	do_chksum(int fd, int off, int *sump);
 private	int	chksum_sccs(char **files, char *offset);
 private	int	do_file(char *file, int off);
+private	u32	badCutoff(sccs *s);
+private	void	dumpMaxfail(sccs *s, ser_t old, ser_t new, int diffcount);
 
 /*
  * checksum - check and/or regenerate the checksums associated with a file.
@@ -417,9 +419,20 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	ser_t	d, prev;
 	int	found = 0;
 	int	n = 0;
-	int	verify = !cfg_bool(s->proj, CFG_NOGRAPHVERIFY);
+	int	verify;
+	u32	cutoff;
+	hash	*differs = 0;
+	int	diffcount = 0;
+	ser_t	dualerr = 0;
+	ser_t	maxfail = 0;
 	u32	index;
 	ticker	*tick = 0;
+
+	if (cutoff = cfg_int(s->proj, CFG_NOGRAPHVERIFY)) {
+		verify = 1;
+	} else if (verify = !cfg_bool(s->proj, CFG_NOGRAPHVERIFY)) {
+		cutoff = ~0;	/* set up lazy check for hardcoded cutoff */
+	}
 
 	T_PERF("file=%s", s->gfile);
 
@@ -506,8 +519,10 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 				ser_t	ser = 0;
 				int	j;
 				int	num;
+				int	fid;
 
-				item = &rkarray[csetlist[i][index]];
+				fid = csetlist[i][index];
+				item = &rkarray[fid];
 				if (item->lastseen == d) continue;
 				item->lastseen = d;
 
@@ -520,7 +535,6 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 				while ((j > 1) && (item->sse[j-1].ser <= d)) {
 					--j;
 				}
-again:
 				for (; j <= num; ++j) {
 					ser = item->sse[j].ser;
 					if ((ser <= d) &&
@@ -531,31 +545,40 @@ again:
 					}
 				}
 				item->last = j;
-				/* written for branch predictor */
-				unless (verify && (j <= num) && 
+				unless (verify) continue;
+				if (diffcount) {
+					if (hash_fetchU32U32(differs, fid)) {
+						hash_storeU32U32(
+						    differs, fid, 0);
+						--diffcount;
+					}
+				}
+				unless ((j <= num) && 
 				    ((slist[ser] ^ symdiff[ser]) != 3)) {
 					continue;
 				}
 				/* mismatch between graph and serialmap */
-				unless (found++) {
-					fprintf(stderr,
-					    "closure failure %s(%s)\n",
-					    s->gfile,
-					    REV(s, d));
+				unless (differs) {
+					differs = hash_new(HASH_U32HASH,
+					    sizeof(u32), sizeof(u32));
 				}
-				if (fix) {
-					fprintf(stderr, "Unfixable.\n"
-					    "Write support@bitkeeper.com\n");
-					exit(1);
+				/* If it was in hash, it was removed above */
+				hash_storeU32U32(differs, fid, 1);
+				++diffcount;
+				/* if serialmap version, we're done */
+				if ((slist[ser] ^ symdiff[ser]) & 1) continue;
+				/* else, update serialmap version */
+				sum -= item->sse[j].sum;
+				if (ser == d) --added;
+				for (; j <= num; ++j) {
+					ser = item->sse[j].ser;
+					if ((slist[ser] ^ symdiff[ser]) & 1) {
+						sum += item->sse[j].sum;
+						if (ser == d) ++added;
+						break;
+					}
 				}
-				/* checksum is really just serial map */
-				unless ((slist[ser] ^ symdiff[ser]) & 1) {
-					/* false hit: undo and keep looking */
-					sum -= item->sse[j].sum;
-					if (ser == d) --added;
-					j++;
-					goto again;
-				}
+				item->last = j;
 			}
 		}
 		prev = d;
@@ -579,7 +602,14 @@ again:
 				++found;
 			}
 		}
-
+		if (diffcount) {
+			if (maxfail < d) maxfail = d;
+			if (cutoff == ~0) cutoff = badCutoff(s);
+			if (!cutoff || (DATE(s, d) > cutoff)) {
+				unless (dualerr || (dualerr > d)) dualerr = d;
+				unless (fix) found++;
+			}
+		}
 		if (SUM(s, d) != sum) {
 			if (!fix || (diags > 1)) {
 				fprintf(stderr,
@@ -591,6 +621,8 @@ again:
 			++found;
 		}
 	}
+	if (differs) hash_free(differs);
+	if (dualerr && !fix) dumpMaxfail(s, dualerr, maxfail, diffcount);
 	if (slist) free(slist);
 	if (symdiff) free(symdiff);
 	if (order) free(order);
@@ -603,4 +635,49 @@ again:
 	free(csetlist);
 	T_PERF("done");
 	return (found);
+}
+
+private	u32
+badCutoff(sccs *s)
+{
+	int	i;
+	u32	cutoff = 0;
+	char    utcTime[32];	/* mostly 32: bk grep -i utctime'\[' */
+	const struct {
+		char	*utctime;
+		u32	cutoff;
+	} badrepo[] = {
+		{"20020322184504", 1055522031}, /* customer */
+		{"20040627230739", 1443746616},	/* regressions */
+		{0, 0}
+	};
+
+	if (getenv("_BK_DEVELOPER")) return (0);
+	sccs_utctime(s, sccs_ino(s), utcTime);
+	for (i = 0; badrepo[i].utctime; i++) {
+		if (streq(badrepo[i].utctime, utcTime)) {
+			cutoff = badrepo[i].cutoff;
+			break;
+		}
+	}
+	return (cutoff);
+}
+
+private	void
+dumpMaxfail(sccs *s, ser_t old, ser_t new, int diffcount)
+{
+	char    utcTime[32];
+
+	sccs_utctime(s, new, utcTime);
+	fprintf(stderr,
+	    "Dual sum failure at %s in %s\n"
+	    "Last rev to fail %s(%lu %s)\n",
+ 	    REV(s, old), s->gfile,
+	    REV(s, new), DATE(s, new), utcTime);
+
+	sccs_utctime(s, sccs_ino(s), utcTime);
+	fprintf(stderr, "root time: %s\n", utcTime);
+	if (diffcount) {
+		fprintf(stderr, "%d files still differ\n", diffcount);
+	}
 }

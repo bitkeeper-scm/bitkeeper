@@ -44,6 +44,7 @@ description:
 email: 
 eoln: native
 keyword: none
+no_graphverify: off
 parallel: on
 partial_check: on
 stats_after_pull: off
@@ -67,6 +68,7 @@ description:
 email: 
 eoln: native
 keyword: none
+no_graphverify: off
 parallel: on
 partial_check: on
 stats_after_pull: off

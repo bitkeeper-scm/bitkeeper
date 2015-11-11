@@ -408,8 +408,11 @@ finish:
 	// sometimes want to skip this to save another sfile write/walk.
 	unless (flags & PRUNE_NO_NEWROOT) {
 		verbose((stderr, "Regenerating ChangeSet file checksums...\n"));
-		sys("bk", "-?BK_NO_REPO_LOCK=YES", "checksum",
-		    opts->bk4 ? "-f4" : "-f", "ChangeSet", SYS);
+		if (sys("bk", "-?BK_NO_REPO_LOCK=YES", "checksum",
+		    opts->bk4 ? "-f4" : "-f", "ChangeSet", SYS)) {
+			fprintf(stderr, "fixing checksum failed\n");
+			goto err;
+		}
 		unless (opts->ranbits) {
 			randomBits(buf);
 			opts->ranbits = buf;
