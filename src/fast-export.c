@@ -12,6 +12,7 @@ typedef struct {
 	MDBM	*idDB;
 	MDBM	*goneDB;
 	MDBM	*sDB;
+	hash	*compGone;
 } opts;
 
 private	char	*gitMode(mode_t mode);
@@ -191,6 +192,7 @@ gitLineComp(opts *op, char ***lines, char *rk, char *dk1, char *dk2)
 	ser_t	d1, d2;
 	char	*prefix1, *prefix2, *p;
 	rset_df *rset;
+	MDBM	*goneSave;
 
 	s = sccs_keyinitAndCache(0, rk, INIT_MUSTEXIST, op->sDB, op->idDB);
 	unless (s) {
@@ -210,6 +212,18 @@ gitLineComp(opts *op, char ***lines, char *rk, char *dk1, char *dk2)
 		fprintf(stderr, "%s not found\n", dk2);
 		exit(1);
 	}
+
+	/*
+	 * swap op->goneDB for the gone file in this component.
+	 * we will restore it before returning
+	 */
+	unless (op->compGone) op->compGone = hash_new(HASH_MEMHASH);
+	goneSave = op->goneDB;
+	unless (op->goneDB = hash_fetchStrPtr(op->compGone, rk)) {
+		op->goneDB = loadDB(proj_fullpath(s->proj, GONE), 0, DB_GONE);
+		hash_storeStrPtr(op->compGone, rk, op->goneDB);
+	}
+
 	rset = rset_diff(s, d1, 0, d2, 1);
 	prefix1 = 0;
 	if (p = key2path(dk1, 0, 0, 0)) {
@@ -225,6 +239,7 @@ gitLineComp(opts *op, char ***lines, char *rk, char *dk1, char *dk2)
 		    HEAP(s, rset[i].dkright),
 		    prefix1, prefix2);
 	}
+	op->goneDB = goneSave;
 	free(rset);
 	free(prefix1);
 	free(prefix2);
@@ -399,6 +414,8 @@ gitExport(opts *op)
 	}
 	mdbm_close(op->sDB);
 	hash_free(op->rkdk2fi);
+	EACH_HASH(op->compGone) mdbm_close(*(MDBM **)op->compGone->vptr);
+	hash_free(op->compGone);
 	printf("progress done\n");
 	return (0);
 }
