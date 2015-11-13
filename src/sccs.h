@@ -92,7 +92,7 @@ int	checking_rmdir(char *dir);
 #define	GET_SERIAL	0x00000800	/* get -aS: prefix with serial */
 #define	GET_MD5KEY	0x00000010	/* get -5: prefix line with md5key */
 #define	GET_LINENAME	0x00000020	/* get -O: prefix with line name */
-#define	GET_SEQ		0x00000040	/* sccs_get: prefix with sequence no */
+#define	GET_SEQ		0x00000040	/* get -0: prefix with sequence no */
 #define	GET_RELPATH	0x00000080	/* like GET_MODNAME but full relative */
 
 #define CLEAN_SHUTUP	0x20000000	/* clean -Q: quiet mode */
@@ -762,6 +762,7 @@ struct sccs {
 	char	**text;		/* descriptive text */
 	u32	state;		/* GFILE/SFILE etc */
 	u32	xflags;		/* cache of sccs_top()->xflags */
+	u32	lines;		/* how many lines in the latest get_reg() */
 	mode_t	mode;		/* mode of the gfile */
 	off_t	data;		/* offset to data in file */
 	ser_t	rstart;	/* start of a range (1.1 - oldest) */
@@ -1451,7 +1452,6 @@ void	save_log_markers(void);
 void	update_log_markers(int verbose);
 ser_t	sccs_getedit(sccs *s, char **revp);
 void	line2av(char *cmd, char **av);
-void	smerge_saveseq(u32 seq);
 void	mk_repoID(project *proj, char *repoid);
 void	fromTo(char *op, remote *r, remote *l);
 u32	adler32_file(char *filename);

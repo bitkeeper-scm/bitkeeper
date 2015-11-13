@@ -24,6 +24,14 @@ BK_DATE_TIME_ZONE="04/08/01 13:13:13-8:00" BK_USER=joe BK_HOST=blow.com \
     bk new $Q file
 bk commit $Q -yfirst || fail
 bk edit $Q file
+cat <<EOF > file
+line1
+notseen
+line3
+EOF
+BK_DATE_TIME_ZONE="04/08/12 14:13:12-2:00" BK_USER=traveler BK_HOST=boat.com \
+    bk delta -ywhatever $Q file || fail
+bk edit $Q -x+ file
 echo line4 >> file
 BK_DATE_TIME_ZONE="04/08/23 14:14:14-8:00" BK_USER=jane BK_HOST=shoes.com \
     bk delta -ywhatever $Q file || fail
@@ -36,7 +44,31 @@ cat <<EOF > WANT
 joe/$USER	1.1	line1
 joe/$USER	1.1	line2
 joe/$USER	1.1	line3
-jane/$USER	1.2	line4
+jane/$USER	1.3	line4
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check bk annotate -a0 .......................................$NL
+bk annotate -a0 file > GOT
+cat <<EOF > WANT
+1	line1
+2	line2
+4	line3
+5	line4
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Demo bk annotate -A0 not lining up at boundary ..............$NL
+# We don't know how many lines before data is output, so use "%7d ".
+# When number overflows, the string will use more space than anticipated.
+bk -?_BK_SEQ_START=9999997 annotate -A0 file > GOT
+cat <<EOF > WANT
+9999998       | line1
+9999999       | line2
+10000001       | line3
+10000002       | line4
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -80,14 +112,14 @@ cat <<EOF > WANT
 1.1	line1
 1.1	line2
 1.1	line3
-1.2	line4
+1.3	line4
 EOF
 cmpfiles WANT GOT
 echo OK
 
 echo $N Check bk annotate -a5........................................$NL
 MD5KEY1=`bk log -nd:MD5KEY: -r1.1 file`
-MD5KEY2=`bk log -nd:MD5KEY: -r1.2 file`
+MD5KEY2=`bk log -nd:MD5KEY: -r1.3 file`
 bk annotate -a5 file > GOT
 cat <<EOF > WANT
 $MD5KEY1	line1
@@ -99,8 +131,6 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Check bk annotate -A5........................................$NL
-MD5KEY1=`bk log -nd:MD5KEY: -r1.1 file`
-MD5KEY2=`bk log -nd:MD5KEY: -r1.2 file`
 bk annotate -A5 file > GOT
 cat <<EOF > WANT
 $MD5KEY1        | line1
@@ -147,13 +177,13 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N Check bk annotate -abdnru ...................................$NL
-bk annotate -abdnru file > GOT
+echo $N Check bk annotate -a0bdnru ..................................$NL
+bk annotate -a0bdnru file > GOT
 cat <<EOF > WANT
-file	2004/08/01	joe/$USER	1.1	1	line1
-file	2004/08/01	joe/$USER	1.1	2	line2
-file	2004/08/01	joe/$USER	1.1	3	line3
-file	2004/08/23	jane/$USER	1.2	4	line4
+1	file	2004/08/01	joe/$USER	1.1	1	line1
+2	file	2004/08/01	joe/$USER	1.1	2	line2
+4	file	2004/08/01	joe/$USER	1.1	3	line3
+5	file	2004/08/23	jane/$USER	1.3	4	line4
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -181,8 +211,9 @@ bk annotate -an -R file > GOT
 cat <<EOF > WANT
 1	line1
 2	line2
-3	line3
-4	line4
+3	notseen
+4	line3
+5	line4
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -191,7 +222,7 @@ echo $N Check bk annotate -Ar -R+ ...................................$NL
 # This verifies revLen calculated
 bk annotate -Ar -R+ file > GOT
 cat <<EOF > WANT
-1.2   | line4
+1.3   | line4
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -248,9 +279,10 @@ bk annotate -R file > GOT
 cat <<EOF > WANT
 joe/$USER	1.1	line1
 joe/$USER	1.1	line2
+traveler/$USER	1.2	notseen
 joe/$USER	1.1	line3
-jane/$USER	1.2	line4
-bk/$USER	1.3	foo
+jane/$USER	1.3	line4
+bk/$USER	1.4	foo
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -263,12 +295,13 @@ bk edit $Q -x+ file
 bk delta -ywhatever $Q file
 bk annotate -w -R file > GOT
 cat <<EOF > WANT
-joe/$USER	1.1-d1.3	line1
-joe/$USER	1.1-d1.3	line2
-joe/$USER	1.1-d1.3	line3
-jane/$USER	1.2-d1.3	line4
-bk/$USER	1.3	foo
-bk/$USER	1.4-x1.5	bar
+joe/$USER	1.1-d1.4	line1
+joe/$USER	1.1-d1.4	line2
+traveler/$USER	1.2-x1.3	notseen
+joe/$USER	1.1-d1.4	line3
+jane/$USER	1.3-d1.4	line4
+bk/$USER	1.4	foo
+bk/$USER	1.5-x1.6	bar
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -276,29 +309,39 @@ echo OK
 echo $N Check bk annotate -Ar -w -R .................................$NL
 bk annotate -Ar -w -R file > GOT
 cat <<EOF > WANT
-1.1-d1.3      | line1
-1.1-d1.3      | line2
-1.1-d1.3      | line3
-1.2-d1.3      | line4
-1.3           | foo
-1.4-x1.5      | bar
+1.1-d1.4      | line1
+1.1-d1.4      | line2
+1.2-x1.3      | notseen
+1.1-d1.4      | line3
+1.3-d1.4      | line4
+1.4           | foo
+1.5-x1.6      | bar
 EOF
 cmpfiles WANT GOT
 echo OK
 
 echo $N Check bk annotate -Ar -wOLD -rNEW ...........................$NL
-bk annotate -Ar -w1.5 -r1.4 file > GOT
+bk annotate -Ar -w1.6 -r1.5 file > GOT
 cat <<EOF > WANT
-1.4-x1.5      | bar
+1.5-x1.6      | bar
 EOF
 cmpfiles WANT GOT
 echo OK
 
 echo $N Check bk annotate -Ar -wNEW -rOLD ...........................$NL
-bk annotate -Ar -w1.4 -r1.5 file > GOT
+bk annotate -Ar -w1.5 -r1.6 file > GOT
 # The output isn't clear that the line is here because the -x re-included it.
 cat <<EOF > WANT
-1.3-d1.4      | foo
+1.4-d1.5      | foo
 EOF
 cmpfiles WANT GOT
+echo OK
+
+echo $N Demonstrate --seq-limit .....................................$NL
+bk annotate -A0r -R --seq-limit=3..4 file > OUT
+cat <<EOF > WANT
+      3 1.2   | notseen
+      4 1.1   | line3
+EOF
+cmpfiles OUT WANT
 echo OK

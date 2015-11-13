@@ -631,8 +631,11 @@ c
 branch end
 EOF
 bk delta $Q -ynone fdiffm
-bk smerge -Im -f -l1.1 -r1.1.1.1 fdiffm > fdiffm_R
-bk smerge $D3 -Im -f -l1.1 -r1.1.1.1 fdiffm > fdiffm_RD3
+# Currently 7 chars - test with 9
+UP2START=12345678
+START=${UP2START}0
+bk -?_BK_SEQ_START=$START smerge -Im -f -l1.1 -r1.1.1.1 fdiffm > fdiffm_R
+bk -?_BK_SEQ_START=$START smerge $D3 -Im -f -l1.1 -r1.1.1.1 fdiffm > fdiffm_RD3
 cat <<EOF > fdiffm_D
 M 0
  1.1.1.1               | branch
@@ -642,10 +645,10 @@ s
 R
 -1.1-d1.1.1.1          | a
 +1.1.1.1               | branch
-E 4
+E ${UP2START}4
  1.1                   | b
  1.1                   | c
-M 5
+M ${UP2START}5
  1.1.1.1               | branch end
 L
 s

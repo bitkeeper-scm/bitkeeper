@@ -222,14 +222,6 @@ help:		system("bk help -s smerge");
 	return (ret);
 }
 
-static	char	**seqlist = 0;
-
-void
-smerge_saveseq(u32 seq)
-{
-	seqlist = addLine(seqlist, int2p(seq));
-}
-
 /*
  * Open a file and populate the file_t structure.
  */
@@ -240,12 +232,11 @@ file_init(sccs *s, int side, char *anno, file_t *f)
 	char	*end;
 	size_t	len;
 	int	l;
-	int	flags = GET_SEQ|SILENT;
-	int	i;
+	int	flags = GET_ALIGN|GET_SEQ|SILENT;
 	char	*inc, *exc;
 	char	*rev;
 
-	if (anno) flags = annotate_args(flags|GET_ALIGN, anno);
+	if (anno) flags = annotate_args(flags, anno);
 
 	unless (ASCII(s)) {
 		fprintf(stderr, "%s: cannot merge binary file.\n", s->gfile);
@@ -275,14 +266,8 @@ file_init(sccs *s, int side, char *anno, file_t *f)
 	free(rev);
 	rev = 0;
 
-	f->n = nLines(seqlist);
+	f->n = s->lines;
 	f->lines = calloc(f->n+1, sizeof(ld_t));
-	EACH (seqlist) {
-		f->lines[i-1].seq = p2int(seqlist[i]);
-		seqlist[i] = 0;
-	}
-	freeLines(seqlist, 0);
-	seqlist = 0;
 
 	l = 0;
 	p = fmem_peek(f->f, &len);
@@ -291,13 +276,14 @@ file_init(sccs *s, int side, char *anno, file_t *f)
 		char	*start;
 
 		assert(l < f->n);
-		if (anno) {
-			f->lines[l].anno = p;
-			while (p < end && *p++ != '|');
-			++p;	/* skip space after | */
-		} else {
-			f->lines[l].anno = 0;
-		}
+		/* Seq #: " *\d+ " */
+		while (p < end && *p++ == ' ');
+		--p;
+		f->lines[l].seq = atoi_p(&p);
+		++p;	/* skip space after \d+ */
+		f->lines[l].anno = anno ? p : 0;
+		while (p < end && *p++ != '|');
+		++p;	/* skip space after | */
 		f->lines[l].line = p;
 		start = p;
 		while (p < end && *p++ != '\n');
