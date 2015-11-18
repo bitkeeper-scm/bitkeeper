@@ -152,7 +152,7 @@ proc dotFile {{line {}}} \
 	}
 	catch { close $prs }
 	while {[.l.sccslog.t get "end - 2 char" end] == "\n\n"} {
-		.l.sccslog.t delete "end - 1 char" end
+		.l.sccslog.t delete "end - 2 chars" "end - 1 char"
 	}
 	.l.sccslog.t see end
 	.l.sccslog.t xview moveto 0
