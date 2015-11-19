@@ -1268,9 +1268,8 @@ move_remote(resolve *rs, char *sfile)
 	/* idcache -- so post-commit check can find if a path conflict */
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 	gfile = sccs2name(sfile);
-	mdbm_store_str(idDB, rs->key, gfile, MDBM_REPLACE);
+	if (idcache_item(idDB, rs->key, gfile)) idcache_write(0, idDB);
 	free(gfile);
-	idcache_write(0, idDB);
 	mdbm_close(idDB);
 	/* Nota bene: *s is may be out of date */
 	return (0);
@@ -2714,7 +2713,6 @@ pass4_apply(opts *opts)
 	char	key[MAXKEY];
 	MDBM	*permDB = mdbm_mem();
 	char	*cmd;
-	char	*p;
 	hash	*emptydirs;
 	char	**dirlist;
 
@@ -2818,7 +2816,7 @@ pass4_apply(opts *opts)
 			fprintf(save, "%s\n", l->sfile);
 			sccs_free(l);
 			/* buf+7 == skip RESYNC/ */
-			mdbm_store_str(opts->idDB, key, buf + 7, MDBM_REPLACE);
+			idcache_item(opts->idDB, key, buf + 7);
 			++nold;
 		} else {
 			/*
@@ -2826,7 +2824,7 @@ pass4_apply(opts *opts)
 			 * This little chunk of magic is to detect BAM files
 			 * and respect BAM_checkout.
 			 */
-			if ((p = strrchr(key, '|')) && strneq(p, "|B:", 3)) {
+			if (BAMkey(key)) {
 				proj_saveCOkey(0, key, proj_checkout(0) >> 4);
 			} else {
 				proj_saveCOkey(0, key, proj_checkout(0) & 0xf);
@@ -3360,8 +3358,9 @@ moveupComponent(void)
 	/* update idcache with the changed location */
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 	concat_path(buf, cpath, GCHANGESET);
-	mdbm_store_str(idDB, proj_rootkey(comp), buf, MDBM_REPLACE);
-	idcache_write(0, idDB);
+	if (idcache_item(idDB, proj_rootkey(comp), buf)) {
+		idcache_write(0, idDB);
+	}
 	mdbm_close(idDB);
 
 	/* go back where we came from */

@@ -242,6 +242,7 @@ sfile_move(project *p, char *from, char *to)
 	char	*s1, *s2, *t;
 	int	rc;
 
+	// XXX can replace an existing sfile2
 	if (rc = fileMove(sfile1, sfile2)) goto out;
 
 	s1 = strrchr(sfile1, '/') + 1;
@@ -284,5 +285,10 @@ out:	free(sfile);
 int
 sfile_exists(project *p, char *path)
 {
-	return (exists(path));
+	char	*sfile = name2sccs(path);
+	int	rc;
+
+	rc = exists(sfile);
+	free(sfile);
+	return (rc);
 }

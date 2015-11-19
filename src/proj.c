@@ -1439,19 +1439,22 @@ proj_cset2key(project *p, char *csetrev, char *rootkey)
 	}
 	unless (m) {
 		sccs	*sc;
-		MDBM	*csetm;
+		ser_t	d;
+		rset_df	*data, *item;
 
 		/* fetch MDBM from ChangeSet */
 		concat_path(buf, p->root, CHANGESET);
 		unless (sc = sccs_init(buf, SILENT|INIT_NOCKSUM)) goto ret;
-		if (sccs_get(sc, csetrev, 0, 0, 0, SILENT|GET_HASHONLY, 0, 0)) {
-			csetm = 0;
-		} else {
-			csetm = sc->mdbm;
-			sc->mdbm = 0;
+		d = sccs_findrev(sc, csetrev);
+		unless (d) {
+			sccs_free(sc);
+			goto ret; /* bad cset rev */
 		}
-		sccs_free(sc);
-		unless (csetm) goto ret; /* bad cset rev */
+		data = rset_diff(sc, 0, 0, d, 0);
+		unless (data) {
+			sccs_free(sc);
+			goto ret;
+		}
 
 		pruneCsetCache(p, basenm(mpath));	/* save newest */
 
@@ -1459,18 +1462,17 @@ proj_cset2key(project *p, char *csetrev, char *rootkey)
 		mtmp = aprintf("%s.tmp.%u", mpath, getpid());
 		m = mdbm_open(mtmp, O_RDWR|O_CREAT|O_TRUNC, 0666, 0);
 		unless (m) {
-			if (csetm) mdbm_close(csetm);
 			FREE(mtmp);
+			sccs_free(sc);
+			free(data);
 			goto ret;
 		}
-		if (csetm) {
-			kvpair	kv;
-
-			EACH_KV (csetm) {
-				mdbm_store(m, kv.key, kv.val, MDBM_REPLACE);
-			}
-			mdbm_close(csetm);
+		EACHP(data, item) {
+			mdbm_store_str(m, HEAP(sc, item->rkoff),
+			    HEAP(sc, item->dkright), MDBM_INSERT);
 		}
+		free(data);
+		sccs_free(sc);
 		mdbm_store_str(m, "TIPKEY", proj_tipkey(p), MDBM_REPLACE);
 		mdbm_store_str(m, "REV", csetrev, MDBM_REPLACE);
 	}

@@ -94,6 +94,13 @@ bk cmdlog -va > GOT
 cmpfiles WANT GOT
 echo OK
 
+echo $N Verify that --no-log option does not add to cmdlog ..........$NL
+BCNT=`bk cmdlog -av | wc -l`
+bk --no-log parent $Q
+ACNT=`bk cmdlog -av | wc -l`
+test $BCNT = $ACNT || fail cmdlog line count changed: $BCNT : $ACNT
+echo OK
+
 echo $N Verify that the -r option adds relative timestamps ..........$NL
 bk cmdlog -r | tail -1 | grep -q '^[0-9]' >OUT 2>&1 || \
 	fail -f OUT wrong output

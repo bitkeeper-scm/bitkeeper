@@ -549,6 +549,7 @@ echo OK
 echo $N checkout:EDIT w names .......................................$NL
 bk clean $Q hi
 bk _mv SCCS/s.hi SCCS/s.junk
+bk edit $Q junk	# names keeps checkouts
 bk -r names $Q
 if bk _test ! \( -w hi -a -f SCCS/p.hi \); then echo checkout failed; exit 1; fi
 echo OK

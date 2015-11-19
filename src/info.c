@@ -756,7 +756,9 @@ private int
 uniqdb_lock(Opts *opts)
 {
 	int	timeout = 5, tries_left = 3;
-	char    *lock;
+	char    *host, *lock;
+	pid_t	pid;
+	time_t	t;
 
 	lock = uniqdb_lock_path();
 	mkdirf(lock);
@@ -765,7 +767,14 @@ uniqdb_lock(Opts *opts)
 			free(lock);
 			return (0);
 		}
-		startsock_printf(opts, "WARNING-waiting for startsock %s\n", lock);
+		host = 0; pid = 0;
+		sccs_readlockf(lock, &pid, &host, &t);
+		startsock_printf(opts,
+		    "WARNING-waiting for lock %s "
+		    "(pid %d getpid %d findpid %d real %s host %s local %d)\n",
+		    lock, pid, getpid(), findpid(pid), sccs_realhost(),
+		    host ? host : "(unk)", isLocalHost(host));
+		if (host) free(host);
 		timeout *= 2;
 	}
 	free(lock);

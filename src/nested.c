@@ -1224,9 +1224,10 @@ nested_updateIdcache(project *comp)
 
 	concat_path(buf, proj_root(comp),  GCHANGESET);
 	p = proj_relpath(prod, buf);
-	mdbm_store_str(idDB, proj_rootkey(comp), p, MDBM_REPLACE);
+	if (idcache_item(idDB, proj_rootkey(comp), p)) {
+		idcache_write(prod, idDB);
+	}
 	free(p);
-	idcache_write(prod, idDB);
 	mdbm_close(idDB);
 }
 

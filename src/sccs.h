@@ -740,6 +740,10 @@ struct sccs {
 	u32	heap_loadsz;	/* size of heap at load time */
 	u32	heapsz1;	/* size of SCCS/1.ChangeSet */
 	hash	*heapmeta;	/* metadata from start of heap */
+	struct	{
+	   u32	comp;		/* component rootkey end of table */
+	   u32	bam;		/* bam file rootkey end of table */
+	} rktypeoff;		/* offset to rkeys in heap */
 	nokey	*uniq1;		/* uniq hash in heap1 */
 	u32	uniq1off;	/* uniq1 hash covers objects <off in heap */
 	nokey	*uniq2;		/* remember uniq objects not in uniq1 */
@@ -1539,6 +1543,7 @@ sum_t	str_cksum(u8 *buf);
 char	*psize(u64 bytes);
 u64	scansize(char *bytes);
 void	idcache_update(char **files);
+int	idcache_item(MDBM *idDB, char *rkey, char *path);
 int	idcache_write(project *p, MDBM *idDB);
 void	cset_savetip(sccs *s);
 void	cset_updatetip(void);
@@ -1673,6 +1678,8 @@ extern	u32	swapsz;		/* paging blocksize */
 
 #define	componentKey(k) (strstr(k, "/ChangeSet|") != (char*)0)
 #define	changesetKey(k) (strstr(k, "|ChangeSet|") != (char*)0)
+#define	BAMkey(k) ({ \
+	char	*_p; ((_p = strrchr(k, '|')) && strneq(_p+1, "B:", 2)); })
 
 /*
  * Locking flags for cmdlog_start() and cmdlog_lock()

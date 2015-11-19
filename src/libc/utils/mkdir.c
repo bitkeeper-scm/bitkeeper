@@ -7,11 +7,13 @@ int
 mkdirp(char *dir)
 {
 	char	*t = 0;
-	int	more;
 
 	while (1) {
 		unless (mkdir(dir, 0777)) break;
-		if (errno != ENOENT) return (-1);
+		if (errno != ENOENT) {
+			if (t) *t = '/';
+			return (-1);
+		}
 
 		/*
 		 * some component in the pathname doesn't exist
@@ -36,9 +38,15 @@ mkdirp(char *dir)
 	while (t) {
 		*t++ = '/';
 		while (*t && (*t != '/')) t++;
-		if (more = *t) *t = 0;
-		if (mkdir(dir, 0777)) return (-1);
-		unless (more) t = 0;
+		if (*t) {
+			*t = 0;
+		} else {
+			t = 0;
+		}
+		if (mkdir(dir, 0777)) {
+			if (t) *t = '/';
+			return (-1);
+		}
 	}
 	return (0);
 }

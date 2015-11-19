@@ -1,7 +1,15 @@
 #include "sccs.h"
 
-#define	HEAP_VER	"4"
-#define	UNIQHASH_VER	4
+/*
+ * Heap repack versions:
+ *   1 The original bk-6.0 format and used for all bk-6.x
+ *   2 Added the nokey hash to the heap (not released to customers)
+ *   3 Unused, version that never hit dev
+ *   4 BWEAVE3, weave layout changed (bk-7.0 release)
+ *   5 RKTYPES offset in metadata
+ */
+#define	HEAP_VER	"5"
+#define	UNIQHASH_CLEAN	2	/* version 1 did not clean meta hash */
 #define	IN_HEAP(s, x)	(((x) >= HEAP(s, 0)) && ((x) < HEAP(s, s->heap.len)))
 
 /*
@@ -70,7 +78,7 @@ findUniq1Str(sccs *s, char *key)
 
 	unless (s->uniq1init) {
 		/* only trust if a reliable version did last repack */
-		if ((hash_fetchStrNum(s->heapmeta, "VER") >= UNIQHASH_VER) &&
+		if ((hash_fetchStrNum(s->heapmeta, "VER") >= UNIQHASH_CLEAN) &&
 		    (t = hash_fetchStr(s->heapmeta, "HASH"))) {
 			off = strtoul(t, 0, 16);
 			j = atoi(hash_fetchStr(s->heapmeta, "HASHBITS"));
@@ -245,9 +253,18 @@ sccs_addUniqRootkey(sccs *s, char *key)
 void
 sccs_loadHeapMeta(sccs *s)
 {
+	char	*t;
+
 	if ((s->heap.len >= 5) && (strneq(HEAP(s, 1), "GEN=", 4))) {
 		s->heapmeta = hash_new(HASH_MEMHASH);
 		hash_fromStr(s->heapmeta, s->heap.buf+1);
+
+		if ((hash_fetchStrNum(s->heapmeta, "VER") >= UNIQHASH_CLEAN) &&
+		    (t = hash_fetchStr(s->heapmeta, "RKTYPES"))) {
+			s->rktypeoff.comp = strtoul(t, &t, 16);
+			assert(*t == '/');
+			s->rktypeoff.bam = strtoul(t+1, 0, 16);
+		}
 	}
 }
 
@@ -464,27 +481,35 @@ weave_replace(sccs *s, weave *cweave)
 	hash_free(first);
 }
 
-/* returns 1 if rkoff is a component, will be fast in future */
+/*
+ * Returns 1 if rkoff points at a component rootkey
+ */
 int
 weave_iscomp(sccs *s, u32 rkoff)
 {
-	char	*rkey = HEAP(s, rkoff);
-
-	return (changesetKey(rkey));
+	if (s->rktypeoff.comp && (rkoff < s->heapsz1)) {
+		return (rkoff < s->rktypeoff.comp);
+	}
+	return (changesetKey(HEAP(s, rkoff)));
 }
 
-/* returns 1 if rkoff is a BAM file, will be fast in future */
+/* returns 1 if rkoff is a BAM file */
 int
 weave_isBAM(sccs *s, u32 rkoff)
 {
-	char	*rkey = HEAP(s, rkoff);
-	char	*p;
+	char	*rkey;
 
+	if (s->rktypeoff.bam && (rkoff < s->heapsz1)) {
+		return ((rkoff < s->rktypeoff.bam) &&
+		        (rkoff >= s->rktypeoff.comp));
+	}
+	rkey = HEAP(s, rkoff);
 	/* BAM files can be identified with B: at start of random bits */
-	unless ((p = strrchr(rkey, '|')) && strneq(p, "|B:", 3)) return (0);
+	unless (BAMkey(rkey)) return (0);
 
 	/* component keys can also have "B:" in randbits */
-	if (weave_iscomp(s, rkoff)) return (0);
+	if (changesetKey(rkey)) return (0);
+
 	return (1);
 }
 
@@ -938,8 +963,10 @@ typedef	struct {
  * v4 post 6.0 header
  *   0 - first byte is null string
  *   hash - keys = {GEN, HASH, HASHBITS, LEN, TIP, VER}
- *	new are HASH and HASHBITS, which only work if VER >= UNIQHASH_VER
+ *	new are HASH and HASHBITS, which only work if VER >= UNIQHASH_CLEAN
  *   s->rkeyHead = heap offset gets stored in on disk init table
+ * v5 bk-7.0.x
+ *   Add RKTYPES and rootkeys sorted by types
  *
  * HEAP LAYOUT
  *   meta hash
@@ -960,7 +987,9 @@ typedef	struct {
  *   For BWEAVE3 ChangeSet files:
  *     non-tip deltakeys in weave order
  *     deltakeys in tip cset in weave order
- *     rootkeys in weave order
+ *     component rootkeys
+ *     BAM rootkeys
+ *     remaining file rootkeys in weave order
  *     actual weave data
  *
  *   nokey hash of unique data
@@ -1015,6 +1044,10 @@ bin_heapRepack(sccs *s)
 	sprintf(buf, "0x%08x", 0);
 	hash_storeStr(meta, "LEN", buf);
 	hash_storeStr(meta, "HASH", buf);
+	if (CSET(s)) {
+		sprintf(buf, "0x%08x/0x%08x", 0, 0);
+		hash_storeStr(meta, "RKTYPES", buf);
+	}
 	sprintf(buf, "%02d", 0);
 	hash_storeStr(meta, "HASHBITS", buf);
 
@@ -1119,6 +1152,7 @@ bin_heapRepack(sccs *s)
 			    hash_new(HASH_U32HASH, sizeof(u32), sizeof(Pair));
 		Pair	p = {0};
 		hash	*tiphash;
+		u32	*comprk = 0, *bamrk = 0;
 
 		/*
 		 * walk the weave oldest to newest to identify the
@@ -1127,9 +1161,17 @@ bin_heapRepack(sccs *s)
 		for (d = TREE(s); d <= TABLE(s); d++) {
 			unless (off = WEAVE_INDEX(s, d)) continue;
 			while (rkoff = OLDKOFF(off)) {
-				if ((p.oldestdk = OLDKOFF(off+4)) != 0) {
-					hash_insert(rkh, &rkoff, sizeof(rkoff),
-					    &p, sizeof(p));
+				if (((p.oldestdk = OLDKOFF(off+4)) != 0) &&
+				    hash_insert(rkh, &rkoff, sizeof(rkoff),
+					&p, sizeof(p))) {
+
+					rkey = OLDHEAP(rkoff);
+					if (changesetKey(rkey)) {
+						addArray(&comprk, &rkoff);
+					} else if (BAMkey(rkey)) {
+						/* BAM file */
+						addArray(&bamrk, &rkoff);
+					}
 				}
 				off += 8;
 			}
@@ -1188,6 +1230,26 @@ bin_heapRepack(sccs *s)
 		free(tipkeys.buf);
 
 		/* write rootkeys to heap */
+		EACH(comprk) {
+			rkey = OLDHEAP(comprk[i]);
+			sccs_addUniqRootkey(s, rkey);
+		}
+		free(comprk);
+		/* Save the last offset of component rootkeys */
+		s->rktypeoff.comp = s->heap.len;
+
+		/* Now put BAM rootkeys on heap and save that */
+		EACH(bamrk) {
+			rkey = OLDHEAP(bamrk[i]);
+			sccs_addUniqRootkey(s, rkey);
+		}
+		free(bamrk);
+		s->rktypeoff.bam = s->heap.len;
+		sprintf(buf, "0x%08x/0x%08x",
+		    s->rktypeoff.comp, s->rktypeoff.bam);
+		hash_storeStr(meta, "RKTYPES", buf);
+
+		/* now all remaining rootkeys (and update offsets) */
 		EACH(rkeys) {
 			rkey = OLDHEAP(rkeys[i]);
 			rkeys[i] = sccs_addUniqRootkey(s, rkey);
