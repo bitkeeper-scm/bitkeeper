@@ -1,0 +1,86 @@
+# based on: https://tahoe-lafs.org/~zooko/badmerge/simple.html
+
+echo $N Setup repo ..................................................$NL
+commercial project
+echo <<EOF > file
+A
+B
+C
+D
+E
+EOF
+bk new $Q file
+bk commit $Q -ya || fail
+bk clone $Q . ../b
+bk clone $Q . ../c
+
+cd ../b
+bk edit $Q file
+echo <<EOF > file
+G
+G
+G
+A
+B
+C
+D
+E
+EOF
+bk ci $Q -l -yb1 file
+bk commit $Q -yb1 || fail
+
+echo <<EOF > file
+A
+B
+C
+D
+E
+G
+G
+G
+A
+B
+C
+D
+E
+EOF
+
+bk ci $Q -l -yb2 file
+bk commit $Q -yb2 || fail
+
+cd ../c
+bk edit $Q file
+echo <<EOF > file
+A
+B
+X
+D
+E
+EOF
+bk ci $Q -l -yc1
+bk commit $Q -yc1 || fail
+echo OK
+
+echo $N Do badmerge example .........................................$NL
+
+# pull will automerge
+bk pull $Q ../b || fail
+
+# verify expected result
+echo <<EOF > WANT
+A
+B
+C
+D
+E
+G
+G
+G
+A
+B
+X
+D
+E
+EOF
+cmpfiles WANT file
+echo OK

@@ -145,7 +145,7 @@ setuptool: $(COMMON) tkwizard.tcl setuptool.tcl
 installtool: ../port/$(SYS)_platform.tcl ../utils/installtool.tcl \
 	tkwizard.tcl bktheme.tcl common.tcl
 	@(echo 'wm withdraw .' ; cat $^ ;\
-	 echo "image create photo bklogo -data {`../bk base64<../gui/imgsrc/bklogo.gif`}";\
+	 echo "image create photo bklogo -data {`bk base64<../gui/imgsrc/bklogo.gif`}";\
 	 echo 'main') | $(TCLWRAP) > $(LIBDIR)/installtool
 
 outputtool: $(COMMON) outputtool.l

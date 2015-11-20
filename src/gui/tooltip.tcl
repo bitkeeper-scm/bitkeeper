@@ -101,7 +101,7 @@ namespace eval ::tooltip {
 	set G(LAST) -1
 	if {$G(enabled) && [info exists tooltip(%W)]} {
 	    set G(AFTERID) \
-		[after $G(DELAY) [namespace code [list show %W $tooltip(%W) cursor]]]
+		[after $G(DELAY) [namespace code [list _show %W $tooltip(%W) cursor]]]
 	}
     }]
 
@@ -205,9 +205,13 @@ proc ::tooltip::register {w args} {
                 }
                 set args [lreplace $args 0 1]
             }
+	    -command {
+		set command [lindex $args 1]
+		set args [lreplace $args 0 1]
+	    }
 	    default	{
 		return -code error "unknown option \"$key\":\
-			should be -index, -items or -tag"
+			should be -command, -index, -items or -tag"
 	    }
 	}
 	set key [lindex $args 0]
@@ -222,12 +226,16 @@ proc ::tooltip::register {w args} {
 	if {![winfo exists $w]} {
 	    return -code error "bad window path name \"$w\""
 	}
+	set d [dict create message $key]
+	if {[info exists command]} {
+	    dict set d command $command
+	}
 	if {[info exists index]} {
-	    set tooltip($w,$index) $key
+	    set tooltip($w,$index) $d
 	    return $w,$index
 	} elseif {[info exists items]} {
 	    foreach item $items {
-		set tooltip($w,$item) $key
+		set tooltip($w,$item) $d
 		if {[winfo class $w] eq "Listbox"} {
 		    enableListbox $w $item
 		} else {
@@ -238,11 +246,11 @@ proc ::tooltip::register {w args} {
 	    # how this is called
 	    return $w,[lindex $items 0]
         } elseif {[info exists tag]} {
-            set tooltip($w,t_$tag) $key
+            set tooltip($w,t_$tag) $d
             enableTag $w $tag
             return $w,$tag
 	} else {
-	    set tooltip($w) $key
+	    set tooltip($w) $d
 	    bindtags $w [linsert [bindtags $w] end "Tooltip"]
 	    return $w
 	}
@@ -338,6 +346,15 @@ proc ::tooltip::show {w msg {i {}}} {
     }
 }
 
+proc ::tooltip::_show {w d {i ""}} {
+    set message [dict get $d message]
+    if {[dict exists $d command]} {
+	set message [uplevel #0 [dict get $d command]]
+	if {$message eq ""} { return }
+    }
+    show $w $message $i
+}
+
 proc ::tooltip::menuMotion {w} {
     variable G
 
@@ -359,7 +376,7 @@ proc ::tooltip::menuMotion {w} {
 		(![catch {$w entrycget $cur -label} cur] && \
 		[info exists tooltip($m,$cur)])} {
 	    set G(AFTERID) [after $G(DELAY) \
-		    [namespace code [list show $w $tooltip($m,$cur) cursor]]]
+		    [namespace code [list _show $w $tooltip($m,$cur) cursor]]]
 	}
     }
 }
@@ -408,7 +425,7 @@ proc ::tooltip::listitemTip {w x y} {
     set item [$w index @$x,$y]
     if {$G(enabled) && [info exists tooltip($w,$item)]} {
 	set G(AFTERID) [after $G(DELAY) \
-		[namespace code [list show $w $tooltip($w,$item) cursor]]]
+		[namespace code [list _show $w $tooltip($w,$item) cursor]]]
     }
 }
 
@@ -424,7 +441,7 @@ proc ::tooltip::listitemMotion {w x y} {
             catch {wm withdraw $G(TOPLEVEL)}
             if {[info exists tooltip($w,$item)]} {
                 set G(AFTERID) [after $G(DELAY) \
-                   [namespace code [list show $w $tooltip($w,$item) cursor]]]
+                   [namespace code [list _show $w $tooltip($w,$item) cursor]]]
             }
         }
     }
@@ -448,7 +465,7 @@ proc ::tooltip::itemTip {w args} {
     set item [$w find withtag current]
     if {$G(enabled) && [info exists tooltip($w,$item)]} {
 	set G(AFTERID) [after $G(DELAY) \
-		[namespace code [list show $w $tooltip($w,$item) cursor]]]
+		[namespace code [list _show $w $tooltip($w,$item) cursor]]]
     }
 }
 
@@ -467,7 +484,7 @@ proc ::tooltip::tagTip {w tag} {
     if {$G(enabled) && [info exists tooltip($w,t_$tag)]} {
         if {[info exists G(AFTERID)]} { after cancel $G(AFTERID) }
         set G(AFTERID) [after $G(DELAY) \
-            [namespace code [list show $w $tooltip($w,t_$tag) cursor]]]
+            [namespace code [list _show $w $tooltip($w,t_$tag) cursor]]]
     }
 }
 
