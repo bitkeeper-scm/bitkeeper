@@ -474,6 +474,8 @@ annotate_args(int flags, char *args)
 	if (streq(args, "none")) return (flags);
 	while (*args) {
 		switch (*args) {
+			/* Larry sez users won't use seq so make it obscure */
+		    case '0': flags |= GET_SEQ; break;
 		    case '5': flags |= GET_MD5KEY; break;
 		    case 'b': flags |= GET_MODNAME; break;
 		    case 'd': flags |= GET_PREFIXDATE; break;

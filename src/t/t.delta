@@ -547,6 +547,7 @@ echo $N Check that delta picks up comments from c.files, -c case ....$NL
 cd "$HERE/project"
 bk edit $Q init3
 ( echo "Auto comment from c.file"
+  echo
   echo "And a second line" 
  ) > C
 bk cfile save init3 < C

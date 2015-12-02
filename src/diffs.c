@@ -510,7 +510,9 @@ private int
 nulldiff(char *name, df_opt *dop)
 {
 	int	ret = 0;
+	int	i;
 	char	*here, *file, *p;
+	char	buf[MAXPATH];
 
 	name = sccs2name(name);
 	unless (exists(name)) goto out;
@@ -529,6 +531,12 @@ nulldiff(char *name, df_opt *dop)
 			ret = 2;
 			goto out;
 		}
+	}
+	if (isSymlnk(name) && ((i = readlink(name, buf, sizeof(buf))) > 0)) {
+		buf[i] = 0;
+		printf("SYMLINK -> %s\n", buf);
+		ret = 1;
+		goto out;
 	}
 
 	/*

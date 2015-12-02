@@ -259,13 +259,17 @@ cset_main(int ac, char **av)
 	/*
 	 * If doing include/exclude, go do it.
 	 */
-	if (copts.include || copts.exclude) bk_nested2root(copts.standalone);
+	if (copts.include || copts.exclude) {
+		bk_nested2root(copts.standalone);
+		cmdlog_lock(CMD_NESTED_WRLOCK|CMD_WRLOCK);
+	}
 	if (copts.include) return (cset_inex(flags, "-i", rargs.rstart));
 	if (copts.exclude) return (cset_inex(flags, "-x", rargs.rstart));
 	if (copts.standalone) {
 		fprintf(stderr, "cset: -S requires -i or -x\n");
 		return (1);
 	}
+	unless (copts.makepatch) cmdlog_lock(CMD_WRLOCK);
 
 	cset = sccs_init(csetFile, 0);
 	if (!cset) return (101);

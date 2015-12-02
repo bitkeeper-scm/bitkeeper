@@ -1204,7 +1204,7 @@ private	struct {
 	{"collapse", CMD_REPOLOG},	/* real locks in collapse.c */
 	{"commit", CMD_REPOLOG},	/* real locks in commit.c */
 	{"cp", CMD_WRLOCK},
-	{"cset", CMD_REPOLOG|CMD_WRLOCK},
+	{"cset", CMD_REPOLOG},
 	{"csetprune", CMD_WRLOCK},
 	/* ci/delta locking handled in delta.c */
 	{"_findcset", CMD_WRLOCK},

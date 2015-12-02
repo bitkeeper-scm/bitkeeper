@@ -1,0 +1,9 @@
+echo $N Add airgap keys to your home .bk config file ................$NL
+cat <<EOF >> $HOME/.bk/config
+# The latest round of PRO keys from regressions
+license: $BKL_PRO!
+licsign1: $BKL_P1!
+licsign2: $BKL_P2!
+licsign3: $BKL_P3!
+EOF
+echo OK

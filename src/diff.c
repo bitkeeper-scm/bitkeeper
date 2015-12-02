@@ -172,8 +172,11 @@ cmpIt(df_ctx *dc, int idxA, int sideA, int idxB, int sideB)
 inline	private	u32
 hashIt(df_ctx *dc, int idx, int side)
 {
-	return (dc->dhash(
-	    IDX(&dc->range, idx, side), side, dc->data, dc->extra));
+	u32	ret;
+
+	ret = dc->dhash(IDX(&dc->range, idx, side), side, dc->data, dc->extra);
+	unless (ret) ret = 1;	/* cannot use hash==0 */
+	return (ret);
 }
 
 inline	private	u32

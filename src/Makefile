@@ -106,6 +106,11 @@ WARNINGS_GCC4=-Wextra -Wno-pointer-sign -Wno-sign-compare \
 	-Wno-unused-parameter -Wno-missing-field-initializers \
 	-Wdeclaration-after-statement -Wpointer-arith
 
+# Warnings enabled with GCC newer than 5.0
+#
+# -Wno-unusedr-esult Do not warn if a caller ignores return value
+WARNINGS_GCC5=-Wno-unused-result
+
 # Other options to consider enabling in the future:
 #
 # -Wnested-externs Prototypes declared in a function
@@ -118,12 +123,15 @@ GCC_MAJOR_REV=$(shell $(CC) -dumpversion | sed 's/\..*//')
 GCC_MINOR_REV=$(shell $(CC) -dumpversion | sed 's/.*\.//')
 ifeq ($(GCC_MAJOR_REV),3)
 	WARNINGS += $(WARNINGS_GCC3)
-endif 
+endif
 ifeq ($(GCC_MAJOR_REV),4)
 	WARNINGS += $(WARNINGS_GCC3) $(WARNINGS_GCC4)
 	ifeq ($(shell expr $(GCC_MINOR_REV) \> 5), 1)
 		WARNINGS += -Wno-unused-result
 	endif
+endif
+ifeq ($(GCC_MAJOR_REV),5)
+	WARNINGS += $(WARNINGS_GCC3) $(WARNINGS_GCC4) $(WARNINGS_GCC5)
 endif
 
 ifeq "$(shell bk changes -r+ -d:TAG:)" ""

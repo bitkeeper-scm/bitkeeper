@@ -18,6 +18,7 @@ commercial project
 echo data > foo.c
 bk ci $Q -i foo.c
 bk _mv SCCS/s.foo.c SCCS/s.bar.c
+bk _mv SCCS/d.foo.c SCCS/d.bar.c
 bk names bar.c 2> /dev/null || fail
 if bk _test ! -f SCCS/s.foo.c; then echo fail; fi
 bk commit $Q -ywhatever

@@ -70,7 +70,7 @@ private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private	void	parseConfig(char *buf, MDBM *db, int stripbang);
 private	void	taguncolor(sccs *s, ser_t d);
 private	void	prefix(sccs *s, ser_t d, int whodel,
-		    u32 flags, int lines, char *name, FILE *out);
+		    u32 flags, int lines, u32 seq, char *name, FILE *out);
 private	int	sccs_meta(char *m, sccs *s, ser_t parent,
 		    char *init);
 private	int	misc(sccs *s);
@@ -6890,6 +6890,7 @@ get_reg(sccs *s, char *printOut, FILE *out, int flags, ser_t d, ser_t m,
 		}
 
 		len = 0;
+		if (flags&GET_SEQ) len += 8;	/* NOP as len % 8 unchanged */
 		if (flags&(GET_MODNAME|GET_RELPATH)) len += strlen(name) + 1;
 		if (flags&GET_PREFIXDATE) len += YEAR4(s) ? 11 : 9;
 		if (flags&GET_USER) len += s->userLen + 1;
@@ -6931,7 +6932,7 @@ out:			if (slist) free(slist);
 			goto out;
 		}
 	}
-	seq = 0;
+	seq = (buf = getenv("_BK_SEQ_START")) ? atoi(buf) : 0;
 	sum = 0;
 	added = 0;
 	deleted = 0;
@@ -6979,12 +6980,11 @@ out:			if (slist) free(slist);
 				for (e = buf; *e; sum += *e++);
 				sum += '\n';
 			}
-			if (flags&GET_SEQ) smerge_saveseq(seq);
 			if (flags & GET_PREFIX) {
 				char	*p = 0;
 
-				prefix(
-				    s, print, whodel, flags, lines, name, out);
+				prefix(s, print, whodel, flags, lines,
+				    seq, name, out);
 
 				/* GET_LINENAME must be last for mdiff */
 				if (flags & GET_LINENAME) {
@@ -7124,6 +7124,7 @@ write:
 			}
 		}
 	}
+	s->lines = lines;
 	if (hash) getKey(s, DB, 0, hashFlags, flags, &dbstate);
 
 	if (BITKEEPER(s) &&
@@ -7332,10 +7333,11 @@ get_link(sccs *s, char *printOut, FILE *out, int flags, ser_t d, int *ln)
 			assert(HAS_PATHNAME(s, d));
 			if (flags & GET_MODNAME) name = basenm(PATHNAME(s, d));
 			if (flags & GET_RELPATH) name = PATHNAME(s, d);
-			prefix(s, d, 0, flags, 1, name, out);
+			prefix(s, d, 0, flags, 1, 1, name, out);
 			if (flags & GET_ALIGN) {
 				int	len = 0;
 
+				if (flags&GET_SEQ) len += 8;
 				if (flags&(GET_MODNAME|GET_RELPATH)) {
 					len += strlen(name) + 1;
 				}
@@ -7717,12 +7719,14 @@ skip_get:
  * we are displaying, not the full set.
  */
 private void
-prefix(sccs *s, ser_t d, int whodel, u32 flags, int lines, char *name,
+prefix(sccs *s, ser_t d, int whodel, u32 flags, int lines, u32 seq, char *name,
     FILE *out)
 {
 	char	buf[32];
 
 	if (flags & GET_ALIGN) {
+		/* smerge wants SEQ first and 8 chars so tabs align */
+		if (flags&GET_SEQ) fprintf(out, "%7d ", seq);
 		if (flags&(GET_MODNAME|GET_RELPATH)) fprintf(out, "%s ", name);
 		if (flags&GET_PREFIXDATE) {
 			delta_strftime(buf, sizeof(buf),
@@ -7752,6 +7756,7 @@ prefix(sccs *s, ser_t d, int whodel, u32 flags, int lines, char *name,
 		if (flags&GET_SERIAL) fprintf(out, "%6d ", d);
 	} else {
 		/* tab style */
+		if (flags&GET_SEQ) fprintf(out, "%d\t", seq);
 		if (flags&(GET_MODNAME|GET_RELPATH)) fprintf(out, "%s\t",name);
 		if (flags&GET_PREFIXDATE) {
 			delta_strftime(buf, sizeof(buf),

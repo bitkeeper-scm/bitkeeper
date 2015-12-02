@@ -29,7 +29,7 @@ data_resize(DATA *d, u32 newlen)
 			size = (3 << 30);
 		} else {
 			assert(newlen < 0xfff00000);	// 3.99G max
-			size = 0xfff0000;
+			size = 0xfff00000;
 		}
 		data_setSize(d, size);
 	}

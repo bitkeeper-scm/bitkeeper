@@ -23,6 +23,9 @@ proc main {} \
 	global	env
 	wm title . "revtool"
 
+	set ::shift_down 0
+	set ::tooltipAfterId ""
+
 	bk_init
 	
 	arguments
@@ -1039,6 +1042,7 @@ proc listRevs {r file} \
 	if {$bad != 0} {
 		wm title . "revtool: $file -- $bad bad revs"
 	}
+	set_tooltips
 	return 0
 } ;# proc listRevs
 
@@ -1315,6 +1319,8 @@ proc filltext {win f clear {msg {}}} \
 			$win insert end $msg
 		}
 	}
+
+	set_tooltips
 	if {$clear == 1} { busy 0 }
 	searchreset
 	set search(prompt) "Welcome"
@@ -2089,6 +2095,9 @@ proc widgets {} \
 	#bindtags $search(text) { .cmd.search Entry }
 	bind all <$gc(rev.quit)>	"done"
 
+	bind all <KeyPress-Shift_L> revtool_shift_down
+	bind all <KeyRelease-Shift_L> revtool_shift_up
+
 	focus $w(graph)
 } ;# proc widgets
 
@@ -2175,19 +2184,30 @@ proc get_line_rev {lineno} \
 }
 
 proc mouse_motion {win} {
-	global	gc redrev
+	global	gc redrev file
 
 	set tags [$win tag names current]
-	set tag  [lsearch -inline [$win tag names current] link-*]
+	set tag  [lsearch -inline $tags link-*]
 	if {[info exists redrev] && $tag ne $redrev} {
 		$win tag configure $redrev -foreground blue
 		unset redrev
 	}
 
+	after cancel $::tooltipAfterId
+
 	if {"link" in $tags} {
 		set redrev $tag
 		$win configure -cursor $gc(handCursor)
 		$win tag configure $redrev -foreground red
+
+		set rev [$win get $tag.first $tag.last]
+		set msg [exec bk log -r$rev $file]
+		set cmd [list tooltip::show $win $msg cursor]
+		if {$::shift_down} {
+			eval $cmd
+		} else {
+			set ::tooltipAfterId [after 500 $cmd]
+		}
 	} else {
 		$win configure -cursor ""
 	}
@@ -2649,6 +2669,47 @@ proc printCanvas {} \
 	#    -width $width -height $h]
 	catch { close $fd } err
 	exit
+}
+
+proc revtool_popup_rev {win} {
+	global	w file
+
+	if {$win eq $w(graph)} {
+	    set tags [$win gettags current]
+	    lassign [split [lindex $tags 0] -] rev user
+	} elseif {$win eq $w(aptext)} {
+	    set tags [$win tag names current]
+	    set tag [lsearch -inline $tags link-*]
+	    set rev [$win get $tag.first $tag.last]
+	}
+
+	return [exec bk log -r$rev $file]
+}
+
+proc revtool_shift_down {} \
+{
+	set ::shift_down 1
+	tooltip::tooltip fade 0
+	tooltip::tooltip delay 50
+}
+
+proc revtool_shift_up {} \
+{
+	set ::shift_down 0
+	tooltip::tooltip fade 1
+	tooltip::tooltip delay 500
+}
+
+proc set_tooltips {} \
+{
+	global	w
+
+	tooltip::tooltip $w(graph) -items "revision" \
+	    -command [list revtool_popup_rev $w(graph)] "#"
+	tooltip::tooltip $w(graph) -items "revtext" \
+	    -command [list revtool_popup_rev $w(graph)] "#"
+	tooltip::tooltip $w(aptext) -tag "link" \
+	    -command [list revtool_popup_rev $w(aptext)] "#"
 }
 
 main

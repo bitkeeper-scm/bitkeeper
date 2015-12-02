@@ -36,7 +36,56 @@ EOF
 checkfiles WANT GOT
 echo OK
 
+test -d "$TESTDATA/exclude-merge" && {
+echo $N Test for ignoring an excluded merge .........................$NL
+cd "$HERE"
+bk clone $Q "$TESTDATA/exclude-merge"
+cd exclude-merge
+# What a customer sees: it works
+bk --config=no_graphverify:on checksum ChangeSet || fail
+_BK_DEVELOPER="" bk checksum ChangeSet || fail
+# What we see: it fails
+bk checksum ChangeSet 2>ERR && fail -f ERR
+grep -q "Last rev to fail 1.3" ERR || fail -f ERR
+# But it is not fixable, even to the customer who can't see it.
+echo OK
+
+echo $N Test for fixing an excluded merge fails .....................$NL
+ranbits=1234567890abcdef
+echo "bk@bk.bitkeeper.com|file5|20050902193043|01746|a022a526fa5a428e" \
+    | bk csetprune -q -k$ranbits - 2>ERR && fail -f ERR
+cat <<EOF > WANT
+Dual sum failure at 1.4 in ChangeSet
+Last rev to fail 1.5(1443746616 20151002004336)
+root time: 20040627230739
+1 files still differ
+csetprune: failed
+EOF
+cmpfiles WANT ERR
+echo OK
+
+echo $N But the csetprune part worked, check passes with cutoff .....$NL
+bk --config=no_graphverify:1443746616 checksum ChangeSet || fail
+echo OK
+}
+
+test -d "$TESTDATA/nested-exclude-merge" && {
+echo $N Test for ignoring an excluded merge in a component ..........$NL
+cd "$HERE"
+bk --config=no_graphverify:on clone $Q "$TESTDATA/nested-exclude-merge"
+cd nested-exclude-merge
+# What a customer sees: it works
+_BK_DEVELOPER="" bk -e checksum ChangeSet || fail
+# What we see: it fails
+bk -e checksum ChangeSet 2>ERR && fail -f ERR
+grep -q "Last rev to fail 1.3" ERR || fail -f ERR
+# but product is okay
+bk checksum ChangeSet || fail
+echo OK
+}
+
 echo $N Test for specific checksum to be bad ........................$NL
+cd "$HERE"/project
 bk checksum -r+ b1 || fail
 bk checksum -r1.1 b1 2> GOT && fail
 echo 'Bad checksum 00451:00450 in b1|1.1' > WANT
@@ -124,14 +173,30 @@ checkfiles WANT GOT
 echo OK
 
 test -d "$TESTDATA/xaraya-exclude-merge" && {
-echo $N Test an exclude of a merge fails closure test ...............$NL
+echo $N Test an exclude of a merge fails dual sum test ..............$NL
 # We can turn off verify checking
-bk --config=no_graphverify:1 --cd="$TESTDATA/xaraya-exclude-merge" \
+bk --config=no_graphverify:on --cd="$TESTDATA/xaraya-exclude-merge" \
     bk checksum ChangeSet || fail
-# Or run with it on
+# Or run with it on - lists first item to fail
 bk --cd="$TESTDATA/xaraya-exclude-merge" bk checksum ChangeSet 2> GOT && fail
-echo "closure failure ChangeSet(1.482)" > WANT
+cat <<EOF > WANT
+Dual sum failure at 1.482 in ChangeSet
+Last rev to fail 1.1638.2.1(1067763651 20031102090051)
+root time: 20020928131446
+EOF
 cmpfiles WANT GOT
+# 1 second before cutoff - lists last item to fail
+bk --config=no_graphverify:1067763650 --cd="$TESTDATA/xaraya-exclude-merge" \
+    bk checksum ChangeSet 2> GOT && fail -f GOT
+cat <<EOF > WANT
+Dual sum failure at 1.1638.2.1 in ChangeSet
+Last rev to fail 1.1638.2.1(1067763651 20031102090051)
+root time: 20020928131446
+EOF
+cmpfiles WANT GOT
+# cutoff from above - no bad items found
+bk --config=no_graphverify:1067763651 --cd="$TESTDATA/xaraya-exclude-merge" \
+    bk checksum ChangeSet || fail
 echo OK
 }
 

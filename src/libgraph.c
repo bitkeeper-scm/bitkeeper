@@ -8,7 +8,6 @@ private	int	v2Right(sccs *s, ser_t d, void *token);
 private	int	v2Left(sccs *s, ser_t d, void *token);
 
 private	void	loadKids(sccs *s);
-private	int	bigFirst(const void *a, const void *b);
 private	void	foundDup(sccs *s, u32 bits,
 		    ser_t tip, ser_t other, ser_t dup, ser_t **dups);
 
@@ -89,7 +88,7 @@ private	void	foundDup(sccs *s, u32 bits,
  */
 int
 graph_symdiff(sccs *s, ser_t left, ser_t right, void *token1, u8 *slist,
-    void *token2, int count, int flags)
+    u32 *cludes, int count, int flags)
 {
 	ser_t	ser, lower = 0;
 	u8	bits, newbits;
@@ -102,9 +101,7 @@ graph_symdiff(sccs *s, ser_t left, ser_t right, void *token1, u8 *slist,
 	int	i, activeLeft, activeRight;
 	char	*p;
 	ser_t	*include = 0, *exclude = 0;
-	u32	*cludes = 0;
 	u32	orig = 0;
-	ser_t	**sd = 0;
 	ser_t	t = 0, x;
 	int	calcDups = 0;
 
@@ -113,13 +110,6 @@ graph_symdiff(sccs *s, ser_t left, ser_t right, void *token1, u8 *slist,
 			list = (ser_t *)token1;
 		} else {
 			dups = (ser_t **)token1;
-		}
-	}
-	if (token2) {
-		if (flags & SD_CLUDES) {
-			cludes = (u32 *)token2;
-		} else {
-			sd = (ser_t **)token2;
 		}
 	}
 	if (flags & SD_MERGE) {
@@ -139,7 +129,6 @@ graph_symdiff(sccs *s, ser_t left, ser_t right, void *token1, u8 *slist,
 		calcDups = dups != 0;
 	} else {
 		assert(left);
-		if (sd) assert(count == 0);
 		marked = count;
 		orig = CLUDES_INDEX(s, left);
 		CLUDES_SET(s, left, 0);
@@ -149,10 +138,6 @@ graph_symdiff(sccs *s, ser_t left, ser_t right, void *token1, u8 *slist,
 		x = list[i];
 		bits = SL_PAR;
 		marked++;
-		if (sd) {
-			bits |= S_DIFF;
-			marked++;
-		}
 		ser = x;
 		slist[ser] |= bits;
 		if (!t || (t < x)) t = x;
@@ -166,10 +151,6 @@ graph_symdiff(sccs *s, ser_t left, ser_t right, void *token1, u8 *slist,
 	if (right) {
 		bits = SR_PAR;
 		marked++;
-		if (sd) {
-			bits |= S_DIFF;
-			marked++;
-		}
 		ser = right;
 		slist[ser] |= bits;
 		if (!t || (t < right)) t = right;
@@ -181,14 +162,15 @@ graph_symdiff(sccs *s, ser_t left, ser_t right, void *token1, u8 *slist,
 
 		ser = t;
 		unless (bits = slist[ser]) continue;
-		assert(!(FLAGS(s, t) & D_GONE));
+		/* csetprune.c:fixupGraph() is permitted to use D_GONE */
+		assert(!(FLAGS(s, t) & D_GONE) || (!expand && (t == right)));
 
-		if (expand && !sd) {
+		if (expand) {
 			slist[ser] = bits & S_DIFF;
 		} else {
 			slist[ser] = 0;
 			if (bits & S_DIFF) {
-				unless (sd) count--;
+				count--;
 				marked--;
 			}
 		}
@@ -203,7 +185,7 @@ graph_symdiff(sccs *s, ser_t left, ser_t right, void *token1, u8 *slist,
 		activeRight= ((bits & SR_INC) ||
 		    ((bits & (SR_PAR|SR_EXCL)) == SR_PAR));
 
-		if (expand && !sd) {
+		if (expand) {
 			if (activeLeft ^ activeRight) {
 				if (bits & S_DIFF) {
 					slist[ser] = 0;
@@ -213,42 +195,14 @@ graph_symdiff(sccs *s, ser_t left, ser_t right, void *token1, u8 *slist,
 					count++;
 				}
 			}
-		} else unless ((
-		    (bits & S_DIFF) != 0) ^ activeLeft ^ activeRight) {
-		    	/* do nothing */
-		} else if (expand) {	/* Compute SD compression */
-			assert(sd);
-			bits ^= S_DIFF;
-			sd[left] =
-			    addSerial(sd[left], ser);
-		} else {		/* Compute SCCS compression */
+		} else if (((bits & S_DIFF) != 0) ^ activeLeft ^ activeRight) {
+			/* mismatch: update -i or -x */
 			if (activeLeft) {
 				exclude = addSerial(exclude, ser);
 				activeLeft = 0;
 			} else {
 				include = addSerial(include, ser);
 				activeLeft = 1;
-			}
-		}
-
-		if (sd && (bits & S_DIFF)) {
-			/*
-			 * Save allocating lists for most nodes by making
-			 * use of parent serial.
-			 */
-			if (PARENT(s, t)) {
-				if ((slist[PARENT(s, t)] ^= S_DIFF) & S_DIFF) {
-					marked++;
-				} else {
-					marked--;
-				}
-			}
-			EACH(sd[ser]) {
-				if ((slist[sd[ser][i]] ^= S_DIFF) & S_DIFF) {
-					marked++;
-				} else {
-					marked--;
-				}
 			}
 		}
 
@@ -450,7 +404,7 @@ graph_convert(sccs *s, int fixpfile)
 		}
 		cludes[d] = CLUDES_INDEX(s, d);
 		count = graph_symdiff(s, d, PARENT(s, d),
-		    &dups, slist, cludes, -1, SD_CLUDES);
+		    &dups, slist, cludes, -1, 0);
 
 		s->encoding_in ^= E_BKMERGE;	/* compress in other format */
 		graph_symdiff(s, d, PARENT(s, d), &dups, slist, 0, count, 0);
@@ -494,91 +448,6 @@ err:
 	free(slist);
 	free(cludes);
 	return (rc);
-}
-
-/*
- * Add to a list, the Base Version Compression (the Symmetric Difference
- * Compression (SDC) of the Base Version (the set of deltas active
- * at the time this delta was made).
- */
-ser_t *
-symdiff_addBVC(ser_t **sd, ser_t *list, sccs *s, ser_t d)
-{
-	int	i;
-	ser_t	*sdlist = sd[d];
-
-	if (PARENT(s, d)) list = addSerial(list, PARENT(s, d));
-	EACH(sdlist) {
-		list = addSerial(list, sdlist[i]);
-	}
-	return (list);
-}
-
-/*
- * remove paired entries that have accumulated.  This counts and keeps
- * ones with an odd number.  This is needed because addSerial accumulates
- * duplicates instead of symdiffing on the fly.
- */
-ser_t *
-symdiff_noDup(ser_t *list)
-{
-	int	i;
-	int	prev = 0;
-	int	count = 0;
-	ser_t	*new = 0;
-
-	EACH(list) {
-		if (prev == list[i]) {
-			count++;
-		} else {
-			if (count & 1) new = addSerial(new, prev);
-			prev = list[i];
-			count = 1;
-		}
-	}
-	if (count & 1) new = addSerial(new, prev);
-	return (new);
-}
-
-/*
- * Just like most nodes have one parent and no d->include or d->exclude,
- * the sd lists will mostly have one entry, which is the same as PARENT(s, d).
- * To save lots of lists from being created, just treat the list as though
- * PARENT(s, d) is in it, and if it ever is not, have a PARENT(s, d) in the
- * list.  That means when code wants to change the parent pointer, it
- * needs to call here to keep the bookkeeping lined up.
- * This routine works hard to not create a list if one isn't needed.
- */
-void
-symdiff_setParent(sccs *s, ser_t d, ser_t new, ser_t **sd)
-{
-	ser_t	dser = d;
-	ser_t	newser = new;
-
-	assert(PARENT(s, d));
-	if (sd[dser] || sd[PARENT(s, d)] ||
-	    (PARENT(s, PARENT(s, d)) != newser)) {
-		sd[dser] = addSerial(sd[dser], PARENT(s, d));
-		sd[dser] = addSerial(sd[dser], newser);
-	}
-	PARENT_SET(s, d, newser);
-}
-
-ser_t	**
-graph_sccs2symdiff(sccs *s)
-{
-	ser_t	d;
-	ser_t	**sd = (ser_t **)calloc(TABLE(s) + 1, sizeof(ser_t *));
-	u8	*slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
-
-	assert(sd && slist);
-	for (d = TREE(s); d <= TABLE(s); d++) {
-		if (MERGE(s, d) || HAS_CLUDES(s, d)) {
-			graph_symdiff(s, d, PARENT(s, d), 0, slist, sd, -1, 0);
-		}
-	}
-	free(slist);
-	return (sd);
 }
 
 /*
@@ -732,25 +601,4 @@ loadKids(sccs *s)
 		if (k = s->kidlist[p].kid) s->kidlist[d].siblings = k;
 		s->kidlist[p].kid = d;
 	}
-}
-
-private	sccs	*sortfile;
-
-void
-graph_sortLines(sccs *s, ser_t *list)
-{
-	sortfile = s;
-	sortArray(list, bigFirst);
-}
-
-private	int
-bigFirst(const void *a, const void *b)
-{
-	ser_t	l, r;
-	int	cmp;
-
-	l = *(ser_t *)a;
-	r = *(ser_t *)b;
-	if (cmp = (!TAG(sortfile, r) - !TAG(sortfile, l))) return (cmp);
-	return (r - l);
 }

@@ -23,6 +23,12 @@ annotate_main(int ac, char **av)
 	char	*whodel = 0;
 	int	range = 0;
 	RANGE	rargs = {0};
+	int	seq1 = 0, seq2 = 0;
+	FILE	*out = stdout;
+	static longopt	lopts[] = {
+		{ "seq-limit;", 300 },  // limit to range of seq number
+		{ 0, 0 }
+	};
 
 	name = strrchr(av[0], '/');
 
@@ -34,7 +40,7 @@ annotate_main(int ac, char **av)
 			return (1);
 		}
 	}
-	while ((c = getopt(ac, av, "A;a;Bc;hkr;R|w|", 0)) != -1) {
+	while ((c = getopt(ac, av, "A;a;Bc;hkr;R|w|", lopts)) != -1) {
 		switch (c) {
 		    case 'A':
 			flags |= GET_ALIGN;
@@ -71,6 +77,14 @@ annotate_main(int ac, char **av)
 			flags &= ~GET_EXPAND;
 			break;
 		    case 'w': whodel = optarg ? optarg : "+"; break;
+		    case 300:	// --seq-limit=n1..n2
+			flags |= GET_SEQ;
+			seq1 = strtoul(optarg, &optarg, 0);
+			unless (strneq(optarg, "..", 2)) usage();
+			seq2 = strtoul(optarg+2, 0, 0);
+			unless (seq2) usage();
+			out = fmem();
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -118,9 +132,9 @@ err:			errors = 1;
 			}
 		}
 		if (range) {
-			c = sccs_cat(s, flags, stdout);
+			c = sccs_cat(s, flags, out);
 		} else {
-			c = sccs_get(s, rev, 0, 0, 0, flags, 0, stdout);
+			c = sccs_get(s, rev, 0, 0, 0, flags, 0, out);
 		}
 		if (c) {
 			unless (BEEN_WARNED(s)) {
@@ -130,9 +144,20 @@ err:			errors = 1;
 			}
 			errors = 1;
 		}
+		if (seq2) {
+			rewind(out);
+			while (t = fgetline(out)) {
+				c = strtoul(t, 0, 0);
+				if (c > seq2) break;
+				if (c < seq1) continue;
+				printf("%s\n", t);
+			}
+			ftrunc(out, 0);
+		}
 next:		sccs_free(s);
 		s = 0;
 	}
+	if (out != stdout) fclose(out);
 	if (sfileDone()) errors = 1;
 	return (errors);
 }

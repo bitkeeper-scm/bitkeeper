@@ -174,9 +174,11 @@ comments_readcfile(sccs *s, int prompt, ser_t d)
 		unlink(tmp);
 		return (-2);
 	}
-	t = loadfile(tmp, 0);
+	comments = file2Lines(0, tmp);
+	comments = addLine(comments, ""); /* add blank for trailing NL */
+	t = joinLines("\n", comments);
+	popLine(comments); /* remove blank we just added */
 	xfile_store(s->gfile, 'c', t);
-	comments = splitLine(t, "\n", 0);
 	free(t);
 	s->used_cfile = 1;
 	comments_set(s, d, comments);
