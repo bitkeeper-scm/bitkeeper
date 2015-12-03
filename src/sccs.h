@@ -46,7 +46,6 @@ int	checking_rmdir(char *dir);
  */
 #define	SILENT		0x00000001	/* do work quietly */
 #define	PRINT		0x00000002	/* get/delta/clean [diffs] to stdout */
-#define	NEWFILE		0x00000004	/* delta -i: create initial file */
 #define	NEWCKSUM	0x00000008	/* Redo checksum */
 
 #define	INIT_NOWARN	0x10000000	/* don't bitch about failed inits */
@@ -111,6 +110,7 @@ int	checking_rmdir(char *dir);
 #define	DELTA_MONOTONIC	0x00200000	/* preserve MONOTONIC flag */
 #define	DELTA_TAKEPATCH	0x00400000	/* call sccs_getInit() from takepatch */
 #define	DELTA_DB	0x00800000	/* treat as DB file */
+#define	DELTA_NEWFILE	0x00010000	/* delta -i: create initial file */
 
 #define	ADMIN_FORMAT	0x10000000	/* check file format (admin) */
 /* AVAILABLE		0x20000000	*/

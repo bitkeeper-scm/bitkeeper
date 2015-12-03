@@ -575,7 +575,7 @@ polyFlush(void)
 					assert(1);
 				}
 			} else {
-				dflags |= NEWFILE | DELTA_DB;
+				dflags |= DELTA_NEWFILE | DELTA_DB;
 			}
 			rc = sccs_delta(s, dflags, 0, 0, 0, 0);
 			if (rc == -2) {
@@ -583,7 +583,7 @@ polyFlush(void)
 				xfile_delete(s->gfile, 'p');
 				unlink(s->gfile);
 			}
-			if (dflags & NEWFILE) {
+			if (dflags & DELTA_NEWFILE) {
 				/*
 				 * Needed to create a new file.  We
 				 * are going to force the file to be

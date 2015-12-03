@@ -234,18 +234,10 @@ cset_main(int ac, char **av)
 		copts.dash++;
 	}
 	if (av[optind]) {
-		unless (isdir(av[optind])) {
-			if (flags & NEWFILE) {
-				mkdirp(av[optind]);
-			}
-		}
 		if (chdir(av[optind])) {
 			perror(av[optind]);
 			return (1);
 		}
-	} else if (flags & NEWFILE) {
-		fprintf(stderr, "cset: must specify package root.\n");
-		return (1);
 	} else if (proj_cd2root()) {
 		fprintf(stderr, "cset: cannot find package root.\n");
 		return (1);
