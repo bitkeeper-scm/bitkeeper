@@ -3,4 +3,5 @@
 # unuuwrap - the receiving side of a uuencode stream
 # %W% %K%
 
-exec bk uudecode 
+bk="${BK_BIN:+$BK_BIN/}bk"
+"$bk" uudecode 

@@ -3,4 +3,5 @@
 # unb64wrap - the receiving side of a base64 stream
 # %W% %K%
 
-exec bk base64 -d 
+bk="${BK_BIN:+$BK_BIN/}bk"
+"$bk" base64 -d 
