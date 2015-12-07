@@ -1,3 +1,5 @@
+echo parallel:2 >> .bk/config
+
 echo $N Reproduce abcdr marked delta is missing problem .............$NL
 nested prod
 cd "$HERE"
@@ -14,6 +16,19 @@ bk populate $Q gdb
 # the check in the commit should have cleaned up the
 # cset mark in the gcc component
 bk repocheck >OUT 2>&1 || fail -f OUT
+echo OK
+
+echo $N Test turning off parallel in repocheck works ................$NL
+# Hack: using that parallel does not print = and serial does
+for j in 0 1
+do	bk repocheck -j$j > OUT 2>&1
+	grep -q = OUT || fail -f OUT
+	bk --config=parallel:$j repocheck > OUT 2>&1
+	grep -q = OUT || fail -f OUT
+done
+# Test assumption that parallel prints no =
+bk repocheck -j2 > OUT 2>&1
+grep -q = OUT && fail -f OUT
 echo OK
 
 # White box test to test other return/cleanup paths
