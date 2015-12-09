@@ -175,3 +175,16 @@ bk relink project clone3 2>OUT || fail
 echo "project: relinked 1/7 files, 0 different, 6 already linked." > WANT
 cmpfiles OUT WANT
 echo OK
+
+echo $N Show sfiles converge ........................................$NL
+cd clone3
+_BK_FORCE_REPACK=1 bk admin -z ff || fail
+bk _cp SCCS/s.ff 1
+bk edit $Q ff
+echo hh >> ff
+BK_USER=fjljs bk ci -ydd $Q ff || fail
+bk stripdel $Q -r+ ff || fail
+_BK_FORCE_REPACK=1 bk admin -z ff || fail
+bk _cp SCCS/s.ff 2
+cmpfiles 1 2
+echo OK

@@ -1712,6 +1712,9 @@ _changed_files() {
 	fi
 }
 
+_force_repack() {
+	_BK_FORCE_REPACK=1 bk repocheck
+}
 
 # ------------- main ----------------------
 __platformInit

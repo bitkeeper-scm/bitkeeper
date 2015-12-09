@@ -997,8 +997,8 @@ bin_heapRepack(sccs *s)
 
 	/* read old metadata */
 	meta = hash_new(HASH_MEMHASH);
-	/* generational number */
-	hash_storeStrNum(meta, "GEN", hash_fetchStrNum(s->heapmeta, "GEN") + 1);
+	/* old generational number */
+	hash_storeStr(meta, "GEN", "0");
 	hash_free(s->heapmeta);
 	s->heapmeta = meta;
 

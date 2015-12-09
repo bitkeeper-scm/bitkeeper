@@ -238,9 +238,6 @@ dumpStats(sccs *s)
 		printf(" (gzip)");
 	}
 	printf("\n");
-	if (t = hash_fetchStr(s->heapmeta, "GEN")) {
-		printf("%10s: %7s\n", "generation", t);
-	}
 	if (s->heapsz1) {
 		assert(CSET(s));
 		printf("heap1: %s->%s\n",

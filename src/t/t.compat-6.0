@@ -654,31 +654,10 @@ bk clone $Q bkfile2 bkfile2.new || fail
 cd bkfile2.new
 bk features | grep -q BWEAVEv2 || fail
 $OLDBK/bk -r check -ac
-# See that generation doesn't get reset by a repack
-bk _heapdump -s | clean > DUMP1
 _BK_FORCE_REPACK=1 bk -r check -ac || fail
-bk _heapdump -s | clean > DUMP2
-bk diff DUMP1 DUMP2 > GOT
-cat <<EOF > WANT
-3c3
-< generation: 1 
----
-> generation: 2 
-EOF
-cmpfiles WANT GOT
 bk features | grep -q BWEAVEv2 || fail
 $OLDBK/bk -r check -ac
-# See that generation doesn't get reset by a bk-6 repack
 _BK_FORCE_REPACK=1 $OLDBK/bk -r check -ac || fail
-bk _heapdump -s | clean > DUMP3
-bk diff DUMP1 DUMP3 > GOT
-cat <<EOF > WANT
-3c3
-< generation: 1 
----
-> generation: 3 
-EOF
-cmpfiles WANT GOT
 cd ..
 bk clone $Q --upgrade bkfile2 bkfile3.convert || fail
 cd bkfile3.convert
