@@ -1117,8 +1117,6 @@ bk_cleanup(int ret)
 	if (done) return (ret);
 	done = 1;
 
-	purify_list();
-
 	/* this is attached to stdin and we have to clean it up or
 	 * bktmpcleanup() will deadlock on windows.
 	 */

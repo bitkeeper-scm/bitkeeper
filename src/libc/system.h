@@ -11,14 +11,6 @@
 #define	unlikely(e)	__builtin_expect(!!(e), 0)
 
 #include <assert.h>
-#ifdef	PURIFY
-#undef	assert
-#define	assert(expr) if (unlikely(!(expr))) {				\
-			purifyList(__FILE__, __LINE__);			\
-			(__assert_fail (__STRING(expr),			\
-			    __FILE__, __LINE__, __ASSERT_FUNCTION), 0); \
-	}
-#endif
 #include <ctype.h>
 #include <errno.h>
 #include <setjmp.h>

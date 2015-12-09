@@ -1291,6 +1291,24 @@ next:		if (getline2(r, buf, bsize) <= 0) break;
 	return;
 }
 
+/* strdup a line upto the next \n, strip trailing \r\n */
+char *
+strnonldup(char *s)
+{
+	char	*p, *ret;
+
+	if (p = strchr(s, '\n')) {
+		ret = malloc(p - s + 1);
+		p = ret;
+		while (*s != '\n') *p++ = *s++;
+		*p-- = 0;
+		while ((p > ret) && (*p == '\r')) *p-- = 0;
+	} else {
+		ret = strdup(s);
+	}
+	return (ret);
+}
+
 int
 remote_lock_fail(char *buf, int verbose)
 {

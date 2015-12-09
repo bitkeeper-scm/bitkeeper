@@ -3,7 +3,6 @@
 #define	_SCCS_H_
 
 #include "system.h"
-#include "purify.h"
 #include "diff.h"
 #define	PCRE_STATIC		/* for win32 */
 #include "pcre.h"
@@ -1349,6 +1348,7 @@ char	*_bktmp_local(char *file, int line, char *buf);
 void	bktmpenv(void);
 void	bktmpcleanup(void);
 int	smallTree(int threshold);
+char	*strnonldup(char *s);
 char	*strdup_tochar(const char *s, int c);
 void	enableFastPendingScan(void);
 char	*isHostColonPath(char *);

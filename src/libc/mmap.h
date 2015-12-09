@@ -17,12 +17,8 @@ typedef	struct mmap {
 #define	MMAP_OURS	0x01
 #define MMAP_BIN_MODE	0x02		/* binary mode read, for win32 */
 
-#ifdef	PURIFY_FILES
-MMAP	*purify_mopen(char *file, char *mode, char *, int);
-void	purify_mclose(MMAP *, char *, int);
-#else
-MMAP	*mopen(char *file, char *mode); void	mclose(MMAP *);
-#endif
+MMAP	*mopen(char *file, char *mode);
+void	mclose(MMAP *);
 char	*mnext(MMAP *);
 int	mpeekc(MMAP *);
 void	mseekto(MMAP *m, off_t off);

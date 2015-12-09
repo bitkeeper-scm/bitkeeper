@@ -210,7 +210,7 @@ OBJ =	bkver.o cmd.o \
 	port/svcinfo.o \
 	port/uninstall.o \
 	progress.o \
-	prs.o pull.o purify.o push.o pwd.o \
+	prs.o pull.o push.o pwd.o \
 	randombits.o range.o rcheck.o rclone.o \
 	rcs2bk.o rcsparse.o \
 	receive.o redblack.o regex.o registry.o renumber.o \
@@ -267,7 +267,7 @@ SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
 HDRS	= bam.h bkd.h bk-features.h cfg.h confvars.h diff.h fsfuncs.h \
 	  graph.h logging.h nested.h \
-	  progress.h purify.h range.h rcs.h resolve.h sccs.h \
+	  progress.h range.h rcs.h resolve.h sccs.h \
 	  cmd.h poly.h proj.h redblack.h inskeys.h libc/system.h xfile.h
 
 # list of non-C sources in bk
@@ -290,17 +290,6 @@ SUBDIRS = libc tommath tomcrypt
 
 all: $(ALL)
 
-FREQ=50
-purify-mem:
-	$(MAKE) CFLAGS="$G $O -DPURIFY -DPURIFY_FREQ=$(FREQ)" all
-purify+files:
-	$(MAKE) CFLAGS="$G $O -DPURIFY -DPURIFY_FILES -DPURIFY_FREQ=$(FREQ)" all
-purify+mdbm:
-	$(MAKE) CFLAGS="$G $O -DPURIFY -DPURIFY_MDBM -DPURIFY_FREQ=$(FREQ)" all
-purify:
-	$(MAKE) CFLAGS="$G $O -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DPURIFY_FREQ=$(FREQ)" all
-PURIFY:
-	$(MAKE) CFLAGS="$G $O -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DPURIFY_FREQ=1" all
 prof:
 	$(MAKE) CFLAGS="$G -pg -O2" LDFLAGS=-pg all
 gprof:
@@ -310,10 +299,10 @@ ggprof:
 # Debugging...
 d:
 	$(MAKE) CFLAGS="$G -DDEBUG" all
-dp debug:
-	$(MAKE) CFLAGS="$G -DPURIFY -DDEBUG" all
-dp2 debug2:
-	$(MAKE) CFLAGS="$G -DPURIFY -DDEBUG2" all
+debug:
+	$(MAKE) CFLAGS="$G -DDEBUG" all
+debug2:
+	$(MAKE) CFLAGS="$G -DDEBUG2" all
 
 gWall Wall:
 	$(MAKE) CFLAGS="$(CC_WALL)" all
@@ -326,8 +315,6 @@ trial:
 	$(MAKE) TRIAL=1 CFLAGS="$(CC_FAST) $(CF)" all
 ndebug:
 	$(MAKE) CFLAGS="$(CC_FAST) -DNDEBUG $(CC_NOFRAME)" all
-stats:
-	$(MAKE) CFLAGS="$(CC_FAST) -DPURIFY_STATS $(CC_NOFRAME)" all
 g:
 	$(MAKE) CFLAGS="$(CC_DEBUG)" all
 gO:
