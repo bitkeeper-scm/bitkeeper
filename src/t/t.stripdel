@@ -48,7 +48,8 @@ EOF
 bk undos X > CMP1
 
 # a test to show this isn't legal
-echo FILE | bk stripdel -r1.4 - 2>ERR && fail -f ERR should fail
+echo FILE > IN
+bk stripdel -r1.4 - < IN 2>ERR && fail -f ERR should fail
 bk stripdel -r1.4 FILE 2> CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi

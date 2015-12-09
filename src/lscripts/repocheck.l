@@ -36,7 +36,8 @@ main(int ac, string av[])
 		    case "j":
 		    case "parallel":
 			if (defined(optarg)) {
-				force = parallel = (int)optarg;
+				parallel = (int)optarg;
+				force = 1;
 			}
 			break;
 		    case "q":
@@ -80,7 +81,7 @@ main(int ac, string av[])
 	unless (force) {
 		parallel = (int)`bk _parallel`;
 	}
-	if (parallel == 1) {
+	if (parallel <= 1) {
 		error = system("bk ${cold} --each-repo -r check ${checkopts} ${v}");
 		exit(error);
 	}

@@ -247,22 +247,27 @@ proc validateLicense {} \
 	set wizData(licsign3) ""
 
 	set data [string trim [$widgets(license) get 1.0 end]]
-	set lines [split $data \n]
+	set fields {license licsign1 licsign2 licsign3}
+	set p "^([join $fields |]):\s*(.+)"
+	foreach line [split $data \n] {
+	    set line [string trim $line]
+	    if {![regexp $p $line -> field value]} { continue }
+	    set wizData($field) [string trim $value]
+	}
 
-	set line1 [lindex $lines 0]
-	if {[llength $lines] == 4 && ([string match "BKL*" $line1]
-	    || [string match "license: BKL*" $line1])} {
-		set wizData(license)  [string trim [lindex $lines 0]]
-		set wizData(licsign1) [string trim [lindex $lines 1]]
-		set wizData(licsign2) [string trim [lindex $lines 2]]
-		set wizData(licsign3) [string trim [lindex $lines 3]]
+	set good 1
+	foreach field $fields {
+	    if {$wizData($field) ne ""} { continue }
+	    set good 0
+	    break
+	}
+
+	if {$good && [string match "BKL*" $wizData(license)]} {
 		. configure -state normal
 	} else {
 		. configure -state pending
 	}
 
-	insertLicense
-	
 	## Reset the modified state so our event will fire again.
 	$widgets(license) edit modified 0
 	
@@ -289,10 +294,10 @@ proc insertLicense {} {
 	## Take the license we have stored and insert it into
 	## the license text widget.
 	$widgets(license) delete 1.0 end
-	$widgets(license) insert end $wizData(license)\n
-	$widgets(license) insert end $wizData(licsign1)\n
-	$widgets(license) insert end $wizData(licsign2)\n
-	$widgets(license) insert end $wizData(licsign3)
+	$widgets(license) insert end "license: $wizData(license)\n"
+	$widgets(license) insert end "licsign1: $wizData(licsign1)\n"
+	$widgets(license) insert end "licsign2: $wizData(licsign2)\n"
+	$widgets(license) insert end "licsign3: $wizData(licsign3)"
 }
 
 proc get_license_from_file {} \
@@ -304,7 +309,10 @@ proc get_license_from_file {} \
 	}
 
 	set file [tk_getOpenFile -filetypes $types -parent .]
-	if {$file eq "" || ![file readable $file]} { return }
+	if {$file eq ""} { return }
+	if {![file readable $file]} {
+	    tk_messageBox -message "cannot read $file"
+	}
 
 	set data ""
 	catch {
@@ -312,29 +320,10 @@ proc get_license_from_file {} \
 		set data [read $f]
 		close $f
 	}
-
-	set lines [split $data \n]
-	if {![llength $lines]} { return }
-
-	set i 0
-	foreach line $lines {
-		if {[regexp {^license: } $line]} {
-			set lines [lreplace $lines 0 $i-1]
-			break
-		}
-		incr i
-	}
-
-	set fields {license licsign1 licsign2 licsign3}
-
-	foreach line $lines field $fields {
-		regexp "$field:(.+)\$" $line -> line
-		set line [string trim $line]
-		set wizData($field) $line
-		$widgets(license) insert end $line\n
-	}
-
-	insertLicense
+	$widgets(license) delete 1.0 end
+	$widgets(license) insert end $data
+	validateLicense
+        insertLicense
 }
 
 # Insert a step right after the current step
@@ -437,7 +426,7 @@ proc widgets {} \
 
 		ttk::label $w.keyLabel -text "License Key:"
 		text $w.license -height 4 -relief sunken -borderwidth 1 \
-		    -highlightthickness 0
+		    -highlightthickness 0 -font $::fixedFont
 		ttk::button $w.fileButton -text "Load from file..." \
 		    -command get_license_from_file
 
@@ -484,15 +473,15 @@ proc widgets {} \
 		    -width 80
 		ttk::scrollbar $w.vsb -command [list $w.text yview]
 		ttk::scrollbar $w.hsb -command [list $w.text.xview]
-		bind all <Next> "$w.text yview scroll 1 pages"
-		bind all <Prior> "$w.text yview scroll -1 pages"
-		bind all <Down> "$w.text yview scroll 1 units"
-		bind all <Up> "$w.text yview scroll -1 units"
+		bind all <Next> "scroll $w.text 1 pages"
+		bind all <Prior> "scroll $w.text -1 pages"
+		bind all <Down> "scroll $w.text 1 units"
+		bind all <Up> "scroll $w.text -1 units"
 		bind all <MouseWheel> "
 			if {%D < 0} {
-				$w.text yview scroll +1 units
+				scroll $w.text +1 units
 			} else {
-				$w.text yview scroll -1 units
+				scroll $w.text -1 units
 			}
 		"
 
@@ -844,15 +833,15 @@ proc widgets {} \
 		    -orient horizontal \
 		    -command [list $w.log xview]
 
-		bind all <Next> "$w.log yview scroll 1 pages"
-		bind all <Prior> "$w.log yview scroll -1 pages"
-		bind all <Down> "$w.log yview scroll 1 units"
-		bind all <Up> "$w.log yview scroll -1 units"
+		bind all <Next> "scroll $w.log 1 pages"
+		bind all <Prior> "scroll $w.log -1 pages"
+		bind all <Down> "scroll $w.log 1 units"
+		bind all <Up> "scroll $w.log -1 units"
 		bind all <MouseWheel> "
 			if {%D < 0} {
-				$w.log yview scroll +1 units
+				scroll $w.log +1 units
 			} else {
-				$w.log yview scroll -1 units
+				scroll $w.log -1 units
 			}
 		"
 
@@ -1046,6 +1035,12 @@ proc log {string {tag {}}} \
 	if {[lindex $yview 1] >= 1} {
 		$::widgets(log) see end-1c
 	}
+}
+
+proc scroll {w args} \
+{
+        if {![winfo exists $w]} { return }
+        $w yview scroll {*}$args
 }
 
 proc busy {on} \

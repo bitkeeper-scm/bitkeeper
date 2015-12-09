@@ -1,3 +1,4 @@
 #!/bin/sh
 
-exec bk base64
+bk="${BK_BIN:+$BK_BIN/}bk"
+"$bk" base64

@@ -401,6 +401,21 @@ check_main(int ac, char **av)
 				sccs_restart(s);
 			}
 		}
+		if (all && !(flags & INIT_NOCKSUM) && !CSET(s) &&
+		    (repo_feat & FEAT_BKFILE) && getenv("_BK_FORCE_REPACK")) {
+			getlock();
+			T_PERF("heap repack %s", s->gfile);
+			if (sccs_newchksum(s)) {
+				fprintf(stderr,
+				    "Could not rewrite %s to fix file "
+				    "format.  Perhaps it is locked by "
+				    "some other process?\n",
+				    s->gfile);
+				ferr++, errors |= 0x08;
+			} else {
+				sccs_restart(s);
+			}
+		}
 		if (IS_POLYPATH(PATHNAME(s, sccs_top(s)))) sawPOLY = 1;
 		if (chk_gfile(s, pathDB)) ferr++, errors |= 0x08;
 		if (HAS_PFILE(s)) {
