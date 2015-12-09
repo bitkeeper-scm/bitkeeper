@@ -46,13 +46,14 @@ status_main(int ac, char **av)
 			return (1);
 		}
 	}
+
+	isnest = bk_nested2root(0);
 	if (compat) {
 		compat_status(verbose, stdout);
 		return (0);
 	}
-	/* 7.0 status starts here */
-	isnest = bk_nested2root(0);
 
+	/* 7.0 status starts here */
 	/* start these early to reduce latency */
 	fchg = popen("bk changes -aLR -nd. 2>&1", "r");
 	fsfile = popen("bk -e sfiles -Ucgvhp", "r"); /* XXX no scancomps */
