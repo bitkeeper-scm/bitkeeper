@@ -626,7 +626,7 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 		char	*data[2] = {state, gfile};
 
 		/* get the nodes not covered by D_CSET */
-		range_walkrevs(s, 0, 0, d, WR_STOP, pending_print, data);
+		range_walkrevs(s, 0, 0, d, 0, WR_STOP, pending_print, data);
 		printed = 1;
 	} else if (opts.Cflg) {
 		do_print(state, gfile, REV(s, d));

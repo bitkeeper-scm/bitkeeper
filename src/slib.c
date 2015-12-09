@@ -6740,7 +6740,7 @@ whodisabled(sccs *s, ser_t tip, ser_t serial, u8 *slist)
 	if ((tip < serial) || !isReachable(s, serial, tip)) return (0);
 	who.base = serial;
 	who.slist = calloc(TABLE(s) + 1, 1);
-	if (range_walkrevs(s, serial, 0, tip, 0, _whodisabled, &who)) {
+	if (range_walkrevs(s, serial, 0, tip, 0, 0, _whodisabled, &who)) {
 		free(who.slist);
 		return (who.base);
 	}
@@ -17056,7 +17056,7 @@ gca3(sccs *s, ser_t left, ser_t right, char **inc, char **exc)
 	*inc = *exc = 0;
 	unless (s && TABLE(s) && left && right) return (0);
 
-	range_walkrevs(s, left, 0, right, WR_GCA, walkrevs_addSer, &glist);
+	range_walkrevs(s, left, 0, right, 0, WR_GCA, walkrevs_addSer, &glist);
 	count = nLines(glist);
 	assert(count);
 	gca = glist[1];

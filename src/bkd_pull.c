@@ -156,7 +156,7 @@ cmd_pull_part2(int ac, char **av)
 		/*
 		 * Need the 'gone' region marked RED
 		 */
-		range_gone(cset, d, D_RED);
+		range_gone(cset, d, 0, D_RED);
 	}
 
 	bzero(&r, sizeof(r));

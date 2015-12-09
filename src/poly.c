@@ -133,7 +133,7 @@ poly_r2c(sccs *cset, ser_t orig, char ***pcsets)
 				addArray(&lower, &e);
 			}
 			if (range_walkrevs(
-			    cset, 0, lower, d, 0, inrange, uint2p(orig))) {
+			    cset, 0, lower, d, 0, 0, inrange, uint2p(orig))) {
 				*pcsets = addLine(*pcsets, strdup(cm->pkey));
 			}
 			FREE(lower);
@@ -175,7 +175,7 @@ poly_range(sccs *s, ser_t d, char *pkey)
 				e = sccs_findKey(s, cm->emkey);
 				addArray(&lower, &e);
 			}
-			range_walkrevs(s, 0, lower, d, 0,
+			range_walkrevs(s, 0, lower, d, 0, 0,
 			    walkrevs_setFlags, uint2p(D_SET));
 			s->state |= S_SET;
 			FREE(lower);
@@ -671,7 +671,8 @@ findPoly(sccs *s, ser_t local, ser_t remote, ser_t fake)
 	int	i;
 	ser_t	*gcalist = 0, *list = 0;
 
-	range_walkrevs(s, local, 0, remote, WR_GCA, walkrevs_addSer, &gcalist);
+	range_walkrevs(
+	    s, local, 0, remote, 0, WR_GCA, walkrevs_addSer, &gcalist);
 	EACH_REVERSE(gcalist) {
 		unless (polyChk(s, gcalist[i])) {
 			removeArrayN(gcalist, i);
@@ -690,7 +691,7 @@ findPoly(sccs *s, ser_t local, ser_t remote, ser_t fake)
 		 * Take that gca list and get a list of poly D_CSET
 		 * under the gca D_SET is used to keep from adding dups. 
 		 */
-		range_walkrevs(s, 0, gcalist, 0, WR_STOP, polyMarked, &list);
+		range_walkrevs(s, 0, 0, 0, gcalist, WR_STOP, polyMarked, &list);
 
 		/*
 		 * gca may be unmarked poly, so add in corresponding
@@ -868,7 +869,7 @@ lowerBounds(sccs *s, ser_t d, u32 side)
 	cs.d = d;
 	cs.side = side;
 	cs.list = 0;
-	range_walkrevs(s, 0, 0, d, WR_STOP, csetStop, &cs);
+	range_walkrevs(s, 0, 0, d, 0, WR_STOP, csetStop, &cs);
 	insertArrayN(&cs.list, 1, &cs.oldest);
 	return (cs.list);
 }

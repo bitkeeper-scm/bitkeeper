@@ -339,14 +339,14 @@ csetprune(Opts *opts)
 		goto err;
 	}
 	/* a hack way to color all D_SET */
-	range_walkrevs(cset, 0, 0, 0, 0, walkrevs_setFlags, int2p(D_SET));
+	range_walkrevs(cset, 0, 0, 0, 0, 0, walkrevs_setFlags, int2p(D_SET));
 	cset->state |= S_SET;
 	cweave = cset_mkList(cset);
 	if (d) {
 		/* leave just history of rev colored (assuming single tip) */
 		sccs_sortkey(cset, d, key);
 		partition_key = strdup(key);
-		range_walkrevs(cset, d, 0, sccs_top(cset), 0,
+		range_walkrevs(cset, d, 0, sccs_top(cset), 0, 0,
 		    walkrevs_clrFlags, int2p(D_SET));
 	}
 	deepnest = deepPrune(opts->complist, opts->comppath);

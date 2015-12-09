@@ -156,7 +156,7 @@ void
 range_cset(sccs *s, ser_t d)
 {
 	unless (d = sccs_csetBoundary(s, d, 0)) return; /* if pending */
-	range_walkrevs(s, 0, 0, d, WR_STOP, csetStop, &d);
+	range_walkrevs(s, 0, 0, d, 0, WR_STOP, csetStop, &d);
 	s->state |= S_SET;
 }
 
@@ -269,10 +269,12 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 	if (!rargs->rstart) {
 		/* select all */
 		for (d = TABLE(s); d >= TREE(s); d--) {
-			unless (TAG(s, d)) FLAGS(s, d) |= D_SET;
+			unless (TAG(s, d)) {
+				unless (s->rstop) s->rstop = d;
+				FLAGS(s, d) |= D_SET;
+			}
 		}
 		s->rstart = TREE(s);
-		s->rstop = sccs_top(s);
 	} else if (!rargs->rstop) {
 		/* list of revs */
 		revs = splitLine(rargs->rstart, ",", 0);
@@ -309,8 +311,8 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 				goto out;
 			}
 		}
-		if (range_walkrevs(
-		    s, 0, dlist, r2, 0, walkrevs_setFlags, (void*)D_SET)) {
+		if (range_walkrevs(s, 0, dlist, r2, 0,
+		    0, walkrevs_setFlags, (void*)D_SET)) {
 			verbose((stderr, "%s: unable to connect %s to %s\n",
 			    me,
 			    *rargs->rstart ? rargs->rstart : "ROOT",
@@ -409,24 +411,36 @@ doGca(sccs *s, ser_t d, hash *gca, u32 *marked, u32 before, u32 change)
  * not use the standard approach that walks the entire table multiple times.
  *
  * Think of 'from..to' with from on the LEFT and to on the RIGHT.
- * LEFT is colored D_BLUE and RIGHT is colored D_RED (RIGHT-RED)
+ * LEFT is colored D_BLUE and RIGHT is colored D_RED (RIGHT-RED).
+ * The callback happens on all D_RED nodes, with D_RED cleared before call.
  *
- * 'to' defaults to '+' if it is missing.
- * if 'from' is null, then all of ancestors of 'to' are walked.
- * if 'fromlist' is set, then each works as a termination point.
+ * 'to' defaults to "all tips" if it is missing.
+ * XXX: this disable short-circuit as the whole table is walked, as
+ * a new tip could appear at any point.
+ *
+ * Both 'to' and 'from' can be lists.  Since this is C, and bk style,
+ * two parameters are used for each.  Only one of each type can be set.
+ *
+ * Lists just bound the colored region in the same way single points do.
+ * All colored items in the history of the 'to' list items (inclusive),
+ * but not in the history of 'from' list items (inclusive).
  *
  * The walk stops the first time fcn returns a non-zero result and that
  * value is returned.
  *
  * D_RED and D_BLUE is normally to be cleared on all nodes before this
- * function is called and are left cleared at the end.
- * However, if the WR_BOTH flag is passed in, D_RED or D_BLUE are left
- * on the single color nodes so the callback function can know which
- * was which.  It is up to the callback function to clear them in that
- * case.
+ * function is called and are left cleared at the end.  The 
+ *
+ * Optional flags:
+ *
+ * WR_BOTH: two way difference: from..to => D_RED; to..from => D_BLUE
+ * To distinguish, the colors are _not_ cleared.  It's the caller's
+ * responsibility to either clear in the callback, or after the function
+ * (can use the time range s->rstart .. s->rstop to minimize range to clean).
+ * Or just not call walkrevs again (or anything that expects a clean graph).
  *
  * WR_GCA mode: the callback will be on the first deltas to be in both
- * regions.  It uses a hash to identify first delta.
+ * regions.  In lieu of a 3rd color, it uses a hash to identify first delta.
  *
  * WR_STOP is used when the stopping points aren't known in advance
  * but recognized during the walk.  This is good for finding D_CSET
@@ -434,10 +448,19 @@ doGca(sccs *s, ser_t d, hash *gca, u32 *marked, u32 before, u32 change)
  * walkrevs immediately exits with that return code.  With WR_STOP,
  * that is true if the return is < 0; a ret > 0 tells walkrevs to
  * treat this node as a GCA node, and walkrevs keeps going.
+ *   Note: if _all_ callback use < 0 for error as opposed to != 0,
+ *   then WR_STOP wouldn't be needed as a flag.
+ *   XXX: do this as a cleanup.
+ *
+ * WR_TIP is like WR_STOP that run automatically on the first item found.
+ * This saves from writing two callbacks: one for "find all in region" and
+ * one for "find tip in region".  In tip mode, if the callback returns 0,
+ * then it is treated like WR_STOP returning > 0, pruning the history of
+ * the node from being considered for the region.
  */
 int
-range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
-    int (*fcn)(sccs *s, ser_t d, void *token), void *token)
+range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, ser_t *tolist,
+    int flags, int (*fcn)(sccs *s, ser_t d, void *token), void *token)
 {
 	ser_t	d, e, last;
 	int	i = 0, ret = 0;
@@ -470,25 +493,36 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 	}} while (0)
 
 	assert (!from || !fromlist);
+	assert (!to || !tolist);
 	s->rstop = 0;
-	unless (to) {		/* no upper bound - get all tips */
-		unless (flags & WR_STOP) all = 1;
-		to = TABLE(s);	/* could be a tag; that's okay */
+	if (tolist) {
+		d = 0;
+		last = TABLE(s);
+		EACH(tolist) {
+			to = tolist[i];
+			if (TAG(s, to)) continue;
+			if (d < to) d = to;
+			MARK(to, D_RED);
+		}
+		to = 0;
+	} else unless (to) {		/* no upper bound - get all tips */
+		all = 1;
+		/* could be a tag; that's okay */
+		last = d = TABLE(s);
 	} else {
 		FLAGS(s, to) |= D_RED;
 		marked++;
+		last = d = to;
 	}
-	last = to;
-	d = to;			/* start here in table */
 	if (from) {
 		addArray(&freelist, &from);
 		fromlist = freelist;
 	}
-	color = (flags & WR_STOP) ? D_RED : D_BLUE;
 	EACH(fromlist) {
 		from = fromlist[i];
+		if (TAG(s, from)) continue;
 		if (d < from) d = from;
-		MARK(from, color);
+		MARK(from, D_BLUE);
 	}
 
 	/* compute RED - BLUE */
@@ -513,9 +547,10 @@ doit:			if (fcn && (ret = fcn(s, d, token))) {
 				ret = 0;
 				color = mask;
 			} else {
-				unless (s->rstop) s->rstop = d;
-				s->rstart = d;
+				if (flags & WR_TIP) color = mask;
 			}
+			unless (s->rstop) s->rstop = d;
+			s->rstart = d;
 		}
 		if (e = PARENT(s, d)) MARK(e, color);
 		if (e = MERGE(s, d)) MARK(e, color);
@@ -659,11 +694,12 @@ range_markMeta(sccs *s)
 }
 
 int
-range_gone(sccs *s, ser_t d, u32 dflags)
+range_gone(sccs *s, ser_t d, ser_t *dlist, u32 dflags)
 {
 	int	count = 0;
 
-	range_walkrevs(s, d, 0, 0, 0, walkrevs_setFlags, (void*)D_SET);
+	range_walkrevs(s, d, dlist, 0, 0,
+	    0, walkrevs_setFlags, (void*)D_SET);
 	range_markMeta(s);
 	for (d = s->rstop; d >= TREE(s); d--) {
 		if (FLAGS(s, d) & D_SET) {
@@ -679,25 +715,20 @@ range_gone(sccs *s, ser_t d, u32 dflags)
 }
 
 /*
- * INPUT: D_SET is some region to consider.
- * 'right' is tip of D_SET region.
- * 'left' is tip of other region.
- * 'all' means consider all nodes outside D_SET for left.
- * not setting 'all' means only consider nodes in parent region
- * of D_SET for left.
+ * INPUT: D_SET is some region to consider
+ * 'right' is tip of D_SET region
+ * 'left' if all is tip of non-SET region, else s tip of GCA (for undo/push -r)
  *
- * In any cases, if left and right are set, then left..right
- * defines D_SET region.
+ * When done, left..right always defines D_SET region.
  *
- * Leave with D_SET now D_RED and D_BLUE coloring common nodes to left
- * and right.
+ * Coloring in 'all' case matches walkrevs(s, left, 0, right, WR_BOTH)
+ * So we could assert left..right == D_SET (meaning overstated * inputs).
+ *
+ * In the not 'all' case, D_SET will be D_RED, and non history of D_SET
+ * will be D_BLUE.  History of D_SET will be clear.  Keeps nested_init working.
+ *
  * Either left or right can be INVALID if there is more than one tip in their
  * region.
- *
- * Intermediate use of color: D_RED is a parent node in the non D_SET region.
- * D_BLUE is a parent of the D_SET region (and is not really needed in
- * the 'all' case -- it is here to have the non-all case work).
- * D_RED is left cleared.
  */
 void
 range_unrange(sccs *s, ser_t *left, ser_t *right, int all)
@@ -711,36 +742,35 @@ range_unrange(sccs *s, ser_t *left, ser_t *right, int all)
 	for (d = TABLE(s); d >= TREE(s); d--) {
 		if (TAG(s, d)) continue;
 		color = (FLAGS(s, d) & (D_SET|D_RED|D_BLUE));
-		/* parent region of left does not intersect D_SET region */
-		assert((color & (D_SET|D_RED)) != (D_SET|D_RED));
-		unless (all || color) continue;
-		/*
-		 * Color this node to its final value
-		 */
-		FLAGS(s, d) &= ~color;	/* turn all off */
+		/* grab first tip in D_SET and non D_SET regions */
 		if (color & D_SET) {
-			FLAGS(s, d) |= D_RED;
-			goto limits;
-		} else if (color & D_BLUE) {
+			assert(!(color & D_BLUE));  /* no region bleeding */
+			FLAGS(s, d) &= ~D_SET;
+			color &= ~D_SET;
+			unless (color & D_RED) {
+				*right = *right ? D_INVALID : d;
+				FLAGS(s, d) |= D_RED;
+				color |= D_RED;
+			}
+		} else if ((all || (color & D_RED)) && !(color & D_BLUE)) {
+			*left = *left ? D_INVALID : d;
 			FLAGS(s, d) |= D_BLUE;
-		} else {
-limits:			unless (s->rstop) s->rstop = d;
+			color |= D_BLUE;
+		} else unless (color) {
+			/* return as left, though no internal coloring */
+			assert(!all);
+			FLAGS(s, d) |= D_BLUE;	/* non-propagating color */
+		}
+
+		if ((color & (D_RED|D_BLUE)) == (D_RED|D_BLUE)) {
+			FLAGS(s, d) &= ~color;	/* return GCA uncolored */
+		} else if (FLAGS(s, d) & (D_RED|D_BLUE)) {
+			unless (s->rstop) s->rstop = d;
 			s->rstart = d;
 		}
 
-		/* grab first tip in D_SET and non D_SET regions */
-		if (color & D_SET) {
-			unless (color & D_BLUE) *right = *right ? D_INVALID : d;
-		} else {
-			unless (color & D_RED) *left = *left ? D_INVALID : d;
-		}
-		/*
-		 * color parents of D_SET => D_BLUE, and
-		 * parents of non D_SET is D_RED
-		 * Also propagate existing D_RED & D_BLUE.
-		 */
-		color |= ((color & D_SET) ? D_BLUE : D_RED);
-		color &= ~D_SET;
+		/* Sanity */
+		assert((FLAGS(s, d) & (D_RED|D_BLUE)) != (D_RED|D_BLUE));
 
 		/* Color parents */
 		if (p = PARENT(s, d)) {
