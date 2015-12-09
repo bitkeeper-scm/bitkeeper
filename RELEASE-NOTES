@@ -1,8 +1,29 @@
 ============================================================================
-Release notes for BitKeeper version 7.0.1 (released Sep 4, 2015)
+Release notes for BitKeeper version 7.0.2 (released Dec 9, 2015)
 
   See our Tips & FAQ page at:       http://www.bitkeeper.com/tips
   Follow us on Twitter:             https://twitter.com/BitKeeper
+
+Bugs fixed:
+
+ - bk commit --ci in a nested repository could miss components
+   that have modified (but not checked in) files
+ - fix coredump with bk diffs -w
+ - fix locking issue when running 'bk cset -xREV' in component
+ - bug related to 'bk diffs -N' when given symlink not under BitKeeper
+   control
+ - fix problem where citool could incorrectly strip blank lines from
+   file comments
+
+GUI Enhancement:
+
+ - Add balloon popups to revtool showing revision info
+   in the following contexts:
+   - mouse hover over graph nodes
+   - mouse hover over links in annotation view (press c)
+
+============================================================================
+Release notes for BitKeeper version 7.0.1 (released Sep 4, 2015)
 
 Bugs fixed:
 
