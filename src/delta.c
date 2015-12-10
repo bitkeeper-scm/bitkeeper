@@ -152,11 +152,11 @@ delta_main(int ac, char **av)
 	else prog = av[0];
 	if (streq(prog, "new") ||
 	    streq(prog, "enter") || streq(prog, "add")) {
-		dflags |= NEWFILE;
+		dflags |= DELTA_NEWFILE;
 		sflags |= SF_NODIREXPAND;
 		sflags &= ~SF_WRITE_OK;
 	} else if (streq(prog, "dbnew")) {
-		dflags |= NEWFILE | DELTA_DB;
+		dflags |= DELTA_NEWFILE | DELTA_DB;
 		sflags |= SF_NODIREXPAND;
 		sflags &= ~SF_WRITE_OK;
 	}
@@ -180,7 +180,7 @@ delta_main(int ac, char **av)
 			dflags |= SILENT; gflags |= SILENT;
 			break;
 		    case 'f': dflags |= DELTA_FORCE; break;	/* doc 2.0 ci */
-		    case 'i': dflags |= NEWFILE; 		/* doc 2.0 */
+		    case 'i': dflags |= DELTA_NEWFILE; 		/* doc 2.0 */
 			      sflags |= SF_NODIREXPAND;
 			      sflags &= ~SF_WRITE_OK;
 			      break;
@@ -246,7 +246,7 @@ delta_main(int ac, char **av)
 
 
 	if (encp) {
-		unless (dflags & NEWFILE) {
+		unless (dflags & DELTA_NEWFILE) {
 			fprintf(stderr,
 			    "Encoding is allowed only when creating files\n");
 			usage();
@@ -272,7 +272,7 @@ delta_main(int ac, char **av)
 
 	/* force them to do something sane */
 	if (!comments_got() &&
-	    dash && name && !(dflags & (NEWFILE|DELTA_CFILE)) && sfileNext()) {
+	    dash && name && !(dflags & (DELTA_NEWFILE|DELTA_CFILE)) && sfileNext()) {
 		fprintf(stderr,
 "%s: only one file may be specified without a checkin comment\n", av[0]);
 		usage();
@@ -334,9 +334,9 @@ delta_main(int ac, char **av)
 		if (mode) d = sccs_parseArg(s, d, 'O', mode, 0);
 		if (df & DELTA_AUTO) {
 			if (HAS_SFILE(s)) {
-				df &= ~NEWFILE;
+				df &= ~DELTA_NEWFILE;
 			} else {
-				df |= NEWFILE;
+				df |= DELTA_NEWFILE;
 			}
 		}
 		/* DB files must be sorted unless specified otherwise. */
@@ -413,7 +413,7 @@ delta_main(int ac, char **av)
 			}
 		}
 
-		if (df & NEWFILE) {
+		if (df & DELTA_NEWFILE) {
 			sz = diffs ? size(diffsFile) : size(s->gfile);
 			s->encoding_in = s->encoding_out =
 			    sccs_encoding(s, sz, encp);
@@ -473,7 +473,7 @@ delta_main(int ac, char **av)
 				gf &= ~GET_SKIPGET;
 			}
 		}
-		if (df & NEWFILE) {
+		if (df & DELTA_NEWFILE) {
 			/*
 			 * The 'keyword' preference for a new file might
 			 * have set keywords in sccs_delta() so we need to

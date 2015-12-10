@@ -1367,7 +1367,7 @@ fetch_changeset(int forceCsetFetch)
 		fprintf(stderr, "TIP %s %s\n", REV(s, d), delta_sdate(s, d));
 	}
 	s->hasgone = 1;
-	range_gone(s, d, D_SET);
+	range_gone(s, d, 0, D_SET);
 	(void)stripdel_fixTable(s, &i);
 	unless (i) {
 		locked_free(s);
@@ -1402,7 +1402,7 @@ color_merge(sccs *s, ser_t trunk, ser_t branch)
 		unless (branch = MERGE(s, trunk)) return (trunk);
 		trunk = PARENT(s, trunk);
 	}
-	range_walkrevs(s, branch, 0, trunk, WR_BOTH, 0, 0);
+	range_walkrevs(s, branch, 0, trunk, 0, WR_BOTH, 0, 0);
 	return (s->rstart);
 }
 
@@ -1556,7 +1556,7 @@ next:		if (color) {
 		} else if (nLines(branches) == 2) {
 			ser_t	*gcalist = 0;
 
-			range_walkrevs(s, branches[1], 0, branches[2],
+			range_walkrevs(s, branches[1], 0, branches[2], 0,
 			    WR_GCA, walkrevs_addSer, &gcalist);
 			EACH(gcalist) {
 				d = gcalist[i];
@@ -2231,7 +2231,7 @@ stripdelFile(sccs *s, rkdata *rkd, char *tip)
 	int	errors;
 
 	assert(s);
-	range_gone(s, sccs_findKey(s, tip), D_SET);
+	range_gone(s, sccs_findKey(s, tip), 0, D_SET);
 	(void)stripdel_fixTable(s, &i);
 	if (verbose > 2) {
 		fprintf(stderr, "Rolling back %d deltas in %s\n", i, s->gfile);

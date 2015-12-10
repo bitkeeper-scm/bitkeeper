@@ -6740,7 +6740,7 @@ whodisabled(sccs *s, ser_t tip, ser_t serial, u8 *slist)
 	if ((tip < serial) || !isReachable(s, serial, tip)) return (0);
 	who.base = serial;
 	who.slist = calloc(TABLE(s) + 1, 1);
-	if (range_walkrevs(s, serial, 0, tip, 0, _whodisabled, &who)) {
+	if (range_walkrevs(s, serial, 0, tip, 0, 0, _whodisabled, &who)) {
 		free(who.slist);
 		return (who.base);
 	}
@@ -10363,7 +10363,7 @@ checkin(sccs *s,
 
 	assert(s);
 	debug((stderr, "checkin %s %x\n", s->gfile, flags));
-	unless (flags & NEWFILE) {
+	unless (flags & DELTA_NEWFILE) {
 		verbose((stderr,
 		    "%s not checked in, use -i flag.\n", s->gfile));
 out:		sccs_abortWrite(s);
@@ -13894,7 +13894,7 @@ sccs_delta(sccs *s,
 
 	assert(s);
 	T_SCCS("file=%s flags=%x", s->gfile, flags);
-	if (flags & NEWFILE) mksccsdir(s->sfile);
+	if (flags & DELTA_NEWFILE) mksccsdir(s->sfile);
 	if (READ_ONLY(s)) {
 		fprintf(stderr,
 		    "delta: read-only %s\n", s->sfile);
@@ -13940,7 +13940,7 @@ out:
 			    streq(PATHNAME(s, prefilled), "ChangeSet")) {
 				s->state |= S_CSET;
 		    	}
-			unless (flags & NEWFILE) {
+			unless (flags & DELTA_NEWFILE) {
 				/* except the very first delta   */
 				/* all rev are subject to rename */
 				R0_SET(s, prefilled, 0);
@@ -13958,7 +13958,7 @@ out:
 		}
 	}
 
-	if ((flags & NEWFILE) || (!HAS_SFILE(s) && HAS_GFILE(s))) {
+	if ((flags & DELTA_NEWFILE) || (!HAS_SFILE(s) && HAS_GFILE(s))) {
 		int rc;
 
 		rc = checkin(s, flags, prefilled, init != 0, diffs, syms);
@@ -17056,7 +17056,7 @@ gca3(sccs *s, ser_t left, ser_t right, char **inc, char **exc)
 	*inc = *exc = 0;
 	unless (s && TABLE(s) && left && right) return (0);
 
-	range_walkrevs(s, left, 0, right, WR_GCA, walkrevs_addSer, &glist);
+	range_walkrevs(s, left, 0, right, 0, WR_GCA, walkrevs_addSer, &glist);
 	count = nLines(glist);
 	assert(count);
 	gca = glist[1];

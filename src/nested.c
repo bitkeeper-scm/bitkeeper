@@ -297,21 +297,21 @@ err:				if (revsDB) mdbm_close(revsDB);
 			nontag = 1;
 		}
 		unless (nontag) goto prod; /* tag only push, pull, undo */
+		/*
+		 * if L..R colors a range, take a range and return L and R
+		 * Leave 'right' range colored RED and left colored BLUE.
+		 */
+		range_unrange(cset, &left, &right, (flags & NESTED_PULL));
 	} else {
 		unless (d = sccs_findrev(cset, rev)) {
 			fprintf(stderr, "nested: bad rev %s\n", rev);
 			goto err;
 		}
-		range_walkrevs(cset, 0, 0, d, 0,
-		    walkrevs_setFlags,(void*)D_SET);
+		range_walkrevs(cset, 0, 0, d, 0, 0,
+		    walkrevs_setFlags,(void*)D_RED);
+		left = 0;
+		right = d;
 	}
-
-	/*
-	 * if L..R colors a range, take a range and return L and R
-	 * Leave range colored RED and the intersetion of left and
-	 * right colored BLUE.
-	 */
-	range_unrange(cset, &left, &right, (flags & NESTED_PULL));
 	if (left == D_INVALID) {
 		fprintf(stderr, "nested: rev list has more than one base\n");
 		goto err;
@@ -348,12 +348,6 @@ err:				if (revsDB) mdbm_close(revsDB);
 		unless (weave_iscomp(cset, rkoff)) continue;
 		t = HEAP(cset, rkoff);
 		v = HEAP(cset, dkoff);
-		/*
-		 * It would be even better if we could identify component
-		 * rootkeys and had a separate predicate to do that
-		 * test.
-		 */
-		unless (componentKey(v)) continue;
 		unless (c = nested_findKey(n, t)) {
 			c = new(comp);
 			c->n = n;
@@ -380,9 +374,9 @@ err:				if (revsDB) mdbm_close(revsDB);
 		 *     like when undo is done
 		 */
 
-#define	IN_GCA(d)	(FLAGS(cset, (d)) & D_BLUE)
+#define	IN_GCA(d)	!(FLAGS(cset, (d)) & (D_RED | D_BLUE))
 #define	IN_REMOTE(d)	(FLAGS(cset, (d)) & D_RED)
-#define	IN_LOCAL(d)	!(FLAGS(cset, (d)) & (D_RED | D_BLUE))
+#define	IN_LOCAL(d)	(FLAGS(cset, (d)) & D_BLUE)
 
 		if (!c->included && IN_REMOTE(d)) {
 			/* lastest delta included in revs or under tip */

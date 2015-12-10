@@ -518,7 +518,7 @@ extractPatch(char *name, FILE *p)
 		}
 		rewind(perfile);
 		resyncFile = aprintf(ROOT2RESYNC "/%s", name);
-		unless (new_s = sccs_init(resyncFile, NEWFILE|SILENT)) {
+		unless (new_s = sccs_init(resyncFile, SILENT)) {
 			SHOUT();
 			fprintf(stderr,
 			    "takepatch: can't create %s\n", resyncFile);
@@ -1571,7 +1571,7 @@ apply:
 		n++;
 		if (tick) progress(tick, n);
 		assert(s == 0);
-		unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
+		unless (s = sccs_init(p->resyncFile, SILENT)) {
 			SHOUT();
 			fprintf(stderr,
 			    "takepatch: can't create %s\n",
@@ -1600,7 +1600,7 @@ apply:
 			unless (dF) dF = fmem();
 		}
 		d = 0;
-		newflags = NEWFILE|DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
+		newflags = DELTA_NEWFILE|DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
 		if (opts->echo <= 3) newflags |= SILENT;
 		if (sccs_delta(s, newflags, d, iF, dF, 0)) {
 			unless (s->io_error) perror("delta");
@@ -2114,7 +2114,7 @@ sfio(FILE *m, int files)
 			goto err;
 		}
 		/* mark remote-only deltas */
-		range_walkrevs(sr, d, 0, 0, 0,
+		range_walkrevs(sr, d, 0, 0, 0, 0,
 		    walkrevs_setFlags, (void*)D_REMOTE);
 		/*
 		 * techically, FLAGS(s, d) |= D_LOCAL, but D_LOCAL goes away

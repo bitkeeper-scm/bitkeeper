@@ -222,7 +222,7 @@ setup_main(int ac, char **av)
 	s = sccs_init(s_config, SILENT);
 	assert(s);
 	putenv("_BK_MV_OK=1");
-	sccs_delta(s, SILENT|NEWFILE, 0, 0, 0, 0);
+	sccs_delta(s, SILENT|DELTA_NEWFILE, 0, 0, 0, 0);
 	s = sccs_restart(s);
 	assert(s);
 	sccs_get(s, 0, 0, 0, 0, SILENT|GET_EXPAND, s->gfile, 0);

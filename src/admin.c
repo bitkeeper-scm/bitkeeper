@@ -12,7 +12,7 @@
 			exit(1); \
 		    }
 
-private	int	do_checkin(char *nm, int fl,
+private	int	do_checkin(char *nm, u32 fl,
 		   char *rev, char *newf, char *com);
 private	int	setMerge(sccs *sc, char *merge, char *rev);
 private	void	rootCsetFile(sccs *sc, char *csetFile);
@@ -22,7 +22,8 @@ int
 admin_main(int ac, char **av)
 {
 	sccs	*sc;
-	int	flags = 0;
+	u32	flags = 0;
+	u32	dflags = 0;	/* delta flags */
 	int	init_flags = 0;
 	char	*rev = 0;
 	int	c;
@@ -63,8 +64,8 @@ admin_main(int ac, char **av)
 				OP(f, optarg, A_DEL); new_delta = 1; break; 
 		/* new file options */
 		    case 'i':	newfile = optarg ? optarg : "-"; /* doc 2.0 */
-				flags |= NEWFILE; break;
-		    case 'n':	flags |= NEWFILE; break;   	/* undoc? 2.0 */
+				dflags |= DELTA_NEWFILE; break;
+		    case 'n':	dflags |= DELTA_NEWFILE; break;   	/* undoc? 2.0 */
 		    case 'r':	rev = optarg; break;		/* undoc */
 		    case 'y':	comment = optarg; break;	/* doc 2.0 */
 		    case 'M':					/* undoc */
@@ -148,7 +149,7 @@ admin_main(int ac, char **av)
 		fprintf(stderr, "admin: -0 option must be alone\n");
 		usage();
 	}
-	if (comment && !(flags & NEWFILE)) {
+	if (comment && !(dflags & DELTA_NEWFILE)) {
 		fprintf(stderr,
 		    "admin: comment may only be specified with -i and/or -n\n");
 		usage();
@@ -172,32 +173,32 @@ admin_main(int ac, char **av)
 	/* All of these need to be here: m/nextf are for resolve,
 	 * newfile is for !BK mode.
 	 */
-	if (rev && (!(flags & NEWFILE) && !merge && !m && !nextf && !path)) {
+	if (rev && (!(dflags & DELTA_NEWFILE) && !merge && !m && !nextf && !path)) {
 		fprintf(stderr, "%s %s\n",
 		    "admin: revision may only be specified with",
 		    "-i and/or -n or -M or -m or -f or -F\n");
 		usage();
 	}
-	if ((flags & NEWFILE) && nextf) {
+	if ((dflags & DELTA_NEWFILE) && nextf) {
 		fprintf(stderr,
 		    "admin: cannot have -f with -i and/or -n\n");
 		usage();
 	}
-	if ((flags & NEWFILE) && text && !text[0]) {
+	if ((dflags & DELTA_NEWFILE) && text && !text[0]) {
 		fprintf(stderr,
 		    "admin: -t must have file arg with -i and/or -n\n");
 		usage();
 	}
 	name = sfileFirst("admin", &av[optind], 0);
-	if ((flags & NEWFILE) && sfileNext()) {
+	if ((dflags & DELTA_NEWFILE) && sfileNext()) {
 		fprintf(stderr, "admin: Only one file with -i/-n\n");
 		usage();
 	}
 
 	while (name) {
-		if (flags & NEWFILE) {
-			if (do_checkin(name,
-			    flags&(SILENT|NEWFILE), rev, newfile, comment)) {
+		if (dflags & DELTA_NEWFILE) {
+			if (do_checkin(name, SILENT|dflags,
+			    rev, newfile, comment)) {
 				error  = 1;
 				name = sfileNext();
 				continue;
@@ -320,14 +321,14 @@ next:		sccs_free(sc);
  */
 private	int
 do_checkin(char *name,
-	int flags, char *rev, char *newfile, char *comment)
+	u32 flags, char *rev, char *newfile, char *comment)
 {
 	ser_t	d = 0;
 	sccs	*s;
 	int	error;
 	struct	stat sb;
 
-	unless (s = sccs_init(name, flags)) return (-1);
+	unless (s = sccs_init(name, (flags & 0xf))) return (-1);
 	if (rev && !streq(rev, "1.1") && proj_root(s->proj)) {
 		fprintf(stderr,
 		    "admin: can not specify initial rev for BK files\n");
@@ -400,8 +401,9 @@ do_checkin(char *name,
 		flags |= DELTA_EMPTY;
 	}
 	s->state |= S_GFILE;
+	flags |= DELTA_SAVEGFILE;
 	if (comment) { d = sccs_parseArg(s, d, 'C', comment, 0); }
-	if ((error = sccs_delta(s, flags|DELTA_SAVEGFILE, d, 0, 0, 0))) {
+	if ((error = sccs_delta(s, flags, d, 0, 0, 0))) {
 		unless (BEEN_WARNED(s)) {
 			fprintf(stderr, "admin: failed to check in %s.\n",
 			    s->sfile);

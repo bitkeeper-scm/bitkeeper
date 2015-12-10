@@ -501,7 +501,8 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 		if (verify) {
 			sdrange	r = {symdiff, bits};
 
-			range_walkrevs( s, prev, 0, d, WR_BOTH, xorDelta, &r);
+			range_walkrevs(
+			    s, prev, 0, d, 0, WR_BOTH, xorDelta, &r);
 			bits = r.bits;
 		}
 
