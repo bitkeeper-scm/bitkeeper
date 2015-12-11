@@ -1253,7 +1253,7 @@ bam_pull_main(int ac, char **av)
 		return (255);
 	}
 	EACH(list) fprintf(f, "%s", list[i]);
-	rc = pclose(f);
+	rc = SYSRET(pclose(f));
 	freeLines(list, free);
 	return (rc);
 }

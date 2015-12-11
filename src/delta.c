@@ -82,10 +82,10 @@ strip_danglers(char *name, u32 flags)
 		fprintf(f, "%s|%s\n", name, revs[i]);
 	}
 	freeLines(revs, free);
-	if (i = pclose(f)) {
+	if (i = SYSRET(pclose(f))) {
 		fprintf(stderr, "%s failed\n", p);
 		free(p);
-		return (i);	// XXX - need to get exit status
+		return (i);
 	}
 	free(p);
 	s = sccs_init(name, INIT_WACKGRAPH);

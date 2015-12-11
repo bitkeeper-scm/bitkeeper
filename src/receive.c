@@ -34,5 +34,5 @@ receive_main(int ac,  char **av)
 	}
 
 	sprintf(buf, "bk unwrap | bk takepatch %s", opts);
-	return (system(buf));
+	return (SYSRET(system(buf)));
 }
