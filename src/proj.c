@@ -1418,7 +1418,7 @@ proj_cset2key(project *p, char *csetrev, char *rootkey)
 	mpath = aprintf("%s/BitKeeper/tmp/cset%scache.%x",
 	    p->root,
 	    key ? "key" : "",
-	    (u32)adler32(0, csetrev, strlen(csetrev)));
+	    crc32c(0, csetrev, strlen(csetrev)));
 
 	if (exists(mpath)) m = mdbm_open(mpath, O_RDONLY, 0600, 0);
 	/* validate it still matches rev */
