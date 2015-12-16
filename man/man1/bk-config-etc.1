@@ -167,14 +167,14 @@ The BitKeeper support team recommends "BAM_checkout:last".
 .br
 When \*[BK] is looking for modified files,
 file time stamps can be compared to a per-repo database to determine when
-files are unmodified.
-This can be a substantial performance improvement in larger repositories.
+files are unmodified
+leading to a substantial performance improvement in larger repositories.
 The
 .Q clock_skew
 parameter controls how old a file must be before file time stamps are to 
 be trusted.  
 A certain amount of clock skew is strongly advised since the use of network
-file systems can can cause the time stamps to be incorrect.
+file systems can cause the time stamps to be incorrect.
 The time is in seconds and defaults to 604800 (one week).
 .DS
 clock_skew: on          # use system defaults
