@@ -224,10 +224,11 @@ check_main(int ac, char **av)
 		if (verbose) {
 			fprintf(stderr,
 			    "Restarting a full repository check.\n");
-			return (system("bk -?BK_NO_REPO_LOCK=YES -r check -acvff"));
+			e = system("bk -?BK_NO_REPO_LOCK=YES -r check -acvff");
 		} else {
-			return (system("bk -?BK_NO_REPO_LOCK=YES -r check -acff"));
+			e = system("bk -?BK_NO_REPO_LOCK=YES -r check -acff");
 		}
+		return (SYSRET(e));
 	}
 
 	/* Make sure we're sane or bail. */

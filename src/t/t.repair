@@ -29,7 +29,7 @@ bk commit $Q -ycomment || fail
 bk clone $Q "$HERE/repair1" "$HERE/repair2" || fail
 cd "$HERE"/repair2
 bk _rm SCCS/s.ChangeSet
-bk repair > OUT 2>&1 || {
+bk _repair > OUT 2>&1 || {
 	echo failed
 	cat OUT
 	exit 1
@@ -40,7 +40,7 @@ echo OK
 
 echo $N Make sure we can restore an identical file ..................$NL
 bk _rm SCCS/s.foo
-bk repair > OUT 2>&1 || {
+bk _repair > OUT 2>&1 || {
 	echo failed
 	cat OUT
 	exit 1
@@ -59,7 +59,7 @@ done
 bk commit $Q -ycomment || fail
 cd "$HERE/repair2"
 bk _rm SCCS/s.ChangeSet
-bk repair > OUT 2>&1 || {
+bk _repair > OUT 2>&1 || {
 	echo failed
 	cat OUT
 	exit 1
@@ -70,7 +70,7 @@ echo OK
 
 echo $N Make sure we can restore a file which is ahead...............$NL
 bk _rm SCCS/s.foo
-bk repair > OUT 2>&1 || {
+bk _repair > OUT 2>&1 || {
 	echo failed
 	cat OUT
 	exit 1
@@ -81,7 +81,7 @@ echo OK
 
 echo $N Make sure we can restore multiple files which are ahead .....$NL
 bk _rm SCCS/s.foo SCCS/s.bar SCCS/s.blech SCCS/s.whatsit
-bk repair > OUT 2>&1 || {
+bk _repair > OUT 2>&1 || {
 	echo failed
 	cat OUT
 	exit 1
@@ -98,7 +98,7 @@ do	bk edit $Q $i
 done
 bk commit $Q -yahead || fail
 bk _mv SCCS/s.foo save.foo
-bk repair > OUT 2>&1 && fail -f OUT should fail
+bk _repair > OUT 2>&1 && fail -f OUT should fail
 grep -q 'Missing delta (bk help chk2) in BitKeeper/repair/foo' OUT || fail -f OUT
 test -d BitKeeper/repair && {
 	echo failed to clean up repair directory
@@ -112,7 +112,7 @@ echo OK
 echo $N Sane error message if the parent ChangeSet is behind ........$NL
 bk clone $Q "$HERE/repair2" "$HERE/repair3" || fail
 bk _rm SCCS/s.ChangeSet
-bk repair > OUT 2>&1 && {
+bk _repair > OUT 2>&1 && {
 	echo failed
 	cat OUT
 	exit 1
@@ -125,7 +125,7 @@ grep -q 'Your repository tip was not found in any of the specified ' OUT || {
 echo OK
 
 echo $N Sane error message if the remote ChangeSet is behind ........$NL
-bk repair -@bk://localhost:$PORT/repair1 > OUT 2>&1 && {
+bk _repair -@bk://localhost:$PORT/repair1 > OUT 2>&1 && {
 	echo failed
 	cat OUT
 	exit 1
@@ -138,7 +138,7 @@ grep -q 'Your repository tip was not found in any of the specified ' OUT || {
 echo OK
 
 echo $N Force fetch of remote ChangeSet even if behind ..............$NL
-bk repair --use-older-changeset -@bk://localhost:$PORT/repair1 > OUT 2>&1 && \
+bk _repair --use-older-changeset -@bk://localhost:$PORT/repair1 > OUT 2>&1 && \
     fail -f OUT
 grep -q 'The repair was NOT complete.' OUT || fail -f OUT wrong error
 bk _test -w SCCS/1.ChangeSet || fail should be writable
@@ -146,7 +146,7 @@ echo OK
 
 echo $N Make sure we can repair with a different parent .............$NL
 bk _rm SCCS/s.ChangeSet # remove the forced changeset from test above
-bk repair -@"$HERE"/repair3 > OUT 2>&1 || {
+bk _repair -@"$HERE"/repair3 > OUT 2>&1 || {
 	echo failed
 	cat OUT
 	bk changes -r+ "$HERE"/repair3 

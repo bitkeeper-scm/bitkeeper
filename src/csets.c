@@ -46,12 +46,12 @@ csets_main(int ac, char **av)
 		if (gui) {
 			printf("Viewing %sBitKeeper/etc/csets-in\n",
 			    resync ? "RESYNC/" : "");
-			rc = system("bk changes -nd:I: - "
+			rc = SYSRET(system("bk changes -nd:I: - "
 			    "< BitKeeper/etc/csets-in "
-			    "| bk csettool -");
+			    "| bk csettool -"));
 		} else {
-			rc = systemf("bk changes %s - "
-			    "< BitKeeper/etc/csets-in", verbose ? "-v" : "");
+			rc = SYSRET(systemf("bk changes %s - "
+			    "< BitKeeper/etc/csets-in", verbose ? "-v" : ""));
 		}
 	} else {
 		fprintf(stderr, "Cannot find csets to view.\n");

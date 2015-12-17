@@ -28,7 +28,7 @@ cd "$HERE"/copy
 bk _rm SCCS/s.ChangeSet
 bk repocheck > OUT 2>&1 && fail -f OUT
 grep -q "missing ChangeSet file!" OUT || fail -f OUT
-bk repair > OUT 2>&1 || fail -f OUT
+bk _repair > OUT 2>&1 || fail -f OUT
 grep -q "Missing ChangeSet file," OUT || fail -f OUT
 bk repocheck $Q || fail
 echo OK
@@ -38,7 +38,7 @@ cd "$HERE"/copy/gcc
 bk _rm SCCS/s.ChangeSet
 bk repocheck > OUT 2>&1 && fail -f OUT
 grep -q "missing ChangeSet file!" OUT || fail -f OUT
-bk repair > OUT 2>&1 || fail -f OUT
+bk _repair > OUT 2>&1 || fail -f OUT
 grep -q "Missing ChangeSet file," OUT || fail -f OUT
 bk repocheck $Q || fail
 echo OK
@@ -48,7 +48,7 @@ cd "$HERE"/copy
 bk _rm SCCS/s.foo
 bk repocheck > OUT 2>&1 && fail
 grep -q "Missing file .bk help chk3" OUT || fail -f OUT
-bk repair > OUT 2>&1 || fail -f OUT
+bk _repair > OUT 2>&1 || fail -f OUT
 grep -q "Repository is repaired." OUT || fail -f OUT
 bk repocheck $Q || fail
 echo OK
@@ -58,7 +58,7 @@ cd "$HERE"/copy/gcc
 bk _rm SCCS/s.filefoo
 bk repocheck > OUT 2>&1 && fail
 grep -q "Missing file .bk help chk3" OUT || fail -f OUT
-bk repair > OUT 2>&1 || fail -f OUT
+bk _repair > OUT 2>&1 || fail -f OUT
 grep -q "Repository is repaired." OUT || fail -f OUT
 bk repocheck $Q || fail
 echo OK
@@ -79,7 +79,7 @@ cd "$HERE"/copy/gcc
 bk _rm SCCS/s.filefoo
 bk repocheck > OUT 2>&1 && fail
 grep -q "Missing file .bk help chk3" OUT || fail -f OUT
-bk repair -@"$HERE/gcc" > OUT 2>&1 || fail -f OUT
+bk _repair -@"$HERE/gcc" > OUT 2>&1 || fail -f OUT
 grep -q "Repository is repaired." OUT || fail -f OUT
 bk repocheck $Q || fail
 echo OK
@@ -89,7 +89,7 @@ bk _heapdump ChangeSet > 1
 bk _rm SCCS/s.ChangeSet
 bk repocheck > OUT 2>&1 && fail -f OUT
 grep -q "missing ChangeSet file!" OUT || fail -f OUT
-bk repair -@"$HERE/gcc" > OUT 2>&1 || fail -f OUT
+bk _repair -@"$HERE/gcc" > OUT 2>&1 || fail -f OUT
 bk _heapdump ChangeSet > 2
 bk diff -u 1 2 > 3 && fail working, update test
 grep '^-[^-]' 3 | sed s'/RANDOM.*/RANDOM:/' > 4

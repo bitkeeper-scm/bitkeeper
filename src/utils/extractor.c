@@ -313,7 +313,7 @@ main(int ac, char **av)
 		    opts.upgrade ? "-u" : "",
 		    dest);
 #endif
-		unless (rc = system(buf)) {
+		unless (rc = SYSRET(system(buf))) {
 			fprintf(stderr, "\nInstalled version information:\n\n");
 			sprintf(buf, "'%s/bk' version", dest);
 			system(buf);
@@ -333,7 +333,7 @@ main(int ac, char **av)
 		fprintf(stderr, "Running installer...\n");
 		SetCursor(h);
 #endif	// WIN32
-		rc = system(buf);
+		rc = SYSRET(system(buf));
 	}
 
 	/* Clean up your room, kids. */

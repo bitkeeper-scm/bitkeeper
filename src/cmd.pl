@@ -346,7 +346,7 @@ _realpath
 regex
 _registry
 renumber
-repair
+_repair
 repogca
 repostats
 repotype

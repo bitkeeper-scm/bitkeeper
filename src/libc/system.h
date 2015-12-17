@@ -346,6 +346,11 @@ int	sysio(char *in, char *out, char *err, char *first, ...);
 void	syserr(const char *postfix);
 
 /* system.c */
+#define	SYSRET(status)				\
+	({ int rc = (status);			\
+	   if (rc) rc = WIFEXITED(rc) ? WEXITSTATUS(rc) : 255; \
+	   rc; })
+
 #define	system(cmd)	safe_system(cmd)
 #define	systemf		safe_systemf
 #define	popen(f, m)	safe_popen(f, m)
