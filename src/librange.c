@@ -147,7 +147,7 @@ range_cutoff(char *spec)
 private	int
 csetStop(sccs *s, ser_t d, void *token)
 {
-	if ((*(ser_t *)token != d) && (FLAGS(s, d) & D_CSET)) return (1);
+	if ((*(ser_t *)token != d) && (FLAGS(s, d) & D_CSET)) return (-1);
 	FLAGS(s, d) |= D_SET;
 	return (0);
 }
@@ -156,7 +156,7 @@ void
 range_cset(sccs *s, ser_t d)
 {
 	unless (d = sccs_csetBoundary(s, d, 0)) return; /* if pending */
-	range_walkrevs(s, 0, 0, d, 0, WR_STOP, csetStop, &d);
+	range_walkrevs(s, 0, L(d), 0, csetStop, &d);
 	s->state |= S_SET;
 }
 
@@ -311,7 +311,7 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 				goto out;
 			}
 		}
-		if (range_walkrevs(s, 0, dlist, r2, 0,
+		if (range_walkrevs(s, dlist, L(r2),
 		    0, walkrevs_setFlags, (void*)D_SET)) {
 			verbose((stderr, "%s: unable to connect %s to %s\n",
 			    me,
@@ -379,189 +379,197 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 }
 
 /*
- * Detecting first node is a challenge given only RED and BLUE.
- * Using a hash to help by marking a node it is a candidate for GCA,
- * and clearing hash when something in the history of a GCA colors on
- * to this node.  When we get to the node, if in hash, then a real GCA
+ * walkrevs ( blue .. red ; flags)
+ *
+ * Think about: bk changes -e -r"blue".."red"
+ * If blue empty, no lower bound.
+ * If red empty, use all tips as upper bound.
+ * This calculates red - blue, so there is no blue in the answer.
+ *
+ * Valid flag combos
+ * 1. <none>		  : red - blue
+ * 2. WR_EITHER		  : red xor blue
+ * 3. WR_BOTH		  : red intersection blue
+ * 4. WR_EITHER | WR_BOTH : red union blue
+ *
+ * WR_TIP added to any of the above 4 returns just the tips of the answer
+ *
+ * WR_GCA is syntactic sugar for WR_BOTH | WR_TIP
+ *
+ * Read code for range_walkrevs() for idiomatic use.
  */
-private	void
-doGca(sccs *s, ser_t d, hash *gca, u32 *marked, u32 before, u32 change)
+void
+walkrevs_setup(wrdata *wr, sccs *s, ser_t *blue, ser_t *red, u32 flags)
 {
-	const int	mask = (D_BLUE|D_RED);
+	int	i = 0;
+	ser_t	d;
 
-	if (change != mask) {	/* changing 1 bit */
-		if (before != mask) { /* it was the other bit */
-			(*marked)++;
-			/* gca candidate */
-			hash_insert(gca, &d, sizeof(d), 0, 0);
+	memset(wr, 0, sizeof(*wr));
+	wr->flags = flags;
+	wr->s = s;
+
+	/*
+	 * Nodes can have 0 to 2 colors.  3 if BOTH mode.
+	 * "marked" says how many nodes have some but not all colors.
+	 * When marked hits 0, all nodes have been found.
+	 * Subtle: code is reduced from (with after = before | change):
+	 *	if (before && (before != mask)) marked--;
+	 *	if (after && (after != mask)) marked++;
+	 * because with the 'if', we know before != mask and after != 0
+	 * Suboptimal, but good enough for how it is used.
+	 * Example: in the default mode, should only count RED, not BLUE.
+	 */
+#define	MARK(x, change)	do {					\
+	u32 before = FLAGS(wr->s, (x)) & wr->mask;		\
+	if (change & ~before) {	/* anything new? */		\
+		if ((x) < wr->last) wr->last = (x);		\
+		FLAGS(wr->s, (x)) |= change;			\
+		if (before) wr->marked--;			\
+		if ((before | change) != wr->mask) wr->marked++;\
+	}} while (0)
+
+	/* Sugar */
+	if (wr->flags & WR_GCA) wr->flags |= (WR_BOTH | WR_TIP);
+
+	if (wr->flags & WR_BOTH) {
+		wr->want = (D_RED|D_BLUE);
+		wr->mask = (D_BLUE|D_RED|D_GREEN);
+	} else {
+		wr->want = D_RED;
+		wr->mask = (D_BLUE|D_RED);
+	}
+
+	s->rstop = 0;
+	if (red) {
+		wr->d = 0;
+		wr->last = TABLE(s);
+		EACH(red) {
+			d = red[i];
+			if (TAG(s, d)) continue;
+			if (wr->d < d) wr->d = d;
+			MARK(d, D_RED);
 		}
-	} else if (!hash_delete(gca, &d, sizeof(d))) {
-		/* d _was_ in gca */
-		/* inheriting 2 bit; & candidate */
-		assert(before == mask);
-		(*marked)--;
+	} else {		/* no upper bound - get all tips */
+		wr->all = 1;
+		wr->marked++;		/* 'all' works by never hitting 0 */
+		wr->last = wr->d = TABLE(s);/* could be a tag; that's okay */
+	}
+	EACH(blue) {
+		d = blue[i];
+		if (TAG(s, d)) continue;
+		if (wr->d < d) wr->d = d;
+		MARK(d, D_BLUE);
+	}
+	wr->d++;		/* setup for first call */
+}
+
+/* return next serial in requested set */
+ser_t
+walkrevs(wrdata *wr)
+{
+	sccs	*s = wr->s;
+	ser_t	d = wr->d;
+	ser_t	e;
+
+	/* compute RED - BLUE by default */
+	for (--d; (d >= TREE(s)) && (wr->marked > 0); --d) {
+		if (TAG(s, d)) continue;
+		if (wr->all) {
+			MARK(d, D_RED);
+			// XXX: when we store s->lasttip, do this:
+			// if (d <= s->lasttip) { all = 0; wr->marked--; }
+		}
+		unless (wr->color = (FLAGS(s, d) & wr->mask)) continue;
+		FLAGS(s, d) &= ~wr->color; /* clear bits */
+		if (e = PARENT(s, d)) MARK(e, wr->color);
+		if (e = MERGE(s, d)) MARK(e, wr->color);
+		if (wr->color != wr->mask) {
+			wr->marked--;
+			if (((wr->color & wr->want) == wr->want) ||
+			    (wr->flags & WR_EITHER)) {
+				if (wr->flags & WR_TIP) walkrevs_prune(wr, d);
+				return (wr->d = d);
+			}
+		}
+	}
+	return (0);
+}
+
+/* prune walking the parents */
+void
+walkrevs_prune(wrdata *wr, ser_t d)
+{
+	ser_t	e;
+
+	if (e = PARENT(wr->s, d)) MARK(e, wr->mask);
+	if (e = MERGE(wr->s, d)) MARK(e, wr->mask);
+}
+
+/* remove all remaining coloring added by walkrevs() */
+void
+walkrevs_done(wrdata *wr)
+{
+	/* cleanup */
+	u32	color = ~wr->mask;
+	ser_t	d = wr->d;
+	sccs	*s = wr->s;
+
+	for (--d; (d >= TREE(s)) && (d >= wr->last); d--) {
+		FLAGS(s, d) &= color;
 	}
 }
 
+/* common loops */
+ser_t *
+walkrevs_collect(sccs *s, ser_t *blue, ser_t *red, u32 flags)
+{
+	wrdata	wr;
+	ser_t	d, *list = 0;
+
+	walkrevs_setup(&wr, s, blue, red, flags);
+	while (d = walkrevs(&wr)) addArray(&list, &d);
+	walkrevs_done(&wr);
+	return (list);
+}
+
 /*
- * Walk the set of deltas that are included 'to', but are not included
- * in 'from'.  The deltas are walked in table order (newest to oldest)
- * and 'fcn' is called on each delta if it is set.  This function is
- * careful to only walk the minimal number of nodes required.  It does
- * not use the standard approach that walks the entire table multiple times.
- *
- * Think of 'from..to' with from on the LEFT and to on the RIGHT.
- * LEFT is colored D_BLUE and RIGHT is colored D_RED (RIGHT-RED).
- * The callback happens on all D_RED nodes, with D_RED cleared before call.
- *
- * 'to' defaults to "all tips" if it is missing.
- * XXX: this disable short-circuit as the whole table is walked, as
- * a new tip could appear at any point.
- *
- * Both 'to' and 'from' can be lists.  Since this is C, and bk style,
- * two parameters are used for each.  Only one of each type can be set.
- *
- * Lists just bound the colored region in the same way single points do.
- * All colored items in the history of the 'to' list items (inclusive),
- * but not in the history of 'from' list items (inclusive).
- *
- * The walk stops the first time fcn returns a non-zero result and that
- * value is returned.
- *
- * D_RED and D_BLUE is normally to be cleared on all nodes before this
- * function is called and are left cleared at the end.  The 
- *
- * Optional flags:
- *
- * WR_BOTH: two way difference: from..to => D_RED; to..from => D_BLUE
- * To distinguish, the colors are _not_ cleared.  It's the caller's
- * responsibility to either clear in the callback, or after the function
- * (can use the time range s->rstart .. s->rstop to minimize range to clean).
- * Or just not call walkrevs again (or anything that expects a clean graph).
- *
- * WR_GCA mode: the callback will be on the first deltas to be in both
- * regions.  In lieu of a 3rd color, it uses a hash to identify first delta.
- *
- * WR_STOP is used when the stopping points aren't known in advance
- * but recognized during the walk.  This is good for finding D_CSET
- * marked ranges.  Normally, if the callback returns non-zero, then
- * walkrevs immediately exits with that return code.  With WR_STOP,
- * that is true if the return is < 0; a ret > 0 tells walkrevs to
- * treat this node as a GCA node, and walkrevs keeps going.
- *   Note: if _all_ callback use < 0 for error as opposed to != 0,
- *   then WR_STOP wouldn't be needed as a flag.
- *   XXX: do this as a cleanup.
- *
- * WR_TIP is like WR_STOP that run automatically on the first item found.
- * This saves from writing two callbacks: one for "find all in region" and
- * one for "find tip in region".  In tip mode, if the callback returns 0,
- * then it is treated like WR_STOP returning > 0, pruning the history of
- * the node from being considered for the region.
+ * Original call back form of iterator.
+ * See walkrevs_setup() comment for what items are selected.
+ * The user's function with token is called for all the selected items.
+ * The return of the function controls the loop:
+ * > 0 : return immediately passing back that return code.
+ * < 0 : prune walking the history of this current item.
+ * 0 : okay, keep going.
  */
 int
-range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, ser_t *tolist,
-    int flags, int (*fcn)(sccs *s, ser_t d, void *token), void *token)
+range_walkrevs(sccs *s, ser_t *blue, ser_t *red,
+    u32 flags, int (*fcn)(sccs *s, ser_t d, void *token), void *token)
 {
-	ser_t	d, e, last;
-	int	i = 0, ret = 0;
-	u32	color, before;
-	int	marked = 0;	/* number of BLUE or RED nodes */
-	int	all = 0;	/* set if all deltas in 'to' */
-	hash	*gca = (flags & WR_GCA) ? hash_new(HASH_MEMHASH) : 0;
-	ser_t	*freelist = 0;
-	const int	mask = (D_BLUE|D_RED);
+	wrdata	wr;
+	int	ret = 0;
+	ser_t	d;
 
-	/*
-	 * Nodes can have 0, 1, or 2 colors.
-	 * Consider changing the color, and look at before and after
-	 * states: we know change can't be 0, therefor after can't be 0.
-	 * if before was 0 colors and after is 1, then inc marked;
-	 * if before was 1 color and after is 2, dec marked.
-	 * When marked hits 0, no more single color nodes in graph: DONE!
-	 */
-#define	MARK(x, change)	do {					\
-	before = FLAGS(s, (x)) & mask;				\
-	FLAGS(s, (x)) |= change;	/* after */		\
-	if ((x) < last) last = (x);				\
-	if ((FLAGS(s, (x)) & mask) != mask) { /* after == 1 */	\
-		unless (before) marked++; 			\
-	} else if (before) {	/* after == 2; bef == [1,2] */	\
-		if (before != mask) { /* before == 1 */		\
-			marked--;				\
-		}						\
-		if (flags & WR_GCA) doGca(s, x, gca, &marked, before, change); \
-	}} while (0)
-
-	assert (!from || !fromlist);
-	assert (!to || !tolist);
-	s->rstop = 0;
-	if (tolist) {
-		d = 0;
-		last = TABLE(s);
-		EACH(tolist) {
-			to = tolist[i];
-			if (TAG(s, to)) continue;
-			if (d < to) d = to;
-			MARK(to, D_RED);
-		}
-		to = 0;
-	} else unless (to) {		/* no upper bound - get all tips */
-		all = 1;
-		/* could be a tag; that's okay */
-		last = d = TABLE(s);
-	} else {
-		FLAGS(s, to) |= D_RED;
-		marked++;
-		last = d = to;
-	}
-	if (from) {
-		addArray(&freelist, &from);
-		fromlist = freelist;
-	}
-	EACH(fromlist) {
-		from = fromlist[i];
-		if (TAG(s, from)) continue;
-		if (d < from) d = from;
-		MARK(from, D_BLUE);
-	}
-
-	/* compute RED - BLUE */
-	for (; (d >= TREE(s)) && (all || (marked > 0)); d--) {
-		if (TAG(s, d)) continue;
-		if (all) FLAGS(s, d) |= D_RED;
-		unless (color = (FLAGS(s, d) & mask)) continue;
-		FLAGS(s, d) &= ~color; /* clear bits */
-		if (color != mask) marked--;
-		if (flags & WR_GCA) {
-			if (hash_fetch(gca, &d, sizeof(d))) {
-				marked--;
-				goto doit;
-			}
-		} else if ((color == D_RED) ||
-		    ((flags & WR_BOTH) && (color != mask))) {
-			if (flags & WR_BOTH) FLAGS(s, d) |= color;
-doit:			if (fcn && (ret = fcn(s, d, token))) {
-				unless ((flags & WR_STOP) && (ret > 0)) {
-					break;
+	walkrevs_setup(&wr, s, blue, red, flags);
+	while (d = walkrevs(&wr)) {
+		if (wr.flags & WR_EITHER) FLAGS(s, d) |= wr.color;
+		if (fcn) {
+			ret = fcn(s, d, token);
+			if (ret > 0) {
+				break;
+			} else if (ret < 0) {
+				if (wr.flags & WR_EITHER) {
+					FLAGS(s, d) &= ~wr.color;
 				}
+				walkrevs_prune(&wr, d);
 				ret = 0;
-				color = mask;
-			} else {
-				if (flags & WR_TIP) color = mask;
+				continue;
 			}
-			unless (s->rstop) s->rstop = d;
-			s->rstart = d;
 		}
-		if (e = PARENT(s, d)) MARK(e, color);
-		if (e = MERGE(s, d)) MARK(e, color);
+		unless (s->rstop) s->rstop = d;
+		s->rstart = d;
 	}
-	/* cleanup */
-	color = mask;
-	for (; (d >= TREE(s)) && (d >= last); d--) {
-		FLAGS(s, d) &= ~color;
-	}
-	if (gca) hash_free(gca);
-	if (freelist) free(freelist);
+	assert(ret || (wr.marked == wr.all));
+	walkrevs_done(&wr);
 	return (ret);
 }
 
@@ -576,42 +584,6 @@ int
 walkrevs_setFlags(sccs *s, ser_t d, void *token)
 {
 	FLAGS(s, d) |= p2int(token);
-	return (0);
-}
-
-int
-walkrevs_printkey(sccs *s, ser_t d, void *token)
-{
-        sccs_pdelta(s, d, (FILE *)token);
-        fputc('\n', (FILE *)token);
-        return (0);
-}
-
-int
-walkrevs_printmd5key(sccs *s, ser_t d, void *token)
-{
-        char    buf[MAXKEY];
-
-        sccs_md5delta(s, d, buf);
-        fprintf((FILE *)token, "%s\n", buf);
-        return (0);
-}
-
-int
-walkrevs_addSer(sccs *s, ser_t d, void *token)
-{
-	ser_t	**line = (ser_t **)token;
-
-	addArray(line, &d);
-	return (0);
-}
-
-int
-walkrevs_countIfDSET(sccs *s, ser_t d, void *token)
-{
-	int	*n = (int *)token;
-
-	if (FLAGS(s, d) & D_SET) (*n)++;
 	return (0);
 }
 
@@ -694,11 +666,12 @@ range_markMeta(sccs *s)
 }
 
 int
-range_gone(sccs *s, ser_t d, ser_t *dlist, u32 dflags)
+range_gone(sccs *s, ser_t *dlist, u32 dflags)
 {
+	ser_t	d;
 	int	count = 0;
 
-	range_walkrevs(s, d, dlist, 0, 0,
+	range_walkrevs(s, dlist, 0,
 	    0, walkrevs_setFlags, (void*)D_SET);
 	range_markMeta(s);
 	for (d = s->rstop; d >= TREE(s); d--) {
@@ -721,7 +694,7 @@ range_gone(sccs *s, ser_t d, ser_t *dlist, u32 dflags)
  *
  * When done, left..right always defines D_SET region.
  *
- * Coloring in 'all' case matches walkrevs(s, left, 0, right, WR_BOTH)
+ * Coloring in 'all' case matches walkrevs(s, left, 0, right, WR_EITHER)
  * So we could assert left..right == D_SET (meaning overstated * inputs).
  *
  * In the not 'all' case, D_SET will be D_RED, and non history of D_SET

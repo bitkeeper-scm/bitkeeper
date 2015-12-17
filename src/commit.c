@@ -782,7 +782,7 @@ updateCsetChecksum(sccs *cset, ser_t d, char **keys)
 		 */
 		cset->rstart = 0;
 		range_walkrevs(cset,
-		    PARENT(cset, d), 0, MERGE(cset, d), 0, WR_BOTH, 0, 0);
+		    L(PARENT(cset, d)), L(MERGE(cset, d)), WR_EITHER, 0, 0);
 		if (cset->rstart) {
 			merge = 1;
 			todo++;

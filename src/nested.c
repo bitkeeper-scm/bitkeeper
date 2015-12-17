@@ -307,7 +307,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 			fprintf(stderr, "nested: bad rev %s\n", rev);
 			goto err;
 		}
-		range_walkrevs(cset, 0, 0, d, 0, 0,
+		range_walkrevs(cset, 0, L(d), 0,
 		    walkrevs_setFlags,(void*)D_RED);
 		left = 0;
 		right = d;

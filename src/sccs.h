@@ -321,6 +321,7 @@ int	checking_rmdir(char *dir);
 #define	D_FIXUPS	0x00008000	/* fixups to tip delta at end of file */
 
 /* flags that are in memory only and not written to disk */
+#define	D_GREEN		0x00200000	/* Another coloring flag */
 #define	D_REMOTE	0x00400000	/* for resolve; from remote repos. */
 #define	D_LOCAL		0x00800000	/* for resolve; this is a local delta */
 #define	D_ERROR		0x01000000	/* from parseArg() */

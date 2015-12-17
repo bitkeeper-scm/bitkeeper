@@ -39,6 +39,11 @@
 /* length of array (use nLines() in code) */
 #define	_LLEN(s)			(*(u32 *)(s) & LMASK)
 
+#define L(d) ({							\
+	typeof(d) _d = d;						\
+	(_d) ? (typeof(_d) []){(typeof(_d))1, (typeof(_d))_d} : 0;	\
+})
+
 #define	EACH_START(x, s, i)				\
 	if ((i = (x)), (s)) for (; (i) <= _LLEN(s); i++)
 #define	EACH_INDEX(s, i)		EACH_START(1, s, i)

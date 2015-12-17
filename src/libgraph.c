@@ -52,9 +52,9 @@ private	void	foundDup(sccs *s, u32 bits,
  *
  *   slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
  *   count = 0;
- *   count += graph_symdiff(a, b, slist, 0, -1, 0);
- *   count += graph_symdiff(c, d, slist, 0, -1, 0);
- *   count += graph_symdiff(e, f, slist, 0, -1, 0);
+ *   count += graph_symdiff(a, b, slist, 0, -1);
+ *   count += graph_symdiff(c, d, slist, 0, -1);
+ *   count += graph_symdiff(e, f, slist, 0, -1);
  *
  * will have count be the number of non-zero items in slist
  *
@@ -63,9 +63,9 @@ private	void	foundDup(sccs *s, u32 bits,
  *
  *   slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
  *   count = 0;
- *   count += graph_symdiff(a, 0, slist, 0, -1, 0);	// slist = CV(a)
- *   count += graph_symdiff(b, a, slist, 0, -1, 0);	// slist = CV(b)
- *   count += graph_symdiff(c, b, slist, 0, -1, 0);	// slist = CV(c)
+ *   count += graph_symdiff(a, 0, slist, 0, -1);	// slist = CV(a)
+ *   count += graph_symdiff(b, a, slist, 0, -1);	// slist = CV(b)
+ *   count += graph_symdiff(c, b, slist, 0, -1);	// slist = CV(c)
  *
  * ## Compress - if count passed in >= 0, then run in compress mode.
  * Count must be the number of non-zero entries in slist.
@@ -87,17 +87,15 @@ private	void	foundDup(sccs *s, u32 bits,
  *
  */
 int
-graph_symdiff(sccs *s, ser_t left, ser_t right, void *token1, u8 *slist,
-    u32 *cludes, int count, int flags)
+graph_symdiff(sccs *s, ser_t *leftlist, ser_t right, ser_t **dups, u8 *slist,
+    u32 *cludes, int count)
 {
 	ser_t	ser, lower = 0;
 	u8	bits, newbits;
 	int	marked = 0;
 	int	expand = (count < 0);
 	int	sign;
-	ser_t	*list = 0;
-	ser_t	**dups = 0;
-	int	freelist = 0;
+	ser_t	left;
 	int	i, activeLeft, activeRight;
 	char	*p;
 	ser_t	*include = 0, *exclude = 0;
@@ -105,23 +103,10 @@ graph_symdiff(sccs *s, ser_t left, ser_t right, void *token1, u8 *slist,
 	ser_t	t = 0, x;
 	int	calcDups = 0;
 
-	if (token1) {
-		if (flags & SD_MERGE) {
-			list = (ser_t *)token1;
-		} else {
-			dups = (ser_t **)token1;
-		}
-	}
-	if (flags & SD_MERGE) {
-		assert(!left && !right);
-		left = nLines(list) ? list[1] : 0;
-	} else if (left == right) {	/* X symdiff X = {} */
+	left = nLines(leftlist) ? leftlist[1] : 0;
+	if ((nLines(leftlist) == 1) && (left == right)) {
 		assert(expand);
 		return (0);
-	} else {
-		assert(!list);
-		addArray(&list, &left);
-		freelist = 1;
 	}
 
 	if (expand) {
@@ -134,19 +119,14 @@ graph_symdiff(sccs *s, ser_t left, ser_t right, void *token1, u8 *slist,
 		CLUDES_SET(s, left, 0);
 	}
 	/* init the array with the starting points */
-	EACH (list) {
-		x = list[i];
+	EACH (leftlist) {
+		x = leftlist[i];
 		bits = SL_PAR;
 		marked++;
 		ser = x;
 		slist[ser] |= bits;
 		if (!t || (t < x)) t = x;
 		if (!lower || (lower > ser)) lower = ser;
-	}
-	if (freelist) {
-		free(list);
-		freelist = 0;
-		list = 0;
 	}
 	if (right) {
 		bits = SR_PAR;
@@ -403,11 +383,11 @@ graph_convert(sccs *s, int fixpfile)
 		    	continue;
 		}
 		cludes[d] = CLUDES_INDEX(s, d);
-		count = graph_symdiff(s, d, PARENT(s, d),
-		    &dups, slist, cludes, -1, 0);
+		count = graph_symdiff(s, L(d), PARENT(s, d),
+		    &dups, slist, cludes, -1);
 
 		s->encoding_in ^= E_BKMERGE;	/* compress in other format */
-		graph_symdiff(s, d, PARENT(s, d), &dups, slist, 0, count, 0);
+		graph_symdiff(s, L(d), PARENT(s, d), &dups, slist, 0, count);
 		s->encoding_in ^= E_BKMERGE;	/* restore expand format */
 		truncArray(dups, 0);
 	}

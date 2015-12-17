@@ -339,14 +339,14 @@ csetprune(Opts *opts)
 		goto err;
 	}
 	/* a hack way to color all D_SET */
-	range_walkrevs(cset, 0, 0, 0, 0, 0, walkrevs_setFlags, int2p(D_SET));
+	range_walkrevs(cset, 0, 0, 0, walkrevs_setFlags, int2p(D_SET));
 	cset->state |= S_SET;
 	cweave = cset_mkList(cset);
 	if (d) {
 		/* leave just history of rev colored (assuming single tip) */
 		sccs_sortkey(cset, d, key);
 		partition_key = strdup(key);
-		range_walkrevs(cset, d, 0, sccs_top(cset), 0, 0,
+		range_walkrevs(cset, L(d), L(sccs_top(cset)), 0,
 		    walkrevs_clrFlags, int2p(D_SET));
 	}
 	deepnest = deepPrune(opts->complist, opts->comppath);
@@ -1670,8 +1670,8 @@ fixTags(sccs *s)
 /*
  * Functionally, this is ideal: using new parent, expand in old
  * graph and compress in new graph:
- *	count = graph_symdiff(old, d, p, 0, slist, 0, -1, 0);
- *	graph_symdiff(s, d, p, 0, slist, 0, count, 0);
+ *	count = graph_symdiff(old, d, p, 0, slist, 0, -1);
+ *	graph_symdiff(s, d, p, 0, slist, 0, count);
  * The downside is extremely bad performance relative to the old stuff.
  * In a million node graph that gets reduced to 100 nodes, that's
  * 2 million calls to symdiff, with too many having large graph walks.
@@ -1705,7 +1705,7 @@ fixupGraph(sccs *s, ser_t d, ser_t p, ser_t m, u8 *slist, sccs *old)
 		slist[d] = 1;
 	} else {
 		/* No.  Compute difference manually */
-		count = graph_symdiff(old, d, oldp, 0, slist, 0, -1, 0);
+		count = graph_symdiff(old, L(d), oldp, 0, slist, 0, -1);
 
 		/* Filter out GONE'd items */
 		for (e = d, i = count; (e >= TREE(s)) && i; e--) {
@@ -1750,7 +1750,7 @@ fixupGraph(sccs *s, ser_t d, ser_t p, ser_t m, u8 *slist, sccs *old)
 		count++;
 	}
 	/* compute and store cludes list in the new graph */
-	graph_symdiff(s, d, oldp, 0, slist, 0, count, 0);
+	graph_symdiff(s, L(d), oldp, 0, slist, 0, count);
 }
 
 /*

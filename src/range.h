@@ -13,10 +13,10 @@ struct	range {
 #define	RANGE_SET	0x20	/* return S_SET */
 #define	RANGE_RSTART2	0x40	/* allow s->rstart2 */
 
-#define	WR_BOTH		0x10	/* keep RED and BLUE; callback on both */
-#define	WR_GCA		0x20	/* Callback only on the gca deltas */
-#define	WR_STOP		0x40	/* Callback controls stopping point (gca) */
-#define	WR_TIP		0x80	/* Callback only on tips of red graph */
+#define	WR_EITHER	0x10	/* select if BLUE xor RED */
+#define	WR_BOTH 	0x20	/* select if RED and BLUE */
+#define	WR_TIP		0x40	/* Callback only on tips */
+#define	WR_GCA		0x80	/* Sugar for WR_BOTH | WR_TIP */
 
 /*
  *  1.1 -- 1.2 -- 1.3 -- 1.4 -- 1.5
@@ -49,17 +49,28 @@ void	range_cset(sccs *s, ser_t d);
 ser_t	range_findMerge(sccs *s, ser_t d1, ser_t d2, ser_t **mlist);
 time_t	range_cutoff(char *spec);
 void	range_markMeta(sccs *s);
-int	range_gone(sccs *s, ser_t d, ser_t *dlist, u32 dflags);
+int	range_gone(sccs *s, ser_t *dlist, u32 dflags);
 void	range_unrange(sccs *s, ser_t *left, ser_t *right, int all);
 
-int	range_walkrevs(sccs *s, ser_t from, ser_t *fromlist,
-	    ser_t to, ser_t *tolist, int flags,
+int	range_walkrevs(sccs *s, ser_t *fromlist, ser_t *tolist, u32 flags,
 	    int (*fcn)(sccs *s, ser_t d, void *token), void *token);
 int	walkrevs_setFlags(sccs *s, ser_t d, void *token);
 int	walkrevs_clrFlags(sccs *s, ser_t d, void *token);
-int	walkrevs_printkey(sccs *s, ser_t d, void *token);
-int	walkrevs_printmd5key(sccs *s, ser_t d, void *token);
-int	walkrevs_addSer(sccs *s, ser_t d, void *token);
-int	walkrevs_countIfDSET(sccs *s, ser_t d, void *token);
+
+typedef	struct {
+	u32	flags;
+	sccs	*s;
+	ser_t	d;		/* the last 'd' returned from walkrevs() */
+	ser_t	last;		/* the oldest serial colored (for cleanup)  */
+	int	marked;		/* number of BLUE or RED nodes */
+	int	all;		/* set if all deltas in RED */
+	u32	mask, want, color; /* state for coloring engine */
+} wrdata;
+
+void	walkrevs_setup(wrdata *wr, sccs *s, ser_t *blue, ser_t *red, u32 flags);
+ser_t	walkrevs(wrdata *wr);
+void	walkrevs_prune(wrdata *wr, ser_t d);
+void	walkrevs_done(wrdata *wr);
+ser_t	*walkrevs_collect(sccs *s, ser_t *blue, ser_t *red, u32 flags);
 
 #endif

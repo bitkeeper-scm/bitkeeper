@@ -2114,7 +2114,7 @@ sfio(FILE *m, int files)
 			goto err;
 		}
 		/* mark remote-only deltas */
-		range_walkrevs(sr, d, 0, 0, 0, 0,
+		range_walkrevs(sr, L(d), 0, 0,
 		    walkrevs_setFlags, (void*)D_REMOTE);
 		/*
 		 * techically, FLAGS(s, d) |= D_LOCAL, but D_LOCAL goes away

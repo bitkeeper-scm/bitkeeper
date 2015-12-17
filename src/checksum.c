@@ -365,22 +365,6 @@ setOrder(sccs *s, ser_t d, void *token)
 	addArray(order, &d);
 	return (0);
 }
-/* save the graph symmetric difference */
-typedef	struct {
-	u8	*symdiff;
-	u32	bits;
-} sdrange;
-
-private	int
-xorDelta(sccs *s, ser_t d, void *token)
-{
-	sdrange *r = (sdrange *)token;
-
-	FLAGS(s, d) &= ~(D_RED|D_BLUE);
-	unless (r->symdiff[d]) r->bits++;
-	r->symdiff[d] |= 2;
-	return (0);
-}
 
 typedef	struct {
 	u32	index;		/* index into rkarray */
@@ -495,15 +479,19 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 		d = order[orderIndex];
 
 		/* serialmap[i] = (slist[i] ^ symdiff[i]) & 1 */
-		bits = graph_symdiff(s, d, prev, 0, symdiff, 0, -1, 0);
+		bits = graph_symdiff(s, L(d), prev, 0, symdiff, 0, -1);
 		start = (d > prev) ? d : prev;
 		/* closure[i] = (slist[i] ^ symdiff[i]) & 2 */
 		if (verify) {
-			sdrange	r = {symdiff, bits};
+			wrdata	wr;
+			ser_t	tmpd;
 
-			range_walkrevs(
-			    s, prev, 0, d, 0, WR_BOTH, xorDelta, &r);
-			bits = r.bits;
+			walkrevs_setup(&wr, s, L(prev), L(d), WR_EITHER);
+			while (tmpd = walkrevs(&wr)) {
+				unless (symdiff[tmpd]) bits++;
+				symdiff[tmpd] |= 2;
+			}
+			walkrevs_done(&wr);
 		}
 
 		if (tick) progress(tick, ++n);

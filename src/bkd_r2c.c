@@ -76,10 +76,10 @@ out:	if (revs) freeLines(revs, free);
 
 /*
  * walkrevs callback.
- * return > 0 if this node is not in range, but is a range termination.
+ * return < 0 if this node is not in range, but is a range termination.
  *   This will keep on looking for other nodes if any more to search.
  *   This does not cause walkrevs to return non-zero.
- * return < 0 if this node is in range, and is in the D_SET set.
+ * return > 0 if this node is in range, and is in the D_SET set.
  *   This will terminate walkrevs immediately, even if more in range.
  *   This will cause walkrevs to return this value.
  * return 0 to keep on looking.
@@ -88,10 +88,10 @@ private	int
 inCset(sccs *s, ser_t d, void *token)
 {
 	/* see if range termination */
-	if ((p2uint(token) != d) && (FLAGS(s, d) & D_CSET)) return (1);
+	if ((p2uint(token) != d) && (FLAGS(s, d) & D_CSET)) return (-1);
 
 	/* fast exit in walkrevs if found a tagged node in the range */
-	if (FLAGS(s, d) & D_SET) return (-1);
+	if (FLAGS(s, d) & D_SET) return (1);
 	return (0);
 }
 
@@ -136,7 +136,7 @@ csetBoundarySet(sccs *s)
 	EACH_REVERSE(serlist) {
 		d = serlist[i];
 		unless (range_walkrevs(
-		    s, 0, 0, d, 0, WR_STOP, inCset, uint2p(d))) {
+			    s, 0, L(d), 0, inCset, uint2p(d))) {
 			removeArrayN(serlist, i);
 		}
 	}

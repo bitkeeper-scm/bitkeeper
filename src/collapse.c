@@ -259,6 +259,7 @@ do_cset(sccs *s, char *rev, char **nav)
 	char	**flist = 0;
 	int	rc = 1;
 	char	*csetfile = "";
+	wrdata	wr;
 	FILE	*f;
 	nested	*n = 0;
 	comp	*c;
@@ -283,7 +284,14 @@ do_cset(sccs *s, char *rev, char **nav)
 	/* BK_CSETLIST=/file/of/cset/keys */
 	csetfile = bktmp(0);
 	f = fopen(csetfile, "w");
-	range_walkrevs(s, d, 0, 0, 0, 0, walkrevs_printmd5key, f);
+	walkrevs_setup(&wr, s, L(d), 0, 0);
+	while (d = walkrevs(&wr)) {
+		char    buf[MAXKEY];
+
+		sccs_md5delta(s, d, buf);
+		fprintf(f, "%s\n", buf);
+	}
+	walkrevs_done(&wr);
 	fclose(f);
 	if (size(csetfile) == 0) {
 		fprintf(stderr, "Nothing to collapse.\n");
@@ -465,7 +473,7 @@ do_file(char *file, char *tiprev)
 	}
 
 	/* save deltas to remove in rmdeltas */
-	if (range_walkrevs(s, tipd, 0, d, 0, 0, savedeltas, &rmdeltas)) {
+	if (range_walkrevs(s, L(tipd), L(d), 0, savedeltas, &rmdeltas)) {
 		goto done;
 	}
 	reverseArray(rmdeltas);	/* oldest first (for comments) */

@@ -1367,7 +1367,7 @@ fetch_changeset(int forceCsetFetch)
 		fprintf(stderr, "TIP %s %s\n", REV(s, d), delta_sdate(s, d));
 	}
 	s->hasgone = 1;
-	range_gone(s, d, 0, D_SET);
+	range_gone(s, L(d), D_SET);
 	(void)stripdel_fixTable(s, &i);
 	unless (i) {
 		locked_free(s);
@@ -1402,7 +1402,7 @@ color_merge(sccs *s, ser_t trunk, ser_t branch)
 		unless (branch = MERGE(s, trunk)) return (trunk);
 		trunk = PARENT(s, trunk);
 	}
-	range_walkrevs(s, branch, 0, trunk, 0, WR_BOTH, 0, 0);
+	range_walkrevs(s, L(branch), L(trunk), WR_EITHER, 0, 0);
 	return (s->rstart);
 }
 
@@ -1554,12 +1554,11 @@ next:		if (color) {
 		if (nLines(branches) == 1) {
 			/* poly detector okay with this; do nothing */
 		} else if (nLines(branches) == 2) {
-			ser_t	*gcalist = 0;
+			wrdata	wr;
 
-			range_walkrevs(s, branches[1], 0, branches[2], 0,
-			    WR_GCA, walkrevs_addSer, &gcalist);
-			EACH(gcalist) {
-				d = gcalist[i];
+			walkrevs_setup(&wr, s,
+			    L(branches[1]), L(branches[2]), WR_GCA);
+			while (d = walkrevs(&wr)) {
 				sccs_sdelta(s, d, key);
 				if (FLAGS(s, d) & D_CSET) {
 					if (idx = keyFind(rkd, key)) {
@@ -1573,7 +1572,7 @@ next:		if (color) {
 					    addLine(rkd->poly, strdup(key));
 				}
 			}
-			free(gcalist);
+			walkrevs_done(&wr);
 		} else {
 			assert(0);
 		}
@@ -2231,7 +2230,7 @@ stripdelFile(sccs *s, rkdata *rkd, char *tip)
 	int	errors;
 
 	assert(s);
-	range_gone(s, sccs_findKey(s, tip), 0, D_SET);
+	range_gone(s, L(sccs_findKey(s, tip)), D_SET);
 	(void)stripdel_fixTable(s, &i);
 	if (verbose > 2) {
 		fprintf(stderr, "Rolling back %d deltas in %s\n", i, s->gfile);

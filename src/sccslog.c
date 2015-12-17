@@ -143,7 +143,7 @@ next:			sccs_free(s);
 					if (FLAGS(s, d) & D_CSET) break;
 				}
 				/* and walk all revs not included in that... */
-				range_walkrevs(s, d, 0, 0, 0, 0,
+				range_walkrevs(s, L(d), 0, 0,
 				    walkrevs_setFlags, (void *)D_SET);
 				s->state |= S_SET;
 			} else if (rargs.rstart || sfileRev()) {

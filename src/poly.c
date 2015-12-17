@@ -83,7 +83,7 @@ poly_check(sccs *cset, ser_t d)
 
 /*
  * range_walkrevs() helper function used to see if ser_t token is in
- * the range being walked.  Returning non-zero terminates walkrevs.
+ * the range being walked.  Returning >0 terminates walkrevs.
  */
 private	int
 inrange(sccs *s, ser_t d, void *token)
@@ -133,7 +133,7 @@ poly_r2c(sccs *cset, ser_t orig, char ***pcsets)
 				addArray(&lower, &e);
 			}
 			if (range_walkrevs(
-			    cset, 0, lower, d, 0, 0, inrange, uint2p(orig))) {
+			    cset, lower, L(d), 0, inrange, uint2p(orig))) {
 				*pcsets = addLine(*pcsets, strdup(cm->pkey));
 			}
 			FREE(lower);
@@ -175,7 +175,8 @@ poly_range(sccs *s, ser_t d, char *pkey)
 				e = sccs_findKey(s, cm->emkey);
 				addArray(&lower, &e);
 			}
-			range_walkrevs(s, 0, lower, d, 0, 0,
+			/* XXX: keep range_walkrevs; sets s->rstart/rstop */
+			range_walkrevs(s, lower, L(d), 0,
 			    walkrevs_setFlags, uint2p(D_SET));
 			s->state |= S_SET;
 			FREE(lower);
@@ -622,31 +623,6 @@ polyFlush(void)
 }
 
 /*
- * range_walkrevs() callback.
- * Gather up all local or remote nodes on or under GCA nodes.
- *
- * When we find D_CSET that aren't marked, that should mean GCA
- * from the point of view of the product: terminate walkrevs.
- *
- * Returns 0 to walk the history d; 1 to not walk the history of d
- */
-private	int
-polyMarked(sccs *s, ser_t d, void *token)
-{
-	ser_t	**list = (ser_t **)token;
-
-	unless (FLAGS(s, d) & D_CSET) return (0);
-	unless (FLAGS(s, d) & (D_LOCAL|D_REMOTE)) return (1);
-
-	/* Already in list to be marked Poly; no need to add it again */
-	if (FLAGS(s, d) & D_SET) return (0);
-
-	FLAGS(s, d) |= D_SET;
-	addArray(list, &d);
-	return (0);
-}
-
-/*
  * Detect Poly by finding list of gca nodes for local and remote
  * then seeing if any of them are either marked as being new to
  * local and remote (think about it: how can a node common to local
@@ -669,15 +645,14 @@ private ser_t *
 findPoly(sccs *s, ser_t local, ser_t remote, ser_t fake)
 {
 	int	i;
-	ser_t	*gcalist = 0, *list = 0;
+	wrdata	wd;
+	ser_t	*gcalist = 0, *list = 0, d;
 
-	range_walkrevs(
-	    s, local, 0, remote, 0, WR_GCA, walkrevs_addSer, &gcalist);
-	EACH_REVERSE(gcalist) {
-		unless (polyChk(s, gcalist[i])) {
-			removeArrayN(gcalist, i);
-		}
+	walkrevs_setup(&wd, s, L(local), L(remote), WR_GCA);
+	while (d = walkrevs(&wd)) {
+		if (polyChk(s, d)) addArray(&gcalist, &d);
 	}
+	walkrevs_done(&wd);
 
 	if (nLines(gcalist)) {
 		/* if new poly and not allowed - error */
@@ -689,9 +664,24 @@ findPoly(sccs *s, ser_t local, ser_t remote, ser_t fake)
 
 		/*
 		 * Take that gca list and get a list of poly D_CSET
-		 * under the gca D_SET is used to keep from adding dups. 
+		 * on or under the gca.
+		 * D_SET is used to keep from adding dups. 
+		 * When we find D_CSET that aren't marked, that should mean GCA
+		 * from the point of view of the product: prune walk.
 		 */
-		range_walkrevs(s, 0, 0, 0, gcalist, WR_STOP, polyMarked, &list);
+		walkrevs_setup(&wd, s, 0, gcalist, 0);
+		while (d = walkrevs(&wd)) {
+			unless (FLAGS(s, d) & D_CSET) continue;
+			unless (FLAGS(s, d) & (D_LOCAL|D_REMOTE)) {
+				walkrevs_prune(&wd, d);
+				continue;
+			}
+			unless (FLAGS(s, d) & D_SET) {
+				FLAGS(s, d) |= D_SET;
+				addArray(&list, &d);
+			}
+		}
+		walkrevs_done(&wd);
 
 		/*
 		 * gca may be unmarked poly, so add in corresponding
@@ -846,7 +836,7 @@ csetStop(sccs *s, ser_t d, void *token)
 		side = FLAGS(s, d) & (D_LOCAL|D_REMOTE);
 		if (!side || (side & p->side)) {
 			addArray(&p->list, &d);
-			return (1);
+			return (-1);
 		}
 	}
 	p->oldest = d;
@@ -869,7 +859,7 @@ lowerBounds(sccs *s, ser_t d, u32 side)
 	cs.d = d;
 	cs.side = side;
 	cs.list = 0;
-	range_walkrevs(s, 0, 0, d, 0, WR_STOP, csetStop, &cs);
+	range_walkrevs(s, 0, L(d), 0, csetStop, &cs);
 	insertArrayN(&cs.list, 1, &cs.oldest);
 	return (cs.list);
 }

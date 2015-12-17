@@ -6715,10 +6715,10 @@ _whodisabled(sccs *s, ser_t d, void *token)
 	wd	*who = (wd *)token;
 
 	if (MERGE(s, d)) return (0);
-	graph_symdiff(s, d, PARENT(s, d), 0, who->slist, 0, -1, 0);
+	graph_symdiff(s, L(d), PARENT(s, d), 0, who->slist, 0, -1);
 	if (who->slist[who->base]) {
 		who->base = d;
-		return (1);
+		return (1);	/* found; terminate walkrevs */
 	}
 	return (0);
 }
@@ -6740,7 +6740,7 @@ whodisabled(sccs *s, ser_t tip, ser_t serial, u8 *slist)
 	if ((tip < serial) || !isReachable(s, serial, tip)) return (0);
 	who.base = serial;
 	who.slist = calloc(TABLE(s) + 1, 1);
-	if (range_walkrevs(s, serial, 0, tip, 0, 0, _whodisabled, &who)) {
+	if (range_walkrevs(s, L(serial), L(tip), 0, _whodisabled, &who)) {
 		free(who.slist);
 		return (who.base);
 	}
@@ -17056,7 +17056,7 @@ gca3(sccs *s, ser_t left, ser_t right, char **inc, char **exc)
 	*inc = *exc = 0;
 	unless (s && TABLE(s) && left && right) return (0);
 
-	range_walkrevs(s, left, 0, right, 0, WR_GCA, walkrevs_addSer, &glist);
+	glist = walkrevs_collect(s, L(left), L(right), WR_GCA);
 	count = nLines(glist);
 	assert(count);
 	gca = glist[1];
@@ -17068,7 +17068,7 @@ gca3(sccs *s, ser_t left, ser_t right, char **inc, char **exc)
 			}
 		}
 		gmap = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
-		graph_symdiff(s, 0, 0, glist, gmap, 0, -1, SD_MERGE);
+		graph_symdiff(s, glist, 0, 0, gmap, 0, -1);
 		if (compressmap(s, gca, gmap, inc, exc)) {
 			goto bad;
 		}
@@ -17093,6 +17093,7 @@ sccs_gca(sccs *s, ser_t left, ser_t right, char **inc, char **exc)
 int
 sccs_findtips(sccs *s, ser_t *a, ser_t *b)
 {
+	wrdata	wr;
 	ser_t	d;
 
 	*a = *b = 0;
@@ -17101,9 +17102,9 @@ sccs_findtips(sccs *s, ser_t *a, ser_t *b)
 	 * b is that branch which needs to be merged.
 	 * At any given point there should be exactly one of these.
 	 */
-	for (d = TABLE(s); d >= TREE(s); d--) {
-		if (TAG(s, d)) continue;
-		unless (isleaf(s, d)) continue;
+	walkrevs_setup(&wr, s, 0, 0, WR_TIP);
+	while (d = walkrevs(&wr)) {
+		assert(R0(s, d) == 1);	/* from the old isleaf() */
 		if (!*a) {
 			*a = d;
 		} else {
@@ -17112,6 +17113,7 @@ sccs_findtips(sccs *s, ser_t *a, ser_t *b)
 			/* Could break but I like the error checking */
 		}
 	}
+	walkrevs_done(&wr);
 	return (*b != 0);
 }
 

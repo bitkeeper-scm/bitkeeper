@@ -107,7 +107,7 @@ probekey(sccs *s, char *rev, u32 flags, FILE *fout)
 			d = PARENT(s, d);
 			assert(d);
 		}
-		range_gone(s, d, 0, D_GONE);
+		range_gone(s, L(d), D_GONE);
 	} else {
 		d = sccs_top(s);
 	}
