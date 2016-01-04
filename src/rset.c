@@ -452,7 +452,8 @@ isIdenticalData(sccs *cset, char *file, u32 start, u32 start2, u32 end)
 		if (SUM(s, d1) != SUM(s, d2)) goto out;
 	}
 	file_1 = fmem();
-	if (sccs_get(s, HEAP(cset, start), HEAP(cset, start2),
+	if (sccs_get(s, HEAP(cset, start),
+	    start2 ? HEAP(cset, start2) : 0,
 	    0, 0, SILENT, 0, file_1)) {
 		goto out;
 	}

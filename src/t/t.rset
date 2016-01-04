@@ -801,11 +801,14 @@ EOF
 bk delta $Q -y. afile
 bk commit $Q -ycontent
 bk edit $Q afile
+
+# change data by swapping lines so the SCCS checksum is unchanged and
+# we must diff the data
 cat <<EOF > afile
 this is
 some file
-CHANGED LINE
 content
+with some
 EOF
 bk delta $Q -y. afile
 bk edit $Q bfile
@@ -821,7 +824,21 @@ content
 EOF
 bk delta $Q -y"put it back" afile
 bk commit $Q -yrevert
+KEY=`bk changes -r+ -k`
 bk rset --elide -r@1.3 -r@+ > OUT
+grep -q afile OUT && fail -f OUT afile should not have been in rset
+echo OK
+
+echo $N Show elide for history in the middle of a file .............. $NL
+bk edit $Q afile
+cat <<EOF > afile
+and
+now for something
+different
+EOF
+bk delta $Q -ynew afile
+bk commit $Q -ynew
+bk rset --elide -r@1.3 -r"$KEY" > OUT
 grep -q afile OUT && fail -f OUT afile should not have been in rset
 echo OK
 
