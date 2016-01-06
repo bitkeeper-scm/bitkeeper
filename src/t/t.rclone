@@ -284,3 +284,25 @@ bk lock -U 2>/dev/null
 # 	exit 1
 # }
 # echo OK
+
+cd "$HERE"
+bk bkd -q -a"$HERE/PORT" -ikill || fail
+P=`cat "$HERE/PORT"`
+trap "bk _kill http://localhost:$P" 0
+
+echo $N Setup an rclone in checkout:edit mode and test scandirs .....$NL
+echo "checkout:edit!" >> "`bk dotbk`"/config
+commercial newstuff
+echo 1 > file1
+echo 2 > file2
+bk new $Q file1 file2
+bk commit $Q -ynew || fail
+bk clone $Q . bk://localhost:$P/copy.new || fail
+cd ../copy.new
+echo newstuff >> file1
+bk -Uc > GOT
+cat <<EOF > WANT
+file1
+EOF
+cmpfiles WANT GOT
+echo OK

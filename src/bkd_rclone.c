@@ -213,6 +213,15 @@ cmd_rclone_part2(int ac, char **av)
 		bp_setBAMserver(0, p, getenv("BK_BAM_SERVER_ID"));
 	}
 	free(path);
+	if ((p = getenv("BK_FEATURES_USED")) ||
+	     (p = getenv("BK_FEATURES_REQUIRED"))) {
+		char	**list = splitLine(p, ",", 0);
+
+		lines2File(list, "BitKeeper/log/features");
+		freeLines(list, free);
+		proj_reset(0);
+	}
+	features_set(0, FEAT_REMAP, !proj_hasOldSCCS(0));
 	printf("@SFIO INFO@\n");
 
 	/* Arrange to have stderr go to stdout */
@@ -222,6 +231,11 @@ cmd_rclone_part2(int ac, char **av)
 	/* clone needs the remote HERE as RMT_HERE; rclone doesn't */
 	if (opts.product) unlink("BitKeeper/log/HERE");
 	if (opts.detach) unlink("BitKeeper/log/COMPONENT");
+	proj_reset(0);
+	if (proj_isComponent(0)) {
+		unlink("BitKeeper/log/features");
+		proj_reset(0);
+	}
 	cset_updatetip();
 
 	/*
@@ -254,16 +268,6 @@ cmd_rclone_part2(int ac, char **av)
 			rename("BitKeeper/etc/SCCS/x.id_cache", IDCACHE);
 		}
 	}
-	if (!proj_isComponent(0) &&
-	    ((p = getenv("BK_FEATURES_USED")) ||
-	     (p = getenv("BK_FEATURES_REQUIRED")))) {
-		char	**list = splitLine(p, ",", 0);
-
-		lines2File(list, "BitKeeper/log/features");
-		freeLines(list, free);
-		proj_reset(0);
-	}
-	features_set(0, FEAT_REMAP, !proj_hasOldSCCS(0));
 
 	unless (rc || getenv("BK_BAM")) {
 		rc = rclone_end(&opts);
