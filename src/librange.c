@@ -379,6 +379,30 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 }
 
 /*
+ * Nodes can have 0 to 2 colors.  3 if BOTH mode.
+ * "marked" says how many nodes have some but not all colors.
+ * When marked hits 0, all nodes have been found.
+ * Subtle: code is reduced from (with after = before | change):
+ *	if (before && (before != mask)) marked--;
+ *	if (after && (after != mask)) marked++;
+ * because with the 'if', we know before != mask and after != 0
+ * Suboptimal, but good enough for how it is used.
+ * Example: in the default mode, should only count RED, not BLUE.
+ */
+private inline void
+markDelta(wrdata *wr, ser_t d, u32 change)
+{
+	u32	before = FLAGS(wr->s, d) & wr->mask;
+
+	if (change & ~before) {	/* anything new? */
+		if (d < wr->last) wr->last = d;
+		FLAGS(wr->s, d) |= change;
+		if (before) wr->marked--;
+		if ((before | change) != wr->mask) wr->marked++;
+	}
+}
+
+/*
  * walkrevs ( blue .. red ; flags)
  *
  * Think about: bk changes -e -r"blue".."red"
@@ -408,26 +432,6 @@ walkrevs_setup(wrdata *wr, sccs *s, ser_t *blue, ser_t *red, u32 flags)
 	wr->flags = flags;
 	wr->s = s;
 
-	/*
-	 * Nodes can have 0 to 2 colors.  3 if BOTH mode.
-	 * "marked" says how many nodes have some but not all colors.
-	 * When marked hits 0, all nodes have been found.
-	 * Subtle: code is reduced from (with after = before | change):
-	 *	if (before && (before != mask)) marked--;
-	 *	if (after && (after != mask)) marked++;
-	 * because with the 'if', we know before != mask and after != 0
-	 * Suboptimal, but good enough for how it is used.
-	 * Example: in the default mode, should only count RED, not BLUE.
-	 */
-#define	MARK(x, change)	do {					\
-	u32 before = FLAGS(wr->s, (x)) & wr->mask;		\
-	if (change & ~before) {	/* anything new? */		\
-		if ((x) < wr->last) wr->last = (x);		\
-		FLAGS(wr->s, (x)) |= change;			\
-		if (before) wr->marked--;			\
-		if ((before | change) != wr->mask) wr->marked++;\
-	}} while (0)
-
 	/* Sugar */
 	if (wr->flags & WR_GCA) wr->flags |= (WR_BOTH | WR_TIP);
 
@@ -447,7 +451,7 @@ walkrevs_setup(wrdata *wr, sccs *s, ser_t *blue, ser_t *red, u32 flags)
 			d = red[i];
 			if (TAG(s, d)) continue;
 			if (wr->d < d) wr->d = d;
-			MARK(d, D_RED);
+			markDelta(wr, d, D_RED);
 		}
 	} else {		/* no upper bound - get all tips */
 		wr->all = 1;
@@ -458,9 +462,18 @@ walkrevs_setup(wrdata *wr, sccs *s, ser_t *blue, ser_t *red, u32 flags)
 		d = blue[i];
 		if (TAG(s, d)) continue;
 		if (wr->d < d) wr->d = d;
-		MARK(d, D_BLUE);
+		markDelta(wr, d, D_BLUE);
 	}
 	wr->d++;		/* setup for first call */
+}
+
+private	void
+markParents(wrdata *wr, ser_t d, u32 color)
+{
+	ser_t	e;
+
+	if (e = PARENT(wr->s, d)) markDelta(wr, e, color);
+	if (e = MERGE(wr->s, d)) markDelta(wr, e, color);
 }
 
 /* return next serial in requested set */
@@ -469,20 +482,18 @@ walkrevs(wrdata *wr)
 {
 	sccs	*s = wr->s;
 	ser_t	d = wr->d;
-	ser_t	e;
 
 	/* compute RED - BLUE by default */
 	for (--d; (d >= TREE(s)) && (wr->marked > 0); --d) {
 		if (TAG(s, d)) continue;
 		if (wr->all) {
-			MARK(d, D_RED);
+			markDelta(wr, d, D_RED);
 			// XXX: when we store s->lasttip, do this:
 			// if (d <= s->lasttip) { all = 0; wr->marked--; }
 		}
 		unless (wr->color = (FLAGS(s, d) & wr->mask)) continue;
 		FLAGS(s, d) &= ~wr->color; /* clear bits */
-		if (e = PARENT(s, d)) MARK(e, wr->color);
-		if (e = MERGE(s, d)) MARK(e, wr->color);
+		markParents(wr, d, wr->color);
 		if (wr->color != wr->mask) {
 			wr->marked--;
 			if (((wr->color & wr->want) == wr->want) ||
@@ -499,10 +510,7 @@ walkrevs(wrdata *wr)
 void
 walkrevs_prune(wrdata *wr, ser_t d)
 {
-	ser_t	e;
-
-	if (e = PARENT(wr->s, d)) MARK(e, wr->mask);
-	if (e = MERGE(wr->s, d)) MARK(e, wr->mask);
+	markParents(wr, d, wr->mask);
 }
 
 /* remove all remaining coloring added by walkrevs() */
@@ -688,69 +696,54 @@ range_gone(sccs *s, ser_t *dlist, u32 dflags)
 }
 
 /*
- * INPUT: D_SET is some region to consider
+ * INPUT: D_SET is some region.
+ * Output: region tips and regions colored.
+ *
+ * == Tips (influenced by 'all')
  * 'right' is tip of D_SET region
- * 'left' if all is tip of non-SET region, else s tip of GCA (for undo/push -r)
- *
+ * 'left' if 'all' is tip of non-D_SET region, else is tip of history of D_SET
  * When done, left..right always defines D_SET region.
+ * Either left or right can be D_INVALID if there is more than one tip.
  *
- * Coloring in 'all' case matches walkrevs(s, left, 0, right, WR_EITHER)
- * So we could assert left..right == D_SET (meaning overstated * inputs).
- *
- * In the not 'all' case, D_SET will be D_RED, and non history of D_SET
- * will be D_BLUE.  History of D_SET will be clear.  Keeps nested_init working.
- *
- * Either left or right can be INVALID if there is more than one tip in their
- * region.
+ * == Regions returned (not influenced by 'all')
+ * D_RED: D_SET region (the D_SET is cleared)
+ * D_BLUE: The non-D_SET and non history of D_SET.
+ * Nothing: The history of D_SET left uncolored (biggest region, least work).
  */
 void
 range_unrange(sccs *s, ser_t *left, ser_t *right, int all)
 {
-	ser_t	d, p;
-	int	color;
+	ser_t	d;
+	wrdata	wr;
+	u32	green;
+	u32	regions = all ? (D_RED|D_BLUE) : D_RED;
 
 	assert(left && right);
 	*left = *right = 0;
 	s->rstart = s->rstop = 0;
-	for (d = TABLE(s); d >= TREE(s); d--) {
-		if (TAG(s, d)) continue;
-		color = (FLAGS(s, d) & (D_SET|D_RED|D_BLUE));
-		/* grab first tip in D_SET and non D_SET regions */
-		if (color & D_SET) {
-			assert(!(color & D_BLUE));  /* no region bleeding */
-			FLAGS(s, d) &= ~D_SET;
-			color &= ~D_SET;
-			unless (color & D_RED) {
-				*right = *right ? D_INVALID : d;
-				FLAGS(s, d) |= D_RED;
-				color |= D_RED;
-			}
-		} else if ((all || (color & D_RED)) && !(color & D_BLUE)) {
-			*left = *left ? D_INVALID : d;
-			FLAGS(s, d) |= D_BLUE;
-			color |= D_BLUE;
-		} else unless (color) {
-			/* return as left, though no internal coloring */
-			assert(!all);
-			FLAGS(s, d) |= D_BLUE;	/* non-propagating color */
-		}
 
-		if ((color & (D_RED|D_BLUE)) == (D_RED|D_BLUE)) {
-			FLAGS(s, d) &= ~color;	/* return GCA uncolored */
-		} else if (FLAGS(s, d) & (D_RED|D_BLUE)) {
+	walkrevs_setup(&wr, s, 0, 0, WR_EITHER|WR_BOTH);
+	while (d = walkrevs(&wr)) {
+		// assert(wr.color & D_RED); /* true for range '..' */
+		// assert(wr.color != (D_RED|D_BLUE|D_GREEN); /* pruned */
+		green = wr.color & D_GREEN;
+		if (FLAGS(s, d) & D_SET) {
+			FLAGS(s, d) = (FLAGS(s, d) & ~D_SET) | D_RED;
+			unless (green) {	/* a tip */
+				*right = *right ? D_INVALID : d;
+				markParents(&wr, d, D_GREEN);
+			}
+		} else { /* green means history of D_SET */
+			unless (green) FLAGS(s, d) |= D_BLUE;
+			if (green || (all && (wr.color == D_RED))) {
+				*left = *left ? D_INVALID : d;
+				markParents(&wr, d, D_BLUE);
+			}
+		}
+		if (FLAGS(s, d) & regions) {
 			unless (s->rstop) s->rstop = d;
 			s->rstart = d;
 		}
-
-		/* Sanity */
-		assert((FLAGS(s, d) & (D_RED|D_BLUE)) != (D_RED|D_BLUE));
-
-		/* Color parents */
-		if (p = PARENT(s, d)) {
-			FLAGS(s, p) |= color;
-		}
-		if (p = MERGE(s, d)) {
-			FLAGS(s, p) |= color;
-		}
 	}
+	walkrevs_done(&wr);
 }

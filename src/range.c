@@ -2,7 +2,7 @@
 #include "sccs.h"
 #include "range.h"
 
-private	int	unrange(int ac, char **av);
+private	int	unrange(int standalone, int ac, char **av);
 
 int
 range_main(int ac, char **av)
@@ -49,12 +49,18 @@ range_main(int ac, char **av)
 		    range_addArg(&rargs, "+", 0)) {
 			return (1);
 		}
-	} else if (standalone) {
-		fprintf(stderr,
-		    "%s: -S only can be used if -L is also used\n", prog);
-		return (1);
 	}
-	if (endpoints) return (unrange(ac, av));
+	if (endpoints) {
+		if (av[optind]) {
+			if (av[optind + 1] || !streq(av[optind], "-")) {
+				/* Undocumented option, so state here */
+				fprintf(stderr,
+				    "Usage: bk range -u [-S] [-]\n");
+				return (1);
+			}
+		}
+		return (unrange(standalone, ac, av));
+	}
 	if (local && !av[optind]) {
 		char	*slopts = aprintf("rm%s", standalone ? "S" : "");
 
@@ -105,7 +111,7 @@ next:		;
 }
 
 private	int
-unrange(int ac, char **av)
+unrange(int standalone, int ac, char **av)
 {
 	sccs	*s = 0;
 	ser_t	d, left, right;
@@ -113,6 +119,7 @@ unrange(int ac, char **av)
 	FILE	*f = 0;
 	char	*p;
 
+	bk_nested2root(standalone);
 	unless (s = sccs_csetInit(INIT_MUSTEXIST)) {
 		fprintf(stderr, "%s: can't find ChangeSet\n", prog);
 		goto err;
@@ -120,10 +127,6 @@ unrange(int ac, char **av)
 	if (av[optind] && streq(av[optind], "-")) {
 		f = stdin;
 	} else {
-		if (proj_cd2product()) {
-			fprintf(stderr, "%s: not in repo\n", prog);
-			goto err;
-		}
 		unless (f = fopen("BitKeeper/etc/csets-in", "r")) {
 			fprintf(stderr, "%s: no csets-in\n", prog);
 			goto err;
@@ -134,7 +137,7 @@ unrange(int ac, char **av)
 			fprintf(stderr, "%s: can't find %s\n", prog, p);
 			goto err;
 		}
-		FLAGS(s, d) |= D_SET;
+		if (!TAG(s, d) && !(FLAGS(s, d) & D_SET)) FLAGS(s, d) |= D_SET;
 	}
 	left = right = 0;
 	range_unrange(s, &left, &right, 0);

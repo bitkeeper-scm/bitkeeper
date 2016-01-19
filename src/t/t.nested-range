@@ -1,0 +1,34 @@
+
+# This tests both the librange code and the range command
+# can work in a component.
+
+set -e
+
+echo $N Check range -u -S ...........................................$NL
+nested project
+bk clone $Q . ../copy
+cd gcc
+touch foo
+bk new $Q -l foo
+bk commit $Q -S -f
+bk delta $Q -fyempty foo
+bk commit $Q -f
+cd ../../copy
+bk pull $Q
+cd gcc
+bk range -u -S - < BitKeeper/etc/csets-in > GOT
+echo "1.1..1.3" > WANT
+cmpfiles WANT GOT
+# Shorthand for above
+bk range -u -S > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check range -u which should do product while in a comp ......$NL
+bk range -u - < ../BitKeeper/etc/csets-in > GOT
+echo "1.2..1.3" > WANT
+cmpfiles WANT GOT
+# Shorthand for above
+bk range -u > GOT
+cmpfiles WANT GOT
+echo OK

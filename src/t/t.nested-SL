@@ -33,7 +33,7 @@ echo OK
 # At least at this time, illegal usage
 echo $N Illegal to use -S without -L, such as to contextualize -r ...$NL
 # Conceptually it could be legal to use -S with other options, ...
-for cmd in diffs range log sccslog
+for cmd in diffs log sccslog
 do	bk $cmd -S -r@$REV.. foo 2> GOT
 	echo "$cmd: -S only can be used if -L is also used" > WANT
 	cmpfiles WANT GOT
