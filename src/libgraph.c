@@ -11,20 +11,32 @@ private	void	loadKids(sccs *s);
 private	void	foundDup(sccs *s, u32 bits,
 		    ser_t tip, ser_t other, ser_t dup, ser_t **dups);
 
-#define	S_DIFF		0x01	/* final active states differ */
+/*
+ * Bookkeeping for two simulataneous serialmap() computations.
+ * Serialmap needs 3 bits; two of them need 6.  The other two:
+ * S_DIFF is the xor of the two serialmaps.  This is what is returned.
+ * SL_DUP is to track inc/exc of things already inc/exc in the left.
+ * For how serialmap works, see serialmap() and Notes/SCCSGRAPH.adoc,
+ * the "Expansion of corresponding version" section.
+ */
+#define	S_DIFF		0x01	/* xor of left and right active state */
 #define	SR_PAR		0x02	/* Right side parent lineage */
 #define	SR_INC		0x04	/* Right side include */
 #define	SR_EXCL		0x08	/* Right side exclude */
 
-#define	SL_DUP		0x10	/* Check for not needed */
+#define	SL_DUP		0x10	/* Used in checking for inc/exc not needed */
 #define	SL_PAR		0x20	/* Left side parent lineage */
 #define	SL_INC		0x40	/* Left side include */
 #define	SL_EXCL		0x80	/* Left side exclude */
 
-/* non zero if SL and SR have different states */
+/*
+ * How short circuiting works: when all the remaining work matches,
+ * then the xor of the two sides will be 0, and we can stop.
+ * Here's how we see if an entry has left/right differences
+ */
 #define	S_DIFFERENT(x)	(((x) ^ ((x) >> 4)) & (SR_PAR|SR_INC|SR_EXCL))
 
-#define	HIBIT		0x80000000UL
+#define	HIBIT		0x80000000UL	/* used for DUP processing */
 
 /*
  * Compute the symmetric difference between two serialmaps.
