@@ -16,16 +16,6 @@ private	void	foundDup(sccs *s, u32 bits,
 #define	SR_INC		0x04	/* Right side include */
 #define	SR_EXCL		0x08	/* Right side exclude */
 
-/*
- * Uncomment if we want to store S_DIFFERENT(bits) instead of recomputing
- * it in the marked-- cases in graph_symdiff()
- * Also add code to update bits when updating marked++ before saving it
- *	if (S_DIFFERENT(bits)) { marked++; bits |= SLR_DIFF; }
- * and to use it:
- *	if (bits & SLR_DIFF) marked--;
- *
- * #define	SLR_DIFF	0x10
- */
 #define	SL_DUP		0x10	/* Check for not needed */
 #define	SL_PAR		0x20	/* Left side parent lineage */
 #define	SL_INC		0x40	/* Left side include */
@@ -37,14 +27,22 @@ private	void	foundDup(sccs *s, u32 bits,
 #define	HIBIT		0x80000000UL
 
 /*
- * Compute or collapse the symmetric difference between two nodes.
- * Four modes currently supported:
- *	expand and compress SCCS to and from a binary vector (slist)
- *	compute and compress Symmetric Difference Compression (sd) to SCCS
+ * Compute the symmetric difference between two serialmaps.
+ * Modes:
+ *	expand - compute the symmetric difference (input count < 0)
+ *	compress - given a symmetric difference, compute CLUDES for 'left'.
  *
- * ## Expand - if count passed in is < 0, then run in expand mode:
+ * + With both of those, either keep or don't keep duplicates.
+ *   A duplicate is an unneeded -i or -x as far as the serial map of
+ *   itself, but may impact the serialmap of another (hence, wanting to keep).
+ * + With both of those, compute using SCCS or BK merge bookkeeping.
+ *   SCCS - Use -i and -x in the merge node to active branch nodes
+ *   BK - Treat the merge like an SCCS parent relationship.
+ *
+ * == Expand
+ * To compute the symdiff between to versions, pass in count == -1.
  * Take two deltas and return in slist the symmetric difference
- * of the input slist with of the corresonding version CV(x) (aka, the
+ * of the input slist with of the corresponding version CV(x) (aka, the
  * set output of serialmap()) of left and right:
  * slist = slist ^ CV(left) ^ CV(right);
  * Return the number of nodes altered where a 1->0 transition is -1 
@@ -52,22 +50,13 @@ private	void	foundDup(sccs *s, u32 bits,
  *
  *   slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
  *   count = 0;
- *   count += graph_symdiff(a, b, slist, 0, -1);
- *   count += graph_symdiff(c, d, slist, 0, -1);
- *   count += graph_symdiff(e, f, slist, 0, -1);
+ *   count += graph_symdiff(a, 0, slist, 0, -1);
+ *   count += graph_symdiff(b, a, slist, 0, -1);
  *
- * will have count be the number of non-zero items in slist
+ * will end up with the serialmap of b and count = number of (slist[d] != 0)
  *
- * In particular, starting with empty list, and passing in previous
- * left as right (or right as left) will compute serialmap incrementally:
- *
- *   slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
- *   count = 0;
- *   count += graph_symdiff(a, 0, slist, 0, -1);	// slist = CV(a)
- *   count += graph_symdiff(b, a, slist, 0, -1);	// slist = CV(b)
- *   count += graph_symdiff(c, b, slist, 0, -1);	// slist = CV(c)
- *
- * ## Compress - if count passed in >= 0, then run in compress mode.
+ * == Compress
+ * If count passed in >= 0, then run in compress mode.
  * Count must be the number of non-zero entries in slist.
  * Take two deltas and a symmetric difference map
  * and alter the include and exclude list of 'left' such that
@@ -75,16 +64,8 @@ private	void	foundDup(sccs *s, u32 bits,
  * the slist passed in, ignoring D_GONE nodes (needed for pruneEmpty).
  * slist will be returned cleared and count returned will be 0.
  *
- * NOTE: the slist settings passed in are assumed to be done with a
- * previous expand mode call to graph_symdiff().  slist is not so
- * much non-zero as S_DIFF or 0.
- *
- * ## general notes
- * serialmap() stores a serial in slist[0] so it must be ser_t big,
- * currently 32bits.  This slist doesn't use slist[0] and only needs
- * a byte.  A file with 250k nodes will only need 250k array instead
- * of a megabyte. At some point, this may help caches.
- *
+ * See graph_convert() for expanding and compressing with dups and
+ * switching merge booking around.
  */
 int
 graph_symdiff(sccs *s, ser_t *leftlist, ser_t right, ser_t **dups, u8 *slist,
