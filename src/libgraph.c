@@ -398,6 +398,33 @@ foundDup(sccs *s, u32 bits, ser_t tip, ser_t other, ser_t dup, ser_t **dups)
 	}
 }
 
+int
+graph_check(sccs *s)
+{
+	ser_t	d;
+	u8	*slist = 0;
+	u32	*dups = 0;
+	int	ret = 0;
+
+	slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
+	assert(slist);
+
+	putenv("_BK_SHOWDUPS=1");
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		if (TAG(s, d) || (FLAGS(s, d) & D_GONE) ||
+		    (!MERGE(s, d) && !CLUDES_INDEX(s, d))) {
+		    	continue;
+		}
+		graph_symdiff(s, d, PARENT(s, d), &dups, slist, 0, -1, 0);
+		if (nLines(dups)) ret = 1;
+		truncArray(dups, 0);
+	}
+	putenv("_BK_SHOWDUPS=");
+	free(dups);
+	free(slist);
+	return (ret);
+}
+
 /*
  * Flip style that graph is stored in: original SCCS and new BK
  */

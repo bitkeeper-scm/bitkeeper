@@ -674,11 +674,13 @@ again:	/* doDiffs can make it two pass */
 		if (cs->BAM || cs->sfiles) {
 			int	i;
 			FILE	*f;
+			char	*cmd = (copts.fastpatch && !copts.compat) ?
+				    "bk sfio -oqB -" : "bk sfio -oqBC -";
 
 			/* try and fetch from my local BAM pool but recurse
 			 * through to the server.
 			 */
-			f = popen("bk sfio -oqB -", "w");
+			f = popen(cmd, "w");
 			EACH(cs->BAM) fprintf(f, "%s\n", cs->BAM[i]);
 			freeLines(cs->BAM, free);
 			cs->BAM = 0;

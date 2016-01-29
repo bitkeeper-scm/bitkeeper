@@ -557,3 +557,68 @@ bk takepatch < ../patch
 cd RESYNC
 bk check ChangeSet || fail -f ERR
 echo OK
+
+echo $N Test applyPatch in bkmerge repo with sccs patch .............$NL
+cd "$HERE"
+commercial baseproject
+# Test 3 code paths: existing that strips, existing with no strip, and new
+echo create > a-no-strip
+echo create > strip
+bk new $Q strip a-no-strip
+bk commit $Q -f
+bk clone $Q . ../patch-dest
+echo create > new-file
+bk new $Q new-file
+bk commit $Q -f
+bk clone $Q . ../patch-source
+# In project
+bk edit $Q strip a-no-strip new-file
+echo project > a-no-strip
+echo project > strip
+echo project > new-file
+bk delta $Q -ychange strip a-no-strip new-file
+bk commit $Q -f
+# in source
+cd ../patch-source
+bk edit $Q strip a-no-strip new-file
+echo source > strip
+echo source > a-no-strip
+echo source > new-file
+bk delta $Q -ychange strip a-no-strip new-file
+bk commit $Q -f
+# Make a merge node in each
+printf "s\nC\ns\nC\ns\nC\n" | bk pull $Q -T 2> noise
+# Make a patch with explicit -i
+cd ../patch-dest
+bk parent $Q ../patch-source
+# Add data to one file to cause a stripdel in applyPatch()
+bk edit $Q strip
+echo dest > strip
+bk delta $Q -ydata strip
+bk commit $Q -f
+bk tag $Q MARK
+printf "s\nC\n" | bk pull $Q -T 2> noise
+bk push $Q
+# Use -C to put new file into patch.
+bk makepatch $Q -C -rMARK..+ > ../patc
+bk makepatch $Q -rMARK..+ > ../patc-w-sfio
+bk unpull $Q -sf
+bk receive < ../patc
+cd RESYNC
+bk -r check -R --check-dup || fail
+bk log -nd':GFILE: :ENCODING: :I: :Rn: :Rx:' a-no-strip new-file strip \
+    > "$HERE/GOT"
+cd ..
+bk abort -f
+bk receive < ../patc-w-sfio
+cd RESYNC
+bk log -nd':GFILE: :ENCODING: :I: :Rn: :Rx:' a-no-strip new-file strip \
+    > GOT
+cmpfiles GOT "$HERE/GOT"
+cd ..
+bk abort -f
+cd ../patch-source
+bk log -nd':GFILE: :ENCODING: :I: :Rn: :Rx:' a-no-strip new-file strip \
+    > WANT
+cmpfiles WANT "$HERE/GOT"
+echo OK

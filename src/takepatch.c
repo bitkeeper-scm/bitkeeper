@@ -1515,9 +1515,9 @@ applyPatch(char *localPath, FILE *perfile)
 	/* flip format before putting local files out in a patch form */
 	if (opts->bkmerge != BKMERGE(s)) {
 		if (graph_convert(s, 0)) return (-1);
-		/* Override storage format from repo default */
-		s->encoding_out = s->encoding_in;
 	}
+	/* Override storage format from repo default */
+	s->encoding_out = s->encoding_in;
 	unless (s) return (-1);
 	unless (opts->tableGCA) goto apply;
 	assert(p && localPath);
@@ -1562,6 +1562,12 @@ applyPatch(char *localPath, FILE *perfile)
 		    "takepatch: can't open %s\n", p->resyncFile);
 		return -1;
 	}
+	/* If no stripdel, then sccs_init could be wrong mode */
+	if (opts->bkmerge != BKMERGE(s)) {
+		if (graph_convert(s, 0)) return (-1);
+	}
+	/* Override storage format from repo default */
+	s->encoding_out = s->encoding_in;
 apply:
 	nump = reversePatch();
 	p = opts->patchList;
@@ -1616,6 +1622,15 @@ apply:
 			    p->resyncFile);
 			return -1;
 		}
+		/*
+		 * Delay this because BAM/binary needs to get set above,
+		 * and there is no -i -x bookkeeping in the first delta
+		 */
+		if (opts->bkmerge != BKMERGE(s)) {
+			if (graph_convert(s, 0)) return (-1);
+		}
+		/* Override storage format from repo default */
+		s->encoding_out = s->encoding_in;
 		p = p->next;
 	}
 	while (p) {
@@ -1664,6 +1679,8 @@ apply:
 		}
 		newflags = DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
 		if (opts->echo <= 3) newflags |= SILENT;
+		/* Format being written still correct? */
+		assert(s->encoding_out && (opts->bkmerge == BKMERGE_OUT(s)));
 		if (sccs_delta(s, newflags, 0, iF, dF, 0)) {
 			unless (s->io_error) perror("delta");
 			return (-1);
@@ -1674,7 +1691,10 @@ apply:
 	}
 	/* Put the storage style back to match the repo */
 	s->encoding_out = sccs_encoding(s, 0, 0);
-	if (BKMERGE(s) != BKMERGE_OUT(s)) sccs_newchksum(s);
+	if (BKMERGE(s) != BKMERGE_OUT(s)) {
+		sccs_restart(s);	/* reset pfile bit (delta doesn't?) */
+		sccs_newchksum(s);
+	}
 	sccs_free(s);
 	s = sccs_init(opts->patchList->resyncFile, SILENT);
 	assert(s);
@@ -2866,6 +2886,7 @@ err:
 		}
 	}
 	unless (len) goto err;
+	fflush(out);
 
 	if ((c = getc(in)) == EOF) goto done;
 	ungetc(c, in);

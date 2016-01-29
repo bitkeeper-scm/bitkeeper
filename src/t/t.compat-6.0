@@ -753,3 +753,24 @@ bk csetprune $Q -k1234567890abcdef - < ../BKEY || fail
 bk changes -qaLR ../bk6-prune > DIFF
 test -s DIFF && fail -f DIFF should be no diffs
 echo OK
+
+echo -------------- Makepatch with compat sfio by default
+echo $N Test makepatch generating sfio that is compat with bk6 ......$NL
+# There are no merged files in this repo?!  Making one
+cd "$HERE"
+commercial mp-base
+bk clone $Q --downgrade . ../mp-base-down
+touch foo
+bk new $Q foo
+bk edit $Q foo
+bk delta $Q -fynull foo
+bk _get $Q -er1.1 foo
+bk delta $Q -fynull foo
+bk edit $Q -M foo
+bk delta $Q -fynull foo
+bk commit $Q -f
+bk makepatch -r+ > ../mp-patch
+cd ../mp-base-down
+$OLDBK/bk receive < ../mp-patch
+$OLDBK/bk resolve $Q || fail
+echo OK

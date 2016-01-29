@@ -10,6 +10,7 @@ int	graph_v1(sccs *s);	/* when done, graph is in v1 form */
 int	graph_v2(sccs *s);	/* when done, graph is in v2 form */
 
 int	graph_convert(sccs *s, int fixpfile);
+int	graph_check(sccs *s);
 
 int	graph_symdiff(sccs *s, ser_t left, ser_t right, void *token1,
 	    u8 *slist, void *token2, int count, int flags);

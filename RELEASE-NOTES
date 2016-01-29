@@ -1,4 +1,19 @@
 ============================================================================
+Release notes for BitKeeper version 7.0.3 (released Jan 29, 2016)
+
+  See our Tips & FAQ page at:       http://www.bitkeeper.com/tips
+  Follow us on Twitter:             https://twitter.com/BitKeeper
+
+Bugs fixed:
+
+ - Return codes fixed to return error, such as when bk check calls itself.
+ - Fix clock_skew section of config-etc man page.  BUG-ID: 2015-12-11-001
+ - Fix receive and takepatch pulling old style patches into bk-7 repos.
+ - Fix bug where a post-incoming trigger on a push would eat the first
+   character after @ in the trigger output.
+
+
+============================================================================
 Release notes for BitKeeper version 7.0.2 (released Dec 9, 2015)
 
   See our Tips & FAQ page at:       http://www.bitkeeper.com/tips
