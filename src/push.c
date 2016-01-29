@@ -1338,9 +1338,10 @@ maybe_trigger(remote *r)
 	 */
 	buf[0] = '@';
 	for (n = 1; n < 14; n++) {
+		buf[n] = 0;
 		if ((read_blk(r, &buf[n], 1) != 1) ||
 		    (buf[n] != "@TRIGGER INFO@\n"[n])) {
-			buf[n] = 0;
+			if (buf[n]) n++;
 			unless (opts.quiet) fwrite(buf, 1, n, stderr);
 			return (0);
 		}
