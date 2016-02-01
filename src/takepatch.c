@@ -87,8 +87,7 @@ typedef struct {
 	/* old globals */
 	int	echo;		/* verbose level, more means more diagnostics */
 	int	line;		/* line number in the patch file */
-	int	fileNum;	/* counter for the Nth init/diff file */
-	patch	*patchList;	/* patches for a file, list len == fileNum */
+	patch	*patchList;	/* patches for a file */
 	int	conflicts;	/* number of conflicts over all files */
 	int	newProject;	/* command line opt to create a new repo */
 	int	saveDirs;	/* save directories even if errors */
@@ -847,8 +846,6 @@ delta1:	while ((b = fgetline(f)) && *b) {
 			    sreal->sfile);
 		}
 		skip++;
-	} else {
-		opts->fileNum++;
 	}
 save:
 	if (skip) {
@@ -1385,7 +1382,6 @@ done:	if (CSET(s)) T_PERF("done cset");
 	freePatchList();
 	if (topkey) free(topkey);
 	opts->patchList = 0;
-	opts->fileNum = 0;
 	return (0);
 err:
 	if (topkey) free(topkey);
@@ -1749,7 +1745,6 @@ apply:
 	}
 	freePatchList();
 	opts->patchList = 0;
-	opts->fileNum = 0;
 	return (0);
 }
 
@@ -1793,8 +1788,7 @@ getLocals(sccs *s, char *name)
 			if (p) continue;
 		}
 		assert(d);
-		sprintf(tmpf,
-		    "RESYNC/BitKeeper/tmp/%03d-init", ++opts->fileNum);
+		bktmp(tmpf);
 		unless (t = fopen(tmpf, "w")) {
 			perror(tmpf);
 			exit(1);
@@ -1814,7 +1808,7 @@ getLocals(sccs *s, char *name)
 		p->localFile = strdup(name);
 		sprintf(tmpf, "RESYNC/%s", name);
 		p->resyncFile = strdup(tmpf);
-		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-diffs", opts->fileNum);
+		bktmp(tmpf);
 		unless (FLAGS(s, d) & D_META) {
 			p->diffFile = strdup(tmpf);
 			sccs_restart(s);
