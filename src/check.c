@@ -145,6 +145,7 @@ check_main(int ac, char **av)
 	char	**bp_missing = 0;
 	int	BAM = 0;
 	int	doBAM = 0;
+	int	checkdup = 0;
 	int	forceCsetFetch = 0;
 	ticker	*tick = 0;
 	u32	repo_feat, file_feat;
@@ -153,6 +154,7 @@ check_main(int ac, char **av)
 	longopt	lopts[] = {
 		{ "parallel", 290 },
 		{ "use-older-changeset", 300 },
+		{ "check-dup", 310 },
 		{ 0, 0 }
 	};
 
@@ -184,6 +186,8 @@ check_main(int ac, char **av)
 			lock_csets = 1;	break;
 		    case 300:	/* --use-older-changeset */
 			forceCsetFetch++; break;
+		    case 310:	/* --check-dup */
+		    	checkdup = 1; break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -457,6 +461,7 @@ check_main(int ac, char **av)
 			ferr++, errors |= 0x08;
 		}
 		if (check(s, idDB)) ferr++, errors |= 0x40;
+		if (checkdup && graph_check(s)) ferr++, errors |= 1;
 
 		/*
 		 * Remember all the marked file deltas so we can verify they

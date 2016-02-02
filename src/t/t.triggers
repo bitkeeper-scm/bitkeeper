@@ -1401,7 +1401,7 @@ mkdir project/BitKeeper/triggers || fail
 cd project/BitKeeper/triggers
 bk undos > X <<EOF
 #!/bin/sh
-echo \$0: trigger fired
+echo \$0: @trigger fired
 exit 0
 EOF
 chmod +x X
@@ -1442,7 +1442,7 @@ cd "$HERE"
 mkdir copy/BitKeeper/triggers || fail
 cd copy/BitKeeper/triggers
 echo "#! /bin/sh"                > good
-echo "echo \$0: trigger fired"	>> good
+echo "echo \$0: @trigger fired"	>> good
 echo "exit 0"                   >> good
 chmod +x good
 for x in pre post;do
@@ -1570,7 +1570,16 @@ cd "$HERE/project/src"
 bk get $Q -e foo.c
 echo 3 >> foo.c
 bk delta $Q -y2 foo.c
-bk commit $Q -y2 > /dev/null 2>&1 || { echo failed; exit 1; }
+bk commit -y2 > commit.out 2>&1 || fail -f commit.out
+cat commit.out | perl -pe 's/.*\r//;s/\.regression /reg/;s/[^ ]*\/sandbox\///' > GOT
+cat <<EOF > WANT
+>> Trigger "pre-commit"
+project/BitKeeper/triggers/pre-commit: @trigger fired
+ChangeSet revision 1.3: +1
+>> Trigger "post-commit"
+project/BitKeeper/triggers/post-commit: @trigger fired
+EOF
+cmpfiles GOT WANT
 echo OK
 
 if [ X$BK_TESTGUI != X ]; then
@@ -1585,22 +1594,28 @@ fi
 
 echo $N Pull w/trivial triggers .....................................$NL
 cd "$HERE/copy"
-bk pull >pull.out 2>&1 || { echo failed; exit 1; }
-grep -q "project/.*BitKeeper/triggers/pre-outgoing: trigger fired" pull.out
-if [ $? -ne 0 ]; then echo failed 3; cat pull.out; exit 1; fi
-# XXX - There can be spurious errors here depending on how the output gets
-# mixed together.
-# I saw: 
-# /build/.regression-lm/project 
-# /build/.regression-lm/project/B2.76X expansion
-#                                ^^^^^^^^^^^^^^^
-# which is the bkd trigger output mixed with takepatch output.
-grep -q "project/.*BitKeeper/triggers/post-outgoing: trigger fired" pull.out
-if [ $? -ne 0 ]; then echo failed 4; cat pull.out; exit 1; fi
-grep -q "copy/.*BitKeeper/triggers/pre-incoming: trigger fired" pull.out
-if [ $? -ne 0 ]; then echo failed 5; cat pull.out; exit 1; fi
-grep -q "/copy/.*BitKeeper/triggers/post-incoming: trigger fired" pull.out
-if [ $? -ne 0 ]; then echo failed 6; cat pull.out; exit 1; fi
+bk pull >pull.out 2>&1 || fail -f pull.out
+cat pull.out | perl -ne '
+    BEGIN{binmode(STDIN);binmode(STDOUT)}
+    s/.*\r//; s/\.regression /reg/;s/[^ ]*\/sandbox\///; print;
+    ' > GOT
+cat <<EOF > WANT
+Pull project
+  -> copy
+>> Trigger "pre-incoming"
+copy/BitKeeper/triggers/pre-incoming: @trigger fired
+------------------------- Remote trigger message --------------------------
+>> Trigger "pre-outgoing"
+project/BitKeeper/triggers/pre-outgoing: @trigger fired
+---------------------------------------------------------------------------
+>> Trigger "post-outgoing"
+project/BitKeeper/triggers/post-outgoing: @trigger fired
+
+>> Trigger "post-incoming"
+copy/BitKeeper/triggers/post-incoming: @trigger fired
+pull                                 1 changeset,   no merges in   2 files
+EOF
+cmpfiles GOT WANT
 echo OK
 
 echo $N Push w/trivial triggers .....................................$NL
@@ -1609,7 +1624,24 @@ bk get $Q -e foo.c
 echo 4 >> foo.c
 bk delta $Q -y2 foo.c
 bk commit $Q -y"cset comment for 1.4" > /dev/null 2>&1
-bk push >push.out 2>&1 || { echo failed; cat push.out; exit 1; }
+bk push >push.out 2>&1 || fail -f push.out
+cat push.out | perl -pe 's/.*\r//;s/\.regression /reg/;s/[^ ]*\/sandbox\///' > GOT
+cat <<EOF > WANT
+Push copy
+  -> project
+------------------------- Remote trigger message --------------------------
+>> Trigger "pre-incoming"
+project/BitKeeper/triggers/pre-incoming: trigger fired
+---------------------------------------------------------------------------
+>> Trigger "pre-outgoing"
+copy/BitKeeper/triggers/pre-outgoing: @trigger fired
+>> Trigger "post-incoming"
+project/BitKeeper/triggers/post-incoming: @trigger fired
+push                               100% |==============================| OK
+>> Trigger "post-outgoing"
+copy/BitKeeper/triggers/post-outgoing: @trigger fired
+EOF
+cmpfiles GOT WANT
 echo OK
 
 cd "$HERE/project/BitKeeper/triggers"
@@ -1619,11 +1651,7 @@ chmod +x pre-outgoing.quiet
 
 echo $N Clone w/quiet failure, should report exit status ............$NL
 cd "$HERE"
-bk clone -q "$HERE/project" "$HERE/dontcopy" 2>ERR && {
-	echo failed
-	cat ERR
-	exit 1
-}
+bk clone -q "$HERE/project" "$HERE/dontcopy" 2>ERR && fail -f ERR
 test -d "$HERE/dontcopy" && { echo created dontcopy; exit 1; }
 cat > WANT <<EOF
 ------------------------- Remote trigger message --------------------------
