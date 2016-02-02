@@ -342,7 +342,7 @@ graph_check(sccs *s)
 		    (!MERGE(s, d) && !CLUDES_INDEX(s, d))) {
 		    	continue;
 		}
-		graph_symdiff(s, d, PARENT(s, d), &dups, slist, 0, -1, 0);
+		graph_symdiff(s, L(d), PARENT(s, d), &dups, slist, 0, -1);
 		if (nLines(dups)) ret = 1;
 		truncArray(dups, 0);
 	}
