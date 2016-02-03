@@ -8339,9 +8339,7 @@ delta_table(sccs *s, int willfix)
 	static int chkd_striptags;
 
 	if (!chkd_striptags++ && getenv("_BK_STRIPTAGS")) {
-		fprintf(stderr,
-		    "_BK_STRIPTAGS is deprecated\n"
-		    "Please run: bk stripdel --strip-tags <file>\n");
+		fprintf(stderr, "_BK_STRIPTAGS is no longer supported.\n");
 		return (1);
 	}
 

@@ -205,12 +205,14 @@ echo OK
 echo $N Test that _BK_STRIPTAGS is deprecated .......................$NL
 _BK_STRIPTAGS=1 bk admin -z ChangeSet 2>ERR && fail -f ERR
 cat <<EOF >WANT
-_BK_STRIPTAGS is deprecated
-Please run: bk stripdel --strip-tags <file>
+_BK_STRIPTAGS is no longer supported.
 EOF
 cmpfiles WANT ERR
 echo OK
 
+# Note that users shouldn't run this, it's for csetprune only.
+# It should newroot the repo (csetprune does, this does not)
+# because you will no longer be able to pull from a repo with tags.
 echo $N Test that stripdel --strip-tags works .......................$NL
 bk tag $Q NEWTAG
 bk changes -rNEWTAG -nd'$if(x=y){z}' || fail
