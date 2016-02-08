@@ -52,6 +52,8 @@ typedef struct {
 	u32	batch:1;	/* command line version of autoOnly */
 	u32	standalone:1;	/* operate in this component only */
 	u32	nested:1;	/* is this a nested resolve? */
+	u32	moveup:1;	/* move component up */
+	u32	fullCheck:1;	/* did pass4 pass a full check? */
 	int	hadConflicts;	/* conflicts during automerge */
 	int	pass;		/* which pass are we in now */
 	char	*comment;	/* checkin comment for commit */

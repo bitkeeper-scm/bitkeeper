@@ -1540,6 +1540,34 @@ unsafe_path(char *s)
 	/*NOTREACHED*/
 }
 
+int
+cset_needRepack(void)
+{
+	off_t	heapsize;
+
+	/*
+	 * If the non-packed portion of the ChangeSet heap
+	 * (2.ChangeSet) has grown to be at least a quarter of the
+	 * size of the packed portion (1.ChangeSet) then we probably
+	 * should do a full check and a repack even if the timestamps
+	 * suggest a full check is not required yet.  The thinking is
+	 * that the performance impact of not repacking is starting to
+	 * matter more than the check time.
+	 * We call bin_needHeapRepack() just to make sure the repack
+	 * isn't blocked by one of the other conditions.
+	 */
+	if ((heapsize = size("SCCS/1.ChangeSet")) &&
+	   (size("SCCS/2.ChangeSet") > heapsize/4)) {
+		sccs	*cset = sccs_csetInit(0);
+		int	repack;
+
+		repack = bin_needHeapRepack(cset);
+		sccs_free(cset);
+		if (repack) return (1);
+	}
+	return (0);
+}
+
 /*
  * Return true if no checked marker or if it is too old.
  */
@@ -1563,7 +1591,10 @@ full_check(void)
 		if (t = fgetline(f)) checkt = strtoul(t, 0, 10);
 		fclose(f);
 	}
-	return ((now - checkt) > window);
+	if ((now - checkt) > window) return (1);
+	if (cset_needRepack()) return (1);
+
+	return (0);		/* no full check is required */
 }
 
 /*
