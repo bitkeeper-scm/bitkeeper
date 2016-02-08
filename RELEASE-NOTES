@@ -14,6 +14,8 @@ Bugs fixed:
  - Fix parallel takepatch reading old style patches created by 'bk makepatch'.
  - Occasionally force a full repository check when the ChangeSet file
    heap has grown significantly and needs garbage collection.
+ - Change makepatch to send using format of receiving repository.
+   This reduces converstion data from accumulating in the receiving repo.
 
 ============================================================================
 Release notes for BitKeeper version 7.0.2 (released Dec 9, 2015)

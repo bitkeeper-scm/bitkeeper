@@ -27,3 +27,43 @@ _BK_DEVELOPER= bk repocheck $Q
 bk prs -r+ -hnd":GFILE: :DI:" foo bar > GOT
 cmpfiles WANT GOT
 echo OK
+
+echo $N See that sending side matches receiving side with patch .....$NL
+bk commit $Q -f
+bk clone $Q --no-bk-merge . ../copy
+bk parent $Q ../copy
+cd ../copy
+bk edit $Q foo
+bk delta $Q -fynull foo
+bk commit $Q -f
+bk tag $Q ONE
+bk edit $Q foo
+bk delta $Q -fynull foo
+bk commit $Q -f
+cd ../project
+touch baz
+bk edit $Q foo
+bk delta $Q -fynull foo
+bk commit $Q -f
+bk pull $Q -rONE
+bk features | grep -q BKMERGE || fail
+_BK_FORCE_REPACK=1 bk repocheck -q
+bk _heapdump -s ChangeSet | grep -i unused | sed 's/ *[^ ]*%$//' > WANT
+bk pull $Q -R
+# local BKMERGE; remote SCCS Merge bookkeeping - patch - BKMERGE
+echo "# Patch features:	BKMERGE" > want-mode
+head -2 PENDING/* | tail -1 > got-mode
+cmpfiles want-mode got-mode
+bk --cd=RESYNC _heapdump -s ChangeSet \
+    | grep -i unused | sed 's/ *[^ ]*%$//' > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Reverse the polarity of previous test .......................$NL
+cd ../copy
+bk features | grep -q BKMERGE && fail
+bk pull $Q -R
+echo "# Patch type:	REGULAR" > want-mode
+head -2 PENDING/* | tail -1 > got-mode
+cmpfiles want-mode got-mode
+echo OK
