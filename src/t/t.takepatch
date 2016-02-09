@@ -20,7 +20,7 @@ BK_USER=adam bk delta -f $Q -i -y'Initial checkin' f
 BK_USER=adam bk commit $Q -y'Initial checkin' || fail
 bk edit $Q f
 BK_USER=second bk delta -f $Q -y'Second checkin' f
-BK_USER=second bk commit $Q --tag=second -y'Second checkin' || fail
+BK_USER=second bk commit $Q --tag=second -y'Second commit' || fail
 bk edit $Q f
 BK_USER=third bk delta -f $Q -y'Third checkin' f
 BK_USER=third bk commit $Q --tag=third -y'Third checkin' || fail
@@ -36,6 +36,17 @@ bk lease flush -a
 bk takepatch $Q < "$HERE/patch" || fail
 test -d RESYNC -a -d PENDING || fail
 bk abort -f || fail
+bk takepatch $Q -f "$HERE/patch" || fail
+test -d RESYNC || fail
+test -d PENDING && fail
+bk abort -f || fail
+test -f "$HERE/patch" || fail abort unlinked patch
+echo OK
+
+echo $N Test bad patch left in place ................................$NL
+sed 's/Second checkin/2nd checkin/' < ../patch > ../badpatch
+bk takepatch -f "$HERE/badpatch" 2> ERR && fail -f ERR
+test -f "$HERE/badpatch" || fail takepatch unlinked badpatch
 echo OK
 
 echo $N Test basic takepatch with copying sfiles to resync ..........$NL
@@ -47,7 +58,8 @@ bk abort -f || fail
 echo OK
 
 echo $N Test basic takepatch -a .....................................$NL
-bk takepatch $Q -a < "$HERE/patch" || fail
+bk takepatch $Q -af "$HERE/patch" || fail
+test -f "$HERE/patch" || fail resolve unlinked patch
 bk changes -aqL > c1 || fail
 test -s c1 && {
        echo "unexpected output from changes -L:"

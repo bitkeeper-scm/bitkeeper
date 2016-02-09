@@ -11,6 +11,7 @@ Bugs fixed:
  - Fix receive and takepatch pulling old style patches into bk-7 repos.
  - Fix bug where a post-incoming trigger on a push would eat the first
    character after @ in the trigger output.
+ - Do not delete patch given by bk takepatch -f patch.  Abort and resolve did.
  - Fix parallel takepatch reading old style patches created by 'bk makepatch'.
  - Occasionally force a full repository check when the ChangeSet file
    heap has grown significantly and needs garbage collection.
