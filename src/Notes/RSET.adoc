@@ -19,7 +19,7 @@ and 3 times if --show-gone .  In bk-7, the weave is only walked once
 in all cases, with effort taken to walk a minimal part of the weave.
 
 This is achieved by having a copy / customized version of walkrevs().
-Walkrevs() has a limition of tracking 2 versions.  Rset needs to track
+Walkrevs() has a limitation of tracking 2 versions.  Rset needs to track
 3 to correctly handle -r$MERGE.  More could be handled, but use case
 hasn't presented itself yet.  The routine is weaveExtract().
 

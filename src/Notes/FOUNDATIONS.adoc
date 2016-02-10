@@ -73,7 +73,7 @@ doesn't, as far as I can tell because they don't have any way, that I
 see, of having a branch in the name graph associated with a branch in 
 the delta graph.
 
-Seems to me there outght to be some way to mix the LOD and pathname
+Seems to me there ought to be some way to mix the LOD and pathname
 namespaces to make this work out.
 
 A more clear statement of the problem:

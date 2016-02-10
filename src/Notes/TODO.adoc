@@ -118,7 +118,7 @@ Redo the code to mmap private the file and unmap on completion.  On frees,
 free only things which are not in the range s->mmap .. s->mmap + s->size.
 
 For systems w/o a working map private, malloc enough space for the whole file.
-This isnt quite as fast, but it is damn portable.
+This isn't quite as fast, but it is damn portable.
 
 Full screen ci program.  Have it split the screen, do the comment in
 the bottom, and the diffs in the top, with key stroke explanations
@@ -128,7 +128,7 @@ Neato.  For now, hardwire it to a vt100 or make it be a perl prog.
 For the flags section, see if I could add flags and recalc the checksum
 by subtracting the chars I deleted and adding the chars I added.
 
-Add a flag that defines prefix (or a list of prefices) that are to be
+Add a flag that defines prefix (or a list of prefixes) that are to be
 stripped from the pathname so that the file name doesn't change.  Maybe.
 
 Add admin options for interactively managing the flags.  Add this to
@@ -186,7 +186,7 @@ Make prs print stuff out in time order?  Certainly an option to do this would
 be nice.
 
 I could keep a list of the heads of all branches.  This would speed up
-searchs as the trees get more bushy.
+searches as the trees get more bushy.
 
 Make it not puke on new keywords, but instead ignore them.
 
@@ -216,7 +216,7 @@ Keyword expansion
 
 Handle interrupts properly.
 
-    In particular, an interuppt at the commentary should be a NOP.
+    In particular, an interrupt at the commentary should be a NOP.
 
 If no file args, expand to SCCS/s.* when getting, SCCS/p.* when delta-ing.
 
@@ -234,7 +234,7 @@ Make diff a part of slib.c
 
 A command that puts the file in edit mode w/o getting it.
 
-Make all the indivdual commands one big program that just does different
+Make all the individual commands one big program that just does different
 things based on argv[0].
 
 Think about a stdio mode where one part of the program is writing the

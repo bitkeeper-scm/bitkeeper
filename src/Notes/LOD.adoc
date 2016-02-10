@@ -107,7 +107,7 @@ Not-In-View (NIV) files
   and we need to do something with it.  Change set theory has a notion
   that all inodes exist in all time, even if NIV.  Their active state
   is a not exist state.  For Bitkeeper, the 1.0 delta was chosen to
-  be this NIV state.  This is a nice choice for ATT SCCS compatability.
+  be this NIV state.  This is a nice choice for ATT SCCS compatibility.
   ATT SCCS with defbranch of 1.0 will not error, but return an empty file.
   BK has been modified such that get ignores any file with a 1.0 revision.
 

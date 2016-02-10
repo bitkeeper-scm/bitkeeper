@@ -18,14 +18,14 @@ Requirements:
 From 7/19/02 meeting of Andrew, Wayne and Rick
 Andrew summarizes (Rick's edits):
 
-a) We need Wanye's null sync fix on bitkeeper.com
+a) We need Wayne's null sync fix on bitkeeper.com
      -- can we upgrade bitkeeper.com to the bk-2.1.x TOT ?
         This pending rick/lm fix the MYSQL issues...
 
-Note:  I tried a more aggressive version of wanye's fix, takepatch/resolve 
-cannot handle it.  (so only turested one is the orginal null sync fix)
+Note:  I tried a more aggressive version of Wayne's fix, takepatch/resolve 
+cannot handle it.  (so only tested one is the original null sync fix)
 
-b) revisit making push/pull propogate log maker
+b) revisit making push/pull propagate log maker
  	When pulling in a change that has already been logged,
 	and it becomes the tip, there is no need to log.
 	This could happen often if people use BK to grab latest

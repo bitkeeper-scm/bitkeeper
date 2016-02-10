@@ -51,7 +51,7 @@ For commit, always make sure
 
 ----------------------
 INIT_FIXDTIME is gone, we do that by default now if we have a gfile.
-INIT_FIXSTIME is used only by check, the behaviour is default now.
+INIT_FIXSTIME is used only by check, the behavior is default now.
 ----------------------
 
 Goals:

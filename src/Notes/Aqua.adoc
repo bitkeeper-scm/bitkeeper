@@ -28,7 +28,7 @@ sorted out, we should only put a single line of text in buttons.
 ABOUT TEAR-OFF MENUS
 --------------------
 
-Tear-off menus were removed in Aqua where possible and dissabled 
+Tear-off menus were removed in Aqua where possible and disabled 
 where not.
 
 We can't just remove all tear-off menus using the options
@@ -42,11 +42,11 @@ Windows and Unix still have tear-offs.
 NOTES
 -----
 
-- There is a bad interaction with what Mac OS X deffines as "an application"
+- There is a bad interaction with what Mac OS X defines as "an application"
   and the way we exec bk to launch other GUIs. For example, running citool
   and getting a message (via 'exec bk msgtool') results in launching a new
   with shell which blocks the old wish shell (the old wish shell appears to
-  be hosed because it's not responging to GUI events) until the user dismisses
+  be hosed because it's not responding to GUI events) until the user dismisses
   msgtool. Combine that with the fact that new apps sometimes appear _under_
   the currently selected app and you get very confused users.
 

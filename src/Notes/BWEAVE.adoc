@@ -135,7 +135,7 @@ on the fly into the in-memory copy of the heap. When writing an ascii
 ChangeSet weave the `sccs_nextdata()` function produces the old ascii
 weave on the fly.  This means the BitKeeper is actually slower when
 reading ascii repositories with big ChangeSet files.  This is most
-noticiable when running commands that read information from the delta
+noticeable when running commands that read information from the delta
 table of the ChangeSet file, like in the GUI tools.
 
 The reading and write v2 vs. v3 is hidden in the RKDKOFF macro on

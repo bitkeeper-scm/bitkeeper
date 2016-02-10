@@ -20,7 +20,7 @@ MYKEYS - sends all keys in the tree
 MYKEYS LOD.1 LOD.TOT - says how far you are in that LOD
 KEYS - reports root,tot key pairs for each LOD
 KEYS [LOD.1 key] - reports the TOT of that LOD
-EOF - coversation over
+EOF - conversation over
 
 EMAIL
 -----

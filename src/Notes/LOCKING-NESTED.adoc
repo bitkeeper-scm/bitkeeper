@@ -88,7 +88,7 @@ authoritative version of what's in there, but as of this writing:
 		time(0), getpid(), random));
 
 
-This is then also kept in an enviroment variable, NESTED_LOCK or
+This is then also kept in an environment variable, NESTED_LOCK or
 BKD_NESTED_LOCK, which is passed back and forth between bk and bkd.
 The env variable must match the NESTED_WRITER_LOCK file contents or
 write access is denied.
@@ -148,7 +148,7 @@ in the bk and the bkd side. For instance, both bkd_push.c and pull.c
 end up calling takepatch, so takepatch can just use _NESTED_LOCK
 regardless of where it's being called from.
 
-This is a little different from normal BK convetion (BKD_* on the bkd
+This is a little different from normal BK convention (BKD_* on the bkd
 side and BK_* on the bk side), but there is a good reason for it. Only
 the local side (bk side) needs to handle both variables (_NESTED_LOCK
 and BKD_NESTED_LOCK) and it only ever looks at the _NESTED_LOCK one,

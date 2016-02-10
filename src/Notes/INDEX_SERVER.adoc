@@ -2,8 +2,8 @@ Imagined index server working with blobs.
 =========================================
 
 With the new filesystem remapping and sfile blobs we are introducing a
-NFS-like index server.  Bascially all sfile reading and writing is
-handled by a single process that maintains a consistant view of the
+NFS-like index server.  Basically all sfile reading and writing is
+handled by a single process that maintains a consistent view of the
 repository.
 
 All the following will be hidden under the fslayer code.  Normal bk
@@ -18,7 +18,7 @@ When a new bk process wants to read sfiles it needs to find a index
 server.  A file ROOT/.bk/INDEX is consulted and it will contain an
 IP/PORT number of another bk process.  If no INDEX is found or if the
 info is found to be stale then a new index server is spawned.  That
-process will use sccs_lockfile(".bk/INDEX.lock") to aquire permissions
+process will use sccs_lockfile(".bk/INDEX.lock") to acquire permissions
 to serve this repository.  This process will continue to serve this
 repository until no new requests have been received for several
 minutes and then will write out state and exit.
@@ -26,14 +26,14 @@ minutes and then will write out state and exit.
 The current INDEX is also put in the environment so that subprocesses
 do not need to read .bk/INDEX to know the INDEX.
 
-Connections to the INDEX server are persistant and used for the
+Connections to the INDEX server are persistent and used for the
 duration of the process if possible.  This means that current bkd code
 will NOT be used.
 
-Properites of an INDEX server:
+Properties of an INDEX server:
 
  - The server is a non-forking daemon that maintains connections to
-   multiple clients simulainously using select/poll.  This allows all
+   multiple clients simultaneously using select/poll.  This allows all
    state updates to be synchronous.
 
  - Any updates to state are kept in memory and written to an
@@ -52,7 +52,7 @@ Properites of an INDEX server:
  - Larry's keymap server can just be a directory that is managed by
    the index server and doesn't actually go to disk.
 
- - only one INDEX server per nested colleciton
+ - only one INDEX server per nested collection
 
 Commands from client to index server:
 
@@ -67,7 +67,7 @@ Commands from client to index server:
 
    Note: the data is not always returned, but the remote client reads the
    data directly.  This means that the structures returned need to be
-   "relatively" stable and don't get deleted execpt at controlled
+   "relatively" stable and don't get deleted except at controlled
    times.
 
    This API is used for open() and stat()

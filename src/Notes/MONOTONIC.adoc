@@ -2,7 +2,7 @@ Monotonically increasing files in BitKeeper
 ===========================================
 Files in BitKeeper are currently TimeSafe which means if the repository
 rolls backwards, the files also roll backwards.  In almost all cases
-this is the correct behaviour, but there are exceptions.
+this is the correct behavior, but there are exceptions.
 
 We'd like to have a file type which only increases for things like
 the config file (license keys, configuration changes) and tags.
@@ -16,8 +16,8 @@ undo, or a stripdel.   The non-stripped deltas have a new name, they are
 "dangling deltas".
 
 We allow edits on files with dangling deltas, but delta gets some
-additional features.  The behaviour we want is to maintain all the BK
-invariants but get the effect of modifying the rolled-foward delta.
+additional features.  The behavior we want is to maintain all the BK
+invariants but get the effect of modifying the rolled-forward delta.
 Here's how we do that.  We allow edit to run against a file with
 dangling deltas.  The p.file is as if there were no dangling deltas,
 which means that clean, diffs, et al just work.  The hard part is in

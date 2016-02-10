@@ -262,7 +262,7 @@ We use the interesting segment of the changestate array as
 a variable length hash key.
 
 In changestate, the I entries are marked with the hibit set
-to dinstinguish them from D entries.  In the hash key, the
+to distinguish them from D entries.  In the hash key, the
 first entry will always be an I and the zero or more rest
 will always be D.  When making the hash key, we turn off
 the hibit on I entry to make them just a list of serials
@@ -305,7 +305,7 @@ an EACH_HASH and processing all the blocks in the context
 of a serialmap.  But that's not where the big gains are.
 Better to see if we can avoid processing all blocks.
 
-We also konw that processors like to read sequential
+We also know that processors like to read sequential
 data.  So what we can do is create an array of hash
 values sorted by their first key serial (the I entry).
 Then we can create an array of the keys laid out in

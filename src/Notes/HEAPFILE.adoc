@@ -4,7 +4,7 @@ Some of Wayne's thoughts relating to heap perf
  * sccs_addUniqStr() currently has to page all of delta2 into
    memory.  Since the heap saves the tipkey at the time of the
    last repack we can avoid most of this walk. However since we are
-   rewritting the entire delta table anyway it probably doesn't
+   rewriting the entire delta table anyway it probably doesn't
    matter.
 
  * in takepatch we end up pushing the incoming comments to the heap

@@ -44,7 +44,7 @@ success or failure lead to `outputtool`.
 None of this works, however, if the user is not using _the_ console
 but is rather connected remotely via `ssh/rsh`.  The code for the GUI
 elements does run but it not displayed anywhere (Google hints that
-there are rumours that those windows are sent to something a special
+there are rumors that those windows are sent to something a special
 session and a registry tweak could make them visible but we are deep
 into the weeds).  Moreover, dialogs/windows in this particular limbo
 that require feedback (such as a click on OK) have no way of getting

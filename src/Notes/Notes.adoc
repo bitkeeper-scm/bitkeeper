@@ -82,11 +82,11 @@ well or renames/splits/merges won't work.
 
 
 
-THis is all orthogonal to LOD's.  Implement them first.
+This is all orthogonal to LOD's.  Implement them first.
 
 Let's think some more about naming in the integration tree.  Suppose
 we were to define the trunk as where stuff goes when it is committed.
-Branches are where developmnet happens.  So //no// work actually 
+Branches are where development happens.  So //no// work actually 
 ever happens on the trunk, it's all on a branch.  When the work is 
 approved a delta is added to the trunk which either is the merge of
 what was on the trunk and the branch (there were conflicts) or it is

@@ -7,7 +7,7 @@ Adding logging to BitKeeper.
 resync
 
 	The last thing resync does is move RESYNC -> RESOLVE .
-	The existance of a RESYNC directory means the resync
+	The existence of a RESYNC directory means the resync
 	didn't get done or is in progress.  If in progress,
 	RESYNC/BitKeeper/tmp/pid should be the process id.
 

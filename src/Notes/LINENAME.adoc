@@ -52,7 +52,7 @@ Interface
 ---------
 
 Command line: bk get -O (the old sequence number interface)
-Doesn't work with -a formated.  Should it?
+Doesn't work with -a formatted.  Should it?
 
 sccs_get() flags:
 GET_LINENAME - defined as the last bit in the GET_* flags.

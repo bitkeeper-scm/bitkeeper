@@ -18,7 +18,7 @@ becomes dev so the tip would have both bugfix.xxx and dev.zzz .
 --
 Alternative from Wayne:
 
-Just calling creating a new 'dev' tag everytime the tip of -dev
+Just calling creating a new 'dev' tag every time the tip of -dev
 changes would do the same thing.  The previous values of dev are still
 recorded as the old bk-tag-del RTI shows.
 
@@ -31,4 +31,4 @@ When did this bugfix cset make it into dev?
   bk set -tt -l -r${BUGFIX}_$INDEX | grep '^dev_[^_]*$' | tail -1
 
 Bisect going only over this repo's event stack. I.e. don't jump around
-branches, just test the merges and print the branc this was merged from.
+branches, just test the merges and print the branch this was merged from.

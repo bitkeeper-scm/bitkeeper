@@ -98,4 +98,4 @@ tree at any point, you just get that changeset and convert those lines
 into a set of checkouts on the file & rev.  Means that co needs to be
 able to take a key as a rev.
 
-Allow the use of tags to delimit boundries of a change set.
+Allow the use of tags to delimit boundaries of a change set.

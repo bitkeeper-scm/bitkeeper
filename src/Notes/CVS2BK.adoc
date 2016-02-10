@@ -55,7 +55,7 @@ Algorithm
     }
     sccs_delta() the changeset file with a some sort of comment.  
     We need delta the changeset file with a date that equals the last delta
-    in the changeset.  The user should someobody in the list of deltas in
+    in the changeset.  The user should somebody in the list of deltas in
     the changset.
     The comment is an open issue - we could use the checkin comments
     on the files but that is going to make the changeset file huge.

@@ -1,19 +1,11 @@
-cset -i -x; cset -i is cherry picking and cset -x has 2 forms now
-=================================================================
+cset -i and -x: selective include or exclude of a cset or delta
+===============================================================
 
-This is not about cset 9 but cset -i <include-list> -x <exclude-list>
+cset -x$REVLIST - exclude csets already included 
 
-cset -i is both being able to include csets that were excluded,
-and to support cherry picking if other work is done.
-See Notes/CHERRY-PICK for those details.
+cset -i$REVLIST - include csets previously excluded
 
-Currently:
-
-cset -i <include-list> -x <exclude-list> include or exclude the content
-contributed by the listed csets, and any csets that they include or
-exclude according the set computed by serialmap().
-
-If there were file renames, changes in permissions, like chmod +x,
+Currently, if there were file renames, changes in permissions, like chmod +x,
 those are not changed.
 
 csetx.sh
@@ -40,6 +32,3 @@ a function is active and the change which created the function
 gets excluded.
 
 And to handle meta data as best we can.
-
-See also the description for continuity and replacement in the
-Notes/SET-BASED file.

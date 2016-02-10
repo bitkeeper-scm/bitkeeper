@@ -77,7 +77,7 @@ Revisioning of symbols:
 
 The # is a monotonically increasing number (which may have conflicts at
 smoosh time, what do I do about that?).  The highest numbered version of
-a particular smbol is the one that gets used.  So if someone moved the
+a particular symbol is the one that gets used.  So if someone moved the
 tags around, you'd see
 
 	^Af s 1.20 Alpha 0 lm@bitmover.com 05/22/1998 11:02:45

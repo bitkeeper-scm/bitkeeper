@@ -70,11 +70,11 @@ This list is maintained as follows:
 Proxies
 -------
 
-In some cases the list of URLs for a repository will not be accessable
+In some cases the list of URLs for a repository will not be accessible
 from another machine after that repo is cloned.   We solve this by
-having some generic mechinism for bkd connections to be proxied via
+having some generic mechanism for bkd connections to be proxied via
 another bkd.  So after a clone if all the missing components cannot be
-found and we had some URLs which were inaccessable, we try retry those
+found and we had some URLs which were inaccessible, we try retry those
 URLs by proxying the URL for the clone.  These proxied connections are
 less desirable so the code should try to replace them with direct
 connections as they are found.
