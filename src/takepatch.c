@@ -2551,7 +2551,7 @@ init(char *inputFile)
 			perror(inputFile);
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
-		saveFile = inputFile;
+		saveFile = "";	/* Don't let abort or resolve rm patch file */
 	}
 	if (Fprintf("RESYNC/BitKeeper/tmp/patch", "%s\n", saveFile) < 0) {
 		perror("RESYNC/BitKeeper/tmp/patch");

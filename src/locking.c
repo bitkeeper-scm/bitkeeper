@@ -411,6 +411,10 @@ wrlock(project *p)
 	return (0);
 }
 
+/*
+ * Try and get a write lock for the whole repository.
+ * Return -1 if failed, 0 if it worked.
+ */
 int
 repository_wrlock(project *p)
 {

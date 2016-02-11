@@ -41,7 +41,38 @@ bk new $Q jj
 bk commit $Q -yjj || fail
 echo 2 > yy
 bk new $Q yy
-chmod -w .bk/SCCS/ChangeSet,2
+chmod a-w .bk/SCCS/ChangeSet,2
 bk commit $Q -yyy || fail
 bk _test -w SCCS/2.ChangeSet || fail
+echo OK
+
+echo $N Show a pull into a bloated repo will repack .................$NL
+cd "$HERE"
+echo 'partial_check: on!' >> "$BK_DOTBK/config"
+commercial pull-source
+touch foo
+bk new $Q foo
+bk commit $Q -f
+bk clone $Q . ../pull-dest
+bk edit $Q foo
+bk delta $Q -fynull foo
+bk commit $Q -f
+bk force_repack $Q
+SEDSTRING='s/ *unused: *\([^ ]*\).*/\1/p'
+WANT=`bk _heapdump -s ChangeSet | sed -n "$SEDSTRING"`
+cd ../pull-dest
+bk force_repack $Q
+# build up some litter
+for f in 1 2 3 4 5 6
+do	bk -?_BK_HEAP_NOREPACK=1 pull $Q -R
+	rm -fr RESYNC PENDING
+done
+# Stage is set: we want small, and it is now large
+BEFORE=`bk _heapdump -s ChangeSet | sed -n "$SEDSTRING"`
+test "$WANT" -lt 200 || fail $WANT not less than 200
+test "$BEFORE" -gt 500 || fail $BEFORE not greater than 500
+# <drum roll>
+bk pull $Q || fail
+GOT=`bk _heapdump -s ChangeSet | sed -n "$SEDSTRING"`
+test "$WANT" -eq "$GOT" || fail $WANT not equal to $GOT
 echo OK

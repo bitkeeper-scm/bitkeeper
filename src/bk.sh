@@ -1713,7 +1713,19 @@ _changed_files() {
 }
 
 _force_repack() {
-	_BK_FORCE_REPACK=1 bk repocheck
+	OPT=
+	while getopts q opt
+	do
+		case "$opt" in
+		    q)	OPT="-q";;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	test "X$1" != X && {
+		echo "force_repack: too many arguments"
+		exit 1
+	}
+	_BK_FORCE_REPACK=1 bk repocheck $OPT
 }
 
 # ------------- main ----------------------
