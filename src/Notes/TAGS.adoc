@@ -35,7 +35,7 @@ These just because they're weird.
 Dash is allowed in the middle of a tag, yet causes a parsing error
 in some cases, like 'bk edit -xA-B', but not 'bk cset -xA-B'.
 Read slib.c:walkList; dash is used for a linear range.
-Depracate that form of range?  (which should be done anyway).
+Deprecate that form of range?  (which should be done anyway).
 Prioritize TAGS in the parsing?
 
 == Post BK-7.0

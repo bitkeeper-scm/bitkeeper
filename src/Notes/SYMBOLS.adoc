@@ -110,7 +110,7 @@ Symbol graph notes, Sun Oct 29 11:29:36 PST 2000
 
 We have numerous problems resulting from the symbols not participating in 
 the graph the way the regular deltas do.  We can't merge conflicts, we
-can't brobe the symbol space for fast pulls, etc.
+can't probe the symbol space for fast pulls, etc.
 
 Proposed fix:
 
@@ -133,7 +133,7 @@ C DATA STRUCTURES
 
     0 in these fields means there is no parent/merge parent.
 
-COVERSION FROM EXISTING FORMAT
+CONVERSION FROM EXISTING FORMAT
     Construct a straightline graph in time order.  So just walk the
     table in table order (newest to oldest) and for each delta which
     has a tag, find the next delta which has a tag, and then  use that
@@ -145,7 +145,7 @@ COVERSION FROM EXISTING FORMAT
 LOD IMPLICATIONS
     We need to allow multiple open tips so long as the there is exactly one
     open tip per lod.  In other words, when we write a resolver for this
-    stuff, we need to not merge across lod boundries.
+    stuff, we need to not merge across lod boundaries.
 
 PULL / PUSH
     We have to probe the tag graph the same we probe the delta graph.

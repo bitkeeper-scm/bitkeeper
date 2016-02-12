@@ -28,7 +28,7 @@ time.
   line comment.  This is because commit will be calling with the
   changeset comment supplied via -Y, however, the contents of any
   cfiles that already exist (such as citool might create) should be
-  honoured.
+  honored.
 
 `delta --did-ci`::
   When commit feeds delta a list of files on stdin, it has
@@ -47,9 +47,9 @@ mechanism, we check for the existence of the mark before proceeding.
 Changes to commit
 -----------------
 
-   - Make this the new default behaviour when processing -l or stdin
+   - Make this the new default behavior when processing -l or stdin
 
-   - Add a --ci option to enable this behaviour when commit generates
+   - Add a --ci option to enable this behavior when commit generates
      its own list of files to commit (but note that we do not automagically
      include extra files, those have to be specified).
 

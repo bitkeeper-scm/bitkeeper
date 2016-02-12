@@ -9,7 +9,7 @@ Problem:
     community but the other N groups are corporations which may wish to
     cooperate but hold back their details, such as who is doing what.
 
-Solution for a single coporation + the open source community:
+Solution for a single corporation + the open source community:
     Construct a two sided firewall repository.  The repository has
     a public and private side, somewhat similar to a public and a
     private net.  What we are going to do is ``masquerade'' all the
@@ -51,9 +51,9 @@ Solution for a single coporation + the open source community:
     in an internal LOD.
 
     The firewall could also filter the comments for inappropriate messages
-    such as a string of keyowrds (obscenities, trade secrets, etc.).
+    such as a string of keywords (obscenities, trade secrets, etc.).
 
-Solution for multiple coporations + the open source community:
+Solution for multiple corporations + the open source community:
     It's more or less the same as the other one, except each company has a
     firewall repository through which changes move.
 
@@ -66,9 +66,9 @@ Effects:
     We preserve anonymity for the internal developers.  This doesn't mean
     that there is no contact between the internal and external developers,
     it means that the contact is carried out at the discretion of the
-    internal corporation.  The corporation can appoint a liason who is the
+    internal corporation.  The corporation can appoint a liaison who is the
     contact person for the project.  If an external person has issues, they
-    can raise them with the liason and the liason is able to know from 
+    can raise them with the liaison and the liaison is able to know from 
     the history who the real internal person is, and can either find out
     what is needed or put the two people in direct contact.
 

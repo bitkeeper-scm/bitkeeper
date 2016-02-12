@@ -23,7 +23,7 @@ These will be generated automatically as part of a crankturn.
 3. Permissions and ownership
 	a. file permissions - not writable
 	b. directory permissions - not writable by other than installer
-	c. file and directory owndership - same as who installed.
+	c. file and directory ownership - same as who installed.
 
 4. It will make links to /usr/bin/.. 
 	a. if it can, it will make links in /usr/bin for bk, get, prs, ...
@@ -32,6 +32,6 @@ These will be generated automatically as part of a crankturn.
 	a. show 'bk help license'
 
 == 
-Possible Requrements, but do not implement unless they get moved to above.
+Possible Requirements, but do not implement unless they get moved to above.
 	a. it will relocatable - user can specify root of installation
 	b. it will work for non-root - users can install in $HOME area

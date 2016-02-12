@@ -22,7 +22,7 @@ they come together we don't have the state we need to do the right thing.
 For regular files we can get the same problem if the pathnames change
 the sort order.
 
-Mysql shows this on a parition when you clone backwards and pull.
+Mysql shows this on a partition when you clone backwards and pull.
 
 To avoid those problems, metadata is added to keep sort order the same.
 More details below, here is the summary:

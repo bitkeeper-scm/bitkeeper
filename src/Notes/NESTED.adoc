@@ -43,7 +43,7 @@ definition of each of the fields and how they are used.
 === Product ===
 A BitKeeper product is a repository marked with an empty file
 `BitKeeper/log/PRODUCT`. The command `bk product` tells you whether
-the repsository you're at is a product or not.
+the repository you're at is a product or not.
 
 Most operations in a nested collection start by getting a `nested`
 structure through a call to `nested_init()`. This function has many
@@ -155,7 +155,7 @@ nested	*nested_init(sccs *cset, char *rev, char **revs, u32 flags);
   structure, see below). Mutually exclusive with `rev`. This field is
   mainly used by `bk pull` and `bk undo` which operate on regions of
   the graph.  The region of the graph must have a single tip and when
-  the region and it's decendents are removed from the graph a single
+  the region and it's descendents are removed from the graph a single
   tip must remain.  The `nested_init()` will fail if these properties
   are not true.
 

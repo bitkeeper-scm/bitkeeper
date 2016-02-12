@@ -84,7 +84,7 @@ Thanks,
 ----------------------------------
 On Jan 9, 2007, at 8:03 PM, Oscar Bonilla wrote:
 
-> I have a reproducible bug on some windos machines where bash coredumps
+> I have a reproducible bug on some Windows machines where bash coredumps
 > like this:
 >
 > MSYS-1.0.11 Build:2004-03-25 09:45
@@ -116,7 +116,7 @@ On Jan 9, 2007, at 8:03 PM, Oscar Bonilla wrote:
 > I've traced it back to what appears to be a problem in fork.cc. From
 > what I can tell, the problem is that
 > user_data->threadinterface->reent_index gets overwritten (as part of
-> fork copying the address space) with an invalid Thread Local Storaga
+> fork copying the address space) with an invalid Thread Local Storage
 > index. I have managed to "fix" it by marking _mtinterf as NO_COPY,
 > like so,
 >

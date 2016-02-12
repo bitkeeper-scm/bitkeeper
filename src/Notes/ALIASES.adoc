@@ -20,7 +20,7 @@ Rework the alias interface to support the following new features:
   bk alias add|remove|etc need to muck with the tip of the aliasdb file
 
   we punted on gfile because we have the bk alias command and it
-  does't leave the gfile edited so if the user is messing by hand with
+  doesn't leave the gfile edited so if the user is messing by hand with
   the gfile, it's their problem. (lm3di).
 
 - The present bit went in because we used to skip stuff that wasn't
@@ -44,7 +44,7 @@ STUFF THAT'S NOT DONE OR NEEDS TO BE CHECKED
 
 one idea is:
 
-  * the receiver passses the tip key of the aliases file and an md5sum
+  * the receiver passes the tip key of the aliases file and an md5sum
     of each alias expansion for each alias it's asking for.
 
     the sender can then see if it's an update-only pull with respect

@@ -24,7 +24,7 @@ information, we keep the information in two separate files.
   as keys and all the urls on which we've seen that component as
   values. There is no other information in this file. Occasionally,
   you might see a timestamp at the end of the stored URLs, this is
-  beacuse older BKs (bk-5.1) used to store it. It is deprecated.
+  because older BKs (bk-5.1) used to store it. It is deprecated.
 
   `BitKeeper/log/urlinfo`:: a KV file that contains URLs as keys and
   information about the URLs as data (separated by new
@@ -111,7 +111,7 @@ typedef struct {
 } urlinfo;
 }}}
 
-Besided this new structure `urlinfo`, a couple of fields have been
+Besides this new structure `urlinfo`, a couple of fields have been
 added to the `nested` structure.
 {{{#!cplusplus numbers=off
 struct nested {
@@ -133,9 +133,9 @@ struct nested {
     BAM does.
 
     `urlinfo_buildArray()`:: this is an auxiliary function that
-    intializes the `n->urls` array.
+    initializes the `n->urls` array.
 
-    `urlinfo_urlArgs()`:: Occassionally we need to check some extra
+    `urlinfo_urlArgs()`:: Occasionally we need to check some extra
     URLs than what is in the KV files. E.g. URLs that were passed by
     the user as arguments to some command (-@<url>). This helper
     function allows us to add then to the `n->urls` array.

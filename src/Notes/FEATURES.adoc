@@ -51,7 +51,7 @@ Nested component-only features
 
 Some features that change bk's behavior may want to be enabled only
 for certain components or only in the product.  Currently this is not
-supported since a nested tree has the same features everwhere.  The
+supported since a nested tree has the same features everywhere.  The
 extension we have in mind is to allow a new class of features with an
 enable per-component.  These will be tested an enabled with some API
 like the following:
@@ -60,7 +60,7 @@ like the following:
   int proj_featuresSetActive(project *p, int feature, int on);
 
 And in the BitKeeper/log/features file the feature will be listed
-everwhere, but preceeded with a '#' in all files where the feature is
+everywhere, but preceded with a '#' in all files where the feature is
 not enabled.  For example:
 
 prod/BitKeeper/log/features:

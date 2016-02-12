@@ -1,7 +1,7 @@
 The over-the-wire protocol explained
 ====================================
 
-This is the new key sync algorthm which should minimize the keys exchanged
+This is the new key sync algorithm which should minimize the keys exchanged
 as part of a resync|pull|push.  It is a protocol rev to the BKD protocol
 so we want to get it right.  While I'm there, I need to remember to pass
 the remote BK version as well, cort wants that in triggers so he can force

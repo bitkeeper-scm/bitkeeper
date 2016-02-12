@@ -18,7 +18,7 @@ Xilinx (big repos and fragmentation)
   was observed that in checkout:edit mode we will have a ~40 byte
   pfile on disk for every sfile.  We also have little dfiles, zfiles,
   cfiles, etc...  Because of block allocation these files will consume
-  a suprisingly large amount of space on the disk.  (~42% of the size
+  a surprisingly large amount of space on the disk.  (~42% of the size
   of the sfiles on linux-2.6) Also on NFS every operation on one of
   those files will be a couple round trip network packets.
 
@@ -35,14 +35,14 @@ sfile blobs and append only
   win what about collapsing all the sfiles into a single blob under
   the BitKeeper directory.  The immediate benefit is that the SCCS
   directories are removed from among the user's data.  Next is that
-  fragmentation will again allow a significate diskspace savings.
+  fragmentation will again allow a significant diskspace savings.
   (~15% in our tree and ~20% in linux-2.6)
 
   And for simplicity and stability we can make those sfile blobs
   append-only where new sfiles are added to the end without deleting
   the old versions.  The data can be recompacted in check.c
   occasionally when the unused space reaches a certain threshold. (The
-  assumption is that only a small precentage on files will have
+  assumption is that only a small percentage on files will have
   changed in recent history.  Unfortunately the largest file changes
   the most often.  Chaining to the rescue!)  Add an external index for
   the blobs and lookups would be very fast.
@@ -99,7 +99,7 @@ coherency and locking
 
 using bkd for locking
   So that suggests we need a 3rd party process to negotiate access to
-  our shared resource.  And since we have always wanted a presistant
+  our shared resource.  And since we have always wanted a persistent
   bkd to handle state and track repositories this was a good chance to
   introduce a global bkd to the system that we can use.  Just start a
   single bkd per-user per-machine and put a pointer to it in
@@ -153,7 +153,7 @@ use unionfs for transactions
 
 problems with triggers and returning to shell
   Note that other programs not linked with bk's fslayer code would not
-  see changes in the repostory.  This is a big issue for triggers.
+  see changes in the repository.  This is a big issue for triggers.
   Consider triggers called out of resolve...
 
   Also programs that bk calls like GNU diff would either need to be

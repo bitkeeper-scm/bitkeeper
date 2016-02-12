@@ -49,7 +49,7 @@ clone
   set a valid URL.  (XXX checkout:get can be a problem here)
 
 - An option '-B URL' option is added to clone to override the new
-  server URL.  This is verfied before the clone begins.  In this case
+  server URL.  This is verified before the clone begins.  In this case
   a clone may transfer some BAM data files that exist on the source's
   BAM server, but not at the new URL.
 

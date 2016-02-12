@@ -65,8 +65,8 @@ Difference between pre- and post-
     post-triggers are informational only.
 
 Paranoid mode for gatekeeper trees
-    Because triggers can propogate and because they can do bad things like
-    "rm -rf .", it is a wise idea to put a non-propogating paranoid trigger
+    Because triggers can propagate and because they can do bad things like
+    "rm -rf .", it is a wise idea to put a non-propagating paranoid trigger
     like so in your tree:
 
     cat > BitKeeper/triggers/pre-apply-paranoid <<EOF
@@ -84,7 +84,7 @@ Paranoid mode for gatekeeper trees
     exit 0
 
 
-Trigger catagories:
+Trigger categories:
     c-	-> pre-commit
     c+  -> post-commit
     i-  -> pre-incoming

@@ -24,7 +24,7 @@ The ability to slurp the end of an LOD into another LOD and merge.
 PATCH ISSUES
 ------------
 
-a) deletes & renames.  Need a modifed version of patch which does not delete
+a) deletes & renames.  Need a modified version of patch which does not delete
    files, it tells BK to delete them.  Also needs to tell BK when it creates
    new files.  We need a post processor which goes over the set of deletes
    and creates and detects renames.

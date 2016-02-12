@@ -12,7 +12,7 @@ do not require.
  1. A manifest file.  This is an XML file that provides metadata
     about the executable:
 
-     - priviledge required, does it need admin? (we use this to
+     - privilege required, does it need admin? (we use this to
        demand admin privs for the installer)
      - version info (optional)
      - compatibility info (what Windows versions is the executable
