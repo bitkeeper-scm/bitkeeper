@@ -26,10 +26,10 @@ typedef	struct cset {
 	u32	compat:1;	/* do not send new sfiles in sfio */
 	u32	fastpatch:1;	/* enable fast patch mode */
 	u32	fail:1;		/* let all failures be flushed out */
-	u32	bkmerge:1;	/* Patch is sending patches in bkmerge */
-	u32	standalone:1;	/* Patch is sending patches in bkmerge */
+	u32	standalone:1;	/* this repo and not product */
 
 	/* numbers */
+	int	bkmerge;	/* -1: default; 1 bkmerge; 0 sccsmerge */
 	int	tooMany;	/* send whole sfiles if # deltas > tooMany */
 	int	verbose;
 	int	progress;	/* progress bar max */
@@ -62,10 +62,16 @@ makepatch_main(int ac, char **av)
 	int	dash, c, i;
 	char	*nav[15];
 	char	*range = 0;
+	longopt	lopts[] = {
+		{ "bk-merge", 300 },		/* output bk-merge format */
+		{ "no-bk-merge", 310 },		/* output sccs-merge format */
+		{ 0, 0 }
+	};
 
 	dash = streq(av[ac-1], "-");
 	nav[i=0] = "makepatch";
-	while ((c = getopt(ac, av, "BCdFM;P:qr|sv", 0)) != -1) {
+	copts.bkmerge = -1;	/* un-determined */
+	while ((c = getopt(ac, av, "BCdFM;P:qr|sv", lopts)) != -1) {
 		if (i == 14) usage();
 		switch (c) {
 		    case 'B': copts.doBAM = 1; break;
@@ -99,6 +105,12 @@ makepatch_main(int ac, char **av)
 			break;
 		    case 'v':					/* doc 2.0 */
 			nav[++i] = "-v";
+			break;
+		    case 300:		/* --bk-merge */
+			copts.bkmerge = 1;
+			break;
+		    case 310:		/* --no-bk-merge */
+			copts.bkmerge = 0;
 			break;
 		    default: bk_badArg(c, av);
 		}
@@ -601,11 +613,13 @@ again:	/* doDiffs can make it two pass */
 			fputs(((didfeature++) ? "," : PATCH_FEATURES), stdout);
 			fputs("PORT", stdout);
 		}
-		if (copts.fastpatch && !copts.compat &&
-		    features_test(cset->proj, FEAT_BKMERGE)) {
+		if (copts.bkmerge == -1) {
+			copts.bkmerge = (copts.fastpatch && !copts.compat &&
+			    features_test(cset->proj, FEAT_BKMERGE));
+		} 
+		if (copts.bkmerge) {
 			fputs(((didfeature++) ? "," : PATCH_FEATURES), stdout);
 			fputs("BKMERGE", stdout);
-			copts.bkmerge = 1;
 		}
 		if (didfeature) {
 			fputc('\n', stdout);

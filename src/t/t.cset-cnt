@@ -30,7 +30,11 @@ cat <<EOF > BitKeeper/etc/ignore
 3
 EOF
 bk ci -yignore1 -u $Q BitKeeper/etc/ignore
-bk commit $Q -yignore1 || fail
+# give big set comment so the heap doesn't repack over and over
+bk base64 < $BIN1 > C
+bk commit $Q -YC || fail
+rm -f C
+bk force_repack $Q || fail
 echo OK
 
 CNT=1
@@ -144,6 +148,10 @@ CNT=9
 echo $N "Count the inits for a 'bk clone' ($CNT)........................."$NL
 cd "$HERE"
 nested nest
+# give big set comment so the heap doesn't repack over and over
+bk base64 < $BIN3 > C
+bk commit -YC $Q -F || fail
+bk force_repack $Q || fail
 bk gate $Q -r
 rm "$FILE"
 bk clone $Q . ../nest2 || fail
@@ -212,7 +220,7 @@ bk changes -Rv > /dev/null || fail
 check_cnt
 echo OK
 
-CNT=47
+CNT=49
 echo $N "Count the inits for a 'bk pull -u' ($CNT)......................"$NL
 rm "$FILE"
 bk pull -u $Q || fail
@@ -226,7 +234,7 @@ bk unpull -fs $Q || fail
 check_cnt
 echo OK
 
-CNT=62
+CNT=64
 echo $N "Count the inits for a 'bk pull' w merge ($CNT)................."$NL
 bk portal $Q .
 touch c
@@ -247,7 +255,7 @@ bk pull $Q || fail
 check_cnt
 echo OK
 
-CNT=32
+CNT=33
 echo $N "Count the inits for a 'bk push' ($CNT)........................."$NL
 rm "$FILE"
 bk push $Q || fail

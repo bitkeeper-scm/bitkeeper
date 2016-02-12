@@ -32,6 +32,7 @@ stripdel_main(int ac, char **av)
 	RANGE	rargs = {0};
 	char	nullrange[] = "+..+";
 	longopt	lopts[] = {
+		/* should only be used by csetprune or if you newroot */
 		{ "strip-tags", 300 },		/* remove tag graph */
 		{ 0, 0 }
 	};

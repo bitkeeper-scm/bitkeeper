@@ -248,6 +248,7 @@ bk clone $Q --upgrade-repo nest.bk nest.also-upgraded || fail
 grep -q ' check' nest.also-upgraded/BitKeeper/log/cmd_log || fail
 grep -q ' check' nest.also-upgraded/newcomp/BitKeeper/log/cmd_log || fail
 # But do the same thing again and all the checking is cleaned up
+_BK_HEAP_NOREPACK=1 \
 bk clone $Q --upgrade-repo nest.bk nest.also-upgraded-2 || fail
 bk --cd=nest.also-upgraded-2 -e sh -c "'$PWD/script'" || fail
 echo OK

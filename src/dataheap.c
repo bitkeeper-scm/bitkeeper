@@ -909,19 +909,29 @@ _heap_u32load(void *ptr)
 int
 bin_needHeapRepack(sccs *s)
 {
-	project	*prod;
 	char	*t;
 	u32	heapsz_orig;
 
 	/* only makes since for BK sfiles */
 	unless (BKFILE(s)) return (0);
 
-	/* no repacking in RESYNC */
-	if (proj_isResync(s->proj)) return (0);
-	if ((prod = proj_product(s->proj)) && proj_isResync(prod)) return (0);
+	/* csets have more restrictions */
+	if (CSET(s)) {
+		/* no repacking in RESYNC */
+		if (proj_isResync(s->proj)) return (0);
 
-	/* no repacking if we have a RESYNC (which shares the heap) */
-	if (CSET(s) && isdir(proj_fullpath(s->proj, ROOT2RESYNC))) return (0);
+		/* no repacking if we have a RESYNC (which shares the heap) */
+		if (isdir(proj_fullpath(s->proj, ROOT2RESYNC))) return (0);
+
+		/* Also for comp csets that are copied to prod RESYNC */
+		if (proj_isComponent(s->proj) &&
+		    isdir(proj_fullpath(proj_product(s->proj), ROOT2RESYNC))) {
+			return (0);
+		}
+	}
+
+	/* testing API */
+	if (getenv("_BK_HEAP_NOREPACK")) return (0);
 
 	/* always repack if forced */
 	if (getenv("_BK_FORCE_REPACK")) return (1);

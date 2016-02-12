@@ -1024,6 +1024,7 @@ private u32
 genpatch(FILE *wf, char *rev_list, int gzip, int isLocal)
 {
 	char	*makepatch[10] = {"bk", "makepatch", 0};
+	char	*p;
 	int	fd0, fd, rfd, n, status;
 	pid_t	pid;
 
@@ -1038,6 +1039,13 @@ genpatch(FILE *wf, char *rev_list, int gzip, int isLocal)
 		}
 	} else {
 		makepatch[n++] = "-C"; /* old-bk, compat mode */
+	}
+	if (p = getenv("BKD_FEATURES_USED")) {
+		if (strstr(p, "BKMERGE")) {
+			makepatch[n++] = "--bk-merge";
+		} else {
+			makepatch[n++] = "--no-bk-merge";
+		}
 	}
 	if (bkd_hasFeature(FEAT_FAST)) makepatch[n++] = "-F";
 	makepatch[n++] = "-";

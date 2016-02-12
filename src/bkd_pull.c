@@ -254,6 +254,14 @@ cmd_pull_part2(int ac, char **av)
 
 	n = 2;
 	if (bk_hasFeature(FEAT_BKMERGE)) {
+		/* match remote side format to keep unused from building up */
+		if (p = getenv("BK_FEATURES_USED")) {
+			if (strstr(p, "BKMERGE")) {
+				makepatch[n++] = "--bk-merge";
+			} else {
+				makepatch[n++] = "--no-bk-merge";
+			}
+		}
 		if (rem) {
 			/* A pull that will create a merge */
 

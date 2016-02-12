@@ -490,7 +490,7 @@ pass3:	T_PERF("pass3");
 	 */
 	T_PERF("pass4");
 	if (opts->pass4) pass4_apply(opts);  /* never returns */
-	
+
 	freeStuff(opts);
 
 	/* Unlock the RESYNC dir so someone else can get in */
@@ -2715,6 +2715,7 @@ pass4_apply(opts *opts)
 	char	*cmd;
 	hash	*emptydirs;
 	char	**dirlist;
+	int	did_partial;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 4 ====\n");
 	opts->pass = 4;
@@ -2965,17 +2966,16 @@ err:			unapply(applied);
 		sync();
 	}
 	if (run_check(opts->quiet && !opts->progress,
-		opts->verbose && !opts->progress, applied, 0, 0)) {
+		opts->verbose && !opts->progress, applied, 0, &did_partial)) {
 		fprintf(stderr, "Check failed.  Resolve not completed.\n");
-		/*
-		 * Clean up any gfiles we may have pulled out to run check.
-		 */
-		system("bk clean BitKeeper/etc");
 		goto err;
+	} else {
+		/* remember we passed a full repo check */
+		unless (did_partial) opts->fullCheck = 1;
 	}
 	if (xfile_exists("ChangeSet", 'd') && proj_isComponent(0) &&
 	    !exists("RESYNC/BitKeeper/log/port")) {
-		if (moveupComponent()) goto err;
+		opts->moveup = 1;
 	}
 	unlink(BACKUP_LIST);
 	unlink(BACKUP_SFIO);
@@ -3208,7 +3208,6 @@ resolve_cleanup(opts *opts, int what)
 		goto exit;
 	}
 
-	resolve_post(opts, 0);
 
 	/*
 	 * Force a logging process even if we did not create a merge node
@@ -3222,7 +3221,36 @@ resolve_cleanup(opts *opts, int what)
 	logChangeSet();
 
 	/* Only get here from pass4_apply() */
-	rc = 0;
+
+	/*
+	 * While we might have done a check, we might need a repack, which
+	 * we can't do while a RESYNC is around because the heap files are
+	 * shared between main repo and RESYNC ChangeSet files.  So a
+	 * machine that only gets pushed to can accumulate crud.
+	 */
+	if (cset_needRepack()) {
+		if (opts->fullCheck) {
+			sccs	*cset = sccs_csetInit(0);
+
+			bin_heapRepack(cset);
+			if (rc = sccs_newchksum(cset)) {
+				perror(cset->fullsfile);
+			}
+			sccs_free(cset);
+		} else {
+			rc = run_check(opts->quiet, opts->verbose, 0, 0, 0);
+		}
+	} else {
+		rc = 0;
+	}
+	/* Do repack before post trigger, as write lock is downgraded here */
+	resolve_post(opts, 0);
+	/*
+	 * Need to delay this until here, so that the repacked cset file
+	 * is moved above, as after that, we have to hold off doing a
+	 * repack.
+	 */
+	if (!rc && opts->moveup && moveupComponent()) rc = 1;
 exit:
 	sccs_unlockfile(RESOLVE_LOCK);
 	longjmp(cleanup_jmp, rc+1000);

@@ -545,6 +545,7 @@ echo partial_check:yes! >> BitKeeper/etc/config
 echo hi > foo
 bk new $Q -ycomment foo || fail
 bk commit $Q -ycomment || fail
+bk force_repack $Q || fail   # make sure we are repacked
 echo 1 > BitKeeper/log/checked
 bk admin -pbusted foo
 bk --config=autofix:off -r check -ac 2>ERR && fail -f ERR should fail
@@ -917,9 +918,7 @@ rm BitKeeper/etc/ignore-poly
 # Check passes because it is incremental and the duplicated key in the
 # changeset file is for bar, and bar is not in resync, so not seen.
 bk --cd=RESYNC -r check -aR || fail
-bk --config='partial_check:yes' resolve $Q || fail
-# Full check hits warning
-bk repocheck -q 2> GOT
+bk --config='partial_check:yes' resolve -q 2> GOT || fail
 cat <<EOF > WANT
 Warning: Duplicate delta found in ChangeSet
 	Rev: 1.1  Key: $KEY
@@ -928,6 +927,9 @@ Warning: Duplicate delta found in ChangeSet
 Please write support@bitkeeper.com with the above
 warning about duplicate deltas
 EOF
+cmpfiles WANT GOT
+# Full check hits warning
+bk repocheck -q 2> GOT
 cmpfiles WANT GOT
 echo OK
 
