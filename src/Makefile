@@ -69,7 +69,6 @@ GET=	$(Q)bk get -sS
 BK=	bk$(EXE)
 LD	=cc
 G	=-g
-TRIAL	=0
 TCLWRAP	=./tclwrap
 IMGDIR	=$(HERE)/tmp/bitkeeper
 
@@ -308,8 +307,6 @@ gWall Wall:
 p:
 	$(MAKE) CFLAGS="$(CC_FAST) $(CF)" all
 
-trial:
-	$(MAKE) TRIAL=1 CFLAGS="$(CC_FAST) $(CF)" all
 ndebug:
 	$(MAKE) CFLAGS="$(CC_FAST) -DNDEBUG $(CC_NOFRAME)" all
 g:
@@ -443,7 +440,6 @@ bkver.c: utils/bk_version FORCE
 	$(Q)echo "#include \"sccs.h\"" > bk.v
 	$(Q)bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\nchar *bk_tag = ":TAG:";\n' ../ChangeSet >> bk.v
 	$(Q)echo "char *bk_platform = \""`./utils/bk_version`"\";" >> bk.v
-	$(Q)echo "int test_release = "$(TRIAL)";" >> bk.v
 	$(Q)echo "time_t bk_build_timet = "`perl -e "print time"`";" >> bk.v
 	$(Q)echo "char *bk_build_user = \""`bk getuser`@`bk gethost -r`"\";" >> bk.v
 	$(Q)echo "char *bk_build_dir = \""`pwd`"\";" >> bk.v
@@ -501,10 +497,6 @@ installdir: utils/registry.tcl
 	    test -s symlinks || rm -f symlinks
 	@true
 
-trial_image trial-image:
-	$(MAKE) trial
-	$(MAKE) _image
-
 image:
 	$(MAKE) p
 	$(MAKE) _image
@@ -529,16 +521,13 @@ cranksave: crank.sh remote.sh
 crankstatus: crank.sh remote.sh
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh status
 
-crankrelease cranktrial nightly: crank.sh remote.sh
+crankrelease nightly: crank.sh remote.sh
 	@(TAG=$(shell bk changes -r+ -d:TAG:) ; \
 	test x$$TAG = x && { \
 		echo Cannot crankrelease with a non-tagged tip ; \
 		exit 1 ; \
 	} ; \
 	case $@ in \
-	cranktrial ) \
-		TYPE=trial; DIR=/home/bk/images/$$TAG-trial; \
-		;; \
 	crankrelease ) \
 		TYPE=release; DIR=/home/bk/images/$$TAG; \
 		;; \
@@ -558,9 +547,6 @@ crankrelease cranktrial nightly: crank.sh remote.sh
 	md5sum bk-* >> MD5SUMS ; \
 	echo "Your images are in $$DIR" ; \
 	case $@  in  \
-	cranktrial ) \
-		echo "Run './mkupgrades --trial $$TAG' to create upgrade area."; \
-		;; \
 	crankrelease ) \
 		echo "Run './mkupgrades $$TAG' to create upgrade area."; \
 	     	echo "Run './mkrelease $$TAG' to release this version of bk."; \

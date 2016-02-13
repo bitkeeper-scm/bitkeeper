@@ -69,7 +69,6 @@ void
 bkversion(FILE *f)
 {
 	FILE	*f1;
-	float	exp;
 	time_t	now = time(0);
 	char	*t;
 	char	buf[MAXLINE];
@@ -104,16 +103,6 @@ bkversion(FILE *f)
 				    age(now - sccs_date2time(t, 0), " "));
 			}
 			fprintf(f, "\n");
-		}
-	}
-
-	if (test_release) {
-		exp = ((time_t)bk_build_timet - now + 3*WEEK) / (float)DAY;
-		if (exp > 0) {
-			fprintf(f, "Expires in: %.1f days (test release).\n",
-			    exp);
-		} else {
-			fprintf(f, "Expired (test release).\n");
 		}
 	}
 }

@@ -47,8 +47,6 @@ typedef struct CMD {
 	u8	type;		/* type of symbol (from enum above) */
 	int	(*fcn)(int, char **);
 	char	*alias;		/* name is alias for 'alias' */
-	u8	restricted:1;	/* cannot be called from the command line */
-	u8	pro:1;		/* only in pro version of bk */
 	u8	remote:1;	/* always allowed as a remote command */
 } CMD;
 
@@ -63,7 +61,7 @@ while (<DATA>) {
 
     # handle aliases
     if (/([\-\w]+) => (\w+)/) {
-	print C "$1, CMD_ALIAS, 0, \"$2\", 0, 0\n";
+	print C "$1, CMD_ALIAS, 0, \"$2\"\n";
 	next;
     }
     s/\s+$//;			# strict trailing space
@@ -73,9 +71,7 @@ while (<DATA>) {
     $type = "CMD_CPROG" if s/\s+cprog//;
     $type = "CMD_LSCRIPT" if s/\s+lscript//;
 
-    $r = $pro = $remote = 0;
-    $r = 1 if s/\s+restricted//;
-    $pro = 1 if s/\s+pro//;
+    $remote = 0;
     $remote = 1 if s/\s+remote//;
 
     if (/\s/) {
@@ -89,7 +85,7 @@ while (<DATA>) {
     } else {
 	$m = 0;
     }
-    print C "$_, $type, $m, 0, $r, $pro, $remote\n";
+    print C "$_, $type, $m, 0, $remote\n";
     $rmts{$m} = 1 if $remote;
 }
 print H "\n#endif\n";
@@ -100,7 +96,7 @@ close(H) or die;
 open(SH, "bk.sh") || die;
 while (<SH>) {
     if (/^_(\w+)\(\)/) {
-	print C "$1, CMD_BK_SH, 0, 0, 0, 0\n";
+	print C "$1, CMD_BK_SH, 0, 0\n";
     }
 }
 close(SH) or die;
@@ -124,7 +120,7 @@ while (<>) {
     #  (ex:   cmd_pull_part1 => 'bk _bkd_pull_part1')
 
     if (/^cmd_(\w+)\(/) {
-	print C "_bkd_$1, CMD_INTERNAL, cmd_$1, 0, 0, 0, 1\n";
+	print C "_bkd_$1, CMD_INTERNAL, cmd_$1, 0, 1\n";
     }
 }
 if (%rmts) {
@@ -152,8 +148,6 @@ foreach (qw(cmd.c cmd.h)) {
 # (leading underscores are not included in the _main function)
 #
 # Modifiers:
-#    restricted		can only be called from bk itself
-#    pro		only available in the commercial build
 #    gui		is a GUI script
 #    cprog		is an executable in the `bk bin` directory
 #    shell		is a shell script in the `bk bin` directory
@@ -209,7 +203,7 @@ create
 crypto
 cset
 csets
-csetprune pro
+csetprune
 dbexplode
 dbimplode
 _debugargs remote
@@ -258,7 +252,7 @@ _getopt_test
 getuser
 glob
 gnupatch
-gone pro
+gone
 graft
 grep
 _gzip
@@ -285,7 +279,7 @@ _kill
 level remote
 _lines
 _link
-_listkey restricted
+_listkey
 lock
 _locktest
 log
@@ -305,7 +299,7 @@ names
 ndiff
 needscheck
 _nested
-newroot pro
+newroot
 nfiles
 opark
 ounpark
@@ -319,11 +313,11 @@ _poly
 _popensystem
 populate
 port => pull
-_probekey restricted
+_probekey
 _progresstest
 prompt
 prs
-_prunekey restricted
+_prunekey
 pull
 push
 pwd
@@ -357,7 +351,7 @@ sccs2bk
 _scat
 sccslog
 _sec2hms
-send pro
+send
 sendbug
 set
 _setkv

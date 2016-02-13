@@ -15,7 +15,6 @@ char	*editor = 0, *bin = 0;
 char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
 char	**bk_environ;
 jmp_buf	exit_buf;
-int	bk_isSubCmd = 0;	/* if 1, BK called us and sent seed */
 int	spawn_tcl;		/* needed in crypto.c:bk_preSpawnHook() */
 ltc_math_descriptor	ltc_mp;
 char	*prog;			/* name of the bk command being run, like co */
@@ -75,6 +74,7 @@ main(int volatile ac, char **av, char **env)
 	char	**sopts = 0;
 	char	**aliases = 0;
 	char	**nav = 0;
+	int	bk_isSubCmd = 0;	/* if 1, BK called us and sent seed */
 	static longopt	lopts[] = {
 		/* Note: remote_bk() won't like "option:" with a space */
 		/* none of these are passed to --each commands */
@@ -492,18 +492,6 @@ baddir:						fprintf(stderr,
 			}
 		}
 
-		/* Trial versions of bk will expire in 3 weeks. */
-		if (test_release && !bk_isSubCmd && !streq(prog, "upgrade") &&
-		    !streq(prog, "bin") &&
-		    !streq(prog, "pwd") &&
-		    (getenv("_BK_EXPIRED_TRIAL") ||
-			(time(0) > (time_t)bk_build_timet + 3*WEEK))) {
-			char	*nav[] = {"version", 0};
-
-			version_main(1, nav);
-			exit(1);
-		}
-
 		/* -'?VAR=val&VAR2=val2' */
 		if (envargs) {
 			hash	*h = hash_new(HASH_MEMHASH);
@@ -765,25 +753,6 @@ out:
 #pragma	GCC diagnostic pop
 #endif
 
-
-/*
- * Checks to see if it's allowed to run a given command
- */
-private int
-cmd_canRun(CMD *cmd)
-{
-	/* unknown commands are okay to run, they fall through bk.sh */
-	unless (cmd) return (1);
-
-	/* Handle restricted commands */
-	if (cmd->restricted && !bk_isSubCmd) {
-		/* error message matches shell message */
-		fprintf(stderr, "%s: command not found\n", prog);
-		return (0);
-	}
-	return (1);
-}
-
 private int
 cmd_run_parallel(int ac, char **av)
 {
@@ -960,7 +929,6 @@ cmd_run(char *prog, int is_bk, int ac, char **av)
 		fprintf(stderr, "%s is not a linkable command\n",  prog);
 		return (1);
 	}
-	unless (cmd_canRun(cmd)) return (1);
 	/* unknown commands fall through to bk.script */
 	switch (cmd ? cmd->type : CMD_BK_SH) {
 	    case CMD_INTERNAL:		/* handle internal command */
