@@ -1,6 +1,5 @@
-#line 2 "Lscanner.c"
 
-#line 4 "Lscanner.c"
+#line 3 "<stdout>"
 
 #define  YY_INT_ALIGNED short int
 
@@ -28,7 +27,7 @@
 #define FLEX_SCANNER
 #define YY_FLEX_MAJOR_VERSION 2
 #define YY_FLEX_MINOR_VERSION 5
-#define YY_FLEX_SUBMINOR_VERSION 35
+#define YY_FLEX_SUBMINOR_VERSION 39
 #if YY_FLEX_SUBMINOR_VERSION > 0
 #define FLEX_BETA
 #endif
@@ -66,7 +65,6 @@ typedef int16_t flex_int16_t;
 typedef uint16_t flex_uint16_t;
 typedef int32_t flex_int32_t;
 typedef uint32_t flex_uint32_t;
-typedef uint64_t flex_uint64_t;
 #else
 typedef signed char flex_int8_t;
 typedef short int flex_int16_t;
@@ -74,7 +72,6 @@ typedef int flex_int32_t;
 typedef unsigned char flex_uint8_t; 
 typedef unsigned short int flex_uint16_t;
 typedef unsigned int flex_uint32_t;
-#endif /* ! C99 */
 
 /* Limits of integral types. */
 #ifndef INT8_MIN
@@ -104,6 +101,8 @@ typedef unsigned int flex_uint32_t;
 #ifndef UINT32_MAX
 #define UINT32_MAX             (4294967295U)
 #endif
+
+#endif /* ! C99 */
 
 #endif /* ! FLEXINT_H */
 
@@ -161,7 +160,15 @@ typedef unsigned int flex_uint32_t;
 
 /* Size of default input buffer. */
 #ifndef YY_BUF_SIZE
+#ifdef __ia64__
+/* On IA-64, the buffer size is 16k, not 8k.
+ * Moreover, YY_BUF_SIZE is 2*YY_READ_BUF_SIZE in the general case.
+ * Ditto for the __ia64__ case accordingly.
+ */
+#define YY_BUF_SIZE 32768
+#else
 #define YY_BUF_SIZE 16384
+#endif /* __ia64__ */
 #endif
 
 /* The state buf must be large enough to hold one state per character in the main buffer.
@@ -187,6 +194,7 @@ extern FILE *L_in, *L_out;
 #define EOB_ACT_LAST_MATCH 2
 
     #define YY_LESS_LINENO(n)
+    #define YY_LINENO_REWIND_TO(ptr)
     
 /* Return all but the first "n" matched characters back to the input stream. */
 #define yyless(n) \
@@ -352,7 +360,7 @@ void L_free (void *  );
 
 /* Begin user sect3 */
 
-#define L_wrap(n) 1
+#define L_wrap() 1
 #define YY_SKIP_YYWRAP
 
 typedef unsigned char YY_CHAR;
@@ -378,7 +386,7 @@ static void yy_fatal_error (yyconst char msg[]  );
  */
 #define YY_DO_BEFORE_ACTION \
 	(yytext_ptr) = yy_bp; \
-	L_leng = (yy_size_t) (yy_cp - yy_bp); \
+	L_leng = (size_t) (yy_cp - yy_bp); \
 	(yy_hold_char) = *yy_cp; \
 	*yy_cp = '\0'; \
 	(yy_c_buf_p) = yy_cp;
@@ -1225,7 +1233,7 @@ goto find_rule; \
 #define YY_MORE_ADJ 0
 #define YY_RESTORE_YY_MORE_OFFSET
 char *L_text;
-#line 1 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1 "../generic/Lscanner.l"
 #define YY_NO_INPUT 1
 
 
@@ -1243,7 +1251,7 @@ char *L_text;
 
 
 
-#line 24 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 24 "../generic/Lscanner.l"
 /*
  * Copyright (c) 2006-2008 BitMover, Inc.
  */
@@ -1252,11 +1260,7 @@ char *L_text;
 #include "tclInt.h"
 #include "Lcompile.h"
 #include "Lgrammar.h"
-#include "blowfish.h"
-#include "tomcrypt.h"
-#include "randseed.h"
 #include "tommath.h"
-extern u8 bkey[];
 
 private void	extract_re_delims(char c);
 private int	include_pop();
@@ -1509,9 +1513,7 @@ include_push(Tcl_Channel chan, char *name)
 	YY_BUFFER_STATE buf;
 	Tcl_Obj		*objPtr;
 	char		*dec = NULL, *script;
-	unsigned long	declen;
 	int		len, ret;
-	blf_ctx		C;
 
 	/* Read the file into memory. */
 	objPtr = Tcl_NewObj();
@@ -1525,20 +1527,6 @@ include_push(Tcl_Channel chan, char *name)
 
 	/* If it is encrypted, decrypt it. */
 	script = Tcl_GetStringFromObj(objPtr, &len);
-	if (strncmp(script, "#%-\n", 4) == 0) {
-		dec = ckalloc(len);
-		declen = len;
-		if (base64_decode((unsigned char *)script, len,
-				  (unsigned char *)dec, &declen)) {
-			ckfree(dec);
-			L_err("error decrypting include file %s", name);
-			return (0);
-		}
-		blf_key(&C, bkey, 10);
-		blf_dec(&C, (u32 *)dec, declen/8);
-		script = dec;
-		len = declen;
-	}
 
 	/* Create a new flex buffer with the file contents. */
 	if (include_top >= INCLUDE_STACK_SZ) {
@@ -1613,7 +1601,7 @@ canonical_num(char *num)
 #undef optarg
 #undef optind
 
-#line 1617 "Lscanner.c"
+#line 1605 "<stdout>"
 
 #define INITIAL 0
 #define re_delim 1
@@ -1718,7 +1706,12 @@ static int input (void );
     
 /* Amount of stuff to slurp up with each read. */
 #ifndef YY_READ_BUF_SIZE
+#ifdef __ia64__
+/* On IA-64, the buffer size is 16k, not 8k */
+#define YY_READ_BUF_SIZE 16384
+#else
 #define YY_READ_BUF_SIZE 8192
+#endif /* __ia64__ */
 #endif
 
 /* Copy whatever the last rule matched to the standard output. */
@@ -1726,7 +1719,7 @@ static int input (void );
 /* This used to be an fputs(), but since the string might contain NUL's,
  * we now use fwrite().
  */
-#define ECHO fwrite( L_text, L_leng, 1, L_out )
+#define ECHO do { if (fwrite( L_text, L_leng, 1, L_out )) {} } while (0)
 #endif
 
 /* Gets input and stuffs it into "buf".  number of characters read, or YY_NULL,
@@ -1737,7 +1730,7 @@ static int input (void );
 	if ( YY_CURRENT_BUFFER_LVALUE->yy_is_interactive ) \
 		{ \
 		int c = '*'; \
-		yy_size_t n; \
+		size_t n; \
 		for ( n = 0; n < max_size && \
 			     (c = getc( L_in )) != EOF && c != '\n'; ++n ) \
 			buf[n] = (char) c; \
@@ -1822,10 +1815,6 @@ YY_DECL
 	register char *yy_cp, *yy_bp;
 	register int yy_act;
     
-#line 394 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
-
-#line 1828 "Lscanner.c"
-
 	if ( !(yy_init) )
 		{
 		(yy_init) = 1;
@@ -1858,6 +1847,11 @@ YY_DECL
 		L__load_buffer_state( );
 		}
 
+	{
+#line 374 "../generic/Lscanner.l"
+
+#line 1854 "<stdout>"
+
 	while ( 1 )		/* loops until end-of-file is reached */
 		{
 		yy_cp = (yy_c_buf_p);
@@ -1879,7 +1873,7 @@ YY_DECL
 yy_match:
 		do
 			{
-			register YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)];
+			register YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)] ;
 			while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 				{
 				yy_current_state = (int) yy_def[yy_current_state];
@@ -1895,7 +1889,6 @@ yy_match:
 yy_find_action:
 		yy_current_state = *--(yy_state_ptr);
 		(yy_lp) = yy_accept[yy_current_state];
-goto find_rule; /* Shut up GCC warning -Wall */
 find_rule: /* we branch to this label when backing up */
 		for ( ; ; ) /* until we find what rule we matched */
 			{
@@ -1921,473 +1914,473 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 396 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 376 "../generic/Lscanner.l"
 return T_LPAREN;
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 397 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 377 "../generic/Lscanner.l"
 return T_RPAREN;
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 398 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 378 "../generic/Lscanner.l"
 interpol_lbrace(); return T_LBRACE;
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 399 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 379 "../generic/Lscanner.l"
 return T_LBRACKET;
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 400 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 380 "../generic/Lscanner.l"
 return T_RBRACKET;
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 401 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 381 "../generic/Lscanner.l"
 return T_COMMA;
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 402 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 382 "../generic/Lscanner.l"
 return T_BANG;
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 403 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 383 "../generic/Lscanner.l"
 return T_PLUS;
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 404 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 384 "../generic/Lscanner.l"
 return T_MINUS;
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 405 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 385 "../generic/Lscanner.l"
 return T_STAR;
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 406 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 386 "../generic/Lscanner.l"
 return T_SLASH;
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 407 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 387 "../generic/Lscanner.l"
 return T_PERC;
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 408 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 388 "../generic/Lscanner.l"
 return T_EQPLUS;
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 409 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 389 "../generic/Lscanner.l"
 return T_EQMINUS;
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 410 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 390 "../generic/Lscanner.l"
 return T_EQSTAR;
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 411 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 391 "../generic/Lscanner.l"
 return T_EQSLASH;
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 412 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 392 "../generic/Lscanner.l"
 return T_EQPERC;
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 413 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 393 "../generic/Lscanner.l"
 return T_EQBITAND;
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 414 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 394 "../generic/Lscanner.l"
 return T_EQBITOR;
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 415 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 395 "../generic/Lscanner.l"
 return T_EQBITXOR;
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 416 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 396 "../generic/Lscanner.l"
 return T_EQLSHIFT;
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 417 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 397 "../generic/Lscanner.l"
 return T_EQRSHIFT;
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 418 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 398 "../generic/Lscanner.l"
 return T_EQDOT;
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 419 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 399 "../generic/Lscanner.l"
 return T_PLUSPLUS;
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 420 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 400 "../generic/Lscanner.l"
 return T_MINUSMINUS;
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 421 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 401 "../generic/Lscanner.l"
 return T_ANDAND;
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 422 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 402 "../generic/Lscanner.l"
 return T_OROR;
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 423 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 403 "../generic/Lscanner.l"
 return T_BITAND;
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 424 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 404 "../generic/Lscanner.l"
 return T_BITOR;
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 425 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 405 "../generic/Lscanner.l"
 return T_BITXOR;
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 426 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 406 "../generic/Lscanner.l"
 return T_BITNOT;
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 427 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 407 "../generic/Lscanner.l"
 return T_LSHIFT;
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 428 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 408 "../generic/Lscanner.l"
 return T_RSHIFT;
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 429 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 409 "../generic/Lscanner.l"
 return T_EQUALS;
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 430 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 410 "../generic/Lscanner.l"
 return T_SEMI;
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 431 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 411 "../generic/Lscanner.l"
 return T_DOT;
 	YY_BREAK
 case 37:
 /* rule 37 can match eol */
 YY_RULE_SETUP
-#line 432 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 412 "../generic/Lscanner.l"
 return T_STRCAT;
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 433 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 413 "../generic/Lscanner.l"
 return T_DOTDOT;
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 434 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 414 "../generic/Lscanner.l"
 return T_ELLIPSIS;
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 435 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 415 "../generic/Lscanner.l"
 return T_CLASS;
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 436 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 416 "../generic/Lscanner.l"
 return T_EXTERN;
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 437 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 417 "../generic/Lscanner.l"
 return T_RETURN;
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 438 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 418 "../generic/Lscanner.l"
 return T_VOID;
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 439 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 419 "../generic/Lscanner.l"
 return T_STRING;
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 440 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 420 "../generic/Lscanner.l"
 return T_WIDGET;
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 441 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 421 "../generic/Lscanner.l"
 return T_INT;
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 442 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 422 "../generic/Lscanner.l"
 return T_FLOAT;
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 443 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 423 "../generic/Lscanner.l"
 return T_POLY;
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
-#line 444 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 424 "../generic/Lscanner.l"
 return T_SPLIT;
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 445 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 425 "../generic/Lscanner.l"
 return T_IF;
 	YY_BREAK
 case 51:
 YY_RULE_SETUP
-#line 446 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 426 "../generic/Lscanner.l"
 return T_ELSE;
 	YY_BREAK
 case 52:
 YY_RULE_SETUP
-#line 447 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 427 "../generic/Lscanner.l"
 return T_UNLESS;
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 448 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 428 "../generic/Lscanner.l"
 return T_WHILE;
 	YY_BREAK
 case 54:
 YY_RULE_SETUP
-#line 449 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 429 "../generic/Lscanner.l"
 return T_DO;
 	YY_BREAK
 case 55:
 YY_RULE_SETUP
-#line 450 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 430 "../generic/Lscanner.l"
 return T_FOR;
 	YY_BREAK
 case 56:
 YY_RULE_SETUP
-#line 451 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 431 "../generic/Lscanner.l"
 return T_STRUCT;
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
-#line 452 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 432 "../generic/Lscanner.l"
 return T_TYPEDEF;
 	YY_BREAK
 case 58:
 YY_RULE_SETUP
-#line 453 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 433 "../generic/Lscanner.l"
 return T_DEFINED;
 	YY_BREAK
 case 59:
 YY_RULE_SETUP
-#line 454 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 434 "../generic/Lscanner.l"
 return T_FOREACH;
 	YY_BREAK
 case 60:
 YY_RULE_SETUP
-#line 455 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 435 "../generic/Lscanner.l"
 return T_BREAK;
 	YY_BREAK
 case 61:
 YY_RULE_SETUP
-#line 456 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 436 "../generic/Lscanner.l"
 return T_CONTINUE;
 	YY_BREAK
 case 62:
 YY_RULE_SETUP
-#line 457 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 437 "../generic/Lscanner.l"
 return T_INSTANCE;
 	YY_BREAK
 case 63:
 YY_RULE_SETUP
-#line 458 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 438 "../generic/Lscanner.l"
 return T_PRIVATE;
 	YY_BREAK
 case 64:
 YY_RULE_SETUP
-#line 459 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 439 "../generic/Lscanner.l"
 return T_PUBLIC;
 	YY_BREAK
 case 65:
 YY_RULE_SETUP
-#line 460 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 440 "../generic/Lscanner.l"
 return T_CONSTRUCTOR;
 	YY_BREAK
 case 66:
 YY_RULE_SETUP
-#line 461 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 441 "../generic/Lscanner.l"
 return T_DESTRUCTOR;
 	YY_BREAK
 case 67:
 YY_RULE_SETUP
-#line 462 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 442 "../generic/Lscanner.l"
 return T_EXPAND;
 	YY_BREAK
 case 68:
 YY_RULE_SETUP
-#line 463 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 443 "../generic/Lscanner.l"
 return T_ARGUSED;
 	YY_BREAK
 case 69:
 YY_RULE_SETUP
-#line 464 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 444 "../generic/Lscanner.l"
 return T_ATTRIBUTE;
 	YY_BREAK
 case 70:
 YY_RULE_SETUP
-#line 465 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 445 "../generic/Lscanner.l"
 return T_ATTRIBUTE;
 	YY_BREAK
 case 71:
 YY_RULE_SETUP
-#line 466 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 446 "../generic/Lscanner.l"
 return T_OPTIONAL;
 	YY_BREAK
 case 72:
 YY_RULE_SETUP
-#line 467 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 447 "../generic/Lscanner.l"
 return T_MUSTBETYPE;
 	YY_BREAK
 case 73:
 YY_RULE_SETUP
-#line 468 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 448 "../generic/Lscanner.l"
 return T_GOTO;
 	YY_BREAK
 case 74:
 YY_RULE_SETUP
-#line 469 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 449 "../generic/Lscanner.l"
 return T_SWITCH;
 	YY_BREAK
 case 75:
 YY_RULE_SETUP
-#line 470 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 450 "../generic/Lscanner.l"
 return T_CASE;
 	YY_BREAK
 case 76:
 YY_RULE_SETUP
-#line 471 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 451 "../generic/Lscanner.l"
 return T_DEFAULT;
 	YY_BREAK
 case 77:
 YY_RULE_SETUP
-#line 472 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 452 "../generic/Lscanner.l"
 return T_TRY;
 	YY_BREAK
 case 78:
 YY_RULE_SETUP
-#line 473 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 453 "../generic/Lscanner.l"
 return T_ARROW;
 	YY_BREAK
 case 79:
 YY_RULE_SETUP
-#line 474 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 454 "../generic/Lscanner.l"
 return T_EQ;
 	YY_BREAK
 case 80:
 YY_RULE_SETUP
-#line 475 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 455 "../generic/Lscanner.l"
 return T_NE;
 	YY_BREAK
 case 81:
 YY_RULE_SETUP
-#line 476 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 456 "../generic/Lscanner.l"
 return T_LT;
 	YY_BREAK
 case 82:
 YY_RULE_SETUP
-#line 477 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 457 "../generic/Lscanner.l"
 return T_LE;
 	YY_BREAK
 case 83:
 YY_RULE_SETUP
-#line 478 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 458 "../generic/Lscanner.l"
 return T_GT;
 	YY_BREAK
 case 84:
 YY_RULE_SETUP
-#line 479 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 459 "../generic/Lscanner.l"
 return T_GE;
 	YY_BREAK
 case 85:
 YY_RULE_SETUP
-#line 480 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 460 "../generic/Lscanner.l"
 return T_EQUALEQUAL;
 	YY_BREAK
 case 86:
 YY_RULE_SETUP
-#line 481 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 461 "../generic/Lscanner.l"
 return T_NOTEQUAL;
 	YY_BREAK
 case 87:
 YY_RULE_SETUP
-#line 482 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 462 "../generic/Lscanner.l"
 return T_GREATER;
 	YY_BREAK
 case 88:
 YY_RULE_SETUP
-#line 483 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 463 "../generic/Lscanner.l"
 return T_GREATEREQ;
 	YY_BREAK
 case 89:
 YY_RULE_SETUP
-#line 484 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 464 "../generic/Lscanner.l"
 return T_LESSTHAN;
 	YY_BREAK
 case 90:
 YY_RULE_SETUP
-#line 485 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 465 "../generic/Lscanner.l"
 return T_LESSTHANEQ;
 	YY_BREAK
 case 91:
 YY_RULE_SETUP
-#line 486 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 466 "../generic/Lscanner.l"
 return T_POINTS;
 	YY_BREAK
 case 92:
 YY_RULE_SETUP
-#line 487 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 467 "../generic/Lscanner.l"
 return T_COLON;
 	YY_BREAK
 case 93:
 YY_RULE_SETUP
-#line 488 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 468 "../generic/Lscanner.l"
 return T_QUESTION;
 	YY_BREAK
 case 94:
 YY_RULE_SETUP
-#line 489 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 469 "../generic/Lscanner.l"
 {
 				/*
 				 * ?> marks the end of a script or expr
@@ -2409,7 +2402,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 95:
 YY_RULE_SETUP
-#line 507 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 487 "../generic/Lscanner.l"
 {
 				L_err("'and','or','xor','not' are "
 				      "unimplemented reserved words");
@@ -2418,7 +2411,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 96:
 YY_RULE_SETUP
-#line 512 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 492 "../generic/Lscanner.l"
 {
 				L_err("'and','or','xor','not' are "
 				      "unimplemented reserved words");
@@ -2427,7 +2420,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 97:
 YY_RULE_SETUP
-#line 517 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 497 "../generic/Lscanner.l"
 {
 				L_err("'and','or','xor','not' are "
 				      "unimplemented reserved words");
@@ -2436,7 +2429,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 98:
 YY_RULE_SETUP
-#line 522 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 502 "../generic/Lscanner.l"
 {
 				L_err("'and','or','xor','not' are "
 				      "unimplemented reserved words");
@@ -2445,7 +2438,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 99:
 YY_RULE_SETUP
-#line 527 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 507 "../generic/Lscanner.l"
 {
 				Type *t = L_typedef_lookup(L_text);
 				if (t) {
@@ -2460,7 +2453,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 100:
 YY_RULE_SETUP
-#line 538 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 518 "../generic/Lscanner.l"
 {
 				/*
 				 * Push back the : and return a T_ID
@@ -2478,7 +2471,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 101:
 YY_RULE_SETUP
-#line 552 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 532 "../generic/Lscanner.l"
 {
 				L_lval.s = ckstrdup(L_text);
 				return T_PATTERN;
@@ -2486,7 +2479,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 102:
 YY_RULE_SETUP
-#line 556 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 536 "../generic/Lscanner.l"
 {
 				/* Regular expression submatches */
 				L_lval.s = ckstrdup(L_text);
@@ -2495,7 +2488,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 103:
 YY_RULE_SETUP
-#line 561 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 541 "../generic/Lscanner.l"
 {
 				/*
 				 * Skip any leading 0's which would
@@ -2509,7 +2502,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 104:
 YY_RULE_SETUP
-#line 571 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 551 "../generic/Lscanner.l"
 {
 				/*
 				 * Create a leading 0 so it looks like
@@ -2522,7 +2515,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 105:
 YY_RULE_SETUP
-#line 580 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 560 "../generic/Lscanner.l"
 {
 				L_lval.s = canonical_num(L_text);
 				return T_INT_LITERAL;
@@ -2530,7 +2523,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 106:
 YY_RULE_SETUP
-#line 584 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 564 "../generic/Lscanner.l"
 {
 				L_lval.s = ckstrdup(L_text);
 				return T_FLOAT_LITERAL;
@@ -2539,7 +2532,7 @@ YY_RULE_SETUP
 case 107:
 /* rule 107 can match eol */
 YY_RULE_SETUP
-#line 588 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 568 "../generic/Lscanner.l"
 {
 				int	line = strtoul(L_text+5, NULL, 10);
 
@@ -2555,7 +2548,7 @@ YY_RULE_SETUP
 case 108:
 /* rule 108 can match eol */
 YY_RULE_SETUP
-#line 599 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 579 "../generic/Lscanner.l"
 {
 				int	line  = strtoul(L_text+5, NULL, 10);
 				char	*beg  = strchr(L_text, '"') + 1;
@@ -2575,7 +2568,7 @@ YY_RULE_SETUP
 case 109:
 /* rule 109 can match eol */
 YY_RULE_SETUP
-#line 614 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 594 "../generic/Lscanner.l"
 {
 				--L->line;  // since \n already scanned
 				L_err("malformed #line");
@@ -2584,7 +2577,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 110:
 YY_RULE_SETUP
-#line 619 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 599 "../generic/Lscanner.l"
 {
 				char	*beg  = strchr(L_text, '"') + 1;
 				char	*end  = strrchr(L_text, '"');
@@ -2602,7 +2595,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 111:
 YY_RULE_SETUP
-#line 633 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 613 "../generic/Lscanner.l"
 {
 				char	*beg  = strchr(L_text, '<') + 1;
 				char	*end  = strrchr(L_text, '>');
@@ -2622,7 +2615,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 112:
 YY_RULE_SETUP
-#line 649 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 629 "../generic/Lscanner.l"
 {
 				L_err("malformed #include");
 				yy_push_state(eat_through_eol);
@@ -2630,13 +2623,13 @@ YY_RULE_SETUP
 	YY_BREAK
 case 113:
 YY_RULE_SETUP
-#line 653 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 633 "../generic/Lscanner.l"
 return T_PRAGMA;
 	YY_BREAK
 case 114:
 /* rule 114 can match eol */
 YY_RULE_SETUP
-#line 654 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 634 "../generic/Lscanner.l"
 {
 				/*
 				 * Rather than using a start condition
@@ -2663,7 +2656,7 @@ YY_RULE_SETUP
 case 115:
 /* rule 115 can match eol */
 YY_RULE_SETUP
-#line 676 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 656 "../generic/Lscanner.l"
 {
 				--L->line;  // since \n already scanned
 				unless (L->line == 1) {
@@ -2678,44 +2671,44 @@ YY_RULE_SETUP
 case 116:
 /* rule 116 can match eol */
 YY_RULE_SETUP
-#line 686 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 666 "../generic/Lscanner.l"
 
 	YY_BREAK
 case 117:
 YY_RULE_SETUP
-#line 687 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 667 "../generic/Lscanner.l"
 
 	YY_BREAK
 case 118:
 /* rule 118 can match eol */
 YY_RULE_SETUP
-#line 688 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 668 "../generic/Lscanner.l"
 
 	YY_BREAK
 case 119:
 YY_RULE_SETUP
-#line 689 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 669 "../generic/Lscanner.l"
 yy_push_state(str_double); STRBUF_START(L->token_off);
 	YY_BREAK
 case 120:
 YY_RULE_SETUP
-#line 690 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 670 "../generic/Lscanner.l"
 yy_push_state(str_single); STRBUF_START(L->token_off);
 	YY_BREAK
 case 121:
 YY_RULE_SETUP
-#line 691 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 671 "../generic/Lscanner.l"
 yy_push_state(str_backtick); STRBUF_START(L->token_off);
 	YY_BREAK
 case 122:
 YY_RULE_SETUP
-#line 692 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 672 "../generic/Lscanner.l"
 yy_push_state(comment);
 	YY_BREAK
 case 123:
 /* rule 123 can match eol */
 YY_RULE_SETUP
-#line 693 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 673 "../generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2729,7 +2722,7 @@ YY_RULE_SETUP
 case 124:
 /* rule 124 can match eol */
 YY_RULE_SETUP
-#line 702 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 682 "../generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2743,7 +2736,7 @@ YY_RULE_SETUP
 case 125:
 /* rule 125 can match eol */
 YY_RULE_SETUP
-#line 711 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 691 "../generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(subst_re);
@@ -2758,7 +2751,7 @@ YY_RULE_SETUP
 case 126:
 /* rule 126 can match eol */
 YY_RULE_SETUP
-#line 721 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 701 "../generic/Lscanner.l"
 {
 		char	*p, *q;
 
@@ -2785,7 +2778,7 @@ YY_RULE_SETUP
 case 127:
 /* rule 127 can match eol */
 YY_RULE_SETUP
-#line 743 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 723 "../generic/Lscanner.l"
 {
 		char	*p, *q;
 
@@ -2811,11 +2804,11 @@ YY_RULE_SETUP
 /* illegal here documents (bad stuff before or after the delim) */
 case 128:
 /* rule 128 can match eol */
-#line 766 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 746 "../generic/Lscanner.l"
 case 129:
 /* rule 129 can match eol */
 YY_RULE_SETUP
-#line 766 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 746 "../generic/Lscanner.l"
 {
 		L_synerr("<<- unsupported, use =\\n\\t<<END to strip one "
 			 "leading tab");
@@ -2824,7 +2817,7 @@ YY_RULE_SETUP
 case 130:
 /* rule 130 can match eol */
 YY_RULE_SETUP
-#line 770 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 750 "../generic/Lscanner.l"
 {
 		L_synerr("illegal characters after here-document delimeter");
 	}
@@ -2832,7 +2825,7 @@ YY_RULE_SETUP
 case 131:
 /* rule 131 can match eol */
 YY_RULE_SETUP
-#line 773 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 753 "../generic/Lscanner.l"
 {
 		L_synerr("illegal characters before here-document delimeter");
 	}
@@ -2840,7 +2833,7 @@ YY_RULE_SETUP
 case 132:
 /* rule 132 can match eol */
 YY_RULE_SETUP
-#line 776 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 756 "../generic/Lscanner.l"
 {
 		L_synerr("illegal characters after here-document delimeter");
 	}
@@ -2848,7 +2841,7 @@ YY_RULE_SETUP
 case 133:
 /* rule 133 can match eol */
 YY_RULE_SETUP
-#line 779 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 759 "../generic/Lscanner.l"
 {
 		L_synerr("illegal characters before here-document delimeter");
 	}
@@ -2863,7 +2856,7 @@ YY_RULE_SETUP
 case 134:
 /* rule 134 can match eol */
 YY_RULE_SETUP
-#line 790 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 770 "../generic/Lscanner.l"
 {
 		int	line = strtoul(L_text+5, NULL, 10);
 
@@ -2878,7 +2871,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 135:
 YY_RULE_SETUP
-#line 801 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 781 "../generic/Lscanner.l"
 {
 		L_lval.s = ckstrdup(STRBUF_STRING());
 		STRBUF_STOP(L_lloc.beg);
@@ -2893,11 +2886,11 @@ YY_RULE_SETUP
 case 136:
 /* rule 136 can match eol */
 YY_RULE_SETUP
-#line 811 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 791 "../generic/Lscanner.l"
 STRBUF_ADD(L_text, L_leng);
 	YY_BREAK
 case YY_STATE_EOF(lhtml):
-#line 812 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 792 "../generic/Lscanner.l"
 {
 		unless (STRBUF_STARTED()) yyterminate();
 		L_lval.s = ckstrdup(STRBUF_STRING());
@@ -2914,7 +2907,7 @@ case YY_STATE_EOF(lhtml):
 case 137:
 /* rule 137 can match eol */
 YY_RULE_SETUP
-#line 825 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 805 "../generic/Lscanner.l"
 {
 		unput(L_text[0]);
 		undo_yy_user_action();
@@ -2932,13 +2925,13 @@ YY_RULE_SETUP
 case 138:
 /* rule 138 can match eol */
 YY_RULE_SETUP
-#line 839 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 819 "../generic/Lscanner.l"
 
 	YY_BREAK
 /* / starts an RE */
 case 139:
 YY_RULE_SETUP
-#line 841 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 821 "../generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2952,7 +2945,7 @@ YY_RULE_SETUP
 	 */
 case 140:
 YY_RULE_SETUP
-#line 851 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 831 "../generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2963,7 +2956,7 @@ YY_RULE_SETUP
 /* nothing else starts an RE */
 case 141:
 YY_RULE_SETUP
-#line 858 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 838 "../generic/Lscanner.l"
 {
 		unput(L_text[0]);
 		undo_yy_user_action();
@@ -2980,13 +2973,13 @@ YY_RULE_SETUP
 case 142:
 /* rule 142 can match eol */
 YY_RULE_SETUP
-#line 871 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 851 "../generic/Lscanner.l"
 
 	YY_BREAK
 /* / starts an RE */
 case 143:
 YY_RULE_SETUP
-#line 873 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 853 "../generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -3002,7 +2995,7 @@ YY_RULE_SETUP
 	 */
 case 144:
 YY_RULE_SETUP
-#line 885 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 865 "../generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -3013,7 +3006,7 @@ YY_RULE_SETUP
 /* nothing else starts an RE */
 case 145:
 YY_RULE_SETUP
-#line 892 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 872 "../generic/Lscanner.l"
 {
 		unput(L_text[0]);
 		undo_yy_user_action();
@@ -3024,14 +3017,14 @@ YY_RULE_SETUP
 
 case 146:
 YY_RULE_SETUP
-#line 900 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 880 "../generic/Lscanner.l"
 return T_RBRACE;
 	YY_BREAK
 
 
 case 147:
 YY_RULE_SETUP
-#line 904 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 884 "../generic/Lscanner.l"
 {
 				if (interpol_rbrace()) {
 					STRBUF_START(L_lloc.end);
@@ -3049,7 +3042,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 148:
 YY_RULE_SETUP
-#line 918 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 898 "../generic/Lscanner.l"
 {
 		L_synerr("illegal character");
 	}
@@ -3058,28 +3051,28 @@ YY_RULE_SETUP
 
 case 149:
 YY_RULE_SETUP
-#line 924 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 904 "../generic/Lscanner.l"
 STRBUF_ADD("\r", 1);
 	YY_BREAK
 case 150:
 YY_RULE_SETUP
-#line 925 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 905 "../generic/Lscanner.l"
 STRBUF_ADD("\n", 1);
 	YY_BREAK
 case 151:
 YY_RULE_SETUP
-#line 926 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 906 "../generic/Lscanner.l"
 STRBUF_ADD("\t", 1);
 	YY_BREAK
 case 152:
-#line 928 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 908 "../generic/Lscanner.l"
 case 153:
-#line 929 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 909 "../generic/Lscanner.l"
 case 154:
-#line 930 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 910 "../generic/Lscanner.l"
 case 155:
 YY_RULE_SETUP
-#line 930 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 910 "../generic/Lscanner.l"
 {
 				char	buf[TCL_UTF_MAX];
 				int	ch;
@@ -3090,18 +3083,18 @@ YY_RULE_SETUP
 case 156:
 /* rule 156 can match eol */
 YY_RULE_SETUP
-#line 936 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 916 "../generic/Lscanner.l"
 STRBUF_ADD(L_text+1, 1);
 	YY_BREAK
 case 157:
 YY_RULE_SETUP
-#line 937 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 917 "../generic/Lscanner.l"
 STRBUF_ADD("$", 1);
 	YY_BREAK
 case 158:
 /* rule 158 can match eol */
 YY_RULE_SETUP
-#line 938 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 918 "../generic/Lscanner.l"
 {
 				L_err("missing string terminator \"");
 				STRBUF_ADD("\n", 1);
@@ -3109,12 +3102,12 @@ YY_RULE_SETUP
 	YY_BREAK
 case 159:
 YY_RULE_SETUP
-#line 942 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 922 "../generic/Lscanner.l"
 STRBUF_ADD(L_text, L_leng);
 	YY_BREAK
 case 160:
 YY_RULE_SETUP
-#line 943 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 923 "../generic/Lscanner.l"
 {
 				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3125,12 +3118,12 @@ YY_RULE_SETUP
 case 161:
 /* rule 161 can match eol */
 YY_RULE_SETUP
-#line 949 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 929 "../generic/Lscanner.l"
 
 	YY_BREAK
 case 162:
 YY_RULE_SETUP
-#line 950 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 930 "../generic/Lscanner.l"
 {
 				yy_pop_state();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3142,45 +3135,45 @@ YY_RULE_SETUP
 
 case 163:
 YY_RULE_SETUP
-#line 959 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 939 "../generic/Lscanner.l"
 STRBUF_ADD("\\", 1);
 	YY_BREAK
 case 164:
 YY_RULE_SETUP
-#line 960 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 940 "../generic/Lscanner.l"
 STRBUF_ADD("'", 1);
 	YY_BREAK
 case 165:
 /* rule 165 can match eol */
 YY_RULE_SETUP
-#line 961 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 941 "../generic/Lscanner.l"
 STRBUF_ADD("\n", 1);
 	YY_BREAK
 case 166:
 /* rule 166 can match eol */
 YY_RULE_SETUP
-#line 962 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 942 "../generic/Lscanner.l"
 {
 				L_err("missing string terminator \'");
 				STRBUF_ADD("\n", 1);
 			}
 	YY_BREAK
 case 167:
-#line 967 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 947 "../generic/Lscanner.l"
 case 168:
 YY_RULE_SETUP
-#line 967 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 947 "../generic/Lscanner.l"
 STRBUF_ADD(L_text, L_leng);
 	YY_BREAK
 case 169:
 /* rule 169 can match eol */
 YY_RULE_SETUP
-#line 968 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 948 "../generic/Lscanner.l"
 
 	YY_BREAK
 case 170:
 YY_RULE_SETUP
-#line 969 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 949 "../generic/Lscanner.l"
 {
 				yy_pop_state();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3192,28 +3185,28 @@ YY_RULE_SETUP
 
 case 171:
 YY_RULE_SETUP
-#line 978 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 958 "../generic/Lscanner.l"
 STRBUF_ADD(L_text+1, 1);
 	YY_BREAK
 case 172:
 /* rule 172 can match eol */
 YY_RULE_SETUP
-#line 979 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 959 "../generic/Lscanner.l"
 /* ignore \<newline> */
 	YY_BREAK
 case 173:
-#line 981 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 961 "../generic/Lscanner.l"
 case 174:
-#line 982 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 962 "../generic/Lscanner.l"
 case 175:
 YY_RULE_SETUP
-#line 982 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 962 "../generic/Lscanner.l"
 STRBUF_ADD(L_text, L_leng);
 	YY_BREAK
 case 176:
 /* rule 176 can match eol */
 YY_RULE_SETUP
-#line 983 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 963 "../generic/Lscanner.l"
 {
 				L_err("missing string terminator `");
 				STRBUF_ADD("\n", 1);
@@ -3221,7 +3214,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 177:
 YY_RULE_SETUP
-#line 987 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 967 "../generic/Lscanner.l"
 {
 				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3231,7 +3224,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 178:
 YY_RULE_SETUP
-#line 993 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 973 "../generic/Lscanner.l"
 {
 				yy_pop_state();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3249,7 +3242,7 @@ case 179:
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up L_text again */
 YY_RULE_SETUP
-#line 1005 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 985 "../generic/Lscanner.l"
 {
 				int	len;
 				char	*p = L_text;
@@ -3289,7 +3282,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 180:
 YY_RULE_SETUP
-#line 1041 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1021 "../generic/Lscanner.l"
 {
 				char	*p = strstr(L_text, here_pfx);
 				if (p == L_text) {
@@ -3304,35 +3297,35 @@ YY_RULE_SETUP
 case 181:
 /* rule 181 can match eol */
 YY_RULE_SETUP
-#line 1051 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1031 "../generic/Lscanner.l"
 STRBUF_ADD(L_text, 1);
 	YY_BREAK
 
 
 case 182:
 YY_RULE_SETUP
-#line 1055 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1035 "../generic/Lscanner.l"
 STRBUF_ADD("\\", 1);
 	YY_BREAK
 case 183:
 YY_RULE_SETUP
-#line 1056 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1036 "../generic/Lscanner.l"
 STRBUF_ADD("$", 1);
 	YY_BREAK
 case 184:
 YY_RULE_SETUP
-#line 1057 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1037 "../generic/Lscanner.l"
 STRBUF_ADD("`", 1);
 	YY_BREAK
 case 185:
 /* rule 185 can match eol */
 YY_RULE_SETUP
-#line 1058 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1038 "../generic/Lscanner.l"
 // ignore \<newline>
 	YY_BREAK
 case 186:
 YY_RULE_SETUP
-#line 1059 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1039 "../generic/Lscanner.l"
 {
 				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3342,7 +3335,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 187:
 YY_RULE_SETUP
-#line 1065 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1045 "../generic/Lscanner.l"
 {
 				L_lval.s = ckstrdup(STRBUF_STRING());
 				STRBUF_STOP(L_lloc.beg);
@@ -3356,7 +3349,7 @@ case 188:
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up L_text again */
 YY_RULE_SETUP
-#line 1072 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1052 "../generic/Lscanner.l"
 {
 				int	len;
 				char	*p = L_text;
@@ -3396,7 +3389,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 189:
 YY_RULE_SETUP
-#line 1108 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1088 "../generic/Lscanner.l"
 {
 				char	*p = strstr(L_text, here_pfx);
 				if (p == L_text) {
@@ -3411,7 +3404,7 @@ YY_RULE_SETUP
 case 190:
 /* rule 190 can match eol */
 YY_RULE_SETUP
-#line 1118 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1098 "../generic/Lscanner.l"
 STRBUF_ADD(L_text, 1);
 	YY_BREAK
 
@@ -3419,24 +3412,24 @@ STRBUF_ADD(L_text, 1);
 case 191:
 /* rule 191 can match eol */
 YY_RULE_SETUP
-#line 1122 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1102 "../generic/Lscanner.l"
 
 	YY_BREAK
 case 192:
 YY_RULE_SETUP
-#line 1123 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1103 "../generic/Lscanner.l"
 
 	YY_BREAK
 case 193:
 YY_RULE_SETUP
-#line 1124 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1104 "../generic/Lscanner.l"
 yy_pop_state();
 	YY_BREAK
 
 
 case 194:
 YY_RULE_SETUP
-#line 1128 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1108 "../generic/Lscanner.l"
 {
 				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3446,7 +3439,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 195:
 YY_RULE_SETUP
-#line 1134 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1114 "../generic/Lscanner.l"
 {
 				if ((L_text[1] == re_end_delim) ||
 				    (L_text[1] == re_start_delim)) {
@@ -3459,7 +3452,7 @@ YY_RULE_SETUP
 case 196:
 /* rule 196 can match eol */
 YY_RULE_SETUP
-#line 1142 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1122 "../generic/Lscanner.l"
 {
 				--L->line;  // since \n already scanned
 				L_err("run-away regular expression");
@@ -3472,7 +3465,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 197:
 YY_RULE_SETUP
-#line 1151 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1131 "../generic/Lscanner.l"
 {
 				// Convert $3 to \3 (regexp capture reference).
 				STRBUF_ADD("\\", 1);
@@ -3481,7 +3474,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 198:
 YY_RULE_SETUP
-#line 1156 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1136 "../generic/Lscanner.l"
 {
 				if (*L_text == re_end_delim) {
 					L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3515,7 +3508,7 @@ YY_RULE_SETUP
 case 199:
 /* rule 199 can match eol */
 YY_RULE_SETUP
-#line 1187 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1167 "../generic/Lscanner.l"
 {
 				--L->line;  // since \n already scanned
 				L_err("run-away regular expression");
@@ -3526,7 +3519,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 200:
 YY_RULE_SETUP
-#line 1194 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1174 "../generic/Lscanner.l"
 {
 				extract_re_delims(*L_text);
 				yy_pop_state();
@@ -3536,7 +3529,7 @@ YY_RULE_SETUP
 
 case 201:
 YY_RULE_SETUP
-#line 1201 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1181 "../generic/Lscanner.l"
 {
 				L_lval.s = ckstrdup(L_text);
 				yy_pop_state();
@@ -3546,7 +3539,7 @@ YY_RULE_SETUP
 case 202:
 /* rule 202 can match eol */
 YY_RULE_SETUP
-#line 1206 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1186 "../generic/Lscanner.l"
 {
 				unput(L_text[0]);
 				undo_yy_user_action();
@@ -3559,19 +3552,19 @@ YY_RULE_SETUP
 
 case 203:
 YY_RULE_SETUP
-#line 1216 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1196 "../generic/Lscanner.l"
 
 	YY_BREAK
 case 204:
 /* rule 204 can match eol */
 YY_RULE_SETUP
-#line 1217 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1197 "../generic/Lscanner.l"
 yy_pop_state();
 	YY_BREAK
 
 case 205:
 YY_RULE_SETUP
-#line 1220 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1200 "../generic/Lscanner.l"
 {
 				/* This rule matches a char if no other does. */
 				L_synerr("illegal character");
@@ -3594,7 +3587,7 @@ case YY_STATE_EOF(here_doc_interp):
 case YY_STATE_EOF(here_doc_nointerp):
 case YY_STATE_EOF(eat_through_eol):
 case YY_STATE_EOF(lhtml_expr_start):
-#line 1225 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1205 "../generic/Lscanner.l"
 {
 				if (in_lhtml) {
 					yy_user_action();  // for line #s
@@ -3605,10 +3598,10 @@ case YY_STATE_EOF(lhtml_expr_start):
 	YY_BREAK
 case 206:
 YY_RULE_SETUP
-#line 1232 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1212 "../generic/Lscanner.l"
 ECHO;
 	YY_BREAK
-#line 3612 "Lscanner.c"
+#line 3605 "<stdout>"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -3737,6 +3730,7 @@ ECHO;
 			"fatal flex scanner internal error--no action found" );
 	} /* end of action switch */
 		} /* end of scanning one token */
+	} /* end of user's declarations */
 } /* end of L_lex */
 
 /* yy_get_next_buffer - try to read in a new buffer
@@ -3899,7 +3893,7 @@ static int yy_get_next_buffer (void)
 	if ( ! yy_is_jam )
 		*(yy_state_ptr)++ = yy_current_state;
 
-	return yy_is_jam ? 0 : yy_current_state;
+		return yy_is_jam ? 0 : yy_current_state;
 }
 
     static void yyunput (int c, register char * yy_bp )
@@ -3987,7 +3981,7 @@ static int yy_get_next_buffer (void)
 				case EOB_ACT_END_OF_FILE:
 					{
 					if ( L_wrap( ) )
-						return 0;
+						return EOF;
 
 					if ( ! (yy_did_buffer_switch_on_eof) )
 						YY_NEW_FILE;
@@ -4125,10 +4119,6 @@ static void L__load_buffer_state  (void)
 	L_free((void *) b  );
 }
 
-#ifndef __cplusplus
-extern int isatty (int );
-#endif /* __cplusplus */
-    
 /* Initializes or reinitializes a buffer.
  * This function is sometimes called more than once on the same buffer,
  * such as during a L_restart() or at EOF.
@@ -4333,8 +4323,8 @@ YY_BUFFER_STATE L__scan_string (yyconst char * yystr )
 
 /** Setup the input buffer state to scan the given bytes. The next call to L_lex() will
  * scan from a @e copy of @a bytes.
- * @param bytes the byte buffer to scan
- * @param len the number of bytes in the buffer pointed to by @a bytes.
+ * @param yybytes the byte buffer to scan
+ * @param _yybytes_len the number of bytes in the buffer pointed to by @a bytes.
  * 
  * @return the newly allocated buffer state object.
  */
@@ -4342,7 +4332,8 @@ YY_BUFFER_STATE L__scan_bytes  (yyconst char * yybytes, yy_size_t  _yybytes_len 
 {
 	YY_BUFFER_STATE b;
 	char *buf;
-	yy_size_t n, i;
+	yy_size_t n;
+	yy_size_t i;
     
 	/* Get memory for full buffer, including space for trailing EOB's. */
 	n = _yybytes_len + 2;
@@ -4620,7 +4611,7 @@ void L_free (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 1232 "/Users/rob/bk/dev-L-encryption/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1211 "../generic/Lscanner.l"
 
 
 void

@@ -70,7 +70,6 @@ BK=	bk$(EXE)
 LD	=cc
 G	=-g
 TRIAL	=0
-TCLWRAP	=./tclwrap
 IMGDIR	=$(HERE)/tmp/bitkeeper
 
 # Handle warning arguments in GCC
@@ -327,10 +326,9 @@ clean: FORCE
 	$(Q)$(RM) $(OBJ) bk.o $(BINS) $(SCRIPTS) \
 	    $(LOCALSRC) $(PSRC) $(PROGS)
 	$(Q)$(RM) tags TAGS tags.local cscope.out substvars a.out cmd.c cmd.h \
-		tclkey.h core *.bb *.bbg *.da *.gcov \
+		core *.bb *.bbg *.da *.gcov \
 		bk.ico \
-		tclwrap$(EXE) \
-		tclwrap.o blowfish.o bkmsg.txt bkhelp.txt build bkver.c \
+		bkmsg.txt bkhelp.txt build bkver.c \
 		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe \
 		diff.exe diff3.exe hidestring.exe mend.exe
 	$(Q)$(RM) -r tmp
@@ -383,8 +381,8 @@ t/doit: t/doit.sh substvars
 	./substvars t/doit.sh > t/doit
 	chmod +x t/doit
 
-t/guitest: t/guitest.tcl tclwrap
-	./tclwrap < t/guitest.tcl > t/guitest
+t/guitest: t/guitest.tcl
+	cat < t/guitest.tcl > t/guitest
 
 .PHONY: FORCE
 FORCE:
@@ -467,7 +465,7 @@ import: import.sh port/$(SYS)_platform.sh
 
 # Quick and dirty target so we can make all the gui tools without the rest
 .PHONY: GUI
-GUI: tclwrap PCRE
+GUI: PCRE
 	@$(MAKE) -Cgui Q=$(Q) gui
 
 gui-nowrap GUI-nowrap:
@@ -605,14 +603,6 @@ PCRE:
 	$(MAKE) Q=$(Q) -Cgui/tcltk pcre
 
 $(OBJ) bk.o: $(HDRS)
-
-tclkey.h: genkeys.pl ../BitKeeper/log/TIP
-	perl genkeys.pl > tclkey.h
-
-tclwrap: blowfish.o tclwrap.o libc/libc.a
-	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ tclwrap.o blowfish.o libc/libc.a $(XLIBS)
-
-tclwrap.o blowfish.o: blowfish.h tclkey.h
 
 cmd.c cmd.h: cmd.pl bk.sh $(filter bkd_%,$(SRCS))
 	$(if $(Q),@echo Building $@,)

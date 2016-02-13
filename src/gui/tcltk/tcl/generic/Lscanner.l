@@ -29,11 +29,7 @@ HEX	[a-fA-F0-9]
 #include "tclInt.h"
 #include "Lcompile.h"
 #include "Lgrammar.h"
-#include "blowfish.h"
-#include "tomcrypt.h"
-#include "randseed.h"
 #include "tommath.h"
-extern u8 bkey[];
 
 private void	extract_re_delims(char c);
 private int	include_pop();
@@ -286,9 +282,7 @@ include_push(Tcl_Channel chan, char *name)
 	YY_BUFFER_STATE buf;
 	Tcl_Obj		*objPtr;
 	char		*dec = NULL, *script;
-	unsigned long	declen;
 	int		len, ret;
-	blf_ctx		C;
 
 	/* Read the file into memory. */
 	objPtr = Tcl_NewObj();
@@ -302,20 +296,6 @@ include_push(Tcl_Channel chan, char *name)
 
 	/* If it is encrypted, decrypt it. */
 	script = Tcl_GetStringFromObj(objPtr, &len);
-	if (strncmp(script, "#%-\n", 4) == 0) {
-		dec = ckalloc(len);
-		declen = len;
-		if (base64_decode((unsigned char *)script, len,
-				  (unsigned char *)dec, &declen)) {
-			ckfree(dec);
-			L_err("error decrypting include file %s", name);
-			return (0);
-		}
-		blf_key(&C, bkey, 10);
-		blf_dec(&C, (u32 *)dec, declen/8);
-		script = dec;
-		len = declen;
-	}
 
 	/* Create a new flex buffer with the file contents. */
 	if (include_top >= INCLUDE_STACK_SZ) {

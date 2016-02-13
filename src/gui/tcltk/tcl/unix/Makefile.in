@@ -494,15 +494,8 @@ OO_SRCS = \
 
 ifdef BK_DIR
 BK_HDRS = \
-	$(BK_DIR)/tclkey.h \
 	$(BK_DIR)/tomcrypt/src/headers/tomcrypt.h \
 	$(BK_DIR)/tomcrypt/randseed.h
-endif
-
-ifndef BK_SRCS
-BK_SRCS	?= \
-	$(GENERIC_DIR)/blowfish.c \
-	$(GENERIC_DIR)/keydecode.c 
 endif
 
 L_HDRS = \

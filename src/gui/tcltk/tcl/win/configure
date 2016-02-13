@@ -2170,16 +2170,16 @@ fi
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for BK source tree" >&5
 $as_echo_n "checking for BK source tree... " >&6; }
 		if test x"${with_bksource}" != x ; then
-			if test -f "${with_bksource}/src/tclkey.h" ; then
+			if test -f "${with_bksource}/src/slib.c" ; then
 				ac_cv_c_bksource=`(cd ${with_bksource}/src ; pwd)`
 			else
-				as_fn_error $? "${with_bksource}/src directory does not contain tclkey.h" "$LINENO" 5
+				as_fn_error $? "${with_bksource}/src directory does not contain slib.c" "$LINENO" 5
 			fi
 		fi
 
 		# Now check for it in the parent directory
 		if test x"${ac_cv_c_bksource}" = x ; then
-			if test -f "../../../../tclkey.h" ; then
+			if test -f "../../../../slib.c" ; then
 				ac_cv_c_bksource=`(cd ../../../.. ; pwd)`
 			fi
 		fi
@@ -2197,8 +2197,8 @@ $as_echo_n "checking for BK source tree... " >&6; }
 
 
 
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Can't find BK source tree encryption disabled" >&5
-$as_echo "$as_me: WARNING: Can't find BK source tree encryption disabled" >&2;}
+			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Can't find BK source tree" >&5
+$as_echo "$as_me: WARNING: Can't find BK source tree" >&2;}
 		else
 			no_bk=
 			BK_DIR=${ac_cv_c_bksource}
