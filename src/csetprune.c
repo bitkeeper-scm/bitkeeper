@@ -1,7 +1,6 @@
 #include "system.h"
 #include "sccs.h"
 #include "bam.h"
-#include "logging.h"
 #include "nested.h"
 #include "range.h"
 #include "graph.h"
@@ -470,7 +469,6 @@ finish:
 		sccs_free(cset);
 		cset = 0;
 	}
-	updLogMarker();	/* before making a cset, fix log marker */
 	/* Find any missing keys and make a delta about them. */
 	if (opts->comppath || opts->newgone) {
 		verbose((stderr, "Running a check...\n"));

@@ -1,5 +1,4 @@
 #include "bkd.h"
-#include "logging.h"
 #include "nested.h"
 
 private int	compressed(int level, int lclone);

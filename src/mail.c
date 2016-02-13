@@ -2,7 +2,6 @@
  * Copyright (c) 2000, Andrew Chang
  */
 #include "bkd.h"
-#include "logging.h"
 #include "cfg.h"
 
 int

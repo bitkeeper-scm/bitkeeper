@@ -88,28 +88,6 @@ bk isascii file_that_does_not_exist 2> ERR
 test $? -eq 2 || fail
 echo OK
 
-echo $N Test bk legal -c without having accepted the license ........$NL
-if test -f "`bk dotbk`/accepted"; then
-	mv "`bk dotbk`/accepted" "`bk dotbk`/not_accepted"
-fi
-bk legal $Q -c
-test $? -eq 1 || fail
-if test -f "`bk dotbk`/not_accepted"; then
-	mv "`bk dotbk`/not_accepted" "`bk dotbk`/accepted"
-fi
-echo OK
-
-echo $N Test bk legal -c after accepting the license ................$NL
-bk _eula -a || fail
-bk legal $Q -c
-test $? -eq 0 || fail
-echo OK
-
-echo $N Test bk legal with invalid option ...........................$NL
-bk legal $Q -z 2> ERR
-test $? -eq 3 || fail
-echo OK
-
 echo $N Test bk more without error ..................................$NL
 bk more foo > /dev/null
 test $? -eq 0 || fail

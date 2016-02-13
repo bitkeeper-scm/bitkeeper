@@ -458,42 +458,6 @@ _superset() {
 	exit 1
 }
 
-# Ping bitkeeper.com to tell them what bkd version we are running.
-# This is used so BitKeeper can tell the customer when that bkd needs
-# to be upgraded.
-__bkdping() {
-	( 
-	  echo bk://`bk gethost`:$_BKD_PORT
-	  bk version
-	  ARGS=
-	  test "X$_BKD_OPTS" = X || ARGS=" $_BKD_OPTS"
-	  echo "`bk gethost`|bkd$ARGS|`bk version -s`|`uname -s -r`"
-	) | bk _mail -u http://bitmover.com/cgi-bin/bkdmail \
-	    -s 'bkd version' bkd_version@bitmover.com >/dev/null 2>&1
-}
-
-# Dump the repository license, this is not the BKL.
-_repo_license() {
-    	__cd2root
-	bk _test -f BitKeeper/etc/SCCS/s.COPYING && {
-	    	echo =========== Repository license ===========
-		bk cat BitKeeper/etc/COPYING
-		exit 0
-	}
-	bk _test -f BitKeeper/etc/SCCS/s.REPO_LICENSE && {
-	    	echo =========== Repository license ===========
-		bk cat BitKeeper/etc/REPO_LICENSE
-		exit 0
-	}
-	echo There is no BitKeeper repository license for this repository.
-	exit 0
-}
-
-# Earlier documentation had repo_license as "copying".
-_copying() {
-    	_repo_license
-}
-
 # Alias
 _lclone() {
 	exec bk clone -l "$@"
@@ -1195,11 +1159,6 @@ __install()
 	DEST="$1"
 	SRC=$BK_BIN
 
-	bk _eula -p || {
-		echo "Installation aborted." 1>&2
-		exit 1
-	}
-
 	NFILE=0
 	test -d "$DEST" && NFILE=`bk _find -type f "$DEST" | wc -l`
 	test $NFILE -gt 0 && {
@@ -1317,21 +1276,7 @@ __install()
 	fi
 
 	test $CRANKTURN = YES && exit 0
-	echo "$DEST" > "$SRC/install_dir"
 	exit 0
-}
-
-__register()
-{
-	# Log the fact that the installation occurred
-	(
-	bk version
-	echo USER=`bk getuser`/`bk getuser -r`
-	echo HOST=`bk gethost`/`bk gethost -r`
-	echo UNAME=`uname -a 2>/dev/null`
-	echo LICENSE=`bk config license 2>/dev/null`
-	) | bk _mail -u http://bitmover.com/cgi-bin/bkdmail \
-	    -s 'bk install' install@bitmover.com >/dev/null 2>&1 &
 }
 
 # alias for only removed 'bk _sortmerge'

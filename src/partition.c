@@ -1,5 +1,4 @@
 #include "sccs.h"
-#include "logging.h"
 #include "nested.h"
 
 #define	WA	"BitKeeper/tmp/partition.d"
@@ -166,13 +165,13 @@ partition_main(int ac, char **av)
 
 	verbose((stderr, "### Cloning and pruning baseline\n"));
 	if (clone(opts, opts->from, opts->to, 1)) goto err;
+
 	proj = proj_init(opts->to);
 	if (proj_product(proj)) {
 		fprintf(stderr,
 		    "%s: only works on standalone repositories\n", prog);
 		goto err;
 	}
-	if (bk_notLicensed(proj, LIC_SAM, 0)) goto err;
 	proj_free(proj);
 	proj = 0;
 
@@ -404,7 +403,6 @@ setupWorkArea(Opts *opts, char *repo)
 		perror("chdir");
 		goto err;
 	}
-	sys("bk", "lease", "renew", "-qw", SYS);
 	if (opts->referenceurl) {
 		assert(streq(opts->rootkey, proj_rootkey(0)));
 	} else {

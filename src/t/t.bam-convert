@@ -11,8 +11,7 @@
 
 commercial proj
 bk edit $Q BitKeeper/etc/config
-cp BitKeeper/etc/config c
-grep -v BAM c > BitKeeper/etc/config
+echo 'BAM: off!' >> BitKeeper/etc/config
 
 echo $N Trying to check in some binary data .........................$NL
 cp "$BIN1" data

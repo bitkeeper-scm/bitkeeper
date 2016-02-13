@@ -8,7 +8,6 @@
 
 #include "system.h"
 #include "sccs.h"
-#include "logging.h"
 #include "tomcrypt.h"
 #include "tomcrypt/randseed.h"
 #include "cfg.h"
@@ -90,13 +89,6 @@ sane(int readonly, int resync)
 			    getenv("_BK_INSANE")) {
 				fprintf(stderr,
 				    "sane: no BitKeeper/etc/config file.\n");
-				errors++;
-			}
-			if (cfg_size(0, CFG_BAM) &&
-			    bk_notLicensed(0, LIC_BAM, 1)) {
-				fprintf(stderr,
-				    "BAM is enabled in config "
-				    "but not found in license.\n");
 				errors++;
 			}
 		}

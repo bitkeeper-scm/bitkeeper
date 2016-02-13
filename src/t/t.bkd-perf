@@ -15,8 +15,6 @@ test -d $TESTDATA/perf || {
 	echo skipped
 	exit 0
 }
-BK_CONFIG="license:$BKL_PRO!;licsign1:$BKL_P1!;licsign2:$BKL_P2!;licsign3:$BKL_P3!"
-export BK_CONFIG
 echo y | bk clone $Q $TESTDATA/perf > OUT 2>&1 || {
 	cat OUT
 	echo skipped

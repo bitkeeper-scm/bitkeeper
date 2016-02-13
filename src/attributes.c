@@ -100,7 +100,6 @@ attr_write(char *file)
 	 * Keep keys sorted
 	 * HERE
 	 * ID
-	 * LICENSE
 	 * TEST
 	 * VERSION
 	 */
@@ -117,24 +116,6 @@ attr_write(char *file)
 	fputs("@ID\n", f);
 	fprintf(f, "%s\n", proj_rootkey(proj));
 
-	fputs("@LICENSE\n", f);
-	/*
-	 * Save the license used to create this cset.
-	 *  XXX what to put here?
-	 * proj_bkl(proj) returns the license key in the current lease,
-	 * but that changes all the time and isn't really important.
-	 *
-	 * We use 'license' from the config file, but that might not actually
-	 * be the license key that was used to fetch the curent lease.
-	 * Also with licenseurl, we may not even have a license.
-	 *
-	 * Unfortunately we don't save the original license key in a
-	 * lease.
-	 */
-	unless (incomp) {
-		t = cfg_str(proj, CFG_LICENSE);
-		fprintf(f, "%s\n", notnull(t));
-	}
 
 	if (getenv("BK_REGRESSION") && (t = getenv("_BK_ATTR_TEST"))) {
 		fprintf(f, "@TEST\n%s\n", t);

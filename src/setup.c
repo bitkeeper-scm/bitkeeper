@@ -1,6 +1,5 @@
 #include "system.h"
 #include "sccs.h"
-#include "logging.h"
 #include "nested.h"
 #include "cfg.h"
 
@@ -11,7 +10,7 @@ private MDBM	*addField(MDBM *flist, char *field, int replace);
 int
 setup_main(int ac, char **av)
 {
-	int	accept = 0, c;
+	int	c;
 	char	*package_path = 0, *config_path = 0;
 	char	buf[MAXLINE];
 	char	here[MAXPATH];
@@ -33,7 +32,7 @@ setup_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "aCc:ePfF:pv", lopts)) != -1) {
 		switch (c) {
-		    case 'a': accept = 1; break;
+		    case 'a': break; /* ignored */
 		    case 'C':
 			noCommit = 1;
 			break;
@@ -191,22 +190,7 @@ setup_main(int ac, char **av)
 		exit(1);
 	}
 
-	if (product && bk_notLicensed(0, LIC_SAM, 0)) goto err;
-
-	/*
-	 * When creating a new component we need a valid license, but
-	 * while the component is being created it is a new
-	 * repository, but not yet a component.  So the product's
-	 * config file is not visible and if the only license is in
-	 * the product bk won't see a license.  To work around this we
-	 * make sure we have a valid write lease before proceeding.
-	 * We don't check the exit status from lease renew as we may be
-	 * disconnected with a valid write lease already.
-	 */
 	if (in_prod) {
-		chdir(proj_root(in_prod));
-		sys("bk", "lease", "renew", "-qw", SYS);
-		chdir(here);
 		chdir(package_path);
 
 		/*
@@ -218,7 +202,6 @@ setup_main(int ac, char **av)
 
 	features_set(0, FEAT_REMAP, !proj_hasOldSCCS(0));
 	if (cset_setup(SILENT)) goto err;
-	unless (eula_accept(accept ? EULA_ACCEPT : EULA_PROMPT, 0)) exit(1);
 	s = sccs_init(s_config, SILENT);
 	assert(s);
 	putenv("_BK_MV_OK=1");
@@ -239,7 +222,6 @@ setup_main(int ac, char **av)
 		return (1);
 	}
 	enableFastPendingScan();
-	logChangeSet();
 	nf.tot = product ? NFILES_PROD : NFILES_SA;
 	nf.usr = 1;
 	if (in_prod) {		/* we are a new component, attach ourself */
@@ -354,20 +336,12 @@ private MDBM *
 mkconfig(FILE *out, MDBM *flist, int verbose)
 {
 	FILE	*in;
-	char	*p, *val;
-	char	*key;
-	u32	bits = 0;
+	char	*p;
 	char	**keys = 0;
 	datum	k;
 	int	i, idx;
 	char	*def;
 	char	buf[1000], pattern[200];
-
-	/* get a lease, but don't fail */
-	if (key = lease_bkl(0, 0)) {
-		bits = license_bklbits(key);
-		free(key);
-	}
 
 	if (in = config_template()) {
 		while (fnext(buf, in)) {
@@ -391,14 +365,6 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 		getMsgP("config_preamble", 0, "# ", 0, out);
 	}
 
-	val = flist ? mdbm_fetch_str(flist, "BAM") : 0;
-	/* force BAM to default off, it's licensed */
-	unless (val && *val) {
-		char	fld[100];
-
-		sprintf(fld, "%s", (bits & LIC_BAM) ? "BAM=on" : "BAM=off");
-		flist = addField(flist, fld, 0);
-	}
 
 	unless (flist) flist = mdbm_mem();
 	cfg_loadSetup(flist);

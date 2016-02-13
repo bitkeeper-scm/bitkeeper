@@ -1,6 +1,5 @@
 #include "system.h"
 #include "sccs.h"
-#include "logging.h"
 #include "nested.h"
 #include "progress.h"
 
@@ -112,7 +111,6 @@ undo_main(int ac,  char **av)
 	trigger_setQuiet(opts->quiet);
 	cmdlog_lock(standalone ? CMD_WRLOCK : (CMD_WRLOCK|CMD_NESTED_WRLOCK));
 	if (undoLimit(0, &must_have)) limitwarning = 1;
-	save_log_markers();
 	// XXX - be nice to do this only if we actually are going to undo
 	unlink(BACKUP_SFIO); /* remove old backup file */
 	/*
@@ -343,7 +341,6 @@ prod:
 	freeLines(sfiles, free);
 	freeLines(csetrevs, 0);
 	unless (opts->fromclone) unlink(UNDO_CSETS);
-	update_log_markers(opts->verbose);
 	unless (rc) {
 		/* do not remove backup if check failed */
 		unlink(BACKUP_SFIO);
@@ -977,50 +974,3 @@ rmEmptyDirs(hash *empty)
 	}
 }
 
-private	int	valid_marker;
-
-void
-save_log_markers(void)
-{
-	char	*mark;
-	sccs	*s;
-
-	valid_marker = 0;
-	// uncomment after bk-4.x is gone
-	// unless (proj_bklbits(0) & LIC_AIRGAP) return;
-	if (mark = signed_loadFile(CMARK)) {
-		if (streq(mark, proj_tipkey(0))) {
-			valid_marker = 1;
-		} else {
-			if (s = sccs_csetInit(0)) {
-				if (sccs_findKey(s, mark)) valid_marker = 1;
-				sccs_free(s);
-			}
-		}
-		free(mark);
-	}
-}
-
-void
-update_log_markers(int verbose)
-{
-	sccs	*s;
-	char	*mark;
-
-	// uncomment after bk-4.x is gone
-	// unless (proj_bklbits(0) & LIC_AIRGAP) return;
-	if (valid_marker && (mark = signed_loadFile(CMARK))) {
-		if (streq(mark, proj_tipkey(0))) {
-			valid_marker = 0;
-		} else {
-			if (s = sccs_csetInit(0)) {
-				if (sccs_findKey(s, mark)) valid_marker = 0;
-				sccs_free(s);
-			} else {
-				valid_marker = 0;
-			}
-		}
-		free(mark);
-	}
-	if (valid_marker) updLogMarker();
-}

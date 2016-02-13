@@ -2,7 +2,6 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
-#include "logging.h"	/* lease_check() */
 
 typedef	struct dstat {
 	char	*name;		   /* name of the file */
@@ -333,18 +332,6 @@ err:		FREE(pattern);
 				goto next;
 			}
 		}
-		/*
-		 * If diffing against an edited file and tip,
-		 * then we need a write lease.
-		 * This includes: bk diffs foo; bk diffs -r+ foo; 
-		 * but not bk diffs -r1.42 foo if 1.42 is not tip
-		 */
-		if (!r2 && WRITABLE(s) && HAS_PFILE(s)) {
-			if (!r1 || (sccs_top(s) == sccs_findrev(s, r1))) {
-				lease_check(s->proj, O_WRONLY, s);
-			}
-		}
-
 		/*
 		 * Errors come back as -1/-2/-3/0
 		 * -2/-3 means it couldn't find the rev; ignore.

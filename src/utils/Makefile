@@ -175,7 +175,7 @@ installtool: ../port/$(SYS)_platform.tcl installtool.tcl \
 	 echo "main"\
 	) > installtool
 
-html: ../bk$(EXE) A P
+html: ../bk$(EXE)
 	test `find . -name 'bk*' | wc -l` -eq 1 || { \
 		echo Wrong number of images; \
 		exit 1; \
@@ -183,8 +183,6 @@ html: ../bk$(EXE) A P
 	cp bk* /home/lm/public_html/bk-no-lic.bin
 	cp bk* /home/lm/public_html/bk-academic.bin
 	cp bk* /home/lm/public_html/bk-pro.bin
-	../bk inskeys /home/lm/public_html/bk-academic.bin A
-	../bk inskeys /home/lm/public_html/bk-pro.bin P
 
 munge$(EXE): munge.o
 	$(LD) $(LFLAGS) munge.o $(SYSTEM_OBJS) $(LIBS) -o $@
@@ -197,7 +195,7 @@ clean:
 	$(RM) -f _data _data.c _data.o a.out count.h rcver.h \
 		munge$(EXE) zz \
 		core* bk-*.bin *.o *.exe *.obj *.pdb *.ilk sfio *.zz \
-		installtool inskeys *.pkg
+		installtool *.pkg
 	$(RM) -rf BitKeeper
 
 clobber: clean

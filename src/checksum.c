@@ -1,6 +1,5 @@
 #include "system.h"
 #include "sccs.h"
-#include "logging.h"
 #include "progress.h"
 #include "graph.h"
 #include "range.h"

@@ -1,7 +1,6 @@
 /* Copyright (c) 2001 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-#include "logging.h"
 
 /*
  * Verbosity:
@@ -44,15 +43,6 @@ sccs2bk_main(int ac, char **av)
 		    case 'v': verbose++; break;
 		    default: bk_badArg(c, av);
 		}
-	}
-
-	if (bk_notLicensed(0, LIC_IMPORT, 1)) {
-		if (verbose) {
-			// XXX - need a name
-			fputs("sccs2bk: operation requires "
-			    "a license with import feature.\n", stderr);
-		}
-		return (1);
 	}
 	if (licChk) return (0);
 

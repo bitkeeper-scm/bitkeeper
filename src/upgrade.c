@@ -1,7 +1,6 @@
 #include "system.h"
 #include "sccs.h"
 #include "bkd.h"
-#include "logging.h"
 #include "cfg.h"
 
 /*
@@ -31,7 +30,7 @@ upgrade_main(int ac, char **av)
 	int	install = 1;
 	int	force = 0;
 	int	obsolete = 0;
-	char	*oldversion, *errs = 0, *lic;
+	char	*oldversion;
 	char	*indexfn, *index;
 	char	*p, *e;
 	char	*platform = 0, *version = 0;
@@ -39,8 +38,6 @@ upgrade_main(int ac, char **av)
 	char	**data = 0;
 	int	len;
 	FILE	*f, *fout;
-	MDBM	*configDB = proj_config(0);
-	char	*licf;
 	int	rc = 2;
 	char	*tmpbin = 0, *bundle = 0;
 	mode_t	myumask;
@@ -254,19 +251,11 @@ proceed:
 "option to force the upgrade\n", data[3], bk_vers);
 		goto out;
 	}
-	/* obtain new lease here */
 	oldversion = bk_vers;
 	bk_vers = data[3];
-	unless (lic = lease_bkl(0, &errs)) {
-		lease_printerr(errs);
-		free(errs);
-		notice("upgrade-require-license", 0, "-e");
-		rc = 2;
-		goto out;
-	}
-	bk_vers = oldversion;
-	free(lic);
 
+
+	bk_vers = oldversion;
 	unless (fetchonly || install) {
 		printf("BitKeeper version %s is available for download.\n",
 		    data[3]);
@@ -308,34 +297,6 @@ proceed:
 	free(tmpbin);
 	tmpbin = 0;
 
-	/* embed bk license, we know it is valid because we got a lease above */
-	licf = bktmp(0);
-	f = fopen(licf, "w");
-	if ((p = getenv("BK_LICENSEURL")) ||
-	    (p = mdbm_fetch_str(configDB, "licenseurl"))) {
-		fprintf(f, "licenseurl: %s\n", p);
-	} else if (p = mdbm_fetch_str(configDB, "license")) {
-		fprintf(f, "license: %s\n", p);
-		i = 1;
-		do {
-			sprintf(buf, "licsign%d", i++);
-			if (p = mdbm_fetch_str(configDB, buf)) {
-				fprintf(f, "%s: %s\n", buf, p);
-			}
-		} while (p);
-	} else {
-		fprintf(stderr, "upgrade: can't find license to embed\n");
-		goto out;
-	}
-	fclose(f);
-	unless (!fetchonly || macosx() || win32() ||
-	    getenv("_BK_UPGRADE_NOINSKEYS")) {
-		rc = inskeys(data[1], licf);
-		unlink(licf);
-		free(licf);
-		if (rc) goto out;
-		rc = 2;
-	}
 	myumask = umask(0);
 	umask(myumask);
 	chmod(data[1], 0555 & ~myumask);
@@ -442,8 +403,7 @@ void
 upgrade_maybeNag(char *out)
 {
 	FILE	*f;
-	char	*t, *key, *new_utc, *new_age, *bk_age;
-	u32	bits;
+	char	*t, *new_utc, *new_age, *bk_age;
 	int	same, i;
 	time_t	now = time(0);
 	char	*av[] = {
@@ -502,13 +462,6 @@ upgrade_maybeNag(char *out)
 	concat_path(buf, getDotBk(), "latest-bkver.nag");
 	Fprintf(buf, "%s,%s\n", bk_utc, new_utc);
 
-	/* But don't do anything if noNAG is set */
-	if (key = lease_bkl(0, 0)) {	/* get a lease, but don't fail */
-		bits = license_bklbits(key);
-		free(key);
-
-		if (bits & LIC_NONAG) return;
-	}
 
 donag:	/* okay, nag */
 

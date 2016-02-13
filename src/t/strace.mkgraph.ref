@@ -1,9 +1,9 @@
 # baseline data for t.strace-cnt
-close 6
-fstat 7
+close 5
+fstat 6
 lseek 3
-lstat 13
-open 8
-read 75
+lstat 12
+open 7
+read 74
 stat 2
 write 92

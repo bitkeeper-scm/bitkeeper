@@ -8,10 +8,12 @@
  * Copyright (c) 1999 Larry McVoy
  */
 #include "system.h"
-#include "../inskeys.h"
 
 #define	OUTPUT	"_data.c"
 #define	OBJ	"_data.o"
+
+/* unique sequence of bytes */
+#define	MARKER	"2ccd0fc04e3abb1a1e5af1e3da51d0fa574d2c4f584b39bc954e7b76cefea"
 
 /*
  * Layout in _data.c
@@ -19,8 +21,6 @@
  *	unsigned char	sfio_data[installer_size];
  *	unsigned int	data_size;
  *	unsigned char	data_data[data_size];
- *	unsigned int	keys_size;
- *	unsigned char	keys_data[keys_size];
  */
 
 private void
@@ -32,13 +32,12 @@ setup(FILE *f, char *prog, off_t size)
 	fprintf(f, "unsigned char %s_data[%lu] = {\n",
 	    prog, (unsigned long)size);
 
-	assert(sizeof(inskeys_marker) < size);
 	/*
 	 * According lm, to keep hpux happy, we need stuff some non-zero
 	 * (random) value here.
 	 */
-	for (i = 0; i < sizeof(inskeys_marker); i++) {
-		fprintf(f, "\t%u,\n", inskeys_marker[i]);
+	for (i = 0; i < sizeof(MARKER); i++) {
+		fprintf(f, "\t%u,\n", MARKER[i]);
 	}
 	fprintf(f, "};\n");
 }
@@ -52,8 +51,8 @@ install(u8 *map, u8 *start, off_t size, int fd)
 
 	end = map + size;
 	if (p = memmem(start, end - start,
-		inskeys_marker, sizeof(inskeys_marker))) {
-		printf("Found array offset %u bytes.\n", p - map);
+		MARKER, sizeof(MARKER))) {
+		printf("Found array offset %lu bytes.\n", p - map);
 	} else {
 		printf("Did not find array\n");
 		exit(1);
@@ -114,7 +113,6 @@ main(int ac, char **av)
 	}
 	setup(f, "sfio", sf_size);
 	setup(f, "data", d_size);
-	setup(f, "keys", KEYS_SIZE);
 	fclose(f);
 
 	if (!(cc = getenv("CC"))) cc = "cc";

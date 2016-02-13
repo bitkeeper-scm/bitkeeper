@@ -1,7 +1,4 @@
 #include "bkd.h"
-#include "logging.h"
-#include "tomcrypt.h"
-#include "tomcrypt/randseed.h"
 
 #define	LOG_STDERR	(char *)1
 
@@ -249,15 +246,12 @@ do_cmds(void)
 	}
 	/* Don't allow existing env to be used */
 	/* XXX put function in utils.c and have it match what gets set? */
-	putenv("BK_AUTH_HMAC=BAD");
-	putenv("BK_LICENSE=");
 	putenv("BK_REMAP=");
 	putenv("BK_FEATURES=");
 	putenv("BK_FEATURES_REQUIRED=");
 	putenv("BK_QUIET_TRIGGERS=");
 	putenv("BK_SYNCROOT=");
 
-	lease_inbkd();		/* enable bkd-mode in lease code */
 
 	/*
 	 * The _BKD_HTTP varible indicates that the current bkd
@@ -475,35 +469,6 @@ findcmd(int ac, char **av)
 	return (-1);
 }
 
-private struct {
-	char	*buf;
-	int	i, len;
-	char	*hash;
-} hmac;
-
-private void
-parse_hmac(char *p)
-{
-	int     len;
-
-	if (hmac.buf) {
-		free(hmac.buf);
-		free(hmac.hash);
-		hmac.buf = 0;
-	}
-	len = strtoul(p, &p, 10);
-	unless (len && (*p == '|')) goto bad;
-	strtoul(p+1, &p, 10);
-	unless (*p == '|') goto bad;
-	++p;
-	unless (hmac.buf = malloc(len)) goto bad;
-	hmac.hash = strdup(p);
-	hmac.i = 0;
-	hmac.len = len;
-	return;
-bad:
-	putenv("BK_AUTH_HMAC=BAD");
-}
 
 static	int	content_len = -1;	/* content-length from http header */
 
@@ -511,24 +476,10 @@ private int
 nextbyte(void *unused, char *buf, int size)
 {
 	int	ret;
-	char	*h;
 
 	if (content_len == 0) return (0);
 	--content_len;
 	if ((ret = bkd_getc()) == EOF) return (0);
-	if (hmac.buf) {
-		hmac.buf[hmac.i++] = (char)ret;
-		if (hmac.i == hmac.len) {
-			h = secure_hashstr(hmac.buf, hmac.len,
-			    makestring(KEY_BK_AUTH_HMAC));
-			safe_putenv("BK_AUTH_HMAC=%s",
-			    streq(h, hmac.hash) ? "GOOD" : "BAD");
-			free(h);
-			free(hmac.buf);
-			free(hmac.hash);
-			memset(&hmac, 0, sizeof(hmac));
-		}
-	}
 	buf[0] = (char)ret;
 	buf[1] = 0;
 	return (1);	/* returning 1 char */
@@ -621,151 +572,9 @@ nextline:
 		goto nextline;
 	}
 
-	/*
-	 * Process HMAC header
-	 */
-	if ((ac == 2) && streq("putenv", av[1]) &&
-	    strneq("BK_AUTH_HMAC=", av[2], 13)) {
-		parse_hmac(av[2] + 13);
-	}
-
 	*acp = ac;
 	*avp = av + 1;
 	return (1);
-}
-
-/*
- * The following routines are used to setup a handshake between
- * bk clients and servers to authenticate that they are not being
- * spoofed by another program.
- *
- * client <-> server
- *
- * X=rand        -->  bkd
- * client        <--  H(X),Y=rand (store repoid/Y)
- * H(Y),Z=rand   -->  bkd (check with stored Y)
- * client        <--  H(Z)
- *
- * The code looks like this:
- * client				server
- *   bkd_seed(0, 0, &pass1) => 0
- *        pass1 sent to bkd     -->
- *					bkd_seed(0, pass1, &pass2) => 0
- *					bkd_saveSeed(BK_REPOID, pass2)
- *				<--  pass2 sent to bk
- *   bkd_seed(pass1, pass2, &pass3) => 1
- *        pass3 sent to bkd     -->
- *					pass2 = bkd_restoreSeed(BK_REPOID)
- *					bkd_seed(pass2, pass3, &pass4) => 2
- *				<--  pass4 sent to bk
- *   bkd_seed(pass3, pass4, 0) => 2
- *
- * The return value:
- *    -1  remote fails validation
- *     0  first round, no validation
- *     1  pass3 validation matches
- *     2  pass4+ validation matches
- */
-int
-bkd_seed(char *oldseed, char *newval, char **newout)
-{
-	char	*p, *h, *r;
-	int	ret = 0;
-	char	rand[64];
-
-	/* validate newval */
-	if (newval && oldseed) {
-		h = secure_hashstr(oldseed, strlen(oldseed),
-		    makestring(KEY_SEED));
-
-		if (p = strchr(newval, '|')) *p = 0;
-		if (p && streq(h, newval)) {
-			ret = 1;
-			if (strchr(oldseed, '|')) ++ret;
-		} else {
-			/*
-			 * we sent a seed and the response either didn't have
-			 * a hash or the hash was wrong.  bad.
-			 */
-			newval = 0;  /* don't hash their bad data for them */
-			ret = -1;
-		}
-		free(h);
-		if (p) *p = '|';
-	} else if (newval && strchr(newval, '|')) {
-		/*
-		 * We didn't send them a seed and somehow they are coming back
-		 * with the hash of something. bad.
-		 */
-		newval = 0;  /* don't hash their bad data for them */
-		ret = -1;
-	}
-	if (newout) {
-		rand_getBytes(rand, sizeof(rand));
-		r = hashstr(rand, sizeof(rand));
-		if (newval) {
-			h = secure_hashstr(newval, strlen(newval),
-			    makestring(KEY_SEED));
-			*newout = aprintf("%s|%s", h, r);
-			free(h);
-			free(r);
-		} else {
-			*newout = r;
-		}
-	}
-#if 0
-	ttyprintf("%u: %s %s %s %d\n", getpid(),
-	    oldseed, newval, newout ? *newout : "-", ret);
-#endif
-	return (ret);
-}
-
-
-private
-char *
-seedFile(char *repoid)
-{
-	char	*ret, *h;
-
-	unless (repoid) repoid = "no repoid";
-	ret = aprintf("%s/seeds/%s", getDotBk(),
-	    (h = hashstr(repoid, strlen(repoid))));
-	free(h);
-	return (ret);
-}
-
-
-/*
- * XXX how do I clean up stale values?
- */
-void
-bkd_saveSeed(char *repoid, char *seed)
-{
-	char	*d;
-	int	fd;
-
-	d = seedFile(repoid);
-	mkdirf(d);
-	fd = creat(d, 0664);
-	free(d);
-	if (fd < 0) {
-		perror("bkd_saveSeed");
-		return;
-	}
-	write(fd, seed, strlen(seed));
-	close(fd);
-}
-
-char *
-bkd_restoreSeed(char *repoid)
-{
-	char	*d, *ret;
-
-	d = seedFile(repoid);
-	ret = loadfile(d, 0);	/* may be missing */
-	unlink(d);
-	free(d);
-	return (ret);
 }
 
 private int

@@ -9,8 +9,6 @@ file with data like this:
 
     @HERE
     default
-    @LICENSE
-    BKL5446d4e9e25a06ae10001201ffffe
     @VERSION
     bk-5.0-beta10
 

@@ -2,7 +2,6 @@
  * Copyright (c) 2000-2010 BitMover, Inc.
  */
 #include "bkd.h"
-#include "logging.h"
 #include "range.h"
 #include "nested.h"
 #include "progress.h"
@@ -149,12 +148,6 @@ push_main(int ac, char **av)
 	}
 	opts.product = bk_nested2root(getenv("_BK_TRANSACTION") != 0);
 	cmdlog_lock(CMD_NESTED_RDLOCK|CMD_RDLOCK);
-
-	unless (eula_accept(EULA_PROMPT, 0)) {
-		fprintf(stderr, "push: failed to accept license, aborting.\n");
-		return (1);
-	}
-
 	if (sane(0, 0) != 0) return (1);
 	if (hasLocalWork(GONE)) {
 		fprintf(stderr,

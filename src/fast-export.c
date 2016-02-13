@@ -1,7 +1,6 @@
 #include "sccs.h"
 #include "range.h"
 #include "nested.h"
-#include "logging.h"
 
 typedef struct {
 	char	*branch;
@@ -36,11 +35,6 @@ fastexport_main(int ac, char **av)
 	};
 	int	rc = 1;
 
-	if (bk_notLicensed(0, LIC_EXPORT, 1)) {
-		/* act like it doesn't exist */
-		fprintf(stderr, "%s: command not found\n", prog);
-		return (1);
-	}
 	opts.addMD5Keys = 1;
 	while ((c = getopt(ac, av, "", lopts)) != -1) {
 		switch (c) {

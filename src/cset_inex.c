@@ -54,14 +54,6 @@ cset_inex(int flags, char *op, char *revs)
 	START_TRANSACTION();
 	file[0] = 0;
 	while (fgets(buf, sizeof(buf), f)) {
-#ifdef OLD_LICENSE
-		if (checkLog(0, 1)) {
-			fprintf(stderr, "Cset aborted, no changes applied\n");
-			pclose(f);
-			mdbm_close(m);
-			return (1);
-		}
-#endif
 		chop(buf);
 		t = strchr(buf, BK_FS);
 		assert(t);

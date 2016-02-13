@@ -416,14 +416,12 @@ echo $N Make sure clone is passed the right variables ...............$NL
 cat > BitKeeper/triggers/pre-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ | egrep -v '^[^=]+=$' |
-	grep -v _SEED= |
  	bk sort > "$HERE/pre-outgoing"
 exit 1
 EOF
 cat > BitKeeper/triggers/post-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ | egrep -v '^[^=]+=$' |
-	grep -v _SEED= |
 	bk sort > "$HERE/post-outgoing"
 EOF
 chmod +x BitKeeper/triggers/*
@@ -461,14 +459,12 @@ cd "$HERE/project"
 cat > BitKeeper/triggers/pre-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ | egrep -v '^[^=]+=$' |
-	grep -v _SEED= |
 	bk sort > "$HERE/pre-outgoing-l"
 exit 1
 EOF
 cat > BitKeeper/triggers/post-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ | egrep -v '^[^=]+=$' |
-	grep -v _SEED= |
 	bk sort > "$HERE/post-outgoing-l"
 EOF
 chmod +x BitKeeper/triggers/*
@@ -526,7 +522,6 @@ cat > BitKeeper/triggers/post-incoming <<EOF
 #!/bin/bash
 # ignore BK_REPO_ID because clone and clone-l had different ids
 set | grep $DASHA ^BK | grep -v _BK_ | egrep -v '^[^=]+=$' |
-    grep -v _SEED= |
     grep -v BK_REPO_ID= |
     grep -v BKD_TIP |
     bk sort > "$HERE/post-incoming-clone"
@@ -559,7 +554,6 @@ bk edit $Q BitKeeper/triggers
 cat > BitKeeper/triggers/post-incoming <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | egrep -v '^[^=]+=$' |
-    grep -v _SEED= |
     grep -v BK_REPO_ID= |
     grep -v BKD_TIP |
     bk sort > "$HERE/post-incoming-clone-l"
@@ -612,9 +606,6 @@ grep -q BK_LOCALCSETS=3 "$HERE/pre-outgoing" || {
 }
 grep -q BK_REMOTECSETS=0 "$HERE/pre-outgoing" || {
 	fail -f "$HERE/pre-outgoing" failed to put remote csets in the env
-}
-grep -q BK_LICENSE=$BKL_PRO "$HERE/pre-outgoing" || {
-	fail didn\'t pass license
 }
 test -d RESYNC && fail failed to clean up RESYNC dir
 echo OK

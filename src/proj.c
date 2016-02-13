@@ -1,6 +1,5 @@
 #include "system.h"
 #include "sccs.h"
-#include "logging.h"
 #include "bam.h"
 #include "cfg.h"
 
@@ -34,10 +33,7 @@ struct project {
 	project	*product;	/* if Nested, point at the product repo */
 
 	/* per proj cache data */
-	char	*bkl;		/* key - filled from lease_bkl() */
-	u32	bklbits;	/* LIC_* from license_bklbits() */
 	int	casefolding;	/* mixed case file system: FOO == foo */
-	int	leaseok;	/* if set, we've checked and have a lease */
 	MDBM	*BAM_idx;	/* BAM index file */
 	int	BAM_write;	/* BAM index file opened for write? */
 	int	sync;		/* sync/fsync data? */
@@ -714,7 +710,6 @@ proj_reset(project *p)
 		FREE(p->md5rootkey);
 		FREE(p->comppath);
 		FREE(p->repoID);
-		FREE(p->bkl);
 		FREE(p->tipkey);
 		FREE(p->tipmd5key);
 		FREE(p->tiprev);
@@ -722,9 +717,7 @@ proj_reset(project *p)
 			mdbm_close(p->config);
 			p->config = 0;
 		}
-		p->bklbits = 0;
 		p->casefolding = -1;
-		p->leaseok = -1;
 		p->co = 0;
 		p->sync = -1;
 		p->noremap = -1;
@@ -858,69 +851,6 @@ proj_fakenew(void)
 	return (ret);
 }
 
-/*
- * return the BKL.... key as a string
- * Will exit(1) on failure, so the function always returns a key.
- */
-char *
-proj_bkl(project *p)
-{
-	char	*errs = 0;
-
-	/*
-	 * If we are outside of any repository then we must get a
-	 * licence from the global config or a license server.
-	 */
-	unless (p || (p = curr_proj())) p = proj_fakenew();
-
-	if (p->bkl) return (p->bkl);
-	unless (p->bkl = lease_bkl(p, &errs)) {
-		assert(errs);
-		lease_printerr(errs);
-		exit(1);
-	}
-	return (p->bkl);
-}
-
-/*
- * return the decoded license/option bits (LIC_*)
- * (like proj_bkl() above this function will exit without a valid license)
- */
-u32
-proj_bklbits(project *p)
-{
-	/*
-	 * If we are outside of any repository then we must get a
-	 * licence from the global config or a license server.
-	 */
-	unless (p || (p = curr_proj())) p = proj_fakenew();
-
-	unless (p->bklbits) p->bklbits = license_bklbits(proj_bkl(p));
-	if (streq(p->root, "/.")) {
-		p->bklbits |= 0; /* XXX add force read-only bit */
-	}
-	return (p->bklbits);
-}
-
-/*
- * Returns 1 if the repo has already been checked in this write mode
- * and 0 otherwise.  It also saves the mark.
- *
- * This is a helper found used by lease.c to determine if lease have
- * already been verified for this repository.
- */
-int
-proj_leaseChecked(project *p, int write)
-{
-	unless (p || (p = curr_proj())) return (0);
-
-	if ((p->leaseok == O_WRONLY) ||
-	    ((p->leaseok == O_RDONLY) && (write == O_RDONLY))) {
-		return (1);
-	}
-	p->leaseok = write;
-	return (0);
-}
 
 int
 proj_isCaseFoldingFS(project *p)

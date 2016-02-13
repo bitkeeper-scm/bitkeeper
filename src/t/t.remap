@@ -2,7 +2,7 @@ FEATURES=BitKeeper/log/features
 
 echo $N Check that setup --sccs-compat works ........................$NL
 _commercial_config > c
-bk setup -a -f -cc --sccs-compat noremap || fail
+bk setup -f -cc --sccs-compat noremap || fail
 cd noremap
 # This should NOT be bk _test
 test ! -f SCCS/s.ChangeSet && fail

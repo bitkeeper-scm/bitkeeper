@@ -1353,7 +1353,7 @@ echo OK
 echo $N Show that failed resolve will not mangle repo ...............$NL
 cd "$HERE"
 _commercial_config > c
-bk setup --sccs-compat -a -f -cc repo2
+bk setup --sccs-compat -f -cc repo2
 cd repo2
 test -d .bk && fail
 mkdir dir

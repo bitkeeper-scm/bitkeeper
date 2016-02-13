@@ -42,7 +42,6 @@ int	cmd_clone(int ac, char **av);
 int	cmd_check(int ac, char **av);
 int	cmd_help(int ac, char **av);
 int	cmd_httpget(int ac, char **av);
-int	cmd_license(int ac, char **av);
 int	cmd_pwd(int ac, char **av);
 int	cmd_quit(int ac, char **av);
 int	cmd_rootkey(int ac, char **av);
@@ -166,7 +165,6 @@ int	getServerInfo(remote *r, hash *bkdEnv);
 char	*vpath_translate(char *path);
 
 #define	SENDENV_NOREPO	   1 /* don't assume we are called from a repo */
-#define	SENDENV_NOLICENSE  2 /* don't send BK_LICENSE, in lease code */
 #define	SENDENV_FORCEREMAP 4 /* send BK_REMAP even if not true */
 #define	SENDENV_FORCENOREMAP 8 /* don't send BK_REMAP even if true */
 #define	SENDENV_SENDFMT	   0x10 /* send sfile format */
@@ -181,9 +179,6 @@ void	drainErrorMsg(remote *r, char *buf, int bsize);
 int	listType(char *type);
 int	bkd_isSafe(char *file);
 int	unsafe_cd(char *path);
-int	bkd_seed(char *oldseed, char *newval, char **newout);
-void	bkd_saveSeed(char *repoid, char *seed);
-char	*bkd_restoreSeed(char *repoid);
 int	clone_sfioCompat(int bkd);
 
 int	bkd_doResolve(char *me, int quiet, int verbose);

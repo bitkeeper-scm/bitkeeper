@@ -1,5 +1,4 @@
 #include "sccs.h"
-#include "logging.h"
 #include "nested.h"
 
 /* map feature enum, data about feature */
@@ -358,11 +357,6 @@ features_bits(project *p)
 		free(here);
 	} else {
 		ret = pf->bits = 1;  /* none */
-	}
-
-	/* enforce nested restrictions */
-	if (proj_isEnsemble(p) && bk_notLicensed(p, LIC_SAM, 0)) {
-		exit(100);
 	}
 	if (freep) proj_free(freep);
 	return (ret);

@@ -541,14 +541,12 @@ echo $N Make sure clone is passed the right variables ...............$NL
 cat > BitKeeper/triggers/pre-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ |
-	grep -v _SEED= |
  	bk sort > "$HERE/pre-outgoing"
 exit 1
 EOF
 cat > BitKeeper/triggers/post-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ |
-	grep -v _SEED= |
 	bk sort > "$HERE/post-outgoing"
 EOF
 chmod +x BitKeeper/triggers/*
@@ -603,14 +601,12 @@ cd "$HERE/project"
 cat > BitKeeper/triggers/pre-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ |
-	grep -v _SEED= |
 	bk sort > "$HERE/pre-outgoing-l"
 exit 1
 EOF
 cat > BitKeeper/triggers/post-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ |
-	grep -v _SEED= |
 	bk sort > "$HERE/post-outgoing-l"
 EOF
 chmod +x BitKeeper/triggers/*
@@ -682,7 +678,6 @@ cat > BitKeeper/triggers/post-incoming <<EOF
 #!/bin/bash
 # ignore BK_REPO_ID because clone and clone-l had different ids
 set | grep $DASHA ^BK | grep -v _BK_ |
-    grep -v _SEED= |
     grep -v BK_REPO_ID= |
     grep -v BKD_TIP |
     bk sort > "$HERE/post-incoming-clone"
@@ -719,7 +714,6 @@ cat > BitKeeper/triggers/post-incoming <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK |
     grep -v _BK_ |
-    grep -v _SEED= |
     grep -v BK_REPO_ID= |
     grep -v BKD_TIP |
     bk sort > "$HERE/post-incoming-clone-l"
@@ -781,10 +775,6 @@ grep -q BK_LOCALCSETS=3 "$HERE/pre-outgoing" || {
 grep -q BK_REMOTECSETS=0 "$HERE/pre-outgoing" || {
 	echo failed to put remote csets in the env
 	cat "$HERE/pre-outgoing"
-	exit 1
-}
-grep -q BK_LICENSE=$BKL_PRO "$HERE/pre-outgoing" || {
-	echo didn\'t pass license
 	exit 1
 }
 test -d RESYNC && {
@@ -2096,9 +2086,7 @@ bk tag TOP || fail
 bk pull -v || fail
 bk _rclone -v .. ../../rclone.mt || fail
 # pre and post lease proxy
-bk lease flush -a || fail
 # BK_NO_TRIGGERS=1
-BK_CONFIG="licenseurl: $HERE/rclone.mt! " bk lease renew || fail
 bk collapse -eaTOP || fail
 rm -f ../foo
 ) > "$HERE/TRIGOUT" 2>&1 || {
@@ -2195,9 +2183,7 @@ bk tag TOP
 bk pull -v
 bk _rclone -v .. ../../rclone.no-local.mt
 # pre and post lease proxy
-bk lease flush -a
 # BK_NO_TRIGGERS=1
-BK_CONFIG="licenseurl: $HERE/rclone.no-local.mt! " bk lease renew || fail
 bk collapse -eaTOP
 rm -f ../foo
 ) > "$HERE/TRIGOUT.no-local" 2>&1 || {

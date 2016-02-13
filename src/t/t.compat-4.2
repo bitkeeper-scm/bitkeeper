@@ -18,6 +18,12 @@ OSTYPE=`uname -s`
 case $OSTYPE in
 	MINGW32_NT-6.*) echo skipped; exit 0;;
 esac
+# just put this license in the lease server when it expires
+BKL_PRO=BKL657ba5407368c808000012fdfffff42e572b430023
+BKL_P1=YgAAAo4AAAADgQAAAAH25wKkj5S4TqH3lBBbr2ZcvNVtgH945QYa6aZK0XOQuZON
+BKL_P2=VgIa7srODXebDkbzCJzSt7akBg4KMjkmCx0GI2vAWS4ddnccqRNUG+iNXMCXfXXD
+BKL_P3=WJk6+SFVwEh1/MsFIxFpc4hSsTF1QAdebtSKPACFhX34zXF8h3stHBiHMPIMmg==
+
 echo license: $BKL_PRO > c
 echo licsign1: $BKL_P1 >> c
 echo licsign2: $BKL_P2 >> c
@@ -41,7 +47,7 @@ test -d $OLDBK || {
     }
     # NOTE bk-3.2.x didn't set exit status...
     echo y | BK_NOLINKS=1 ./bk-$OLDVER-* $OLDBK >out 2>err || fail
-    rm $OLDBK/config
+    rm -f $OLDBK/config
 
     # generate a crypto key for tests
     $OLDBK/bk crypto -i 1024 $OLDBK/my.sec $OLDBK/my.pub || fail
@@ -51,6 +57,7 @@ test X$VER = X$OLDVER || {
 	echo bk not installed correctly
 	exit 1
 }
+$OLDBK/bk _eula -a
 echo OK
 
 echo -------------- crypto tests
@@ -348,88 +355,6 @@ grep -q "Repository doesn't exist" ERR || fail -f ERR wrong message
 bk clonemod $Q bk://localhost:$OLDP/copy project copy >ERR 2>&1 && \
 	fail -f ERR should have failed
 grep -q "copy needs to be upgraded" ERR || fail -f ERR wrong message
-echo OK
-
-echo $N Check lease proxy compat ....................................$NL
-cd "$HERE"
-# Do some work to isolate license key
-cp -R .bk .mybk
-mv .mybk/config dotbkconfig
-grep -v '^lic' dotbkconfig > .mybk/config
-BK_DOTBK="$HERE/.mybk"
-export BK_DOTBK
-rm -fr copy
-tar xf copy.tar
-cd copy || fail
-bk edit $Q BitKeeper/etc/config
-grep -v '^lic' BitKeeper/etc/config > ../repoconfig
-cp ../repoconfig BitKeeper/etc/config
-bk lease renew 2> ERR && echo lease worked?
-grep -q 'You do not have a license for BitKeeper' ERR || fail
-cd ..
-cp -R copy licserve
-cd licserve
-rm BitKeeper/log/repo_id
-bk id -r > newid
-cd ../copy
-echo "licenseurl: bk://localhost:$OLDP" >> BitKeeper/etc/config
-bk lease renew || fail
-$OLDBK/bk lease renew || fail
-cp ../repoconfig BitKeeper/etc/config
-echo "licenseurl: bk://localhost:$NEWP" >> BitKeeper/etc/config
-bk lease renew || fail
-$OLDBK/bk lease renew || fail
-cp ../repoconfig BitKeeper/etc/config
-echo "licenseurl: bk://localhost:$OLDP/licserve" >> BitKeeper/etc/config
-bk lease renew || fail
-$OLDBK/bk lease renew || fail
-cp ../repoconfig BitKeeper/etc/config
-echo "licenseurl: bk://localhost:$NEWP/licserve" >> BitKeeper/etc/config
-bk lease renew || fail
-$OLDBK/bk lease renew || fail
-echo OK
-
-echo $N Check lease proxy trigger compat ............................$NL
-cd "$HERE"
-mkdir -p BitKeeper/triggers || fail
-cd BitKeeper/triggers || fail
-cat <<'EOF' > pre-lease-proxy.global
-#!/bin/sh
-echo "My message to you is that the $BK_EVENT failed"
-exit 1
-EOF
-chmod +x pre-lease-proxy.global
-cd ../..
-echo "triggers: $HERE" >> .bk/config
-cd copy
-cp ../repoconfig BitKeeper/etc/config
-echo "licenseurl: bk://localhost:$OLDP/licserve" >> BitKeeper/etc/config
-bk lease renew 2> ERR && fail
-grep -q "My message" ERR && fail
-$OLDBK/bk lease renew 2> ERR && fail
-grep -q "My message" ERR && fail
-cp ../repoconfig BitKeeper/etc/config
-echo "licenseurl: bk://localhost:$NEWP/licserve" >> BitKeeper/etc/config
-bk lease renew 2> ERR && fail
-grep -q "My message" ERR || fail
-$OLDBK/bk lease renew 2> ERR && fail
-grep -q "My message" ERR && fail
-echo OK
-
-echo $N Show global lease proxy triggers do not fire if not in repo .$NL
-cp ../repoconfig BitKeeper/etc/config
-echo "licenseurl: bk://localhost:$OLDP" >> BitKeeper/etc/config
-bk lease renew || fail
-$OLDBK/bk lease renew || fail
-cp ../repoconfig BitKeeper/etc/config
-echo "licenseurl: bk://localhost:$NEWP" >> BitKeeper/etc/config
-bk lease renew || fail
-$OLDBK/bk lease renew || fail
-echo OK
-
-echo $N Check bkd error logs ........................................$NL
-cd "$HERE"
-test -s OLDERR -o -s NEWERR && fail
 echo OK
 
 echo -------------- sortkey repo interacting with old bk

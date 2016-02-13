@@ -17,7 +17,6 @@
 # 
 # We pick up the config from dotbk but don't leave it in config.
 # We pick up the config from a repo, if present, but don't leave it in config.
-# Install/upgrades fail if the license isn't accepted
 # Upgrades do not install config files, they leave them.
 #
 # Not done yet:
@@ -36,13 +35,6 @@ test `wc -l < /tmp/bk$$` -gt 1 && {
 test `wc -l < /tmp/bk$$` -eq 1 && BK_INSTALLER="`cat /tmp/bk$$`"
 $RM /tmp/bk$$
 test "X$BK_INSTALLER" = X && exit 0
-
-echo "license: $BKL_PRO" > c
-echo "licsign1: $BKL_P1" >> c
-echo "licsign2: $BKL_P2" >> c
-echo "licsign3: $BKL_P3" >> c
-DOTBK=`bk dotbk`
-mv c "$DOTBK"/config || fail
 
 if [ X$PLATFORM = X"WIN32" ]
 then #-------------------- WIN32 tests ---------------------
@@ -75,171 +67,39 @@ echo OK
 fi	# end of WIN32 tests
 
 echo $N Relative path installation, no config file...................$NL
-rm -f "$DOTBK"/accepted
-echo y | "$BK_INSTALLER" relative > OUT 2>&1
-grep -q LICENSE OUT || {
-	echo Did not prompt for license
-	cat OUT
-	exit 1
-}
-test -d relative || {
-	echo did not create relative 
-	cat OUT
-	exit 1
-}
-test -f relative/config && {
-	echo left config file
-	cat OUT
-	exit 1
-}
+"$BK_INSTALLER" relative > OUT 2>&1 || fail -f OUT
+test -d relative || fail -f OUT
+test -f relative/config && fail -f OUT left config file
 bk _rm -rf relative
 echo OK
 
 echo $N Absolute path installation, no config file...................$NL
-# Save accepted file for later unprompted install test
-cp "$DOTBK"/accepted accepted.saved
-rm -f "$DOTBK"/accepted
-echo y | "$BK_INSTALLER" "$HERE/absolute" > OUT 2>&1
-grep -q LICENSE OUT || {
-	echo Did not prompt for license
-	cat OUT
-	exit 1
-}
-test -d absolute || {
-	echo did not create absolute 
-	cat OUT
-	exit 1
-}
-test -f absolute/config && {
-	echo left config file
-	cat OUT
-	exit 1
-}
+"$BK_INSTALLER" "$HERE/absolute" > OUT 2>&1 || fail -f OUT
+test -d absolute || fail -f OUT
+test -f absolute/config && fail -f OUT left config file
 echo OK
-
-echo $N Refuse license, should fail and leave no installation .......$NL
-rm -f "$DOTBK"/accepted
-echo n | "$BK_INSTALLER" refuse > OUT 2>&1
-grep -q LICENSE OUT || {
-	echo Did not prompt for license
-	cat OUT
-	exit 1
-}
-test -d refuse && {
-	echo created refuse
-	cat OUT
-	exit 1
-}
-echo OK
-
-echo $N Use repo license rather than .bk/config, should work ........$NL
-commercial repo
-rm -f "$DOTBK"/accepted
-mv "$DOTBK"/config "$HERE"
-echo y | "$BK_INSTALLER" "$HERE/use_repo" > "$HERE/OUT" 2>&1
-cd "$HERE"
-grep -q LICENSE OUT || {
-	echo Did not prompt for license
-	cat OUT
-	exit 1
-}
-test -d use_repo || {
-	echo did not create use_repo 
-	cat OUT
-	exit 1
-}
-echo OK
-bk _rm -rf use_repo
 
 echo $N Upgrade with installed config, leave it and it should work ..$NL
-rm -f "$DOTBK"/accepted
 # XXX - it would be nice if we looked in the destination for the config
 # on upgrades.
-cp "$HERE/config" "$DOTBK"/config
 chmod +w absolute >/dev/null 2>&1	# SCO's chmod barfs
-cp "$HERE/config" absolute
 echo "foo: bar" >> absolute/config
 OLDPATH="$PATH"
-PATH="$HERE/absolute:$PATH"
+PATH="`pwd`/absolute:$PATH"
 export PATH
-echo y | "$BK_INSTALLER" -u > OUT 2>&1
+"$BK_INSTALLER" -u > OUT 2>&1 || fail -f OUT
 PATH="$OLDPATH"
 export PATH
 cd "$HERE"
-grep -q LICENSE OUT || {
-	echo Did not prompt for license
-	cat OUT
-	exit 1
-}
-test -f absolute/config || {
-	echo should have left config file
-	exit 1
-}
-grep -q "foo: bar" absolute/config || {
-	echo stomped on config
-	exit 1
-}
+test -f absolute/config || fail -f OUT
+grep -q "foo: bar" absolute/config || fail -f OUT stomped on config
 echo OK
 bk _rm -rf absolute
-
-echo $N Embedded license, should leave config file...................$NL
-rm -f "$DOTBK"/accepted "$DOTBK"/config
-echo "license: $BKL_ACADEMIC" > c
-echo "licsign1: $BKL_A1" >> c
-echo "licsign2: $BKL_A2" >> c
-echo "licsign3: $BKL_A3" >> c
-cp "$BK_INSTALLER" bk-academic
-bk inskeys bk-academic c > OUT 2>&1
-grep -q 'Inserted keys into binary' OUT || {
-	echo failed to run inskeys
-	cat OUT
-	wc c
-	exit 1
-}
-rm -f bk-academic
-echo y | ./bk-academic-licensed embedded > OUT 2>&1
-grep -q LICENSE OUT || {
-	echo Did not prompt for license
-	cat OUT
-	exit 1
-}
-test -d embedded || {
-	echo did not create embedded 
-	cat OUT
-	exit 1
-}
-test -f embedded/config || {
-	echo did not leave config file
-	cat OUT
-	exit 1
-}
-cp "$DOTBK"/accepted accepted.academic.saved
-echo OK
-
-echo $N Check unprompted install is possible with accepted file......$NL
-# Create a pro embedded installer
-cp "$BK_INSTALLER" bk-pro
-echo "license: $BKL_PRO" > c
-echo "licsign1: $BKL_P1" >> c
-echo "licsign2: $BKL_P2" >> c
-echo "licsign3: $BKL_P3" >> c
-cp "$BK_INSTALLER" bk-pro
-bk inskeys bk-pro c > OUT 2>&1
-cp accepted.saved "$DOTBK"/accepted
-./bk-pro-licensed "$HERE/DEAD4" > OUT 2>&1 || {
-	echo failed $?
-	echo Installer failed to install with accepted file
-	cat OUT
-	exit 1
-}
-echo OK
-bk _rm -rf embedded
 
 if [ X$PLATFORM = X"WIN32" ]
 then #-------------------- WIN32 tests ---------------------
 echo $N Make sure we preserve registry settings and use long paths...$NL
-cp accepted.academic.saved "$DOTBK"/accepted
-./bk-academic-licensed "$HERE/DEAD BEEF" > OUT 2>&1 || {
+"$BK_INSTALLER" "$HERE/DEAD BEEF" > OUT 2>&1 || {
 	echo failed $?
 	echo Installer failed to install
 	cat OUT
@@ -252,7 +112,7 @@ bk _registry set $SHELLXKEY LocalDrive 100 || fail
 P=`bk _registry get "$SYSPATHKEY" Path`
 P="$HERE/DEAD BEEF;$P"
 bk _registry set "$SYSPATHKEY" Path expand_sz:"$P"
-PATH="$P" ./bk-academic-licensed -u > OUT 2>&1 || {
+PATH="$P" "$BK_INSTALLER" -u > OUT 2>&1 || {
 	echo failed $?
 	echo Installer failed to upgrade
 	cat OUT
@@ -287,8 +147,7 @@ fi
 echo OK
 
 echo $N Make sure the installer accepts command line options.........$NL
-#./bk-academic-licensed -s -l "$HERE/DEAD2" > OUT 2>&1 || {
-./bk-academic-licensed -l "$HERE/DEAD2" > OUT 2>&1 || {
+"$BK_INSTALLER" -l "$HERE/DEAD2" > OUT 2>&1 || {
 	echo failed $?
 	echo Installer failed to install with -l
 	cat OUT
@@ -338,7 +197,7 @@ bk _registry set $SHELLXKEY LocalDrive 100 || fail
 # Depends on $P from above, make the path same as it was
 # before the first -u test else the uninstall test fails
 bk _registry set "$SYSPATHKEY" Path expand_sz:"$P"
-PATH="$P" ./bk-academic-licensed -u -l > OUT 2>&1 || {
+PATH="$P" "$BK_INSTALLER" -u -l > OUT 2>&1 || {
 	bk _registry set "$SYSPATHKEY" Path expand_sz:"$OP"
 	echo failed $?
 	echo Installer failed to upgrade with -l
@@ -394,7 +253,7 @@ bk _registry get "$UNINSTALLKEY" $VERSION | grep "DEAD BEEF" > TEXT && {
 echo OK
 
 echo $N Uninstaller in upgrade mode should not remove everything.....$NL
-./bk-academic-licensed "$HERE/DEADBEEF" >OUT 2>&1
+"$BK_INSTALLER" "$HERE/DEADBEEF" >OUT 2>&1
 bk _registry get "$SYSPATHKEY" Path | grep "DEADBEEF" > TEXT || {
 	echo failed
 	echo Installer did not install PATH
@@ -431,13 +290,8 @@ echo OK
 else #-------------------- UNIX tests ---------------------
 echo $N Make sure uninstaller removes subdirs........................$NL
 BIN="$HERE/DEADBEEF"
-echo y | ./bk-academic-licensed "$HERE/DEADBEEF" >OUT 2>&1
-test -f "$HERE/DEADBEEF/bk" || {
-	echo failed
-	echo installer failed
-	cat OUT
-	exit 1
-}
+"$BK_INSTALLER" "$HERE/DEADBEEF" >OUT 2>&1 || fail -f OUT
+test -f "$HERE/DEADBEEF/bk" || fail -f OUT
 find "$HERE/DEADBEEF" -type d -exec chmod 555 {} \;
 chmod 777 "$HERE/DEADBEEF"
 "$BIN/bk" uninstall -f || {
@@ -467,7 +321,7 @@ echo OK
 
 echo $N Make sure installer and bk links adds functioning symlinks ..$NL
 BIN="$HERE/DEADBEEF.1"
-./bk-academic-licensed "$BIN" >OUT 2>&1
+"$BK_INSTALLER" "$BIN" >OUT 2>&1 || fail -f OUT
 test -f "$BIN/bk" || fail -f OUT bk file missing
 test -f "$BIN/prs" && fail -f OUT ATT SCCS still there
 "$BIN/bk" version -s > WANT || fail
@@ -514,7 +368,7 @@ echo OK
 
 echo $N Uninstaller in upgrade mode should not remove symlinks.......$NL
 BIN="$HERE/DEADBEEF.2"
-./bk-academic-licensed "$BIN" >OUT 2>&1
+"$BK_INSTALLER" "$BIN" >OUT 2>&1
 test -f "$BIN/bk" || {
 	echo failed
 	echo installer failed

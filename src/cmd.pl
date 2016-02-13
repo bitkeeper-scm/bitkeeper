@@ -220,7 +220,6 @@ diffs
 diffsplit
 dotbk
 _dumpconfig
-_eula
 _exists
 export
 _fastexport
@@ -279,15 +278,10 @@ idcache
 info_server
 info_shell
 isascii
-inskeys
 key2rev
 key2path
 _keyunlink
 _kill
-_lconfig
-lease
-_lease_errtest
-legal
 level remote
 _lines
 _link
@@ -295,7 +289,6 @@ _listkey restricted
 lock
 _locktest
 log
-_logging
 _lstat
 _mailslot
 mailsplit

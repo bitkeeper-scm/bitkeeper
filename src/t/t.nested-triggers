@@ -258,7 +258,7 @@ echo OK
 
 echo $N Triggers during pull w/cloned component cset ................$NL
 cd "$HERE/source"
-bk setup -af "new comp"
+bk setup -f "new comp"
 rm -f "$TRIGS.client" "$TRIGS.server"
 cd "$HERE/pulldest"
 bk pull $Q "$HERE/source" || fail
@@ -310,7 +310,7 @@ echo OK
 
 echo $N Triggers during pull w/cloned component cset over bkd .......$NL
 cd "$HERE/source"
-bk setup -af "new remote comp"
+bk setup -f "new remote comp"
 rm -f "$TRIGS.client" "$TRIGS.server"
 cd "$HERE/pulldest"
 bk pull $Q bk://localhost:$P/source || fail

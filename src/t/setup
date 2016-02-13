@@ -70,10 +70,6 @@ _commercial_config() {
         # one more item for nested repos
 	test "$1" && echo clone_default: DEFAULT
 	cat <<EOF
-license: $BKL_PRO
-licsign1: $BKL_P1
-licsign2: $BKL_P2
-licsign3: $BKL_P3
 description: BitKeeper Test repository
 email: nobody@nowhere.bk
 eoln: unix
@@ -98,14 +94,14 @@ _make_repo() {
 	COMPAT=
 	test "$_BKFILE_REGRESSIONS" = "no" && COMPAT=--compat
 
-	bk setup $COMPAT -a -f -c"$CF" $DASH_P "$REPO" || fail
+	bk setup $COMPAT -f -c"$CF" $DASH_P "$REPO" || fail
 	test "$TYPE" = nested && { (
 		cd "$REPO" || {
 			echo failed to create $REPO
 			exit 1
 		}
-		bk setup -C -a -f gcc
-		bk setup -C -a -f gdb
+		bk setup -C -f gcc
+		bk setup -C -f gdb
 		bk alias set -C DEFAULT ALL
 		bk commit -S -q -y"attach gcc, gdb"
 		touch gcc/BitKeeper/tmp/saveme
@@ -113,13 +109,13 @@ _make_repo() {
 
 		test "$DEEP" = deep && { (
 			## Make a deep-nested repo.
-			bk setup -C -a -f gui
+			bk setup -C -f gui
 			cd gui || {
 			    echo failed to create gui repo
 			    exit 1
 			}
-			bk setup -C -a -f bin
-			bk setup -C -a -f lib
+			bk setup -C -f bin
+			bk setup -C -f lib
 			bk commit -S -q -y"create gui repo"
 			touch bin/BitKeeper/tmp/saveme
 			touch lib/BitKeeper/tmp/saveme
@@ -180,7 +176,6 @@ _get_cached_repo() {
 	mkdir -p BitKeeper/tmp		# because sfio does not copy dir
 	bk _mkdir BitKeeper/deleted
 	bk _mkdir BitKeeper/deleted/SCCS
-	bk _eula -a
 }
 
 # Get a commercial repo, use cache copy if available
@@ -207,7 +202,7 @@ fresh_commercial() {
 	     shift
 	}
 	test "$_BKFILE_REGRESSIONS" = "no" && COMPAT=--compat
-	bk setup $COMPAT -a -f -c.config "$1" || fail
+	bk setup $COMPAT -f -c.config "$1" || fail
 	cd "$1"
 }
 
@@ -219,7 +214,6 @@ nested() {
 		_commercial_config 1 > "$CF"
 		_make_repo nested "$CF" ignored "$2"
 	}
-	(cd "$BK_CACHE"/nested; bk _eula -a)
 	bk clone -q "$BK_CACHE/nested" "$1" || exit 1
 	cd "$1" || exit 1
 	bk parent -qr || exit 1
@@ -236,10 +230,10 @@ fresh_nested() {
 	     shift
 	}
 	test "$_BKFILE_REGRESSIONS" = "no" && COMPAT=--compat
-	bk setup $COMPAT -P -a -f -c.config "$1" || fail
+	bk setup $COMPAT -P -f -c.config "$1" || fail
 	cd "$1"
-	bk setup -C -a -f gcc
-	bk setup -C -a -f gdb
+	bk setup -C -f gcc
+	bk setup -C -f gdb
 	bk alias set -C DEFAULT ALL
 	bk commit -q -y"attach gcc, gdb"
 }

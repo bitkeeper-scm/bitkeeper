@@ -1,5 +1,4 @@
 #include "bkd.h"
-#include "logging.h"
 #include "progress.h"
 #include "nested.h"
 #include "cfg.h"
@@ -448,7 +447,6 @@ err:			if (file == msgtmp) unlink(msgtmp);
 
 	/* in trigger and in text mode */
 	if ((p = getenv("BK_EVENT")) &&
-	    !streq(p, "lease-proxy") &&
 	    ((i = open(DEV_TTY, O_RDWR, 0)) >= 0)) {
 		dup2(i, 0);
 		dup2(i, 1);
@@ -587,7 +585,6 @@ send_file(remote *r, char *file, int extra)
 {
 	MMAP	*m;
 	int	rc, len;
-	char	*q, *hdr;
 	int	no_extra = (extra == 0);
 
 	assert(r->wfd >= 0);	/* we should be connected */
@@ -597,20 +594,10 @@ send_file(remote *r, char *file, int extra)
 	len = m->size;
 
 	if (r->type == ADDR_HTTP) extra += 5;	/* "quit\n" */
-	q = secure_hashstr(m->mmap, len, makestring(KEY_BK_AUTH_HMAC));
-	hdr = aprintf("putenv 'BK_AUTH_HMAC=%d|%d|%s'\n", len, extra, q);
-	free(q);
-	rc = send_msg(r, hdr, strlen(hdr), len+extra);
-	free(hdr);
-	unless (rc) {
-		if (writen(r->wfd, m->mmap, len) != len) {
-			remote_error(r, "write to remote failed");
-			rc = -1;
-		}
-		if (r->trace) {
-			fprintf(stderr, "Sending...\n");
-			fwrite(m->mmap, 1, len, stderr);
-		}
+	rc = send_msg(r, m->mmap, len, extra);
+	if (r->trace) {
+		fprintf(stderr, "Sending...\n");
+		fwrite(m->mmap, 1, len, stderr);
 	}
 	mclose(m);
 	unless (rc) {
@@ -661,9 +648,6 @@ skip_http_hdr(remote *r)
 			/* detect response header and handle errs */
 			unless (p = strchr(buf, ' ')) return (-1);
 			unless (atoi(p+1) == 200) {
-				if (r->errs) {
-					lease_mkerror(r->errs, "http-err", buf);
-				}
 				return (-1);
 			}
 		}
@@ -730,7 +714,6 @@ get_ok(remote *r, char *read_ahead, int verbose)
 	}
 
 	if (streq(p, "@OK@")) return (0); /* ok */
-	if (streq(p, "ERROR-bogus license key")) return (100);
 	if (strneq(p, "ERROR-unable to update BAM server", 33)) {
 		if (verbose) fprintf(stderr, "%s\n", p);
 		return (-1000);
@@ -802,7 +785,6 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	int	i;
 	char	*user, *host, *repo, *proj, *bp;
 	char	*t;
-	char	*lic;
 	project	*p = proj_init(".");
 	project	*prod = p;	/* product if we have one */
 	char	buf[MAXLINE];
@@ -824,10 +806,6 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	fprintf(f, "putenv _BK_USER=%s\n", user);	/* XXX remove in 3.0 */
 	host = sccs_gethost();
 	fprintf(f, "putenv _BK_HOST=%s\n", host);
-	if (lic = licenses_accepted()) {
-		fprintf(f, "putenv BK_ACCEPTED=%s\n", lic);
-		free(lic);
-	}
 	fprintf(f, "putenv BK_REALUSER=%s\n", sccs_realuser());
 	fprintf(f, "putenv BK_REALHOST=%s\n", sccs_realhost());
 	fprintf(f, "putenv BK_PLATFORM=%s\n", platform());
@@ -896,21 +874,6 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 			fprintf(f, "putenv BK_REMAP=1\n");
 		}
 	}
-	unless (flags & SENDENV_NOLICENSE) {
-		if (flags & SENDENV_NOREPO) {
-			/*
-			 * Send information on the current license, but
-			 * don't fail if we can't find a license
-			 */
-			if (lic = lease_bkl(0, 0)) {
-				fprintf(f, "putenv BK_LICENSE=%s\n", lic);
-				free(lic);
-			}
-		} else {
-			/* Require a license or die */
-			fprintf(f, "putenv BK_LICENSE=%s\n", proj_bkl(p));
-		}
-	}
 	if (t = getenv("_BK_TESTFEAT")) {
 		t = strdup(t);
 	} else {
@@ -942,8 +905,6 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		fprintf(f, "putenv BK_FEATURES_REQUIRED=%s\n", t);
 		free(t);
 	}
-	unless (r->seed) bkd_seed(0, 0, &r->seed);
-	fprintf(f, "putenv 'BK_SEED=%s'\n", r->seed);
 	if (p) proj_free(p);
 }
 
@@ -955,9 +916,7 @@ int
 getServerInfo(remote *r, hash *bkdEnv)
 {
 	int	ret = 1; /* protocol error, never saw @END@ */
-	int	gotseed = 0;
-	int	i;
-	char	*newseed, *p, *key;
+	char	*p, *key;
 	char	buf[4096];
 
 	unless (bkdEnv) {
@@ -981,7 +940,16 @@ getServerInfo(remote *r, hash *bkdEnv)
 			getMsg("bkd_missing_feature", buf+26, '=', stderr);
 			return (1);
 		} else if (strneq(buf, "ERROR-", 6)) {
-			lease_printerr(buf+6);
+			char	*tmpf = bktmp(0);
+			FILE	*f = fopen(tmpf, "w");
+
+			unless (getMsgP(buf+6, 0, 0, 0, f)) {
+				getMsgP("other-error", buf+6, 0, 0, f);
+			}
+			fclose(f);
+			sys("bk", "prompt", "-eocf", tmpf, SYS);
+			unlink(tmpf);
+			free(tmpf);
 			return (1);
 		}
 		if (strneq(buf, "PROTOCOL", 8)) {
@@ -1010,21 +978,8 @@ getServerInfo(remote *r, hash *bkdEnv)
 			if (strneq(buf, "REPO_ID=", 8)) {
 				cmdlog_addnote("rmts", buf+8);
 			}
-			if (strneq(buf, "SEED=", 5)) gotseed = 1;
 		}
 	}
-	assert(r->seed);	/* I should have always sent a seed */
-	if (gotseed) {
-		i = bkd_seed(r->seed, getenv("BKD_SEED"), &newseed);
-	} else {
-		i = 0;
-		newseed = 0;
-	}
-	unless (bkdEnv) {
-		safe_putenv("BKD_SEED_OK=%d", i);
-	}
-	if (r->seed) free(r->seed);
-	r->seed = newseed;
 	if (ret) {
 		fprintf(stderr, "%s: premature disconnect\n", prog);
 	} else if (features_bkdCheck(0, r->noLocalRepo)) {
@@ -1063,7 +1018,7 @@ getServerInfo(remote *r, hash *bkdEnv)
 int
 sendServerInfo(u32 cmdlog_flags)
 {
-	char	*repoid, *rootkey, *p, *errs = 0;
+	char	*repoid, *rootkey, *p;
 	project	*prod = 0;	/* product project* (if we have a product) */
 	int	no_repo = (cmdlog_flags & CMD_NOREPO);
 	u32	bits;
@@ -1075,17 +1030,6 @@ sendServerInfo(u32 cmdlog_flags)
 	out("@SERVER INFO@\n");
 	if (features_bkdCheck(1, no_repo)) {
 		return (1);
-	}
-	unless (no_repo) {
-		if (p = lease_bkl(0, &errs)) {
-			free(p);
-		} else {
-			assert(errs);
-			out("ERROR-");
-			out(errs);
-			out("\n");
-			return (1);
-		}
 	}
         sprintf(buf, "PROTOCOL=%s\n", BKD_VERSION);	/* protocol version */
 	out(buf);
@@ -1101,13 +1045,10 @@ sendServerInfo(u32 cmdlog_flags)
 		/*
 		 * Some comands don't have a tree on the remote
 		 * side. These include, but are not limited to:
-		 * rclone, license, kill, etc.
+		 * rclone, kill, etc.
 		 */
 		sprintf(buf, "LEVEL=%d\n", getlevel());
 		out(buf);
-		out("LICTYPE=");
-		out(eula_name());
-		out("\n");
 		if (bp_hasBAM()) out("BAM=YES\n");
 		if (p = bp_serverURL(bp)) {
 			sprintf(buf, "BAM_SERVER_URL=%s\n", p);
@@ -1197,12 +1138,6 @@ sendServerInfo(u32 cmdlog_flags)
 	out("\nFEATURES_REQUIRED=");
 	out(p);
 	free(p);
-
-	/* only send back a seed if we received one */
-	if (p = getenv("BKD_SEED")) {
-		out("\nSEED=");
-		out(p);
-	}
 
 	/* send local nested lock to BKD_NESTED_LOCK on client */
 	if (p = getenv("_BK_NESTED_LOCK")) {
@@ -2067,7 +2002,7 @@ bk_saveArg(char **nav, char **av, int c)
  * print usage message to stderr and exit.
  * Use 3 since some command use 1 as a special meaning. ex: diff
  *
- * This assumes functions do option parsing.  They should at lease
+ * This assumes functions do option parsing.  They should at least
  * have done this:
  *   while ((c = getopt(ac, av, "", 0)) != -1) bk_badArg(c, av);
  *
@@ -2237,4 +2172,24 @@ int
 bk_gzipLevel(void)
 {
 	return (cfg_int(0, CFG_BKD_GZIP));
+}
+
+void
+notice(char *key, char *arg, char *type)
+{
+	char	*gm;
+
+	assert(key);
+	if (arg) {
+		gm = aprintf("bk getmsg %s '%s'", key, arg);
+	} else {
+		gm = aprintf("bk getmsg %s", key);
+	}
+	unless (type) type = "-x";
+	sys("bk", "prompt", type, "-t", key, "-ocp", gm, SYS);
+
+	/* So we can have both GUI and command line results for regressions */
+	if (getenv("BK_GUI") && getenv("_BK_PROMPT")) {
+		sys("bk", "prompt", "-gocp", gm, SYS);
+	}
 }

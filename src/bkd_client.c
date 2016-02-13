@@ -345,8 +345,6 @@ remote_free(remote *r)
 	if (r->host) free(r->host);
 	if (r->path) free(r->path);
 	if (r->cred) free(r->cred);
-	if (r->seed) free(r->seed);
-	// r->errs is freed in lease.c
 	if (r->params) hash_free(r->params);
 	free(r);
 }

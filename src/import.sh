@@ -162,12 +162,6 @@ import() {
 	fi
 	mycd "$2"
 	TO="`bk pwd`"
-	if [ $TYPE = SCCS ]
-	then	bk _logging | grep -q 'license is current' || {
-			echo "Import -tSCCS requires a BK Pro license"
-			Done 1
-		}
-	fi
 	bk sane || Done 1	# verifiy hostname from -H is OK
 	LOCKURL=`bk lock -wt`
 	trap 'Done 100' 1 2 3 15
@@ -846,23 +840,9 @@ validate_SCCS () {
 	if [ X$QUIET = X ]
 	then	echo Looking for BitKeeper files, please wait...
 	fi
-	# need lease from BK repo to do ops in the SCCS repo
-	# only need for one operation, as then we'll have a lease
-	mycd "$TO"
-	val=`bk config license`
-	test "$val" || {
-		echo "No commercial license found."
-		Done 1
-	}
-	SCFG="license:$val!"
-	for key in licsign1 licsign2 licsign3
-	do
-		val=`bk config $key`
-		test "$val" && SCFG="$SCFG;$key:$val!"
-	done
 	mycd "$FROM"
 	grep 'SCCS/s\.' "${TMP}import$$" | \
-	    BK_CONFIG="$SCFG" bk prs -hr+ -nd':PN: :TYPE:' - | \
+	    bk prs -hr+ -nd':PN: :TYPE:' - | \
 	    grep ' BitKeeper' > "${TMP}reparent$$"
 	if [ -s "${TMP}reparent$$" ]
 	then	cat <<EOF

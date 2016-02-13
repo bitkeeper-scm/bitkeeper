@@ -19,13 +19,9 @@ EOLN="EOLN_NATIVE EOLN_WINDOWS EOLN_UNIX"
 MAYCHANGE="RCS YEAR4 SHELL EXPAND1 SCCS NOMERGE"
 MAYNOT="BITKEEPER CSETMARKED HASH"
 
-echo "license: $BKL_PRO" > "$HERE/c"
-echo "licsign1: $BKL_P1" >> "$HERE/c"
-echo "licsign2: $BKL_P2" >> "$HERE/c"
-echo "licsign3: $BKL_P3" >> "$HERE/c"
-echo "description: BitKeeper Test repository" >> "$HERE/c"
+echo "description: BitKeeper Test repository" > "$HERE/c"
 echo "email:		nobody@nowhere.bk" >> "$HERE/c"
-bk setup -a -f -c"$HERE/c" project
+bk setup -f -c"$HERE/c" project
 cd project
 echo $N Creat initial file ..........................................$NL
 echo Yo yo yo yo > xflags

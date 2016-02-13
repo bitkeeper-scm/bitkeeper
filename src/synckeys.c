@@ -2,7 +2,6 @@
  * Copyright (c) 2000, Larry McVoy & Andrew Chang
  */
 #include "bkd.h"
-#include "logging.h"
 #include "range.h"
 
 /*

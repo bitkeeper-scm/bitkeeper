@@ -673,7 +673,7 @@ echo OK
 echo $N Demonstrate component named rm problem.......................$NL
 cd "$HERE"
 cd product
-bk setup -a -f rm || fail
+bk setup -f rm || fail
 RM_RK=`cd rm; bk id -S`
 bk comps -h | grep -q rm || fail
 cd "$HERE"

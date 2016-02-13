@@ -18,7 +18,6 @@ bkd_server(int ac, char **av)
 	FILE	*f;
 	pid_t	pid = 0;
 	fd_set	fds;
-	time_t	ping = time(0);
 	struct timeval delay;
 	char	buf[4];
 	char	*nav[100];
@@ -162,12 +161,6 @@ next:			--tries;
 		if (select(maxfd+1, &fds, 0, 0, &delay) < 0) continue;
 		if (Opts.kill_ok && FD_ISSET(killsock, &fds)) {
 			break; /* stop server */
-		}
-		if ((time(0) - ping) > DAY) {
-			char	*av[] = { "bk", "_bkdping", 0 };
-
-			ping = time(0);
-			spawnvp(_P_DETACH, av[0], av);
 		}
 		unless (FD_ISSET(sock, &fds)) continue;
 		if ((nsock = tcp_accept(sock)) < 0) continue;

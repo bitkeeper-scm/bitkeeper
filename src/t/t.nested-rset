@@ -13,7 +13,7 @@ rev2md5() {
 echo $N Pass with component that has a comma in the name ............$NL
 nested product
 bk tag $Q START
-bk setup -af foo,bar
+bk setup -f foo,bar
 cd foo,bar
 touch x
 bk new $Q x

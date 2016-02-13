@@ -1,6 +1,5 @@
 #include "system.h"
 #include "sccs.h"
-#include "logging.h"
 
 typedef struct conflct	conflct;
 typedef struct ld	ld_t;

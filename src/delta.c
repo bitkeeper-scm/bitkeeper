@@ -1,7 +1,6 @@
 /* Copyright (c) 1997 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-#include "logging.h"
 
 int
 fix_gmode(sccs *s, int gflags)
@@ -330,7 +329,6 @@ delta_main(int ac, char **av)
 			}
 			goto next;
 		}
-		lease_check(s->proj, O_WRONLY, s);
 		if (mode) d = sccs_parseArg(s, d, 'O', mode, 0);
 		if (df & DELTA_AUTO) {
 			if (HAS_SFILE(s)) {
@@ -428,10 +426,6 @@ delta_main(int ac, char **av)
 		}
 		if (rc == -2) goto next; /* no diff in file */
 		if (rc == -1) {
-			if (BAM(s) && bk_notLicensed(s->proj, LIC_BAM, 0)) {
-				errors |= 4;
-				break;
-			}
 			sccs_whynot("delta", s);
 			errors |= 4;
 			goto next;

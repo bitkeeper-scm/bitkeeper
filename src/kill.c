@@ -55,7 +55,7 @@ usage:		fprintf(stderr, "Usage: bk kill URL <or> bk kill -SIG PID\n");
 	tmpf = bktmp(0);
 	f = fopen(tmpf, "w");
 	assert(f);
-	sendEnv(f, 0, r, SENDENV_NOREPO|SENDENV_NOLICENSE);
+	sendEnv(f, 0, r, SENDENV_NOREPO);
 	fprintf(f, "kill\n");
 	fclose(f);
 	rc = send_file(r, tmpf, 0);

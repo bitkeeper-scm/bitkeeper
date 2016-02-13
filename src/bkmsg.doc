@@ -184,201 +184,6 @@ Please check it out ("bk edit BitKeeper/etc/config"), modify the file
 to reflect your site, check it in, and then try your command again.
 
 $
-#license_grace
-Your license for BitKeeper has expired but you are still
-within the grace period.  This changeset will be created
-as normal, but you need to contact sales@bitkeeper.com
-to purchase an updated license.
-
-CustomerID: #BKARG#
-
-BitKeeper Inc. can be reached at:
-   +1-408-370-9911 (international and California)
-   888-401-8808 (toll free in the US & Canada) 
-during business hours (PST) or via email at sales@bitkeeper.com.
-Thanks!
-$
-#license_almost
-Your evaluation license for BitKeeper is less than one week away from
-expiring.  This changeset will be created as normal, but you need to
-contact sales@bitkeeper.com to purchase a commercial license.
-
-BitKeeper Inc. can be reached at:
-   +1-408-370-9911 (international and California)
-   888-401-8808 (toll free in the US & Canada) 
-during business hours (PST) or via email at sales@bitkeeper.com.
-Thanks!
-$
-#license-expired
-Your license for BitKeeper has expired.  You are beyond the
-grace period and you may not create any changesets until you
-have contacted sales@bitkeeper.com to purchase a new license.
-
-License key being used: #BKARG#
-
-BitKeeper Inc. can be reached at:
-   +1-408-370-9911 (international and California)
-   888-401-8808 (toll free in the US & Canada) 
-during business hours (PST) or via email at sales@bitkeeper.com.
-Thanks!
-$
-#license-max-users
-The current BitKeeper license supports a fixed number users and the
-the current repository contains more that the purchased amount.
-
-File: #BKARG#
-
-BitKeeper Inc. can be reached at:
-   +1-408-370-9911 (international and California)
-   888-401-8808 (toll free in the US & Canada) 
-during business hours (PST) or via email at sales@bitkeeper.com.
-Thanks!
-$
-#lease-loop-blocked
-A lease-proxy trigger requested a lease, probably because it used a bk
-operation, such as 'bk get'.  A lease-proxy trigger may not fetch a lease.
-Please put any files the trigger needs to fetch into the BitKeeper/triggers
-directory.
-
-Tell your site's BitKeeper administrator that you encountered this error
-or send mail to support@bitkeeper.com.
-$
-#license-none
-You do not have a license for BitKeeper and you need one to create
-any changesets.
-
-You can get a temporary license by sending a mail request
-to sales@bitkeeper.com.  
-
-BitKeeper Inc. can be reached at:
-   +1-408-370-9911 (international and California)
-   888-401-8808 (toll free in the US & Canada) 
-during business hours (PST) or via email at sales@bitkeeper.com.
-Thanks!
-$
-#authentication-failed
-The bkd license proxy had problems determining the version of BitKeeper
-used for this connection.  Please contact the BitKeeeper support team at
-support@bitkeeper.com.
-$
-#badurl
-The URL provided to contact a bk license proxy cannot be parsed.
-	#BKARG#
-
-Please see 'bk help url' for how valid bkd URLs should be formed.
-$
-#lease-bkd-error
-An unexpected error was received from the remote bkd when making a license
-request:
-	#BKARG#
-
-Please correct the problem or contact support@bitkeeper.com for help.
-$
-#lease-msg
-
-#BKARG#
-$
-#unexpected-response
-An unexpected response was received from the remote bkd when making a license
-request:
-	#BKARG#
-
-Please correct the problem or contact support@bitkeeper.com for help.
-$
-#cannot-connect
-BitKeeper was unable to make a connection to the license server at:
-
-	#BKARG#
-
-Please see:
-
-    	http://www.bitkeeper.com/installing.html
-
-if you are having problems installing BitKeeper.  
-
-Common problems are firewalls blocking http requests and/or web
-proxies;  the web page has more information on what to do.
-$
-#rejected-proxy-trigger
-The lease proxy server rejected your request to use BitKeeper.
-
-#BKARG#
-Contact your site's BitKeeper administrator for more information.
-$
-#http-err
-An unexpected http error response was returned when trying to make a
-license request.  The response was:
-	#BKARG#
-
-Perhaps the licenseurl config field was set incorrectly?
-Please correct the problem or contact support@bitkeeper.com for help.
-$
-#missing_config_install
-No config file was found containing a license.  A license is required
-to install BitKeeper.
-
-If you have a BitKeeper repository with a valid license, retry the
-install from within that repository and it will use that license.
-
-If you have a license that was sent to you, place that license in 
-
-	#BKARG#/config
-
-and retry the install.
-
-If you have no license then contact sales@bitkeeper.com to get one.
-
-BitKeeper Inc. can be reached at:
-   +1-408-370-9911 (international and California)
-   888-401-8808 (toll free in the US & Canada)
-during business hours (PST) or via email at sales@bitkeeper.com.
-$
-#seat_info
-Your user count has exceeded the number of purchased licenses.
-To purchase more seats, please email sales@bitkeeper.com.  Thank you.
-
-$
-#no_accept_no_cset
-Changeset not created due to license rejection.
-$
-#config_max
-Error: Max pending config messages exceeded, commit aborted.
-
-This error indicates that the BitKeeper program was unable to contact
-www.bitkeeper.com to send the configuration log.
-
-There are two possible causes for this error:
-
-a) Network connectivity problems such as firewall/proxy configuration.
-b) Problems with the server at www.bitkeeper.com
-
-
-Please run the following command and include in an email to
-support@bitkeeper.com.
-
-	bk _lconfig -d
-$
-#eval_max
-Error: Evaluation license are limited to #BKARG# changesets.  You are over 
-that limit and you will need to get a commercial license to make any
-more changesets.
-BitKeeper Inc. can be reached at:
-   +1-408-370-9911 (international and California)
-   888-401-8808 (toll free in the US & Canada) 
-during business hours (PST) or via email at sales@bitkeeper.com.
-Thanks!
-$
-#eval_warn
-Warning: Evaluation licenses have a limited number of changesets. Your
-changeset quota is now down to #BKARG# changesets.  You will not be
-able to commit any more changesets when the quota reaches zero.
-Please upgrade to a commercial license.
-BitKeeper Inc. can be reached at:
-   +1-408-370-9911 (international and California)
-   888-401-8808 (toll free in the US & Canada) 
-during business hours (PST) or via email at sales@bitkeeper.com.
-Thanks!
-$
 #takepatch-chksum
 Error: A checksum in the patch for the ChangeSet file does not match
 the checksum of the data in the patch.
@@ -594,19 +399,6 @@ repositories.
 Default: #BKARG#
 
 $
-#config_license
-
-Enter the license information for BitKeeper below.
-
-If you do not have a license, please contact your company's system
-administrator for a copy.
-
-You may also contact sales@bitkeeper.com for information regarding your
-company's license, or to receive a temporary license.
-
-Default: #BKARG#
-
-$
 #config_email
 
 Email address of the person or alias that should get administrative 
@@ -634,10 +426,8 @@ Default: #BKARG#
 $
 #config_BAM
 
-If setup found a BAM enabled BitKeeper license then the following will
-default to "on".  Otherwise it defaults to "off" because BAM is an
-optional feature.  If your license is BAM enabled then you want this
-feature to be "on".
+Default is to enable the Binary Asset Manager.
+If you want to use the older uuencoded binaries, set this to "no".
 
 $
 #config_stats_after_pull
@@ -1020,79 +810,7 @@ esac
 
 exit 0
 $
-#bkl_new_preamble
-In order to use the BitKeeper software, you must accept the BitKeeper
-Commercial license.  This license grants you specific rights and also
-contains various restrictions.  Please read the license carefully,
-it is a contract and you must abide by the terms.
-
-Your acceptance will be recorded on this machine and you will not be
-asked again during the term of this license.
-$
-#bkl_upgrade_preamble
-The BitKeeper license required for the use of this repository has changed
-and you need to accept the new version in order to make changes in this
-repository.  Your acceptance will be recorded on this machine and you will
-not be asked again.
-$
-#repo_new_preamble
-In order to use BitKeeper in this repository, you need to accept the
-associated Repository license.  The Repository license is part of the
-the repository and it is a condition of the BitKeeper license that you
-agree with the Repository license.  Please read the license carefully,
-it is a contract and you must abide by the terms.  Your acceptance will
-be recorded on this machine and you will not be asked again.
-
-This license was associated with this repository by the party who
-initially created the repository.  Unless BitKeeper Inc. created this
-repository, this license was not written by BitKeeper Inc. and BitKeeper,
-Inc. is not responsible for the content of the license.
-$
-#repo_upgrade_preamble
-The Repository license associated with the use of this repository has
-changed and you need to accept the new version in order to make changes in
-this repository.  Your acceptance will be recorded on this machine and you
-will not be asked again.
-$
-#missing-key-sig
-This repository is configured to use a commercial license 
-	#BKARG#
-but does not contain a license key signature in
-the BitKeeper config key: licsign1.
-Please contact sales@bitkeeper.com to get a valid license signature.
-BitKeeper Inc. can be reached at:
-   +1-408-370-9911 (international and California)
-   888-401-8808 (toll free in the US & Canada) 
-during business hours (PST) or via email at sales@bitkeeper.com.
-Thanks!
-$
-#invalid-key-sig
-The configured license key signature for the current repository
-doesn't match the current license key: #BKARG#
-
-The config variables should look like
-
-license: #BKARG#
-licsign1: long string of characters
-licsign2: long string of characters
-licsign3: long string of characters
-
-A possible cause of this problem is a cut and paste error when adding
-those signatures to the config file or BK_CONFIG environment variable.
-$
-#lease_nonet
-Unable to fetch a new license from #BKARG#
-Either that server is not responding or you have a network
-problem.
-
-Look at 'bk help url' if you need to tell 'bk' about a proxy.
-$
-#lease_unsupported_version
-The version of BK that you are currently using (#BKARG#) is no
-longer supported by your license server.  Please use 'bk upgrade'
-to obtain the latest version of BitKeeper.
-$
-#lease-other-error
+#other-error
 The error code returned from BitKeeper was:
 	#BKARG#
 Please send mail to support@bitkeeper.com to request assistance.
@@ -1101,16 +819,6 @@ $
 The time on the local machine is out of sync with your license server.
 Please verify the time on your computer and that the timezone is set
 correctly and try again.
-$
-#lease-eval-limit
-You are using an evaluation license and it appears that you have  
-reached the usage limit allowed for this license.  To continue  
-your work you will need a commercial license.  Please contact  
-sales@bitkeeper.com
-$
-#bkd-err-nolease
-The remote BitKeeper daemon was unable to obtain a valid license for
-this operation.
 $
 #bkd-err-other
 The remote BitKeeper daemon for this connection had an error.
@@ -1546,11 +1254,6 @@ BitKeeper installed at:
 Please rerun the upgrade command from an account with the needed
 permissions.
 $
-#upgrade-require-license
-The bk upgrade process requires a valid commercial license.
-Please chdir to a repository setup with a current commercial license
-and then repeat this upgrade command.
-$
 #upgrade-nomsys
 The upgrade command may not be run from an Msys shell, the removal of the
 existing BitKeeper will fail.  Please try again from a command shell.
@@ -1567,14 +1270,6 @@ download the old installer, manually remove the bundle located at
 	 #BKARG#
 and run the installer.
 $
-#license-restricted
-A license request was rejected by the license server.
-
-If this error occurs in 'bk upgrade' you may be attempting to fetch a release
-with a limited distribution.
-
-Please send mail to support@bitkeeper.com to request assistance.
-$
 #comments-badfmt
 Illegal format for input to the 'bk comments' command.  Lines should
 match this format:
@@ -1583,13 +1278,6 @@ match this format:
 
    ### Comments for <file2>|<rev2>
    Other changes
-$
-#license-invalid-bkl5
-#license-parse
-The license used by this repository is not valid.
-	#BKARG#
-
-Please contact sales@bitkeeper.com and request assistance.
 $
 #missing_parent
 This repository has no parent.  You must set a parent with "bk parent" or

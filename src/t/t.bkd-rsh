@@ -49,16 +49,13 @@ chmod +x bin1/mytest.sh
 # Call BK_RSH twice: once to get a lease, and once to run abort
 # Note: 'host' does not mean anything -- our fake rsh ignores it.
 # However, project does mean the project dir in HERE
-bk lease flush
-BK_LICENSEURL="rsh://host/project"
-export BK_LICENSEURL
 mkdir -p project/RESYNC/BitKeeper/tmp
 touch project/RESYNC/BitKeeper/tmp/patch
 rm -f OUT*
 BK_RSH="mytest.sh arg1" bk abort -f rsh://host/project || fail
 test -d project/RESYNC && fail RESYNC still there
-# should be at least two OUT files: lease fetch and command
-test `ls OUT* | wc -l` -ge 2 || {
+# should be at least 1 OUT file
+test `ls OUT* | wc -l` -ge 1 || {
 	ls OUT* > ERR
 	fail -f ERR not enough OUT files
 }

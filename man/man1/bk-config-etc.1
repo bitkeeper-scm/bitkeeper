@@ -254,44 +254,6 @@ encountered that contains sccs keywords.
 Setting this option affects
 .I only
 files created subsequently.
-.SS LICENSE KEY
-.LP
-The use of \*(BK requires a commercial
-license key.  You can obtain a 30-day license for evaluation by
-emailing a request to sales@bitkeeper.com.
-.LP
-Once a license key is obtained, add license and signatures to one
-of your configuration files as follows (or see LICENSE URL below):
-.DS
-license: <license key>
-licsig1: <sig1>
-licsig2: <sig2>
-licsig3: <sig3>
-.DE
-.SS LICENSE URL
-.LP
-The license key information may be fetched from a license proxy.
-A license proxy is a \*[BK] bkd that has access to a license.
-Instead of placing the license information in your configuration,
-you point at a bkd that has that information in its configuration.
-For example, if your configuration had:
-.DS
-licenseurl: bk://machine/lease-proxy
-.DE
-you might create a mostly empty repository named "lease-proxy",
-that just contained the license keys and any needed triggers.
-The BitKeeper support team has an example script for this,
-contact support@bitkeeper.com if you would like a copy.
-.LP
-If you wish to limit access to a particular set of users, either on 
-read-only or read-write basis, you may do so using a pre-lease-proxy
-trigger.
-See 'bk help triggers' for more information.
-.LP
-If you wish to disable this variable, set in your configuration:
-.DS
-licenseurl:none
-.DE
 .SS LINE TERMINATION
 .br
 The \*[UN] and Windows operating systems use different characters to

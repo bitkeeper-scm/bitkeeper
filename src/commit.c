@@ -1,6 +1,5 @@
 #include "system.h"
 #include "sccs.h"
-#include "logging.h"
 #include "nested.h"
 #include "range.h"
 #include <time.h>
@@ -172,12 +171,6 @@ commit_main(int ac, char **av)
 	}
 	T_PERF("start");
 
-	/*
-	 * Check for licensing problems before we get buried in a bunch
-	 * of subprocesses.  This process will need the result anyway so
-	 * this isn't any slower.
-	 */
-	lease_check(0, O_WRONLY, 0);
 	do_stdin = (av[optind] && streq("-", av[optind]));
 	if (nested) {
 		int	rc;
@@ -415,14 +408,13 @@ do_commit(char **av,
 	char	buf[MAXLINE];
 
 	cset = sccs_csetInit(0);
-	if (enforceLicense(cset)) {
-err:		rc = 1;
-		goto done;
-	}
 	(void)sccs_defRootlog(cset);	/* if no rootlog, make one */
 	commitSnapshot();
 	if (!opts.resync && (rc = attr_update())) {
-		if (rc < 0) goto err;
+		if (rc < 0) {
+			rc = 1;
+			goto done;
+		}
 		bktmp(pendingFiles2);
 		f = fopen(pendingFiles, "r");
 		f2 = fopen(pendingFiles2, "w");
@@ -631,12 +623,7 @@ done:	if (unlink(pendingFiles)) perror(pendingFiles);
 	freeLines(list, free);
 	commitRestore(rc);
 	freeLines(modFiles, free);
-	/*
-	 * If we are doing a commit in RESYNC or the commit failed, do
-	 * not log the cset. Let the resolver do it after it moves the
-	 * stuff in RESYNC to the real tree.
-	 */
-	unless (opts.resync || rc) logChangeSet();
+
 	T_PERF("done");
 	return (rc);
 }

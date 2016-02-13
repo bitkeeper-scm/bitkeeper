@@ -1,6 +1,6 @@
 _commercial_config > c
 echo $N Create a new standalone component............................$NL
-bk setup -afcc standalone >OUT 2>&1 || {
+bk setup -fcc standalone >OUT 2>&1 || {
 	echo failed
 	cat OUT
 	pwd
@@ -18,7 +18,7 @@ echo OK
 
 echo $N Create a new product.........................................$NL
 _commercial_config > c
-bk setup -afcc -P product >OUT 2>&1 || {
+bk setup -fcc -P product >OUT 2>&1 || {
 	echo failed
 	cat OUT
 	exit 1
@@ -40,7 +40,7 @@ echo OK
 
 echo $N Create a new product inside the product......................$NL
 cd "$HERE"/product
-bk setup -afc"$HERE"/c -P product2 >OUT 2>&1 || {
+bk setup -fc"$HERE"/c -P product2 >OUT 2>&1 || {
 	echo failed
 	cat OUT
 	exit 1
@@ -92,7 +92,7 @@ echo OK
 
 echo $N Create a new component with no config file...................$NL
 cd "$HERE"/product
-bk setup -aCf component >OUT 2>&1 || {
+bk setup -Cf component >OUT 2>&1 || {
 	echo failed
 	cat OUT
 	exit 1
@@ -123,7 +123,7 @@ echo OK
 
 echo $N Create a new component and give it a config file.............$NL
 cd "$HERE"/product
-bk setup -aCfc"$HERE"/c component2 >OUT 2>&1 || {
+bk setup -Cfc"$HERE"/c component2 >OUT 2>&1 || {
 	echo failed
 	cat OUT
 	exit 1

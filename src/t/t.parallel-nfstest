@@ -33,7 +33,7 @@ trap "cd \"$HERE\" && rm -rf $NFSROOT" 0
 
 
 echo $N Clone repo to work:/home, should run in parallel ............$NL
-BK_CONFIG="license:$BKL_PRO;licsign1:$BKL_P1$BKL_P2$BKL_P3;checkout:none!"
+BK_CONFIG="checkout:none!"
 export BK_CONFIG
 echo y | \
     bk clone $Q $TESTDATA/bitcluster $NFSROOT/bitcluster 2> /dev/null || fail

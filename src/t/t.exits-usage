@@ -573,30 +573,6 @@ bk grep -iq usage ERR || {
 rm -f ERR
 echo OK
 
-echo $N bk lease with bogus option ..................................$NL
-bk lease -z > /dev/null 2> ERR && {
-	echo "Should fail"
-	exit 1
-}
-bk grep -iq usage ERR || {
-	echo "No usage"
-	exit 1
-}
-rm -f ERR
-echo OK
-
-echo $N bk legal with bogus option ..................................$NL
-bk legal -z > /dev/null 2> ERR && {
-	echo "Should fail"
-	exit 1
-}
-bk grep -iq usage ERR || {
-	echo "No usage"
-	exit 1
-}
-rm -f ERR
-echo OK
-
 echo $N bk level with bogus option ..................................$NL
 bk level -z > /dev/null 2> ERR && {
 	echo "Should fail"

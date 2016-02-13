@@ -1,5 +1,4 @@
 commercial throwaway
-bk lease renew -w $Q   # get a lease so the following tests pass
 
 echo $N Test config defaults in setup................................$NL
 cd "$HERE"
@@ -10,7 +9,7 @@ bk _dumpconfig > GOT
 cat <<EOF > WANT
 autofix: on
 auto_populate: off
-BAM: off
+BAM: on
 BAM_checkout: (null)
 BAM_hardlinks: off
 bkd_gzip: 0
@@ -30,8 +29,6 @@ fakegrafts: off
 homepage: (null)
 keyword: none
 legacyguis: off
-license: (null)
-licenseurl: (null)
 lockwait: 30
 mail_proxy: (null)
 master: (null)
@@ -76,8 +73,6 @@ fakegrafts: off
 homepage: (null)
 keyword: sccs
 legacyguis: off
-license: $BKL_PRO
-licenseurl: (null)
 lockwait: 0
 mail_proxy: (null)
 master: (null)

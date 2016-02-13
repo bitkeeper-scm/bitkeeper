@@ -443,13 +443,11 @@ echo OK
 test -d $TESTDATA/cset-gzipped && {
 echo $N Make sure check works with compressed ChangeSet files........$NL
 cd "$HERE"
-BK_CONFIG="license:$BKL_PRO;licsign1:$BKL_P1$BKL_P2$BKL_P3" \
 bk clone $Q $TESTDATA/cset-gzipped p || {
 	echo "failed"
 	exit 1
 }
 cd p
-BK_CONFIG="license:$BKL_PRO;licsign1:$BKL_P1$BKL_P2$BKL_P3" \
 bk -r check -a || {
 	echo "failed"
 	exit 1

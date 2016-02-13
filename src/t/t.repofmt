@@ -1,6 +1,3 @@
-BK_CONFIG="license:$BKL_PRO;licsign1:$BKL_P1;licsign2:$BKL_P2;licsign3:$BKL_P3"
-export BK_CONFIG
-
 checkbk()
 {
 	bk --cd="$1" features | grep -q BKFILE || fail  missing BKFILE
@@ -45,10 +42,10 @@ checkascii()
 
 echo $N Test that bk setup creates BK sfiles by default .............$NL
 touch c
-bk setup -a -cc -f repo.bk || fail
+bk setup -cc -f repo.bk || fail
 checkbk repo.bk
 
-bk setup -a -cc -f --compat repo.ascii || fail
+bk setup -cc -f --compat repo.ascii || fail
 checkascii repo.ascii
 echo OK
 
@@ -76,10 +73,10 @@ checkbk repo.ascii/clone.bk
 echo OK
 
 echo $N Attach an ascii and BK standalone to ascii and BK nested ....$NL
-bk setup -P -a -cc -f nest.bk || fail
+bk setup -P -cc -f nest.bk || fail
 checkbk nest.bk
 
-bk setup -P -a -cc -f --compat nest.ascii || fail
+bk setup -P -cc -f --compat nest.ascii || fail
 checkascii nest.ascii
 
 cd "$HERE"
@@ -125,7 +122,7 @@ echo OK
 
 
 echo $N Undocumented form of attach is supported ....................$NL
-bk setup -a -cc -f --compat repo.ascii-2 || fail
+bk setup -cc -f --compat repo.ascii-2 || fail
 bk clone $Q repo.ascii-2 nest.bk/comp.ascii-2 || fail
 cd nest.bk
 bk attach $Q -N comp.ascii-2 || fail

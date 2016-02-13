@@ -1,5 +1,4 @@
 #include "bkd.h"
-#include "logging.h"
 #include "range.h"
 #include "cfg.h"
 
@@ -86,7 +85,7 @@ private struct pageref {
 int
 cmd_httpget(int ac, char **av)
 {
-	char	*url, *key;
+	char	*url;
 	char	*p, *page;
 	int 	i;
 	char	buf[MAXPATH];
@@ -137,17 +136,6 @@ cmd_httpget(int ac, char **av)
 	/* expand url and extract arguments */
 	if (parseurl(url)) http_error(503, "unable to parse URL");
 
-	/* check for a proper license */
-	if (root) {
-		unless (key = lease_bkl(0, 0)) {
-			http_error(503,
-		    "Cannot find BitKeeper license for this repository.");
-		}
-		unless (license_bklbits(key) & LIC_WEB) {
-			http_error(503,
-			    "BK/Web option has not been purchased.");
-		}
-	}
 	page = hash_fetchStr(qin, "PAGE");
 	for (i = 0; pages[i].content; i++) {
 		if (streq(pages[i].page, page)) {

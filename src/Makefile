@@ -152,7 +152,7 @@ CC_DEBUG=$(GCCOPTS) $G $(WARNINGS) $(TRACE)
 CC_FAST_DEBUG=$(GCCOPTS) $G -O2 $(WARNINGS) $(TRACE)
 CC_FAST	=$(CC_FAST_DEBUG)
 CC_WALL=$(GCCOPTS) $G -DLINT $(WARNINGS) $(TRACE)
-BINS	= $(BK) $(BKGUI) inskeys$(EXE)
+BINS	= $(BK) $(BKGUI)
 
 # List of all objects in bk other than bk.o. Keep it sorted.
 # But put bkver.o/cmd.o first, they generate headers.
@@ -161,7 +161,7 @@ OBJ =	bkver.o cmd.o \
 	bam.o bisect.o bkd.o bkd_bam.o bkd_cd.o \
 	bkd_changes.o bkd_client.o bkd_clone.o bkd_cmdtab.o \
 	bkd_findkey.o bkd_http.o \
-	bkd_id.o bkd_kill.o bkd_level.o bkd_license.o bkd_misc.o bkd_nested.o \
+	bkd_id.o bkd_kill.o bkd_level.o bkd_misc.o bkd_nested.o \
 	bkd_partition.o bkd_pull.o bkd_push.o bkd_pwd.o \
 	bkd_r2c.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
@@ -175,7 +175,7 @@ OBJ =	bkver.o cmd.o \
 	converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	dataheap.o dbfile.o delta.o diff.o diffs.o diffsplit.o dspec.o \
-	eula.o export.o \
+	export.o \
 	fast-export.o features.o findmerge.o \
 	find.o findcset.o fixtool.o fsl.o fslayer.o \
 	g2bk.o gca.o get.o gethelp.o \
@@ -183,13 +183,12 @@ OBJ =	bkver.o cmd.o \
 	gnupatch.o graft.o grep.o \
 	hash_nokey.o \
 	heapdump.o help.o here.o here_check.o hostme.o http.o \
-	idcache.o isascii.o info.o inskeys.o \
+	idcache.o isascii.o info.o \
 	key2rev.o key2path.o kill.o kv.o \
-	lease.o \
 	libcommit.o libgraph.o librange.o \
 	libsfiles.o libusers.o lines.o \
 	localtm.o lock.o locking.o \
-	logging.o mail.o merge.o mklock.o \
+	mail.o merge.o mklock.o \
 	mailslot.o \
 	mailsplit.o mtime.o mv.o names.o ndiff.o nested.o newroot.o \
 	opark.o \
@@ -249,8 +248,6 @@ LIBS	= libc/libc.a tomcrypt/libtomcrypt.a tommath/libtommath.a
 PCRELIB = gui/tcltk/pcre/local/lib/libpcre.a
 DATA	= bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
-	Academic.lic Essentials.lic Pro.lic Enterprise.lic MLA.lic bkcl.lic \
-	Premier.lic 2015.lic \
 	dspec-changes dspec-changes-vv dspec-changes-h dspec-changes-hv \
 	dspec-changes-3.2 dspec-changes-4.0 dspec-prs dspec-log
 CONTRIB = gui/ide/emacs/vc-bk.el
@@ -266,9 +263,9 @@ RANLIB	= ranlib
 SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
 HDRS	= bam.h bkd.h bk-features.h cfg.h confvars.h diff.h fsfuncs.h \
-	  graph.h logging.h nested.h \
+	  graph.h nested.h \
 	  progress.h range.h rcs.h resolve.h sccs.h \
-	  cmd.h poly.h proj.h redblack.h inskeys.h libc/system.h xfile.h
+	  cmd.h poly.h proj.h redblack.h libc/system.h xfile.h
 
 # list of non-C sources in bk
 SCRSRCS	= bk.sh import.sh kwextract.pl uuwrap.sh unuuwrap.sh \
@@ -327,17 +324,15 @@ clean: FORCE
 	$(Q)for sub in $(SUBDIRS) ../doc ../man gnu gui utils win32; \
 	do	$(MAKE) -C$$sub "CFLAGS=$(CFLAGS)" Q=$(Q) $@; \
 	done
-	$(Q)$(RM) $(OBJ) bk.o inskeys.o inskeys_main.o $(BINS) $(SCRIPTS) \
+	$(Q)$(RM) $(OBJ) bk.o $(BINS) $(SCRIPTS) \
 	    $(LOCALSRC) $(PSRC) $(PROGS)
 	$(Q)$(RM) tags TAGS tags.local cscope.out substvars a.out cmd.c cmd.h \
 		tclkey.h core *.bb *.bbg *.da *.gcov \
 		bk.ico \
-		Academic.lic Basic.lic Enterprise.lic Essentials.lic \
-		MLA.lic Premier.lic Pro.lic \
-		bkl.lic bkcl.lic tclwrap$(EXE) \
+		tclwrap$(EXE) \
 		tclwrap.o blowfish.o bkmsg.txt bkhelp.txt build bkver.c \
 		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe \
-		diff.exe diff3.exe hidestring.exe inskeys_main.o mend.exe
+		diff.exe diff3.exe hidestring.exe mend.exe
 	$(Q)$(RM) -r tmp
 
 clobber: clean FORCE
@@ -423,9 +418,6 @@ $(BKGUI): bkg.o $(RESOURCE)
 	$(if $(Q),@echo LINKING $(BKGUI),)
 	$(Q)$(LD) $(LDFLAGS) -o $@ bkg.o $(RESOURCE) -Llibc -lc -mwindows $(XLIBS)
 
-inskeys$(EXE): inskeys.o inskeys_main.o $(LIBS)
-	$(LD) $(LDFLAGS) -o $@ inskeys.o inskeys_main.o $(LIBS) $(XLIBS)
-
 bk.script: bk.sh port/$(SYS)_platform.sh
 	cat port/$(SYS)_platform.sh bk.sh > bk.script
 	chmod +x bk.script 
@@ -482,7 +474,6 @@ gui-nowrap GUI-nowrap:
 	@$(MAKE) -Cgui Q=$(Q) nowrap
 
 install: installdir
-	tmp/bitkeeper/bk _eula -a
 	tmp/bitkeeper/bk _install -d -f $(BINDIR)
 
 installdir: utils/registry.tcl
@@ -496,7 +487,6 @@ installdir: utils/registry.tcl
 	cp -f $(DATA) $(IMGDIR)
 	cp -f $(CONTRIB) $(IMGDIR)/contrib
 	(cd ../doc/nested && $(MAKE) install HTML=$(IMGDIR)/html)
-	(cd ../doc/lease-proxy && $(MAKE) install HTML=$(IMGDIR)/html)
 	if [ $(SYS) = unix ]; \
 	then	(cd gnu && $(MAKE) install BINDIR=$(IMGDIR)) ;\
 		bk get -S ../man/Makefile; \
@@ -637,15 +627,6 @@ kw2val_lookup.c: slib.c kw2val.pl
 
 hidestring: hidestring.c	
 	$(CC) $(CC_FAST) -o hidestring hidestring.c
-
-MLA.lic: MLA.preamble Enterprise.lic.txt
-	$(if $(Q),@echo Encrypting $@,)
-	$(Q)cat MLA.preamble Enterprise.lic.txt | \
-	    bk crypto -E 048d6aa55c30b3b4 > MLA.lic
-
-%.lic: %.lic.txt bkupgrade.key
-	$(if $(Q),@echo Encrypting $@,)
-	$(Q)bk crypto -E 048d6aa55c30b3b4 < $< > $@
 
 check-syntax:
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -S ${CHK_SOURCES} -o /dev/null

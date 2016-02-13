@@ -72,7 +72,7 @@ int
 main(int ac, char **av)
 {
 	int	i, c;
-	int	rc = 0, embeddedkey = 0;
+	int	rc = 0;
 #ifndef	WIN32
 	int	dolinks = 0;
 #endif
@@ -230,34 +230,8 @@ main(int ac, char **av)
 	symlinks();
 #endif
 
-	/*
-	 * extract the embedded config file
-	 */
-	if (bkpath) concat_path(buf, bkpath, "config");
-	/* We can't compare with the inskeys_marker template directly
-	 * because that would put two copies of the template in the binary.
-	 * That 12 is the lenght of 'license: BKL'
-	 */
-	for (p = keys_data + 12; *p != '\n'; p++) {
-		if (*p != 'X') embeddedkey = 1;
-	}
-	if (embeddedkey) {
-		if (bkpath && exists(buf)) {
-			/* merge embedded file into existing config */
-			sprintf(buf,
-			    "bk config -m '%s'/config - > bitkeeper/config",
-			    bkpath);
-			f = popen(buf, "w");
-			fputs(keys_data, f);
-			pclose(f);
-		} else {
-			/* Just write embedded config */
-			f = fopen("bitkeeper/config", "w");
-			fputs(keys_data, f);
-			fclose(f);
-		}
-	} else if (bkpath && exists(buf)) {
-		/* just copy existing config */
+	if (bkpath && exists(buf)) {
+		/* copy existing config */
 		fileCopy(buf, "bitkeeper/config");
 		chmod("bitkeeper/config", 0666);
 	}
@@ -288,14 +262,6 @@ main(int ac, char **av)
 		putenv("BK_NO_GUI_PROMPT=1");
 #endif
 		buf[0] = 0;
-		/*
-		 * This is silent unless we have an error.  And if there is
-		 * an error we want that error to print out.
-		 */
-		if (system("bk lease renew")) {
-			    rc = 1;
-			    goto out;
-		}
 		fprintf(stderr, "Installing BitKeeper in %s\n", dest);
 #ifdef	WIN32
 		sprintf(buf,
@@ -337,26 +303,8 @@ main(int ac, char **av)
 	}
 
 	/* Clean up your room, kids. */
-out:	cd(tmpdir);
-	p = 0;
-	if ((rc == 0) && (f = fopen("bitkeeper/install_dir", "r"))) {
-		/*
-		 * install_dir is written at the end of _install in bk.sh
-		 * We need to run the new bk so register can run in the
-		 * background while the old bk is deleted.  Fixes a
-		 * windows race condition.
-		 */
-		if (fnext(buf, f)) {
-			chomp(buf);
-			p = aprintf("\"%s/bk\" _register", buf);
-		}
-		fclose(f);
-	}
+	cd(tmpdir);
 	cd("..");
-	if (p) {
-		system(p);
-		free(p);
-	}
 	unless (getenv("BK_SAVE_INSTALL")) {
 		fprintf(stderr,
 		    "Cleaning up temp files in %s%u ...\n", TMP, pid);
@@ -364,7 +312,6 @@ out:	cd(tmpdir);
 		/*
 		 * Sometimes windows has processes sitting in here and we
 		 * have to wait for them to go away.
-		 * XXX - The "if (install_dir) system(bk _register)"
 		 * above intends to fix the waiting problem, so the retry
 		 * loop is not needed anymore -- yet we're not wanting to
 		 * pull it out right before a release and have customers

@@ -1838,8 +1838,6 @@ sfiles_clone_main(int ac, char **av)
 	 * when doing a clone here are a couple more files to include
 	 * from the BitKeeper/etc/SCCS dir
 	 */
-	concat_path(buf, "BitKeeper/etc/SCCS", "x.cmark");
-	if (exists(buf)) puts(buf);
 	concat_path(buf, "BitKeeper/etc/SCCS", "x.dfile");
 	if (exists(buf)) puts(buf);
 

@@ -2,7 +2,6 @@
  * Copyright (c) 2001-2006 BitMover, Inc.
  */
 #include "bkd.h"
-#include "logging.h"
 #include "cfg.h"
 
 private int	runTriggers(int rem, char *ev, char *what, char *when,
@@ -84,8 +83,6 @@ trigger(char *cmd, char *when)
 		what = event = "fix";
 	} else if (streq(cmd, "collapse")) {
 		what = event = "collapse";
-	} else if (streq(cmd, "remote lease-proxy")) {
-		what = event = "lease-proxy";
 	} else if (streq(cmd, "undo")) {
 		what = event = cmd;
 	} else if (streq(cmd, "remote nested")) {
@@ -95,15 +92,6 @@ trigger(char *cmd, char *when)
 	} else {
 		fprintf(stderr,
 		    "Warning: Unknown trigger event: %s, ignored\n", cmd);
-		return (0);
-	}
-	/*
-	 * If the current license doesn't have triggers enabled then
-	 * don't run them.  Unlike other places I don't want to use
-	 * bk_notLicensed() here because for people without this bit set
-	 * having this return false is not an error condition.
-	 */
-	unless (streq(what, "lease-proxy") || (proj_bklbits(0) & LIC_ET)) {
 		return (0);
 	}
 
@@ -316,13 +304,6 @@ runTriggers(int remote, char *event, char *what, char *when, char **triggers)
 	 */
 	proto = remote && streq(when, "pre");
 
-	/*
-	 * No triggers in the protocol for lease-proxy, it's handled
-	 * in the lease hash.  Fitting it into the protocol lost the
-	 * annotations that showed where things went wrong.
-	 */
-	if (proto && streq(event, "lease-proxy")) proto = 0;
-
 	if (proto) {
 	    	bkd_data = "D";
 		out = stdout;
@@ -424,14 +405,10 @@ private void
 trigger_env(char *prefix, char *event, char *what)
 {
 	char	buf[100];
-	char	*repoid, *lic;
+	char	*repoid;
 
 	if (streq("BK", prefix)) {
 		trigger_putenv("BK", "SIDE", "client");
-		if (lic = licenses_accepted()) {
-			safe_putenv("BK_ACCEPTED=%s", lic);
-			free(lic);
-		}
 	} else {
 		trigger_putenv("BK", "SIDE", "server");
 		trigger_putenv("BK", "HOST", getenv("_BK_HOST"));

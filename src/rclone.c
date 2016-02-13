@@ -1,5 +1,4 @@
 #include "bkd.h"
-#include "logging.h"
 #include "nested.h"
 #include "progress.h"
 

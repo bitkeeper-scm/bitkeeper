@@ -1,6 +1,5 @@
 /* Copyright (c) 1999-2000 L.W.McVoy */
 #include "sccs.h"
-#include "logging.h"
 #include "bam.h"
 #include "nested.h"
 #include <time.h>

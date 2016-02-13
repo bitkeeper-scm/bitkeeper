@@ -18,9 +18,10 @@ _BK_MIXED_FORMAT=1
 export _BK_MIXED_FORMAT
 
 # force ascii repository
-_commercial_config | grep -v BAM > c
+_commercial_config > c
+echo 'BAM: off!' >> c
 echo compression:none >> c
-bk setup -a -cc -f --compat proj || fail
+bk setup -cc -f --compat proj || fail
 cd proj
 cp ../c .
 bk edit $Q BitKeeper/etc/config
@@ -93,7 +94,7 @@ bk new $Q uuencode1 || fail
 grep -v compression c > BitKeeper/etc/config
 bk new $Q uuencode1z || fail
 cp c BitKeeper/etc/config
-echo BAM:1 >> BitKeeper/etc/config
+echo 'BAM:1!' >> BitKeeper/etc/config
 cp data uuencode2
 bk new $Q -Euuencode uuencode2 || fail
 cp "$BIN1" bam1

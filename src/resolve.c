@@ -22,7 +22,6 @@
  * 	RESYNC directory or the RENAMES directory under <path>.
  */
 #include "resolve.h"
-#include "logging.h"
 #include "progress.h"
 #include "nested.h"
 
@@ -3209,16 +3208,6 @@ resolve_cleanup(opts *opts, int what)
 	}
 
 
-	/*
-	 * Force a logging process even if we did not create a merge node
-	 * This is needed because we do not carry the log marker in
-	 * external patch, csets from remote tree would look like they
-	 * have pending logs. If we don't force a loggging process now,
-	 * we will get a bogus warning message on the next commit.
-	 *
-	 * if (opts->didMerge && !opts->logging) ...
-	 */
-	logChangeSet();
 
 	/* Only get here from pass4_apply() */
 

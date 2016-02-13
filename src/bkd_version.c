@@ -1,6 +1,5 @@
 #include "sccs.h"
 #include "bkd.h"
-#include "logging.h"
 
 /*
  * Show bkd version
@@ -72,8 +71,7 @@ bkversion(FILE *f)
 	FILE	*f1;
 	float	exp;
 	time_t	now = time(0);
-	int	seats;
-	char	*key, *t;
+	char	*t;
 	char	buf[MAXLINE];
 
 	buf[0] = 0;
@@ -81,14 +79,6 @@ bkversion(FILE *f)
 	if (*bk_tag) fprintf(f, "%s ", bk_tag);
 	fprintf(f, "%s for %s\n", bk_utc, bk_platform);
 	fflush(f);	/* put out ver info while waiting for lease */
-	/* get a lease, but don't fail */
-	if (key = lease_bkl(0, 0)) {
-		license_info(key, buf, 0, &seats);
-		fprintf(f, "Options: %s\n", buf);
-		if (seats) fprintf(f, "MaxSeats: %d\n", seats);
-		fprintf(f, "Customer ID: %.12s\n", key + 12);
-		free(key);
-	}
 	fprintf(f, "Built by: %s in %s\n", bk_build_user, bk_build_dir);
 
 	strftime(buf, sizeof(buf), "%a %b %d %Y %H:%M:%S %Z",

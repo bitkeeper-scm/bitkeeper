@@ -15,14 +15,11 @@
 # Except stuff like editor/vi/etc that needs a tty
 
 cat <<EOF > SKIP
-_bkdping
 _install
-_lconfig
 _locktest
 _newFile
 _popensystem
 _progresstest
-_register
 _unittests
 editor
 graft

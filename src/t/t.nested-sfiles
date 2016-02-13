@@ -9,7 +9,6 @@ PWD1=`bk pwd -s`
 PWD2=`bk pwd -s "$ROOT"`
 test "$PWD1" = "$PWD2" || fail
 cd ..
-bk lease renew -w  # hack!
 mkdir -p a/b
 touch c
 bk setup -cc -f a/b/c || fail

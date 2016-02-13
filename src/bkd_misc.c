@@ -80,7 +80,6 @@ cmd_putenv(int ac, char **av)
 	 * _BK_, BK_, or BKD_.  Not sure we need the BKD_, but hey.
 	 * Also disable BK_HOST, this screws up the locks.
 	 */
-	if (streq("BK_SEED_OK", var)) goto out;
 	if (streq("BK_NO_TRIGGERS", var)) goto out;
 	if (streq("BK_HOST", var)) goto out;
 	unless (strneq("BK_", var, 3) || strneq("BKU_", var, 4) ||
@@ -110,26 +109,6 @@ cmd_putenv(int ac, char **av)
 		}
 	}
 
-	/*
-	 * Handle BK_SEED processing
-	 */
-	if (streq(var, "BK_SEED")) {
-		char	*seed, *oldseed = 0, *newseed;
-		int	i;
-
-		seed = av[1] + 8;
-		if (strchr(seed, '|')) {
-			oldseed = bkd_restoreSeed(getenv("BK_REPOID"));
-		}
-		i = bkd_seed(oldseed, seed, &newseed);
-		if (oldseed) {
-			/* in part2 */
-			safe_putenv("BK_SEED_OK=%d", i);
-		} else {
-			bkd_saveSeed(getenv("BK_REPOID"), newseed);
-		}
-		safe_putenv("BKD_SEED=%s", newseed);
-	}
 	ret = 0;
 out:	free(var);
 	return (ret);

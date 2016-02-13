@@ -14,15 +14,11 @@
 # %K%
 
 echo $N Create initial repository ...................................$NL
-echo "license: $BKL_PRO" > "$HERE/c"
-echo "licsign1: $BKL_P1" >> "$HERE/c"
-echo "licsign2: $BKL_P2" >> "$HERE/c"
-echo "licsign3: $BKL_P3" >> "$HERE/c"
 echo "description: BitKeeper Test repository" >> "$HERE/c"
 echo "email:		nobody@nowhere.bk" >> "$HERE/c"
 echo "keyword: rcs, expand1" >> "$HERE/c"
 echo "checkout: get" >> "$HERE/c"
-bk setup -a -f -c"$HERE/c" project
+bk setup -f -c"$HERE/c" project
 cd project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi

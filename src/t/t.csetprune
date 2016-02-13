@@ -19,13 +19,6 @@
 echo $N Setting up cset split testing respositories .................$NL
 TZ=UTC+0 fresh_commercial --compat simple
 bk edit $Q BitKeeper/etc/config
-cat <<EOF >> BitKeeper/etc/config
-license:$BKL_REMOTE!
-licsign1:$BKL_R1!
-licsign2:$BKL_R2!
-licsign3:$BKL_R3!
-EOF
-bk lease flush
 bk delta $Q -y'non-airgap: what most customers have' BitKeeper/etc/config
 touch a b c d
 bk new $Q a b c d
@@ -55,10 +48,6 @@ bk csetprune $Q -r+ -w'demo' < ../KEYS
 if [ $? -ne 0 ]; then echo Failed; exit 1; fi
 tip=`bk prs -h -r+ -d':I:\n' ChangeSet`
 if [ "$tip" != 1.3 ]; then echo Failed; exit 1; fi
-LCONFIG=`bk _lconfig -p`
-test "$LCONFIG" = "Number of config logs pending: 0" || {
-	fail not 0: "$LCONFIG"
-}
 echo OK
 
 echo $N Check that the rootlog was preserved ........................$NL

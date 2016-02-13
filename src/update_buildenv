@@ -31,8 +31,8 @@ mkdir -p $D
 
 W32TOOLS=$BUILD/win32tools
 if [ -d $W32TOOLS ]
-then	(cd $W32TOOLS; bk _eula -a; bk pull)
-else	bk _eula -a; bk clone bk://data.bitkeeper.com$_BUILD_PORT/win32tools $W32TOOLS
+then	(cd $W32TOOLS; bk pull)
+else	bk clone bk://data.bitkeeper.com$_BUILD_PORT/win32tools $W32TOOLS
 fi
 
 # generate hash of this script

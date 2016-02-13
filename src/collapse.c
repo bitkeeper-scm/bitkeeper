@@ -328,7 +328,6 @@ do_cset(sccs *s, char *rev, char **nav)
 	/* always run 'pre-collapse' trigger */
 	if (trigger("collapse", "pre")) goto out;
 
-	save_log_markers();
 	unlink(COLLAPSE_BACKUP_SFIO);	/* remote old backup file */
 	unlink(COLLAPSE_BACKUP_PATCH);
 	flist = fix_genlist(rev);
@@ -418,7 +417,6 @@ do_cset(sccs *s, char *rev, char **nav)
 		STOP_TRANSACTION();
 	}
 	unlink(COLLAPSE_BACKUP_SFIO);
-	update_log_markers(0);
 	rc = 0;
 out:
 	if (n) nested_free(n);

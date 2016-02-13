@@ -495,9 +495,6 @@ echo content > afile
 bk delta $Q -y. afile
 bk commit $Q -y.
 cd "$HERE/copy"
-BK_CONFIG="license:$BKL_ACADEMIC!;
-licsign1:$BKL_A1!; licsign2:$BKL_A2!; licsign3:$BKL_A3!"
-export BK_CONFIG
 bk edit $Q bfile
 echo more > bfile
 bk delta $Q -y. bfile
@@ -521,9 +518,6 @@ bk new $Q afile gcc/afile gdb/afile
 (cd gdb && bk commit $Q -S -yafile)
 bk commit $Q -yafile
 REV=`bk changes -qnd:REV: -r+`
-BK_CONFIG="license:$BKL_ACADEMIC!;
-licsign1:$BKL_A1!; licsign2:$BKL_A2!; licsign3:$BKL_A3!"
-export BK_CONFIG
 bk edit $Q afile gcc/afile gdb/afile
 echo content > afile
 echo content > gcc/afile

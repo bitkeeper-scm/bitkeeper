@@ -2,7 +2,6 @@
  * Copyright (c) 2000-2002, Andrew Chang & Larry McVoy
  */
 #include "bkd.h"
-#include "logging.h"
 #include "bam.h"
 #include "nested.h"
 #include "progress.h"
@@ -295,16 +294,8 @@ clone_main(int ac, char **av)
 			return (RET_ERROR);
 		}
 	} else {
-		/*
-		 * Go prompt with the remotes license, it makes cleanup nicer.
-		 */
 		assert(r->path);
 		chdir(r->path);
-		unless (eula_accept(EULA_PROMPT, 0)) {
-			fprintf(stderr,
-			    "clone: failed to accept license, aborting.\n");
-			exit(RET_ERROR);
-		}
 		if (opts->attach_only && exists(BAM_ROOT "/" BAM_DB)) {
 			fprintf(stderr,
 			    "%s: cannot attach repo with "
@@ -312,12 +303,6 @@ clone_main(int ac, char **av)
 			exit(RET_ERROR);
 		}
 		chdir(start_cwd);
-	}
-	if (opts->detach && bk_notLicensed(0, LIC_PL, 1)) {
-		fprintf(stderr,
-		    "%s: detach is not enabled by the current license.\n",
-		    prog);
-		return (1);
 	}
 	if (opts->to) {
 
@@ -593,7 +578,6 @@ private retrc
 clone(char **av, remote *r, char *local, char **envVar)
 {
 	char	*p, buf[MAXPATH];
-	char	*lic;
 	int	rc, do_part2;
 	u32	rmt_features;
 	int	after_create = 0;
@@ -695,27 +679,6 @@ clone(char **av, remote *r, char *local, char **envVar)
 		goto done;
 	}
 
-	if (lic = getenv("BKD_LICTYPE")) {
-		/*
-		 * Make sure we know about the remote's license.
-		 * XXX - even this isn't perfect, the remote side may have
-		 * a different version of "Pro".
-		 */
-		unless (eula_known(lic)) {
-			fprintf(stderr,
-			    "clone: remote BK has a different license: %s\n"
-			    "You will need to upgrade in order to proceed.\n",
-			    lic);
-			disconnect(r);
-			goto done;
-		}
-		unless (eula_accept(EULA_PROMPT, lic)) {
-			fprintf(stderr,
-			    "clone: failed to accept license '%s'\n", lic);
-			disconnect(r);
-			goto done;
-		}
-	}
 
 	getline2(r, buf, sizeof (buf));
 	if (streq(buf, "@TRIGGER INFO@")) {
@@ -732,7 +695,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	}
 
 	// XXX - would be nice if we did this before bailing out on any of
-	// the error/license conditions above but not when we have an ensemble.
+	// the error conditions above but not when we have an ensemble.
 	if (!opts->quiet && (!trans || !opts->quiet)) {
 		remote	*l = remote_parse(local, REMOTE_BKDURL);
 
@@ -1019,12 +982,6 @@ clone2(remote *r)
 	popts	ops;
 	char	buf[MAXLINE];
 
-
-	unless (eula_accept(EULA_PROMPT, 0)) {
-		fprintf(stderr, "clone failed license accept check\n");
-		unlink("SCCS/s.ChangeSet");
-		return (RET_ERROR);
-	}
 
 	if (proj_isComponent(0) || opts->no_parent) {
 		// can't use 'bk parent -rq', it changes product

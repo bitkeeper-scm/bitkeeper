@@ -5,8 +5,7 @@
 
 typedef struct	project project;
 
-char*		proj_bkl(project *p);
-u32		proj_bklbits(project *p);
+
 int		proj_cd2root(void);
 int		proj_cd2product(void);
 int		proj_chdir(char *newdir);
@@ -42,7 +41,6 @@ int		proj_isProduct(project *p);
 project*	proj_product(project *p);
 project*	proj_findProduct(project *p);
 project*	proj_isResync(project *p);
-int		proj_leaseChecked(project *p, int write);
 char*		proj_md5rootkey(project *p);
 char*		proj_syncroot(project *p);
 char*		proj_repoID(project *p);

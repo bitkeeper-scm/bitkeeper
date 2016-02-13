@@ -3,7 +3,6 @@
  */
 #include "bkd.h"
 #include "bam.h"
-#include "logging.h"
 #include "nested.h"
 #include "progress.h"
 #include "range.h"
@@ -185,11 +184,6 @@ pull_main(int ac, char **av)
 		fprintf(stderr, "%s: --stats not allowed with -R.\n", prog);
 		return (1);
 	}
-	if (opts.port && bk_notLicensed(0, LIC_PL, 1)) {
-		fprintf(stderr,
-		    "%s: port is not enabled by the current license.\n", prog);
-		return (1);
-	}
 	/*
 	 * Get pull parent(s)
 	 * Must do this before we chdir()
@@ -204,10 +198,6 @@ pull_main(int ac, char **av)
 		if (cfg_bool(0, CFG_AUTOPOPULATE)) {
 			opts.autoPopulate = 1;
 		}
-	}
-	unless (eula_accept(EULA_PROMPT, 0)) {
-		fprintf(stderr, "pull: failed to accept license, aborting.\n");
-		exit(1);
 	}
 
 	if (sane(0, 0) != 0) return (1);

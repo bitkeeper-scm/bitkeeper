@@ -13,6 +13,8 @@ private	int	validatedata(rsa_key *public, char *sign);
 private	int	encrypt_stream(rsa_key *public, FILE *fin, FILE *fout);
 private	int	decrypt_stream(rsa_key	*secret, FILE *fin, FILE *fout);
 private void	loadkey(char *file, rsa_key *key);
+private	int	symEncrypt(char *key, FILE *fin, FILE *fout);
+private	int	symDecrypt(char *key, FILE *fin, FILE *fout);
 
 private	int		wprng = -1;
 private	prng_state	*prng;
@@ -20,32 +22,6 @@ private	int	use_sha1_hash = 0;
 private	int	hex_output = 0;
 private	int	rsakey_old = 0;
 
-private const u8	pubkey5[151] = {
-~~~~~~~~~~~~~~~~~~~~~0h
-~~~~~~~~~~~~~~~~~~~~~~~C
-~~~~~~~~~~~~~~~~~~~~~~R
-~~~~~~~~~~~~~~~~~~~~~~x
-~~~~~~~~~~~~~~~~~~~~~~0g
-~~~~~~~~~~~~~~~~~~~~~~A
-~~~~~~~~~~~~~~~~~~~~~~0Y
-~~~~~~~~~~~~~~~~~~~~~~0j
-~~~~~~~~~~~~~~~~~~~~~r
-~~~~~~~~~~~~~~~~~~~~~~~+
-~~~~~~~0\
-};
-private const u8	pubkey6[151] = {
-~~~~~~~~~~~~~~~~~~~~~;
-~~~~~~~~~~~~~~~~~~~~~~:
-~~~~~~~~~~~~~~~~~~~~~t
-~~~~~~~~~~~~~~~~~~~~~~t
-~~~~~~~~~~~~~~~~~~~~~~~(
-~~~~~~~~~~~~~~~~~~~~~~g
-~~~~~~~~~~~~~~~~~~~~~~~%
-~~~~~~~~~~~~~~~~~~~~~~
-~~~~~~~~~~~~~~~~~~~~~~?
-~~~~~~~~~~~~~~~~~~~~~~D
-~~~~~~~~~~w
-};
 private const u8	upgrade_secretkey[828] = {
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~4
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~I
@@ -222,7 +198,7 @@ crypto_main(int ac, char **av)
 		break;
 	    case 'E':
 		if (strlen(av[optind]) == 16) {
-			ret = crypto_symEncrypt(av[optind], stdin, stdout);
+			ret = symEncrypt(av[optind], stdin, stdout);
 		} else {
 			fprintf(stderr,
 			    "ERROR: key must be exactly 16 bytes\n");
@@ -231,7 +207,7 @@ crypto_main(int ac, char **av)
 		break;
 	    case 'D':
 		if (strlen(av[optind]) == 16) {
-			ret = crypto_symDecrypt(av[optind], stdin, stdout);
+			ret = symDecrypt(av[optind], stdin, stdout);
 		} else {
 			fprintf(stderr,
 			    "ERROR: key must be exactly 16 bytes\n");
@@ -369,41 +345,6 @@ error:		fprintf(stderr, "crypto: %s\n", error_to_string(err));
 	}
 	if (err = oldrsa_verify_hash(sig, &siglen, hbuf, hashlen,
 		&stat, hash_descriptor[hash].ID, key)) goto error;
-	return (stat ? 0 : 1);
-}
-
-int
-check_licensesig(char *key, char *sign, int version)
-{
-	int		hash = register_hash(&md5_desc);
-	unsigned long	hashlen, signbinlen;
-	rsa_key		rsakey;
-	u8		*pubkey;
-	int		err, i;
-	int		stat;
-	u8		hbuf[32];
-	char		signbin[256];
-
-	if (version <= 5) {
-		pubkey = (u8 *)pubkey5;
-	} else {
-		pubkey = (u8 *)pubkey6;
-	}
-	if (err = oldrsa_import(pubkey, &rsakey)) {
-err:		fprintf(stderr, "check_licensesig: %s\n",
-		    error_to_string(err));
-		exit(1);
-	}
-	signbinlen = sizeof(signbin);
-	if (err = base64_decode(sign, strlen(sign), signbin, &signbinlen)) {
-		goto err;
-	}
-	hashlen = sizeof(hbuf);
-	if (err = hash_memory(hash, key, strlen(key), hbuf, &hashlen)) goto err;
-	i = signbinlen;
-	if (oldrsa_verify_hash(signbin, &i, hbuf, hashlen,
-		&stat, hash_descriptor[hash].ID, &rsakey)) return (-1);
-	rsa_free(&rsakey);
 	return (stat ? 0 : 1);
 }
 
@@ -557,50 +498,6 @@ hashstream(int fd)
 	return (strdup(b64));
 }
 
-char *
-signed_loadFile(char *filename)
-{
-	int	len;
-	char	*p;
-	char	*hash;
-	char	*data = loadfile(filename, &len);
-
-	unless (data && len > 0) return (0);
-	p = data + len - 1;
-	*p = 0;
-	while ((p > data) && (*p != '\n')) --p;
-	*p++ = 0;
-	hash = secure_hashstr(data, (p - data - 1),
-	    makestring(KEY_SIGNEDFILE));
-	unless (streq(hash, p)) {
-		free(data);
-		data = 0;
-	}
-	free(hash);
-	return (data);
-}
-
-int
-signed_saveFile(char *filename, char *data)
-{
-	FILE	*f;
-	char	*tmpf;
-	char	*hash;
-
-	tmpf = aprintf("%s.%u", filename, getpid());
-	unless (f = fopen(tmpf, "w")) {
-		return (-1);
-	}
-	hash = secure_hashstr(data, strlen(data), makestring(KEY_SIGNEDFILE));
-	fprintf(f, "%s\n%s\n", data, hash);
-	fclose(f);
-	free(hash);
-	rename(tmpf, filename);
-	unlink(tmpf);
-	free(tmpf);
-	return (0);
-}
-
 private int
 encrypt_stream(rsa_key *key, FILE *fin, FILE *fout)
 {
@@ -698,8 +595,8 @@ upgrade_decrypt(FILE *fin, FILE *fout)
 }
 
 /* key contains 16 bytes of data */
-int
-crypto_symEncrypt(char *key, FILE *fin, FILE *fout)
+private int
+symEncrypt(char *key, FILE *fin, FILE *fout)
 {
 	int	cipher = register_cipher(&rijndael_desc);
 	long	blklen;
@@ -721,8 +618,8 @@ crypto_symEncrypt(char *key, FILE *fin, FILE *fout)
 	return (0);
 }
 
-int
-crypto_symDecrypt(char *key, FILE *fin, FILE *fout)
+private int
+symDecrypt(char *key, FILE *fin, FILE *fout)
 {
 	int	cipher = register_cipher(&rijndael_desc);
 	long	blklen;
@@ -769,57 +666,19 @@ bk_preSpawnHook(int flags, char *av[])
 	proj_flush(0);
 }
 
-
-private const u8	leasekey[] = {
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~V
-~~~~~~~~~~~~~~~~~~~~~~~~~~~M
-~~~~v
-};
-private const u8	bk_auth_hmackey[] = {
-~~~~~~~~~~~~~~~~~~~~~~~~~~~{
-~~~~~~~~~~~~~~~~~~~~~~~~~~~0T
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~`
-~~~~x
-};
-private const u8	lconfigkey[] = {
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~0l
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~A
-~~~~~]
-};
 private const u8	upgradekey[] = {
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~0l
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~A
 ~~~~~]
 };
-private const u8	signedfilekey[] = {
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~G
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~E
-~~~~~]
-};
-private const u8	seedkey[] = {
-~~~~~~~~~~~~~~~~~~~~~~~~~~~0X
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~Q
-~~~~w
-};
-private const u8	eulakey[] = {
-~~~~~~~~~~~~~~~~~~~~~~~~~~~0T
-~~~~~~~~~~~~~~~y
-};
 
 struct {
+	int		keynum;
 	const	u8	*key;
 	int		size;
 } savedkeys[] = {
-	{ leasekey, sizeof(leasekey) },			/* 0 */
-	{ bk_auth_hmackey, sizeof(bk_auth_hmackey) },	/* 1 */
-	{ lconfigkey, sizeof(lconfigkey) },		/* 2 */
-	{ upgradekey, sizeof(upgradekey) },		/* 3 */
-	{ signedfilekey, sizeof(signedfilekey) },	/* 4 */
-	{ seedkey, sizeof(seedkey) },			/* 5 */
-	{ eulakey, sizeof(eulakey) },			/* 6 */
-	{ 0, 0 }
+	{ KEY_UPGRADE, upgradekey, sizeof(upgradekey) },
+	{ 0, 0, 0 }
 };
 
 
@@ -835,7 +694,7 @@ char *
 makestring(int keynum)
 {
 	const	char	*in;
-	int		i, size;
+	int		idx, i, size;
 	char		seed = 'Q';
 	static	char	*out;
 
@@ -846,8 +705,16 @@ makestring(int keynum)
 		}
 		out = malloc(size + 1);
 	}
-	in = savedkeys[keynum].key;
-	size = savedkeys[keynum].size;
+	idx = -1;
+	for (i = 0; savedkeys[i].key; i++) {
+		if (savedkeys[i].keynum == keynum) {
+			idx = i;
+			break;
+		}
+	}
+	assert(idx != -1);
+	in = savedkeys[idx].key;
+	size = savedkeys[idx].size;
 	for (i = 0; i < size; i++) {
 		out[i] = (seed ^= in[i]);
 	}

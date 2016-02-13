@@ -32,7 +32,6 @@ bk clone $Q -r1.2 project clone1
 cd project
 bk makepatch $Q -d -r1.2..+ > "$HERE/patch" || fail
 cd "$HERE/clone1"
-bk lease flush -a
 bk takepatch $Q < "$HERE/patch" || fail
 test -d RESYNC -a -d PENDING || fail
 bk abort -f || fail
@@ -409,7 +408,7 @@ echo "failed (bug -- we just don't update danglers well)"
 echo $N Check takepatch checking checksum in sccs_delta .............$NL
 cd "$HERE"
 _commercial_config > c
-bk setup -a -f --sccs-compat -cc no-blob || fail
+bk setup -f --sccs-compat -cc no-blob || fail
 cd no-blob
 echo abcde > foo
 bk new $Q foo

@@ -5,7 +5,6 @@
 #include "tomcrypt.h"
 #include "range.h"
 #include "bam.h"
-#include "logging.h"
 #include "progress.h"
 
 /*
@@ -2902,7 +2901,6 @@ bam_main(int ac, char **av)
 		fprintf(stderr, "%s: must be run in a repository\n", prog);
 		return (1);
 	}
-	if (bk_notLicensed(0, LIC_BAM, 0)) exit(1);
 
 	while ((c = getopt(ac, av, "", 0)) != -1) {
 		switch (c) {

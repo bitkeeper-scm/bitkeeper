@@ -1,7 +1,6 @@
 /* Copyright (c) 1998 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-#include "logging.h"
 #include "progress.h"
 
 #define	OP(W, V, F) if (next##W < A_SZ-1) { \
@@ -161,8 +160,6 @@ admin_main(int ac, char **av)
 		}
 		if (streq(obscure, "all")) {
 			flags |= NEWCKSUM|ADMIN_OBSCURE;
-		} else if (streq(obscure, "license")) {
-			flags |= NEWCKSUM|ADMIN_RMLICENSE;
 		} else {
 			fprintf(stderr,
 			    "admin: unrecognized obscure option %s\n",
@@ -240,12 +237,10 @@ admin_main(int ac, char **av)
 			sccs_parseArg(sc, d, 'P', path ? path : sc->gfile, 0);
 		}
 		if (newCset) {
-			if (bk_notLicensed(sc->proj, LIC_ADM, 0)) exit(1);
 			if (csetFile) rootCsetFile(sc, csetFile);
 			flags |= NEWCKSUM;
 		}
 		if (rmCsets) {
-			if (bk_notLicensed(sc->proj, LIC_ADM, 0)) exit(1);
 			sccs_clearbits(sc, D_CSET);
 		}
 		/*

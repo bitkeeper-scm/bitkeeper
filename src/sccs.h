@@ -123,7 +123,6 @@ int	checking_rmdir(char *dir);
 #define	ADMIN_FORCE	0x00200000	/* use Z lock; for pull/cweave */
 #define	ADMIN_NEWPATH	0x00400000	/* path changed, add a new null delta */
 #define	ADMIN_DELETE	0x00800000	/* file deleted, add a new null delta */
-#define	ADMIN_RMLICENSE	0x00010000	/* Obscure licenses in repo config */
 #define	ADMIN_NEWTAG	0x00020000	/* restricted tag rules */
 
 #define	ADMIN_CHECKS	(ADMIN_FORMAT|ADMIN_TIME|ADMIN_BK)
@@ -384,12 +383,8 @@ typedef	enum {
 #define	MD5LEN	32	/* storage for a hex-encoded 16-bit md5 checksum */
 #define	MD5KEYLEN 30	/* length of :MD5KEY: */
 
-#define	LEASE_URL	getenv("BK_LEASE_URL")
-#define	LEASE_URL2	getenv("BK_LEASE_URL2")
 #define	BK_WEBMAIL_URL	getenv("BK_WEBMAIL_URL")
 #define	BK_HOSTME_SERVER "hostme.bkbits.net"
-#define	BK_CONFIG_URL	getenv("BK_CONFIG_URL")
-#define	BK_CONFIG_URL2	getenv("BK_CONFIG_URL2")
 #define	BKDIR		"BitKeeper"
 #define	BKTMP		"BitKeeper/tmp"
 #define	BKROOT		"BitKeeper/etc"
@@ -992,10 +987,8 @@ typedef struct {
 	char	*path;		/* pathname (must be set) */
 	char	*httppath;	/* pathname for http URL, see REMOTE_BKDURL */
 	char 	*cred;		/* user:passwd for proxy authentication */
-	char	*seed;		/* seed saved to validate bkd */
 	int	contentlen;	/* len from http header (recieve only) */
 	pid_t	pid;		/* if pipe, pid of the child */
-	hash	*errs;		/* encode error messages */
 	hash	*params;	/* optional url params */
 } remote;
 
@@ -1224,11 +1217,6 @@ ser_t	sccs_kid(sccs *s, ser_t d);
 void	sccs_mkKidList(sccs *s);
 void	sccs_renumber(sccs *s, u32 flags);
 int	linelen(char *s);
-char	*licenses_accepted(void);
-int	eula_known(char *lic);
-int	eula_accept(int prompt, char *lic);
-char	*eula_name(void);
-char	*eula_type(u32 bits);
 char	*mkline(char *mmap);
 char    *mode2FileType(mode_t m);
 #define	getline bk_getline
@@ -1434,7 +1422,6 @@ int	run_check(int quiet, int verbose, char **flist, char *opts, int *did_partial
 int	full_check(void);
 int	cset_needRepack(void);
 char	*key2path(char *key, MDBM *idDB, MDBM *done, MDBM **m2k);
-int	check_licensesig(char *key, char *sign, int version);
 char	*hashstr(char *str, int len);
 char	*hashstream(int fd);
 char	*secure_hashstr(char *str, int len, char *key);
@@ -1443,19 +1430,11 @@ void	log_rotate(char *path);
 void	sccs_saveNum(FILE *f, int num, int sign);
 int	sccs_eachNum(char **linep, int *signp);
 
-#define	KEY_LEASE		0
-#define	KEY_BK_AUTH_HMAC	1
-#define	KEY_LCONFIG		2
-#define	KEY_UPGRADE		3
-#define	KEY_SIGNEDFILE		4
-#define	KEY_SEED		5
-#define	KEY_EULA		6
+#define	KEY_UPGRADE		1
 char	*makestring(int keynum);
 
 int	attach_name(sccs *cset, char *name, int setmarks);
 void	notice(char *key, char *arg, char *type);
-void	save_log_markers(void);
-void	update_log_markers(int verbose);
 ser_t	sccs_getedit(sccs *s, char **revp);
 void	line2av(char *cmd, char **av);
 void	mk_repoID(project *proj, char *repoid);
@@ -1468,13 +1447,8 @@ int	bkmail(char *url, char **to, char *subject, char *file);
 void	bkversion(FILE *f);
 int	sane(int, int);
 int	global_locked(void);
-char	*signed_loadFile(char *filename);
-int	signed_saveFile(char *filename, char *data);
 void	bk_preSpawnHook(int flags, char *av[]);
 int	upgrade_decrypt(FILE *fin, FILE *fout);
-int	crypto_symEncrypt(char *key, FILE *fin, FILE *fout);
-int	crypto_symDecrypt(char *key, FILE *fin, FILE *fout);
-int	inskeys(char *image, char *keys);
 void	lockfile_cleanup(void);
 
 int	diff_cleanOpts(df_opt *opts);
@@ -1609,7 +1583,6 @@ void	usage(void)
 	__attribute__((noreturn))
 #endif
 ;
-int	bk_notLicensed(project *p, u32 bits, int quiet);
 char	*file_fanout(char *file);
 void	upgrade_maybeNag(char *out);
 int	attr_update(void);
@@ -1661,7 +1634,6 @@ void	nokey_insert(nokey *h, char *heap, u32 key);
 extern	char	*editor;
 extern	char	*bin;
 extern	char	*BitKeeper;
-extern	time_t	licenseEnd;
 extern	int	spawn_tcl;
 extern	char	*start_cwd;
 extern	char	*bk_vers;

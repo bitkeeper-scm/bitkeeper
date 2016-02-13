@@ -20,12 +20,8 @@ description: BitKeeper Test repository
 email: nobody@nowhere.bk
 eoln: unix
 keyword: sccs
-license: $BKL_PRO
-licsign1: $BKL_P1
-licsign2: $BKL_P2
-licsign3: $BKL_P3
 EOF
-BK_HOST=localhost bk setup -a -f -cc project 2>ERR && {
+BK_HOST=localhost bk setup -f -cc project 2>ERR && {
 	echo "failed"
 	exit 1
 }
@@ -34,30 +30,6 @@ echo OK
 
 echo $N Check defaults from setup -p ................................$NL
 bk setup -p > GOT || fail
-cat <<EOF > WANT
-auto_populate: off
-BAM: off
-checkout: edit
-clock_skew: on
-clone_default: ALL
-description: 
-email: 
-eoln: native
-keyword: none
-no_graphverify: off
-parallel: on
-partial_check: on
-stats_after_pull: off
-sync: off
-triggers: \$PRODUCT|.
-EOF
-cmpfiles WANT GOT
-echo OK
-
-echo $N Check defaults from setup -p w valid license.................$NL
-BK_CONFIG=\
-"license:$BKL_PRO;licsign1:$BKL_P1;licsign2:$BKL_P2;licsign3:$BKL_P3" \
-	bk setup -p >OUT || fail
 cat <<EOF > WANT
 auto_populate: off
 BAM: on
@@ -75,16 +47,16 @@ stats_after_pull: off
 sync: off
 triggers: \$PRODUCT|.
 EOF
-cmpfiles WANT OUT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Check setup -e works ........................................$NL
 # Inherit 'c' config file from first test
 mkdir proj2
 touch proj2/stuff
-bk setup -e -a -f -cc proj2 2>ERR || fail -f ERR "should have worked"
+bk setup -e -f -cc proj2 2>ERR || fail -f ERR "should have worked"
 # Try again, should fail this time
-bk setup -e -a -f -cc proj2 2>ERR && fail -f ERR "should have failed"
+bk setup -e -f -cc proj2 2>ERR && fail -f ERR "should have failed"
 echo OK
 
 echo $N Test setup noargs with a non-existent path...................$NL
@@ -164,14 +136,9 @@ echo $N Test default config options in newly created repo............$NL
 cd "$HERE"
 mkdir dotbk
 cat <<EOF > dotbk/config
-license: $BKL_PRO
-licsign1: $BKL_P1
-licsign2: $BKL_P2
-licsign3: $BKL_P3
 EOF
 BK_DOTBK="$HERE/dotbk"
 export BK_DOTBK
-bk _eula -a
 bk setup brand-new
 
 ## And the Good Lord spake unto ob, saying: EDIT shall be the default

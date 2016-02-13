@@ -2,7 +2,6 @@
 #include "sccs.h"
 #include "bkd.h"
 #include "cmd.h"
-#include "logging.h"
 #include "tomcrypt.h"
 #include "tomcrypt/randseed.h"
 #include "nested.h"
@@ -705,10 +704,6 @@ bad_locking:				fprintf(stderr,
 
 run:	trace_init(prog);	/* again 'cause we changed prog */
 
-	/*
-	 * XXX - we could check to see if we are licensed for SAM and make
-	 * this conditional.
-	 */
 	if (dashr) nested_check();
 	getoptReset();
 #ifdef	PROFILE
@@ -779,15 +774,6 @@ cmd_canRun(CMD *cmd)
 {
 	/* unknown commands are okay to run, they fall through bk.sh */
 	unless (cmd) return (1);
-	/* handle pro only commands */
-	if (cmd->pro) {
-		unless (proj_root(0)) {
-			fprintf(stderr,
-			    "%s: cannot find package root\n", prog);
-			return (0);
-		}
-		if (bk_notLicensed(0, LIC_ADM, 0)) return (0);
-	}
 
 	/* Handle restricted commands */
 	if (cmd->restricted && !bk_isSubCmd) {
@@ -1209,7 +1195,6 @@ private	struct {
 	{"fix", CMD_REPOLOG},
 	{"get", CMD_COMPAT_NOSI},
 	{"kill", CMD_NOREPO|CMD_COMPAT_NOSI},
-	{"license", CMD_NOREPO},
 	{"newroot", CMD_WRLOCK},
 	{"pull", CMD_REPOLOG|CMD_BYTES}, /* real locks in pull.c */
 	{"push", CMD_REPOLOG|CMD_BYTES}, /* real locks in push.c */

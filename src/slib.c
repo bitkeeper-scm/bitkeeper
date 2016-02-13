@@ -11,7 +11,6 @@
 #include "sccs.h"
 #include "resolve.h"
 #include "bkd.h"
-#include "logging.h"
 #include "tomcrypt.h"
 #include "range.h"
 #include "graph.h"
@@ -4900,10 +4899,6 @@ sccs_init(char *name, u32 flags)
 				if (streq(s->text[i], "@ROOTLOG")) in_log = 1;
 				continue;
 			}
-			if (streq(s->text[i], "detach") &&
-			    bk_notLicensed(s->proj, LIC_PL, 0)) {
-				exit(101);
-			}
 			if (s->text[i][0] == '@') break;
 		}
 	}
@@ -4947,8 +4942,6 @@ sccs_init(char *name, u32 flags)
 		FREE(s->remap);
 		s->state |= S_CSET;
 	}
-	/* test lease after we have PATHNAME(s, TABLE(s)) */
-	lease_check(s->proj, O_RDONLY, s);
 
  out:
 	if (fixstime) sccs_setStime(s, s->stime); /* only make older */
@@ -7466,10 +7459,6 @@ err:		if (i2) free(i2);
 		goto err;
 	}
 
-	if (BAM(s) && bk_notLicensed(s->proj, LIC_BAM, 0)) {
-		s->state |= S_WARNED;
-		goto err;
-	}
 
 	/* this has to be above the sccs_getedit() - that changes the rev */
 	if (mRev) {
@@ -10379,7 +10368,6 @@ out:		sccs_abortWrite(s);
 		}
 	} else if (HAS_GFILE(s) && S_ISREG(s->mode)) {
 		openInput(s, flags, &gfile);
-		if (BAM(s) && bk_notLicensed(s->proj, LIC_BAM, 1)) goto out;
 		unless (gfile || BAM(s)) {
 			perror(s->gfile);
 			goto out;
@@ -12014,11 +12002,10 @@ c_compar(const void *a, const void *b)
 }
 
 private	char *
-obscure(int rmlicense, int uu, char *buf)
+obscure(int uu, char *buf)
 {
 	int	len;
 	char	*new;
-	char	*p, *t;
 
 	/*
 	 * line either terminates with a '\n' (mmap of sfile)
@@ -12031,32 +12018,6 @@ obscure(int rmlicense, int uu, char *buf)
 	unless (len > 1) goto done; 	/* need to have something to obscure */
 
 	if (*new == '\001') goto done;
-	/*
-	 * Try to match '.*\Wlicense\w*:.* or .*\Wlicsign\d\w*:
-	 * and obsure them.
-	 */
-	if (rmlicense) {
-		if (uu) goto done;
-		/* only pick on active license and licsign lines */
-		p = new;
-		while (isspace(*p)) ++p;
-		if (*p == '#') goto done;
-		if ((*p == '[') && (p = strchr(p, ']'))) p++;
-		unless (p && *p) goto done;
-		while (isspace(*p)) ++p;
-		unless ((strneq(p, "license", 7)) ||
-		    (strneq(p, "licsign", 7))) {
-			goto done;
-		}
-		t = p + 7;
-		if ((t[-1] == 'n') && isdigit(*t)) ++t;	/* licsign\d */
-		while (isspace(*t)) ++t;
-		unless (*t == ':') goto done;
-		*t = *new;		/* save first character in : */
-		p[2] += ':' - '#';	/* turn a c into z */
-		new[0] = '#';		/* replace : with # */
-		uu = 1;			/* leave the first char in place */
-	}
 	if (uu) {
 		qsort(new+1, len-2, 1, c_compar); /* leave first and last */
 	} else {
@@ -12076,7 +12037,7 @@ obscure_comments(sccs *s)
 	for (d = TABLE(s); d >= TREE(s); d--) {
 		unless (buf = COMMENTS(s, d)) continue;
 		while (p = eachline(&buf, 0)) {
-			comments = addLine(comments, obscure(0, 0, p));
+			comments = addLine(comments, obscure(0, p));
 		}
 		comments_set(s, d, comments);
 		freeLines(comments, free);
@@ -12109,7 +12070,7 @@ sccs_admin(sccs *sc, ser_t p, u32 flags,
 	char	*buf;
 	char	**comments = 0;
 	ser_t	d = 0;
-	int	obscure_it, rmlicense;
+	int	obscure_it;
 
 	assert(!z); /* XXX used to be LOD item */
 
@@ -12145,7 +12106,7 @@ out:
 		}
 	}
 	if (flags & (ADMIN_BK|ADMIN_FORMAT)) goto out;
-	if ((flags & (ADMIN_OBSCURE|ADMIN_RMLICENSE))
+	if ((flags & (ADMIN_OBSCURE))
 	    && sccs_clean(sc, (flags & SILENT))) {
 		goto out;
 	}
@@ -12412,23 +12373,20 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	}
 	debug((stderr, "seek to %d\n", (int)sc->data));
 	obscure_it = (flags & ADMIN_OBSCURE);
-	rmlicense = (flags & ADMIN_RMLICENSE);
 	/* ChangeSet can't be obscured in any sense */
-	if (CSET(sc)) {
-	    	rmlicense = obscure_it = 0;
-	}
+	if (CSET(sc)) obscure_it = 0;
+
 	/* the BitKeeper/etc files can't be obscured in normal sense */
 	if (HAS_PATHNAME(sc, TREE(sc))
 	    && strneq(PATHNAME(sc, TREE(sc)), "BitKeeper/etc/",13)) {
-	    	obscure_it = 0;
+		obscure_it = 0;
 	}
-	if (rmlicense) obscure_it = 1;
 	if (BWEAVE_OUT(sc)) goto skip_weave;
 	sccs_wrweaveInit(sc);
 	sccs_rdweaveInit(sc);
 	while (buf = sccs_nextdata(sc)) {
 		if (obscure_it) {
-			buf = obscure(rmlicense, UUENCODE(sc), buf);
+			buf = obscure(UUENCODE(sc), buf);
 		}
 		if (!CSET(sc) && (flags & ADMIN_ADD1_0)) {
 			fputbumpserial(sc, buf, 1);
@@ -13964,7 +13922,6 @@ out:
 		return rc;
 	}
 
-	if (BAM(s) && bk_notLicensed(s->proj, LIC_BAM, 1)) OUT;
 	if (toobig(s)) OUT;
 
 	unless (HAS_SFILE(s) && HASGRAPH(s)) {
@@ -16597,7 +16554,6 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		}
 		return (nullVal);
 
-	case KW_ATTR_LICENSE: /* ATTR_LICENSE */
 	case KW_ATTR_VERSION: /* ATTR_VERSION */
 	case KW_ATTR_ID: /* ATTR_ID */
 	case KW_ATTR_HERE: /* ATTR_HERE */
