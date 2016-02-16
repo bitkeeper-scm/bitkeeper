@@ -2610,8 +2610,8 @@ chk_merges(sccs *s, int chkdup, ser_t *firstDup)
 			unless (slist) {
 				slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
 			}
-			graph_symdiff(s, d, PARENT(s, d),
-			    &dups, slist, 0, -1, 0);
+			graph_symdiff(s, L(d), PARENT(s, d),
+			    &dups, slist, 0, -1);
 			if (nLines(dups)) {
 				chkdup = 0;	/* just want first */
 				*firstDup = d;

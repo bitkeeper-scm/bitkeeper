@@ -379,8 +379,8 @@ graph_fixMerge(sccs *s, ser_t d, int fix)
 		rc = 0;
 		for (/* d */; d <= TABLE(s); d++) {
 			unless (MERGE(s, d) || CLUDES_INDEX(s, d)) continue;
-			graph_symdiff(s, d, PARENT(s, d),
-			    &dups, slist, 0, -1, 0);
+			graph_symdiff(s, L(d), PARENT(s, d),
+			    &dups, slist, 0, -1);
 			unless (nLines(dups)) continue;
 			if (MERGE(s, d)) EACH(dups) {
 				rc = -1;
@@ -405,10 +405,10 @@ graph_fixMerge(sccs *s, ser_t d, int fix)
 		unless (MERGE(s, d) || CLUDES_INDEX(s, d)) continue;
 
 		cludes[d] = CLUDES_INDEX(s, d);
-		count = graph_symdiff(s, d, PARENT(s, d),
-		    &dups, slist, cludes, -1, SD_CLUDES);
+		count = graph_symdiff(s, L(d), PARENT(s, d),
+		    &dups, slist, cludes, -1);
 		if (MERGE(s, d)) truncArray(dups, 0);
-		graph_symdiff(s, d, PARENT(s, d), &dups, slist, 0, count, 0);
+		graph_symdiff(s, L(d), PARENT(s, d), &dups, slist, 0, count);
 		truncArray(dups, 0);
 		if (sccs_resum(s, d, 0, 0)) goto err;
 	}
