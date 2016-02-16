@@ -86,7 +86,7 @@ private int	readonly_gfile(sccs *s, pfile *pf);
 private int	no_gfile(sccs *s, pfile *pf);
 private int	chk_eoln(sccs *s, int eoln_unix);
 private int	chk_monotonic(sccs *s);
-private int	chk_merges(sccs *s);
+private int	chk_merges(sccs *s, int chkdup, ser_t *firstDup);
 private	int	update_idcache(MDBM *idDB);
 private	void	fetch_changeset(int forceCsetFetch);
 private	int	repair(hash *db);
@@ -147,6 +147,9 @@ check_main(int ac, char **av)
 	int	doBAM = 0;
 	int	checkdup = 0;
 	int	forceCsetFetch = 0;
+	int	fixMergeDups = 0;
+	int	chkMergeDups = 0;
+	ser_t	firstDup = 0;
 	ticker	*tick = 0;
 	u32	repo_feat, file_feat;
 	int	sawPOLY = 0;
@@ -305,6 +308,8 @@ check_main(int ac, char **av)
 		eoln_native = !streq(cfg_str(0, CFG_EOLN), "unix");
 	}
 	unless (fix) fix = cfg_bool(0, CFG_AUTOFIX);
+	fixMergeDups = fix && cfg_bool(0, CFG_FIX_MERGE);
+	chkMergeDups = !checkdup && !getenv("_BK_LEAVE_DUPS");
 	unless ((t = cfg_str(0, CFG_MONOTONIC)) && streq(t, "allow")) {
 		check_monotonic = 1;
 	}
@@ -453,9 +458,34 @@ check_main(int ac, char **av)
 		if (check_eoln && chk_eoln(s, eoln_native)) {
 			ferr++, errors |= 0x10;
 		}
-		if (chk_merges(s)) {
+		/* Next 2 go together: compute firstDup; use firstDup; */
+		if (chk_merges(s, chkMergeDups, &firstDup)) {
 			errors |= 0x20;
 			ferr++;
+		}
+		if (firstDup &&
+		    (i = graph_fixMerge(s, firstDup, fixMergeDups))) {
+			if (i < 0) {
+				if (fixMergeDups) {
+					fprintf(stderr, "Removing merge "
+					    "duplicates failed\n");
+				} else {
+					chkMergeDups++;
+				}
+				ferr++, errors |= 0x01;
+			} else {
+				getlock();
+				if (sccs_newchksum(s)) {
+					fprintf(stderr,
+					    "Could not rewrite %s to fix file "
+					    "format.  Perhaps it is locked by "
+					    "some other process?\n",
+					    s->gfile);
+					ferr++, errors |= 0x01;
+				} else {
+					sccs_restart(s);
+				}
+			}
 		}
 		if (check_monotonic && chk_monotonic(s)) {
 			ferr++, errors |= 0x08;
@@ -481,6 +511,7 @@ check_main(int ac, char **av)
 			ferr++, errors |= 0x01;
 		}
 	}
+	if (chkMergeDups > 1) getMsg("chk7", 0, '=', stderr);
 	if (e = sfileDone()) {
 		errors++;
 		goto out;
@@ -2560,11 +2591,14 @@ check(sccs *s, MDBM *idDB)
 }
 
 private int
-chk_merges(sccs *s)
+chk_merges(sccs *s, int chkdup, ser_t *firstDup)
 {
 	ser_t	p, m, d;
+	u8	*slist = 0;
+	ser_t	*dups = 0;
 
-	for (d = TABLE(s); d >= TREE(s); d--) {
+	*firstDup = 0;
+	for (d = TREE(s); d <= TABLE(s); d++) {
 		unless (MERGE(s, d)) continue;
 		p = PARENT(s, d);
 		assert(p);
@@ -2577,7 +2611,20 @@ chk_merges(sccs *s)
 			    s->gfile, REV(s, d), REV(s, p), REV(s, m));
 			return (1);
 		}
+		if (chkdup && CLUDES_INDEX(s, d)) {
+			unless (slist) {
+				slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
+			}
+			graph_symdiff(s, d, PARENT(s, d),
+			    &dups, slist, 0, -1, 0);
+			if (nLines(dups)) {
+				chkdup = 0;	/* just want first */
+				*firstDup = d;
+			}
+		}
 	}
+	free(slist);
+	free(dups);
 	return (0);
 }
 

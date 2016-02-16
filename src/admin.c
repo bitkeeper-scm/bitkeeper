@@ -119,6 +119,7 @@ admin_main(int ac, char **av)
 		    case 'u':					/* undoc */
 			doDates = 1; flags |= NEWCKSUM; break;
 		    case 'z':	init_flags |= INIT_NOCKSUM;	/* doc 2.0 */
+				init_flags |= INIT_WACKGRAPH;	/* doc 2.0 */
 		    		flags |= NEWCKSUM;
 				touchGfile++;
 				break;

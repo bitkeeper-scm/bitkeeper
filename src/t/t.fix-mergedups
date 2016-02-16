@@ -1,0 +1,126 @@
+
+# flip default; control in this test by adding -f to check
+echo 'autofix: off!' >> .bk/config
+
+echo $N Try fixing 10 random files ..................................$NL
+_BK_LEAVE_DUPS=1
+export _BK_LEAVE_DUPS
+commercial bk-format
+bk clone $Q . ../takepatch
+SYNTH="`bk bin`/t/synth.l"
+for f in 0 1 2 3 4 5 6 7 8 9
+do	file=foo$f
+	bk tclsh "$SYNTH" -s100 $file | bk undos > .bk/SCCS/$file,s
+	bk admin -z $file
+	bk renumber $Q $file
+	bk checksum -f $file
+	bk admin -C`bk prs -r+ -hnd:ROOTKEY: ChangeSet` $file
+done
+# make a cset with the 10 random files.
+bk sfiles -P > /dev/null
+bk repocheck $Q
+bk commit $Q -y'done'
+bk features | grep -q BKMERGE || fail not in BKMERGE format
+bk clone $Q --no-bk-merge . ../sccs-format
+bk makepatch -Cr+ > ../patch
+cd ../takepatch
+bk takepatch -a < ../patch
+bk repocheck $Q
+
+# Turn on the failure
+_BK_LEAVE_DUPS=
+export _BK_LEAVE_DUPS
+
+# Fix and dump results in both styles of repos
+cd ..
+for d in bk sccs
+do	cd $d-format
+	# super tiny chance there will be no dups.  Rolling the dice:
+	bk -r check --check-dup 2> ALL
+	ALLSIZE=`wc -l < ALL`
+	bk -r check 2> ERR && fail -f ERR
+	grep -q "duplicate ..clude" ERR || fail -f ERR
+	ORIGSIZE=`wc -l < ERR`
+	# fix 'em
+	bk --config='fix_mergedups:on' -r check -f
+	# check again
+	bk -r check || fail
+	bk -r checksum || fail
+	bk -r check --check-dup 2> SOME
+	SOMESIZE=`wc -l < SOME`
+	# Show that just the merges were pulled out
+	test $SOMESIZE -ne 0 || fail there should still be some left $SOMESIZE
+	# remove error message from ERR/ORIGSIZE
+	MSGSIZE=`bk help chk7 | wc -l`
+	test `expr $ALLSIZE + $MSGSIZE - $ORIGSIZE` -eq $SOMESIZE || {
+		fail all $ALLSIZE orig $ORIGSIZE some $SOMESIZE msg $MSGSIZE
+	}
+	# save in both forms
+	for f in 0 1 2 3 4 5 6 7 8 9
+	do	file=foo$f
+		bk _scat --bk $file > ../$d.bk.$file
+		bk _scat --sccs $file > ../$d.sccs.$file
+	done
+	cd ..
+done
+
+for f in 0 1 2 3 4 5 6 7 8 9
+do	file=foo$f
+	cmpfiles bk.bk.$file sccs.bk.$file
+	cmpfiles bk.sccs.$file sccs.sccs.$file
+done
+echo OK
+
+# Fix some repos with duplicates like the bug created.
+repo=duplicate-include
+
+test -d "$TESTDATA/$repo" || {
+echo $N Testing with pre-made bad repos .............................$NL
+echo skipped
+exit 0
+}
+
+echo $N Test the cleaning of duplicate includes .....................$NL
+cd "$HERE"
+_BK_LEAVE_DUPS=1
+export _BK_LEAVE_DUPS
+# XXX: Currently served by a bkd which don't fix these.
+bk clone $Q "$TESTDATA/$repo" project
+bk clone $Q "$TESTDATA/${repo}-parent" project-parent
+cd project
+bk parent $Q ../project-parent
+bk clone $Q --parents --no-bk-merge . ../sccsmerge
+bk pull $Q -R 2> ERR && fail -f ERR
+grep -q "checksum in the patch" ERR || fail -f ERR wrong err
+
+_BK_LEAVE_DUPS=
+export _BK_LEAVE_DUPS
+
+# Sanity -- default now fails
+cat <<EOF > ../WANT
+foo: duplicate include in 1.3 of 1.1.1.1
+foo: duplicate include in 1.4 of 1.1.1.2
+`bk help chk7`
+EOF
+bk -r check 2> GOT && fail -f GOT
+cmpfiles ../WANT GOT
+
+# clean dups and do it again.
+bk --config="fix_mergedups:on" -r check -f || fail
+bk pull $Q || fail
+bk -r check || fail
+
+# sccs format; pull doesn't fail, but dups still there
+cd ../sccsmerge
+bk pull $Q -R || fail
+bk abort -f
+
+# clean dups and do it again.
+bk -r check 2> GOT && fail -f GOT
+cmpfiles ../WANT GOT
+# Fix
+bk --config="fix_mergedups:on" -r check -f || fail
+# No problems
+bk -r check || fail
+bk pull $Q || fail
+echo OK

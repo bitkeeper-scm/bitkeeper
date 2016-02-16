@@ -60,6 +60,5 @@ rev=`bk prs -r+ -hnd:I: ChangeSet`
 bk _scat ChangeSet | perl -pe "binmode(STDOUT); s/ D $rev / D 2.1 /" > tmp2
 chmod 444 tmp2
 bk _cp tmp2 SCCS/s.ChangeSet
-bk admin -z SCCS/s.ChangeSet 2> ERR && fail
-grep -q 'SCCS/s.ChangeSet: bad revision 2.1 (parent = 1.3)' ERR || fail
+bk admin -z SCCS/s.ChangeSet || fail
 echo OK
