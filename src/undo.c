@@ -652,7 +652,7 @@ check_patch(char *patch)
 	MMAP	*m = mopen(patch, "");
 
 	unless (m && m->size) return (1);
-	unless (strstr(m->mmap, "\n\n# Patch checksum=")) {
+	unless (memmem(m->mmap, m->size, "\n\n# Patch checksum=", 19)) {
 		mclose(m);
 		return (1);
 	}
