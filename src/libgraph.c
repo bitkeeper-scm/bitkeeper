@@ -332,11 +332,12 @@ graph_check(sccs *s)
 	u8	*slist = 0;
 	u32	*dups = 0;
 	int	ret = 0;
+	int	wasSet = (getenv("_BK_SHOWDUPS") != 0);
 
 	slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
 	assert(slist);
 
-	putenv("_BK_SHOWDUPS=1");
+	unless (wasSet) putenv("_BK_SHOWDUPS=1");
 	for (d = TREE(s); d <= TABLE(s); d++) {
 		if (TAG(s, d) || (FLAGS(s, d) & D_GONE) ||
 		    (!MERGE(s, d) && !CLUDES_INDEX(s, d))) {
@@ -346,10 +347,77 @@ graph_check(sccs *s)
 		if (nLines(dups)) ret = 1;
 		truncArray(dups, 0);
 	}
-	putenv("_BK_SHOWDUPS=");
+	unless (wasSet) putenv("_BK_SHOWDUPS=");
 	free(dups);
 	free(slist);
 	return (ret);
+}
+
+/*
+ * Remove all dups from merge nodes.
+ * All nodes and run in each check?
+ * Return: -1 err - there are dups, but they weren't fixed (or fix had err).
+ *          0 okay - no dups, no fix
+ *          1 dups - dups were fixed
+ */
+int
+graph_fixMerge(sccs *s, ser_t d, int fix)
+{
+	ser_t	e;
+	u8	*slist = 0;
+	u32	*cludes = 0;
+	u32	*dups = 0;
+	int	i, count;
+	int	rc = -1;
+
+	if (CSET(s)) return (0);
+
+	/* 'd' is the oldest merge node with dups; fix it */
+
+	slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
+	unless (fix) {
+		rc = 0;
+		for (/* d */; d <= TABLE(s); d++) {
+			unless (MERGE(s, d) || CLUDES_INDEX(s, d)) continue;
+			graph_symdiff(s, L(d), PARENT(s, d),
+			    &dups, slist, 0, -1);
+			unless (nLines(dups)) continue;
+			if (MERGE(s, d)) EACH(dups) {
+				rc = -1;
+				fprintf(stderr,
+				    "%s: duplicate %s in %s of %s\n",
+				    s->gfile,
+				    (dups[i] & HIBIT) ? "exclude" : "include",
+				    REV(s, d), REV(s, dups[i] & ~HIBIT));
+			}
+			truncArray(dups, 0);
+		}
+		goto err;
+	}
+
+
+	cludes = (u32 *)calloc(TABLE(s) + 1, sizeof(u32));
+	assert(slist && cludes);
+
+	for (e = TREE(s); e < d; e++) cludes[e] = CLUDES_INDEX(s, e);
+
+	for (/* d */; d <= TABLE(s); d++) {
+		unless (MERGE(s, d) || CLUDES_INDEX(s, d)) continue;
+
+		cludes[d] = CLUDES_INDEX(s, d);
+		count = graph_symdiff(s, L(d), PARENT(s, d),
+		    &dups, slist, cludes, -1);
+		if (MERGE(s, d)) truncArray(dups, 0);
+		graph_symdiff(s, L(d), PARENT(s, d), &dups, slist, 0, count);
+		truncArray(dups, 0);
+		if (sccs_resum(s, d, 0, 0)) goto err;
+	}
+	rc = 1;
+err:
+	free(dups);
+	free(slist);
+	free(cludes);
+	return (rc);
 }
 
 /*
