@@ -1,7 +1,7 @@
 #----------------------------------------------------------------------
 # SC_PATH_BK --
 #
-#		Find BK and enable encryption if found. Tcl must be in a BK source tree
+#		Find BK. Tcl must be in a BK source tree
 #		if this option is set.
 #
 # Arguments:
@@ -23,16 +23,16 @@ AC_DEFUN([SC_PATH_BK], [
 		AC_ARG_WITH(bk, [  --with-bk              directory containing BK source], with_bksource=${withval})
 		AC_MSG_CHECKING([for BK source tree])
 		if test x"${with_bksource}" != x ; then
-			if test -f "${with_bksource}/src/tclkey.h" ; then
+			if test -f "${with_bksource}/src/slib.c" ; then
 				ac_cv_c_bksource=`(cd ${with_bksource}/src ; pwd)`
 			else
-				AC_MSG_ERROR([${with_bksource}/src directory does not contain tclkey.h])
+				AC_MSG_ERROR([${with_bksource}/src directory does not contain slib.c])
 			fi
 		fi
 		
 		# Now check for it in the parent directory
 		if test x"${ac_cv_c_bksource}" = x ; then
-			if test -f "../../../../tclkey.h" ; then
+			if test -f "../../../../slib.c" ; then
 				ac_cv_c_bksource=`(cd ../../../.. ; pwd)`
 			fi
 		fi
@@ -50,7 +50,7 @@ AC_DEFUN([SC_PATH_BK], [
 			AC_SUBST(BK_OBJS)
 			AC_SUBST(BK_INCLUDES)
 			AC_SUBST(BK_LIBS)
-			AC_MSG_WARN(Can't find BK source tree encryption disabled)
+			AC_MSG_WARN(Can't find BK source tree)
 		else
 			no_bk=
 			BK_DIR=${ac_cv_c_bksource}

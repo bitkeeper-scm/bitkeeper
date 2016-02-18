@@ -25,15 +25,6 @@
 #endif
 #include "tclFileSystem.h"
 #include "Lcompile.h"
-#ifdef	BK
-#include "blowfish.h"
-#include "tclkey.h"
-#include "tomcrypt.h"
-#include "randseed.h"
-
-extern	char *keydecode(char *key);
-int	enable_secure_bk_calls = -1;
-#endif
 
 #ifdef TCL_TEMPLOAD_NO_UNLINK
 #ifndef NO_FSTATFS
@@ -1751,10 +1742,6 @@ Tcl_FSEvalFileEx(
     const char *string;
     Tcl_Channel chan;
     Tcl_Obj *objPtr;
-#ifdef	BK
-    int	enclen, oldbk;
-    char *enc;
-#endif
 
     if (Tcl_FSGetNormalizedPath(interp, pathPtr) == NULL) {
 	return result;
@@ -1834,58 +1821,6 @@ Tcl_FSEvalFileEx(
     oldScriptFile = iPtr->scriptFile;
     iPtr->scriptFile = pathPtr;
     Tcl_IncrRefCount(iPtr->scriptFile);
-#ifdef	BK
-    /*
-     * Here we create a stack for the security stuff.  We were called
-     * from bk then !rand_checkSeed() will be true and only when that
-     * is true do we decode encrypted scripts and we enable those
-     * scripts to call restricted bk commands.  Non-encrypted scripts
-     * cannot call bk.
-     *
-     * But we make a special case for the first time we get here, then
-     * enable secure bk when we return.  This is so commands from the
-     * main Tk loop will also work.
-     */
-    if (enable_secure_bk_calls < 0) {
-	    /*
-	     * We need to make sure that rand_checkSeed() is only
-	     * called once at the beginning of the program.  Both
-	     * because calls to rand_setSeed() will invalidate the
-	     * data in the environment and because the RANDSEED data
-	     * is time sensitive and will get stale.
-	     */
-	    keydecode((char *)bkey);
-	    oldbk = !rand_checkSeed();
-    } else {
-	    oldbk = enable_secure_bk_calls;
-    }
-    enc = Tcl_GetStringFromObj(objPtr, &enclen);
-    if (strncmp(enc, "#%-\n", 4) == 0) {
-	char *dec;
-	unsigned long declen;
-	blf_ctx C;
-
-	dec = ckalloc(enclen);
-	declen = enclen;
-	if (base64_decode((unsigned char *)enc, enclen,
-			  (unsigned char *)dec, &declen)) {
-		ckfree(dec);
-		Tcl_ResetResult(interp);
-		Tcl_AppendResult(interp,
-			"couldn't decode file \"", Tcl_GetString(pathPtr),
-			"\": ", Tcl_PosixError(interp), (char *) NULL);
-		goto end;
-	}
-	blf_key(&C, bkey, 10);
-	blf_dec(&C, (u32 *)dec, declen/8);
-	/* put the decrypted script back into the Tcl_Obj */
-	Tcl_SetStringObj(objPtr, dec, declen);
-	ckfree(dec);
-	enable_secure_bk_calls = 1;
-    } else {
-	enable_secure_bk_calls = 0;
-    }
-#endif
 
     objPtr = FsMaybeWrapInLLang(interp, objPtr, Tcl_GetString(pathPtr));
 
@@ -1894,9 +1829,6 @@ Tcl_FSEvalFileEx(
      * file. */
     iPtr->evalFlags |= TCL_EVAL_FILE;
     result = TclEvalEx(interp, string, length, 0, 1, NULL, string);
-#ifdef	BK
-    enable_secure_bk_calls = oldbk;
-#endif
     /*
      * Now we have to be careful; the script may have changed the
      * iPtr->scriptFile value, so we must reset it without assuming it still
@@ -1943,10 +1875,6 @@ TclNREvalFile(
     Interp *iPtr;
     Tcl_Channel chan;
     const char *string;
-#ifdef	BK
-    int	enclen, oldbk;
-    char *enc;
-#endif
 
     if (Tcl_FSGetNormalizedPath(interp, pathPtr) == NULL) {
 	return TCL_ERROR;
@@ -2029,62 +1957,6 @@ TclNREvalFile(
     oldScriptFile = iPtr->scriptFile;
     iPtr->scriptFile = pathPtr;
     Tcl_IncrRefCount(iPtr->scriptFile);
-#ifdef	BK
-    /****************************************************************
-     *** WARNING: This code was copied & pasted from FSEvalFileEX ***
-     *** Much like the rest of this entire function.              ***
-     ****************************************************************/
-    /*
-     * Here we create a stack for the security stuff.  We were called
-     * from bk then !rand_checkSeed() will be true and only when that
-     * is true do we decode encrypted scripts and we enable those
-     * scripts to call restricted bk commands.  Non-encrypted scripts
-     * cannot call bk.
-     *
-     * But we make a special case for the first time we get here, then
-     * enable secure bk when we return.  This is so commands from the
-     * main Tk loop will also work.
-     */
-    if (enable_secure_bk_calls < 0) {
-	    /*
-	     * We need to make sure that rand_checkSeed() is only
-	     * called once at the beginning of the program.  Both
-	     * because calls to rand_setSeed() will invalidate the
-	     * data in the environment and because the RANDSEED data
-	     * is time sensitive and will get stale.
-	     */
-	    keydecode((char *)bkey);
-	    oldbk = !rand_checkSeed();
-    } else {
-	    oldbk = enable_secure_bk_calls;
-    }
-    enc = Tcl_GetStringFromObj(objPtr, &enclen);
-    if (strncmp(enc, "#%-\n", 4) == 0) {
-	char *dec;
-	unsigned long declen;
-	blf_ctx C;
-
-	dec = ckalloc(enclen);
-	declen = enclen;
-	if (base64_decode((unsigned char *)enc, enclen,
-			  (unsigned char *)dec, &declen)) {
-		ckfree(dec);
-		Tcl_ResetResult(interp);
-		Tcl_AppendResult(interp,
-			"couldn't decode file \"", Tcl_GetString(pathPtr),
-			"\": ", Tcl_PosixError(interp), (char *) NULL);
-		return (TCL_ERROR);
-	}
-	blf_key(&C, bkey, 10);
-	blf_dec(&C, (u32 *)dec, declen/8);
-	/* put the decrypted script back into the Tcl_Obj */
-	Tcl_SetStringObj(objPtr, dec, declen);
-	ckfree(dec);
-	enable_secure_bk_calls = 1;
-    } else {
-	enable_secure_bk_calls = 0;
-    }
-#endif
 
     objPtr = FsMaybeWrapInLLang(interp, objPtr, Tcl_GetString(pathPtr));
 
@@ -2093,13 +1965,8 @@ TclNREvalFile(
      */
 
     iPtr->evalFlags |= TCL_EVAL_FILE;
-#ifdef BK
-    TclNRAddCallback(interp, EvalFileCallback, oldScriptFile, pathPtr, objPtr,
-	    INT2PTR(oldbk));
-#else
     TclNRAddCallback(interp, EvalFileCallback, oldScriptFile, pathPtr, objPtr,
 	    NULL);
-#endif
     return TclNREvalObjEx(interp, objPtr, 0, NULL, INT_MIN);
 }
 
@@ -2113,9 +1980,6 @@ EvalFileCallback(
     Tcl_Obj *oldScriptFile = data[0];
     Tcl_Obj *pathPtr = data[1];
     Tcl_Obj *objPtr = data[2];
-#ifdef	BK
-    enable_secure_bk_calls = PTR2INT(data[3]);
-#endif
     /*
      * Now we have to be careful; the script may have changed the
      * iPtr->scriptFile value, so we must reset it without assuming it still

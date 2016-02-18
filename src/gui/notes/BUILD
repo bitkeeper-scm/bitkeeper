@@ -1,9 +1,3 @@
-By default the tools are built "wrapped", which means they are
-processed by src/tclwrap. This results in scripts which are not
-readable by humans and must be decoded by our special version
-of wish. You can get around this by defining TCLWRAP to be cat
-or by doing "make nowrap"
-
 There is nothing special that needs to be done to install the tools
 so an install target only exists for completeness.
 

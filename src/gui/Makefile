@@ -14,7 +14,6 @@ LIBDIR	= lib
 GUIS	= revtool citool helptool difftool csettool fmtool fm3tool \
 	  msgtool renametool setuptool installtool outputtool bugform \
 	  supportform
-TCLWRAP	= ../tclwrap
 DOIT	= ../t/doit
 GUITEST = ../t/guitest.tcl
 BK	= $(REPO)/src/bk
@@ -36,15 +35,11 @@ ordered:
 	$(Q)$(MAKE) tcltk
 	$(Q)$(MAKE) $(GUIS)
 
-gui guis:  ../tclwrap lib images ordered
+gui guis:  lib images ordered
 	@echo GUIs are up-to-date
 
 lib:
 	$(Q)test -d lib || mkdir lib
-
-nowrap gui-nowrap: 
-	$(MAKE) clean-here
-	$(MAKE) TCLWRAP=cat gui
 
 images: FORCE
 	$(Q)rm -rf images
@@ -53,9 +48,6 @@ images: FORCE
 	$(Q)bk -grimgsrc sfio -oq | (cd images && bk sfio -iq)
 	$(Q)test "X$(ICONS)" = X || cp $(ICONS) images
 	$(Q)chmod 664 images/*.gif
-
-../tclwrap:
-	@cd .. && $(MAKE) tclwrap
 
 tcltk: FORCE
 	$(Q)test -f tcltk/Makefile || bk co -q tcltk
@@ -99,10 +91,10 @@ wc: $(SRC)
 FORCE:
 
 bugform: $(COMMON) search.tcl appState.tcl buglib.tcl bugform.tcl
-	@(echo 'wm withdraw .' ;  cat $^) | $(TCLWRAP) > $(LIBDIR)/bugform
+	@(echo 'wm withdraw .' ;  cat $^) > $(LIBDIR)/bugform
 
 supportform: $(COMMON) search.tcl appState.tcl supportlib.tcl supportform.tcl
-	@(echo 'wm withdraw .' ;  cat $^) | $(TCLWRAP) > $(LIBDIR)/supportform
+	@(echo 'wm withdraw .' ;  cat $^)  > $(LIBDIR)/supportform
 
 citool: $(COMMON) appState.tcl ciedit.tcl $(LCOMMON) listbox.l citool.l
 	@(	echo 'wm withdraw .' ;		\
@@ -113,40 +105,40 @@ citool: $(COMMON) appState.tcl ciedit.tcl $(LCOMMON) listbox.l citool.l
 			cat $$f ;		\
 		done ;				\
 		echo '}' ; 		\
-	) | $(TCLWRAP) > $(LIBDIR)/citool
+	) > $(LIBDIR)/citool
 
 csettool: $(COMMON) search.tcl appState.tcl difflib.tcl csettool.tcl
-	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/csettool
+	@(echo 'wm withdraw .' ; cat $^) > $(LIBDIR)/csettool
 
 difftool: $(COMMON) search.tcl appState.tcl difflib.tcl difftool.tcl
-	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/difftool
+	@(echo 'wm withdraw .' ; cat $^) > $(LIBDIR)/difftool
 
 fmtool: $(COMMON) appState.tcl difflib.tcl fmlib.tcl fmtool.tcl
-	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/fmtool
+	@(echo 'wm withdraw .' ; cat $^) > $(LIBDIR)/fmtool
 
 fm3tool: $(COMMON) appState.tcl tooltip.tcl difflib.tcl fm3tool.tcl
-	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/fm3tool
+	@(echo 'wm withdraw .' ; cat $^) > $(LIBDIR)/fm3tool
 
 helptool: $(COMMON) appState.tcl helptool.tcl
-	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/helptool
+	@(echo 'wm withdraw .' ; cat $^) > $(LIBDIR)/helptool
 
 msgtool: $(COMMON) msgtool.tcl
-	@(echo "wm withdraw ."; cat $^) | $(TCLWRAP) > $(LIBDIR)/msgtool
+	@(echo "wm withdraw ."; cat $^) > $(LIBDIR)/msgtool
 
 renametool: $(COMMON) appState.tcl renametool.tcl
-	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/renametool
+	@(echo 'wm withdraw .' ; cat $^) > $(LIBDIR)/renametool
 
 revtool: $(COMMON) search.tcl appState.tcl revtool.tcl
-	@(echo 'wm withdraw .' ; cat $^) |  $(TCLWRAP) > $(LIBDIR)/revtool
+	@(echo 'wm withdraw .' ; cat $^) > $(LIBDIR)/revtool
 
 setuptool: $(COMMON) tkwizard.tcl setuptool.tcl
-	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/setuptool
+	@(echo 'wm withdraw .' ; cat $^) > $(LIBDIR)/setuptool
 
 installtool: ../port/$(SYS)_platform.tcl ../utils/installtool.tcl \
 	tkwizard.tcl bktheme.tcl common.tcl
 	@(echo 'wm withdraw .' ; cat $^ ;\
 	 echo "image create photo bklogo -data {`bk base64<../gui/imgsrc/bklogo.gif`}";\
-	 echo 'main') | $(TCLWRAP) > $(LIBDIR)/installtool
+	 echo 'main') > $(LIBDIR)/installtool
 
 outputtool: $(COMMON) outputtool.l
 	@(	echo 'wm withdraw .' ;		\
@@ -157,4 +149,4 @@ outputtool: $(COMMON) outputtool.l
 			cat $$f ;		\
 		done ;				\
 		echo '}' ; 		\
-	) | $(TCLWRAP) > $(LIBDIR)/outputtool
+	) > $(LIBDIR)/outputtool

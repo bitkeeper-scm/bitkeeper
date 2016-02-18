@@ -390,19 +390,6 @@ TOMMATH_OBJS = \
 	bn_s_mp_sub.${OBJEXT}
 
 
-ifdef BK_DIR
-BK_HDRS = \
-	$(BK_DIR)/tclkey.h \
-	$(BK_DIR)/tomcrypt/src/headers/tomcrypt.h \
-	$(BK_DIR)/tomcrypt/randseed.h
-endif
-
-ifndef BK_OBJS
-BK_OBJS = \
-	blowfish.$(OBJEXT) \
-	keydecode.$(OBJEXT)
-endif
-
 L_HDRS	= \
 	$(GENERIC_DIR)/Lcompile.h \
 	$(GENERIC_DIR)/Lgrammar.h \

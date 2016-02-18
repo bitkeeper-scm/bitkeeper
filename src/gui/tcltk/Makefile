@@ -96,7 +96,7 @@ LIBTOMCRYPT=$(BKROOT)/src/tomcrypt/libtomcrypt.a
 TOMMATH=$(BKROOT)/src/tommath
 LIBPCRE=$(BKROOT)/src/gui/tcltk/pcre/local/lib/libpcre.a
 
-all: version.sh ../../tclkey.h
+all: version.sh
 	$(if $(Q),@echo Building Tcl/Tk,)
 	-$(Q)rm -rf bin lib share
 	$(Q)TCLVER=`./version.sh`; \

@@ -1,15 +1,15 @@
 #!/bin/sh
 
 test -f Makefile || bk get -S Makefile
-test -f Makefile -a -f ../../tclkey.h || {
+test -f Makefile -a -f ../../slib.c || {
 	echo src/gui/tcltk/version.sh failed
 	test -f Makefile || echo Mising src/gui/tcltk/Makefile
-	test -f ../../tclkey.h || echo Missing src/tclkey.h
+	test -f ../../slib.c || echo Missing src/slib.c
 	exit 1
 }
 
 # calculate hash of all build scripts so if those change we rebuild.
-BUILDHASH=`bk cat Makefile ../../tclkey.h | bk crypto -h -`
+BUILDHASH=`bk changes -tnd":TAG: :TIME_T:" | grep "^bk-" | head -1 | bk crypto -h -`
 
 # get a list of all the repo keys here
 # XXX: this is the gui component, but tcl is part of product
