@@ -163,7 +163,6 @@ OBJ =	bkver.o cmd.o \
 	bkd_partition.o bkd_pull.o bkd_push.o bkd_pwd.o \
 	bkd_r2c.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
-	bkusers.o \
 	cat.o cfile.o changes.o cfg.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
 	cmdlog.o \
@@ -184,7 +183,7 @@ OBJ =	bkver.o cmd.o \
 	idcache.o isascii.o info.o \
 	key2rev.o key2path.o kill.o kv.o \
 	libcommit.o libgraph.o librange.o \
-	libsfiles.o libusers.o lines.o \
+	libsfiles.o lines.o \
 	localtm.o lock.o locking.o \
 	mail.o merge.o mklock.o \
 	mailslot.o \

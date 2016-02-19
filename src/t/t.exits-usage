@@ -1270,18 +1270,6 @@ bk grep -iq usage ERR || {
 rm -f ERR
 echo OK
 
-echo $N bk users with bogus option ..................................$NL
-bk users -z > /dev/null 2> ERR && {
-	echo "Should fail"
-	exit 1
-}
-bk grep -iq usage ERR || {
-	echo "No usage"
-	exit 1
-}
-rm -f ERR
-echo OK
-
 echo $N bk version with bogus option ................................$NL
 bk version -z > /dev/null 2> ERR && {
 	echo "Should fail"

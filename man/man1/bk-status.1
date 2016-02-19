@@ -12,10 +12,6 @@ bk status \- show repository status
 The
 .B bk status
 command gives a quick overview of the current (or specified) repository.
-.SH OPTIONS
-.TP "\-\-compat "
-.B \-\-compat
-Produce the pre-bk-7.0 format.
 .SH OUTPUT
 The default output looks something like:
 .DS
@@ -26,21 +22,6 @@ Push/pull parent: bk://work.bitkeeper.com/dev
 4 locally modified files
 Repo attributes: level=3, GATE, PORTAL
 BK version: bk-7.0.1 (repository requires bk-7.0 or later)
-.DE
-.LP
-The compat output looks something like:
-.DS
-Status for \*(BK repository /u01/package/bk
-\*(BK version is bk-beta-14.3 20000302045832 for x86-linux
-Built by: lm@work.bitkeeper.com
-Built on: Wed Mar  1 21:22:07 PST 2000
-Parent repository is bitkeeper.com:/home/bk/one
-Pending patches
-    61 people have made deltas.
-   600 files under revision control.
-     3 files not under revision control.
-     0 files modified and not checked in.
-     0 files with checked in, but not committed, deltas.
 .DE
 .SH NOTE
 The current output format is preliminary and may change in the future.

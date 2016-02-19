@@ -25,7 +25,6 @@ status_main(int ac, char **av)
 		char	*err;
 	} *pi = 0;
 	longopt	lopts[] = {
-		{ "compat", 300 },
 		{ 0, 0 }
 		};
 
@@ -33,9 +32,6 @@ status_main(int ac, char **av)
 	while ((c = getopt(ac, av, "v", lopts)) != -1) {
 		switch (c) {
 		    case 'v': verbose++; break;			/* doc 2.0 */
-		    case 300: // --compat
-			compat++;
-			break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -48,10 +44,6 @@ status_main(int ac, char **av)
 	}
 
 	isnest = bk_nested2root(0);
-	if (compat) {
-		compat_status(verbose, stdout);
-		return (0);
-	}
 
 	/* 7.0 status starts here */
 	/* start these early to reduce latency */
@@ -179,69 +171,4 @@ status_main(int ac, char **av)
 	printf("BK version: %s (repository requires bk-%d.0 or later)\n",
 	    bk_vers, features_minrelease(0, 0));
 	return (0);
-}
-
-private void
-compat_status(int verbose, FILE *f)
-{
-	char	buf[MAXLINE], parent_file[MAXPATH];
-	char	tmp_file[MAXPATH];
-	FILE	*f1;
-
-	fprintf(f, "Status for BitKeeper repository %s:%s\n",
-	    sccs_gethost(), proj_cwd());
-	bkversion(f);
-	sprintf(parent_file, "%slog/parent", BitKeeper);
-	if (exists(parent_file)) {
-		fprintf(f, "Parent repository is ");
-		f1 = fopen(parent_file, "r");
-		while (fgets(buf, sizeof(buf), f1)) fputs(buf, f);
-		fclose(f1);
-	}
-	unless (repository_lockers(0)) {
-		if (isdir("PENDING")) {
-			fprintf(f, "Pending patches\n");
-		}
-	}
-
-	if (verbose) {
-		bktmp(tmp_file);
-		f1 = fopen(tmp_file, "w");
-		assert(f1);
-		bkusers(0, 0, f1);
-		fclose(f1);
-		f1 = fopen(tmp_file, "rt");
-		while (fgets(buf, sizeof(buf), f1)) {
-			fprintf(f, "User:\t%s", buf);
-		}
-		fclose(f1);
-		sprintf(buf, "bk sfiles -x > '%s'", tmp_file);
-		system(buf);
-		f1 = fopen(tmp_file, "rt");
-		while (fgets(buf, sizeof(buf), f1)) {
-			fprintf(f, "Extra:\t%s", buf);
-		}
-		fclose(f1);
-		sprintf(buf, "bk sfiles -gc > '%s'", tmp_file);
-		system(buf);
-		f1 = fopen(tmp_file, "rt");
-		while (fgets(buf, sizeof(buf), f1)) {
-			fprintf(f, "Modified:\t%s", buf);
-		}
-		fclose(f1);
-		sprintf(buf, "bk sfiles -gpC > '%s'", tmp_file);
-		system(buf);
-		f1 = fopen(tmp_file, "rt");
-		while (fgets(buf, sizeof(buf), f1)) {
-			fprintf(f, "Uncommitted:\t%s", buf);
-		}
-		fclose(f1);
-		unlink(tmp_file);
-	} else {
-		fprintf(f,
-		    "%6d people have made deltas.\n", bkusers(0, 0, 0));
-		f1 = popen("bk sfiles -ES", "r");
-		while (fgets(buf, sizeof (buf), f1)) fputs(buf, f);
-		pclose(f1);
-	}
 }

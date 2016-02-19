@@ -399,7 +399,6 @@ unpull
 unrm
 unwrap
 upgrade
-users
 _usleep
 uuencode
 uudecode
@@ -443,7 +442,6 @@ _sort => sort
 support => sendbug
 _test => test
 unget => unedit
-user => users
 
 # guis
 citool gui
