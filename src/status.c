@@ -2,13 +2,11 @@
 #include "bkd.h"
 #include "nested.h"
 
-private	void	compat_status(int verbose, FILE *f);
-
 int
 status_main(int ac, char **av)
 {
 	int	i, c;
-	int	compat = 0, verbose = 0;
+	int	verbose = 0;
 	int	isnest;
 	nested	*n;
 	comp	*cp;
