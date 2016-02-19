@@ -434,41 +434,42 @@ graph_check(sccs *s)
  *          1 dups - dups were fixed
  */
 int
-graph_fixMerge(sccs *s, ser_t d, int fix)
+graph_fixMerge(sccs *s, ser_t d)
 {
 	ser_t	e;
 	u8	*slist = 0;
 	u32	*cludes = 0;
 	u32	*dups = 0;
-	int	i, count;
+	int	count;
 	int	rc = -1;
+	static	int	excCheck = -1;
 
 	if (CSET(s)) return (0);
 
-	/* 'd' is the oldest merge node with dups; fix it */
-
-	slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
-	unless (fix) {
-		rc = 0;
-		for (/* d */; d <= TABLE(s); d++) {
-			unless (MERGE(s, d) || CLUDES_INDEX(s, d)) continue;
-			graph_symdiff(s, d, PARENT(s, d),
-			    &dups, slist, 0, -1, 0);
-			unless (nLines(dups)) continue;
-			if (MERGE(s, d)) EACH(dups) {
-				rc = -1;
+	/* Any excludes in the graph? */
+	if (excCheck < 0) excCheck = !getenv("_BK_FIX_MERGEDUPS");
+	if (excCheck) {
+		/*
+		 * This routine auto-removes duplicate includes from
+		 * merge nodes. We are not totally sure this is always
+		 * safe for some combinations of including nodes with
+		 * excludes.  So as a cheap filter for when this
+		 * repair is safe, we refused to repair any sfile with
+		 * excludes in it. This still works in the cases we
+		 * know about.
+		 */
+		for (e = TREE(s); e <= TABLE(s); e++) {
+			if (CLUDES_INDEX(s, e) && strchr(CLUDES(s, e), '-')) {
 				fprintf(stderr,
-				    "%s: duplicate %s in %s of %s\n",
-				    s->gfile,
-				    (dups[i] & HIBIT) ? "exclude" : "include",
-				    REV(s, d), REV(s, dups[i] & ~HIBIT));
+				    "%s: duplicate in merge %s, "
+				    "excludes present in %s\n",
+				    s->gfile, REV(s, d), REV(s, e));
+				goto err;
 			}
-			truncArray(dups, 0);
 		}
-		goto err;
 	}
 
-
+	slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
 	cludes = (u32 *)calloc(TABLE(s) + 1, sizeof(u32));
 	assert(slist && cludes);
 
@@ -551,6 +552,14 @@ graph_convert(sccs *s, int fixpfile)
 		graph_symdiff(s, d, PARENT(s, d), &dups, slist, 0, count, 0);
 		s->encoding_in ^= E_BKMERGE;	/* restore expand format */
 		truncArray(dups, 0);
+#if 0
+		unless (MERGE(s, d) || (cludes[d] == CLUDES_INDEX(s, d))) {
+			fprintf(stderr, "Changed cludes: %s %s\n\t%s\n\t%s\n",
+			    s->gfile, REV(s, d),
+			    CLUDES(s, d),
+			    HEAP(s, cludes[d]));
+		}
+#endif
 	}
 	s->encoding_in ^= E_BKMERGE;	/* new style */
 

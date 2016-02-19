@@ -103,13 +103,11 @@ and it finds the key, then you should contact support@bitkeeper.com for
 assistance.
 $
 #chk7
-Your repository has duplicate include entries in a merge delta.
-They can be removed by adding the config setting: fix_mergedups .
+Your repository has an corrupted graph structure in a merge delta.
+A list of files impacted and their graphs is in 'BitKeeper/tmp/mergedups'.
 
-	bk --config:fix_mergedups:on -er check -f
-
-See FIX MERGEDUPS section in: bk help config-etc
-Or write support@bitkeeper.com for assistance.
+Please send a copy of that file to support@bitkeeper.com for assistance.
+Run 'bk help chk7' to see this message again.
 $
 #shadow
 If a repository is remapped (no SCCS dirs visible), it is possible to 

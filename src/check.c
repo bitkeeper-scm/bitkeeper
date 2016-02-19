@@ -96,6 +96,8 @@ private	void	undoDoMarks(void);
 private	int	polyChk(char *rkey, rkdata *rkd, hash *newpoly);
 private	int	stripdelFile(sccs *s, rkdata *rkd, char *tip);
 private	int	keyFind(rkdata *rkd, char *key);
+private	void	dumpgraph(sccs *s, FILE *fsavedump);
+private	void	dumpheader(sccs *s, FILE *fsavedump);
 private	void	getlock(void);
 private	sccs	*locked_init(char *name, u32 flags);
 private	int	locked_free(sccs *s);
@@ -132,6 +134,7 @@ check_main(int ac, char **av)
 	int	c, nfiles = 0;
 	u64	n;
 	FILE	*f;
+	FILE	*fsavedump = 0;
 	MDBM	*idDB;
 	MDBM	*pathDB = mdbm_mem();
 	sccs	*s;
@@ -147,7 +150,6 @@ check_main(int ac, char **av)
 	int	doBAM = 0;
 	int	checkdup = 0;
 	int	forceCsetFetch = 0;
-	int	fixMergeDups = 0;
 	int	chkMergeDups = 0;
 	ser_t	firstDup = 0;
 	ticker	*tick = 0;
@@ -308,7 +310,6 @@ check_main(int ac, char **av)
 		eoln_native = !streq(cfg_str(0, CFG_EOLN), "unix");
 	}
 	unless (fix) fix = cfg_bool(0, CFG_AUTOFIX);
-	fixMergeDups = fix && cfg_bool(0, CFG_FIX_MERGE);
 	chkMergeDups = !checkdup && !getenv("_BK_LEAVE_DUPS");
 	unless ((t = cfg_str(0, CFG_MONOTONIC)) && streq(t, "allow")) {
 		check_monotonic = 1;
@@ -463,15 +464,29 @@ check_main(int ac, char **av)
 			errors |= 0x20;
 			ferr++;
 		}
-		if (firstDup &&
-		    (i = graph_fixMerge(s, firstDup, fixMergeDups))) {
+		if (firstDup) {
+			if (fix) {
+				i = graph_fixMerge(s, firstDup);
+			} else {
+				i = -1;
+				fprintf(stderr,
+				    "%s: duplicate in merge %s\n",
+				    s->gfile, REV(s, firstDup));
+			}
 			if (i < 0) {
-				if (fixMergeDups) {
-					fprintf(stderr, "Removing merge "
-					    "duplicates failed\n");
-				} else {
-					chkMergeDups++;
+				unless (fsavedump) {
+					if (resync) {
+						t = RESYNC2ROOT
+					    	    "/BitKeeper/tmp/mergedups";
+					} else {
+						t = "BitKeeper/tmp/mergedups";
+					}
+					unless (fsavedump = fopen(t, "w")) {
+					    perror(t);
+					}
+					dumpheader(cset, fsavedump);
 				}
+				dumpgraph(s, fsavedump);
 				ferr++, errors |= 0x01;
 			} else {
 				getlock();
@@ -511,7 +526,10 @@ check_main(int ac, char **av)
 			ferr++, errors |= 0x01;
 		}
 	}
-	if (chkMergeDups > 1) getMsg("chk7", 0, '=', stderr);
+	if (fsavedump) {
+		fclose(fsavedump);
+		getMsg("chk7", 0, '=', stderr);
+	}
 	if (e = sfileDone()) {
 		errors++;
 		goto out;
@@ -2615,6 +2633,7 @@ chk_merges(sccs *s, int chkdup, ser_t *firstDup)
 			unless (slist) {
 				slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
 			}
+			/* Find dups. slists is junk: xor of all the sets */
 			graph_symdiff(s, d, PARENT(s, d),
 			    &dups, slist, 0, -1, 0);
 			if (nLines(dups)) {
@@ -2778,6 +2797,32 @@ undoDoMarks(void)
 		updatePending(s);
 		locked_free(s);
 	}
+}
+
+/* ID which repo / component this */
+private	void
+dumpheader(sccs *cset, FILE *fsavedump)
+{
+	u32	flags = (PRS_LF|PRS_FORCE);
+	char	*dspec = "# :COMPONENT::GFILE:|:ROOTKEY:";
+
+	sccs_prsdelta(cset, TREE(s), flags, dspec, fsavedump);
+	fputc('\n', fsavedump);
+}
+
+/* dump the graph to a file for a customer to send to us */
+private	void
+dumpgraph(sccs *s, FILE *fsavedump)
+{
+	ser_t	d;
+	char	*dspec = ":MD5KEY: :DS: :DP: :MGP::CLUDES:";
+	u32	flags = (PRS_LF|PRS_FORCE);
+
+	sccs_prsdelta(s, TREE(s), flags, "== :GFILE:|:ROOTKEY:", fsavedump);
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		sccs_prsdelta(s, d, flags, dspec, fsavedump);
+	}
+	fputc('\n', fsavedump);
 }
 
 #undef	sccs_init

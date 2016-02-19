@@ -1,24 +1,29 @@
 ============================================================================
-Release notes for BitKeeper version 7.0.3 (released Feb 17, 2016)
+Release notes for BitKeeper version 7.1 (released Feb 24, 2016)
 
   See our Tips & FAQ page at:       http://www.bitkeeper.com/tips
   Follow us on Twitter:             https://twitter.com/BitKeeper
 
-Note: This release includes a new check which might fail on your
-repositories.  Do not roll this out to production without reading
-below and running a 'bk repocheck' on your repositories.
+This release is identical to bk-7.0.3 with one added test to the
+repository check for the problem introduced in bk-7.0 which bk-7.0.3
+fixed.  Since this check could fail on existing repositories the
+version was bumped to 7.1.
 
-There was a bug shipped with bk-7, which manifests through a combination
-of bk makepatch and bk takepatch, that might result in graph corruption.
-This release has additional code in bk check that looks for the problem.
-It will be automatically fixed if bk check is run with the configuration
-option "fix_mergedups: on" and either the -f option or the configuration
-option: "autofix: on".
+The most common forms of corruption from this problem will be
+automatically and silently repaired by this release if the autofix
+config is enabled (on by default).  Some more tricky forms are
+possible, but we have never seen them in the wild. If these occur,
+debugging information to send to support@bitkeeper.com will be
+printed.
+
+The recommendation is to test this release on a couple repositories
+before deploying to the team at large.
+
+============================================================================
+Release notes for BitKeeper version 7.0.3 (released Feb 17, 2016)
 
 Bugs fixed:
 
- - Detect and repair graph corruption introduced through a combination
-   of bk makepatch and bk takepatch in bk-7.
  - Return codes fixed to return error, such as when bk check calls itself.
  - Fix clock_skew section of config-etc man page.  BUG-ID: 2015-12-11-001
  - Fix receive and takepatch pulling old style patches into bk-7 repos.
