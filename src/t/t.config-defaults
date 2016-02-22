@@ -25,7 +25,6 @@ description: (null)
 diffgap: -1
 email: (null)
 eoln: native
-fix_mergedups: off
 fakegrafts: off
 homepage: (null)
 keyword: none
@@ -70,7 +69,6 @@ description: BitKeeper Test repository
 diffgap: -1
 email: nobody@nowhere.bk
 eoln: unix
-fix_mergedups: off
 fakegrafts: off
 homepage: (null)
 keyword: sccs

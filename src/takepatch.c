@@ -1228,6 +1228,7 @@ applyCsetPatch(sccs *s, int *nfound, int newFile)
 		}
 	}
 	if (CSET(s) && (opts->echo == 3)) fputs(", ", stderr);
+	assert(opts->bkmerge == BKMERGE(s));
 	if (cset_write(s, (opts->echo == 3), opts->fast)) {
 		SHOUT();
 		fprintf(stderr, "takepatch: can't update %s\n", s->sfile);

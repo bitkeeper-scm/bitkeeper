@@ -14879,6 +14879,14 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		return (nullVal);
 	}
 
+	case KW_CLUDES: /* CLUDES */ {
+		/* space separated signed serial numbers of inc/exc deltas */
+
+		unless (HAS_CLUDES(s, d)) return (nullVal);
+		fs(CLUDES(s, d));
+		return (strVal);
+	}
+
 	/* rev number of included deltas */
 	case KW_Rn: /* Rn */ {
 		int	sign, i = 0;

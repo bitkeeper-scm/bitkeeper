@@ -612,8 +612,11 @@ printf "s\nC\n" | bk pull $Q -T 2> noise
 bk push $Q
 # Use -C to put new file into patch.
 bk makepatch $Q -C -rMARK..+ > ../patc
+bk makepatch $Q -CF -rMARK..+ > ../patc-fast
+bk makepatch $Q --bk-merge -CF -rMARK..+ > ../patc-fast-bk
 bk makepatch $Q -rMARK..+ > ../patc-w-sfio
 bk unpull $Q -sf
+bk clone $Q --no-bk-merge . ../patch-dest-no-bkmerge
 bk receive < ../patc
 cd RESYNC
 bk -r check -R --check-dup || fail
@@ -628,8 +631,25 @@ bk log -nd':GFILE: :ENCODING: :I: :Rn: :Rx:' a-no-strip new-file strip \
 cmpfiles GOT "$HERE/GOT"
 cd ..
 bk abort -f
+bk receive < ../patc-fast
+cd RESYNC
+bk log -nd':GFILE: :ENCODING: :I: :Rn: :Rx:' a-no-strip new-file strip \
+    > GOT
+cmpfiles GOT "$HERE/GOT"
+cd ..
+bk abort -f
 cd ../patch-source
 bk log -nd':GFILE: :ENCODING: :I: :Rn: :Rx:' a-no-strip new-file strip \
     > WANT
 cmpfiles WANT "$HERE/GOT"
+bk clone $Q --no-bk-merge . ../patch-source-no-bkmerge
+cd ../patch-source-no-bkmerge
+bk log -nd':GFILE: :ENCODING: :I: :Rn: :Rx:' a-no-strip new-file strip \
+    > ../GOT-no-bkmerge
+cd ../patch-dest-no-bkmerge
+bk receive < ../patc-fast-bk
+cd RESYNC
+bk log -nd':GFILE: :ENCODING: :I: :Rn: :Rx:' a-no-strip new-file strip \
+    > GOT
+cmpfiles GOT "$HERE/GOT-no-bkmerge"
 echo OK
