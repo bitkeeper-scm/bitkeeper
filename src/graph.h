@@ -6,7 +6,7 @@ typedef int	(*walkfcn)(sccs *s, ser_t d, void *token);
 int	graph_v1(sccs *s);	/* when done, graph is in v1 form */
 int	graph_v2(sccs *s);	/* when done, graph is in v2 form */
 
-int	graph_fixMerge(sccs *s, ser_t first, int fix);
+int	graph_fixMerge(sccs *s, ser_t first);
 int	graph_convert(sccs *s, int fixpfile);
 int	graph_check(sccs *s);
 

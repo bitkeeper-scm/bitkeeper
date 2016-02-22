@@ -226,15 +226,6 @@ the repository.
 .DS
 description: cross-platform C-like GUI programming language
 .DE
-.SS FIX MERGEDUPS
-A rare corner of \*(BK version 7.0 caused some duplication of includes
-in merge deltas.  Version 7.0.3 added a check for this case which fails
-if detected.  To fix your repository, add
-.DS
-fix_mergedups: on
-.DE
-Then run check with the -f option, or turn on autofix.
-.DE
 .SS KEYWORD EXPANSION
 .br
 Keyword expansion is turned OFF by default.  To have keyword expansion
