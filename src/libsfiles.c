@@ -5,7 +5,7 @@
  *
  * File name expansion.
  *	<dir> means <dir>/SCCS/s.* if <dir>/SCCS exists
- *		XXX - shouldn't it really mean `bk sfiles dir`???
+ *		XXX - shouldn't it really mean `bk gfiles dir`???
  *	<dir> means <dir>/s.* if <dir>/SCCS doesn't exist
  *	NULL means SCCS/s.* if SCCS exists
  *	NULL means ./s.* if SCCS doesn't exist
@@ -255,7 +255,7 @@ sfiles(char **av)
 		get(ignore, SILENT);
 	}
 	if ((spid = spawnvpio(0, &pfd, 0, av)) == -1) {
-		fprintf(stderr, "cannot spawn bk sfiles\n");
+		fprintf(stderr, "cannot spawn bk gfiles\n");
 		return (1);
 	}
 	dup2(pfd, 0);

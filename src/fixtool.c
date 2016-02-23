@@ -33,7 +33,7 @@ fixtool_main(int ac,  char **av)
 	}
 	unless (diffopts[1]) strcpy(diffopts, "");
 	nav = addLine(nav, "bk");
-	nav = addLine(nav, "sfiles");
+	nav = addLine(nav, "gfiles");
 	nav = addLine(nav, "-cg");
 	while (av[optind]) nav = addLine(nav, av[optind++]);
 	nav = addLine(nav, 0);

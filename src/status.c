@@ -56,7 +56,7 @@ status_main(int ac, char **av)
 	/* 7.0 status starts here */
 	/* start these early to reduce latency */
 	fchg = popen("bk changes -aLR -nd. 2>&1", "r");
-	fsfile = popen("bk -e sfiles -Ucgvhp", "r"); /* XXX no scancomps */
+	fsfile = popen("bk -e gfiles -Ucvhp", "r"); /* XXX no scancomps */
 
 	printf("Repo: %s:%s\n", sccs_realhost(), proj_root(0));
 	if (isnest) {
@@ -215,21 +215,21 @@ compat_status(int verbose, FILE *f)
 			fprintf(f, "User:\t%s", buf);
 		}
 		fclose(f1);
-		sprintf(buf, "bk sfiles -x > '%s'", tmp_file);
+		sprintf(buf, "bk gfiles -x > '%s'", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
 			fprintf(f, "Extra:\t%s", buf);
 		}
 		fclose(f1);
-		sprintf(buf, "bk sfiles -gc > '%s'", tmp_file);
+		sprintf(buf, "bk gfiles -c > '%s'", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
 			fprintf(f, "Modified:\t%s", buf);
 		}
 		fclose(f1);
-		sprintf(buf, "bk sfiles -gpC > '%s'", tmp_file);
+		sprintf(buf, "bk gfiles -pC > '%s'", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
@@ -240,7 +240,7 @@ compat_status(int verbose, FILE *f)
 	} else {
 		fprintf(f,
 		    "%6d people have made deltas.\n", bkusers(0, 0, 0));
-		f1 = popen("bk sfiles -ES", "r");
+		f1 = popen("bk gfiles -ES", "r");
 		while (fgets(buf, sizeof (buf), f1)) fputs(buf, f);
 		pclose(f1);
 	}

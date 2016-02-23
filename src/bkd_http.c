@@ -738,7 +738,7 @@ http_dir(char *page)
 	pclose(f);
 	fclose(out);
 
-	cmd = aprintf("bk sfiles -1x '%s'", fpath);
+	cmd = aprintf("bk gfiles -1x '%s'", fpath);
 	f = popen(cmd, "r");
 	free(cmd);
 	while (fnext(buf, f)) {

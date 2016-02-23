@@ -89,7 +89,7 @@ setup_main(int ac, char **av)
 		FILE	*f;
 		int	any = 0;
 
-		sprintf(buf, "bk --cd='%s' sfiles -d", package_path);
+		sprintf(buf, "bk --cd='%s' gfiles -d", package_path);
 		if (f = popen(buf, "r")) {
 			while (fread(buf, 1, sizeof(buf), f)) any = 1;
 			pclose(f); /* ignore errors */

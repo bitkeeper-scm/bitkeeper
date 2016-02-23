@@ -169,7 +169,7 @@ mvdir_main(int ac, char **av)
 	 * is located at the root of the tree,
 	 * "bk mvdir project-root" => moving the BitKeeper sub-tree.
 	 */
-	cmd = aprintf("bk sfiles '%s'", from);
+	cmd = aprintf("bk gfiles '%s'", from);
 	f = popen(cmd, "r");
 	free(cmd);
 	assert(f);
@@ -213,7 +213,7 @@ mvdir_main(int ac, char **av)
 	concat_path(buf, proj_root(proj), getIDCACHE(proj));
 	idDB = loadDB(buf, 0, DB_IDCACHE);
 	proj_free(proj);
-	cmd = aprintf("bk sfiles \"%s\"", to);
+	cmd = aprintf("bk gfiles \"%s\"", to);
 	f = popen(cmd, "r");
 	free(cmd);
 	while (fnext(buf, f)) {

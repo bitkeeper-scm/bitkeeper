@@ -313,6 +313,7 @@ passes(opts *opts)
 	T_PERF("pass1");
 	opts->pass = 1;
 	bktmp(flist);
+	/* needs to be sfiles not gfiles */
 	if (sysio(0, flist, 0, "bk", "sfiles", SYS)) {
 		perror("sfiles list");
 err:		if (p) fclose(p);
@@ -2024,7 +2025,7 @@ nocommit:
 		proj = proj_init(".");
 		assert(proj_isResync(proj));
 		if (proj_isProduct(proj)) {
-			system("bk sfiles -Rr > BitKeeper/log/deep-nests");
+			system("bk gfiles -Rr > BitKeeper/log/deep-nests");
 		}
 		proj_free(proj);
 
@@ -2127,7 +2128,7 @@ checkins(opts *opts, char *comment)
 	FILE	*p;
 	char	buf[MAXPATH];
 
-	unless (p = popen("bk sfiles -c", "r")) {
+	unless (p = popen("bk gfiles -c", "r")) {
 		perror("popen of find");
 		resolve_cleanup(opts, 0);
 	}
@@ -2544,12 +2545,12 @@ pending(int checkComments)
 	int	ret;
 
 	unless (checkComments) {
-		f = popen("bk sfiles -rpC", "r");
+		f = popen("bk gfiles -rpC", "r");
 		ret = fgetc(f) != EOF;
 		pclose(f);
 		return (ret);
 	}
-	f = popen("bk sfiles -rpCA | bk sccslog -CA -", "r");
+	f = popen("bk gfiles -rpCA | bk sccslog -CA -", "r");
 	while (fnext(buf, f)) {
 		unless (t = strchr(buf, '\t')) {
 			pclose(f);
@@ -2575,12 +2576,12 @@ pendingEdits(void)
 	char	buf[MAXPATH];
 	FILE	*f;
 
-	f = popen("bk sfiles -c", "r");
+	f = popen("bk gfiles -c", "r");
 
 	while (fnext(buf, f)) {
 		chop(buf);
 		/* Huh? */
-		if (streq("SCCS/s.ChangeSet", buf)) continue;
+		if (streq(GCHANGESET, buf)) continue;
 		pclose(f);
 		return (1);
 	}
@@ -2763,6 +2764,7 @@ pass4_apply(opts *opts)
 	save = fopen(BACKUP_LIST, "w+");
 	assert(save);
 	unlink(PASS4_TODO);
+	/* needs to be sfiles not gfiles */
 	sprintf(key, "bk sfiles -r '%s' > " PASS4_TODO, ROOT2RESYNC);
 	if (system(key) || !(f = fopen(PASS4_TODO, "r+")) || !save) {
 		fprintf(stderr, "Unable to create|open " PASS4_TODO);

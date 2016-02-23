@@ -12,7 +12,7 @@ bk ignore \- ignore shell glob patterns
 tells \*(BK to ignore specified files when looking for extra files
 that are not under revision control.
 This affects the output of
-.B bk sfiles \-x
+.B bk gfiles \-x
 and all commands that use its output, such as 
 .B bk citool
 and 
@@ -124,7 +124,7 @@ $ echo '*.xxx' >> "`bk dotbk`/ignore"
 .LP
 .SA citool
 .SA extras
-.SA sfiles
+.SA gfiles
 .SA status
 .SH CATEGORY
 .B Admin

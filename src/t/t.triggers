@@ -511,7 +511,7 @@ test -f "$HERE/BK_PENDING" || {
 	echo failed to copy the file
 	exit 1
 }
-test SCCS/s.c.c${BK_FS}1.1 = `cat "$HERE/BK_PENDING"` || {
+test c.c${BK_FS}1.1 = `cat "$HERE/BK_PENDING"` || {
 	echo bad file list
 	cat "$HERE/BK_PENDING"
 	exit 1

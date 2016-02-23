@@ -374,7 +374,7 @@ err:		freeLines(envVar, free);
 			/*
 			 * Commit
 			 */
-			sprintf(buf, "bk -P sfiles -pC '%s' |"
+			sprintf(buf, "bk -P gfiles -pC '%s' |"
 			    "bk -P commit -S -qfY'%s' -",
 			    proj_comppath(0),
 			    tmpfile);

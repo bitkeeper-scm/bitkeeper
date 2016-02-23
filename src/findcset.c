@@ -157,7 +157,7 @@ findcset_main(int ac, char **av)
 	closeTags();
 	mdbm_close(csetBoundary);
 	freeLines(list, free_dinfo);
-	sysio(NULL, DEVNULL_WR, DEVNULL_WR, "bk", "-R", "sfiles", "-P", SYS);
+	sysio(NULL, DEVNULL_WR, DEVNULL_WR, "bk", "-R", "gfiles", "-P", SYS);
 
 	/* update rootkey embedded in files */
 	unlink("BitKeeper/log/ROOTKEY");

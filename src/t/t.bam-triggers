@@ -392,7 +392,7 @@ bk commit $S -yCset2 2>/dev/null && {
 test -f "$HERE/BK_PENDING" || {
 	fail failed to copy the file
 }
-bk _test SCCS/s.c.c${BK_FS}1.1 = `cat "$HERE/BK_PENDING"` || {
+test c.c${BK_FS}1.1 = `cat "$HERE/BK_PENDING"` || {
 	fail -f "$HERE/BK_PENDING" bad file list
 }
 echo OK

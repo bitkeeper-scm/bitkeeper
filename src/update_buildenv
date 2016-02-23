@@ -71,7 +71,7 @@ rm -rf $D || {
 # build and install new msys
 (cd win32; bk get -S Makefile; make MSYSBIN=$D msys)
 
-bk sfiles -Ug $W32TOOLS | bk get -S -
+bk gfiles -U $W32TOOLS | bk get -S -
 
 # build mingw
 echo extracting MinGW

@@ -301,7 +301,7 @@ Here's an example of such a trigger, which would typically be named
 # be sneaky and create the file in an earlier
 # changeset and then move it.
 
-test `bk sfiles -g BitKeeper/triggers | wc -l\` -gt 0 || exit 0
+test `bk gfiles BitKeeper/triggers | wc -l\` -gt 0 || exit 0
 
 if [ $BK_SIDE = server ]
 then    echo Refusing to accept any changes to triggers on push,
@@ -310,7 +310,7 @@ then    echo Refusing to accept any changes to triggers on push,
 fi
 
 rm -f BitKeeper/tmp/t_reject
-for i in \`bk sfiles -g BitKeeper/triggers\`
+for i in \`bk gfiles BitKeeper/triggers\`
 do      (
         echo Please review the following trigger for security risks.
         echo Do not accept it if you think it is a problem.

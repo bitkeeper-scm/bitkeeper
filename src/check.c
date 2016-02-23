@@ -1145,12 +1145,12 @@ listFound(hash *db)
 	}
 	/* see if .bk_skip or a -prune ignore pattern is to blame */
 	h = hash_new(HASH_MEMHASH);
-	f = popen("bk sfiles -a --no-bkskip", "r");
+	f = popen("bk gfiles -a --no-bkskip", "r");
 	assert(f);
 	while (t = fgetline(f)) hash_insertStrSet(h, t);
 	pclose(f);
 
-	f = popen("bk sfiles", "r");
+	f = popen("bk gfiles", "r");
 	assert(f);
 	while (t = fgetline(f)) hash_deleteStr(h, t);
 	pclose(f);
@@ -1322,13 +1322,13 @@ repair(hash *db)
 	}
 	freeLines(sorted, 0);
 	if (pclose(f) != 0) return (n);
-	if (system("bk sfiles BitKeeper/repair |"
+	if (system("bk gfiles BitKeeper/repair |"
 	    "bk -?BK_NO_REPO_LOCK=YES check -s -") != 0) {
 		fprintf(stderr, "check: stripdel pass failed, aborting.\n");
 		goto out;
 	}
 	if (verbose) fprintf(stderr, "Moving files into place...\n");
-	if (system("bk sfiles BitKeeper/repair | bk names -q -") != 0) {
+	if (system("bk gfiles BitKeeper/repair | bk names -q -") != 0) {
 		goto out;
 	}
 	if (verbose) fprintf(stderr, "Rerunning check...\n");

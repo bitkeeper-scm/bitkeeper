@@ -474,25 +474,25 @@ import_patch() {
 		-e 's/Patching file //' | \
 	    			bk sort -u  > "${TMP}plist$$"
 	CONFLICT=NO
-	MCNT=`bk sfiles -c - < "${TMP}plist$$" | wc -l`
+	MCNT=`bk gfiles -c - < "${TMP}plist$$" | wc -l`
 	if [ $MCNT -ne 0 ]
 	then
 		echo "Cannot import to modified file:"
-		bk sfiles -c - < "${TMP}plist$$"
+		bk gfiles -c - < "${TMP}plist$$"
 		CONFLICT=YES
 	fi
-	MCNT=`bk sfiles -p - < "${TMP}plist$$" | wc -l`
+	MCNT=`bk gfiles -p - < "${TMP}plist$$" | wc -l`
 	if [ $MCNT -ne 0 ]
 	then
 		echo "Cannot import to file with uncommitted delta:"
-		bk sfiles -p - < "${TMP}plist$$"
+		bk gfiles -p - < "${TMP}plist$$"
 		CONFLICT=YES
 	fi
-	MCNT=`bk sfiles -x - < "${TMP}plist$$" | wc -l`
+	MCNT=`bk gfiles -x - < "${TMP}plist$$" | wc -l`
 	if [ $MCNT -ne 0 ]
 	then
 		echo "Cannot import to existing extra file"
-		bk sfiles -x - < "${TMP}plist$$"
+		bk gfiles -x - < "${TMP}plist$$"
 		CONFLICT=YES
 	fi
 
@@ -523,7 +523,7 @@ import_patch() {
 	grep '^Patching file ' "${TMP}plog$$" |
 	    sed 's/Patching file //' | bk sort -u > "${TMP}patching$$"
 
-	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | bk _unlink -
+	bk gfiles -x | grep '=-PaTcH_BaCkUp!$' | bk _unlink -
 	while read x
 	do	test -f "$x".rej && echo "$x".rej
 	done < "${TMP}patching$$" > "${TMP}rejects$$"
@@ -581,7 +581,7 @@ import_patch() {
 			# Renametool may have moved a s.file on the "delete"
 			# list under a gfile on the "create" list. Check for
 			# this case and make a delta.
-			bk sfiles -gc - < "${TMP}creates$$" | \
+			bk gfiles -c - < "${TMP}creates$$" | \
 					BK_NO_REPO_LOCK=YES bk ci $VERBOSE -G "$COMMENTOPT" -
 
 			# "bk rm" and "bk new" was done in renametool
@@ -622,13 +622,13 @@ import_patch() {
 	# Note: renametool does not update the idcache when it
 	# move a s.file to match up a "delete" with a "create". Fotrunately,
 	# the new s.file location is always captured on the "create" list.
-	# We are counting on "bk sfiles -pC" to ignore files which are
+	# We are counting on "bk gfiles -pC" to ignore files which are
 	# without a s.file. Otherwise we would have to rebuild the idcache,
 	# which is slow.
 	msg Creating changeset for $PNAME in `pwd` ...
 	bk _key2path < "${TMP}keys$$" > "${TMP}patching$$"
 	cat "${TMP}creates$$" "${TMP}patching$$" |
-	    bk sort -u | bk sfiles -pC - > "${TMP}commit$$"
+	    bk sort -u | bk gfiles -pC - > "${TMP}commit$$"
 	BK_NO_REPO_LOCK=YES bk commit \
 	    $QUIET $SYMBOL -y"$PNAME" - < "${TMP}commit$$"
 
@@ -785,7 +785,7 @@ import_finish () {
 	mycd "$1"
 	if [ X$QUIET = X ]; then echo ""; fi
 	if [ X$QUIET = X ]; then echo Final error checks...; fi
-	bk sfiles | BK_NO_REPO_LOCK=YES bk admin -hhhq - > "${TMP}admin$$"
+	bk gfiles | BK_NO_REPO_LOCK=YES bk admin -hhhq - > "${TMP}admin$$"
 	if [ -s "${TMP}admin$$" ]
 	then	echo Import failed because
 		cat "${TMP}admin$$"

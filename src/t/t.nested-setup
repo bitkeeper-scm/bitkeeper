@@ -115,9 +115,9 @@ test -z "`cat XXX`" || {
 }
 cd "$HERE"/product
 cat <<EOF > WANT
-component/SCCS/s.ChangeSet
+component/ChangeSet
 EOF
-bk sfiles -cP > GOT
+bk gfiles -cP > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -136,8 +136,8 @@ test -f component2/BitKeeper/log/COMPONENT || {
 bk cat component2/BitKeeper/etc/config > GOT
 cmpfiles "$HERE"/c GOT
 cat <<EOF > WANT
-component/SCCS/s.ChangeSet
-component2/SCCS/s.ChangeSet
+component/ChangeSet
+component2/ChangeSet
 EOF
 bk sfiles -cP > GOT
 echo OK

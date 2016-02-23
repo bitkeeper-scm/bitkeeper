@@ -241,7 +241,7 @@ commit_main(int ac, char **av)
 		if (fin != stdin) fclose(fin);
 		offset = 0;
 	} else {
-		cmd = aprintf("bk sfiles -v%s%spC",
+		cmd = aprintf("bk gfiles -v%s%spC",
 		    opts.resync ? "r" : "",
 		    opts.ci ? "c" : "");
 		fin = popen(cmd, "r");
@@ -426,16 +426,16 @@ err:		rc = 1;
 		bktmp(pendingFiles2);
 		f = fopen(pendingFiles, "r");
 		f2 = fopen(pendingFiles2, "w");
-		i = strlen(SATTR);
+		i = strlen(ATTR);
 		while (t = fgetline(f)) {
-			if (strneq(SATTR "|", t, i+1)) {
+			if (strneq(ATTR "|", t, i+1)) {
 				/* skip ATTR file */
 				continue;
 			}
 			fprintf(f2, "%s\n", t);
 		}
 		fclose(f);
-		fprintf(f2, "%s%c+\n", SATTR, BK_FS);
+		fprintf(f2, "%s%c+\n", ATTR, BK_FS);
 		fclose(f2);
 		if (unlink(pendingFiles)) perror(pendingFiles);
 		fileMove(pendingFiles2, pendingFiles);
@@ -678,14 +678,14 @@ do_ci(char ***modFiles, char *commentFile, char *pendingFiles)
  * Read in sfile and extend the cset weave
  */
 private int
-getfilekey(char *sfile, char *rev, sccs *cset, ser_t cset_d, char ***keys)
+getfilekey(char *gfile, char *rev, sccs *cset, ser_t cset_d, char ***keys)
 {
 	sccs	*s;
 	ser_t	d;
 	u8	buf[MAXLINE];
 
-	unless (s = sccs_init(sfile, 0)) {
-		fprintf(stderr, "cset: can't init %s\n", sfile);
+	unless (s = sccs_init(gfile, 0)) {
+		fprintf(stderr, "cset: can't init %s\n", gfile);
 		return (1);
 	}
 
@@ -697,7 +697,7 @@ getfilekey(char *sfile, char *rev, sccs *cset, ser_t cset_d, char ***keys)
 		return (0);
 	}
 	unless (d = sccs_findrev(s, rev)) {
-		fprintf(stderr, "cset: can't find %s in %s\n", rev, sfile);
+		fprintf(stderr, "cset: can't find %s in %s\n", rev, gfile);
 		return (1);
 	}
 	//assert(!(FLAGS(s, d) & D_CSET));

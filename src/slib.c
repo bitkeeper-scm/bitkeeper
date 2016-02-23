@@ -4725,15 +4725,15 @@ sccs_init(char *name, u32 flags)
 		return (0);
 	}
 	localName2bkName(name, name);
-	if (sccs_filetype(name) != 's') {
-		fprintf(stderr, "Not an SCCS file: %s\n", name);
-		return (0);
-	}
+	name = name2sccs(name);
 	lstat_rc = lstat(name, &sbuf);
 	lstat_errno = lstat_rc ? errno : 0;
-	if (lstat_rc && (flags & INIT_MUSTEXIST)) return (0);
+	if (lstat_rc && (flags & INIT_MUSTEXIST)) {
+		free(name);
+		return (0);
+	}
 	s = new(sccs);
-	s->sfile = strdup(name);
+	s->sfile = name;	/* dup'ed at name2sccs() above */
 	if (IsFullPath(name)) {
 		s->fullsfile = s->sfile;
 	} else {
