@@ -145,19 +145,33 @@ private int
 fastprint(char *file, char type, void *data)
 {
 	filecnt	*fc = data;
-
+	char	*p;
+               
 	file += 2;
 	if (fc) {
 		++fc->tot;
 		unless (strneq(file, "BitKeeper/", 10)) ++fc->usr;
 	}
-	puts(file);
+	if (opts.gfile) {
+		if (p = strstr(file, "/SCCS/s.")) {
+			*++p = 0;
+			fputs(file, stdout);
+			*p = 'S';
+			p += 7;
+		} else {
+			assert(strneq(file, "SCCS/s.", 7));
+			p = file + 7;
+		}
+		puts(p);
+	} else {
+		puts(file);
+	}
 	if (opts.cold) willneed(file);
 	return (0);
 }
 
 int
-sfiles_main(int ac, char **av)
+gfiles_main(int ac, char **av)
 {
 	int	c, i;
 	int	not = 0;
@@ -175,6 +189,9 @@ sfiles_main(int ac, char **av)
 		{ "cold", 315 },
 		{ 0, 0 },
 	};
+
+	// can we lose the sfind alias yet?
+	unless (streq(av[0], "sfiles") || streq(av[0], "sfind")) opts.gfile = 1;
 
 	if (av[1] && streq(av[1], "--cold")) { /* for the fast case below */
 		opts.cold = 1;
@@ -212,7 +229,7 @@ sfiles_main(int ac, char **av)
 				opts.unlocked = opts.xdirs = 1;
 				/* fall through */
 		    case 'v':	opts.verbose = 1; break;
-		    case 'g':	opts.gfile = 1; break;		/* doc 2.0 */
+		    case 'g':	opts.gfile = 1; break;
 		    case 'G':					/* doc */
 			if (not) {
 				not = 0;
@@ -587,7 +604,7 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 		char *sfile = name2sccs(gfile);
 		s = init(sfile, INIT_NOCKSUM, sDB, gDB);
 		unless (s && HASGRAPH(s)) {
-			fprintf(stderr, "sfiles: %s: bad sfile\n", sfile);
+			fprintf(stderr, "gfiles: %s: bad sfile\n", sfile);
 			free(sfile);
 			if (s) sccs_free(s);
 			return;
@@ -660,7 +677,7 @@ file(char *f)
 	sccs	*sc = 0;
 
 	if (strlen(f) >= sizeof(name)) {
-		fprintf(stderr, "sfiles: name too long: [%s]\n", f);
+		fprintf(stderr, "gfiles: name too long: [%s]\n", f);
 		return;
 	}
 	strcpy(name, f);
@@ -721,7 +738,7 @@ file(char *f)
 	}
 	if (proj && sc && (sc->proj != proj)) {
 		fprintf(stderr,
-		    "sfiles: error file %s is from a different repository\n"
+		    "gfiles: error file %s is from a different repository\n"
 		    "than other files. %s vs %s\n",
 		    sc->gfile, proj_root(sc->proj), proj_root(proj));
 	}

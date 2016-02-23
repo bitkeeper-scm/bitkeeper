@@ -278,7 +278,7 @@ unpopulate_check(popts *ops, comp *c)
 		perror(c->path);
 		goto out;
 	}
-	f = popen("bk sfiles -gcxp -v", "r");
+	f = popen("bk gfiles -cxp -v", "r");
 	errs = 0;
 	while (t = fgetline(f)) {
 		if (t[0] == 'x') {

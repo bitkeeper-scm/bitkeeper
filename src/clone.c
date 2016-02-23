@@ -1463,8 +1463,8 @@ sccs_rmUncommitted(int quiet, char ***stripped)
 	 * but we didn't copy over the scandirs so --no-cache prevents
 	 * trying to depend on that file
 	 */
-	unless (in = popen("bk sfiles -pA --no-cache", "r")) {
-		perror("popen of bk sfiles -pA");
+	unless (in = popen("bk gfiles -pA --no-cache", "r")) {
+		perror("popen of bk gfiles -pA");
 		exit(1);
 	}
 	sprintf(buf, "bk -?BK_NO_REPO_LOCK=YES stripdel -d %s -", (quiet ? "-q" : ""));
@@ -1489,7 +1489,7 @@ sccs_rmUncommitted(int quiet, char ***stripped)
 		fprintf(stderr, "clone: stripdel failed, continuing...\n");
 	}
 	EACH (files) {
-		if (stripped && exists(files[i])) {
+		if (stripped && sfile_exists(0, files[i])) {
 			*stripped = addLine(*stripped, strdup(files[i]));
 		}
 		/*

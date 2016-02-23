@@ -457,9 +457,9 @@ bk attach --force -q -C "$HERE/standalone1" component6 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk sfiles -p >GOT || fail
+bk gfiles -p >GOT || fail
 cat <<EOF >WANT
-component6/SCCS/s.ChangeSet
+component6/ChangeSet
 EOF
 cmpfiles GOT WANT
 bk commit -q -y'attach component6' || fail
@@ -473,9 +473,9 @@ bk attach --force -q -C "$HERE/standalone1" component6a 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk sfiles -p >GOT || fail
+bk gfiles -p >GOT || fail
 cat <<EOF >WANT
-component6a/SCCS/s.ChangeSet
+component6a/ChangeSet
 EOF
 cmpfiles GOT WANT
 bk attach --force -q -C "$HERE/standalone1" component6b 2>GOT 1>&2 || {
@@ -483,10 +483,10 @@ bk attach --force -q -C "$HERE/standalone1" component6b 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk sfiles -p >GOT || fail
+bk gfiles -p >GOT || fail
 cat <<EOF >WANT
-component6a/SCCS/s.ChangeSet
-component6b/SCCS/s.ChangeSet
+component6a/ChangeSet
+component6b/ChangeSet
 EOF
 cmpfiles GOT WANT
 bk commit -q -y'attach component6a and component6b' || fail

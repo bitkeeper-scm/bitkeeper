@@ -505,7 +505,7 @@ dc_ml(resolve *rs)
 	/* Check to see that a simple rename is possible */
 	getFileConflict(rs, PATHNAME(rs->s, rs->d), path);
 	chdir(RESYNC2ROOT);
-	t = aprintf("bk sfiles '%s'", path);
+	t = aprintf("bk gfiles '%s'", path);
 	list = popen(t, "r");
 	free(t);
 	while (fnext(buf, list)) count++;

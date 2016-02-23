@@ -479,8 +479,8 @@ bk alias new -C dev gcc gdb >ERR 2>&1 || {
 	cat ERR
 	exit 1
 }
-echo BitKeeper/etc/SCCS/s.aliases > WANT
-bk sfiles -cP > GOT
+echo BitKeeper/etc/aliases > WANT
+bk gfiles -cP > GOT
 cmpfiles WANT GOT
 echo OK
 

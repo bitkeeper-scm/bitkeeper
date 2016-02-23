@@ -108,13 +108,8 @@ _repatch() {
 	bk takepatch -vvvaf $PATCH
 }
 
-# shorthand
-_gfiles() {		# /* undoc? 2.0 */
-	exec bk sfiles -g "$@"
-}
-
 _files() {
-	exec bk sfiles -1g "$@"
+	exec bk gfiles -1 "$@"
 }
 
 _inode() {		# /* undoc? 2.0 */
@@ -348,7 +343,7 @@ _superset() {
 		echo === Pending files === >> $TMP1
 		sed 's/^/    /' < $TMP2 >> $TMP1
 	}
-	bk sfiles -cg > $TMP2
+	bk gfiles -c > $TMP2
 	test -s $TMP2 && {
 		test $LIST = NO && {
 			rm -f $TMP1 $TMP2
@@ -357,9 +352,9 @@ _superset() {
 		echo === Modified files === >> $TMP1
 		sed 's/^/    /' < $TMP2 >> $TMP1
 	}
-	(bk sfiles -x
-	 bk sfiles -xa BitKeeper/triggers
-	 bk sfiles -xa BitKeeper/etc |
+	(bk gfiles -x
+	 bk gfiles -xa BitKeeper/triggers
+	 bk gfiles -xa BitKeeper/etc |
 	    egrep -v 'etc/SCCS|etc/csets-out|etc/csets-in|etc/level'
 	) | bk sort > $TMP2
 	test -s $TMP2 && {
@@ -410,7 +405,7 @@ _superset() {
 			echo "    `ls -l BitKeeper/tmp/${i}.patch`" >> $TMP1
 		}
 	done
-	bk sfiles -R > $TMP2
+	bk gfiles -R > $TMP2
 	test -s $TMP2 && {
 		EXIT=${TMP}/bkexit$$
 		rm -f $EXIT
@@ -522,8 +517,8 @@ _extras() {		# /* doc 2.0 */
 	then	cd "$1"
 		__feature_test
 		shift
-		bk sfiles -x $A "$@"
-	else	bk -R sfiles -x $A "$@"
+		bk gfiles -x $A "$@"
+	else	bk -R gfiles -x $A "$@"
 	fi
 }
 
@@ -598,7 +593,7 @@ _obscure() {
 
 __bkfiles() {
 	__feature_test "$1"
-	bk sfiles "$1" |
+	bk gfiles "$1" |
 	    bk prs -hr1.0 -nd:DPN: - | grep BitKeeper/ > ${TMP}/bk$$
 	test -s ${TMP}/bk$$ && {
 		echo "$2 directories with BitKeeper files not allowed" 1>&2
@@ -615,27 +610,27 @@ _rmdir() {		# /* doc 2.0 */
 	if [ ! -d "$1" ]; then echo "$1 is not a directory" 1>&2; exit 1; fi
 	bk sfiles --relpath="`bk root -S "$1"`" "$1" | bk check -c - || exit 1;
 	__bkfiles "$1" "Removing"
-	XNUM=`bk sfiles -x "$1" | wc -l`
+	XNUM=`bk gfiles -x "$1" | wc -l`
 	if [ "$XNUM" -ne 0 ]
 	then
 		echo "There are extra files under $1" 1>&2;
-		bk sfiles -x $1 1>&2
+		bk gfiles -x $1 1>&2
 		exit 1
 	fi
-	CNUM=`bk sfiles -c "$1" | wc -l`
+	CNUM=`bk gfiles -c "$1" | wc -l`
 	if [ "$CNUM" -ne 0 ]
 	then
 		echo "There are edited files under $1" 1>&2;
-		bk sfiles -cg "$1" 1>&2
+		bk gfiles -c "$1" 1>&2
 		exit 1
 	fi
-	bk sfiles "$1" | bk clean -q -
-	bk sfiles "$1" | bk sort | bk rm -
-	SNUM=`bk sfiles "$1" | wc -l`
+	bk gfiles "$1" | bk clean -q -
+	bk gfiles "$1" | bk sort | bk rm -
+	SNUM=`bk gfiles "$1" | wc -l`
 	if [ "$SNUM" -ne 0 ]; 
 	then
 		echo "Failed to remove the following files: 1>&2"
-		bk sfiles -g "$1" 1>&2
+		bk gfiles "$1" 1>&2
 		exit 1
 	fi
 	if [ -d "$1" ]
@@ -721,8 +716,8 @@ _chmod() {		# /* doc 2.0 */
 	shift
 	ROOT=`bk root -R`
 	rm -f "$ROOT/BitKeeper/tmp/err$$"
-	bk sfiles -g ${1+"$@"} | while read i
-	do	test "X`bk sfiles -c $i`" = X || {
+	bk gfiles ${1+"$@"} | while read i
+	do	test "X`bk gfiles -c $i`" = X || {
 			echo "Cannot clean $i; skipping it" 1>&2
 			continue
 		}

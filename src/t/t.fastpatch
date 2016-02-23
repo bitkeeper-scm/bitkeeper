@@ -119,7 +119,7 @@ cd ..
 mkdir empty
 cd empty
 bk takepatch -ia < ../project/fullpatch || fail
-bk -r | while read file; do
+bk sfiles | while read file; do
 	bk _scat $file > tp
 	bk _scat ../project.sfiles/$file > mp
 	cmpfiles tp mp

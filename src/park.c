@@ -107,7 +107,7 @@ err:		if (s) sccs_free(s);
 		fclose(f);
 	} else {
 		sysio(0, changedfile, 0,
-			"bk", "sfiles", aflag ? "-Ugcx" : "-Ugc", SYS);
+			"bk", "gfiles", aflag ? "-Ugcx" : "-Ugc", SYS);
 	}
 	if (size(changedfile) == 0) {
 		unless (qflag) printf("Nothing to park\n");

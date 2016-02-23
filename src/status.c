@@ -46,7 +46,7 @@ status_main(int ac, char **av)
 	/* 7.0 status starts here */
 	/* start these early to reduce latency */
 	fchg = popen("bk changes -aLR -nd. 2>&1", "r");
-	fsfile = popen("bk -e sfiles -Ucgvhp", "r"); /* XXX no scancomps */
+	fsfile = popen("bk -e gfiles -Ucvhp", "r"); /* XXX no scancomps */
 
 	printf("Repo: %s:%s\n", sccs_realhost(), proj_root(0));
 	if (isnest) {

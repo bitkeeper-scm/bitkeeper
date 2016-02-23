@@ -84,6 +84,7 @@ main(int volatile ac, char **av, char **env)
 		{ "from-iterator", 304 },
 		{ "sigpipe", 305 },     // allow SIGPIPE
 		{ "sfiles-opts;", 306 },// --sfiles-opts=vcg
+		{ "gfiles-opts;", 306 },// --gfiles-opts=vcg
 		{ "config;", 307 },	// override config options
 		{ "ibuf;", 310 },
 		{ "obuf;", 320 },
@@ -220,7 +221,7 @@ main(int volatile ac, char **av, char **env)
 
 	/*
 	 * Parse our options if called as "bk".
-	 * We support most of the sfiles options.
+	 * We support most of the gfiles options.
 	 */
 	prog = basenm(av[0]);
 	if (streq(prog, "sccs")) prog = "bk";
@@ -251,14 +252,15 @@ main(int volatile ac, char **av, char **env)
 				dashU = 1; /* nested -U mode */
 				sopts = bk_saveArg(sopts, av, c);
 				break;
+			    case 'g': break; // ignore
 			    case '1': case 'a': case 'c': case 'd':
-			    case 'D': case 'g': case 'G': case 'l':
+			    case 'D': case 'G': case 'l':
 			    case 'n': case 'p': case 'u': case 'x': case '^':
 				if (c == 'c') {
 					mp |= DS_EDITED;
 				} else if ((c == 'p') || (c == 'l')) {
 					mp |= DS_PENDING;
-				} else unless (c == 'g') {
+				} else {
 					fast_ok = 0;
 				}
 				sopts = bk_saveArg(sopts, av, c);
@@ -480,7 +482,6 @@ baddir:						fprintf(stderr,
 			    "bk: -R/-P not allowed with -e\n");
 			return (1);
 		}
-		if (dashA) sopts = addLine(sopts, strdup("-g"));
 
 		if (av[optind]) {
 			prog = av[optind];
@@ -537,8 +538,8 @@ baddir:						fprintf(stderr,
 		if ((dashA || each_repo) && !proj_isEnsemble(0)) {
 			/*
 			 * Downgrade to be compat in standalone trees.
-			 * bk -A => bk -gr, but with cwd relative paths
-			 * bk -U => bk -gUr, but with cwd relative paths
+			 * bk -A => bk -r, but with cwd relative paths
+			 * bk -U => bk -Ur, but with cwd relative paths
 			 * bk -sHERE -A => bk -r
 			 */
 			if (dashA) {
@@ -621,17 +622,17 @@ bad_locking:				fprintf(stderr,
 
 		unless (prog = av[optind]) {
 			prog = "bk"; /* for error messages */
-			sopts = unshiftLine(sopts, strdup("sfiles"));
+			sopts = unshiftLine(sopts, strdup("gfiles"));
 			if (dashr) {
 				if (dashA) proj_cd2root();
-				/* bk [opts] -r => bk -R sfiles [opts] */
+				/* bk [opts] -r => bk -R gfiles [opts] */
 				sopts = addLine(sopts, 0);
 				av = &sopts[1];
 				ac = nLines(sopts);
 				prog = av[0];
 				goto run;
 			} else if (dashA) {
-				/* bk -U [opts] => bk -s sfiles -U [opts] -g */
+				/* bk -U [opts] => bk -s gfiles -U [opts] */
 				sopts = unshiftLine(sopts, strdup("bk"));
 				unless (mp & DS_PENDING) {
 					/*
@@ -662,9 +663,9 @@ bad_locking:				fprintf(stderr,
 			}
 		}
 		for (ac = 0; av[ac] = av[optind++]; ac++);
-		if ((dashr || dashA) && !streq(prog, "sfiles")) {
+		if ((dashr || dashA) && !streq(prog, "gfiles")) {
 			if (dashr) {
-				sopts = unshiftLine(sopts, strdup("sfiles"));
+				sopts = unshiftLine(sopts, strdup("gfiles"));
 				if (dashA) sopts = unshiftLine(sopts,
 				    strdup("-R"));
 			} else{

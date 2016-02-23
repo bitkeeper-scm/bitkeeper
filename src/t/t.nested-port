@@ -118,9 +118,9 @@ test "`bk prs -hnd:SPN: -r+ sa2/ChangeSet`" = sa2/SCCS/s.ChangeSet || {
      exit 1
 }
 bk -r check -ac || fail
-bk sfiles -pAC > GOT
+bk gfiles -pAC > GOT
 cat <<EOF > WANT
-sa2/SCCS/s.ChangeSet|1.3
+sa2/ChangeSet|1.3
 EOF
 cmpfiles GOT WANT
 bk log -C1.2 -d:JOIN::I: sa2/ChangeSet > WANT
@@ -449,13 +449,13 @@ bk commit -S $Q -y'add baz' || fail
 
 bk port -C $Q ../../project/bash || fail
 cd ..
-bk sfiles -pAC > GOT
+bk gfiles -pAC > GOT
 cat <<EOF > WANT
-mybash/SCCS/s.ChangeSet|1.4
+mybash/ChangeSet|1.4
 EOF
 cmpfiles GOT WANT
 bk commit $Q -ymkcset
-bk log -C+ -nd":SFILE:|:I:" mybash/ChangeSet > GOT
+bk log -C+ -nd":GFILE:|:I:" mybash/ChangeSet > GOT
 cmpfiles GOT WANT
 echo OK
 

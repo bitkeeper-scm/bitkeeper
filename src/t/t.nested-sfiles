@@ -42,107 +42,107 @@ echo OK
 #
 # Plus project/standalone is unattached
 
-echo $N bk sfiles sees stuff in product only ........................$NL
-bk sfiles > GOT
+echo $N bk gfiles sees stuff in product only ........................$NL
+bk gfiles > GOT
 cat <<EOF > WANT
-SCCS/s.ChangeSet
-BitKeeper/etc/SCCS/s.aliases
-BitKeeper/etc/SCCS/s.attr
-BitKeeper/etc/SCCS/s.collapsed
-BitKeeper/etc/SCCS/s.config
-BitKeeper/etc/SCCS/s.gone
-BitKeeper/etc/SCCS/s.ignore
-a/b/SCCS/s.f
-a/b/c/SCCS/s.ChangeSet
-a/b/c/d/e/SCCS/s.ChangeSet
-a/b/c1/SCCS/s.f
-gcc/SCCS/s.ChangeSet
-gdb/SCCS/s.ChangeSet
+ChangeSet
+BitKeeper/etc/aliases
+BitKeeper/etc/attr
+BitKeeper/etc/collapsed
+BitKeeper/etc/config
+BitKeeper/etc/gone
+BitKeeper/etc/ignore
+a/b/f
+a/b/c/ChangeSet
+a/b/c/d/e/ChangeSet
+a/b/c1/f
+gcc/ChangeSet
+gdb/ChangeSet
 EOF
 cmpfiles GOT WANT
 echo OK
 
-echo $N bk sfiles -h filters out component changeset files ..........$NL
-bk sfiles -h | grep ChangeSet > GOT
+echo $N bk gfiles -h filters out component changeset files ..........$NL
+bk gfiles -h | grep ChangeSet > GOT
 cat <<EOF > WANT
-SCCS/s.ChangeSet
+ChangeSet
 EOF
 cmpfiles GOT WANT
 echo OK
 
-echo $N bk sfiles . .................................................$NL
-bk sfiles . > GOT
+echo $N bk gfiles . .................................................$NL
+bk gfiles . > GOT
 cat <<EOF > WANT
-SCCS/s.ChangeSet
-BitKeeper/etc/SCCS/s.aliases
-BitKeeper/etc/SCCS/s.attr
-BitKeeper/etc/SCCS/s.collapsed
-BitKeeper/etc/SCCS/s.config
-BitKeeper/etc/SCCS/s.gone
-BitKeeper/etc/SCCS/s.ignore
-a/b/SCCS/s.f
-a/b/c1/SCCS/s.f
-a/b/c/SCCS/s.ChangeSet
-a/b/c/d/e/SCCS/s.ChangeSet
-gcc/SCCS/s.ChangeSet
-gdb/SCCS/s.ChangeSet
+ChangeSet
+BitKeeper/etc/aliases
+BitKeeper/etc/attr
+BitKeeper/etc/collapsed
+BitKeeper/etc/config
+BitKeeper/etc/gone
+BitKeeper/etc/ignore
+a/b/f
+a/b/c1/f
+a/b/c/ChangeSet
+a/b/c/d/e/ChangeSet
+gcc/ChangeSet
+gdb/ChangeSet
 EOF
 cmpfiles GOT WANT
 echo OK
 
-echo $N bk sfiles a .................................................$NL
-bk sfiles a > GOT
+echo $N bk gfiles a .................................................$NL
+bk gfiles a > GOT
 cat <<EOF > WANT
-a/b/SCCS/s.f
-a/b/c1/SCCS/s.f
-a/b/c/SCCS/s.ChangeSet
-a/b/c/d/e/SCCS/s.ChangeSet
+a/b/f
+a/b/c1/f
+a/b/c/ChangeSet
+a/b/c/d/e/ChangeSet
 EOF
 cmpfiles GOT WANT
 echo OK
 
-echo $N bk sfiles -h a filters comp changesets ......................$NL
-bk sfiles -h a > GOT
+echo $N bk gfiles -h a filters comp changesets ......................$NL
+bk gfiles -h a > GOT
 cat <<EOF > WANT
-a/b/SCCS/s.f
-a/b/c1/SCCS/s.f
+a/b/f
+a/b/c1/f
 EOF
 cmpfiles GOT WANT
 echo OK
 
-echo $N bk sfiles a/b/c .............................................$NL
-bk sfiles a/b/c > GOT
+echo $N bk gfiles a/b/c .............................................$NL
+bk gfiles a/b/c > GOT
 cat <<EOF > WANT
-a/b/c/SCCS/s.ChangeSet
-a/b/c/BitKeeper/etc/SCCS/s.attr
-a/b/c/BitKeeper/etc/SCCS/s.collapsed
-a/b/c/BitKeeper/etc/SCCS/s.config
-a/b/c/BitKeeper/etc/SCCS/s.gone
-a/b/c/BitKeeper/etc/SCCS/s.ignore
-a/b/c/d/SCCS/s.f
+a/b/c/ChangeSet
+a/b/c/BitKeeper/etc/attr
+a/b/c/BitKeeper/etc/collapsed
+a/b/c/BitKeeper/etc/config
+a/b/c/BitKeeper/etc/gone
+a/b/c/BitKeeper/etc/ignore
+a/b/c/d/f
 EOF
 cmpfiles GOT WANT
 echo OK
 
-echo $N bk sfiles a/b/c1.............................................$NL
-bk sfiles a/b/c1 > GOT
+echo $N bk gfiles a/b/c1.............................................$NL
+bk gfiles a/b/c1 > GOT
 cat <<EOF > WANT
-a/b/c1/SCCS/s.f
+a/b/c1/f
 EOF
 cmpfiles GOT WANT
 echo OK
 
-echo $N bk sfiles a/b/f .............................................$NL
-bk sfiles a/b/f > GOT
+echo $N bk gfiles a/b/f .............................................$NL
+bk gfiles a/b/f > GOT
 cat <<EOF > WANT
-a/b/SCCS/s.f
+a/b/f
 EOF
 cmpfiles GOT WANT
 echo OK
 
-echo $N bk sfiles -1 ................................................$NL
-bk sfiles -1 > GOT
-echo SCCS/s.ChangeSet > WANT
+echo $N bk gfiles -1 ................................................$NL
+bk gfiles -1 > GOT
+echo ChangeSet > WANT
 cmpfiles GOT WANT
 echo OK
 
@@ -250,8 +250,8 @@ grep -q 'bk: -A may not be combined with -r' OUT || {
 }
 echo OK
 
-echo $N bk -Ur in a nested product should be like bk -R sfiles -U ...$NL
-bk sfiles -U > WANT
+echo $N bk -Ur in a nested product should be like bk -R gfiles -U ...$NL
+bk gfiles -U > WANT
 bk -Ur > GOT
 cmpfiles WANT GOT
 echo OK
@@ -350,50 +350,50 @@ echo $N bk -e -s. gfiles from inside a comp runs that in that comp ..$NL
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk sfiles -r in a nested collection includes standalone .....$NL
-bk sfiles -r > GOT
+echo $N bk gfiles -r in a nested collection includes standalone .....$NL
+bk gfiles -r > GOT
 cat <<EOF > WANT
-SCCS/s.ChangeSet
-BitKeeper/etc/SCCS/s.aliases
-BitKeeper/etc/SCCS/s.attr
-BitKeeper/etc/SCCS/s.collapsed
-BitKeeper/etc/SCCS/s.config
-BitKeeper/etc/SCCS/s.gone
-BitKeeper/etc/SCCS/s.ignore
-a/b/SCCS/s.f
-a/b/c/SCCS/s.ChangeSet
-a/b/c/BitKeeper/etc/SCCS/s.attr
-a/b/c/BitKeeper/etc/SCCS/s.collapsed
-a/b/c/BitKeeper/etc/SCCS/s.config
-a/b/c/BitKeeper/etc/SCCS/s.gone
-a/b/c/BitKeeper/etc/SCCS/s.ignore
-a/b/c/d/SCCS/s.f
-a/b/c/d/e/SCCS/s.ChangeSet
-a/b/c/d/e/BitKeeper/etc/SCCS/s.attr
-a/b/c/d/e/BitKeeper/etc/SCCS/s.collapsed
-a/b/c/d/e/BitKeeper/etc/SCCS/s.config
-a/b/c/d/e/BitKeeper/etc/SCCS/s.gone
-a/b/c/d/e/BitKeeper/etc/SCCS/s.ignore
-a/b/c/d/e/f/SCCS/s.f
-a/b/c1/SCCS/s.f
-gcc/SCCS/s.ChangeSet
-gcc/BitKeeper/etc/SCCS/s.attr
-gcc/BitKeeper/etc/SCCS/s.collapsed
-gcc/BitKeeper/etc/SCCS/s.config
-gcc/BitKeeper/etc/SCCS/s.gone
-gcc/BitKeeper/etc/SCCS/s.ignore
-gdb/SCCS/s.ChangeSet
-gdb/BitKeeper/etc/SCCS/s.attr
-gdb/BitKeeper/etc/SCCS/s.collapsed
-gdb/BitKeeper/etc/SCCS/s.config
-gdb/BitKeeper/etc/SCCS/s.gone
-gdb/BitKeeper/etc/SCCS/s.ignore
-standalone/SCCS/s.ChangeSet
-standalone/BitKeeper/etc/SCCS/s.attr
-standalone/BitKeeper/etc/SCCS/s.collapsed
-standalone/BitKeeper/etc/SCCS/s.config
-standalone/BitKeeper/etc/SCCS/s.gone
-standalone/BitKeeper/etc/SCCS/s.ignore
+ChangeSet
+BitKeeper/etc/aliases
+BitKeeper/etc/attr
+BitKeeper/etc/collapsed
+BitKeeper/etc/config
+BitKeeper/etc/gone
+BitKeeper/etc/ignore
+a/b/f
+a/b/c/ChangeSet
+a/b/c/BitKeeper/etc/attr
+a/b/c/BitKeeper/etc/collapsed
+a/b/c/BitKeeper/etc/config
+a/b/c/BitKeeper/etc/gone
+a/b/c/BitKeeper/etc/ignore
+a/b/c/d/f
+a/b/c/d/e/ChangeSet
+a/b/c/d/e/BitKeeper/etc/attr
+a/b/c/d/e/BitKeeper/etc/collapsed
+a/b/c/d/e/BitKeeper/etc/config
+a/b/c/d/e/BitKeeper/etc/gone
+a/b/c/d/e/BitKeeper/etc/ignore
+a/b/c/d/e/f/f
+a/b/c1/f
+gcc/ChangeSet
+gcc/BitKeeper/etc/attr
+gcc/BitKeeper/etc/collapsed
+gcc/BitKeeper/etc/config
+gcc/BitKeeper/etc/gone
+gcc/BitKeeper/etc/ignore
+gdb/ChangeSet
+gdb/BitKeeper/etc/attr
+gdb/BitKeeper/etc/collapsed
+gdb/BitKeeper/etc/config
+gdb/BitKeeper/etc/gone
+gdb/BitKeeper/etc/ignore
+standalone/ChangeSet
+standalone/BitKeeper/etc/attr
+standalone/BitKeeper/etc/collapsed
+standalone/BitKeeper/etc/config
+standalone/BitKeeper/etc/gone
+standalone/BitKeeper/etc/ignore
 EOF
 cmpfiles GOT WANT
 echo OK
@@ -401,75 +401,75 @@ echo OK
 echo ---- similar tests in a subdirectory in the product
 cd "$HERE/project/a"
 
-echo $N bk sfiles ...................................................$NL
-bk sfiles > GOT
+echo $N bk gfiles ...................................................$NL
+bk gfiles > GOT
 cat <<EOF > WANT
-b/SCCS/s.f
-b/c/SCCS/s.ChangeSet
-b/c/d/e/SCCS/s.ChangeSet
-b/c1/SCCS/s.f
+b/f
+b/c/ChangeSet
+b/c/d/e/ChangeSet
+b/c1/f
 EOF
 cmpfiles GOT WANT
 echo OK
 
-echo $N bk sfiles . .................................................$NL
-bk sfiles . > GOT
+echo $N bk gfiles . .................................................$NL
+bk gfiles . > GOT
 cat <<EOF > WANT
-b/SCCS/s.f
-b/c1/SCCS/s.f
-b/c/SCCS/s.ChangeSet
-b/c/d/e/SCCS/s.ChangeSet
+b/f
+b/c1/f
+b/c/ChangeSet
+b/c/d/e/ChangeSet
 EOF
 cmpfiles GOT WANT
 echo OK
 
 
-echo $N bk sfiles b .................................................$NL
-bk sfiles b > GOT
+echo $N bk gfiles b .................................................$NL
+bk gfiles b > GOT
 cat <<EOF > WANT
-b/SCCS/s.f
-b/c1/SCCS/s.f
-b/c/SCCS/s.ChangeSet
-b/c/d/e/SCCS/s.ChangeSet
+b/f
+b/c1/f
+b/c/ChangeSet
+b/c/d/e/ChangeSet
 EOF
 cmpfiles GOT WANT
 echo OK
 
-echo $N bk sfiles b/c1 ..............................................$NL
-bk sfiles b/c1 > GOT
+echo $N bk gfiles b/c1 ..............................................$NL
+bk gfiles b/c1 > GOT
 cat <<EOF > WANT
-b/c1/SCCS/s.f
+b/c1/f
 EOF
 cmpfiles GOT WANT
 echo OK
 
-echo $N bk sfiles b/f ...............................................$NL
-bk sfiles b/f > GOT
+echo $N bk gfiles b/f ...............................................$NL
+bk gfiles b/f > GOT
 cat <<EOF > WANT
-b/SCCS/s.f
+b/f
 EOF
 cmpfiles GOT WANT
 echo OK
 
-echo $N bk sfiles -r ................................................$NL
-bk sfiles -r > GOT
+echo $N bk gfiles -r ................................................$NL
+bk gfiles -r > GOT
 cat <<EOF > WANT
-b/SCCS/s.f
-b/c/SCCS/s.ChangeSet
-b/c/BitKeeper/etc/SCCS/s.attr
-b/c/BitKeeper/etc/SCCS/s.collapsed
-b/c/BitKeeper/etc/SCCS/s.config
-b/c/BitKeeper/etc/SCCS/s.gone
-b/c/BitKeeper/etc/SCCS/s.ignore
-b/c/d/SCCS/s.f
-b/c/d/e/SCCS/s.ChangeSet
-b/c/d/e/BitKeeper/etc/SCCS/s.attr
-b/c/d/e/BitKeeper/etc/SCCS/s.collapsed
-b/c/d/e/BitKeeper/etc/SCCS/s.config
-b/c/d/e/BitKeeper/etc/SCCS/s.gone
-b/c/d/e/BitKeeper/etc/SCCS/s.ignore
-b/c/d/e/f/SCCS/s.f
-b/c1/SCCS/s.f
+b/f
+b/c/ChangeSet
+b/c/BitKeeper/etc/attr
+b/c/BitKeeper/etc/collapsed
+b/c/BitKeeper/etc/config
+b/c/BitKeeper/etc/gone
+b/c/BitKeeper/etc/ignore
+b/c/d/f
+b/c/d/e/ChangeSet
+b/c/d/e/BitKeeper/etc/attr
+b/c/d/e/BitKeeper/etc/collapsed
+b/c/d/e/BitKeeper/etc/config
+b/c/d/e/BitKeeper/etc/gone
+b/c/d/e/BitKeeper/etc/ignore
+b/c/d/e/f/f
+b/c1/f
 EOF
 cmpfiles GOT WANT
 echo OK
@@ -561,8 +561,8 @@ grep -q 'bk: -A may not be combined with -r' OUT || {
 }
 echo OK
 
-echo $N bk -Ur in a prod subdir should be like bk -R sfiles -U ......$NL
-bk -R sfiles -U > WANT
+echo $N bk -Ur in a prod subdir should be like bk -R gfiles -U ......$NL
+bk -R gfiles -U > WANT
 bk -Ur > GOT
 cmpfiles WANT GOT
 echo OK
@@ -706,8 +706,8 @@ grep -q 'bk: -A may not be combined with -r' OUT || {
 }
 echo OK
 
-echo $N bk -Ur in a nested comp should be like bk -R sfiles -U ......$NL
-bk sfiles -U > WANT
+echo $N bk -Ur in a nested comp should be like bk -R gfiles -U ......$NL
+bk gfiles -U > WANT
 bk -Ur > GOT
 cmpfiles WANT GOT
 echo OK

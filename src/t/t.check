@@ -388,7 +388,7 @@ bk _rm SCCS/s.ff ff.tmp
 echo OK
 }
 
-echo $N Make sure check complains is cset marks are missing .........$NL
+echo $N Make sure check complains if cset marks are missing .........$NL
 cd "$HERE"
 bk clone $Q project bad || fail
 cd bad

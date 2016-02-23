@@ -34,7 +34,7 @@ opark_main(int ac, char **av)
 	if (purge) return (purgeParkFile(purge));
 
 	bktmp(changedfile);
-	sysio(0, changedfile, 0, "bk", "sfiles", "-c", SYS);
+	sysio(0, changedfile, 0, "bk", "gfiles", "-c", SYS);
 	if (size(changedfile) <= 0) {
 empty:		unless (qflag) printf("Nothing to park\n");
 		if (parkfile[0]) unlink(parkfile);

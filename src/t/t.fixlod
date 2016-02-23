@@ -29,7 +29,7 @@ do	mkdir $dir
 	do	echo "I am $dir/$file" > $dir/$file
 	done
 done
-bk sfiles -x | bk ci $Q -i -
+bk gfiles -x | bk ci $Q -i -
 if bk _test ! -f d2/SCCS/s.b; then echo failed to create files; exit 1; fi
 echo OK
 
@@ -39,7 +39,7 @@ bk edit $Q d1/a || fail
 echo foo >> d1/a
 bk delta $Q -fy'new lod' d1/a || fail
 bk commit $S -yCset || fail
-test `bk sfiles -pC | wc -l` -eq 0 || {
+test `bk gfiles -pC | wc -l` -eq 0 || {
 	echo failed to commit all files
 	exit 1
 }
