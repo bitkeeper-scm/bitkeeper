@@ -4709,14 +4709,6 @@ sccs_init(char *name, u32 flags)
 	static	int show = -1;
 
 	T_INIT("name=%s flags=%x", name, flags);
-	if (show == -1) {
-		glob = getenv("BK_SHOWINIT");
-		show = glob != 0;
-	}
-	if (show && match_one(name, glob, 0)) {
-		ttyprintf("init(%s) [%s]\n", name, prog);
-		gdb_backtrace();
-	}
 
 	if (strpbrk(name, "\n\r|")) {
 		fprintf(stderr,
@@ -4731,6 +4723,14 @@ sccs_init(char *name, u32 flags)
 	if (lstat_rc && (flags & INIT_MUSTEXIST)) {
 		free(name);
 		return (0);
+	}
+	if (show == -1) {
+		glob = getenv("BK_SHOWINIT");
+		show = glob != 0;
+	}
+	if (show && match_one(name, glob, 0)) {
+		ttyprintf("init(%s) [%s]\n", name, prog);
+		gdb_backtrace();
 	}
 	s = new(sccs);
 	s->sfile = name;	/* dup'ed at name2sccs() above */

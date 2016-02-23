@@ -168,7 +168,7 @@ bk commit -S $Q -ynew || fail
 check_cnt
 echo OK
 
-CNT=5
+CNT=6
 echo $N "Count the inits for a 'bk -P commit' ($CNT) ...................."$NL
 rm -f "$FILE"
 bk -P commit $Q -ynew || fail
@@ -234,7 +234,7 @@ bk unpull -fs $Q || fail
 check_cnt
 echo OK
 
-CNT=63
+CNT=64
 echo $N "Count the inits for a 'bk pull' w merge ($CNT)................."$NL
 bk portal $Q .
 touch c
@@ -288,3 +288,4 @@ rm "$FILE"
 bk clone $Q -sALL -@nest2 "$HERE"/nest newnest2 || fail
 check_cnt
 echo OK
+
