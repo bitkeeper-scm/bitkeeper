@@ -1374,7 +1374,7 @@ test -d gcc/PENDING && {
 }
 echo OK
 
-echo $N Repro abcdr key mismatch problem ............................$NL
+echo $N Repro key mismatch problem ..................................$NL
 cd "$HERE"
 nested iprod
 bk clone $Q . ../icopy

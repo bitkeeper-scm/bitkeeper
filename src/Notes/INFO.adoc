@@ -32,7 +32,7 @@ Naming
 
 We reserve the prefix com.bitkeeper/ - customers may not use that.
 Customers may use anything else but we suggest the reverse domain
-partitioning such as abcdefghijkGZ.
+partitioning such as com.bitkeeper.
 
 For repository specific information, we can use
 

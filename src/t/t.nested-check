@@ -1,6 +1,6 @@
 echo parallel:2 >> .bk/config
 
-echo $N Reproduce abcdr marked delta is missing problem .............$NL
+echo $N Reproduce marked delta is missing problem ...................$NL
 nested prod
 cd "$HERE"
 bk clone $Q prod prod-clone
