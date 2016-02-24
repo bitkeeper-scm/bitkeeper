@@ -103,13 +103,9 @@ bk clone $Q -r1.1 . ../clone || fail
 cd ../clone
 bk pull $Q || fail
 bk admin -z
-bk _cp SCCS/s.xflags A
-bk _cp ../project/SCCS/s.xflags B
-cmp -s A B || {
-	echo files differ
-	diff A B
-	exit 1
-}
+bk _scat SCCS/s.xflags > A
+bk _scat ../project/SCCS/s.xflags > B
+cmpfiles A B
 bk xflags -s xflags || {
 	echo failed
 	exit 1

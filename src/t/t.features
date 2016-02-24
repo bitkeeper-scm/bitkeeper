@@ -41,7 +41,7 @@ cd "$HERE"
 nested nest
 bk clone $Q . ../nestcopy
 cd ../nestcopy
-_BK_TESTFEAT='HORSE' bk pull $Q 2>ERR && fail -f ERR
+_BK_TESTFEAT='HORSE,fastpatch' bk pull $Q 2>ERR && fail -f ERR
 bk getmsg -= bk_missing_feature SAMv3 > WANT
 cmpfiles ERR WANT
 _BK_TEST_REQUIRED='HORSE' bk pull $Q 2>ERR && fail -f ERR
@@ -56,7 +56,7 @@ echo OK
 
 echo $N Here what bkd has and output message ........................$NL
 cd ../nestcopy
-_BKD_TESTFEAT='HORSE' bk pull $Q 2>ERR && fail -f ERR
+_BKD_TESTFEAT='HORSE,fastpatch' bk pull $Q 2>ERR && fail -f ERR
 bk getmsg -= bkd_missing_feature SAMv3 > WANT
 cmpfiles ERR WANT
 _BKD_TEST_REQUIRED='HORSE' bk pull $Q 2>ERR && fail -f ERR

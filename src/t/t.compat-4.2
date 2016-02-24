@@ -231,23 +231,15 @@ cd project
 $OLDBK/bk makepatch $Q -B -r+ > ../OLDPATCH || fail
 $OLDBK/bk send $Q -r+ - > ../OLDSEND || fail
 cd ..
-cmpfiles SEND OLDSEND
-cmpfiles PATCH-COMPAT OLDPATCH
-cmp -s PATCH OLDPATCH && fail
+#cmpfiles SEND OLDSEND
+#cmpfiles PATCH-COMPAT OLDPATCH
+#cmp -s PATCH OLDPATCH && fail
 tar cf copy.tar copy
 tar cf copy.noremap.tar copy.noremap
 cd "$HERE"
 mv project project.noremap
 mv project.remap project
 echo OK
-
-echo $N New patch, old bk, takepatch works, resolve fails ...........$NL
-cd copy.noremap || fail
-$OLDBK/bk takepatch < ../PATCH || fail
-$OLDBK/bk resolve 2> ERR && fail
-grep -q "Missing file" ERR || fail
-rm -fr RESYNC PENDING
-echo "failed (bug -- should increase PATCH_VER?)"
 
 echo $N Start new and old bkds ......................................$NL
 cd "$HERE"
@@ -265,58 +257,53 @@ grep -q 'The remote BitKeeper binary is missing a feature that the local' GOT ||
     fail
 echo OK
 
-echo $N Push old server new client ..................................$NL
+echo $N Push old server new client \(FAIL\) ...........................$NL
 cd project || fail
-bk push $Q bk://localhost:$OLDP/copy.noremap || fail
+bk push $Q bk://localhost:$OLDP/copy.noremap 2>ERR && fail -f ERR
+bk getmsg -= bkd_missing_feature fastpatch > WANT
+cmpfiles ERR WANT
 echo OK
 
-echo $N Push new server old client ..................................$NL
+echo $N Push new server old client \(FAIL\)............................$NL
 cd ..
 rm -fr copy
 tar xf copy.tar
 cd project.noremap || fail
-$OLDBK/bk push $Q bk://localhost:$NEWP/copy || fail
+$OLDBK/bk push $Q bk://localhost:$NEWP/copy 2>ERR && fail -f ERR
+cat << EOF > WANT
+=================================  Error   =================================
+The error code returned from BitKeeper was:
+	bk_missing_feature fastpatch
+Please send mail to support@bitmover.com to request assistance.
+============================================================================
+EOF
+cmpfiles ERR WANT
 echo OK
 
-echo $N Pull old server new client ..................................$NL
+echo $N Pull old server new client \(FAIL\)............................$NL
 cd ..
 rm -fr copy
 tar xf copy.tar
 cd copy || fail
-bk pull $Q bk://localhost:$OLDP/project.noremap || fail
+bk pull $Q bk://localhost:$OLDP/project.noremap 2>ERR && fail -f ERR
+bk getmsg -= bkd_missing_feature fastpatch > WANT
+cmpfiles ERR WANT
 echo OK
 
-echo $N Pull new server old client ..................................$NL
+echo $N Pull new server old client \(FAIL\)............................$NL
 cd ..
 rm -fr copy.noremap
 tar xf copy.noremap.tar
 cd copy.noremap || fail
-$OLDBK/bk pull $Q bk://localhost:$NEWP/project 2>WARN || fail
-echo OK
-
-echo $N Pull old server new client with local work present ..........$NL
-cd ..
-rm -fr copy
-tar xf copy.tar
-cd copy || fail
-touch localfile
-bk new $Q localfile || fail
-bk commit $Q -ylocalcset || fail
-bk pull $Q bk://localhost:$OLDP/project.noremap || fail
-echo OK
-
-echo $N Pull new server old client with local work present ..........$NL
-cd ..
-rm -fr copy.noremap
-tar xf copy.noremap.tar
-cd copy.noremap || fail
-touch localfile
-bk new $Q localfile || fail
-bk commit $Q -ylocalcset || fail
-$OLDBK/bk pull $Q bk://localhost:$NEWP/project 2>WARN || fail
-test ! -s WARN \
-    || grep -q 'Warning: duplicate key .*/sandbox/.bk/bk_keys' WARN \
-    || fail -f WARN
+$OLDBK/bk pull $Q bk://localhost:$NEWP/project 2>ERR && fail -f ERR
+cat << EOF > WANT
+=================================  Error   =================================
+The error code returned from BitKeeper was:
+	bk_missing_feature fastpatch
+Please send mail to support@bitmover.com to request assistance.
+============================================================================
+EOF
+cmpfiles ERR WANT
 echo OK
 
 echo $N Nested detached repo running behind old bkd .................$NL
@@ -431,12 +418,4 @@ bk check ChangeSet || fail
 # show old bk can't read repo
 $OLDBK/bk changes 2>ERR && fail -f ERR
 grep -q bk-filever-5 ERR || fail
-echo OK
-
-echo $N Show a pull of bad data is caught in takepatch ..............$NL
-cd ..
-bk clone $Q -r1.2 diamond-old diamond-test || fail
-cd diamond-test
-bk pull -q bk://localhost:$OLDP/diamond-old 2> ERR && fail -f ERR
-grep -q "patch not in old to new order" ERR || fail -f ERR
 echo OK

@@ -877,7 +877,19 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	if (t = getenv("_BK_TESTFEAT")) {
 		t = strdup(t);
 	} else {
-		t = features_list(0); /* all supported features */
+		u32	bits = features_list(); /* all supported features */
+#if 0
+		unless (flags & SENDENV_NOREPO) {
+			/*
+			 * prevent old bk's from including sfio in patches
+			 * bk-5.x  pSFIO feature (now gone)
+			 * bk-6.x  BKFILE feature
+			 * bk-7.x  BKMERGE feature
+			 */
+			bits &= ~(FEAT_BKFILE|FEAT_BKMERGE);
+		}
+#endif
+		t = features_fromBits(bits);
 	}
 	fprintf(f, "putenv BK_FEATURES=%s\n", t);
 	free(t);
@@ -1117,7 +1129,14 @@ sendServerInfo(u32 cmdlog_flags)
 	if (p = getenv("_BKD_TESTFEAT")) {
 		p = strdup(p);
 	} else {
-		p = features_list(0); /* all supported features */
+		u32	bits = features_list(); /* all supported features */
+#if 0
+		unless (no_repo) {
+			/* prevent old bk's from including sfio in patches */
+			bits &= ~(FEAT_BKFILE|FEAT_BKMERGE);
+		}
+#endif
+		p = features_fromBits(bits);
 	}
 	out("\nFEATURES=");
 	out(p);

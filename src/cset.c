@@ -23,14 +23,12 @@ typedef	struct cset {
 	u32	serial:1;	/* the revs passed in are serial numbers */
 	u32	md5out:1;	/* the revs printed are as md5keys */
 	u32	doBAM:1;	/* send BAM data */
-	u32	compat:1;	/* do not send new sfiles in sfio */
-	u32	fastpatch:1;	/* enable fast patch mode */
+	u32	compat:1;	/* do not send BKMERGE patches */
 	u32	fail:1;		/* let all failures be flushed out */
 	u32	standalone:1;	/* this repo and not product */
 
 	/* numbers */
 	int	bkmerge;	/* -1: default; 1 bkmerge; 0 sccsmerge */
-	int	tooMany;	/* send whole sfiles if # deltas > tooMany */
 	int	verbose;
 	int	progress;	/* progress bar max */
 	int	notty;
@@ -42,7 +40,6 @@ typedef	struct cset {
 
 	char	*csetkey;	/* lie about the cset rootkey */
 	char	**BAM;		/* list of keys we need to send */
-	char	**sfiles;	/* list of whole sfiles we need to send */
 } cset_t;
 
 private	void	csetlist(cset_t *cs, sccs *cset);
@@ -50,7 +47,6 @@ private	void	doSet(sccs *sc);
 private	int	doMarks(cset_t *cs, sccs *sc);
 private	void	doDiff(sccs *sc);
 private	void	sccs_patch(sccs *, cset_t *);
-private	int	cset_diffs(cset_t *cs, ser_t ser);
 private	void	cset_exit(int n);
 private	int	bykeys(const void *pa, const void *pb);
 private	char	csetFile[] = CHANGESET; /* for win32, need writable buffer */
@@ -79,10 +75,8 @@ makepatch_main(int ac, char **av)
 		    case 'd':					/* doc 2.0 */
 			nav[++i] = "-d";
 			break;
-		    case 'F':					/* undoc */
-			nav[++i] = "-F";
-			break;
-		    case 'M': copts.tooMany = atoi(optarg); break;
+		    case 'F': break; // ignored, old fastpatch
+		    case 'M': break; // ignored, old tooMany
 		    case 'P':
 			copts.csetkey = optarg;
 			break;
@@ -114,10 +108,6 @@ makepatch_main(int ac, char **av)
 			break;
 		    default: bk_badArg(c, av);
 		}
-	}
-	if (getenv("_BK_NO_PATCHSFIO")) {
-		copts.compat = 1;
-		copts.tooMany = 0;
 	}
 	unless (range) {
 		nav[++i] = "-m";
@@ -162,7 +152,7 @@ cset_main(int ac, char **av)
 		    case 'B': copts.doBAM = 1; break;
 		    case 'D': ignoreDeleted++; break;		/* undoc 2.0 */
 		    case 'f': copts.force++; break;		/* undoc? 2.0 */
-		    case 'F': copts.fastpatch++; break;		/* undoc */
+		    case 'F': break; // ignored, old fastpatch
 		    case 'h': copts.historic++; break;		/* undoc? 2.0 */
 		    case 'i':					/* doc 2.0 */
 			if (copts.include || copts.exclude) usage();
@@ -254,11 +244,6 @@ cset_main(int ac, char **av)
 		fprintf(stderr, "cset: cannot find package root.\n");
 		return (1);
 	}
-	if (getenv("_BK_NO_FASTPATCH")) {
-		copts.fastpatch = 0;
-	}
-	/* with a onepass patch, nothing is too much */
-	if (copts.fastpatch) copts.tooMany = 0;
 
 	/*
 	 * If doing include/exclude, go do it.
@@ -608,15 +593,12 @@ again:	/* doDiffs can make it two pass */
 
 		fputc('\n', stdout);
 		fputs(PATCH_PATCH, stdout);
-		fputs(cs->fastpatch ? PATCH_FAST : PATCH_CURRENT, stdout);
+		fputs(PATCH_FAST, stdout);
 		if (copts.csetkey) {
 			fputs(((didfeature++) ? "," : PATCH_FEATURES), stdout);
 			fputs("PORT", stdout);
 		}
-		if (copts.bkmerge == -1) {
-			copts.bkmerge = (copts.fastpatch && !copts.compat &&
-			    features_test(cset->proj, FEAT_BKMERGE));
-		} 
+		if (copts.bkmerge == -1) copts.bkmerge = !copts.compat;
 		if (copts.bkmerge) {
 			fputs(((didfeature++) ? "," : PATCH_FEATURES), stdout);
 			fputs("BKMERGE", stdout);
@@ -674,26 +656,20 @@ again:	/* doDiffs can make it two pass */
 		    cs->ndeltas, cs->nfiles);
 	}
 	if (cs->makepatch) {
-		if (cs->BAM || cs->sfiles) fputs("== @SFIO@ ==\n\n", stdout);
+		if (cs->BAM) fputs("== @SFIO@ ==\n\n", stdout);
 		fputs(PATCH_END, stdout);
 		fflush(stdout);
-		if (cs->BAM || cs->sfiles) {
+		if (cs->BAM) {
 			int	i;
 			FILE	*f;
-			char	*cmd = (copts.fastpatch && !copts.compat) ?
-				    "bk sfio -oqB -" : "bk sfio -oqBC -";
 
 			/* try and fetch from my local BAM pool but recurse
 			 * through to the server.
 			 */
-			f = popen(cmd, "w");
+			f = popen("bk sfio -oqB -", "w");
 			EACH(cs->BAM) fprintf(f, "%s\n", cs->BAM[i]);
 			freeLines(cs->BAM, free);
 			cs->BAM = 0;
-			sortLines(cs->sfiles, 0);
-			EACH(cs->sfiles) fprintf(f, "%s\n", cs->sfiles[i]);
-			freeLines(cs->sfiles, free);
-			cs->sfiles = 0;
 			if (pclose(f)) {
 				fprintf(stderr, "BAM sfio -o failed.\n");
 				goto fail;
@@ -876,8 +852,8 @@ sccs_patch(sccs *s, cset_t *cs)
 	int	rc = 0;
 	int	deltas = 0, csets = 0, last = 0;
 	int	outdiffs = 0;
-	int	prs_flags = (PRS_PATCH|SILENT);
-	int	i, n, newfile, hastip;
+	int	prs_flags = (PRS_PATCH|PRS_FASTPATCH|SILENT);
+	int	i, n, newfile;
 	ser_t	*list;
 	char	*gfile = 0;
 	ticker	*tick = 0;
@@ -902,7 +878,6 @@ sccs_patch(sccs *s, cset_t *cs)
 	 * a time when sending the cset diffs.
 	 */
 	newfile = FLAGS(s, TREE(s)) & D_SET;
-	hastip = FLAGS(s, TABLE(s)) & D_SET;
 	list = 0;
 	for (n = 0, d = TABLE(s); d >= TREE(s); d--) {
 		unless (FLAGS(s, d) & D_SET) continue;
@@ -920,22 +895,6 @@ sccs_patch(sccs *s, cset_t *cs)
 	assert(gfile);
 
 	/*
-	 * If the receiver understands then just send the entire sfile
-	 * for newfiles and for any files with more patches than
-	 * threshold.  Don't send the ChangeSet file.  Also don't send
-	 * a sfile if the tip delta is not part of the patch.
-	 * (pull-r or pending deltas)
-	 */
-	if (!CSET(s) && hastip && !MONOTONIC(s) &&
-	    !IS_POLYPATH(PATHNAME(s, sccs_ino(s))) &&
-	    ((!cs->compat && newfile) ||
-		((cs->tooMany > 0) && (n >= cs->tooMany)))) {
-		cs->sfiles = addLine(cs->sfiles, strdup(s->sfile));
-		free(list);
-		if (cs->verbose > 1) fprintf(stderr, "\n");
-		return;
-	}
-	/*
 	 * For each file, spit out file seperators when the filename
 	 * changes.
 	 * Spit out the root rev so we can find if it has moved.
@@ -943,10 +902,7 @@ sccs_patch(sccs *s, cset_t *cs)
 	if ((cs->verbose == 2) && !cs->notty) {
 		tick = progress_start(PROGRESS_SPIN, 0);
 	}
-	if (cs->fastpatch) {
-		prs_flags |= PRS_FASTPATCH;
-		patchmap = calloc(TABLE(s) + 1, sizeof(ser_t));
-	}
+	patchmap = calloc(TABLE(s) + 1, sizeof(ser_t));
 	for (i = n; i > 0; i--) {
 		d = list[i];
 		if (patchmap) patchmap[d] = n - i + 1;
@@ -986,24 +942,14 @@ sccs_patch(sccs *s, cset_t *cs)
 		printf("\n");
 		/* takepatch lists tags+commits so we do too */
 		if (CSET(s)) csets++;
-		if (cs->fastpatch) {
-			/*
-			 * put a multi-delta patch on the newest delta
-			 * pedantically, put out a patch for I1-E1
-			 * can make for better diff -r results.
-			 */
-			outdiffs += ADDED(s, d) + DELETED(s, d) + (d == 1);
-			if ((i == last) && outdiffs) {
-				rc = sccs_patchDiffs(s, patchmap, "-");
-			}
-		} else unless (TAG(s, d)) {
-			// Nested XXX
-			if (CSET(s)) {
-				if (ADDED(s, d)) rc = cset_diffs(cs, d);
-			} else if (!BAM(s)) {
-				rc = sccs_getdiffs(s, REV(s, d),
-				    GET_BKDIFFS, "-");
-			}
+		/*
+		 * put a multi-delta patch on the newest delta
+		 * pedantically, put out a patch for I1-E1
+		 * can make for better diff -r results.
+		 */
+		outdiffs += ADDED(s, d) + DELETED(s, d) + (d == 1);
+		if ((i == last) && outdiffs) {
+			rc = sccs_patchDiffs(s, patchmap, "-");
 		}
 		if (rc) { /* sccs_getdiffs errored */
 			fprintf(stderr,
@@ -1027,24 +973,6 @@ sccs_patch(sccs *s, cset_t *cs)
 	cs->ndeltas += deltas;
 	cs->ncsets += csets;
 	if (list) free(list);
-}
-
-private int
-cset_diffs(cset_t *cs, ser_t ser)
-{
-	u32	rkoff, dkoff;
-
-	printf("0a0\n");
-	sccs_rdweaveInit(cset);
-	cset_firstPair(cset, ser);
-	while (cset_rdweavePair(cset, RWP_ONE, &rkoff, &dkoff)) {
-		unless (dkoff) continue; /* last key */
-		printf("> %s %s\n",
-		    HEAP(cset, rkoff),
-		    HEAP(cset, dkoff));
-	}
-	sccs_rdweaveDone(cset);
-	return (0);
 }
 
 weave *

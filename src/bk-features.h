@@ -77,7 +77,7 @@ int	features_test(project *p, int feature);
 void	features_set(project *p, int feature, int on);
 void	features_setAll(project *p, u32 bits);
 
-char	*features_list(project *p);
+u32	features_list(void);
 int	features_bkdCheck(int in_bkd, int no_repo);
 u32	features_toBits(char *features, char *bad);
 char	*features_fromBits(u32 bits);

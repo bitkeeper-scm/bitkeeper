@@ -53,10 +53,13 @@ echo 'SCCS/s.newfile|+' | bk commit $Q -y'foo' - || fail
 bk pull -q 2> GOT && fail -f GOT
 sanitize GOT
 cat <<EOF > WANT
-takepatch: key '<newfile>' not found in sfile RESYNC/SCCS/s.newfile
-takepatch: patch left in 
-==============================================================================
-Pull failed: takepatch exited 1.
+commit: ChangeSet is a merge but is missing
+a required merge delta for this rootkey
+	<newfile>
+The commit is aborted.
+Commit aborted, no changes applied.
+resolve: RESYNC directory left intact.
+====================================================
 EOF
 cmpfiles WANT GOT
 echo OK

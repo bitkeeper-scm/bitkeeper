@@ -1024,13 +1024,7 @@ genpatch(FILE *wf, char *rev_list, int gzip, int isLocal)
 	opts.inBytes = opts.outBytes = 0;
 	n = 2;
 	if (opts.verbose) makepatch[n++] = "-v";
-	if (bkd_hasFeature(FEAT_BKMERGE)) {
-		if (isLocal) {
-			makepatch[n++] = "-M3";
-		} else {
-			makepatch[n++] = "-M10";
-		}
-	} else {
+	unless (bkd_hasFeature(FEAT_BKMERGE)) {
 		makepatch[n++] = "-C"; /* old-bk, compat mode */
 	}
 	if (p = getenv("BKD_FEATURES_USED")) {
@@ -1040,7 +1034,6 @@ genpatch(FILE *wf, char *rev_list, int gzip, int isLocal)
 			makepatch[n++] = "--no-bk-merge";
 		}
 	}
-	if (bkd_hasFeature(FEAT_FAST)) makepatch[n++] = "-F";
 	makepatch[n++] = "-";
 	makepatch[n] = 0;
 	/*

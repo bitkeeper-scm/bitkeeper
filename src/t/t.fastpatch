@@ -250,25 +250,11 @@ grep -q "Bad checksum 01687:01341 in RESYNC/foo" ERR || fail
 test -d RESYNC && fail
 echo OK
 
-echo $N Show sfio mode in pull can propagate corrupt data ...........$NL
+echo $N Show pull will detect corrupt sfile .........................$NL
 # setup repos for next two tests
 bk clone $Q -r1.1 . ../pullsfio
 cd ../pullsfio
 bk clone $Q . ../pullfast
-# now test a pull corrupt data using sfio copy and it works
-# turn off no SFIO which is the normal default mode
-_BK_NO_PATCHSFIO= bk pull $Q ../corrupt || fail
-# tip is fine
-bk get $Q foo || fail
-# but one back is not - works but prints err msg
-bk get $Q -kpr1.5 foo 2>ERR > GOT || fail -f ERR
-grep -q "bad delta cksum 1341:1687 for 1.5 in SCCS/s.foo" ERR || fail -f ERR
-printf "\001tame that data\n" > WANT
-cmpfiles WANT GOT
-echo "failed (bug in sfio pull integrity)"
-
-echo $N Same pull with sfio turned off detects it ...................$NL
-cd ../pullfast
 bk pull $Q ../corrupt 2> ERR && fail -f ERR
 grep -q "Bad checksum 01687:01341 in RESYNC/foo" ERR || fail -f ERR
 test -d RESYNC && fail

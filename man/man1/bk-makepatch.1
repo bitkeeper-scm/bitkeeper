@@ -12,16 +12,15 @@ bk makepatch \- creates \*(BK patches
 The makepatch command is a low level command used to generate \*(BK patches.
 .SH OPTIONS
 .TP \-r\*<range\*>
+.B \-B
+Include the data from any BAM files in the patch. Normally BAM files
+are sent without the implied data.
+.tp
 .B \-C
 Generate a patch compatible with any supported versions of \*(BK.
 .tp
 .B \-d
 Add a header with the unified diffs to the top of the \*(BK patch.
-.tp
-.B \-F
-Generate a more efficient version of a \*(BK patch.
-Can be combined with -C to give a compatible and efficient form that can be
-used with any supported version of \*(BK.
 .tp
 .OPTreq \-r range
 Generate a \*(BK patch of the changesets in
@@ -38,10 +37,16 @@ either as keys or revisions.
 .SH NOTES
 In general, users do not use this command directly, it is called by
 .B bk pull
-or 
+or
 .BR "bk push" .
 If patches are to be sent to a non-\*(BK user then use
 .BR "bk export" .
+.LP
+By default patches are created in the latest patch format known by
+this version of \*(BK. With
+.B \-C
+patches will be compatible with oldest version of \*(BK that is still
+supported.
 .SH SEE ALSO
 .SA export
 .SA takepatch

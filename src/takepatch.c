@@ -2175,7 +2175,6 @@ typedef struct {
 	FILE	*fin;		/* the file it is sitting on */
 	long	bytecount;	/* size of pending file for logs */
 	uLong	sumC, sumR;	/* The computed and real checksum */
-	u32	buffering;	/* remember how often we use leftover */
 
 	/* state bits */
 	u32	longline:1;	/* a continuation of earlier line */
@@ -2409,7 +2408,6 @@ dosum:			st->sumR = strtoul(buf+17, 0, 16);
 	outbuf += count;
 	left -= count;
 	if (len -= count) {
-		st->buffering++;	// trace that this happened
 		unless (st->leftover) st->leftover = fmem();
 		fwrite(&buf[count], 1, len, st->leftover);
 	}
@@ -2458,11 +2456,6 @@ patchClose(void *cookie)
 	} else {
 		rc |= fclose(st->fin);
 	}
-	if (st->buffering && getenv("_BK_DEVELOPER")) {
-		fprintf(stderr,
-		    "Leftover buffering %u times\n", st->buffering);
-	}
-
 	unless (rc || (st->sumR == st->sumC)) badXsum(st->sumR, st->sumC);
 
 	if (st->leftover) fclose(st->leftover);

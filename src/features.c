@@ -85,22 +85,16 @@ features_main(int ac, char **av)
 
 
 /*
- * Generate a comma separated list of "feature" strings to sent over the wire
- * to the remote bk.  The same list is use for bk->bkd connections and
- * the bkd->bk response.
+ * Return a bitmask of all features understood by this version of bk.
  */
-char *
-features_list(project *p)
+u32
+features_list(void)
 {
-	char	*ret;
+	u32	ret;
 
-#define	X(a, b, c, d, e, f) c ","
-	ret = strdup(FEATURES);
+#define	X(a, b, c, d, e, f) (1 << a) |
+	ret = FEATURES 0;
 #undef	X
-	if (getenv("_BK_NO_FASTPATCH")) {
-		str_subst(ret, "fastpatch,", "", ret);
-	}
-	chop(ret);	/* remove trailing , */
 	return (ret);
 }
 
@@ -270,6 +264,13 @@ features_bkdCheck(int bkd, int no_repo)
 	/* remove local-only features */
 	features &= ~(FEAT_REMAP|FEAT_SCANDIRS);
 	features &= ~FEAT_FILEFORMAT;
+
+	/*
+	 * We now require the other side to have FAST patch
+	 * (unless no_repo aka clone)
+	 */
+	 features |= FEAT_FAST;
+
 	features &= ~rmt_features;
 
 	/*
@@ -307,6 +308,7 @@ fneeded:
 	return (0);
 }
 
+/* return the bitmask of all features used by the current repository */
 u32
 features_bits(project *p)
 {

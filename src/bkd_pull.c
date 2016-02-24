@@ -262,36 +262,9 @@ cmd_pull_part2(int ac, char **av)
 				makepatch[n++] = "--no-bk-merge";
 			}
 		}
-		if (rem) {
-			/* A pull that will create a merge */
-
-			/*
-			 * Bluearc had a idea they called the "Cunning Plan"
-			 * where they would create backports of new files
-			 * copying the 1.0 delta of a sfile to an older
-			 * repository.  Then when the branch was merged
-			 * back in instead of getting a create conflict
-			 * takepatch would build the two independant files
-			 * of the same 1.0 with a 1.1 and 1.0.1.1.
-			 * Sending new files in a SFIO breaks this "feature"
-			 * of takepatch, so provide a way for Bluearc to
-			 * keep this feature.
-			 */
-			if (cfg_bool(0, CFG_FAKEGRAFTS)) {
-				makepatch[n++] = "-C";
-			}
-		} else {
-			/* update only pull */
-			if (getenv("_BK_BKD_IS_LOCAL")) {
-				makepatch[n++] = "-M3";
-			} else {
-				makepatch[n++] = "-M10";
-			}
-		 }
 	} else {
 		makepatch[n++] = "-C"; /* old-bk, use compat mode */
 	}
-	if (bk_hasFeature(FEAT_FAST)) makepatch[n++] = "-F";
 	if (port) {
 		makepatch[n++] = "-P";
 		makepatch[n++] = port;

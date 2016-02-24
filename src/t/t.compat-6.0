@@ -762,8 +762,8 @@ bk changes -qaLR ../bk6-prune > DIFF
 test -s DIFF && fail -f DIFF should be no diffs
 echo OK
 
-echo -------------- Makepatch with compat sfio by default
-echo $N Test makepatch generating sfio that is compat with bk6 ......$NL
+echo -------------- Makepatch in compat mode
+echo $N Test makepatch with -C is compat with bk6 ...................$NL
 # There are no merged files in this repo?!  Making one
 cd "$HERE"
 commercial mp-base
@@ -777,7 +777,7 @@ bk delta $Q -fynull foo
 bk edit $Q -M foo
 bk delta $Q -fynull foo
 bk commit $Q -f
-bk makepatch -r+ > ../mp-patch
+bk makepatch -C -r+ > ../mp-patch
 cd ../mp-base-down
 $OLDBK/bk receive < ../mp-patch
 $OLDBK/bk resolve $Q || fail
