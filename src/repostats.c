@@ -86,7 +86,7 @@ repostats_main(int ac, char **av)
 			s = sccs_init(buf, SILENT);
 			histo_data(csets, s->tip);
 			sccs_free(s);
-			sprintf(buf, "bk sfiles '%s'", t);
+			sprintf(buf, "bk gfiles '%s'", t);
 			c = streq(t, ".") ? 0 : strlen(t)+1;
 			cnt = 0;
 			del = 0;

@@ -325,7 +325,7 @@ doit:	if (opts->newProject) {
 	}
 	if (opts->echo || opts->pbars) {
 		files = 0;
-		if (f = popen("bk sfiles RESYNC", "r")) {
+		if (f = popen("bk gfiles RESYNC", "r")) {
 			while (t = fgetline(f)) ++files;
 			pclose(f);
 		}

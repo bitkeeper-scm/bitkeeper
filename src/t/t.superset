@@ -421,7 +421,7 @@ mv repo prod-clone
 cd prod-clone
 bk superset > ../GOT 2>&1
 test $? -ne 1 && fail -f ../GOT "superset with a parentless subrepo should exit 1"
-grep -q 'repo/SCCS/s.ChangeSet' ../GOT || \
+grep -q 'repo/ChangeSet' ../GOT || \
 	fail -f ../GOT "superset failed to spot subrepo"
 grep -q '=== Extra files ===' ../GOT || \
 	fail -f ../GOT "superset failed to flag the repo as an extra"
@@ -447,7 +447,7 @@ bk clone $Q repo prod-clone/gdb/repo
 cd prod-clone
 bk superset > ../GOT 2>&1
 test $? -ne 1 && fail -f ../GOT "superset with a sub-subrepo should exit 1"
-grep -q 'gdb/repo/SCCS/s.ChangeSet' ../GOT || \
+grep -q 'gdb/repo/ChangeSet' ../GOT || \
 	fail -f ../GOT "superset failed to spot subrepo"
 grep -q '=== Extra files ===' ../GOT || \
 	fail -f ../GOT "superset failed to flag the repo as an extra"
@@ -460,7 +460,7 @@ cd prod-clone
 bk superset > ../GOT 2>&1
 test $? -ne 1 && \
 	fail -f ../GOT "superset with deeply nested subrepos should exit 1"
-grep -q 'gdb/repo/repo/SCCS/s.ChangeSet' ../GOT || \
+grep -q 'gdb/repo/repo/ChangeSet' ../GOT || \
 	fail -f ../GOT "superset failed to spot subrepo"
 grep -q '=== Extra files ===' ../GOT || \
 	fail -f ../GOT "superset failed to flag the repo as an extra"

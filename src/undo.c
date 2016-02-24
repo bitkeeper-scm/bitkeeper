@@ -426,7 +426,7 @@ undo_ensemble1(nested *n, options *opts,
 		removeLine(n->here, proj_rootkey(proj), free);
 		proj_free(proj);
 
-		sysio(0, SFILES, 0, "bk", "sfiles", "-gcxp", c->path, SYS);
+		sysio(0, SFILES, 0, "bk", "gfiles", "-cxp", c->path, SYS);
 		if (size(SFILES) > 0) {
 			fprintf(stderr,
 			    "Changed/extra files in '%s'\n", c->path);
@@ -878,6 +878,8 @@ move_file(options *opts, char ***checkfiles)
 	 * Cannot trust fileList, because file may be renamed
 	 *
 	 * Paranoid, check for name conflict before we throw it over the wall
+	 *
+	 * needs to be sfiles not gfiles
 	 */
 	f = popen("bk sfiles", "r");
 	while (from = fgetline(f)) {

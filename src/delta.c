@@ -433,7 +433,7 @@ delta_main(int ac, char **av)
 
 		if (didci) {
 			fprintf(didci, "%s|%s\n",
-			    s->sfile, REV(s, sccs_top(s)));
+			    s->gfile, REV(s, sccs_top(s)));
 		}
 
 		if (dangling) {

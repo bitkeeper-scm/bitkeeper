@@ -14,12 +14,12 @@ command is used to initially place files under \*[BK] control.
 .LP
 A useful way to add new files in the current directory is:
 .DS
-bk sfiles -x *.[ch] | bk new - 
+bk gfiles -x *.[ch] | bk new - 
 .DE
 When you want to add files in the current directory and all 
 subdirectories, do the following:
 .DS
-bk -xr. new	# same as bk sfiles -x | bk new -
+bk -xr. new	# same as bk gfiles -x | bk new -
 .DE
 After the files are checked in, don't be surprised to see that
 the files are no longer in your directory. The process of checking
@@ -54,7 +54,7 @@ be quiet.
 .SA edit
 .SA co
 .SA ignore
-.SA sfiles
+.SA gfiles
 .SH CATEGORY
 .B File
 .br

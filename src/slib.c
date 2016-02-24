@@ -4708,14 +4708,6 @@ sccs_init(char *name, u32 flags)
 	static	int show = -1;
 
 	T_INIT("name=%s flags=%x", name, flags);
-	if (show == -1) {
-		glob = getenv("BK_SHOWINIT");
-		show = glob != 0;
-	}
-	if (show && match_one(name, glob, 0)) {
-		ttyprintf("init(%s) [%s]\n", name, prog);
-		gdb_backtrace();
-	}
 
 	if (strpbrk(name, "\n\r|")) {
 		fprintf(stderr,
@@ -4724,15 +4716,23 @@ sccs_init(char *name, u32 flags)
 		return (0);
 	}
 	localName2bkName(name, name);
-	if (sccs_filetype(name) != 's') {
-		fprintf(stderr, "Not an SCCS file: %s\n", name);
-		return (0);
-	}
+	name = name2sccs(name);
 	lstat_rc = lstat(name, &sbuf);
 	lstat_errno = lstat_rc ? errno : 0;
-	if (lstat_rc && (flags & INIT_MUSTEXIST)) return (0);
+	if (lstat_rc && (flags & INIT_MUSTEXIST)) {
+		free(name);
+		return (0);
+	}
+	if (show == -1) {
+		glob = getenv("BK_SHOWINIT");
+		show = glob != 0;
+	}
+	if (show && match_one(name, glob, 0)) {
+		ttyprintf("init(%s) [%s]\n", name, prog);
+		gdb_backtrace();
+	}
 	s = new(sccs);
-	s->sfile = strdup(name);
+	s->sfile = name;	/* dup'ed at name2sccs() above */
 	if (IsFullPath(name)) {
 		s->fullsfile = s->sfile;
 	} else {

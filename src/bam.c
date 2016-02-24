@@ -2043,7 +2043,7 @@ sfiles_bam_main(int ac, char **av)
 	}
 
 	/* start sfiles early to avoid latency */
-	fsfiles = popen("bk sfiles -gpA", "r");
+	fsfiles = popen("bk gfiles -pA", "r");
 
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 	goneDB = loadDB(GONE, 0, DB_GONE);
@@ -2392,7 +2392,7 @@ bam_convert_main(int ac, char **av)
 	freeLines(gone, free);
 	if (errors) goto out;
 
-	sfiles = popen("bk sfiles", "r");
+	sfiles = popen("bk gfiles", "r");
 	while (fnext(buf, sfiles)) {
 		chomp(buf);
 		/*

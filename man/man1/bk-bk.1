@@ -190,7 +190,7 @@ or
 to limit the set of files passed to
 .ARG command .
 .\" HEY!  YOU!  Man page hacker.  If you change these make sure you follow
-.\" whatever bk-sfiles.1 says, that's the authoritative source, OK?  Thanks!
+.\" whatever bk-gfiles.1 says, that's the authoritative source, OK?  Thanks!
 .RS
 .TP ABCD
 .B \-1
@@ -229,15 +229,15 @@ Unless otherwise documented, all \*(BK commands return exit status
 The following commands are equivalent:
 .DS 6
 bk -A co
-bk -R sfiles | bk -R co -
-cd \`bk root\`; bk sfiles | bk co -
+bk -R gfiles | bk -R co -
+cd \`bk root\`; bk gfiles | bk co -
 .DE
 An example usage for generating a patch of all new and/or changed files:
 .DS
 $ bk -cxU diffs -Nu
 .DE
 .SH "SEE ALSO"
-.SA sfiles
+.SA gfiles
 .SH CATEGORY
 .B Repository
 .if \n[NESTED] \{\

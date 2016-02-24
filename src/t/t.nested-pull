@@ -467,24 +467,24 @@ cmpfiles ../WANT.changes GOT
 # Files were actually pulled
 cd "$HERE"/local/gcc
 cat <<EOF > "$HERE/WANT.actual"
-SCCS/s.ChangeSet
-SCCS/s.bam
-SCCS/s.file1
-SCCS/s.file2
-SCCS/s.file3
-SCCS/s.file4
-SCCS/s.file5
-SCCS/s.file6
-SCCS/s.file7
-SCCS/s.file8
-SCCS/s.file9
-BitKeeper/etc/SCCS/s.attr
-BitKeeper/etc/SCCS/s.collapsed
-BitKeeper/etc/SCCS/s.config
-BitKeeper/etc/SCCS/s.gone
-BitKeeper/etc/SCCS/s.ignore
+ChangeSet
+bam
+file1
+file2
+file3
+file4
+file5
+file6
+file7
+file8
+file9
+BitKeeper/etc/attr
+BitKeeper/etc/collapsed
+BitKeeper/etc/config
+BitKeeper/etc/gone
+BitKeeper/etc/ignore
 EOF
-bk sfiles > GOT
+bk gfiles > GOT
 cmpfiles "$HERE/WANT.actual" GOT
 
 bk _test -f SCCS/d.ChangeSet && {
@@ -508,7 +508,7 @@ bk changes -nd:GFILE: -vr+ > GOT
 cmpfiles ../WANT.changes GOT
 # Files were actually pulled
 cd "$HERE"/local/gcc
-bk sfiles > GOT
+bk gfiles > GOT
 cmpfiles "$HERE/WANT.actual" GOT
 echo OK
 
@@ -526,7 +526,7 @@ bk changes -nd:GFILE: -vr+ > GOT
 cmpfiles ../WANT.changes GOT
 # Files were actually pulled
 cd "$HERE"/local/gcc
-bk sfiles > GOT
+bk gfiles > GOT
 cmpfiles "$HERE/WANT.actual" GOT
 echo OK
 
@@ -541,7 +541,7 @@ bk changes -nd:GFILE: -vr+ > GOT
 cmpfiles ../WANT.changes GOT
 # Files were actually pulled
 cd "$HERE"/local/gcc
-bk sfiles > GOT
+bk gfiles > GOT
 cmpfiles "$HERE/WANT.actual" GOT
 echo OK
 

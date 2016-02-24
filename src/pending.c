@@ -25,10 +25,10 @@ $each(:C:){  (:C:)\\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\\n";
 	nested = bk_nested2root(standalone);
 	tmp = bktmp(0);
 	unless (nested) {
-		sysio(0, tmp, 0, "bk", "sfiles", "-pA", SYS);
+		sysio(0, tmp, 0, "bk", "gfiles", "-pA", SYS);
 	} else {
 		sprintf(buf, "--relpath=%s", proj_root(0));
-		sysio(0, tmp, 0, "bk", "-e", "sfiles", "-pA", buf, SYS);
+		sysio(0, tmp, 0, "bk", "-e", "gfiles", "-pA", buf, SYS);
 	}
 	unless (size(tmp) > 0) {
 		unlink(tmp);

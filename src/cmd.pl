@@ -250,6 +250,7 @@ _getkv
 getmsg
 _getopt_test
 getuser
+gfiles
 glob
 gnupatch
 gone
@@ -356,7 +357,7 @@ sendbug
 set
 _setkv
 setup
-sfiles
+sfiles => gfiles
 _sfiles_bam
 _sfiles_clone
 _sfiles_local
@@ -437,7 +438,7 @@ _preference => config
 rechksum => checksum
 rev2cset => r2c
 sccsdiff => diffs
-sfind => sfiles
+sfind => gfiles
 _sort => sort
 support => sendbug
 _test => test

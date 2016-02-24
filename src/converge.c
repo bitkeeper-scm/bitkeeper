@@ -63,7 +63,7 @@ converge_hash_files(void)
 	 * Find all files in RESYNC that may contain a merge conflict for
 	 * the files above and merge them.
 	 */
-	f = popen("bk sfiles -g BitKeeper/etc BitKeeper/deleted", "r");
+	f = popen("bk gfiles BitKeeper/etc BitKeeper/deleted", "r");
 	assert(f);
 	while (gfile = fgetline(f))  {
 		/* find basename of file with deleted stuff stripped */

@@ -35,15 +35,15 @@ echo $N Try to collapse top cset in product .........................$NL
 cd ..
 bk fix $Q -Pc || fail
 bk -r check -a || fail
-bk sfiles -p > GOT
-echo gcc/SCCS/s.ChangeSet > WANT
+bk gfiles -p > GOT
+echo gcc/ChangeSet > WANT
 cmpfiles GOT WANT
 echo OK
 
 echo $N Now collapse top cset in component ..........................$NL
 cd gcc
 bk fix -Sc || fail
-bk sfiles -x > GOT
+bk gfiles -x > GOT
 cat <<EOF > WANT
 ERR
 GOT
@@ -112,14 +112,14 @@ done
 bk commit $Q -y"post-collapse product"
 
 bk collapse -qea`cat SAVED_TIP`
-bk sfiles -p > PENDING
+bk gfiles -p > PENDING
 test -s PENDING && fail -f PENDING
 cat >WANT <<EOF
 gcc_file
 gdb_file
 prod_file
 EOF
-bk -e sfiles -cg > GOT
+bk -e gfiles -c > GOT
 cmpfiles GOT WANT
 echo OK
 

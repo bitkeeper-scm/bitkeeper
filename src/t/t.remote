@@ -173,7 +173,7 @@ cat <<EOF > WANT
 cwd: $HERE/clone
 start_cwd: $HERE/clone
 stdin:
-SCCS/s.ChangeSet
+ChangeSet
 ... 5 more lines ...
 EOF
 cmpfiles WANT GOT

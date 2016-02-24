@@ -72,15 +72,15 @@ bk -r ci -q -y'commit message'
 # New files will show up in sfiles -x.
 # Deleted files will show up as p.files with no gfiles (and there should
 # be no gfiles at this point).
-bk sfiles -x | grep -v BitKeeper | bk delta -i -
+bk gfiles -x | grep -v BitKeeper | bk delta -i -
 find . -name 'p.*' | while read pfile
 do	gfile=`echo $pfile | sed 's|SCCS/p.||'`
 	bk rm $gfile
 done
 
 # Commit changeset, get all the files out, and see what we've got.
-bk sfiles -pC | bk cset -ybundle -
-bk sfiles | grep -v 'SCCS/s\.\.del' | bk get -kq -
+bk gfiles -pC | bk cset -ybundle -
+bk gfiles | grep -v '\.del' | bk get -kq -
 cd ..
 echo Diffing ...
 diff -ruN -x SCCS -x BitKeeper -x ChangeSet A R | grep -v '^diff' >A-R

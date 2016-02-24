@@ -1,21 +1,21 @@
 .so ../bk-macros
-.TH "bk sfiles" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.TH "bk gfiles" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk sfiles \- generate lists of \*[BK] controlled files
+bk gfiles \- generate lists of \*[BK] controlled files
 .SH SYNOPSIS
 .B bk
-.B sfiles
+.B gfiles
 .[B] \-01acCdDgGijlnRsSuUvxy
 .[OPTopt] \-p \fBA\fP|\fBC\fP
 .[ARG] dirs
 .SH DESCRIPTION
-.B bk sfiles
+.B bk gfiles
 is used to generate lists of revision control files, files related to
 revision control files, directories related (or not) to revision control files,
 and/or files not under revision control.  In other words, if you need a list
 of files, you've come to the right place.
 .LP
-.B bk sfiles 
+.B bk gfiles 
 without any arguments finds all s.files in or below the current working
 directory.  This is what
 .Qreq "bk\ \-r\ " command
@@ -74,9 +74,6 @@ Shorthand which means "show everything interesting in verbose format".
 Currently the same as:
 .Q \-cdDGijlnRsuvxyp
 .tp
-.B \-g
-List the gfile name, not the sfile name.
-.tp
 .B \-G
 List files only if they are checked out ("gotten").
 .tp
@@ -91,7 +88,7 @@ below) but are suppressed because they are present in the
 file.
 Note that this options works on files that were ignored, but not on
 directories that were pruned.
-There is no way to force bk sfiles to
+There is no way to force bk gfiles to
 descend into pruned directories.
 .tp
 .B \-j
@@ -218,7 +215,7 @@ List files which have no revision control files.
 List files which have saved checkin comments, the files listed
 may be either extra files and/or files under \*(BK control.
 .SH NOTES
-.B bk sfiles
+.B bk gfiles
 will not descend into directories pruned in the
 .B BitKeeper/etc/ignore
 file.
@@ -238,4 +235,4 @@ not
 .SA new
 .SH CATEGORY
 .B File
-.\" help://Files/gfiles
+.\" help://Files/sfiles

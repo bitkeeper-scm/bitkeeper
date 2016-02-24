@@ -45,9 +45,9 @@ and
 is a file revision number, such as 1.1 or 1.2. Example:
 .BR SCCS/s.foo|1.2 .
 This is the same format produced by
-.Q bk sfiles \-pA
+.Q bk gfiles \-pA
 and
-.QR "bk sfiles \-pC" .
+.QR "bk gfiles \-pC" .
 .LP
 .B Note:
 .ARG rev
@@ -63,7 +63,7 @@ $ bk pending
 .\"are not yet checked in are not shown.  Use 
 .\".B bk status
 .\"or
-.\".B bk sfiles
+.\".B bk gfiles
 .\"if you want to see both.
 .LP
 All revisions which you have checked in will become part of a
@@ -146,7 +146,7 @@ Set check-in comment of changeset to
 .SA citool
 .SA import
 .SA pending
-.SA sfiles
+.SA gfiles
 .SA status
 .SA tag
 .SA templates

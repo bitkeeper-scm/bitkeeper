@@ -41,11 +41,11 @@ if present, indicates that the file is modified.
 .SH NOTE
 .LP
 Most people prefer the 
-.B bk sfiles
+.B bk gfiles
 interface for finding files in a particular state.
 .SH SEE ALSO
 .SA log
-.SA sfiles
+.SA gfiles
 .SA status
 .SH CATEGORY
 .B File
