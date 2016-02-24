@@ -774,6 +774,23 @@ bk changes -nd:I: > WANT
 cmpfiles WANT GOT
 echo OK
 
+echo $N Check that a \} in a string doesn\'t screw up parsing..........$NL
+cat <<'EOF' > dspec
+#dspec-v2
+$if(:CHANGESET: && !:COMPONENT_V:) {
+	"{"
+	"."
+	"}\n"
+}
+EOF
+cat <<EOF > WANT
+{.}
+EOF
+bk changes -1 -v --dspecf=dspec > GOT
+cmpfiles WANT GOT
+echo OK
+
+
 # Setup a case where changes is hanging a remote repo with a read lock
 # and show that it doesn't in the -R case, as part2 now releases the readlock
 

@@ -857,6 +857,7 @@ dspec_collapse(char **dspec, char **begin, char **end)
 					fputc(*p, f);
 					if (p[1]) fputc(*++p, f);
 					break;
+				    case '{': case '}':
 				    case '$':
 					unless (isdigit(p[1])) fputc('\\', f);
 					fputc(*p, f);
