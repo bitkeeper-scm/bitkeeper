@@ -2,8 +2,6 @@
 
 orig_args="$@"
 
-HERE=`pwd`
-
 ms_env()
 {
 	unset JOBS
@@ -39,6 +37,7 @@ shift `expr $OPTIND - 1`
 test "X$G" = X && G=-g
 test "X$CC" = X && CC=gcc
 test "X$LD" = X && LD=$CC
+test "X$RANLIB" = X && RANLIB=ranlib
 
 # ccache stuff
 CCLINKS=/build/cclinks
@@ -87,7 +86,6 @@ case "X`uname -s`" in
 	XDarwin)
 		CC=gcc
 		LD=gcc
-		export CC LD
 		CCXTRA="-Qunused-arguments -DHAVE_GMTOFF -DNOPROC -no-cpp-precomp"
 		XLIBS="-lresolv"
 		;;
@@ -100,7 +98,6 @@ case "X`uname -s`" in
 	XIRIX*)
 		CCXTRA="-DHAVE_LOCALZONE -DNOPROC"
 		RANLIB="touch"
-		export RANLIB
 		;;
 	XLinux) CCXTRA=-DHAVE_GMTOFF
 		test "x`uname -m`" = xx86_64 && {
@@ -120,13 +117,10 @@ case "X`uname -s`" in
 	XSCO_SV)
 		PATH="/usr/local/bin:${PATH}"
 		XLIBS="-lsocket"
-		export XLIBS
 		CCXTRA="-DHAVE_LOCALZONE -DNOPROC"
 		RANLIB="touch"
-		export RANLIB
 		;;
 	XSunOS)	XLIBS="-lnsl -lsocket -lresolv"
-		export XLIBS
 		CCXTRA="-DHAVE_LOCALZONE -DNOPROC"
 		test X`uname -p` = Xi386 && {
 			CCXTRA="$CCXTRA -DLTC_NO_ASM"
@@ -181,6 +175,6 @@ test "X$MAKE" = X && {
 }
 test "x$BK_VERBOSE_BUILD" != "x" && { V="V=1"; }
 # If the current build process needs to use current bk, use "$HERE/bk"
-export PATH HERE
-make --no-print-directory $JOBS -e $V "MAKE=$MAKE" "CC=$CC $CCXTRA" "G=$G" "LD=$LD" \
-	"XLIBS=$XLIBS" "$@"
+export PATH
+make --no-print-directory $JOBS $V "MAKE=$MAKE" "CC=$CC $CCXTRA" "G=$G" "LD=$LD" \
+	"XLIBS=$XLIBS" "RANLIB=$RANLIB" "$@"

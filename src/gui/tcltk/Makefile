@@ -1,6 +1,6 @@
 HERE	:= $(shell pwd)
 OSTYPE	:= $(shell bash -c 'echo $$OSTYPE')
-BKROOT	:= $(shell bk -P root)
+BKROOT	:= $(shell cd ../../.. && pwd)
 
 CC := gcc
 LD := gcc
@@ -12,17 +12,7 @@ TCLVERSION := 8.6
 TCLVERSIONNODOTS := 86
 
 # Machines on which we disable XFT
-NO_XFT := netbsd4.bitkeeper.com	\
-	netbsd4-64.bitkeeper.com	\
-	freebsd4.bitkeeper.com	\
-	sco.bitkeeper.com	\
-	netbsd.bitkeeper.com	\
-	aix5.bitkeeper.com	\
-	sunx86.bitkeeper.com	\
-	hp11.bitkeeper.com	\
-	macos103.bitkeeper.com	\
-	hp-ia64.bitkeeper.com	\
-	sun.bitkeeper.com
+NO_XFT := netbsd4 sunx86
 
 ifeq "$(OSTYPE)" "msys"
 	S := win
@@ -37,7 +27,7 @@ else
 	EXE :=
 	SO  := .so
 	XSSSUPPORT := --disable-xss
-	ifeq (,$(findstring $(shell bk gethost -r), $(NO_XFT)))
+	ifeq (,$(findstring $(HOSTNAME), $(NO_XFT)))
 		XFTSUPPORT := --enable-xft
 	endif
 	SHARED := --disable-shared
@@ -158,11 +148,11 @@ $(CHANGELOGS): populate
 
 # fetch tcl subdirectory if needed
 tcl/$S/configure: tcl/ChangeLog
-	$(Q)(cd tcl && bk -Ur get -qS)
+	-$(Q)(cd tcl && bk -Ur get -qS)
 
 # fetch tk subdirectory if needed
 tk/$S/configure: tk/ChangeLog
-	$(Q)(cd tk && bk -Ur get -qS)
+	-$(Q)(cd tk && bk -Ur get -qS)
 
 pcre: $(LIBPCRE)
 
@@ -178,11 +168,11 @@ pcre/Makefile: pcre/configure Makefile
 	    ./configure $(QUIET) --disable-cpp --disable-shared --enable-utf8=yes --prefix=)
 
 pcre/configure: Makefile
-	$(Q)(cd pcre && bk -Ur get -qS)
+	-$(Q)(cd pcre && bk -Ur get -qS)
 
 # fetch tktable subdirectory if needed
 tktable/configure:
-	$(Q)(cd tktable && bk -Ur get -qS)
+	-$(Q)(cd tktable && bk -Ur get -qS)
 
 # Tktable libs
 lib/$(TKTABLE)/$(LIBTKTABLE): tktable/configure bin/bkgui$(EXE)
@@ -219,7 +209,7 @@ $(BKAPP)/Contents/lib:
 	mkdir $(BKAPP)/Contents/lib
 
 lib/$(BWIDGET)/pkgIndex.tcl: bwidget/ChangeLog
-	$(Q)cd bwidget; bk -Ur get -qS
+	-$(Q)cd bwidget; bk -Ur get -qS
 	$(if $(Q), @echo Installing BWidget,)
 	$(Q)mkdir -p lib/$(BWIDGET)/lang
 	$(Q)mkdir -p lib/$(BWIDGET)/images
@@ -233,7 +223,7 @@ $(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl: lib/$(BWIDGET)/pkgIndex.tcl \
 	cp -fRPH lib/$(BWIDGET) $(BKAPP)/Contents/lib
 
 lib/Tkcon/pkgIndex.tcl: tkcon/ChangeLog
-	cd tkcon; bk -Ur get -qS
+	-cd tkcon; bk -Ur get -qS
 	$(if $(Q), @echo Installing TkCon,)
 	$(Q)mkdir -p lib/Tkcon
 	$(Q)cp tkcon/tkcon.tcl lib/Tkcon
@@ -350,7 +340,7 @@ clobber: clean FORCE
 
 rmcache: version.sh
 	rm -f `./version.sh`
-	bk clean -q version.sh
+	-bk clean -q version.sh
 
 test:
 	test -d tk && cd tk/$S && $(MAKE) test

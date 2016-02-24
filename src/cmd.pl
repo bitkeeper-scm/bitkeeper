@@ -104,7 +104,7 @@ close(SH) or die;
 # all commands tagged with 'remote' must live in files named bkd_*.c
 # (can't use perl's glob() because win32 perl is missing library)
 delete $rmts{"sfio_main"};	# Exception to the rules.
-open(LS, "bk gfiles bkd_\*.c |") or die;
+open(LS, "ls bkd_\*.c |") or die;
 @ARGV = ();
 while (<LS>) {
     chomp;

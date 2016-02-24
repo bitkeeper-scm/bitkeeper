@@ -20,12 +20,21 @@
 #   $^  all sources
 #   $<  first source
 
+HAS_BK	?= $(shell bash -c "command -v bk")
+ifeq (,$(HAS_BK))
+	BKUSER := $(USER)
+	BKHOST := $(HOSTNAME)
+else
+	BKUSER := $(shell bk getuser)
+	BKHOST := $(shell bk gethost -r)
+endif
+
 HERE    := $(shell pwd)
-REPO    := $(shell basename "`bk root`")
-URL     := $(shell echo bk://work/`bk root` | sed s,/home/bk/,,)
-LOG	:= $(shell echo LOG-`bk getuser`)
+ROOT	:= $(shell dirname $(HERE))
+REPO    := $(notdir $(ROOT))
+URL     := $(shell echo bk://work/$(ROOT) | sed s,/home/bk/,,)
+LOG	:= $(shell echo LOG-$(BKUSER))
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
-JUNK	:= $(shell bk -Ur. -1 -^G checkout)
 
 ## Which hosts are used for producing nightly builds
 NIGHTLY_HOSTS	:= macos106 win7-vm debian40 debian40-64
@@ -37,7 +46,11 @@ ifeq "$(OSTYPE)" "msys"
 	# BINDIR should really be :C:/Program Files/BitKeeper
 	# The shell can not handle space in pathname, so
 	# we use the short name here
-	BINDIR := $(shell bk pwd -s "`bk _registry get 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion' ProgramFilesDir`/BitKeeper")
+	ifeq (,$(HAS_BK))
+		BINDIR := "C:/PROGRA~1/BITKEE~1"
+	else
+		BINDIR := $(shell bk pwd -s "`bk _registry get 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion' ProgramFilesDir`/BitKeeper")
+	endif
 	INSTALL=installdir
 	RESOURCE=bkres.o
 	UWT_C=$(patsubst %,win32/uwtlib/%.c, wapi_intf wcrt_intf)
@@ -65,8 +78,8 @@ ifndef V
 	Q=@
 endif
 
-GET=	$(Q)bk get -sS
-BK=	bk$(EXE)
+BK=bk$(EXE)
+GET=	$(Q)$(BK) get -sS
 LD	=cc
 G	=-g
 IMGDIR	=$(HERE)/tmp/bitkeeper
@@ -132,9 +145,7 @@ ifeq ($(GCC_MAJOR_REV),5)
 	WARNINGS += $(WARNINGS_GCC3) $(WARNINGS_GCC4) $(WARNINGS_GCC5)
 endif
 
-ifeq "$(shell bk changes -r+ -d:TAG:)" ""
-	TRACE = -DUSE_TRACE
-endif
+TRACE = -DUSE_TRACE
 
 ifeq ($(shell uname -s), Darwin)
 	XLIBS += -lresolv
@@ -277,7 +288,7 @@ MISC	= bkmsg.doc t/doit.sh
 export	GET
 
 default:
-	bk cat BUILD.txt
+	cat BUILD.txt
 
 SUBDIRS = libc tommath tomcrypt
 
@@ -303,10 +314,13 @@ gWall Wall:
 
 # production builds
 p:
+ifeq (,$(HAS_BK))
+	$(MAKE) bk
+	PATH=`pwd`:$(PATH) $(MAKE) HAS_BK=1 p
+else
 	$(MAKE) CFLAGS="$(CC_FAST) $(CF)" all
+endif
 
-ndebug:
-	$(MAKE) CFLAGS="$(CC_FAST) -DNDEBUG $(CC_NOFRAME)" all
 g:
 	$(MAKE) CFLAGS="$(CC_DEBUG)" all
 gO:
@@ -330,22 +344,22 @@ clean: FORCE
 	$(Q)$(RM) -r tmp
 
 clobber: clean FORCE
-	-@bk -A clean
+	-@$(BK) -A clean
 
 # XXX subdirs? (see tags)
 wc: $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
 	wc -l $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
 
 get-e: FORCE
-	-@bk edit -qT `echo $(HDRS) $(SRCS) $(SCRSRCS) $(MISC) | fmt -1|sort -u`
+	-@$(BK) edit -qT `echo $(HDRS) $(SRCS) $(SCRSRCS) $(MISC) | fmt -1|sort -u`
 	$(Q)$(MAKE) tags
 
 srcs: $(SRCS) $(HDRS) FORCE
-	$(Q)for sub in $(SUBDIRS); do bk -r$$sub co -q; done
+	$(Q)for sub in $(SUBDIRS); do $(BK) -r$$sub co -q; done
 
 tags: $(patsubst %,%/tags.local, $(SUBDIRS)) tags.local
-	@bk get -Sq tags.skippats
-	@bk _sort -u $^ | grep -v -ftags.skippats > $@
+	@$(BK) get -Sq tags.skippats
+	@$(BK) _sort -u $^ | grep -v -ftags.skippats > $@
 	@echo ctags completed
 
 tags.local: $(SRCS) $(HDRS)
@@ -365,12 +379,12 @@ nonet nonet_test localtest:
 
 realtest: $(ALL) t/doit
 	-cd gui/tcltk && $(MAKE) clobber
-	-bk get -qS t/setup t/win32/win32_common
-	bk -rt get -qTS 't.*'
+	-$(BK) get -qS t/setup t/win32/win32_common
+	$(BK) -rt get -qTS 't.*'
 	cd t && ./doit -f 5
 
 guitest: $(ALL) t/doit
-	-bk get -qS t/SCCS/s.g.* t/setup t/win32/win32_common t/guitest.tcl
+	-$(BK) get -qS t/SCCS/s.g.* t/setup t/win32/win32_common t/guitest.tcl
 	cd t && ./doit -g -i
 
 t/doit: t/doit.sh substvars
@@ -425,7 +439,7 @@ bkhelp.txt: FORCE
 
 ../doc/bk_refcard.ps: FORCE
 	$(Q)echo building $@
-	$(Q)-bk -r../doc co -qS
+	$(Q)-$(BK) -r../doc co -qS
 	$(Q)$(MAKE) -C ../doc all
 
 ../doc/bk_refcard.pdf: ../doc/bk_refcard.ps
@@ -435,10 +449,14 @@ bkhelp.txt: FORCE
 bkver.c: utils/bk_version FORCE
 	$(if $(Q),@echo Building $@,)
 	$(Q)echo "#include \"sccs.h\"" > bk.v
-	$(Q)bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\nchar *bk_tag = ":TAG:";\n' ../ChangeSet >> bk.v
+ifeq (,$(HAS_BK))
+	$(Q)printf "char *bk_vers = \"%s\";\nchar *bk_utc = \"%s\";\nchar *bk_time = \"%s\";\nchar *bk_tag = \"%s\";\n" "`date +%Y%m%d%H%M%S`" "`date +%Y%m%d%H%M%S`" "`date +%s`" "BOOTSTRAP" >> bk.v
+else
+		$(Q)$(BK) prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\nchar *bk_tag = ":TAG:";\n' ../ChangeSet >> bk.v
+endif
 	$(Q)echo "char *bk_platform = \""`./utils/bk_version`"\";" >> bk.v
 	$(Q)echo "time_t bk_build_timet = "`perl -e "print time"`";" >> bk.v
-	$(Q)echo "char *bk_build_user = \""`bk getuser`@`bk gethost -r`"\";" >> bk.v
+	$(Q)echo "char *bk_build_user = \"$(BKUSER)@$(BKHOST)\";" >> bk.v
 	$(Q)echo "char *bk_build_dir = \""`pwd`"\";" >> bk.v
 	$(Q)mv -f bk.v bkver.c
 
@@ -473,8 +491,8 @@ installdir: utils/registry.tcl
 	rm -rf $(IMGDIR) || exit 1
 	mkdir -p $(IMGDIR)/contrib
 	mkdir -p $(IMGDIR)/lscripts
-	bk get -S www
-	bk get -S $(CONTRIB)
+	$(BK) get -S www
+	$(BK) get -S $(CONTRIB)
 	tar cf - $(BINS) $(SCRIPTS) lscripts gui/bin gui/lib gui/images \
 		www/*.gif www/*.png | (cd $(IMGDIR) && tar xf -)
 	cp -f $(DATA) $(IMGDIR)
@@ -482,7 +500,7 @@ installdir: utils/registry.tcl
 	(cd ../doc/nested && $(MAKE) install HTML=$(IMGDIR)/html)
 	if [ $(SYS) = unix ]; \
 	then	(cd gnu && $(MAKE) install BINDIR=$(IMGDIR)) ;\
-		bk get -S ../man/Makefile; \
+		$(BK) get -S ../man/Makefile; \
 		cd ../man && $(MAKE) install BINDIR=$(IMGDIR) ;\
 	else \
 		(cd win32 && $(MAKE) BINDIR=$(IMGDIR) install); \
@@ -495,8 +513,13 @@ installdir: utils/registry.tcl
 	@true
 
 image:
+ifeq (,$(HAS_BK))
+	$(MAKE) bk
+	PATH=`pwd`:$(PATH) $(MAKE) HAS_BK=1 image
+else
 	$(MAKE) p
 	$(MAKE) _image
+endif
 
 _image:
 	$(MAKE) installdir
@@ -519,7 +542,7 @@ crankstatus: crank.sh remote.sh
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh status
 
 crankrelease nightly: crank.sh remote.sh
-	@(TAG=$(shell bk changes -r+ -d:TAG:) ; \
+	@(TAG=$(shell $(BK) changes -r+ -d:TAG:) ; \
 	test x$$TAG = x && { \
 		echo Cannot crankrelease with a non-tagged tip ; \
 		exit 1 ; \
@@ -536,7 +559,7 @@ crankrelease nightly: crank.sh remote.sh
 	test -d $$DIR || mkdir -p $$DIR ; \
 	REPO=$(REPO) URL=$(URL) HOSTS=$$HOSTS REMOTE=remote.sh \
 	    LOG=$(LOG) bash crank.sh $$TYPE ; \
-	bk -R get -qS RELEASE-NOTES ; \
+	$(BK) -R get -qS RELEASE-NOTES ; \
 	cp ../RELEASE-NOTES $$DIR ; \
 	SAVED_WD=$(shell pwd) ; \
 	cd $$DIR && chmod +rx bk-* >/dev/null 2>&1 ; \
@@ -605,3 +628,8 @@ hidestring: hidestring.c
 
 check-syntax:
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -S ${CHK_SOURCES} -o /dev/null
+
+# print a make variable  'make print-REPO'
+#   http://www.cmcrossroads.com/article/printing-value-makefile-variable
+print-%:
+	@echo $* = \"$($*)\"
