@@ -167,30 +167,6 @@ $
 Please fill out the configuration template in your editor.
 This is used for support purposes as well as licensing.
 $
-#chkconfig_missing
-
-Your BitKeeper package is missing the config file
-
-    BitKeeper/etc/SCCS/s.config
-
-This should not have occurred, but since it did, you can fix it
-by doing the following:
-
-    cp #BKARG#/bitkeeper.config BitKeeper/etc/config
-    # edit it to reflect your site
-    vi BitKeeper/etc/config
-    bk new BitKeeper/etc/config
-
-and then try your command again.
-
-$
-#chkconfig_inaccurate
-
-Your config file, BitKeeper/etc/config, does not reflect your site.
-Please check it out ("bk edit BitKeeper/etc/config"), modify the file
-to reflect your site, check it in, and then try your command again.
-
-$
 #takepatch-chksum
 Error: A checksum in the patch for the ChangeSet file does not match
 the checksum of the data in the patch.
@@ -669,9 +645,6 @@ $
 The following information uniquely identifies this repository. The fields
 highlighted in blue are required to be non-empty.
 $
-#setuptool_step_ContactInfo
-The following information is optional.
-$
 #setuptool_step_Finish
 There is now enough information to create the repository. Please review the 
 following information. If it is correct, press the Finish button to create 
@@ -733,18 +706,6 @@ only for files which are updated.
 
 We recommend that you start in full check mode and turn on partial check
 later if needed.
-$
-#setuptool_step_Compression
-By default, when you set up a repository the files in the repository are
-compressed. If you do not wish for the s.files in your repository to be 
-compressed you may turn this feature off by selecting "none".
-$
-#setuptool_step_Autofix
-The bk check command can automatically fix a number of problems found
-in a repository. By default this feature is turned on when a repository
-is created. To turn this feature off select the value "no", in which case
-the bk check command will not attempt to automatically fix problems it
-detects.
 $
 #setuptool_invalid_license
 The license key or license signatures are invalid. 
@@ -1247,12 +1208,6 @@ you may remove Cygwin by manually removing the following items:
 * Anything created by setup in its temporary working directory.
 
 For more information see http://cygwin.com/faq/faq0.html#SEC19
-$
-#bad-linux-kern-tree
-This copy of the Linux Kernel tree contains a bad ChangeSet file that
-needs to be repaired manually.  If at all possible please delete this
-repository and clone a new copy.  Otherwise contact support@bitkeeper.com
-and request assistance.
 $
 #upgrade-badperms
 The current user does not have permissions to replace the version of
