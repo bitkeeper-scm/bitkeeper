@@ -13,13 +13,6 @@ proc main {} \
 
 	set runtime(installed) 0
 	if {[set x [lsearch -exact $argv "--installed"]] > -1} {
-	    ## If they already have accepted the eula and have
-	    ## a valid license, we have nothing to show them.
-	    eula_u licText
-	    if {[existingLicense] && ($licText eq "")} {
-		exit 0
-	    }
-
 	    set runtime(installed) 1
 	    set argv [lreplace $argv $x $x]
 	}
@@ -61,11 +54,6 @@ proc main {} \
 proc initGlobals {} \
 {
 	global runtime wizData tcl_platform
-
-	set wizData(license)  ""
-	set wizData(licsign1) ""
-	set wizData(licsign2) ""
-	set wizData(licsign3) ""
 
 	set runtime(tmpdir) [pwd]
 	set runtime(destination) ""
@@ -227,53 +215,6 @@ proc homedir {} \
 	}
 }
 
-proc validateLicense {} \
-{
-	global	widgets wizData
-
-	if {![winfo exists $widgets(license)]} { return }
-
-	## Don't fire any further events while we're working in here.
-	bind $widgets(license) <<Modified>> ""
-
-	# This doesn't validate the license per se,
-	# only whether the user has entered one. Validation
-	# is expensive, so we'll only do it when the user
-	# presses "Next"
-
-	set wizData(license)  ""
-	set wizData(licsign1) ""
-	set wizData(licsign2) ""
-	set wizData(licsign3) ""
-
-	set data [string trim [$widgets(license) get 1.0 end]]
-	set fields {license licsign1 licsign2 licsign3}
-	set p "^([join $fields |]):\s*(.+)"
-	foreach line [split $data \n] {
-	    set line [string trim $line]
-	    if {![regexp $p $line -> field value]} { continue }
-	    set wizData($field) [string trim $value]
-	}
-
-	set good 1
-	foreach field $fields {
-	    if {$wizData($field) ne ""} { continue }
-	    set good 0
-	    break
-	}
-
-	if {$good && [string match "BKL*" $wizData(license)]} {
-		. configure -state normal
-	} else {
-		. configure -state pending
-	}
-
-	## Reset the modified state so our event will fire again.
-	$widgets(license) edit modified 0
-	
-	## Re-validate every time the text in the widget changes.
-	bind $widgets(license) <<Modified>> [list after idle validateLicense]
-}
 
 # This not only sets the focus, but attempts to put the cursor in
 # the right place
@@ -284,46 +225,6 @@ proc focusEntry {w} \
 		$w icursor end
 		focus $w
 	}
-}
-
-proc insertLicense {} {
-	global	widgets wizData
-
-	if {$wizData(license) eq ""} { return }
-
-	## Take the license we have stored and insert it into
-	## the license text widget.
-	$widgets(license) delete 1.0 end
-	$widgets(license) insert end "license: $wizData(license)\n"
-	$widgets(license) insert end "licsign1: $wizData(licsign1)\n"
-	$widgets(license) insert end "licsign2: $wizData(licsign2)\n"
-	$widgets(license) insert end "licsign3: $wizData(licsign3)"
-}
-
-proc get_license_from_file {} \
-{
-	global	widgets wizData
-
-	set types {
-		{{All Files} *}
-	}
-
-	set file [tk_getOpenFile -filetypes $types -parent .]
-	if {$file eq ""} { return }
-	if {![file readable $file]} {
-	    tk_messageBox -message "cannot read $file"
-	}
-
-	set data ""
-	catch {
-		set f [open $file r]
-		set data [read $f]
-		close $f
-	}
-	$widgets(license) delete 1.0 end
-	$widgets(license) insert end $data
-	validateLicense
-        insertLicense
 }
 
 # Insert a step right after the current step
@@ -408,113 +309,6 @@ proc widgets {} \
 		    set d [string map $map $::strings(Welcome.$p)]
 		    $this stepconfigure Welcome -description [unwrap $d]
 	    }
-
-	#-----------------------------------------------------------------------
-	. add step LicenseKey \
-	    -title "Commercial License" \
-	    -description [wrap [getmsg setuptool_step_LicenseKey]]
-
-	. stepconfigure LicenseKey -body {
-		global wizData
-		global gc
-
-		$this configure -defaultbutton next
-
-		set w [$this info workarea]
-
-		set ::widgets(license) $w.license
-
-		ttk::label $w.keyLabel -text "License Key:"
-		text $w.license -height 4 -relief sunken -borderwidth 1 \
-		    -highlightthickness 0 -font $::fixedFont
-		ttk::button $w.fileButton -text "Load from file..." \
-		    -command get_license_from_file
-
-		grid $w.keyLabel   -row 0 -column 0 -sticky w  -padx 2
-		grid $w.license    -row 1 -column 0 -sticky ew -pady 2
-		grid $w.fileButton -row 2 -column 0 -sticky sw -padx 2 -pady 5
-
-		grid columnconfigure $w $w.license -weight 1
-
-		insertLicense
-
-		# running the validate command will set the wizard buttons to 
-		# the proper state; this is mostly useful if they enter
-		# a license, go to the next step, then come back.
-		validateLicense
-
-		after idle [list focus $w.license]
-	}
-
-	#-----------------------------------------------------------------------
-	. add step EULA \
-	    -title "End User License" \
-	    -description [wrap [getmsg setuptool_step_EndUserLicense]]
-
-	. stepconfigure EULA -body {
-
-		global wizData
-		global licenseInfo
-		global fixedFont
-
-		set wizData(licenseAccept) 0
-		$this configure -defaultbutton next
-
-		set w [$this info workarea]
-
-		text $w.text \
-		    -background white \
-		    -relief sunken \
-		    -font $fixedFont \
-		    -yscrollcommand [list $w.vsb set] \
-		    -wrap none \
-		    -takefocus 0 \
-		    -bd 1 \
-		    -width 80
-		ttk::scrollbar $w.vsb -command [list $w.text yview]
-		ttk::scrollbar $w.hsb -command [list $w.text.xview]
-		bind all <Next> "scroll $w.text 1 pages"
-		bind all <Prior> "scroll $w.text -1 pages"
-		bind all <Down> "scroll $w.text 1 units"
-		bind all <Up> "scroll $w.text -1 units"
-		bind all <MouseWheel> "
-			if {%D < 0} {
-				scroll $w.text +1 units
-			} else {
-				scroll $w.text -1 units
-			}
-		"
-
-		ttk::frame $w.radioframe
-		ttk::radiobutton $w.radioframe.accept \
-		    -text "I Agree" \
-		    -underline 2 \
-		    -variable wizData(licenseAccept) \
-		    -command [list $this configure -state normal] \
-		    -value 1
-		ttk::radiobutton $w.radioframe.dont \
-		    -text "I Do Not Agree" \
-		    -underline 2 \
-		    -variable wizData(licenseAccept) \
-		    -command [list $this configure -state pending] \
-		    -value 0
-
-		pack $w.radioframe.accept -side left
-		pack $w.radioframe.dont -side left -padx 8
-		pack $w.radioframe -side bottom -fill x -pady 5
-		pack $w.vsb -side right -fill y -expand n
-		pack $w.text -side left -fill both -expand y
-
-		$w.text insert end $licenseInfo(text)
-		$w.text configure -state disabled
-
-		if {$wizData(licenseAccept) == 1} {
-			$this configure -state normal
-		} else {
-			$this configure -state pending
-		}
-
-	}
 
 	#-----------------------------------------------------------------------
 	. add step PickPlace -title "Install Directory" 
@@ -919,69 +713,7 @@ proc widgets {} \
 					. configure -path new
 				}
 			}
-			EULA {
-				if {[catch {exec bk _eula -a}]} {
-					exit 1
-				}
-			}
-			LicenseKey {
-				if {![checkLicense {*}[lic_lines]]} {
-					# we don't need to do anything here
-					# because checkLicense warns the user
-					# if the license is invalid
-					break
-				}
-				# save a copy of the license in config
-				# so that bk install installs it
-				if {[tk windowingsystem] eq "aqua"} {
-					# On OS X, since we sign the
-					# bundle, we can't change its
-					# contents.
-					set cfgpath "~/.bk/config"
-				} else {
-					set cfgpath "[exec bk bin]/config"
-				}
-				set cfgpath [file normalize $cfgpath]
-
-				if {[file exists $cfgpath]} {
-					set fd [open $cfgpath r]
-					set data [read $fd]
-					close $fd
-				} else {
-				    file mkdir [file dirname $cfgpath]
-				}
-
-				set fd [open $cfgpath w]
-				puts $fd [join [lic_lines 1] \n]
-				if {[info exists data]} {puts $fd $data}
-				catch {close $fd}
-				if {![info exists ::licenseInfo(text)] ||
-				    $::licenseInfo(text) eq ""} {
-					if {[getEulaText {*}[lic_lines] \
-					     ::licenseInfo(text)]} {
-						break
-					}
-				}
-				if {$::licenseInfo(text) ne ""} {
-					# Insert EULA step into path
-					wizInsertStep EULA
-				}
-			}
 			Welcome {
-				if {![existingLicense]} {
-					# No license found, so prompt for it
-					wizInsertStep LicenseKey
-					. configure -step LicenseKey
-					break
-				}
-				if {![info exists ::licenseInfo(text)] ||
-				    $::licenseInfo(text) eq ""} {
-					eula_u ::licenseInfo(text)
-				}
-				if {$::licenseInfo(text) ne ""} {
-					# Insert EULA step into path
-					wizInsertStep EULA
-				}
 			}
 		}
 	}
@@ -1300,27 +1032,6 @@ proc usage {} \
 	puts stderr "usage: $image ?directory?"
 }
 
-proc lic_lines {{withPrefix 0}} \
-{
-	global	wizData
-
-	set fields {license licsign1 licsign2 licsign3}
-	foreach var $fields {
-		set line $wizData($var)
-		regsub {^lic(ense|sign1|sign2|sign3):\s+} $line "" line
-		set line [string trimright $line !]
-		lappend lines $line
-	}
-
-	if {$withPrefix} {
-		foreach prefix $fields line $lines {
-			lappend newlines "$prefix: $line"
-		}
-		set lines $newlines
-	}
-	return $lines
-}
-
 # these strings will be reformatted; the newlines and leading spaces
 # will be collapsed to paraphaphs so they will wrap when the GUI is
 # resized. The formatting here is just to make the code easier to
@@ -1352,9 +1063,6 @@ set strings(Welcome.unix) {
 
 set strings(Welcome.installed) {
 	Thank you for installing BitKeeper.
-
-	We just need to get your license key installed, and you'll be
-	all set to go.
 
 	When you are ready to continue, press Next.
 }

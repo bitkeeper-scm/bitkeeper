@@ -16,7 +16,7 @@ string	runit(string cmd);
 int
 main(_argused int ac, _argused string av[], string env{string})
 {
-	string	buf, c, dotbk, dstroot, oldbk, out, path, paths[], tmp;
+	string	buf, c, dotbk, dstroot, oldbk, path, paths[], tmp;
 	string	home = env{"HOME"};
 	string	user = env{"USER"};
 	FILE	f;
@@ -49,13 +49,6 @@ main(_argused int ac, _argused string av[], string env{string})
 	log("dotbk ${dotbk}");
 
 	/*
-	 * runit() has the side-effect of logging the output of the
-	 * commands it runs, which is what we use in this case.
-	 */
-	runit("sudo -u '${user}' '${newbk}' config license");
-	runit("sudo -u '${user}' '${newbk}' config licenseurl");
-
-	/*
 	 * The preinstall script looks for a pre-existing config file and
 	 * copies it to $INSTALLER_TEMP. Look for that.
 	 */
@@ -83,23 +76,6 @@ main(_argused int ac, _argused string av[], string env{string})
 			Fprintf("${dotbk}/config", "%s", c);
 			runit("chown -R '${user}' '${dotbk}/config'");
 		}
-	}
-
-	/*
-	 * Run bk installtool to have it deal with the EULA and license keys.
-	 * If installtool exits non-0, it means the user declined the EULA
-	 * or quit the installation, so restore the old app bundle (if any)
-	 * and bail.
-	 */
-	rc = system("sudo -u '${user}' '${newbk}' installtool --installed",
-		    undef, &out, &err);
-	log("bk installtool: ${rc} '${out}' '${err}'");
-	unless (rc == 0) {
-		runit("/bin/rm -rf '${dstroot}/BitKeeper.app'");
-		if (exists("${tmp}/oldbk.tar")) {
-			runit("/usr/bin/tar -C '${dstroot}' -xf '${tmp}/oldbk.tar'");
-		}
-		exit(1);
 	}
 
 	/* Look for old versions of bk that we can uninstall. */
