@@ -798,12 +798,7 @@ C
 .
 EOF
 bk edit $Q foo
-grep -q '^%K%$' foo || {
-  echo Failed
-  echo expected keywords
-  cat foo
-  exit 1
-}
+grep -q '^%K%$' foo || fail -f foo
 echo OK
 
 echo $N Check vr and vl when filename has spaces ....................$NL
