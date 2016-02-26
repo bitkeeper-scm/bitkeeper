@@ -1,4 +1,4 @@
-# Copyright 1999-2004,2010,0 BitMover, Inc
+# Copyright 1999-2004,2010 BitMover, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.

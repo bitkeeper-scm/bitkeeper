@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2009,0 BitMover, Inc
+ * Copyright 1999-2009 BitMover, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.

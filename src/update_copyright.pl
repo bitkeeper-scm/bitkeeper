@@ -25,15 +25,16 @@ sub dateRange {
 	$s = $_ unless $s;
 	$e = $_ unless $e;
 	if ($_ > $e + 1) {
+	    $ret .= "," if $ret;
 	    $ret .= $s;
 	    $ret .= "-$e" if $e != $s;
-	    $ret .= ",";
 	    $s = $e = 0;
 	} else {
 	    $e = $_;
 	}
     }
     if ($s) {
+	$ret .= "," if $ret;
 	$ret .= $s;
 	$ret .= "-$e" if $e != $s;
     }
@@ -41,15 +42,16 @@ sub dateRange {
 }
 
 
-open(S, "bk -U grep -l 'Copyright [0-9,]+ BitMover, Inc' |");
+open(S, "bk -U grep 'Copyright [0-9,-]+ BitMover, Inc' |");
 while (<S>) {
     chomp;
-    my($file) = $_;
+    my($file, $oldrange) = (/^(.*):.*Copyright ([0-9,-]+)/);
 
     my($r) = dateRange($file);
+    next unless $r ne $oldrange;
     print "$file: $r\n";
     system("bk edit -qS '$file'") == 0 or die $file;
 
-    system("sed -i 's/Copyright [0-9,]\\+ BitMover, Inc/Copyright $r BitMover, Inc/' '$file'") == 0 or die;
+    system("sed -i 's/Copyright [0-9,-]\\+ BitMover, Inc/Copyright $r BitMover, Inc/' '$file'") == 0 or die;
 }
 close(S);

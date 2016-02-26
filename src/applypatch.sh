@@ -2,7 +2,7 @@
 # name: $1, domain: $2, Subject: $3, Explanation: $4, diff-file: stdin
 # test checkin
 
-# Copyright 2002-2003,0 BitMover, Inc
+# Copyright 2002-2003 BitMover, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
