@@ -1419,7 +1419,7 @@ pager(void)
 				break;
 			}
 		}
-		unless (pg) pg = "bk more";
+		unless (pg) pg = "cat";
 	}
 	if (oldpath) safe_putenv("PATH=%s", path);
 	if (path) free(path);	/* hard to imagine we don't have one but.. */

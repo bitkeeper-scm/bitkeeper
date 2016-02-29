@@ -244,7 +244,7 @@ OBJ =	bkver.o cmd.o \
 	rm.o rmdel.o \
 	root.o rset.o sane.o scat.o sccs.o sccs2bk.o \
 	sccslog.o sccs_mv.o sec2hms.o send.o sendbug.o \
-	set.o setup.o sfio.o shellcmd.o shrink.o sinfo.o \
+	set.o setup.o sfio.o shrink.o sinfo.o \
 	slib.o smerge.o sort.o startmenu.o \
 	stat.o stattest.o status.o stripdel.o synckeys.o \
 	tagmerge.o testcode.o tclsh.o takepatch.o \

@@ -74,7 +74,7 @@ fixtool(char *file, int ask, char *diffopts)
 
 	if (ask) {
 		system("bk clear");
-		p = aprintf("bk diffs %s '%s' | bk more", diffopts, file);
+		p = aprintf("bk diffs %s '%s' | %s", diffopts, file, pager());
 		system(p);
 		free(p);
 		fflush(stdout);

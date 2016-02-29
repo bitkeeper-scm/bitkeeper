@@ -305,7 +305,6 @@ makepatch
 mdbmdump
 merge
 mklock
-more
 mtime
 mv
 mvdir
@@ -445,7 +444,6 @@ init => setup
 _key2path => key2path
 _mail => mail
 aliases => alias
-pager => more
 patch => mend
 _preference => config
 rechksum => checksum

@@ -88,22 +88,6 @@ bk isascii file_that_does_not_exist 2> ERR
 test $? -eq 2 || fail
 echo OK
 
-echo $N Test bk more without error ..................................$NL
-bk more foo > /dev/null
-test $? -eq 0 || fail
-echo OK
-
-# this needs to be interactive to work
-# echo $N Test bk more with early exit ................................$NL
-# bk more doit > /dev/null
-# test $? -eq 1 || fail
-# echo OK
-
-echo $N Test bk more with error .....................................$NL
-bk more file_that_does_not_exist 2> ERR
-test $? -eq 2 || fail
-echo OK
-
 echo $N Test bk patch with a working patch ..........................$NL
 bk diff foo bar > foo.patch
 bk patch -g1 foo < foo.patch > /dev/null
