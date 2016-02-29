@@ -102,30 +102,8 @@ proc main {} \
 		}
 	}
 
-	# this all deals with user acceptance of a particular license,
-	# which occurs on different steps for different license types
 	bind . <<WizNextStep>> {
 		switch -exact -- [. cget -step] {
-			Begin	{
-				if {![findLicense]} {
-					set ::licInRepo 1
-					wizInsertStep LicenseKey
-				} else {
-					set ::licInRepo 0
-					if {$::licenseInfo(text) ne ""} {
-						wizInsertStep EndUserLicense
-					}
-				}
-			}
-			EndUserLicense	{exec bk _eula -a}
-			LicenseKey      {
-				if {![checkLicense]} {
-					break
-				}
-				if {$::licenseInfo(text) ne ""} {
-					wizInsertStep EndUserLicense
-				}
-			}
 			CheckoutMode {
 				if {$::wizData(checkout) eq "edit"} {
 					wizInsertStep Clock_Skew
@@ -135,26 +113,6 @@ proc main {} \
 			}
 		}
 	}
-}
-
-proc findLicense {} \
-{
-	global dev_null licenseInfo tmp_dir wizData
-
-	set rc 0
-	set pwd [pwd]
-	cd $tmp_dir
-	set ::env(BK_NO_GUI_PROMPT) 1
-	if {[catch {exec bk lease renew} result]} {
-		set rc 0
-	} else {
-		# we have a current license, let's grab the EULA
-		set licenseInfo(text) [exec bk _eula -u]
-		set rc 1
-	}
-	unset ::env(BK_NO_GUI_PROMPT)
-	cd $pwd
-	return $rc
 }
 
 proc app_init {} \
@@ -197,10 +155,6 @@ proc app_init {} \
 		partial_check "on"
 		closeOnCreate 1
 
-		license		""
-		licsign1	""
-		licsign2	""
-		licsign3	""
 		repository	""
 	}
 
@@ -406,123 +360,6 @@ proc widgets {} \
 	    -title "BK Setup Wizard" \
 	    -description [wrap [getmsg setuptool_step_Begin]] \
 	    -body {$this configure -defaultbutton next}
-
-	#-----------------------------------------------------------------------
-	. add step EndUserLicense \
-	    -title "End User License" \
-	    -description [wrap [getmsg setuptool_step_EndUserLicense]] \
-
-	. stepconfigure EndUserLicense -body {
-
-		global wizData widgets licenseInfo
-
-		set wizData(licenseAccept) ""
-		$this configure -defaultbutton next
-
-		set w [$this info workarea]
-		set widgets(EndUserLicense) $w
-
-		text $w.text \
-		    -yscrollcommand [list $w.vsb set] \
-		    -wrap none \
-		    -takefocus 0 \
-		    -bd 1 \
-		    -width 80
-		ttk::scrollbar $w.vsb -command [list $w.text yview]
-		ttk::scrollbar $w.hsb -command [list $w.text.xview]
-
-		ttk::frame $w.radioframe
-		ttk::radiobutton $w.radioframe.accept \
-		    -text "I Agree" \
-		    -underline 2 \
-		    -variable wizData(licenseAccept) \
-		    -command [list $this configure -state normal] \
-		    -value 1
-		ttk::radiobutton $w.radioframe.dont \
-		    -text "I Do Not Agree" \
-		    -underline 2 \
-		    -variable wizData(licenseAccept) \
-		    -command [list $this configure -state pending] \
-		    -value 0
-
-		pack $w.radioframe.accept -side left
-		pack $w.radioframe.dont -side left -padx 8
-		pack $w.radioframe -side bottom -fill x -pady 1
-		pack $w.vsb -side right -fill y -expand n
-		pack $w.text -side left -fill both -expand y
-
-		$w.text insert end $licenseInfo(text)
-		$w.text configure -state disabled
-
-		if {$wizData(licenseAccept) == 1} {
-			$this configure -state normal
-		} else {
-			$this configure -state pending
-		}
-
-	}
-
-	#-----------------------------------------------------------------------
-	. add step LicenseKey \
-	    -title "Commercial License" \
-	    -description [wrap [getmsg setuptool_step_LicenseKey]]
-
-	. stepconfigure LicenseKey -body {
-		global wizData gc widgets
-
-		$this configure -defaultbutton next
-
-		set w [$this info workarea]
-		set widgets(LicenseKey) $w
-
-		set ::widgets(license)  $w.license
-		set ::widgets(licsign1) $w.licsign1Entry
-		set ::widgets(licsign2) $w.licsign2Entry
-		set ::widgets(licsign3) $w.licsign3Entry
-
-		ttk::label $w.keyLabel -text "License Key:"
-		ttk::entry $w.keyEntry  -textvariable wizData(license)
-		ttk::button $w.fileButton -text "From file..." \
-		    -command {parseLicenseData file}
-		ttk::label $w.licsign1Label -text "Key Signature #1:"
-		ttk::entry $w.licsign1Entry -textvariable wizData(licsign1)
-		ttk::label $w.licsign2Label -text "Key Signature #2:"
-		ttk::entry $w.licsign2Entry -textvariable wizData(licsign2)
-		ttk::label $w.licsign3Label -text "Key Signature #3:"
-		ttk::entry $w.licsign3Entry -textvariable wizData(licsign3)
-
-		grid $w.keyLabel       -row 0 -column 0 -sticky e
-		grid $w.keyEntry       -row 0 -column 1 -sticky ew -pady 2
-		grid $w.fileButton     -row 0 -column 2 -sticky w -padx 2
-		grid $w.licsign1Label  -row 1 -column 0 -sticky e 
-		grid $w.licsign1Entry  -row 1 -column 1 -sticky ew -pady 2
-		grid $w.licsign2Label  -row 2 -column 0 -sticky e
-		grid $w.licsign2Entry  -row 2 -column 1 -sticky ew -pady 2
-		grid $w.licsign3Label  -row 3 -column 0 -sticky e
-		grid $w.licsign3Entry  -row 3 -column 1 -sticky ew -pady 3
-
-		grid columnconfigure $w 0 -weight 0
-		grid columnconfigure $w 1 -weight 1
-		grid columnconfigure $w 2 -weight 0
-		grid rowconfigure $w 0 -weight 0
-		grid rowconfigure $w 1 -weight 0
-		grid rowconfigure $w 2 -weight 0
-		grid rowconfigure $w 3 -weight 0
-		grid rowconfigure $w 4 -weight 1
-
-		bind $w.keyEntry <<Paste>> {parseLicenseData clipboard}
-
-		# running the validate command will set the wizard buttons to 
-		# the proper state; this is mostly useful if they enter
-		# a license, go to the next step, then come back.
-		validate license
-		trace variable wizData(license) w [list validate license $w]
-		trace variable wizData(licsign1) w [list validate license $w]
-		trace variable wizData(licsign2) w [list validate license $w]
-		trace variable wizData(licsign3) w [list validate license $w]
-
-		after idle [list focusEntry $w.keyEntry]
-	}
 
 	#-----------------------------------------------------------------------
 	. add step RepoInfo \
@@ -735,69 +572,12 @@ proc validate {which args} \
 	global gc
 
 	switch $which {
-		"license" {
-			# This doesn't validate the license per se,
-			# only whether the user has entered one. Validation
-			# is expensive, so we'll only do it when the user
-			# presses "Next"
-			if {$wizData(license)  eq "" ||
-			    $wizData(licsign1) eq "" ||
-			    $wizData(licsign2) eq "" ||
-			    $wizData(licsign3) eq "" ||
-			    (![string match "BKL*" $wizData(license)])} {
-				. configure -state pending
-			} else {
-				. configure -state normal
-			}
-		}
-
 		"repoInfo" {
 			if {$wizData(repository) eq ""} {
 				. configure -state pending
 			} else {
 				. configure -state normal
 			}
-		}
-	}
-}
-
-proc parseLicenseData {type} \
-{
-	global wizData
-	set data ""
-
-	if {$type == "clipboard"} {
-		# this is experimental... It needs a lot of testing on
-		# our supported platforms before we bless it. 
-		if {[catch {selection get -displayof . -selection PRIMARY} data]} {
-			catch {clipboard get} data
-		}
-
-	} elseif {$type == "file"} {
-		set types {
-			{{All Files} *}
-			{{License Files} {.lic}}
-			{{Text Files} {.txt}}
-		}
-		set file [tk_getOpenFile -filetypes $types -parent .]
-		if {$file != "" && 
-		    [file exists $file] && 
-		    [file readable $file]} {
-
-			catch {
-				set f [open $file r]
-				set data [read $f]
-				close $f
-			}
-		}
-	}
-
-	foreach line [split $data \n] {
-		if {[regexp {license: *(BKL.+)$} $line -> value]} {
-			set wizData(license) $value
-		}
-		if {[regexp {(licsign[123]): *(.*)$} $line -> key value]} {
-			set wizData($key) $value
 		}
 	}
 }
@@ -823,10 +603,6 @@ proc createConfigData {} \
 	global wizData
 	set configData ""
 
-	set licenseOptions {
-		license licsign1 licsign2 licsign3
-	}
-
 	foreach key {
 		description email
 		autofix checkout clock_skew partial_check
@@ -834,14 +610,8 @@ proc createConfigData {} \
 		append configData "$key: $wizData($key)\n"
 	}
 
-	if {$::licInRepo} {
-		foreach key $licenseOptions {
-			append configData "$key: $wizData($key)\n"
-		}
-	}
-
 	return $configData
-}		
+}
 
 proc createRepo {errorVar} \
 {
@@ -914,53 +684,10 @@ proc focusEntry {w} \
 	}
 }
 
-# side effect: licenseInfo(text) might get filled with EULA
-proc checkLicense {} \
-{
-	
-	global env licenseInfo wizData dev_null
-
-	set f [open "|bk _eula -v > $dev_null" w]
-	puts $f "
-	    license: $wizData(license)
-	    licsign1: $wizData(licsign1)
-	    licsign2: $wizData(licsign2)
-	    licsign3: $wizData(licsign3)
-	"
-
-	set ::errorCode NONE
-	catch {close $f}
-		      
-	if {($::errorCode == "NONE") || 
-	    ([lindex $::errorCode 0] == "CHILDSTATUS" &&
-	     [lindex $::errorCode 2] == 0)} {
-		# need to override any config currently in effect...
-		set BK_CONFIG "logging:none!;"
-		append BK_CONFIG "license:$wizData(license)!;"
-		append BK_CONFIG "licsign1:$wizData(licsign1)!;"
-		append BK_CONFIG "licsign2:$wizData(licsign2)!;"
-		append BK_CONFIG "licsign3:$wizData(licsign3)!;"
-		append BK_CONFIG "single_user:!;single_host:!;"
-		set env(BK_CONFIG) $BK_CONFIG
-		set licenseInfo(text) [exec bk _eula -u]
-		return 1
-	}
-		      
-		      
-	popupMessage -W [getmsg "setuptool_invalid_license"]
-
-	return 0
-}
-
 proc moreInfo {which {search {}}} {
 	global dev_null
 
-	switch -exact -- $which {
-		commercial	{set topic licensing}
-		default		{set topic config-etc}
-	}
-
-	exec bk helptool $topic $search 2> $dev_null &
+	exec bk helptool config-etc $search 2> $dev_null &
 }
 
 main

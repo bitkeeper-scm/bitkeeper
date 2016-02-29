@@ -628,19 +628,6 @@ bk clone to get a copy of the repository
 
 If you are ready to create a new BitKeeper repository, press Next.
 $
-#setuptool_step_EndUserLicense
-Please take a moment to read the license agreement now. If you accept 
-the terms below, click "I Agree", then "Next". Otherwise click Cancel.
-$
-#setuptool_step_LicenseKey
-Please enter the license key and signatures exactly as they were given to
-you.
-
-If the license keys are in a file, click the "From file..." button and the 
-values will be extracted from the file. This should work even if the file 
-has mail headers or other text, and it is the easiest way to ensure the keys 
-are entered properly.
-$
 #setuptool_step_RepoInfo
 The following information uniquely identifies this repository. The fields
 highlighted in blue are required to be non-empty.
@@ -706,13 +693,6 @@ only for files which are updated.
 
 We recommend that you start in full check mode and turn on partial check
 later if needed.
-$
-#setuptool_invalid_license
-The license key or license signatures are invalid. 
-Please check the values that you entered. If you 
-continue to have problems please contact BitKeeper 
-support at support@bitkeeper.com.
-
 $
 #bitkeeper.init
 #!/bin/sh
@@ -782,11 +762,6 @@ $
 The error code returned from BitKeeper was:
 	#BKARG#
 Please send mail to support@bitkeeper.com to request assistance.
-$
-#timesync
-The time on the local machine is out of sync with your license server.
-Please verify the time on your computer and that the timezone is set
-correctly and try again.
 $
 #bkd-err-other
 The remote BitKeeper daemon for this connection had an error.

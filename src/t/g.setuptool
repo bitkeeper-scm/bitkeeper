@@ -16,7 +16,6 @@ test -d "$HERE/home" || mkdir "$HERE/home"
 export BK_TEST_HOME="$HERE/home"
 OUT="$HERE/out"
 RC="`bk dotbk`/setup.rc"
-ACCEPTED="`bk dotbk`/accepted"
 
 echo $N Simple startup and exit......................................$NL
 bk guitest setuptool >"$OUT" 2>&1 <<'EOF'
@@ -38,152 +37,11 @@ echo OK
 #test -f "$RC" || { echo "failed"; ls -l `bk dotbk`; exit 1; }
 #echo "OK"
 
-echo $N Creating an Academic repository .............................$NL
-rm -rf "`bk dotbk`/accepted" "$HERE/repo"
-# note the lack of single quotes around EOF, which is a bit unusual.
-# we want HERE to be expanded in the script
-bk guitest setuptool >"$OUT" 2>&1 <<EOF
-    focus -force .
-    test_buttonPress "Next >"
-    test_focus
-    test_inputString  [string trim [test_escapeInput "$BKL_ACADEMIC"]]
-    test_inputString "\t\t"
-    test_inputString [string trim [test_escapeInput "$BKL_A1"]]
-    test_inputString \t
-    test_inputString [string trim [test_escapeInput "$BKL_A2"]]
-    test_inputString \t
-    test_inputString [string trim [test_escapeInput "$BKL_A3"]]
-    test_buttonPress "Next >"
-    test_focus
-    test_buttonPress "I Agree"
-    test_buttonPress "Next >"
-    test_focus
-    test_inputString "$HERE/repo"
-    test_inputString \t
-    test_inputString "this is the description"
-    test_inputString \t
-    test_inputString nobody@nowhere.bk
-    test_buttonPress "Next >"  ;# takes us to checkout mode
-    test_buttonPress "Next >"  ;# takes us to timestamp database
-    test_buttonPress "Next >"  ;# takes us to partial check options
-    test_buttonPress "Next >"  ;# takes us to last step
-    test_buttonPress "Finish"  ;# do it!
-    after 5000 [list test_buttonPress OK] ;# darn confirmation popup :-(
-    test_die 99
-EOF
-test $? -eq 0 || {
-	echo failed
-	echo guitest returned with non-zero exit status
-	exit 1
-}
-grep -q 'The repository was successfully created.' "$OUT" || {
-	echo failed 
-	cat "$OUT" 
-	exit 1 
-}
-cat > "$OUT" <<EOF
-description: this is the description
-email: nobody@nowhere.bk
-autofix: yes
-checkout: edit
-clock_skew: on
-partial_check: on
-license: $BKL_ACADEMIC
-licsign1: $BKL_A1
-licsign2: $BKL_A2
-licsign3: $BKL_A3
-EOF
-CONFIG="$HERE/repo/BitKeeper/etc/config"
-test -f "$CONFIG" || {
-	echo "failed to make config file" 
-	exit 1 
-}
-bk undos < "$CONFIG" > "$HERE/config"
-checkfiles "$OUT" "$HERE/config"
-echo OK
-
-echo $N Creating a Basic repository .................................$NL
-rm -rf "`bk dotbk`/accepted" "$HERE/repo"
-# note the lack of single quotes around EOF, which is a bit unusual.
-# we want HERE to be expanded in the script
-bk guitest setuptool >"$OUT" 2>&1 <<EOF
-    focus -force .
-    test_buttonPress "Next >"
-    test_focus
-    test_inputString  [string trim [test_escapeInput "$BKL_BASIC"]]
-    test_inputString "\t\t"
-    test_inputString [string trim [test_escapeInput "$BKL_B1"]]
-    test_inputString \t
-    test_inputString [string trim [test_escapeInput "$BKL_B2"]]
-    test_inputString \t
-    test_inputString [string trim [test_escapeInput "$BKL_B3"]]
-    test_buttonPress "Next >"
-    test_focus
-    test_buttonPress "I Agree"
-    test_buttonPress "Next >"
-    test_focus
-    test_inputString "$HERE/repo"
-    test_inputString \t
-    test_inputString "this is the description"
-    test_inputString \t
-    test_inputString nobody@nowhere.bk
-    test_buttonPress "Next >"  ;# takes us to checkout mode
-    test_buttonPress "Next >"  ;# takes us to timestamp database
-    test_buttonPress "Next >"  ;# takes us to partial check options
-    test_buttonPress "Next >"  ;# takes us to last step
-    test_buttonPress "Finish"  ;# do it!
-    after 5000 [list test_buttonPress OK] ;# darn confirmation popup :-(
-    test_die 99
-EOF
-test $? -eq 0 || {
-	echo failed
-	echo guitest returned with non-zero exit status
-	exit 1
-}
-grep -q 'The repository was successfully created.' "$OUT" || {
-	echo failed 
-	cat "$OUT" 
-	exit 1 
-}
-cat > "$OUT" <<EOF
-description: this is the description
-email: nobody@nowhere.bk
-autofix: yes
-checkout: edit
-clock_skew: on
-partial_check: on
-license: $BKL_BASIC
-licsign1: $BKL_B1
-licsign2: $BKL_B2
-licsign3: $BKL_B3
-EOF
-CONFIG="$HERE/repo/BitKeeper/etc/config"
-test -f "$CONFIG" || {
-	echo "failed to make config file" 
-	exit 1 
-}
-bk undos < "$CONFIG" > "$HERE/config"
-checkfiles "$OUT" "$HERE/config"
-echo OK
-
 echo $N Creating a Pro repository ...................................$NL
-rm -rf "`bk dotbk`/accepted" "$HERE/repo"
 # note the lack of single quotes around EOF, which is a bit unusual.
 # we want HERE to be expanded in the script
 bk guitest setuptool >"$OUT" 2>&1 <<EOF
     focus -force .
-    test_buttonPress "Next >"
-    test_focus
-    test_inputString  [string trim [test_escapeInput "$BKL_PRO"]]
-    test_inputString "\t\t"
-    test_inputString [string trim [test_escapeInput "$BKL_P1"]]
-    test_inputString \t
-    test_inputString [string trim [test_escapeInput "$BKL_P2"]]
-    test_inputString \t
-    test_inputString [string trim [test_escapeInput "$BKL_P3"]]
-    test_buttonPress "Next >"
-    test_focus
-    test_buttonPress "I Agree"
     test_buttonPress "Next >"
     test_focus
     test_inputString "$HERE/repo"
@@ -216,10 +74,6 @@ autofix: yes
 checkout: edit
 clock_skew: on
 partial_check: on
-license: $BKL_PRO
-licsign1: $BKL_P1
-licsign2: $BKL_P2
-licsign3: $BKL_P3
 EOF
 CONFIG="$HERE/repo/BitKeeper/etc/config"
 test -f "$CONFIG" || {
@@ -230,66 +84,3 @@ bk undos < "$CONFIG" > "$HERE/config"
 checkfiles "$OUT" "$HERE/config"
 echo OK
 
-echo $N Creating an Enterprise repository ...........................$NL
-rm -rf "`bk dotbk`/accepted" "$HERE/repo"
-# note the lack of single quotes around EOF, which is a bit unusual.
-# we want HERE to be expanded in the script
-bk guitest setuptool >"$OUT" 2>&1 <<EOF
-    focus -force .
-    test_buttonPress "Next >"
-    test_focus
-    test_inputString  [string trim [test_escapeInput "$BKL_ENTERPRISE"]]
-    test_inputString "\t\t"
-    test_inputString [string trim [test_escapeInput "$BKL_E1"]]
-    test_inputString \t
-    test_inputString [string trim [test_escapeInput "$BKL_E2"]]
-    test_inputString \t
-    test_inputString [string trim [test_escapeInput "$BKL_E3"]]
-    test_buttonPress "Next >"
-    test_focus
-    test_buttonPress "I Agree"
-    test_buttonPress "Next >"
-    test_focus
-    test_inputString "$HERE/repo"
-    test_inputString \t
-    test_inputString "this is the description"
-    test_inputString \t
-    test_inputString nobody@nowhere.bk
-    test_buttonPress "Next >"  ;# takes us to checkout mode
-    test_buttonPress "Next >"  ;# takes us to timestamp database
-    test_buttonPress "Next >"  ;# takes us to partial check options
-    test_buttonPress "Next >"  ;# takes us to last step
-    test_buttonPress "Finish"  ;# do it!
-    after 5000 [list test_buttonPress OK] ;# darn confirmation popup :-(
-    test_die 99
-EOF
-test $? -eq 0 || {
-	echo failed
-	echo guitest returned with non-zero exit status
-	exit 1
-}
-grep -q 'The repository was successfully created.' "$OUT" || {
-	echo failed 
-	cat "$OUT" 
-	exit 1 
-}
-cat > "$OUT" <<EOF
-description: this is the description
-email: nobody@nowhere.bk
-autofix: yes
-checkout: edit
-clock_skew: on
-partial_check: on
-license: $BKL_ENTERPRISE
-licsign1: $BKL_E1
-licsign2: $BKL_E2
-licsign3: $BKL_E3
-EOF
-CONFIG="$HERE/repo/BitKeeper/etc/config"
-test -f "$CONFIG" || {
-	echo "failed to make config file" 
-	exit 1 
-}
-bk undos < "$CONFIG" > "$HERE/config"
-checkfiles "$OUT" "$HERE/config"
-echo OK
