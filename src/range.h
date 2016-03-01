@@ -25,9 +25,11 @@ struct	range {
 };
 
 /* Lower nibble of both used for generic flags */
-#define RANGE_ENDPOINTS	0x10	/* just return s->rstart s->rstop */
-#define	RANGE_SET	0x20	/* return S_SET */
-#define	RANGE_RSTART2	0x40	/* allow s->rstart2 */
+#define RANGE_ENDPOINTS	0x010	/* just return s->rstart s->rstop */
+#define	RANGE_SET	0x020	/* return S_SET */
+#define	RANGE_RSTART2	0x040	/* allow s->rstart2 */
+#define RANGE_LATTICE	0x080	/* mark lattice range with D_SET */
+#define RANGE_LONGEST	0x100	/* mark longest line with D_SET */
 
 #define	WR_EITHER	0x10	/* select if BLUE xor RED */
 #define	WR_BOTH 	0x20	/* select if RED and BLUE */
@@ -67,6 +69,7 @@ time_t	range_cutoff(char *spec);
 void	range_markMeta(sccs *s);
 int	range_gone(sccs *s, ser_t *dlist, u32 dflags);
 void	range_unrange(sccs *s, ser_t *left, ser_t *right, int all);
+int	range_lattice(sccs *s, ser_t lower, ser_t upper, int longest);
 
 int	range_walkrevs(sccs *s, ser_t *fromlist, ser_t *tolist, u32 flags,
 	    int (*fcn)(sccs *s, ser_t d, void *token), void *token);

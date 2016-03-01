@@ -63,6 +63,7 @@ private struct {
 	char	*dspecfile;	/* name the file where the dspec is */
 
 	RANGE	rargs;
+	u32	rflags;		/* range flags */
 } opts;
 
 typedef struct slog {
@@ -128,6 +129,8 @@ changes_main(int ac, char **av)
 						/* undocumented on purpose */
 		{ "sparse-ok", 320 },		/* don't error on non-present */
 		{ "standalone", 'S' },		/* treat comps as standalone */
+		{ "lattice", 330 },		/* range is a lattice */
+		{ "longest", 340 },		/* longest path */
 		{ 0, 0 }
 	};
 
@@ -220,10 +223,18 @@ changes_main(int ac, char **av)
 			break;
 		    case 320:	/* --sparse-ok */
 			opts.sparseOk = 1;
+		    case 330: /* --lattice */
+			if (opts.rflags) bk_badArg(c, av);
+			opts.rflags = RANGE_LATTICE;
+			break;
+		    case 340: /* --longest */
+			if (opts.rflags) bk_badArg(c, av);
+			opts.rflags = RANGE_LONGEST;
 			break;
 		    default: bk_badArg(c, av);
 		}
 	}
+	unless (opts.rflags) opts.rflags = RANGE_SET;
 	if (opts.dspecfile) {
 		if (opts.dspec) {
 			fprintf(stderr,
@@ -701,9 +712,14 @@ doit(int dash)
 			checkPresent(s, opts.incS, opts.excS);
 		}
 	}
-	if (opts.rargs.rstart) {
-		unless (opts.rargs.rstop) opts.noempty = 0;
-		if (range_process("changes", s, RANGE_SET, &opts.rargs)) {
+	if (opts.rargs.rstart ||
+	    (opts.rflags & (RANGE_LATTICE|RANGE_LONGEST))) {
+		/* if a list, then don't skip empty as they listed it */
+		if (!opts.rargs.rstop &&
+	    	    !(opts.rflags & (RANGE_LATTICE|RANGE_LONGEST))) {
+			opts.noempty = 0;
+		}
+		if (range_process("changes", s, opts.rflags, &opts.rargs)) {
 			goto next;
 		}
 		for (e = s->rstop; e >= TREE(s); e--) {

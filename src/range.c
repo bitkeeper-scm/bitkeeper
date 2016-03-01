@@ -34,8 +34,11 @@ range_main(int ac, char **av)
 	int	c;
 	int	standalone = 0;
 	int	endpoints = 0;
+	u32	rflags = 0;
 	RANGE	rargs = {0};
 	longopt	lopts[] = {
+		{ "lattice", 310 },		/* range is a lattice */
+		{ "longest", 320 },		/* longest line */
 		{ "standalone", 'S' },	/* alias */
 		{ 0, 0 }
 	};
@@ -57,6 +60,14 @@ range_main(int ac, char **av)
 			break;
 		    case 'S': standalone = 1; break;	// undoc
 		    case 'u': endpoints = 1; break;	// undoc
+		    case 310: /* --lattice */
+		    	if (rflags) bk_badArg(c, av);
+			rflags = RANGE_LATTICE;
+		    	break;
+		    case 320: /* --longest */
+		    	if (rflags) bk_badArg(c, av);
+			rflags = RANGE_LONGEST;
+		    	break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -86,6 +97,7 @@ range_main(int ac, char **av)
 		name = sfileFirst(av[0], &av[optind], 0);
 	}
 
+	unless (rflags) rflags = RANGE_SET;
 	for (; name; name = sfileNext()) {
 		if (s && (streq(s->gfile, name) || streq(s->sfile, name))) {
 			sccs_clearbits(s, D_SET|D_RED|D_BLUE);
@@ -100,7 +112,7 @@ range_main(int ac, char **av)
 			s = 0;
 			continue;
 		}
-		if (range_process("range", s, RANGE_SET, &rargs)) goto next;
+		if (range_process("range", s, rflags, &rargs)) goto next;
 		if (all) range_markMeta(s);
 		if (s->state & S_SET) {
 			printf("%s set:", s->gfile);

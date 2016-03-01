@@ -43,7 +43,7 @@ log_main(int ac, char **av)
 	ser_t	e;
 	int	log = streq(av[0], "log");
 	int	init_flags = INIT_NOCKSUM;
-	int	rflags = SILENT|RANGE_SET;
+	int	rflags = 0;
 	int	rc = 0;
 	int	local = 0;
 	char	*url = 0;
@@ -55,6 +55,8 @@ log_main(int ac, char **av)
 	pid_t	pid = 0;	/* pager */
 	longopt	lopts[] = {
 		{ "dspecf;", 300 },		/* let user pass in dspec */
+		{ "lattice", 310 },		/* color lattice */
+		{ "longest", 320 },		/* color longest */
 		{ "standalone", 'S' },		/* alias */
 		{ 0, 0 }
 	};
@@ -114,9 +116,19 @@ log_main(int ac, char **av)
 				return (1);
 			}
 			break;
+		    case 310:	/* --lattice */
+			if (rflags) bk_badArg(c, av);
+		    	rflags = RANGE_LATTICE;
+			break;
+		    case 320:	/* --longest */
+			if (rflags) bk_badArg(c, av);
+		    	rflags = RANGE_LONGEST;
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
+	unless (rflags) rflags = RANGE_SET;
+	rflags |= SILENT;
 	unless (opts->dspec) {
 		char	*specf;
 		char	*spec = log ? "dspec-log" : "dspec-prs";

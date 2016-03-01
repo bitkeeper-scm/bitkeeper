@@ -162,6 +162,14 @@ Use with
 to see tags and empty merges,
 i.e., everything which would be sent back with a bk push.
 .Tp
+.B \-\-lattice
+Restrict the changesets to those on the lattice between the two range
+endpoints.  Unlike a range, the lower bound is included in the output.
+.Tp
+.B \-\-longest
+Restrict the changesets to those on the longest line between the two range
+endpoints.  Unlike a range, the lower bound is included in the output.
+.Tp
 .B \-m
 Do not show any merge changesets, empty or not.
 .Tp

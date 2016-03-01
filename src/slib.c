@@ -16068,6 +16068,14 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		return (nullVal);
 	}
 
+	case KW_D_SET: /* D_SET */ {	/* D_SET is set */
+		if (FLAGS(s, d) & D_SET) {
+			fs(REV(s, d));
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
 	case KW_GCA: /* GCA */ {		/* print gca rev if a merge node */
 		if (MERGE(s, d) && (d = gca(s, MERGE(s, d), PARENT(s, d)))) {
 			fs(REV(s, d));

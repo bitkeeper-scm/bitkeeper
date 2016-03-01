@@ -241,8 +241,13 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 	int	i, restore = 0, rc = 1;
 	RANGE	save = {0};
 
-	/* must pick a mode */
-	assert(((flags & RANGE_ENDPOINTS) != 0) ^ ((flags & RANGE_SET) != 0));
+	/*
+	 * must pick a mode -- the assert is clearer, but not as fun as
+	 * bit twiddling: assert(i == (i & ~(i - 1)));
+	 */
+	i = flags & (RANGE_ENDPOINTS| RANGE_SET| RANGE_LATTICE| RANGE_LONGEST);
+	assert((i == RANGE_ENDPOINTS) || (i == RANGE_SET) ||
+	    (i == RANGE_LATTICE) || (i == RANGE_LONGEST));
 
 	if (rargs->isdate) return (range_processDates(me, s, flags, rargs));
 
@@ -255,6 +260,22 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 		memcpy(&save, rargs, sizeof(save));
 		restore = 1;
 		if (range_addArg(rargs, rev, 0)) goto out;
+	}
+	if (flags & (RANGE_LATTICE|RANGE_LONGEST)) {
+		unless (rargs->rstop) rargs->rstop = rargs->rstart;
+		unless (rargs->rstart && *rargs->rstart) rargs->rstart = "1.1";
+		unless (s->rstart = getrev(me, s, flags, rargs->rstart)) {
+			goto out;
+		}
+		unless (s->rstop = getrev(me, s, flags, rargs->rstop)) {
+			goto out;
+		}
+		if (range_lattice(
+		    s, s->rstart, s->rstop, (flags & RANGE_LONGEST))) {
+			goto out;
+		}
+		rc = 0;
+		goto out;
 	}
 	if (flags & RANGE_ENDPOINTS) {
 		unless (rargs->rstart) return (0);
@@ -761,4 +782,63 @@ range_unrange(sccs *s, ser_t *left, ser_t *right, int all)
 		}
 	}
 	walkrevs_done(&wr);
+}
+
+/*
+ * Color D_SET on directed lattice connecting upper and lower
+ * returns 0 if they connect, 1 if they don't. If longest, just
+ * color D_SET the longest path between lower and upper.
+ */
+int
+range_lattice(sccs *s, ser_t lower, ser_t upper, int longest)
+{
+	ser_t	d, p, m;
+	ser_t	*len;
+
+	unless (upper) upper = sccs_top(s);
+	unless (lower) lower = TREE(s);
+	assert(upper && lower);
+
+	/* optimize - prune obvious case */
+	if (lower > upper) return (1);
+
+	/*
+	 * over allocs, but it makes serials match indices, also zero
+	 * val means there is no path from lower to this serial
+	 */
+	len = (ser_t *)calloc(TABLE(s) + 1, sizeof(ser_t));
+
+	/* marking nodes between lower and upper with longest distance + 1 */
+	len[lower] = 1;
+	for (d = lower + 1; d <= upper; d++) {
+		if (TAG(s, d)) continue;
+		p = PARENT(s, d);
+		m = MERGE(s, d);
+		if (m && (len[m] > len[p])) {
+			len[d] = len[m] + 1;
+		} else if (len[p]) {
+			len[d] = len[p] + 1;
+		}
+	}
+	unless (len[upper]) {	/* no connection, bail */
+		free(len);
+		return (1);
+	}
+	/* Color D_SET intersection of parent of upper and kid of lower */
+	FLAGS(s, upper) |= D_SET;
+	s->state |= S_SET;
+	for (d = upper; d >= lower; d--) {
+		unless (FLAGS(s, d) & D_SET) continue;
+		p = PARENT(s, d);
+		m = MERGE(s, d);
+		/* ties go to the parent */
+		if (m && len[m] && (!longest || (len[m] > len[p]))) {
+			FLAGS(s, m) |= D_SET;
+			unless (longest) goto parent;
+		} else {
+parent:			if (len[p]) FLAGS(s, p) |= D_SET;
+		}
+	}
+	free(len);
+	return (0);
 }

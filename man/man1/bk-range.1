@@ -125,15 +125,23 @@ because it is the first revision seen, rounds down and means
 1.1.  To get the most recent delta, type
 .QR \-r+ .
 .SH OPTIONS
-.TP \-c\*<range\*>
+.TP \-\-standalone
 .OPTreq \-c range
 Specify deltas by a date range
 .tp
-.OPTreq \-r rev
-Specify deltas by revision number
+.B \-\-lattice
+Restrict the deltas to those on the lattice between the two range
+endpoints.  Unlike a range, the lower bound is included in the output.
+.tp
+.B \-\-longest
+Restrict the deltas to those on the longest line between the two range
+endpoints.  Unlike a range, the lower bound is included in the output.
 .tp
 .B \-q
 run quietly; default is to warn about all files which do not match the range
+.tp
+.OPTreq \-r rev
+Specify deltas by revision number
 .tp
 .B \-S
 .tp
