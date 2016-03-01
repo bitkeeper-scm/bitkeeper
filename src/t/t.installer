@@ -52,21 +52,6 @@ win32_regDiff || {
 }
 echo OK
 
-# signtool path is also listed in src/utils/Makefile; keep in sync.
-SIGNTOOL="/c/Program Files/Microsoft SDKs/Windows/v7.1/Bin/signtool.exe"
-if [ -x "$SIGNTOOL" ]
-then
-	echo $N Check that installer is signed ..............................$NL
-	"$SIGNTOOL" verify -pa "$BK_INSTALLER" >OUT 2>&1 || fail -f OUT
-elif [ `bk gethost` = "win7-vm.bitkeeper.com" ]
-then
-	echo $N Check that signtool is installed on release machine .........$NL
-	fail No v7.1 of signtool
-else
-	echo $N Skipping installer signed test as no signtool ...............$NL
-fi
-echo OK
-
 fi	# end of WIN32 tests
 
 echo $N Relative path installation, no config file...................$NL

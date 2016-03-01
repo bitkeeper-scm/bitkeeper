@@ -33,11 +33,6 @@ ifeq "$(OSTYPE)" "msys"
 	SO=so
 	STRIPOPTS=
 	DARWIN=NO
-	# SIGNTOOL path also in t.installer, so keep in sync
-	SIGNTOOL=/c/Program Files/Microsoft SDKs/Windows/v7.1/Bin/signtool.exe
-	CERT=../win32/bitmover-cert.p12
-	PASS=BMstuff1
-	TSURL=http://timestamp.comodoca.com/authenticode
 	BKGUI=$(BINDIR)/gui/bin/bkgui$(EXE)
 	EXTRACT_OBJ=extractor.o extractor-console.o
 	MANIFEST=installer.manifest
@@ -61,12 +56,6 @@ else
 		STRIPOPTS=-x
 		BKGUI=$(BINDIR)/gui/bin/BitKeeper.app/Contents/MacOS/BitKeeper
 		DARWIN=YES
-# CERT is the Common Name of the Developer ID Installer
-# certificate issued to us by Apple for code signing our Mac OS X
-# installer package. It need not be installed on your machine; the
-# build will simply not sign the .pkg file.
-		CERT='Developer ID Installer: BitMover, Inc. (2265G6A886)'
-		APPCERT='3rd Party Mac Developer Application: BitMover, Inc. (2265G6A886)'
 		DEEP=$(shell test `uname -r | awk -F. '{print $$1}'` -gt 10 && echo --deep)
 	endif
 	EXTRACT_OBJ=extractor.o
@@ -85,10 +74,6 @@ IMAGEDEPS:= $(RESOURCES) $(PROGRESS) _data.o
 
 all image: $(BINDIR)/bk$(EXE) $(IMAGE)
 	strip $(IMAGE) $(CONSOLE_IMAGE)
-	@test ! -x "$(SIGNTOOL)" || { \
-	    "$(SIGNTOOL)" sign -t $(TSURL) -f $(CERT) -p $(PASS) $(IMAGE) ; \
-	    "$(SIGNTOOL)" sign -t $(TSURL) -f $(CERT) -p $(PASS) $(CONSOLE_IMAGE) ; \
-	}
 
 $(IMAGE): $(MANIFEST) $(EXTRACT_OBJ) $(SYSTEM_OBJS) $(IMAGEDEPS)
 	$(LD) $(LDFLAGS) extractor.o $(SYSTEM_OBJS) _data.o \
@@ -113,14 +98,6 @@ endif
 		bk get -qS ../macosx/AppMain.tcl ; \
 		cp ../macosx/AppMain.tcl \
 		    BitKeeper/BitKeeper.app/Contents/Resources/Scripts ; \
-		codesign -s $(APPCERT) BitKeeper/BitKeeper.app/Contents/Resources/bitkeeper/bk || { \
-			echo "Signing bk binary failed" ; \
-			exit 1; \
-		} ; \
-		codesign -s $(APPCERT) BitKeeper/BitKeeper.app $(DEEP) || { \
-			echo "Signing the app bundle failed" ; \
-			exit 1; \
-		} ; \
 		pkgbuild --install-location /Applications \
 			--identifier com.bitkeeper.bk \
 			--version $(VERS_NO) \
@@ -131,11 +108,6 @@ endif
 		productbuild --distribution distribution.xml \
 			$(IMGBASE).pkg ; \
 		rm bk.pkg ; \
-		productsign --sign $(CERT) $(IMGBASE).pkg $(IMGBASE)-signed.pkg || { \
-			echo "Signing the installer failed" ; \
-			exit 1; \
-		} ; \
-		mv $(IMGBASE)-signed.pkg $(IMGBASE).pkg ; \
 	fi || exit 1
 
 _data.o: sfio$(EXE) munge$(EXE) zz$(EXE) sfioball.zz
