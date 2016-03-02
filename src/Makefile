@@ -582,12 +582,11 @@ crankrelease nightly: crank.sh remote.sh
 	echo "Your images are in $$DIR" ; \
 	case $@  in  \
 	crankrelease ) \
-		echo "Run './mkupgrades $$TAG' to create upgrade area."; \
 	     	echo "Run './mkrelease $$TAG' to release this version of bk."; \
 		;; \
 	nightly ) \
-		cd $$SAVED_WD ; \
-		./mkupgrades --nightly $$TAG ; \
+#		cd $$SAVED_WD ; \
+#		./mkupgrades --nightly $$TAG ; \
 		;; \
 	esac)
 

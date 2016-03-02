@@ -84,9 +84,9 @@ version_main(int ac, char **av)
 void
 bkversion(FILE *f)
 {
-	FILE	*f1;
 	time_t	now = time(0);
-	char	*t;
+	char	new_vers[64];
+	char	new_utc[16];
 	char	buf[MAXLINE];
 
 	buf[0] = 0;
@@ -104,21 +104,10 @@ bkversion(FILE *f)
 	fprintf(f, "Running on: %s\n", platform());
 
 	/* latest version information */
-	concat_path(buf, getDotBk(), "latest-bkver");
-	if (f1 = fopen(buf, "r")) {
-		fnext(buf, f1);
-		chomp(buf);
-		fclose(f1);
-		if (t = strchr(buf, ',')) {
-			*t++ = 0;
-		}
-		unless (streq(buf, bk_vers)) {
-			fprintf(f, "Latest version: %s", buf);
-			if (t) {
-				fprintf(f, " (released %s ago)",
-				    age(now - sccs_date2time(t, 0), " "));
-			}
-			fprintf(f, "\n");
-		}
+	unless (upgrade_latestVersion(new_vers, new_utc) ||
+	    streq(new_vers, bk_vers)) {
+		fprintf(f, "Latest version: %s  (released %s ago)\n",
+		    new_vers,
+		    age(now - sccs_date2time(new_utc, 0), " "));
 	}
 }

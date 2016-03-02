@@ -92,7 +92,7 @@ case $CMD in
 		    echo failed to make upgrade dir
 		    exit 1
 		}
-		bk upgrade -df http://work/upgrades.cluster || {
+		bk upgrade -df http://work/downloads/upgrades.cluster || {
 		    echo bk upgrade download failed
 		    exit 1
 		}

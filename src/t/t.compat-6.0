@@ -52,8 +52,8 @@ test -d $OLDBK || {
 	echo skipped
 	exit 0
     }
-    bk upgrade $Q -f -n $BK_TCOMPAT_ARCH \
-	    http://data.bitkeeper.com/upgrades.$OLDVER >out 2>ERR || {
+    bk upgrade $Q -f -d $BK_TCOMPAT_ARCH \
+	    http://data.bitkeeper.com/downloads/bk-$OLDVER >out 2>ERR || {
 	    grep -q "No upgrade for the arch.*found" ERR && {
 		echo skipped
 		exit 0

@@ -29,7 +29,7 @@
  *  - change the installer to also take a -i option.
  */
 
-#define	UPGRADEBASE	"http://upgrades.bitkeeper.com/upgrades"
+#define	UPGRADEBASE	"http://downloads.bitkeeper.com/latest"
 
 private	int	noperms(char *target);
 private	int	upgrade_fetch(char *name, char *file);
@@ -43,6 +43,7 @@ upgrade_main(int ac, char **av)
 	int	c, i;
 	int	fetchonly = 0;
 	int	install = 1;
+	int	show_latest = 0;
 	int	force = 0;
 	int	obsolete = 0;
 	char	*oldversion;
@@ -52,13 +53,17 @@ upgrade_main(int ac, char **av)
 	char	**platforms, **bininstaller = 0;
 	char	**data = 0;
 	int	len;
-	FILE	*f, *fout;
+	FILE	*f;
 	int	rc = 2;
-	char	*tmpbin = 0, *bundle = 0;
+	char	*bundle = 0;
 	mode_t	myumask;
+	static longopt	lopts[] = {
+		{"show-latest", 300 },
+		{ 0, 0 }
+	};
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "a|cdfinq", 0)) != -1) {
+	while ((c = getopt(ac, av, "a|cdfinq", lopts)) != -1) {
 		switch (c) {
 		    case 'a':
 		    	unless (platform = optarg) {
@@ -74,6 +79,11 @@ upgrade_main(int ac, char **av)
 		    case 'n':				// obsolete, for compat
 			install = 0; fetchonly = 1; break;
 		    case 'q': flags |= SILENT; break;
+		    case 300: // --show-latest
+			show_latest = 1;
+			fetchonly = 1;
+			flags |= SILENT;
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -152,7 +162,7 @@ upgrade_main(int ac, char **av)
 	while (p[-1] != '\n') --p;
 	strcpy(buf, p);	/* hmac */
 	*p = 0;
- 	p = secure_hashstr(index, strlen(index), makestring(KEY_UPGRADE));
+	p = hashstr(index, strlen(index));
 	unless (streq(p, buf)) {
 		fprintf(stderr, "upgrade: INDEX corrupted\n");
 		free(index);
@@ -182,6 +192,12 @@ upgrade_main(int ac, char **av)
 				platforms =
 				    addLine(platforms, strdup(data[5]));
 			}
+			if (show_latest) {
+				// bk_ver,bk_utc
+				printf("%s,%s\n", data[3], data[4]);
+				rc = 0;
+				goto out;
+			}
 			unless (version) version = strdup(data[3]);
 			if (streq(data[5], platform)) {
 				/* found this platform */
@@ -209,6 +225,7 @@ next:				freeLines(data, free);
 	}
 	free(index);
 	index = 0;
+	if (show_latest) goto out;
 
 	if (platforms) {	/* didn't find this platform */
 		uniqLines(platforms, free);
@@ -267,7 +284,6 @@ proceed:
 	oldversion = bk_vers;
 	bk_vers = data[3];
 
-
 	bk_vers = oldversion;
 	unless (fetchonly || install) {
 		printf("BitKeeper version %s is available for download.\n",
@@ -279,14 +295,13 @@ proceed:
 		goto out;
 	}
 
-	tmpbin = aprintf("%s.tmp", data[1]);
-	if (upgrade_fetch(data[1], tmpbin)) {
+	if (upgrade_fetch(data[1], data[1])) {
 		fprintf(stderr, "upgrade: unable to fetch %s\n", data[1]);
 		goto out;
 	}
 
 	/* find checksum of the file we just fetched */
-	f = fopen(tmpbin, "r");
+	f = fopen(data[1], "r");
 	p = hashstream(fileno(f));
 	assert(p);
 	rewind(f);
@@ -295,20 +310,10 @@ proceed:
 		    data[1]);
 		fclose(f);
 		free(p);
- 		goto out;
+		goto out;
 	}
-	free(p);
-
-	/* decrypt data */
-	unlink(data[1]);
-	fout = fopen(data[1], "w");
-	assert(fout);
-	if (upgrade_decrypt(f, fout)) goto out;
 	fclose(f);
-	fclose(fout);
-	unlink(tmpbin);
-	free(tmpbin);
-	tmpbin = 0;
+	free(p);
 
 	myumask = umask(0);
 	umask(myumask);
@@ -342,10 +347,6 @@ proceed:
 	if (version) free(version);
 	if (bundle) free(bundle);
 	if (data) freeLines(data, free);
-	if (tmpbin) {
-		unlink(tmpbin);
-		free(tmpbin);
-	}
 	return (rc);
 }
 
@@ -410,20 +411,56 @@ out:
 }
 
 /*
+ * Every day look at the official upgrade area and find the latest bk version.
+ * Store the result in `bk dotbk`/latest-bkver
+ *
+ * Returns -1 if check failed.
+ */
+int
+upgrade_latestVersion(char *new_vers, char *new_utc)
+{
+	FILE	*f;
+	char	*t, *p;
+	int	rc = -1;
+	char	buf[MAXPATH];
+
+	*new_vers = *new_utc = 0;
+	concat_path(buf, getDotBk(), "latest-bkver");
+	if (time(0) - mtime(buf) > DAY) {
+		if (sysio(0, buf, 0, "bk", "upgrade", "--show-latest", SYS)) {
+			return (-1);
+		}
+	}
+	if (f = fopen(buf, "r")) {
+		if ((t = fgetline(f)) && (p = strchr(t, ','))) {
+			*p++ = 0;
+			assert(strlen(t) < 32);
+			assert(strlen(p) < 16);
+			strcpy(new_vers, t);
+			strcpy(new_utc, p);
+			rc = 0;
+		}
+		fclose(f);
+	}
+	return (rc);
+}
+
+/*
  * Tell the user about new versions of bk.
  */
 void
 upgrade_maybeNag(char *out)
 {
 	FILE	*f;
-	char	*t, *new_utc, *new_age, *bk_age;
+	char	*t, *new_age, *bk_age;
 	int	same, i;
 	time_t	now = time(0);
 	char	*av[] = {
 		"bk", "prompt", "-io", 0, 0
 	};
 	int	ac = 3;	/* first 0 above */
-	char	new_vers[MAXLINE];
+	char	new_vers[65];
+	char	new_utc[16];
 	char	buf[MAXLINE];
 
 	/*
@@ -432,19 +469,15 @@ upgrade_maybeNag(char *out)
 	 */
 	if (out && getenv("BK_GUI")) return;
 
+
 	/*
-	 * Undocumented way to give customers to disable this
-	 * but use the noNAG bit in the leaseDB first
+	 * Give people a way to give customers to disable this
 	 */
 	if (getenv("BK_NEVER_NAG")) return;
+	if (cfg_bool(0, CFG_UPGRADE_NONAG)) return;
 
 	/* a new bk is out */
-	concat_path(buf, getDotBk(), "latest-bkver");
-	unless (f = fopen(buf, "r")) return;
-	fnext(new_vers, f);
-	chomp(new_vers);
-	fclose(f);
-	if (new_utc = strchr(new_vers, ',')) *new_utc++ = 0;
+	if (upgrade_latestVersion(new_vers, new_utc)) return;
 	if (getenv("_BK_ALWAYS_NAG")) goto donag;
 	if (strcmp(new_utc, bk_utc) <= 0) return;
 
@@ -483,7 +516,8 @@ donag:	/* okay, nag */
 	bk_age = strdup(age(now - sccs_date2time(bk_utc, 0), " "));
 	av[ac] = aprintf("BitKeeper %s (%s) is out, it was released %s ago.\n"
 	    "You are running version %s (%s) released %s ago.\n\n"
-	    "If you want to upgrade, please run bk upgrade.",
+	    "If you want to upgrade, please run bk upgrade.\n"
+	    "Or set upgrade_nonag:yes config to not see these messages",
 	    new_vers, new_utc, new_age,
 	    bk_vers, bk_utc, bk_age);
 	if (out) {

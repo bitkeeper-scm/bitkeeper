@@ -13,8 +13,6 @@
 # limitations under the License.
 
 echo $N Hack a near real install directory with 555 perms on dirs ...$NL
-echo "failed (bug - no upgrade for now XXX)"
-exit 0
 
 BKSRC=`bk bin`
 if [ -d "$BKSRC/tmp/bitkeeper" ]
@@ -36,40 +34,9 @@ fi
 SUFF=""
 bk version | grep -q '^Expires in' && SUFF=.trial
 
-echo $N Test upgrade without a commercial lease .....................$NL
-bk upgrade -f 2>ERR && {
-	echo should have failed
-	exit 1
-}
-grep -q "No upgrade for the arch.*found" ERR && {
-	echo skipped
-	exit 0
-}
-
-grep -q "valid commercial license" ERR || {
-	echo wrong error message
-	cat ERR
-	exit 1
-}
-echo OK
-
-echo $N Test upgrade with just a commercial lease ...................$NL
-commercial junk2
-cd "$HERE"
-bk upgrade -f 2>ERR && {
-	echo should have failed
-	cat ERR
-	exit 1
-}
-grep -q "valid commercial license" ERR || {
-	echo wrong error message
-	cat ERR
-	exit 1
-}
-echo OK
 
 echo $N Test upgrade to get status from bitkeeper ...................$NL
-cd junk2
+commercial junk2
 BK_NOTTY=1 bk upgrade -cf >OUT 2>ERR || {
 	echo should not have failed
 	cat OUT
@@ -77,7 +44,7 @@ BK_NOTTY=1 bk upgrade -cf >OUT 2>ERR || {
 	exit 1
 }
 cat <<END > WANT
-Fetching http://upgrades.bitkeeper.com/upgrades$SUFF/INDEX
+Fetching http://downloads.bitkeeper.com/latest/INDEX
 END
 checkfiles ERR WANT
 
@@ -111,7 +78,7 @@ BK_NOTTY=1 BK_UPGRADE_FORCEMATCH=1 bk upgrade -cf >OUT 2>ERR && {
 	exit 1
 }
 cat <<END > WANT
-Fetching http://upgrades.bitkeeper.com/upgrades$SUFF/INDEX
+Fetching http://downloads.bitkeeper.com/latest/INDEX
 END
 checkfiles ERR WANT
 cat <<END > WANT
@@ -132,7 +99,7 @@ BK_NOTTY=1 bk upgrade -cf >OUT 2>ERR || {
 	exit 1
 }
 cat <<END > WANT
-Fetching http://upgrades.bitkeeper.com/upgrades$SUFF/INDEX
+Fetching http://downloads.bitkeeper.com/latest/INDEX
 END
 checkfiles ERR WANT
 
@@ -177,11 +144,11 @@ test X$BK_INSTALLER = X && {
 
 OS=`bk version | sed -n 's/.* for //p'`
 INSTALLER=bk-3.2.6-$OS.bin
-cp $BK_INSTALLER $INSTALLER
 mkdir upgrade
 cd upgrade
-bk get $Q -S "$BKSRC"/build_upgrade_index.pl "$BKSRC"/bkupgrade.key
-"$BKSRC"/build_upgrade_index.pl  bk-3.2.6 ../$INSTALLER
+cp $BK_INSTALLER $INSTALLER
+bk get $Q -S "$BKSRC"/build_upgrade_index.pl
+"$BKSRC"/build_upgrade_index.pl  bk-3.2.6 $INSTALLER
 cd ..
 cd junk2
 bk upgrade -df "$HERE/upgrade" >OUT || {
@@ -192,7 +159,7 @@ grep -q "New version of bk fetched: $INSTALLER" OUT || {
 	echo Wrong message
 	exit 1
 }
-cmp -s ../$INSTALLER $INSTALLER || {
+cmp -s $BK_INSTALLER $INSTALLER || {
 	echo wrong file
 	exit 1
 }

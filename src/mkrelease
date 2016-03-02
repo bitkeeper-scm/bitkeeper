@@ -35,6 +35,14 @@ test -d $S || {
 	exit 1
 }
 
+# setup upgrade information
+save=`pwd`
+cd $S
+./build_upgrade_index.pl ${ver}-* || exit 1
+# Wayne's magic line to get windows to get 'bk upgrade' to work on windows
+echo "ForceType application/octet-stream" > .htaccess
+cd "$save"
+
 echo "Making download directory for $ver on $host"
 ssh -i $key downloads@$host mkdir $hostdir/$vernum || {
 	echo failed making $host:$hostdir/$vernum

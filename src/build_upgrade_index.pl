@@ -14,13 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# reads files on command line can copies them to
-# the upgrade area in the current directory.
+# reads files on command line and writes upgrade INDEX to
+# current dectory
 
 use strict;
 use FindBin;
 use Cwd;
-
 
 # maintain the list of platform aliases.  If images for any of
 # this platforms are found, then the INDEX will link all the 
@@ -54,18 +53,15 @@ foreach $file (@ARGV) {
     my($base);
     ($base = $file) =~ s/.*\///;
 
-    system("bk crypto -eO $FindBin::Bin/bkupgrade.key < $file > $base");
-    die "encryption of $file to $base failed" unless $? == 0;
-    chomp($md5sum = `bk crypto -h - < $base`);
-    die "hash of $base failed" unless $md5sum;
-    
+    chomp($md5sum = `bk crypto -h - < $file`);  
+
     # parse bk install binary filename
     #   VERSION-PLATFORM.{bin,exe}
     ($platform) = ($base =~ /^$version-([^\.]+)/);
     $platform =~ s/-setup$//;
     die "Can't include $base, all images must be from $version\n"
 	unless $platform;
-    
+
     print I join(",", $base, $md5sum, $version, $utc, $platform, "bk");
     print I "\n";
 
@@ -82,7 +78,7 @@ my %obsoletes;
 # find which releases are obsoleted by the current versions
 
 chdir $bkdir || die "Can't chdir to $bkdir: $!";
-   
+
 $base = `bk r2c -r1.1 src/upgrade.c 2> /dev/null`;
 die if $? != 0;  # no upgrade command
 chomp($base);
@@ -101,10 +97,7 @@ foreach (sort keys %obsoletes) {
 }
 print I "\n# checksum\n";
 close(I);
-my $sum = `bk crypto -h - 'WXVTpmDYN1GusoFq5hkAoA' < INDEX`;
+my $sum = `bk crypto -h - < INDEX`;
 open(I, ">>INDEX") or die "Can't append to INDEX: $!";
 print I $sum;
 close(I);
-    
-    
-    

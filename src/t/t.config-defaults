@@ -55,6 +55,7 @@ stats_after_pull: off
 sync: off
 triggers: \$PRODUCT|.
 uniqdb: (null)
+upgrade_nonag: (null)
 upgrade_url: (null)
 EOF
 cmpfiles WANT GOT
@@ -99,6 +100,7 @@ stats_after_pull: off
 sync: off
 triggers: \$PRODUCT|.
 uniqdb: (null)
+upgrade_nonag: (null)
 upgrade_url: (null)
 EOF
 cmpfiles WANT GOT

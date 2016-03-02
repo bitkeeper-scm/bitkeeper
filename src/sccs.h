@@ -1445,9 +1445,6 @@ void	log_rotate(char *path);
 void	sccs_saveNum(FILE *f, int num, int sign);
 int	sccs_eachNum(char **linep, int *signp);
 
-#define	KEY_UPGRADE		1
-char	*makestring(int keynum);
-
 int	attach_name(sccs *cset, char *name, int setmarks);
 void	notice(char *key, char *arg, char *type);
 ser_t	sccs_getedit(sccs *s, char **revp);
@@ -1463,7 +1460,6 @@ void	bkversion(FILE *f);
 int	sane(int, int);
 int	global_locked(void);
 void	bk_preSpawnHook(int flags, char *av[]);
-int	upgrade_decrypt(FILE *fin, FILE *fout);
 void	lockfile_cleanup(void);
 
 int	diff_cleanOpts(df_opt *opts);
@@ -1599,6 +1595,7 @@ void	usage(void)
 #endif
 ;
 char	*file_fanout(char *file);
+int	upgrade_latestVersion(char *new_vers, char *new_utc);
 void	upgrade_maybeNag(char *out);
 int	attr_update(void);
 int	attr_write(char *file);
