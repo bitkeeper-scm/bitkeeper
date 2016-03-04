@@ -5,6 +5,7 @@ bk repocheck \- check repository for consistency
 .SH SYNOPSIS
 .B bk repocheck
 .[B] \-qS
+.[B] \-\-check_opts="options"
 .SH DESCRIPTION
 .LP
 .B "bk repocheck"
@@ -21,14 +22,22 @@ bk config
 bk repocheck
 .DE
 .LP
-This command is implemented on top of
-.B bk check
-and as such, it prints out the check command being run before running it.
+This command is implemented on top of \fBbk check\fR.
+The default, when running a nested collection, is to run in parallel;
+in that case check output is suppressed unless there are errors.
 .SH OPTIONS
-.TP \-q
+.TP \-\-check-opts= opts
+.OPTreq \-\-check-opts= opts
+This long option may be used to pass any valid option to \fBbk check\fR.
+The format must include the leading \- or \-\- for each option
+and each option must be separated by a space like so:
+.DS
+\-\-check\-opts='\-fv \-e'
+.DE
+.tp
 .B \-q
 Run quietly.
-.TP \-S
+.tp
 .B \-S
 Just check the current repo.  
 This has no effect in a traditional standalone repository,

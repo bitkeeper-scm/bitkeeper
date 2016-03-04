@@ -133,3 +133,11 @@ rm BitKeeper/log/TIP
 cd ..
 bk resolve $Q || fail
 echo OK
+
+echo $N Check for duplicates ........................................$NL
+cd ../prod-clone
+bk repocheck $Q --check-opts=--check-dup || fail
+bk cset $Q -i+ || fail
+bk repocheck $Q --check-opts=--check-dup 2> ERR && fail -f ERR
+grep -q 'duplicate include' ERR || fail -f ERR
+echo OK

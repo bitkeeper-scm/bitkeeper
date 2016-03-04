@@ -99,8 +99,7 @@ main(int volatile ac, char **av, char **env)
 		{ "headers", 303 },	// --headers for -s
 		{ "from-iterator", 304 },
 		{ "sigpipe", 305 },     // allow SIGPIPE
-		{ "sfiles-opts;", 306 },// --sfiles-opts=vcg
-		{ "gfiles-opts;", 306 },// --gfiles-opts=vcg
+		{ "gfiles-opts;", 306 },// --gfiles-opts=vc
 		{ "config;", 307 },	// override config options
 		{ "ibuf;", 310 },
 		{ "obuf;", 320 },
@@ -281,9 +280,9 @@ main(int volatile ac, char **av, char **env)
 				}
 				sopts = bk_saveArg(sopts, av, c);
 				break;
-			    case 306: // --sfiles-opts=cvg
+			    case 306: // --gfiles-opts="-c --long-opt"
 				fast_ok = 0;
-				sopts = addLine(sopts, aprintf("-%s", optarg));
+				sopts = splitLine(optarg, " ", sopts);
 				break;
 			    case '?': envargs = optarg; break;
 			    case '@': remote = 1; break;

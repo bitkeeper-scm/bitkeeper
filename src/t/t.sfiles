@@ -1870,3 +1870,10 @@ echo OK
 else
 echo skipped
 fi
+
+echo $N Test --gfiles-opts ..........................................$NL
+cd "`bk root`"
+bk gfiles -v --cold > WANT
+bk -r --gfiles-opts='-v --cold' > GOT
+cmpfiles WANT GOT
+echo OK

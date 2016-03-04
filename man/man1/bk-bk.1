@@ -218,8 +218,13 @@ List files with pending deltas.
 List files which have no revision control files.
 See EXAMPLES below for a typical usage.
 .tp
-.OPTreq \-\-sfiles-opts= opts
+.OPTreq \-\-gfiles-opts= opts
 This long option may be used to pass any valid option to sfiles.
+The format must include the leading \- or \-\- for each option
+and each option must be separated by a space like so:
+.DS
+\-\-gfiles-opts='-c --cold'
+.DE
 .RE
 .SH EXIT STATUS
 Unless otherwise documented, all \*(BK commands return exit status

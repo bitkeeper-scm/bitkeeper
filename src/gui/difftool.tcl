@@ -852,7 +852,7 @@ main(int argc, string argv[])
 		} else if (isdir(path1)) {
 			// bk difftool <dir>
 			chdir(path1);
-			fp = popen("bk -Ur. --sfiles-opts=cg", "r");
+			fp = popen("bk -Ur. --gfiles-opts=-c", "r");
 		} else {
 			// bk difftool <file>
 			string	file = normalizePath(path1);
@@ -889,7 +889,7 @@ main(int argc, string argv[])
 		} else {
 			// bk difftool [-S] [-salias]
 			if (dashs) relative = "-s.";
-			fp = popen("bk -U ${relative} --sfiles-opts=cg", "r");
+			fp = popen("bk -U ${relative} --gfiles-opts=-c", "r");
 		}
 	}
 

@@ -27,7 +27,8 @@ main(int ac, string av[])
 	string	comps[], cmd[];
 	string	comp, errout, buf, c;
 	string	v = "-v";
-	string	checkopts = "-aBc";
+	string	opts;		// collapsed opts for system
+	string	checkopts[] = { "-aBc" };
 	string	cold = "--cold";
 	int	i, j;
 	int	bg = 0, force = 0, standalone = 0;
@@ -35,6 +36,7 @@ main(int ac, string av[])
 	int	pids{int}, pid;
 	STATUS	status;
 	string	lopts[] = {
+		"check-opts;",
 		"hot",
 		"parallel|",
 		};
@@ -63,6 +65,9 @@ main(int ac, string av[])
 		    case "S":
 			standalone = 1;
 			break;
+		    case "check-opts":
+			push(&checkopts, split(/ /, optarg));
+			break;
 		    default:
 			system("bk help -s repocheck");
 			exit(1);
@@ -88,9 +93,10 @@ main(int ac, string av[])
 	    default:
 		die("repocheck: not in a repository\n");
 	}
+	opts = join(" ", checkopts);
 	if (standalone) {
 		// no need to do parallel for one
-		error = system("bk ${cold} -r check ${checkopts} ${v}");
+		error = system("bk ${cold} -r check ${opts} ${v}");
 		exit(error);	// XXX - signaled?
 	}
 
@@ -98,7 +104,7 @@ main(int ac, string av[])
 		parallel = (int)`bk _parallel`;
 	}
 	if (parallel <= 1) {
-		error = system("bk ${cold} --each-repo -r check ${checkopts} ${v}");
+		error = system("bk ${cold} --each-repo -r check ${opts} ${v}");
 		exit(error);
 	}
 
@@ -127,13 +133,14 @@ main(int ac, string av[])
 		buf = comp;
 		buf =~ s|/|.|g;
 		errout = "BitKeeper/tmp/${buf}.errors";
+		undef(cmd);
 		cmd[j = 0] = "bk";
 		cmd[++j] = "--cd=${comp}";
 		if (length(cold) > 0) cmd[++j] = cold;
 		cmd[++j] = "-r";
 		cmd[++j] = "check";
 		cmd[++j] = "--parallel";
-		cmd[++j] = checkopts;
+		push(&cmd, checkopts);
 		pid = spawn(cmd, stdin, stdout, "${errout}");
 		unless (defined(stdio_status.path)) {
 			die("bk: command not found.\n");
