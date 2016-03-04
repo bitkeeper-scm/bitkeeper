@@ -75,7 +75,11 @@ else
 	XTRA=gnu
 	# You can set this to anywhere you like and do a 
 	# build production" and you'll have an installed BitKeeper.
-	BINDIR	= /usr/libexec/bitkeeper
+	ifeq (,$(HAS_BK))
+		BINDIR := /usr/libexec/bitkeeper
+	else
+		BINDIR := $(shell cd / && bk bin)
+	endif
 	INSTALL=install
 	RESOURCE=
 endif
@@ -466,7 +470,8 @@ bkver.c: utils/bk_version FORCE
 ifeq (,$(HAS_BK))
 	$(Q)printf "char *bk_vers = \"%s\";\nchar *bk_utc = \"%s\";\nchar *bk_time = \"%s\";\nchar *bk_tag = \"%s\";\n" "`date +%Y%m%d%H%M%S`" "`date +%Y%m%d%H%M%S`" "`date +%s`" "BOOTSTRAP" >> bk.v
 else
-		$(Q)$(BK) prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\nchar *bk_tag = ":TAG:";\n' ../ChangeSet >> bk.v
+	$(Q)bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\n' ../ChangeSet >> bk.v
+	$(Q)echo "char *bk_tag = \""`bk describe --bk`"\";" >> bk.v
 endif
 	$(Q)echo "char *bk_platform = \""`./utils/bk_version`"\";" >> bk.v
 	$(Q)echo "time_t bk_build_timet = "`perl -e "print time"`";" >> bk.v

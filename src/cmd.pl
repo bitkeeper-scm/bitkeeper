@@ -499,3 +499,4 @@ hello lscript
 pull-size lscript
 repocheck lscript
 check_comments lscript
+describe lscript

@@ -375,15 +375,8 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 
 	/*
 	 * make -c-1Y mean -c-1Y..
-	 * XXX we don't want to support this forever...
 	 */
 	if ((rstart[0] == '-') && !rstop) rstop = "";
-
-	unless (rstop) {
-		verbose((stderr, "%s: Date ranges must have 2 endpoints.\n",
-			    me));
-		return (1);
-	}
 
 	if (*rstart) {
 		unless (s->rstart =

@@ -1,0 +1,57 @@
+.so ../bk-macros
+.TH "bk describe" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk describe \- generate a tag-based release name
+.SH SYNOPSIS
+.B bk describe
+.[B] \-\-brief
+.[B] \-\-dirty
+.SH DESCRIPTION
+This command generates a name based on the most recent tag.
+If the most recent tag is older than the tip then the name
+is appended with "+%d@0x%x" where %d is replaced with the number
+of changesets implied by the tip that are not implied by the tagged
+changeset and %x is replaced with the time_t of the latest commit
+in hexadecimal.
+.LP
+Note that the changeset[s] that have the same time_t as the 0xDDDDDDDD
+can be listed with
+.DS
+bk changes -c<time_t>
+.DE
+where <time_t> is the 0xDDDDDDDD part of the name.  
+In most cases there will be only one match, if there are more than one
+you can usually figure it out by the distance from the tag.
+.OPTIONS
+.TP \-\-brief 
+\-\-brief
+Skip the timestamp.  This makes the name far less unique but more human 
+readable.
+.tp
+\-\-dirty
+If the tree has modified, extra, and/or pending files, then the 
+name is appended with "-dirty".
+.SH EXAMPLES
+.DS
+# No tags, 3 csets total, last cset at 0x564f5316, clean 
+$ bk describe
+1.0+3@0x564f5316
+# No tags, 3 csets total, last cset at 0x564f5316, with changes
+1.0+3@0x564f5316-dirty
+# newest tag is v1.0, tag is on tip cset, clean repo
+v1.0
+# newest tag is v1.0, tag is on tip cset, dirty repo, with --dirty
+v1.0-dirty
+# newest tag is v1.0, tag is 1 cset older than tip cset, clean repo
+v1.0+1@0x564f5316
+# newest tag is v1.0, tag is 1 cset older than tip cset, dirty repo
+v1.0+1@0x564f5316-dirty
+# same except tag is 5 csets older than tip, brief format
+v1.0+5-dirty
+.DE
+.SH "SEE ALSO"
+.SA changes
+.SH SOURCE
+This is an L script in `bk bin`/lscripts/describe.l
+.SH CATEGORY
+.B Utility

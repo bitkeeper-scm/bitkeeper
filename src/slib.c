@@ -1846,6 +1846,10 @@ sccs_findDate(sccs *sc, char *s, int roundup)
 	 */
 	if (*s == '-') {
 		date = range_cutoff(s+1);
+	} if ((s[0] == '0') && (s[1] == 'x')) {
+		/* exact timet, must match */
+		roundup = EXACT;
+		date = (time_t)strtoll(s+2, 0, 16);
 	} else {
 		date = date2time(s, 0, roundup);
 	}
@@ -1863,8 +1867,12 @@ sccs_findDate(sccs *sc, char *s, int roundup)
 		if (DATE(sc, d) < date) break;
 		tmp = d;
 	}
-	if (roundup == ROUNDDOWN) return (tmp);
-	return (d);
+	switch (roundup) {
+	    case EXACT: return (0);
+	    case ROUNDDOWN: return (tmp);
+	    case ROUNDUP: return (d);
+	}
+	return (0);
 }
 
 private inline int
@@ -15886,7 +15894,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	case KW_TIME_T: /* TIME_T */ {
 		char	buf[20];
 
-		sprintf(buf, "%d", (int)DATE(s, d));
+		sprintf(buf, "%u", (u32)DATE(s, d));
 		fs(buf);
 		return (strVal);
 	}

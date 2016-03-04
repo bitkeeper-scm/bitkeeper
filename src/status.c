@@ -183,6 +183,6 @@ status_main(int ac, char **av)
 	}
 
 	printf("BK version: %s (repository requires bk-%d.0 or later)\n",
-	    bk_vers, features_minrelease(0, 0));
+	    *bk_tag ? bk_tag : bk_vers, features_minrelease(0, 0));
 	return (0);
 }

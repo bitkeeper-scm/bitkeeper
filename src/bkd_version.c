@@ -91,8 +91,13 @@ bkversion(FILE *f)
 
 	buf[0] = 0;
 	fprintf(f, "BitKeeper version is ");
-	if (*bk_tag) fprintf(f, "%s ", bk_tag);
-	fprintf(f, "%s for %s\n", bk_utc, bk_platform);
+	if (*bk_tag) {
+		fprintf(f, "%s ", bk_tag);
+		unless (strchr(bk_tag, '+')) fprintf(f, "%s ", bk_utc);
+	} else {
+		fprintf(f, "%s ", bk_utc);
+	}
+	fprintf(f, "for %s\n", bk_platform);
 	fflush(f);	/* put out ver info while waiting for lease */
 	fprintf(f, "Built by: %s in %s\n", bk_build_user, bk_build_dir);
 

@@ -69,6 +69,8 @@ negative offsets from GMT or +ZH:ZM for positive offsets.
 Date rounding is context sensitive:
 the starting date is rounded down and the ending date is rounded up,
 so 2001..2001 is the same as 2001/01/01-00:00:00..2001/12/31-23:59:59.
+A single date is used as both endpoints so 2005/12 is the same as
+2005/12/01-00:00:00..2005/12/31-23:59:59.
 .LP
 Note: the mixing of dates and revisions is deprecated.
 .LP
