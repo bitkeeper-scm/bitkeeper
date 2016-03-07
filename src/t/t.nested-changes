@@ -787,9 +787,9 @@ echo OK
 
 echo $N 'Test $begin and $end ........................................'$NL
 cd "$HERE/project"
-bk changes -v -nd'# dspec-v2
+bk changes -v --dspecbegin='${9=<LIST>}' -nd'# dspec-v2
 $begin {
-	<LIST>
+	$9
 }
 $if (:CHANGESET: && :COMPONENT:) {
     	$if ($1 != :GFILE:) {

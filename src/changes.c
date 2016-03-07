@@ -52,7 +52,7 @@ private struct {
 	u32	num;		/* -%u: stop after printing n entries */
 	search	search;		/* -/pattern/[i] matches comments w/ pattern */
 	char	*dspec;		/* override dspec */
-	char	*begin;		/* $begin{....} */
+	char	**begin;	/* $begin{....} */
 	char	*end;		/* $end{....} */
 	char	**users;	/* lines list of users to include */
 	char	**notusers;	/* lines list of users to exclude */
@@ -131,6 +131,7 @@ changes_main(int ac, char **av)
 		{ "standalone", 'S' },		/* treat comps as standalone */
 		{ "lattice", 330 },		/* range is a lattice */
 		{ "longest", 340 },		/* longest path */
+		{ "dspecbegin;", 350 },		/* dspec $begin clause */
 		{ 0, 0 }
 	};
 
@@ -230,6 +231,9 @@ changes_main(int ac, char **av)
 		    case 340: /* --longest */
 			if (opts.rflags) bk_badArg(c, av);
 			opts.rflags = RANGE_LONGEST;
+			break;
+		    case 350: /* --dspecbegin */
+			opts.begin = addLine(opts.begin, strdup(optarg));
 			break;
 		    default: bk_badArg(c, av);
 		}
@@ -468,7 +472,7 @@ out:	if (s_cset) sccs_free(s_cset);
 		waitpid(pid, 0, 0);
 	}
 	if (opts.dspec) free(opts.dspec);
-	if (opts.begin) free(opts.begin);
+	freeLines(opts.begin, free);
 	if (opts.end) free(opts.end);
 	if (seen) hash_free(seen);
 	freeLines(nav, free);
@@ -668,7 +672,7 @@ doit(int dash)
 	pid_t	pid;
 	sccs	*s = 0;
 	ser_t	e, dstart, dstop;
-	int	rc = 1;
+	int	i, rc = 1;
 	hash	*state;
 	struct	rstate *rstate;
 	kvpair	kv;
@@ -697,7 +701,9 @@ doit(int dash)
 		}
 		free(specf);
 	}
-	dspec_collapse(&opts.dspec, &opts.begin, &opts.end);
+	spec = 0;
+	dspec_collapse(&opts.dspec, &spec, &opts.end);
+	if (spec) opts.begin = addLine(opts.begin, spec);
 	s = s_cset;
 	unless (s && HASGRAPH(s)) {
 		system("bk help -s changes");
@@ -791,8 +797,8 @@ doit(int dash)
 	}
 	flags = PRS_FORCE;
 	if (opts.newline) flags |= PRS_LF;
-	if (opts.begin && dstart) {
-		sccs_prsdelta(s, dstart, flags, opts.begin, stdout);
+	if (dstart) EACH(opts.begin) {
+		sccs_prsdelta(s, dstart, flags, opts.begin[i], stdout);
 	}
 	cset(state, s, 0, 0, stdout, opts.dspec);
 	if (opts.end && dstop) {
