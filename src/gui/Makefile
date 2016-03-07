@@ -111,6 +111,7 @@ supportform: $(COMMON) search.tcl appState.tcl supportlib.tcl supportform.tcl
 
 citool: $(COMMON) appState.tcl ciedit.tcl $(LCOMMON) listbox.l citool.l
 	@(	echo 'wm withdraw .' ;		\
+		echo 'set ::tool_name $@' ;	\
 		cat $(filter %.tcl,$^) ;	\
 		echo ; echo 'L {' ; echo ;	\
 		for f in $(filter %.l,$^) ; do	\
@@ -121,35 +122,35 @@ citool: $(COMMON) appState.tcl ciedit.tcl $(LCOMMON) listbox.l citool.l
 	) > $(LIBDIR)/citool
 
 csettool: $(COMMON) search.tcl appState.tcl difflib.tcl csettool.tcl
-	@(echo 'wm withdraw .' ; cat $^) > $(LIBDIR)/csettool
+	@(echo 'wm withdraw .' ; echo 'set ::tool_name $@'; cat $^) > $(LIBDIR)/$@
 
 difftool: $(COMMON) search.tcl appState.tcl difflib.tcl difftool.tcl
-	@(echo 'wm withdraw .' ; cat $^) > $(LIBDIR)/difftool
+	@(echo 'wm withdraw .' ; echo 'set ::tool_name $@'; cat $^) > $(LIBDIR)/$@
 
 fmtool: $(COMMON) appState.tcl difflib.tcl fmlib.tcl fmtool.tcl
-	@(echo 'wm withdraw .' ; cat $^) > $(LIBDIR)/fmtool
+	@(echo 'wm withdraw .' ; echo 'set ::tool_name $@'; cat $^) > $(LIBDIR)/$@
 
 fm3tool: $(COMMON) appState.tcl tooltip.tcl difflib.tcl fm3tool.tcl
-	@(echo 'wm withdraw .' ; cat $^) > $(LIBDIR)/fm3tool
+	@(echo 'wm withdraw .' ; echo 'set ::tool_name $@'; cat $^) > $(LIBDIR)/$@
 
 helptool: $(COMMON) appState.tcl helptool.tcl
-	@(echo 'wm withdraw .' ; cat $^) > $(LIBDIR)/helptool
+	@(echo 'wm withdraw .' ; echo 'set ::tool_name $@'; cat $^) > $(LIBDIR)/$@
 
 msgtool: $(COMMON) msgtool.tcl
-	@(echo "wm withdraw ."; cat $^) > $(LIBDIR)/msgtool
+	@(echo "wm withdraw ."; echo 'set ::tool_name $@'; cat $^) > $(LIBDIR)/$@
 
 renametool: $(COMMON) appState.tcl renametool.tcl
-	@(echo 'wm withdraw .' ; cat $^) > $(LIBDIR)/renametool
+	@(echo 'wm withdraw .' ; echo 'set ::tool_name $@'; cat $^) > $(LIBDIR)/$@
 
 revtool: $(COMMON) search.tcl appState.tcl revtool.tcl
-	@(echo 'wm withdraw .' ; cat $^) > $(LIBDIR)/revtool
+	@(echo 'wm withdraw .' ; echo 'set ::tool_name $@'; cat $^) > $(LIBDIR)/$@
 
 setuptool: $(COMMON) tkwizard.tcl setuptool.tcl
-	@(echo 'wm withdraw .' ; cat $^) > $(LIBDIR)/setuptool
+	@(echo 'wm withdraw .' ; echo 'set ::tool_name $@'; cat $^) > $(LIBDIR)/$@
 
 installtool: ../port/$(SYS)_platform.tcl ../utils/installtool.tcl \
 	tkwizard.tcl bktheme.tcl common.tcl
-	@(echo 'wm withdraw .' ; cat $^ ;\
+	@(echo 'wm withdraw .' ; echo 'set ::tool_name $@'; cat $^ ;\
 	 echo "image create photo bklogo -data {`bk base64<../gui/imgsrc/bklogo.gif`}";\
 	 echo 'main') > $(LIBDIR)/installtool
 

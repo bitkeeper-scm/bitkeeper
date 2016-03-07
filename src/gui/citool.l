@@ -2391,6 +2391,7 @@ launchEditor(string which)
 void
 doCommit()
 {
+	int	res;
 	string	comp;
 	sfile	cset = self.files{"ChangeSet"};
 
@@ -2461,7 +2462,11 @@ doCommit()
 
 	self.committing = 0;
 	self.commitSwitch = 0;
-	unless (commitComponent(self.root)) {
+	res = commitComponent(self.root);
+
+	if (res == -1) return;
+
+	if (res == 0) {
 		ListBox_configure(self.o_files, state: "normal");
 		updateButtons();
 		/*
@@ -2524,23 +2529,27 @@ commitComponent(string comp)
 			    "${getRelativePath(comp, self.root)}...\n", 0);
 		}
 		scrollToBottom();
-		fd = popen("bk ci -a -c -q -", "w");
+		fd = popen("bk ci -a -c -q -", "w+", &read_popen_error);
 		foreach (file in checkin) {
 			file = getRelativePath(file, comp);
 			puts(fd, file);
 		}
 		pclose(fd, &st);
 		unless (st.exit == 0) {
-			string	msg = "The checkin failed.  See the "
-			    "bottom pane for the reason.\n\ncitool "
-			    "will exit when you click OK.\n";
+			string	msg = "The checkin failed."
+			    " See above for the reason.\n"
+			    "Correct the problem and then rescan"
+			    " for changes,\nor you can Quit citool"
+			    " and try again later.\n";
 
-			insertBottomText(stdio_lasterr, 0);
-			insertBottomText("\n", 0);
-			update();
+			Text_insert(self.w_diffs, "end", "\n\n", "",
+			    msg, "warning");
+			configureButton("rescan", state: "normal");
+			configureButton("quit", state: "normal");
 
-			popupMessage(E: msg);
-			exit(1);
+                        disable_file_list();
+                        insertTopText("", 1);
+			return (-1);
 		}
 	}
 
@@ -2634,6 +2643,19 @@ commitComponent(string comp)
 	}
 	chdir(self.root);
 	return (res);
+}
+
+void
+read_popen_error(string cmd, FILE fp)
+{
+	string	err;
+	
+	cmd = cmd;
+	if (read(fp, &err) == -1 || err == "") return;
+	insertBottomText("\nError during checkin\n\n", 0);
+	insertBottomText(err, 0);
+	insertBottomText("\n", 0);
+	Update_idletasks();
 }
 
 void
@@ -3037,6 +3059,19 @@ handle_focus(widget w)
 {
 	if (w == self.w_diffs || w == self.w_lowerF) return;
 	focus(self.w_comments);
+}
+
+void
+disable_file_list()
+{
+        string  node, nodes[];
+
+        ListBox_configure(self.o_files, state: "disabled");
+        nodes = getAllNodes();
+        foreach (node in nodes) {
+                ListBox_itemconfigure(self.o_files, node,
+                    foreground: "gray");
+        }
 }
 
 void

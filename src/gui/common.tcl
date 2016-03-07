@@ -33,6 +33,9 @@ if {![info exists ::env(BK_GUI_LEVEL)]
 incr ::env(BK_GUI_LEVEL)
 
 proc bk_toolname {} {
+	if {[info exists ::tool_name]} {
+		return $::tool_name
+	}
 	return [file tail [info script]]
 }
 
@@ -202,12 +205,18 @@ proc message {message args} \
 	}
 
 	if {![dict exists $args -parent]} {
-		dict set args -parent "."
+		dict set args -parent [bk_toplevel]
 	}
 
-	if {[info exists ::env(BK_REGRESSION)]
+	set forceGui 0
+	if {[dict exists $args -gui]} {
+	    set forceGui 1
+	    dict unset args -gui
+	}
+
+	if {!$forceGui && ([info exists ::env(BK_REGRESSION)]
 	    || ($::env(BK_GUI_LEVEL) == 1
-		&& $::tcl_platform(platform) ne "windows")} {
+		&& $::tcl_platform(platform) ne "windows"))} {
 		if {[info exists ::env(BK_REGRESSION)]
 		    && $::env(BK_GUI_LEVEL) > 1} {
 			append message " (LEVEL: $::env(BK_GUI_LEVEL))"
