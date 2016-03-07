@@ -143,14 +143,6 @@ cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 	int	keep;
 	symbol	*sym;
 
-	unless (iF) {
-		/* ignore in patch: like if in skipkeys */
-		assert(fast);
-		d = 0;
-		serial = 0;
-		goto done;
-	}
-
 	/*
 	 * Get the "new" delta from the mmaped patch file (iF)
 	 */

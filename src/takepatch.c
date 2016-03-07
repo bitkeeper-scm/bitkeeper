@@ -71,7 +71,6 @@ private	void	fileCopy2(char *from, char *to);
 private	void	badpath(sccs *s, ser_t tot);
 private	int	skipPatch(FILE *p);
 private	void	getChangeSet(void);
-private	void	loadskips(void);
 private	int	sfio(FILE *m, int files);
 private	int	parseFeatures(char *next);
 private	int	sendPatch(char *name, FILE *in);
@@ -133,17 +132,6 @@ private struct {
 	{"BKMERGE", offsetof(Opts, bkmerge)},
 	{0}
 };
-
-/*
- * Structure for keys we skip when incoming, used for old LOD keys that
- * we do not want in the open logging tree.
- */
-typedef	struct s {
-	char	*rkey;		/* file inode */
-	char	**dkeys;	/* lines array of delta keys */
-	struct	s *next;	/* next file */
-} skips;
-private	skips	*skiplist;
 
 int
 takepatch_main(int ac, char **av)
@@ -249,8 +237,6 @@ doit:	if (opts->newProject) {
 
 		/* OK if this returns NULL */
 		opts->goneDB = loadDB(GONE, 0, DB_GONE);
-
-		loadskips();
 
 		unless (opts->idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
 			perror("SCCS/x.id_cache");
@@ -721,67 +707,6 @@ error:		if (new_s && (new_s != s)) sccs_free(new_s);
 	return (nfound);
 }
 
-#define SKIPKEYS	"BitKeeper/etc/skipkeys"
-
-/*
- * Read in the BitKeeper/etc/skipkeys file
- * Format is alphabetized:
- * rootkey1 deltakey1
- * rootkey1 deltakey2
- * rootkey2 deltakey1
- * rootkey2 deltakey2
- */
-private void
-loadskips(void)
-{
-	FILE	*f;
-	char	buf[2 * MAXKEY];
-	char	*dkey;
-	skips	*s = 0;
-
-	f = popen("bk cat " SKIPKEYS, "r");
-	while (fnext(buf, f)) {
-		chomp(buf);
-		if (buf[0] == '#') continue;
-		unless (dkey = separator(buf)) {
-			fprintf(stderr, "Garbage in skipfiles: %s\n", buf);
-			continue;
-		}
-		*dkey++ = '\0';
-		unless (s && streq(buf, s->rkey)) {
-			s = new(skips);
-			assert(s);
-			s->next = skiplist;
-			skiplist = s;
-			s->rkey = strdup(buf);
-		}
-		assert(s);
-		s->dkeys = addLine(s->dkeys, strdup(dkey));
-	}
-	pclose(f);
-}
-
-private int
-skipkey(sccs *s, char *dkey)
-{
-	char	rkey[MAXKEY];
-	skips	*sk;
-	int	i;
-
-	unless (s && skiplist) return (0);
-	sccs_sdelta(s, sccs_ino(s), rkey);
-	for (sk = skiplist; sk; sk = sk->next) {
-		unless (streq(sk->rkey, rkey)) continue;
-		EACH(sk->dkeys) {
-			if (streq(sk->dkeys[i], dkey)) {
-				return (1);
-			}
-		}
-		return (0);
-	}
-	return (0);
-}
-
 /*
  * Extract one delta from the patch file.
  * Deltas end on the first blank line.
@@ -795,7 +720,6 @@ extractDelta(char *name, sccs *sreal, sccs *scratch,
 	char	*b, *sep;
 	char	*pid = 0;
 	int	c, i;
-	int	skip = 0;
 	int	ignore = 0;
 	size_t	len;
 	patch	*p;
@@ -834,11 +758,6 @@ delta1:	while ((b = fgetline(f)) && *b) {
 	/* go get the delta table entry for this delta */
 	d = getRecord(scratch, init);
 	rewind(init);
-	sccs_sdelta(scratch, d, buf);
-	if (opts->fast) {
-		if (sreal && skipkey(sreal, buf)) ignore = 1;
-		goto save;
-	}
 	/*
 	 * 11/29/02 - we fill in dangling deltas by pretending they are
 	 * incoming deltas which we do not already have.  In the patch
@@ -846,24 +765,13 @@ delta1:	while ((b = fgetline(f)) && *b) {
 	 * applying the patch will clear the flag and the code paths
 	 * are all happier this way.
 	 */
-	if (sreal &&
+	if (!opts->fast && sreal && sccs_sdelta(scratch, d, buf) &&
 	    (tmp = sccs_findKey(sreal, buf)) && !DANGLING(sreal, tmp)) {
 		if (opts->echo > 3) {
 			fprintf(stderr,
 			    "takepatch: delta %s already in %s, skipping it.\n",
 			    REV(sreal, tmp), sreal->sfile);
 		}
-		skip++;
-	} else if (sreal && skipkey(sreal, buf)) {
-		if (opts->echo>6) {
-			fprintf(stderr,
-			    "takepatch: skipping marked delta in %s\n",
-			    sreal->sfile);
-		}
-		skip++;
-	}
-save:
-	if (skip) {
 		free(pid);
 		fclose(init);
 		init = 0;
@@ -1100,20 +1008,11 @@ applyCsetPatch(sccs *s, int *nfound, int newFile)
 			fprintf(stderr, "PID: %s\nME:  %s\n",
 			    p->pid ? p->pid : "none", p->me);
 		}
-		/*
-		 * iF = 0 if skipkey found it; so its parent may have also
-		 * been skipkey'd and so not here; don't look up parent
-		 * without iF being set (as well as parent pointer p->pid).
-		 * p->pid won't be set for 1.0 delta.
-		 */
+		assert(p->initMem.buf);
+		iF = fmem_buf(p->initMem.buf, p->initMem.len);
 		dF = p->diffMem;
-		if (p->initMem.buf) {
-			iF = fmem_buf(p->initMem.buf, p->initMem.len);
-		} else {
-			iF = 0;
-		}
 		d = 0;	/* in this case, parent */
-		if (iF && p->pid) {
+		if (p->pid) {
 			unless (d = sccs_findKey(s, p->pid)) {
 				if ((opts->echo == 2) || (opts->echo == 3)) {
 					fprintf(stderr, " \n");
@@ -1139,7 +1038,7 @@ applyCsetPatch(sccs *s, int *nfound, int newFile)
 				remote_tagtip = d;
 			}
 		}
-		if (iF) fclose(iF); /* dF needs to stick around until write */
+		fclose(iF); /* dF needs to stick around until write */
 		p = p->next;
 	}
 	unless (*nfound) {
@@ -1604,11 +1503,8 @@ apply:
 		if (p->initFile) {
 			iF = fopen(p->initFile, "r");
 		} else {
-			if (p->initMem.buf) {
-				iF = fmem_buf(p->initMem.buf, p->initMem.len);
-			} else {
-				iF = 0;
-			}
+			assert(p->initMem.buf);
+			iF = fmem_buf(p->initMem.buf, p->initMem.len);
 		}
 		if (p->diffFile) {
 			dF = fopen(p->diffFile, "r");
@@ -1676,11 +1572,8 @@ apply:
 		if (p->initFile) {
 			iF = fopen(p->initFile, "r");
 		} else {
-			if (p->initMem.buf) {
-				iF = fmem_buf(p->initMem.buf, p->initMem.len);
-			} else {
-				iF = 0;
-			}
+			assert(p->initMem.buf);
+			iF = fmem_buf(p->initMem.buf, p->initMem.len);
 		}
 		if (p->diffFile) {
 			dF = fopen(p->diffFile, "r");

@@ -129,22 +129,6 @@ bk sfiles | while read file; do
 done || fail
 echo OK
 
-echo $N Test skipkeys ...............................................$NL
-cd "$HERE"/project.sfiles
-# Need a keeper and a skipper
-bk edit $Q foo
-echo bar > foo
-bk delta $Q -ynew foo
-bk edit $Q foo
-echo foo > foo
-bk delta $Q -ynew foo
-bk commit $Q -ydata
-bk makepatch -F -r+ > patch || fail
-bk prs -r+ -hnd':ROOTKEY: :KEY:' foo > BitKeeper/etc/skipkeys
-bk undo $Q -sfr+
-bk takepatch < patch || fail
-echo OK
-
 echo $N sfiles end early ............................................$NL
 # XXX not comprehensive, but give some testing to the EOF handling
 cd "$HERE"

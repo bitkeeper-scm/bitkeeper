@@ -442,9 +442,6 @@ setupWorkArea(Opts *opts, char *repo)
 		 * Component prune list (keep sorted)
 		 * ATTR passed to comp and prod because it produces
 		 * a different file in csetprune in each context.
-		 * grepping the source -- here's the rest not created
-		 * by default in a 4.6 or 5.x new repo:
-		 * "BitKeeper/etc/skipkeys"
 		 */
 		opts->compprune = addLine(0, strdup(ATTR));
 		opts->compprune =

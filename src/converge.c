@@ -35,7 +35,6 @@ struct files {
 	     { "BitKeeper/etc/gone", "-s" },
 	     { "BitKeeper/etc/ignore", "-s" },
 	     { IGNOREPOLY, "-s" },
-	     { "BitKeeper/etc/skipkeys", "-s"},
 	     { 0, 0 }
 };
 

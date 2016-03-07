@@ -12577,11 +12577,8 @@ sccs_fastWeave(sccs *s, FILE *fastpatch)
 	 * a dangling delta pointer or cset mark.
 	 */
 	for (i = 1; i < s->iloc; i++) {
-		unless (d = lp[i].serial) {
-			d = D_INVALID;
-			addArray(&patchmap, &d);
-			continue;
-		}
+		d = lp[i].serial;
+		assert(d);
 		addArray(&patchmap, &d);
 		unless (FLAGS(s, d) & D_REMOTE) continue;
 		unless (weavemap) {
@@ -12619,7 +12616,6 @@ sccs_fastWeave(sccs *s, FILE *fastpatch)
 	/* compute an serialmap view which matches sccs_patchDiffs() */
 	w->slist = calloc(TABLE(s) + 1, sizeof(u8));
 	EACH(patchmap) {
-		if ((d = patchmap[i]) == D_INVALID) continue;
 		w->slist[d] = 1;
 	}
 	/* transitive close if not the cset file */
@@ -12658,7 +12654,6 @@ doFast(fweave *w, ser_t *patchmap, FILE *diffs)
 	int	lineno, lcount = 0, serial, pmapsize;
 	int	gotK = 0;
 	int	inpatch = 0;
-	int	ignore = 0;
 	size_t	len;
 	char	*p, *b;
 	char	type;
@@ -12685,11 +12680,7 @@ doFast(fweave *w, ser_t *patchmap, FILE *diffs)
 			break;
 		}
 		if (*b == '>') {
-			if (ignore) {
-				while (*p) w->sum += *(u8 *)p++;
-				w->sum += '\n';
-				w->line++;
-			} else if (inpatch) {
+			if (inpatch) {
 				fix_cntl_a(w->s, p);
 				w->sum += str_cksum(p) + '\n';
 				fputs(p, out);
@@ -12702,16 +12693,6 @@ doFast(fweave *w, ser_t *patchmap, FILE *diffs)
 		serial = atoi_p(&p);
 		assert((serial > 0) && (serial <= pmapsize));
 		d = patchmap[serial];
-		if (d == D_INVALID) {
-			unless (ignore) {
-				if (type == 'I') ignore = serial;
-			} else if (ignore == serial) {
-				assert(type == 'E');
-				ignore = 0;
-			}
-			continue;
-		}
-		assert(!ignore);
 		assert(d);
 		unless (FLAGS(w->s, d) & D_REMOTE) continue;
 		dser = d;
@@ -12737,7 +12718,7 @@ doFast(fweave *w, ser_t *patchmap, FILE *diffs)
 			unless (w->slist[w->print]) w->print = 0;
 		}
 	}
-	assert(!inpatch && !ignore);
+	assert(!inpatch);
 done:
 	if (weaveMove(w, -1, 0, 0)) goto err;
 	if (gotK && ((w->sum != sum) || (lcount != w->line))) {
