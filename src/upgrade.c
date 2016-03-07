@@ -82,6 +82,7 @@ upgrade_main(int ac, char **av)
 		    case 300: // --show-latest
 			show_latest = 1;
 			fetchonly = 1;
+			install = 0;
 			flags |= SILENT;
 			break;
 		    default: bk_badArg(c, av);
