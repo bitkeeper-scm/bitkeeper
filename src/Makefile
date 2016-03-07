@@ -598,6 +598,22 @@ crankrelease nightly: crank.sh remote.sh
 crankclean: crank.sh remote.sh
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh clean
 
+# This target assumes a bk repository
+.PHONY: src-tar
+src-tar:  ## build tar.gz image for the current tree
+	bk here set OPENBK
+	$(Q)-mkdir -p tmp/src
+	$(Q)(DIR=bk-$(shell $(BK) version -s) ; \
+	     TAR="$$DIR".tar.gz ; \
+	     echo "Creating $$TAR in tmp/src..." ; \
+	     cd tmp/src ; \
+	     rm -rf "$$DIR" ; \
+	     bk export -tplain -r+ -sOPENBK "$$DIR" ; \
+	     tar -czf "$$TAR" "$$DIR" ; \
+	     rm -rf "$$DIR" ; \
+	     echo Done ; \
+	)
+
 # It is OK if we fail to "rm build" on win32.
 # We can not "rm build" when we are running it.
 build: build.sh
