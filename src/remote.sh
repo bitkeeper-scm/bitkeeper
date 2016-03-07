@@ -189,10 +189,11 @@ case $CMD in
 				rm -rf /build/.tmp-$BK_USER
 				exit 0
 			}
+			# backup for this key in /home/bk/internal/ssh-keys	
+			KEYSRC=/build/ssh-keys/images.key
+			KEY=images.key.me
 			## Make sure the permissions are right for the key
-			KEYSRC=ssh-keys/images.key
-			KEY=$KEYSRC.me
-			cp $KEYSRC $KEY
+			cp $KEYSRC $KEY || { echo failed to cp $KEYSRC; exit 1; }
 			chmod 600 $KEY
 			trap "rm -f '$KEY'" 0 1 2 3 15
 			IMG=$TAG-${ARCH}-setup.exe

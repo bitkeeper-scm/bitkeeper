@@ -20,9 +20,9 @@ test $# -eq 1 || {
 
 host=webhost-int
 hostdir=/home/downloads/www
-keysrc=ssh-keys/downloads.key
-key=$keysrc.me
-cp "$keysrc" "$key"
+keysrc=/home/bk/internal/ssh-keys/downloads.key
+key=downloads.key.me
+cp "$keysrc" "$key" || { echo failed to cp $keysrc; exit 1 }
 chmod 600 "$key"
 trap "rm -f '$key'" 0 1 2 3 15
 
