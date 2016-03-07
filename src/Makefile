@@ -269,7 +269,7 @@ LOCALSCR= build \
 	www/document_plain.png www/document_delta.png \
 	www/folder_plain.png www/folder_delta.png
 PSCR	= t/doit t/guitest
-PROGS	= hidestring libc/mtst$(EXE)
+PROGS	= libc/mtst$(EXE)
 LIBS	= libc/libc.a tomcrypt/libtomcrypt.a tommath/libtommath.a
 PCRELIB = gui/tcltk/pcre/local/lib/libpcre.a
 DATA	= bkmsg.txt bkhelp.txt \
@@ -358,7 +358,7 @@ clean: FORCE
 		bk.ico \
 		bkmsg.txt bkhelp.txt build bkver.c \
 		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe \
-		diff.exe diff3.exe hidestring.exe mend.exe
+		diff.exe diff3.exe mend.exe
 	$(Q)$(RM) -r tmp
 
 clobber: clean FORCE
@@ -640,9 +640,6 @@ slib.o:	kw2val_lookup.c
 kw2val_lookup.c: slib.c kw2val.pl
 	$(if $(Q),@echo Building $@,)
 	$(Q)perl kw2val.pl slib.c || (rm -f kw2val_lookup.c; exit 1)
-
-hidestring: hidestring.c	
-	$(CC) $(CC_FAST) -o hidestring hidestring.c
 
 check-syntax:
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -S ${CHK_SOURCES} -o /dev/null
