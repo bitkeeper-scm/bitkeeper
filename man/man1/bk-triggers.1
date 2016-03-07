@@ -205,18 +205,6 @@ and/or \*[BK] version.
 called after the data has been applied to the tree.
 .li
 typically used for notification.
-.EV pre-lease-proxy
-called in a bkd handling a licenseurl request,
-before a lease is fetched.
-.li
-non-zero exit status fails the lease fetch.
-.li
-used to control whether a lease is fetched for a particular bk user.
-.EV post-lease-proxy
-called in a bkd handling a licenseurl request,
-after a lease has been fetched.
-li
-can be used to record who fetch leases and what lease type was fetched.
 .EV pre-outgoing
 called before an outgoing pull/push/clone event.
 .li
@@ -397,7 +385,6 @@ incoming clone,
 incoming port,
 incoming pull,
 incoming push,
-lease-proxy,
 outgoing clone,
 outgoing pull, 
 outgoing push,
@@ -415,10 +402,6 @@ The hostname of the client side host.
 .tp
 .V BKD_HOST
 The hostname of the server side host.
-.tp
-.V BK_LEASE_TYPE
-Valid in a pre-lease-proxy and post-lease-proxy trigger.
-It will be set to \*(lqread\*(rq or \*(lqwrite\*(rq.
 .tp
 .V BK_LEVEL
 The \*(lqlevel\*(rq of the client side repository.
@@ -671,24 +654,6 @@ rm -f /tmp/csets$$
 exit $OK
 .DE
 .SH "EXAMPLE 5"
-.DS
-#!/bin/sh
-#
-# Using a pre-lease-proxy trigger to limit access to
-# the users who can have a lease.
-
-if [ "$BK_LEASE_TYPE" = write ]
-then
-	grep -q -f /home/project/config/WRITE_PERMISSION "$BK_USER" 
-	exit $?
-else
-	grep -q -f /home/project/config/READ_PERMISSION "$BK_USER" 
-	exit $?
-fi
-# cannot happen
-exit 1
-.DE
-.SH "EXAMPLE 6"
 .DS
 #!/bin/sh
 #

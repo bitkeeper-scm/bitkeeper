@@ -38,9 +38,7 @@ bk setup
 bk setuptool
 .CE
 These commands will guide you through the setup process, in which
-you name the project, give it a category, add your license key (if
-you are a commercial customer) or accept open logging (if you are
-a non-commercial user).
+you name the project, give it a category, etc.
 .LP
 The end result is a mostly empty repository, which is shown in
 figure 1.

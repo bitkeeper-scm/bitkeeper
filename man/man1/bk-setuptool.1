@@ -16,29 +16,10 @@ The purpose of the tool is to help you enter all of the information
 needed to create a repository by stepping you through a series of
 input forms and prompts.
 .LP
-Before you can create a repository you must read and accept the
-appropriate \*[BK] license. The exact license you must accept
-depends on the type of the repository you are creating. 
-.B bk setuptool 
-will prompt you for the type of repository and give you an
-opportunity to read and accept the license. If you choose to not
-accept the license you will not be able to create the
-repository. See
-.B bk help setup
-and
-.B bk help licensing
-for more information. 
-.LP
-After you have accepted a particular license, the next time you run 
-.B bk setuptool
-you will not be required to accept the same license again. 
-.LP
-Once you have defined the type of repository and accepted the
-appropriate license you will be prompted for additional information
+You will be prompted for additional information
 that will be stored in the config file for the repository. Different
 types of repositories will require slightly different sets of
-data. For example, a repository that uses a commercial license will
-require that you enter the license key and signatures.
+data.
 .LP
 After all information has been entered you will have a chance to
 review the information that will be put into the config file before
@@ -55,21 +36,6 @@ This has the same format as a regular config file.
 will look for
 this file and, if found, use the data in the file to set the default
 values when creating a new repository.
-.SH "LICENSE KEYS"
-.LP
-If you have a commercial license key you may enter it by hand when
-prompted.
-.B bk setuptool
-also allows you to load the license key and signatures
-from a file. This is the most accurate way to enter the licensing
-information. 
-.LP
-This file may have other information besides the license
-key as long as the key and signatures are embedded in the text
-somewhere. So, for example, if you receive an email that includes
-your license key you can save that email to a file and select that
-file from within
-.BR "bk setuptool" .
 .SH "EXAMPLES"
 .LP
 To create a repository named
