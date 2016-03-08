@@ -566,6 +566,14 @@ pending:
 		if (flags & (NESTED_PENDING|NESTED_MARKPENDING)) {
 			c->_pending = -1;
 		}
+		if (strneq(c->path, "BitKeeper/deleted/", 18) &&
+		    !C_PRESENT(c)) {
+			/* deleted comps that aren't present don't exist */
+			hash_deleteStr(n->compdb, c->rootkey);
+			removeLineN(n->comps, i, compFree);
+			--i;
+			continue;
+		}
 	}
 	mdbm_close(idDB);
 

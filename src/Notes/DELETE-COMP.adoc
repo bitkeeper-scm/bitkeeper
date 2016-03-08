@@ -1,0 +1,57 @@
+Delete, gone, and bring back components
+=======================================
+
+Components that are no longer needed or are not needed by a subset
+of users, can be deleted.
+
+Note: this is partially implemented, and these notes are to help anyone
+who is completing the work, to not have to think of all the scenarios from
+scratch.
+
+When a repo has a deleted component still populated, then it is still
+visible.  When it has a deleted component that is missing, then it is
+invisible.  This is both a plus and a minus.
+
+== Clone
+Clone works by cloning the product, then using the remote HERE
+file to populate.  If the remote HERE file is ALL, and the clone
+destination only has the product, then the deleted component will
+be hidden, and won't be included in the clone.
+
+Better would be if a clone of a repo with the deleted component
+still present would clone that component.  Otherwise, that component
+is vulnerable to getting lost.
+
+== Pull
+Two problems scenarios with pull: merge and update.
+
+=== Merge
+    bk clone . ../client1
+    bk rmcomp x
+    bk clone . ../no-x
+    cd client1/x
+    # do work; make csets
+    cd ../../no-x
+    pull ../client1
+
+This fails because component 'x' needs a merge, but is not populated.
+
+A solution is to have client pulled into a copy of the main
+repo that has the deleted component populated.  The merge is done
+there, then can be pulled into no-x.
+
+=== Update
+    cd main
+    bk rmcomp x
+    bk clone . ../no-x
+    cd client1/x
+    bk unrmcomp x
+    # do work; make csets
+    cd ../no-x
+    pull ../main
+
+This fails because the the product is pulled which re-activates x
+but x isn't populated and an error is generated.
+
+The solution is to have x look like a new component in this case,
+and get fed to the populate code.
