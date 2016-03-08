@@ -16102,63 +16102,6 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		return (nullVal);
 	}
 
-	case KW_GET_SETGCA: /* GET_SETGCA */ {	/* print gca args for get*/
-		char	*inc, *exc;
-
-		if (MERGE(s, d) &&
-		    (d = gca3(s, MERGE(s, d), PARENT(s, d), &inc, &exc))) {
-			fs("-r");
-			fs(REV(s, d));
-			if (inc) {
-				fs(" -i");
-				fs(inc);
-				free(inc);
-			}
-			if (exc) {
-				fs(" -x");
-				fs(exc);
-				free(exc);
-			}
-			return (strVal);
-		}
-		return (nullVal);
-	}
-
-	case KW_GET_SETGCA301: /* GET_SETGCA301 */ {	/* print gca args for get*/
-		char	*inc, *exc;
-
-		if (MERGE(s, d) &&
-		    (d = gca3(s, MERGE(s, d), PARENT(s, d), &inc, &exc))) {
-			fs("-r");
-			fs(REV(s, d));
-			if (inc) free(inc);
-			if (exc) free(exc);
-			return (strVal);
-		}
-		return (nullVal);
-	}
-	case KW_GET_SETGCA302: /* GET_SETGCA302 */ {	/* print gca args for get*/
-		char	*inc, *exc;
-
-		if (MERGE(s, d) &&
-		    (d = gca3(s, MERGE(s, d), PARENT(s, d), &inc, &exc))) {
-			fs("-r");
-			fs(REV(s, d));
-			if (inc) {
-				fs(" -M");
-				fs(inc);
-				free(inc);
-			}
-			if (exc) {
-				fs(" -i");
-				fs(exc);
-				free(exc);
-			}
-			return (strVal);
-		}
-		return (nullVal);
-	}
-
 	case KW_PREV: /* PREV */ {
 		if (d = sccs_prev(s, d)) {
 			fs(REV(s, d));

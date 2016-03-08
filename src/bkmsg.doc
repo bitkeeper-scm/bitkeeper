@@ -1163,27 +1163,6 @@ You should put the bk_mail.bat file in the BitKeeper directory.
 The bk_mail.bat command should exit with status zero when the mail is
 sent successfully.
 $
-#install-cygwin-upgrade
-Thanks for installing BitKeeper.  We noticed that this was an upgrade
-from an earlier version of BitKeeper.  Earlier versions of BitKeeper
-required Cygwin (http://cygwin.com) and we did not uninstall Cygwin.
-
-Versions 3.2.0 and later of Bitkeeper no longer require Cygwin in
-order to function.  It is fine if Cygwin is left there, BitKeeper
-doesn't need it but BK will work fine from a Cygwin shell.
-
-We did not remove Cygwin as part of your upgrade because it is
-common for people to have customized their Cygwin installation.
-If you don't need or want Cygwin, the Cygwin documentation says that
-you may remove Cygwin by manually removing the following items:
-
-* The registry tree `Software\Cygnus Solutions' under
-   HKEY_LOCAL_MACHINE and/or HKEY_CURRENT_USER .
-* Anything under the Cygwin root folder, `C:\cygwin' by default.
-* Anything created by setup in its temporary working directory.
-
-For more information see http://cygwin.com/faq/faq0.html#SEC19
-$
 #upgrade-badperms
 The current user does not have permissions to replace the version of
 BitKeeper installed at:

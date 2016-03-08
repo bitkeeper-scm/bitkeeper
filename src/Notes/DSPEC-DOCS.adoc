@@ -25,9 +25,6 @@ FB - unimplemented, remove or leave undoc
 FD - should probably be TEXT except we have shoved the newroot log in there
 FILE - this is for the component file name I believe, internal
 FL - flag list, leave undoc
-GET_SETGCA - internal?
-GET_SETGCA301 - internal?
-GET_SETGCA302 - internal?
 GPN - I dunno what this is
 HT - alias for HOST, leave undoc
 I - alias for REV, leave undoc
