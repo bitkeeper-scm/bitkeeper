@@ -15,7 +15,6 @@
  */
 
 #include "common.h"
-WHATSTR("%W%");
 
 #define P(p) ((unsigned long)(p))   /* cast pointer to integer for printf */
 

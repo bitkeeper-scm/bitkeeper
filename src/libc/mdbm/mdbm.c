@@ -62,8 +62,6 @@
 
 #include "common.h"
 
-WHATSTR("%W%");
-
 static datum   nullitem;
 static kvpair  nullkv;
 

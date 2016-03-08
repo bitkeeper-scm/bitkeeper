@@ -93,10 +93,8 @@ main(int ac, char **av)
 	int	dolinks = 0;
 #endif
 	pid_t	pid = getpid();
-	FILE	*f;
 	char	*dest = 0, *bkpath = 0, *tmp = findtmp();
 	char	tmpdir[MAXPATH], buf[MAXPATH], pwd[MAXPATH];
-	char	*p;
 	opts	opts;
 #ifdef	WIN32
 #ifndef	CONSOLE
@@ -104,6 +102,7 @@ main(int ac, char **av)
 	char	*fakestdin, *winlog;
 	FILE	*sfiofd;
 #endif
+	char	*p;
 	HCURSOR h;
 
 	/* Refuse to install on unsupported versions of Windows */

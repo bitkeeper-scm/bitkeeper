@@ -16,8 +16,6 @@
 
 #include "system.h"
 
-WHATSTR("%W%");
-
 int mdbm_test(void);
 
 

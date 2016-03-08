@@ -17,11 +17,12 @@
 #include "string/str.cfg"
 #ifdef BK_STR_STRNDUP
 #include "local_string.h"
+#include <stdlib.h>
 
 char	*
 strndup(const char *s, size_t len)
 {
-    	char	*p;
+	char	*p;
 
 	if (p = malloc(len+1)) {
 		strncpy(p, s, len);

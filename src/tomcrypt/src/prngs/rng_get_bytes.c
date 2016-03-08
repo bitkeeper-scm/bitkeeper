@@ -157,7 +157,7 @@ static unsigned long rng_fake(unsigned char *buf, unsigned long len)
 	p = add_entropy(tv.tv_sec, p, buf, len);
 	p = add_entropy(tv.tv_usec, p, buf, len);
 	p = add_entropy(times(&tms), p, buf, len); /* this works really well */
-	p = add_entropy((unsigned long)sbrk(0), p, buf, len);
+	p = add_entropy((unsigned long)rng_fake, p, buf, len);
 	p = add_entropy((unsigned long)&len, p, buf, len);
 	p = add_entropy(getuid(), p, buf, len);
 	return (len);
