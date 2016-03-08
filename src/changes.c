@@ -1513,14 +1513,16 @@ send_part1_msg(remote *r, char **av)
 	unlink(cmdf);
 	free(cmdf);
 	if (probef) {
-		f = fopen(probef, "rb");
-		while ((i = fread(buf, 1, sizeof(buf), f)) > 0) {
-			writen(r->wfd, buf, i);
+		unless (rc) {
+			f = fopen(probef, "rb");
+			while ((i = fread(buf, 1, sizeof(buf), f)) > 0) {
+				writen(r->wfd, buf, i);
+			}
+			fclose(f);
+			rc = send_file_extra_done(r);
 		}
-		fclose(f);
 		unlink(probef);
 		free(probef);
-		send_file_extra_done(r);
 	}
 	return (rc);
 }
