@@ -190,12 +190,12 @@ I<serial>[N] if neither have the N or both have the N.
 Look at the weave as a sequence of data blocks, and the conditions
 which make them active.  Turn the conditions into a hash key,
 and accumulate checksum metadata about blocks with the same key.
-Then make that into a sorter to sort the blocks and some
-logic to avoid looking at some of the blocks, and we have
-the basis for a fast file checksum.
 
-This will be presented in 3 parts: the hash, the sorted list,
-and the way to limit how much of the sorted list is walked.
+Then make that into a list of data blocks meta data.  Walk the list
+testing for active block, and if so, accumulate checksum data.
+
+The details will be presented in 3 parts: the hash, the list,
+and the walk.
 
 But first...
 
@@ -300,42 +300,28 @@ all hash entries, we'll know if the file ended in newline.
 
 LIST
 
-Just the above is enough to improve fastsum by doing
-an EACH_HASH and processing all the blocks in the context
-of a serialmap.  But that's not where the big gains are.
-Better to see if we can avoid processing all blocks.
+At the time the hash is being built, a list is also
+being built and creates an in order memory walk for
+the walker (discussed below) to use.
 
-We also know that processors like to read sequential
-data.  So what we can do is create an array of hash
-values sorted by their first key serial (the I entry).
-Then we can create an array of the keys laid out in
-a row, and either do start/len or put in a terminator.
-
-Now we can do the equivalent of walking the hash
-by walking two sequential lists.
+This list could be sorted to have the walker go
+over fewer items, but the addition of sort time
+vs the fewer items walked didn't help.
 
 WALK
 
-If we are computing for serial N, we know there will be
-no serials active in the serialmap greater than N.
+We walk the list and evaluate each entry to see if it
+is active (I and no D) and accumulate block sums.
+And logic to count added/deleted/same and run the
+no newline state machine.  See fastsum().  Small routine.
 
-Sorting the list from low to high lets us stop doing
-the walk when we get to the serial for the delta we
-are computing.
+Future work: incremental sums
 
-There are other walks you can probably think of which
-also have the trait of skipping entries.  That's the
-power of post processing the hashed data to make things
-faster.
-
-For example, we can now think about doing a relative
-checksum, by taking the serialmap of desired, and
-a symdiff with the base version.  We can then arrange
-the data as an interval tree (don't need a full red black,
-as we don't need to support insert).  Then we can start
-later than the beginning of the list, and end at the
-same spot.  This will help checksum grow linearly instead
-of N^2.
-
-The first cut of the code doesn't do relative, just
-full checksums, using the early termination from the walk.
+We can now think about doing an incremental checksum, similar to
+cset_resum, with same order of walking.  Then each computed sum will
+serve as the basis for the next sum.  It's a bit of work, and requires a
+sort of the list to create an interval tree like structure, but this
+data structure at least allows it to be built.  Also there's
+something about the no newline state machine hitting some cases
+where it punts on incremental and computes the whole thing from
+scratch, but those are as rare as instances of no newline.
