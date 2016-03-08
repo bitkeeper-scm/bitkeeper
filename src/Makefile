@@ -331,7 +331,7 @@ gWall Wall:
 	$(MAKE) CFLAGS="$(CC_WALL)" all
 
 # production builds
-p:
+p:  ## Build a production version of BitKeeper (no -g)
 ifeq (,$(HAS_BK))
 	$(MAKE) bk
 	PATH=`pwd`:$(PATH) $(MAKE) HAS_BK=1 p
@@ -339,14 +339,14 @@ else
 	$(MAKE) CFLAGS="$(CC_FAST) $(CF)" all
 endif
 
-g:
+g:  ## Build a debug version of BitKeeper (-g)
 	$(MAKE) CFLAGS="$(CC_DEBUG)" all
 gO:
 	$(MAKE) CFLAGS="$(CC_FAST_DEBUG)" all
 gcov:
 	$(MAKE) CFLAGS="$(CC_DEBUG) -fprofile-arcs -ftest-coverage" all
 
-clean: FORCE
+clean: FORCE  ## Remove object files and executables
 	$(if $(Q),@echo Cleaning up,)
 	$(Q)for sub in $(SUBDIRS) ../doc ../man gnu gui utils win32; \
 	do	$(MAKE) -C$$sub "CFLAGS=$(CFLAGS)" Q=$(Q) $@; \
@@ -361,7 +361,7 @@ clean: FORCE
 		diff.exe diff3.exe mend.exe
 	$(Q)$(RM) -r tmp
 
-clobber: clean FORCE
+clobber: clean FORCE ## Same as 'clean' but also bk clean files
 	-@$(BK) -A clean
 
 # XXX subdirs? (see tags)
@@ -531,7 +531,7 @@ installdir: utils/registry.tcl
 	    test -s symlinks || rm -f symlinks
 	@true
 
-image:
+image:  ## Build the installer (left in src/utils/bk-*)
 ifeq (,$(HAS_BK))
 	$(MAKE) bk
 	PATH=`pwd`:$(PATH) $(MAKE) HAS_BK=1 image
@@ -551,16 +551,16 @@ _image:
 	-cd $(IMGDIR)/gui/bin && strip *$(EXE)
 	BINDIR=$(IMGDIR) ${MAKE} -Cutils "CC=$(CC)" "CFLAGS=$(CFLAGS)" image
 
-crankturn: crank.sh remote.sh
+crankturn: crank.sh remote.sh  ## Run a clean-build + regressions in cluster
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh
 
-cranksave: crank.sh remote.sh
+cranksave: crank.sh remote.sh  ## Run a crankturn but save the built images
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh save
 
-crankstatus: crank.sh remote.sh
+crankstatus: crank.sh remote.sh  ## See how the crank is going
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh status
 
-crankrelease nightly: crank.sh remote.sh
+crankrelease nightly: crank.sh remote.sh  ## Do a BitKeeper release (or nightly build)
 	@(TAG=$(shell $(BK) changes -r+ -d:TAG:) ; \
 	test x$$TAG = x && { \
 		echo Cannot crankrelease with a non-tagged tip ; \
@@ -664,3 +664,10 @@ check-syntax:
 #   http://www.cmcrossroads.com/article/printing-value-makefile-variable
 print-%:
 	@echo $* = \"$($*)\"
+
+.PHONY: help
+
+help:
+	@grep -E '^[a-zA-Z_\-\ ]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+	@echo Suggested: make -j12 image
+
