@@ -1,17 +1,36 @@
 /*
- * Copyright 1999-2001,2005-2006 BitMover, Inc
+ * sdbm Copyright (c) 1991 by Ozan S. Yigit
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Modifications to use memory mapped files to enable multiple concurrent
+ * users:
+ *	Copyright (c) 1996 by Larry McVoy, lm@sgi.com.
+ *	Copyright (c) 1996 by John Schimmel, jes@sgi.com.
+ *	Copyright (c) 1996 by Andrew Chang, awc@sgi.com.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Ported to NT WIN32 environment
+ *	Copyright (c) 1998 by Andrew Chang, awc@bitmover.com
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Permission to use, copy, modify, and distribute this software and its
+ * documentation for any purpose and without fee is hereby granted,
+ * provided that the above copyright notice appear in all copies and that
+ * both that copyright notice and this permission notice appear in
+ * supporting documentation.
+ *
+ * This file is provided AS IS with no warranties of any kind.	The author
+ * shall have no liability with respect to the infringement of copyrights,
+ * trade secrets or any patents by this file or any part thereof.  In no
+ * event will the author be liable for any lost revenue or profits or
+ * other special, indirect and consequential damages.
+ *
+ *			oz@nexus.yorku.ca
+ *
+ *			Ozan S. Yigit
+ *			Dept. of Computing and Communication Svcs.
+ *			Steacie Science Library. T103
+ *			York University
+ *			4700 Keele Street, North York
+ *			Ontario M3J 1P3
+ *			Canada
  */
 
 #include "common.h"
