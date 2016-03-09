@@ -1,0 +1,45 @@
+Notes in progress for the next release...
+
+============================================================================
+Release notes for BitKeeper version 7.2-oss
+
+This is the first open source free release of Bitkeeeper. Many changes
+involve removing the old licensing code.
+
+Changes:
+
+  Upgraded TclTk to v8.6 which improved appearance on MacOS.
+
+  BitKeeper now uses gfile pathnames in many places where sfile
+  pathnames were used in the past. The biggest change is that 'bk -r'
+  returns dir/file instead of dir/SCCS/s.file.  Also many error
+  messages avoid printing SCCS/s.file pathnames since those are
+  confusing.
+
+  Removed old commands:
+    bk _eula
+    bk lease
+    bk legal
+    bk more
+    bk status --compat
+    bk users
+
+  Changed 'bk makepatch' so that it ONLY generates the bk-5.0
+  fastpatch format and later. This breaks pull/push compatibility with
+  bk-4.x, but old repositories can still be cloned and read.
+
+  Added new traversal options to 'bk changes': --lattice && --longest
+
+  'bk upgrade' was changed to use the downloads.bitkeeper.com website
+  directly rather than our separate upgrades.bitkeeper.com site.
+  Also the upgrade code is used to get the latest release for 'bk version'.
+
+  Add 'bk describe' command to give a friendly name for the current
+  cset like bk-7.1+183@0x56d9f3c0-dirty
+
+Bugs fixed:
+
+  Fixed 'bk citool' support for pre-delta triggers. The old behavior
+  was terrible. (sorry)
+
+  'bk changes -R URL' with a bad URL could coredump. Fixed.
