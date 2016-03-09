@@ -508,6 +508,18 @@ baddir:						fprintf(stderr,
 			}
 		}
 
+		/* Trial versions of bk will expire in 3 weeks. */
+		if (test_release && !bk_isSubCmd && !streq(prog, "upgrade") &&
+		    !streq(prog, "bin") &&
+		    !streq(prog, "pwd") &&
+		    (getenv("_BK_EXPIRED_TRIAL") ||
+			(time(0) > (time_t)bk_build_timet + test_release))) {
+			char	*nav[] = {"version", 0};
+
+			version_main(1, nav);
+			exit(1);
+		}
+
 		/* -'?VAR=val&VAR2=val2' */
 		if (envargs) {
 			hash	*h = hash_new(HASH_MEMHASH);

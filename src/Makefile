@@ -100,6 +100,7 @@ BK=bk$(EXE)
 GET=	$(Q)$(BK) get -sS
 LD	=cc
 G	=-g
+TRIAL	=0
 IMGDIR	=$(HERE)/tmp/bitkeeper
 
 # Handle warning arguments in GCC
@@ -339,6 +340,12 @@ else
 	$(MAKE) CFLAGS="$(CC_FAST) $(CF)" all
 endif
 
+trial:
+	$(MAKE) TRIAL="3*WEEK" CFLAGS="$(CC_FAST) $(CF)" all
+
+trial3M:
+	$(MAKE) TRIAL="3*MONTH" CFLAGS="$(CC_FAST) $(CF)" all
+
 g:  ## Build a debug version of BitKeeper (-g)
 	$(MAKE) CFLAGS="$(CC_DEBUG)" all
 gO:
@@ -474,6 +481,7 @@ else
 	$(Q)echo "char *bk_tag = \""`bk describe --bk`"\";" >> bk.v
 endif
 	$(Q)echo "char *bk_platform = \""`./utils/bk_version`"\";" >> bk.v
+	$(Q)echo "int test_release = "$(TRIAL)";" >> bk.v
 	$(Q)echo "time_t bk_build_timet = "`perl -e "print time"`";" >> bk.v
 	$(Q)echo "char *bk_build_user = \"$(BKUSER)@$(BKHOST)\";" >> bk.v
 	$(Q)echo "char *bk_build_dir = \""`pwd`"\";" >> bk.v

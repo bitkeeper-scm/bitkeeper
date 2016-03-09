@@ -30,6 +30,7 @@
  */
 
 #define	UPGRADEBASE	"http://downloads.bitkeeper.com/latest"
+#define	UPGRADETRIAL	"http://downloads.bitkeeper.com/latest"
 
 private	int	noperms(char *target);
 private	int	upgrade_fetch(char *name, char *file);
@@ -99,6 +100,8 @@ upgrade_main(int ac, char **av)
 		}
 	} else if (p = cfg_str(0, CFG_UPGRADE_URL)) {
 		urlbase = p;
+	} else if (test_release) {
+		urlbase = UPGRADETRIAL;
 	} else {
 		urlbase = UPGRADEBASE;
 	}

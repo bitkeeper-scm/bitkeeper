@@ -115,4 +115,16 @@ bkversion(FILE *f)
 		    new_vers,
 		    age(now - sccs_date2time(new_utc, 0), " "));
 	}
+
+	if (test_release) {
+		float	exp;
+
+		exp = ((time_t)bk_build_timet - now + test_release) / (float)DAY;
+		if (exp > 0) {
+			fprintf(f, "Expires in: %.1f days (test release).\n",
+			    exp);
+		} else {
+			fprintf(f, "Expired (test release).\n");
+		}
+	}
 }
