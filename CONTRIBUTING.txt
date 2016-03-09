@@ -1,0 +1,4 @@
+By submitting code to the BitKeeper project, you represent that you
+have the right to license your contribution to Bitmover Inc, and the
+community, and agree that your contributions are licensed under the
+Apache 2.0 license.

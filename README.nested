@@ -1,0 +1,38 @@
+This repository uses the BitKeeper nested feature, but was setup
+during development before we developed a set of best practices for
+nested repositories.  It shouldn't be considered a good example of a
+Nested repository.
+
+What we did wrong: we put the main BK source in the product rather than
+a component.  You really don't want that, it means if we had wanted to
+detach the BK source from this nested collection and attach it to some
+other nested collection, we can't.
+
+The product should have very little in it, it should be like a FreeBSD
+ports (https://en.wikipedia.org/wiki/FreeBSD_Ports) instance.  Just a
+makefile, maybe a readme and a license, just the basics.
+
+Imagine a nested collection for a Unix distribution.  There's a top level
+Makefile that knows how to build the compiler, the kernel, basic userland,
+X11, etc.  If the Makefile target for gcc looked like
+
+
+gcc: usr/src/gnu/gcc
+	cd usr/src/gnu/gcc && $(MAKE)
+
+usr/src/gnu/gcc:
+	bk populate usr/src/gnu/gcc
+
+then you could
+
+	bk clone -sPRODUCT bk://server/unix
+	cd unix
+	make gcc kernel
+
+and it will pull in the compiler, build it, pull in the kernel, build it.
+Lather, rinse, repeat.
+
+We didn't structure our world that way, we didn't have the experience to
+know that was a best practice.  Don't be us.
+
+BitKeeper dev team, 2016.
