@@ -24,6 +24,7 @@ private struct {
 	u32	showdups:1;	/* do not filter duplicates when multi-parent */
 	u32	forwards:1;	/* like prs -f */
 	u32	html:1;		/* do html style output */
+	u32	json:1;		/* do json output */
 	u32	keys:1;		/* just list the keys */
 	u32	local:1;	/* want the new local csets */
 	u32	newline:1;	/* add a newline after each record, like prs */
@@ -127,6 +128,7 @@ changes_main(int ac, char **av)
 		{ "dspecf;", 303 },		/* let user pass in dspec */
 		{ "filter", 310 },		/* -i/-x filter not select */
 						/* undocumented on purpose */
+		{ "json", 315 },		/* output json */
 		{ "sparse-ok", 320 },		/* don't error on non-present */
 		{ "standalone", 'S' },		/* treat comps as standalone */
 		{ "lattice", 330 },		/* range is a lattice */
@@ -222,6 +224,9 @@ changes_main(int ac, char **av)
 		    case 310:	/* --filter */
 			opts.filter = 1;
 			break;
+		    case 315: /* --json */
+			opts.json = 1;
+			break;
 		    case 320:	/* --sparse-ok */
 			opts.sparseOk = 1;
 		    case 330: /* --lattice */
@@ -271,10 +276,16 @@ changes_main(int ac, char **av)
 			opts.doComp = opts.prodOnly = 1;
 		}
 	}
-	if (opts.keys && (opts.verbose||opts.html||opts.dspec)) usage();
-	if (opts.html && opts.dspec) usage();
-	if (opts.diffs && opts.dspec) usage();
-	if (opts.html && opts.diffs) usage();
+	/* only one option that specifies a dspec */
+	i = 0;
+	if (opts.keys) ++i;
+	if (opts.html) ++i;
+	if (opts.json) ++i;
+	if (opts.diffs) ++i;
+	if (opts.dspec) ++i;
+	if (i > 1) usage();
+	/* and -k can't be used with -v */
+	if (opts.keys && opts.verbose) usage();
 
 	if (opts.local || opts.remote || !av[optind] ||
 	    (streq(av[optind], "-") && !av[optind + 1])) {
@@ -683,6 +694,10 @@ doit(int dash)
 			spec = opts.verbose ?
 			    "dspec-changes-hv" :
 			    "dspec-changes-h";
+		} else if (opts.json) {
+			spec = opts.verbose ?
+			    "dspec-changes-json-v" :
+			    "dspec-changes-json";
 		} else {
 			if (!opts.diffs && getenv("BK_4X_DSPEC_COMPAT")) {
 				spec = "dspec-changes-4.0";
@@ -797,13 +812,15 @@ doit(int dash)
 	}
 	flags = PRS_FORCE;
 	if (opts.newline) flags |= PRS_LF;
-	if (dstart) EACH(opts.begin) {
-		sccs_prsdelta(s, dstart, flags, opts.begin[i], stdout);
-	}
+	/*
+	 * $begin/$end node. When the range is empty then dstart = dend = 0.
+	 * So in this case any keywords in $begin/$end will get passed with d=0
+	 * and so not expand.
+	 * Otherwise d is set to the first (or last) match
+	 */
+	EACH(opts.begin) sccs_prsdelta(s, dstart, flags, opts.begin[i], stdout);
 	cset(state, s, 0, 0, stdout, opts.dspec);
-	if (opts.end && dstop) {
-		sccs_prsdelta(s, dstop, flags, opts.end, stdout);
-	}
+	if (opts.end) sccs_prsdelta(s, dstop, flags, opts.end, stdout);
 	EACH_HASH(state) {
 		rstate = state->vptr;
 		EACH_KV(rstate->graphDB) {

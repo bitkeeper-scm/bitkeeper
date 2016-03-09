@@ -495,7 +495,7 @@ echo OK
 echo $N Test a dspec of only dv2 line does not use data after null ..$NL
 # bug where code would pick up stuff after the null.
 # which would be junk.  For the test, make it not junk.
-perl -e 'print "#dv2\\x\0\n:I:\n"' > dspecf
+perl -e 'print "#dv2\\n\0\n:I:\n"' > dspecf
 bk changes -r+ -n --dspecf=dspecf > GOT || fail -f GOT
 test -s GOT && fail -f GOT
 echo OK

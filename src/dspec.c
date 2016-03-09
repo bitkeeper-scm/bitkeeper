@@ -49,6 +49,7 @@ private struct {
 	FILE	*out;		/* FILE* to receive output */
 	int	line;		/* current line in $each iteration */
 	int	tcl;		/* whether we are inside a $tcl construct */
+	int	json;		/* whether we are inside a $json construct */
 	sccs	*s;
 	ser_t	d;
 	FILE	*flhs, *frhs;	/* tmp fmem handles to hold expressions */
@@ -92,6 +93,7 @@ dspec_eval(FILE * out, sccs *s, ser_t d, char *dspec)
 	g.eachval = 0;
 	g.line = 0;
 	g.tcl = 0;
+	g.json = 0;
 	/* we preserve any existing g.f[rl]hs */
 
 	stmtList(g.out);
@@ -323,6 +325,12 @@ dollar(FILE *out)
 		g.tcl = 0;
 		show_s(g.s, out, "}", 1);
 		g.tcl = rc;
+		if (*g.p++ != '}') err("missing }");
+	} else if (strneq("$json{", g.p, 6)) {
+		g.p += 6;
+		g.json = 1;
+		stmtList(out);
+		g.json = 0;
 		if (*g.p++ != '}') err("missing }");
 	} else if ((g.p[0] == '$') && (g.p[1] == '{')) {
 		g.p += 2;
@@ -753,6 +761,29 @@ tclQuote(char *s, int len, FILE *f)
 	}
 }
 
+/*
+ * From http://www.json.org/ (string section)
+ * Except the \u0000 section.
+ */
+private void
+jsonQuote(char *s, int len, FILE *f)
+{
+	unless (s && s[0] && len) return;
+	for (; len; --len, ++s) {
+		switch (*s) {
+		    case '\b': fputs("\\b", f); continue;
+		    case '\f': fputs("\\f", f); continue;
+		    case '\n': fputs("\\n", f); continue;
+		    case '\r': fputs("\\r", f); continue;
+		    case '\t': fputs("\\t", f); continue;
+
+		    case '"':
+		    case '\\':fputc('\\', f); /* Fallthrough */
+		    default: fputc(*s, f);
+		}
+	}
+}
+
 void
 show_d(sccs *s, FILE *out, char *format, int num)
 {
@@ -773,6 +804,8 @@ show_s(sccs *s, FILE *out, char *data, int len)
 		unless (len) return;
 		if (g.tcl) {
 			tclQuote(data, len, out);
+		} else if (g.json) {
+			jsonQuote(data, len, out);
 		} else {
 			fwrite(data, 1, len, out);
 		}
@@ -813,31 +846,34 @@ dspec_collapse(char **dspec, char **begin, char **end)
 
 	/*
 	 * The first line has to be
-	 * #[ ]dv2
+	 * #[ ]+dv2
 	 * or
-	 * #[ ]dspec-v2
-	 * or we don't expand.
+	 * #[ ]+dv2\n<the-rest-of-the-dspec>
+	 * or
+	 * #[ ]+dspec-v2
+	 * or we don't expand, where the "\n" above means the two-character
+	 * string "\" followed by "n" and is how we get a one-line dv2 dspec.
 	 * The first is for tired fingers, but we should use the second in
 	 * the files we ship, self documenting.
-	 * Note that I don't look for trailing \n, I don't care and it opened
-	 * the \r\n vs \n can of worms.
 	 */
 	p = *dspec;
 	unless (*p == '#') return;
 	for (p++; *p && isspace(*p); p++);
-	unless (strneq(p, "dv2", 3) || strneq(p, "dspec-v2", 8)) return;
-
+	if (strneq(p, "dv2\\n", 5)) {
+		p += 5;
+	} else if (strneq(p, "dv2\n", 4)) {
+		p += 4;
+	} else if (strneq(p, "dspec-v2\n", 9)) {
+		p += 9;
+	} else {
+		return;
+	}
 	f = fmem();
-	p = *dspec;
 	for (; *p; p++) {
 		switch (*p) {
 		    case '#':	/* comment to end of line */
 			for (++p; *p; ++p) {
 				if (*p == '\n') break;
-				if (*p == '\\') {
-					++p;
-					if (!*p || (*p == 'n')) break;
-				}
 			}
 			unless (*p) --p; /* outer for loop needs to see end */
 			break;

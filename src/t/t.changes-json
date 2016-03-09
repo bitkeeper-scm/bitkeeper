@@ -1,0 +1,362 @@
+# Copyright 2008-2016 BitMover, Inc
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+echo $N Create a test repository.....................................$NL
+nested proj
+for i in 1 2 3 4 5
+do
+        touch afile$i gcc/afile$i gdb/afile$i
+        bk new $Q afile$i gcc/afile$i gdb/afile$i
+        bk commit $Q -y"cset$i"
+done
+cd "$HERE"
+bk clone $Q proj copy
+cd copy
+for i in 1 2 3 4 5
+do
+        bk edit $Q afile$i gcc/afile$i gdb/afile$i
+        echo $i > afile$i
+        echo $i > gcc/afile$i
+        echo $i > gdb/afile$i
+        bk ci $Q -y"delta$i" afile$i gcc/afile$i gdb/afile$i
+done
+bk commit $Q -y"copy1"
+cd "$HERE"
+cd proj
+bk edit $Q afile1
+echo 1 > afile1
+bk ci $Q -yproj
+bk commit $Q -yproj1
+
+bk pull $Q ../copy
+
+bk edit $Q afile2
+echo proj > afile2
+bk ci $Q -yproj
+bk commit $Q -yproj2
+
+bk edit $Q afile3
+echo proj > afile3
+bk ci $Q -yproj
+bk commit $Q -yproj3
+
+KEY1=`bk changes -d:MD5KEY: -r+`
+
+# create an empty merge
+cd ../copy
+echo foo > newfile
+bk new $Q newfile
+bk commit $Q -ynewfile
+cd ../proj
+bk pull $Q ../copy
+MERGEKEY=`bk changes -nd:MD5KEY: -r+`
+
+bk mv newfile rename
+echo stuff > newfile
+bk new $Q newfile
+DELETED_FILE=`bk log -d:RM_NAME: -r+ afile4`
+bk rm -f afile4
+DELETED_KEY=`bk log -d:MD5KEY: -r+ $DELETED_FILE`
+bk commit $Q -yrename
+bk tag $Q -r+ MYTAG2
+bk tag $Q -r+ MYTAG
+
+RENAMEKEY=`bk changes -d:MD5KEY: -r+`
+
+
+echo OK
+
+echo $N Test just one cset...........................................$NL
+KEY=`bk changes -d:MD5KEY: -r$KEY1`
+DATE=`bk changes -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$KEY1`
+PARENT=`bk changes -nd':MD5KEY|PARENT:' -r$KEY1`
+cat <<EOF >WANT
+[
+{
+  "key": "$KEY",
+  "user": "bk",
+  "host": "bk_regression.bk",
+  "date": "$DATE",
+  "serial": "13",
+  "comments": "proj3\n",
+  "parents": [ "$PARENT" ]
+}
+]
+EOF
+bk changes --json -r$KEY1 > GOT
+cmpfiles WANT GOT
+echo OK
+
+
+echo $N Test two csets...............................................$NL
+KEY=`bk changes -d':MD5KEY|PARENT:' -r$KEY`
+DATE=`bk changes -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$KEY`
+PARENT=`bk changes -nd':MD5KEY|PARENT:' -r$KEY`
+perl -0777 -pe 's/\n\]$/,/' WANT >WANT2
+cat <<EOF >>WANT2
+{
+  "key": "$KEY",
+  "user": "bk",
+  "host": "bk_regression.bk",
+  "date": "$DATE",
+  "serial": "12",
+  "comments": "proj2\n",
+  "parents": [ "$PARENT" ]
+}
+EOF
+cp WANT2 WANT
+echo "]" >>WANT
+bk changes --json -2 -r..$KEY1 > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Include the merge............................................$NL
+KEY=`bk changes -d':MD5KEY|PARENT:' -r$KEY`
+DATE=`bk changes -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$KEY`
+PARENT=`bk changes -nd':MD5KEY|PARENT:' -r$KEY`
+MPARENT=`bk changes -nd':MD5KEY|MPARENT:' -r$KEY`
+perl -0777 -pe 's/\n\]$/,/' WANT >WANT2
+cat <<EOF >>WANT2
+{
+  "key": "$KEY",
+  "user": "bk",
+  "host": "bk_regression.bk",
+  "date": "$DATE",
+  "serial": "11",
+  "comments": "Merge bk_regression.bk:HERE/copy\ninto  bk_regression.bk:HERE/proj\n",
+  "parents": [ "$PARENT", "$MPARENT" ]
+}
+EOF
+cp WANT2 WANT
+echo "]" >>WANT
+bk changes --json -3 -r..$KEY1 > GOT1
+sed "s|$HERE|HERE|g" < GOT1 > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test verbose output with one changeset.......................$NL
+KEY=`bk changes -d:MD5KEY: -r$KEY1`
+DATE=`bk changes -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$KEY1`
+PARENT=`bk changes -nd':MD5KEY|PARENT:' -r$KEY1`
+REV1=`bk c2r -r$KEY afile3`
+FKEY=`bk log -d:MD5KEY: -r$REV1 afile3`
+FDATE=`bk log -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$REV1 afile3`
+cat <<EOF >WANT
+[
+{
+  "key": "$KEY",
+  "user": "bk",
+  "host": "bk_regression.bk",
+  "date": "$DATE",
+  "serial": "13",
+  "comments": "proj3\n",
+  "parents": [ "$PARENT" ],
+  "deltas": [
+    {
+      "path": "afile3",
+      "revision": "1.3",
+      "key": "$FKEY",
+      "user": "bk",
+      "host": "bk_regression.bk",
+      "date": "$FDATE",
+      "serial": "4",
+      "comments": "proj\n",
+      "lines-deleted": 1,
+      "lines-inserted": 1,
+      "lines-unchanged": 0,
+      "kind": "content"
+    }
+  ]
+}
+]
+EOF
+bk changes -av --json -r$KEY1 > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Now with two.................................................$NL
+KEY=`bk changes -d':MD5KEY|PARENT:' -r$KEY`
+DATE=`bk changes -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$KEY`
+PARENT=`bk changes -nd':MD5KEY|PARENT:' -r$KEY`
+REV2=`bk c2r -r$KEY afile2`
+FKEY=`bk log -d:MD5KEY: -r$REV2 afile2`
+FDATE=`bk log -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$REV2 afile2`
+perl -0777 -pe 's/\n\]$/,/' WANT >WANT2
+cat <<EOF >>WANT2
+{
+  "key": "$KEY",
+  "user": "bk",
+  "host": "bk_regression.bk",
+  "date": "$DATE",
+  "serial": "12",
+  "comments": "proj2\n",
+  "parents": [ "$PARENT" ],
+  "deltas": [
+    {
+      "path": "afile2",
+      "revision": "$REV2",
+      "key": "$FKEY",
+      "user": "bk",
+      "host": "bk_regression.bk",
+      "date": "$FDATE",
+      "serial": "4",
+      "comments": "proj\n",
+      "lines-deleted": 1,
+      "lines-inserted": 1,
+      "lines-unchanged": 0,
+      "kind": "content"
+    }
+  ]
+}
+EOF
+cp WANT2 WANT
+echo "]" >>WANT
+bk changes -v --json -2 -r..$KEY1 > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test a cset with no files....................................$NL
+# I'm using the merge since it has no files
+DATE=`bk changes -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$MERGEKEY`
+PARENT=`bk changes -nd':MD5KEY|PARENT:' -r$MERGEKEY`
+MPARENT=`bk changes -nd':MD5KEY|MPARENT:' -r$MERGEKEY`
+cat <<EOF >WANT
+[
+{
+  "key": "$MERGEKEY",
+  "user": "bk",
+  "host": "bk_regression.bk",
+  "date": "$DATE",
+  "serial": "15",
+  "comments": "Merge bk_regression.bk:HERE/copy\ninto  bk_regression.bk:HERE/proj\n",
+  "parents": [ "$PARENT", "$MPARENT" ],
+  "deltas": [
+  ]
+}
+]
+EOF
+bk changes --json -v -r$MERGEKEY > GOT1
+sed "s|$HERE|HERE|g" < GOT1 > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test an empty search ........................................$NL
+bk changes --json -/jlsjkjlsf/ > GOT
+cat <<EOF >WANT
+[
+]
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test tag output in non-verbose...............................$NL
+KEY=`bk changes -d':MD5KEY:' -r$RENAMEKEY`
+DATE=`bk changes -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$KEY`
+PARENT=`bk changes -nd':MD5KEY|PARENT:' -r$KEY`
+cat <<EOF >WANT
+[
+{
+  "key": "$KEY",
+  "user": "bk",
+  "host": "bk_regression.bk",
+  "date": "$DATE",
+  "serial": "16",
+  "comments": "rename\n",
+  "tags": [ "MYTAG","MYTAG2" ],
+  "parents": [ "$PARENT" ]
+}
+]
+EOF
+bk changes --json -r$RENAMEKEY > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test verbose output with a rename............................$NL
+KEY=`bk changes -d':MD5KEY:' -r$RENAMEKEY`
+DATE=`bk changes -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$KEY`
+PARENT=`bk changes -nd':MD5KEY|PARENT:' -r$KEY`
+REV2=`bk c2r -r$KEY rename`
+FKEY=`bk log -d:MD5KEY: -r$REV2 rename`
+FDATE=`bk log -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$REV2 rename`
+FKEY10=`bk log -d:MD5KEY: -r1.0 newfile`
+FDATE10=`bk log -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r1.0 newfile`
+FKEY11=`bk log -d:MD5KEY: -r1.1 newfile`
+FDATE11=`bk log -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r1.1 newfile`
+DELETED_REV=`bk log -d:REV: -r$DELETED_KEY $DELETED_FILE`
+DELETED_DATE=`bk log -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$DELETED_KEY $DELETED_FILE`
+cat <<EOF >WANT
+[
+{
+  "key": "$KEY",
+  "user": "bk",
+  "host": "bk_regression.bk",
+  "date": "$DATE",
+  "serial": "16",
+  "comments": "rename\n",
+  "tags": [ "MYTAG","MYTAG2" ],
+  "parents": [ "$PARENT" ],
+  "deltas": [
+    {
+      "path": "$DELETED_FILE",
+      "revision": "$DELETED_REV",
+      "key": "$DELETED_KEY",
+      "user": "bk",
+      "host": "bk_regression.bk",
+      "date": "$DELETED_DATE",
+      "serial": "4",
+      "comments": "Delete: afile4\n",
+      "lines-deleted": 0,
+      "lines-inserted": 0,
+      "lines-unchanged": 1,
+      "old-path": "afile4",
+      "kind": "delete"
+    },
+    {
+      "path": "newfile",
+      "revision": "1.1",
+      "key": "$FKEY11",
+      "user": "bk",
+      "host": "bk_regression.bk",
+      "date": "$FDATE11",
+      "serial": "2",
+      "comments": "BitKeeper file HERE/proj/newfile\n",
+      "lines-deleted": 0,
+      "lines-inserted": 1,
+      "lines-unchanged": 0,
+      "kind": "create"
+    },
+    {
+      "path": "rename",
+      "revision": "$REV2",
+      "key": "$FKEY",
+      "user": "bk",
+      "host": "bk_regression.bk",
+      "date": "$FDATE",
+      "serial": "3",
+      "comments": "Rename: newfile -> rename\n",
+      "lines-deleted": 0,
+      "lines-inserted": 0,
+      "lines-unchanged": 1,
+      "old-path": "newfile",
+      "kind": "rename"
+    }
+  ]
+}
+]
+EOF
+bk changes -v --json -r$RENAMEKEY > GOT1
+sed "s|$HERE|HERE|g" < GOT1 > GOT
+cmpfiles WANT GOT
+echo OK
+

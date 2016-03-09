@@ -1,0 +1,104 @@
+# dspec-v2
+# Copyright 2008,2011,2016 BitMover, Inc
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# The default dspec used by 'bk changes' and 'bk changes -v'
+# $0 == 1 means we have a { to close for the changeset 
+# $1 == 1 means we have a [ to close for the file list
+# $2 == 1 means we need a comma before printing the next file
+#	  also means we need a newline so we do a \n on changeset/EOF
+#	  but ,\n on next file
+
+$begin {
+	"[\n"
+}
+
+$if (:CHANGESET: && !:COMPONENT_V:) {
+	$if($2 -eq 1) {
+		"\n"
+	}
+	$if($1 -eq 1) {
+		"  ]\n"
+	}
+	$if($0 -eq 1) {
+		"\},\n"
+	}
+	"\{\n"
+	"  \"key\": \":MD5KEY:\",\n"
+	"  \"user\": \":USER:\",\n"
+	"  \"host\": \":HOST:\",\n"
+	"  \"date\": \":Dy:-:Dm:-:Dd:T:T::TZ:\",\n"
+	"  \"serial\": \":DS:\",\n"
+	"  \"comments\": \"" $each(:C:){$json{(:C:)}\\n} "\",\n"
+	$if (:TAG:) {
+		"  \"tags\": [ "
+		$each(:TAG:){:JOIN:"\""(:TAG:)"\""}
+		" ],\n"
+	}
+	"  \"parents\": [ "
+		$if(:PARENT:){"\"" :MD5KEY|PARENT: "\""}
+		$if(:MPARENT:){", \"":MD5KEY|MPARENT: "\""}
+	" ],\n"
+	"  \"deltas\": [\n"
+	${0=1}		 		# we need to close off the changeset
+	${1=1}		 		# we need to close off the delta : [
+	${2=0}		 		# don't need a comma yet
+} $else {
+	$unless(:REV:=1.0) {
+		$if($2 -eq 1) {
+			",\n"
+		}
+		"    \{\n"
+		"      \"path\": \":DPN:\",\n"
+		"      \"revision\": \"" :REV: "\",\n"
+		"      \"key\": \":MD5KEY:\",\n"
+		"      \"user\": \":USER:\",\n"
+		"      \"host\": \":HOST:\",\n"
+		"      \"date\": \":Dy:-:Dm:-:Dd:T:T::TZ:\",\n"
+		"      \"serial\": \":DS:\",\n"
+		"      \"comments\": \"" $each(:C:){$json{(:C:)}\\n} "\",\n"
+		"      \"lines-deleted\": " :LD: ",\n"
+		"      \"lines-inserted\": " :LI: ",\n"
+		"      \"lines-unchanged\": " :LU: ",\n"
+		$if(:REV:=1.1) {
+			"      \"kind\": \"create\"\n"
+		} $else {
+			$if(:DPN|PARENT: != :DPN:) {
+				"      \"old-path\": \"" :DPN|PARENT: "\",\n"
+				$if(:DELETED:) {
+					"      \"kind\": \"delete\"\n"
+				} $else {
+					"      \"kind\": \"rename\"\n"
+				}
+			} $else {
+				"      \"kind\": \"content\"\n"
+			}
+		}
+		"    \}"
+		${2=1}		 		# we need a comma
+	}
+}
+
+$end {
+	$if($2 -eq 1) {
+		"\n"
+	}
+	$if($1 -eq 1) {
+		"  ]\n"
+	}
+	$if($0 -eq 1) {
+		"\}\n"
+	}
+	"]\n"
+}

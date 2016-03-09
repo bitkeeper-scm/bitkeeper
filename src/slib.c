@@ -15980,6 +15980,17 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		return (strVal);
 	}
 
+	case KW_DELETED: /* DELETED */ {
+		/* return true if this is a delete */
+		if (HAS_PATHNAME(s, d) &&
+			strneq(PATHNAME(s, d), "BitKeeper/deleted/", 18) &&
+			!streq(PATHNAME(s, d), PATHNAME(s, PARENT(s, d)))) {
+			fs("DELETED");
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
 	case KW_RENAME: /* RENAME */ {
 		/* per delta path name if the pathname is a rename */
 		unless (HAS_PATHNAME(s, d) &&
