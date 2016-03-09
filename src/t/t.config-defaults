@@ -42,7 +42,6 @@ eoln: native
 fakegrafts: off
 homepage: (null)
 keyword: none
-legacyguis: off
 lockwait: 30
 mail_proxy: (null)
 master: (null)
@@ -87,7 +86,6 @@ eoln: unix
 fakegrafts: off
 homepage: (null)
 keyword: sccs
-legacyguis: off
 lockwait: 0
 mail_proxy: (null)
 master: (null)

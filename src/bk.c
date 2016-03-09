@@ -1783,11 +1783,7 @@ launch_wish(char *script, char **av)
 	if (strchr(script, '/')) {
 		strcpy(cmd_path, script);
 	} else {
-		if (cfg_bool(0, CFG_LEGACYGUIS)) {
-			sprintf(cmd_path, "%s/gui/lib/legacy/%s", bin, script);
-		} else {
-			sprintf(cmd_path, "%s/gui/lib/%s", bin, script);
-		}
+                sprintf(cmd_path, "%s/gui/lib/%s", bin, script);
 	}
 	argv[++ac] = cmd_path;
 	unless (exists(cmd_path)) {
