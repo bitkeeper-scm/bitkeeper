@@ -1481,7 +1481,8 @@ int	restore_backup(char *backup_sfio, int overwrite);
 char	*parent_normalize(char *);
 int	annotate_args(int flags, char *args);
 void	platformInit(char **av);
-int	sccs_fastWeave(sccs *s, FILE *fastpatch);
+int	sccs_fastWeave(sccs *s);
+int	sccs_slowWeave(sccs *s);
 void	sccs_clearbits(sccs *s, u32 flags);
 MDBM	*db_load(char *gfile, sccs *s, char *rev, MDBM *m);
 int	db_sort(char *gfile_in, char *gfile_out);
@@ -1526,7 +1527,6 @@ u32	send_BAM_sfio(FILE *wf, char *bp_keys, u64 bpsz, int gzip, int quiet, int ve
 int	bkd_BAM_part3(remote *r, char **env, int quiet, char *range);
 int	bp_sendkeys(FILE *f, char *range, u64 *bytes, int gzip);
 int	detach(int quiet, int verbose);
-sum_t	str_cksum(u8 *buf);
 char	*psize(u64 bytes);
 u64	scansize(char *bytes);
 void	idcache_update(char **files);

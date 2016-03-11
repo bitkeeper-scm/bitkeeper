@@ -556,6 +556,31 @@ cd RESYNC
 bk check ChangeSet || fail -f ERR
 echo OK
 
+echo $N Check takepatch bookkeeping csets already in repo ...........$NL
+cd "$HERE"
+commercial oldDelta
+touch foo
+bk new $Q foo
+bk commit $Q -f
+bk tag $Q BASE
+bk clone $Q . ../patchcopy
+bk edit $Q foo
+bk delta $Q -fynull foo
+bk commit $Q -f
+cd ../patchcopy
+bk edit $Q foo
+bk delta $Q -fynull foo
+bk commit $Q -f
+bk edit $Q foo
+bk delta $Q -fynull foo
+bk commit $Q -f
+bk clone $Q . ../patchcopy2
+bk pull $Q
+bk makepatch -FC -rBASE.. > ../patch
+cd ../patchcopy2
+bk takepatch -j0 < ../patch || fail
+echo OK
+
 echo $N Test applyPatch in bkmerge repo with sccs patch .............$NL
 cd "$HERE"
 commercial baseproject

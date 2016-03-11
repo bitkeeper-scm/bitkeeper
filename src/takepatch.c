@@ -58,16 +58,13 @@ private void	errorMsg(char *msg, char *arg1, char *arg2);
 private	int	extractPatch(char *name, FILE *p);
 private	int	extractDelta(char *name, sccs *sreal, sccs *scratch,
 		    int newFile, FILE *f, hash *countFiles, int *np);
-private	int	applyPatch(char *local, FILE *perfile);
 private	int	applyCsetPatch(sccs *s, int *nfound, int newFile);
-private	int	getLocals(sccs *s, char *name);
 private	void	insertPatch(patch *p, int strictOrder);
 private	int	reversePatch(void);
 private	void	initProject(void);
 private	FILE	*init(char *file);
 private	void	cleanup(int what);
 private	void	freePatchList(void);
-private	void	fileCopy2(char *from, char *to);
 private	void	badpath(sccs *s, ser_t tot);
 private	int	skipPatch(FILE *p);
 private	void	getChangeSet(void);
@@ -107,8 +104,6 @@ typedef struct {
 	int	saveDirs;	/* save directories even if errors */
 	MDBM	*idDB;		/* key to pathname db, set by init or rebuilt */
 	MDBM	*goneDB;	/* key to gone database */
-	char	*tableGCA;	/* key of predecessor to the oldest delta found
-				 * in the patch */
 	int	noConflicts;	/* if set, abort on conflicts */
 	char	pendingFile[MAXPATH];
 	char	*input;		/* input file name,
@@ -481,6 +476,7 @@ extractPatch(char *name, FILE *p)
 	int	nfound = 0, rc;
 	hash	*countFiles = 0; /* hash of rootkeys seen in cset patches */
 	char	*t;
+	int	newsfile;
 
 	/*
 	 * Patch format for continuing file:
@@ -648,7 +644,6 @@ error:		if (new_s && (new_s != s)) sccs_free(new_s);
 			    "takepatch: new file %s\n", t);
 		}
 	}
-	opts->tableGCA = 0;
 	cset = s ? CSET(s) : CSET(new_s);
 	if (opts->pbars && cset) {
 		countFiles = hash_new(HASH_MEMHASH);
@@ -667,25 +662,16 @@ error:		if (new_s && (new_s != s)) sccs_free(new_s);
 	gfile = sccs2name(name);
 	if (opts->echo > 1) fprintf(stderr, "Updating %s", gfile);
 
-	if (opts->fast || cset) {
-		int	newsfile = !s;
+	newsfile = !s;
 
-		unless (s) {
-			s = new_s;
-			new_s = 0;
-		}
-		rc = applyCsetPatch(s, &nfound, newsfile);
-		s = 0;		/* applyCsetPatch calls sccs_free */
-		unless (cset) nfound = 0;	/* only count csets */
-	} else {
-		rc = applyPatch(s ? s->sfile : 0, perfile);
-		if (rc < 0) {
-			opts->errfiles =
-			    addLine(opts->errfiles, sccs2name(name));
-		}
-		nfound = 0;	/* only count csets */
+	unless (s) {
+		s = new_s;
+		new_s = 0;
 	}
-	FREE(opts->tableGCA);
+	rc = applyCsetPatch(s, &nfound, newsfile);
+	s = 0;		/* applyCsetPatch calls sccs_free */
+	unless (cset) nfound = 0;	/* only count csets */
+
 	if (opts->echo > 1) fputc('\n', stderr);
 	if (perfile) fclose(perfile);
 	if (streq(gfile, "BitKeeper/etc/config")) {
@@ -731,17 +717,6 @@ extractDelta(char *name, sccs *sreal, sccs *scratch,
 	if (opts->echo>4) fprintf(stderr, "%s\n", b);
 	if (strneq(b, "# Patch checksum=", 17)) return 0;
 	pid = strdup(b);
-	/*
-	 * We stash away the parent key of the earliest delta as a "GCA".
-	 * Optimally, we'd walk sccs_prev() and do date and key compares.
-	 * and move up to the last one older than the current patch (for
-	 * which we haven't read in the delta struct yet).  But this
-	 * isn't used by current code (fastpatch+sfio), so this is good
-	 * enough.
-	 */
-	if (sreal && !opts->tableGCA && sccs_findKey(sreal, b)) {
-		opts->tableGCA = strdup(b);
-	}
 
 	/* buffer the required init block */
 delta1:	while ((b = fgetline(f)) && *b) {
@@ -776,7 +751,7 @@ delta1:	while ((b = fgetline(f)) && *b) {
 		fclose(init);
 		init = 0;
 		/* Eat diffs */
-		while ((b = fgetline(f)) && *b) opts->line++;
+		while ((b = fgetln(f, &len)) && (len > 1)) opts->line++;
 		opts->line++;
 	} else {
 		if (ignore) {
@@ -786,8 +761,6 @@ delta1:	while ((b = fgetline(f)) && *b) {
 		}
 		p = new(patch);
 		if (init) {
-			size_t	len;
-
 			p->initMem.buf = fmem_close(init, &len);
 			p->initMem.len = len;
 			p->initMem.size = len; /* really +1 */
@@ -905,9 +878,6 @@ badXsum(int a, int b)
 }
 
 /*
- * Most of the code in this function is copied from applyPatch
- * We may want to merge the two function later.
- *
  * This tries within a reasonable amount of effort to write the
  * SCCS file only once.  This can be done because the sccs struct
  * is in memory and can be fiddled with carefully.  The weaving
@@ -1045,7 +1015,7 @@ applyCsetPatch(sccs *s, int *nfound, int newFile)
 		if (HAS_SFILE(s)) {
 			sccs_close(s);
 			unlink(s->sfile);
-			sccs_rmEmptyDirs(s->sfile);
+			unless (opts->nway) sccs_rmEmptyDirs(s->sfile);
 		}
 		goto done;
 	}
@@ -1303,449 +1273,6 @@ err:
 	if (s) sccs_free(s);
 	return (-1);
 }
-
-/* 
- * an existing file that was in the patch but didn't
- * get any deltas.  Usually an error, but we should
- * handle this better.
- */
-private int
-noupdates(char *localPath)
-{
-	char    *resync = aprintf("RESYNC/%s", localPath);
-	int	rc = 0, i = 0;
-	sccs	*s;
-	ser_t	d;
-	FILE	*f;
-	char	*p, buf[MAXKEY*2], key[MAXKEY];
-	
-	while (exists(resync)) {
-		free(resync);
-		resync = aprintf("RESYNC/BitKeeper/RENAMES/s.%d", i++);
-	}
-	fileCopy2(localPath, resync);
-
-	/* No changeset, no marks for you, dude */
-	unless (exists(ROOT2RESYNC "/SCCS/s.ChangeSet")) goto out;
-
-	/*
-	 * bk fix -c can leave files that are pending but then a pull
-	 * puts back the changes.  Make sure that if we have pending
-	 * deltas we are either filling that back in or error with a
-	 * pending message.
-	 */
-	s = sccs_init(resync, INIT_NOCKSUM);
-	sccs_sdelta(s, sccs_ino(s), key);
-	f = popen("bk annotate -R -h " ROOT2RESYNC "/ChangeSet", "r");
-	while (fnext(buf, f)) {
-		chomp(buf);
-		p = separator(buf);
-		assert(p);
-		*p++ = 0;
-		unless (streq(key, buf)) continue;
-		d = sccs_findKey(s, p);
-		assert(d);
-		if (FLAGS(s, d) & D_CSET) continue;
-		if (opts->echo > 4) {
-			fprintf(stderr,"MARK(%s|%s)\n", s->gfile, REV(s, d));
-		}
-		FLAGS(s, d) |= D_CSET;
-	}
-	pclose(f);
-	unless (FLAGS(s, sccs_top(s)) & D_CSET) {
-		SHOUT();
-		getMsg("tp_uncommitted",
-		    s->gfile + strlen(ROOT2RESYNC) + 1, 0, stderr);
-		rc = -1;
-	} else {
-		sccs_newchksum(s);
-	}
-	sccs_free(s);
-out:	free(resync);
-	return (rc);
-}
-
-/*
- * If the destination file does not exist, just apply the patches to create
- * the new file.
- * If the file does exist, copy it, rip out the old stuff, and then apply
- * the list.
- */
-private	int
-applyPatch(char *localPath, FILE *perfile)
-{
-	patch	*p;
-	FILE	*iF;
-	FILE	*dF;
-	sccs	*s = 0;
-	ser_t	d = 0;
-	int	newflags;
-	int	pending = 0;
-	int	n = 0;
-	int	nump;
-	int	confThisFile;
-	int	flags = opts->echo ? 0 : SILENT;
-	ticker	*tick = 0;
-
-	p = opts->patchList;
-
-	if (!p && localPath) return (noupdates(localPath));
-
-	if (opts->echo > 7) {
-		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",
-		    p->localFile, p->resyncFile, p->pid, p->me);
-	}
-	unless (localPath) {
-		if (mkdirf(p->resyncFile) == -1) {
-			if (errno == EINVAL) {
-				getMsg("reserved_name",
-				    p->resyncFile, '=', stderr);
-				return (-1);
-			}
-		}
-		goto apply;
-	}
-	fileCopy2(localPath, p->resyncFile);
-	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags)) {
-		SHOUT();
-		fprintf(stderr, "takepatch: can't open %s\n", p->resyncFile);
-		return -1;
-	}
-	unless (HASGRAPH(s)) {
-		SHOUT();
-		if (!(s->state & S_SFILE)) {
-			fprintf(stderr,
-			    "takepatch: no s.file %s\n", p->resyncFile);
-		} else {
-			perror(s->sfile);
-		}
-		return -1;
-	}
-	assert(!CSET(s));
-
-	/* flip format before putting local files out in a patch form */
-	if (opts->bkmerge != BKMERGE(s)) {
-		if (graph_convert(s, 0)) return (-1);
-	}
-	/* Override storage format from repo default */
-	s->encoding_out = s->encoding_in;
-	unless (s) return (-1);
-	unless (opts->tableGCA) goto apply;
-	assert(p && localPath);
-	getLocals(s, localPath);
-	if (opts->echo > 6) {
-		fprintf(stderr,
-		    "stripdel %s from %s\n", opts->tableGCA, s->sfile);
-	}
-	if (d = sccs_next(s, sccs_findKey(s, opts->tableGCA))) {
-		ser_t	e;
-
-		for (e = TABLE(s); e >= TREE(s); e--) {
-			FLAGS(s, e) |= D_SET;
-			MK_GONE(s, e);
-		    	if (opts->echo>7) {
-				char	k[MAXKEY];
-
-				sccs_sdelta(s, e, k);
-				fprintf(stderr, "STRIP %s/%u/%c %s\n",
-				    REV(s, e), e,
-				    TAG(s, e) ? 'R' : 'D',
-				    k);
-			}
-			if (e == d) break;
-		}
-		if (sccs_stripdel(s, "takepatch")) {
-			SHOUT();
-			unless (BEEN_WARNED(s)) {
-				fprintf(stderr,
-				    "stripdel of %s failed.\n", p->resyncFile);
-			}
-			return -1;
-		}
-	}
-	sccs_free(s);
-	/* sccs_restart does not rebuild the graph and we just pruned it,
-	 * so do a hard restart.
-	 */
-	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags)) {
-		SHOUT();
-		fprintf(stderr,
-		    "takepatch: can't open %s\n", p->resyncFile);
-		return -1;
-	}
-	/* If no stripdel, then sccs_init could be wrong mode */
-	if (opts->bkmerge != BKMERGE(s)) {
-		if (graph_convert(s, 0)) return (-1);
-	}
-	/* Override storage format from repo default */
-	s->encoding_out = s->encoding_in;
-apply:
-	nump = reversePatch();
-	p = opts->patchList;
-	if (opts->echo == 3) tick = progress_start(PROGRESS_MINI, nump);
-	if (p && !p->pid) {
-		/* initial file create */
-		n++;
-		if (tick) progress(tick, n);
-		assert(s == 0);
-		unless (s = sccs_init(p->resyncFile, SILENT)) {
-			SHOUT();
-			fprintf(stderr,
-			    "takepatch: can't create %s\n",
-			    p->resyncFile);
-			return -1;
-		}
-		assert(perfile);
-		if (sccs_getperfile(s, perfile, 0)) {
-			sccs_free(s);
-			return (-1);
-		}
-		if (p->initFile) {
-			iF = fopen(p->initFile, "r");
-		} else {
-			assert(p->initMem.buf);
-			iF = fmem_buf(p->initMem.buf, p->initMem.len);
-		}
-		if (p->diffFile) {
-			dF = fopen(p->diffFile, "r");
-		} else {
-			dF = p->diffMem;
-			p->diffMem = 0;
-			unless (dF) dF = fmem();
-		}
-		d = 0;
-		newflags = DELTA_NEWFILE|DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
-		if (opts->echo <= 3) newflags |= SILENT;
-		if (sccs_delta(s, newflags, d, iF, dF, 0)) {
-			unless (s->io_error) perror("delta");
-			return -1;
-		}
-		if (s->bad_dsum || s->io_error) return (-1);
-		fclose(iF);	/* dF done by delta() */
-		sccs_free(s);
-		unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|SILENT)) {
-			SHOUT();
-			fprintf(stderr,
-			    "takepatch: can't create %s\n",
-			    p->resyncFile);
-			return -1;
-		}
-		/*
-		 * Delay this because BAM/binary needs to get set above,
-		 * and there is no -i -x bookkeeping in the first delta
-		 */
-		if (opts->bkmerge != BKMERGE(s)) {
-			if (graph_convert(s, 0)) return (-1);
-		}
-		/* Override storage format from repo default */
-		s->encoding_out = s->encoding_in;
-		p = p->next;
-	}
-	while (p) {
-		assert(p->pid);
-		n++;
-		if (tick) progress(tick, n);
-		assert(s);
-		if (opts->echo > 9) {
-			fprintf(stderr,
-			    "------------- %s delta ---------\n"
-			    "PID: %s\nME:  %s\n",
-			    p->local ? "local" : "remote",
-			    p->pid, p->me);
-		}
-		unless (d = sccs_findKey(s, p->pid)) {
-			if ((opts->echo == 2) || (opts->echo == 3)) {
-				fprintf(stderr, " \n");
-			}
-			errorMsg("tp_ahead", p->pid, s->sfile);
-			/*NOTREACHED*/
-		}
-		unless (sccs_restart(s)) { perror("restart"); exit(1); }
-		if (opts->echo > 9) fprintf(stderr, "Child of %s\n", REV(s, d));
-		assert(!p->meta); /* this is not the cset file */
-		newflags = GET_FORCE|GET_SKIPGET|GET_EDIT;
-		unless (opts->echo > 6) newflags |= SILENT;
-		if (sccs_get(s, REV(s, d), 0, 0, 0, newflags, 0, 0)) {
-			perror("get");
-			return (-1);
-		}
-		if (p->initFile) {
-			iF = fopen(p->initFile, "r");
-		} else {
-			assert(p->initMem.buf);
-			iF = fmem_buf(p->initMem.buf, p->initMem.len);
-		}
-		if (p->diffFile) {
-			dF = fopen(p->diffFile, "r");
-		} else {
-			dF = p->diffMem;
-			p->diffMem = 0;
-			unless (dF) dF = fmem();
-		}
-		newflags = DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
-		if (opts->echo <= 3) newflags |= SILENT;
-		/* Format being written still correct? */
-		assert(s->encoding_out && (opts->bkmerge == BKMERGE_OUT(s)));
-		if (sccs_delta(s, newflags, 0, iF, dF, 0)) {
-			unless (s->io_error) perror("delta");
-			return (-1);
-		}
-		if (s->bad_dsum || s->io_error) return -1;
-		fclose(iF);
-		p = p->next;
-	}
-	/* Put the storage style back to match the repo */
-	s->encoding_out = sccs_encoding(s, 0, 0);
-	if (BKMERGE(s) != BKMERGE_OUT(s)) {
-		sccs_restart(s);	/* reset pfile bit (delta doesn't?) */
-		sccs_newchksum(s);
-	}
-	sccs_free(s);
-	s = sccs_init(opts->patchList->resyncFile, SILENT);
-	assert(s);
-
-	for (d = 0, p = opts->patchList; p; p = p->next) {
-		assert(p->me);
-		d = sccs_findKey(s, p->me);
-		/*
-		 * XXX - this is probably an incomplete fix.
-		 * The problem was that we got a patch with a meta delta
-		 * with no content in it and delta_table() tossed it out.
-		 * So when we go looking for it, we don't find it.
-		 * What is not being checked here is if the delta was
-		 * indeed empty.
-		 */
-		if (!d && p->meta) continue;
-		assert(d);
-		if (p->remote) FLAGS(s, d) |= D_REMOTE;
-		if (CSET(s)) continue;
-		if (sccs_isleaf(s, d) && !(FLAGS(s, d) & D_CSET)) pending++;
-	}
-	if (pending) {
-		char	*t = sccs2name(localPath);
-
-		sccs_free(s);
-		SHOUT();
-		getMsg("tp_uncommitted", t, 0, stderr);
-		free(t);
-		return (-1);
-	}
-	if ((confThisFile = sccs_resolveFiles(s, opts->automerge)) < 0) {
-		sccs_free(s);
-		return (-1);
-	}
-	if (!confThisFile && (s->state & S_CSET) && 
-	    sccs_adminFlag(s, SILENT|ADMIN_BK)) {
-	    	confThisFile++;
-		/* yeah, the count is slightly off if there were conflicts */
-	}
-	opts->conflicts += confThisFile;
-	if (BAM(s) && !bp_hasBAM()) {
-		/* this shouldn't be needed... */
-		if (touch(BAM_MARKER, 0664)) perror(BAM_MARKER);
-	}
-	sccs_free(s);
-	if (tick) {
-		progress_done(tick, 0);
-		progress_nldone();  /* don't inject \n later */
-	}
-	if (opts->noConflicts && opts->conflicts) {
-		errorMsg("tp_noconflicts", 0, 0);
-	}
-	freePatchList();
-	opts->patchList = 0;
-	return (0);
-}
-
-/*
- * Include up to but not including tableGCA in the list.
- */
-private	int
-getLocals(sccs *s, char *name)
-{
-	ser_t	g = sccs_findKey(s, opts->tableGCA);
-	FILE	*t;
-	patch	*p;
-	ser_t	d;
-	int	n = 0;
-	static	char tmpf[MAXPATH];	/* don't allocate on stack */
-
-	assert(!CSET(s));
-	assert(g);
-	if (opts->echo > 6) {
-		fprintf(stderr, "getlocals(%s, %s, %s)\n",
-		    s->gfile, REV(s, g), name);
-	}
-	for (d = TABLE(s); d != g; d--) {
-		/*
-		 * Silently discard removed deltas, we don't support them.
-		 */
-		if (TAG(s, d) && !(FLAGS(s, d) & D_META)) continue;
-
-		/*
-		 * If we are dangling, don't insert the local delta if
-		 * it is already in the patch list.  In applyPatch()
-		 * we'll undangle the delta.
-		 */
-		if (DANGLING(s, d)) {
-			char	key[MAXPATH];
-
-			sccs_sdelta(s, d, key);
-			for (p = opts->patchList; p; p = p->next) {
-				if (streq(key, p->me)) break;
-			}
-			if (p) continue;
-		}
-		assert(d);
-		bktmp(tmpf);
-		unless (t = fopen(tmpf, "w")) {
-			perror(tmpf);
-			exit(1);
-		}
-		sccs_restart(s);
-		s->rstart = s->rstop = d;
-		sccs_prs(s, PRS_PATCH|SILENT, 0, NULL, t);
-		if (ferror(t)) {
-			perror("error on init file");
-			cleanup(CLEAN_RESYNC);
-		}
-		fclose(t);
-
-		p = new(patch);
-		p->local = 1;
-		p->initFile = strdup(tmpf);
-		p->localFile = strdup(name);
-		sprintf(tmpf, "RESYNC/%s", name);
-		p->resyncFile = strdup(tmpf);
-		bktmp(tmpf);
-		unless (FLAGS(s, d) & D_META) {
-			p->diffFile = strdup(tmpf);
-			sccs_restart(s);
-			if (sccs_getdiffs(s, REV(s, d), GET_BKDIFFS, tmpf)) {
-				SHOUT();
-				fprintf(stderr, "unable to create diffs");
-				cleanup(CLEAN_RESYNC);
-			}
-		} else {
-			p->meta = 1;
-		}
-		sccs_sdelta(s, PARENT(s, d), tmpf);
-		p->pid = strdup(tmpf);
-		sccs_sdelta(s, d, tmpf);
-		p->me = strdup(tmpf);
-		sccs_sortkey(s, d, tmpf);
-		p->sortkey = strdup(tmpf);
-		p->order = DATE(s, d);
-		if (opts->echo>6) {
-			fprintf(stderr,
-			    "LOCAL: %s %s %lu\n", REV(s, d), p->me, p->order);
-		}
-		insertPatch(p, 0);
-		n++;
-	}
-	return (n);
-}
-
 
 /*
  * Return true if 'a' is earlier than 'b'
@@ -2484,13 +2011,6 @@ init(char *inputFile)
 }
 
 private	void
-fileCopy2(char *from, char *to)
-{
-	if (fileCopy(from, to)) cleanup(CLEAN_RESYNC);
-}
-
-
-private	void
 cleanup(int what)
 {
 	int	i, rc = 1;
@@ -2737,17 +2257,31 @@ again:
 	unless (len) {
 err:	
 		if (ferror(out)) {
-			fprintf(stderr, "slurp rest of file\n");
-			// slurp rest of data and wind down
+			char	*buf[1024];
+
+			fprintf(stderr, "Draining patch file (%d)\n", rc);
+			while (fread(buf, 1, sizeof(buf), in));
 		}
-		return (-1);
+		goto done;
 	}
 	if ((len > 17) &&
 	    strneq(line, "# Patch checksum=", 17)) {
 		rc = 0;
 		goto done;
 	}
-	unless (len == fwrite(line, 1, len, out)) return (-1);
+	unless (len == fwrite(line, 1, len, out)) goto done;
+	sent += len;
+
+	/* Per file block */
+	if ((len > 10) && strneq(line, "New file: ", 10)) {
+		while(line = fgetln(in, &len)) {
+			assert(len);
+			unless (len == fwrite(line, 1, len, out)) goto err;
+			sent += len;
+			if (*line == '\n') break;
+		}
+		unless (len) goto err;
+	}
 
 	/* delta meta data block */
 	while(line = fgetln(in, &len)) {
