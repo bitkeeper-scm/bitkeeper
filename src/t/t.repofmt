@@ -65,7 +65,7 @@ echo OK
 
 echo $N Test that bk clone creates BK sfiles at the right time ......$NL
 for f in ascii bk; do
-	for t in "" "--compat" "--upgrade-repo"; do
+	for t in "" "--no-bk-sfile" "--upgrade-repo"; do
 		bk clone $Q $t repo.$f clone.$f$t || fail
 	done
 done
@@ -130,7 +130,7 @@ echo SAMv3 > ../BitKeeper/log/features
 cd ..
 bk repocheck $Q 2>ERR && fail should fail
 cd ..
-bk clone $Q --compat nest.ascii.mixed nest.ascii.fixed || fail
+bk clone $Q --no-bk-sfile nest.ascii.mixed nest.ascii.fixed || fail
 checkascii nest.ascii.fixed
 echo OK
 
@@ -228,8 +228,7 @@ bk clone $Q --upgrade-repo . ../repo.bsfile-upgrade-repo || fail
 checkbk ../repo.bsfile-upgrade-repo
 grep -q bSFILEv1 ../repo.bsfile-upgrade-repo/BitKeeper/log/features && fail
 
-# --compat clears feature
-bk clone $Q --compat . ../repo.bsfile-compat || fail
+bk clone $Q --no-bk-sfile . ../repo.bsfile-compat || fail
 checkascii ../repo.bsfile-compat
 # the file should be gone
 test -f ../repo.bsfile-compat/BitKeeper/log/features && fail
@@ -241,8 +240,8 @@ bk clone $Q --upgrade-repo repo.bsfile-upgrade-repo repo.also-upgraded || fail
 grep -q ' check' repo.also-upgraded/BitKeeper/log/cmd_log && fail full check
 echo OK
 
-echo $N Show that --compat on compat runs no check ..................$NL
-bk clone $Q --compat repo.ascii repo.also-ascii || fail
+echo $N Show that --no-bk-sfile on compat runs no check .............$NL
+bk clone $Q --no-bk-sfile repo.ascii repo.also-ascii || fail
 grep -q ' check' repo.also-ascii/BitKeeper/log/cmd_log && fail full check
 echo OK
 

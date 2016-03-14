@@ -72,7 +72,6 @@ setup_main(int ac, char **av)
 		    default: bk_badArg(c, av);
 		}
 	}
-
 	if (noCommit && product) {
 		fprintf(stderr, "setup: can't use -C and -P together.\n");
 		exit(1);
@@ -95,6 +94,7 @@ setup_main(int ac, char **av)
 		usage();
 		return (1);
 	}
+	unless (getenv("BK_REGRESSION")) sccs_compat = 0;
 
 	/*
 	 * If in a repo, be it product, component or standalone, see

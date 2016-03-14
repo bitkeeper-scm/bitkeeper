@@ -188,8 +188,8 @@ grep -q POLY BitKeeper/log/features || fail
 bk repocheck $Q || fail
 echo OK
 
-echo $N clone --downgrade, check warning message ....................$NL
-bk clone --downgrade . ../downgrade >OUT 2>&1 || fail
+echo $N clone with old --downgrade, check warning message ...........$NL
+bk clone $COMPAT4 . ../downgrade >OUT 2>&1 || fail
 grep -q "compatible with bk-6.x and later" OUT || fail -f OUT wrong message
 grep -q 'POLY$' OUT || fail -f OUT wrong message
 echo OK

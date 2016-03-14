@@ -57,7 +57,7 @@ _BK_DEVELOPER= bk check ChangeSet
 bk send $Q -  > ../bkpatch
 cd ..
 bk receive -iaT copy2 < bkpatch || fail
-bk clone $Q --compat copy2 copy || fail
+bk clone $Q $COMPAT4 copy2 copy || fail
 rm copy/BitKeeper/etc/level
 if [ ! -d copy/BitKeeper ]; then echo failed to receive; exit 1; fi
 if bk _test ! -f copy/src/SCCS/s.h.h; then echo failed to receive; exit 1; fi
@@ -129,7 +129,7 @@ echo OK
 echo $N Create copy using send / receive and wrappers ...............$NL
 cd "$HERE/project"
 bk send $Q -wuu -  | bk receive -iaT ../uu2
-bk clone $Q --compat ../uu2 ../uu || fail
+bk clone $Q --sccsdirs --no-bk-sfile --no-bk-merge ../uu2 ../uu || fail
 rm ../uu/BitKeeper/etc/level
 if [ ! -d ../uu/BitKeeper ]; then echo failed to receive; exit 1; fi
 cd "$HERE/project"; bk -r clean; bk -r admin -Zgzip
@@ -148,7 +148,7 @@ echo OK
 echo $N Create copy using send / receive 1 cset at a time ...........$NL
 cd "$HERE/project"
 bk send $Q -r..1.1 -  | bk receive -iaT ../csets2
-bk clone $Q --compat ../csets2 ../csets || fail
+bk clone $Q --sccsdirs --no-bk-sfile --no-bk-merge ../csets2 ../csets || fail
 rm ../csets/BitKeeper/etc/level
 if [ ! -d ../csets/BitKeeper ]; then echo failed to receive; exit 1; fi
 for i in 2 3 4 5 6 7

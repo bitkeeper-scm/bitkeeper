@@ -104,9 +104,9 @@ echo OK
 echo $N Test that bk features with none prints nothing ..............$NL
 cd "$HERE"
 rm -f project/BitKeeper/log/features # cleanup after earlier test
-bk clone $Q --compat project compat
+bk clone $Q $COMPAT4 project compat
 cd compat
-test "`bk features`" && fail
+test "`bk features`" && { bk features; fail; }
 echo OK
 
 echo "----- Test features -m"
@@ -122,7 +122,7 @@ cmpfiles OUT WANT
 echo OK
 
 echo $N downgrade ...................................................$NL
-bk clone --downgrade . ../sa-downgrade >OUT 2>&1 || fail
+bk clone $COMPAT4 . ../sa-downgrade >OUT 2>&1 || fail
 cd ../sa-downgrade
 bk features -m > OUT
 grep -q "compatible with bk-4.x and later" OUT || fail -f OUT wrong message
@@ -140,7 +140,7 @@ cmpfiles OUT WANT
 echo OK
 
 echo $N downgrade ...................................................$NL
-bk clone --downgrade . ../nest2-downgrade >OUT 2>&1 || fail
+bk clone $COMPAT4 . ../nest2-downgrade >OUT 2>&1 || fail
 cd ../nest2-downgrade
 bk features -m > OUT
 grep -q "compatible with bk-5.x and later" OUT || fail -f OUT wrong message

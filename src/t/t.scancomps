@@ -149,7 +149,7 @@ echo OK
 
 echo $N Scancomps should be empty on clone...........................$NL
 cd "$HERE"
-bk clone $Q --compat copy compat
+bk clone $Q --no-bk-sfile copy compat
 bk clone $Q --upgrade-repo compat upgrade
 test -f upgrade/BitKeeper/log/scancomps && fail
 echo OK

@@ -372,7 +372,7 @@ echo -------------- compat '<->' BK testing with clone, push, pull
 echo $N Set up bkfile/bweave format repo called bkfile ..............$NL
 cd "$HERE"
 $OLDBK/bk clone $Q --upgrade bk://localhost:$OLDP/newrepo bkfile || fail
-bk clone $Q --compat bkfile bkfile--compat || fail
+bk clone $Q $COMPAT4 bkfile bkfile--compat || fail
 bk clone $Q --upgrade bkfile bkfile--upgrade || fail
 $OLDBK/bk --cd=bkfile--compat repocheck $Q || fail
 echo OK
@@ -527,7 +527,7 @@ bk edit $Q gcc/foo
 bk delta $Q -fyempty gcc/foo
 bk commit $Q --tag=BASE -yfoo
 bk pull $Q || fail
-bk clone $Q --downgrade . ../downgraded
+bk clone $Q $COMPAT4 . ../downgraded
 cd "$HERE"
 $OLDBK/bk clone $Q --upgrade downgraded upgraded
 echo OK
@@ -781,7 +781,7 @@ echo $N Test makepatch with -C is compat with bk6 ...................$NL
 # There are no merged files in this repo?!  Making one
 cd "$HERE"
 commercial mp-base
-bk clone $Q --downgrade . ../mp-base-down
+bk clone $Q $COMPAT4 . ../mp-base-down
 touch foo
 bk new $Q foo
 bk edit $Q foo

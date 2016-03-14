@@ -766,7 +766,9 @@ echo OK
 
 echo $N Attach -N an old repo and see that pfile gets fixed .........$NL
 cd "$HERE"
-bk clone $Q --downgrade standalone1 newcomp
+# bkmerge stores the pfile in a different format.
+# Note: if no --no-hardlinks then a mostly empty BAM dir mucks things up
+bk clone $Q --no-bk-merge --no-hardlinks standalone1 newcomp
 cd newcomp
 bk edit $Q file1
 bk delta $Q -fynull file1

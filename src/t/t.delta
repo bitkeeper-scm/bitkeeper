@@ -500,7 +500,8 @@ echo OK
 
 echo $N Check compression: gzip preference ..........................$NL
 cd "$HERE"
-bk clone $Q --compat project project.ascii || fail
+# Only ASCII supports a compression option.  BKFILE always compressed.
+bk clone $Q --no-bk-sfile project project.ascii || fail
 cd "$HERE/project.ascii/BitKeeper/etc"
 bk edit $Q config
 echo "compression: gzip" >> config
