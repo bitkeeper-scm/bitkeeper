@@ -962,7 +962,7 @@ private void
 ignore_file(char *file)
 {
 	char	*dir, *pat, *sfile;
-	int	len, isbase, isprune;
+	int	len, isbase, isprune, process = 0;
 	FILE	*ignoref;
 	char	buf[MAXLINE];
 
@@ -992,6 +992,7 @@ ignore_file(char *file)
 		 */
 		sprintf(buf, "bk cat '%s'", file);
 		ignoref = popen(buf, "r");
+		process = 1;
 	}
 	unless (ignoref) return;
 	while (fnext(buf, ignoref)) {
@@ -1024,10 +1025,10 @@ ignore_file(char *file)
 			ignore = addLine(ignore, pat);
 		}
 	}
-	if (exists(file)) {
-		fclose(ignoref);
-	} else {
+	if (process) {
 		pclose(ignoref);
+	} else {
+		fclose(ignoref);
 	}
 }
 
