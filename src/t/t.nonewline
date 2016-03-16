@@ -148,15 +148,6 @@ bk delta $Q -y1.4 afterdel || fail
 bk get $Q afterdel
 checkfiles WANT afterdel
 bk checksum afterdel || fail
-# run through it again, with gzipped sfile
-bk _cp afterdel.bkup SCCS/s.afterdel
-bk admin -Zgzip afterdel
-bk edit $Q afterdel
-printf "a\nb\n" > afterdel
-bk delta $Q -y1.4 afterdel || fail
-bk get $Q afterdel
-checkfiles WANT afterdel
-bk checksum afterdel || fail
 echo OK
 
 echo $N No newline corner case with closing E before delete .........$NL
@@ -180,13 +171,57 @@ bk delta $Q -y'merge and delete end' beforedel
 bk get $Q beforedel
 checkfiles WANT beforedel
 bk checksum beforedel || fail
-# run through it again, with gzipped sfile
-bk _cp beforedel.bkup SCCS/s.beforedel
-bk admin -Zgzip beforedel
-bk get $Q -e -M1.1.1.1 beforedel
-printf "a\n\001c\n" > beforedel
-bk delta $Q -y'merge and delete end' beforedel
-bk get $Q beforedel
-checkfiles WANT beforedel
-bk checksum beforedel || fail
+echo OK
+
+# from t.fastpatch
+weavedump() {
+	bk _heapdump $1 | perl -ne 's/^\^A//; print unless 1 .. /^weave:/'
+}
+
+echo $N Use diff to add some non-newline deltas .....................$NL
+printf '\r\r\r' > data-1
+printf 'x\n\r\r\r' > data-2
+touch delta-1 delta-2
+bk new $Q data-1 data-2 delta-1 delta-2
+bk edit $Q delta-1 delta-2
+rm delta-1 delta-2
+printf 'a0 1\n\r\r\r' > diff-1
+printf 'a0 2\nx\n\r\r\r' > diff-2
+bk delta $Q -y1-line -Ddiff-1 delta-1
+bk delta $Q -y2-line -Ddiff-2 delta-2
+bk new $Q -Ddiff-1 diff-1
+bk new $Q -Ddiff-2 diff-2
+# Stats
+bk prs -hnd':GFILE: :REV: :LI:' \
+    data-1 data-2 delta-1 delta-2 diff-1 diff-2 > GOT
+cat <<EOF > WANT
+data-1 1.1 0
+data-2 1.1 1
+delta-1 1.2 0
+delta-1 1.1 0
+delta-2 1.2 1
+delta-2 1.1 0
+diff-1 1.1 0
+diff-2 1.1 1
+EOF
+cmpfiles WANT GOT
+for f in data-1 delta-1 diff-1
+do
+	weavedump $f > $f.weave
+done
+cat <<EOF > WANT
+I 2
+E 2
+I 1
+E 1
+EOF
+cmpfiles WANT data-1.weave
+cmpfiles WANT diff-1.weave
+cmpfiles WANT delta-1.weave
+# Use checkfiles for verbatim check
+bk --config=eoln:unix get $Q data-2 delta-2 diff-2
+echo x > WANT
+checkfiles WANT data-2
+checkfiles WANT diff-2
+checkfiles WANT delta-2
 echo OK

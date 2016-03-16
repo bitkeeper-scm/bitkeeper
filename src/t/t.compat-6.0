@@ -796,3 +796,63 @@ cd ../mp-base-down
 $OLDBK/bk receive < ../mp-patch
 $OLDBK/bk resolve $Q || fail
 echo OK
+
+weavedump() {
+	bk _heapdump $1 | perl -ne 's/^\^A//; print unless 1 .. /^weave:/'   
+}
+
+echo $N Testing oddball weave structure gets ported .................$NL
+touch odd
+bk new $Q odd
+bk edit $Q odd
+rm odd
+printf '0a1\n> \r\r\r\n\\ No newline at end of file' > diff
+$OLDBK/bk delta $Q -yodd -Ddiff odd
+bk _get $Q -er1.1 odd
+printf "a normal no newline line" > odd
+bk delta $Q -ynormal odd
+bk edit $Q -M odd
+bk delta $Q -ymerge odd
+bk commit $Q -f
+$OLDBK/bk makepatch -C -r+ > ../slow
+$OLDBK/bk makepatch -FC -r+ > ../fast
+cd ../mp-base
+bk takepatch < ../slow || fail
+echo "a normal no newline line" > WANT.odd
+bk get RESYNC/odd 2> ERR
+cmpfiles WANT.odd RESYNC/odd
+# oddity of structure: 1 line printed, but it counts two
+grep -q "RESYNC/odd 1.3: 2 lines" ERR || fail -f ERR
+weavedump RESYNC/odd > got.slow
+cat <<EOF > WANT
+I 4
+a normal no newline line
+E 4N
+I 3
+
+E 3N
+I 1
+E 1
+EOF
+# cmpfiles WANT got.slow
+rm -fr RESYNC
+bk takepatch < ../fast || fail
+bk get RESYNC/odd 2> ERR
+cmpfiles WANT.odd RESYNC/odd
+# oddity of structure: 1 line printed, but it counts two
+grep -q "RESYNC/odd 1.3: 2 lines" ERR || fail -f ERR
+weavedump RESYNC/odd > got.fast
+cat <<EOF > WANT
+I 4
+a normal no newline line
+E 4N
+I 3
+
+E 3N
+I 2
+E 2
+I 1
+E 1
+EOF
+# cmpfiles WANT got.fast
+echo OK

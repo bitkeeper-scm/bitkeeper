@@ -1185,14 +1185,14 @@ sccs_setStime(sccs *s, time_t newest)
 }
 
 /*
- * Diff can give me
+ * Diff can give me (not currently supported)
  *	10a12, 14	-> 10 a
  *	10, 12d13	-> 10 d
  *	10, 12c12, 14	-> 10 c
  *
  * Diff -n can give me
- *	a10 2		-> 10 i 2
- *	d10 2		-> 10 x 2
+ *	a10 2		-> 10 a 2
+ *	d10 2		-> 10 d 2
  *
  * Mkpatch can give me
  *	I10 2		-> 10 I 2
@@ -1202,31 +1202,21 @@ sccs_setStime(sccs *s, time_t newest)
 private inline int
 scandiff(char *s, int *where, char *what, int *howmany)
 {
-	if (!isdigit(*s)) { /* look for diff -n and mkpatch format */
-		*what = *s;
-		if (*s == 'a')
-			*what = 'i';
-		else if (*s == 'd')
-			*what = 'x';
-		else unless (*s == 'D' || *s == 'I' || *s == 'N')
-			return (-1);
-		s++;
-		*where = atoi_p(&s);
-		unless (*s == ' ')  return (-1);
-		s++;
-		*howmany = atoi_p(&s);
-		return (0);
+	char	*t;
+
+	/* The line needs to start with one of these letters */
+	switch(*s) {
+	    case 'D': case 'I': case 'N': case 'a': case 'd': break;
+	    default: return (-1);
 	}
-	*howmany = 0;	/* not used by this part, but used by nonl fixer */
-	*where = atoi_p(&s);
-	if (*s == ',') {
-		s++;
-		(void)atoi_p(&s);
-	}
-	if (*s != 'a' && *s != 'c' && *s != 'd') {
-		return (-1);
-	}
+	/* look for diff -n and mkpatch format */
 	*what = *s;
+	t = ++s;
+	*where = atoi_p(&s);
+	unless ((s > t) && (*s == ' '))  return (-1);
+	t = ++s;
+	*howmany = atoi_p(&s);
+	unless ((s > t) && (*s == 0)) return (-1);
 	return (0);
 }
 
@@ -9518,6 +9508,7 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 		df_opt	dop = {0};
 
 		dop.ignore_trailing_cr = 1;
+		dop.out_rcs = 1;
 		ret = diff_files(old, new, &dop, tmpfile);
 	}
 	unless (streq(old, DEVNULL_WR)) unlink(old);
@@ -10379,7 +10370,9 @@ checkin(sccs *s,
 		verbose((stderr,
 		    "%s not checked in, use -i flag.\n", s->gfile));
 out:		sccs_abortWrite(s);
-		if (prefilled) sccs_freedelta(s, prefilled);
+		if (prefilled && !INARRAY(s, prefilled)) {
+			sccs_freedelta(s, prefilled);
+		}
 		if (gfile && (gfile != stdin)) fclose(gfile);
 		s->state |= S_WARNED;
 		return (-1);
@@ -10606,57 +10599,47 @@ out:		sccs_abortWrite(s);
 		 */
 		added = uuencode_sum(s, gfile, sfile);
 	} else {
-		if (diffs) {
-			int	off = 0;
-			char	*t;
-
-			if ((t = fgetline(diffs)) && isdigit(t[0])) off = 2;
-			while (t = fgetline(diffs)) {
-				if ((off == 0) && (t[0] == '\\')) {
-					++t;
-				} else {
-					t = &t[off];
-				}
-				s->dsum += str_cksum(t) + '\n';
-				fputs(t, sfile);
-				fputc('\n', sfile);
-				added++;
-			}
-			fclose(diffs);
-		} else if (gfile) {
+		if (diffs || gfile) {
+			FILE	*f = diffs ? diffs : gfile;
 			int	crnl_bug = (getenv("_BK_CRNL_BUG") != 0);
 
-			strcpy(buf, "\n");
-			while (t = fgetln(gfile, &len)) {
-				assert(!no_lf);
+			if (diffs) {
+				t = fgetline(f);
+				unless (strneq(t, "a0 ", 3)) {
+					fprintf(stderr,
+					    "checkin: bad diff format %s\n", t);
+					error++;
+					goto out;
+				}
+			}
+			while (t = fgetln(f, &len)) {
+				assert(!no_lf && len);
 				fix_cntl_a(s, t);
 				--len;
 				if (t[len] != '\n') {
 					/* must be last line in file */
+					++len;
+					assert(!t[len]);
 					no_lf = 1;
-					buf[0] = t[len]; /* buf last char */
-				} else unless (crnl_bug) {
+				}
+				unless (crnl_bug) {
 					while ((len > 0) &&
 					    (t[len - 1] == '\r')) {
 						--len;
 					}
 				}
 				t[len] = 0;
-				if (len) {
-					s->dsum += str_cksum(t);
-					fputs(t, sfile);
+				if (no_lf && !len) {
+					no_lf = 0;
+					continue;
 				}
-				s->dsum += str_cksum(buf);
-				fputs(buf, sfile);
+				s->dsum += str_cksum(t) + '\n';
+				fputs(t, sfile);
+				fputc('\n', sfile);
 				added++;
 			}
-			/*
-			 * For ascii files, add missing \n automagically.
-			 */
-			if (no_lf) {
-				/* put lf in sfile, but not in dsum */
-				fputc('\n', sfile);
-			}
+			if (no_lf) s->dsum -= '\n';
+			if (diffs) fclose(f);
 		} else if (S_ISLNK(s->mode)) {
 			u8	*t;
 
@@ -13078,6 +13061,7 @@ weaveDiffs(fweave *w, ser_t d, FILE *diffs, int *fixdelp)
 	int	lastdel = 0;
 	char	*addthis = 0;
 	int	added = 0, deleted = 0;
+	int	header = 0;
 	int	rc = -1;
 
 	weaveReset(w);
@@ -13088,94 +13072,83 @@ weaveDiffs(fweave *w, ser_t d, FILE *diffs, int *fixdelp)
 	/*
 	 * Do the actual delta.
 	 */
-	if (diffs) while (b || (b = fgetline(diffs))) {
+	if (diffs) while (b = fgetline(diffs)) {
 		if (scandiff(b, &where, &what, &howmany) != 0) {
 			fprintf(stderr,
-			    "delta: can't figure out '%s'\n", b);
+			    "delta: Must use RCS diff format (diff -n).  "
+			    "Found '%s'\n", b);
 			return (-1);
 		}
 		debug2((stderr, "where=%d what=%c\n", where, what));
 
 		switch(what) {
-		    case 'c': case 'd': case 'D': case 'x':
 			/* output ^AD .... <skip data>.... ^AE */
+		    case 'd':
 			lastdel = where;
 			if (fixdel && (fixdel == where)) {
 				where--;
+				fixdel--;
 				howmany++;
-				if (weaveMove(w, where, d, WM_BEFORE_DEL)) {
-					goto err;
-				}
+		    	}
+			/*FALLTHROUGH*/
+		    case 'D':
+			if (weaveMove(w, where, d, WM_BEFORE_DEL)) goto err;
+			if (fixdel && (fixdel == where)) {
 				assert(isData(w->buf));	/* d must be newest */
 				addthis = strdup(w->buf);
-			} else {
-				if (weaveMove(w, where, d, WM_BEFORE_DEL)) {
-					goto err;
-				}
 			}
 			doctrl(s, "\001D ", d, "");
-			b = 0;
-			if ((what == 'c') || (what == 'd')) {
-				// count the deleted lines from the diff
-				while (b = fgetline(diffs)) {
-					if (strneq(b, "\\ No", 4)) continue;
-					if (isdigit(*b)) break;
-					if (streq(b, "---")) {
-						b = 0;
-						break;
-					}
-					howmany++;
-				}
-			}
 			deleted += howmany;
 			weaveMove(w, where + howmany - 1, d, WM_AFTER_DEL);
 			doctrl(s, "\001E ", d, "");
-			if (addthis) {
-				lastdel = 0;
-				w->sum += str_cksum(addthis) + '\n';
-				if (*addthis == CNTLA_ESCAPE) {
-					w->sum -= CNTLA_ESCAPE;
-				}
-				doctrl(s, "\001I ", d, "");
-				fputs(addthis, out);
-				fputc('\n', out);
-				doctrl(s, "\001E ", d, "");
-				free(addthis);
-				addthis = 0;
-			}
-			if (what != 'c') break;
-			howmany = 0;
-			/* fall into insert */
-		    case 'a': case 'I': case 'i': case 'N':
-			/* output ^AI .... <data>.... ^AE */
+			break;
+
+		    case 'a':
 			lastdel = 0;
+			/*FALLTHROUGH*/
+		    case 'I':
+		    case 'N':
+			/* output ^AI .... <data>.... ^AE */
 			weaveMove(w, where, d, WM_ADD);
-			doctrl(s, "\001I ", d, "");
 			if (no_lf = (what == 'N')) what = 'I';
-			while (b = fgetln(diffs, &len)) {
-				assert(len);
+			header = 0;
+			if (d == TREE(s)) { /* XXX: When to stop empty 1 ? */
+				header = 1;
+				doctrl(s, "\001I ", d, "");
+			}
+			while (howmany--) {
+				unless (b = fgetln(diffs, &len)) {
+					fprintf(stderr,
+					    "Unexpected EOF in diffs\n");
+					return (1);
+				}
+				assert(len > 0);
 				if (b[len-1] == '\n') {
 					--len;
 					b[len] = 0;
 				} else {
-					assert((what == 'i') && (howmany == 1));
+					assert((what == 'a') &&
+					    !howmany && !b[len]);
 					no_lf = 1;
 				}
 				if (what == 'I') {	/* patch */
-					if (*b == '\\') b++;
+					if (*b == '\\') {
+						--len;
+						b++;
+					}
 				} else {
-					/* Block \r added to weave */
+					/* Block new \r going into weave */
 					while (len && (b[len-1] == '\r')) --len;
 					b[len] = 0;
-				}
-				unless (howmany) {
-					if (isdigit(*b)) break;
-					if (strneq(b, "\\ No", 4)) {
-						no_lf = 1;
-						b = 0;
-						break;
+					/* Eat wacky last line of \r\r\r\r */
+					if (no_lf && !len) {
+						no_lf = 0;
+						continue;
 					}
-					b += 2;
+				}
+				unless (header) {
+					header = 1;
+					doctrl(s, "\001I ", d, "");
 				}
 				fix_cntl_a(s, b);
 				w->sum += str_cksum(b) + '\n';
@@ -13183,19 +13156,26 @@ weaveDiffs(fweave *w, ser_t d, FILE *diffs, int *fixdelp)
 				fputc('\n', out);
 				debug2((stderr, "INS %s\n", b));
 				added++;
-				b = 0;
-				if (howmany && !(--howmany)) break;
 			}
-			if (howmany) {
-				fprintf(stderr, "Unexpected EOF in diffs\n");
-				return (1);
+			if (header) {
+				if (no_lf) w->sum -= '\n';
+				doctrl(s, "\001E ", d, no_lf ? "N" : "");
 			}
-			if (no_lf) w->sum -= '\n';
-			doctrl(s, "\001E ", d, no_lf ? "N" : "");
 			break;
 		    default:
 			assert(0);
 		}
+	}
+	if (addthis) {
+		lastdel = 0;
+		w->sum += str_cksum(addthis) + '\n';
+		if (*addthis == CNTLA_ESCAPE) w->sum -= CNTLA_ESCAPE;
+		doctrl(s, "\001I ", d, "");
+		fputs(addthis, out);
+		fputc('\n', out);
+		doctrl(s, "\001E ", d, "");
+		free(addthis);
+		addthis = 0;
 	}
 	lines = w->line;
 	if (weaveMove(w, 0, 0, WM_FINISH)) goto err;
@@ -14493,7 +14473,6 @@ doDiff(sccs *s, df_opt *dop, char *leftf, char *rightf,
 			if (dop->out_comments) {
 				diffComments(out, s, lrev, rrev);
 			}
-			unless (dop->out_header) fprintf(out, "\n");
 			first = 0;
 			mkDiffHdr(ltag, buf, out);
 			unless (fnext(buf, diffs)) break;

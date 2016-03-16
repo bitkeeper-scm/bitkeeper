@@ -160,7 +160,7 @@ done
 echo $NX x$NXL > x
 echo > y
 cat C x C C y C > B
-cat C x y C > WANT
+cat C x y > WANT
 mv B C
 bk new $Q C
 bk admin -fEOLN_UNIX C
