@@ -1,0 +1,58 @@
+# Copyright 2008-2016 BitMover, Inc
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+echo $N Create a test repository.....................................$NL
+nested proj
+n=1
+while [ $n -lt 20 ]
+do
+        touch afile$n gcc/afile$n gdb/afile$n
+        bk new $Q afile$n gcc/afile$n gdb/afile$n
+        bk commit $Q -ycommit$n
+        n=`expr $n + 1`
+done
+echo OK
+
+echo $N Test simple --start-after....................................$NL
+K=`bk changes -nd:MD5KEY: | head -5 | tail -1`
+bk changes -nd':MD5KEY: $first(:C:){(:C:)}' | sed -n '6,$p' > WANT
+bk changes -nd':MD5KEY: $first(:C:){(:C:)}' --start-after=$K > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Again, but with -v...........................................$NL
+bk changes -nd':MD5KEY:' | sed -n '6,$p' > KEYS
+bk changes -nvd':MD5KEY: $first(:C:){(:C:)}' - < KEYS > WANT
+bk changes -vnd':MD5KEY: $first(:C:){(:C:)}' --start-after=$K > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test simple --end-before.....................................$NL
+bk changes -nd':MD5KEY: $first(:C:){(:C:)}' | head -4 > WANT
+bk changes -nd':MD5KEY: $first(:C:){(:C:)}' --end-before=$K > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Again but with -v............................................$NL
+bk changes -nd':MD5KEY:' | head -4 > KEYS
+bk changes -nvd':MD5KEY: $first(:C:){(:C:)}' - < KEYS > WANT
+bk changes -vnd':MD5KEY: $first(:C:){(:C:)}' --end-before=$K > GOT
+echo OK
+
+echo $N Test simple --around-key.....................................$NL
+bk changes -nd:MD5KEY: | head -10 > KEYS
+bk changes -nd':MD5KEY: $first(:C:){(:C:)}' - < KEYS > WANT
+bk changes -nd':MD5KEY: $first(:C:){(:C:)}' --around-key=$K --limit=10 > GOT
+cmpfiles WANT GOT
+echo OK
