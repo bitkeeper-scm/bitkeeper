@@ -16,7 +16,6 @@
 
 #include "sccs.h"
 #include "resolve.h"
-#include "pcre.h"
 #include "range.h"
 #include "nested.h"
 #include "poly.h"

@@ -76,8 +76,9 @@ private ser_t	gca3(sccs *s, ser_t left, ser_t right, char **i, char **e);
 private int	compressmap(sccs *s, ser_t d, u8 *set, char **i, char **e);
 private	void	uniqDelta(sccs *s);
 private	void	uniqRoot(sccs *s);
-private int	weaveMove(fweave *w, int line, int before, ser_t patchserial);
+private int	weaveMove(fweave *w, int line, ser_t patchserial, u32 flags);
 private int	doFast(fweave *w, ser_t *patchmap, FILE *diffs);
+private	int	weaveDiffs(fweave *w, ser_t d, FILE *diffs, int *fixdelp);
 private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private	void	parseConfig(char *buf, MDBM *db, int stripbang);
@@ -1184,47 +1185,38 @@ sccs_setStime(sccs *s, time_t newest)
 }
 
 /*
- * Diff can give me
+ * Diff can give me (not currently supported)
  *	10a12, 14	-> 10 a
  *	10, 12d13	-> 10 d
  *	10, 12c12, 14	-> 10 c
  *
  * Diff -n can give me
- *	a10 2		-> 10 b 2
- *	d10 2		-> 10 e 2
+ *	a10 2		-> 10 a 2
+ *	d10 2		-> 10 d 2
  *
  * Mkpatch can give me
  *	I10 2		-> 10 I 2
+ *	N10 2		-> 10 N 2  # I with no_lf
  *	D10 2		-> 10 D 2
  */
 private inline int
 scandiff(char *s, int *where, char *what, int *howmany)
 {
-	if (!isdigit(*s)) { /* look for diff -n and mkpatch format */
-		*what = *s;
-		if (*s == 'a')
-			*what = 'i';
-		else if (*s == 'd')
-			*what = 'x';
-		else unless (*s == 'D' || *s == 'I' || *s == 'N')
-			return (-1);
-		s++;
-		*where = atoi_p(&s);
-		unless (*s == ' ')  return (-1);
-		s++;
-		*howmany = atoi_p(&s);
-		return (0);
+	char	*t;
+
+	/* The line needs to start with one of these letters */
+	switch(*s) {
+	    case 'D': case 'I': case 'N': case 'a': case 'd': break;
+	    default: return (-1);
 	}
-	*howmany = 0;	/* not used by this part, but used by nonl fixer */
-	*where = atoi_p(&s);
-	if (*s == ',') {
-		s++;
-		(void)atoi_p(&s);
-	}
-	if (*s != 'a' && *s != 'c' && *s != 'd') {
-		return (-1);
-	}
+	/* look for diff -n and mkpatch format */
 	*what = *s;
+	t = ++s;
+	*where = atoi_p(&s);
+	unless ((s > t) && (*s == ' '))  return (-1);
+	t = ++s;
+	*howmany = atoi_p(&s);
+	unless ((s > t) && (*s == 0)) return (-1);
 	return (0);
 }
 
@@ -4998,6 +4990,7 @@ sccs_restart(sccs *s)
 		mdbm_close(s->mdbm);
 		s->mdbm = 0;
 	}
+	FREE(s->remap);
 	return (s);
 }
 
@@ -5991,7 +5984,7 @@ fputbumpserial(sccs *s, u8 *buf, int inc)
 	fputs(t, s->outfh);
 }
 
-sum_t
+private sum_t
 str_cksum(u8 *p)
 {
 	u32	sum = 0;
@@ -9515,6 +9508,7 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 		df_opt	dop = {0};
 
 		dop.ignore_trailing_cr = 1;
+		dop.out_rcs = 1;
 		ret = diff_files(old, new, &dop, tmpfile);
 	}
 	unless (streq(old, DEVNULL_WR)) unlink(old);
@@ -10376,7 +10370,9 @@ checkin(sccs *s,
 		verbose((stderr,
 		    "%s not checked in, use -i flag.\n", s->gfile));
 out:		sccs_abortWrite(s);
-		if (prefilled) sccs_freedelta(s, prefilled);
+		if (prefilled && !INARRAY(s, prefilled)) {
+			sccs_freedelta(s, prefilled);
+		}
 		if (gfile && (gfile != stdin)) fclose(gfile);
 		s->state |= S_WARNED;
 		return (-1);
@@ -10603,57 +10599,47 @@ out:		sccs_abortWrite(s);
 		 */
 		added = uuencode_sum(s, gfile, sfile);
 	} else {
-		if (diffs) {
-			int	off = 0;
-			char	*t;
-
-			if ((t = fgetline(diffs)) && isdigit(t[0])) off = 2;
-			while (t = fgetline(diffs)) {
-				if ((off == 0) && (t[0] == '\\')) {
-					++t;
-				} else {
-					t = &t[off];
-				}
-				s->dsum += str_cksum(t) + '\n';
-				fputs(t, sfile);
-				fputc('\n', sfile);
-				added++;
-			}
-			fclose(diffs);
-		} else if (gfile) {
+		if (diffs || gfile) {
+			FILE	*f = diffs ? diffs : gfile;
 			int	crnl_bug = (getenv("_BK_CRNL_BUG") != 0);
 
-			strcpy(buf, "\n");
-			while (t = fgetln(gfile, &len)) {
-				assert(!no_lf);
+			if (diffs) {
+				t = fgetline(f);
+				unless (strneq(t, "a0 ", 3)) {
+					fprintf(stderr,
+					    "checkin: bad diff format %s\n", t);
+					error++;
+					goto out;
+				}
+			}
+			while (t = fgetln(f, &len)) {
+				assert(!no_lf && len);
 				fix_cntl_a(s, t);
 				--len;
 				if (t[len] != '\n') {
 					/* must be last line in file */
+					++len;
+					assert(!t[len]);
 					no_lf = 1;
-					buf[0] = t[len]; /* buf last char */
-				} else unless (crnl_bug) {
+				}
+				unless (crnl_bug) {
 					while ((len > 0) &&
 					    (t[len - 1] == '\r')) {
 						--len;
 					}
 				}
 				t[len] = 0;
-				if (len) {
-					s->dsum += str_cksum(t);
-					fputs(t, sfile);
+				if (no_lf && !len) {
+					no_lf = 0;
+					continue;
 				}
-				s->dsum += str_cksum(buf);
-				fputs(buf, sfile);
+				s->dsum += str_cksum(t) + '\n';
+				fputs(t, sfile);
+				fputc('\n', sfile);
 				added++;
 			}
-			/*
-			 * For ascii files, add missing \n automagically.
-			 */
-			if (no_lf) {
-				/* put lf in sfile, but not in dsum */
-				fputc('\n', sfile);
-			}
+			if (no_lf) s->dsum -= '\n';
+			if (diffs) fclose(f);
 		} else if (S_ISLNK(s->mode)) {
 			u8	*t;
 
@@ -11202,8 +11188,8 @@ out:		fprintf(stderr, "sccs: can't parse date format %s at %s\n",
 		sprintf(tmp, "%c%02d:%02d", sign, hwest, mwest);
 		zoneArg(s, d, tmp);
 		zone = ZONE(s, d);
-	} else if (TABLE(s)) {
-		zone = ZONE(s, TABLE(s));
+	} else if (PARENT(s, d)) {
+		zone = ZONE(s, PARENT(s, d));
 	} else {
 		zone = 0;
 	}
@@ -12534,7 +12520,64 @@ scompressGraph(sccs *s)
 	return (remap);
 }
 
-#define	MAXCMD	20
+/*
+ * Make a map for renumbering weave.  The table is already renumbered.
+ * Weave will use as:
+ *   new = (old > map[0]) ? map[old - map[0]] : old;
+ * map[0] maps to self, and is newest delta to not change.
+ */
+private	ser_t *
+weaveMap(sccs *s)
+{
+	int	i;
+	ser_t	d;
+	ser_t	index = 0, base = 0, offset = 0;
+	ser_t	*map = 0;
+	loc	*lp = s->locs;
+
+	for (i = 1; i < s->iloc; i++) {
+		d = lp[i].serial;
+		assert(d);
+		unless (FLAGS(s, d) & D_REMOTE) continue;
+		unless (map) {
+			base = d - 1;
+			map = (ser_t *)calloc(
+			    (TABLE(s) + 1 - base), sizeof(ser_t));
+			assert(map);
+			index = d;
+			map[0] = base;
+		}
+		while (index + offset < d) {
+			map[index - base] = index + offset;
+			index++;
+		}
+		offset++;
+	}
+	if (map) {
+		while (index + offset <= TABLE(s)) {
+			map[index - base] = index + offset;
+			index++;
+		}
+	}
+	return (map);
+}
+
+/* Bits - used for control inside weaveMove */
+#define	_WM_FAST	0x10000000	/* fast mode */
+#define	_WM_BEFORE	0x20000000	/* before mode */
+#define	_WM_CLRLF	0x40000000	/* clear LF state machine */
+#define	_WM_DEL		0x80000000	/* deleted lines - no chksum */
+#define	_WM_FIN		0x01000000	/* dump out rest of weave */
+
+/* State - used in client calls to weaveMove */
+#define	WM_FAST_BEFORE	(_WM_FAST|_WM_BEFORE)
+#define	WM_FAST_AFTER	_WM_FAST
+#define	WM_FAST_FINISH	(_WM_FAST|_WM_FIN)	
+#define	WM_BEFORE_DEL	_WM_BEFORE	/* move to start of a delete */
+#define	WM_AFTER_DEL	_WM_DEL		/* move after a delete */
+#define	WM_ADD		_WM_CLRLF	/* diff adds data, clr weave no_lf */
+#define	WM_FINISH	_WM_FIN
+
 struct fweave {
 	sccs	*s;		// backpointer
 	char	*buf;		// current data line
@@ -12544,107 +12587,83 @@ struct fweave {
 	sum_t	sum;		// checksum
 	int	print;		// active serial in weave
 	int	line;		// line number in weave
+	ser_t	cur;		// whatstate - current I value
+	ser_t	no_lf;		// serial of last printed line
 };
 
+private	void
+weaveFree(fweave *w)
+{
+	free(w->state);
+	free(w->slist);
+	free(w->wmap);
+}
+
+private	void
+weaveReset(fweave *w)
+{
+	w->cur = 0;
+	w->line = 0;
+	w->no_lf = 0;
+	w->print = 0;
+	w->sum = 0;
+	assert(w->s);
+	// prime the next-line
+	w->buf = w->s->fh ? sccs_nextdata(w->s) : 0;
+}
+
 int
-sccs_fastWeave(sccs *s, FILE *fastpatch)
+sccs_fastWeave(sccs *s)
 {
 	int	i;
-	u32	base = 0, index = 0, offset = 0;
-	loc	*lp;
-	ser_t	d, e;
-	fweave	*w = 0;
+	loc	*lp = s->locs;
+	ser_t	d;
+	fweave	w = {0};
 	int	rc = 0;
-	ser_t	*weavemap = 0;
 	ser_t	*patchmap = 0;
 
-	assert(s);
 	assert(!CSET(s));
-	assert(s->locs);
-	lp = s->locs;
+	assert(lp);
 
-	/*
-	 * weavemap is used to renumber serials in the weave
-	 * map(A) -> B, where map(A) is weavemap[A - map[0]],
-	 * meaning weavemap[0] is A; ie, A maps to itself.
-	 * And serials > A map to a big number to create the
-	 * holes filled in by the new data coming in.
-	 *
-	 * patchmap is addLines mapping patch serial number (1..n) to
-	 * serial to use in the weave.  It does this by being an addLines
-	 * of pointers to d, then uses d->serial to write the weave.
-	 * Note: patchmap could be empty if say, if we are updating
-	 * a dangling delta pointer or cset mark.
-	 */
+	if (delta_table(s, 0)) {
+		perror("table");
+		return (1);
+	}
+
+	if (HAS_SFILE(s)) sccs_rdweaveInit(s);
+	w.s = s;
+	w.wmap = weaveMap(s);
+	weaveReset(&w);
+
+	/* compute an serialmap view which matches sccs_patchDiffs() */
+	w.slist = calloc(TABLE(s) + 1, sizeof(u8));
 	for (i = 1; i < s->iloc; i++) {
 		d = lp[i].serial;
 		assert(d);
 		addArray(&patchmap, &d);
-		unless (FLAGS(s, d) & D_REMOTE) continue;
-		unless (weavemap) {
-			/*
-			 * allocating more than needed.  We don't know until
-			 * the end how many are wasted: it's in 'offset'.
-			 */
-			base = d - 1;
-			weavemap = (ser_t *)calloc(
-			    (TABLE(s) + 1 - base), sizeof(ser_t));
-			assert(weavemap);
-			index = d;
-			weavemap[0] = base;
-			offset = 0;
-		}
-		while (index + offset < d) {
-			e = index + offset;
-			weavemap[index - base] = e;
-			index++;
-		}
-		offset++;
+		w.slist[d] = 1;
 	}
-	if (weavemap) {
-		while (index + offset <= TABLE(s)) {
-			e = index + offset;
-			weavemap[index - base] = e;
-			index++;
-		}
-	}
-
-	w = new(fweave);
-	w->s = s;
-	w->wmap = weavemap;
-
-	/* compute an serialmap view which matches sccs_patchDiffs() */
-	w->slist = calloc(TABLE(s) + 1, sizeof(u8));
-	EACH(patchmap) {
-		w->slist[d] = 1;
-	}
-	/* transitive close if not the cset file */
+	/* transitive closure (since not the cset file) */
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (w->slist[d]) continue;
+		unless (w.slist[d]) continue;
 		if (PARENT(s, d)) {
-			w->slist[PARENT(s, d)] = 1;
+			w.slist[PARENT(s, d)] = 1;
 		}
 		if (MERGE(s, d)) {
-			w->slist[MERGE(s, d)] = 1;
+			w.slist[MERGE(s, d)] = 1;
 		}
-	}
-	if (HAS_SFILE(s)) {
-		sccs_rdweaveInit(s);
-		w->buf = sccs_nextdata(s);	/* prime the data flow */
 	}
 	sccs_wrweaveInit(s);
 
-	rc = doFast(w, patchmap, fastpatch);
+	/* patch is last diff */
+	rc = doFast(&w, patchmap, lp[s->iloc - 1].dF);
 
 	if (HAS_SFILE(s)) {
 		if (sccs_rdweaveDone(s)) rc = 1;	/* no EOF */
 	}
 	sccs_wrweaveDone(s);
-	if (w->slist) free(w->slist);
-	if (w->state) free(w->state);
-	if (weavemap) free(weavemap);
+	weaveFree(&w);
 	if (patchmap) free(patchmap);
-	free(w);
 	return (rc);
 }
 
@@ -12700,7 +12719,8 @@ doFast(fweave *w, ser_t *patchmap, FILE *diffs)
 			assert(*p == ' ');
 			p++;
 			lineno = atoi_p(&p);
-			if (weaveMove(w, lineno, (type == 'D'), dser)) {
+			if (weaveMove(w, lineno, dser,
+			    (type == 'D') ? WM_FAST_BEFORE : WM_FAST_AFTER)) {
 				goto err;
 			}
 			if (type == 'I') inpatch = dser;
@@ -12720,7 +12740,7 @@ doFast(fweave *w, ser_t *patchmap, FILE *diffs)
 	}
 	assert(!inpatch);
 done:
-	if (weaveMove(w, -1, 0, 0)) goto err;
+	if (weaveMove(w, 0, 0, WM_FAST_FINISH)) goto err;
 	if (gotK && ((w->sum != sum) || (lcount != w->line))) {
 		fprintf(stderr,
 		    "%s:\n\tcomputed sum %u and patch sum %u\n",
@@ -12739,14 +12759,15 @@ err:
  * Move in the weave
  *
  * line		stop at which line in weave
- * before	stop before that line
  * patchserial	current serial being processed
+ * flags	caller uses WM_* to control weave state machine
+ * 
+ * Note: Only _WM_* appear in this function.
  */
 private int
-weaveMove(fweave *w, int line, int before, ser_t patchserial)
+weaveMove(fweave *w, int line, ser_t patchserial, u32 flags)
 {
 	sccs	*s = w->s;
-	int	finish = (line < 0);
 	int	skipblock;
 	int	print;
 	char	*n;
@@ -12754,15 +12775,22 @@ weaveMove(fweave *w, int line, int before, ser_t patchserial)
 	ser_t	serial;
 	char	*buf;
 	FILE	*out = w->s->outfh;
+	u32	diffmode = !(flags & _WM_FAST);
+	u32	before = flags & _WM_BEFORE;
+	u32	delmode = flags & _WM_DEL;
+	u32	finish = flags & _WM_FIN;
 
 	if (before) {
+		assert(!finish);
 		/* first move after the previous line, then upto this line */
-		if (weaveMove(w, line - 1, 0, patchserial)) return (1);
+		if (weaveMove(w, line - 1, patchserial, flags & ~_WM_BEFORE)) {
+			return (1);
+		}
 	}
 
 	unless (buf = w->buf) {	/* note: want assignment, not == */
-		if (before ||
-		    (!finish && (line != w->line)) || whatstate(w->state)) {
+		if (!finish && (before ||
+			(diffmode ? line : (line != w->line)))) {
 			goto eof;
 		}
 		return (0);
@@ -12774,16 +12802,18 @@ weaveMove(fweave *w, int line, int before, ser_t patchserial)
 			if (print) {
 				if (before) goto end;
 				w->line++;
+			}
+			if (print && !delmode) {
+				w->no_lf = print;
 				w->sum += str_cksum(buf) + '\n';
-				fputs(buf, out);
-				fputc('\n', out);
 				if (buf[0] == CNTLA_ESCAPE) {
 					w->sum -= CNTLA_ESCAPE;
 				}
 			} else {
-				fputs(buf, out);
-				fputc('\n', out);
+				if (w->no_lf == w->cur) w->no_lf = 0;
 			}
+			fputs(buf, out);
+			fputc('\n', out);
 			continue;
 		}
 		type = buf[1];
@@ -12799,8 +12829,17 @@ weaveMove(fweave *w, int line, int before, ser_t patchserial)
 		}
 		fprintf(out, "\001%c %u%s\n", type, serial, n);
 		w->state = changestate(w->state, type, serial);
-		if (print = whatstate(w->state)) {
-			unless (w->slist[print]) print = 0;
+		print = whatstate(w->state);
+		if (diffmode) {
+			if (w->no_lf == serial) {
+				/* last printed line is from I of this ser */
+				assert(type == 'E');
+				if (*n != 'N') w->no_lf = 0;
+			}
+			w->cur = print;
+			print = printstate(w->state, w->slist);
+		} else if (print && !w->slist[print]) {
+			print = 0;
 		}
 	} while (buf = sccs_nextdata(s));
 	assert(!buf);
@@ -12850,17 +12889,133 @@ after:	skipblock = 0;
 			skipblock = 0;
 		}
 		w->state = changestate(w->state, type, serial);
-		if (print = whatstate(w->state)) {
+		if (diffmode) {
+			print = printstate(w->state, w->slist);
+		} else if (print = whatstate(w->state)) {
 			unless (w->slist[print]) print = 0;
 		}
 	} while (buf = sccs_nextdata(s));
 	assert(!buf);
 	/* assert(patchserial == 1); kind of strong, but should be true */
-	if (whatstate(w->state)) goto eof;
+	if (nLines(w->state)) goto eof;
 
 end:	w->buf = buf;
 	w->print = print;
+	if (diffmode) {
+		if (flags & _WM_CLRLF) w->no_lf = 0;
+		if (finish && w->no_lf) w->sum -= '\n';
+	}
 	return (0);
+}
+
+/*
+ * s->iloc	pointer to number; iloc - 1 is index of last
+ */
+int
+sccs_slowWeave(sccs *s)
+{
+	loc	*lp = s->locs;
+	ser_t	d, e;
+	ser_t	prev = 0;
+	int	i;
+	int	rc = 1;
+	int	first = 1;
+	FILE	*in_orig = s->fh;
+	FILE	*out_orig = s->outfh;
+	int	pingpong = 0;
+	FILE	*diffs;
+	FILE	*fh[2] = {fmem(), fmem()};
+	int	rdweave = 0;
+	fweave	w = {0};
+
+	assert(!CSET(s));
+	assert(lp);
+
+	w.s = s;
+	w.slist = calloc(TABLE(s) + 1, sizeof(u8));
+	w.wmap = weaveMap(s);
+
+	if (HAS_SFILE(s)) {
+		sccs_rdweaveInit(s);
+		rdweave = 1;
+	}
+
+	s->outfh = fh[pingpong];
+	unless (BAM(s)) for (i = 1; i < s->iloc; i++) {
+		d = lp[i].serial;
+		assert(d);
+		unless (FLAGS(s, d) & D_REMOTE) continue;
+		diffs = s->locs[i].dF;
+		if (!diffs && (d == TREE(s))) {
+			assert(first);
+			diffs = fh[1];
+			fputs("I0 0\n", diffs);
+			rewind(diffs);
+		}
+		/* incremental serialmap() call */
+		graph_symdiff(s, L(d), prev, 0, w.slist, 0, -1);
+		prev = d;
+		unless (first) {
+			s->fh = fh[pingpong];
+			rewind(s->fh);
+			pingpong ^= 1;
+			s->outfh = fh[pingpong];
+			ftrunc(s->outfh, 0);
+		}
+		if (weaveDiffs(&w, d, diffs, 0)) goto err;
+		if (fileType(MODE(s, d)) == S_IFLNK) {
+			e = getSymlnkCksumDelta(s, d);
+			/* see comment above get_link() about this cruft */
+			if ((SUM(s, e) != 0) &&
+			    !streq(REV(s, e), "1.1") &&
+			    !strneq(REV(s, e), "1.1.", 4)) {
+				u8	*t;
+
+				w.sum = 0;
+				for (t = SYMLINK(s, d); *t; t++) w.sum += *t;
+				if (SUM(s, e) != w.sum) {
+					fprintf(stderr,
+					    "%s:\n\tcomputed symlink sum %u "
+					    "and patch sum %u\n",
+					    s->gfile, w.sum, SUM(s, e));
+				}
+			}
+		} else if ((e = sccs_getCksumDelta(s, d)) &&
+		    (w.sum != SUM(s, e))) {
+			fprintf(stderr,
+			    "%s:\n\tcomputed sum %u and patch sum %u\n",
+			    s->gfile, w.sum, SUM(s, e));
+			goto err;
+		}
+		first = 0;
+		FREE(w.wmap);	/* Only renumber weave in first pass */
+		FREE(s->remap);	/* Same but a different remapper */
+	}
+	unless (first) {
+		s->fh = s->outfh;
+		rewind(s->fh);
+		s->rdweaveEOF = 0;
+	}
+	s->outfh = out_orig;
+	/* Now write out sfile */
+	if (rc = delta_table(s, 0)) {
+		perror("table");
+		goto err;
+	}
+
+	/* Reset all state and serialmap; just dump in mem weave to disk */
+	sccs_wrweaveInit(s);
+	weaveReset(&w);
+	graph_symdiff(s, 0, prev, 0, w.slist, 0, -1);
+	rc = weaveMove(&w, 0, 0, WM_FINISH);
+	sccs_wrweaveDone(s);
+err:
+	s->fh = in_orig;
+	fclose(fh[0]);
+	fclose(fh[1]);
+	if (rdweave && sccs_rdweaveDone(s)) rc = 1;	/* no EOF */
+	weaveFree(&w);
+	return (rc);
 }
 
 private void
@@ -12876,126 +13031,169 @@ doctrl(sccs *s, char *pre, int val, char *post)
 	fputc('\n', out);
 }
 
-private void
-finish(sccs *s, int *ip, int *pp, int *last, ser_t **state, u8 *slist)
+/*
+ * Two state machines in operation:
+ * 1. No final line feed - uses w->no_lf which is set if the last printed line
+ *    is the last line in a block whose ^AE is tagged with a final 'N'.
+ * 2. Corner case fixer - if the no newline says true, and there the last
+ *    diff command was a delete, and no data lines are active after the
+ *    the delete, then the gfile has a newline at the end but the weave
+ *    engine would say it doesn't.  The fix is to redo the whole thing
+ *    and when getting to the final delete block, start it one line earlier
+ *    and then re-add the first line line deleted.  That will then have
+ *    a newline.  The variables to watch are 'lastdel' which tracks
+ *    the last diff block being a delete.  And fixdel, which gets set
+ *    if the defect is detected, and when true, enacts the fix.
+ */
+private	int
+weaveDiffs(fweave *w, ser_t d, FILE *diffs, int *fixdelp)
 {
-	int	print = *pp, incr = *ip;
-	sum_t	sum;
-	register char	*buf;
-	ser_t	serial;
-	int	lf_pend = *last;
-	FILE	*out = s->outfh;
+	sccs	*s;
+	int	lines;
+	int	fixdel = fixdelp ? *fixdelp : 0;
+	size_t	len;
+	FILE	*out;
+	int	where;
+	char	what;
+	int	howmany;
+	int	no_lf = 0;
+	u8	*b = 0;
+	int	lastdel = 0;
+	char	*addthis = 0;
+	int	added = 0, deleted = 0;
+	int	header = 0;
+	int	rc = -1;
 
-	debug((stderr, "finish(incr=%d, sum=%d, print=%d) ",
-		incr, s->dsum, print));
-	if (lf_pend) s->dsum -= '\n';
-	while (!feof(s->fh)) {
-		unless (buf = sccs_nextdata(s)) break;
-		debug2((stderr, "G> %s", buf));
-		sum = str_cksum(buf) + '\n';
-		fputs(buf, out);
-		fputc('\n', out);
-		if (isData(buf)) {
-			/* CNTLA_ESCAPE is not part of the check sum */
-			if (buf[0] == CNTLA_ESCAPE) sum -= CNTLA_ESCAPE;
+	weaveReset(w);
+	s = w->s;
+	out = s->outfh;
+	unless (w->slist) w->slist = serialmap(s, d, 0, 0, 0, 0);
+	assert(nLines(w->state) == 0);
+	/*
+	 * Do the actual delta.
+	 */
+	if (diffs) while (b = fgetline(diffs)) {
+		if (scandiff(b, &where, &what, &howmany) != 0) {
+			fprintf(stderr,
+			    "delta: Must use RCS diff format (diff -n).  "
+			    "Found '%s'\n", b);
+			return (-1);
+		}
+		debug2((stderr, "where=%d what=%c\n", where, what));
 
-			if (!print) {
-				/* if we are skipping data from pending block */
-				if (lf_pend &&
-				    lf_pend == whatstate(*state)) {
-					s->dsum += '\n';
-					lf_pend = 0;
+		switch(what) {
+			/* output ^AD .... <skip data>.... ^AE */
+		    case 'd':
+			lastdel = where;
+			if (fixdel && (fixdel == where)) {
+				where--;
+				fixdel--;
+				howmany++;
+		    	}
+			/*FALLTHROUGH*/
+		    case 'D':
+			if (weaveMove(w, where, d, WM_BEFORE_DEL)) goto err;
+			if (fixdel && (fixdel == where)) {
+				assert(isData(w->buf));	/* d must be newest */
+				addthis = strdup(w->buf);
+			}
+			doctrl(s, "\001D ", d, "");
+			deleted += howmany;
+			weaveMove(w, where + howmany - 1, d, WM_AFTER_DEL);
+			doctrl(s, "\001E ", d, "");
+			break;
+
+		    case 'a':
+			lastdel = 0;
+			/*FALLTHROUGH*/
+		    case 'I':
+		    case 'N':
+			/* output ^AI .... <data>.... ^AE */
+			weaveMove(w, where, d, WM_ADD);
+			if (no_lf = (what == 'N')) what = 'I';
+			header = 0;
+			if (d == TREE(s)) { /* XXX: When to stop empty 1 ? */
+				header = 1;
+				doctrl(s, "\001I ", d, "");
+			}
+			while (howmany--) {
+				unless (b = fgetln(diffs, &len)) {
+					fprintf(stderr,
+					    "Unexpected EOF in diffs\n");
+					return (1);
 				}
-				continue;
-			}
-			*last = 0;
-			unless (lf_pend) sum -= '\n';
-			lf_pend = print;
-			s->dsum += sum;
-			incr++;
-			continue;
-		}
-		serial = atoi(&buf[3]);
-		if (buf[1] == 'E' && lf_pend == serial &&
-		    whatstate(*state) == serial)
-		{
-			char	*n = &buf[3];
-			while (isdigit(*n)) n++;
-			if (*n != 'N') {
-				lf_pend = 0;
-				s->dsum += '\n';
-			}
-		}
-		*state = changestate(*state, buf[1], serial);
-		print = printstate(*state, slist);
-	}
-	unless (lf_pend) *last = 0;
-	*ip = incr;
-	*pp = print;
-	debug((stderr, "incr=%d, sum=%d\n", incr, s->dsum));
-}
-
-#define	nextline(inc)	\
-    nxtline(s, &inc, 0, &lines, &print, &last, &state, slist, &savenext)
-#define	beforeline(inc) \
-    nxtline(s, &inc, 1, &lines, &print, &last, &state, slist, &savenext)
-
-private void
-nxtline(sccs *s, int *ip, int before, int *lp, int *pp, int *last,
-    ser_t **state, u8 *slist, char ***savenext)
-{
-	int	print = *pp, incr = *ip, lines = *lp;
-	int	serial;
-	char	*n;
-	int	len;
-	register char	*buf;
-	FILE	*out = s->outfh;
-	char	peek[3];	/* 2 chars plus \0 */
-
-	debug((stderr, "nxtline(@%d, before=%d print=%d, sum=%d) ",
-	    lines, before, print, s->dsum));
-	while (!feof(s->fh)) {
-		if (before && print) { /* if move upto next printable line */
-			/* peek - read up to 2 and put them back */
-			len = fread(peek, 1, 2, s->fh);
-			peek[len] = 0;
-			while (len--) ungetc(peek[len], s->fh);
-			if (isData(peek)) break;
-		}
-		unless (buf = sccs_nextdata(s)) break;
-		debug2((stderr, "[%d] ", lines));
-		debug2((stderr, "G> %s", buf));
-		fputs(buf, out);
-		fputc('\n', out);
-		if (isData(buf)) {
-			if (print) {
-				if (*savenext) {
-					**savenext = strdup(buf);
-					assert(**savenext);
-					*savenext = 0;
+				assert(len > 0);
+				if (b[len-1] == '\n') {
+					--len;
+					b[len] = 0;
+				} else {
+					assert((what == 'a') &&
+					    !howmany && !b[len]);
+					no_lf = 1;
 				}
-				/* CNTLA_ESCAPE is not part of the check sum */
-				if (buf[0] == CNTLA_ESCAPE) buf++;
-				s->dsum += str_cksum(buf) + '\n';
-				incr++; lines++;
-				break;
+				if (what == 'I') {	/* patch */
+					if (*b == '\\') {
+						--len;
+						b++;
+					}
+				} else {
+					/* Block new \r going into weave */
+					while (len && (b[len-1] == '\r')) --len;
+					b[len] = 0;
+					/* Eat wacky last line of \r\r\r\r */
+					if (no_lf && !len) {
+						no_lf = 0;
+						continue;
+					}
+				}
+				unless (header) {
+					header = 1;
+					doctrl(s, "\001I ", d, "");
+				}
+				fix_cntl_a(s, b);
+				w->sum += str_cksum(b) + '\n';
+				fputs(b, out);
+				fputc('\n', out);
+				debug2((stderr, "INS %s\n", b));
+				added++;
 			}
-			continue;
+			if (header) {
+				if (no_lf) w->sum -= '\n';
+				doctrl(s, "\001E ", d, no_lf ? "N" : "");
+			}
+			break;
+		    default:
+			assert(0);
 		}
-		n = &buf[3];
-		serial = atoi_p(&n);
-		if ((buf[1] == 'E') && (*last == serial) &&
-		    (whatstate(*state) == serial) &&
-		    (*n != 'N')) {
-			*last = 0;
-		}
-		*state = changestate(*state, buf[1], serial);
-		print = printstate(*state, slist);
 	}
-	*ip = incr;
-	*lp = lines;
-	*pp = print;
-	debug((stderr, "sum=%d\n", s->dsum));
+	if (addthis) {
+		lastdel = 0;
+		w->sum += str_cksum(addthis) + '\n';
+		if (*addthis == CNTLA_ESCAPE) w->sum -= CNTLA_ESCAPE;
+		doctrl(s, "\001I ", d, "");
+		fputs(addthis, out);
+		fputc('\n', out);
+		doctrl(s, "\001E ", d, "");
+		free(addthis);
+		addthis = 0;
+	}
+	lines = w->line;
+	if (weaveMove(w, 0, 0, WM_FINISH)) goto err;
+	if (no_lf) assert(!lastdel && (lines == w->line));
+	if (lastdel && (lines == w->line) && w->no_lf) {
+		assert(fixdelp && !fixdel);	/* no infinite loops */
+		*fixdelp = lastdel;
+	} else if (fixdel) {
+		assert(fixdelp);
+		*fixdelp = 0;
+	}
+
+	ADDED_SET(w->s, d, added);
+	DELETED_SET(w->s, d, deleted);
+	SAME_SET(w->s, d, w->line - deleted);
+	rc = 0;
+err:
+	return (rc);
 }
 
 /*
@@ -13005,21 +13203,9 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, int *last,
 private int
 delta_write(sccs *s, ser_t n, FILE *diffs, int *ap, int *dp, int *up)
 {
-	ser_t	*state;
-	u8	*slist;
-	int	print;
-	int	lines;
-	int	last;
-	int	lastdel;
+	fweave	w = {0};
+	int	ret;
 	int	fixdel = 0;
-	size_t	len;
-	char	*addthis;
-	char	**savenext;
-	int	added, deleted, unchanged;
-	sum_t	sum;
-	char	*b;
-	int	no_lf;
-	FILE	*out;
 
 	if (binaryCheck(diffs)) {
 		assert(!BINARY(s));
@@ -13029,193 +13215,39 @@ delta_write(sccs *s, ser_t n, FILE *diffs, int *ap, int *dp, int *up)
 		return (-1);
 	}
 	assert(!READ_ONLY(s));
+
+	w.s = s;
 again:
 	/*
 	 * Do the delta table & misc.
 	 */
 	unless (sccs_startWrite(s)) return (-1);
 	if (delta_table(s, 1)) return (-1);
+	assert(nLines(w.state) == 0);
 
 	if (BAM(s)) return (0);	/* skip weave for BAM files */
 
-	*ap = *dp = *up = 0;
-	state = 0;
-	slist = 0;
-	print = 0;
-	lines = 0;
-	last = 0;
-	lastdel = 0;
-	addthis = 0;
-	savenext = 0;
-	added = 0;
-	deleted = 0;
-	unchanged = 0;
-	no_lf = 0;
-	/*
-	 * Do the actual delta.
-	 */
 	sccs_rdweaveInit(s);
-	out = sccs_wrweaveInit(s);
-	slist = serialmap(s, n, 0, 0, 0, 0);	/* XXX - -gLIST */
-	s->dsum = 0;
-	while (b = fgetline(diffs)) {
-		int	where;
-		char	what;
-		int	howmany;
+	sccs_wrweaveInit(s);
 
-newcmd:
-		if (scandiff(b, &where, &what, &howmany) != 0) {
-			fprintf(stderr,
-			    "delta: can't figure out '%s'\n", b);
-			if (state) free(state);
-			if (slist) free(slist);
-			return (-1);
-		}
-		debug2((stderr, "where=%d what=%c\n", where, what));
+	ret = weaveDiffs(&w, n, diffs, &fixdel);
 
-#define	ctrl(pre, val, post)	doctrl(s, pre, val, post)
+	*ap = ADDED(s, n);
+	*dp = DELETED(s, n);
+	*up = SAME(s, n);
+	s->dsum = w.sum;
 
-		if (what == 'c' || what == 'd' || what == 'D' || what == 'x')
-		{
-			where--;
-			lastdel = where;
-			if (where && (fixdel == where)) {
-				where--;
-				howmany++;
-				while (lines < where) {
-					nextline(unchanged);
-				}
-				savenext = &addthis;
-			}
-		}
-		while (lines < where) {
-			/*
-			 * XXX - this loops when I don't use the fudge as part
-			 * of the ID in make/takepatch of SCCSFILE.
-			 */
-			nextline(unchanged);
-		}
-		last = print;
-		switch (what) {
-		    case 'c':
-		    case 'd':
-			beforeline(unchanged);
-			ctrl("\001D ", n, "");
-			sum = s->dsum;
-			/* howmany != 0 only for nonewline corner fixer */
-			while (howmany--) nextline(deleted);
-			while (b = fgetline(diffs)) {
-				if (streq(b, "---")) break;
-				if (strneq(b, "\\ No", 4)) continue;
-				if (isdigit(b[0])) {
-					ctrl("\001E ", n, "");
-					s->dsum = sum;
-					goto newcmd;
-				}
-				nextline(deleted);
-				if (last == print) last = 0;
-			}
-			s->dsum = sum;
-			if (what != 'c') break;
-			ctrl("\001E ", n, "");
-			/* fall through to */
-		    case 'a':
-			last = 0;
-			ctrl("\001I ", n, "");
-			while (b = fgetline(diffs)) {
-				if (strneq(b, "\\ No", 4)) {
-					s->dsum -= '\n';
-					no_lf = 1;
-					break;
-				}
-				if (isdigit(b[0])) {
-					ctrl("\001E ", n, "");
-					goto newcmd;
-				}
-				fix_cntl_a(s, &b[2]);
-				s->dsum += str_cksum(&b[2]) + '\n';
-				fputs(&b[2], out);
-				fputc('\n', out);
-				debug2((stderr,
-				    "INS %s\n", &b[2]));
-				added++;
-			}
-			break;
-		    case 'N':
-		    case 'I':
-		    case 'i':
-			last = 0;
-			ctrl("\001I ", n, "");
-			while (howmany--) {
-				/* XXX: not break but error */
-				if (what == 'i') {
-					unless (b = fgetline(diffs)) break;
-				} else {
-					/* bk patch could have \r\n */
-					unless (b = fgetln(diffs, &len)) break;
-					if (len && (b[len-1] == '\n')) --len;
-					b[len] = 0;
-				}
-				if (what != 'i' && b[0] == '\\') {
-					fix_cntl_a(s, &b[1]);
-					s->dsum += str_cksum(&b[1]);
-					fputs(&b[1], out);
-				} else {
-					fix_cntl_a(s, b);
-					s->dsum += str_cksum(b);
-					fputs(b, out);
-				}
-				s->dsum += '\n';
-				fputc('\n', out);
-				debug2((stderr, "INS %s\n", b));
-				added++;
-			}
-			if (what == 'N') {
-				s->dsum -= '\n';
-				no_lf = 1;
-			}
-			break;
-		    case 'D':
-		    case 'x':
-			beforeline(unchanged);
-			ctrl("\001D ", n, "");
-			sum = s->dsum;
-			while (howmany--) {
-				nextline(deleted);
-				if (last == print) last = 0;
-			}
-			s->dsum = sum;
-			break;
-		}
-		ctrl("\001E ", n, no_lf ? "N" : "");
-	}
-	if (addthis) {
-		last = 0;
-		ctrl("\001I ", n, "");
-		s->dsum += str_cksum(addthis) + '\n';
-		fputs(addthis, out);
-		fputc('\n', out);
-		if (addthis[0] == CNTLA_ESCAPE) s->dsum -= CNTLA_ESCAPE;
-		ctrl("\001E ", n, "");
-		free(addthis);
-	}
-	finish(s, &unchanged, &print, &last, &state, slist);
-	*ap = added;
-	*dp = deleted;
-	*up = unchanged;
-	if (state) free(state);
-	if (slist) free(slist);
 	sccs_rdweaveDone(s);
 	sccs_wrweaveDone(s);
-	out = 0;
-	if (last) {
-		assert(!fixdel);	/* no infinite loops */
-		fixdel = lastdel;
+
+	if (!ret && fixdel) {
 		sccs_abortWrite(s);
 		rewind(diffs);
 		goto again;
 	}
-	return (0);
+
+	weaveFree(&w);
+	return (ret);
 }
 
 int
@@ -13874,6 +13906,17 @@ out:
 	if (init) {
 		int	e;
 
+		if (HAS_PFILE(s)) {
+			if (sccs_read_pfile(s, &pf)) OUT;
+			unless (d = findrev(s, pf.oldrev)) {
+				fprintf(stderr,
+				    "delta: can't find %s in %s\n",
+				    pf.oldrev, s->gfile);
+				OUT;
+			}
+			unless (prefilled) prefilled = sccs_newdelta(s);
+			PARENT_SET(s, prefilled, d);
+		}
 		if (syms) {
 			fprintf(stderr, "delta: init or symbols, not both\n");
 			init = 0;  /* prevent double free */
@@ -13971,7 +14014,7 @@ out:
 	/*
 	 * OK, checking done, start the delta.
 	 */
-	if (sccs_read_pfile(s, &pf)) OUT;
+	if (!pf.newrev && sccs_read_pfile(s, &pf)) OUT;
 	unless (d = findrev(s, pf.oldrev)) {
 		fprintf(stderr,
 		    "delta: can't find %s in %s\n", pf.oldrev, s->gfile);
@@ -14430,7 +14473,6 @@ doDiff(sccs *s, df_opt *dop, char *leftf, char *rightf,
 			if (dop->out_comments) {
 				diffComments(out, s, lrev, rrev);
 			}
-			unless (dop->out_header) fprintf(out, "\n");
 			first = 0;
 			mkDiffHdr(ltag, buf, out);
 			unless (fnext(buf, diffs)) break;
@@ -15981,11 +16023,11 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	}
 
 	case KW_DELETED: /* DELETED */ {
-		/* return true if this is a delete */
+		/* revision of delta if this is a delete */
 		if (HAS_PATHNAME(s, d) &&
 			strneq(PATHNAME(s, d), "BitKeeper/deleted/", 18) &&
 			!streq(PATHNAME(s, d), PATHNAME(s, PARENT(s, d)))) {
-			fs("DELETED");
+			fs(REV(s, d));
 			return (strVal);
 		}
 		return (nullVal);

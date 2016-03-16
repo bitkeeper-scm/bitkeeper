@@ -368,7 +368,8 @@ echo $N Show that we can clone --compat -rREV .......................$NL
 cd "$HERE"
 # we need to clone back to a point where a graph collapse happens.
 # Two branches: 1.2.1.1 and 1.2.2.1 -- keep the latter, collapse the former
-bk clone $Q -r1.2.2.1 --compat project compat-undo || fail
+# Test is about heap files, which don't exist in ASCII, so make ASCII
+bk clone $Q -r1.2.2.1 --no-bk-sfile project compat-undo || fail
 cd compat-undo || fail
 bk _test -f SCCS/1.ChangeSet && fail 1.ChangeSet exists
 bk _test -f SCCS/2.ChangeSet && fail 2.ChangeSet exists
@@ -376,7 +377,8 @@ echo OK
 
 echo $N Show that we can clone --upgrade -rREV ......................$NL
 cd "$HERE"
-bk clone $Q --compat project compat || fail
+# Test is about heap files, which don't exist in ASCII, so make ASCII
+bk clone $Q --no-bk-sfile project compat || fail
 bk clone $Q -r1.2.2.1 --upgrade compat upgrade-undo || fail
 cd upgrade-undo || fail
 bk _test -f SCCS/1.ChangeSet || fail 1.ChangeSet not there

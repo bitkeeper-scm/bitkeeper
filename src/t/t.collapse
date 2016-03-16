@@ -179,7 +179,6 @@ $CREATE_DELETE 1.1 1/0/0 u2
 BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
 -rw-
 C BitKeeper file $HERE/project/create_delete
-
 --- /dev/null
 +++ 1.1/$CREATE_DELETE
 @@ -0,0 +1 @@
@@ -215,7 +214,6 @@ binary 1.2 1/1/1 u2 uuencode
 BITKEEPER,CSETMARKED,EOLN_UNIX
 -rw-
 C more
-
 --- 1.1/binary
 +++ 1.2/binary
 @@ -1 +1,2 @@
@@ -226,7 +224,6 @@ binpool 1.2 22/0/0 u2 BAM
 BITKEEPER,CSETMARKED,EOLN_UNIX
 -rw-
 C more
-
 --- 1.1/binpool
 +++ 1.2/binpool
 @@ -1 +1,2 @@
@@ -237,7 +234,6 @@ change_symlink 1.2 0/0/0 u2
 BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
 lrwx
 C movelink
-
 --- 1.1/change_symlink
 +++ 1.2/change_symlink
 @@ -1 +1 @@
@@ -250,7 +246,6 @@ BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
 C stuff
 C ---
 C edited comment
-
 --- 1.1/chg_edit
 +++ 1.2/chg_edit
 @@ -1 +1,3 @@
@@ -262,7 +257,6 @@ edited 1.2 1/0/1 u2
 BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
 -rw-
 C edited comment
-
 --- 1.1/edited
 +++ 1.2/edited
 @@ -1 +1,2 @@
@@ -275,7 +269,6 @@ lrwx
 C BitKeeper file $HERE/project/edited_symlink
 C ---
 C edited comment
-
 --- /dev/null
 +++ 1.1/edited_symlink
 @@ -0,0 +1 @@
@@ -289,7 +282,6 @@ BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
 inc/exc -3
 -rw-
 C replace
-
 --- 1.2/exclude
 +++ 1.3/exclude
 @@ -1,2 +1,2 @@
@@ -301,7 +293,6 @@ file 1.2 1/0/1 u2
 BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
 -rw-
 C contents
-
 --- 1.1/file
 +++ 1.2/file
 @@ -1 +1,2 @@
@@ -322,7 +313,6 @@ new_file 1.1 1/0/0 u2
 BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
 -rw-
 C BitKeeper file $HERE/project/new_file
-
 --- /dev/null
 +++ 1.1/new_file
 @@ -0,0 +1 @@
@@ -335,7 +325,6 @@ new_symlink 1.1 0/0/0 u2
 BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
 lrwx
 C BitKeeper file $HERE/project/new_symlink
-
 --- /dev/null
 +++ 1.1/new_symlink
 @@ -0,0 +1 @@

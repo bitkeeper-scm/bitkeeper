@@ -22,7 +22,6 @@ include fslayer/Makefile
 include hash/Makefile
 include lz4/Makefile
 include mdbm/Makefile
-include regex/Makefile
 include string/Makefile
 include stdio/Makefile
 include tcp/Makefile
@@ -34,11 +33,11 @@ XCPPFLAGS=-Wno-redundant-decls
 endif
 include zlib/Makefile
 
-OBJS = $(FSLAYER_OBJS) $(HASH_OBJS) $(MDBM_OBJS) $(REGEX_OBJS) \
+OBJS = $(FSLAYER_OBJS) $(HASH_OBJS) $(MDBM_OBJS) \
 	$(STRING_OBJS) $(STDIO_OBJS) $(LZ4_OBJS) \
 	$(TCP_OBJS) $(UDP_OBJS) $(UTILS_OBJS) $(WIN32_OBJS) $(ZLIB_OBJS)
 SRCS = $(OBJS:%.o=%.c)
-HDRS = $(FSLAYER_HDRS) $(HASH_HDRS) $(MDBM_HDRS) $(REGEX_HDRS) \
+HDRS = $(FSLAYER_HDRS) $(HASH_HDRS) $(MDBM_HDRS) \
 	$(STRING_HDRS) $(STDIO_HDRS) $(LZ4_HDRS) \
 	$(TCP_HDRS) $(UDP_HDRS) $(UTILS_HDRS) $(WIN32_HDRS) $(ZLIB_HDRS)
 

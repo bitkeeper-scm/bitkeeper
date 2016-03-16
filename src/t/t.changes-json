@@ -81,6 +81,7 @@ echo $N Test just one cset...........................................$NL
 KEY=`bk changes -d:MD5KEY: -r$KEY1`
 DATE=`bk changes -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$KEY1`
 PARENT=`bk changes -nd':MD5KEY|PARENT:' -r$KEY1`
+DS=`bk changes -nd':DS:' -r$KEY`
 cat <<EOF >WANT
 [
 {
@@ -88,7 +89,7 @@ cat <<EOF >WANT
   "user": "bk",
   "host": "bk_regression.bk",
   "date": "$DATE",
-  "serial": "13",
+  "serial": $DS,
   "comments": "proj3\n",
   "parents": [ "$PARENT" ]
 }
@@ -103,6 +104,7 @@ echo $N Test two csets...............................................$NL
 KEY=`bk changes -d':MD5KEY|PARENT:' -r$KEY`
 DATE=`bk changes -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$KEY`
 PARENT=`bk changes -nd':MD5KEY|PARENT:' -r$KEY`
+DS=`bk changes -nd':DS:' -r$KEY`
 perl -0777 -pe 's/\n\]$/,/' WANT >WANT2
 cat <<EOF >>WANT2
 {
@@ -110,7 +112,7 @@ cat <<EOF >>WANT2
   "user": "bk",
   "host": "bk_regression.bk",
   "date": "$DATE",
-  "serial": "12",
+  "serial": $DS,
   "comments": "proj2\n",
   "parents": [ "$PARENT" ]
 }
@@ -126,6 +128,7 @@ KEY=`bk changes -d':MD5KEY|PARENT:' -r$KEY`
 DATE=`bk changes -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$KEY`
 PARENT=`bk changes -nd':MD5KEY|PARENT:' -r$KEY`
 MPARENT=`bk changes -nd':MD5KEY|MPARENT:' -r$KEY`
+DS=`bk changes -nd':DS:' -r$KEY`
 perl -0777 -pe 's/\n\]$/,/' WANT >WANT2
 cat <<EOF >>WANT2
 {
@@ -133,7 +136,7 @@ cat <<EOF >>WANT2
   "user": "bk",
   "host": "bk_regression.bk",
   "date": "$DATE",
-  "serial": "11",
+  "serial": 11,
   "comments": "Merge bk_regression.bk:HERE/copy\ninto  bk_regression.bk:HERE/proj\n",
   "parents": [ "$PARENT", "$MPARENT" ]
 }
@@ -149,9 +152,11 @@ echo $N Test verbose output with one changeset.......................$NL
 KEY=`bk changes -d:MD5KEY: -r$KEY1`
 DATE=`bk changes -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$KEY1`
 PARENT=`bk changes -nd':MD5KEY|PARENT:' -r$KEY1`
+DS=`bk changes -nd':DS:' -r$KEY1`
 REV1=`bk c2r -r$KEY afile3`
 FKEY=`bk log -d:MD5KEY: -r$REV1 afile3`
 FDATE=`bk log -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$REV1 afile3`
+FDS=`bk log -d':DS:' -r$REV1 afile3`
 cat <<EOF >WANT
 [
 {
@@ -159,7 +164,7 @@ cat <<EOF >WANT
   "user": "bk",
   "host": "bk_regression.bk",
   "date": "$DATE",
-  "serial": "13",
+  "serial": 13,
   "comments": "proj3\n",
   "parents": [ "$PARENT" ],
   "deltas": [
@@ -170,7 +175,7 @@ cat <<EOF >WANT
       "user": "bk",
       "host": "bk_regression.bk",
       "date": "$FDATE",
-      "serial": "4",
+      "serial": $FDS,
       "comments": "proj\n",
       "lines-deleted": 1,
       "lines-inserted": 1,
@@ -189,9 +194,11 @@ echo $N Now with two.................................................$NL
 KEY=`bk changes -d':MD5KEY|PARENT:' -r$KEY`
 DATE=`bk changes -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$KEY`
 PARENT=`bk changes -nd':MD5KEY|PARENT:' -r$KEY`
+DS=`bk changes -nd':DS:' -r$KEY`
 REV2=`bk c2r -r$KEY afile2`
 FKEY=`bk log -d:MD5KEY: -r$REV2 afile2`
 FDATE=`bk log -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$REV2 afile2`
+FDS=`bk log -d':DS:' -r$REV2 afile2`
 perl -0777 -pe 's/\n\]$/,/' WANT >WANT2
 cat <<EOF >>WANT2
 {
@@ -199,7 +206,7 @@ cat <<EOF >>WANT2
   "user": "bk",
   "host": "bk_regression.bk",
   "date": "$DATE",
-  "serial": "12",
+  "serial": $DS,
   "comments": "proj2\n",
   "parents": [ "$PARENT" ],
   "deltas": [
@@ -210,7 +217,7 @@ cat <<EOF >>WANT2
       "user": "bk",
       "host": "bk_regression.bk",
       "date": "$FDATE",
-      "serial": "4",
+      "serial": $FDS,
       "comments": "proj\n",
       "lines-deleted": 1,
       "lines-inserted": 1,
@@ -231,6 +238,7 @@ echo $N Test a cset with no files....................................$NL
 DATE=`bk changes -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$MERGEKEY`
 PARENT=`bk changes -nd':MD5KEY|PARENT:' -r$MERGEKEY`
 MPARENT=`bk changes -nd':MD5KEY|MPARENT:' -r$MERGEKEY`
+DS=`bk changes -nd':DS:' -r$MERGEKEY`
 cat <<EOF >WANT
 [
 {
@@ -238,7 +246,7 @@ cat <<EOF >WANT
   "user": "bk",
   "host": "bk_regression.bk",
   "date": "$DATE",
-  "serial": "15",
+  "serial": $DS,
   "comments": "Merge bk_regression.bk:HERE/copy\ninto  bk_regression.bk:HERE/proj\n",
   "parents": [ "$PARENT", "$MPARENT" ],
   "deltas": [
@@ -264,6 +272,7 @@ echo $N Test tag output in non-verbose...............................$NL
 KEY=`bk changes -d':MD5KEY:' -r$RENAMEKEY`
 DATE=`bk changes -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$KEY`
 PARENT=`bk changes -nd':MD5KEY|PARENT:' -r$KEY`
+DS=`bk changes -nd':DS:' -r$KEY`
 cat <<EOF >WANT
 [
 {
@@ -271,7 +280,7 @@ cat <<EOF >WANT
   "user": "bk",
   "host": "bk_regression.bk",
   "date": "$DATE",
-  "serial": "16",
+  "serial": $DS,
   "comments": "rename\n",
   "tags": [ "MYTAG","MYTAG2" ],
   "parents": [ "$PARENT" ]
@@ -286,15 +295,19 @@ echo $N Test verbose output with a rename............................$NL
 KEY=`bk changes -d':MD5KEY:' -r$RENAMEKEY`
 DATE=`bk changes -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$KEY`
 PARENT=`bk changes -nd':MD5KEY|PARENT:' -r$KEY`
+DS=`bk changes -nd':DS:' -r$KEY`
 REV2=`bk c2r -r$KEY rename`
 FKEY=`bk log -d:MD5KEY: -r$REV2 rename`
 FDATE=`bk log -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$REV2 rename`
+FDS=`bk log -d':DS:' -r$REV2 rename`
 FKEY10=`bk log -d:MD5KEY: -r1.0 newfile`
 FDATE10=`bk log -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r1.0 newfile`
 FKEY11=`bk log -d:MD5KEY: -r1.1 newfile`
+FDS11=`bk log -d:DS: -r1.1 newfile`
 FDATE11=`bk log -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r1.1 newfile`
 DELETED_REV=`bk log -d:REV: -r$DELETED_KEY $DELETED_FILE`
 DELETED_DATE=`bk log -d':Dy:-:Dm:-:Dd:T:T::TZ:' -r$DELETED_KEY $DELETED_FILE`
+DELETED_DS=`bk log -d:DS: -r$DELETED_KEY $DELETED_FILE`
 cat <<EOF >WANT
 [
 {
@@ -302,7 +315,7 @@ cat <<EOF >WANT
   "user": "bk",
   "host": "bk_regression.bk",
   "date": "$DATE",
-  "serial": "16",
+  "serial": $DS,
   "comments": "rename\n",
   "tags": [ "MYTAG","MYTAG2" ],
   "parents": [ "$PARENT" ],
@@ -314,7 +327,7 @@ cat <<EOF >WANT
       "user": "bk",
       "host": "bk_regression.bk",
       "date": "$DELETED_DATE",
-      "serial": "4",
+      "serial": $DELETED_DS,
       "comments": "Delete: afile4\n",
       "lines-deleted": 0,
       "lines-inserted": 0,
@@ -329,7 +342,7 @@ cat <<EOF >WANT
       "user": "bk",
       "host": "bk_regression.bk",
       "date": "$FDATE11",
-      "serial": "2",
+      "serial": $FDS11,
       "comments": "BitKeeper file HERE/proj/newfile\n",
       "lines-deleted": 0,
       "lines-inserted": 1,
@@ -343,7 +356,7 @@ cat <<EOF >WANT
       "user": "bk",
       "host": "bk_regression.bk",
       "date": "$FDATE",
-      "serial": "3",
+      "serial": $FDS,
       "comments": "Rename: newfile -> rename\n",
       "lines-deleted": 0,
       "lines-inserted": 0,

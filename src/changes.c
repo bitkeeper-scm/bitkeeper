@@ -49,6 +49,9 @@ private struct {
 	u32	sameComp:1;	/* --same-component */
 	u32	sparseOk:1;	/* --sparse-ok */
 	u32	filter:1;	/* --filter */
+	u32	startAfter:1;	/* --start-after */
+	u32	endBefore:1;	/* --end-before */
+	u32	around:1;	/* --around */
 
 	u32	num;		/* -%u: stop after printing n entries */
 	search	search;		/* -/pattern/[i] matches comments w/ pattern */
@@ -62,6 +65,8 @@ private struct {
 	char	**incF;		/* list of globs for files to filter in */
 	char	**excF;		/* list of globs for files to filter out */
 	char	*dspecfile;	/* name the file where the dspec is */
+	/* Pagination  (these are useful when combined with opts.num (limit) */
+	char	*pagekey;
 
 	RANGE	rargs;
 	u32	rflags;		/* range flags */
@@ -129,8 +134,12 @@ changes_main(int ac, char **av)
 		{ "filter", 310 },		/* -i/-x filter not select */
 						/* undocumented on purpose */
 		{ "json", 315 },		/* output json */
+		{ "limit:", 318},		/* how many csets to output */
 		{ "sparse-ok", 320 },		/* don't error on non-present */
 		{ "standalone", 'S' },		/* treat comps as standalone */
+		{ "start-after:", 325},		/* start after key */
+		{ "end-before:", 326},		/* end list before key */
+		{ "around-key:", 327},		/* list is around key */
 		{ "lattice", 330 },		/* range is a lattice */
 		{ "longest", 340 },		/* longest path */
 		{ "dspecbegin;", 350 },		/* dspec $begin clause */
@@ -227,8 +236,27 @@ changes_main(int ac, char **av)
 		    case 315: /* --json */
 			opts.json = 1;
 			break;
+		    case 318:	/* --limit */
+			opts.num = strtol(optarg, 0, 10);
+			break;
 		    case 320:	/* --sparse-ok */
 			opts.sparseOk = 1;
+			break;
+		    case 325:	/* --start-after */
+			if (opts.pagekey) usage();
+			opts.startAfter = 1;
+			opts.pagekey = optarg;
+			break;
+		    case 326:	/* --end_before */
+			if (opts.pagekey) usage();
+			opts.endBefore = 1;
+			opts.pagekey = optarg;
+			break;
+		    case 327:	/* --around-key */
+			if (opts.pagekey) usage();
+			opts.around = 1;
+			opts.pagekey = optarg;
+			break;
 		    case 330: /* --lattice */
 			if (opts.rflags) bk_badArg(c, av);
 			opts.rflags = RANGE_LATTICE;
@@ -286,6 +314,9 @@ changes_main(int ac, char **av)
 	if (i > 1) usage();
 	/* and -k can't be used with -v */
 	if (opts.keys && opts.verbose) usage();
+
+	/* can't do around without picking a number of csets */
+	if (opts.around && !opts.num) usage();
 
 	if (opts.local || opts.remote || !av[optind] ||
 	    (streq(av[optind], "-") && !av[optind + 1])) {
@@ -1234,6 +1265,47 @@ cset(hash *state, sccs *sc, char *compKey, char *pkey, FILE *f, char *dspec)
 		if (e == sc->rstart) break;
 	}
 	if (opts.forwards) reverseArray(csets);
+
+	/*
+	 * If --start_after, --end_before, or --around are passed, we
+	 * filter the list of changes to match the requirements.
+	 */
+	if (!compKey && opts.pagekey) {
+		ser_t	d;
+		ser_t	*result = 0;
+		int	n = nLines(csets);
+		int	s, e;
+		int	num = opts.num ? opts.num : n;
+
+		unless (d = sccs_findKey(sc, opts.pagekey)) {
+			fprintf(stderr,
+			    "%s: Key %s not found\n", prog, opts.pagekey);
+			exit(1);
+		}
+		for (i = 1; i < n; i++) if (csets[i] == d) break;
+
+		/*
+		 * If 'd' is not in the list of csets we take it as
+		 * unmatched criteria, like searching for -/foo/ when
+		 * foo is not in any cset.
+		 */
+		unless (i < n) goto out;
+
+		s = i+1;
+		if (opts.endBefore) {
+			s -= num+1;
+		} else if (opts.around) {
+			s -= num/2;
+		}
+		e = s + num;
+		if (s < 1) s = 1;
+		if (e > n) e = n+1;
+		growArray(&result, e-s);
+		memcpy(&result[1], &csets[s], (e-s)*sizeof(ser_t));
+
+		free(csets);
+		csets = result;
+	}
 
 	/*
 	 * Walk the ordered cset list and dump the file deltas contain in

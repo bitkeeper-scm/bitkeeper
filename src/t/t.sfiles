@@ -1785,7 +1785,8 @@ test $PLATFORM != WIN32 && {
 echo $N Check sfiles -v does not dump core on an unreadable binary ..$NL
 cd "$HERE"
 rm project/test/.bk_skip
-bk clone $Q --downgrade project downgrade
+# ASCII is needed in order to have a pfile; otherwise, magic pfile is used
+bk clone $Q --no-bk-sfile project downgrade
 cd downgrade
 perl -e 'printf "a\000b\n"' > binary_file
 bk new $Q binary_file

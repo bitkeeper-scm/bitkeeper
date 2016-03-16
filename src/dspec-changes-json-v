@@ -39,7 +39,7 @@ $if (:CHANGESET: && !:COMPONENT_V:) {
 	"  \"user\": \":USER:\",\n"
 	"  \"host\": \":HOST:\",\n"
 	"  \"date\": \":Dy:-:Dm:-:Dd:T:T::TZ:\",\n"
-	"  \"serial\": \":DS:\",\n"
+	"  \"serial\": :DS:,\n"
 	"  \"comments\": \"" $each(:C:){$json{(:C:)}\\n} "\",\n"
 	$if (:TAG:) {
 		"  \"tags\": [ "
@@ -66,7 +66,7 @@ $if (:CHANGESET: && !:COMPONENT_V:) {
 		"      \"user\": \":USER:\",\n"
 		"      \"host\": \":HOST:\",\n"
 		"      \"date\": \":Dy:-:Dm:-:Dd:T:T::TZ:\",\n"
-		"      \"serial\": \":DS:\",\n"
+		"      \"serial\": :DS:,\n"
 		"      \"comments\": \"" $each(:C:){$json{(:C:)}\\n} "\",\n"
 		"      \"lines-deleted\": " :LD: ",\n"
 		"      \"lines-inserted\": " :LI: ",\n"

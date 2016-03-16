@@ -1,4 +1,17 @@
 ============================================================================
+Regressions from previous version:
+
+bk diffs
+  -h no longer prints a blank first line.
+
+bk delta
+  if the last line has no newline at the end and has carriage returns,
+  they will now be stripped.  If no data is left, then the line is ignored.
+
+  The -D option is now limited to RCS diffs.  RCS diffs used to not
+  recognize no newline diffs.  They are recognized now.
+
+============================================================================
 Release notes for BitKeeper version 7.2-beta released March 9th 2016
 
 Changes:

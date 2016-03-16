@@ -63,12 +63,13 @@ foo: duplicate exclude in 1.1.1.2 of 1.1 and in 1.1.1.1
 EOF
 cmpfiles WANT ERR
 # flip back
-bk clone $Q --downgrade clean-merges downgrade
+bk clone $Q --no-bk-merge clean-merges downgrade
 echo +4,5 > WANT
 for f in foo bar
-do	# downgrade / compat files have real SCCS dirs
-	test -f project/SCCS/s.$f -a -f downgrade/SCCS/s.$f || fail
-	cmpfiles project/SCCS/s.$f downgrade/SCCS/s.$f
+do
+	bk _scat project/$f > p.$f
+	bk _scat downgrade/$f > d.$f
+	cmpfiles p.$f d.$f
 	bk prs -hnd'$if(:MERGE:){:DI:}' project/$f > GOT
 	cmpfiles WANT GOT
 	# show merges -i in old and not in new

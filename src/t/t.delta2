@@ -19,17 +19,17 @@ echo $N show XP strncmp bug .........................................$NL
 touch test.c
 bk new $Q -l test.c
 rm -f test.c
-echo "0a1,279" > diffs
+echo "a0 103" > diffs
 cnt=0
 # Create a diffs file with 4096 char (page boundary?) and short line at the end
 while true
 do
-	echo "> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" >> diffs
+	echo "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" >> diffs
 	cnt=`expr $cnt + 1`
 	if [ $cnt -eq 101 ]; then break; fi
 done
-echo "> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" >> diffs
-echo "> " >> diffs
+echo "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" >> diffs
+echo "xx" >> diffs
 bk delta $Q -y -Ddiffs test.c || { echo failed; exit 1; }
 echo OK
 
@@ -44,27 +44,22 @@ bk undos -r < file > dosfile
 touch null
 bk diff null dosfile > diffs
 bk diff -n null dosfile > diffs.rcs
-bk delta $Q -i -ynewfile -Ddiffs plain || fail
+bk delta $Q -i -ynewfile -Ddiffs plain 2> ERR && fail -f ERR
+grep -q "checkin: bad diff format 0a1,3" ERR || fail -f ERR
 bk delta $Q -i -ynewfile -Ddiffs.rcs rcs || fail
-bk _scat plain > splain
 bk _scat rcs > srcs
-bk undos < splain > splain.unix
 bk undos < srcs > srcs.unix
-checkfiles splain splain.unix
 checkfiles srcs srcs.unix
 # Delta code path
 echo line 4 >> file
 bk undos -r < file > dosfile2
 bk diff dosfile dosfile2 > diffs
 bk diff -n dosfile dosfile2 > diffs.rcs
-bk edit $Q -g plain
-bk delta $Q -ynewfile -Ddiffs plain || fail
 bk edit $Q -g rcs
+bk delta $Q -ynewfile -Ddiffs rcs 2> ERR && fail -f ERR
+grep -q "Must use RCS diff format (diff -n).  Found '3a4'" ERR || fail -f ERR
 bk delta $Q -ynewfile -Ddiffs.rcs rcs || fail
-bk _scat plain > splain
 bk _scat rcs > srcs
-bk undos < splain > splain.unix
 bk undos < srcs > srcs.unix
-# checkfiles splain splain.unix
 checkfiles srcs srcs.unix
 echo OK

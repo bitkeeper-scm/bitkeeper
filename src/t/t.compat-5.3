@@ -372,7 +372,7 @@ echo -------------- compat '<->' BK testing with clone, push, pull
 echo $N Set up bkfile/bweave format repo called bkfile ..............$NL
 cd "$HERE"
 bk clone $Q --upgrade-repo bk://localhost:$OLDP/newrepo bkfile || fail
-bk clone $Q --compat bkfile bkfile--compat || fail
+bk clone $Q $COMPAT4 bkfile bkfile--compat || fail
 $OLDBK/bk --cd=bkfile--compat repocheck $Q || fail
 echo OK
 

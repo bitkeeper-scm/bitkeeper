@@ -196,7 +196,10 @@ sccs_resum(sccs *s, ser_t d, int diags, int fix)
 		u8	*t;
 		sum_t	sum = 0;
 
-		/* don't complain about these, old BK binaries did this */
+		/*
+		 * don't complain about these, old BK binaries did
+		 * this see get_link()
+		 */
 		e = getSymlnkCksumDelta(s, d);
 		if (!fix && !SUM(s, e)) return (0);
 

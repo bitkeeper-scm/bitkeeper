@@ -958,8 +958,8 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N Same test on a compat repo ..................................$NL
-bk clone $Q --compat . ../copy-compat
+echo $N Same test on an ASCII weave cset file .......................$NL
+bk clone $Q --no-bk-sfile . ../copy-compat
 cd ../copy-compat
 bk prs -hnd:I: ChangeSet | while read rev
 do	bk rset --no-print --stats --checksum -r$rev || fail

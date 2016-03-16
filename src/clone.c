@@ -203,10 +203,10 @@ clone_main(int ac, char **av)
 			break;
 		    case 310: /* --compat */
 			opts->no_lclone = 1;
-			opts->remap = 0;
-			opts->bkfile = 0;
+			opts->remap = 1;
+			opts->bkfile = 1;
 			opts->downgrade = 1;
-			opts->bkmerge = 0;
+			opts->bkmerge = 1;
 			break;
 		    case 311: /* --upgrade-repo */
 			// done below if we decide to rewrite files
@@ -760,16 +760,13 @@ clone(char **av, remote *r, char *local, char **envVar)
 		features_set(0, FEAT_REMAP, !proj_hasOldSCCS(0));
 		if (opts->bkfile == 1) {
 			features_set(0,
-			    (FEAT_FILEFORMAT|FEAT_SCANDIRS) & ~FEAT_BWEAVEv2, 1);
+			    (FEAT_BKFILE|FEAT_BWEAVE|FEAT_SCANDIRS), 1);
 		} else if (opts->bkfile == 0) {
 			features_set(0,
-			    FEAT_FILEFORMAT|FEAT_SCANDIRS, 0);
+			    (FEAT_BKFILE|FEAT_BWEAVE|FEAT_BWEAVEv2|
+			     FEAT_SCANDIRS), 0);
 		}
 		if (opts->bkmerge != -1) {
-			/*
-			 * Note: FEAT_FILEFORMAT above contains FEAT_BKMERGE
-			 * By having this after it, this overrides.
-			 */
 			features_set(0, FEAT_BKMERGE, opts->bkmerge);
 		}
 	}

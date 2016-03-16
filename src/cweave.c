@@ -147,57 +147,55 @@ cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 	 * Get the "new" delta from the mmaped patch file (iF)
 	 */
 	d = sccs_getInit(s, 0, iF, DELTA_PATCH, &error, 0, &syms);
-	if (fast) {
-		sccs_sdelta(s, d, key);
-		if (e = sccs_findKey(s, key)) {
-			/*
-			 * d - remote patch delta
-			 * e - local delta with matching key to d
-			 */
-			ser_t	rpar = parent, rmerge = MERGE(s, d);
-			ser_t	lpar = PARENT(s, e), lmerge = MERGE(s, e);
+	sccs_sdelta(s, d, key);
+	if (e = sccs_findKey(s, key)) {
+		/*
+		 * d - remote patch delta
+		 * e - local delta with matching key to d
+		 */
+		ser_t	rpar = parent, rmerge = MERGE(s, d);
+		ser_t	lpar = PARENT(s, e), lmerge = MERGE(s, e);
 
-			/* We already have this delta... lineage line up? */
-			if ((lpar != rpar) || (lmerge != rmerge)) {
-				fprintf(stderr, "%s: duplicate delta with "
-				    "different parents\n", s->gfile);
-				if (rpar) sccs_sdelta(s, rpar, key);
-				fprintf(stderr,
-				    "local parent: %s\n"
-				    "remote parent: %s (%s)\n",
-				    (lpar) ? REV(s, lpar) : "none",
-				    rpar ? key : "none",
-				    (rpar && (FLAGS(s, rpar) & D_REMOTE))
-				    ? "remote"
-				    : (rpar ? REV(s, rpar) : ""));
-				if (rmerge) sccs_sdelta(s, rmerge, key);
-				fprintf(stderr,
-				    "local merge: %s\n"
-				    "remote merge: %s (%s)\n",
-				    lmerge ? REV(s, lmerge) : "none",
-				    rmerge ? key : "none",
-				    (rmerge && (FLAGS(s, rmerge) & D_REMOTE))
-				    ? "remote"
-				    : (rmerge ? REV(s, rmerge) : ""));
-				fprintf(stderr, "Please send "
-				    "the output to support@bitkeeper.com\n");
-				return (D_INVALID);
-			}
-			keep = 0;
-			if (DANGLING(s, e)) {
-				FLAGS(s, e) &= ~D_DANGLING;
-				keep = 1;
-			}
-			if (!(FLAGS(s, e) & D_CSET) &&
-			   (FLAGS(s, d) & D_CSET)) {
-			   	FLAGS(s, e) |= D_CSET;
-				keep = 1;
-			}
-			sccs_freedelta(s, d);
-			d = keep ? e : 0;
-			serial = e;
-			goto done;
+		/* We already have this delta... lineage line up? */
+		if ((lpar != rpar) || (lmerge != rmerge)) {
+			fprintf(stderr, "%s: duplicate delta with "
+			    "different parents\n", s->gfile);
+			if (rpar) sccs_sdelta(s, rpar, key);
+			fprintf(stderr,
+			    "local parent: %s\n"
+			    "remote parent: %s (%s)\n",
+			    (lpar) ? REV(s, lpar) : "none",
+			    rpar ? key : "none",
+			    (rpar && (FLAGS(s, rpar) & D_REMOTE))
+			    ? "remote"
+			    : (rpar ? REV(s, rpar) : ""));
+			if (rmerge) sccs_sdelta(s, rmerge, key);
+			fprintf(stderr,
+			    "local merge: %s\n"
+			    "remote merge: %s (%s)\n",
+			    lmerge ? REV(s, lmerge) : "none",
+			    rmerge ? key : "none",
+			    (rmerge && (FLAGS(s, rmerge) & D_REMOTE))
+			    ? "remote"
+			    : (rmerge ? REV(s, rmerge) : ""));
+			fprintf(stderr, "Please send "
+			    "the output to support@bitkeeper.com\n");
+			return (D_INVALID);
 		}
+		keep = 0;
+		if (DANGLING(s, e)) {
+			FLAGS(s, e) &= ~D_DANGLING;
+			keep = 1;
+		}
+		if (!(FLAGS(s, e) & D_CSET) &&
+		   (FLAGS(s, d) & D_CSET)) {
+		   	FLAGS(s, e) |= D_CSET;
+			keep = 1;
+		}
+		sccs_freedelta(s, d);
+		d = keep ? e : 0;
+		serial = e;
+		goto done;
 	}
 	FLAGS(s, d) |= D_REMOTE;
 
@@ -234,6 +232,10 @@ cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 		}
 	}
 	d = sccs_insertdelta(s, d, serial);
+	for (e = d + 1; e <= TABLE(s); e++) {
+		if ((p = PARENT(s, e)) >= d) PARENT_SET(s, e, p+1);
+		if ((p = MERGE(s, e)) >= d) MERGE_SET(s, e, p+1);
+	}
 	if (d != TABLE(s)) {
 		EACHP_REVERSE(s->symlist, sym) {
 			if (sym->ser >= serial) sym->ser++;
@@ -304,8 +306,6 @@ fix(sccs *s)
 			unless (streq(p, CLUDES(s, d))) CLUDES_SET(s, d, p);
 			ftrunc(f, 0);
 		}
-		if ((e = PARENT(s, d)) > base) PARENT_SET(s, d, SERMAP(e));
-		if ((e = MERGE(s, d)) > base) MERGE_SET(s, d, SERMAP(e));
 		if ((e = PTAG(s, d)) > base) PTAG_SET(s, d, SERMAP(e));
 		if ((e = MTAG(s, d)) > base) MTAG_SET(s, d, SERMAP(e));
 	}
@@ -319,8 +319,6 @@ fix(sccs *s)
 int
 cset_write(sccs *s, int spinners, int fast)
 {
-	int	i;
-
 	assert(s);
 	assert(s->locs);
 
@@ -343,16 +341,10 @@ cset_write(sccs *s, int spinners, int fast)
 	s->state |= S_PFILE;
 	if (CSET(s)) {
 		if (fastCsetWeave(s, fast)) goto err;
+	} else if (fast) {
+		if (sccs_fastWeave(s)) goto err;
 	} else {
-		/* non-cset files should always be in fast mode */
-		assert(fast);
-		if (delta_table(s, 0)) {
-			perror("table");
-			goto err;
-		}
-		i = s->iloc - 1; /* set index to final element in array */
-		assert(i > 0); /* base 1 data structure */
-		if (sccs_fastWeave(s, s->locs[i].dF)) goto err;
+		if (sccs_slowWeave(s)) goto err;
 	}
 	if (sccs_finishWrite(s)) goto err;
 	return (0);

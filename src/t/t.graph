@@ -68,7 +68,7 @@ bk edit $Q -M foo
 bk delta $Q -fymerge foo
 bk commit $Q -f
 bk _scat foo > ../WANT
-bk clone $Q --compat . ../copy || fail
+bk clone $Q --no-bk-merge . ../copy || fail
 cd ../copy
 bk _scat foo > ../DIFF
 bk clone $Q --upgrade . ../upgrade || fail
