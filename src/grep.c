@@ -28,7 +28,6 @@
  */
 
 #include "sccs.h"
-#include "pcre.h"
 
 private	void	doit(FILE *f, pcre *re);
 private char	*getfile(char *buf);

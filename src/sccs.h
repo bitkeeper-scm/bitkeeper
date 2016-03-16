@@ -1643,6 +1643,20 @@ void	nokey_free(nokey *h);
 u32	nokey_lookup(nokey *h, char *heap, char *key);
 void	nokey_insert(nokey *h, char *heap, u32 key);
 
+typedef struct {
+	pcre	*re;		/* handle to compiled regex */
+	char    *pattern;	/* what we want to find */
+	u8      ignorecase:1;	/* duh */
+	u8	want_glob:1;	/* do a glob based search */
+	u8	want_re:1;	/* do a regex based search */
+} search;
+
+int	search_either(char *s, search search);
+int	search_glob(char *s, search search);
+int	search_regex(char *s, search search);
+search	search_parse(char *str);
+void	search_free(search search);
+
 extern	char	*editor;
 extern	char	*bin;
 extern	char	*BitKeeper;

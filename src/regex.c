@@ -16,7 +16,6 @@
 
 #include "system.h"
 #include "sccs.h"
-#include "pcre.h"
 
 int
 regex_main(int ac, char **av)
