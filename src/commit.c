@@ -436,7 +436,8 @@ do_commit(char **av,
 		f2 = fopen(pendingFiles2, "w");
 		i = strlen(ATTR);
 		while (t = fgetline(f)) {
-			if (strneq(ATTR "|", t, i+1)) {
+			if (begins_with(t, ATTR "|") ||
+			    begins_with(t, SATTR "|")) {
 				/* skip ATTR file */
 				continue;
 			}
@@ -800,8 +801,21 @@ updateCsetChecksum(sccs *cset, ser_t d, char **keys)
 			++todo;
 			rinfo = hash_insert(h, &rkoff, sizeof(rkoff),
 			    0, sizeof(*rinfo));
+			unless (rinfo) {
+				fprintf(stderr,
+				    "ERROR: same rootkey appears twice:\n%s\n",
+				    rk);
+				ret++;
+				rinfo = h->vptr;
+			}
 			rinfo->n = i;
 		} else {
+			/* Should be truly new, so do now and call done */
+			rkoff = sccs_addUniqRootkey(cset, rk);
+			rinfo = hash_insert(h, &rkoff, sizeof(rkoff),
+			    0, sizeof(*rinfo));
+			assert(rkoff && rinfo);
+			rinfo->seen = S_DONE;	/* don't checksum again */
 			/* new file, just add rk now */
 			for (p = rk; *p; p++) sum += *p;
 			sum += ' ' + '\n';

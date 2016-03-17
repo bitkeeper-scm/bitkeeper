@@ -422,3 +422,48 @@ EOF
 cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 unset BK_CONFIG
+
+echo $N Commit with duplicate s.attr file on stdin ..................$NL
+
+bk edit $Q BitKeeper/etc/attr
+echo junk >> BitKeeper/etc/attr
+bk ci -yjunk $Q BitKeeper/etc/attr
+
+echo hi > newfile
+bk new $Q newfile
+cat <<EOF > FILES
+SCCS/s.newfile|+
+BitKeeper/etc/SCCS/s.attr|+
+EOF
+_BK_ATTR_TEST=foo2 bk commit $Q -S -yattr - < FILES || fail
+bk rset -ar+ | grep -q attr || fail
+bk cat BitKeeper/etc/attr | grep junk && fail
+echo OK
+
+echo $N Catch duplicates in commit earlier and without assert .......$NL
+# The previous attr failure was a duplicate rk in a commit.
+# Having an assert fail in rset is hard to follow.  Put in msg.
+bk edit $Q newfile
+bk delta $Q -fynull newfile
+touch newfile2
+bk new $Q newfile2
+# different mechanism for seeing dups
+cat <<EOF > FILES
+SCCS/s.newfile|+
+SCCS/s.newfile2|+
+SCCS/s.newfile|+
+SCCS/s.newfile2|+
+EOF
+bk commit $Q -S -ydups - < FILES 2> ERR && fail -f ERR
+sed 's/[^|]*|\([^|]*\).*/\1/' < ERR > GOT
+cp ERR ~/p
+cp GOT ~/p1
+cat <<'EOF' > WANT
+ERROR: same rootkey appears twice:
+newfile
+ERROR: same rootkey appears twice:
+newfile2
+The commit is aborted.
+EOF
+cmpfiles WANT GOT
+echo OK
