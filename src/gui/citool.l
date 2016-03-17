@@ -2456,14 +2456,16 @@ doCommit()
 	if (self.nested) {
 		foreach (comp in self.components) {
 			if (comp == self.root) continue;
-			commitComponent(comp);
+			res = commitComponent(comp);
+			if (res == -1) break;
 		}
 	}
 
 	self.committing = 0;
 	self.commitSwitch = 0;
-	res = commitComponent(self.root);
+	if (res == -1) return;
 
+	res = commitComponent(self.root);
 	if (res == -1) return;
 
 	if (res == 0) {
@@ -2537,18 +2539,8 @@ commitComponent(string comp)
 		pclose(fd, &st);
 		unless (st.exit == 0) {
 			string	msg = "The checkin failed."
-			    " See above for the reason.\n"
-			    "Correct the problem and then rescan"
-			    " for changes,\nor you can Quit citool"
-			    " and try again later.\n";
-
-			Text_insert(self.w_diffs, "end", "\n\n", "",
-			    msg, "warning");
-			configureButton("rescan", state: "normal");
-			configureButton("quit", state: "normal");
-
-                        disable_file_list();
-                        insertTopText("", 1);
+			    " See above for the reason.\n";
+			fail_commit(msg);
 			return (-1);
 		}
 	}
@@ -2608,7 +2600,7 @@ commitComponent(string comp)
 		if ((bgExecInfo("stderr") != "")
 		    || (bgExecInfo("stdout") != "")) {
 			string	type;
-			string	message = "bk commit";;
+			string	message = "bk commit";
 
 			if (err != 0 && err != 100) {
 				type = "-E";
@@ -2635,14 +2627,30 @@ commitComponent(string comp)
 			    && (err == 2)) {
 				res = 0;
 			} else {
-				popupMessage(type, message);
+				fail_commit(message);
+				res = -1;
 			}
 		}
 
-		if (res) deleteCommentFile(cset);
+		if (res == 1) deleteCommentFile(cset);
 	}
 	chdir(self.root);
 	return (res);
+}
+
+void
+fail_commit(string msg)
+{
+	msg .= "\n\nCorrect the problem and then"
+	" rescan for changes,\nor you can Quit"
+	" citool and try again later.\n";
+
+	Text_insert(self.w_diffs, "end", "\n\n", "", msg, "warning");
+	configureButton("rescan", state: "normal");
+	configureButton("quit", state: "normal");
+
+	disable_file_list();
+	insertTopText("", 1);
 }
 
 void
