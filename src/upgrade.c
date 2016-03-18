@@ -426,14 +426,18 @@ upgrade_latestVersion(char *new_vers, char *new_utc)
 	FILE	*f;
 	char	*t, *p;
 	int	rc = -1;
-	char	buf[MAXPATH];
+	char	buf[MAXPATH], new[MAXPATH];
 
 	*new_vers = *new_utc = 0;
 	concat_path(buf, getDotBk(), "latest-bkver");
+	sprintf(new, "%s.tmp", buf);
 	if (time(0) - mtime(buf) > DAY) {
-		if (sysio(0, buf, 0, "bk", "upgrade", "--show-latest", SYS)) {
+		if (sysio(0, new, DEVNULL_WR,
+			"bk", "upgrade", "--show-latest", SYS)) {
+			unlink(new);
 			return (-1);
 		}
+		if (rename(new, buf)) perror(new);
 	}
 	if (f = fopen(buf, "r")) {
 		if ((t = fgetline(f)) && (p = strchr(t, ','))) {
