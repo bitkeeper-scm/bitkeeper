@@ -173,55 +173,108 @@ checkfiles WANT beforedel
 bk checksum beforedel || fail
 echo OK
 
-# from t.fastpatch
-weavedump() {
-	bk _heapdump $1 | perl -ne 's/^\^A//; print unless 1 .. /^weave:/'
-}
+# Treat each file as though it was filtered by
+# bk diff -n --ignore-trailing-cr /dev/null a | tail -n +2
+#
+# Things to test that all data looks as though it went through
+# diff --no-trailing-cr, whether it is right or wrong.
+# 1. Nail down a black box model of diff --no-trailing-cr
+# 1a. See that ndiff is the same as diff --no-trailing-cr
+# 2. See that new files (or diffs) produce the same
+# 3. See that deltas result in the same.
+# 4. See that hasDiffs agrees on when there are diffs
 
-echo $N Use diff to add some non-newline deltas .....................$NL
-printf '\r\r\r' > data-1
-printf 'x\n\r\r\r' > data-2
-touch delta-1 delta-2
-bk new $Q data-1 data-2 delta-1 delta-2
-bk edit $Q delta-1 delta-2
-rm delta-1 delta-2
-printf 'a0 1\n\r\r\r' > diff-1
-printf 'a0 2\nx\n\r\r\r' > diff-2
-bk delta $Q -y1-line -Ddiff-1 delta-1
-bk delta $Q -y2-line -Ddiff-2 delta-2
-bk new $Q -Ddiff-1 diff-1
-bk new $Q -Ddiff-2 diff-2
-# Stats
-bk prs -hnd':GFILE: :REV: :LI:' \
-    data-1 data-2 delta-1 delta-2 diff-1 diff-2 > GOT
-cat <<EOF > WANT
-data-1 1.1 0
-data-2 1.1 1
-delta-1 1.2 0
-delta-1 1.1 0
-delta-2 1.2 1
-delta-2 1.1 0
-diff-1 1.1 0
-diff-2 1.1 1
-EOF
-cmpfiles WANT GOT
-for f in data-1 delta-1 diff-1
-do
-	weavedump $f > $f.weave
+echo $N Verify a black box model of '[n]'diff -n --no-trailing-cr .....$NL
+printf '1\r\r\n2\r\r\n3\r\r\n' > b
+for prog in diff ndiff
+do	# Different amounts of \r don't matter 0 vs 2
+	printf '1\n2\n3\n' > a
+	bk $prog -n --ignore-trailing-cr a b || fail $prog
+	bk $prog -n --ignore-trailing-cr b a || fail $prog
+	# a mix
+	printf '1\r\n2\r\r\n3\r\r\r\n' > a
+	bk $prog -n --ignore-trailing-cr a b || fail $prog
+	bk $prog -n --ignore-trailing-cr b a || fail $prog
+	# No newline on one of them
+	printf '1\r\n2\r\r\n3\r\r\r' > a
+	bk $prog -n --ignore-trailing-cr a b || fail $prog
+	bk $prog -n --ignore-trailing-cr b a || fail $prog
+	# Introduce a diff
+	printf '1\r\nx\r\r\n3\r\r\r' > a
+	bk $prog -n --ignore-trailing-cr a b > GOT && fail -f GOT $prog
+	printf 'd2 1\na2 1\n2\n' > WANT
+	cmpfiles WANT GOT
+	bk $prog -n --ignore-trailing-cr b a > GOT && fail -f GOT $prog
+	printf 'd2 1\na2 1\nx\n' > WANT
+	cmpfiles WANT GOT
 done
-cat <<EOF > WANT
-I 2
-E 2
-I 1
-E 1
-EOF
-cmpfiles WANT data-1.weave
-cmpfiles WANT diff-1.weave
-cmpfiles WANT delta-1.weave
-# Use checkfiles for verbatim check
-bk --config=eoln:unix get $Q data-2 delta-2 diff-2
-echo x > WANT
-checkfiles WANT data-2
-checkfiles WANT diff-2
-checkfiles WANT delta-2
+echo OK
+
+echo $N Verify new files and rcs diffs produce similar outcomes .....$NL
+printf "" > empty
+for string in '1\r\r\n2\r\r\n3\r\r\n' '1\r\r\n2\r\r\n3\r\r'
+do	printf "$string" > a
+	bk diff -n --ignore-trailing-cr empty a | tail -n +2 > a.ntc
+	bk ndiff -n --ignore-trailing-cr empty a | tail -n +2 > a.ntc2
+	bk new $Q a
+	bk --config=eoln:unix get $Q a
+	checkfiles a.ntc a
+	checkfiles a.ntc2 a
+
+	printf "a0 3\n$string" > b.patch
+	bk new $Q -Db.patch b
+	bk --config=eoln:unix get $Q b
+	checkfiles a.ntc b
+	bk rm a b
+done
+echo OK
+
+echo $N Verify deltas to files produce consistent results ...........$NL
+echo 4 | cat a.ntc - > WANT
+for string in '4\r\r\n' '4\r\r'
+do	cp a.ntc a
+	bk new $Q a
+	bk edit $Q a
+	printf "$string" | cat a.ntc - > a
+	bk delta $Q -yfile a
+	bk --config=eoln:unix get $Q a
+	checkfiles WANT a
+
+	cp a.ntc b
+	bk new $Q b
+	bk edit $Q b
+	rm b
+	printf "a3 1\n$string" > b.patch
+	bk delta $Q -ydiff -Db.patch b
+	bk --config=eoln:unix get $Q b
+	checkfiles WANT b
+	bk rm a b
+done
+echo OK
+
+echo $N Verify hasDiffs sees no diff when bk diff does not ..........$NL
+echo x > a
+bk new $Q a
+bk edit $Q a
+cp a a.orig
+for string in 'x\r\n' 'x\r'
+do	printf "$string" > a
+	bk diff -q --ignore-trailing-cr a.orig a || fail
+	bk ndiff --ignore-trailing-cr a.orig a || fail
+	bk diffs -n a > diffs || fail
+	test -s diffs && fail -f diffs
+	bk sfiles -c a > GOT
+	test -s GOT && fail -f GOT
+done
+# This is different - no newline
+printf 'x' > a
+bk diff --ignore-trailing-cr a.orig a > diff1 && fail -f diff1
+bk ndiff --ignore-trailing-cr a.orig a > diff2 && fail -f diff2
+checkfiles diff1 diff2
+test -s diff1 || fail should not be empty
+bk diffs -h --no-unified a > diffs || fail
+checkfiles diff1 diffs
+bk gfiles -c a > GOT
+echo a > WANT
+cmpfiles GOT WANT
 echo OK

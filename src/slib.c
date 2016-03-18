@@ -9219,7 +9219,10 @@ _hasDiffs(sccs *s, ser_t d, u32 flags, int inex, pfile *pf)
 				no_lf = 1;
 			}
 			/* now strip CR; if gline was "\n", glen now 0 */
-			while (glen && (gline[glen-1] == '\r')) glen--;
+			while (glen && (gline[glen-1] == '\r')) {
+				no_lf = 0;
+				glen--;
+			}
 
 			/* now strip CR in weave if old broken sfile */
 			flen = strlen(fbuf);
@@ -10630,13 +10633,10 @@ out:		sccs_abortWrite(s);
 					while ((len > 0) &&
 					    (t[len - 1] == '\r')) {
 						--len;
+						no_lf = 0;
 					}
 				}
 				t[len] = 0;
-				if (no_lf && !len) {
-					no_lf = 0;
-					continue;
-				}
 				s->dsum += str_cksum(t) + '\n';
 				fputs(t, sfile);
 				fputc('\n', sfile);
@@ -13047,7 +13047,6 @@ weaveDiffs(fweave *w, ser_t d, FILE *diffs, int *fixdelp)
 	int	lastdel = 0;
 	char	*addthis = 0;
 	int	added = 0, deleted = 0;
-	int	header = 0;
 	int	rc = -1;
 
 	weaveReset(w);
@@ -13097,11 +13096,7 @@ weaveDiffs(fweave *w, ser_t d, FILE *diffs, int *fixdelp)
 			/* output ^AI .... <data>.... ^AE */
 			weaveMove(w, where, d, WM_ADD);
 			if (no_lf = (what == 'N')) what = 'I';
-			header = 0;
-			if (d == TREE(s)) { /* XXX: When to stop empty 1 ? */
-				header = 1;
-				doctrl(s, "\001I ", d, "");
-			}
+			doctrl(s, "\001I ", d, "");
 			while (howmany--) {
 				unless (b = fgetln(diffs, &len)) {
 					fprintf(stderr,
@@ -13124,17 +13119,11 @@ weaveDiffs(fweave *w, ser_t d, FILE *diffs, int *fixdelp)
 					}
 				} else {
 					/* Block new \r going into weave */
-					while (len && (b[len-1] == '\r')) --len;
-					b[len] = 0;
-					/* Eat wacky last line of \r\r\r\r */
-					if (no_lf && !len) {
+					while (len && (b[len-1] == '\r')) {
+						--len;
 						no_lf = 0;
-						continue;
 					}
-				}
-				unless (header) {
-					header = 1;
-					doctrl(s, "\001I ", d, "");
+					b[len] = 0;
 				}
 				fix_cntl_a(s, b);
 				w->sum += str_cksum(b) + '\n';
@@ -13143,10 +13132,8 @@ weaveDiffs(fweave *w, ser_t d, FILE *diffs, int *fixdelp)
 				debug2((stderr, "INS %s\n", b));
 				added++;
 			}
-			if (header) {
-				if (no_lf) w->sum -= '\n';
-				doctrl(s, "\001E ", d, no_lf ? "N" : "");
-			}
+			if (no_lf) w->sum -= '\n';
+			doctrl(s, "\001E ", d, no_lf ? "N" : "");
 			break;
 		    default:
 			assert(0);

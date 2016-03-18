@@ -160,7 +160,8 @@ done
 echo $NX x$NXL > x
 echo > y
 cat C x C C y C > B
-cat C x y > WANT
+# last line of \r is replaced by a \n
+cat C x y y > WANT
 mv B C
 bk new $Q C
 bk admin -fEOLN_UNIX C
