@@ -37,11 +37,12 @@
 HAS_BK	?= $(shell bash -c "command -v bk")
 ifeq (,$(HAS_BK))
 	BKUSER := $(USER)
-	BKHOST := $(HOSTNAME)
+	BKFULLHOST := $(HOSTNAME)
 else
 	BKUSER := $(shell bk getuser)
-	BKHOST := $(shell bk gethost -r)
+	BKFULLHOST := $(shell bk gethost -r)
 endif
+BKHOST := $(shell echo $(BKFULLHOST) | sed 's/\..*//')
 
 HERE    := $(shell pwd)
 ROOT	:= $(shell dirname $(HERE))
@@ -49,6 +50,8 @@ REPO    := $(notdir $(ROOT))
 URL     := $(shell echo bk://work/$(ROOT) | sed s,/home/bk/,,)
 LOG	:= $(shell echo LOG-$(BKUSER))
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
+
+include conf-$(BKHOST).mk
 
 ## Which hosts are used for producing nightly builds
 NIGHTLY_HOSTS	:= macos106 win7-vm debian40 debian40-64
@@ -98,7 +101,6 @@ endif
 
 BK=bk$(EXE)
 GET=	$(Q)$(BK) get -sS
-LD	=cc
 G	=-g
 TRIAL	=0
 IMGDIR	=$(HERE)/tmp/bitkeeper
@@ -172,7 +174,7 @@ ifeq ($(shell uname -s), Darwin)
 endif
 
 ifeq (clang, $(findstring clang, $(shell $(CC) --version)))
-	WARNINGS += -Wno-unused-value -Wno-empty-body
+	WARNINGS += -Wno-unused-value -Wno-empty-body -Wno-self-assign
 endif
 
 GCCOPTS=
@@ -264,11 +266,6 @@ SCRIPTS	= applypatch bk.script import \
 	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
 LSCRIPTS = lscripts/hello.l
-LOCALSCR= build \
-	www/arrow.gif www/bkpowered.gif www/back.gif \
-	www/trailer.gif \
-	www/document_plain.png www/document_delta.png \
-	www/folder_plain.png www/folder_delta.png
 PSCR	= t/doit t/guitest
 PROGS	= libc/mtst$(EXE)
 LIBS	= libc/libc.a tomcrypt/libtomcrypt.a tommath/libtommath.a
@@ -278,7 +275,7 @@ DATA	= bkmsg.txt bkhelp.txt \
 	dspec-changes dspec-changes-vv dspec-changes-h dspec-changes-hv \
 	dspec-changes-3.2 dspec-changes-4.0 dspec-prs dspec-log
 CONTRIB = gui/ide/emacs/vc-bk.el
-ALL	= PCRE $(LIBS) $(BINS) $(SCRIPTS) $(LSCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) \
+ALL	= PCRE $(LIBS) $(BINS) $(SCRIPTS) $(LSCRIPTS) $(PSCR) $(DATA) $(XTRA) \
 	$(PROGS) GUI
 
 CFLAGS	= $(CC_DEBUG)
@@ -359,13 +356,14 @@ clean: FORCE  ## Remove object files and executables
 	do	$(MAKE) -C$$sub "CFLAGS=$(CFLAGS)" Q=$(Q) $@; \
 	done
 	$(Q)$(RM) $(OBJ) bk.o $(BINS) $(SCRIPTS) \
-	    $(LOCALSRC) $(PSRC) $(PROGS)
+	    $(PSRC) $(PROGS)
 	$(Q)$(RM) tags TAGS tags.local cscope.out substvars a.out cmd.c cmd.h \
 		core *.bb *.bbg *.da *.gcov \
 		bk.ico \
-		bkmsg.txt bkhelp.txt build bkver.c \
+		bkmsg.txt bkhelp.txt bkver.c \
 		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe \
-		diff.exe diff3.exe mend.exe
+		diff.exe diff3.exe mend.exe \
+		conf-$(BKHOST).mk build
 	$(Q)$(RM) -r tmp
 
 clobber: clean FORCE ## Same as 'clean' but also bk clean files
@@ -483,7 +481,7 @@ endif
 	$(Q)echo "char *bk_platform = \""`./utils/bk_version`"\";" >> bk.v
 	$(Q)echo "int test_release = "$(TRIAL)";" >> bk.v
 	$(Q)echo "time_t bk_build_timet = "`perl -e "print time"`";" >> bk.v
-	$(Q)echo "char *bk_build_user = \"$(BKUSER)@$(BKHOST)\";" >> bk.v
+	$(Q)echo "char *bk_build_user = \"$(BKUSER)@$(BKFULLHOST)\";" >> bk.v
 	$(Q)echo "char *bk_build_dir = \""`pwd`"\";" >> bk.v
 	$(Q)mv -f bk.v bkver.c
 
@@ -630,8 +628,10 @@ build: build.sh
 	-chmod +x build
 	-chmod -w build
 
-# The default .c.o rule is broken with some Makes.
-.c.o:
+conf-$(BKHOST).mk: mkconf.sh
+	sh mkconf.sh > $@
+
+%.o: %.c
 	$(if $(Q),@echo CC $<,)
 	$(Q)$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 

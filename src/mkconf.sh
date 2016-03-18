@@ -14,21 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-orig_args="$@"
+# generate config settings for make
 
 ms_env()
 {
-	unset JOBS
-	test "$MSYSBUILDENV" || {
-		echo running in wrong environment, respawning...
-		bk get -S ./update_buildenv
-		BK_USEMSYS=1 bk sh ./update_buildenv
-		export HOME=`bk pwd`
-		test -d R:/build/buildenv/bin &&
-		    exec R:/build/buildenv/bin/sh --login $0 $orig_args
-		exec C:/build/buildenv/bin/sh --login $0 $orig_args
-	}
-
 	gcc --version | grep -q cyg && {
 		echo No Mingw GCC found, I quit.
 		exit 1
@@ -39,42 +28,9 @@ ms_env()
 	LD="gcc -Wl,--stack,33554432"
 }
 
-JOBS=-j4
-while getopts j: opt
-do
-	case "$opt" in
-		j) JOBS=-j$OPTARG;;
-	esac
-done
-shift `expr $OPTIND - 1`
-
-test "X$G" = X && G=-g
 test "X$CC" = X && CC=gcc
 test "X$LD" = X && LD=$CC
 test "X$RANLIB" = X && RANLIB=ranlib
-
-# ccache stuff
-CCLINKS=/build/cclinks
-CCACHEBIN=`which ccache 2>/dev/null`
-if [ $? = 0 -a "X$BK_NO_CCACHE" = X ]
-then
-	test -d $CCLINKS || {
-		mkdir -p $CCLINKS
-		ln -s "$CCACHEBIN" $CCLINKS/cc
-		ln -s "$CCACHEBIN" $CCLINKS/gcc
-	}
-	CCACHE_DIR=/build/.ccache
-	# Seems like a good idea but if cache and
-	# source are on different filesystems, setting
-	# CCACHE_HARDLINK seems to have the same
-	# effect as disabling the cache altogether
-	#CCACHE_HARDLINK=1
-	CCACHE_UMASK=002
-	export CCACHE_DIR CCACHE_HARDLINK CCACHE_UMASK
-else
-	CCACHE_DISABLE=1
-	export CCACHE_DISABLE
-fi
 
 case "X`uname -s`" in
     XCYGWIN*|XMINGW*)
@@ -176,19 +132,10 @@ test -z "$BK_STATIC" || {
 	export BK_STATIC
 }
 
-V=
-test "x$1" = "x-v" && {
-	V="V=1"
-	shift
-}
-test "X$MAKE" = X && {
-	MAKE=make
-	case "X$1" in
-	    X-j*) MAKE="make $1";;
-	esac
-}
-test "x$BK_VERBOSE_BUILD" != "x" && { V="V=1"; }
-# If the current build process needs to use current bk, use "$HERE/bk"
-export PATH
-make --no-print-directory $JOBS $V "MAKE=$MAKE" "CC=$CC $CCXTRA" "G=$G" "LD=$LD" \
-	"XLIBS=$XLIBS" "RANLIB=$RANLIB" "$@"
+
+test "x$BK_VERBOSE_BUILD" != "x" && { echo V=1; }
+echo PATH=$PATH
+echo CC="$CC $CCXTRA"
+echo LD=$LD
+echo XLIBS=$XLIBS
+echo RANLIB=$RANLIB

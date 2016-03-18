@@ -64,10 +64,11 @@ Build using the following sequence (we build on 12 core systems,
 hence the -j12 sprinkled here and there):
 
 	cd src
-	make build		# builds a simple make wrapper
-	./build -j12 p		# 'p'roduction build
-	./build image		# create install image (at src/utils)
-	./build install		# install (default /usr/libexec/bitkeeper)
+	make -j12 p		# 'p'roduction build
+	make image		# create install image (at src/utils)
+	make install		# install (default /usr/libexec/bitkeeper)
+
+(make must be GNU make)
 
 ## Testing BitKeeper
 

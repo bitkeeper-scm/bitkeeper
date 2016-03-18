@@ -9,7 +9,7 @@ Possible preparation
 
 When ready
 	tag tree
-	./build crankturn on all build machines
+	make crankturn on all build machines
 		roughly, this does a ..
 			make production
 			make install

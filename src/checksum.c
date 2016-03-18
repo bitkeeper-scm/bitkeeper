@@ -29,8 +29,6 @@ private	void	dumpMaxfail(sccs *s, ser_t old, ser_t new, int diffcount);
 
 /*
  * checksum - check and/or regenerate the checksums associated with a file.
- *
- * Copyright (c) 1999-2001 L.W.McVoy
  */
 int
 checksum_main(int ac, char **av)

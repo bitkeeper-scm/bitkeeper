@@ -15,6 +15,7 @@
 
 test "$MSYSBUILDENV" || {
 	echo running in wrong environment, respawning...
+	rm -f conf-*.mk
 	bk get -S ./update_buildenv
 	BK_USEMSYS=1 bk sh ./update_buildenv
 	export HOME=`bk pwd`

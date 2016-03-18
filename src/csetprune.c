@@ -40,8 +40,6 @@
  * Reinit the file into cset2, scompress it, write it, reinit again.
  * Walk the graph recursively and apply from root forward.
  * Create a new root key.
- *
- * Copyright (c) 2001 Larry McVoy & Rick Smith
  */
 
 typedef struct {
