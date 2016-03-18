@@ -900,7 +900,7 @@ applyCsetPatch(sccs *s, int *nfound, int newFile)
 	ser_t	top;
 	ser_t	remote_tagtip = 0;
 	int	n = 0;
-	int	c;
+	int	c, j;
 	int	psize = *nfound;
 	int	confThisFile;
 	FILE	*csets = 0, *f;
@@ -1091,10 +1091,7 @@ applyCsetPatch(sccs *s, int *nfound, int newFile)
 				    proj_rootkey(proj_product(s->proj)))) {
 					continue;
 				}
-				if (d = PARENT(s, p->serial)) {
-					FLAGS(s, d) |= D_SET;
-				}
-				if (d = MERGE(s, p->serial)) {
+				EACH_PARENT(s, p->serial, d, j) {
 					FLAGS(s, d) |= D_SET;
 				}
 				d = p->serial;

@@ -500,9 +500,9 @@ private	void
 markParents(wrdata *wr, ser_t d, u32 color)
 {
 	ser_t	e;
+	int	j;
 
-	if (e = PARENT(wr->s, d)) markDelta(wr, e, color);
-	if (e = MERGE(wr->s, d)) markDelta(wr, e, color);
+	EACH_PARENT(wr->s, d, e, j) markDelta(wr, e, color);
 }
 
 /* return next serial in requested set */

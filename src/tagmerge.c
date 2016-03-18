@@ -43,7 +43,7 @@ tagmerge(void)
 {
 	sccs	*s;
 	ser_t	d, e, a = 0, b = 0;
-	int	i = 0;
+	int	j, i = 0;
 	char	cset[] = CHANGESET;
 
 	unless (s = sccs_init(cset, 0)) {
@@ -55,8 +55,7 @@ tagmerge(void)
 	 */
 	for (d = TABLE(s), i = 0; d >= TREE(s); d--) {
 		unless (SYMGRAPH(s, d)) continue;
-		if (e = PTAG(s, d)) FLAGS(s, e) |= D_RED;
-		if (e = MTAG(s, d)) FLAGS(s, e) |= D_RED;
+		EACH_PTAG(s, d, e, j) FLAGS(s, e) |= D_RED;
 		if (FLAGS(s, d) & D_RED) {
 			FLAGS(s, d) &= ~D_RED;
 			continue;

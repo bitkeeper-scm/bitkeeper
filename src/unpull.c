@@ -125,12 +125,10 @@ err:			sccs_free(s);
 	if (tag) {
 		for (d = TABLE(s); (d >= TREE(s)) && (d != tag); d--) {
 			if (!SYMGRAPH(s, d) || (FLAGS(s, d) & D_BLUE)) continue;
-			if (e = PTAG(s, d)) {
+			EACH_PTAG(s, d, e, i) {
 				if (FLAGS(s, e) & D_BLUE) break;
 			}
-			if (e = MTAG(s, d)) {
-				if (FLAGS(s, e) & D_BLUE) break;
-			}
+			if (e) break;
 		}
 		unless (d == tag) {
 			sccs_sdelta(s, d, key);

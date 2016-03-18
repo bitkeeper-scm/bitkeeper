@@ -233,8 +233,9 @@ cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 	}
 	d = sccs_insertdelta(s, d, serial);
 	for (e = d + 1; e <= TABLE(s); e++) {
-		if ((p = PARENT(s, e)) >= d) PARENT_SET(s, e, p+1);
-		if ((p = MERGE(s, e)) >= d) MERGE_SET(s, e, p+1);
+		EACH_PARENT(s, e, p, i) {
+			if (p >= d) PARENTS_SET(s, e, i, p+1);
+		}
 	}
 	if (d != TABLE(s)) {
 		EACHP_REVERSE(s->symlist, sym) {
@@ -306,8 +307,9 @@ fix(sccs *s)
 			unless (streq(p, CLUDES(s, d))) CLUDES_SET(s, d, p);
 			ftrunc(f, 0);
 		}
-		if ((e = PTAG(s, d)) > base) PTAG_SET(s, d, SERMAP(e));
-		if ((e = MTAG(s, d)) > base) MTAG_SET(s, d, SERMAP(e));
+		EACH_PTAG(s, d, e, i) {
+			if (e > base) PTAGS_SET(s, d, i, SERMAP(e));
+		}
 	}
 	fclose(f);
 	free(remap);

@@ -210,9 +210,9 @@ graph_symdiff(sccs *s, ser_t *leftlist, ser_t right, ser_t **dups, u8 *slist,
 
 		/* Set up parent ancestory for this node */
 		if (newbits = (bits & (SL_PAR|SR_PAR))) {
-			for (i = BKMERGE(s), ser = PARENT(s, t);
-			    ser;
-			    ser = i-- ? MERGE(s, t) : 0) {
+			EACH_PARENT(s, t, ser, i) {
+				/* Hack: parent (i=0) is only par in orig */
+				if (!BKMERGE(s) && i) break;
 				bits = slist[ser];
 				if ((bits & newbits) != newbits) {
 					if (S_DIFFERENT(bits)) marked--;

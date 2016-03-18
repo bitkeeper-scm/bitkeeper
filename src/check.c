@@ -1503,7 +1503,7 @@ checkKeys(sccs *s)
 	rkdata	*rkd;
 	DATA	*kbufp;
 	char	*sfile;
-	int	i, len, idx, fake;
+	int	i, j, len, idx, fake;
 	int	errors = 0, doGca = 0;
 	ser_t	*branches = 0;
 	u32	color;
@@ -1610,8 +1610,7 @@ checkKeys(sccs *s)
 		}
 
 next:		if (color) {
-			if (p = PARENT(s, d)) FLAGS(s, p) |= color;
-			if (p = MERGE(s, d)) FLAGS(s, p) |= color;
+			EACH_PARENT(s, d, p, j) FLAGS(s, p) |= color;
 		}
 	}
 	/* Now return any unused data to the system */

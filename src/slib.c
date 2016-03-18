@@ -2958,6 +2958,9 @@ sccs_tagLeaf(sccs *s, ser_t d, ser_t md, char *tag)
 private void
 taguncolor(sccs *s, ser_t d)
 {
+	ser_t	p;
+	int	j;
+
 	assert(d);
 	FLAGS(s, d) |= D_BLUE;
 	for (; d >= TREE(s); d--) {
@@ -2966,8 +2969,7 @@ taguncolor(sccs *s, ser_t d)
 			FLAGS(s, d) &= ~D_RED;
 			continue;
 		}
-		if (PTAG(s, d)) FLAGS(s, PTAG(s, d)) |= D_BLUE;
-		if (MTAG(s, d)) FLAGS(s, MTAG(s, d)) |= D_BLUE;
+		EACH_PTAG(s, d, p, j) FLAGS(s, p) |= D_BLUE;
 		FLAGS(s, d) &= ~D_BLUE;
 	}
 }
@@ -3072,25 +3074,29 @@ sccs_tagConflicts(sccs *s)
 private void
 unvisit(sccs *s, ser_t d)
 {
+	ser_t	p;
+	int	j;
+
 	unless (d) return;
 	unless (FLAGS(s, d) & D_BLUE) return;
 	FLAGS(s, d) &= ~D_BLUE;
 
-	if (PTAG(s, d)) unvisit(s, PTAG(s, d));
-	if (MTAG(s, d)) unvisit(s, MTAG(s, d));
+	EACH_PTAG(s, d, p, j) unvisit(s, p);
 }
 
 private ser_t
 tagwalk(sccs *s, ser_t d)
 {
+	ser_t	p;
+	int	j;
+
 	unless (d) return (D_INVALID);	/* this is an error case */
 
 	/* note that the stripdel path has used D_RED */
 	if (FLAGS(s, d) & D_BLUE) return(0);
 	FLAGS(s, d) |= D_BLUE;
 
-	if (PTAG(s, d)) if (tagwalk(s, PTAG(s, d))) return (d);
-	if (MTAG(s, d)) if (tagwalk(s, MTAG(s, d))) return (d);
+	EACH_PTAG(s, d, p, j) if (tagwalk(s, p)) return (d);
 	return (0);
 }
 
@@ -8078,11 +8084,12 @@ int
 sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
 {
 	ser_t	*state = 0;
-	ser_t	d;
+	ser_t	d, p;
 	char	*n, type, patchcmd;
 	u8	*sump, *buf;
 	int	track = 0, print = 0, lineno = 0;
 	int	ret = -1;
+	int	j;
 	FILE	*out = 0;
 	sum_t	sum = 0;
 	ser_t	oldest = TABLE(s);
@@ -8109,11 +8116,8 @@ sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
 		unless (pmap[d]) continue;
 		oldest = d;
 		unless (CSET(s)) {
-			if (PARENT(s, d) && !pmap[PARENT(s, d)]) {
-				pmap[PARENT(s, d)] = D_INVALID;
-			}
-			if (MERGE(s, d) && !pmap[MERGE(s, d)]) {
-				pmap[MERGE(s, d)] = D_INVALID;
+			EACH_PARENT(s, d, p, j) {
+				unless (pmap[p]) pmap[p] = D_INVALID;
 			}
 		}
 	}
@@ -10750,8 +10754,9 @@ sccs_isleaf(sccs *s, ser_t d)
 private int
 checkOpenBranch(sccs *s, int flags)
 {
-	ser_t	d, tip = 0, symtip = 0;
+	ser_t	d, p, tip = 0, symtip = 0;
 	int	ret = 0, tips = 0, symtips = 0;
+	int	j;
 
 	for (d = TABLE(s);
 	    d >= TREE(s); (FLAGS(s, d) &= ~D_RED), d = sccs_prev(s, d)) {
@@ -10802,8 +10807,7 @@ checkOpenBranch(sccs *s, int flags)
 			tip = d;
 			tips++;
 		}
-		if (PARENT(s, d)) FLAGS(s, PARENT(s, d)) |= D_RED;
-		if (MERGE(s, d)) FLAGS(s, MERGE(s, d)) |= D_RED;
+		EACH_PARENT(s, d, p, j) FLAGS(s, p) |= D_RED;
 	}
 	return (ret);
 }
@@ -10821,7 +10825,8 @@ checkInvariants(sccs *s, int flags)
 {
 	int	error = 0;
 	int	xf = (flags & SILENT) ? XF_STATUS : XF_DRYRUN;
-	ser_t	d;
+	ser_t	d, p;
+	int	j;
 
 	error |= checkOpenBranch(s, flags);
 	error |= checkTags(s, flags);
@@ -10833,17 +10838,13 @@ checkInvariants(sccs *s, int flags)
 			xflags_failed = 1;
 			error |= 1;
 		}
-		if (MTAG(s, d) && !FLAGS(s, MTAG(s, d))) {
-			verbose((stderr,
-			    "%s|%s: tag merge %u does not exist\n",
-			    s->gfile, REV(s, d), MTAG(s, d)));
-			error |= 1;
-		}
-		if (PTAG(s, d) && !FLAGS(s, PTAG(s, d))) {
-			verbose((stderr,
-			    "%s|%s: tag parent %u does not exist\n",
-			    s->gfile, REV(s, d), PTAG(s, d)));
-			error |= 1;
+		EACH_PTAG(s, d, p, j) {
+			unless (FLAGS(s, p)) {
+				verbose((stderr,
+				    "%s|%s: tag parent %u does not exist\n",
+				    s->gfile, REV(s, d), p));
+				error |= 1;
+			}
 		}
 	}
 	return (error);
@@ -10863,39 +10864,33 @@ private int
 checkGone(sccs *s, int bit, char *who)
 {
 	u8	*slist = setmap(s, bit, 1);
-	ser_t	d;
+	ser_t	d, e;
 	char	*p;
 	int	i, sign, error = 0;
 
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		if (FLAGS(s, d) & bit) continue;
-		if (PARENT(s, d) && (FLAGS(s, PARENT(s, d)) & bit)) {
-			error++;
-			fprintf(stderr,
-			"%s: revision %s not at tip of branch in %s.\n",
-			    who, REV(s, PARENT(s, d)), s->sfile);
-			s->state |= S_WARNED;
+		if (slist[d]) continue;
+		EACH_PARENT(s, d, e, i) {
+			if (slist[e]) {
+				error++;
+				fprintf(stderr,
+				    "%s: revision %s not at tip of "
+				    "branch in %s.\n",
+				    who, REV(s, e), s->sfile);
+				s->state |= S_WARNED;
+			}
 		}
-		if (MERGE(s, d) && slist[MERGE(s, d)]) {
-			error++;
-			fprintf(stderr,
-			"%s: revision %s not at tip of branch in %s.\n",
-			    who, REV(s, MERGE(s, d)), s->sfile);
-			s->state |= S_WARNED;
-		}
-		if (SYMGRAPH(s, d) && (PTAG(s, d) && slist[PTAG(s, d)])) {
-			error++;
-			fprintf(stderr,
-			"%s: revision %s not at tip of tag graph in %s.\n",
-			    who, REV(s, PTAG(s, d)), s->sfile);
-			s->state |= S_WARNED;
-		}
-		if (SYMGRAPH(s, d) && (MTAG(s, d) && slist[MTAG(s, d)])) {
-			error++;
-			fprintf(stderr,
-			"%s: revision %s not at tip of tag graph in %s.\n",
-			    who, REV(s, MTAG(s, d)), s->sfile);
-			s->state |= S_WARNED;
+		if (SYMGRAPH(s, d)) {
+			EACH_PTAG(s, d, e, i) {
+				if (slist[e]) {
+					error++;
+					fprintf(stderr,
+					    "%s: revision %s not at tip "
+					    "of tag graph in %s.\n",
+					    who, REV(s, e), s->sfile);
+					s->state |= S_WARNED;
+				}
+			}
 		}
 		p = CLUDES(s, d);
 		while (i = sccs_eachNum(&p, &sign)) {
@@ -11821,7 +11816,8 @@ sccs_eachNum(char **linep, int *signp)
 private void
 adjust_serials(sccs *s, ser_t d, int amount)
 {
-	int	ser, sign;
+	int	j, sign;
+	ser_t	ser;
 	char	*p;
 	FILE	*f;
 
@@ -11837,11 +11833,8 @@ adjust_serials(sccs *s, ser_t d, int amount)
 		CLUDES_SET(s, d, fmem_peek(f, 0));
 		fclose(f);
 	}
-
-	PARENT_SET(s, d, (PARENT(s, d) + amount));
-	if (PTAG(s, d)) PTAG_SET(s, d, (PTAG(s, d) + amount));
-	if (MTAG(s, d)) MTAG_SET(s, d, (MTAG(s, d) + amount));
-	if (MERGE(s, d)) MERGE_SET(s, d, (MERGE(s, d) + amount));
+	EACH_PARENT(s, d, ser, j) PARENTS_SET(s, d, j, ser + amount);
+	EACH_PTAG(s, d, ser, j) PTAGS_SET(s, d, j, ser + amount);
 }
 
 private char	*
@@ -12438,7 +12431,7 @@ scompressGraph(sccs *s)
 	FILE	*f = fmem();
 	symbol	*sym;
 	char	*p;
-	int	sign;
+	int	j, sign;
 	ser_t	d, e, x;
 	ser_t	*remap = 0;
 	hash	*h = 0;
@@ -12479,10 +12472,8 @@ scompressGraph(sccs *s)
 		memcpy(&s->slist2[d], &s->slist2[e], sizeof(d2_t));
 		memcpy(EXTRA(s, d), EXTRA(s, e), sizeof(dextra));
 
-		if (x = PARENT(s, d)) PARENT_SET(s, d, remap[x]);
-		if (x = MERGE(s, d)) MERGE_SET(s, d, remap[x]);
-		if (x = PTAG(s, d)) PTAG_SET(s, d, remap[x]);
-		if (x = MTAG(s, d)) MTAG_SET(s, d, remap[x]);
+		EACH_PARENT(s, d, x, j) PARENTS_SET(s, d, j, remap[x]);
+		EACH_PTAG(s, d, x, j) PTAGS_SET(s, d, j, remap[x]);
 
 		if (HAS_CLUDES(s, d)) {
 			p = CLUDES(s, d);
@@ -12617,7 +12608,7 @@ sccs_fastWeave(sccs *s)
 {
 	int	i;
 	loc	*lp = s->locs;
-	ser_t	d;
+	ser_t	d, p;
 	fweave	w = {0};
 	int	rc = 0;
 	ser_t	*patchmap = 0;
@@ -12646,12 +12637,7 @@ sccs_fastWeave(sccs *s)
 	/* transitive closure (since not the cset file) */
 	for (d = TABLE(s); d >= TREE(s); d--) {
 		unless (w.slist[d]) continue;
-		if (PARENT(s, d)) {
-			w.slist[PARENT(s, d)] = 1;
-		}
-		if (MERGE(s, d)) {
-			w.slist[MERGE(s, d)] = 1;
-		}
+		EACH_PARENT(s, d, p, i) w.slist[p] = 1;
 	}
 	sccs_wrweaveInit(s);
 
@@ -14047,12 +14033,7 @@ out:
 			if (TAG(s, e) || DANGLING(s, e)) continue;
 			unless (d) d = e;
 			/* uncolor if poly dangling */
-			if ((p = PARENT(s, e)) && DANGLING(s, p)) {
-				FLAGS(s, p) &= ~D_DANGLING;
-			}
-			if ((p = MERGE(s, e)) && DANGLING(s, p)) {
-				FLAGS(s, p) &= ~D_DANGLING;
-			}
+			EACH_PARENT(s, e, p, i) FLAGS(s, p) &= ~D_DANGLING;
 		}
 		assert(d > TREE(s));
 		free(pf.oldrev);
@@ -16744,7 +16725,7 @@ do_patch(sccs *s, ser_t d, int flags, FILE *out)
 	char	type;
 	char	*p, *t;
 	ser_t	e;
-	int	len, sign;
+	int	j, len, sign;
 
 	if (!d) return (0);
 	type = TAG(s, d) ? 'R' : 'D';
@@ -16820,13 +16801,7 @@ do_patch(sccs *s, ser_t d, int flags, FILE *out)
 		}
 		if (SYMGRAPH(s, d)) fprintf(out, "s g\n");
 		if (SYMLEAF(s, d)) fprintf(out, "s l\n");
-		if (e = PTAG(s, d)) {
-			char	buf[MAXKEY];
-
-			sccs_sdelta(s, e, buf);
-			fprintf(out, "s %s\n", buf);
-		}
-		if (e = MTAG(s, d)) {
+		EACH_PTAG(s, d, e, j) {
 			char	buf[MAXKEY];
 
 			sccs_sdelta(s, e, buf);
@@ -16984,9 +16959,9 @@ gca(sccs *s, ser_t left, ser_t right)
 private ser_t
 gca2(sccs *s, ser_t left, ser_t right)
 {
-	ser_t	d;
+	ser_t	d, p;
 	u8	*slist;
-	int	value;
+	int	j, value;
 
 	unless (s && TABLE(s) && left && right) return (0);
 
@@ -16998,8 +16973,7 @@ gca2(sccs *s, ser_t left, ser_t right)
 		if (TAG(s, d)) continue;
 		unless (value = slist[d]) continue;
 		if (value == 3) break;
-		if (PARENT(s, d)) slist[PARENT(s, d)] |= value;
-		if (MERGE(s, d))   slist[MERGE(s, d)] |= value;
+		EACH_PARENT(s, d, p, j) slist[p] |= value;
 	}
 	free(slist);
 	return (d);
@@ -17562,6 +17536,7 @@ ser_t
 sccs_csetBoundary(sccs *s, ser_t d, u32 flags)
 {
 	ser_t	e, start, end;
+	int	j;
 
 	flags |= D_CSET;
 	if ((FLAGS(s, d) & flags) == flags) return (d);	/* optimize */
@@ -17572,11 +17547,8 @@ sccs_csetBoundary(sccs *s, ser_t d, u32 flags)
 	for (; d <= TABLE(s); ++d) {
 		if (TAG(s, d)) continue;
 
-		if ((e = PARENT(s, d)) && (FLAGS(s, e) & D_RED)) {
-			FLAGS(s, d) |= D_RED;
-		}
-		if ((e = MERGE(s, d)) && (FLAGS(s, e) & D_RED)) {
-			FLAGS(s, d) |= D_RED;
+		EACH_PARENT(s, d, e, j) {
+			if (FLAGS(s, e) & D_RED) FLAGS(s, d) |= D_RED;
 		}
 		if ((FLAGS(s, d) & flags) == flags) break;
 	}

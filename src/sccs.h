@@ -486,16 +486,14 @@ typedef	unsigned short	sum_t;
  */
 
 typedef struct {
-	ser_t	parent;			/* serial number of parent */
-	ser_t	merge;			/* serial number merged into here */
+	ser_t	parents[2];		/* serial number of parent,merge */
 	u32	date;			/* date - conversion from sdate/zone */
 	u32	flags;			/* per delta flags */
 } d1_t;			   /* delta walk type */
 
 typedef struct delta {
 	/* linkage */
-	ser_t	ptag;			/* parent in tag graph */
-	ser_t	mtag;			/* merge parent in tag graph */
+	ser_t	ptags[2];		/* parent,merge in tag graph */
 
 	/* data */
 	u32	added;			/* lines added by this delta (u32!) */
@@ -543,10 +541,21 @@ typedef struct {
 #define	XFLAGS(s, d)		((s)->slist2[d].xflags)
 #define	FLAGS(s, d)		((s)->slist1[d].flags)
 
-#define	PARENT(s, d)		(0 + (s)->slist1[d].parent)
-#define	MERGE(s, d)		(0 + (s)->slist1[d].merge)
-#define	PTAG(s, d)		(0 + (s)->slist2[d].ptag)
-#define	MTAG(s, d)		(0 + (s)->slist2[d].mtag)
+/* Parent must exist for merge, so can terminate on first empty one */
+#define	EACH_PARENT(s, d, p, j)	\
+	for (j = 0; (p) = (j < 2) ? PARENTS(s, d, j) : 0; ++j)
+
+#define	PARENTS(s, d, j)	(0 + (s)->slist1[d].parents[j])
+#define	PARENT(s, d)		PARENTS(s, d, 0)
+#define	MERGE(s, d)		PARENTS(s, d, 1)
+
+#define	EACH_PTAG(s, d, p, j)	\
+	for (j = 0; (p) = (j < 2) ? PTAGS(s, d, j) : 0; ++j)
+
+#define	PTAGS(s, d, j)		(0 + (s)->slist2[d].ptags[j])
+#define	PTAG(s, d)		PTAGS(s, d, 0)
+#define	MTAG(s, d)		PTAGS(s, d, 1)
+
 #define	ADDED(s, d)		(0 + (s)->slist2[d].added)
 #define	DELETED(s, d)		(0 + (s)->slist2[d].deleted)
 #define	SAME(s, d)		(0 + (s)->slist2[d].same)
@@ -560,10 +569,12 @@ typedef struct {
 #define	R2(s, d)		(0 + (s)->slist2[d].r[2])
 #define	R3(s, d)		(0 + (s)->slist2[d].r[3])
 
-#define	PARENT_SET(s, d, v)	((s)->slist1[d].parent = (v))
-#define	MERGE_SET(s, d, v)	((s)->slist1[d].merge = (v))
-#define	PTAG_SET(s, d, v)	((s)->slist2[d].ptag = (v))
-#define	MTAG_SET(s, d, v)	((s)->slist2[d].mtag = (v))
+#define	PARENTS_SET(s, d, j, v)	((s)->slist1[d].parents[j] = (v))
+#define	PARENT_SET(s, d, v)	PARENTS_SET(s, d, 0, v)
+#define	MERGE_SET(s, d, v)	PARENTS_SET(s, d, 1, v)
+#define	PTAGS_SET(s, d, j, v)	((s)->slist2[d].ptags[j] = (v))
+#define	PTAG_SET(s, d, v)	PTAGS_SET(s, d, 0, v);
+#define	MTAG_SET(s, d, v)	PTAGS_SET(s, d, 1, v);
 #define	ADDED_SET(s, d, v)	((s)->slist2[d].added = (v))
 #define	DELETED_SET(s, d, v)	((s)->slist2[d].deleted = (v))
 #define	SAME_SET(s, d, v)	((s)->slist2[d].same = (v))

@@ -139,11 +139,11 @@ void
 sccs_tagcolor(sccs *s, ser_t d)
 {
 	ser_t	e;
+	int	j;
 
 	if (FLAGS(s, d) & D_BLUE) return;
 	FLAGS(s, d) |= D_BLUE;
-	if (e = PTAG(s, d)) sccs_tagcolor(s, e);
-	if (e = MTAG(s, d)) sccs_tagcolor(s, e);
+	EACH_PTAG(s, d, e, j) sccs_tagcolor(s, e);
 	FLAGS(s, d) |= D_RED;
 }
 
