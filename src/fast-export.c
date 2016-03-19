@@ -343,8 +343,8 @@ gitExport(opts *op)
 		printf("commit refs/heads/%s\n", op->branch);
 		printf("mark : %llu\n", mark + d);
 		tz = gitTZ(s, d);
-		printf("committer <%s@%s> %d %s\n", USER(s, d),
-		    HOSTNAME(s, d), (int)DATE(s, d), tz);
+		printf("committer %s <%s@%s> %d %s\n", USER(s, d),
+		    USER(s, d), HOSTNAME(s, d), (int)DATE(s, d), tz);
 		free(tz);
 
 		if (op->addMD5Keys || op->md5KeysAsSubject) {
