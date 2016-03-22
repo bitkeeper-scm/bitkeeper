@@ -38,12 +38,11 @@ case "X`uname -s`" in
     XDarwin)
 	# Create fresh, clean path, prepending ccache
 	eval `/usr/libexec/path_helper`
-	PATH=${CCLINKS}:${PATH}
 	;;
     *)	AR=/usr/ccs/bin
 	GREP=/usr/xpg4/bin:/usr/xpg2/bin
 	GNU=/opt/gnu/bin:/usr/local/bin:/usr/gnu/bin:/usr/freeware/bin
-	PATH=${GREP}:${CCLINKS}:/bin:/usr/bin:/usr/bsd:${GNU}:${AR}:/usr/bin/X11
+	PATH=${GREP}:/bin:/usr/bin:/usr/bsd:${GNU}:${AR}:/usr/bin/X11
 	export PATH
 	;;
 esac

@@ -192,11 +192,11 @@ s(STATUS status)
 		warn("check in '%s' exited %d, error output:\n",
 		    comp, status.exit);
 		// check.c prints to stderr so we need to as well
-		f = fopen(errout, "r");
-		while (buf = <f>) fprintf(stderr, "%s\n", buf);
-		fclose(f);
 		error = status.exit;
 	}
+	f = fopen(errout, "r");
+	while (buf = <f>) fprintf(stderr, "%s\n", buf);
+	fclose(f);
 	if (verbose) fprintf(stderr, "%4d/%d %-60s OK\n", ++done, total, comp);
 	unlink(errout);
 }

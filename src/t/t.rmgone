@@ -19,6 +19,7 @@ if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; f
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
+
 echo $N Create some data ............................................$NL
 mkdir src
 cd src
@@ -30,17 +31,247 @@ bk ci $Q -i foo.c bar.c h.h "file with space"
 if bk _test ! -f SCCS/s.foo.c; then echo failed to create history; exit 1; fi
 echo OK
 
-echo $N check rmgone ................................................$NL
-if bk _test ! -f SCCS/s.foo.c; then echo failed; exit 1; fi
+echo $N check rmgone requires committed gone file....................$NL
+bk _test -f SCCS/s.foo.c || fail
 bk -R gone $Q `bk prs -hr1.0 -d:ROOTKEY: foo.c`
-if bk _test ! -f SCCS/s.foo.c; then echo failed; exit 1; fi
-bk rmgone $Q
-if bk _test -f SCCS/s.foo.c; then echo failed; exit 1; fi
+bk _test -f SCCS/s.foo.c || fail
+bk edit $Q foo.c || fail
+echo junk >> foo.c
+test -f foo.c || fail
+bk _test -f SCCS/p.foo.c || fail
+bk rmgone 2> OUT && fail -f OUT
+# it shouldn't have deleted the sfile since gone is
+# not committed
+bk _test -f SCCS/s.foo.c || fail
+cat <<EOF > WANT
+rmgone: file src/foo.c is in tip gone file, but not in committed gone
+rmgone: failed to remove some files
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N check rmgone won\'t remove edited files ......................$NL
+bk commit $Q -y'commit gone' || fail
+bk rmgone 2> ERR && fail -f ERR
+cat <<EOF > WANT
+rmgone: file src/foo.c has modifications
+rmgone: failed to remove some files
+EOF
+cmpfiles WANT ERR
+echo OK
+
+echo $N check rmgone won\'t remove files with pending deltas .........$NL
+bk delta $Q -l -ypending foo.c
+bk rmgone 2> ERR && fail -f ERR
+cat <<EOF > WANT
+rmgone: file src/foo.c has pending deltas
+rmgone: failed to remove some files
+EOF
+cmpfiles WANT ERR
+echo OK
+
+echo $N rmgone -n doesn\'t change anything ...........................$NL
+bk stripdel $Q -r+ foo.c || fail
+bk rmgone -n >OUT || fail -f OUT
+cat <<EOF > WANT
+WILL DELETE: src/foo.c
+EOF
+cmpfiles WANT OUT
+bk _test -f SCCS/s.foo.c || fail
+echo OK
+
+echo $N rmgone shouldn\'t allow BK_GONE ..............................$NL
+BK_GONE=foo bk rmgone 2>ERR && fail -f ERR
+cat <<EOF > WANT
+rmgone: not supported with BK_GONE in environment
+rmgone: failed to remove some files
+EOF
+cmpfiles WANT ERR
+echo OK
+
+echo $N now test rmgone .............................................$NL
+bk rmgone $Q || fail
+bk _test -f SCCS/s.foo.c && fail
+test -f foo.c && fail
+bk _test -f SCCS/p.foo.c && fail
+bk _test -f SCCS/d.foo.c && fail
 echo OK
 
 echo $N check rmgone in a file with spaces in the name ..............$NL
 bk -R gone $Q "`bk prs -hr1.0 -d:ROOTKEY: 'file with space'`"
-if bk _test ! -f SCCS/s."file with space"; then echo failed; exit 1; fi
-bk rmgone $Q
-if bk _test -f SCCS/s."file with space"; then echo failed; exit 1; fi
+bk commit $Q -y'commit gone' || fail
+bk _test -f SCCS/s."file with space" || fail
+bk rmgone $Q || fail
+bk _test -f SCCS/s."file with space" && fail
+echo OK
+
+echo $N Nested rmgone with dandling gone deltas .....................$NL
+cd "$HERE"
+nested nest
+bk gate -r $Q
+bk portal -r $Q
+for h in file1 gcc/file2 gdb/file3
+do	echo hi > $h
+	bk new $Q $h
+done
+bk commit $Q -y'add files' || fail
+
+bk clone $Q . ../base || fail
+bk rm file1 gcc/file2 gdb/file3 || fail
+bk commit $Q -y'delete' || fail
+
+for h in . gcc gdb
+do
+	(cd $h
+	 bk -rBitKeeper/deleted prs -r+ -hnd:ROOTKEY: | bk gone $Q - || fail
+	 )
+done
+bk commit $Q -y'update gone' || fail
+bk clone $Q . ../copy || fail
+
+fGCC=`bk gfiles gcc/BitKeeper/deleted`
+fGDB=`bk gfiles gdb/BitKeeper/deleted`
+fPROD=`bk gfiles BitKeeper/deleted`
+
+# rollback to before gone
+bk undo $Q -fsr+ || fail
+
+SFILE=`bk sfiles BitKeeper/deleted`
+KEY=`bk prs -r+ -hnd:ROOTKEY: "$SFILE"`
+bk get $Q -S BitKeeper/etc/gone
+grep -q "$KEY" BitKeeper/etc/gone || fail should have key
+bk _test -f "$SFILE" || fail should have sfile
+
+# rmgone shouldn't delete anything because gone is dangling
+bk rmgone -q 2>OUT && fail
+bk _test -f "$SFILE" || fail should have sfile
+cat <<EOF > WANT
+rmgone: file $fGCC is in tip gone file, but not in committed gone
+rmgone: file $fGDB is in tip gone file, but not in committed gone
+rmgone: file $fPROD is in tip gone file, but not in committed gone
+rmgone: failed to remove some files
+EOF
+cmpfiles OUT WANT
+# without -q
+bk rmgone >OUT 2>&1 && fail -f OUT
+cat <<EOF > WANT
+rmgone: file $fGCC is in tip gone file, but not in committed gone
+rmgone: file $fGDB is in tip gone file, but not in committed gone
+rmgone: file $fPROD is in tip gone file, but not in committed gone
+rmgone: failed to remove some files
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N Nested gone with modified files .............................$NL
+bk pull $Q ../copy || fail
+bk -A | grep deleted | while read h
+do	bk edit $Q $h
+	echo junk >> $h
+done
+bk rmgone -n > OUT 2>&1 && fail -f OUT
+cat <<EOF > WANT
+rmgone: file $fGCC has modifications
+rmgone: file $fGDB has modifications
+rmgone: file $fPROD has modifications
+rmgone: failed to remove some files
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N Now real nested rmgone ......................................$NL
+bk unedit $fGCC $fGDB $fPROD || fail
+bk -A diffs
+bk rmgone >OUT || fail -f OUT
+bk _test -f "$SFILE" && fail sfile should be gone
+cat <<EOF > WANT
+DELETED: $fGCC
+DELETED: $fGDB
+DELETED: $fPROD
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N Now push the rmgone cset ....................................$NL
+
+# about we did the following sequence
+# 1) we created one cset that deleted a bunch of files
+# 2) another cset the added those files to gone
+# 3) ran rmgone
+
+# now push this to a baseline from before the deletes
+
+bk clone $Q ../base ../target || fail
+bk push $Q ../target || fail
+cd ../target
+# the tree is valid
+
+# repocheck runs in parallel so we need to sort output
+bk repocheck $Q 2>ERR2 || fail
+sort < ERR2 > ERR
+cat <<EOF >WANT
+Marked gone (bk help chk1): file1
+Marked gone (bk help chk1): file2
+Marked gone (bk help chk1): file3
+EOF
+cmpfiles ERR WANT
+
+# but the files are in the wrong place (never got the delete deltas)
+bk -U > GOT
+cat <<EOF > WANT
+gcc/file2
+gdb/file3
+file1
+EOF
+cmpfiles WANT GOT
+
+# the cset file thinks there are deleted
+bk rset -ahl+ --show-gone | sed -n 's/\/..\//\/xx\//;s/~.*//p' > GOT
+cat <<EOF > WANT
+BitKeeper/deleted/xx/file1
+gcc/BitKeeper/deleted/xx/file2
+gdb/BitKeeper/deleted/xx/file3
+EOF
+cmpfiles WANT GOT
+
+# and finally 'bk rmgone' can remove them
+bk rmgone > GOT || fail -f GOT
+cat <<EOF > WANT
+DELETED: gcc/file2
+DELETED: gdb/file3
+DELETED: file1
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Now pull into repo with merge in gone\'d files ...............$NL
+cd ../base
+
+bk edit $Q file1 gcc/file2
+echo work >> file1
+echo more work >> gcc/file2
+bk ci $Q -l -y'been workin boss' file1 gcc/file2 || fail
+bk commit $Q -yworkin || fail
+
+# oddly enough this works
+bk pull $Q ../nest 2>ERR || fail -f ERR
+cat <<EOF >WANT
+Marked gone (bk help chk1): file2
+Marked gone (bk help chk1): file3
+Marked gone (bk help chk1): file1
+EOF
+cmpfiles ERR WANT
+# XXX repocheck is busted and generates no output on fast machines
+#bk repocheck $Q 2>ERR || fail
+bk -er check -ac 2>ERR || fail
+cmpfiles ERR WANT
+
+# and we can remove the trash
+bk rmgone >GOT || fail
+cat <<EOF > WANT
+DELETED: gcc/file2
+DELETED: gdb/file3
+DELETED: file1
+EOF
+cmpfiles WANT GOT
 echo OK

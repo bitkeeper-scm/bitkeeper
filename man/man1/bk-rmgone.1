@@ -5,7 +5,7 @@
 bk rmgone \- remove files having keys in the gone file
 .SH SYNOPSIS
 .B bk rmgone
-.[B] \-npq
+.[B] \-nqS
 .SH DESCRIPTION
 .LP
 The
@@ -13,28 +13,30 @@ The
 command removes the sfiles and any gfiles associated
 with the keys listed in the gone file.
 .LP
-S-files may be removed and their keys added to the gone file with
-the gone command.  When the ChangeSet containing changes to the
-gone file is pushed/pulled from another repository \*(BK will issue
-warnings indicating that you have sfiles matching things in the
-gone file.  The
+Sfiles may be removed and their keys added to the gone file with
+the gone command.
+When the ChangeSet containing changes to the gone file is
+pushed/pulled from another repository \*(BK will issue warnings
+indicating that you have files matching things in the gone file.
+The
 .B bk rmgone
-command may be used to remove the files
-in question and thus permanently stop the warnings.
+command may be used to remove the files in question and thus
+permanently stopping the warnings.
 .SH OPTIONS
-.TP
+.TP \-\-standalone
 .B \-n
 Dry run.  Just print out the files that would be removed.
 .tp
-.B \-p
-Prompt before removing each file.  Entering
-.Q y
-or
-.Q Y
-will delete the file.
-.tp
 .B \-q
 Run quietly.
+.tp
+.B \-S
+.tp
+.B \-\-standalone
+In a nested collection the
+.B bk rmgone
+command normally remove all sfiles marked as gone in all components.
+With this option only the current component is checked for gone sfiles.
 .SH WARNING
 This command cannot be undone.
 .SH "SEE ALSO"

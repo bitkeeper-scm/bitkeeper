@@ -357,6 +357,7 @@ restore
 _reviewmerge
 rm
 rmdel
+rmgone
 root
 rset
 sane
