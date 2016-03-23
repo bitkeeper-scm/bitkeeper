@@ -728,6 +728,7 @@ _chmod() {		# /* doc 2.0 */
 	MODE=$1
 	shift
 	ROOT=`bk root -R`
+	test $? -eq 0 || exit 1
 	rm -f "$ROOT/BitKeeper/tmp/err$$"
 	bk gfiles ${1+"$@"} | while read i
 	do	test "X`bk gfiles -c $i`" = X || {

@@ -32,6 +32,11 @@ checkperm()
     esac
 }
 
+echo $N Check that chmod correctly fails outside a repo .............$NL
+touch foo
+bk chmod 0777 foo 2>${DEV_NULL} && fail
+echo OK
+
 commercial project
 echo $N Check in an executable file .................................$NL
 touch prog
