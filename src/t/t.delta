@@ -320,7 +320,9 @@ echo OK
 
 echo $N Make sure checkout:last preserves modtime if no keyword .....$NL
 bk commit $Q -ysnap || fail
-bk clone --compat $Q . ../compat || fail
+# if SCCS dirs, then timestamps managed.
+# Might as well ASCII too as that is the real case for Make, emacs, etc.
+bk clone --compat --no-bk-sfile --sccsdirs $Q . ../compat || fail
 bk fix -c || fail
 cd "$HERE"/compat
 bk edit $Q BitKeeper/etc/config
