@@ -21,11 +21,22 @@
 #include "range.h"
 #include "cfg.h"
 
+/* error values */
+#define	FIX_CKSUM	1	/* fix SUM() */
+#define	BAD_CKSUM	2
+#define	FIX_GRAPH	3	/* fix redundant merge */
+#define	BAD_GRAPH	4
+#define	BAD_SFILE	5
+#define	FIX_ADDCNT	6	/* fix a/d/s counts */
+#define	NUM_ERRS	7
+
 private	int	do_chksum(int fd, int off, int *sump);
 private	int	chksum_sccs(char **files, char *offset);
 private	int	do_file(char *file, int off);
 private	u32	badCutoff(sccs *s);
 private	void	dumpMaxfail(sccs *s, ser_t old, ser_t new, int diffcount);
+private	int	fileResum(sccs *s, ser_t d, int diags, int fix, int safefix);
+private	int	chkMerge(sccs *s, ser_t d, int diags, int fix);
 
 /*
  * checksum - check and/or regenerate the checksums associated with a file.
@@ -35,15 +46,20 @@ checksum_main(int ac, char **av)
 {
 	sccs	*s;
 	ser_t	d;
-	int	doit = 0, bk4 = 0;
+	int	bk4 = 0;
 	char	*name;
-	int	fix = 0, diags = 0, bad = 0, do_sccs = 0, ret = 0, spin = 0;
+	int	fix = 0, diags = 0, do_sccs = 0, ret = 0, spin = 0;
+	int	safefix = 0;
 	int	c, i;
 	char	*off = 0;
 	char	*rev = 0;
 	ticker	*tick = 0;
+	longopt	lopts[] = {
+		{ "safe-fix", 330 },
+		{ 0, 0 }
+	};
 
-	while ((c = getopt(ac, av, "4cfpr;s|v", 0)) != -1) {
+	while ((c = getopt(ac, av, "4cfpr;s|v", lopts)) != -1) {
 		switch (c) {
 		    case '4': bk4 = 1; break;	/* obsolete */
 		    case 'c': break;	/* obsolete */
@@ -52,17 +68,21 @@ checksum_main(int ac, char **av)
 		    case 's': do_sccs = 1; off = optarg; break;
 		    case 'p': spin = 1; break;
 		    case 'v': diags++; break;			/* doc 2.0 */
+		    case 330: safefix = 1; break;
 		    default: bk_badArg(c, av);
 		}
 	}
+	if (fix) safefix = 1;
 
 	if (bk4 && diags) fprintf(stderr, "Running checksum in bk4\n");
 
 	if (do_sccs) return (chksum_sccs(&av[optind], off));
 
-	cmdlog_lock(fix ? CMD_WRLOCK : CMD_RDLOCK);
+	cmdlog_lock(safefix ? CMD_WRLOCK : CMD_RDLOCK);
 	for (name = sfileFirst("checksum", &av[optind], 0);
 	    name; name = sfileNext()) {
+		int	cnt[NUM_ERRS] = {0};
+
 		s = sccs_init(name, 0);
 		unless (s) continue;
 		unless (HASGRAPH(s)) {
@@ -76,7 +96,6 @@ checksum_main(int ac, char **av)
 			    av[0], s->sfile);
 			goto next;
 		}
-		doit = bad = 0;
 		/* should this be changed to use the range code? */
 		if (rev) {
 			unless (d = sccs_findrev(s, rev)) {
@@ -85,16 +104,19 @@ checksum_main(int ac, char **av)
 				    av[0], rev, s->gfile);
 				goto next;
 			}
-			c = sccs_resum(s, d, diags, fix);
-			if (c & 1) doit++;
-			if (c & 2) bad++;
+			c = fileResum(s, d, diags, fix, safefix);
+			if (c == BAD_SFILE) goto next;
+			assert(c < NUM_ERRS);
+			++cnt[c];
 		} else {
 			if (CSET(s)) {
-				c = cset_resum(s, diags, fix, spin, 0);
+				/* No safe fixes in cset file */
+				c = cset_resum(
+				    s, diags, fix, spin, 0);
 				if (fix) {
-					doit = c;
+					cnt[FIX_CKSUM] += c;
 				} else {
-					bad = c;
+					cnt[BAD_CKSUM] += c;
 				}
 			} else {
 				if (spin) {
@@ -103,10 +125,12 @@ checksum_main(int ac, char **av)
 					    TABLE(s) + 1);
 				}
 				for (i = 0, d = TABLE(s); d >= TREE(s); d--) {
-					c = sccs_resum(s, d, diags, fix);
+					c = fileResum(
+					    s, d, diags, fix, safefix);
 					if (tick) progress(tick, ++i);
-					if (c & 1) doit++;
-					if (c & 2) bad++;
+					if (c == BAD_SFILE) goto next;
+					assert(c < NUM_ERRS);
+					++cnt[c];
 				}
 				if (tick) {
 					progress_done(tick, 0);
@@ -115,17 +139,31 @@ checksum_main(int ac, char **av)
 				}
 			}
 		}
-		if (diags && fix) {
-			fprintf(stderr,
-			    "%s: fixed bad metadata in %d deltas\n",
-			    s->gfile, doit);
+		if (diags) {
+			char	*msgs[] = {
+				0,
+				"fixed bad metadata",
+				"bad metadata",
+				"fixed bad graph",
+				"bad graph",
+				0, // bad sfile
+				"fixed bad add/delete/same count"
+			};
+			c = 0;
+			for (i = 1; i < NUM_ERRS; i++) {
+				unless (cnt[i]) continue;
+
+				fprintf(stderr, "%s: %s in %d deltas\n",
+				    s->gfile, msgs[i], cnt[i]);
+				c += cnt[i];
+			}
+			unless (c) {
+				fprintf(stderr, "%s: no problems found\n",
+				    s->gfile);
+			}
 		}
-		if (diags && !fix) {
-			fprintf(stderr,
-			    "%s: bad metadata in %d deltas\n",
-			    s->gfile, bad);
-		}
-		if ((doit || !s->cksumok) && fix) {
+		if (cnt[FIX_CKSUM] || cnt[FIX_GRAPH] ||
+		    cnt[FIX_ADDCNT] || !s->cksumok) {
 			unless (sccs_restart(s)) { perror("restart"); exit(1); }
 			if (bk4) for (d = TABLE(s); d >= TREE(s); d--) {
 				SORTSUM_SET(s, d, SUM(s, d));
@@ -140,15 +178,21 @@ checksum_main(int ac, char **av)
 			}
 			unless (bk4) features_set(s->proj, FEAT_SORTKEY, 1);
 		}
-		if (bad && !ret) ret = 1;
+		if ((cnt[BAD_CKSUM] || cnt[BAD_GRAPH]) && !ret) ret = 1;
 next:		sccs_free(s);
 	}
 	if (sfileDone() && !ret) ret = 1;
 	return (ret);
 }
 
-int
-sccs_resum(sccs *s, ser_t d, int diags, int fix)
+/*
+ * Look for checksum errors for a certain delta of a file
+ *
+ * Return:
+ *    0  or error code from top of file
+ */
+private	int
+fileResum(sccs *s, ser_t d, int diags, int fix, int safefix)
 {
 	int	err = 0;
 	char	before[43];	/* 4000G/4000G/4000G will fit */
@@ -165,14 +209,14 @@ sccs_resum(sccs *s, ser_t d, int diags, int fix)
 			fprintf(stderr,
 			    "Bad tag checksum %d:0 in %s|=%u\n",
 			    SUM(s, d), s->gfile, d);
-			return (2);
+			return (BAD_CKSUM);
 		}
 		if (diags > 1) {
 			fprintf(stderr, "Corrected %s:=%u %u->0\n",
 			    s->sfile, d, SUM(s, d));
 		}
 		SUM_SET(s, d, 0);
-		return (0);
+		return (FIX_CKSUM);
 	}
 	if (CSET(s) && (diags <= 1) && !fix) {
 		u32	sum;
@@ -184,7 +228,7 @@ sccs_resum(sccs *s, ser_t d, int diags, int fix)
 			fprintf(stderr,
 			    "Bad checksum %05u:%05u in %s|%s\n",
 			    want, sum, s->gfile, REV(s, d));
-			return (2);
+			return (BAD_CKSUM);
 		}
 		return (0);
 	}
@@ -207,14 +251,14 @@ sccs_resum(sccs *s, ser_t d, int diags, int fix)
 			fprintf(stderr, "Bad symlink checksum %05u:%05u "
 			    "in %s|%s\n",
 			    SUM(s, e), sum, s->gfile, REV(s, d));
-			return (2);
+			return (BAD_CKSUM);
 		} else {
 			if (diags > 1) {
 				fprintf(stderr, "Corrected %s:%s %d->%d\n",
 				    s->sfile, REV(s, d), SUM(s, d), sum);
 			}
 			SUM_SET(s, d, sum);
-			return (1);
+			return (FIX_CKSUM);
 		}
 	}
 
@@ -227,7 +271,7 @@ sccs_resum(sccs *s, ser_t d, int diags, int fix)
 	    REV(s, d), 0, 0, 0, GET_SUM|GET_SHUTUP|SILENT, 0, 0)) {
 		fprintf(stderr, "get of %s:%s failed, skipping it.\n",
 		    s->gfile, REV(s, d));
-		return (4);
+		return (BAD_SFILE);
 	}
 
 	sprintf(before, "\001s %d/%d/%d\n", ADDED(s, d), DELETED(s, d), SAME(s, d));
@@ -252,7 +296,7 @@ sccs_resum(sccs *s, ser_t d, int diags, int fix)
 			fprintf(stderr,
 			    "Bad a/d/s %s:%s in %s|%s\n",
 			    &before[3], &after[3], s->gfile, REV(s, d));
-			err = 2;
+			err = BAD_CKSUM;
 #endif
 		}
 		else {
@@ -265,7 +309,7 @@ sccs_resum(sccs *s, ser_t d, int diags, int fix)
 			ADDED_SET(s, d, s->added);
 			DELETED_SET(s, d, s->deleted);
 			SAME_SET(s, d, s->same);
-			err = 1;
+			err = FIX_ADDCNT;
 		}
 	}
 
@@ -277,6 +321,11 @@ sccs_resum(sccs *s, ser_t d, int diags, int fix)
 	e = sccs_getCksumDelta(s, d);
 	want = e ? SUM(s, e) : 0;
 	if (want == s->dsum) return (err);
+	/* 'err' gets overwritten to return checksum error */
+	if (MERGE(s, d)) {
+		assert(d == e);
+		if (err = chkMerge(s, d, diags, safefix)) return (err);
+	}
 	unless (fix) {
 		if (d != e) {
 			fprintf(stderr,
@@ -288,22 +337,88 @@ sccs_resum(sccs *s, ser_t d, int diags, int fix)
 			    "Bad checksum %05u:%05u in %s|%s\n",
 			    SUM(s, d), s->dsum, s->gfile, REV(s, d));
 		}
-		return (2);
+		return (BAD_CKSUM);
 	}
 	if (d != e) {
 		fprintf(stderr,
 		    "Not fixing bad checksum in baseline %s|%s\n",
 		    s->gfile, e ? REV(s, e) : "0");
-		return (2);
+		return (BAD_CKSUM);  // note: 'fix' set, but doesn't repair
 	}
 	if (diags > 1) {
 		fprintf(stderr, "Corrected %s:%s %d->%d\n",
 		    s->sfile, REV(s, d), SUM(s, d), s->dsum);
 	}
 	SUM_SET(s, d, s->dsum);
-	return (1);
+	return (FIX_CKSUM);
 }
 
+int
+sccs_resum(sccs *s, ser_t d, int diags, int fix)
+{
+	assert(!fix);
+	return (fileResum(s, d, diags, fix, 0));
+}
+
+/*
+ * bk-1 .. bk-6 gave random checksum to !ADDED && !HAS_CLUDES
+ * bk-7 added BKMERGE and added !MERGE to the random conditions.
+ * Some old files had merges with random checksums.
+ * bk-7 reported those as checksum errors.
+ * The code below recognizes this and with -f | --safe-fix
+ * will remove the merge parent, restoring the randomness
+ */
+private	int
+chkMerge(sccs *s, ser_t d, int diags, int fix)
+{
+	int	convert = BKMERGE(s);
+	int	prune = 0;
+	sccs	*scopy = 0;
+
+	if (convert) {
+		/* bloat a read only copy */
+		scopy = s;
+		s = sccs_init(scopy->sfile, SILENT|INIT_MUSTEXIST);
+		assert(s);
+		graph_convert(s, 0);
+	}
+	prune = !HAS_CLUDES(s, d);
+	if (convert) {
+		sccs_free(s);	/* toss bloated copy; fix real one */
+		s = scopy;
+		scopy = 0;
+		if (prune && HAS_CLUDES(s, d)) {
+			/* No known way to produce this */
+			fprintf(stderr,
+			    "%s: Cannot fix checksum\n", s->gfile);
+			fprintf(stderr,
+			    "Please write support@bitkeeper.com "
+			    "with the following:\n"
+			    "%s|%u %s\n",
+			    s->gfile, d, CLUDES(s, d));
+			exit (1);
+		}
+	}
+	if (prune) {
+		if (fix) {
+			if (diags > 1) {
+				fprintf(stderr,
+				    "Removing unneeded merge parent "
+				    "%s|%s -> %s\n",
+				    s->gfile, REV(s, d),
+				    REV(s, MERGE(s, d)));
+			}
+			MERGE_SET(s, d, 0);
+			return (FIX_GRAPH);
+		}
+		fprintf(stderr,
+		    "Unneeded merge parent %s|%s -> %s\n",
+		    s->gfile, REV(s, d),
+		    REV(s, MERGE(s, d)));
+		return (BAD_GRAPH);
+	}
+	return (0);
+}
 
 /*
  * Calculate the same checksum as is used in BitKeeper.

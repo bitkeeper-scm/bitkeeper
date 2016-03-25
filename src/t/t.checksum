@@ -41,8 +41,8 @@ bk checksum -r+ g1 g2 || fail
 bk checksum g1 g2 || fail
 bk checksum -v g1 g2 2> GOT || fail
 cat <<EOF > WANT
-g1: bad metadata in 0 deltas
-g2: bad metadata in 0 deltas
+g1: no problems found
+g2: no problems found
 EOF
 checkfiles WANT GOT
 echo OK
@@ -95,6 +95,18 @@ bk checksum ChangeSet || fail
 echo OK
 }
 
+test -d "$TESTDATA/bad_checksum" && {
+echo $N Test removing a merge parent relationship to fix sum ........$NL
+cd "$HERE"
+bk clone $Q "$TESTDATA/bad_checksum" bad
+cd bad
+bk checksum BitKeeper/etc/logging_ok 2> ERR && fail -f ERR
+grep -q 'Unneeded merge parent BitKeeper/etc/logging_ok' ERR || fail -f ERR
+bk checksum --safe-fix BitKeeper/etc/logging_ok
+bk checksum BitKeeper/etc/logging_ok || fail
+echo OK
+}
+
 echo $N Test for specific checksum to be bad ........................$NL
 cd "$HERE"/project
 bk checksum -r+ b1 || fail
@@ -120,10 +132,10 @@ echo OK
 echo $N Test for finding a bad checksum in a list of files ..........$NL
 bk checksum -v g1 b1 g2 2> GOT && fail
 cat <<EOF > WANT
-g1: bad metadata in 0 deltas
+g1: no problems found
 Bad checksum 00451:00450 in b1|1.1
 b1: bad metadata in 1 deltas
-g2: bad metadata in 0 deltas
+g2: no problems found
 EOF
 checkfiles WANT GOT
 echo OK
@@ -155,7 +167,7 @@ bk admin -z ChangeSet
 bk checksum -r+ ChangeSet || fail
 bk checksum -vr+ ChangeSet 2> GOT || fail
 cat <<EOF > WANT
-ChangeSet: bad metadata in 0 deltas
+ChangeSet: no problems found
 EOF
 checkfiles WANT GOT
 echo OK
@@ -172,12 +184,14 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Fix the files ...............................................$NL
-bk checksum -fv b1 ChangeSet g1 g2 b2 2> GOT || fail
+bk checksum -v --safe-fix b1 ChangeSet g1 g2 b2 2> GOT && fail -f GOT
+grep -q "bad metadata" GOT || fail -f GOT
+bk checksum -fv b1 ChangeSet g1 g2 b2 2> GOT || fail -f GOT
 cat <<EOF > WANT
 b1: fixed bad metadata in 1 deltas
 ChangeSet: fixed bad metadata in 1 deltas
-g1: fixed bad metadata in 0 deltas
-g2: fixed bad metadata in 0 deltas
+g1: no problems found
+g2: no problems found
 b2: fixed bad metadata in 1 deltas
 EOF
 checkfiles WANT GOT

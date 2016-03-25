@@ -900,7 +900,7 @@ applyCsetPatch(sccs *s, int *nfound, int newFile)
 	ser_t	top;
 	ser_t	remote_tagtip = 0;
 	int	n = 0;
-	int	c, j;
+	int	j;
 	int	psize = *nfound;
 	int	confThisFile;
 	FILE	*csets = 0, *f;
@@ -1234,8 +1234,7 @@ markup:
 	} else if (!BAM(s)) {
 		for (d = TABLE(s); d >= TREE(s); d--) {
 			unless ((FLAGS(s, d) & D_SET) && !TAG(s, d)) continue;
-			c = sccs_resum(s, d, 0, 0);
-			if (c & 2) {
+			if (sccs_resum(s, d, 0, 0)) {
 				getMsg("takepatch-chksum", 0, '=', stderr);
 				goto err;
 			}

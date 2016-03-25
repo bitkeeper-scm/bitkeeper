@@ -33,6 +33,7 @@ encourage the use of this command with the
 option unless you are very sure of what you are doing.
 .SH OPTIONS
 .TP \-s[\*<off\*>]
+.TP \-\-safe\-fix
 .B \-f
 fix any missing or incorrect checksums.
 .tp
@@ -49,6 +50,10 @@ If
 is 8, then this generates the same checksum as the per file checksum.
 If there are no file arguments, reads data from stdin (note: differs from
 other options which obey the normal \*(BK file expansion rules).
+.tp
+.B \-\-safe\-fix
+Only do fixes which do not alter the deltakey.
+The fix removes an unneeded merge parent.
 .tp
 .B \-v
 be verbose.
