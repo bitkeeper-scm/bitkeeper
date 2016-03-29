@@ -1,0 +1,243 @@
+# Copyright 2016 BitMover, Inc
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Flush out the 4 calls to tagmerge
+# Tag parents are always the newer is parent (no topo sort like graph)
+# parent shifts about
+# no conflict - tag parent - ie, newer tip
+# pick local - local D node for tag
+# pick remote - remote D node for tag
+# push to merge - tag graph merge with parent being local D tag (arbitrary)
+#   followed by the tag in the D merge, but only one tag
+# two tag conflicts assert.
+
+#     Type serial parent merge tagParent tagMerge
+dspec=':DT:-:DS:-:DP:-:MGP:-:TAG_PSERIAL:-:TAG_MSERIAL:'
+
+echo $N Merge with no conflict and analyze tag graph merge ..........$NL
+commercial project
+bk clone $Q . ../copy
+touch foo
+bk new $Q foo
+bk commit $Q -f
+bk tag $Q P1
+cd ../copy
+touch bar
+bk new $Q bar
+bk commit $Q -f
+bk tag $Q C1
+bk pull $Q -R
+bk resolve $Q -4
+bk --cd=RESYNC changes -r1.1.. -and"$dspec" > GOT
+# Note: T7 has parent of T6, which is the newer tag parent: PTAG
+cat <<EOF > WANT
+D-8-3-5--
+T-7-6-0-6-4
+T-6-5-0--
+D-5-2-0--
+T-4-3-0--
+D-3-2-0--
+EOF
+cmpfiles WANT GOT
+bk abort -f
+echo OK
+
+echo $N Merge with conflict and pick local ..........................$NL
+bk tag $Q P1
+bk pull $Q -R
+echo l | bk resolve $Q -4 2> ERR || fail -f ERR
+bk --cd=RESYNC changes -r1.1.. -and"$dspec" > GOT
+# T8 parent is local D5
+cat <<EOF > WANT
+D-9-3-5--
+T-8-7-0-7-4
+T-7-5-0-6-
+T-6-5-0--
+D-5-2-0--
+T-4-3-0--
+D-3-2-0--
+EOF
+cmpfiles WANT GOT
+bk abort -f
+echo OK
+
+echo $N Merge with conflict and pick remote .........................$NL
+bk tag $Q P1
+bk pull $Q -R
+echo r | bk resolve $Q -4 2> ERR || fail -f ERR
+bk --cd=RESYNC changes -r1.1.. -and"$dspec" > GOT
+# T8 parent is remote D3
+cat <<EOF > WANT
+D-9-3-5--
+T-8-3-0-7-4
+T-7-5-0-6-
+T-6-5-0--
+D-5-2-0--
+T-4-3-0--
+D-3-2-0--
+EOF
+cmpfiles WANT GOT
+bk abort -f
+echo OK
+
+echo $N Merge with conflict and pick merge ..........................$NL
+bk tag $Q P1
+bk pull $Q -R
+echo m | bk resolve $Q -4 2> ERR || fail -f ERR
+bk --cd=RESYNC changes -r1.1.. -and"$dspec" > GOT
+# Signature here is to have T8 parent be local tip D5 (arbitrary)
+# Then to also dup the tag in D9 and tag graph parent to T8
+cat <<EOF > WANT
+D-9-3-5-8-
+T-8-7-0-7-4
+T-7-5-0-6-
+T-6-5-0--
+D-5-2-0--
+T-4-3-0--
+D-3-2-0--
+EOF
+cmpfiles WANT GOT
+bk abort -f
+echo OK
+
+echo $N Do two merge conflicts and try all combos ...................$NL
+bk --cd=../project tag $Q C1
+rm -f GOT
+for first in l m r
+do	for second in l m r
+	do	bk pull $Q -R
+		printf "$first\n$second\n" \
+		    | bk resolve $Q -4 2> ERR || fail -f ERR
+		echo "$first $second" >> GOT
+		bk --cd=RESYNC changes -r1.1.. -and"$dspec" >> GOT
+		bk abort -f
+	done
+done
+cat <<'EOF' > WANT
+l l
+D-10-3-5--
+T-9-5-0-8-7
+T-8-3-0-4-
+T-7-5-0-6-
+T-6-5-0--
+D-5-2-0--
+T-4-3-0--
+D-3-2-0--
+l m
+D-10-3-5-9-
+T-9-8-0-8-7
+T-8-3-0-4-
+T-7-5-0-6-
+T-6-5-0--
+D-5-2-0--
+T-4-3-0--
+D-3-2-0--
+l r
+D-10-3-5--
+T-9-8-0-8-7
+T-8-3-0-4-
+T-7-5-0-6-
+T-6-5-0--
+D-5-2-0--
+T-4-3-0--
+D-3-2-0--
+m l
+D-11-3-5-10-
+T-10-5-0-9-
+T-9-8-0-8-7
+T-8-3-0-4-
+T-7-5-0-6-
+T-6-5-0--
+D-5-2-0--
+T-4-3-0--
+D-3-2-0--
+m m
+D-10-3-5-9-
+T-9-8-0-8-7
+T-8-3-0-4-
+T-7-5-0-6-
+T-6-5-0--
+D-5-2-0--
+T-4-3-0--
+D-3-2-0--
+m r
+D-10-3-5-9-
+T-9-8-0-8-7
+T-8-3-0-4-
+T-7-5-0-6-
+T-6-5-0--
+D-5-2-0--
+T-4-3-0--
+D-3-2-0--
+r l
+D-11-3-5--
+T-10-5-0-9-
+T-9-3-0-8-7
+T-8-3-0-4-
+T-7-5-0-6-
+T-6-5-0--
+D-5-2-0--
+T-4-3-0--
+D-3-2-0--
+r m
+D-10-3-5-9-
+T-9-3-0-8-7
+T-8-3-0-4-
+T-7-5-0-6-
+T-6-5-0--
+D-5-2-0--
+T-4-3-0--
+D-3-2-0--
+r r
+D-10-3-5--
+T-9-3-0-8-7
+T-8-3-0-4-
+T-7-5-0-6-
+T-6-5-0--
+D-5-2-0--
+T-4-3-0--
+D-3-2-0--
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N See that two tags have same meta_ser and are picked .........$NL
+printf "m\nm\n" | bk pull $Q 2> ERR || fail -f ERR
+cd ../project
+touch castle
+bk new $Q castle
+bk commit $Q -f
+bk tag $Q C1
+bk tag $Q P1
+bk pull $Q -R ../copy
+printf "r\nr\n" | bk resolve $Q -4 2 2> ERR || fail -f ERR
+bk --cd=RESYNC changes -r1.1.. -and"$dspec" > GOT
+# The top to pick parent D10 which has 2 tags in on meta_ser
+cat <<'EOF' > WANT
+T-15-10-0-14-
+T-14-10-0-13-10
+T-13-11-0-12-
+T-12-11-0-8-
+D-11-3-0--
+D-10-3-5-9-
+T-9-8-0-8-7
+T-8-3-0-4-
+T-7-5-0-6-
+T-6-5-0--
+D-5-2-0--
+T-4-3-0--
+D-3-2-0--
+EOF
+cmpfiles WANT GOT
+echo OK

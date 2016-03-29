@@ -71,17 +71,16 @@ t_local(resolve *rs)
 {
 	tags	*t = (tags *)rs->opaque;
 
-	if (n == 1) {
+	/*
+	 * If the "right" one is later, that's what will be hit in
+	 * the symbol table anyway, don't add another node.
+	 */
+	if (t->mlocal < t->mremote) {
 		if (sccs_tagMerge(rs->s, t->local, t->name)) {
 			rs->opts->errors = 1;
 		}
-	} else {
-		/*
-		 * If the "right" one is later, that's what will be hit in
-		 * the symbol table anyway, don't add another node.
-		 */
-		if ((t->mlocal < t->mremote)
-		    && (sccs_tagLeaf(rs->s, t->local, t->mlocal, t->name))) {
+	} else if (n == 1) {
+		if (sccs_tagMerge(rs->s, 0, 0)) {
 			rs->opts->errors = 1;
 		}
 	}
@@ -93,14 +92,16 @@ t_remote(resolve *rs)
 {
 	tags	*t = (tags *)rs->opaque;
 
-	if (n == 1) {
+	/*
+	 * If the "right" one is later, that's what will be hit in
+	 * the symbol table anyway, don't add another node.
+	 */
+	if (t->mlocal > t->mremote) {
 		if (sccs_tagMerge(rs->s, t->remote, t->name)) {
 			rs->opts->errors = 1;
 		}
-	} else {
-		/* see t_local */
-		if ((t->mlocal > t->mremote)
-		    && (sccs_tagLeaf(rs->s, t->remote, t->mremote, t->name))) {
+	} else if (n == 1) {
+		if (sccs_tagMerge(rs->s, 0, 0)) {
 			rs->opts->errors = 1;
 		}
 	}
@@ -147,7 +148,7 @@ t_merge(resolve *rs)
 		return (0);
 	}
 	/* close the graph, doesn't matter which side, we're adding a new tag */
-	if (sccs_tagMerge(rs->s, t->local, 0)) {
+	if (sccs_tagMerge(rs->s, 0, 0)) {
 		rs->opts->errors = 1;
 		return (1);
 	}

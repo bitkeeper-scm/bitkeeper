@@ -88,6 +88,7 @@ typedef	struct {
 
 void	walkrevs_setup(wrdata *wr, sccs *s, ser_t *blue, ser_t *red, u32 flags);
 ser_t	walkrevs(wrdata *wr);
+ser_t	walktagrevs(wrdata *wr);
 void	walkrevs_prune(wrdata *wr, ser_t d);
 void	walkrevs_done(wrdata *wr);
 ser_t	*walkrevs_collect(sccs *s, ser_t *blue, ser_t *red, u32 flags);

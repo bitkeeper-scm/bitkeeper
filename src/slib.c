@@ -82,7 +82,6 @@ private	int	weaveDiffs(fweave *w, ser_t d, FILE *diffs, int *fixdelp);
 private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private	void	parseConfig(char *buf, MDBM *db, int stripbang);
-private	void	taguncolor(sccs *s, ser_t d);
 private	void	prefix(sccs *s, ser_t d, int whodel,
 		    u32 flags, int lines, u32 seq, char *name, FILE *out);
 private	int	sccs_meta(char *m, sccs *s, ser_t parent,
@@ -2875,7 +2874,8 @@ sccs_tagMerge(sccs *s, ser_t d, char *tag)
 	int	len, rc;
 
 	if (sccs_tagleaves(s, &l1, &l2)) assert("too many tag leaves" == 0);
-	assert(l1 && l2);
+	assert(l1);
+	if (!l2 && !d) return (0);	/* no need to merge */
 	/*
 	 * If we are automerging, then use the later of the two tag tips.
 	 */
@@ -2884,19 +2884,21 @@ sccs_tagMerge(sccs *s, ser_t d, char *tag)
 		d = (DATE(s, l1) > DATE(s, l2)) ? l1 : l2;
 	}
 	sccs_sdelta(s, l1, k1);
-	sccs_sdelta(s, l2, k2);
+	k2[0] = 0;
+	if (l2) sccs_sdelta(s, l2, k2);
 	len = strlen(k1) + strlen(k1) + 2000;
 	if (tag) len += strlen(tag);
 	buf = malloc(len);
 	/* XXX - if we ever remove |ChangeSet| from the keys fix P below */
 	sprintf(buf,
 	    "M 0.0 %s%s %s@%s 0 0 0/0/0\nP ChangeSet\n"
-	    "%s%s%ss g\ns l\ns %s\ns %s\n%s\n",
+	    "%s%s%ss g\ns l\ns %s%s%s\n%s\n",
 	    time2date(tt), sccs_zone(tt), sccs_user(), sccs_host(),
 	    tag ? "S " : "",
 	    tag ? tag : "",
 	    tag ? "\n" : "",
-	    k1, k2,
+	    k1,
+	    l2 ? "\ns " : "", k2,
 	    "------------------------------------------------");
 	assert(strlen(buf) < len);
 	rc = resyncMeta(s, d, buf);
@@ -2939,39 +2941,33 @@ sccs_tagLeaf(sccs *s, ser_t d, ser_t md, char *tag)
 	return (rc);
 }
 
-/*
- * This is called after sccs_tagcolor() which colors all nodes
- * related to a node.  It colors them RED and BLUE.
- * 
- * This code is used to uncolor the RED nodes that lie in the
- * intersection of histories of 2 different leaves.
- * If it finds a RED and BLUE, it uncolors RED.
- * If it find a BLUE but not RED, then it uncolors the BLUE.
- * For this trick to work, we need to go in table order rather
- * than recurse, because doing this, when we uncolor BLUE, we
- * know that we will not need to use it again.  The same is not
- * true if we did recurse.
- *
- * When calling sccs_tagcolor again, it will only color
- * RED and BLUE the nodes not in the intersection.
- */
-private void
-taguncolor(sccs *s, ser_t d)
+private	void
+symIterate_setup(wrdata *wr, symbol **symp)
 {
-	ser_t	p;
-	int	j;
+	walktagrevs(wr);	/* prime the flow into wr->d */
+	++(*symp);		/* back up one before largest */
+}
 
-	assert(d);
-	FLAGS(s, d) |= D_BLUE;
-	for (; d >= TREE(s); d--) {
-		unless (FLAGS(s, d) & D_BLUE) continue;
-		if (FLAGS(s, d) & D_RED) {
-			FLAGS(s, d) &= ~D_RED;
-			continue;
+/*
+ * Find the next line up between graph walk and symlist
+ */
+private	int
+symIterate(wrdata *wr, symbol **symp)
+{
+	symbol	*sym = *symp;
+	ser_t	d = wr->d;
+	sccs	*s = wr->s;
+
+	*symp = --sym;	/* started one back; always go forward */
+	while (d && (sym > s->symlist)) {
+		if (d == sym->meta_ser) return (d);
+		if (d > sym->meta_ser) {
+			d = walktagrevs(wr);
+		} else {
+			*symp = --sym;
 		}
-		EACH_PTAG(s, d, p, j) FLAGS(s, p) |= D_BLUE;
-		FLAGS(s, d) &= ~D_BLUE;
 	}
+	return (0);
 }
 
 /*
@@ -2982,92 +2978,49 @@ MDBM	*
 sccs_tagConflicts(sccs *s)
 {
 	MDBM	*db = 0;
-	ser_t	l1 = 0, l2 = 0, md;
-	symbol	*sy1, *sy2;
-	u8	*left, *right;
-	int	i, j;
+	hash	*h;
+	ser_t	l1 = 0, l2 = 0;
+	wrdata	wr;
+	ser_t	d;
+	symbol	*sym;
+	struct	tcpair {
+		symbol	*sym;
+		u32	color;
+	} *pair;
 	char	buf[MAXREV*3];
 
 	if (sccs_tagleaves(s, &l1, &l2)) assert("too many tag leaves" == 0);
 	unless (l2) return (0);
 
-	left = calloc(nLines(s->symlist)+1, sizeof(u8));
-	right = calloc(nLines(s->symlist)+1, sizeof(u8));
+	h = hash_new(HASH_U32HASH, sizeof(u32), sizeof(struct tcpair));
+	db = mdbm_mem();
+	sym = s->symlist + nLines(s->symlist);
+	walkrevs_setup(&wr, s, L(l1), L(l2), WR_EITHER);
+	symIterate_setup(&wr, &sym);
+	while (d = symIterate(&wr, &sym)) {
+		assert((sym > s->symlist) && (sym->meta_ser == d));
 
-	/* We always return an MDBM even if it is just an automerge case
-	 * with nothing to merge.
-	 */
-	unless (db) db = mdbm_mem();
-	sccs_tagcolor(s, l1);
-	taguncolor(s, l2);	/* uncolor the intersection */
-	EACH_REVERSE(s->symlist) {
-		sy1 = &s->symlist[i];
-		md = sy1->meta_ser;
-		unless (FLAGS(s, md) & D_RED) continue;
-		FLAGS(s, md) &= ~D_RED;
-		left[i] = 1;
-	}
-	sccs_tagcolor(s, l2);
-	EACH_REVERSE(s->symlist) {
-		sy1 = &s->symlist[i];
-		md = sy1->meta_ser;
-		unless (FLAGS(s, md) & D_RED) continue;
-		FLAGS(s, md) &= ~D_RED;
-		right[i] = 1;
-	}
+		if (pair = hash_insert(h,
+		    &sym->symname, sizeof(sym->symname), 0, sizeof(*pair))) {
+			pair->color = wr.color;
+			pair->sym = sym;
+			continue;
+		}
+		/* done or same color, don't care */
+		pair = (struct tcpair *)h->vptr;
+		if (!pair->color || (pair->color == wr.color)) continue;
 
-	/*
-	 * OK, for each symbol only in the left, see if there is one of the
-	 * same name only in the right.
-	 *
-	 * Imagine a tree like so:
-	 *	[ 1.5, "foo" ]
-	 *	[ 1.6, "foo" ]	[ 1.5.1.1, "foo" ]
-	 *	[ 1.7, "foo" ]
-	 *
-	 * We want to store 1.7,1.5.1.1 as the conflict.
-	 */
-	EACH_REVERSE(s->symlist) {
-		unless (left[i] && !right[i]) continue;
-		sy1 = &s->symlist[i];
-		EACH_REVERSE_INDEX(s->symlist, j) {
-			sy2 = &s->symlist[j];
-			unless (right[j] && !left[j] &&
-			    (streq(SYMNAME(s, sy1), SYMNAME(s, sy2)))) {
-			    	continue;
-			}
-			/*
-			 * Quick check to see if they added the same symbol
-			 * twice to the same rev.
-			 */
-			if (sy1->ser == sy2->ser) continue;
-			/*
-			 * OK, we really have a conflict, save it.
-			 * If it is already there, make sure that our version
-			 * has later serials on both sides.
-			 */
-			sprintf(buf,
-			    "%d %d", sy1->meta_ser, sy2->meta_ser);
-			if (mdbm_store_str(db,
-			    SYMNAME(s, sy1), buf, MDBM_INSERT)) {
-				char	*old;
-				int	a = 0, b = 0;
+		pair->color = 0;	/* ignore future lookups */
+		/* two tags on same item, not a conflict */
+		if (pair->sym->ser == sym->ser) continue;
 
-				old  = mdbm_fetch_str(db, SYMNAME(s, sy1));
-				assert(old);
-				sscanf(old, "%d %d", &a, &b);
-				assert(a && b);
-				if ((a > sy1->meta_ser) ||
-				    (b > sy2->meta_ser)) {
-				    	continue;
-				}
-				mdbm_store_str(db,
-				    SYMNAME(s, sy1), buf, MDBM_REPLACE);
-		    	}
+		sprintf(buf, "%d %d", pair->sym->meta_ser, sym->meta_ser);
+		if (mdbm_store_str(db, SYMNAME(s, sym), buf, MDBM_INSERT)) {
+			assert(0);
 		}
 	}
-	free(left);
-	free(right);
+	walkrevs_done(&wr);
+	hash_free(h);
 	return (db);
 }
 

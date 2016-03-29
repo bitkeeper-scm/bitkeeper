@@ -478,7 +478,6 @@ walkrevs_setup(wrdata *wr, sccs *s, ser_t *blue, ser_t *red, u32 flags)
 		wr->last = TABLE(s);
 		EACH(red) {
 			d = red[i];
-			if (TAG(s, d)) continue;
 			if (wr->d < d) wr->d = d;
 			markDelta(wr, d, D_RED);
 		}
@@ -489,7 +488,6 @@ walkrevs_setup(wrdata *wr, sccs *s, ser_t *blue, ser_t *red, u32 flags)
 	}
 	EACH(blue) {
 		d = blue[i];
-		if (TAG(s, d)) continue;
 		if (wr->d < d) wr->d = d;
 		markDelta(wr, d, D_BLUE);
 	}
@@ -554,6 +552,46 @@ walkrevs_done(wrdata *wr)
 	for (--d; (d >= TREE(s)) && (d >= wr->last); d--) {
 		FLAGS(s, d) &= color;
 	}
+}
+
+private	void
+markTagParents(wrdata *wr, ser_t d, u32 color)
+{
+	ser_t	e;
+	int	j;
+
+	EACH_PTAG(wr->s, d, e, j) markDelta(wr, e, color);
+}
+
+/* return next serial in requested set */
+ser_t
+walktagrevs(wrdata *wr)
+{
+	sccs	*s = wr->s;
+	ser_t	d = wr->d;
+
+	/* compute RED - BLUE by default */
+	for (--d; (d >= TREE(s)) && (wr->marked > 0); --d) {
+		if (wr->all) {
+			markDelta(wr, d, D_RED);
+			// XXX: when we store s->lasttagtip, do this:
+			// if (d <= s->lasttagtip) { all = 0; wr->marked--; }
+		}
+		unless (wr->color = (FLAGS(s, d) & wr->mask)) continue;
+		FLAGS(s, d) &= ~wr->color; /* clear bits */
+		markTagParents(wr, d, wr->color);
+		if (wr->color != wr->mask) {
+			wr->marked--;
+			if (((wr->color & wr->want) == wr->want) ||
+			    (wr->flags & WR_EITHER)) {
+				if (wr->flags & WR_TIP) {
+					markTagParents(wr, d, wr->mask);
+				}
+				return (wr->d = d);
+			}
+		}
+	}
+	return (0);
 }
 
 /* common loops */
