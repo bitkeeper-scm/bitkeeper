@@ -235,6 +235,16 @@ bk cset $Q -x+
 # While we are here, see that multiple tags can exist on a node
 bk tag $Q TAG1
 bk tag $Q TAG2
+# Set up next test
+cd ../tag-copy
+touch x
+bk new $Q x
+bk commit $Q -f
+bk tag $Q TAG3
+bk tag $Q TAG4
+bk pull $Q
+cd ../tag-master
+# resume this test ...
 # collapse tag graph onto real graph
 echo "$BAR" | bk csetprune $Q --tag-csets || fail
 bk changes -ar+ -d:TAGS: > GOT
@@ -245,6 +255,23 @@ EOF
 cmpfiles WANT GOT
 # tickle the bug
 echo "$FOO" | bk csetprune $Q || fail
+echo OK
+
+dspec=':DT:-:DS:-:DP:-:MGP:-:TAG_PSERIAL:-:TAG_MSERIAL:$if(:TAG_ISLEAF:){-leaf}'
+echo $N Test collapsing with two tag tips ...........................$NL
+cd ../tag-copy
+bk tag $Q -r1.0 TAG1   # will be 'tag delete' in the future (probably)
+echo "$BAR" | bk csetprune $Q --tag-csets || fail
+bk changes -and"$dspec" > GOT
+cat <<'EOF' > WANT
+D-6-4-5-4-5-leaf
+D-5-2-0--
+D-4-3-0--
+D-3-2-0--
+D-2-1-0--
+D-1-0-0--
+EOF
+cmpfiles WANT GOT
 echo OK
 
 # have tip change 'b' and remove 'a' and check for tip reparented

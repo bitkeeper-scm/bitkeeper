@@ -37,7 +37,6 @@ typedef	struct
 {
 	int	i;		/* index into a lines array typically */
 	char	*freeme;	/* last value if it needs to be freed */
-	symbol	*sym;		/* symbol link list current state */
 } nextln;
 
 /* Globals for dspec code below. */
@@ -691,20 +690,18 @@ again:
 		return (g.s->text[state->i]);
 	}
 
-	if (strneq(kw.dptr, "SYMBOL", kw.dsize) ||
-	    strneq(kw.dptr, "TAG", kw.dsize)) {
-		if (state->i == 1) {
-			unless (g.d && (FLAGS(g.s, g.d) & D_SYMBOLS)) return (0);
-			state->sym = g.s->symlist + nLines(g.s->symlist);
-		} else {
-			--state->sym;
+	if (((kw.dsize == 6) && strneq(kw.dptr, "SYMBOL", kw.dsize)) ||
+	    ((kw.dsize == 3) && strneq(kw.dptr, "TAG", kw.dsize))) {
+		symbol	*sym;
+		int	i;
+
+		i = 0;
+		sym = 0;
+		while (sym = sccs_walkTags(sym, g.s, g.d, 0, g.s->prs_all)) {
+			if (++i == state->i) break;
 		}
-		while ((state->sym > g.s->symlist) && (g.d !=
-		    (g.s->prs_all ? state->sym->meta_ser : state->sym->ser))) {
-			--state->sym;
-		}
-		if (state->sym == g.s->symlist) return (0);
-		return (SYMNAME(g.s, state->sym));
+		unless (sym) return (0);
+		return (SYMNAME(g.s, sym));
 	}
 
 	/* Handle all single-line keywords. */

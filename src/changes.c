@@ -1503,19 +1503,18 @@ want(sccs *s, ser_t e)
 
 	unless (opts.all || !TAG(s, e)) return (0);
 	if (opts.tagOnly) {
-		unless (FLAGS(s, e) & D_SYMBOLS) return (0);
-		if (opts.tsearch) {
-			match = 0;
-			EACHP_REVERSE(s->symlist, sym) {
-				unless (sym->ser == e) continue;
-				if (search_either(SYMNAME(s, sym),
-					opts.search)) {
-					match = 1;
-					break;
-				}
+		match = 0;
+		sym = 0;
+		while (sym =
+		    sccs_walkTags(sym, s, e, 0, opts.all)) {
+			if (opts.tsearch &&
+			    !search_either(SYMNAME(s, sym), opts.search)) {
+				continue;
 			}
-			unless (match) return (0);
+			match = 1;
+			break;
 		}
+		unless (match) return (0);
 	}
 	if (opts.notusers) {
 		char	*u = USER(s, e);

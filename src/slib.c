@@ -2773,7 +2773,7 @@ int
 sccs_tagleaves(sccs *s, ser_t *l1, ser_t *l2)
 {
 	ser_t	d;
-	symbol	*sym, *iter;
+	symbol	*sym;
 	int	first = 1;
 	char	*arev = 0;
 	char	*brev = 0;
@@ -2788,13 +2788,7 @@ sccs_tagleaves(sccs *s, ser_t *l1, ser_t *l2)
 	aname = bname = "?";
 	for (d = TABLE(s); d >= TREE(s); d--) {
 		unless (SYMLEAF(s, d)) continue;
-		sym = 0;
-		EACHP_REVERSE(s->symlist, iter) {
-			if (iter->meta_ser == d) {
-				sym = iter;
-				break;
-			}
-		}
+		sym = sccs_walkTags(0, s, d, 0, 1);
 		unless (*l1) {
 			arev = REV(s, d);
 			if (sym) aname = SYMNAME(s, sym);
@@ -2941,35 +2935,6 @@ sccs_tagLeaf(sccs *s, ser_t d, ser_t md, char *tag)
 	return (rc);
 }
 
-private	void
-symIterate_setup(wrdata *wr, symbol **symp)
-{
-	walktagrevs(wr);	/* prime the flow into wr->d */
-	++(*symp);		/* back up one before largest */
-}
-
-/*
- * Find the next line up between graph walk and symlist
- */
-private	int
-symIterate(wrdata *wr, symbol **symp)
-{
-	symbol	*sym = *symp;
-	ser_t	d = wr->d;
-	sccs	*s = wr->s;
-
-	*symp = --sym;	/* started one back; always go forward */
-	while (d && (sym > s->symlist)) {
-		if (d == sym->meta_ser) return (d);
-		if (d > sym->meta_ser) {
-			d = walktagrevs(wr);
-		} else {
-			*symp = --sym;
-		}
-	}
-	return (0);
-}
-
 /*
  * Return an MDBM ${value} = rev,rev
  * for each value that was added by both the left and the right.
@@ -2994,12 +2959,11 @@ sccs_tagConflicts(sccs *s)
 
 	h = hash_new(HASH_U32HASH, sizeof(u32), sizeof(struct tcpair));
 	db = mdbm_mem();
-	sym = s->symlist + nLines(s->symlist);
 	walkrevs_setup(&wr, s, L(l1), L(l2), WR_EITHER);
-	symIterate_setup(&wr, &sym);
-	while (d = symIterate(&wr, &sym)) {
-		assert((sym > s->symlist) && (sym->meta_ser == d));
-
+	sym = 0;
+	while (d = walktagrevs(&wr)) {
+	    /* Want active in two contexts, so disable active in walkTags */
+	    while (sym = sccs_walkTags(sym, s, d, 0, 1)) {
 		if (pair = hash_insert(h,
 		    &sym->symname, sizeof(sym->symname), 0, sizeof(*pair))) {
 			pair->color = wr.color;
@@ -3018,67 +2982,11 @@ sccs_tagConflicts(sccs *s)
 		if (mdbm_store_str(db, SYMNAME(s, sym), buf, MDBM_INSERT)) {
 			assert(0);
 		}
+	    }
 	}
 	walkrevs_done(&wr);
 	hash_free(h);
 	return (db);
-}
-
-private void
-unvisit(sccs *s, ser_t d)
-{
-	ser_t	p;
-	int	j;
-
-	unless (d) return;
-	unless (FLAGS(s, d) & D_BLUE) return;
-	FLAGS(s, d) &= ~D_BLUE;
-
-	EACH_PTAG(s, d, p, j) unvisit(s, p);
-}
-
-private ser_t
-tagwalk(sccs *s, ser_t d)
-{
-	ser_t	p;
-	int	j;
-
-	unless (d) return (D_INVALID);	/* this is an error case */
-
-	/* note that the stripdel path has used D_RED */
-	if (FLAGS(s, d) & D_BLUE) return(0);
-	FLAGS(s, d) |= D_BLUE;
-
-	EACH_PTAG(s, d, p, j) if (tagwalk(s, p)) return (d);
-	return (0);
-}
-
-private int
-checktags(sccs *s, ser_t leaf, int flags)
-{
-	ser_t	d, e;
-
-	unless (leaf) return(0);
-	unless (d = tagwalk(s, leaf)) {
-		unvisit(s, leaf);
-		return (0);
-	}
-	if (d == D_INVALID) {
-		verbose((stderr,
-		    "Corrupted tag graph in %s\n", s->gfile));
-		return (1);
-	}
-	unless ((e = PTAG(s, d)) && FLAGS(s, e)) {
-		verbose((stderr,
-		    "Cannot find serial %u, tag parent for %s:%u, in %s\n",
-			PTAG(s, d), REV(s, d), d, s->gfile));
-	} else {
-		assert(MTAG(s, d));
-		verbose((stderr,
-		    "Cannot find serial %u, tag parent for %s:%u, in %s\n",
-			MTAG(s, d), REV(s, d), d, s->gfile));
-	}
-	return (1);
 }
 
 int
@@ -3144,29 +3052,226 @@ sccs_badTag(char *tag, u32 flags)
 }
 
 /*
+ * Walk all tag entries that point at a given delta.
+ *  sym:    last data returned by iterator (0 == start new)
+ *  active: only non-deleted tags
+ *  meta:   only symbols pointing at this tag delta
+ *
+ * Typical usage:
+ *
+ *    sym = 0;
+ *    while (sym = sccs_walkTags(sym, s, d, !opts.tagDeletes, opts.prs_all)) {
+ *         printf("S %s\n", SYMNAME(s, sym));
+ *    }
+ */
+symbol *
+sccs_walkTags(symbol *sym, sccs *s, ser_t d, int active, int meta)
+{
+	hash	*h;
+	int	i, j, n;
+	u32	**listp, *list;
+	u32	off;
+
+#define	HIBIT	0x80000000ul
+
+	unless (SYMBOLS(s, d)) return (0);
+	unless (h = s->symhash) {
+		hash    *names;
+
+		names = hash_new(HASH_U32HASH, sizeof(u32), sizeof(u32));
+		h = s->symhash =
+		    hash_new(HASH_U32HASH, sizeof(u32), sizeof(u32 *));
+		EACHP_REVERSE(s->symlist, sym) {
+			off = sym - s->symlist;
+			/*
+			 * After a name has been used once, everything
+			 * else using that name is deleted. Also if
+			 * the tag points at 1.0 it is deleted.
+			 */
+			if (!hash_insertU32U32(names, sym->symname, 1) ||
+			    (sym->ser == TREE(s))) {
+				off |= HIBIT;
+			}
+
+			/* Remember the symbols seen at each serial */
+			hash_insert(h, &sym->ser,
+			    sizeof(u32), 0, sizeof(u32 *));
+			addArray((u32 **)h->vptr, &off);
+			if (sym->meta_ser != sym->ser) {
+				hash_insert(h, &sym->meta_ser,
+				    sizeof(u32), 0, sizeof(u32 *));
+				addArray((u32 **)h->vptr, &off);
+			}
+		}
+		hash_free(names);
+	}
+	unless (listp = hash_fetch(h, &d, sizeof(d))) return (0);
+	list = *listp;
+	if (sym && (sym > s->symlist)) {
+		n = sym - s->symlist;
+		EACH_INDEX(list, j) if ((list[j] & ~HIBIT) == n) {
+			sym = 0;
+			break;
+		}
+		assert(!sym);	/* you broke the rules */
+		++j;		/* already did that one */
+	} else {
+		j = 1;
+	}
+	EACH_START(j, list, i) {
+		if (active && (list[i] & HIBIT)) continue; /* no deletes */
+		sym = s->symlist + (list[i] & ~HIBIT);
+		if (d != (meta ? sym->meta_ser : sym->ser)) continue;
+		return (sym);
+	}
+	return (0);
+#undef	HIBIT
+}
+
+/*
  * Check tag graph integrity.
+ * Try to assure everything follows the expected patterns
+ *
+ * D_TAG is the old d->type != 'D' (or == 'R')
+ * D_META is if D_TAG and graph entry has BK meta data, like tag info.
+ * Kind of confusing because D_TAG without D_META is not a tag, but
+ * an SCCS removed delta.  Removed deltas aren't suppored in BK mode,
+ * so check meta here, but it should always be set if tag is set.
  */
 private int
-checkTags(sccs *s, int flags)
+checkTags(sccs *s, u32 flags)
 {
-	ser_t	l1 = 0, l2 = 0;
+	ser_t	d, p;
+	int	nleaf = 0;	/* SYMLEAF markers, must have 1, can have 2 */
+	int	i;
+	int	saw_symgraph = 0;
 	symbol	*sym;
-	int	bad = 0;
+
+#define	tagassert(s) if (unlikely(!(s))) {			       \
+	fprintf(stderr, "%s: serial %d doesn't match '%s' at %s:%d\n", \
+		prog, d, #s, __FILE__, __LINE__);		       \
+	return (128);						       \
+    }
 
 	/* Nobody else has tags */
 	unless (CSET(s)) return (0);
 
-	/* Make sure that tags don't contain weird characters */
-	EACHP_REVERSE(s->symlist, sym) {
-		unless (sym->symname) continue;
-		/* XXX - not really "check" all the time */
-		if (sccs_badTag(SYMNAME(s, sym), flags)) bad = 1;
+	if (i = nLines(s->symlist)) {
+		sym = s->symlist + i;
+		FLAGS(s, sym->ser) |= D_BLUE;
+	} else {
+		sym = 0;
 	}
-	if (bad) return (128);
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		if (SYMGRAPH(s, d)) {
+			if (FLAGS(s, d) & D_GREEN) {
+				// child of a previous SYMGRAPH node
+				FLAGS(s, d) &= ~D_GREEN;
+				tagassert(!SYMLEAF(s, d));
+			} else {
+				// a tip of SYMGRAPH
+				if (SYMLEAF(s, d)) {
+					++nleaf;
+					tagassert(nleaf <= 2);
+				}
+			}
+			// nodes marked 'gone', skip some tests
+			unless (FLAGS(s, d) & D_GONE) {
+				saw_symgraph = 1;
 
-	if (sccs_tagleaves(s, &l1, &l2)) return (128);
-	if (checktags(s, l1, flags) || checktags(s, l2, flags)) return (128);
+				// my parents should be in graph
+				EACH_PTAG(s, d, p, i) {
+					tagassert(SYMGRAPH(s, p));
+					FLAGS(s, p) |= D_GREEN;
+				}
+			}
+			if (MTAG(s, d)) {
+				// a tag merge doesn't always need a
+				// new symbol. It might be picking the
+				// newest or just closing unrelated
+				// tips.
+			} else {
+				// but a normal tag should always have
+				// a symbol
+				tagassert(SYMBOLS(s, d));
+			}
+		} else {
+			tagassert(!PTAG(s, d));
+			tagassert(!MTAG(s, d));
+			tagassert(!SYMLEAF(s, d));
+			// if (TAG(s, d)) then old-style tag
+		}
+		if (TAG(s, d)) {
+			tagassert(FLAGS(s, d) & D_META);
 
+			unless (SYMGRAPH(s, d)) {
+				// bk used tag graph starting in 2000
+				tagassert(SYMBOLS(s, d));
+				tagassert(DATE(s, d) < yearSecs[2010-1970]);
+			}
+			if (p = PARENT(s, d)) {
+				if (TAG(s, p)) {
+					// must be tag merge
+					tagassert(PTAG(s, d) == p);
+					tagassert(MTAG(s, d));
+					tagassert(SYMGRAPH(s, p));
+					tagassert(!SYMBOLS(s, d));
+				} else {
+					// this might be tag merge
+					tagassert(SYMBOLS(s, p));
+				}
+			}
+			tagassert(!MERGE(s, d));
+		} else {
+			/* regular cset */
+			tagassert(!(FLAGS(s, d) & D_META));
+			/* csetprune --tag-csets can make merge */
+			if (!MTAG(s, d) && PTAG(s, d)) {
+				tagassert(SYMBOLS(s, d));
+				tagassert(SYMGRAPH(s, d));
+			}
+		}
+		if (SYMBOLS(s, d)) { /* symlist points at me */
+			if (TAG(s, d)) {
+				tagassert(sym && (d == sym->meta_ser));
+
+				// note sym->ser might be pointing at
+				// at a tag node
+				tagassert(PARENT(s, d) == sym->ser);
+			} else {
+				/*
+				 * I might be either a normal delta or
+				 * a tag/delta combo, but either way
+				 * some ->ser should point here
+				 */
+				tagassert(FLAGS(s, d) & D_BLUE);
+				FLAGS(s, d) &= ~D_BLUE;
+			}
+			while (sym && (d == sym->meta_ser)) {
+				if (sccs_badTag(SYMNAME(s, sym), flags)) {
+					return (128);
+				}
+				--sym;
+				if (sym == s->symlist) {
+					sym = 0;
+				} else if (sym->ser != d) {
+					FLAGS(s, sym->ser) |= D_BLUE;
+				}
+			}
+		} else {
+			tagassert(!sym || (d != sym->meta_ser));
+		}
+		tagassert(!(FLAGS(s, d) & D_BLUE));
+	}
+	if (sym) {
+		fprintf(stderr, "%s: %ld entries on symlist not consumed.\n",
+		    prog, (sym - s->symlist));
+		return (128);
+	}
+	if (saw_symgraph && !nleaf) {
+		fprintf(stderr, "%s: missing SYMLEAF marker.\n", prog);
+		return (128);
+	}
 	return (0);
 }
 
@@ -5103,6 +5208,10 @@ sccs_free(sccs *s)
 	free(s->symlist);
 	sccs_freetable(s);
 	if (s->fullsfile != s->sfile) free(s->fullsfile);
+	if (s->symhash) {
+		EACH_HASH(s->symhash) free(*(u32 **)s->symhash->vptr);
+		hash_free(s->symhash);
+	}
 	if (s->sfile) free(s->sfile);
 	if (s->gfile) free(s->gfile);
 	if (s->defbranch) free(s->defbranch);
@@ -12410,6 +12519,7 @@ scompressGraph(sccs *s)
 					weave_updateMarker(s, e, rkoff, 1);
 				}
 			}
+			FLAGS(s, e) &= ~D_SYMBOLS;
 		}
 		if (FLAGS(s, e) & D_GONE) {
 			/* Then go to end looking for things to tag */
@@ -12457,9 +12567,16 @@ scompressGraph(sccs *s)
 		if (x = remap[sym->meta_ser]) {
 			sym->meta_ser = x;
 			sym->ser = remap[sym->ser];
+			FLAGS(s, x) |= D_SYMBOLS;
+			FLAGS(s, sym->ser) |= D_SYMBOLS;
 		} else {
 			removeArrayN(s->symlist, (sym - s->symlist));
 		}
+	}
+	if (s->symhash) {
+		EACH_HASH(s->symhash) free(*(u32 **)s->symhash->vptr);
+		hash_free(s->symhash);
+		s->symhash = 0;
 	}
 	return (remap);
 }
@@ -15429,11 +15546,8 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		int	j = 0;
 
 		unless (d && (FLAGS(s, d) & D_SYMBOLS)) return (nullVal);
-		EACHP_REVERSE(s->symlist, sym) {
-			unless (d ==
-			    (s->prs_all ? sym->meta_ser : sym->ser)) {
-				continue;
-			}
+		sym = 0;
+		while (sym = sccs_walkTags(sym, s, d, 0, s->prs_all)) {
 			j++;
 			fs("S ");
 			fs(SYMNAME(s, sym));
@@ -15471,7 +15585,6 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	}
 
 	case KW_LOG: /* LOG */ {
-		symbol	*sym;
 		int	len;
 
 		if (HAS_PATHNAME(s, d)) {
@@ -15494,12 +15607,8 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		}
 		fc('\n');
 		unless (d && (FLAGS(s, d) & D_SYMBOLS)) return (strVal);
-		EACHP_REVERSE(s->symlist, sym) {
-			unless (sym->ser == d) continue;
-			fs("  TAG: ");
-			fs(SYMNAME(s, sym));
-			fc('\n');
-		}
+		dspec_eval(out, s, d,
+		    "$each(:TAG:){  TAG: (:TAG:)\n}");
 		fc('\n');
 		return (strVal);
 	}
@@ -15693,12 +15802,10 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		int	j = 0;
 
 		unless (d && (FLAGS(s, d) & D_SYMBOLS)) return (nullVal);
-		EACHP_REVERSE(s->symlist, sym) {
-			unless (d ==
-			    (s->prs_all ? sym->meta_ser : sym->ser)) {
-				continue;
-			}
-			j++;
+
+		sym = 0;
+		while (sym = sccs_walkTags(sym, s, d, 0, s->prs_all)) {
+			++j;
 			fs(SYMNAME(s, sym));
 		}
 		if (j) return (strVal);
@@ -15728,6 +15835,11 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		fs(REV(s, e));
 		return (strVal);
 	}
+
+	case KW_TAG_ISLEAF: /* TAG_ISLEAF */
+		unless (SYMLEAF(s, d)) return (nullVal);
+		fs(REV(s, d));
+		return (strVal);
 
 	case KW_GFILE: /* GFILE */ {
 		if (s->gfile) {
@@ -16735,8 +16847,8 @@ do_patch(sccs *s, ser_t d, int flags, FILE *out)
 	}
 	if (HAS_RANDOM(s, d)) fprintf(out, "R %s\n", RANDOM(s, d));
 	if ((FLAGS(s, d) & D_SYMBOLS) || SYMGRAPH(s, d)) {
-		EACHP_REVERSE(s->symlist, sym) {
-			unless (sym->meta_ser == d) continue;
+		sym = 0;
+		while (sym = sccs_walkTags(sym, s, d, 0, 1)) {
 			fprintf(out, "S %s\n", SYMNAME(s, sym));
 		}
 		if (SYMGRAPH(s, d)) fprintf(out, "s g\n");

@@ -15,9 +15,17 @@
 # Because we use tar xmf we don't check for timestamp errors here.
 unset _BK_DEVELOPER
 
+# old-style tags are only supported if they are older than 2010
+# we take a big hammer and force the beginning of all of these tests
+# to be in the past. When we are done creating old tags we move
+# to the present. (Note: we do end up with repos new new tags in the
+# present and old tags in the past.)
+BK_DATE_TIME_ZONE='2005-02-02 20:20:20-02'
+export BK_DATE_TIME_ZONE
+
 # Tests for tag propogation in new/old protocols.
 echo $N Create initial repository ...................................$NL
-commercial project
+fresh_commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -197,6 +205,7 @@ bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'
 echo delta two >> 'F!O#O$ B%A^R&RR(R)RR'
 bk delta $Q -fywhatever 'F!O#O$ B%A^R&RR(R)RR'
 _BK_NO_TAG_GRAPH=YES bk commit $Q -yopull_cset --tag='NOT-IN-TAG-GRAPH'
+unset BK_DATE_TIME_ZONE
 cd ..
 bk _scat SCCS/s.ChangeSet | grep -q '^.cS[0-9]' && {
 	echo added a tag graph node

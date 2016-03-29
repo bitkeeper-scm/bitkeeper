@@ -316,18 +316,37 @@ int	checking_rmdir(char *dir);
  */
 /* flags that are written to disk (don't renumber) */
 #define	D_INARRAY	0x00000001	/* part of s->slist array */
-#define	D_NONEWLINE	0x00000002	/* this delta has no trailing newline */
+//#define	D_NONEWLINE	0x00000002	/* no trailing newline */
 //#define	D_CKSUM		0x00000004	/* delta has checksum */
 //#define	D_SORTSUM	0x00000008	/* generate a sortSum */
-#define	D_META		0x00000010	/* this is a metadata removed delta */
-#define	D_SYMBOLS	0x00000020	/* delta has one or more symbols */
+
+// in old bk this is type=='M' plus metadata found on cset comments
+// so this is a bk-only delta. So always set for bk tags
+// if D_META, then D_TAGS
+#define	D_META		0x00000010
+
+// marks that this delta or tag has a symbol in s->symlist.
+// The target of both sym->ser and sym->meta_ser get marked with D_SYMBOLS
+// tag merges don't always set D_SYMBOLS
+#define	D_SYMBOLS	0x00000020
 
 #define	D_DANGLING	0x00000080	/* in MONOTONIC file, ahead of chgset */
+
+// Set on tags that are on a separate graph from the csets (also D_META).
+// Also ATT SCCS removed deltas, if no D_META
 #define	D_TAG		0x00000100	/* is tag node old d->type=='R' */
+
+// set on all tags created by bk after 2000. These form a separate graph
+// using PTAG/MTAG. Also non-tags can have SYMGRAPH|SYMBOLS set if they
+// will act as both a commit and a tag.  (bk commit --tag=FOO)
 #define	D_SYMGRAPH	0x00000200	/* if set, I'm a symbol in the graph */
-#define	D_SYMLEAF	0x00000400	/* if set, I'm a symbol with no kids */
-					/* Needed for tag conflicts with 2 */
-					/* open tips, so maintained always */
+
+// The newest tip of the tag graph will be marked with SYMLEAF
+// An older tag graph tip might also have SYMLEAF set after a tag.
+// Note: the tag graph many have many open tips after an undo but only
+// the newest tip is marked with SYMLEAF
+#define	D_SYMLEAF	0x00000400
+
 //#define	D_MODE		0x00000800	/* permissions in MODE(s, d) are valid */
 #define	D_CSET		0x00001000	/* this delta is marked in cset file */
 	/* unused	0x00002000	*/
@@ -638,6 +657,7 @@ typedef struct {
 #define	DANGLING(s, d)	(FLAGS(s, d) & D_DANGLING)
 #define	SYMGRAPH(s, d)	(FLAGS(s, d) & D_SYMGRAPH)
 #define	SYMLEAF(s, d)	(FLAGS(s, d) & D_SYMLEAF)
+#define	SYMBOLS(s, d)	(FLAGS(s, d) & D_SYMBOLS)
 #define	INARRAY(s, d)	(FLAGS(s, d) & D_INARRAY)
 
 #define	KID(s, d)	(s)->kidlist[d].kid
@@ -660,14 +680,14 @@ typedef struct {
 #define	SORTPATH(s,d)	((s)->heap.buf + SORTPATH_INDEX(s, d))
 
 /*
- * Rap on lod/symbols wrt deltas.
+ * Rap on symbols wrt deltas.
  * Both symbols can occur exactly once per delta where delta is a node in
- * the graph.  When a delta is created, it might get a symbol and/or a lod.
+ * the graph.  When a delta is created, it might get a symbol.
  * Later, it might get another one.  These later ones are implemented as
  * metadata deltas (aka removed deltas) which point up to the real delta.
- * So it is an invariant: one node in the graph, one symbol and/or one lod.
+ * So it is an invariant: one node in the graph, one symbol.
  *
- * The sym/lod fields in the delta are for initialization and are extracted
+ * The sym field in the delta are for initialization and are extracted
  * and put into the appropriate lists once the delta is entered in the graph.
  *
  */
@@ -679,7 +699,6 @@ typedef struct {
 typedef	struct symbol {			/* symbolic tags */
 	u32	symname;		/* STABLE */
 	ser_t	ser;			/* delta associated with this one */
-					/* only for absolute revs, not LOD */
 	ser_t	meta_ser;		/* where the symbol lives on disk */
 } symbol;
 
@@ -753,6 +772,7 @@ struct sccs {
 	dextra	*extra;		/* array of extra delta info */
 	symbol	*symlist;	/* array of symbols, oldest first */
 	KIDS	*kidlist;	/* optional kid/sibling data */
+	hash	*symhash;	/* list of active tags pointing at delta */
 	char	*defbranch;	/* defbranch, if set */
 
 	/* struct heap / BKFILE (in essence) */
@@ -1344,6 +1364,7 @@ char	*sccs_zone(time_t tt);
 MDBM	*sccs_tagConflicts(sccs *s);
 int	sccs_tagMerge(sccs *s, ser_t d, char *tag);
 int	sccs_tagleaves(sccs *, ser_t *, ser_t *);
+symbol	*sccs_walkTags(symbol *sym, sccs *s, ser_t d, int active, int meta);
 u8	*sccs_set(sccs *s, ser_t d, ser_t m, char *iLst, char *xLst);
 int	sccs_graph(sccs *s, ser_t d, u8 *map, char **inc, char **exc);
 int	sccs_setCludes(sccs *sc, ser_t d, char *iLst, char *xLst);

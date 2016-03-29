@@ -1418,10 +1418,11 @@ isReachable(sccs *s, ser_t start, ser_t stop)
 private int
 mkTagGraph(sccs *s)
 {
-	ser_t	d, p, m;
+	ser_t	d, p, m, x;
 	int	tips = 0;
 
 	/* in reverse table order */
+	assert(!SYMBOLS(s, TREE(s)));
 	for (d = TREE(s); d <= TABLE(s); d++) {
 		if (FLAGS(s, d) & D_GONE) continue;
 
@@ -1433,7 +1434,6 @@ mkTagGraph(sccs *s)
 		if (p = PARENT(s, d)) {
 			unless (SYMGRAPH(s, p)) p = PTAG(s, p);
 		}
-		m = 0;
 		if (m = MERGE(s, d)) {
 			unless (SYMGRAPH(s, m)) m = PTAG(s, m);
 		}
@@ -1449,16 +1449,22 @@ mkTagGraph(sccs *s)
 			m = 0;
 		}
 		/* if both, but one is contained in other: use newer as p */
-		if (p && m && isReachable(s, p, m)) {
-			if (m > p) p = m;
-			m = 0;
+		if (p && m) {
+			if (isReachable(s, p, m)) {
+				if (m > p) p = m;
+				m = 0;
+			} else if (m < p) {
+				x = p;
+				p = m;
+				m = x;
+			}
 		}
 		/* p and m are now as we would like them.  assert if not */
 		assert(p || !m);
 
 		/* If this has a symbol, it is in tag graph */
 		if (FLAGS(s, d) & D_SYMBOLS) {
-			unless (SYMLEAF(s, d)) tips++;
+			tips++;
 			FLAGS(s, d) |= D_SYMGRAPH | D_SYMLEAF;
 		}
 		/*
@@ -1468,21 +1474,60 @@ mkTagGraph(sccs *s)
 		 */
 		if (m) {
 			assert(p);
-			unless (SYMLEAF(s, d)) tips++;
-			FLAGS(s, d) |= D_SYMGRAPH | D_SYMLEAF;
+			unless (SYMLEAF(s, d)) {
+				tips++;
+				FLAGS(s, d) |= D_SYMGRAPH | D_SYMLEAF;
+			}
 			MTAG_SET(s, d, m);
-			if (SYMLEAF(s, m)) tips--;
-			FLAGS(s, m) &= ~D_SYMLEAF;
+			if (SYMLEAF(s, m)) {
+				tips--;
+				FLAGS(s, m) &= ~D_SYMLEAF;
+			}
 		}
 		if (p) {
 			PTAG_SET(s, d, p);
-			if (SYMGRAPH(s, d)) {
-				if (SYMLEAF(s, p)) tips--;
-				FLAGS(s, p) &= ~D_SYMLEAF;
+			if (SYMLEAF(s, d)) {
+				if (SYMLEAF(s, p)) {
+					tips--;
+					FLAGS(s, p) &= ~D_SYMLEAF;
+				}
 			}
 		}
 	}
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		unless (SYMGRAPH(s, d)) {
+			MTAG_SET(s, d, 0);
+			PTAG_SET(s, d, 0);
+		}
+	}
 	return (tips);
+}
+
+private	sccs	*sort_s;
+
+/* sort meta_ser, low to high with 0's after high */
+private	int
+symclean(const void *a, const void *b)
+{
+	symbol	*sa = (symbol *)a;
+	symbol	*sb = (symbol *)b;
+
+	unless (sa->meta_ser && sb->meta_ser) {
+		/* if either is 0, sort high to low */
+		return (sb->meta_ser - sa->meta_ser);
+	}
+
+	/* if both exist, sort low to high */
+	if (sa->meta_ser != sb->meta_ser) {
+		return (sa->meta_ser - sb->meta_ser);
+	}
+	if (sa->ser != sb->ser) {
+		/* can't happen, because meta_ser == ser */
+		assert(0);
+	}
+	/* dups of tags have been pruned */
+	assert(strcmp(SYMNAME(sort_s, sa), SYMNAME(sort_s, sb)));
+	return(strcmp(SYMNAME(sort_s, sa), SYMNAME(sort_s, sb)));
 }
 
 private void
@@ -1511,8 +1556,10 @@ rebuildTags(sccs *s)
 		md = sym->meta_ser;
 		d = sym->ser;
 		assert(md && d);
-		if (mdbm_store_str(symdb, SYMNAME(s, sym), "", MDBM_INSERT)) {
-			/* no error, just ignoring duplicates */
+		/* XXX: DELETED_TAG() tests SYMBOLS() which has been cleared */
+		if (mdbm_store_str(symdb, SYMNAME(s, sym), "", MDBM_INSERT) ||
+		    (TAG(s, md) && (PARENT(s, md) == TREE(s)))) {
+			/* no error, just ignoring deleted and duplicates */
 			sym->meta_ser = sym->ser = 0;
 			continue;
 		}
@@ -1538,6 +1585,16 @@ rebuildTags(sccs *s)
 		FLAGS(s, d) |= D_SYMBOLS;
 	}
 	/*
+	 * symlist is a persistent data structure.
+	 * sort and prune holes.
+	 */
+	sort_s = s;
+	sortArray(s->symlist, symclean);
+	EACHP_REVERSE(s->symlist, sym) {
+		if (sym->meta_ser) break;
+	}
+	if (s->symlist) truncArray(s->symlist, sym - s->symlist);
+	/*
 	 * Symbols are now marked, but not connected.
 	 * Prepare structure for building symbol graph.
 	 * and D_GONE all 'R' nodes in graph.
@@ -1548,6 +1605,7 @@ rebuildTags(sccs *s)
 		MK_GONE(s, d);
 	}
 	tips = mkTagGraph(s);
+	assert (tips < 2);
 	verbose((stderr, "Tag graph rebuilt with %d tip%s\n",
 		tips, (tips != 1) ? "s" : ""));
 	mdbm_close(symdb);
@@ -1612,7 +1670,7 @@ fixTags(sccs *s)
 			 * XXX: Does the rev need to be altered?
 			 */
 			assert(!TAG(s, md));
-			FLAGS(s, md) |= D_TAG;
+			FLAGS(s, md) |= D_TAG|D_META;
 			FLAGS(s, md) &= ~(D_GONE|D_CSET);
 			ADDED_SET(s, md, 0);
 			DELETED_SET(s, md, 0);
@@ -1667,7 +1725,7 @@ fixTags(sccs *s)
 			 * XXX: Does the rev need to be altered?
 			 */
 			assert(!TAG(s, d));
-			FLAGS(s, d) |= D_TAG;
+			FLAGS(s, d) |= D_TAG|D_META;
 			FLAGS(s, d) &= ~(D_GONE|D_CSET);
 			ADDED_SET(s, d, 0);
 			DELETED_SET(s, d, 0);
