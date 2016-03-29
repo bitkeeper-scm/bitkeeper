@@ -910,3 +910,17 @@ unterminated search pattern: /with \/
 EOF
 cmpfiles WANT ERR
 echo OK
+
+echo $N Test -c restriction .........................................$NL
+cd "$HERE"
+BK_DATE_TIME_ZONE="97/05/20 18:48:16+00:00"
+export BK_DATE_TIME_ZONE
+fresh_commercial proj2
+unset BK_DATE_TIME_ZONE
+touch foo
+bk new $Q foo
+bk commit $Q -f
+REV=`bk changes -nd":REV:" -c-1d`
+WANT=1.2
+test "$REV" = "$WANT" || fail REV should be $WANT not $REV
+echo OK

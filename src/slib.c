@@ -1837,13 +1837,14 @@ sccs_findDate(sccs *sc, char *s, int roundup)
 	 */
 	if (*s == '-') {
 		date = range_cutoff(s+1);
-	} if ((s[0] == '0') && (s[1] == 'x')) {
+	} else if ((s[0] == '0') && (s[1] == 'x')) {
 		/* exact timet, must match */
 		roundup = EXACT;
 		date = (time_t)strtoll(s+2, 0, 16);
 	} else {
 		date = date2time(s, 0, roundup);
 	}
+	T_DEBUG("date: %ld", date);
 
 	/* Walking the table newest .. oldest order */
 	for (tmp = 0, d = TABLE(sc);
