@@ -1131,7 +1131,7 @@ applyCsetPatch(sccs *s, int *nfound, int newFile)
 		if (HAS_SFILE(s)) {
 			sccs_close(s);
 			unlink(s->sfile);
-			sccs_rmEmptyDirs(s->sfile);
+			/* leaving empty dirs to avoid parallel rm races */
 		}
 		goto done;
 	}

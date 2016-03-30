@@ -227,6 +227,11 @@ cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 		}
 	}
 	d = sccs_insertdelta(s, d, serial);
+	/* remap parent.  Needed by the "lineage line up?" section above */
+	for (e = d + 1; e <= TABLE(s); e++) {
+		if ((p = PARENT(s, e)) >= d) PARENT_SET(s, e, p+1);
+		if ((p = MERGE(s, e)) >= d) MERGE_SET(s, e, p+1);
+	}
 	if (d != TABLE(s)) {
 		EACHP_REVERSE(s->symlist, sym) {
 			if (sym->ser >= serial) sym->ser++;
@@ -297,8 +302,7 @@ fix(sccs *s)
 			unless (streq(p, CLUDES(s, d))) CLUDES_SET(s, d, p);
 			ftrunc(f, 0);
 		}
-		if ((e = PARENT(s, d)) > base) PARENT_SET(s, d, SERMAP(e));
-		if ((e = MERGE(s, d)) > base) MERGE_SET(s, d, SERMAP(e));
+		/* parents already remapped in cset_insert */
 		if ((e = PTAG(s, d)) > base) PTAG_SET(s, d, SERMAP(e));
 		if ((e = MTAG(s, d)) > base) MTAG_SET(s, d, SERMAP(e));
 	}
