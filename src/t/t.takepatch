@@ -665,3 +665,29 @@ bk log -nd':GFILE: :ENCODING: :I: :Rn: :Rx:' a-no-strip new-file strip \
     > GOT
 cmpfiles GOT "$HERE/GOT-no-bkmerge"
 echo OK
+
+echo $N Make a patch which some is there and bumps parent serials ...$NL
+cd "$HERE"
+commercial serial-bump
+touch foo
+bk new $Q foo
+bk commit $Q -f
+bk clone $Q . ../serial-bump-copy
+bk parent $Q ../serial-bump-copy
+bk tag $Q BASE
+bk edit $Q foo
+bk delta $Q -fynull foo
+bk commit $Q -f
+cd ../serial-bump-copy
+bk edit $Q foo
+bk delta $Q -fynull foo
+bk commit $Q -f
+bk edit $Q foo
+bk delta $Q -fynull foo
+bk commit $Q -f
+cd ../serial-bump
+bk pull $Q
+bk makepatch -FC -rBASE.. > ../patch
+cd ../serial-bump-copy
+bk takepatch < ../patch || fail
+echo OK

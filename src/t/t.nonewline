@@ -129,7 +129,9 @@ bk _scat x | grep -q '^.E '$SER'$' || {
 echo OK
 
 echo $N No newline corner case with closing E after delete ..........$NL
-cd "$HERE/project"
+cd "$HERE"
+bk clone $Q --downgrade --no-bk-sfile --sccsdirs project oldstyle
+cd oldstyle
 printf "a\nb" > afterdel
 bk new $Q afterdel
 bk edit $Q afterdel
@@ -140,7 +142,7 @@ printf "a\nc\nd\n" > afterdel
 bk delta $Q -y1.3 afterdel || fail
 bk edit $Q -x1.2 afterdel
 bk delta $Q -y1.4 afterdel || fail
-bk _cp SCCS/s.afterdel afterdel.bkup
+bk _scat afterdel > afterdel.bkup
 bk edit $Q afterdel
 printf "a\nb\n" > afterdel
 cp afterdel WANT
@@ -148,6 +150,27 @@ bk delta $Q -y1.4 afterdel || fail
 bk get $Q afterdel
 checkfiles WANT afterdel
 bk checksum afterdel || fail
+echo OK
+
+echo $N Test closing holes does not mess up the redo loop ...........$NL
+# Create holes in files to test keeping s->remap during redo
+# This replace four '4' with '8' and one '5' with '9' upping sum 20
+perl -pe 'BEGIN{binmode(STDOUT)} if (/^\001H(\d+)/) {
+		$ser = ($1 + 20) & 65535;
+		$_ = sprintf("\001H%05d\n", $ser);
+	}
+	if (($pre, $ser, $par) = /^(\001d D .*) (\d+) (\d+)$/) {
+		$ser += 4 if $ser >= 4;
+		$par += 4 if $par >= 4;
+		$_ = "$pre $ser $par\n";
+	} elsif (/^\001([IDE]) 4$/) {
+		$_ = "\001$1 8\n";
+	}' afterdel.bkup > hole
+bk _cp hole SCCS/s.afterdel
+bk edit $Q afterdel
+printf "a\nb\n" > afterdel
+bk delta $Q -y1.4 afterdel || fail
+bk get $Q afterdel || fail
 echo OK
 
 echo $N No newline corner case with closing E before delete .........$NL

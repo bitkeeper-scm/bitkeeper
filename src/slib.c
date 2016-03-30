@@ -2290,7 +2290,6 @@ sccs_abortWrite(sccs *s)
 		unlink(sccsXfile(s, 'x'));
 	}
 	s->outfh = 0;
-	FREE(s->remap);
 	sccs_close(s);
 }
 
