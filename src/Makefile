@@ -43,6 +43,15 @@ else
 	BKFULLHOST := $(shell bk gethost -r)
 endif
 BKHOST := $(shell echo $(BKFULLHOST) | sed 's/\..*//')
+ifeq (0,$(MAKELEVEL))
+ifeq ("",$(HAS_BK))
+	BKTAG := "unknown-non-bk-tree"
+	export BKTAG
+else
+	BKTAG := $(shell bk describe --bk)
+	export BKTAG
+endif
+endif
 
 HERE    := $(shell pwd)
 ROOT	:= $(shell dirname $(HERE))
@@ -476,7 +485,7 @@ ifeq (,$(HAS_BK))
 	$(Q)printf "char *bk_vers = \"%s\";\nchar *bk_utc = \"%s\";\nchar *bk_time = \"%s\";\nchar *bk_tag = \"%s\";\n" "`date +%Y%m%d%H%M%S`" "`date +%Y%m%d%H%M%S`" "`date +%s`" "BOOTSTRAP" >> bk.v
 else
 	$(Q)bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\n' ../ChangeSet >> bk.v
-	$(Q)echo "char *bk_tag = \""`bk describe --bk`"\";" >> bk.v
+	$(Q)echo "char *bk_tag = \"$(BKTAG)\";" >> bk.v
 endif
 	$(Q)echo "char *bk_platform = \""`./utils/bk_version`"\";" >> bk.v
 	$(Q)echo "int test_release = "$(TRIAL)";" >> bk.v
