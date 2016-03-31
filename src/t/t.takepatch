@@ -691,3 +691,92 @@ bk makepatch -FC -rBASE.. > ../patch
 cd ../serial-bump-copy
 bk takepatch < ../patch || fail
 echo OK
+
+echo $N Test that litter is created .................................$NL
+# keep src/bar and keep/foo, everything else should be a null patch
+# the sfio code doesn't delete sfio that already match, so poof/foo
+# is still there and should be pruned.
+cd "$HERE"
+commercial patch-litter
+mkdir -p src/dir
+touch bar foo src/bar src/foo src/dir/bar
+bk new $Q bar foo src/bar src/foo src/dir/bar
+bk commit $Q -f
+bk tag $Q BASE
+mkdir poof keep
+touch poof/foo keep/foo
+bk new $Q poof/foo keep/foo
+bk edit $Q bar foo src/bar src/foo src/dir/bar
+bk delta $Q -fynull bar foo src/bar src/foo src/dir/bar
+bk commit $Q -f
+bk edit $Q src/bar keep/foo
+bk delta $Q -fynull src/bar keep/foo
+bk commit $Q -f
+bk makepatch -F -rBASE.. > patch
+bk undo $Q -sfr+
+bk takepatch < patch
+echo "## files" > GOT
+bk _find RESYNC/.bk >> GOT
+echo "## dirs" >> GOT
+bk _find -type d RESYNC/.bk >> GOT
+cat <<'EOF' > WANT
+## files
+RESYNC/.bk/SCCS/ChangeSet,s
+RESYNC/.bk/keep/SCCS/foo,s
+RESYNC/.bk/src/SCCS/bar,s
+## dirs
+RESYNC/.bk
+RESYNC/.bk/SCCS
+RESYNC/.bk/BitKeeper
+RESYNC/.bk/keep
+RESYNC/.bk/src
+RESYNC/.bk/BitKeeper/deleted
+RESYNC/.bk/BitKeeper/etc
+RESYNC/.bk/BitKeeper/deleted/SCCS
+RESYNC/.bk/BitKeeper/etc/SCCS
+RESYNC/.bk/keep/SCCS
+RESYNC/.bk/src/SCCS
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Create litter when working hard .............................$NL
+rm -fr RESYNC
+_BK_COPY_SFILE=1 bk takepatch < patch
+# leaves foo, bar, src/dir/bar, poof/foo
+echo "## files" > GOT
+bk _find RESYNC/.bk >> GOT
+echo "## dirs" >> GOT
+bk _find -type d RESYNC/.bk >> GOT
+cat <<'EOF' > WANT
+## files
+RESYNC/.bk/SCCS/ChangeSet,s
+RESYNC/.bk/SCCS/bar,s
+RESYNC/.bk/SCCS/foo,s
+RESYNC/.bk/keep/SCCS/foo,s
+RESYNC/.bk/poof/SCCS/foo,s
+RESYNC/.bk/src/SCCS/bar,s
+RESYNC/.bk/src/SCCS/foo,s
+RESYNC/.bk/src/dir/SCCS/bar,s
+## dirs
+RESYNC/.bk
+RESYNC/.bk/SCCS
+RESYNC/.bk/BitKeeper
+RESYNC/.bk/keep
+RESYNC/.bk/poof
+RESYNC/.bk/src
+RESYNC/.bk/BitKeeper/deleted
+RESYNC/.bk/BitKeeper/etc
+RESYNC/.bk/BitKeeper/deleted/SCCS
+RESYNC/.bk/BitKeeper/etc/SCCS
+RESYNC/.bk/keep/SCCS
+RESYNC/.bk/poof/SCCS
+RESYNC/.bk/src/SCCS
+RESYNC/.bk/src/dir
+RESYNC/.bk/src/dir/SCCS
+EOF
+cmpfiles WANT GOT
+# Show that there's no harm in the dup files
+bk resolve $Q || fail
+bk repocheck $Q || fail
+echo OK

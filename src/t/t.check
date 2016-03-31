@@ -356,6 +356,7 @@ chmod +w ff.tmp
 perl - <<'EOF' || fail
 $/ = undef;
 open(F, "ff.tmp");
+binmode(F);
 $ff = <F>;
 close (F);
 $/ = "\n";

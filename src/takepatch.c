@@ -908,6 +908,7 @@ applyCsetPatch(sccs *s, int *nfound, int newFile)
 	char	*topkey = 0;
 	char	csets_in[MAXPATH];
 	char	buf[MAXKEY];
+	char	*resyncFile;
 
 	assert(s);
 	if (CSET(s)) T_PERF("applyCsetPatch(start)");
@@ -921,17 +922,7 @@ applyCsetPatch(sccs *s, int *nfound, int newFile)
 		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",
 		    p->localFile, p->resyncFile, p->pid, p->me);
 	}
-	/*
-	 * XXX: could this be done in cset_write()? As in, do not create
-	 * until it is needed?  This seems to work but may be excess
-	 */
-	if (mkdirf(p->resyncFile) == -1) {
-		if (errno == EINVAL) {
-			getMsg("reserved_name",
-			    p->resyncFile, '=', stderr);
-			return (-1);
-		}
-	}
+	resyncFile = p->resyncFile;
 	if (newFile) {
 		/* good to go */
 	} else if (getenv("_BK_COPY_SFILE")) {
@@ -1011,14 +1002,7 @@ applyCsetPatch(sccs *s, int *nfound, int newFile)
 		fclose(iF); /* dF needs to stick around until write */
 		p = p->next;
 	}
-	unless (*nfound) {
-		if (HAS_SFILE(s)) {
-			sccs_close(s);
-			unlink(s->sfile);
-			/* leaving empty dirs to avoid parallel rm races */
-		}
-		goto done;
-	}
+	unless (*nfound) goto done;
 	/*
 	 * pull -r can propagate a non-tip tag element as the tip.
 	 * We have to mark it here before writing the file out.
@@ -1111,6 +1095,12 @@ applyCsetPatch(sccs *s, int *nfound, int newFile)
 	}
 	if (CSET(s) && (opts->echo == 3)) fputs(", ", stderr);
 	assert(opts->bkmerge == BKMERGE(s));
+	if (mkdirf(resyncFile) == -1) {
+		if (errno == EINVAL) {
+			getMsg("reserved_name", resyncFile, '=', stderr);
+			return (-1);
+		}
+	}
 	if (cset_write(s, (opts->echo == 3), opts->fast)) {
 		SHOUT();
 		fprintf(stderr, "takepatch: can't update %s\n", s->sfile);
