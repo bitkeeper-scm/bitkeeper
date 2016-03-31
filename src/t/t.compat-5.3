@@ -368,6 +368,28 @@ cmpfiles WANT GOT
 bk _scat ChangeSet > GOT || fail
 echo OK
 
+echo $N See that takepatch checkout edit with holes works ...........$NL
+bk clone $Q . ../server
+cd ../server
+bk clone $Q . ../client
+bk edit $Q bar
+bk delta $Q -fynull bar
+bk commit $Q -f
+cd ../client
+bk edit $Q bar
+echo bar > bar
+# The -l is key to the failure, as takepatch called sccs_restart()
+# which reset s->remap
+bk delta $Q -l -ybar bar
+bk commit $Q -f
+bk pull -R $Q
+cp PENDING/* patch
+bk resolve $Q
+# Use old bk to create holes in the table
+$OLDBK/bk unpull $Q -sf
+bk takepatch -j0 -f patch || fail
+echo OK
+
 echo -------------- compat '<->' BK testing with clone, push, pull
 echo $N Set up bkfile/bweave format repo called bkfile ..............$NL
 cd "$HERE"

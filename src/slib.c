@@ -5054,7 +5054,6 @@ sccs_restart(sccs *s)
 		mdbm_close(s->mdbm);
 		s->mdbm = 0;
 	}
-	FREE(s->remap);
 	return (s);
 }
 
