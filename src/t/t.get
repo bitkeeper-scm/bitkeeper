@@ -207,7 +207,7 @@ bk get $Q -Golddate -k -r1.4 date
 bk edit $Q -r1.4 date || fail
 if ! cmp olddate date; then echo Fail; exit 1; fi
 bk delta $Q -y1.4 date || fail
-if [ "`bk prs -r+ -hnd:DI: date`" != '-6,7' ]; then echo Fail; exit 1; fi
+if [ "`bk prs -r+ -hnd:DI: date`" != '-7,6' ]; then echo Fail; exit 1; fi
 rm -f olddate
 bk get $Q -Golddate -k -r1.6 date
 bk edit $Q -r1.6 date || fail

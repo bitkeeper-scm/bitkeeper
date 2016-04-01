@@ -287,12 +287,12 @@ bkify(Graph table[], int size)
 			}
 		}
 		/* see that no x is in both include and exclude */
-		graph.include = sort(graph.include);
+		graph.include = lsort(integer:, decreasing:, graph.include);
 		undef(h);
 		foreach (x in graph.include) {
 			h{x} = 1;
 		}
-		graph.exclude = sort(graph.exclude);
+		graph.exclude = lsort(integer:, decreasing:, graph.exclude);
 		undef(list);
 		foreach (x in graph.exclude) {
 			unless (h{x}) push(&list, x);

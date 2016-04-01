@@ -187,10 +187,10 @@ graph_symdiff(sccs *s, ser_t *leftlist, ser_t right, ser_t **dups, u8 *slist,
 		} else if (((bits & S_DIFF) != 0) ^ activeLeft ^ activeRight) {
 			/* mismatch: update -i or -x */
 			if (activeLeft) {
-				exclude = addSerial(exclude, ser);
+				addArray(&exclude, &ser);
 				activeLeft = 0;
 			} else {
-				include = addSerial(include, ser);
+				addArray(&include, &ser);
 				activeLeft = 1;
 			}
 		}
@@ -288,16 +288,19 @@ graph_symdiff(sccs *s, ser_t *leftlist, ser_t right, ser_t **dups, u8 *slist,
 		EACH(x) {
 			ser = x[i];
 			if (ser & HIBIT) {
-				exclude = addSerial(exclude, ser & ~HIBIT);
+				ser &= ~HIBIT;
+				addArray(&exclude, &ser);
 			} else {
-				include = addSerial(include, ser);
+				addArray(&include, &ser);
 			}
 		}
 	}
 	if (include || exclude) {
 		FILE	*f = fmem();
 
+		sortArray(include, serial_sortrev);
 		EACH(include) sccs_saveNum(f, include[i], 1);
+		sortArray(exclude, serial_sortrev);
 		EACH(exclude) sccs_saveNum(f, exclude[i], -1);
 		p = fmem_peek(f, 0);
 		if (streq(p, HEAP(s, orig))) {

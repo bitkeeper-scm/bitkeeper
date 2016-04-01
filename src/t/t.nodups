@@ -64,7 +64,7 @@ EOF
 cmpfiles WANT ERR
 # flip back
 bk clone $Q --no-bk-merge clean-merges downgrade
-echo +4,5 > WANT
+echo +5,4 > WANT
 for f in foo bar
 do
 	bk _scat project/$f > p.$f

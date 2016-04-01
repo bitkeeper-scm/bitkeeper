@@ -238,7 +238,7 @@ r2c(char *file, RANGE *rarg)
 	EACH(polykeys) {
 		d = sccs_findKey(cset, polykeys[i]);
 		assert(d);
-		serlist = addSerial(serlist, d);
+		addArray(&serlist, &d);
 	}
 	unless (hash_count(keys)) goto done;	/* just polykeys or nothing */
 
@@ -268,7 +268,7 @@ again:	sccs_rdweaveInit(cset);
 	while (d = cset_rdweavePair(cset, 0, &rkoff, &dkoff)) {
 		unless (dkoff) continue; /* last key */
 		unless (hash_deleteStr(keys, HEAP(cset, dkoff))) {
-			serlist = addSerial(serlist, d);
+			addArray(&serlist, &d);
 			unless (hash_count(keys)) break;
 		}
 	}
@@ -278,9 +278,10 @@ again:	sccs_rdweaveInit(cset);
 		goto again;	/* full weave this time */
 	}
 done:
-	/* addSerial sorts, but leaves dups; so filter dups here */
+	/* List is sorted, with dups; so filter dups here */
+	sortArray(serlist, serial_sortrev);
 	d = 0;
-	EACH_REVERSE(serlist) {
+	EACH(serlist) {
 		if (d == serlist[i]) continue;
 		d = serlist[i];
 		ret = addLine(ret, strdup(REV(cset, d)));

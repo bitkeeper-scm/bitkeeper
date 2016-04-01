@@ -1179,7 +1179,7 @@ int	cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch);
 weave	*cset_mkList(sccs *cset);
 int	sccs_newchksum(sccs *s);
 ser_t	sccs_getCksumDelta(sccs *s, ser_t d);
-ser_t	*addSerial(ser_t *space, ser_t s);
+int	serial_sortrev(const void *a, const void *b);
 void	sccs_perfile(sccs *s, FILE *out, int patch);
 int	sccs_getperfile(sccs *, FILE *, int *);
 char	*sccs_gethost(void);

@@ -112,7 +112,7 @@ rm -f SAVE
 cp include SAVE
 bk ci $Q -fy include
 X=`bk _scat SCCS/s.include | sed -n 4p`
-if [ "$X" != "i 2 3 4 5" ]; then echo Failed - bad include list $X; exit 1; fi
+if [ "$X" != "i 5 4 3 2" ]; then echo Failed - bad include list $X; exit 1; fi
 echo OK
 echo $N Making sure the includes worked .............................$NL
 bk co $Q -r1.0.1.1 include

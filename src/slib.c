@@ -5502,22 +5502,15 @@ delta_strftime(char *out, int sz, char *fmt, sccs *s, ser_t d)
 	return (strftime(out, sz, fmt, gmtime(&tt)));
 }
 
- /*
-  * Save a serial in an array.
-  * The serial number is stored in ascending order.
-  */
-ser_t *
-addSerial(ser_t *space, ser_t s)
+/* Reverse sort serial list */
+int
+serial_sortrev(const void *a, const void *b)
 {
-	int	i;
+	ser_t	l, r;
 
-	EACH(space) {
-		/* addSerial allowed dups, so for now, let there be dups */
-		// if (space[i] == s) return (space); /* no dups */
-		if (space[i] > s) break;
-	}
-	insertArrayN(&space, i, &s);
-	return (space);
+	l = *(ser_t*)a;
+	r = *(ser_t*)b;
+	return (r - l);	/* reverse sort */
 }
 
 /*
@@ -5623,16 +5616,18 @@ sccs_setCludes(sccs *sc, ser_t d, char *iLst, char *xLst)
 	for (t = walkList(sc, iLst, &err);
 	     !err && t;
 	     t = walkList(sc, 0, &err)) {
-		include = addSerial(include, t);
+		addArray(&include, &t);
 	}
 	for (t = walkList(sc, xLst, &err);
 	     !err && t;
 	     t = walkList(sc, 0, &err)) {
-		exclude = addSerial(exclude, t);
+		addArray(&exclude, &t);
 	}
 	unless (err) {
 		f = fmem();
+		sortArray(include, serial_sortrev);
 		EACH(include) sccs_saveNum(f, include[i], 1);
+		sortArray(exclude, serial_sortrev);
 		EACH(exclude) sccs_saveNum(f, exclude[i], -1);
 		CLUDES_SET(sc, d, fmem_peek(f, 0));
 		fclose(f);

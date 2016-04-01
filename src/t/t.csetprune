@@ -657,7 +657,7 @@ cat <<EOF > WANT
 2c2
 < i 11
 ---
-> i 7 11
+> i 11 7
 9d8
 < i 6
 EOF

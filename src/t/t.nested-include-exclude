@@ -90,7 +90,7 @@ bk cset $Q -xyourport
 bk prs -hnd':DS: :DI:' comp/foo > GOT
 cat <<EOF > WANT
 7 -4
-6 -3,4
+6 -4,3
 5 -4
 4 
 3 

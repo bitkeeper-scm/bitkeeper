@@ -787,7 +787,7 @@ grep -q '^1.3 1.4 .* -x1.2,1.3$' pfile.orig || fail -f pfile.orig
 bk attach $Q -N .
 bk check file1
 bk _cp SCCS/p.file1 pfile.attach
-grep -q '^1.3 1.4 .* -X1.2,1.1.1.1,1.3$' pfile.attach || fail -f pfile.attach
+grep -q '^1.3 1.4 .* -X1.3,1.1.1.1,1.2$' pfile.attach || fail -f pfile.attach
 # Rider: While we are here, break the pfile and fix it.
 bk _cp pfile.orig SCCS/p.file1
 bk check file1 2>ERR && fail -f ERR
@@ -798,5 +798,5 @@ bk check -ff file1 2>ERR || fail -f ERR
 echo "file1: p.file fixed" >> WANT
 cmpfiles WANT ERR
 bk _cp SCCS/p.file1 pfile.fixed
-grep -q '^1.3 1.4 .* -X1.2,1.1.1.1,1.3$' pfile.fixed || fail -f pfile.fixed
+grep -q '^1.3 1.4 .* -X1.3,1.1.1.1,1.2$' pfile.fixed || fail -f pfile.fixed
 echo OK
