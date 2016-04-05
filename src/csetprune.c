@@ -1359,39 +1359,19 @@ err:
  * also remove tags, write it out, and free the sccs*.
  */
 
-private void
-_clr(sccs *s, ser_t d)
-{
-	for (/* set */ ; FLAGS(s, d) & D_RED; d = PARENT(s, d)) {
-		FLAGS(s, d) &= ~D_RED;
-		if (MERGE(s, d)) _clr(s, MERGE(s, d));
-	}
-}
-
-private int
-_has(sccs *s, ser_t d, ser_t stop)
-{
-	for (/* set */ ; d > stop; d = PARENT(s, d)) {
-		if (FLAGS(s, d) & D_RED) return (0);
-		FLAGS(s, d) |= D_RED;
-		if (MERGE(s, d)) {
-			if (_has(s, MERGE(s, d), stop)) return (1);
-		}
-	}
-	return (d == stop);
-}
-
 /*
  * Found -- see if one delta can be found in the history of the other.
- * It is written recursive instead of iterative because it is running in a
+ * It is written with a priority queue (pq) because it is running in a
  * possibly large sparse graph (many nodes D_GONE) so having every merge
  * node iteratively check many nodes can chew up resource.
  */
 int
 isReachable(sccs *s, ser_t start, ser_t stop)
 {
-	ser_t	d;
-	int	ret;
+	ser_t	d, p, prev;
+	int	j;
+	int	ret = 1;
+	u32	*pq = 0;
 
 	assert(start && stop);
 	if (start == stop) return (1);
@@ -1400,8 +1380,24 @@ isReachable(sccs *s, ser_t start, ser_t stop)
 		start = stop;
 		stop = d;
 	}
-	ret = _has(s, start, stop);
-	_clr(s, start);
+	pq_insert(&pq, start);
+	prev = 0;
+	while (!pq_isEmpty(pq)) {
+		d = pq_delMax(&pq);
+		if (prev == d) continue;
+		prev = d;
+		EACH_PARENT(s, d, p, j) {
+			if (p > stop) {
+				pq_insert(&pq, p);
+			} else if (p == stop) {
+				goto done;
+			}
+		}
+	}
+	ret = 0;
+
+done:
+	free(pq);
 	return (ret);
 }
 

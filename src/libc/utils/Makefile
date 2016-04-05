@@ -34,6 +34,7 @@ UTILS_OBJS = $(patsubst %,utils/%, \
 	mkdir.o \
 	milli.o \
 	mmap.o \
+	pq.o \
 	putenv.o \
 	readn.o \
 	realbasename.o relpath.o rlimit.o rmrepo.o rmtree.o \
@@ -46,6 +47,6 @@ UTILS_OBJS = $(patsubst %,utils/%, \
 	webencode.o \
 	which.o)
 
-UTILS_HDRS = lines.h mmap.h style.h system.h unix.h win32.h
+UTILS_HDRS = lines.h mmap.h pq.h style.h system.h unix.h win32.h
 
 utils: $(UTILS_OBJS)

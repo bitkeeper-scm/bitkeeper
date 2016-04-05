@@ -16,6 +16,29 @@
 
 #include <system.h>
 
+private	void
+pq_tests(void)
+{
+	u32	*pq = 0;
+	u32	i;
+	int	n = 100;
+
+	for (i = 1; i <= n; i++) {
+		pq_insert(&pq, i);
+	}
+
+	for (i = n; i > 0; i--) {
+		int pi = pq_delMax(&pq);
+		if (i != pi) goto err;
+	}
+	free(pq);
+
+	return;
+err:
+	fprintf(stderr, "pq test failed\n");
+	exit(1);
+}
+
 private void
 trim_tests(void)
 {
@@ -94,6 +117,7 @@ relpath_tests(void)
 void
 libc_tests(void)
 {
+	pq_tests();
 	fmem_tests();
 	trim_tests();
 	lines_tests();

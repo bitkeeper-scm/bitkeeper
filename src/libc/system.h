@@ -46,6 +46,7 @@
 
 #include "style.h"
 #include "lines.h"
+#include "pq.h"
 #include "mmap.h"
 #include "hash.h"
 #include "mdbm/mdbm.h"
