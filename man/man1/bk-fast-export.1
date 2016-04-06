@@ -14,15 +14,21 @@ output.
 By default the BitKeeper MD5KEY of the equivalent changeset will be
 added to every commit in git.
 .SH OPTIONS
-.TP
+.TP \-\-branch=<branch>
 .B \-\-no\-bk\-keys
 Don't add the "bk: <mk5key>" line at the end of the comments.
-.TP
+.tp
 .OPTreq \-\-branch= branch
-By default the export will be done for the "master" branch. This option
+By default the export will be done for the "master" git branch. This option
 lets you do the export for a different branch. This is useful for
 exporting two different BitKeeper branches (e.g. "dev" and "stable")
 into the same git repository. See CAVEATS below.
+.tp
+.B \-S
+.tp
+\-\-standalone
+When used in a nested collection, export only the product or the 
+component implied by the current working directory.
 .SH EXAMPLE
 .LP
 The commands to export a BitKeeper repository named

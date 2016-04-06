@@ -22,6 +22,7 @@ typedef struct {
 	char	*branch;
 	u32	addMD5Keys:1;
 	u32	md5KeysAsSubject:1;
+	u32	nested:1;
 	// state that gets passed around
 	hash	*rkdk2fi;
 	MDBM	*idDB;
@@ -42,18 +43,27 @@ int
 fastexport_main(int ac, char **av)
 {
 	int	c;
+	int	standalone = 0;
 	opts	opts = {0};
 	longopt	lopts[] = {
 		{ "branch;", 310},
 		{ "bk-regressions", 320},
 		{ "no-bk-keys", 330},
+		{ "standalone", 'S' },
+
+	// future options:
+	//   --flatten  export ALL component csets, not only ones in product
 		{ 0, 0 }
 	};
 	int	rc = 1;
 
 	opts.addMD5Keys = 1;
-	while ((c = getopt(ac, av, "", lopts)) != -1) {
+	while ((c = getopt(ac, av, "S", lopts)) != -1) {
 		switch (c) {
+		    //case 's':  // -sALIAS export a subset of tree
+		    case 'S':
+			standalone = 1;
+			break;
 		    case 310:	/* --branch */
 			opts.branch = strdup(optarg);
 			break;
@@ -68,12 +78,11 @@ fastexport_main(int ac, char **av)
 	}
 	if (av[optind]) usage();
 	unless (opts.branch) opts.branch = strdup("master");
-	bk_nested2root(0);
-	if (proj_isProduct(0) && !nested_isPortal(0)) {
+	opts.nested = bk_nested2root(standalone);
+	if (opts.nested && !nested_isPortal(0)) {
 		fprintf(stderr, "%s: only allowed in a portal\n", prog);
 		goto out;
 	}
-
 	rc = gitExport(&opts);
 out:	free(opts.branch);
 	return (rc);
@@ -281,7 +290,7 @@ gitExport(opts *op)
 	mark = 1;
 
 	printf("progress Processing files\n");
-	f1 = popen("bk -A", "r");
+	f1 = popen(op->nested ? "bk -A" : "bk -r", "r");
 	f2 = fmem();
 	progress = 0;
 	while (file = fgetline(f1)) {
@@ -372,6 +381,7 @@ gitExport(opts *op)
 		gitOps = 0;
 		EACH(rset) {
 			if (componentKey(HEAP(s, rset[i].dkright))) {
+				unless (op->nested) continue;
 				gitLineComp(op, &gitOps,
 				    HEAP(s, rset[i].rkoff),
 				    HEAP(s, rset[i].dkleft1),

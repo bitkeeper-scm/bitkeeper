@@ -18,9 +18,10 @@ test -x "`bk which git`" || exit 0
 function do_export () {
 	repo_bk=$1
 	repo_git=$2
+	standalone=${3:+-S}
 	rm -rf "$2"
 	git init -q "$repo_git"
-	(cd "$repo_bk" ; bk fast-export --bk-regressions) | \
+	(cd "$repo_bk" ; bk fast-export $standalone --bk-regressions) | \
 	    (cd "$repo_git" ; git fast-import) > "$HERE/GOT" 2>&1 || \
 	    fail -f "$HERE/GOT" export failed
 }
@@ -28,6 +29,7 @@ function do_export () {
 function cmp_repos() {
 	bk_repo=$1
 	git_repo=$2
+	standalone=${3:+-S}
 	export_git="$HERE/export.git"
 	export_bk="$HERE/export.bk"
 	## build an array of bk revisions mapped to git revisions
@@ -41,7 +43,7 @@ function cmp_repos() {
 		     git --work-tree="$export_git" checkout -f -q $sha1 ;
 		    )
 		    (cd "$bk_repo" ;
-		     bk export -tplain -kr$md5 "$export_bk" )
+		     bk export $standalone -tplain -kr$md5 "$export_bk" )
 		    diff -Nrq "$export_git" "$export_bk" > OUT || fail -f OUT Diffs found $sha1 $md5
 	    done
 }
@@ -215,6 +217,20 @@ bk pull $Q ../product
 cd "$HERE"
 do_export product.copy product.git || fail
 cmp_repos product.copy product.git || fail
+echo OK
+
+echo $N Test component only .........................................$NL
+cd "$HERE"
+do_export product/gcc component.git standalone || fail
+cmp_repos product/gcc component.git standalone || fail
+echo OK
+
+# product only must be before symlink else the diff in cmp_repos()
+# will choke on the gcclink link pointing at nothing
+echo $N Test product only ...........................................$NL
+cd "$HERE"
+do_export product product-only.git standalone || fail
+cmp_repos product product-only.git standalone || fail
 echo OK
 
 echo $N Test symlinks in nested......................................$NL
