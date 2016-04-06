@@ -610,7 +610,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 		d = order[orderIndex];
 
 		/* serialmap[i] = (slist[i] ^ symdiff[i]) & 1 */
-		bits = graph_symdiff(s, L(d), prev, 0, symdiff, 0, -1);
+		bits = symdiff_expand(s, L(prev), d, symdiff);
 		start = (d > prev) ? d : prev;
 		/* closure[i] = (slist[i] ^ symdiff[i]) & 2 */
 		if (verify) {

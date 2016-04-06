@@ -43,7 +43,7 @@ it is a DAG.
 Each node can be expanded to a set of nodes
 -------------------------------------------
 These are the nodes from a set point of view which make
-up version corresponding to the node.  If there are no
+up the version corresponding to the node.  If there are no
 includes and excludes (covered next), then the set is
 simply the transitive closure under the DAG.
 
@@ -83,23 +83,25 @@ Expansion of corresponding version
 This is a textual description of serialmap().
 
 A data structure is used which has 3 bits associated with every node:
-parent, include, and exclude.  The data structure is initialized
-with the parent bit set for the node being expanded.
+parent (`S_PAR`), include (`S_INC`), and exclude (`S_EXC`).  The data
+structure is initialized with the parent bit set for the node being
+expanded.
 
 NOTE: the graph walk is in time sorted order of the nodes.  The parent
 and merge edges are not used to determine the next node to visit.
 
-There are two parts: state of this node (in or out of the corresponding
-version set) and given the state of this node, setting up older nodes.
+There are two parts: a) state of this node (in or out of the
+corresponding version set) and b) given the state of this node,
+setting up older nodes.
 
-State of this node: if marked included or (parent and not excluded),
+a. State of this node: if marked included or (parent and not excluded),
 then it is in the set.
 
-Setting up other nodes: if this node marked parent, then mark parent
-node as parent.
-If this node is in the corresponding version, then process the include
-and exclude lists by walking the lists : for each node A, if A's include
-and exclude bits aren't set, then set a bit now (include or exclude).
+b. Setting up other nodes: if this node marked parent, then mark
+parent node as parent. If this node is in the corresponding version,
+then process the include and exclude lists by walking the lists : for
+each node A, if A's include and exclude bits aren't set, then set A’s
+corresponding bit now (include or exclude).
 
 
 Symmetric difference

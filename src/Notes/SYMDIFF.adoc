@@ -1,0 +1,262 @@
+Computing the symmetric difference of two serialmaps
+====================================================
+
+To get some context, you need to understand SCCS graph and set,
+and serialmap().
+
+IMPORTANT: Read link:SCCSGRAPH.html[Notes/SCCSGRAPH] before reading this.
+
+Symdiff computes the symmetric difference of two version specifications.
+
+A version spec is { list of nodes, list of includes, list of excludes }
+
+The version specification is a concise way to express an activation
+set that gets used during a weave walk to make a file.
+
+There are two forms of version specifications: SCCS and BK.
+SCCS doesn't use the merge edge in computing the set, and BK does.
+
+Symdiff takes 2 version specs, but not generically.
+It is optimized to the use cases to have each param use a different form:
+
+  Left : { list of nodes }
+  Right: { single node, list of includes, list of excludes }
+
+This lets us compute everything the code base needs, while reducing
+the interface size.
+
+While symmetric difference is symmetric, think of the interface like
+a walkrevs range Left..Right, where Right is the region of interest,
+and Left is removed from it.  In this case, Right is the set of
+interest, and Left is the set XOR-ed with it.
+
+There are two interfaces to the engine: expand and compress.
+Expand is symmetric but compress is not.
+
+    Expand: slist = serialmap(Left) ^ serialmap(Right)
+
+    Compress: Right includes / excludes = 
+        slist ^ serialmap(Left) ^ serialmap(Right)
+
+Example: to compute the include / exclude list to mimic a merge
+in SCCS bookkeeping:
+
+    slist = serialmap({parent, mparent}) ^ serialmap(merge);
+    Right cludes = slist ^ serialmap(parent) ^ serialmap(merge);
+
+In order to distinguish and include from an exclude, we
+need the state of the bits in `serialmap(Right)`.
+
+	if ((bits & S_DIFF) ^ activeLeft ^ activeRight) {
+		e = activeRight ? d : (d | HIBIT);
+		addArray(cludes, &e);
+	}
+
+Design details:
+
+   * perf - short circuiting
+   * dups - includes and excludes which don't impact the serialmap
+   * convert - going back and forth between SCCS and BK bookkeeping
+   * count - expand return count, compress takes count - why?
+   * litter - compress adds to the heap; use wisely
+   * future - range instead of count, dynamic instead of static slist
+
+== Perf
+What makes thinking-in-symdiff meaningful is short circuiting.
+
+If it weren't for short circuiting, serialmap is fine and much
+easier to understand.
+
+Short circuiting is leaving the computation as soon as possible.
+The computation is iterative over the table, and so could scale
+O(N) with table.  That means cset_resum() and merge bookkeeping
+conversion would be O(N^2).
+
+The idea is to compute serialmap incrementally to some version
+nearby.  At some point in the computation, the work left to do
+will be identical on both sides, and therefore the resulting
+XOR will be 0, so we can terminate.
+
+This is done through a counter "marked" to use the same name
+as walkrevs short circuiting.  A better name would be diffcount,
+which shows how many items in the spec are different.
+
+To evaluate if a spec for a node is different, use
+the S_DIFFERENT(nodespec) macro.  Nodespec is 6 bits specifying
+whether it is on the DAG, include, and or exclude for left and right.
+
+To get the most perf, we want the two specs "near" each other.
+Typically, this is PARENT(s, d) and 'd'.
+
+For incremental serialmap used in cset_resum, the nearness
+is done by using a special walker which walks the full graph
+going to an unvisited node that is most likely nearby, and such
+that the current node is not reachable from any node done in
+the past.  That way, all incremental computation is on top
+of a set that has been tested.
+
+== Dups
+In SCCS, this was legal:
+
+  bk edit -i1.3,1.3 foo
+
+This would write 1.3 into the include list twice, not to mention
+that 1.3 might already be active, and not needing of inclusion.
+
+Since it doesn't alter the resulting set, one might think it safe
+to remove duplicates from the spec.  However, duplicates can impact
+the results of future version spec calculations.  For this reason,
+in some cases, we need to know what they are and keep them around.
+
+Expand can compute a dups lists which is like a cludes list: it
+contains include and excludes that are duplicates.
+
+Compress just adds the dups list to the cludes list.
+
+Asymmetrical alert: dups are computed on the clude list
+associated with the Right node.  In the clude processing,
+we see if the current node is the right node, and if so,
+mark all of its clude items as S_DUP.  Then later, if we
+come across an S_DUP, we see if the same result would have
+been computed without that clude.  If so, we `foundDup()`.
+
+All dup candidates need to be evaluated.  It may be that
+the symdiff short circuit says we are done before all dups
+have been looked at.  The 'marked' counter is incremented
+for each future dup to be visited, and decremented when
+it is visited, and that's how we get to see them all.
+
+== Convert
+`graph_convert()` takes the current merge bookkeeping and
+switches it to the other merge bookkeeping.
+
+The two flavors of merge bookkeeping are SCCS and BK.
+
+SCCS is a tree structure, with no merge edge.  To simulate
+a merge, original BitKeeper used SCCS include lists to act
+as though a merge was done.
+
+BK is a DAG structure, and can treat a merge edge like a parent
+edge.  A merge requires no includes or excludes, just specifying
+the two parents.
+
+Similar to dups, the bookkeeping of a particular node doesn't
+impact that node, but it can impact future nodes.  Therefore,
+it is critical that not only the same set be computed for each
+node, but that doing 2 conversions gets back to the same identical
+structure, including dups.
+
+Conversion uses expand and compress on two different structures.
+
+   s_orig = sccs_init("SCCS/s.foo");
+   s_convert = sccs_init("SCCS/s.foo");
+   for (TREE..TABLE) {
+   	(slist, dups) = expand(s_orig, {Parent(d)}, d);
+   	compress(s_convert, {Parent}, d, slist, dups);
+   }
+
+But we don't really need a full `sccs_init`, just another
+place to scribble clude lists.  So what is done is to have a cludes
+array which contains the original cludes list, then have existing
+cludes list get updated with the new cludes.
+
+The orig cludes list is built up as needed.  Right before calling
+expand, the original cludes value is added to the cludes list.
+
+== Count
+Count represents the number of bits on in slist.
+It is used to aid in knowing when we can stop.
+
+   count = expand(Left, Right);
+   compress(Left, Right, count);
+
+In compress, the short circuiting counter needs to know it
+has seen all non-zero items in slist, so it adds count to
+the initial list (marked), and decrements marked every time
+it sees a non-zero slist[d].
+
+=== Alternative
+To design it all again, I (Rick) would look at using the common
+{s->rstart, s->rstop} range instead of count.
+
+The internal 'marked' is still used, but for compress,
+it is only a terminating condition after the table walk
+is outside of the range.
+
+Two advantages: using an idiom common to the code base.
+Be able to handle compressions outside of the range of
+the spec.  For example, the 'count' method can't handle:
+(Useful in sccs_impliedList())
+
+    (slist, count) = expand({parent, mparent}, parent, cludes);
+    compress({parent}, parent, &cludes, slist, count);
+
+The mparent could be newer than parent, and so slist could
+have items before parent.  Yet the start point in compress
+is based on the two specs given, so would start at parent.
+
+This will fail because the loop will be terminated with
+the 'marked' counter not zero.  The items not visited
+will be before the start.
+
+This is avoided in the current code by allocating the merge
+node first, which is newer than parent and mparent, then
+using that as Right.
+
+Well, actually, at this time, this is avoided by not having
+the computation done by symdiff.  It uses serialmap
+and compressmap to do full graph walks.
+
+Nice if this would work in the future.
+
+== Litter
+Running compress computes new cludes lists.
+Those are stored on the heap as ASCII lists of numbers.
+
+Therefore doing this gets you back to where you started,
+but the heap has been bloated:
+
+  graph_convert(s);
+  graph_convert(s);
+  graph_convert(s);
+  graph_convert(s);
+
+To help with this, makepatch does the convert to align
+with the format of the receiving side, rather than
+the receiving side converting to align with the sending.
+This is because the receiving side is written, and would
+have 2 converts done to it.  Better to convert the read-only
+sending side once, then throw it away.
+
+== Future
+=== slist array
+Now: each user does slist = calloc(TABLE(s)+1, sizeof(u8));
+
+Better would be simple data hiding:
+
+    symdiff_setup(&sd, ....);
+    while () {
+        symdiff_expand(&sd, ...);
+        symdiff_compress(&sd, ...);
+    }
+    symdiff_done(&sd);
+
+But the slist is also used externally as a slist[d] - is d active?
+
+    slist = symdiff_slist(&sd);
+
+Or a macro SLIST(&sd, d) ?
+
+Currently the slist grows with time, while in sccs_convert, only gets
+a few entries each time.  More efficient would be to have a list,
+which then serves to initialize a pq (or just be the pq).
+
+Likely the two uses: slist for the whole table and slist for the symdiff
+which is a small set.
+
+=== range vs count
+At a minimum, do both, so that we can fix the start.
+Don't use s->rstart as that may get used elsewhere.  Do the &sd thing.
+
+All we need is range, then have the short circuit be outside of range
+and marked == 0.

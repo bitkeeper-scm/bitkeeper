@@ -2623,7 +2623,6 @@ chk_merges(sccs *s, int chkdup, ser_t *firstDup)
 {
 	ser_t	p, m, d;
 	u8	*slist = 0;
-	ser_t	*dups = 0;
 
 	*firstDup = 0;
 	for (d = TREE(s); d <= TABLE(s); d++) {
@@ -2643,16 +2642,13 @@ chk_merges(sccs *s, int chkdup, ser_t *firstDup)
 			unless (slist) {
 				slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
 			}
-			graph_symdiff(s, L(d), PARENT(s, d),
-			    &dups, slist, 0, -1);
-			if (nLines(dups)) {
+			if (graph_hasDups(s, d, slist)) {
 				chkdup = 0;	/* just want first */
 				*firstDup = d;
 			}
 		}
 	}
 	free(slist);
-	free(dups);
 	return (0);
 }
 

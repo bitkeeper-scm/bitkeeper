@@ -17,6 +17,13 @@
 #include	"sccs.h"
 #include	"graph.h"
 
+/*
+ * Two unrelated files in one.
+ * Upper part : symmetric difference * operations on SCCS graph.
+ * Lower part : a DAG walker used by incremental checksum 
+ */
+
+/* DAG walker */
 private	int	v1Right(sccs *s, ser_t d, void *token);
 private	int	v1Left(sccs *s, ser_t d, void *token);
 
@@ -24,26 +31,36 @@ private	int	v2Right(sccs *s, ser_t d, void *token);
 private	int	v2Left(sccs *s, ser_t d, void *token);
 
 private	void	loadKids(sccs *s);
+
+/* Symmetric difference */
 private	void	foundDup(sccs *s, u32 bits,
 		    ser_t tip, ser_t other, ser_t dup, ser_t **dups);
 
-/*
- * Bookkeeping for two simulataneous serialmap() computations.
+/* Bookkeeping for two simulataneous serialmap() computations.
  * Serialmap needs 3 bits; two of them need 6.  The other two:
  * S_DIFF is the xor of the two serialmaps.  This is what is returned.
- * SL_DUP is to track inc/exc of things already inc/exc in the left.
- * For how serialmap works, see serialmap() and Notes/SCCSGRAPH.adoc,
- * the "Expansion of corresponding version" section.
+ * S_DUP is to track inc/exc of things already inc/exc in the right.
+ * For how serialmap works, see serialmap() and Notes/SCCSGRAPH.adoc.
  */
 #define	S_DIFF		0x01	/* xor of left and right active state */
 #define	SR_PAR		0x02	/* Right side parent lineage */
 #define	SR_INC		0x04	/* Right side include */
 #define	SR_EXCL		0x08	/* Right side exclude */
 
-#define	SL_DUP		0x10	/* Used in checking for inc/exc not needed */
+#define	S_DUP		0x10	/* Used in checking for inc/exc not needed */
 #define	SL_PAR		0x20	/* Left side parent lineage */
 #define	SL_INC		0x40	/* Left side include */
 #define	SL_EXCL		0x80	/* Left side exclude */
+
+// Compute Active bitmap for left and right in one calc
+#define	ACTIVE(x)	((((x) >> 1) & (~(x) >> 3) | ((x) >> 2)) & 0x11)
+#define	XOR_ACTIVE(x)	((((x) >> 4) ^ (x)) & 1)
+#define	ALEFT		0x10
+#define	ARIGHT		0x01
+
+// Compute the new IE bits to set - does the innovation
+#define	IE(active, bits, sign)	\
+    ((~(((bits) >> 2) | ((bits) >> 3)) & (active)) << (((sign) > 0) ?  2 : 3))
 
 /*
  * How short circuiting works: when all the remaining work matches,
@@ -58,7 +75,7 @@ private	void	foundDup(sccs *s, u32 bits,
  * Compute the symmetric difference between two serialmaps.
  * Modes:
  *	expand - compute the symmetric difference (input count < 0)
- *	compress - given a symmetric difference, compute CLUDES for 'left'.
+ *	compress - given a symmetric difference, compute CLUDES for 'right'.
  *
  * + With both of those, either keep or don't keep duplicates.
  *   A duplicate is an unneeded -i or -x as far as the serial map of
@@ -69,234 +86,227 @@ private	void	foundDup(sccs *s, u32 bits,
  *
  * == Expand
  * To compute the symdiff between to versions, pass in count == -1.
- * Take two deltas and return in slist the symmetric difference
- * of the input slist with of the corresponding version CV(x) (aka, the
- * set output of serialmap()) of left and right:
- * slist = slist ^ CV(left) ^ CV(right);
- * Return the number of nodes altered where a 1->0 transition is -1 
- * and 0->1 transition is +1.  That means
- *
- *   slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
- *   count = 0;
- *   count += graph_symdiff(a, 0, slist, 0, -1);
- *   count += graph_symdiff(b, a, slist, 0, -1);
- *
- * will end up with the serialmap of b and count = number of (slist[d] != 0)
+ * Take two deltas and return in slist the symmetric difference.
+ * It accumulates, and can be used for incremental serialmap calc:
+ * slist ^= ^ left ^ right;
+ * Return the number of 1s in slist.
  *
  * == Compress
  * If count passed in >= 0, then run in compress mode.
  * Count must be the number of non-zero entries in slist.
  * Take two deltas and a symmetric difference map
- * and alter the include and exclude list of 'left' such that
- * the symmetric difference of the right and altered left matches
+ * and alter the include and exclude list of 'right' such that
+ * the symmetric difference of the altered right and left matches
  * the slist passed in, ignoring D_GONE nodes (needed for pruneEmpty).
  * slist will be returned cleared and count returned will be 0.
  *
  * See graph_convert() for expanding and compressing with dups and
  * switching merge booking around.
  */
-int
-graph_symdiff(sccs *s, ser_t *leftlist, ser_t right, ser_t **dups, u8 *slist,
-    u32 *cludes, int count)
+
+private	inline	void
+update(ser_t d, u8 newbits, u8 *slist, int *markedp, ser_t *lower)
 {
-	ser_t	ser, lower = 0;
+	if (S_DIFFERENT(slist[d])) (*markedp)--;
+	slist[d] |= newbits;
+	if (S_DIFFERENT(slist[d])) (*markedp)++;
+	if (*lower > d) *lower = d;
+}
+
+private	int
+symdiff(sccs *s, ser_t *leftlist, ser_t right, ser_t **cludes,
+    ser_t **dups, u8 *slist, u32 *cludeslist, int count)
+{
+	ser_t	d, e, start, lower;
 	u8	bits, newbits;
 	int	marked = 0;
 	int	expand = (count < 0);
 	int	sign;
-	ser_t	left;
-	int	i, activeLeft, activeRight;
+	int	i;
+	u32	active;
 	char	*p;
-	ser_t	*include = 0, *exclude = 0;
-	u32	orig = 0;
-	ser_t	t = 0, x;
-	int	calcDups = 0;
 
-	left = nLines(leftlist) ? leftlist[1] : 0;
-	if ((nLines(leftlist) == 1) && (left == right)) {
-		assert(expand);
-		return (0);
-	}
-
-	if (expand) {
-		count = 0;
-		calcDups = dups != 0;
-	} else {
-		assert(left);
+	unless (expand) {
+		assert(right);
 		marked = count;
-		orig = CLUDES_INDEX(s, left);
-		CLUDES_SET(s, left, 0);
 	}
+	count = 0;
+
 	/* init the array with the starting points */
+	start = 0;
+	lower = TABLE(s);
 	EACH (leftlist) {
-		x = leftlist[i];
-		bits = SL_PAR;
-		marked++;
-		ser = x;
-		slist[ser] |= bits;
-		if (!t || (t < x)) t = x;
-		if (!lower || (lower > ser)) lower = ser;
+		d = leftlist[i];
+		update(d, SL_PAR, slist, &marked, &lower);
+		if (start < d) start = d;
 	}
 	if (right) {
-		bits = SR_PAR;
-		marked++;
-		ser = right;
-		slist[ser] |= bits;
-		if (!t || (t < right)) t = right;
-		if (!lower || (lower > ser)) lower = ser;
+		d = right;
+		update(d, SR_PAR, slist, &marked, &lower);
+		if (start < d) start = d;
 	}
 
-	for (/* set */; (t >= TREE(s)) && marked; t--) {
-		if (!FLAGS(s, t) || TAG(s, t)) continue;
-
-		ser = t;
-		unless (bits = slist[ser]) continue;
-		/* csetprune.c:fixupGraph() is permitted to use D_GONE */
-		assert(!(FLAGS(s, t) & D_GONE) || (!expand && (t == right)));
-
-		if (expand) {
-			slist[ser] = bits & S_DIFF;
-		} else {
-			slist[ser] = 0;
-			if (bits & S_DIFF) {
-				count--;
-				marked--;
-			}
-		}
-
+	for (d = start; (d >= TREE(s)) && marked; d--) {
+		if (!FLAGS(s, d) || TAG(s, d)) continue;
+		unless (bits = slist[d]) continue;
 		if (S_DIFFERENT(bits)) marked--;
 
-		/* if included or an ancestor and not excluded */
+		/* csetprune.c:fixupGraph() is permitted to use D_GONE */
+		assert(!(FLAGS(s, d) & D_GONE) ||
+		    (!expand && nLines(leftlist) && (d == leftlist[1])));
 
-		activeLeft = ((bits & SL_INC) ||
-		    ((bits & (SL_PAR|SL_EXCL)) == SL_PAR));
-
-		activeRight= ((bits & SR_INC) ||
-		    ((bits & (SR_PAR|SR_EXCL)) == SR_PAR));
+		/* if included or an ancestor (PAR) and not excluded */
+		active = ACTIVE(bits);
 
 		if (expand) {
-			if (activeLeft ^ activeRight) {
-				if (bits & S_DIFF) {
-					slist[ser] = 0;
-					count--;
-				} else {
-					slist[ser] = S_DIFF;
-					count++;
-				}
+			slist[d] = bits & S_DIFF;
+			if (XOR_ACTIVE(active)) {
+				(slist[d] ^= S_DIFF) ? count++ : count--;
 			}
-		} else if (((bits & S_DIFF) != 0) ^ activeLeft ^ activeRight) {
-			/* mismatch: update -i or -x */
-			if (activeLeft) {
-				addArray(&exclude, &ser);
-				activeLeft = 0;
-			} else {
-				addArray(&include, &ser);
-				activeLeft = 1;
+		} else {
+			slist[d] = 0;
+			if (bits & S_DIFF) marked--;
+			if ((bits & S_DIFF) ^ XOR_ACTIVE(active)) {
+				active ^= ARIGHT;
+				e = (active & ARIGHT) ? d : (d|HIBIT);
+				addArray(cludes, &e);
 			}
 		}
 
 		/*
-		 * During expand, see if there is a duplicate between 
-		 * an include in the tip, and this node being on the parent
-		 * line(sccs)/dag(bk), or an exclude and not a parent.
+		 * If S_DUP is still set, then INC xor EXCL is too.
+		 * Dup : PAR & INC || !PAR & EXC => PAR == INC
 		 */
-		if (bits & SL_DUP) {
+		if (bits & S_DUP) {
 			marked--;
-			if (((bits & SL_PAR) && (bits & SL_INC)) ||
-			    (!(bits & SL_PAR) && (bits & SL_EXCL))) {
-				foundDup(s, bits, left, t, t, dups);
+			if (!(bits & SR_PAR) == !(bits & SR_INC)) {
+				foundDup(s, bits, right, d, d, dups);
 			}
 		}
 
 		/* Set up parent ancestory for this node */
 		if (newbits = (bits & (SL_PAR|SR_PAR))) {
-			EACH_PARENT(s, t, ser, i) {
-				/* Hack: parent (i=0) is only par in orig */
-				if (!BKMERGE(s) && i) break;
-				bits = slist[ser];
-				if ((bits & newbits) != newbits) {
-					if (S_DIFFERENT(bits)) marked--;
-					bits |= newbits;
-					if (S_DIFFERENT(bits)) marked++;
-					slist[ser] = bits;
-					if (lower > ser) lower = ser;
-				}
+			if (e = PARENT(s, d)) {
+				update(e, newbits, slist, &marked, &lower);
+			}
+			if (BKMERGE(s) && (e = MERGE(s, d))) {
+				update(e, newbits, slist, &marked, &lower);
 			}
 		}
 
-		if (activeLeft || activeRight) {
-			int	chkDup = calcDups && (t == left);
+		unless (active) continue;	/* optimization */
 
-			/* alter only if item hasn't been set yet */
-			p = cludes ? HEAP(s, cludes[t]) : CLUDES(s, t);
-			while (ser = sccs_eachNum(&p, &sign)) {
-				newbits = 0;
-				bits = slist[ser];
-				/* Mark inc/exc in tip for dup consideration */
-				if (chkDup) {
-					if (bits & SL_DUP) {
-						/* dups in the list itself */
-						foundDup(s, bits,
-						    left, left, ser, dups);
-					} else {
-						newbits = SL_DUP;
-						marked++;
-					}
-				} else if (activeLeft && (bits & SL_DUP)) {
-					/* Inc already inc'd; exc already.. */
-					if (((sign > 0) && (bits & SL_INC)) ||
-					    ((sign < 0) && (bits & SL_EXCL))) {
-						foundDup(s, bits,
-						    left, t, ser, dups);
-					}
-					bits &= ~SL_DUP;
-					slist[ser] = bits;
-					marked--;
-				}
-				if (sign > 0) {
-					if (activeLeft &&
-					    !(bits & (SL_INC|SL_EXCL))) {
-						newbits |= SL_INC;
-					}
-					if (activeRight &&
-					    !(bits & (SR_INC|SR_EXCL))) {
-						newbits |= SR_INC;
-					}
+		/* Process the cludes list */
+		p = cludeslist ? HEAP(s, cludeslist[d]) : CLUDES(s, d);
+		while (e = sccs_eachNum(&p, &sign)) {
+			bits = slist[e];
+			newbits = IE(active, bits, sign);
+			update(e, newbits, slist, &marked, &lower);
+
+			unless (dups) continue; /* optimization */
+
+			/* Mark inc/exc in Right for dup consideration */
+			if (d == right) {
+				if (bits & S_DUP) {
+					/* dups in the list itself */
+					foundDup(s, bits,
+					    right, right, e, dups);
 				} else {
-					if (activeLeft &&
-					    !(bits & (SL_INC|SL_EXCL))) {
-						newbits |= SL_EXCL;
-					}
-					if (activeRight &&
-					    !(bits & (SR_INC|SR_EXCL))) {
-						newbits |= SR_EXCL;
-					}
+					slist[e] |= S_DUP;
+					marked++;
 				}
-				if (newbits) {
-					if (S_DIFFERENT(bits)) marked--;
-					bits |= newbits;
-					if (S_DIFFERENT(bits)) marked++;
-					slist[ser] = bits;
-					if (lower > ser) lower = ser;
+			} else if ((active & ARIGHT) && (bits & S_DUP)) {
+				/* Inc already inc'd; exc already.. */
+				if (!(sign > 0) == !(bits & SR_INC)) {
+					foundDup(s, bits,
+					    right, d, e, dups);
 				}
+				slist[e] &= ~S_DUP;
+				marked--;
 			}
 		}
 	}
-	if (!expand && dups && nLines(*dups)) {
-		ser_t	*x = *dups;
+	assert(!marked);
+	/* fresh slate for next round */
+	if (d && lower) {
+		for (/* d */; d >= lower; d--) {
+			slist[d] &= S_DIFF;	/* clear all but S_DIFF */
+		}
+	}
+	return (count);
+}
 
-		EACH(x) {
-			ser = x[i];
-			if (ser & HIBIT) {
-				ser &= ~HIBIT;
-				addArray(&exclude, &ser);
-			} else {
-				addArray(&include, &ser);
-			}
+/* Helper function to save up dups and print out errors */
+private	void
+foundDup(sccs *s, u32 bits, ser_t tip, ser_t other, ser_t dup, ser_t **dups)
+{
+	if (bits & SR_EXCL) dup |= HIBIT;
+	addArray(dups, &dup);
+	unless (getenv("_BK_SHOWDUPS")) return;
+
+	dup &= ~HIBIT;
+	fprintf(stderr, "%s: duplicate %s in %s of %s",
+	    s->gfile, (bits & SR_EXCL) ? "exclude" : "include",
+	    REV(s, tip), REV(s, dup));
+
+	if (tip == other) {
+		fputc('\n', stderr);
+	} else if (other == dup) {
+		fprintf(stderr, " and in %sparent %s\n",
+		   (bits & SR_PAR) ? "" : "non-", REV(s, dup));
+	} else {
+		fprintf(stderr, " and in %s\n", REV(s, other));
+	}
+}
+
+/*
+ * compress - a helper function used to mimic past interfaces while
+ * new interface evolve.  The old system wrote directly to the include
+ * and exclude list for the tip delta.  In the future, we want to pass
+ * list back.  At this step the core engine passes a list back to us,
+ * and this routine sticks it in the cludes list.
+ */
+private	void
+comp(sccs *s, ser_t *leftlist, ser_t right, ser_t **dups, u8 *slist, int count)
+{
+	ser_t	*cludes = 0;
+	ser_t	*include = 0, *exclude = 0;
+	u32	orig = 0;
+	int	i;
+	ser_t	d, *x;
+
+	assert(count >= 0);
+	orig = CLUDES_INDEX(s, right);
+	CLUDES_SET(s, right, 0);
+
+	/* dups and cludeslist only passed in expand; 0 here */
+	(void)symdiff(s, leftlist, right, &cludes, 0, slist, 0, count);
+
+	x = cludes;
+	EACH(x) {
+		d = x[i];
+		if (d & HIBIT) {
+			d &= ~HIBIT;
+			addArray(&exclude, &d);
+		} else {
+			addArray(&include, &d);
 		}
 	}
+
+	x = dups ? *dups : 0;
+	EACH(x) {
+		d = x[i];
+		if (d & HIBIT) {
+			d &= ~HIBIT;
+			addArray(&exclude, &d);
+		} else {
+			addArray(&include, &d);
+		}
+	}
+
 	if (include || exclude) {
 		FILE	*f = fmem();
+		char	*p;
 
 		sortArray(include, serial_sortrev);
 		EACH(include) sccs_saveNum(f, include[i], 1);
@@ -304,44 +314,42 @@ graph_symdiff(sccs *s, ser_t *leftlist, ser_t right, ser_t **dups, u8 *slist,
 		EACH(exclude) sccs_saveNum(f, exclude[i], -1);
 		p = fmem_peek(f, 0);
 		if (streq(p, HEAP(s, orig))) {
-			CLUDES_INDEX(s, left) = orig;
+			CLUDES_INDEX(s, right) = orig;
 		} else {
-			CLUDES_SET(s, left, p);
+			CLUDES_SET(s, right, p);
 		}
 		fclose(f);
 		FREE(include);
 		FREE(exclude);
 	}
-	assert(!marked);
-	/* fresh slate for next round */
-	if (t && lower) {
-		for (ser = t; ser >= lower; ser--) {
-			slist[ser] &= S_DIFF;	/* clear all but S_DIFF */
-		}
-	}
-	return (count);
 }
 
-private	void
-foundDup(sccs *s, u32 bits, ser_t tip, ser_t other, ser_t dup, ser_t **dups)
+/*
+ * Just a fast checker.  Don't want the details.
+ */
+int
+graph_hasDups(sccs *s, ser_t d, u8 *slist)
 {
-	if (bits & SL_EXCL) dup |= HIBIT;
-	addArray(dups, &dup);
-	unless (getenv("_BK_SHOWDUPS")) return;
+	ser_t	*dups = 0;
 
-	dup &= ~HIBIT;
-	fprintf(stderr, "%s: duplicate %s in %s of %s",
-	    s->gfile, (bits & SL_EXCL) ? "exclude" : "include",
-	    REV(s, tip), REV(s, dup));
-
-	if (tip == other) {
-		fputc('\n', stderr);
-	} else if (other == dup) {
-		fprintf(stderr, " and in %sparent %s\n",
-		   (bits & SL_PAR) ? "" : "non-", REV(s, dup));
-	} else {
-		fprintf(stderr, " and in %s\n", REV(s, other));
+	(void)symdiff(s, L(PARENT(s, d)), d, 0, &dups, slist, 0, -1);
+	if (dups) {
+		free(dups);
+		return (1);
 	}
+	return (0);
+}
+
+int
+symdiff_expand(sccs *s, ser_t *leftlist, ser_t right, u8 *slist)
+{
+	return(symdiff(s, leftlist, right, 0, 0, slist, 0, -1));
+}
+
+void
+symdiff_compress(sccs *s, ser_t *leftlist, ser_t right, u8 *slist, int count)
+{
+	comp(s, leftlist, right, 0, slist, count);
 }
 
 int
@@ -349,7 +357,6 @@ graph_check(sccs *s)
 {
 	ser_t	d;
 	u8	*slist = 0;
-	u32	*dups = 0;
 	int	ret = 0;
 	int	wasSet = (getenv("_BK_SHOWDUPS") != 0);
 
@@ -362,12 +369,9 @@ graph_check(sccs *s)
 		    (!MERGE(s, d) && !CLUDES_INDEX(s, d))) {
 		    	continue;
 		}
-		graph_symdiff(s, L(d), PARENT(s, d), &dups, slist, 0, -1);
-		if (nLines(dups)) ret = 1;
-		truncArray(dups, 0);
+		if (graph_hasDups(s, d, slist)) ret = 1;
 	}
 	unless (wasSet) putenv("_BK_SHOWDUPS=");
-	free(dups);
 	free(slist);
 	return (ret);
 }
@@ -425,10 +429,10 @@ graph_fixMerge(sccs *s, ser_t d)
 		unless (MERGE(s, d) || CLUDES_INDEX(s, d)) continue;
 
 		cludes[d] = CLUDES_INDEX(s, d);
-		count = graph_symdiff(s, L(d), PARENT(s, d),
+		count = symdiff(s, L(PARENT(s, d)), d, 0,
 		    &dups, slist, cludes, -1);
 		if (MERGE(s, d)) truncArray(dups, 0);
-		graph_symdiff(s, L(d), PARENT(s, d), &dups, slist, 0, count);
+		comp(s, L(PARENT(s, d)), d, &dups, slist, count);
 		truncArray(dups, 0);
 		if (sccs_resum(s, d, 0, 0)) goto err;
 	}
@@ -491,11 +495,11 @@ graph_convert(sccs *s, int fixpfile)
 		    	continue;
 		}
 		cludes[d] = CLUDES_INDEX(s, d);
-		count = graph_symdiff(s, L(d), PARENT(s, d),
+		count = symdiff(s, L(PARENT(s, d)), d, 0,
 		    &dups, slist, cludes, -1);
 
 		s->encoding_in ^= E_BKMERGE;	/* compress in other format */
-		graph_symdiff(s, L(d), PARENT(s, d), &dups, slist, 0, count);
+		comp(s, L(PARENT(s, d)), d, &dups, slist, count);
 		s->encoding_in ^= E_BKMERGE;	/* restore expand format */
 		truncArray(dups, 0);
 #if 0

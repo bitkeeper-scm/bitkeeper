@@ -5749,7 +5749,7 @@ compressmap(sccs *s, ser_t d, u8 *set, char **inc, char **exc)
 /*
  * Generate a list of serials to use to get a particular delta and
  * allocate & return space with the list in the space.
- * The 0th entry is contains the maximum used entry.
+ * The 0th entry contains the maximum used entry.
  * Note that the error pointer is to be used only by walkList, it's null if
  * the lists are null.
  * Note we don't have to worry about growing tables here, the list isn't saved
@@ -5762,7 +5762,6 @@ serialmap(sccs *s, ser_t d, ser_t m, char *iLst, char *xLst, int *errp)
 	ser_t	t, start = max(d, m);
 	char	*p;
 	int	i, sign;
-	ser_t	tser;
 
 	assert(d);
 
@@ -5813,10 +5812,9 @@ serialmap(sccs *s, ser_t d, ser_t m, char *iLst, char *xLst, int *errp)
 
 	for (t = start; t > TREE(s); t--) {
 		if (TAG(s, t)) continue;
-		tser = t;
 
 		/* Set up parent ancestory for this node */
-		if ((slist[tser] & S_PAR) && PARENT(s, t)) {
+		if ((slist[t] & S_PAR) && PARENT(s, t)) {
 			slist[PARENT(s, t)] |= S_PAR;
 			if (BKMERGE(s) && MERGE(s, t)) {
 				slist[MERGE(s, t)] |= S_PAR;
@@ -5824,10 +5822,10 @@ serialmap(sccs *s, ser_t d, ser_t m, char *iLst, char *xLst, int *errp)
 		}
 
 		/* if an ancestor and not excluded, or if included */
-		if ( ((slist[tser] & (S_PAR|S_EXCL)) == S_PAR)
-		     || slist[tser] & S_INC) {
+		if ( ((slist[t] & (S_PAR|S_EXCL)) == S_PAR)
+		     || slist[t] & S_INC) {
 
-			slist[tser] = 1;
+			slist[t] = 1;
 			p = CLUDES(s, t);
 			while (i = sccs_eachNum(&p, &sign)) {
 				unless(slist[i] & (S_INC|S_EXCL)) {
@@ -5836,7 +5834,7 @@ serialmap(sccs *s, ser_t d, ser_t m, char *iLst, char *xLst, int *errp)
 				}
 			}
 		} else {
-			slist[tser] = 0;
+			slist[t] = 0;
 		}
 	}
 	return (slist);
@@ -6785,7 +6783,13 @@ _whodisabled(sccs *s, ser_t d, void *token)
 	wd	*who = (wd *)token;
 
 	if (MERGE(s, d)) return (0);
-	graph_symdiff(s, L(d), PARENT(s, d), 0, who->slist, 0, -1);
+	/*
+	 * Abuse expand, in that slist will accumulate xors, and as a whole
+	 * become a meaningless set.  However, we watch just one entry to
+	 * become set and stop the first time it does.  So no reason to clear
+	 * whole list after each iteration.  Pretty slick.
+	 */
+	symdiff_expand(s, L(PARENT(s, d)), d, who->slist);
 	if (who->slist[who->base]) {
 		who->base = d;
 		return (1);	/* found; terminate walkrevs */
@@ -13003,7 +13007,7 @@ sccs_slowWeave(sccs *s)
 			rewind(diffs);
 		}
 		/* incremental serialmap() call */
-		graph_symdiff(s, L(d), prev, 0, w.slist, 0, -1);
+		symdiff_expand(s, L(prev), d, w.slist);
 		prev = d;
 		unless (first) {
 			s->fh = fh[pingpong];
@@ -13056,7 +13060,7 @@ sccs_slowWeave(sccs *s)
 	/* Reset all state and serialmap; just dump in mem weave to disk */
 	sccs_wrweaveInit(s);
 	weaveReset(&w);
-	graph_symdiff(s, 0, prev, 0, w.slist, 0, -1);
+	symdiff_expand(s, 0, prev, w.slist);
 	rc = weaveMove(&w, 0, 0, WM_FINISH);
 	sccs_wrweaveDone(s);
 err:
@@ -17057,7 +17061,7 @@ gca3(sccs *s, ser_t left, ser_t right, char **inc, char **exc)
 			}
 		}
 		gmap = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
-		graph_symdiff(s, glist, 0, 0, gmap, 0, -1);
+		symdiff_expand(s, glist, 0, gmap);
 		if (compressmap(s, gca, gmap, inc, exc)) {
 			goto bad;
 		}

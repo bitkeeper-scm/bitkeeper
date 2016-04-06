@@ -1736,8 +1736,8 @@ fixTags(sccs *s)
 /*
  * Functionally, this is ideal: using new parent, expand in old
  * graph and compress in new graph:
- *	count = graph_symdiff(old, d, p, 0, slist, 0, -1);
- *	graph_symdiff(s, d, p, 0, slist, 0, count);
+ *	count = symdiff_expand(old, d, p, slist);
+ *	symdiff_compress(s, d, p, slist, count);
  * The downside is extremely bad performance relative to the old stuff.
  * In a million node graph that gets reduced to 100 nodes, that's
  * 2 million calls to symdiff, with too many having large graph walks.
@@ -1748,7 +1748,7 @@ fixTags(sccs *s)
  * about in the common case of simple update (no -i or -x).
  * Note: passing oldp into the new graph compress (last line below) could
  * mean that the D_GONE check in symdiff() would pop.
- * Special case this in graph_symdiff().
+ * Special case this in symdiff().
  */
 private	void
 fixupGraph(sccs *s, ser_t d, ser_t p, ser_t m, u8 *slist, sccs *old)
@@ -1771,7 +1771,7 @@ fixupGraph(sccs *s, ser_t d, ser_t p, ser_t m, u8 *slist, sccs *old)
 		slist[d] = 1;
 	} else {
 		/* No.  Compute difference manually */
-		count = graph_symdiff(old, L(d), oldp, 0, slist, 0, -1);
+		count = symdiff_expand(old, L(oldp), d, slist);
 
 		/* Filter out GONE'd items */
 		for (e = d, i = count; (e >= TREE(s)) && i; e--) {
@@ -1816,7 +1816,7 @@ fixupGraph(sccs *s, ser_t d, ser_t p, ser_t m, u8 *slist, sccs *old)
 		count++;
 	}
 	/* compute and store cludes list in the new graph */
-	graph_symdiff(s, L(d), oldp, 0, slist, 0, count);
+	symdiff_compress(s, L(oldp), d, slist, count);
 }
 
 /*

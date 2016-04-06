@@ -26,8 +26,10 @@ int	graph_fixMerge(sccs *s, ser_t first);
 int	graph_convert(sccs *s, int fixpfile);
 int	graph_check(sccs *s);
 
-int	graph_symdiff(sccs *s, ser_t *leftlist, ser_t right, ser_t **dups,
-	    u8 *slist, u32 *cludes, int count);
+int	graph_hasDups(sccs *s, ser_t d, u8 *slist);
+int	symdiff_expand(sccs *s, ser_t *leftlist, ser_t right, u8 *slist);
+void	symdiff_compress(sccs *s, ser_t *leftlist, ser_t right,
+	    u8 *slist, int count);
 int	graph_kidwalk(sccs *s, walkfcn toTip, walkfcn toRoot, void *token);
 
 #endif
