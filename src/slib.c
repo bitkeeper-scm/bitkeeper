@@ -5616,12 +5616,12 @@ sccs_setCludes(sccs *sc, ser_t d, char *iLst, char *xLst)
 	for (t = walkList(sc, iLst, &err);
 	     !err && t;
 	     t = walkList(sc, 0, &err)) {
-		addArray(&include, &t);
+		addArrayV(&include, t);
 	}
 	for (t = walkList(sc, xLst, &err);
 	     !err && t;
 	     t = walkList(sc, 0, &err)) {
-		addArray(&exclude, &t);
+		addArrayV(&exclude, t);
 	}
 	unless (err) {
 		f = fmem();
@@ -11393,8 +11393,6 @@ mergeArg(sccs *s, ser_t d, char *arg)
 private void
 symArg(sccs *s, ser_t d, char *name)
 {
-	u32	tmp;
-
 	assert(d);
 
 	unless (CSET(s)) return;	/* no tags on regular files */
@@ -11425,10 +11423,8 @@ symArg(sccs *s, ser_t d, char *name)
 		FLAGS(s, d) |= D_SYMLEAF;
 		return;
 	}
-	tmp = d;
-	addArray(&s->mg_symname, &tmp);
-	tmp = sccs_addUniqStr(s, name);
-	addArray(&s->mg_symname, &tmp);
+	addArrayV(&s->mg_symname, d);
+	addArrayV(&s->mg_symname, sccs_addUniqStr(s, name));
 	FLAGS(s, d) |= D_SYMBOLS;	/* so stripdel won't MKGONE it */
 }
 

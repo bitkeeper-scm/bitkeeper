@@ -683,7 +683,7 @@ savedeltas(sccs *s, ser_t d, void *data)
 {
 	ser_t	**rmdeltas = data;
 
-	addArray(rmdeltas, &d);
+	addArrayV(rmdeltas, d);
 	if (FLAGS(s, d) & D_CSET && (flags & COLLAPSE_FIX)) {
 		fprintf(stderr, "%s: can't fix committed delta %s@%s\n",
 		    me, s->gfile, REV(s, d));

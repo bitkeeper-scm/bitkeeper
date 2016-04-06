@@ -144,6 +144,11 @@ int	parallelLines(char **a, char **b,
 	   _ret = _addArray((void **)space, _arg, sizeof(*_ret));	\
 	   _ret; })
 
+/* void addArrayV(TYPE **space, TYPE new) */
+#define	addArrayV(space, x)				\
+	(void)({ typeof(**space) _arg = (x);			\
+		 _addArray((void **)space, &_arg, sizeof(_arg)); })
+
 /* TYPE *insertArrayN(TYPE **space, int n, TYPE *x) */
 #define	insertArrayN(space, n, x)			\
 	({ typeof(*space) _arg = (x), _ret;			\

@@ -241,7 +241,7 @@ private	void
 foundDup(sccs *s, u32 bits, ser_t tip, ser_t other, ser_t dup, ser_t **dups)
 {
 	if (bits & SR_EXCL) dup |= HIBIT;
-	addArray(dups, &dup);
+	addArrayV(dups, dup);
 	unless (getenv("_BK_SHOWDUPS")) return;
 
 	dup &= ~HIBIT;
@@ -286,10 +286,9 @@ comp(sccs *s, ser_t *leftlist, ser_t right, ser_t **dups, u8 *slist, int count)
 	EACH(x) {
 		d = x[i];
 		if (d & HIBIT) {
-			d &= ~HIBIT;
-			addArray(&exclude, &d);
+			addArrayV(&exclude, d & ~HIBIT);
 		} else {
-			addArray(&include, &d);
+			addArrayV(&include, d);
 		}
 	}
 
@@ -297,10 +296,9 @@ comp(sccs *s, ser_t *leftlist, ser_t right, ser_t **dups, u8 *slist, int count)
 	EACH(x) {
 		d = x[i];
 		if (d & HIBIT) {
-			d &= ~HIBIT;
-			addArray(&exclude, &d);
+			addArrayV(&exclude, d & ~HIBIT);
 		} else {
-			addArray(&include, &d);
+			addArrayV(&include, d);
 		}
 	}
 
