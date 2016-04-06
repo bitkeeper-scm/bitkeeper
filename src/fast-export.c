@@ -29,6 +29,7 @@ typedef struct {
 	MDBM	*goneDB;
 	MDBM	*sDB;
 	hash	*compGone;
+	hash	*authors;
 } opts;
 
 private	char	*gitMode(mode_t mode);
@@ -37,6 +38,9 @@ private	void	gitLine(opts *op, char ***lines,
     char *comp_rk, char *rk, char *dk1, char *dk2,
     char *prefix1, char *prefix2);
 private	int	gitExport(opts *op);
+private	hash	*loadAuthors(char *file);
+private	void	authorInfo(opts *op, sccs *s, ser_t d);
+private	void	printUserDate(opts *op, sccs *s, ser_t d);
 
 /* bk fast-export (aliased as _fastexport) */
 int
@@ -46,6 +50,7 @@ fastexport_main(int ac, char **av)
 	int	standalone = 0;
 	opts	opts = {0};
 	longopt	lopts[] = {
+		{ "authors-file;", 'A'},   // opt name from git cvs/svn import
 		{ "branch;", 310},
 		{ "bk-regressions", 320},
 		{ "no-bk-keys", 330},
@@ -58,8 +63,11 @@ fastexport_main(int ac, char **av)
 	int	rc = 1;
 
 	opts.addMD5Keys = 1;
-	while ((c = getopt(ac, av, "S", lopts)) != -1) {
+	while ((c = getopt(ac, av, "A;S", lopts)) != -1) {
 		switch (c) {
+		    case 'A':
+			unless (opts.authors = loadAuthors(optarg)) return (0);
+			break;
 		    //case 's':  // -sALIAS export a subset of tree
 		    case 'S':
 			standalone = 1;
@@ -269,7 +277,6 @@ gitExport(opts *op)
 {
 	FILE	*f1, *f2;
 	char	*file, *sfile, *p;
-	char	*tz;
 	sccs	*s;
 	ser_t	d, md;
 	u64	mark;
@@ -351,10 +358,7 @@ gitExport(opts *op)
 		if (TAG(s, d)) continue;
 		printf("commit refs/heads/%s\n", op->branch);
 		printf("mark : %llu\n", mark + d);
-		tz = gitTZ(s, d);
-		printf("committer %s <%s@%s> %d %s\n", USER(s, d),
-		    USER(s, d), HOSTNAME(s, d), (int)DATE(s, d), tz);
-		free(tz);
+		authorInfo(op, s, d);
 
 		if (op->addMD5Keys || op->md5KeysAsSubject) {
 			sccs_md5delta(s, d, md5key);
@@ -418,10 +422,8 @@ gitExport(opts *op)
 		printf("tag %s\n", SYMNAME(s, sym));
 		printf("from :%llu\n", mark + sym->ser);
 		md = sym->meta_ser;
-		tz = gitTZ(s, md);
-		printf("tagger <%s@%s> %d %s\n", USER(s, md),
-		    HOSTNAME(s, md), (int)DATE(s, md), tz);
-		free(tz);
+		printf("tagger ");
+		printUserDate(op, s, md);
 		printf("data 0\n");
 	}
 	hash_free(tags);
@@ -438,4 +440,113 @@ gitExport(opts *op)
 	hash_free(op->compGone);
 	printf("progress done\n");
 	return (0);
+}
+
+/*
+ * Load an authors file file mapping bk usernames to names and email
+ * addresses. The file is a list of lines like this:
+ *   wscott=Wayne Scott <wscott@bitkeeper.com>
+ * one line per user.  The format is reused from git's svn and cvs
+ * import tools.
+ *
+ * This will be matched on user/realuser or usr of a cset.  If no match
+ * is found then:
+ *     :USER: <:USER:@:HOST:>
+ * is used.
+ */
+private hash *
+loadAuthors(char *file)
+{
+	FILE	*f;
+	char	*t;
+	hash	*ret;
+	int	line = 0;
+	const char	*error;
+	int	off;
+	pcre	*re;
+	int	vec[9];
+
+	re = pcre_compile(
+		"^\\s*(\\S+)\\s*=\\s*"
+		"(.*<[\\w0-9._%+-]+@[\\w0-9.-]+\\.\\w{2,}>)\\s*$",
+		0, &error, &off, 0);
+	if (error) fprintf(stderr, "%s: %s at %d\n", prog, error, off);
+	assert(re);
+
+	unless (f = fopen(file, "r")) {
+		perror(file);
+		return (0);
+	}
+
+	ret = hash_new(HASH_MEMHASH);
+	while (t = fgetline(f)) {
+		++line;
+		if (!*t || (*t == '#')) continue;
+		if (pcre_exec(re, 0, t, strlen(t), 0, 0,
+		    vec, sizeof(vec)/sizeof(*vec)) < 0) {
+			fprintf(stderr, "%s: %s:%d: bad line: %s\n",
+			    prog, file, line, t);
+			hash_free(ret);
+			ret = 0;
+			break;
+		}
+		hash_insert(ret,
+		    t+vec[2], vec[3]-vec[2],
+		    t+vec[4], vec[5]-vec[4]);
+	}
+	fclose(f);
+	pcre_free(re);
+	return (ret);
+}
+
+private void
+printUserDate(opts *op, sccs *s, ser_t d)
+{
+	char	*tz;
+	char	*userhost = USERHOST(s, d);
+	char	*user, *host;
+	int	ulen, hlen;
+
+	tz = gitTZ(s, d);
+	user = userhost;
+	ulen = strcspn(user, "/@");
+	if (hash_fetch(op->authors, user, ulen)) {
+		printf("%.*s", op->authors->vlen, (char *)op->authors->vptr);
+	} else {
+		/* :USER: <:USER:@:HOST:> */
+		if (host = strchr(userhost, '@')) {
+			++host;
+		} else {
+			host = "NOHOST.com";
+		}
+		hlen = strcspn(host, "/[");
+		printf("%.*s <%.*s@%.*s>",
+		    ulen, user, ulen, user, hlen, host);
+	}
+	printf(" %d %s\n", (int)DATE(s, d), tz);
+	free(tz);
+}
+
+private void
+authorInfo(opts *op, sccs *s, ser_t d)
+{
+	char	*tz;
+	char	*userhost = USERHOST(s, d);
+	char	*import;
+
+	/* userhost = user/realuser@host/realhost[importer] */
+
+	/* [importer] only works with author map */
+	if ((import = strchr(userhost, '[')) &&
+	    hash_fetch(op->authors, import+1, strlen(import)-2)) {
+		/* need separate author line */
+		tz = gitTZ(s, d);
+		printf("author %.*s %d %s\n",
+		    op->authors->vlen, (char *)op->authors->vptr,
+		    (int)DATE(s, d), tz);
+		free(tz);
+	}
+	printf("committer ");
+
+	printUserDate(op, s, d);
 }

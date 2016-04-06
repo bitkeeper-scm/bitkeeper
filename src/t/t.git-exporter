@@ -21,7 +21,7 @@ function do_export () {
 	standalone=${3:+-S}
 	rm -rf "$2"
 	git init -q "$repo_git"
-	(cd "$repo_bk" ; bk fast-export $standalone --bk-regressions) | \
+	(cd "$repo_bk" ; bk fast-export -A"$HERE"/authors $standalone --bk-regressions) | \
 	    (cd "$repo_git" ; git fast-import) > "$HERE/GOT" 2>&1 || \
 	    fail -f "$HERE/GOT" export failed
 }
@@ -44,11 +44,14 @@ function cmp_repos() {
 		    )
 		    (cd "$bk_repo" ;
 		     bk export $standalone -tplain -kr$md5 "$export_bk" )
-		    diff -Nrq "$export_git" "$export_bk" > OUT || fail -f OUT Diffs found $sha1 $md5
+		    diff -Nrq "$export_git" "$export_bk" > OUT || {
+			fail -f OUT Diffs found $sha1 $md5
+		    }
 	    done
 }
 
 echo $N Create a bk tree.............................................$NL
+touch authors
 commercial project
 echo stuff > afile
 echo other stuff > bfile
@@ -183,6 +186,37 @@ bk mv -f bfile.moved BitKeeper/etc/
 bk commit $Q -y"moved a file into BitKeeper"
 cd "$HERE"
 do_export project project.git || fail
+cmp_repos project project.git || fail
+echo OK
+
+echo $N Test author file mapping ....................................$NL
+
+cat <<EOF > authors
+user1=user1 <user1@foo.com>
+user2 = user 2 <user2@bar.com>
+user3  =  three eee user  <user3.name@something.com>
+EOF
+
+cd project
+echo 1 > 1
+bk new $Q -l 1
+BK_USER=user0 BK_HOST=machine.comp.com bk commit $Q -y1
+echo 2 > 1
+bk ci $Q -ly2 1
+BK_USER=user1 BK_HOST=mach2.comp.com bk commit $Q -y2
+echo 3 > 1
+bk ci $Q -ly3 1
+BK_USER=user2 BK_IMPORTER=user3 BK_HOST=mach3.comp.com bk commit $Q -y3
+
+cd "$HERE"
+do_export project project.git || fail
+(cd project.git; git log --pretty='%an <%ae>|%cn <%ce>') | grep -v ^bk > OUT
+cat <<EOF > WANT
+three eee user <user3.name@something.com>|user 2 <user2@bar.com>
+user1 <user1@foo.com>|user1 <user1@foo.com>
+user0 <user0@machine.comp.com>|user0 <user0@machine.comp.com>
+EOF
+cmpfiles WANT OUT
 cmp_repos project project.git || fail
 echo OK
 
