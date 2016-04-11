@@ -318,7 +318,6 @@ setup_env()
 	export _BK_GEOM
 
 	BK_REGRESSION="`cd "$TST_DIR"; bk pwd -s`/.regression $USER"
-	BK_CACHE="$BK_REGRESSION/cache"
 	HERE="$BK_REGRESSION/sandbox"
 	BK_TMP="$HERE/.tmp"
 	BK_DOTBK="$HERE/.bk"
@@ -396,10 +395,10 @@ clean_up()
 		test -n "$_BK_MAC_CORES" && {
 			# Add in any new MacOS cores
 			find /cores -type f -name 'core*' 2>$DEV_NULL \
-				| bk _sort > "$BK_REGRESSION/cores.macos"
+				| bk _sort > "$BK_REGRESSION/macos/cores.macos"
 			comm -13 \
 				"$_BK_MAC_CORES" \
-				"$BK_REGRESSION/cores.macos" \
+				"$BK_REGRESSION/macos/cores.macos" \
 				>> "$BK_REGRESSION/cores"
 		}
 		if [ -s "$BK_REGRESSION/cores" ]
@@ -484,15 +483,14 @@ init_main_loop()
 	BK_PATH="$PATH"
 	export PATH BK_PATH PLATFORM DEV_NULL TST_DIR CWD
 	export USER BK_FS BK_REGRESSION HERE BK_TMP TMPDIR NL N Q S CORES
-	export BK_CACHE
 	export RM
 	export NXL NX
 	export BK_GLOB_EQUAL
 	export BK_BIN
-	mkdir -p "$BK_CACHE"
 	test "X`uname`" = XDarwin && {
 		# Save a baseline of core files; then later look for new
-		_BK_MAC_CORES="$BK_CACHE/macos_cores"
+		mkdir -p "$BK_REGRESSION/macos"
+		_BK_MAC_CORES="$BK_REGRESSION/macos/macos_cores"
 		export _BK_MAC_CORES
 		find /cores -type f -name 'core*' 2>$DEV_NULL | \
 		    bk _sort > "$_BK_MAC_CORES"
@@ -702,7 +700,7 @@ do
 	test -f setup || exit 1
 	export BK_CURRENT_TEST="$i"
 	cat setup "$i" | eval "{ $VALGRIND @TEST_SH@ $dashx; echo \$?>\"$EXF\"; } $OUTPIPE"
-	EXIT="`cat \"$EXF\"`"
+	EXIT="`cat \"$EXF\" 2>$DEV_NULL || echo 1`"
 	rm -f "$EXF"
 	BAD=0
 	# If the test passes, then check to see if it contains any unexpected
@@ -761,8 +759,8 @@ I hope your testing experience was positive! :-)
 			test -n "$_BK_MAC_CORES" && {
 				# Add in any new MacOS cores
 				find /cores -type f -name 'core*' 2>$DEV_NULL \
-					| bk _sort > "$BK_CACHE/XXX.macos"
-				comm -13 "$_BK_MAC_CORES" "$BK_CACHE/XXX.macos"
+					| bk _sort > "$BK_REGRESSION/macos//XXX.macos"
+				comm -13 "$_BK_MAC_CORES" "$BK_REGRESSION/macos/XXX.macos"
 			}
 			# kill the uniq daemon
 			test -d "$HERE/.bk/bk-keys-db" && {

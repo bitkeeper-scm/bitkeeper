@@ -16,6 +16,7 @@ umask 002
 
 echo $N Create initial repository ...................................$NL
 commercial project
+bk clone $Q . ../proj4	# for a later test
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -537,7 +538,7 @@ echo OK
 
 echo $N bk check with errors should delete checked file .............$NL
 cd "$HERE"
-commercial proj4
+cd proj4	# created earlier
 bk edit $Q BitKeeper/etc/config
 echo partial_check:yes! >> BitKeeper/etc/config
 echo hi > foo

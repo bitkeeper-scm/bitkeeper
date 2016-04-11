@@ -194,14 +194,15 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Attach in a existing repo running in checkout edit ..........$NL
-cd "$HERE"/p1/gcc
+cd "$HERE"
 commercial s-expr
 BK_CONFIG="checkout: edit! "
 export BK_CONFIG
 touch foo
 bk new $Q foo
 bk commit $Q -f
-cd ..
+cd "$HERE"/p1/gcc
+mv "$HERE/s-expr" .
 bk attach $Q -N s-expr || fail
 cd s-expr
 bk -cpr

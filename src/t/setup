@@ -82,120 +82,6 @@ partial_check: off
 EOF
 }
 
-# Usage: make_repo type instance
-_make_repo() {
-	TYPE="$1"
-	CF="$2"
-	SFIO="$3"
-	DEEP="$4"
-	REPO="$BK_CACHE/${TYPE}"
-	DASH_P=
-
-	test -d "$REPO" && rm -rf "$REPO"		# should not happen
-	test "$TYPE" = nested && DASH_P="-P"		# Make it a product
-	COMPAT=
-	test "$_BKFILE_REGRESSIONS" = "no" && COMPAT=--compat
-
-	bk setup $COMPAT -f -c"$CF" $DASH_P "$REPO" || fail
-	test "$TYPE" = nested && { (
-		cd "$REPO" || {
-			echo failed to create $REPO
-			exit 1
-		}
-		bk setup -C -f gcc
-		bk setup -C -f gdb
-		bk alias set -C DEFAULT ALL
-		bk commit -S -q -y"attach gcc, gdb"
-		touch gcc/BitKeeper/tmp/saveme
-		touch gdb/BitKeeper/tmp/saveme
-
-		test "$DEEP" = deep && { (
-			## Make a deep-nested repo.
-			bk setup -C -f gui
-			cd gui || {
-			    echo failed to create gui repo
-			    exit 1
-			}
-			bk setup -C -f bin
-			bk setup -C -f lib
-			bk commit -S -q -y"create gui repo"
-			touch bin/BitKeeper/tmp/saveme
-			touch lib/BitKeeper/tmp/saveme
-			cd ..
-			bk commit -q -y"attach deep"
-		); }
-		true
-	); return; }
-
-	# Make a cached copy
-        (cd "$REPO" && bk _find . -type f | perl -e '
-		# Input is a file name per line
-		# Output is a sorted file list so that sfiles are always
-		# before gfiles And files in same directory are "near"
-		# each other. 
-		#
-		# Good for small lists - does the split each time mysort runs
-		# For large data sets, cache the split
-
-		sub mysort {
-			my	@a = split(/\//, $a);
-			my	@b = split(/\//, $b);
-			my	($a0, $b0);
-
-			while (@a || @b) {
-				# sort shorter string first
-				return (-1) unless @a;
-				return (1) unless @b;
-				# nab first item
-				$a0 = shift @a;
-				$b0 = shift @b;
-				# look for a difference
-				next if $a0 eq $b0;
-				# like extsort() - sort SCCS first
-				return (-1) if $a0 eq "SCCS";
-				return (1) if $b0 eq "SCCS";
-				# if this is the last item in one string,
-				# sort it first
-				return (-1) if !@a and @b;
-				return (1) if @a and !@b;
-				# else sort alphabetically
-				return ($a0 cmp $b0);
-			}
-			# paranoid - only happens if strings are a dup
-			return (0);
-		}
-		chomp(@list = <>);
-		print join("\n", sort mysort @list);
-	' | bk sfio -qm -o > "$SFIO")
-}
-
-# Usage get_cached_repo dir sfio
-_get_cached_repo() {
-	mkdir "$1" || exit 1
-	cd "$1" || exit 1
-	mkdir -p BitKeeper/etc
-	bk sfio -qm -i < "$2"
-	mkdir -p BitKeeper/tmp		# because sfio does not copy dir
-	bk _mkdir BitKeeper/deleted
-	bk _mkdir BitKeeper/deleted/SCCS
-}
-
-# Get a commercial repo, use cache copy if available
-# Usage: commercial dir
-commercial() {
-	CF="$BK_CACHE/commercial.config"
-	SFIO="$BK_CACHE/commercial.sfio"
-	test "$_BK_SETUP_NOGONE" && {
-		echo "no calling 'commercial' with _BK_SETUP_NOGONE" 1>&2
-		exit 1
-	}
-	test -f "$SFIO" || {
-		_commercial_config > "$CF"
-		_make_repo commercial "$CF" "$SFIO"
-	}
-	_get_cached_repo "$1" "$SFIO"
-}
-
 fresh_commercial() {
 	_commercial_config > .config
 	COMPAT=
@@ -205,23 +91,14 @@ fresh_commercial() {
 	}
 	test "$_BKFILE_REGRESSIONS" = "no" && COMPAT=--compat
 	bk setup $COMPAT -f -c.config "$1" || fail
+	rm .config
 	cd "$1"
+	bk bam server -qfr
+	bk repos -qc.
 }
 
-# 'nested foo' is a form of 'commercial foo' which gives a nested repo.
-nested() {
-	CF="$BK_CACHE/nested.config"
-	REPO="$BK_CACHE/nested"
-	test -d "$REPO" || {
-		_commercial_config 1 > "$CF"
-		_make_repo nested "$CF" ignored "$2"
-	}
-	bk clone -q "$BK_CACHE/nested" "$1" || exit 1
-	cd "$1" || exit 1
-	bk parent -qr || exit 1
-	bk portal -q . || exit 1
-	bk gate -q . || exit 1
-	rm BitKeeper/log/urllist
+commercial() {
+	fresh_commercial $*
 }
 
 fresh_nested() {
@@ -233,11 +110,18 @@ fresh_nested() {
 	}
 	test "$_BKFILE_REGRESSIONS" = "no" && COMPAT=--compat
 	bk setup $COMPAT -P -f -c.config "$1" || fail
+	rm .config
 	cd "$1"
 	bk setup -C -f gcc
 	bk setup -C -f gdb
 	bk alias set -C DEFAULT ALL
 	bk commit -q -y"attach gcc, gdb"
+	bk bam server -qfr
+	bk here set ALL PRODUCT
+}
+
+nested() {
+	fresh_nested $*
 }
 
 create_test_files() {

@@ -14,7 +14,7 @@
 
 echo $N Setup a fake read lock in a traditional repo.................$NL
 commercial project
-mkdir BitKeeper/readers
+mkdir -p BitKeeper/readers
 touch BitKeeper/readers/9999999@`bk gethost -r`.lock
 bk lock -lv 2> OUT || fail -f OUT
 echo 'No active lock in repository' > WANT

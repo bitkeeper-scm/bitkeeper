@@ -401,6 +401,9 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Make sure we do the right thing when an alias changes........$NL
+# XXXREV used in later test marked with XXX
+cd "$HERE/project"
+XXXREV=`bk changes -r+ -nd:REV:`
 cd "$HERE"
 bk clone $Q -sGCC project repo-1
 bk clone $Q -sGDB project repo-2
@@ -435,8 +438,10 @@ echo OK
 
 echo $N Setup a pull where a remote alias changes locally ...........$NL
 cd "$HERE"
-# XXX relies on nongate being a cached clone of repo-1 and -2
-nested nongate
+# XXX create a non-gate based on what repo-1 was when it was created
+# from project
+bk clone -r$XXXREV $Q project nongate
+cd nongate
 bk gate $Q -r
 bk clone $Q -s. . ../just-prod
 touch foo
