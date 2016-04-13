@@ -964,10 +964,13 @@ rmEmptyDirs(hash *empty)
 	 * These directories have had something removed, and so
 	 * _may_ be empty.  If rmdir() succeeds then it must have been.
 	 * if so keep walking up to root.
+	 *
+	 * Removing BitKeeper/etc makes a repository not a repository, so
+	 * we need to preserve that.
 	 */
 	EACH_HASH(empty) {
 		strcpy(buf, empty->kptr);
-		while (!rmdir(buf)) {
+		while (!streq(buf, "BitKeeper/etc") && !rmdir(buf)) {
 			t = dirname(buf);
 			if (streq(t, ".")) break;
 		}
