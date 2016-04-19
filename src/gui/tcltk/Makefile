@@ -261,27 +261,28 @@ rm_doc: FORCE
 	fi
 
 install: ./version.sh
-	$(Q)find bin lib -type d -print | xargs chmod ug+w
-	$(Q)rm -rf ../bin ../lib
-	$(Q)tar cf - bin lib | (cd .. && tar xf -)
+	$(Q)find bin lib share -type d -print | xargs chmod ug+w
+	$(Q)rm -rf ../bin ../lib ../share 
+	$(Q)tar cf - bin lib share | (cd .. && tar xf -)
 	-$(Q)TCLVER=`./version.sh`; \
 	if [ -n "$$TCLVER" -a \! -f "$$TCLVER" ]; \
 	then	test -d /build/obj || { \
 			mkdir /build/obj; \
 			chmod 777 /build/obj; \
 		}; \
-		tar cf - bin lib | gzip > "$$TCLVER"; \
+		tar cf - bin lib share | gzip > "$$TCLVER"; \
 		chmod 666 "$$TCLVER"; \
 	fi
 
 bin/tclsh$(EXE): tcl/$S/Makefile Lversion-L.sh Lversion-C.sh
-	rm -rf bin/tclsh$(EXE) lib/tcl*
+	rm -rf bin lib usr include share
+	mkdir include
 	cd tcl && ../Lversion-L.sh >library/Lver.tcl
 	cd tcl && ../Lversion-C.sh >generic/Lver.h
 	cd tcl/$S && \
-	$(MAKE) Q=$(Q) prefix= exec_prefix= INSTALL_ROOT=../.. \
+	$(MAKE) Q=$(Q) prefix= exec_prefix= INSTALL_ROOT="../.." \
 	    XLIBS="$(LIBTOMCRYPT)" \
-	    install-binaries install-libraries
+	    install-binaries install-libraries install-L-doc
 	if [ -x bin/tclsh$(TCLVERSION)$(EXE) ] ; then \
 		mv bin/tclsh$(TCLVERSION)$(EXE) bin/tclsh$(EXE) ; \
 	fi

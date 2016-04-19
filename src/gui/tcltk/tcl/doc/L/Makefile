@@ -1,32 +1,54 @@
-all: L.1 L.txt L.html
+TITLE="L Programmer's Reference Guide"
+PFMT_DIR="../../../../../../man/man1"
+PFMT="$(PFMT_DIR)/bk-little.1.pfmt"
 
-L.man: l.doc pod2man
-	sed s/=proto/=item/ < l.doc > L.pod
-	./pod2man -r L-beta -c "L Programmer's Reference Guide" L.pod L.man
-	rm -f L.pod
+all: little.1 little.txt little.html little.man delta.gif
 
-L.html: l.doc pod2html.l FORCE
-	bk tclsh ./pod2html.l --title="L Programmer's Reference Guide" l.doc > L.html
-	-@test -d /home/lm/public_html/ && cp L.html /home/lm/public_html/
+little.man: little.doc pod2man
+	awk -f bkfix.awk < little.doc | \
+	sed \
+	    -e 's/=options_end/=back/' \
+	    -e 's/=options/=over 4/' \
+	    -e 's/=option/=item/' \
+	    -e 's/=proto/=item/' \
+	    -e 's/^#.*//' | \
+	perl ./pod2man \
+	    -c"BitKeeper Users Manual" \
+	    -n"bk little" -s1 -ross | \
+	awk -f manfix.awk > little.man
 
-L.1: L.man
-	nroff -man L.man > L.1
+little.html: little.doc pod2html.l template.html
+	bk tclsh ./pod2html.l --title=$(TITLE) \
+	    --template=template.html -- $< > $@
 
-L.txt: L.man
-	nroff -man L.man | colcrt - > L.txt
+%.1: %.man
+	groff -man -Tascii $< > $@
 
-x: L.man
-	groff -man L.man > L.ps
-	gv L.ps
+%.txt: %.1
+	-colcrt $< > $@
+
+%.ps: %.man
+	groff -man $< > $@
+
+x: little.ps
+	gv little.ps
+
+install: all
+	cp delta.gif little.man little.1 little.txt little.html $(INSTALL_DIR)
+
+pfmt: little.man
+	-test -d $(PFMT_DIR) && { \
+		# Do this so Windows has an up to date bk help little; \
+		test -w $(PFMT) || bk edit $(PFMT); \
+		cp little.man $(PFMT); \
+	}
 
 clean:
-	rm -rf L.man L.1 L.txt L.ps l.shar L-docs L.html
-	bk clean
+	rm -rf little.man little.1 little.txt little.ps \
+	    little.shar L-docs little.html
 
-shar: l.doc pod2man Makefile
+shar: little.doc pod2man Makefile
 	rm -rf L-docs
 	mkdir L-docs
-	cp l.doc pod2man Makefile L-docs
-	shar L-docs > l.shar
-
-FORCE:
+	cp little.doc pod2man Makefile L-docs
+	shar L-docs > little.shar

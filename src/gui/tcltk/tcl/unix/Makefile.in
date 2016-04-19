@@ -29,6 +29,7 @@ libdir			= @libdir@
 includedir		= @includedir@
 datarootdir		= @datarootdir@
 mandir			= @mandir@
+docdir			= @docdir@
 
 # The following definition can be set to non-null for special systems like AFS
 # with replication. It allows the pathnames used for installation to be
@@ -60,6 +61,9 @@ PRIVATE_INCLUDE_DIR	= @PRIVATE_INCLUDE_DIR@
 
 # Directory in which to (optionally) install the private tcl headers:
 PRIVATE_INCLUDE_INSTALL_DIR = $(INSTALL_ROOT)$(PRIVATE_INCLUDE_DIR)
+
+# Top-level directory in which to install doc entries:
+DOC_INSTALL_DIR		= $(INSTALL_ROOT)$(docdir)
 
 # Top-level directory in which to install manual entries:
 MAN_INSTALL_DIR		= $(INSTALL_ROOT)$(mandir)
@@ -955,8 +959,8 @@ install-msgs:
 		$(INSTALL_DATA) $$i "$(SCRIPT_INSTALL_DIR)"/msgs; \
 	done;
 
-install-doc: doc
-	@for i in "$(MAN_INSTALL_DIR)" "$(MAN1_INSTALL_DIR)" "$(MAN3_INSTALL_DIR)" "$(MANN_INSTALL_DIR)" ; \
+install-L-doc: doc
+	@for i in "$(DOC_INSTALL_DIR)/L" ; \
 	    do \
 	    if [ ! -d "$$i" ] ; then \
 		echo "Making directory $$i"; \
@@ -964,6 +968,23 @@ install-doc: doc
 		else true; \
 		fi; \
 	    done;
+
+	@echo "Installing L docs to $(DOC_INSTALL_DIR)/L";
+	@cd $(TOP_DIR)/doc/L && $(MAKE) INSTALL_DIR=../$(DOC_INSTALL_DIR)/L install
+
+install-doc: doc
+	@for i in "$(DOC_INSTALL_DIR)/L" "$(MAN_INSTALL_DIR)" "$(MAN1_INSTALL_DIR)" "$(MAN3_INSTALL_DIR)" "$(MANN_INSTALL_DIR)" ; \
+	    do \
+	    if [ ! -d "$$i" ] ; then \
+		echo "Making directory $$i"; \
+		$(INSTALL_DATA_DIR) "$$i"; \
+		else true; \
+		fi; \
+	    done;
+
+	@echo "Installing L docs to $(DOC_INSTALL_DIR)/L";
+	@cd $(TOP_DIR)/doc/L && $(MAKE) INSTALL_DIR=$(DOC_INSTALL_DIR)/L install
+
 	@echo "Installing and cross-linking top-level (.1) docs to $(MAN1_INSTALL_DIR)/";
 	@for i in $(TOP_DIR)/doc/*.1; do \
 	    $(SHELL) $(UNIX_DIR)/installManPage $(MAN_FLAGS) $$i "$(MAN1_INSTALL_DIR)"; \

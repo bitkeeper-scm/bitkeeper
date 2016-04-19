@@ -274,7 +274,6 @@ OBJ =	bkver.o cmd.o \
 SCRIPTS	= applypatch bk.script import \
 	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
-LSCRIPTS = lscripts/hello.l
 PSCR	= t/doit t/guitest
 PROGS	= libc/mtst$(EXE)
 LIBS	= libc/libc.a tomcrypt/libtomcrypt.a tommath/libtommath.a
@@ -284,8 +283,8 @@ DATA	= bkmsg.txt bkhelp.txt \
 	dspec-changes dspec-changes-vv dspec-changes-h dspec-changes-hv \
 	dspec-changes-3.2 dspec-changes-4.0 dspec-prs dspec-log
 CONTRIB = gui/ide/emacs/vc-bk.el
-ALL	= PCRE $(LIBS) $(BINS) $(SCRIPTS) $(LSCRIPTS) $(PSCR) $(DATA) $(XTRA) \
-	$(PROGS) GUI
+ALL	= PCRE $(LIBS) $(BINS) $(SCRIPTS) $(PSCR) $(XTRA) \
+	$(PROGS) L-clean GUI L-doc $(DATA)
 
 CFLAGS	= $(CC_DEBUG)
 CPPFLAGS= -Ilibc -Itommath -Itomcrypt/src/headers -Igui/tcltk/pcre/local/include
@@ -306,8 +305,7 @@ SCRSRCS	= bk.sh import.sh kwextract.pl uuwrap.sh unuuwrap.sh \
 	  port/win32_platform.perl port/win32_platform.sh \
 	  gzip_uuwrap.sh ungzip_uuwrap.sh \
 	  substvars.sh b64wrap.sh gzip_b64wrap.sh \
-	  unb64wrap.sh ungzip_b64wrap.sh \
-	  $(LSCRIPTS)
+	  unb64wrap.sh ungzip_b64wrap.sh 
 MISC	= bkmsg.doc t/doit.sh
 
 export	GET
@@ -465,9 +463,27 @@ bk.script: bk.sh port/$(SYS)_platform.sh
 bkmsg.txt: bkmsg.doc
 	cp -f $< $@
 
-bkhelp.txt: FORCE
+L-clean: FORCE
+	@rm -f gui/share/doc/L/little.man ../man/man1/bk-little.1
+	@rm -f ../man/man2help/bk-little-1.fmt
+
+# has to run before bkhelp.txt but after GUI
+L-doc L-docs: GUI FORCE
+	@test -f gui/share/doc/L/little.man || { \
+		echo Failed to build gui/share/doc/L/little.man; \
+		exit 1; \
+	}
+	@if [ -s gui/share/doc/L/little.man ]; \
+	then	cp gui/share/doc/L/little.man ../man/man1/bk-little.1; \
+	else	cp ../man/man1/bk-little.1.pfmt ../man/man1/bk-little.1; \
+	fi; \
+	chmod +w ../man/man1/bk-little.1
+
+bkhelp.txt: L-docs FORCE
+	@rm -f ../man/man2help/bk-little.fmt
 	@cd ../man/man2help && $(MAKE) helptxt
 	@cp ../man/man2help/helptxt bkhelp.txt
+	@rm -f ../man/man1/bk-little.1
 
 ../doc/bk_refcard.ps: FORCE
 	$(Q)echo building $@
