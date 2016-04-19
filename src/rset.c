@@ -306,6 +306,20 @@ out:
 }
 
 /*
+ * See if there was a change in the file or not. Since the data is
+ * most likely coming from weaveExtract(), a file where nothing
+ * changed will have the same deltakey in left1 and right with no
+ * left2, or the same in all keys. That means no change so it should
+ * not be in the diff.
+ */
+#define	UNCHANGED(file) (							\
+      ((((file)->left1 == (file)->right) &&				\
+       !(file)->left2) ||						\
+	(((file)->left2 == (file)->right) &&				\
+	 (!(file)->left1 || ((file)->left1 == (file)->left2))))		\
+)									\
+
+/*
  * List the rset output for a cset range left1,left2..right
  * For compactness, keep things in heap offset form.
  */
@@ -323,6 +337,7 @@ rset_diff(sccs *cset, ser_t left1, ser_t left2, ser_t right, int showgone)
 
 	EACH_HASH(data->keys) {
 		file = (rfile *)data->keys->vptr;
+		if (UNCHANGED(file)) continue;
 		d = addArray(&diff, 0);
 		d->rkoff = file->rkoff;
 		d->dkleft1 = file->left1;
@@ -741,11 +756,7 @@ sortKeys(Opts *opts, rset *data)
 		 * Prune where left and right have same content.
 		 * Keep where left1 == left2, but != right.
 		 */
-		if (((file->left1 == file->right) && !file->left2) ||
-		    ((file->left2 == file->right) &&
-		    (!file->left1 || (file->left1 == file->left2)))) {
-			continue;
-		}
+		if (UNCHANGED(file)) continue;
 		list = addRline(list, opts, file);
 	}
 	sortArray(list, sortpath);

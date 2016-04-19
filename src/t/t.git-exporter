@@ -19,11 +19,22 @@ function do_export () {
 	repo_bk=$1
 	repo_git=$2
 	standalone=${3:+-S}
-	rm -rf "$2"
+	rm -rf "$repo_git"
 	git init -q "$repo_git"
-	(cd "$repo_bk" ; bk fast-export -A"$HERE"/authors $standalone --bk-regressions) | \
-	    (cd "$repo_git" ; git fast-import) > "$HERE/GOT" 2>&1 || \
-	    fail -f "$HERE/GOT" export failed
+	(cd "$repo_bk" ; bk fast-export -A"$HERE"/authors $standalone --bk-regressions) > "$HERE/EXPORT"
+	(cd "$repo_git" ; git fast-import) < "$HERE/EXPORT" > "$HERE/GOT" 2>&1 || \
+	    fail -f "$HERE/GOT" export failed. See "$HERE/EXPORT".
+}
+
+function do_incremental () {
+	repo_bk="`pwd`/$1"
+	repo_git="`pwd`/$2"
+	standalone=${3:+-S}
+	(cd "$repo_bk" ; \
+	 bk fast-export -A"$HERE"/authors \
+	    --bk-regressions $standalone --incremental="$repo_git") > "$HERE/EXPORT"
+	(cd "$repo_git" ; git fast-import) < "$HERE/EXPORT" > "$HERE/GOT" 2>&1 || \
+	    fail -f "$HERE/GOT" export failed. See "$HERE/EXPORT"
 }
 
 function cmp_repos() {
@@ -35,7 +46,8 @@ function cmp_repos() {
 	## build an array of bk revisions mapped to git revisions
 	## I need to build it from the git tree since it's the one
 	## that has the MD5KEYs in the comments.
-	(cd "$git_repo" ; git log --pretty='%H %s' ) | \
+	rm -f "$HERE/GOT.1"
+	(cd "$git_repo" ; git log --pretty='%H %s' master ) | \
 	    while read sha1 md5; 
 	    do 
 		    rm -rf "$export_git" "$export_bk"
@@ -47,7 +59,11 @@ function cmp_repos() {
 		    diff -Nrq "$export_git" "$export_bk" > OUT || {
 			fail -f OUT Diffs found $sha1 $md5
 		    }
+		    echo $md5 >> "$HERE/GOT.1"
 	    done
+	(cd "$bk_repo" ; bk changes $standalone -end:MD5KEY: ) | sort > "$HERE/WANT"
+	sort < "$HERE/GOT.1" > "$HERE/GOT"
+	cmpfiles "$HERE/WANT" "$HERE/GOT"
 }
 
 echo $N Create a bk tree.............................................$NL
@@ -220,6 +236,41 @@ cmpfiles WANT OUT
 cmp_repos project project.git || fail
 echo OK
 
+echo $N Establish a baseline for incremental testing.................$NL
+cd "$HERE"
+commercial incremental
+
+## Establish a baseline
+echo file1 > file1 ; bk new $Q file1 ; bk commit $Q -yfile1
+bk clone $Q . ../incremental.copy
+echo file2 > file2 ; bk new $Q file2 ; bk commit $Q -yfile2
+bk clone $Q . ../incremental.copy2
+cd ../incremental.copy
+echo file1.1 > file1.1 ; bk new $Q file1.1 ; bk commit $Q -yfile1.1
+cd ../incremental
+bk pull $Q ../incremental.copy
+cd ..
+do_export incremental incremental.git || fail
+cmp_repos incremental incremental.git || fail
+echo OK
+
+echo $N Test criss-cross merge.......................................$NL
+## 
+cd "$HERE/incremental.copy2"
+bk pull $Q ../incremental.copy
+cd ../incremental
+bk pull $Q ../incremental.copy2
+cd ..
+
+do_incremental incremental incremental.git || fail
+cmp_repos incremental incremental.git || fail
+echo OK
+
+echo $N Incremental when there is nothing to do......................$NL
+do_incremental incremental incremental.git || fail
+cmp_repos incremental incremental.git || fail
+echo OK
+
 echo ---- nested tests
 
 echo $N Test a simple nested export..................................$NL
@@ -292,7 +343,50 @@ do_export product product.git || fail
 cmp_repos product product.git || fail
 echo OK
 
-echo $N Set up a repo that does support fast-export .................$NL
+echo $N Test incremental in component................................$NL
 cd "$HERE"
-commercial export
+do_export product/gcc component.git standalone || fail
+cmp_repos product/gcc component.git standalone || fail
+cd product/gcc
+for i in 1 2 3
+do	 echo file$i > file$i
+	 bk new $Q file$i
+	 bk commit -S $Q -yfile$i
+done
+bk commit $Q -y"bunch of csets"
+cd "$HERE"
+do_incremental product/gcc component.git standalone || fail
+cmp_repos product/gcc component.git standalone || fail
+echo OK
+
+echo $N Test warning.................................................$NL
+cd "$HERE"
+do_export project project.git || fail
+cmp_repos project project.git || fail
+cd project
+echo extra stuff > extra_file
+bk new $Q extra_file
+bk commit $Q -yextra_file
+cd ..
+cd project.git
+git checkout -q -f master
+echo stuff > git_file
+git add git_file
+git commit -q -m"add git file"
+cd ..
+repo_git="$HERE/project.git"
+(cd project ; \
+ bk fast-export -A"$HERE"/authors \
+    --bk-regressions $standalone --incremental="$repo_git") > "$HERE/EXPORT" 2>"$HERE/GOT"
+cat <<EOF >WANT
+WARNING: The tip of the master git branch is not a BitKeeper imported
+cset (no MD5KEY in the comments). Please see bk help fast-export for more details.
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test quiet mode..............................................$NL
+cd "$HERE"
+git init -q junk
+(cd project; bk fast-export --quiet --quiet) | (cd junk ; git fast-import --quiet)
 echo OK
