@@ -134,7 +134,7 @@ EOF
 bk undos < OUT | grep -v Date > GOT
 cat <<EOF > WANT
 HTTP/1.0 403 Error
-Server: bkhttp/0.5
+Server: bkhttp/0.6
 Content-Type: text/html
 
 <html><head><title>Error!</title></head>
@@ -153,9 +153,9 @@ BK/Web cannot access data outside of the directory where the bkd was started.
 <hr>
 <table width=100%>
 <tr>
-  <th valign=top align=left>bkhttp/0.5 server
+  <th valign=top align=left>bkhttp/0.6 server
   </th>
-  <td align=right><a href=http://www.bitkeeper.com><img src=/BitKeeper/www/trailer.gif alt="Learn more about BitKeeper">  </a>  </td>
+  <td align=right><a href=http://www.bitkeeper.com><img src='/BitKeeper/www/trailer.gif' alt='Learn more about BitKeeper'>  </a>  </td>
 </tr>
 </table>
 </body></html>

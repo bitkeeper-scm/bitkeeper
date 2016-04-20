@@ -45,10 +45,10 @@ private void	http_related(char *page);
 private void	http_tags(char *page);
 private void	http_robots(void);
 private void	http_repos(char *page);
-private void	http_title(char *title, char *desc, char *color);
-private void	pwd_title(char *t, char *color);
-private void	header(char *color, char *title, char *header, ...);
-private void	printnavbar(void);
+private void	http_title(char *desc);
+private void	pwd_title(void);
+private void	header(char *title, char *header, ...);
+private void	printnavbar(char *current_page);
 private int	parseurl(char *);
 private	void	mk_querystr(void);
 private void	trailer(void);
@@ -56,15 +56,13 @@ private	void	detect_oldurls(char *url);
 private void	flushExit(int status);
 private char	*dl_link(void);
 
-#define	COLOR		"white"
+#define INNER_TABLE	"<table class='table table-bordered table-condensed table-striped sortable'>"
+#define	INNER_END	"</table>\n"
 
-#define	OUTER_TABLE	"<!-- OUTER -->\n<table width=100% bgcolor=black cellspacing=0 border=0 cellpadding=2><tr><td>\n"
-#define INNER_TABLE	"<!-- INNER -->\n<table width=100% cellpadding=3 cellspacing=1 border=0 class=\"sortable\" id=\"t1\">"
-#define	INNER_END	"</table>\n<!-- END INNER -->\n"
-#define OUTER_END	"</td></tr></table>\n<!-- END OUTER -->\n"
-
-#define BKWEB_SERVER_VERSION	"0.5"
+#define BKWEB_SERVER_VERSION	"0.6"
 #define	BKWWW		"/BitKeeper/www/"
+#define BASE_CSS        BKWWW "css/bootstrap.min.css"
+#define BK_CSS          BKWWW "css/bk.css"
 
 private	char	*header_host;	/* hostname for http headers */
 private	hash	*qin;		/* the query keys in current url */
@@ -96,6 +94,30 @@ private struct pageref {
     { http_tags,    "tags" },
     { http_repos,   "repos" },
     { 0 },
+};
+
+private struct {
+	int	secs;
+	char	*cmd;
+	char	*name;
+} dates[] = {
+	{ HOUR,    "1h", "hour" },
+	{ DAY,     "1d", "day" },
+	{ 2*DAY,   "2d", "two days" },
+	{ 3*DAY,   "3d", "three days" },
+	{ 4*DAY,   "4d", "four days" },
+	{ WEEK,    "1w", "week" },
+	{ 2*WEEK,  "2w", "two weeks" },
+	{ 3*WEEK,  "3w", "three weeks" },
+	{ 4*WEEK,  "4w", "four weeks" },
+	{ 8*WEEK,  "8w", "eight weeks" },
+	{ 12*WEEK, "12w", "twelve weeks" },
+	{ 6*MONTH, "6M", "six months" },
+	{ 9*MONTH, "9M", "nine months" },
+	{ YEAR,    "1y", "year" },
+	{ 2*YEAR,  "2y", "two years" },
+	{ 3*YEAR,  "3y", "three years" },
+	{ 0 }
 };
 
 int
@@ -168,83 +190,52 @@ private void
 navbutton(char *title, char *url)
 {
 	if (!url) {
-		printf("<font size=2 color=lightblue>%s</font>\n", title);
+                printf("<li class='crumb'>%s</li>", title);
 	} else {
-		printf("<a style=\"text-decoration: none\" href=\"%s\">"
-		    "<font size=2 color=yellow>%s</font></a>\n",
-		    url, title);
+                printf("<li class='crumb'><a href='%s'>%s</a></li>",url,title);
 	}
 }
 
 private void
-navarrow(void) {
-	printf("<font size=2 color=white>"
-	    "<img src=" BKWWW "arrow.gif alt=&gt;&gt;>"
-	    "</font>");
-}
-
-private void
-printnavbar(void)
+printnavbar(char *current_page)
 {
-	char	*p, *dir, *file;
+	char	*p, *file = 0;
 	int	i;
-	char	**items;
+	char	**items = 0;
 	char	buf[MAXLINE];
 
 	/* put in a navigation bar */
-	puts("<!-- NAVBAR -->\n");
-	puts("<table width=100% cellpadding=1>\n"
-	    "<tr bgcolor=black><td align=left>");
+        puts("<ol class='breadcrumb'>");
 
 	navbutton("TOP", "/");
 
 	p = buf;
-	if (root) {
-		/* in repo */
-		dir = root;
-	} else {
-		dir = fpath;
+	*p++ = '/';
+	if (root && !streq(root, ".")) items = splitLine(root, "/", 0);
+	if (!streq(fpath, ".")) {
+		items = splitLine(fpath, "/", items);
+		if (fpath[strlen(fpath)-1] != '/') file = popLine(items);
 	}
-	dir = (root ? root : fpath);
-	unless (streq(dir, ".")) {
-		*p++ = '/';
-		items = splitLine(dir, "/", 0);
-		EACH(items) {
-			p += sprintf(p, "%s/", items[i]);
-			navarrow();
-			navbutton(items[i], buf);
-		}
-		freeLines(items, free);
+	EACH(items) {
+		p += sprintf(p, "%s/", items[i]);
+		navbutton(items[i], buf);
 	}
-	if (root && !streq(fpath, ".")) {
-		items = splitLine(fpath, "/", 0);
-		if (fpath[strlen(fpath)-1] != '/') {
-			file = popLine(items);
-		} else {
-			file = 0;
-		}
-		EACH(items) {
-			p += sprintf(p, "%s/", items[i]);
-			navarrow();
-			navbutton(items[i], buf);
-		}
-		freeLines(items, free);
-		if (file) {
-			navarrow();
-			navbutton(file, 0);
-			free(file);
-		}
+	freeLines(items, free);
+	if (file) {
+		navbutton(file, 0);
+		free(file);
 	}
-	puts("</td></tr></table>");
-	puts("<!-- END NAVBAR -->\n");
+	if (current_page != NULL) navbutton(current_page, 0);
+        puts("</ol>");
 }
 
 private void
-header(char *color, char *titlestr, char *headerstr, ...)
+header(char *titlestr, char *headerstr, ...)
 {
-	char	*t, *fmt = 0;
 	va_list	ptr;
+	char	*t;
 	char	buf[MAXPATH];
+	char	*label = headerstr;
 
 	puts("<html><head>");
 	if (titlestr) {
@@ -258,46 +249,25 @@ header(char *color, char *titlestr, char *headerstr, ...)
 			va_start(ptr, headerstr);
 			vsprintf(buf, headerstr, ptr);
 			va_end(ptr);
+			label = buf;
 		}
-
-		fmt = buf;
 	}
-#ifdef SORTTABLE
 	printf("<script type=\"text/javascript\" src=" BKWWW "sorttable.js>"
 	    "</script>\n");
-	printf("<style type=text/css>\n"
-	    "table.sortable a.sortheader {\n"
-	    "  background-color:#d0d0d0;\n"
-	    "  font-weight: bold;\n"
-	    "  text-decoration: none;\n"
-	    "  display: block;\n"
-	    "}\n"
-	    "table.sortable span.sortarrow {\n"
-	    "  color: black;\n"
-	    "  text-decoration: none;\n"
-	    "}\n"
-	    "</style>\n");
-#endif
+	puts("<meta name='viewport' content='width=device-width'>");
+	puts("<meta name='viewport' content='initial-scale=1.0'>");
+        puts("<link rel='stylesheet' href='" BASE_CSS "' />");
+        puts("<link rel='stylesheet' href='" BK_CSS "' />");
 	puts("</head>");
 
-	puts("<body alink=black link=black bgcolor=white>");
-	puts("<!-- HEADER -->\n");
-	puts("<table width=100% bgcolor=black"
-	    " cellspacing=0 border=0 cellpadding=1>\n"
-	    "<tr><td>");
-
-	printnavbar();
-
-	puts("</td></tr>");
-	puts("<tr><td>");
+	puts("<body class='container-fluid'>");
+	printnavbar(label);
 
 	if ((t = cfg_str(0, CFG_DESCRIPTION)) && (strlen(t) < 2000)) {
-		http_title(fmt, t, color);
+		http_title(t);
 	} else {
-		pwd_title(fmt, color);
+		pwd_title();
 	}
-	puts("</td></tr></table>");
-	puts("<!-- END HEADER -->\n");
 }
 
 private void
@@ -329,13 +299,41 @@ http_changes(char *page)
 	char	*av[100];
 	char	buf[2048];
 
-	httphdr(".html");
-	header(COLOR, "ChangeSet Summaries", 0);
+	sprintf(buf, "Changes");
+	if (date && (*date == '-') && ends_with(date, "..")) {
+		char	match[8];
 
-	puts(OUTER_TABLE INNER_TABLE
-	    "<tr bgcolor=#d0d0d0>\n"
-    	    "<th>Age</th><th>Author</th><th>Rev</th>"
-	    "<th align=left>&nbsp;Comments</th></tr>");
+		strcpy(match, date+1);
+		match[strlen(match)-2] = 0;
+		for (i = 0; dates[i].secs; i++) {
+			if (streq(dates[i].cmd, match)) {
+				if (user) {
+					sprintf(buf,
+					    "Changes by %s in the last %s",
+					    user, dates[i].name);
+				} else {
+					sprintf(buf,
+					    "Changes in the last %s",
+					    dates[i].name);
+				}
+				break;
+			}
+		}
+	} else if (user) {
+		sprintf(buf, "All changes by %s", user);
+	}
+
+	httphdr(".html");
+	header("ChangeSet Summaries", buf);
+
+	puts("<div id='changes-view' class='view'>");
+
+	puts(INNER_TABLE
+	    "<tr>\n"
+    	    "<th class='age'>Age</th>"
+	    "<th class='author'>Author</th>"
+	    "<th class='rev'>Rev</th>"
+	    "<th class='comments'>Comments</th></tr>");
 
 	av[i=0] = "bk";
 	av[++i] = "prs";
@@ -348,14 +346,14 @@ http_changes(char *page)
 		av[++i] = buf;
 	}
 	av[++i] = dspec = aprintf("-d%s"
-	    "$if(:Li: -gt 0){<tr bgcolor=white>\\n"
-	    " <td align=right>:HTML_AGE:</td>\\n"
-	    " <td align=center>:USER:</td>\\n"
-	    " <td align=center$if(:TAG:){ bgcolor=yellow}>\\n"
+	    "$if(:Li: -gt 0){<tr>\\n"
+	    " <td class='age'>:HTML_AGE:</td>\\n"
+	    " <td class='author'>:USER:</td>\\n"
+	    " <td$if(:TAG:){ class='rev tag'}$else{ class='rev'}>\\n"
 	    "|:REV:|:MD5KEY:\\n"
 	    "$if(:TAG:){$each(:TAG:){<br>TAG: (:TAG:) }}"
 	    "</td>\\n"
-	    " <td>:HTML_C:</td>\\n"
+	    " <td class='comments'>:HTML_C:</td>\\n"
 	    "</tr>\\n"
 	    "}%s",
 	    prefix, suffix);
@@ -385,7 +383,8 @@ http_changes(char *page)
 		}
 	}
 	pclose(f);
-	puts(INNER_END OUTER_END);
+	puts(INNER_END);
+	puts("</div>");
 	trailer();
 }
 
@@ -402,16 +401,16 @@ http_cset(char *page)
 
 	dspec = aprintf("-d%s"
 	    "##:REV:\\n"
-	    "<tr bgcolor=#e0e0e0><td><font size=2>\\n"
+	    "<tr><td class='cset-heading'>\\n"
 	    "#:MD5KEY:@:GFILE:@:REV:&nbsp;&nbsp;:Dy:-:Dm:-:Dd: :T::TZ:&nbsp;&nbsp;:P:"
-	    "$if(:DOMAIN:){@:DOMAIN:}</font><br>\\n"
+	    "$if(:DOMAIN:){@:DOMAIN:}<br>\\n"
 	    "</td></tr>\\n"
 	    "$if(:TAG:){"
-	      "<tr bgcolor=yellow><td>"
+	      "<tr class='tag'><td class='tag'>"
 	      "$each(:TAG:){TAG: (:TAG:)<br>}</td>\\n</tr>\\n"
 	    "}"
-	    "<tr bgcolor=white>\\n"
-	    "<td>:HTML_C:</td></tr>\\n"
+	    "<tr>\\n"
+	    "<td class='comments'>:HTML_C:</td></tr>\\n"
 	    "%s",
 	    prefix, suffix);
 
@@ -434,11 +433,10 @@ http_cset(char *page)
 		if (buf[1] == '#') {
 			if (didhead) continue;
 			httphdr("cset.html");
-			header(COLOR, "Changeset details for %s", 0, buf+2);
-			puts("<table width=100% bgcolor=black cellspacing=0 "
-			    "border=0 cellpadding=0><tr><td>\n"
-	    		    "<table width=100% bgcolor=darkgray cellspacing=1 "
-	    		    "border=0 cellpadding=4>");
+			header("ChangeSet details for %s", buf+2, buf+2);
+			puts("<div id='cset-view' class='view'>");
+			puts("<table class='table table-bordered"
+			    " table-condensed table-striped'>");
 			didhead = 1;
 			continue;
 		}
@@ -455,71 +453,61 @@ http_cset(char *page)
 			hash_storeStr(qout, "PAGE", "patch");
 			hash_storeStr(qout, "REV", md5key);
 			mk_querystr();
-			printf("<a href=%s>\n"
-			    "<font size=2 color=darkblue>all diffs</font></a>",
+			printf("<a class='function' href='%s'>all diffs</a>",
 			    querystr);
 		} else {
 			hash_storeStr(qout, "PAGE", "history");
 			hash_deleteStr(qout, "REV");
 			mk_querystr();
-			printf("<a href=\"%s%s\">\n"
-			    "<font size=2 color=darkblue>history</font></a>\n",
+			printf("<a class='function' href='%s%s'>history</a>\n",
 			    p, querystr);
 			hash_storeStr(qout, "PAGE", "anno");
 			hash_storeStr(qout, "REV", md5key);
 			mk_querystr();
-			printf("&nbsp;&nbsp;"
-			    "<a href=\"%s%s\">"
-			    "<font size=2 color=darkblue>annotate</font>"
-			    "</a>\n",
+			printf("<a class='function' href='%s%s'>annotate</a>\n",
 			    p, querystr);
 			hash_storeStr(qout, "PAGE", "diffs");
 			mk_querystr();
-			printf("&nbsp;&nbsp;"
-			    "<a href=\"%s%s\">"
-			    "<font size=2 color=darkblue>diffs</font></a>\n",
+			printf("<a class='function' href='%s%s'>diffs</a>\n",
 			    p, querystr);
 		}
 	}
 	pclose(f);
 
-	fputs(INNER_END OUTER_END, stdout);
+	fputs(INNER_END, stdout);
+	puts("</div>");
 	trailer();
 }
 
 private void
-http_title(char *title, char *desc, char *color)
+http_title(char *desc)
 {
-	unless (title) return;
-
-	printf("<!-- TITLE -->\n<table width=100%% cellpadding=5 cellspacing=0 border=0>\n"
-	    "<tr><td align=middle bgcolor=%s><font color=black>", color);
-	if (desc) {
-		puts(desc);
-		puts("\n<hr size=1 noshade>\n");
-	}
-	puts(title);
-	puts("</font></td></tr></table>\n<!-- END TITLE -->\n");
+        puts("<div class='row page-title'>");
+        puts("<div class='col-xs-12'>");
+	puts(desc);
+        puts("</div>");
+        puts("</div>");
 }
 
 private void
-pwd_title(char *t, char *color)
+pwd_title(void)
 {
 	char	pwd[MAXPATH];
 
 	strcpy(pwd, proj_cwd());
-	http_title(t, pwd, color);
+	http_title(pwd);
 }
 
 private void
 trailer(void)
 {
-	puts("<p align=center>\n"
-	    "<font color=black size=-2>"
-	    "<a href=http://www.bitkeeper.com>"
-	    "<img src=" BKWWW "trailer.gif alt=\"Learn more about BitKeeper\">"
-	    "</a></font>\n"
-	    "</p>");
+	puts("<div class='row footer'>");
+	puts("<div class='col-xs-12 text-center'>");
+	puts("<hr/>");
+	puts("<a href='http://www.bitkeeper.com'>");
+	puts("<img src='" BKWWW "trailer.gif'>");
+	puts("</div>");
+	puts("</div>");
 	puts("</body></html>");
 }
 
@@ -567,14 +555,16 @@ http_prs(char *page)
 	hash_storeStr(qout, "PAGE", "diffs");
 
 	httphdr(".html");
-	header(COLOR, "Revision history for %s", 0, fpath);
+	header("Revision history for %s", "History", fpath);
 
-	puts(OUTER_TABLE INNER_TABLE
-	    "<tr bgcolor=#d0d0d0>\n"
-	    " <th>Age</th>\n"
-	    " <th>Author</th>\n"
-	    " <th>Rev</th>\n"
-	    " <th align=left>Comments</th>\n"
+	puts("<div id='prs-view' class='view'>");
+
+	puts(INNER_TABLE
+	    "<tr>\n"
+	    " <th class='age'>Age</th>\n"
+	    " <th class='author'>Author</th>\n"
+	    " <th class='rev'>Rev</th>\n"
+	    " <th class='comments'>Comments</th>\n"
 	    "</tr>");
 
 	av[i=0] = "bk";
@@ -599,24 +589,27 @@ http_prs(char *page)
 
 		hash_storeStr(qout, "REV", items[1]);
 		mk_querystr();
-		printf("%s<tr bgcolor=white>\n"
-		    " <td align=right>%s</td>\n"
-		    " <td align=center>%s</td>\n"
-		    " <td align=center%s%s>"
-		    "<a href=\"%s\">%s</a>"
+		printf("%s<tr>\n"
+		    " <td class='age'>%s</td>\n"
+		    " <td class='author'>%s</td>\n"
+		    " <td class='rev%s%s'>"
+		    "<a href='%s'>%s</a>"
 		    "%s"
 		    "</td>\n <td>%s</td>\n"
 		    "</tr>\n%s",
 		    prefix, items[4], items[5],
-		    ((items[6][0] != ' ') ? " bgcolor=yellow" : ""),
-		    ((items[3][0] == '1') ? " bgcolor=orange" : ""),
+		    ((items[6][0] != ' ') ? " tag tags" : ""),
+		    ((items[3][0] == '1') ? " rename" : ""),
 		    querystr, items[2], items[6], items[7],
 		    suffix);
 		freeLines(items, free);
 	}
 	pclose(f);
 
-	puts(INNER_END OUTER_END);
+	puts(INNER_END);
+
+	puts("</div>");
+
 	trailer();
 	if (revision) free(revision);
 }
@@ -636,34 +629,37 @@ http_dir(char *page)
 		http_error(500, "%s: %s", fpath, strerror(errno));
 	}
 	httphdr(".html");
-	header(COLOR, "Source directory &lt;%s&gt;", 0,
+	header("Source directory &lt;%s&gt;", "Browse Source",
 	    fpath[1] ? fpath : "project root");
 
-	puts(OUTER_TABLE INNER_TABLE
-	    "<tr bgcolor=#d0d0d0>"
-	    "<th>&nbsp;</th>\n"
-	    "<th align=left>File&nbsp;or&nbsp;folder&nbsp;name</th>\n"
-	    "<th>Rev</th>\n"
-	    "<th>&nbsp;</th>\n"
-	    "<th>Age</th>\n"
-	    "<th>Author</th>\n"
-	    "<th align=left>&nbsp;Comments</th>\n"
+	puts("<div id='dir-view' class='view'>");
+
+	puts(INNER_TABLE
+	    "<tr>"
+	    "<th class='icon'></th>\n"
+	    "<th class='filename'>File or folder name</th>\n"
+	    "<th class='rev'>Rev</th>\n"
+	    "<th class='function'></th>\n"
+	    "<th class='age'>Age</th>\n"
+	    "<th class='author'>Author</th>\n"
+	    "<th class='comments'>Comments</th>\n"
 	    "</tr>");
 
 	hash_storeStr(qout, "PAGE", "dir");
 	mk_querystr();
 	EACH (d) {
 		if (streq("SCCS", d[i])) continue;
+		if (streq("BitKeeper", fpath) && streq("BAM", d[i])) continue;
 		concat_path(buf, fpath, d[i]);
 		unless (isdir(buf)) continue;
-		printf("<tr bgcolor=#e0e0e0>"
-		    "<td><a href=\"%s/%s\"><img border=0 src=%s></a></td>"
-		    "<td>&nbsp;<a href=\"%s/%s\">%s</a></td>"
-		    "<td>&nbsp;</td>"			/* rev */
-		    "<td>&nbsp;</td>"
-		    "<td align=right>&nbsp;</td>"	/* age */
-		    "<td>&nbsp;</td>"			/* user */
-		    "<td>&nbsp;</td></tr>\n",		/* comments */
+		printf("<tr>"
+		    "<td class='icon'><a href='%s/%s'><img src='%s'></a></td>"
+		    "<td class='filename'><a href='%s/%s'>%s</a></td>"
+		    "<td class='rev'></td>"			/* rev */
+		    "<td class='function'></td>"
+		    "<td class='age'></td>"	/* age */
+		    "<td class='author'></td>"			/* user */
+		    "<td class='comments'></td></tr>\n",	/* comments */
 		    d[i], querystr,
 		    BKWWW "folder_plain.png",
 		    d[i], querystr,
@@ -672,11 +668,11 @@ http_dir(char *page)
 	freeLines(d, free);
 
 	cmd = aprintf("bk prs -h -r+ -d'"
-	    "%s<tr bgcolor=white>\\n"
+	    "%s<tr>\\n"
 	    "|:GFILE:|:REV:|:MD5KEY:\\n"
-	    " <td align=right><font size=2>:HTML_AGE:</font></td>"
-	    " <td align=center>:USER:</td>"
-	    " <td>:HTML_C:&nbsp;</td>"
+	    " <td class='age'>:HTML_AGE:</td>"
+	    " <td class='author'>:USER:</td>"
+	    " <td class='comments'>:HTML_C:</td>"
 	    "</tr>\\n%s' '%s'",
 	    prefix, suffix, fpath);
 	out = fmem();
@@ -694,20 +690,20 @@ http_dir(char *page)
 		*rev++ = 0;
 		md5key = strchr(rev, '|');
 		*md5key++ = 0;
-		if (streq(file, "./ChangeSet")) {
+		if (streq(file, "ChangeSet")) {
 			hash_storeStr(qout, "PAGE", "changes");
 			hash_storeStr(qout, "REV", md5key);
 			mk_querystr();
-			printf("<td><a href=\"%s\"><img border=0 src="
-			    BKWWW "document_delta.png></a></td>"
-			    "<td>&nbsp;<a href=\"%s\">%s</a></td>",
+			printf("<td class='icon'><a href=\"%s\"><img src='"
+			    BKWWW "document_delta.png'></a></td>"
+			    "<td class='filename'><a href='%s'>%s</a></td>",
 			    querystr,
 			    querystr, gfile);
 			hash_storeStr(qout, "PAGE", "cset");
 			mk_querystr();
-			printf("<td align=center>"
-			    "<a href=%s>%s</a></td>"
-			    "<td headers=csets>&nbsp;</td>",
+			printf("<td class='rev'>"
+			    "<a href='%s'>%s</a></td>"
+			    "<td class='function'></td>",
 			    querystr, rev);
 		} else {
 			hash_storeStr(qout, "PAGE", "history");
@@ -716,26 +712,27 @@ http_dir(char *page)
 			ftrunc(out, 0);
 			webencode(out, gfile, strlen(gfile)+1);
 			enc = fmem_peek(out, 0);
-			printf("<td><a href=\"%s%s\"><img border=0 src="
-			    BKWWW "document_delta.png></a></td>",
+			printf("<td class='icon'><a href='%s%s'><img src='"
+			    BKWWW "document_delta.png'></a></td>",
 			    enc, querystr);
 			hash_storeStr(qout, "PAGE", "anno");
 			hash_storeStr(qout, "REV", md5key);
 			mk_querystr();
-			printf("<td>&nbsp;<a href=\"%s%s\">%s</a></td>",
+			printf("<td class='filename'>"
+			    "<a href='%s%s'>%s</a></td>",
 			    enc, querystr, gfile);
 			hash_storeStr(qout, "PAGE", "diffs");
-			hash_storeStr(qout, "REV", "+");
+			hash_storeStr(qout, "REV", md5key);
 			mk_querystr();
-			printf("<td align=center>"
-			    "<a href=\"%s%s\">%s</a>"
+			printf("<td class='rev'>"
+			    "<a href='%s%s'>%s</a>"
 			    "</td>",
 			    enc, querystr, rev);
 			hash_storeStr(qout, "PAGE", "related");
 			hash_deleteStr(qout, "REV");
 			mk_querystr();
-			printf("<td align=center>"
-			    "<a href=\"%s%s\">CSets</a></td>",
+			printf("<td class='function'>"
+			    "<a href='%s%s'>csets</a></td>",
 			    enc, querystr);
 		}
 	}
@@ -751,24 +748,27 @@ http_dir(char *page)
 		hash_storeStr(qout, "PAGE", "cat");
 		hash_deleteStr(qout, "REV");
 		mk_querystr();
-		printf("%s<tr bgcolor=white>\n"
-		    "<td><img border=0 src="
-		    BKWWW "document_plain.png></td>"
-		    "<td><a href=\"",
+		printf("%s<tr>\n"
+		    "<td class='icon'><img src='"
+		    BKWWW "document_plain.png'></td>"
+		    "<td class='filename'><a href='",
 		    prefix);
 		webencode(stdout, gfile ,strlen(gfile)+1);
-		printf("%s\">%s<a/></td>"
-		    "<td align=center>-</td>"
-		    "<td align=center>-</td>"
-		    "<td align=right>%s</td>"
-		    "<td align=center>-</td>"
-		    "<td>non-version controlled file</td>\n"
+		printf("%s'>%s<a/></td>"
+		    "<td class='rev'>-</td>"
+		    "<td class='function'>-</td>"
+		    "<td class='age'>%s</td>"
+		    "<td class='author'>-</td>"
+		    "<td class='comments'>non-version controlled file</td>\n"
 		    "</tr>\n%s",
 		    querystr, gfile,
 		    age(now - mtime(buf), "&nbsp;"), suffix);
 	}
 	pclose(f);
-	puts(INNER_END OUTER_END);
+	puts(INNER_END);
+	
+	puts("</div>");
+
 	trailer();
 }
 
@@ -777,7 +777,7 @@ private void
 http_anno(char *page)
 {
 	FILE	*f;
-	char	*src, *t, *p;
+	char	*t;
 	char	buf[4096];
 	int	empty = 1;
 	char	*rev = hash_fetchStr(qin, "REV");
@@ -788,11 +788,13 @@ http_anno(char *page)
 	 * Second param is title, third is header, both use same
 	 * varargs list, so use hack of %.0s to have it skip string
 	 */
-	header(COLOR, "Annotated listing of %s%.0s", 
-	    "Annotated listing of %.0s%s", fpath, freeme = dl_link());
+	header("Annotated listing of %s%.0s", 
+	    "%.0s%s &lt;annotated&gt;", fpath, freeme = dl_link());
 	free(freeme);
 
-	printf("<pre><font size=3>");
+	puts("<div id='anno-view' class='view'>");
+
+	printf("<pre class='code annotated'>");
 	unless (rev) rev = "+";
 	sprintf(buf, "bk annotate -Aru -r'%s' '%s'", rev, fpath);
 
@@ -805,30 +807,16 @@ http_anno(char *page)
 	}
 	f = popen(buf, "r");
 	while (t = fgetline(f)) {
-		int	closeTag = 0;
-
 		empty = 0;
-
-		/* search for C functions */
-		if (src = strchr(t, '|')) {
-			src += 2;	/* skip '| ' */
-			p = src;
-			while (*p && (isalnum(*p) || (*p == '_'))) p++;
-			if (*p == '(') {
-				printf("<a name=\"%.*s\">", (int)(p-src), src);
-				closeTag=1;
-			}
-		}
 		htmlify(t, strlen(t));
-		if (closeTag) {
-			printf("</a>");
-			closeTag = 0;
-		}
 		putchar('\n');
 	}
 	pclose(f);
 	if (empty) puts("\nEmpty file");
-	puts("</font></pre>");
+	puts("</pre>");
+
+	puts("</div>");
+
 	trailer();
 }
 
@@ -836,8 +824,9 @@ private char *
 dl_link(void)
 {
 	FILE	*f = fmem();
+	char	*base = basenm(fpath);
 
-	fputs("<a href=\"/", f);
+	fputs("<a title='View file contents' href=\"/", f);
 	webencode(f, root, strlen(root)+1);
 	putc('/', f);
 	webencode(f, fpath, strlen(fpath)+1);
@@ -847,7 +836,7 @@ dl_link(void)
 		webencode(f, qin->vptr, qin->vlen);
 	}
 	fputs("\">", f);
-	webencode(f, fpath, strlen(fpath)+1);
+	webencode(f, base, strlen(base)+1);
 	fputs("</a>", f);
 	return (fmem_close(f, 0));
 }
@@ -855,35 +844,29 @@ dl_link(void)
 #define BLACK 1
 #define	OLD 2
 #define	NEW 3
-#define	BOLD 4
 private void
 color(char c)
 {
 	static	int clr;
 
 	unless (c) {
-		fputs("<font color=black>", stdout);
+		fputs("<div class='same'>", stdout);
 		clr = 0;
 		return;
 	}
 	if (c == '-') {
 		if (clr != OLD) {
-			fputs("</font><font color=gray>", stdout);
+			fputs("</div><div class='old'>", stdout);
 			clr = OLD;
 		}
 	} else if (c == '+') {
 		if (clr != NEW) {
-			fputs("</font><font color=blue>", stdout);
-			clr = NEW;
-		}
-	} else if (c == 'd') {
-		if (clr != BOLD) {
-			fputs("</font><font color=black size=3>", stdout);
+			fputs("</div><div class='new'>", stdout);
 			clr = NEW;
 		}
 	} else {
 		if (clr != BLACK) {
-			fputs("</font><font color=black>", stdout);
+			fputs("</div><div class='same'>", stdout);
 			clr = BLACK;
 		}
 	}
@@ -906,19 +889,21 @@ http_diffs(char *page)
 	 * Second param is title, third is header, both use same
 	 * varargs list, so use hack of %.0s to have it skip string
 	 */
-	header(COLOR, "Changes for %s%.0s", 
-	    "Changes for %.0s%s", fpath, freeme = dl_link());
+	header("Changes for %s%.0s", 
+	    "%.0s%s &lt;changes&gt;", fpath, freeme = dl_link());
 	free(freeme);
+
+	puts("<div id='diffs-view' class='view'>");
 
 	hash_storeStr(qout, "PAGE", "anno");
 	mk_querystr();
 
 	i = snprintf(dspec, sizeof dspec,
-		"-d%s<tr bgcolor=white>\\n"
-		" <td align=right>:HTML_AGE:</td>\\n"
-		" <td align=center>:USER:$if(:DOMAIN:){@:DOMAIN:}</td>\\n"
-		" <td align=center><a href=\"%s&REV=:MD5KEY:\">:I:</a></td>\\n"
-		" <td>:HTML_C:</td>\\n"
+		"-d%s<tr>\\n"
+		" <td class='age'>:HTML_AGE:</td>\\n"
+		" <td class='author'>:USER:$if(:DOMAIN:){@:DOMAIN:}</td>\\n"
+		" <td class='rev'><a href=\"%s&REV=:MD5KEY:\">:I:</a></td>\\n"
+		" <td class='comments'>:HTML_C:</td>\\n"
 		"</tr>\\n%s", prefix, querystr, suffix);
 
 	if (i == -1) {
@@ -929,12 +914,12 @@ http_diffs(char *page)
 		http_error(500, "buffer overflow (#2) in http_diffs");
 	}
 
-	puts(OUTER_TABLE INNER_TABLE
-	    "<tr bgcolor=#d0d0d0>\n"
-	    " <th>Age</th>\n"
-	    " <th>Author</th>\n"
-	    " <th>Annotate</th>\n"
-	    " <th align=left>Comments</th>\n"
+	puts(INNER_TABLE
+	    "<tr>\n"
+	    " <th class='age'>Age</th>\n"
+	    " <th class='author'>Author</th>\n"
+	    " <th class='rev'>Annotate</th>\n"
+	    " <th class='comments'>Comments</th>\n"
 	    "</tr>");
 
 	av[i=0] = "bk";
@@ -948,7 +933,7 @@ http_diffs(char *page)
 	fflush(stdout);
 	spawnvp(_P_WAIT, "bk", av);
 
-	puts(INNER_END OUTER_END);
+	puts(INNER_END);
 
 	if (strstr(rev, "..")) {
 		sprintf(buf, "bk diffs -ur'%s' '%s'",
@@ -958,7 +943,7 @@ http_diffs(char *page)
 		    any2rev(rev, fpath), fpath);
 	}
 	f = popen(buf, "r");
-	printf("<pre><font size=3>");
+	printf("<pre class='code diffs'>");
 	color(0);
 	fnext(buf, f);
 	while (fnext(buf, f)) {
@@ -966,7 +951,11 @@ http_diffs(char *page)
 		htmlify(buf, strlen(buf));
 	}
 	pclose(f);
-	printf("</font></font></pre>"); /* first </font> closes color(0) */
+	printf("</div>"); /* Close the opening <div> from color() */
+	printf("</pre>");
+
+	puts("</div>");
+
 	trailer();
 }
 
@@ -980,27 +969,45 @@ http_patch(char *page)
 
 	httphdr(".html");
 	s = any2rev(rev, "ChangeSet");
-	header("#f0f0f0", "All diffs for ChangeSet %s", 0, s, querystr, rev);
+	header("All diffs for ChangeSet %s", "%s changes",
+	    s, querystr, rev);
 	free(s);
 
-	printf("<pre><font size=3>");
+	puts("<div id='patch-view' class='view'>");
+
 	sprintf(buf, "bk changes -vvr'%s'", rev);
 	f = popen(buf, "r");
-	color(0);
 	while (fgets(buf, sizeof(buf), f)) {
 		color(buf[0]);
-		if ((buf[0] == '=') || (buf[0] == '#')) {
-			printf("<table width=100%%>");
-			printf("<tr bgcolor=#e0e0e0><td><font size=2>");
-			chomp(buf);
+		if ((buf[0] == '#')) {
+			puts("</pre>");
+			puts("</div>");
+			puts("<div class='panel panel-default'>");
+			puts("<div class='panel-heading cset-heading'>");
+			puts("<h3 class='panel-title'>");
+			printf("<div class='file-heading'>");
+		}
+		if ((buf[0] == '=')) {
+			puts("</pre>");
+			puts("</div>");
+			puts("<div class='panel panel-default'>");
+			puts("<div class='panel-heading cset-heading'>");
+			puts("<h3 class='panel-title'>");
 		}
 		htmlify(buf, strlen(buf));
 		if ((buf[0] == '=') || (buf[0] == '#')) {
-			puts("</font></td></tr></table>");
+			puts("</h3>");
+			puts("</div>");
+			puts("<pre class='code diffs patch'>");
+			color(0);
 		}
 	}
 	pclose(f);
-	printf("</font></font></pre>"); /* first </font> closes color(0) */
+	printf("</div>"); /* Close the opening <div> from color() */
+	printf("</pre>");
+
+	puts("</div>");
+
 	trailer();
 }
 
@@ -1021,13 +1028,15 @@ http_stats(char *page)
 	recent_cs = all_cs = 0;
 
 	httphdr(".html");
-	header(COLOR, "User statistics", 0);
+	header("User statistics", "User Statistics");
 
-	puts(OUTER_TABLE INNER_TABLE
-	    "<tr bgcolor=#d0d0d0>\n"
-	    "<th>Author</th>\n"
-	    "<th>Recent changesets</th>\n"
-	    "<th>All changesets</th></tr>");
+	puts("<div id='stats-view' class='view'>");
+
+	puts(INNER_TABLE
+	    "<tr>\n"
+	    "<th class='author'>Author</th>\n"
+	    "<th class='recent-csets'>Recent changesets</th>\n"
+	    "<th class='all-csets'>All changesets</th></tr>");
 
 	while (fnext(buf,p)) {
 		char	f_user[80];
@@ -1042,11 +1051,11 @@ http_stats(char *page)
 			mk_querystr();
 			if (c_user[0]) {
 				printf(
-				    "<tr bgcolor=white>\n"
-				    "<td align=center>"
+				    "<tr>\n"
+				    "<td class='author'>"
 				    "<a href=\"%s\">%s</a></td>\n"
-				    "<td align=center>%d</td>\n"
-				    "<td align=center>%d</td></tr>\n",
+				    "<td class='recent-csets'>%d</td>\n"
+				    "<td class='all-csets'>%d</td></tr>\n",
 				    querystr, c_user,
 				    recent_cs, all_cs);
 			}
@@ -1070,15 +1079,18 @@ http_stats(char *page)
 		hash_storeStr(qout, "USER", c_user);
 		mk_querystr();
 		printf(
-		    "<tr bgcolor=white>\n"
-		    "<td align=center>"
+		    "<tr>\n"
+		    "<td class='author'>"
 		    "<a href=\"%s\">%s</a></td>\n"
-		    "<td align=center>%d</td>\n"
-		    "<td align=center>%d</td></tr>\n",
+		    "<td class='recent-csets'>%d</td>\n"
+		    "<td class='all-csets'>%d</td></tr>\n",
 		    querystr, c_user,
 		    recent_cs, all_cs);
 	}
-	puts(INNER_END OUTER_END);
+	puts(INNER_END);
+
+	puts("</div>");
+
 	trailer();
 }
 
@@ -1088,36 +1100,21 @@ http_index(char *page)
 {
 	sccs	*s;
 	ser_t	d;
-	time_t	now, t1h, t1d, t2d, t3d, t4d, t1w, t2w, t3w;
-	time_t	t4w, t8w, t12w, t6m, t9m, t1y, t2y, t3y;
-	int	c1h=0, c1d=0, c2d=0, c3d=0, c4d=0;
-	int	c1w=0, c2w=0, c3w=0, c4w=0, c8w=0, c12w=0, c6m=0, c9m=0;
-	int	c1y=0, c2y=0, c3y=0, c=0, cm=0;
-	char	buf[MAXPATH*2];
-	char	*email=0, *desc=0, *contact=0, *category=0;
+	time_t	now;
+	int	i;
+	int	c=0, cm=0;
+	//char	*email=0;
+	char	*desc=0;
+	//char	*contact=0;
+	//char	*category=0;
 	char	*bkweb=0, *master=0, *homepage=0;
+	int	cnt[20] = {0};
 
 	unless (s  = sccs_csetInit(INIT_NOCKSUM|INIT_NOSTAT|INIT_MUSTEXIST)) {
 		http_error(404, "Unable to find ChangeSet file");
 		return;
 	}
 	time(&now);
-	t1h = now - HOUR;
-	t1d = now - DAY;
-	t2d = now - 2*DAY;
-	t3d = now - 3*DAY;
-	t4d = now - 4*DAY;
-	t1w = now - WEEK;
-	t2w = now - 2*WEEK;
-	t3w = now - 3*WEEK;
-	t4w = now - 4*WEEK;
-	t8w = now - 8*WEEK;
-	t12w = now - 12*WEEK;
-	t6m = now - 6*MONTH;
-	t9m = now - 9*MONTH;
-	t1y = now - YEAR;
-	t2y = now - 2*YEAR;
-	t3y = now - 3*YEAR;
 	for (d = TABLE(s); d >= TREE(s); d--) {
 		if (user && !streq(user, USER(s, d))) continue;
 		if (TAG(s, d)) continue;
@@ -1125,32 +1122,20 @@ http_index(char *page)
 			unless (d == TREE(s)) cm++;
 			continue;
 		}
-		if (NOFUDGE(s, d) >= t1h) c1h++;
-		if (NOFUDGE(s, d) >= t1d) c1d++;
-		if (NOFUDGE(s, d) >= t2d) c2d++;
-		if (NOFUDGE(s, d) >= t3d) c3d++;
-		if (NOFUDGE(s, d) >= t4d) c4d++;
-		if (NOFUDGE(s, d) >= t1w) c1w++;
-		if (NOFUDGE(s, d) >= t2w) c2w++;
-		if (NOFUDGE(s, d) >= t3w) c3w++;
-		if (NOFUDGE(s, d) >= t4w) c4w++;
-		if (NOFUDGE(s, d) >= t8w) c8w++;
-		if (NOFUDGE(s, d) >= t12w) c12w++;
-		if (NOFUDGE(s, d) >= t6m) c6m++;
-		if (NOFUDGE(s, d) >= t9m) c9m++;
-		if (NOFUDGE(s, d) >= t1y) c1y++;
-		if (NOFUDGE(s, d) >= t2y) c2y++;
-		if (NOFUDGE(s, d) >= t3y) c3y++;
+		for (i = 0; dates[i].secs; i++) {
+			assert(i < sizeof(cnt)/sizeof(cnt[0]));
+			if (NOFUDGE(s, d) >= now - dates[i].secs) cnt[i]++;
+		}
 		c++;
 	}
 	sccs_free(s);
 
-	desc 	 = cfg_str(0, CFG_DESCRIPTION);
-	contact  = cfg_str(0, CFG_CONTACT);
-	email 	 = cfg_str(0, CFG_EMAIL);
-	category = cfg_str(0, CFG_CATEGORY);
-	bkweb 	 = cfg_str(0, CFG_BKWEB);
-	master 	 = cfg_str(0, CFG_MASTER);
+	desc	 = cfg_str(0, CFG_DESCRIPTION);
+	//contact  = cfg_str(0, CFG_CONTACT);
+	//email	 = cfg_str(0, CFG_EMAIL);
+	//category = cfg_str(0, CFG_CATEGORY);
+	bkweb	 = cfg_str(0, CFG_BKWEB);
+	master	 = cfg_str(0, CFG_MASTER);
 	homepage = cfg_str(0, CFG_HOMEPAGE);
 
 	httphdr(".html");
@@ -1159,139 +1144,116 @@ http_index(char *page)
 	 */
 	puts("<html><head><title>");
 	puts(desc ? desc : "ChangeSet activity");
-	puts("\n"
-	    "</title></head>\n"
-	    "<body alink=black link=black bgcolor=white>\n");
-	puts("<!-- INDEX -->\n");
-	puts("<table width=100% bgcolor=black"
-	    " border=0 cellspacing=0 cellpadding=1>\n"
-	    "<tr><td>");
+	puts("</title>\n");
+	puts("<meta name='viewport' content='width=device-width'>");
+	puts("<meta name='viewport' content='initial-scale=1.0'>");
+        puts("<link rel='stylesheet' href='" BASE_CSS "' />");
+        puts("<link rel='stylesheet' href='" BK_CSS "' />");
+        puts("</head>\n");
+        puts("<body class='container-fluid'>");
+	printnavbar(user);
 
-	printnavbar();
-	puts("</td></tr>");
-	puts("<tr><td>");
+	puts("<div id='index-view' class='view'>");
 
-	if (desc && strlen(desc) < MAXPATH) {
-		sprintf(buf, "%s<br>", desc);
-	} else {
-		strcpy(buf, proj_cwd());
-		strcat(buf, "<br>");
-	}
-	if (category && strlen(category) < MAXPATH) {
-		sprintf(buf+strlen(buf), "(%s)<br>", category);
-	}
-	if (email) {
-		sprintf(buf+strlen(buf),
-		    "<a href=\"mailto:%s\">%s</a>",
-		    email, contact ? contact : email);
-	}
-
-	if (user) {
-		char	*titlebar;
-		titlebar = aprintf("ChangeSet activity for %s",
-		    user);
-		http_title(titlebar, buf, "#f0f0f0");
-		free(titlebar);
-	} else {
-		http_title("ChangeSet activity", buf, "#f0f0f0");
-	}
-	puts("</td></tr></table>");
-	puts("<!-- END INDEX -->\n");
-
-	puts("<!-- MAIN -->\n");
-	puts("<p align=center><table bgcolor=#e0e0e0 border=1>");
-	puts("<tr><td align=middle valign=top width=50%>");
-	puts("<table cellpadding=3>");
+	puts("<div class='row'>");
+	puts("<div class='col-xs-12 col-sm-5 col-md-4 col-lg-4'>");
+	puts("<label>ChangeSet History</label>");
 	hash_storeStr(qout, "PAGE", "changes");
-#define	DOIT(c, l, u, t) \
-	if (c && (c != l)) { \
-		hash_storeStr(qout, "DATE", u); \
-		mk_querystr(); \
-		printf("<tr><td><a href=%s>", querystr); \
-		printf( \
-		    "%d&nbsp;Changesets&nbsp;in&nbsp;the&nbsp;last&nbsp;%s</a>", c, t); \
-		printf("</td></tr>\n"); \
+	for (i = 0; dates[i].secs; i++) {
+		char	t[10];
+		if (!cnt[i] || (i && (cnt[i] == cnt[i-1]))) continue;
+		sprintf(t, "-%s..", dates[i].cmd);
+		hash_storeStr(qout, "DATE", t);
+		mk_querystr();
+		printf("<div><a href=%s>", querystr);
+		printf(
+		    "%d&nbsp;ChangeSets&nbsp;in&nbsp;the&nbsp;last&nbsp;%s</a>",
+		    cnt[i], dates[i].name);
+		printf("</div>\n");
 	}
-	DOIT(c1h, 0, "-1h..", "hour");
-	DOIT(c1d, c1h, "-1d..", "day");
-	DOIT(c2d, c1d, "-2d..", "two&nbsp;days");
-	DOIT(c3d, c2d, "-3d..", "three&nbsp;days");
-	DOIT(c4d, c3d, "-4d..", "four&nbsp;days");
-	DOIT(c1w, c4d, "-7d..", "week");
-	DOIT(c2w, c1w, "-2w..", "two&nbsp;weeks");
-	DOIT(c3w, c2w, "-3w..", "three&nbsp;weeks");
-	DOIT(c4w, c3w, "-4w..", "four&nbsp;weeks");
-	DOIT(c8w, c4w, "-8w..", "eight&nbsp;weeks");
-	DOIT(c12w, c8w, "-12w..", "twelve&nbsp;weeks");
-	DOIT(c6m, c12w, "-6M..", "six&nbsp;months");
-	DOIT(c9m, c6m, "-9M..", "nine&nbsp;months");
-	DOIT(c1y, c9m, "-1y..", "year");
-	DOIT(c2y, c1y, "-2y..", "two&nbsp;years");
-	DOIT(c3y, c2y, "-3y..", "three&nbsp;years");
 	hash_deleteStr(qout, "DATE");
 	mk_querystr();
-	printf("<tr><td><a href=%s>", querystr);
+	printf("<div><a href=%s>", querystr);
 	if (cm) {
 		printf("All %d changesets (%d empty merges)", c+cm, cm);
 	} else {
 		printf("All %d changesets", c+cm);
 	}
-	puts("</a></td></tr></table>");
-	puts("</td><td align=middle valign=top width=50%>");
-	puts("<table cellpadding=3>\n");
-	unless (user) {
-		puts("<tr><td align=middle>");
-		hash_storeStr(qout, "PAGE", "stats");
-		mk_querystr();
-		printf("<a href=%s>User statistics</a></td></tr>\n",
-		    querystr);
-	}
-	puts("<tr><td align=middle>");
+	puts("</a></div>");
+	puts("</div>");
+
+	puts("<div class='col-xs-12 col-sm-7 col-md-8 col-lg-8'>");
+	puts("<label>Search History</label>");
+
+	puts("<div>");
 	hash_storeStr(qout, "PAGE", "tags");
 	mk_querystr();
-	printf("<a href=%s>Tags</a></td></tr>\n", querystr);
-	puts("<tr><td align=middle>");
+	printf("<a href=%s>Tags</a></div>", querystr);
+
+	unless (user) {
+		puts("<div>");
+		hash_storeStr(qout, "PAGE", "stats");
+		mk_querystr();
+		printf("<a href='%s'>User statistics</a>", querystr);
+		puts("</div>");
+	}
+
+	puts("<div>");
 	hash_storeStr(qout, "PAGE", "dir");
 	mk_querystr();
-	printf("<a href=%s>Browse the source tree</a></td></tr>", querystr);
+	printf("<a href=%s>Browse the source tree</a></div>", querystr);
+
 	if (bkweb && !exists(WEBMASTER)) {
-		puts("<tr><td align=middle>");
+		puts("<div>");
 		printf("<a href=\"%s\">BK/Web site for this package</a>"
-		    "</td></tr>\n", bkweb);
+		    "</div>\n", bkweb);
 	}
+
 	if (homepage) {
-		puts("<tr><td align=middle>");
+		puts("<div>");
 		printf("<a href=\"%s\">"
-		    "Home page for this package</a></td></tr>\n",
+		    "Home page for this package</a></div>\n",
 		    homepage);
 	}
+
 	if (master) {
-		puts("<tr><td align=middle>");
-		printf("Master repository at %s</td></tr>\n", master);
+		puts("<div>");
+		printf("Master repository at %s</div>\n", master);
 	}
-#ifdef notyet
-	puts("<tr><td><a href=http://www.bitkeeper.com/bkweb/help.html>Help"
-	    "</a></td></tr>\n");
-#endif
-	puts("<tr><td align=middle>"
-	    "<form method=get>\n"
-	    "<input type=hidden name=PAGE value=search>\n");
-	puts("<INPUT size=26 type=text name=EXPR><br>\n"
-	    "<table><tr><td><font size=2>\n"
-	    "<input type=radio name=SEARCH "
-	    "value=\"ChangeSet comments\" checked>"
-	    "Changeset comments<br>\n"
-	    "<input type=radio name=SEARCH value=\"file comments\">"
-	    "File comments<br>\n");
-	puts("<input type=radio name=SEARCH value=\"file contents\">"
-	    "File contents<br>\n");
-	puts("</font></td><td align=right>"
-	    "<input type=submit value=Search><br>"
-	    "<input type=reset value=\"Clear search\">\n"
-	    "</td></tr></table></form></td></tr>\n");
-	puts("</table></td></tr>");
-	puts("</table></p>");
-	puts("<!-- END MAIN -->");
+
+	puts("<div class='search-form'>"
+	    "<form class='form-inline' method='GET'>\n"
+	    "<input type='hidden' name='PAGE' value='search'>\n");
+
+	puts("<div class='form-group'>");
+	puts("<div class='input-group'>");
+	puts("<div class='input-group-addon'>");
+	puts("<span class='glyphicon glyphicon-search'></span>");
+	puts("</div>");
+	puts("<input type='search' name='EXPR' class='form-control'>");
+	puts("</div>");
+	puts("</div>");
+
+	puts("<button type='submit' class='btn btn-default'>Search</button>");
+	puts("<br/>");
+
+	puts("<label class='radio-inline'>");
+	puts("<input type='radio' name='SEARCH' value='ChangeSet comments'"
+		" checked>ChangeSet comments</label>");
+	puts("<label class='radio-inline'>");
+	puts("<input type='radio' name='SEARCH' value='file comments'>"
+		"File comments</label>");
+	puts("<label class='radio-inline'>");
+	puts("<input type='radio' name='SEARCH' value='file contents'>"
+		"File contents</label>");
+
+	puts("</form>");
+	puts("</div>");
+	puts("</div>");
+	puts("</div>");
+
+	puts("</div>");
+
 	trailer();
 }
 
@@ -1417,7 +1379,7 @@ http_error(int status, char *fmt, ...)
 	    "  <th valign=top align=left>bkhttp/" BKWEB_SERVER_VERSION " server");
 	puts("  </th>\n"
 	    "  <td align=right><a href=http://www.bitkeeper.com>"
-	    "<img src=" BKWWW "trailer.gif alt=\"Learn more about BitKeeper\">"
+	    "<img src='" BKWWW "trailer.gif' alt='Learn more about BitKeeper'>"
 	    "  </a>"
 	    "  </td>\n"
 	    "</tr>\n"
@@ -1562,27 +1524,31 @@ http_related(char *page)
 	hash_storeStr(qout, "PAGE", "cset");
 	mk_querystr();
 
-	i = snprintf(dspec, sizeof dspec, "%s<tr bgcolor=white>\\n"
-			" <td align=right>:HTML_AGE:</td>\\n"
-			" <td align=center>:USER:</td>\\n"
-			" <td align=center"
-			"$if(:TAG:){ bgcolor=yellow}>"
+	i = snprintf(dspec, sizeof dspec, "%s<tr>\\n"
+			" <td tag=\"age\">:HTML_AGE:</td>\\n"
+			" <td tag=\"author\">:USER:</td>\\n"
+			" <td"
+			"$if(:TAG:){ class=\"rev tag\"}$else{ class=\"rev\"}>"
 			"<a href=/%s/%s&REV=:MD5KEY:>:I:</a>"
 			"$if(:TAG:){$each(:TAG:){<br>TAG: (:TAG:)}}"
 			"</td>\\n"
-			" <td>:HTML_C:</td>\\n"
+			" <td class=\"comments\">:HTML_C:</td>\\n"
 			"</tr>\\n%s", prefix, root, querystr, suffix);
 
 	if (i == -1)
 		http_error(500, "buffer overflow in http_related");
 
 	httphdr(".html");
-	header(COLOR, "Changesets that modify %s", 0, fpath);
+	header("ChangeSets that modify %s", 0, fpath);
 
-	puts(OUTER_TABLE INNER_TABLE
-	    "<tr bgcolor=#d0d0d0>\n"
-	    "<th>Age</th><th>Author</th><th>Rev</th>"
-	    "<th align=left>&nbsp;Comments</th></tr>\n");
+	puts("<div id='related-view' class='view'>");
+
+	puts(INNER_TABLE
+	    "<tr>\n"
+	    "<th class='age'>Age</th>"
+	    "<th class='author'>Author</th>"
+	    "<th class='rev'>Rev</th>"
+	    "<th class='comments'>Comments</th></tr>\n");
 	fflush(stdout);
 	if (root && !streq(root, ".")) {
 		path = aprintf("%s/%s", root, fpath);
@@ -1591,7 +1557,10 @@ http_related(char *page)
 	}
 	systemf("bk changes -i'%s' -nd'%s'", path, dspec);
 	free(path);
-	puts(INNER_END OUTER_END);
+	puts(INNER_END);
+
+	puts("</div>");
+
 	trailer();
 }
 
@@ -1605,23 +1574,25 @@ http_tags(char *page)
 	char	buf[MAXLINE];
 
 	httphdr(".html");
-	header(COLOR, "Tags", 0);
+	header("Tags", "Tags");
 
-	puts(OUTER_TABLE INNER_TABLE
-	    "<tr bgcolor=#d0d0d0>\n"
-	    "  <th>Age</th>\n"
-	    "  <th>Tag</th>\n"
-	    "  <th>&nbsp;</th>\n"
-	    "  <th>&nbsp;</th>\n"
-	    "  <th align=left>&nbsp;Comments</th>\n"
+	puts("<div id='tags-view' class='view'>");
+
+	puts(INNER_TABLE
+	    "<tr>\n"
+	    "  <th class='age'>Age</th>\n"
+	    "  <th class='tag'>Tag</th>\n"
+	    "  <th class='function'></th>\n"
+	    "  <th class='function'></th>\n"
+	    "  <th class='comments'>Comments</th>\n"
 	    "</tr>\n");
 
 
 	cmd = aprintf("bk changes -t -nd'%s"
-	    "<tr bgcolor=white>\\n"
-	    "  <td align=right>:HTML_AGE:</td>\\n"
+	    "<tr>\\n"
+	    "  <td class='age'>:HTML_AGE:</td>\\n"
 	    "$each(:TAG:){|(:TAG:)}\\n"
-	    "  <td>:HTML_C:</td>\\n"
+	    "  <td class='comments'>:HTML_C:</td>\\n"
 	    "</tr>%s'", prefix, suffix);
 	f = popen(cmd, "r");
 	free(cmd);
@@ -1632,7 +1603,7 @@ http_tags(char *page)
 			continue;
 		}
 		chomp(buf);
-		printf("<td align=center bgcolor=yellow>\n");
+		printf("<td class='tag tags'>\n");
 		tags = splitLine(buf+1, "|", 0);
 		EACH(tags) {
 			hash_storeStr(qout, "PAGE", "cset");
@@ -1641,22 +1612,24 @@ http_tags(char *page)
 			printf("<a href=\"%s\">%s</a><br>\n",
 			    querystr, tags[i]);
 		}
-		printf("</a></td>\n");
+		printf("</td>\n");
 		sprintf(buf, "..%s", tags[1]);
 		hash_storeStr(qout, "PAGE", "changes");
 		hash_storeStr(qout, "REV", buf);
 		mk_querystr();
-		printf("<td><a href=\"%s\">earlier CSets</a></td>\n",
-		    querystr);
+		printf("<td class='function'>"
+		    "<a href='%s'>earlier csets</a></td>\n", querystr);
 		sprintf(buf, "%s..", tags[1]);
 		hash_storeStr(qout, "REV", buf);
 		mk_querystr();
-		printf("<td><a href=\"%s\">later CSets</a></td>\n",
-		    querystr);
+		printf("<td class='function'>"
+		    "<a href='%s'>later csets</a></td>\n", querystr);
 		freeLines(tags, free);
 	}
 	pclose(f);
-	puts(INNER_END OUTER_END);
+	puts(INNER_END);
+
+	puts("</div>");
 
 	trailer();
 }
@@ -1691,10 +1664,12 @@ http_search(char *page)
 	i = snprintf(buf,
 	    sizeof(buf), "Search results for \"%s\" in %s\n", expr, s);
 	if (i == -1) {
-		header(COLOR, "Search results", 0);
+		header("Search Results", "Search Results");
 	} else {
-		header(COLOR, buf, 0);
+		header(buf, "Search Results");
 	}
+
+	puts("<div id='search-view' class='view'>");
 
 	switch (which) {
 	    case SEARCH_CSET:
@@ -1761,6 +1736,9 @@ http_search(char *page)
 	} else {
 		puts("</pre>");
 	}
+
+	puts("</div>");
+
 	trailer();
 }
 
@@ -1787,14 +1765,16 @@ http_repos(char *page)
 	if (chdir(fpath)) http_error(404, "unknown directory");
 
 	httphdr(".html");
-	header(COLOR, "Repos", 0);
+	header("Repos", "Repos");
 
-	puts(OUTER_TABLE INNER_TABLE
-	    "<thead><tr bgcolor=#d0d0d0>\n"
-	    "  <th>&nbsp;</th>\n"
-	    "  <th align=left>Repository or Folder</th>\n"
-	    "  <th>Age</th>\n"
-	    "</tr></thead><tbody>");
+	puts("<div id='repos-view' class='view'>");
+
+	puts(INNER_TABLE
+	    "<tr>\n"
+	    "  <th class='icon'></th>\n"
+	    "  <th>Repository or Folder</th>\n"
+	    "  <th data-sort='date'>Age</th>\n"
+	    "</tr>");
 
 	d = getdir(".");
 	EACH(d) {
@@ -1808,20 +1788,20 @@ http_repos(char *page)
 		if (isdir(buf2)) {
 			concat_path(buf, buf, "SCCS/s.ChangeSet");
 			if (lstat(buf, &sb) == -1) continue;
-			printf("<tr bgcolor=white>\n"
-			    "<td align=center><a href=\"%s/%s\">"
-			    "<img border=0 src=" BKWWW "folder_delta.png></a></td>"
-			    "<td>&nbsp;<a href=\"%s/%s\">%s</a></td>\n"
-			    "<td align=center>%s</td></tr>",
+			printf("<tr class='repo'>\n"
+			    "<td class='icon'><a href='%s/%s'>"
+			    "<img src='" BKWWW "folder_delta.png'></a></td>"
+			    "<td><a href='%s/%s'>%s</a></td>\n"
+			    "<td>%s</td></tr>",
 			    enc, querystr,
 			    enc, querystr, d[i],
 			    age(now - sb.st_mtime, "&nbsp;"));
 		} else {
-			printf("<tr bgcolor=#e0e0e0>\n"
-			    "<td align=center><a href=\"%s/%s\">"
-			    "<img border=0 src=" BKWWW "folder_plain.png></a></td>"
-			    "<td>&nbsp;<a href=\"%s/%s\">%s</a></td>\n"
-			    "<td align=center>%s</td></tr>",
+			printf("<tr class='directory'>"
+			    "<td class='icon'><a href='%s/%s'>"
+			    "<img src='" BKWWW "folder_plain.png'></a></td>"
+			    "<td><a href='%s/%s'>%s</a></td>\n"
+			    "<td>%s</td></tr>",
 			    enc, querystr,
 			    enc, querystr, d[i],
 			    age(now - sb.st_mtime, "&nbsp;"));
@@ -1829,8 +1809,10 @@ http_repos(char *page)
 	}
 	fclose(f);
 	freeLines(d, free);
-	printf("</tbody>\n");
-	puts(INNER_END OUTER_END);
+	puts(INNER_END);
+
+	puts("</div>");
+
 	trailer();
 }
 

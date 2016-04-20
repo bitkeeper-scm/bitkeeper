@@ -8,8 +8,7 @@ function sortables_init() {
     tbls = document.getElementsByTagName("table");
     for (ti=0;ti<tbls.length;ti++) {
         thisTbl = tbls[ti];
-        if (((' '+thisTbl.className+' ').indexOf("sortable") != -1) && (thisTbl.id)) {
-            //initTable(thisTbl.id);
+        if (((' '+thisTbl.className+' ').indexOf("sortable") != -1)) {
             ts_makeSortable(thisTbl);
         }
     }
@@ -63,12 +62,24 @@ function ts_resortTable(lnk) {
     
     // Work out a type for the column
     if (table.rows.length <= 1) return;
-    var itm = ts_getInnerText(table.rows[1].cells[column]);
+
+    var col  = table.rows[0].cells[column];
+    var sort = col.getAttribute('data-sort');
     sortfn = ts_sort_caseinsensitive;
-    if (itm.match(/^\d\d[\/-]\d\d[\/-]\d\d\d\d$/)) sortfn = ts_sort_date;
-    if (itm.match(/^\d\d[\/-]\d\d[\/-]\d\d$/)) sortfn = ts_sort_date;
-    if (itm.match(/^[£$]/)) sortfn = ts_sort_currency;
-    if (itm.match(/^[\d\.]+$/)) sortfn = ts_sort_numeric;
+    if (sort === 'date') {
+	sortfn = ts_sort_date;
+    } else if (sort === 'numeric') {
+	sortfn = ts_sort_numeric;
+    } else if (sort === 'currency') {
+	sortfn = ts_sort_currency;
+    } else {
+	var itm = ts_getInnerText(table.rows[1].cells[column]);
+	if (itm.match(/^\d\d[\/-]\d\d[\/-]\d\d\d\d$/)) sortfn = ts_sort_date;
+	if (itm.match(/^\d\d[\/-]\d\d[\/-]\d\d$/)) sortfn = ts_sort_date;
+	if (itm.match(/^[£$]/)) sortfn = ts_sort_currency;
+	if (itm.match(/^[\d\.]+$/)) sortfn = ts_sort_numeric;
+    }
+
     SORT_COLUMN_INDEX = column;
     var firstRow = new Array();
     var newRows = new Array();
@@ -113,9 +124,18 @@ function getParent(el, pTagName) {
 		return getParent(el.parentNode, pTagName);
 }
 function ts_sort_date(a,b) {
-    // y2k notes: two digit years less than 50 are treated as 20XX, greater than 50 are treated as 19XX
-    aa = ts_getInnerText(a.cells[SORT_COLUMN_INDEX]);
-    bb = ts_getInnerText(b.cells[SORT_COLUMN_INDEX]);
+    // y2k notes: two digit years less than 50 are treated as 20XX,
+    // greater than 50 are treated as 19XX
+
+    var aa = a.cells[SORT_COLUMN_INDEX].getAttribute('data-sort');
+    var bb = b.cells[SORT_COLUMN_INDEX].getAttribute('data-sort');
+    if (aa == undefined) {
+	aa = ts_getInnerText(a.cells[SORT_COLUMN_INDEX]);
+    }
+    if (bb == undefined) {
+	bb = ts_getInnerText(b.cells[SORT_COLUMN_INDEX]);
+    }
+
     if (aa.length == 10) {
         dt1 = aa.substr(6,4)+aa.substr(3,2)+aa.substr(0,2);
     } else {
