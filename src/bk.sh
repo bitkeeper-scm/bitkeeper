@@ -1251,6 +1251,14 @@ _L() {
 	_tclsh --L "$@"
 }
 
+_little() {
+	_tclsh --L "$@"
+}
+
+_little-gui() {
+	_wish "$@"
+}
+
 _wish() {
 	BK_GUI="YES"
 	export BK_GUI
