@@ -35,20 +35,41 @@
 #   $<  first source
 
 HAS_BK	?= $(shell bash -c "command -v bk")
+INREPO  ?= $(shell bash -c "test -d ../.bk && echo true || echo false")
 ifeq (,$(HAS_BK))
 	BKUSER := $(USER)
 	BKFULLHOST := $(HOSTNAME)
+	BKVERS := $(shell date +%Y%m%d%H%M%S)
+	BKUTC  := $(shell date +%Y%m%d%H%M%S)
+	BKTIME := $(shell date +%s)
 else
-	BKUSER := $(shell bk getuser)
-	BKFULLHOST := $(shell bk gethost -r)
+	BKUSER := $(shell $(HAS_BK) getuser)
+	BKFULLHOST := $(shell $(HAS_BK) gethost -r)
+	ifeq (true,$(INREPO))
+		BKVERS := $(shell bk changes -r+ -d'$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}')
+		BKUTC  := $(shell bk changes -r+ -d:UTC:)
+		BKTIME := $(shell bk changes -r+ -d:TIME_T:)
+	else
+		BKVERS := $(shell cat bkvers.txt)
+		BKUTC  := $(shell date +%Y%m%d%H%M%S)
+		BKTIME := $(shell date +%s)
+	endif
 endif
-BKHOST := $(shell echo $(BKFULLHOST) | sed 's/\..*//')
+BKHOST := $(shell echo "$(BKFULLHOST)" | sed 's/\..*//')
 ifeq (0,$(MAKELEVEL))
-ifeq ("",$(HAS_BK))
-	BKTAG := "unknown-non-bk-tree"
+ifeq (,$(HAS_BK))
+	ifeq (true,$(INREPO))
+		BKTAG := "bootstrap"
+	else
+		BKTAG := $(shell cat bktag.txt)
+	endif
 	export BKTAG
 else
-	BKTAG := $(shell bk describe --bk)
+	ifeq (true,$(INREPO))
+		BKTAG := $(shell bash -c "if ./hasL; then $(HAS_BK) describe --bk; else echo bootstrap; fi")
+	else
+		BKTAG := $(shell cat bktag.txt)
+	endif
 	export BKTAG
 endif
 endif
@@ -88,9 +109,9 @@ else
 	# You can set this to anywhere you like and do a 
 	# build production" and you'll have an installed BitKeeper.
 	ifeq (,$(HAS_BK))
-		BINDIR := /usr/libexec/bitkeeper
+		BINDIR := /usr/local/bitkeeper
 	else
-		BINDIR := $(shell cd / && bk bin)
+		BINDIR := $(shell cd / && $(HAS_BK) bin)
 	endif
 	INSTALL=install
 	RESOURCE=
@@ -339,7 +360,7 @@ gWall Wall:
 p:  ## Build a production version of BitKeeper (no -g)
 ifeq (,$(HAS_BK))
 	$(MAKE) bk
-	PATH=`pwd`:$(PATH) $(MAKE) HAS_BK=1 p
+	$(MAKE) HAS_BK=$(HERE)/bk$(EXE) p
 else
 	$(MAKE) CFLAGS="$(CC_FAST) $(CF)" all
 endif
@@ -479,16 +500,16 @@ L-doc L-docs: GUI FORCE
 	fi; \
 	chmod +w ../man/man1/bk-little.1
 
-bkhelp.txt: L-docs FORCE
+bkhelp.txt: $(BK) L-docs FORCE
 	@rm -f ../man/man2help/bk-little.fmt
-	@cd ../man/man2help && $(MAKE) helptxt
+	@cd ../man/man2help && $(MAKE) BK=$(HERE)/bk$(EXE) helptxt
 	@cp ../man/man2help/helptxt bkhelp.txt
 	@rm -f ../man/man1/bk-little.1
 
 ../doc/bk_refcard.ps: FORCE
 	$(Q)echo building $@
 	$(Q)-$(BK) -r../doc co -qS
-	$(Q)$(MAKE) -C ../doc all
+	$(Q)$(MAKE) -C ../doc BK=$(HERE)/bk$(EXE) all
 
 ../doc/bk_refcard.pdf: ../doc/bk_refcard.ps
 
@@ -497,12 +518,10 @@ bkhelp.txt: L-docs FORCE
 bkver.c: utils/bk_version FORCE
 	$(if $(Q),@echo Building $@,)
 	$(Q)echo "#include \"sccs.h\"" > bk.v
-ifeq (,$(HAS_BK))
-	$(Q)printf "char *bk_vers = \"%s\";\nchar *bk_utc = \"%s\";\nchar *bk_time = \"%s\";\nchar *bk_tag = \"%s\";\n" "`date +%Y%m%d%H%M%S`" "`date +%Y%m%d%H%M%S`" "`date +%s`" "BOOTSTRAP" >> bk.v
-else
-	$(Q)bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\n' ../ChangeSet >> bk.v
+	$(Q)echo "char *bk_vers = \"$(BKVERS)\";" >> bk.v
+	$(Q)echo "char *bk_utc = \"$(BKUTC)\";" >> bk.v
+	$(Q)echo "char *bk_time = \"$(BKTIME)\";" >> bk.v
 	$(Q)echo "char *bk_tag = \"$(BKTAG)\";" >> bk.v
-endif
 	$(Q)echo "char *bk_platform = \""`./utils/bk_version`"\";" >> bk.v
 	$(Q)echo "int test_release = "$(TRIAL)";" >> bk.v
 	$(Q)echo "time_t bk_build_timet = "`perl -e "print time"`";" >> bk.v
@@ -528,22 +547,28 @@ import: import.sh port/$(SYS)_platform.sh
 
 # Quick and dirty target so we can make all the gui tools without the rest
 .PHONY: GUI
-GUI: PCRE
-	@$(MAKE) -Cgui Q=$(Q) gui
+GUI: PCRE $(BK)
+	@$(MAKE) -Cgui Q=$(Q) BK=$(HERE)/bk$(EXE) gui
 
 gui-nowrap GUI-nowrap:
 	@$(MAKE) -Cgui Q=$(Q) nowrap
 
 install: installdir
 	tmp/bitkeeper/bk _install -d -f $(BINDIR)
+	@echo BitKeeper is installed in $(BINDIR)
+	@echo We suggest you run:
+	@echo
+	@echo sudo $(BINDIR)/bk links /usr/local/bin
+	@echo
+	@echo to create the bk symlink.
 
 installdir: utils/registry.tcl
 	rm -rf $(IMGDIR) || exit 1
 	mkdir -p $(IMGDIR)/contrib
 	mkdir -p $(IMGDIR)/lscripts
-	$(BK) -rwww get -S
-	cp -f -r www $(IMGDIR)
-	$(BK) get -S $(CONTRIB)
+	-$(BK) -rwww get -S
+	-cp -f -r www $(IMGDIR)
+	-$(BK) get -S $(CONTRIB)
 	tar cf - $(BINS) $(SCRIPTS) lscripts gui/bin gui/lib gui/images \
 		| (cd $(IMGDIR) && tar xf -)
 	cp -f $(DATA) $(IMGDIR)
@@ -566,7 +591,7 @@ installdir: utils/registry.tcl
 image:  ## Build the installer (left in src/utils/bk-*)
 ifeq (,$(HAS_BK))
 	$(MAKE) bk
-	PATH=`pwd`:$(PATH) $(MAKE) HAS_BK=1 image
+	$(MAKE) HAS_BK=$(HERE)/bk$(EXE) image
 else
 	$(MAKE) p
 	$(MAKE) _image
@@ -581,7 +606,7 @@ _image:
 		chmod -w *$(EXE); \
 	}
 	-cd $(IMGDIR)/gui/bin && strip *$(EXE)
-	BINDIR=$(IMGDIR) ${MAKE} -Cutils "CC=$(CC)" "CFLAGS=$(CFLAGS)" image
+	BINDIR=$(IMGDIR) ${MAKE} -Cutils "CC=$(CC)" "BK=$(HERE)/bk$(EXE)" "CFLAGS=$(CFLAGS)" image
 
 crankturn: crank.sh remote.sh  ## Run a clean-build + regressions in cluster
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh
@@ -633,6 +658,9 @@ crankclean: crank.sh remote.sh
 # This target assumes a bk repository
 .PHONY: src-tar
 src-tar:  ## build tar.gz image for the current tree
+ifeq (false,$(INREPO))
+	$(error This target only works in a BK source repository)
+else
 	bk here set OPENBK
 	$(Q)-mkdir -p tmp/src
 	$(Q)(DIR=bk-$(shell $(BK) version -s) ; \
@@ -640,11 +668,14 @@ src-tar:  ## build tar.gz image for the current tree
 	     echo "Creating $$TAR in tmp/src..." ; \
 	     cd tmp/src ; \
 	     rm -rf "$$DIR" ; \
-	     bk export -tplain -r+ -sOPENBK "$$DIR" ; \
+	     bk export -tplain -wr+ -sOPENBK "$$DIR" ; \
+	     echo "$(BKVERS)-tb" > "$$DIR/src/bkvers.txt" ; \
+	     echo "$(BKTAG)-tb" > "$$DIR/src/bktag.txt" ; \
 	     tar -czf "$$TAR" "$$DIR" ; \
 	     rm -rf "$$DIR" ; \
 	     echo Done ; \
 	)
+endif
 
 # It is OK if we fail to "rm build" on win32.
 # We can not "rm build" when we are running it.

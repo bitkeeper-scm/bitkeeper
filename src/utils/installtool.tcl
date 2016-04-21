@@ -99,9 +99,9 @@ proc initGlobals {} \
 		set runtime(enableShellxLocal) 0
 		set runtime(symlinkDir) "/usr/bin"
 		set runtime(places) {
-			/usr/libexec/bitkeeper 
+			/usr/local/bitkeeper 
 			/opt/bitkeeper 
-			/usr/local/bitkeeper
+			/usr/libexec/bitkeeper
 		}
 		set id "id"
 	}
@@ -1083,7 +1083,7 @@ set strings(Welcome.installed) {
 
 set strings(PickPlace.unix) {
 	The installation directory can be anywhere, 
-	/usr/libexec/bitkeeper is recommended.  
+	/usr/local/bitkeeper is recommended.  
 }
 
 set strings(PickPlace.windows) {

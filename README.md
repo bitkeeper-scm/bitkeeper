@@ -66,7 +66,7 @@ hence the -j12 sprinkled here and there):
 	cd src
 	make -j12 p		# 'p'roduction build
 	make image		# create install image (at src/utils)
-	make install		# install (default /usr/libexec/bitkeeper)
+	make install		# install (default /usr/local/bitkeeper)
 
 (make must be GNU make)
 

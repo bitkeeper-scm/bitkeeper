@@ -1,4 +1,6 @@
-# Copyright 1999-2000 BitMover, Inc
+#!/bin/sh
+
+# Copyright 2016 BitMover, Inc
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-all: 
-	$(MAKE) -C src all
-
-clean: 
-	$(MAKE) -C src clean
-
-install:
-	$(MAKE) -C src install
+bk L --version > /tmp/L$$ 2>/dev/null 
+grep -q 'L version' /tmp/L$$ 
+EXIT=$? 
+rm -f /tmp/L$$
+exit $EXIT
