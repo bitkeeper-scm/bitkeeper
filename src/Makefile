@@ -541,10 +541,11 @@ installdir: utils/registry.tcl
 	rm -rf $(IMGDIR) || exit 1
 	mkdir -p $(IMGDIR)/contrib
 	mkdir -p $(IMGDIR)/lscripts
-	$(BK) get -S www
+	$(BK) -rwww get -S
+	cp -f -r www $(IMGDIR)
 	$(BK) get -S $(CONTRIB)
 	tar cf - $(BINS) $(SCRIPTS) lscripts gui/bin gui/lib gui/images \
-		www/*.gif www/*.png | (cd $(IMGDIR) && tar xf -)
+		| (cd $(IMGDIR) && tar xf -)
 	cp -f $(DATA) $(IMGDIR)
 	cp -f $(CONTRIB) $(IMGDIR)/contrib
 	(cd ../doc/nested && $(MAKE) install HTML=$(IMGDIR)/html)

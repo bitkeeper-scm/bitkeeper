@@ -53,37 +53,15 @@ bk new $Q file2.c
 bk commit $Q -y"file1 and file2"
 echo OK
 
-echo $N Fetch an annotated file with tags on C functions ............$NL
-bk bkd > OUT << EOF
-get /file1.c?PAGE=anno
-EOF
-grep '<a name=' OUT | tr -s ' ' > GOT
-U=`bk getuser -r`
-cat <<EOF > WANT
-<a name="main">bk/$U 1.1 | main(int ac, char *av[])</a>
-<a name="sub">bk/$U 1.1 | sub(int a, int b)</a>
-EOF
-cmpfiles WANT GOT
-echo OK
-
-echo $N Test that non-BitMover style C functions work................$NL
-bk bkd > OUT <<EOF
-get /file2.c?PAGE=anno
-EOF
-grep '<a name=' OUT | tr -s ' ' > GOT
-U=`bk getuser -r`
-cat <<EOF > WANT2
-<a name="sub">bk/$U 1.1 | int sub2(int a, int b) {</a>
-EOF
-cmp -s GOT WANT2 && {
-	fail fixme!  Congratulations, you fixed a bug. Now fix the testcase.
-}
-echo failed \(bug \)
-
 # Symlinks not on windows.
 if [ "$PLATFORM" != "WIN32" ]; then
 
 echo $N Demonstrate symlink to outside of bkd will error ............$NL
+bk bkd > OUT << EOF
+get /file1.c?PAGE=anno
+EOF
+grep "| [a-z]" OUT | tr -s ' ' > WANT
+
 cd ..
 mkdir repos
 cd repos
@@ -109,7 +87,7 @@ echo $N Demonstrate symlink to outside of bkd will work with -S .....$NL
 bk bkd -S > OUT << EOF || fail
 get /project/file1.c?PAGE=anno
 EOF
-grep '<a name=' OUT | tr -s ' ' > GOT
+grep "| [a-z]" OUT | tr -s ' ' > GOT
 cmpfiles project/WANT GOT
 echo OK
 
@@ -117,7 +95,7 @@ echo $N Demonstrate symlink to outside of bkd will work with -CS ....$NL
 bk bkd -CS > OUT << EOF || fail -f OUT
 get /project/file1.c?PAGE=anno
 EOF
-grep '<a name=' OUT | tr -s ' ' > GOT
+grep "| [a-z]" OUT | tr -s ' ' > GOT
 cmpfiles project/WANT GOT
 echo OK
 
