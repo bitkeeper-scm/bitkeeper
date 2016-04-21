@@ -1255,7 +1255,7 @@ _little() {
 	_tclsh --L "$@"
 }
 
-_little-gui() {
+_little_gui() {
 	_wish "$@"
 }
 
