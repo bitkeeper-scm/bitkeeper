@@ -34,7 +34,7 @@
 #   $^  all sources
 #   $<  first source
 
-HAS_BK	?= $(shell bash -c "command -v bk")
+HAS_BK	?= $(shell bash -c "cd / && command -v bk")
 INREPO  ?= $(shell bash -c "test -d ../.bk && echo true || echo false")
 ifeq (,$(HAS_BK))
 	BKUSER := $(USER)
@@ -111,7 +111,7 @@ else
 	ifeq (,$(HAS_BK))
 		BINDIR := /usr/local/bitkeeper
 	else
-		BINDIR := $(shell cd / && $(HAS_BK) bin)
+		BINDIR := $(shell $(HAS_BK) bin)
 	endif
 	INSTALL=install
 	RESOURCE=
@@ -360,7 +360,7 @@ gWall Wall:
 p:  ## Build a production version of BitKeeper (no -g)
 ifeq (,$(HAS_BK))
 	$(MAKE) bk
-	$(MAKE) HAS_BK=$(HERE)/bk$(EXE) p
+	$(MAKE) HAS_BK=$(HERE)/bk$(EXE) BINDIR=$(BINDIR) p
 else
 	$(MAKE) CFLAGS="$(CC_FAST) $(CF)" all
 endif
@@ -591,7 +591,7 @@ installdir: utils/registry.tcl
 image:  ## Build the installer (left in src/utils/bk-*)
 ifeq (,$(HAS_BK))
 	$(MAKE) bk
-	$(MAKE) HAS_BK=$(HERE)/bk$(EXE) image
+	$(MAKE) HAS_BK=$(HERE)/bk$(EXE) BINDIR=$(BINDIR) image
 else
 	$(MAKE) p
 	$(MAKE) _image
