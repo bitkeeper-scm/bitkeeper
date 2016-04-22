@@ -1,6 +1,6 @@
 #!/bin/bash
 
-umask 0
+umask 002
 
 test X$OSTYPE != Xcygwin && {
 	# The build script sets PATH, but we need to find 'make' on sun.
