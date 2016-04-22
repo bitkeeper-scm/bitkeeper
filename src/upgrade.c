@@ -29,8 +29,8 @@
  *  - change the installer to also take a -i option.
  */
 
-#define	UPGRADEBASE	"http://downloads.bitkeeper.com/latest"
-#define	UPGRADETRIAL	"http://downloads.bitkeeper.com/latest"
+#define	UPGRADEBASE	"http://www.bitkeeper.org/downloads/latest"
+#define	UPGRADETRIAL	UPGRADEBASE
 
 private	int	noperms(char *target);
 private	int	upgrade_fetch(char *name, char *file);

@@ -44,7 +44,7 @@ BK_NOTTY=1 bk upgrade -cf >OUT 2>ERR || {
 	exit 1
 }
 cat <<END > WANT
-Fetching http://downloads.bitkeeper.com/latest/INDEX
+Fetching http://www.bitkeeper.org/downloads/latest/INDEX
 END
 checkfiles ERR WANT
 
@@ -78,7 +78,7 @@ BK_NOTTY=1 BK_UPGRADE_FORCEMATCH=1 bk upgrade -cf >OUT 2>ERR && {
 	exit 1
 }
 cat <<END > WANT
-Fetching http://downloads.bitkeeper.com/latest/INDEX
+Fetching http://www.bitkeeper.org/downloads/latest/INDEX
 END
 checkfiles ERR WANT
 cat <<END > WANT
@@ -99,7 +99,7 @@ BK_NOTTY=1 bk upgrade -cf >OUT 2>ERR || {
 	exit 1
 }
 cat <<END > WANT
-Fetching http://downloads.bitkeeper.com/latest/INDEX
+Fetching http://www.bitkeeper.org/downloads/latest/INDEX
 END
 checkfiles ERR WANT
 

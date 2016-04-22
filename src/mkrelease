@@ -18,8 +18,10 @@ test $# -eq 1 || {
 	exit 1
 }
 
+# ssh $ruser@$host:$hostdir
+ruser=bitkeeper-org
 host=webhost-int
-hostdir=/home/downloads/www
+hostdir=www/downloads
 keysrc=/home/bk/internal/ssh-keys/downloads.key
 key=downloads.key.me
 cp "$keysrc" "$key" || { echo failed to cp $keysrc; exit 1 }
@@ -44,22 +46,15 @@ echo "ForceType application/octet-stream" > .htaccess
 cd "$save"
 
 echo "Making download directory for $ver on $host"
-ssh -i $key downloads@$host mkdir $hostdir/$vernum || {
+ssh -i $key $ruser@$host mkdir $hostdir/$vernum || {
 	echo failed making $host:$hostdir/$vernum
 	echo Go take a look and see if you need to clean up something
 	exit 1
 }
 echo "Mirroring $ver to $host"
-rsync -av -e "ssh -i $key" $S/. downloads@$host:$hostdir/$vernum/. || {
+rsync -av -e "ssh -i $key" $S/. $ruser@$host:$hostdir/$vernum/. || {
 	echo failed installing $host:$hostdir/$vernum
 	echo Go take a look and possibly remove that directory.
-	exit 1
-}
-echo "Updating /home/bk/current_version used by eval system on bitmover"
-ssh -i $key downloads@$host "echo $vernum > /home/downloads/current_version" || {
-	echo failed to update $host:/home/bk/current_version
-	echo Please clean up $host:$hostdir/$vernum
-	echo and take a look at /home/bk/current_version to see it is right.
 	exit 1
 }
 
@@ -69,10 +64,9 @@ at -f announce next week
 echo "Could someone verify that BitKeeper $ver really shipped and send
 an announcement to customers?
 
-Also update http://www.bitkeeper.com/Support.Release.html
+Also post to users.bitkeeper.org
 
-And someday, go fix a script that Amy used to run that closes bugs
-fixed in this release.
+And someday, go run a script that closes bugs fixed in this release.
 
 Thanks,
 
@@ -89,7 +83,6 @@ queued an atjob to send mail in a week that if all is well,
 annouce the release.
 
 If this is not right, delete $host:$hostdir/$vernum
-and fix $host:/home/downloads/current_version to have correct version.
 And cancel my atjob queued on work.
 EOF
 
