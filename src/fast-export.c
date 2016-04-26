@@ -24,7 +24,6 @@ typedef struct {
 	u32	addMD5Keys:1;
 	u32	md5KeysAsSubject:1;
 	u32	nested:1;
-	u32	warned:1;
 	u32	quiet:1;
 	// state that gets passed around
 	hash	*rkdk2fi;	// map "crk rk dk" to 'struct finfo'
@@ -74,6 +73,7 @@ private void	gitProgress(opts *op, char *format, ...)
      __attribute__((format (__printf__, 2, 3)))
 #endif
 ;
+private int	uncolorAlreadyImported(opts *op, sccs *cset);
 
 /* bk fast-export (aliased as _fastexport) */
 int
@@ -101,7 +101,6 @@ fastexport_main(int ac, char **av)
 	while ((c = getopt(ac, av, "A;Sq", lopts)) != -1) {
 		switch (c) {
 		    case 'q':
-			opts.warned = 1;
 			opts.quiet = 1;
 			break;
 		    case 'A':
@@ -431,7 +430,6 @@ gitExport(opts *op)
 	if (op->baserepo) {
 		char	*line;
 		char	*sha1, *md5;
-		int	warn = op->warned;
 		int	numcsets = 0;
 
 		gitProgress(op, "Analyzing baseline repo %s\n",
@@ -450,8 +448,8 @@ gitExport(opts *op)
 		}
 
 		cmd = aprintf("git --git-dir='%s/.git' "
-		    "log --pretty='%%w(0,1,1)%%B%%n%%w(0,0,0)%%H' %s",
-		    op->baserepo, op->branch);
+		    "log --pretty='%%w(0,1,1)%%B%%n%%w(0,0,0)%%H' --all",
+		    op->baserepo);
 		f1 = popen(cmd, "r");
 		free(cmd);
 		while (!feof(f1)) {
@@ -463,19 +461,7 @@ gitExport(opts *op)
 				}
 			}
 			unless(line) break;
-			unless (md5) {
-				if (warn++ == 0) {
-					fprintf(stderr, "WARNING: "
-					    "The tip of the %s "
-					    "git branch is not a BitKeeper "
-					    "imported\ncset (no MD5KEY in the "
-					    "comments). "
-					    "Please see bk help fast-export "
-					    "for more details.\n", op->branch);
-				}
-				continue;
-			}
-			warn++;
+			unless (md5) continue;
 			sha1 = line;
 			unless (hash_insertStrStr(op->bk2git, md5, sha1)) {
 				fprintf(stderr,
@@ -499,7 +485,9 @@ gitExport(opts *op)
 
 		f1 = 0;
 
+		numcsets += uncolorAlreadyImported(op, cset);
 		gitProgress(op, "%d csets already imported\n", numcsets);
+
 		/* Try to find the endpoints of the colored range */
 		range_unrange(cset, &left, &right, 0);
 
@@ -817,4 +805,36 @@ gitProgress(opts *op, char *format, ...)
 	fmt = aprintf("progress %s\n", format);
 	va_start(ap, format);
 	vfprintf(stdout, fmt, ap);
+}
+
+/*
+ * Walk the graph looking for csets tagged as 'GIT:' which we assume
+ * are already imported in GIT.
+ */
+private int
+uncolorAlreadyImported(opts *op, sccs *cset)
+{
+	ser_t	d;
+	char	*t, *p;
+	int	i, n = 0;
+
+	for (d = TABLE(cset); d >= TREE(cset); d--) {
+		if (TAG(cset, d)) continue;
+		t = COMMENTS(cset, d);
+		while (p = eachline(&t, &i)) {
+			char old = p[i];
+			p[i] = 0;
+			if (strneq(p, "GIT: ", 5)) {
+				char	md5[MD5KEYLEN];
+				char	*sha1 = p + 5;
+
+				sccs_md5delta(cset, d, md5);
+				hash_storeStrStr(op->bk2git, md5, sha1);
+				FLAGS(cset, d) &= ~D_SET;
+				n++;
+			}
+			p[i] = old;
+		}
+	}
+	return (n);
 }
