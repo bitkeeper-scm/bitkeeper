@@ -33,20 +33,6 @@ test "X$LD" = X && LD=$CC
 test "X$RANLIB" = X && RANLIB=ranlib
 
 case "X`uname -s`" in
-    XCYGWIN*|XMINGW*)
-	;;
-    XDarwin)
-	# Create fresh, clean path, prepending ccache
-	eval `/usr/libexec/path_helper`
-	;;
-    *)	AR=/usr/ccs/bin
-	GREP=/usr/xpg4/bin:/usr/xpg2/bin
-	GNU=/opt/gnu/bin:/usr/local/bin:/usr/gnu/bin:/usr/freeware/bin
-	PATH=${GREP}:/bin:/usr/bin:/usr/bsd:${GNU}:${AR}:/usr/bin/X11
-	export PATH
-	;;
-esac
-case "X`uname -s`" in
 	XAIX)	CCXTRA="-DHAVE_LOCALZONE -DNOPROC -mminimal-toc"
 		;;
 	XCYGWIN*|XMINGW*)
@@ -68,23 +54,18 @@ case "X`uname -s`" in
 		CCXTRA="-DHAVE_LOCALZONE -DNOPROC"
 		RANLIB="touch"
 		;;
-	XLinux) CCXTRA=-DHAVE_GMTOFF
-		test "x`uname -m`" = xx86_64 && {
-			PATH=/usr/gnu/bin:$PATH
-			export PATH
-		}
+	XLinux) 
+		CCXTRA=-DHAVE_GMTOFF
 		;;
 	XNetBSD)
 		CC=gcc
 		LD=gcc
-		PATH="/usr/local/bin:${PATH}"
 		CCXTRA="-DHAVE_GMTOFF -DNOPROC -DRLIMIT_DEFAULT_SUCKS"
 		;;
 	XOpenBSD)
 		CCXTRA="-DHAVE_GMTOFF -DNOPROC"
 		;;
 	XSCO_SV)
-		PATH="/usr/local/bin:${PATH}"
 		XLIBS="-lsocket"
 		CCXTRA="-DHAVE_LOCALZONE -DNOPROC"
 		RANLIB="touch"
@@ -123,7 +104,6 @@ if [ "$CHECK" ]; then
 	test -d /proc || CCXTRA="$CCXTRA -DNOPROC"
 fi
 
-test -f /build/.static && BK_STATIC=YES
 test -z "$BK_STATIC" || {
 	# XXX - GCC static syntax, will need to be updated for others.
 	LD="$LD -static"
@@ -133,7 +113,6 @@ test -z "$BK_STATIC" || {
 
 
 test "x$BK_VERBOSE_BUILD" != "x" && { echo V=1; }
-echo PATH=$PATH
 echo CC="$CC $CCXTRA"
 echo LD=$LD
 echo XLIBS=$XLIBS
