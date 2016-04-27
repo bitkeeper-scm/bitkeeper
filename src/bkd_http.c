@@ -55,6 +55,7 @@ private void	trailer(void);
 private	void	detect_oldurls(char *url);
 private void	flushExit(int status);
 private char	*dl_link(void);
+private void	show_readme(void);
 
 #define INNER_TABLE	"<table class='table table-bordered table-condensed table-striped sortable'>"
 #define	INNER_END	"</table>\n"
@@ -253,6 +254,8 @@ header(char *titlestr, char *headerstr, ...)
 		}
 	}
 	printf("<script type=\"text/javascript\" src=" BKWWW "sorttable.js>"
+	    "</script>\n");
+	printf("<script type=\"text/javascript\" src=" BKWWW "markdown.min.js>"
 	    "</script>\n");
 	puts("<meta name='viewport' content='width=device-width'>");
 	puts("<meta name='viewport' content='initial-scale=1.0'>");
@@ -766,7 +769,9 @@ http_dir(char *page)
 	}
 	pclose(f);
 	puts(INNER_END);
-	
+
+	show_readme();
+
 	puts("</div>");
 
 	trailer();
@@ -1149,6 +1154,8 @@ http_index(char *page)
 	puts("<meta name='viewport' content='initial-scale=1.0'>");
         puts("<link rel='stylesheet' href='" BASE_CSS "' />");
         puts("<link rel='stylesheet' href='" BK_CSS "' />");
+	printf("<script type=\"text/javascript\" src=" BKWWW "markdown.min.js>"
+	    "</script>\n");
         puts("</head>\n");
         puts("<body class='container-fluid'>");
 	printnavbar(user);
@@ -1252,9 +1259,94 @@ http_index(char *page)
 	puts("</div>");
 	puts("</div>");
 
+	puts("<br/>");
+	show_readme();
+
 	puts("</div>");
 
 	trailer();
+}
+
+private void
+show_readme_text(char *readme)
+{
+	FILE	*f;
+	int	c;
+
+	unless (f = fopen(readme, "r")) return;
+
+	puts("<div class='row'>");
+	puts("<div class='col-xs-12'>");
+	puts("<div class='panel panel-default'>");
+	printf("<div class='panel-heading'>"
+	    "<span class='glyphicon glyphicon-file'></span>"
+	    " %s</div>", readme);
+	printf("<div id='readme' class='panel-body'>");
+	while ((c = fgetc(f)) > 0) {
+		switch (c) {
+		    case '<': fputs("&lt;", stdout); break;
+		    case '>': fputs("&gt;", stdout); break;
+		    case '&': fputs("&amp;", stdout); break;
+		    case '"': fputs("&quot;", stdout); break;
+		    case '\'': fputs("&#39;", stdout); break;
+		    default: putc(c, stdout); break;
+		}
+	}
+	fclose(f);
+	puts("</div>");
+	puts("</div>");
+	puts("</div>");
+	puts("</div>");
+}
+
+private void
+show_readme_markdown(char *readme)
+{
+	FILE	*f;
+	int	c;
+
+	unless (f = fopen(readme, "r")) return;
+
+	puts("<div class='row'>");
+	puts("<div class='col-xs-12'>");
+	puts("<div class='panel panel-default'>");
+	printf("<div class='panel-heading'>"
+	    "<span class='glyphicon glyphicon-file'></span>"
+	    " %s</div>", readme);
+	printf("<div id='markdown' class='panel-body'></div>");
+	puts("</div>");
+	puts("</div>");
+	puts("</div>");
+
+	puts("<script>");
+	fputs("var data = \"", stdout);
+	while ((c = fgetc(f)) > 0) {
+	    switch (c) {
+		case '"': fputs("\\\"", stdout); break;
+		case '\\': fputs("\\\\", stdout); break;
+		case '\n': fputs("\\n\\\n", stdout); break;
+		case '\r': fputs("\\r", stdout); break;
+		case '\t': fputs("\\t", stdout); break;
+		default: putc(c, stdout); break;
+	    }
+	}
+	puts("\";");
+	puts("var md = document.getElementById('markdown');");
+	puts("md.innerHTML = markdown.toHTML(data);");
+	puts("</script>");
+	fclose(f);
+}
+
+private void
+show_readme(void)
+{
+	if (exists("README.md")) {
+		show_readme_markdown("README.md");
+	} else if (exists("README.txt")) {
+		show_readme_text("README.txt");
+	} else if (exists("README")) {
+		show_readme_text("README");
+	}
 }
 
 /*
