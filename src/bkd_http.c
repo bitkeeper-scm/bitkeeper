@@ -1518,7 +1518,6 @@ private void
 http_related(char *page)
 {
 	int	i;
-	char	*path;
 	char    dspec[MAXPATH];
 
 	hash_storeStr(qout, "PAGE", "cset");
@@ -1550,13 +1549,7 @@ http_related(char *page)
 	    "<th class='rev'>Rev</th>"
 	    "<th class='comments'>Comments</th></tr>\n");
 	fflush(stdout);
-	if (root && !streq(root, ".")) {
-		path = aprintf("%s/%s", root, fpath);
-	} else {
-		path = strdup(fpath);
-	}
-	systemf("bk changes -i'%s' -nd'%s'", path, dspec);
-	free(path);
+	systemf("bk changes -i'%s' -nd'%s'", fpath, dspec);
 	puts(INNER_END);
 
 	puts("</div>");
