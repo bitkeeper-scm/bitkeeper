@@ -694,7 +694,7 @@ Everything inside the ${} is evaluated like any other Little expression, so
 it is not limited to just variables:
 
     printf("The time is ${`date`}\n");
-    s = "The result is {some_function(a, b, c) / 100}";
+    s = "The result is ${some_function(a, b, c) / 100}";
 
 =head1 Here documents
 
@@ -960,6 +960,12 @@ After completing the loop and falling through, all loop counters
 become undefined (they get the C<undef> value).  If the loop
 is prematurely ended with a C<break> or by jumping out of the
 loop with a C<goto>, the loop counters keep their values.
+
+=item braceless control flow
+
+Little allows braceless versions of C<if, unless, while, for, foreach>
+provided that it is a single statement after the control flow keyword.
+Note that C<else> is not in the list, if then else always requires braces.
 
 =item switch
 
@@ -1674,10 +1680,10 @@ in Little and in Tcl.
 
 Passing complex variables is trickier and is not supported, but if you
 want to try here is what you need to know.  This is subject to change.
-An Little array is a Tcl list.
-An Little struct is a Tcl list with the first struct member as the first
+A Little array is a Tcl list.
+A Little struct is a Tcl list with the first struct member as the first
 list element and so on.
-An Little hash table is a Tcl dict.
+A Little hash table is a Tcl dict.
 If a Little variable is deeply nested, so is the Tcl variable.
 
 So long as you understand that and do the appropriate thing in both
