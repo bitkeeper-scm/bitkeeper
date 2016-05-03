@@ -641,7 +641,7 @@ And then use the shorthand as you would any other type name:
 You can typedef a function pointer too.  This declares compar_t
 as type function that takes two ints and returns an int:
 
-    typedef int compar_t(int a, int b);
+    typedef int &compar_t(int a, int b);
 
 Type names belong to their own namespace, so you can define a typedef
 with the same name as a variable, function, or struct without
@@ -1211,7 +1211,7 @@ otherwise assign a function pointer to a variable.  It is common to
 first typedef the function-pointer type; here is one for a function
 that compares two strings:
 
-    typedef int str_compar_t(string a, string b);
+    typedef int &str_compar_t(string a, string b);
 
 You can then pass such a compare function as follows:
 
@@ -1225,7 +1225,7 @@ Where the sort function looks like this:
     {
         do {
             ...
-            if (compar(a[i], a[i+1] > 0) { ... }
+            if (compar(a[i], a[i+1] > 0)) { ... }
             ...
         } ...
     }
@@ -1403,9 +1403,10 @@ Little also remembers which files have been included and will not include a file
 more than once, allowing you to have #include files that include each
 other.
 
-=head1 Classes
+=head1 Classes (experimental)
 
-Little has a C<class> abstraction for encapsulating data and
+Little has an experimental (as in don't count on this to be compatible going 
+forward) C<class> abstraction for encapsulating data and
 functions that operate on that data.  Little classes are simpler than
 full-blown object-oriented programming (there is no inheritance), but
 they get you most of the way there.
