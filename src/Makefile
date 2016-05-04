@@ -506,6 +506,9 @@ bkhelp.txt: $(BK) L-docs FORCE
 	@cp ../man/man2help/helptxt bkhelp.txt
 	@rm -f ../man/man1/bk-little.1
 
+html-docs: bkhelp.txt
+	@cd ../man/man2html && $(MAKE)
+
 ../doc/bk_refcard.ps: FORCE
 	$(Q)echo building $@
 	$(Q)-$(BK) -r../doc co -qS

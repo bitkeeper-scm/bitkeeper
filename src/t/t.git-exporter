@@ -359,32 +359,6 @@ do_incremental product/gcc component.git standalone || fail
 cmp_repos product/gcc component.git standalone || fail
 echo OK
 
-echo $N Test warning.................................................$NL
-cd "$HERE"
-do_export project project.git || fail
-cmp_repos project project.git || fail
-cd project
-echo extra stuff > extra_file
-bk new $Q extra_file
-bk commit $Q -yextra_file
-cd ..
-cd project.git
-git checkout -q -f master
-echo stuff > git_file
-git add git_file
-git commit -q -m"add git file"
-cd ..
-repo_git="$HERE/project.git"
-(cd project ; \
- bk fast-export -A"$HERE"/authors \
-    --bk-regressions $standalone --incremental="$repo_git") > "$HERE/EXPORT" 2>"$HERE/GOT"
-cat <<EOF >WANT
-WARNING: The tip of the master git branch is not a BitKeeper imported
-cset (no MD5KEY in the comments). Please see bk help fast-export for more details.
-EOF
-cmpfiles WANT GOT
-echo OK
-
 echo $N Test quiet mode..............................................$NL
 cd "$HERE"
 git init -q junk

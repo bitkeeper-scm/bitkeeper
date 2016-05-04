@@ -5,5 +5,5 @@ g: $(SRCS)
 	g groff -p -s -mgs all.ms
 
 clean clobber:
-	/bin/rm -f PS PS2
+	$(RM) PS PS2
 	bk clean

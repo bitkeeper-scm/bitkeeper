@@ -100,3 +100,7 @@ td.filename {
 .diffs .old {
     background-color: #feecec;
 }
+
+#readme {
+    white-space: pre;
+}

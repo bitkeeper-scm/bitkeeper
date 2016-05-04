@@ -11,5 +11,5 @@ spell:
 	spell bam.ms | less
 
 clean clobber:
-	/bin/rm -f PS PS2 bam.ps bam.pdf
+	$(RM) PS PS2 bam.ps bam.pdf
 	bk clean
