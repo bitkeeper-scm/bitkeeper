@@ -1267,13 +1267,20 @@ http_index(char *page)
 	trailer();
 }
 
-private void
-show_readme_text(char *readme)
+private int
+format_readme(char *readme, int markdown)
 {
 	FILE	*f;
 	int	c;
+	char	buf[MAXLINE];
 
-	unless (f = fopen(readme, "r")) return;
+	sprintf(buf, "bk cat '%s/%s'", fpath, readme);
+	unless (f = popen(buf, "r")) return (-1);
+	if ((c = fgetc(f)) <= 0) {
+		pclose(f);
+		return (-1);
+	}
+	ungetc(c, f);
 
 	puts("<div class='row'>");
 	puts("<div class='col-xs-12'>");
@@ -1281,72 +1288,54 @@ show_readme_text(char *readme)
 	printf("<div class='panel-heading'>"
 	    "<span class='glyphicon glyphicon-file'></span>"
 	    " %s</div>", readme);
-	printf("<div id='readme' class='panel-body'>");
-	while ((c = fgetc(f)) > 0) {
-		switch (c) {
-		    case '<': fputs("&lt;", stdout); break;
-		    case '>': fputs("&gt;", stdout); break;
-		    case '&': fputs("&amp;", stdout); break;
-		    case '"': fputs("&quot;", stdout); break;
-		    case '\'': fputs("&#39;", stdout); break;
-		    default: putc(c, stdout); break;
+	if (markdown) {
+		printf("<div id='markdown' class='panel-body'>");
+	} else {
+		printf("<div id='readme' class='panel-body'>");
+		while ((c = fgetc(f)) > 0) {
+			switch (c) {
+			    case '<': fputs("&lt;", stdout); break;
+			    case '>': fputs("&gt;", stdout); break;
+			    case '&': fputs("&amp;", stdout); break;
+			    case '"': fputs("&quot;", stdout); break;
+			    case '\'': fputs("&#39;", stdout); break;
+			    default: putc(c, stdout); break;
+			}
 		}
 	}
-	fclose(f);
 	puts("</div>");
 	puts("</div>");
 	puts("</div>");
 	puts("</div>");
-}
-
-private void
-show_readme_markdown(char *readme)
-{
-	FILE	*f;
-	int	c;
-
-	unless (f = fopen(readme, "r")) return;
-
-	puts("<div class='row'>");
-	puts("<div class='col-xs-12'>");
-	puts("<div class='panel panel-default'>");
-	printf("<div class='panel-heading'>"
-	    "<span class='glyphicon glyphicon-file'></span>"
-	    " %s</div>", readme);
-	printf("<div id='markdown' class='panel-body'></div>");
-	puts("</div>");
-	puts("</div>");
-	puts("</div>");
-
-	puts("<script>");
-	fputs("var data = \"", stdout);
-	while ((c = fgetc(f)) > 0) {
-	    switch (c) {
-		case '"': fputs("\\\"", stdout); break;
-		case '\\': fputs("\\\\", stdout); break;
-		case '\n': fputs("\\n\\\n", stdout); break;
-		case '\r': fputs("\\r", stdout); break;
-		case '\t': fputs("\\t", stdout); break;
-		default: putc(c, stdout); break;
-	    }
+	if (markdown) {
+		puts("<script>");
+		fputs("var data = \"", stdout);
+		while ((c = fgetc(f)) > 0) {
+			switch (c) {
+			    case '"': fputs("\\\"", stdout); break;
+			    case '\\': fputs("\\\\", stdout); break;
+			    case '\n': fputs("\\n\\\n", stdout); break;
+			    case '\r': fputs("\\r", stdout); break;
+			    case '\t': fputs("\\t", stdout); break;
+			    default: putc(c, stdout); break;
+			}
+		}
+		puts("\";");
+		puts("var md = document.getElementById('markdown');");
+		puts("md.innerHTML = markdown.toHTML(data);");
+		puts("</script>");
 	}
-	puts("\";");
-	puts("var md = document.getElementById('markdown');");
-	puts("md.innerHTML = markdown.toHTML(data);");
-	puts("</script>");
-	fclose(f);
+	pclose(f);
+	return (0);
 }
 
 private void
 show_readme(void)
 {
-	if (exists("README.md")) {
-		show_readme_markdown("README.md");
-	} else if (exists("README.txt")) {
-		show_readme_text("README.txt");
-	} else if (exists("README")) {
-		show_readme_text("README");
-	}
+	// stop on the first version that succeeds
+	unless (format_readme("README.md", 1)) return;
+	unless (format_readme("README.txt", 0)) return;
+	unless (format_readme("README", 0)) return;
 }
 
 /*
