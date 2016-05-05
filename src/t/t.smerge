@@ -863,6 +863,8 @@ echo OK
 
 echo $N Demo that -g output uses diff and not the weave .............$NL
 
+if [ -d "$BK_ROOT/.bk" ]
+then
 # check a historical merge that shows what this fixes
 # just in case:
 # 1.117 == bryan@bigmac.bitmover.com|src/bk.c|20020820033927|43415
@@ -903,3 +905,6 @@ cmpfiles OUT WANT
 # -		}
 # >>>>>>>
 echo OK
+else
+	echo skipped
+fi

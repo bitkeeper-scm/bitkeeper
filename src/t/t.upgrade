@@ -37,11 +37,11 @@ bk version | grep -q '^Expires in' && SUFF=.trial
 
 echo $N Test upgrade to get status from bitkeeper ...................$NL
 commercial junk2
-BK_NOTTY=1 bk upgrade -cf >OUT 2>ERR || {
-	echo should not have failed
-	cat OUT
-	cat ERR
-	exit 1
+BK_NOTTY=1 bk upgrade -cf >OUT 2>ERR
+grep -q "No upgrade for the arch" ERR && {
+     # can set BK_UPGRADE_PLATFORM to some official arch to run test
+     echo skipped
+     exit 0
 }
 cat <<END > WANT
 Fetching http://www.bitkeeper.org/downloads/latest/INDEX

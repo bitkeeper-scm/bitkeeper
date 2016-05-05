@@ -1,4 +1,4 @@
-# Copyright 1999-2000,2012-2013 BitMover, Inc
+# Copyright 1999-2000,2012-2013,2016 BitMover, Inc
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,9 +19,10 @@ ifeq "$(OSTYPE)" "msys"
 	TST_DIR:=$(shell if [ -d /r/build ]; then echo R:\\; else echo C:\\; fi)build\test-$(shell bk getuser)
 else
 	EXE=
-	TST_DIR:=/build/test-$(shell bk getuser)
+	TST_DIR:=$(shell if [ -d /build ]; then echo /build ; else echo /tmp/build; fi)/test-$(shell bk getuser)
 endif
 
+BK_ROOT := $(abspath ../../)
 # The test t.bkd-svc cannot be run in parallel with any other
 # tests or it will fail
 TESTS = $(filter-out %~, $(wildcard t.*))
@@ -46,6 +47,8 @@ output/OUT.t.%: t.% ../bk$(EXE) doit
 	@DIR="$(TST_DIR)/p$$$$"; \
 	rm -rf $$DIR; \
 	mkdir -p $$DIR; \
+	BK_ROOT=$(BK_ROOT); \
+	export BK_ROOT; \
 	if ../bk time -f'Test $< (%e secs)\n' -c "./doit -t '$$DIR' $< > $@ 2>&1"; \
 	then	rm -rf $$DIR; \
 	else	echo failure of `pwd`/src/t/$< in $$DIR >> $@; \

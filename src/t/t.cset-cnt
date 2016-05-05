@@ -14,6 +14,7 @@
 
 # count the number of times we init the ChangeSet file for normal operations
 
+mkBINs
 
 BK_SHOWINIT="*/s.ChangeSet"
 BK_TTYPRINTF="$HERE/INITs"

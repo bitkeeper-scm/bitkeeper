@@ -422,8 +422,11 @@ tags.local: $(SRCS) $(HDRS)
 ssh sshtest:
 	$(MAKE) realtest
 
-test tests rsh rshtest:
+rsh rshtest:
 	PREFER_RSH=YES $(MAKE) realtest
+
+test tests:
+	DO_REMOTE=NO $(MAKE) -C t
 
 nonet nonet_test localtest:
 	BK_NONET=YES PREFER_RSH=YES $(MAKE) realtest
@@ -671,7 +674,7 @@ else
 	     echo "Creating $$TAR in tmp/src..." ; \
 	     cd tmp/src ; \
 	     rm -rf "$$DIR" ; \
-	     bk export -tplain -wr+ -sOPENBK "$$DIR" ; \
+	     bk export -tplain -kwr+ -sOPENBK "$$DIR" ; \
 	     echo "$(BKVERS)-tb" > "$$DIR/src/bkvers.txt" ; \
 	     echo "$(BKTAG)-tb" > "$$DIR/src/bktag.txt" ; \
 	     tar -czf "$$TAR" "$$DIR" ; \

@@ -299,5 +299,23 @@ key_exists()
 	echo "get .*$key.*" | bk info_shell --uniqdb | grep -q $key
 }
 
+# make $BIN1 $BIN2 & $BIN3 example binary files
+mkBINs() {
+	EXE=""
+	if [ "$PLATFORM" = "WIN32" ]; then EXE=.exe; fi
+
+	B=`bk bin`
+	# Make the binaries not too large, sco hangs on large diffs.
+	DOTBIN="$TST_DIR/.bin"
+	mkdir -p "$DOTBIN"
+	perl -e '$s=102400;sysread(STDIN, $buf, $s);syswrite(STDOUT, $buf, $s)' < "$B"/bk$EXE > "$DOTBIN/binary1"
+	perl -e '$s=204900;sysread(STDIN, $buf, $s);syswrite(STDOUT, $buf, $s)' < "$B"/gnu/bin/diff$EXE > "$DOTBIN/binary2"
+	perl -e '$s=307200;sysread(STDIN, $buf, $s);syswrite(STDOUT, $buf, $s)' < "$B"/gnu/bin/diff3$EXE > "$DOTBIN/binary3"
+	BIN1="$DOTBIN/binary1"
+	BIN2="$DOTBIN/binary2"
+	BIN3="$DOTBIN/binary3"
+	export BIN1 BIN2 BIN3
+}
+
 # this next line needs to be last, it's line zero of the script (see doit)
 BOS=$LINENO

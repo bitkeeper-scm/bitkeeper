@@ -15,6 +15,15 @@
 if [ $DO_REMOTE = YES ]
 then
  echo $N check this_host:relative_path ...............................$NL
+
+ # test is bk is installed locally first
+ SSH=ssh
+ test "$PERFER_RSH" = YES && SSH=rsh
+ $SSH localhost bk pwd >OUT 2>&1 || {
+      echo skipped
+      exit 0
+}
+
  commercial proj
  # We put "copy" under $HERE/proj becuase the old/buggy code would
  # have picked it up because it failed to do a chdir to $HOME.

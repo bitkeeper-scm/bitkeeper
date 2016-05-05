@@ -138,7 +138,7 @@ case $CMD in
 	if [ $CMD != nightly ]
 	then
 		# run tests
-		{ ./build test 2>&1 || failed; } | \
+		{ ./build rshtest 2>&1 || failed; } | \
 			while read line
 			do
 				echo "$line"
