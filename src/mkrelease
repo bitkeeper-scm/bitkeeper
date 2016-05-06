@@ -24,7 +24,7 @@ host=webhost-int
 hostdir=www/downloads
 keysrc=/home/bk/internal/ssh-keys/downloads.key
 key=downloads.key.me
-cp "$keysrc" "$key" || { echo failed to cp $keysrc; exit 1 }
+cp "$keysrc" "$key" || { echo failed to cp $keysrc; exit 1; }
 chmod 600 "$key"
 trap "rm -f '$key'" 0 1 2 3 15
 
@@ -40,13 +40,13 @@ test -d $S || {
 # setup upgrade information
 save=`pwd`
 cd $S
-./build_upgrade_index.pl ${ver}-* || exit 1
+$save/build_upgrade_index.pl $ver ${ver}-* || exit 1
 # Wayne's magic line to get windows to get 'bk upgrade' to work on windows
 echo "ForceType application/octet-stream" > .htaccess
 cd "$save"
 
 echo "Making download directory for $ver on $host"
-ssh -i $key $ruser@$host mkdir $hostdir/$vernum || {
+ssh -i $key $ruser@$host mkdir -p $hostdir/$vernum || {
 	echo failed making $host:$hostdir/$vernum
 	echo Go take a look and see if you need to clean up something
 	exit 1
@@ -57,6 +57,13 @@ rsync -av -e "ssh -i $key" $S/. $ruser@$host:$hostdir/$vernum/. || {
 	echo Go take a look and possibly remove that directory.
 	exit 1
 }
+
+echo "Copying src to $host"
+make -s src-tar || {
+	echo make src-tar failed
+	exit 1
+}
+scp -i $key tmp/src/$ver.tar.gz $ruser@$host:$hostdir/$vernum/.
 
 echo "Queuing mail to be sent next week to announce release"
 cat <<EOF > announce
