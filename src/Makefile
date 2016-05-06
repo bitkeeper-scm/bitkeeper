@@ -43,8 +43,8 @@ ifeq (,$(HAS_BK))
 	BKUTC  := $(shell date +%Y%m%d%H%M%S)
 	BKTIME := $(shell date +%s)
 else
-	BKUSER := $(shell $(HAS_BK) getuser)
-	BKFULLHOST := $(shell $(HAS_BK) gethost -r)
+	BKUSER := $(shell "$(HAS_BK)" getuser)
+	BKFULLHOST := $(shell "$(HAS_BK)" gethost -r)
 	ifeq (true,$(INREPO))
 		BKVERS := $(shell bk changes -r+ -d'$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}')
 		BKUTC  := $(shell bk changes -r+ -d:UTC:)
@@ -66,7 +66,7 @@ ifeq (,$(HAS_BK))
 	export BKTAG
 else
 	ifeq (true,$(INREPO))
-		BKTAG := $(shell bash -c "if ./hasL; then $(HAS_BK) describe --bk; else echo bootstrap; fi")
+		BKTAG := $(shell bash -c "if ./hasL; then \"$(HAS_BK)\" describe --bk; else echo bootstrap; fi")
 	else
 		BKTAG := $(shell cat bktag.txt)
 	endif
