@@ -382,3 +382,23 @@ cat <<EOF > WANT
 EOF
 cmpfiles WANT GOT
 echo OK
+
+echo $N Test rset -lREV --dir .......................................$NL
+bk rset -Sl+ --dir=. --subdirs > GOT || fail -f GOT
+cat <<EOF > WANT
+ChangeSet|+
+|BitKeeper
+|foo,bar
+|gcc-old
+|gdb
+EOF
+cmpfiles WANT GOT
+
+bk rset -Sl+ --dir=BitKeeper/etc --subdirs > GOT || fail -f GOT
+bk prs -hnd':GFILE:|:MD5KEY:' -r+ BitKeeper/etc > WANT
+grep -v attr WANT > WANT2
+cmpfiles WANT2 GOT
+
+bk rset -a -Sl+ --dir=BitKeeper/etc --subdirs > GOT || fail -f GOT
+cmpfiles WANT GOT
+echo OK

@@ -55,7 +55,7 @@ private void	trailer(void);
 private	void	detect_oldurls(char *url);
 private void	flushExit(int status);
 private char	*dl_link(void);
-private void	show_readme(void);
+private void	show_readme(char *rev);
 
 #define INNER_TABLE	"<table class='table table-bordered table-condensed table-striped sortable'>"
 #define	INNER_END	"</table>\n"
@@ -627,16 +627,40 @@ http_prs(char *page)
 private void
 http_dir(char *page)
 {
-	char	*cmd, *file, *gfile, *rev, *enc, *md5key;
-	int	i;
-	char	**d;
+	char	*cmd, *file, *dpn, *fn, *lnkfn, *rev, *enc, *md5key;
+	char	*t;
+	int	c;
+	FILE	*d;
 	FILE	*f, *out;
-	time_t	now = time(0);
+	char	*tmpf;
+	FILE	*ftmp;
 	char	buf[MAXLINE];
 
-	unless (d = getdir(fpath)) {
-		http_error(500, "%s: %s", fpath, strerror(errno));
+	hash_storeStr(qout, "PAGE", "dir");
+	if (rev = hash_fetchStr(qin, "REV")) {
+		hash_storeStr(qout, "REV", rev);
+	} else {
+		rev = "+";
 	}
+	mk_querystr();
+	tmpf = bktmp(0);
+	sprintf(buf, "bk rset -S -hl'%s' --dir='%s' --subdirs 2> '%s'",
+	    rev, fpath, tmpf);
+	d = popen(buf, "r");
+	if ((c = fgetc(d)) > 0) {
+		/* geting data */
+		ungetc(c, d);
+	} else {
+		/* error */
+		pclose(d);
+		buf[0] = 0;
+		if (f = fopen(tmpf, "r")) {
+			if (t = fgetline(f)) strcpy(buf, t);
+			fclose(f);
+		}
+		http_error(500, "%s: %s", fpath, buf[0] ? buf : "");
+	}
+
 	httphdr(".html");
 	header("Source directory &lt;%s&gt;", "Browse Source",
 	    fpath[1] ? fpath : "project root");
@@ -654,36 +678,42 @@ http_dir(char *page)
 	    "<th class='comments'>Comments</th>\n"
 	    "</tr>");
 
-	hash_storeStr(qout, "PAGE", "dir");
-	mk_querystr();
-	EACH (d) {
-		if (streq("SCCS", d[i])) continue;
-		if (streq("BitKeeper", fpath) && streq("BAM", d[i])) continue;
-		concat_path(buf, fpath, d[i]);
-		unless (isdir(buf)) continue;
-		printf("<tr>"
-		    "<td class='icon'><a href='%s/%s'><img src='%s'></a></td>"
-		    "<td class='filename'><a href='%s/%s'>%s</a></td>"
-		    "<td class='rev'></td>"			/* rev */
-		    "<td class='function'></td>"
-		    "<td class='age'></td>"	/* age */
-		    "<td class='author'></td>"			/* user */
-		    "<td class='comments'></td></tr>\n",	/* comments */
-		    d[i], querystr,
-		    BKWWW "folder_plain.png",
-		    d[i], querystr,
-		    d[i]);
-	}
-	freeLines(d, free);
+	ftmp = fopen(tmpf, "w");
+	while (t = fgetline(d)) {
+		if (t[0] == '|') {
+			/* display directories */
+			++t;
+			printf("<tr>"
+			    "<td class='icon'><a href='%s/%s'><img src='%s'></a></td>"
+			    "<td class='filename'><a href='%s/%s'>%s</a></td>"
+			    "<td class='rev'></td>"		/* rev */
+			    "<td class='function'></td>"
+			    "<td class='age'></td>"		/* age */
+			    "<td class='author'></td>"		/* user */
+			    "<td class='comments'></td></tr>\n",/* comments */
+			    t, querystr,
+			    BKWWW "folder_plain.png",
+			    t, querystr,
+			    t);
+		} else {
+			char	**items = splitLine(t, "|", 0);
 
-	cmd = aprintf("bk prs -h -r+ -d'"
+			/* save info for files */
+			fprintf(ftmp, "%s|%s\n", items[1], items[3]);
+			freeLines(items, free);
+		}
+	}
+	pclose(d);
+	fclose(ftmp);
+
+	cmd = aprintf("bk prs -h -d'"
 	    "%s<tr>\\n"
-	    "|:GFILE:|:REV:|:MD5KEY:\\n"
+	    "|:GFILE:|:DPN:|:REV:|:MD5KEY:\\n"
 	    " <td class='age'>:HTML_AGE:</td>"
 	    " <td class='author'>:USER:</td>"
 	    " <td class='comments'>:HTML_C:</td>"
-	    "</tr>\\n%s' '%s'",
-	    prefix, suffix, fpath);
+	    "</tr>\\n%s' - < '%s'",
+	    prefix, suffix, tmpf);
 	out = fmem();
 	f = popen(cmd, "r");
 	free(cmd);
@@ -694,11 +724,14 @@ http_dir(char *page)
 		}
 		chomp(buf);
 		file = buf + 1;
-		gfile = basenm(file);
-		rev = strchr(file, '|');
+		dpn = strchr(file, '|');
+		*dpn++ = 0;
+		rev = strchr(dpn, '|');
 		*rev++ = 0;
 		md5key = strchr(rev, '|');
 		*md5key++ = 0;
+		fn = basenm(dpn);	/* historical file name */
+		lnkfn = file;		/* current sfile path */
 		if (streq(file, "ChangeSet")) {
 			hash_storeStr(qout, "PAGE", "changes");
 			hash_storeStr(qout, "REV", md5key);
@@ -707,7 +740,7 @@ http_dir(char *page)
 			    BKWWW "document_delta.png'></a></td>"
 			    "<td class='filename'><a href='%s'>%s</a></td>",
 			    querystr,
-			    querystr, gfile);
+			    querystr, fn);
 			hash_storeStr(qout, "PAGE", "cset");
 			mk_querystr();
 			printf("<td class='rev'>"
@@ -719,64 +752,42 @@ http_dir(char *page)
 			hash_deleteStr(qout, "REV");
 			mk_querystr();
 			ftrunc(out, 0);
-			webencode(out, gfile, strlen(gfile)+1);
+			webencode(out, root, strlen(root)+1);
+			fputc('/', out);
+			webencode(out, lnkfn, strlen(lnkfn)+1);
 			enc = fmem_peek(out, 0);
-			printf("<td class='icon'><a href='%s%s'><img src='"
+			printf("<td class='icon'><a href='/%s%s'><img src='"
 			    BKWWW "document_delta.png'></a></td>",
 			    enc, querystr);
 			hash_storeStr(qout, "PAGE", "anno");
 			hash_storeStr(qout, "REV", md5key);
 			mk_querystr();
 			printf("<td class='filename'>"
-			    "<a href='%s%s'>%s</a></td>",
-			    enc, querystr, gfile);
+			    "<a href='/%s%s'>%s</a></td>",
+			    enc, querystr, fn);
 			hash_storeStr(qout, "PAGE", "diffs");
 			hash_storeStr(qout, "REV", md5key);
 			mk_querystr();
 			printf("<td class='rev'>"
-			    "<a href='%s%s'>%s</a>"
+			    "<a href='/%s%s'>%s</a>"
 			    "</td>",
 			    enc, querystr, rev);
 			hash_storeStr(qout, "PAGE", "related");
 			hash_deleteStr(qout, "REV");
 			mk_querystr();
 			printf("<td class='function'>"
-			    "<a href='%s%s'>csets</a></td>",
+			    "<a href='/%s%s'>csets</a></td>",
 			    enc, querystr);
 		}
 	}
 	pclose(f);
 	fclose(out);
+	unlink(tmpf);
+	free(tmpf);
 
-	cmd = aprintf("bk gfiles -1x '%s'", fpath);
-	f = popen(cmd, "r");
-	free(cmd);
-	while (fnext(buf, f)) {
-		chomp(buf);
-		gfile = basenm(buf);
-		hash_storeStr(qout, "PAGE", "cat");
-		hash_deleteStr(qout, "REV");
-		mk_querystr();
-		printf("%s<tr>\n"
-		    "<td class='icon'><img src='"
-		    BKWWW "document_plain.png'></td>"
-		    "<td class='filename'><a href='",
-		    prefix);
-		webencode(stdout, gfile ,strlen(gfile)+1);
-		printf("%s'>%s<a/></td>"
-		    "<td class='rev'>-</td>"
-		    "<td class='function'>-</td>"
-		    "<td class='age'>%s</td>"
-		    "<td class='author'>-</td>"
-		    "<td class='comments'>non-version controlled file</td>\n"
-		    "</tr>\n%s",
-		    querystr, gfile,
-		    age(now - mtime(buf), "&nbsp;"), suffix);
-	}
-	pclose(f);
 	puts(INNER_END);
 
-	show_readme();
+	show_readme(rev);
 
 	puts("</div>");
 
@@ -1266,7 +1277,7 @@ http_index(char *page)
 	puts("</div>");
 
 	puts("<br/>");
-	show_readme();
+	show_readme("+");
 
 	puts("</div>");
 
@@ -1274,13 +1285,13 @@ http_index(char *page)
 }
 
 private int
-format_readme(char *readme, int markdown)
+format_readme(char *readme, int markdown, char *rev)
 {
 	FILE	*f;
 	int	c;
 	char	buf[MAXLINE];
 
-	sprintf(buf, "bk cat '%s/%s'", fpath, readme);
+	sprintf(buf, "bk get -kqpr'%s' '%s/%s'", rev, fpath, readme);
 	unless (f = popen(buf, "r")) return (-1);
 	if ((c = fgetc(f)) <= 0) {
 		pclose(f);
@@ -1336,12 +1347,12 @@ format_readme(char *readme, int markdown)
 }
 
 private void
-show_readme(void)
+show_readme(char *rev)
 {
 	// stop on the first version that succeeds
-	unless (format_readme("README.md", 1)) return;
-	unless (format_readme("README.txt", 0)) return;
-	unless (format_readme("README", 0)) return;
+	unless (format_readme("README.md", 1, rev)) return;
+	unless (format_readme("README.txt", 0, rev)) return;
+	unless (format_readme("README", 0, rev)) return;
 }
 
 /*
@@ -1863,6 +1874,7 @@ http_repos(char *page)
 
 	d = getdir(".");
 	EACH(d) {
+		if (d[i][0] == '.') continue; /* skip DOT directories */
 		strcpy(buf, d[i]);
 		if (lstat(buf, &sb) == -1) continue;
 		unless (S_ISDIR(sb.st_mode)) continue;

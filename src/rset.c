@@ -35,11 +35,14 @@ typedef struct {
 	u32	chksum:1;	/* checksum diff */
 	u32	stats:1;	/* output internal work number(s) */
 	u32	no_print:1;	/* for getting stats, squelch data */
+	u32	subdirs:1;	/* with --dir show subdirs */
 	char	**nav;
 	char	**aliases;	/* -s limit nested output to aliases */
+	char	*limit_dir;
 	nested	*n;		/* only if -s (and therefore, -P) */
 	RANGE	rargs;		/* revisions */
 	sccs	*s;		/* pass through */
+	hash	*seen_dir;
 } Opts;
 
 /*
@@ -108,6 +111,8 @@ rset_main(int ac, char **av)
 		{ "show-gone", 350 },	// undoc, not sure
 		{ "stats", 360 },	// undoc, how much we read
 		{ "no-print", 370 },	// don't print anything (use w/ stats)
+		{ "dir;", 380 },
+		{ "subdirs", 390 },
 		{ "subset;", 's' },	// aliases
 		{ "standalone", 'S' },	// this repo only
 		{ 0, 0 }
@@ -173,6 +178,12 @@ range:				if (range_addArg(&opts->rargs, optarg, 0)) {
 				opts->no_print = 1;
 				opts->hide_cset = 1;
 				break;
+		case 380: // --dir=LIMIT_DIR
+				opts->limit_dir = optarg;
+				break;
+		case 390: // --subdirs
+				opts->subdirs = 1;
+				break;
 		default:        bk_badArg(c, av);
 		}
 	}
@@ -198,10 +209,15 @@ range:				if (range_addArg(&opts->rargs, optarg, 0)) {
 	if (opts->rargs.rstop && strchr(opts->rargs.rstop, ',')) {
 		usage();
 	}
-
+	if (opts->subdirs && !opts->limit_dir) usage();
 	if (opts->standalone && opts->aliases) usage();
 	opts->nested = bk_nested2root(opts->standalone);
-
+	if (opts->nested && opts->limit_dir) {
+		// If you know what directory you want, then running over
+		// all components is stupid
+		fprintf(stderr, "%s: --dir=DIR requires -S\n", prog);
+		goto out;
+	}
 	/* Let them use -sHERE by default but ignore it in non-products. */
 	if (!opts->nested && opts->aliases) {
 		EACH(opts->aliases) {
@@ -613,6 +629,29 @@ process(Opts *opts, rset *data, rfile *file)
 	    isIdenticalData(opts->s, path0, start, start2, end)) {
 		goto done;
 	}
+	if (opts->limit_dir) {
+		char	*dir = dirname_alloc(path2);
+		int	match = streq(dir, opts->limit_dir);
+		int	c;
+		char	*p;
+
+		c = 0;
+		if (!match && opts->subdirs &&
+		    (streq(opts->limit_dir, ".") ||
+		     ((c = paths_overlap(opts->limit_dir, dir)) &&
+			 !opts->limit_dir[c]))) {
+			if (dir[c] == '/') c++;
+			if (p = strchr(dir+c, '/')) *p = 0;
+			unless (opts->seen_dir) {
+				opts->seen_dir = hash_new(HASH_MEMHASH);
+			}
+			if (hash_insertStr(opts->seen_dir, dir+c, 0)) {
+				printf("|%s\n", dir+c);
+			}
+		}
+		free(dir);
+		unless (match) goto done;
+	}
 	if (data->curpath) fputs(data->curpath, stdout);
 	printf("%s|", path0);
 	if (opts->show_diffs) {
@@ -832,7 +871,8 @@ rel_list(Opts *opts, rset *data)
 	int	i;
 	rfile	*file;
 
-	unless (opts->hide_cset) {
+	unless (opts->hide_cset ||
+	    (opts->limit_dir && !streq(opts->limit_dir, "."))) {
 		unless (opts->show_path) {
 			printf("ChangeSet|%s\n", opts->rargs.rstop);
 		} else {
