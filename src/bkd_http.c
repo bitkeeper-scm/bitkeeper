@@ -276,8 +276,14 @@ header(char *titlestr, char *headerstr, ...)
 private void
 httphdr(char *file)
 {
+	if (getenv("GATEWAY_INTERFACE")) {
+		/* looks like a CGI context */
+		printf("Status: 200 OK\r\n");
+	} else {
+		/* we are the web server */
+	    	printf("HTTP/1.0 200 OK\r\n");
+	}
 	printf(
-	    "HTTP/1.0 200 OK\r\n"
 	    "Date: %s\r\n"
 	    "Server: bkhttp/%s\r\n"
 	    "Content-Type: %s\r\n"
@@ -1423,13 +1429,18 @@ http_error(int status, char *fmt, ...)
 	int     size;
 	int     ct;
 
+	if (getenv("GATEWAY_INTERFACE")) {
+		/* looks like a CGI context */
+		printf("Status: %d Error\r\n", status);
+	} else {
+		printf("HTTP/1.0 %d Error\r\n", status);
+	}
 	printf(
-	    "HTTP/1.0 %d Error\r\n"
 	    "Date: %s\r\n"
 	    "Server: bkhttp/%s\r\n"
 	    "Content-Type: text/html\r\n"
 	    "\r\n",
-	    status, http_time(), BKWEB_SERVER_VERSION);
+	    http_time(), BKWEB_SERVER_VERSION);
 
 	puts("<html><head><title>Error!</title></head>\n"
 	    "<body alink=black link=black bgcolor=white>");

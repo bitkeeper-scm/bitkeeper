@@ -1192,7 +1192,12 @@ http_hdr(void)
 	static	int done = 0;
 
 	if (done) return; /* do not send it twice */
-	out("HTTP/1.0 200 OK\r\n");
+	if (getenv("GATEWAY_INTERFACE")) {
+		/* looks like a CGI context */
+		out("Status: 200 OK\r\n");
+	} else {
+		out("HTTP/1.0 200 OK\r\n");
+	}
 	out("Server: BitKeeper daemon ");
 	out(bk_vers);
 	out("\r\n");
