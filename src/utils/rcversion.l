@@ -58,12 +58,12 @@ tag_to_ver(string tag)
 	int	sum = 0;
 	int	a, b, c, d;
 
-	if (tag =~ /^bk-([0-9]+)\.([0-9]+)$/) {
+	if (tag =~ /^bk-([0-9]+)\.([0-9]+)(ce)?$/) {
 		a = (int)$1;
 		b = (int)$2;
 		c = 0;
 		d = 0;
-	} else if (tag =~ /^bk-([0-9]+)\.([0-9]+)\.([0-9]+)$/) {
+	} else if (tag =~ /^bk-([0-9]+)\.([0-9]+)\.([0-9]+)(ce)?$/) {
 		a = (int)$1;
 		b = (int)$2;
 		c = (int)$3;
