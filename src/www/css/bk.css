@@ -103,4 +103,5 @@ td.filename {
 
 #readme {
     white-space: pre;
+    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 }
