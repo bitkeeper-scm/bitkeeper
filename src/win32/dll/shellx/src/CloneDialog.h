@@ -147,7 +147,7 @@ private:
 	{
 		demo = !demo;
 		if (demo) {
-			setParent("http://bkdemo.bkbits.net/bk_demo");
+			setParent("http://bkbits.net/u/bkdemo/bk_demo");
 			setTarget("");
 		} else {
 			setParent("");
