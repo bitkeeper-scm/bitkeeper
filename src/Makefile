@@ -612,7 +612,7 @@ _image:
 		chmod -w *$(EXE); \
 	}
 	-cd $(IMGDIR)/gui/bin && strip *$(EXE)
-	BINDIR=$(IMGDIR) ${MAKE} -Cutils "CC=$(CC)" "BK=$(HERE)/bk$(EXE)" "CFLAGS=$(CFLAGS)" image
+	${MAKE} -Cutils BINDIR=$(IMGDIR) "CC=$(CC)" "BK=$(HERE)/bk$(EXE)" "CFLAGS=$(CFLAGS)" image
 
 crankturn: crank.sh remote.sh  ## Run a clean-build + regressions in cluster
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh
