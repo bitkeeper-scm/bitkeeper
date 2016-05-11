@@ -276,7 +276,9 @@ char	*tmpnam(char *);
 int	 vsprintf(char * __restrict, const char * __restrict, va_list);
 #endif
 
+#ifndef __sun
 int	rename(const char *src, const char *dst);
+#endif
 
 /*
  * Bk extension
