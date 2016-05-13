@@ -76,7 +76,7 @@ echo OK
 
 if [ "$PLATFORM" != "WIN32" ]
 then
-echo $N "Tags may not contain the control characters \001 | \\n or \\r .$NL"
+echo $N Tags may not contain the control characters ^A \| NL or CR ...$NL
 for i in '\001' '\n' '\r' '|'
 do
 	T=`printf "foo${i}bar"`

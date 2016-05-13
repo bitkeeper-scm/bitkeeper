@@ -56,7 +56,7 @@ function cmp_repos() {
 		    )
 		    (cd "$bk_repo" ;
 		     bk export $standalone -tplain -kr$md5 "$export_bk" )
-		    diff -Nrq "$export_git" "$export_bk" > OUT || {
+		    diff -r "$export_git" "$export_bk" > OUT || {
 			fail -f OUT Diffs found $sha1 $md5
 		    }
 		    echo $md5 >> "$HERE/GOT.1"

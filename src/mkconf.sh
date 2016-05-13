@@ -71,6 +71,11 @@ case "X`uname -s`" in
 		RANLIB="touch"
 		;;
 	XSunOS)	XLIBS="-lnsl -lsocket -lresolv"
+		if [ `isainfo -b` = "64" ]
+		then
+			CC="gcc -m64"
+			LD="gcc -m64"
+		fi
 		CCXTRA="-DHAVE_LOCALZONE -DNOPROC"
 		test X`uname -p` = Xi386 && {
 			CCXTRA="$CCXTRA -DLTC_NO_ASM"

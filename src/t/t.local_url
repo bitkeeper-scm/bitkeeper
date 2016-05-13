@@ -18,7 +18,7 @@ then
 
  # test is bk is installed locally first
  SSH=ssh
- test "$PERFER_RSH" = YES && SSH=rsh
+ test "$PREFER_RSH" = YES && SSH=rsh
  $SSH localhost bk pwd >OUT 2>&1 || {
       echo skipped
       exit 0

@@ -879,6 +879,7 @@ grep -q 'not writable' OUT || {
 chmod 777 "$HERE/dest"
 echo OK
 
+if [ -x /usr/bin/co ]; then	# skipping RCS tests
 test -d $TESTDATA/lmbench && {
 echo $N Make sure that traditional RCS imports works ................$NL
 cd "$HERE"
@@ -965,6 +966,7 @@ test -f COPYING || {
 echo OK
 
 }
+fi # skipped RCS/CVS tests
 
 test -d $TESTDATA/import_data && {
 echo $N Multiple parallel imports ...................................$NL

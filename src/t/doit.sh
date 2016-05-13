@@ -129,8 +129,8 @@ unix_common_setup()
 		ln -s "`bk bin`/bk" "$BK_BIN/bk"
 		ln -s "`bk bin`/gui/tcltk/tcl/unix/tcltest" "$BK_BIN/tcltest"
 	fi
-	PATH=/bin:/usr/bin:$PATH:/usr/local/bin:/usr/freeware/bin:/usr/gnu/bin
-	if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
+	test `uname` != SunOS && PATH=/bin:/usr/bin:$PATH:/usr/local/bin:/usr/freeware/bin:/usr/gnu/bin
+	#if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
 	PATH=$BK_BIN:$PATH
 
 	unset CDPATH PAGER
@@ -147,10 +147,16 @@ unix_common_setup()
 	for f in awk expr sh ksh grep egrep sed env test [ sleep getopts \
 	    basename dirname cat cp cut ln mkdir mv rm rmdir touch wc xargs \
 	    co rcs ssh rsh gzip gunzip remsh rcmd uname xterm vi tar \
-	    chmod perl ls gdb bkdcp git
+	    chmod perl ls gdb bkdcp git realpath
 	do	p=`bk which -e $f`
 		if [ $? -eq 0 ]
-		then	ln -s "$p" "$BK_LIMITPATH/$f"
+		then
+			if [ `uname` = SunOS -a $p = /usr/gnu/bin/egrep ]
+			then
+				cp egrep-illumos "$BK_LIMITPATH/$f"
+			else
+				ln -s "$p" "$BK_LIMITPATH/$f"
+			fi
 		else	:
 			# Too noisy
 			# echo WARNING: could not find a $f binary.
@@ -159,7 +165,7 @@ unix_common_setup()
 	export BK_LIMITPATH
 
 	# on MacOS, ...
-	test "X`uname`" = XDarwin &&
+	test "X`uname`" = XDarwin -o "X`uname`" = XSunOS &&
 		# Use bash; their ksh is broken.
 		test -x /bin/bash && ln -s /bin/bash "$BK_LIMITPATH/bash"
 }
