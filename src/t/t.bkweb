@@ -173,3 +173,15 @@ grep -q "Top Secret Data" OUT || fail -f OUT
 echo OK
 
 fi # end of everything but on Windows tests
+
+echo $N Demonstrate that bad cset key causes an error page ..........$NL
+cd "$HERE"
+bk bkd -D <<EOF >OUT 2>&1
+GET /project/?PAGE=cset&REV=BADKEYd6H2QOk9MNbv3YAatMeiNUoQ HTTP/1.1
+Host: localhost:14690
+User-Agent: bktest/1.0.0
+Accept: */*
+
+EOF
+grep -iq "key not found" OUT || fail -f OUT
+echo OK

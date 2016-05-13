@@ -348,11 +348,11 @@ http_changes(char *page)
 	av[++i] = "prs";
 	av[++i] = "-h";
 	if (rev) {
-		sprintf(buf, "-r%s", rev);
-		av[++i] = buf;
+		rev = aprintf("-r%s", rev);
+		av[++i] = rev;
 	} else if (date) {
-		sprintf(buf, "-c%s", date);
-		av[++i] = buf;
+		date = aprintf("-c%s", date);
+		av[++i] = date;
 	}
 	av[++i] = dspec = aprintf("-d%s"
 	    "$if(:Li: -gt 0){<tr>\\n"
@@ -370,6 +370,11 @@ http_changes(char *page)
 	av[++i] = 0;
 	f = popenvp(av, "r");
 	free(dspec);
+	if (rev) {
+		free(rev);
+	} else if (date) {
+		free(date);
+	}
 
 	hash_storeStr(qout, "PAGE", "cset");
 	/*
@@ -403,10 +408,9 @@ http_cset(char *page)
 	char	*av[100];
 	FILE	*f;
 	int	i;
-	char	*p, *s, *t, *dspec, *md5key;
+	char	*buf, *p, *s, *t, *dspec, *md5key;
 	char	*rev = hash_fetchStr(qin, "REV");
 	int	didhead = 0;
-	char	*buf = malloc(2048);
 
 	dspec = aprintf("-d%s"
 	    "##:REV:\\n"
@@ -425,15 +429,15 @@ http_cset(char *page)
 
 	av[i=0] = "bk";
 	av[++i] = "changes";
-	sprintf(buf, "-r%s", rev);
-	av[++i] = buf;
+	rev = aprintf("-r%s", rev);
+	av[++i] = rev;
 	av[++i] = "-vn";
 	av[++i] = dspec;
 	av[++i] = 0;
 
 	f = popenvp(av, "r");
+	free(rev);
 	free(dspec);
-	free(buf);
 	while (buf = fgetline(f)) {
 		if (buf[0] != '#') {
 			fputs(buf, stdout);
@@ -482,9 +486,12 @@ http_cset(char *page)
 		}
 	}
 	pclose(f);
-
-	fputs(INNER_END, stdout);
-	puts("</div>");
+	if (didhead) {
+		fputs(INNER_END, stdout);
+		puts("</div>");
+	} else {
+		http_error(500, "key not found");
+	}
 	trailer();
 }
 
@@ -644,9 +651,10 @@ http_dir(char *page)
 	}
 	mk_querystr();
 	tmpf = bktmp(0);
-	sprintf(buf, "bk rset -S -hl'%s' --dir='%s' --subdirs 2> '%s'",
-	    rev, fpath, tmpf);
-	d = popen(buf, "r");
+	cmd = aprintf("bk rset -S -hl'%s' --dir='%s' --subdirs 2> '%s'",
+		      rev, fpath, tmpf);
+	d = popen(cmd, "r");
+	free(cmd);
 	if ((c = fgetc(d)) > 0) {
 		/* geting data */
 		ungetc(c, d);
