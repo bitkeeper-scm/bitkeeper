@@ -65,6 +65,13 @@ else
 	ifeq "$(shell uname -r)" "2.2.8-RELEASE"
 		SHARED := $(SHARED) --disable-rpath
 	endif
+	ifeq "$(shell uname -s)" "SunOS"
+	ifeq "$(shell isainfo -b)" "64"
+		CC := gcc -m64
+		export CC
+		ENABLE_64BIT := --enable-64bit
+	endif
+	endif
 endif
 
 ifdef	DEBUG_TCL
