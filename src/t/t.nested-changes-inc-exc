@@ -44,7 +44,7 @@ cat <<EOF > ALL
 1.3 ChangeSet add comps: foo bar baz
 1.2 ChangeSet attach gcc, gdb
 1.1 ChangeSet Initial repository create
-1.0 ChangeSet new
+1.0 ChangeSet ChangeSet
 EOF
 cmpfiles ALL GOT
 bk changes -vnd':INDENT::REV: :DPN: :C:' 2>ERR |
@@ -67,7 +67,7 @@ cat <<EOF > ALLPV
   1.0 BitKeeper/etc/gone 
   1.1 BitKeeper/etc/ignore new
   1.0 BitKeeper/etc/ignore 
-1.0 ChangeSet new
+1.0 ChangeSet ChangeSet
 EOF
 cmpfiles ALLPV GOT
 bk here set $Q ALL
@@ -100,7 +100,7 @@ cat <<EOF > ALLAV
     1.0 bar/BitKeeper/etc/gone 
     1.1 bar/BitKeeper/etc/ignore new
     1.0 bar/BitKeeper/etc/ignore 
-  1.0 ChangeSet new
+  1.0 ChangeSet ChangeSet
   1.1 baz/ChangeSet Initial repository create
     1.1 baz/BitKeeper/etc/collapsed new
     1.0 baz/BitKeeper/etc/collapsed 
@@ -110,7 +110,7 @@ cat <<EOF > ALLAV
     1.0 baz/BitKeeper/etc/gone 
     1.1 baz/BitKeeper/etc/ignore new
     1.0 baz/BitKeeper/etc/ignore 
-  1.0 ChangeSet new
+  1.0 ChangeSet ChangeSet
   1.1 foo/ChangeSet Initial repository create
     1.1 foo/BitKeeper/etc/collapsed new
     1.0 foo/BitKeeper/etc/collapsed 
@@ -120,7 +120,7 @@ cat <<EOF > ALLAV
     1.0 foo/BitKeeper/etc/gone 
     1.1 foo/BitKeeper/etc/ignore new
     1.0 foo/BitKeeper/etc/ignore 
-  1.0 ChangeSet new
+  1.0 ChangeSet ChangeSet
 1.2 ChangeSet attach gcc, gdb
   1.2 BitKeeper/etc/aliases Create alias "DEFAULT" containing:	ALL
   1.1 gcc/ChangeSet Initial repository create
@@ -132,7 +132,7 @@ cat <<EOF > ALLAV
     1.0 gcc/BitKeeper/etc/gone 
     1.1 gcc/BitKeeper/etc/ignore new
     1.0 gcc/BitKeeper/etc/ignore 
-  1.0 ChangeSet new
+  1.0 ChangeSet ChangeSet
   1.1 gdb/ChangeSet Initial repository create
     1.1 gdb/BitKeeper/etc/collapsed new
     1.0 gdb/BitKeeper/etc/collapsed 
@@ -142,7 +142,7 @@ cat <<EOF > ALLAV
     1.0 gdb/BitKeeper/etc/gone 
     1.1 gdb/BitKeeper/etc/ignore new
     1.0 gdb/BitKeeper/etc/ignore 
-  1.0 ChangeSet new
+  1.0 ChangeSet ChangeSet
 1.1 ChangeSet Initial repository create
   1.1 BitKeeper/etc/aliases new
   1.0 BitKeeper/etc/aliases 
@@ -154,7 +154,7 @@ cat <<EOF > ALLAV
   1.0 BitKeeper/etc/gone 
   1.1 BitKeeper/etc/ignore new
   1.0 BitKeeper/etc/ignore 
-1.0 ChangeSet new
+1.0 ChangeSet ChangeSet
 EOF
 cmpfiles ALLAV GOT
 echo OK
@@ -205,7 +205,7 @@ cat <<EOF > WANT
   1.2 gcc/ChangeSet both
 1.2 ChangeSet attach gcc, gdb
   1.1 gcc/ChangeSet Initial repository create
-  1.0 ChangeSet new
+  1.0 ChangeSet ChangeSet
 EOF
 cmpfiles WANT GOT
 bk here set $Q PRODUCT
@@ -230,7 +230,7 @@ cat <<EOF > WANT
   1.2 gcc/ChangeSet both
 1.2 ChangeSet attach gcc, gdb
   1.1 gcc/ChangeSet Initial repository create
-  1.0 ChangeSet new
+  1.0 ChangeSet ChangeSet
 EOF
 cmpfiles WANT GOT
 echo OK

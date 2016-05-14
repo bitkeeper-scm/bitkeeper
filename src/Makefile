@@ -301,9 +301,11 @@ LIBS	= libc/libc.a tomcrypt/libtomcrypt.a tommath/libtommath.a
 PCRELIB = gui/tcltk/pcre/local/lib/libpcre.a
 DATA	= bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
-	dspec-changes dspec-changes-vv dspec-changes-h dspec-changes-hv \
-	dspec-changes-3.2 dspec-changes-4.0 dspec-prs dspec-log
-CONTRIB = gui/ide/emacs/vc-bk.el
+	dspec-changes dspec-changes-3.2 dspec-changes-4.0 dspec-changes-h \
+	dspec-changes-hv dspec-changes-json dspec-changes-json-v \
+	dspec-changes-vv dspec-log dspec-prs
+
+CONTRIB = gui/ide/emacs/vc-bk.el contrib/git2bk.l
 ALL	= PCRE $(LIBS) $(BINS) $(SCRIPTS) $(PSCR) $(XTRA) \
 	$(PROGS) L-clean GUI L-doc $(DATA)
 

@@ -320,6 +320,8 @@ _BK_NO_ATTR=1 BK_DATE_TIME_ZONE=$DAT bk commit $Q -ybar
 _BK_NO_ATTR=1 BK_DATE_TIME_ZONE=$DAT bk pull $Q
 cd ..
 # compare cset files
+# We changed the path name, hack this to make it match
+(cd oldcopy; bk comments -yChangeSet -r1.0 ChangeSet)
 bk _scat oldcopy/ChangeSet > old
 bk _scat newcopy/ChangeSet > new
 cmpfiles old new

@@ -156,9 +156,12 @@ string
 caller(int stacks)
 {
 	string	err;
+	string	ans;
 
 	try {
-		return (uplevel(1, "info level -${stacks}"));
+		ans = uplevel(1, "info level -${stacks}");
+		ans =~ s/ .*//;
+		return (ans);
 	} catch (&err) {
 		stdio_lasterr = err;
 		return (undef);

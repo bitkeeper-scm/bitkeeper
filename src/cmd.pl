@@ -496,8 +496,8 @@ diff3 cprog
 sdiff cprog
 
 # L scripts
+check_comments lscript
+describe lscript
 hello lscript
 pull-size lscript
 repocheck lscript
-check_comments lscript
-describe lscript

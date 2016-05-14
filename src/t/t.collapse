@@ -178,7 +178,7 @@ cat <<EOF > cd
 $CREATE_DELETE 1.1 1/0/0 u2
 BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
 -rw-
-C BitKeeper file $HERE/project/create_delete
+C BitKeeper file create_delete
 --- /dev/null
 +++ 1.1/$CREATE_DELETE
 @@ -0,0 +1 @@
@@ -266,7 +266,7 @@ C edited comment
 edited_symlink 1.1 0/0/0 u2
 BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
 lrwx
-C BitKeeper file $HERE/project/edited_symlink
+C BitKeeper file edited_symlink
 C ---
 C edited comment
 --- /dev/null
@@ -312,7 +312,7 @@ C Change mode to -rwx
 new_file 1.1 1/0/0 u2
 BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
 -rw-
-C BitKeeper file $HERE/project/new_file
+C BitKeeper file new_file
 --- /dev/null
 +++ 1.1/new_file
 @@ -0,0 +1 @@
@@ -324,7 +324,7 @@ BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
 new_symlink 1.1 0/0/0 u2
 BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
 lrwx
-C BitKeeper file $HERE/project/new_symlink
+C BitKeeper file new_symlink
 --- /dev/null
 +++ 1.1/new_symlink
 @@ -0,0 +1 @@

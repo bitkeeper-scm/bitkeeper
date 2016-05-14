@@ -993,10 +993,7 @@ mkChangeSet(c_opts opts, sccs *cset, char *files, char ***keys)
 		/* nor a pathname for a component */
 		sccs_parseArg(cset, d, 'P', "ChangeSet", 0);
 
-		t = fullname(cset->gfile, 0);
-		sprintf(buf, "BitKeeper file %s\n", t);
-		free(t);
-		COMMENTS_SET(cset, d, buf);
+		COMMENTS_SET(cset, d, "ChangeSet\n");
 
 		cset->bitkeeper = 1;
 		XFLAGS(cset, d) |= X_REQUIRED|X_LONGKEY;
