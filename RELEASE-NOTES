@@ -1,5 +1,24 @@
 ============================================================================
-Release notes for BitKeeper version 7.2-oss release May 9 2016
+Release notes for BitKeeper version 7.2.1ce release May 16 2016
+
+This is a minor bugfix release
+
+- Portability fixes for Solaris-derived machines.
+  We have added an OpenIndiana/hipster machine to our build cluster
+  and ship binaries built on that machine.
+
+- Fix the BK/Web web API to return a 500 error page when a REV URL parameter
+  can't be found in the current repository.
+
+- Fix 'bk version' to not do a synchronous fetch from bitkeeper.org to
+  find the latest released version.  Now this fetch is done daily in
+  the background to prevent pauses on machines with limited
+  connectivity.
+
+- Add support needed for a contributed git2bk importer
+
+============================================================================
+Release notes for BitKeeper version 7.2ce release May 9 2016
 
 This is the first open source release of BitKeeper. Many changes involve
 removing the licensing code.
