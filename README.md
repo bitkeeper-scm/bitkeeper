@@ -94,7 +94,7 @@ parallel using multiple cores like so:
 	cd t
 	./doit -j12
 
-Look [here](https://users.bitkeeper.org/t/howto-running-regressions-on-a-clean-linux-machine/74)
+Look [here](https://users.bitkeeper.org/t/running-regressions-on-a-clean-linux-machine/74)
 for help with getting regressions to pass cleanly.
 
 ## Contributing to BitKeeper
