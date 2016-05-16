@@ -16,13 +16,13 @@
 
 ifeq "$(OSTYPE)" "msys"
 	EXE=.exe
-	TST_DIR:=$(shell if [ -d /r/build ]; then echo R:\\; else echo C:\\; fi)build\test-$(shell bk getuser)
+	TST_DIR?=$(shell if [ -d /r/build ]; then echo R:\\; else echo C:\\; fi)build\test-$(shell bk getuser)
 else
 	EXE=
-	TST_DIR:=$(shell if [ -d /build ]; then echo /build ; else echo /tmp/build; fi)/test-$(shell bk getuser)
+	TST_DIR?=$(shell if [ -d /build ]; then echo /build ; else echo /tmp/build; fi)/test-$(shell bk getuser)
 endif
 
-BK_ROOT := $(abspath ../../)
+BK_ROOT ?= $(abspath ../../)
 # The test t.bkd-svc cannot be run in parallel with any other
 # tests or it will fail
 TESTS = $(filter-out %~, $(wildcard t.*))
