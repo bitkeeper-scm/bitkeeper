@@ -395,7 +395,7 @@ setup(string start_rev, int rcs)
 	unless (sys("bk setup -f -c.bk_config .bk_empty") == 0) {
 		return (1);
 	}
-	sys("tar -C.bk_empty -cf- . | tar -xf-");
+	sys("tar -cf - -C .bk_empty . | tar -xf -");
 	for (i = 0; i < 10; ++i) {
 		if (system("rm -rf .bk_config .bk_empty") == 0) break;
 		sleep(1);
