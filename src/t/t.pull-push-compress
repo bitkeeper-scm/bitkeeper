@@ -225,8 +225,8 @@ fi
 [ $L -eq $target ] || { echo merge failed; exit 1; }
 cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
 cd "$HERE"
-cp -rp project project2
-cp -rp project project3
+cp -R project project2
+cp -R project project3
 cd copy
 KEY="`bk prs -hd:KEY: -r+ ChangeSet`"
 bk push $Q || { echo failed; exit 1; }

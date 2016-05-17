@@ -337,8 +337,8 @@ echo OK
 
 echo $N Test relink keeps the older time ............................$NL
 cd "$HERE"
-cp -rp project link1
-cp -rp project link2
+cp -R project link1
+cp -R project link2
 cd link1
 bk _touch -t $T11 SCCS/s.keyword
 cd ../link2

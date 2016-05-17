@@ -33,7 +33,7 @@ echo OK
 
 echo $N clone with checkout:get and BAM_checkout:none ...............$NL
 cd "$HERE"
-cp -rp project source
+cp -R project source
 cd source
 bk commit -ywhatever $Q
 cd ..
@@ -100,7 +100,7 @@ echo OK
 echo $N clone with checkout:get and BAM_checkout:last ...............$NL
 cd "$HERE"
 rm -rf source checkout
-cp -rp project source
+cp -R project source
 cd source
 bk commit -ywhatever $Q
 cd ..

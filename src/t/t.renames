@@ -92,7 +92,7 @@ echo $N Create a file w/ no conflict for completeness ...............$NL
 cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
-cp -rp project copy
+cp -R project copy
 cd project
 echo "No conflicts" > no_conflicts
 bk new $Q no_conflicts
@@ -108,7 +108,7 @@ echo $N Rename a file to a no conflict case for completeness ........$NL
 cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
-cp -rp project copy
+cp -R project copy
 cd project
 echo foo > no_conflicts
 bk new $Q no_conflicts
@@ -135,7 +135,7 @@ echo $N Create with local gfile, no sfile ...........................$NL
 cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
-cp -rp project copy
+cp -R project copy
 cd project
 echo "I am the project file" > 'B%A!#$%^&)(-_+=];,'
 bk new $Q 'B%A!#$%^&)(-_+=];,'
@@ -403,7 +403,7 @@ echo $N Rename with local gfile, no sfile ...........................$NL
 cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
-cp -rp project copy
+cp -R project copy
 cd project
 echo "I am the project file" > OLDNAME
 bk new $Q OLDNAME
@@ -606,7 +606,7 @@ echo $N Remote create, local sfile w/ no pending deltas .............$NL
 cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
-cp -rp project copy
+cp -R project copy
 cd project
 echo "I am the project file" > 'B%A!#$%^&)(-_+=];,'
 bk new $Q 'B%A!#$%^&)(-_+=];,'
@@ -875,7 +875,7 @@ echo $N Remote create, local sfile w/ pending deltas .. .............$NL
 cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
-cp -rp project copy
+cp -R project copy
 cd project
 echo "I am the project file" > 'B%A!#$%^&)(-_+=];,'
 bk new $Q 'B%A!#$%^&)(-_+=];,'
@@ -947,7 +947,7 @@ echo $N Remote rename, local sfile w/ no pending deltas .............$NL
 cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
-cp -rp project copy
+cp -R project copy
 cd project
 echo "I am the project file" > OLDNAME
 bk new $Q OLDNAME
@@ -1167,7 +1167,7 @@ echo $N Create a file w/ tmp conflict which gets renamed away .......$NL
 cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
-cp -rp project copy
+cp -R project copy
 cd project
 bk mv "A A" MOVED
 touch "A A"
@@ -1225,7 +1225,7 @@ echo $N Create a file in same pathname slot in both .................$NL
 cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
-cp -rp project copy
+cp -R project copy
 # project:
 #	create B%A!#$%^&)(-_+=];,
 # copy:
@@ -1409,7 +1409,7 @@ echo $N Resolve with an edited file created after RESYNC is created..$NL
 cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
-cp -rp project copy
+cp -R project copy
 cd project
 bk mv "A A" Z
 bk commit $S -y'A A->Z'

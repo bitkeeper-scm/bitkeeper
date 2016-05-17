@@ -24,8 +24,8 @@ bk ci $Q -i h.h || exit 1
 echo OK
 
 echo $N Attempt citool with commit which errors .....................$NL
-cp -rp "$HERE/project" "$HERE/interactive"
-cp -rp "$HERE/project" "$HERE/interactive.cmd"
+cp -R "$HERE/project" "$HERE/interactive"
+cp -R "$HERE/project" "$HERE/interactive.cmd"
 mkdir "$HERE/project/BitKeeper/triggers"
 cat > "$HERE/project/BitKeeper/triggers/pre-commit" <<EOF
 #!/bin/sh

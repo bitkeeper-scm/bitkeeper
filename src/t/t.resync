@@ -221,7 +221,7 @@ fi
 bk commit $S -y'counter clockwise'
 cd "$HERE/copy"
 bk pull $Q -R "$HERE/project"
-cp -rp "$HERE/copy" "$HERE/SAVE"
+cp -R "$HERE/copy" "$HERE/SAVE"
 # This is completely dependent on the ordering of file processing in resolve.
 # So what we do is run the first step of the rename processing and then
 # go move them into the order we want: File 1, File 2, File 3, File 4
@@ -299,7 +299,7 @@ fi
 bk commit $S -y'counter clockwise'
 cd "$HERE/copy"
 bk pull $Q -R "$HERE/project"
-cp -rp "$HERE/copy" "$HERE/SAVE"
+cp -R "$HERE/copy" "$HERE/SAVE"
 # This is completely dependent on the ordering of file processing in resolve.
 # So what we do is run the first step of the rename processing and then
 # go move them into the order we want: File 1, File 2, File 3, File 4
