@@ -12,23 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Top level BitKeeper Makefile
-# %W% %@% (c) 1999 BitMover, Inc.
-
 all: 
-	cd man && $(MAKE)
-	cd src && $(MAKE)
-
-production:
-	cd man && $(MAKE)
-	cd src && $(MAKE) production
+	$(MAKE) -C src all
 
 clean: 
-	cd man && $(MAKE) clean
-	cd src && $(MAKE) cclean
-	bk clean
+	$(MAKE) -C src clean
 
-clobber: 
-	cd man && $(MAKE) clobber
-	cd src && $(MAKE) clobber
-	bk clean
+install:
+	$(MAKE) -C src install

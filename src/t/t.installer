@@ -39,6 +39,8 @@ test `wc -l < /tmp/bk$$` -eq 1 && BK_INSTALLER="`cat /tmp/bk$$`"
 $RM /tmp/bk$$
 test "X$BK_INSTALLER" = X && exit 0
 
+mkBINs
+
 if [ X$PLATFORM = X"WIN32" ]
 then #-------------------- WIN32 tests ---------------------
 

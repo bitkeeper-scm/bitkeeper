@@ -1528,6 +1528,7 @@ int	getMsg2(char *msg_name, char *arg, char *arg2, char b, FILE *outf);
 int	getMsgP(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);
 int	getMsgv(char *msg_name, char **bkarg, char *prefix, char b, FILE *outf);
 void	randomBits(char *buf);
+void	randomCons(char *buf, sccs *s, ser_t d);
 sum_t	almostUnique(void);
 int	uninstall(char *path, int upgrade);
 void	delete_onReboot(char *path);

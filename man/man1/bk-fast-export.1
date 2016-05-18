@@ -4,8 +4,7 @@
 bk fast-export \- export the repository in a format compatible with git
 .SH SYNOPSIS
 .B bk fast-export
-.[B] \-\-no\-bk\-keys
-.[OPTreq] \-\-branch= branch
+.ARG options
 .SH DESCRIPTION
 bk fast-export exports the entire repository in a format suitable for
 input to git's fast-import command. The output is sent to standard
@@ -14,22 +13,46 @@ output.
 By default the BitKeeper MD5KEY of the equivalent changeset will be
 added to every commit in git.
 .SH OPTIONS
-.TP \-\-branch=<branch>
-.B \-\-no\-bk\-keys
-Don't add the "bk: <mk5key>" line at the end of the comments.
+.TP \-\-incremental=<repo>
+.OPTreq \-A filename
+.tp
+.OPTreq \-\-authors= filename
+Use the given file as a map for authors. The syntax is compatible with
+git cvsimport:
+.DS
+USER = Name <email@domain.com>
+.DE
+With one user per line.
 .tp
 .OPTreq \-\-branch= branch
 By default the export will be done for the "master" git branch. This option
 lets you do the export for a different branch. This is useful for
 exporting two different BitKeeper branches (e.g. "dev" and "stable")
-into the same git repository. See CAVEATS below.
+into the same git repository. See SUGGESTED USE below.
+.tp
+.B \-\-incremental=<repo>
+Do an incremental export starting from the last exported cset found in
+the Git repository
+.ARG repo .
+This will not work if the previous export used
+.BR \-\-no\-bk\-keys .
+.tp
+.B \-\-no\-bk\-keys
+Don't add the "bk: <mk5key>" line at the end of the comments 
+(incompatible with
+.BR \-\-incremental ).
+.tp
+.B \-q
+.tp
+\-\-quiet
+Don't print warnings or other information.
 .tp
 .B \-S
 .tp
 \-\-standalone
 When used in a nested collection, export only the product or the 
 component implied by the current working directory.
-.SH EXAMPLE
+.SH EXAMPLES
 .LP
 The commands to export a BitKeeper repository named
 "bk-repo" to a git repository named "git-repo"
@@ -38,15 +61,30 @@ would be:
 $ git init git-repo
 $ (cd bk-repo; bk fast-export) | (cd git-repo ; git fast-import)
 .DE
-.SH CAVEATS
+And to do an incremental export later:
+.DS
+$ (cd bk-repo; bk fast-export --incremental=../git-repo) | \\
+  (cd git-repo ; git fast-import)
+.DE
+.SH SUGGESTED USE
 .LP
-It's possible to run the exporter over different BitKeeper
-repositories and use the same git repository as a destination. All the
-shared history will be imported by git only once as long as the
-repositories have identical comments and matching gone files. 
+It is suggested that you create a
+.I pristine
+import branch where no git commits are created. By default,
+.B fast-export
+warns if the latest commit in the import branch is not marked with a
+BitKeper key (This can be disabled with the 
+.B --quiet
+option).
 .LP
-It's probably a good idea to contact BitKeeper support if you are
-going to be doing this.
+For example, if you have two separate BitKeeper branches: 'dev',
+and 'stable', you can import each of them into corresponding git
+branches and pass the appropriate
+.B --branch
+option to
+.B fast-export
+each time. If the git repository is also being developed, this can be
+done in a separate git branch (e.g. 'master').
 .SH EXIT STATUS
 .LP
 .B bk fast-export

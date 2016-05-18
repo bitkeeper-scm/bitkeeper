@@ -1,4 +1,4 @@
-# Copyright 2007-2011,2015 BitMover, Inc
+# Copyright 2007-2011,2015-2016 BitMover, Inc
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -200,6 +200,11 @@ echo OK
 
 echo $N Clone using bk:// of repo with file url bam server ..........$NL
 cd "$HERE"
+bk changes -qnd:REV: -r+ bk://data.bitkeeper.com/test_data/file-url-abs-path >OUT 2>ERR
+if [ $? -eq 0 ]
+then
+test `cat OUT` = 1.5 || fail
+cat ERR
 echo "binary data" > WANT
 # BAM server repo on work: /home/bk/test_data/bk-url-only
 # has 700 perms and is owned by user bkd (which owns the bkd process on work)
@@ -220,3 +225,6 @@ for f in 2-slash 3-slash abs-path; do
 	cd ..
 done
 echo OK
+else
+echo skipped
+fi

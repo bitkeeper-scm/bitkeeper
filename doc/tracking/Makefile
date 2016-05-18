@@ -9,5 +9,5 @@ pdf:
 	ps2pdf track.ps
 
 clean clobber:
-	/bin/rm -f PS PS2 track.ps track.pdf
+	$(RM) PS PS2 track.ps track.pdf
 	bk clean

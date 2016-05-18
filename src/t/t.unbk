@@ -1,4 +1,4 @@
-# Copyright 2008,2011 BitMover, Inc
+# Copyright 2008,2011,2016 BitMover, Inc
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ touch foo
 bk new $Q foo
 # keep the date, drop the time zone and host, shift serials
 bk prs -h foo \
-    | perl -ne 'print if s?^(D[^-]*)-.*?\1 bk 1 0 0/0/0? or /^[-C]/' > WANT.prs
+    | perl -ne 'print if s{^(D.*?)([-+].*)? bk.*}{\1 bk 1 0 0/0/0} or /^[-C]/' > WANT.prs
 bk _unbk --I-know-this-destroys-my-bk-repo
 cat <<EOF > WANT
 t

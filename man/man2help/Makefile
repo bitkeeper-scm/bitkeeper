@@ -26,7 +26,7 @@ summaries: helptxt2 ../bk-macros help2sum.pl FORCE
 	do	if test -f $$i.done; then cat $$i.done; fi \
 	done > helptxt
 	@cat helptxt2 >> helptxt
-	@/bin/rm -f helptxt2
+	@$(RM) helptxt2
 	@grep '^help://' helptxt | sort > ALL
 	@grep '^help://' helptxt | sort -u > UNIQUE
 	@cmp -s ALL UNIQUE || { echo Not unique; diff ALL UNIQUE; }
@@ -35,7 +35,7 @@ verify-dspecs: ../man1/bk-log.1 verify-dspecs.pl
 	perl ./verify-dspecs.pl $<
 
 clean: FORCE
-	/bin/rm -f -- *.fmt *.sum* *.roff *.done helptxt* ALL UNIQUE tmp
+	$(RM) -- *.fmt *.sum* *.roff *.done helptxt* ALL UNIQUE tmp
 
 clobber: clean
 	-$(BK) clean

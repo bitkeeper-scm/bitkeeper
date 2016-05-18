@@ -456,8 +456,6 @@ SCCS/s.newfile2|+
 EOF
 bk commit $Q -S -ydups - < FILES 2> ERR && fail -f ERR
 sed 's/[^|]*|\([^|]*\).*/\1/' < ERR > GOT
-cp ERR ~/p
-cp GOT ~/p1
 cat <<'EOF' > WANT
 ERROR: same rootkey appears twice:
 newfile

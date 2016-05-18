@@ -1,0 +1,5 @@
+.SH DESCRIPTION
+The nested category contains commands that are specific to \*(BK Nested
+Collections (think submodules that work).  These are commands that only
+work on Nested Collections; most of the repository level commands are
+nested aware.

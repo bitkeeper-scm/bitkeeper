@@ -435,7 +435,7 @@ defaultBin(void)
 	}
 	return (bindir);
 #else
-	return ("/usr/libexec/bitkeeper");
+	return ("/usr/local/bitkeeper");
 #endif
 }
 

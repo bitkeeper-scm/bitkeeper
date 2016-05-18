@@ -34,11 +34,11 @@ test -d $OLDBK || {
 		MINGW32_NT-6.*) echo skipped; exit 0;;
 	esac
 }
-# just put this license in the lease server when it expires
-BKL_PRO=BKL657ba5407368c808000012fdfffff42e572b430023
-BKL_P1=YgAAAo4AAAADgQAAAAH25wKkj5S4TqH3lBBbr2ZcvNVtgH945QYa6aZK0XOQuZON
-BKL_P2=VgIa7srODXebDkbzCJzSt7akBg4KMjkmCx0GI2vAWS4ddnccqRNUG+iNXMCXfXXD
-BKL_P3=WJk6+SFVwEh1/MsFIxFpc4hSsTF1QAdebtSKPACFhX34zXF8h3stHBiHMPIMmg==
+# http://config.bitmover.com:7777/cgi-bin/view.cgi?id=2016-05-02-002
+BKL_PRO=BKL65908cc51572709000001200fffff000000000
+BKL_P1=YgAAAo4AAAADgQAAAAHZK6YXrWpbvvL7wuT1Fj8Z4gsjm633vW6T8Irespi/d1GL
+BKL_P2=LltIV1NobkMykn2BWS45ph8r+VpBbslq4r8cOffc7UK3qd40y6uFW+ud1mMUJjYm
+BKL_P3=Jl+mK0yL7V9E8uvsWU8VF6Wr/0lFDLZOMAbLUeTnh3EM8WcTqE0oar00Wygc0A==
 
 echo license: $BKL_PRO > c
 echo licsign1: $BKL_P1 >> c
@@ -53,8 +53,10 @@ test -d $OLDBK || {
 	exit 0
     }
     bk upgrade $Q -f -d $BK_TCOMPAT_ARCH \
-	    http://data.bitkeeper.com/downloads/bk-$OLDVER >out 2>ERR || {
+	    http://downloads.bitkeeper.com/unsupported/bk-$OLDVER >out 2>ERR || {
 	    grep -q "No upgrade for the arch.*found" ERR && {
+	        # can use $BK_TCOMPAT_ARCH to fix if your platform
+		# isn't one of the official
 		echo skipped
 		exit 0
 	    }
@@ -77,6 +79,8 @@ test X$VER = X$OLDVER || {
 	exit 1
 }
 echo OK
+
+mkBINs
 
 echo -------------- crypto tests
 echo $N New and old version should generate the same signature ......$NL
@@ -316,6 +320,8 @@ _BK_NO_ATTR=1 BK_DATE_TIME_ZONE=$DAT bk commit $Q -ybar
 _BK_NO_ATTR=1 BK_DATE_TIME_ZONE=$DAT bk pull $Q
 cd ..
 # compare cset files
+# We changed the path name, hack this to make it match
+(cd oldcopy; bk comments -yChangeSet -r1.0 ChangeSet)
 bk _scat oldcopy/ChangeSet > old
 bk _scat newcopy/ChangeSet > new
 cmpfiles old new

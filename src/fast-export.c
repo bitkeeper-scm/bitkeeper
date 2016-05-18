@@ -20,11 +20,15 @@
 
 typedef struct {
 	char	*branch;
+	char	*baserepo;
 	u32	addMD5Keys:1;
 	u32	md5KeysAsSubject:1;
 	u32	nested:1;
+	u32	quiet:1;
 	// state that gets passed around
-	hash	*rkdk2fi;
+	hash	*rkdk2fi;	// map "crk rk dk" to 'struct finfo'
+				// crk == component rootkey
+	hash	*bk2git;	// map bkkeys(seen in git) to git-revs
 	MDBM	*idDB;
 	MDBM	*goneDB;
 	MDBM	*sDB;
@@ -32,15 +36,44 @@ typedef struct {
 	hash	*authors;
 } opts;
 
+
+/*
+ * How is data passed? Inline or with a SHA1 or :mark reference?
+ */
+enum {INLINE, EXTERNAL};
+
+/*
+ * A line like:
+ *
+ *   'M' SP <mode> SP <dataref> SP <path> LF
+ *
+ * and an optional inline FILE* that will be dumped after the line if
+ * it isn't NULL.  If the latter, <dataref> must be the word 'inline'
+ * (without the quotes). Note the print function checks none of this.
+ *
+ */
+typedef struct gitOp {
+	char	*op;
+	FILE	*data;
+} gitOp;
+
 private	char	*gitMode(mode_t mode);
 private	char	*gitTZ(sccs *s, ser_t d);
-private	void	gitLine(opts *op, char ***lines,
+private	void	gitLine(opts *op, gitOp **oplist,
     char *comp_rk, char *rk, char *dk1, char *dk2,
     char *prefix1, char *prefix2);
 private	int	gitExport(opts *op);
 private	hash	*loadAuthors(char *file);
 private	void	authorInfo(opts *op, sccs *s, ser_t d);
 private	void	printUserDate(opts *op, sccs *s, ser_t d);
+private void	printOp(struct gitOp op, FILE *f);
+private void	data(sccs *s, ser_t d, FILE *f);
+private void	gitProgress(opts *op, char *format, ...)
+#ifdef __GNUC__
+     __attribute__((format (__printf__, 2, 3)))
+#endif
+;
+private int	uncolorAlreadyImported(opts *op, sccs *cset);
 
 /* bk fast-export (aliased as _fastexport) */
 int
@@ -53,8 +86,10 @@ fastexport_main(int ac, char **av)
 		{ "authors-file;", 'A'},   // opt name from git cvs/svn import
 		{ "branch;", 310},
 		{ "bk-regressions", 320},
+		{ "incremental;", 325},
 		{ "no-bk-keys", 330},
 		{ "standalone", 'S' },
+		{ "quiet", 'q'},
 
 	// future options:
 	//   --flatten  export ALL component csets, not only ones in product
@@ -63,8 +98,11 @@ fastexport_main(int ac, char **av)
 	int	rc = 1;
 
 	opts.addMD5Keys = 1;
-	while ((c = getopt(ac, av, "A;S", lopts)) != -1) {
+	while ((c = getopt(ac, av, "A;Sq", lopts)) != -1) {
 		switch (c) {
+		    case 'q':
+			opts.quiet = 1;
+			break;
 		    case 'A':
 			unless (opts.authors = loadAuthors(optarg)) return (0);
 			break;
@@ -77,6 +115,9 @@ fastexport_main(int ac, char **av)
 			break;
 		    case 320:	/* --bk-regressions */
 			opts.md5KeysAsSubject = 1;
+			break;
+		    case 325:	/* --incremental */
+			opts.baserepo = strdup(optarg);
 			break;
 		    case 330:	/* --no-bk-keys */
 			opts.addMD5Keys = 0;
@@ -93,6 +134,7 @@ fastexport_main(int ac, char **av)
 	}
 	rc = gitExport(&opts);
 out:	free(opts.branch);
+	free(opts.baserepo);
 	return (rc);
 }
 
@@ -138,7 +180,10 @@ typedef struct finfo {
 
 
 /*
- * Decode an rset line and print what happened in Git's terms.
+ * Decode an rset line and create a gitOp suitable for printing.
+ *
+ * Note that renames are not handled so we just delete the old path
+ * and add the new path.
  *
  * rkdk2fi: hash of "rk dk" to info about the file (cached)
  * rk:  rootkey of the file
@@ -149,14 +194,21 @@ typedef struct finfo {
  * prefix2: component prefix of dk2
  */
 private	void
-gitLine(opts *op, char ***lines, char *comp_rk, char *rk, char *dk1, char *dk2,
-    char *prefix1, char *prefix2)
+gitLine(opts *op, gitOp **oplist, char *comp_rk, char *rk,
+    char *dk1, char *dk2, char *prefix1, char *prefix2)
 {
 	char	*hkey = 0;
-	char	*path1, *path2;
+	char	*path1 = 0, *path2 = 0;
 	int	del1, del2, rename;
 	finfo	*fip;
-	char	**ret = *lines;
+	sccs	*s;
+	ser_t	d;
+	gitOp	*gop;
+
+	/* punt early if gone */
+	if (gone(rk, op->goneDB) || gone(dk2, op->goneDB)) {
+		return;
+	}
 
 	path1 = key2path(dk1, 0, 0, 0); /* could be NULL for new files */
 	path2 = key2path(dk2, 0, 0, 0);
@@ -187,32 +239,43 @@ gitLine(opts *op, char ***lines, char *comp_rk, char *rk, char *dk1, char *dk2,
 		free(path2);
 		path2 = p;
 	}
-	unless (fip = hash_fetchStrMem(op->rkdk2fi, hkey)) {
-		if (gone(rk, op->goneDB) || gone(dk2, op->goneDB)) {
-			goto out;
-		}
-		fprintf(stderr, "1. Key not found: %s\n", hkey);
-		exit(1);
-	}
 	if (rename && !del1 && del2) {
-		ret = addLine(ret, aprintf("D %s\n", path1));
+		gop = addArray(oplist, 0);
+		gop->op = aprintf("D %s\n", path1);
 	} else {
 		if (rename && !del1 && !del2) {
-			ret = addLine(ret,
-			    aprintf("D %s\n", path1));
+			gop = addArray(oplist, 0);
+			gop->op = aprintf("D %s\n", path1);
 		}
-		ret = addLine(ret,
-		    aprintf("M %s :%llu %s\n", gitMode(fip->mode),
-			fip->mark, path2));
+		gop = addArray(oplist, 0);
+		if (fip = hash_fetchStrMem(op->rkdk2fi, hkey)) {
+			gop->op = aprintf("M %s :%llu %s\n",
+			    gitMode(fip->mode), fip->mark, path2);
+		} else {
+			unless (s = sccs_keyinitAndCache(0, rk, INIT_MUSTEXIST,
+			    op->sDB, op->idDB)) {
+				fprintf(stderr, "failed to find %s\n", rk);
+				exit(1);
+			}
+			unless (d = sccs_findKey(s, dk2)) {
+				fprintf(stderr, "failed to find delta %s "
+				    "for rootkey %s\n", dk2, rk);
+				exit(1);
+			}
+			gop->op = aprintf("M %s inline %s\n",
+			    gitMode(MODE(s, d)), path2);
+			gop->data = fmem();
+			data(s, d, gop->data);
+			fseek(gop->data, 0, SEEK_SET);
+		}
 	}
 out:	free(hkey);
 	free(path1);
 	free(path2);
-	*lines = ret;
 }
 
 private void
-gitLineComp(opts *op, char ***lines, char *rk, char *dk1, char *dk2)
+gitLineComp(opts *op, gitOp **oplist, char *rk, char *dk1, char *dk2)
 {
 	int	i;
 	sccs	*s;
@@ -259,7 +322,7 @@ gitLineComp(opts *op, char ***lines, char *rk, char *dk1, char *dk2)
 	p = key2path(dk2, 0, 0, 0);
 	prefix2 = dirname(p);
 	EACH(rset) {
-		gitLine(op, lines,
+		gitLine(op, oplist,
 		    rk,
 		    HEAP(s, rset[i].rkoff),
 		    HEAP(s, rset[i].dkleft1),
@@ -272,13 +335,75 @@ gitLineComp(opts *op, char ***lines, char *rk, char *dk1, char *dk2)
 	free(prefix2);
 }
 
+/*
+ * Print a git 'data' command (see git help fast-import)
+ */
+private void
+data(sccs *s, ser_t d, FILE *f)
+{
+	char	*p;
+	size_t	len;
+	FILE	*f2;
+
+	assert(s);
+	assert(d);
+	f2 = fmem();
+	sccs_get(s, REV(s, d), 0, 0, 0, SILENT, 0, f2);
+	p = fmem_peek(f2, &len);
+	if (S_ISLNK(MODE(s, d))) {
+		p  += strlen("SYMLINK -> ");
+		len -= strlen("SYMLINK -> ") + 1 /* \n */;
+		fprintf(f, "data %u\n%s", (u32)len, p);
+	} else {
+		fprintf(f, "data %u\n", (u32)len);
+		fwrite(p, 1, len, f);
+	}
+	fclose(f2);
+}
+
+private void
+printOp(struct gitOp op, FILE *f)
+{
+	int	len;
+	char	buf[8<<10];
+
+	fputs(op.op, f);
+	if (op.data) {
+		while ((len = fread(buf, 1, sizeof(buf), op.data)) > 0) {
+			if (fwrite(buf, 1, len, f) != len) {
+				fprintf(stderr,
+				    "%s: failed writing data\n", prog);
+				exit(1);
+			}
+		}
+		if (ferror(op.data)) {
+			fprintf(stderr, "%s: failed reading data\n", prog);
+			exit(1);
+		}
+	}
+}
+
+private int
+gitOpCmp(const void *a, const void *b)
+{
+	gitOp	op1 = *(gitOp *)a;
+	gitOp	op2 = *(gitOp *)b;
+
+	/*
+	 * This relies on the fact that 'D' < 'M', all we want are
+	 * deletes before adds.
+	 */
+	return (op1.op - op2.op);
+}
+
 private int
 gitExport(opts *op)
 {
-	FILE	*f1, *f2;
+	FILE	*f1 = 0;
 	char	*file, *sfile, *p;
-	sccs	*s;
-	ser_t	d, md;
+	char	*cmd;
+	sccs	*s, *cset;
+	ser_t	d, md, left, right, dp;
 	u64	mark;
 	size_t	len;
 	u64	progress = 0;
@@ -286,28 +411,136 @@ gitExport(opts *op)
 	kvpair	kv;
 	rset_df	*rset;
 	int	i;
-	char	**gitOps;
+	gitOp	*gitOps;
 	symbol	*sym;
 	hash	*tags;
+	char	*sha1;
+	char	md5key[MD5LEN];
 	char	rk[MAXKEY];
 	char	dk[MAXKEY];
 
 	/* Give git all the files */
 	op->rkdk2fi = hash_new(HASH_MEMHASH);
+	op->bk2git = hash_new(HASH_MEMHASH);
 	mark = 1;
 
-	printf("progress Processing files\n");
-	f1 = popen(op->nested ? "bk -A" : "bk -r", "r");
-	f2 = fmem();
+	cset = sccs_csetInit(0);
+	assert(cset);
+
+	if (op->baserepo) {
+		char	*line;
+		char	*sha1, *md5;
+		int	numcsets = 0;
+
+		gitProgress(op, "Analyzing baseline repo %s\n",
+		    op->baserepo);
+
+		/*
+		 * We're going to use range_unrange to find the
+		 * endpoints of the incremental, that means we want to
+		 * tag everything we want with D_SET. However, we're
+		 * reading the MD5 keys that git already has, so we
+		 * tag *everything* with D_SET and untag each key git
+		 * has. */
+		for (d = TREE(cset); d <= TABLE(cset); d++) {
+			if (TAG(cset, d)) continue;
+			FLAGS(cset, d) |= D_SET;
+		}
+
+		cmd = aprintf("git --git-dir='%s/.git' "
+		    "log --pretty='%%w(0,1,1)%%B%%n%%w(0,0,0)%%H' --all",
+		    op->baserepo);
+		f1 = popen(cmd, "r");
+		free(cmd);
+		while (!feof(f1)) {
+			md5 = 0;
+			while ((line = fgetline(f1)) && line[0] == ' ') {
+				if (strneq(line, " bk: ", 5) &&
+				    isKey(line + 5)) {
+					md5 = strdup(line + 5);
+				}
+			}
+			unless(line) break;
+			unless (md5) continue;
+			sha1 = line;
+			unless (hash_insertStrStr(op->bk2git, md5, sha1)) {
+				fprintf(stderr,
+				    "Duplicated md5: |%s| -> |%s|\n",
+				    md5, sha1);
+				exit(1);
+			}
+			/*
+			 * Untag the delta since it's already in git.
+			 */
+			if (d = sccs_findMD5(cset, md5)) {
+				FLAGS(cset, d) &= ~D_SET;
+				numcsets++;
+			}
+			free(md5);
+		}
+		if (pclose(f1)) {
+			fprintf(stderr, "%s failed\n", cmd);
+			exit(1);
+		}
+
+		f1 = 0;
+
+		numcsets += uncolorAlreadyImported(op, cset);
+		gitProgress(op, "%d csets already imported\n", numcsets);
+
+		/* Try to find the endpoints of the colored range */
+		range_unrange(cset, &left, &right, 0);
+
+		if (cset->rstart != cset->rstop) {
+			cmd = aprintf("bk rset %s -ahH -r%s..%s",
+			    op->nested ? "" : "-S",
+			    REV(cset, cset->rstart),
+			    REV(cset, cset->rstop));
+			f1 = popen(cmd, "r");
+			free(cmd);
+		}
+	} else {
+		/* Non-incremental, do all files */
+		cset->rstart = TREE(cset);
+		cset->rstop = TABLE(cset);
+		cmd = strdup(op->nested ? "bk -A" : "bk -r");
+		f1 = popen(cmd, "r");
+		free(cmd);
+	}
+	gitProgress(op, "Processing files\n");
 	progress = 0;
-	while (file = fgetline(f1)) {
-		if (streq(basenm(file), GCHANGESET)) continue;
-		sfile = name2sccs(file);
+	while (f1 && (file = fgetline(f1))) {
+		char	*revs = 0;
+		RANGE	rargs = {0};
+
+		if (op->baserepo) {
+			char	**lines;
+
+			lines= splitLine(file, "|", 0);
+			sfile = strdup(lines[1]);
+			revs = aprintf("%s..%s", lines[3], lines[5]);
+			freeLines(lines, free);
+			if (range_addArg(&rargs, revs, 0)) {
+				fprintf(stderr, "%s: range failure\n", prog);
+				exit(1);
+			}
+		} else {
+			if (streq(basenm(file), GCHANGESET)) continue;
+			sfile = name2sccs(file);
+		}
 		s = sccs_init(sfile, INIT_MUSTEXIST);
 		assert(s);
 		sccs_sdelta(s, sccs_ino(s), rk);
-		for (d = TREE(s); d <= TABLE(s); d++) {
-			/* We only want cset marked deltas */
+		range_process("fastexport", s, RANGE_SET, &rargs);
+		for (d = s->rstart; d <= s->rstop; d++) {
+			unless (FLAGS(s, d) & D_SET) continue;
+			/*
+			 * We only want cset marked deltas
+			 * But this can still send too much data in components
+			 * when only some of the component csets are in
+			 * the product.  (see --flatten)
+			 * Harmless, but bloats git's object store.
+			 */
 			unless (FLAGS(s, d) & D_CSET) continue;
 			sccs_sdelta(s, d, dk);
 			p = aprintf("%s %s %s", proj_rootkey(s->proj), rk, dk);
@@ -319,27 +552,20 @@ gitExport(opts *op)
 				exit(1);
 			}
 			free(p);
-			sccs_get(s, REV(s, d), 0, 0, 0, SILENT, 0, f2);
 			printf("blob\nmark :%lld\n", mark++);
-			p = fmem_peek(f2, &len);
-			if (S_ISLNK(MODE(s, d))) {
-				p  += strlen("SYMLINK -> ");
-				len -= strlen("SYMLINK -> ") + 1 /* \n */;
-				printf("data %u\n%s", (u32)len, p);
-			} else {
-				printf("data %u\n", (u32)len);
-				fwrite(p, 1, len, stdout);
-			}
-			ftrunc(f2, 0); /* reuse memory */
+			data(s, d, stdout);
 		}
 		sccs_free(s);
 		free(sfile);
 		if ((++progress % 1000) == 0) {
-			printf("progress %llu files done\n", progress);
+			gitProgress(op, "%llu files done\n", progress);
 		}
+		free(revs);
 	}
-	pclose(f1);
-	fclose(f2);
+	if (f1 && pclose(f1)) {
+		fprintf(stderr, "%s failed\n", cmd);
+		exit(1);
+	}
 
 	op->idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 	op->goneDB = loadDB(GONE, 0, DB_GONE);
@@ -347,25 +573,23 @@ gitExport(opts *op)
 
 	/* Now walk the ChangeSet file and do all the ChangeSets */
 
-	printf("progress Processing changes\n");
-	s = sccs_csetInit(0);
-	assert(s);
+	gitProgress(op, "Processing changes\n");
 	progress = 0;
 	f1 = fmem();
-	for (d = TREE(s); d <= TABLE(s); d++) {
-		char	md5key[MD5LEN];
-
-		if (TAG(s, d)) continue;
+	mark--;			/* we were one over */
+	for (d = cset->rstart; d <= cset->rstop; d++) {
+		if (TAG(cset, d)) continue;
+		if (op->baserepo && !(FLAGS(cset, d) & D_RED)) continue;
 		printf("commit refs/heads/%s\n", op->branch);
-		printf("mark : %llu\n", mark + d);
-		authorInfo(op, s, d);
+		printf("mark :%llu\n", mark + d);
+		authorInfo(op, cset, d);
 
 		if (op->addMD5Keys || op->md5KeysAsSubject) {
-			sccs_md5delta(s, d, md5key);
+			sccs_md5delta(cset, d, md5key);
 		}
 		if (op->md5KeysAsSubject) fprintf(f1, "%s\n\n", md5key);
-		if (HAS_COMMENTS(s, d)) {
-			fprintf(f1, "%s", COMMENTS(s, d));
+		if (HAS_COMMENTS(cset, d)) {
+			fprintf(f1, "%s", COMMENTS(cset, d));
 		}
 		if (op->addMD5Keys) {
 			fprintf(f1, "\nbk: %s", md5key);
@@ -374,28 +598,33 @@ gitExport(opts *op)
 		printf("data %lu\n", len);
 		fwrite(p, 1, len, stdout);
 		ftrunc(f1, 0);	/* reuse memory */
-		if (PARENT(s, d)) {
-			printf("from :%llu\n", mark + PARENT(s, d));
+		EACH_PARENT(cset, d, dp, i) {
+			printf("%s ", i ? "merge" : "from");
+			if (op->baserepo &&
+			    !(FLAGS(cset, dp) & D_RED)) {
+				sccs_md5delta(cset, dp, md5key);
+				sha1 = hash_fetchStrStr(op->bk2git, md5key);
+				assert(sha1);
+				printf("%s\n", sha1);
+			} else {
+				printf(":%llu\n", mark + dp);
+			}
 		}
-		if (MERGE(s, d)) {
-			printf("merge :%llu\n", mark + MERGE(s, d));
-		}
-
-		rset = rset_diff(s, PARENT(s, d), 0, d, 1);
+		rset = rset_diff(cset, PARENT(cset, d), 0, d, 1);
 		gitOps = 0;
 		EACH(rset) {
-			if (componentKey(HEAP(s, rset[i].dkright))) {
+			if (componentKey(HEAP(cset, rset[i].dkright))) {
 				unless (op->nested) continue;
 				gitLineComp(op, &gitOps,
-				    HEAP(s, rset[i].rkoff),
-				    HEAP(s, rset[i].dkleft1),
-				    HEAP(s, rset[i].dkright));
+				    HEAP(cset, rset[i].rkoff),
+				    HEAP(cset, rset[i].dkleft1),
+				    HEAP(cset, rset[i].dkright));
 			} else {
 				gitLine(op, &gitOps,
-				    proj_rootkey(s->proj),
-				    HEAP(s, rset[i].rkoff),
-				    HEAP(s, rset[i].dkleft1),
-				    HEAP(s, rset[i].dkright), 0, 0);
+				    proj_rootkey(cset->proj),
+				    HEAP(cset, rset[i].rkoff),
+				    HEAP(cset, rset[i].dkleft1),
+				    HEAP(cset, rset[i].dkright), 0, 0);
 			}
 		}
 		free(rset);
@@ -405,29 +634,43 @@ gitExport(opts *op)
 		 * (M). Also, don't do renames, git doesn't
 		 * care and 'R' sorts after 'M' :)
 		 */
-		sortLines(gitOps, 0);
-		EACH(gitOps) fputs(gitOps[i], stdout);
-		freeLines(gitOps, free);
-
+		sortArray(gitOps, gitOpCmp);
+		EACH(gitOps) {
+			printOp(gitOps[i], stdout);
+			free(gitOps[i].op);
+			if (gitOps[i].data) fclose(gitOps[i].data);
+		}
+		free(gitOps);
 		if ((++progress % 1000) == 0) {
-			printf("progress %llu csets done\n", progress);
+			gitProgress(op, "%llu csets done\n", progress);
 		}
 	}
 	fclose(f1);
-	printf("progress Processing Tags\n");
+	gitProgress(op, "Processing Tags\n");
 
-	tags = hash_new(HASH_MEMHASH);
-	EACHP_REVERSE(s->symlist, sym) {
-		unless (hash_insertStrSet(tags, SYMNAME(s, sym))) continue;
-		printf("tag %s\n", SYMNAME(s, sym));
-		printf("from :%llu\n", mark + sym->ser);
+	tags = hash_new(HASH_U32HASH, sizeof(u32), sizeof(u32));
+	EACHP_REVERSE(cset->symlist, sym) {
+		unless (hash_insertU32U32(tags, sym->symname, 1)) continue;
+		if (op->baserepo && !(FLAGS(cset, sym->ser) & D_RED)) {
+			continue;
+		}
+		printf("tag %s\n", SYMNAME(cset, sym));
+		if (op->baserepo &&
+		    !(FLAGS(cset, sym->ser) & D_RED)) {
+			sccs_md5delta(cset, sym->ser, md5key);
+			sha1 = hash_fetchStrStr(op->bk2git, md5key);
+			assert(sha1);
+			printf("from %s\n", sha1);
+		} else {
+			printf("from :%llu\n", mark + sym->ser);
+		}
 		md = sym->meta_ser;
 		printf("tagger ");
-		printUserDate(op, s, md);
+		printUserDate(op, cset, md);
 		printf("data 0\n");
 	}
 	hash_free(tags);
-	sccs_free(s);
+	sccs_free(cset);
 	mdbm_close(op->idDB);
 	mdbm_close(op->goneDB);
 	EACH_KV(op->sDB) {
@@ -435,10 +678,11 @@ gitExport(opts *op)
 		if (s) sccs_free(s);
 	}
 	mdbm_close(op->sDB);
+	hash_free(op->bk2git);
 	hash_free(op->rkdk2fi);
 	EACH_HASH(op->compGone) mdbm_close(*(MDBM **)op->compGone->vptr);
 	hash_free(op->compGone);
-	printf("progress done\n");
+	gitProgress(op, "done\n");
 	return (0);
 }
 
@@ -549,4 +793,48 @@ authorInfo(opts *op, sccs *s, ser_t d)
 	printf("committer ");
 
 	printUserDate(op, s, d);
+}
+
+private void
+gitProgress(opts *op, char *format, ...)
+{
+	char	*fmt;
+	va_list	ap;
+
+	if (op->quiet) return;
+	fmt = aprintf("progress %s\n", format);
+	va_start(ap, format);
+	vfprintf(stdout, fmt, ap);
+}
+
+/*
+ * Walk the graph looking for csets tagged as 'GIT:' which we assume
+ * are already imported in GIT.
+ */
+private int
+uncolorAlreadyImported(opts *op, sccs *cset)
+{
+	ser_t	d;
+	char	*t, *p;
+	int	i, n = 0;
+
+	for (d = TABLE(cset); d >= TREE(cset); d--) {
+		if (TAG(cset, d)) continue;
+		t = COMMENTS(cset, d);
+		while (p = eachline(&t, &i)) {
+			char old = p[i];
+			p[i] = 0;
+			if (strneq(p, "GIT: ", 5)) {
+				char	md5[MD5KEYLEN];
+				char	*sha1 = p + 5;
+
+				sccs_md5delta(cset, d, md5);
+				hash_storeStrStr(op->bk2git, md5, sha1);
+				FLAGS(cset, d) &= ~D_SET;
+				n++;
+			}
+			p[i] = old;
+		}
+	}
+	return (n);
 }

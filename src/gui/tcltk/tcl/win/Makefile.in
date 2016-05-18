@@ -24,6 +24,7 @@ libdir			= @libdir@
 includedir		= @includedir@
 datarootdir		= @datarootdir@
 mandir			= @mandir@
+docdir			= @docdir@
 
 # The following definition can be set to non-null for special systems like AFS
 # with replication. It allows the pathnames used for installation to be
@@ -53,6 +54,9 @@ INCLUDE_INSTALL_DIR	= $(INSTALL_ROOT)$(includedir)
 
 # Directory in which to (optionally) install the private tcl headers:
 PRIVATE_INCLUDE_INSTALL_DIR = $(INSTALL_ROOT)$(includedir)
+
+# Top-level directory in which to install doc entries:
+DOC_INSTALL_DIR		= $(INSTALL_ROOT)$(docdir)
 
 # Top-level directory in which to install manual entries:
 MAN_INSTALL_DIR		= $(INSTALL_ROOT)$(mandir)
@@ -736,6 +740,11 @@ install-msgs:
 	@echo "Installing message catalogs"
 	@$(TCL_EXE) "$(ROOT_DIR)/tools/installData.tcl" \
 	    "$(ROOT_DIR)/library/msgs" "$(SCRIPT_INSTALL_DIR)/msgs"
+
+install-L-doc:
+	test -d "$(DOC_INSTALL_DIR)/L" || mkdir -p "$(DOC_INSTALL_DIR)/L"
+	@echo "Installing L docs to $(DOC_INSTALL_DIR)/L";
+	@cd "$(TOP_DIR)/doc/L" && $(MAKE) INSTALL_DIR="../$(DOC_INSTALL_DIR)/L" install
 
 install-doc: doc
 

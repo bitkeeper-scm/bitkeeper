@@ -660,7 +660,8 @@ dc_remove(resolve *rs)
 
 		saved_errno = errno;
 
-		if ((errno == ENOTEMPTY) || (errno == EACCES)) {
+		if ((errno == ENOTEMPTY) || (errno == EACCES) ||
+		    (errno == EEXIST)) {
 			walkdir(buf, (walkfns){ .file = walk_print}, &files);
 			unless (n = nLines(files)) {
 				errno = saved_errno;

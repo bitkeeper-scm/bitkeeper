@@ -22,7 +22,7 @@ else
 	ICONS=
 endif
 
-REPO   := $(shell basename "`bk -P root`")
+REPO   := $(shell basename "`$(BK) -P root`")
 LIBDIR	= lib
 GUIS	= revtool citool helptool difftool csettool fmtool fm3tool \
 	  msgtool renametool setuptool installtool outputtool bugform \
@@ -57,17 +57,17 @@ lib:
 images: FORCE
 	$(Q)rm -rf images
 	$(Q)test -d images || mkdir images
-	$(Q)bk -rimgsrc co -S
-	$(Q)bk -grimgsrc sfio -oq | (cd images && bk sfio -iq)
+	$(Q)$(BK) -rimgsrc co -S
+	$(Q)cp -rp imgsrc/* images
 	$(Q)test "X$(ICONS)" = X || cp $(ICONS) images
 	$(Q)chmod 664 images/*.gif
 
 tcltk: FORCE
-	$(Q)test -f tcltk/Makefile || bk co -q tcltk
+	$(Q)test -f tcltk/Makefile || $(BK) co -q tcltk
 	$(Q)$(MAKE) -Ctcltk
 
 test: lib $(GUIS) $(DOIT) $(GUITEST) ../t/setup
-	@bk get -S ../t/SCCS/s.g.* 
+	@$(BK) get -S ../t/SCCS/s.g.* 
 	@(cd ../t && ./doit -g g.*)
 
 $(DOIT):
@@ -78,7 +78,7 @@ clean-here: FORCE
 	-rm -rf bin lib images
 
 clobber-here: clean-here FORCE
-	-bk -r. clean
+	-$(BK) -r. clean
 
 clean: clean-here FORCE
 	-cd tcltk && $(MAKE) clean
@@ -91,7 +91,7 @@ install: $(GUIS)
 
 tags TAGS: $(SRC)
 	@for i in *.tcl;\
-	do	if [ ! -f $$i ]; then bk get -s $$i; fi; \
+	do	if [ ! -f $$i ]; then $(BK) get -s $$i; fi; \
 	done
 	@etags -l none \
 	   -r '/proc[ \t]+\([^ \t]+\)/\1/' \
@@ -151,7 +151,7 @@ setuptool: $(COMMON) tkwizard.tcl setuptool.tcl
 installtool: ../port/$(SYS)_platform.tcl ../utils/installtool.tcl \
 	tkwizard.tcl bktheme.tcl common.tcl
 	@(echo 'wm withdraw .' ; echo 'set ::tool_name $@'; cat $^ ;\
-	 echo "image create photo bklogo -data {`bk base64<../gui/imgsrc/bklogo.gif`}";\
+	 echo "image create photo bklogo -data {`$(BK) base64<../gui/imgsrc/bklogo.gif`}";\
 	 echo 'main') > $(LIBDIR)/installtool
 
 outputtool: $(COMMON) outputtool.l

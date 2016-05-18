@@ -13,6 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+test "`bash -c 'command -v bk'`" = "" && {
+        echo /build/obj/tcltk-bootstrap.tar.gz
+        exit 0
+}
 
 test -f Makefile || bk get -S Makefile
 test -f Makefile -a -f ../../slib.c || {

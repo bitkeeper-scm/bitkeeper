@@ -187,7 +187,7 @@ echo OK
 echo $N Checking sccslog with -f option .............................$NL
 bk undos > CMP1 <<EOF
 ChangeSet 1.0
-  BitKeeper file ${HERE}/project/ChangeSet
+  ChangeSet
 
 ChangeSet 1.1
   Initial repository create
@@ -203,7 +203,7 @@ bk undos > CMP1 <<EOF
 a/b/c/Data 1.0
 
 a/b/c/Data 1.1
-  BitKeeper file ${HERE}/project/a/b/c/Data
+  BitKeeper file a/b/c/Data
 
 a/b/c/Data 1.2
   Rev 2

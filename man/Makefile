@@ -28,7 +28,7 @@ manball: get
 	done
 
 install: manball
-	/bin/rm -rf $(BINDIR)/man
+	$(RM) -r $(BINDIR)/man
 	mkdir -p $(BINDIR)/man
 	cd bk-man && tar cf $(BINDIR)/man/TAR .
 	cd $(BINDIR)/man && tar xf TAR

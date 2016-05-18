@@ -1,0 +1,24 @@
+#!/bin/sh
+
+REALPATH=`realpath "$0"`
+DIRNAME=`dirname "$REALPATH"`
+BASENAME=`basename "$0"`
+
+case $BASENAME in
+  egrep)
+    SWITCH="-E";;
+  fgrep)
+    SWITCH="-F";;
+  *)
+    printf "Should be called egrep or fgrep!\n" 1>&2
+    exit 1
+    ;;
+esac
+
+case $DIRNAME in
+  */amd64)
+    GREP=/usr/gnu/bin/amd64/grep;;
+  *)
+    GREP=/usr/gnu/bin/grep;;
+esac
+exec $GREP $SWITCH "$@"

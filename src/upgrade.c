@@ -29,8 +29,8 @@
  *  - change the installer to also take a -i option.
  */
 
-#define	UPGRADEBASE	"http://downloads.bitkeeper.com/latest"
-#define	UPGRADETRIAL	"http://downloads.bitkeeper.com/latest"
+#define	UPGRADEBASE	"http://www.bitkeeper.org/downloads/latest"
+#define	UPGRADETRIAL	UPGRADEBASE
 
 private	int	noperms(char *target);
 private	int	upgrade_fetch(char *name, char *file);
@@ -44,7 +44,7 @@ upgrade_main(int ac, char **av)
 	int	c, i;
 	int	fetchonly = 0;
 	int	install = 1;
-	int	show_latest = 0;
+	int	update_latest = 0;
 	int	force = 0;
 	int	obsolete = 0;
 	char	*oldversion;
@@ -59,7 +59,7 @@ upgrade_main(int ac, char **av)
 	char	*bundle = 0;
 	mode_t	myumask;
 	static longopt	lopts[] = {
-		{"show-latest", 300 },
+		{"update-latest", 300 },
 		{ 0, 0 }
 	};
 	char	buf[MAXLINE];
@@ -80,8 +80,8 @@ upgrade_main(int ac, char **av)
 		    case 'n':				// obsolete, for compat
 			install = 0; fetchonly = 1; break;
 		    case 'q': flags |= SILENT; break;
-		    case 300: // --show-latest
-			show_latest = 1;
+		    case 300: // --update-latest
+			update_latest = 1;
 			fetchonly = 1;
 			install = 0;
 			flags |= SILENT;
@@ -196,9 +196,18 @@ upgrade_main(int ac, char **av)
 				platforms =
 				    addLine(platforms, strdup(data[5]));
 			}
-			if (show_latest) {
-				// bk_ver,bk_utc
-				printf("%s,%s\n", data[3], data[4]);
+			if (update_latest) {
+				char	new[MAXPATH];
+
+				chdir("/");  // avoid delete dir
+				concat_path(buf, getDotBk(), "latest-bkver");
+				sprintf(new, "%s.tmp.%u", buf, (u32)getpid());
+				if (f = fopen(new, "w")) {
+					// bk_ver,bk_utc
+					fprintf(f, "%s,%s\n", data[3], data[4]);
+					fclose(f);
+					rename(new, buf);
+				}
 				rc = 0;
 				goto out;
 			}
@@ -229,7 +238,7 @@ next:				freeLines(data, free);
 	}
 	free(index);
 	index = 0;
-	if (show_latest) goto out;
+	if (update_latest) goto out;
 
 	if (platforms) {	/* didn't find this platform */
 		uniqLines(platforms, free);
@@ -426,18 +435,24 @@ upgrade_latestVersion(char *new_vers, char *new_utc)
 	FILE	*f;
 	char	*t, *p;
 	int	rc = -1;
-	char	buf[MAXPATH], new[MAXPATH];
+	char	**av = 0;
+	char	buf[MAXPATH];
 
 	*new_vers = *new_utc = 0;
 	concat_path(buf, getDotBk(), "latest-bkver");
-	sprintf(new, "%s.tmp", buf);
 	if (time(0) - mtime(buf) > DAY) {
-		if (sysio(0, new, DEVNULL_WR,
-			"bk", "upgrade", "--show-latest", SYS)) {
-			unlink(new);
-			return (-1);
-		}
-		if (rename(new, buf)) perror(new);
+		/* latest-bkver file is old, start update in background */
+		av = addLine(av, "bk");
+		av = addLine(av, "upgrade");
+		av = addLine(av, "--update-latest");
+		av = addLine(av, 0);
+		spawnvp(P_DETACH, av[1], av+1);
+		freeLines(av, 0);
+		/*
+		 * Regardless of what happens, we touch the file so it
+		 * only gets updated once a day.
+		 */
+		touch(buf, 0666);
 	}
 	if (f = fopen(buf, "r")) {
 		if ((t = fgetline(f)) && (p = strchr(t, ','))) {

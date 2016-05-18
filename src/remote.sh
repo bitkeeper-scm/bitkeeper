@@ -13,12 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-umask 0
+umask 002
 
 test X$OSTYPE != Xcygwin && {
-	# The build script sets PATH, but we need to find 'make' on sun.
-	PATH=/bin:/usr/bin:/usr/bsd:/usr/local/bin:/usr/gnu/bin
-	PATH=$PATH:/usr/freeware/bin:/usr/ccs/bin
+	if [ `uname` = SunOS ]
+	then
+		# Modern Solaris/OpenIndiana/illumos
+		PATH=/usr/gnu/bin:/bin:/usr/bin
+	else
+		# all the other *nix
+		PATH=/bin:/usr/bin:/usr/bsd:/usr/local/bin:/usr/gnu/bin
+		PATH=$PATH:/usr/freeware/bin:/usr/ccs/bin
+	fi
 	export PATH
 }
 BK_NOTTY=YES
@@ -138,7 +144,7 @@ case $CMD in
 	if [ $CMD != nightly ]
 	then
 		# run tests
-		{ ./build test 2>&1 || failed; } | \
+		{ ./build rshtest 2>&1 || failed; } | \
 			while read line
 			do
 				echo "$line"

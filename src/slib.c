@@ -66,7 +66,7 @@ private	int	unlinkGfile(sccs *s);
 private int	write_pfile(sccs *s, int flags, ser_t d,
 		    char *rev, char *iLst, char *i2, char *xLst, char *mRev);
 private time_t	date2time(char *asctime, char *z, int roundup);
-private int	addSym(char *name, sccs *sc, int flags, admin *l, int *ep);
+private int	addSym(sccs *sc, int flags, admin *l, int *ep);
 private int	sameFileType(sccs *s, ser_t d);
 private int	uuexpand_gfile(sccs *s, char *tmpfile);
 private void	sccs_freetable(sccs *s);
@@ -10586,7 +10586,11 @@ out:		sccs_abortWrite(s);
 
 		if (!HAS_RANDOM(s, d)) {
 			if (t = getenv("BK_RANDOM")) {
-				strcpy(buf+2, t);
+				if (streq(t, "cons")) {
+					randomCons(buf+2, s, d);
+				} else {
+					strcpy(buf+2, t);
+				}
 			} else {
 				randomBits(buf+2);
 			}
@@ -10608,7 +10612,14 @@ out:		sccs_abortWrite(s);
 			}
 		}
 		unless (HAS_COMMENTS(s, n)) {
-			t = fullname(s->gfile, 0);
+			project	*p;
+
+			if (p = proj_init(".")) {
+				t = proj_relpath(p, s->gfile);
+				proj_free(p);
+			} else {
+				t = fullname(s->gfile, 0);
+			}
 			sprintf(buf, "BitKeeper file %s\n", t);
 			free(t);
 			COMMENTS_SET(s, n, buf);
@@ -11521,7 +11532,7 @@ dupSym(sccs *sc, char *s, char *rev)
 
 /* 'bk tag' comes here */
 private int
-addSym(char *me, sccs *sc, int flags, admin *s, int *ep)
+addSym(sccs *sc, int flags, admin *s, int *ep)
 {
 	int	added = 0, i, error = 0;
 	char	*rev;
@@ -11554,7 +11565,7 @@ addSym(char *me, sccs *sc, int flags, admin *s, int *ep)
 		unless (d = sccs_findrev(sc, rev)) {
 			verbose((stderr,
 			    "%s: can't find %s in %s\n",
-			    me, rev, sc->sfile));
+			    prog, rev, sc->sfile));
 sym_err:		error = 1; sc->state |= S_WARNED;
 			free(sym);
 			continue;
@@ -11566,7 +11577,7 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 		}
 		if (dupSym(sc, sym, rev)) {
 			verbose((stderr,
-			    "%s: symbol %s exists on %s\n", me, sym, rev));
+			    "%s, tag %s exists on %s\n", prog, sym, rev));
 			goto sym_err;
 		}
 
@@ -11603,15 +11614,15 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 		if (addsym(sc, n, 1, sym)) {
 			verbose((stderr,
 			    "%s: won't add identical symbol %s to %s\n",
-			    me, sym, sc->sfile));
+			    prog, sym, sc->sfile));
 			/* No error here, it's not necessary */
 			free(sym);
 			continue;
 		}
 		added++;
 		verbose((stderr,
-		    "%s: add symbol %s->%s in %s\n",
-		    me, sym, rev, sc->sfile));
+		    "%s: add tag %s->%s in %s\n",
+		    prog, sym, rev, sc->sfile));
 		free(sym);
 	}
 	if (ep) *ep = error;
@@ -12172,7 +12183,7 @@ out:
 		goto out;
 	}
 
-	if (addSym("admin", sc, flags, s, &error)) flags |= NEWCKSUM;
+	if (addSym(sc, flags, s, &error)) flags |= NEWCKSUM;
 	if (mode) {
 		ser_t	n = sccs_top(sc);
 		mode_t	m;
