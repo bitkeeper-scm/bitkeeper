@@ -25,10 +25,15 @@ typedef struct {
 } opts;
 
 typedef struct {
+	/* git's fields */
 	char	*name;		/* "Oscar Bonilla" */
 	char	*email;		/* "ob@bitkeeper.com" */
 	time_t	when;		/* secs since epoch */
 	char	*tz;		/* timezone  */
+	/* bk's fields */
+	char	*user;		/* ob */
+	char	*host;		/* dirac.bitkeeper.com */
+	char	*date;		/* BK's weird _almost_ ISO date */
 } who;
 
 /* Types of marks */
@@ -38,10 +43,17 @@ enum {
 };
 
 typedef struct mark {
-	char	*sha1;		/* sha1 of the data */
+	char	*sha1;		/* sha1 of the data (or commit) */
 	u32	type;		/* type of mark (see above) */
-	char	*file;		/* file where data is */
-	int	binary;		/* did we see a NULL in the data? */
+	struct {
+		char	*file;		/* file where data is */
+		int	binary;		/* did we see a NULL in the data? */
+	} blob;
+	struct {
+		char	*deltakey;	/* deltakey of this commit */
+		who	*author;	/* git's author */
+		who	*committer;	/* git's committer */
+	} commit;
 } mark;
 
 /* types of git operations */
@@ -75,6 +87,8 @@ private	void	freeWho(who *w);
 private void	freeMark(mark *m);
 
 private gop	*parseOp(opts *op, char *line);
+private void	freeOp(gop *op);
+
 private mark	*parseDataref(opts *op, char **s);
 private	char	*parseMode(opts *op, char **s);
 private char	*parsePath(opts *op, char **s);
@@ -117,6 +131,7 @@ gitImport(opts *op)
 {
 	char	*line;
 	int	i;
+	int	blobCount, commitCount;
 	int	rc = 1;
 	struct {
 		char	*s;			/* cmd */
@@ -172,10 +187,18 @@ gitImport(opts *op)
 	/*
 	 * Teardown
 	 */
+	blobCount = commitCount = 0;
 	EACH_HASH(op->marks) {
 		mark	*m = op->marks->vptr;
 		freeMark(m);
+		if (m->type == BLOB) {
+			blobCount++;
+		} else {
+			commitCount++;
+		}
 	}
+	fprintf(stderr, "%d marks in hash (%d blobs, %d commits)\n",
+	    blobCount + commitCount, blobCount, commitCount);
 	hash_free(op->marks);
 	return (rc);
 }
@@ -228,6 +251,7 @@ blob(opts *op, char *line)
 		fprintf(stderr, "ERROR: Duplicate key: %s\n", key);
 		exit(1);
 	}
+	free(m);		/* memory is copied into hash */
 	free(mark);
 	return (0);		/* we used up all the lines */
 }
@@ -252,24 +276,30 @@ blob(opts *op, char *line)
 private char *
 commit(opts *op, char *line)
 {
-	mark	*m;
-	char	*mark = 0;
+	mark	*mrk, *cmt;
+	char	*key;
 	int	root;
 	char	*comments;
-	who	*author, *committer;
-	gop	*g;
+	gop	*gop;
 	FILE	*f;
 
 	assert(MATCH("commit "));
 	/* XXX: Need to get ref from line before reading another one. */
 	line = fgetline(stdin);
-	if (MATCH("mark :")) {
-		mark = line + strlen("mark :");
-		line = fgetline(stdin);
+	unless (MATCH("mark :")) {
+		fprintf(stderr, "unmarked commits not supported\n");
+		exit(1);
 	}
+	key = line + strlen("mark :");
+	unless (cmt = hash_insertStrMem(op->marks, key, 0, sizeof(mark))) {
+		fprintf(stderr, "ERROR: Duplicate mark: %s\n", key);
+		exit(1);
+	}
+	line = fgetline(stdin);
+
 	if (MATCH("author")) {
 		/* Ignore author? */
-		author = parseWho(line);
+		cmt->commit.author = parseWho(line);
 		line = fgetline(stdin);
 	}
 
@@ -278,16 +308,16 @@ commit(opts *op, char *line)
 		exit(1);
 	}
 
-	committer = parseWho(line);
+	cmt->commit.committer = parseWho(line);
 	line = fgetline(stdin);
 
 	/*
 	 * Get comments from data command
 	 */
 	f = fmem();
-	m = data(op, line, f);
-	freeMark(m);
-	free(m);
+	mrk = data(op, line, f);
+	freeMark(mrk);
+	free(mrk);
 	comments = fmem_close(f, 0);
 
 	line = fgetline(stdin);
@@ -304,13 +334,22 @@ commit(opts *op, char *line)
 		line = fgetline(stdin);
 	}
 
-	while (g = parseOp(op, line)) {
-		/* XXX: do stuff */
+	while (gop = parseOp(op, line)) {
+		switch (gop->op) {
+		    case NOTE: break;
+		    case 'M':
+			break;
+		    default:
+			/* fprintf(stderr, "unknown op: %d\n", gop->op); */
+			/* exit(1); */
+			break;
+		}
+		freeOp(gop);
 		line = fgetline(stdin);
 	}
 
-	freeWho(author);
-	freeWho(committer);
+	/* XXX: do commit */
+
 	return (line);
 }
 
@@ -388,6 +427,16 @@ parseOp(opts *op, char *line)
 	return (g);
 }
 
+private void
+freeOp(gop *op)
+{
+	unless (op) return;
+	free(op->path1);
+	free(op->path2);
+	free(op->mode);
+	free(op);
+}
+
 /*
  * Try to parse a dataref out of 's'. Leave 's' pointing after the
  * consumed portion. Returns a 'mark' with all the info from the file.
@@ -460,7 +509,10 @@ parseMode(opts *op, char **s)
 
 	assert(s);
 	p = strchr(*s, ' ');
-	assert(p);
+	unless (p) {
+		fprintf(stderr, "Parse Failed: '%s'\n", *s);
+		exit(1);
+	}
 	*p = 0;
 	valid = 0;
 	for (i = 0; validModes[i]; i++) {
@@ -601,6 +653,7 @@ freeWho(who *w)
 	free(w->name);
 	free(w->email);
 	free(w->tz);
+	free(w);
 }
 
 private void
@@ -608,7 +661,14 @@ freeMark(mark *m)
 {
 	unless (m) return;
 	free(m->sha1);
-	free(m->file);
+	if (m->type == BLOB) {
+		free(m->blob.file);
+	}
+	if (m->type == COMMIT) {
+		freeWho(m->commit.author);
+		freeWho(m->commit.committer);
+		free(m->commit.deltakey);
+	}
 }
 
 /*
@@ -819,8 +879,11 @@ data(opts *op, char *line, FILE *f)
 	/* Now insert the mark */
 	m = new(mark);
 	m->type = BLOB;
-	m->file = file;		/* we free file when we free the hash */
-	m->binary = binary;
-	m->sha1 = sha1;		/* we free the sha1 when we free the hash */
+	m->sha1 = sha1;		/* free'd by freeMark() */
+	m->blob.file = file;	/* free'd by freeMark() */
+	m->blob.binary = binary;
 	return (m);
 }
+
+/* Everything above was parsing (analysis). This next part is synthesis. */
+
