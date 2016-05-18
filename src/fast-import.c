@@ -16,7 +16,6 @@
 #include "sccs.h"
 #include "range.h"
 #include "nested.h"
-#include "logging.h"
 #include "tomcrypt.h"
 
 typedef struct {
@@ -58,12 +57,12 @@ typedef struct mark {
 
 /* types of git operations */
 enum {
-	COPY,
-	DELETE,
-	DELETE_ALL,
-	MODIFY,
-	NOTE,
-	RENAME,
+	GCOPY,
+	GDELETE,
+	GDELETE_ALL,
+	GMODIFY,
+	GNOTE,
+	GRENAME,
 };
 
 typedef struct {
@@ -336,7 +335,7 @@ commit(opts *op, char *line)
 
 	while (gop = parseOp(op, line)) {
 		switch (gop->op) {
-		    case NOTE: break;
+		    case GNOTE: break;
 		    case 'M':
 			break;
 		    default:
@@ -386,16 +385,16 @@ parseOp(opts *op, char *line)
 
 	g = new(gop);
 	if (streq(line, "deleteall")) {
-		g->op = DELETE_ALL;
+		g->op = GDELETE_ALL;
 		return g;
 	}
 
 	switch (line[0]) {
-	    case 'C': g->op = COPY;	break;
-	    case 'D': g->op = DELETE;	break;
-	    case 'M': g->op = MODIFY;	break;
-	    case 'N': g->op = NOTE;	break;
-	    case 'R': g->op = RENAME;	break;
+	    case 'C': g->op = GCOPY;	break;
+	    case 'D': g->op = GDELETE;	break;
+	    case 'M': g->op = GMODIFY;	break;
+	    case 'N': g->op = GNOTE;	break;
+	    case 'R': g->op = GRENAME;	break;
 	    case 0:		/* empty line, break */
 		return (0);
 		break;
@@ -406,15 +405,15 @@ parseOp(opts *op, char *line)
 	}
 	assert(line[1] == ' ');
 	p = &line[2];
-	if (g->op == MODIFY) {
+	if (g->op == GMODIFY) {
 		/* parse mode */
 		g->mode = parseMode(op, &p);
 	}
-	if ((g->op == MODIFY) || (g->op == NOTE)) {
+	if ((g->op == GMODIFY) || (g->op == GNOTE)) {
 		/* parse dataref/inline */
 		g->m = parseDataref(op, &p);
 	}
-	if (g->op == NOTE) {
+	if (g->op == GNOTE) {
 		/*
 		 * Notes are not supported anyway so skip parsing
 		 * commit-ish.
@@ -422,7 +421,7 @@ parseOp(opts *op, char *line)
 		return (g);
 	}
 	g->path1 = parsePath(op, &p);
-	if ((g->op == DELETE) || (g->op == MODIFY)) return (g);
+	if ((g->op == GDELETE) || (g->op == GMODIFY)) return (g);
 	g->path2 = parsePath(op, &p);
 	return (g);
 }
@@ -562,7 +561,7 @@ parsePath(opts *op, char **s)
 		return (ret);
 	}
 	/*
-	 * Compilcated case, do the parsing
+	 * Complicated case, do the parsing
 	 */
 	p = ret = malloc(strlen(start) * 4); // 2 should suffice but whatever
 	for (q = start + 1; *q && (*q != '"'); p++, q++) {
@@ -724,16 +723,12 @@ setup(opts *op)
 	/* safe_putenv("BK_HOST=%s", op->host); */
 	f = fopen("/tmp/bk_config", "w");
 	fprintf(f, "checkout:edit\n");
-	fprintf(f, "clockskew:on\n");
-	fprintf(f, "partial_check:on\n");
-	fprintf(f, "compression:gzip\n");
 	fclose(f);
 	if (systemf("bk setup -fc/tmp/bk_config")) {
 		perror("bk setup");
 		exit(1);
 	}
 	unlink("/tmp/bk_config");
-	system("bk _eula -a");
 	system("bk root >/dev/null");
 	system("bk sane");
 }
@@ -886,4 +881,3 @@ data(opts *op, char *line, FILE *f)
 }
 
 /* Everything above was parsing (analysis). This next part is synthesis. */
-

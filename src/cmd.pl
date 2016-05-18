@@ -229,6 +229,7 @@ dotbk
 _dumpconfig
 _exists
 export
+_fastimport
 _fastexport
 _fgzip
 features
@@ -436,6 +437,7 @@ _get => get
 co => get
 checkout => get
 edit => get
+fast-import => _fastimport
 fast-export => _fastexport
 comment => comments	# alias for Linus, remove...
 identity => id
