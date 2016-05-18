@@ -20,7 +20,8 @@
 
 typedef struct {
 	/* state */
-	hash	*marks;		/* Marks hash (also sha1's) */
+	hash	*blobs;
+	hash	*commits;
 } opts;
 
 typedef struct {
@@ -29,31 +30,19 @@ typedef struct {
 	char	*email;		/* "ob@bitkeeper.com" */
 	time_t	when;		/* secs since epoch */
 	char	*tz;		/* timezone  */
-	/* bk's fields */
-	char	*user;		/* ob */
-	char	*host;		/* dirac.bitkeeper.com */
-	char	*date;		/* BK's weird _almost_ ISO date */
 } who;
 
-/* Types of marks */
-enum {
-	BLOB,
-	COMMIT,
-};
+typedef struct {
+	who	*author;	/* git's author */
+	who	*committer;	/* git's committer */
+	char	*comments;
+} commit;
 
-typedef struct mark {
-	char	*sha1;		/* sha1 of the data (or commit) */
-	u32	type;		/* type of mark (see above) */
-	struct {
-		char	*file;		/* file where data is */
-		int	binary;		/* did we see a NULL in the data? */
-	} blob;
-	struct {
-		char	*deltakey;	/* deltakey of this commit */
-		who	*author;	/* git's author */
-		who	*committer;	/* git's committer */
-	} commit;
-} mark;
+typedef	struct {
+	char	*sha1;
+	char	*file;		/* file where data is */
+	u8	binary:1;	/* did we see a NULL in the data? */
+} blob;
 
 /* types of git operations */
 enum {
@@ -69,30 +58,30 @@ typedef struct {
 	int	op;		/* file operation */
 	char	*path1;		/* path */
 	char	*path2;		/* second path if rename or copy */
-	mark	*m;		/* 'mark' struct where contents are */
+	blob	*m;		/* 'mark' struct where contents are */
 	char	*mode;		/* mode of file */
 } gop;				/* git operation */
 
-
 private int	gitImport(opts *op);
 private void	setup(opts *op);
-private char	*blob(opts *op, char *line);
+private	char	*getBlob(opts *op, char *line);
 private	char	*reset(opts *op, char *line);
-private	char	*commit(opts *op, char *line);
-private	mark	*data(opts *op, char *line, FILE *f);
+private	char	*getCommit(opts *op, char *line);
+private	blob	*data(opts *op, char *line, FILE *f, int want_sha1);
 
 private	who	*parseWho(char *line);
 private	void	freeWho(who *w);
-private void	freeMark(mark *m);
+private	void	freeBlob(blob *m);
+private	void	freeCommit(commit *m);
 
 private gop	*parseOp(opts *op, char *line);
 private void	freeOp(gop *op);
 
-private mark	*parseDataref(opts *op, char **s);
+private	blob	*parseDataref(opts *op, char **s);
 private	char	*parseMode(opts *op, char **s);
 private char	*parsePath(opts *op, char **s);
 
-private	mark	*saveInline(opts *op);
+private	blob	*saveInline(opts *op);
 
 
 /* bk fast-import (aliased as _fastimport) */
@@ -136,8 +125,8 @@ gitImport(opts *op)
 		char	*s;			/* cmd */
 		char	*(*fn)(opts *, char *);	/* handler */
 	} cmds[] = {
-		{"blob", blob},
-		{"commit", commit},
+		{"blob", getBlob},
+		{"commit", getCommit},
 		{"reset", reset},
 		{0, 0}
 	};
@@ -145,7 +134,8 @@ gitImport(opts *op)
 	/*
 	 * Setup
 	 */
-	op->marks = hash_new(HASH_MEMHASH);
+	op->commits = hash_new(HASH_MEMHASH);
+	op->blobs = hash_new(HASH_MEMHASH);
 
 	/*
 	 * Processing:
@@ -186,19 +176,20 @@ gitImport(opts *op)
 	/*
 	 * Teardown
 	 */
-	blobCount = commitCount = 0;
-	EACH_HASH(op->marks) {
-		mark	*m = op->marks->vptr;
-		freeMark(m);
-		if (m->type == BLOB) {
-			blobCount++;
-		} else {
-			commitCount++;
-		}
+	EACH_HASH(op->commits) {
+		commit	*m = op->commits->vptr;
+		freeCommit(m);
+		commitCount++;
 	}
+	hash_free(op->commits);
+	EACH_HASH(op->blobs) {
+		blob	*m = op->blobs->vptr;
+		freeBlob(m);
+		blobCount++;
+	}
+	hash_free(op->blobs);
 	fprintf(stderr, "%d marks in hash (%d blobs, %d commits)\n",
 	    blobCount + commitCount, blobCount, commitCount);
-	hash_free(op->marks);
 	return (rc);
 }
 
@@ -229,9 +220,9 @@ gitImport(opts *op)
  *   does in the diff-tree command).
  */
 private char *
-blob(opts *op, char *line)
+getBlob(opts *op, char *line)
 {
-	mark	*m;
+	blob	*m;
 	char	*mark = 0;
 	char	*key;
 
@@ -243,10 +234,10 @@ blob(opts *op, char *line)
 		mark = strdup(mark);
 		line = fgetline(stdin);
 	}
-	m = data(op, line, 0);
+	m = data(op, line, 0, !mark);
 	key = mark ? mark : m->sha1;
 	/* save the mark */
-	unless (hash_insertStrMem(op->marks, key, m, sizeof(*m))) {
+	unless (hash_insertStrMem(op->blobs, key, m, sizeof(*m))) {
 		fprintf(stderr, "ERROR: Duplicate key: %s\n", key);
 		exit(1);
 	}
@@ -273,12 +264,11 @@ blob(opts *op, char *line)
  *
  */
 private char *
-commit(opts *op, char *line)
+getCommit(opts *op, char *line)
 {
-	mark	*mrk, *cmt;
+	blob	*mrk;
+	commit	*cmt;
 	char	*key;
-	int	root;
-	char	*comments;
 	gop	*gop;
 	FILE	*f;
 
@@ -290,7 +280,7 @@ commit(opts *op, char *line)
 		exit(1);
 	}
 	key = line + strlen("mark :");
-	unless (cmt = hash_insertStrMem(op->marks, key, 0, sizeof(mark))) {
+	unless (cmt = hash_insertStrMem(op->commits, key, 0, sizeof(commit))) {
 		fprintf(stderr, "ERROR: Duplicate mark: %s\n", key);
 		exit(1);
 	}
@@ -298,7 +288,7 @@ commit(opts *op, char *line)
 
 	if (MATCH("author")) {
 		/* Ignore author? */
-		cmt->commit.author = parseWho(line);
+		cmt->author = parseWho(line);
 		line = fgetline(stdin);
 	}
 
@@ -307,24 +297,21 @@ commit(opts *op, char *line)
 		exit(1);
 	}
 
-	cmt->commit.committer = parseWho(line);
+	cmt->committer = parseWho(line);
 	line = fgetline(stdin);
 
 	/*
 	 * Get comments from data command
 	 */
 	f = fmem();
-	mrk = data(op, line, f);
-	freeMark(mrk);
+	mrk = data(op, line, f, 0);
+	freeBlob(mrk);
 	free(mrk);
-	comments = fmem_close(f, 0);
-
+	cmt->comments = fmem_close(f, 0);
 	line = fgetline(stdin);
 
-	root = 1;
 	if (MATCH("from ")) {
 		/* parent */
-		root = 0;
 		line = fgetline(stdin);
 	}
 
@@ -335,8 +322,7 @@ commit(opts *op, char *line)
 
 	while (gop = parseOp(op, line)) {
 		switch (gop->op) {
-		    case GNOTE: break;
-		    case 'M':
+		    case GNOTE:
 			break;
 		    default:
 			/* fprintf(stderr, "unknown op: %d\n", gop->op); */
@@ -447,11 +433,11 @@ freeOp(gop *op)
  * the temporary file is saved in the marks hash and the newly created
  * 'mark' is what is returned.
  */
-private mark *
+private blob *
 parseDataref(opts *op, char **s)
 {
 	char	*key;
-	mark	*m;
+	blob	*m;
 
 	assert(s && *s);
 	if (strneq(*s, "inline", strlen("inline"))) {
@@ -472,14 +458,14 @@ parseDataref(opts *op, char **s)
 	} else {
 		*s = strchr(*s, ' ');
 	}
-	unless (m = hash_fetchStrMem(op->marks, key)) {
+	unless (m = hash_fetchStrMem(op->blobs, key)) {
 		fprintf(stderr, "ERROR: failed to find mark: %s\n", key);
 		exit(1);
 	}
 	return (m);
 }
 
-private	mark *
+private blob *
 saveInline(opts *op)
 {
 	fprintf(stderr, "'inline' not implemented\n");
@@ -656,18 +642,22 @@ freeWho(who *w)
 }
 
 private void
-freeMark(mark *m)
+freeBlob(blob *m)
+{
+	free(m->sha1);
+	if (m->file) {
+		unlink(m->file);
+		free(m->file);
+	}
+}
+
+private void
+freeCommit(commit *m)
 {
 	unless (m) return;
-	free(m->sha1);
-	if (m->type == BLOB) {
-		free(m->blob.file);
-	}
-	if (m->type == COMMIT) {
-		freeWho(m->commit.author);
-		freeWho(m->commit.committer);
-		free(m->commit.deltakey);
-	}
+	freeWho(m->author);
+	freeWho(m->committer);
+	free(m->comments);
 }
 
 /*
@@ -709,28 +699,18 @@ reset(opts *op, char *line)
 }
 
 /*
- * This function is a bit of cargo cult science. I'm not sure we need
- * all these tweaks to a standard setup.
  */
 private void
 setup(opts *op)
 {
-	FILE	*f;
-
 	putenv("BK_DATE_TIME_ZONE=1970-01-01 01:00:00-0");
 	putenv("BK_NO_TRIGGERS=1");
 	/* safe_putenv("BK_USER=%s", op->user); */
 	/* safe_putenv("BK_HOST=%s", op->host); */
-	f = fopen("/tmp/bk_config", "w");
-	fprintf(f, "checkout:edit\n");
-	fclose(f);
-	if (systemf("bk setup -fc/tmp/bk_config")) {
-		perror("bk setup");
+	if (systemf("bk init")) {
+		perror("bk init");
 		exit(1);
 	}
-	unlink("/tmp/bk_config");
-	system("bk root >/dev/null");
-	system("bk sane");
 }
 
 /*
@@ -798,10 +778,10 @@ setup(opts *op)
  * for the delimited format.
  *
  */
-private mark *
-data(opts *op, char *line, FILE *f)
+private blob *
+data(opts *op, char *line, FILE *f, int want_sha1)
 {
-	mark	*m;
+	blob	*m;
 	size_t	len, l, l2, blocks, last;
 	char	*p, *sha1, *file = 0;
 	int	i, idx, binary;
@@ -828,12 +808,13 @@ data(opts *op, char *line, FILE *f)
 	blocks = len / (1<<12);
 	last = len % (1<<12);
 	binary = 0;
-	idx = register_hash(&sha1_desc);
-	hash_descriptor[idx].init(&md);
-	sprintf(buf, "blob %ld", len);
-	/* we _want_ the trailing NULL */
-	hash_descriptor[idx].process(&md, buf, strlen(buf)+1);
-
+	if (want_sha1) {
+		idx = register_hash(&sha1_desc);
+		hash_descriptor[idx].init(&md);
+		sprintf(buf, "blob %ld", len);
+		/* we _want_ the trailing NULL */
+		hash_descriptor[idx].process(&md, buf, strlen(buf)+1);
+	}
 	/*
 	 * Read data and compute sha1
 	 */
@@ -845,7 +826,7 @@ data(opts *op, char *line, FILE *f)
 		}
 		l2 = fwrite(buf, 1, l, f);
 		assert(l == l2);
-		hash_descriptor[idx].process(&md, buf, l2);
+		if (want_sha1) hash_descriptor[idx].process(&md, buf, l2);
 	}
 	if (blocks != -1) {
 		perror("reading blob");
@@ -859,24 +840,26 @@ data(opts *op, char *line, FILE *f)
 	l2 = fwrite(buf, 1, l, f);
 	assert(l == l2);
 	if (closeit) fclose(f);
-	hash_descriptor[idx].process(&md, buf, l2);
-	hash_descriptor[idx].done(&md, buf);
-
-	/*
-	 * Store the mark
-	 */
-	sha1 = malloc(2 * hash_descriptor[idx].hashsize + 2);
-	for (i = 0; i < (int)hash_descriptor[idx].hashsize; i++) {
-		sprintf(sha1 + i*2, "%02x", buf[i]);
-	}
-	*(sha1 + i * 2 + 1) = 0;
 
 	/* Now insert the mark */
-	m = new(mark);
-	m->type = BLOB;
-	m->sha1 = sha1;		/* free'd by freeMark() */
-	m->blob.file = file;	/* free'd by freeMark() */
-	m->blob.binary = binary;
+	m = new(blob);
+	if (want_sha1) {
+		hash_descriptor[idx].process(&md, buf, l2);
+		hash_descriptor[idx].done(&md, buf);
+
+		/*
+		 * Store the mark
+		 */
+		sha1 = malloc(2 * hash_descriptor[idx].hashsize + 2);
+		for (i = 0; i < (int)hash_descriptor[idx].hashsize; i++) {
+			sprintf(sha1 + i*2, "%02x", buf[i]);
+		}
+		*(sha1 + i * 2 + 1) = 0;
+
+		m->sha1 = sha1;		/* free'd by freeBlob() */
+	}
+	m->file = file;		/* free'd by freeBlob() */
+	m->binary = binary;
 	return (m);
 }
 
