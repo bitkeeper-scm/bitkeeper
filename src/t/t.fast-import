@@ -21,7 +21,7 @@ function get_git_branch {
 
 # silly prng that returns 1-20 in a predictable sequence
 function rand {
-	shuf -i1-20 -n1
+	expr $RANDOM % 20
 }
 
 function rand_diffs {

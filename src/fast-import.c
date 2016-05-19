@@ -49,16 +49,17 @@ typedef struct {
 	char	*mode;		/* mode of file */
 } gop;				/* git operation */
 
-typedef struct commit {
+typedef struct commit commit;
+struct commit {
 	char	*mark;
 	time_t	when;		/* commit time */
 	char	*tz;		/* timezone  */
 	who	*author;	/* git's author */
 	who	*committer;	/* git's committer */
-	char	*comments;
-	struct	commit	**parents; /* list of parents */
-	gop	**fops;	        /* file operations for this commit  */
-} commit;
+	char	*comments;	/* commit's comments */
+	commit	**parents;	/* list of parents */
+	gop	**fops;		/* file operations for this commit  */
+};
 
 typedef struct {
 	/* state */
@@ -361,10 +362,14 @@ getCommit(opts *op, char *line)
 
 	while (gop = parseOp(op, line)) {
 		switch (gop->op) {
+		    case GDELETE: case GMODIFY:
+			/* supported */
+			break;
 		    case GCOPY:
 		    case GDELETE_ALL:
 		    case GRENAME:
 		    case GNOTE:
+		    default:
 			fprintf(stderr, "line '%s' not supported\n", line);
 			exit(1);
 		}
