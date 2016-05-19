@@ -19,48 +19,53 @@
 #include "tomcrypt.h"
 
 typedef struct {
-	/* state */
-	hash	*blobs;
-	hash	*commits;
-} opts;
-
-typedef struct {
 	/* git's fields */
 	char	*name;		/* "Oscar Bonilla" */
 	char	*email;		/* "ob@bitkeeper.com" */
-	time_t	when;		/* secs since epoch */
-	char	*tz;		/* timezone  */
 } who;
-
-typedef struct {
-	who	*author;	/* git's author */
-	who	*committer;	/* git's committer */
-	char	*comments;
-} commit;
 
 typedef	struct {
 	char	*sha1;
+	int	refcnt;		/* number of file ops pointing at this blob */
 	char	*file;		/* file where data is */
 	u8	binary:1;	/* did we see a NULL in the data? */
 } blob;
 
 /* types of git operations */
-enum {
-	GCOPY,
-	GDELETE,
-	GDELETE_ALL,
-	GMODIFY,
-	GNOTE,
-	GRENAME,
+enum op {
+	GCOPY,			/* copy file (not supproted) */
+	GDELETE,		/* delete path */
+	GDELETE_ALL,		/* delete all files (not supported) */
+	GMODIFY,		/* new contents */
+	GNOTE,			/* nodemodify: ?? (not supported) */
+	GRENAME,		/* rename file (not supported) */
 };
 
 typedef struct {
-	int	op;		/* file operation */
+	enum op	op;		/* file operation */
 	char	*path1;		/* path */
 	char	*path2;		/* second path if rename or copy */
 	blob	*m;		/* 'mark' struct where contents are */
 	char	*mode;		/* mode of file */
 } gop;				/* git operation */
+
+typedef struct commit {
+	char	*mark;
+	time_t	when;		/* commit time */
+	char	*tz;		/* timezone  */
+	who	*author;	/* git's author */
+	who	*committer;	/* git's committer */
+	char	*comments;
+	struct	commit	**parents; /* list of parents */
+	gop	**fops;	        /* file operations for this commit  */
+} commit;
+
+typedef struct {
+	/* state */
+	hash	*blobs;		/* mark -> blob struct */
+	hash	*commits;	/* mark -> commit struct */
+	commit	**clist;	/* array of commit*'s, oldest first */
+} opts;
 
 private int	gitImport(opts *op);
 private void	setup(opts *op);
@@ -69,7 +74,7 @@ private	char	*reset(opts *op, char *line);
 private	char	*getCommit(opts *op, char *line);
 private	blob	*data(opts *op, char *line, FILE *f, int want_sha1);
 
-private	who	*parseWho(char *line);
+private	who	*parseWho(char *line, time_t *when, char **tz);
 private	void	freeWho(who *w);
 private	void	freeBlob(blob *m);
 private	void	freeCommit(commit *m);
@@ -118,7 +123,7 @@ private int
 gitImport(opts *op)
 {
 	char	*line;
-	int	i;
+	int	i, j;
 	int	blobCount, commitCount;
 	int	rc = 1;
 	struct {
@@ -173,22 +178,41 @@ gitImport(opts *op)
 		}
 	}
 
+	printf("commits\n");
+	EACH(op->clist) {
+		commit	*c = op->clist[i];
+		printf(":%s -", c->mark);
+		EACH_INDEX(c->parents, j) {
+			printf(" :%s", c->parents[j]->mark);
+		}
+		printf("\n%s", c->comments);
+		EACH_INDEX(c->fops, j) {
+			if (c->fops[j]->path1) {
+				printf("\t%s\n", c->fops[j]->path1);
+			}
+		}
+	}
+
 	/*
 	 * Teardown
 	 */
+	commitCount = 0;
 	EACH_HASH(op->commits) {
 		commit	*m = op->commits->vptr;
 		freeCommit(m);
 		commitCount++;
 	}
 	hash_free(op->commits);
+	blobCount = 0;
 	EACH_HASH(op->blobs) {
 		blob	*m = op->blobs->vptr;
+
+		assert(m->refcnt == 0);
 		freeBlob(m);
 		blobCount++;
 	}
 	hash_free(op->blobs);
-	fprintf(stderr, "%d marks in hash (%d blobs, %d commits)\n",
+	printf("%d marks in hash (%d blobs, %d commits)\n",
 	    blobCount + commitCount, blobCount, commitCount);
 	return (rc);
 }
@@ -267,8 +291,9 @@ private char *
 getCommit(opts *op, char *line)
 {
 	blob	*mrk;
-	commit	*cmt;
+	commit	*cmt, *parent;
 	char	*key;
+	char	*p;
 	gop	*gop;
 	FILE	*f;
 
@@ -284,11 +309,13 @@ getCommit(opts *op, char *line)
 		fprintf(stderr, "ERROR: Duplicate mark: %s\n", key);
 		exit(1);
 	}
+	cmt->mark = op->commits->kptr;
+	addArray(&op->clist, &cmt);
 	line = fgetline(stdin);
 
 	if (MATCH("author")) {
 		/* Ignore author? */
-		cmt->author = parseWho(line);
+		cmt->author = parseWho(line, 0, 0);
 		line = fgetline(stdin);
 	}
 
@@ -297,7 +324,7 @@ getCommit(opts *op, char *line)
 		exit(1);
 	}
 
-	cmt->committer = parseWho(line);
+	cmt->committer = parseWho(line, &cmt->when, &cmt->tz);
 	line = fgetline(stdin);
 
 	/*
@@ -310,31 +337,40 @@ getCommit(opts *op, char *line)
 	cmt->comments = fmem_close(f, 0);
 	line = fgetline(stdin);
 
-	if (MATCH("from ")) {
-		/* parent */
-		line = fgetline(stdin);
-	}
-
-	while (MATCH("merge")) {
-		/* merge */
+	while (MATCH("from ") || MATCH("merge")) {
+		if (line[0] == 'f') {
+			p = line + strlen("from ");
+		} else {
+			p = line + strlen("merge ");
+		}
+		if (p[0] == ':') {
+			parent = (commit *)hash_fetchStr(op->commits, p+1);
+			unless (parent) {
+				fprintf(stderr, "parent '%s' not found\n",
+				    p);
+				exit(1);
+			}
+			addArray(&cmt->parents, &parent);
+		} else {
+			fprintf(stderr, "line '%s' not handled\n",
+			    line);
+			exit(1);
+		}
 		line = fgetline(stdin);
 	}
 
 	while (gop = parseOp(op, line)) {
 		switch (gop->op) {
+		    case GCOPY:
+		    case GDELETE_ALL:
+		    case GRENAME:
 		    case GNOTE:
-			break;
-		    default:
-			/* fprintf(stderr, "unknown op: %d\n", gop->op); */
-			/* exit(1); */
-			break;
+			fprintf(stderr, "line '%s' not supported\n", line);
+			exit(1);
 		}
-		freeOp(gop);
+		addArray(&cmt->fops, &gop);
 		line = fgetline(stdin);
 	}
-
-	/* XXX: do commit */
-
 	return (line);
 }
 
@@ -398,6 +434,7 @@ parseOp(opts *op, char *line)
 	if ((g->op == GMODIFY) || (g->op == GNOTE)) {
 		/* parse dataref/inline */
 		g->m = parseDataref(op, &p);
+		g->m->refcnt++;
 	}
 	if (g->op == GNOTE) {
 		/*
@@ -416,6 +453,7 @@ private void
 freeOp(gop *op)
 {
 	unless (op) return;
+	if (op->m) op->m->refcnt--;
 	free(op->path1);
 	free(op->path2);
 	free(op->mode);
@@ -592,7 +630,7 @@ parsePath(opts *op, char **s)
  *
  */
 private	who *
-parseWho(char *line)
+parseWho(char *line, time_t *when, char **tz)
 {
 	char	*p, *q;
 	who	*w;
@@ -622,12 +660,14 @@ parseWho(char *line)
 	 *
 	 * XXX: fix me.
 	 */
-	++p;			/* skip space */
-	w->when = strtol(p, &q, 10);
-	assert(w->when);
-	assert(*q == ' ');
-	p = ++q;
-	w->tz = strdup(p);
+	if (when) {
+		++p;			/* skip space */
+		*when = strtol(p, &q, 10);
+		assert(*when);
+		assert(*q == ' ');
+		p = ++q;
+		*tz = strdup(p);
+	}
 	return (w);
 }
 
@@ -637,7 +677,6 @@ freeWho(who *w)
 	unless (w) return;
 	free(w->name);
 	free(w->email);
-	free(w->tz);
 	free(w);
 }
 
@@ -654,10 +693,15 @@ freeBlob(blob *m)
 private void
 freeCommit(commit *m)
 {
+	int	i;
+
 	unless (m) return;
+	free(m->tz);
 	freeWho(m->author);
 	freeWho(m->committer);
 	free(m->comments);
+	EACH(m->fops) freeOp(m->fops[i]);
+	free(m->fops);
 }
 
 /*
