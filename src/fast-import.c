@@ -13,6 +13,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+/*
+ * Code layout:
+ * main() calls gitImport()
+ *
+ * gitImport()
+ *    - reads fast-export stream from stdin and processes using
+ *      helper functions like getCommit() and getBlob()
+ *      - this builds the os->clist data structure with the graph of
+ *	  all commits.
+ *
+ *    - calls importFile() for each unique pathname in os->paths
+ *      - Extracts graph for each file and builds sfiles
+ *      - returns rootkey/deltakey pairs for toplevel csets
+ *
+ *    - writes toplevel ChangeSet file and then uses 'bk checksum' for
+ *      fixup cset keys
+ *
+ *
+ * Threading possibilities:
+ *   The parsing code builds the commit structure in the same order
+ *   that importFile() consumes them.
+ *
+ *   So one thread can be consuming stdin and building the toplevel
+ *   data struction.  As it encounters each new pathname it can start
+ *   a thread to build each new sfile.  Those threads can write the
+ *   sfiles, but can't finish until the parsing thread finishes.
+ *
+ *   The last step writes the final ChangeSet file, it shouldn't take
+ *   that long.
+ */
 #include "sccs.h"
 #include "range.h"
 #include "nested.h"
@@ -33,7 +64,7 @@ typedef	struct {
 
 /* types of git operations */
 enum op {
-	GCOPY,			/* copy file (not supproted) */
+	GCOPY = 1,		/* copy file (not supproted) */
 	GDELETE,		/* delete path */
 	GDELETE_ALL,		/* delete all files (not supported) */
 	GMODIFY,		/* new contents */
@@ -43,7 +74,7 @@ enum op {
 
 typedef struct {
 	enum op	op;		/* file operation */
-	char	*path1;		/* path */
+	char	*path1;		/* path (ptr is unique) */
 	char	*path2;		/* second path if rename or copy */
 	blob	*m;		/* 'mark' struct where contents are */
 	char	*mode;		/* mode of file */
@@ -51,6 +82,7 @@ typedef struct {
 
 typedef struct commit commit;
 struct commit {
+	int	ser;		/* commit order */
 	char	*mark;
 	time_t	when;		/* commit time */
 	char	*tz;		/* timezone  */
@@ -65,8 +97,16 @@ typedef struct {
 	/* state */
 	hash	*blobs;		/* mark -> blob struct */
 	hash	*commits;	/* mark -> commit struct */
+	hash	*paths;		/* uniq list of pathnames */
+	MDBM	*idDB;
 	commit	**clist;	/* array of commit*'s, oldest first */
 } opts;
+
+typedef struct {
+	sccs	*s;
+	ser_t	d;
+	blob	*m;
+} sdelta;
 
 private int	gitImport(opts *op);
 private void	setup(opts *op);
@@ -89,6 +129,10 @@ private char	*parsePath(opts *op, char **s);
 
 private	blob	*saveInline(opts *op);
 
+private	int	importFile(opts *op, char *file);
+private	sdelta	newFile(opts *op, char *file, commit *cmt, gop *g);
+private	sdelta	newDelta(opts *ob, sdelta td, commit *cmt, gop *g);
+private	sdelta	newMerge(opts *ob, sdelta p[2], commit *cmt, gop *g);
 
 /* bk fast-import (aliased as _fastimport) */
 int
@@ -114,6 +158,8 @@ fastimport_main(int ac, char **av)
 	} else {
 		setup(&opts);
 	}
+	putenv("_BK_NO_UNIQ=1");
+	cmdlog_lock(CMD_WRLOCK);
 	rc = gitImport(&opts);
 out:	return (rc);
 }
@@ -124,9 +170,10 @@ private int
 gitImport(opts *op)
 {
 	char	*line;
-	int	i, j;
+	int	i;
 	int	blobCount, commitCount;
 	int	rc = 1;
+	char	**list = 0;
 	struct {
 		char	*s;			/* cmd */
 		char	*(*fn)(opts *, char *);	/* handler */
@@ -142,6 +189,7 @@ gitImport(opts *op)
 	 */
 	op->commits = hash_new(HASH_MEMHASH);
 	op->blobs = hash_new(HASH_MEMHASH);
+	op->paths = hash_new(HASH_MEMHASH);
 
 	/*
 	 * Processing:
@@ -179,24 +227,18 @@ gitImport(opts *op)
 		}
 	}
 
-	printf("commits\n");
-	EACH(op->clist) {
-		commit	*c = op->clist[i];
-		printf(":%s -", c->mark);
-		EACH_INDEX(c->parents, j) {
-			printf(" :%s", c->parents[j]->mark);
-		}
-		printf("\n%s", c->comments);
-		EACH_INDEX(c->fops, j) {
-			if (c->fops[j]->path1) {
-				printf("\t%s\n", c->fops[j]->path1);
-			}
-		}
+	EACH_HASH(op->paths) list = addLine(list, (char *)op->paths->kptr);
+	sortLines(list, string_sortrev); /* deeper first */
+	EACH(list) {
+		printf("import %s\n", list[i]);
+		importFile(op, list[i]);
 	}
+	freeLines(list, 0);
 
 	/*
 	 * Teardown
 	 */
+	free(op->clist);
 	commitCount = 0;
 	EACH_HASH(op->commits) {
 		commit	*m = op->commits->vptr;
@@ -213,6 +255,7 @@ gitImport(opts *op)
 		blobCount++;
 	}
 	hash_free(op->blobs);
+	hash_free(op->paths);
 	printf("%d marks in hash (%d blobs, %d commits)\n",
 	    blobCount + commitCount, blobCount, commitCount);
 	return (rc);
@@ -312,6 +355,7 @@ getCommit(opts *op, char *line)
 	}
 	cmt->mark = op->commits->kptr;
 	addArray(&op->clist, &cmt);
+	cmt->ser = nLines(op->clist);
 	line = fgetline(stdin);
 
 	if (MATCH("author")) {
@@ -362,7 +406,8 @@ getCommit(opts *op, char *line)
 
 	while (gop = parseOp(op, line)) {
 		switch (gop->op) {
-		    case GDELETE: case GMODIFY:
+		    case GMODIFY:
+		    case GDELETE:
 			/* supported */
 			break;
 		    case GCOPY:
@@ -423,6 +468,7 @@ parseOp(opts *op, char *line)
 	    case 'N': g->op = GNOTE;	break;
 	    case 'R': g->op = GRENAME;	break;
 	    case 0:		/* empty line, break */
+		free(g);
 		return (0);
 		break;
 	    default:
@@ -459,8 +505,6 @@ freeOp(gop *op)
 {
 	unless (op) return;
 	if (op->m) op->m->refcnt--;
-	free(op->path1);
-	free(op->path2);
 	free(op->mode);
 	free(op);
 }
@@ -568,6 +612,7 @@ parsePath(opts *op, char **s)
 	char	*start, *end;
 	char	*p, *q;
 	u8	n;
+	int	c;
 	char	*ret;
 
 	assert(s);
@@ -576,23 +621,19 @@ parsePath(opts *op, char **s)
 		/*
 		 * Simple case, nothing funny
 		 */
-		if (end = strchr(start, ' ')) {
-			/* space delimiter */
-			*end = 0;
-			ret = strdup(start);
-			*end = ' ';
-			*s = end + 1;
-			return (ret);
-		}
-		/* rest of string is file name */
-		ret = strdup(start);
-		*s = start + strlen(start);
+		n = (end = strchr(start, ' ')) ? start - end : strlen(start);
+		*s = start + n;
+		c = start[n];
+		start[n] = 0;
+		hash_insertStrSet(op->paths, start);
+		start[n] = c;
+		ret = op->paths->kptr;
 		return (ret);
 	}
 	/*
 	 * Complicated case, do the parsing
 	 */
-	p = ret = malloc(strlen(start) * 4); // 2 should suffice but whatever
+	ret = p = malloc(strlen(start));
 	for (q = start + 1; *q && (*q != '"'); p++, q++) {
 		if (*q == '\\') {
 			q++;
@@ -625,6 +666,9 @@ parsePath(opts *op, char **s)
 	}
 	*p = 0;
 	*s = q;
+	hash_insertStrSet(op->paths, ret);
+	free(ret);
+	ret = op->paths->kptr;
 	return (ret);
 }
 
@@ -705,6 +749,7 @@ freeCommit(commit *m)
 	freeWho(m->author);
 	freeWho(m->committer);
 	free(m->comments);
+	free(m->parents);
 	EACH(m->fops) freeOp(m->fops[i]);
 	free(m->fops);
 }
@@ -752,6 +797,8 @@ reset(opts *op, char *line)
 private void
 setup(opts *op)
 {
+	/* XXX seems like this should be tied to the oldest cset. */
+
 	putenv("BK_DATE_TIME_ZONE=1970-01-01 01:00:00-0");
 	putenv("BK_NO_TRIGGERS=1");
 	/* safe_putenv("BK_USER=%s", op->user); */
@@ -760,6 +807,7 @@ setup(opts *op)
 		perror("bk init");
 		exit(1);
 	}
+	op->idDB = mdbm_mem();
 }
 
 /*
@@ -831,12 +879,12 @@ private blob *
 data(opts *op, char *line, FILE *f, int want_sha1)
 {
 	blob	*m;
-	size_t	len, l, l2, blocks, last;
+	size_t	len, c1, c2;
 	char	*p, *sha1, *file = 0;
 	int	i, idx, binary;
 	int	closeit = 0;
 	hash_state	md;
-	unsigned char	buf[1<<12];
+	u8	buf[1<<12];
 
 	assert(MATCH("data "));
 
@@ -844,7 +892,7 @@ data(opts *op, char *line, FILE *f, int want_sha1)
 	 * Get a temp file to put the data.
 	 */
 	unless (f) {
-		file = bktmp(0);
+		file = bktmp_local(0);
 		f = fopen(file, "w");
 		assert(f);
 		closeit = 1;
@@ -854,8 +902,6 @@ data(opts *op, char *line, FILE *f, int want_sha1)
 	 * Initialize vars and get length
 	 */
 	len = strtoul(line + strlen("data "), &p, 10);
-	blocks = len / (1<<12);
-	last = len % (1<<12);
 	binary = 0;
 	if (want_sha1) {
 		idx = register_hash(&sha1_desc);
@@ -867,33 +913,18 @@ data(opts *op, char *line, FILE *f, int want_sha1)
 	/*
 	 * Read data and compute sha1
 	 */
-	while (blocks-- && ((l = fread(buf, 1, 1<<12, stdin)) > 0)) {
-		unless (binary) {
-			for (i = 0; i < l; i++) {
-				unless (buf[i]) (binary) = 1;
-			}
-		}
-		l2 = fwrite(buf, 1, l, f);
-		assert(l == l2);
-		if (want_sha1) hash_descriptor[idx].process(&md, buf, l2);
+	while ((c1 = fread(buf, 1, min(sizeof(buf), len), stdin)) > 0) {
+		unless (binary) binary = (memchr(buf, 0, c1) != 0);
+		c2 = fwrite(buf, 1, c1, f);
+		assert(c1 == c2);
+		len -= c2;
+		if (want_sha1) hash_descriptor[idx].process(&md, buf, c2);
 	}
-	if (blocks != -1) {
-		perror("reading blob");
-		exit(1);
-	}
-	if ((l = fread(buf, 1, last, stdin)) != last) {
-		perror("fread on blob");
-		exit(1);
-	}
-	assert(l == last);
-	l2 = fwrite(buf, 1, l, f);
-	assert(l == l2);
 	if (closeit) fclose(f);
 
 	/* Now insert the mark */
 	m = new(blob);
 	if (want_sha1) {
-		hash_descriptor[idx].process(&md, buf, l2);
 		hash_descriptor[idx].done(&md, buf);
 
 		/*
@@ -913,3 +944,216 @@ data(opts *op, char *line, FILE *f, int want_sha1)
 }
 
 /* Everything above was parsing (analysis). This next part is synthesis. */
+
+
+private int
+importFile(opts *op, char *file)
+{
+	int	ncsets = hash_count(op->commits);
+	sdelta	lastmod[ncsets+1];
+	int	i, j;
+	int	nparents;
+	commit	*cmt, **p;
+	sdelta	dp[2], td;
+	gop	*g;
+
+	EACH_INDEX(op->clist, j) {
+		cmt = op->clist[j];
+
+		/* did this cset change 'file' ? */
+		g = 0;
+		EACH(cmt->fops) {
+			if (cmt->fops[i]->path1 == file) {
+				g = cmt->fops[i];
+				break;
+			}
+		}
+
+		/* how many unique parents? */
+		nparents = 0;
+		EACHP(cmt->parents, p) {
+			td = lastmod[(*p)->ser];
+			unless (td.s) continue;
+			for (i = 0; i < nparents; i++) {
+				if ((dp[i].s == td.s) && (dp[i].d == td.d)) {
+					break;
+				}
+			}
+			assert(i < 2); /* octopus on file */
+			dp[i] = td;
+			if (i == nparents) nparents++;
+		}
+		/* skip cases where this file doesn't matter */
+		if (!g && (nparents < 2)) {
+			if (nparents == 1) {
+				lastmod[cmt->ser] = dp[0];
+			} else {
+				memset(&lastmod[cmt->ser], 0, sizeof(sdelta));
+			}
+			continue;
+		}
+
+		if (nparents == 0) {
+			// new file
+			td = newFile(op, file, cmt, g);
+		} else if (nparents == 1) {
+			// new delta
+			td = newDelta(op, dp[0], cmt, g);
+		} else {
+			assert(nparents == 2);
+			// merge in file with new contents (g might be 0)
+			td = newMerge(op, dp, cmt, g);
+		}
+		lastmod[cmt->ser] = td;
+	}
+	return (0);
+}
+
+private void
+loadMetaData(sccs *s, ser_t d, commit *cmt)
+{
+	ser_t	prev;
+
+	USERHOST_SET(s, d, cmt->committer->email);
+	DATE_SET(s, d, cmt->when);
+	ZONE_SET(s, d, cmt->tz); //XXX git -0400 bk -04:00 (but both work)
+
+	// fudge
+	if ((prev = sccs_prev(s, d)) &&
+	    (DATE(s, d) <= DATE(s, prev)))  {
+		time_t	tdiff;
+		tdiff = DATE(s, prev) - DATE(s, d) + 1;
+		DATE_SET(s, d, (DATE(s, d) + tdiff));
+		DATE_FUDGE_SET(s, d, (DATE_FUDGE(s, d) + tdiff));
+	}
+}
+
+private sdelta
+newFile(opts *op, char *file, commit *cmt, gop *g)
+{
+	sccs	*s;
+	sdelta	ret;
+	ser_t	d, d0;
+	char	buf[MAXLINE];
+
+	assert(g->op == GMODIFY);
+
+	mkdirf(file);
+	fileLink(g->m->file, file);
+	ret.m = g->m;
+
+	ret.s = s = sccs_init(file, 0);
+	assert(s);
+	d0 = sccs_newdelta(s);
+	loadMetaData(s, d0, cmt);
+	sccs_parseArg(s, d0, 'P', file, 0);
+	sccs_parseArg(s, d0, 'R', "1.0", 0);
+	randomCons(buf+2, s, d0);
+	safe_putenv("BK_RANDOM=%s", buf+2);
+	s->xflags |= X_REQUIRED;
+	XFLAGS(s, d0) |= X_REQUIRED;
+	SUM_SET(s, d0, almostUnique()); /* reads BK_RANDOM */
+	SORTSUM_SET(s, d0, SUM(s, d0));
+	if (g->m->binary) {
+		buf[0] = 'B';
+		buf[1] = ':';
+		RANDOM_SET(s, d0, buf);
+		sccs_encoding(s, 0, "BAM");
+	} else {
+		RANDOM_SET(s, d0, buf+2);
+	}
+	FLAGS(s, d0) |= D_INARRAY;
+
+	ret.d = d = sccs_newdelta(s);
+	loadMetaData(s, d, cmt);
+	PARENT_SET(s, d, d0);
+	PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, d0);
+	sccs_parseArg(s, d, 'R', "1.1", 0);
+
+	if (sccs_delta(s, DELTA_NEWFILE|DELTA_PATCH|DELTA_CSETMARK,
+	    d, 0, 0, 0)) {
+		perror(s->gfile);
+		exit(1);
+	}
+	s->state |= S_SFILE;
+	return (ret);
+}
+
+private sdelta
+newDelta(opts *op, sdelta td, commit *cmt, gop *g)
+{
+	sdelta	ret;
+	sccs	*s = td.s;
+	ser_t	p = td.d;
+	ser_t	d;
+	int	rc;
+	FILE	*diffs;
+	char	buf[MAXLINE];
+
+	if ((g->op == GMODIFY) && (BAM(s) || g->m->binary)) {
+		unless (BAM(s)) {
+			// delete old file
+			strcpy(buf, s->gfile);
+			sccs_free(s);
+			rc = sccs_rm(buf, 0, op->idDB);
+			assert(!rc);
+			return (newFile(op, buf, cmt, g));
+		}
+		rc = sccs_get(s, REV(s, p), 0, 0, 0,
+		    GET_SKIPGET|GET_EDIT, 0, 0);
+		assert(!rc);
+		d = sccs_newdelta(s);
+		loadMetaData(s, d, cmt);
+		fileLink(g->m->file, s->gfile);
+		ret.m = g->m;
+
+		rc = sccs_delta(s, DELTA_DONTASK|DELTA_CSETMARK,
+		    d, 0, 0, 0);
+		assert(!rc);
+
+	} else if (g->op == GMODIFY) {
+		/* test to see if 'p' is deleted and undelete first */
+
+		rc = sccs_get(s, REV(s, p), 0, 0, 0,
+		    GET_SKIPGET|GET_EDIT, 0, 0);
+		assert(!rc);
+
+		d = sccs_newdelta(s);
+		loadMetaData(s, d, cmt);
+		assert(td.m);
+		sprintf(buf, "bk ndiff -n '%s' '%s'",
+		    td.m->file,
+		    g->m->file);
+		diffs = popen(buf, "r");
+		assert(diffs);
+
+		rc = sccs_delta(s, DELTA_DONTASK|DELTA_CSETMARK,
+		    d, 0, diffs, 0);
+		assert(!rc);
+		rc = pclose(diffs);
+		assert(!rc);
+		ret.m = g->m;
+	} else {
+		assert(g->op = GDELETE);
+
+		strcpy(buf, s->gfile);
+		sccs_close(s);
+		rc = sccs_rm(buf, 0, op->idDB);
+		assert(!rc);
+
+		d = sccs_top(s);
+		ret.m = 0;
+	}
+	ret.s = s;
+	ret.d = d;
+	return (ret);
+}
+
+private sdelta
+newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
+{
+	sdelta	ret = {0};
+
+	assert(0);
+	return (ret);
+}
