@@ -72,12 +72,20 @@ enum op {
 	GRENAME,		/* rename file (not supported) */
 };
 
+enum m {
+	MODE_FILE = 1,
+	MODE_EXE,
+	MODE_SYMLINK,
+	MODE_GITLINK,
+	MODE_SUBDIR,
+};
+
 typedef struct {
 	enum op	op;		/* file operation */
 	char	*path1;		/* path (ptr is unique) */
 	char	*path2;		/* second path if rename or copy */
 	blob	*m;		/* 'mark' struct where contents are */
-	char	*mode;		/* mode of file */
+	enum m	mode;		/* mode of file */
 } gop;				/* git operation */
 
 typedef struct commit commit;
@@ -100,6 +108,7 @@ typedef struct {
 	hash	*paths;		/* uniq list of pathnames */
 	MDBM	*idDB;
 	commit	**clist;	/* array of commit*'s, oldest first */
+	int	filen;
 } opts;
 
 typedef struct {
@@ -124,7 +133,7 @@ private gop	*parseOp(opts *op, char *line);
 private void	freeOp(gop *op);
 
 private	blob	*parseDataref(opts *op, char **s);
-private	char	*parseMode(opts *op, char **s);
+private	enum m	parseMode(opts *op, char **s);
 private char	*parsePath(opts *op, char **s);
 
 private	blob	*saveInline(opts *op);
@@ -159,6 +168,7 @@ fastimport_main(int ac, char **av)
 		setup(&opts);
 	}
 	putenv("_BK_NO_UNIQ=1");
+	putenv("_BK_MV_OK=1");
 	cmdlog_lock(CMD_WRLOCK);
 	rc = gitImport(&opts);
 out:	return (rc);
@@ -481,6 +491,14 @@ parseOp(opts *op, char *line)
 	if (g->op == GMODIFY) {
 		/* parse mode */
 		g->mode = parseMode(op, &p);
+		switch(g->mode) {
+		    case MODE_SUBDIR:
+		    case MODE_GITLINK:
+			assert(0);
+			break;
+		    default:
+			break;
+		}
 	}
 	if ((g->op == GMODIFY) || (g->op == GNOTE)) {
 		/* parse dataref/inline */
@@ -505,7 +523,6 @@ freeOp(gop *op)
 {
 	unless (op) return;
 	if (op->m) op->m->refcnt--;
-	free(op->mode);
 	free(op);
 }
 
@@ -564,19 +581,22 @@ saveInline(opts *op)
  * Try to parse a mode out of 's'. Leave 's' pointing after the
  * consumed portion. Returns an allocated string with the parsed part.
  */
-private	char *
+private	enum m
 parseMode(opts *op, char **s)
 {
-	char	*p, *ret;
+	char	*p;
+	enum m	ret;
 	int	i;
-	int	valid = 0;
-	char	*validModes[] = {
-		"100644", "644",    /* normal file */
-		"100755", "755",    /* executable */
-		"120000",	    /* symlink */
-		"160000",	    /* gitlink (submodule) */
-		"040000",	    /* subdirectory */
-		0
+	struct {
+		char	*str;
+		enum m	mode;
+	} validModes[] = {
+		{ "100644", MODE_FILE},	{ "644", MODE_FILE},
+		{ "100755", MODE_EXE},	{ "755", MODE_EXE},
+		{ "120000", MODE_SYMLINK},
+		{ "160000", MODE_GITLINK},
+		{ "040000", MODE_SUBDIR},
+		{ 0, 0 }
 	};
 
 	assert(s);
@@ -586,18 +606,17 @@ parseMode(opts *op, char **s)
 		exit(1);
 	}
 	*p = 0;
-	valid = 0;
-	for (i = 0; validModes[i]; i++) {
-		if (streq(*s, validModes[i])) {
-			valid = 1;
+	ret = 0;
+	for (i = 0; validModes[i].str; i++) {
+		if (streq(*s, validModes[i].str)) {
+			ret = validModes[i].mode;
 			break;
 		}
 	}
-	unless (valid) {
+	unless (ret) {
 		fprintf(stderr, "invalid mode found: %s\n", *s);
 		exit(1);
 	}
-	ret = strdup(*s);
 	*s = p+1;
 	return (ret);
 }
@@ -702,7 +721,16 @@ parseWho(char *line, time_t *when, char **tz)
 	p = strchr(p, '>');
 	*p++ = 0;
 	w->email = strdup(w->email);
+
+	/*
+	 * skip any extra cruft:
+	 *   Guoli Shu<Kerry.Shu@Sun.COM> <none@none> 1219106876 -0700
+	 * (git has the same code)
+	 */
+	if (q = strrchr(p, '>')) p = q+1;
+
 	assert(*p == ' ');
+
 	/*
 	 * Get when. Git supports multiple formats for the 'when'
 	 * field. This only handles the default.
@@ -953,7 +981,7 @@ importFile(opts *op, char *file)
 	sdelta	lastmod[ncsets+1];
 	int	i, j;
 	int	nparents;
-	commit	*cmt, **p;
+	commit	*cmt = 0, **p;
 	sdelta	dp[2], td;
 	gop	*g;
 
@@ -1001,11 +1029,13 @@ importFile(opts *op, char *file)
 			td = newDelta(op, dp[0], cmt, g);
 		} else {
 			assert(nparents == 2);
+
 			// merge in file with new contents (g might be 0)
 			td = newMerge(op, dp, cmt, g);
 		}
 		lastmod[cmt->ser] = td;
 	}
+	if (cmt && lastmod[cmt->ser].s) sccs_free(lastmod[cmt->ser].s);
 	return (0);
 }
 
@@ -1033,17 +1063,37 @@ newFile(opts *op, char *file, commit *cmt, gop *g)
 {
 	sccs	*s;
 	sdelta	ret;
+	char	*p;
 	ser_t	d, d0;
+	int	rc;
 	char	buf[MAXLINE];
 
 	assert(g->op == GMODIFY);
 
-	mkdirf(file);
-	fileLink(g->m->file, file);
 	ret.m = g->m;
 
-	ret.s = s = sccs_init(file, 0);
+	sprintf(buf, "%d", ++op->filen);
+	ret.s = s = sccs_init(buf, 0);
 	assert(s);
+
+	switch(g->mode) {
+	    case MODE_SYMLINK:
+		p = loadfile(g->m->file, 0);
+		rc = symlink(p, s->gfile);
+		assert(!rc);
+		free(p);
+		break;
+	    case MODE_FILE:
+	    case MODE_EXE:
+		fileLink(g->m->file, s->gfile);
+		if (g->mode == MODE_EXE) chmod(s->gfile, 0700);
+		break;
+	    default:
+		assert(0);
+		break;
+	}
+	check_gfile(s, 0);
+
 	d0 = sccs_newdelta(s);
 	loadMetaData(s, d0, cmt);
 	sccs_parseArg(s, d0, 'P', file, 0);
@@ -1067,7 +1117,7 @@ newFile(opts *op, char *file, commit *cmt, gop *g)
 	ret.d = d = sccs_newdelta(s);
 	loadMetaData(s, d, cmt);
 	PARENT_SET(s, d, d0);
-	PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, d0);
+	sccs_parseArg(s, d, 'P', file, 0);
 	sccs_parseArg(s, d, 'R', "1.1", 0);
 
 	if (sccs_delta(s, DELTA_NEWFILE|DELTA_PATCH|DELTA_CSETMARK,
@@ -1086,11 +1136,13 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 	sccs	*s = td.s;
 	ser_t	p = td.d;
 	ser_t	d;
+	char	*t, *rel;
 	int	rc;
 	FILE	*diffs;
 	char	buf[MAXLINE];
 
 	if ((g->op == GMODIFY) && (BAM(s) || g->m->binary)) {
+		assert(g->mode == MODE_EXE || g->mode == MODE_FILE);
 		unless (BAM(s)) {
 			// delete old file
 			strcpy(buf, s->gfile);
@@ -1104,15 +1156,65 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		assert(!rc);
 		d = sccs_newdelta(s);
 		loadMetaData(s, d, cmt);
+		PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, 1);
+		SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, 1);
 		fileLink(g->m->file, s->gfile);
+		if (g->mode == MODE_EXE) chmod(s->gfile, 0755);
 		ret.m = g->m;
 
 		rc = sccs_delta(s, DELTA_DONTASK|DELTA_CSETMARK,
 		    d, 0, 0, 0);
 		assert(!rc);
+	} else if ((g->op == GMODIFY) && (g->mode == MODE_SYMLINK)) {
+		rc = sccs_get(s, REV(s, p), 0, 0, 0,
+		    GET_EDIT, s->gfile, 0);
+		assert(!rc);
 
+		d = sccs_newdelta(s);
+		loadMetaData(s, d, cmt);
+		PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, 1);
+		SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, 1);
+
+		assert(td.m);
+		t = loadfile(g->m->file, 0);
+		unlink(s->gfile);
+		rc = symlink(t, s->gfile);
+		assert(!rc);
+		free(t);
+
+		rc = sccs_delta(s, DELTA_DONTASK|DELTA_CSETMARK,
+		    d, 0, 0, 0);
+		assert(!rc);
+		ret.m = g->m;
 	} else if (g->op == GMODIFY) {
-		/* test to see if 'p' is deleted and undelete first */
+		if (td.m) {
+			rc = sccs_get(s, REV(s, p), 0, 0, 0,
+			    GET_SKIPGET|GET_EDIT, 0, 0);
+			assert(!rc);
+
+			sprintf(buf, "bk ndiff -n '%s' '%s'",
+			    td.m->file,
+			    g->m->file);
+			diffs = popen(buf, "r");
+			assert(diffs);
+		} else {
+			rc = sccs_get(s, REV(s, p), 0, 0, 0,
+			    GET_EDIT, s->gfile, 0);
+			assert(!rc);
+			diffs = 0;
+		}
+		d = sccs_newdelta(s);
+		loadMetaData(s, d, cmt);
+		PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, 1);
+		SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, 1);
+
+		rc = sccs_delta(s, DELTA_DONTASK|DELTA_CSETMARK,
+		    d, 0, diffs, 0);
+		assert(!rc);
+		if (diffs) pclose(diffs);
+		ret.m = g->m;
+	} else {
+		assert(g->op = GDELETE);
 
 		rc = sccs_get(s, REV(s, p), 0, 0, 0,
 		    GET_SKIPGET|GET_EDIT, 0, 0);
@@ -1120,30 +1222,23 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 
 		d = sccs_newdelta(s);
 		loadMetaData(s, d, cmt);
-		assert(td.m);
-		sprintf(buf, "bk ndiff -n '%s' '%s'",
-		    td.m->file,
-		    g->m->file);
-		diffs = popen(buf, "r");
-		assert(diffs);
-
-		rc = sccs_delta(s, DELTA_DONTASK|DELTA_CSETMARK,
+		t = sccs_rmName(s);
+		rel = proj_relpath(s->proj, t);
+		free(t);
+		PATHNAME_SET(s, d, rel);
+		free(rel);
+		t = aprintf("Delete: %s\n", PATHNAME(s, p));
+		COMMENTS_SET(s, d, t);
+		free(t);
+		diffs = fmem();
+		rc = sccs_delta(s, DELTA_DONTASK|DELTA_CSETMARK|DELTA_FORCE,
 		    d, 0, diffs, 0);
 		assert(!rc);
-		rc = pclose(diffs);
-		assert(!rc);
-		ret.m = g->m;
-	} else {
-		assert(g->op = GDELETE);
+		fclose(diffs);
 
-		strcpy(buf, s->gfile);
-		sccs_close(s);
-		rc = sccs_rm(buf, 0, op->idDB);
-		assert(!rc);
-
-		d = sccs_top(s);
 		ret.m = 0;
 	}
+	s->state &= ~S_PFILE;
 	ret.s = s;
 	ret.d = d;
 	return (ret);
@@ -1152,8 +1247,58 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 private sdelta
 newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
 {
-	sdelta	ret = {0};
+	sdelta	ret;
+	sccs	*s;
+	ser_t	d;
+	int	i, rc;
+	char	buf[MAXPATH];
 
-	assert(0);
+	if (m[0].s != m[1].s) {
+		/* delete newer file */
+		i =  (DATE(m[0].s, 1) < DATE(m[1].s, 1));
+
+		s = m[i].s;	/* newer sfile */
+		strcpy(buf, s->gfile);
+		sccs_free(s);
+		rc = sccs_rm(buf, 0, op->idDB);
+		assert(!rc);
+		if (g) {
+			return (newDelta(op, m[i], cmt, g));
+		} else {
+			ret = m[!i];	/* older sfile */
+			ret.m = 0;
+			return (ret);
+		}
+	}
+	s = m[0].s;
+	ret.s = s;
+	ret.m = 0;
+
+	if (!g || (g->op == GMODIFY)) {
+		rc = sccs_get(s, REV(s, m[1].d), REV(s, m[0].d), 0, 0,
+		    GET_EDIT, s->gfile, 0);
+		assert(!rc);
+
+		ret.d = d = sccs_newdelta(s);
+		loadMetaData(s, d, cmt);
+
+		if (g) {
+			assert(PATHNAME(s, m[0].d) == PATHNAME(s, m[1].d));
+
+			fileLink(g->m->file, s->gfile);
+			ret.m = g->m;
+		} else {
+			PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, m[0].d);
+			SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, m[0].d);
+		}
+		rc = sccs_delta(s, DELTA_DONTASK|DELTA_CSETMARK,
+		    d, 0, 0, 0);
+		assert(!rc);
+		s->state &= ~S_PFILE;
+	} else if (g->op == GDELETE) {
+		assert(0);
+	} else {
+		assert(0);
+	}
 	return (ret);
 }

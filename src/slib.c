@@ -10531,7 +10531,9 @@ out:		sccs_abortWrite(s);
 		first = n0 = 1;
 	}
 	assert(n);
-	if (!nodefault && buf[0]) pathArg(s, n, buf); /* pathname */
+	if (!nodefault && !HAS_PATHNAME(s, n) && buf[0]) {
+		pathArg(s, n, buf); /* pathname */
+	}
 	n = sccs_dInit(n, 'D', s, nodefault);
 
 	/*
