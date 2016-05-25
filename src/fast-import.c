@@ -99,6 +99,7 @@ struct commit {
 	char	*comments;	/* commit's comments */
 	commit	**parents;	/* list of parents */
 	gop	**fops;		/* file operations for this commit  */
+	u32	*weave;		/* rk/dk pairs */
 };
 
 typedef struct {
@@ -109,12 +110,15 @@ typedef struct {
 	MDBM	*idDB;
 	commit	**clist;	/* array of commit*'s, oldest first */
 	int	filen;
+	sccs	*cset;
 } opts;
 
+/* the sfile/delta combo that records a certain git blob */
 typedef struct {
 	sccs	*s;
 	ser_t	d;
 	blob	*m;
+	u32	rk;		/* rkoff in cset heap */
 } sdelta;
 
 private int	gitImport(opts *op);
@@ -140,8 +144,9 @@ private	blob	*saveInline(opts *op);
 
 private	int	importFile(opts *op, char *file);
 private	sdelta	newFile(opts *op, char *file, commit *cmt, gop *g);
-private	sdelta	newDelta(opts *ob, sdelta td, commit *cmt, gop *g);
-private	sdelta	newMerge(opts *ob, sdelta p[2], commit *cmt, gop *g);
+private	sdelta	newDelta(opts *op, sdelta td, commit *cmt, gop *g);
+private	sdelta	newMerge(opts *op, sdelta p[2], commit *cmt, gop *g);
+private	int	mkChangeSet(opts *op);
 
 /* bk fast-import (aliased as _fastimport) */
 int
@@ -239,11 +244,17 @@ gitImport(opts *op)
 
 	EACH_HASH(op->paths) list = addLine(list, (char *)op->paths->kptr);
 	sortLines(list, string_sortrev); /* deeper first */
+
+	op->cset = sccs_init(CHANGESET, 0);
 	EACH(list) {
 		printf("import %s\n", list[i]);
 		importFile(op, list[i]);
 	}
 	freeLines(list, 0);
+
+	mkChangeSet(op);
+	sccs_newchksum(op->cset); /* write new heap */
+	sccs_free(op->cset);
 
 	/*
 	 * Teardown
@@ -723,6 +734,13 @@ parseWho(char *line, time_t *when, char **tz)
 	w->email = strdup(w->email);
 
 	/*
+	 * XXX Larry wants to ignore email and cons up something else when
+	 * the email is stupid like none@none
+	 * I think I disagree, if git history is stupid, we should reproduce
+	 * that.
+	 */
+
+	/*
 	 * skip any extra cruft:
 	 *   Guoli Shu<Kerry.Shu@Sun.COM> <none@none> 1219106876 -0700
 	 * (git has the same code)
@@ -780,6 +798,7 @@ freeCommit(commit *m)
 	free(m->parents);
 	EACH(m->fops) freeOp(m->fops[i]);
 	free(m->fops);
+	free(m->weave);
 }
 
 /*
@@ -1062,7 +1081,7 @@ private sdelta
 newFile(opts *op, char *file, commit *cmt, gop *g)
 {
 	sccs	*s;
-	sdelta	ret;
+	sdelta	ret = {0};
 	char	*p;
 	ser_t	d, d0;
 	int	rc;
@@ -1126,13 +1145,25 @@ newFile(opts *op, char *file, commit *cmt, gop *g)
 		exit(1);
 	}
 	s->state |= S_SFILE;
+
+	/* record the cset weave */
+	sccs_sdelta(s, sccs_ino(s), buf);
+	ret.rk = sccs_addUniqRootkey(op->cset, buf);
+	assert(ret.rk);
+	addArrayV(&cmt->weave, ret.rk);
+	sccs_sdelta(s, d, buf);
+	addArrayV(&cmt->weave, sccs_addStr(op->cset, buf));
+	/* and oldest delta marker */
+	addArrayV(&cmt->weave, ret.rk);
+	addArrayV(&cmt->weave, 0);
+
 	return (ret);
 }
 
 private sdelta
 newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 {
-	sdelta	ret;
+	sdelta	ret = td;
 	sccs	*s = td.s;
 	ser_t	p = td.d;
 	ser_t	d;
@@ -1144,11 +1175,12 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 	if ((g->op == GMODIFY) && (BAM(s) || g->m->binary)) {
 		assert(g->mode == MODE_EXE || g->mode == MODE_FILE);
 		unless (BAM(s)) {
-			// delete old file
-			strcpy(buf, s->gfile);
-			sccs_free(s);
-			rc = sccs_rm(buf, 0, op->idDB);
-			assert(!rc);
+			gop	gtmp;
+
+			gtmp.op = GDELETE;
+			(void)newDelta(op, td, cmt, &gtmp);
+			sccs_free(td.s); // XXX parallel deletes
+
 			return (newFile(op, buf, cmt, g));
 		}
 		rc = sccs_get(s, REV(s, p), 0, 0, 0,
@@ -1239,7 +1271,13 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		ret.m = 0;
 	}
 	s->state &= ~S_PFILE;
-	ret.s = s;
+
+	/* record the cset weave */
+	assert(ret.rk);
+	addArrayV(&cmt->weave, ret.rk);
+	sccs_sdelta(s, d, buf);
+	addArrayV(&cmt->weave, sccs_addStr(op->cset, buf));
+
 	ret.d = d;
 	return (ret);
 }
@@ -1254,24 +1292,25 @@ newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
 	char	buf[MAXPATH];
 
 	if (m[0].s != m[1].s) {
+		gop	gtmp;
+
 		/* delete newer file */
 		i =  (DATE(m[0].s, 1) < DATE(m[1].s, 1));
 
-		s = m[i].s;	/* newer sfile */
-		strcpy(buf, s->gfile);
-		sccs_free(s);
-		rc = sccs_rm(buf, 0, op->idDB);
-		assert(!rc);
+		gtmp.op = GDELETE;
+		newDelta(op, m[i], cmt, &gtmp);
+		sccs_free(m[i].s); // XXX parallel deletes
+
 		if (g) {
-			return (newDelta(op, m[i], cmt, g));
+			ret = newDelta(op, m[i], cmt, g);
 		} else {
 			ret = m[!i];	/* older sfile */
 			ret.m = 0;
-			return (ret);
 		}
+		return (ret);
 	}
-	s = m[0].s;
-	ret.s = s;
+	ret = m[0];
+	s = ret.d;
 	ret.m = 0;
 
 	if (!g || (g->op == GMODIFY)) {
@@ -1300,5 +1339,53 @@ newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
 	} else {
 		assert(0);
 	}
+	/* record the cset weave */
+	assert(ret.rk);
+	addArrayV(&cmt->weave, ret.rk);
+	sccs_sdelta(s, d, buf);
+	addArrayV(&cmt->weave, sccs_addStr(op->cset, buf));
 	return (ret);
+}
+
+private int
+mkChangeSet(opts *op)
+{
+	sccs	*s = op->cset;
+	ser_t	d;
+	int	i;
+	int	nparents;
+	commit	*cmt = 0;
+
+	printf("Writing new ChangeSet file...\n");
+	EACH(op->clist) {
+		cmt = op->clist[i];
+
+		d = sccs_newdelta(s);
+		FLAGS(s, d) |= D_INARRAY;
+		loadMetaData(s, d, cmt);
+		XFLAGS(s, d) |= X_REQUIRED;
+		PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, 1);
+		SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, 1);
+		ADDED_SET(s, d, nLines(cmt->weave)/2);
+		SAME_SET(s, d, 1);
+		MODE_SET(s, d, MODE(s, 2));
+		COMMENTS_SET(s, d, cmt->comments);
+		WEAVE_SET(s, d, s->heap.len);
+		addArrayV(&cmt->weave, 0);
+		data_append(&s->heap,
+		    cmt->weave+1, sizeof(u32)*nLines(cmt->weave));
+
+		nparents = nLines(cmt->parents);
+		if (nparents == 0) {
+			PARENT_SET(s, d, 2);
+		} else if (nparents == 1) {
+			PARENT_SET(s, d, cmt->parents[1]->ser+2);
+		} else if (nparents == 2) {
+			MERGE_SET(s, d, cmt->parents[2]->ser+2);
+		} else {
+			assert(0);
+		}
+		TABLE_SET(s, d);
+	}
+	return (0);
 }
