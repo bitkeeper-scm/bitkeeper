@@ -37,7 +37,7 @@
  *   that importFile() consumes them.
  *
  *   So one thread can be consuming stdin and building the toplevel
- *   data struction.  As it encounters each new pathname it can start
+ *   data structure.  As it encounters each new pathname it can start
  *   a thread to build each new sfile.  Those threads can write the
  *   sfiles, but can't finish until the parsing thread finishes.
  *
@@ -68,7 +68,7 @@ enum op {
 	GDELETE,		/* delete path */
 	GDELETE_ALL,		/* delete all files (not supported) */
 	GMODIFY,		/* new contents */
-	GNOTE,			/* nodemodify: ?? (not supported) */
+	GNOTE,			/* notemodify: ?? (not supported) */
 	GRENAME,		/* rename file (not supported) */
 };
 
@@ -153,12 +153,21 @@ fastimport_main(int ac, char **av)
 		{ 0, 0 }
 	};
 	int	rc = 1;
+
 	while ((c = getopt(ac, av, "", lopts)) != -1) {
 		switch (c) {
 		    default: bk_badArg(c, av);
 		}
 	}
 	if (av[optind]) usage();
+	/*
+	 * XXX: if we _only_ provided incremental it would have more
+	 * symmetrical use cases:
+	 *
+	 *   $ bk init bk-repo
+	 *   $ (cd git-repo ; git fast-export) | (cd bk-repo; bk fast-import)
+	 *
+	 */
 	if (isdir(".bk") || isdir("BitKeeper")) {
 		fprintf(stderr, "%s: Incremental imports not done yet\n",
 			av[0]);
@@ -579,7 +588,7 @@ saveInline(opts *op)
 
 /*
  * Try to parse a mode out of 's'. Leave 's' pointing after the
- * consumed portion. Returns an allocated string with the parsed part.
+ * consumed portion. Returns the mode as an enum m.
  */
 private	enum m
 parseMode(opts *op, char **s)
