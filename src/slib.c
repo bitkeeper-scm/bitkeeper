@@ -14838,6 +14838,8 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 			if (d) e = PARENT(s, d);
 		} else if (streq(rev, "MPARENT")) {
 			if (d) e = MERGE(s, d);
+		} else if (streq(rev, "1.0")) {
+			e = TREE(s);
 		} else {
 			e = sccs_findrev(s, rev);
 		}

@@ -196,7 +196,7 @@ gitImport(opts *op)
 	char	*line;
 	int	i;
 	int	blobCount, commitCount;
-	int	rc = 1;
+	int	rc;
 	char	**list = 0;
 	struct {
 		char	*s;			/* cmd */
@@ -265,6 +265,11 @@ gitImport(opts *op)
 	sccs_newchksum(op->cset); /* write new heap */
 	sccs_free(op->cset);
 
+	printf("Rename sfiles...\n");
+	fflush(stdout);
+	rc = system("bk -r names");
+	assert(!rc);
+
 	/*
 	 * Teardown
 	 */
@@ -288,7 +293,7 @@ gitImport(opts *op)
 	hash_free(op->paths);
 	printf("%d marks in hash (%d blobs, %d commits)\n",
 	    blobCount + commitCount, blobCount, commitCount);
-	return (rc);
+	return (0);
 }
 
 /*
@@ -936,7 +941,7 @@ data(opts *op, char *line, FILE *f, int want_sha1)
 {
 	blob	*m;
 	size_t	len, c1, c2;
-	char	*p, *sha1, *file = 0;
+	char	*sha1, *file = 0;
 	int	i, idx, binary;
 	int	closeit = 0;
 	hash_state	md;
@@ -957,7 +962,7 @@ data(opts *op, char *line, FILE *f, int want_sha1)
 	/*
 	 * Initialize vars and get length
 	 */
-	len = strtoul(line + strlen("data "), &p, 10);
+	len = strtoul(line + strlen("data "), 0, 10);
 	binary = 0;
 	if (want_sha1) {
 		idx = register_hash(&sha1_desc);
@@ -1128,15 +1133,15 @@ newFile(opts *op, char *file, commit *cmt, gop *g)
 	sccs_parseArg(s, d0, 'R', "1.0", 0);
 	randomCons(buf+2, s, d0);
 	safe_putenv("BK_RANDOM=%s", buf+2);
-	s->xflags |= X_REQUIRED;
-	XFLAGS(s, d0) |= X_REQUIRED;
+	s->xflags = X_DEFAULT;
+	XFLAGS(s, d0) = X_DEFAULT;
 	SUM_SET(s, d0, almostUnique()); /* reads BK_RANDOM */
 	SORTSUM_SET(s, d0, SUM(s, d0));
 	if (g->m->binary) {
 		buf[0] = 'B';
 		buf[1] = ':';
 		RANDOM_SET(s, d0, buf);
-		sccs_encoding(s, 0, "BAM");
+		s->encoding_in = sccs_encoding(s, 0, "BAM");
 	} else {
 		RANDOM_SET(s, d0, buf+2);
 	}
@@ -1147,8 +1152,11 @@ newFile(opts *op, char *file, commit *cmt, gop *g)
 	PARENT_SET(s, d, d0);
 	sccs_parseArg(s, d, 'P', file, 0);
 	sccs_parseArg(s, d, 'R', "1.1", 0);
+	XFLAGS(s, d) = X_DEFAULT;
 
-	if (sccs_delta(s, DELTA_NEWFILE|DELTA_PATCH|DELTA_CSETMARK,
+	if (BAM(s)) bp_delta(s, d);
+
+	if (sccs_delta(s, SILENT|DELTA_NEWFILE|DELTA_PATCH|DELTA_CSETMARK,
 	    d, 0, 0, 0)) {
 		perror(s->gfile);
 		exit(1);
@@ -1193,7 +1201,7 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 			return (newFile(op, buf, cmt, g));
 		}
 		rc = sccs_get(s, REV(s, p), 0, 0, 0,
-		    GET_SKIPGET|GET_EDIT, 0, 0);
+		    SILENT|GET_SKIPGET|GET_EDIT, 0, 0);
 		assert(!rc);
 		d = sccs_newdelta(s);
 		loadMetaData(s, d, cmt);
@@ -1203,12 +1211,12 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		if (g->mode == MODE_EXE) chmod(s->gfile, 0755);
 		ret.m = g->m;
 
-		rc = sccs_delta(s, DELTA_DONTASK|DELTA_CSETMARK,
+		rc = sccs_delta(s, SILENT|DELTA_DONTASK|DELTA_CSETMARK,
 		    d, 0, 0, 0);
 		assert(!rc);
 	} else if ((g->op == GMODIFY) && (g->mode == MODE_SYMLINK)) {
 		rc = sccs_get(s, REV(s, p), 0, 0, 0,
-		    GET_EDIT, s->gfile, 0);
+		    SILENT|GET_EDIT, s->gfile, 0);
 		assert(!rc);
 
 		d = sccs_newdelta(s);
@@ -1223,14 +1231,14 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		assert(!rc);
 		free(t);
 
-		rc = sccs_delta(s, DELTA_DONTASK|DELTA_CSETMARK,
+		rc = sccs_delta(s, SILENT|DELTA_DONTASK|DELTA_CSETMARK,
 		    d, 0, 0, 0);
 		assert(!rc);
 		ret.m = g->m;
 	} else if (g->op == GMODIFY) {
 		if (td.m) {
 			rc = sccs_get(s, REV(s, p), 0, 0, 0,
-			    GET_SKIPGET|GET_EDIT, 0, 0);
+			    SILENT|GET_SKIPGET|GET_EDIT, 0, 0);
 			assert(!rc);
 
 			sprintf(buf, "bk ndiff -n '%s' '%s'",
@@ -1240,7 +1248,7 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 			assert(diffs);
 		} else {
 			rc = sccs_get(s, REV(s, p), 0, 0, 0,
-			    GET_EDIT, s->gfile, 0);
+			    SILENT|GET_EDIT, s->gfile, 0);
 			assert(!rc);
 			diffs = 0;
 		}
@@ -1249,7 +1257,7 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, 1);
 		SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, 1);
 
-		rc = sccs_delta(s, DELTA_DONTASK|DELTA_CSETMARK,
+		rc = sccs_delta(s, SILENT|DELTA_DONTASK|DELTA_CSETMARK,
 		    d, 0, diffs, 0);
 		assert(!rc);
 		if (diffs) pclose(diffs);
@@ -1258,7 +1266,7 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		assert(g->op = GDELETE);
 
 		rc = sccs_get(s, REV(s, p), 0, 0, 0,
-		    GET_SKIPGET|GET_EDIT, 0, 0);
+		    SILENT|GET_SKIPGET|GET_EDIT, 0, 0);
 		assert(!rc);
 
 		d = sccs_newdelta(s);
@@ -1272,7 +1280,8 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		COMMENTS_SET(s, d, t);
 		free(t);
 		diffs = fmem();
-		rc = sccs_delta(s, DELTA_DONTASK|DELTA_CSETMARK|DELTA_FORCE,
+		rc = sccs_delta(s,
+		    SILENT|DELTA_DONTASK|DELTA_CSETMARK|DELTA_FORCE,
 		    d, 0, diffs, 0);
 		assert(!rc);
 		fclose(diffs);
@@ -1319,12 +1328,12 @@ newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
 		return (ret);
 	}
 	ret = m[0];
-	s = ret.d;
+	s = ret.s;
 	ret.m = 0;
 
 	if (!g || (g->op == GMODIFY)) {
 		rc = sccs_get(s, REV(s, m[1].d), REV(s, m[0].d), 0, 0,
-		    GET_EDIT, s->gfile, 0);
+		    SILENT|GET_EDIT, s->gfile, 0);
 		assert(!rc);
 
 		ret.d = d = sccs_newdelta(s);
@@ -1339,7 +1348,7 @@ newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
 			PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, m[0].d);
 			SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, m[0].d);
 		}
-		rc = sccs_delta(s, DELTA_DONTASK|DELTA_CSETMARK,
+		rc = sccs_delta(s, SILENT|DELTA_DONTASK|DELTA_CSETMARK,
 		    d, 0, 0, 0);
 		assert(!rc);
 		s->state &= ~S_PFILE;
@@ -1366,18 +1375,23 @@ mkChangeSet(opts *op)
 	commit	*cmt = 0;
 
 	printf("Writing new ChangeSet file...\n");
+	fflush(stdout);
 	EACH(op->clist) {
 		cmt = op->clist[i];
 
 		d = sccs_newdelta(s);
-		FLAGS(s, d) |= D_INARRAY;
+		FLAGS(s, d) |= D_INARRAY|D_CSET;
 		loadMetaData(s, d, cmt);
-		XFLAGS(s, d) |= X_REQUIRED;
-		PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, 1);
-		SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, 1);
+		XFLAGS(s, d) = XFLAGS(s, 2);
+		CSETFILE_SET(s, d, CSETFILE(s, 2));
+		PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, 2);
+		SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, 2);
+		MODE_SET(s, d, MODE(s, 2));
+
 		ADDED_SET(s, d, nLines(cmt->weave)/2);
 		SAME_SET(s, d, 1);
-		MODE_SET(s, d, MODE(s, 2));
+		R0_SET(s, d, 1);
+		R1_SET(s, d, cmt->ser + 1);
 		COMMENTS_SET(s, d, cmt->comments);
 		WEAVE_SET(s, d, s->heap.len);
 		addArrayV(&cmt->weave, 0);
@@ -1396,5 +1410,13 @@ mkChangeSet(opts *op)
 		}
 		TABLE_SET(s, d);
 	}
+	printf("Renumber...\n");
+	fflush(stdout);
+	sccs_renumber(s, 0);
+
+	printf("Generate checksums...\n");
+	fflush(stdout);
+	cset_resum(s, 0, 1, 0, 0);
+
 	return (0);
 }
