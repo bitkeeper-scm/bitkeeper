@@ -93,6 +93,7 @@ struct commit {
 	int	ser;		/* commit order */
 	char	*mark;
 	time_t	when;		/* commit time */
+	u32	fudge;		/* time fudge */
 	char	*tz;		/* timezone  */
 	who	*author;	/* git's author */
 	who	*committer;	/* git's committer */
@@ -194,10 +195,11 @@ private int
 gitImport(opts *op)
 {
 	char	*line;
-	int	i;
+	int	i, j;
 	int	blobCount, commitCount;
 	int	rc;
 	char	**list = 0;
+	commit	*cmt;
 	struct {
 		char	*s;			/* cmd */
 		char	*(*fn)(opts *, char *);	/* handler */
@@ -250,9 +252,29 @@ gitImport(opts *op)
 			break;
 		}
 	}
+	// XXX should time sort clist constrained by parents here
 
+	// set time fudge
+	EACH(op->clist) {
+		commit	*p;
+		long	tdiff;
+
+		cmt = op->clist[i];
+		EACH_INDEX(cmt->parents, j) {
+			p = cmt->parents[j];
+			if ((tdiff = ((long)p->when - (long)cmt->when)) >= 0) {
+				/* parent is younger than me */
+
+				++tdiff;
+				cmt->when += tdiff;
+				cmt->fudge += tdiff;
+			}
+		}
+	}
+
+	/* get sorted unique list of pathnames */
 	EACH_HASH(op->paths) list = addLine(list, (char *)op->paths->kptr);
-	sortLines(list, string_sortrev); /* deeper first */
+	sortLines(list, 0);
 
 	op->cset = sccs_init(CHANGESET, 0);
 	EACH(list) {
@@ -860,11 +882,7 @@ setup(opts *op)
 {
 	/* XXX seems like this should be tied to the oldest cset. */
 
-	putenv("BK_DATE_TIME_ZONE=1970-01-01 01:00:00-0");
-	putenv("BK_NO_TRIGGERS=1");
-	/* safe_putenv("BK_USER=%s", op->user); */
-	/* safe_putenv("BK_HOST=%s", op->host); */
-	if (systemf("bk init")) {
+	if (systemf("bk '-?BK_DATE_TIME_ZONE=1970-01-01 01:00:00-0' init")) {
 		perror("bk init");
 		exit(1);
 	}
@@ -1079,6 +1097,7 @@ loadMetaData(sccs *s, ser_t d, commit *cmt)
 
 	USERHOST_SET(s, d, cmt->committer->email);
 	DATE_SET(s, d, cmt->when);
+	DATE_FUDGE_SET(s, d, cmt->fudge);
 	ZONE_SET(s, d, cmt->tz); //XXX git -0400 bk -04:00 (but both work)
 
 	// fudge
@@ -1102,7 +1121,6 @@ newFile(opts *op, char *file, commit *cmt, gop *g)
 	char	buf[MAXLINE];
 
 	assert(g->op == GMODIFY);
-
 	ret.m = g->m;
 
 	sprintf(buf, "%d", ++op->filen);
@@ -1131,7 +1149,8 @@ newFile(opts *op, char *file, commit *cmt, gop *g)
 	loadMetaData(s, d0, cmt);
 	sccs_parseArg(s, d0, 'P', file, 0);
 	sccs_parseArg(s, d0, 'R', "1.0", 0);
-	randomCons(buf+2, s, d0);
+	// XXX want randomCons(buf+2, s, d0);
+	randomBits(buf+2);
 	safe_putenv("BK_RANDOM=%s", buf+2);
 	s->xflags = X_DEFAULT;
 	XFLAGS(s, d0) = X_DEFAULT;
@@ -1209,6 +1228,7 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, 1);
 		fileLink(g->m->file, s->gfile);
 		if (g->mode == MODE_EXE) chmod(s->gfile, 0755);
+		check_gfile(s, 0);
 		ret.m = g->m;
 
 		rc = sccs_delta(s, SILENT|DELTA_DONTASK|DELTA_CSETMARK,
@@ -1257,7 +1277,8 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, 1);
 		SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, 1);
 
-		rc = sccs_delta(s, SILENT|DELTA_DONTASK|DELTA_CSETMARK,
+		rc = sccs_delta(s,
+		    SILENT|DELTA_DONTASK|DELTA_CSETMARK|DELTA_FORCE,
 		    d, 0, diffs, 0);
 		assert(!rc);
 		if (diffs) pclose(diffs);
@@ -1279,6 +1300,11 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		t = aprintf("Delete: %s\n", PATHNAME(s, p));
 		COMMENTS_SET(s, d, t);
 		free(t);
+		if (BAM(s)) {
+			// XXX gfile doesn't matter here, we are deleting
+			// but better is probably to copy my parent's file
+			touch(s->gfile, 0666);
+		}
 		diffs = fmem();
 		rc = sccs_delta(s,
 		    SILENT|DELTA_DONTASK|DELTA_CSETMARK|DELTA_FORCE,
@@ -1305,6 +1331,7 @@ newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
 {
 	sdelta	ret;
 	sccs	*s;
+	char	*t, *rel;
 	ser_t	d;
 	int	i, rc;
 	char	buf[MAXPATH];
@@ -1320,7 +1347,7 @@ newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
 		sccs_free(m[i].s); // XXX parallel deletes
 
 		if (g) {
-			ret = newDelta(op, m[i], cmt, g);
+			ret = newDelta(op, m[!i], cmt, g);
 		} else {
 			ret = m[!i];	/* older sfile */
 			ret.m = 0;
@@ -1336,15 +1363,23 @@ newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
 		    SILENT|GET_EDIT, s->gfile, 0);
 		assert(!rc);
 
-		ret.d = d = sccs_newdelta(s);
+		d = sccs_newdelta(s);
 		loadMetaData(s, d, cmt);
 
 		if (g) {
-			assert(PATHNAME(s, m[0].d) == PATHNAME(s, m[1].d));
+			/*
+			 * if we have data, then it must be the original
+			 * pathname.
+			 */
+			PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, 1);
+			SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, 1);
 
 			fileLink(g->m->file, s->gfile);
+			if (g->mode == MODE_EXE) chmod(s->gfile, 0755);
+			check_gfile(s, 0);
 			ret.m = g->m;
 		} else {
+			/* merge with g==0, must be merging deletes */
 			PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, m[0].d);
 			SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, m[0].d);
 		}
@@ -1353,10 +1388,28 @@ newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
 		assert(!rc);
 		s->state &= ~S_PFILE;
 	} else if (g->op == GDELETE) {
-		assert(0);
+		rc = sccs_get(s, REV(s, m[1].d), REV(s, m[0].d), 0, 0,
+		    SILENT|GET_EDIT, s->gfile, 0);
+		assert(!rc);
+		d = sccs_newdelta(s);
+		loadMetaData(s, d, cmt);
+		t = sccs_rmName(s);
+		rel = proj_relpath(s->proj, t);
+		free(t);
+		PATHNAME_SET(s, d, rel);
+		free(rel);
+		rc = sccs_delta(s,
+		    SILENT|DELTA_DONTASK|DELTA_CSETMARK|DELTA_FORCE,
+		    d, 0, 0, 0);
+		assert(!rc);
+		s->state &= ~S_PFILE;
+
+		ret.m = 0;
 	} else {
 		assert(0);
 	}
+	ret.d = d;
+
 	/* record the cset weave */
 	assert(ret.rk);
 	addArrayV(&cmt->weave, ret.rk);
