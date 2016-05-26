@@ -10531,7 +10531,9 @@ out:		sccs_abortWrite(s);
 		first = n0 = 1;
 	}
 	assert(n);
-	if (!nodefault && buf[0]) pathArg(s, n, buf); /* pathname */
+	if (!nodefault && !HAS_PATHNAME(s, n) && buf[0]) {
+		pathArg(s, n, buf); /* pathname */
+	}
 	n = sccs_dInit(n, 'D', s, nodefault);
 
 	/*
@@ -13922,7 +13924,7 @@ dot0(sccs *s, ser_t d)
  */
 int
 sccs_delta(sccs *s,
-    	u32 flags, ser_t prefilled, FILE *init, FILE *diffs, char **syms)
+	u32 flags, ser_t prefilled, FILE *init, FILE *diffs, char **syms)
 {
 	int	i, free_syms = 0, error = 0;
 	ser_t	d = 0, e, p, n = 0;
@@ -13942,10 +13944,12 @@ sccs_delta(sccs *s,
 out:
 		if (prefilled) sccs_freedelta(s, prefilled);
 		if (error) sccs_abortWrite(s);
-		if (diffs) fclose(diffs);
 		free_pfile(&pf);
-		if (free_syms) freeLines(syms, free); 
-		if (tmpfile  && !streq(tmpfile, DEVNULL_WR)) unlink(tmpfile);
+		if (free_syms) freeLines(syms, free);
+		if (tmpfile) {
+			if (diffs) fclose(diffs);
+			unless (streq(tmpfile, DEVNULL_WR)) unlink(tmpfile);
+		}
 		debug((stderr, "delta returns %d\n", error));
 		return (error);
 	}
@@ -14831,6 +14835,8 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 			if (d) e = PARENT(s, d);
 		} else if (streq(rev, "MPARENT")) {
 			if (d) e = MERGE(s, d);
+		} else if (streq(rev, "1.0")) {
+			e = TREE(s);
 		} else {
 			e = sccs_findrev(s, rev);
 		}

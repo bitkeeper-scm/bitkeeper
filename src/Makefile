@@ -235,7 +235,7 @@ OBJ =	bkver.o cmd.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	dataheap.o dbfile.o delta.o diff.o diffs.o diffsplit.o dspec.o \
 	export.o \
-	fast-export.o features.o findmerge.o \
+	fast-import.o fast-export.o features.o findmerge.o \
 	find.o findcset.o fixtool.o fsl.o fslayer.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o gettemp.o getuser.o gfiles.o glob.o \

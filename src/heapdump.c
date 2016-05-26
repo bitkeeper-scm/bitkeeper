@@ -215,7 +215,7 @@ delta_print(sccs *s, ser_t d)
 	HPRINT(SYMLINK);
 	HPRINT(CSETFILE);
 #undef	HPRINT
-	if (HAS_WEAVE(s, d)) printf("weave: yes\n");
+	if (HAS_WEAVE(s, d)) printf("wptr: yes\n");
 	if (HAS_COMMENTS(s, d)) printf("comments: %s", COMMENTS(s, d));
 }
 

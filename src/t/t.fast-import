@@ -1,0 +1,499 @@
+# Copyright 2015-2016 BitMover, Inc
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Skip test if no git
+test -x "`bk which git`" || exit 0
+
+function get_git_branch {
+	git branch | grep ^\* | sed 's/^\* //g'
+}
+
+# silly prng that returns 1-20 in a predictable sequence
+function rand {
+	shuf -i1-20 -n1
+}
+
+function rand_diffs {
+	j=1
+	while [ $j -le 20 ]
+	do    r=`rand`
+	      if [ $r -lt 4 ]
+	      then rm -f file$j
+	      else rand > file$j
+	      fi
+	      j=`expr $j + 1`
+	done
+}
+
+commercial bk-repo
+cd ..
+
+set -e
+
+echo $N Creating a git tree..........................................$NL
+# The idea here is to create a single git repo
+# that hits all the corner cases.
+mkdir git-repo
+cd git-repo
+git init $Q
+git config user.name bk
+git config user.email bk@bitkeeper.bk
+
+# create some files
+cat "`bk bin`"/slib.c > c-code.txt
+echo "some contents" > text-file-move
+echo "afile" > afile
+echo "text" > text-to-binary
+printf "foo\0bar" > binary-to-text
+printf "foo\0bar" > binary
+echo "delete me" > delete-me
+ln -s binary symlink
+echo "perms test" > exec-perms
+chmod 755 exec-perms
+git add -A
+git commit $Q -m"`get_git_branch`: create all files"
+BASE=`git rev-parse HEAD`
+#echo; git ls-tree -r --full-tree HEAD
+git checkout-index -a --prefix=../bk-repo/
+cd ../bk-repo
+bk sfiles -x | bk new $Q -
+bk commit -y"GIT: $BASE" $Q
+cd ../git-repo
+
+# Make a commit that hits all the different
+# diff-tree cases
+echo "new file" > a-new-file
+cp c-code.txt c-code.txt.copy
+mv text-file-move text-file-move-2
+mv text-to-binary tmp
+mv binary-to-text text-to-binary
+mv tmp binary-to-text
+rm delete-me
+rm symlink
+ln -s text-to-binary symlink
+chmod 644 exec-perms
+git add -A
+git commit $Q -m"`get_git_branch`: a complicated cset"
+#echo; git diff-tree -r -M -C HEAD^ HEAD
+
+# turn the symlink into text
+rm -f symlink
+echo "now it's text" > symlink
+git add symlink
+git commit $Q -m"`get_git_branch`: turn 'symlink' into a plain file"
+
+# Move to a branch and create some conflicting
+# changes
+git checkout $Q -b branch1
+sed 's|private|static|g' < c-code.txt > tmp
+mv tmp c-code.txt
+echo "stuff" > del-create-conf
+git add -A
+git commit $Q -m"`get_git_branch`: modify 'c-code.txt', create 'del-create-conf'"
+
+# put a few deltas that get reverted
+# this verifies that the merge closes
+# all the tips, even those not reported by
+# diff-tree
+echo "change" > afile
+git add -A
+git commit $Q -m"`get_git_branch`: modify 'afile'"
+echo "afile" > afile
+git add -A
+git commit $Q -m"`get_git_branch`: modify, then revert 'afile'"
+
+# Move back to master branch
+git checkout $Q -f master
+echo "added file" > added-file
+echo "a change" > afile
+echo "stuff" > del-create-conf
+git add -A
+git commit $Q -m"`get_git_branch`: create 'added-file', create 'del-create-conf'"
+
+# remove the file we just created
+git rm $Q -f del-create-conf
+git commit $Q -m"`get_git_branch`: delete 'del-create-conf'"
+
+# null merge
+git checkout $Q -f branch1
+git merge $Q -m"`get_git_branch`: merge branch 'master'" master
+STOP=`git log -1 --pretty=%H HEAD`
+
+# fast-forward
+git checkout $Q -f master
+git merge $Q -m"`get_git_branch`: fast-forward to 'branch1'" branch1
+
+# # OCTO: prepare for an octopuss merge
+# git checkout $Q -f master
+# echo "delete" > deleted-in-branch
+# echo "master" > modified-in-branch
+# git add -A
+# git commit $Q -m"Prepare master for octomerge"
+# BRANCHES=
+# for i in 1 2 3 4 5 6 7
+# do
+# 	BRANCHES="$BRANCHES o$i"
+# 	git checkout -q -b o$i
+# 	rm -f deleted-in-branch
+# 	echo "o" > modified-in-branch
+# 	echo "o$i" > added-in-o$i
+# 	git add -A
+# 	git commit $Q -m"cset in branch o$i"
+# 	git checkout $Q -f master
+# done
+# # Merge all the parallel branches at once
+# git merge $Q -m "Octomerge that automerges" \
+# 	$BRANCHES >"$HERE/ERR" 2>&1 || fail
+
+# try some unusual file names
+git checkout $Q -f master
+echo "contents" > "a file with spaces"
+echo "stuff" > "a+file+with+pluses"
+# BUG 2: unicode file names don't work
+echo "Märchen" > "Märchen"
+git add -A
+git commit $Q -m"Special files tests"
+
+# Test a case where the mparent is in the
+# history of the parent (in a branch)
+git checkout $Q -f master
+echo "file in GCA" > a-new-file
+git add a-new-file
+git commit $Q -m"add a-new-file"
+SHA=`git log -1 --pretty=%H HEAD`
+echo "different" > a-different-file
+git add a-different-file
+git commit $Q -m"don't change a-new-file in master"
+git checkout $Q -fb branch100 $SHA
+echo "modify in branch" > a-new-file
+git add a-new-file
+git commit $Q -m"modify in branch"
+git checkout $Q -f master
+git merge $Q branch100
+
+# Test a file deleted in master, modified in branch
+git checkout $Q -f master
+echo "contents" > del-master-mod-branch
+git add del-master-mod-branch
+git commit $Q -m"del-master-mod-branch"
+SHA=`git log -1 --pretty=%H HEAD`
+git rm $Q del-master-mod-branch
+git commit $Q -m"del del-master-mod-branch"
+echo "another file" > another-file
+git add another-file
+git commit $Q -m"another-file"
+git checkout $Q -fb branch150 $SHA
+echo "more stuf" >> del-master-mod-branch
+git add del-master-mod-branch
+git commit $Q -m"mod del-master-mod-branch"
+git checkout $Q -f master
+git merge $Q branch150 >$DEV_NULL 2>&1 || true # this gives a conflict
+git checkout $Q -f branch150 -- del-master-mod-branch
+git add del-master-mod-branch
+git commit $Q -m"merge del-master-mod-branch"
+
+# # Test an octomerge with a file that is not touched
+# # in the parent.
+# git checkout $Q -f master
+# echo "stuff" > mod-in-octo
+# git add mod-in-octo
+# git commit $Q -m"GCA"
+# SHA=`git log -1 --pretty=%H HEAD`
+# for branch in octo1 octo2
+# do
+# 	git checkout $Q -fb $branch $SHA
+# 	echo "no conflicts" > mod-in-octo
+# 	git add mod-in-octo
+# 	git commit $Q -m"mod-in-octo branch $branch"
+# done
+# # octomerge
+# git checkout $Q -f master
+# echo "some other file" > other-file
+# git add other-file
+# git commit $Q -m"other-file in master"
+# git merge $Q -m"Octomerge" octo1 octo2 >"$HERE/ERR" 2>&1 || fail -f "$HERE/ERR"
+# echo "change" > mod-in-octo
+# git add mod-in-octo
+# git commit $Q -m"mod-in-octo after octomerge"
+
+# do a symlink conflict
+ln -s master symlink-conflict
+git add symlink-conflict
+git commit $Q -m"symlink-conflict"
+
+git checkout $Q -fb branch200
+rm -f symlink-conflict
+ln -s branch symlink-conflict
+git add symlink-conflict
+git commit $Q -m"symlink-conflict"
+
+git checkout $Q -f master
+git merge $Q --no-commit branch200 > "$HERE/ERR" 2>&1
+rm -f symlink-conflict
+ln -s master symlink-conflict
+git add symlink-conflict
+git commit $Q -m"symlink conflict"
+
+# do a create/create conflict
+git checkout $Q -fb branch250
+echo "same contents" > create-create
+git add create-create
+git commit $Q -m"create-create in branch250"
+
+# create-create
+git checkout $Q -f master
+sleep 1
+echo "same contents" > create-create
+git add create-create
+git commit $Q -m"create-create in master"
+
+git merge $Q branch250
+
+# two deleted files with same basename
+git checkout $Q -f master
+mkdir foo
+echo "same contents" > foo/same-name
+mkdir bar
+echo "same contents" > bar/same-name
+git add foo/same-name bar/same-name
+git commit $Q -m"add {foo,bar}/same-name"
+# delete them
+git rm -f foo/same-name >"$HERE/ERR" 2>&1
+git rm -f bar/same-name >"$HERE/ERR" 2>&1
+git commit $Q -m"deleted {foo,bar}/same-name"
+
+# two deleted files, same basename, in parallel
+mkdir -p foo
+echo "same content again" > foo/same-name
+mkdir -p bar
+echo "same content again" > bar/same-name
+git add foo/same-name bar/same-name
+git commit $Q -m"re added {foo,bar}/same-name"
+SHA=`git log -1 --pretty=%H HEAD`
+# delete one in master
+git rm -f foo/same-name >"$HERE/ERR" 2>&1
+git commit $Q -m"del foo/same-name in master"
+# delete the other in branch
+git checkout $Q -fb branch300 $SHA
+git rm -f bar/same-name >"$HERE/ERR" 2>&1
+git commit $Q -m"del bar/same-name in branch300"
+# merge
+git checkout $Q -f master
+git merge $Q branch300 >"$HERE/ERR" 2>&1 || fail -f ERR merge failed
+
+# a rename in the merge
+SHA=`git log -1 --pretty=%H HEAD`
+# some unrelated changes to force a merge
+echo "unrelated" > unrelated
+git add unrelated
+git commit $Q -m"unrelated changes"
+# on a branch, create a file
+git checkout $Q -fb branch350 $SHA
+echo "some content" > merge-rename
+git add merge-rename
+git commit $Q -m"merge rename"
+# in the merge, rename it
+git checkout $Q -f master
+git merge $Q --no-commit branch350 >/dev/null 2>&1
+mv merge-rename merge-rename-aside
+git rm $Q merge-rename
+git add merge-rename-aside
+git commit $Q -m"moved aside in merge"
+# now add the original
+test -f merge-rename && fail "pathname should be free"
+echo "some content" > merge-rename
+git add merge-rename
+git commit $Q -m"add merge-rename"
+
+# a rename in a merge that stomps on an existing file
+SHA=`git log -1 --pretty=%H HEAD`
+echo "content in master (2)" > rename-stomps
+git add rename-stomps
+git commit $Q -m"rename-stomps M in master"
+git checkout $Q -fb branch400 $SHA
+echo "content in branch" > rename-in-branch
+git add rename-in-branch
+git commit $Q -m"rename-in-branch"
+git checkout $Q -f master
+git merge $Q --no-commit branch400 > /dev/null 2>&1
+mv rename-in-branch rename-stomps
+git rm $Q rename-in-branch
+git add rename-stomps
+git commit $Q -m"rename-stomps renamed in merge"
+
+
+# merge delete w re-add & a new file
+echo file1 > powerdomain.h
+git add -A
+git commit $Q -m"add a file"
+git checkout $Q -fb branch450
+mv powerdomain.h newpd.h
+echo totally-different > newpd.h
+git add -A
+git commit $Q -m'mv different'
+echo file1 > newpd.h
+git add -A
+git commit $Q -m'make same'
+git checkout $Q -f master
+mv powerdomain.h newpd.h
+git add -A
+git commit $Q -m'mv same'
+git merge $Q branch450
+
+# merge rename with delete
+echo file1 > clock-dummy.c
+git add clock-dummy.c
+git commit $Q -m"add a file"
+git checkout $Q -fb branch500
+echo 1 > a
+echo 2 > b
+echo 3 > c
+git add -A
+git commit $Q -m'rm'
+git checkout $Q -f master
+rm clock-dummy.c
+git add -A
+git commit $Q -m"rm2"
+echo file1 > scm-boot.c
+git add -A
+git commit $Q -m'add back'
+git merge $Q --no-commit branch500 >/dev/null 2>&1
+echo file1 > scm-boot.c
+#rm clock-dummy.c
+git add -A
+git commit $Q -m'resolve del/rename conflict'
+
+# try some random csets
+rand_diffs
+git add -A
+git commit $Q -mbase
+i=1
+while [ $i -le 16 ]
+do	git checkout $Q -b branch550.$i master
+	rand_diffs
+	git add -A
+	git commit $Q -m"`get_git_branch`: rand"
+	i=`expr $i + 1`
+done
+i=1
+while [ $i -le 16 ]
+do	git checkout $Q branch550.$i
+	git merge $Q --no-commit -s ours branch550.`expr $i + 1` >/dev/null 2>&1
+	rand_diffs
+	git add -A
+	git commit $Q -m"`get_git_branch`: merge1"
+	i=`expr $i + 2`
+done
+i=1
+while [ $i -le 16 ]
+do	git checkout $Q branch550.$i
+	git merge $Q --no-commit -s ours branch550.`expr $i + 2` >/dev/null 2>&1
+	rand_diffs
+	git add -A
+	git commit $Q -m"`get_git_branch`: merge2"
+	i=`expr $i + 4`
+done
+i=1
+while [ $i -le 16 ]
+do	git checkout $Q branch550.$i
+	git merge $Q --no-commit -s ours branch550.`expr $i + 4` >/dev/null 2>&1
+	rand_diffs
+	git add -A
+	git commit $Q -m"`get_git_branch`: merge4"
+	i=`expr $i + 8`
+done
+git checkout $Q branch550.1
+git merge $Q --no-commit -s ours branch550.9 >/dev/null 2>&1
+rand_diffs
+git add -A
+git commit $Q -m"`get_git_branch`: merge8"
+git checkout $Q master
+git merge $Q branch550.1
+
+#
+# To see what the git tree looks like, uncomment the following line.
+#printf "\n--- GIT TREE ---\n"; git log --oneline --graph; printf -- "---\n"
+#
+
+# GET the list of wanted revs
+git rev-list --topo-order --reverse master > "$HERE/WANT"
+echo OK
+
+
+echo $N Parse fast-export ...........................................$NL
+git fast-export --all > ../git-repo.fast-export
+
+cd ..
+mkdir import
+cd import
+bk fast-import < ../git-repo.fast-export > OUT || fail -f OUT
+bk -r check -a || fail
+echo OK
+
+echo $N Compare repos using fast export ............................$NL
+bk fast-export --branch=bkcmp --no-bk-keys > ../import.fast-export || fail
+cd ../git-repo
+git fast-import < ../import.fast-export || fail
+
+git log --pretty="tree: %T%ncommitter: %cn <%ae>%ndate: %cD%n%B" --raw bkcmp > BK.log
+git log --pretty="tree: %T%ncommitter: %cn <%ae>%ndate: %cD%n%B" --raw master > GIT.log
+diff -u BK.log GIT.log
+
+exit 1
+
+
+exit 0
+########################################################################
+########################################################################
+########################################################################
+
+echo $N Test --quiet mode............................................$NL
+rm -rf .bk BitKeeper
+bk git2bk --quiet --user=bk --host=bk_regression.bk --verify || fail
+bk changes -fnd'$each(:C:){(:C:)\n}' | grep GIT: > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
+echo OK
+
+## Incremental not done yet
+exit 0
+
+echo $N Test incremental.............................................$NL
+git checkout -q -f master
+echo "more stuff" >> afile
+git add afile
+git commit $Q -m"more content"
+git log -1 --pretty="GIT: %H" HEAD >> ../WANT
+bk git2bk --quiet --verify || fail -f GOT
+bk changes -fnd'$each(:C:){(:C:)\n}' | grep GIT: > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
+echo OK
+
+echo $N Test submodule commit........................................$NL
+cd "$HERE"
+mkdir git-sub
+cd git-sub
+git init $Q
+echo FILE > bfile
+git add bfile
+git commit $Q -m"added file"
+cd ../git-repo
+git submodule --quiet add "$HERE/git-sub" submodule >$DEV_NULL
+git commit $Q -m"added submodule"
+bk git2bk --verify >GOT 2>&1 || fail -f GOT
+bk changes -fnd'$each(:C:){(:C:)\n}' | grep GIT: > "$HERE/GOT"
+# WANT already set from last time ; there should be no new activity
+cd ..
+cmpfiles WANT GOT
+echo OK
+

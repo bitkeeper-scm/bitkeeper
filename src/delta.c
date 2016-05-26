@@ -435,6 +435,7 @@ delta_main(int ac, char **av)
 		dangling = MONOTONIC(s) && DANGLING(s, sccs_top(s));
 		if (dangling) df |= DELTA_MONOTONIC;
 		rc = sccs_delta(s, df, d, init, diffs, 0);
+		if (diffs) fclose(diffs);
 		if (rc == -4) {	/* interrupt in comment prompt */
 			errors |= 4;
 			break;
