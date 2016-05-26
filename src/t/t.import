@@ -405,7 +405,7 @@ echo $N Test import of a patch file which deletes a file ............$NL
 cd "$HERE/project"
 bk export ../export
 cd ..
-cp -rp export export2
+cp -R export export2
 rm -f export2/src/foo.c
 bk diff -Nru export export2 > test_patch || : # legitimately exits 1
 ( echo patch; echo no ) | bk import test_patch project > import.out 2>&1
@@ -438,7 +438,7 @@ echo OK
 
 echo $N Verify checkout:get with patch import .......................$NL
 cd "$HERE"
-cp -rp import1 import2
+cp -R import1 import2
 echo bar >> import2/src/foo.c
 echo baz > import2/src/baz.c
 bk diff -Nur import1 import2 > patch || : # legitimately exits 1
@@ -492,7 +492,7 @@ cd "$HERE"
 # Finally, there can be no sfiles in the bk _find list, just gfiles and 
 # symlinks of SCCS dirs.  This bypasses a non-sccs file stripper in
 # import.sh:validate_SCCS()
-cp -r import_sccs import_sccs_linked
+cp -R import_sccs import_sccs_linked
 cd import_sccs_linked/src
 test -d SCCS || { echo fix blobbed test; exit 1; }
 rm -fr SCCS
@@ -971,14 +971,14 @@ fi # skipped RCS/CVS tests
 test -d $TESTDATA/import_data && {
 echo $N Multiple parallel imports ...................................$NL
 cd "$HERE"
-cp -rp $TESTDATA/import_data import_data
+cp -R $TESTDATA/import_data import_data
 commercial import
 cd ..
 test `bk gethost -r` = freebsd.bitkeeper.com && ulimit -u 128
 test `bk gethost -r` = openbsd.bitkeeper.com && ulimit -p 128
 LIST="1 2 3 4 5 6"
 for i in $LIST
-do	cp -rp import import$i
+do	cp -R import import$i
 done
 mv import import0
 for i in 0 $LIST

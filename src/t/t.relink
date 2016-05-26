@@ -110,7 +110,7 @@ grep -q "relink: unable to write lock clone" OUT || {
 echo OK
 
 echo $N Try to relink with read lock in the to repo, should work ....$NL
-cp -rp project relink
+cp -R project relink
 L=`cd project ; bk lock -rt`
 bk relink relink project 2>OUT || {
 	bk _kill $L

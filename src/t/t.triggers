@@ -674,7 +674,7 @@ echo OK
 # Make a post-incoming trigger be checked in, see if clone runs it.
 echo $N Test post-incoming in a clone ...............................$NL
 cd "$HERE"
-cp -rp project parent
+cp -R project parent
 cd parent
 rm -f BitKeeper/triggers/*
 cat > BitKeeper/triggers/post-incoming <<EOF
@@ -1447,7 +1447,7 @@ cd "$HERE"
 echo "OK"
 
 echo $N Make sure delta fails with pre-delta trigger ................$NL
-cp -rp "$HERE/project" "$HERE/delta"
+cp -R "$HERE/project" "$HERE/delta"
 cd "$HERE/delta/BitKeeper/triggers"
 cat > pre-delta <<EOF
 #!/bin/bash
@@ -1504,7 +1504,7 @@ fi
 
 echo $N Test that a pre-delta trigger will work from command line ...$NL
 cd "$HERE"
-cp -rp delta aaron
+cp -R delta aaron
 cd "$HERE/aaron/BitKeeper/triggers"
 cat > pre-delta <<EOF
 #!/bin/bash
@@ -2068,7 +2068,7 @@ for f in $TRIGS; do cp X $f; done
 cd ..
 rm -fr "$BK_DOTBK"/BitKeeper
 mkdir "$BK_DOTBK/BitKeeper" || fail
-cp -r triggers "$BK_DOTBK"/BitKeeper
+cp -R triggers "$BK_DOTBK"/BitKeeper
 # Okay, triggers created and path set up.  Now fire pre-delta many times:
 cd triggers
 (

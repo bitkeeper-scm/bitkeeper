@@ -414,7 +414,7 @@ echon "No newline at end" > foo.d/FIELDC
 echo -e "Binary\002Field" > foo.d/BINARY_FIELD
 echo "@@@fields with lots of @'s" > foo.d/fff
 touch foo.d/NULL
-cp -rp foo.d t
+cp -R foo.d t
 bk dbimplode $Q -dfoo.d foo
 test -f foo || fail
 test -d foo.d && fail
