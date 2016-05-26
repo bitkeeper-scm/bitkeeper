@@ -724,6 +724,7 @@ proj_reset(project *p)
 		proj_flush(p);
 		FREE(p->rootkey);
 		FREE(p->md5rootkey);
+		FREE(p->syncroot);
 		FREE(p->comppath);
 		FREE(p->repoID);
 		FREE(p->tipkey);

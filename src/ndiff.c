@@ -212,11 +212,6 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 
 	unless (diff_cleanOpts(dop)) return (2);
 
-	if (out) {
-		fout = (streq(out, "-")) ? stdout : fopen(out, "w");
-		unless (fout) return (2);
-	}
-
 	fop.dop = *dop;
 	fop.diffgap = cfg_int(0, CFG_DIFFGAP);
 
@@ -236,6 +231,11 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 	    (sb[DF_LEFT].st_ino == sb[DF_RIGHT].st_ino)) {
 		/* no diffs */
 		return (0);
+	}
+
+	if (out) {
+		fout = (streq(out, "-")) ? stdout : fopen(out, "w");
+		unless (fout) return (2);
 	}
 
 	/* Load the two files into memory. */

@@ -13688,7 +13688,7 @@ sccs_read_pfile(sccs *s, pfile *pf)
 	char	*pfile;
 	int	fsize;
 	char	*iLst, *xLst;
-	char	*mRev = malloc(MAXREV+1);
+	char	*mRev;
 	char	c1 = 0, c2 = 0, c3 = 0;
 	int	e;
 	char	oldrev[MAXREV], newrev[MAXREV];
@@ -13713,6 +13713,7 @@ sccs_read_pfile(sccs *s, pfile *pf)
 	fsize = strlen(pfile);
 	iLst = malloc(fsize);
 	xLst = malloc(fsize);
+	mRev = malloc(MAXREV+1);
 	iLst[0] = xLst[0] = 0;
 	e = sscanf(pfile, "%s %s %s %s %s -%c%s -%c%s -%c%s",
 	    oldrev, newrev, user, date, time, &c1, iLst, &c2, xLst,
