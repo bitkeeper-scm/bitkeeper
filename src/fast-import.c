@@ -1230,6 +1230,16 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		if (g->mode == MODE_EXE) chmod(s->gfile, 0755);
 		check_gfile(s, 0);
 		ret.m = g->m;
+		switch(g->mode) {
+		    case MODE_FILE:
+			MODE_SET(s, d, 0100664);
+			break;
+		    case MODE_EXE:
+			MODE_SET(s, d, 0100775);
+			break;
+		    default:
+			assert(0);
+		}
 
 		rc = sccs_delta(s, SILENT|DELTA_DONTASK|DELTA_CSETMARK,
 		    d, 0, 0, 0);
@@ -1243,12 +1253,14 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		loadMetaData(s, d, cmt);
 		PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, 1);
 		SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, 1);
+		MODE_SET(s, d, 0120777);
 
 		assert(td.m);
 		t = loadfile(g->m->file, 0);
 		unlink(s->gfile);
 		rc = symlink(t, s->gfile);
 		assert(!rc);
+		SYMLINK_SET(s, d, t);
 		free(t);
 		check_gfile(s, 0);
 
@@ -1289,6 +1301,16 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		loadMetaData(s, d, cmt);
 		PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, 1);
 		SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, 1);
+		switch(g->mode) {
+		    case MODE_FILE:
+			MODE_SET(s, d, 0100664);
+			break;
+		    case MODE_EXE:
+			MODE_SET(s, d, 0100775);
+			break;
+		    default:
+			assert(0);
+		}
 
 		rc = sccs_delta(s,
 		    SILENT|DELTA_DONTASK|DELTA_CSETMARK|DELTA_FORCE,

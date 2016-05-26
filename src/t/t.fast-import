@@ -447,8 +447,8 @@ cd ../git-repo
 git fast-import --quiet < ../import.fast-export || fail
 
 BKROOT=`git log --pretty=%H bkcmp | tail -2 | head -1`
-git log --pretty="tree: %T%ncommitter: %cn <%ae>%ndate: %cD%n%B" --raw $BKROOT..bkcmp > BK.log || fail
-git log --pretty="tree: %T%ncommitter: %cn <%ae>%ndate: %cD%n%B" --raw master > GIT.log || fail
+git log --pretty="tree: %T%ncommitter: %ae%ndate: %cD%n%B" --raw $BKROOT..bkcmp > BK.log || fail
+git log --pretty="tree: %T%ncommitter: %ae%ndate: %cD%n%B" --raw master > GIT.log || fail
 diff -u BK.log GIT.log || fail
 echo OK
 
