@@ -1,6 +1,6 @@
 .DELETE_ON_ERROR:
 
-SRC = $(wildcard *.adoc)
+SRC = $(sort $(wildcard *.adoc))
 
 all: www/index.html $(patsubst %.adoc,www/%.html,$(SRC))
 
@@ -10,7 +10,7 @@ www/index.html: index.html.pl $(SRC)
 
 www/%.html: %.adoc
 	@mkdir -p www
-	asciidoc -o $@ $<
+	asciidoctor -a toc2 -o $@ $<
 
 clean:
 	$(RM) index.html $(patsubst %.adoc,www/%.html,$(SRC))

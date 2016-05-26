@@ -1,4 +1,4 @@
-# Copyright 2005,2009,2011-2012,2015 BitMover, Inc
+# Copyright 2005,2009,2011-2012,2015-2016 BitMover, Inc
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -39,6 +39,15 @@ test_proxy() {
 		exit 1
 	}
 }
+
+echo $N Test access to data.bitkeeper.com ...........................$NL
+BK_TRACE_REMOTE=1 http_proxy=http://data.bitkeeper.com:3128 no_proxy= \
+	bk _httpfetch http://www.bitkeeper.org/ff >OUT 2>ERR
+grep -q "IP: lookup failed" ERR && {
+     echo skipped
+     exit 0
+}
+echo OK
 
 echo $N Verify that bkd access works through a proxy ................$NL
 test_proxy http://data.bitkeeper.com:3128

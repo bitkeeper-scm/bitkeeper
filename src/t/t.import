@@ -468,7 +468,7 @@ bk ci $Q -i -l bar.c
 echo "bar-new" > bar.c
 bk ci $Q -y bar.c
 cd "$HERE"
-( echo SCCS; echo no ) | bk import -v import_sccs co_get > import.out 2>&1 || {
+( echo SCCS; echo no ) | bk import -k -v import_sccs co_get > import.out 2>&1 || {
 	echo Failed
 	cat import.out
 	exit 1
@@ -774,7 +774,7 @@ bk ci $Q -i -l './*.c'
 echo "bar-new" > './*.c'
 bk ci $Q -y '*.c'
 cd "$HERE"
-( echo SCCS; echo no ) | bk import import_sccs2 metachar > import.out 2>&1 || {
+( echo SCCS; echo no ) | bk import -k import_sccs2 metachar > import.out 2>&1 || {
 	echo Failed
 	cat import.out
 	exit 1
@@ -879,6 +879,7 @@ grep -q 'not writable' OUT || {
 chmod 777 "$HERE/dest"
 echo OK
 
+if [ -x /usr/bin/co ]; then	# skipping RCS tests
 test -d $TESTDATA/lmbench && {
 echo $N Make sure that traditional RCS imports works ................$NL
 cd "$HERE"
@@ -965,6 +966,7 @@ test -f COPYING || {
 echo OK
 
 }
+fi # skipped RCS/CVS tests
 
 test -d $TESTDATA/import_data && {
 echo $N Multiple parallel imports ...................................$NL

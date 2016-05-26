@@ -186,7 +186,7 @@ getdir(char *dir)
 {
 	char	**lines = 0;
 	DIR	*d;
-	int	type;
+	int	type = '?';
 	struct	dirent   *e;
 
 	unless (d = opendir(dir)) {
@@ -198,12 +198,14 @@ getdir(char *dir)
 		if (streq(e->d_name, ".") || streq(e->d_name, "..")) {
 			continue;
 		}
+#ifndef __sun
 		switch (e->d_type) {
 		    case DT_DIR: type = 'd'; break;
 		    case DT_REG: type = 'f'; break;
 		    case DT_LNK: type = 'l'; break;
 		    default: type = '?'; break;
 		}
+#endif
 		lines = addLine(lines, aprintf("%s%c%c", e->d_name, 0, type));
 	}
 	closedir(d);

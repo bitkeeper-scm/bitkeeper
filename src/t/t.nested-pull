@@ -615,9 +615,10 @@ rm -rf project2 copy2
 echo OK
 
 echo $N Try a pull that adds a component.............................$NL
-cd "$HERE/project"
+cd "$HERE"
 commercial newcomp
-cd ..
+cd "$HERE/project"
+mv ../newcomp .
 bk attach $Q -N newcomp
 cd "$HERE/copy"
 bk pull >OUT 2>&1 || {
@@ -761,7 +762,10 @@ echo OK
 
 echo $N Try a pull with a moved component............................$NL
 cd "$HERE"
-bk _rm -rf remote local
+bk _rm -rf remote local project
+bk clone $Q null-pull project
+# make project a portal again
+(cd project; bk portal $Q .; bk gate $Q .)
 bk clone $Q null-pull remote
 bk clone $Q remote local
 cd "$HERE"/local
@@ -778,12 +782,7 @@ done
 cd "$HERE"/remote
 bk commit $Q -y"remote gcc"
 cd "$HERE"/local
-
-bk pull $Q ../project || {
-	echo failed
-	cat OUT
-	exit 1
-}
+bk pull $Q ../project || fail
 test -d gcc && {
 	echo should not have made gcc
 	find gcc
@@ -1490,7 +1489,7 @@ bk edit $Q gcc/foo gdb/bar
 bk delta $Q -fynull gcc/foo gdb/bar
 bk commit $Q -yedits
 cd ../edited
-# to hit abcdAQ problem, need a merge
+# to hit intel problem, need a merge
 bk edit $Q gcc/foo
 bk delta $Q -fynull gcc/foo
 bk commit $Q -yfiles

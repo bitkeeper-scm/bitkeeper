@@ -139,8 +139,11 @@ test "`cat GOT`" = "$ROOTKEY" && {
 echo OK
 
 echo $N Test that a standalone in a prod gets the right prod ........$NL
-cd "$HERE/project"
+cd "$HERE"
 commercial comp
+cd "$HERE/project"
+mv ../comp .
+cd comp
 # there are no sub repos in this standalone repo inside a product
 printf "" > WANT
 bk -P sfiles -R > GOT
@@ -157,9 +160,6 @@ rm c
 cd subproduct
 bk portal $Q . || fail
 commercial comp
-cd ..
-bk attach --force $Q -N comp || fail
-cd comp
 echo comp > WANT
 bk -P sfiles -R > GOT
 checkfiles WANT GOT
@@ -656,10 +656,10 @@ echo OK
 
 echo $N Create a pending deep nested component ......................$NL
 cd gdb || fail
-commercial pendingdeepnest
-cd ..
-commercial extradeepnest
-cd ..
+(cd "$HERE"; commercial pendingdeepnest)
+mv "$HERE/pendingdeepnest" .
+(cd "$HERE"; commercial extradeepnest)
+mv "$HERE/extradeepnest" .
 bk attach --force $Q -C -N pendingdeepnest
 cd ..
 echo OK
@@ -1600,7 +1600,8 @@ echo OK
 
 echo $N Test that newly created product is a portal and a gate ......$NL
 cd "$HERE"
-bk setup -P -fc"$BK_CACHE/commercial.config" prod-empty
+_commercial_config > config
+bk setup -P -fcconfig prod-empty
 cd prod-empty
 bk portal -q || fail should be a portal
 bk gate -q || fail should be a gate

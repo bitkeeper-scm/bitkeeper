@@ -547,8 +547,9 @@ echo OK
 
 echo $N Test deep nest populate scenarios ...........................$NL
 cd "$HERE"/project/gcc
-commercial deep
-cd ../..
+(cd "$HERE"; commercial deep)
+mv "$HERE/deep" .
+cd ..
 bk attach $Q -N gcc/deep
 test -f BitKeeper/log/deep-nests || {
 	echo failed to make deep-nests

@@ -16,7 +16,7 @@
 
 # Override Solaris make.rules
 .SCCS_GET:
-	bk get -q $@
+	$(BK) get -q $@
 
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 ifeq "$(OSTYPE)" "msys"
@@ -65,9 +65,9 @@ endif
 SYSTEM_OBJS=../libc/libc.a
 SFIO=sfio$(EXE)
 CPPFLAGS=-I../libc
-VERS	:= $(shell test -x vers || bk get vers; BINDIR=$(BINDIR) ./vers)
+VERS	:= $(shell test -x vers || $(BK) get vers; BINDIR=$(BINDIR) ./vers)
 VERS_NO := $(subst bk-,,$(VERS))
-IMGBASE:= $(shell bk get -qS bk_version; echo $(VERS)-`./bk_version`)
+IMGBASE:= $(shell $(BK) get -qS bk_version; echo $(VERS)-`./bk_version`)
 IMAGE:= $(IMGBASE)$(EXT)
 IMAGE_NAME:= $(IMGBASE)-setup
 IMAGEDEPS:= $(RESOURCES) $(PROGRESS) _data.o
@@ -95,7 +95,7 @@ endif
 		ln -s ../../../../../../BitKeeper.app \
 		    BitKeeper/BitKeeper.app/Contents/Resources/bitkeeper/gui/bin ; \
 		mkdir BitKeeper/BitKeeper.app/Contents/Resources/Scripts ; \
-		bk get -qS ../macosx/AppMain.tcl ; \
+		$(BK) get -qS ../macosx/AppMain.tcl ; \
 		cp ../macosx/AppMain.tcl \
 		    BitKeeper/BitKeeper.app/Contents/Resources/Scripts ; \
 		pkgbuild --install-location /Applications \
@@ -122,7 +122,7 @@ sfioball.zz: installtool $(BINDIR) $(BKGUI) zz$(EXE)
 	@find $(BINDIR) -type f -name \*.$(SO) | while read x; \
 	    do strip $(STRIPOPTS) $$x ; done
 	@(cd $(BINDIR)/.. && find `basename $(BINDIR)` -type f | \
-	    bk sfio -mqo) | ./zz sfioball.zz
+	    $(BK) sfio -mqo) | ./zz sfioball.zz
 
 resources.o: resources.rc ../win32/data/box_software.ico rcver.h
 	windres -o $@ resources.rc
@@ -185,7 +185,7 @@ clean:
 	$(RM) -rf BitKeeper
 
 clobber: clean
-	-bk clean
+	-$(BK) clean
 
 .PHONY: FORCE
 FORCE:

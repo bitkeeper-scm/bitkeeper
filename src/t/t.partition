@@ -42,7 +42,10 @@ rm -fr nest
 echo OK
 
 echo $N Create initial repository ...................................$NL
-commercial project
+commercial seed
+cd ..
+bk clone $Q seed project
+cd project
 mkdir src doc BitKeeper/www
 # BitKeeper/* get mapped to product -- should it be a component?
 touch BitKeeper/www/index.html
@@ -433,7 +436,8 @@ echo OK
 echo $N Verify different command line map and gone lead to diff .....$NL
 cd "$HERE"
 mv project project.orig
-commercial project
+bk clone $Q seed project
+cd project
 cat <<EOF > x
 #!/bin/sh
 exit 0

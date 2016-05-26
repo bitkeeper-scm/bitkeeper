@@ -584,7 +584,8 @@ echo OK
 
 echo $N Urllist check: repo with no components ......................$NL
 cd "$HERE"
-bk setup -P -fc"$BK_CACHE/commercial.config" prod-empty || fail
+_commercial_config > .config
+bk setup -P -fc".config" prod-empty || fail
 bk clone $Q prod-empty clone-empty
 cd clone-empty
 bk here check $Q || fail 2

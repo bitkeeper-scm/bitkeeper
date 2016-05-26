@@ -34,21 +34,42 @@
 #   $^  all sources
 #   $<  first source
 
-HAS_BK	?= $(shell bash -c "command -v bk")
+HAS_BK	?= $(shell bash -c "cd / && command -v bk")
+INREPO  ?= $(shell bash -c "test -d ../.bk && echo true || echo false")
 ifeq (,$(HAS_BK))
 	BKUSER := $(USER)
 	BKFULLHOST := $(HOSTNAME)
+	BKVERS := $(shell date +%Y%m%d%H%M%S)
+	BKUTC  := $(shell date +%Y%m%d%H%M%S)
+	BKTIME := $(shell date +%s)
 else
-	BKUSER := $(shell bk getuser)
-	BKFULLHOST := $(shell bk gethost -r)
+	BKUSER := $(shell "$(HAS_BK)" getuser)
+	BKFULLHOST := $(shell "$(HAS_BK)" gethost -r)
+	ifeq (true,$(INREPO))
+		BKVERS := $(shell bk changes -r+ -d'$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}')
+		BKUTC  := $(shell bk changes -r+ -d:UTC:)
+		BKTIME := $(shell bk changes -r+ -d:TIME_T:)
+	else
+		BKVERS := $(shell cat bkvers.txt)
+		BKUTC  := $(shell date +%Y%m%d%H%M%S)
+		BKTIME := $(shell date +%s)
+	endif
 endif
-BKHOST := $(shell echo $(BKFULLHOST) | sed 's/\..*//')
+BKHOST := $(shell echo "$(BKFULLHOST)" | sed 's/\..*//')
 ifeq (0,$(MAKELEVEL))
-ifeq ("",$(HAS_BK))
-	BKTAG := "unknown-non-bk-tree"
+ifeq (,$(HAS_BK))
+	ifeq (true,$(INREPO))
+		BKTAG := "bootstrap"
+	else
+		BKTAG := $(shell cat bktag.txt)
+	endif
 	export BKTAG
 else
-	BKTAG := $(shell bk describe --bk)
+	ifeq (true,$(INREPO))
+		BKTAG := $(shell bash -c "if ./hasL; then \"$(HAS_BK)\" describe --bk; else echo bootstrap; fi")
+	else
+		BKTAG := $(shell cat bktag.txt)
+	endif
 	export BKTAG
 endif
 endif
@@ -88,9 +109,9 @@ else
 	# You can set this to anywhere you like and do a 
 	# build production" and you'll have an installed BitKeeper.
 	ifeq (,$(HAS_BK))
-		BINDIR := /usr/libexec/bitkeeper
+		BINDIR := /usr/local/bitkeeper
 	else
-		BINDIR := $(shell cd / && bk bin)
+		BINDIR := $(shell $(HAS_BK) bin)
 	endif
 	INSTALL=install
 	RESOURCE=
@@ -274,18 +295,19 @@ OBJ =	bkver.o cmd.o \
 SCRIPTS	= applypatch bk.script import \
 	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
-LSCRIPTS = lscripts/hello.l
 PSCR	= t/doit t/guitest
 PROGS	= libc/mtst$(EXE)
 LIBS	= libc/libc.a tomcrypt/libtomcrypt.a tommath/libtommath.a
 PCRELIB = gui/tcltk/pcre/local/lib/libpcre.a
 DATA	= bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
-	dspec-changes dspec-changes-vv dspec-changes-h dspec-changes-hv \
-	dspec-changes-3.2 dspec-changes-4.0 dspec-prs dspec-log
-CONTRIB = gui/ide/emacs/vc-bk.el
-ALL	= PCRE $(LIBS) $(BINS) $(SCRIPTS) $(LSCRIPTS) $(PSCR) $(DATA) $(XTRA) \
-	$(PROGS) GUI
+	dspec-changes dspec-changes-3.2 dspec-changes-4.0 dspec-changes-h \
+	dspec-changes-hv dspec-changes-json dspec-changes-json-v \
+	dspec-changes-vv dspec-log dspec-prs
+
+CONTRIB = gui/ide/emacs/vc-bk.el contrib/git2bk.l
+ALL	= PCRE $(LIBS) $(BINS) $(SCRIPTS) $(PSCR) $(XTRA) \
+	$(PROGS) L-clean GUI L-doc $(DATA)
 
 CFLAGS	= $(CC_DEBUG)
 CPPFLAGS= -Ilibc -Itommath -Itomcrypt/src/headers -Igui/tcltk/pcre/local/include
@@ -306,8 +328,7 @@ SCRSRCS	= bk.sh import.sh kwextract.pl uuwrap.sh unuuwrap.sh \
 	  port/win32_platform.perl port/win32_platform.sh \
 	  gzip_uuwrap.sh ungzip_uuwrap.sh \
 	  substvars.sh b64wrap.sh gzip_b64wrap.sh \
-	  unb64wrap.sh ungzip_b64wrap.sh \
-	  $(LSCRIPTS)
+	  unb64wrap.sh ungzip_b64wrap.sh 
 MISC	= bkmsg.doc t/doit.sh
 
 export	GET
@@ -341,7 +362,7 @@ gWall Wall:
 p:  ## Build a production version of BitKeeper (no -g)
 ifeq (,$(HAS_BK))
 	$(MAKE) bk
-	PATH=`pwd`:$(PATH) $(MAKE) HAS_BK=1 p
+	$(MAKE) HAS_BK=$(HERE)/bk$(EXE) BINDIR=$(BINDIR) p
 else
 	$(MAKE) CFLAGS="$(CC_FAST) $(CF)" all
 endif
@@ -403,8 +424,11 @@ tags.local: $(SRCS) $(HDRS)
 ssh sshtest:
 	$(MAKE) realtest
 
-test tests rsh rshtest:
+rsh rshtest:
 	PREFER_RSH=YES $(MAKE) realtest
+
+test tests:
+	DO_REMOTE=NO $(MAKE) -C t
 
 nonet nonet_test localtest:
 	BK_NONET=YES PREFER_RSH=YES $(MAKE) realtest
@@ -465,14 +489,35 @@ bk.script: bk.sh port/$(SYS)_platform.sh
 bkmsg.txt: bkmsg.doc
 	cp -f $< $@
 
-bkhelp.txt: FORCE
-	@cd ../man/man2help && $(MAKE) helptxt
+L-clean: FORCE
+	@rm -f gui/share/doc/L/little.man ../man/man1/bk-little.1
+	@rm -f ../man/man2help/bk-little-1.fmt
+
+# has to run before bkhelp.txt but after GUI
+L-doc L-docs: GUI FORCE
+	@test -f gui/share/doc/L/little.man || { \
+		echo Failed to build gui/share/doc/L/little.man; \
+		exit 1; \
+	}
+	@if [ -s gui/share/doc/L/little.man ]; \
+	then	cp gui/share/doc/L/little.man ../man/man1/bk-little.1; \
+	else	cp ../man/man1/bk-little.1.pfmt ../man/man1/bk-little.1; \
+	fi; \
+	chmod +w ../man/man1/bk-little.1
+
+bkhelp.txt: $(BK) L-docs FORCE
+	@rm -f ../man/man2help/bk-little.fmt
+	@cd ../man/man2help && $(MAKE) BK=$(HERE)/bk$(EXE) helptxt
 	@cp ../man/man2help/helptxt bkhelp.txt
+	@rm -f ../man/man1/bk-little.1
+
+html-docs: bkhelp.txt
+	@cd ../man/man2html && $(MAKE)
 
 ../doc/bk_refcard.ps: FORCE
 	$(Q)echo building $@
 	$(Q)-$(BK) -r../doc co -qS
-	$(Q)$(MAKE) -C ../doc all
+	$(Q)$(MAKE) -C ../doc BK=$(HERE)/bk$(EXE) all
 
 ../doc/bk_refcard.pdf: ../doc/bk_refcard.ps
 
@@ -481,12 +526,10 @@ bkhelp.txt: FORCE
 bkver.c: utils/bk_version FORCE
 	$(if $(Q),@echo Building $@,)
 	$(Q)echo "#include \"sccs.h\"" > bk.v
-ifeq (,$(HAS_BK))
-	$(Q)printf "char *bk_vers = \"%s\";\nchar *bk_utc = \"%s\";\nchar *bk_time = \"%s\";\nchar *bk_tag = \"%s\";\n" "`date +%Y%m%d%H%M%S`" "`date +%Y%m%d%H%M%S`" "`date +%s`" "BOOTSTRAP" >> bk.v
-else
-	$(Q)bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\n' ../ChangeSet >> bk.v
+	$(Q)echo "char *bk_vers = \"$(BKVERS)\";" >> bk.v
+	$(Q)echo "char *bk_utc = \"$(BKUTC)\";" >> bk.v
+	$(Q)echo "char *bk_time = \"$(BKTIME)\";" >> bk.v
 	$(Q)echo "char *bk_tag = \"$(BKTAG)\";" >> bk.v
-endif
 	$(Q)echo "char *bk_platform = \""`./utils/bk_version`"\";" >> bk.v
 	$(Q)echo "int test_release = "$(TRIAL)";" >> bk.v
 	$(Q)echo "time_t bk_build_timet = "`perl -e "print time"`";" >> bk.v
@@ -512,23 +555,30 @@ import: import.sh port/$(SYS)_platform.sh
 
 # Quick and dirty target so we can make all the gui tools without the rest
 .PHONY: GUI
-GUI: PCRE
-	@$(MAKE) -Cgui Q=$(Q) gui
+GUI: PCRE $(BK)
+	@$(MAKE) -Cgui Q=$(Q) BK=$(HERE)/bk$(EXE) gui
 
 gui-nowrap GUI-nowrap:
 	@$(MAKE) -Cgui Q=$(Q) nowrap
 
 install: installdir
 	tmp/bitkeeper/bk _install -d -f $(BINDIR)
+	@echo BitKeeper is installed in $(BINDIR)
+	@echo We suggest you run:
+	@echo
+	@echo sudo $(BINDIR)/bk links /usr/local/bin
+	@echo
+	@echo to create the bk symlink.
 
 installdir: utils/registry.tcl
 	rm -rf $(IMGDIR) || exit 1
 	mkdir -p $(IMGDIR)/contrib
 	mkdir -p $(IMGDIR)/lscripts
-	$(BK) get -S www
-	$(BK) get -S $(CONTRIB)
+	-$(BK) -rwww get -S
+	-cp -f -r www $(IMGDIR)
+	-$(BK) get -S $(CONTRIB)
 	tar cf - $(BINS) $(SCRIPTS) lscripts gui/bin gui/lib gui/images \
-		www/*.gif www/*.png | (cd $(IMGDIR) && tar xf -)
+		| (cd $(IMGDIR) && tar xf -)
 	cp -f $(DATA) $(IMGDIR)
 	cp -f $(CONTRIB) $(IMGDIR)/contrib
 	(cd ../doc/nested && $(MAKE) install HTML=$(IMGDIR)/html)
@@ -549,7 +599,7 @@ installdir: utils/registry.tcl
 image:  ## Build the installer (left in src/utils/bk-*)
 ifeq (,$(HAS_BK))
 	$(MAKE) bk
-	PATH=`pwd`:$(PATH) $(MAKE) HAS_BK=1 image
+	$(MAKE) HAS_BK=$(HERE)/bk$(EXE) BINDIR=$(BINDIR) image
 else
 	$(MAKE) p
 	$(MAKE) _image
@@ -564,7 +614,7 @@ _image:
 		chmod -w *$(EXE); \
 	}
 	-cd $(IMGDIR)/gui/bin && strip *$(EXE)
-	BINDIR=$(IMGDIR) ${MAKE} -Cutils "CC=$(CC)" "CFLAGS=$(CFLAGS)" image
+	${MAKE} -Cutils BINDIR=$(IMGDIR) "CC=$(CC)" "BK=$(HERE)/bk$(EXE)" "CFLAGS=$(CFLAGS)" image
 
 crankturn: crank.sh remote.sh  ## Run a clean-build + regressions in cluster
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh
@@ -616,6 +666,9 @@ crankclean: crank.sh remote.sh
 # This target assumes a bk repository
 .PHONY: src-tar
 src-tar:  ## build tar.gz image for the current tree
+ifeq (false,$(INREPO))
+	$(error This target only works in a BK source repository)
+else
 	bk here set OPENBK
 	$(Q)-mkdir -p tmp/src
 	$(Q)(DIR=bk-$(shell $(BK) version -s) ; \
@@ -623,11 +676,14 @@ src-tar:  ## build tar.gz image for the current tree
 	     echo "Creating $$TAR in tmp/src..." ; \
 	     cd tmp/src ; \
 	     rm -rf "$$DIR" ; \
-	     bk export -tplain -r+ -sOPENBK "$$DIR" ; \
+	     bk export -tplain -kwr+ -sOPENBK "$$DIR" ; \
+	     echo "$(BKVERS)-tb" > "$$DIR/src/bkvers.txt" ; \
+	     echo "$(BKTAG)-tb" > "$$DIR/src/bktag.txt" ; \
 	     tar -czf "$$TAR" "$$DIR" ; \
 	     rm -rf "$$DIR" ; \
 	     echo Done ; \
 	)
+endif
 
 # It is OK if we fail to "rm build" on win32.
 # We can not "rm build" when we are running it.

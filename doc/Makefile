@@ -5,7 +5,7 @@
 WIN32_GS_PATH=/cygdrive/c/gs/gs7.00
 
 .SCCS_GET:
-	$(Q)bk get -q $@
+	$(Q)$(BK) get -q $@
 
 all: bk_refcard.ps bk_refcard.pdf
 
@@ -18,8 +18,8 @@ bk_refcard.ps: bk_refcard.tr flip
 
 bk_refcard.pdf: bk_refcard.tr bk_refcard.ps
 	-ps2pdf bk_refcard.ps
-	test -f bk_refcard.pdf || \
-	    bk co -p bk_refcard.pdf.preformatted > bk_refcard.pdf
+	-test -f bk_refcard.pdf || \
+	    $(BK) co -p bk_refcard.pdf.preformatted > bk_refcard.pdf
 
 gv: bk_refcard.tr
 	groff -P-g -P-l bk_refcard.tr > bk_refcard.ps
@@ -34,4 +34,4 @@ clean:
 	$(Q)rm -f *.ps PS PDF *.pdf
 
 clobber: clean
-	-bk clean
+	-$(BK) clean

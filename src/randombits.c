@@ -19,6 +19,28 @@
 #include "tomcrypt/randseed.h"
 
 void
+randomCons(char *buf, sccs *s, ser_t d)
+{
+	u32	date;
+	u32	crc1, crc2;
+	char	*item;
+
+	/*
+	 * We don't want to hash realuser or realhost as that would
+	 * make prevent these random bits from being stable.
+	 */
+	item = USER(s, d);	/* user or user/realuser */
+	crc1 = crc32c(0, item, strcspn(item, "/"));
+	item = HOSTNAME(s, d);	/* host or host/realhost */
+	crc1 = crc32c(crc1, item, strcspn(item, "/["));
+
+	crc2 = crc32c(0, PATHNAME(s, d), strlen(PATHNAME(s, d)));
+	date = DATE(s, d);
+	crc2 = crc32c(crc2, &date, sizeof(date));
+	sprintf(buf, "%x%x", crc1, crc2);
+}
+
+void
 randomBits(char *buf)
 {
     	u32	a, b;

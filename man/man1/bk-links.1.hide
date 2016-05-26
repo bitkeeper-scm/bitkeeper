@@ -12,8 +12,8 @@ directory to the executables for the version of \*(BK being run.
 This is typically used after installing \*(BK as a non-root user.
 .SH EXAMPLE
 .DS
-$ /usr/libexec/bitkeeper/bk links /usr/local/bin
-ln -s /usr/libexec/bitkeeper/bk /usr/local/bin/bk
+$ /usr/local/bitkeeper/bk links /usr/local/bin
+ln -s /usr/local/bitkeeper/bk /usr/local/bin/bk
 .DE
 .SH SEE ALSO
 .SA bin

@@ -23,12 +23,12 @@ echo $N Check nfiles on a nested collection .........................$NL
 cd "$HERE"
 nested prod
 CNT=`bk nfiles`
-test $CNT -eq 21 || fail wrong count
+test $CNT -eq 19|| fail wrong count $CNT
 echo OK
 
 echo $N Check nfiles -S .............................................$NL
 CNT=`bk nfiles -S`
-test $CNT -eq 9 || fail wrong count
+test $CNT -eq 7 || fail wrong count $CNT
 echo OK
 
 echo $N Check nfiles -sgcc ..........................................$NL
@@ -48,7 +48,7 @@ echo OK
 echo $N Check that nfiles works with no NFILES_PRODUCT ..............$NL
 rm BitKeeper/log/NFILES_PRODUCT
 CNT=`bk nfiles`
-test $CNT -eq 21 || fail wrong count
+test $CNT -eq 19 || fail wrong count $CNT
 echo OK
 
 echo $N Make sure repocheck recreates NFILES_PRODUCT ................$NL

@@ -74,8 +74,8 @@ echo OK
 
 echo $N Pull -r to see that it propagates with no problems ..........$NL
 cd "$HERE"
-commercial copykid
-bk parent $Q "$HERE/copy"
+bk clone $Q -r1.2 copy copykid || fail
+cd copykid
 bk pull $Q -rBAR || {
 	echo failed
 	exit 1

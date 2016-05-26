@@ -18,6 +18,7 @@ bk new $Q gcc/a
 echo 2 > aa
 bk new $Q aa
 bk commit -y'base' $Q || fail
+bk -Ucp
 
 echo $N Check for scancomps feature .................................$NL
 bk features > ../SRC

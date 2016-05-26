@@ -23,6 +23,15 @@ if bk _test ! -f SCCS/s.foo.c; then echo fail; fi
 bk commit $Q -ywhatever
 echo OK
 
+echo $N Run undo where we try to delete RESYNC/BitKeeper/etc ........$NL
+touch afile
+bk new $Q afile
+bk commit $Q -yafile
+bk mv -f afile BitKeeper/etc
+bk commit $Q -ymv
+bk undo $Q -fr+ || fail
+echo OK
+
 echo $N Identical gfile conflict should autoresolve .................$NL
 cd "$HERE"
 bk clone $Q project clone

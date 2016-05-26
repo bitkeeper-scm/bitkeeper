@@ -62,7 +62,6 @@ proc main {} \
 	# done or cancel...
 	vwait ::done
 	exit $::done
-
 }
 
 proc initGlobals {} \
@@ -71,6 +70,7 @@ proc initGlobals {} \
 
 	set runtime(tmpdir) [pwd]
 	set runtime(destination) ""
+        set runtime(register_email) ""
 	set runtime(upgradeCheckbutton) 0
 	if {$tcl_platform(platform) == "windows"} {
 #		set runtime(enableSccDLL) 1
@@ -99,9 +99,9 @@ proc initGlobals {} \
 		set runtime(enableShellxLocal) 0
 		set runtime(symlinkDir) "/usr/bin"
 		set runtime(places) {
-			/usr/libexec/bitkeeper 
+			/usr/local/bitkeeper 
 			/opt/bitkeeper 
-			/usr/local/bitkeeper
+			/usr/libexec/bitkeeper
 		}
 		set id "id"
 	}
@@ -189,6 +189,24 @@ proc install {} \
 	} else {
 		log $result error
 	}
+}
+
+proc finish {} {
+        if {$::runtime(register_email) ne ""} {
+                set fp [file tempfile temp_file]
+                puts $fp [exec bk version]
+                close $fp
+
+                set to install@bitkeeper.com
+                set email $::runtime(register_email)
+                set subject "$email wants to make BitKeeper awesome"
+                set url http://bitmover.com/cgi-bin/bkdmail
+
+                catch {
+                    exec bk mail -u $url -s $subject $to < $temp_file
+                }
+        }
+        set ::done 0
 }
 
 proc findOldInstall {} \
@@ -285,22 +303,24 @@ proc widgets {} \
 		set paths(new) {Welcome SummaryInstalled}
 		. add path new -steps $paths(new)
 	} elseif {$tcl_platform(platform) eq "windows"} {
-		set paths(new) {Welcome PickPlace InstallDLLs Install Summary}
+		set paths(new) {Welcome PickPlace InstallDLLs Install Summary
+                    SummaryInstalled}
 		. add path new -steps $paths(new)
-		set paths(existing) \
-		    {Welcome PickPlace OverWrite InstallDLLs Install Summary}
+		set paths(existing) {Welcome PickPlace OverWrite InstallDLLs
+                    Install Summary SummaryInstalled}
 		. add path existing -steps $paths(existing)
-		set paths(createDir) \
-		    {Welcome PickPlace CreateDir InstallDLLs Install Summary}
+		set paths(createDir) {Welcome PickPlace CreateDir InstallDLLs
+                    Install Summary SummaryInstalled}
 		. add path createDir -steps $paths(createDir)
 	} else {
-		set paths(new) {Welcome PickPlace Install Summary}
+		set paths(new) {Welcome PickPlace Install Summary
+                    SummaryInstalled}
 		. add path new -steps $paths(new)
-		set paths(existing) \
-		    {Welcome PickPlace OverWrite Install Summary}
+		set paths(existing) {Welcome PickPlace OverWrite Install
+                    Summary SummaryInstalled}
 		. add path existing -steps $paths(existing)
-		set paths(createDir) \
-		    {Welcome PickPlace CreateDir Install Summary}
+		set paths(createDir) {Welcome PickPlace CreateDir Install
+                    Summary SummaryInstalled}
 		. add path createDir -steps $paths(createDir)
 	}
 	. configure -path new
@@ -672,7 +692,7 @@ proc widgets {} \
 		}
 
 		$this buttonconfigure cancel -state disabled
-                $this configure -defaultbutton finish
+                $this configure -defaultbutton next
 	}
 	#-----------------------------------------------------------------------
 	. add step SummaryInstalled \
@@ -682,10 +702,21 @@ proc widgets {} \
 		    $this stepconfigure SummaryInstalled -description $desc
 		    $this buttonconfigure cancel -state disabled
 		    $this configure -defaultbutton finish
+
+                    set w [$this info workarea]
+                    grid columnconfigure $w 0 -weight 1
+
+                    ttk::label $w.label -text "Your Email Address"
+                    grid $w.label -row 0 -column 0 -sticky w
+
+                    set ::runtime(register_email) ""
+                    ttk::entry $w.email -textvariable ::runtime(register_email)
+                    grid $w.email -row 1 -column 0 -sticky ew
+                    focus $w.email
 	    }
 
 	bind . <<WizCancel>> {set ::done 1}
-	bind . <<WizFinish>> {set ::done 0}
+	bind . <<WizFinish>> {finish}
 
 	bind . <<WizBackStep>> {
 		# this button may have been reconfigured to say "Install"..
@@ -731,28 +762,6 @@ proc widgets {} \
 			}
 		}
 	}
-}
-
-# Return 1 if there's a config file anywhere with a license key
-# or a licenseurl. This tells us whether to prompt the user
-# for a license.
-proc existingLicense {} \
-{
-	if {![catch {exec bk config license} license] ||
-	    ![catch {exec bk config licenseurl} licenseurl]} {
-		return 1
-	} else {
-		return 0
-	}
-}
-
-proc eula_u {text} \
-{
-	upvar 1 $text t
-	set ::env(BK_NO_GUI_PROMPT) 1	;# make bk _eula shut up
-	set r [catch {exec bk _eula -u} t]
-	unset ::env(BK_NO_GUI_PROMPT)
-	return $r
 }
 
 proc doInstall {} \
@@ -1083,7 +1092,7 @@ set strings(Welcome.installed) {
 
 set strings(PickPlace.unix) {
 	The installation directory can be anywhere, 
-	/usr/libexec/bitkeeper is recommended.  
+	/usr/local/bitkeeper is recommended.  
 }
 
 set strings(PickPlace.windows) {
@@ -1152,15 +1161,9 @@ by using the back button.
 }
 
 set strings(InstallComplete) {
-Installation of
+Installation is complete.
 
 %v
-
-is complete. Enjoy BitKeeper and send support@bitkeeper.com
-any questions. Don't forget to try the quick and informative
-demo at http://www.bitkeeper.com/Test.html
-
-The BitKeeper Team
 }
 
 set strings(SummaryInstalled) {
@@ -1169,6 +1172,9 @@ set strings(SummaryInstalled) {
     Enjoy BitKeeper and send support@bitkeeper.com
     any questions. Don't forget to try the quick and informative
     demo at http://www.bitkeeper.com/Test.html
+
+    Would you like to participate in helping make BitKeeper better?
+    Register your email address with us to receive important updates.
 
     The BitKeeper Team
 }

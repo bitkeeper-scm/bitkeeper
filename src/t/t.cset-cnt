@@ -14,6 +14,7 @@
 
 # count the number of times we init the ChangeSet file for normal operations
 
+mkBINs
 
 BK_SHOWINIT="*/s.ChangeSet"
 BK_TTYPRINTF="$HERE/INITs"
@@ -234,7 +235,7 @@ bk changes -Rv > /dev/null || fail
 check_cnt
 echo OK
 
-CNT=46
+CNT=44
 echo $N "Count the inits for a 'bk pull -u' ($CNT)......................"$NL
 rm "$FILE"
 bk pull -u $Q || fail
@@ -248,7 +249,7 @@ bk unpull -fs $Q || fail
 check_cnt
 echo OK
 
-CNT=61
+CNT=59
 echo $N "Count the inits for a 'bk pull' w merge ($CNT)................."$NL
 bk portal $Q .
 touch c
@@ -269,7 +270,7 @@ bk pull $Q || fail
 check_cnt
 echo OK
 
-CNT=31
+CNT=30
 echo $N "Count the inits for a 'bk push' ($CNT)........................."$NL
 rm "$FILE"
 bk push $Q || fail

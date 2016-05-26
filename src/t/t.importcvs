@@ -21,6 +21,11 @@ test -f CVS || {
 	exit 0
 }
 
+test `uname` = SunOS && {
+	echo Skipping cvs importer testing on Solaris ....................skipped
+	exit 0
+}
+
 cvs --version | grep -q '^Concurrent.*(CVS) 1\.1' || {
 	echo Wrong version of cvs installed on this client ...............skipped
 	exit 0

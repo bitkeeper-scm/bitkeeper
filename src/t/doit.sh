@@ -28,7 +28,7 @@ fi
 
 # Tell tests if we are a tagged cset, some tests use internal features
 # like --trace=fs
-test "`bk changes -r+ -d'$if(:SYMBOL:){1}'`" && {
+test -x "`which bk`" -a "`bk changes -r+ -d'$if(:SYMBOL:){1}'`" && {
 	BK_TAGGED=yes
 	export BK_TAGGED
 }
@@ -76,12 +76,6 @@ win32_common_setup()
 	BKTESTDATA=bk://data.bitkeeper.com/test_data
 	export TESTDATA BKTESTDATA
 
-	B=`bk bin`
-	BIN1="$B/bk.exe"
-	BIN2="$B/diff.exe"
-	BIN3="$B/diff3.exe"
-	export BIN1 BIN2 BIN3
-
 	# clear any existing proxy settings is registry (see t.proxy-win32)
 	KEY="HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings"
 	bk _registry set "$KEY" ProxyEnable dword:0 || exit 1
@@ -105,7 +99,8 @@ unix_common_setup()
 	WINDOWS=NO
 	export WINDOWS
 	DEV_NULL="/dev/null"
-	if [ -z "$TST_DIR" ]; then TST_DIR="/build"; fi
+	if [ -z "$TST_DIR" -a -d /build ]; then TST_DIR="/build"; fi
+	if [ -z "$TST_DIR" ]; then TST_DIR="/tmp/build"; fi
 	TST_DIR=`bk pwd "$TST_DIR"`       # if symlink, force to real path
 	test -d "$TST_DIR" || {
 		echo bad testdir '$TST_DIR'
@@ -134,8 +129,8 @@ unix_common_setup()
 		ln -s "`bk bin`/bk" "$BK_BIN/bk"
 		ln -s "`bk bin`/gui/tcltk/tcl/unix/tcltest" "$BK_BIN/tcltest"
 	fi
-	PATH=/bin:/usr/bin:$PATH:/usr/local/bin:/usr/freeware/bin:/usr/gnu/bin
-	if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
+	test `uname` != SunOS && PATH=/bin:/usr/bin:$PATH:/usr/local/bin:/usr/freeware/bin:/usr/gnu/bin
+	#if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
 	PATH=$BK_BIN:$PATH
 
 	unset CDPATH PAGER
@@ -143,12 +138,6 @@ unix_common_setup()
 	# do run remote regressions on UNIX
 	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=YES; fi
 	export DO_REMOTE
-
-	B=`bk bin`
-	BIN1="$B/bk"
-	BIN2="$B/gnu/bin/diff"
-	BIN3="$B/gnu/bin/diff3"
-	export BIN1 BIN2 BIN3
 
 	test `uname` = SCO_SV && return
 
@@ -158,10 +147,16 @@ unix_common_setup()
 	for f in awk expr sh ksh grep egrep sed env test [ sleep getopts \
 	    basename dirname cat cp cut ln mkdir mv rm rmdir touch wc xargs \
 	    co rcs ssh rsh gzip gunzip remsh rcmd uname xterm vi tar \
-	    chmod perl ls gdb bkdcp git
+	    chmod perl ls gdb bkdcp git realpath
 	do	p=`bk which -e $f`
 		if [ $? -eq 0 ]
-		then	ln -s "$p" "$BK_LIMITPATH/$f"
+		then
+			if [ `uname` = SunOS -a $p = /usr/gnu/bin/egrep ]
+			then
+				cp egrep-illumos "$BK_LIMITPATH/$f"
+			else
+				ln -s "$p" "$BK_LIMITPATH/$f"
+			fi
 		else	:
 			# Too noisy
 			# echo WARNING: could not find a $f binary.
@@ -170,7 +165,7 @@ unix_common_setup()
 	export BK_LIMITPATH
 
 	# on MacOS, ...
-	test "X`uname`" = XDarwin &&
+	test "X`uname`" = XDarwin -o "X`uname`" = XSunOS &&
 		# Use bash; their ksh is broken.
 		test -x /bin/bash && ln -s /bin/bash "$BK_LIMITPATH/bash"
 }
@@ -284,8 +279,10 @@ setup_env()
 	check_enclosing_repo
 
 	# L tests use this to find the tcl component.
-	BK_ROOT=`bk -P root`
-	export BK_ROOT
+	test "$BK_ROOT" = "" && {
+		BK_ROOT=`bk -P root`
+		export BK_ROOT
+	}
 
 	# Don't whine about lock files
 	_BK_UNIQUE_SHUTUP=YES
@@ -318,7 +315,6 @@ setup_env()
 	export _BK_GEOM
 
 	BK_REGRESSION="`cd "$TST_DIR"; bk pwd -s`/.regression $USER"
-	BK_CACHE="$BK_REGRESSION/cache"
 	HERE="$BK_REGRESSION/sandbox"
 	BK_TMP="$HERE/.tmp"
 	BK_DOTBK="$HERE/.bk"
@@ -338,26 +334,6 @@ setup_env()
 		export _BKFILE_REGRESSIONS
 	}
 
-	# Make the binaries not too large, sco hangs on large diffs.
-	cd ..
-	DOTBIN="`bk pwd -s`/.bin"
-	cd t
-	test -d "$DOTBIN" || {
-		mkdir "$DOTBIN"
-		cat > "$DOTBIN/mkbin$$" <<EOF
-perl -e '\$s=102400;sysread(STDIN, \$buf, \$s);syswrite(STDOUT, \$buf, \$s)' < $BIN1 > "$DOTBIN/binary1"
-perl -e '\$s=204800;sysread(STDIN, \$buf, \$s);syswrite(STDOUT, \$buf, \$s)' < $BIN2 > "$DOTBIN/binary2"
-perl -e '\$s=307200;sysread(STDIN, \$buf, \$s);syswrite(STDOUT, \$buf, \$s)' < $BIN3 > "$DOTBIN/binary3"
-EOF
-		bk -Lw sh "$DOTBIN/mkbin$$"
-		rm -f "$DOTBIN/mkbin$$"
-	}
-
-	BIN1="$DOTBIN/binary1"
-	BIN2="$DOTBIN/binary2"
-	BIN3="$DOTBIN/binary3"
-	export BIN1 BIN2 BIN3
-
 	test "$GUI_TEST" = YES || {
 		BK_NO_GUI_PROMPT=YES
 		export BK_NO_GUI_PROMPT
@@ -373,9 +349,9 @@ EOF
 	# clear OLDPATH in case bk ran doit
 	unset BK_OLDPATH
 
-	START=/build/.start-$USER
-	END=/build/.end-$USER
-	ELAPSED=/build/.elapsed-$USER
+	START=$TST_DIR/.start-$USER
+	END=$TST_DIR/.end-$USER
+	ELAPSED=$TST_DIR/.elapsed-$USER
 	trap "rm -f $START $END" 0 
 }
 
@@ -396,10 +372,10 @@ clean_up()
 		test -n "$_BK_MAC_CORES" && {
 			# Add in any new MacOS cores
 			find /cores -type f -name 'core*' 2>$DEV_NULL \
-				| bk _sort > "$BK_REGRESSION/cores.macos"
+				| bk _sort > "$BK_REGRESSION/macos/cores.macos"
 			comm -13 \
 				"$_BK_MAC_CORES" \
-				"$BK_REGRESSION/cores.macos" \
+				"$BK_REGRESSION/macos/cores.macos" \
 				>> "$BK_REGRESSION/cores"
 		}
 		if [ -s "$BK_REGRESSION/cores" ]
@@ -484,15 +460,14 @@ init_main_loop()
 	BK_PATH="$PATH"
 	export PATH BK_PATH PLATFORM DEV_NULL TST_DIR CWD
 	export USER BK_FS BK_REGRESSION HERE BK_TMP TMPDIR NL N Q S CORES
-	export BK_CACHE
 	export RM
 	export NXL NX
 	export BK_GLOB_EQUAL
 	export BK_BIN
-	mkdir -p "$BK_CACHE"
 	test "X`uname`" = XDarwin && {
 		# Save a baseline of core files; then later look for new
-		_BK_MAC_CORES="$BK_CACHE/macos_cores"
+		mkdir -p "$BK_REGRESSION/macos"
+		_BK_MAC_CORES="$BK_REGRESSION/macos/macos_cores"
 		export _BK_MAC_CORES
 		find /cores -type f -name 'core*' 2>$DEV_NULL | \
 		    bk _sort > "$_BK_MAC_CORES"
@@ -639,7 +614,7 @@ FAILCNT=0
 for i in $list
 do
 	CUR=`expr $CUR + 1`
-	test -f /build/die && {
+	test -f $TST_DIR/die && {
 		echo Forced shutdown, dieing.
 		test $PLATFORM = WIN32 && bk bkd -R
 		exit 1
@@ -702,7 +677,7 @@ do
 	test -f setup || exit 1
 	export BK_CURRENT_TEST="$i"
 	cat setup "$i" | eval "{ $VALGRIND @TEST_SH@ $dashx; echo \$?>\"$EXF\"; } $OUTPIPE"
-	EXIT="`cat \"$EXF\"`"
+	EXIT="`cat \"$EXF\" 2>$DEV_NULL || echo 1`"
 	rm -f "$EXF"
 	BAD=0
 	# If the test passes, then check to see if it contains any unexpected
@@ -761,8 +736,8 @@ I hope your testing experience was positive! :-)
 			test -n "$_BK_MAC_CORES" && {
 				# Add in any new MacOS cores
 				find /cores -type f -name 'core*' 2>$DEV_NULL \
-					| bk _sort > "$BK_CACHE/XXX.macos"
-				comm -13 "$_BK_MAC_CORES" "$BK_CACHE/XXX.macos"
+					| bk _sort > "$BK_REGRESSION/macos//XXX.macos"
+				comm -13 "$_BK_MAC_CORES" "$BK_REGRESSION/macos/XXX.macos"
 			}
 			# kill the uniq daemon
 			test -d "$HERE/.bk/bk-keys-db" && {

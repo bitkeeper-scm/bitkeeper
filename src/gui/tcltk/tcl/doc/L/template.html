@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<title>%TITLE%</title>
+
+<style>
+    body {
+	margin: 0;
+	background: #FFFFFF;
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-size: 14px;
+	line-height: 1.42857143;
+    }
+
+    dt {
+	font-size: large;
+    }
+
+    .code {
+	padding: 5px;
+	background: #EEEEDD;
+	font: bold 1em monospace;
+	border: 1px solid #CCCCCC;
+    }
+
+    #index {
+	color: #CCCCCC;
+	background: #304080;
+	font-size: .9em;
+	padding-right: 10px;
+	overflow: auto;
+	float: left;
+	width: 21em;
+	height: 100%;
+	position: fixed;
+    }
+
+    #toc {
+	margin: 0;
+	padding: 0 5px 10px 20px;
+	color: #CCCCCC;
+    }
+
+    #toc a:link, #toc a:visited {
+	color: #CCCCCC;
+	text-decoration: none;
+    }
+
+    #logo {
+	margin: 0 auto;
+	text-align: center;
+    }
+
+    #content {
+	background: #fff;
+	padding: 20px 10px;
+	margin-left: 20em;
+	float: left;
+    }
+</style>
+</head>
+
+<body>
+  <div id='index'>
+    <div id='index-fixed'>
+      <div id='logo'>
+	<a href='#'><img src='little.jpg' width='128'/></a>
+      </div>
+
+      %TOC%
+    </div>
+  </div>
+
+  <div id='content'>
+    %BODY%
+  </div>
+</body>
+</html>

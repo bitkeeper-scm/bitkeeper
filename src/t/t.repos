@@ -15,16 +15,16 @@
 PATHLOG=`bk repos --pathlog`
 
 echo $N Create initial repository ...................................$NL
+commercial commercial
+cd ..
 commercial project
-# -c because the cache might get reused
-bk repos -c../../cache/commercial > GOT
-grep -q "cache/commercial" GOT || fail -f GOT
-# Note: commercial uses 'sfio' so there is no 'project' in cache:
-grep -q "project" GOT && fail -f GOT
+bk repos > GOT
+grep -q "commercial" GOT || fail -f GOT
+grep -q "project" GOT || fail -f GOT
 # Simulate more fields on commercial
-sed 's/$/|one|two|three/' "$PATHLOG" > ../longline
+sed '/commercial/s/$/|one|two|three/' "$PATHLOG" > ../longline
 cp ../longline "$PATHLOG"
-bk repos -qc../../cache/commercial
+bk repos -qc../commercial
 # see that long line had no truncation
 cmpfiles ../longline "$PATHLOG"
 echo OK

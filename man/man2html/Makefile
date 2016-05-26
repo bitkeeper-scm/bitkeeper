@@ -1,53 +1,14 @@
-SRC=data/*
-DIR=/home/lm/ht/bitkeeper/manpages
-# Order is important, this is the order they will show up in helptool.
-SUM=	\
-	All-sum.fmt \
-	General-sum.fmt \
-	Licensing-sum.fmt \
-	Basics-sum.fmt \
-	Repository-sum.fmt \
-	GUI-tools-sum.fmt \
-	File-sum.fmt \
-	Admin-sum.fmt \
-	Compat-sum.fmt \
-	?-sum.fmt
-
 all: html 
 
-html: man2help.pl bk-macros
-	@make links
-	./man2help.pl -debug bk-macros bk- $(SRC)
-
-install:
-	@make links
-	@make clean
-	@make all
-	@/bin/rm -f $(DIR)/*
-	@make index
-	@make cp
-
-cp:
-	/bin/rm -f $(DIR)/*
-	mkdir -p $(DIR)
-	cp index.db *.html $(DIR)
-
-index:
-	@mkindex *.html
-
-links:
-	-bk co -q ../man1
-	-bk co -q ../bk-macros
-	/bin/rm -rf data
-	mkdir data
-	cd data && ln -s ../../man1/*.1 .
-
-FRC:
+html: man2html.l BitKeeper_SN_Blue.png BitKeeper_SN_SVC_Blue.png
+	@test -d www || mkdir www
+	@rm -f www/*
+	-bk tclsh man2html.l
+	@cp *.png *.js www
 
 .PHONY: clean
 clean:
-	$(RM) -r data
-	$(RM) *.html *.fmt *.sum helptxt
+	rm -rf www
 
 clobber: clean
 	-bk clean

@@ -94,11 +94,8 @@ cd "$HERE"
 rm -fr project copy
 nested project
 cd gcc
-# Note: fresh_commercial will do a setup which will automatically attach.
-# and commercial will just copy in the bits with no attach.  This matters
-# for having the attach -N work or fail.
-commercial deepnest
-cd ..
+(cd "$HERE"; commercial deepnest)
+mv "$HERE/deepnest" .
 bk attach --force $Q -N deepnest
 cd ../..
 bk clone $Q -shere project copy

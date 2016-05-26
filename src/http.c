@@ -410,7 +410,7 @@ http_sendheader(remote *r, char *user_agent, char *cmd, size_t len)
 	}
 	APPEND((
 	    "User-Agent: BitKeeper-%s/%s\r\n"
-	    "Accept: text/html\r\n"
+	    "Accept: */*\r\n"
 	    "Host: %s:%d\r\n",
 	    user_agent, bk_vers,
 	    r->host, r->port));
@@ -478,7 +478,7 @@ http_fetch(remote *r, char *file)
 	int	i;
 	u64	got, len;
 	int	rc = -1;
-	int	binary = 0;
+	int	binary = 1;
 	char	*p;
 	FILE	*f;
 	ticker	*tick = 0;
@@ -503,9 +503,13 @@ http_fetch(remote *r, char *file)
 		while (isspace(*p)) ++p;
 		if (strieq(buf, "Content-Length")) {
 			len = atoi(p);
-		} else if (strieq(buf, "Content-Type") &&
-		    strieq(p, "application/octet-stream")) {
-			binary = 1;
+		} else if (strieq(buf, "Content-Type")) {
+			if (strlen(p) > 5) {
+				char	saved = p[5];
+				p[5] = 0;
+				if (strieq(p, "text/")) binary = 0;
+				p[5] = saved;
+			}
 		}
 	}
 	if (f = streq(file, "-") ? stdout : fopen(file, "w")) {

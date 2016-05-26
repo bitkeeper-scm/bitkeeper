@@ -96,28 +96,6 @@ getMsg_tests(void)
 }
 
 private void
-signal_tests(void)
-{
-	char	*av[] = { "bk", "-Lw", "_usleep", "2000000", 0 };
-	time_t	now = time(0);
-	pid_t	p;
-
-	p = spawnvp(_P_NOWAIT, "bk", av);
-	assert(p != (pid_t)-1);
-	usleep(50000);		// let it start
-	kill(p, SIGINT);
-#ifndef	WIN32
-	kill(p, SIGQUIT);
-	kill(p, SIGTERM);
-#endif
-	while (waitpid(p, 0, 0) != p) usleep(50000);
-	if ((time(0) - now) <= 1) {
-		fprintf(stderr, "Whoops, managed to kill w/ blocked sig.\n");
-		exit(1);
-	}
-}
-
-private void
 tmp_tests(void)
 {
 	char	*template = malloc(500);
@@ -209,7 +187,6 @@ unittests_main(int ac, char **av)
 	assert(t);
 	free(t);
 #endif
-	signal_tests();
 	tmp_tests();
 	compile_tests();
 	return (0);

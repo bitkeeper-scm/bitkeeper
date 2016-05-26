@@ -343,7 +343,7 @@ cat <<EOF >WANT
       "host": "bk_regression.bk",
       "date": "$FDATE11",
       "serial": $FDS11,
-      "comments": "BitKeeper file HERE/proj/newfile\n",
+      "comments": "BitKeeper file newfile\n",
       "lines-deleted": 0,
       "lines-inserted": 1,
       "lines-unchanged": 0,

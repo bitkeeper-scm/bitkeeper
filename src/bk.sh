@@ -488,7 +488,7 @@ _keysync() {
 	then	$PAGER /tmp/sync$$
 	else	more /tmp/sync$$
 	fi
-	/bin/rm -f /tmp/sync$$
+	rm -f /tmp/sync$$
 }
 
 __keysync() {
@@ -507,7 +507,7 @@ __keysync() {
 	else	echo ===== "$2" is a superset of "$1" =====
 		echo ""
 	fi
-	/bin/rm -f /tmp/sync[123]$$
+	rm -f /tmp/sync[123]$$
 }
 
 _clear() {
@@ -782,11 +782,11 @@ _links() {		# /* doc 3.0 */
 	for i in admin get delta unget rmdel prs
 	do	test -h "$BIN/$i" && ls -l "$BIN/$i" | grep -q bitkeeper && {
 			echo Removing "$BIN/$i"
-			/bin/rm -f "$BIN/$i"
+			rm -f "$BIN/$i"
 		}
 	done
 	echo "ln -s $BK/bk $BIN/bk"
-	/bin/rm -f "$BIN/bk"
+	rm -f "$BIN/bk"
 	ln -s "$BK/bk" "$BIN/bk"
 }
 
@@ -1249,6 +1249,14 @@ _tclsh() {
 
 _L() {
 	_tclsh --L "$@"
+}
+
+_little() {
+	_tclsh --L "$@"
+}
+
+_little_gui() {
+	_wish "$@"
 }
 
 _wish() {

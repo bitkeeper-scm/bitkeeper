@@ -33,6 +33,8 @@ jed
 joe
 jove
 latest
+little
+little_gui
 reedit
 regression
 shrink
@@ -43,7 +45,8 @@ vim
 wish
 EOF
 
-perl -ne 'print "$1\n" if /^\s+{"(\w+)",/' < "`bk bin`"/cmd.c | sort |
+test -f "$BK_ROOT/src/cmd.c" || exit 1
+perl -ne 'print "$1\n" if /^\s+{"(\w+)",/' < "$BK_ROOT/src/cmd.c" | sort |
 grep -vf SKIP > "$HERE/.INTERFACES"
 
 dotest()
