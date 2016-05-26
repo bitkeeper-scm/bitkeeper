@@ -1250,21 +1250,34 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		rc = symlink(t, s->gfile);
 		assert(!rc);
 		free(t);
+		check_gfile(s, 0);
 
 		rc = sccs_delta(s, SILENT|DELTA_DONTASK|DELTA_CSETMARK,
 		    d, 0, 0, 0);
 		assert(!rc);
 		ret.m = g->m;
 	} else if (g->op == GMODIFY) {
-		if (td.m) {
+		if (td.m && SYMLINK(s, p)) {
+			rc = sccs_get(s, REV(s, p), 0, 0, 0,
+			    SILENT|GET_EDIT, s->gfile, 0);
+			assert(!rc);
+			diffs = 0;
+			fileLink(g->m->file, s->gfile);
+			if (g->mode == MODE_EXE) chmod(s->gfile, 0755);
+			check_gfile(s, 0);
+		} else if (td.m) {
+			df_opt	dop = {0};
+
 			rc = sccs_get(s, REV(s, p), 0, 0, 0,
 			    SILENT|GET_SKIPGET|GET_EDIT, 0, 0);
 			assert(!rc);
 
-			sprintf(buf, "bk ndiff -n '%s' '%s'",
-			    td.m->file,
-			    g->m->file);
-			diffs = popen(buf, "r");
+			dop.ignore_trailing_cr = 1;
+			dop.out_rcs = 1;
+			bktmp(buf);
+			rc = diff_files(td.m->file, g->m->file, &dop, buf);
+			assert((rc == 0) || (rc == 1));
+			diffs = fopen(buf, "r");
 			assert(diffs);
 		} else {
 			rc = sccs_get(s, REV(s, p), 0, 0, 0,
@@ -1281,7 +1294,10 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		    SILENT|DELTA_DONTASK|DELTA_CSETMARK|DELTA_FORCE,
 		    d, 0, diffs, 0);
 		assert(!rc);
-		if (diffs) pclose(diffs);
+		if (diffs) {
+			fclose(diffs);
+			unlink(buf);
+		}
 		ret.m = g->m;
 	} else {
 		assert(g->op = GDELETE);

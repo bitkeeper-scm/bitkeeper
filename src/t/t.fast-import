@@ -441,17 +441,16 @@ bk fast-import < ../git-repo.fast-export > OUT || fail -f OUT
 bk -r check -a || fail
 echo OK
 
-echo $N Compare repos using fast export ............................$NL
+echo $N Compare repos using fast export .............................$NL
 bk fast-export --branch=bkcmp --no-bk-keys > ../import.fast-export || fail
 cd ../git-repo
-git fast-import < ../import.fast-export || fail
+git fast-import --quiet < ../import.fast-export || fail
 
-git log --pretty="tree: %T%ncommitter: %cn <%ae>%ndate: %cD%n%B" --raw bkcmp > BK.log
-git log --pretty="tree: %T%ncommitter: %cn <%ae>%ndate: %cD%n%B" --raw master > GIT.log
-diff -u BK.log GIT.log
-
-exit 1
-
+BKROOT=`git log --pretty=%H bkcmp | tail -2 | head -1`
+git log --pretty="tree: %T%ncommitter: %cn <%ae>%ndate: %cD%n%B" --raw $BKROOT..bkcmp > BK.log || fail
+git log --pretty="tree: %T%ncommitter: %cn <%ae>%ndate: %cD%n%B" --raw master > GIT.log || fail
+diff -u BK.log GIT.log || fail
+echo OK
 
 exit 0
 ########################################################################

@@ -10667,11 +10667,7 @@ out:		sccs_abortWrite(s);
 	}
 	sfile = sccs_wrweaveInit(s);
 	if (BAM(s)) goto skip_weave;
-	if (n0) {
-		fputs("\001I 2\n", sfile);
-	} else {
-		fputs("\001I 1\n", sfile);
-	}
+	fprintf(sfile, "\001I %d\n", n);
 	s->dsum = 0;
 	if (!(flags & DELTA_PATCH) && BINARY(s)) {
 		/* XXX - this is incorrect, it needs to do it depending on
@@ -10723,16 +10719,12 @@ out:		sccs_abortWrite(s);
 			for (t = s->symlink; t && *t; s->dsum += *t++);
 		}
 	}
+	fprintf(sfile, "\001E %d", n);
+	if (no_lf) fputc('N', sfile);
+	fputc('\n', sfile);
 	if (n0) {
-		fputs("\001E 2", sfile);
-		if (no_lf) fputc('N', sfile);
-		fputc('\n', sfile);
 		fputs("\001I 1\n", sfile);
 		fputs("\001E 1\n", sfile);
-	} else {
-		fputs("\001E 1", sfile);
-		if (no_lf) fputc('N', sfile);
-		fputc('\n', sfile);
 	}
 skip_weave:
 	if (BKFILE_OUT(s)) fputs("\001Z\n", sfile);
