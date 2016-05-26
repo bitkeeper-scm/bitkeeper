@@ -47,6 +47,8 @@ echo $N Creating a git tree..........................................$NL
 mkdir git-repo
 cd git-repo
 git init $Q
+git config user.name bk
+git config user.email bk@bitkeeper.bk
 
 # create some files
 cat "`bk bin`"/slib.c > c-code.txt
@@ -366,7 +368,7 @@ git commit $Q -m"rm2"
 echo file1 > scm-boot.c
 git add -A
 git commit $Q -m'add back'
-git merge $Q --no-commit branch500
+git merge $Q --no-commit branch500 >/dev/null 2>&1
 echo file1 > scm-boot.c
 #rm clock-dummy.c
 git add -A
@@ -387,7 +389,7 @@ done
 i=1
 while [ $i -le 16 ]
 do	git checkout $Q branch550.$i
-	git merge $Q --no-commit -s ours branch550.`expr $i + 1`
+	git merge $Q --no-commit -s ours branch550.`expr $i + 1` >/dev/null 2>&1
 	rand_diffs
 	git add -A
 	git commit $Q -m"`get_git_branch`: merge1"
@@ -396,7 +398,7 @@ done
 i=1
 while [ $i -le 16 ]
 do	git checkout $Q branch550.$i
-	git merge $Q --no-commit -s ours branch550.`expr $i + 2`
+	git merge $Q --no-commit -s ours branch550.`expr $i + 2` >/dev/null 2>&1
 	rand_diffs
 	git add -A
 	git commit $Q -m"`get_git_branch`: merge2"
@@ -405,14 +407,14 @@ done
 i=1
 while [ $i -le 16 ]
 do	git checkout $Q branch550.$i
-	git merge $Q --no-commit -s ours branch550.`expr $i + 4`
+	git merge $Q --no-commit -s ours branch550.`expr $i + 4` >/dev/null 2>&1
 	rand_diffs
 	git add -A
 	git commit $Q -m"`get_git_branch`: merge4"
 	i=`expr $i + 8`
 done
 git checkout $Q branch550.1
-git merge $Q --no-commit -s ours branch550.9
+git merge $Q --no-commit -s ours branch550.9 >/dev/null 2>&1
 rand_diffs
 git add -A
 git commit $Q -m"`get_git_branch`: merge8"
@@ -435,13 +437,21 @@ git fast-export --all > ../git-repo.fast-export
 cd ..
 mkdir import
 cd import
-bk fast-import < ../git-repo.fast-export
+bk fast-import < ../git-repo.fast-export > OUT || fail -f OUT
+bk -r check -a || fail
+echo OK
+
+echo $N Compare repos using fast export ............................$NL
+bk fast-export --branch=bkcmp --no-bk-keys > ../import.fast-export || fail
+cd ../git-repo
+git fast-import < ../import.fast-export || fail
+
+git log --pretty="tree: %T%ncommitter: %cn <%ae>%ndate: %cD%n%B" --raw bkcmp > BK.log
+git log --pretty="tree: %T%ncommitter: %cn <%ae>%ndate: %cD%n%B" --raw master > GIT.log
+diff -u BK.log GIT.log
+
 exit 1
 
-echo $N Simple import................................................$NL
-cd "$HERE"
-`bk bin`/contrib/bk-git-import git-repo/.git bk-repo || fail
-echo OK
 
 exit 0
 ########################################################################

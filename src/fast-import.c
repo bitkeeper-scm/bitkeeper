@@ -108,7 +108,6 @@ typedef struct {
 	hash	*blobs;		/* mark -> blob struct */
 	hash	*commits;	/* mark -> commit struct */
 	hash	*paths;		/* uniq list of pathnames */
-	MDBM	*idDB;
 	commit	**clist;	/* array of commit*'s, oldest first */
 	int	filen;
 	sccs	*cset;
@@ -886,7 +885,6 @@ setup(opts *op)
 		perror("bk init");
 		exit(1);
 	}
-	op->idDB = mdbm_mem();
 }
 
 /*
@@ -1213,6 +1211,8 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		unless (BAM(s)) {
 			gop	gtmp;
 
+			strcpy(buf, PATHNAME(td.s, td.d));
+
 			gtmp.op = GDELETE;
 			(void)newDelta(op, td, cmt, &gtmp);
 			sccs_free(td.s); // XXX parallel deletes
@@ -1359,7 +1359,14 @@ newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
 	ret.m = 0;
 
 	if (!g || (g->op == GMODIFY)) {
-		rc = sccs_get(s, REV(s, m[1].d), REV(s, m[0].d), 0, 0,
+		ser_t	dp = m[1].d;
+		ser_t	dm = m[0].d;
+
+		if (sccs_needSwap(s, dp, dm, 0)) {
+			dp = m[0].d;
+			dm = m[1].d;
+		}
+		rc = sccs_get(s, REV(s, dp), REV(s, dm), 0, 0,
 		    SILENT|GET_EDIT, s->gfile, 0);
 		assert(!rc);
 
@@ -1388,7 +1395,14 @@ newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
 		assert(!rc);
 		s->state &= ~S_PFILE;
 	} else if (g->op == GDELETE) {
-		rc = sccs_get(s, REV(s, m[1].d), REV(s, m[0].d), 0, 0,
+		ser_t	dp = m[1].d;
+		ser_t	dm = m[0].d;
+
+		if (sccs_needSwap(s, dp, dm, 0)) {
+			dp = m[0].d;
+			dm = m[1].d;
+		}
+		rc = sccs_get(s, REV(s, dp), REV(s, dm), 0, 0,
 		    SILENT|GET_EDIT, s->gfile, 0);
 		assert(!rc);
 		d = sccs_newdelta(s);
@@ -1422,7 +1436,7 @@ private int
 mkChangeSet(opts *op)
 {
 	sccs	*s = op->cset;
-	ser_t	d;
+	ser_t	d, p, m;
 	int	i;
 	int	nparents;
 	commit	*cmt = 0;
@@ -1457,7 +1471,15 @@ mkChangeSet(opts *op)
 		} else if (nparents == 1) {
 			PARENT_SET(s, d, cmt->parents[1]->ser+2);
 		} else if (nparents == 2) {
-			MERGE_SET(s, d, cmt->parents[2]->ser+2);
+			p = cmt->parents[1]->ser+2;
+			m = cmt->parents[2]->ser+2;
+			if (sccs_needSwap(s, p, m, 0)) {
+				ser_t	tmp = p;
+				p = m;
+				m = tmp;
+			}
+			PARENT_SET(s, d, p);
+			MERGE_SET(s, d, m);
 		} else {
 			assert(0);
 		}
