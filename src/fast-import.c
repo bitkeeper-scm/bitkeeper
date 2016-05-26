@@ -1341,6 +1341,7 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		if (BAM(s)) {
 			// XXX gfile doesn't matter here, we are deleting
 			// but better is probably to copy my parent's file
+			//fileLink(td.m->file, s->gfile);
 			touch(s->gfile, 0666);
 		}
 		diffs = fmem();
@@ -1350,7 +1351,7 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		assert(!rc);
 		fclose(diffs);
 
-		ret.m = 0;
+		ret.m = td.m;
 	}
 	s->state &= ~S_PFILE;
 
@@ -1377,8 +1378,16 @@ newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
 	if (m[0].s != m[1].s) {
 		gop	gtmp;
 
-		/* delete newer file */
-		i =  (DATE(m[0].s, 1) < DATE(m[1].s, 1));
+		if (g) {
+			/* delete newer file */
+			i =  (DATE(m[0].s, 1) < DATE(m[1].s, 1));
+		} else {
+			/*
+			 * g==0 means match the parent so we should
+			 * do that
+			 */
+			i = 1;
+		}
 
 		gtmp.op = GDELETE;
 		newDelta(op, m[i], cmt, &gtmp);
