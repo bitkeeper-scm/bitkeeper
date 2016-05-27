@@ -1061,7 +1061,8 @@ importFile(opts *op, char *file)
 			if (i == nparents) nparents++;
 		}
 		/* skip cases where this file doesn't matter */
-		if (!g && (nparents < 2)) {
+		if (!g && (nparents < 2) &&
+		    ((nparents == 0) || lastmod[cmt->parents[1]->ser].s)) {
 			if (nparents == 1) {
 				lastmod[cmt->ser] = dp[0];
 			} else {
@@ -1073,9 +1074,21 @@ importFile(opts *op, char *file)
 		if (nparents == 0) {
 			// new file
 			td = newFile(op, file, cmt, g);
-		} else if (nparents == 1) {
+		} else if (g && (nparents == 1)) {
 			// new delta
 			td = newDelta(op, dp[0], cmt, g);
+		} else if (!g && (nparents == 1)) {
+			gop	gtmp;
+			/*
+			 * Here the file propages from a single parent
+			 * and wasn't selected above so it must be
+			 * from a merge parent of the a merge cset.
+			 * And since it enters via a merge and isn't a
+			 * change relative to the parent, then we must
+			 * delete this file.
+			 */
+			gtmp.op = GDELETE;
+			td = newDelta(op, dp[0], cmt, &gtmp);
 		} else {
 			assert(nparents == 2);
 
@@ -1324,13 +1337,19 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 	} else {
 		assert(g->op = GDELETE);
 
+		if (begins_with(PATHNAME(s, p), "BitKeeper/deleted/")) {
+			/* already deleted */
+			return (td);
+		}
 		rc = sccs_get(s, REV(s, p), 0, 0, 0,
 		    SILENT|GET_SKIPGET|GET_EDIT, 0, 0);
 		assert(!rc);
 
 		d = sccs_newdelta(s);
 		loadMetaData(s, d, cmt);
-		t = sccs_rmName(s);
+		rel = sccs_rmName(s);
+		t = sccs2name(rel);
+		free(rel);
 		rel = proj_relpath(s->proj, t);
 		free(t);
 		PATHNAME_SET(s, d, rel);
@@ -1454,7 +1473,9 @@ newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
 		assert(!rc);
 		d = sccs_newdelta(s);
 		loadMetaData(s, d, cmt);
-		t = sccs_rmName(s);
+		rel = sccs_rmName(s);
+		t = sccs2name(rel);
+		free(rel);
 		rel = proj_relpath(s->proj, t);
 		free(t);
 		PATHNAME_SET(s, d, rel);
