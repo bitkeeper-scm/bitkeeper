@@ -16,7 +16,7 @@ mkBINs
 data="data"
 
 commercial proj
-cp -rp "$HERE/proj" "$HERE/ascii"
+cp -R "$HERE/proj" "$HERE/ascii"
 echo $N Trying to check in some binary data .........................$NL
 cp "$BIN1" ${data}
 chmod u+w ${data}

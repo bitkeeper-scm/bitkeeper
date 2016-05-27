@@ -71,7 +71,7 @@ echo OK
 
 echo $N Check a component without a product fails a check ...........$NL
 cd "$HERE"
-cp -r prod/gcc gcc-comp-no-prod
+cp -R prod/gcc gcc-comp-no-prod
 # hack to cut out all the bad format messages
 cp prod/BitKeeper/log/features gcc-comp-no-prod/BitKeeper/log/features
 cd gcc-comp-no-prod
@@ -89,7 +89,7 @@ bk clone $Q --compat -sPRODUCT prod prod-clone2
 cd prod-clone2
 bk populate $Q gcc
 # Manually populate
-cp -r ../prod/gdb .
+cp -R ../prod/gdb .
 cd gcc
 touch bar
 bk new $Q bar

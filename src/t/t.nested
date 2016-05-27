@@ -84,7 +84,7 @@ echo $N Set up a new component ......................................$NL
 cd ..
 bk -R get $Q -S BitKeeper/etc/config
 bk setup -Cfc"`bk root`"/BitKeeper/etc/config new-comp
-cp -rp new-comp "$HERE/save"
+cp -R new-comp "$HERE/save"
 cd new-comp || fail
 test "`bk repotype`" = "component" || {
 	echo failed to make it a component
@@ -623,7 +623,7 @@ echo $N Make some csets and look at changes output ..................$NL
 # First commit the rename
 cd "$HERE/project"
 bk commit -S $Q -y"rename cset"
-cp -rp gcc4 ../gcc4-save
+cp -R gcc4 ../gcc4-save
 cd gcc4
 for i in file1 file2 file3
 do	echo $i > $i
@@ -1054,7 +1054,7 @@ cd project
 
 echo $N Test bk undo -r+ in where undo has been already done in gcc..$NL
 rm -rf gcc4
-cp -rp ../gcc4-save gcc4
+cp -R ../gcc4-save gcc4
 bk undo -fsr+ > OUT 2>&1 || {
 	echo failed
 	cat OUT

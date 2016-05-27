@@ -176,6 +176,7 @@ gitTZ(sccs *s, ser_t d)
 typedef struct finfo {
 	u64	mark;
 	mode_t	mode;
+	char	*dkParent;
 } finfo;
 
 
@@ -200,7 +201,7 @@ gitLine(opts *op, gitOp **oplist, char *comp_rk, char *rk,
 	char	*hkey = 0;
 	char	*path1 = 0, *path2 = 0;
 	int	del1, del2, rename;
-	finfo	*fip;
+	finfo	*fip = 0;
 	sccs	*s;
 	ser_t	d;
 	gitOp	*gop;
@@ -208,6 +209,14 @@ gitLine(opts *op, gitOp **oplist, char *comp_rk, char *rk,
 	/* punt early if gone */
 	if (gone(rk, op->goneDB) || gone(dk2, op->goneDB)) {
 		return;
+	}
+
+	hkey = aprintf("%s %s %s", comp_rk, rk, dk2);
+	unless (dk1) {
+		if (fip = hash_fetchStrMem(op->rkdk2fi, hkey)) {
+			dk1 = fip->dkParent;
+		}
+		unless (dk1) dk1 = "";
 	}
 
 	path1 = key2path(dk1, 0, 0, 0); /* could be NULL for new files */
@@ -224,7 +233,7 @@ gitLine(opts *op, gitOp **oplist, char *comp_rk, char *rk,
 	if ((del1 && del2) || (!path1 && del2)) {
 		goto out;
 	}
-	hkey = aprintf("%s %s %s", comp_rk, rk, dk2);
+
 	if (prefix1) {
 		char	*p;
 
@@ -248,7 +257,7 @@ gitLine(opts *op, gitOp **oplist, char *comp_rk, char *rk,
 			gop->op = aprintf("D %s\n", path1);
 		}
 		gop = addArray(oplist, 0);
-		if (fip = hash_fetchStrMem(op->rkdk2fi, hkey)) {
+		if (fip || (fip = hash_fetchStrMem(op->rkdk2fi, hkey))) {
 			gop->op = aprintf("M %s :%llu %s\n",
 			    gitMode(fip->mode), fip->mark, path2);
 		} else {
@@ -279,10 +288,11 @@ gitLineComp(opts *op, gitOp **oplist, char *rk, char *dk1, char *dk2)
 {
 	int	i;
 	sccs	*s;
-	ser_t	d1, d2;
-	char	*prefix1, *prefix2, *p;
+	ser_t	d1 = 0, d2 = 0;
+	char	*prefix1, *prefix2, *path1, *path2;
 	rset_df *rset;
 	MDBM	*goneSave;
+	char	buf[MAXKEY];
 
 	s = sccs_keyinitAndCache(0, rk, INIT_MUSTEXIST, op->sDB, op->idDB);
 	unless (s) {
@@ -290,17 +300,25 @@ gitLineComp(opts *op, gitOp **oplist, char *rk, char *dk1, char *dk2)
 		fprintf(stderr, "failed to init: %s\n", rk);
 		exit(1);
 	}
-	d1 = sccs_findKey(s, dk1);
-	if (!d1 && !streq(dk1, "")) {
-		if (gone(dk1, op->goneDB)) return;
-		fprintf(stderr, "%s not found\n", dk1);
-		exit(1);
-	}
 	d2 = sccs_findKey(s, dk2);
 	unless (d2) {
 		if (gone(dk2, op->goneDB)) return;
 		fprintf(stderr, "%s not found\n", dk2);
 		exit(1);
+	}
+
+	if (dk1) {
+		d1 = sccs_findKey(s, dk1);
+		if (!d1 && !streq(dk1, "")) {
+			if (gone(dk1, op->goneDB)) return;
+			fprintf(stderr, "%s not found\n", dk1);
+			exit(1);
+		}
+	} else {
+		if (d1 = PARENT(s, d2)) {
+			sccs_sdelta(s, d1, buf);
+			dk1 = buf;
+		}
 	}
 
 	/*
@@ -314,13 +332,14 @@ gitLineComp(opts *op, gitOp **oplist, char *rk, char *dk1, char *dk2)
 		hash_storeStrPtr(op->compGone, rk, op->goneDB);
 	}
 
-	rset = rset_diff(s, d1, 0, d2, 1);
 	prefix1 = 0;
-	if (p = key2path(dk1, 0, 0, 0)) {
-		prefix1 = dirname(p);
+	if (path1 = key2path(dk1, 0, 0, 0)) {
+		prefix1 = dirname(path1);
 	}
-	p = key2path(dk2, 0, 0, 0);
-	prefix2 = dirname(p);
+	path2 = key2path(dk2, 0, 0, 0);
+	prefix2 = dirname(path2);
+
+	rset = rset_diff(s, d1, 0, d2, 1);
 	EACH(rset) {
 		gitLine(op, oplist,
 		    rk,
@@ -331,8 +350,8 @@ gitLineComp(opts *op, gitOp **oplist, char *rk, char *dk1, char *dk2)
 	}
 	op->goneDB = goneSave;
 	free(rset);
-	free(prefix1);
-	free(prefix2);
+	free(path1);
+	free(path2);
 }
 
 /*
@@ -393,7 +412,7 @@ gitOpCmp(const void *a, const void *b)
 	 * This relies on the fact that 'D' < 'M', all we want are
 	 * deletes before adds.
 	 */
-	return (op1.op - op2.op);
+	return (*op1.op - *op2.op);
 }
 
 private int
@@ -418,6 +437,7 @@ gitExport(opts *op)
 	char	md5key[MD5LEN];
 	char	rk[MAXKEY];
 	char	dk[MAXKEY];
+	char	pdk[MAXKEY];
 
 	/* Give git all the files */
 	op->rkdk2fi = hash_new(HASH_MEMHASH);
@@ -546,6 +566,17 @@ gitExport(opts *op)
 			p = aprintf("%s %s %s", proj_rootkey(s->proj), rk, dk);
 			fi.mark = mark;
 			fi.mode = MODE(s, d);
+			if (PARENT(s, d)) {
+				ser_t	e;
+
+				/* Look for the csetmarked parent. */
+				for (e = PARENT(s, d);
+				     PARENT(s, e) && !(FLAGS(s, e) & D_CSET);
+				     e = PARENT(s, e)) {}
+
+				sccs_sdelta(s, e, pdk);
+				fi.dkParent = strdup(pdk);
+			}
 			unless (hash_insertStrMem(op->rkdk2fi, p,
 			    &fi, sizeof(fi))) {
 				fprintf(stderr, "Duplicate rk/dk: %s\n", p);
@@ -578,6 +609,8 @@ gitExport(opts *op)
 	f1 = fmem();
 	mark--;			/* we were one over */
 	for (d = cset->rstart; d <= cset->rstop; d++) {
+		int	incremental = 0; /* built on non-imported csets */
+
 		if (TAG(cset, d)) continue;
 		if (op->baserepo && !(FLAGS(cset, d) & D_RED)) continue;
 		printf("commit refs/heads/%s\n", op->branch);
@@ -606,28 +639,53 @@ gitExport(opts *op)
 				sha1 = hash_fetchStrStr(op->bk2git, md5key);
 				assert(sha1);
 				printf("%s\n", sha1);
+				incremental = 1;
 			} else {
 				printf(":%llu\n", mark + dp);
 			}
 		}
-		rset = rset_diff(cset, PARENT(cset, d), 0, d, 1);
-		gitOps = 0;
-		EACH(rset) {
-			if (componentKey(HEAP(cset, rset[i].dkright))) {
-				unless (op->nested) continue;
-				gitLineComp(op, &gitOps,
-				    HEAP(cset, rset[i].rkoff),
-				    HEAP(cset, rset[i].dkleft1),
-				    HEAP(cset, rset[i].dkright));
-			} else {
-				gitLine(op, &gitOps,
-				    proj_rootkey(cset->proj),
-				    HEAP(cset, rset[i].rkoff),
-				    HEAP(cset, rset[i].dkleft1),
-				    HEAP(cset, rset[i].dkright), 0, 0);
+		if (MERGE(cset, d) || incremental) {
+			rset = rset_diff(cset, PARENT(cset, d), 0, d, 1);
+			gitOps = 0;
+			EACH(rset) {
+				if (weave_iscomp(cset, rset[i].rkoff)) {
+					unless (op->nested) continue;
+					gitLineComp(op, &gitOps,
+					    HEAP(cset, rset[i].rkoff),
+					    HEAP(cset, rset[i].dkleft1),
+					    HEAP(cset, rset[i].dkright));
+				} else {
+					gitLine(op, &gitOps,
+					    proj_rootkey(cset->proj),
+					    HEAP(cset, rset[i].rkoff),
+					    HEAP(cset, rset[i].dkleft1),
+					    HEAP(cset, rset[i].dkright), 0, 0);
+				}
 			}
+			free(rset);
+		} else {
+			u32	rkof = 0, dkof = 0;
+			char	*frk, *fdk;
+
+			sccs_rdweaveInit(cset);
+			cset_firstPair(cset, d);
+			gitOps = 0;
+			while (cset_rdweavePair(cset, RWP_ONE, &rkof, &dkof)) {
+
+				unless (dkof) continue;
+				frk = HEAP(cset, rkof);
+				fdk = HEAP(cset, dkof);
+				if (weave_iscomp(cset, rkof)) {
+					unless (op->nested) continue;
+					gitLineComp(op, &gitOps, frk, 0, fdk);
+				} else {
+					gitLine(op, &gitOps,
+					    proj_rootkey(cset->proj),
+					    frk, 0, fdk, 0, 0);
+				}
+			}
+			sccs_rdweaveDone(cset);
 		}
-		free(rset);
 		/*
 		 * Sort the git operations on files so that
 		 * the deletes (D) happen before the new files
@@ -679,6 +737,10 @@ gitExport(opts *op)
 	}
 	mdbm_close(op->sDB);
 	hash_free(op->bk2git);
+	EACH_HASH(op->rkdk2fi) {
+		finfo *fi = (finfo *)op->rkdk2fi->vptr;
+		free(fi->dkParent);
+	}
 	hash_free(op->rkdk2fi);
 	EACH_HASH(op->compGone) mdbm_close(*(MDBM **)op->compGone->vptr);
 	hash_free(op->compGone);

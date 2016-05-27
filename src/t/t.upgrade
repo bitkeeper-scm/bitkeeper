@@ -17,7 +17,7 @@ echo $N Hack a near real install directory with 555 perms on dirs ...$NL
 BKSRC=`bk bin`
 if [ -d "$BKSRC/tmp/bitkeeper" ]
 then
-cp -r "$BKSRC/tmp/bitkeeper" "$HERE/installdir"
+cp -R "$BKSRC/tmp/bitkeeper" "$HERE/installdir"
 if [ "$PLATFORM" = "WIN32" ]
 then	PATH=`win2msys "$HERE/installdir"`:$PATH
 else	PATH="$HERE/installdir":$PATH

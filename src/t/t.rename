@@ -38,8 +38,8 @@ bk -r check -a
 # Now create two repositories with that file.
 cd "$HERE"
 rm gca/BitKeeper/log/repo_id
-cp -rp gca a
-cp -rp gca b
+cp -R gca a
+cp -R gca b
 
 # By hand, move the file in this tree.
 # Done by hand so we can force the date.

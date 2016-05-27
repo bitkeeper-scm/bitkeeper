@@ -94,7 +94,6 @@ fresh_commercial() {
 	rm .config
 	cd "$1"
 	bk bam server -qfr
-	bk repos -qc.
 }
 
 commercial() {

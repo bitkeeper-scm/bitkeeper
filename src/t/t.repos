@@ -18,7 +18,7 @@ echo $N Create initial repository ...................................$NL
 commercial commercial
 cd ..
 commercial project
-bk repos > GOT
+bk repos --check-all > GOT
 grep -q "commercial" GOT || fail -f GOT
 grep -q "project" GOT || fail -f GOT
 # Simulate more fields on commercial

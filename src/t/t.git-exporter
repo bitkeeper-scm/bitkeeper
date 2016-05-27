@@ -153,6 +153,35 @@ do_export project project.git || fail
 cmp_repos project project.git || fail
 echo OK
 
+echo $N Test a rename with modification .............................$NL
+cd "$HERE/project"
+bk mv bfile.moved bfile.moved2
+bk edit $Q bfile.moved2
+echo ddd >> bfile.moved2
+bk ci $Q -yddd bfile.moved2
+bk commit $Q -y"moved bfile again"
+cd "$HERE"
+do_export project project.git || fail
+cmp_repos project project.git || fail
+echo OK
+
+echo $N Test a rename via merge conflict.............................$NL
+cd "$HERE"
+bk clone $Q project copy
+cd project
+bk mv bfile.moved2 bfile.moved3
+bk commit $Q -y"moved bfile again"
+cd ../copy
+bk edit $Q bfile.moved2
+echo zzz >> bfile.moved2
+bk ci $Q -yzzz bfile.moved2
+bk commit $Q -y"changed bfile.moved2"
+bk pull $Q ../project
+cd "$HERE"
+do_export copy copy.git || fail
+cmp_repos copy copy.git || fail
+echo OK
+
 echo $N Make sure tags are imported as well..........................$NL
 cd "$HERE/project"
 bk tag $Q -r+ A_TAG
@@ -198,7 +227,7 @@ echo OK
 
 echo $N Move a file _inside_ BitKeeper...............................$NL
 cd "$HERE/project"
-bk mv -f bfile.moved BitKeeper/etc/
+bk mv -f bfile.moved3 BitKeeper/etc/
 bk commit $Q -y"moved a file into BitKeeper"
 cd "$HERE"
 do_export project project.git || fail
@@ -255,8 +284,10 @@ cmp_repos incremental incremental.git || fail
 echo OK
 
 echo $N Test criss-cross merge.......................................$NL
-## 
+##
 cd "$HERE/incremental.copy2"
+bk mv file1 file1new
+bk commit $Q -ymv
 bk pull $Q ../incremental.copy
 cd ../incremental
 bk pull $Q ../incremental.copy2
