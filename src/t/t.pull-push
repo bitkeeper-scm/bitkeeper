@@ -266,8 +266,8 @@ fi
 [ $L -eq $target ] || { echo merge failed; exit 1; }
 cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
 cd "$HERE"
-cp -rp project project2
-cp -rp project project3
+cp -R project project2
+cp -R project project3
 cd copy
 KEY="`bk prs -hd:KEY: -r+ ChangeSet`"
 bk push >OUT 2>ERR || { echo failed; exit 1; }
@@ -519,7 +519,7 @@ echo OK
 cd "$HERE"
 commercial pull-self
 cd ..
-cp -r pull-self push-self
+cp -R pull-self push-self
 
 echo $N Try pulling from myself .....................................$NL
 cd pull-self

@@ -225,7 +225,7 @@ commercial project
 touch foo
 bk new $Q foo || fail
 cd ..
-cp -r project copy
+cp -R project copy
 cd project
 rm BitKeeper/log/repo_id
 bk commit $Q -ytrunk

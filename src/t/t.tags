@@ -122,7 +122,7 @@ echo OK
 
 echo $N Add old style tags ..........................................$NL
 cd "$HERE"
-cp -rp project tags
+cp -R project tags
 cd tags
 _BK_NO_TAG_GRAPH=YES bk tag $Q OLD
 bk _scat SCCS/s.ChangeSet | grep -q '^.cS l' && {

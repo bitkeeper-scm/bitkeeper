@@ -214,7 +214,7 @@ echo OK
 
 echo $N Make sure renames are not stripped but are left pending .....$NL
 cd "$HERE"
-cp -rp clone pending
+cp -R clone pending
 cd pending
 bk mv FILE RENAME
 bk commit $Q -yrename
@@ -242,7 +242,7 @@ echo OK
 
 echo $N Make sure bk new-ed files are left but s.file is removed ....$NL
 cd "$HERE"
-cp -rp clone new
+cp -R clone new
 cd new
 ls > NEW
 cp NEW SAVE
@@ -285,7 +285,7 @@ echo OK
 
 echo $N Make sure bk new-ed files are left without keywords expanded.$NL
 cd "$HERE"
-cp -rp clone keywords
+cp -R clone keywords
 cd keywords
 bk edit $Q BitKeeper/etc/config
 echo "keywords: sccs" >> BitKeeper/etc/config

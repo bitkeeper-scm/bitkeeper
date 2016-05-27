@@ -138,7 +138,7 @@ test "$WANT" = "$GOT" || {
 }
 echo OK
 
-cp -rp "$HERE/project" "$HERE/clean"
+cp -R "$HERE/project" "$HERE/clean"
 echo $N Make sure that it complains if a file is missing, -a case ...$NL
 bk _mv d1/sub1/SCCS/s.a d1/sub1/SCCS/junk.a
 bk -r check -a > OUT 2>&1

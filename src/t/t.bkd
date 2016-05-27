@@ -521,18 +521,12 @@ echo OK
 echo $N Choose bk path on remote side of ssh using BK_REMOTEBIN .....$NL
 BK_RSH="ssh -i ppfree -o StrictHostKeyChecking=no -o Compression=no" \
 BK_TRACE_REMOTE=1 \
-BK_REMOTEBIN=/home/bk/releases/4.0.2d \
+BK_REMOTEBIN=/home/bk/releases/7.2.1ce \
     bk changes -q -r+ -nd:I: \
     ssh://bkd@work/empty > GOT 2> ERR || {
 	fail -f ERR
 }
-grep -q "Server info:VERSION=bk-4.0.2d" ERR || {
-	(
-	echo version not 4.0.2d
-	grep "Server info:VERSION=" ERR
-	) > ERR2
-	fail -f ERR2
-}
+grep -q "Server info:VERSION=bk-7.2.1ce" ERR || fail -f ERR expected ver 7.2.1
 checkfiles WANT GOT
 echo OK
 

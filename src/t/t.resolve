@@ -738,7 +738,7 @@ grep -q 'mode conflict' OUT && {
 }
 echo OK
 
-cp -rp "$HERE/mode" "$HERE/locktest"
+cp -R "$HERE/mode" "$HERE/locktest"
 echo $N Make sure we can finish the resolve .........................$NL
 ( 
   echo '?'

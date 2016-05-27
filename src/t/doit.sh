@@ -751,7 +751,7 @@ I hope your testing experience was positive! :-)
 		(	cd "$BK_REGRESSION"/..
 			test -d carcass-$USER || mkdir carcass-$USER
 			rm -fr "carcass-$USER/$i"
-			cp -Rp "$BK_REGRESSION" "carcass-$USER/$i"
+			cp -R "$BK_REGRESSION" "carcass-$USER/$i"
 		)
 		FAILED="$i $FAILED"
 	fi

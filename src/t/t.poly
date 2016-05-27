@@ -26,7 +26,7 @@ bk commit $Q -yrepo
 bk edit $Q foo
 bk delta $Q -fynull foo
 bk new $Q newfile
-cp -rp . ../snapshot
+cp -R . ../snapshot
 bk commit $Q -yrepo
 cd ../snapshot
 rm BitKeeper/log/repo_id
@@ -37,7 +37,7 @@ echo OK
 
 echo $N Duplicate delta, missing merge delta in file ................$NL
 cd "$HERE"
-cp -rp snapshot duplicate
+cp -R snapshot duplicate
 cd duplicate
 echo 'SCCS/s.foo|+' | bk commit $Q -y'foo' - || fail
 bk pull -q 2> GOT && fail -f GOT
@@ -59,7 +59,7 @@ echo $N New local delta in newfile - tickles takepatch error ........$NL
 # looks like a new file, it is coming over the patch as an sfio, and
 # hits a logic problem there:
 cd "$HERE"
-cp -rp snapshot newlocal-newfile
+cp -R snapshot newlocal-newfile
 cd newlocal-newfile
 bk edit $Q newfile
 bk delta $Q -fynull newfile
@@ -87,7 +87,7 @@ echo OK
 
 echo $N Merge on both sides with duplicate delta marked .............$NL
 cd "$HERE"
-cp -rp snapshot merge-dup
+cp -R snapshot merge-dup
 cd merge-dup
 echo 'SCCS/s.foo|+' | bk commit $Q -y'foo' - || fail
 bk edit $Q foo
@@ -113,7 +113,7 @@ echo OK
 echo $N Merge on both sides with no duplicate deltas marked .........$NL
 # We didn't block non-dup-key poly in the past, and still don't
 cd "$HERE"
-cp -rp snapshot merge
+cp -R snapshot merge
 cd merge
 bk edit $Q foo
 bk delta $Q -fynull foo
@@ -129,7 +129,7 @@ bk rm foo
 bk _rm -fr BitKeeper/deleted
 bk -r check -ag | bk gone $Q -
 GONEKEY=`bk prs -r+ -hnd:KEY: BitKeeper/etc/gone`
-cp -rp . ../copy
+cp -R . ../copy
 cd ../copy
 rm BitKeeper/log/repo_id
 bk id -r > newid

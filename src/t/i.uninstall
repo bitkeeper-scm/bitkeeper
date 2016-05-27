@@ -17,7 +17,7 @@ test "$PLATFORM" = "WIN32" && { echo skipped; exit 0; }
 root="`bk bin`/tmp"
 test -n "$root" -a -f $root/bitkeeper/bk || { echo skipped; exit 0; }
 # make a copy of the tmp installed area, then uninstall it
-cp -r $root/bitkeeper $root/bits || exit 1
+cp -R $root/bitkeeper $root/bits || exit 1
 test -d $root/bits || exit 1
 BK_GUI=1 $root/bits/bk uninstall || exit 1
 test -d "$root/bits" && exit 1
