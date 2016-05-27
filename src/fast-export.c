@@ -393,7 +393,7 @@ gitOpCmp(const void *a, const void *b)
 	 * This relies on the fact that 'D' < 'M', all we want are
 	 * deletes before adds.
 	 */
-	return (op1.op - op2.op);
+	return (*op1.op - *op2.op);
 }
 
 private int
