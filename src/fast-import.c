@@ -1392,14 +1392,26 @@ newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
 	char	*t, *rel;
 	ser_t	d;
 	int	i, rc;
+	FILE	*f;
 	char	buf[MAXPATH];
 
 	if (m[0].s != m[1].s) {
 		gop	gtmp;
 
 		if (g) {
-			/* delete newer file */
-			i =  (DATE(m[0].s, 1) < DATE(m[1].s, 1));
+			int del0 = begins_with(PATHNAME(m[0].s, m[0].d),
+					"BitKeeper/deleted/");
+			int del1 = begins_with(PATHNAME(m[1].s, m[1].d),
+					"BitKeeper/deleted/");
+
+			if (del0 && !del1) {
+				i = 0;
+			} else if (!del0 && del1) {
+				i = 1;
+			} else {
+				/* delete newer file */
+				i =  (DATE(m[0].s, 1) < DATE(m[1].s, 1));
+			}
 		} else {
 			/*
 			 * g==0 means match the parent so we should
@@ -1416,7 +1428,6 @@ newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
 			ret = newDelta(op, m[!i], cmt, g);
 		} else {
 			ret = m[!i];	/* older sfile */
-			ret.m = 0;
 		}
 		return (ret);
 	}
@@ -1452,9 +1463,17 @@ newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
 			check_gfile(s, 0);
 			ret.m = g->m;
 		} else {
-			/* merge with g==0, must be merging deletes */
+			/* merge with g==0, we match parent */
+			// XXX Assuming m[0] is git's parent
 			PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, m[0].d);
 			SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, m[0].d);
+			f = fopen(s->gfile, "w");
+			rc = sccs_get(s, REV(s, m[0].d), 0, 0, 0,
+			    SILENT|PRINT, 0, f);
+			assert(!rc);
+			fclose(f);
+			check_gfile(s, 0);
+			ret.m = m[0].m;
 		}
 		rc = sccs_delta(s, SILENT|DELTA_DONTASK|DELTA_CSETMARK,
 		    d, 0, 0, 0);

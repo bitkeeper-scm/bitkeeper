@@ -432,7 +432,7 @@ echo OK
 
 
 echo $N Parse fast-export ...........................................$NL
-git fast-export --all > ../git-repo.fast-export
+git fast-export master > ../git-repo.fast-export
 
 cd ..
 mkdir import
@@ -442,7 +442,7 @@ bk -r check -a || fail
 echo OK
 
 echo $N Compare repos using fast export .............................$NL
-bk fast-export --branch=bkcmp --no-bk-keys > ../import.fast-export || fail
+bk fast-export $Q --branch=bkcmp --no-bk-keys > ../import.fast-export || fail
 cd ../git-repo
 git fast-import --quiet < ../import.fast-export || fail
 

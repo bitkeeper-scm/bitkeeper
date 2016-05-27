@@ -829,7 +829,7 @@ printUserDate(opts *op, sccs *s, ser_t d)
 		printf("%.*s <%.*s@%.*s>",
 		    ulen, user, ulen, user, hlen, host);
 	}
-	printf(" %d %s\n", (int)DATE(s, d) - DATE_FUDGE(s, d), tz);
+	printf(" %d %s\n", (i32)(DATE(s, d) - DATE_FUDGE(s, d)), tz);
 	free(tz);
 }
 
