@@ -101,6 +101,7 @@ struct commit {
 	commit	**parents;	/* list of parents */
 	gop	**fops;		/* file operations for this commit  */
 	u32	*weave;		/* rk/dk pairs */
+	u32	inarray:1;	/* in op->clist */
 };
 
 typedef struct {
@@ -109,7 +110,9 @@ typedef struct {
 	hash	*commits;	/* mark -> commit struct */
 	hash	*paths;		/* uniq list of pathnames */
 	commit	**clist;	/* array of commit*'s, oldest first */
+	commit	*lastcset;	/* last cset from git, assume tip */
 	int	filen;
+	int	ncsets;
 	sccs	*cset;
 } opts;
 
@@ -188,16 +191,29 @@ fastimport_main(int ac, char **av)
 out:	return (rc);
 }
 
+private int
+cmtTimeSort(void *a, void *b)
+{
+	commit	*c1 = a;
+	commit	*c2 = b;
+	long	diff;
+
+	diff = (long)c1->when - (long)c2->when;
+	if (diff) return (diff);    /* time order */
+	return (c1->ser - c2->ser); /* original order */
+}
+
 #define	MATCH(s1)	(strneq(s1, line, strlen(s1)))
 
 private int
 gitImport(opts *op)
 {
 	char	*line;
-	int	i, j;
+	int	i, n;
 	int	blobCount, commitCount;
 	int	rc;
 	char	**list = 0;
+	PQ	*pq;
 	commit	*cmt;
 	struct {
 		char	*s;			/* cmd */
@@ -251,25 +267,26 @@ gitImport(opts *op)
 			break;
 		}
 	}
-	// XXX should time sort clist constrained by parents here
+	/* sort csets in time order */
+	pq = pq_new(cmtTimeSort);
+	growArray(&op->clist, op->ncsets);
+	pq_insert(pq, op->lastcset);
+	n = op->ncsets;
+	while (pq_peek(pq)) {
+		cmt = pq_pop(pq);
+		cmt->ser = n;
+		op->clist[n--] = cmt;
 
-	// set time fudge
-	EACH(op->clist) {
-		commit	*p;
-		long	tdiff;
+		EACH(cmt->parents) {
+			commit	*p = cmt->parents[i];
 
-		cmt = op->clist[i];
-		EACH_INDEX(cmt->parents, j) {
-			p = cmt->parents[j];
-			if ((tdiff = ((long)p->when - (long)cmt->when)) >= 0) {
-				/* parent is younger than me */
-
-				++tdiff;
-				cmt->when += tdiff;
-				cmt->fudge += tdiff;
-			}
+			if (p->inarray) continue;
+			p->inarray = 1;
+			pq_insert(pq, p);
 		}
 	}
+	pq_free(pq);
+	assert(n == 0);
 
 	/* get sorted unique list of pathnames */
 	EACH_HASH(op->paths) list = addLine(list, (char *)op->paths->kptr);
@@ -396,6 +413,7 @@ getCommit(opts *op, char *line)
 	char	*p;
 	gop	*gop;
 	FILE	*f;
+	long	tdiff;
 
 	assert(MATCH("commit "));
 	/* XXX: Need to get ref from line before reading another one. */
@@ -410,8 +428,6 @@ getCommit(opts *op, char *line)
 		exit(1);
 	}
 	cmt->mark = op->commits->kptr;
-	addArray(&op->clist, &cmt);
-	cmt->ser = nLines(op->clist);
 	line = fgetline(stdin);
 
 	if (MATCH("author")) {
@@ -424,7 +440,6 @@ getCommit(opts *op, char *line)
 		fprintf(stderr, "expected 'committer' line\n");
 		exit(1);
 	}
-
 	cmt->committer = parseWho(line, &cmt->when, &cmt->tz);
 	line = fgetline(stdin);
 
@@ -451,7 +466,15 @@ getCommit(opts *op, char *line)
 				    p);
 				exit(1);
 			}
-			addArray(&cmt->parents, &parent);
+			addArrayV(&cmt->parents, parent);
+			tdiff = (long)parent->when - (long)cmt->when;
+			if (tdiff >= 0) {
+				/* parent is younger than me */
+
+				++tdiff;
+				cmt->when += tdiff;
+				cmt->fudge += tdiff;
+			}
 		} else {
 			fprintf(stderr, "line '%s' not handled\n",
 			    line);
@@ -474,9 +497,11 @@ getCommit(opts *op, char *line)
 			fprintf(stderr, "line '%s' not supported\n", line);
 			exit(1);
 		}
-		addArray(&cmt->fops, &gop);
+		addArrayV(&cmt->fops, gop);
 		line = fgetline(stdin);
 	}
+	op->lastcset = cmt;
+	cmt->ser = ++op->ncsets;
 	return (line);
 }
 
@@ -538,8 +563,12 @@ parseOp(opts *op, char *line)
 		/* parse mode */
 		g->mode = parseMode(op, &p);
 		switch(g->mode) {
-		    case MODE_SUBDIR:
 		    case MODE_GITLINK:
+			fprintf(stderr,
+			    "%s: importing submodules not supported\n",
+			    prog);
+			exit(1);
+		    case MODE_SUBDIR:
 			assert(0);
 			break;
 		    default:
@@ -1309,6 +1338,9 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 			    SILENT|GET_EDIT, s->gfile, 0);
 			assert(!rc);
 			diffs = 0;
+			fileLink(g->m->file, s->gfile);
+			if (g->mode == MODE_EXE) chmod(s->gfile, 0755);
+			check_gfile(s, 0);
 		}
 		d = sccs_newdelta(s);
 		loadMetaData(s, d, cmt);
@@ -1422,7 +1454,7 @@ newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
 
 		gtmp.op = GDELETE;
 		newDelta(op, m[i], cmt, &gtmp);
-		sccs_free(m[i].s); // XXX parallel deletes
+		//sccs_free(m[i].s); // XXX parallel deletes
 
 		if (g) {
 			ret = newDelta(op, m[!i], cmt, g);
@@ -1434,6 +1466,11 @@ newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
 	ret = m[0];
 	s = ret.s;
 	ret.m = 0;
+	if (isReachable(s, m[0].d, m[1].d)) {
+		i = (m[0].d < m[1].d);
+		unless (g) return (m[i]);
+		return (newDelta(op, m[i], cmt, g));
+	}
 
 	if (!g || (g->op == GMODIFY)) {
 		ser_t	dp = m[1].d;
@@ -1560,7 +1597,11 @@ mkChangeSet(opts *op)
 		} else if (nparents == 2) {
 			p = cmt->parents[1]->ser+2;
 			m = cmt->parents[2]->ser+2;
-			if (sccs_needSwap(s, p, m, 0)) {
+			if (isReachable(s, p, m)) {
+				/* no need for merge */
+				if (p < m) p = m;
+				m = 0;
+			} else if (sccs_needSwap(s, p, m, 0)) {
 				ser_t	tmp = p;
 				p = m;
 				m = tmp;

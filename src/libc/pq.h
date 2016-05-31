@@ -17,9 +17,15 @@
 #ifndef	_LIB_PQ_H
 #define	_LIB_PQ_H
 
-void	pq_insert(u32 **pq, u32 item);
-u32	pq_delMax(u32 **pq);
+void	pq32_insert(u32 **pq, u32 item);
+u32	pq32_delMax(u32 **pq);
+#define	pq32_isEmpty(pq)	(nLines(pq) == 0)
 
-#define	pq_isEmpty(pq)	(nLines(pq) == 0)
+typedef	struct	pq	PQ;
+PQ	*pq_new(int (*cmp)(void *a, void *b));
+void	pq_insert(PQ *, void *);
+void	*pq_pop(PQ *);
+void	*pq_peek(PQ *);
+void	pq_free(PQ *);
 
 #endif	/* _LIB_PQ_H */

@@ -421,6 +421,17 @@ git commit $Q -m"`get_git_branch`: merge8"
 git checkout $Q master
 git merge $Q branch550.1
 
+# setup fast forward merge
+git checkout $Q -fb no-ff
+echo 2 >> file1
+git add file1
+git commit $Q -m'file1'
+rand_diffs
+git add -A
+git commit $Q -m'file2'
+git checkout $Q master
+git merge $Q --no-ff no-ff > /dev/null 2>&1
+
 #
 # To see what the git tree looks like, uncomment the following line.
 #printf "\n--- GIT TREE ---\n"; git log --oneline --graph; printf -- "---\n"
@@ -447,8 +458,8 @@ cd ../git-repo
 git fast-import --quiet < ../import.fast-export || fail
 
 BKROOT=`git log --pretty=%H bkcmp | tail -2 | head -1`
-git log --pretty="tree: %T%ncommitter: %ae%ndate: %cD%n%B" --raw $BKROOT..bkcmp > BK.log || fail
-git log --pretty="tree: %T%ncommitter: %ae%ndate: %cD%n%B" --raw master > GIT.log || fail
+git log --date-order --pretty="tree: %T%ncommitter: %ae%ndate: %cD%n%B" --raw $BKROOT..bkcmp > BK.log || fail
+git log --date-order --pretty="tree: %T%ncommitter: %ae%ndate: %cD%n%B" --raw master > GIT.log || fail
 diff -u BK.log GIT.log || fail
 echo OK
 

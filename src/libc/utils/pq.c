@@ -18,7 +18,7 @@
 #include "pq.h"
 
 private inline void
-swap(u32 *pq, int i, int j)
+swap32(u32 *pq, int i, int j)
 {
 	u32	tmp = pq[i];
 
@@ -27,16 +27,16 @@ swap(u32 *pq, int i, int j)
 }
 
 private inline void
-swim(u32 *pq, int k)
+swim32(u32 *pq, int k)
 {
 	while ((k > 1) && (pq[k/2] < pq[k])) {
-		swap(pq, k/2, k);
+		swap32(pq, k/2, k);
 		k = k/2;
 	}
 }
 
 private inline void
-sink(u32 *pq, int k, int N)
+sink32(u32 *pq, int k, int N)
 {
 	int	j;
 
@@ -44,22 +44,22 @@ sink(u32 *pq, int k, int N)
 		j = 2*k;
 		if ((j < N) && (pq[j] < pq[j+1])) j++;
 		unless (pq[k] < pq[j]) break;
-		swap(pq, k, j);
+		swap32(pq, k, j);
 		k = j;
 	}
 }
 
 void
-pq_insert(u32 **pq, u32 item)
+pq32_insert(u32 **pq, u32 item)
 {
 	u32	i = item;
 
 	addArray(pq, &i);
-	swim(*pq, nLines(*pq));
+	swim32(*pq, nLines(*pq));
 }
 
 u32
-pq_delMax(u32 **pqp)
+pq32_delMax(u32 **pqp)
 {
 	u32	ret;
 	u32	*pq = *pqp;
@@ -69,6 +69,90 @@ pq_delMax(u32 **pqp)
 	ret = pq[1];
 	pq[1] = pq[N--];
 	truncArray(pq, N);
-	sink(pq, 1, N);
+	sink32(pq, 1, N);
 	return ret;
+}
+
+// -------------------------------------------------
+
+struct	pq {
+	int	(*cmp)(void *a, void *b);
+	char	**d;
+};
+
+private inline void
+swap(PQ *pq, int i, int j)
+{
+	char	**d = pq->d;
+	void	*tmp = d[i];
+
+	d[i] = d[j];
+	d[j] = tmp;
+}
+
+PQ *
+pq_new(int (*cmp)(void *a, void *b))
+{
+	PQ	*ret;
+
+	ret = new(PQ);
+	ret->cmp = cmp;
+	return (ret);
+}
+
+private inline void
+swim(PQ *pq, int k)
+{
+	while ((k > 1) && (pq->cmp(pq->d[k/2], pq->d[k]) < 0)) {
+		swap(pq, k/2, k);
+		k = k/2;
+	}
+}
+
+void
+pq_insert(PQ *pq, void *item)
+{
+	pq->d = addLine(pq->d, item);
+	swim(pq, nLines(pq->d));
+}
+
+private inline void
+sink(PQ *pq, int k, int N)
+{
+	int	j;
+
+	while (2*k <= N) {
+		j = 2*k;
+		if ((j < N) && (pq->cmp(pq->d[j], pq->d[j+1]) < 0)) j++;
+		if (pq->cmp(pq->d[k], pq->d[j]) >= 0) break;
+		swap(pq, k, j);
+		k = j;
+	}
+}
+
+/* remove max item according to comparison function */
+void *
+pq_pop(PQ *pq)
+{
+	void	*ret;
+	int	N = nLines(pq->d);
+
+	assert(N > 0);
+	ret = pq->d[1];
+	pq->d[1] = popLine(pq->d);
+	sink(pq, 1, N-1);
+	return ret;
+}
+
+void *
+pq_peek(PQ *pq)
+{
+	return (nLines(pq->d) ? pq->d[1] : 0);
+}
+
+void
+pq_free(PQ *pq)
+{
+	freeLines(pq->d, 0);
+	free(pq);
 }

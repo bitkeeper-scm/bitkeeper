@@ -24,11 +24,11 @@ pq_tests(void)
 	int	n = 100;
 
 	for (i = 1; i <= n; i++) {
-		pq_insert(&pq, i);
+		pq32_insert(&pq, i);
 	}
 
 	for (i = n; i > 0; i--) {
-		int pi = pq_delMax(&pq);
+		int pi = pq32_delMax(&pq);
 		if (i != pi) goto err;
 	}
 	free(pq);

@@ -1380,15 +1380,15 @@ isReachable(sccs *s, ser_t start, ser_t stop)
 		start = stop;
 		stop = d;
 	}
-	pq_insert(&pq, start);
+	pq32_insert(&pq, start);
 	prev = 0;
-	while (!pq_isEmpty(pq)) {
-		d = pq_delMax(&pq);
+	while (!pq32_isEmpty(pq)) {
+		d = pq32_delMax(&pq);
 		if (prev == d) continue;
 		prev = d;
 		EACH_PARENT(s, d, p, j) {
 			if (p > stop) {
-				pq_insert(&pq, p);
+				pq32_insert(&pq, p);
 			} else if (p == stop) {
 				goto done;
 			}
