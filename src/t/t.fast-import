@@ -21,7 +21,7 @@ function get_git_branch {
 
 # silly prng that returns 1-20 in a predictable sequence
 function rand {
-	shuf -i1-20 -n1
+	perl -e'print int(rand(20));'
 }
 
 function rand_diffs {
@@ -40,6 +40,44 @@ commercial bk-repo
 cd ..
 
 set -e
+
+echo $N Create-create conflict.......................................$NL
+cd "$HERE"
+git init $Q create-create.git
+cd create-create.git
+echo afile > afile ; git add afile
+git commit $Q -m "add afile"
+GCA=`git log -1 --pretty=%H`
+echo create-create > create-create ; git add create-create
+git commit $Q -m "create-create (side 1)"
+git checkout $Q -f -b branch $GCA
+echo create-create > create-create ; git add create-create
+git commit $Q -m "create-create (side 2)"
+TIP=`git log -1 --pretty=%H`
+git merge $Q -m "merge 1" master
+git checkout $Q -f master
+git merge $Q -m "merge 2" $TIP
+git merge $Q -m "merge of merges" branch
+printf "\n--- GIT TREE ---\n"; git log --oneline --graph; printf -- "---\n"
+git fast-export master > ../create-create.export.git
+
+cd "$HERE"
+mkdir create-create.bk
+cd create-create.bk
+bk fast-import < ../create-create.export.git > OUT || fail -f OUT
+bk -r check -a || fail
+
+bk fast-export $Q --branch=bkcmp --no-bk-keys > ../create-create.export.bk || fail
+cd ../create-create.git
+git fast-import --quiet < ../create-create.export.bk || fail
+
+BKROOT=`git log --pretty=%H bkcmp | tail -2 | head -1`
+git log --date-order --pretty="tree: %T%ncommitter: %ae%ndate: %cD%n%B" --raw $BKROOT..bkcmp > BK.log || fail
+git log --date-order --pretty="tree: %T%ncommitter: %ae%ndate: %cD%n%B" --raw master > GIT.log || fail
+diff -u BK.log GIT.log || fail
+echo OK
+
+exit 0
 
 echo $N Creating a git tree..........................................$NL
 # The idea here is to create a single git repo
