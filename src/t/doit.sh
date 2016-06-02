@@ -147,7 +147,7 @@ unix_common_setup()
 	for f in awk expr sh ksh grep egrep sed env test [ sleep getopts \
 	    basename dirname cat cp cut ln mkdir mv rm rmdir touch wc xargs \
 	    co rcs ssh rsh gzip gunzip remsh rcmd uname xterm vi tar \
-	    chmod perl ls gdb bkdcp git realpath
+	    chmod perl ls gdb bkdcp git realpath diff diff3
 	do	p=`bk which -e $f`
 		if [ $? -eq 0 ]
 		then
@@ -421,9 +421,9 @@ clean_up()
 
 	# Make sure there are no stale files in $TMPDIR
 	ls -a "$TMPDIR" > "$TMPDIR/T.${USER} new"
-	bk diff "$TMPDIR/T.${USER}" "$TMPDIR/T.${USER} new" > /dev/null || {
+	bk ndiff "$TMPDIR/T.${USER}" "$TMPDIR/T.${USER} new" > /dev/null || {
 		echo "Test leaked the following temporary files:"
-		bk diff "$TMPDIR/T.${USER}" "$TMPDIR/T.${USER} new"
+		bk ndiff "$TMPDIR/T.${USER}" "$TMPDIR/T.${USER} new"
 		exit 1
 	}
 

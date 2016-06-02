@@ -41,8 +41,8 @@ cd "$HERE/project"
 bk export -T -k -r1.2 "$HERE/a"
 bk export -T -k -r1.3 "$HERE/b"
 cd "$HERE"
-bk diff -Nru a b | sed -e 's/foo\.c.*/foo.c/' > "$HERE/CMP2"
-bk diff -c CMP1 CMP2
+diff -Nru a b | sed -e 's/foo\.c.*/foo.c/' > "$HERE/CMP2"
+diff -c CMP1 CMP2
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 rm -rf "$HERE/a" "$HERE/b"
@@ -69,7 +69,7 @@ grep -q "Wed Dec 31 16:00:00 196900" patch && {
 }
 bk patch -sp 1 -d "$HERE/a" < patch
 bk export -T -k -r1.4 "$HERE/b"
-bk diff -r "$HERE/a" "$HERE/b"
+diff -r "$HERE/a" "$HERE/b"
 if [ $? -ne 0 ]; then echo failed; else echo OK; fi
 rm -rf "$HERE/a" "$HERE/b"
 
@@ -85,7 +85,7 @@ bk export -T -k -r1.4 "$HERE/a"
 bk export -hT -tpatch -r1.4,1.5 > patch
 bk patch -sp 1 -d "$HERE/a" < patch
 bk export -T -k -r1.5 "$HERE/b"
-bk diff -r "$HERE/a" "$HERE/b"
+diff -r "$HERE/a" "$HERE/b"
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 echo OK
 rm -rf "$HERE/a" "$HERE/b"
@@ -99,7 +99,7 @@ bk export -T -k -r1.5 "$HERE/a"
 bk export -hT -tpatch -r1.5,1.6 > patch 
 bk patch -sp 1 -d "$HERE/a" < patch
 bk export -T -k -r1.6 "$HERE/b"
-bk diff -r "$HERE/a" "$HERE/b"
+diff -r "$HERE/a" "$HERE/b"
 if [ $? -ne 0 ]; then echo failed; exit 1;  fi
 echo OK
 rm -rf "$HERE/a" "$HERE/b"
@@ -109,7 +109,7 @@ bk export -T -k -r1.6 "$HERE/a"
 bk export -hT -tpatch -r1.6,1.5 > patch
 bk patch -sp 1 -d "$HERE/a" < patch
 bk export -T -k -r1.5 "$HERE/b"
-bk diff -r "$HERE/a" "$HERE/b"
+diff -r "$HERE/a" "$HERE/b"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 rm -rf "$HERE/a" "$HERE/b"
@@ -120,7 +120,7 @@ bk export -T -k -r1.5 "$HERE/a"
 bk export -hT -tpatch -r1.5,1.4 > patch
 bk patch -sp 1 -d "$HERE/a" < patch
 bk export -T -k -r1.4 "$HERE/b"
-bk diff -r "$HERE/a" "$HERE/b"
+diff -r "$HERE/a" "$HERE/b"
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 echo OK
 rm -rf "$HERE/a" "$HERE/b"
@@ -138,7 +138,7 @@ bk export -T -k -r1.1 "$HERE/a"
 bk export -hT -tpatch -r1.1,1.6 > patch
 bk patch -sp 1 -d "$HERE/a" < patch
 bk export -T -k -r1.6 "$HERE/b"
-bk diff -r "$HERE/a" "$HERE/b"
+diff -r "$HERE/a" "$HERE/b"
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 echo OK
 rm -rf "$HERE/a" "$HERE/b"
@@ -149,7 +149,7 @@ bk export -T -k -r1.5 "$HERE/a"
 bk export -hT -tpatch -r1.5,1.1 > patch
 bk patch -sp 1 -d "$HERE/a" < patch
 bk export -T -k -r1.1 "$HERE/b"
-bk diff -r "$HERE/a" "$HERE/b"
+diff -r "$HERE/a" "$HERE/b"
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 echo OK
 rm -rf "$HERE/a" "$HERE/b"
@@ -169,7 +169,7 @@ bk export -T -k -r1.6 "$HERE/a"
 bk export -hT -tpatch -r1.6,1.7 > patch
 bk patch -sp 1 -d "$HERE/a" < patch
 bk export -T -k -r1.7 "$HERE/b"
-bk diff -r "$HERE/a" "$HERE/b"
+diff -r "$HERE/a" "$HERE/b"
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 echo OK
 rm -rf "$HERE/a" "$HERE/b"
@@ -197,7 +197,7 @@ grep "dup.c" mkdiffs.out
 if [ $? -eq 0 ]; then echo "failed"; exit 1; fi
 bk patch -sp 1 -d "$HERE/a" < mkdiffs.out
 bk export -T -k -r1.10 "$HERE/b"
-bk diff -r "$HERE/a" "$HERE/b"
+diff -r "$HERE/a" "$HERE/b"
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 echo OK
 

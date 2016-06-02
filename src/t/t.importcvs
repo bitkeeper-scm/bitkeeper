@@ -196,7 +196,7 @@ cat <<EOF > WANT_TAGS
 1.3 tag_branch1
 1.2 tag_start
 EOF
-bk diff -u TAGS WANT_TAGS
+bk ndiff -u TAGS WANT_TAGS
 echo OK
 
 echo $N Import CVS branch2...........................................$NL
@@ -217,7 +217,7 @@ cat <<EOF > WANT_TAGS
 1.3 tag_next1 branch2_BASE
 1.2 tag_start
 EOF
-bk diff -u TAGS WANT_TAGS
+bk ndiff -u TAGS WANT_TAGS
 echo OK
 
 echo $N Import CVS branch1_1.........................................$NL

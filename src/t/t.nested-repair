@@ -105,7 +105,7 @@ bk repocheck > OUT 2>&1 && fail -f OUT
 grep -q "missing ChangeSet file!" OUT || fail -f OUT
 bk _repair -@"$HERE/gcc" > OUT 2>&1 || fail -f OUT
 bk _heapdump ChangeSet > 2
-bk diff -u 1 2 > 3 && fail working, update test
+bk ndiff -u 1 2 > 3 && fail working, update test
 grep '^-[^-]' 3 | sed s'/RANDOM.*/RANDOM:/' > 4
 
 # the repair fails to fix the pathname and the rootkey

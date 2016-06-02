@@ -42,8 +42,8 @@ EOF
 bk undos -r < file > dosfile
 # Newfile code path
 touch null
-bk diff null dosfile > diffs
-bk diff -n null dosfile > diffs.rcs
+bk ndiff null dosfile > diffs
+bk ndiff -n null dosfile > diffs.rcs
 bk delta $Q -i -ynewfile -Ddiffs plain 2> ERR && fail -f ERR
 grep -q "checkin: bad diff format 0a1,3" ERR || fail -f ERR
 bk delta $Q -i -ynewfile -Ddiffs.rcs rcs || fail
@@ -53,8 +53,8 @@ checkfiles srcs srcs.unix
 # Delta code path
 echo line 4 >> file
 bk undos -r < file > dosfile2
-bk diff dosfile dosfile2 > diffs
-bk diff -n dosfile dosfile2 > diffs.rcs
+bk ndiff dosfile dosfile2 > diffs
+bk ndiff -n dosfile dosfile2 > diffs.rcs
 bk edit $Q -g rcs
 bk delta $Q -ynewfile -Ddiffs rcs 2> ERR && fail -f ERR
 grep -q "Must use RCS diff format (diff -n).  Found '3a4'" ERR || fail -f ERR

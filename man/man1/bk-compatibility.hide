@@ -41,7 +41,7 @@ Add a new file to the repository.  Same as
 .tp
 .B sccsdiff
 Show differences in revision control files.  Similar to
-.BR "bk diffs" .
+.BR "bk diff" .
 .tp
 .B val
 Check s.file structure and time stamps.  Similar to
@@ -57,7 +57,7 @@ Check out a file.
 .SH "SEE ALSO"
 .SA admin
 .SA delta
-.SA diffs
+.SA diff
 .SA get
 .SA new
 .SH CATEGORY

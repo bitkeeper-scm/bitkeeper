@@ -160,7 +160,7 @@ BK_CONFIG="eoln: native!; compression: gzip! " \
 umask 077
 BK_CONFIG="eoln: unix!; keyword:sccs, rcs, expand1!; compress: none! " \
     bk partition $Q -@config.one project config.two || fail
-bk diff -ar -ux'log' config.one config.two > DIFF || fail -f DIFF diff failed
+diff -ar -ux'log' config.one config.two > DIFF || fail -f DIFF diff failed
 test -s DIFF && fail -f DIFF
 umask 000
 echo OK

@@ -30,7 +30,7 @@ will refuse bring in changes to files which are modified in the
 local repository.
 Should this occur, one way around it is to do
 .DS
-bk -Ac diffs -up > DIFFS
+bk -Ac diff -up > DIFFS
 bk -A unedit
 bk pull
 bk patch -p1 -g1 < DIFFS
@@ -170,7 +170,7 @@ below.
 .tp
 .B \-\-stats
 After finishing the pull, print statistics about what was pulled. The
-format is compatible with the output of bk diffs --stats-only.
+format is compatible with the output of bk diff --stats-only.
 This option can be permanently turned on with the
 .B stats_after_pull
 configuration variable. See

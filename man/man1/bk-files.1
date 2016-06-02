@@ -71,8 +71,8 @@ must be set to the value \s-1YES\s0.
 To match all header files both of the following do the same thing:
 .DS
 export BK_GLOB_EQUAL=YES
-bk diffs =.h
-bk diffs '*.h'
+bk diff =.h
+bk diff '*.h'
 .DE
 If you have a file with an \*(lq=\*(rq or other glob characters in
 its name you will need to either quote those characters with a
@@ -81,7 +81,7 @@ proceeding backslash (i.e., \*(lq\\*.h\*(rq matches a file named
 \*(lq/\*(rq then no glob expansion is applied.
 This makes it possible to do things like
 .DS
-bk diffs './*.h'
+bk diff './*.h'
 .DE
 and have that match the file named \*(lq*.h\*(rq.
 .SH EXCEPTIONS
@@ -94,15 +94,15 @@ and it refuses to autoexpand to all files, the files must be specified.
 .SH EXAMPLES
 See changes in the current directory:
 .DS
-bk diffs
+bk diff
 .DE
 See all changes in the repository:
 .DS
-bk -U diffs
+bk -U diff
 .DE
 See all changes to header files in the repository:
 .DS
-bk -U diffs '*.h'
+bk -U diff '*.h'
 .DE
 List all C or header files containing the phrase \*(lqproc\*(rq in their name:
 .DS
@@ -122,7 +122,7 @@ bk -xA
 returns exit status 0.
 .SH SEE ALSO
 .SA bk
-.SA diffs
+.SA diff
 .SA glob
 .SA gfiles
 .SH CATEGORY

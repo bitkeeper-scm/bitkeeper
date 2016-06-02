@@ -233,7 +233,7 @@ OBJ =	bkver.o cmd.o \
 	contrib/test.o \
 	converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
-	dataheap.o dbfile.o delta.o diff.o diffs.o diffsplit.o dspec.o \
+	dataheap.o dbfile.o delta.o diff.o diffsplit.o dspec.o \
 	export.o \
 	fast-export.o features.o findmerge.o \
 	find.o findcset.o fixtool.o fsl.o fslayer.o \
@@ -244,7 +244,7 @@ OBJ =	bkver.o cmd.o \
 	heapdump.o help.o here.o here_check.o hostme.o http.o \
 	idcache.o isascii.o info.o \
 	key2rev.o key2path.o kill.o kv.o \
-	libcommit.o libgraph.o librange.o \
+	libcommit.o libdiff.o libgraph.o librange.o \
 	libsfiles.o lines.o \
 	localtm.o lock.o locking.o \
 	mail.o merge.o mklock.o \
@@ -392,7 +392,7 @@ clean: FORCE  ## Remove object files and executables
 		bk.ico \
 		bkmsg.txt bkhelp.txt bkver.c \
 		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe \
-		diff.exe diff3.exe mend.exe \
+		mend.exe \
 		conf-$(BKHOST).mk build
 	$(Q)$(RM) -r tmp
 

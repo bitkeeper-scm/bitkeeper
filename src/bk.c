@@ -1956,3 +1956,10 @@ log_rotate(char *path)
 		rename(path, old);
 	}
 }
+
+int
+undefined_main(int ac, char **av)
+{
+	fprintf(stderr, "%s: this command is undefined\n", prog);
+	return (1);
+}

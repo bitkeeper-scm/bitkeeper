@@ -223,7 +223,8 @@ _debugargs remote
 deledit
 delget
 delta
-diffs
+diff
+diffs => diff
 diffsplit
 dotbk
 _dumpconfig
@@ -400,6 +401,7 @@ tmpdir
 _touch
 _unbk
 _uncat
+_undefined
 undo
 undos
 unedit
@@ -449,12 +451,17 @@ patch => mend
 _preference => config
 rechksum => checksum
 rev2cset => r2c
-sccsdiff => diffs
+sccsdiff => diff
 sfind => gfiles
 _sort => sort
 support => sendbug
 _test => test
 unget => unedit
+
+# commands we don't want to work
+#cmp => _undefined
+#diff3 => _undefined
+#sdiff => _undefined
 
 # guis
 citool gui
@@ -490,10 +497,6 @@ resync shell
 
 # c programs
 mend cprog
-cmp cprog
-diff cprog
-diff3 cprog
-sdiff cprog
 
 # L scripts
 check_comments lscript

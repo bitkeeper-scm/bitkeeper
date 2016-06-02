@@ -1065,6 +1065,7 @@ typedef struct {
 	pcre	*pattern;		/* compiled pattern for diff -p */
 	int	context;		/* context for unified output
 					 * (-1 means 0) see delta comments */
+	u32	always_text:1;		/* treat all files as text */
 	u32	out_sdiff;		/* sdiff output (value is # of cols) */
 	u32	ignore_all_ws:1;	/* ignore all whitespace */
 	u32	ignore_ws_chg:1;	/* ignore changes in white space */
@@ -1079,6 +1080,7 @@ typedef struct {
 	u32	out_header:1;		/* print bitkeeper header (doDiff())*/
 	u32	out_comments:1;		/* print comments */
 	u32	out_diffstat:1;		/* print diffstat output */
+	u32	out_quiet:1;		/* don't print any output */
 } df_opt;
 
 #if	defined(__x86_64__) || defined(__i386__)

@@ -1,4 +1,19 @@
 ============================================================================
+Release notes for BitKeeper version 7.2.2ce release June 16 2016
+
+- Removed the out-of-date version of GNU diff from our tree.  The few
+  places where BK assumed a GNU diff, it will now use the one on the
+  system.  There is an exception for Windows. If no diff is found BK
+  will use a 2.8.7 binary that we still ship (upgraded from 2.7).
+
+  This is part of a larger effort to unbundle all of the OSS packages
+  that are likely to already be installed (and more up-to-date).
+
+- Rename the old "bk diffs" command to "bk diff".  "bk diffs" remains
+  as an alias.  Scripts expecting on the "bk diff" to run a GNU diff
+  should be updated to remove the "bk " prefix.
+
+============================================================================
 Release notes for BitKeeper version 7.2.1ce release May 16 2016
 
 This is a minor bugfix release

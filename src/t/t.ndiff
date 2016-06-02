@@ -58,7 +58,7 @@ D
 EOF
 echon "2" >> B
 bk ndiff A B > GOT && fail Expected diffs
-bk diff A B >WANT
+diff A B >WANT
 cmp -s WANT GOT || {
 	dumpdiffs
 	fail
@@ -69,7 +69,7 @@ echo $N Test no newline makes it through.............................$NL
 echo bar > A
 echo bar > B
 printf "foo\r" >> B
-bk diff A B > WANT
+diff A B > WANT
 bk ndiff A B > GOT
 cmp -s WANT GOT || {
 	dumpdiffs
@@ -105,102 +105,6 @@ cmp -s WANT GOT || {
 	fail Different results
 }
 echo OK
-
-echo $N Test our wacky --ignore-tailing-cr...........................$NL
-echo a > A
-printf "a\n\r" > B
-bk diff --ignore-trailing-cr A B >WANT && fail
-bk ndiff --ignore-trailing-cr A B >GOT && {
-	dumpdiffs
-	fail
-}
-cmp -s WANT GOT || {
-	dumpdiffs
-	fail Different results
-}
-echo a > A
-echon a > B
-bk diff --ignore-trailing-cr A B > WANT && fail
-bk ndiff --ignore-trailing-cr A B > GOT && {
-	dumpdiffs
-	fail
-}
-cmp -s WANT GOT || {
-	dumpdiffs
-	fail Different results
-}
-printf "\ra\r\n" > A
-printf "\ra\r\r\r\n" > B
-bk diff --ignore-trailing-cr A B > WANT || fail $?
-bk ndiff --ignore-trailing-cr A B > GOT || fail $?
-cmp -s WANT GOT || {
-	dumpdiffs
-	fail Different results
-}
-printf 'data\r\n' > A
-echo 'data' > B
-bk diff --ignore-trailing-cr A B > WANT || fail $?
-bk ndiff --ignore-trailing-cr A B > GOT || fail $?
-cmp -s WANT GOT || {
-	dumpdiffs
-	fail Different results
-}
-echo 'data' > A
-echo 'data' > B
-printf 'last line\r\n' >> B
-bk diff --ignore-trailing-cr A B > WANT && fail $?
-bk ndiff --ignore-trailing-cr A B > GOT && fail $?
-cmp -s WANT GOT || {
-	dumpdiffs
-	fail
-}
-printf "bar\r\n" > A
-printf "bar\r\nfoo\r" > B
-bk diff --ignore-trailing-cr A B > WANT
-bk ndiff --ignore-trailing-cr A B > GOT
-cmp -s WANT GOT || {
-	dumpdiffs
-	fail
-}
-printf "bar\r\n" > A
-printf "bar\r\nfoo\r\n" > B
-bk diff --ignore-trailing-cr A B > WANT
-bk ndiff --ignore-trailing-cr A B > GOT
-cmp -s WANT GOT || {
-	dumpdiffs
-	fail
-}
-printf "a\nb\nc\r\r\r\r" > A
-printf "a\n1\nc\r\r\r" > B
-bk diff --ignore-trailing-cr A B > WANT
-bk ndiff --ignore-trailing-cr A B >GOT
-cmp -s WANT GOT || {
-	dumpdiffs
-	fail
-}
-printf "a\r\nb\r\n" > A
-printf "a\r\nb\r\nc\r\n" > B
-bk diff --ignore-trailing-cr A B > WANT
-bk ndiff --ignore-trailing-cr A B > GOT
-cmpfiles WANT GOT
-bk ndiff --strip-trailing-cr A B > GOT
-cmpfiles WANT GOT
-echo OK
-
-echo $N Test binary detection........................................$NL
-echo baseline > A
-cp A B
-echo 'There is a null right here X>' | tr X '\000' >> B
-echo "" >> B
-echo and another line after that >> B
-bk diff --ignore-trailing-cr A B > WANT && fail $?
-bk ndiff --ignore-trailing-cr A B > GOT && fail $?
-cmp -s WANT GOT || {
-	dumpdiffs
-	fail Different results
-}
-echo OK
-
 
 echo $N Asymetric test...............................................$NL
 cat > A <<EOF
@@ -356,8 +260,8 @@ bar(int arg)
 	/* changed code */
 }
 EOF
-bk diff -up A B > WANT
-bk ndiff -up A B > GOT
+diff -up A B | grep -v -e '^---' | grep -v -e '^+++' > WANT
+bk ndiff -up A B | grep -v -e '^---' | grep -v -e '^+++' > GOT
 cmp -s WANT GOT || {
 	dumpdiffs
 	fail
@@ -991,8 +895,8 @@ funcb()
 	stuff;
 }
 EOF
-bk ndiff -u A B > GOT
-bk diff -up A B > WANT
+bk ndiff -u A B | grep -v -e '^---' | grep -v -e '^+++' > GOT
+diff -up A B | grep -v -e '^---' | grep -v -e '^+++' > WANT
 cmpfiles WANT GOT
 echo OK
 

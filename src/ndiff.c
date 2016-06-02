@@ -76,13 +76,16 @@ ndiff_main(int ac, char **av)
 		{ "show-function-line", 'F'},
 		{ "strip-trailing-cr", 320 },
 		{ "print-hunks", 330},
+		{ "quiet", 'q' },
+		{ "text", 'a' },
 		{ 0, 0 }
 	};
 	int	rc = -1;
 
 	bzero(&opts, sizeof(df_opt));
-	while ((c = getopt(ac, av, "bdD:F:pu|wnN", lopts)) != -1) {
+	while ((c = getopt(ac, av, "abdD:F:pqu|wnN", lopts)) != -1) {
 		switch (c) {
+		    case 'a': opts.always_text = 1; break;
 		    case 'b': opts.ignore_ws_chg = 1; break;
 		    case 'd': opts.minimal = 1; break;
 		    case 'D': opts.out_define = strdup(optarg);	break;
@@ -101,6 +104,7 @@ ndiff_main(int ac, char **av)
 		    case 'n': opts.out_rcs = 1; break;
 		    case 'N': opts.new_is_null = 1; break;
 		    case 'F': pattern = strdup(optarg); break;
+		    case 'q': opts.out_quiet = 1; break;
 		    case 310:	/* --ignore-trailing-cr */
 			opts.ignore_trailing_cr = 1;
 			break;
@@ -122,7 +126,7 @@ ndiff_main(int ac, char **av)
 		goto out;
 	}
 	if ((opts.out_unified + !!opts.out_define + opts.out_rcs +
-	    !!opts.out_sdiff + opts.out_print_hunks) > 1) {
+	    !!opts.out_sdiff + opts.out_print_hunks + opts.out_quiet) > 1) {
 		fprintf(stderr, "diff: conflicting output style options\n");
 		goto out;
 	}
@@ -283,7 +287,9 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 
 		s = e = data[i];
 		for (j = 0; j < sb[i].st_size; j++) {
-			if (*e == '\0') fop.binary[i] = 1;
+			if (*e == '\0' && !dop->always_text) {
+				fop.binary[i] = 1;
+			}
 			if (*e == '\n') {
 				if (dop->strip_trailing_cr) {
 					t = e;
@@ -380,7 +386,7 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 			    DSTART(h, DF_LEFT), DLEN(h, DF_LEFT),
 			    DSTART(h, DF_RIGHT), DLEN(h, DF_RIGHT));
 		}
-	} else {
+	} else if (!dop->out_quiet) {
 		printStd(hlist, &fop, fout);
 	}
 

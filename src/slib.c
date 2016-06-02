@@ -10156,10 +10156,21 @@ sccs_dInit(ser_t d, char type, sccs *s, int nodefault)
 			time_t	now = time(0), use = s->gtime, i;
 
 			if (use > now) {
-				fprintf(stderr, "BK limiting the delta time "
-				    "to the present time.\n"
-				    "Timestamp on \"%s\" is in the future\n",
-				    s->gfile);
+				/*
+				 * clamp DTIME to now *but* only
+				 * complain if sfile is more than one
+				 * second in the future (as can happen
+				 * when patch rounds up fractional
+				 * seconds)
+				 */
+				if (use > now + 1) {
+					fprintf(stderr,
+					    "BK limiting the delta time "
+					    "to the present time.\n"
+					    "Timestamp on \"%s\" is in the "
+					    "future\n",
+					    s->gfile);
+				}
 				use = now;
 			}
 			date(s, d, use);

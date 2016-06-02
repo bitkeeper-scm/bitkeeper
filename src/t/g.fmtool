@@ -61,7 +61,7 @@ if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
 # should we ignore whitespace? At present, fmtool on windows creates
 # lines terminated by \r\n even if the original files were terminated
 # with \n.
-bk diff $Q -w merge left >"$OUT" 2>&1
+bk ndiff $Q -w merge left >"$OUT" 2>&1
 if [ $? -ne 0 ]; then echo failed; cat "$OUT"; exit 1; fi
 echo OK
 
@@ -77,7 +77,7 @@ if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
 # should we ignore whitespace? At present, fmtool on windows creates
 # lines terminated by \r\n even if the original files were terminated
 # with \n.
-bk diff $Q -w merge right >"$OUT" 2>&1
+bk ndiff $Q -w merge right >"$OUT" 2>&1
 if [ $? -ne 0 ]; then echo failed; cat "$OUT"; exit 1; fi
 echo OK
 
@@ -95,7 +95,7 @@ if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
 # should we ignore whitespace? At present, fmtool on windows creates
 # lines terminated by \r\n even if the original files were terminated
 # with \n.
-bk diff $Q -w merge right >"$OUT" 2>&1
+bk ndiff $Q -w merge right >"$OUT" 2>&1
 if [ $? -ne 0 ]; then echo failed; cat "$OUT"; exit 1; fi
 echo OK
 

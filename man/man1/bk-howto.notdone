@@ -94,14 +94,14 @@ string when the program is compiled into a binary executable.
 Before checking in the file, you might want to see what changes you
 have made to the file since checking it out:
 .DS
-master$ bk diffs
+master$ bk diff
 .DE
 When you are happy with your changes and want to commit them, type:
 .DS
 master$ bk ci test.c
 .DE
 An alternative to doing 
-.BR bk diffs ,
+.BR bk diff ,
 is to use the 
 .B -p 
 option when

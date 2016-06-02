@@ -121,7 +121,7 @@ $Date: DATE $
 # $Author sdljf $Author: bk@bk_regression.bk $
 # $Author: bk@bk_regression.bk $$Author $Author: bk@bk_regression.bk $
 EOF
-bk diff -u CMP1 CMP2 || fail
+bk ndiff -u CMP1 CMP2 || fail
 echo OK
 
 echo $N Check RCS and SCCS keyword expansion on the same line .......$NL
@@ -140,7 +140,7 @@ Both 1.2 \$Revision: 1.2 \$
 EOF
 cmp -s src/both WANT || {
 	echo failed
-	bk diff src/both WANT
+	bk ndiff src/both WANT
 	exit 1
 }
 echo OK
