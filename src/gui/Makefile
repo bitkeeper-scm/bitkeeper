@@ -75,7 +75,7 @@ $(DOIT):
 
 clean-here: FORCE
 	-rm -f $(GUIS) TAGS
-	-rm -rf bin lib images
+	-rm -rf bin lib images share
 
 clobber-here: clean-here FORCE
 	-$(BK) -r. clean
