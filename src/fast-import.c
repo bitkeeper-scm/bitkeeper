@@ -116,13 +116,12 @@ typedef struct {
 	sccs	*cset;
 } opts;
 
-/* the sfile/delta combo that records a certain git blob */
 typedef struct {
 	sccs	*s;
-	ser_t	d;
-	blob	*m;
-	u32	rk;		/* rkoff in cset heap */
-} sdelta;
+	ser_t	*dlist;		/* tip of this sfile for each cset */
+	u32	rk;		/* offset to rk in op->cset heap */
+	u32	binary:1;
+} finfo;
 
 private int	gitImport(opts *op);
 private void	setup(opts *op);
@@ -146,9 +145,10 @@ private char	*parsePath(opts *op, char **s);
 private	blob	*saveInline(opts *op);
 
 private	int	importFile(opts *op, char *file);
-private	sdelta	newFile(opts *op, char *file, commit *cmt, gop *g);
-private	sdelta	newDelta(opts *op, sdelta td, commit *cmt, gop *g);
-private	sdelta	newMerge(opts *op, sdelta p[2], commit *cmt, gop *g);
+private	finfo	newFile(opts *op, char *file, commit *cmt, gop *g);
+private	void	newDelta(opts *op, finfo *fi, ser_t p, blob *m,
+    commit *cmt, gop *g);
+private	void	newMerge(opts *op, finfo *fi, commit *cmt, gop *g);
 private	int	mkChangeSet(opts *op);
 
 /* bk fast-import (aliased as _fastimport) */
@@ -269,6 +269,7 @@ gitImport(opts *op)
 	}
 	/* sort csets in time order */
 	pq = pq_new(cmtTimeSort);
+	assert(op->ncsets == hash_count(op->commits));
 	growArray(&op->clist, op->ncsets);
 	pq_insert(pq, op->lastcset);
 	n = op->ncsets;
@@ -1052,21 +1053,82 @@ data(opts *op, char *line, FILE *f, int want_sha1)
 /* Everything above was parsing (analysis). This next part is synthesis. */
 
 
+/*
+ * Look at the list of sfiles for the current pathname at pick the
+ * best one.  We can have mutiple for a couple reasons:
+ *  - switching from ascii to BAM
+ *  - files created in parallel (create/create conflict)
+ */
+private int
+findMatch(finfo *sfiles, gop *g, u32 dp)
+{
+	sccs	*s, *sb = 0;
+	int	best = 0;
+	int	i;
+	int	a, b;
+	ser_t	d, db;
+	char	key1[MAXKEY], key2[MAXKEY];
+
+	/*
+	 * Of the files that are active for this serial that have the right
+	 * binary state, pick the oldest one and favor non-delete files
+	 */
+	EACH(sfiles) {
+		if (g && (g->op != GDELETE) &&
+		    (g->m->binary != sfiles[i].binary)) {
+			/* BAM or not? */
+			continue;
+		}
+		/* can't use a file that didn't exist at parent rev */
+		unless (d = sfiles[i].dlist[dp]) continue;
+
+		s = sfiles[i].s;
+		unless (best) {	/* anything is better than nothing */
+new:			best = i;
+			sb = s;
+			db = d;
+			continue;
+		}
+		/* not deleted is better than deleted */
+		a = begins_with(PATHNAME(s, d), "BitKeeper/deleted/");
+		b = begins_with(PATHNAME(sb, db), "BitKeeper/deleted/");
+		if (!a && b) goto new;
+		if (a && !b) continue;
+
+		/* older is better than newer */
+		if (DATE(s, 1) < DATE(sb, 1)) goto new;
+		if (DATE(s, 1) > DATE(sb, 1)) continue;
+
+		/* if all else fails, sort by rootkey so we are stable */
+		sccs_sdelta(s, 1, key1);
+		sccs_sdelta(sb, 1, key2);
+		if (strcmp(key1, key2) < 0) goto new;
+	}
+	return (best);
+}
+
+
 private int
 importFile(opts *op, char *file)
 {
-	int	ncsets = hash_count(op->commits);
-	sdelta	lastmod[ncsets+1];
-	int	i, j;
-	int	nparents;
-	commit	*cmt = 0, **p;
-	sdelta	dp[2], td;
-	gop	*g;
+	int	i, j, k;
+	int	npar_git, npar_file;
+	u32	d, dp;
+	commit	*cmt = 0;
+	u32	n, ud, uniq_n[2], uniq_d[2];
+	gop	*g, gtmp;
+	blob	**m = 0;		/* contents of path for each cset */
+
+	/* all the sfiles that have been created for this pathname */
+	finfo	*sfiles = 0;
+
+	growArray(&m, op->ncsets);
 
 	EACH_INDEX(op->clist, j) {
 		cmt = op->clist[j];
+		d = cmt->ser;
 
-		/* did this cset change 'file' ? */
+		/* did this cset change pathname 'file' ? */
 		g = 0;
 		EACH(cmt->fops) {
 			if (cmt->fops[i]->path1 == file) {
@@ -1074,59 +1136,106 @@ importFile(opts *op, char *file)
 				break;
 			}
 		}
-
-		/* how many unique parents? */
-		nparents = 0;
-		EACHP(cmt->parents, p) {
-			td = lastmod[(*p)->ser];
-			unless (td.s) continue;
-			for (i = 0; i < nparents; i++) {
-				if ((dp[i].s == td.s) && (dp[i].d == td.d)) {
+		npar_git = nLines(cmt->parents);
+		dp = npar_git ? cmt->parents[1]->ser : d;
+		m[d] = g ? g->m : m[dp];
+		if (!g && (!sfiles || (npar_git == 1))) {
+			/* nothing interesting happened */
+			/* copy state from parent */
+			EACH(sfiles) sfiles[i].dlist[d] = sfiles[i].dlist[dp];
+			continue;
+		}
+		/* how many unique parents in file? */
+		npar_file = 0;
+		EACH_INDEX(cmt->parents, k) {
+			dp = cmt->parents[k]->ser;
+			unless (n = findMatch(sfiles, g, dp)) continue;
+			unless (ud = sfiles[n].dlist[dp]) continue;
+			for (i = 0; i < npar_file; i++) {
+				if ((uniq_n[i] == n) && (uniq_d[i] == ud)) {
 					break;
 				}
 			}
-			assert(i < 2); /* octopus on file */
-			dp[i] = td;
-			if (i == nparents) nparents++;
+			assert(i < 2); /* no octopus on file */
+			uniq_n[i] = n;
+			uniq_d[i] = ud;
+			if (i == npar_file) npar_file++;
 		}
-		/* skip cases where this file doesn't matter */
-		if (!g && (nparents < 2) &&
-		    ((nparents == 0) || lastmod[cmt->parents[1]->ser].s)) {
-			if (nparents == 1) {
-				lastmod[cmt->ser] = dp[0];
+		if ((npar_file == 2) && (uniq_n[0] != uniq_n[1])) {
+			sccs	*s0 = sfiles[uniq_n[0]].s;
+			sccs	*s1 = sfiles[uniq_n[1]].s;
+			int	del0 = begins_with(PATHNAME(s0, uniq_d[0]),
+						   "BitKeeper/deleted/");
+			int	del1 = begins_with(PATHNAME(s1, uniq_d[1]),
+						   "BitKeeper/deleted/");
+
+			/* 'i' is the side to keep */
+			if (del0 && !del1) {
+				i = 1;
+			} else if (!del0 && del1) {
+				i = 0;
+			} else if (DATE(s0, 1) > DATE(s1, 1)) {
+				/* keep older file */
+				i = 1;
+			} else if (DATE(s0, 1) < DATE(s1, 1)) {
+				i = 0;
 			} else {
-				memset(&lastmod[cmt->ser], 0, sizeof(sdelta));
+				char	key0[MAXKEY];
+				char	key1[MAXKEY];
+
+				sccs_sdelta(s0, sccs_ino(s0), key0);
+				sccs_sdelta(s1, sccs_ino(s1), key1);
+				i = (strcmp(key0, key1) > 0);
 			}
-			continue;
+			uniq_n[0] = uniq_n[i];
+			uniq_d[0] = uniq_d[i];
+			npar_file = 1;
+			if (!g && m[cmt->parents[1]->ser]) {
+				gtmp.op = GMODIFY;
+				gtmp.mode = MODE_FILE; // XXX?
+				gtmp.m = m[cmt->parents[1]->ser];
+				g = &gtmp;
+			}
 		}
-
-		if (nparents == 0) {
+		n = uniq_n[0];
+		ud = uniq_d[0];
+		if ((npar_file == 0) && g) {
 			// new file
-			td = newFile(op, file, cmt, g);
-		} else if (g && (nparents == 1)) {
+			addArrayV(&sfiles, newFile(op, file, cmt, g));
+			n = nLines(sfiles);
+		} else if ((npar_file == 1) && g) {
 			// new delta
-			td = newDelta(op, dp[0], cmt, g);
-		} else if (!g && (nparents == 1)) {
-			gop	gtmp;
-			/*
-			 * Here the file propages from a single parent
-			 * and wasn't selected above so it must be
-			 * from a merge parent of the a merge cset.
-			 * And since it enters via a merge and isn't a
-			 * change relative to the parent, then we must
-			 * delete this file.
-			 */
-			gtmp.op = GDELETE;
-			td = newDelta(op, dp[0], cmt, &gtmp);
+			newDelta(op, &sfiles[n], ud, m[d], cmt, g);
 		} else {
-			assert(nparents == 2);
-
-			// merge in file with new contents (g might be 0)
-			td = newMerge(op, dp, cmt, g);
+			// merge in file with new contents (g may be zero)
+			newMerge(op, &sfiles[n], cmt, g);
 		}
-		lastmod[cmt->ser] = td;
+		/* now update the other files */
+		EACH(sfiles) {
+			gop	gtmp = { GDELETE };
+
+			if (i == n) continue;
+			if (npar_git == 0) {
+			} else if (npar_git == 1) {
+				/* nothing interesting happened */
+				dp = sfiles[i].dlist[cmt->parents[1]->ser];
+				if (dp) {
+					newDelta(op, &sfiles[i], dp, 0,
+					    cmt, &gtmp);
+				}
+			} else {
+				assert(npar_git > 1);
+				// handle merging existing sfiles
+				newMerge(op, &sfiles[i], cmt, &gtmp);
+			}
+		}
 	}
-	if (cmt && lastmod[cmt->ser].s) sccs_free(lastmod[cmt->ser].s);
+	EACH(sfiles) {
+		sccs_free(sfiles[i].s);
+		free(sfiles[i].dlist);
+	}
+	free(sfiles);
+	free(m);
 	return (0);
 }
 
@@ -1150,18 +1259,20 @@ loadMetaData(sccs *s, ser_t d, commit *cmt)
 	}
 }
 
-private sdelta
+private finfo
 newFile(opts *op, char *file, commit *cmt, gop *g)
 {
 	sccs	*s;
-	sdelta	ret = {0};
+	finfo	ret = {0};
 	char	*p;
 	ser_t	d, d0;
 	int	rc;
 	char	buf[MAXLINE];
 
 	assert(g->op == GMODIFY);
-	ret.m = g->m;
+
+	growArray(&ret.dlist, op->ncsets);
+	ret.binary = g->m->binary;
 
 	sprintf(buf, "%d", ++op->filen);
 	ret.s = s = sccs_init(buf, 0);
@@ -1206,7 +1317,7 @@ newFile(opts *op, char *file, commit *cmt, gop *g)
 	}
 	FLAGS(s, d0) |= D_INARRAY;
 
-	ret.d = d = sccs_newdelta(s);
+	ret.dlist[cmt->ser] = d = sccs_newdelta(s);
 	loadMetaData(s, d, cmt);
 	PARENT_SET(s, d, d0);
 	sccs_parseArg(s, d, 'P', file, 0);
@@ -1236,31 +1347,19 @@ newFile(opts *op, char *file, commit *cmt, gop *g)
 	return (ret);
 }
 
-private sdelta
-newDelta(opts *op, sdelta td, commit *cmt, gop *g)
+private void
+newDelta(opts *op, finfo *fi, ser_t p, blob *m, commit *cmt, gop *g)
 {
-	sdelta	ret = td;
-	sccs	*s = td.s;
-	ser_t	p = td.d;
+	sccs	*s = fi->s;
 	ser_t	d;
 	char	*t, *rel;
 	int	rc;
 	FILE	*diffs;
 	char	buf[MAXLINE];
 
-	if ((g->op == GMODIFY) && (BAM(s) || g->m->binary)) {
+	if ((g->op == GMODIFY) && g->m->binary) {
+		assert(BAM(s));
 		assert(g->mode == MODE_EXE || g->mode == MODE_FILE);
-		unless (BAM(s)) {
-			gop	gtmp;
-
-			strcpy(buf, PATHNAME(td.s, td.d));
-
-			gtmp.op = GDELETE;
-			(void)newDelta(op, td, cmt, &gtmp);
-			sccs_free(td.s); // XXX parallel deletes
-
-			return (newFile(op, buf, cmt, g));
-		}
 		rc = sccs_get(s, REV(s, p), 0, 0, 0,
 		    SILENT|GET_SKIPGET|GET_EDIT, 0, 0);
 		assert(!rc);
@@ -1271,7 +1370,6 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		fileLink(g->m->file, s->gfile);
 		if (g->mode == MODE_EXE) chmod(s->gfile, 0755);
 		check_gfile(s, 0);
-		ret.m = g->m;
 		switch(g->mode) {
 		    case MODE_FILE:
 			MODE_SET(s, d, 0100664);
@@ -1288,7 +1386,7 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		assert(!rc);
 	} else if ((g->op == GMODIFY) && (g->mode == MODE_SYMLINK)) {
 		rc = sccs_get(s, REV(s, p), 0, 0, 0,
-		    SILENT|GET_EDIT, s->gfile, 0);
+		    SILENT|GET_SKIPGET|GET_EDIT, s->gfile, 0);
 		assert(!rc);
 
 		d = sccs_newdelta(s);
@@ -1297,7 +1395,6 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, 1);
 		MODE_SET(s, d, 0120777);
 
-		assert(td.m);
 		t = loadfile(g->m->file, 0);
 		unlink(s->gfile);
 		rc = symlink(t, s->gfile);
@@ -1309,9 +1406,9 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		rc = sccs_delta(s, SILENT|DELTA_DONTASK|DELTA_CSETMARK,
 		    d, 0, 0, 0);
 		assert(!rc);
-		ret.m = g->m;
+		assert(!exists(s->gfile));
 	} else if (g->op == GMODIFY) {
-		if (td.m && SYMLINK(s, p)) {
+		if (!m || SYMLINK(s, p)) {
 			rc = sccs_get(s, REV(s, p), 0, 0, 0,
 			    SILENT|GET_EDIT, s->gfile, 0);
 			assert(!rc);
@@ -1319,7 +1416,7 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 			fileLink(g->m->file, s->gfile);
 			if (g->mode == MODE_EXE) chmod(s->gfile, 0755);
 			check_gfile(s, 0);
-		} else if (td.m) {
+		} else  {
 			df_opt	dop = {0};
 
 			rc = sccs_get(s, REV(s, p), 0, 0, 0,
@@ -1329,18 +1426,10 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 			dop.ignore_trailing_cr = 1;
 			dop.out_rcs = 1;
 			bktmp(buf);
-			rc = diff_files(td.m->file, g->m->file, &dop, buf);
+			rc = diff_files(m->file, g->m->file, &dop, buf);
 			assert((rc == 0) || (rc == 1));
 			diffs = fopen(buf, "r");
 			assert(diffs);
-		} else {
-			rc = sccs_get(s, REV(s, p), 0, 0, 0,
-			    SILENT|GET_EDIT, s->gfile, 0);
-			assert(!rc);
-			diffs = 0;
-			fileLink(g->m->file, s->gfile);
-			if (g->mode == MODE_EXE) chmod(s->gfile, 0755);
-			check_gfile(s, 0);
 		}
 		d = sccs_newdelta(s);
 		loadMetaData(s, d, cmt);
@@ -1365,13 +1454,13 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 			fclose(diffs);
 			unlink(buf);
 		}
-		ret.m = g->m;
 	} else {
 		assert(g->op = GDELETE);
 
 		if (begins_with(PATHNAME(s, p), "BitKeeper/deleted/")) {
 			/* already deleted */
-			return (td);
+			fi->dlist[cmt->ser] = p;
+			return;
 		}
 		rc = sccs_get(s, REV(s, p), 0, 0, 0,
 		    SILENT|GET_SKIPGET|GET_EDIT, 0, 0);
@@ -1385,6 +1474,7 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		rel = proj_relpath(s->proj, t);
 		free(t);
 		PATHNAME_SET(s, d, rel);
+		SORTPATH_SET(s, d, rel);
 		free(rel);
 		t = aprintf("Delete: %s\n", PATHNAME(s, p));
 		COMMENTS_SET(s, d, t);
@@ -1401,85 +1491,87 @@ newDelta(opts *op, sdelta td, commit *cmt, gop *g)
 		    d, 0, diffs, 0);
 		assert(!rc);
 		fclose(diffs);
-
-		ret.m = td.m;
 	}
 	s->state &= ~S_PFILE;
 
 	/* record the cset weave */
-	assert(ret.rk);
-	addArrayV(&cmt->weave, ret.rk);
+	assert(fi->rk);
+	addArrayV(&cmt->weave, fi->rk);
 	sccs_sdelta(s, d, buf);
 	addArrayV(&cmt->weave, sccs_addStr(op->cset, buf));
 
-	ret.d = d;
-	return (ret);
+	fi->dlist[cmt->ser] = d;
 }
 
-private sdelta
-newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
+private void
+newMerge(opts *op, finfo *fi, commit *cmt, gop *g)
 {
-	sdelta	ret;
-	sccs	*s;
+	sccs	*s = fi->s;
 	char	*t, *rel;
-	ser_t	d;
-	int	i, rc;
+	ser_t	d;		/* new merge delta being created */
+	ser_t	dp, dm;		/* bk's parent/merge deltas */
+	ser_t	dp_git;		/* bk's delta matching git's parent */
+	int	rc;
 	FILE	*f;
 	char	buf[MAXPATH];
 
-	if (m[0].s != m[1].s) {
-		gop	gtmp;
-
-		if (g) {
-			int del0 = begins_with(PATHNAME(m[0].s, m[0].d),
-					"BitKeeper/deleted/");
-			int del1 = begins_with(PATHNAME(m[1].s, m[1].d),
-					"BitKeeper/deleted/");
-
-			if (del0 && !del1) {
-				i = 0;
-			} else if (!del0 && del1) {
-				i = 1;
-			} else {
-				/* delete newer file */
-				i =  (DATE(m[0].s, 1) < DATE(m[1].s, 1));
-			}
+	assert(nLines(cmt->parents) == 2);
+	dp = dp_git = fi->dlist[cmt->parents[1]->ser];
+	dm =          fi->dlist[cmt->parents[2]->ser];
+	if (!(dp && dm) || (dp == dm) || isReachable(s, dp, dm)) {
+		d = max(dp, dm);
+		if (!d) {
+			/* no history for this file */
+			assert(!g || (g->op == GDELETE));
+			fi->dlist[cmt->ser] = 0;
+		} else if (g) {
+			newDelta(op, fi, d, 0, cmt, g);
+		} else if (!dp && (d != dp_git)) {
+			/* if a merge has g==0 and the file only exists on
+			 * merge parent, then the merge is ignored and
+			 * the file is deleted
+			 */
+			gop	gtmp = { GDELETE };
+			newDelta(op, fi, d, 0, cmt, &gtmp);
+		} else if (d == dp_git) {
+			/* add nothing, just keep parent */
+			fi->dlist[cmt->ser] = d;
 		} else {
 			/*
-			 * g==0 means match the parent so we should
-			 * do that
+			 * a merge with g==0 where we are reverting
+			 * changes we must be reverting the changes on the
+			 * merge side
 			 */
-			i = 1;
+			assert(dp && dm && (d == dm));
+			rc = sccs_get(s, REV(s, d), 0, 0, 0,
+			    SILENT|GET_SKIPGET|GET_EDIT, s->gfile, 0);
+			assert(!rc);
+
+			d = sccs_newdelta(s);
+			loadMetaData(s, d, cmt);
+
+			PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, dp_git);
+			SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, dp_git);
+			f = fopen(s->gfile, "w");
+			rc = sccs_get(s, REV(s, dp_git), 0, 0, 0,
+			    SILENT|PRINT, 0, f);
+			assert(!rc);
+			fclose(f);
+			check_gfile(s, 0);
+			rc = sccs_delta(s, SILENT|DELTA_DONTASK|DELTA_CSETMARK,
+			    d, 0, 0, 0);
+			assert(!rc);
+			s->state &= ~S_PFILE;
+			goto out;
 		}
-
-		gtmp.op = GDELETE;
-		newDelta(op, m[i], cmt, &gtmp);
-		//sccs_free(m[i].s); // XXX parallel deletes
-
-		if (g) {
-			ret = newDelta(op, m[!i], cmt, g);
-		} else {
-			ret = m[!i];	/* older sfile */
-		}
-		return (ret);
+		return;
+	}  else if (sccs_needSwap(s, dp, dm, 0)) {
+		d = dp;
+		dp = dm;
+		dm = d;
+		/* dp_git doesn't move */
 	}
-	ret = m[0];
-	s = ret.s;
-	ret.m = 0;
-	if (isReachable(s, m[0].d, m[1].d)) {
-		i = (m[0].d < m[1].d);
-		unless (g) return (m[i]);
-		return (newDelta(op, m[i], cmt, g));
-	}
-
 	if (!g || (g->op == GMODIFY)) {
-		ser_t	dp = m[1].d;
-		ser_t	dm = m[0].d;
-
-		if (sccs_needSwap(s, dp, dm, 0)) {
-			dp = m[0].d;
-			dm = m[1].d;
-		}
 		rc = sccs_get(s, REV(s, dp), REV(s, dm), 0, 0,
 		    SILENT|GET_EDIT, s->gfile, 0);
 		assert(!rc);
@@ -1498,32 +1590,24 @@ newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
 			fileLink(g->m->file, s->gfile);
 			if (g->mode == MODE_EXE) chmod(s->gfile, 0755);
 			check_gfile(s, 0);
-			ret.m = g->m;
 		} else {
 			/* merge with g==0, we match parent */
-			// XXX Assuming m[0] is git's parent
-			PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, m[0].d);
-			SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, m[0].d);
+			PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, dp_git);
+			SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, dp_git);
+			unlink(s->gfile);
 			f = fopen(s->gfile, "w");
-			rc = sccs_get(s, REV(s, m[0].d), 0, 0, 0,
+			rc = sccs_get(s, REV(s, dp_git), 0, 0, 0,
 			    SILENT|PRINT, 0, f);
 			assert(!rc);
 			fclose(f);
 			check_gfile(s, 0);
-			ret.m = m[0].m;
 		}
 		rc = sccs_delta(s, SILENT|DELTA_DONTASK|DELTA_CSETMARK,
 		    d, 0, 0, 0);
 		assert(!rc);
 		s->state &= ~S_PFILE;
 	} else if (g->op == GDELETE) {
-		ser_t	dp = m[1].d;
-		ser_t	dm = m[0].d;
-
-		if (sccs_needSwap(s, dp, dm, 0)) {
-			dp = m[0].d;
-			dm = m[1].d;
-		}
+		/* gfile will contain "sccs-merge" */
 		rc = sccs_get(s, REV(s, dp), REV(s, dm), 0, 0,
 		    SILENT|GET_EDIT, s->gfile, 0);
 		assert(!rc);
@@ -1535,25 +1619,23 @@ newMerge(opts *op, sdelta m[2], commit *cmt, gop *g)
 		rel = proj_relpath(s->proj, t);
 		free(t);
 		PATHNAME_SET(s, d, rel);
+		SORTPATH_SET(s, d, rel);
 		free(rel);
 		rc = sccs_delta(s,
 		    SILENT|DELTA_DONTASK|DELTA_CSETMARK|DELTA_FORCE,
 		    d, 0, 0, 0);
 		assert(!rc);
 		s->state &= ~S_PFILE;
-
-		ret.m = 0;
 	} else {
 		assert(0);
 	}
-	ret.d = d;
-
-	/* record the cset weave */
-	assert(ret.rk);
-	addArrayV(&cmt->weave, ret.rk);
+out:	/* record the cset weave */
+	assert(fi->rk);
+	addArrayV(&cmt->weave, fi->rk);
 	sccs_sdelta(s, d, buf);
 	addArrayV(&cmt->weave, sccs_addStr(op->cset, buf));
-	return (ret);
+
+	fi->dlist[cmt->ser] = d;
 }
 
 private int
