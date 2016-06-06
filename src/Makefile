@@ -395,6 +395,20 @@ clean: FORCE  ## Remove object files and executables
 		mend.exe \
 		conf-$(BKHOST).mk build
 	$(Q)$(RM) -r tmp
+ifeq (true,$(INREPO))
+	$(Q)EXTRALIST=`"$(HAS_BK)" -Aax` ; \
+	if [ "$$EXTRALIST" ]; then \
+		echo "Clean left behind the following files:" ; \
+		for file in $$EXTRALIST; do \
+			if [ "$$file" = "conf-$(BKHOST).mk" ]; then \
+				continue ; \
+			fi ; \
+			echo "  $$file" ; \
+		done ; \
+	else \
+		echo Clean complete ; \
+	fi
+endif
 
 clobber: clean FORCE ## Same as 'clean' but also bk clean files
 	-@$(BK) -A clean

@@ -31,7 +31,7 @@ g: bk_refcard.tr
 .PHONY: clean
 clean:
 	$(if $(Q),@echo Cleaning doc,)
-	$(Q)rm -f *.ps PS PDF *.pdf
+	$(Q)rm -f *.ps PS PDF *.pdf www/nested.html
 
 clobber: clean
 	-$(BK) clean

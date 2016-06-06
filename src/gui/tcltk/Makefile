@@ -355,6 +355,7 @@ clean-config: FORCE
 
 clean: clean-obj FORCE
 	rm -rf bin lib man build include usr share
+	-rm -rf pcre/a.out.dSYM
 	-rm -rf build
 
 clobber: clean FORCE
