@@ -1,5 +1,5 @@
 ============================================================================
-Release notes for BitKeeper version 7.2.2ce release June 16 2016
+Release notes for BitKeeper version 7.3ce release June 16 2016
 
 - Removed the out-of-date version of GNU diff from our tree.  The few
   places where BK assumed a GNU diff, it will now use the one on the
@@ -12,6 +12,12 @@ Release notes for BitKeeper version 7.2.2ce release June 16 2016
 - Rename the old "bk diffs" command to "bk diff".  "bk diffs" remains
   as an alias.  Scripts expecting on the "bk diff" to run a GNU diff
   should be updated to remove the "bk " prefix.
+
+- Update the documentation to describe 'bk get' instead of 'bk co'
+  and 'bk delta' instead of 'bk ci'.  The get/delta verbs have become
+  the names for these operations and the documentation should reflect
+  that.   These commands were aliased before and after this release
+  so no functionality has changed and no scripts should break.
 
 ============================================================================
 Release notes for BitKeeper version 7.2.1ce release May 16 2016

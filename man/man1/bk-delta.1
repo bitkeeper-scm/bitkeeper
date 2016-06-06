@@ -1,15 +1,15 @@
 .so ../bk-macros
-.TH "bk ci" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.TH "bk delta" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk ci \- check in modified files
+bk delta \- check in modified files
 .SH SYNOPSIS
-.B bk ci
+.B bk delta
 .[B] \-acflpqu
 .[OPTreq] \-D file
 .[OPTreq] \-y msg
 .BKARGS
 .br
-.B bk ci
+.B bk delta
 .[B] \-acflpqu
 .[OPTreq] \-D file
 .[OPTreq] \-Y file
@@ -17,19 +17,31 @@ bk ci \- check in modified files
 .SH DESCRIPTION
 .LP
 The
-.B bk ci 
+.B bk delta
 command is used to check in changes made to revision controlled files.
 This command is fairly rich in features and is the preferred interface
 for scripting.  For interactive checkins, 
 .B "bk citool" 
 is the preferred interface.
 .LP
+After a delta saves the modifications in a file, the state of the user file
+is controlled by the 'checkout' config option and the
+.B \-l
+and
+.B \-u
+options below.  In checkout:edit (aka
+.BR \-l )
+mode (the default for new repositories)
+the file is left unmodifed in an edited/writable state.
+In checkout:get (aka
+.BR \-u )
+mode, the file is unlocked and made read-only.
+In checkout:none mode, the file is removed after its contents has
+been recorded. The file is removed even if no changes are found.
+.LP
 By default,
-.B bk ci
-with no file arguments checks in all checked out, modified files in the
-current directory and runs the equivalent of
-.B bk clean
-to unedit all unmodified, checked out files in the current directory.
+.B bk delta
+with no file arguments operates on all files in the current directory.
 If you want to disable this behavior, for example to prevent accidental
 checkins, you can set the
 .V BK_NODIREXPAND
@@ -38,23 +50,23 @@ environment variable to a value of 1.
 .TP \-y\*<comment\*>
 .B \-a
 Normally, 
-.B bk ci
+.B bk delta
 is used to modify existing files.
-This option changes bk ci to act like bk new for new files and bk ci
+This option changes bk delta to act like bk new for new files and bk delta
 for existing files.
 The usefulness of this option is more apparent when you consider having
 a mixed list of files, some under revision control and some not.
 For example,
 .DS
-bk -xcr ci -a -y'mass checkin'
+bk -Axc delta -a -y'mass checkin'
 .DE
 runs
 .B bk new
 on all the new files and
-.B bk ci
+.B bk delta
 on all the modified
 files.  When called with this option,
-.B bk ci
+.B bk delta
 does not create a null delta on an edited but unmodified file.
 .tp
 .B \-c
@@ -98,14 +110,11 @@ for comments for all files.
 Sets the revision comment to 
 .if t .IR comment .
 .if n <comment>.
-.SH BUGS
-.\" XXX Is this necessary?
-The format of the init file is not documented.
 .SH "SEE ALSO"
 .SA citool
-.SA co
+.SA get
 .SA edit
 .SA new
 .SH CATEGORY
 .B File
-.\" help://delta
+.\" help://ci

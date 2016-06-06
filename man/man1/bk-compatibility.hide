@@ -24,7 +24,7 @@ Add a file to the repository.  Same as
 .B create
 Create (initialize) history files.  Same as
 .DS
-bk new && bk co
+bk new && bk get
 .DE
 .tp
 .B deledit
@@ -48,12 +48,13 @@ Check s.file structure and time stamps.  Similar to
 .QR "bk admin \-hhhh" .
 .SH RCS
 .TP \fBsccsdiff\fP
-.B ci
+.B delta
 Check in a file.  Same as
-.BR "bk delta" .
+.BR "bk ci" .
 .tp
-.B co
-Check out a file.
+.B get
+Check out a file.  Same as
+.BR "bk co" .
 .SH "SEE ALSO"
 .SA admin
 .SA delta
