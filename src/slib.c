@@ -2000,8 +2000,10 @@ sccs_rdweaveInit(sccs *s)
 					if (streq(t, "\001T")) break;
 				}
 				unless (t) {
-					fprintf(stderr, "%s: missing weave in %s\n",
-					    prog, s->sfile);
+					fprintf(stderr,
+					    "%s: missing weave in "
+					    "history file for %s\n",
+					    prog, s->gfile);
 					exit(1);
 				}
 				s->data = ftell(s->fh);
@@ -2082,8 +2084,8 @@ next:			if ((s->w_off != 1) &&
 		--i;
 		unless (buf[i] == '\n') {
 			fprintf(stderr,
-			    "error, truncated sccs file '%s', exiting.\n",
-			    s->sfile);
+			    "error, truncated history file '%s', exiting.\n",
+			    s->gfile);
 			exit(1);
 		}
 		buf[i] = 0;
@@ -2401,7 +2403,7 @@ chk_nlbug(sccs *s)
 			p = buf + 3;
 			while (isdigit(*p)) p++;
 			if (*p == 'N' && sawblank) {
-				getMsg("saw_blanknonl", s->sfile, 0, stderr);
+				getMsg("saw_blanknonl", s->gfile, 0, stderr);
 				ret = 1;
 			}
 		}
@@ -2700,16 +2702,18 @@ sccs_whynot(char *who, sccs *s)
 	if (s->io_error && s->io_warned) return;
 	if (BEEN_WARNED(s)) return;
 	unless (HAS_SFILE(s)) {
-		fprintf(stderr, "%s: No such file: %s\n", who, s->sfile);
+		fprintf(stderr, "%s: no history file for: %s\n", who, s->gfile);
 		return;
 	}
 	unless (s->cksumok) {
-		fprintf(stderr, "%s: bad checksum in %s\n", who, s->sfile);
+		fprintf(stderr,
+		    "%s: bad checksum in history of %s\n", who, s->gfile);
 		return;
 	}
 	unless (HASGRAPH(s)) {
-		fprintf(stderr, "%s: couldn't decipher delta table in %s\n",
-		    who, s->sfile);
+		fprintf(stderr,
+		    "%s: couldn't decipher delta table in history of %s\n",
+		    who, s->gfile);
 		return;
 	}
 	if (HAS_PFILE(s)) {
@@ -2717,10 +2721,11 @@ sccs_whynot(char *who, sccs *s)
 		return;
 	}
 	if (errno == ENOSPC) {
-		fprintf(stderr, "No disk space for %s\n", s->sfile);
+		fprintf(stderr, "No disk space for history of %s\n", s->gfile);
 		return;
 	}
-	fprintf(stderr, "%s: %s: unknown error.\n", who, s->sfile);
+	fprintf(stderr,
+	    "%s: history file for %s: unknown error.\n", who, s->gfile);
 }
 
 /*
@@ -3663,9 +3668,12 @@ mkgraph(sccs *s, int flags)
 		unless (buf = sccs_nextdata(s)) {
 bad:
 			if (fcludes) fclose(fcludes);
+			// LMXXX - don't know how to fix this wording,
+			// should talk about history.
+			// pretty dead code though.
 			fprintf(stderr,
 			    "%s: bad delta on line %d, expected `%s'",
-			    s->sfile, line, expected);
+			    s->gfile, line, expected);
 			if (buf) {
 				fprintf(stderr,
 				    ", line follows:\n\t``%s''\n", buf);
@@ -10861,12 +10869,13 @@ checkOpenBranch(sccs *s, int flags)
 				if (symtips) {
 					if (symtips == 1) {
 					    verbose((stderr,
-			    			"%s: unmerged symleaf %s\n",
-						    s->sfile, REV(s, symtip)));
+			    			"History of %s: "
+						"unmerged symleaf %s\n",
+						    s->gfile, REV(s, symtip)));
 					}
 					verbose((stderr,
 			    		    "%s: unmerged symleaf %s\n",
-					    s->sfile, REV(s, d)));
+					    s->gfile, REV(s, d)));
 					ret = 1;
 				}
 				symtip = d;
@@ -10878,12 +10887,14 @@ checkOpenBranch(sccs *s, int flags)
 			if (tips) {
 				if (tips == 1) {
 				    verbose((stderr,
-		    			"%s: unmerged leaf %s\n",
-					s->sfile, REV(s, tip)));
+			    		"History of %s: "
+		    			"unmerged leaf %s\n",
+					s->gfile, REV(s, tip)));
 				}
 				verbose((stderr,
-		    		    "%s: unmerged leaf %s\n",
-				    s->sfile, REV(s, d)));
+				    "History of %s: "
+		    		    "unmerged leaf %s\n",
+				    s->gfile, REV(s, d)));
 				ret = 1;
 			}
 			tip = d;

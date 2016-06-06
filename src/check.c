@@ -361,8 +361,10 @@ check_main(int ac, char **av)
 		}
 		unless (HASGRAPH(s)) {
 			if (!(s->state & S_SFILE)) {
-				fprintf(stderr, "check: %s doesn't exist.\n",
-				    s->sfile);
+				fprintf(stderr,
+				    "check: revision history file "
+				    "for %s doesn't exist.\n",
+				    s->gfile);
 			} else {
 				perror(s->gfile);
 			}
