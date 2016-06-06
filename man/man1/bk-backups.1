@@ -26,7 +26,7 @@ problems:
 cd REPO
 bk edit foo.c
 echo "I am a pending delta not yet committed" >> foo.c
-bk ci -yPENDING foo.c
+bk delta -yPENDING foo.c
 cd ..
 cp -r REPO COPY
 cd REPO

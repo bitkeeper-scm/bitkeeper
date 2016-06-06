@@ -20,8 +20,8 @@ commands
 .RB ( ci ,
 .BR co ).
 The
-.B ci/co
-are the preferred interfaces (they stand for "check in" and "check out").
+.B delta/get
+are the preferred interfaces.
 .LP
 As an example, go to the directory where you would like to make changes:
 .DS
@@ -52,7 +52,7 @@ will access many files in a tree.
 Once you are finished making changes to files, you can check in the files
 as follows:
 .DS
-$ bk ci file1 file2 file3
+$ bk delta file1 file2 file3
 .DE
 However, we recommend using the graphical checkin tool which is invoked with 
 the following command:
@@ -66,7 +66,7 @@ will help you check in both new, modified, and pending files.
 Each command in \*(BK has command-specific help.  You can access
 individual help topics by typing:
 .DS
-$ bk help \*<command\*>		# e.g., "bk help co"
+$ bk help \*<command\*>		# e.g., "bk help get"
 .DE
 There are also a number of other topics that describe various areas
 in detail. Try
@@ -74,10 +74,10 @@ in detail. Try
 for a listing of help topics.
 .SH SEE ALSO
 .LP
-.SA ci
 .SA citool
-.SA co
+.SA delta
 .SA edit
+.SA get
 .SA help
 .SA new
 .SH CATEGORY

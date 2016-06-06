@@ -343,12 +343,12 @@ bk grep -iq usage ERR || {
 rm -f ERR
 echo OK
 
-echo $N bk diff with bogus option and missing args ..................$NL
-bk diff -z > /dev/null 2> ERR && {
+echo $N bk ndiff with bogus option and missing args .................$NL
+bk ndiff -z > /dev/null 2> ERR && {
 	echo "Should fail"
 	exit 1
 }
-bk grep -iq usage ERR
+bk grep -iq "invalid option" ERR
 if [ $? -ne 0 ]
 then	echo "failed (bug no usage)"
 else

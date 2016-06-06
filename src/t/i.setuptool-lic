@@ -75,8 +75,8 @@ checkout: none
 EOF
 CONFIG="$REPO/BitKeeper/etc/config"
 if [ ! -f "$CONFIG" ] ; then echo "failed to make config file" ; exit 1 ; fi
-bk diff $Q -w "$OUT" "$CONFIG"
-if [ $? -ne 0 ] ; then echo "failed" ; bk diff -w "$OUT" "$CONFIG"; exit 1 ; fi
+bk ndiff $Q -w "$OUT" "$CONFIG"
+if [ $? -ne 0 ] ; then echo "failed" ; bk ndiff -w "$OUT" "$CONFIG"; exit 1 ; fi
 cd "$REPO"
 test -z "`bk license -l`" || (echo "failed; license not accepted"; exit 1)
 echo OK
@@ -133,8 +133,8 @@ checkout: none
 EOF
 CONFIG="$REPO/BitKeeper/etc/config"
 if [ ! -f "$CONFIG" ] ; then echo "failed to make config file" ; exit 1 ; fi
-bk diff $Q -w "$OUT" "$CONFIG"
-if [ $? -ne 0 ] ; then echo "failed" ; bk diff -w "$OUT" "$CONFIG"; exit 1 ; fi
+bk ndiff $Q -w "$OUT" "$CONFIG"
+if [ $? -ne 0 ] ; then echo "failed" ; bk ndiff -w "$OUT" "$CONFIG"; exit 1 ; fi
 cd "$REPO"
 test -z "`bk license -l`" || (echo "failed; license not accepted"; exit 1)
 echo OK

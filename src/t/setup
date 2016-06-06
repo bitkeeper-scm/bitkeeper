@@ -117,7 +117,22 @@ fresh_nested() {
 	bk commit -q -y"attach gcc, gdb"
 	bk bam server -qfr
 	bk here set ALL PRODUCT
-}
+
+	if [ "$2" = deep ]
+	then
+		## Make a deep-nested repo.
+		bk setup -C -f gui
+		cd gui || {
+			echo failed to create gui repo
+			exit 1
+		}
+		bk setup -C -f bin
+		bk setup -C -f lib
+		bk commit -S -q -y"create gui repo"
+		cd ..
+		bk commit -q -y"attach deep"
+	fi
+} 
 
 nested() {
 	fresh_nested $*
@@ -170,13 +185,13 @@ port() {
 
 # args: GOT WANT
 cmpfiles() {
-	OUTPUT=`bk diff -q --ignore-trailing-cr "$1" "$2"` && return
+	OUTPUT=`bk ndiff -q --ignore-trailing-cr "$1" "$2"` && return
 	case "X$BASH_VERSION" in
 	    X[234]*) eval 'echo failed in line $((${BASH_LINENO[0]} - $BOS))';;
 	    *) echo failed ;;
 	esac
 	echo $OUTPUT
-	bk diff -u "$1" "$2"
+	bk ndiff -u "$1" "$2"
 	exit 1
 }
 
@@ -186,8 +201,8 @@ cmpsfiles() {
 	b="$BK_TMP/`basename \"$2\"`.$$"
 	bk _cat "$1" > "$a"
 	bk _cat "$2" > "$b"
-	bk diff -q --ignore-trailing-cr "$a" "$b" || {
-		bk diff -u "$a" "$b"
+	bk ndiff -q --ignore-trailing-cr "$a" "$b" || {
+		bk ndiff -u "$a" "$b"
 		exit 1
 	}
 	rm -f "$a" "$b"
@@ -197,7 +212,7 @@ cmpsfiles() {
 checkfiles() {
 	cmp -s "$1" "$2" || {
 		echo "$1" and "$2" don\'t match
-		bk diff -u "$1" "$2"
+		bk ndiff -u "$1" "$2"
 		exit 1
 	}
 }
@@ -308,8 +323,8 @@ mkBINs() {
 	DOTBIN="$TST_DIR/.bin"
 	mkdir -p "$DOTBIN"
 	perl -e '$s=102400;sysread(STDIN, $buf, $s);syswrite(STDOUT, $buf, $s)' < "$B"/bk$EXE > "$DOTBIN/binary1"
-	perl -e '$s=204900;sysread(STDIN, $buf, $s);syswrite(STDOUT, $buf, $s)' < "$B"/gnu/bin/diff$EXE > "$DOTBIN/binary2"
-	perl -e '$s=307200;sysread(STDIN, $buf, $s);syswrite(STDOUT, $buf, $s)' < "$B"/gnu/bin/diff3$EXE > "$DOTBIN/binary3"
+	perl -e '$s=204900;seek(STDIN, 2056, 0); sysread(STDIN, $buf, $s);syswrite(STDOUT, $buf, $s)' < "$B"/bk$EXE > "$DOTBIN/binary2"
+	perl -e '$s=307200;seek(STDIN, 5564, 0); sysread(STDIN, $buf, $s);syswrite(STDOUT, $buf, $s)' < "$B"/bk$EXE > "$DOTBIN/binary3"
 	BIN1="$DOTBIN/binary1"
 	BIN2="$DOTBIN/binary2"
 	BIN3="$DOTBIN/binary3"

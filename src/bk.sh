@@ -824,7 +824,7 @@ _treediff() {
 		echo "usage: bk treediff DIR1 DIR2" 1>&2
 		exit 1
 	fi
-	bk diff -Nur \
+	diff -Nur \
 	    --exclude=RCS --exclude=CVS --exclude=SCCS --exclude=.bk \
 	    --exclude=BitKeeper --exclude=ChangeSet "$1" "$2"
 }
@@ -996,7 +996,7 @@ EOF
 		echo $N ${FILE}">>"$NL
 		read x
 		case "X$x" in
-		Xd*) bk diff -u $MERGE $REAL;;
+		Xd*) bk ndiff -u $MERGE $REAL;;
 		XD*) bk difftool $MERGE $REAL;;
 		Xe*) bk editor $MERGE;;
 		Xf*) bk fm3tool -o $MERGE -f -l$p -r$m "$FILE";;

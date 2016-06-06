@@ -1,505 +1,234 @@
 .so ../bk-macros
-.TH "bk diff" "\*[BKVER]" "22sep1993" "GNU Tools" "GNU Tools"
+.TH "bk diff" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk diff \- find differences between two files
+bk diff \- show differences in revision controlled files
 .SH SYNOPSIS
 .B bk diff
-.[ARG] options
-.ARG from-file
-.ARG to-file
+.[ARG] opts
+.BKARGS
 .SH DESCRIPTION
-In the simplest case, 
+The 
 .B bk diff
-compares the contents of the two files
-.ARG from-file
-and
-.ARG to-file .
-A file name of
-.Q \-
-stands for
-text read from the standard input.  As a special case,
-.Q "bk diff \- \-"
-compares a copy of standard input to itself.
-If 
-.ARG from-file
-is a directory and
-.ARG to-file
-is not,
+command is typically used to show changes to working files relative to the
+previously checked in version.
+Unified diffs are produced by default.
+.LP
+The 
 .B bk diff
-compares the file in
-.ARG from-file
-whose file name is that of
-.ARG to-file ,
-and vice versa.  The non-directory file must not be
-.QR \- .
-If both
-.ARG from-file
-and
-.ARG to-file
-are directories,
-.B bk diff
-compares corresponding files in both directories, in
-alphabetical order; this comparison is not recursive unless the
-.Q \-r
-or
-.Q \-\-recursive
-option is given.
-.B bk diff
-never
-compares the actual contents of a directory as if it were a file.  The
-file that is fully specified may not be standard input, because standard
-input is nameless and the notion of ``file with the same name'' does not
-apply.
-.B bk diff
-options begin with
-.QR \- ,
-so normally
-.ARG from-file
-and
-.ARG to-file
-may not begin with
-.QR \- .
-However,
-.Q \-\-
-as an
-argument by itself treats the remaining arguments as file names even if
-they begin with
-.QR \- .
+command supports context, unified, procedural, and side-by-side diffs.
+All of the above can be optionally annotated with filename,
+author, date, and/or revision numbers.
+.LP
+To view changes you have made to all of the files in the current directory:
+.DS
+$ bk diff
+.DE
+To see the changes for all files in your tree:
+.DS
+$ bk \-U diff
+.DE
 .SH OPTIONS
-Most options have two equivalent names, one of which is a single letter
-preceded by
-.QR \- ,
-and the other of which is a long name preceded by
-.QR \-\- .
-Multiple single letter options (unless they take an
-argument) can be combined into a single command line word:
-.Q \-ac
-is
-equivalent to
-.QR "\-a \-c" .
-Long named options can be abbreviated to
-any unique prefix of their name.
+.TP \-stats-only\ 
+.OPTreq \-A bdpru
+Align prefix output in a human readable form.
+The set of annotations will be followed by a vertical bar and a space
+before the data from each line of the file starts.
+Each annotation is aligned in a column.
+The option argument[s] turn on one
+or more annotations as a prefix to each line.
+The possible annotations are:
+.RS
 .TP
-.OPTreq \- lines
-Show
-.ARG lines
-(an integer) lines of context.  This option does not
-specify an output format by itself; it has no effect unless it is
-combined with
-.Q \-c
-or
-.QR \-u .
-This option is obsolete.  For proper
-operation,
-.B bk patch
-typically needs at least two lines of context.
-.TP
-.B \-a
-Treat all files as text and compare them line-by-line, even if they
-do not seem to be text.
-.TP
+.B b
+Prefix each line with the basename of the file.
+.tp
+.B d
+Prefix each line with the date of last modification.
+.tp
+.B p
+Prefix each line with pathname of the file relative to the root
+of the repository.
+.tp
+.B r
+Prefix each line with the revision of last modification.
+.tp
+.B u
+Prefix each line the name of the user who last modified it.
+.RE
+.tp
+.OPTreq \-a bdpru
+Similar to
+.Q \-A 
+but without the alignment.
+.tp
 .B \-b
 Ignore changes in amount of white space.
-.TP
+.tp
 .B \-B
-Ignore changes that just insert or delete blank lines.
-.TP
-.B \-\-brief
-Report only whether the files differ, not the details of the
-differences.
-.TP
+Ignore  changes  that  just  insert or delete blank lines.
+.tp
 .B \-c
-Use the context output format.
-.TP
-.OPTreq "\-C " lines
-.br
-.ns
-.TP
-.OPTopt \-\-context "= lines"
-Use the context output format, showing
-.ARG lines
-(an integer) lines of
-context, or three if
-.ARG lines
-is not given.
-For proper operation,
-.B bk patch
-typically needs at least two lines of
-context.
-.TP
-.OPTreq \-\-changed\-group\-format= format
-Use
-.ARG format
-to output a line group containing differing lines from
-both files in if-then-else format.
-.TP
-.B \-d
-Change the algorithm to perhaps find a smaller set of changes.  This makes
-.B bk diff
-slower (sometimes much slower).
-.TP
-.OPTreq "\-D " name
-Make merged if-then-else format output, conditional on the preprocessor
-macro
-.ARG name .
-.TP
-.B \-e
-.br
-.ns
-.TP
-.B \-\-ed
-Make output that is a valid
-.BR ed (1)
-script.
-.TP
-.OPTreq \-\-exclude= pattern
-When comparing directories, ignore files and subdirectories whose basenames
-match
-.ARG pattern .
-.TP
-.OPTreq \-\-exclude\-from= file
-When comparing directories, ignore files and subdirectories whose basenames
-match any pattern contained in
-.ARG file .
-.TP
-.B \-\-expand\-tabs
-Expand tabs to spaces in the output, to preserve the alignment of tabs
-in the input files.
-.TP
+Do old-style context diffs.
+.tp
+.OPTreq \-d date
+Instead of using revision[s] as the versions to diff, use the revision[s]
+specified by the date (see
+.BR "help bk range" ).
+.tp
 .B \-f
-Make output that looks vaguely like an
-.BR ed (1)
-script but has changes
-in the order they appear in the file.
-.TP
-.OPTreq "\-F " regexp
-In context and unified format, for each hunk of differences, show some
-of the last preceding line that matches
-.ARG regexp .
-.TP
-.B \-\-forward\-ed
-Make output that looks vaguely like an
-.BR ed (1)
-script but has changes
-in the order they appear in the file.
-.TP
+Normally, bk diff does not bother to diff against a checked out, read only
+file (unless a revision was specified).
+This option forces bk diff to ignore the read only hint and to do the
+diff against all specified files.
+.tp
+.tp
+.B \-F regex
+Only useful in unified diffs, the given regex will be matched with the
+lines before the diff block and, if a match is found, it will be
+printed after the '@@' at the start of the diff block. Typically used
+to match function declarations.
+.tp
 .B \-h
-This option currently has no effect; it is present for \*(UN
-compatibility.
-.TP
+Don't print headers.
+.tp
 .B \-H
-Use heuristics to speed handling of large files that have numerous
-scattered small changes.
-.TP
-.OPTreq \-\-horizon\-lines= lines
-Do not discard the last
-.ARG lines
-lines of the common prefix
-and the first
-.ARG lines
-lines of the common suffix.
-.TP
-.B \-i
-Ignore changes in case; consider upper- and lower-case letters
-equivalent.
-.TP
-.OPTreq "\-I " regexp
-Ignore changes that just insert or delete lines that match
-.ARG regexp .
-.TP
-.OPTreq \-\-ifdef= name
-Make merged if-then-else format output, conditional on the preprocessor
-macro
-.ARG name .
-.TP
-.B \-\-ignore\-all\-space
-Ignore white space when comparing lines.
-.TP
-.B \-\-ignore\-blank\-lines
-Ignore changes that just insert or delete blank lines.
-.TP
-.B \-\-ignore\-case
-Ignore changes in case; consider upper- and lower-case to be the same.
-.TP
-.OPTreq \-\-ignore\-matching\-lines= regexp
-Ignore changes that just insert or delete lines that match
-.ARG regexp .
-.TP
-.B \-\-ignore\-space\-change
-Ignore changes in amount of white space.
-.TP
-.B \-\-initial\-tab
-Output a tab rather than a space before the text of a line in normal or
-context format.  This causes the alignment of tabs in the line to look
-normal.
-.TP
-.B \-l
-Pass the output through
-.BR pr (1)
-to paginate it.
-.TP
-.OPTreq "\-L " label
-.br
-.ns
-.TP
-.OPTreq \-\-label= label
-Use
-.ARG label
-instead of the file name in the context format
-and unified format
-headers.
-.TP
-.B \-\-left\-column
-Print only the left column of two common lines in side by side format.
-.TP
-.OPTreq \-\-line\-format= format
-Use
-.ARG format
-to output all input lines in in-then-else format.
-.TP
-.B \-\-minimal
-Change the algorithm to perhaps find a smaller set of changes.  This
-makes
-.B bk diff
-slower (sometimes much slower).
-.TP
+Prefix diffs with the checkin comments of that range of revisions.
+The comments printed are those associated with the set difference
+of the two revisions.
+.tp
+.OPTreq \-l rev
+Show all changes made by the changeset containing rev 
+.ARG rev .
+This obscure option is useful when there are multiple deltas in the same 
+changeset and you aren't sure of the changeset boundaries.
+Similar to 
+.DS
+bk changes -i\*<file\*> -vvr\*<rev\*>
+.DE
+.tp
+.OPTopt \-L url
+Show all the changes unique to this repository relative to the (outgoing)
+parent or 
+.ARG url
+if one was specified.
+In this context, "changes" means committed, pending, and/or modified files.
+Very similar to:
+.DS
+bk -A diff -r@`bk repogca [\*<url\*>]`
+.DE
+.tp
 .B \-n
-Output RCS-format diffs; like
-.B \-f
-except that each command
-specifies the number of lines affected.
-.TP
+Do RCS style diffs.
+.tp
+.B \--normal
+Instead of unified diffs (the default) print less verbose diffs like those
+produced by diff(1).
+.tp
 .B \-N
-.br
-.ns
-.TP
-.B \-\-new\-file
-In directory comparison, if a file is found in only one directory,
-treat it as present but empty in the other directory.
-.TP
-.OPTreq \-\-new\-group\-format= format
-Use
-.ARG format
-to output a group of lines taken from just the second
-file in if-then-else format.
-.TP
-.OPTreq \-\-new\-line\-format= format
-Use 
-.ARG format
-to output a line taken from just the second file in
-if-then-else format.
-.TP
-.OPTreq \-\-old\-group\-format= format
-Use
-.ARG format
-to output a group of lines taken from just the first
-file in if-then-else format.
-.TP
-.OPTreq \-\-old\-line\-format= format
-Use
-.ARG format
-to output a line taken from just the first file in
-if-then-else format.
-.TP
+If a specified file is not under revision control treat it as if it were under
+revision control and the previous checked in version was empty.
+Without this option specified files not under revision control are listed
+as \*(lqNew file: \*<filename\*>\*(rq.
+.tp
 .B \-p
-Show which C function each change is in.
-.TP
-.B \-P
-When comparing directories, if a file appears only in the second
-directory of the two, treat it as present but empty in the other.
-.TP
-.B \-\-paginate
-Pass the output through
-.BR pr (1)
-to paginate it.
-.TP
-.B \-q
-Report only whether the files differ, not the details of the
-differences.
-.TP
-.B \-r
-When comparing directories, recursively compare any subdirectories
-found.
-.TP
-.B \-\-rcs
-Output \*(R-format diffs; like
-.B \-f
-except that each command
-specifies the number of lines affected.
-.TP
-.B \-\-recursive
-When comparing directories, recursively compare any subdirectories
-found.
-.TP
-.B \-\-report\-identical\-files
-.br
-.ns
-.TP
+Procedural diffs, like
+.QR "diff \-p" .
+.tp
+.OPTreq \-r rev
+Diff revision 
+.ARG rev .
+(Or key or changeset revision. See 
+.B bk help terms
+under \*(lqrev argument.\*(rq)
+.tp
+.OPTreq \-R rev
+Show diffs between parent of 
+.ARG rev
+and
+.ARG rev .
+If no revision is specified and the files are listed on standard input
+as
+.ARGc file
+.OPTreq | rev
+then the revision is taken from the standard input.
+.tp
 .B \-s
-Report when two files are the same.
-.TP
-.OPTreq "\-S " file
-When comparing directories, start with the file
-.ARG file .
-This is
-used for resuming an aborted comparison.
-.TP
-.OPTreq \-\-from\-file= file
-Compare
-.ARG file
-to all operands.
-.ARG file
-can be a directory.
-.TP
-.OPTreq \-\-to\-file= file
-Compare all operands to
-.ARG file .
-.ARG file
-can be a directory.
-.TP
-.B \-\-sdiff\-merge\-assist
-Print extra information to help
-.BR sdiff (1).
-.\" XXX should we document this option?  sdiff(1) doesn't know about bk diff.
-.B sdiff
-uses this
-option when it runs
-.BR diff .
-This option is not intended for users
-to use directly.
-.TP
-.B \-\-show\-c\-function
-Show which C function each change is in.
-.TP
-.OPTreq \-\-show\-function\-line= regexp
-In context and unified format, for each hunk of differences, show some
-of the last preceding line that matches
-.ARG regexp .
-.TP
-.B \-\-side\-by\-side
-Use the side by side output format.
-.TP
-.B \-\-speed\-large\-files
-Use heuristics to speed handling of large files that have numerous
-scattered small changes.
-.TP
-.ARG \-\-starting\-file= file
-When comparing directories, start with the file
-.ARG file .
-This is
-used for resuming an aborted comparison.
-.TP
-.B \-\-suppress\-common\-lines
-Do not print common lines in side by side format.
-.TP
-.B \-t
-Expand tabs to spaces in the output, to preserve the alignment of tabs
-in the input files.
-.TP
-.B \-T
-Output a tab rather than a space before the text of a line in normal or
-context format.  This causes the alignment of tabs in the line to look
-normal.
-.TP
-.B \-\-text
-Treat all files as text and compare them line-by-line, even if they
-do not appear to be text.
-.TP
-.B \-u
-Use the unified output format.
-.TP
-.OPTreq \-\-unchanged\-group\-format= format
-Use
-.ARG format
-to output a group of common lines taken from both files
-in if-then-else format.
-.TP
-.OPTreq \-\-unchanged\-line\-format= format
-Use
-.ARG format
-to output a line common to both files in if-then-else
-format.
-.TP
-.B \-\-unidirectional\-new\-file
-When comparing directories, if a file appears only in the second
-directory of the two, treat it as present but empty in the other.
-.TP
-.OPTreq "\-U " lines
-.br
-.ns
-.TP
-.OPTreq \-\-unified[= lines ]
-Use the unified output format, showing
-.ARG lines
-(an integer) lines of
-context, or three if
-.ARG lines
-is not given.
-For proper operation,
-.B bk patch
-typically needs at least two lines of
-context.
-.TP
+Display side-by-side diffs.  The total width is controlled by
+the COLUMNS environment variable, and defaults to 80.
+.tp
+.B \-\-stats
+Print a statistics header like diffstat in addition to the normal diff output.
+.tp
+.B \-\-stats\-only
+Print a statistics header like diffstat and suppress the normal diff
+output.
+.tp
+.B \-S
+.tp
+.B \-\-standalone
+Use with -L in a nested component when you want the component to act like
+a standalone repository.
+.tp
+.OPTreq \-u context
+Print unified diffs (this is the default). Optionally, pass the number
+of lines of context to print.
+.tp
 .B \-v
-.br
-.ns
-.TP
-.B \-\-version
-Output the version number of
-.BR "bk diff" .
-.TP
+Be verbose about non-matching ranges.
+.tp
 .B \-w
 Ignore white space when comparing lines.
-.TP
-.OPTreq "\-W " columns
-.br
-.ns
-.TP
-.OPTreq \-\-width= columns
-Use an output width of
-.ARG columns
-in side by side format.
-.TP
-.OPTreq "\-x " pattern
-When comparing directories, ignore files and subdirectories whose basenames
-match
-.ARG pattern .
-.TP
-.OPTreq "\-X " file
-When comparing directories, ignore files and subdirectories whose basenames
-match any pattern contained in
-.ARG file .
-.TP
-.B \-y
-Use the side by side output format.
-.\" XXX I get connection refused by ftp.bitkeeper.com
-.\".SH SOURCE
-.\"The source code for the versions of GNU tools shipped by \*(BM is available at
-.\".BR ftp://ftp.bitkeeper.com/gnu .
-.SH EXIT STATUS
-.B bk diff
-returns exit status:
-.TP
-0
-if no differences were found
-.tp
-1
-if some differences were found
-.tp
-2
-if an error occurred
-.SH NOTES
-.B bk diff
-uses the GNU implementation of
-.BR diff (1).
+.SH EXAMPLES
+You may diff specific revisions:
+.DS
+$ bk diff -r1.2..1.4 foo.c
+.DE
+When only one revision is supplied with
+.QR \-r ,
+then that revision is
+compared to the working file or the top of trunk if the file is not
+edited.
+.LP
+A fairly useful thing is to show the differences introduced by a 
+specific revision or changeset:
+.DS
+bk diff -R1.5 foo.c
+.DE
+Normally, the revisions specified mean the revision in the file.
+Changeset revisions do not match file revisions and sometimes you
+want to see the changes for a specific changeset.  Both of these
+accomplish that:
+.DS
+bk diff -l@\*<alpha1\*> \*<file\*>
+bk changes -i\*<file\*> -vvr\*<alpha1\*>
+.DE
+To create a patch which captures all content changes as well as all new files:
+.DS
+bk -Axc diff -N
+.DE
+You can use bk diff to diff your entire tree, including edits against an
+existing changeset revision or tag in your repository.  
+.DS
+$ bk -A diff 
+$ bk -A diff -r@\*<rev\*>
+.DE
+To see the diffs in the local tree from the new baseline cset in the parent
+(-L changes diff behavior to look at the whole tree):
+.DS
+$ bk diff -L
+.DE
+.SH BUGS
+This command does not currently handle displaying differences for binary files.
 .SH SEE ALSO
-.SA credits
-.SA patch
-.BR cmp (1),
-.BR comm (1),
-.BR diff3 (1),
-.BR ed (1),
-.BR pr (1),
-.BR sdiff (1).
+.SA changes
+.SA difftool
+.SA export
+.SA range
+.br
+.\" help://differences
+.\" help://sdiffs
+.\" help://diffs
 .SH CATEGORY
-.B Utility
+.B Common
+.br
+.B File

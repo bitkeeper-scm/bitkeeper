@@ -767,21 +767,30 @@ diffwalk_new(file_t *left, file_t *right)
 {
 	difwalk	*dw;
 	char	*cmd;
-	FILE	*f;
-	char	*d;
+	FILE	*f, *tf;
+	char	*d, *p;
 	size_t	len;
 	int	i;
 
 	dw = new(difwalk);
 	for (i = 0; i < 2; i++) {
+		tf = ((i == 0) ? left : right)->f;
 		dw->file[i] = bktmp(0);
 		f = fopen(dw->file[i], "w");
-		d = fmem_peek(((i == 0) ? left : right)->f, &len);
-		fwrite(d, 1, len, f);
+		if (anno) {
+			rewind(tf);
+			while (d = fgetline(tf)) {
+				p = strstr(d, "\\| ");
+				if (p) d = p + 2;
+				fprintf(f, "%s\n", d);
+			}
+		} else {
+			d = fmem_peek(tf, &len);
+			fwrite(d, 1, len, f);
+		}
 		fclose(f);
 	}
-	cmd = aprintf("bk diff %s '%s' '%s'",
-	    (anno ? "--ignore-to-str='\\| '" : ""),
+	cmd = aprintf("bk ndiff '%s' '%s'",
 	    dw->file[0], dw->file[1]);
 	dw->diff = popen(cmd, "r");
 	free(cmd);

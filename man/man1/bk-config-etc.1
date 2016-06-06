@@ -123,16 +123,16 @@ checkout:<option>
 where option is one of:
 .TP \fBnone \fP
 .B get
-Automatically do a bk co
+Automatically do a bk get
 .ARG file
-after doing a bk ci
+after doing a bk delta
 .ARG file .
 (Checkout in read-only mode.)
 .tp
 .B edit
 Automatically do a bk edit
 .ARG file
-after doing a bk ci
+after doing a bk delta
 .ARG file .
 Note: This will also
 adjust the modification time of the s.file to be two seconds before the 
@@ -151,7 +151,7 @@ If the file was later locked and then checked in, it will be checked out
 again with a lock.
 .tp
 .B none
-Clear the gfile after doing a bk ci
+Clear the gfile after doing a bk delta
 .ARG file .
 (This is the default.)
 .LP

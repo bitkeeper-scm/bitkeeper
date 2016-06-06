@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2016 BitMover, Inc
+ * Copyright 1997-2016 BitMover, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,1114 +16,545 @@
 
 #include "system.h"
 #include "sccs.h"
+#include "range.h"
+
+typedef	struct dstat {
+	char	*name;		   /* name of the file */
+	int	adds, dels, mods;  /* lines added/deleted/modified */
+	u32	bin_files:1;	   /* binary files differ */
+} dstat;
+
+private int	nulldiff(char *name, df_opt *dop);
+private	void	printHistogram(dstat *diffstats);
 
 /*
- * What we want to diff is data/len 'things'. Internally, we'll diff
- * hashes of them so it doesn't really matter what they are.
+ * diffs - show differences of SCCS revisions.
+ *
+ * diffs file file file....
+ *	for each file that is checked out, diff it against the old version.
+ * diffs -r<rev> file
+ *	diff the checked out (or TOT) against rev like so
+ *	diff rev TOT
+ * diffs -r<r1>..<r2> file
+ *	diff the two revisions like so
+ *	diff r1 r2
+ *
+ * In a quite inconsistent but (to me) useful fashion, I don't default to
+ * all files when there are no arguments.  I want
+ *	diffs
+ *	diffs -dalpha1
+ * to behave differently.
+ *
+ * Rules for -r option:
+ *
+ *  diffs file
+ *	no gfile or readonly gfile
+ *		skip
+ *	edited gfile
+ *		diff TOT gfile
+ *  diffs -r<rev> file   or  echo 'file|<rev>' | bk diffs -
+ *	no gfile or readonly gfile
+ *		diff <rev> TOT    (don't diff with gfile)
+ *	edited gfile
+ *		diff <rev> gfile
+ *  diffs -r+ file
+ *	no gfile
+ *		skip
+ *	readonly gfile
+ *		diff TOT gfile (and do keywork expansion on TOT)
+ *	edited gfile
+ *		diff TOT gfile
+ *  diffs -r<rev1> -r<rev2> file or echo 'file|<rev1>' | bk diffs -r<rev2> -
+ *	state of gfile doesn't matter
+ *		diff <rev1> <rev2>
+ *
+ *  XXX - need a -N which makes diffs more like diff -Nr, esp. w/ diffs -r@XXX
  */
-typedef struct thing {
-	int	idx;		/* (side, index) of item */
-	u8	side;
-	u8	both;		/* does it exist on both sides */
-} thing;
-
-/*
- * Internal diff state.
- */
-typedef	struct {
-	df_data	*data;		/* data fetch function */
-	df_cmp	*dcmp;		/* compare function */
-	df_hash	*dhash;		/* hash function */
-	df_cost	*dcost;		/* cost function */
-	u32	*hashes[2];	/* hashed version of things */
-	u32	*red[2];	/* reduced version of hashes */
-	int	*idx[2];	/* mappings between l/r <-> hashes */
-	u8	*chg[2];	/* change maps */
-	int	*vf, *vr;	/* diags for meyer's diff algo */
-	hash	*h;		/* storage hash u32 <-> data */
-	int	minimal;	/* whether to find the minimal diffs */
-	int	max_steps;	/* upper limit on diag finding algo */
-	hunk	range;		/* The range we are diffing */
-	void	*extra;		/* app extra stuff */
-
-#ifdef	DEBUG_DIFF
-	int	*minf, *minr;	/* bounds checking */
-	int	*maxf, *maxr;	/* bounds checking */
-#endif
-} df_ctx;
-
-private	void	hashThings(df_ctx *dc, int side);
-private	void	compressHashes(df_ctx *dc, int side);
-private	void	idiff(df_ctx *dc, int x1, int x2, int y1, int y2);
-private	int	dsplit1(df_ctx *dc, int x1, int x2, int y1, int y2,
-		    int *mx, int *my);
-private	void	shrink_gaps(df_ctx *dc, int side);
-private	void	align_blocks(df_ctx *dc, int side);
-private hunk	*ses(df_ctx *dc, hunk *hunks);
-
-private	u32	cmpIt(df_ctx *dc, int idxA, int sideA, int idxB, int sideB);
-private	u32	hashIt(df_ctx *dc, int idx, int side);
-private	u32	costIt(df_ctx *dc, int idx, int side, int pos);
-private	int	lcs(char *a, int alen, char *b, int blen);
-
-hunk *
-diff_items(hunk *range, int minimal,
-    df_data *data, df_cmp *dcmp, df_hash *dhash, df_cost *dcost, void *extra)
+int
+diff_main(int ac, char **av)
 {
-	hunk	*hunks = 0;
-	int	i;
-	int	x, y;
-	int	*minf, *minr;
-	df_ctx	*dc;
-#ifdef	DEBUG_DIFF
-	int	*maxf, *maxr;
-#endif
-	int	n[2];
+	int	rc, c, i, poff;
+	int	verbose = 0, empty = 0, errors = 0, force = 0;
+	int	standalone = 0;
+	int	local = 0, whodel = 0;
+	u32	flags = SILENT;
+	df_opt	dop = {0};
+	FILE	*fout = stdout;
+	char	*name, *p;
+	char	*url = 0;
+	const	char *perr;
+	char	*Rev = 0, *boundaries = 0, *pattern = 0;
+	dstat	*diffstats = 0, *ds;
+	int	diffstat_only = 0;
+	longopt	lopts[] = {
+		{ "normal", 300 },	// like diff(1)'s default
+		{ "no-unified", 300 },	// alias
+		{ "stats", 330 },	 /* show diffstat output */
+		{ "stats-only", 340 },	 /* show only diffstat output */
+		{ "who-deleted", 350 },	 /* show who deleted info */
+		{ "standalone", 'S' },	/* alias */
+		{ 0, 0 }
+	};
+	RANGE	rargs = {0};
 
-	for (i = 0; i < 2; i++) {
-		n[i] = range->len[i];
-	}
-	unless (n[DF_LEFT] && n[DF_RIGHT]) {
-		/* add in unsanitized diff block */
-		if (n[DF_LEFT] || n[DF_RIGHT]) addArray(&hunks, range);
-		return (hunks);
-	}
-	dc = new(df_ctx);
-	dc->range = *range;
-	dc->minimal = minimal;
-	dc->data = data;
-	dc->dcmp = dcmp;
-	dc->dhash = dhash;
-	dc->dcost = dcost;
-	dc->extra = extra;
-	/* Both have content, do the diff. */
-	dc->h = hash_new(HASH_U32HASH, sizeof(u32), sizeof(thing));
-	hashThings(dc, DF_LEFT);
-	hashThings(dc, DF_RIGHT);
-	/* Now that both hashes are filled */
-	for (i = 0; i < 2; i++) {
-		compressHashes(dc, i);
-		n[i] = nLines(dc->red[i]);
-	}
-	hash_free(dc->h);
-	dc->h = 0;
-	/*
-	 * Bound how much effort we're willing to put into finding the
-	 * diff.
-	 */
-	x = n[DF_LEFT] + n[DF_RIGHT] + 3;
-	y = 1;
-	while (x != 0) {
-		x >>= 2;
-		y <<= 1;
-	}
-	dc->max_steps = max(256, y);
-
-	/*
-	 * Init the vf, vr arrays which are used to keep track of the
-	 * furthest reaching path in each direction. All of the min/max
-	 * variables are just for bounds checking on vf/vr and can be
-	 * removed once we have confidence we're not going out of bounds.
-	 */
-	minf = malloc(2 * (n[DF_LEFT] + n[DF_RIGHT] + 1) * sizeof(int));
-	minr = malloc(2 * (n[DF_LEFT] + n[DF_RIGHT] + 1) * sizeof(int));
-#ifdef	DEBUG_DIFF
-	maxf = minf + 2 * (n[DF_LEFT] + n[DF_RIGHT] + 1) - 1;
-	maxr = minr + 2 * (n[DF_LEFT] + n[DF_RIGHT] + 1) - 1;
-	dc->minf = minf;
-	dc->maxf = maxf;
-	dc->minr = minr;
-	dc->maxr = maxr;
-#endif
-
-	dc->vf = minf + (n[DF_LEFT] + n[DF_RIGHT] + 1);
-	dc->vr = minr + (n[DF_LEFT] + n[DF_RIGHT] + 1);
-
-	idiff(dc, 0, n[DF_LEFT], 0, n[DF_RIGHT]);
-
-	FREE(dc->red[DF_LEFT]);
-	FREE(dc->red[DF_RIGHT]);
-	FREE(dc->idx[DF_LEFT]);
-	FREE(dc->idx[DF_RIGHT]);
-	FREE(minf);
-	FREE(minr);
-	/*
-	 * Now dc->chg[0] and dc->chg[1] have been tagged with what
-	 * changed. However, we need to shuffle them around a bit to
-	 * minimize the number of hunks.
-	 */
-	shrink_gaps(dc, DF_LEFT);
-	shrink_gaps(dc, DF_RIGHT);
-	if (dc->dcost) {
-		align_blocks(dc, DF_LEFT);
-		align_blocks(dc, DF_RIGHT);
-	}
-
-	/*
-	 * Time to turn it into hunks using the Shortest Edit Script function.
-	 */
-	hunks = ses(dc, hunks);
-
-	FREE(dc->chg[DF_LEFT]);
-	FREE(dc->chg[DF_RIGHT]);
-	FREE(dc->hashes[DF_LEFT]);
-	FREE(dc->hashes[DF_RIGHT]);
-	FREE(dc);
-	return (hunks);
-}
-
-/* Helpers: Internal arrays are base 1, externals are base h->start[side] */
-
-#define IDX(h, i, s)	(DSTART(h, s) + (i) - 1)
-
-inline	private	u32
-cmpIt(df_ctx *dc, int idxA, int sideA, int idxB, int sideB)
-{
-	return (dc->dcmp(
-	    IDX(&dc->range, idxA, sideA), sideA,
-	    IDX(&dc->range, idxB, sideB), sideB,
-	    dc->data, dc->extra));
-}
-
-inline	private	u32
-hashIt(df_ctx *dc, int idx, int side)
-{
-	u32	ret;
-
-	ret = dc->dhash(IDX(&dc->range, idx, side), side, dc->data, dc->extra);
-	unless (ret) ret = 1;	/* cannot use hash==0 */
-	return (ret);
-}
-
-inline	private	u32
-costIt(df_ctx *dc, int idx, int side, int pos)
-{
-	return (dc->dcost(
-	    IDX(&dc->range, idx, side), side, pos, dc->data, dc->extra));
-}
-
-/*
- * Hash the things on side 'side' skipping anything before 'from'.
- * Also keeps track of how many matches on either side it has seen.
- */
-private void
-hashThings(df_ctx *dc, int side)
-{
-	int	i, n;
-	u32	dh;
-	thing	*t;
-
-	assert(!dc->hashes[side]);
-	n = dc->range.len[side];
-	growArray(&dc->hashes[side], n);
-	for (i = 1; i <= n; i++) {
-		dh = hashIt(dc, i, side);
-		while (1) {
-			if (t = hash_insert(dc->h, &dh, sizeof(u32),
-			    0, sizeof(thing))) {
-				/* new entry */
-				t->idx = i;
-				t->side = side;
-				break;
+	unless (getenv("_BK_OLDSTYLE_DIFFS")) dop.out_unified = 1;
+	dop.out_header = 1;
+	while ((c = getopt(ac, av,
+		    "@|a;A;bBcd;eF:fhHL|l|nNpr;R|s|Su|vw", lopts)) != -1) {
+		switch (c) {
+		    case 'A':
+			flags |= GET_ALIGN;
+			/*FALLTHROUGH*/
+		    case 'a':
+			flags = annotate_args(flags, optarg);
+			if (flags == -1) usage();
+			break;
+		    case 'b': dop.ignore_ws_chg = 1; break;	/* doc 2.0 */
+		    case 'B': /* unimplemented */    break;	/* doc 2.0 */
+		    case 'c': dop.out_unified = 0;   break;	/* doc 2.0 */
+		    case 'e': empty = 1; break;			/* don't doc */
+		    case 'F': pattern = strdup(optarg); break;
+		    case 'f': force = 1; break;
+		    case 'h': dop.out_header = 0; break;	/* doc 2.0 */
+		    case 'H': dop.out_comments = 1; break;
+		    case 'l': boundaries = optarg; break;	/* doc 2.0 */
+		    case 'L': case '@':
+			if (rargs.rstart) usage();
+			local = 1;
+			url = optarg;
+			break;
+		    case 'n':
+		    	dop.out_rcs = 1;
+			dop.out_unified = 0;
+			break;
+		    case 'N': dop.new_is_null = 1; break;
+		    case 'p': dop.out_show_c_func = 1; break;	/* doc 2.0 */
+		    case 'R': unless (Rev = optarg) Rev = "-"; break;
+		    case 's':
+			dop.out_unified = 0;
+			if (optarg) {
+				dop.out_sdiff = strtoul(optarg, 0, 10);
+			} else if (p = getenv("COLUMNS")) {
+				dop.out_sdiff = strtoul(p, 0, 10);
 			} else {
-				/* existing entry */
-				t = dc->h->vptr;
-				unless (cmpIt(dc, i, side, t->idx, t->side)) {
-					if (t->side != side) t->both = 1;
-					break;
-				}
+				dop.out_sdiff = 80;
 			}
-			/* collision */
-			dh++;
+			break;		/* doc 2.0 */
+		    case 'S': standalone = 1; break;
+		    case 'u':
+			dop.out_unified = 1;
+			if (optarg && isdigit(optarg[0])) {
+				i = strtoul(optarg, &p, 10);
+				dop.context = i ? i : -1; /* -1 means zero */
+				if (*p) getoptConsumed(p - optarg + 1);
+			} else if (optarg) {
+				getoptConsumed(1);
+			}
+			break;
+		    case 'v': verbose = 1; break;		/* doc 2.0 */
+		    case 'w': dop.ignore_all_ws = 1; break;	/* doc 2.0 */
+		    case 'd':
+			if (local) usage();
+			if (range_addArg(&rargs, optarg, 1)) usage();
+			break;
+		    case 'r':
+			if (local) usage();
+			if (range_addArg(&rargs, optarg, 0)) usage();
+			break;
+		    case 300: // --normal
+			dop.out_unified = 0;
+			dop.out_rcs = 0;
+			break;
+		    case 340:	/* --stats-only */
+			diffstat_only = 1;
+			/* fallthrough */
+		    case 330:	/* --stats */
+			dop.out_diffstat = 1;
+			fout = fmem();
+			break;
+		    case 350:	/* --who-deleted */
+			whodel = 1;
+			break;
+		    default: bk_badArg(c, av);
 		}
-		dc->hashes[side][i] = dh;
 	}
-}
 
-/*
- * Try to make the problem smaller by immediately marking lines that
- * only exist in things[0] as deletes, and lines that only exist in
- * things[1] as adds.
- */
-private void
-compressHashes(df_ctx *dc, int side)
-{
-	int	i, j, n;
-	u32	*u;
-	u32	**v;
-	int	**idx;
-	thing	*t;
+	if (local) {
+		if (range_urlArg(&rargs, url, standalone)) return (1);
+	} else if (standalone) {
+		fprintf(stderr,
+		    "%s: -S only can be used if -L is also used\n", prog);
+		return (1);
+	}
 
-	assert(!dc->red[side] && !dc->idx[side]);
+	if (dop.out_show_c_func && pattern) {
+		fprintf(stderr, "diffs: only one of -p or -F allowed\n");
+err:		FREE(pattern);
+		return (1);
+	}
+
+	if (pattern &&
+	    !(dop.pattern = pcre_compile(pattern, 0, &perr, &poff, 0))) {
+		fprintf(stderr, "diff: bad regexp '%s': %s\n", pattern, perr);
+		goto err;
+	}
+
+	unless (diff_cleanOpts(&dop)) usage();
+
+	if ((rargs.rstart && (boundaries || Rev)) || (boundaries && Rev)) {
+		fprintf(stderr, "%s: -R must be alone\n", av[0]);
+		goto err;
+	}
+
+	if (diffstat_only && (!dop.out_header ||
+		dop.out_comments || dop.out_rcs || dop.out_sdiff)) {
+		fprintf(stderr, "%s: --stats-only should be alone\n", av[0]);
+		goto err;
+	}
+
+	dop.flags = flags;
 
 	/*
-	 * Compress the hash maps and immediately mark lines that only
-	 * exist in DF_LEFT as deletions and lines that only exist in
-	 * DF_RIGHT as additions. Also, if we have a line on one side
-	 * that has multiple matches in the other side, but is between
-	 * a region that is unique, it also gets marked.
-	 *
-	 * The compressed hashes go in dc->red[DF_LEFT], and
-	 * dc->red[DF_RIGHT] and are what
-	 * will be passed to the diff engine. We also save a mapping
-	 * from the compressed indices to the original ones.
+	 * If we specified both revisions then we don't need the gfile.
+	 * If we specifed one rev, then the gfile is also optional, we'll
+	 * do the parent against that rev if no gfile.
+	 * If we specified no revs then there must be a gfile.
 	 */
-	n = dc->range.len[side];
-	u = dc->hashes[side];
-	v = &dc->red[side];
-	idx = &dc->idx[side];
-	growArray(v, n);
-	growArray(idx, n);
- 	/*
-	 * Adding a zero (NULL) at the beginning and end of chg[0] &
-	 * chg[1] saves bounds comparisons later.
-	 */
-	dc->chg[side] = calloc(n + 2, sizeof(int));
-	j = 1;
-	EACH(u) {
-		t = hash_fetch(dc->h, &u[i], sizeof(u32));
-		assert(t);
-		if (t->both) {
-			/* matches lines on the other side, keep it */
-			(*v)[j] = u[i];
-			(*idx)[j] = i;
-			j++;
-		} else {
-			/* no matches on the other side, it's a diff */
-			dc->chg[side][i] = 1;
-		}
+	if ((flags & GET_PREFIX) &&
+	    !Rev && (!rargs.rstop || boundaries) && !streq("-", av[ac-1])) {
+		fprintf(stderr,
+		    "%s: must have both revisions with -A|U|M|O\n", av[0]);
+		goto err;
 	}
-	truncArray(*v, j-1);
-	truncArray(*idx, j-1);
-}
 
-/*
- * This is a simple divide and conquer algorithm. Even tho we can find
- * the minimal edit distance in O(ND), we would need O(n^2) space to
- * store the actual path. This kills performance. Rather than saving
- * every possible path, we call the dsplit1() function to find a point
- * in the middle of the shortest path. Then we save that point and
- * recurse looking for another point in the middle, etc. This is
- * section 4b of Myers' paper.
- */
-private void
-idiff(df_ctx *dc, int x1, int x2, int y1, int y2)
-{
-	int	x, y;
-
-	assert(x1 <= x2);
-	assert(y1 <= y2);
-	while ((x1 < x2) && (y1 < y2) &&
-	    (dc->red[DF_LEFT][x1+1] == dc->red[DF_RIGHT][y1+1])) {
-		x1++, y1++;
-	}
-	while ((x1 < x2) && (y1 < y2) &&
-	    (dc->red[DF_LEFT][x2] == dc->red[DF_RIGHT][y2])) {
-		x2--, y2--;
-	}
-	if (x1 == x2) {
-		/* ADD */
-		while (y1 < y2) dc->chg[1][dc->idx[DF_RIGHT][y2--]] = 1;
-	} else if (y1 == y2) {
-		/* DELETE */
-		while (x1 < x2) dc->chg[0][dc->idx[DF_LEFT][x2--]] = 1;
+	if (local && !av[optind]) {
+		p = aprintf("r%s%s",
+		    dop.new_is_null ? "x" : "", standalone ? "S" : "");
+		name = sfiles_local(rargs.rstart, p);
+		free(p);
 	} else {
-		dsplit1(dc, x1, x2, y1, y2, &x, &y);
-		assert((x1 <= x) && (x <= x2));
-		assert((y1 <= y) && (y <= y2));
-		idiff(dc, x1, x, y1, y);
-		idiff(dc, x, x2, y, y2);
+		name = sfileFirst("diffs", &av[optind], 0);
 	}
-}
+	while (name) {
+		sccs	*s = 0;
+		ser_t	d;
+		char	*r1 = 0, *r2 = 0;
 
-/*
- * dsplit1() is an implementation of the middle snake algorithm from
- * Eugene W. Myer's "An O(ND) Difference Algorithm and Its Variations"
- * paper.
- *
- * It returns a point (mx, my) that belongs to the middle snake in
- * an edit graph between points (x1, y1) and (x2, y2).
+		/*
+		 * Unless we are given endpoints, don't diff.
+		 * This is a big performance win.
+		 * 2005-06: Endpoints meaning extended for diffs -N.
+		 */
+		unless (force ||
+		    rargs.rstart || boundaries || Rev || sfileRev()) {
+			char	*gfile = sccs2name(name);
 
- * It uses linear space O(N), where N = (x2 - x1) + (y2 - y1).
- */
-private int
-dsplit1(df_ctx *dc, int x1, int x2, int y1, int y2, int *mx, int *my)
-{
-	int	d, k;
-	int	x, y;
-	u32	*A = dc->red[DF_LEFT];
-	u32	*B = dc->red[DF_RIGHT];
-	int	*vf = dc->vf;
-	int	*vr = dc->vr;
-	int	kmin = x1 - y2;
-	int	kmax = x2 - y1;
-	int	kf   = x1 - y1;
-	int	kr   = x2 - y2;
-	int	kfmin = kf;
-	int	kfmax   = kf;
-	int	krmin = kr;
-	int	krmax   = kr;
-	int	odd = ((kr - kf) & 1);
-
-#ifdef DEBUG_DIFF
-	/* Do some bounds checking. */
-	assert(dc->minf <= (vf+kf+1));
-	assert(dc->maxf >= (vf+kf+1));
-	assert(dc->minr <= (vr+kr-1));
-	assert(dc->maxr >= (vr+kr-1));
-#endif
-
-	vf[kf] = x1;
-	vr[kr] = x2;
-
-	for (d = 1; ; d++) {
-		if (kfmin > kmin) {
-			--kfmin;
-			vf[kfmin - 1] = x1 - 1;
-		} else {
-			++kfmin;
+			unless (writable(gfile) ||
+			    ((dop.new_is_null) && !exists(name) && exists(gfile))){
+				free(gfile);
+				goto next;
+			}
+			free(gfile);
 		}
-		if (kfmax < kmax) {
-			++kfmax;
-			vf[kfmax + 1] = x1 - 1;
-		} else {
-			--kfmax;
+		s = sccs_init(name, SILENT);
+		unless (s && HASGRAPH(s)) {
+			if (nulldiff(name, &dop) == 2) goto out;
+			goto next;
 		}
-		for (k = kfmin; k <= kfmax; k += 2) {
-			if (vf[k-1] < vf[k+1]) {
-				x = vf[k+1];
+		if (boundaries) {
+			if (CSET(s)) goto next;
+			unless (d = sccs_findrev(s, boundaries)) {
+				fprintf(stderr,
+				    "No delta %s in %s\n",
+				    boundaries, s->gfile);
+				goto next;
+			}
+			range_cset(s, d);
+			if (s->rstart && PARENT(s, s->rstart)) {
+				s->rstart = PARENT(s, s->rstart);
+			}
+		} else if (Rev) {
+			/* r1 == r2  means diff against the parent(s)(s)  */
+			/* XXX TODO: probably needs to support -R+	  */
+			if (streq(Rev, "-")) {
+				unless (r1 = r2 = sfileRev()) {
+					fprintf(stderr,
+					    "diffs: -R- needs file|rev.\n");
+					goto next;
+				}
 			} else {
-				x = vf[k-1] + 1;
+				r1 = r2 = Rev;
 			}
-			y = x - k;
-			while ((x < x2) && (y < y2) && (A[x+1] == B[y+1])) {
-				x++, y++;
-			}
-#ifdef DEBUG_DIFF
-			assert((dc->minf <= (vf+k)) && (dc->maxf >= (vf+k)));
-#endif
-			vf[k] = x;
-#ifdef DEBUG_DIFF
-			assert((dc->minr <= (vr+k)) && (dc->maxr >= (vr+k)));
-#endif
-			if (odd && ((k >= krmin) && (k <= krmax)) &&
-			    (vr[k] <= x)) {
-				/* last forward snake is middle snake */
-				*mx = x;
-				*my = y;
-				return (2*d - 1);
-			}
-		}
-		if (krmin > kmin) {
-			--krmin;
-			vr[krmin - 1] = x2 + 1;
 		} else {
-			++krmin;
-		}
-		if (krmax < kmax) {
-			++krmax;
-			vr[krmax + 1] = x2 + 1;
-		} else {
-			--krmax;
-		}
-		for (k = krmax; k >= krmin; k -= 2) {
-			if (vr[k-1] < vr[k+1]) {
-				x = vr[k-1];
-			} else {
-				x = vr[k+1] - 1;
-			}
-			y = x - k;
-			while ((x > x1) && (y > y1) && (A[x] == B[y])) {
-				x--, y--;
-			}
-#ifdef DEBUG_DIFF
-			assert((dc->minr <= (vr+k)) && (dc->maxr >= (vr+k)));
-#endif
-			vr[k] = x;
-#ifdef DEBUG_DIFF
-			assert((dc->minf <= (vf+k)) && (dc->maxf >= (vf+k)));
-#endif
-			if (!odd && ((k >= kfmin) && (k <= kfmax)) &&
-			    (vf[k] >= x)) {
-				/* found middle snake */
-				*mx = x;
-				*my = y;
-				return (2*d);
-			}
-		}
-		if (dc->minimal) continue;
-		if (d > dc->max_steps) {
-			int	maxfx = -1, bestf = -1;
-			int	maxbx = INT_MAX, bestb = INT_MAX;
-
-			for (k = kfmin; k <= kfmax; k += 2) {
-				x = min (vf[k], x2);
-				y = x - k;
-				if (y2 < y) {
-					x = y2 + k;
-					y = y2;
-				}
-				if (bestf < (x + y)) {
-					bestf = x + y;
-					maxfx = x;
-				}
-			}
-			assert(maxfx != -1);
-			for (k = krmax; k >= krmin; k -= 2) {
-				x = max (x1, vr[k]);
-				y = x - k;
-				if (y < y1) {
-					x = y1 + k;
-					y = y1;
-				}
-				if (bestb > (x + y)) {
-					bestb = x + y;
-					maxbx = x;
-				}
-			}
-			assert(maxbx != INT_MAX);
-			if (((x2 + y2) - bestb) < (bestf - (x1 + y1))) {
-				*mx = maxfx;
-				*my = bestf - maxfx;
-			} else {
-				*mx = maxbx;
-				*my = bestb - maxbx;
-			}
-			return (0); /* we don't know the distance */
-		}
-	}
-	assert(0);
-	return (0);
-}
-
-/*
- * Here we try to close the gaps between regions. chg[0] & chg[1] are
- * arrays of booleans that indicate if left & right have changed in
- * the other side.
- *
- * The idea is to find two consecutive blocks of changes separated by
- * lines that remained the same. Then we start trying to move the
- * first block towards the second by comparing chg[a] with chg[b], if
- * they are the same, the entire block can be shifte downwards.
- *
- * Next we try to move the lower block upwards by comparing chg[c]
- * with chg[d], if they match we can shift the entire block
- * upwards. Hopefully we can close the region between b and c and have
- * a contiguous block.
- *
- *    chg   index
- *    0
- *    0
- *    1 <--- a
- *    1
- *    1
- *    0 <--- b
- *    0
- *    0 <--- c
- *    1
- *    1
- *    1 <--- d
- *    0
- *
- * Repeat for all gaps [b,c] in chg.
- *
- * Adapted from code by wscott in another RTI.
- */
-private void
-shrink_gaps(df_ctx *dc, int side)
-{
-	int	i;
-	int	a, b, c, d;
-	int	a1, b1, c1, d1;
-	int	n;
-	u8	*chg;
-	u32	*h;
-
-	chg = dc->chg[side];
-	h = dc->hashes[side];
-	n = nLines(h);
-
-	i = 1;
-	/* Find first block */
-	while ((i <= n) && (chg[i] == 0)) i++;
-	if (i >= n) return;
-	a = i;
-	while ((i <= n) && (chg[i] == 1)) i++;
-	if (i >= n) return;
-	b = i;
-
-	while (1) {
-		/* The line before the next 1 is 'c' */
-		while ((i <= n) && (chg[i] == 0)) i++;
-		if (i >= n) return;
-		c = i - 1;
-
-		/* The last '1' is 'd' */
-		while ((i <= n) && (chg[i] == 1)) i++;
-		/* hitting the end here is OK */
-		d = i - 1;
-	again:
-		/* try to close gap between 'b' and 'c' */
-		a1 = a; b1 = b; c1 = c; d1 = d;
-		while ((b1 <= c1) && (h[a1] == h[b1])) {
-			a1++;
-			b1++;
-		}
-		while ((b1 <= c1) && (h[c1] == h[d1])) {
-			c1--;
-			d1--;
-		}
-		if (b1 > c1) {
-			/* Bingo! commit it */
-			while (a < b) chg[a++] = 0; /* erase old block */
-			a = a1;
-			while (a < b1) chg[a++] = 1; /* write new block */
-			a = a1;
-			b = b1;
-			while (d > c) chg[d--] = 0;
-			d = d1;
-			while (d > c1) chg[d--] = 1;
-			c = c1;
-			d = d1;
+			int	restore = 0;
 
 			/*
-			 * Now search back for previous block and start over.
-			 * The last gap "might" be closable now.
+			 * XXX - if there are other commands which want the
+			 * edited file as an arg, we should make this code
+			 * be a function.  export/rset/gnupatch use it.
 			 */
-			--a;
-			c = a;
-			while ((a > 1) && (chg[a] == 0)) --a;
-			if (chg[a] == 1) {
-				/* found a previous block */
-				b = a+1;
-				while ((a > 1) && (chg[a] == 1)) a--;
-				if (chg[a] == 0) a++;
-				/*
-				 * a,b now points at the previous block
-				 * and c,d points at the newly merged block.
-				 */
-				goto again;
-			} else {
-				/*
-				 * We are already in the first block,
-				 * so just go on.
-				 */
-				a = a1;
-				b = d + 1;
+			// XXX
+			if (rargs.rstart && streq(rargs.rstart, ".")) {
+				restore = 1;
+				if (HAS_GFILE(s) && WRITABLE(s)) {
+					rargs.rstart = 0;
+				} else {
+					rargs.rstart = "+";
+				}
 			}
-		} else {
-			a = c + 1;
-			b = d + 1;
+			if (range_process("diffs", s, RANGE_ENDPOINTS,&rargs)) {
+				unless (empty) goto next;
+				s->rstart = TREE(s);
+			}
+			if (restore) rargs.rstart = ".";
 		}
-	}
-}
-
-/*
- * Move any remaining diff blocks align to better boundaries if
- * possible. Adapted from code by wscott in another RTI.
- */
-private void
-align_blocks(df_ctx *dc, int side)
-{
-	int	a, b;
-	int	n;
-	u8	*chg;
-	u32	*h;
-
-	n = dc->range.len[side];
-	chg = dc->chg[side];
-	h = dc->hashes[side];
-	a = 1;
-	while (1) {
-		int	up, down;
+		if (s->rstart) {
+			unless (r1 = REV(s, s->rstart)) goto next;
+			if ((rargs.rstop) && (s->rstart == s->rstop)) goto next;
+			if (s->rstop) r2 = REV(s, s->rstop);
+		}
 
 		/*
-		 * Find a sections of 1's bounded by 'a' and 'b'
+		 * Optimize out the case where we we are readonly and diffing
+		 * TOT.
+		 * EDITED() doesn't work because they could have chmod +w
+		 * the file.
 		 */
-		while ((a <= n) && (chg[a] == 0)) a++;
-		if (a >= n) return;
-		b = a;
-		while ((b <= n) && (chg[b] == 1)) b++;
-		/* b 'might' be at end of file */
-
-		/* Find the maximum distance it can be shifted up */
-		up = 0;
-		while ((a-up > 1) && (h[a-1-up] == h[b-1-up]) &&
-		    (chg[a-1-up] == 0)) {
-			++up;
+		if (!r1 && (!HAS_GFILE(s) || (!force && !WRITABLE(s)))) {
+			goto next;
 		}
-		/* Find the maximum distance it can be shifted down */
-		down = 0;
-		while ((b+down <= n) && (h[a+down] == h[b+down]) &&
-		    (chg[b+down] == 0)) {
-			++down;
-		}
-		if (up + down > 0) {
-			int	best = INT_MAX;
-			int	bestalign = 0;
-			int	i;
 
-			/* for all possible alignments ... */
-			for (i = -up; i <= down; i++) {
-				int	a1 = a + i;
-				int	b1 = b + i;
-				int	cost;
-				int	total = 0;
-
-				while ((a1 < b1) &&
-				    (cost = costIt(dc, a1, side, DF_START))) {
-					total += cost;
-					++a1;
-				}
-
-				while ((b1 > a1) &&
-				    (cost = costIt(dc, b1-1, side, DF_END))) {
-					total += cost;
-					--b1;
-				}
-
-				while (a1 < b1) {
-					total +=
-					    costIt(dc, a1, side, DF_MIDDLE);
-					++a1;
-				}
-				/*
-				 * Find the alignment with the lowest cost and
-				 * if all things are equal shift down as far as
-				 * possible.
-				 */
-				if (total <= best) {
-					best = total;
-					bestalign = i;
-				}
-			}
-			if (bestalign != 0) {
-				int	a1 = a + bestalign;
-				int	b1 = b + bestalign;
-
-				/* remove old marks */
-				while (a < b) chg[a++] = 0;
-				/* add new marks */
-				while (a1 < b1) chg[a1++] = 1;
-				b = b1;
-			}
-		}
-		a = b;
-	}
-}
-
-
-/*
- * SES: Shortest Edit Script.
- *
- * Given a pair of arrays with 0's for "did not change" and 1's for
- * "did change", turn it into a hunks structure with the Shortest Edit
- * Script.
- */
-private hunk *
-ses(df_ctx *dc, hunk *hunks)
-{
-	int	n, m;
-	int	x, y;
-	hunk	*h;
-
-	n = dc->range.len[DF_LEFT];
-	m = dc->range.len[DF_RIGHT];
-	for (x = 1, y = 1; (x <= n) || (y <= m);) {
-		if (dc->chg[DF_LEFT][x] || dc->chg[DF_RIGHT][y]) {
-			h = addArray(&hunks, 0);
-			h->start[DF_LEFT] = x;
-			h->start[DF_RIGHT] = y;
-			while ((x <= n) && dc->chg[DF_LEFT][x]) x++;
-			while ((y <= m) && dc->chg[DF_RIGHT][y]) y++;
-			h->len[DF_LEFT] = x - h->start[DF_LEFT];
-			h->len[DF_RIGHT] = y - h->start[DF_RIGHT];
-			h->start[DF_LEFT] += dc->range.start[DF_LEFT] - 1;
-			h->start[DF_RIGHT] += dc->range.start[DF_RIGHT] - 1;
-		}
-		if (x <= n) x++;
-		if (y <= m) y++;
-	}
-	return (hunks);
-}
-
-/* Comparison functions for the various diff options */
-
-/*
- * Just see if two lines are identical
- */
-int
-diff_cmpLine(
-    int idxa, int sidea, int idxb, int sideb, df_data *data, void *extra)
-{
-	int	lena, lenb;
-	char	*a = data(idxa, sidea, extra, &lena);
-	char	*b = data(idxb, sideb, extra, &lenb);
-
-	if (lena != lenb) return (lena - lenb);
-	return (memcmp(a, b, lena));
-}
-
-/*
- * Compare ignoring all white space. (diff -w)
- */
-int
-diff_cmpIgnoreWS(
-    int idxa, int sidea, int idxb, int sideb, df_data *data, void *extra)
-{
-	int	i, j;
-	int	lena, lenb;
-	char	*a = data(idxa, sidea, extra, &lena);
-	char	*b = data(idxb, sideb, extra, &lenb);
-
-	i = j = 0;
-	for (;;) {
-		while ((i < lena) && (j < lenb)) {	/* optimize */
-			unless (a[i] == b[j]) break;
-			i++, j++;
-		}
-		while ((i < lena) && isspace(a[i])) i++;
-		while ((j < lenb) && isspace(b[j])) j++;
-		unless ((i < lena) && (j < lenb) && (a[i] == b[j])) break;
-		i++, j++;
-	}
-	return (!((i == lena) && (j == lenb)));
-}
-
-/*
- * Compare ignoring changes in white space (diff -b).
- */
-int
-diff_cmpIgnoreWSChg(
-    int idxa, int sidea, int idxb, int sideb, df_data *data, void *extra)
-{
-	int	i, j;
-	int	sa, sb;
-	int	lena, lenb;
-	char	*a = data(idxa, sidea, extra, &lena);
-	char	*b = data(idxb, sideb, extra, &lenb);
-
-	i = j = 0;
-	for (;;) {
-		while ((i < lena) && (j < lenb)) {	/* skip matches */
-			unless (a[i] == b[j]) break;
-			i++, j++;
-		}
-		sa = (i < lena) ? isspace(a[i]) : 0;
-		sb = (j < lenb) ? isspace(b[j]) : 0;
-		unless (sa || sb) break;
-		unless (sa && sb) {
-			if (sa && (!i || !isspace(a[i-1]))) break;
-			if (sb && (!j || !isspace(a[j-1]))) break;
-		}
-		while ((i < lena) && isspace(a[i])) i++;
-		while ((j < lenb) && isspace(b[j])) j++;
-		unless ((i < lena) && (j < lenb) && (a[i] == b[j])) break;
-		i++, j++;
-	}
-	return (!((i == lena) && (j == lenb)));
-}
-
-/* HASH FUNCTIONS */
-
-/*
- * Hash data, use crc32c for speed
- */
-u32
-diff_hashLine(int idx, int side, df_data *data, void *extra)
-{
-	int	len;
-	char	*a = data(idx, side, extra, &len);
-
-	return (crc32c(0, a, len));
-}
-
-/*
- * Hash data ignoring all white space (diff -w)
- */
-u32
-diff_hashIgnoreWS(int idx, int side, df_data *data, void *extra)
-{
-	int	i, j = 0;
-	int	len;
-	char	*a = data(idx, side, extra, &len);
-	u32	ret = 0;
-	char	copy[MAXLINE];
-
-	for (i = 0; i < len; i++) {
-		unless (isspace(a[i])) {
-			copy[j++] = a[i];
-			if (j >= MAXLINE) {
-				assert(j == MAXLINE);
-				ret = crc32c(ret, copy, j);
-				j = 0;
-			}
-		}
-	}
-	if (j) ret = crc32c(ret, copy, j);
-	return (ret);
-}
-
-/*
- * Hash data ignoring changes in white space (diff -b)
- */
-u32
-diff_hashIgnoreWSChg(int idx, int side, df_data *data, void *extra)
-{
-	int	i, j = 0;
-	int	len;
-	char	*a = data(idx, side, extra, &len);
-	u32	ret = 0;
-	char	copy[MAXLINE];
-
-	for (i = 0; i < len; i++) {
-		if (isspace(a[i])) {
-			while ((i < len - 1) && isspace(a[i+1])) i++;
-			copy[j++] = ' ';
-		} else {
-			copy[j++] = a[i];
-		}
-		if (j >= MAXLINE) {
-			assert(j == MAXLINE);
-			ret = crc32c(ret, copy, j);
-			j = 0;
-		}
-	}
-	if (j) ret = crc32c(ret, copy, j);
-	return (ret);
-}
-
-/* ALIGN FUNCTIONS */
-
-u32
-diff_cost(int idx, int side, int pos, df_data *data, void *extra)
-{
-	int	len;
-	char	*line = data(idx, side, extra, &len);
-	int	i, j, c;
-	int	cost;
-	struct {
-		char	*match;		/* pattern to match */
-		int	len;		/* size of match */
-		int	cost[3];	/* cost for BEG, END, MID */
-	} menu[] = {
-		{"", 0, {2, 1, 3}},	/* empty line */
-		{"/*", 2, {1, 2, 3}},	/* start comment */
-		{"*/", 2, {2, 1, 3}},	/* end comment */
-		{"{", 1, {1, 2, 3}},	/* start block */
-		{"}", 1, {2, 1, 3}},	/* end block */
-		{0, 0, {0, 0, 0}}
-	};
-	/* remove final newline */
-	if ((len > 0) && (line[len-1] == '\n')) --len;
-
-	/* skip whitespace at start of line */
-	for (i = 0; i < len; i++) {
-		unless ((line[i] == ' ') || (line[i] == '\t')) break;
-	}
-
-	/* handle blank line case */
-	if (i == len) return (menu[0].cost[pos]);
-
-	/* look for other cases */
-	cost = 0;
-	for (j = 1; menu[j].match; j++) {
-		c = menu[j].len;
-		if (((len - i) >= c) && strneq(line+i, menu[j].match, c)) {
-			cost = menu[j].cost[pos];
-			i += c;
-			break;
-		}
-	}
-	if (cost) {
-		/* make sure all that's left is whitespace */
-		for (/* i */; i < len; i++) {
-			unless ((line[i] == ' ') || (line[i] == '\t')) break;
-		}
-		if (i == len) return (cost);
-	}
-	return (0);
-}
-
-/*
- * This implements the Needleman-Wunsch algorithm for finding
- * the best alignment of diff block.
- * See http://en.wikipedia.org/wiki/Needleman-Wunsch_algorithm
- *
- * Return an int addArray made up of DF_LEFT, DF_RIGHT, and DF_BOTH
- * for each line to be printed.  Only need a byte, but no byte addArray.
- */
-int *
-diff_alignMods(hunk *h, df_data *data, void *extra, int diffgap)
-{
-	int	i, j, k;
-	int	match, delete, insert;
-	int	score, scoreDiag, scoreUp, scoreLeft;
-	int	lenA, lenB;
-	int	cmd;
-	char	*strA, *strB;
-	int	n, m;
-	int	**F;
-	int	*algnA;
-	int	*algnB;
-	int	*plist = 0;
-
-	n = DLEN(h, DF_LEFT);
-	m = DLEN(h, DF_RIGHT);
-
-	if ((n * m) > 100000) {
 		/*
-		 * Punt if the problem is too large since the
-		 * algorithm is O(n^2).  The rationale is that the
-		 * line alignment only helps if you're looking at
-		 * smallish regions. Once you've gone over a few
-		 * screenfuls you're just reading new code so no point
-		 * in working hard to align lines.
+		 * Optimize out the case where we have a locked file with
+		 * no changes at TOT.
+		 * XXX: the following doesn't make sense because of PFILE:
+		 * EDITED() doesn't work because they could have chmod +w
+		 * the file.
+		 */
+		if (!r1 && WRITABLE(s) && HAS_PFILE(s) && !MONOTONIC(s)) {
+			rc = sccs_hasDiffs(s, flags, 1);
+			if (BAM(s) && ((rc < 0) || (rc > 1))) {
+				errors |= 2;
+				goto next;
+			}
+			unless (rc) goto next;
+			if (BAM(s)) {
+				if (dop.out_header) {
+					printf("===== %s %s vs edited =====\n",
+					    s->gfile, REV(s, sccs_top(s)));
+				}
+				printf("Binary file %s differs\n", s->gfile);
+				goto next;
+			}
+		}
+		/*
+		 * Errors come back as -1/-2/-3/0
+		 * -2/-3 means it couldn't find the rev; ignore.
 		 *
+		 * XXX - need to catch a request for annotations w/o 2 revs.
 		 */
-
-		cmd = DF_BOTH;
-		for (i = 0; (i < n) && (i < m); i++) {
-			addArray(&plist, &cmd);
+		dop.adds = dop.dels = dop.mods = 0;
+		dop.bin_files = 0;
+		if (whodel) s->whodel = sccs_findrev(s, r2);
+		rc = sccs_diffs(s, r1, r2, &dop, fout);
+		if (dop.out_diffstat &&
+		    (dop.adds || dop.dels || dop.mods || dop.bin_files)) {
+			ds = addArray(&diffstats, 0);
+			ds->name = strdup(s->gfile);
+			ds->bin_files = dop.bin_files;
+			ds->adds = dop.adds;
+			ds->dels = dop.dels;
+			ds->mods = dop.mods;
 		}
-		cmd = DF_LEFT;
-		for ( ; i < n; i++) {
-			addArray(&plist, &cmd);
+		switch (rc) {
+		    case -1:
+			fprintf(stderr,
+			    "diffs of %s failed.\n", s->gfile);
+			break;
+		    case -2:
+		    case -3:
+			break;
+		    case 0:	
+			if (verbose) fprintf(stderr, "%s\n", s->gfile);
+			break;
+		    default:
+			fprintf(stderr,
+			    "diffs of %s failed.\n", s->gfile);
 		}
-		cmd = DF_RIGHT;
-		for ( ; i < m; i++) {
-			addArray(&plist, &cmd);
+next:		if (s) {
+			sccs_free(s);
+			s = 0;
 		}
-		return (plist);
+		name = sfileNext();
 	}
-	F = malloc((n+1) * sizeof(int *));
-	algnA = calloc(n+m+1, sizeof(int));
-	algnB = calloc(n+m+1, sizeof(int));
+	if (dop.out_diffstat) {
+		char	*data;
+		size_t	len;
 
-	for (i = 0; i <= n; i++) {
-		F[i] = malloc((m+1) * sizeof(int));
-		F[i][0] = diffgap * i;
+		if (diffstat_only || (nLines(diffstats) > 1)) {
+			printHistogram(diffstats);
+			putchar('\n');
+		}
+		data = fmem_close(fout, &len);
+		unless (diffstat_only) fwrite(data, 1, len, stdout);
+		FREE(data);
 	}
-	for (j = 0; j <= m; j++) F[0][j] = diffgap * j;
-	for (i = 1; i <= n; i++) {
-		strA = data(IDX(h, i, DF_LEFT), DF_LEFT, extra, &lenA);
-		for (j = 1; j <= m; j++) {
-			strB = data(
-			    IDX(h, j, DF_RIGHT), DF_RIGHT, extra, &lenB);
-			match  = F[i-1][j-1] + lcs(strA, lenA, strB, lenB);
-			delete = F[i-1][j] + diffgap;
-			insert = F[i][j-1] + diffgap;
-			F[i][j] = max(match, max(delete, insert));
+out:	if (sfileDone()) errors |= 4;
+	FREE(pattern);
+	return (errors);
+}
+
+/*
+ * -L without args, use _sfiles_local and list whole repository
+ */
+char *
+sfiles_local(char *rev, char *opts)
+{
+	char    *freeme = 0, *nav[10];
+	int     i, fd;
+	int	standalone = 0;
+
+	nav[i=0] = "bk";
+	nav[++i] = "_sfiles_local";
+	nav[++i] = freeme = aprintf("-r%s", rev);
+	while (opts && *opts) {
+		switch (*opts++) {
+		    case 'm': nav[++i] = "--no-mods"; break;
+		    case 'r': nav[++i] = "--no-revs"; break;
+		    case 'S': nav[++i] = "-S"; standalone = 1; break;
+		    case 'x': nav[++i] = "--extras" ; break;
+		    default: assert(0 == "nr");
+		}
+	}
+	nav[++i] = 0;
+	bk_nested2root(standalone);
+	spawnvpio(0, &fd, 0, nav);
+	free(freeme);
+	dup2(fd, 0);
+	close(fd);
+	nav[0] = "-";
+	nav[1] = 0;
+	// XXX - flags?
+	return (sfileFirst(prog, &nav[0], 0));
+}
+
+private int
+ilog10(int i)
+{
+	int	n = 0;
+
+	while (i /= 10) n++;
+	return (n);
+}
+
+private void
+printHistogram(dstat *diffstats)
+{
+	int	maxlen, maxdiffs, maxbar, n, m;
+	int	adds, dels, mods, files;
+	int	i;
+	double	factor;
+	dstat	*ds;
+	char	hist[MAXLINE];
+
+#define	DIGITS(x) ((x) ? ilog10(x) + 1 : 1)
+
+	maxdiffs = maxlen = 0;
+	files = adds = dels = mods = 0;
+	EACHP(diffstats, ds) {
+		n = strlen(ds->name);
+		if (n > maxlen) maxlen = n;
+		if ((ds->adds + ds->dels + ds->mods) > maxdiffs) {
+			maxdiffs = ds->adds + ds->dels + ds->mods;
 		}
 	}
 	/*
-	 * F now has all the alignments, walk it back to find
-	 * the best one.
+	 * Format is: filename, | ,num,bar\n
 	 */
-	k = n + m;
-	i = n;
-	j = m;
-	while ((i > 0) && (j > 0)) {
-		score     = F[i][j];
-		scoreDiag = F[i-1][j-1];
-		scoreUp   = F[i][j-1];
-		scoreLeft = F[i-1][j];
-		assert(k > 0);
-		if (score == (scoreUp + diffgap)) {
-			algnA[k] = -1;
-			algnB[k] = j;
-			j--; k--;
-			continue;
-		}
-		if (score == (scoreLeft + diffgap)) {
-			algnA[k] = i;
-			algnB[k] = -1;
-			i--; k--;
-			continue;
-		}
-		strA = data(IDX(h, i, DF_LEFT), DF_LEFT, extra, &lenA);
-		strB = data(IDX(h, j, DF_RIGHT), DF_RIGHT, extra, &lenB);
-		if (score == (scoreDiag + lcs(strA, lenA, strB, lenB))) {
-			algnA[k] = i;
-			algnB[k] = j;
-			i--; j--; k--;
-			continue;
-		}
+	maxbar = 80 - maxlen - strlen(" | ") - DIGITS(maxdiffs) - 1;
+	if (maxdiffs < maxbar) {
+		factor = 1.0;
+	} else {
+		factor = (double)maxbar / (double)maxdiffs;
 	}
-	while (i > 0) {
-		assert(k > 0);
-		algnA[k] = i;
-		algnB[k] = -1;
-		i--; k--;
-	}
-	while (j > 0) {
-		assert(k > 0);
-		algnA[k] = -1;
-		algnB[k] = j;
-		j--; k--;
-	}
-	/* Now print the output */
-	for (i = k + 1; i <= (n + m); i++) {
-		assert((algnA[i] != -1) || (algnB[i] != -1));
-		if (algnA[i] == -1) {
-			cmd = DF_RIGHT;
-		} else if (algnB[i] == -1) {
-			cmd = DF_LEFT;
+	EACHP(diffstats, ds) {
+		n = 0;
+		m = (int)((double)ds->adds * factor);
+		for (i = 0; i < m; i++) hist[n++] = '+';
+		m = (int)((double)ds->mods * factor);
+		for (i = 0; i < m; i++) hist[n++] = '~';
+		m = (int)((double)ds->dels * factor);
+		for (i = 0; i < m; i++) hist[n++] = '-';
+		hist[n] = 0;
+		if (ds->bin_files) {
+			printf("%-*.*s |binary\n", maxlen, maxlen, ds->name);
 		} else {
-			cmd = DF_BOTH;
+			printf("%-*.*s | %*d %s\n", maxlen, maxlen,
+			    ds->name,
+			    DIGITS(maxdiffs),
+			    ds->adds + ds->dels + ds->mods, hist);
 		}
-		addArray(&plist, &cmd);
+		files++;
+		adds += ds->adds;
+		dels += ds->dels;
+		mods += ds->mods;
+		FREE(ds->name);
 	}
-	for (i = 0; i <= n; i++) free(F[i]);
-	free(F);
-	free(algnA);
-	free(algnB);
-	return (plist);
+	FREE(diffstats);
+	printf("%d files changed", files);
+	if (adds) printf(", %d insertions(+)", adds);
+	if (mods) printf(", %d modifications(~)", mods);
+	if (dels) printf(", %d deletions(-)", dels);
+	printf("\n");
 }
 
-private	int
-lcs(char *a, int alen, char *b, int blen)
+private int
+nulldiff(char *name, df_opt *dop)
 {
-	int	i, j;
-	int	ret;
-	int	**d;
+	int	ret = 0;
+	int	i;
+	char	*here, *file, *p;
+	char	buf[MAXPATH];
 
-	d = calloc(alen+1, sizeof(int *));
-	for (i = 0; i <= alen; i++) d[i] = calloc(blen+1, sizeof(int));
-
-	for (i = 1; i <= alen; i++) {
-		for (j = 1; j <= blen; j++) {
-			if (a[i] == b[j]) {
-				d[i][j] = d[i-1][j-1] + 1;
-			} else {
-				d[i][j] = max(d[i][j-1], d[i-1][j]);
-			}
+	name = sccs2name(name);
+	unless (exists(name)) goto out;
+	unless (dop->new_is_null) {
+		printf("New file: %s\n", name);
+		goto out;
+	}
+	unless (ascii(name)) {
+		fprintf(stderr, "Warning: skipping binary '%s'\n", name);
+		goto out;
+	}
+	if (dop->out_header) {
+		printf("===== New file: %s =====\n", name);
+		/* diff() uses write, not stdio */
+		if (fflush(stdout)) {
+			ret = 2;
+			goto out;
 		}
 	}
-	ret = d[alen][blen];
-	for (i = 0; i <= alen; i++) free(d[i]);
-	free(d);
+	if (isSymlnk(name) && ((i = readlink(name, buf, sizeof(buf))) > 0)) {
+		buf[i] = 0;
+		printf("SYMLINK -> %s\n", buf);
+		ret = 1;
+		goto out;
+	}
+
+	/*
+	 * Wayne liked this better but I had to work around a nasty bug in
+	 * that the chdir() below changes the return from proj_cwd().
+	 * Hence the strdup.  I think we want a pushd/popd sort of interface.
+	 */
+	here = strdup(proj_cwd());
+	p = strrchr(here, '/');
+	assert(p);
+	file = aprintf("%s/%s", p+1, name);
+	chdir("..");
+	ret = diff_files(DEVNULL_RD, file, dop, "-");
+	chdir(here);
+	free(here);
+	free(file);
+out:	free(name);
 	return (ret);
-}
-
-/*
- * Strictly only need one side of common, but we do both.
- * And get a small integrity check out of it.
- */
-void
-diff_mkCommon(hunk *out, hunk *range, hunk *from, hunk *to)
-{
-	int	start, end, side;
-
-	for (side = 0; side < 2; side++) {
-		start = from ? DEND(from, side) : DSTART(range, side);
-		end = to ? DSTART(to, side) : DEND(range, side);
-
-		/* maybe have setters and this is a little too magic? */
-		DSTART(out, side) = start;
-		DLEN(out, side) = end - start;
-	}
-
-	/* integrity check - sides have same length */
-	assert(DLEN(out, DF_LEFT) == DLEN(out, DF_RIGHT));
 }

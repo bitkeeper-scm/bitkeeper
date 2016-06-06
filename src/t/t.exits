@@ -43,18 +43,18 @@ bk cat file_that_does_not_exist 2> ERR
 test $? -eq 1 || fail
 echo OK
 
-echo $N Test bk diff with no changes ................................$NL
-bk diff foo foo > /dev/null
+echo $N Test bk ndiff with no changes ...............................$NL
+bk ndiff foo foo > /dev/null
 test $? -eq 0 || fail
 echo OK
 
-echo $N Test bk diff with changes ...................................$NL
-bk diff foo bar > /dev/null
+echo $N Test bk ndiff with changes ..................................$NL
+bk ndiff foo bar > /dev/null
 test $? -eq 1 || fail
 echo OK
 
-echo $N Test bk diff with error .....................................$NL
-bk diff foo file_that_does_not_exist 2> ERR
+echo $N Test bk ndiff with error ....................................$NL
+bk ndiff foo file_that_does_not_exist 2> ERR
 test $? -eq 2 || fail
 echo OK
 
@@ -89,7 +89,7 @@ test $? -eq 2 || fail
 echo OK
 
 echo $N Test bk patch with a working patch ..........................$NL
-bk diff foo bar > foo.patch
+bk ndiff foo bar > foo.patch
 bk patch -g1 foo < foo.patch > /dev/null
 test $? -eq 0 || fail
 echo OK

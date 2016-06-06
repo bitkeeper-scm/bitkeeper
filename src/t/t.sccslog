@@ -194,7 +194,7 @@ ChangeSet 1.1
 
 EOF
 bk sccslog -f | grep -v bk_regression | bk undos > CMP2
-bk diff -iu CMP1 CMP2 || {
+diff -iu CMP1 CMP2 || {
 	echo Failed
 	exit 1
 }
@@ -234,7 +234,7 @@ a/b/c/Data 1.10
 
 EOF
 bk sccslog -f a/b/c/Data | grep -v bk_regression.bk | bk undos > CMP2
-bk diff -i CMP1 CMP2 > /dev/null
+diff -i CMP1 CMP2 > /dev/null
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; bk sccslog -f a/b/c/Data; exit 1; fi
 echo OK
 

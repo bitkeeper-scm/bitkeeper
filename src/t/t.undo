@@ -52,7 +52,7 @@ then
 	echo failed
 	exit 1
 fi
-bk diff -r "$HERE/copy1/src" "$HERE/copy2/src"
+diff -r "$HERE/copy1/src" "$HERE/copy2/src"
 if [ $? != 0 ]
 then
 	echo failed

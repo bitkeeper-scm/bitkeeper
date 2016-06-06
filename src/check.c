@@ -361,8 +361,10 @@ check_main(int ac, char **av)
 		}
 		unless (HASGRAPH(s)) {
 			if (!(s->state & S_SFILE)) {
-				fprintf(stderr, "check: %s doesn't exist.\n",
-				    s->sfile);
+				fprintf(stderr,
+				    "check: revision history file "
+				    "for %s doesn't exist.\n",
+				    s->gfile);
 			} else {
 				perror(s->gfile);
 			}
@@ -905,7 +907,7 @@ keywords(sccs *s)
 	sysio(0, a, 0, "bk", "get", "-qp", s->gfile, SYS);
 	sysio(0, b, 0, "bk", "get", "-qkp", s->gfile, SYS);
 	same = sameFiles(a, b);
-	if (getenv("BK_DEBUG") && !same) sys("bk", "diff", "-up", a, b, SYS);
+	if (getenv("BK_DEBUG") && !same) sys("bk", "ndiff", "-up", a, b, SYS);
 	unlink(a);
 	unlink(b);
 	free(a);

@@ -1,9 +1,9 @@
 .so ../bk-macros
-.TH "bk co" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.TH "bk get" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk co \- check out \*(BK files
+bk get \- check out \*(BK files
 .SH SYNOPSIS
-.B bk co 
+.B bk get 
 .[B] options
 .BKARGS
 .SH ALTERNATE
@@ -12,12 +12,12 @@ bk co \- check out \*(BK files
 .BKARGS
 .SH DESCRIPTION
 .LP
-.B bk co
+.B bk get
 is used to check out files for viewing or editing.
 By default, files are checked out unlocked and read-only.
 .LP
 .B bk checkout
-is used to to checkout files in the repository's checkout mode (bk co
+is used to to checkout files in the repository's checkout mode (bk get
 defaults to read-only, this form matches the checkout config).
 .SH OPTIONS 
 .TP \-A\*<bdnpru\*>
@@ -56,9 +56,13 @@ Similar to
 .Q \-A 
 but without the alignment.
 .tp
+.B \-e
+Checkout the file for editing (same as
+.BR "bk edit" ).
+.tp
 .B \-g
 Suppress the retrieval of any text; sometimes useful with
-.QR \-l .
+.QR \-e .
 .tp
 .B \-h
 Invert sense of file's hash flag.
@@ -71,11 +75,7 @@ Include revs in
 Don't expand RCS or SCCS keywords.
 .Q \-k
 is implied by
-.QR \-l .
-.tp
-.B \-l
-Checkout the file for editing (same as
-.BR "bk edit" ).
+.QR \-e .
 .tp
 .B \-p
 Write file to standard output (useful in scripts).
@@ -92,8 +92,8 @@ Get this revision (or key or changeset revision\(emsee
 .B bk help terms
 under \*(lqrev argument\*(rq).
 If combined with 
-.Q \-l
-(lock), \*(BK checks out the tip revision
+.Q \-e
+(edit), \*(BK checks out the tip revision
 combined with a set of deltas to be included and excluded to produce
 the requested revision.
 .tp
@@ -131,5 +131,5 @@ JUNK := $(shell bk -Ur. -1 -^G checkout)
 .B Common
 .br
 .B File
-.\" help://get
+.\" help://co
 .\" help://checkout

@@ -363,7 +363,7 @@ cat <<EOF > expect
 1.5 C clone
  
 EOF
-bk diff -u expect chgs || fail changes returned wrong data
+bk ndiff -u expect chgs || fail changes returned wrong data
 echo OK
 
 echo $N Verify changes -a works with tags ...........................$NL
