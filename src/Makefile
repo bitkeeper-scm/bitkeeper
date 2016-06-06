@@ -380,9 +380,9 @@ gO:
 gcov:
 	$(MAKE) CFLAGS="$(CC_DEBUG) -fprofile-arcs -ftest-coverage" all
 
-clean: FORCE  ## Remove object files and executables
+clean: L-clean FORCE  ## Remove object files and executables
 	$(if $(Q),@echo Cleaning up,)
-	$(Q)for sub in $(SUBDIRS) ../doc ../man gnu gui utils win32; \
+	$(Q)for sub in $(SUBDIRS) ../doc ../man gnu gui utils win32 t; \
 	do	$(MAKE) -C$$sub "CFLAGS=$(CFLAGS)" Q=$(Q) $@; \
 	done
 	$(Q)$(RM) $(OBJ) bk.o $(BINS) $(SCRIPTS) \
@@ -396,13 +396,10 @@ clean: FORCE  ## Remove object files and executables
 		conf-$(BKHOST).mk build
 	$(Q)$(RM) -r tmp
 ifeq (true,$(INREPO))
-	$(Q)EXTRALIST=`"$(HAS_BK)" -Aax` ; \
+	$(Q)EXTRALIST=`"$(HAS_BK)" -Aax | grep -v '~$$\|conf-.*\.mk$$'` ; \
 	if [ "$$EXTRALIST" ]; then \
 		echo "Clean left behind the following files:" ; \
 		for file in $$EXTRALIST; do \
-			if [ "$$file" = "conf-$(BKHOST).mk" ]; then \
-				continue ; \
-			fi ; \
 			echo "  $$file" ; \
 		done ; \
 	else \

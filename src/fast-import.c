@@ -168,25 +168,15 @@ fastimport_main(int ac, char **av)
 		}
 	}
 	if (av[optind]) usage();
-	/*
-	 * XXX: if we _only_ provided incremental it would have more
-	 * symmetrical use cases:
-	 *
-	 *   $ bk init bk-repo
-	 *   $ (cd git-repo ; git fast-export) | (cd bk-repo; bk fast-import)
-	 *
-	 */
-	if (isdir(".bk") || isdir("BitKeeper")) {
+	if (isdir(BKROOT)) {
 		fprintf(stderr, "%s: Incremental imports not done yet\n",
 			av[0]);
 		rc = 1;
 		goto out;
 	} else {
-		setup(&opts);
+		/* we need a place to save tmp files before we get started */
+		sccs_mkroot(".");
 	}
-	putenv("_BK_NO_UNIQ=1");
-	putenv("_BK_MV_OK=1");
-	cmdlog_lock(CMD_WRLOCK);
 	rc = gitImport(&opts);
 out:	return (rc);
 }
@@ -288,6 +278,12 @@ gitImport(opts *op)
 	}
 	pq_free(pq);
 	assert(n == 0);
+
+	setup(op);
+
+	putenv("_BK_NO_UNIQ=1");
+	putenv("_BK_MV_OK=1");
+	cmdlog_lock(CMD_WRLOCK);
 
 	/* get sorted unique list of pathnames */
 	EACH_HASH(op->paths) list = addLine(list, (char *)op->paths->kptr);
@@ -778,6 +774,7 @@ parseWho(char *line, time_t *when, char **tz)
 {
 	char	*p, *q;
 	who	*w;
+	int	zone;
 
 	assert(line);
 	w = new(who);
@@ -826,7 +823,17 @@ parseWho(char *line, time_t *when, char **tz)
 		assert(*when);
 		assert(*q == ' ');
 		p = ++q;
-		*tz = strdup(p);
+		zone = strtol(p, &q, 10);
+		assert(!*q);
+		q = *tz = malloc(7); /* -HH:MM */
+		if (zone < 0) {
+			*q++ = '-';
+			zone = -zone;
+		} else {
+			*q++ = '+';
+		}
+		assert(zone < 10000);
+		sprintf(q, "%02d:%02d", (zone / 100), (zone % 100));
 	}
 	return (w);
 }
@@ -909,9 +916,27 @@ reset(opts *op, char *line)
 private void
 setup(opts *op)
 {
-	/* XXX seems like this should be tied to the oldest cset. */
+	int	zone = 0;
+	int	neg = 1;
+	char	*p;
+	time_t	tt;
+	commit	*cmt = op->clist[1];
+	char	buf[MAXLINE];
 
-	if (systemf("bk '-?BK_DATE_TIME_ZONE=1970-01-01 01:00:00-0' init")) {
+	tt = cmt->when - 5*MINUTE;
+	p = cmt->tz;
+	if (*p == '-') {
+		neg = -1;
+		++p;
+	} else if (*p == '+') {
+		++p;
+	}
+	zone = HOUR * atoi_p(&p);
+	if (*p++ == ':') zone += MINUTE * atoi_p(&p);
+	tt += neg * zone;
+	strftime(buf, sizeof(buf), "%y/%m/%d %H:%M:%S", gmtime(&tt));
+
+	if (systemf("bk '-?BK_DATE_TIME_ZONE=%s' init", buf)) {
 		perror("bk init");
 		exit(1);
 	}
@@ -1247,7 +1272,7 @@ loadMetaData(sccs *s, ser_t d, commit *cmt)
 	USERHOST_SET(s, d, cmt->committer->email);
 	DATE_SET(s, d, cmt->when);
 	DATE_FUDGE_SET(s, d, cmt->fudge);
-	ZONE_SET(s, d, cmt->tz); //XXX git -0400 bk -04:00 (but both work)
+	ZONE_SET(s, d, cmt->tz);
 
 	// fudge
 	if ((prev = sccs_prev(s, d)) &&
