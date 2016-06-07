@@ -36,9 +36,6 @@ function rand_diffs {
 	done
 }
 
-commercial bk-repo
-cd ..
-
 set -e
 
 echo $N Creating a git tree..........................................$NL
@@ -66,11 +63,6 @@ git add -A
 git commit $Q -m"`get_git_branch`: create all files"
 BASE=`git rev-parse HEAD`
 #echo; git ls-tree -r --full-tree HEAD
-git checkout-index -a --prefix=../bk-repo/
-cd ../bk-repo
-bk sfiles -x | bk new $Q -
-bk commit -y"GIT: $BASE" $Q
-cd ../git-repo
 
 # Make a commit that hits all the different
 # diff-tree cases
@@ -449,7 +441,8 @@ git fast-export master > ../git-repo.fast-export
 cd ..
 mkdir import
 cd import
-bk fast-import < ../git-repo.fast-export > OUT || fail -f OUT
+#_BK_NO_PAGING=1 valgrind --leak-check=yes --track-fds=yes \
+bk fast-import < ../git-repo.fast-export > ../OUT || fail -f ../OUT
 bk -r check -a || fail
 echo OK
 
@@ -468,6 +461,8 @@ echo $N Create-create conflict.......................................$NL
 cd "$HERE"
 git init $Q create-create.git
 cd create-create.git
+git config user.name bk
+git config user.email bk@bitkeeper.bk
 echo afile > afile ; git add afile
 git commit $Q -m "add afile"
 GCA=`git log -1 --pretty=%H`
@@ -487,7 +482,7 @@ git fast-export master > ../create-create.export.git
 cd "$HERE"
 mkdir create-create.bk
 cd create-create.bk
-bk fast-import < ../create-create.export.git > OUT || fail -f OUT
+bk fast-import < ../create-create.export.git > ../OUT || fail -f ../OUT
 bk -r check -a || fail
 
 bk fast-export $Q --branch=bkcmp --no-bk-keys > ../create-create.export.bk || fail

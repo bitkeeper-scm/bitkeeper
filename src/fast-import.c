@@ -156,6 +156,7 @@ int
 fastimport_main(int ac, char **av)
 {
 	int	c;
+	char	*dir;
 	opts	opts = {0};
 	longopt	lopts[] = {
 		{ 0, 0 }
@@ -167,15 +168,35 @@ fastimport_main(int ac, char **av)
 		    default: bk_badArg(c, av);
 		}
 	}
-	if (av[optind]) usage();
+	if (dir = av[optind]) {
+		if (streq(dir, "-")) usage();
+		if (av[optind+1]) usage();
+
+		if (!exists(dir) && mkdir(dir, 0777)) {
+			fprintf(stderr, "%s: failed to create '%s'\n",
+			    prog, dir);
+			goto out;
+		}
+		if (chdir(dir)) {
+			fprintf(stderr, "%s: cannot chdir to '%s'\n",
+			    prog, dir);
+			goto out;
+		}
+	}
 	if (isdir(BKROOT)) {
 		fprintf(stderr, "%s: Incremental imports not done yet\n",
-			av[0]);
+			prog);
 		rc = 1;
 		goto out;
-	} else {
+	} else if (emptyDir(".")) {
 		/* we need a place to save tmp files before we get started */
 		sccs_mkroot(".");
+	} else {
+		fprintf(stderr,
+		    "%s: needs to be run in an empty directory "
+		         "or existing repository\n",
+		    prog);
+		goto out;
 	}
 	rc = gitImport(&opts);
 out:	return (rc);
@@ -200,7 +221,6 @@ gitImport(opts *op)
 {
 	char	*line;
 	int	i, n;
-	int	blobCount, commitCount;
 	int	rc;
 	char	**list = 0;
 	PQ	*pq;
@@ -230,6 +250,7 @@ gitImport(opts *op)
 	 * from stdin. I.e. if a function consumes a line it has to
 	 * either read another line or return NULL.
 	 */
+	rc = 0;
 	line = fgetline(stdin);
 	while (line || (line = fgetline(stdin))) {
 		/*
@@ -257,6 +278,12 @@ gitImport(opts *op)
 			break;
 		}
 	}
+	if (rc || !op->ncsets) {
+		fprintf(stderr, "%s: no csets to import on stdin\n", prog);
+		rc = 1;
+		goto out;
+	}
+
 	/* sort csets in time order */
 	pq = pq_new(cmtTimeSort);
 	assert(op->ncsets == hash_count(op->commits));
@@ -305,30 +332,25 @@ gitImport(opts *op)
 	rc = system("bk -r names");
 	assert(!rc);
 
+out:
 	/*
 	 * Teardown
 	 */
 	free(op->clist);
-	commitCount = 0;
 	EACH_HASH(op->commits) {
 		commit	*m = op->commits->vptr;
 		freeCommit(m);
-		commitCount++;
 	}
 	hash_free(op->commits);
-	blobCount = 0;
 	EACH_HASH(op->blobs) {
 		blob	*m = op->blobs->vptr;
 
 		assert(m->refcnt == 0);
 		freeBlob(m);
-		blobCount++;
 	}
 	hash_free(op->blobs);
 	hash_free(op->paths);
-	printf("%d marks in hash (%d blobs, %d commits)\n",
-	    blobCount + commitCount, blobCount, commitCount);
-	return (0);
+	return (rc);
 }
 
 /*
@@ -1224,15 +1246,20 @@ importFile(opts *op, char *file)
 		}
 		n = uniq_n[0];
 		ud = uniq_d[0];
-		if ((npar_file == 0) && g) {
-			// new file
-			addArrayV(&sfiles, newFile(op, file, cmt, g));
-			n = nLines(sfiles);
+		if (npar_file == 0) {
+			if (g) {
+				// new file
+				addArrayV(&sfiles, newFile(op, file, cmt, g));
+				n = nLines(sfiles);
+			} else {
+				n = 0;
+			}
 		} else if ((npar_file == 1) && g) {
 			// new delta
 			newDelta(op, &sfiles[n], ud, m[d], cmt, g);
 		} else {
 			// merge in file with new contents (g may be zero)
+			assert(npar_file > 0);
 			newMerge(op, &sfiles[n], cmt, g);
 		}
 		/* now update the other files */
