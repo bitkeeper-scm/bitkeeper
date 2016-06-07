@@ -57,8 +57,8 @@ typedef struct {
 
 typedef	struct {
 	char	*sha1;
-	int	refcnt;		/* number of file ops pointing at this blob */
-	char	*file;		/* file where data is */
+	off_t	off;		/* offset where data starts */
+	size_t	len;		/* length of data */
 	u8	binary:1;	/* did we see a NULL in the data? */
 } blob;
 
@@ -114,6 +114,10 @@ typedef struct {
 	int	filen;
 	int	ncsets;
 	sccs	*cset;
+
+	char	*btmp;		/* tmpfile with blob data */
+	FILE	*btmpf;		/* write handle to 'btmp' */
+	MMAP	*bmap;		/* mmap for reading 'btmp' */
 } opts;
 
 typedef struct {
@@ -241,6 +245,9 @@ gitImport(opts *op)
 	op->commits = hash_new(HASH_MEMHASH);
 	op->blobs = hash_new(HASH_MEMHASH);
 	op->paths = hash_new(HASH_MEMHASH);
+	op->btmp = bktmp_local(0);
+	op->btmpf = fopen(op->btmp, "wb");
+	assert(op->btmpf);
 
 	/*
 	 * Processing:
@@ -278,6 +285,9 @@ gitImport(opts *op)
 			break;
 		}
 	}
+	fclose(op->btmpf);
+	op->bmap = mopen(op->btmp, "r");
+	assert(op->bmap);
 	if (rc || !op->ncsets) {
 		fprintf(stderr, "%s: no csets to import on stdin\n", prog);
 		rc = 1;
@@ -322,6 +332,10 @@ gitImport(opts *op)
 		importFile(op, list[i]);
 	}
 	freeLines(list, 0);
+	mclose(op->bmap);
+	op->bmap = 0;
+	unlink(op->btmp);
+	FREE(op->btmp);
 
 	mkChangeSet(op);
 	sccs_newchksum(op->cset); /* write new heap */
@@ -329,8 +343,9 @@ gitImport(opts *op)
 
 	printf("Rename sfiles...\n");
 	fflush(stdout);
-	rc = system("bk -r names");
-	assert(!rc);
+	if (rc = system("bk -r names")) {
+		fprintf(stderr, "%s: 'bk -r names' failed\n", prog);
+	}
 
 out:
 	/*
@@ -345,7 +360,6 @@ out:
 	EACH_HASH(op->blobs) {
 		blob	*m = op->blobs->vptr;
 
-		assert(m->refcnt == 0);
 		freeBlob(m);
 	}
 	hash_free(op->blobs);
@@ -597,7 +611,6 @@ parseOp(opts *op, char *line)
 	if ((g->op == GMODIFY) || (g->op == GNOTE)) {
 		/* parse dataref/inline */
 		g->m = parseDataref(op, &p);
-		g->m->refcnt++;
 	}
 	if (g->op == GNOTE) {
 		/*
@@ -616,7 +629,6 @@ private void
 freeOp(gop *op)
 {
 	unless (op) return;
-	if (op->m) op->m->refcnt--;
 	free(op);
 }
 
@@ -873,10 +885,6 @@ private void
 freeBlob(blob *m)
 {
 	free(m->sha1);
-	if (m->file) {
-		unlink(m->file);
-		free(m->file);
-	}
 }
 
 private void
@@ -1034,9 +1042,8 @@ data(opts *op, char *line, FILE *f, int want_sha1)
 {
 	blob	*m;
 	size_t	len, c1, c2;
-	char	*sha1, *file = 0;
+	char	*sha1;
 	int	i, idx, binary;
-	int	closeit = 0;
 	hash_state	md;
 	u8	buf[1<<12];
 
@@ -1045,17 +1052,14 @@ data(opts *op, char *line, FILE *f, int want_sha1)
 	/*
 	 * Get a temp file to put the data.
 	 */
-	unless (f) {
-		file = bktmp_local(0);
-		f = fopen(file, "w");
-		assert(f);
-		closeit = 1;
-	}
+	unless (f) f = op->btmpf;
+	m = new(blob);
+	m->off = ftell(f);
 
 	/*
 	 * Initialize vars and get length
 	 */
-	len = strtoul(line + strlen("data "), 0, 10);
+	m->len = len = strtoul(line + strlen("data "), 0, 10);
 	binary = 0;
 	if (want_sha1) {
 		idx = register_hash(&sha1_desc);
@@ -1074,10 +1078,8 @@ data(opts *op, char *line, FILE *f, int want_sha1)
 		len -= c2;
 		if (want_sha1) hash_descriptor[idx].process(&md, buf, c2);
 	}
-	if (closeit) fclose(f);
 
 	/* Now insert the mark */
-	m = new(blob);
 	if (want_sha1) {
 		hash_descriptor[idx].done(&md, buf);
 
@@ -1092,7 +1094,6 @@ data(opts *op, char *line, FILE *f, int want_sha1)
 
 		m->sha1 = sha1;		/* free'd by freeBlob() */
 	}
-	m->file = file;		/* free'd by freeBlob() */
 	m->binary = binary;
 	return (m);
 }
@@ -1311,14 +1312,43 @@ loadMetaData(sccs *s, ser_t d, commit *cmt)
 	}
 }
 
+private void
+mkFile(opts *op, gop *g, char *gfile)
+{
+	int	fd;
+	char	*p;
+	int	rc;
+
+	unlink(gfile);
+	switch(g->mode) {
+	    case MODE_SYMLINK:
+		p = strndup(op->bmap->mmap + g->m->off, g->m->len);
+		rc = symlink(p, gfile);
+		assert(!rc);
+		free(p);
+		break;
+	    case MODE_FILE:
+	    case MODE_EXE:
+		fd = open(gfile, O_WRONLY|O_CREAT,
+		    (g->mode == MODE_EXE) ? 0755 : 0644);
+		assert(fd >= 0);
+		rc = write(fd, op->bmap->mmap + g->m->off, g->m->len);
+		assert(rc == g->m->len);
+		rc = close(fd);
+		assert(!rc);
+		break;
+	    default:
+		assert(0);
+		break;
+	}
+}
+
 private finfo
 newFile(opts *op, char *file, commit *cmt, gop *g)
 {
 	sccs	*s;
 	finfo	ret = {0};
-	char	*p;
 	ser_t	d, d0;
-	int	rc;
 	char	buf[MAXLINE];
 
 	assert(g->op == GMODIFY);
@@ -1330,22 +1360,7 @@ newFile(opts *op, char *file, commit *cmt, gop *g)
 	ret.s = s = sccs_init(buf, 0);
 	assert(s);
 
-	switch(g->mode) {
-	    case MODE_SYMLINK:
-		p = loadfile(g->m->file, 0);
-		rc = symlink(p, s->gfile);
-		assert(!rc);
-		free(p);
-		break;
-	    case MODE_FILE:
-	    case MODE_EXE:
-		fileLink(g->m->file, s->gfile);
-		if (g->mode == MODE_EXE) chmod(s->gfile, 0700);
-		break;
-	    default:
-		assert(0);
-		break;
-	}
+	mkFile(op, g, buf);
 	check_gfile(s, 0);
 
 	d0 = sccs_newdelta(s);
@@ -1419,8 +1434,7 @@ newDelta(opts *op, finfo *fi, ser_t p, blob *m, commit *cmt, gop *g)
 		loadMetaData(s, d, cmt);
 		PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, 1);
 		SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, 1);
-		fileLink(g->m->file, s->gfile);
-		if (g->mode == MODE_EXE) chmod(s->gfile, 0755);
+		mkFile(op, g, s->gfile);
 		check_gfile(s, 0);
 		switch(g->mode) {
 		    case MODE_FILE:
@@ -1447,10 +1461,8 @@ newDelta(opts *op, finfo *fi, ser_t p, blob *m, commit *cmt, gop *g)
 		SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, 1);
 		MODE_SET(s, d, 0120777);
 
-		t = loadfile(g->m->file, 0);
-		unlink(s->gfile);
-		rc = symlink(t, s->gfile);
-		assert(!rc);
+		mkFile(op, g, s->gfile);
+		t = strndup(op->bmap->mmap + g->m->off, g->m->len);
 		SYMLINK_SET(s, d, t);
 		free(t);
 		check_gfile(s, 0);
@@ -1465,11 +1477,12 @@ newDelta(opts *op, finfo *fi, ser_t p, blob *m, commit *cmt, gop *g)
 			    SILENT|GET_EDIT, s->gfile, 0);
 			assert(!rc);
 			diffs = 0;
-			fileLink(g->m->file, s->gfile);
-			if (g->mode == MODE_EXE) chmod(s->gfile, 0755);
+			mkFile(op, g, s->gfile);
 			check_gfile(s, 0);
 		} else  {
 			df_opt	dop = {0};
+			char	*data[2];
+			size_t	len[2];
 
 			rc = sccs_get(s, REV(s, p), 0, 0, 0,
 			    SILENT|GET_SKIPGET|GET_EDIT, 0, 0);
@@ -1477,11 +1490,14 @@ newDelta(opts *op, finfo *fi, ser_t p, blob *m, commit *cmt, gop *g)
 
 			dop.ignore_trailing_cr = 1;
 			dop.out_rcs = 1;
-			bktmp(buf);
-			rc = diff_files(m->file, g->m->file, &dop, buf);
+			data[0] = op->bmap->mmap + m->off;
+			len[0] = m->len;
+			data[0] = op->bmap->mmap + g->m->off;
+			len[0] = g->m->len;
+			diffs = fmem();
+			rc = diff_mem(data, len, &dop, diffs);
 			assert((rc == 0) || (rc == 1));
-			diffs = fopen(buf, "r");
-			assert(diffs);
+			rewind(diffs);
 		}
 		d = sccs_newdelta(s);
 		loadMetaData(s, d, cmt);
@@ -1502,10 +1518,7 @@ newDelta(opts *op, finfo *fi, ser_t p, blob *m, commit *cmt, gop *g)
 		    SILENT|DELTA_DONTASK|DELTA_CSETMARK|DELTA_FORCE,
 		    d, 0, diffs, 0);
 		assert(!rc);
-		if (diffs) {
-			fclose(diffs);
-			unlink(buf);
-		}
+		if (diffs) fclose(diffs);
 	} else {
 		assert(g->op = GDELETE);
 
@@ -1604,6 +1617,7 @@ newMerge(opts *op, finfo *fi, commit *cmt, gop *g)
 
 			PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, dp_git);
 			SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, dp_git);
+			unlink(s->gfile);
 			f = fopen(s->gfile, "w");
 			rc = sccs_get(s, REV(s, dp_git), 0, 0, 0,
 			    SILENT|PRINT, 0, f);
@@ -1639,8 +1653,7 @@ newMerge(opts *op, finfo *fi, commit *cmt, gop *g)
 			PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, 1);
 			SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, 1);
 
-			fileLink(g->m->file, s->gfile);
-			if (g->mode == MODE_EXE) chmod(s->gfile, 0755);
+			mkFile(op, g, s->gfile);
 			check_gfile(s, 0);
 		} else {
 			/* merge with g==0, we match parent */

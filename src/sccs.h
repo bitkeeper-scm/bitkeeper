@@ -1062,6 +1062,7 @@ typedef struct {
 	int	adds, dels, mods;	/* lines added/deleted/modified */
 	u32	bin_files:1;		/* Binary files differ */
 	char	*out_define;		/* diff -D */
+	char	*header;		/* print before diffs  */
 	pcre	*pattern;		/* compiled pattern for diff -p */
 	int	context;		/* context for unified output
 					 * (-1 means 0) see delta comments */
@@ -1498,6 +1499,7 @@ void	lockfile_cleanup(void);
 
 int	diff_cleanOpts(df_opt *opts);
 int	diff_files(char *file1, char *file2, df_opt *opts, char *out);
+int	diff_mem(char *data[2], size_t len[2], df_opt *dop, FILE *fout);
 typedef	void (*set_pfunc)(sccs *, ser_t);
 u8	*set_get(sccs *s, char *rev);
 void	set_list(sccs *s, char *rev, set_pfunc p);

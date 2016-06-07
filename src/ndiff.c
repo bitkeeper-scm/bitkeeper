@@ -191,33 +191,24 @@ diff_cleanOpts(df_opt *opts)
 int
 diff_files(char *file1, char *file2, df_opt *dop, char *out)
 {
-	int	i, j;
+	size_t	len[2] = {0, 0};
+	int	i;
 	int	printAll = dop->out_define || dop->out_sdiff; /* whole file */
-	int	lno[2];
 	int	skip[2] = {0, 0};
 	int	rc = 2;
 	char	*files[2] = {file1, file2};
 	char	*data[2] = {0, 0};
-	df_cmp	*dcmp;
-	df_hash	*dhash;
-	header	*fh;
-	filedf	fop = {{0}};
-	pcre	*re = 0;
 	FILE	*fout = 0;
 	struct	stat sb[2];
 	struct	tm	*tm;
 	long	offset;
-	hunk	*h, *hlist = 0, range;
 	char	buf[1024];
 
 	if (getenv("_BK_USE_EXTERNAL_DIFF")) {
 		return (external_diff(file1, file2, dop, out));
 	}
 
-	unless (diff_cleanOpts(dop)) return (2);
-
-	fop.dop = *dop;
-	fop.diffgap = cfg_int(0, CFG_DIFFGAP);
+	//unless (diff_cleanOpts(dop)) return (2);
 
 	for (i = 0; i < 2; i++) {
 		if (stat(files[i], &sb[i])) {
@@ -227,6 +218,7 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 			}
 			skip[i] = 1;
 		}
+		len[i] = sb[i].st_size;
 	}
 
 	/* Maybe they gave us the same file? */
@@ -251,14 +243,73 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 			goto out;
 		}
 	}
+	if (dop->out_unified) {
+		FILE	*f = fmem();
+
+		/*
+		 * Prepare the unified diff header, but it won't get
+		 * printed unless diffs are found.
+		 */
+		tm = localtimez(&sb[DF_LEFT].st_mtime, &offset);
+		strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", tm);
+		fprintf(f, "--- %s\t%s %s\n",
+		    files[DF_LEFT], buf, tzone(offset));
+		tm = localtimez(&sb[DF_RIGHT].st_mtime, &offset);
+		strftime(buf, 1024, "%Y-%m-%d %H:%M:%S", tm);
+		fprintf(f, "+++ %s\t%s %s\n",
+		    files[DF_RIGHT], buf, tzone(offset));
+		dop->header = fmem_close(f, 0);
+	}
+	rc = diff_mem(data, len, dop, fout);
+
+	if (rc && dop->bin_files) {
+		if (fout) {
+			fprintf(fout,
+			    "Binary files %s and %s differ\n", file1, file2);
+		}
+		goto out;
+	}
+
+out:	if (fout && (fout != stdout)) fclose(fout);
+	FREE(dop->header);
+	FREE(data[DF_LEFT]);
+	FREE(data[DF_RIGHT]);
+	return (rc);
+}
+
+/*
+ * Return:
+ *   0  same
+ *   1  differ
+ *   2  error
+ */
+int
+diff_mem(char *data[2], size_t len[2], df_opt *dop, FILE *fout)
+{
+	int	i, j;
+	int	printAll = dop->out_define || dop->out_sdiff; /* whole file */
+	int	lno[2];
+	int	rc = 2;
+	df_cmp	*dcmp;
+	df_hash	*dhash;
+	header	*fh;
+	filedf	fop = {{0}};
+	pcre	*re = 0;
+	hunk	*h, *hlist = 0, range;
+
+	unless (diff_cleanOpts(dop)) return (2);
+
+	fop.dop = *dop;
+	fop.diffgap = cfg_int(0, CFG_DIFFGAP);
+
 
 	/*
 	 * If the two files are the same size, or if we are just
 	 * seeing if they differ and don't care about the actual
 	 * diffs, then do a quick comparison.
 	 */
-	if (!printAll && (sb[DF_LEFT].st_size == sb[DF_RIGHT].st_size) &&
-	    !memcmp(data[DF_LEFT], data[DF_RIGHT], sb[DF_LEFT].st_size)) {
+	if (!printAll && (len[DF_LEFT] == len[DF_RIGHT]) &&
+	    !memcmp(data[DF_LEFT], data[DF_RIGHT], len[DF_LEFT])) {
 		/* no diffs */
 		rc = 0;
 		goto out;
@@ -286,7 +337,7 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 		char	*s, *e, *t = 0;	/* start/end/tmp */
 
 		s = e = data[i];
-		for (j = 0; j < sb[i].st_size; j++) {
+		for (j = 0; j < len[i]; j++) {
 			if (*e == '\0' && !dop->always_text) {
 				fop.binary[i] = 1;
 			}
@@ -332,10 +383,6 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 		 * we've checked for same size and equal contents
 		 * above.
 		 */
-		if (fout) {
-			fprintf(fout,
-			    "Binary files %s and %s differ\n", file1, file2);
-		}
 		rc = 1;
 		dop->bin_files = 1;
 		goto out;
@@ -349,7 +396,7 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 	    getData, dcmp, dhash, diff_cost, &fop);
 
 	rc = nLines(hlist) != 0;
-	if (!out || (!rc && !printAll)) goto out;
+	if (!fout || (!rc && !printAll)) goto out;
 
 	if (dop->out_diffstat) {
 		dop->adds = dop->dels = dop->mods = 0;
@@ -362,16 +409,8 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 			}
 		}
 	}
+	if (dop->header) fputs(dop->header, fout);
 	if (dop->out_unified) {
-		/* print header */
-		tm = localtimez(&sb[DF_LEFT].st_mtime, &offset);
-		strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", tm);
-		fprintf(fout, "--- %s\t%s %s\n",
-		    files[DF_LEFT], buf, tzone(offset));
-		tm = localtimez(&sb[DF_RIGHT].st_mtime, &offset);
-		strftime(buf, 1024, "%Y-%m-%d %H:%M:%S", tm);
-		fprintf(fout, "+++ %s\t%s %s\n",
-		    files[DF_RIGHT], buf, tzone(offset));
 		printUnified(hlist, &range, &fop, fout);
 	} else if (dop->out_rcs) {
 		printRCS(hlist, &fop, fout);
@@ -390,10 +429,7 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 		printStd(hlist, &fop, fout);
 	}
 
-out:	if (fout && (fout != stdout)) fclose(fout);
-	FREE(data[DF_LEFT]);
-	FREE(data[DF_RIGHT]);
-	FREE(fop.lines[DF_LEFT]);
+out:	FREE(fop.lines[DF_LEFT]);
 	FREE(fop.lines[DF_RIGHT]);
 	FREE(hlist);
 	return (rc);
