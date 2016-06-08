@@ -448,13 +448,15 @@ echo OK
 
 
 echo $N Parse fast-export ...........................................$NL
-git fast-export master > ../git-repo.fast-export
+git fast-export --progress=10 master > ../git-repo.fast-export
 
 cd ..
 mkdir import
 cd import
 #_BK_NO_PAGING=1 valgrind --leak-check=yes --track-fds=yes \
-bk fast-import $Q < ../git-repo.fast-export || fail
+bk fast-import < ../git-repo.fast-export > "$HERE/OUT" 2>"$HERE/PB" || fail
+grep -q progress "$HERE/OUT" || fail did not print output
+grep -q "\[fast-import\]" "$HERE/PB" || fail no progress
 bk -r check -a || fail
 echo OK
 

@@ -172,6 +172,7 @@ private	char	*getBlob(opts *op, char *line);
 private	char	*reset(opts *op, char *line);
 private	char	*getCommit(opts *op, char *line);
 private	blob	*data(opts *op, char *line, FILE *f, int want_sha1);
+private	char	*progressCmd(opts *op, char *line);
 
 private	who	*parseWho(char *line, time_t *when, char **tz);
 private	void	freeWho(who *w);
@@ -278,6 +279,7 @@ gitImport(opts *op)
 	} cmds[] = {
 		{"blob", getBlob},
 		{"commit", getCommit},
+		{"progress", progressCmd},
 		{"reset", reset},
 		{0, 0}
 	};
@@ -997,6 +999,37 @@ reset(opts *op, char *line)
 		return (0);
 	}
 	return (line);
+}
+
+/*  progress
+ *      Causes fast-import to print the entire progress line unmodified to its
+ *      standard output channel (file descriptor 1) when the command is
+ *      processed from the input stream. The command otherwise has no impact on
+ *      the current import, or on any of fast-import's internal state.
+ *
+ *                  'progress' SP <any> LF
+ *                  LF?
+ *
+ *      The <any> part of the command may contain any sequence of bytes that
+ *      does not contain LF. The LF after the command is optional. Callers may
+ *      wish to process the output through a tool such as sed to remove the
+ *      leading part of the line, for example:
+ *
+ *          frontend | git fast-import | sed 's/^progress //'
+ *
+ *      Placing a progress command immediately after a checkpoint will inform
+ *      the reader when the checkpoint has been completed and it can safely
+ *      access the refs that fast-import updated.
+ */
+private char *
+progressCmd(opts *op, char *line)
+{
+	assert(MATCH("progress "));
+	unless (op->quiet) {
+		printf("%s\n", line);
+		fflush(stdout);
+	}
+	return (0);
 }
 
 /*
