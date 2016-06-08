@@ -366,6 +366,7 @@ gitImport(opts *op)
 	putenv("_BK_NO_UNIQ=1");
 	putenv("_BK_MV_OK=1");
 	cmdlog_lock(CMD_WRLOCK);
+	sig_default();		/* allow ^C at least in the new-repo case */
 
 	/* get sorted unique list of pathnames */
 	EACH_HASH(op->paths) list = addLine(list, (char *)op->paths->kptr);
@@ -1251,6 +1252,7 @@ importFile(opts *op, char *file)
 	u32	d, dp;
 	commit	*cmt = 0;
 	u32	n, ud, uniq_n[2], uniq_d[2];
+	int	force_n;
 	gop	*g, **ghist = 0;
 
 	/* all the sfiles that have been created for this pathname */
@@ -1280,10 +1282,13 @@ importFile(opts *op, char *file)
 			continue;
 		}
 		/* how many unique parents in file? */
-		npar_file = 0;
+		force_n = 0;
+again:		npar_file = 0;
 		EACH_INDEX(cmt->parents, k) {
 			dp = cmt->parents[k]->ser;
-			unless (n = findMatch(sfiles, g, dp)) continue;
+			unless (force_n || (n = findMatch(sfiles, g, dp))) {
+				continue;
+			}
 			unless (ud = sfiles[n].dlist[dp]) continue;
 			for (i = 0; i < npar_file; i++) {
 				if ((uniq_n[i] == n) && (uniq_d[i] == ud)) {
@@ -1303,6 +1308,8 @@ importFile(opts *op, char *file)
 			int	del1 = begins_with(PATHNAME(s1, uniq_d[1]),
 						   "BitKeeper/deleted/");
 
+			assert(!force_n); /* no loops */
+
 			/* 'i' is the side to keep */
 			if (del0 && !del1) {
 				i = 1;
@@ -1321,10 +1328,15 @@ importFile(opts *op, char *file)
 				sccs_sdelta(s1, sccs_ino(s1), key1);
 				i = (strcmp(key0, key1) > 0);
 			}
-			uniq_n[0] = uniq_n[i];
-			uniq_d[0] = uniq_d[i];
-			npar_file = 1;
+
+			/*
+			 * now that we picked a sfile, calculate
+			 * npar_file again
+			 */
+			n = uniq_n[i];
+			force_n = 1;
 			unless (g) g = ghist[cmt->parents[1]->ser];
+			goto again;
 		}
 		n = uniq_n[0];
 		ud = uniq_d[0];

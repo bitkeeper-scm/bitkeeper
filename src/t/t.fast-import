@@ -427,15 +427,22 @@ git checkout $Q master
 git merge $Q branch550.1
 
 # setup fast forward merge
+echo ff-file > ff-file
+git add -A
+git commit $Q -m"ff base"
 git checkout $Q -fb no-ff
 echo 2 >> file1
 git add file1
 git commit $Q -m'file1'
 rand_diffs
+rm -f ff-file
 git add -A
 git commit $Q -m'file2'
 git checkout $Q master
-git merge $Q --no-ff no-ff > /dev/null 2>&1
+git merge $Q --no-commit --no-ff no-ff > /dev/null 2>&1
+echo ff-file > ff-file
+git add -A
+git commit $Q -m"resolve no-ff"
 
 #
 # To see what the git tree looks like, uncomment the following line.
@@ -454,10 +461,10 @@ cd ..
 mkdir import
 cd import
 #_BK_NO_PAGING=1 valgrind --leak-check=yes --track-fds=yes \
-bk fast-import < ../git-repo.fast-export > "$HERE/OUT" 2>"$HERE/PB" || fail
+bk fast-import < ../git-repo.fast-export > ../OUT 2> ../PB || fail -f ../PB
 grep -q progress "$HERE/OUT" || fail did not print output
 grep -q "\[fast-import\]" "$HERE/PB" || fail no progress
-bk -r check -a || fail
+bk -r check -a || fail -f ../PB
 echo OK
 
 echo $N Compare repos using fast export .............................$NL
@@ -466,10 +473,26 @@ cd ../git-repo
 git fast-import --quiet < ../import.fast-export || fail
 
 BKROOT=`git log --pretty=%H bkcmp | tail -2 | head -1`
-git log --date-order --pretty="tree: %T%ncommitter: %ae%ndate: %cD%n%B" --raw $BKROOT..bkcmp > BK.log || fail
-git log --date-order --pretty="tree: %T%ncommitter: %ae%ndate: %cD%n%B" --raw master > GIT.log || fail
+git log --date-order --pretty="tree: %T%ncommitter: %ae%ndate: %cD%n%B" $BKROOT..bkcmp > BK.log || fail
+git log --date-order --pretty="tree: %T%ncommitter: %ae%ndate: %cD%n%B" master > GIT.log || fail
 diff -u BK.log GIT.log || fail
 echo OK
+
+# echo $N Repeat git fast-export with -M ..............................$NL
+# cd ..
+# git -C git-repo fast-export -M --progress=10 master > git-repo.fast-export-M
+# bk fast-import import-M < git-repo.fast-export-M > OUT 2>PB || fail -f PB
+# grep -q progress OUT || fail did not print output
+# grep -q "\[fast-import\]" PB || fail no progress
+# cd import-M
+# bk -r check -a || fail
+
+# bk fast-export $Q --branch=bkcmp-M --no-bk-keys > ../import-M.fast-export || fail
+# cd ../git-repo
+# BKROOT=`git log --pretty=%H bkcmp-< | tail -2 | head -1`
+# git log --date-order --pretty="tree: %T%ncommitter: %ae%ndate: %cD%n%B" --raw $BKROOT..bkcmp-M > BK-M.log || fail
+# diff -u BK-M.log GIT.log || fail
+# echo OK
 
 echo $N Create-create conflict.......................................$NL
 cd "$HERE"
