@@ -1247,7 +1247,7 @@ cpuid(u32 functionInput)
 	u32 ebx;
 	u32 ecx;
 	u32 edx;
-#ifdef __PIC__
+#if defined(__PIC__) && !defined(__x86_64__)
 	// PIC: Need to save and restore ebx See:
 	// http://sam.zoy.org/blog/2007-04-13-shlib-with-non-pic-code-have-inline-assembly-and-pic-mix-well
 	asm("pushl %%ebx\n\t" /* save %ebx */
