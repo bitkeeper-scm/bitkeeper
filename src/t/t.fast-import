@@ -221,22 +221,34 @@ git commit $Q -m"merge del-master-mod-branch"
 # git commit $Q -m"mod-in-octo after octomerge"
 
 # do a symlink conflict
-ln -s master symlink-conflict
-git add symlink-conflict
-git commit $Q -m"symlink-conflict"
+ln -s base symlink-conflict1
+ln -s base symlink-conflict2
+ln -s base symlink-conflict3
+git add -A
+git commit $Q -m"symlink-conflict base"
 
 git checkout $Q -fb branch200
-rm -f symlink-conflict
-ln -s branch symlink-conflict
-git add symlink-conflict
-git commit $Q -m"symlink-conflict"
+rm -f symlink-conflict*
+ln -s branch1 symlink-conflict1
+ln -s branch1 symlink-conflict2
+ln -s branch1 symlink-conflict3
+git add -A
+git commit $Q -m"symlink-conflict left"
 
 git checkout $Q -f master
-git merge $Q --no-commit branch200 > "$HERE/ERR" 2>&1
-rm -f symlink-conflict
-ln -s master symlink-conflict
-git add symlink-conflict
-git commit $Q -m"symlink conflict"
+rm -f symlink-conflict*
+ln -s branch2 symlink-conflict1
+ln -s branch2 symlink-conflict2
+ln -s branch2 symlink-conflict3
+git add -A
+git commit $Q -m"symlink-conflict right"
+git merge $Q --no-commit -s ours branch200 > "$HERE/ERR" 2>&1
+rm -f symlink-conflict*
+ln -s merge symlink-conflict1
+ln -s branch1 symlink-conflict2
+ln -s branch2 symlink-conflict3
+git add -A
+git commit $Q -m"symlink conflict merge"
 
 # do a create/create conflict
 git checkout $Q -fb branch250
@@ -442,7 +454,7 @@ cd ..
 mkdir import
 cd import
 #_BK_NO_PAGING=1 valgrind --leak-check=yes --track-fds=yes \
-bk fast-import < ../git-repo.fast-export > ../OUT || fail -f ../OUT
+bk fast-import $Q < ../git-repo.fast-export || fail
 bk -r check -a || fail
 echo OK
 
@@ -482,7 +494,7 @@ git fast-export master > ../create-create.export.git
 cd "$HERE"
 mkdir create-create.bk
 cd create-create.bk
-bk fast-import < ../create-create.export.git > ../OUT || fail -f ../OUT
+bk fast-import $Q < ../create-create.export.git || fail
 bk -r check -a || fail
 
 bk fast-export $Q --branch=bkcmp --no-bk-keys > ../create-create.export.bk || fail
@@ -493,18 +505,6 @@ BKROOT=`git log --pretty=%H bkcmp | tail -2 | head -1`
 git log --date-order --pretty="tree: %T%ncommitter: %ae%ndate: %cD%n" --raw $BKROOT..bkcmp > BK.log || fail
 git log --date-order --pretty="tree: %T%ncommitter: %ae%ndate: %cD%n" --raw master > GIT.log || fail
 diff -u BK.log GIT.log || fail
-echo OK
-
-exit 0
-########################################################################
-########################################################################
-########################################################################
-
-echo $N Test --quiet mode............................................$NL
-rm -rf .bk BitKeeper
-bk git2bk --quiet --user=bk --host=bk_regression.bk --verify || fail
-bk changes -fnd'$each(:C:){(:C:)\n}' | grep GIT: > "$HERE/GOT"
-cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 ## Incremental not done yet

@@ -278,6 +278,10 @@ out:	if (fout && (fout != stdout)) fclose(fout);
 }
 
 /*
+ *
+ * WARNING: if ignore_trailing_cr or strip_trailing_cr are set then this
+ *          function will write to the memory.
+ *
  * Return:
  *   0  same
  *   1  differ

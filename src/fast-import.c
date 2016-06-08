@@ -15,34 +15,70 @@
  */
 
 /*
+ * TODO
+ *
+ * correctness problems
+ *   - the --no-ff merge in t.fast-import occasinally leaves an
+ *     unmerged tip
+ *   - verify that the incoming fast-export graph has a single tip
+ *     before starting import
+ *   - delete of a BAM file saves empty file for tip
+ *   - octo-merge that doesn't touch any one file with more than one
+ *     tip
+ *   - octo-merge in files themselves
+ *
+ * performance
+ *   - need to use pthreads to import files in parallel
+ *
+ * features
+ *   - incremental import
+ *   - support for submodules -> nested or large repo
+ *   - -iGLOB & -xGLOB to import a subset
+ *   - add first line from each commit comment to files
+ *   - support reading a fast-import -M file (still no rename)
+ *
+ *  future
+ *   - add rename support
+ */
+
+/*
  * Code layout:
  * main() calls gitImport()
  *
  * gitImport()
  *    - reads fast-export stream from stdin and processes using
  *      helper functions like getCommit() and getBlob()
- *      - this builds the os->clist data structure with the graph of
- *	  all commits.
+ *
+ *    - do a breadth first graph traversal to order the topological
+ *      graph in time order matching bk's layout.
+ *
+ *    - open a new top-level ChangeSet file
  *
  *    - calls importFile() for each unique pathname in os->paths
  *      - Extracts graph for each file and builds sfiles
- *      - returns rootkey/deltakey pairs for toplevel csets
+ *      - save rootkey/deltakey pairs in cset heap
+ *      - save cset weave fragments in cmt->weave
  *
- *    - writes toplevel ChangeSet file and then uses 'bk checksum' for
- *      fixup cset keys
- *
+ *    - writes toplevel ChangeSet file and then uses renumber/resum to
+ *      fixup issues
  *
  * Threading possibilities:
- *   The parsing code builds the commit structure in the same order
- *   that importFile() consumes them.
+ *   The first phase of parsing the incoming csets has to happen in
+ *   order because of the time reordering step before we process
+ *   files, but this is pretty fast.
  *
- *   So one thread can be consuming stdin and building the toplevel
- *   data structure.  As it encounters each new pathname it can start
- *   a thread to build each new sfile.  Those threads can write the
- *   sfiles, but can't finish until the parsing thread finishes.
+ *   The importFile() calls could all be done in parallel since they
+ *   do everything locally.  The only outputs from this phase are a
+ *   new sfile on the disk, adding rk/dk pairs to the cset heap, and
+ *   writing cmt->weave. We can keep the current code and have a
+ *   global mutex for updates weave entries, or save the cset heap
+ *   part for the end and use a mutex per cset.  Another option is a
+ *   channel to send weave updates back to main thread which will add
+ *   the updates.
  *
- *   The last step writes the final ChangeSet file, it shouldn't take
- *   that long.
+ *   The last step writes the final ChangeSet file and moves the
+ *   sfiles to their final locations. This is pretty fast and has to
+ *   be in order.
  */
 #include "sccs.h"
 #include "range.h"
@@ -90,7 +126,7 @@ typedef struct {
 
 typedef struct commit commit;
 struct commit {
-	int	ser;		/* commit order */
+	u32	ser;		/* commit order */
 	char	*mark;
 	time_t	when;		/* commit time */
 	u32	fudge;		/* time fudge */
@@ -105,6 +141,9 @@ struct commit {
 };
 
 typedef struct {
+	u32	quiet:1;	/* -q */
+	u32	verbose:1;	/* -v */
+
 	/* state */
 	hash	*blobs;		/* mark -> blob struct */
 	hash	*commits;	/* mark -> commit struct */
@@ -150,9 +189,9 @@ private	blob	*saveInline(opts *op);
 
 private	int	importFile(opts *op, char *file);
 private	finfo	newFile(opts *op, char *file, commit *cmt, gop *g);
-private	void	newDelta(opts *op, finfo *fi, ser_t p, blob *m,
-    commit *cmt, gop *g);
-private	void	newMerge(opts *op, finfo *fi, commit *cmt, gop *g);
+private	void	newDelta(opts *op, finfo *, ser_t p,
+    commit *cmt, gop *gp, gop *g);
+private	void	newMerge(opts *op, finfo *, commit *cmt, gop **ghist, gop *g);
 private	int	mkChangeSet(opts *op);
 
 /* bk fast-import (aliased as _fastimport) */
@@ -167,11 +206,14 @@ fastimport_main(int ac, char **av)
 	};
 	int	rc = 1;
 
-	while ((c = getopt(ac, av, "", lopts)) != -1) {
+	while ((c = getopt(ac, av, "qv", lopts)) != -1) {
 		switch (c) {
+		    case 'q': opts.quiet = 1; break;
+		    case 'v': opts.verbose = 1; break;
 		    default: bk_badArg(c, av);
 		}
 	}
+	if (opts.quiet && opts.verbose) usage();
 	if (dir = av[optind]) {
 		if (streq(dir, "-")) usage();
 		if (av[optind+1]) usage();
@@ -229,6 +271,7 @@ gitImport(opts *op)
 	char	**list = 0;
 	PQ	*pq;
 	commit	*cmt;
+	ticker	*tick = 0;
 	struct {
 		char	*s;			/* cmd */
 		char	*(*fn)(opts *, char *);	/* handler */
@@ -280,7 +323,7 @@ gitImport(opts *op)
 			}
 		}
 		unless (cmds[i].s) {
-			fprintf(stderr, "Unknown command: %s\n", line);
+			fprintf(stderr, "%s: Unknown command: %s\n", prog, line);
 			rc = 1;
 			break;
 		}
@@ -326,12 +369,20 @@ gitImport(opts *op)
 	EACH_HASH(op->paths) list = addLine(list, (char *)op->paths->kptr);
 	sortLines(list, 0);
 
+	unless (op->quiet || op->verbose) {
+		tick = progress_start(PROGRESS_BAR, nLines(list));
+	}
 	op->cset = sccs_init(CHANGESET, 0);
 	EACH(list) {
-		printf("import %s\n", list[i]);
+		if (op->verbose) fprintf(stderr, "import %s\n", list[i]);
 		importFile(op, list[i]);
+		if (tick) progress(tick, i);
 	}
 	freeLines(list, 0);
+	if (tick) {
+		progress_done(tick, "OK");
+		tick = 0;
+	}
 	mclose(op->bmap);
 	op->bmap = 0;
 	unlink(op->btmp);
@@ -341,8 +392,7 @@ gitImport(opts *op)
 	sccs_newchksum(op->cset); /* write new heap */
 	sccs_free(op->cset);
 
-	printf("Rename sfiles...\n");
-	fflush(stdout);
+	unless (op->quiet) fprintf(stderr, "Rename sfiles...\n");
 	if (rc = system("bk -r names")) {
 		fprintf(stderr, "%s: 'bk -r names' failed\n", prog);
 	}
@@ -412,7 +462,7 @@ getBlob(opts *op, char *line)
 	key = mark ? mark : m->sha1;
 	/* save the mark */
 	unless (hash_insertStrMem(op->blobs, key, m, sizeof(*m))) {
-		fprintf(stderr, "ERROR: Duplicate key: %s\n", key);
+		fprintf(stderr, "%s: ERROR: Duplicate key: %s\n", prog, key);
 		exit(1);
 	}
 	free(m);		/* memory is copied into hash */
@@ -452,12 +502,12 @@ getCommit(opts *op, char *line)
 	/* XXX: Need to get ref from line before reading another one. */
 	line = fgetline(stdin);
 	unless (MATCH("mark :")) {
-		fprintf(stderr, "unmarked commits not supported\n");
+		fprintf(stderr, "%s: unmarked commits not supported\n", prog);
 		exit(1);
 	}
 	key = line + strlen("mark :");
 	unless (cmt = hash_insertStrMem(op->commits, key, 0, sizeof(commit))) {
-		fprintf(stderr, "ERROR: Duplicate mark: %s\n", key);
+		fprintf(stderr, "%s: ERROR: Duplicate mark: %s\n", prog, key);
 		exit(1);
 	}
 	cmt->mark = op->commits->kptr;
@@ -470,7 +520,7 @@ getCommit(opts *op, char *line)
 	}
 
 	unless (MATCH("committer")) {
-		fprintf(stderr, "expected 'committer' line\n");
+		fprintf(stderr, "%s: expected 'committer' line\n", prog);
 		exit(1);
 	}
 	cmt->committer = parseWho(line, &cmt->when, &cmt->tz);
@@ -495,8 +545,8 @@ getCommit(opts *op, char *line)
 		if (p[0] == ':') {
 			parent = (commit *)hash_fetchStr(op->commits, p+1);
 			unless (parent) {
-				fprintf(stderr, "parent '%s' not found\n",
-				    p);
+				fprintf(stderr, "%s: parent '%s' not found\n",
+				    prog, p);
 				exit(1);
 			}
 			addArrayV(&cmt->parents, parent);
@@ -509,8 +559,8 @@ getCommit(opts *op, char *line)
 				cmt->fudge += tdiff;
 			}
 		} else {
-			fprintf(stderr, "line '%s' not handled\n",
-			    line);
+			fprintf(stderr, "%s: line '%s' not handled\n",
+			    prog, line);
 			exit(1);
 		}
 		line = fgetline(stdin);
@@ -527,7 +577,8 @@ getCommit(opts *op, char *line)
 		    case GRENAME:
 		    case GNOTE:
 		    default:
-			fprintf(stderr, "line '%s' not supported\n", line);
+			fprintf(stderr, "%s: line '%s' not supported\n",
+			    prog, line);
 			exit(1);
 		}
 		addArrayV(&cmt->fops, gop);
@@ -586,7 +637,7 @@ parseOp(opts *op, char *line)
 		return (0);
 		break;
 	    default:
-		fprintf(stderr, "Error parsing %s\n", line);
+		fprintf(stderr, "%s: Error parsing %s\n", prog, line);
 		exit(1);
 		break;
 	}
@@ -669,7 +720,8 @@ parseDataref(opts *op, char **s)
 		*s = strchr(*s, ' ');
 	}
 	unless (m = hash_fetchStrMem(op->blobs, key)) {
-		fprintf(stderr, "ERROR: failed to find mark: %s\n", key);
+		fprintf(stderr, "%s: ERROR: failed to find mark: %s\n",
+		    prog, key);
 		exit(1);
 	}
 	return (m);
@@ -678,7 +730,7 @@ parseDataref(opts *op, char **s)
 private blob *
 saveInline(opts *op)
 {
-	fprintf(stderr, "'inline' not implemented\n");
+	fprintf(stderr, "%s: 'inline' not implemented\n", prog);
 	exit(1);
 	return (0);
 }
@@ -708,7 +760,7 @@ parseMode(opts *op, char **s)
 	assert(s);
 	p = strchr(*s, ' ');
 	unless (p) {
-		fprintf(stderr, "Parse Failed: '%s'\n", *s);
+		fprintf(stderr, "%s: Parse Failed: '%s'\n", prog, *s);
 		exit(1);
 	}
 	*p = 0;
@@ -720,7 +772,7 @@ parseMode(opts *op, char **s)
 		}
 	}
 	unless (ret) {
-		fprintf(stderr, "invalid mode found: %s\n", *s);
+		fprintf(stderr, "%s: invalid mode found: %s\n", prog, *s);
 		exit(1);
 	}
 	*s = p+1;
@@ -824,8 +876,10 @@ parseWho(char *line, time_t *when, char **tz)
 		w->name = strdup(w->name);
 	}
 	/* Get email */
+	while (p[1] == ' ') ++p; /* skip space */
 	w->email = ++p;
-	p = strchr(p, '>');
+	p += strcspn(p, "<>");
+	while ((p > w->email) && (p[-1] == ' ')) --p; /* trim space */
 	*p++ = 0;
 	w->email = strdup(w->email);
 
@@ -843,6 +897,10 @@ parseWho(char *line, time_t *when, char **tz)
 	 */
 	if (q = strrchr(p, '>')) p = q+1;
 
+	/*
+	 * other bad lines:
+	 * roland.mainz <roland.mainz@nexenta.com <none@none> 1297982978 -0800
+	 */
 	assert(*p == ' ');
 
 	/*
@@ -1164,13 +1222,12 @@ importFile(opts *op, char *file)
 	u32	d, dp;
 	commit	*cmt = 0;
 	u32	n, ud, uniq_n[2], uniq_d[2];
-	gop	*g, gtmp;
-	blob	**m = 0;		/* contents of path for each cset */
+	gop	*g, **ghist = 0;
 
 	/* all the sfiles that have been created for this pathname */
 	finfo	*sfiles = 0;
 
-	growArray(&m, op->ncsets);
+	growArray(&ghist, op->ncsets);
 
 	EACH_INDEX(op->clist, j) {
 		cmt = op->clist[j];
@@ -1186,7 +1243,7 @@ importFile(opts *op, char *file)
 		}
 		npar_git = nLines(cmt->parents);
 		dp = npar_git ? cmt->parents[1]->ser : d;
-		m[d] = g ? g->m : m[dp];
+		ghist[d] = g ? g : ghist[dp];
 		if (!g && (!sfiles || (npar_git == 1))) {
 			/* nothing interesting happened */
 			/* copy state from parent */
@@ -1238,12 +1295,7 @@ importFile(opts *op, char *file)
 			uniq_n[0] = uniq_n[i];
 			uniq_d[0] = uniq_d[i];
 			npar_file = 1;
-			if (!g && m[cmt->parents[1]->ser]) {
-				gtmp.op = GMODIFY;
-				gtmp.mode = MODE_FILE; // XXX?
-				gtmp.m = m[cmt->parents[1]->ser];
-				g = &gtmp;
-			}
+			unless (g) g = ghist[cmt->parents[1]->ser];
 		}
 		n = uniq_n[0];
 		ud = uniq_d[0];
@@ -1256,12 +1308,15 @@ importFile(opts *op, char *file)
 				n = 0;
 			}
 		} else if ((npar_file == 1) && g) {
+			gop	*gp = 0;
+
+			if (npar_git == 1) gp = ghist[cmt->parents[1]->ser];
 			// new delta
-			newDelta(op, &sfiles[n], ud, m[d], cmt, g);
+			newDelta(op, &sfiles[n], ud, cmt, gp, g);
 		} else {
 			// merge in file with new contents (g may be zero)
 			assert(npar_file > 0);
-			newMerge(op, &sfiles[n], cmt, g);
+			newMerge(op, &sfiles[n], cmt, ghist, g);
 		}
 		/* now update the other files */
 		EACH(sfiles) {
@@ -1273,13 +1328,13 @@ importFile(opts *op, char *file)
 				/* nothing interesting happened */
 				dp = sfiles[i].dlist[cmt->parents[1]->ser];
 				if (dp) {
-					newDelta(op, &sfiles[i], dp, 0,
-					    cmt, &gtmp);
+					newDelta(op, &sfiles[i], dp,
+					    cmt, 0, &gtmp);
 				}
 			} else {
 				assert(npar_git > 1);
 				// handle merging existing sfiles
-				newMerge(op, &sfiles[i], cmt, &gtmp);
+				newMerge(op, &sfiles[i], cmt, ghist, &gtmp);
 			}
 		}
 	}
@@ -1288,7 +1343,7 @@ importFile(opts *op, char *file)
 		free(sfiles[i].dlist);
 	}
 	free(sfiles);
-	free(m);
+	free(ghist);
 	return (0);
 }
 
@@ -1367,7 +1422,6 @@ newFile(opts *op, char *file, commit *cmt, gop *g)
 	loadMetaData(s, d0, cmt);
 	sccs_parseArg(s, d0, 'P', file, 0);
 	sccs_parseArg(s, d0, 'R', "1.0", 0);
-	// XXX want randomCons(buf+2, s, d0);
 	randomBits(buf+2);
 	safe_putenv("BK_RANDOM=%s", buf+2);
 	s->xflags = X_DEFAULT;
@@ -1415,7 +1469,7 @@ newFile(opts *op, char *file, commit *cmt, gop *g)
 }
 
 private void
-newDelta(opts *op, finfo *fi, ser_t p, blob *m, commit *cmt, gop *g)
+newDelta(opts *op, finfo *fi, ser_t p, commit *cmt, gop *gp, gop *g)
 {
 	sccs	*s = fi->s;
 	ser_t	d;
@@ -1472,7 +1526,7 @@ newDelta(opts *op, finfo *fi, ser_t p, blob *m, commit *cmt, gop *g)
 		assert(!rc);
 		assert(!exists(s->gfile));
 	} else if (g->op == GMODIFY) {
-		if (!m || SYMLINK(s, p)) {
+		if (!(gp && gp->m) || HAS_SYMLINK(s, p)) {
 			rc = sccs_get(s, REV(s, p), 0, 0, 0,
 			    SILENT|GET_EDIT, s->gfile, 0);
 			assert(!rc);
@@ -1488,12 +1542,12 @@ newDelta(opts *op, finfo *fi, ser_t p, blob *m, commit *cmt, gop *g)
 			    SILENT|GET_SKIPGET|GET_EDIT, 0, 0);
 			assert(!rc);
 
-			dop.ignore_trailing_cr = 1;
+			//dop.ignore_trailing_cr = 1;
 			dop.out_rcs = 1;
-			data[0] = op->bmap->mmap + m->off;
-			len[0] = m->len;
-			data[0] = op->bmap->mmap + g->m->off;
-			len[0] = g->m->len;
+			data[0] = op->bmap->mmap + gp->m->off;
+			len[0] = gp->m->len;
+			data[1] = op->bmap->mmap + g->m->off;
+			len[1] = g->m->len;
 			diffs = fmem();
 			rc = diff_mem(data, len, &dop, diffs);
 			assert((rc == 0) || (rc == 1));
@@ -1569,7 +1623,7 @@ newDelta(opts *op, finfo *fi, ser_t p, blob *m, commit *cmt, gop *g)
 }
 
 private void
-newMerge(opts *op, finfo *fi, commit *cmt, gop *g)
+newMerge(opts *op, finfo *fi, commit *cmt, gop **ghist, gop *g)
 {
 	sccs	*s = fi->s;
 	char	*t, *rel;
@@ -1578,6 +1632,7 @@ newMerge(opts *op, finfo *fi, commit *cmt, gop *g)
 	ser_t	dp_git;		/* bk's delta matching git's parent */
 	int	rc;
 	FILE	*f;
+	gop	*gp;
 	char	buf[MAXPATH];
 
 	assert(nLines(cmt->parents) == 2);
@@ -1590,14 +1645,14 @@ newMerge(opts *op, finfo *fi, commit *cmt, gop *g)
 			assert(!g || (g->op == GDELETE));
 			fi->dlist[cmt->ser] = 0;
 		} else if (g) {
-			newDelta(op, fi, d, 0, cmt, g);
+			newDelta(op, fi, d, cmt, 0, g);
 		} else if (!dp && (d != dp_git)) {
 			/* if a merge has g==0 and the file only exists on
 			 * merge parent, then the merge is ignored and
 			 * the file is deleted
 			 */
 			gop	gtmp = { GDELETE };
-			newDelta(op, fi, d, 0, cmt, &gtmp);
+			newDelta(op, fi, d, cmt, 0, &gtmp);
 		} else if (d == dp_git) {
 			/* add nothing, just keep parent */
 			fi->dlist[cmt->ser] = d;
@@ -1645,6 +1700,7 @@ newMerge(opts *op, finfo *fi, commit *cmt, gop *g)
 		d = sccs_newdelta(s);
 		loadMetaData(s, d, cmt);
 
+		gp = ghist[cmt->parents[1]->ser];
 		if (g) {
 			/*
 			 * if we have data, then it must be the original
@@ -1654,19 +1710,14 @@ newMerge(opts *op, finfo *fi, commit *cmt, gop *g)
 			SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, 1);
 
 			mkFile(op, g, s->gfile);
-			check_gfile(s, 0);
 		} else {
 			/* merge with g==0, we match parent */
 			PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, dp_git);
 			SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, dp_git);
-			unlink(s->gfile);
-			f = fopen(s->gfile, "w");
-			rc = sccs_get(s, REV(s, dp_git), 0, 0, 0,
-			    SILENT|PRINT, 0, f);
-			assert(!rc);
-			fclose(f);
-			check_gfile(s, 0);
+
+			if (gp->op != GDELETE)	mkFile(op, gp, s->gfile);
 		}
+		check_gfile(s, 0);
 		rc = sccs_delta(s, SILENT|DELTA_DONTASK|DELTA_CSETMARK,
 		    d, 0, 0, 0);
 		assert(!rc);
@@ -1712,8 +1763,7 @@ mkChangeSet(opts *op)
 	int	nparents;
 	commit	*cmt = 0;
 
-	printf("Writing new ChangeSet file...\n");
-	fflush(stdout);
+	unless (op->quiet) fprintf(stderr, "Writing new ChangeSet file...\n");
 	EACH(op->clist) {
 		cmt = op->clist[i];
 
@@ -1760,12 +1810,10 @@ mkChangeSet(opts *op)
 		}
 		TABLE_SET(s, d);
 	}
-	printf("Renumber...\n");
-	fflush(stdout);
+	unless (op->quiet) fprintf(stderr, "Renumber...\n");
 	sccs_renumber(s, 0);
 
-	printf("Generate checksums...\n");
-	fflush(stdout);
+	unless (op->quiet) fprintf(stderr, "Generate checksums...\n");
 	cset_resum(s, 0, 1, 0, 0);
 
 	return (0);

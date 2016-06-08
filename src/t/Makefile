@@ -61,10 +61,11 @@ output/OUT.t.%: t.% ../bk$(EXE) doit
 # delete any stale regression areas
 clean:
 	@rm -rf output
-	@chmod -R +w $(TST_DIR)
-	@find $(TST_DIR)/p[0-9]*[0-9] \
+	@test -d $(TST_DIR) && { \
+	    chmod -R +w $(TST_DIR); \
+	    find $(TST_DIR)/p[0-9]*[0-9] \
 		-maxdepth 0  -type d -ctime +1 | \
-		xargs rm -rf
+		xargs rm -rf; } || true
 
 clobber: clean
 	bk clean
