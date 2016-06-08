@@ -634,13 +634,9 @@ parseOp(opts *op, char *line)
 	    case 'M': g->op = GMODIFY;	break;
 	    case 'N': g->op = GNOTE;	break;
 	    case 'R': g->op = GRENAME;	break;
-	    case 0:		/* empty line, break */
+	    default:
 		free(g);
 		return (0);
-		break;
-	    default:
-		fprintf(stderr, "%s: Error parsing %s\n", prog, line);
-		exit(1);
 		break;
 	}
 	assert(line[1] == ' ');
