@@ -1672,7 +1672,6 @@ newMerge(opts *op, finfo *fi, commit *cmt, gop **ghist, gop *g)
 	ser_t	dp, dm;		/* bk's parent/merge deltas */
 	ser_t	dp_git;		/* bk's delta matching git's parent */
 	int	rc;
-	FILE	*f;
 	gop	*gp;
 	char	buf[MAXPATH];
 
@@ -1681,6 +1680,7 @@ newMerge(opts *op, finfo *fi, commit *cmt, gop **ghist, gop *g)
 	dm =          fi->dlist[cmt->parents[2]->ser];
 	if (!(dp && dm) || (dp == dm) || isReachable(s, dp, dm)) {
 		d = max(dp, dm);
+		gp = ghist[cmt->parents[1]->ser];
 		if (!d) {
 			/* no history for this file */
 			assert(!g || (g->op == GDELETE));
@@ -1697,7 +1697,7 @@ newMerge(opts *op, finfo *fi, commit *cmt, gop **ghist, gop *g)
 		} else if (d == dp_git) {
 			/* add nothing, just keep parent */
 			fi->dlist[cmt->ser] = d;
-		} else {
+		} else if (gp && (gp->op != GDELETE)) {
 			/*
 			 * a merge with g==0 where we are reverting
 			 * changes we must be reverting the changes on the
@@ -1713,18 +1713,23 @@ newMerge(opts *op, finfo *fi, commit *cmt, gop **ghist, gop *g)
 
 			PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, dp_git);
 			SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, dp_git);
-			unlink(s->gfile);
-			f = fopen(s->gfile, "w");
-			rc = sccs_get(s, REV(s, dp_git), 0, 0, 0,
-			    SILENT|PRINT, 0, f);
-			assert(!rc);
-			fclose(f);
+			mkFile(op, gp, s->gfile);
 			check_gfile(s, 0);
 			rc = sccs_delta(s, SILENT|DELTA_DONTASK|DELTA_CSETMARK,
 			    d, 0, 0, 0);
 			assert(!rc);
 			s->state &= ~S_PFILE;
 			goto out;
+		} else {
+			/*
+			 * a merge with g==0 where we are reverting
+			 * changes we must be reverting the changes on the
+			 * merge side
+			 * delete case.
+			 */
+			gop	gtmp = { GDELETE };
+			assert(dp && dm && (d == dm));
+			newDelta(op, fi, d, cmt, 0, &gtmp);
 		}
 		return;
 	}  else if (sccs_needSwap(s, dp, dm, 0)) {

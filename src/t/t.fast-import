@@ -428,19 +428,25 @@ git merge $Q branch550.1
 
 # setup fast forward merge
 echo ff-file > ff-file
+rm -f fflink*
+ln -s base fflink1
 git add -A
 git commit $Q -m"ff base"
 git checkout $Q -fb no-ff
 echo 2 >> file1
-git add file1
+git add -A
 git commit $Q -m'file1'
 rand_diffs
 rm -f ff-file
+rm -f fflink*
+ln -s branch fflink1
 git add -A
 git commit $Q -m'file2'
 git checkout $Q master
 git merge $Q --no-commit --no-ff no-ff > /dev/null 2>&1
 echo ff-file > ff-file
+rm -f fflink*
+ln -s base fflink1
 git add -A
 git commit $Q -m"resolve no-ff"
 
