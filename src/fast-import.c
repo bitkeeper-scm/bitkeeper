@@ -132,7 +132,6 @@ struct commit {
 	u32	fudge;		/* time fudge */
 	char	*tz;		/* timezone  */
 	who	*author;	/* git's author */
-	who	*committer;	/* git's committer */
 	char	*comments;	/* commit's comments */
 	commit	**parents;	/* list of parents */
 	gop	**fops;		/* file operations for this commit  */
@@ -143,6 +142,7 @@ struct commit {
 typedef struct {
 	u32	quiet:1;	/* -q */
 	u32	verbose:1;	/* -v */
+	char	**inc_exc;	/* -iGLOB -xGLOB */
 
 	/* state */
 	hash	*blobs;		/* mark -> blob struct */
@@ -207,10 +207,18 @@ fastimport_main(int ac, char **av)
 	};
 	int	rc = 1;
 
-	while ((c = getopt(ac, av, "qv", lopts)) != -1) {
+	while ((c = getopt(ac, av, "i;qvx;", lopts)) != -1) {
 		switch (c) {
+		    case 'i':
+			opts.inc_exc = addLine(opts.inc_exc,
+			    aprintf("+%s", optarg));
+			break;
 		    case 'q': opts.quiet = 1; break;
 		    case 'v': opts.verbose = 1; break;
+		    case 'x':
+			opts.inc_exc = addLine(opts.inc_exc,
+			    aprintf("-%s", optarg));
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -247,6 +255,39 @@ fastimport_main(int ac, char **av)
 	}
 	rc = gitImport(&opts);
 out:	return (rc);
+}
+
+/*
+ * determine if this pathname should be included in import
+ * If the command line starts with -iGLOB we default to off.
+ * If it starts with -xGLOB we default to on.
+ *
+ * ex:
+ *     -i'file'		# import only file
+ *     -x'junk*'	# import everything but start starting the junk
+ */
+private int
+matchInclude(opts *op, char *path)
+{
+	int	en = -1;
+	int	i;
+	char	*pat;
+	int	isInc, match;
+
+	EACH(op->inc_exc) {
+		pat = op->inc_exc[i];
+		isInc = (*pat++ == '+');
+		match = match_one(path, pat, 0);
+
+		/* default set by first pattern */
+		if (en < 0) en = !isInc;
+
+		unless (match) continue;
+
+		en = isInc;
+	}
+	if (en < 0) en = 1;
+	return (en);
 }
 
 private int
@@ -377,6 +418,7 @@ gitImport(opts *op)
 	}
 	op->cset = sccs_init(CHANGESET, 0);
 	EACH(list) {
+		unless (matchInclude(op, list[i])) continue;
 		if (op->verbose) fprintf(stderr, "import %s\n", list[i]);
 		importFile(op, list[i]);
 		if (tick) progress(tick, i);
@@ -500,6 +542,7 @@ getCommit(opts *op, char *line)
 	gop	*gop;
 	FILE	*f;
 	long	tdiff;
+	who	*committer;
 
 	assert(MATCH("commit "));
 	/* XXX: Need to get ref from line before reading another one. */
@@ -526,7 +569,12 @@ getCommit(opts *op, char *line)
 		fprintf(stderr, "%s: expected 'committer' line\n", prog);
 		exit(1);
 	}
-	cmt->committer = parseWho(line, &cmt->when, &cmt->tz);
+	committer = parseWho(line, &cmt->when, &cmt->tz);
+	if (cmt->author) {
+		freeWho(committer);
+	} else {
+		cmt->author = committer;
+	}
 	line = fgetline(stdin);
 
 	/*
@@ -952,7 +1000,6 @@ freeCommit(commit *m)
 	unless (m) return;
 	free(m->tz);
 	freeWho(m->author);
-	freeWho(m->committer);
 	free(m->comments);
 	free(m->parents);
 	EACH(m->fops) freeOp(m->fops[i]);
@@ -1393,7 +1440,7 @@ loadMetaData(sccs *s, ser_t d, commit *cmt)
 {
 	ser_t	prev;
 
-	USERHOST_SET(s, d, cmt->committer->email);
+	USERHOST_SET(s, d, cmt->author->email);
 	DATE_SET(s, d, cmt->when);
 	DATE_FUDGE_SET(s, d, cmt->fudge);
 	ZONE_SET(s, d, cmt->tz);
@@ -1567,7 +1614,7 @@ newDelta(opts *op, finfo *fi, ser_t p, commit *cmt, gop *gp, gop *g)
 		assert(!rc);
 		assert(!exists(s->gfile));
 	} else if (g->op == GMODIFY) {
-		if (!(gp && gp->m) || HAS_SYMLINK(s, p)) {
+		if (1 || !(gp && gp->m) || HAS_SYMLINK(s, p)) {
 			rc = sccs_get(s, REV(s, p), 0, 0, 0,
 			    SILENT|GET_EDIT, s->gfile, 0);
 			assert(!rc);
@@ -1575,6 +1622,15 @@ newDelta(opts *op, finfo *fi, ser_t p, commit *cmt, gop *gp, gop *g)
 			mkFile(op, g, s->gfile);
 			check_gfile(s, 0);
 		} else  {
+			/*
+			 * XXX this block is always disabled (by
+			 * 'if(1)' above) because I hit some bugs with
+			 * the second block in testing.
+			 * either:
+			 *   the 'gp' baseline was incorrect
+			 * or
+			 *   we really need ignore_trailing_cr
+			 */
 			df_opt	dop = {0};
 			char	*data[2];
 			size_t	len[2];
@@ -1761,7 +1817,7 @@ newMerge(opts *op, finfo *fi, commit *cmt, gop **ghist, gop *g)
 			PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, dp_git);
 			SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, dp_git);
 
-			if (gp->op != GDELETE)	mkFile(op, gp, s->gfile);
+			if (gp && (gp->op != GDELETE)) mkFile(op, gp, s->gfile);
 		}
 		check_gfile(s, 0);
 		rc = sccs_delta(s, SILENT|DELTA_DONTASK|DELTA_CSETMARK,
