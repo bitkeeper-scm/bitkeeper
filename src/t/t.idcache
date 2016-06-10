@@ -142,7 +142,7 @@ grep -q 'Rebuilding idcache' OUT && {
 	cat OUT
 	exit 1
 }
-grep -q 'check: SCCS/s.catch_me should be SCCS/s.duplicate' OUT || {
+grep -q 'check: catch_me should be duplicate' OUT || {
 	echo Failed to catch duplicate
 	cat OUT
 	exit 1

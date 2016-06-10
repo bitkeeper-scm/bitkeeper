@@ -2567,9 +2567,8 @@ check(sccs *s, MDBM *idDB)
 		free(x);
 		if (proj_isProduct(0)) strcat(PATHNAME(s, d), "/ChangeSet");
 	} else unless (resync || sccs_patheq(PATHNAME(s, d), s->gfile)) {
-		x = name2sccs(PATHNAME(s, d));
-		fprintf(stderr, "check: %s should be %s\n", s->sfile, x);
-		free(x);
+		fprintf(stderr, "check: %s should be %s\n",
+		    s->gfile, PATHNAME(s, d));
 		errors++;
 		names = 1;
 	}

@@ -57,7 +57,7 @@ do	if [ -f $i ]
 		exit 1
 	fi
 done
-grep -q 'check: SCCS/s.WRONG_PLACE should be SCCS/s.A' OUT || {
+grep -q 'check: WRONG_PLACE should be A' OUT || {
 	echo bad error message from pull:
 	cat OUT
 	exit 1
@@ -90,7 +90,7 @@ then	echo failed to remove subdir
 	cat OUT
 	exit 1
 fi
-grep -q 'check: SCCS/s.WRONG_PLACE should be SCCS/s.A' OUT || {
+grep -q 'check: WRONG_PLACE should be A' OUT || {
 	echo bad error message from pull:
 	cat OUT
 	exit 1
