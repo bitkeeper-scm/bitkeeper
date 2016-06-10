@@ -928,7 +928,9 @@ parseWho(char *line, time_t *when, char **tz)
 	p += strcspn(p, "<>");
 	while ((p > w->email) && (p[-1] == ' ')) --p; /* trim space */
 	*p++ = 0;
-	w->email = strdup(w->email);
+	w->email = strchr(w->email, '@') ?
+	    strdup(w->email) :
+	    aprintf("%s@NOHOST.com", w->email);
 
 	/*
 	 * XXX Larry wants to ignore email and cons up something else when
@@ -1328,8 +1330,10 @@ importFile(opts *op, char *file)
 			EACH(sfiles) sfiles[i].dlist[d] = sfiles[i].dlist[dp];
 			continue;
 		}
+		if (!g && cmt->parents) g = ghist[cmt->parents[1]->ser];
 		/* how many unique parents in file? */
 		force_n = 0;
+		n = 0;
 again:		npar_file = 0;
 		EACH_INDEX(cmt->parents, k) {
 			dp = cmt->parents[k]->ser;
@@ -1382,7 +1386,6 @@ again:		npar_file = 0;
 			 */
 			n = uniq_n[i];
 			force_n = 1;
-			unless (g) g = ghist[cmt->parents[1]->ser];
 			goto again;
 		}
 		n = uniq_n[0];
@@ -1731,6 +1734,11 @@ newMerge(opts *op, finfo *fi, commit *cmt, gop **ghist, gop *g)
 	gop	*gp;
 	char	buf[MAXPATH];
 
+	if (nLines(cmt->parents) > 2) {
+		fprintf(stderr,
+		    "%s: octopus merges are not currently supported\n", prog);
+		exit(1);
+	}
 	assert(nLines(cmt->parents) == 2);
 	dp = dp_git = fi->dlist[cmt->parents[1]->ser];
 	dm =          fi->dlist[cmt->parents[2]->ser];

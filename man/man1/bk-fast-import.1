@@ -1,0 +1,43 @@
+.so ../bk-macros
+.TH "bk fast-import" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk fast-import \- import a new repository using git's fast-export format
+.SH SYNOPSIS
+.B bk fast-import
+.[B] options
+.[ARG] repo
+.SH DESCRIPTION
+bk fast-import creates a new repository from a stream on data on stdin
+that follows the data format expected by git's fast-import command.
+.SH OPTIONS
+.TP \-i\*<glob\*>
+.tp
+.B \-q
+Do not generate any output unless an error has occurred.
+.tp
+.B \-v
+Generate verbose output printing a message before each file is imported.
+.tp
+.OPTreq \-i glob
+Only include pathnames matching this 'glob' in the resulting repository.
+.tp
+.OPTreq \-x glob
+Never include pathnames matching this 'glob' in the resulting repository.
+.SH EXAMPLES
+.LP
+The commands to import a git repository into bitkeeper
+would look like this:
+.DS
+$ rm -rf bk-repo
+$ git -C git-repo fast-export master | bk fast-import bk-repo
+.DE
+.SH EXIT STATUS
+.LP
+.B bk fast-import
+returns exit status 0 if the import completed successfuly. Non-zero if
+there was an error.
+.SH "SEE ALSO"
+.SA fast-export
+.SH CATEGORY
+.\" If you change this you need to go make the code in help.c match
+.B Utility
