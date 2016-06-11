@@ -159,11 +159,13 @@ typedef struct {
 	MMAP	*bmap;		/* mmap for reading 'btmp' */
 } opts;
 
+/* remember sfile, and mapping from cset->file delta tips */
 typedef struct {
 	sccs	*s;
 	ser_t	*dlist;		/* tip of this sfile for each cset */
 	u32	rk;		/* offset to rk in op->cset heap */
-	u32	binary:1;
+	u32	binary:1;	/* sfile is BAM */
+	u8	symlink:1;	/* sfile contains symlinks */
 } finfo;
 
 private int	gitImport(opts *op);
@@ -1260,7 +1262,8 @@ findMatch(finfo *sfiles, gop *g, u32 dp)
 	 */
 	EACH(sfiles) {
 		if (g && (g->op != GDELETE) &&
-		    (g->m->binary != sfiles[i].binary)) {
+		    ((g->m->binary != sfiles[i].binary) ||
+		     ((g->mode == MODE_SYMLINK) != sfiles[i].symlink))) {
 			/* BAM or not? */
 			continue;
 		}
@@ -1500,7 +1503,11 @@ newFile(opts *op, char *file, commit *cmt, gop *g)
 	assert(g->op == GMODIFY);
 
 	growArray(&ret.dlist, op->ncsets);
-	ret.binary = g->m->binary;
+	if (g->mode == MODE_SYMLINK) {
+		ret.symlink = 1;
+	} else if (g->m->binary) {
+		ret.binary = 1;
+	}
 
 	sprintf(buf, "%d", ++op->filen);
 	ret.s = s = sccs_init(buf, 0);
@@ -1596,6 +1603,7 @@ newDelta(opts *op, finfo *fi, ser_t p, commit *cmt, gop *gp, gop *g)
 		    d, 0, 0, 0);
 		assert(!rc);
 	} else if ((g->op == GMODIFY) && (g->mode == MODE_SYMLINK)) {
+		assert(fi->symlink);
 		rc = sccs_get(s, REV(s, p), 0, 0, 0,
 		    SILENT|GET_SKIPGET|GET_EDIT, s->gfile, 0);
 		assert(!rc);
