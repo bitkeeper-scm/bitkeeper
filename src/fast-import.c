@@ -162,7 +162,8 @@ typedef struct {
 /* remember sfile, and mapping from cset->file delta tips */
 typedef struct {
 	sccs	*s;
-	ser_t	*dlist;		/* tip of this sfile for each cset */
+	ser_t	*dlist;		/* tip of this sfile for each cset (per cset) */
+	gop	**glist;	/* gop's that created each delta (per delta) */
 	u32	rk;		/* offset to rk in op->cset heap */
 	u32	binary:1;	/* sfile is BAM */
 	u8	symlink:1;	/* sfile contains symlinks */
@@ -192,8 +193,7 @@ private	blob	*saveInline(opts *op);
 
 private	int	importFile(opts *op, char *file);
 private	finfo	newFile(opts *op, char *file, commit *cmt, gop *g);
-private	void	newDelta(opts *op, finfo *, ser_t p,
-    commit *cmt, gop *gp, gop *g);
+private	void	newDelta(opts *op, finfo *, ser_t p, commit *cmt, gop *g);
 private	void	newMerge(opts *op, finfo *, commit *cmt, gop **ghist, gop *g);
 private	int	mkChangeSet(opts *op);
 
@@ -1305,7 +1305,7 @@ importFile(opts *op, char *file)
 	commit	*cmt = 0;
 	u32	n;
 	int	force_n;
-	gop	*g, **ghist = 0;
+	gop	*g, *gp, **ghist = 0;
 
 	/* all the sfiles that have been created for this pathname */
 	finfo	*sfiles = 0;
@@ -1315,7 +1315,6 @@ importFile(opts *op, char *file)
 		u32	n;	/* which item in 'sfiles' for this parent */
 		ser_t	d;	/* which d in sfiles[n].s */
 		u32	dp;	/* serial of parent cset */
-		gop	*gp;	/* 'gop' of parent cset */
 	} uniq[2];
 
 	growArray(&ghist, op->ncsets);
@@ -1368,7 +1367,6 @@ again:		npar_file = 0;
 			uniq[i].n = n;
 			uniq[i].d = ud;
 			uniq[i].dp = dp;
-			uniq[i].gp = ghist[dp];
 			if (i == npar_file) npar_file++;
 		}
 		if ((npar_file == 2) && (uniq[0].n != uniq[1].n)) {
@@ -1417,17 +1415,15 @@ again:		npar_file = 0;
 			} else {
 				n = 0;
 			}
-		} else if ((npar_file == 1) &&
-		    g && uniq[0].gp && !memcmp(g, uniq[0].gp, sizeof(*g))) {
+		} else if ((npar_file == 1) && g &&
+		    (gp = sfiles[n].glist[uniq[0].d]) &&
+		    !memcmp(g, gp, sizeof(*g))) {
 			// nothing changes
 
-			// XXX I don't know for sure that 'gp' was
-			// saved with this same sfile, so this might
-			// be totally wrong.
 			sfiles[n].dlist[d] = sfiles[n].dlist[uniq[0].dp];
 		} else if ((npar_file == 1) && g) {
 			// new delta
-			newDelta(op, &sfiles[n], uniq[0].d, cmt, uniq[0].gp, g);
+			newDelta(op, &sfiles[n], uniq[0].d, cmt, g);
 		} else {
 			// merge in file with new contents (g may be zero)
 			assert(npar_file > 0);
@@ -1444,7 +1440,7 @@ again:		npar_file = 0;
 				dp = sfiles[i].dlist[cmt->parents[1]->ser];
 				if (dp) {
 					newDelta(op, &sfiles[i], dp,
-					    cmt, 0, &gtmp);
+					    cmt, &gtmp);
 				}
 			} else {
 				assert(npar_git > 1);
@@ -1456,6 +1452,7 @@ again:		npar_file = 0;
 	EACH(sfiles) {
 		sccs_free(sfiles[i].s);
 		free(sfiles[i].dlist);
+		free(sfiles[i].glist);
 	}
 	free(sfiles);
 	free(ghist);
@@ -1518,6 +1515,19 @@ mkFile(opts *op, gop *g, sccs *s, ser_t d)
 	s->mode = MODE(s, d);
 }
 
+/*
+ * remember a value like 'fi->glist[d] = g', but grow the glist array
+ * if needed
+ */
+private inline void
+setGlist(gop ***glist, int n, gop *val)
+{
+	int	diff = n - nLines(*glist);
+
+	if (diff > 0) growArray(glist, diff);
+	(*glist)[n] = val;
+}
+
 private finfo
 newFile(opts *op, char *file, commit *cmt, gop *g)
 {
@@ -1560,6 +1570,7 @@ newFile(opts *op, char *file, commit *cmt, gop *g)
 	FLAGS(s, d0) |= D_INARRAY;
 
 	ret.dlist[cmt->ser] = d = sccs_newdelta(s);
+	setGlist(&ret.glist, d, g);
 	loadMetaData(s, d, cmt);
 	mkFile(op, g, s, d);
 	PARENT_SET(s, d, d0);
@@ -1591,7 +1602,7 @@ newFile(opts *op, char *file, commit *cmt, gop *g)
 }
 
 private void
-newDelta(opts *op, finfo *fi, ser_t p, commit *cmt, gop *gp, gop *g)
+newDelta(opts *op, finfo *fi, ser_t p, commit *cmt, gop *g)
 {
 	sccs	*s = fi->s;
 	ser_t	d;
@@ -1600,7 +1611,7 @@ newDelta(opts *op, finfo *fi, ser_t p, commit *cmt, gop *gp, gop *g)
 	FILE	*diffs;
 	char	buf[MAXLINE];
 
-	if (0 && gp && (g->op == GMODIFY) && !fi->binary && !fi->symlink) {
+	if (0 && fi->glist[p] && (g->op == GMODIFY) && !fi->binary && !fi->symlink) {
 		/*
 		 * XXX this block is always disabled (by
 		 * 'if(0)' above) because I hit some bugs in testing.
@@ -1619,8 +1630,8 @@ newDelta(opts *op, finfo *fi, ser_t p, commit *cmt, gop *gp, gop *g)
 
 		//dop.ignore_trailing_cr = 1;
 		dop.out_rcs = 1;
-		data[0] = op->bmap->mmap + gp->m->off;
-		len[0] = gp->m->len;
+		data[0] = op->bmap->mmap + fi->glist[p]->m->off;
+		len[0] = fi->glist[p]->m->len;
 		data[1] = op->bmap->mmap + g->m->off;
 		len[1] = g->m->len;
 		diffs = fmem();
@@ -1699,6 +1710,7 @@ newDelta(opts *op, finfo *fi, ser_t p, commit *cmt, gop *gp, gop *g)
 	addArrayV(&cmt->weave, sccs_addStr(op->cset, buf));
 
 	fi->dlist[cmt->ser] = d;
+	setGlist(&fi->glist, d, (g->op != GDELETE) ? g : 0);
 }
 
 private void
@@ -1729,15 +1741,18 @@ newMerge(opts *op, finfo *fi, commit *cmt, gop **ghist, gop *g)
 			/* no history for this file */
 			assert(!g || (g->op == GDELETE));
 			fi->dlist[cmt->ser] = 0;
+		} else if (g && fi->glist[d] &&
+		    !memcmp(g, fi->glist[d], sizeof(*g))) {
+			fi->dlist[cmt->ser] = d;
 		} else if (g) {
-			newDelta(op, fi, d, cmt, 0, g);
+			newDelta(op, fi, d, cmt, g);
 		} else if (!dp && (d != dp_git)) {
 			/* if a merge has g==0 and the file only exists on
 			 * merge parent, then the merge is ignored and
 			 * the file is deleted
 			 */
 			gop	gtmp = { GDELETE };
-			newDelta(op, fi, d, cmt, 0, &gtmp);
+			newDelta(op, fi, d, cmt, &gtmp);
 		} else if (d == dp_git) {
 			/* add nothing, just keep parent */
 			fi->dlist[cmt->ser] = d;
@@ -1772,7 +1787,7 @@ newMerge(opts *op, finfo *fi, commit *cmt, gop **ghist, gop *g)
 			 */
 			gop	gtmp = { GDELETE };
 			assert(dp && dm && (d == dm));
-			newDelta(op, fi, d, cmt, 0, &gtmp);
+			newDelta(op, fi, d, cmt, &gtmp);
 		}
 		return;
 	}  else if (sccs_needSwap(s, dp, dm, 0)) {
@@ -1839,6 +1854,7 @@ out:	/* record the cset weave */
 	addArrayV(&cmt->weave, sccs_addStr(op->cset, buf));
 
 	fi->dlist[cmt->ser] = d;
+	setGlist(&fi->glist, d, (g && (g->op != GDELETE)) ? g : 0);
 }
 
 private int

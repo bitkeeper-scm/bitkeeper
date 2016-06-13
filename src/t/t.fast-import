@@ -484,6 +484,12 @@ git log --date-order --pretty="tree: %T%ncommitter: %ae%ndate: %cD%n%B" master >
 diff -u BK.log GIT.log || fail
 echo OK
 
+echo $N Look for null deltas in bk files ............................$NL
+cd ../import
+bk -A prs -hnd'$unless(:MERGE: || :RENAME: || :SYMLINK: || (:MODE: != :MODE|PARENT:)){$if(:LI::LD:=00){:GFILE:|:REV:}}'
+cd ..
+echo OK
+
 # echo $N Repeat git fast-export with -M ..............................$NL
 # cd ..
 # git -C git-repo fast-export -M --progress=10 master > git-repo.fast-export-M
