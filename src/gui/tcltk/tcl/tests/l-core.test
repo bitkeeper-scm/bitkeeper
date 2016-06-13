@@ -580,7 +580,7 @@ test parse-1.4 {parse an L function named by a pattern} -body {
 #lang L --line=1
 poly Parse14Pattern_*(int a, ...rest)
 {
-	puts("${$1}${a}${rest}");
+	puts("${$cmd}${a}${rest}");
 }
 #lang tcl
 } -result {}
@@ -15157,7 +15157,7 @@ string Pattern1_foo(int a, int b)
 string Pattern1_*(...args)
 {
 	poly	p;
-	string	ret = "Pattern1_* ${$1}";
+	string	ret = "Pattern1_* ${$cmd}";
 	foreach (p in args) ret .= " ${p}";
 	return (ret);
 }
