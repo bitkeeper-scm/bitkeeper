@@ -18,10 +18,10 @@
  * TODO
  *
  * correctness problems
- *   - the --no-ff merge in t.fast-import occasinally leaves an
- *     unmerged tip
  *   - verify that the incoming fast-export graph has a single tip
  *     before starting import
+ *   - in 'bootstrap' some BAM files have wrong mode
+ *     (looks like newMerge needs MODE_SET, need testcase)
  *   - delete of a BAM file saves empty file for tip
  *   - octo-merge that doesn't touch any one file with more than one
  *     tip
@@ -1303,12 +1303,20 @@ importFile(opts *op, char *file)
 	int	npar_git, npar_file;
 	u32	d, dp;
 	commit	*cmt = 0;
-	u32	n, ud, uniq_n[2], uniq_d[2];
+	u32	n;
 	int	force_n;
 	gop	*g, **ghist = 0;
 
 	/* all the sfiles that have been created for this pathname */
 	finfo	*sfiles = 0;
+
+	/* information about each uniq parent for this pathname */
+	struct	{
+		u32	n;	/* which item in 'sfiles' for this parent */
+		ser_t	d;	/* which d in sfiles[n].s */
+		u32	dp;	/* serial of parent cset */
+		gop	*gp;	/* 'gop' of parent cset */
+	} uniq[2];
 
 	growArray(&ghist, op->ncsets);
 
@@ -1333,33 +1341,42 @@ importFile(opts *op, char *file)
 			EACH(sfiles) sfiles[i].dlist[d] = sfiles[i].dlist[dp];
 			continue;
 		}
-		if (!g && cmt->parents) g = ghist[cmt->parents[1]->ser];
+		if (!g && npar_git) g = ghist[cmt->parents[1]->ser];
 		/* how many unique parents in file? */
 		force_n = 0;
 		n = 0;
 again:		npar_file = 0;
 		EACH_INDEX(cmt->parents, k) {
+			u32	ud;
+
 			dp = cmt->parents[k]->ser;
 			unless (force_n || (n = findMatch(sfiles, g, dp))) {
 				continue;
 			}
 			unless (ud = sfiles[n].dlist[dp]) continue;
 			for (i = 0; i < npar_file; i++) {
-				if ((uniq_n[i] == n) && (uniq_d[i] == ud)) {
+				if ((uniq[i].n == n) && (uniq[i].d == ud)) {
 					break;
 				}
 			}
-			assert(i < 2); /* no octopus on file */
-			uniq_n[i] = n;
-			uniq_d[i] = ud;
+			if (i >= 2) {
+				fprintf(stderr,
+				    "%s: an octopus merge touch >2 parents "
+				    "in '%s'\n", prog, file);
+				exit(1);
+			}
+			uniq[i].n = n;
+			uniq[i].d = ud;
+			uniq[i].dp = dp;
+			uniq[i].gp = ghist[dp];
 			if (i == npar_file) npar_file++;
 		}
-		if ((npar_file == 2) && (uniq_n[0] != uniq_n[1])) {
-			sccs	*s0 = sfiles[uniq_n[0]].s;
-			sccs	*s1 = sfiles[uniq_n[1]].s;
-			int	del0 = begins_with(PATHNAME(s0, uniq_d[0]),
+		if ((npar_file == 2) && (uniq[0].n != uniq[1].n)) {
+			sccs	*s0 = sfiles[uniq[0].n].s;
+			sccs	*s1 = sfiles[uniq[1].n].s;
+			int	del0 = begins_with(PATHNAME(s0, uniq[0].d),
 						   "BitKeeper/deleted/");
-			int	del1 = begins_with(PATHNAME(s1, uniq_d[1]),
+			int	del1 = begins_with(PATHNAME(s1, uniq[1].d),
 						   "BitKeeper/deleted/");
 
 			assert(!force_n); /* no loops */
@@ -1387,12 +1404,11 @@ again:		npar_file = 0;
 			 * now that we picked a sfile, calculate
 			 * npar_file again
 			 */
-			n = uniq_n[i];
+			n = uniq[i].n;
 			force_n = 1;
 			goto again;
 		}
-		n = uniq_n[0];
-		ud = uniq_d[0];
+		n = uniq[0].n;
 		if (npar_file == 0) {
 			if (g) {
 				// new file
@@ -1401,12 +1417,17 @@ again:		npar_file = 0;
 			} else {
 				n = 0;
 			}
-		} else if ((npar_file == 1) && g) {
-			gop	*gp = 0;
+		} else if ((npar_file == 1) &&
+		    g && uniq[0].gp && !memcmp(g, uniq[0].gp, sizeof(*g))) {
+			// nothing changes
 
-			if (npar_git == 1) gp = ghist[cmt->parents[1]->ser];
+			// XXX I don't know for sure that 'gp' was
+			// saved with this same sfile, so this might
+			// be totally wrong.
+			sfiles[n].dlist[d] = sfiles[n].dlist[uniq[0].dp];
+		} else if ((npar_file == 1) && g) {
 			// new delta
-			newDelta(op, &sfiles[n], ud, cmt, gp, g);
+			newDelta(op, &sfiles[n], uniq[0].d, cmt, uniq[0].gp, g);
 		} else {
 			// merge in file with new contents (g may be zero)
 			assert(npar_file > 0);
@@ -1462,34 +1483,39 @@ loadMetaData(sccs *s, ser_t d, commit *cmt)
 }
 
 private void
-mkFile(opts *op, gop *g, char *gfile)
+mkFile(opts *op, gop *g, sccs *s, ser_t d)
 {
 	int	fd;
 	char	*p;
 	int	rc;
 
-	unlink(gfile);
+	unlink(s->gfile);
 	switch(g->mode) {
 	    case MODE_SYMLINK:
 		p = strndup(op->bmap->mmap + g->m->off, g->m->len);
-		rc = symlink(p, gfile);
+		rc = symlink(p, s->gfile);
 		assert(!rc);
+		SYMLINK_SET(s, d, p);
 		free(p);
+		MODE_SET(s, d, 0120777);
 		break;
 	    case MODE_FILE:
 	    case MODE_EXE:
-		fd = open(gfile, O_WRONLY|O_CREAT,
+		fd = open(s->gfile, O_WRONLY|O_CREAT,
 		    (g->mode == MODE_EXE) ? 0755 : 0644);
 		assert(fd >= 0);
 		rc = write(fd, op->bmap->mmap + g->m->off, g->m->len);
 		assert(rc == g->m->len);
 		rc = close(fd);
 		assert(!rc);
+		MODE_SET(s, d, (g->mode == MODE_EXE) ? 0100775: 0100664);
 		break;
 	    default:
 		assert(0);
 		break;
 	}
+	s->state |= S_GFILE;
+	s->mode = MODE(s, d);
 }
 
 private finfo
@@ -1513,9 +1539,6 @@ newFile(opts *op, char *file, commit *cmt, gop *g)
 	ret.s = s = sccs_init(buf, 0);
 	assert(s);
 
-	mkFile(op, g, buf);
-	check_gfile(s, 0);
-
 	d0 = sccs_newdelta(s);
 	loadMetaData(s, d0, cmt);
 	sccs_parseArg(s, d0, 'P', file, 0);
@@ -1538,6 +1561,7 @@ newFile(opts *op, char *file, commit *cmt, gop *g)
 
 	ret.dlist[cmt->ser] = d = sccs_newdelta(s);
 	loadMetaData(s, d, cmt);
+	mkFile(op, g, s, d);
 	PARENT_SET(s, d, d0);
 	sccs_parseArg(s, d, 'P', file, 0);
 	sccs_parseArg(s, d, 'R', "1.1", 0);
@@ -1576,9 +1600,47 @@ newDelta(opts *op, finfo *fi, ser_t p, commit *cmt, gop *gp, gop *g)
 	FILE	*diffs;
 	char	buf[MAXLINE];
 
-	if ((g->op == GMODIFY) && g->m->binary) {
-		assert(BAM(s));
-		assert(g->mode == MODE_EXE || g->mode == MODE_FILE);
+	if (0 && gp && (g->op == GMODIFY) && !fi->binary && !fi->symlink) {
+		/*
+		 * XXX this block is always disabled (by
+		 * 'if(0)' above) because I hit some bugs in testing.
+		 * either:
+		 *   the 'gp' baseline was incorrect
+		 * or
+		 *   we really need ignore_trailing_cr
+		 */
+		df_opt	dop = {0};
+		char	*data[2];
+		size_t	len[2];
+
+		rc = sccs_get(s, REV(s, p), 0, 0, 0,
+		    SILENT|GET_SKIPGET|GET_EDIT, 0, 0);
+		assert(!rc);
+
+		//dop.ignore_trailing_cr = 1;
+		dop.out_rcs = 1;
+		data[0] = op->bmap->mmap + gp->m->off;
+		len[0] = gp->m->len;
+		data[1] = op->bmap->mmap + g->m->off;
+		len[1] = g->m->len;
+		diffs = fmem();
+		rc = diff_mem(data, len, &dop, diffs);
+		assert((rc == 0) || (rc == 1));
+		rewind(diffs);
+		switch(g->mode) {
+		    case MODE_FILE:
+			MODE_SET(s, d, 0100664);
+			break;
+		    case MODE_EXE:
+			MODE_SET(s, d, 0100775);
+			break;
+		    default:
+			assert(0);
+		}
+		rc = sccs_delta(s, SILENT|DELTA_DONTASK|DELTA_CSETMARK,
+		    d, 0, 0, 0);
+		assert(!rc);
+	} else if (g->op == GMODIFY) {
 		rc = sccs_get(s, REV(s, p), 0, 0, 0,
 		    SILENT|GET_SKIPGET|GET_EDIT, 0, 0);
 		assert(!rc);
@@ -1586,101 +1648,10 @@ newDelta(opts *op, finfo *fi, ser_t p, commit *cmt, gop *gp, gop *g)
 		loadMetaData(s, d, cmt);
 		PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, 1);
 		SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, 1);
-		mkFile(op, g, s->gfile);
-		check_gfile(s, 0);
-		switch(g->mode) {
-		    case MODE_FILE:
-			MODE_SET(s, d, 0100664);
-			break;
-		    case MODE_EXE:
-			MODE_SET(s, d, 0100775);
-			break;
-		    default:
-			assert(0);
-		}
-
+		mkFile(op, g, s, d);
 		rc = sccs_delta(s, SILENT|DELTA_DONTASK|DELTA_CSETMARK,
 		    d, 0, 0, 0);
 		assert(!rc);
-	} else if ((g->op == GMODIFY) && (g->mode == MODE_SYMLINK)) {
-		assert(fi->symlink);
-		rc = sccs_get(s, REV(s, p), 0, 0, 0,
-		    SILENT|GET_SKIPGET|GET_EDIT, s->gfile, 0);
-		assert(!rc);
-
-		d = sccs_newdelta(s);
-		loadMetaData(s, d, cmt);
-		PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, 1);
-		SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, 1);
-		MODE_SET(s, d, 0120777);
-
-		mkFile(op, g, s->gfile);
-		t = strndup(op->bmap->mmap + g->m->off, g->m->len);
-		SYMLINK_SET(s, d, t);
-		free(t);
-		check_gfile(s, 0);
-
-		rc = sccs_delta(s, SILENT|DELTA_DONTASK|DELTA_CSETMARK,
-		    d, 0, 0, 0);
-		assert(!rc);
-		assert(!exists(s->gfile));
-	} else if (g->op == GMODIFY) {
-		if (1 || !(gp && gp->m) || HAS_SYMLINK(s, p)) {
-			rc = sccs_get(s, REV(s, p), 0, 0, 0,
-			    SILENT|GET_EDIT, s->gfile, 0);
-			assert(!rc);
-			diffs = 0;
-			mkFile(op, g, s->gfile);
-			check_gfile(s, 0);
-		} else  {
-			/*
-			 * XXX this block is always disabled (by
-			 * 'if(1)' above) because I hit some bugs with
-			 * the second block in testing.
-			 * either:
-			 *   the 'gp' baseline was incorrect
-			 * or
-			 *   we really need ignore_trailing_cr
-			 */
-			df_opt	dop = {0};
-			char	*data[2];
-			size_t	len[2];
-
-			rc = sccs_get(s, REV(s, p), 0, 0, 0,
-			    SILENT|GET_SKIPGET|GET_EDIT, 0, 0);
-			assert(!rc);
-
-			//dop.ignore_trailing_cr = 1;
-			dop.out_rcs = 1;
-			data[0] = op->bmap->mmap + gp->m->off;
-			len[0] = gp->m->len;
-			data[1] = op->bmap->mmap + g->m->off;
-			len[1] = g->m->len;
-			diffs = fmem();
-			rc = diff_mem(data, len, &dop, diffs);
-			assert((rc == 0) || (rc == 1));
-			rewind(diffs);
-		}
-		d = sccs_newdelta(s);
-		loadMetaData(s, d, cmt);
-		PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, 1);
-		SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, 1);
-		switch(g->mode) {
-		    case MODE_FILE:
-			MODE_SET(s, d, 0100664);
-			break;
-		    case MODE_EXE:
-			MODE_SET(s, d, 0100775);
-			break;
-		    default:
-			assert(0);
-		}
-
-		rc = sccs_delta(s,
-		    SILENT|DELTA_DONTASK|DELTA_CSETMARK|DELTA_FORCE,
-		    d, 0, diffs, 0);
-		assert(!rc);
-		if (diffs) fclose(diffs);
 	} else {
 		assert(g->op = GDELETE);
 
@@ -1748,11 +1719,12 @@ newMerge(opts *op, finfo *fi, commit *cmt, gop **ghist, gop *g)
 		exit(1);
 	}
 	assert(nLines(cmt->parents) == 2);
+	gp = ghist[cmt->parents[1]->ser];
+
 	dp = dp_git = fi->dlist[cmt->parents[1]->ser];
 	dm =          fi->dlist[cmt->parents[2]->ser];
 	if (!(dp && dm) || (dp == dm) || isReachable(s, dp, dm)) {
 		d = max(dp, dm);
-		gp = ghist[cmt->parents[1]->ser];
 		if (!d) {
 			/* no history for this file */
 			assert(!g || (g->op == GDELETE));
@@ -1785,8 +1757,7 @@ newMerge(opts *op, finfo *fi, commit *cmt, gop **ghist, gop *g)
 
 			PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, dp_git);
 			SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, dp_git);
-			mkFile(op, gp, s->gfile);
-			check_gfile(s, 0);
+			mkFile(op, gp, s, d);
 			rc = sccs_delta(s, SILENT|DELTA_DONTASK|DELTA_CSETMARK,
 			    d, 0, 0, 0);
 			assert(!rc);
@@ -1818,7 +1789,6 @@ newMerge(opts *op, finfo *fi, commit *cmt, gop **ghist, gop *g)
 		d = sccs_newdelta(s);
 		loadMetaData(s, d, cmt);
 
-		gp = ghist[cmt->parents[1]->ser];
 		if (g) {
 			/*
 			 * if we have data, then it must be the original
@@ -1827,15 +1797,14 @@ newMerge(opts *op, finfo *fi, commit *cmt, gop **ghist, gop *g)
 			PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, 1);
 			SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, 1);
 
-			mkFile(op, g, s->gfile);
+			mkFile(op, g, s, d);
 		} else {
 			/* merge with g==0, we match parent */
 			PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, dp_git);
 			SORTPATH_INDEX(s, d) = SORTPATH_INDEX(s, dp_git);
 
-			if (gp && (gp->op != GDELETE)) mkFile(op, gp, s->gfile);
+			if (gp && (gp->op != GDELETE)) mkFile(op, gp, s, d);
 		}
-		check_gfile(s, 0);
 		rc = sccs_delta(s, SILENT|DELTA_DONTASK|DELTA_CSETMARK,
 		    d, 0, 0, 0);
 		assert(!rc);
