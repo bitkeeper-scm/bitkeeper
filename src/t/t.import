@@ -103,7 +103,7 @@ E
 G
 EOF
 bk get $Q foo
-bk diff -ruN foo BitKeeper/tmp/foo > BitKeeper/tmp/P
+diff -ruN foo BitKeeper/tmp/foo > BitKeeper/tmp/P
 bk import $Q -tpatch -p0 BitKeeper/tmp/P . || fail
 echo OK
 
@@ -179,7 +179,7 @@ echo $N Make sure a patch creating a file does not overwrite ........$NL
 cd "$HERE/EDIT"
 mkdir a b
 echo 'I am the patch file being imported.' > a/extra
-bk diff -Nur a b > BitKeeper/tmp/P
+diff -Nur a b > BitKeeper/tmp/P
 rm -rf a b
 echo hi mom > extra
 cp extra BitKeeper/tmp
@@ -227,7 +227,7 @@ cat > "$HERE/B/bar" <<EOF
 EOF
 # force a delete event for "foo"
 rm -f "$HERE/B/foo"
-bk diff -Nur A B > "$HERE/patch"
+diff -Nur A B > "$HERE/patch"
 cd "$HERE/EDIT"
 bk get $Q -r+ -p foo > foo.ref
 bk import $Q -tpatch -R "$HERE/patch" "$HERE/EDIT" \
@@ -257,7 +257,7 @@ bk export -tplain -r+ "$HERE/EDIT" "$HERE/A"
 bk export -tplain -r+ "$HERE/EDIT" "$HERE/B"
 chmod +w "$HERE/A/bar" "$HERE/B/bar" "$HERE/B/foo"
 echo E >> "$HERE/B/bar"
-bk diff -Nur A B > "$HERE/patch"
+diff -Nur A B > "$HERE/patch"
 echo E >> "$HERE/A/bar"
 cat >"$HERE/B/bar" <<EOF
 B
@@ -265,7 +265,7 @@ C
 D
 E
 EOF
-bk diff -Nur A B >> "$HERE/patch"
+diff -Nur A B >> "$HERE/patch"
 cd "$HERE/EDIT"
 bk import $Q -tpatch  "$HERE/patch"  "$HERE/EDIT" || fail
 cat > bar.ref <<EOF
@@ -387,11 +387,11 @@ mkdir -p import_new/src
 echo "foo-new" > X
 bk undos X >  "$HERE/import_new/src/foo.c"
 rm import_dir/src/link
-bk diff -Nru import_dir import_new > test_patch || : # legitimately exits 1
+diff -Nru import_dir import_new > test_patch || : # legitimately exits 1
 ( echo patch; echo no ) | bk import test_patch project > import.out 2>&1
 cd "$HERE/project/src"
 bk get $Q foo.c
-bk diff -u foo.c "$HERE/import_new/src/foo.c"
+bk ndiff -u foo.c "$HERE/import_new/src/foo.c"
 cmp -s foo.c "$HERE/import_new/src/foo.c"
 U=`bk prs -r+ -h -d:P: foo.c`
 if [ X$U != Xpatch -a X$U != Xbk ] 
@@ -407,7 +407,7 @@ bk export ../export
 cd ..
 cp -R export export2
 rm -f export2/src/foo.c
-bk diff -Nru export export2 > test_patch || : # legitimately exits 1
+diff -Nru export export2 > test_patch || : # legitimately exits 1
 ( echo patch; echo no ) | bk import test_patch project > import.out 2>&1
 cd project
 if bk _test -f src/SCCS/s.foo
@@ -441,7 +441,7 @@ cd "$HERE"
 cp -R import1 import2
 echo bar >> import2/src/foo.c
 echo baz > import2/src/baz.c
-bk diff -Nur import1 import2 > patch || : # legitimately exits 1
+diff -Nur import1 import2 > patch || : # legitimately exits 1
 bk clean $Q projc/src/foo.c || fail
 bk import -tpatch $Q -f patch projc || fail
 test -f projc/src/foo.c || fail
@@ -812,7 +812,7 @@ EOF
 bk new $Q foo.rej data
 bk commit $Q -ywah
 cat > "$HERE/patch" <<EOF
-bk diff -Nru a/data b/data
+diff -Nru a/data b/data
 --- a/data   Sun Mar  3 21:37:06 2002
 +++ b/data   Sun Mar  3 21:37:17 2002
 @@ -1,4 +1,4 @@
@@ -835,7 +835,7 @@ echo OK
 
 echo $N Make sure that patch rejects are still caught ...............$NL
 cat > "$HERE/patch" <<EOF
-bk diff -Nru a/data b/data
+diff -Nru a/data b/data
 --- a/data   Sun Mar  3 21:37:06 2002
 +++ b/data   Sun Mar  3 21:37:17 2002
 @@ -1,4 +1,4 @@

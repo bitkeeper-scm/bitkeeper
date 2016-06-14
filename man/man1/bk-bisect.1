@@ -162,7 +162,7 @@ The test program would not need to build anything, it just looks like this:
 .DS
 #!/bin/sh
 
-bk co -q the-file || exit 3 # skip if we can't get the-file
+bk get -q the-file || exit 3 # skip if we can't get the-file
 
 # grep -q exits 0 if a match is found
 grep -q "THE STRING" the-file

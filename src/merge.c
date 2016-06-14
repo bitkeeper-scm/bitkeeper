@@ -95,14 +95,13 @@ do_merge(char *files[3])
 	int	rc;
 	char	*new_av[8];
 
-	new_av[0] = "bk";
-	new_av[1] = "diff3";
-	new_av[2] = "-E";
-	new_av[3] = "-am";
-	new_av[4] = files[0];
-	new_av[5] = files[1];
-	new_av[6] = files[2];
-	new_av[7] = 0;
+	new_av[0] = "diff3";
+	new_av[1] = "-E";
+	new_av[2] = "-am";
+	new_av[3] = files[0];
+	new_av[4] = files[1];
+	new_av[5] = files[2];
+	new_av[6] = 0;
 
 	rc = spawnvp(_P_WAIT, new_av[0], new_av);
 

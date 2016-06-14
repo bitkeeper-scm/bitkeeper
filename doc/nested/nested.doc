@@ -2,11 +2,11 @@
 
 =head2 Introduction
 
-BitKeeper 5.0 introduces a new feature, BK/Nested.  BK/Nested is
-technology that provides product and product line development support.
-A product is a collection of repositories, called components, that are
-grouped together and move in lock step.  Clones of a nested collection
-may be fully or partially populated with components.
+BitKeeper has had, since bk-5.0, a feature called Nested Collections or
+BK/Nested.  BK/Nested is technology that provides product and product line
+development support.  A product is a collection of repositories, called
+components, that are grouped together and move in lock step.  Clones of
+a nested collection may be fully or partially populated with components.
 
 A product line is a development effort which spans multiple related
 products.  In most cases, each product in a product line reuses some
@@ -326,13 +326,27 @@ The "bk repocheck" command is built this, it is similar to this:
 
 There are three ways to create a nested collection:
 
-<ul><li>
-create a new empty product repository with bk setup -P
-</li><li>
-split an existing repository into a collection with bk partition
-</li><li>
-clone an existing product and newroot it to create a different product
-</li></ul>
+=item Empty product
+
+=over 4
+Use C<bk setup -P> to create a new empty product repository.
+=back
+
+=item Split an existing repository
+
+=over4
+Use C<bk partition> to split an existing repository into a nested collection.
+Note that C<bk partition> may be used repeatedly so that you can migrate
+people from a monolithic repository to a nested collection, see the man
+page for partition.
+=back
+
+=item Product line
+=over4
+
+If you want to create a new product based on an old one, clone the product
+and C<bk newroot> it.
+=back
 
 =head2 Best practices when creating a nested collection
 
@@ -343,15 +357,31 @@ may be thought of as the container in which the components reside.
 =head3 What goes in the product?
 
 While the product may be thought of as just a container, it will usually 
-have a small set of files.  These files may be
+have a small set of files.  These files may be:
 
-<ul><li>
-Build infrastructure, i.e., C<Makefile, README, INSTALL>.
-</li><li>
-Triggers (the components inherit the product triggers by default).
-</li><li>
-BitKeeper infrastructure, such as C<BitKeeper/etc/config>, also inherited.
-</li></ul>
+=item Build infrastructure
+=over4
+C<Makefile, README, INSTALL>, etc.
+=back
+=item Triggers
+=over 4
+For notification after a commit, license enforcement (we check for
+Apache 2), etc.
+Note that the components inherit the product triggers by default.
+=back
+=item Configuration
+=over4
+BitKeeper configuration in C<BitKeeper/etc/config>.  This is typically
+only set in the product as it is inherited by the components automatically.
+However, suppose you had a component that was a number of large binaries 
+(in BAM)
+and you did not want those checked out by default, they are to be checked
+out manually so that you only fetch those that you need.
+In that case the product's configuration would be C<checkout:edit>
+or C<checkout:get> but the component would override that with
+C<checkout:last> or C<checkout:none>.  (This is a little contrived since
+we have a BAM_checkout mode.)
+=back
 
 In general, you don't want much more than that in the product.  The content
 wants to live in the components since components may be reused in other
@@ -761,4 +791,54 @@ slower.
     ALL
     PRODUCT
 
+=head1 What doesn't work?
 
+You can see what does and doesn't work by looking at the documentation
+for any command that you think should be nested aware.  C<bk difftool>
+is a good example, it would be pretty bad if that didn't work across
+repository boundries.  If the command has a C<-S> option, it is nested
+aware (it's useful to know that all the command documentation is in
+C<`bk bin`/bkhelp.txt>, you can look at that with $EDITOR or grep, etc.)
+
+=head2 Commands
+
+=item bk send/receive
+=over 4
+
+These commands currently work on a single repository at a time;
+fixing it is not hard, just hasn't been a priority.
+
+=back
+=item bk bam
+=over 4
+
+Single repository only currently.  This is a utility program that is rarely
+used by users.  
+
+Work around:
+
+    bk --each-repo bam <subcmd>
+
+=back
+=head2 Renames
+
+=item Component renames
+=over 4
+
+These are currently not supported.  It would not be very hard to add
+support for this, it's just not been a priority.
+
+=back
+=item Cross component file renames
+=over 4
+
+File renames currently only work within a repository, renaming files 
+across repository boundries is not supported.  Fixing this in the 
+general case is fairly hard (think about components that have been 
+detached but the file is no longer there).
+
+The work around, which is clunky, is to C<bk cp -f> the file to 
+the new location and then C<bk rm> the old file.  The problem with
+this is that any updates to the old file need to be manually patched
+over to the new location.
+=back

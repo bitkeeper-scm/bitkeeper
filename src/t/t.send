@@ -71,7 +71,7 @@ rm -f copy/BitKeeper/etc/csets-in
 rm -f project/BitKeeper/log/*
 bk _rm -r project/BitKeeper/tmp/SCCS
 rm -f copy/BitKeeper/log/*
-bk diff -r project copy > diff$$
+diff -r project copy > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
 
@@ -87,7 +87,7 @@ do	case "$x" in
 	esac
 done ) > p1
 bk send $Q -  | bk unwrap > p2
-bk diff p1 p2
+bk ndiff p1 p2
 if [ $? != 0 ]; then echo Failed because of diffs; exit 1; fi
 rm -f p1 p2
 echo OK
@@ -104,7 +104,7 @@ do	case "$x" in
 	esac
 done ) > p1
 bk send $Q -  | bk unwrap > p2
-bk diff p1 p2
+bk ndiff p1 p2
 if [ $? != 0 ]; then echo Failed because of diffs; exit 1; fi
 rm -f p1 p2
 echo OK
@@ -121,7 +121,7 @@ do	case "$x" in
 	esac
 done ) > p1
 bk send $Q -  | bk unwrap > p2
-bk diff p1 p2
+bk ndiff p1 p2
 if [ $? != 0 ]; then echo Failed because of diffs; exit 1; fi
 rm -f p1 p2
 echo OK
@@ -141,7 +141,7 @@ rm -f project/BitKeeper/log/cmd uu/BitKeeper/log/cmd
 rm -f uu/BitKeeper/etc/csets-in
 rm -f project/BitKeeper/log/*
 rm -f uu/BitKeeper/log/*
-bk diff -r project uu > diff$$
+diff -r project uu > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
 
@@ -163,7 +163,7 @@ rm -f project/BitKeeper/log/cmd csets/BitKeeper/log/cmd
 rm -f csets/BitKeeper/etc/csets-in
 rm -f project/BitKeeper/log/*
 rm -f csets/BitKeeper/log/*
-bk diff -r project csets > diff$$
+diff -r project csets > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
 
@@ -209,7 +209,7 @@ rm -f project/BitKeeper/log/cmd csets/BitKeeper/log/cmd
 rm -f csets/BitKeeper/etc/csets-in
 rm -f project/BitKeeper/log/*
 rm -f csets/BitKeeper/log/*
-bk diff -r project csets > diff$$
+diff -r project csets > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
 
@@ -219,7 +219,7 @@ bk repocheck $Q
 KEY="`bk changes -kr1.5`"
 bk send -qr"$KEY".. - > KEYS
 bk send -qr1.6,1.7 - > LIST
-bk diff KEYS LIST > GOT
+bk ndiff KEYS LIST > GOT
 cat <<EOF > WANT
 2c2
 < $KEY..
@@ -241,7 +241,7 @@ rm -f project/BitKeeper/log/cmd csets/BitKeeper/log/cmd
 rm -f csets/BitKeeper/etc/csets-in
 rm -f project/BitKeeper/log/*
 rm -f csets/BitKeeper/log/*
-bk diff -r project csets > diff$$
+diff -r project csets > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
 
@@ -256,6 +256,6 @@ rm -f project/BitKeeper/log/cmd csets/BitKeeper/log/cmd
 rm -f csets/BitKeeper/etc/csets-in
 rm -f project/BitKeeper/log/*
 rm -f csets/BitKeeper/log/*
-bk diff -r project csets > diff$$
+diff -r project csets > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK

@@ -154,6 +154,7 @@ upgrade_main(int ac, char **av)
 	indexfn = bktmp(0);
 	if (upgrade_fetch("INDEX", indexfn)) {
 		fprintf(stderr, "upgrade: unable to fetch INDEX\n");
+		unlink(indexfn);
 		free(indexfn);
 		goto out;
 	}

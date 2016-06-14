@@ -33,7 +33,7 @@ echo $N Test per user ignore file ...................................$NL
 bk ignore > ../baseline
 echo '*.junk' > "`bk dotbk`/ignore"
 bk ignore > ../advanced
-bk diff ../baseline ../advanced | sed "s?$HERE?HERE?" > GOT
+bk ndiff ../baseline ../advanced | sed "s?$HERE?HERE?" > GOT
 cat <<EOF > WANT
 3a4,6
 > 

@@ -226,7 +226,7 @@ cat >WANT <<EOF
 F
 G
 EOF
-bk diff -q --ignore-trailing-cr WANT GOT >OUT && \
+bk ndiff -q --ignore-trailing-cr WANT GOT >OUT && \
 	fail -f OUT you fixed a bug
 echo failed \(bug np-hard\)
 

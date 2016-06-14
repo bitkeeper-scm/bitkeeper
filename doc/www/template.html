@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+
 <html>
 <head>
 <title>%TITLE%</title>
@@ -6,10 +8,13 @@
     body {
 	margin: 0;
 	background: #FFFFFF;
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-size: 14px;
+	line-height: 1.42857143;
     }
 
     dt {
-	font-size: large;
+	font-size: medium;
     }
 
     .code {
@@ -19,15 +24,21 @@
 	border: 1px solid #CCCCCC;
     }
 
-    #toc {
+    #index {
 	color: #CCCCCC;
+	background: #304080;
 	font-size: .9em;
-	padding-left: 20px;
 	padding-right: 10px;
+	overflow: auto;
+	float: left;
+	width: 25em;
+	height: 100%;
+	position: fixed;
     }
 
-    #toc ul {
-	padding-left: 20px;
+    #toc {
+	margin: 0;
+	padding: 0 5px 10px 20px;
 	color: #CCCCCC;
     }
 
@@ -37,50 +48,32 @@
     }
 
     #logo {
+	margin: 0 auto;
 	text-align: center;
-	background: #304080;
-	background-position: center;
-	background-repeat: no-repeat;
-	background-image: url('images/delta.gif');
-    }
-
-    .hshade {
-	width: 10px;
-	background-image: url('images/hshade.gif');
-    }
-
-    #toctd {
-	background: #304080;
-	padding: 10px 5px;
-	vertical-align: top;
-    }
-
-    #header {
-	border: 0;
-	height: 90px;
-	background-repeat: no-repeat;
-	background-image: url('images/pageheader.jpg');
     }
 
     #content {
+	background: #fff;
 	padding: 20px 10px;
+	margin-left: 25em;
+	float: left;
     }
 </style>
 </head>
 
 <body>
-<table width="100%" cellpadding="0" cellspacing="0">
-<tr>
-    <td id="logo"></td>
-    <td class="hshade"></td>
-    <td id="header"></td>
-</tr>
+  <div id='index'>
+    <div id='index-fixed'>
+      <div id='logo'>
+	<a href='#'><img src='images/delta.gif' width='81'/></a>
+      </div>
 
-<tr>
-    <td id="toctd">%TOC%</td>
-    <td class="hshade"></td>
-    <td id="content">%BODY%</td>
-</tr>
-</table>
+      %TOC%
+    </div>
+  </div>
+
+  <div id='content'>
+    %BODY%
+  </div>
 </body>
 </html>

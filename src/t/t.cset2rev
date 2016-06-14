@@ -93,9 +93,9 @@ test `ls BitKeeper/tmp/cset* | wc -l` -ne 5 && {
 }
 
 # but a different 5	# this shows one file was replaced
-C=`bk diff BEFORE AFTER | wc -l`
+C=`bk ndiff BEFORE AFTER | wc -l`
 test $C -eq 4 || {
-     bk diff BEFORE AFTER
+     bk ndiff BEFORE AFTER
      fail
 }
 echo OK

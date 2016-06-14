@@ -82,7 +82,7 @@ to test.c:
 .DS
 static char *what = "%W%";
 .DE
-When test.c is checked out in read-only mode (i.e. "bk co"), the
+When test.c is checked out in read-only mode (i.e. "bk get"), the
 keyword will be expanded to:
 .DS
 static char *what = "@(#)test.doc 1.2";
@@ -94,20 +94,20 @@ string when the program is compiled into a binary executable.
 Before checking in the file, you might want to see what changes you
 have made to the file since checking it out:
 .DS
-master$ bk diffs
+master$ bk diff
 .DE
 When you are happy with your changes and want to commit them, type:
 .DS
-master$ bk ci test.c
+master$ bk delta test.c
 .DE
 An alternative to doing 
-.BR bk diffs ,
+.BR bk diff ,
 is to use the 
 .B -p 
 option when
 checking in a file.  For example, typing:
 .DS
-master$ bk ci -p test.c
+master$ bk delta -p test.c
 .DE
 Will show the following:
 .DS
@@ -129,7 +129,7 @@ A popular alternative to the command line check-in is "citool", a
 graphical tool which lists the files needing a check-in, provides
 a window to type in comments, and another window showing the diffs.
 .LP
-After checking in files with "ci", you may want to see what files need
+After checking in files with "delta", you may want to see what files need
 to be added to the changeset. Type "bk pending" to show all files checked
 in, but not yet committed to a changeset.
 .DS
@@ -185,7 +185,7 @@ part of a changeset - it throws them out of the newly created repository.
 .SH "III. WORKING WITH A CLONED REPOSITORY"
 .LP
 Once you have a clone of the master repository, you can do work as if
-you were in the master repository. (see bk ci, bk edit)
+you were in the master repository. (see bk delta, bk edit)
 .LP
 In this section we are going to show how to interact with the master
 repository and how to deal with merging and conflicts. For this demo,
@@ -285,7 +285,7 @@ above the printf.
 .DE
 Save the file, check it in, and then commit it to a changeset.
 .DS
-master$ bk ci -y"added variable" file1.c
+master$ bk delta -y"added variable" file1.c
 master$ bk commit -Yfile1.c
 .DE
 Now go back to the slave, and make a slightly different change to
@@ -303,7 +303,7 @@ file.c. Enter "int k;" instead of "int j;".
 
         ======
 
-slave$ bk ci -y"added variable" file1.c
+slave$ bk delta -y"added variable" file1.c
 slave$ bk commit -Yfile1.c
 .DE
 Now synchronize with the master. We can use the -t option to 

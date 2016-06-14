@@ -12,13 +12,6 @@ bk \- \*(BK configuration management system front end
 .SH DESCRIPTION
 .B bk
 is the front end to all \*(BK commands.
-All \*(BK commands are prefixed with 
-.B bk
-in order to avoid ambiguity with
-non-\*(BK commands that might be already installed on the system such as 
-.B bk co
-and
-.BR "bk ci" .
 .LP
 If you are looking for instructions on how to get started, try running the
 test drive at
@@ -171,11 +164,11 @@ In a standalone repository this option is similar to
 .BR \-Ur .
 For example, to check out your collection:
 .DS
-$ bk -U co
+$ bk -U get
 .DE
 To see all unchecked in changes:
 .DS
-$ bk -cU diffs
+$ bk -cU diff
 .DE
 See \-s above for ways to limit the set of files processed in a nested
 collection.
@@ -233,13 +226,13 @@ Unless otherwise documented, all \*(BK commands return exit status
 .LP
 The following commands are equivalent:
 .DS 6
-bk -A co
-bk -R gfiles | bk -R co -
-cd \`bk root\`; bk gfiles | bk co -
+bk -A get
+bk -R gfiles | bk -R get -
+cd \`bk root\`; bk gfiles | bk get -
 .DE
 An example usage for generating a patch of all new and/or changed files:
 .DS
-$ bk -cxU diffs -Nu
+$ bk -cxU diff -Nu
 .DE
 .SH "SEE ALSO"
 .SA gfiles
