@@ -46,12 +46,11 @@ export BK_USER=trini BK_HOST=butthead.com
 ME=`bk getuser -r`
 bk import $Q -Cftpatch PATCH proj
 cd proj
-export BK_IMPORTER=`bk getuser -r`
 bk commit $Q -y'Should be trini@butthead.com[torvalds]'
-bk changes -vr+ -nd':HOST:[:IMPORTER:]' | bk undos > GOT
+bk changes -vr+ -nd':FULLUSER:@:HOST:' | bk undos > GOT
 bk undos > ../WANT <<EOF
-butthead.com[$ME]
-butthead.com[$ME]
+trini/$ME@butthead.com
+trini/$ME@butthead.com
 EOF
 cmp -s GOT ../WANT || {
 	echo failed to set the hostname properly
@@ -71,12 +70,11 @@ cd "$HERE"
 export BK_USER=trini BK_HOST=headbutt.com
 bk import $Q -Cftpatch PATCH child
 cd child
-export BK_IMPORTER=`bk getuser -r`
 bk commit $Q -y'Should be trini@headbutt.com[lm]'
-bk changes -vr+ -nd':HOST:[:IMPORTER:]' | bk undos > GOT
+bk changes -vr+ -nd':HOST:' | bk undos > GOT
 bk undos > ../WANT <<EOF
-headbutt.com[$ME]
-headbutt.com[$ME]
+headbutt.com
+headbutt.com
 EOF
 cmp -s GOT ../WANT || {
 	echo failed to set the hostname properly
@@ -92,7 +90,6 @@ test `bk prs -hr+ -nd:FUDGE: file` -gt 1243730 || {
 echo OK
 
 echo $N Test pull of a double imported patch, should automerge ......$NL
-unset BK_IMPORTER
 unset BK_USER
 unset BK_HOST
 unset USER

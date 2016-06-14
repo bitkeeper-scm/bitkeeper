@@ -179,14 +179,14 @@ echo '$Id$' > date
 bk ci $S -y date
 bk get $S date
 if writable date; then echo date is writable and should not be; exit 1; fi
-if [ '$Id$' != "`cat date`" ]; then echo Failed.; exit 1; fi
+if [ '$Id$' != "`cat date`" ]; then fail; fi
 echo OK
 
 echo $N RCS keywords should work w/ -fRCS ...........................$NL
 bk admin $Q -fRCS date
 bk get $S date
 if writable date; then echo date is writable and should not be; exit 1; fi
-if [ '$Id$' = "`cat date`" ]; then echo Failed.; exit 1; fi
+if [ '$Id$' = "`cat date`" ]; then fail; fi
 echo OK
 
 echo $N Get -ep should fail .........................................$NL
@@ -233,34 +233,34 @@ echo OK
 echo $N Make sure get -ab works .....................................$NL
 echo HI > T
 bk ci $Q -i T
-if [ "`bk get $S -pab T`" != "T	HI" ]; then echo Failed.; exit 1; fi
+if [ "`bk get $S -pab T`" != "T	HI" ]; then fail; fi
 echo OK
 
 echo $N Make sure get -ar works .....................................$NL
-if [ "`bk get $S -par T`" != "1.1	HI" ]; then echo Failed.; exit 1; fi
+if [ "`bk get $S -par T`" != "1.1	HI" ]; then fail; fi
 echo OK
 
 echo $N Make sure get -aO works .....................................$NL
 name=`bk prs -r+ -hnd:MD5KEY: T`
-if [ "`bk get $S -paO T`" != "$name.1	HI" ]; then echo Failed.; exit 1; fi
+if [ "`bk get $S -paO T`" != "$name.1	HI" ]; then fail; fi
 echo OK
 
 echo $N Make sure get -au works .....................................$NL
-if [ "`bk get $S -pau T`" != "bk/$USER	HI" ]; then echo Failed.; exit 1; fi
+if [ "`bk get $S -pau T`" != "bk	HI" ]; then fail; fi
 echo OK
 
 echo $N Make sure get -Ab works .....................................$NL
 echo HI > T
 chmod -w T
-if [ "`bk get $S -pAb T`" != "T     | HI" ]; then echo Failed.; exit 1; fi
+if [ "`bk get $S -pAb T`" != "T     | HI" ]; then fail; fi
 echo OK
 
 echo $N Make sure get -Ar works .....................................$NL
-if [ "`bk get $S -pAr T`" != "1.1   | HI" ]; then echo Failed.; exit 1; fi
+if [ "`bk get $S -pAr T`" != "1.1   | HI" ]; then fail; fi
 echo OK
 
 echo $N Make sure get -Au works .....................................$NL
-test "`bk get $S -pAu T | sed 's/ +/\\s/g'`" != "bk/$USER\s|\sHI" || {
+test "`bk get $S -pAu T | sed 's/ +/\\s/g'`" != "bk\s|\sHI" || {
 	echo Failed
 	bk get $S -pAu T | sed 's/ +/\\s/g'
 	exit 1

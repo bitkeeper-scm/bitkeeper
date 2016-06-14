@@ -645,7 +645,6 @@ sccs_inherit(sccs *s, ser_t d)
 	unless (XFLAGS(s, d)) XFLAGS(s, d) = XFLAGS(s, p);
 
 	if (HAS_USERHOST(s, p)) {
-		assert(HAS_USERHOST(s, d));
 		if (!strchr(USERHOST(s, d), '@') &&
 		    (phost = HOSTNAME(s, p)) && *phost) {
 			/* user but no @host, so get host from parent */
@@ -1291,34 +1290,92 @@ delta_rev(sccs *s, ser_t d)
 	}
 }
 
+static	char	*userbuf;	/* one deep, last user returned */
+static	char	*hostbuf;	/* one deep, last hostname returned */
+
 /*
  * Return the user for this delta.  Used by USER() macro
+ * returns "user" or "user/realuser" as a static one deep buffer.
  */
 char *
-delta_user(sccs *s, ser_t d)
+delta_fulluser(sccs *s, ser_t d)
 {
 	char	*u, *h;
-	static	char	buf[MAXLINE];
+
+	FREE(userbuf);
 
 	u = USERHOST(s, d);
 	if (h = strchr(u, '@')) {
-		strncpy(buf, u, h-u);
-		buf[h-u] = 0;
-		u = buf;
+		userbuf = strndup(u, h-u);
+		return (userbuf);
 	}
 	return (u);
 }
 
 /*
+ * Return "user" for the current delta. (no realuser)
+ * the data is returned as a one-deep static buffer.
+ */
+char *
+delta_user(sccs *s, ser_t d)
+{
+	char	*u;
+
+	FREE(userbuf);
+
+	u = USERHOST(s, d);
+	userbuf = strndup(u, strcspn(u, "/@"));
+	return (userbuf);
+}
+
+/*
  * Return the hostname for this delta.  Used by HOSTNAME() macro
+ * returns "host" or "host/realhost" as a static one deep buffer
+ */
+char *
+delta_fullhost(sccs *s, ser_t d)
+{
+	char	*h, *p;
+
+	FREE(hostbuf);
+
+	/* userhost = user/realuser@host/realhost[importer] */
+	if (h = strchr(USERHOST(s, d), '@')) {
+		++h;
+		if (p = strchr(h, '[')) {
+			/* [importer] is only on old versions of bk */
+			/* bk-7.2.1ce and before */
+			hostbuf = strndup(h, p-h);
+			return (hostbuf);
+		}
+		return (h);	/* ptr to heap */
+	} else {
+		return ("");
+	}
+}
+
+/*
+ * Return "host" for the current delta. (no realhost)
+ * the data is returned as a one-deep static buffer.
  */
 char *
 delta_host(sccs *s, ser_t d)
 {
 	char	*h;
+	int	c;
 
-	if (HAS_USERHOST(s, d) && (h = strchr(USERHOST(s, d), '@'))) {
-		return (h+1);
+	FREE(hostbuf);
+
+	/* userhost = user/realuser@host/realhost[importer] */
+	if (h = strchr(USERHOST(s, d), '@')) {
+		++h;
+		c = strcspn(h, "/[");
+		if (h[c]) {
+			hostbuf = strndup(h, c);
+			return (hostbuf);
+		} else {
+			return (h); /* ptr to heap */
+		}
 	} else {
 		return ("");
 	}
@@ -6967,7 +7024,7 @@ get_reg(sccs *s, char *printOut, FILE *out, int flags, ser_t d, ser_t m,
 		for (d2 = TREE(s); d2 <= TABLE(s); d2++) {
 			len = strlen(REV(s, d2));
 			if (len > s->revLen) s->revLen = len;
-			len = strlen(USER(s, d2));
+			len = strlen(delta_user(s, d2));
 			if (len > s->userLen) s->userLen = len;
 		}
 
@@ -7812,7 +7869,7 @@ prefix(sccs *s, ser_t d, int whodel, u32 flags, int lines, u32 seq, char *name,
 			fputs(buf, out);
 		}
 		if (flags&GET_USER) {
-			fprintf(out, "%-*s ", s->userLen, USER(s, d));
+			fprintf(out, "%-*s ", s->userLen, delta_user(s, d));
 		}
 		if (flags&GET_REVNUMS) {
 			int	len = fprintf(out, "%s", REV(s, d));
@@ -7841,7 +7898,7 @@ prefix(sccs *s, ser_t d, int whodel, u32 flags, int lines, u32 seq, char *name,
 			    YEAR4(s) ? "%Y/%m/%d\t" : "%y/%m/%d\t", s, d);
 			fputs(buf, out);
 		}
-		if (flags&GET_USER) fprintf(out, "%s\t", USER(s, d));
+		if (flags&GET_USER) fprintf(out, "%s\t", delta_user(s, d));
 		if (flags&GET_REVNUMS) {
 			fputs(REV(s, d), out);
 			if (whodel > 0) {
@@ -8589,9 +8646,11 @@ delta_table(sccs *s, int willfix)
 			fputs(buf, out);
 		}
 
-		if (((t = HOSTNAME(s, d)) && *t) &&
-		    (!parent || !streq(t, HOSTNAME(s, parent)))) {
-			sprintf(buf, "\001cH%s\n", t);
+		if ((t = strchr(USERHOST(s, d), '@')) &&
+		    (!parent ||
+		     !(p = strchr(USERHOST(s, parent), '@')) ||
+		     !streq(t, p))) {
+			sprintf(buf, "\001cH%s\n", t+1);
 			fputs(buf, out);
 		}
 
@@ -10201,7 +10260,7 @@ sccs_dInit(ser_t d, char type, sccs *s, int nodefault)
 		unless ((t = USER(s, d)) && *t) userArg(s, d, "Anon");
 	} else {
 		project	*proj = s->proj;
-		char	*imp, *user, *host;
+		char	*user, *host;
 		int	changed = 0;
 
 		if (CSET(s) && proj_isComponent(proj)) {
@@ -10212,13 +10271,7 @@ sccs_dInit(ser_t d, char type, sccs *s, int nodefault)
 			changed = 1;
 		}
 		unless ((host = HOSTNAME(s, d)) && *host) {
-			if (imp = getenv("BK_IMPORTER")) {
-				user = aprintf("%s@%s[%s]",
-				    user, sccs_gethost(), imp);
-			} else {
-				user = aprintf("%s@%s",
-				    user, sccs_host());
-			}
+			user = aprintf("%s@%s", user, sccs_host());
 			changed = 1;
 		} else if (changed) {
 			user = aprintf("%s@%s", user, host);
@@ -15204,10 +15257,8 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	case KW_P: /* P */
 	case KW_USER: /* USER */ {
 		/* programmer */
-		if ((p = USER(s, d)) && *p) {
-			if (q = strchr(p, '/')) *q = 0;
+		if ((p = delta_user(s, d)) && *p) {
 			fs(p);
-			if (q) *q = '/';
 			return (strVal);
 		}
 		return (nullVal);
@@ -15885,18 +15936,8 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	case KW_HT: /* HT */
 	case KW_HOST: /* HOST */ {
 		/* host without any importer name */
-		if ((q = HOSTNAME(s, d)) && *q) {
-			if (p = strchr(q, '/')) {
-				*p = 0;
-				fs(q);
-				*p = '/';
-			} else if (p = strchr(q, '[')) {
-				*p = 0;
-				fs(q);
-				*p = '[';
-			} else {
-				fs(q);
-			}
+		if (q = delta_host(s, d)) {
+			fs(q);
 			return (strVal);
 		}
 		return (nullVal);
@@ -15905,10 +15946,6 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		if ((q = HOSTNAME(s, d)) && *q) {
 			if (p = strchr(q, '/')) {
 				fs(p+1);
-			} else if (p = strchr(q, '[')) {
-				*p = 0;
-				fs(q);
-				*p = '[';
 			} else {
 				fs(q);
 			}
@@ -15918,24 +15955,14 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	}
 	case KW_FULLHOST: /* FULLHOST */ {
 		if ((q = HOSTNAME(s, d)) && *q) {
-			if (p = strchr(q, '[')) {
-				*p = 0;
-				fs(q);
-				*p = '[';
-			} else {
-				fs(q);
-			}
+			fs(q);
 			return (strVal);
 		}
 		return (nullVal);
 	}
 
 	case KW_IMPORTER: /* IMPORTER */ {
-		/* importer name */
-		if ((p = HOSTNAME(s, d)) && (p = strchr(p, '['))) {
-			while (*(++p) != ']') fc(*p);
-			return (strVal);
-		}
+		/* importer name, deprecated */
 		return (nullVal);
 	}
 

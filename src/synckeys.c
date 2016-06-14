@@ -24,7 +24,8 @@
 private void
 lod_probekey(sccs *s, ser_t d, u32 flags, FILE *f)
 {
-	int	i, j;
+	int	i;
+	ser_t	top = d;
 	char	key[MAXKEY];
 
 	/*
@@ -33,11 +34,13 @@ lod_probekey(sccs *s, ser_t d, u32 flags, FILE *f)
 	 */
 	fputs("@LOD PROBE@\n", f);
 	for (i = 1; d && (d != TREE(s)); i *= 2) {
-		for (j = i; d && --j; d = PARENT(s, d));
+		if (i - 1 > top) break;
+		while (d && (d > top - i + 1)) d = PARENT(s, d);
 		if (d) {
 			assert(!TAG(s, d));
 			sccs_pdelta(s, d, f);
 			putc('\n', f);
+			d = PARENT(s, d);
 		}
 	}
 

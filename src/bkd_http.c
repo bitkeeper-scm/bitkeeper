@@ -1146,7 +1146,7 @@ http_index(char *page)
 	}
 	time(&now);
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		if (user && !streq(user, USER(s, d))) continue;
+		if (user && !streq(user, delta_user(s, d))) continue;
 		if (TAG(s, d)) continue;
 		unless (ADDED(s, d) > 0) {
 			unless (d == TREE(s)) cm++;

@@ -509,7 +509,7 @@ fundecl_tail:
 	| T_PATTERN fundecl_tail1
 	{
 		VarDecl	*new_param;
-		Expr	*dollar1 = ast_mkId("$1", @2, @2);
+		Expr	*dollar1 = ast_mkId("$cmd", @2, @2);
 
 		$$ = $2;
 		$$->decl->id = ast_mkId($1, @1, @1);

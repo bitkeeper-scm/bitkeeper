@@ -127,12 +127,10 @@ import() {
 		then	echo import: no include/excludes allowed with patch files
 			Done 1
 		fi
-		export BK_IMPORTER=`bk getuser -r`
 	else	if [ ! -d "$1" ]
 		then	echo import: "$1" is not a directory
 			Done 1
 		fi
-		unset BK_IMPORTER
 	fi
 
 	case $TYPE in

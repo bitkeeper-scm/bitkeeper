@@ -533,7 +533,7 @@ canonical_num(char *num)
 				L_lval.s = ckstrdup(yytext);
 				return T_PATTERN;
 			}
-	$[0-9]+		{
+	$[0-9A-Za-z_]+	{
 				/* Regular expression submatches */
 				L_lval.s = ckstrdup(yytext);
 				return T_ID;

@@ -1604,14 +1604,11 @@ when the function is named like C<Myfunc_*>:
     }
 
 If C<Myfunc_*> is declared, then any call like C<Myfunc_x> becomes a
-call to C<Myfunc_*> where the string C<x> is put into the local
-variable C<$1> inside C<Myfunc_*>.  The remaining parameters are
+call to C<Myfunc_*> where the string C<x> is put into a special pre-defined local
+variable C<$cmd> inside C<Myfunc_*>.  The remaining parameters are
 handled normally.
 This gives you a way to handle a collection of sub-commands without
 having to declare each as a separate Little function.
-Note that this use of C<$1> clashes with regular expression captures
-(described later), so if you use both, you should save off C<$1>
-before using any such regular expressions.
 
 Note: we are going to change this to not conflict with regular expressions.
 

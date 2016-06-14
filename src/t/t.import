@@ -326,15 +326,15 @@ grep -q G foo || {
 	cat BitKeeper/tmp/PLOG
 	exit 1
 }
-U=akushner@bitmover.com+`bk getuser -r`
-test "`bk prs -hr+ -nd:P:@:HOST:+:IMPORTER: foo`" = "$U" || {
+U=akushner/`bk getuser -r`@bitmover.com
+test "`bk prs -hr+ -nd:FULLUSER:@:HOST: foo`" = "$U" || {
 	echo did not pick up email address, wanted $U
-	bk prs -r+ -nd':P:@:HOST:+:IMPORTER:' foo
+	bk prs -r+ -nd':FULLUSER:@:HOST:' foo
 	exit 1
 }
-test "`bk prs -hr+ -nd:P:@:HOST:+:IMPORTER: ChangeSet`" = "$U" || {
+test "`bk prs -hr+ -nd:FULLUSER:@:HOST: ChangeSet`" = "$U" || {
 	echo did not pick up email address, wanted $U
-	bk prs -r+ -nd':P:@:HOST:+:IMPORTER:' ChangeSet
+	bk prs -r+ -nd':FULLUSER:@:HOST:' ChangeSet
 	exit 1
 }
 bk changes -r+ > C
