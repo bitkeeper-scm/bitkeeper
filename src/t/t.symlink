@@ -355,3 +355,14 @@ SYMLINK -> ../project
 EOF
 cmpfiles GOT2 WANT
 echo OK
+
+echo $N Merge two symlink deletes in parallel .......................$NL
+bk commit $Q -ybase || fail
+bk clone $Q . ../proj4 || fail
+bk rm sym1 || fail
+bk commit $Q -y'del 1' || fail
+cd ../proj4
+bk rm sym1 || fail
+bk commit $Q -y'del 2' || fail
+bk pull $Q || fail
+echo OK

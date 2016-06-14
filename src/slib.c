@@ -17183,6 +17183,7 @@ tryMerge(sccs *s, ser_t local, ser_t remote)
 	unless (streq(PATHNAME(s, local), PATHNAME(s, remote))) return (1);
 	unless (XFLAGS(s, local) == XFLAGS(s, remote)) return (1);
 	unless (MODE(s, local) == MODE(s, remote)) return (1);
+	if (HAS_SYMLINK(s, local) || HAS_SYMLINK(s, remote)) return (1);
 
 	file = strneq(s->gfile, "RESYNC/", 7) ? s->gfile + 7 : s->gfile;
 	if (isConvergeFile(file)) return (1);
