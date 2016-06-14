@@ -251,13 +251,13 @@ bk ci $Q -ly2 1
 BK_USER=user1 BK_HOST=mach2.comp.com bk commit $Q -y2
 echo 3 > 1
 bk ci $Q -ly3 1
-BK_USER=user2 BK_IMPORTER=user3 BK_HOST=mach3.comp.com bk commit $Q -y3
+BK_USER=user2 BK_HOST=mach3.comp.com bk commit $Q -y3
 
 cd "$HERE"
 do_export project project.git || fail
 (cd project.git; git log --pretty='%an <%ae>|%cn <%ce>') | grep -v ^bk > OUT
 cat <<EOF > WANT
-three eee user <user3.name@something.com>|user 2 <user2@bar.com>
+user 2 <user2@bar.com>|user 2 <user2@bar.com>
 user1 <user1@foo.com>|user1 <user1@foo.com>
 user0 <user0@machine.comp.com>|user0 <user0@machine.comp.com>
 EOF

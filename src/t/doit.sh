@@ -342,6 +342,11 @@ setup_env()
 	# Use this to test timestamps and checkouts
 	_BK_DEVELOPER=YES
 	export _BK_DEVELOPER
+
+	# avoid nagging in regressions
+	BK_NEVER_NAG=YES
+	export BK_NEVER_NAG
+
 	unset BK_NO_TRIGGERS
 	#unset BK_UPGRADE_PLATFORM
 	unset BK_NOTTY

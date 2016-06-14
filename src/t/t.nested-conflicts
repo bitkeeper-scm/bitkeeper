@@ -94,8 +94,8 @@ cat <<EOF > WANT
     Local path:   gcc/b
     Remote path:  gcc/a
 gcc/real-collide has 1 conflict block
-   1 local lines by bk/$REAL
-   1 remote lines by bk/$REAL
+   1 local lines by bk
+   1 remote lines by bk
     GCA path:     prod
     Local path:   prod
     Remote path:  product

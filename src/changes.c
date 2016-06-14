@@ -1517,7 +1517,7 @@ want(sccs *s, ser_t e)
 		unless (match) return (0);
 	}
 	if (opts.notusers) {
-		char	*u = USER(s, e);
+		char	*u = delta_user(s, e);
 
 		if (p = strchr(u, '/')) *p = 0;
 		match = 0;
@@ -1528,7 +1528,7 @@ want(sccs *s, ser_t e)
 		if (match) return (0);
 	}
 	if (opts.users) {
-		char	*u = USER(s, e);
+		char	*u = delta_user(s, e);
 
 		if (p = strchr(u, '/')) *p = 0;
 		match = 0;

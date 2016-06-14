@@ -64,7 +64,6 @@ private	void	gitLine(opts *op, gitOp **oplist,
     char *prefix1, char *prefix2);
 private	int	gitExport(opts *op);
 private	hash	*loadAuthors(char *file);
-private	void	authorInfo(opts *op, sccs *s, ser_t d);
 private	void	printUserDate(opts *op, sccs *s, ser_t d);
 private void	printOp(struct gitOp op, FILE *f);
 private void	data(sccs *s, ser_t d, FILE *f);
@@ -615,7 +614,8 @@ gitExport(opts *op)
 		if (op->baserepo && !(FLAGS(cset, d) & D_RED)) continue;
 		printf("commit refs/heads/%s\n", op->branch);
 		printf("mark :%llu\n", mark + d);
-		authorInfo(op, cset, d);
+		printf("committer ");
+		printUserDate(op, cset, d);
 
 		if (op->addMD5Keys || op->md5KeysAsSubject) {
 			sccs_md5delta(cset, d, md5key);
@@ -809,52 +809,21 @@ private void
 printUserDate(opts *op, sccs *s, ser_t d)
 {
 	char	*tz;
-	char	*userhost = USERHOST(s, d);
 	char	*user, *host;
-	int	ulen, hlen;
 
-	tz = gitTZ(s, d);
-	user = userhost;
-	ulen = strcspn(user, "/@");
-	if (hash_fetch(op->authors, user, ulen)) {
+	user = delta_user(s, d);;
+	if (hash_fetch(op->authors, user, strlen(user))) {
 		printf("%.*s", op->authors->vlen, (char *)op->authors->vptr);
 	} else {
 		/* :USER: <:USER:@:HOST:> */
-		if (host = strchr(userhost, '@')) {
-			++host;
-		} else {
+		unless (host = delta_host(s, d)) {
 			host = "NOHOST.com";
 		}
-		hlen = strcspn(host, "/[");
-		printf("%.*s <%.*s@%.*s>",
-		    ulen, user, ulen, user, hlen, host);
+		printf("%s <%s@%s>", user, user, host);
 	}
+	tz = gitTZ(s, d);
 	printf(" %d %s\n", (int)DATE(s, d), tz);
 	free(tz);
-}
-
-private void
-authorInfo(opts *op, sccs *s, ser_t d)
-{
-	char	*tz;
-	char	*userhost = USERHOST(s, d);
-	char	*import;
-
-	/* userhost = user/realuser@host/realhost[importer] */
-
-	/* [importer] only works with author map */
-	if ((import = strchr(userhost, '[')) &&
-	    hash_fetch(op->authors, import+1, strlen(import)-2)) {
-		/* need separate author line */
-		tz = gitTZ(s, d);
-		printf("author %.*s %d %s\n",
-		    op->authors->vlen, (char *)op->authors->vptr,
-		    (int)DATE(s, d), tz);
-		free(tz);
-	}
-	printf("committer ");
-
-	printUserDate(op, s, d);
 }
 
 private void

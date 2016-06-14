@@ -792,8 +792,7 @@ keyExists(char *rk, char *path)
 private	int
 newFileEnv(sccs *cset, char **user, char **host)
 {
-	char	c = 0, *p, *dtz;
-	char	*u;
+	char	*p, *dtz;
 	ser_t	d;
 
 	if (p = getenv("BK_USER")) p = strdup(p);
@@ -806,17 +805,8 @@ newFileEnv(sccs *cset, char **user, char **host)
 	safe_putenv("BK_DATE_TIME_ZONE=%s", dtz+2);
 	free(dtz);
 
-	u = USER(cset, d);
-	if (p = strchr(u, '/')) *p = 0;
-	safe_putenv("BK_USER=%s", u);
-	if (p) *p = '/';
-	if ((p = strchr(HOSTNAME(cset, d), '/')) ||
-	    (p = strchr(HOSTNAME(cset, d), '['))) {
-		c = *p;
-		*p = 0;
-	}
-	safe_putenv("BK_HOST=%s", HOSTNAME(cset, d));
-	if (p) *p = c;
+	safe_putenv("BK_USER=%s", delta_user(cset, d));
+	safe_putenv("BK_HOST=%s", delta_host(cset, d));
 	putenv("_BK_NO_UNIQ=1");
 	putenv("BK_IMPORT=");
 	return (d);

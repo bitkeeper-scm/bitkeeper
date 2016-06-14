@@ -136,9 +136,12 @@ findkey(sccs *s, look l)
 		if (l.cksum) unless (SUM(s, d) == l.cksum) continue;
 		if (l.utc) unless (DATE(s, d) == l.utc) continue;
 		if (l.path) unless (streq(PATHNAME(s, d), l.path)) continue;
-		if (l.user) unless (streq(USER(s, d), l.user)) continue;
-		if (l.host) unless (streq(HOSTNAME(s, d), l.host)) continue;
+		if (l.user) unless (streq(delta_user(s, d), l.user)) continue;
+		if (l.host) unless (streq(delta_host(s, d), l.host)) continue;
+
+		// XXX this is pretty wrong
 		if (l.email) unless (streq(USERHOST(s, d), l.email)) continue;
+
 		printf("%s|%s", s->gfile, REV(s, d));
 		if (l.pkey) {
 			sccs_sdelta(s, d, key);

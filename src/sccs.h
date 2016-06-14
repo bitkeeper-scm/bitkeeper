@@ -670,9 +670,16 @@ typedef struct {
 #define	COMMENTS(s, d)	((s)->heap.buf + COMMENTS_INDEX(s, d))
 #define	RANDOM(s, d)	((s)->heap.buf + RANDOM_INDEX(s, d))
 
-#define	USER(s, d)	delta_user(s, d)
-#define	HOSTNAME(s, d)	delta_host(s, d)
+/* user or user/realuser */
+#define	USER(s, d)	delta_fulluser(s, d)
+
+/* host or host/realhost */
+#define	HOSTNAME(s, d)	delta_fullhost(s, d)
+
+/* userhost = user/realuser@host/realhost */
+/* NOTE: old repositories might also have [importer] at the end of host */
 #define	USERHOST(s, d)	((s)->heap.buf + USERHOST_INDEX(s, d))
+
 #define	ZONE(s,d)	((s)->heap.buf + ZONE_INDEX(s, d))
 #define	SYMLINK(s,d)	((s)->heap.buf + SYMLINK_INDEX(s, d))
 #define	CSETFILE(s,d)	((s)->heap.buf + CSETFILE_INDEX(s, d))
@@ -1216,7 +1223,9 @@ void	bin_heapRepack(sccs *s);
 
 char	*delta_rev(sccs *s, ser_t d);
 char	*delta_user(sccs *s, ser_t d);
+char	*delta_fulluser(sccs *s, ser_t d);
 char	*delta_host(sccs *s, ser_t d);
+char	*delta_fullhost(sccs *s, ser_t d);
 void	delta_print(sccs *s, ser_t d);
 
 ser_t	modeArg(sccs *s, ser_t d, char *arg);
