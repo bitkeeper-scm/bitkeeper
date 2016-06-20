@@ -19,4 +19,4 @@ clean:
 	$(MAKE) -C src clean
 
 install:
-	$(MAKE) -C src install
+	$(MAKE) DESTDIR=$(DESTDIR) -C src install

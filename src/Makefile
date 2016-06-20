@@ -573,7 +573,7 @@ gui-nowrap GUI-nowrap:
 	@$(MAKE) -Cgui Q=$(Q) nowrap
 
 install: installdir
-	tmp/bitkeeper/bk _install -d -f $(BINDIR)
+	tmp/bitkeeper/bk _install -d -f $(DESTDIR)$(BINDIR)
 	@echo BitKeeper is installed in $(BINDIR)
 	@echo We suggest you run:
 	@echo
