@@ -547,6 +547,18 @@ git log --date-order --pretty="tree: %T%ncommitter: %ae%ndate: %cD%n" --raw mast
 diff -u BK.log GIT.log || fail
 echo OK
 
+echo $N Test optional LF after data..................................$NL
+commercial optlf
+printf "No newline" > afile
+bk new $Q -yafile afile
+printf "no newline comments" > "$HERE"/cmt
+bk commit $Q -Y"$HERE/cmt"
+bk fast-export > "$HERE/export.optlf"
+cd "$HERE"
+mkdir optlf.import
+bk fast-import -q optlf.import < "$HERE/export.optlf" 2>ERR || fail -f ERR
+echo OK
+
 ## Incremental not done yet
 exit 0
 

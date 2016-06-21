@@ -1182,7 +1182,7 @@ data(opts *op, char *line, FILE *f, int want_sha1)
 	blob	*m;
 	size_t	len, c1, c2;
 	char	*sha1;
-	int	i, idx, binary;
+	int	c, i, idx, binary;
 	hash_state	md;
 	u8	buf[1<<12];
 
@@ -1217,6 +1217,9 @@ data(opts *op, char *line, FILE *f, int want_sha1)
 		len -= c2;
 		if (want_sha1) hash_descriptor[idx].process(&md, buf, c2);
 	}
+
+	/* See if we have the optional last LF */
+	if ((c = fgetc(stdin)) != '\n') ungetc(c, stdin);
 
 	/* Now insert the mark */
 	if (want_sha1) {
