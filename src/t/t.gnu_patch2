@@ -60,18 +60,19 @@ echo bar2-new >> bar2.c
 bk ci $Q -y bar2.c
 bk commit $S -y"This is a \"Change Set\" C" --tag=CSET_C
 cd "$HERE/project"
-bk export -T -k -r1.3 "$HERE/a"
+bk export -T -kw -r1.3 "$HERE/a"
 bk export -hT -tpatch -r1.3,1.4 > patch
 grep -q "Wed Dec 31 16:00:00 196900" patch && {
 	echo fix the awc /dev/null bug
 	grep /dev/null patch
 	exit 1
 }
-bk patch -sp 1 -d "$HERE/a" < patch
+bk patch -s -p1 -d "$HERE/a" < patch
+rm -f "$HERE"/a/src/*.orig
 bk export -T -k -r1.4 "$HERE/b"
-diff -r "$HERE/a" "$HERE/b"
-if [ $? -ne 0 ]; then echo failed; else echo OK; fi
+diff -r "$HERE/a" "$HERE/b" || fail
 rm -rf "$HERE/a" "$HERE/b"
+echo OK
 
 echo $N Test chaining rename ........................................$NL
 cd "$HERE/project/src"
@@ -81,9 +82,10 @@ echo >  foo.c
 bk ci $Q -i foo.c
 bk commit $S -y"abc"
 cd "$HERE/project"
-bk export -T -k -r1.4 "$HERE/a"
+bk export -T -kw -r1.4 "$HERE/a"
 bk export -hT -tpatch -r1.4,1.5 > patch
-bk patch -sp 1 -d "$HERE/a" < patch
+bk patch -s -p1 -d "$HERE/a" < patch
+rm -f "$HERE"/a/src/*.orig
 bk export -T -k -r1.5 "$HERE/b"
 diff -r "$HERE/a" "$HERE/b"
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
@@ -95,9 +97,10 @@ cd "$HERE/project/src"
 bk rm bar.c
 bk commit $S -y"abc"
 cd "$HERE/project"
-bk export -T -k -r1.5 "$HERE/a"
+bk export -T -kw -r1.5 "$HERE/a"
 bk export -hT -tpatch -r1.5,1.6 > patch 
-bk patch -sp 1 -d "$HERE/a" < patch
+bk patch -sE -p1 -d "$HERE/a" < patch
+rm -f "$HERE"/a/src/*.orig
 bk export -T -k -r1.6 "$HERE/b"
 diff -r "$HERE/a" "$HERE/b"
 if [ $? -ne 0 ]; then echo failed; exit 1;  fi
@@ -105,9 +108,10 @@ echo OK
 rm -rf "$HERE/a" "$HERE/b"
 
 echo $N Test reverse patch \& un-delete ..............................$NL
-bk export -T -k -r1.6 "$HERE/a"
+bk export -T -kw -r1.6 "$HERE/a"
 bk export -hT -tpatch -r1.6,1.5 > patch
-bk patch -sp 1 -d "$HERE/a" < patch
+bk patch -s -p1 -d "$HERE/a" < patch
+rm -f "$HERE"/a/src/*.orig
 bk export -T -k -r1.5 "$HERE/b"
 diff -r "$HERE/a" "$HERE/b"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
@@ -116,9 +120,10 @@ rm -rf "$HERE/a" "$HERE/b"
 
 echo $N Test reverse patch \& reverse-rename .........................$NL
 cd "$HERE/project"
-bk export -T -k -r1.5 "$HERE/a"
+bk export -T -kw -r1.5 "$HERE/a"
 bk export -hT -tpatch -r1.5,1.4 > patch
-bk patch -sp 1 -d "$HERE/a" < patch
+bk patch -sE -p1 -d "$HERE/a" < patch
+rm -f "$HERE"/a/src/*.orig
 bk export -T -k -r1.4 "$HERE/b"
 diff -r "$HERE/a" "$HERE/b"
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
@@ -134,9 +139,10 @@ echo OK
 
 echo $N Test non-adjacent ChangeSet .................................$NL
 cd "$HERE/project"
-bk export -T -k -r1.1 "$HERE/a"
+bk export -T -kw -r1.1 "$HERE/a"
 bk export -hT -tpatch -r1.1,1.6 > patch
-bk patch -sp 1 -d "$HERE/a" < patch
+bk patch -s -p1 -d "$HERE/a" < patch
+rm -f "$HERE"/a/src/*.orig
 bk export -T -k -r1.6 "$HERE/b"
 diff -r "$HERE/a" "$HERE/b"
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
@@ -145,9 +151,12 @@ rm -rf "$HERE/a" "$HERE/b"
 
 echo $N Test reverse non-adjacent ChangeSet .........................$NL
 cd "$HERE/project"
-bk export -T -k -r1.5 "$HERE/a"
+bk export -T -kw -r1.5 "$HERE/a"
 bk export -hT -tpatch -r1.5,1.1 > patch
-bk patch -sp 1 -d "$HERE/a" < patch
+bk patch -sE -p1 -d "$HERE/a" < patch
+rm -f "$HERE"/a/src/*.orig
+# some versions of patch will not clean up the empty directory
+if [ -d "$HERE/a/src" ]; then rmdir "$HERE/a/src" || fail; fi
 bk export -T -k -r1.1 "$HERE/b"
 diff -r "$HERE/a" "$HERE/b"
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
@@ -165,9 +174,10 @@ bk mv moo.c foo.c
 bk mv tmp moo.c
 bk commit $S -y"abc"
 cd "$HERE/project"
-bk export -T -k -r1.6 "$HERE/a"
+bk export -T -kw -r1.6 "$HERE/a"
 bk export -hT -tpatch -r1.6,1.7 > patch
-bk patch -sp 1 -d "$HERE/a" < patch
+bk patch -s -p1 -d "$HERE/a" < patch
+rm -f "$HERE"/a/src/*.orig
 bk export -T -k -r1.7 "$HERE/b"
 diff -r "$HERE/a" "$HERE/b"
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
@@ -189,13 +199,14 @@ bk co $Q -l moo.c
 echo "moo-update" > moo.c
 bk ci $Q -y moo.c
 bk commit $S -y"moo-update"
-bk export -T -k -r1.9 "$HERE/a"
+bk export -T -kw -r1.9 "$HERE/a"
 bk export -hT -tpatch -r1.9,1.10 > mkdiffs.out
 grep "/dev/null" mkdiffs.out
 if [ $? -eq 0 ]; then echo "failed"; exit 1; fi
 grep "dup.c" mkdiffs.out
 if [ $? -eq 0 ]; then echo "failed"; exit 1; fi
-bk patch -sp 1 -d "$HERE/a" < mkdiffs.out
+bk patch -s -p1 -d "$HERE/a" < mkdiffs.out
+rm -f "$HERE"/a/src/*.orig
 bk export -T -k -r1.10 "$HERE/b"
 diff -r "$HERE/a" "$HERE/b"
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi

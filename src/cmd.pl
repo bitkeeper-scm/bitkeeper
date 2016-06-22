@@ -225,7 +225,6 @@ delget
 delta
 diff
 diffs => diff
-diffsplit
 dotbk
 _dumpconfig
 _exists
@@ -301,7 +300,6 @@ _locktest
 log
 _lstat
 _mailslot
-mailsplit
 mail
 makepatch
 mdbmdump
@@ -321,6 +319,7 @@ ounpark
 _parallel
 parent
 park
+patch
 path
 pending
 platform
@@ -449,7 +448,6 @@ init => setup
 _key2path => key2path
 _mail => mail
 aliases => alias
-patch => mend
 _preference => config
 rechksum => checksum
 rev2cset => r2c
@@ -493,12 +491,8 @@ histtool => revtool
 sccstool => revtool
 
 # shell scripts
-applypatch shell
 import shell
 resync shell
-
-# c programs
-mend cprog
 
 # L scripts
 check_comments lscript

@@ -706,6 +706,7 @@ distclean: distclean-packages clean
 	rm -rf Makefile config.status config.cache config.log tclConfig.sh \
 		tclConfig.h *.plist Tcl.framework tcl.pc
 	cd dltest ; $(MAKE) distclean
+	cd $(TOP_DIR)/doc/L && $(MAKE) clean
 
 depend:
 	makedepend -- $(DEPEND_SWITCHES) -- $(SRCS)

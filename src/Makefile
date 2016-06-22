@@ -102,10 +102,10 @@ ifeq "$(OSTYPE)" "msys"
 	RESOURCE=bkres.o
 	UWT_C=$(patsubst %,win32/uwtlib/%.c, wapi_intf wcrt_intf)
 	BKGUI=bkg$(EXE)
+	BKG_O=bkg.o
 else
 	SYS=unix
 	EXE=
-	XTRA=gnu
 	# You can set this to anywhere you like and do a 
 	# build production" and you'll have an installed BitKeeper.
 	ifeq (,$(HAS_BK))
@@ -233,7 +233,7 @@ OBJ =	bkver.o cmd.o \
 	contrib/test.o \
 	converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
-	dataheap.o dbfile.o delta.o diff.o diffsplit.o dspec.o \
+	dataheap.o dbfile.o delta.o diff.o dspec.o \
 	export.o \
 	fast-import.o fast-export.o features.o findmerge.o \
 	find.o findcset.o fixtool.o fsl.o fslayer.o \
@@ -249,9 +249,10 @@ OBJ =	bkver.o cmd.o \
 	localtm.o lock.o locking.o \
 	mail.o merge.o mklock.o \
 	mailslot.o \
-	mailsplit.o mtime.o mv.o names.o ndiff.o nested.o newroot.o \
+	mtime.o mv.o names.o ndiff.o nested.o newroot.o \
 	opark.o \
 	parent.o park.o partition.o \
+	patch.o \
 	pending.o preference.o proj.o \
 	poly.o \
 	populate.o \
@@ -292,7 +293,7 @@ OBJ =	bkver.o cmd.o \
 	utils.o uu.o what.o which.o \
 	xfile.o xflags.o \
 	zone.o
-SCRIPTS	= applypatch bk.script import \
+SCRIPTS	= bk.script import \
 	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
 PSCR	= t/doit t/guitest
@@ -382,17 +383,16 @@ gcov:
 
 clean: L-clean FORCE  ## Remove object files and executables
 	$(if $(Q),@echo Cleaning up,)
-	$(Q)for sub in $(SUBDIRS) ../doc ../man gnu gui utils win32 t; \
+	$(Q)for sub in $(SUBDIRS) ../doc ../man gui utils win32 t t/win32; \
 	do	$(MAKE) -C$$sub "CFLAGS=$(CFLAGS)" Q=$(Q) $@; \
 	done
-	$(Q)$(RM) $(OBJ) bk.o $(BINS) $(SCRIPTS) \
+	$(Q)$(RM) $(OBJ) bk.o $(BKG_O) $(BINS) $(SCRIPTS) \
 	    $(PSRC) $(PROGS)
 	$(Q)$(RM) tags TAGS tags.local cscope.out substvars a.out cmd.c cmd.h \
 		core *.bb *.bbg *.da *.gcov \
 		bk.ico \
 		bkmsg.txt bkhelp.txt bkver.c \
 		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe \
-		mend.exe \
 		conf-$(BKHOST).mk build
 	$(Q)$(RM) -r tmp
 ifeq (true,$(INREPO))
@@ -463,9 +463,6 @@ t/guitest: t/guitest.tcl
 
 .PHONY: FORCE
 FORCE:
-
-gnu: $(BK) libc/libc.a FORCE
-	@cd gnu && $(MAKE) Q=$(Q) BINDIR=$(BINDIR)
 
 win32: FORCE
 	cd win32 && $(MAKE) BINDIR=$(BINDIR)
@@ -594,8 +591,7 @@ installdir: utils/registry.tcl
 	cp -f $(CONTRIB) $(IMGDIR)/contrib
 	(cd ../doc/nested && $(MAKE) install HTML=$(IMGDIR)/html)
 	if [ $(SYS) = unix ]; \
-	then	(cd gnu && $(MAKE) install BINDIR=$(IMGDIR)) ;\
-		$(BK) get -S ../man/Makefile; \
+	then	$(BK) get -S ../man/Makefile; \
 		cd ../man && $(MAKE) install BINDIR=$(IMGDIR) ;\
 	else \
 		(cd win32 && $(MAKE) BINDIR=$(IMGDIR) install); \
@@ -619,11 +615,6 @@ endif
 _image:
 	$(MAKE) installdir
 	-cd $(IMGDIR) && strip *$(EXE) 2>/dev/null
-	-test -d $(IMGDIR)/gnu/bin && cd $(IMGDIR)/gnu/bin && { \
-		chmod +w *$(EXE); \
-		strip *$(EXE); \
-		chmod -w *$(EXE); \
-	}
 	-cd $(IMGDIR)/gui/bin && strip *$(EXE)
 	${MAKE} -Cutils BINDIR=$(IMGDIR) "CC=$(CC)" "BK=$(HERE)/bk$(EXE)" "CFLAGS=$(CFLAGS)" image
 

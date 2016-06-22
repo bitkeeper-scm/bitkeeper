@@ -732,20 +732,6 @@ bk grep -iq usage ERR || {
 rm -f ERR
 echo OK
 
-echo $N bk patch with bogus option ..................................$NL
-bk patch -a > /dev/null 2> ERR && {
-	echo "Should fail"
-	exit 1
-}
-bk grep -iq usage ERR
-if [ $? -ne 0 ]
-then	echo "failed (bug no usage)"
-else
-	echo "OK, fix test"
-	exit 1
-fi
-rm -f ERR
-
 echo $N bk path with bogus option ...................................$NL
 bk path -z > /dev/null 2> ERR && {
 	echo "Should fail"

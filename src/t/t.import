@@ -230,18 +230,12 @@ rm -f "$HERE/B/foo"
 diff -Nur A B > "$HERE/patch"
 cd "$HERE/EDIT"
 bk get $Q -r+ -p foo > foo.ref
-bk import $Q -tpatch -R "$HERE/patch" "$HERE/EDIT" \
-    > BitKeeper/tmp/PLOG 2>&1 < /dev/null
-test $? -eq 0 && {
-	echo failed to reject bad patch
-	cat BitKeeper/tmp/PLOG
-	exit 1
-}
-grep -q 'hunk FAILED -- saving rejects to file bar.rej' BitKeeper/tmp/PLOG || {
-	echo failed to reject bad patch, no hunk FAILED
-	cat BitKeeper/tmp/PLOG
-	exit 1
-}
+bk import $Q -tpatch -R "$HERE/patch" "$HERE/EDIT"  > PLOG 2>&1 && fail -f PLOG
+
+# GNU patch: 1 out of 1 hunk FAILED -- saving rejects to file bar.rej
+# LWALL patch: 1 out of 1 hunks failed--saving rejects to bar.rej
+grep -qi 'FAILED.*saving rejects to.*bar.rej' PLOG || fail -f PLOG
+
 bk get $Q -r+ -p foo > foo.now
 cmp -s foo.now foo.ref || { echo failed; exit 1; }
 rm -f foo.now foo.ref bar.ref
@@ -276,80 +270,6 @@ E
 EOF
 bk get $Q bar
 cmp -s bar bar.ref || { echo failed; exit 1; }
-echo OK
-
-echo $N Test import of an email patch ...............................$NL
-cd "$HERE"
-rm -rf EDIT
-tar xmf TAR
-cd EDIT
-bk edit $Q foo bar
-cat >> foo <<EOF
-E
-F
-G
-EOF
-bk diffs -hu > BitKeeper/tmp/P
-bk unedit foo
-cat > BitKeeper/tmp/E <<EOF
-From akushner@bitmover.com  Fri May 25 13:48:55 2001
-Delivery-Date: Fri May 25 10:23:31 2001
-Return-Path: <akushner@bitmover.com>
-Received: from adsl-63-193-121-233.dsl.snfc21.pacbell.net (adsl-63-193-121-233.dsl.snfc21.pacbell.net [63.193.121.233])
-        by bitmover.com (8.8.7/8.8.7) with ESMTP id KAA01840
-        for <lm@bitmover.com>; Fri, 25 May 2001 10:18:34 -0700
-Received: from localhost (localhost [127.0.0.1])
-        by adsl-63-193-121-233.dsl.snfc21.pacbell.net (Postfix) with ESMTP id EA417400E
-        for <lm@bitmover.com>; Fri, 25 May 2001 10:18:34 -0700 (PDT)
-Date: Fri, 25 May 2001 10:18:34 -0700 (PDT)
-From: Aaron Kushner <akushner@bitmover.com>
-X-X-Sender:  <akushner@vermin.dsl.snfc21.pacbell.net>
-To: Larry McVoy <lm@bitmover.com>
-Subject: citool cursor fix
-Message-ID: <Pine.LNX.4.33.0105251015230.3751-100004@vermin.dsl.snfc21.pacbell.net>
-MIME-Version: 1.0
-
-Comment line 1
-Comment line 2
-Comment line 3
-Comment line 4
-EOF
-cat BitKeeper/tmp/P >> BitKeeper/tmp/E
-bk import -temail < BitKeeper/tmp/E > BitKeeper/tmp/PLOG 2>&1 || {
-	echo import failed
-	cat BitKeeper/tmp/PLOG
-	exit 1
-}
-bk get $Q foo
-grep -q G foo || {
-	echo failed to apply patch
-	cat BitKeeper/tmp/PLOG
-	exit 1
-}
-U=akushner/`bk getuser -r`@bitmover.com
-test "`bk prs -hr+ -nd:FULLUSER:@:HOST: foo`" = "$U" || {
-	echo did not pick up email address, wanted $U
-	bk prs -r+ -nd':FULLUSER:@:HOST:' foo
-	exit 1
-}
-test "`bk prs -hr+ -nd:FULLUSER:@:HOST: ChangeSet`" = "$U" || {
-	echo did not pick up email address, wanted $U
-	bk prs -r+ -nd':FULLUSER:@:HOST:' ChangeSet
-	exit 1
-}
-bk changes -r+ > C
-grep -q 'citool cursor fix' C || {
-	echo Did not pick up subject line
-	cat C
-	exit 1
-}
-for i in 1 2 3 4
-do	grep -q "Comment line $i" C || {
-		echo did not pick up line $i
-		cat C
-		exit 1
-	}
-done
 echo OK
 
 # XXX - we do not test for links pointing outside the tree
@@ -813,8 +733,8 @@ bk new $Q foo.rej data
 bk commit $Q -ywah
 cat > "$HERE/patch" <<EOF
 diff -Nru a/data b/data
---- a/data   Sun Mar  3 21:37:06 2002
-+++ b/data   Sun Mar  3 21:37:17 2002
+--- a/data	Sun Mar  3 21:37:06 2002
++++ b/data	Sun Mar  3 21:37:17 2002
 @@ -1,4 +1,4 @@
  A
  B

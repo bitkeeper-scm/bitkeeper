@@ -152,7 +152,11 @@ do_unpark(int id)
 		printf(
 "==========================================================================\n");
 	}
-	rc = sysio(parkfile, 0, 0, "bk", "patch", "-p1", "-g1", "-fu", SYS);
+	rc = sysio(parkfile, 0, 0, "bk", "patch",
+#ifdef WIN32
+		"--binary",
+#endif
+		"-p1", "-fu", SYS);
 	if (rc) {
 		fprintf(stderr, "Cannot unpark %s\n", parkfile);
 		/* Do not unlink the parkfile,  user may want to re-try */

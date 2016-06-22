@@ -31,8 +31,5 @@ all: $(EXES)
 %.exe: %.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ $< ../../libc/libc.a -lws2_32
 
-clean:
-	rm -f $(TESTS) $(PROGS)
-
-clobber:
-	rm -f $(EXES)
+clean clobber:
+	rm -f $(TESTS) $(PROGS) $(EXES)

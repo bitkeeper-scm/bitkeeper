@@ -813,8 +813,9 @@ cleanhelp:
 
 clean: cleanhelp clean-packages
 	$(RM) *.lib *.a *.exp *.dll *.$(RES) *.${OBJEXT} *~ \#* TAGS a.out
-	$(RM) $(TCLSH) $(CAT32)
+	$(RM) $(TCLSH) $(TCLSH).manifest $(CAT32)
 	$(RM) *.pch *.ilk *.pdb
+	cd $(TOP_DIR)/doc/L && $(MAKE) clean
 
 distclean: distclean-packages clean
 	$(RM) Makefile config.status config.cache config.log tclConfig.sh \

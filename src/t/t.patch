@@ -46,7 +46,7 @@ export BK_USER=trini BK_HOST=butthead.com
 ME=`bk getuser -r`
 bk import $Q -Cftpatch PATCH proj
 cd proj
-bk commit $Q -y'Should be trini@butthead.com[torvalds]'
+bk commit $Q -y'Should be trini@butthead.com'
 bk changes -vr+ -nd':FULLUSER:@:HOST:' | bk undos > GOT
 bk undos > ../WANT <<EOF
 trini/$ME@butthead.com
@@ -55,12 +55,6 @@ EOF
 cmp -s GOT ../WANT || {
 	echo failed to set the hostname properly
 	diff ../WANT GOT
-	exit 1
-}
-# This was the minimal value on May 15th 2002 at about 6pm PST.
-test `bk prs -hr+ -nd:FUDGE: file` -gt 1243730 || {
-	echo failed to fudge the date
-	bk prs -hr+ -nd:FUDGE: file
 	exit 1
 }
 echo OK
@@ -79,12 +73,6 @@ EOF
 cmp -s GOT ../WANT || {
 	echo failed to set the hostname properly
 	diff ../WANT GOT
-	exit 1
-}
-# This was the minimal value on May 15th 2002 at about 6pm PST.
-test `bk prs -hr+ -nd:FUDGE: file` -gt 1243730 || {
-	echo failed to fudge the date
-	bk prs -hr+ -nd:FUDGE: file
 	exit 1
 }
 echo OK

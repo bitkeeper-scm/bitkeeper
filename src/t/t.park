@@ -28,7 +28,17 @@ echo OK
 echo $N Create some data ............................................$NL
 mkdir src
 cd src
-echo foo > foo.c
+cat << EOF > foo.c
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur
+id elit nec dui tristique auctor. Ut vestibulum dui ligula, vitae
+dignissim augue mollis non. In velit sem, fermentum eget tortor ut,
+mattis finibus diam. Vestibulum ultrices lacus erat, id aliquet
+urna commodo vitae. Nulla facilisi. Praesent suscipit, ante in
+pulvinar maximus, quam nulla dignissim ex, a molestie magna enim
+et augue. Sed pretium posuere quam, quis lobortis erat interdum
+lobortis. Nunc efficitur massa congue tincidunt vulputate. Nunc
+scelerisque fermentum pretium.
+EOF
 echo bar > bar.c
 echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
@@ -188,27 +198,6 @@ bk unpark -cf 2> /dev/null 1>&2
 test -f binary_moved || fail
 cmp -s "$BIN2" binary_moved || fail
 echo OK
-
-if [ "$PLATFORM" = "WIN32" ]
-then #--------------------------------------------------------------------
-echo $N Check park/unpark with mix Unix Dos EOLN ....................$NL
-bk admin $Q -fEOLN_NATIVE bar.c
-bk edit $Q bar.c
-# This test assume echo output in binary mode
-echo -e "new-new\r" >> bar.c
-bk edit $Q foo.c
-echo "666" >> foo.c
-cp bar.c bar.ref
-cp foo.c foo.ref
-bk park -y 2> /dev/null
-if [ -f bar.c ]; then echo failed; exit 1; fi
-if [ -f foo.c ]; then echo failed; exit 1; fi
-bk unpark 2> /dev/null 1>&2
-cmp -s bar.c bar.ref || { echo failed; exit 1; }
-cmp -s foo.c foo.ref || { echo failed; exit 1; }
-echo OK
-
-fi   #--------------------------------------------------------------------
 
 if [ "$PLATFORM" = "UNIX" ]
 then  #--------------------------------------------------------------------

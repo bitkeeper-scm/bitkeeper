@@ -255,7 +255,7 @@ fail() {
 		echo "pwd is `pwd`"
 		sleep 100000
 	}
-	test x$BK_REGRESSION_NOFAIL == x && exit 1
+	test x$BK_REGRESSION_NOFAIL = x && exit 1
 }
 
 # longpath "/prefix/" total_length

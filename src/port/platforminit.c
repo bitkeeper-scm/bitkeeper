@@ -34,7 +34,14 @@ platformInit(char **av)
 	int	flags = SILENT;
 	int	got_tilda = 0;
 	mode_t	m;
-	char    *paths[] = {"", "/gnu/bin", "/gui/bin", 0};
+	char    *paths[] = {
+		"",
+#ifdef WIN32
+		"/gnu/bin",
+#endif
+		"/gui/bin",
+		0
+	};
 	char	*badvars[] = {"CDPATH", "",
 			      "IFS", " \t\n",
 			      "ENV", "",

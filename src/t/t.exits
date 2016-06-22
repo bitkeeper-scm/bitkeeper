@@ -90,13 +90,13 @@ echo OK
 
 echo $N Test bk patch with a working patch ..........................$NL
 bk ndiff foo bar > foo.patch
-bk patch -g1 foo < foo.patch > /dev/null
-test $? -eq 0 || fail
+bk patch foo < foo.patch > /dev/null 2> ERR
+test $? -eq 0 || fail -f ERR
 echo OK
 
 echo $N Test bk patch with an invalid patch .........................$NL
-bk patch -g1 bar < foo.patch > /dev/null 2> ERR
-test $? -eq 1 || fail
+bk patch -f bar < foo.patch > /dev/null 2> ERR
+test $? -eq 1 || fail -f ERR
 echo OK
 
 echo $N Test bk prompt when answered yes ............................$NL

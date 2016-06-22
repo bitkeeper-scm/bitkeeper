@@ -352,6 +352,7 @@ clean-config: FORCE
 	-for i in Makefile config.cache config.log tclConfig.sh config.status; \
 	do	rm -f tcl/$S/$$i tk/$S/$$i; \
 	done
+	-rm -f tcl/library/Lver.tcl tcl/generic/Lver.h
 
 clean: clean-obj FORCE
 	rm -rf bin lib man build include usr share

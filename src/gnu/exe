@@ -1,6 +1,0 @@
-#!/bin/sh
-
-machine=`uname -s`
-case $machine in 
-    CYGWIN_NT*) echo ".exe";;
-esac

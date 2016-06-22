@@ -34,7 +34,7 @@ cd llvm
 bk -Uc diffs -up > PATCH
 bk -Uc unedit
 bk -U edit -qS
-bk -P patch --quiet -p1 -g1 < PATCH || fail -f OUT
+bk -P patch --quiet -p1 < PATCH || fail -f OUT
 cd ..
 echo "stuff1" > WANT
 cmpfiles WANT afile

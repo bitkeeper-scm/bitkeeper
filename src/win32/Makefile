@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-all: svcmgr patch msys populate
+all: svcmgr msys populate
 	cd pub/winctl && unset MAKEFLAGS && make
 
 .PHONY: clean
 ifeq "$(OSTYPE)" "msys"
 clean:
-	for sub in svcmgr pub/blat pub/winctl pub/patch; \
+	for sub in svcmgr pub/blat pub/winctl; \
 	do	$(MAKE) -C $$sub clean; \
 	done
 else
@@ -34,9 +34,6 @@ svcmgr: FORCE
 
 blat: FORCE
 	cd pub/blat && make
-
-patch: FORCE
-	cd pub/patch && unset MAKEFLAGS && make
 
 MSYSBIN = ../gnu
 msys: ./msysver.sh FORCE
@@ -76,6 +73,5 @@ install: all blat data/bk.ico
 	cp -f dll/shellx/lib/BkShellX.dll $(BINDIR)
 	cp -f dll/shellx/lib/BkShellX64.dll $(BINDIR)
 	cd pub/blat && make BINDIR=$(BINDIR) install
-	cd pub/patch && make BINDIR=$(BINDIR) install
 	cd pub/winctl && make BINDIR=$(BINDIR) install
 	make MSYSBIN=$(BINDIR)/gnu msys	

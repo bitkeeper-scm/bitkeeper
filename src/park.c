@@ -788,7 +788,11 @@ do_text_diffs_unpark(MMAP *m, char *path, MDBM **idDB, FILE *unpark_list)
 	/*
 	 * TODO should make sure the file did not changed type or encoding
 	 */
-	rc = sysio(path, NULL, NULL, "bk", "patch", "-p1", "-g1", "-f",  SYS);
+	rc = sysio(path, NULL, NULL, "bk", "patch",
+#ifdef WIN32
+		"--binary",
+#endif
+		"-p1", "-f",  SYS);
 	return (rc);
 }
 
