@@ -206,7 +206,7 @@ platformInit(char **av)
 		}
 		verbose((stderr, "USING PATH '%s'\n", buf));
 	}
-	if ((n = readlink(buf, buf2, sizeof(buf2))) != -1) {
+	while ((n = readlink(buf, buf2, sizeof(buf2))) != -1) {
 		buf2[n] = 0;
 		verbose((stderr, "LINK '%s'->'%s'\n", buf, buf2));
 		if  (IsFullPath(buf2)) {
