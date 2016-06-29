@@ -142,7 +142,7 @@ upgrade_main(int ac, char **av)
 		}
 	}
 	if (win32() && (p = getenv("OSTYPE"))
-	    && streq(p, "msys") && (fetchonly || install)
+	    && streq(p, "msys") && install
 	    && !getenv("BK_REGRESSION")) {
 		notice("upgrade-nomsys", 0, "-e");
 		goto out;
