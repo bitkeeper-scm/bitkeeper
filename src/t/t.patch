@@ -140,32 +140,3 @@ bk patch -s < patch || {
 }
 checkfiles file want.lf
 echo OK
-
-if [ "$PLATFORM" = "WIN32" ]; then
-echo $N Try all other end of line combinations: result always lf ....$NL
-# file crlf and patch is lf => want is lf
-cp file.crlf file
-cp patch.lf patch
-bk patch -s < patch || {
-	echo failed
-	exit 1
-}
-checkfiles file want.lf
-# file crlf and patch is crlf => want is lf
-cp file.crlf file
-cp patch.crlf patch
-bk patch -s < patch || {
-	echo failed
-	exit 1
-}
-checkfiles file want.lf
-# file lf and patch is crlf => want is lf
-cp file.lf file
-cp patch.crlf patch
-bk patch -s < patch || {
-	echo failed
-	exit 1
-}
-checkfiles file want.lf
-echo OK
-fi	# if WIN32
