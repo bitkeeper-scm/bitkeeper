@@ -149,6 +149,7 @@ int	checking_rmdir(char *dir);
 #define	PRS_GRAFT	0x01000000	/* put the perfile in the patch */
 #define	PRS_LF		0x02000000	/* terminate non-empty output with LF */
 #define	PRS_FASTPATCH	0x04000000	/* print in fast patch format */
+#define	PRS_ACTIVETAGSONLY 0x08000000	/* :TAGS: only active? */
 
 #define SINFO_TERSE	0x10000000	/* print in terse format: sinfo -t */
 
@@ -367,6 +368,9 @@ int	checking_rmdir(char *dir);
 #define	D_SET		0x80000000	/* range.c: marked as part of a set */
 
 #define	D_INVALID	((ser_t)~0u)	/* invalid delta */
+
+#define	DELETED_TAG(s, d) \
+	(TAG(s, d) && SYMBOLS(s, d) && (PARENT(s, d) == TREE(s)))
 
 /*
  * Undo exit status for nothing to undo.
@@ -867,6 +871,8 @@ struct sccs {
 	u32	prs_odd:1;	/* for :ODD: :EVEN: in dspecs */
 	u32	prs_join:1;	/* for joining together items in dspecs */
 	u32	prs_all:1;	/* including tag deltas in prs output */
+	u32	prs_activeTagsOnly:1;
+				/* only active tags in :TAGS:? */
 	u32	prs_indentC:1;	/* extra space for components in :INDENT: ? */
 	u32	hasgone:1;	/* this graph has D_GONE deltas */
 	u32	has_nonl:1;	/* set by getRegBody() if a no-NL is seen */

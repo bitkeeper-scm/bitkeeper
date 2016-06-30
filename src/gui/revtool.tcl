@@ -1807,13 +1807,13 @@ proc widgets {} \
 	set sem "start"
 	set ttype ""
 	set dspec \
-"-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\\n\$each(:C:){  (:C:)\\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\\n"
+"-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\\n\$each(:C:){  (:C:)\\n}\$each(:TAGS:){  TAG: (:TAGS:)\\n}\\n"
 	# this one is used when calling 'bk changes'; its distinguishing
 	# feature is slighly different indentation and the fact that the
 	# filename is on a line by itself. The key bindings for changeset
 	# history depend on this (see selectTag)
 	set chgdspec \
-"-d\$if(:DPN:!=ChangeSet){  }:DPN:\\n    :I: :Dy:/:Dm:/:Dd: :T: :P:\$if(:HT:){@:HT:} +:LI: -:LD: \\n\$each(:C:){    (:C:)\\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\\n"
+"-d\$if(:DPN:!=ChangeSet){  }:DPN:\\n    :I: :Dy:/:Dm:/:Dd: :T: :P:\$if(:HT:){@:HT:} +:LI: -:LD: \\n\$each(:C:){    (:C:)\\n}\$each(:TAGS:){  TAG: (:TAGS:)\\n}\\n"
 	set Opts(line) "-u -t"
 	set yspace 20
 	# graph		- graph canvas window

@@ -80,7 +80,8 @@ cat <<EOF > WANT
   1.1 prod_file new
   1.0 prod_file 
 1.2 ChangeSet attach gcc, gdb
-  1.2 BitKeeper/etc/aliases Create alias "DEFAULT" containing:	ALL
+  1.2 BitKeeper/etc/aliases Create alias "DEFAULT" containing:
+	ALL
   1.1 gcc/ChangeSet Initial repository create
     1.1 gcc/BitKeeper/etc/collapsed new
     1.0 gcc/BitKeeper/etc/collapsed 
@@ -351,7 +352,8 @@ cat <<EOF > WANT
   1.1 prod_file new
   1.0 prod_file 
 1.2 ChangeSet attach gcc, gdb
-  1.2 BitKeeper/etc/aliases Create alias "DEFAULT" containing:	ALL
+  1.2 BitKeeper/etc/aliases Create alias "DEFAULT" containing:
+	ALL
   1.1 gcc/ChangeSet Initial repository create
     1.1 gcc/BitKeeper/etc/collapsed new
     1.0 gcc/BitKeeper/etc/collapsed 
@@ -398,7 +400,8 @@ cat <<EOF > WANT
   1.1 prod_file new
   1.0 prod_file 
 1.2 ChangeSet attach gcc, gdb
-  1.2 BitKeeper/etc/aliases Create alias "DEFAULT" containing:	ALL
+  1.2 BitKeeper/etc/aliases Create alias "DEFAULT" containing:
+	ALL
 1.1 ChangeSet Initial repository create
   1.1 BitKeeper/etc/aliases new
   1.0 BitKeeper/etc/aliases 

@@ -1,0 +1,33 @@
+.so ../bk-macros
+.TH "bk untag" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.\"    ====================== BitKeeper untag ======================
+.SH NAME
+bk untag \- delete the symbolic namd in the \*(BK repository
+.SH SYNOPSIS
+.B bk untag
+.[B] \-q
+.ARG symbol
+.[ARG] symbol \ ...
+.SH DESCRIPTION
+.LP
+Tags (aka symbols or labels) are used when you want to record the state of 
+a tree.
+When the tag no longer is useful, then it can be deleted with this command.
+.LP
+Remove a tag Alpha in the tree by typing:
+.DS
+$ bk untag Alpha
+.DE
+.SH OPTIONS
+.TP \-q
+.B \-q
+Run quietly, supressing diagnostics.
+.SH BUGS
+.SH "SEE ALSO"
+.SA admin
+.SA changes
+.SA commit
+.SA tag
+.SA log
+.SH CATEGORY
+.B Repository

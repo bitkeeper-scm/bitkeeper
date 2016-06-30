@@ -35,13 +35,6 @@ is followed by a detailed account of each revision.  Revision number,
 revision date and time, user who made that revision, what the relative
 path from root of repository is to that file, the comments that go
 with that revision, and documents if the file has been renamed.
-.LP
-.B Note:
-In pre-4.0 releases of \*[BK],
-.B bk log
-was known as
-.BR "bk prs" ,
-which is now deprecated.
 .SH OPTIONS
 .TP \fB\-c2006/07.\|.2006\fP
 .OPTreq \- n
@@ -133,9 +126,8 @@ for seconds,minutes, hours, days, months, and years.
 .SH DEFAULT OUTPUT FORMAT
 The 
 .BR "bk changes" ,
-.BR "bk log" ,
-and 
-.B "bk prs" 
+and
+.BR "bk log" 
 commands have a default output format which may be modified on a
 per user or per repository basis.
 The default formats are named as follows:
@@ -149,8 +141,13 @@ Specifies the format for bk changes -vv output (verbose with diffs).
 dspec-log
 Specifies the format for bk log output.
 .LP
-These files are searched for in the following places and the first one 
-found is used:  
+There are other dspec-* files, if you want some fun look at dspec-*-json,
+if you understand those you understand that dspecs are a little programming
+language. 
+The shipped files live in `bk bin`/dspec-*
+.LP
+These files can live in multiple places, this is the search order for
+"dspec-changes", the first one found is used:
 .RS
 <repo>/BitKeeper/etc/dspec-changes
 .br
@@ -168,10 +165,16 @@ virtually all of them can be extracted using a non-default output
 format.
 .LP
 To extract specific information, a \*(lqdspec\*(rq
-(data specification) string must be provided and should contain
-keywords surrounded by colons.
-Each keyword corresponds to some piece of information and will be expanded
-as that information in the output it produces.
+(data specification) string is provided and and where there are
+keywords surrounded by colons the keywords are expanded much like
+.BR printf (3).
+If you are familiar with 
+.BR awk (1)
+the processing here is similar.  In awk, each line is a record, here each
+delta is a record.  For each delta, you can provide a 
+.B dspec
+which says what it is you want to print from that delta.
+Looking at the dspec-* files in the installation directory is recommended.
 .LP
 The
 .I dspecs
@@ -192,44 +195,32 @@ will be replaced with the specified string:
 An example dspec 
 which prints the \*(BK file name and the revision number
 is 
-.BR ':SFILE:\ :REV:\en' .
+.BR ':GFILE:\ :REV:\en' .
 .LP
 In almost all cases, a trailing
 newline is not provided by any of the variables 
 and one should be provided as needed.
-The list of variables which currently provide one are:
-.V COMMENTS ,
-.V PRS ,
-.V PATH ,
-and
-.V TAGS .
 The newline can be added in line or you can specify the
 .B \-n
-option which will provide one as needed.
+option which will add a newline after each delta is processed.
 .LP
-Multi-line variables are printed with no spacing or newlines between the
-lines by default.  You can insert spaces or newlines with a 
+Multi-line variables are normally printed as is, but you can
+format each line separately using a
 .B $each(\|) 
 loop like so
-.DS
-bk log -d'$each(:C:){(:C:)\en}' foo.c
-.DE
-In this
-.B $each(\|)
-construction, (\c
-.V :C: )
-iteratively takes the value of each line of the multi-line value of
-.V :C: .
-For example, to prefix each comment line with ">> " the dspec would
-be:
 .DS
 bk log -d'$each(:C:){>> (:C:)\en}' foo.c
 .DE
 .LP
-The list of variables with this behavior is:
-.V C 
+Any variable that is more than one line can be processed with the
+.B $each(\|)
+iterator.
+Variables that may be multi line are:
+.BR ALL_TAGS ,
+.BR C ,
+.BR TAGGED ,
 and
-.V TAG .
+.BR TAGS .
 .br
 .ne 5
 .SS CONDITIONAL OUTPUT
@@ -254,9 +245,9 @@ if
 .ARG expr
 is true.  If
 .ARG expr 
-is a field, i.e.,
+is a keyword, i.e.,
 .V :MERGE: ,
-then the field is examined and returns true if it has a value.
+then the keyword is examined and returns true if it has a value.
 .ARG anything 
 can contain keywords, i.e.,
 .V :REV: .
@@ -356,22 +347,19 @@ Note: spaces immediately before and after the operator are ignored.
 To match against such a leading or trailing space, escape it.
 .SS ITERATIVE OUTPUT
 .ad b
-Some fields, such as comments or tags, may be multi-line.  To print a prefix
+Some keywords, such as comments or tags, may be multi-line.  To print a prefix
 in front of each of these lines, the idiom is:
 .DS
 bk log -d'$if(:C:){$each(:C:){C\ \ (:C:)\en}}' foo.c
 .DE
-The variables that support this kind of iteration are
+This iteration works for all variables, but normally is only used
+for variables that can contain multiple lines like
 .V C 
 and
-.V TAG .
-The
-.V GB
-variable may not be used in a 
-.BR $each(\|) .
+.V TAGS .
 Also
 .B $first(\|)
-can be used to only expand the first line of one of these multi-line fields.
+can be used to only expand the first line of one of these multi-line keywords.
 .SS VARIABLES
 When the
 .BR "bk log"
@@ -390,20 +378,23 @@ command.
 Variables start out as empty strings, and
 when re-assigned the old value is discarded.
 .SS KEYWORDS
-Some fields are per repository and are marked with 
+Some keywords are per repository and are marked with 
 .B R
 in the 
 .B T
 column below.
-Some fields are per file and are marked with
+Some keywords are per file and are marked with
 .B F
 in the 
 .B T
-column below; other fields are per delta and are marked with
+column below; other keywords are per delta and are marked with
 .BR D .
-In the ``What is printed'' column, 
-.B D
-refers to the specified delta, since some operations work relative to 
+Some keywords only make sense if they are changesets, they are 
+marked with
+.BR C .
+Those keywords that can be either on a changeset or on a file
+are marked with
+.BR D .
 .if t .sp .5
 .if n .sp
 .nf
@@ -426,6 +417,8 @@ Name	T	What is printed
 .\" changes to the list of help:// links at the end of this file.
 .xx
 :AGE:	D	D's age, i.e., seven hours, two weeks, etc.
+.xx
+:ALL_TAGS:	C	The tag[s] if this changeset has/ever had it/them
 .xx
 :ATTACHED_ID:	F	package id to be used for new deltas
 .xx
@@ -615,9 +608,9 @@ Name	T	What is printed
 .xx
 :T:	D	time of D as HH:MM:SS
 .xx
-:TAG:	D	any symbolic tag[s] associated with D
+:TAGGED:	C	The tag[s] iff currently on this changeset
 .xx
-:TAGS:	D	the symbolic tag portion of PRS
+:TAGS:	C	Tag[s] if on, or were on, this changeset (with notes)
 .xx
 :TIME_T:	D	D's date as GMT time_t, TZ and Fudge adjusted
 .xx
@@ -639,36 +632,22 @@ Name	T	What is printed
 .xx
 :VERSION:	F	file format version
 .SH NOTES
-There used to be a
-.Q \-m
-option which did what this does:
-.DS
-bk changes -d'$if(:TAG:){$each(:TAGS:){S (:TAGS:)\\n}}'
-.DE
 .LP
-The
-.B :I:
-and
-.B :P:
-keywords are backwards compatible with AT&T SCCS and are synonyms for
-.B :REV:
-and
-.BR :USER: ,
-respectively.
-The old forms will continue to work but the new forms are used
-in the documentation.
-.LP
-Keywords marked with type D above can optionally be restricted to a
+Keywords marked with type C or D above can optionally be restricted to a
 given revision as follows:
 .DS
-.B :KW|REV:
+.B :KW|1.0:	# as of a literal revision
+.B :KW|PARENT:	# as of the current rev's parent
+.B :KW|MPARENT:	# as of the current rev's merge parent (if any)
 .DE
 For example:
 .DS
-bk -U log -r+ -hnd'$if(:DPN|1.0: != :DPN:){rename :DPN|1.0: => :DPN:}'
+bk log -hnd'$if(:DPN|PARENT: != :DPN:){rename :DPN|PARENT: => :DPN:}'
 .DE
+Things that can go in the second part include a specific revision (eg 1.0),
+PARENT, and MPARENT.
 .SH EXAMPLES
-To extract a key, which is a stable internal name for a changeset:
+To extract a key, which is a stable name for a changeset:
 .DS
 bk changes -r1.234 -nd:MD5KEY:
 .DE
@@ -693,25 +672,43 @@ Count up lines inserted by a particular user in all non-merge deltas:
 bk -U log -nd'$if(:USER: = joe && !:MERGE:){:LI:}' |
 awk '{ lines += $1 } END { print lines }'
 .DE
-Note that the preceding example uses new features in the 
-.I dspec 
-language.
-The following will work in older bk-4.x releases:
-.DS
-bk -Ur log -nd'$if(:USER:=joe){$unless(:MERGE:){:LI:}}' |
-awk '{ lines += $1 } END { print lines }'
-.DE
 The default
 .I dspec
 for the
-.B bk changes command is this:
+.B bk changes command is below.  This is an example of an expanded
+form of dspecs, only things in quotes generate output, the rest is 
+control flow.
 .DS
-"$unless(:CHANGESET:){  }"
-":DPN:@:REV:, :Dy:-:Dm:-:Dd: :T::TZ:, :USER:$if(:HOST:){@:HOST:} "
-"+:LI: -:LD:\\n"
-"$each(:C:){$unless(:CHANGESET:){  }  (:C:)\\n}"
-"$each(:TAG:){  TAG: (:TAG:)\\n}"
-"$if(:MERGE:){$unless(:CHANGESET:){  }  MERGE: :MPARENT:\\n}\\n"
+# dspec-v2
+
+# The default dspec used by 'bk changes' and 'bk changes -v'
+
+":INDENT:"              # 2 spaces + 2 in component
+":DPN:@:REV:"
+${1=:USERHOST:}         # 1 == user || user@host
+$if (:CHANGESET: && !:COMPONENT_V:) {
+    ", :Dy:-:Dm:-:Dd: :T::TZ:, $1"
+    ${0=$1}                          # 0 == user of last cset
+} $else {
+    $if($0 != $1){                   # print user if different
+	", $1"
+    }
+}
+$unless (:CHANGESET:) {
+    " +:LI: -:LD:"                   # lines added/deleted
+}
+"\\n"
+$each(:C:) {                         # comments
+    ":INDENT:  (:C:)\\n"
+}
+$each(:TAGS:) {
+    "  TAG: (:TAGS:)\\n"
+}
+$if (:MERGE:) {                      # merge shows both parents
+    ":INDENT:  MERGE: :MPARENT:\\n"
+}
+"\\n"
+
 .DE
 .SH "SEE ALSO"
 .SA range
@@ -726,6 +723,7 @@ for the
 .\" Don't sort the list, we aren't completely in sorted order
 .\" BEGIN dspecs help links ## IMPORTANT: Do not edit or delete this line! ##
 .\" help://:AGE:
+.\" help://:ALL_TAGS:
 .\" help://:ATTACHED_ID:
 .\" help://:BAM:
 .\" help://:C:
@@ -820,7 +818,7 @@ for the
 .\" help://:SPN:
 .\" help://:SYMLINK:
 .\" help://:T:
-.\" help://:TAG:
+.\" help://:TAGGED:
 .\" help://:TAGS:
 .\" help://:TIME_T:
 .\" help://:TIP:

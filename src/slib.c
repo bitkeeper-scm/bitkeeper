@@ -2663,7 +2663,7 @@ rcsexpand(sccs *s, ser_t d, char *line, int *expanded)
 		{2, "Id", ": :G: :I: :D: :T::TZ: :USER:@:HOST: "},
 		{6, "Locker", ": <Not implemented> "},
 		{3, "Log", ": <Not implemented> "},
-		{4, "Name", ": <Not implemented> "}, /* almost :TAG: */
+		{4, "Name", ": <Not implemented> "}, /* almost :TAGS: */
 		{8, "Revision", ": :I: "},
 		{7, "RCSfile", ": s.:G: "},
 		{6, "Source", ": :SFILE: "},
@@ -3137,6 +3137,7 @@ sccs_walkTags(symbol *sym, sccs *s, ser_t d, int active, int meta)
 #define	HIBIT	0x80000000ul
 
 	unless (SYMBOLS(s, d)) return (0);
+	if (d == TREE(s)) return (0);
 	unless (h = s->symhash) {
 		hash    *names;
 
@@ -11641,11 +11642,26 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 			goto sym_err;
 		}
 		if (dupSym(sc, sym, rev)) {
-			verbose((stderr,
-			    "%s, tag %s exists on %s\n", prog, sym, rev));
+			if (d == TREE(s)) {
+				verbose((stderr,
+				    "%s: tag %s already deleted\n",
+				    prog, sym));
+			} else {
+				verbose((stderr,
+				    "%s: tag %s exists on %s\n",
+				    prog, sym, rev));
+			}
 			goto sym_err;
 		}
-
+		/*
+		 * if tagging the 1.0 delta, then it is a delete.
+		 * See if symbol exists to delete
+		 */
+		if ((d == TREE(s)) && !dupSym(sc, sym, 0)) {
+			verbose((stderr,
+			    "%s: tag %s does not exist\n", prog, sym));
+			goto sym_err;
+		}
 		// XXX - if anyone calls admin directly with two tags this can
 		// be wrong.  bk tag doesn't.
 		// We should just get rid of the multiple tag thing, it was
@@ -11678,16 +11694,22 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 		n = dinsert(sc, n, 1);
 		if (addsym(sc, n, 1, sym)) {
 			verbose((stderr,
-			    "%s: won't add identical symbol %s to %s\n",
-			    prog, sym, sc->sfile));
+			    "%s: won't add identical tag %s to %s\n",
+			    prog, sym, sc->gfile));
 			/* No error here, it's not necessary */
 			free(sym);
 			continue;
 		}
 		added++;
-		verbose((stderr,
-		    "%s: add tag %s->%s in %s\n",
-		    prog, sym, rev, sc->sfile));
+		if (d == TREE(s)) {
+			verbose((stderr,
+			    "%s: delete tag %s in %s\n",
+			    prog, sym, sc->gfile));
+		} else {
+			verbose((stderr,
+			    "%s: add tag %s->%s in %s\n",
+			    prog, sym, rev, sc->gfile));
+		}
 		free(sym);
 	}
 	if (ep) *ep = error;
@@ -14826,6 +14848,44 @@ key2val(sccs *s, ser_t d, const char *key, int len)
 	return (v);
 }
 
+private void
+printTagDetails(sccs *s, ser_t d, symbol *sym, char *out)
+{
+	symbol	*s2;
+	char	*p = out;
+
+	EACHP_REVERSE(s->symlist, s2) {
+		if (s2 == sym) {
+			if (s2->ser == TREE(s)) {
+				p += sprintf(p, "delete ");
+			}
+			break;
+		}
+		if (s2->symname == sym->symname) {
+			if (d == s2->ser) {
+			} else if (s2->ser == TREE(s)) {
+				if (sym->ser == TREE(s)) {
+					p += sprintf(p, "delete %s",
+					    SYMNAME(s, sym));
+				} else {
+					p += sprintf(p, "%s (deleted)",
+					    SYMNAME(s, sym));
+				}
+			} else if (sym->ser == s2->ser) {
+				break;
+			} else {
+				if (sym->ser == TREE(s)) {
+					p += sprintf(p, "delete ");
+				}
+				p += sprintf(p, "%s (currently on %s)",
+				    SYMNAME(s, sym), REV(s, s2->ser));
+			}
+			return;
+		}
+	}
+	p += sprintf(p, "%s", SYMNAME(s, sym));
+}
+
 /*
  * Include the kw2val() hash lookup function.  This is dynamically
  * generated during the build by kwextract.pl and gperf (see the
@@ -15319,11 +15379,15 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	}
 
 	case KW_C: /* C */ {
-		/* comments */
+		/* comments with lines joined by \n, but no final \n */
 		int	len;
 
 		unless (t = COMMENTS(s, d)) return (nullVal);
-		while (p = eachline(&t, &len)) fm(p, len);
+		len = strlen(t);
+		while ((len > 0) && (t[len-1] == '\n' || t[len-1] == '\r')) {
+			--len;
+		}
+		fm(t, len);
 		return (strVal);
 	}
 
@@ -15616,24 +15680,6 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		return (nullVal);
 	}
 
-	/* $each(:TAG:){S (:TAG:)\n} */
-	case KW_SYMBOLS: /* SYMBOLS */
-	case KW_TAGS: /* TAGS */ {
-		symbol	*sym;
-		int	j = 0;
-
-		unless (d && (FLAGS(s, d) & D_SYMBOLS)) return (nullVal);
-		sym = 0;
-		while (sym = sccs_walkTags(sym, s, d, 0, s->prs_all)) {
-			j++;
-			fs("S ");
-			fs(SYMNAME(s, sym));
-			fc('\n');
-		}
-		if (j) return (strVal);
-		return (nullVal);
-	}
-
 	case KW_COMMENTS: /* COMMENTS */ {	/* $if(:C:){$each(:C:){C (:C:)}\n} */
 		int	len;
 
@@ -15685,7 +15731,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		fc('\n');
 		unless (d && (FLAGS(s, d) & D_SYMBOLS)) return (strVal);
 		dspec_eval(out, s, d,
-		    "$each(:TAG:){  TAG: (:TAG:)\n}");
+		    "$each(:TAGS:){  TAG: (:TAGS:)\n}");
 		fc('\n');
 		return (strVal);
 	}
@@ -15873,17 +15919,38 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		return (strVal);
 	}
 
+	 /* obsolete tags names */
 	case KW_SYMBOL: /* SYMBOL */
-	case KW_TAG: /* TAG */ {
+		if (kwval->kwnum == KW_SYMBOL) kwval->kwnum = KW_ALL_TAGS;
+	case KW_TAG: /* TAG */
+		if (kwval->kwnum == KW_TAG) kwval->kwnum = KW_TAGGED;
+
+	/* current tag names */
+	case KW_ALL_TAGS: /* ALL_TAGS */
+	case KW_TAGS: /* TAGS */
+	case KW_TAGGED: /* TAGGED */ {
 		symbol	*sym;
 		int	j = 0;
+		char	buf[MAXLINE];
 
 		unless (d && (FLAGS(s, d) & D_SYMBOLS)) return (nullVal);
 
 		sym = 0;
-		while (sym = sccs_walkTags(sym, s, d, 0, s->prs_all)) {
+		while (sym = sccs_walkTags(sym, s, d,
+			(kwval->kwnum == KW_TAGGED) ||
+			((kwval->kwnum == KW_TAGS) && s->prs_activeTagsOnly),
+			s->prs_all)) {
+			if (kwval->kwnum == KW_TAGS) {
+				*buf = 0;
+				printTagDetails(s, d, sym, buf);
+				unless (*buf) continue;
+				t = buf;
+			} else {
+				t = SYMNAME(s, sym);
+			}
+			if (j) fc('\n');
 			++j;
-			fs(SYMNAME(s, sym));
+			fs(t);
 		}
 		if (j) return (strVal);
 		return (nullVal);
@@ -16703,6 +16770,7 @@ sccs_prsdelta(sccs *s, ser_t d, int flags, char *dspec, FILE *out)
 	if (TAG(s, d) && !(flags & (PRS_ALL|PRS_FORCE))) return (0);
 	if (SET(s) && !(FLAGS(s, d) & D_SET) && !(flags & PRS_FORCE)) return (0);
 	s->prs_all = ((flags & PRS_ALL) != 0);
+	s->prs_activeTagsOnly = ((flags & PRS_ACTIVETAGSONLY) != 0);
 	s->prs_output = 0;
 	dspec_eval(out, s, d, dspec);
 	if (s->prs_output) {

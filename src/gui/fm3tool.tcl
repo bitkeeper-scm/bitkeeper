@@ -1322,7 +1322,7 @@ proc widgets {} \
 
         set DSPEC \
 "-d:I:  :Dy:-:Dm:-:Dd: :T::TZ:  :P:\\n\$each(:C:){  (:C:)\
-\\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}"
+\\n}\$each(:TAGS:){  TAG: (:TAGS:)\\n}"
 
 	set g [wm geometry .]
 	wm title . "BitKeeper FileMerge $argv"

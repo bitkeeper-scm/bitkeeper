@@ -37,12 +37,22 @@ t_help(resolve *rs)
 	int	len;
 
 	fprintf(stderr, "Tag ``%s'' was added to two changesets.\n", t->name);
-	fprintf(stderr, "\nLocal:  ChangeSet %s\n", REV(rs->s, t->local));
-	r = COMMENTS(rs->s, t->local);
-	while (p = eachline(&r, &len)) fprintf(stderr, "\t%.*s\n", len, p);
-	fprintf(stderr, "Remote: ChangeSet %s\n", REV(rs->s, t->remote));
-	r = COMMENTS(rs->s, t->remote);
-	while (p = eachline(&r, &len)) fprintf(stderr, "\t%.*s\n", len, p);
+	fprintf(stderr, "\nLocal: ");
+	if (DELETED_TAG(rs->s, t->mlocal)) {
+		fprintf(stderr, "tag deleted\n");
+	} else {
+		fprintf(stderr, "ChangeSet %s\n", REV(rs->s, t->local));
+		r = COMMENTS(rs->s, t->local);
+		while (p = eachline(&r, &len)) fprintf(stderr, "\t%.*s\n", len, p);
+	}
+	fprintf(stderr, "Remote: ");
+	if (DELETED_TAG(rs->s, t->mremote)) {
+		fprintf(stderr, "tag deleted\n");
+	} else {
+		fprintf(stderr, "ChangeSet %s\n", REV(rs->s, t->remote));
+		r = COMMENTS(rs->s, t->remote);
+		while (p = eachline(&r, &len)) fprintf(stderr, "\t%.*s\n", len, p);
+	}
 	fprintf(stderr, "\n");
 	for (i = 0; rs->funcs[i].spec; i++) {
 		fprintf(stderr, "  %-4s - %s\n", 
@@ -240,11 +250,13 @@ out:		sccs_free(s);
 		fprintf(stderr,
 		    "%-10.10s %-12s %-7.7s %-11.11s  ",
 		    kv.key.dptr,
-		    REV(s, l), USER(s, l), sdate + 3);
+		    DELETED_TAG(s, l) ? "deleted" : REV(s, l),
+		    USER(s, l), sdate + 3);
 		sdate = delta_sdate(s, r);
 		fprintf(stderr,
 		    "%-12s %-7.7s %11.11s\n",
-		    REV(s, r), USER(s, r), sdate + 3);
+		    DELETED_TAG(s, r) ? "deleted" : REV(s, r),
+		    USER(s, r), sdate + 3);
 		n++;
 	}
 	fprintf(stderr, "\n");

@@ -30,8 +30,8 @@ $if (:FILE:) {
 $each(:C:) {
 	"  (:C:)\n"
 }
-$each(:TAG:) {
-	"  TAG: (:TAG:)\n"
+$each(:TAGS:) {
+	"  TAG: (:TAGS:)\n"
 }
 $unless(:CHANGESET:) {
 	":DIFFS_UP:"

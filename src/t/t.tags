@@ -450,25 +450,16 @@ cd "$HERE"
 # Running over NFS gets this whine: 
 # tar: tagchild/BitKeeper/etc/csets-in: file changed as we read it
 tar cf tagchild.TAR tagchild 2>/dev/null
+cd "$HERE/tagpush"
+KEY=`bk changes -nd:MD5KEY: -r+`  # this guy should win since he is remote
 cd "$HERE/tagchild"
-#  ( echo ""
-#   echo x
-#   echo p
-#   echo t
-#   echo q
-#   ) | bk pull
 echo r | bk pull $Q 2>/dev/null
-test -d RESYNC && {
-	echo failed to resolve
-	exit 1
-}
-test X`bk prs -hr1.5.1.3 -nd:TAG: ChangeSet` = Xsame_tag || {
-	echo Failed to add tag to tip of branch, 1.5.1.3
-	bk prs ChangeSet
-	exit 1
+test -d RESYNC && fail
+test X`bk prs -hr$KEY -nd:TAG: ChangeSet` = Xsame_tag || {
+	bk changes
+	fail Failed to add tag to tip of branch, 1.5.1.3
 }
 echo OK
-#bk revtool
 
 echo $N Test propogation of a tag added with a commit, pick merge ...$NL
 cd "$HERE"

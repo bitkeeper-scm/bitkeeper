@@ -1,0 +1,400 @@
+# Copyright 2016 BitMover, Inc
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+echo $N Add a tag and check that we see it with bk tags .............$NL
+commercial project
+echo junk > junk
+bk new $Q junk || fail
+bk commit $Q -yjunk || fail
+bk tag $Q FOO || fail
+bk tags > OUT
+test -s OUT || fail -f OUT
+grep -q TAG OUT || fail -f OUT
+echo OK
+
+echo $N Delete the tag and bk tags should not show it ...............$NL
+bk untag $Q FOO || fail
+bk tags > OUT
+test -s OUT && fail -f OUT
+echo OK
+
+echo $N But bk tags -t should show it ...............................$NL
+bk tags -t > OUT
+test -s OUT || fail -f OUT
+grep -q TAG OUT || fail -f OUT
+echo OK
+
+echo $N bk changes should show deleted tags by default ..............$NL
+bk changes | grep TAG > OUT
+test -s OUT || fail -f OUT
+echo OK
+
+echo $N But bk changes -tt should show it ...........................$NL
+bk changes -tt | grep TAG > OUT
+test -s OUT || fail -f OUT
+grep -q TAG OUT || fail -f OUT
+echo OK
+
+
+echo $N Try fetching that tag .......................................$NL
+bk prs -rFOO -hnd:REV: > REV 2>ERR && fail -f REV
+echo OK
+
+echo $N Changes output that shows deleted tags ......................$NL
+bk changes -tt | grep TAG: > OUT
+cat <<EOF > WANT
+  TAG: FOO (deleted)
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N Changes output that supresses deleted tags ..................$NL
+bk changes -t | grep TAG: > OUT
+cat <<EOF > WANT
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N Attach a tag to a cset and check output .....................$NL
+bk edit $Q junk || fail
+echo more >> junk
+bk ci $Q -yjunk2 -l junk || fail
+bk commit -yjunk2 --tag=FOO2 $Q || fail
+bk changes -tt -d'$each(:TAGS:){:REV: (:TAGS:)\n}' > OUT
+cat <<EOF > WANT
+1.3 FOO2
+1.2 FOO (deleted)
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N Delete it and check output ..................................$NL
+bk untag $Q FOO2
+bk changes -tt -d'$each(:TAGS:){:REV: (:TAGS:)\n}' > OUT
+cat <<EOF > WANT
+1.3 FOO2 (deleted)
+1.2 FOO (deleted)
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N Try merging tags ............................................$NL
+bk tag $Q FOO || fail
+bk tag $Q BAZ || fail
+cd ..
+bk clone $Q project clone || fail
+cd project
+bk untag $Q FOO || fail
+cd ../clone
+bk changes -tt -d'$each(:TAGS:){:REV: (:TAGS:)\n}' > OUT
+cat <<EOF > WANT
+1.3 BAZ
+1.3 FOO
+1.3 FOO2 (deleted)
+1.2 FOO (currently on 1.3)
+EOF
+cmpfiles OUT WANT
+bk pull $Q || fail
+bk changes -tt -d'$each(:TAGS:){:REV: (:TAGS:)\n}' > OUT
+cat <<EOF > WANT
+1.3 BAZ
+1.3 FOO (deleted)
+1.3 FOO2 (deleted)
+1.2 FOO (deleted)
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N Try tag conflict involving a delete .........................$NL
+cd ../project
+bk untag $Q BAZ || fail
+cd ../clone
+bk tag $Q -r1.1 BAZ || fail
+(echo h; echo q) | bk pull $Q 2>ERR && fail should have failed
+grep -q "BAZ.*1.1.*bk.*deleted" ERR || fail -f ERR wrong message
+grep -q "Remote: tag deleted" ERR || fail -f ERR
+(echo l) | bk resolve $Q 2>ERR
+bk changes -tt -d'$each(:TAGS:){:REV: (:TAGS:)\n}' > OUT
+cat <<EOF > WANT
+1.3 BAZ (currently on 1.1)
+1.3 FOO (deleted)
+1.3 FOO2 (deleted)
+1.2 FOO (deleted)
+1.1 BAZ
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N Test output when we restore a tag to tip ....................$NL
+bk tag $Q BAZ || fail
+bk changes -tt -d'$each(:TAGS:){:REV: (:TAGS:)\n}' > OUT
+cat <<EOF > WANT
+1.3 BAZ
+1.3 FOO (deleted)
+1.3 FOO2 (deleted)
+1.2 FOO (deleted)
+1.1 BAZ (currently on 1.3)
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N Test output when we move it forward \(XXX - dups\) ............$NL
+echo whatever > some_file
+bk new $Q some_file
+bk commit $Q -ywhatever
+bk tag $Q BAZ || fail
+bk changes -tt -d'$each(:TAGS:){:REV: (:TAGS:)\n}' > OUT
+cat <<EOF > WANT
+1.4 BAZ
+1.3 BAZ (currently on 1.4)
+1.3 BAZ (currently on 1.4)
+1.3 FOO (deleted)
+1.3 FOO2 (deleted)
+1.2 FOO (deleted)
+1.1 BAZ (currently on 1.4)
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N Should have one active tag at this point ....................$NL
+bk tags > OUT
+test -s OUT || fail -f OUT
+grep TAG OUT > GOT
+echo "  TAG: BAZ" > WANT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test output when we delete it \(XXX - dups\) ..................$NL
+bk untag $Q BAZ || fail
+bk changes -tt -d'$each(:TAGS:){:REV: (:TAGS:)\n}' > OUT
+cat <<EOF > WANT
+1.4 BAZ (deleted)
+1.3 BAZ (deleted)
+1.3 BAZ (deleted)
+1.3 FOO (deleted)
+1.3 FOO2 (deleted)
+1.2 FOO (deleted)
+1.1 BAZ (deleted)
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N Should have no active tags at this point ....................$NL
+bk tags > OUT
+test -s OUT && fail -f OUT
+echo OK
+
+echo $N Undo can bring back old tags ................................$NL
+bk undo $Q -sfr+
+bk changes -t | grep TAG > GOT
+echo "  TAG: BAZ" > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test expected changes output ................................$NL
+
+perl -lne 'BEGIN {binmode(STDOUT);print "#dv2"; print "\":DT::DS: :REV:\\n\"";} ($n = $_) =~ s/([$():])/\\$1/g; print "\$if($_){\"$n: \"$_\"\\n\"}"; END { print "---\\n";}' <<'EOF' > dspec
+:ALL_TAGS:
+:TAGGED:
+:TAGS:
+:TAG_ISLEAF:
+EOF
+
+bk changes --dspecf=dspec > GOT
+cat <<'EOF' > WANT
+D6 1.3
+:ALL_TAGS:: BAZ
+BAZ
+FOO
+FOO2
+:TAGGED:: BAZ
+:TAGS:: BAZ
+FOO (deleted)
+FOO2 (deleted)
+---
+D3 1.2
+:ALL_TAGS:: FOO
+:TAGS:: FOO (deleted)
+---
+D2 1.1
+:ALL_TAGS:: BAZ
+:TAGS:: BAZ (currently on 1.3)
+---
+D1 1.0
+---
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test expected changes -a output .............................$NL
+# notice only 1 ":TAGGED:: BAZ"
+bk changes -a --dspecf=dspec > GOT
+cat <<'EOF' > WANT
+T14 1.3
+:ALL_TAGS:: BAZ
+:TAGGED:: BAZ
+:TAGS:: BAZ
+:TAG_ISLEAF:: 1.3
+---
+T13 1.1
+---
+T12 1.1
+:ALL_TAGS:: BAZ
+:TAGS:: BAZ (currently on 1.3)
+---
+T11 1.0
+:ALL_TAGS:: BAZ
+:TAGS:: delete BAZ (currently on 1.3)
+---
+T10 1.0
+:ALL_TAGS:: FOO
+:TAGS:: delete FOO
+---
+T9 1.3
+:ALL_TAGS:: BAZ
+:TAGS:: BAZ
+---
+T8 1.3
+:ALL_TAGS:: FOO
+:TAGS:: FOO (deleted)
+---
+T7 1.0
+:ALL_TAGS:: FOO2
+:TAGS:: delete FOO2
+---
+D6 1.3
+:ALL_TAGS:: FOO2
+:TAGS:: FOO2 (deleted)
+---
+T5 1.0
+:ALL_TAGS:: FOO
+:TAGS:: delete FOO
+---
+T4 1.2
+:ALL_TAGS:: FOO
+:TAGS:: FOO (deleted)
+---
+D3 1.2
+---
+D2 1.1
+---
+D1 1.0
+---
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test expected changes -t output .............................$NL
+bk changes -t --dspecf=dspec > GOT
+cat <<'EOF' > WANT
+D6 1.3
+:ALL_TAGS:: BAZ
+BAZ
+FOO
+FOO2
+:TAGGED:: BAZ
+:TAGS:: BAZ
+---
+EOF
+cmpfiles GOT WANT
+echo OK
+
+
+echo $N Test expected changes -tt output ............................$NL
+bk changes -tt --dspecf=dspec > GOT
+cat <<'EOF' > WANT
+D6 1.3
+:ALL_TAGS:: BAZ
+BAZ
+FOO
+FOO2
+:TAGGED:: BAZ
+:TAGS:: BAZ
+FOO (deleted)
+FOO2 (deleted)
+---
+D3 1.2
+:ALL_TAGS:: FOO
+:TAGS:: FOO (deleted)
+---
+D2 1.1
+:ALL_TAGS:: BAZ
+:TAGS:: BAZ (currently on 1.3)
+---
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test expected changes -a -t output ..........................$NL
+bk changes -a -t --dspecf=dspec > GOT
+cat <<'EOF' > WANT
+T14 1.3
+:ALL_TAGS:: BAZ
+:TAGGED:: BAZ
+:TAGS:: BAZ
+:TAG_ISLEAF:: 1.3
+---
+T12 1.1
+:ALL_TAGS:: BAZ
+:TAGS:: BAZ (currently on 1.3)
+---
+T11 1.0
+:ALL_TAGS:: BAZ
+:TAGS:: delete BAZ (currently on 1.3)
+---
+T10 1.0
+:ALL_TAGS:: FOO
+:TAGS:: delete FOO
+---
+T9 1.3
+:ALL_TAGS:: BAZ
+:TAGS:: BAZ
+---
+T8 1.3
+:ALL_TAGS:: FOO
+:TAGS:: FOO (deleted)
+---
+T7 1.0
+:ALL_TAGS:: FOO2
+:TAGS:: delete FOO2
+---
+D6 1.3
+:ALL_TAGS:: FOO2
+:TAGS:: FOO2 (deleted)
+---
+T5 1.0
+:ALL_TAGS:: FOO
+:TAGS:: delete FOO
+---
+T4 1.2
+:ALL_TAGS:: FOO
+:TAGS:: FOO (deleted)
+---
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test command line takes multiple tags .......................$NL
+bk tags > WANT
+bk tag $Q LEFT
+bk tag $Q -r1.2 RIGHT
+bk untag LEFT RIGHT 2> OUT
+bk tags > GOT
+cmpfiles WANT GOT
+cat <<'EOF' > WANT
+admin: delete tag LEFT in ChangeSet
+admin: delete tag RIGHT in ChangeSet
+EOF
+cmpfiles WANT OUT
+echo OK

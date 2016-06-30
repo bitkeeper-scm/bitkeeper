@@ -125,7 +125,7 @@ case $CMD in
 
 	cd $BKDIR/src
 	# If tagged tree, clear obj cache
-	test $CMD != nightly -a "`bk changes -r+ -d'$if(:SYMBOL:){1}'`" && {
+	test $CMD != nightly -a "`bk changes -r+ -t`" && {
 		echo Tagged tree: removing /build/obj
 		/bin/rm -rf /build/obj/*
 		# On Windows the obj cache might be somewhere else

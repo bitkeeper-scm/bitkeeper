@@ -357,7 +357,7 @@ echo OK
 echo $N Verify changes -aL works with tags ..........................$NL
 cd "$HERE/clone"
 bk tag $Q -r1.2 bar
-bk changes -aL -qnd':REV: :COMMENTS: :SYMBOL:' > chgs
+bk changes -aL -qnd':REV: :COMMENTS: :TAGS:' > chgs
 cat <<EOF > expect
 1.2  bar
 1.5 C clone
@@ -881,10 +881,10 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Check that -/regex/t works ..................................$NL
-bk changes -/s.*/t -nd:SYMBOL: > GOT
+bk changes -/s.*/t -nd:TAGS: > GOT
 echo second > WANT
 cmpfiles WANT GOT
-bk changes -/t*i/gt -nd:SYMBOL: > GOT
+bk changes -/t*i/gt -nd:TAGS: > GOT
 echo third > WANT
 cmpfiles WANT GOT
 echo OK

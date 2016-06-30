@@ -33,12 +33,6 @@ typedef enum {
 	T_EOF,
 } op;
 
-typedef	struct
-{
-	int	i;		/* index into a lines array typically */
-	char	*freeme;	/* last value if it needs to be freed */
-} nextln;
-
 /* Globals for dspec code below. */
 private struct {
 	char	*p;		/* current location in dspec */
@@ -72,7 +66,6 @@ private void	evalId(FILE *out);
 private void	evalParenid(FILE *out, datum id);
 private int	expr(void);
 private int	expr2(op *next_tok);
-private char	*getnext(datum kw, nextln *state);
 private int	getParenid(datum *id);
 private int	lookFor(char *s, int len, enum flags flags);
 private int	match(char *s, char *pattern);
@@ -256,7 +249,9 @@ dollar(FILE *out)
 		}
 	} else if (strneq("$each(", g.p, 6) ||
 	    strneq("$first(", g.p, 7)) {
-		nextln	state;
+		FILE	*f;
+		char	*save, *nextln;
+		int	len;
 		char	*bufptr;
 		int	savejoin;
 		int	first = strneq("$first(", g.p, 7);
@@ -284,17 +279,23 @@ dollar(FILE *out)
 		 * Re-evaluate the $each body for each
 		 * line of the $each variable.
 		 */
-		bzero(&state, sizeof(state));
 		bufptr	  = g.p;
 		g.line	  = 1;
 		savejoin  = g.s->prs_join;
 		g.s->prs_join = 0;
-		while (g.eachval = getnext(g.eachkey, &state)) {
+
+		/* expand eachkey and walk each line (newlines stripped) */
+		f = fmem();
+		kw2val(f, g.eachkey.dptr, g.eachkey.dsize, g.s, g.d);
+		save = nextln = fmem_close(f, 0);
+		while (g.eachval = eachline(&nextln, &len)) {
+			if (g.eachval) g.eachval[len] = 0;
 			g.p = bufptr;
 			stmtList(out);
 			++g.line;
 			if (first) break;
 		}
+		FREE(save);
 		g.eachkey.dptr = 0;
 		g.eachkey.dsize = 0;
 		g.s->prs_join = savejoin;
@@ -642,83 +643,6 @@ err(char *msg)
 	fprintf(stderr, "^\n");
 	exit(1);
 }
-
-/*
- * Given a keyword with a multi-line value, return each line successively.
- * A nextln * is passed in to store the state
- * of where we are in the list of lines to return.
- * Call this function with all of state cleared the first time.
- * In particular, state->i=0 to get the first line, then pass the
- * return value back in to get subsquent lines.
- * Return a pointer to the data or 0 meaning EOF.
- * If data is malloced, save the pointer in freeme, which will get freed
- * on next call.  Nothing outside this routine knows internals of state.
- */
-private char *
-getnext(datum kw, nextln *state)
-{
-	if (state->freeme) {
-		free(state->freeme);
-		state->freeme = 0;
-	}
-again:
-	if (strneq(kw.dptr, "C", kw.dsize)) {
-		char	*p, *t;
-		int	len;
-
-		unless (g.d && HAS_COMMENTS(g.s, g.d)) return (0);
-
-		t = COMMENTS(g.s, g.d);
-		t += state->i;
-		if (*t && (p = strchr(t, '\n'))) {
-			len = p-t;
-			state->freeme = strndup(t, len);
-			state->i += len+1;
-		}
-		return(state->freeme);
-	}
-	++state->i;	/* first call has it set to 0, so now 1 */
-
-	/* XXX FD depracated */
-	if (strneq(kw.dptr, "FD", kw.dsize)) {
-		unless (g.s && g.s->text &&
-		    (state->i <= nLines(g.s->text))) {
-			return (0);
-		}
-		/* XXX Is this needed for title, or only comments? */
-		if (g.s->text[state->i][0] == '\001') goto again;
-		return (g.s->text[state->i]);
-	}
-
-	if (((kw.dsize == 6) && strneq(kw.dptr, "SYMBOL", kw.dsize)) ||
-	    ((kw.dsize == 3) && strneq(kw.dptr, "TAG", kw.dsize))) {
-		symbol	*sym;
-		int	i;
-
-		i = 0;
-		sym = 0;
-		while (sym = sccs_walkTags(sym, g.s, g.d, 0, g.s->prs_all)) {
-			if (++i == state->i) break;
-		}
-		unless (sym) return (0);
-		return (SYMNAME(g.s, sym));
-	}
-
-	/* Handle all single-line keywords. */
-	if (state->i == 1) {
-		FILE	*f = fmem();
-
-		/* First time in, get the keyword value. */
-		kw2val(f, kw.dptr, kw.dsize, g.s, g.d);
-		state->freeme = fmem_close(f, 0);
-		return (state->freeme);
-	} else {
-		/* Second time in, bail out. */
-		return (0);
-	}
-	/* not reached */
-}
-
 
 void
 dspec_printeach(sccs *s, FILE *out)

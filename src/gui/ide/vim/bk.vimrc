@@ -1,6 +1,18 @@
-"" BitKeeper VIM mode 
-""  Copyright (c) 2001 by Aaron Kushner; All rights reserved.
+"" BitKeeper VIM mode
+"" Copyright 2001 BitMover & Aaron Kushner
 ""
+"" Licensed under the Apache License, Version 2.0 (the "License");
+"" you may not use this file except in compliance with the License.
+"" You may obtain a copy of the License at
+
+""     http://www.apache.org/licenses/LICENSE-2.0
+
+"" Unless required by applicable law or agreed to in writing, software
+"" distributed under the License is distributed on an "AS IS" BASIS,
+"" WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+"" See the License for the specific language governing permissions and
+"" limitations under the License.
+
 "" %W%
 ""
 "" Instructions:
@@ -244,7 +256,7 @@ if version >= 505 && !exists("bk_macros_loaded")
 
     " Show the PRS output for a file or cset
     fu! Prs(file)
-        let dspec = "-d\':DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\\n\$each(:C:){  (:C:)\\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\\n\' "
+        let dspec = "-d\':DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\\n\$each(:C:){  (:C:)\\n}\$each(:TAGS:){  TAG: (:TAGS:)\\n}\\n\' "
 	if a:file == "ChangeSet"
         	new prs-window
         	exe "r!bk -R prs " . "-hn " . dspec . 'ChangeSet'

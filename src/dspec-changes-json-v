@@ -41,9 +41,9 @@ $if (:CHANGESET: && !:COMPONENT_V:) {
 	"  \"date\": \":Dy:-:Dm:-:Dd:T:T::TZ:\",\n"
 	"  \"serial\": :DS:,\n"
 	"  \"comments\": \"" $each(:C:){$json{(:C:)}\\n} "\",\n"
-	$if (:TAG:) {
+	$if (:TAGS:) {
 		"  \"tags\": [ "
-		$each(:TAG:){:JOIN:"\""(:TAG:)"\""}
+		$each(:TAGS:){:JOIN:"\""(:TAGS:)"\""}
 		" ],\n"
 	}
 	"  \"parents\": [ "

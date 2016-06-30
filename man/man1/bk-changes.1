@@ -81,7 +81,7 @@ options.
 .OPTreq \- n
 A numeric argument that limits the number of changesets printed.
 .Tp
-.OPTreq \-/ str \fB/\fP[\fBig\fP]
+.OPTreq \-/ str \fB/\fP[\fBigt\fP]
 List only those changesets whose comments contain the string
 .ARG str .
 .ARG str
@@ -89,8 +89,7 @@ may be a regular expression, or if the
 .ARG g
 option is specified, a glob.
 If there is a trailing \*(lqi\*(rq then ignore case in the search.
-.\" Pulling these docs because tag search is N^2 or worse.  lm3di
-.\" If there is a trailing \*(lqt\*(rq then search only in tag names.
+If there is a trailing \*(lqt\*(rq then search only in tag names.
 .Tp
 .B \-a
 List all deltas, including tag deltas.
@@ -240,7 +239,12 @@ See product notes below for examples.
 .\}
 .Tp
 .B \-t
-Only list changesets which are tagged.
+.tp
+.B \-\-tags
+Only list changesets which are currently tagged.
+Use \-tt (or \-\-all-tags)
+to list all changesets which have ever been tagged, annotated with
+the tag's current state.
 .Tp
 .B \-T
 Sort the deltas in a changeset in time order.

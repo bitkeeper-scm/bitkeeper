@@ -652,7 +652,7 @@ _rmdir() {		# /* doc 2.0 */
 	exit 0
 }
 
-# usage: tag [r<rev>] symbol
+# usage: tag [-r<rev>] symbol
 _tag() {		# /* doc 2.0 */
 	if [ "X$1" = X"--help" ]; then bk help tag; exit 0; fi
 	__cd2root
@@ -661,7 +661,7 @@ _tag() {		# /* doc 2.0 */
 	while getopts qr: opt
 	do	case "$opt" in
 		q) OPTS="-q";;		# /* undoc? 2.0 */
-		r) REV="|$OPTARG";;	# /* undoc? 2.0 */
+		r) REV="|$OPTARG";;
 		*) bk help -s tag; exit 1;;
 		esac
 	done
@@ -671,11 +671,25 @@ _tag() {		# /* doc 2.0 */
 		exit 1
 	}
 	shift `expr $OPTIND - 1`
-	if [ "X$1" = X ]
-	then	bk help -s tag
-		exit 1
-	fi
+	if [ "X$1" = X ]; then	bk help -s tag; exit 1; fi
 	bk admin $OPTS -S"${1}$REV" ChangeSet
+}
+
+_untag() {
+	if [ "X$1" = X"--help" ]; then bk help untag; exit 0; fi
+	__cd2root
+	OPTS=
+	while getopts q opt
+	do	case "$opt" in
+		q) OPTS="-q";;
+		*) bk help -s untag; exit 1;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	if [ "X$1" = X ]; then	bk help -s untag; exit 1; fi
+	for i
+	do	bk admin $OPTS -S"${i}|1.0" ChangeSet
+	done
 }
 
 # usage: ignore glob [glob ...]

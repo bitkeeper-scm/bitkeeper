@@ -358,9 +358,9 @@ http_changes(char *page)
 	    "$if(:Li: -gt 0){<tr>\\n"
 	    " <td class='age'>:HTML_AGE:</td>\\n"
 	    " <td class='author'>:USER:</td>\\n"
-	    " <td$if(:TAG:){ class='rev tag'}$else{ class='rev'}>\\n"
+	    " <td$if(:TAGS:){ class='rev tag'}$else{ class='rev'}>\\n"
 	    "|:REV:|:MD5KEY:\\n"
-	    "$if(:TAG:){$each(:TAG:){<br>TAG: (:TAG:) }}"
+	    "$each(:TAGS:){<br>TAG: (:TAGS:) }"
 	    "</td>\\n"
 	    " <td class='comments'>:HTML_C:</td>\\n"
 	    "</tr>\\n"
@@ -418,9 +418,9 @@ http_cset(char *page)
 	    "#:MD5KEY:@:GFILE:@:REV:&nbsp;&nbsp;:Dy:-:Dm:-:Dd: :T::TZ:&nbsp;&nbsp;:P:"
 	    "$if(:DOMAIN:){@:DOMAIN:}<br>\\n"
 	    "</td></tr>\\n"
-	    "$if(:TAG:){"
+	    "$if(:TAGS:){"
 	      "<tr class='tag'><td class='tag'>"
-	      "$each(:TAG:){TAG: (:TAG:)<br>}</td>\\n</tr>\\n"
+	      "$each(:TAGS:){TAG: (:TAGS:)<br>}</td>\\n</tr>\\n"
 	    "}"
 	    "<tr>\\n"
 	    "<td class='comments'>:HTML_C:</td></tr>\\n"
@@ -592,7 +592,7 @@ http_prs(char *page)
 	    "$if(:RENAME:){1}0|"			   /* 3 isrename */
 	    ":HTML_AGE:|"				   /* 4 age */
 	    ":USER:|"					   /* 5 user */
-	    "$if(:TAG:){$each(:TAG:){<br>TAG: (:TAG:)}} |" /* 6 tags */
+	    "$each(:TAGS:){<br>TAG: (:TAGS:)} |"	   /* 6 tags */
 	    ":HTML_C:";					   /* 7 comments */
 	if (rev) av[++i] = revision = aprintf("-r%s", rev);
 	av[++i] = fpath;
@@ -1638,9 +1638,9 @@ http_related(char *page)
 			" <td tag=\"age\">:HTML_AGE:</td>\\n"
 			" <td tag=\"author\">:USER:</td>\\n"
 			" <td"
-			"$if(:TAG:){ class=\"rev tag\"}$else{ class=\"rev\"}>"
+			"$if(:TAGS:){ class=\"rev tag\"}$else{ class=\"rev\"}>"
 			"<a href=/%s/%s&REV=:MD5KEY:>:I:</a>"
-			"$if(:TAG:){$each(:TAG:){<br>TAG: (:TAG:)}}"
+			"$each(:TAGS:){<br>TAG: (:TAGS:)}"
 			"</td>\\n"
 			" <td class=\"comments\">:HTML_C:</td>\\n"
 			"</tr>\\n%s", prefix, root, querystr, suffix);
@@ -1695,7 +1695,7 @@ http_tags(char *page)
 	cmd = aprintf("bk changes -t -nd'%s"
 	    "<tr>\\n"
 	    "  <td class='age'>:HTML_AGE:</td>\\n"
-	    "$each(:TAG:){|(:TAG:)}\\n"
+	    "$each(:TAGS:){|(:TAGS:)}\\n"
 	    "  <td class='comments'>:HTML_C:</td>\\n"
 	    "</tr>%s'", prefix, suffix);
 	f = popen(cmd, "r");

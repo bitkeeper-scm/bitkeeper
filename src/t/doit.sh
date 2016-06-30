@@ -28,7 +28,7 @@ fi
 
 # Tell tests if we are a tagged cset, some tests use internal features
 # like --trace=fs
-test -x "`which bk`" -a "`bk changes -r+ -d'$if(:SYMBOL:){1}'`" && {
+test -x "`which bk`" -a "`bk changes -r+ -t`" && {
 	BK_TAGGED=yes
 	export BK_TAGGED
 }

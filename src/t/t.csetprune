@@ -247,7 +247,7 @@ cd ../tag-master
 # resume this test ...
 # collapse tag graph onto real graph
 echo "$BAR" | bk csetprune $Q --tag-csets || fail
-bk changes -ar+ -d:TAGS: > GOT
+bk changes -ar+ -d'$each(:TAGGED:){S (:TAGGED:)\n}' > GOT
 cat <<EOF > WANT
 S TAG2
 S TAG1
@@ -260,7 +260,7 @@ echo OK
 dspec=':DT:-:DS:-:DP:-:MGP:-:TAG_PSERIAL:-:TAG_MSERIAL:$if(:TAG_ISLEAF:){-leaf}'
 echo $N Test collapsing with two tag tips ...........................$NL
 cd ../tag-copy
-bk tag $Q -r1.0 TAG1   # will be 'tag delete' in the future (probably)
+bk untag $Q TAG1
 echo "$BAR" | bk csetprune $Q --tag-csets || fail
 bk changes -and"$dspec" > GOT
 cat <<'EOF' > WANT

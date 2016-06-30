@@ -21,9 +21,9 @@ $each(:C:) {		# comments
 	"  (:C:)\n"
 }
 "\n"
-$if (:TAG:) {
-	$each(:TAG:) {
-		"  TAG: (:TAG:)\n"
+$if (:TAGS:) {
+	$each(:TAGS:) {
+		"  TAG: (:TAGS:)\n"
 	}
 	"\n"
 }

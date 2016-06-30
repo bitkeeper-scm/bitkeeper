@@ -24,7 +24,7 @@ pending_main(int ac, char **av)
 	int	c, nested, quiet = 0, standalone = 0;
 	char	*dspec =
 ":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\\n\
-$each(:C:){  (:C:)\\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\\n";
+$each(:C:){  (:C:)\\n}$each(:TAGS:){  TAG: (:TAGS:)\\n}\\n";
 	longopt	lopts[] = {
 		{ "standalone", 'S' },		/* new -S option */
 		{ 0, 0 }

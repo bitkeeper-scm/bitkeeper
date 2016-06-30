@@ -32,6 +32,7 @@ private struct {
 	u32	nomerge:1;	/* do not list _any_ merge deltas */
 	u32	remote:1;	/* want the new remote csets */
 	u32	tagOnly:1;	/* only show items which are tagged */
+	u32	tagDeletes:1;	/* include deleted tags */
 	u32	timesort:1;	/* force sorting based on time, not dspec */
 	u32	urls:1;		/* list each URL for local/remote */
 	u32	verbose:1;	/* list the file checkin comments */
@@ -143,6 +144,8 @@ changes_main(int ac, char **av)
 		{ "lattice", 330 },		/* range is a lattice */
 		{ "longest", 340 },		/* longest path */
 		{ "dspecbegin;", 350 },		/* dspec $begin clause */
+		{ "tags", 360 },
+		{ "all-tags", 370 },
 		{ 0, 0 }
 	};
 
@@ -195,7 +198,13 @@ changes_main(int ac, char **av)
 		    case 'n': opts.newline = 1; break;
 		    case 'P': opts.prodOnly = 1; break;
 		    case 'q': opts.urls = 0; break;
-		    case 't': opts.tagOnly = 1; break;		/* doc 2.0 */
+		    case 't': 					/* doc'd */
+			if (opts.tagOnly) {
+				opts.tagDeletes = 1;
+			} else {
+		    		opts.tagOnly = 1;
+			}
+			break;
 		    case 'T': opts.timesort = 1; break;
 		    case 'u':
 			opts.users = addLine(opts.users, strdup(optarg));
@@ -267,6 +276,13 @@ changes_main(int ac, char **av)
 			break;
 		    case 350: /* --dspecbegin */
 			opts.begin = addLine(opts.begin, strdup(optarg));
+			break;
+		    case 360: /* --tags */
+			opts.tagOnly = 1;
+			opts.tagDeletes = 0;
+			break;
+		    case 370: /* --all-tags */
+			opts.tagOnly = opts.tagDeletes = 1;
 			break;
 		    default: bk_badArg(c, av);
 		}
@@ -843,6 +859,7 @@ doit(int dash)
 	}
 	flags = PRS_FORCE;
 	if (opts.newline) flags |= PRS_LF;
+
 	/*
 	 * $begin/$end node. When the range is empty then dstart = dend = 0.
 	 * So in this case any keywords in $begin/$end will get passed with d=0
@@ -1183,6 +1200,10 @@ cset(hash *state, sccs *sc, char *compKey, char *pkey, FILE *f, char *dspec)
 	assert(dspec);
 	if (opts.newline) flags |= PRS_LF; /* for sccs_prsdelta() */
 	if (opts.all) flags |= PRS_ALL;	   /* force s->prs_all */
+	if (!opts.all && opts.tagOnly && !opts.tagDeletes) {
+		/* :TAGS: only matches active tags */
+		flags |= PRS_ACTIVETAGSONLY;
+	}
 
 	/* Create an empty rstate if it doesn't already exist */
 	hash_insert(state, &sc->proj, sizeof(project *),
@@ -1506,7 +1527,8 @@ want(sccs *s, ser_t e)
 		match = 0;
 		sym = 0;
 		while (sym =
-		    sccs_walkTags(sym, s, e, 0, opts.all)) {
+		    sccs_walkTags(sym, s, e,
+			!(opts.tagDeletes || opts.all), opts.all)) {
 			if (opts.tsearch &&
 			    !search_either(SYMNAME(s, sym), opts.search)) {
 				continue;

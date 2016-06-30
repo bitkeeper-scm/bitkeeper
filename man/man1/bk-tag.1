@@ -7,6 +7,7 @@ bk tag \- tag the \*(BK repository with a symbolic name
 bk tags \- list tagged changesets
 .SH SYNOPSIS
 .B bk tag
+.[B] \-q
 .[OPTreq] \-r rev
 .ARG symbol
 .br
@@ -15,12 +16,16 @@ bk tags \- list tagged changesets
 .SH DESCRIPTION
 .LP
 Tags (aka symbols or labels) are used when you want to record the state of 
-a tree.  It is quite common to \*(lqtag the tree\*(rq with a release name when 
+a tree.
+It is quite common to \*(lqtag the tree\*(rq with a release name when 
 shipping a product to customers.  
 .LP
 To add a tag to the repository, make sure that you've checked everything
-in and created a changeset.  You can use bk status to see what needs to
-be checked in and/or committed to a changeset. Tag the tree by typing:
+in and created a changeset.
+You can use
+.B bk status
+to see what needs to be checked in and/or committed to a changeset.
+Tag the tree by typing:
 .DS
 $ bk tag Alpha
 .DE
@@ -69,6 +74,14 @@ command again.  If there are multiple tags
 with the same name, \*(BK takes the most recently applied tag (which
 means you can move a tag backwards by specifying an older revision of
 the cset file).
+.SH OPTIONS
+.TP \-r\*<rev\*>
+.B \-q
+Run quietly, supressing diagnostics.
+.tp
+.OPTreq \-r rev
+Tags an older release
+.BR rev .
 .SH LEGAL TAGS
 Certain characters are not allowed in tags because they conflict with
 other parts of the \*(BK revision, date, and/or range name spaces.
@@ -99,6 +112,7 @@ Need a way of setting a tag in
 .SA admin
 .SA changes
 .SA commit
+.SA untag
 .SA log
 .\" help://tags
 .\" help://label

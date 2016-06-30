@@ -30,11 +30,11 @@ $begin {
     "&nbsp;:Dy:-:Dm:-:Dd: :Th:::Tm:&nbsp;&nbsp;:USER:@:HOST:&nbsp;&nbsp;:REV:"
   "</td>"
 "</tr>\n"
-$if (:TAG:) {
+$if (:TAGS:) {
 	"<tr bgcolor=yellow>"
 	  "<td>"
-	    $each(:TAG:) {
-		"&nbsp;TAG: (:TAG:)<br>\n"
+	    $each(:TAGS:) {
+		"&nbsp;TAG: (:TAGS:)<br>\n"
 	    }
 	  "</td>"
 	"</tr>\n"
