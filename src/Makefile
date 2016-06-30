@@ -203,6 +203,8 @@ ifeq ($(shell uname -s), Darwin)
 	G	+= -DNOPROC
 endif
 
+XLIBS += -lz
+
 ifeq (clang, $(findstring clang, $(shell $(CC) --version)))
 	WARNINGS += -Wno-unused-value -Wno-empty-body -Wno-self-assign
 endif
