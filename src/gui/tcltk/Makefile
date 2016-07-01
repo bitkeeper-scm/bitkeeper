@@ -341,6 +341,7 @@ bin/BitKeeper.app/Contents/MacOS/BitKeeper: bin/tclsh$(EXE) mkapp
 clean-obj: FORCE
 	-test -d tcl && cd tcl/$S && test -f Makefile && $(MAKE) distclean
 	-test -d tk && cd tk/$S && test -f Makefile && $(MAKE) distclean
+	-test -d tk && rm -f tk/doc/man.macros
 	-test -d tktable && cd tktable && test -f Makefile && $(MAKE) distclean
 	-test -d pcre && cd pcre && { \
 		test -f Makefile && $(MAKE) distclean; \

@@ -432,9 +432,9 @@ trigger_env(char *prefix, char *event, char *what)
 	trigger_putenv(prefix, "USER", sccs_getuser());
 	trigger_putenv("BK", "EVENT", event);
 	putroot(prefix);
-	trigger_putenv(prefix, "TIME_T", bk_time);
-	trigger_putenv(prefix, "UTC", bk_utc);
-	trigger_putenv(prefix, "VERSION", bk_vers);
+	trigger_putenv(prefix, "TIME_T", bkver("TIME"));
+	trigger_putenv(prefix, "UTC", bkver("UTC"));
+	trigger_putenv(prefix, "VERSION", bkver("VERS"));
 	sprintf(buf, "%d", getlevel());
 	trigger_putenv(prefix, "LEVEL", buf);
 	repoid = proj_repoID(0);

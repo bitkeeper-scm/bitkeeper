@@ -1709,18 +1709,15 @@ int	search_regex(char *s, search search);
 search	search_parse(char *str);
 void	search_free(search search);
 
+char	*bkver(char *key);
+
 extern	char	*editor;
 extern	char	*bin;
 extern	char	*BitKeeper;
 extern	int	spawn_tcl;
 extern	char	*start_cwd;
-extern	char	*bk_vers;
-extern	char	*bk_utc;
-extern	char	*bk_tag;
-extern	char	*bk_time;
 extern	char	*bk_platform;
 extern	time_t	bk_build_timet;
-extern	char	*bk_build_user;
 extern	char	*bk_build_dir;
 extern	int	test_release;
 extern	char	*prog;

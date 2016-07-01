@@ -814,9 +814,9 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 
 	if (r->host) fprintf(f, "putenv BK_VHOST=%s\n", r->host);
 	fprintf(f, "putenv BK_REMOTE_PROTOCOL=%s\n", BKD_VERSION);
-	fprintf(f, "putenv BK_VERSION=%s\n", bk_vers);
-	fprintf(f, "putenv BK_UTC=%s\n", bk_utc);
-	fprintf(f, "putenv BK_TIME_T=%s\n", bk_time);
+	fprintf(f, "putenv BK_VERSION=%s\n", bkver("VERS"));
+	fprintf(f, "putenv BK_UTC=%s\n", bkver("UTC"));
+	fprintf(f, "putenv BK_TIME_T=%s\n", bkver("TIME"));
 	user = sccs_getuser();
 	fprintf(f, "putenv BK_USER=%s\n", user);
 	fprintf(f, "putenv _BK_USER=%s\n", user);	/* XXX remove in 3.0 */
@@ -1062,11 +1062,11 @@ sendServerInfo(u32 cmdlog_flags)
         sprintf(buf, "PROTOCOL=%s\n", BKD_VERSION);	/* protocol version */
 	out(buf);
 
-        sprintf(buf, "VERSION=%s\n", bk_vers);		/* binary version   */
+        sprintf(buf, "VERSION=%s\n", bkver("VERS"));		/* binary version   */
 	out(buf);
-        sprintf(buf, "UTC=%s\n", bk_utc);
+        sprintf(buf, "UTC=%s\n", bkver("UTC"));
 	out(buf);
-        sprintf(buf, "TIME_T=%s\n", bk_time);
+        sprintf(buf, "TIME_T=%s\n", bkver("TIME"));
 	out(buf);
 
 	unless (no_repo) {
@@ -1199,7 +1199,7 @@ http_hdr(void)
 		out("HTTP/1.0 200 OK\r\n");
 	}
 	out("Server: BitKeeper daemon ");
-	out(bk_vers);
+	out(bkver("VERS"));
 	out("\r\n");
 	out("Cache-Control: no-cache\r\n");	/* for http 1.1 */
 	out("Pragma: no-cache\r\n");		/* for http 1.0 */

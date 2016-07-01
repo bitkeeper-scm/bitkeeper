@@ -58,6 +58,7 @@ upgrade_main(int ac, char **av)
 	int	rc = 2;
 	char	*bundle = 0;
 	mode_t	myumask;
+	char	*bk_vers = bkver("VERS");
 	static longopt	lopts[] = {
 		{"update-latest", 300 },
 		{ 0, 0 }
@@ -276,9 +277,10 @@ proceed:
 	 */
 	if (data && getenv("BK_REGRESSION")) {
 		/* control matches for regressions */
-		data[4] = strdup(getenv("BK_UPGRADE_FORCEMATCH") ? bk_utc : "");
+		data[4] = strdup(getenv("BK_UPGRADE_FORCEMATCH") ?
+		    bkver("UTC") : "");
 	}
-	if (data && streq(data[4], bk_utc) && !fetchonly) {
+	if (data && streq(data[4], bkver("UTC")) && !fetchonly) {
 		freeLines(data, free);
 		data = 0;
 	}
@@ -503,14 +505,14 @@ upgrade_maybeNag(char *out)
 	/* a new bk is out */
 	if (upgrade_latestVersion(new_vers, new_utc)) return;
 	if (getenv("_BK_ALWAYS_NAG")) goto donag;
-	if (strcmp(new_utc, bk_utc) <= 0) return;
+	if (strcmp(new_utc, bkver("UTC")) <= 0) return;
 
 	/*
 	 * Wait for the new bk to be out for a while, unless we are a
 	 * beta version.
 	 */
-	if (!strstr(bk_vers, "-beta-") &&
-	    ((now - sccs_date2time(bk_utc, 0)) > MONTH) &&
+	if (!strstr(bkver("VERS"), "-beta-") &&
+	    ((now - sccs_date2time(bkver("UTC"), 0)) > MONTH) &&
 	    ((now - sccs_date2time(new_utc, 0)) < MONTH)) {
 		return;
 	}
@@ -520,7 +522,7 @@ upgrade_maybeNag(char *out)
 	if ((now - mtime(buf)) < MONTH) {
 		/* make sure we nagged for the same thing */
 		t = loadfile(buf, 0);
-		sprintf(buf, "%s,%s\n", bk_utc, new_utc);
+		sprintf(buf, "%s,%s\n", bkver("UTC"), new_utc);
 		same = streq(buf, t);
 		free(t);
 		if (same) return;
@@ -530,20 +532,20 @@ upgrade_maybeNag(char *out)
 
 	/* remember that we did */
 	concat_path(buf, getDotBk(), "latest-bkver.nag");
-	Fprintf(buf, "%s,%s\n", bk_utc, new_utc);
+	Fprintf(buf, "%s,%s\n", bkver("UTC"), new_utc);
 
 
 donag:	/* okay, nag */
 
 	/* age uses a staic buffer */
 	new_age = strdup(age(now - sccs_date2time(new_utc, 0), " "));
-	bk_age = strdup(age(now - sccs_date2time(bk_utc, 0), " "));
+	bk_age = strdup(age(now - sccs_date2time(bkver("UTC"), 0), " "));
 	av[ac] = aprintf("BitKeeper %s (%s) is out, it was released %s ago.\n"
 	    "You are running version %s (%s) released %s ago.\n\n"
 	    "If you want to upgrade, please run bk upgrade.\n"
 	    "Or set upgrade_nonag:yes config to not see these messages",
 	    new_vers, new_utc, new_age,
-	    bk_vers, bk_utc, bk_age);
+	    bkver("VERS"), bkver("UTC"), bk_age);
 	if (out) {
 		if (f = fopen(out, "w")) {
 			fprintf(f, "%s\n", av[ac]);
