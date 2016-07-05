@@ -275,8 +275,8 @@ onefile:	fprintf(stderr,
 		}
 		unless (HASGRAPH(s)) {
 			unless (HAS_SFILE(s)) {
-				verbose((stderr, "%s: %s doesn't exist.\n",
-				    prog, s->sfile));
+				verbose((stderr, "%s: %s is not under BK control.\n",
+				    prog, s->gfile));
 			} else {
 				perror(s->sfile);
 			}
