@@ -41,6 +41,7 @@ else
         SYS=unix
 	EXE=
 	EXT=.bin
+	LIBS=-lz
 	H=../unix.h
 	CFLAGS=-Os
 	LD=$(CC)

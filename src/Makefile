@@ -115,6 +115,7 @@ else
 	endif
 	INSTALL=install
 	RESOURCE=
+	XLIBS += -lz
 endif
 
 # By default, we don't print verbose output. If you want to see
@@ -202,8 +203,6 @@ ifeq ($(shell uname -s), Darwin)
 	XLIBS += -lresolv
 	G	+= -DNOPROC
 endif
-
-XLIBS += -lz
 
 ifeq (clang, $(findstring clang, $(shell $(CC) --version)))
 	WARNINGS += -Wno-unused-value -Wno-empty-body -Wno-self-assign
