@@ -140,7 +140,7 @@ attr_write(char *file)
 	fputs("@VERSION\n", f);
 	unless (incomp) {
 		/* match version -s alg */
-		t = bk_vers;
+		t = bkver("VERS");
 		if (strneq(t, "bk-", 3)) t += 3;
 		fprintf(f, "%s\n", t);
 	}

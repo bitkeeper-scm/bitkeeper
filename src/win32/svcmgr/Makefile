@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+BK=../../bk
 CC=gcc
 RC=windres
 W=-Wall -Wno-parentheses -Wno-strict-aliasing

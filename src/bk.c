@@ -214,15 +214,14 @@ main(int volatile ac, char **av, char **env)
 	 * a newer bk and something blew up.
 	 */
 	if (bk_isSubCmd &&
-	    (p = getenv("_BK_VERSION")) && !streq(bk_vers, p) &&
+	    (p = getenv("_BK_VERSION")) && !streq(bkver("VERS"), p) &&
 	    !getenv("_BK_NO_VERSION_CHECK")) {
 		error("bk: %s being called by %s not supported.\n",
-		    bk_vers, p);
+		    bkver("VERS"), p);
 		if (getenv("_BK_IN_BKD")) drain();
 		exit(1);
 	}
-	safe_putenv("_BK_VERSION=%s", bk_vers);
-
+	safe_putenv("_BK_VERSION=%s", bkver("VERS"));
 	unless (bin) {
 		fprintf(stderr,
 		    "Unable to find the BitKeeper bin directory, aborting\n");
@@ -1591,7 +1590,7 @@ write_log(char *file, char *format, ...)
 	sprintf(nformat, "%c%s %lu.%06lu %s %s: %*s%s\n",
 	    log_versions[LOGVER],
 	    sccs_getuser(), tv.tv_sec, (unsigned long)tv.tv_usec,
-	    milli(), bk_vers, indent(), "", format);
+	    milli(), bkver("VERS"), indent(), "", format);
 	va_start(ap, format);
 	vfprintf(f, nformat, ap);
 	va_end(ap);

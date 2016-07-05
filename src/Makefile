@@ -34,54 +34,21 @@
 #   $^  all sources
 #   $<  first source
 
-HAS_BK	?= $(shell bash -c "cd / && command -v bk")
+INSTALLED_BK	?= $(shell bash -c "cd / && command -v bk")
 INREPO  ?= $(shell bash -c "test -d ../.bk && echo true || echo false")
-ifeq (,$(HAS_BK))
-	BKUSER := $(USER)
-	BKFULLHOST := $(HOSTNAME)
-	BKVERS := $(shell date +%Y%m%d%H%M%S)
-	BKUTC  := $(shell date +%Y%m%d%H%M%S)
-	BKTIME := $(shell date +%s)
+ifeq (,$(HOSTNAME))
+HOST = $(shell uname -n)
 else
-	BKUSER := $(shell "$(HAS_BK)" getuser)
-	BKFULLHOST := $(shell "$(HAS_BK)" gethost -r)
-	ifeq (true,$(INREPO))
-		BKVERS := $(shell bk changes -r+ -d'$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}')
-		BKUTC  := $(shell bk changes -r+ -d:UTC:)
-		BKTIME := $(shell bk changes -r+ -d:TIME_T:)
-	else
-		BKVERS := $(shell cat bkvers.txt)
-		BKUTC  := $(shell date +%Y%m%d%H%M%S)
-		BKTIME := $(shell date +%s)
-	endif
+HOST = $(HOSTNAME)
 endif
-BKHOST := $(shell echo "$(BKFULLHOST)" | sed 's/\..*//')
-ifeq (0,$(MAKELEVEL))
-ifeq (,$(HAS_BK))
-	ifeq (true,$(INREPO))
-		BKTAG := "bootstrap"
-	else
-		BKTAG := $(shell cat bktag.txt)
-	endif
-	export BKTAG
-else
-	ifeq (true,$(INREPO))
-		BKTAG := $(shell bash -c "if ./hasL; then \"$(HAS_BK)\" describe --bk; else echo bootstrap; fi")
-	else
-		BKTAG := $(shell cat bktag.txt)
-	endif
-	export BKTAG
-endif
-endif
-
 HERE    := $(shell pwd)
 ROOT	:= $(shell dirname $(HERE))
 REPO    := $(notdir $(ROOT))
 URL     := $(shell echo bk://work/$(ROOT) | sed s,/home/bk/,,)
-LOG	:= $(shell echo LOG-$(BKUSER))
+LOG	= $(shell echo LOG-`./bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 
-include conf-$(BKHOST).mk
+include conf-$(HOST).mk
 
 ## Which hosts are used for producing nightly builds
 NIGHTLY_HOSTS	:= macos106 win7-vm debian40 debian40-64
@@ -90,10 +57,10 @@ ifeq "$(OSTYPE)" "msys"
 	SYS=win32
 	EXE=.exe
 	XTRA=win32
-	# BINDIR should really be :C:/Program Files/BitKeeper
-	# The shell can not handle space in pathname, so
-	# we use the short name here
-	ifeq (,$(HAS_BK))
+	ifeq (,$(INSTALLED_BK))
+		# BINDIR should really be :C:/Program Files/BitKeeper
+		# The shell can not handle space in pathname, so
+		# we use the short name here
 		BINDIR := "C:/PROGRA~1/BITKEE~1"
 	else
 		BINDIR := $(shell bk pwd -s "`bk _registry get 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion' ProgramFilesDir`/BitKeeper")
@@ -108,10 +75,10 @@ else
 	EXE=
 	# You can set this to anywhere you like and do a 
 	# build production" and you'll have an installed BitKeeper.
-	ifeq (,$(HAS_BK))
+	ifeq (,$(INSTALLED_BK))
 		BINDIR := /usr/local/bitkeeper
 	else
-		BINDIR := $(shell $(HAS_BK) bin)
+		BINDIR := $(shell "$(INSTALLED_BK)" bin)
 	endif
 	INSTALL=install
 	RESOURCE=
@@ -130,7 +97,7 @@ ifndef V
 	Q=@
 endif
 
-BK=bk$(EXE)
+BK=./bk$(EXE)
 GET=	$(Q)$(BK) get -sS
 G	=-g
 TRIAL	=0
@@ -226,6 +193,7 @@ OBJ =	bkver.o cmd.o \
 	bkd_partition.o bkd_pull.o bkd_push.o bkd_pwd.o \
 	bkd_r2c.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
+	bkverinfo.o \
 	cat.o cfile.o changes.o cfg.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
 	cmdlog.o \
@@ -301,7 +269,7 @@ PSCR	= t/doit t/guitest
 PROGS	= libc/mtst$(EXE)
 LIBS	= libc/libc.a tomcrypt/libtomcrypt.a tommath/libtommath.a
 PCRELIB = gui/tcltk/pcre/local/lib/libpcre.a
-DATA	= bkmsg.txt bkhelp.txt \
+DATA	= bkmsg.txt bkhelp.txt version \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
 	dspec-changes dspec-changes-3.2 dspec-changes-4.0 dspec-changes-h \
 	dspec-changes-hv dspec-changes-json dspec-changes-json-v \
@@ -362,12 +330,7 @@ gWall Wall:
 
 # production builds
 p:  ## Build a production version of BitKeeper (no -g)
-ifeq (,$(HAS_BK))
-	$(MAKE) bk
-	$(MAKE) HAS_BK=$(HERE)/bk$(EXE) BINDIR=$(BINDIR) p
-else
 	$(MAKE) CFLAGS="$(CC_FAST) $(CF)" all
-endif
 
 trial:
 	$(MAKE) TRIAL="3*WEEK" CFLAGS="$(CC_FAST) $(CF)" all
@@ -392,12 +355,20 @@ clean: L-clean FORCE  ## Remove object files and executables
 	$(Q)$(RM) tags TAGS tags.local cscope.out substvars a.out cmd.c cmd.h \
 		core *.bb *.bbg *.da *.gcov \
 		bk.ico \
-		bkmsg.txt bkhelp.txt bkver.c \
+		bkmsg.txt bkhelp.txt bkver.c version \
 		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe \
-		conf-$(BKHOST).mk build
+		conf-$(HOST).mk build
 	$(Q)$(RM) -r tmp
+ifeq "$(OSTYPE)" "msys"
+	$(Q)$(RM) -rf gnu/bin gnu/doc gnu/etc gnu/share
+	$(Q)$(RM) -f gnu/m.ico gnu/msys.bat gnu/msys.ico
+	$(Q)-rmdir gnu/tmp
+	$(Q)-rmdir gnu
+endif
 ifeq (true,$(INREPO))
-	$(Q)EXTRALIST=`"$(HAS_BK)" -Aax | grep -v '~$$\|conf-.*\.mk$$'` ; \
+ifneq (,$(INSTALLED_BK))
+	$(Q)EXTRALIST=`"$(INSTALLED_BK)" -Aax | \
+		grep -v '~$$\|conf-.*\.mk$$'` ; \
 	if [ "$$EXTRALIST" ]; then \
 		echo "Clean left behind the following files:" ; \
 		for file in $$EXTRALIST; do \
@@ -406,6 +377,7 @@ ifeq (true,$(INREPO))
 	else \
 		echo Clean complete ; \
 	fi
+endif
 endif
 
 clobber: clean FORCE ## Same as 'clean' but also bk clean files
@@ -514,7 +486,7 @@ L-doc L-docs: GUI FORCE
 	fi; \
 	chmod +w ../man/man1/bk-little.1
 
-bkhelp.txt: $(BK) L-docs FORCE
+bkhelp.txt: $(BK) version L-docs FORCE
 	@rm -f ../man/man2help/bk-little.fmt
 	@cd ../man/man2help && $(MAKE) BK=$(HERE)/bk$(EXE) helptxt
 	@cp ../man/man2help/helptxt bkhelp.txt
@@ -530,23 +502,18 @@ html-docs: bkhelp.txt
 
 ../doc/bk_refcard.pdf: ../doc/bk_refcard.ps
 
-
 # This must be rebuilt every time because it includes the build time
 bkver.c: utils/bk_version FORCE
 	$(if $(Q),@echo Building $@,)
 	$(Q)echo "#include \"sccs.h\"" > bk.v
-	$(Q)echo "char *bk_vers = \"$(BKVERS)\";" >> bk.v
-	$(Q)echo "char *bk_utc = \"$(BKUTC)\";" >> bk.v
-	$(Q)echo "char *bk_time = \"$(BKTIME)\";" >> bk.v
-	$(Q)echo "char *bk_tag = \"$(BKTAG)\";" >> bk.v
 	$(Q)echo "char *bk_platform = \""`./utils/bk_version`"\";" >> bk.v
 	$(Q)echo "int test_release = "$(TRIAL)";" >> bk.v
 	$(Q)echo "time_t bk_build_timet = "`perl -e "print time"`";" >> bk.v
-	$(Q)echo "char *bk_build_user = \"$(BKUSER)@$(BKFULLHOST)\";" >> bk.v
 	$(Q)echo "char *bk_build_dir = \""`pwd`"\";" >> bk.v
 	$(Q)mv -f bk.v bkver.c
 
-bkver.o: bkver.c
+version: version.sh $(BK) utils/bk_version GUI FORCE
+	bash version.sh > $@
 
 %: %.sh
 	$(if $(Q),@echo Building $@,)
@@ -605,13 +572,8 @@ installdir: utils/registry.tcl
 	@true
 
 image:  ## Build the installer (left in src/utils/bk-*)
-ifeq (,$(HAS_BK))
-	$(MAKE) bk
-	$(MAKE) HAS_BK=$(HERE)/bk$(EXE) BINDIR=$(BINDIR) image
-else
 	$(MAKE) p
 	$(MAKE) _image
-endif
 
 _image:
 	$(MAKE) installdir
@@ -680,8 +642,7 @@ else
 	     cd tmp/src ; \
 	     rm -rf "$$DIR" ; \
 	     bk export -tplain -kwr+ -sOPENBK "$$DIR" ; \
-	     echo "$(BKVERS)-tb" > "$$DIR/src/bkvers.txt" ; \
-	     echo "$(BKTAG)-tb" > "$$DIR/src/bktag.txt" ; \
+	     cat ../../version > "$$DIR/src/bkvers.txt" ; \
 	     tar -czf "$$TAR" "$$DIR" ; \
 	     rm -rf "$$DIR" ; \
 	     echo Done ; \
@@ -696,7 +657,7 @@ build: build.sh
 	-chmod +x build
 	-chmod -w build
 
-conf-$(BKHOST).mk: mkconf.sh
+conf-$(HOST).mk: mkconf.sh
 	sh mkconf.sh > $@
 
 %.o: %.c

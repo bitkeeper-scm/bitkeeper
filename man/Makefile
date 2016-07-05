@@ -1,5 +1,6 @@
 FILES=man1/*.1
 VER=`./bkver.pl`
+BK=../src/bk
 
 PS:
 	@make get
@@ -15,7 +16,7 @@ PS4:
 	a2ps -4 -o PS4 < PS
 
 get:
-	-@bk -r. get -Sq
+	@$(BK) -r. get -Sq
 
 manball: get
 	rm -rf bk-man; mkdir -p bk-man/man1

@@ -189,6 +189,7 @@ base64
 bin
 bisect
 bkd
+bkver
 binpool => bam
 cat
 _catfile	# bsd contrib/cat.c

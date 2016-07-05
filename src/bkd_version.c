@@ -71,7 +71,7 @@ version_main(int ac, char **av)
 	}
 
 	if (justver) {
-		p = bk_vers;
+		p = bkver("VERS");
 		if (strneq(p, "bk-", 3)) p += 3;
 		puts(p);
 		return (0);
@@ -91,15 +91,10 @@ bkversion(FILE *f)
 
 	buf[0] = 0;
 	fprintf(f, "BitKeeper version is ");
-	if (*bk_tag) {
-		fprintf(f, "%s ", bk_tag);
-		unless (strchr(bk_tag, '+')) fprintf(f, "%s ", bk_utc);
-	} else {
-		fprintf(f, "%s ", bk_utc);
-	}
+	fprintf(f, "%s ", bkver("TAG"));
 	fprintf(f, "for %s\n", bk_platform);
 	fflush(f);	/* put out ver info while waiting for lease */
-	fprintf(f, "Built by: %s in %s\n", bk_build_user, bk_build_dir);
+	fprintf(f, "Built by: %s in %s\n", bkver("BUILD_USER"), bk_build_dir);
 
 	strftime(buf, sizeof(buf), "%a %b %d %Y %H:%M:%S %Z",
 	    localtimez(&bk_build_timet, 0));
@@ -110,7 +105,7 @@ bkversion(FILE *f)
 
 	/* latest version information */
 	unless (upgrade_latestVersion(new_vers, new_utc) ||
-	    streq(new_vers, bk_vers)) {
+	    streq(new_vers, bkver("VERS"))) {
 		fprintf(f, "Latest version: %s  (released %s ago)\n",
 		    new_vers,
 		    age(now - sccs_date2time(new_utc, 0), " "));

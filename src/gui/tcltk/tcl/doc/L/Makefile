@@ -1,6 +1,7 @@
 TITLE="L Programmer's Reference Guide"
 PFMT_DIR="../../../../../../man/man1"
 PFMT="$(PFMT_DIR)/bk-little.1.pfmt"
+BK="../../../../../bk"
 
 all: little.1 little.txt little.html little.man delta.gif
 
@@ -39,7 +40,7 @@ install: all
 pfmt: little.man
 	-test -d $(PFMT_DIR) && { \
 		# Do this so Windows has an up to date bk help little; \
-		test -w $(PFMT) || bk edit $(PFMT); \
+		test -w $(PFMT) || $(BK) edit $(PFMT); \
 		cp little.man $(PFMT); \
 	}
 

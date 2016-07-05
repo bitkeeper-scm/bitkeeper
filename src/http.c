@@ -412,7 +412,7 @@ http_sendheader(remote *r, char *user_agent, char *cmd, size_t len)
 	    "User-Agent: BitKeeper-%s/%s\r\n"
 	    "Accept: */*\r\n"
 	    "Host: %s:%d\r\n",
-	    user_agent, bk_vers,
+	    user_agent, bkver("VERS"),
 	    r->host, r->port));
 	if (len) {
 		APPEND((
