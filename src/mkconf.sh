@@ -116,6 +116,25 @@ test -z "$BK_STATIC" || {
 	export BK_STATIC
 }
 
+# test for pcre library
+if pcre-config --libs > /dev/null 2>&1; then
+	PCRE_CFLAGS=`pcre-config --cflags`
+	PCRE_LDFLAGS=`pcre-config --libs`
+	echo PCRE_SYSTEM=1
+	echo export PCRE_SYSTEM
+else
+	# no pcre found, build our own.
+	bk here add PCRE || {
+		echo failed to add tcltk component
+		exit 1
+	}
+	PCRE_CFLAGS=-I`pwd`/gui/tcltk/pcre/local/include
+	PCRE_LDFLAGS=`pwd`/gui/tcltk/pcre/local/lib/libpcre.a
+fi
+echo PCRE_CFLAGS=$PCRE_CFLAGS
+echo export PCRE_CFLAGS
+echo PCRE_LDFLAGS=$PCRE_LDFLAGS
+echo export PCRE_LDFLAGS
 
 test "x$BK_VERBOSE_BUILD" != "x" && { echo V=1; }
 echo CC="$CC $CCXTRA"

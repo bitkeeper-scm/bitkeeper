@@ -36,11 +36,6 @@
 
 INSTALLED_BK	?= $(shell bash -c "cd / && command -v bk")
 INREPO  ?= $(shell bash -c "test -d ../.bk && echo true || echo false")
-ifeq (,$(HOSTNAME))
-HOST = $(shell uname -n)
-else
-HOST = $(HOSTNAME)
-endif
 HERE    := $(shell pwd)
 ROOT	:= $(shell dirname $(HERE))
 REPO    := $(notdir $(ROOT))
@@ -48,7 +43,7 @@ URL     := $(shell echo bk://work/$(ROOT) | sed s,/home/bk/,,)
 LOG	= $(shell echo LOG-`./bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 
-include conf-$(HOST).mk
+include conf.mk
 
 ## Which hosts are used for producing nightly builds
 NIGHTLY_HOSTS	:= macos106 win7-vm debian40 debian40-64
@@ -268,7 +263,6 @@ SCRIPTS	= bk.script import \
 PSCR	= t/doit t/guitest
 PROGS	= libc/mtst$(EXE)
 LIBS	= libc/libc.a tomcrypt/libtomcrypt.a tommath/libtommath.a
-PCRELIB = gui/tcltk/pcre/local/lib/libpcre.a
 DATA	= bkmsg.txt bkhelp.txt version \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
 	dspec-changes dspec-changes-3.2 dspec-changes-4.0 dspec-changes-h \
@@ -280,7 +274,7 @@ ALL	= PCRE $(LIBS) $(BINS) $(SCRIPTS) $(PSCR) $(XTRA) \
 	$(PROGS) L-clean GUI L-doc $(DATA)
 
 CFLAGS	= $(CC_DEBUG)
-CPPFLAGS= -Ilibc -Itommath -Itomcrypt/src/headers -Igui/tcltk/pcre/local/include
+CPPFLAGS= -Ilibc -Itommath -Itomcrypt/src/headers $(PCRE_CFLAGS)
 # Override this if you don't have it.
 RANLIB	= ranlib
 
@@ -357,7 +351,7 @@ clean: L-clean FORCE  ## Remove object files and executables
 		bk.ico \
 		bkmsg.txt bkhelp.txt bkver.c version \
 		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe \
-		conf-$(HOST).mk build
+		conf.mk build
 	$(Q)$(RM) -r tmp
 ifeq "$(OSTYPE)" "msys"
 	$(Q)$(RM) -rf gnu/bin gnu/doc gnu/etc gnu/share
@@ -456,7 +450,7 @@ bk.ico: win32/data/bk.ico
 
 $(BK): $(LIBS) bk.o $(RESOURCE) $(OBJ)
 	$(if $(Q),@echo LINKING $(BK),)
-	$(Q)$(LD) $(LDFLAGS) -o $@ bk.o $(OBJ) $(RESOURCE) $(LIBS) $(PCRELIB) $(XLIBS)
+	$(Q)$(LD) $(LDFLAGS) -o $@ bk.o $(OBJ) $(RESOURCE) $(LIBS) $(PCRE_LDFLAGS) $(XLIBS)
 
 # Windows only rule, BKGUI should be blank on other platforms
 $(BKGUI): bkg.o $(RESOURCE)
@@ -657,7 +651,7 @@ build: build.sh
 	-chmod +x build
 	-chmod -w build
 
-conf-$(HOST).mk: mkconf.sh
+conf.mk: mkconf.sh
 	sh mkconf.sh > $@
 
 %.o: %.c
@@ -679,7 +673,9 @@ libc/system.h: FORCE
 sccs.h: PCRE
 .PHONY: PCRE
 PCRE:
+ifneq ($(PCRE_SYSTEM),1)
 	$(MAKE) Q=$(Q) -Cgui/tcltk pcre
+endif
 
 $(OBJ) bk.o: $(HDRS)
 

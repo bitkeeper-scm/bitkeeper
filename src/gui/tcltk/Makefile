@@ -105,7 +105,12 @@ LIBTCL=$(BKROOT)/src/gui/tcltk/tcl/$S/libtcl$(TCLVERSION).a
 endif
 LIBTOMCRYPT=$(BKROOT)/src/tomcrypt/libtomcrypt.a
 TOMMATH=$(BKROOT)/src/tommath
-LIBPCRE=$(BKROOT)/src/gui/tcltk/pcre/local/lib/libpcre.a
+ifneq ($(PCRE_SYSTEM),1)
+	LIBPCRE=$(BKROOT)/src/gui/tcltk/pcre/local/lib/libpcre.a
+	PCRE_LDFLAGS ?= $(LIBPCRE)
+	export PCRE_LDFLAGS
+	PCRE_CFG = "--with-pcre=$(BKROOT)/src/gui/tcltk/pcre/local"
+endif
 
 all: version.sh
 	$(if $(Q),@echo Building Tcl/Tk,)
@@ -142,7 +147,7 @@ tcl/$S/Makefile: tcl/$S/configure $(LIBPCRE) Makefile
 	$(if $(Q),@echo Configuring Tcl,)
 	$(Q)cd tcl/$S; \
 	./configure $(QUIET) \
-	    --disable-info-body --enable-pcre=default --with-pcre=../../pcre/local \
+	    --disable-info-body --enable-pcre=default $(PCRE_CFG) \
 	    $(ENABLE_64BIT) $(SHARED) $(SYMBOLS) \
 	    --with-tommath=$(TOMMATH)
 
@@ -288,7 +293,7 @@ bin/tclsh$(EXE): tcl/$S/Makefile Lversion-L.sh Lversion-C.sh
 	cd tcl && ../Lversion-C.sh >generic/Lver.h
 	cd tcl/$S && \
 	$(MAKE) Q=$(Q) prefix= exec_prefix= INSTALL_ROOT="../.." \
-	    XLIBS="$(LIBTOMCRYPT)" \
+	    XLIBS="$(LIBTOMCRYPT) $(PCRE_LDFLAGS)" \
 	    install-binaries install-libraries install-L-doc
 	if [ -x bin/tclsh$(TCLVERSION)$(EXE) ] ; then \
 		mv bin/tclsh$(TCLVERSION)$(EXE) bin/tclsh$(EXE) ; \
@@ -311,7 +316,7 @@ bin/bkgui$(EXE): tk/$S/Makefile bin/tclsh$(EXE)
 	rm -rf bin/bkgui$(EXE) lib/tk*
 	cd tk/$S && \
 	$(MAKE) prefix= exec_prefix= INSTALL_ROOT=../.. \
-	    XLIBS="$(LIBTOMCRYPT) $(LIBPCRE)" \
+	    XLIBS="$(LIBTOMCRYPT) $(PCRE_LDFLAGS)" \
 	    BK_TCL_LIB="$(LIBTCL)" \
 	    install-binaries install-libraries
 	rm -rf include usr lib/tk*/images
@@ -332,9 +337,9 @@ mkapp: FORCE
 bin/BitKeeper.app/Contents/MacOS/BitKeeper: bin/tclsh$(EXE) mkapp
 	$(MAKE) -C tcl/macosx XLIBS="$(LIBTOMCRYPT)" \
 	    EXTRA_CONFIGURE_ARGS="--with-bk=$(BKROOT) --disable-info-body $(SYMBOLS) \
-	    --enable-pcre=default --with-pcre=../../../pcre/local \
+	    --enable-pcre=default $(PCRE_CFG) \
 	    --with-tommath=$(TOMMATH) $(SYMBOLS)" embedded
-	$(MAKE) -C tk/macosx XLIBS="$(LIBTOMCRYPT) $(LIBPCRE)" \
+	$(MAKE) -C tk/macosx XLIBS="$(LIBTOMCRYPT) $(PCRE_LDFLAGS)" \
 	    EXTRA_CONFIGURE_ARGS="--with-bk=$(BKROOT) $(SYMBOLS) --enable-aqua" embedded
 	./mkapp BitKeeper 1.0 BkAp "BitKeeper Inc" com.bitmover.bk "$(WISHPATH)"
 
@@ -384,3 +389,8 @@ verify: FORCE
 FORCE:
 
 .PHONY: all configure
+
+# print a make variable  'make print-REPO'
+#   http://www.cmcrossroads.com/article/printing-value-makefile-variable
+print-%:
+	@echo $* = \"$($*)\"

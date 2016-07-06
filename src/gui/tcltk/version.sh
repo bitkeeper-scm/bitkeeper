@@ -31,6 +31,8 @@ BUILDHASH=`$BK changes -tnd":TAG: :TIME_T:" | grep "^bk-" | head -1 | $BK crypto
 $BK -P get -qkp ChangeSet | grep '[|]src/gui/tcltk/[^/]*/ChangeSet[|]' | \
     sed 's/.* //' > COMPKEYS
 
+trap "rm -f COMPKEYS" 0
+
 if [ -d tcl ]
 then
 	test `($BK sfiles -cp tcl | wc -l)` -gt 0 && exit 1
@@ -86,7 +88,5 @@ then
 else
 	PCREKEY=`grep '/pcre/' COMPKEYS`
 fi
-
-rm -f COMPKEYS
 
 echo /build/obj/tcltk-`$BK crypto -h -- "$TCLKEY-$TKKEY-$TKTABLEKEY-$TKTREECTRLKEY-$BWIDGETKEY-$TKCONKEY-$PCREKEY-$BUILDHASH"`.tgz

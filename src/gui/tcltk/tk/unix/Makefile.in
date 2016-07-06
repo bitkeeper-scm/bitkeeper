@@ -317,7 +317,7 @@ XLIB_DIR		= $(TOP_DIR)/xlib
 BK_DIR			= @BK_DIR@
 @BK_LIBS@
 ifdef BK_DIR
-BK_LIBS			= $(BK_DIR)/tomcrypt/libtomcrypt.a $(BK_DIR)/gui/tcltk/pcre/.libs/libpcre.a
+BK_LIBS			= $(BK_DIR)/tomcrypt/libtomcrypt.a $(PCRE_LDFLAGS)
 endif
 
 #----------------------------------------------------------------
