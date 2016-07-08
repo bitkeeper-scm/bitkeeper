@@ -1,6 +1,36 @@
 ============================================================================
 Release notes for BitKeeper version 7.3ce release June 16 2016
 
+This release contains changes aimed at decoupling built-in packages
+from BitKeeper to make it easier to include to system packages.  Since
+some functionality changed, but nothing major was added the minor
+version number was incremented.
+
+New features
+
+- The 'bk fast-import' command was added to quickly import git
+  repositories into bk. This is the initial release of a work in
+  progress. The following features are not yet implemented
+    - incremental import
+    - git repos with submodules
+    - octopus merges
+    - 'git fast-export -M' support
+
+- Add 'bk untag' command to delete tags and extend 'bk changes' output
+  to show better information about tags.  BK has always version
+  controlled tags and it is possible to have the same tag at multiple
+  places in the history. This release adds the ability to delete tags
+  (previously you could move them but there was no way to delete them).
+  bk changes -t shows only the currently tagged changesets;
+  bk changes -tt shows all changesets even if the tag is moved/deleted
+  and annotates them with that information:
+
+  ChangeSet@1.2678.1.218, 2015-07-15 15:09:24-07:00, wscott@work.bitkeeper.com
+    Fix problem with t.status in tagged release
+    TAG: bk-7.0 (currently on 1.2678.1.220)
+
+Changes
+
 - Removed the out-of-date version of GNU diff from our tree.  The few
   places where BK assumed a GNU diff, it will now use the one on the
   system.  There is an exception for Windows. If no diff is found BK
@@ -13,11 +43,78 @@ Release notes for BitKeeper version 7.3ce release June 16 2016
   as an alias.  Scripts expecting on the "bk diff" to run a GNU diff
   should be updated to remove the "bk " prefix.
 
+- Removed the out-of-date verison of GNU patch from our tree.
+  The code will now use whatever version of patch the user has
+  installed.
+  The 'bk patch' code will also call the system's patch(1) but will
+  first scan the patch and runs 'bk edit' on all pathnames found in
+  the patch.
+  As a side-effect of this change we removed the 'bk import -temail'.
+  It was not used and was too dependent on the exact version of patch
+  used.
+
+- The libraries zlib, pcre, lz4, tomcrypt & tommath will now link to
+  the system's copy instead of the using our included copies if a
+  simplistic compile test works.  The src/mkconf.sh script can be
+  tweaked if these libraries are found in non-standard locations on
+  your system. When building from a tar.gz these libraries must be
+  pre-installed.
+
 - Update the documentation to describe 'bk get' instead of 'bk co'
   and 'bk delta' instead of 'bk ci'.  The get/delta verbs have become
   the names for these operations and the documentation should reflect
   that.   These commands were aliased before and after this release
   so no functionality has changed and no scripts should break.
+
+- When overriding a csets username with BK_USER, bk would record the
+  new user and system's username together as "user/realuser".  The
+  code was changed to only display "user" in most cases. Visible
+  changes:
+    - annotations will only be username not user/realuser
+    - changes -uUSER will now match just the user name
+    - limiting by user in bkweb works
+    - findkey can now search for user in the user/realuser case
+
+- As part of the tag delete changes a number of dspecs were changed
+  - The $each() function was normalized to strictly walk each line
+    (separated by newlines) of a dspec for processing.  Previously
+    :DSPEC: and $each(:DSPEC:) were separate and could do different
+    things.
+  - So the :C: macro was changed when not used in $each to return the
+    comments with newlines.  Previous it would join multiple lines
+    without adding spaces which isn't very useful.
+  - The tag releated dspecs changed:
+    (these are lists separated by newlines)
+    :TAGGED:  all tags on delta that are still active
+    :TAGS:    all tags on delta and inactive ones are annotated
+              if they are deleted or moved.
+    :ALL_TAGS: Show all tags on delete active or not (old :TAG:)
+
+    Some aliases were added for compability:
+      :TAG: -> :TAGGED:
+      :SYMBOL: -> :ALL_TAGS:
+
+- Rework some of the build dependancies in our Makefile so it no
+  longer assumes that 'bk' is installed and tries to use the installed
+  bk when building BitKeeper.  Now the 'bk' binary is built first and
+  that binary is used for constructing the manpages and GUIs.
+
+Bugfixes
+
+- Performance fixes for 'bk fast-export'.  For large repositories the
+  new code is a couple orders of magnitude faster.
+
+- Fix a couple more places where we were using the old dir/SCCS/s.file
+  pathnames in error messages
+
+- Customer reported that pull failed to delete parallel deletes of
+  symlinks.
+
+- Add DESTDIR support to makefike.
+
+- Fix 'bk' binary so if it has a chain of symlinks to the final
+  location the code can still find the install directory.  This
+  simplifies packages for NixOS.
 
 ============================================================================
 Release notes for BitKeeper version 7.2.1ce release May 16 2016
