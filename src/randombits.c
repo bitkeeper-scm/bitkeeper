@@ -16,7 +16,7 @@
 
 #include "sccs.h"
 #include "tomcrypt.h"
-#include "tomcrypt/randseed.h"
+#include "randseed.h"
 
 void
 randomCons(char *buf, sccs *s, ser_t d)

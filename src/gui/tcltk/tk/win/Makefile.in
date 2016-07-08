@@ -116,12 +116,6 @@ TTK_DIR			= $(GENERIC_DIR)/ttk
 BITMAP_DIR		= $(ROOT_DIR)/bitmaps
 XLIB_DIR		= $(ROOT_DIR)/xlib
 RC_DIR			= $(WIN_DIR)/rc
-BK_DIR			= @BK_DIR@
-@BK_LIBS@
-ifdef BK_DIR
-BK_LIBS			= $(BK_DIR)/tomcrypt/libtomcrypt.a
-endif
-
 
 ROOT_DIR_NATIVE	   	= $(shell $(CYGPATH) '$(ROOT_DIR)' | sed 's!\\!/!g')
 WIN_DIR_NATIVE	   	= $(shell $(CYGPATH) '$(WIN_DIR)' | sed 's!\\!/!g')
@@ -200,7 +194,7 @@ SHLIB_CFLAGS	= @SHLIB_CFLAGS@
 SHLIB_SUFFIX	= @SHLIB_SUFFIX@
 VER		= @TK_MAJOR_VERSION@@TK_MINOR_VERSION@
 DOTVER		= @TK_MAJOR_VERSION@.@TK_MINOR_VERSION@
-LIBS		= $(TCL_STUB_LIB_FILE) @LIBS@ @LIBS_GUI@ ${BK_LIBS}
+LIBS		= $(TCL_STUB_LIB_FILE) @LIBS@ @LIBS_GUI@
 RMDIR		= rm -rf
 MKDIR		= mkdir -p
 SHELL		= @SHELL@

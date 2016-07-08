@@ -8,9 +8,7 @@ RANLIB=ranlib
 .SCCS_GET:
 	$(Q)bk get -q $@
 
-OBJS =	oldrsa.o \
-	randseed.o \
-	src/ciphers/aes/aes_enc.o \
+OBJS =	src/ciphers/aes/aes_enc.o \
 	src/ciphers/aes/aes.o \
 	src/misc/base64/base64_decode.o \
 	src/misc/base64/base64_encode.o \
@@ -131,9 +129,7 @@ OBJS =	oldrsa.o \
 	src/prngs/yarrow.o 
 
 SRCS = $(OBJS:%.o=%.c)
-HDRS =  oldrsa.h \
-	randseed.h \
-	../tommath/tommath.h \
+HDRS =  ../tommath/tommath.h \
 	../tommath/tommath_class.h \
 	../tommath/tommath_superclass.h \
 	src/headers/tomcrypt_cfg.h \

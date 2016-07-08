@@ -294,7 +294,9 @@ int hash_memory(int hash,
                       unsigned char *out, unsigned long *outlen);
 int hash_memory_multi(int hash, unsigned char *out, unsigned long *outlen,
                       const unsigned char *in, unsigned long inlen, ...);
+#ifdef LTC_SOURCE
 int hash_fd(int hash, int fd, unsigned char *out, unsigned long *outlen);
+#endif
 int hash_file(int hash, const char *fname, unsigned char *out, unsigned long *outlen);
 
 /* a simple macro for making hash "process" functions */

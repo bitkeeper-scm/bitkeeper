@@ -124,8 +124,12 @@ if pcre-config --libs > /dev/null 2>&1; then
 	echo export PCRE_SYSTEM
 else
 	# no pcre found, build our own.
+	test "$BK_NO_AUTOCLONE" && {
+		echo pcre required to build bk
+		exit 1
+	}
 	bk here add PCRE || {
-		echo failed to add tcltk component
+		echo failed to add pcre component
 		exit 1
 	}
 	PCRE_CFLAGS=-I`pwd`/gui/tcltk/pcre/local/include
@@ -135,6 +139,34 @@ echo PCRE_CFLAGS=$PCRE_CFLAGS
 echo export PCRE_CFLAGS
 echo PCRE_LDFLAGS=$PCRE_LDFLAGS
 echo export PCRE_LDFLAGS
+
+# test for system tomcrypt library
+echo "#include <tommath.h>" > $$.c
+echo "#include <tomcrypt.h>" >> $$.c
+echo "main(){ find_hash(\"foo\");}" >> $$.c
+trap "rm -f $$ $$.c" 0
+if $CC $CCXTRA -o $$ $$.c -ltomcrypt -ltommath >/dev/null 2>&1; then
+	TOMCRYPT_CFLAGS=
+	TOMCRYPT_LDFLAGS="-ltomcrypt -ltommath"
+else
+	test "$BK_NO_AUTOCLONE" && {
+		echo tomcrypt required to build bk
+		exit 1
+	}
+	# no tomcrypt found, build our own.
+	bk here add TOMCRYPT TOMMATH || {
+		echo failed to add tomcrypt component
+		exit 1
+	}
+	echo TOMCRYPT_DEPS=tomcrypt/libtomcrypt.a tommath/libtommath.a
+	echo export TOMCRYPT_DEPS
+	TOMCRYPT_CFLAGS="-I`pwd`/tommath -I`pwd`/tomcrypt/src/headers"
+	TOMCRYPT_LDFLAGS="`pwd`/tomcrypt/libtomcrypt.a `pwd`/tommath/libtommath.a"
+fi
+echo TOMCRYPT_CFLAGS=$TOMCRYPT_CFLAGS
+echo export TOMCRYPT_CFLAGS
+echo TOMCRYPT_LDFLAGS=$TOMCRYPT_LDFLAGS
+echo export TOMCRYPT_LDFLAGS
 
 test "x$BK_VERBOSE_BUILD" != "x" && { echo V=1; }
 echo CC="$CC $CCXTRA"

@@ -1203,7 +1203,7 @@ data(opts *op, char *line, FILE *f, int want_sha1)
 	if (want_sha1) {
 		idx = register_hash(&sha1_desc);
 		hash_descriptor[idx].init(&md);
-		sprintf(buf, "blob %ld", len);
+		sprintf(buf, "blob %zd", len);
 		/* we _want_ the trailing NULL */
 		hash_descriptor[idx].process(&md, buf, strlen(buf)+1);
 	}

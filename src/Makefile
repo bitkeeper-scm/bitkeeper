@@ -196,7 +196,9 @@ OBJ =	bkver.o cmd.o \
 	contrib/cat.o \
 	contrib/test.o \
 	converge.o \
-	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
+	cp.o \
+	crypto.o crypto_oldrsa.o \
+	cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	dataheap.o dbfile.o delta.o diff.o dspec.o \
 	export.o \
 	fast-import.o fast-export.o features.o findmerge.o \
@@ -234,7 +236,7 @@ OBJ =	bkver.o cmd.o \
 	port/uninstall.o \
 	progress.o \
 	prs.o pull.o push.o pwd.o \
-	randombits.o range.o rcheck.o rclone.o \
+	randombits.o randseed.o range.o rcheck.o rclone.o \
 	rcs2bk.o rcsparse.o \
 	receive.o redblack.o regex.o registry.o renumber.o \
 	remap.o	remote.o \
@@ -262,7 +264,7 @@ SCRIPTS	= bk.script import \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
 PSCR	= t/doit t/guitest
 PROGS	= libc/mtst$(EXE)
-LIBS	= libc/libc.a tomcrypt/libtomcrypt.a tommath/libtommath.a
+LIBS	= libc/libc.a
 DATA	= bkmsg.txt bkhelp.txt version \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
 	dspec-changes dspec-changes-3.2 dspec-changes-4.0 dspec-changes-h \
@@ -274,7 +276,7 @@ ALL	= PCRE $(LIBS) $(BINS) $(SCRIPTS) $(PSCR) $(XTRA) \
 	$(PROGS) L-clean GUI L-doc $(DATA)
 
 CFLAGS	= $(CC_DEBUG)
-CPPFLAGS= -Ilibc -Itommath -Itomcrypt/src/headers $(PCRE_CFLAGS)
+CPPFLAGS= -Ilibc $(TOMCRYPT_CFLAGS) $(PCRE_CFLAGS)
 # Override this if you don't have it.
 RANLIB	= ranlib
 
@@ -300,8 +302,7 @@ export	GET
 default:
 	$(MAKE) p
 
-SUBDIRS = libc tommath tomcrypt
-
+SUBDIRS = libc $(shell ls -d tomcrypt tommath 2>/dev/null)
 
 all: $(ALL)
 
@@ -448,9 +449,9 @@ bkres.o: win32/data/bk.rc bk.ico
 bk.ico: win32/data/bk.ico
 	@cp -f win32/data/bk.ico .
 
-$(BK): $(LIBS) bk.o $(RESOURCE) $(OBJ)
+$(BK): $(LIBS) bk.o $(RESOURCE) $(OBJ) $(TOMCRYPT_DEPS)
 	$(if $(Q),@echo LINKING $(BK),)
-	$(Q)$(LD) $(LDFLAGS) -o $@ bk.o $(OBJ) $(RESOURCE) $(LIBS) $(PCRE_LDFLAGS) $(XLIBS)
+	$(Q)$(LD) $(LDFLAGS) -o $@ bk.o $(OBJ) $(RESOURCE) $(LIBS) $(TOMCRYPT_LDFLAGS) $(PCRE_LDFLAGS) $(XLIBS)
 
 # Windows only rule, BKGUI should be blank on other platforms
 $(BKGUI): bkg.o $(RESOURCE)

@@ -16,12 +16,10 @@
 
 #include "system.h"
 #include "sccs.h"
-#define	LTC_SOURCE
-#include "tomcrypt.h"
-#include "tomcrypt/randseed.h"
-#include "tomcrypt/oldrsa.h"
+#include <tomcrypt.h>
+#include "randseed.h"
+#include "crypto_oldrsa.h"
 #include "cmd.h"
-#include "zlib/zlib.h"
 
 private	int	make_keypair(int bits, char *secret, char *public);
 private	int	signdata(rsa_key *secret);
@@ -31,6 +29,8 @@ private	int	decrypt_stream(rsa_key	*secret, FILE *fin, FILE *fout);
 private void	loadkey(char *file, rsa_key *key);
 private	int	symEncrypt(char *key, FILE *fin, FILE *fout);
 private	int	symDecrypt(char *key, FILE *fin, FILE *fout);
+private int	hash_fd(int hash,
+    int fd, unsigned char *out, unsigned long *outlen);
 
 private	int		wprng = -1;
 private	prng_state	*prng;
@@ -351,6 +351,37 @@ hmac_filehandle(int hash, FILE *in,
 	}
 	zeromem(buf, sizeof(buf));
 	return (CRYPT_OK);
+}
+
+private int
+hash_fd(int hash, int fd, unsigned char *out, unsigned long *outlen)
+{
+    hash_state md;
+    unsigned char buf[8192];
+    size_t x;
+    int err;
+
+    if ((err = hash_is_valid(hash)) != CRYPT_OK) {
+        return err;
+    }
+
+    if (*outlen < hash_descriptor[hash].hashsize) {
+       *outlen = hash_descriptor[hash].hashsize;
+       return CRYPT_BUFFER_OVERFLOW;
+    }
+    if ((err = hash_descriptor[hash].init(&md)) != CRYPT_OK) {
+       return err;
+    }
+
+    *outlen = hash_descriptor[hash].hashsize;
+    while ((x = read(fd, buf, sizeof(buf))) > 0) {
+        if ((err = hash_descriptor[hash].process(&md, buf, x)) != CRYPT_OK) {
+           return err;
+        }
+    }
+    err = hash_descriptor[hash].done(&md, out);
+
+    return err;
 }
 
 char *

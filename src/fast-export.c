@@ -628,7 +628,7 @@ gitExport(opts *op)
 			fprintf(f1, "\nbk: %s", md5key);
 		}
 		p = fmem_peek(f1, &len);
-		printf("data %lu\n", len);
+		printf("data %zu\n", len);
 		fwrite(p, 1, len, stdout);
 		if ((len > 0) && (p[len-1] != '\n')) putc('\n', stdout);
 		ftrunc(f1, 0);	/* reuse memory */

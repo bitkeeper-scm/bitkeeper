@@ -16,7 +16,7 @@
 
 #include "sccs.h"
 #include "tomcrypt.h"
-#include "tomcrypt/randseed.h"
+#include "randseed.h"
 
 #define	INFO_DELETE	2	/* delete items */
 #define	INFO_GET	3	/* print items */

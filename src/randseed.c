@@ -1,9 +1,20 @@
-#include <unistd.h>
-#include "tomcrypt.h"
-
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
+/*
+ * Copyright 2016 BitMover, Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include "system.h"
+#include <tomcrypt.h>
 
 #include "randseed.h"
 
@@ -115,7 +126,7 @@ rand_getBytes(u8 *buf, unsigned int len)
 	rand_setupPrng(0, 0);
 
 	memset(buf, 0, len);	/* avoid valgrind warnings */
-	if (prng_descriptor[wprng].read(buf, len, &prng) != len) {
+	if ((prng_descriptor[wprng].read)(buf, len, &prng) != len) {
 		fprintf(stderr, "randBytes: failed to read %d bytes\n", len);
 		exit(1);
 	}

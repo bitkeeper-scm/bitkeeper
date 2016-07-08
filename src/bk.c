@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include "system.h"
 #include "sccs.h"
 #include "bkd.h"
 #include "cmd.h"
-#include "tomcrypt.h"
-#include "tomcrypt/randseed.h"
+#define	LTM_DESC
+#include <tomcrypt.h>
+#include "randseed.h"
 #include "nested.h"
 #include "progress.h"
 #include "cfg.h"

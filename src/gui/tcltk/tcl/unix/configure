@@ -714,12 +714,6 @@ LDFLAGS
 CFLAGS
 CC
 TOMMATH_DIR
-BK_LIBS
-BK_INCLUDES
-BK_OBJS
-BK_SRCS
-BK_HDRS
-BK_DIR
 MAN_FLAGS
 target_alias
 host_alias
@@ -740,6 +734,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -765,8 +760,6 @@ enable_option_checking
 enable_man_symlinks
 enable_man_compression
 enable_man_suffix
-with_bk
-enable_info_body
 with_tommath
 enable_threads
 with_encoding
@@ -833,6 +826,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE_TARNAME}'
@@ -1085,6 +1079,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1222,7 +1225,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1375,6 +1378,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1411,7 +1415,6 @@ Optional Features:
                           use STRING as a suffix to manpage file names
                           (default: no, tcl if enabled without
                           specifying STRING)
-  --enable-info-body      enable the info body command (default: on)
   --enable-threads        build with threads (default: on)
   --enable-shared         build and link with shared libraries (default: on)
   --enable-64bit          enable 64bit support (default: off)
@@ -1434,7 +1437,6 @@ Optional Features:
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-bk              directory containing BK source
   --with-tommath          directory containing tommath headers and libraries
   --with-encoding         encoding for configuration values (default:
                           iso8859-1)
@@ -2451,102 +2453,6 @@ fi
 $as_echo "$enableval" >&6; }
 
 
-
-
-#------------------------------------------------------------------------
-# Try to find BitKeeper source repo
-#------------------------------------------------------------------------
-
-	if test x"${no_bk}" = x ; then
-		# reset no_bk in case something fails
-		no_bk=true
-
-# Check whether --with-bk was given.
-if test "${with_bk+set}" = set; then :
-  withval=$with_bk; with_bksource=${withval}
-fi
-
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for BK source tree" >&5
-$as_echo_n "checking for BK source tree... " >&6; }
-		if test x"${with_bksource}" != x ; then
-			if test -f "${with_bksource}/src/slib.c" ; then
-				ac_cv_c_bksource=`(cd ${with_bksource}/src ; pwd)`
-			else
-				as_fn_error $? "${with_bksource}/src directory does not contain slib.c" "$LINENO" 5
-			fi
-		fi
-
-		# Now check for it in the parent directory
-		if test x"${ac_cv_c_bksource}" = x ; then
-			if test -f "../../../../slib.c" ; then
-				ac_cv_c_bksource=`(cd ../../../.. ; pwd)`
-			fi
-		fi
-
-		if test x"${ac_cv_c_bksource}" = x ; then
-			BK_DIR=""
-			BK_HDRS="BK_HDRS = "
-			BK_SRCS="BK_SRCS = "
-			BK_OBJS="BK_OBJS = "
-			BK_LIBS="BK_LIBS = "
-			BK_INCLUDES=""
-
-
-
-
-
-
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Can't find BK source tree encryption disabled" >&5
-$as_echo "$as_me: WARNING: Can't find BK source tree" >&2;}
-		else
-			no_bk=
-			BK_DIR=${ac_cv_c_bksource}
-			BK_HDRS=""
-			BK_SRCS=""
-			BK_OBJS=""
-			BK_LIBS=""
-			BK_INCLUDES="-I$BK_DIR -I${BK_DIR}/tomcrypt -I${BK_DIR}/tomcrypt/src/headers"
-			$as_echo "#define BK 1" >>confdefs.h
-
-
-
-
-
-
-
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: result: found $BK_DIR" >&5
-$as_echo "found $BK_DIR" >&6; }
-		fi
-	fi
-
-
-
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking should info body be allowed" >&5
-$as_echo_n "checking should info body be allowed... " >&6; }
-    # Check whether --enable-info_body was given.
-if test "${enable_info_body+set}" = set; then :
-  enableval=$enable_info_body; tcl_ok=$enableval
-else
-  tcl_ok=yes
-fi
-
-
-    if test "${enable_info_body+set}" = set; then
-	enableval="$enable_info_body"
-	tcl_ok=$enableval
-    else
-	tcl_ok=yes
-    fi
-
-    if test "$tcl_ok" = "yes" ; then
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-	$as_echo "#define INFO_BODY_ENABLED 1" >>confdefs.h
-
-    else
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-    fi
 
 
 

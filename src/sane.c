@@ -22,7 +22,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "tomcrypt.h"
-#include "tomcrypt/randseed.h"
+#include "randseed.h"
 #include "cfg.h"
 
 #if (defined(__GNUC__) && \

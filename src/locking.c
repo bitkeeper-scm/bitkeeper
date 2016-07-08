@@ -21,8 +21,7 @@
 #include "sccs.h"
 #include "nested.h"
 #include "tomcrypt.h"
-#include "tomcrypt/randseed.h"
-
+#include "randseed.h"
 
 private int	lockResync(project *p);
 private void	unlockResync(project *p);

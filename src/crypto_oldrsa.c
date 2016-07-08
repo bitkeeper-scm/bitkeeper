@@ -1,11 +1,23 @@
-#include <unistd.h>
-#include "tomcrypt.h"
+/*
+ * Copyright 2000-2016 BitMover, Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include "sccs.h"
+#include <tomcrypt.h>
+#include <tommath.h>
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-
-#include "oldrsa.h"
+#include "crypto_oldrsa.h"
 
 /*
  * ---------------------- old tomcrypt support functions ------------------
@@ -60,7 +72,7 @@ oldrsa_pad(u8 *in, int inlen, u8 *out, unsigned long *outlen,
 	/* check inlen */
 	assert(inlen <= 512);
 
-	if (prng_descriptor[wprng].read(buf, inlen*2-2, prng) != (inlen*2 -2)) {
+	if ((prng_descriptor[wprng].read)(buf, inlen*2-2, prng) != (inlen*2 -2)) {
 		return (CRYPT_ERROR);
 	}
 
@@ -311,7 +323,7 @@ oldrsa_import(u8 *in, rsa_key *key)
 	void	*junk;
 
 	/* init key */
-	if (err = mp_init_multi(&key->e, &key->d, &key->N, &key->dQ,
+	if (err = mp_init_multi((mp_int*)&key->e, &key->d, &key->N, &key->dQ,
 		&key->dP, &key->qP, &key->p, &key->q, NULL)) {
 		return err;
 	}
@@ -341,7 +353,7 @@ oldrsa_import(u8 *in, rsa_key *key)
 	if (type == 2) {	/* PRIVATE_OPTIMZED */
 		if (!(in = input_bignum(key->dQ, in))) goto error2;
 		if (!(in = input_bignum(key->dP, in))) goto error2;
-		mp_init(&junk);
+		mp_init((mp_int*)&junk);
 		if (!(in = input_bignum(junk, in))) goto error2;/* pQ */
 		if (!(in = input_bignum(junk, in))) goto error2;/* qP */
 		mp_clear(junk);
@@ -351,8 +363,7 @@ oldrsa_import(u8 *in, rsa_key *key)
 	}
 	return (CRYPT_OK);
 error2:
-	mp_clear_multi(&key->e, &key->d, &key->N, &key->dQ,
+	mp_clear_multi((mp_int*)&key->e, &key->d, &key->N, &key->dQ,
 		&key->dP, &key->qP, &key->p, &key->q, NULL);
 	return CRYPT_ERROR;
 }
-

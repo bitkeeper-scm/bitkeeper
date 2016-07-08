@@ -3327,7 +3327,7 @@ checkTags(sccs *s, u32 flags)
 		tagassert(!(FLAGS(s, d) & D_BLUE));
 	}
 	if (sym) {
-		fprintf(stderr, "%s: %ld entries on symlist not consumed.\n",
+		fprintf(stderr, "%s: %td entries on symlist not consumed.\n",
 		    prog, (sym - s->symlist));
 		return (128);
 	}

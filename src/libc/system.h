@@ -17,6 +17,7 @@
 #ifndef _SYSTEM_H
 #define _SYSTEM_H
 
+#define _WCHAR_H
 #define	_GNU_SOURCE
 
 #include <stddef.h>

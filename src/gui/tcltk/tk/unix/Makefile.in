@@ -263,7 +263,7 @@ TCL_STUB_FLAGS		= @TCL_STUB_FLAGS@
 # Libraries to use when linking.  This definition is determined by the
 # configure script.
 LIBS = @LIBS@ $(X11_LIB_SWITCHES) @TCL_LIBS@
-WISH_LIBS = $(TCL_LIB_SPEC) @LIBS@ $(X11_LIB_SWITCHES) @TCL_LIBS@ ${BK_LIBS} @EXTRA_WISH_LIBS@
+WISH_LIBS = $(TCL_LIB_SPEC) @LIBS@ $(X11_LIB_SWITCHES) @TCL_LIBS@ @EXTRA_WISH_LIBS@ $(PCRE_LDFLAGS)
 
 # The symbols below provide support for dynamic loading and shared
 # libraries.  See configure.in for a description of what the
@@ -314,11 +314,6 @@ TOOL_DIR		= @TCL_SRC_DIR@/tools
 TEST_DIR		= $(TOP_DIR)/tests
 MAC_OSX_DIR		= $(TOP_DIR)/macosx
 XLIB_DIR		= $(TOP_DIR)/xlib
-BK_DIR			= @BK_DIR@
-@BK_LIBS@
-ifdef BK_DIR
-BK_LIBS			= $(BK_DIR)/tomcrypt/libtomcrypt.a $(PCRE_LDFLAGS)
-endif
 
 #----------------------------------------------------------------
 # The information below should be usable as is.  The configure
@@ -619,7 +614,7 @@ tkLibObjs:
 objs: ${OBJS}
 
 
-${WISH_EXE}: $(TK_STUB_LIB_FILE) $(WISH_OBJS) $(TK_LIB_FILE) $(BK_TCL_LIB) @APP_RSRC_FILE@
+${WISH_EXE}: $(TK_STUB_LIB_FILE) $(WISH_OBJS) $(TK_LIB_FILE) @APP_RSRC_FILE@
 	${CC} ${CFLAGS} ${LDFLAGS} $(WISH_OBJS) @TK_BUILD_LIB_SPEC@ \
 		$(WISH_LIBS) $(CC_SEARCH_FLAGS) -o ${WISH_EXE}
 

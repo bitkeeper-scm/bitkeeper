@@ -47,13 +47,6 @@ fi
 # libdir must be a fully qualified path (not ${exec_prefix}/lib)
 eval libdir="$libdir"
 
-#------------------------------------------------------------------------
-# Try to find BitKeeper source during configure
-#------------------------------------------------------------------------
-SC_PATH_BK
-
-SC_ENABLE_INFO_BODY
-
 SC_WITH_TOMMATH
 
 #------------------------------------------------------------------------
