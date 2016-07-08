@@ -116,57 +116,103 @@ test -z "$BK_STATIC" || {
 	export BK_STATIC
 }
 
-# test for pcre library
-if pcre-config --libs > /dev/null 2>&1; then
-	PCRE_CFLAGS=`pcre-config --cflags`
-	PCRE_LDFLAGS=`pcre-config --libs`
-	echo PCRE_SYSTEM=1
-	echo export PCRE_SYSTEM
-else
-	# no pcre found, build our own.
-	test "$BK_NO_AUTOCLONE" && {
-		echo pcre required to build bk
-		exit 1
-	}
-	bk here add PCRE || {
-		echo failed to add pcre component
-		exit 1
-	}
-	PCRE_CFLAGS=-I`pwd`/gui/tcltk/pcre/local/include
-	PCRE_LDFLAGS=`pwd`/gui/tcltk/pcre/local/lib/libpcre.a
+# if we don't have bk installed or we are not in a bk repository
+# then we can't populate our backup copies of libraries
+if [ "`bk repotype 2>/dev/null`" != "product" ]
+then	BK_NO_AUTOCLONE=1
 fi
-echo PCRE_CFLAGS=$PCRE_CFLAGS
-echo export PCRE_CFLAGS
-echo PCRE_LDFLAGS=$PCRE_LDFLAGS
-echo export PCRE_LDFLAGS
 
-# test for system tomcrypt library
-echo "#include <tommath.h>" > $$.c
-echo "#include <tomcrypt.h>" >> $$.c
-echo "main(){ find_hash(\"foo\");}" >> $$.c
+set_libcfg() {
+	NAME=$1
+	COMPONENT=$2
+	local LDFLAGS=${NAME}_LDFLAGS
+	local CPPFLAGS=${NAME}_CPPFLAGS
+	local testfcn=${NAME}_test
+	local builtin=${NAME}_builtin
+
+	if [ "$(eval echo \$$LDFLAGS)" ] || eval $testfcn; then
+		# the user already defined XXX_LDFLAGS in the environment
+		# or we found the system one
+		echo ${NAME}_SYSTEM=1
+		echo export ${NAME}_SYSTEM
+	else
+		# no library found, build our own.
+		test "$BK_NO_AUTOCLONE" && {
+			echo $NAME required to build bk
+			exit 1
+		}
+		test "$COMPONENT" && {
+			bk here add $COMPONENT || {
+				echo failed to add $COMPONENT component
+				exit 1
+			}
+		}
+		eval $builtin
+	fi
+	echo ${NAME}_CPPFLAGS=$(eval echo \$$CPPFLAGS)
+	echo export ${NAME}_CPPFLAGS
+	echo ${NAME}_LDFLAGS=$(eval echo \$$LDFLAGS)
+	echo export ${NAME}_LDFLAGS
+	echo
+}
+
+PCRE_test() {
+	# test for pcre library
+	if pcre-config --libs > /dev/null 2>&1
+	then	PCRE_CPPFLAGS=`pcre-config --cflags`
+		PCRE_LDFLAGS=`pcre-config --libs`
+		true
+	else	false
+	fi
+}
+PCRE_builtin() {
+	PCRE_CPPFLAGS=-I`pwd`/gui/tcltk/pcre/local/include
+	PCRE_LDFLAGS=`pwd`/gui/tcltk/pcre/local/lib/libpcre.a
+}
+
+set_libcfg PCRE PCRE
+
 trap "rm -f $$ $$.c" 0
-if $CC $CCXTRA -o $$ $$.c -ltomcrypt -ltommath >/dev/null 2>&1; then
-	TOMCRYPT_CFLAGS=
-	TOMCRYPT_LDFLAGS="-ltomcrypt -ltommath"
-else
-	test "$BK_NO_AUTOCLONE" && {
-		echo tomcrypt required to build bk
-		exit 1
-	}
-	# no tomcrypt found, build our own.
-	bk here add TOMCRYPT TOMMATH || {
-		echo failed to add tomcrypt component
-		exit 1
-	}
-	echo TOMCRYPT_DEPS=tomcrypt/libtomcrypt.a tommath/libtommath.a
-	echo export TOMCRYPT_DEPS
-	TOMCRYPT_CFLAGS="-I`pwd`/tommath -I`pwd`/tomcrypt/src/headers"
+TOMCRYPT_test() {
+	# test for system tomcrypt library
+	echo "#include <tommath.h>" > $$.c
+	echo "#include <tomcrypt.h>" >> $$.c
+	echo "main(){ find_hash(\"foo\");}" >> $$.c
+	if $CC $CCXTRA -o $$ $$.c -ltomcrypt -ltommath >/dev/null 2>&1; then
+		TOMCRYPT_CPPFLAGS=
+		TOMCRYPT_LDFLAGS="-ltomcrypt -ltommath"
+		true
+	else
+		false
+	fi
+}
+
+TOMCRYPT_builtin() {
+	TOMCRYPT_CPPFLAGS="-I`pwd`/tommath -I`pwd`/tomcrypt/src/headers"
 	TOMCRYPT_LDFLAGS="`pwd`/tomcrypt/libtomcrypt.a `pwd`/tommath/libtommath.a"
-fi
-echo TOMCRYPT_CFLAGS=$TOMCRYPT_CFLAGS
-echo export TOMCRYPT_CFLAGS
-echo TOMCRYPT_LDFLAGS=$TOMCRYPT_LDFLAGS
-echo export TOMCRYPT_LDFLAGS
+}
+
+set_libcfg TOMCRYPT "TOMCRYPT TOMMATH"
+
+LZ4_test() {
+	# test for system lz4 library
+	echo "#include <lz4.h>" > $$.c
+	echo "main() { char buf[1000]; LZ4_compress_limitedOutput(\"hello\", buf, 5, 1000); }" >> $$.c
+	if $CC $CCXTRA -o $$ $$.c -llz4 >/dev/null 2>&1; then
+		LZ4_CPPFLAGS=
+		LZ4_LDFLAGS="-llz4"
+		true
+	else
+		false
+	fi
+}
+
+LZ4_builtin() {
+	LZ4_CPPFLAGS="-I`pwd`/libc/lz4"
+	LZ4_LDFLAGS=""
+}
+
+set_libcfg LZ4
 
 test "x$BK_VERBOSE_BUILD" != "x" && { echo V=1; }
 echo CC="$CC $CCXTRA"

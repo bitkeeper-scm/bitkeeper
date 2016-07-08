@@ -20,7 +20,10 @@ all: libc.a mtst$(EXE)
 
 include fslayer/Makefile
 include hash/Makefile
+ifneq ($(LZ4_SYSTEM),1)
 include lz4/Makefile
+LZ4_CPPFLAGS ?= -Ilz4
+endif
 include mdbm/Makefile
 include string/Makefile
 include stdio/Makefile
@@ -43,7 +46,7 @@ HDRS = $(FSLAYER_HDRS) $(HASH_HDRS) $(MDBM_HDRS) \
 
 CC = gcc
 CFLAGS = -fno-builtin -g -O2 -Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k -Wstrict-prototypes -Wchar-subscripts -Wredundant-decls -Wextra -Wno-sign-compare -Wno-unused-parameter -Wdeclaration-after-statement -Wmissing-prototypes
-CPPFLAGS = -I.
+CPPFLAGS = -I. $(LZ4_CPPFLAGS)
 AR=ar rc
 RANLIB=ranlib
 

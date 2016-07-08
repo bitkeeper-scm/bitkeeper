@@ -1,7 +1,3 @@
-Import of lz4 from http://code.google.com/p/lz4/
+Import of lz4 from https://github.com/Cyan4973/lz4/releases/tag/r131
 
-Version r77 2012-08-22
-
-Patches submitted back to developer:
-   http://code.google.com/p/lz4/issues/detail?id=37
-
+Version r131 2015-06-29

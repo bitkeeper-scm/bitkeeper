@@ -276,7 +276,7 @@ ALL	= PCRE $(LIBS) $(BINS) $(SCRIPTS) $(PSCR) $(XTRA) \
 	$(PROGS) L-clean GUI L-doc $(DATA)
 
 CFLAGS	= $(CC_DEBUG)
-CPPFLAGS= -Ilibc $(TOMCRYPT_CFLAGS) $(PCRE_CFLAGS)
+CPPFLAGS= -Ilibc $(TOMCRYPT_CPPFLAGS) $(PCRE_CPPFLAGS) $(LZ4_CPPFLAGS)
 # Override this if you don't have it.
 RANLIB	= ranlib
 
@@ -449,9 +449,14 @@ bkres.o: win32/data/bk.rc bk.ico
 bk.ico: win32/data/bk.ico
 	@cp -f win32/data/bk.ico .
 
-$(BK): $(LIBS) bk.o $(RESOURCE) $(OBJ) $(TOMCRYPT_DEPS)
+ifneq ($(TOMCRYPT_SYSTEM),1)
+# add dependency on building libraries first
+$(BK): $(TOMCRYPT_LDFLAGS)
+endif
+
+$(BK): $(LIBS) bk.o $(RESOURCE) $(OBJ)
 	$(if $(Q),@echo LINKING $(BK),)
-	$(Q)$(LD) $(LDFLAGS) -o $@ bk.o $(OBJ) $(RESOURCE) $(LIBS) $(TOMCRYPT_LDFLAGS) $(PCRE_LDFLAGS) $(XLIBS)
+	$(Q)$(LD) $(LDFLAGS) -o $@ bk.o $(OBJ) $(RESOURCE) $(LIBS) $(TOMCRYPT_LDFLAGS) $(PCRE_LDFLAGS) $(LZ4_LDFLAGS) $(XLIBS)
 
 # Windows only rule, BKGUI should be blank on other platforms
 $(BKGUI): bkg.o $(RESOURCE)
@@ -625,18 +630,18 @@ crankclean: crank.sh remote.sh
 
 # This target assumes a bk repository
 .PHONY: src-tar
-src-tar:  ## build tar.gz image for the current tree
+src-tar: $(BK) version ## build tar.gz image for the current tree
 ifeq (false,$(INREPO))
 	$(error This target only works in a BK source repository)
 else
-	bk here set OPENBK
+	./bk here add default TCLTK
 	$(Q)-mkdir -p tmp/src
 	$(Q)(DIR=bk-$(shell $(BK) version -s) ; \
 	     TAR="$$DIR".tar.gz ; \
 	     echo "Creating $$TAR in tmp/src..." ; \
 	     cd tmp/src ; \
 	     rm -rf "$$DIR" ; \
-	     bk export -tplain -kwr+ -sOPENBK "$$DIR" ; \
+	     ../../bk export -tplain -kwr+ -sdefault -sTCLTK "$$DIR" ; \
 	     cat ../../version > "$$DIR/src/bkvers.txt" ; \
 	     tar -czf "$$TAR" "$$DIR" ; \
 	     rm -rf "$$DIR" ; \
@@ -702,6 +707,6 @@ print-%:
 .PHONY: help
 
 help:
-	@grep -E -h '^[a-zA-Z_\-\ ]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+	@grep -E -h '^[-a-zA-Z_\ ]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 	@echo Suggested: make -j12 image
 

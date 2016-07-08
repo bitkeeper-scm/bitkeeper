@@ -66,6 +66,7 @@ BitKeeper requires the following prerequisites to build:
 * tommath (*)
 * pcre (*)
 * zlib (*)
+* lz4 (*)
 
 The requirement marked with (*) are optional, if not installed locally
 and BitKeeper is currently installed and we are building from a
@@ -75,7 +76,7 @@ automatically populated and included.
 If you are building on a Debian based Linux then the following
 packages are required:
 
-  sudo apt-get install make gperf groff bison flex libxft2-dev libtommath-dev libtomcrypt-dev libpcre3-dev zlib1g-dev
+  sudo apt-get install make gperf groff bison flex libxft2-dev libtommath-dev libtomcrypt-dev libpcre3-dev zlib1g-dev liblz4-dev
 
 Build using the following sequence (we build on 12 core systems;
 hence the -j12 sprinkled here and there):

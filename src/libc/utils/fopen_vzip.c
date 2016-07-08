@@ -15,7 +15,7 @@
  */
 
 #include "system.h"
-#include "lz4/lz4.h"
+#include <lz4.h>
 
 /*
  * GZIP wrapper.  This is closer to the application than the CRC layer,
@@ -260,7 +260,7 @@ lz4_compress(const void *in, int ilen, void *out, int *olen)
 private int
 lz4_uncompress(const void *in, int ilen, void *out, int *olen)
 {
-	*olen = LZ4_uncompress_unknownOutputSize(in, out, ilen, *olen);
+	*olen = LZ4_decompress_safe(in, out, ilen, *olen);
 	return (*olen < 0);
 }
 
