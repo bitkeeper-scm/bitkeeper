@@ -17,7 +17,6 @@
 #include "sccs.h"
 #include "bkd.h"
 #include "cmd.h"
-#define	LTM_DESC
 #include <tomcrypt.h>
 #include "randseed.h"
 #include "nested.h"
@@ -32,7 +31,6 @@ char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
 char	**bk_environ;
 jmp_buf	exit_buf;
 int	spawn_tcl;		/* needed in crypto.c:bk_preSpawnHook() */
-ltc_math_descriptor	ltc_mp;
 char	*prog;			/* name of the bk command being run, like co */
 char	*title;			/* if set, use this instead of prog for pbars */
 char	*start_cwd;		/* if -R or -P, where did I start? */
@@ -131,7 +129,6 @@ main(int volatile ac, char **av, char **env)
 	 */
 	if (getenv("_BK_IGNORE_SIGS")) sig_ignore();
 
-	ltc_mp = ltm_desc;
 	for (i = 3; i < 20; i++) close(i);
 	reserveStdFds();
 	spawn_preHook = bk_preSpawnHook;

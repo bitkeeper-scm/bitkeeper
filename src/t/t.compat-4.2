@@ -64,9 +64,6 @@ test -d $OLDBK || {
     # NOTE bk-3.2.x didn't set exit status...
     echo y | BK_NOLINKS=1 ./bk-$OLDVER-* $OLDBK >out 2>err || fail
     rm -f $OLDBK/config
-
-    # generate a crypto key for tests
-    $OLDBK/bk crypto -i 1024 $OLDBK/my.sec $OLDBK/my.pub || fail
 }
 VER=`$OLDBK/bk version -s`
 test X$VER = X$OLDVER || {
@@ -79,48 +76,6 @@ echo OK
 mkBINs
 
 echo -------------- crypto tests
-echo $N New and old version should generate the same signature ......$NL
-$OLDBK/bk crypto -s $OLDBK/my.sec < "$BIN2" > sig1 || fail
-bk crypto -s $OLDBK/my.sec < "$BIN2" > sig2 || fail
-echo OK
-
-echo $N New and old versions should validate signature ..............$NL
-$OLDBK/bk crypto -v $OLDBK/my.pub sig1 < "$BIN2" || fail
-bk crypto -v $OLDBK/my.pub sig1 < "$BIN2" || fail
-$OLDBK/bk crypto -v $OLDBK/my.pub sig2 < $BIN2 || fail
-bk crypto -v $OLDBK/my.pub sig2 < "$BIN2" || fail
-echo OK
-
-echo $N Old version encrypts and new version decrypts ...............$NL
-$OLDBK/bk crypto -e $OLDBK/my.pub < "$BIN2" > enc || fail
-bk crypto -d $OLDBK/my.sec < enc > out || fail
-cmp -s "$BIN2" out || fail
-rm -f enc out
-echo OK
-
-echo $N New version encrypts and old version decrypts ...............$NL
-bk crypto -e $OLDBK/my.pub < "$BIN2" > enc || fail
-$OLDBK/bk crypto -d $OLDBK/my.sec < enc > out || fail
-cmp -s "$BIN2" out || fail
-rm -f enc out
-echo OK
-
-KEY=64338d0365e3c7da
-echo $N New and old versions should symetric encrypt to same data ...$NL
-$OLDBK/bk crypto -E $KEY < "$BIN2" > enc1 || fail
-bk crypto -E $KEY < "$BIN2" > enc2 || fail
-cmp -s enc1 enc2 || fail
-rm -f enc2
-echo OK
-
-echo $N Both versions should be able to decrypt data ................$NL
-$OLDBK/bk crypto -D $KEY < enc1 > out || fail
-cmp -s "$BIN2" out || fail
-bk crypto -D $KEY < enc1 > out || fail
-cmp -s "$BIN2" out || fail
-rm -f enc1 out
-echo OK
-
 echo $N Check hashing with new and old versions .....................$NL
 $OLDBK/bk crypto -h - < "$BIN2" > hash1
 bk crypto -h - < "$BIN2" > hash2 || fail
