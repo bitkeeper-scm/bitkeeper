@@ -197,7 +197,7 @@ OBJ =	bkver.o cmd.o \
 	contrib/test.o \
 	converge.o \
 	cp.o \
-	crypto.o crypto_oldrsa.o \
+	crypto.o \
 	cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	dataheap.o dbfile.o delta.o diff.o dspec.o \
 	export.o \
