@@ -88,6 +88,11 @@ hence the -j12 sprinkled here and there):
 
 (make *must* be GNU make)
 
+If bk fails to locate your pre-installed libraries then edit the file
+src/conf.mk.local to provide the needed information.  If you want to
+share the config with others please label it like "# Macos with homebrew"
+and put the configs commented out in there and send us a patch.
+
 Building on Windows requires msys and is more involved. See the thread
 on the
 [forum](https://users.bitkeeper.org/t/howto-building-bitkeeper-on-windows/78)

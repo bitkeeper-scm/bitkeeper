@@ -93,7 +93,6 @@ ifndef V
 endif
 
 BK=./bk$(EXE)
-GET=	$(Q)$(BK) get -sS
 G	=-g
 TRIAL	=0
 IMGDIR	=$(HERE)/tmp/bitkeeper
@@ -276,7 +275,8 @@ ALL	= PCRE $(LIBS) $(BINS) $(SCRIPTS) $(PSCR) $(XTRA) \
 	$(PROGS) L-clean GUI L-doc $(DATA)
 
 CFLAGS	= $(CC_DEBUG)
-CPPFLAGS= -Ilibc $(TOMCRYPT_CPPFLAGS) $(PCRE_CPPFLAGS) $(LZ4_CPPFLAGS)
+CPPFLAGS= -Ilibc $(TOMCRYPT_CPPFLAGS) $(TOMMATH_CPPFLAGS) \
+	$(PCRE_CPPFLAGS) $(LZ4_CPPFLAGS)
 # Override this if you don't have it.
 RANLIB	= ranlib
 
@@ -296,8 +296,6 @@ SCRSRCS	= bk.sh import.sh kwextract.pl uuwrap.sh unuuwrap.sh \
 	  substvars.sh b64wrap.sh gzip_b64wrap.sh \
 	  unb64wrap.sh ungzip_b64wrap.sh 
 MISC	= bkmsg.doc t/doit.sh
-
-export	GET
 
 default:
 	$(MAKE) p
@@ -453,10 +451,16 @@ ifneq ($(TOMCRYPT_SYSTEM),1)
 # add dependency on building libraries first
 $(BK): $(TOMCRYPT_LDFLAGS)
 endif
+ifneq ($(TOMMATH_SYSTEM),1)
+# add dependency on building libraries first
+$(BK): $(TOMMATH_LDFLAGS)
+endif
 
 $(BK): $(LIBS) bk.o $(RESOURCE) $(OBJ)
 	$(if $(Q),@echo LINKING $(BK),)
-	$(Q)$(LD) $(LDFLAGS) -o $@ bk.o $(OBJ) $(RESOURCE) $(LIBS) $(TOMCRYPT_LDFLAGS) $(PCRE_LDFLAGS) $(LZ4_LDFLAGS) $(XLIBS)
+	$(Q)$(LD) $(LDFLAGS) -o $@ bk.o $(OBJ) $(RESOURCE) $(LIBS) \
+		$(TOMCRYPT_LDFLAGS) $(TOMMATH_LDFLAGS) \
+		$(PCRE_LDFLAGS) $(LZ4_LDFLAGS) $(XLIBS)
 
 # Windows only rule, BKGUI should be blank on other platforms
 $(BKGUI): bkg.o $(RESOURCE)
@@ -657,8 +661,9 @@ build: build.sh
 	-chmod +x build
 	-chmod -w build
 
-conf.mk: mkconf.sh
-	sh mkconf.sh > $@
+# only depend on conf.mk.local if it exists
+conf.mk: mkconf.sh $(wildcard conf.mk.local)
+	sh mkconf.sh > $@ || { $(RM) $@; false; }
 
 %.o: %.c
 	$(if $(Q),@echo CC $<,)

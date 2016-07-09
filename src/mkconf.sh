@@ -19,7 +19,7 @@
 ms_env()
 {
 	gcc --version | grep -q cyg && {
-		echo No Mingw GCC found, I quit.
+		echo No Mingw GCC found, I quit. 1>&2
 		exit 1
 	}
 
@@ -122,33 +122,46 @@ if [ "`bk repotype 2>/dev/null`" != "product" ]
 then	BK_NO_AUTOCLONE=1
 fi
 
+# load any local settings needed to override
+test -f ./conf.mk.local && . ./conf.mk.local
+
 set_libcfg() {
-	NAME=$1
-	COMPONENT=$2
+	NAME=$1      # name of config
+	PC=$2	     # name of pkg-config package
+	COMPONENT=$3 # name of bk component (might be empty if no component)
 	local LDFLAGS=${NAME}_LDFLAGS
 	local CPPFLAGS=${NAME}_CPPFLAGS
 	local testfcn=${NAME}_test
 	local builtin=${NAME}_builtin
+	local SYSTEM=1
 
-	if [ "$(eval echo \$$LDFLAGS)" ] || eval $testfcn; then
+	if [ "$(eval echo \$$LDFLAGS)" ]; then
 		# the user already defined XXX_LDFLAGS in the environment
-		# or we found the system one
-		echo ${NAME}_SYSTEM=1
-		echo export ${NAME}_SYSTEM
+		true
+	elif pkg-config --exists $PC 2>/dev/null; then
+		# pkg-config thinks it knows
+		eval "$CPPFLAGS=\"$(pkg-config --cflags $PC)\""
+		eval "$LDFLAGS=\"$(pkg-config --libs $PC)\""
+	elif eval $testfcn; then
+		# our test function worked
+		true
 	else
 		# no library found, build our own.
 		test "$BK_NO_AUTOCLONE" && {
-			echo $NAME required to build bk
+			echo $NAME required to build bk 1>&2
 			exit 1
 		}
 		test "$COMPONENT" && {
 			bk here add $COMPONENT || {
-				echo failed to add $COMPONENT component
+				echo failed to add $COMPONENT component 1>&2
 				exit 1
 			}
 		}
 		eval $builtin
+		SYSTEM=0
 	fi
+	echo ${NAME}_SYSTEM=$SYSTEM
+	echo export ${NAME}_SYSTEM
 	echo ${NAME}_CPPFLAGS=$(eval echo \$$CPPFLAGS)
 	echo export ${NAME}_CPPFLAGS
 	echo ${NAME}_LDFLAGS=$(eval echo \$$LDFLAGS)
@@ -170,17 +183,16 @@ PCRE_builtin() {
 	PCRE_LDFLAGS=`pwd`/gui/tcltk/pcre/local/lib/libpcre.a
 }
 
-set_libcfg PCRE PCRE
+set_libcfg PCRE libpcre PCRE
 
 trap "rm -f $$ $$.c" 0
 TOMCRYPT_test() {
 	# test for system tomcrypt library
-	echo "#include <tommath.h>" > $$.c
-	echo "#include <tomcrypt.h>" >> $$.c
+	echo "#include <tomcrypt.h>" > $$.c
 	echo "main(){ find_hash(\"foo\");}" >> $$.c
-	if $CC $CCXTRA -o $$ $$.c -ltomcrypt -ltommath >/dev/null 2>&1; then
+	if $CC $CCXTRA -o $$ $$.c -ltomcrypt >/dev/null 2>&1; then
 		TOMCRYPT_CPPFLAGS=
-		TOMCRYPT_LDFLAGS="-ltomcrypt -ltommath"
+		TOMCRYPT_LDFLAGS="-ltomcrypt"
 		true
 	else
 		false
@@ -188,11 +200,31 @@ TOMCRYPT_test() {
 }
 
 TOMCRYPT_builtin() {
-	TOMCRYPT_CPPFLAGS="-I`pwd`/tommath -I`pwd`/tomcrypt/src/headers"
-	TOMCRYPT_LDFLAGS="`pwd`/tomcrypt/libtomcrypt.a `pwd`/tommath/libtommath.a"
+	TOMCRYPT_CPPFLAGS="-I`pwd`/tomcrypt/src/headers"
+	TOMCRYPT_LDFLAGS="`pwd`/tomcrypt/libtomcrypt.a"
 }
 
-set_libcfg TOMCRYPT "TOMCRYPT TOMMATH"
+set_libcfg TOMCRYPT libtomcrypt TOMCRYPT
+
+TOMMATH_test() {
+	# test for system tomcrypt library
+	echo "#include <tommath.h>" > $$.c
+	echo "main(){ mp_int a; mp_init(&a);}" >> $$.c
+	if $CC $CCXTRA -o $$ $$.c -ltommath >/dev/null 2>&1; then
+		TOMMATH_CPPFLAGS=
+		TOMMATH_LDFLAGS="-ltommath"
+		true
+	else
+		false
+	fi
+}
+
+TOMMATH_builtin() {
+	TOMMATH_CPPFLAGS="-I`pwd`/tommath"
+	TOMMATH_LDFLAGS="`pwd`/tommath/libtommath.a"
+}
+
+set_libcfg TOMMATH libtommath TOMMATH
 
 LZ4_test() {
 	# test for system lz4 library
@@ -212,7 +244,7 @@ LZ4_builtin() {
 	LZ4_LDFLAGS=""
 }
 
-set_libcfg LZ4
+set_libcfg LZ4 liblz4
 
 test "x$BK_VERBOSE_BUILD" != "x" && { echo V=1; }
 echo CC="$CC $CCXTRA"
