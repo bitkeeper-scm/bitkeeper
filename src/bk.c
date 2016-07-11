@@ -1749,9 +1749,9 @@ launch_wish(char *script, char **av)
 		} else {
 			path = aprintf("%s/gui/bin/bkgui", bin);
 			if (executable(path)) {
-				safe_putenv("TCL_LIBRARY=%s/gui/lib/tcl8.5",
+				safe_putenv("TCL_LIBRARY=%s/gui/lib/tcl8.6",
 				    bin);
-				safe_putenv("TK_LIBRARY=%s/gui/lib/tk8.5",
+				safe_putenv("TK_LIBRARY=%s/gui/lib/tk8.6",
 				    bin);
 			} else {
 				free(path);

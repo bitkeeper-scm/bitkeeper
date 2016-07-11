@@ -39,7 +39,6 @@ __platformInit()
 	CLEAR=cls
 	TMP=`__nativepath /tmp`/
 	WINDOWS=YES
-	AWK=awk
 	ext=".exe"
 	tcl=".tcl"
 	test "X$EDITOR" = X && EDITOR=notepad.exe

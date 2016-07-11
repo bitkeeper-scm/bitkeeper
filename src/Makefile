@@ -290,8 +290,7 @@ HDRS	= bam.h bkd.h bk-features.h cfg.h confvars.h diff.h fsfuncs.h \
 
 # list of non-C sources in bk
 SCRSRCS	= bk.sh import.sh kwextract.pl uuwrap.sh unuuwrap.sh \
-	  port/unix_platform.sh port/unix_platform.perl \
-	  port/win32_platform.perl port/win32_platform.sh \
+	  port/unix_platform.sh port/win32_platform.sh \
 	  gzip_uuwrap.sh ungzip_uuwrap.sh \
 	  substvars.sh b64wrap.sh gzip_b64wrap.sh \
 	  unb64wrap.sh ungzip_b64wrap.sh 
