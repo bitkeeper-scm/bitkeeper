@@ -83,7 +83,7 @@
 #include "sccs.h"
 #include "range.h"
 #include "nested.h"
-#include "tomcrypt.h"
+#include <tomcrypt.h>
 
 typedef struct {
 	/* git's fields */

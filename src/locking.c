@@ -20,7 +20,6 @@
 #include "system.h"
 #include "sccs.h"
 #include "nested.h"
-#include "tomcrypt.h"
 #include "randseed.h"
 
 private int	lockResync(project *p);

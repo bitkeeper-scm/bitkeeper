@@ -166,7 +166,7 @@ upgrade_main(int ac, char **av)
 	p = index + len - 1;
 	*p = 0;
 	while (p[-1] != '\n') --p;
-	strcpy(buf, p);	/* hmac */
+	strcpy(buf, p);	/* md5 */
 	*p = 0;
 	p = hashstr(index, strlen(index));
 	unless (streq(p, buf)) {

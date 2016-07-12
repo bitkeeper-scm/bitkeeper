@@ -894,8 +894,7 @@ The commit is aborted.
 EOF
 cmpfiles WANT GOT
 # Do again overriding check
-CRC=`bk crypto -h "$KEY" "rick approves"`
-echo "$KEY $CRC" > BitKeeper/etc/ignore-poly
+echo "$KEY" > BitKeeper/etc/ignore-poly
 bk commit $Q -ynewfile-again || fail
 # Show that a -pp check fails even if key in ignore-poly
 bk -r check -pp 2> GOT && fail -f GOT
@@ -905,7 +904,7 @@ rm BitKeeper/etc/ignore-poly
 bk -r check 2> GOT || fail -f GOT
 grep -q "Duplicate delta found in ChangeSet" GOT || fail -f GOT
 # Show that we can quiet the message, and still not fail
-echo "$KEY $CRC" > BitKeeper/etc/ignore-poly
+echo "$KEY" > BitKeeper/etc/ignore-poly
 bk -r check || fail
 # Now, on with the checkAll test ...
 bk pull $Q -R

@@ -25,7 +25,7 @@
 #include "sccs.h"
 #include "resolve.h"
 #include "bkd.h"
-#include "tomcrypt.h"
+#include <tomcrypt.h>
 #include "range.h"
 #include "graph.h"
 #include "bam.h"
@@ -12000,16 +12000,12 @@ short_random(char *str, int len)
 {
 	int	hash = register_hash(&md5_desc);
 	unsigned long md5len;
-	char	*salt = "shortkey";
 	int	n;
 	char	md5[32];
 	char	b64[64];
 
 	md5len = sizeof(md5);
-	if (hmac_memory(
-	    hash, salt, strlen(salt), str, len, md5, &md5len)) {
-		return (0);
-	}
+	if (hash_memory(hash, str, len, md5, &md5len)) return (0);
 	assert(sizeof(b64) > md5len*2+1);
 	if (md5len > 8) md5len = 8;	/* for random, just 16 char max */
 	for (n = 0; n < md5len; n++) {

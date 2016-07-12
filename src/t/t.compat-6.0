@@ -84,12 +84,6 @@ bk crypto -h - < "$BIN2" > hash2 || fail
 cmpfiles hash1 hash2
 echo OK
 
-echo $N Check hmacs with new and old versions .......................$NL
-$OLDBK/bk crypto -h - key < "$BIN2" > hash1
-bk crypto -h - key < "$BIN2" > hash2 || fail
-cmpfiles hash1 hash2
-echo OK
-
 echo $N Start new and old bkds ......................................$NL
 cd "$HERE"
 OLDP=`port 54500`

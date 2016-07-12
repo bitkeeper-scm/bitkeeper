@@ -17,7 +17,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "bkd.h"
-#include "tomcrypt.h"
+#include <tomcrypt.h>
 #include "progress.h"
 
 #define	SEND_SUCCESS	0

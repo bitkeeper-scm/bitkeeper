@@ -18,7 +18,7 @@
 #include "sccs.h"
 #include "cfg.h"
 #include "bkd.h"
-#include "tomcrypt.h"
+#include <tomcrypt.h>
 #include "range.h"
 #include "bam.h"
 #include "progress.h"

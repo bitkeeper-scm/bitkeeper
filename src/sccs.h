@@ -1489,7 +1489,6 @@ int	cset_needRepack(void);
 char	*key2path(char *key, MDBM *idDB, MDBM *done, MDBM **m2k);
 char	*hashstr(char *str, int len);
 char	*hashstream(int fd);
-char	*secure_hashstr(char *str, int len, char *key);
 int	isNetworkFS(char *path);
 void	log_rotate(char *path);
 void	sccs_saveNum(FILE *f, int num, int sign);

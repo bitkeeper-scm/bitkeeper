@@ -15,7 +15,6 @@
  */
 
 #include "sccs.h"
-#include "tomcrypt.h"
 
 private int	dbexplode(char *file, char *dir, char *rev, u32 flags);
 private int	dbimplode(char *file, char *dir, u32 flags);

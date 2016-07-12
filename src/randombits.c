@@ -15,7 +15,6 @@
  */
 
 #include "sccs.h"
-#include "tomcrypt.h"
 #include "randseed.h"
 
 void

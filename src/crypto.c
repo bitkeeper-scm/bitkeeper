@@ -54,7 +54,7 @@ crypto_main(int ac, char **av)
 	optargs = 0;
 	switch (mode) {
 	    default: args = 1; break;
-	    case 'h': args = 1; optargs = 1; break;
+	    case 'h': args = 1; optargs = 0; break;
 	}
 	if (ac - optind < args || ac - optind > args + optargs) {
 		fprintf(stderr, "ERROR: wrong number of args!\n");
@@ -66,12 +66,7 @@ crypto_main(int ac, char **av)
 
 	switch (mode) {
 	    case 'h':
-		if (av[optind+1]) {
-			hash = secure_hashstr(av[optind], strlen(av[optind]),
-			    av[optind+1]);
-		} else {
-			hash = hashstr(av[optind], strlen(av[optind]));
-		}
+		hash = hashstr(av[optind], strlen(av[optind]));
 		puts(hash);
 		free(hash);
 		ret = 0;
@@ -123,40 +118,6 @@ err:				fprintf(stderr, "base64: %s\n",
 	return (0);
 }
 
-/* this seems to have been removed from libtomcrypt,
- * it seems to me it should really be a tomcrypt API
- */
-private int
-hmac_filehandle(int hash, FILE *in,
-    const unsigned char *key, unsigned long keylen,
-    unsigned char *out, unsigned long *outlen)
-{
-	hmac_state	hmac;
-	unsigned char	buf[512];
-	size_t		x;
-	int		err;
-
-	if (err = hash_is_valid(hash)) {
-		return (err);
-	}
-
-	if (err = hmac_init(&hmac, hash, key, keylen)) {
-		return (err);
-	}
-
-	while ((x = fread(buf, 1, sizeof(buf), in)) > 0) {
-		if (err = hmac_process(&hmac, buf, (unsigned long)x)) {
-			return (err);
-		}
-	}
-
-	if (err = hmac_done(&hmac, out, outlen)) {
-		return (err);
-	}
-	zeromem(buf, sizeof(buf));
-	return (CRYPT_OK);
-}
-
 private int
 hash_fd(int hash, int fd, unsigned char *out, unsigned long *outlen)
 {
@@ -189,7 +150,7 @@ hash_fd(int hash, int fd, unsigned char *out, unsigned long *outlen)
 }
 
 char *
-secure_hashstr(char *str, int len, char *key)
+hashstr(char *str, int len)
 {
 	int	hash = register_hash(use_sha1_hash ? &sha1_desc : &md5_desc);
 	unsigned long md5len, b64len;
@@ -199,15 +160,7 @@ secure_hashstr(char *str, int len, char *key)
 	char	b64[64];
 
 	md5len = sizeof(md5);
-	if (key && (len == 1) && streq(str, "-")) {
-		if (hmac_filehandle(hash, stdin,
-		    key, strlen(key), md5, &md5len)) {
-			return (0);
-		}
-	} else if (key) {
-		if (hmac_memory(hash, key, strlen(key),
-			str, len, md5, &md5len)) return (0);
-	} else if ((len == 1) && streq(str, "-")) {
+	if ((len == 1) && streq(str, "-")) {
 		if (hash_fd(hash, 0, md5, &md5len)) return (0);
 	} else {
 		if (hash_memory(hash, str, len, md5, &md5len)) return (0);
@@ -231,12 +184,6 @@ secure_hashstr(char *str, int len, char *key)
 		}
 	}
 	return (strdup(b64));
-}
-
-char *
-hashstr(char *str, int len)
-{
-	return (secure_hashstr(str, len, 0));
 }
 
 char *

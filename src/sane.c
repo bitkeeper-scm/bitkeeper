@@ -21,7 +21,6 @@
 
 #include "system.h"
 #include "sccs.h"
-#include "tomcrypt.h"
 #include "randseed.h"
 #include "cfg.h"
 

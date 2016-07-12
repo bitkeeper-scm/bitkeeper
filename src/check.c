@@ -1985,28 +1985,23 @@ private	int
 ignorepoly(char *dkey)
 {
 	FILE	*ignore;
-	int	again = 1, found = 0;
-	int	rc;
-	char	*crc, *t;
+	int	again = 1;
+	char	*crc;
 	char	*line;
 
 	ignore = popen("bk -R cat " IGNOREPOLY, "r");
 
 again:	unless (ignore) return (0);
 	while (line = fgetline(ignore)) {
-		unless (crc = separator(line)) continue;
-		*crc++ = 0;
-		unless (streq(line, dkey)) continue;
-		t = secure_hashstr(line, strlen(line), "rick approves");
-		if (streq(t, crc)) found = 1;
-		free(t);
+		if (crc = separator(line)) *crc = 0; /* strip old hmac */
+		if (streq(line, dkey)) break;
 	}
-	if ((rc = pclose(ignore)) && !found && again && resync) {
+	if (pclose(ignore) && !line && again && resync) {
 		again = 0;
 		ignore = popen("bk -R cat " RESYNC2ROOT "/" IGNOREPOLY, "r");
 		goto again;
 	}
-	return (found);
+	return (line != 0);
 }
 
 /*

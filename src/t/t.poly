@@ -118,8 +118,7 @@ cd merge
 bk edit $Q foo
 bk delta $Q -fynull foo
 echo 'SCCS/s.foo|+' | bk commit $Q -y'foo' - || fail
-CRC=`bk crypto -h "$FOOKEY" 'rick approves'`
-echo "$FOOKEY $CRC" > BitKeeper/etc/ignore-poly
+echo "$FOOKEY" > BitKeeper/etc/ignore-poly
 bk pull $Q || fail
 echo OK
 
@@ -143,8 +142,7 @@ bk rm newfile
 bk _rm -fr BitKeeper/deleted
 bk -r check -ag | bk gone $Q -
 bk commit $Q -ygone-copy
-CRC=`bk crypto -h "$GONEKEY" 'rick approves'`
-echo "$GONEKEY $CRC" >> BitKeeper/etc/ignore-poly
+echo "$GONEKEY" >> BitKeeper/etc/ignore-poly
 bk pull $Q ../project || fail
 bk unpull $Q -sf || fail
 bk edit $Q BitKeeper/etc/gone || fail
