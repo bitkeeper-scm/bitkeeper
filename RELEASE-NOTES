@@ -1,5 +1,5 @@
 ============================================================================
-Release notes for BitKeeper version 7.3ce release June 16 2016
+Release notes for BitKeeper version 7.3ce release July 13 2016
 
 This release contains changes aimed at decoupling built-in packages
 from BitKeeper to make it easier to include to system packages.  Since

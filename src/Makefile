@@ -40,7 +40,7 @@ HERE    := $(shell pwd)
 ROOT	:= $(shell dirname $(HERE))
 REPO    := $(notdir $(ROOT))
 URL     := $(shell echo bk://work/$(ROOT) | sed s,/home/bk/,,)
-LOG	= $(shell echo LOG-`./bk getuser`)
+LOG	= $(shell echo LOG-`bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 
 include conf.mk
@@ -498,7 +498,7 @@ bkhelp.txt: $(BK) version L-docs FORCE
 html-docs: bkhelp.txt
 	@cd ../man/man2html && $(MAKE)
 
-../doc/bk_refcard.ps: FORCE
+../doc/bk_refcard.ps: $(BK) FORCE
 	$(Q)echo building $@
 	$(Q)-$(BK) -r../doc co -qS
 	$(Q)$(MAKE) -C ../doc BK=$(HERE)/bk$(EXE) all
@@ -536,9 +536,6 @@ import: import.sh port/$(SYS)_platform.sh
 .PHONY: GUI
 GUI: PCRE $(BK)
 	@$(MAKE) -Cgui Q=$(Q) BK=$(HERE)/bk$(EXE) gui
-
-gui-nowrap GUI-nowrap:
-	@$(MAKE) -Cgui Q=$(Q) nowrap
 
 install: installdir
 	tmp/bitkeeper/bk _install -d -f $(DESTDIR)$(BINDIR)
@@ -593,7 +590,7 @@ cranksave: crank.sh remote.sh  ## Run a crankturn but save the built images
 crankstatus: crank.sh remote.sh  ## See how the crank is going
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh status
 
-crankrelease nightly: crank.sh remote.sh  ## Do a BitKeeper release (or nightly build)
+crankrelease nightly: $(BK) crank.sh remote.sh  ## Do a BitKeeper release (or nightly build)
 	@(TAG=$(shell $(BK) changes -r+ -d:TAG:) ; \
 	test x$$TAG = x && { \
 		echo Cannot crankrelease with a non-tagged tip ; \
