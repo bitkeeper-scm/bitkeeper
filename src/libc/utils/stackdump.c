@@ -16,7 +16,7 @@
 
 #include "system.h"
 
-#if defined(__linux__) || (defined(__DARWIN_UNIX03) && __DARWIN_UNIX03 > 0)
+#if (defined(__linux__) && defined(__GLIBC__)) || (defined(__DARWIN_UNIX03) && __DARWIN_UNIX03 > 0)
 
 #include <execinfo.h>
 

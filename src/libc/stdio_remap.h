@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+// musl libc needs to to not try to define FILE in headers
+#define __DEFINED_FILE
+
 #define asprintf	bk_asprintf
 //#define clearerr	bk_clearerr
 #define fclose	bk_fclose
