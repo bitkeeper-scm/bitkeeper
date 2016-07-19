@@ -118,7 +118,7 @@ bk _cp SCCS/s.ChangeSet oneTip
 bk _cp twoTip SCCS/s.ChangeSet
 bk _cp twoTip ../RESYNC/gcc/SCCS/s.ChangeSet
 cd ..
-bk resolve $Q 2> GOT && fail -f GOT
+bk resolve -q 2> GOT && fail -f GOT
 cat <<EOF > WANT
 check: component cset file not single tipped: 1.3 not under 1.1.1.2
 {bk} {-?BK_NO_REPO_LOCK=YES} {-r} {check} {-acR} failed.  Resolve not even started.

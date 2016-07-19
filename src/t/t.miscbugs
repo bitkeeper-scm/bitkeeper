@@ -12,13 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-echon Running msys doesn\'t move dotbk .............................
-PATH1=`BK_DOTBK= TMP= TMPDIR= bk dotbk | tr '[A-Z]' '[a-z]'`
-PATH2=`BK_DOTBK= TMP= TMPDIR= bk bk dotbk | tr '[A-Z]' '[a-z]'`
-# cmp lowercase to avoid problems on Win32
-test "$PATH1" = "$PATH2" || fail
-echo OK
-
 echon Max line length .............................................
 commercial project
 awk 'BEGIN {for (i = 0; i < 2047; i++) printf "."; printf "\n"}' >long

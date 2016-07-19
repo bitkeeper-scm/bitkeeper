@@ -995,7 +995,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Test relative pathnames for \'bk -es./relative bk -Ugr\<dir\>\' .$NL
-bk -es../../c bk -Ugr.. _debugargs > GOT || fail -f GOT
+bk -es../../c sh -c "bk -Ugr.. _debugargs" > GOT || fail -f GOT
 sed "s,$HERE,ROOT," < GOT > GOT2
 cat <<EOF > WANT
 0: _debugargs
