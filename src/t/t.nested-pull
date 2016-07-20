@@ -1529,7 +1529,7 @@ echo OK
 echo $N Ensure that most of the above tests cleaned up PENDING dirs .$NL
 WANT=7
 cd "$HERE"
-bk find . -name PENDING > OUT
+find . -name PENDING > OUT
 GOT=`wc -l < OUT`
 test $WANT -eq $GOT || fail -f OUT there should only be $WANT PENDING dirs
 echo OK

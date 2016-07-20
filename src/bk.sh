@@ -1650,6 +1650,11 @@ _force_repack() {
 	_BK_FORCE_REPACK=1 bk repocheck $OPT
 }
 
+_sh() {
+	# allow 'bk sh' to run a shell in bk's environent
+	exec sh "$@"
+}
+
 # ------------- main ----------------------
 __platformInit
 __init
@@ -1666,7 +1671,7 @@ then	cmd=_$1
 	exit $?
 fi
 test -z "$BK_NO_CMD_FALL_THROUGH" || {
-	echo "bk: $1 is not a BitKeeper command" 1>&2
+	echo "bk: '$1' is not a BitKeeper command" 1>&2
 	exit 1
 }
 cmd=$1

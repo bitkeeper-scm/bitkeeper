@@ -494,6 +494,12 @@ sccstool => revtool
 # shell scripts
 import shell
 resync shell
+b64wrap shell
+unb64wrap shell
+gzip_b64wrap shell
+ungzip_b64wrap shell
+gzip_wrap shell
+ungzip_wrap shell
 
 # L scripts
 check_comments lscript

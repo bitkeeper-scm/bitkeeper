@@ -242,7 +242,7 @@ undoit(MDBM *m)
 		    streq(p, "/" GCHANGESET)) {
 			*p = 0;
 			i = systemf(
-			    "bk --cd='%s' bk undo -fSr%s", buf, &t[1]);
+			    "bk --cd='%s' undo -fSr%s", buf, &t[1]);
 			*p = '/';
 			if (i) worked = 0;
 			continue;
@@ -319,7 +319,7 @@ doit(int flags, char *file, char *op, char *revs)
 			ret = 1;
 		} else {
 			ret = systemf(
-			    "bk --cd='%s' bk cset -S%s %s%s",
+			    "bk --cd='%s' cset -S%s %s%s",
 			    file, (flags & SILENT) ? "q" : "", op, revs);
 		 }
 		*p = '/';

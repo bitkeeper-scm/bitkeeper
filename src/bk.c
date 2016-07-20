@@ -939,6 +939,7 @@ cmd_run(char *prog, int is_bk, int ac, char **av)
 {
 	int	i, j;
 	CMD	*cmd;
+	u8	ctype;
 	char	cmd_path[MAXPATH];
 	char	*argv[MAXARGS];
 
@@ -954,7 +955,9 @@ cmd_run(char *prog, int is_bk, int ac, char **av)
 		return (1);
 	}
 	/* unknown commands fall through to bk.script */
-	switch (cmd ? cmd->type : CMD_BK_SH) {
+	ctype = cmd ? cmd->type : 0;
+	if (!ctype && getenv("BK_CMD_FALL_THROUGH")) ctype = CMD_BK_SH;
+	switch (ctype) {
 	    case CMD_INTERNAL:		/* handle internal command */
 		assert(cmd->fcn);
 		if ((ac == 2) && streq("--help", av[1])) {
@@ -1025,8 +1028,8 @@ cmd_run(char *prog, int is_bk, int ac, char **av)
 		argv[i] = 0;
 		return (spawn_cmd(_P_WAIT, argv));
 	    default:
-		/* should never get here */
-		fprintf(stderr, "bk: '%s' not setup correctly.\n", prog);
+		fprintf(stderr, "bk: '%s' is not a BitKeeper command.\n",
+		    prog);
 		return (1);
 	}
 }

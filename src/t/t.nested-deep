@@ -152,7 +152,7 @@ echo OK
 
 echo $N Test proper rset ordering with deep nests....................$NL
 cd "$HERE/project"
-bk -e touch afile zfile
+bk -e _touch afile zfile
 bk -e new $Q afile zfile
 bk commit $Q -yfiles
 bk rset -l+ > GOT
