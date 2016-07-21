@@ -300,7 +300,7 @@ proc widgets {} \
 	. buttonconfigure finish -text "Done"
 
 	if {$runtime(installed)} {
-		set paths(new) {Welcome SummaryInstalled}
+		set paths(new) {SummaryInstalled}
 		. add path new -steps $paths(new)
 	} elseif {$tcl_platform(platform) eq "windows"} {
 		set paths(new) {Welcome PickPlace InstallDLLs Install Summary

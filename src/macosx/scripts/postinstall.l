@@ -33,6 +33,7 @@ int
 main(_argused int ac, _argused string av[], string env{string})
 {
 	string	buf, c, dotbk, dstroot, oldbk, path, paths[], tmp;
+	string	out;
 	string	home = env{"HOME"};
 	string	user = env{"USER"};
 	FILE	f;
@@ -69,6 +70,13 @@ main(_argused int ac, _argused string av[], string env{string})
 	 * copies it to $INSTALLER_TEMP. Look for that.
 	 */
 	tmp = getenv("INSTALLER_TEMP");
+
+	/*
+	 * Run bk installtool to have it attempt to collect an email address
+	 */
+	rc = system("sudo -u '${user}' '${newbk}' installtool --installed",
+	    undef, &out, &err);
+	log("bk installtool: ${rc} '${out}' '${err}'");
 
 	/*
 	 * bk-7.0 puts the config file inside the bundle (since the
