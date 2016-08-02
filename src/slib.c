@@ -646,9 +646,9 @@ sccs_inherit(sccs *s, ser_t d)
 
 	if (HAS_USERHOST(s, p)) {
 		if (!strchr(USERHOST(s, d), '@') &&
-		    (phost = HOSTNAME(s, p)) && *phost) {
+		    (phost = strchr(USERHOST(s, p), '@'))) {
 			/* user but no @host, so get host from parent */
-			sprintf(buf, "%s@%s", USERHOST(s, d), phost);
+			sprintf(buf, "%s@%s", USERHOST(s, d), phost+1);
 			USERHOST_SET(s, d, buf);
 		}
 	}

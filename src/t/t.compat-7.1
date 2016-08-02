@@ -1,0 +1,692 @@
+# Copyright 2011-2016 BitMover, Inc
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# 7.0 introduced BKWEAVEv3 & BKMERGE
+
+OLDVER=7.1
+OLDBK=/build/bitkeeper-$OLDVER
+
+# use new parallel clone in tests
+_BK_FSTYPE=nfs
+export _BK_FSTYPE
+
+# kill any uniq_server that may be running out of ~/.bk
+BK_DOTBK="$HOME/.bk" bk uniq_server $Q --dir="$HOME/.bk/bk-keys-db/`bk gethost -r`" --quit
+
+echo $N Check bitkeeper 7.1 installation ............................$NL
+
+if [ -n "$BK_DEV_SKIPTEST" ]; then echo skipped; exit 0; fi
+# Skip this test for Windows VISTA
+test -d $OLDBK || {
+	OSTYPE=`uname -s`
+	case $OSTYPE in
+		MINGW32_NT-6.*) echo skipped; exit 0;;
+	esac
+}
+# http://config.bitmover.com:7777/cgi-bin/view.cgi?id=2016-05-02-002
+BKL_PRO=BKL65908cc51572709000001200fffff000000000
+BKL_P1=YgAAAo4AAAADgQAAAAHZK6YXrWpbvvL7wuT1Fj8Z4gsjm633vW6T8Irespi/d1GL
+BKL_P2=LltIV1NobkMykn2BWS45ph8r+VpBbslq4r8cOffc7UK3qd40y6uFW+ud1mMUJjYm
+BKL_P3=Jl+mK0yL7V9E8uvsWU8VF6Wr/0lFDLZOMAbLUeTnh3EM8WcTqE0oar00Wygc0A==
+
+echo license: $BKL_PRO > c
+echo licsign1: $BKL_P1 >> c
+echo licsign2: $BKL_P2 >> c
+echo licsign3: $BKL_P3 >> c
+mv c "`bk dotbk`"/config
+test -d $OLDBK || {
+    test "`uname`" = Darwin && {
+	# skip this test on macos unless the image is installed manually
+	echo skipped
+	exit 0
+    }
+
+    # Skip this test if we don't have at least 5gigs free
+    df -Pk /build 2>/dev/null |
+        perl -e '$_ = <>; $_ = <>; exit 0 if /^\S+\s+\d+\s+\d+\s+(\d+)\s+\d+%/ && $1 > 5e6; exit 1' || {
+	echo skipped
+	exit 0
+    }
+    bk upgrade $Q -f -d $BK_TCOMPAT_ARCH \
+	    http://downloads.bitkeeper.com/$OLDVER >out 2>ERR || {
+	    grep -q "No upgrade for the arch.*found" ERR && {
+	        # can use $BK_TCOMPAT_ARCH to fix if your platform
+		# isn't one of the official
+		echo skipped
+		exit 0
+	    }
+	    echo image fetch failed
+	    exit 1
+    }
+    # NOTE bk-3.2.x didn't set exit status...
+    echo y | BK_NOLINKS=1 ./bk-$OLDVER-* $OLDBK >out 2>err || fail
+    rm -f $OLDBK/config
+}
+$OLDBK/bk _eula -a
+VER=`$OLDBK/bk version -s`
+test X$VER = X$OLDVER || {
+	echo bk not installed correctly
+	exit 1
+}
+echo OK
+
+mkBINs
+
+echo -------------- crypto tests
+echo $N Check hashing with new and old versions .....................$NL
+$OLDBK/bk crypto -h - < "$BIN2" > hash1
+bk crypto -h - < "$BIN2" > hash2 || fail
+cmpfiles hash1 hash2
+echo OK
+
+echo $N Start new and old bkds ......................................$NL
+cd "$HERE"
+OLDP=`port 54500`
+# old bkd will have "No root for triggers!" ttyprintf
+$OLDBK/bk bkd -d -aPORT -ikill 2> OLDERR || fail -f OLDERR
+OLDP=`cat PORT`
+bk bkd -d -aPORT -ikill 2> NEWERR || fail -f NEWERR
+NEWP=`cat PORT`
+trap "bk _kill bk://localhost:$OLDP; bk _kill bk://localhost:$NEWP" 0
+echo OK
+
+echo -------------- clone compat tests
+
+echo $N Clone from old bkd and make sure we do checkouts ............$NL
+cd "$HERE"
+fresh_commercial --compat project
+bk clone $Q --sccs-compat . ../sccsdirs
+cd ../sccsdirs
+mkdir src
+cd src
+echo foo > foo
+bk new $Q foo
+cd ..
+bk commit -ywhatever $Q
+cd ..
+# Important for the test: SCCS compat, partial check and checkout get|edit
+bk --config='partial_check:yes' clone $Q --checkout=get \
+    bk://localhost:$OLDP/sccsdirs file-after || fail
+cd file-after
+bk -U^G > CO
+test -s CO && fail -f CO files not checked out
+echo OK
+
+echo $N Clone again, but such that config is last in the list .......$NL
+cd "$HERE"/sccsdirs
+bk mv src/foo foo
+bk commit -ywhatever $Q
+cd ..
+# Important for the test: SCCS compat, partial check and checkout get|edit
+bk --config='partial_check:yes' clone $Q --checkout=get \
+    bk://localhost:$OLDP/sccsdirs config-last || fail
+cd config-last
+bk -U^G > CO
+test -s CO && fail -f CO files not checked out
+echo OK
+
+echo $N Try a pull urllist to see if the hacks work .................$NL
+# old bkds fail bkd_nested call, so hackery in place to work anyway
+cd "$HERE"
+fresh_nested --compat nest
+bk clone $Q . ../nest-dest
+touch gcc/foo
+bk new $Q gcc/foo
+bk commit $Q -f
+bk clone $Q -s. . ../nest-src
+cd ../nest-src
+rm BitKeeper/log/urllist
+cd ../nest-dest
+perl -pe 's|.*/nest$|bk://localhost:'$OLDP'/nest|' BitKeeper/log/urllist > x
+cp x BitKeeper/log/urllist
+bk pull ../nest-src >X 2>&1 || fail -f X
+grep searching X > GOT
+# The non -q shows takepatch reading the file, and then failing with
+# this same nested only in product.  That means to upgraded the bkd.
+cat <<EOF > WANT
+pull: searching bk://localhost:$OLDP/nest...ok (gate)
+EOF
+cmpfiles WANT GOT
+# again, http style
+bk unpull $Q -sf
+perl -pe 's|^bk://|http://|' BitKeeper/log/urllist > x
+cp x BitKeeper/log/urllist
+bk pull ../nest-src >X 2>&1 || fail -f GOT
+grep searching X > GOT
+cat <<EOF > WANT
+pull: searching http://localhost:$OLDP/nest...ok (gate)
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Clone an old bam repo with new client and get bam file ......$NL
+cd "$HERE"
+# Need to create a syncroot distinct from rootkey
+# So take a standalone repo, make a BAM file, then attach it.
+$OLDBK/bk --cd=nest bam server $Q .
+$OLDBK/bk clone $Q project binary
+cd binary
+$OLDBK/bk bam server $Q ../nest
+# BAM binary data will not pass this test on windows.  Skip BAM testing.
+echo binary > bam
+if [ X"$PLATFORM" = XWIN32 ]
+then	$OLDBK/bk new $Q bam
+else	$OLDBK/bk new $Q -b bam
+fi
+$OLDBK/bk commit $Q -ybamfile
+cd ../nest
+$OLDBK/bk attach $Q ../binary binary
+cd ../binary
+$OLDBK/bk edit $Q bam
+echo dvd > bam
+$OLDBK/bk delta $Q -ybig-data bam
+$OLDBK/bk commit $Q -ypush-to-bam-server
+$OLDBK/bk push $Q
+cd ..
+# Now using a new client, clone and fetch the BAM file
+bk clone $Q \
+    --checkout=get bk://localhost:$NEWP/nest nested-bam-clone || fail
+cd nested-bam-clone/binary
+bk portal $Q .
+bk port $Q ../../binary || fail
+echo OK
+
+echo -------------- BAM cp test
+echo $N See that a BAM cp that fetch from old bam server fails ......$NL
+cd "$HERE"
+bk clone $Q project bam-server
+bk clone $Q project bam-receiver
+cd bam-server
+echo binary > bam2
+bk new $Q -b bam2
+bk commit $Q -ybam-file
+bk bam server $Q .
+cd ..
+bk clone $Q bk://localhost:$OLDP/bam-server bam-copy
+bk clone $Q bk://localhost:$OLDP/bam-server bam-xcopy
+cd bam-copy
+bk cp $Q bam2 newbam || fail
+bk get $Q || fail
+# across a component, same thing
+cd ../bam-xcopy
+bk cp $Q -f bam2 ../bam-receiver/newbam || fail
+cd ../bam-receiver
+bk get $Q || fail
+echo OK
+
+echo -------------- ascii cset files match
+echo $N New and old version should generate the same cset file ......$NL
+cd "$HERE"
+touch empty
+
+ENV="_BK_NO_UNIQ=1 _BK_NO_ATTR=1 BK_DATE_TIME_ZONE=\"98/09/22 16:23:31+00:00\" BK_RANDOM=1234567890abcdef"
+
+eval $ENV $OLDBK/bk setup -fcempty newrepo
+eval $ENV $OLDBK/bk clone $Q newrepo newcopy
+cd newrepo
+echo f > foo
+eval $ENV $OLDBK/bk new $Q foo
+eval $ENV $OLDBK/bk commit $Q -yfoo
+cd ../newcopy
+echo b > bar
+eval $ENV $OLDBK/bk new $Q bar
+
+eval $ENV $OLDBK/bk commit $Q -ybar
+eval $ENV $OLDBK/bk pull $Q
+cd ..
+mv newrepo oldrepo
+mv newcopy oldcopy
+
+# again with the current stuff
+eval $ENV bk setup --compat -fcempty newrepo
+eval $ENV bk clone $Q newrepo newcopy
+cd newrepo
+echo f > foo
+eval $ENV bk new $Q foo
+eval $ENV bk commit $Q -yfoo
+cd ../newcopy
+echo b > bar
+eval $ENV bk new $Q bar
+eval $ENV bk commit $Q -ybar
+eval $ENV bk pull $Q
+cd ..
+# compare cset files
+# We changed the path name, hack this to make it match
+(cd oldcopy; bk comments -yChangeSet -r1.0 ChangeSet)
+bk _scat --sccs oldcopy/ChangeSet > old
+bk _scat --sccs newcopy/ChangeSet > new
+cmpfiles old new
+echo OK
+
+echo $N Document the weave signature ................................$NL
+# Dump a weave signature
+dump() {
+	perl -e '
+		while (<>) { last if /^\001T/ }  # Skip to weave
+		while (<>) {
+			if (s/\001//) {
+				if ($x) {
+					print "$x\n";
+					$x = 0;
+				} elsif (/^E/) {
+					print "== 0 ==\n";
+				}
+				print;
+			} else {
+				$x++;
+			}
+		}
+	' $1
+}
+# For compat sake, 2 empty slots.
+dump new > GOT
+cat <<EOF > WANT
+I 5
+== 0 ==
+E 5
+I 4
+1
+E 4
+I 3
+1
+E 3
+I 2
+4
+E 2
+I 1
+== 0 ==
+E 1
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo -------------- compat '<->' BK testing with clone, push, pull
+echo $N Set up bkfile/bweave format repo called bkfile ..............$NL
+cd "$HERE"
+$OLDBK/bk clone $Q --upgrade bk://localhost:$OLDP/newrepo bkfile || fail
+bk clone $Q $COMPAT4 bkfile bkfile--compat || fail
+bk clone $Q --upgrade bkfile bkfile--upgrade || fail
+$OLDBK/bk --cd=bkfile--compat repocheck $Q || fail
+echo OK
+
+echo $N Clone from bk7/bkfile with bk - passes ......................$NL
+bk clone -q bk://localhost:$OLDP/bkfile save-this || fail
+bk _rm -r save-this
+echo OK
+
+echo $N Clone from bk/upgrade with bk7 - now passes .................$NL
+$OLDBK/bk clone -q bk://localhost:$NEWP/bkfile--upgrade save-this || fail
+bk _rm -r save-this
+echo OK
+
+echo $N Rclone with bk/upgrade to bk7 - now passes ..................$NL
+bk clone $Q bkfile--upgrade bk://localhost:$OLDP/save-this || fail
+bk _rm -r save-this
+echo OK
+
+echo $N Rclone with bk7/bkfile to bk - passes .......................$NL
+$OLDBK/bk clone -q bkfile bk://localhost:$NEWP/save-this || fail
+echo OK
+
+echo $N Pull from bk7/compat to bk/bkfile ...........................$NL
+cd newrepo
+touch newfile-compat
+$OLDBK/bk new $Q newfile-compat
+$OLDBK/bk commit $Q -ynewfile
+cd ../bkfile--upgrade
+bk pull $Q || fail
+bk repocheck $Q || fail
+echo OK
+
+echo $N Pull from bk/upgrade to bk7/compat ..........................$NL
+touch newfile-bkfile
+bk new $Q newfile-bkfile
+bk commit $Q -ynewfile-bkfile
+cd ../newrepo
+$OLDBK/bk pull $Q bk://localhost:$NEWP/bkfile--upgrade || fail
+echo OK
+
+echo $N Pull from bk/upgrade to bk/compat ...........................$NL
+bk pull $Q bk://localhost:$NEWP/bkfile--upgrade || fail
+echo OK
+
+echo $N Push from bk7/compat to bk/upgrade ..........................$NL
+touch newfile-compat-push
+$OLDBK/bk new $Q newfile-compat-push
+$OLDBK/bk commit $Q -ynewfile-compat-push
+$OLDBK/bk push $Q bk://localhost:$NEWP/bkfile--upgrade || fail
+echo OK
+
+echo $N Push from bk/compat to bk/upgrade ...........................$NL
+bk push $Q bk://localhost:$NEWP/bkfile--upgrade || fail
+echo OK
+
+echo $N Push from bk/upgrade to bk7/compat ..........................$NL
+cd ../bkfile--upgrade
+touch newfile-bkfile-push
+bk new $Q newfile-bkfile-push
+bk commit $Q -ynewfile-bkfile-push || fail
+bk push $Q bk://localhost:$OLDP/newrepo || fail
+echo OK
+
+echo -------------- compat '<->' BK testing with attach, detach, port
+echo $N Set up bkfile/bweave format repo called bkfile.nest .........$NL
+cd "$HERE"
+bk clone $Q --upgrade-repo bk://localhost:$OLDP/nest bkfile.nest || fail
+echo OK
+
+echo $N Attach from bk/bkfile to bk7/compat - now works .............$NL
+cd nest
+$OLDBK/bk attach $Q bk://localhost:$NEWP/bkfile newrepo || fail
+bk gate -qr
+bk portal -qr
+bk undo -qsfr+
+bk gate -q .
+bk portal -q .
+echo OK
+
+echo $N Detach from bk7/compat to bk/bkfile - works .................$NL
+$OLDBK/bk detach $Q -Bnone gcc bk://localhost:$NEWP/gcc.bk || fail
+echo OK
+
+echo $N Attach from bk7/compat to bk/bkfile - works .................$NL
+cd ../bkfile.nest
+bk portal $Q .
+bk gate $Q .
+bk attach $Q bk://localhost:$OLDP/newrepo bkfile || fail
+# XXX test to see that it is in bkfile format
+echo OK
+
+echo $N Push to bk7/compat which will clone bkfile comp - works .....$NL
+bk push $Q bk://localhost:$OLDP/nest || fail
+echo OK
+
+echo $N Pull from bk/bkfile to bk7/compat - now works ...............$NL
+# XXX See the additional lines on the test below: problem with nested lock?
+# It's from the bk-6.0 binary.  If we want to improve it, add RTI to bugfix
+cd ../nest
+$OLDBK/bk pull -q bk://localhost:$NEWP/bkfile.nest || fail
+cd ../bkfile.nest
+echo OK
+
+echo $N Push to bk/compat which will clone bkfile comp - works ......$NL
+bk push $Q bk://localhost:$NEWP/nest || fail
+# See that an old bk thinks all is fine
+$OLDBK/bk --cd="$HERE/nest" repocheck $Q || fail
+echo OK
+
+echo $N Detach from bk/bkfile to bk7/compat - now works .............$NL
+bk detach $Q gcc bk://localhost:$OLDP/gcc.bk7 || fail
+echo OK
+
+echo $N Port from bk/bkfile to bk7/compat ...........................$NL
+# make into new product so we can port.
+bk newroot
+# update bk comp
+cd gcc
+touch bk
+bk new $Q bk
+bk commit $Q -ybk
+# port into bk7 comp
+cd ../../nest/gcc
+$OLDBK/bk port $Q bk://localhost:$NEWP/bkfile.nest/gcc || fail
+echo OK
+
+echo $N Port from bk7/compat to bk/bkfile ...........................$NL
+# update bk7 comp
+cd ../gdb
+touch bk7
+$OLDBK/bk new $Q bk7
+bk commit $Q -ybk7
+# port into bk comp
+cd ../../bkfile.nest/gdb
+bk port $Q bk://localhost:$OLDP/nest/gdb || fail
+echo OK
+
+echo -------------- clone tests
+echo $N Make a nested repo with a fork and merge history ............$NL
+cd "$HERE"
+nested clone-base
+touch gcc/foo
+bk new $Q gcc/foo
+bk commit $Q -yfoo
+bk clone $Q . ../upgraded.v3
+bk edit $Q gcc/foo
+bk delta $Q -fyempty gcc/foo
+bk commit $Q -yfoo
+cd ../upgraded.v3
+bk edit $Q gcc/foo
+bk delta $Q -fyempty gcc/foo
+bk commit $Q --tag=BASE -yfoo
+bk pull $Q || fail
+bk clone $Q $COMPAT4 . ../downgraded
+cd "$HERE"
+$OLDBK/bk clone $Q --upgrade downgraded upgraded
+echo OK
+
+echo $N Test straight clone .........................................$NL
+$OLDBK/bk clone $Q bk://localhost:$NEWP/upgraded upgraded-old || fail
+bk clone $Q bk://localhost:$OLDP/upgraded upgraded-new || fail
+$OLDBK/bk clone $Q bk://localhost:$NEWP/downgraded downgraded-old || fail
+bk clone $Q bk://localhost:$OLDP/downgraded downgraded-new || fail
+echo OK
+
+echo $N Test clone --downgrade ......................................$NL
+$OLDBK/bk clone $Q --downgrade bk://localhost:$NEWP/upgraded \
+    dg-upgraded-old || fail
+bk clone $Q --downgrade bk://localhost:$OLDP/upgraded \
+    dg-upgraded-new || fail
+$OLDBK/bk clone $Q --downgrade bk://localhost:$NEWP/downgraded \
+    dg-downgraded-old || fail
+bk clone $Q --downgrade bk://localhost:$OLDP/downgraded \
+    dg-downgraded-new || fail
+echo OK
+
+echo $N Test clone --upgrade ........................................$NL
+$OLDBK/bk clone $Q --upgrade bk://localhost:$NEWP/upgraded \
+    ug-upgraded-old || fail
+bk clone $Q --upgrade bk://localhost:$OLDP/upgraded \
+    ug-upgraded-new || fail
+$OLDBK/bk clone $Q --upgrade bk://localhost:$NEWP/downgraded \
+    ug-downgraded-old || fail
+bk clone $Q --upgrade bk://localhost:$OLDP/downgraded \
+    ug-downgraded-new || fail
+echo OK
+
+echo $N Test clone -r ...............................................$NL
+$OLDBK/bk clone $Q -rBASE bk://localhost:$NEWP/upgraded \
+    r-upgraded-old || fail
+bk clone $Q -rBASE bk://localhost:$OLDP/upgraded r-upgraded-new || fail
+$OLDBK/bk clone $Q -rBASE bk://localhost:$NEWP/downgraded \
+    r-downgraded-old || fail
+bk clone $Q -rBASE bk://localhost:$OLDP/downgraded r-downgraded-new || fail
+echo OK
+
+echo $N Test clone -r --downgrade ...................................$NL
+$OLDBK/bk clone -q -rBASE --downgrade bk://localhost:$NEWP/upgraded \
+    r-dg-upgraded-old || fail
+bk clone $Q --downgrade -rBASE bk://localhost:$OLDP/upgraded \
+    r-dg-upgraded-new || fail
+$OLDBK/bk clone $Q -rBASE --downgrade bk://localhost:$NEWP/downgraded \
+    r-dg-downgraded-old || fail
+bk clone $Q --downgrade -rBASE bk://localhost:$OLDP/downgraded \
+    r-dg-downgraded-new || fail
+echo OK
+
+echo $N Test clone -r --upgrade .....................................$NL
+$OLDBK/bk clone $Q -rBASE --upgrade bk://localhost:$NEWP/upgraded \
+    r-ug-upgraded-old || fail
+bk clone $Q --upgrade -rBASE bk://localhost:$OLDP/upgraded \
+    r-ug-upgraded-new || fail
+$OLDBK/bk clone -q --upgrade -rBASE bk://localhost:$NEWP/downgraded \
+    r-ug-downgraded-old || fail
+bk clone $Q --upgrade -rBASE bk://localhost:$OLDP/downgraded \
+    r-ug-downgraded-new || fail
+echo OK
+
+echo $N Test straight rclone ........................................$NL
+$OLDBK/bk clone $Q upgraded bk://localhost:$NEWP/upgraded-old-rc || fail
+bk clone $Q upgraded bk://localhost:$OLDP/upgraded-new-rc || fail
+$OLDBK/bk clone $Q downgraded bk://localhost:$NEWP/downgraded-old-rc || fail
+bk clone $Q downgraded bk://localhost:$OLDP/downgraded-new-rc || fail
+echo OK
+
+echo $N Test rclone -r ..............................................$NL
+$OLDBK/bk clone $Q -rBASE upgraded \
+    bk://localhost:$NEWP/r-upgraded-old-rc || fail
+bk clone $Q -rBASE upgraded \
+    bk://localhost:$OLDP/r-upgraded-new-rc || fail
+$OLDBK/bk clone $Q -rBASE downgraded \
+    bk://localhost:$NEWP/r-downgraded-old-rc || fail
+bk clone $Q -rBASE downgraded \
+    bk://localhost:$OLDP/r-downgraded-new-rc || fail
+echo OK
+
+echo -------------- pull which cause clone -r tests
+echo $N Test pull new comp upgraded to downgraded ...................$NL
+cd upgraded
+bk portal $Q .
+bk setup -f ug-newcomp
+bk tag $Q UG_NEWCOMP
+touch ug-newcomp/foo
+bk new $Q ug-newcomp/foo
+bk commit $Q -yfoo
+cd ../downgraded
+$OLDBK/bk pull $Q -rUG_NEWCOMP \
+    bk://localhost:$NEWP/upgraded || fail
+bk pull $Q -rUG_NEWCOMP bk://localhost:$OLDP/upgraded || fail
+echo OK
+
+echo $N Test pull new comp downgraded to upgraded ...................$NL
+bk portal $Q .
+bk setup -f dg-newcomp
+bk tag $Q DG_NEWCOMP
+touch dg-newcomp/foo
+bk new $Q dg-newcomp/foo
+bk commit $Q -yfoo
+cd ../upgraded
+$OLDBK/bk pull -q -rDG_NEWCOMP \
+    bk://localhost:$NEWP/downgraded || fail
+echo OK
+
+echo $N Test pull new comp upgraded.v3 to v2 ........................$NL
+cd ../upgraded.v3
+bk portal $Q .
+bk setup -f v3-newcomp
+bk tag $Q V3_NEWCOMP
+touch v3-newcomp/foo
+bk new $Q v3-newcomp/foo
+bk commit $Q -yfoo
+cd ../upgraded
+bk pull $Q -rV3_NEWCOMP ../upgraded.v3 || fail
+echo OK
+
+clean() {
+    # prune percentages, unused, and uniqheap
+    perl -ne 'next if /^heap|u/; chomp; @_=split; print "$_[0] $_[1] $_[3]\n"'
+}
+
+echo -------------- Makepatch in compat mode
+echo $N Test makepatch with -C is compat with bk7 ...................$NL
+# There are no merged files in this repo?!  Making one
+cd "$HERE"
+commercial mp-base
+bk clone $Q $COMPAT4 . ../mp-base-down
+touch foo
+bk new $Q foo
+bk edit $Q foo
+bk delta $Q -fynull foo
+bk _get $Q -er1.1 foo
+bk delta $Q -fynull foo
+bk edit $Q -M foo
+bk delta $Q -fynull foo
+bk commit $Q -f
+bk makepatch -C -r+ > ../mp-patch
+cd ../mp-base-down
+$OLDBK/bk receive < ../mp-patch
+$OLDBK/bk resolve $Q || fail
+echo OK
+
+weavedump() {
+	bk _heapdump $1 | perl -ne 's/^\^A//; print unless 1 .. /^weave:/'   
+}
+
+echo $N Testing oddball weave structure gets ported .................$NL
+touch odd
+bk new $Q odd
+bk edit $Q odd
+rm odd
+printf '0a1\n> \r\r\r\n\\ No newline at end of file' > diff
+$OLDBK/bk delta $Q -yodd -Ddiff odd
+bk _get $Q -er1.1 odd
+printf "a normal no newline line" > odd
+bk delta $Q -ynormal odd
+bk edit $Q -M odd
+bk delta $Q -ymerge odd
+bk commit $Q -f
+$OLDBK/bk makepatch -C -r+ > ../slow
+$OLDBK/bk makepatch -FC -r+ > ../fast
+cd ../mp-base
+bk takepatch < ../slow || fail
+echo "a normal no newline line" > WANT.odd
+bk get RESYNC/odd 2> ERR
+cmpfiles WANT.odd RESYNC/odd
+# oddity of structure: 1 line printed, but it counts two
+grep -q "RESYNC/odd 1.3: 2 lines" ERR || fail -f ERR
+weavedump RESYNC/odd > got.slow
+cat <<EOF > WANT
+I 4
+a normal no newline line
+E 4N
+I 3
+
+E 3N
+I 1
+E 1
+EOF
+# cmpfiles WANT got.slow
+rm -fr RESYNC
+bk takepatch < ../fast || fail
+bk get RESYNC/odd 2> ERR
+cmpfiles WANT.odd RESYNC/odd
+# oddity of structure: 1 line printed, but it counts two
+grep -q "RESYNC/odd 1.3: 2 lines" ERR || fail -f ERR
+weavedump RESYNC/odd > got.fast
+cat <<EOF > WANT
+I 4
+a normal no newline line
+E 4N
+I 3
+
+E 3N
+I 2
+E 2
+I 1
+E 1
+EOF
+# cmpfiles WANT got.fast
+echo OK
+
+echo -------------- Misc bugs
+
+echo $N Demostrate using BK_IMPORTER with SCCS files works ..........$NL
+cd "$HERE"
+$OLDBK/bk setup --compat -f importer || fail
+cd importer
+echo hi > foo
+BK_IMPORTER=foo $OLDBK/bk new $Q foo || fail
+$OLDBK/bk commit $Q -yIMPORT || fail
+
+bk -r check -ac || fail
+echo OK
