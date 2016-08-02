@@ -390,6 +390,11 @@ do_incremental product/gcc component.git standalone || fail
 cmp_repos product/gcc component.git standalone || fail
 echo OK
 
+echo $N Test incremental with nested collection .....................$NL
+do_incremental product product.git || fail
+cmp_repos product product.git || fail
+echo OK
+
 echo $N Test quiet mode..............................................$NL
 cd "$HERE"
 git init -q junk

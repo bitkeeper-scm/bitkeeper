@@ -489,7 +489,8 @@ echo OK
 
 # run time testing of what machines work.
 bk which ssh > /dev/null && {
-	ssh -V 2>&1 | grep -q '^OpenSSH_[12]\.' || SSH_GOOD=1
+        # the grep matches bad versions
+	ssh -V 2>&1 | egrep -q '^(Open|Sun_)SSH_[123]\.' || SSH_GOOD=1
 }
 
 if [ -f /home/bk/test_data/ppfree -a "$SSH_GOOD" = 1 ]

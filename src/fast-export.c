@@ -32,8 +32,10 @@ typedef struct {
 	MDBM	*idDB;
 	MDBM	*goneDB;
 	MDBM	*sDB;
-	hash	*compGone;
+	hash	*compGone;	// saved goneDB for each component
+	hash	*compIdcache;	// saved idDB for each component
 	hash	*authors;
+	project	*proj;		// current component
 } opts;
 
 
@@ -260,7 +262,8 @@ gitLine(opts *op, gitOp **oplist, char *comp_rk, char *rk,
 			gop->op = aprintf("M %s :%llu %s\n",
 			    gitMode(fip->mode), fip->mark, path2);
 		} else {
-			unless (s = sccs_keyinitAndCache(0, rk, INIT_MUSTEXIST,
+			unless (s = sccs_keyinitAndCache(op->proj,
+				rk, INIT_MUSTEXIST,
 			    op->sDB, op->idDB)) {
 				fprintf(stderr, "failed to find %s\n", rk);
 				exit(1);
@@ -291,6 +294,7 @@ gitLineComp(opts *op, gitOp **oplist, char *rk, char *dk1, char *dk2)
 	char	*prefix1, *prefix2, *path1, *path2;
 	rset_df *rset;
 	MDBM	*goneSave;
+	MDBM	*idSave;
 	char	buf[MAXKEY];
 
 	s = sccs_keyinitAndCache(0, rk, INIT_MUSTEXIST, op->sDB, op->idDB);
@@ -331,6 +335,20 @@ gitLineComp(opts *op, gitOp **oplist, char *rk, char *dk1, char *dk2)
 		hash_storeStrPtr(op->compGone, rk, op->goneDB);
 	}
 
+	/*
+	 * swap op->idDB for this component.
+	 * we will restore it before returning
+	 */
+	unless (op->compIdcache) op->compIdcache = hash_new(HASH_MEMHASH);
+	idSave = op->idDB;
+	unless (op->idDB = hash_fetchStrPtr(op->compIdcache, rk)) {
+		op->idDB = loadDB(proj_fullpath(s->proj, IDCACHE),
+		    0, DB_IDCACHE);
+		hash_storeStrPtr(op->compIdcache, rk, op->idDB);
+	}
+
+	op->proj = s->proj;
+
 	prefix1 = 0;
 	if (path1 = key2path(dk1, 0, 0, 0)) {
 		prefix1 = dirname(path1);
@@ -348,6 +366,8 @@ gitLineComp(opts *op, gitOp **oplist, char *rk, char *dk1, char *dk2)
 		    prefix1, prefix2);
 	}
 	op->goneDB = goneSave;
+	op->idDB = idSave;
+	op->proj = 0;		/* back to product */
 	free(rset);
 	free(path1);
 	free(path2);
@@ -551,6 +571,7 @@ gitExport(opts *op)
 		assert(s);
 		sccs_sdelta(s, sccs_ino(s), rk);
 		range_process("fastexport", s, RANGE_SET, &rargs);
+		assert(cset->rstart);
 		for (d = s->rstart; d <= s->rstop; d++) {
 			unless (FLAGS(s, d) & D_SET) continue;
 			/*
@@ -607,7 +628,7 @@ gitExport(opts *op)
 	progress = 0;
 	f1 = fmem();
 	mark--;			/* we were one over */
-	for (d = cset->rstart; d <= cset->rstop; d++) {
+	if (cset->rstart) for (d = cset->rstart; d <= cset->rstop; d++) {
 		int	incremental = 0; /* built on non-imported csets */
 
 		if (TAG(cset, d)) continue;
@@ -745,6 +766,8 @@ gitExport(opts *op)
 	hash_free(op->rkdk2fi);
 	EACH_HASH(op->compGone) mdbm_close(*(MDBM **)op->compGone->vptr);
 	hash_free(op->compGone);
+	EACH_HASH(op->compIdcache) mdbm_close(*(MDBM **)op->compIdcache->vptr);
+	hash_free(op->compIdcache);
 	gitProgress(op, "done\n");
 	return (0);
 }
