@@ -66,7 +66,7 @@ heapdump_main(int ac, char **av)
 			printf("\n");
 		}
 
-		if (s->symlink) printf("symlist:\n");
+		if (s->symlist) printf("symlist:\n");
 		EACHP(s->symlist, sym) {
 			if (sym->symname) {
 				printf("symname: %s\n", SYMNAME(s, sym));

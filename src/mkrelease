@@ -63,7 +63,7 @@ make -s src-tar || {
 	echo make src-tar failed
 	exit 1
 }
-scp -i $key tmp/src/$ver.tar.gz $ruser@$host:$hostdir/$vernum/.
+scp -i $key tmp/src/$ver.tar.gz $ruser@$host:$hostdir/$vernum/$ver.src.tar.gz
 
 echo "Queuing mail to be sent next week to announce release"
 cat <<EOF > announce
