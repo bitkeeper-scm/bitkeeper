@@ -133,7 +133,6 @@ case $CMD in
 		test -d /cygdrive/r/build/obj && rm -rf /cygdrive/r/build/obj/*
 	}
 	bk -U^G get -qT || true
-	make build || failed
 	./build image || failed
 	test $CMD != nightly && { ./build install || failed ; }
 	test $CMD = trial -o $CMD = nightly && {

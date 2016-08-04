@@ -28,7 +28,7 @@ ms_env()
 	LD="gcc -Wl,--stack,33554432"
 }
 
-test "X$CC" = X && CC=gcc
+test "X$CC" = X && CC=cc
 test "X$LD" = X && LD=$CC
 test "X$RANLIB" = X && RANLIB=ranlib
 
@@ -39,8 +39,6 @@ case "X`uname -s`" in
 		ms_env;
 		;;
 	XDarwin)
-		CC=gcc
-		LD=gcc
 		CCXTRA="-Qunused-arguments -DHAVE_GMTOFF -DNOPROC -no-cpp-precomp"
 		XLIBS="-lresolv"
 		;;
@@ -71,10 +69,12 @@ case "X`uname -s`" in
 		RANLIB="touch"
 		;;
 	XSunOS)	XLIBS="-lnsl -lsocket -lresolv"
+		CC="gcc"
+		LD=$CC
 		if [ `isainfo -b` = "64" ]
 		then
-			CC="gcc -m64"
-			LD="gcc -m64"
+			CC="${CC} -m64"
+			LD="${LD} -m64"
 		fi
 		CCXTRA="-DHAVE_LOCALZONE -DNOPROC"
 		test X`uname -p` = Xi386 && {

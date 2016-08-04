@@ -649,14 +649,6 @@ else
 	)
 endif
 
-# It is OK if we fail to "rm build" on win32.
-# We can not "rm build" when we are running it.
-build: build.sh
-	-rm -f build
-	-cp build.sh build
-	-chmod +x build
-	-chmod -w build
-
 # only depend on conf.mk.local if it exists
 conf.mk: mkconf.sh $(wildcard conf.mk.local)
 	sh mkconf.sh > $@ || { $(RM) $@; false; }
@@ -675,7 +667,9 @@ depend: $(SRCS)
 # for system.h we need to actually run libc's makefile because it includes
 # calculated header files
 libc/system.h: FORCE
-	$(MAKE) -C libc system.h
+	$(MAKE) -C libc CC="$(CC)" system.h
+
+libc/libc.a: libc/system.h
 
 sccs.h: PCRE
 .PHONY: PCRE

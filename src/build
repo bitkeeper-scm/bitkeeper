@@ -75,12 +75,8 @@ case "X`uname -s`" in
 		;;
 esac
 
-test "X$MAKE" = X && {
-	MAKE=make
-	case "X$1" in
-	    X-j*) MAKE="make $1";;
-	esac
-}
+test "$MAKE" || MAKE=`which gmake 2>/dev/null`
+test "$MAKE" || MAKE=make
 test "x$BK_VERBOSE_BUILD" != "x" && { V="V=1"; }
-# If the current build process needs to use current bk, use "$HERE/bk"
-make --no-print-directory $JOBS $V "$@"
+
+"$MAKE" --no-print-directory $JOBS $V "$@"

@@ -37,7 +37,8 @@ close(S);
 
 print T "#include \"local_string.h\"\n";
 close(T);
-open(GCC, "gcc -I.. -Wredundant-decls $tmp 2>&1 |") || die;
+my $CC = $ENV{'CC'} || "gcc";
+open(GCC, "$CC -I.. -Wredundant-decls $tmp 2>&1 |") || die;
 
 # now look for all warnings
 while (<GCC>) {
