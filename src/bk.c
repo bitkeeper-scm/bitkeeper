@@ -940,6 +940,7 @@ cmd_run(char *prog, int is_bk, int ac, char **av)
 	int	i, j;
 	CMD	*cmd;
 	u8	ctype;
+	char	*t;
 	char	cmd_path[MAXPATH];
 	char	*argv[MAXARGS];
 
@@ -956,6 +957,17 @@ cmd_run(char *prog, int is_bk, int ac, char **av)
 	}
 	/* unknown commands fall through to bk.script */
 	ctype = cmd ? cmd->type : 0;
+	unless (ctype) {
+		sprintf(cmd_path, "bk-%s", prog);
+		if (t = which(cmd_path)) {
+			/*
+			 * We found 'bk-prog' on the user's PATH so
+			 * act like that is a builtin bk command.
+			 */
+			strcpy(cmd_path, t);
+			ctype = CMD_EXTENSION;
+		}
+	}
 	if (!ctype && getenv("BK_CMD_FALL_THROUGH")) ctype = CMD_BK_SH;
 	switch (ctype) {
 	    case CMD_INTERNAL:		/* handle internal command */
@@ -976,30 +988,14 @@ cmd_run(char *prog, int is_bk, int ac, char **av)
 		return (launch_L(cmd->name, av+1));
 
 	    case CMD_SHELL:		/* Handle shell scripts */
-		argv[0] = shell();
+		argv[i=0] = shell();
 		sprintf(cmd_path, "%s/%s", bin, prog);
-		argv[1] = cmd_path;
-		for (i = 2, j = 1; av[j]; i++, j++) {
-			if (i >= (MAXARGS-10)) {
-				fprintf(stderr, "bk: too many args\n");
-				return (1);
-			}
-			argv[i] = av[j];
-		}
-		argv[i] = 0;
-		return (spawn_cmd(_P_WAIT, argv));
+		argv[++i] = cmd_path;
+		goto args;
 
-	    case CMD_CPROG:		/* Handle C programs */
-		argv[0] = cmd->name;
-		for (i = 1; av[i]; i++) {
-			if (i >= (MAXARGS-10)) {
-				fprintf(stderr, "bk: too many args\n");
-				return(1);
-			}
-			argv[i] = av[i];
-		}
-		argv[i] = 0;
-		return (spawn_cmd(_P_WAIT, argv));
+	    case CMD_EXTENSION:		/* Handle use extensions bk-cmd */
+		argv[i=0] = cmd_path;
+		goto args;
 
 	    case CMD_BK_SH:
 		/* Handle GUI test */
@@ -1015,17 +1011,18 @@ cmd_run(char *prog, int is_bk, int ac, char **av)
 		 * b) external program/script
 		 * XXX This is slow because we are going thru the shell
 		 */
-		argv[0] = shell();
+		argv[i=0] = shell();
 		sprintf(cmd_path, "%s/bk.script", bin);
-		argv[1] = cmd_path;
-		for (i = 2, j = 0; av[j]; i++, j++) {
+		argv[++i] = cmd_path;
+		argv[++i] = prog;
+args:		for (j = 1; av[j]; j++) {
 			if (i >= (MAXARGS-10)) {
 				fprintf(stderr, "bk: too many args\n");
 				return (1);
 			}
-			argv[i] = av[j];
+			argv[++i] = av[j];
 		}
-		argv[i] = 0;
+		argv[++i] = 0;
 		return (spawn_cmd(_P_WAIT, argv));
 	    default:
 		fprintf(stderr, "bk: '%s' is not a BitKeeper command.\n",

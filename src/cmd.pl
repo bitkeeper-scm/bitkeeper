@@ -49,10 +49,10 @@ enum {
     CMD_INTERNAL,		/* internal XXX_main() function */
     CMD_GUI,			/* GUI command */
     CMD_SHELL,			/* shell script in `bk bin` */
-    CMD_CPROG,			/* executable in `bk bin` */
     CMD_ALIAS,			/* alias for another symbol */
     CMD_BK_SH,			/* function in bk.script */
     CMD_LSCRIPT,		/* L script */
+    CMD_EXTENSION,		/* bk-cmd program on PATH */
 };
 
 typedef struct CMD {
@@ -81,7 +81,6 @@ while (<DATA>) {
     $type = "CMD_INTERNAL";
     $type = "CMD_GUI" if s/\s+gui//;
     $type = "CMD_SHELL" if s/\s+shell//;
-    $type = "CMD_CPROG" if s/\s+cprog//;
     $type = "CMD_LSCRIPT" if s/\s+lscript//;
 
     $remote = 0;
@@ -162,7 +161,6 @@ foreach (qw(cmd.c cmd.h)) {
 #
 # Modifiers:
 #    gui		is a GUI script
-#    cprog		is an executable in the `bk bin` directory
 #    shell		is a shell script in the `bk bin` directory
 #    lscript		is an L script in the `bk bin` directory
 #
@@ -493,7 +491,6 @@ sccstool => revtool
 
 # shell scripts
 import shell
-resync shell
 b64wrap shell
 unb64wrap shell
 gzip_b64wrap shell

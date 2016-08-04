@@ -22,11 +22,10 @@ help_main(int ac,  char **av)
 {
 	FILE	*f, *f1;
 	pid_t	pid = 0;
-	int	c, i = 0, use_pager = 1;
+	int	c, use_pager = 1;
 	char	*opt = 0, *synopsis = "";
+	char	*topic;
 	char	*file = 0;
-	char 	*new_av[2] = {"help", 0 };
-	char	**ALL = 0;
 	char	buf[MAXLINE];
 	char	out[MAXPATH];
 
@@ -42,60 +41,46 @@ help_main(int ac,  char **av)
 		}
 	}
 
-	/* Needs to match what is in man/man2help/help2sum.pl */
-	ALL = addLine(ALL, "All");
-	ALL = addLine(ALL, "topic");
-	ALL = addLine(ALL, "topics");
-	ALL = addLine(ALL, "command");
-	ALL = addLine(ALL, "commands");
-	ALL = addLine(ALL, "Utility");
-
 	bktmp(out);
-	if (av[i=optind] && !strcasecmp(av[i], "release-notes")) {
+	if (!(topic = av[optind]) || av[optind+1]) {
+		topic = "help";
+	}
+	assert(topic);
+	if (strieq(topic, "release-notes")) {
 		sprintf(buf, "%s/RELEASE-NOTES", bin);
 		fileCopy(buf, out);
-		goto print;
-	}
-	unless (av[optind]) {
-		av = new_av;
-		optind = -0;
-	}
-	if (opt) {
-		for (i = optind; av[i]; i++) {
-			if (file) {
-				sprintf(buf,
-				    "bk helpsearch -f'%s' -%s '%s' >> '%s'",
-				    file, opt, av[i], out);
-			} else {
-				sprintf(buf,
-				    "bk helpsearch -%s '%s' >> '%s'",
-				    opt, av[i], out);
-			}
-			system(buf);
-		}
-		goto print;
-	}
-	upgrade_maybeNag(out);
-	for (i = optind; av[i]; i++) {
+	} else if (opt) {
 		if (file) {
 			sprintf(buf,
-			    "bk gethelp %s -f'%s' '%s' '%s' >> '%s'",
-			     		synopsis, file, av[i], bin, out);
+			    "bk helpsearch -f'%s' -%s '%s' >> '%s'",
+			    file, opt, topic, out);
+		} else {
+			sprintf(buf,
+			    "bk helpsearch -%s '%s' >> '%s'",
+			    opt, topic, out);
+		}
+		system(buf);
+	} else {
+		upgrade_maybeNag(out);
+		if (file) {
+			sprintf(buf, "bk gethelp %s -f'%s' '%s' '%s' >> '%s'",
+			    synopsis, file, topic, bin, out);
 		} else {
 			sprintf(buf, "bk gethelp %s '%s' '%s' >> '%s'",
-					synopsis, av[i], bin, out);
+			    synopsis, topic, bin, out);
 		}
 		if (system(buf) != 0) {
-			sprintf(buf, "bk getmsg -= '%s' >> '%s'", av[i], out);
+			sprintf(buf, "bk getmsg -= '%s' >> '%s'",
+			    topic, out);
 			if (system(buf) != 0) {
 				f = fopen(out, "a");
 				fprintf(f,
-				    "No help for %s, check spelling.\n", av[i]);
+				    "No help for %s, check spelling.\n",
+				    topic);
 				fclose(f);
 			}
 		}
 	}
-print:
 	if (use_pager) pid = mkpager();
 	f = fopen(out, "rt");
 	f1 = (*synopsis) ? stderr : stdout;
