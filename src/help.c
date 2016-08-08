@@ -23,7 +23,7 @@ help_main(int ac,  char **av)
 	FILE	*f, *f1;
 	pid_t	pid = 0;
 	int	c, use_pager = 1;
-	char	*opt = 0, *synopsis = "";
+	char	*opt = 0, *synopsis = "", *p;
 	char	*topic;
 	char	*file = 0;
 	char	buf[MAXLINE];
@@ -62,9 +62,12 @@ help_main(int ac,  char **av)
 		system(buf);
 	} else {
 		upgrade_maybeNag(out);
+		p = aprintf("bk-%s", topic);
 		if (file) {
 			sprintf(buf, "bk gethelp %s -f'%s' '%s' '%s' >> '%s'",
 			    synopsis, file, topic, bin, out);
+		} else if (which(p)) {
+			sprintf(buf, "bk %s --help", topic);
 		} else {
 			sprintf(buf, "bk gethelp %s '%s' '%s' >> '%s'",
 			    synopsis, topic, bin, out);
@@ -80,6 +83,7 @@ help_main(int ac,  char **av)
 				fclose(f);
 			}
 		}
+		free(p);
 	}
 	if (use_pager) pid = mkpager();
 	f = fopen(out, "rt");

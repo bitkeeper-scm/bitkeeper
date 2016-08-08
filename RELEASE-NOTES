@@ -5,6 +5,11 @@ New features
 - Add a simple mechinism for user's to add new commands to bk.
   If 'bk-foo' exists on the PATH, then 'bk foo' will call that command.
   (git already does something similar)
+  If you want 'bk help foo' to work, you do that by making 'bk-foo --help'
+  produce whatever help you want.  Your command must handle --help even
+  if it just does nothing.  The reason: if your command is potentially
+  destructive and it doesn't handle --help, it just ignores it, that
+  could lead to a mess.
 
 ============================================================================
 Release notes for BitKeeper version 7.3ce release July 13 2016

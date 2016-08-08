@@ -1,0 +1,9 @@
+#!/bin/sh
+
+if [ X"$1" = "X--help" ]
+then
+	echo "bk update is an alias for bk pull -u"
+else
+	exec bk pull -u "$@"
+fi
+exit 0
