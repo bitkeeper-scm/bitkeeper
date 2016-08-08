@@ -15,6 +15,7 @@
 HERE	:= $(shell pwd)
 OSTYPE	:= $(shell bash -c 'echo $$OSTYPE')
 BKROOT	:= $(shell cd ../../.. && pwd)
+BK	:= $(BKROOT)/src/bk
 
 CC := gcc
 LD := gcc
@@ -117,7 +118,8 @@ all: version.sh
 	$(Q)TCLVER=`./version.sh`; \
 	if [ -n "$$TCLVER" -a -f "$$TCLVER" -a -z "$$FORCE_REBUILD" ]; \
 	then	gunzip < "$$TCLVER" | tar -xf -; true; \
-	else	unset CC LD CCXTRA CFLAGS MAKEFLAGS; \
+	else	unset CC LD CCXTRA CFLAGS; \
+		MAKEFLAGS=`echo $$MAKEFLAGS | sed 's/ -- .*//'`; \
 		$(MAKE) Q=$(Q) populate ; \
 		$(MAKE) Q=$(Q) bin/tclsh$(EXE) || exit 1; \
 		if [ "X$(AQUA)" = X ] ; \
@@ -150,7 +152,7 @@ tcl/$S/Makefile: tcl/$S/configure $(LIBPCRE) Makefile
 	    $(ENABLE_64BIT) $(SHARED) $(SYMBOLS) \
 	    --with-tommath=$(TOMMATH)
 
-tk/$S/Makefile: tk/$S/configure Makefile
+tk/$S/Makefile: tk/$S/configure Makefile bin/tclsh$(EXE)
 	$(if $(Q),@echo Configuring Tk,)
 	$(Q)cd tk/$S; \
 	./configure $(QUIET) --with-tcl=../../tcl/$S \
@@ -158,9 +160,7 @@ tk/$S/Makefile: tk/$S/configure Makefile
 
 populate:
 	$(if $(Q), @echo Cloning TclTk repos,)
-	-$(Q) BK_CONFIG='checkout:get!' bk here add $(QUIET) TCLTK || \
-	     BK_CONFIG='checkout:get!' bk here add $(QUIET) \
-		-@bk://data.bitkeeper.com$$_BUILD_PORT/bk TCLTK
+	-$(Q) $(BK) --config=checkout:get here add $(QUIET) TCLTK
 
 CHANGELOGS =  \
 	tcl/ChangeLog \
