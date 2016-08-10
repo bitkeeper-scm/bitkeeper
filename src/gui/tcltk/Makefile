@@ -17,9 +17,9 @@ OSTYPE	:= $(shell bash -c 'echo $$OSTYPE')
 BKROOT	:= $(shell cd ../../.. && pwd)
 BK	:= $(BKROOT)/src/bk
 
-CC := gcc
-LD := gcc
-STRIP := strip
+CC ?= gcc
+LD ?= gcc
+STRIP ?= strip
 export CC LD
 
 # The Tk version is tied to the Tcl version so you only need to change TCL
@@ -119,7 +119,7 @@ all: version.sh
 	if [ -n "$$TCLVER" -a -f "$$TCLVER" -a -z "$$FORCE_REBUILD" ]; \
 	then	gunzip < "$$TCLVER" | tar -xf -; true; \
 	else	unset CC LD CCXTRA CFLAGS; \
-		MAKEFLAGS=`echo $$MAKEFLAGS | sed 's/ -- .*//'`; \
+		MAKEFLAGS=`echo "$$MAKEFLAGS" | sed 's/ -- .*//'`; \
 		$(MAKE) Q=$(Q) populate ; \
 		$(MAKE) Q=$(Q) bin/tclsh$(EXE) || exit 1; \
 		if [ "X$(AQUA)" = X ] ; \

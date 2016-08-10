@@ -30,10 +30,12 @@ include stdio/Makefile
 include tcp/Makefile
 include udp/Makefile
 include utils/Makefile
+ifneq ($(ZLIB_SYSTEM),1)
+include zlib/Makefile
+endif
 ifeq "$(OSTYPE)" "msys"
 include win32/Makefile
 XCPPFLAGS=-Wno-redundant-decls
-include zlib/Makefile
 endif
 
 OBJS = $(FSLAYER_OBJS) $(HASH_OBJS) $(MDBM_OBJS) \
@@ -44,8 +46,8 @@ HDRS = $(FSLAYER_HDRS) $(HASH_HDRS) $(MDBM_HDRS) \
 	$(STRING_HDRS) $(STDIO_HDRS) $(LZ4_HDRS) \
 	$(TCP_HDRS) $(UDP_HDRS) $(UTILS_HDRS) $(WIN32_HDRS) $(ZLIB_HDRS)
 
-CC = gcc
-CFLAGS = -fno-builtin -g -O2 -Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k -Wstrict-prototypes -Wchar-subscripts -Wredundant-decls -Wextra -Wno-sign-compare -Wno-unused-parameter -Wdeclaration-after-statement -Wmissing-prototypes
+CC ?= gcc
+CFLAGS ?= -fno-builtin -g -O2 -Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k -Wstrict-prototypes -Wchar-subscripts -Wredundant-decls -Wextra -Wno-sign-compare -Wno-unused-parameter -Wdeclaration-after-statement -Wmissing-prototypes
 CPPFLAGS = -I. $(LZ4_CPPFLAGS)
 AR=ar rc
 RANLIB=ranlib

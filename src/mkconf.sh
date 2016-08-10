@@ -135,14 +135,14 @@ set_libcfg() {
 	local builtin=${NAME}_builtin
 	local SYSTEM=1
 
-	if [ "$(eval echo \$$LDFLAGS)" ]; then
+	if [ -z "$BK_CRANK" -a "$(eval echo \$$LDFLAGS)" ]; then
 		# the user already defined XXX_LDFLAGS in the environment
 		true
-	elif pkg-config --exists $PC 2>/dev/null; then
+	elif [ -z "$BK_CRANK" ] && pkg-config --exists $PC 2>/dev/null; then
 		# pkg-config thinks it knows
 		eval "$CPPFLAGS=\"$(pkg-config --cflags $PC)\""
 		eval "$LDFLAGS=\"$(pkg-config --libs $PC)\""
-	elif eval $testfcn; then
+	elif [ -z "$BK_CRANK" ] && eval $testfcn; then
 		# our test function worked
 		true
 	else
@@ -246,8 +246,32 @@ LZ4_builtin() {
 
 set_libcfg LZ4 liblz4
 
+ZLIB_test() {
+	# test for system zlib library
+	echo "#include <zlib.h>" > $$.c
+	echo "main() { adler32(0, buf, 100); }" >> $$.c
+	if $CC $CCXTRA -o $$ $$.c -lz >/dev/null 2>&1; then
+		ZLIB_CPPFLAGS=
+		ZLIB_LDFLAGS="-lz"
+		true
+	else
+		false
+	fi
+	
+}
+
+ZLIB_builtin() {
+	# anything special to do here?
+	ZLIB_CPPFLAGS="-I`pwd`/libc/zlib"
+	ZLIB_LDFLAGS=""
+}
+
+set_libcfg ZLIB zlib
+
 test "x$BK_VERBOSE_BUILD" != "x" && { echo V=1; }
 echo CC="$CC $CCXTRA"
+echo export CC
 echo LD=$LD
+echo export LD
 echo XLIBS=$XLIBS
 echo RANLIB=$RANLIB

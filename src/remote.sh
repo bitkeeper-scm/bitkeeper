@@ -15,6 +15,10 @@
 
 umask 002
 
+# this gets picked up by mkconf.sh to disable the library detection
+# logic
+export BK_CRANK=1
+
 test X$OSTYPE != Xcygwin && {
 	if [ `uname` = SunOS ]
 	then

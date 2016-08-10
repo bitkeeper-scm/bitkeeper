@@ -77,7 +77,6 @@ else
 	endif
 	INSTALL=install
 	RESOURCE=
-	XLIBS += -lz
 endif
 
 # By default, we don't print verbose output. If you want to see
@@ -90,6 +89,7 @@ endif
 # so we just conditionalize on Q. Empty is false.
 ifndef V
 	Q=@
+	export Q
 endif
 
 BK=./bk$(EXE)
@@ -275,8 +275,9 @@ ALL	= PCRE $(LIBS) $(BINS) $(SCRIPTS) $(PSCR) $(XTRA) \
 	$(PROGS) L-clean GUI L-doc $(DATA)
 
 CFLAGS	= $(CC_DEBUG)
+export CFLAGS
 CPPFLAGS= -Ilibc $(TOMCRYPT_CPPFLAGS) $(TOMMATH_CPPFLAGS) \
-	$(PCRE_CPPFLAGS) $(LZ4_CPPFLAGS)
+	$(PCRE_CPPFLAGS) $(LZ4_CPPFLAGS) $(ZLIB_CPPFLAGS)
 # Override this if you don't have it.
 RANLIB	= ranlib
 
@@ -340,7 +341,7 @@ gcov:
 clean: L-clean FORCE  ## Remove object files and executables
 	$(if $(Q),@echo Cleaning up,)
 	$(Q)for sub in $(SUBDIRS) ../doc ../man gui utils win32 t t/win32; \
-	do	$(MAKE) -C$$sub "CFLAGS=$(CFLAGS)" Q=$(Q) $@; \
+	do	$(MAKE) -C$$sub "CFLAGS=$(CFLAGS)" $@; \
 	done
 	$(Q)$(RM) $(OBJ) bk.o $(BKG_O) $(BINS) $(SCRIPTS) \
 	    $(PSRC) $(PROGS)
@@ -349,7 +350,7 @@ clean: L-clean FORCE  ## Remove object files and executables
 		bk.ico \
 		bkmsg.txt bkhelp.txt bkver.c version \
 		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe \
-		conf.mk build
+		conf.mk
 	$(Q)$(RM) -r tmp
 ifeq "$(OSTYPE)" "msys"
 	$(Q)$(RM) -rf gnu/bin gnu/doc gnu/etc gnu/share
@@ -435,10 +436,10 @@ win32: FORCE
 
 # build libraries in sub directories
 %.a: FORCE
-	$(Q)$(MAKE) -C $(dir $@) "CC=$(CC)" "CFLAGS=$(CFLAGS)" Q=$(Q) $(notdir $@)
+	$(Q)$(MAKE) -C $(dir $@) $(notdir $@)
 
 libc/mtst$(EXE): libc/libc.a FORCE
-	$(Q)$(MAKE) -C libc "CC=$(CC)" "CFLAGS=$(CFLAGS)" mtst$(EXE)
+	$(Q)$(MAKE) -C libc mtst$(EXE)
 
 bkres.o: win32/data/bk.rc bk.ico
 	windres -i win32/data/bk.rc -o bkres.o
@@ -459,7 +460,7 @@ $(BK): $(LIBS) bk.o $(RESOURCE) $(OBJ)
 	$(if $(Q),@echo LINKING $(BK),)
 	$(Q)$(LD) $(LDFLAGS) -o $@ bk.o $(OBJ) $(RESOURCE) $(LIBS) \
 		$(TOMCRYPT_LDFLAGS) $(TOMMATH_LDFLAGS) \
-		$(PCRE_LDFLAGS) $(LZ4_LDFLAGS) $(XLIBS)
+		$(PCRE_LDFLAGS) $(LZ4_LDFLAGS) $(ZLIB_LDFLAGS) $(XLIBS)
 
 # Windows only rule, BKGUI should be blank on other platforms
 $(BKGUI): bkg.o $(RESOURCE)
@@ -535,7 +536,7 @@ import: import.sh port/$(SYS)_platform.sh
 # Quick and dirty target so we can make all the gui tools without the rest
 .PHONY: GUI
 GUI: PCRE $(BK)
-	@$(MAKE) -Cgui Q=$(Q) BK=$(HERE)/bk$(EXE) gui
+	@$(MAKE) -Cgui BK=$(HERE)/bk$(EXE) gui
 
 install: installdir
 	tmp/bitkeeper/bk _install -d -f $(DESTDIR)$(BINDIR)
@@ -667,7 +668,7 @@ depend: $(SRCS)
 # for system.h we need to actually run libc's makefile because it includes
 # calculated header files
 libc/system.h: FORCE
-	$(MAKE) -C libc CC="$(CC)" system.h
+	$(MAKE) -C libc system.h
 
 libc/libc.a: libc/system.h
 
@@ -675,7 +676,7 @@ sccs.h: PCRE
 .PHONY: PCRE
 PCRE:
 ifneq ($(PCRE_SYSTEM),1)
-	$(MAKE) Q=$(Q) -Cgui/tcltk pcre
+	$(MAKE) -Cgui/tcltk pcre
 endif
 
 $(OBJ) bk.o: $(HDRS)
