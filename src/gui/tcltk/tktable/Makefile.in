@@ -298,6 +298,8 @@ VPATH = $(srcdir):$(srcdir)/generic:$(srcdir)/unix:$(srcdir)/win
 tkTable.tcl.h: $(srcdir)/library/tkTable.tcl
 	sed -e '/^\#/d' -e '/^$$/d' -e 's/\\/\\\\/g' -e 's/\"/\\"/g' -e 's/^/"/' -e 's/$$/\\n"/' < `@CYGPATH@ $?` > '$@' || { rm -f $@; exit 1; }
 
+tkTable.o: tkTable.tcl.h
+
 .SUFFIXES: .c .$(OBJEXT)
 
 .c.@OBJEXT@:
@@ -337,7 +339,7 @@ distclean: clean
 # You should not have to modify this target.
 #========================================================================
 
-install-lib-binaries:
+install-lib-binaries: $(lib_BINARIES)
 	@mkdir -p $(DESTDIR)$(pkglibdir)
 	@list='$(lib_BINARIES)'; for p in $$list; do \
 	  if test -f $$p; then \

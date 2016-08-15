@@ -162,22 +162,13 @@ populate:
 	$(if $(Q), @echo Cloning TclTk repos,)
 	-$(Q) $(BK) --config=checkout:get here add $(QUIET) TCLTK
 
-CHANGELOGS =  \
-	tcl/ChangeLog \
-	tk/ChangeLog \
-	tktable/ChangeLog \
-	bwidget/ChangeLog \
-	tkcon/ChangeLog
+# checkout tcl subdirectory if needed
+tcl/$S/configure:
+	-$(Q)(cd tcl && bk -Ur get -qST)
 
-$(CHANGELOGS): populate
-
-# fetch tcl subdirectory if needed
-tcl/$S/configure: tcl/ChangeLog
-	-$(Q)(cd tcl && bk -Ur get -qS)
-
-# fetch tk subdirectory if needed
-tk/$S/configure: tk/ChangeLog
-	-$(Q)(cd tk && bk -Ur get -qS)
+# checkout tk subdirectory if needed
+tk/$S/configure:
+	-$(Q)(cd tk && bk -Ur get -qST)
 
 pcre: $(LIBPCRE)
 
@@ -233,8 +224,7 @@ $(BKAPP)/Contents/lib/$(TKTABLE)/$(LIBTKTABLE): tktable/configure
 $(BKAPP)/Contents/lib:
 	mkdir $(BKAPP)/Contents/lib
 
-lib/$(BWIDGET)/pkgIndex.tcl: bwidget/ChangeLog
-	-$(Q)cd bwidget; bk -Ur get -qS
+lib/$(BWIDGET)/pkgIndex.tcl:
 	$(if $(Q), @echo Installing BWidget,)
 	$(Q)mkdir -p lib/$(BWIDGET)/lang
 	$(Q)mkdir -p lib/$(BWIDGET)/images
@@ -247,8 +237,7 @@ $(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl: lib/$(BWIDGET)/pkgIndex.tcl \
 	$(BKAPP)/Contents/lib
 	cp -fRPH lib/$(BWIDGET) $(BKAPP)/Contents/lib
 
-lib/Tkcon/pkgIndex.tcl: tkcon/ChangeLog
-	-cd tkcon; bk -Ur get -qS
+lib/Tkcon/pkgIndex.tcl:
 	$(if $(Q), @echo Installing TkCon,)
 	$(Q)mkdir -p lib/Tkcon
 	$(Q)cp tkcon/tkcon.tcl lib/Tkcon
@@ -337,6 +326,7 @@ bin/BitKeeper.app/Contents/MacOS/BitKeeper: bin/tclsh$(EXE) mkapp
 	$(MAKE) -C tcl/macosx \
 	    EXTRA_CONFIGURE_ARGS="$(SYMBOLS) \
 	    --enable-pcre=default $(PCRE_CFG) \
+	    --disable-dtrace \
 	   --with-tommath=$(TOMMATH) $(SYMBOLS)" embedded
 	$(MAKE) -C tk/macosx XLIBS="$(PCRE_LDFLAGS)" \
 	    EXTRA_CONFIGURE_ARGS="$(SYMBOLS) --enable-aqua" embedded
