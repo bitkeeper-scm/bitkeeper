@@ -8996,6 +8996,35 @@ void struct_1_6()
 } -returnCodes error -match regexp -result {.*4: L Error: struct field x not found
 }
 
+test struct-1.7 {check struct type declarations at various scopes} -body {
+#lang L --line=1
+// Test sole struct type declarations. Some of these used to erroneously
+// cause syntax errors.
+struct s17_global { int a,b; };
+struct s17_global s17_g;
+s17_g.a = 111;
+s17_g.b = 222;
+
+// Test just syntax here. Functionality of struct types inside class
+// declarations are more fully tested in class-4.3 et al.
+class s17
+{
+	struct s17_class { int a,b; };
+	public struct s17_class s17_c;
+}
+
+void struct_1_7()
+{
+	struct s17_fn { int a,b; };
+	struct s17_fn s17_l;
+	s17_l.a = 333;
+	s17_l.b = 444;
+	unless (s17_g == {111,222}) puts("bad 1");
+	unless (s17_l == {333,444}) puts("bad 2");
+}
+struct_1_7();
+} -output {}
+
 test hash-1.0 {basic hashtable support} -body {
 #lang L --line=1
 void hash_1_0() {
@@ -21355,6 +21384,9 @@ test goto-1 {check goto statement} -body {
 	puts("bad");
  L1:	puts("L1");
 	goto L2;
+
+/* This used to not parse correctly. */
+wasbad: (0);
 
 /* Now test at proc scope. */
 void goto_1a()

@@ -12,43 +12,7 @@ extern int	L_lex (void);
 #define L_error L_synerr
 %}
 
-/*
- * We need a GLR parser because of a shift/reduce conflict introduced
- * by hash-element types.  This production is the culprit:
- *
- * array_or_hash_type: "{" scalar_type_specifier "}"
- *
- * This introduced a shift/reduce conflict on "{" due to "{" being in
- * the FOLLOW set of scalar_type_specifier because "{" can follow
- * type_specifier in function_decl.  For example, after you
- * have seen
- *
- *    struct s
- *
- * and "{" is the next token, the parser can't tell whether to shift
- * and proceed to parse a struct_specifier that declares a struct:
- *
- *    struct s { int x,y; }
- *
- * or whether to reduce and proceed in to a array_or_hash_type:
- *
- *    struct s { int } f() {}
- *
- * To make this grammar LALR(1) seemed difficult.  The grammar seems
- * to want to be LALR(3) perhaps(?).  The best we could do was to extend
- * the language by pushing the array_or_hash_type syntax down into
- * scalar_type_specifier and struct_specifier.  This would allow
- * inputs that should be syntax errors, so extra checking would have
- * been needed to detect these cases.
- *
- * The GLR parser has no problem with this type of conflict and keeps
- * the grammar nice.
- *
- * Note that the %expect 1 below is for this conflict.  Although the
- * GLR parser handles it, it is still reported as a conflict.
- */
-%glr-parser
-%expect 1
+%expect 0
 
 %union {
 	long	i;
@@ -200,7 +164,7 @@ extern int	L_lex (void);
 %nonassoc T_STR_BACKTICK T_INT_LITERAL T_FLOAT_LITERAL T_TYPE T_WHILE
 %nonassoc T_FOR T_DO T_DEFINED T_STRING T_FOREACH T_BREAK T_CONTINUE
 %nonassoc T_SPLIT T_GOTO T_WIDGET T_PRAGMA T_SWITCH T_START_BACKTICK T_TRY
-%nonassoc T_HTML T_LHTML_EXPR_START
+%nonassoc T_HTML T_LHTML_EXPR_START T_LPAREN
 %left T_COMMA
 %nonassoc T_ELSE T_SEMI
 %right T_EQUALS T_EQPLUS T_EQMINUS T_EQSTAR T_EQSLASH T_EQPERC
@@ -275,10 +239,6 @@ toplevel_code:
 			$2->decl->flags |= SCOPE_GLOBAL;
 		}
 		$$->u.fun = $2;
-	}
-	| toplevel_code struct_specifier ";"
-	{
-		$$ = $1;  // nothing more to do
 	}
 	| toplevel_code T_TYPEDEF type_specifier declarator ";"
 	{
@@ -426,7 +386,6 @@ class_code:
 		}
 		APPEND_OR_SET(VarDecl, next, clsdecl->clsvars, $2);
 	}
-	| class_code struct_specifier ";"
 	| class_code T_TYPEDEF type_specifier declarator ";"
 	{
 		L_set_declBaseType($4, $3);
@@ -1398,8 +1357,8 @@ declaration_list:
 	;
 
 declaration:
-	  declaration2 ";"
-	| decl_qualifier declaration2 ";"
+	  declaration2
+	| decl_qualifier declaration2
 	{
 		VarDecl *v;
 		for (v = $2; v; v = v->next) {
@@ -1417,7 +1376,7 @@ decl_qualifier:
 	;
 
 declaration2:
-	  type_specifier init_declarator_list
+	  type_specifier init_declarator_list ";"
 	{
 		/* Don't REVERSE $2; it's done as part of declaration_list. */
 		VarDecl *v;
@@ -1426,6 +1385,7 @@ declaration2:
 		}
 		$$ = $2;
 	}
+	| type_specifier ";" { $$ = NULL; }
 	;
 
 init_declarator_list:
