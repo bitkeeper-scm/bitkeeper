@@ -19,7 +19,6 @@ BK	:= $(BKROOT)/src/bk
 
 CC ?= gcc
 LD ?= gcc
-STRIP ?= strip
 export CC LD
 
 # The Tk version is tied to the Tcl version so you only need to change TCL
@@ -33,7 +32,6 @@ ifeq "$(OSTYPE)" "msys"
 	S := win
 	EXE := .exe
 	SO := .dll
-	STRIP := true
 	XFTSUPPORT :=
 	SHARED := --enable-shared
 	PCRE_OBJ:= bin/tcl$(subst .,,$(TCLVERSION)).dll
@@ -296,9 +294,6 @@ bin/tclsh$(EXE): tcl/$S/Makefile Lversion-L.sh Lversion-C.sh
 		mv usr/local/lib/reg$(REGVERSION) lib/tcl$(TCLVERSION); \
 	fi
 	rm -rf include usr lib/tcl$(TCLVERSION)/tcltest*
-	if [ -z "$(DEBUG_TCL)" ] ; then \
-		$(STRIP) bin/tclsh$(EXE) ; \
-	fi
 
 bin/bkgui$(EXE): tk/$S/Makefile bin/tclsh$(EXE)
 	rm -rf bin/bkgui$(EXE) lib/tk*
@@ -315,9 +310,6 @@ bin/bkgui$(EXE): tk/$S/Makefile bin/tclsh$(EXE)
 	    mv tmp/* .; \
 	    rmdir tmp
 	mv bin/wish* bin/bkgui$(EXE)
-	if [ -z "$(DEBUG_TCL)" ] ; then \
-		$(STRIP) bin/bkgui$(EXE); \
-	fi
 
 mkapp: FORCE
 	-bk get mkapp

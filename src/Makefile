@@ -578,8 +578,6 @@ image:  ## Build the installer (left in src/utils/bk-*)
 
 _image:
 	$(MAKE) installdir
-	-cd $(IMGDIR) && strip *$(EXE) 2>/dev/null
-	-cd $(IMGDIR)/gui/bin && strip *$(EXE)
 	${MAKE} -Cutils BINDIR=$(IMGDIR) "CC=$(CC)" "BK=$(HERE)/bk$(EXE)" "CFLAGS=$(CFLAGS)" image
 
 crankturn: crank.sh remote.sh  ## Run a clean-build + regressions in cluster

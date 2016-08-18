@@ -32,7 +32,6 @@ ifeq "$(OSTYPE)" "msys"
 	PROGRESS=progress.o
 	WINAPP=-mwindows
 	SO=so
-	STRIPOPTS=
 	DARWIN=NO
 	BKGUI=$(BINDIR)/gui/bin/bkgui$(EXE)
 	EXTRACT_OBJ=extractor.o extractor-console.o
@@ -50,12 +49,10 @@ else
 	PROGRESS=
 	WINAPP=
 	SO=dll
-	STRIPOPTS=
 	BKGUI=$(BINDIR)/gui/bin/bkgui$(EXE)
 	DARWIN=NO
 	ifeq "$(shell uname)" "Darwin"
 		SO=dylib
-		STRIPOPTS=-x
 		BKGUI=$(BINDIR)/gui/bin/BitKeeper.app/Contents/MacOS/BitKeeper
 		DARWIN=YES
 		DEEP=$(shell test `uname -r | awk -F. '{print $$1}'` -gt 10 && echo --deep)
@@ -75,7 +72,6 @@ IMAGE_NAME:= $(IMGBASE)-setup
 IMAGEDEPS:= $(RESOURCES) $(PROGRESS) _data.o
 
 all image: $(BINDIR)/bk$(EXE) $(IMAGE)
-	strip $(IMAGE) $(CONSOLE_IMAGE)
 
 $(IMAGE): $(MANIFEST) $(EXTRACT_OBJ) $(SYSTEM_OBJS) $(IMAGEDEPS)
 	$(LD) $(LDFLAGS) extractor.o $(SYSTEM_OBJS) _data.o \
@@ -121,8 +117,6 @@ _data.o: sfio$(EXE) munge$(EXE) zz$(EXE) sfioball.zz
 sfioball.zz: installtool $(BINDIR) $(BKGUI) zz$(EXE)
 	@echo Creating sfioball.zz from BK in $(BINDIR) ...
 	@cp installtool $(BINDIR)/gui/lib/installtool
-	@find $(BINDIR) -type f -name \*.$(SO) | while read x; \
-	    do strip $(STRIPOPTS) $$x ; done
 	@(cd $(BINDIR)/.. && find `basename $(BINDIR)` -type f | \
 	    $(BK) sfio -mqo) | ./zz sfioball.zz
 
