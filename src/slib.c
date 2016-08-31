@@ -2479,7 +2479,7 @@ private char *
 expand(sccs *s, ser_t d, char *l, int *expanded)
 {
 	char 	*buf;
-	char	*t;
+	char	*t, *p;
 	char	*tmp;
 	time_t	now = 0;
 	ser_t	a[4] = {0, 0, 0, 0};
@@ -2509,7 +2509,7 @@ expand(sccs *s, ser_t d, char *l, int *expanded)
 		    case 'A':	/* %Z%%Y% %M% %I%%Z% */
 			/* XXX - no tflag */
 			strcpy(t, "@(#) "); t += 5;
-			tmp = basenm(s->gfile);
+			tmp = basenm(PATHNAME(s, d));
 			strcpy(t, tmp); t += strlen(tmp); *t++ = ' ';
 			strcpy(t, REV(s, d)); t += strlen(REV(s, d));
 			strcpy(t, "@(#)"); t += 4;
@@ -2537,8 +2537,8 @@ expand(sccs *s, ser_t d, char *l, int *expanded)
 			break;
 
 		    case 'F':	/* s.file name */
-			strcpy(t, "SCCS/"); t += 5;
-			tmp = basenm(s->sfile);
+			t += sprintf(t, "SCCS/s.");
+			tmp = basenm(PATHNAME(s, d));
 			strcpy(t, tmp); t += strlen(tmp);
 			break;
 
@@ -2568,13 +2568,20 @@ expand(sccs *s, ser_t d, char *l, int *expanded)
 			break;
 
 		    case 'M':	/* mflag or filename: slib.c */
-			tmp = basenm(s->gfile);
+			tmp = basenm(PATHNAME(s, d));
 			strcpy(t, tmp); t += strlen(tmp);
 			break;
 
 		    case 'P':	/* full: /u/lm/smt/sccs/SCCS/s.slib.c */
-			fullname(s->sfile, t);
-			t += strlen(t);
+			t += sprintf(t, "%s/", proj_root(s->proj));
+			tmp = PATHNAME(s, d);
+			if (p = strrchr(tmp, '/')) {
+				++p;
+				t += sprintf(t, "%.*s", (int)(p - tmp), tmp);
+			} else {
+				p = tmp;
+			}
+			t += sprintf(t, "SCCS/s.%s", p);
 			break;
 
 		    case 'Q':	/* qflag */
@@ -2600,7 +2607,7 @@ expand(sccs *s, ser_t d, char *l, int *expanded)
 
 		    case 'W':	/* @(#)%M% %I%: @(#)slib.c 1.1 */
 			strcpy(t, "@(#) "); t += 4;
-			tmp = basenm(s->gfile);
+			tmp = basenm(PATHNAME(s, d));
 			strcpy(t, tmp); t += strlen(tmp); *t++ = ' ';
 			strcpy(t, REV(s, d)); t += strlen(REV(s, d));
 			break;
@@ -2659,14 +2666,14 @@ rcsexpand(sccs *s, ser_t d, char *line, int *expanded)
 		/*   123456789 */
 		{6, "Author", ": :USER:@:HOST: "},
 		{4, "Date", ": :D: :T::TZ: "},
-		{6, "Header", ": :GFILE: :I: :D: :T::TZ: :USER:@:HOST: "},
-		{2, "Id", ": :G: :I: :D: :T::TZ: :USER:@:HOST: "},
+		{6, "Header", ": :DPN: :I: :D: :T::TZ: :USER:@:HOST: "},
+		{2, "Id", ": :DPN_BN: :I: :D: :T::TZ: :USER:@:HOST: "},
 		{6, "Locker", ": <Not implemented> "},
 		{3, "Log", ": <Not implemented> "},
 		{4, "Name", ": <Not implemented> "}, /* almost :TAGS: */
 		{8, "Revision", ": :I: "},
-		{7, "RCSfile", ": s.:G: "},
-		{6, "Source", ": :SFILE: "},
+		{7, "RCSfile", ": s.:DPN_BN: "},
+		{6, "Source", ": :SPN: "},
 		{5, "State", ": <unknown> "}
 	};
 	const	int	keyslen = sizeof(keys)/sizeof(struct keys);
@@ -6402,7 +6409,7 @@ write_pfile(sccs *s, int flags, ser_t d,
 	if (BITKEEPER(s) && (!(flags & GET_SKIPGET) || WRITABLE_REG(s)) &&
 	    HASGRAPH(s) && (d == sccs_top(s)) &&
 	    !i2 && !iLst && !xLst && !mRev &&
-	    S_ISREG(MODE(s, d)) && !HAS_KEYWORDS(s) &&
+	    S_ISREG(MODE(s, d)) && !(XFLAGS(s, d) & (X_SCCS|X_RCS)) &&
 	    features_test(s->proj, FEAT_PFILE)) {
 		/*
 		 * Unless we are writing something interesting we
@@ -6913,11 +6920,12 @@ get_reg(sccs *s, char *printOut, FILE *out, int flags, ser_t d, ser_t m,
 	char	lnamebuf[MD5LEN+32]; /* md5sum + '.' + linenumber */
 	MDBM	*namedb = 0;
 	u32	*lnum = 0;
+	u32	xflags = d ? XFLAGS(s, d) : s->xflags;
 	hashpl	dbstate = {0};
 	u32	fastflags = (NEWCKSUM|GET_SUM|GET_SHUTUP|SILENT|PRINT);
 
 	assert(!BAM(s));
-	if ((d ? XFLAGS(s, d) : s->xflags) & X_EOLN_WINDOWS) eol = "\r\n";
+	if (xflags & X_EOLN_WINDOWS) eol = "\r\n";
 	slist = d ? serialmap(s, d, m, iLst, xLst, &error)
 		  : setmap(s, D_SET, 0);
 	if (error) {
@@ -7002,7 +7010,7 @@ get_reg(sccs *s, char *printOut, FILE *out, int flags, ser_t d, ser_t m,
 	if (BINARY(s) || (hash && !(flags & (PRINT|GET_HASHONLY)))) {
 		flags &= ~(GET_EXPAND|GET_PREFIX);
 	}
-	unless (HAS_KEYWORDS(s)) flags &= ~GET_EXPAND;
+	unless (xflags & (X_SCCS|X_RCS)) flags &= ~GET_EXPAND;
 
 	if (flags & GET_LINENAME) {
 		lnum = calloc(TABLE(s) + 1, sizeof(*lnum));
@@ -7151,26 +7159,28 @@ out:			if (slist) free(slist);
 			e = buf;
 			sccs_expanded = rcs_expanded = 0;
 			unless (flags & GET_EXPAND) goto write;
-			if (SCCS(s)) {
+			if (xflags & X_SCCS) {
 				for (e = buf; *e && (*e != '%'); e++);
 				if (*e == '%') {
 					e = e1 =
 					    expand(s, d, buf, &sccs_expanded);
-					if (sccs_expanded && EXPAND1(s)) {
+					if (sccs_expanded &&
+					    (xflags & X_EXPAND1)) {
 						flags &= ~GET_EXPAND;
 					}
 				} else {
 					e = buf;
 				}
 			}
-			if (RCS(s)) {
+			if (xflags & X_RCS) {
 				char	*t;
 
 				for (t = e; *t && (*t != '$'); t++);
 				if (*t == '$') {
 					e = e2 =
 					    rcsexpand(s, d, e, &rcs_expanded);
-					if (rcs_expanded && EXPAND1(s)) {
+					if (rcs_expanded &&
+					    (xflags & X_EXPAND1)) {
 						flags &= ~GET_EXPAND;
 					}
 				}
@@ -9170,16 +9180,21 @@ expandeq(sccs *s, ser_t d, char *gbuf, int glen, char *fbuf, int *flags)
 {
 	char	*e = fbuf, *e1 = 0, *e2 = 0;
 	int sccs_expanded = 0 , rcs_expanded = 0, rc;
+	u32	xflags = XFLAGS(s, d);
 
 	if (BINARY(s)) return (0);
 	unless (*flags & GET_EXPAND) return (0);
-	if (SCCS(s)) {
+	if (xflags & X_SCCS) {
 		e = e1 = expand(s, d, e, &sccs_expanded);
-		if (EXPAND1(s) && sccs_expanded) *flags &= ~GET_EXPAND;
+		if ((xflags & X_EXPAND1) && sccs_expanded) {
+			*flags &= ~GET_EXPAND;
+		}
 	}
-	if (RCS(s)) {
+	if (xflags & X_RCS) {
 		e = e2 = rcsexpand(s, d, e, &rcs_expanded);
-		if (EXPAND1(s) && rcs_expanded) *flags &= ~GET_EXPAND;
+		if ((xflags & X_EXPAND1) && rcs_expanded) {
+			*flags &= ~GET_EXPAND;
+		}
 	}
 	rc = (glen == strlen(e)) && strneq(gbuf, e, glen);
 	if (sccs_expanded) free(e1);
@@ -15654,6 +15669,11 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 			if (*q == '/') q++;
 			fs(q);
 		}
+		return (strVal);
+	}
+
+	case KW_DPN_BN: /* DPN_BN */ {
+		fs(basenm(PATHNAME(s, d)));
 		return (strVal);
 	}
 

@@ -449,6 +449,18 @@ bk prs -r1.1..1.5 -d':DPN:\n' FILE > CMP2
 cmpfiles CMP1 CMP2
 echo OK
 
+echo $N checking per delta path name :DPN_BN: .......................$NL
+bk undos > CMP1 <<EOF
+======== FILE 1.1..1.5 ========
+pathname.5
+pathname.4
+pathname.3
+pathname.2
+EOF
+bk prs -r1.1..1.5 -d':DPN_BN:\n' FILE > CMP2
+cmpfiles CMP1 CMP2
+echo OK
+
 echo $N test EVEN ODD and JOIN ......................................$NL
 cat <<EOF > WANT
 e1.4,o1.3,e1.2,o1.1

@@ -50,11 +50,7 @@ echo OK
 echo $N Check files get keywords expanded by \'bk new\' ...............$NL
 echo %F% > fff
 bk new $Q fff || fail
-if [ `cat fff` != "SCCS/s.fff" ]; then
-	echo keyword expansion failed
-	cat fff
-	exit 1
-fi
+test `cat fff` = "SCCS/s.fff" || fail -f fff
 echo OK
 
 echo $N "Check expansion of '% %Z%%M%' ...............................$NL"
@@ -155,12 +151,34 @@ bk _get $Q -e -r1.3.2 src/data
 bk delta $Q -fy1.3.2.2 src/data
 bk _get $Q -e -r1.3.2 src/data
 bk delta $Q -fy1.3.2.3 src/data
+bk admin -fSCCS -r1.3.2 src/data
 bk _get $Q -e -r1.3.2 src/data
 echo "%R%.%L%.%B%.%S%" > src/data
-bk delta $Q -fy1.3.2.4 src/data
-echo 1.3.2.4 > WANT
+bk delta $Q -fy1.3.2.5 src/data
+echo 1.3.2.5 > WANT
 bk get -q -pr1.3.2 src/data > GOT
 cmpfiles WANT GOT
 bk prs -r1.3.2 -hnd:I: src/data > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Show file names in keywords are stable across renames .......$NL
+bk edit $Q src/data
+cat <<'EOF' > src/data
+%A%
+%M%
+%F%
+%P%
+%W%
+$Id$
+$Header$
+$RCSfile$
+$Source$
+EOF
+bk delta $Q -ypath-keywords src/data
+KEY=`bk prs -hnd:KEY: -r+ src/data`
+bk get $Q -r+ -p src/data > WANT
+bk mv src/data src/newdata || fail
+bk get $Q -r"$KEY" -p src/newdata > GOT
 cmpfiles WANT GOT
 echo OK

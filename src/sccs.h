@@ -297,13 +297,10 @@ int	checking_rmdir(char *dir);
 #define	HASGRAPH(s)	(TABLE(s))
 
 #define	BITKEEPER(s)	((s)->bitkeeper)
-#define	RCS(s)		((s)->xflags & X_RCS)
 #define	YEAR4(s)	((s)->xflags & X_YEAR4)
 #define	SHELL(s)	((s)->xflags & X_SHELL)
-#define	EXPAND1(s)	((s)->xflags & X_EXPAND1)
 #define	CSETMARKED(s)	((s)->xflags & X_CSETMARKED)
 #define	HASH(s)		((s)->xflags & X_HASH)
-#define	SCCS(s)		((s)->xflags & X_SCCS)
 #define	HAS_KEYWORDS(s)	((s)->xflags & (X_RCS|X_SCCS))
 #define	EOLN_NATIVE(s)	((s)->xflags & X_EOLN_NATIVE)
 #define	DB(s)		((s)->xflags & X_DB)
