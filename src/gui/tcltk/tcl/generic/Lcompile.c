@@ -7455,7 +7455,7 @@ Tcl_GetOptObjCmd(
 	int		ac, i, n, ret = TCL_OK;
 	char		**av, *opts, *s;
 	longopt		*lopts = NULL;
-	Tcl_Obj		**objs;
+	Tcl_Obj		*obj, **objs;
 
 	/*
 	 * This is all about converting the L args to C args for the
@@ -7538,6 +7538,16 @@ Tcl_GetOptObjCmd(
 		Tcl_SetVar2Ex(interp, "optarg", NULL, *L_undefObjPtrPtr(),
 			      TCL_GLOBAL_ONLY);
 	}
+	/*
+	 * If objv[1] is main's argv, remember the value of optind for
+	 * the <> operator (Tcl_LAngleReadObjCmd) so it can start just
+	 * beyond the parsed command-line options.
+	 */
+	obj = Tcl_GetVar2Ex(interp, "::argv", NULL, TCL_GLOBAL_ONLY);
+	if (obj && (obj == objv[1])) {
+		L->optind_angle = optind;
+	}
+
  done:
 	ckfree((char *)av);
 	ckfree((char *)lopts);
@@ -7654,7 +7664,13 @@ Tcl_LAngleReadObjCmd(
 		Tcl_WrongNumArgs(interp, 1, objv, NULL);
 		return (TCL_ERROR);
 	}
-	unless (L->global->script_argc) {
+	Tcl_ListObjGetElements(L->interp, L->global->script_argv, &argc, &argv);
+	/* If getopt has been called, skip the parsed cmd-line args. */
+	if (L->optind_angle) {
+		argv += L->optind_angle - 1;
+		argc -= L->optind_angle - 1;
+	}
+	unless (argc) {
 		Tcl_Obj	*objv[2];
 
 		objv[0] = Tcl_NewStringObj("angle_read_", -1);
@@ -7664,7 +7680,6 @@ Tcl_LAngleReadObjCmd(
 		Tcl_DecrRefCount(objv[1]);
 		return (res);
 	}
-	Tcl_ListObjGetElements(L->interp, L->global->script_argv, &argc, &argv);
 	while (1) {
 		if (chan) {
 			ret = do_getline(interp, chan);

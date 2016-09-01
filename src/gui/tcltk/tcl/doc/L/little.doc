@@ -2184,6 +2184,10 @@ means
         }
     }
 
+although if command-line arguments exist and are parsed with L's
+getopt(), then <> starts looking at argv[] after the last option
+instead of at argv[1].
+
 A trivial grep implementation:
 
     void

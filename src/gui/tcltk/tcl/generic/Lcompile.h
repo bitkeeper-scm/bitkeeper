@@ -135,6 +135,7 @@ typedef struct {
 	int	call_level;	// compile_expr() level of last fn call
 	Tcl_Obj	*fn_calls;	// list of all fn calls compiled
 	Tcl_Obj	*fn_decls;	// hash of all L fns
+	int	optind_angle;	// start index of main's argv[] for <>
 } Linterp;
 
 /*

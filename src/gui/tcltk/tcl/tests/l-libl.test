@@ -1062,6 +1062,77 @@ void getopt2()
 getopt2();
 } -output {}
 
+test getopt-3 {test that getopt does not break <>} -setup {
+	makeFile {
+		int
+		main(int ac, string av[])
+		{
+			string  buf, c, myav[] = {"myprog", "-a"};
+
+			while (c = getopt(av, "abc", undef)) {
+				switch (c) {
+				    case /[abc]/: break;
+				    default: die("getopt");
+				}
+			}
+			while (c = getopt(myav, "a", undef)) {
+				switch (c) {
+				    case "a": break;
+				    default: die("getopt");
+				}
+			}
+			while (buf = <>) {
+				puts(buf);
+			}
+			return (0);
+		}
+	} getopt3.l
+} -body {
+#lang L
+void getopt3()
+{
+	int	ret;
+	string	err, got, want;
+	string	tclsh = interpreter();
+	FILE	f;
+
+	unless (f = fopen("getopt3.l", "r")) puts("bad 1");
+	read(f, &want);
+	fclose(f);
+
+	/*
+	 * Check that the command-line options do not mess up
+	 * what <> is supposed to see.
+	 */
+
+	ret = system("${tclsh} getopt3.l getopt3.l", undef, &got, &err);
+	unless (ret == 0) puts("bad 2.1");
+	unless (got == want) puts("bad 2.2: wanted '${want} got '${got}'");
+	if (err) puts("bad 2.3: ${err}");
+
+	ret = system("${tclsh} getopt3.l -a getopt3.l", undef, &got, &err);
+	unless (ret == 0) puts("bad 3.1");
+	unless (got == want) puts("bad 3.2: wanted '${want} got '${got}'");
+	if (err) puts("bad 3.3: ${err}");
+
+	ret = system("${tclsh} getopt3.l -a -b -c getopt3.l", undef, &got,&err);
+	unless (ret == 0) puts("bad 4.1");
+	unless (got == want) puts("bad 4.2: wanted '${want} got '${got}'");
+	if (err) puts("bad 4.3: ${err}");
+
+	ret = system("${tclsh} getopt3.l -a", "getopt3.l", &got, &err);
+	unless (ret == 0) puts("bad 5.1");
+	unless (got == want) puts("bad 5.2: wanted '${want} got '${got}'");
+	if (err) puts("bad 5.3: ${err}");
+
+	ret = system("${tclsh} getopt3.l -a -b -c", "getopt3.l", &got, &err);
+	unless (ret == 0) puts("bad 6.1");
+	unless (got == want) puts("bad 6.2: wanted '${want} got '${got}'");
+	if (err) puts("bad 6.3: ${err}");
+}
+getopt3();
+} -output {}
+
 test getpid-1 {test getpid} -body {
 #lang L --line=1
 void getpid1()
