@@ -1094,3 +1094,14 @@ A Big Binary File of Data
 EOF
 cmpfiles want.bin got.bin
 echo OK
+
+echo $N check that :DOMAIN: correctly extracts domain vs host .......$NL
+touch foo
+bk new $Q foo
+BK_HOST=machine.corp.com bk commit -f $Q
+bk prs -hnd:DOMAIN: -r+ ChangeSet > GOT
+cat <<EOF > WANT
+corp.com
+EOF
+cmpfiles WANT GOT
+echo OK

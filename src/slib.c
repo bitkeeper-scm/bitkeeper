@@ -16062,7 +16062,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		 */
 		int i;
 
-		unless ((q = HOSTNAME(s, d)) && *q) return (nullVal);
+		unless ((q = delta_host(s, d)) && *q) return (nullVal);
 		p = &q[strlen(q)];
 		do {
 			i = 0;
