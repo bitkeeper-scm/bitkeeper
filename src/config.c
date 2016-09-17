@@ -17,7 +17,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "proj.h"
-#include "cfg.h"
+#include "config.h"
 
 struct {
 	char	*defval;
@@ -25,10 +25,10 @@ struct {
 	char	*name;
 } cfg[] = {
 
-#define CONFVAR(def, defval, insetup, name)	\
+#define CONFIGVAR(def, defval, insetup, name)	\
 	{defval, insetup, name},
-#include "confvars.h"
-#undef CONFVAR
+#include "configvars.def"
+#undef CONFIGVAR
 
 };
 
@@ -36,13 +36,13 @@ struct alias {
 	char	*alias;
 	int	idx;
 } alias[] = {
-	{"autopopulate",	CFG_AUTOPOPULATE},
-	{"auto-populate",	CFG_AUTOPOPULATE},
-	{"binpool_hardlinks",	CFG_BAM_HARDLINKS},
-	{"trust_window",	CFG_CLOCK_SKEW},
-	{"clone-default",	CFG_CLONE_DEFAULT},
-	{"mail-proxy",		CFG_MAIL_PROXY},
-	{"upgrade-url",		CFG_UPGRADE_URL},
+	{"autopopulate",	CONFIG_AUTOPOPULATE},
+	{"auto-populate",	CONFIG_AUTOPOPULATE},
+	{"binpool_hardlinks",	CONFIG_BAM_HARDLINKS},
+	{"trust_window",	CONFIG_CLOCK_SKEW},
+	{"clone-default",	CONFIG_CLONE_DEFAULT},
+	{"mail-proxy",		CONFIG_MAIL_PROXY},
+	{"upgrade-url",		CONFIG_UPGRADE_URL},
 	{0,			-1}
 };
 
@@ -74,16 +74,16 @@ dumpconfig_main(int ac, char **av)
 		int	idx;
 
 		if (av[optind+1]) usage();
-		if ((idx = cfg_findVar(av[optind])) < 0) {
+		if ((idx = config_findVar(av[optind])) < 0) {
 			return (1);
 		}
-		puts(cfg_str(0, idx));
+		puts(config_str(0, idx));
 		return (0);
 	}
 
-#define CONFVAR(def, ...) dumpvar(CFG_##def, defaults);
-#include "confvars.h"
-#undef CONFVAR
+#define CONFIGVAR(def, ...) dumpvar(CONFIG_##def, defaults);
+#include "configvars.def"
+#undef CONFIGVAR
 	return (0);
 }
 
@@ -92,17 +92,17 @@ dumpconfig_main(int ac, char **av)
  * by "bk setup" into an MDBM.
  */
 MDBM *
-cfg_loadSetup(MDBM *db)
+config_loadSetup(MDBM *db)
 {
 	assert(db);
-#define CONFVAR(def, ...) dbSetup(db, CFG_##def);
-#include "confvars.h"
-#undef CONFVAR
+#define CONFIGVAR(def, ...) dbSetup(db, CONFIG_##def);
+#include "configvars.def"
+#undef CONFIGVAR
 	return (db);
 }
 
 /*
- * Helper for cfg_loadSetup
+ * Helper for config_loadSetup
  * Note: this will not be directly used by config mechanism,
  * and is only for setup to write out a config file.
  * In particular, it is okay to have a null string in the db.
@@ -126,7 +126,7 @@ dumpvar(int idx, int defaults)
 {
 	char	*val;
 
-	val = defaults ? cfg[idx].defval : cfg_str(0, idx);
+	val = defaults ? cfg[idx].defval : config_str(0, idx);
 	printf ("%s: %s\n", cfg[idx].name, val ? val : "(null)");
 }
 
@@ -134,7 +134,7 @@ dumpvar(int idx, int defaults)
  * See if name is an alias.  If so, return the core name.
  */
 char *
-cfg_alias(char *name)
+config_alias(char *name)
 {
 	struct	alias	*x;
 
@@ -149,7 +149,7 @@ cfg_alias(char *name)
  * It can be 0, or string, but not "".
  */
 char *
-cfg_def(int idx)
+config_def(int idx)
 {
 	assert(cfg[idx].name);
 	assert(!cfg[idx].defval || *cfg[idx].defval);	/* "" illegal */
@@ -158,11 +158,11 @@ cfg_def(int idx)
 
 /*
  * Return the value of the `idx` variable as set by the user. If the
- * variable has not been set, return the default from the confvars.h
+ * variable has not been set, return the default from the configvars.def
  * file.
  */
 char *
-cfg_str(project *p, int idx)
+config_str(project *p, int idx)
 {
 	char	*val;
 	MDBM	*db;
@@ -180,12 +180,12 @@ cfg_str(project *p, int idx)
  * the user. It returns 0 if the config variable is not found.
  */
 u64
-cfg_size(project *p, int idx)
+config_size(project *p, int idx)
 {
 	char	*val, *end;
 	u64	sz;
 
-	unless (val = cfg_str(p, idx)) return (0);
+	unless (val = config_str(p, idx)) return (0);
 	unless (isdigit(*val) || (*val == '-')) val = cfg[idx].defval;
 	sz = strtoull(val, &end, 10);
 	unless (sz) return (0);
@@ -204,11 +204,11 @@ cfg_size(project *p, int idx)
  * '1', 'on', 'true', 'yes'. 0 otherwise.
  */
 int
-cfg_bool(project *p, int idx)
+config_bool(project *p, int idx)
 {
 	char	*val;
 
-	unless (val = cfg_str(p, idx)) return (0);
+	unless (val = config_str(p, idx)) return (0);
 	if (isBoolean(val)) return (isOn(val));
 	/*
 	 * If it's not boolean and we're here it's set to something
@@ -221,11 +221,11 @@ cfg_bool(project *p, int idx)
  * Return the config variable `idx` as an int.
  */
 i64
-cfg_int(project *p, int idx)
+config_int(project *p, int idx)
 {
 	char	*val;
 
-	unless (val = cfg_str(p, idx)) return (0);
+	unless (val = config_str(p, idx)) return (0);
 	unless (isdigit(*val) || (*val == '-')) val = cfg[idx].defval;
 	return (strtoll(val, 0, 10));
 }
@@ -270,7 +270,7 @@ isOn(char *str)
  * Returns -1 if not found.
  */
 int
-cfg_findVar(char *name)
+config_findVar(char *name)
 {
 	int	idx;
 	int	n = sizeof(cfg)/sizeof(*cfg);
@@ -290,7 +290,7 @@ cfg_findVar(char *name)
  * in the context of the overall config.
  */
 void
-cfg_printDefaults(MDBM *db, MDBM *defs, MDBM *merge)
+config_printDefaults(MDBM *db, MDBM *defs, MDBM *merge)
 {
 	int	idx;
 	int	n;

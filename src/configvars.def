@@ -1,0 +1,64 @@
+/*
+ * Copyright 2015-2016 BitMover, Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef CONFIGVAR
+#define CONFIGVAR(def, ...)
+#endif
+
+// Please keep this sorted
+// See Notes/CONFIG for a better explanation
+// Fields: CONFIG_NAME, DEFAULT VALUE, IN SETUP DEFAULT, NAMES ARRAY
+CONFIGVAR(AUTOFIX,		"on",		0,	"autofix")
+CONFIGVAR(AUTOPOPULATE,		"off",		"",	"auto_populate")
+CONFIGVAR(BAM,			"on",		"",	"BAM")
+CONFIGVAR(BAM_CHECKOUT,		0,		0,	"BAM_checkout")
+CONFIGVAR(BAM_HARDLINKS,	"off",		0,	"BAM_hardlinks")
+CONFIGVAR(BKD_GZIP,		"0",		0,	"bkd_gzip")
+CONFIGVAR(BKWEB,		0,		0,	"bkweb")
+CONFIGVAR(CATEGORY,		0,		0,	"category")
+CONFIGVAR(CHECK_FREQUENCY,	0,		0,	"check_frequency")
+
+
+// If this default changes, then src/gui/ide/emacs/vc-bk.el
+// will need to be changed as well (specifically, the
+// vc-bk-checkout-model function).
+CONFIGVAR(CHECKOUT,		"none",		"edit",	"checkout")
+
+CONFIGVAR(CLOCK_SKEW,		"on",		"",	"clock_skew")
+CONFIGVAR(CLONE_DEFAULT,	"ALL",		"",	"clone_default")
+CONFIGVAR(CONTACT,		0,		0,	"contact")
+CONFIGVAR(COMPRESSION,		"gzip",		0,	"compression")
+CONFIGVAR(DESCRIPTION,		0,		"",	"description")
+CONFIGVAR(DIFFGAP,		"-1",		0,	"diffgap")
+CONFIGVAR(EMAIL,		0,		"",	"email")
+CONFIGVAR(EOLN,			"native"	,"",	"eoln")
+CONFIGVAR(FAKEGRAFTS,		"off",		0,	"fakegrafts")
+CONFIGVAR(HOMEPAGE,		0,		0,	"homepage")
+CONFIGVAR(KEYWORD,		"none",		"",	"keyword")
+CONFIGVAR(LOCKWAIT,		"30",		0,	"lockwait")
+CONFIGVAR(MAIL_PROXY,		0,		0,	"mail_proxy")
+CONFIGVAR(MASTER,		0,		0,	"master")
+CONFIGVAR(MONOTONIC,		0,		0,	"monotonic")
+CONFIGVAR(NOGRAPHVERIFY,	"off",		"",	"no_graphverify")
+CONFIGVAR(PARALLEL,		"on",		"",	"parallel")
+CONFIGVAR(PARTIAL_CHECK,	"on",		"",	"partial_check")
+CONFIGVAR(POLY,			"off",		0,	"poly")
+CONFIGVAR(STATS_AFTER_PULL,	"off",		"",	"stats_after_pull")
+CONFIGVAR(SYNC,			"off",		"",	"sync")
+CONFIGVAR(TRIGGERS,		"$PRODUCT|.",	"",	"triggers")
+CONFIGVAR(UNIQDB,		0,		0,	"uniqdb")
+CONFIGVAR(UPGRADE_NONAG,	0,		0,	"upgrade_nonag")
+CONFIGVAR(UPGRADE_URL,		0,		0,	"upgrade_url")

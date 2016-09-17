@@ -17,7 +17,7 @@
 #include "bkd.h"
 #include "range.h"
 #include "nested.h"
-#include "cfg.h"
+#include "config.h"
 
 private	int	checkAlias(sccs *cset, char *rev, char ***comps);
 

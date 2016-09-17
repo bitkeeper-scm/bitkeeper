@@ -19,7 +19,7 @@
 #include "progress.h"
 #include "graph.h"
 #include "range.h"
-#include "cfg.h"
+#include "config.h"
 
 /* error values */
 #define	FIX_CKSUM	1	/* fix SUM() */
@@ -543,9 +543,9 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	u32	index;
 	ticker	*tick = 0;
 
-	if (cutoff = cfg_int(s->proj, CFG_NOGRAPHVERIFY)) {
+	if (cutoff = config_int(s->proj, CONFIG_NOGRAPHVERIFY)) {
 		verify = 1;
-	} else if (verify = !cfg_bool(s->proj, CFG_NOGRAPHVERIFY)) {
+	} else if (verify = !config_bool(s->proj, CONFIG_NOGRAPHVERIFY)) {
 		cutoff = ~0;	/* set up lazy check for hardcoded cutoff */
 	}
 

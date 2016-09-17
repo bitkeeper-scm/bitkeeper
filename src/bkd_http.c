@@ -16,7 +16,7 @@
 
 #include "bkd.h"
 #include "range.h"
-#include "cfg.h"
+#include "config.h"
 
 typedef void (*vfn)(char *page);
 
@@ -266,7 +266,7 @@ header(char *titlestr, char *headerstr, ...)
 	puts("<body class='container-fluid'>");
 	printnavbar(label);
 
-	if ((t = cfg_str(0, CFG_DESCRIPTION)) && (strlen(t) < 2000)) {
+	if ((t = config_str(0, CONFIG_DESCRIPTION)) && (strlen(t) < 2000)) {
 		http_title(t);
 	} else {
 		pwd_title();
@@ -1160,13 +1160,13 @@ http_index(char *page)
 	}
 	sccs_free(s);
 
-	desc	 = cfg_str(0, CFG_DESCRIPTION);
-	//contact  = cfg_str(0, CFG_CONTACT);
-	//email	 = cfg_str(0, CFG_EMAIL);
-	//category = cfg_str(0, CFG_CATEGORY);
-	bkweb	 = cfg_str(0, CFG_BKWEB);
-	master	 = cfg_str(0, CFG_MASTER);
-	homepage = cfg_str(0, CFG_HOMEPAGE);
+	desc	 = config_str(0, CONFIG_DESCRIPTION);
+	//contact  = config_str(0, CONFIG_CONTACT);
+	//email	 = config_str(0, CONFIG_EMAIL);
+	//category = config_str(0, CONFIG_CATEGORY);
+	bkweb	 = config_str(0, CONFIG_BKWEB);
+	master	 = config_str(0, CONFIG_MASTER);
+	homepage = config_str(0, CONFIG_HOMEPAGE);
 
 	httphdr(".html");
 	/* don't use header() here; this is one place where the regular

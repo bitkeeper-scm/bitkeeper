@@ -17,7 +17,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "bam.h"
-#include "cfg.h"
+#include "config.h"
 
 /*
  * This file contains a series of accessor functions for the project
@@ -464,7 +464,7 @@ proj_checkout(project *p)
 	unless (p || (p = curr_proj())) return (CO_NONE|CO_BAM_NONE);
 	if (proj_isResync(p)) return (CO_NONE|CO_BAM_NONE);
 	if (p->co) return (p->co);
-	s = cfg_str(p, CFG_CHECKOUT);
+	s = config_str(p, CONFIG_CHECKOUT);
 	assert(s);		/* must have default */
 	if (strieq(s, "get")) bits = CO_GET|CO_BAM_GET;
 	if (strieq(s, "edit")) bits = CO_EDIT|CO_BAM_EDIT;
@@ -476,7 +476,7 @@ proj_checkout(project *p)
 		    "Meaning of '%s' unknown. Assuming edit.\n", s);
 		bits = CO_EDIT|CO_BAM_EDIT;
 	}
-	if (s = cfg_str(p, CFG_BAM_CHECKOUT)) {
+	if (s = config_str(p, CONFIG_BAM_CHECKOUT)) {
 		bits &= 0xf;
 		if (strieq(s, "get")) bits |= CO_BAM_GET;
 		if (strieq(s, "edit")) bits |= CO_BAM_EDIT;
@@ -1105,7 +1105,7 @@ proj_sync(project *p)
 
 	if (p->rparent) return (0); /* no syncs in RESYNC */
 
-	if (p->sync == -1) p->sync = cfg_bool(p, CFG_SYNC);
+	if (p->sync == -1) p->sync = config_bool(p, CONFIG_SYNC);
 	return (p->sync);
 }
 

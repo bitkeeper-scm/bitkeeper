@@ -14,27 +14,27 @@
  * limitations under the License.
  */
 
-#ifndef	_CFG_H_
-#define	_CFG_H_
+#ifndef	_CONFIG_H_
+#define	_CONFIG_H_
 #include "system.h"
 #include "sccs.h"
 #include "proj.h"
 #include "bam.h"
 
 // config variables access via enum
-#define CONFVAR(def, ...) CFG_##def,
+#define CONFIGVAR(def, ...) CONFIG_##def,
 enum {
-#include "confvars.h"
+#include "configvars.def"
 };
-#undef CONFVAR
+#undef CONFIGVAR
 
-char	*cfg_def(int idx);
-char	*cfg_alias(char *name);	/* return canonical name */
-char	*cfg_str(project *p, int idx);
-int	cfg_bool(project *p, int idx);
-u64	cfg_size(project *p, int idx);
-i64	cfg_int(project *p, int idx);
-int	cfg_findVar(char *name);
-MDBM	*cfg_loadSetup(MDBM *db);
-void	cfg_printDefaults(MDBM *db, MDBM *defs, MDBM *merge);
-#endif	/* _CFG_H_ */
+char	*config_def(int idx);
+char	*config_alias(char *name);	/* return canonical name */
+char	*config_str(project *p, int idx);
+int	config_bool(project *p, int idx);
+u64	config_size(project *p, int idx);
+i64	config_int(project *p, int idx);
+int	config_findVar(char *name);
+MDBM	*config_loadSetup(MDBM *db);
+void	config_printDefaults(MDBM *db, MDBM *defs, MDBM *merge);
+#endif	/* _CONFIG_H_ */

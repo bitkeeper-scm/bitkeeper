@@ -15,7 +15,7 @@
  */
 
 #include "bkd.h"
-#include "cfg.h"
+#include "config.h"
 
 private int	runTriggers(int rem, char *ev, char *what, char *when,
 		    char **trs);
@@ -526,7 +526,7 @@ trigger_dirs(void)
 	int	i;
 	project	*proj;
 
-	p = cfg_str(0, CFG_TRIGGERS);
+	p = config_str(0, CONFIG_TRIGGERS);
 	// old, remove in 6.0
 	if (streq(p, "none")) return (0);
 

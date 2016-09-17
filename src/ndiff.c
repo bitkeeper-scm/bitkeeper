@@ -15,7 +15,7 @@
  */
 
 #include "sccs.h"
-#include "cfg.h"
+#include "config.h"
 
 /*
  * This struct is for diff -p, so we can save where
@@ -304,7 +304,7 @@ diff_mem(char *data[2], size_t len[2], df_opt *dop, FILE *fout)
 	unless (diff_cleanOpts(dop)) return (2);
 
 	fop.dop = *dop;
-	fop.diffgap = cfg_int(0, CFG_DIFFGAP);
+	fop.diffgap = config_int(0, CONFIG_DIFFGAP);
 
 
 	/*

@@ -188,7 +188,7 @@ OBJ =	bkver.o cmd.o \
 	bkd_r2c.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
 	bkverinfo.o \
-	cat.o cfile.o changes.o cfg.o \
+	cat.o cfile.o changes.o config.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
 	cmdlog.o \
 	collapse.o comment.o comments.o commit.o comps.o compress.o \
@@ -284,7 +284,7 @@ RANLIB	= ranlib
 # list of C sources in bk
 SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
-HDRS	= bam.h bkd.h bk-features.h cfg.h confvars.h diff.h fsfuncs.h \
+HDRS	= bam.h bkd.h bk-features.h config.h configvars.def diff.h fsfuncs.h \
 	  graph.h nested.h \
 	  progress.h range.h rcs.h resolve.h sccs.h \
 	  cmd.h poly.h proj.h redblack.h libc/system.h xfile.h

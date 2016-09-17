@@ -17,7 +17,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "bkd.h"
-#include "cfg.h"
+#include "config.h"
 
 /*
  * TODO
@@ -99,7 +99,7 @@ upgrade_main(int ac, char **av)
 			    urlbase);
 			exit(1);
 		}
-	} else if (p = cfg_str(0, CFG_UPGRADE_URL)) {
+	} else if (p = config_str(0, CONFIG_UPGRADE_URL)) {
 		urlbase = p;
 	} else if (test_release) {
 		urlbase = UPGRADETRIAL;
@@ -500,7 +500,7 @@ upgrade_maybeNag(char *out)
 	 * Give people a way to give customers to disable this
 	 */
 	if (getenv("BK_NEVER_NAG")) return;
-	if (cfg_bool(0, CFG_UPGRADE_NONAG)) return;
+	if (config_bool(0, CONFIG_UPGRADE_NONAG)) return;
 
 	/* a new bk is out */
 	if (upgrade_latestVersion(new_vers, new_utc)) return;

@@ -28,7 +28,7 @@
 #include "nested.h"
 #include "progress.h"
 #include "poly.h"
-#include "cfg.h"
+#include "config.h"
 
 #define	sccs_init		die("use locked_init instead sccs_init")
 #define	sccs_free		die("use locked_free instead sccs_free")
@@ -323,11 +323,11 @@ check_main(int ac, char **av)
 		idDB = mdbm_mem();
 	}
 	if (check_eoln) {
-		eoln_native = !streq(cfg_str(0, CFG_EOLN), "unix");
+		eoln_native = !streq(config_str(0, CONFIG_EOLN), "unix");
 	}
-	unless (fix) fix = cfg_bool(0, CFG_AUTOFIX);
+	unless (fix) fix = config_bool(0, CONFIG_AUTOFIX);
 	chkMergeDups = !checkdup && !getenv("_BK_LEAVE_DUPS");
-	unless ((t = cfg_str(0, CFG_MONOTONIC)) && streq(t, "allow")) {
+	unless ((t = config_str(0, CONFIG_MONOTONIC)) && streq(t, "allow")) {
 		check_monotonic = 1;
 	}
 	if (verbose == 1) {
@@ -2738,7 +2738,7 @@ needscheck_main(int ac, char **av)
 		if (verbose) printf("no repo, no check needed.\n");
 		return (1);
 	}
-	if (cfg_bool(0, CFG_PARTIAL_CHECK) && full_check()) {
+	if (config_bool(0, CONFIG_PARTIAL_CHECK) && full_check()) {
 		if (verbose) printf("needs check.\n");
 		return (0);
 	}

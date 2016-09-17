@@ -29,7 +29,7 @@
 #include "range.h"
 #include "graph.h"
 #include "bam.h"
-#include "cfg.h"
+#include "config.h"
 
 typedef struct fweave fweave;
 #define	WRITABLE_REG(s)	(WRITABLE(s) && S_ISREG((s)->mode))
@@ -4293,7 +4293,7 @@ parseConfigKV(char *buf, int nofilter, char **kp, char **vp)
 
 	if (streq(buf, "logging_ok")) return (0);
 
-	*kp = cfg_alias(buf);
+	*kp = config_alias(buf);
 	*vp = p;
 
 	/*
@@ -4673,7 +4673,7 @@ config_main(int ac, char **av)
 		if (av[optind]) {
 
 			if (av[optind+1]) usage();
-			k = cfg_alias(av[optind]);
+			k = config_alias(av[optind]);
 			/*
 			 * This is preserving existing behavior where
 			 * if the user puts an unknown config variable
@@ -4687,8 +4687,8 @@ config_main(int ac, char **av)
 			if (v = mdbm_fetch_str(cfg, k)) {
 				puts(v);
 				return (0);
-			} else if (((i = cfg_findVar(k)) >= 0) &&
-			    (v = cfg_str(0, i))) {
+			} else if (((i = config_findVar(k)) >= 0) &&
+			    (v = config_str(0, i))) {
 				puts(v);
 				return (0);
 			} else {
@@ -4771,7 +4771,7 @@ config_main(int ac, char **av)
 	 */
 	db = mdbm_mem();
 	db1 = mdbm_mem();
-	cfg_printDefaults(cfg, db, db1);
+	config_printDefaults(cfg, db, db1);
 	printconfig("defaults", db, db1);
 	mdbm_close(db);
 	mdbm_close(db1);
@@ -10648,7 +10648,7 @@ out:		sccs_abortWrite(s);
 		char	*p;
 		/* check eoln preference */
 		s->xflags |= X_DEFAULT;
-		if (p = cfg_str(s->proj, CFG_EOLN)) {
+		if (p = config_str(s->proj, CONFIG_EOLN)) {
 			if (streq("unix", p)) {
 				s->xflags &= ~X_EOLN_NATIVE;
 				s->xflags &= ~X_EOLN_WINDOWS;
@@ -10658,7 +10658,7 @@ out:		sccs_abortWrite(s);
 				s->xflags |= X_EOLN_WINDOWS;
 			}
 		}
-		if (p = cfg_str(s->proj, CFG_KEYWORD)) {
+		if (p = config_str(s->proj, CONFIG_KEYWORD)) {
 			if (strstr(p, "sccs")) s->xflags |= X_SCCS;
 			if (strstr(p, "rcs")) s->xflags |= X_RCS;
 			if (strstr(p, "expand1")) s->xflags |= X_EXPAND1;
@@ -11885,9 +11885,9 @@ sccs_encoding(sccs *sc, off_t size, char *encp)
 		else if (streq(encp, "binary")) {
 			project	*p = sc ? sc->proj : 0;
 
-			unless (bam = cfg_size(p, CFG_BAM)) {
+			unless (bam = config_size(p, CONFIG_BAM)) {
 				/* BAM=on should use default */
-				bam = cfg_bool(p, CFG_BAM) ? BAM_SIZE : 0;
+				bam = config_bool(p, CONFIG_BAM) ? BAM_SIZE : 0;
 			}
 			if (bam && (bam <= size)) {
 				enc = E_BAM;
@@ -11913,7 +11913,7 @@ sccs_encoding(sccs *sc, off_t size, char *encp)
 
 		encoding &= ~E_COMP;
 		unless (encoding & (E_BK|E_BAM)) {
-			compp = cfg_str(sc->proj, CFG_COMPRESSION);
+			compp = config_str(sc->proj, CONFIG_COMPRESSION);
 
 			if (!*compp || streq(compp, "gzip")) {
 				encoding |= E_GZIP;
@@ -18468,7 +18468,7 @@ generateTimestampDB(project *p)
 	char	buf[MAXLINE];
 
 	assert(p);
-	if (streq(cfg_str(p, CFG_CLOCK_SKEW), "off")) return (0);
+	if (streq(config_str(p, CONFIG_CLOCK_SKEW), "off")) return (0);
 
 	tsname = aprintf("%s/%s", proj_root(p), TIMESTAMPS);
 	db = hash_new(HASH_MEMHASH);
@@ -18609,8 +18609,8 @@ updateTimestampDB(sccs *s, hash *timestamps, int different)
 	 * so at this point we know CLOCK_SKEW is not "off".
 	 * Anything that isn't a number is assumed to use the default.
 	 */
-	unless (clock_skew = cfg_int(s->proj, CFG_CLOCK_SKEW)) {
-		if (streq(cfg_str(s->proj, CFG_CLOCK_SKEW), "zero")) {
+	unless (clock_skew = config_int(s->proj, CONFIG_CLOCK_SKEW)) {
+		if (streq(config_str(s->proj, CONFIG_CLOCK_SKEW), "zero")) {
 			clock_skew = 0; /* for testing */
 		} else {
 			clock_skew = WEEK;

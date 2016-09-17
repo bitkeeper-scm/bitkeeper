@@ -22,7 +22,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "randseed.h"
-#include "cfg.h"
+#include "config.h"
 
 #if (defined(__GNUC__) && \
     ((__GNUC_MINOR__ > 99) || (__GNUC_PATCHLEVEL__ > 99)))

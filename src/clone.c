@@ -18,7 +18,7 @@
 #include "bam.h"
 #include "nested.h"
 #include "progress.h"
-#include "cfg.h"
+#include "config.h"
 
 private	struct {
 	u32	no_parent:1;		/* -p: do not set parent pointer */
@@ -952,7 +952,7 @@ clone_defaultAlias(nested *n)
 	 * if they want.
 	 */
 	proj_reset(n->proj);
-	defalias = cfg_str(n->proj, CFG_CLONE_DEFAULT);
+	defalias = config_str(n->proj, CONFIG_CLONE_DEFAULT);
 
 	t = defalias + strlen(defalias);
 	while (isspace(t[-1])) *--t = 0;

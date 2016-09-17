@@ -21,7 +21,7 @@
 #include "randseed.h"
 #include "nested.h"
 #include "progress.h"
-#include "cfg.h"
+#include "config.h"
 
 #define	BK "bk"
 
@@ -618,7 +618,7 @@ bad_locking:				fprintf(stderr,
 					goto out;
 				}
 			} else {
-				waitsecs = cfg_int(0, CFG_LOCKWAIT);
+				waitsecs = config_int(0, CONFIG_LOCKWAIT);
 			}
 			while (1) {
 				if (*locking == 'r') {

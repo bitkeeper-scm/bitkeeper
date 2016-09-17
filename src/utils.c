@@ -17,7 +17,7 @@
 #include "bkd.h"
 #include "progress.h"
 #include "nested.h"
-#include "cfg.h"
+#include "config.h"
 #ifdef WIN32
 #include "Winbase.h"
 #endif
@@ -1121,7 +1121,7 @@ sendServerInfo(u32 cmdlog_flags)
 		sprintf(buf, "NFILES=%u\n", repo_nfiles(0,0));
 		out(buf);
 		sprintf(buf,
-		    "CLONE_DEFAULT=%s\n", cfg_str(0, CFG_CLONE_DEFAULT));
+		    "CLONE_DEFAULT=%s\n", config_str(0, CONFIG_CLONE_DEFAULT));
 		out(buf);
 		sprintf(buf, "TIP_MD5=%s\n", proj_tipmd5key(0));
 		out(buf);
@@ -1573,8 +1573,8 @@ full_check(void)
 	time_t	window;
 	time_t	checkt = 0;	/* time of last full check */
 
-	unless (cfg_bool(0, CFG_PARTIAL_CHECK)) return (1);
-	if (window = cfg_int(0, CFG_CHECK_FREQUENCY)) {
+	unless (config_bool(0, CONFIG_PARTIAL_CHECK)) return (1);
+	if (window = config_int(0, CONFIG_CHECK_FREQUENCY)) {
 		window *= DAY;
 	} else {
 		window = WEEK;
@@ -2121,7 +2121,7 @@ parallel(char *path, int flags)
 #ifdef	WIN32
 	return (val);
 #endif
-	if ((t = cfg_str(0, CFG_PARALLEL)) && isdigit(*t)) {
+	if ((t = config_str(0, CONFIG_PARALLEL)) && isdigit(*t)) {
 		val = atoi(t);
 		return (min(val, PARALLEL_MAX));
 	}
@@ -2211,7 +2211,7 @@ formatBits(u32 bits, ...)
 int
 bk_gzipLevel(void)
 {
-	return (cfg_int(0, CFG_BKD_GZIP));
+	return (config_int(0, CONFIG_BKD_GZIP));
 }
 
 void

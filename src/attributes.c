@@ -16,7 +16,7 @@
 
 #include "sccs.h"
 #include "nested.h"
-#include "cfg.h"
+#include "config.h"
 
 /*
  * Update the BitKeeper/etc/attr file with information for the current

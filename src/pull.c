@@ -19,7 +19,7 @@
 #include "nested.h"
 #include "progress.h"
 #include "range.h"
-#include "cfg.h"
+#include "config.h"
 
 private struct {
 	u32	automerge:1;		/* -i: turn off automerge */
@@ -208,7 +208,7 @@ pull_main(int ac, char **av)
 	}
 
 	if (opts.product = bk_nested2root(opts.transaction || opts.port)) {
-		if (cfg_bool(0, CFG_AUTOPOPULATE)) {
+		if (config_bool(0, CONFIG_AUTOPOPULATE)) {
 			opts.autoPopulate = 1;
 		}
 	}
@@ -258,7 +258,7 @@ err:		freeLines(envVar, free);
 	}
 
 	if (!opts.transaction && !opts.quiet && !opts.noresolve &&
-	    (opts.stats || cfg_bool(0, CFG_STATS_AFTER_PULL))) {
+	    (opts.stats || config_bool(0, CONFIG_STATS_AFTER_PULL))) {
 		pstats_beforeTIP = strdup(proj_tipmd5key(0));
 	}
 

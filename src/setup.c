@@ -17,7 +17,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "nested.h"
-#include "cfg.h"
+#include "config.h"
 
 private MDBM	*mkconfig(FILE *out, MDBM *flist, int verbose);
 private void	defaultFiles(int);
@@ -322,7 +322,7 @@ addField(MDBM *flist, char *field, int replace)
 		    "setup: filters not supported; \"%s\" ignored\n", field);
 		return (flist);
 	}
-	field = cfg_alias(field);
+	field = config_alias(field);
 	mdbm_store_str(flist, field, p, replace ? MDBM_REPLACE : MDBM_INSERT);
 	return (flist);
 }
@@ -383,7 +383,7 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 
 
 	unless (flist) flist = mdbm_mem();
-	cfg_loadSetup(flist);
+	config_loadSetup(flist);
 
 	/*
 	 * Now print the help message for each config entry
@@ -400,8 +400,8 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 			fputc('\n', out);
 			def = 0;
 			comment = "";
-			if ((idx = cfg_findVar(key)) >= 0) {
-				def = cfg_def(idx);
+			if ((idx = config_findVar(key)) >= 0) {
+				def = config_def(idx);
 			}
 			unless (def) {
 				def = "empty";

@@ -15,7 +15,7 @@
  */
 
 #include "sccs.h"
-#include "cfg.h"
+#include "config.h"
 
 private int debug_trace = 0;  // for debug
 private	int reopens = 0;
@@ -318,7 +318,7 @@ uniq_dbdir(void)
 
 	if (s = getenv("_BK_UNIQ_DIR")) {
 		ret = strdup(s);
-	} else if (s = cfg_str(0, CFG_UNIQDB)) {
+	} else if (s = config_str(0, CONFIG_UNIQDB)) {
 		ret = aprintf("%s/%s",
 		    s, sccs_realhost());
 	} else if (writable("/netbatch")) {
