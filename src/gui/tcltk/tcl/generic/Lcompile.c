@@ -7545,6 +7545,7 @@ Tcl_GetOptObjCmd(
 	 */
 	obj = Tcl_GetVar2Ex(interp, "::argv", NULL, TCL_GLOBAL_ONLY);
 	if (obj && (obj == objv[1])) {
+		L = Tcl_GetAssocData(interp, "L", NULL);
 		L->optind_angle = optind;
 	}
 
@@ -7664,6 +7665,7 @@ Tcl_LAngleReadObjCmd(
 		Tcl_WrongNumArgs(interp, 1, objv, NULL);
 		return (TCL_ERROR);
 	}
+	L = Tcl_GetAssocData(interp, "L", NULL);
 	Tcl_ListObjGetElements(L->interp, L->global->script_argv, &argc, &argv);
 	/* If getopt has been called, skip the parsed cmd-line args. */
 	if (L->optind_angle) {

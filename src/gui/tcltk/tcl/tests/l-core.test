@@ -15604,7 +15604,7 @@ puts(include_1_0);
 
 test include-1.1 {nested include files} -setup {
 #
-# The code for these files isn't indented because L recognizes
+# The code for these files is not indented because L recognizes
 # include() only when it starts at the beginning of the line.
 #
 	set fname1 [makeFile {#include "foo-1.1-2.l"
@@ -15641,6 +15641,7 @@ test include-1.2 {malformed includes} -body {
 #include <
 #include ""
 #include <>
+#include "
 } -returnCodes {error} -match regexp -result {.*1: L Error: malformed #include
 .*2: L Error: malformed #include
 .*3: L Error: malformed #include
@@ -15816,6 +15817,33 @@ void interp_1_foo() {}
 }
 interp delete interp_1_2
 interp delete interp_1_1
+} -output {}
+
+test interp-2 {test interp stacking} -setup {
+	makeFile {
+		void main()
+		{
+			string	slave1 = Interp_create();
+			string	slave2 = Interp_create();
+			Interp_delete(slave1);
+			Interp_delete(slave2);
+			puts(<>);
+		}
+	} interp2.l
+} -body {
+#lang L --line=1
+void interp2()
+{
+	int	ret;
+	string	tclsh = interpreter();
+	string	out, err;
+
+	ret = system({tclsh, "interp2.l"}, {"xyz"}, &out, &err);
+	unless (ret == 0) puts("bad 1.1: ${ret}");
+	unless (trim(out) == "xyz") puts("bad 1.2: ${out}");
+	if (err) puts("bad 1.3: ${err}");
+}
+interp2();
 } -output {}
 
 test split-1.0 {test split function} -body {
