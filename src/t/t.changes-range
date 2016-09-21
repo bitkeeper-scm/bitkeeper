@@ -26,33 +26,33 @@ echo OK
 
 echo $N Test simple --start-after....................................$NL
 K=`bk changes -nd:MD5KEY: | head -5 | tail -1`
-bk changes -nd':MD5KEY: $first(:C:){(:C:)}' | sed -n '6,$p' > WANT
-bk changes -nd':MD5KEY: $first(:C:){(:C:)}' --start-after=$K > GOT
+bk changes -nd':MD5KEY: $first(:C:)' | sed -n '6,$p' > WANT
+bk changes -nd':MD5KEY: $first(:C:)' --start-after=$K > GOT
 cmpfiles WANT GOT
 echo OK
 
 echo $N Again, but with -v...........................................$NL
 bk changes -nd':MD5KEY:' | sed -n '6,$p' > KEYS
-bk changes -nvd':MD5KEY: $first(:C:){(:C:)}' - < KEYS > WANT
-bk changes -vnd':MD5KEY: $first(:C:){(:C:)}' --start-after=$K > GOT
+bk changes -nvd':MD5KEY: $first(:C:)' - < KEYS > WANT
+bk changes -vnd':MD5KEY: $first(:C:)' --start-after=$K > GOT
 cmpfiles WANT GOT
 echo OK
 
 echo $N Test simple --end-before.....................................$NL
-bk changes -nd':MD5KEY: $first(:C:){(:C:)}' | head -4 > WANT
-bk changes -nd':MD5KEY: $first(:C:){(:C:)}' --end-before=$K > GOT
+bk changes -nd':MD5KEY: $first(:C:)' | head -4 > WANT
+bk changes -nd':MD5KEY: $first(:C:)' --end-before=$K > GOT
 cmpfiles WANT GOT
 echo OK
 
 echo $N Again but with -v............................................$NL
 bk changes -nd':MD5KEY:' | head -4 > KEYS
-bk changes -nvd':MD5KEY: $first(:C:){(:C:)}' - < KEYS > WANT
-bk changes -vnd':MD5KEY: $first(:C:){(:C:)}' --end-before=$K > GOT
+bk changes -nvd':MD5KEY: $first(:C:)' - < KEYS > WANT
+bk changes -vnd':MD5KEY: $first(:C:)' --end-before=$K > GOT
 echo OK
 
 echo $N Test simple --around-key.....................................$NL
 bk changes -nd:MD5KEY: | head -10 > KEYS
-bk changes -nd':MD5KEY: $first(:C:){(:C:)}' - < KEYS > WANT
-bk changes -nd':MD5KEY: $first(:C:){(:C:)}' --around-key=$K --limit=10 > GOT
+bk changes -nd':MD5KEY: $first(:C:)' - < KEYS > WANT
+bk changes -nd':MD5KEY: $first(:C:)' --around-key=$K --limit=10 > GOT
 cmpfiles WANT GOT
 echo OK

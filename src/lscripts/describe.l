@@ -50,7 +50,7 @@ main(int ac, string av[])
 	}
 
 	if (bk) {
-		if (`bk changes -ar+ -nd$first(:TAG:){(:TAG:)}` =~ /^bk-[0-9.]+$/) {
+		if (`bk changes -ar+ -nd$first(:TAG:)` =~ /^bk-[0-9.]+$/) {
 			brief = 1;
 			dirty = 0;
 		} else {
@@ -71,7 +71,7 @@ main(int ac, string av[])
 		pclose(f);
 	}
 
-	tag = `bk changes -t -1 -nd$first(:TAG:){(:TAG:)}`;
+	tag = `bk changes -t -1 -nd$first(:TAG:)`;
 	if (length(tag) > 0) {
 		csets =  (int)`bk changes -er"${tag}".. -nd:REV: | wc -l`;
 	} else {

@@ -185,6 +185,7 @@ $unless($9){false}		# false
 $each(:C:){x}			# x
 $each(:C:){(:C:)}		# c3
 $each(:C:){:each:}		# c3
+$first(:C:)			# c3
 $if(:REV:=1.4){t}		# t
 $if(:REV: = 1.4){t}		# t
 $if(:REV: = 1.4 ){t}$else{f}	# f
@@ -313,7 +314,9 @@ $each(:C:){:each::each:x}		# l1l1xl2l2xl3l3xl4l4x
 $each(:C:){(:C:) :each:x}		# l1 l1xl2 l2xl3 l3xl4 l4x
 $each(:C:){:line: :each:x}		# 1 l1x2 l2x3 l3x4 l4x
 $each(:C:){$if(:line:=1){one}$if(:line:=2){two}$if(:line:=3){three}}	# onetwothree
+$first(:C:)				# l1
 $each(:REV:){:each:}		# 1.3
+$first(:REV:)			# 1.3
 $each(:C:){:JOIN::each:}		# l1,l2,l3,l4
 $each(:C:){${0=(:C:)}}$0		# l4
 $each(:C:){${0=$0(:C:)}}$0		# l1l2l3l4
@@ -372,6 +375,9 @@ $each(:id
 $each(:id:
 $each(:C:)
 $each(:C:){
+$first(
+$first(:id
+$first(:id:
 $if((:REV:=1.4)
 $each(:C:){$each(:TAG:){x}}
 ${}

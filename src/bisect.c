@@ -291,7 +291,7 @@ bisect_main(int ac, char **av)
 			info(&opts, "Validating exit status at %s", md5key);
 			p = sccs_prsbuf(s,
 			    s->rstart, 0,
-			    ":MD5KEY: $first(:C:){(:C:)}");
+			    ":MD5KEY: $first(:C:)");
 			info(&opts, "%.*s", columns, p);
 			free(p);
 			ret = bisect_try(&opts, 0, md5key);
@@ -306,7 +306,7 @@ bisect_main(int ac, char **av)
 			sccs_md5delta(s, s->rstop, md5key);
 			info(&opts, "Validating exit status at %s", md5key);
 			p = sccs_prsbuf(s,
-			    s->rstop, 0, ":MD5KEY: $first(:C:){(:C:)}");
+			    s->rstop, 0, ":MD5KEY: $first(:C:)");
 			info(&opts, "%.*s", columns, p);
 			free(p);
 			ret = bisect_try(&opts, 0, md5key);
@@ -569,10 +569,10 @@ ago(opts *op, sccs *s, ser_t d, int columns)
 
 	if (op->keys) {
 		t = sccs_prsbuf(s,
-		    d, 0, ":MD5KEY: $first(:C:){(:C:)}");
+		    d, 0, ":MD5KEY: $first(:C:)");
 	} else {
 		age = sccs_prsbuf(s, d, 0, ":AGE:");
-		p = sccs_prsbuf(s, d, 0, "$first(:C:){(:C:)}");
+		p = sccs_prsbuf(s, d, 0, "$first(:C:)");
 		t = aprintf("%10s ago: %s", age, p);
 		free(age);
 		free(p);

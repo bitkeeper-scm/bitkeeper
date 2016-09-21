@@ -247,22 +247,16 @@ dollar(FILE *out)
 			stmtList(rc ? 0 : out);
 			if (*g.p++ != '}') err("missing }");
 		}
-	} else if (strneq("$each(", g.p, 6) ||
-	    strneq("$first(", g.p, 7)) {
+	} else if (strneq("$each(", g.p, 6)) {
 		FILE	*f;
 		char	*save, *nextln;
 		int	len;
 		char	*bufptr;
 		int	savejoin;
-		int	first = strneq("$first(", g.p, 7);
 
-		if (in_each++) {
-			first
-			    ? err("nested first illegal")
-			    : err("nested each illegal");
-		}
+		if (in_each++) err("nested each illegal");
 
-		g.p += first ? 7 : 6;
+		g.p += 6;
 		if (*g.p++ != ':') err("missing id");
 
 		/* Extract the id in $each(:id:) */
@@ -293,7 +287,6 @@ dollar(FILE *out)
 			g.p = bufptr;
 			stmtList(out);
 			++g.line;
-			if (first) break;
 		}
 		FREE(save);
 		g.eachkey.dptr = 0;
@@ -303,6 +296,33 @@ dollar(FILE *out)
 		/* Eat the body if we never parsed it above. */
 		if (g.line == 1) stmtList(0);
 		if (*g.p++ != '}') err("missing }");
+	} else if (strneq("$first(", g.p, 7)) {
+		FILE	*f;
+		char	*save, *nextln;
+		int	len;
+
+		g.p += 7;
+		if (*g.p++ != ':') err("missing id");
+
+		/* Extract the id in $first(:id:) */
+		g.eachkey.dptr = g.p;
+		while (*g.p && (*g.p != ':')) ++g.p;
+		unless (*g.p) err("premature eof");
+		g.eachkey.dsize = g.p - g.eachkey.dptr;
+		++g.p;
+
+		if (*g.p++ != ')') err("missing )");
+
+		/* expand eachkey to fetch first line (without newline) */
+		f = fmem();
+		kw2val(f, g.eachkey.dptr, g.eachkey.dsize, g.s, g.d);
+		save = nextln = fmem_close(f, 0);
+		if (g.eachval = eachline(&nextln, &len)) {
+			show_s(g.s, out, g.eachval, len);
+		}
+		FREE(save);
+		g.eachkey.dptr = 0;
+		g.eachkey.dsize = 0;
 	} else if (strneq("$unless(", g.p, 8)) {
 		g.p += 8;
 		rc = !expr();
