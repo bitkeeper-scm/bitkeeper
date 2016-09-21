@@ -50,7 +50,9 @@ int sub2(int a, int b) {
 
 EOF
 bk new $Q file2.c
-bk commit $Q -y"file1 and file2"
+echo This is a .o file > file3.o
+bk new $Q -b file3.o
+bk commit $Q -y"file1, file2 and file3"
 echo OK
 
 # Symlinks not on windows.
@@ -170,6 +172,13 @@ bk bkd -CS > OUT << EOF || fail -f OUT
 get /dir/secrets
 EOF
 grep -q "Top Secret Data" OUT || fail -f OUT
+echo OK
+
+echo $N Demonstrate that binary file is properly identified .........$NL
+bk bkd -CS > OUT <<EOF
+get /project/file3.o?PAGE=anno
+EOF
+grep -q "Binary file" OUT || fail -f OUT
 echo OK
 
 fi # end of everything but on Windows tests

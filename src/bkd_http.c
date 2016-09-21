@@ -812,6 +812,8 @@ http_anno(char *page)
 	int	empty = 1;
 	char	*rev = hash_fetchStr(qin, "REV");
 	char	*freeme;
+	sccs	*s;
+	int	ascii = 0;
 
 	httphdr(".html");
 	/*
@@ -826,23 +828,32 @@ http_anno(char *page)
 
 	printf("<pre class='code annotated'>");
 	unless (rev) rev = "+";
-	sprintf(buf, "bk annotate -Aru -r'%s' '%s'", rev, fpath);
+	if (s = sccs_init(fpath, SILENT|INIT_MUSTEXIST)) {
+		if (ASCII(s)) ascii = 1;
+		sccs_free(s);
+	}
+	if (ascii) {
+		sprintf(buf, "bk annotate -Aru -r'%s' '%s'", rev, fpath);
 
-	/*
-	 * Do not show the license key in config file
-	 */
-	if (streq(fpath, "BitKeeper/etc/config")) {
-		strcat(buf,
-		    " | sed -e's/| license:.*$/| license: XXXXXXXXXXXXX/'");
+		/*
+		 * Do not show the license key in config file
+		 */
+		if (streq(fpath, "BitKeeper/etc/config")) {
+			strcat(buf,
+			    " | sed -e's/| license:.*$/| "
+			    "license: XXXXXXXXXXXXX/'");
+		}
+		f = popen(buf, "r");
+		while (t = fgetline(f)) {
+			empty = 0;
+			htmlify(t, strlen(t));
+			putchar('\n');
+		}
+		pclose(f);
+		if (empty) puts("\nEmpty file");
+	} else {
+		puts("\nBinary file");
 	}
-	f = popen(buf, "r");
-	while (t = fgetline(f)) {
-		empty = 0;
-		htmlify(t, strlen(t));
-		putchar('\n');
-	}
-	pclose(f);
-	if (empty) puts("\nEmpty file");
 	puts("</pre>");
 
 	puts("</div>");
