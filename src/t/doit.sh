@@ -776,7 +776,7 @@ if [ "X$FAILED" = X ]
 then
 	if [ X"$GUI_TEST" = XYES ]
 	then
-		echo All GUI tests passed, tell ob@perforce.com
+		echo All GUI tests passed, tell ob@linkedin.com
 	else
 		echo All requested tests passed, must be my lucky day
 	fi

@@ -25,6 +25,7 @@ _progresstest
 _unittests
 editor
 graft
+guitest
 gvim
 indexsvr
 info_shell

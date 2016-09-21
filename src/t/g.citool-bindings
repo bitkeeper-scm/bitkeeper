@@ -38,7 +38,7 @@ bk guitest citool >"$OUT" 2>&1 <<'EOF'
 	test_selectFile "src/file1"
 	test_inputComment "comment for src/file1"
 
-	exec bk echo "NEW DIFF" >> "src/file1"
+	exec sh -c "echo NEW DIFF" >> "src/file1"
 	test_inputString "^l"
 
 	if {![string match "*NEW DIFF*" [test_getDiffs]]} {

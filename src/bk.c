@@ -998,11 +998,6 @@ cmd_run(char *prog, int is_bk, int ac, char **av)
 		goto args;
 
 	    case CMD_BK_SH:
-		/* Handle GUI test */
-		if (streq(prog, "guitest")) {
-			sprintf(cmd_path, "%s/t/guitest", bin);
-			return (launch_wish(cmd_path, av+1));
-		}
 
 		/*
 		 * If we get here, it is a

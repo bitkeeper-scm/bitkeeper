@@ -1650,6 +1650,15 @@ _force_repack() {
 	_BK_FORCE_REPACK=1 bk repocheck $OPT
 }
 
+_guitest() {
+	if [ ! -f "$(bk bin)/t/guitest" ]
+	then
+		echo "guitest: expects to be run in a BitKeeper source tree"
+		exit 1
+	fi
+	bk wish "$(bk bin)/t/guitest" $@
+}
+
 _sh() {
 	# allow 'bk sh' to run a shell in bk's environent
 	exec sh "$@"
