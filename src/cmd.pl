@@ -464,6 +464,7 @@ unget => unedit
 
 # guis
 citool gui
+committool => citool
 csettool gui
 difftool gui
 fm3tool gui
