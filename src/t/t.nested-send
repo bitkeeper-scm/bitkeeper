@@ -1,0 +1,218 @@
+# Copyright 2016 BitMover, Inc
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+echo $N Setup .......................................................$NL
+# create the following (product-level) csets:
+# 1.2 - attach 2 components (gcc, gdb)
+nested project
+# 1.3 - 1 cset in 1 component
+cd "$HERE/project"
+date >file0
+bk new $Q file0
+cd "$HERE/project/gcc"
+date >file1
+bk new $Q file1
+bk delta $Q -y"add file1"
+cd ..
+bk edit $Q file0
+date >>file0
+bk delta $Q -y'update file0'
+bk commit $Q -y"add file1"
+# 1.4 - 2 csets in 1 component
+cd "$HERE/project/gcc"
+bk edit $Q file1
+date >>file1
+bk delta $Q -y"update file1"
+bk edit $Q file1
+date >>file1
+bk delta $Q -y"update #2 file1" file1
+cd ..
+bk edit $Q file0
+date >>file0
+bk delta $Q -y'update file0'
+bk commit $Q -y"update file1 twice"
+# 1.5 - 1 cset in 2 components
+cd "$HERE/project/gcc"
+bk edit $Q file1
+date >>file1
+bk delta $Q -y"update file1" file1
+cd "$HERE/project/gdb"
+date >file2
+bk new $Q file2
+bk delta $Q -y"add file12"
+cd ..
+bk edit $Q file0
+date >>file0
+bk delta $Q -y'update file0'
+bk commit $Q -y"update file1 add file2"
+# 1.6 - 2 csets in 2 components
+cd "$HERE/project/gcc"
+bk edit $Q file1
+date >>file1
+bk delta $Q -y"update #3 file1" file1
+bk edit $Q file1
+date >>file1
+bk delta $Q -y"update #4 file1" file1
+cd "$HERE/project/gdb"
+bk edit $Q file2
+date >>file2
+bk delta $Q -y"update #1 file2" file2
+bk edit $Q file2
+date >>file2
+bk delta $Q -y"update #2 file2" file2
+cd ..
+bk edit $Q file0
+date >>file0
+bk delta $Q -y'update file0'
+bk commit $Q -y"update file1 file2"
+echo OK
+
+# Export and compare the project and clone trees. Fail if different.
+chk() {
+	rev=$1; shift;
+	cd "$HERE/clone"
+	bk export -tplain -r+ "$HERE/clone-export" || fail
+	cd ../project
+	bk export -tplain -r$rev "$HERE/project-export" || fail
+	cd ..
+	diff -r project-export clone-export >DIFFS || fail -f DIFFS trees differ
+	rm -rf project-export clone-export
+}
+
+# Echo "Check $*........" where enough dots are added, and $* is truncated
+# if necessary, to line everything up nicely.
+pr()
+{
+	_PR=$*
+	_PR_LEN=`echo "$_PR" | wc -c`
+	test $_PR_LEN -gt 53 && {
+		_PR=`echo "$_PR" | cut -b1-53`
+		_PR_LEN=54
+	}
+	_PR_LEN=`expr 56 - $_PR_LEN`
+	_PR_FILL=`printf "%${_PR_LEN}s\n" "" | sed -e 's/ /./g' 2>/dev/null`
+	echo $N Check "$_PR"$_PR_FILL$NL
+}
+
+# Check all possible wraps
+cd "$HERE"
+bk clone $Q -sALL project clone || fail
+for w in none uu b64 gzip_b64 gzip_uu; do
+    pr Send 1.2..1.6 wrap ${w}
+    bk --cd=clone undo $Q -fa1.2 || fail
+    wrap=""; [ $w = none ] || wrap="-w $w"
+    bk --cd=project send $wrap -r1.2..1.6 - | \
+	bk --cd=clone receive -a || fail
+    chk 1.6
+    echo OK
+done
+
+# Check sending several revs at once.
+cd "$HERE"
+bk --cd=clone pull $Q || fail
+for r in 2 3 4; do
+    pr Send 1.2..1.$(($r+1)) wrap none
+    bk --cd=clone undo $Q -fa1.2 || fail
+    bk --cd=project send -r1.2..1.$(($r+1)) - | \
+	bk --cd=clone receive -a || fail
+    chk 1.$(($r+1))
+    echo OK
+done
+
+# Check sending revs one at a time.
+bk --cd=clone undo $Q -fa1.2 || fail
+for r in 2 3 4 5; do
+    pr Send 1.$r..1.$(($r+1)) wrap none
+    bk --cd=project send -r1.$r..1.$(($r+1)) - | \
+	bk --cd=clone receive -a || fail
+    chk 1.$(($r+1))
+    echo OK
+done
+
+echo $N Try a failed takepatch due to local work in component 1 .....$NL
+cd clone
+bk undo $Q -fa1.2 || fail
+date >gcc/file1
+cd ..
+bk --cd=project send -r1.2..1.6 - | bk --cd=clone receive -a >OUT 2>&1 && {
+	fail should have failed
+}
+[ -z "`find clone -name RESYNC`" ] || fail RESYNC directories left
+rm -f clone/gcc/file1
+chk 1.2
+echo OK
+
+echo $N Try a failed takepatch due to local work in component 2 .....$NL
+cd clone
+bk undo $Q -fa1.2 || fail
+date >gdb/file2
+cd ..
+bk --cd=project send -r1.2..1.6 - | bk --cd=clone receive -a >OUT 2>&1 && {
+	fail should have failed
+}
+[ -z "`find clone -name RESYNC`" ] || fail RESYNC directories left
+rm -f clone/gdb/file2
+chk 1.2
+echo OK
+
+echo $N Try a failed takepatch due to local work in product .........$NL
+cd clone
+bk undo $Q -fa1.2 || fail
+date >file0
+cd ..
+bk --cd=project send -r1.2..1.6 - | bk --cd=clone receive -a >OUT 2>&1 && {
+	fail should have failed
+}
+[ -z "`find clone -name RESYNC`" ] || fail RESYNC directories left
+rm -f file0
+chk 1.2
+echo OK
+
+echo $N Test bk send -S .............................................$NL
+cd "$HERE/project/gcc"
+bk send -Sq -r+ - | grep -q SFIO && echo should not have created an SFIO
+echo OK
+
+echo $N Test send with missing component ............................$NL
+cd "$HERE"
+bk clone $Q -sgcc project partial
+cd partial
+bk send $Q -r1.2..1.6 - > OUT 2>ERR && fail -f ERR should have failed
+echo "send: component gdb not populated" > WANT
+cmpfiles ERR WANT
+echo OK
+
+echo $N Test receive with missing component .........................$NL
+cd "$HERE"
+bk --cd=project send $Q -r1.2..1.6 - | bk --cd=partial receive -a 2>ERR && {
+   fail -f ERR
+}
+echo "receive: component gdb not populated" > WANT
+cmpfiles ERR WANT
+echo OK
+
+echo $N Test send with aliases change ...............................$NL
+cd "$HERE/project"
+bk send $Q -r1.1..+ - > OUT 2>ERR && fail -f ERR
+echo "send: not yet supported: changes in BitKeeper/etc/aliases" > WANT
+cmpfiles ERR WANT
+echo OK
+
+echo $N Test send of new component ..................................$NL
+bk setup newcomp || fail
+bk commit $Q -ynewcomp || fail
+bk send $Q -r1.6.. - > OUT 2>ERR && fail -f ERR
+echo "send: not yet supported: new component newcomp" > WANT
+cmpfiles ERR WANT
+echo OK

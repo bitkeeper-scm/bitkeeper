@@ -27,8 +27,9 @@ unwrap_main(int ac,  char **av)
 	 * the input that we (may) want to send to the unwrap child.
 	 */
 	while (getline(0, buf, sizeof(buf)) > 0) {
-		if (strneq(buf, "# Patch vers:", 13)) {
-			out("\n");
+		if (strneq(buf, "# Patch vers:", 13) ||
+		    strneq(buf, "SFIO v ", 7)) {
+			if (buf[0] == '#') out("\n");
 			out(buf);
 			out("\n");
 			while ((n = read(0, buf, sizeof(buf))) > 0) {

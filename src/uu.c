@@ -29,6 +29,7 @@ uuencode_main(int ac, char **av)
 {
 	FILE	*f;
 
+	setmode(0, O_BINARY);
 	if (av[1]) {
 		unless (f = fopen(av[1], "r")) {
 			perror(av[1]);

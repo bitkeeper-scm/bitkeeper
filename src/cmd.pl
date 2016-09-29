@@ -492,6 +492,8 @@ sccstool => revtool
 
 # shell scripts
 import shell
+uuwrap shell
+unuuwrap shell
 b64wrap shell
 unb64wrap shell
 gzip_b64wrap shell

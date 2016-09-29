@@ -5,7 +5,7 @@
 bk send \- send a \*(BK patch
 .SH SYNOPSIS
 .B bk send
-.[B] \-dfq
+.[B] \-dfqS
 .[OPTreq] \-w wr
 .[OPTreq] \-r revs
 .[OPTreq] \-s subject
@@ -103,6 +103,10 @@ Without
 .QR \-s ,
 the default subject line
 \*(lqBitKeeper patch\*(rq is used.
+.tp
+.B \-S
+When used in a nested collection, send a patch only for the component
+at the current working directory.
 .tp
 .OPTreq \-u URL
 Instead of consulting the send log, connect to the remote repository 

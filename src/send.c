@@ -19,6 +19,8 @@
 
 #define	BK_LOG "BitKeeper/log"
 
+private	int	sendNested(char *revArgs, char *dflag, char *wrapperArgs,
+			   char *out);
 
 /*
  * Compute the cset(s) we need to send.
@@ -140,20 +142,25 @@ printHdr(FILE *f, char *revsFile, char *rev, char *wrapper)
 int
 send_main(int ac,  char **av)
 {
-	int	c, rc = 0, force = 0;
-	char	*to, *out, *cmd, *dflag = "", *qflag = "-vv";
+	int	c, rc = 0, force = 0, standalone = 0;
+	char	*to, *out, *cmd = 0, *dflag = "", *qflag = "-vv";
 	char	*wrapper = 0,*patch = 0, *keysFile = 0, *revArgs = 0;
 	char	*wrapperArgs = "", *rev = "..", *subject = "BitKeeper patch";
 	char	*url = NULL;
 	FILE	*f;
+	longopt	lopts[] = {
+		{ "standalone", 'S' },
+		{ 0, 0 }
+	};
 
-	while ((c = getopt(ac, av, "dFfqr:s;u:w:", 0)) != -1) {
+	while ((c = getopt(ac, av, "dFfqr:s;Su:w:", lopts)) != -1) {
 		switch (c) {
 		    case 'd':	dflag = "-d"; break;		/* doc 2.0 */
 		    case 'F':	break;	/* ignored, old fastpatch */
 		    case 'f':	force++; break;			/* doc 2.0 */
 		    case 'q':	qflag = ""; break;		/* doc 2.0 */
 		    case 'r': 	rev = optarg; break;		/* doc 2.0 */
+		    case 'S':	standalone = 1; break;
 		    case 's': 	subject = optarg; break;
 		    case 'w': 	wrapper = optarg; break;	/* doc 2.0 */
 		    case 'u': 	url = optarg; break;
@@ -221,10 +228,14 @@ send_main(int ac,  char **av)
 	/*
 	 * Now make the patch
 	 */
-	cmd = aprintf("bk makepatch -CB %s %s %s %s %s",
-			    dflag, qflag, revArgs, wrapperArgs, out);
-	if (rc = system(cmd) ? 1 : 0)  goto out;
-
+	if (bk_nested2root(standalone)) {
+		rc = sendNested(revArgs, dflag, wrapperArgs, out);
+		if (rc) goto out;
+	} else {
+		cmd = aprintf("bk makepatch -CB %s %s %s %s %s",
+			      dflag, qflag, revArgs, wrapperArgs, out);
+		if (rc = system(cmd) ? 1 : 0)  goto out;
+	}
 
 	/*
 	 * Mail the patch if necessary
@@ -244,5 +255,118 @@ out:	if (patch) {
 	if (cmd) free(cmd);
 	if (*out) free(out);
 	if (*wrapperArgs) free(wrapperArgs);
+	return (rc);
+}
+
+private int
+sendNested(char *revArgs, char *dflag, char *wrapperArgs, char *out)
+{
+	int	i, rc = 1;
+	char	*cmd, **comp, **comps = 0, *p, *path;
+	char	*t;
+	FILE	*f;
+
+	cmdlog_lock(CMD_RDLOCK|CMD_NESTED_RDLOCK);
+
+	/*
+	 * Get the set of components with updates in the given rev range.
+	 * Bail if
+	 * - not all are populated,
+	 * - the rev range includes any new components, or
+	 *   (this can be fixed in the future)
+	 * - the rev range has a change to the aliases file.
+	 *   (We don't know what is in the HERE file at the destination
+	 *    and that change may be a problem.  This can get relaxed
+	 *    if we change receive.c to look for these issues and either
+	 *    address them or bail early.)
+	 */
+	cmd = aprintf("bk rset -S --show-gone %s", revArgs);
+	unless (f = popen(cmd, "r")) {
+		perror("popen");
+		return (1);
+	}
+	free(cmd);
+	while (p = fgetline(f)) {
+		if (begins_with(p, "BitKeeper/etc/aliases|")) {
+			fprintf(stderr, "%s: not yet supported: "
+			    "changes in BitKeeper/etc/aliases\n",
+			    prog);
+			pclose(f);
+			goto out;
+		}
+		if (t = strchr(p, '|')) *t = 0;
+		unless (ends_with(p, "/ChangeSet")) continue;
+		*t = '|';
+		comps = addLine(comps, strdup(p));
+		*t++ = 0;
+		path = dirname(p);
+		if (begins_with(t, "1.0..")) {
+			fprintf(stderr, "%s: not yet supported: "
+			    "new component %s\n",
+			    prog, path);
+			pclose(f);
+			goto out;
+		}
+		unless (isdir(path)) {
+			fprintf(stderr, "%s: component %s not populated\n",
+			    prog, path);
+			pclose(f);
+			goto out;
+		}
+	}
+	if (pclose(f)) {
+		fprintf(stderr, "%s: 'bk rset -S --show-gone %s' failed\n",
+		    prog, revArgs);
+		goto out;
+	}
+
+	/*
+	 * Do a makepatch for each component we need to send, putting
+	 * the patch in <component>/BitKeeper/tmp/PATCH, and create
+	 * an SFIO of all the patch files.
+	 */
+	cmd = aprintf("bk sfio -oq %s %s", wrapperArgs, out);
+	unless (f = popen(cmd, "w")) {
+		perror("popen");
+		goto out;
+	}
+	free(cmd);
+	EACH(comps) {
+		comp = splitLine(comps[i], "|", 0);
+		path = dirname(comp[1]);
+		if (systemf("bk --cd='%s' makepatch -q -r'%s' %s "
+			    ">'%s/BitKeeper/tmp/PATCH'",
+			    path, comp[2], dflag, path)) {
+			fprintf(stderr, "%s: makepatch in %s failed\n",
+			    prog, path);
+			freeLines(comp, free);
+			goto out;
+		}
+		fprintf(f, "%s/BitKeeper/tmp/PATCH\n", path);
+		freeLines(comp, free);
+	}
+
+	/* Now do the product. */
+	if (systemf("bk makepatch -q %s %s >BitKeeper/tmp/PATCH",
+		revArgs, dflag)) {
+		fprintf(stderr, "%s: makepatch in product failed\n", prog);
+		goto out;
+	}
+	fprintf(f, "BitKeeper/tmp/PATCH\n");
+	if (pclose(f)) goto out;
+
+	/* Delete the PATCH files. */
+	EACH(comps) {
+		comp = splitLine(comps[i], "|", 0);
+		path = dirname(comp[1]);
+		p = aprintf("%s/BitKeeper/tmp/PATCH", path);
+		unlink(p);
+		free(p);
+	}
+	unlink("BitKeeper/tmp/PATCH");
+	rc = 0;
+ out:
+	cmdlog_unlock(CMD_RDLOCK|CMD_NESTED_RDLOCK);
+	if (comps) freeLines(comps, free);
 	return (rc);
 }

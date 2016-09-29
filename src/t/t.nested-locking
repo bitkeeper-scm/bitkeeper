@@ -1029,3 +1029,103 @@ test -f "$TMP/clone..post-incoming.here" && fail
 cd "$HERE/clone"
 test "`bk changes -r+ -nd':C:'`" = "add new1" || fail
 echo OK
+
+echo ---- While nested receive in progress \[post-incoming]
+repo_setup csets-in-products
+bk clone $Q product clone || fail
+# Pull clone1 into clone via bk send/receive but cause it to spin in
+# the post-incoming trigger.
+test -f "$TMP/clone..post-incoming.here" && fail
+touch "$TMP/clone..post-incoming"
+cd "$HERE/clone"
+bk --cd=../clone1 send -r1.3.. - | bk receive -a >/dev/null 2>&1 &
+PID=$!
+# Wait for the pull to be in progress.
+while ! test -f "$TMP/clone..post-incoming.here"
+do	sleep 1
+done
+
+# Now try various operations.
+
+# Clone of product.
+echo $N Cloning should fail..........................................$NL
+cd "$HERE"
+bk clone $Q clone clone4 2>ERR && fail -f ERR
+grep -q "Can't get read lock" ERR || fail -f ERR wrong error
+echo OK
+
+# Pull into clone.
+echo $N Pulling should fail..........................................$NL
+cd "$HERE/clone"
+bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail should have failed
+grep -q "Unable to lock repository for update." ERR || fail -f ERR wrong error
+echo OK
+
+# Attach in clone.
+echo $N Attaching should fail........................................$NL
+cd "$HERE/clone"
+# achtung! don't use bk portal, see delta comments
+touch BitKeeper/log/PORTAL
+bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+rm -f BitKeeper/log/PORTAL
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
+
+# Here in clone.
+echo $N Here should fail.............................................$NL
+cd "$HERE/clone"
+bk here set all >ERR 2>&1 && fail
+grep -q "Unable to lock repository for update." ERR || fail -f ERR wrong error
+echo OK
+
+# Push into clone.
+echo $N Pushing should fail..........................................$NL
+cd "$HERE/clone3"
+bk push $Q -c0 "$HERE/clone" >ERR 2>&1 && fail
+grep -q "ERROR-Unable to lock repository for update." ERR || fail -f ERR
+echo OK
+
+# Commit in the product.  This should fail.
+echo $N Commit in product should fail................................$NL
+cd "$HERE/clone"
+echo new >pnew
+bk new $Q pnew >ERR 2>&1 && fail
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
+echo OK
+
+# Commit in the gcc component.  This should fail.
+echo $N Commit in locked component should fail.......................$NL
+cd "$HERE/clone/gcc"
+echo new >new10
+bk new $Q new10 >ERR 2>&1 || fail -f ERR
+bk commit -S $Q -ynew10 >ERR 2>&1 && fail -f ERR
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
+
+# Commit in the gdb component.
+echo $N Commit in other component should fail........................$NL
+cd "$HERE/clone/gdb"
+echo new >new
+bk new $Q new >ERR 2>&1 || fail
+bk commit -S $Q -y'new file' >ERR 2>&1 && fail you fixed a bug
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
+
+# Undo a cset in the gcc component.
+echo $N Undo should fail.............................................$NL
+cd "$HERE/clone"
+bk undo $Q -fr+ 2>ERR && fail -f ERR should fail
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
+echo OK
+
+echo $N Make sure original receive completed.........................$NL
+cd ..
+rm "$TMP/clone..post-incoming"
+wait $PID
+STATUS=$?
+test $STATUS = 0 -o $STATUS = 127 || fail
+test -f "$TMP/clone..post-incoming.here" && fail
+# Verify that the receive into clone worked.
+cd "$HERE/clone"
+test "`bk changes -r+ -nd':C:'`" = "add new1" || fail
+echo OK
