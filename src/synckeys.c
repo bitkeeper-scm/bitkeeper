@@ -588,8 +588,7 @@ prunekey_main(int ac, char **av)
 	s->state &= ~S_SET;
 	for (d = TABLE(s); d >= TREE(s); d--) {
 		if (FLAGS(s, d) & D_RED) continue;
-		s->rstart = s->rstop = d;
-		sccs_prs(s, PRS_ALL, 0, dspec, stdout);
+		sccs_prsdelta(s, d, PRS_ALL, dspec, stdout);
 	}
 	sccs_free(s);
 	return (0);

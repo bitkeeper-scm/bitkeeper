@@ -128,7 +128,7 @@ private void
 _patch(sccs *s)
 {
 	ser_t	d;
-	int	flags = PRS_PATCH|SILENT;
+	int	flags = SILENT;
 
 	for (d = TREE(s); d <= TABLE(s); d++) {
 		if (PARENT(s, d)) {
@@ -137,8 +137,7 @@ _patch(sccs *s)
 		} else {
 			flags |= PRS_GRAFT;
 		}
-		s->rstop = s->rstart = d;
-		sccs_prs(s, flags, 0, NULL, stdout);
+		sccs_prsPatch(s, d, flags, stdout);
 		printf("\n");
 		unless (TAG(s, d)) {
 			assert(!(s->state & S_CSET));

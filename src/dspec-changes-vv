@@ -27,8 +27,14 @@ $if (:FILE:) {
 	" +:LI: -:LD:"
 }
 \n
-$each(:C:) {
-	"  (:C:)\n"
+$if ($9 -eq 0) {			# comments
+	$each(:C:) {
+		"  (:C:)\n"
+	}
+} $else {
+	"  "
+	$first(:C:)
+	"\n"
 }
 $each(:TAGS:) {
 	"  TAG: (:TAGS:)\n"

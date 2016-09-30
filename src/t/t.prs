@@ -124,6 +124,7 @@ $if(!:FALSE: && :FALSE:){true}	# <nonl>
 $if(!(:FALSE: && :FALSE:)){true}	# true
 $if(!:TRUE: && :FALSE:){true}	# <nonl>
 $if(!(:TRUE: && :FALSE:)){true}	# true
+$if($0 -eq 0){true}$else{false}	# true
 $if($0){true}$else{false}	# false
 $if($1){true}$else{false}	# false
 $if($2){true}$else{false}	# false
@@ -135,6 +136,7 @@ $if($7){true}$else{false}	# false
 $if($8){true}$else{false}	# false
 $if($9){true}$else{false}	# false
 $if($x){true}$else{false}	# true
+$if($0=){good}$else{bad}	# good
 $if(${0=nope}){bad}$else{good}$0	# good
 $if(${0=nope){bad}$else{good}$0	# good
 ${0=x}				# <nonl>
@@ -1109,5 +1111,72 @@ bk prs -hnd:DOMAIN: -r+ ChangeSet > GOT
 cat <<EOF > WANT
 corp.com
 EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N check that log takes --begin=dspec-v2 statements ............$NL
+touch bar
+bk new $Q bar
+for i in 1 2 3 4 5
+do	bk edit $Q bar
+	echo $i >> bar
+	bk delta $Q -y$i bar
+done
+cat <<'EOF' > dspec
+# dspec-v2
+$begin {
+	"FILE begin (:REV:)\n"
+}
+":GFILE: :REV:\n"
+$end {
+	"FILE end (:REV:)\n"
+}
+EOF
+cat > WANT <<EOF
+cmd line begin
+FILE begin (1.6)
+bar 1.6
+bar 1.5
+bar 1.4
+bar 1.3
+bar 1.2
+bar 1.1
+FILE end (1.1)
+EOF
+bk log --dspecf=dspec --begin='"cmd line begin\n"' bar > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N check that ranges work as well ..............................$NL
+cat > WANT <<EOF
+cmd line begin
+FILE begin (1.4)
+bar 1.4
+bar 1.3
+FILE end (1.3)
+EOF
+bk log -r1.2..1.4 --dspecf=dspec --begin='"cmd line begin\n"' bar > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N check that forward/backwards works ..........................$NL
+cat > WANT <<EOF
+cmd line begin
+FILE begin (1.3)
+bar 1.3
+bar 1.4
+FILE end (1.4)
+EOF
+bk log -f -r1.2..1.4 --dspecf=dspec --begin='"cmd line begin\n"' bar > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N check that a null range runs begin/end ......................$NL
+cat > WANT <<EOF
+cmd line begin
+FILE begin ()
+FILE end ()
+EOF
+bk log -f -r1.2..1.2 --dspecf=dspec --begin='"cmd line begin\n"' bar > GOT
 cmpfiles WANT GOT
 echo OK

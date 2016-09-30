@@ -144,7 +144,6 @@ int	checking_rmdir(char *dir);
 
 #define	PRS_FORCE	0x10000000	/* ignore the D_SET/S_SET filter */
 #define	PRS_SYMBOLIC	0x20000000	/* show revs as beta1, etc. Not done */
-#define	PRS_PATCH	0x40000000	/* print in patch format */
 #define PRS_ALL		0x80000000	/* scan all revs, not just type D */
 #define	PRS_GRAFT	0x01000000	/* put the perfile in the patch */
 #define	PRS_LF		0x02000000	/* terminate non-empty output with LF */
@@ -1137,9 +1136,9 @@ int	sccs_hashcount(sccs *s);
 int	sccs_clean(sccs *s, u32 flags);
 int	sccs_unedit(sccs *s, u32 flags);
 int	sccs_info(sccs *s, u32 flags);
-int	sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out);
 int	sccs_prsdelta(sccs *s, ser_t d, int flags, char *dspec, FILE *out);
 char	*sccs_prsbuf(sccs *s, ser_t d, int flags, char *dspec);
+int	sccs_prsPatch(sccs *s, ser_t d, u32 flags, FILE *out);
 ser_t	sccs_findDate(sccs *s, char *date, int roundup);
 ser_t	sccs_date2delta(sccs *s, time_t date);
 int	sccs_patheq(char *file1, char *file2);

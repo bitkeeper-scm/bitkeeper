@@ -36,9 +36,19 @@ revision date and time, user who made that revision, what the relative
 path from root of repository is to that file, the comments that go
 with that revision, and documents if the file has been renamed.
 .SH OPTIONS
-.TP \fB\-c2006/07.\|.2006\fP
+.TP "\-\-begin\=<script>"
 .OPTreq \- n
 A numeric argument that limits the number of deltas printed per file.
+.tp
+.OPTreq \-\-begin\= script
+The dspec v2 language (see that section below and the examples) is awk
+like and has optional begin/end sections.
+This option allows you to specify the body of a begin section (if the
+file also has a begin section then both are run; order is
+undefined).
+It is typically used with an on disk dspec in a dspec file that has been 
+written in a way to do one thing by default and another if a variable
+is set to non-zero.
 .tp
 .OPTreq \-c date
 Cut-off dates.  See range specifications (below) or 
@@ -165,16 +175,22 @@ virtually all of them can be extracted using a non-default output
 format.
 .LP
 To extract specific information, a \*(lqdspec\*(rq
-(data specification) string is provided and and where there are
+(data specification) string is provided and where there are
 keywords surrounded by colons the keywords are expanded much like
 .BR printf (3).
+This can lead to many useful one liners; want to see which file is
+the most busy in a repository?
+.DS
+bk -U log -r+ -nd':DS: :GFILE' | sort -nr | head
+.DE
 If you are familiar with 
 .BR awk (1)
 the processing here is similar.  In awk, each line is a record, here each
 delta is a record.  For each delta, you can provide a 
 .B dspec
 which says what it is you want to print from that delta.
-Looking at the dspec-* files in the installation directory is recommended.
+Looking at the dspec-* files in the installation directory is recommended,
+there are $begin/$end sections that mimic awk.
 .LP
 The
 .I dspecs
@@ -192,37 +208,18 @@ will be replaced with the specified string:
 \\<c>	c for any other character "c"
 .LP
 .fi
-An example dspec 
-which prints the \*(BK file name and the revision number
-is 
-.BR ':GFILE:\ :REV:\en' .
 .LP
 In almost all cases, a trailing
-newline is not provided by any of the variables 
+newline is not provided by any of the keywords 
 and one should be provided as needed.
 The newline can be added in line or you can specify the
 .B \-n
 option which will add a newline after each delta is processed.
 .LP
-Multi-line variables are normally printed as is, but you can
+Multi-line keywords are normally printed as is, but you can
 format each line separately using a
 .B $each(\|) 
-loop like so
-.DS
-bk log -d'$each(:C:){>> (:C:)\en}' foo.c
-.DE
-.LP
-Any variable that is more than one line can be processed with the
-.B $each(\|)
-iterator.
-Variables that may be multi line are:
-.BR ALL_TAGS ,
-.BR C ,
-.BR TAGGED ,
-and
-.BR TAGS .
-.br
-.ne 5
+loop (see ITERATIVE OUTPUT below).
 .SS CONDITIONAL OUTPUT
 The 
 .I dspec
@@ -348,18 +345,30 @@ To match against such a leading or trailing space, escape it.
 .SS ITERATIVE OUTPUT
 .ad b
 Some keywords, such as comments or tags, may be multi-line.  To print a prefix
-in front of each of these lines, the idiom is:
+in front of each of these lines, the dspec is:
 .DS
-bk log -d'$if(:C:){$each(:C:){C\ \ (:C:)\en}}' foo.c
+bk log -d'$each(:C:){C\ \ (:C:)\en}' foo.c
 .DE
-This iteration works for all variables, but normally is only used
-for variables that can contain multiple lines like
-.V C 
+This iteration works for all keywords, but normally is only used
+for keywords that can contain multiple lines like
+.V ALL_TAGS ,
+.V C ,
+.V TAGGED ,
 and
 .V TAGS .
-Also
+.LP
+The
 .B $first(\|)
-can be used to only expand the first line of one of these multi-line keywords.
+builtin can be used to print only the first line of one of these
+multi-line keywords.
+Some development efforts tend to use the first line of commit comments
+as a summary of the change; the rest are more details.
+The dspec that ships with \*(BK for \f(CWbk changes\fP uses this feature
+to implement \f(CWbk changes --short\fP.  
+To print the first line of each comment in a changeset:
+.DS
+bk changes -nd'$first(:C:)'
+.DE
 .SS VARIABLES
 When the
 .BR "bk log"
@@ -373,10 +382,64 @@ ${0=<dspec>}
 .DE
 where <dspec> is a recursively evaluated data specification.
 Once assigned, a variable retains its value for the remainder of the
-.BR "bk log"
-command.
-Variables start out as empty strings, and
-when re-assigned the old value is discarded.
+command (or until reassigned).
+Variables start out as empty strings (evaluate to zero in numeric context),
+and when re-assigned the old value is discarded.
+.SS DSPEC VERSION 2
+This little printf like language outgrew itself, having if/then/else
+and other control flow was too much on just one line.  
+We came up with a version 2 language that allows you to have dspecs
+that look like a programming language.  
+All of the output from \*(BK commands is generated via the v2 language
+in external files (see \f(CWdspec-*\fP in the bin directory).
+All of the commands that take dspecs also can take a file containing
+the dspec; that's how the \*(BK commands work, they just load those
+files.
+.LP
+To switch into the new language a dspec has to begin like so:
+.DS
+# dspec-v2
+.DE
+The language is awk like, comments start with "#" and go to the end of
+the line.
+Whitespace is ignored unless it is inside double quotes, then it is
+reproduced exactly.
+Keywords are expanded inside of double quotes as are the escaped
+characters mentioned above.
+Control flow and begin/end blocks (all the $something) are unquoted.
+.LP
+Like awk, there are optional begin/end blocks:
+.DS
+$begin {
+        "[\en"
+}
+$end {
+        $if($0 -eq 1) {
+                "\}\en"
+        }
+        "]\en"
+}
+.DE
+Those are from \f(CWdspec-changes-json-v\fP which is the dspec that is used
+for \f(CWbk changes -v --json\fP which (surprise!) produces json format output.
+If you want to understand this language that is a good file to read.
+.LP
+In many cases, all keywords will expand in begin/end blocks, those are 
+run in the context of the first/last delta selected.
+If a range is selected that has no matching deltas (think
+.B bk changes -L
+for example) then \fBnone\fP of the keywords will be expanded, the current
+system expands keywords if and only if there is a valid delta in play.
+.LP
+A simple dspec-v2 example is the old \f(CWbk prs\fp output (SCCS compat):
+.DS
+# dspec-v2
+":DT: :REV: :D: :T::TZ: :USERHOST: :DS: :DP: :LI:/:LD:/:LU:\en"
+"P :DPN:\en"
+$each(:TAGGED:){"S (:TAGGED:)\en"}
+$each(:C:){"C (:C:)\en"}
+"------------------------------------------------\en"
+.DE
 .SS KEYWORDS
 Some keywords are per repository and are marked with 
 .B R
@@ -418,7 +481,7 @@ Name	T	What is printed
 .xx
 :AGE:	D	D's age, i.e., seven hours, two weeks, etc.
 .xx
-:ALL_TAGS:	C	The tag[s] if this changeset has/ever had it/them
+:ALL_TAGS:	C	The tag[s] if this changeset has or ever had them
 .xx
 :ATTACHED_ID:	F	package id to be used for new deltas
 .xx
@@ -675,9 +738,9 @@ awk '{ lines += $1 } END { print lines }'
 The default
 .I dspec
 for the
-.B bk changes command is below.  This is an example of an expanded
-form of dspecs, only things in quotes generate output, the rest is 
-control flow.
+.B bk changes
+command is below.  This is an example of a dspec-v2 style of writing
+dspecs, much more pleasant for complex reports.
 .DS
 # dspec-v2
 
@@ -698,17 +761,28 @@ $unless (:CHANGESET:) {
     " +:LI: -:LD:"                   # lines added/deleted
 }
 "\\n"
-$each(:C:) {                         # comments
-    ":INDENT:  (:C:)\\n"
+
+# bk changes --short is an alias for 
+# bk changes --begin='${9=1}'
+# so $9 is the switch that decides between short/long form
+$if ($9 -eq 0) {                     # comments (long form)
+    $each(:C:) {
+        ":INDENT:  (:C:)\\n"
+    }
+} $else {                            # comments (short form)
+    ":INDENT:  "
+    $first(:C:)
+    "\\n"
 }
 $each(:TAGS:) {
     "  TAG: (:TAGS:)\\n"
 }
-$if (:MERGE:) {                      # merge shows both parents
-    ":INDENT:  MERGE: :MPARENT:\\n"
+$if ($9 -eq 0) {                     # skip merge info for --short
+    $if (:MERGE:) {                  # merge shows both parents
+        ":INDENT:  MERGE: :MPARENT:\\n"
+    }
 }
 "\\n"
-
 .DE
 .SH "SEE ALSO"
 .SA range

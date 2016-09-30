@@ -15678,7 +15678,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	}
 
 	case KW_DSUMMARY: /* DSUMMARY */ {
-	/* :DT: :I: :D: :T::TZ: :USERHOST: :DS: :DP: :Li:/:Ld:/:Lu: */
+	/* :DT: :I: :D: :T::TZ: :USERHOST: :DS: :DP: :LI:/:LD:/:LU: */
 	 	KW("DT"); fc(' '); KW("I"); fc(' '); KW("D"); fc(' ');
 		KW("T"); KW("TZ"); fc(' '); KW("USERHOST");
 		fc(' ');
@@ -16907,8 +16907,8 @@ err:		fprintf(stderr,
 	return (0);
 }
 
-private int
-do_patch(sccs *s, ser_t d, int flags, FILE *out)
+int
+sccs_prsPatch(sccs *s, ser_t d, u32 flags, FILE *out)
 {
 	symbol	*sym;
 	char	type;
@@ -17013,62 +17013,6 @@ do_patch(sccs *s, ser_t d, int flags, FILE *out)
 	}
 	if (HAS_ZONE(s, TREE(s))) assert(HAS_ZONE(s, d));
 	fprintf(out, "------------------------------------------------\n");
-	return (0);
-}
-
-private void
-prs_reverse(sccs *s, int flags, char *dspec, FILE *out)
-{
-	ser_t	d;
-
-	for (d = s->rstart; (d >= TREE(s)) && (d <= s->rstop); d++) {
-		unless (FLAGS(s, d) & D_SET) continue;
-		if (sccs_prsdelta(s, d, flags, dspec, out) &&
-		    !--s->prs_nrevs) {
-			return;
-		}
-	}
-}
-
-private void
-prs_forward(sccs *s, int flags, char *dspec, FILE *out)
-{
-	ser_t	d;
-
-	for (d = s->rstop; (d >= TREE(s)) && (d >= s->rstart); --d) {
-		unless (FLAGS(s, d) & D_SET) continue;
-		if (sccs_prsdelta(s, d, flags, dspec, out) &&
-		    !--s->prs_nrevs) {
-			return;
-		}
-	}
-}
-
-int
-sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
-{
-	ser_t	d;
-
-	T_SCCS("file=%s flags=%x", s->gfile, flags);
-	if (!dspec) dspec = ":DEFAULT:";
-	s->prs_odd = 0;
-	s->prs_join = 0;
-	GOODSCCS(s);
-	if (flags & PRS_PATCH) {
-		assert(s->rstart == s->rstop);
-		return (do_patch(s, s->rstart, flags, out));
-	}
-	unless (SET(s)) {
-		for (d = s->rstop; d >= TREE(s); d--) {
-			FLAGS(s, d) |= D_SET;
-			if (d == s->rstart) break;
-		}
-	}
-	if (reverse) {
-		prs_reverse(s, flags, dspec, out);
-	} else {
-		prs_forward(s, flags, dspec, out);
-	}
 	return (0);
 }
 

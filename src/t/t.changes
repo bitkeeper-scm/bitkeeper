@@ -924,3 +924,76 @@ REV=`bk changes -nd":REV:" -c-1d`
 WANT=1.2
 test "$REV" = "$WANT" || fail REV should be $WANT not $REV
 echo OK
+
+echo $N check that changes takes --begin=dspec-v2 statements ........$NL
+touch bar
+bk new $Q bar
+bk commit $Q -ywhatever
+for i in 1 2 3 4 5
+do	bk edit $Q bar
+	echo $i >> bar
+	bk delta $Q -y$i bar
+	bk commit $Q -ywhatever
+done
+cat <<'EOF' > dspec
+# dspec-v2
+$begin {
+	"FILE begin\n"
+}
+":GFILE: :REV:\n"
+$end {
+	"FILE end\n"
+}
+EOF
+# LMXXX - 1.0???
+cat > WANT <<EOF
+cmd line begin
+FILE begin
+ChangeSet 1.8
+ChangeSet 1.7
+ChangeSet 1.6
+ChangeSet 1.5
+ChangeSet 1.4
+ChangeSet 1.3
+ChangeSet 1.2
+ChangeSet 1.1
+ChangeSet 1.0
+FILE end
+EOF
+bk changes --dspecf=dspec --begin='"cmd line begin\n"' > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N check that ranges work as well ..............................$NL
+cat > WANT <<EOF
+cmd line begin
+FILE begin
+ChangeSet 1.4
+ChangeSet 1.3
+FILE end
+EOF
+bk changes -r1.2..1.4 --dspecf=dspec --begin='"cmd line begin\n"' > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N check that forward/backwards works ..........................$NL
+cat > WANT <<EOF
+cmd line begin
+FILE begin
+ChangeSet 1.3
+ChangeSet 1.4
+FILE end
+EOF
+bk changes -f -r1.2..1.4 --dspecf=dspec --begin='"cmd line begin\n"' > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N check that a null range runs begin/end ......................$NL
+cat > WANT <<EOF
+cmd line begin
+FILE begin
+FILE end
+EOF
+bk changes -r1.2..1.2 --dspecf=dspec --begin='"cmd line begin\n"' > GOT
+cmpfiles WANT GOT
+echo OK

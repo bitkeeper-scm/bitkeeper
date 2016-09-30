@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-":DSUMMARY:\n"
-":PATH:"
-$each(:TAGGED:){"S "(:TAGGED)"\n"}
-":COMMENTS:"
+":DT: :REV: :D: :T::TZ: :USERHOST: :DS: :DP: :LI:/:LD:/:LU:\n"
+$if(:DPN:){"P :DPN:\n"}
+$each(:TAGGED:){"S (:TAGGED:)\n"}
+$each(:C:){"C (:C:)\n"}
 "------------------------------------------------\n"

@@ -874,7 +874,7 @@ dspec_collapse(char **dspec, char **begin, char **end)
 				fputc(*p, f);
 				break;
 			}
-			while (*t == ' ') t++;
+			while (isspace(*t)) t++;
 			if (*t != '{') { /* no match */
 				fputc(*p, f);
 				break;

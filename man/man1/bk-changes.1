@@ -75,7 +75,7 @@ Specifying revisions is incompatible with the
 options.
 .SH OPTIONS
 .de Tp
-.TP \fB\-\-dspecf\=\fP\*<file\*>
+.TP \fB\-\-begin\=<script>\fP
 ..
 .Tp
 .OPTreq \- n
@@ -90,6 +90,8 @@ may be a regular expression, or if the
 option is specified, a glob.
 If there is a trailing \*(lqi\*(rq then ignore case in the search.
 If there is a trailing \*(lqt\*(rq then search only in tag names.
+Yes, it would be nice if this worked on (meta)data other than the
+comments but as of now it does not.
 .Tp
 .B \-a
 List all deltas, including tag deltas.
@@ -101,6 +103,16 @@ An additional
 after this option will turn off the listing of the empty merge deltas (the
 .Q \-e 
 option is inverted from its previous value each time the option is seen).
+.Tp
+.OPTreq \-\-begin\= script
+The dspec v2 language (see bk help dspec, in particular the examples) is awk
+like and has begin/end sections.
+This option allows you to specify the body of a begin section (if the
+file also has a begin section then both are run; order is
+undefined).
+A begin script is typically used with an on disk dspec file that has been 
+written in a way to do one thing by default and another if a variable
+is set to non-zero.
 .Tp
 .OPTreq \-c dates
 Specifies the changesets to be listed as a date range, i.e.,
@@ -164,10 +176,12 @@ i.e., everything which would be sent back with a bk push.
 .B \-\-lattice
 Restrict the changesets to those on the lattice between the two range
 endpoints.  Unlike a range, the lower bound is included in the output.
+Empty merge nodes are included (unlike the default output).
 .Tp
 .B \-\-longest
 Restrict the changesets to those on the longest line between the two range
 endpoints.  Unlike a range, the lower bound is included in the output.
+Empty merge nodes are included (unlike the default output).
 .Tp
 .B \-m
 Do not show any merge changesets, empty or not.
@@ -193,6 +207,15 @@ Use with
 .QR \-a
 to see tags and empty merges,
 i.e., everything which would be brought over with a bk pull.
+.Tp
+.B \-\-oneline
+Print a summary of every cset in a single line. It is an alias for:
+\f(CWbk changes -nd'$if(:CHANGESET: && !:COMPONENT_V:){:MD5KEY: $first(:C:)}$else{  :DPN:}'
+.Tp
+.B \-\-short
+With the system supplied dspecs, this will limit the file/commit comments
+to only the first line (it does so by setting the $9 dspec variable to 1, 
+the system supplied dspecs use that to change their output).
 .Tp
 .B \-\-sparse\-ok
 When using include/exclude patterns (\c

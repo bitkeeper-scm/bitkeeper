@@ -30,13 +30,21 @@ $unless (:CHANGESET:) {
 	" +:LI: -:LD:"			# lines added/deleted
 }
 "\n"
-$each(:C:) {				# comments
-	":INDENT:  (:C:)\n"
+$if ($9 -eq 0) {			# comments
+	$each(:C:) {
+		":INDENT:  (:C:)\n"
+	}
+} $else {
+	":INDENT:  "
+	$first(:C:)
+	"\n"
 }
 $each(:TAGS:) {
 	"  TAG: (:TAGS:)\n"
 }
-$if (:MERGE:) {
-	":INDENT:  MERGE: :MPARENT:\n"
+$if ($9 -eq 0) {
+	$if (:MERGE:) {
+		":INDENT:  MERGE: :MPARENT:\n"
+	}
 }
 "\n"

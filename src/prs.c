@@ -22,8 +22,10 @@ typedef struct {
 	int	flags;
 	int	doheader;
 	int	reverse;
-	int	n_revs;
+	int	nrevs;
 	char	*dspec;
+	char	**begin;
+	char	*end;
 	RANGE	rargs;
 } Opts;
 
@@ -49,7 +51,7 @@ log_main(int ac, char **av)
 	char	*url = 0;
 	int	standalone = 0;
 	int	c;
-	char	*name;
+	char	*name, *spec;
 	char	*cset = 0, *tip = 0;
 	int	want_parent = 0;
 	pid_t	pid = 0;	/* pager */
@@ -57,6 +59,8 @@ log_main(int ac, char **av)
 		{ "dspecf;", 300 },		/* let user pass in dspec */
 		{ "lattice", 310 },		/* color lattice */
 		{ "longest", 320 },		/* color longest */
+		{ "dspecbegin;", 330 },		/* $begin body */
+		{ "begin;", 330 },		/* ditto */
 		{ "standalone", 'S' },		/* alias */
 		{ 0, 0 }
 	};
@@ -69,7 +73,7 @@ log_main(int ac, char **av)
 		    case '0': case '1': case '2': case '3': case '4':
 		    case '5': case '6': case '7': case '8': case '9':
 			opts->doheader = 0;
-			opts->n_revs = opts->n_revs * 10 + (c - '0');
+			opts->nrevs = opts->nrevs * 10 + (c - '0');
 			break;
 		    case 'a':					/* doc 2.0 */
 			opts->flags |= PRS_ALL;
@@ -124,6 +128,11 @@ log_main(int ac, char **av)
 			if (rflags) bk_badArg(c, av);
 		    	rflags = RANGE_LONGEST;
 			break;
+		    case 330:	/* --dspecbegin */
+			spec = aprintf("# dspec-v2\n%s", optarg);
+			dspec_collapse(&spec, 0, 0);
+		    	opts->begin = addLine(opts->begin, spec);
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -152,7 +161,10 @@ log_main(int ac, char **av)
 		    "%s: -S only can be used if -L is also used\n", prog);
 		return (1);
 	}
-	dspec_collapse(&opts->dspec, 0, 0);
+	spec = 0;
+	// this calls exit(1) on error
+	dspec_collapse(&opts->dspec, &spec, &opts->end);
+	if (spec) opts->begin = addLine(opts->begin, spec);
 
 	if (opts->rargs.rstart && (cset || tip)) {
 		fprintf(stderr, "%s: -c, -C, and -r are mutually exclusive.\n",
@@ -240,6 +252,10 @@ next:		rc = 1;
 private void
 doLog(Opts *opts, sccs *s)
 {
+	ser_t	d, lastd = 0;
+	int	didBegin = 0;
+	int	i;
+
 	if (opts->flags & PRS_ALL) range_markMeta(s);
 	if (opts->doheader) {
 		printf("======== %s ", s->gfile);
@@ -250,6 +266,42 @@ doLog(Opts *opts, sccs *s)
 		}
 		printf("========\n");
 	}
-	s->prs_nrevs = opts->n_revs;
-	sccs_prs(s, opts->flags, opts->reverse, opts->dspec, stdout);
+	s->prs_nrevs = opts->nrevs;
+	if (!opts->dspec) opts->dspec = ":DEFAULT:";
+	s->prs_odd = 0;
+	s->prs_join = 0;
+	unless (SET(s)) {
+		for (d = s->rstop; d >= TREE(s); d--) {
+			FLAGS(s, d) |= D_SET;
+			if (d == s->rstart) break;
+		}
+	}
+	for (d = (opts->reverse ? s->rstart : s->rstop);
+	     (d >= TREE(s)) &&
+		 (opts->reverse ? (d <= s->rstop) : (d >= s->rstart));
+	     opts->reverse ? d++ : d--) {
+		unless (FLAGS(s, d) & D_SET) continue;
+
+		if (!didBegin && opts->begin) {
+			EACH(opts->begin) {
+				sccs_prsdelta(s, d,
+				    opts->flags, opts->begin[i], stdout);
+			}
+			didBegin = 1;
+		}
+		if (sccs_prsdelta(s, d, opts->flags, opts->dspec, stdout)) {
+			lastd = d;
+			unless (--s->prs_nrevs) break;
+		}
+	}
+	if (!didBegin && opts->begin) {
+		EACH(opts->begin) {
+			sccs_prsdelta(s, 0,
+			    opts->flags|PRS_FORCE, opts->begin[i], stdout);
+		}
+	}
+	if (opts->end) {
+		sccs_prsdelta(s, lastd,
+		    opts->flags|PRS_FORCE, opts->end, stdout);
+	}
 }

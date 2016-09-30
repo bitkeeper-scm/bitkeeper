@@ -122,7 +122,7 @@ changes_main(int ac, char **av)
 	int	rc = 0;
 	char	**nav = 0;
 	char	**urls = 0, **rurls = 0, **lurls = 0;
-	char	*normal;
+	char	*normal, *spec;
 	char	*searchStr = 0;
 	char	buf[MAXPATH];
 	pid_t	pid = 0; /* pager */
@@ -144,8 +144,11 @@ changes_main(int ac, char **av)
 		{ "lattice", 330 },		/* range is a lattice */
 		{ "longest", 340 },		/* longest path */
 		{ "dspecbegin;", 350 },		/* dspec $begin clause */
+		{ "begin;", 350 },		/* dspec $begin clause */
 		{ "tags", 360 },
 		{ "all-tags", 370 },
+		{ "short", 380 },		/* a short form */
+		{ "oneline", 390 },		/* a really short form */
 		{ 0, 0 }
 	};
 
@@ -269,13 +272,17 @@ changes_main(int ac, char **av)
 		    case 330: /* --lattice */
 			if (opts.rflags) bk_badArg(c, av);
 			opts.rflags = RANGE_LATTICE;
+			opts.noempty = 0;
 			break;
 		    case 340: /* --longest */
 			if (opts.rflags) bk_badArg(c, av);
 			opts.rflags = RANGE_LONGEST;
+			opts.noempty = 0;
 			break;
 		    case 350: /* --dspecbegin */
-			opts.begin = addLine(opts.begin, strdup(optarg));
+			spec = aprintf("# dspec-v2\n%s", optarg);
+			dspec_collapse(&spec, 0, 0);
+			opts.begin = addLine(opts.begin, spec);
 			break;
 		    case 360: /* --tags */
 			opts.tagOnly = 1;
@@ -283,6 +290,14 @@ changes_main(int ac, char **av)
 			break;
 		    case 370: /* --all-tags */
 			opts.tagOnly = opts.tagDeletes = 1;
+			break;
+		    case 380: /* --short */
+			opts.begin = addLine(opts.begin, strdup("${9=1}"));
+			break;
+		    case 390: /* --oneline */
+			if (opts.dspec) usage();
+			opts.dspec = strdup("$if(:CHANGESET: && !:COMPONENT_V:)"
+			    "{:MD5KEY: $first(:C:)}$else{  :DPN:}\n");
 			break;
 		    default: bk_badArg(c, av);
 		}
@@ -782,11 +797,9 @@ doit(int dash)
 	}
 	if (opts.rargs.rstart ||
 	    (opts.rflags & (RANGE_LATTICE|RANGE_LONGEST))) {
-		/* if a list, then don't skip empty as they listed it */
-		if (!opts.rargs.rstop &&
-	    	    !(opts.rflags & (RANGE_LATTICE|RANGE_LONGEST))) {
-			opts.noempty = 0;
-		}
+		/* if a rev or list, then don't skip empty as they listed it */
+		if (opts.rargs.rstart && !opts.rargs.rstop) opts.noempty = 0;
+
 		if (range_process("changes", s, opts.rflags, &opts.rargs)) {
 			goto next;
 		}

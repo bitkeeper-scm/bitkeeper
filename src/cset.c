@@ -867,7 +867,7 @@ sccs_patch(sccs *s, cset_t *cs)
 	int	rc = 0;
 	int	deltas = 0, csets = 0, last = 0;
 	int	outdiffs = 0;
-	int	prs_flags = (PRS_PATCH|PRS_FASTPATCH|SILENT);
+	int	prs_flags = (PRS_FASTPATCH|SILENT);
 	int	i, n, newfile;
 	ser_t	*list;
 	char	*gfile = 0;
@@ -952,8 +952,7 @@ sccs_patch(sccs *s, cset_t *cs)
 			printf("\n");
 		}
 		if (copts.csetkey && CSET(s)) FLAGS(s, d) &= ~D_CSET;
-		s->rstop = s->rstart = d;
-		if (sccs_prs(s, prs_flags, 0, NULL, stdout)) cset_exit(1);
+		if (sccs_prsPatch(s, d, prs_flags, stdout)) cset_exit(1);
 		printf("\n");
 		/* takepatch lists tags+commits so we do too */
 		if (CSET(s)) csets++;
