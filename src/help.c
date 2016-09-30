@@ -47,7 +47,7 @@ help_main(int ac,  char **av)
 	}
 	assert(topic);
 	if (strieq(topic, "release-notes")) {
-		sprintf(buf, "%s/RELEASE-NOTES", bin);
+		sprintf(buf, "%s/RELEASE-NOTES.md", bin);
 		fileCopy(buf, out);
 	} else if (opt) {
 		if (file) {

@@ -1,8 +1,12 @@
-============================================================================
+# BitKeeper version 7.3.1ce released Sep 29 2016
 
-New features
+A smaller collection of bugfixes and new features. This is mainly
+being released because of a bug introducted in bk-7.3 that caused some
+older repositories to stop working.
 
-- Add a simple mechinism for user's to add new commands to bk.
+## New features
+
+- Add a simple mechinism for users to add new commands to BitKeeper.
   If 'bk-foo' exists on the PATH, then 'bk foo' will call that command.
   (git already does something similar)
   If you want 'bk help foo' to work, you do that by making 'bk-foo --help'
@@ -11,18 +15,64 @@ New features
   destructive and it doesn't handle --help, it just ignores it, that
   could lead to a mess.
 
-- The dspec expression $first(:KEY:) was introduced in bk-7.0 but with a
-  different less useful syntax.  Now $first() has changed and is documented.
-  
-============================================================================
-Release notes for BitKeeper version 7.3ce release July 13 2016
+- The dspec expression `$first(:KEY:)` was introduced in bk-7.0 but with a
+  different less useful syntax.  Now `$first()` has changed and is documented.
+
+- The `bk send` and `bk receive` commands will now correctly package
+  csets from a nested repositories that impact multiple
+  components. With this release nested csets can be transferred like
+  this:
+  ```
+bk send -rRANGE - | <send to new machine> | bk receive -
+```
+
+- The 'changes' command has new --short and --oneline command line
+  options. See 'bk help changes' for details.
+
+## Changes
+
+- In the past, when running 'bk foo' where 'foo' is not a builtin
+  BitKeeper command, the bk executable would try to execute 'foo' from
+  the user's PATH. This could cause confusion and so this feature has
+  been removed. Now and commands that are not understood by BitKeeper,
+  or match the new bk-foo extention above, will print a command not
+  found error.
+
+- The dspec language used to extract metadata with 'bk changes' and
+  'bk log' is now better documented in the 'bk help log' man page.
+
+## Bugfixes
+
+- In bk-7.3ce, a feature was removed where imports might put the user
+  running the import after the hostname like this:
+  `someone@company.com[me]`
+  This change introduced a bug where old csets created with that
+  syntax were not read correctly if the repository was also in the OLD
+  bk-5.0 syntax.
+
+- Fix a problem with incremental fast-export on nested repositories
+
+- Lots of fixes to the Makefile's to support parallel builds.
+
+- Pathnames in RCS and SCCS keywords (see `bk help keywords`) are now
+  correctly expanded using historical pathnames when fetch old
+  versions of files that have been renamed. This was preventing
+  `bk export -tplain -rREV DIR` for generating a perfect replicate
+  of older releases that contain keywords.
+
+- In BK/Web when looking at files changes, binary files are not
+  reported correctly.
+
+---
+
+# Release notes for BitKeeper version 7.3ce release July 13 2016
 
 This release contains changes aimed at decoupling built-in packages
 from BitKeeper to make it easier to include to system packages.  Since
 some functionality changed, but nothing major was added the minor
 version number was incremented.
 
-New features
+## New features
 
 - The 'bk fast-import' command was added to quickly import git
   repositories into bk. This is the initial release of a work in
@@ -40,12 +90,13 @@ New features
   bk changes -t shows only the currently tagged changesets;
   bk changes -tt shows all changesets even if the tag is moved/deleted
   and annotates them with that information:
+    ```
+   ChangeSet@1.2678.1.218, 2015-07-15 15:09:24-07:00, wscott@work.bitkeeper.com
+     Fix problem with t.status in tagged release
+     TAG: bk-7.0 (currently on 1.2678.1.220)
+```
 
-  ChangeSet@1.2678.1.218, 2015-07-15 15:09:24-07:00, wscott@work.bitkeeper.com
-    Fix problem with t.status in tagged release
-    TAG: bk-7.0 (currently on 1.2678.1.220)
-
-Changes
+## Changes
 
 - Removed the out-of-date version of GNU diff from our tree.  The few
   places where BK assumed a GNU diff, it will now use the one on the
@@ -94,22 +145,26 @@ Changes
 - As part of the tag delete changes a number of dspecs were changed
   - The $each() function was normalized to strictly walk each line
     (separated by newlines) of a dspec for processing.  Previously
-    :DSPEC: and $each(:DSPEC:) were separate and could do different
+    `:DSPEC:` and `$each(:DSPEC:)` were separate and could do different
     things.
   - So the :C: macro was changed when not used in $each to return the
     comments with newlines.  Previous it would join multiple lines
     without adding spaces which isn't very useful.
   - The tag releated dspecs changed:
     (these are lists separated by newlines)
-    :TAGGED:  all tags on delta that are still active
-    :TAGS:    all tags on delta and inactive ones are annotated
-              if they are deleted or moved.
-    :ALL_TAGS: Show all tags on delete active or not (old :TAG:)
+
+    | Keyword  | Meaning |
+	| -------- | ------- |
+    |:TAGGED:  |all tags on delta that are still active|
+    |:TAGS:    |all tags on delta and inactive ones are annotated|
+    |          |if they are deleted or moved.|
+	|:ALL_TAGS:|Show all tags on delete active or not (old :TAG:)|
 
     Some aliases were added for compability:
+	```
       :TAG: -> :TAGGED:
       :SYMBOL: -> :ALL_TAGS:
-
+```
 - Rework some of the build dependancies in our Makefile so it no
   longer assumes that 'bk' is installed and tries to use the installed
   bk when building BitKeeper.  Now the 'bk' binary is built first and
@@ -131,6 +186,8 @@ Bugfixes
 - Fix 'bk' binary so if it has a chain of symlinks to the final
   location the code can still find the install directory.  This
   simplifies packages for NixOS.
+
+```
 
 ============================================================================
 Release notes for BitKeeper version 7.2.1ce release May 16 2016
@@ -575,3 +632,4 @@ Minimum Windows version supported is Windows Vista.
 We continue to support Linux, Windows, MacOS, Solaris, and several
 BSDs on x86.  We can add back in any other major platform if needed,
 just let us know.
+```

@@ -265,7 +265,7 @@ PSCR	= t/doit t/guitest
 PROGS	= libc/mtst$(EXE)
 LIBS	= libc/libc.a
 DATA	= bkmsg.txt bkhelp.txt version \
-	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
+	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES.md \
 	dspec-changes dspec-changes-3.2 dspec-changes-4.0 dspec-changes-h \
 	dspec-changes-hv dspec-changes-json dspec-changes-json-v \
 	dspec-changes-vv dspec-log dspec-prs
@@ -607,8 +607,8 @@ crankrelease nightly: $(BK) crank.sh remote.sh  ## Do a BitKeeper release (or ni
 	test -d $$DIR || mkdir -p $$DIR ; \
 	REPO=$(REPO) URL=$(URL) HOSTS=$$HOSTS REMOTE=remote.sh \
 	    LOG=$(LOG) bash crank.sh $$TYPE ; \
-	$(BK) -R get -qS RELEASE-NOTES ; \
-	cp ../RELEASE-NOTES $$DIR ; \
+	$(BK) -R get -qS ../RELEASE-NOTES.md ; \
+	cp ../RELEASE-NOTES.md $$DIR ; \
 	SAVED_WD=$(shell pwd) ; \
 	cd $$DIR && chmod +rx bk-* >/dev/null 2>&1 ; \
 	rm -f MD5SUMS ; \
