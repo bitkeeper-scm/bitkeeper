@@ -57,10 +57,10 @@ for host in $HOSTS
 do	
 	RCP=rcp
 	RSH=rsh
-	if [ "$host" = "macos106" ]
+	if [ "$host" = "macos106" -o "$host" = "macos1012" ]
 	then
 		RCP="scp -q"
-		RSH=ssh
+		RSH="ssh -A"
 	fi
 	(
 	    test "X$@" = Xstatus && {

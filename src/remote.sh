@@ -147,7 +147,13 @@ case $CMD in
 	if [ $CMD != nightly ]
 	then
 		# run tests
-		{ ./build rshtest 2>&1 || failed; } | \
+		if [ "X`which rsh`" = "X" ]
+		then
+			TESTTARG=sshtest
+		else
+			TESTTARG=rshtest
+		fi
+		{ ./build $TESTTARG 2>&1 || failed; } | \
 			while read line
 			do
 				echo "$line"
