@@ -1656,7 +1656,7 @@ _guitest() {
 		echo "guitest: expects to be run in a BitKeeper source tree"
 		exit 1
 	fi
-	bk wish "$(bk bin)/t/guitest" $@
+	bk wish "$(bk bin)/t/guitest" "$@"
 }
 
 _sh() {

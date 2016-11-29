@@ -793,16 +793,17 @@ bk guitest citool > "$OUT" 2>&1 <<'EOF'
 
 	test_buttonPress "Commit"
 	test_buttonPress "Commit"
+
+	set text [test_getDiffs]
+	if {![string match "*The repository is currently locked*" $text]} {
+		puts "pre-commit trigger output is not in text window"
+		exit 1
+	}
+
+	test_buttonPress "Quit" then "Quit but save*"
 EOF
 err=$?
-test $err -ne 0 && { echo failed; echo "exited $err; expected 0"; exit 1; }
-expected="The repository is currently locked against updates, try later."
-grep -q "$expected" "$OUT" || {
-	echo failed
-	echo "expected: '$expected'"
-	echo "  actual: '`cat "$OUT"`'"
-	exit 1
-}
+test $err -ne 0 && fail -f "$OUT"
 echo OK
 
 echo $N Test that toggling a selected new file works ................$NL
