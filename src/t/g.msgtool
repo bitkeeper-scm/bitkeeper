@@ -130,12 +130,13 @@ test -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
 echo OK
 
 echo $N Option -P: Message from command .............................$NL
-bk guitest msgtool -P 'bk version' >"$OUT" 2>&1 <<'EOF'
+bk guitest msgtool -P 'bk pwd' >"$OUT" 2>&1 <<'EOF'
     global widgets
     set actual [string trim [$widgets(text) get 1.0 end-1c]]
-    set expected [string trim [exec bk version]]
+    set expected [string trim [exec bk pwd]]
     if {$actual ne $expected} {
-        puts "expected: '$expected' got: '$actual'"
+        puts "WANT: '$expected'"
+        puts "GOT:  '$actual'"
     }
     exit 0
 EOF
