@@ -1629,6 +1629,26 @@ void scan_6()
 .*6: L Error: 'and','or','xor','not' are unimplemented reserved words
 }
 
+test scan-7 {test floating-point constants 1} -body {
+#lang L --line=1
+void scan_7()
+{
+	/* This tests that these all scan without errors. */
+	.3;
+	3.3;
+	.3e10;
+	3.3e10;
+	33e10;
+	.3e+10;
+	3.3e+10;
+	33e+10;
+	.3e-10;
+	3.3e-10;
+	33e-10;
+}
+scan_7();
+} -output {}
+
 test unicode-1 {test unicode in string constants and here documents} -body {
 #lang L --line=1
 void unicode_1()
@@ -1931,6 +1951,26 @@ void unicode_5()
 	unless (a[1] eq "yd") puts("bad 5.3");
 }
 unicode_5();
+} -output {}
+
+test octal-1 {test octal constants} -body {
+#lang L --line=1
+void octal_1()
+{
+	/*
+	 * Test that a leading 0 in an integer constant is no longer
+	 * interpreted as octal. It was until we turned on the
+	 * KILL_OCTAL #define for Tcl.
+	 */
+	unless (0o777 == 511) puts("bad 1");
+	unless (0o0777 == 511) puts("bad 2");
+	unless (0777 == 777) puts("bad 3");
+	unless (08 == 8) puts("bad 4");
+	unless (09 == 9) puts("bad 5");
+	unless ((int)"08" == 8) puts("bad 6");
+	unless ((int)"09" == 9) puts("bad 7");
+}
+octal_1();
 } -output {}
 
 test cmdsubst-1 {test command substitution} -body {

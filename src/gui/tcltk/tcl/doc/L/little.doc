@@ -259,10 +259,11 @@ When one of these types is expected, supplying another one usually is
 an error, except that an int always can be used as a float.  You can
 override this behavior with a type cast.
 
-Hex and octal integer constants are specified like this:
+Integer constants may be specified as follows:
 
-    int space = 0x20;
-    int escape = 0o33;
+    int space = 0x20;	// hex
+    int escape = 0o33;	// octal
+    int bits = 0b10101;	// binary
 
 Integer constants can be arbitrarily large; they are not limited
 by the machine's word size.
@@ -293,7 +294,7 @@ After the deletion any characters after the deleted character are shifted
 left by one:
 
     s = "123X456";
-    undef(s[3]);  // s is now "123456", the X is gone, the rest left shifted
+    undef(s[3]); 	// s is now "123456"
 
 =item Undef
 

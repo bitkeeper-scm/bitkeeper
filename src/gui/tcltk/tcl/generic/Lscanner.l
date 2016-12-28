@@ -549,19 +549,15 @@ canonical_num(char *num)
 				return T_INT_LITERAL;
 			}
 	0o[0-7]+	{
-				/*
-				 * Create a leading 0 so it looks like
-				 * octal to Tcl.
-				 */
-				yytext[1] = '0';
-				L_lval.s = canonical_num(yytext+1);
+				L_lval.s = canonical_num(yytext);
 				return T_INT_LITERAL;
 			}
 	0x[0-9a-fA-F]+	{
 				L_lval.s = canonical_num(yytext);
 				return T_INT_LITERAL;
 			}
-	[0-9]*\.[0-9]+	{
+	[0-9]*\.[0-9]+([eE][+-]?[0-9]+)?	|
+	[0-9]+[eE][+-]?[0-9]+		{
 				L_lval.s = ckstrdup(yytext);
 				return T_FLOAT_LITERAL;
 			}
