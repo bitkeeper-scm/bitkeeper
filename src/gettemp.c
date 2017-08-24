@@ -117,7 +117,8 @@ _bktmp(char *file, int line, char *buf)
 	for (i = 0; i < tmpdirs_len; i++) {
 		unless (getTempfile(tmpdirs[i], file, line, &buf)) return (buf);
 	}
-	fprintf(stderr, "_bktmp(%s, %d) failed", file, line);
+	fprintf(stderr, "_bktmp(%s, %d) failed: %s\n", file, line,
+	    strerror(errno));
 	return (0);
 }
 
@@ -137,7 +138,8 @@ _bktmp_dir(char *file, int line, char *buf)
 			return (buf);
 		}
 	}
-	fprintf(stderr, "_bktmp_dir(%s, %d) failed", file, line);
+	fprintf(stderr, "_bktmp_dir(%s, %d) failed: %s\n", file, line,
+	    strerror(errno));
 	return (0);
 }
 
