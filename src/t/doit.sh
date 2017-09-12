@@ -350,6 +350,7 @@ setup_env()
 	unset BK_NO_TRIGGERS
 	#unset BK_UPGRADE_PLATFORM
 	unset BK_NOTTY
+	unset BK_CONFIG
 
 	# clear OLDPATH in case bk ran doit
 	unset BK_OLDPATH
