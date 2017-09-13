@@ -3263,7 +3263,14 @@ checkTags(sccs *s, u32 flags)
 			} else {
 				// but a normal tag should always have
 				// a symbol
-				tagassert(SYMBOLS(s, d));
+				if (DATE(s, d) > yearSecs[2004-1970]) {
+					// unless it is from an old
+					// version of bk which could
+					// create tag graph nodes that
+					// are not merges and don't
+					// contain a new tag.
+					tagassert(SYMBOLS(s, d));
+				}
 			}
 		} else {
 			tagassert(!PTAG(s, d));
@@ -3287,8 +3294,19 @@ checkTags(sccs *s, u32 flags)
 					tagassert(SYMGRAPH(s, p));
 					tagassert(!SYMBOLS(s, d));
 				} else {
-					// this might be tag merge
-					tagassert(SYMBOLS(s, p));
+					// if this is a tag merge then
+					// it must have a new tag
+					//
+					// otherwise it should be a
+					// new tag, but some old
+					// versions of bk could create
+					// an empty node on the
+					// symgraph that still points
+					// at a cset
+					if (MTAG(s, d) ||
+					    (DATE(s, d) > yearSecs[2004-1970])) {
+						tagassert(SYMBOLS(s, p));
+					}
 				}
 			}
 			tagassert(!MERGE(s, d));
