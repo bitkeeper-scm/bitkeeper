@@ -61,6 +61,7 @@ test `ls OUT* | wc -l` -ge 1 || {
 }
 cat - <<'EOF' > WANT
 arg1
+--
 host
 bk bkd
 EOF
@@ -79,6 +80,7 @@ echo " 'arg1' 'arg 2' 'host' 'bk bkd'" > WANT
 cat - <<'EOF' > WANT
 arg1
 arg 2
+--
 host
 bk bkd
 EOF
@@ -100,6 +102,7 @@ touch project/RESYNC/BitKeeper/tmp/patch
 BK_RSH=rsh bk abort rsh://host/project
 test -d project/RESYNC && fail RESYNC still there
 cat - <<'EOF' > WANT
+--
 host
 bk bkd
 EOF

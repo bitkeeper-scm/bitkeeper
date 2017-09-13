@@ -516,7 +516,6 @@ bkd(remote *r)
 				r->gzip = 0; /* don't compress extra */
 			}
 		}
-		cmd[++i] = r->host;
 		if (r->user) {
 			cmd[++i] = "-l";
 			cmd[++i] = r->user;
@@ -527,6 +526,8 @@ bkd(remote *r)
 			cmd[++i] = "-p";
 			cmd[++i] = port;
 		}
+		cmd[++i] = "--";
+		cmd[++i] = r->host;
 
 		/*
 		 * This cute hack should work if you have a sh or a csh.
