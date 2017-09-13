@@ -1720,7 +1720,8 @@ private int
 changes_part1(remote *r, char **av, char *key_list)
 {
 	int	flags, fd, rc, rcsets = 0, rtags = 0;
-	char	buf[MAXPATH];
+	char	*line;
+	char	buf[MAXLINE];
 
 	if (bkd_connect(r, 0)) return (-1);
 	if (send_part1_msg(r, av)) return (-1);
@@ -1745,15 +1746,16 @@ changes_part1(remote *r, char **av, char *key_list)
 		unless (streq("@CHANGES INFO@", buf)) {
 			return (0); /* protocol error */
 		}
-		while (getline2(r, buf, sizeof(buf)) > 0) {
-			if (streq("@END@", buf)) break;
+		assert(r->rf);
+		while (line = fgetline(r->rf)) {
+			if (streq("@END@", line)) break;
 
 			/*
 			 * Check for write error, in case
 			 * our pager terminate early
 			 */
-			if (buf[0] == BKD_DATA) {
-				if (writen(1, &buf[1], strlen(buf) - 1) < 0) break;
+			if (line[0] == BKD_DATA) {
+				if (writen(1, &line[1], strlen(line) - 1) < 0) break;
 				if (write(1, "\n", 1) < 0) break;
 			}
 		}
@@ -1791,6 +1793,7 @@ changes_part2(remote *r, char **av, char *key_list, int ret)
 {
 	int	rc = 0;
 	int	rc_lock;
+	char	*line;
 	char	buf[MAXLINE];
 
 	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) {
@@ -1822,10 +1825,11 @@ changes_part2(remote *r, char **av, char *key_list, int ret)
 		rc = -1; /* protocol error */
 		goto done;
 	}
-	while (getline2(r, buf, sizeof(buf)) > 0) {
-		if (streq("@END@", buf)) break;
-		if (buf[0] == BKD_DATA) {
-			if (writen(1, &buf[1], strlen(buf) - 1) < 0) break;
+	assert(r->rf);
+	while (line = fgetline(r->rf)) {
+		if (streq("@END@", line)) break;
+		if (line[0] == BKD_DATA) {
+			if (writen(1, &line[1], strlen(line) - 1) < 0) break;
 			write(1, "\n", 1);
 		}
 	}

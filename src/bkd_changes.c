@@ -24,6 +24,8 @@ cmd_chg_part1(int ac, char **av)
 	char 	buf[MAXLINE];
 	char	*new_av[100];
 	FILE 	*f;
+	char	*line;
+	size_t	len;
 	pid_t	pid;
 
 	if (ac == 2 && streq(av[1], "-K")) {
@@ -74,10 +76,10 @@ cmd_chg_part1(int ac, char **av)
 
 	f = popenvp(new_av, "r");
 	out("@CHANGES INFO@\n");
-	while (fnext(buf, f)) {
+	while (line = fgetln(f, &len)) {
 		if (newline) outc(BKD_DATA);
-		newline = (strchr(buf, '\n') != 0);
-		if (out(buf) <= 0) break;
+		newline = (line[len-1] == '\n');
+		if (writen(1, line, len) <= 0) break;
 	}
 	pclose(f);
 	unless (newline) out("\n");
@@ -98,6 +100,8 @@ cmd_chg_part2(int ac, char **av)
 	int	rc, status, fd, fd1, i, j;
 	int	newline = 1;
 	FILE	*f;
+	char	*line;
+	size_t	len;
 
 	setmode(0, _O_BINARY);
 	p = getenv("BK_REMOTE_PROTOCOL");
@@ -173,10 +177,10 @@ cmd_chg_part2(int ac, char **av)
 	out("@CHANGES INFO@\n");
 	f = fopen(cmd, "rt");
 	assert(f);
-	while (fnext(buf, f)) {
+	while (line = fgetln(f, &len)) {
 		if (newline) outc(BKD_DATA);
-		newline = (strchr(buf, '\n') != 0);
-		if (out(buf) <= 0) break;
+		newline = (line[len-1] == '\n');
+		if (writen(1, line, len) <= 0) break;
 	}
 	fclose(f);
 	unless (newline) out("\n");

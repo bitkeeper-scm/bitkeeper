@@ -997,3 +997,17 @@ EOF
 bk changes -r1.2..1.2 --dspecf=dspec --begin='"cmd line begin\n"' > GOT
 cmpfiles WANT GOT
 echo OK
+
+echo $N test very long dspecs .......................................$NL
+D=`perl -e 'print "x" x 5000'`
+echo $D > WANT
+echo $NX $D $NXL > WANTN
+bk changes -q -r+ -nd$D > GOT
+cmpfiles WANT GOT
+bk changes -q -r+ -d$D > GOT
+cmpfiles WANTN GOT
+bk changes -q -r+ -nd$D . > GOT
+cmpfiles WANT GOT
+bk changes -q -r+ -d$D . > GOT
+cmpfiles WANT GOT   # a 'remote' changes always has newline
+echo OK
