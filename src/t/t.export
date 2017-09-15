@@ -289,6 +289,36 @@ grep -q b/src/foo.h ../PATCH || {
 }
 echo OK
 
+echo $N Test changes to BitKeeper/etc in a patch.....................$NL
+bk edit $Q BitKeeper/etc/ignore || fail
+echo junk >> BitKeeper/etc/ignore
+bk ci $Q -yjunk BitKeeper/etc/ignore || fail
+bk commit -yedit-ignore $Q || fail
+rm -rf ../EXPORT
+bk export -tpatch -rCSET1.. > ../PATCH
+perl -lne 'print $1 if /^\+\+\+ b\/([^ \t]+)/' ../PATCH > ../LIST
+cat <<EOF > ../WANT
+html/bar.html
+html/blech.html
+html/foo.html
+man/bar.1
+man/blech.1
+man/foo.1
+src/bar.c
+src/bar.h
+src/blech.c
+src/blech.h
+src/foo.c
+src/foo.h
+EOF
+cmpfiles ../WANT ../LIST
+bk export -a -tpatch -rCSET1.. > ../PATCH
+perl -lne 'print $1 if /^\+\+\+ b\/([^ \t]+)/' ../PATCH > ../LIST
+echo BitKeeper/etc/ignore > ../WANT2
+cat ../WANT >> ../WANT2
+cmpfiles ../WANT2 ../LIST
+echo OK
+
 echo $N Test unified/procedural diffs in a patch ....................$NL
 cat > lod.c <<EOF
 int

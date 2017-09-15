@@ -285,7 +285,8 @@ export_patch(Opts *opts)
 			return (1);
 		}
 		fend[-1] = '|';
-		if (strneq(fstart, "BitKeeper/", 10) &&
+		if (!opts->sysfiles &&
+		    strneq(fstart, "BitKeeper/", 10) &&
 		    strneq(fend, "BitKeeper/", 10)) continue;
 		fprintf(f1, "%s\n", buf);
 	}

@@ -4,14 +4,14 @@
 bk export \- export a patch or version of a \*(BK repository
 .SH SYNOPSIS
 .B bk export \-tpatch
-.[B] \-hpST
+.[B] \-ahpST
 .[OPTreq] \-s alias
 .[OPTreq] \-i pat
 .[OPTreq] \-x pat
 .OPTreq \-r r1\fB,\fPr2
 .br
 .B bk export \-tplain
-.[B] \-kSTvw
+.[B] \-akSTvw
 .[OPTreq] \-s alias
 .[OPTreq] \-i pat
 .[OPTreq] \-x pat
@@ -38,6 +38,9 @@ and
 options.
 .SH OPTIONS
 .TP "\\fB\\-\\-standalone \\fP"
+.B \-a
+Include system files from BitKeeper/ subdirectory in exports.
+.tp
 .B \-h
 Disable patch header.
 .tp
