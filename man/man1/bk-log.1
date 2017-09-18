@@ -424,6 +424,18 @@ Those are from \f(CWdspec-changes-json-v\fP which is the dspec that is used
 for \f(CWbk changes -v --json\fP which (surprise!) produces json format output.
 If you want to understand this language that is a good file to read.
 .LP
+Other than variables, which are expanded inside double quotes, none of 
+the $word ($if/$else/$first/$each/etc) expand inside double quotes.
+This can be surprising, you might think the \f(CWbk changes --short\fP dspec
+is:
+.DS
+":MD5SUM: $first(:C:)\en"
+.DE
+but that does not work, this will:
+.DS
+":MD5SUM: " $first(:C:) "\en"
+.DE
+.LP
 In many cases, all keywords will expand in begin/end blocks, those are 
 run in the context of the first/last delta selected.
 If a range is selected that has no matching deltas (think
@@ -431,15 +443,32 @@ If a range is selected that has no matching deltas (think
 for example) then \fBnone\fP of the keywords will be expanded, the current
 system expands keywords if and only if there is a valid delta in play.
 .LP
-A simple dspec-v2 example is the old \f(CWbk prs\fp output (SCCS compat):
+A simple dspec-v2 is the \f(CWbk log\fp output format:
 .DS
-# dspec-v2
-":DT: :REV: :D: :T::TZ: :USERHOST: :DS: :DP: :LI:/:LD:/:LU:\en"
-"P :DPN:\en"
-$each(:TAGGED:){"S (:TAGGED:)\en"}
-$each(:C:){"C (:C:)\en"}
-"------------------------------------------------\en"
+":DPN: :REV:\en"
+"  :D_: :T::TZ: :USERHOST: +:LI: -:LD:\en"
+$each(:C:) {            # comments
+        "  (:C:)\en"
+}
+"\en"
+$if (:TAGS:) {
+        $each(:TAGS:) {
+                "  TAG: (:TAGS:)\en"
+        }
+        "\en"
+}
 .DE
+That says:
+.br
+line 1: print the path name and the revision
+.br
+line 2: indent the date/time/timezone user@host +lines added -lines deleted
+.br
+line 3-5: indent each line of the comments
+.br
+line 6: blank line
+.br
+line 7-11: if there are tags, print them with another blank line
 .SS KEYWORDS
 Some keywords are per repository and are marked with 
 .B R

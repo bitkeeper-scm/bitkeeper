@@ -1180,3 +1180,33 @@ EOF
 bk log -f -r1.2..1.2 --dspecf=dspec --begin='"cmd line begin\n"' bar > GOT
 cmpfiles WANT GOT
 echo OK
+
+echo $N test --oneline ..............................................$NL
+cd ../../copy
+bk changes --oneline > GOT
+bk changes -nd':MD5KEY: $first(:C:)' > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N make sure we can override the dspecf ........................$NL
+cat > my-dspec <<'EOF'
+# dspec-v2
+
+$if(:CHANGESET: && !:COMPONENT_V:) {
+        ":MD5KEY: => " $first(:C:)
+} $else {
+	"  :DPN:"
+}
+"\n"
+EOF
+bk changes --dspecf=my-dspec > GOT
+bk changes -nd':MD5KEY: => $first(:C:)' > WANT
+cmpfiles WANT GOT
+echo OK
+
+# This is a crappy test but it will at least warn us if someone breaks
+# --short.
+echo $N test --short ................................................$NL
+bk changes --short > GOT
+grep -q 'MERGE: 1.2.1.1' GOT && fail
+echo OK

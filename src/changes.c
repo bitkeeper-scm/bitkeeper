@@ -240,6 +240,7 @@ changes_main(int ac, char **av)
 			opts.sameComp = 1;
 			break;
 		    case 303: /* --dspecf */
+		    	if (opts.dspecfile) usage();
 			opts.dspecfile = optarg;
 			break;
 		    case 310:	/* --filter */
