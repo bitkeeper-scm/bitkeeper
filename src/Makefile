@@ -388,8 +388,13 @@ srcs: $(SRCS) $(HDRS) FORCE
 	$(Q)for sub in $(SUBDIRS); do $(BK) -r$$sub co -q; done
 
 tags: $(patsubst %,%/tags.local, $(SUBDIRS)) tags.local
-	@$(BK) get -Sq tags.skippats
-	@$(BK) _sort -u $^ | grep -v -ftags.skippats > $@
+	@if [ -x $(BK) ]; \
+	then	$(BK) get -Sq tags.skippats; \
+		$(BK) _sort -u $^ | grep -v -ftags.skippats > $@; \
+	else \
+		bk get -Sq tags.skippats; \
+		bk _sort -u $^ | grep -v -ftags.skippats > $@; \
+	fi
 	@echo ctags completed
 
 tags.local: $(SRCS) $(HDRS)
