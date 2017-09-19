@@ -446,6 +446,9 @@ upgrade_latestVersion(char *new_vers, char *new_utc)
 	if (time(0) - mtime(buf) > DAY) {
 		/* latest-bkver file is old, start update in background */
 		av = addLine(av, "bk");
+
+		/* avoid atexit() tests that can hang in regressions */
+		av = addLine(av, "-?BK_REGRESSION=");
 		av = addLine(av, "upgrade");
 		av = addLine(av, "--update-latest");
 		av = addLine(av, 0);
