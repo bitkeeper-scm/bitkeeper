@@ -1,3 +1,39 @@
+# BitKeeper version 7.3.2 released Sep 23 2017
+
+A small collection of bugfixes
+
+- Improve the error message when bk fails to allocate a temp file
+  https://users.bitkeeper.org/t/read-only-file-system-causes-suboptimal-error-message/478
+
+- Clear BK_CONFIG before running regressions
+  https://users.bitkeeper.org/t/bk-config-checkout-get-makes-bk-fail-tests/563
+
+- Relax the consistency tests for tags to allow strange constructs
+  created by 15 year old versions of bk. These will still be rejected
+  on a newer repository.
+
+- In `bk changes URL`, fix problem with extremely long output lines
+  not getting transmitted correctly.
+  https://users.bitkeeper.org/t/bk-changes-path-stops-when-it-hits-a-maximally-long-comment/542
+
+- Document 'bk export -a' that includes files from the `BitKeeper/`
+  subdirectory and fix a problem where it didn't work with the
+  `-tpatch` option.
+  https://users.bitkeeper.org/t/bk-export-omits-changes-to-bitkeeper-etc-ignore/344
+
+- Minor tweaks to fix testcases to continue working correctly
+
+- bkd commands are now able to rotate logfiles to prevent
+  BitKeeper/log from growing too large
+
+- Testcase tweak to avoid occasional regression failures
+  https://users.bitkeeper.org/t/occasional-regression-failure-upgrade-running-in-deleted-dir/577/2
+
+- More documentation for 'bk changes --oneline/--short'
+
+***
+
+
 # BitKeeper version 7.3.1ce released Sep 29 2016
 
 A smaller collection of bugfixes and new features. This is mainly
