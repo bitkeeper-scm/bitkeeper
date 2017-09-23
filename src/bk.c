@@ -1588,7 +1588,7 @@ write_log(char *file, char *format, ...)
 	va_end(ap);
 	fclose(f);
 	/* only rotate logs on command boundaries */
-	if (indent() == 0) log_rotate(path);
+	if (indent() <= (getenv("_BK_IN_BKD") ? 1 : 0)) log_rotate(path);
 	return (0);
 }
 
