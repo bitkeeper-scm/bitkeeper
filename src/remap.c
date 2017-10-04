@@ -112,11 +112,12 @@ remap_linkcount(project *proj, char *rel, struct stat *sb)
 private int
 remap_lstat(project *proj, char *rel, struct stat *sb)
 {
-	int	sccs;
 	char	buf[MAXPATH];
 
-	sccs = fullRemapPath(buf, proj, rel);
-	assert(sccs);
+	unless (fullRemapPath(buf, proj, rel)) {
+		memset(sb, 0, sizeof(*sb));
+		return (-1);
+	}
 	return (lstat(buf, sb));
 }
 

@@ -187,3 +187,26 @@ _BK_FORCE_REPACK=1 bk admin -z ff || fail
 bk _cp SCCS/s.ff 2
 cmpfiles 1 2
 echo OK
+
+echo $N Bluearcs relink bug .........................................$NL
+cd "$HERE"
+mkdir bluearc
+cd bluearc
+bk setup a
+cd a
+mkdir -p foo/bar
+touch foo/bar/baz
+bk -xr new $Q
+bk commit -f $Q
+cd ..
+bk clone $Q a b
+cd b
+bk rmdir foo/
+mkdir quux
+touch quux/badger
+ln -s quux foo
+bk -xr new $Q
+bk commit -f $Q
+cd ..
+bk relink $Q a b || exit 1
+echo OK
