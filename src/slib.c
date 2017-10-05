@@ -5223,7 +5223,7 @@ sccs_writeHere(sccs *s, char *new)
 	if (s->sfile != s->fullsfile) free(s->fullsfile);
 	free(s->sfile);
 	s->sfile = spath;
-	t = strchr(spath, '/');
+	t = strrchr(spath, '/');
 	*t = 0;
 	s->proj = proj_init(spath);
 	*t = '/';

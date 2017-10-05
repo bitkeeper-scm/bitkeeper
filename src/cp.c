@@ -16,8 +16,10 @@
 
 #include "system.h"
 #include "sccs.h"
-private int	cp(char *from, char *to, int force, int quiet);
+
+private int	cp(char *from, char *to, int quiet);
 private	int	doLink(project *p1, project *p2);
+
 /*
  * cp - copy a file to another file,
  * removing the changeset marks,
@@ -29,7 +31,8 @@ cp_main(int ac, char **av)
 {
 	int	force = 0;
 	int	quiet = 0;
-	int	c;
+	int	c, rc;
+	project	*src_proj, *dst_proj;
 
 	while ((c = getopt(ac, av, "fq", 0)) != -1) {
 		switch (c) {
@@ -42,11 +45,37 @@ cp_main(int ac, char **av)
 		close(0);	/* XXX - what is this for? */
 		usage();
 	}
-	return (cp(av[optind], av[optind+1], force, quiet));
+	src_proj = proj_init(av[optind]);
+	dst_proj = proj_init(av[optind+1]);
+	if (src_proj != dst_proj) {
+		unless (force) {
+			fprintf(stderr,
+			    "%s: must be in same repo or use cp -f.\n", prog);
+			return (1);
+		}
+		if (repository_rdlock(src_proj)) {
+			fprintf(stderr,
+			    "%s: unable to lock source repository "
+			    "for reading\n", prog);
+			return (1);
+		}
+	}
+	if (repository_wrlock(dst_proj)) {
+		fprintf(stderr,
+		    "%s: unable to lock destination repository "
+		    "for writing\n", prog);
+		return (1);
+	}
+	rc = cp(av[optind], av[optind+1], quiet);
+	if (src_proj != dst_proj) repository_unlock(src_proj, 0);
+	repository_unlock(dst_proj, 0);
+	proj_free(src_proj);
+	proj_free(dst_proj);
+	return (rc);
 }
 
 private int
-cp(char *from, char *to, int force, int quiet)
+cp(char *from, char *to, int quiet)
 {
 	sccs	*s;
 	ser_t	d;
@@ -57,10 +86,6 @@ cp(char *from, char *to, int force, int quiet)
 	int	err;
 
 	assert(from && to);
-	unless (proj_samerepo(from, to, 1) || force) {
-		fprintf(stderr, "bk cp: must be in same repo or use cp -f.\n");
-		return (1);
-	}
 	sfile = name2sccs(from);
 	unless (s = sccs_init(sfile, INIT_MUSTEXIST)) {
 		fprintf(stderr, "%s: %s: No such file\n", prog, from);

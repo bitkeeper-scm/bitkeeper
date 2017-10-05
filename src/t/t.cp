@@ -74,7 +74,7 @@ bk cp file1 ../copy/file2 2>ERR && {
 	echo should have failed
 	exit 1
 }
-grep -q "bk cp: must be in same repo or use cp -f." ERR || {
+grep -q "cp: must be in same repo or use cp -f." ERR || {
 	echo wrong error message
 	cat ERR
 	exit 1
@@ -89,7 +89,7 @@ bk cp file1 ../clone/file2 2>ERR && {
 	echo should have failed
 	exit 1
 }
-grep -q "bk cp: must be in same repo or use cp -f." ERR || {
+grep -q "cp: must be in same repo or use cp -f." ERR || {
 	echo wrong error message
 	cat ERR
 	exit 1
@@ -193,4 +193,12 @@ cat <<EOF > WANT
 cp: non-existent: No such file
 EOF
 cmpfiles WANT GOT
+echo OK
+
+echo $N Test cp from outside of the repository ......................$NL
+cd /tmp
+bk cp $Q "$HERE"/project/file1 "$HERE"/project/file3 || fail
+cd "$HERE"/project
+bk get $Q file1 file3 || fail
+cmpfiles file1 file3
 echo OK
