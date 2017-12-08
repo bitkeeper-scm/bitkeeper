@@ -300,11 +300,15 @@ echo OK
 
 GREP=grep
 $GREP --version > VERS 2>/dev/null
-grep -q 'grep.* 2.[4-9]' VERS || grep -q 'grep.* 2.[1-9][0-9]' VERS || {
+grep -q 'grep.* 2.[4-9]' VERS ||
+grep -q 'grep.* 2.[1-9][0-9]' VERS ||
+grep -q 'grep.* 3.[0-9]' VERS || {
 	test -x /usr/local/bin/grep && GREP=/usr/local/bin/grep
 }
 $GREP --version > VERS 2>/dev/null
-grep -q 'grep.* 2.[4-9]' VERS || grep -q 'grep.* 2.[1-9][0-9]' VERS || {
+grep -q 'grep.* 2.[4-9]' VERS ||
+grep -q 'grep.* 2.[1-9][0-9]' VERS ||
+grep -q 'grep.* 3.[0-9]' VERS || {
 	echo This system has a grep which cannot run this test
 	echo please install GNU grep 2.4 or later
 	cat VERS

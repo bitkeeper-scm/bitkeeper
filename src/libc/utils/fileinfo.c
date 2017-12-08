@@ -130,8 +130,8 @@ hardlinked(char *a, char *b)
 	//assert(0);
 	if (stat(a, &sa) || stat(b, &sb)) return (0);
 	if ((sa.st_size == sb.st_size) &&
-	    (sa.st_dev == sa.st_dev) &&
-	    (sa.st_ino == sa.st_ino) &&
+	    (sa.st_dev == sb.st_dev) &&
+	    (sa.st_ino == sb.st_ino) &&
 	    (sa.st_nlink == sb.st_nlink) &&
 	    (sa.st_nlink >= 2)) {
 		return (1);

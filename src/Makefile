@@ -135,6 +135,11 @@ WARNINGS_GCC4=-Wextra -Wno-pointer-sign -Wno-sign-compare \
 # -Wno-unusedr-esult Do not warn if a caller ignores return value
 WARNINGS_GCC5=-Wno-unused-result
 
+WARNINGS_GCC6= -Wno-misleading-indentation
+
+# XXX could not get -Wimplicit-fallthrough=3 to work
+WARNINGS_GCC7= -Wno-implicit-fallthrough
+
 # Other options to consider enabling in the future:
 #
 # -Wnested-externs Prototypes declared in a function
@@ -156,6 +161,18 @@ ifeq ($(GCC_MAJOR_REV),4)
 endif
 ifeq ($(GCC_MAJOR_REV),5)
 	WARNINGS += $(WARNINGS_GCC3) $(WARNINGS_GCC4) $(WARNINGS_GCC5)
+endif
+ifeq ($(GCC_MAJOR_REV),6)
+	WARNINGS += $(WARNINGS_GCC3) $(WARNINGS_GCC4) $(WARNINGS_GCC5) \
+		    $(WARNINGS_GCC6)
+endif
+ifeq ($(GCC_MAJOR_REV),7)
+	WARNINGS += $(WARNINGS_GCC3) $(WARNINGS_GCC4) $(WARNINGS_GCC5) \
+		    $(WARNINGS_GCC6) $(WARNINGS_GCC7)
+endif
+ifeq ($(GCC_MAJOR_REV),8)
+	WARNINGS += $(WARNINGS_GCC3) $(WARNINGS_GCC4) $(WARNINGS_GCC5) \
+		    $(WARNINGS_GCC6) $(WARNINGS_GCC7) $(WARNINGS_GCC8)
 endif
 
 TRACE = -DUSE_TRACE

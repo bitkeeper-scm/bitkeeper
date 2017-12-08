@@ -36,7 +36,7 @@
 
 #ifndef	_STDIO_H_
 #define	_STDIO_H_
-
+#define __FILE_defined 1
 #include "stdio_remap.h"
 
 #include <stdarg.h>

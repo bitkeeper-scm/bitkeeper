@@ -14917,11 +14917,9 @@ printTagDetails(sccs *s, ser_t d, symbol *sym, char *out)
 
 /*
  * Include the kw2val() hash lookup function.  This is dynamically
- * generated during the build by kwextract.pl and gperf (see the
+ * generated during the build by kw2val.pl and gperf (see the
  * Makefile).
  */
-extern	struct kwval *kw2val_lookup(register const char *str,
-    register unsigned int len);
 #include "kw2val_lookup.c"
 
 #define	notKeyword -1

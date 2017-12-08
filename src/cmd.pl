@@ -18,6 +18,7 @@ $gperf = 'gperf' unless -x $gperf;
 
 $_ = `$gperf --version`;
 die "mk-cmd.pl: Requires gperf version >3\n" unless /^GNU gperf 3/;
+$use_sizet = 1 if /^GNU gperf 3\.[1-9]/;
 
 open(C, "| $gperf > cmd.c.new") or die;
 
@@ -63,9 +64,13 @@ typedef struct CMD {
 	u8	remote:1;	/* always allowed as a remote command */
 } CMD;
 
-CMD	*cmd_lookup(const char *str, unsigned int len);
-
 END
+
+if ($use_sizet) {
+    print H "CMD	*cmd_lookup(const char *str, size_t len);\n";
+} else {
+    print H "CMD	*cmd_lookup(const char *str, unsigned int len);\n";
+}
 
 while (<DATA>) {
     chomp;

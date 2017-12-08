@@ -40,7 +40,18 @@ $gperf = 'gperf' unless -x $gperf;
 $_ = `$gperf --version`;
 die "mk-cmd.pl: Requires gperf version >3\n" unless /^GNU gperf 3/;
 
-open(C, "| $gperf -c > kw2val_lookup.c") or die;
+$use_sizet = 1 if /^GNU gperf 3\.[1-9]/;
+
+open(C, '>kw2val_lookup.c') or die;
+if ($use_sizet) {
+    print C "struct kwval *kw2val_lookup(const char *str, size_t len);\n";
+} else {
+    print C "struct kwval *kw2val_lookup(const char *str, unsigned int len);\n";
+}
+close(C);
+
+
+open(C, "| $gperf -c >> kw2val_lookup.c") or die;
 
 my $in = 0;
 my @keywords;
