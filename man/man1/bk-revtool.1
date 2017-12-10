@@ -39,6 +39,15 @@ $ bk revtool -S
 or
 $ bk revtool --standalone
 .DE
+The default behaviour for files,
+when double clicking on a line to view the changeset that created that line,
+is to zoom all the way out to the product changeset.
+If you wish to restrict your view to the component changesets:
+.DS
+$ bk revtool -S some_file.c
+or
+$ bk revtool --standalone some_file.c
+.DE
 .\}
 .LP
 .B bk revtool

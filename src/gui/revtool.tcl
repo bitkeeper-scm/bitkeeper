@@ -2553,9 +2553,6 @@ proc arguments {} \
 				    "\"$fname\" not a bk controlled file"
 				exit
 			}
-			if {[exec bk repotype "$fname"] == "component"} {
-				set dashs 1
-			}
 		}
 	}
 	if {($rev2 != "") && ($rev1 != "")} {
