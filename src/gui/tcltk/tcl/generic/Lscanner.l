@@ -519,14 +519,15 @@ canonical_num(char *num)
 				/*
 				 * Push back the : and return a T_ID
 				 * unless it's "default".  The grammar relies
-				 * on this to avoid a nasty conflict.
+				 * on this to avoid a nasty conflict.  See the
+				 * rule for option_arg in Lgrammar.y
 				 */
-				put_back(':');
-				if (!strncmp(yytext, "default", 7)) {
+				if (!strcmp(yytext, "default:")) {
+					put_back(':');
 					return T_DEFAULT;
 				}
-				L_lval.s = ckstrdup(yytext);
-				L_lval.s[yyleng-1] = 0;
+				L_lval.s = ckstrndup(yytext, yyleng-1);
+				put_back(':');
 				return T_ID;
 			}
 	([A-Z]|::)([0-9a-zA-Z]|::)*_\*	{

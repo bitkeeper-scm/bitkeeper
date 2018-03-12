@@ -3406,6 +3406,7 @@ void syntax_1_3()
 	unless (args(constructor:) eq "-constructor") puts("bad 22");
 	unless (args(continue:) eq "-continue") puts("bad 23");
 	unless (args(default:) eq "-default") puts("bad 23.2");
+	unless (args(defaultextension:) eq "-defaultextension") puts("bad 23.3");
 	unless (args(destructor:) eq "-destructor") puts("bad 24");
 	unless (args(do:) eq "-do") puts("bad 25");
 	unless (args(else:) eq "-else") puts("bad 26");

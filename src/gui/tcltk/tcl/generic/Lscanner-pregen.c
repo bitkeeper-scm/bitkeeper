@@ -1239,7 +1239,7 @@ goto find_rule; \
 #define YY_MORE_ADJ 0
 #define YY_RESTORE_YY_MORE_OFFSET
 char *L_text;
-#line 1 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 #define YY_NO_INPUT 1
 
 
@@ -1257,7 +1257,7 @@ char *L_text;
 
 
 
-#line 24 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 24 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 /*
  * Copyright (c) 2006-2008 BitMover, Inc.
  */
@@ -1816,7 +1816,7 @@ YY_DECL
 	register char *yy_cp, *yy_bp;
 	register int yy_act;
     
-#line 374 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 374 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 #line 1822 "Lscanner.c"
 
@@ -1915,473 +1915,473 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 376 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 376 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LPAREN;
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 377 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 377 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_RPAREN;
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 378 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 378 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 interpol_lbrace(); return T_LBRACE;
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 379 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 379 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LBRACKET;
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 380 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 380 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_RBRACKET;
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 381 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 381 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_COMMA;
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 382 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 382 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BANG;
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 383 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 383 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PLUS;
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 384 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 384 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_MINUS;
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 385 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 385 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_STAR;
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 386 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 386 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_SLASH;
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 387 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 387 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PERC;
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 388 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 388 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQPLUS;
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 389 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 389 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQMINUS;
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 390 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 390 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQSTAR;
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 391 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 391 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQSLASH;
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 392 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 392 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQPERC;
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 393 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 393 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQBITAND;
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 394 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 394 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQBITOR;
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 395 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 395 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQBITXOR;
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 396 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 396 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQLSHIFT;
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 397 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 397 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQRSHIFT;
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 398 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 398 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQDOT;
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 399 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 399 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PLUSPLUS;
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 400 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 400 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_MINUSMINUS;
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 401 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 401 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ANDAND;
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 402 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 402 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_OROR;
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 403 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 403 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BITAND;
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 404 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 404 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BITOR;
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 405 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 405 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BITXOR;
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 406 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 406 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BITNOT;
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 407 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 407 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LSHIFT;
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 408 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 408 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_RSHIFT;
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 409 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 409 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQUALS;
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 410 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 410 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_SEMI;
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 411 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 411 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DOT;
 	YY_BREAK
 case 37:
 /* rule 37 can match eol */
 YY_RULE_SETUP
-#line 412 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 412 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_STRCAT;
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 413 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 413 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DOTDOT;
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 414 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 414 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ELLIPSIS;
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 415 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 415 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_CLASS;
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 416 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 416 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EXTERN;
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 417 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 417 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_RETURN;
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 418 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 418 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_VOID;
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 419 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 419 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_STRING;
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 420 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 420 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_WIDGET;
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 421 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 421 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_INT;
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 422 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 422 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_FLOAT;
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 423 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 423 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_POLY;
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
-#line 424 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 424 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_SPLIT;
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 425 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 425 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_IF;
 	YY_BREAK
 case 51:
 YY_RULE_SETUP
-#line 426 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 426 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ELSE;
 	YY_BREAK
 case 52:
 YY_RULE_SETUP
-#line 427 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 427 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_UNLESS;
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 428 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 428 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_WHILE;
 	YY_BREAK
 case 54:
 YY_RULE_SETUP
-#line 429 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 429 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DO;
 	YY_BREAK
 case 55:
 YY_RULE_SETUP
-#line 430 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 430 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_FOR;
 	YY_BREAK
 case 56:
 YY_RULE_SETUP
-#line 431 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 431 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_STRUCT;
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
-#line 432 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 432 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_TYPEDEF;
 	YY_BREAK
 case 58:
 YY_RULE_SETUP
-#line 433 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 433 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DEFINED;
 	YY_BREAK
 case 59:
 YY_RULE_SETUP
-#line 434 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 434 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_FOREACH;
 	YY_BREAK
 case 60:
 YY_RULE_SETUP
-#line 435 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 435 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BREAK;
 	YY_BREAK
 case 61:
 YY_RULE_SETUP
-#line 436 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 436 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_CONTINUE;
 	YY_BREAK
 case 62:
 YY_RULE_SETUP
-#line 437 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 437 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_INSTANCE;
 	YY_BREAK
 case 63:
 YY_RULE_SETUP
-#line 438 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 438 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PRIVATE;
 	YY_BREAK
 case 64:
 YY_RULE_SETUP
-#line 439 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 439 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PUBLIC;
 	YY_BREAK
 case 65:
 YY_RULE_SETUP
-#line 440 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 440 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_CONSTRUCTOR;
 	YY_BREAK
 case 66:
 YY_RULE_SETUP
-#line 441 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 441 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DESTRUCTOR;
 	YY_BREAK
 case 67:
 YY_RULE_SETUP
-#line 442 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 442 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EXPAND;
 	YY_BREAK
 case 68:
 YY_RULE_SETUP
-#line 443 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 443 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ARGUSED;
 	YY_BREAK
 case 69:
 YY_RULE_SETUP
-#line 444 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 444 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ATTRIBUTE;
 	YY_BREAK
 case 70:
 YY_RULE_SETUP
-#line 445 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 445 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ATTRIBUTE;
 	YY_BREAK
 case 71:
 YY_RULE_SETUP
-#line 446 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 446 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_OPTIONAL;
 	YY_BREAK
 case 72:
 YY_RULE_SETUP
-#line 447 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 447 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_MUSTBETYPE;
 	YY_BREAK
 case 73:
 YY_RULE_SETUP
-#line 448 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 448 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_GOTO;
 	YY_BREAK
 case 74:
 YY_RULE_SETUP
-#line 449 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 449 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_SWITCH;
 	YY_BREAK
 case 75:
 YY_RULE_SETUP
-#line 450 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 450 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_CASE;
 	YY_BREAK
 case 76:
 YY_RULE_SETUP
-#line 451 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 451 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DEFAULT;
 	YY_BREAK
 case 77:
 YY_RULE_SETUP
-#line 452 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 452 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_TRY;
 	YY_BREAK
 case 78:
 YY_RULE_SETUP
-#line 453 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 453 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ARROW;
 	YY_BREAK
 case 79:
 YY_RULE_SETUP
-#line 454 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 454 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQ;
 	YY_BREAK
 case 80:
 YY_RULE_SETUP
-#line 455 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 455 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_NE;
 	YY_BREAK
 case 81:
 YY_RULE_SETUP
-#line 456 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 456 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LT;
 	YY_BREAK
 case 82:
 YY_RULE_SETUP
-#line 457 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 457 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LE;
 	YY_BREAK
 case 83:
 YY_RULE_SETUP
-#line 458 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 458 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_GT;
 	YY_BREAK
 case 84:
 YY_RULE_SETUP
-#line 459 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 459 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_GE;
 	YY_BREAK
 case 85:
 YY_RULE_SETUP
-#line 460 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 460 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQUALEQUAL;
 	YY_BREAK
 case 86:
 YY_RULE_SETUP
-#line 461 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 461 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_NOTEQUAL;
 	YY_BREAK
 case 87:
 YY_RULE_SETUP
-#line 462 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 462 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_GREATER;
 	YY_BREAK
 case 88:
 YY_RULE_SETUP
-#line 463 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 463 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_GREATEREQ;
 	YY_BREAK
 case 89:
 YY_RULE_SETUP
-#line 464 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 464 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LESSTHAN;
 	YY_BREAK
 case 90:
 YY_RULE_SETUP
-#line 465 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 465 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LESSTHANEQ;
 	YY_BREAK
 case 91:
 YY_RULE_SETUP
-#line 466 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 466 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_POINTS;
 	YY_BREAK
 case 92:
 YY_RULE_SETUP
-#line 467 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 467 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_COLON;
 	YY_BREAK
 case 93:
 YY_RULE_SETUP
-#line 468 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 468 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_QUESTION;
 	YY_BREAK
 case 94:
 YY_RULE_SETUP
-#line 469 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 469 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/*
 				 * ?> marks the end of a script or expr
@@ -2403,7 +2403,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 95:
 YY_RULE_SETUP
-#line 487 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 487 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("'and','or','xor','not' are "
 				      "unimplemented reserved words");
@@ -2412,7 +2412,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 96:
 YY_RULE_SETUP
-#line 492 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 492 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("'and','or','xor','not' are "
 				      "unimplemented reserved words");
@@ -2421,7 +2421,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 97:
 YY_RULE_SETUP
-#line 497 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 497 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("'and','or','xor','not' are "
 				      "unimplemented reserved words");
@@ -2430,7 +2430,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 98:
 YY_RULE_SETUP
-#line 502 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 502 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("'and','or','xor','not' are "
 				      "unimplemented reserved words");
@@ -2439,7 +2439,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 99:
 YY_RULE_SETUP
-#line 507 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 507 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				Type *t = L_typedef_lookup(L_text);
 				if (t) {
@@ -2454,25 +2454,26 @@ YY_RULE_SETUP
 	YY_BREAK
 case 100:
 YY_RULE_SETUP
-#line 518 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 518 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/*
 				 * Push back the : and return a T_ID
 				 * unless it's "default".  The grammar relies
-				 * on this to avoid a nasty conflict.
+				 * on this to avoid a nasty conflict.  See the
+				 * rule for option_arg in Lgrammar.y
 				 */
-				put_back(':');
-				if (!strncmp(L_text, "default", 7)) {
+				if (!strcmp(L_text, "default:")) {
+					put_back(':');
 					return T_DEFAULT;
 				}
-				L_lval.s = ckstrdup(L_text);
-				L_lval.s[L_leng-1] = 0;
+				L_lval.s = ckstrndup(L_text, L_leng-1);
+				put_back(':');
 				return T_ID;
 			}
 	YY_BREAK
 case 101:
 YY_RULE_SETUP
-#line 532 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 533 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_lval.s = ckstrdup(L_text);
 				return T_PATTERN;
@@ -2480,7 +2481,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 102:
 YY_RULE_SETUP
-#line 536 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 537 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/* Regular expression submatches */
 				L_lval.s = ckstrdup(L_text);
@@ -2489,7 +2490,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 103:
 YY_RULE_SETUP
-#line 541 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 542 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/*
 				 * Skip any leading 0's which would
@@ -2503,7 +2504,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 104:
 YY_RULE_SETUP
-#line 551 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 552 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_lval.s = canonical_num(L_text);
 				return T_INT_LITERAL;
@@ -2511,17 +2512,17 @@ YY_RULE_SETUP
 	YY_BREAK
 case 105:
 YY_RULE_SETUP
-#line 555 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 556 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_lval.s = canonical_num(L_text);
 				return T_INT_LITERAL;
 			}
 	YY_BREAK
 case 106:
-#line 560 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 561 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 107:
 YY_RULE_SETUP
-#line 560 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 561 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_lval.s = ckstrdup(L_text);
 				return T_FLOAT_LITERAL;
@@ -2530,7 +2531,7 @@ YY_RULE_SETUP
 case 108:
 /* rule 108 can match eol */
 YY_RULE_SETUP
-#line 564 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 565 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				int	line = strtoul(L_text+5, NULL, 10);
 
@@ -2546,7 +2547,7 @@ YY_RULE_SETUP
 case 109:
 /* rule 109 can match eol */
 YY_RULE_SETUP
-#line 575 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 576 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				int	line  = strtoul(L_text+5, NULL, 10);
 				char	*beg  = strchr(L_text, '"') + 1;
@@ -2566,7 +2567,7 @@ YY_RULE_SETUP
 case 110:
 /* rule 110 can match eol */
 YY_RULE_SETUP
-#line 590 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 591 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				--L->line;  // since \n already scanned
 				L_err("malformed #line");
@@ -2575,7 +2576,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 111:
 YY_RULE_SETUP
-#line 595 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 596 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				char	*beg  = strchr(L_text, '"') + 1;
 				char	*end  = strrchr(L_text, '"');
@@ -2593,7 +2594,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 112:
 YY_RULE_SETUP
-#line 609 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 610 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				char	*beg  = strchr(L_text, '<') + 1;
 				char	*end  = strrchr(L_text, '>');
@@ -2613,7 +2614,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 113:
 YY_RULE_SETUP
-#line 625 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 626 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("malformed #include");
 				yy_push_state(eat_through_eol);
@@ -2621,13 +2622,13 @@ YY_RULE_SETUP
 	YY_BREAK
 case 114:
 YY_RULE_SETUP
-#line 629 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 630 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PRAGMA;
 	YY_BREAK
 case 115:
 /* rule 115 can match eol */
 YY_RULE_SETUP
-#line 630 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 631 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/*
 				 * Rather than using a start condition
@@ -2654,7 +2655,7 @@ YY_RULE_SETUP
 case 116:
 /* rule 116 can match eol */
 YY_RULE_SETUP
-#line 652 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 653 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				--L->line;  // since \n already scanned
 				unless (L->line == 1) {
@@ -2669,44 +2670,44 @@ YY_RULE_SETUP
 case 117:
 /* rule 117 can match eol */
 YY_RULE_SETUP
-#line 662 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 663 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 118:
 YY_RULE_SETUP
-#line 663 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 664 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 119:
 /* rule 119 can match eol */
 YY_RULE_SETUP
-#line 664 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 665 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 120:
 YY_RULE_SETUP
-#line 665 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 666 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_push_state(str_double); STRBUF_START(L->token_off);
 	YY_BREAK
 case 121:
 YY_RULE_SETUP
-#line 666 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 667 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_push_state(str_single); STRBUF_START(L->token_off);
 	YY_BREAK
 case 122:
 YY_RULE_SETUP
-#line 667 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 668 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_push_state(str_backtick); STRBUF_START(L->token_off);
 	YY_BREAK
 case 123:
 YY_RULE_SETUP
-#line 668 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 669 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_push_state(comment);
 	YY_BREAK
 case 124:
 /* rule 124 can match eol */
 YY_RULE_SETUP
-#line 669 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 670 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2720,7 +2721,7 @@ YY_RULE_SETUP
 case 125:
 /* rule 125 can match eol */
 YY_RULE_SETUP
-#line 678 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 679 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2734,7 +2735,7 @@ YY_RULE_SETUP
 case 126:
 /* rule 126 can match eol */
 YY_RULE_SETUP
-#line 687 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 688 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(subst_re);
@@ -2749,7 +2750,7 @@ YY_RULE_SETUP
 case 127:
 /* rule 127 can match eol */
 YY_RULE_SETUP
-#line 697 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 698 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		char	*p, *q;
 
@@ -2776,7 +2777,7 @@ YY_RULE_SETUP
 case 128:
 /* rule 128 can match eol */
 YY_RULE_SETUP
-#line 719 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 720 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		char	*p, *q;
 
@@ -2802,11 +2803,11 @@ YY_RULE_SETUP
 /* illegal here documents (bad stuff before or after the delim) */
 case 129:
 /* rule 129 can match eol */
-#line 742 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 743 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 130:
 /* rule 130 can match eol */
 YY_RULE_SETUP
-#line 742 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 743 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_synerr("<<- unsupported, use =\\n\\t<<END to strip one "
 			 "leading tab");
@@ -2815,7 +2816,7 @@ YY_RULE_SETUP
 case 131:
 /* rule 131 can match eol */
 YY_RULE_SETUP
-#line 746 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 747 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_synerr("illegal characters after here-document delimeter");
 	}
@@ -2823,7 +2824,7 @@ YY_RULE_SETUP
 case 132:
 /* rule 132 can match eol */
 YY_RULE_SETUP
-#line 749 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 750 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_synerr("illegal characters before here-document delimeter");
 	}
@@ -2831,7 +2832,7 @@ YY_RULE_SETUP
 case 133:
 /* rule 133 can match eol */
 YY_RULE_SETUP
-#line 752 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 753 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_synerr("illegal characters after here-document delimeter");
 	}
@@ -2839,7 +2840,7 @@ YY_RULE_SETUP
 case 134:
 /* rule 134 can match eol */
 YY_RULE_SETUP
-#line 755 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 756 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_synerr("illegal characters before here-document delimeter");
 	}
@@ -2854,7 +2855,7 @@ YY_RULE_SETUP
 case 135:
 /* rule 135 can match eol */
 YY_RULE_SETUP
-#line 766 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 767 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		int	line = strtoul(L_text+5, NULL, 10);
 
@@ -2869,7 +2870,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 136:
 YY_RULE_SETUP
-#line 777 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 778 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_lval.s = ckstrdup(STRBUF_STRING());
 		STRBUF_STOP(L_lloc.beg);
@@ -2884,11 +2885,11 @@ YY_RULE_SETUP
 case 137:
 /* rule 137 can match eol */
 YY_RULE_SETUP
-#line 787 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 788 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, L_leng);
 	YY_BREAK
 case YY_STATE_EOF(lhtml):
-#line 788 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 789 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		unless (STRBUF_STARTED()) yyterminate();
 		L_lval.s = ckstrdup(STRBUF_STRING());
@@ -2905,7 +2906,7 @@ case YY_STATE_EOF(lhtml):
 case 138:
 /* rule 138 can match eol */
 YY_RULE_SETUP
-#line 801 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 802 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		unput(L_text[0]);
 		undo_yy_user_action();
@@ -2923,13 +2924,13 @@ YY_RULE_SETUP
 case 139:
 /* rule 139 can match eol */
 YY_RULE_SETUP
-#line 815 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 816 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 /* / starts an RE */
 case 140:
 YY_RULE_SETUP
-#line 817 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 818 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2943,7 +2944,7 @@ YY_RULE_SETUP
 	 */
 case 141:
 YY_RULE_SETUP
-#line 827 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 828 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2954,7 +2955,7 @@ YY_RULE_SETUP
 /* nothing else starts an RE */
 case 142:
 YY_RULE_SETUP
-#line 834 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 835 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		unput(L_text[0]);
 		undo_yy_user_action();
@@ -2971,13 +2972,13 @@ YY_RULE_SETUP
 case 143:
 /* rule 143 can match eol */
 YY_RULE_SETUP
-#line 847 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 848 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 /* / starts an RE */
 case 144:
 YY_RULE_SETUP
-#line 849 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 850 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2993,7 +2994,7 @@ YY_RULE_SETUP
 	 */
 case 145:
 YY_RULE_SETUP
-#line 861 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 862 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -3004,7 +3005,7 @@ YY_RULE_SETUP
 /* nothing else starts an RE */
 case 146:
 YY_RULE_SETUP
-#line 868 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 869 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		unput(L_text[0]);
 		undo_yy_user_action();
@@ -3015,14 +3016,14 @@ YY_RULE_SETUP
 
 case 147:
 YY_RULE_SETUP
-#line 876 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 877 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_RBRACE;
 	YY_BREAK
 
 
 case 148:
 YY_RULE_SETUP
-#line 880 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 881 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (interpol_rbrace()) {
 					STRBUF_START(L_lloc.end);
@@ -3040,7 +3041,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 149:
 YY_RULE_SETUP
-#line 894 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 895 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_synerr("illegal character");
 	}
@@ -3049,28 +3050,28 @@ YY_RULE_SETUP
 
 case 150:
 YY_RULE_SETUP
-#line 900 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 901 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\r", 1);
 	YY_BREAK
 case 151:
 YY_RULE_SETUP
-#line 901 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 902 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\n", 1);
 	YY_BREAK
 case 152:
 YY_RULE_SETUP
-#line 902 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 903 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\t", 1);
 	YY_BREAK
 case 153:
-#line 904 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 905 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 154:
-#line 905 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 906 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 155:
-#line 906 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 907 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 156:
 YY_RULE_SETUP
-#line 906 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 907 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				char	buf[TCL_UTF_MAX];
 				int	ch;
@@ -3081,18 +3082,18 @@ YY_RULE_SETUP
 case 157:
 /* rule 157 can match eol */
 YY_RULE_SETUP
-#line 912 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 913 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text+1, 1);
 	YY_BREAK
 case 158:
 YY_RULE_SETUP
-#line 913 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 914 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("$", 1);
 	YY_BREAK
 case 159:
 /* rule 159 can match eol */
 YY_RULE_SETUP
-#line 914 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 915 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("missing string terminator \"");
 				STRBUF_ADD("\n", 1);
@@ -3100,12 +3101,12 @@ YY_RULE_SETUP
 	YY_BREAK
 case 160:
 YY_RULE_SETUP
-#line 918 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 919 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, L_leng);
 	YY_BREAK
 case 161:
 YY_RULE_SETUP
-#line 919 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 920 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3116,12 +3117,12 @@ YY_RULE_SETUP
 case 162:
 /* rule 162 can match eol */
 YY_RULE_SETUP
-#line 925 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 926 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 163:
 YY_RULE_SETUP
-#line 926 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 927 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				yy_pop_state();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3133,45 +3134,45 @@ YY_RULE_SETUP
 
 case 164:
 YY_RULE_SETUP
-#line 935 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 936 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\\", 1);
 	YY_BREAK
 case 165:
 YY_RULE_SETUP
-#line 936 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 937 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("'", 1);
 	YY_BREAK
 case 166:
 /* rule 166 can match eol */
 YY_RULE_SETUP
-#line 937 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 938 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\n", 1);
 	YY_BREAK
 case 167:
 /* rule 167 can match eol */
 YY_RULE_SETUP
-#line 938 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 939 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("missing string terminator \'");
 				STRBUF_ADD("\n", 1);
 			}
 	YY_BREAK
 case 168:
-#line 943 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 944 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 169:
 YY_RULE_SETUP
-#line 943 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 944 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, L_leng);
 	YY_BREAK
 case 170:
 /* rule 170 can match eol */
 YY_RULE_SETUP
-#line 944 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 945 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 171:
 YY_RULE_SETUP
-#line 945 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 946 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				yy_pop_state();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3183,28 +3184,28 @@ YY_RULE_SETUP
 
 case 172:
 YY_RULE_SETUP
-#line 954 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 955 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text+1, 1);
 	YY_BREAK
 case 173:
 /* rule 173 can match eol */
 YY_RULE_SETUP
-#line 955 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 956 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 /* ignore \<newline> */
 	YY_BREAK
 case 174:
-#line 957 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 958 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 175:
-#line 958 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 959 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 176:
 YY_RULE_SETUP
-#line 958 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 959 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, L_leng);
 	YY_BREAK
 case 177:
 /* rule 177 can match eol */
 YY_RULE_SETUP
-#line 959 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 960 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("missing string terminator `");
 				STRBUF_ADD("\n", 1);
@@ -3212,7 +3213,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 178:
 YY_RULE_SETUP
-#line 963 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 964 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3222,7 +3223,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 179:
 YY_RULE_SETUP
-#line 969 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 970 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				yy_pop_state();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3240,7 +3241,7 @@ case 180:
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up L_text again */
 YY_RULE_SETUP
-#line 981 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 982 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				int	len;
 				char	*p = L_text;
@@ -3280,7 +3281,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 181:
 YY_RULE_SETUP
-#line 1017 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1018 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				char	*p = strstr(L_text, here_pfx);
 				if (p == L_text) {
@@ -3295,35 +3296,35 @@ YY_RULE_SETUP
 case 182:
 /* rule 182 can match eol */
 YY_RULE_SETUP
-#line 1027 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1028 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, 1);
 	YY_BREAK
 
 
 case 183:
 YY_RULE_SETUP
-#line 1031 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1032 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\\", 1);
 	YY_BREAK
 case 184:
 YY_RULE_SETUP
-#line 1032 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1033 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("$", 1);
 	YY_BREAK
 case 185:
 YY_RULE_SETUP
-#line 1033 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1034 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("`", 1);
 	YY_BREAK
 case 186:
 /* rule 186 can match eol */
 YY_RULE_SETUP
-#line 1034 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1035 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 // ignore \<newline>
 	YY_BREAK
 case 187:
 YY_RULE_SETUP
-#line 1035 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1036 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3333,7 +3334,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 188:
 YY_RULE_SETUP
-#line 1041 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1042 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_lval.s = ckstrdup(STRBUF_STRING());
 				STRBUF_STOP(L_lloc.beg);
@@ -3347,7 +3348,7 @@ case 189:
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up L_text again */
 YY_RULE_SETUP
-#line 1048 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1049 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				int	len;
 				char	*p = L_text;
@@ -3387,7 +3388,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 190:
 YY_RULE_SETUP
-#line 1084 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1085 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				char	*p = strstr(L_text, here_pfx);
 				if (p == L_text) {
@@ -3402,7 +3403,7 @@ YY_RULE_SETUP
 case 191:
 /* rule 191 can match eol */
 YY_RULE_SETUP
-#line 1094 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1095 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, 1);
 	YY_BREAK
 
@@ -3410,24 +3411,24 @@ STRBUF_ADD(L_text, 1);
 case 192:
 /* rule 192 can match eol */
 YY_RULE_SETUP
-#line 1098 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1099 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 193:
 YY_RULE_SETUP
-#line 1099 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1100 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 194:
 YY_RULE_SETUP
-#line 1100 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1101 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_pop_state();
 	YY_BREAK
 
 
 case 195:
 YY_RULE_SETUP
-#line 1104 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1105 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3437,7 +3438,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 196:
 YY_RULE_SETUP
-#line 1110 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1111 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if ((L_text[1] == re_end_delim) ||
 				    (L_text[1] == re_start_delim)) {
@@ -3450,7 +3451,7 @@ YY_RULE_SETUP
 case 197:
 /* rule 197 can match eol */
 YY_RULE_SETUP
-#line 1118 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1119 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				--L->line;  // since \n already scanned
 				L_err("run-away regular expression");
@@ -3463,7 +3464,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 198:
 YY_RULE_SETUP
-#line 1127 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1128 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				// Convert $3 to \3 (regexp capture reference).
 				STRBUF_ADD("\\", 1);
@@ -3472,7 +3473,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 199:
 YY_RULE_SETUP
-#line 1132 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1133 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (*L_text == re_end_delim) {
 					L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3506,7 +3507,7 @@ YY_RULE_SETUP
 case 200:
 /* rule 200 can match eol */
 YY_RULE_SETUP
-#line 1163 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1164 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				--L->line;  // since \n already scanned
 				L_err("run-away regular expression");
@@ -3517,7 +3518,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 201:
 YY_RULE_SETUP
-#line 1170 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1171 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				extract_re_delims(*L_text);
 				yy_pop_state();
@@ -3527,7 +3528,7 @@ YY_RULE_SETUP
 
 case 202:
 YY_RULE_SETUP
-#line 1177 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1178 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_lval.s = ckstrdup(L_text);
 				yy_pop_state();
@@ -3537,7 +3538,7 @@ YY_RULE_SETUP
 case 203:
 /* rule 203 can match eol */
 YY_RULE_SETUP
-#line 1182 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1183 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				unput(L_text[0]);
 				undo_yy_user_action();
@@ -3550,19 +3551,19 @@ YY_RULE_SETUP
 
 case 204:
 YY_RULE_SETUP
-#line 1192 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1193 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 205:
 /* rule 205 can match eol */
 YY_RULE_SETUP
-#line 1193 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1194 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_pop_state();
 	YY_BREAK
 
 case 206:
 YY_RULE_SETUP
-#line 1196 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1197 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/* This rule matches a char if no other does. */
 				L_synerr("illegal character");
@@ -3585,7 +3586,7 @@ case YY_STATE_EOF(here_doc_interp):
 case YY_STATE_EOF(here_doc_nointerp):
 case YY_STATE_EOF(eat_through_eol):
 case YY_STATE_EOF(lhtml_expr_start):
-#line 1201 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1202 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (in_lhtml) {
 					yy_user_action();  // for line #s
@@ -3596,10 +3597,10 @@ case YY_STATE_EOF(lhtml_expr_start):
 	YY_BREAK
 case 207:
 YY_RULE_SETUP
-#line 1208 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1209 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 ECHO;
 	YY_BREAK
-#line 3603 "Lscanner.c"
+#line 3604 "Lscanner.c"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -4611,7 +4612,7 @@ void L_free (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 1208 "/Users/rob/bk/dev-oss-L-fix-octal-braindamage/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1209 "/Users/rob/bk/dev-oss-L-default-bug/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 
 void
