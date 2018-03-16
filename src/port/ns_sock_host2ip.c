@@ -30,7 +30,8 @@ ns_sock_host2ip(char *host, int trace)
 
 	p = getenv("SOCKS_NS");
 	if (p && *p) {
-		gethostbyname("localhost"); /* force init the res structure */
+		/* force init the res structure */
+		unless (gethostbyname("localhost")) perror("gethostbyname");
 		res_init();
 		/* save the original values */
 		nsaddr_sav = _res.nsaddr_list[0].sin_addr.s_addr;

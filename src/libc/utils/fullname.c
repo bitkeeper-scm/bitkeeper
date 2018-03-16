@@ -120,7 +120,10 @@ fullLink(char *xfile, char *tmp, int followLink)
 	}
 
 	cleanPath(tmp, tmp);
-	if (here[0]) chdir(here);
+	if (here[0] && chdir(here)) {
+		perror("chdir error");
+		exit(1);
+	}
 	if (tmp == buf) tmp = strdup(buf);
 	return (tmp);
 }
