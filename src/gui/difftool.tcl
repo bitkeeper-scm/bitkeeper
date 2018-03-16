@@ -180,7 +180,7 @@ proc getRev {file rev checkMods} \
 		catch {close $f}
 	}
 	set tmp [tmpfile difftool]
-	if {[catch {exec bk get -qkp -r$rev $file > $tmp} msg]} {
+	if {[catch {exec bk get -qk -r$rev -TG$tmp $file} msg]} {
 		puts "$msg"
 		exit 1
 	}
