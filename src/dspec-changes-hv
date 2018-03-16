@@ -22,7 +22,7 @@ $begin {
 	"border=0 cellpadding=0>"
 	"<tr><td>\n"
 	"<table width=100% cellspacing=1 border=0 cellpadding=1>"
-	"<tr><td>\n"
+	"\n"
 }
 
 
@@ -52,11 +52,11 @@ $if (:TAGS:) {
 }
 "<tr bgcolor=white>"
   "<td>"
-    $each(:C:) { 
+    $each(:HTML_C:) {
       $unless(:CHANGESET:) {
         "&nbsp;&nbsp;&nbsp;&nbsp;"
       }
-      "&nbsp;(:C:)<br>\n"
+      "&nbsp;(:HTML_C:)\n"
     }
     $unless (:C:) {
       $unless(:CHANGESET:) {
@@ -68,5 +68,5 @@ $if (:TAGS:) {
 "</tr>\n"
 
 $end {
-	"</td></tr></table></table></body></html>\n"
+	"</table></td></tr></table></body></html>\n"
 }

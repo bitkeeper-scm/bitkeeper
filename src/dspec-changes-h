@@ -22,7 +22,7 @@ $begin {
 	"border=0 cellpadding=0>"
 	"<tr><td>\n"
 	"<table width=100% cellspacing=1 border=0 cellpadding=1>"
-	"<tr><td>\n"
+	"\n"
 }
 
 "<tr bgcolor=lightblue>"
@@ -41,12 +41,12 @@ $if (:TAGS:) {
 }
 "<tr bgcolor=white>"
   "<td>"
-    $each(:C:) {
-      "&nbsp;(:C:)<br>\n"
+    $each(:HTML_C:) {
+      "&nbsp;(:HTML_C:)"
     }
   "</td>"
 "</tr>\n"
 
 $end {
-	"</td></tr></table></table></body></html>\n"
+	"</table></td></tr></table></body></html>\n"
 }

@@ -15434,7 +15434,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		unless (p = COMMENTS(s, d)) return (nullVal);
 		for (; *p; p++) {
 			switch (*p) {
-			    case '\n': fs("<br>"); break;
+			    case '\n': fs("<br>\n"); break;
 			    case '\t':
 				fs("&nbsp;&nbsp;&nbsp;&nbsp;");
 				fs("&nbsp;&nbsp;&nbsp;&nbsp;");
