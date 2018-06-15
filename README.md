@@ -78,6 +78,10 @@ packages are required:
 
   sudo apt-get install make gperf groff bison flex libxft2-dev libtommath-dev libtomcrypt-dev libpcre3-dev zlib1g-dev liblz4-dev
 
+For Fedora and related versions of Linux the following works:
+
+  sudo yum install gcc make gperf bison flex groff pcre-devel libtomcrypt-devel libtommath-devel lz4-devel zlib-devel libXft-devel 
+
 Build using the following sequence (we build on 12 core systems;
 hence the -j12 sprinkled here and there):
 
