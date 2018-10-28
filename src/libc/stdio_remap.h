@@ -16,6 +16,8 @@
 
 // musl libc needs to to not try to define FILE in headers
 #define __DEFINED_FILE
+// the same goes with the macro below for recent glibc versions
+#define __FILE_defined 1
 
 #define asprintf	bk_asprintf
 //#define clearerr	bk_clearerr
