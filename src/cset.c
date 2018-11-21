@@ -284,24 +284,54 @@ cset_main(int ac, char **av)
 		sccs_free(cset);
 		cset_exit(1);
 	}
-
-	if (list) {
-		unless (copts.dash) {
-		    if (range_process("cset", cset, RANGE_SET, &rargs)) {
-			    goto err;
-		    }
-		    /* include tags in a patch */
-		    if (copts.makepatch) range_markMeta(cset);
-		}
-		csetlist(&copts, cset);
-		rc = 0;
-err:
-		sccs_free(cset);
-		if (cFile) free(cFile);
-		return (rc);
+	unless (list) {
+		fprintf(stderr, "cset: bad options\n");
+		goto err;
 	}
-	fprintf(stderr, "cset: bad options\n");
-	return (1);
+	if (copts.dash) {
+		/* Sort of duplicate of dash in changes.c:doit(1) */
+		char	*buf;
+		ser_t	d;
+
+		cset->rstart = 0;
+		cset->rstop = 0;
+		while(buf = fgetline(stdin)) {
+			if (copts.serial) {
+				d = atoi(buf);
+				assert((d > 0) && (d <= TABLE(cset)));
+				unless (FLAGS(cset, d)) d = 0;
+			} else {
+				d = sccs_findrev(cset, buf);
+			}
+			unless (d) {
+				fprintf(stderr, "cset: no rev like %s in %s\n",
+				    buf, cset->gfile);
+				cset_exit(1);
+			}
+			unless (cset->rstart) {
+				cset->rstart = d;
+				cset->rstop = d;
+			} else if (d < cset->rstart) {
+				cset->rstart = d;
+			} else if (d > cset->rstop) {
+				cset->rstop = d;
+			}
+			FLAGS(cset, d) |= D_SET;
+		}
+		if (cset->rstart) cset->state |= S_SET;
+	} else {
+		if (range_process("cset", cset, RANGE_SET, &rargs)) {
+			goto err;
+		}
+	}
+	/* include tags in a patch */
+	if (copts.makepatch) range_markMeta(cset);
+	csetlist(&copts, cset);
+	rc = 0;
+err:
+	sccs_free(cset);
+	if (cFile) free(cFile);
+	return (rc);
 }
 
 private void
@@ -542,30 +572,9 @@ csetlist(cset_t *cs, sccs *cset)
 	char	buf[MAXPATH*2];
 	char	*csetid;
 	int	status, i, n;
-	ser_t	d;
 	MDBM	*goneDB = 0;
 	ticker	*tick = 0;
 	weave	*cweave = 0;
-
-	if (cs->dash) {
-		while(fgets(buf, sizeof(buf), stdin)) {
-			chop(buf);
-			if (copts.serial) {
-				d = atoi(buf);
-				assert((d > 0) && (d <= TABLE(cset)));
-				unless (FLAGS(cset, d)) d = 0;
-			} else {
-				d = sccs_findrev(cset, buf);
-			}
-			unless (d) {
-				fprintf(stderr,
-				    "cset: no rev like %s in %s\n",
-				    buf, cset->gfile);
-				cset_exit(1);
-			}
-			FLAGS(cset, d) |= D_SET;
-		}
-	}
 
 	/* Save away the cset id */
 	sccs_sdelta(cset, sccs_ino(cset), buf);

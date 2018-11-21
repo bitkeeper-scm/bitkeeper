@@ -223,6 +223,33 @@ find BitKeeper/BAM -type f | bk sort > "$HERE"/GOT
 cmpfiles "$HERE"/WANT "$HERE"/GOT
 echo OK
 
+echo $N Test collapse patch saves BAM data ..........................$NL
+cd "$HERE"
+commercial clean-bam
+echo small > file
+BK_CONFIG='BAM:2!' bk new $Q -b file
+bk commit $Q -ysmall
+test -d BitKeeper/BAM || fail
+bk clone $Q -r1.1 . ../collapse-base || fail
+bk clone $Q . ../collapse || fail
+cd ../collapse
+bk collapse $Q -e -a1.1
+cd ../collapse-base
+bk bam server $Q ../collapse
+bk takepatch -a -f ../collapse/BitKeeper/tmp/collapse.patch || fail
+bk bam server $Q -r
+echo OK
+
+echo $N Test undo patch saves BAM data ..............................$NL
+cd "$HERE"
+bk clone $Q -r1.1 clean-bam undo-base || fail
+bk clone $Q clean-bam undo || fail
+cd undo
+bk undo $Q -fa1.1 || fail
+cd ../undo-base
+bk takepatch -a -f ../undo/BitKeeper/tmp/undo.patch || fail
+echo OK
+
 echo $N Test pull to see that it sends BAM data .....................$NL
 cd "$HERE"
 _BK_ALLOW_BAD_CRC=YES bk clone $Q -r1.1 project pull || fail

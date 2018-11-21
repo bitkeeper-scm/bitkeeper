@@ -767,3 +767,17 @@ bk unedit $Q foo-bar
 bk edit -q -xFOO-BAR foo-bar 2> ERR && fail -f ERR FOO-BAR passed, fix test
 grep -q 'rev in include/exclude list for SCCS/s.foo-bar' ERR || fail -f ERR
 echo OK
+
+echo $N Check that tags get injected into makepatch - ...............$NL
+cd "$HERE/copy"
+bk pull $Q
+bk push $Q
+# bk changes -er1.3.. -nd:REV:
+printf "1.5\n1.3.1.1\n1.4\n1.2.1.1\n" | bk makepatch - > PATCH
+bk undo $Q -sfa1.3
+bk changes -qaR --tags -nd:KEY: > BEFORE
+test "`wc -l < BEFORE`" -eq 4 || fail -f BEFORE should be 4 tag keys
+bk takepatch -af PATCH || fail
+bk changes -qaR -nd:KEY: > AFTER
+test -s AFTER && fail -f AFTER should be empty
+echo OK

@@ -105,11 +105,24 @@ bk delta $Q -fywhatever file
 bk commit -ywhatever $Q
 bk tag $Q RELEASE
 bk tag $Q -r1.2 RELEASE
+bk clone $Q . ../tag-undo
+cd ../tag-undo
 bk undo $Q -fr1.3 || fail
 bk _scat SCCS/s.ChangeSet | grep -q 'R 1.2' && {
 	echo failed to remove the dangling tag
 	exit 1
 }
+echo OK
+
+echo $N Restore the patch and tag should be there ...................$NL
+bk tags -nd:REV:-:TAGS: > GOT
+test -s TAGS && fail -f GOT
+bk takepatch -a -f ../tag-undo/BitKeeper/tmp/undo.patch
+bk tags -nd:REV:-:TAGS: > GOT
+echo 1.2-RELEASE > WANT
+cmpfiles WANT GOT
+bk changes -qaLR > out
+test -s out && fail -f out
 echo OK
 
 echo $N Try and undo a merge changeset ..............................$NL

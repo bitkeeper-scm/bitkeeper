@@ -480,6 +480,19 @@ bk _test -f SCCS/c.myfile || fail
 bk _cat SCCS/c.ChangeSet | grep -q '^hi2' || fail
 echo OK
 
+echo $N Make sure collapse patch includes tags ......................$NL
+bk edit $Q file
+bk delta $Q -f -y'empty' file
+bk commit -ycset $Q || fail
+bk tag $Q FIRST
+# Note - no pending work to clean up, so can takepatch right away
+bk collapse -e -r+ || fail
+bk takepatch -af BitKeeper/tmp/collapse.patch
+bk changes --tags -nd':REV:' > GOT || fail
+echo 1.7 > WANT
+cmpfiles WANT GOT
+echo OK
+
 echo $N Make sure collapse does not leave edited attr file...........$NL
 cd "$HERE"
 rm -rf project copy
