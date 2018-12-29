@@ -35,7 +35,12 @@ cvs --version | grep -q '^Concurrent.*(CVS) 1\.1' || {
 # and you are not in it.
 # Easiest thing is to error on that.
 echo $N Check that user is in cvsadmin group ........................$NL
-grep -q cvsadmin /etc/group && groups | grep -q cvsadmin || fail user not in cvsadmin group
+grep -q cvadmin /etc/group
+if [ $? -eq 0 ]
+then
+	# there is a cvsadmin group so I better be in it
+	groups | grep -q cvsadmin || fail user not in cvsadmin group
+fi
 echo OK
 
 # build a sample CVS repository with branches and branches of

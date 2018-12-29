@@ -1,3 +1,29 @@
+# BitKeeper version 7.3.3 released Dec 29 2018
+
+A bugfix release, but fixes build issues on current systems
+
+- This release fixes some problems where bk fails to build correctly
+  with newer versions of glibc.  (conflict with symbol FILE) And it
+  needed fixes to work with gperf v3
+
+- 'bk relink' could assert in a certain corner case
+  `bk: remap.c:119: remap_lstat: Assertion sccs failed.`
+
+- Fix a bug where 'bk cp' didn't work correctly when run from outside
+  of a the repository containing the file being copied.
+
+-  Fix 'bk changes --html' to handle quoting in comments.
+   Also fix html tag order
+
+-  difftool would use the wrong timestamp when extracting data from bk
+   history. This used to work in the past but was broken with a
+   different bug was fixed.
+
+- Fixed a bug where 'bk collapse' could corrupt a repository by
+  removing some required tags.
+
+***
+
 # BitKeeper version 7.3.2 released Sep 23 2017
 
 A small collection of bugfixes

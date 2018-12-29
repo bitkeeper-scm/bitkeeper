@@ -555,10 +555,10 @@ echo OK
 #bk commit $Q -yopush_cset --tag=TAG2
 #echo OK
 
-test -x /usr/bin/ruby && {
 echo $N Test ruby script to archive tagged csets ....................$NL
 cd "$HERE"
 bk clone $Q -r1.2 project tagexport || fail
+test -x /usr/bin/ruby && {
 mkdir tagexport/BitKeeper/triggers
 cat > tagexport/BitKeeper/triggers/post-incoming.release <<'EOF'
 #!/usr/bin/ruby -w
@@ -588,6 +588,7 @@ tags.each_key {|tag|
 exit 0
 EOF
 chmod +x tagexport/BitKeeper/triggers/post-incoming.release || fail
+}
 cd project
 echo "I love ruby" > language
 bk new $Q language
@@ -595,12 +596,13 @@ bk commit $Q -yruby || fail
 bk tag $Q ruby
 mkdir ../release
 bk push $Q ../tagexport 2> OUT || fail
-test -f ../release/prog-ruby.tar.gz || fail
 bk tag $Q newstuff
 bk push $Q ../tagexport 2> OUT || fail
-test -f ../release/prog-newstuff.tar.gz || fail
-echo OK
+test -x /usr/bin/ruby && {
+	test -f ../release/prog-ruby.tar.gz || fail
+	test -f ../release/prog-newstuff.tar.gz || fail
 }
+echo OK
 
 echo $N Make sure we check for illegal char in tag ..................$NL
 cd "$HERE"
@@ -770,12 +772,12 @@ echo OK
 
 echo $N Check that tags get injected into makepatch - ...............$NL
 cd "$HERE/copy"
-bk pull $Q
-bk push $Q
+bk pull $Q || fail
+bk push $Q || fail
 # bk changes -er1.3.. -nd:REV:
-printf "1.5\n1.3.1.1\n1.4\n1.2.1.1\n" | bk makepatch - > PATCH
-bk undo $Q -sfa1.3
-bk changes -qaR --tags -nd:KEY: > BEFORE
+printf "1.5\n1.3.1.1\n1.4\n1.2.1.1\n" | bk makepatch - > PATCH || fail
+bk undo $Q -sfa1.3 || fail
+bk changes -qaR --tags -nd:KEY: > BEFORE || fail
 test "`wc -l < BEFORE`" -eq 4 || fail -f BEFORE should be 4 tag keys
 bk takepatch -af PATCH || fail
 bk changes -qaR -nd:KEY: > AFTER
