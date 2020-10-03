@@ -257,16 +257,16 @@ ifeq (${TK_X11},)
 ifeq (${EMBEDDED_BUILD},)
 # install Wish.app link in APPLICATION_INSTALL_PATH and setup 'Wish Shell' compatibility links
 	@cd "${TOP_DIR}" && if [ -n "${APP_DIR}" ]; then mkdir -p "./${APP_DIR}" && rm -rf "./${APP_DIR}/Wish.app" && \
-	ln -fsh "./$$(echo "${APP_DIR}" | sed -e 's#/[^/][^/]*#/..#g')/${FMWK_DIR}/${PRODUCT_NAME}.framework/Resources/Wish.app" "./${APP_DIR}" && \
-	ln -fsh Wish.app "./${APP_DIR}/Wish Shell.app"; fi && \
-	ln -fsh Wish.app "./${TK_FMWK_DIR}/Resources/Wish Shell.app" && \
-	ln -fsh Wish "./${TK_FMWK_DIR}/Resources/Wish.app/Contents/MacOS/Wish Shell"
+	ln -fsn "./$$(echo "${APP_DIR}" | sed -e 's#/[^/][^/]*#/..#g')/${FMWK_DIR}/${PRODUCT_NAME}.framework/Resources/Wish.app" "./${APP_DIR}" && \
+	ln -fsn Wish.app "./${APP_DIR}/Wish Shell.app"; fi && \
+	ln -fsn Wish.app "./${TK_FMWK_DIR}/Resources/Wish Shell.app" && \
+	ln -fsn Wish "./${TK_FMWK_DIR}/Resources/Wish.app/Contents/MacOS/Wish Shell"
 else
 # if we are embedding frameworks, move them into the app and fix their install names
 	@cd "${TOP_DIR}" && \
 	rm -rf "./${APP_DIR}/Wish.app" && mkdir -p "./${APP_DIR}" && \
 	mv -f "./${TK_FMWK_DIR}/Resources/Wish.app" "./${APP_DIR}" && \
-	ln -fsh Wish.app "./${APP_DIR}/Wish Shell.app" && \
+	ln -fsn Wish.app "./${APP_DIR}/Wish Shell.app" && \
 	rm -rf "./${APP_DIR}/Wish.app/Contents/Frameworks" && \
 	mkdir -p "./${APP_DIR}/Wish.app/Contents/Frameworks" && \
 	${CPPROG} -RH "./${FMWK_DIR}"/T{cl,k}.framework "./${APP_DIR}/Wish.app/Contents/Frameworks" && \
@@ -274,14 +274,14 @@ else
 	rm -rf Frameworks/Tcl.framework/{,/Versions/${TCL_VERSION}}/{Headers,PrivateHeaders,*_debug,lib*.a,*Config.sh} && \
 	rm -rf Frameworks/Tk.framework/{,/Versions/${VERSION}}/{Headers,PrivateHeaders,*_debug,lib*.a,*Config.sh} && \
 	fix_install_id ( ) { \
-	    chmod -RH a+w "$$1"; \
+	    /bin/chmod -RH a+w "$$1"; \
 	    install_name_tool -id $$(otool -L "$$1" | awk "/$$2\.framework.*[^:]\$$/ {sub(\"^.*/Frameworks\",\"@executable_path/../Frameworks\",\$$1); print \$$1}") "$$1"; \
-	    chmod -RH a-w "$$1"; \
+	    /bin/chmod -RH a-w "$$1"; \
 	} && \
 	fix_install_name ( ) { \
-	    chmod -RH a+w "$$1"; \
+	    /bin/chmod -RH a+w "$$1"; \
 	    install_name_tool -change $$(otool -L "$$1" | awk "/$$2\.framework.*[^:]\$$/ {print \$$1; sub(\"^.*/Frameworks\",\"@executable_path/../Frameworks\",\$$1); print \$$1}") "$$1"; \
-	    chmod -RH a-w "$$1"; \
+	    /bin/chmod -RH a-w "$$1"; \
 	} && \
 	fix_install_id Frameworks/Tcl.framework/Tcl Tcl && fix_install_id Frameworks/Tk.framework/Tk Tk && \
 	fix_install_name MacOS/Wish Tcl && fix_install_name MacOS/Wish Tk
