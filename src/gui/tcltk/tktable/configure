@@ -3468,6 +3468,9 @@ cat >>conftest.$ac_ext <<_ACEOF
 #endif
 
 #define XOR(e, f) (((e) && !(f)) || (!(e) && (f)))
+
+extern void exit();
+
 int
 main ()
 {

@@ -2628,7 +2628,8 @@ AC_DEFUN([SC_TIME_HANDLER], [
     # (like convex) have timezone functions, etc.
     #
     AC_CACHE_CHECK([long timezone variable], tcl_cv_timezone_long, [
-	AC_TRY_COMPILE([#include <time.h>],
+	AC_TRY_COMPILE([#include <time.h>
+extern void exit();],
 	    [extern long timezone;
 	    timezone += 1;
 	    exit (0);],
@@ -2640,7 +2641,8 @@ AC_DEFUN([SC_TIME_HANDLER], [
 	# On some systems (eg IRIX 6.2), timezone is a time_t and not a long.
 	#
 	AC_CACHE_CHECK([time_t timezone variable], tcl_cv_timezone_time, [
-	    AC_TRY_COMPILE([#include <time.h>],
+	    AC_TRY_COMPILE([#include <time.h>
+extern void exit();],
 		[extern time_t timezone;
 		timezone += 1;
 		exit (0);],
@@ -2677,6 +2679,7 @@ AC_DEFUN([SC_BUGGY_STRTOD], [
 	AC_CACHE_CHECK([for Solaris2.4/Tru64 strtod bugs], tcl_cv_strtod_buggy,[
 	    AC_TRY_RUN([
 		extern double strtod();
+		extern void exit();
 		int main() {
 		    char *infString="Inf", *nanString="NaN", *spaceString=" ";
 		    char *term;
