@@ -195,7 +195,7 @@ checkRepo(char *repo)
 		int	mod = 0;
 		char	path[MAXPATH], fullpath[MAXPATH];
 
-		if (win32() || (proj && proj_isCaseFoldingFS(proj))) {
+		if (bk_win32() || (proj && proj_isCaseFoldingFS(proj))) {
 			p = proj ? proj_root(proj) : fullname(repo, fullpath);
 			getRealName(p, 0, path);
 		} else {

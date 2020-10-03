@@ -302,7 +302,7 @@ find_root(char *dir)
 	 *   f:/repo
 	 *     ^
 	 */
-	if (win32() && (buf[1] == ':')) {
+	if (bk_win32() && (buf[1] == ':')) {
 		unless (first = strchr(buf, '/')) return (0);
 	} else {
 		unless (*buf == '/') return (0);

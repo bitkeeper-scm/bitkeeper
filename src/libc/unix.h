@@ -69,14 +69,14 @@
 #define	closesocket(i)	close(i)
 #define	linkcount(a, b)	(b)->st_nlink
 
-#define	win32()		0
+#define	bk_win32()		0
 #define	win_supported()	1
 
 
 #ifdef	__APPLE__
-#define	macosx()	1
+#define	bk_macosx()	1
 #else
-#define	macosx()	0
+#define	bk_macosx()	0
 #endif
 
 /* tcp/tcp.c */

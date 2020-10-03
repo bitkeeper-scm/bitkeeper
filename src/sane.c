@@ -65,7 +65,7 @@ sane(int readonly, int resync)
 		if (!readonly && chk_permissions()) {
 			errors++;
 		}
-		unless (readonly || win32()) {
+		unless (readonly || bk_win32()) {
 			a = aprintf("BitKeeper/tmp/a%d", getpid());
 			b = aprintf("BitKeeper/tmp/b%d", getpid());
 			(void)unlink(a);

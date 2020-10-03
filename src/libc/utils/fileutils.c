@@ -158,7 +158,7 @@ sameFiles(char *file1, char *file2)
 	if (fstat(fileno(f1), &sb1)) goto out;
 	if (fstat(fileno(f2), &sb2)) goto out;
 	if (sb1.st_size != sb2.st_size) goto out;
-	if (!win32() &&
+	if (!bk_win32() &&
 	    (sb1.st_ino == sb2.st_ino) && (sb1.st_dev == sb2.st_dev)) {
 		rc = 1;
 		goto out;

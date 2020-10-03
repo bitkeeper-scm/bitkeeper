@@ -1919,7 +1919,7 @@ err:		unless (opts->autoOnly) {
 		}
 		/* no textOnly means gui is supported - useDisplay() passed */
 		if (!opts->textOnly &&
-		    !opts->quiet && !win32()) {
+		    !opts->quiet && !bk_win32()) {
 			fprintf(stderr,
 			    "Using %s as graphical display\n",
 			    gui_displayName());

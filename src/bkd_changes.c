@@ -55,7 +55,7 @@ cmd_chg_part1(int ac, char **av)
 	 * On windows, we just die because if we drop the read lock we'll
 	 * still have the file open which will prevent write operations.
 	 */
-	if (win32()) {
+	if (bk_win32()) {
 		signal(SIGALRM, exit);
 		alarm(10 * 60);
 	} else {
@@ -86,7 +86,7 @@ cmd_chg_part1(int ac, char **av)
 	out("@END@\n");
 
 	/* don't leave helper processes around */
-	unless (win32()) kill(pid, SIGKILL);
+	unless (bk_win32()) kill(pid, SIGKILL);
 
 	return (0);
 }

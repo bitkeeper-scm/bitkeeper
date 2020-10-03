@@ -131,7 +131,7 @@ upgrade_main(int ac, char **av)
 	} else {
 		platform = bk_platform;
 	}
-	if (macosx()) {
+	if (bk_macosx()) {
 		/* figure out if we're in a bundle or not */
 		bundle = fullname(bin, 0);
 		if (p = strstr(bundle, "BitKeeper.app")) {
@@ -142,13 +142,13 @@ upgrade_main(int ac, char **av)
 			bundle = 0;
 		}
 	}
-	if (win32() && (p = getenv("OSTYPE"))
+	if (bk_win32() && (p = getenv("OSTYPE"))
 	    && streq(p, "msys") && install
 	    && !getenv("BK_REGRESSION")) {
 		notice("upgrade-nomsys", 0, "-e");
 		goto out;
 	}
-	if (!macosx() && install && noperms(bin)) {
+	if (!bk_macosx() && install && noperms(bin)) {
 		notice("upgrade-badperms", bin, "-e");
 		goto out;
 	}
@@ -216,7 +216,7 @@ upgrade_main(int ac, char **av)
 			unless (version) version = strdup(data[3]);
 			if (streq(data[5], platform)) {
 				/* found this platform */
-				if (macosx()) {
+				if (bk_macosx()) {
 					/* if we hit a .bin, skip it. we
 					 * want the .pkg */
 					p = strrchr(data[1], '.');
@@ -347,7 +347,7 @@ proceed:
 		goto out;
 	}
 #else
-	if (macosx()) {
+	if (bk_macosx()) {
 		sprintf(buf, "/usr/bin/open -W %s", data[1]);
 	} else {
 		sprintf(buf, "./%s -u", data[1]);
