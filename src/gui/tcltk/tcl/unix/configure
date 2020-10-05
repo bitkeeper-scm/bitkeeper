@@ -8786,6 +8786,7 @@ else
 	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <time.h>
+extern void exit();
 int
 main ()
 {
@@ -8822,6 +8823,7 @@ else
 	    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <time.h>
+extern void exit();
 int
 main ()
 {
@@ -9131,6 +9133,7 @@ else
 /* end confdefs.h.  */
 int main() {
     extern int strstr();
+    extern void exit();
     exit(strstr("\0test", "test") ? 1 : 0);
 }
 _ACEOF
@@ -9190,6 +9193,7 @@ else
 /* end confdefs.h.  */
 int main() {
     extern int strtoul();
+    extern void exit();
     char *term, *string = "0";
     exit(strtoul(string,&term,0) != 0 || term != string+1);
 }
@@ -9249,6 +9253,7 @@ else
 /* end confdefs.h.  */
 int main() {
     extern double strtod();
+    extern void exit();
     char *term, *string = " +69";
     exit(strtod(string,&term) != 69 || term != string+4);
 }
@@ -9311,6 +9316,7 @@ else
 /* end confdefs.h.  */
 
 		extern double strtod();
+		extern void exit();
 		int main() {
 		    char *infString="Inf", *nanString="NaN", *spaceString=" ";
 		    char *term;
@@ -10111,6 +10117,10 @@ else
 
 	#include <stdlib.h>
 	#define OURVAR "havecopy=yes"
+	extern char* strchr();
+	extern char* strcpy();
+	extern char* strdup();
+	extern int strcmp();
 	int main (int argc, char *argv[])
 	{
 	    char *foo, *bar;

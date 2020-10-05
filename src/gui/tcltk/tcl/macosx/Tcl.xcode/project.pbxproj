@@ -1904,7 +1904,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/bash;
-			shellScript = "## dltest build script phase\n\nrm -f \"${DERIVED_FILE_DIR}/tcl/dltest.marker\"\nmake -C \"${DERIVED_FILE_DIR}/tcl\" dltest.marker\nln -fsh \"${DERIVED_FILE_DIR}/tcl/dltest\" \"${CONFIGURATION_BUILD_DIR}\"\n";
+			shellScript = "## dltest build script phase\n\nrm -f \"${DERIVED_FILE_DIR}/tcl/dltest.marker\"\nmake -C \"${DERIVED_FILE_DIR}/tcl\" dltest.marker\nln -fsn \"${DERIVED_FILE_DIR}/tcl/dltest\" \"${CONFIGURATION_BUILD_DIR}\"\n";
 			showEnvVarsInLog = 0;
 		};
 		F97258A40A86873C00096C78 /* Run Testsuite */ = {

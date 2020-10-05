@@ -126,7 +126,7 @@ gethelp(char *helptxt, char *topic, char *bkarg, char *prefix, FILE *outf)
 					*p = 0;
 					fputs(t, outf);
 					t = &p[7];
-					if (macosx()) {
+					if (bk_macosx()) {
 				        	/* all the same size for roff 
 				        	 *     #BKMOD#
 						 */

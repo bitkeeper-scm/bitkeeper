@@ -26,7 +26,7 @@ gui_useDisplay(void)
 	char	*p;
 
 	if ((p = getenv("BK_NO_GUI_PROMPT")) && *p) return (0);
-	if (win32() || macosx()) return ((p = getenv("BK_GUI")) && *p);
+	if (bk_win32() || bk_macosx()) return ((p = getenv("BK_GUI")) && *p);
 	return (getenv("DISPLAY") && (p = getenv("BK_GUI")) && *p);
 }
 

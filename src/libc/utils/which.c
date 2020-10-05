@@ -20,7 +20,7 @@ private int
 absolute(char *path)
 {
 	/* Any C:whatever is viewed as absolute */
-	if (win32() && isalpha(*path) && (path[1] == ':')) return (1);
+	if (bk_win32() && isalpha(*path) && (path[1] == ':')) return (1);
 
 	return ((*path == '/') ||
 	    strneq("./", path, 2) || strneq("../", path, 3));

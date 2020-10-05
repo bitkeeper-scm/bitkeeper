@@ -38,7 +38,7 @@ do_checkout(sccs *s, u32 getFlags, char ***bamFiles)
 	    !strneq(s->gfile, "BitKeeper/triggers/", 19)) {
 		return (0);
 	}
-	if (win32() && S_ISLNK(MODE(s, sccs_top(s)))) {
+	if (bk_win32() && S_ISLNK(MODE(s, sccs_top(s)))) {
 		/* no symlinks on windows */
 		return (0);
 	}

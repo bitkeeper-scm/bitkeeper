@@ -122,7 +122,7 @@ clone_main(int ac, char **av)
 	opts->bkmerge = -1;
 	if (streq(prog, "attach")) opts->attach = 1;
 	if (streq(prog, "detach")) opts->detach = 1;
-	unless (win32()) opts->link = 1;	    /* try lclone by default */
+	unless (bk_win32()) opts->link = 1;	    /* try lclone by default */
 	gzip = -1;
 	while ((c = getopt(ac, av, "@;B;CdE:j;lNpP;qr;Ss;vw|z|", lopts)) != -1) {
 		switch (c) {

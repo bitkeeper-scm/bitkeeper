@@ -222,7 +222,7 @@ diff_files(char *file1, char *file2, df_opt *dop, char *out)
 	}
 
 	/* Maybe they gave us the same file? */
-	if (!win32() && !printAll &&
+	if (!bk_win32() && !printAll &&
 	    (sb[DF_LEFT].st_dev == sb[DF_RIGHT].st_dev) &&
 	    (sb[DF_LEFT].st_ino == sb[DF_RIGHT].st_ino)) {
 		/* no diffs */

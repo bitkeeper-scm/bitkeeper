@@ -351,7 +351,7 @@ uninstall(char *path, int upgrade)
 
 	dfd = efopen("BK_UNINSTALL_LOG");
 
-	if (macosx() && exists(MAC_PHFILE)) {
+	if (bk_macosx() && exists(MAC_PHFILE)) {
 		ph = backtick("cat " MAC_PHFILE, 0);
 		/*
 		 * Ensure that
@@ -435,7 +435,7 @@ uninstall(char *path, int upgrade)
 		free(cmd);
 	}
 
-	if (macosx()) {
+	if (bk_macosx()) {
 		/* figure out if we're in a bundle or not */
 		char	*bundle = fullname(bin, 0);
 
@@ -496,7 +496,7 @@ uninstall(char *path, int upgrade)
 		}
 	}
 	/* On OS X, bk 7.0.1 and later use path_helper(8). Remove that crumb. */
-	if (macosx() && removeph) {
+	if (bk_macosx() && removeph) {
 		unlink(MAC_PHFILE);
 	}
 	rc = 0;

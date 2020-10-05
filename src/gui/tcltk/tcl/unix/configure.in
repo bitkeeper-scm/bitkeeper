@@ -353,6 +353,7 @@ AC_CHECK_FUNC(memmove, , [
 
 SC_TCL_CHECK_BROKEN_FUNC(strstr, [
     extern int strstr();
+    extern void exit();
     exit(strstr("\0test", "test") ? 1 : 0);
 ])
 
@@ -364,6 +365,7 @@ SC_TCL_CHECK_BROKEN_FUNC(strstr, [
 
 SC_TCL_CHECK_BROKEN_FUNC(strtoul, [
     extern int strtoul();
+    extern void exit();
     char *term, *string = "0";
     exit(strtoul(string,&term,0) != 0 || term != string+1);
 ])
@@ -375,6 +377,7 @@ SC_TCL_CHECK_BROKEN_FUNC(strtoul, [
 
 SC_TCL_CHECK_BROKEN_FUNC(strtod, [
     extern double strtod();
+    extern void exit();
     char *term, *string = " +69";
     exit(strtod(string,&term) != 69 || term != string+4);
 ])
@@ -545,6 +548,10 @@ AC_CACHE_CHECK([for a putenv() that copies the buffer], tcl_cv_putenv_copy, [
     AC_TRY_RUN([
 	#include <stdlib.h>
 	#define OURVAR "havecopy=yes"
+	extern char* strchr();
+	extern char* strcpy();
+	extern char* strdup();
+	extern int strcmp();
 	int main (int argc, char *argv[])
 	{
 	    char *foo, *bar;

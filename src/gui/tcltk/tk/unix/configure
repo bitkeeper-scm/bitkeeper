@@ -7215,6 +7215,7 @@ else
 /* end confdefs.h.  */
 
 		extern double strtod();
+		extern void exit();
 		int main() {
 		    char *infString="Inf", *nanString="NaN", *spaceString=" ";
 		    char *term;

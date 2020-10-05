@@ -145,6 +145,10 @@ set_libcfg() {
 	elif [ -z "$BK_CRANK" ] && eval $testfcn; then
 		# our test function worked
 		true
+	elif [ -z "$BK_CRANK" ]; then
+		echo "Failed to detect system $NAME, use local copy in bk source tree!" 1>&2
+		eval $builtin
+		SYSTEM=0
 	else
 		# no library found, build our own.
 		test "$BK_NO_AUTOCLONE" && {

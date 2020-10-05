@@ -74,8 +74,8 @@
 #define	reserved(f)	Reserved(f)
 #define	mkpipe(p, size)	pipe(p, size)
 
-#define	win32()		1
-#define	macosx()	0
+#define	bk_win32()	1
+#define	bk_macosx()	0
 #define	NOPROC
 #define ELOOP		40
 
