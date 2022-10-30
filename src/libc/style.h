@@ -20,8 +20,10 @@
 #define	private		static
 #define	max(a,b)	((a)>(b)?(a):(b))
 #define	min(a,b)	((a)<(b)?(a):(b))
+#undef bcopy
 #define	bcopy(s,d,l)	memmove(d,s,l)
 #define	bcmp(a,b,l)	memcmp(a,b,l)
+#undef bzero
 #define	bzero(s,l)	memset(s,0,l)
 #undef creat
 #define creat(p,m)	open(p,O_CREAT|O_WRONLY|O_TRUNC,m)

@@ -1,0 +1,8 @@
+bin/
+images/
+lib/
+share/
+
+*.plist
+config.log
+config.status

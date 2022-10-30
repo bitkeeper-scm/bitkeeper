@@ -431,18 +431,6 @@ mkline(char *p)
 }
 
 /*
- * Return the length of the buffer until a newline.
- */
-int
-linelen(char *s)
-{
-	char	*t = s;
-
-	while (*t && (*t++ != '\n'));
-	return (t-s);
-}
-
-/*
  * Convert a serial to an ascii string.
  */
 private void

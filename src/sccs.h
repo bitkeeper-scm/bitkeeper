@@ -1276,7 +1276,6 @@ char	*delta_sdate(sccs *s, ser_t d);
 ser_t	sccs_kid(sccs *s, ser_t d);
 void	sccs_mkKidList(sccs *s);
 void	sccs_renumber(sccs *s, u32 flags);
-int	linelen(char *s);
 char	*mkline(char *mmap);
 char    *mode2FileType(mode_t m);
 #define	getline bk_getline
