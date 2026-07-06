@@ -1,3 +1,5 @@
+a.out.dSYM/
+
 Makefile
 libTktable2.10.dylib
 pkgIndex.tcl
