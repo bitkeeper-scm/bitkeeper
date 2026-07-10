@@ -180,10 +180,11 @@ TRACE = -DUSE_TRACE
 ifeq ($(shell uname -s), Darwin)
 	XLIBS += -lresolv
 	G	+= -DNOPROC
+	WARNINGS +=
 endif
 
 ifeq (clang, $(findstring clang, $(shell $(CC) --version)))
-	WARNINGS += -Wno-unused-value -Wno-empty-body -Wno-self-assign
+	WARNINGS += -Wno-error=incompatible-pointer-types -Wno-unused-value -Wno-empty-body -Wno-self-assign
 endif
 
 GCCOPTS=
