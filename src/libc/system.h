@@ -51,7 +51,7 @@
 #include "mmap.h"
 #include "hash.h"
 #include "mdbm/mdbm.h"
-#include "zlib/zlib.h"
+#include <zlib.h>
 
 #define	FREE(x)	do { if (x) { free(x); (x) = 0; } } while (0)
 #ifndef	isascii

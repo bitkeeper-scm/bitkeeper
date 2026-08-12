@@ -1,0 +1,15 @@
+# -std=c11 (strict ISO C11) hides POSIX/BSD extensions like strdup(),
+# strcasestr(), etc. on glibc. Historically this project built with
+# plain `gcc` (implicit -std=gnu11-ish dialect), so define
+# _DEFAULT_SOURCE to keep those extensions visible while still
+# compiling the language itself as strict C11.
+build --conlyopt=-std=c11
+build --conlyopt=-D_DEFAULT_SOURCE
+build --host_conlyopt=-std=c11
+build --host_conlyopt=-D_DEFAULT_SOURCE
+
+common --enable_platform_specific_config
+
+# MSVC spells the C11 flag differently.
+build:windows --conlyopt=/std:c11
+build:windows --host_conlyopt=/std:c11
