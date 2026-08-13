@@ -103,7 +103,7 @@ tcp_connect(char *host, int port)
 		perror("socket connect");
 		return (-1);
 	}
-	if (freeme = strrchr(host, ':')) {
+	if ((freeme = strrchr(host, ':'))) {
 		host = strdup(host);
 		freeme = strrchr(host, ':');
 		*freeme++ = 0;

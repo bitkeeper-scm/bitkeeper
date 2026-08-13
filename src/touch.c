@@ -62,8 +62,8 @@ touch_main(int ac, char **av)
 	} else {
 		ut.actime = ut.modtime = time(0);
 	}
-	for (i = optind; fn = av[i]; i++) {
-		if (type = is_xfile(fn)) {
+	for (i = optind; (fn = av[i]); i++) {
+		if ((type = is_xfile(fn))) {
 			xfile_store(fn, type, "");
 			continue;
 		}

@@ -126,7 +126,7 @@ sccs_realuser(void)
 	FREE(r);
 
 	if (id) {
-		if (p = getpwuid(id)) r = p->pw_name;
+		if ((p = getpwuid(id))) r = p->pw_name;
 	} else {
 		/*
 		 * redundant on Linux, getlogin does the same thing

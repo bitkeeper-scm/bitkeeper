@@ -466,7 +466,7 @@ undo_ensemble1(nested *n, options *opts,
 	ops.verbose = opts->verbose;
 	if (opts->force_unpopulate) ops.noURLprobe = 1;
 	ops.comps = num;
-	if (errs = nested_populate(n, &ops)) goto err;
+	if ((errs = nested_populate(n, &ops))) goto err;
 	num = ops.comps;
 	START_TRANSACTION();
 	errs = 0;
@@ -593,8 +593,8 @@ undo_ensemble_rollback(nested *n, options *opts, char **comp_list)
 			return;
 		}
 		unless (opts->verbose) progress_nlneeded();
-		if (rc = systemf("bk -Lw -?FROM_PULLPUSH=YES "
-		    "takepatch %s -af'%s'", opt, opts->patch)) {
+		if ((rc = systemf("bk -Lw -?FROM_PULLPUSH=YES "
+		    "takepatch %s -af'%s'", opt, opts->patch))) {
 			fprintf(stderr, "undo: restoring backup patch in %s "
 			    "failed\n", c->path);
 		}
@@ -699,7 +699,7 @@ getrev(char *top_rev, int aflg)
 	free(rev);
 	f = popen(cmd, "r");
 	free(cmd);
-	while (revline = fgetline(f)) {
+	while ((revline = fgetline(f))) {
 		list = addLine(list, strdup(revline));
 	}
 	status = pclose(f);
@@ -898,7 +898,7 @@ move_file(options *opts, char ***checkfiles)
 	 * needs to be sfiles not gfiles
 	 */
 	f = popen("bk sfiles", "r");
-	while (from = fgetline(f)) {
+	while ((from = fgetline(f))) {
 		sprintf(to, "../%s", from);
 		/*
 		 * This should never happen if the repo is in a sane state

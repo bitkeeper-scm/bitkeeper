@@ -688,7 +688,7 @@ mkCset(mkcs_t *cur, dinfo *d)
 		 * hash key is delta root key
 		 * hash value is checksum of corresponding line in cset file
 		 */
-		if (ch = mdbm_fetch_str(cur->view, keylist[k])) {
+		if ((ch = mdbm_fetch_str(cur->view, keylist[k]))) {
 			memcpy(&sumch, ch, sizeof(sum_t));
 			cur->sum -= sumch;
 // fprintf(stderr, "--- cur=%u %u\n", cur->sum, sumch);
@@ -1238,7 +1238,7 @@ do_patch(sccs *s, ser_t d, char *tag, char *tagparent, FILE *out)
 	if (FLAGS(s, d) & D_CSET) fprintf(out, "C\n");
 	if (DANGLING(s, d)) fprintf(out, "D\n");
 	t = COMMENTS(s, d);
-	while (p = eachline(&t, &len)) fprintf(out, "c %.*s\n", len, p);
+	while ((p = eachline(&t, &len))) fprintf(out, "c %.*s\n", len, p);
 	if (DATE_FUDGE(s, d)) fprintf(out, "F %d\n", (int)DATE_FUDGE(s, d));
 	assert(!HAS_CLUDES(s, d));
 	unless (TAG(s, d)) fprintf(out, "K %u\n", SUM(s, d));

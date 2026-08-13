@@ -245,7 +245,7 @@ dbimplode_main(int ac, char **av)
 			    "dbimplode: directory must be implied with -\n");
 			usage();
 		}
-		while (t = fgetline(stdin)) {
+		while ((t = fgetline(stdin))) {
 			err |= dbimplode(t, 0, flags);
 		}
 	} else {

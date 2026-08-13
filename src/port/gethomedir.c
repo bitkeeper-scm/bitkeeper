@@ -99,7 +99,7 @@ getDotBk(void)
 
 	if (dir) return (dir);
 
-	if (t = getenv("BK_DOTBK")) {
+	if ((t = getenv("BK_DOTBK"))) {
 		unless (isdir(t)) {
 			fprintf(stderr, "DOTBK (%s) doesn't exist.\n", t);
 			exit(1);
@@ -107,10 +107,10 @@ getDotBk(void)
 		dir = strdup(t);
 		return (dir);
 	}
-	if (t = getHomeDir()) {
+	if ((t = getHomeDir())) {
 		dir = aprintf("%s/%s", t, bkdir);
 		/* try to only stat() once */
-		if (rc = stat(dir, &sb)) {
+		if ((rc = stat(dir, &sb))) {
 			/* no .bk directory, lstat $HOME */
 			rc = stat(t, &sb);
 			free(t);

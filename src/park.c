@@ -775,7 +775,7 @@ do_text_diffs_unpark(MMAP *m, char *path, MDBM **idDB, FILE *unpark_list)
 	/*
 	 * skip header
 	 */
-	while (buf = mkline(mnext(m))) {
+	while ((buf = mkline(mnext(m)))) {
 		if (strneq(buf, "# PARKCMT: ", 11)) {
 			if (!cname) cname = tname2cname(path);
 			if (!cf) cf = fopen(cname, "w");
@@ -843,7 +843,7 @@ do_file_unpark(MMAP *m, char *path, int force, char *type,
 	/*
 	 * skip header
 	 */
-	while (buf = mkline(mnext(m))) {
+	while ((buf = mkline(mnext(m)))) {
 		if (streq(buf, "#")) break;
 	}
 
@@ -903,7 +903,7 @@ do_extra_reg_unpark(MMAP *m, char *path, int force,
 	/*
 	 * skip header
 	 */
-	while (buf = mkline(mnext(m))) {
+	while ((buf = mkline(mnext(m)))) {
 		if (streq(buf, "#")) break;
 	}
 
@@ -969,7 +969,7 @@ do_symlink_unpark(MMAP *m, char *path, int force,
 	 */
 	buf = mkline(mnext(m)); /* get delta key */
 	dkey = strdup(&buf[11]);
-	while (buf = mkline(mnext(m))) {
+	while ((buf = mkline(mnext(m)))) {
 		if (streq(buf, "#")) break;
 	}
 	p = mkline(mnext(m));
@@ -1038,7 +1038,7 @@ do_extra_symlink_unpark(MMAP *m, char *path, int force,
 	/*
 	 * skip header
 	 */
-	while (buf = mkline(mnext(m))) {
+	while ((buf = mkline(mnext(m)))) {
 		if (streq(buf, "#")) break;
 	}
 
@@ -1432,7 +1432,7 @@ parkfile_header(sccs *s, ser_t top, char *type, FILE *out)
 		sccs_pdelta(s, top, out);
 		fputs("\n", out);
 	}
-	if (t = xfile_fetch(s->gfile, 'c')) {
+	if ((t = xfile_fetch(s->gfile, 'c'))) {
 		comments = splitLine(t, "\n", 0);
 		free(t);
 		EACH(comments) {

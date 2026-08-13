@@ -1293,7 +1293,7 @@ delta_fulluser(sccs *s, ser_t d)
 	FREE(userbuf);
 
 	u = USERHOST(s, d);
-	if (h = strchr(u, '@')) {
+	if ((h = strchr(u, '@'))) {
 		userbuf = strndup(u, h-u);
 		return (userbuf);
 	}
@@ -1328,9 +1328,9 @@ delta_fullhost(sccs *s, ser_t d)
 	FREE(hostbuf);
 
 	/* userhost = user/realuser@host/realhost[importer] */
-	if (h = strchr(USERHOST(s, d), '@')) {
+	if ((h = strchr(USERHOST(s, d), '@'))) {
 		++h;
-		if (p = strchr(h, '[')) {
+		if ((p = strchr(h, '['))) {
 			/* [importer] is only on old versions of bk */
 			/* bk-7.2.1ce and before */
 			hostbuf = strndup(h, p-h);
@@ -1355,7 +1355,7 @@ delta_host(sccs *s, ser_t d)
 	FREE(hostbuf);
 
 	/* userhost = user/realuser@host/realhost[importer] */
-	if (h = strchr(USERHOST(s, d), '@')) {
+	if ((h = strchr(USERHOST(s, d), '@'))) {
 		++h;
 		c = strcspn(h, "/[");
 		if (h[c]) {
@@ -1410,7 +1410,7 @@ sccs_mkroot(char *path)
 	 * map to the wrong repository.
 	 */
 	concat_path(buf, path, "..");
-	if (proj = proj_init(buf)) {
+	if ((proj = proj_init(buf))) {
 		proj_reset(proj);
 		proj_free(proj);
 	}
@@ -1613,7 +1613,7 @@ rfind(sccs *s, char *rev)
 
 	debug((stderr, "rfind(%s) ", rev));
 	unless (isdigit(rev[0])) {
-		if (sym = findSym(s, rev)) return (sym->ser);
+		if ((sym = findSym(s, rev))) return (sym->ser);
 		return (0);
 	}
 	R[0] = R[1] = R[2] = R[3] = 0;
@@ -1671,7 +1671,7 @@ findrev(sccs *s, char *rev)
 		return (e);
 	}
 	unless (isdigit(rev[0])) {
-		if (sym = findSym(s, rev)) return (sym->ser);
+		if ((sym = findSym(s, rev))) return (sym->ser);
 		return (0);
 	}
 	switch (scanrev(rev, &a, &b, &c, &d)) {
@@ -1821,7 +1821,7 @@ again:	if (revtype != PLAINREV) {
 			proj = s->proj;
 			if (CSET(s) && s->file) proj = proj_product(proj);
 atrev:			sccs_sdelta(s, sccs_ino(s), rk);
-			if (dk = proj_cset2key(proj, rev, rk)) {
+			if ((dk = proj_cset2key(proj, rev, rk))) {
 				d = sccs_findKey(s, dk);
 				free(dk);
 			} else {
@@ -2041,7 +2041,7 @@ sccs_rdweaveInit(sccs *s)
 				s->data = bin_data(s, fgetline(s->fh));
 			} else {
 				/* XXX need data-offset in header */
-				while (t = fgetline(s->fh)) {
+				while ((t = fgetline(s->fh))) {
 					if (streq(t, "\001T")) break;
 				}
 				unless (t) {
@@ -2179,7 +2179,7 @@ cset_rdweavePair(sccs *s, u32 flags, u32 *rkoff, u32 *dkoff)
 			}
 			continue;
 		}
-		if (s->w_off = RKDKOFF(s, s->w_off, *rkoff, *dkoff)) {
+		if ((s->w_off = RKDKOFF(s, s->w_off, *rkoff, *dkoff))) {
 			s->w_d = d;
 			return (d);
 		}
@@ -2390,7 +2390,7 @@ sccs_finishWrite(sccs *s)
 		if (proj_hasOldSCCS(s->proj)) {
 			if (chmod(xfile, 0444)) perror(xfile);
 		}
-		if (rc = rename(xfile, s->sfile)) {
+		if ((rc = rename(xfile, s->sfile))) {
 			fprintf(stderr,
 			    "can't rename(%s, %s) left in %s\n",
 			    xfile, s->sfile, xfile);
@@ -2443,7 +2443,7 @@ chk_nlbug(sccs *s)
 	int	ret = 0;
 
 	sccs_rdweaveInit(s);
-	while (buf = sccs_nextdata(s)) {
+	while ((buf = sccs_nextdata(s))) {
 		if (buf[0] == '\001' && buf[1] == 'E') {
 			p = buf + 3;
 			while (isdigit(*p)) p++;
@@ -2563,7 +2563,7 @@ expand(sccs *s, ser_t d, char *l, int *expanded)
 		    case 'P':	/* full: /u/lm/smt/sccs/SCCS/s.slib.c */
 			t += sprintf(t, "%s/", proj_root(s->proj));
 			tmp = PATHNAME(s, d);
-			if (p = strrchr(tmp, '/')) {
+			if ((p = strrchr(tmp, '/'))) {
 				++p;
 				t += sprintf(t, "%.*s", (int)(p - tmp), tmp);
 			} else {
@@ -3018,11 +3018,11 @@ sccs_tagConflicts(sccs *s)
 	db = mdbm_mem();
 	walkrevs_setup(&wr, s, L(l1), L(l2), WR_EITHER);
 	sym = 0;
-	while (d = walktagrevs(&wr)) {
+	while ((d = walktagrevs(&wr))) {
 	    /* Want active in two contexts, so disable active in walkTags */
-	    while (sym = sccs_walkTags(sym, s, d, 0, 1)) {
-		if (pair = hash_insert(h,
-		    &sym->symname, sizeof(sym->symname), 0, sizeof(*pair))) {
+	    while ((sym = sccs_walkTags(sym, s, d, 0, 1))) {
+		if ((pair = hash_insert(h,
+		    &sym->symname, sizeof(sym->symname), 0, sizeof(*pair)))) {
 			pair->color = wr.color;
 			pair->sym = sym;
 			continue;
@@ -3214,7 +3214,7 @@ checkTags(sccs *s, u32 flags)
 	/* Nobody else has tags */
 	unless (CSET(s)) return (0);
 
-	if (i = nLines(s->symlist)) {
+	if ((i = nLines(s->symlist))) {
 		sym = s->symlist + i;
 		FLAGS(s, sym->ser) |= D_BLUE;
 	} else {
@@ -3274,7 +3274,7 @@ checkTags(sccs *s, u32 flags)
 				tagassert(SYMBOLS(s, d));
 				tagassert(DATE(s, d) < yearSecs[2010-1970]);
 			}
-			if (p = PARENT(s, d)) {
+			if ((p = PARENT(s, d))) {
 				if (TAG(s, p)) {
 					// must be tag merge
 					tagassert(PTAG(s, d) == p);
@@ -3582,7 +3582,7 @@ bin_mkgraph(sccs *s)
 		heapsz = s->heapsz1 = ftell(f1);
 		TRACE("heapfile1 = %d", heapsz);
 
-		if (f2 = fopen_bkfile(bin_heapfile(s, '2'), "r", 0, chkxor)) {
+		if ((f2 = fopen_bkfile(bin_heapfile(s, '2'), "r", 0, chkxor))) {
 			if (fseek(f2, 0, SEEK_END)) {
 				/* XXX seek errors don't show up in ferror()? */
 				assert(!ferror(f2));
@@ -3858,14 +3858,14 @@ first:		if (streq(buf, "\001u")) break;
 				goto comment;
 			    case 'i':
 				p = &buf[3];
-				while (q = eachstr(&p, &i)) {
+				while ((q = eachstr(&p, &i))) {
 					sccs_saveNum(
 					    fcludes, atoi(q), 1);
 				}
 				break;
 			    case 'x':
 				p = &buf[3];
-				while (q = eachstr(&p, &i)) {
+				while ((q = eachstr(&p, &i))) {
 					sccs_saveNum(
 					    fcludes, atoi(q), -1);
 				}
@@ -4188,7 +4188,7 @@ pref_parse(char *buf)
 	r->rfd = r->wfd = -1;
 	unless (*buf) return (r);
 	/* user */
-	if (p = strchr(buf, '@')) {
+	if ((p = strchr(buf, '@'))) {
 		if (buf != p) {
 			*p = 0; r->user = strdup(buf);
 		}
@@ -4196,7 +4196,7 @@ pref_parse(char *buf)
 		want_host = 1;
 	}
 	/* host */
-	if (p = strchr(buf, ':')) {
+	if ((p = strchr(buf, ':'))) {
 		if (buf != p) {
 			if (r->user || want_host) {
 				*p = 0; r->host = strdup(buf);
@@ -4337,7 +4337,7 @@ config2mdbm(MDBM *db, char *config)
 	FILE	*f;
 	char 	buf[MAXLINE];
 
-	if (f = fopen(config, "rt")) {
+	if ((f = fopen(config, "rt"))) {
 		while (fnext(buf, f)) parseConfig(buf, db, 1);
 		fclose(f);
 	}
@@ -4394,7 +4394,7 @@ loadRepoConfig(MDBM *DB, char *root)
 	 * config file.  bk -r check -a will check them.
 	 */
 	concat_path(config, root, "BitKeeper/etc/SCCS/s.config");
-	if (s = sccs_init(config, SILENT|INIT_MUSTEXIST|INIT_WACKGRAPH)) {
+	if ((s = sccs_init(config, SILENT|INIT_MUSTEXIST|INIT_WACKGRAPH))) {
 		int	ret = 0;
 		char	*t;
 
@@ -4405,7 +4405,7 @@ loadRepoConfig(MDBM *DB, char *root)
 			ret = 1;
 		} else {
 			rewind(tmpf);
-			while (t = fgetline(tmpf)) parseConfig(t, DB, 1);
+			while ((t = fgetline(tmpf))) parseConfig(t, DB, 1);
 		}
 		fclose(tmpf);
 		sccs_free(s);
@@ -4506,7 +4506,7 @@ loadConfig(project *p, int forcelocal)
 	 * Support for a magic way to set clone default
 	 * (set via sendServerInfo() in the clone bkd)
 	 */
-	if (t = getenv("BKD_CLONE_DEFAULT")) {
+	if ((t = getenv("BKD_CLONE_DEFAULT"))) {
 		mdbm_store_str(db, "clone_default", t, MDBM_INSERT);
 	}
 
@@ -4555,7 +4555,7 @@ printconfig(char *file, MDBM *db, MDBM *cfg)
 	unless (db) {
 		db = freeme = mdbm_mem();
 
-		if (f = fopen(file, "rt")) {
+		if ((f = fopen(file, "rt"))) {
 			while (fnext(buf, f)) {
 				parseConfig(buf, db, 0);
 			}
@@ -4690,7 +4690,7 @@ config_main(int ac, char **av)
 			 * Also, the licsig* fields fall under this
 			 * category.
 			 */
-			if (v = mdbm_fetch_str(cfg, k)) {
+			if ((v = mdbm_fetch_str(cfg, k))) {
 				puts(v);
 				return (0);
 			} else if (((i = config_findVar(k)) >= 0) &&
@@ -4713,7 +4713,7 @@ config_main(int ac, char **av)
 	if (av[optind]) usage();
 
 	/* repo config */
-	if (root = proj_root(0)) {
+	if ((root = proj_root(0))) {
 		file = aprintf("%s/BitKeeper/etc/config", root);
 		unless (exists(file)) get(file, SILENT|GET_EXPAND);
 		printconfig(file, 0, cfg);
@@ -4746,7 +4746,7 @@ config_main(int ac, char **av)
 	free(file);
 
 	/* local config used in bk clone --checkout=<mode> */
-	if (root = proj_root(0)) {
+	if ((root = proj_root(0))) {
 		file = aprintf("%s/BitKeeper/log/config", root);
 		if (exists(file)) printconfig(file, 0, cfg);
 		free(file);
@@ -4761,7 +4761,7 @@ config_main(int ac, char **av)
 
 	/* $BK_CONFIG */
 	db = mdbm_mem();
-	if (env = getenv("BK_CONFIG")) values = splitLine(env, ";", 0);
+	if ((env = getenv("BK_CONFIG"))) values = splitLine(env, ";", 0);
 	EACH (values) {
 		unless (parseConfigKV(values[i], 0, &k, &v)) continue;
 		mdbm_store_str(db, k, v, MDBM_REPLACE);
@@ -5073,7 +5073,7 @@ sccs_init(char *name, u32 flags)
 		/* read the old weave in to memory in the BWEAVE format */
 		s->state &= ~S_CSET; /* trick into read weave */
 		sccs_rdweaveInit(s);
-		while (t = sccs_nextdata(s)) {
+		while ((t = sccs_nextdata(s))) {
 			unless (isData(t)) {
 				if (t[1] == 'I') {
 					d = atoi(t+3);
@@ -5446,7 +5446,7 @@ name2sccs(char *name)
 	char	*s, *newname;
 
 	/* maybe it has the SCCS in it already */
-	if (s = rindex(name, '/')) s -= 4;	/* point it at start of SCCS/ */
+	if ((s = rindex(name, '/'))) s -= 4;	/* point it at start of SCCS/ */
 	unless (s >= name) s = 0;
 
 	/* DIR_WITH_SCCS/GOTTEN screwed us up, this should fix it */
@@ -5497,7 +5497,7 @@ sccsXfile(sccs *s, char type)
 	char	buf[MAXPATH];
 
 	strcpy(buf, s->sfile);
-	if (t = strrchr(buf, '/')) {
+	if ((t = strrchr(buf, '/'))) {
 		t[1] = type;
 	} else {
 		buf[0] = type;
@@ -5787,7 +5787,7 @@ compressmap(sccs *s, ser_t d, u8 *set, char **inc, char **exc)
 		/* include if not active in delta set and in desired set */
 		if (!active) addArray(&incser, &tser);
 		p = CLUDES(s, t);
-		while (i = sccs_eachNum(&p, &sign)) {
+		while ((i = sccs_eachNum(&p, &sign))) {
 			unless(slist[i] & (S_INC|S_EXCL)) {
 				slist[i] |= (sign > 0) ? S_INC : S_EXCL;
 			}
@@ -5906,7 +5906,7 @@ serialmap(sccs *s, ser_t d, ser_t m, char *iLst, char *xLst, int *errp)
 
 			slist[t] = 1;
 			p = CLUDES(s, t);
-			while (i = sccs_eachNum(&p, &sign)) {
+			while ((i = sccs_eachNum(&p, &sign))) {
 				unless(slist[i] & (S_INC|S_EXCL)) {
 					slist[i] |=
 					    (sign > 0) ? S_INC : S_EXCL;
@@ -6363,7 +6363,7 @@ err:		s->state |= S_WARNED;
 		}
 		slist[tser] = 1;
 		p = CLUDES(s, t);
-		while (i = sccs_eachNum(&p, &sign)) {
+		while ((i = sccs_eachNum(&p, &sign))) {
 			unless(slist[i] & (S_INC|S_EXCL)) {
 				slist[i] |= (sign > 0) ? S_INC : S_EXCL;
 			}
@@ -6711,7 +6711,7 @@ fastsum_load(sccs *s)
 	char	**blocks = 0;
 
 	sccs_rdweaveInit(s);
-	while (buf = (u8 *)sccs_nextdata(s)) {
+	while ((buf = (u8 *)sccs_nextdata(s))) {
 		if (isData(buf)) {
 			p = buf;
 			if (*p == CNTLA_ESCAPE) p++;
@@ -6731,9 +6731,9 @@ fastsum_load(sccs *s)
 			assert(start);
 			len = nLines(state) + 1 - start;
 			state[start] = SL_SER(state[start]);	/* just ser */
-			if (data = hash_insert(h,
+			if ((data = hash_insert(h,
 			    &state[start], len*sizeof(u32),
-			    0, sizeof(sumdata))) {
+			    0, sizeof(sumdata)))) {
 				blocks = addLine(blocks, data);
 				data->kptr = h->kptr;
 				data->keylen = len;
@@ -7094,7 +7094,7 @@ out:			if (slist) free(slist);
 	other = 0;
 	counter = &other;
 	sccs_rdweaveInit(s);
-	while (buf = sccs_nextdata(s)) {
+	while ((buf = sccs_nextdata(s))) {
 		register u8 *e, *e1, *e2;
 
 		e1= e2 = 0;
@@ -7303,7 +7303,7 @@ write:
 	if (flags & (GET_HASHONLY|GET_SUM)) {
 		error = 0;
 	} else {
-		if (error = flushFILE(out)) {
+		if ((error = flushFILE(out))) {
 			/*
 			 * In spite of flushFILE() looking like it catches
 			 * EPIPE, it doesn't.  So we look for that case
@@ -7410,7 +7410,7 @@ get_bp(sccs *s, char *printOut, FILE *out, int flags, ser_t d,
 			/* technically there are no recorded modes for 1.0 */
 			touch(gfile, 0664);
 		}
-	} else if (error = bp_get(s, d, flags, gfile, out)) {
+	} else if ((error = bp_get(s, d, flags, gfile, out))) {
 		unless (error == EAGAIN) return (1);
 		if (flags & GET_NOREMOTE) {
 			s->cachemiss = 1;
@@ -7418,7 +7418,7 @@ get_bp(sccs *s, char *printOut, FILE *out, int flags, ser_t d,
 		} else if (bp_fetch(s, d)) {
 			fprintf(stderr, "BAM: fetch failed for %s\n", s->gfile);
 			return (1);
-		} else if (error = bp_get(s, d, flags, gfile, out)) {
+		} else if ((error = bp_get(s, d, flags, gfile, out))) {
 			fprintf(stderr,
 			    "BAM: get after fetch failed for %s\n", s->gfile);
 			return (1);
@@ -7635,7 +7635,7 @@ err:		if (i2) free(i2);
 				    notnull(mRev), s->sfile);
 				s->state |= S_WARNED;
 			}
-		} else if (tmp = sccs_impliedList(s, "get", rev, mRev)) {
+		} else if ((tmp = sccs_impliedList(s, "get", rev, mRev))) {
 #ifdef  CRAZY_WOW
 		// XXX: why was this here?  Should revisions that are
 		// inline (get -e -R1.7 -M1.5 foo) be an error?
@@ -8132,7 +8132,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	side = NEITHER;
 	nextside = NEITHER;
 
-	while (buf = sccs_nextdata(s)) {
+	while ((buf = sccs_nextdata(s))) {
 		unless (isData(buf)) {
 			debug2((stderr, "%s", buf));
 			serial = atoi(&buf[3]);
@@ -8266,7 +8266,7 @@ sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
 	sccs_rdweaveInit(s);
 
 	fputs("F\n", out);
-	while (buf = sccs_nextdata(s)) {
+	while ((buf = sccs_nextdata(s))) {
 		unless (isData(buf)) {
 			debug2((stderr, "%s", buf));
 			type = buf[1];
@@ -8286,8 +8286,8 @@ sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
 				    (lineno + ((type == 'D') ? 1 : 0)));
 			}
 			state = changestate(state, type, d);
-			if (track = whatstate(state)) {
-				if (track = pmap[track]) {
+			if ((track = whatstate(state))) {
+				if ((track = pmap[track])) {
 					print = (track != D_INVALID);
 				}
 			}
@@ -8405,7 +8405,7 @@ sameFileType(sccs *s, ser_t d)
 private inline char *
 fmts(register char *p, register char *s)
 {
-	while (*p++ = *s++);
+	while ((*p++ = *s++));
 	return (p - 1);
 }
 
@@ -8600,7 +8600,7 @@ delta_table(sccs *s, int willfix)
 			/* include */
 			p = 0;
 			t = CLUDES(s, d);
-			while (i = sccs_eachNum(&t, &sign)) {
+			while ((i = sccs_eachNum(&t, &sign))) {
 				unless (sign > 0) continue;
 				unless (p) p = fmts(buf, "\001i");
 				*p++ = ' ';
@@ -8613,7 +8613,7 @@ delta_table(sccs *s, int willfix)
 			/* exclude */
 			p = 0;
 			t = CLUDES(s, d);
-			while (i = sccs_eachNum(&t, &sign)) {
+			while ((i = sccs_eachNum(&t, &sign))) {
 				unless (sign < 0) continue;
 				unless (p) p = fmts(buf, "\001x");
 				*p++ = ' ';
@@ -8625,7 +8625,7 @@ delta_table(sccs *s, int willfix)
 			if (p) fputc('\n', out);
 		}
 		t = COMMENTS(s, d);
-		while (p = eachline(&t, &i)) {
+		while ((p = eachline(&t, &i))) {
 			old = p[i];
 			p[i] = 0;
 			fputs("\001c ", out);
@@ -8796,7 +8796,7 @@ SCCS:
 		fputc('\n', out);
 	}
 	fputs("\001U\n", out);
-	if (BITKEEPER(s) || (s->encoding_out != E_ALWAYS|E_ASCII)) {
+	if (BITKEEPER(s) || ((s->encoding_out != E_ALWAYS)|E_ASCII)) {
 		p = fmts(buf, "\001f e ");
 		p = fmtd(p, (s->encoding_out & ~E_ALWAYS));
 		*p++ = '\n';
@@ -8956,7 +8956,7 @@ bin_writeHeap(sccs *s, char ***save)
 	    (linkcount(file, &sb) == 1))  { /* and isn't hardlinked */
 		// append new data to heap2
 		assert(s->heap_loadsz < s->heap.len);
-		if (f = fopen_bkfile(file, "a", 0, 0)) {
+		if ((f = fopen_bkfile(file, "a", 0, 0))) {
 			fwrite(s->heap.buf + s->heap_loadsz,
 			    1, s->heap.len - s->heap_loadsz, f);
 			rc = fclose(f);
@@ -8989,7 +8989,7 @@ whole:		// need to rewrite whole file
 		}
 		fileSave(file, save);
 		tmp = aprintf("%s.tmp", file);
-		if (f = fopen_bkfile(tmp, "w", s->heap.len, 0)) {
+		if ((f = fopen_bkfile(tmp, "w", s->heap.len, 0))) {
 			fwrite(s->heap.buf + off, 1, s->heap.len - off, f);
 			if (fclose(f) || rename(tmp, file)) {
 				perror(file);
@@ -9301,7 +9301,7 @@ _hasDiffs(sccs *s, ser_t d, u32 flags, int inex, pfile *pf)
 	slist = serialmap(s, d, m, pf->iLst, pf->xLst, &error);
 	assert(!error);
 	sccs_rdweaveInit(s);
-	while (fbuf = sccs_nextdata(s)) {
+	while ((fbuf = sccs_nextdata(s))) {
 		if (isData(fbuf)) {
 			if (fbuf[0] == CNTLA_ESCAPE) fbuf++;
 			if (!print) {
@@ -9420,7 +9420,7 @@ _hasDiffs(sccs *s, ser_t d, u32 flags, int inex, pfile *pf)
 		debug((stderr, "diff because EOF on sfile\n"));
 		RET(1);
 	}
-	if (gline = fgetln(gfile, &glen)) {
+	if ((gline = fgetln(gfile, &glen))) {
 		debug((stderr, "diff because EOF on sfile\n"));
 		RET(1);
 	} else {
@@ -10238,7 +10238,7 @@ sccs_dInit(ser_t d, char type, sccs *s, int nodefault)
 	if (type == 'R') FLAGS(s, d) |= (D_META|D_TAG);
 	assert(s);
 	unless (DATE(s, d) || nodefault) {
-		if (t = getenv("BK_DATE_TIME_ZONE")) {
+		if ((t = getenv("BK_DATE_TIME_ZONE"))) {
 			dateArg(s, d, t, 1);
 			assert(!(FLAGS(s, d) & D_ERROR));
 		} else if (s->gtime && (s->initFlags & INIT_FIXDTIME)) {
@@ -10654,7 +10654,7 @@ out:		sccs_abortWrite(s);
 		char	*p;
 		/* check eoln preference */
 		s->xflags |= X_DEFAULT;
-		if (p = config_str(s->proj, CONFIG_EOLN)) {
+		if ((p = config_str(s->proj, CONFIG_EOLN))) {
 			if (streq("unix", p)) {
 				s->xflags &= ~X_EOLN_NATIVE;
 				s->xflags &= ~X_EOLN_WINDOWS;
@@ -10664,7 +10664,7 @@ out:		sccs_abortWrite(s);
 				s->xflags |= X_EOLN_WINDOWS;
 			}
 		}
-		if (p = config_str(s->proj, CONFIG_KEYWORD)) {
+		if ((p = config_str(s->proj, CONFIG_KEYWORD))) {
 			if (strstr(p, "sccs")) s->xflags |= X_SCCS;
 			if (strstr(p, "rcs")) s->xflags |= X_RCS;
 			if (strstr(p, "expand1")) s->xflags |= X_EXPAND1;
@@ -10681,7 +10681,7 @@ out:		sccs_abortWrite(s);
 		ser_t	d = n0 ? n0 : n;
 
 		if (!HAS_RANDOM(s, d)) {
-			if (t = getenv("BK_RANDOM")) {
+			if ((t = getenv("BK_RANDOM"))) {
 				if (streq(t, "cons")) {
 					randomCons(buf+2, s, d);
 				} else {
@@ -10710,7 +10710,7 @@ out:		sccs_abortWrite(s);
 		unless (HAS_COMMENTS(s, n)) {
 			project	*p;
 
-			if (p = proj_init(".")) {
+			if ((p = proj_init("."))) {
 				t = proj_relpath(p, s->gfile);
 				proj_free(p);
 			} else {
@@ -10782,7 +10782,7 @@ out:		sccs_abortWrite(s);
 					goto out;
 				}
 			}
-			while (t = fgetln(f, &len)) {
+			while ((t = fgetln(f, &len))) {
 				assert(!no_lf && len);
 				fix_cntl_a(s, t);
 				--len;
@@ -11055,7 +11055,7 @@ checkGone(sccs *s, int bit, char *who)
 			}
 		}
 		p = CLUDES(s, d);
-		while (i = sccs_eachNum(&p, &sign)) {
+		while ((i = sccs_eachNum(&p, &sign))) {
 			unless (slist[i]) continue;
 			fprintf(stderr,
 			    "%s: %s:%s %s %s\n", s->sfile,
@@ -11151,7 +11151,7 @@ checkRev(sccs *s, char *file, ser_t d, int flags)
 	 * Make sure there is no garbage in the serial list[s].
 	 */
 	x = CLUDES(s, d);
-	while (i = sccs_eachNum(&x, &sign)) {
+	while ((i = sccs_eachNum(&x, &sign))) {
 		if (i < d) continue;
 		error = 1;
 		if (flags & ADMIN_SHUTUP) continue;
@@ -11437,7 +11437,7 @@ pathArg(sccs *s, ser_t d, char *arg)
 	if (!arg || !*arg) return (d);
 
 	strcpy(buf, arg);
-	if (sp = strchr(buf, '|')) *sp++ = 0;
+	if ((sp = strchr(buf, '|'))) *sp++ = 0;
 	PATHNAME_SET(s, d, buf);
 	if (sp) {
 		SORTPATH_SET(s, d, sp);
@@ -11647,7 +11647,7 @@ addSym(sccs *sc, int flags, admin *s, int *ep)
 	 */
 	for (i = 0; s && s[i].flags; ++i) {
 		sym = strdup(s[i].thing);
-		if (rev = strrchr(sym, '|')) *rev++ = 0;
+		if ((rev = strrchr(sym, '|'))) *rev++ = 0;
 		/* Note: rev is set or null from above test */
 		unless (d = sccs_findrev(sc, rev)) {
 			verbose((stderr,
@@ -12006,7 +12006,7 @@ adjust_serials(sccs *s, ser_t d, int amount)
 		assert(INARRAY(s, d));
 		p = CLUDES(s, d);
 		f = fmem();
-		while (ser = sccs_eachNum(&p, &sign)) {
+		while ((ser = sccs_eachNum(&p, &sign))) {
 			sccs_saveNum(f, ser + amount, sign);
 		}
 		CLUDES_SET(s, d, fmem_peek(f, 0));
@@ -12212,7 +12212,7 @@ obscure_comments(sccs *s)
 
 	for (d = TABLE(s); d >= TREE(s); d--) {
 		unless (buf = COMMENTS(s, d)) continue;
-		while (p = eachline(&buf, 0)) {
+		while ((p = eachline(&buf, 0))) {
 			comments = addLine(comments, obscure(0, p));
 		}
 		comments_set(s, d, comments);
@@ -12345,7 +12345,7 @@ skipmode:
 			freeLines(sc->text, free);
 			sc->text = 0;
 		}
-		while (dbuf = fgetline(desc)) {
+		while ((dbuf = fgetline(desc))) {
 			sc->text = addLine(sc->text, strdup(dbuf));
 		}
 		fclose(desc);
@@ -12560,7 +12560,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	if (BWEAVE_OUT(sc)) goto skip_weave;
 	sccs_wrweaveInit(sc);
 	sccs_rdweaveInit(sc);
-	while (buf = sccs_nextdata(sc)) {
+	while ((buf = sccs_nextdata(sc))) {
 		if (obscure_it) {
 			buf = obscure(UUENCODE(sc), buf);
 		}
@@ -12653,7 +12653,7 @@ scompressGraph(sccs *s)
 
 		if (HAS_CLUDES(s, d)) {
 			p = CLUDES(s, d);
-			while (x = sccs_eachNum(&p, &sign)) {
+			while ((x = sccs_eachNum(&p, &sign))) {
 				sccs_saveNum(f, remap[x], sign);
 			}
 			p = fmem_peek(f, 0);
@@ -12677,7 +12677,7 @@ scompressGraph(sccs *s)
 	/* By using reverse, no pointer adjustment needed after removeN() */
 	EACHP_REVERSE(s->symlist, sym) {
 		assert(sym->meta_ser && sym->ser);
-		if (x = remap[sym->meta_ser]) {
+		if ((x = remap[sym->meta_ser])) {
 			sym->meta_ser = x;
 			sym->ser = remap[sym->ser];
 			FLAGS(s, x) |= D_SYMBOLS;
@@ -12855,7 +12855,7 @@ doFast(fweave *w, ser_t *patchmap, FILE *diffs)
 	assert(patchmap);	/* if diffs, then there's a map */
 	pmapsize = nLines(patchmap);
 
-	while (b = fgetln(diffs, &len)) {
+	while ((b = fgetln(diffs, &len))) {
 		if (len && (b[len-1] == '\n')) --len;
 		b[len] = 0;
 		p = &b[1];
@@ -12903,7 +12903,7 @@ doFast(fweave *w, ser_t *patchmap, FILE *diffs)
 			fprintf(out, "\001%c %u\n", type, dser);
 		}
 		w->state = changestate(w->state, type, dser);
-		if (w->print = whatstate(w->state)) {
+		if ((w->print = whatstate(w->state))) {
 			unless (w->slist[w->print]) w->print = 0;
 		}
 	}
@@ -13010,7 +13010,7 @@ weaveMove(fweave *w, int line, ser_t patchserial, u32 flags)
 		} else if (print && !w->slist[print]) {
 			print = 0;
 		}
-	} while (buf = sccs_nextdata(s));
+	} while ((buf = sccs_nextdata(s)));
 	assert(!buf);
 	unless (finish && !whatstate(w->state)) {
 eof:		fprintf(stderr, "Unexpected EOF in %s\n", s->sfile);
@@ -13060,10 +13060,10 @@ after:	skipblock = 0;
 		w->state = changestate(w->state, type, serial);
 		if (diffmode) {
 			print = printstate(w->state, w->slist);
-		} else if (print = whatstate(w->state)) {
+		} else if ((print = whatstate(w->state))) {
 			unless (w->slist[print]) print = 0;
 		}
-	} while (buf = sccs_nextdata(s));
+	} while ((buf = sccs_nextdata(s)));
 	assert(!buf);
 	/* assert(patchserial == 1); kind of strong, but should be true */
 	if (nLines(w->state)) goto eof;
@@ -13167,7 +13167,7 @@ sccs_slowWeave(sccs *s)
 	}
 	s->outfh = out_orig;
 	/* Now write out sfile */
-	if (rc = delta_table(s, 0)) {
+	if ((rc = delta_table(s, 0))) {
 		perror("table");
 		goto err;
 	}
@@ -13240,7 +13240,7 @@ weaveDiffs(fweave *w, ser_t d, FILE *diffs, int *fixdelp)
 	/*
 	 * Do the actual delta.
 	 */
-	if (diffs) while (b = fgetline(diffs)) {
+	if (diffs) while ((b = fgetline(diffs))) {
 		if (scandiff(b, &where, &what, &howmany) != 0) {
 			fprintf(stderr,
 			    "delta: Must use RCS diff format (diff -n).  "
@@ -13278,7 +13278,7 @@ weaveDiffs(fweave *w, ser_t d, FILE *diffs, int *fixdelp)
 		    case 'N':
 			/* output ^AI .... <data>.... ^AE */
 			weaveMove(w, where, d, WM_ADD);
-			if (no_lf = (what == 'N')) what = 'I';
+			if ((no_lf = (what == 'N'))) what = 'I';
 			doctrl(s, "\001I ", d, "");
 			while (howmany--) {
 				unless (b = fgetln(diffs, &len)) {
@@ -13991,7 +13991,7 @@ abort:		sccs_abortWrite(s);
 	unless (BWEAVE_OUT(s)) {
 		sccs_rdweaveInit(s);
 		sfile = sccs_wrweaveInit(s);
-		while (buf = sccs_nextdata(s)) {
+		while ((buf = sccs_nextdata(s))) {
 			fputs(buf, sfile);
 			fputc('\n', sfile);
 		}
@@ -14254,7 +14254,7 @@ out:
 		} else {
 			char	*t;
 
-			while (t = fgetline(diffs)) puts(t);
+			while ((t = fgetline(diffs))) puts(t);
 			rewind(diffs);
 		}
 		fputs("====\n\n", stdout);
@@ -14832,7 +14832,7 @@ sccs_diffs(sccs *s, char *r1, char *r2, df_opt *dopt, FILE *out)
 	 * Figure out which revision the user want.
 	 * Translate r1 => lrev, r2 => rrev.
 	 */
-	if (rc = mapRev(s, r1, r2, &lrev, &lrevM, &rrev, &pf)) {
+	if ((rc = mapRev(s, r1, r2, &lrev, &lrevM, &rrev, &pf))) {
 		goto done;
 	}
 
@@ -14967,7 +14967,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 			FILE	*f = fmem();
 
 			dspec_eval(f, s, d, rev);
-			if (t = fmem_close(f, 0)) {
+			if ((t = fmem_close(f, 0))) {
 				/* FYI: returns "" if empty */
 				free(rev);
 				rev = t;
@@ -15078,7 +15078,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 
 		unless (HAS_CLUDES(s, d)) return (nullVal);
 		t = CLUDES(s, d);
-		while (num = sccs_eachNum(&t, &sign)) {
+		while ((num = sccs_eachNum(&t, &sign))) {
 			unless (sign > 0) continue;
 			unless (i) {
 				i = 1;
@@ -15097,7 +15097,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 
 		unless (HAS_CLUDES(s, d)) return (nullVal);
 		t = CLUDES(s, d);
-		while (num = sccs_eachNum(&t, &sign)) {
+		while ((num = sccs_eachNum(&t, &sign))) {
 			unless (sign < 0) continue;
 			unless (i) {
 				i = 1;
@@ -15130,7 +15130,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 
 		unless (HAS_CLUDES(s, d)) return (nullVal);
 		t = CLUDES(s, d);
-		while (e = sccs_eachNum(&t, &sign)) {
+		while ((e = sccs_eachNum(&t, &sign))) {
 			unless (sign > 0) continue;
 			unless (i) {
 				i = 1;
@@ -15149,7 +15149,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 
 		unless (HAS_CLUDES(s, d)) return (nullVal);
 		t = CLUDES(s, d);
-		while (e = sccs_eachNum(&t, &sign)) {
+		while ((e = sccs_eachNum(&t, &sign))) {
 			unless (sign < 0) continue;
 			unless (i) {
 				i = 1;
@@ -15360,7 +15360,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 
 	case KW_REALUSER: /* REALUSER */ {
 		if ((p = USER(s, d)) && *p) {
-			if (q = strchr(p, '/')) p = q + 1;
+			if ((q = strchr(p, '/'))) p = q + 1;
 			fs(p);
 			return (strVal);
 		}
@@ -15708,7 +15708,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		/* to get the latest comment				*/
 		unless (HAS_COMMENTS(s, d)) return (nullVal);
 		t = COMMENTS(s, d);
-		while (p = eachline(&t, &len)) {
+		while ((p = eachline(&t, &len))) {
 			fs("C ");
 			fm(p, len);
 			fc('\n');
@@ -15743,7 +15743,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		fc(' ');
 		fc('+'); KW("LI"); fs(" -"); KW("LD"); fc('\n');
 		t = COMMENTS(s, d);
-		while (p = eachline(&t, &len)) {
+		while ((p = eachline(&t, &len))) {
 			fs("  ");
 			fm(p, len);
 			fc('\n');
@@ -15956,10 +15956,10 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		unless (d && (FLAGS(s, d) & D_SYMBOLS)) return (nullVal);
 
 		sym = 0;
-		while (sym = sccs_walkTags(sym, s, d,
+		while ((sym = sccs_walkTags(sym, s, d,
 			(kwval->kwnum == KW_TAGGED) ||
 			((kwval->kwnum == KW_TAGS) && s->prs_activeTagsOnly),
-			s->prs_all)) {
+			s->prs_all))) {
 			if (kwval->kwnum == KW_TAGS) {
 				*buf = 0;
 				printTagDetails(s, d, sym, buf);
@@ -16023,7 +16023,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	case KW_HT: /* HT */
 	case KW_HOST: /* HOST */ {
 		/* host without any importer name */
-		if (q = delta_host(s, d)) {
+		if ((q = delta_host(s, d))) {
 			fs(q);
 			return (strVal);
 		}
@@ -16031,7 +16031,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	}
 	case KW_REALHOST: /* REALHOST */ {
 		if ((q = HOSTNAME(s, d)) && *q) {
-			if (p = strchr(q, '/')) {
+			if ((p = strchr(q, '/'))) {
 				fs(p+1);
 			} else {
 				fs(q);
@@ -16329,7 +16329,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	}
 
 	case KW_PREV: /* PREV */ {
-		if (d = sccs_prev(s, d)) {
+		if ((d = sccs_prev(s, d))) {
 			fs(REV(s, d));
 			return (strVal);
 		}
@@ -16337,7 +16337,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	}
 
 	case KW_NEXT: /* NEXT */ {
-		if (d = sccs_next(s, d)) {
+		if ((d = sccs_next(s, d))) {
 			fs(REV(s, d));
 			return (strVal);
 		}
@@ -16345,7 +16345,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	}
 
 	case KW_KID: /* KID */ {
-		if (d = sccs_kid(s, d)) {
+		if ((d = sccs_kid(s, d))) {
 			fs(REV(s, d));
 			return (strVal);
 		}
@@ -16381,7 +16381,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		 * as kid in teamware is not necessarily oldest
 		 */
 		unless (s->kidlist) sccs_mkKidList(s);
-		if (d = SIBLINGS(s, d)) {
+		if ((d = SIBLINGS(s, d))) {
 			fs(REV(s, d));
 			return (strVal);
 		}
@@ -16679,7 +16679,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		fc(' ');
 		return (strVal);
 	case KW_COMPONENT: /* COMPONENT */
-		if (q = proj_comppath(s->proj)) {
+		if ((q = proj_comppath(s->proj))) {
 			fs(q);
 			fc('/');
 			return (strVal);
@@ -16770,7 +16770,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		    "bk -R get -qp -r@@'%s' " ATTR "| bk _getkv - %.*s",
 		    buf, len - 5, kw + 5);	// yuck - strlen(ATTR)
 		cnt = 0;
-		if (f = popen(cmd, "r")) {
+		if ((f = popen(cmd, "r"))) {
 			while ((i = fread(buf, 1, sizeof(buf), f)) > 0) {
 				fm(buf, i);
 				cnt += i;
@@ -16944,10 +16944,10 @@ sccs_prsPatch(sccs *s, ser_t d, u32 flags, FILE *out)
 	if (DANGLING(s, d)) fprintf(out, "D\n");
 
 	t = COMMENTS(s, d);
-	while (p = eachline(&t, &len)) fprintf(out, "c %.*s\n", len, p);
+	while ((p = eachline(&t, &len))) fprintf(out, "c %.*s\n", len, p);
 	if (DATE_FUDGE(s, d)) fprintf(out, "F %d\n", (int)DATE_FUDGE(s, d));
 	p = CLUDES(s, d);
-	while (e = sccs_eachNum(&p, &sign)) {
+	while ((e = sccs_eachNum(&p, &sign))) {
 		unless (sign > 0) continue;
 		fprintf(out, "i ");
 		sccs_pdelta(s, e, out);
@@ -16989,7 +16989,7 @@ sccs_prsPatch(sccs *s, ser_t d, u32 flags, FILE *out)
 	if (HAS_RANDOM(s, d)) fprintf(out, "R %s\n", RANDOM(s, d));
 	if ((FLAGS(s, d) & D_SYMBOLS) || SYMGRAPH(s, d)) {
 		sym = 0;
-		while (sym = sccs_walkTags(sym, s, d, 0, 1)) {
+		while ((sym = sccs_walkTags(sym, s, d, 0, 1))) {
 			fprintf(out, "S %s\n", SYMNAME(s, sym));
 		}
 		if (SYMGRAPH(s, d)) fprintf(out, "s g\n");
@@ -17005,7 +17005,7 @@ sccs_prsPatch(sccs *s, ser_t d, u32 flags, FILE *out)
 		fprintf(out, "V %u\n", s->version);
 	}
 	p = CLUDES(s, d);
-	while (e = sccs_eachNum(&p, &sign)) {
+	while ((e = sccs_eachNum(&p, &sign))) {
 		unless (sign < 0) continue;
 		fprintf(out, "x ");
 		sccs_pdelta(s, e, out);
@@ -17183,7 +17183,7 @@ sccs_findtips(sccs *s, ser_t *a, ser_t *b)
 	 * At any given point there should be exactly one of these.
 	 */
 	walkrevs_setup(&wr, s, 0, 0, WR_TIP);
-	while (d = walkrevs(&wr)) {
+	while ((d = walkrevs(&wr))) {
 		assert(R0(s, d) == 1);	/* from the old isleaf() */
 		if (!*a) {
 			*a = d;
@@ -17630,7 +17630,7 @@ sccs_key2md5(char *deltakey, char *b64)
 	char	key[MAXKEY+64];
 
 	strcpy(key, deltakey);
-	if (p = strstr(deltakey, "/ChangeSet|")) {
+	if ((p = strstr(deltakey, "/ChangeSet|"))) {
 		/*
 		 * For component ChangeSet files we remove the
 		 * pathname component before computing the md5key
@@ -17801,7 +17801,7 @@ explodeKey(char *key, char *parts[6])
 
 	/* go back and split user@host to user and host */
 	for (key = parts[0]; *key && (*key != '@'); key++);
-	if (key = strchr(parts[0], '@')) {
+	if ((key = strchr(parts[0], '@'))) {
 		*key++ = 0;
 		parts[1] = key;
 	} else {
@@ -18145,7 +18145,7 @@ sccs_keyinitAndCache(project *proj, char *key, u32 flags, MDBM *sDB, MDBM *idDB)
 		chdir(proj_root(prod));
 		idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 		goneDB = loadDB(GONE, 0, DB_GONE);
-		if (path = key2path(proj_rootkey(proj), idDB, goneDB, 0)) {
+		if ((path = key2path(proj_rootkey(proj), idDB, goneDB, 0))) {
 			mdbm_close(idDB);
 			proj = proj_init(path);
 			chdir(path);
@@ -18204,7 +18204,7 @@ stripDeltas(sccs *s, ser_t *remap)
 	assert(!BWEAVE(s));
 	sccs_rdweaveInit(s);
 	out = sccs_wrweaveInit(s);
-	while (buf = sccs_nextdata(s)) {
+	while ((buf = sccs_nextdata(s))) {
 		if (isData(buf)) {
 			unless (prune) {
 				fputs(buf, out);
@@ -18296,7 +18296,7 @@ sccs_stripdel(sccs *s, char *who)
 	} else if (CSET(s)) {
 		sccs_rdweaveInit(s);
 		f = sccs_wrweaveInit(s);
-		while (t = sccs_nextdata(s)) {
+		while ((t = sccs_nextdata(s))) {
 			fputs(t, f);
 			fputc('\n', f);
 		}
@@ -18421,7 +18421,7 @@ generateTimestampDB(project *p)
 	tsname = aprintf("%s/%s", proj_root(p), TIMESTAMPS);
 	db = hash_new(HASH_MEMHASH);
 	assert(db);
-	if (f = fopen(tsname, "r")) {
+	if ((f = fopen(tsname, "r"))) {
 		while (fnext(buf, f)) {
 			tsrec	*ts;
 			char	*p;

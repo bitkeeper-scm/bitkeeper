@@ -76,7 +76,7 @@ cmd_chg_part1(int ac, char **av)
 
 	f = popenvp(new_av, "r");
 	out("@CHANGES INFO@\n");
-	while (line = fgetln(f, &len)) {
+	while ((line = fgetln(f, &len))) {
 		if (newline) outc(BKD_DATA);
 		newline = (line[len-1] == '\n');
 		if (writen(1, line, len) <= 0) break;
@@ -177,7 +177,7 @@ cmd_chg_part2(int ac, char **av)
 	out("@CHANGES INFO@\n");
 	f = fopen(cmd, "rt");
 	assert(f);
-	while (line = fgetln(f, &len)) {
+	while ((line = fgetln(f, &len))) {
 		if (newline) outc(BKD_DATA);
 		newline = (line[len-1] == '\n');
 		if (writen(1, line, len) <= 0) break;

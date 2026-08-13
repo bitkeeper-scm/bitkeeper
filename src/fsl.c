@@ -143,7 +143,7 @@ fslrm_main(int ac, char **av)
 
 	unless (av[optind]) usage1(av[0]);
 	while (--ac >= optind) {
-		if (xfile = is_xfile(av[ac])) {
+		if ((xfile = is_xfile(av[ac]))) {
 			rc = xfile_delete(av[ac], xfile);
 			if (rc && !force) {
 				perror(av[ac]);

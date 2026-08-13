@@ -265,7 +265,7 @@ again:	sccs_rdweaveInit(cset);
 		}
 		cset_firstPairReverse(cset, d); /* old to new */
 	}
-	while (d = cset_rdweavePair(cset, 0, &rkoff, &dkoff)) {
+	while ((d = cset_rdweavePair(cset, 0, &rkoff, &dkoff))) {
 		unless (dkoff) continue; /* last key */
 		unless (hash_deleteStr(keys, HEAP(cset, dkoff))) {
 			addArrayV(&serlist, d);

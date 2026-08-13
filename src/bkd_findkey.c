@@ -119,7 +119,7 @@ findkey(sccs *s, look l)
 	char	key[MAXKEY];
 
 	if (l.key) {
-		if (d = sccs_findKey(s, l.key)) {
+		if ((d = sccs_findKey(s, l.key))) {
 			printf("%s|%s", s->gfile, REV(s, d));
 			if (l.pkey) printf("\t%s", l.key);
 			printf("\n");

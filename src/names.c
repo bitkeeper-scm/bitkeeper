@@ -79,12 +79,12 @@ names_main(int ac, char **av)
 	for (p = sfileFirst("names", &av[optind], 0); p; p = sfileNext()) {
 		if (tick) progress(tick, ++n);
 		if (streq(p, CHANGESET)) continue;
-		if (dest = sfileRev()) {
+		if ((dest = sfileRev())) {
 			/*
 			 * alternative stdin src|dest|rkey
 			 * Faster as it never needs to sccs_init() any files
 			 */
-			if (rk = strchr(dest, '|')) *rk++ = 0;
+			if ((rk = strchr(dest, '|'))) *rk++ = 0;
 			assert(rk);
 			src = sccs2name(p);
 			dest = strdup(dest);

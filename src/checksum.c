@@ -324,7 +324,7 @@ fileResum(sccs *s, ser_t d, int diags, int fix, int safefix)
 	/* 'err' gets overwritten to return checksum error */
 	if (MERGE(s, d)) {
 		assert(d == e);
-		if (err = chkMerge(s, d, diags, safefix)) return (err);
+		if ((err = chkMerge(s, d, diags, safefix))) return (err);
 	}
 	unless (fix) {
 		if (d != e) {
@@ -543,9 +543,9 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	u32	index;
 	ticker	*tick = 0;
 
-	if (cutoff = config_int(s->proj, CONFIG_NOGRAPHVERIFY)) {
+	if ((cutoff = config_int(s->proj, CONFIG_NOGRAPHVERIFY))) {
 		verify = 1;
-	} else if (verify = !config_bool(s->proj, CONFIG_NOGRAPHVERIFY)) {
+	} else if ((verify = !config_bool(s->proj, CONFIG_NOGRAPHVERIFY))) {
 		cutoff = ~0;	/* set up lazy check for hardcoded cutoff */
 	}
 
@@ -564,10 +564,10 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	sccs_rdweaveInit(s);
 	cnt = 1;
 	growArray(&csetlist, TABLE(s));
-	while (d = cset_rdweavePair(s, 0, &rkoff, &dkoff)) {
+	while ((d = cset_rdweavePair(s, 0, &rkoff, &dkoff))) {
 		unless (dkoff) continue; /* last key */
-		if (rkid = hash_insert(root2id,
-		    &rkoff, sizeof(rkoff), 0, sizeof(*rkid))) {
+		if ((rkid = hash_insert(root2id,
+		    &rkoff, sizeof(rkoff), 0, sizeof(*rkid)))) {
 			addArray(&rkarray, 0);
 			rkid->index = cnt++;
 			sum = 0;
@@ -618,7 +618,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 			ser_t	tmpd;
 
 			walkrevs_setup(&wr, s, L(prev), L(d), WR_EITHER);
-			while (tmpd = walkrevs(&wr)) {
+			while ((tmpd = walkrevs(&wr))) {
 				unless (symdiff[tmpd]) bits++;
 				symdiff[tmpd] |= 2;
 			}

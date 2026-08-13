@@ -189,7 +189,7 @@ mvdir_main(int ac, char **av)
 	free(cmd);
 	assert(f);
 	rc = 0;
-	while (t = fgetline(f)) {
+	while ((t = fgetline(f))) {
 		s = sccs_init(t, INIT_NOCKSUM|INIT_MUSTEXIST);
 		assert(s);
 		if (CSET(s) ||
@@ -245,7 +245,7 @@ mvdir_main(int ac, char **av)
 				s->gfile);
 		}
 
-		if (fix_pfile = HAS_PFILE(s)) {
+		if ((fix_pfile = HAS_PFILE(s))) {
 			if (sccs_read_pfile(s, &pf)) {
 				fprintf(stderr, "%s: bad pfile\n", s->gfile);
 				sccs_free(s);

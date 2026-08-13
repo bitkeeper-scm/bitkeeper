@@ -135,7 +135,7 @@ cmd_pull_part2(int ac, char **av)
 		out("@END@\n");
 		return (1);
 	}
-	if (port = getenv("BK_PORT_ROOTKEY")) {
+	if ((port = getenv("BK_PORT_ROOTKEY"))) {
 		unless (!proj_isComponent(0) || nested_isGate(0)) {
 			out("ERROR-port source must be a gate\n");
 			return (1);
@@ -237,7 +237,7 @@ cmd_pull_part2(int ac, char **av)
 		goto done;
 	}
 
-	if (rc = bp_updateServer(0, keys, SILENT)) {
+	if ((rc = bp_updateServer(0, keys, SILENT))) {
 		printf("@UNABLE TO UPDATE BAM SERVER %s (%s)@\n",
 		    bp_serverURL(buf),
 		    (rc == 2) ? "can't get lock" : "unknown reason");
@@ -258,7 +258,7 @@ cmd_pull_part2(int ac, char **av)
 		printf("@HERE@\n");
 		EACH(comps) printf("%s\n", comps[i]);
 		freeLines(comps, free);
-		if (list = file2Lines(0, NESTED_URLLIST)) {
+		if ((list = file2Lines(0, NESTED_URLLIST))) {
 			printf("@URLLIST@\n");
 			EACH(list) printf("%s\n", list[i]);
 			printf("@\n");
@@ -271,7 +271,7 @@ cmd_pull_part2(int ac, char **av)
 	n = 2;
 	if (bk_hasFeature(FEAT_BKMERGE)) {
 		/* match remote side format to keep unused from building up */
-		if (p = getenv("BK_FEATURES_USED")) {
+		if ((p = getenv("BK_FEATURES_USED"))) {
 			if (strstr(p, "BKMERGE")) {
 				makepatch[n++] = "--bk-merge";
 			} else {
@@ -306,7 +306,7 @@ cmd_pull_part2(int ac, char **av)
 		if (!WIFEXITED(status)) {
 			fprintf(stderr,
 			    "cmd_pull_part2: makepatch interrupted\n");
-		} else if (n = WEXITSTATUS(status)) {
+		} else if ((n = WEXITSTATUS(status))) {
 			fprintf(stderr,
 			    "cmd_pull_part2: makepatch failed; status = %d\n",
 			    n);

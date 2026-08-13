@@ -48,7 +48,7 @@ search_parse(char *str)
 	str = s.pattern = strdup(str);
 	if (s.want_glob) return (s);
 	s.want_re = 1;
-	if (s.ignorecase) for (p = str; *p = tolower(*p); p++);
+	if (s.ignorecase) for (p = str; (*p = tolower(*p)); p++);
 	unless (s.re = pcre_compile(str, 0, &perr, &poff, 0)) {
 		fprintf(stderr, "search: bad regex \"%s\"\n", perr);
 		free(str);
@@ -86,7 +86,7 @@ search_regex(char *str, search s)
 		int	ret;
 
 		str = strdup(str);
-		for (p = str; *p = tolower(*p); p++);
+		for (p = str; (*p = tolower(*p)); p++);
 		ret = !pcre_exec(s.re, 0, str, strlen(str), 0, 0, 0, 0);
 		free(str);
 		return (ret);

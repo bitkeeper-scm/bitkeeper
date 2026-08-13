@@ -270,7 +270,7 @@ clone(Opts *opts, char *from, char *to, int fullcheck)
 		// BIKESHED Could use bk --config=partial_check:off
 		// and skip the restore
 		// but this code is currently working.
-		if (oconf = getenv("BK_CONFIG")) oconf = strdup(oconf);
+		if ((oconf = getenv("BK_CONFIG"))) oconf = strdup(oconf);
 		bk_setConfig("partial_check", "off");
 	}
 	cmd = addLine(0, "bk");
@@ -281,7 +281,7 @@ clone(Opts *opts, char *from, char *to, int fullcheck)
 	cmd = addLine(cmd, from);
 	cmd = addLine(cmd, to);
 	cmd = addLine(cmd, 0);
-	if (rc = spawnvp(_P_WAIT, cmd[1], &cmd[1])) {
+	if ((rc = spawnvp(_P_WAIT, cmd[1], &cmd[1]))) {
 		fprintf(stderr, "%s: Cloning %s failed %x\n", prog, from, rc);
 		rc = 1;
 	}
@@ -300,7 +300,7 @@ setEnv(Opts *opts)
 {
 	char	*p;
 
-	if (p = getenv("BK_CONFIG")) opts->oconfig = strdup(p);
+	if ((p = getenv("BK_CONFIG"))) opts->oconfig = strdup(p);
 	bk_setConfig("sync", "no");
 	bk_setConfig("checkout", "none");
 	bk_setConfig("partial_check", "on");
@@ -333,7 +333,7 @@ getPartitionHash(char *url)
 	f = popen(cmd, "r");
 	assert(f);
 	h = hash_fromStream(0, f);
-	if (status = pclose(f)) {
+	if ((status = pclose(f))) {
 		if (h) {
 			hash_free(h);
 			h = 0;
@@ -376,7 +376,7 @@ loadComps(Opts *opts)
 		    prog, opts->compsfile);
 		return (1);
 	}
-	while (p = fgetline(f)) {
+	while ((p = fgetline(f))) {
 		/* strip blank lines and comments */
 		while (isspace(*p)) p++;
 		if (!*p || (*p == '#')) continue;
@@ -496,7 +496,7 @@ cleanMissing(Opts *opts)
 		perror("gone");
 		goto err;
 	}
-	while (line = fgetline(gone)) {
+	while ((line = fgetline(gone))) {
 		assert(*line);	/* no pesky blank line */
 		opts->prune = addLine(opts->prune, strdup(line));
 	}
@@ -719,7 +719,7 @@ moveComps(Opts *opts)
 		}
 
 		// move BAM data to the product -
-		if (bamdirs = getdir("BitKeeper/BAM")) {
+		if ((bamdirs = getdir("BitKeeper/BAM"))) {
 			concat_path(dest, proj_root(prod), "BitKeeper/BAM");
 			if (mkdirp(dest)) goto err;
 			len = strlen(dest);

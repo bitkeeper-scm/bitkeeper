@@ -33,7 +33,7 @@ repotype_main(int ac, char **av)
 		flags |= SILENT;
 		ac--, av++;
 	}
-	if (dir = av[1]) {
+	if ((dir = av[1])) {
 		unless (isdir(dir)) dir = dirname(dir);
 		if (chdir(dir)) {
 			perror(dir);

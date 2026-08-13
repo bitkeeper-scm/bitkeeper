@@ -359,7 +359,7 @@ mkinit(sccs *s, ser_t d, char *file, char *key)
 		p = aprintf("bk get -qkPr1.1 '%s'", file);
 		fh = popen(p, "r");
 		free(p);
-		while (size = fread(buf, 1, sizeof(buf), fh)) {
+		while ((size = fread(buf, 1, sizeof(buf), fh))) {
 			randbits = adler32(randbits, buf, size);
 			for (i = 0; i < size; i++) {
 				unless (buf[i]) {
@@ -404,7 +404,7 @@ mkinit(sccs *s, ser_t d, char *file, char *key)
 		    REV(s, d), delta_sdate(s, d), USER(s, d),
 		    host);
 		t = COMMENTS(s, d);
-		while (p = eachline(&t, &len)) fprintf(fh, "c %.*s\n", len, p);
+		while ((p = eachline(&t, &len))) fprintf(fh, "c %.*s\n", len, p);
 		if (DATE_FUDGE(s, d)) fprintf(fh, "F %lu\n", DATE_FUDGE(s, d));
 	}
 	fprintf(fh, "------------------------------------------------\n");
@@ -541,7 +541,7 @@ makeMerge(sccs *s, int verbose)
 		mser = 0;
 		del = 0;
 		p = CLUDES(s, d);
-		while (m = sccs_eachNum(&p, &sign)) {
+		while ((m = sccs_eachNum(&p, &sign))) {
 			if (FLAGS(s, m) && !TAG(s, m)) {
 				if ((sign > 0) && (mser < m)) {
 					mser = m;

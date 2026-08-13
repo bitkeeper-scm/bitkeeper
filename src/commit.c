@@ -238,7 +238,7 @@ commit_main(int ac, char **av)
 			fin = stdin;
 		}
 		setmode(0, _O_TEXT);
-		while (bufp = fgetline(fin)) {
+		while ((bufp = fgetline(fin))) {
 			if (strstr(bufp, "SCCS/s.") == 0) {
 				bufp = name2sccs(bufp);
 				fprintf(f, "%s\n", bufp);
@@ -255,7 +255,7 @@ commit_main(int ac, char **av)
 		    opts.ci ? "c" : "");
 		fin = popen(cmd, "r");
 		assert(fin);
-		while (bufp = fgetline(fin)) {
+		while ((bufp = fgetline(fin))) {
 			fprintf(f, "%s\n", bufp);
 		}
 		if (pclose(fin)) {
@@ -274,7 +274,7 @@ commit_main(int ac, char **av)
 	bktmp(pendingFiles);
 	f = fopen(pendingFiles, "w");
 	assert(f);
-	while (bufp = fgetline(fin)) {
+	while ((bufp = fgetline(fin))) {
 		p = strchr(bufp+offset, '|');
 		if (((offset == 8) && bufp[2] == 'c' && opts.ci) || (p == 0)) {
 			if (p) *p = 0;
@@ -337,7 +337,7 @@ commit_main(int ac, char **av)
 		f = popen(cmd, "w");
 		f1 = fopen(pendingFiles, "rt");
 		assert(f); assert (f1);
-		while (line = fgetline(f1)) {
+		while ((line = fgetline(f1))) {
 			p = strrchr(line, BK_FS);
 			assert(p);
 			*p = 0;
@@ -435,7 +435,7 @@ do_commit(char **av,
 		f = fopen(pendingFiles, "r");
 		f2 = fopen(pendingFiles2, "w");
 		i = strlen(ATTR);
-		while (t = fgetline(f)) {
+		while ((t = fgetline(f))) {
 			if (begins_with(t, ATTR "|") ||
 			    begins_with(t, SATTR "|")) {
 				/* skip ATTR file */
@@ -484,7 +484,7 @@ do_commit(char **av,
 		goto done;
 	}
 
-	if (rc = trigger(opts.resync ? "merge" : av[0], "pre")) goto done;
+	if ((rc = trigger(opts.resync ? "merge" : av[0], "pre"))) goto done;
 	comments_done();
 	if (comments_savefile(commentFile)) {
 		rc = 1;
@@ -493,7 +493,7 @@ do_commit(char **av,
 	}
 	if (opts.quiet) dflags |= SILENT;
 	if (sym) syms = addLine(syms, strdup(sym));
-	if (f = fopen("SCCS/t.ChangeSet", "r")) {
+	if ((f = fopen("SCCS/t.ChangeSet", "r"))) {
 		while (fnext(buf, f)) {
 			chop(buf);
 			syms = addLine(syms, strdup(buf));
@@ -599,7 +599,7 @@ do_commit(char **av,
 		 * that 'bk abort' can pick it up if we fail.
 		 */
 		sccs_sdelta(cset, sccs_top(cset), key);
-		if (f = fopen(CSETS_IN, "a")) {
+		if ((f = fopen(CSETS_IN, "a"))) {
 			fprintf(f, "%s\n", key);
 			fclose(f);
 		}
@@ -612,7 +612,7 @@ do_commit(char **av,
 		 * Created a new cset for this component, the saved URLs
 		 * for this component are now all invalid.
 		 */
-		if (urllist = hash_fromFile(0, file)) {
+		if ((urllist = hash_fromFile(0, file))) {
 			hash_deleteStr(urllist, proj_rootkey(0));
 			if (hash_toFile(urllist, file)) perror(file);
 			hash_free(urllist);
@@ -797,7 +797,7 @@ updateCsetChecksum(sccs *cset, ser_t d, char **keys)
 		rk = keys[i++];
 		dk = keys[i];
 		for (p = dk; *p; p++) sum += *p; /* sum of new deltakey */
-		if (rkoff = sccs_hasRootkey(cset, rk)) {
+		if ((rkoff = sccs_hasRootkey(cset, rk))) {
 			++todo;
 			rinfo = hash_insert(h, &rkoff, sizeof(rkoff),
 			    0, sizeof(*rinfo));
@@ -847,8 +847,8 @@ updateCsetChecksum(sccs *cset, ser_t d, char **keys)
 		}
 		/* allocate rinfo */
 		if (merge) {
-			if (rinfo = hash_insert(h, &rkoff, sizeof(rkoff),
-				0, sizeof(*rinfo))) {
+			if ((rinfo = hash_insert(h, &rkoff, sizeof(rkoff),
+				0, sizeof(*rinfo)))) {
 				/* new rk first seen in merge (not in commit) */
 
 				assert(dkoff);
@@ -979,7 +979,7 @@ mkChangeSet(c_opts opts, sccs *cset, char *files, char ***keys)
 	}
 	d = sccs_dInit(0, 'D', cset, 0);
 	if (d == TREE(cset)) {
-		if (t = getenv("BK_RANDOM")) {
+		if ((t = getenv("BK_RANDOM"))) {
 			strcpy(buf, t);
 		} else {
 			randomBits(buf);
@@ -1010,7 +1010,7 @@ mkChangeSet(c_opts opts, sccs *cset, char *files, char ***keys)
 		/*
 		 * set initial sum to parent, in updateCsetChecksum we update
 		 */
-		if (d2 = sccs_getCksumDelta(cset, p)) {
+		if ((d2 = sccs_getCksumDelta(cset, p))) {
 			SUM_SET(cset, d, SUM(cset, d2));
 		} else {
 			SUM_SET(cset, d, 0);
@@ -1046,7 +1046,7 @@ mkChangeSet(c_opts opts, sccs *cset, char *files, char ***keys)
 		 */
 		f = fopen(files, "rt");
 		assert(f);
-		while (line = fgetline(f)) {
+		while ((line = fgetline(f))) {
 			rev = strrchr(line, '|');
 			*rev++ = 0;
 			getfilekey(line, rev, cset, d, keys);
@@ -1162,7 +1162,7 @@ csetCreate(c_opts opts, sccs *cset, int flags, char *files, char **syms)
 	unless (BWEAVE_OUT(cset)) {
 		out = sccs_wrweaveInit(cset);
 		sccs_rdweaveInit(cset);
-		while (line = sccs_nextdata(cset)) {
+		while ((line = sccs_nextdata(cset))) {
 			fputs(line, out);
 			fputc('\n', out);
 		}
@@ -1227,8 +1227,8 @@ commitSnapshot(void)
 	 */
 	mkdir("BitKeeper/tmp/SCCS", 0777);
 	fileLink("SCCS/s.ChangeSet", CSET_BACKUP ".s");
-	if (t = xfile_fetch(CHANGESET, 'p')) save_pfile = t;
-	if (t = xfile_fetch(CHANGESET, 'c')) save_cfile = t;
+	if ((t = xfile_fetch(CHANGESET, 'p'))) save_pfile = t;
+	if ((t = xfile_fetch(CHANGESET, 'c'))) save_cfile = t;
 	if (exists(SATTR)) fileLink(SATTR, CSET_BACKUP "attr.s");
 }
 

@@ -128,7 +128,7 @@ checkXflags(sccs *s, ser_t d, int what)
 		return (0);
 	}
 	x = COMMENTS(s, d);
-	while (r = eachline(&x, 0)) {
+	while ((r = eachline(&x, 0))) {
 		if (strneq(r, "Turn on ", 8)) {
 			t = r+8;
 			p = &added;

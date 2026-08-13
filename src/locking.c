@@ -148,7 +148,7 @@ global_wrlock(void)
 {
 	char	*p;
 
-	if (p = getenv("BK_WRITE_LOCK")) {
+	if ((p = getenv("BK_WRITE_LOCK"))) {
 		T_LOCK("global_wrlock=%s", p);
 	} else {
 		p = "/etc/BitKeeper/locks/wrlock";
@@ -161,7 +161,7 @@ global_rdlock(void)
 {
 	char	*p;
 
-	if (p = getenv("BK_READ_LOCK")) {
+	if ((p = getenv("BK_READ_LOCK"))) {
 		T_LOCK("global_rdlock=%s", p);
 	} else {
 		p = "/etc/BitKeeper/locks/rdlock";
@@ -907,7 +907,7 @@ nested_wrlock(project *p)
 		goto out;
 	}
 
-	if (lockers = nested_lockers(p, 0, 1)) {
+	if ((lockers = nested_lockers(p, 0, 1))) {
 		nl_errno = NL_ALREADY_LOCKED;
 		freeLines(lockers, freeNlock);
 		goto out;
@@ -1123,7 +1123,7 @@ rderr:						error(READER_LOCK_DIR
 		unless (stale && !listStale) {
 
 			nl = new(nlock);
-			if (nl->nlid = loadfile(writer, 0)) {
+			if ((nl->nlid = loadfile(writer, 0))) {
 				chomp(nl->nlid);
 				nl->stale = stale;
 				lockers = addLine(lockers, nl);
@@ -1259,7 +1259,7 @@ nested_unlock(project *p, char *nlid)
 	}
 	T_LOCK("nested_unlock: %s '%s'", tfile, nlid);
 	free(tfile);
-	if (lockers = nested_lockers(p, 0, 1)) {
+	if ((lockers = nested_lockers(p, 0, 1))) {
 		freeLines(lockers, freeNlock);
 	} else {
 		/* no lockers, remove RESYNC */

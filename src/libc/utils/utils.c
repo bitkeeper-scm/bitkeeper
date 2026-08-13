@@ -24,13 +24,13 @@ my_perror(char *file, int line, char *msg)
 	char	*p = 0;
 	int	save = errno;
 
-	if (p = getenv("_BK_VERSION")) {
+	if ((p = getenv("_BK_VERSION"))) {
 		if (strneq(p, "bk-", 3)) p += 3;
 		fprintf(stderr, "%s:%d (%s): ", file, line, p);
 	} else {
 		fprintf(stderr, "%s:%d: ", file, line);
 	}
-	if (p = strerror(errno)) {
+	if ((p = strerror(errno))) {
 		fprintf(stderr, "%s: %s\n", msg, p);
 	} else {
 		fprintf(stderr, "%s: errno=%d\n", msg, errno);

@@ -163,7 +163,7 @@ load_existing(char *file)
 				a = strchr(c, ',');
 				if (a) *a++ = 0; /* a = start of next range */
 				start = atoi(c);
-				if (d = strchr(c, '-')) {
+				if ((d = strchr(c, '-'))) {
 					end = atoi(d+1);
 				} else {
 					end = start;
@@ -218,7 +218,7 @@ intvl_in(RBtree *range, int val)
 
 	new.start = new.end = val;
 
-	if (d = RBtree_find(range, &new)) {
+	if ((d = RBtree_find(range, &new))) {
 		if (val >= d->start && val <= d->end) return (1);
 	}
 	return (0);
@@ -301,7 +301,7 @@ mark_annotations(void)
 		taghash = hash_fetchStrPtr(reviews, buf);
 		if (taghash) EACH_HASH(taghash) {
 			range = *(RBtree **)taghash->vptr;
-			if (found = intvl_in(range, line)) break;
+			if ((found = intvl_in(range, line))) break;
 		}
 		p = strchr(p, '\t');
 		printf("%d%s", found, p);

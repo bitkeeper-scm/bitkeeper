@@ -46,7 +46,7 @@ sinfo_main(int ac, char **av)
 
 			sprintf(buf, "%s:", gfile);
 			printf("%-23s ", gfile);
-			if (s = xfile_fetch(gfile, 'p')) {
+			if ((s = xfile_fetch(gfile, 'p'))) {
 				chomp(s);
 				fputs(s, stdout);
 				free(s);

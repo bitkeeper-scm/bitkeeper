@@ -80,11 +80,11 @@ converge_hash_files(void)
 	 */
 	f = popen("bk gfiles BitKeeper/etc BitKeeper/deleted", "r");
 	assert(f);
-	while (gfile = fgetline(f))  {
+	while ((gfile = fgetline(f)))  {
 		/* find basename of file with deleted stuff stripped */
 		bn = basenm(gfile);
 		if (strneq(bn, ".del-", 5)) bn += 5;
-		if (t = strchr(bn, '~')) *t = 0;
+		if ((t = strchr(bn, '~'))) *t = 0;
 		for (i = 0; Files[i].file; i++) {
 			if (streq(bn, basenm(Files[i].file))) {
 				if (t) *t = '~'; /* restore gfile */
@@ -274,7 +274,7 @@ converge(State *g, char *gfile, char *opts)
 	sccs_free(srm);
 
 	/* Check if something is in the way (other than skeep) */
-	if (s = sccs_init(sfile, g->iflags)) {
+	if ((s = sccs_init(sfile, g->iflags))) {
 		sccs_sdelta(s, sccs_ino(s), buf);
 		unless (streq(buf, key_keep)) free_slot(g, s);
 		sccs_free(s);
@@ -348,7 +348,7 @@ copy_to_resync(State *g, sccs *s)
 	/* Is it already there? */
 	sccs_sdelta(s, sccs_ino(s), rootkey);
 
-	if (snew = sccs_keyinit(0, rootkey, g->iflags, g->idDB)) {
+	if ((snew = sccs_keyinit(0, rootkey, g->iflags, g->idDB))) {
 		/* Found this rootkey in RESYNC already */
 		sccs_free(s);
 		return (snew);

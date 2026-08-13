@@ -121,7 +121,7 @@ smerge_main(int ac, char **av)
 	 * heuristics.  We can add a BK_MERGE_ENABLE in the future if
 	 * needed.
 	 */
-	if (p = getenv("BK_MERGE_DISABLE")) {
+	if ((p = getenv("BK_MERGE_DISABLE"))) {
 		enable_mergefcns(p, 0);
 	}
 	if (getenv("BK_MERGE_DIFF3")) do_diff3 = 1;
@@ -269,8 +269,8 @@ file_init(sccs *s, int side, char *anno, file_t *f)
 		s->whodel = sccs_findrev(s, revs[side]);
 	}
 	rev = strdup(revs[side]);
-	if (inc = strchr(rev, '+')) *inc++ = 0;
-	if (exc = strchr(inc ? inc : rev, '-')) *exc++ = 0;
+	if ((inc = strchr(rev, '+'))) *inc++ = 0;
+	if ((exc = strchr(inc ? inc : rev, '-'))) *exc++ = 0;
 
 	f->f = fmem();
 	if (sccs_get(s, rev, 0, inc, exc, flags, 0, f->f)) {
@@ -779,7 +779,7 @@ diffwalk_new(file_t *left, file_t *right)
 		f = fopen(dw->file[i], "w");
 		if (anno) {
 			rewind(tf);
-			while (d = fgetline(tf)) {
+			while ((d = fgetline(tf))) {
 				p = strstr(d, "\\| ");
 				if (p) d = p + 2;
 				fprintf(f, "%s\n", d);
@@ -1360,7 +1360,7 @@ user_conflict_fdiff(conflct *c)
 	rp = right;
 	i = 0;
 	while (lp->ld || rp->ld) {
-		if (!rp->ld || lp->ld && lp->ld->seq < rp->ld->seq) {
+		if (!rp->ld || (lp->ld && lp->ld->seq < rp->ld->seq)) {
 			/* line on left */
 			printline(lp->ld, lp->c, 1);
 			if (lp->highlight) printhighlight(lp->highlight);
@@ -1792,8 +1792,8 @@ merge_content(conflct *c)
 		range.len[DF_RIGHT] = c->end[side] - c->start[side];
 		data.lines[DF_RIGHT] = body[side].lines;
 
-		if (h[side] = diff_items(&range, 1, smergeData,
-		    diff_cmpLine, diff_hashLine, diff_cost, &data)) {
+		if ((h[side] = diff_items(&range, 1, smergeData,
+		    diff_cmpLine, diff_hashLine, diff_cost, &data))) {
 			hs[side] = h[side];
 			he[side] = h[side] + nLines(h[side]);
 			++h[side];
@@ -1934,7 +1934,7 @@ merge_common_header(conflct *c)
 		}
 	}
 	/* i == number of matching lines at start */
-	if (i == 0 || i == len[LEFT] && i == len[RIGHT]) return (0);
+	if (i == 0 || (i == len[LEFT] && i == len[RIGHT])) return (0);
 
 	splitidx[LEFT] = i;
 	splitidx[RIGHT] = i;
@@ -1982,7 +1982,7 @@ merge_common_footer(conflct *c)
 	}
 	/* i == number of matching lines at end */
 	/* j == number of GCA matching lines at end */
-	if (i == 0 || i == len[LEFT] && i == len[RIGHT]) return (0);
+	if (i == 0 || (i == len[LEFT] && i == len[RIGHT])) return (0);
 
 	splitidx[LEFT] = len[LEFT] - i;
 	splitidx[RIGHT] = len[RIGHT] - i;

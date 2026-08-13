@@ -85,7 +85,7 @@ remote_bk(int quiet, int ac, char **av)
 		if (streq(av[i], "-zo0")) gzip &= ~REMOTE_GZ_RCV;
 	}
 	assert(urls);
-	if (p = getenv("_BK_REMOTEGZIP")) gzip = atoi(p);
+	if ((p = getenv("_BK_REMOTEGZIP"))) gzip = atoi(p);
 
 	opts = (quiet ? SILENT : 0) | gzip | REMOTE_BKDERRS;
 	/*
@@ -221,7 +221,7 @@ remote_cmd(char **av, char *url, FILE *in, FILE *out, FILE *err,
 	}
 	if (strneq("ERROR-", line, 6)) {
 err:		if (err) fprintf(err, "##### %s #####\n", u);
-		if (p = strchr(line+6, '\n')) *p = 0; /* terminate line */
+		if ((p = strchr(line+6, '\n'))) *p = 0; /* terminate line */
 		if (err) fprintf(err, "%s\n", &line[6]);
 		/*
 		 * N.B.

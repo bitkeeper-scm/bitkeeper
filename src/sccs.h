@@ -562,14 +562,14 @@ typedef struct {
 
 /* Parent must exist for merge, so can terminate on first empty one */
 #define	EACH_PARENT(s, d, p, j)	\
-	for (j = 0; (p) = (j < 2) ? PARENTS(s, d, j) : 0; ++j)
+	for (j = 0; ((p) = (j < 2) ? PARENTS(s, d, j) : 0); ++j)
 
 #define	PARENTS(s, d, j)	(0 + (s)->slist1[d].parents[j])
 #define	PARENT(s, d)		PARENTS(s, d, 0)
 #define	MERGE(s, d)		PARENTS(s, d, 1)
 
 #define	EACH_PTAG(s, d, p, j)	\
-	for (j = 0; (p) = (j < 2) ? PTAGS(s, d, j) : 0; ++j)
+	for (j = 0; ((p) = (j < 2) ? PTAGS(s, d, j) : 0); ++j)
 
 #define	PTAGS(s, d, j)		(0 + (s)->slist2[d].ptags[j])
 #define	PTAG(s, d)		PTAGS(s, d, 0)

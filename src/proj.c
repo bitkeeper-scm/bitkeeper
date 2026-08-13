@@ -171,7 +171,7 @@ proj_init(char *dir)
 		concat_path(buf, cwd, dir);
 		fdir = buf;
 	}
-	if (ret = projcache_lookup(fdir)) goto done;
+	if ((ret = projcache_lookup(fdir))) goto done;
 
 	/* missed the cache */
 	old = fslayer_enable(0);
@@ -181,7 +181,7 @@ proj_init(char *dir)
 
 	unless (streq(root, fdir)) {
 		/* fdir is not a root, was root in cache? */
-		if (ret = projcache_lookup(root)) {
+		if ((ret = projcache_lookup(root))) {
 			/* yes, make a new mapping */
 			projcache_store(fdir, ret);
 			free(root);
@@ -328,7 +328,7 @@ find_root(char *dir)
 		for (p--; *p != '/'; p--); /* previous / */
 		if (p == first) return (0);
 		*p = 0;
-		if (proj = projcache_lookup(buf)) return (strdup(proj->root));
+		if ((proj = projcache_lookup(buf))) return (strdup(proj->root));
 	}
 	/* NOTREACHED */
 }
@@ -380,7 +380,7 @@ proj_cd2product(void)
 
 	unless (p = curr_proj()) return (-1);
 	if (p->rparent) p = p->rparent;
-	if (p = proj_product(p)) return (proj_chdir(proj_root(p)));
+	if ((p = proj_product(p))) return (proj_chdir(proj_root(p)));
 	return (-1);
 }
 
@@ -476,7 +476,7 @@ proj_checkout(project *p)
 		    "Meaning of '%s' unknown. Assuming edit.\n", s);
 		bits = CO_EDIT|CO_BAM_EDIT;
 	}
-	if (s = config_str(p, CONFIG_BAM_CHECKOUT)) {
+	if ((s = config_str(p, CONFIG_BAM_CHECKOUT))) {
 		bits &= 0xf;
 		if (strieq(s, "get")) bits |= CO_BAM_GET;
 		if (strieq(s, "edit")) bits |= CO_BAM_EDIT;
@@ -519,10 +519,10 @@ proj_rootkey(project *p)
 
 	/* load values from cache */
 	concat_path(file, p->root, "/BitKeeper/log/ROOTKEY");
-	if (f = fopen(file, "rt")) {
-		if (t = fgetline(f)) p->rootkey = strdup(t);
-		if (t = fgetline(f)) p->md5rootkey = strdup(t);
-		if (t = fgetline(f)) p->syncroot = strdup(t);
+	if ((f = fopen(file, "rt"))) {
+		if ((t = fgetline(f))) p->rootkey = strdup(t);
+		if ((t = fgetline(f))) p->md5rootkey = strdup(t);
+		if ((t = fgetline(f))) p->syncroot = strdup(t);
 		fclose(f);
 	}
 
@@ -544,7 +544,7 @@ proj_rootkey(project *p)
 		p->syncroot = strdup(buf);
 		sccs_free(sc);
 		concat_path(file, p->root, "/BitKeeper/log/ROOTKEY");
-		if (f = fopen(file, "wt")) {
+		if ((f = fopen(file, "wt"))) {
 			fputs(p->rootkey, f);
 			putc('\n', f);
 			fputs(p->md5rootkey, f);
@@ -606,9 +606,9 @@ proj_product(project *p)
 		} else if (proj_comppath(p)) {
 			/* return proj_product of the repo above this one */
 			strcpy(buf, p->root);
-			if (proj = proj_init(dirname(buf))) {
+			if ((proj = proj_init(dirname(buf)))) {
 				assert(proj != p);
-				if (prod = proj_product(proj)) {
+				if ((prod = proj_product(proj))) {
 					p->product = proj_init(proj_root(prod));
 				}
 				proj_free(proj);
@@ -633,11 +633,11 @@ proj_findProduct(project *p)
 	char	buf[MAXPATH];
 
 	unless (p || (p = curr_proj())) return (0);
-	if (prod = proj_product(p)) return (prod);
+	if ((prod = proj_product(p))) return (prod);
 
 	/* return proj_findProduct of the repo above this one */
 	strcpy(buf, p->root);
-	if (proj = proj_init(dirname(buf))) {
+	if ((proj = proj_init(dirname(buf)))) {
 		assert(proj != p);
 		prod = proj_findProduct(proj);
 		proj_free(proj);
@@ -665,8 +665,8 @@ proj_comppath(project *p)
 	if (p->comppath) goto out;
 
 	concat_path(file, p->root, "/BitKeeper/log/COMPONENT");
-	if (f = fopen(file, "rt")) {
-		if (t = fgetline(f)) p->comppath = strdup(t);
+	if ((f = fopen(file, "rt"))) {
+		if ((t = fgetline(f))) p->comppath = strdup(t);
 		fclose(f);
 	}
 	unless (p->comppath) p->comppath = strdup("");
@@ -858,7 +858,7 @@ proj_fakenew(void)
 {
 	project	*ret;
 
-	if (ret = projcache_lookup("/.")) return (ret);
+	if ((ret = projcache_lookup("/."))) return (ret);
 	ret = new(project);
 	ret->root = strdup("/.");
 	ret->rootkey = strdup("SCCS");
@@ -1490,7 +1490,7 @@ proj_tipkey(project *p)
 		if (sb.st_size && getenv("_BK_REGRESSION")) assert(0);
 
 		// should only happen when talking to older bks
-		if (s = sccs_init(buf, SILENT|INIT_NOCKSUM|INIT_MUSTEXIST)) {
+		if ((s = sccs_init(buf, SILENT|INIT_NOCKSUM|INIT_MUSTEXIST))) {
 			cset_savetip(s);
 			sccs_free(s);
 			concat_path(buf, p->root, "BitKeeper/log/TIP");
@@ -1577,7 +1577,7 @@ scanfWrite(char *file, hash *new, char **keys)
 	EACH(keys) {
 		k = keys[i];
 		assert(!streq(k, "DIRTY"));
-		if (v = hash_fetchStr(new, k)) {
+		if ((v = hash_fetchStr(new, k))) {
 			hash_storeStr(old, k, v);
 		} else {
 			hash_deleteStr(old, k);
@@ -1611,7 +1611,7 @@ scanfUpdate(project *p, char *file, hash **h, char *dir, u32 state, int set)
 	if (set == -1) {
 		/* flush cache */
 		if (*h) {
-			if (keys = hash_fetchStrPtr(*h, "DIRTY")) {
+			if ((keys = hash_fetchStrPtr(*h, "DIRTY"))) {
 				scanfWrite(file, *h, keys);
 				freeLines(keys, free);
 			}

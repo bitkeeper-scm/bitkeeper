@@ -44,7 +44,7 @@ annotate_main(int ac, char **av)
 	name = strrchr(av[0], '/');
 
 	// LMXXX - does anyone use this?
-	if (t = getenv("BK_ANNOTATE")) {
+	if ((t = getenv("BK_ANNOTATE"))) {
 		if ((flags = annotate_args(flags, t)) == -1) {
 			fprintf(stderr,
 			    "annotate: bad flags in $BK_ANNOTATE\n");
@@ -157,7 +157,7 @@ err:			errors = 1;
 		}
 		if (seq2) {
 			rewind(out);
-			while (t = fgetline(out)) {
+			while ((t = fgetline(out))) {
 				c = strtoul(t, 0, 0);
 				if (c > seq2) break;
 				if (c < seq1) continue;

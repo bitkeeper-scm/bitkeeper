@@ -35,7 +35,7 @@ fullRemapPath(char *buf, project *proj, char *rel)
 		return (0);
 	}
 	assert(!strneq(rel, ".bk/", 4));
-	if (ret = isSCCS(rel)) {
+	if ((ret = isSCCS(rel))) {
 		concat_path(newrel, ".bk", rel);
 
 		/* p -> s.foo */
@@ -232,7 +232,7 @@ remap_rmdir(project *proj, char *dir)
 
 	sccs = fullRemapPath(buf, proj, dir);
 	assert(sccs == 2);
-	if (ret = rmdir(buf)) return (ret);
+	if ((ret = rmdir(buf))) return (ret);
 
 	/* remove any empty directories above */
 	t = buf + strlen(buf);
@@ -319,7 +319,7 @@ remap_getdir(project *p, char *dir)
 		opts.add = 0;
 
 		sprintf(buf, "%s/.bk/%s", proj_root(p), dir);
-		if (mapdir = getdir(buf)) {
+		if ((mapdir = getdir(buf))) {
 			parallelLines(ret, mapdir, 0, getdirMerge, &opts);
 			freeLines(mapdir, 0); /* mapdir items freed in getdirMerge */
 		}

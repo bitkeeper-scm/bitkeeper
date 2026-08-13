@@ -185,8 +185,8 @@ symdiff(sccs *s, ser_t *leftlist, ser_t right, ser_t **cludes,
 		}
 
 		/* Set up parent ancestory for this node */
-		if (newbits = (bits & (SL_PAR|SR_PAR))) {
-			if (e = PARENT(s, d)) {
+		if ((newbits = (bits & (SL_PAR|SR_PAR)))) {
+			if ((e = PARENT(s, d))) {
 				update(e, newbits, slist, &marked, &lower);
 			}
 			if (BKMERGE(s) && (e = MERGE(s, d))) {
@@ -198,7 +198,7 @@ symdiff(sccs *s, ser_t *leftlist, ser_t right, ser_t **cludes,
 
 		/* Process the cludes list */
 		p = cludeslist ? HEAP(s, cludeslist[d]) : CLUDES(s, d);
-		while (e = sccs_eachNum(&p, &sign)) {
+		while ((e = sccs_eachNum(&p, &sign))) {
 			bits = slist[e];
 			newbits = IE(active, bits, sign);
 			update(e, newbits, slist, &marked, &lower);
@@ -516,7 +516,7 @@ graph_convert(sccs *s, int fixpfile)
 		int	sign;
 		
 		p = CLUDES(s, fixup);
-		while (d = sccs_eachNum(&p, &sign)) {
+		while ((d = sccs_eachNum(&p, &sign))) {
 			if (sign > 0) {
 				inc = addLine(inc, REV(s, d));
 			} else {
@@ -625,7 +625,7 @@ v2Right(sccs *s, ser_t d, void *token)
 	ser_t	m;
 
 	printf("right %s", REV(s, d));
-	if (m = MERGE(s, d)) printf(" merge %s", REV(s, m));
+	if ((m = MERGE(s, d))) printf(" merge %s", REV(s, m));
 	fputc('\n', stdout);
 	return (0);
 }
@@ -674,7 +674,7 @@ graph_kidwalk(sccs *s, walkfcn toTip, walkfcn toRoot, void *token)
 		/* now next sibling or up parent link */
 		for (; d; d = PARENT(s, d)) {
 			if (toRoot && (rc = toRoot(s, d, token))) goto out;
-			if (next = SIBLINGS(s, d)) {
+			if ((next = SIBLINGS(s, d))) {
 				d = next;
 				break;
 			}
@@ -696,7 +696,7 @@ loadKids(sccs *s)
 	for (d = TREE(s); d <= TABLE(s); d++) {
 		if (TAG(s, d)) continue;
 		unless (p = PARENT(s, d)) continue;
-		if (k = s->kidlist[p].kid) s->kidlist[d].siblings = k;
+		if ((k = s->kidlist[p].kid)) s->kidlist[d].siblings = k;
 		s->kidlist[p].kid = d;
 	}
 }

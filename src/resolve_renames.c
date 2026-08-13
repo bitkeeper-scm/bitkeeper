@@ -35,7 +35,7 @@ r_help(resolve *rs)
 		r = "did not move.";
 	} else {
 		l = r = 0;
-		if (i = slotTaken(rs, rs->snames->remote, 0)) {
+		if ((i = slotTaken(rs, rs->snames->remote, 0))) {
 			switch (i) {
 			    case SFILE_CONFLICT:
 				r = "wants to move, has sfile conflict.";
@@ -52,7 +52,7 @@ r_help(resolve *rs)
 				break;
 			}
 		}
-		if (i = slotTaken(rs, rs->snames->local, 0)) {
+		if ((i = slotTaken(rs, rs->snames->local, 0))) {
 			switch (i) {
 			    /*
 			     * The two SFILE below can't happen since
@@ -130,7 +130,7 @@ r_l(resolve *rs)
 	int	i;
 	char	*l;
 
-	if (i = slotTaken(rs, rs->snames->local, 0)) {
+	if ((i = slotTaken(rs, rs->snames->local, 0))) {
 		fprintf(stderr, "Local name is in use by ");
 		switch (i) {
 		    case SFILE_CONFLICT:
@@ -165,7 +165,7 @@ r_r(resolve *rs)
 	int	i;
 	char	*l;
 
-	if (i = slotTaken(rs, rs->snames->remote, 0)) {
+	if ((i = slotTaken(rs, rs->snames->remote, 0))) {
 		fprintf(stderr, "Remote name is in use by ");
 		switch (i) {
 		    case SFILE_CONFLICT:

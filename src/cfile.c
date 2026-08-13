@@ -84,7 +84,7 @@ cfile_main(int ac, char **av)
 		f = fmem();
 		for (name = sfileFirst(av[0], (char *[]){"-", 0}, sf_flags);
 		     name; name = sfileNext()) {
-			if (t = xfile_fetch(name, 'c')) {
+			if ((t = xfile_fetch(name, 'c'))) {
 				ftrunc(f, 0);
 				fwrite(t, 1, strlen(t), f);
 				free(t);
@@ -93,7 +93,7 @@ cfile_main(int ac, char **av)
 				printf("%-*s%s\n",
 				    prefix, prefix ? " ": "", gfile);
 				free(gfile);
-				while (t = fgetline(f)) {
+				while ((t = fgetline(f))) {
 					printf("%-*s%s\n", max(2, 2 * prefix),
 					    prefix ? " ": "", t);
 				}

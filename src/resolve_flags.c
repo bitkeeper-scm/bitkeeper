@@ -77,7 +77,7 @@ resolve_flags(resolve *rs)
 	rf = XFLAGS(rs->s, r);
 	gf = XFLAGS(rs->s, g);
 
-	newflags = (lf & rf) | ~gf & (lf ^ rf);
+	newflags = (lf & rf) | (~gf & (lf ^ rf));
 
 	if (newflags == lf) {
 		f_local(rs);

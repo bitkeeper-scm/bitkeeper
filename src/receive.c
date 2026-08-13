@@ -96,7 +96,7 @@ receiveNested(char *opts, int dasha, char *sfio)
 	}
 	free(cmd);
 	err = 0;
-	while (t = fgetline(f)) {
+	while ((t = fgetline(f))) {
 		unless (ends_with(t, "BitKeeper/tmp/PATCH")) {
 			fprintf(stderr, "invalid patch file\n");
 			pclose(f);

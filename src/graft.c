@@ -34,11 +34,11 @@ graft_main(int ac, char **av)
 	sccs	*s1, *s2;
 
 	name[0] = name2[0] = 0;
-	if (s = sfileFirst("graft", &av[1], 0)) {
+	if ((s = sfileFirst("graft", &av[1], 0))) {
 		strcpy(name, s);
-		if (s = sfileNext()) {
+		if ((s = sfileNext())) {
 			strcpy(name2, s);
-			if (s = sfileNext()) usage();
+			if ((s = sfileNext())) usage();
 		}
 	}
 	if (!name[0] || !name2[0]) usage();

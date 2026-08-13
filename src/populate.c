@@ -98,7 +98,7 @@ nested_populate(nested *n, popts *ops)
 	EACH_STRUCT(n->comps, cp, j) {
 		unless (cp->alias && !C_PRESENT(cp)) continue;
 		k = 0;
-		while (url = urllist_find(n, cp, flags, &k)) {
+		while ((url = urllist_find(n, cp, flags, &k))) {
 			unless (flags & SILENT) {
 				unless (ops->lasturl &&
 				    streq(ops->lasturl, url)) {
@@ -296,7 +296,7 @@ unpopulate_check(popts *ops, comp *c)
 	}
 	f = popen("bk gfiles -cxp -v", "r");
 	errs = 0;
-	while (t = fgetline(f)) {
+	while ((t = fgetline(f))) {
 		if (t[0] == 'x') {
 			fprintf(stderr, "Extra file:         ");
 		} else if (t[2] == 'c') {

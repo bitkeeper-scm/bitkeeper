@@ -138,7 +138,7 @@ getMsgv(char *msg_name, char **bkargs, char *prefix, char b, FILE *outf)
 		 * #BKARG# or #BKARG#1# is the first entry.
 		 * #BKARG#%d# is the Nth arg.
 		 */
-		if (p = strstr(buf, "#BKARG#")) {
+		if ((p = strstr(buf, "#BKARG#"))) {
 			b = buf;
 			do {
 				*p = 0;
@@ -160,10 +160,10 @@ getMsgv(char *msg_name, char **bkargs, char *prefix, char b, FILE *outf)
 					fprintf(outf, "#BKARG#%d#", n);
 				}
 				b = p;
-			} while (p = strstr(b, "#BKARG#"));
+			} while ((p = strstr(b, "#BKARG#")));
 			fputs(b, outf);
-		} else if (p = strstr(buf, "#BKEXEC#")) {
-			if (f1 = popen(&p[8], "r")) {
+		} else if ((p = strstr(buf, "#BKEXEC#"))) {
+			if ((f1 = popen(&p[8], "r"))) {
 				while (fgets(buf, sizeof (buf), f1)) {
 					fputs("\t", outf);
 					fputs(buf, outf);

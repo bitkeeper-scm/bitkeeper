@@ -219,8 +219,8 @@ hashThings(df_ctx *dc, int side)
 	for (i = 1; i <= n; i++) {
 		dh = hashIt(dc, i, side);
 		while (1) {
-			if (t = hash_insert(dc->h, &dh, sizeof(u32),
-			    0, sizeof(thing))) {
+			if ((t = hash_insert(dc->h, &dh, sizeof(u32),
+			    0, sizeof(thing)))) {
 				/* new entry */
 				t->idx = i;
 				t->side = side;

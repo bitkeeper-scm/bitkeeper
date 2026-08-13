@@ -180,7 +180,7 @@ bp_get(sccs *s, ser_t din, u32 flags, char *gfile, FILE *out)
 			} else {
 				sum = 0;
 			}
-			if (p = getenv("_BP_HASHCHARS")) {
+			if ((p = getenv("_BP_HASHCHARS"))) {
 				sprintf(hash, "%08x", sum);
 				hash[atoi(p)] = 0;
 				sum = strtoul(hash, 0, 16);
@@ -330,11 +330,11 @@ bp_hashgfile(char *gfile, char **hashp, sum_t *sump)
 	close(fd);
 
 	*hashp = malloc(36);
-	if (p = getenv("_BK_FAKE_HASH")) {
+	if ((p = getenv("_BK_FAKE_HASH"))) {
 		strcpy(*hashp, p);
 	} else {
 		sprintf(*hashp, "%08x", sum);
-		if (p = getenv("_BP_HASHCHARS")) (*hashp)[atoi(p)] = 0;
+		if ((p = getenv("_BP_HASHCHARS"))) (*hashp)[atoi(p)] = 0;
 	}
 	p = *hashp + strlen(*hashp);
 	*p++ = '.';
@@ -430,7 +430,7 @@ bp_rename(project *proj, char *old, char *new)
 	if (streq(old, new)) return (0);
 	db = proj_BAMindex(proj, 1);
 	assert(db);
-	if (p = mdbm_fetch_str(db, old)) {
+	if ((p = mdbm_fetch_str(db, old))) {
 		// mdbm doesn't like you to feed it
 		// back data from a fetch from the
 		// same db.
@@ -474,7 +474,7 @@ bp_lookupkeys(project *proj, char *keys)
 	char	*p, *t;
 
 	unless (db = proj_BAMindex(proj, 0)) return (0);
-	if (t = mdbm_fetch_str(db, keys)) {
+	if ((t = mdbm_fetch_str(db, keys))) {
 		p = bp_dataroot(proj, 0);
 		t = aprintf("%s/%s", p, t);
 		free(p);
@@ -512,7 +512,7 @@ bp_bamPath(project *proj, char *buf, int syncroot)
 
 	/* find repo where BAM dir is stored */
 	unless (prod = proj_isResync(proj)) prod = proj;
-	if (ptmp = proj_product(prod)) prod = ptmp;
+	if ((ptmp = proj_product(prod))) prod = ptmp;
 
 	concat_path(buf, proj_root(prod), BAM_ROOT "/");
 	p = buf + strlen(buf);
@@ -530,7 +530,7 @@ bp_bamPath(project *proj, char *buf, int syncroot)
 	assert(rk);
 	strcpy(p, rk);
 	/* ROOTKEY =~ s/[\|:]/-/g */
-	while (p = strpbrk(p, "|:")) *p++ = '-';	/* : for windows */
+	while ((p = strpbrk(p, "|:"))) *p++ = '-';	/* : for windows */
 	return (buf);
 }
 
@@ -633,7 +633,7 @@ mklink:			if (features_minrelease(proj, 0) <= 6) {
 		} else if (S_ISDIR(sb.st_mode)) {
 			/* found old BAM data */
 			if (isdir(buf)) {
-				if (rc = bp_merge(old, buf)) {
+				if ((rc = bp_merge(old, buf))) {
 					if (rc == 2) goto old;
 					fprintf(stderr, "BP MERGE FAILED\n");
 					exit(1);
@@ -707,7 +707,7 @@ hash2path(project *proj, char *hash)
 	assert(hash);
 	bp_dataroot(proj, bam);
 	p = bam + strlen(bam);
-	if (t = strchr(hash, '.')) *t = 0;
+	if ((t = strchr(hash, '.'))) *t = 0;
 	sprintf(p, "/%c%c/%s", hash[0], hash[1], hash);
 	if (t) *t = '.';
 	return (strdup(bam));
@@ -727,7 +727,7 @@ bp_fetch(sccs *s, ser_t din)
 	unless (din = bp_fdelta(s, din)) return (-1);
 	keys = addLine(0, sccs_prsbuf(s, din, PRS_FORCE, BAM_DSPEC));
 
-	if (rc = bp_fetchkeys("sccs_get", s->proj, 0, keys, ADDED(s, din))) {
+	if ((rc = bp_fetchkeys("sccs_get", s->proj, 0, keys, ADDED(s, din)))) {
 		fprintf(stderr, "bp_fetch: failed to fetch delta for %s\n",
 		    s->gfile);
 	}
@@ -972,7 +972,7 @@ bp_serverURL(char *url)
 
 	unless (url) url = buf;
 
-	if (p = getenv("_BK_FORCE_BAM_URL")) {
+	if ((p = getenv("_BK_FORCE_BAM_URL"))) {
 		if (streq(p, "none")) return (0);
 		strcpy(url, p);
 	} else {
@@ -996,7 +996,7 @@ bp_serverID(char *repoid, int notme)
 
 	unless (repoid) repoid = buf;
 
-	if (p = getenv("_BK_FORCE_BAM_REPOID")) {
+	if ((p = getenv("_BK_FORCE_BAM_REPOID"))) {
 		if (streq(repoid, "none")) return (0);
 		strcpy(repoid, p);
 	} else {
@@ -1023,8 +1023,8 @@ bp_serverURL2ID(char *url)
 	char	buf[MAXLINE];
 
 	sprintf(buf, "bk -q@'%s' id -r 2>%s", url, DEVNULL_WR);
-	if (f = popen(buf, "r")) {
-		if (ret = fgetline(f)) ret = strdup(ret);
+	if ((f = popen(buf, "r"))) {
+		if ((ret = fgetline(f))) ret = strdup(ret);
 		pclose(f);
 	}
 	unless (ret) {
@@ -1047,7 +1047,7 @@ bp_setBAMserver(char *path, char *url, char *repoid)
 	}
 	concat_path(cfile, cfile, BAM_SERVER);
 	if (url) {
-		if (f = fopen(cfile, "w")) {
+		if ((f = fopen(cfile, "w"))) {
 			fprintf(f, "%s\n%s\n", url, repoid);
 			fclose(f);
 		} else {
@@ -1491,7 +1491,7 @@ bam_clean_main(int ac, char **av)
 	if (renames) {
 		/* update index file */
 		EACH_KV(db) {
-			if (p1 = hash_fetchStr(renames, kv.val.dptr)) {
+			if ((p1 = hash_fetchStr(renames, kv.val.dptr))) {
 				/* data will always fit */
 				strcpy(kv.val.dptr, p1);
 				bp_logUpdate(proj, kv.key.dptr, p1);
@@ -1670,7 +1670,7 @@ none:		ERROR((stderr, "no BAM data in this repository\n"));
 
 	bp_indexfile(0, buf);
 	logDB = mdbm_mem();	/* mdbm_delete_str() can't take null mdbm */
-	if (f = fopen(buf, "r")) {
+	if ((f = fopen(buf, "r"))) {
 		load_logfile(logDB, f);
 		fclose(f);
 	}
@@ -1709,7 +1709,7 @@ none:		ERROR((stderr, "no BAM data in this repository\n"));
 		if (tick) progress(tick, 1);
 		chomp(buf);
 		p = strchr(buf, ' ') + 1;
-		if (q = bp_lookupkeys(0, p)) {
+		if ((q = bp_lookupkeys(0, p))) {
 			free(q);
 			assert(mdbm_fetch_str(logDB, p));
 			lines = addLine(lines, strdup(buf));
@@ -1733,7 +1733,7 @@ none:		ERROR((stderr, "no BAM data in this repository\n"));
 	 */
 	for (kv = mdbm_first(logDB); kv.key.dsize; kv = mdbm_next(logDB)) {
 		if (tick) progress(tick, 1);
-		if (p = bp_lookupkeys(0, kv.key.dptr)) {
+		if ((p = bp_lookupkeys(0, kv.key.dptr))) {
 			// XXX - BAMSIZE could be much bigger than 4G
 			sprintf(buf,
 			    "%u %s", (u32)size(p), kv.key.dptr);
@@ -1833,7 +1833,7 @@ fetch_bad(char **servers, char **bad, u64 todo, int verbose)
 		bp_forceServer(servers[j]);
 		(void)bp_fetchkeys("bam check", 0, verbose, bad, todo);
 		EACH(bad) {
-			if (p = bp_lookupkeys(0, bad[i])) {
+			if ((p = bp_lookupkeys(0, bad[i]))) {
 				repaired++;
 				q = aprintf("%s~BAD", p);
 				(void)unlink(q); // might not be there
@@ -2073,7 +2073,7 @@ sfiles_bam_main(int ac, char **av)
 		unless (hash_insertU32U32(h, rkoff, 0)) continue;
 		unless (weave_isBAM(s, rkoff)) continue;
 
-		if (p = key2path(HEAP(s, rkoff), idDB, goneDB, 0)) {
+		if ((p = key2path(HEAP(s, rkoff), idDB, goneDB, 0))) {
 			sfile = name2sccs(p);
 			if (exists(sfile)) puts(p);
 			free(p);
@@ -2088,7 +2088,7 @@ sfiles_bam_main(int ac, char **av)
 
 	/* find any pending 1.0 deltas */
 	if (fsfiles) {
-		while (sfile = fgetline(fsfiles)) {
+		while ((sfile = fgetline(fsfiles))) {
 			if ((p = strchr(sfile, '|')) && streq(p+1, "1.0")) {
 				*p = 0;
 				puts(sfile);
@@ -2220,7 +2220,7 @@ err:			sccs_free(s);
 			goto err;
 		}
 		unless (d = bp_fdelta(s, sccs_top(s))) goto err;
-		if (bytes = size(s->gfile)) {
+		if ((bytes = size(s->gfile))) {
 			ADDED_SET(s, d, bytes);
 			sccs_newchksum(s);
 		}
@@ -2287,7 +2287,7 @@ bam_timestamps_main(int ac, char **av)
 				}
 			}
 		}
-		if (dfile = bp_lookup(s, d)) {
+		if ((dfile = bp_lookup(s, d))) {
 			got = mtime(dfile);
 			want = (DATE(s, d) - DATE_FUDGE(s, d));
 			unless (got == want) {
@@ -2443,7 +2443,7 @@ bam_convert_main(int ac, char **av)
 	sccs_rdweaveInit(s);
 	out = sccs_wrweaveInit(s);
 	n = nLines(keys) / 2;
-	while (line = sccs_nextdata(s)) {
+	while ((line = sccs_nextdata(s))) {
 		unless (isData(line)) {
 			fputs(line, out);
 			fputc('\n', out);
@@ -2804,7 +2804,7 @@ bam_names_main(int ac, char **av)
 			 * returns nothing.
 			 * Ideas?  For now, skip it if not found.
 			 */
-			if (path = key2path(p, idDB, goneDB, &m2k)) {
+			if ((path = key2path(p, idDB, goneDB, &m2k))) {
 				not = 0;
 				if (first) {
 					used++;

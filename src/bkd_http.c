@@ -438,7 +438,7 @@ http_cset(char *page)
 	f = popenvp(av, "r");
 	free(rev);
 	free(dspec);
-	while (buf = fgetline(f)) {
+	while ((buf = fgetline(f))) {
 		if (buf[0] != '#') {
 			fputs(buf, stdout);
 			continue;
@@ -599,7 +599,7 @@ http_prs(char *page)
 	av[++i] = 0;
 
 	f = popenvp(av, "r");
-	while (buf = fgetline(f)) {
+	while ((buf = fgetline(f))) {
 		items = splitLine(buf, "|", 0);
 		if (streq(items[2], "1.1")) items[3][0] = ' ';
 
@@ -644,7 +644,7 @@ http_dir(char *page)
 	char	buf[MAXLINE];
 
 	hash_storeStr(qout, "PAGE", "dir");
-	if (rev = hash_fetchStr(qin, "REV")) {
+	if ((rev = hash_fetchStr(qin, "REV"))) {
 		hash_storeStr(qout, "REV", rev);
 	} else {
 		rev = "+";
@@ -662,8 +662,8 @@ http_dir(char *page)
 		/* error */
 		pclose(d);
 		buf[0] = 0;
-		if (f = fopen(tmpf, "r")) {
-			if (t = fgetline(f)) strcpy(buf, t);
+		if ((f = fopen(tmpf, "r"))) {
+			if ((t = fgetline(f))) strcpy(buf, t);
 			fclose(f);
 		}
 		http_error(500, "%s: %s", fpath, buf[0] ? buf : "");
@@ -687,7 +687,7 @@ http_dir(char *page)
 	    "</tr>");
 
 	ftmp = fopen(tmpf, "w");
-	while (t = fgetline(d)) {
+	while ((t = fgetline(d))) {
 		if (t[0] == '|') {
 			/* display directories */
 			++t;
@@ -828,7 +828,7 @@ http_anno(char *page)
 
 	printf("<pre class='code annotated'>");
 	unless (rev) rev = "+";
-	if (s = sccs_init(fpath, SILENT|INIT_MUSTEXIST)) {
+	if ((s = sccs_init(fpath, SILENT|INIT_MUSTEXIST))) {
 		if (ASCII(s)) ascii = 1;
 		sccs_free(s);
 	}
@@ -844,7 +844,7 @@ http_anno(char *page)
 			    "license: XXXXXXXXXXXXX/'");
 		}
 		f = popen(buf, "r");
-		while (t = fgetline(f)) {
+		while ((t = fgetline(f))) {
 			empty = 0;
 			htmlify(t, strlen(t));
 			putchar('\n');
@@ -1020,7 +1020,7 @@ http_patch(char *page)
 	f = popen(buf, "r");
 	while (fgets(buf, sizeof(buf), f)) {
 		color(buf[0]);
-		if ((buf[0] == '#')) {
+		if (buf[0] == '#') {
 			puts("</pre>");
 			puts("</div>");
 			puts("<div class='panel panel-default'>");
@@ -1028,7 +1028,7 @@ http_patch(char *page)
 			puts("<h3 class='panel-title'>");
 			printf("<div class='file-heading'>");
 		}
-		if ((buf[0] == '=')) {
+		if (buf[0] == '=') {
 			puts("</pre>");
 			puts("</div>");
 			puts("<div class='panel panel-default'>");
@@ -1521,14 +1521,14 @@ parseurl(char *url)
 	unless (*url++ == '/') return (-1); /* skip leading slash */
 
 	/* extract query_string */
-	if (s = strrchr(url, '?')) {
+	if ((s = strrchr(url, '?'))) {
 		*s++ = 0;
 		hash_fromStr(qin, s);
 	}
 	webdecode(url, &newurl, 0);
 	url = newurl;
 
-	if (user = hash_fetchStr(qin, "USER")) {
+	if ((user = hash_fetchStr(qin, "USER"))) {
 		hash_storeStr(qout, "USER", user);
 		prefix = aprintf("$if(:USER:=%s){", user);
 		suffix = strdup("}");
@@ -1562,7 +1562,7 @@ parseurl(char *url)
 		flushExit(0);
 	}
 
-	if (p = proj_init(url)) {
+	if ((p = proj_init(url))) {
 		cwd = proj_cwd();
 		i = strlen(cwd);
 		proot = proj_root(p);
@@ -1627,7 +1627,7 @@ mk_querystr(void)
 	char	*p;
 
 	if (querystr) free(querystr);
-	if (p = hash_toStr(qout)) {
+	if ((p = hash_toStr(qout))) {
 		querystr = malloc(strlen(p) + 2);
 		sprintf(querystr, "?%s", p);
 		free(p);
@@ -1950,13 +1950,13 @@ detect_oldurls(char *url)
 	unless (p = strstr(url, "?nav=")) return;
 	*p = 0;
 
-	if (p = strstr(url, "/ChangeSet@")) {
+	if ((p = strstr(url, "/ChangeSet@"))) {
 		hash_storeStr(qout, "PAGE", "changes");
 		hash_storeStr(qout, "REV", p+11);
-	} else if (p = strstr(url, "/cset@")) {
+	} else if ((p = strstr(url, "/cset@"))) {
 		hash_storeStr(qout, "PAGE", "cset");
 		hash_storeStr(qout, "REV", p+6);
-	} else if (p = strstr(url, "/patch@")) {
+	} else if ((p = strstr(url, "/patch@"))) {
 		hash_storeStr(qout, "PAGE", "patch");
 		hash_storeStr(qout, "REV", p+7);
 	} else if ((p = strstr(url, "/hist/")) ||
@@ -1969,7 +1969,7 @@ detect_oldurls(char *url)
 		} else {
 			hash_storeStr(qout, "PAGE", p+1);
 		}
-		if (rev = strchr(file, '@')) {
+		if ((rev = strchr(file, '@'))) {
 			*rev++ = 0;
 			hash_storeStr(qout, "REV", rev);
 		}
@@ -1979,7 +1979,7 @@ detect_oldurls(char *url)
 	}
 
 	*p = 0;
-	if (user = strstr(url, "/user=")) {
+	if ((user = strstr(url, "/user="))) {
 		*user = 0;
 		hash_storeStr(qout, "USER", user+6);
 	}

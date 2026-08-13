@@ -203,13 +203,13 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 	}
 	/* if last is '-', then fetch params from stdin */
 	if (p) {
-		while (p = fgetline(stdin)) {
+		while ((p = fgetline(stdin))) {
 			aliases = addLine(aliases, strdup(p));
 		}
 	}
 
 	/* replace vals like ./tcl with a rootkey; downcase reserved words */
-	if (c = aliasdb_chkAliases(n, aliasdb, &aliases, start_cwd)) {
+	if ((c = aliasdb_chkAliases(n, aliasdb, &aliases, start_cwd))) {
 		error("%s: %d error%s processing aliases\n",
 		    prog, c, (c > 1)?"s":"");
 		goto err;
@@ -367,7 +367,7 @@ aliasShow(char *cmd, aopts *opts, char **av)
 	}
 	/* if last is '-', then fetch params from stdin */
 	if (p) {
-		while (p = fgetline(stdin)) {
+		while ((p = fgetline(stdin))) {
 			aliases = addLine(aliases, strdup(p));
 		}
 	}
@@ -408,7 +408,7 @@ aliasdb_init(nested *n, project *p, char *rev, int pending, int no_diffs)
 		/* if no aliases in RESYNC, use directory above */
 		concat_path(buf, proj_root(prodroot), ALIASES);
 		path = name2sccs(buf);
-		if (s = sccs_init(path, INIT_MUSTEXIST)) {
+		if ((s = sccs_init(path, INIT_MUSTEXIST))) {
 			/* the sccs_get "-r@<rev>" will use RESYNC cset file */
 			if (s->proj) proj_free(s->proj);
 			s->proj = proj_init(proj_root(p));
@@ -486,7 +486,7 @@ dbAdd(hash *aliasdb, char *alias, char **aliases)
 		error("%s: invalid alias name: %s\n", prog, alias);
 		goto err;
 	}
-	if (val = hash_fetchStr(aliasdb, alias)) {
+	if ((val = hash_fetchStr(aliasdb, alias))) {
 		list = splitLine(val, "\r\n", 0);
 	}
 	EACH(aliases) {
@@ -561,7 +561,7 @@ dbWrite(nested *n, hash *aliasdb, char *comment, int commit)
 	char	*tmpfile;
 	char	buf[MAXPATH];
 
-	if (ret = dbChk(n, aliasdb)) return (ret);
+	if ((ret = dbChk(n, aliasdb))) return (ret);
 
 	if (n->cset) sccs_close(n->cset);	/* win32 */
 
@@ -570,14 +570,14 @@ dbWrite(nested *n, hash *aliasdb, char *comment, int commit)
 	sprintf(buf, "bk -P clean -q %s", ALIASES);
 	unless (ret = system(buf)) return (0); // if clean, okay
 	sprintf(buf, "bk -?BK_NO_REPO_LOCK=YES -P delta -aqY'%s' %s", comment, ALIASES);
-	if (ret = system(buf)) return (ret);
+	if ((ret = system(buf))) return (ret);
 	if (commit) {
 		tmpfile = bktmp(0);
 		sprintf(buf,
 		    "bk -P sfiles -pA %s |"
 		    "bk -P sccslog -A -f -d'$each(:C:){(:C:)\n}' - >'%s'",
 		    ALIASES, tmpfile);
-		if (ret = system(buf)) return (ret);
+		if ((ret = system(buf))) return (ret);
 		sprintf(buf,
 		    "bk -P sfiles -pC %s |"
 		    "bk -?BK_NO_REPO_LOCK=YES -P commit -S -qfY'%s' -", ALIASES, tmpfile);
@@ -621,14 +621,14 @@ dbChk(nested *n, hash *aliasdb)
 			unless (validName(key)) total++;
 		}
 		aliases = splitLine(aliasdb->vptr, "\r\n", 0);
-		if (errors = aliasdb_chkAliases(n, aliasdb, &aliases, 0)) {
+		if ((errors = aliasdb_chkAliases(n, aliasdb, &aliases, 0))) {
 			error("%s: bad values for key: %s\n",
 			    prog, key);
 			total += errors;
 		}
 		freeLines(aliases, free);
 		/* check for recursion */
-		if (comps = aliasdb_expandOne(n, aliasdb, key)) {
+		if ((comps = aliasdb_expandOne(n, aliasdb, key))) {
 			freeLines(comps, 0);
 		} else {
 			total++;
@@ -802,7 +802,7 @@ alias_coverMissing(nested *n, char **missing_list, char **aliases)
 			cand = popLine(*lp);
 			ret = addLine(ret, strdup(cand->name));
 			EACH_STRUCT(cand->exp, c1, j) {
-				if (lp = hash_fetch(need, &c1, sizeof(c1))) {
+				if ((lp = hash_fetch(need, &c1, sizeof(c1)))) {
 					freeLines(*lp, 0);
 					hash_delete(need, &c1, sizeof(c1));
 				}
@@ -881,7 +881,7 @@ alias_coverMissing(nested *n, char **missing_list, char **aliases)
 		 * since they no longer have to be avoided.
 		 */
 		EACH_STRUCT(cand->exp, c, i) {
-			if (lp = hash_fetch(need, &c, sizeof(c))) {
+			if ((lp = hash_fetch(need, &c, sizeof(c)))) {
 				freeLines(*lp, 0);
 				hash_delete(need, &c, sizeof(c));
 			}
@@ -1125,7 +1125,7 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char ***paliases, aopts *op)
 	/*
 	 * print the val entry from the db
 	 */
-	if (i = chkReserved(alias)) {
+	if ((i = chkReserved(alias))) {
 		assert(i >= 0);
 		if (strieq(alias, "HERE")) {
 			EACH_INDEX(n->here, j) {
@@ -1330,7 +1330,7 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char ***paliases, char *cwd)
 			/* is it a normal rootkey? */
 			if (strchr(alias, '|')) {
 				/* that is in the nested collection? */
-				if (c = nested_findKey(n, alias)) {
+				if ((c = nested_findKey(n, alias))) {
 					if (c->product && fix) {
 						goto keys;
 					}
@@ -1379,7 +1379,7 @@ keys:
 		}
 
 		/* Is it a glob ? */
-		if (p = is_glob(alias)) {
+		if ((p = is_glob(alias))) {
 #ifndef	CRAZY_GLOB
 			unless (fix) {
 				error( "%s: glob not allowed: %s\n",

@@ -106,7 +106,7 @@ rmgone(Opts *opts, char *prefix)
 	h = hash_new(HASH_MEMHASH);
 	if (s && !sccs_get(s, "@+", 0, 0, 0, SILENT, 0, f)) {
 		rewind(f);
-		while (t = fgetline(f)) hash_insertStrU32(h, t, 1);
+		while ((t = fgetline(f))) hash_insertStrU32(h, t, 1);
 	}
 	fclose(f);
 
@@ -117,7 +117,7 @@ rmgone(Opts *opts, char *prefix)
 		f = fmem();
 		if (s && !sccs_get(s, 0, 0, 0, 0, SILENT, 0, f)) rewind(f);
 	}
-	while (t = fgetline(f)) {
+	while ((t = fgetline(f))) {
 		unless (hash_insertStrU32(h, t, 2)) {
 			*(u32 *)h->vptr |= 2;
 		}

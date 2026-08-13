@@ -35,13 +35,13 @@ which_main(int ac, char **av)
 	exe = av[optind];
 	if (internal) {
 		assert(bin);
-		if (cmd = cmd_lookup(exe, strlen(exe))) {
+		if ((cmd = cmd_lookup(exe, strlen(exe)))) {
 			printf("%s/bk %s\n", bin, exe);
 			return (0);
 		}
 	}
 	if (external) {
-		if (path = which(exe)) {
+		if ((path = which(exe))) {
 			puts(path);
 			free(path);
 			return (0);

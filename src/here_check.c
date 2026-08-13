@@ -117,7 +117,7 @@ here_check_main(int ac, char **av)
 			}
 		} else {
 			j = 0;
-			while (url = urllist_find(n, cp, flags, &j)) {
+			while ((url = urllist_find(n, cp, flags, &j))) {
 				urls = addLine(urls, url);
 				unless (opts->all) break;
 			}

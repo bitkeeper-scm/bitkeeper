@@ -604,7 +604,7 @@ getFileConflict(resolve *rs, char *gfile, char *path)
 	char	*t, *s;
 	int	i;
 	
-	if (i = comp_overlap(rs->opts->complist, gfile)) {
+	if ((i = comp_overlap(rs->opts->complist, gfile))) {
 		strcpy(path, rs->opts->complist[i]);
 		return;
 	}
@@ -654,7 +654,7 @@ dc_remove(resolve *rs)
 	}
 	getFileConflict(rs, PATHNAME(rs->s, rs->d), path);
 	sprintf(buf, "%s/%s", RESYNC2ROOT, path);
-	if (ret = rmdir(buf)) {
+	if ((ret = rmdir(buf))) {
 		int	i, n, saved_errno;
 		char	**files = 0;
 
@@ -1154,7 +1154,7 @@ resolve_create(resolve *rs, int type)
 	switch (type) {
 	    case GFILE_CONFLICT:
 		if (rs->opts->debug) fprintf(stderr, "GFILE\n");
-		if (ret = gc_sameFiles(rs)) return (ret);
+		if ((ret = gc_sameFiles(rs))) return (ret);
 		rs->prompt = PATHNAME(rs->s, rs->d);
 		rs->res_gcreate = 1;
 		return (resolve_loop("create/gfile conflict", rs, gc_funcs));

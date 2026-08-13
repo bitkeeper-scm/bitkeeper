@@ -149,7 +149,7 @@ comments_main(int ac, char **av)
 			perror(tmp);
 			return (1);
 		}
-		while (cnt = fread(buf, 1, sizeof(buf), tf)) {
+		while ((cnt = fread(buf, 1, sizeof(buf), tf))) {
 			fwrite(buf, 1, cnt, stdout);
 		}
 	} else {

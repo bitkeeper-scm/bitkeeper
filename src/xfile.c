@@ -259,7 +259,7 @@ sfile_move(project *p, char *from, char *to)
 	int	rc;
 
 	// XXX can replace an existing sfile2
-	if (rc = fileMove(sfile1, sfile2)) goto out;
+	if ((rc = fileMove(sfile1, sfile2))) goto out;
 
 	s1 = strrchr(sfile1, '/') + 1;
 	s2 = strrchr(sfile2, '/') + 1;
@@ -286,7 +286,7 @@ sfile_delete(project *p, char *file)
 	char	*s, *t;
 	int	rc;
 
-	if (rc = unlink(sfile)) goto out;
+	if ((rc = unlink(sfile))) goto out;
 
 	s = strrchr(sfile, '/') + 1;
 	for (t = exts; *t; t++) {

@@ -90,7 +90,7 @@ cmdlog_main(int ac, char **av)
 		concat_path(buf, proj_root(0), "/BitKeeper/log/");
 		concat_path(buf, buf, log);
 		unless (f = fopen(buf, "r")) return (1);
-		while (t = fgetline(f)) parsePrint(opts, 0, t);
+		while ((t = fgetline(f))) parsePrint(opts, 0, t);
 		fclose(f);
 		if (opts->pattern) free(opts->pattern);
 		return (0);
@@ -124,7 +124,7 @@ cmdlog_main(int ac, char **av)
 	}
 	nested_free(n);
 
-	while (i = logmux_oldest(lmlist)) {
+	while ((i = logmux_oldest(lmlist))) {
 		lmp = (logmux *)lmlist[i];
 		parsePrint(opts, lmp->prefix, lmp->buf);
 		unless (lmp->buf = fgetline(lmp->fp)) {

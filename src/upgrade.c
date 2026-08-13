@@ -99,7 +99,7 @@ upgrade_main(int ac, char **av)
 			    urlbase);
 			exit(1);
 		}
-	} else if (p = config_str(0, CONFIG_UPGRADE_URL)) {
+	} else if ((p = config_str(0, CONFIG_UPGRADE_URL))) {
 		urlbase = p;
 	} else if (test_release) {
 		urlbase = UPGRADETRIAL;
@@ -121,7 +121,7 @@ upgrade_main(int ac, char **av)
 			notice("upgrade-install-other-platform", 0, "-e");
 			goto out;
 		}
-	} else if (p = getenv("BK_UPGRADE_PLATFORM")) {
+	} else if ((p = getenv("BK_UPGRADE_PLATFORM"))) {
 		/*
 		 * This is mainly useful for development machines that
 		 * are using a platform that we don't actually release
@@ -134,7 +134,7 @@ upgrade_main(int ac, char **av)
 	if (bk_macosx()) {
 		/* figure out if we're in a bundle or not */
 		bundle = fullname(bin, 0);
-		if (p = strstr(bundle, "BitKeeper.app")) {
+		if ((p = strstr(bundle, "BitKeeper.app"))) {
 			/* we know the app name, we want the dir where
 			 * it goes */
 			*(p+13) = 0; /* NULL at end of BitKeeper.app */
@@ -186,7 +186,7 @@ upgrade_main(int ac, char **av)
 	platforms = allocLines(20);
 	p = index;
 	while (*p) {
-		if (e = strchr(p, '\n')) *e++ = 0;
+		if ((e = strchr(p, '\n'))) *e++ = 0;
 		if (p[0] == '#') {
 			/* comments */
 		} else if (strneq(p, "old ", 4)) {
@@ -204,7 +204,7 @@ upgrade_main(int ac, char **av)
 				chdir("/");  // avoid delete dir
 				concat_path(buf, getDotBk(), "latest-bkver");
 				sprintf(new, "%s.tmp.%u", buf, (u32)getpid());
-				if (f = fopen(new, "w")) {
+				if ((f = fopen(new, "w"))) {
 					// bk_ver,bk_utc
 					fprintf(f, "%s,%s\n", data[3], data[4]);
 					fclose(f);
@@ -460,7 +460,7 @@ upgrade_latestVersion(char *new_vers, char *new_utc)
 		 */
 		touch(buf, 0666);
 	}
-	if (f = fopen(buf, "r")) {
+	if ((f = fopen(buf, "r"))) {
 		if ((t = fgetline(f)) && (p = strchr(t, ','))) {
 			*p++ = 0;
 			assert(strlen(t) < 32);
@@ -550,7 +550,7 @@ donag:	/* okay, nag */
 	    new_vers, new_utc, new_age,
 	    bkver("VERS"), bkver("UTC"), bk_age);
 	if (out) {
-		if (f = fopen(out, "w")) {
+		if ((f = fopen(out, "w"))) {
 			fprintf(f, "%s\n", av[ac]);
 			for (i = 0; i < 79; ++i) fputc('=', f);
 			fputc('\n', f);

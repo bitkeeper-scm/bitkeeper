@@ -30,7 +30,7 @@ bk_spawnvp(int flags, char *cmdname, char *av[])
 	unless (exec = which((char*)cmdname)) return (-1);
 
 	if (spawn_preHook) spawn_preHook(flags, av);
-	if (pid = fork()) {	/* parent */
+	if ((pid = fork())) {	/* parent */
 		free(exec);
 		if (pid == -1) return (pid);
 		unless (flags & (_P_DETACH|_P_NOWAIT)) {

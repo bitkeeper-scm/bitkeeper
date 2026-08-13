@@ -38,7 +38,7 @@ spawn_filterPipeline(char **cmds)
 	while (cmd) {
 		tokens = shellSplit(cmd);
 		tokens = addLine(tokens, 0); /* force trailing null */
-		if (cmd = LNEXT(cmds)) {
+		if ((cmd = LNEXT(cmds))) {
 #ifdef	WIN32
 			mkpipe(p, BIG_PIPE);
 #else

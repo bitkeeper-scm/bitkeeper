@@ -122,7 +122,7 @@ gethelp(char *helptxt, char *topic, char *bkarg, char *prefix, FILE *outf)
 			} else unless (p = strstr(buf, "#BKMOD#")) {
 				fputs(buf, outf);
 			} else {
-				for (t = buf; p = strstr(t, "#BKMOD#"); ) {
+				for (t = buf; (p = strstr(t, "#BKMOD#")); ) {
 					*p = 0;
 					fputs(t, outf);
 					t = &p[7];

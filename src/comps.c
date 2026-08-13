@@ -100,7 +100,7 @@ comps_citool(char **av, int haveAliases, int no_extras)
 	 * If run in a nested repository, list only the components
 	 * that contain modified data.
 	 */
-	if (dirs = proj_scanComps(0, DS_PENDING|DS_EDITED)) {
+	if ((dirs = proj_scanComps(0, DS_PENDING|DS_EDITED))) {
 		EACH(dirs) hash_insertStr(mods, dirs[i], 0);
 		freeLines(dirs, 0);
 	}
@@ -112,7 +112,7 @@ comps_citool(char **av, int haveAliases, int no_extras)
 	}
 	(void)proj_cd2product();
 
-	while (t = fgetline(f)) {
+	while ((t = fgetline(f))) {
 		if (strneq(t, "./", 2)) t += 2;
 		if (first && streq(first, t)) {
 			free(first);

@@ -280,7 +280,7 @@ doit(FILE *f, pcre *re)
 	char	*buf = 0;
 
 	opts.line = 0;
-	while (buf = grep_getline(f)) {
+	while ((buf = grep_getline(f))) {
 		if ((buf[0] == '|') && (p = getfile(buf))) {
 			unless (first) done(file);
 			opts.line = first = skip = 0;

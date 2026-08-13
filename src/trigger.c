@@ -322,7 +322,7 @@ runTriggers(int remote, char *event, char *what, char *when, char **triggers)
 		out = stdout;
 	} else {
 		bkd_data = "";
-		if (p = getenv("_BKD_LOGFILE")) {
+		if ((p = getenv("_BKD_LOGFILE"))) {
 			logfile = out = fopen(p, "a");
 		} else {
 			out = stderr;

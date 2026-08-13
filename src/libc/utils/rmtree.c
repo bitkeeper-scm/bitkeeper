@@ -38,7 +38,7 @@ rmtreewalk(char *file, char type, void *data)
 	struct	stat sb;
 
 	if (type == 'd') {
-		if (ret = rmIfRepo(file)) return (ret);
+		if ((ret = rmIfRepo(file))) return (ret);
 		if (!lstat(file, &sb) && ((sb.st_mode & 0700) != 0700)) {
 			chmod(file, sb.st_mode | 0700);
 		}

@@ -109,7 +109,7 @@ nested_main(int ac, char **av)
 		}
 	}
 	if (av[optind] && streq(av[optind], "-")) {
-		while (p = fgetline(stdin)) {
+		while ((p = fgetline(stdin))) {
 			revs = addLine(revs, strdup(p));
 		}
 	}
@@ -358,7 +358,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 
 	sccs_rdweaveInit(cset);
 	/* t = root, v = deltakey */
-	while (d = cset_rdweavePair(cset, 0, &rkoff, &dkoff)) {
+	while ((d = cset_rdweavePair(cset, 0, &rkoff, &dkoff))) {
 		unless (dkoff) continue; /* last key */
 		if (!revs && !(FLAGS(cset, (d)) & D_RED)) continue;
 		unless (weave_iscomp(cset, rkoff)) continue;
@@ -529,7 +529,7 @@ pending:
 		 * the idcache for present components or to the latest
 		 * deltakey for non-present components.
 		 */
-		if (c->path = mdbm_fetch_str(idDB, c->rootkey)) {
+		if ((c->path = mdbm_fetch_str(idDB, c->rootkey))) {
 			c->path = strdup(c->path);
 			c->inCache = 1;
 		} else {
@@ -667,7 +667,7 @@ nestedLoadCache(nested *n, MDBM *idDB)
 	}
 	n->tip = strdup(proj_tipkey(n->proj));
 	n->product->_deltakey = strdup(proj_tipkey(n->proj));
-	while (t = fgetline(f)) {
+	while ((t = fgetline(f))) {
 		s = separator(t);
 		*s++ = 0;
 
@@ -704,7 +704,7 @@ nestedSaveCache(nested *n)
 	if (proj_isResync(n->proj)) return;
 
 	sprintf(tmp, NESTED_CACHE ".tmp.%u", getpid());
-	if (f = fopen(tmp, "w")) {
+	if ((f = fopen(tmp, "w"))) {
 		fprintf(f, "%s\n", proj_tipkey(n->proj));
 		EACH_STRUCT(n->comps, c, i) {
 			fprintf(f, "%s %s\n", c->rootkey, c->_deltakey);
@@ -1004,7 +1004,7 @@ nested_check(void)
 	/* directly nested, let sfiles find it naturally. */
 	if (p == prod) return;	/* use after free ok */
 
-	if (rel = proj_comppath(0)) {
+	if ((rel = proj_comppath(0))) {
 		rel = strdup(rel);
 	} else {
 		/* something that is not a component */
@@ -1296,10 +1296,10 @@ nested_complist(nested *n, project *p)
 		cp = aprintf("%s/", proj_comppath(0));
 		clen = strlen(cp);
 	}
-	if (f = fopen(proj_fullpath(proj_product(p), ROOT2RESYNC "/" COMPLIST),
-		"r")) {
+	if ((f = fopen(proj_fullpath(proj_product(p), ROOT2RESYNC "/" COMPLIST),
+		"r"))) {
 
-		while (t = fgetline(f)) {
+		while ((t = fgetline(f))) {
 			if (strneq(t, cp, clen)) {
 				comps = addLine(comps, strdup(t+clen));
 			}

@@ -495,7 +495,7 @@ bisect(opts *op, sccs *s,
 		e = PARENT(s, d);	// works if no parent: e = 0
 		n = score[e];		// note: e may be outside D_SET range
 		walkrevs_setup(&wd, s, L(e), L(d), 0);
-		while (d1 = walkrevs(&wd)) if (FLAGS(s, d1) & D_SET) n++;
+		while ((d1 = walkrevs(&wd))) if (FLAGS(s, d1) & D_SET) n++;
 		walkrevs_done(&wd);
 		score[d] = n;
 	}

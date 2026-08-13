@@ -231,7 +231,7 @@ cmd_bk(int ac, char **av)
 		if (streq(av[i], "-zi0")) gzip &= ~GZ_FROMREMOTE;
 		if (streq(av[i], "-zo0")) gzip &= ~GZ_TOREMOTE;
 	}
-	if (line = getenv("_BK_REMOTEGZIP")) gzip = atoi(line);
+	if ((line = getenv("_BK_REMOTEGZIP"))) gzip = atoi(line);
 	if (gzip & GZ_FROMREMOTE) {
 		/* this read needs to be unbuffered below... */
 		assert(!Opts.use_stdio);
@@ -475,7 +475,7 @@ debugargs_main(int ac, char **av)
 	if (start_cwd) printf("start_cwd: %s\n", start_cwd);
 	if ((i > 1) && streq(av[i-1], "-")) {
 		printf("stdin:\n");
-		if (t = fgetline(stdin)) printf("%s\n", t);
+		if ((t = fgetline(stdin))) printf("%s\n", t);
 		for (n = 0; fgetline(stdin); n++);
 		if (n) printf("... %d more lines ...\n", n);
 	}

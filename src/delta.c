@@ -96,7 +96,7 @@ strip_danglers(char *name, u32 flags)
 		fprintf(f, "%s|%s\n", name, revs[i]);
 	}
 	freeLines(revs, free);
-	if (i = SYSRET(pclose(f))) {
+	if ((i = SYSRET(pclose(f)))) {
 		fprintf(stderr, "%s failed\n", p);
 		free(p);
 		return (i);
@@ -321,7 +321,7 @@ delta_main(int ac, char **av)
 		    av[0], didciFile, strerror(errno));
 		return (1);
 	}
-	if (fire = (getenv("_IN_DELTA") == 0)) putenv("_IN_DELTA=YES");
+	if ((fire = (getenv("_IN_DELTA") == 0))) putenv("_IN_DELTA=YES");
 	strcpy(here, proj_cwd());
 	
 	while (name) {

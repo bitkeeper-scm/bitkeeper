@@ -81,7 +81,7 @@ status_main(int ac, char **av)
 	pcount = hash_new(HASH_MEMHASH);
 	pcount->vptr = 0;
 	c = 0;		/* for compiler */
-	while (p = fgetline(fchg)) {
+	while ((p = fgetline(fchg))) {
 		if (strneq(p, "==== changes -", 14)) {
 			/* get URL and reset counters */
 			i = strlen(p);
@@ -90,9 +90,9 @@ status_main(int ac, char **av)
 			c = (p[14] == 'R'); /* 0 == L, 1 == R */
 
 			/* save in hash */
-			if (pi = hash_insert(pcount,
+			if ((pi = hash_insert(pcount,
 				p+16, strlen(p+16)+1,
-				0, sizeof(*pi))) {
+				0, sizeof(*pi)))) {
 				/* new parent, save order */
 				parents = addLine(parents, pcount->kptr);
 				pi->cnt[0] = pi->cnt[1] = -1;
@@ -153,7 +153,7 @@ status_main(int ac, char **av)
 	hash_free(pcount);
 
 	/* file counts */
-	while (p = fgetline(fsfile)) {
+	while ((p = fgetline(fsfile))) {
 		if (p[2] == 'c') ++nmods;
 		if (p[3] == 'p') ++npend;
 	}

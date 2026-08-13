@@ -31,7 +31,7 @@ setup_tmpdirs(void)
 
 	/* Setup search path for where to put tempfiles */
 
-	if (envtmp = getenv("TMPDIR")) tmpdirs[tmpdirs_len++] = envtmp;
+	if ((envtmp = getenv("TMPDIR"))) tmpdirs[tmpdirs_len++] = envtmp;
 
 	/*
 	 * Make BKTMP use absolute pathname

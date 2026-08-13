@@ -137,7 +137,7 @@ repogca(char **urls, char *dspec, u32 flags, FILE *out)
 	assert(s && HASGRAPH(s));
 
 	f = popenvp(nav + 1, "r");
-	while (key = fgetline(f)) {
+	while ((key = fgetline(f))) {
 		d = sccs_findKey(s, key);
 		assert(d);
 		FLAGS(s, d) |= D_RED;
@@ -162,8 +162,8 @@ repogca(char **urls, char *dspec, u32 flags, FILE *out)
 			FLAGS(s, d) |= D_BLUE;
 		}
 		if (FLAGS(s, d) & D_BLUE) {
-			if (p = PARENT(s, d)) FLAGS(s, p) |= D_BLUE;
-			if (p = MERGE(s, d)) FLAGS(s, p) |= D_BLUE;
+			if ((p = PARENT(s, d))) FLAGS(s, p) |= D_BLUE;
+			if ((p = MERGE(s, d))) FLAGS(s, p) |= D_BLUE;
 		}
 	}
 	if (dspec) {

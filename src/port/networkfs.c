@@ -75,7 +75,7 @@ mountpoint(char *path)
 	unless (f) f = fopen("/var/log/mount.today", "r");
 	unless (f) return (0);
 
-	while (t = fgetline(f)) {
+	while ((t = fgetline(f))) {
 		/*
 		 * Skip all the none stuff
 		 */
@@ -252,7 +252,7 @@ fstype(char *dir)
 	MP	*m;
 
 	/* for stupid md that doesn't send up the fstype */
-	if (name = getenv("_BK_FSTYPE")) {
+	if ((name = getenv("_BK_FSTYPE"))) {
 		struct	fsmap	*mp;
 
 		for (mp = fsmap; mp->name; mp++) {
@@ -263,7 +263,7 @@ fstype(char *dir)
 	}
 
 	unless (isdir(dir)) return (FS_UNKNOWN);
-	if (m = mountpoint(dir)) {
+	if ((m = mountpoint(dir))) {
 /*
 		printf("%s %s %s\n",
 		    m->dev,

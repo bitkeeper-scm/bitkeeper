@@ -436,7 +436,7 @@ findPath(Opts *opts, rfile *file)
 	char	*rkey = HEAP(opts->s, file->rkoff);
 
 	/* path == path where file lives currently */
-	if (path = mdbm_fetch_str(opts->s->idDB, rkey)) {
+	if ((path = mdbm_fetch_str(opts->s->idDB, rkey))) {
 		path = strdup(path);
 	} else {
 		if (opts->show_gone) {
@@ -560,7 +560,7 @@ process(Opts *opts, rset *data, rfile *file)
 	}
 	if (opts->n) { /* opts->n only set if in PRODUCT and with -s aliases*/
 		/* we're rummaging through all product files/components */
-		if (c = nested_findKey(opts->n, HEAP(opts->s, rkoff))) {
+		if ((c = nested_findKey(opts->n, HEAP(opts->s, rkoff)))) {
 			/* this component is not selected by -s */
 			unless (c->alias) return;
 		} else {
@@ -641,7 +641,7 @@ process(Opts *opts, rset *data, rfile *file)
 		     ((c = paths_overlap(opts->limit_dir, dir)) &&
 			 !opts->limit_dir[c]))) {
 			if (dir[c] == '/') c++;
-			if (p = strchr(dir+c, '/')) *p = 0;
+			if ((p = strchr(dir+c, '/'))) *p = 0;
 			unless (opts->seen_dir) {
 				opts->seen_dir = hash_new(HASH_MEMHASH);
 			}
@@ -1049,8 +1049,8 @@ weaveExtract(sccs *s, ser_t left1, ser_t left2, ser_t right, Opts *opts)
 		if (TAG(s, d)) continue;	/* because of show_gone */
 
 		if ((active = state[d])) {
-			if (e = PARENT(s, d)) MARK(state[e], active, nongca);
-			if (e = MERGE(s, d)) MARK(state[e], active, nongca);
+			if ((e = PARENT(s, d))) MARK(state[e], active, nongca);
+			if ((e = MERGE(s, d))) MARK(state[e], active, nongca);
 		}
 		/*
 		 * show_gone needs to log the first (possibly bogus) dkey
@@ -1059,7 +1059,7 @@ weaveExtract(sccs *s, ser_t left1, ser_t left2, ser_t right, Opts *opts)
 		unless (active || opts->show_gone) continue;
 
 		cset_firstPair(s, d);
-		while (e = cset_rdweavePair(s, RWP_ONE, &rkoff, &dkoff)) {
+		while ((e = cset_rdweavePair(s, RWP_ONE, &rkoff, &dkoff))) {
 			assert(d == e);	/* end of using 'e'; used to fail */
 			data->weavelines++;	/* stats */
 			if (showgone) {
@@ -1156,7 +1156,7 @@ initrset(sccs *s, ser_t left1, ser_t left2, ser_t right, Opts *opts)
 		if (left1 && (d = sccs_getCksumDelta(s, left1))) {
 			data->sum = SUM(s, d);
 		}
-		if (d = sccs_getCksumDelta(s, right)) {
+		if ((d = sccs_getCksumDelta(s, right))) {
 			data->wantsum = SUM(s, d);
 		}
 	}
@@ -1203,8 +1203,8 @@ deltaSkip(sccs *cset, MDBM *sDB, u32 rkoff, u32 dkoff)
 		return (0);
 	}
 	if (rkgone && (*rkgone == '1')) return (1);
-	if (s =
-	    sccs_keyinitAndCache(cset->proj, rk, SILENT, sDB, cset->idDB)) {
+	if ((s =
+	    sccs_keyinitAndCache(cset->proj, rk, SILENT, sDB, cset->idDB))) {
 		/* if file there, but key is missing, ignore line. */
 		unless (sccs_findKey(s, dk)) rc = 1;
 	} else if (rkgone) {

@@ -85,7 +85,7 @@ bkd_main(int ac, char **av)
 		    case 'V':	/* XXX - should be documented */
 			Opts.vhost_dirpath = strdup(optarg); break;
 		    case 'p':
-			if (p = strchr(optarg, ':')) {
+			if ((p = strchr(optarg, ':'))) {
 				*p = 0;
 				addr = strdup(optarg);
 				*p = ':';

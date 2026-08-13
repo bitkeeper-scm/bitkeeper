@@ -281,7 +281,7 @@ listkey(sccs *s, u32 flags, FILE *fin, FILE *fout)
 
 	/* process lod probe */
 	sum = i = 0;
-	while (key = fgetline(fin)) {
+	while ((key = fgetline(fin))) {
 		if (key[0] == '@') break;
 		++i;
 		sum += strlen(key);
@@ -295,7 +295,7 @@ listkey(sccs *s, u32 flags, FILE *fin, FILE *fout)
 	free(note);
 
 	if (streq(key, "@TAG PROBE@")) {
-		while (key = fgetline(fin)) {
+		while ((key = fgetline(fin))) {
 			if (key[0] == '@') break;
 			unless (tagd) tagd = sccs_findKey(s, key);
 		}
@@ -321,7 +321,7 @@ listkey(sccs *s, u32 flags, FILE *fin, FILE *fout)
 			assert(R0(s, probed));
 			fputs(REV(s, probed), fout);
 			putc('|', fout);
-			if (tag = sccs_d2tag(s, probed)) fputs(tag, fout);
+			if ((tag = sccs_d2tag(s, probed))) fputs(tag, fout);
 			putc('|', fout);
 		}
 		if ((flags & SK_SYNCROOT) && (probed == sccs_ino(s))) {
@@ -337,7 +337,7 @@ listkey(sccs *s, u32 flags, FILE *fin, FILE *fout)
 			assert(R0(s, tagd));
 			fputs(REV(s, tagd), fout);
 			putc('|', fout);
-			if (tag = sccs_d2tag(s, tagd)) {
+			if ((tag = sccs_d2tag(s, tagd))) {
 				fputs(tag, fout);
 			}
 			fputc('|', fout);
@@ -360,7 +360,7 @@ listkey(sccs *s, u32 flags, FILE *fin, FILE *fout)
 				assert(R0(s, d));
 				fputs(REV(s, d), fout);
 				putc('|', fout);
-				if (tag = sccs_d2tag(s, d)) {
+				if ((tag = sccs_d2tag(s, d))) {
 					fputs(tag, fout);
 				}
 				putc('|', fout);
@@ -516,7 +516,7 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, u32 flags,
 		}
 		if (streq("@END@", key)) break;
 		k = get_key(key, flags);
-		if (d = sccs_findKey(s, k)) {
+		if ((d = sccs_findKey(s, k))) {
 			FLAGS(s, d) |= D_RED;
 		} else if (!skipit(skip, k)) {
 			if (sccs_istagkey(k)) {

@@ -207,7 +207,7 @@ pull_main(int ac, char **av)
 		}
 	}
 
-	if (opts.product = bk_nested2root(opts.transaction || opts.port)) {
+	if ((opts.product = bk_nested2root(opts.transaction || opts.port))) {
 		if (config_bool(0, CONFIG_AUTOPOPULATE)) {
 			opts.autoPopulate = 1;
 		}
@@ -361,13 +361,13 @@ err:		freeLines(envVar, free);
 			cset = aprintf("%s/ChangeSet",
 			    proj_root(proj_product(0)));
 			f1 = fmem();
-			if (t = xfile_fetch(cset, 'c')) {
+			if ((t = xfile_fetch(cset, 'c'))) {
 				fputs(t, f1);
 				free(t);
 			}
 			f2 = fopen(tmpfile, "r");
 			assert(f1 && f2);
-			while (p = fgetline(f2)) fprintf(f1, "%s\n", p);
+			while ((p = fgetline(f2))) fprintf(f1, "%s\n", p);
 			fclose(f2);
 			xfile_store(cset, 'c', fmem_peek(f1, 0));
 			free(cset);
@@ -729,7 +729,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar,
 	}
 	if (streq(buf, "@PATCH@")) {
 
-		if (i = takepatch(r)) {
+		if ((i = takepatch(r))) {
 			fprintf(stderr,
 			    "Pull failed: takepatch exited %d.\n", i);
 			putenv("BK_STATUS=TAKEPATCH FAILED");
@@ -861,7 +861,7 @@ pull_ensemble(remote *r, char **rmt_aliases,
 		urls = splitLine(rmt_urllist->vptr, "\n", 0);
 		EACH(urls) {
 			/* strip old timestamps */
-			if (t = strchr(urls[i], '|')) *t = 0;
+			if ((t = strchr(urls[i], '|'))) *t = 0;
 
 			// These are urls of the parent, so we normalize
 			url = remoteurl_normalize(r, urls[i]);
@@ -1154,7 +1154,7 @@ pull_ensemble(remote *r, char **rmt_aliases,
 		/* start the urllist loop looking for where to pull from */
 		rc = 1;		/* assume it'll fail */
 		k = 0;
-		while (url = urllist_find(n, c, opts.quiet ? SILENT : 0, &k)) {
+		while ((url = urllist_find(n, c, opts.quiet ? SILENT : 0, &k))) {
 			if (streq(srcurl, url)) {
 				/* pulling from remote, reuses lock */
 				safe_putenv("BKD_NESTED_LOCK=%s", lock);
@@ -1259,7 +1259,7 @@ pull(char **av, remote *r, char **envVar)
 
 	assert(r);
 	putenv("BK_STATUS=");
-	if (rc = pull_part1(av, r, key_list, envVar)) goto out;
+	if ((rc = pull_part1(av, r, key_list, envVar))) goto out;
 	rc = pull_part2(av, r, key_list, envVar, &conflicts);
 	got_patch = ((p = getenv("BK_STATUS")) && streq(p, "OK"));
 	marker = bp_hasBAM();
@@ -1490,7 +1490,7 @@ resolve_comments(remote *r)
 		u = aprintf("%s:%s", h, r->path);
 	}
 	if (proj_isComponent(0)) {
-		if (cpath = getenv("BKD_COMPONENT_PATH")) {
+		if ((cpath = getenv("BKD_COMPONENT_PATH"))) {
 			cpath = strdup(cpath);
 		} else {
 			cpath = proj_relpath(proj_product(0), proj_root(0));

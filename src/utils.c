@@ -667,7 +667,7 @@ skip_http_hdr(remote *r)
 				return (-1);
 			}
 		}
-		if (p = strchr(buf, ':')) {
+		if ((p = strchr(buf, ':'))) {
 			*p++ = 0;
 			while (isspace(*p)) ++p;
 			if (strieq(buf, "Content-length")) {
@@ -833,13 +833,13 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	 * process then we need to clear BKD_NESTED_LOCK so a new lock
 	 * can be acquired.
 	 */
-	if (t = getenv("BKD_NESTED_LOCK")) {
+	if ((t = getenv("BKD_NESTED_LOCK"))) {
 		fprintf(f, "putenv 'BK_NESTED_LOCK=%s'\n", t);
 	}
 	/*
 	 * If we're doing a port, send the rootkey
 	 */
-	if (t = getenv("BK_PORT_ROOTKEY")) {
+	if ((t = getenv("BK_PORT_ROOTKEY"))) {
 		fprintf(f, "putenv 'BK_PORT_ROOTKEY=%s'\n", t);
 	}
 	if (getenv("_BK_PROGRESS_MULTI")) {
@@ -874,10 +874,10 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		unless (streq(proj_rootkey(p), proj_syncroot(p))) {
 			fprintf(f, "putenv 'BK_SYNCROOT=%s'\n", proj_syncroot(p));
 		}
-		if (repo = proj_repoID(prod)) {
+		if ((repo = proj_repoID(prod))) {
 			fprintf(f, "putenv 'BK_REPO_ID=%s'\n", repo);
 			if (bp_hasBAM()) fprintf(f, "putenv BK_BAM=YES\n");
-			if (bp = bp_serverURL(buf)) {
+			if ((bp = bp_serverURL(buf))) {
 				fprintf(f, "putenv 'BK_BAM_SERVER_URL=%s'\n",bp);
 			}
 			unless (bp = bp_serverID(buf, 0)) {
@@ -890,7 +890,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 			fprintf(f, "putenv BK_REMAP=1\n");
 		}
 	}
-	if (t = getenv("_BK_TESTFEAT")) {
+	if ((t = getenv("_BK_TESTFEAT"))) {
 		t = strdup(t);
 	} else {
 		u32	bits = features_list(); /* all supported features */
@@ -916,7 +916,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		fprintf(f, "putenv BK_FEATURES_USED=%s\n", t);
 		free(t);
 
-		if (t = getenv("_BK_TEST_REQUIRED")) {
+		if ((t = getenv("_BK_TEST_REQUIRED"))) {
 			t = strdup(t);
 		} else {
 			/* remove local-only features */
@@ -1078,11 +1078,11 @@ sendServerInfo(u32 cmdlog_flags)
 		sprintf(buf, "LEVEL=%d\n", getlevel());
 		out(buf);
 		if (bp_hasBAM()) out("BAM=YES\n");
-		if (p = bp_serverURL(bp)) {
+		if ((p = bp_serverURL(bp))) {
 			sprintf(buf, "BAM_SERVER_URL=%s\n", p);
 			out(buf);
 		}
-		if (rootkey = proj_rootkey(0)) {
+		if ((rootkey = proj_rootkey(0))) {
 			sprintf(buf, "ROOTKEY=%s\n", rootkey);
 			out(buf);
 			p = proj_syncroot(0);
@@ -1110,7 +1110,7 @@ sendServerInfo(u32 cmdlog_flags)
 		} else {
 			out("REPOTYPE=standalone\n");
 		}
-		if (repoid = proj_repoID(prod)) {
+		if ((repoid = proj_repoID(prod))) {
 			sprintf(buf, "REPO_ID=%s\n", repoid);
 			out(buf);
 			unless (p = bp_serverID(bp, 0)) p = repoid;
@@ -1142,7 +1142,7 @@ sendServerInfo(u32 cmdlog_flags)
 	out(sccs_realhost());
 	out("\nPLATFORM=");
 	out(platform());
-	if (p = getenv("_BKD_TESTFEAT")) {
+	if ((p = getenv("_BKD_TESTFEAT"))) {
 		p = strdup(p);
 	} else {
 		u32	bits = features_list(); /* all supported features */
@@ -1162,7 +1162,7 @@ sendServerInfo(u32 cmdlog_flags)
 	p = features_fromBits(bits);
 	out(p);
 	free(p);
-	if (p = getenv("_BKD_TEST_REQUIRED")) {
+	if ((p = getenv("_BKD_TEST_REQUIRED"))) {
 		p = strdup(p);
 	} else {
 		/* remove local-only features */
@@ -1175,7 +1175,7 @@ sendServerInfo(u32 cmdlog_flags)
 	free(p);
 
 	/* send local nested lock to BKD_NESTED_LOCK on client */
-	if (p = getenv("_BK_NESTED_LOCK")) {
+	if ((p = getenv("_BK_NESTED_LOCK"))) {
 		out("\nNESTED_LOCK=");
 		out(p);
 	}
@@ -1272,7 +1272,7 @@ strnonldup(char *s)
 {
 	char	*p, *ret;
 
-	if (p = strchr(s, '\n')) {
+	if ((p = strchr(s, '\n'))) {
 		ret = malloc(p - s + 1);
 		p = ret;
 		while (*s != '\n') *p++ = *s++;
@@ -1304,7 +1304,7 @@ strdup_tochar(const char *s, int c)
 	char	*p;
 	char	*ret;
 
-	if (p = strchr(s, c)) {
+	if ((p = strchr(s, c))) {
 		ret = malloc(p - s + 1);
 		p = ret;
 		while (*s != c) *p++ = *s++;
@@ -1401,7 +1401,7 @@ pager(void)
 
 	/* restore user's path environment so we pick up their pager */
 	path = strdup(getenv("PATH"));
-	if (oldpath = getenv("BK_OLDPATH")) safe_putenv("PATH=%s", oldpath);
+	if ((oldpath = getenv("BK_OLDPATH"))) safe_putenv("PATH=%s", oldpath);
 
 	if ((pg = getenv("BK_PAGER")) || (pg = getenv("PAGER"))) {
 		/* $PAGER might be "less -E", i.e., multiple words */
@@ -1417,7 +1417,7 @@ pager(void)
 	}
 	unless (pg) {
 		for (i = 0; pagers[i]; i++) {
-			if (cmd = which(pagers[i])) {
+			if ((cmd = which(pagers[i]))) {
 				sprintf(buf, "\"%s\"", cmd);
 				free(cmd);
 				pg = strdup(buf);
@@ -1574,14 +1574,14 @@ full_check(void)
 	time_t	checkt = 0;	/* time of last full check */
 
 	unless (config_bool(0, CONFIG_PARTIAL_CHECK)) return (1);
-	if (window = config_int(0, CONFIG_CHECK_FREQUENCY)) {
+	if ((window = config_int(0, CONFIG_CHECK_FREQUENCY))) {
 		window *= DAY;
 	} else {
 		window = WEEK;
 	}
 	if (window > 2*WEEK) window = 2*WEEK;
-	if (f = fopen(CHECKED, "r")) {
-		if (t = fgetline(f)) checkt = strtoul(t, 0, 10);
+	if ((f = fopen(CHECKED, "r"))) {
+		if ((t = fgetline(f))) checkt = strtoul(t, 0, 10);
 		fclose(f);
 	}
 	if ((now - checkt) > window) return (1);
@@ -1900,7 +1900,7 @@ bk_searchFile(char *base)
 	char	*root;
 	char	buf[MAXPATH];
 
-	if (root = proj_root(0)) {
+	if ((root = proj_root(0))) {
 		sprintf(buf, "%s/BitKeeper/etc/%s", root, base);
 		if (exists(buf) ||
 		    !get(buf, SILENT|GET_EXPAND)) {
@@ -2191,7 +2191,7 @@ formatBits(u32 bits, ...)
 	va_list	ap;
 
 	va_start(ap, bits);
-	while (mask = va_arg(ap, u32)) {
+	while ((mask = va_arg(ap, u32))) {
 		unless (bits) break;
 		name = va_arg(ap, char *);
 		if (bits & mask) {

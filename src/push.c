@@ -615,7 +615,7 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 			return (PUSH_ABORT);
 		}
 		getline2(r, buf, sizeof(buf));
-		if (ret = remote_lock_fail(buf, opts.verbose)) {
+		if ((ret = remote_lock_fail(buf, opts.verbose))) {
 			return ((ret == -2) ? REMOTE_LOCKED : PUSH_ERROR);
 		}
 	} else {
@@ -709,7 +709,7 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 	if (trigger(av[0], "pre")) {
 		send_end_msg(r, "@ABORT@\n", envVar);
 		return(PUSH_ERROR);
-	} else if (i = bp_updateServer(0, rev_list, opts.quiet)) {
+	} else if ((i = bp_updateServer(0, rev_list, opts.quiet))) {
 		/* push BAM data to server */
 		fprintf(stderr,
 		    "push: unable to update BAM server %s (%s)\n",
@@ -721,7 +721,7 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 		return(PUSH_ERROR);
 	}
 
-	if (rc = receive_serverInfoBlock(r)) return (rc);
+	if ((rc = receive_serverInfoBlock(r))) return (rc);
 
 	/*
 	 * get remote progress status
@@ -839,7 +839,7 @@ push_part3(char **av, remote *r, char **envVar, char *bp_keys)
 		return(PUSH_ERROR);
 	}
 
-	if (rc = receive_serverInfoBlock(r)) return (rc);
+	if ((rc = receive_serverInfoBlock(r))) return (rc);
 
 	/*
 	 * get remote progress status
@@ -1004,14 +1004,14 @@ send_part1_msg(remote *r, char **envVar)
 	fclose(f);
 
 	probef = bktmp(0);
-	if (f = fopen(probef, "w")) {
+	if ((f = fopen(probef, "w"))) {
 		rc = probekey(s_cset, opts.rev, 0, f);
 		fclose(f);
 	} else {
 		rc = 1;
 	}
 	unless (rc) {
-		if (rc = send_file(r, buf, size(probef))) return (rc);
+		if ((rc = send_file(r, buf, size(probef)))) return (rc);
 		unlink(buf);
 		f = fopen(probef, "rb");
 		while ((i = fread(buf, 1, sizeof(buf), f)) > 0) {
@@ -1040,7 +1040,7 @@ genpatch(FILE *wf, char *rev_list, int gzip, int isLocal)
 	unless (bkd_hasFeature(FEAT_BKMERGE)) {
 		makepatch[n++] = "-C"; /* old-bk, compat mode */
 	}
-	if (p = getenv("BKD_FEATURES_USED")) {
+	if ((p = getenv("BKD_FEATURES_USED"))) {
 		if (strstr(p, "BKMERGE")) {
 			makepatch[n++] = "--bk-merge";
 		} else {

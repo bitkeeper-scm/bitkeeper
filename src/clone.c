@@ -652,7 +652,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		if (remote_lock_fail(buf, 1)) return (RET_ERROR);
 		/* use the basename of the src if no dest is specified */
 		if (!local && (local = getenv("BKD_ROOT"))) {
-			if (p = strrchr(local, '/')) local = ++p;
+			if ((p = strrchr(local, '/'))) local = ++p;
 		}
 		unless (local) {
 			fprintf(stderr,
@@ -1127,7 +1127,7 @@ clone2(remote *r)
 				get("BitKeeper/etc/attr", SILENT);
 				f = popen("bk _getkv BitKeeper/etc/attr HERE",
 				    "r");
-				while (p = fgetline(f)) {
+				while ((p = fgetline(f))) {
 					opts->aliases = addLine(opts->aliases,
 					    strdup(p));
 				}
@@ -1353,7 +1353,7 @@ initProject(char *root, remote *r)
 			assert(streq(bam_url, ".") || streq(bam_url, "none"));
 			url = strdup(bam_url);
 			repoid = proj_repoID(0);
-		} else if (p = getenv("BKD_BAM_SERVER_URL")) {
+		} else if ((p = getenv("BKD_BAM_SERVER_URL"))) {
 			url = streq(p, ".") ?
 			    remote_unparse(r) :
 			    remoteurl_normalize(r, p);
@@ -1406,7 +1406,7 @@ sfio(remote *r, char *prefix)
 		if (opts->verbose) {
 			cmds[++n] = "-v";
 		} else {
-			if (p = getenv("BKD_NFILES")) {
+			if ((p = getenv("BKD_NFILES"))) {
 				cmds[++n] = dashN = aprintf("-N%u", atoi(p));
 				progress_nlneeded();
 			}
@@ -1535,7 +1535,7 @@ after(int quiet, int verbose, char *rev)
 	if (verbose) {
 		if (isKey(rev)) {
 			s = sccs_csetInit(SILENT|INIT_NOCKSUM);
-			if (d = sccs_findrev(s, rev)) {
+			if ((d = sccs_findrev(s, rev))) {
 				strcpy(revbuf, REV(s, d));
 				rev = revbuf;
 			}
@@ -1980,7 +1980,7 @@ attach(void)
 	concat_path(buf, proj_root(proj_findProduct(0)), "BitKeeper/log/HERE");
 	save = aprintf("%s.bak", buf);
 	fileCopy(buf, save);
-	if (f = fopen(buf, "a")) {
+	if ((f = fopen(buf, "a"))) {
 		fprintf(f, "%s\n", proj_rootkey(0));
 	}
 	if (!f || fclose(f)) {
@@ -2014,10 +2014,10 @@ attach(void)
 			"-y'Attach ./%s' %s -",
 			relpath,
 			opts->verbose ? "" : "-q");
-		if (f = popen(buf, "w")) {
+		if ((f = popen(buf, "w"))) {
 			fprintf(f, "%s/SCCS/s.ChangeSet|+\n", relpath);
 		}
-		if (rc = (!f || pclose(f)) ? RET_ERROR : RET_OK) {
+		if ((rc = (!f || pclose(f)) ? RET_ERROR : RET_OK)) {
 			strcpy(buf, save);
 			buf[strlen(save)-4] = 0;
 			fileMove(save, buf);
@@ -2149,7 +2149,7 @@ clonemod_part2(char **envVar)
 	f = popen(buf, "r");
 	assert(f);
 	cset = sccs_csetInit(SILENT|INIT_NOCKSUM);
-	while (t = fgetline(f)) {
+	while ((t = fgetline(f))) {
 		d = sccs_findKey(cset, t);
 		assert(d);
 		FLAGS(cset, d) |= D_SET;

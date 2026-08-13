@@ -234,7 +234,7 @@ fix_main(int ac,  char **av)
 		rc = do_cset(s, 0, nav); /* this frees s */
 	} else {
 		for (i = optind; av[i]; i++) {
-			if (rc = do_file(av[i], after)) break;
+			if ((rc = do_file(av[i], after))) break;
 		}
 	}
 out:	freeLines(nav, free);
@@ -300,7 +300,7 @@ do_cset(sccs *s, char *rev, char **nav)
 	csetfile = bktmp(0);
 	f = fopen(csetfile, "w");
 	walkrevs_setup(&wr, s, L(d), 0, 0);
-	while (d = walkrevs(&wr)) {
+	while ((d = walkrevs(&wr))) {
 		char    buf[MAXKEY];
 
 		sccs_md5delta(s, d, buf);
@@ -611,7 +611,7 @@ do_file(char *file, char *tiprev)
 		free(pathname);
 
 		/* make xflags match */
-		while (flagdiffs = (xflags ^ XFLAGS(s, tipd))) {
+		while ((flagdiffs = (xflags ^ XFLAGS(s, tipd)))) {
 			/* pick right most bit */
 			flagdiffs &= -flagdiffs;
 
@@ -747,7 +747,7 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 		chomp(p);
 		comments = addLine(comments, p);
 	}
-	if (p = xfile_fetch(s->gfile, 'c')) {
+	if ((p = xfile_fetch(s->gfile, 'c'))) {
 		chomp(p);
 		comments = addLine(comments, strdup(p));
 		free(p);
@@ -764,7 +764,7 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 			free(comments[i]);
 		}
 		freeLines(comments, 0);
-		if (p = fmem_peek(f, 0)) {
+		if ((p = fmem_peek(f, 0))) {
 			xfile_store(s->gfile, 'c', p);
 		}
 		fclose(f);
@@ -819,7 +819,7 @@ fix_genlist(char *rev)
 		unless (p = separator(buf)) continue;
 		unless (hash_insert(h, buf, p-buf, 0, 0)) continue;
 		*p = 0;
-		if (p = key2path(buf, idDB, goneDB, 0)) {
+		if ((p = key2path(buf, idDB, goneDB, 0))) {
 			flist = addLine(flist, name2sccs(p));
 			free(p);
 		}
@@ -866,7 +866,7 @@ update_collapsed_file(char *newcsets)
 	char	buf[MAXLINE];
 
 	get(COLLAPSED, SILENT|GET_EDIT);
-	if (f = fopen(COLLAPSED, "r")) {
+	if ((f = fopen(COLLAPSED, "r"))) {
 		while (fnext(buf, f)) {
 			chomp(buf);
 			unless (*buf) continue;
@@ -874,7 +874,7 @@ update_collapsed_file(char *newcsets)
 		}
 		fclose(f);
 	}
-	if (f = fopen(newcsets, "r")) {
+	if ((f = fopen(newcsets, "r"))) {
 		while (fnext(buf, f)) {
 			chomp(buf);
 			csets = addLine(csets, strdup(buf));

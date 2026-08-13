@@ -275,7 +275,7 @@ bkd_doResolve(char *me, int quiet, int verbose)
 	 */
 	trigger_setQuiet(quiet);
 	putenv("BK_CSETLIST=" CSETS_IN);
-	if (c = trigger("remote resolve",  "pre")) {
+	if ((c = trigger("remote resolve",  "pre"))) {
 		if (c == 2) {
 			system("bk -?BK_NO_REPO_LOCK=YES abort -fp");
 		} else {

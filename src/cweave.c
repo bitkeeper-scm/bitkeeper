@@ -148,7 +148,7 @@ cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 	 */
 	d = sccs_getInit(s, 0, iF, DELTA_PATCH, &error, 0, &syms);
 	sccs_sdelta(s, d, key);
-	if (e = sccs_findKey(s, key)) {
+	if ((e = sccs_findKey(s, key))) {
 		/*
 		 * d - remote patch delta
 		 * e - local delta with matching key to d
@@ -300,7 +300,7 @@ fix(sccs *s)
 		if (HAS_CLUDES(s, d)) {
 			assert(INARRAY(s, d));
 			p = CLUDES(s, d);
-			while (e = sccs_eachNum(&p, &sign)) {
+			while ((e = sccs_eachNum(&p, &sign))) {
 				if (e > base) e = SERMAP(e);
 				sccs_saveNum(f, e, sign);
 			}
@@ -388,7 +388,7 @@ fastCsetWeave(sccs *s, int fast)
 
 	if (fast && lp[i].dF) {
 		/* extract cset weave updates */
-		while (t = fgetline(lp[i].dF)) {
+		while ((t = fgetline(lp[i].dF))) {
 			if (t[0] == 'I') {
 				/*
 				 * d = 0 - skipkeys
@@ -417,7 +417,7 @@ fastCsetWeave(sccs *s, int fast)
 			w = growArray(&weave, 1);
 			w->d = lp[i].serial;
 			unless (lp[i].dF) continue;
-			while (t = fgetline(lp[i].dF)) {
+			while ((t = fgetline(lp[i].dF))) {
 				if (streq(t, "0a0")) continue;
 				assert(strneq(t, "> ", 2));
 				rkey = t+2;
@@ -438,7 +438,7 @@ fastCsetWeave(sccs *s, int fast)
 		EACH(w->keys) {
 			rkey = w->keys[i];
 			dkey = w->keys[++i];
-			if (rkoff = sccs_hasRootkey(s, rkey)) {
+			if ((rkoff = sccs_hasRootkey(s, rkey))) {
 				/*
 				 * remember first serial where we
 				 * added this rootkey. It is possible
@@ -466,7 +466,7 @@ fastCsetWeave(sccs *s, int fast)
 	 */
 	if (cnt) {
 		sccs_rdweaveInit(s);
-		while (d = cset_rdweavePair(s, 0, &rkoff, &dkoff)) {
+		while ((d = cset_rdweavePair(s, 0, &rkoff, &dkoff))) {
 			unless (first = hash_fetchU32U32(h, rkoff)) continue;
 			if (d > first) {
 				if (dkoff) continue;
@@ -502,7 +502,7 @@ fastCsetWeave(sccs *s, int fast)
 	unless (BWEAVE_OUT(s)) {
 		sccs_rdweaveInit(s);
 		f = sccs_wrweaveInit(s);
-		while (t = sccs_nextdata(s)) {
+		while ((t = sccs_nextdata(s))) {
 			fputs(t, f);
 			fputc('\n', f);
 		}

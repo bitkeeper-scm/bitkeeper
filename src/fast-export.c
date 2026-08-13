@@ -167,7 +167,7 @@ gitTZ(sccs *s, ser_t d)
 	if (HAS_ZONE(s, d)) {
 		tz = q = strdup(ZONE(s, d));
 		while (*q && (*q != ':')) q++;
-		if (*q == ':') for (; *q = *(q+1); q++) ;
+		if (*q == ':') for (; (*q = *(q+1)); q++) ;
 	} else {
 		tz = strdup("");
 	}
@@ -214,7 +214,7 @@ gitLine(opts *op, gitOp **oplist, char *comp_rk, char *rk,
 
 	hkey = aprintf("%s %s %s", comp_rk, rk, dk2);
 	unless (dk1) {
-		if (fip = hash_fetchStrMem(op->rkdk2fi, hkey)) {
+		if ((fip = hash_fetchStrMem(op->rkdk2fi, hkey))) {
 			dk1 = fip->dkParent;
 		}
 		unless (dk1) dk1 = "";
@@ -318,7 +318,7 @@ gitLineComp(opts *op, gitOp **oplist, char *rk, char *dk1, char *dk2)
 			exit(1);
 		}
 	} else {
-		if (d1 = PARENT(s, d2)) {
+		if ((d1 = PARENT(s, d2))) {
 			sccs_sdelta(s, d1, buf);
 			dk1 = buf;
 		}
@@ -350,7 +350,7 @@ gitLineComp(opts *op, gitOp **oplist, char *rk, char *dk1, char *dk2)
 	op->proj = s->proj;
 
 	prefix1 = 0;
-	if (path1 = key2path(dk1, 0, 0, 0)) {
+	if ((path1 = key2path(dk1, 0, 0, 0))) {
 		prefix1 = dirname(path1);
 	}
 	path2 = key2path(dk2, 0, 0, 0);
@@ -511,7 +511,7 @@ gitExport(opts *op)
 			/*
 			 * Untag the delta since it's already in git.
 			 */
-			if (d = sccs_findMD5(cset, md5)) {
+			if ((d = sccs_findMD5(cset, md5))) {
 				FLAGS(cset, d) &= ~D_SET;
 				numcsets++;
 			}
@@ -809,7 +809,7 @@ loadAuthors(char *file)
 	}
 
 	ret = hash_new(HASH_MEMHASH);
-	while (t = fgetline(f)) {
+	while ((t = fgetline(f))) {
 		++line;
 		if (!*t || (*t == '#')) continue;
 		if (pcre_exec(re, 0, t, strlen(t), 0, 0,
@@ -876,7 +876,7 @@ uncolorAlreadyImported(opts *op, sccs *cset)
 	for (d = TABLE(cset); d >= TREE(cset); d--) {
 		if (TAG(cset, d)) continue;
 		t = COMMENTS(cset, d);
-		while (p = eachline(&t, &i)) {
+		while ((p = eachline(&t, &i))) {
 			char old = p[i];
 			p[i] = 0;
 			if (strneq(p, "GIT: ", 5)) {

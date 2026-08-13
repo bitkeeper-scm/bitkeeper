@@ -34,7 +34,7 @@ comments_save(char *s)
 
 	if (saved) freeLines(saved, free);
 	saved = 0;
-	while (p = eachline(&s, &len)) {
+	while ((p = eachline(&s, &len))) {
 		if (comments_checkStr(p, len)) {
 			freeLines(saved, free);
 			saved = 0;
@@ -118,7 +118,7 @@ comments_get(char *file, char *rev, sccs *s, ser_t d)
 		    rev ? "@" : ":",
 		    rev ? rev : "");
 	}
-	if (cmts = comments_return(prompt)) {
+	if ((cmts = comments_return(prompt))) {
 		unless (d) d = sccs_newdelta(s);
 		comments_set(s, d, cmts);
 		freeLines(cmts, free);

@@ -134,7 +134,7 @@ diff_main(int ac, char **av)
 			dop.out_unified = 0;
 			if (optarg) {
 				dop.out_sdiff = strtoul(optarg, 0, 10);
-			} else if (p = getenv("COLUMNS")) {
+			} else if ((p = getenv("COLUMNS"))) {
 				dop.out_sdiff = strtoul(p, 0, 10);
 			} else {
 				dop.out_sdiff = 80;
