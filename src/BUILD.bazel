@@ -433,11 +433,6 @@ filegroup(
 )
 
 filegroup(
-    name = "tommath_sources",
-    srcs = glob(["tommath/**"]),
-)
-
-filegroup(
     name = "platform_tcl",
     srcs = select({
         "@platforms//os:windows": ["port/win32_platform.tcl"],

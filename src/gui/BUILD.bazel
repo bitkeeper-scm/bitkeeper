@@ -4,9 +4,7 @@ package(default_visibility = ["//visibility:public"])
 
 filegroup(
     name = "tcltk_sources",
-    srcs = glob(["tcltk/**"]) + [
-        "//src:tommath_sources",
-    ],
+    srcs = glob(["tcltk/**"]),
 )
 
 filegroup(
@@ -34,11 +32,12 @@ genrule(
         ":tcltk_sources",
         "@pcre1//:pcre1",
         "@pcre1//:gen_pcre_h",
+        "@tommath//:tommath_sources",
     ],
     outs = ["tcltk.tar.gz"],
     cmd = """
         set -e
-        bash $(location build_tcltk.sh) "$@" $(locations @pcre1//:pcre1) $(location @pcre1//:gen_pcre_h)
+        bash $(location build_tcltk.sh) "$@" $(locations @pcre1//:pcre1) $(location @pcre1//:gen_pcre_h) $(locations @tommath//:tommath_sources)
     """,
 )
 

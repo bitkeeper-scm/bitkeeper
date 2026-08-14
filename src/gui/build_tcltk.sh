@@ -8,6 +8,7 @@ OUT_TAR="$1"
 shift
 PCRE_LIB=""
 PCRE_HDR=""
+TOMMATH_FILES=()
 
 for arg in "$@"; do
     case "$arg" in
@@ -16,51 +17,50 @@ for arg in "$@"; do
                 PCRE_LIB="$(cd "$(dirname "$arg")" && pwd)/$(basename "$arg")"
             fi
             ;;
-        *.h)
+        *pcre.h)
             if [ -f "$arg" ]; then
                 PCRE_HDR="$(cd "$(dirname "$arg")" && pwd)/$(basename "$arg")"
+            fi
+            ;;
+        *tommath*|*bn_*|*bncore*)
+            if [ -f "$arg" ]; then
+                TOMMATH_FILES+=("$arg")
             fi
             ;;
     esac
 done
 
 if [ -z "$OUT_TAR" ]; then
-    echo "Usage: $0 <output_tar.tar.gz> [pcre_files...]" >&2
+    echo "Usage: $0 <output_tar.tar.gz> [pcre_files...] [tommath_files...]" >&2
     exit 1
 fi
 OUT_TAR="$(cd "$(dirname "$OUT_TAR")" && pwd)/$(basename "$OUT_TAR")"
 
 TOP="$PWD"
 SRCDIR="$TOP/src/gui/tcltk"
-TOMMATH="$TOP/src/tommath"
 WORK="$(mktemp -d)"
 
 # Copy source tree (dereferencing symlinks so sandbox links don't modify repo)
 cp -rL "$SRCDIR"/* "$WORK/"
 mkdir -p "$WORK/tommath"
-cp -rL "$TOMMATH"/* "$WORK/tommath/"
+for f in "${TOMMATH_FILES[@]}"; do
+    cp -f "$f" "$WORK/tommath/"
+done
 
 cd "$WORK"
 
 mkdir -p bin lib include share
 
-# 1. Setup PCRE (either from Bazel @pcre1 or build in-tree)
-if [ -n "$PCRE_LIB" ] && [ -n "$PCRE_HDR" ]; then
-    mkdir -p "$WORK/pcre_dist/include" "$WORK/pcre_dist/lib"
-    cp -f "$PCRE_HDR" "$WORK/pcre_dist/include/pcre.h"
-    cp -f "$PCRE_LIB" "$WORK/pcre_dist/lib/libpcre.a"
-    PCRE_PREFIX="$WORK/pcre_dist"
-    PCRE_A="$WORK/pcre_dist/lib/libpcre.a"
-else
-    (
-        cd pcre
-        ./configure --disable-cpp --disable-shared --enable-utf8=yes --prefix=
-        make -j"$(nproc 2>/dev/null || echo 2)"
-        make prefix= exec_prefix= DESTDIR="$PWD/local/" libdir=lib bindir=bin includedir=include install
-    )
-    PCRE_PREFIX="$WORK/pcre/local"
-    PCRE_A="$WORK/pcre/local/lib/libpcre.a"
+# 1. Setup PCRE from Bazel @pcre1
+if [ -z "$PCRE_LIB" ] || [ -z "$PCRE_HDR" ]; then
+    echo "Error: PCRE library and header must be provided to $0" >&2
+    exit 1
 fi
+mkdir -p "$WORK/pcre_dist/include" "$WORK/pcre_dist/lib"
+cp -f "$PCRE_HDR" "$WORK/pcre_dist/include/pcre.h"
+cp -f "$PCRE_LIB" "$WORK/pcre_dist/lib/libpcre.a"
+PCRE_PREFIX="$WORK/pcre_dist"
+PCRE_A="$WORK/pcre_dist/lib/libpcre.a"
 
 # 2. Generate L version files
 (cd tcl && ../Lversion-L.sh > library/Lver.tcl && ../Lversion-C.sh > generic/Lver.h)

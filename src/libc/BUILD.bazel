@@ -73,7 +73,6 @@ cc_library(
         ["**/*.c", "**/*.h"],
         exclude = [
             "win32/**",
-            "zlib/**",
             "mdbm/mtst.c",
             "fslayer/gen_fslayer.pl",
         ] + ["stdio/%s.c" % fn for fn in _STDIO_EXCLUDE_FCNS],

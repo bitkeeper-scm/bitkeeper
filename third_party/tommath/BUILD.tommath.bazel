@@ -12,3 +12,9 @@ cc_library(
     includes = ["."],
     visibility = ["//visibility:public"],
 )
+
+filegroup(
+    name = "tommath_sources",
+    srcs = glob(["*.c", "*.h"]),
+    visibility = ["//visibility:public"],
+)
