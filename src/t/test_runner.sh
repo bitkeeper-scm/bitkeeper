@@ -117,5 +117,6 @@ if [ -f "$T_DIR/simple-interface.setup" ]; then
 fi
 
 cd "$TEST_SRC_DIR"
-# Run doit pointing to our temp TST_DIR
-"$WORK_DIR/doit" -t "$TST_DIR" "$TEST_NAME"
+# Run doit pointing to our temp TST_DIR, forwarding any extra options (-v, -x, etc.)
+shift || true
+"$WORK_DIR/doit" -t "$TST_DIR" "$@" ${BK_TEST_FLAGS} "$TEST_NAME"

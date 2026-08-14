@@ -990,23 +990,31 @@ a2tm(struct tm *tp, char *asctime, char *z, int roundup)
 	}
 
 	/*
-	 * We're moving towards always having 4 digit years but we still want
-	 * to support, for now, 2 digit years and 4 digit years without 
-	 * requiring a non-digit separator.  So here's how that works:
+	 * We support both 2 digit years and 4 digit years without
+	 * requiring a non-digit separator.
 	 *
-	 * If the first 2 digits are in the 69..18 range then we are going
-	 * see that as 1969..2018.  And before 2019 we need to have dropped
-	 * support for 2 digit years.  The reason for 1969 is imports which
-	 * might have gone back far (and teamware grafted files w/ 1970 dates).
-	 * Otherwise it's a 4 digit year.  
+	 * If the consecutive digits length is 2, 6, or 12, it is a 2-digit year
+	 * (e.g. YY, YYMMDD, YYMMDDhhmmss).
+	 * If 4, 8, or 14, it is a 4-digit year (YYYY, YYYYMMDD, YYYYMMDDhhmmss).
+	 * Also, since BK years (1969-2068) only begin with century 19 or 20,
+	 * any first two digits other than 19 and 20 cannot be a 4-digit century.
 	 */
-	for (i = tmp = 0; (i < 4) && isdigit(*asctime); i++) {
+	int	dlen = 0;
+	int	max_year_digits;
+
+	while (isdigit(asctime[dlen])) dlen++;
+	if (dlen == 2 || dlen == 6 || dlen == 12) {
+		max_year_digits = 2;
+	} else {
+		max_year_digits = 4;
+	}
+
+	for (i = tmp = 0; (i < max_year_digits) && isdigit(*asctime); i++) {
 		/* I want the increment here because of the break below */
 		tmp = tmp * 10 + (*asctime++ - '0');
 
-		/* we want 69..99 or 0..18 and this does that */
-		if ((i == 1) && ((tmp >= 69) || (tmp <= 18))) break;
-    	}
+		if ((i == 1) && (max_year_digits == 2 || (tmp != 19 && tmp != 20))) break;
+	}
 	tp->tm_year = tmp;
 	for (; *asctime && !isdigit(*asctime); asctime++);
 

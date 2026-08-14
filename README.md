@@ -109,6 +109,14 @@ Run a test with failure output displayed in the terminal:
 bazel test --test_output=errors //src/t:t_basic
 ```
 
+Run a test with verbose output (`-v`) or shell tracing (`-x`):
+```bash
+bazel test //src/t:t_basic --test_arg=-v --test_output=all
+bazel test //src/t:t_basic --test_arg=-x --test_output=all
+```
+
+For more details on test execution, debugging flags, and test suite structure, see [src/t/README.md](src/t/README.md).
+
 ## Contributing to BitKeeper
 
 See our [community](https://www.bitkeeper.org/community.html) page for

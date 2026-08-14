@@ -55,10 +55,7 @@
 /* length of array (use nLines() in code) */
 #define	_LLEN(s)			(*(u32 *)(s) & LMASK)
 
-#define L(d) ({							\
-	__typeof__(d) _d = d;						\
-	(_d) ? (__typeof__(_d) []){(__typeof__(_d))1, (__typeof__(_d))_d} : 0;	\
-})
+#define L(d) ((d) ? (__typeof__(d) []){1, (d)} : 0)
 
 #define	EACH_START(x, s, i)				\
 	if ((i = (x)), (s)) for (; (i) <= _LLEN(s); i++)
