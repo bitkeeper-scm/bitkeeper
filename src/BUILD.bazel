@@ -374,19 +374,8 @@ genrule(
     outs = ["version"],
     cmd = """
         set -e
-        bk_bin="$$PWD/$(location //src:bk)"
-        workdir=$$(mktemp -d)
-        cp $(location version.sh) "$$workdir/"
-        mkdir -p "$$workdir/utils"
-        cp $(location utils/bk_version) "$$workdir/utils/"
-        (
-            cd "$$workdir"
-            ln -sf "$$bk_bin" ./bk
-            bash version.sh > out
-        )
-        cp "$$workdir/out" "$@"
+        bash $(location version.sh) > "$@"
     """,
-    tools = ["//src:bk"],
 )
 
 # Helper / wrapper shell scripts
