@@ -1,0 +1,11 @@
+# Build rules for BitKeeper documentation assets.
+
+package(default_visibility = ["//visibility:public"])
+
+# Reference card PDF
+genrule(
+    name = "bk_refcard",
+    srcs = ["bk_refcard.pdf.preformatted"],
+    outs = ["bk_refcard.pdf"],
+    cmd = "cp $< $@",
+)

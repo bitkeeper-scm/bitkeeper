@@ -14,11 +14,14 @@ sub main
 		$prefix = shift(@ARGV);
 	}
 	$ENV{'GROFF_NO_SGR'} = 1;
-	if (-x "../../src/bk" || -x "../../src/bk.exe") {
+	if ($ENV{'BK'} && -x $ENV{'BK'}) {
+		chop($BKVER = `$ENV{'BK'} version -s`);
+	} elsif (-x "../../src/bk" || -x "../../src/bk.exe") {
 		chop($BKVER = `../../src/bk version -s`);
 	} else {
-		chop($BKVER = `bk version -s`);
+		chop($BKVER = `bk version -s 2>/dev/null`);
 	}
+	$BKVER = "NOFILE" unless $BKVER;
 	if ($BKVER =~ /^(\d\d\d\d)(\d\d)(\d\d)/) {
 		$BKVER="${1}-${2}-${3}";	# YYYY-MM-DD
 	}
@@ -66,7 +69,7 @@ sub man2help
 	}
 	close(D);
 	close(F);
-	$cmd = "groff -I.. -dBKVER=$BKVER -rhelpdoc=1 -rNESTED=1 -P-u -P-b -Tascii < tmp";
+	$cmd = "soelim -I . -I .. < tmp | groff -dBKVER=$BKVER -rhelpdoc=1 -rNESTED=1 -P-u -P-b -Tascii";
 	open(G, "$cmd |");
 	$nl = 0;
 	$lines = 0;

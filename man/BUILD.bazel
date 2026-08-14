@@ -1,0 +1,86 @@
+# Build rules for BitKeeper man pages and help text files.
+
+package(default_visibility = ["//visibility:public"])
+
+# bkhelp.txt is compiled from all the man pages and category descriptions
+# using man2help.pl and help2sum.pl via groff / soelim.
+genrule(
+    name = "bkhelp",
+    srcs = [
+        "bk-macros",
+        "man.tmac",
+        "man1/bk-little.1.pfmt",
+        "man2help/man2help.pl",
+        "man2help/help2sum.pl",
+    ] + glob([
+        "man1/bk-*.1",
+        "man2help/*.description",
+    ]),
+    outs = ["bkhelp.txt"],
+    cmd = """
+        set -e
+        workdir=$$(mktemp -d)
+        mkdir -p "$$workdir/man1" "$$workdir/man2help"
+        cp $(location bk-macros) $(location man.tmac) "$$workdir/"
+        for f in $(SRCS); do
+            case "$$f" in
+                */man1/*) cp "$$f" "$$workdir/man1/" ;;
+                */man2help/*) cp "$$f" "$$workdir/man2help/" ;;
+            esac
+        done
+        cp "$$workdir/man1/bk-little.1.pfmt" "$$workdir/man1/bk-little.1"
+
+        (
+            cd "$$workdir/man2help"
+            export BK="$(location //src:bk)"
+            export LC_ALL=C
+            PAGES=$$(ls -1 ../man1/bk-*.1 | sort)
+            perl -Ssw ./man2help.pl ../bk-macros bk- $$PAGES
+            ls -1 bk-*-1.fmt | sort | xargs cat | tr -d '\\r' > helptxt2
+            perl -Ssw ./help2sum.pl helptxt2
+            for i in All Overview Common Repository GUI-tools File Nested Admin Compat Utility; do
+                if test -f "$$i.done"; then cat "$$i.done"; fi
+            done > helptxt
+            cat helptxt2 >> helptxt
+        )
+        cp "$$workdir/man2help/helptxt" "$@"
+    """,
+    tools = ["//src:bk"],
+)
+
+# man pages formatted and packaged with symlink aliases
+genrule(
+    name = "manpages",
+    srcs = [
+        "bk-macros",
+        "man.tmac",
+        "man1/bk-little.1.pfmt",
+    ] + glob(["man1/bk-*.1"]),
+    outs = ["manpages.tar"],
+    cmd = """
+        set -e
+        workdir=$$(mktemp -d)
+        mkdir -p "$$workdir/man1" "$$workdir/out/man1"
+        cp $(location bk-macros) $(location man.tmac) "$$workdir/"
+        for f in $(SRCS); do
+            case "$$f" in
+                */man1/*) cp "$$f" "$$workdir/man1/" ;;
+            esac
+        done
+        cp "$$workdir/man1/bk-little.1.pfmt" "$$workdir/man1/bk-little.1"
+
+        (
+            cd "$$workdir"
+            for f in man1/*.1; do
+                base=$$(basename "$$f")
+                soelim -I . < "$$f" > "out/man1/$$base"
+            done
+            cd out/man1
+            for f in bk-*.1; do
+                alias=$${f#bk-}
+                ln -sf "$$f" "$$alias"
+            done
+        )
+        tar -C "$$workdir/out" -cf "$@" man1
+    """,
+)

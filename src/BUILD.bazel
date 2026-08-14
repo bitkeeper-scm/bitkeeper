@@ -1,5 +1,7 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 
+package(default_visibility = ["//visibility:public"])
+
 # cc_binary's `srcs` attribute rejects non-C/C++ extensions (unlike
 # cc_library's `hdrs`), but configvars.def is #include-d verbatim by
 # config.h, so it's exposed to //src:bk via this tiny header-only lib.
@@ -355,4 +357,174 @@ cc_binary(
         "@tomcrypt//:tomcrypt",
         "@tommath//:tommath",
     ],
+)
+
+# Runtime text files and metadata
+genrule(
+    name = "gen_bkmsg",
+    srcs = ["bkmsg.doc"],
+    outs = ["bkmsg.txt"],
+    cmd = "cp $< $@",
+)
+
+genrule(
+    name = "gen_version",
+    srcs = ["version.sh", "utils/bk_version"],
+    outs = ["version"],
+    cmd = """
+        set -e
+        bk_bin="$$PWD/$(location //src:bk)"
+        workdir=$$(mktemp -d)
+        cp $(location version.sh) "$$workdir/"
+        mkdir -p "$$workdir/utils"
+        cp $(location utils/bk_version) "$$workdir/utils/"
+        (
+            cd "$$workdir"
+            ln -sf "$$bk_bin" ./bk
+            bash version.sh > out
+        )
+        cp "$$workdir/out" "$@"
+    """,
+    tools = ["//src:bk"],
+)
+
+# Helper / wrapper shell scripts
+_WRAPPER_SCRIPTS = [
+    "uuwrap",
+    "unuuwrap",
+    "gzip_uuwrap",
+    "ungzip_uuwrap",
+    "b64wrap",
+    "unb64wrap",
+    "gzip_b64wrap",
+    "ungzip_b64wrap",
+]
+
+[
+    genrule(
+        name = "gen_" + s,
+        srcs = [s + ".sh"],
+        outs = [s],
+        cmd = "cp $< $@ && chmod +x $@",
+    )
+    for s in _WRAPPER_SCRIPTS
+]
+
+genrule(
+    name = "gen_bk_script",
+    srcs = select({
+        "@platforms//os:windows": ["port/win32_platform.sh", "bk.sh"],
+        "//conditions:default": ["port/unix_platform.sh", "bk.sh"],
+    }),
+    outs = ["bk.script"],
+    cmd = """
+        cat $(SRCS) > $@
+        chmod +x $@
+    """,
+)
+
+genrule(
+    name = "gen_import_script",
+    srcs = select({
+        "@platforms//os:windows": ["port/win32_platform.sh", "import.sh"],
+        "//conditions:default": ["port/unix_platform.sh", "import.sh"],
+    }),
+    outs = ["import"],
+    cmd = """
+        cat $(SRCS) > $@
+        chmod +x $@
+    """,
+)
+
+filegroup(
+    name = "dspecs",
+    srcs = glob(["dspec-*"]),
+)
+
+filegroup(
+    name = "lscripts",
+    srcs = glob(["lscripts/*.l"]),
+)
+
+filegroup(
+    name = "contrib",
+    srcs = [
+        "contrib/git2bk.l",
+        "gui/ide/emacs/vc-bk.el",
+    ],
+)
+
+filegroup(
+    name = "www",
+    srcs = glob(["www/**"]),
+)
+
+filegroup(
+    name = "scripts",
+    srcs = [
+        ":gen_bk_script",
+        ":gen_import_script",
+    ] + [":gen_" + s for s in _WRAPPER_SCRIPTS],
+)
+
+filegroup(
+    name = "data",
+    srcs = [
+        ":gen_bkmsg",
+        ":gen_version",
+        "//man:bkhelp",
+        "//doc:bk_refcard",
+        "//:release_notes",
+        ":dspecs",
+    ],
+)
+
+# Full installation image / package layout
+genrule(
+    name = "install_image",
+    srcs = [
+        ":bk",
+        ":scripts",
+        ":data",
+        ":lscripts",
+        ":contrib",
+        ":www",
+        "//man:manpages",
+    ],
+    outs = ["bitkeeper.tar.gz"],
+    cmd = """
+        set -e
+        dest=$$(mktemp -d)/bitkeeper
+        mkdir -p "$$dest/contrib" "$$dest/lscripts" "$$dest/www"
+
+        cp $(location :bk) "$$dest/"
+        for s in $(locations :scripts); do
+            cp "$$s" "$$dest/"
+            chmod +x "$$dest/$$(basename "$$s")"
+        done
+
+        for d in $(locations :data); do
+            cp "$$d" "$$dest/"
+        done
+
+        for l in $(locations :lscripts); do
+            cp "$$l" "$$dest/lscripts/"
+        done
+
+        for c in $(locations :contrib); do
+            cp "$$c" "$$dest/contrib/"
+        done
+
+        for w in $(locations :www); do
+            rpath=$${w#*src/www/}
+            dir=$$(dirname "$$rpath")
+            mkdir -p "$$dest/www/$$dir"
+            cp "$$w" "$$dest/www/$$rpath"
+        done
+
+        mkdir -p "$$dest/man"
+        tar -C "$$dest/man" -xf $(location //man:manpages)
+
+        tar -C "$$dest/.." -czf "$@" bitkeeper
+    """,
 )
