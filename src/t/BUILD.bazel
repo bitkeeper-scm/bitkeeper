@@ -24,6 +24,7 @@ TEST_DATA = [
     "//src:scripts",
     "//src:slib.c",
     "//src:www",
+    "//src/gui:gui_package",
     "//src/libc:mtst",
 ]
 

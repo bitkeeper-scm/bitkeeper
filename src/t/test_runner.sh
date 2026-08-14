@@ -73,6 +73,12 @@ if [ -d "$SRC_DIR/www" ]; then
     cp -rf "$SRC_DIR/www"/* "$BIN_DIR/www/" 2>/dev/null || true
 fi
 
+# Unpack GUI package (tclsh, bkgui, lib, images) into $BIN_DIR/gui
+GUI_TAR="$TEST_SRCDIR/_main/src/gui/gui.tar.gz"
+if [ -f "$GUI_TAR" ]; then
+    tar -C "$BIN_DIR" -xzf "$GUI_TAR" 2>/dev/null || true
+fi
+
 # Copy t helper scripts / ref files to $BIN_DIR/t so tests can find them via `bk bin`/t
 mkdir -p "$BIN_DIR/t"
 cp -rf "$T_DIR"/* "$BIN_DIR/t/" 2>/dev/null || true

@@ -1,5 +1,7 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
 
+package(default_visibility = ["//visibility:public"])
+
 # BUILD file for the upstream PCRE (1.x) release tarball fetched by
 # MODULE.bazel. BitKeeper's C sources call the classic PCRE1 API
 # (pcre_compile/pcre_exec/...), so we build the real PCRE1 sources

@@ -1,0 +1,88 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "tcltk_sources",
+    srcs = glob(["tcltk/**"]) + [
+        "//src:tommath_sources",
+    ],
+)
+
+filegroup(
+    name = "gui_sources",
+    srcs = glob([
+        "*.tcl",
+        "*.l",
+    ]),
+)
+
+filegroup(
+    name = "emacs",
+    srcs = ["ide/emacs/vc-bk.el"],
+)
+
+filegroup(
+    name = "images",
+    srcs = glob(["imgsrc/**"]),
+)
+
+genrule(
+    name = "tcltk",
+    srcs = [
+        "build_tcltk.sh",
+        ":tcltk_sources",
+        "@pcre1//:pcre1",
+        "@pcre1//:gen_pcre_h",
+    ],
+    outs = ["tcltk.tar.gz"],
+    cmd = """
+        set -e
+        bash $(location build_tcltk.sh) "$@" $(locations @pcre1//:pcre1) $(location @pcre1//:gen_pcre_h)
+    """,
+)
+
+genrule(
+    name = "guis",
+    srcs = [
+        "gen_guis.sh",
+        ":gui_sources",
+        ":images",
+        "//src:platform_tcl",
+        "//src:installtool_tcl",
+    ],
+    outs = ["guis.tar.gz"],
+    cmd = """
+        set -e
+        workdir=$$(mktemp -d)
+        bash $(location gen_guis.sh) $(location //src:platform_tcl) $(location //src:installtool_tcl) "" "$$workdir"
+        tar -czf "$@" -C "$$workdir" .
+    """,
+)
+
+genrule(
+    name = "gui_package",
+    srcs = [
+        ":tcltk",
+        ":guis",
+        ":images",
+    ],
+    outs = ["gui.tar.gz"],
+    cmd = """
+        set -e
+        dest=$$(mktemp -d)/gui
+        mkdir -p "$$dest/bin" "$$dest/lib" "$$dest/images"
+
+        tar -xzf $(location :tcltk) -C "$$dest"
+        tar -xzf $(location :guis) -C "$$dest/lib"
+
+        for img in $(locations :images); do
+            rpath=$${img#*src/gui/imgsrc/}
+            dir=$$(dirname "$$rpath")
+            mkdir -p "$$dest/images/$$dir"
+            cp "$$img" "$$dest/images/$$rpath"
+        done
+
+        tar -czf "$@" -C "$$dest/.." gui
+    """,
+)

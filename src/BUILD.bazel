@@ -443,6 +443,24 @@ filegroup(
 )
 
 filegroup(
+    name = "tommath_sources",
+    srcs = glob(["tommath/**"]),
+)
+
+filegroup(
+    name = "platform_tcl",
+    srcs = select({
+        "@platforms//os:windows": ["port/win32_platform.tcl"],
+        "//conditions:default": ["port/unix_platform.tcl"],
+    }),
+)
+
+filegroup(
+    name = "installtool_tcl",
+    srcs = ["utils/installtool.tcl"],
+)
+
+filegroup(
     name = "lscripts",
     srcs = glob(["lscripts/*.l"]),
 )
@@ -451,7 +469,7 @@ filegroup(
     name = "contrib",
     srcs = [
         "contrib/git2bk.l",
-        "gui/ide/emacs/vc-bk.el",
+        "//src/gui:emacs",
     ],
 )
 
@@ -491,6 +509,7 @@ genrule(
         ":contrib",
         ":www",
         "//man:manpages",
+        "//src/gui:gui_package",
     ],
     outs = ["bitkeeper.tar.gz"],
     cmd = """
@@ -522,6 +541,8 @@ genrule(
             mkdir -p "$$dest/www/$$dir"
             cp "$$w" "$$dest/www/$$rpath"
         done
+
+        tar -C "$$dest" -xzf $(location //src/gui:gui_package)
 
         mkdir -p "$$dest/man"
         tar -C "$$dest/man" -xf $(location //man:manpages)
