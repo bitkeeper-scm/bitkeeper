@@ -23,38 +23,38 @@ bk new -q a/b/c/Data
 for i in 2 3 4 5 6 7 8 9 10
 do	bk co $Q -l a/b/c/Data
 	echo 1.$i >> a/b/c/Data
-	echo "D 1.$i 20/03/11 00:00:0$i butthead a b c/d/e" > Init
+	echo "D 1.$i 30/03/11 00:00:0$i butthead a b c/d/e" > Init
 	echo "c Rev $i" >> Init
 	echo "------------------------------------------------" >> Init
 	bk delta $Q -IInit a/b/c/Data
 done
 echo $N Checking sccslog with -b option .............................$NL
 cat > CMP1 <<EOF
-Data 1.10 2020-03-11 00:00:10 butthead${HOST} +1 -0
+Data 1.10 2030-03-11 00:00:10 butthead${HOST} +1 -0
   Rev 10
 
-Data 1.9 2020-03-11 00:00:09 butthead${HOST} +1 -0
+Data 1.9 2030-03-11 00:00:09 butthead${HOST} +1 -0
   Rev 9
 
-Data 1.8 2020-03-11 00:00:08 butthead${HOST} +1 -0
+Data 1.8 2030-03-11 00:00:08 butthead${HOST} +1 -0
   Rev 8
 
-Data 1.7 2020-03-11 00:00:07 butthead${HOST} +1 -0
+Data 1.7 2030-03-11 00:00:07 butthead${HOST} +1 -0
   Rev 7
 
-Data 1.6 2020-03-11 00:00:06 butthead${HOST} +1 -0
+Data 1.6 2030-03-11 00:00:06 butthead${HOST} +1 -0
   Rev 6
 
-Data 1.5 2020-03-11 00:00:05 butthead${HOST} +1 -0
+Data 1.5 2030-03-11 00:00:05 butthead${HOST} +1 -0
   Rev 5
 
-Data 1.4 2020-03-11 00:00:04 butthead${HOST} +1 -0
+Data 1.4 2030-03-11 00:00:04 butthead${HOST} +1 -0
   Rev 4
 
-Data 1.3 2020-03-11 00:00:03 butthead${HOST} +1 -0
+Data 1.3 2030-03-11 00:00:03 butthead${HOST} +1 -0
   Rev 3
 
-Data 1.2 2020-03-11 00:00:02 butthead${HOST} +1 -0
+Data 1.2 2030-03-11 00:00:02 butthead${HOST} +1 -0
   Rev 2
 
 
@@ -67,39 +67,39 @@ echo OK
 echo $N Checking sccslog with no options ............................$NL
 cat > CMP1 <<EOF
 a/b/c/Data 1.10
-  2020-03-11 00:00:10 butthead${HOST} +1 -0
+  2030-03-11 00:00:10 butthead${HOST} +1 -0
   Rev 10
 
 a/b/c/Data 1.9
-  2020-03-11 00:00:09 butthead${HOST} +1 -0
+  2030-03-11 00:00:09 butthead${HOST} +1 -0
   Rev 9
 
 a/b/c/Data 1.8
-  2020-03-11 00:00:08 butthead${HOST} +1 -0
+  2030-03-11 00:00:08 butthead${HOST} +1 -0
   Rev 8
 
 a/b/c/Data 1.7
-  2020-03-11 00:00:07 butthead${HOST} +1 -0
+  2030-03-11 00:00:07 butthead${HOST} +1 -0
   Rev 7
 
 a/b/c/Data 1.6
-  2020-03-11 00:00:06 butthead${HOST} +1 -0
+  2030-03-11 00:00:06 butthead${HOST} +1 -0
   Rev 6
 
 a/b/c/Data 1.5
-  2020-03-11 00:00:05 butthead${HOST} +1 -0
+  2030-03-11 00:00:05 butthead${HOST} +1 -0
   Rev 5
 
 a/b/c/Data 1.4
-  2020-03-11 00:00:04 butthead${HOST} +1 -0
+  2030-03-11 00:00:04 butthead${HOST} +1 -0
   Rev 4
 
 a/b/c/Data 1.3
-  2020-03-11 00:00:03 butthead${HOST} +1 -0
+  2030-03-11 00:00:03 butthead${HOST} +1 -0
   Rev 3
 
 a/b/c/Data 1.2
-  2020-03-11 00:00:02 butthead${HOST} +1 -0
+  2030-03-11 00:00:02 butthead${HOST} +1 -0
   Rev 2
 
 EOF
@@ -110,7 +110,7 @@ echo OK
 echo $N Checking sccslog with -r option..............................$NL
 cat > X <<EOF
 a/b/c/Data 1.2
-  2020-03-11 00:00:02 butthead${HOST} +1 -0
+  2030-03-11 00:00:02 butthead${HOST} +1 -0
   Rev 2
 
 EOF
@@ -122,44 +122,44 @@ echo OK
 echo $N Checking sccslog with -c option..............................$NL
 cat > X <<EOF
 a/b/c/Data 1.10
-  2020-03-11 00:00:10 butthead${HOST} +1 -0
+  2030-03-11 00:00:10 butthead${HOST} +1 -0
   Rev 10
 
 a/b/c/Data 1.9
-  2020-03-11 00:00:09 butthead${HOST} +1 -0
+  2030-03-11 00:00:09 butthead${HOST} +1 -0
   Rev 9
 
 a/b/c/Data 1.8
-  2020-03-11 00:00:08 butthead${HOST} +1 -0
+  2030-03-11 00:00:08 butthead${HOST} +1 -0
   Rev 8
 
 a/b/c/Data 1.7
-  2020-03-11 00:00:07 butthead${HOST} +1 -0
+  2030-03-11 00:00:07 butthead${HOST} +1 -0
   Rev 7
 
 a/b/c/Data 1.6
-  2020-03-11 00:00:06 butthead${HOST} +1 -0
+  2030-03-11 00:00:06 butthead${HOST} +1 -0
   Rev 6
 
 a/b/c/Data 1.5
-  2020-03-11 00:00:05 butthead${HOST} +1 -0
+  2030-03-11 00:00:05 butthead${HOST} +1 -0
   Rev 5
 
 a/b/c/Data 1.4
-  2020-03-11 00:00:04 butthead${HOST} +1 -0
+  2030-03-11 00:00:04 butthead${HOST} +1 -0
   Rev 4
 
 a/b/c/Data 1.3
-  2020-03-11 00:00:03 butthead${HOST} +1 -0
+  2030-03-11 00:00:03 butthead${HOST} +1 -0
   Rev 3
 
 a/b/c/Data 1.2
-  2020-03-11 00:00:02 butthead${HOST} +1 -0
+  2030-03-11 00:00:02 butthead${HOST} +1 -0
   Rev 2
 
 EOF
 bk undos X > CMP1
-bk sccslog -c20/03..20/04 a/b/c/Data | bk undos > CMP2
+bk sccslog -c30/03..30/04 a/b/c/Data | bk undos > CMP2
 cmpfiles CMP1 CMP2
 echo OK
 

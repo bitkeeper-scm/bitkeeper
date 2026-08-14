@@ -60,6 +60,9 @@ if [ -d "$SRC_DIR/lscripts" ]; then
     mkdir -p "$BIN_DIR/lscripts"
     cp -rf "$SRC_DIR/lscripts"/* "$BIN_DIR/lscripts/" 2>/dev/null || true
 fi
+if [ -f "$SRC_DIR/flags.l" ]; then
+    cp -f "$SRC_DIR/flags.l" "$BIN_DIR/flags.l" 2>/dev/null || true
+fi
 
 # Copy contrib
 if [ -d "$SRC_DIR/contrib" ]; then
@@ -98,6 +101,9 @@ if [ -f "$TEST_SRCDIR/_main/src/libc/mtst" ]; then
     chmod +x "$BIN_DIR/libc/mtst"
 fi
 
+ln -sf "$BIN_DIR/bk" "$WORK_DIR/bk"
+export RUNBK_LEVEL=1
+export DO_REMOTE="${DO_REMOTE:-NO}"
 export PATH="$BIN_DIR:$PATH"
 export BK_ROOT="${BK_ROOT:-$ROOT_DIR}"
 export TST_DIR="$WORK_DIR/tst"

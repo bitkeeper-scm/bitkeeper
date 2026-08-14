@@ -486,7 +486,7 @@ void
 extract(char *name, char *data, u32 size, char *dir)
 {
 	int	fd, n;
-	GZIP	*gz;
+	gzFile	gz;
 	char	buf[BUFSIZ];
 
 	sprintf(buf, "%s/%s.zz", dir, name);

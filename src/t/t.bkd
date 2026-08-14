@@ -326,9 +326,9 @@ echo OK
 
 echo $N "check when server can't write to BitKeeper/tmp"...............$NL
 bk unpull $Q -f|| fail
-chmod -w "$HERE/project/BitKeeper/tmp"
+chmod 0555 "$HERE/project/BitKeeper/tmp"
 bk pull $Q bk://localhost:$P/ || fail
-chmod +w "$HERE/project/BitKeeper/tmp"
+chmod 0777 "$HERE/project/BitKeeper/tmp"
 echo OK
 
 echo $N check http clone from bkd ...................................$NL

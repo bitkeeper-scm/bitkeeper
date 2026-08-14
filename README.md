@@ -82,11 +82,54 @@ bazel build //src:bk
 ```
 The compiled binary will be located at `bazel-bin/src/bk`.
 
-To build the full installation package (tarball):
+## Packaging and Installation
+
+### 1. Generating an Install Tarball
+
+To build the full installation package (tarball) with Bazel (use `-c opt` for optimized release builds):
 ```bash
-bazel build //src:install_image
+bazel build -c opt //src:install_image
 ```
-The resulting package will be at `bazel-bin/src/bitkeeper.tar.gz`.
+The resulting tarball will be at `bazel-bin/src/bitkeeper.tar.gz`.
+
+### 2. Creating the Self-Extracting Installer
+
+To build the standalone self-extracting installer executable with Bazel:
+```bash
+bazel build -c opt //src:image
+```
+The resulting installer binary will be at `bazel-bin/src/image` (or `bazel-bin/src/installer`).
+
+### 3. Installing on the Current Machine
+
+#### Option A: Using the Self-Extracting Installer
+Run the generated installer binary:
+```bash
+# Run interactively or install to default location:
+./bazel-bin/src/image
+
+# Or install directly to a specified directory (e.g., /opt/bitkeeper):
+sudo ./bazel-bin/src/image /opt/bitkeeper
+```
+
+#### Option B: Using the Install Tarball
+Extract `bitkeeper.tar.gz` to your desired destination and use `bk links` to set up symlinks in your `PATH`:
+
+**System-wide Installation (requires root/sudo):**
+```bash
+sudo mkdir -p /opt/bitkeeper
+sudo tar -xzf bazel-bin/src/bitkeeper.tar.gz -C /opt/bitkeeper --strip-components=1
+sudo /opt/bitkeeper/bk links /usr/local/bin
+```
+
+**User-local Installation (no root required):**
+```bash
+mkdir -p ~/bitkeeper
+tar -xzf bazel-bin/src/bitkeeper.tar.gz -C ~/bitkeeper --strip-components=1
+mkdir -p ~/bin
+~/bitkeeper/bk links ~/bin
+# Ensure ~/bin is in your PATH (e.g. export PATH="$HOME/bin:$PATH")
+```
 
 *(Note: GNU Make (`make -C src p`) is the legacy build system and is retained primarily for reference during ongoing build modernization.)*
 

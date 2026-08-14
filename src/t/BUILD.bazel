@@ -38,12 +38,18 @@ SERIAL_TESTS = [
 
 ALL_TEST_FILES = glob(["t.*"])
 
+# Tests that require medium size (>100MB RAM or 30-300s runtime)
+MEDIUM_TESTS = [
+    "t.a.progress-bar",
+]
+
 [
     sh_test(
         name = t.replace(".", "_"),
         srcs = ["test_runner.sh"],
         args = [t],
         data = TEST_DATA,
+        size = "medium" if t in MEDIUM_TESTS else "small",
         tags = ["exclusive"] if t in SERIAL_TESTS else [],
     )
     for t in ALL_TEST_FILES

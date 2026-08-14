@@ -379,7 +379,7 @@ popensystem_main(int ac, char **av)
 {
 	FILE	*f;
 	int	status;
-	char	cmd[200];
+	char	cmd[MAXPATH*4];
 
 	sprintf(cmd, "'%s' -c 'exit 5' | '%s' -c 'exit 6'", shell(), shell());
 	f = safe_popen(cmd, "r");

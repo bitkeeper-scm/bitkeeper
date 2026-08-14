@@ -8,6 +8,7 @@ Building and testing in this repository is now primarily done with **Bazel**. Th
 - **Build core binary (`bk`)**: `bazel build //src:bk`
 - **Build all targets**: `bazel build //...`
 - **Build installation package**: `bazel build //src:install_image` (produces `bazel-bin/src/bitkeeper.tar.gz`)
+- **Build self-extracting installer**: `bazel build //src:image` (produces `bazel-bin/src/image`)
 - **Run all regression tests**: `bazel test //src/t:...`
 - **Run a single test**: `bazel test //src/t:t_<testname>`
   - Dots in test filenames are converted to underscores (e.g., `src/t/t.basic` -> `bazel test //src/t:t_basic`)

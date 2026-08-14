@@ -346,6 +346,7 @@ cc_binary(
         "@platforms//os:macos": ["-DNOPROC"],
         "//conditions:default": [],
     }),
+    defines = ["USE_TRACE"],
     linkopts = select({
         "@platforms//os:macos": ["-lresolv"],
         "//conditions:default": [],
@@ -451,7 +452,7 @@ filegroup(
 
 filegroup(
     name = "lscripts",
-    srcs = glob(["lscripts/*.l"]),
+    srcs = glob(["lscripts/*.l"]) + ["flags.l"],
 )
 
 filegroup(
@@ -487,7 +488,17 @@ filegroup(
     ],
 )
 
-# Full installation image / package layout
+cc_binary(
+    name = "sfio_unpack",
+    srcs = [
+        "sfio.h",
+        "utils/sfio_unpack.c",
+    ],
+    includes = ["."],
+    deps = [
+        "//src/libc",
+    ],
+)
 genrule(
     name = "install_image",
     srcs = [
@@ -538,4 +549,61 @@ genrule(
 
         tar -C "$$dest/.." -czf "$@" bitkeeper
     """,
+)
+
+genrule(
+    name = "gen_installer_data",
+    srcs = [
+        ":bk",
+        ":install_image",
+        ":sfio_unpack",
+    ],
+    outs = ["_data.c"],
+    cmd = """
+        set -e
+        bk_bin=$$(pwd)/$(location :bk)
+        sfio_unpack=$$(pwd)/$(location :sfio_unpack)
+        install_image=$$(pwd)/$(location :install_image)
+        workdir=$$(mktemp -d)
+        tar -xzf "$$install_image" -C "$$workdir"
+        (cd "$$workdir" && find bitkeeper -type f -o -type l | "$$bk_bin" sfio -mqo) | gzip -9 > "$$workdir/sfioball.zz"
+        gzip -c "$$sfio_unpack" > "$$workdir/sfio.zz"
+        python3 -c '
+import sys
+with open(sys.argv[1], "rb") as f:
+    sfio_data = f.read()
+with open(sys.argv[2], "rb") as f:
+    data_data = f.read()
+with open(sys.argv[3], "w") as f:
+    f.write(f"unsigned int sfio_size = {len(sfio_data)};\\n")
+    f.write(f"unsigned char sfio_data[{len(sfio_data)}] = {{\\n")
+    for i in range(0, len(sfio_data), 32):
+        f.write(",".join(str(b) for b in sfio_data[i:i+32]) + ",\\n")
+    f.write("};\\n")
+    f.write(f"unsigned int data_size = {len(data_data)};\\n")
+    f.write(f"unsigned char data_data[{len(data_data)}] = {{\\n")
+    for i in range(0, len(data_data), 32):
+        f.write(",".join(str(b) for b in data_data[i:i+32]) + ",\\n")
+    f.write("};\\n")
+' "$$workdir/sfio.zz" "$$workdir/sfioball.zz" "$@"
+        rm -rf "$$workdir"
+    """,
+)
+
+# Self-extracting installer image executable
+cc_binary(
+    name = "image",
+    srcs = [
+        "utils/extractor.c",
+        ":gen_installer_data",
+    ],
+    includes = ["."],
+    deps = [
+        "//src/libc",
+    ],
+)
+
+alias(
+    name = "installer",
+    actual = ":image",
 )

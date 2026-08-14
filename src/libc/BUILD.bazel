@@ -88,7 +88,10 @@ cc_library(
     # standalone (that would duplicate-define its symbols).
     textual_hdrs = ["stdio/vfwprintf.c"],
     includes = ["fslayer", "."],
-    defines = ["LZ4_DISABLE_DEPRECATE_WARNINGS"],
+    defines = [
+        "LZ4_DISABLE_DEPRECATE_WARNINGS",
+        "USE_TRACE",
+    ],
     visibility = ["//visibility:public"],
     deps = [
         "@lz4",
