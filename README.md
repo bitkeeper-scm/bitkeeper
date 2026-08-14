@@ -54,67 +54,60 @@ pretty easy port.
 
 ### Building BitKeeper
 
-BitKeeper requires the following prerequisites to build:
+BitKeeper is built using [Bazel](https://bazel.build/). Third-party dependencies (such as zlib, lz4, PCRE, libtomcrypt, and libtommath) are fetched and built automatically by Bazel.
 
-* GNU make
-* GNU gperf
-* GNU bison
-* some lex
-* GNU groff
-* X libraries for Tk
-* tomcrypt (*)
-* tommath (*)
-* pcre (*)
-* zlib (*)
-* lz4 (*)
+#### Prerequisites
 
-The requirement marked with (*) are optional, if not installed locally
-and BitKeeper is currently installed and we are building from a
-BitKeeper repository then local copies of these requirements will be
-automatically populated and included.
+- **Bazel** (or [Bazelisk](https://github.com/bazelbuild/bazelisk))
+- A C11 compiler (**GCC** or **Clang**)
+- **GNU gperf**
+- **Perl**
+- **GNU groff** (for documentation generation)
 
-If you are building on a Debian based Linux then the following
-packages are required:
+On Debian/Ubuntu:
+```bash
+sudo apt-get install build-essential gperf groff perl
+```
 
-  sudo apt-get install make gperf groff bison flex libxft2-dev libtommath-dev libtomcrypt-dev libpcre3-dev zlib1g-dev liblz4-dev
+On Fedora/RHEL:
+```bash
+sudo dnf install gcc gcc-c++ gperf groff perl
+```
 
-For Fedora and related versions of Linux the following works:
+#### Build Commands
 
-  sudo yum install gcc make gperf bison flex groff pcre-devel libtomcrypt-devel libtommath-devel lz4-devel zlib-devel libXft-devel 
+Build the core `bk` binary:
+```bash
+bazel build //src:bk
+```
+The compiled binary will be located at `bazel-bin/src/bk`.
 
-Build using the following sequence (we build on 12 core systems;
-hence the -j12 sprinkled here and there):
+To build the full installation package (tarball):
+```bash
+bazel build //src:install_image
+```
+The resulting package will be at `bazel-bin/src/bitkeeper.tar.gz`.
 
-	cd src
-	make -j12 p		# 'p'roduction build
-	make image		# create install image (at src/utils)
-	./utils/bk-*.bin	# run installer created above
-
-(make *must* be GNU make)
-
-If bk fails to locate your pre-installed libraries then edit the file
-src/conf.mk.local to provide the needed information.  If you want to
-share the config with others please label it like "# Macos with homebrew"
-and put the configs commented out in there and send us a patch.
-
-Building on Windows requires msys and is more involved. See the thread
-on the
-[forum](https://users.bitkeeper.org/t/howto-building-bitkeeper-on-windows/78)
-about Windows builds.
+*(Note: GNU Make (`make -C src p`) is the legacy build system and is retained primarily for reference during ongoing build modernization.)*
 
 ## Testing BitKeeper
 
-An extensive regression suite is found in `src/t` and can be run using
-the doit script in that directory.  The test harness can be run in
-parallel using multiple cores like so:
+BitKeeper includes an extensive regression test suite. Tests can be executed through Bazel:
 
-	cd src
-	make p
-	cd t
-	./doit -j12
+Run all tests:
+```bash
+bazel test //src/t:...
+```
 
-Look [here](https://users.bitkeeper.org/t/running-regressions-on-a-clean-linux-machine/74)
-for help with getting regressions to pass cleanly.
+Run a specific test (dots in filenames are replaced with underscores, e.g. `t.basic` -> `t_basic`):
+```bash
+bazel test //src/t:t_basic
+```
+
+Run a test with failure output displayed in the terminal:
+```bash
+bazel test --test_output=errors //src/t:t_basic
+```
 
 ## Contributing to BitKeeper
 
