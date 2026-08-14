@@ -53,7 +53,7 @@ private	void	foundDup(sccs *s, u32 bits,
 #define	SL_EXCL		0x80	/* Left side exclude */
 
 // Compute Active bitmap for left and right in one calc
-#define	ACTIVE(x)	((((x) >> 1) & (~(x) >> 3) | ((x) >> 2)) & 0x11)
+#define	ACTIVE(x)	(((((x) >> 1) & (~(x) >> 3)) | ((x) >> 2)) & 0x11)
 #define	XOR_ACTIVE(x)	((((x) >> 4) ^ (x)) & 1)
 #define	ALEFT		0x10
 #define	ARIGHT		0x01

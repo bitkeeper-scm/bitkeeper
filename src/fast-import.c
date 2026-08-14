@@ -1667,7 +1667,7 @@ newDelta(opts *op, finfo *fi, ser_t p, commit *cmt, gop *g)
 		    d, 0, 0, 0);
 		assert(!rc);
 	} else {
-		assert(g->op = GDELETE);
+		assert(g->op == GDELETE);
 
 		if (begins_with(PATHNAME(s, p), "BitKeeper/deleted/")) {
 			/* already deleted */

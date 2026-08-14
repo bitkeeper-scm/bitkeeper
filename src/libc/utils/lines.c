@@ -21,7 +21,7 @@
 #include "system.h"
 #include "lines.h"
 
-#define	setLLEN(s, len)	(*(u32 *)(s) = (*(u32 *)(s) & ~LMASK) | len)
+#define	setLLEN(s, len)	(*(u32 *)(s) = (*(u32 *)(s) & ~LMASK) | (len))
 
 /* size of array (saves LSIZ-1 items) */
 #define	LSIZ(s)				(1u << (*(u32 *)(s) >> LBITS))

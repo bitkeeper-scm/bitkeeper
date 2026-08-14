@@ -318,7 +318,7 @@ platformextra(void)
 #if	defined(__APPLE__)
 	if ((fp = popen("/usr/bin/sw_vers -productVersion", "r"))) {
 #else
-	if (fp = popen("uname -r", "r")) {
+	if ((fp = popen("uname -r", "r"))) {
 #endif
 		if (fnext(buf, fp)) {
 			chomp(buf);

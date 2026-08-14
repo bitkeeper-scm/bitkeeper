@@ -3030,7 +3030,7 @@ writeCheck(sccs *s, MDBM *db)
 					return (1);
 				}
 				/* Must check parent of SCCS dir */
-				unless (t && streq(t, "/SCCS") ||
+				unless ((t && streq(t, "/SCCS")) ||
 					streq(path, "SCCS")) {
 					return (0);
 				}
@@ -3284,7 +3284,7 @@ resolvewalk(char *file, char type, void *data)
 	unless (p = strrchr(file, '/')) return (0);
 	unless (strneq(file, "./", 2)) return (0);
 	file += 2;
-	assert(p[1] = 's');
+	assert(p[1] == 's');
 	if (opts->partial && streq(file, "SCCS/s.ChangeSet")) return (0);
 	if (opts->automerge && xfile_exists(file, 'm')) return (0);
 	unless (ci->pfiles_only || xfile_exists(file, 'r')) return (0);
