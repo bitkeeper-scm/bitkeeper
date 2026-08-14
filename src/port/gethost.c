@@ -113,7 +113,8 @@ gethost(char *host, int hlen, int envOK)
 				goto out;
 			}
 		}
-		if (getdomainname(domain, sizeof(domain)) == 0) {
+		if (getdomainname(domain, sizeof(domain)) == 0 &&
+		    domain[0] && !streq(domain, "(none)")) {
 #ifdef sun
 			/*
 			 * Sun's convention, strip off the first component

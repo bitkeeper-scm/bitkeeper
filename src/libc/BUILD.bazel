@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 
 # -*-Python-*-
 #
@@ -95,4 +95,12 @@ cc_library(
         "@zlib//:z",
     ],
 )
+
+cc_binary(
+    name = "mtst",
+    srcs = ["mdbm/mtst.c"],
+    deps = [":libc"],
+    visibility = ["//visibility:public"],
+)
+
 

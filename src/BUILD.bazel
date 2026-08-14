@@ -295,6 +295,7 @@ genrule(
         cp "$$workdir/cmd.h" "$(location cmd.h)"
     """,
     tools = ["cmd.pl"],
+    visibility = ["//visibility:public"],
 )
 
 # bkver.c embeds the platform string (from utils/bk_version) and the
