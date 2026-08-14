@@ -74,6 +74,29 @@ On Fedora/RHEL:
 sudo dnf install gcc gcc-c++ gperf groff perl
 ```
 
+On macOS (via [Homebrew](https://brew.sh/)):
+```bash
+brew install bazelisk gperf groff gpatch diffutils
+```
+macOS ships Clang, Perl, and BSD `soelim`/`patch`/`diff3`, but not GNU
+`gperf` or GNU `groff`, both of which are required to generate man
+pages and built-in help text. Bazel genrule sandboxes use a minimal
+`PATH` (`/bin:/usr/bin:/usr/local/bin`) that does not include
+Homebrew's Apple Silicon prefix, so the `//man` build rules explicitly
+add `/opt/homebrew/bin` (and `/usr/local/bin` for Intel Macs) to `PATH`
+when invoking `groff`.
+
+Running the regression tests (`bazel test //src/t/...`) also requires
+GNU `patch` and GNU `diff3` (installed above as `gpatch` and via
+`diffutils`, since Homebrew keeps them out of `PATH` to avoid
+clobbering the system tools): `bk patch` and `bk merge` invoke the
+system `patch`/`diff3` by bare name, and Apple's bundled versions
+behave differently (fuzzy-match behavior in `patch`, and `-E`
+conflict-marker behavior in `diff3`), causing spurious test failures.
+`src/t/test_runner.sh` symlinks the Homebrew GNU versions into each
+test's isolated bin directory when found, so no global `PATH` changes
+are required.
+
 #### Build Commands
 
 Build the core `bk` binary:

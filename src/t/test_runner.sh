@@ -33,6 +33,35 @@ mkdir -p "$BIN_DIR"
 cp -f "$BK_BIN_DIR/bk" "$BIN_DIR/bk"
 chmod +x "$BIN_DIR/bk"
 
+# On macOS, the system-provided "patch" and "diff3" (from Apple/BSD) behave
+# differently than the GNU versions BitKeeper expects (e.g. fuzzy-match
+# behavior in `patch`, and `-E` conflict-marker behavior in `diff3`). "bk
+# patch" and "bk merge" invoke these tools by bare name via $PATH, so
+# symlink the Homebrew-provided GNU versions into $BIN_DIR (which is
+# prepended to PATH below) when available, without disturbing the user's
+# real PATH or requiring "gnubin" directories to be added globally.
+for gnubin_dir in \
+    /opt/homebrew/opt/gpatch/libexec/gnubin \
+    /usr/local/opt/gpatch/libexec/gnubin
+do
+    if [ -x "$gnubin_dir/patch" ]; then
+        ln -sf "$gnubin_dir/patch" "$BIN_DIR/patch"
+        break
+    fi
+done
+for diffutils_bin in \
+    /opt/homebrew/opt/diffutils/bin \
+    /usr/local/opt/diffutils/bin
+do
+    if [ -x "$diffutils_bin/diff3" ]; then
+        # GNU diff3 shells out to "diff" as a subsidiary program, so it
+        # must find the GNU diff (not the BSD one) on PATH too.
+        ln -sf "$diffutils_bin/diff3" "$BIN_DIR/diff3"
+        ln -sf "$diffutils_bin/diff" "$BIN_DIR/diff"
+        break
+    fi
+done
+
 # Stage data and doc files alongside bk
 cp -f "$SRC_DIR/bkmsg.txt" "$BIN_DIR/" 2>/dev/null || true
 cp -f "$SRC_DIR/version" "$BIN_DIR/" 2>/dev/null || true
