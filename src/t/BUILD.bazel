@@ -39,8 +39,23 @@ SERIAL_TESTS = [
 ALL_TEST_FILES = glob(["t.*"])
 
 # Tests that require medium size (>100MB RAM or 30-300s runtime)
+# It might be better to annotate the test files with attributes.
+# For details on that see [NOTES.test-annotation.md](NOTES.test-annotation.md).
 MEDIUM_TESTS = [
     "t.a.progress-bar",
+    "t.a.simple-interface.component",
+    "t.a.simple-interface.no-repo",
+    "t.a.simple-interface.product",
+    "t.a.simple-interface.repo",
+    "t.nested-abort",
+    "t.nested-locking",
+    "t.nested-poly",
+    "t.nested-populate",
+    "t.nested-pull",
+    "t.nested-pull-safe",
+    "t.nested-push",
+    "t.partition",
+    "t.triggers"
 ]
 
 [
