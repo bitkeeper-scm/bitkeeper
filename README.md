@@ -50,40 +50,41 @@ This includes:
 and used to include IRIX, AIX, HP-UX, etc.  Any Posix-like system is a
 pretty easy port.
 
+**Runtime Dependency Note:** `diff`, `diff3`, and `patch` on the user's `PATH` are assumed to be the GNU versions (e.g. GNU diffutils and GNU patch) for BitKeeper to work correctly. Commands such as `bk diff`, `bk merge`, and `bk patch` rely on GNU-specific behavior and options.
+
 ### Getting Sources for Bitkeeper
 
 ### Building BitKeeper
 
-BitKeeper is built using [Bazel](https://bazel.build/). Third-party dependencies (such as zlib, lz4, PCRE, libtomcrypt, and libtommath) are fetched and built automatically by Bazel.
+BitKeeper is built using [Bazel](https://bazel.build/). Third-party dependencies and build tools (such as zlib, lz4, PCRE, gperf, libtomcrypt, and libtommath) are fetched and built automatically by Bazel.
 
 #### Prerequisites
 
 - **Bazel** (or [Bazelisk](https://github.com/bazelbuild/bazelisk))
 - A C11 compiler (**GCC** or **Clang**)
-- **GNU gperf**
 - **Perl**
 - **GNU groff** (for documentation generation)
 
 On Debian/Ubuntu:
 ```bash
-sudo apt-get install build-essential gperf groff perl
+sudo apt-get install build-essential groff perl
 ```
 
 On Fedora/RHEL:
 ```bash
-sudo dnf install gcc gcc-c++ gperf groff perl
+sudo dnf install gcc gcc-c++ groff perl
 ```
 
 On macOS (via [Homebrew](https://brew.sh/)):
 ```bash
-brew install bazelisk gperf groff gpatch diffutils
+brew install bazelisk groff gpatch diffutils
 ```
 macOS ships Clang, Perl, and BSD `soelim`/`patch`/`diff3`, but not GNU
-`gperf` or GNU `groff`, both of which are required to generate man
-pages and built-in help text. Bazel genrule sandboxes use a minimal
-`PATH` (`/bin:/usr/bin:/usr/local/bin`) that does not include
-Homebrew's Apple Silicon prefix, so the `//man` build rules explicitly
-add `/opt/homebrew/bin` (and `/usr/local/bin` for Intel Macs) to `PATH`
+`groff`, which is required to generate man pages and built-in help
+text. Bazel genrule sandboxes use a minimal `PATH`
+(`/bin:/usr/bin:/usr/local/bin`) that does not include Homebrew's Apple
+Silicon prefix, so the `//man` build rules explicitly add
+`/opt/homebrew/bin` (and `/usr/local/bin` for Intel Macs) to `PATH`
 when invoking `groff`.
 
 Running the regression tests (`bazel test //src/t/...`) also requires

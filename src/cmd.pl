@@ -13,8 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-$gperf = '/usr/local/bin/gperf';
-$gperf = 'gperf' unless -x $gperf;
+$gperf = $ENV{GPERF} if $ENV{GPERF};
+unless ($gperf) {
+    $gperf = '/usr/local/bin/gperf';
+    $gperf = 'gperf' unless -x $gperf;
+}
 
 $_ = `$gperf --version`;
 die "mk-cmd.pl: Requires gperf version >3\n" unless /^GNU gperf 3/;

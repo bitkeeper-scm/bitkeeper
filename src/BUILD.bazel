@@ -284,17 +284,21 @@ genrule(
     outs = ["cmd.c", "cmd.h"],
     cmd = """
         set -e
+        gperf=$$(pwd)/$(location @gperf//:gperf)
         workdir=$$(mktemp -d)
         cp $(location cmd.pl) $(location bk.sh) "$$workdir/"
         for f in $(SRCS); do
             base=$$(basename "$$f")
             case "$$base" in bkd_*.c) cp "$$f" "$$workdir/$$base" ;; esac
         done
-        (cd "$$workdir" && perl cmd.pl)
+        (cd "$$workdir" && GPERF="$$gperf" perl cmd.pl)
         cp "$$workdir/cmd.c" "$(location cmd.c)"
         cp "$$workdir/cmd.h" "$(location cmd.h)"
     """,
-    tools = ["cmd.pl"],
+    tools = [
+        "cmd.pl",
+        "@gperf//:gperf",
+    ],
     visibility = ["//visibility:public"],
 )
 
@@ -327,12 +331,16 @@ genrule(
     outs = ["kw2val_lookup.c"],
     cmd = """
         set -e
+        gperf=$$(pwd)/$(location @gperf//:gperf)
         workdir=$$(mktemp -d)
         cp $(location slib.c) $(location kw2val.pl) "$$workdir/"
-        (cd "$$workdir" && perl kw2val.pl slib.c)
+        (cd "$$workdir" && GPERF="$$gperf" perl kw2val.pl slib.c)
         cp "$$workdir/kw2val_lookup.c" "$@"
     """,
-    tools = ["kw2val.pl"],
+    tools = [
+        "kw2val.pl",
+        "@gperf//:gperf",
+    ],
 )
 
 cc_binary(
