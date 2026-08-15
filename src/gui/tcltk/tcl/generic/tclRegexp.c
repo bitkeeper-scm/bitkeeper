@@ -486,9 +486,9 @@ Tcl_RegExpExecObj(
     if (reflags & TCL_REG_PCRE) {
 #ifdef HAVE_PCRE
 	const char *matchstr;
-	int match, pcreeflags, nm = (regexpPtr->re.re_nsub + 1) * 3;
+	int match, pcreeflags;
 	int byteOffset, wlen;
-	unsigned long pcreopts;
+	PCRE2_SIZE *ovector;
 
 	if (!(flags & TCL_REG_BYTEOFFSET)) {
 	    wlen = Tcl_GetCharLength(textObj);
@@ -501,9 +501,8 @@ Tcl_RegExpExecObj(
 
 	pcreeflags = 0;
 	if (flags & TCL_REG_NOTBOL) {
-	    pcreeflags |= PCRE_NOTBOL;
+	    pcreeflags |= PCRE2_NOTBOL;
 	}
-	pcre_fullinfo(regexpPtr->pcre, NULL, PCRE_INFO_OPTIONS, &pcreopts);
 
 	if (!(flags & TCL_REG_BYTEOFFSET)) {
 	    /* To handle UTF8, convert offset from a char index to a byte offset. */
@@ -521,26 +520,27 @@ Tcl_RegExpExecObj(
 	    byteOffset = offset;
 	}
 
-	match = pcre_exec(regexpPtr->pcre, regexpPtr->study,
-		matchstr, length, byteOffset, pcreeflags,
-		(int *) regexpPtr->matches, nm);
+	match = pcre2_match(regexpPtr->pcre,
+		(PCRE2_SPTR)matchstr, length, byteOffset, pcreeflags,
+		regexpPtr->match_data, NULL);
 
-	if (!(flags & TCL_REG_BYTEOFFSET)) {
-	    /*
-	     * For UTF8, we need the matches array as char offsets, but pcre
-	     * returns byte offsets.  Do the conversion.
-	     * This could be sped up for lots of matches.
-	     */
-	    for (i = 0; i < 2*match; ++i) {
-		int *p = &((int *)regexpPtr->matches)[i];
-		*p = Tcl_NumUtfChars(matchstr, *p);
+	if (match >= 0) {
+	    ovector = pcre2_get_ovector_pointer(regexpPtr->match_data);
+	    for (i = 0; i < match; ++i) {
+		if (!(flags & TCL_REG_BYTEOFFSET)) {
+		    regexpPtr->matches[i].rm_so = (ovector[2*i] == PCRE2_UNSET) ? -1 : (int)Tcl_NumUtfChars(matchstr, ovector[2*i]);
+		    regexpPtr->matches[i].rm_eo = (ovector[2*i+1] == PCRE2_UNSET) ? -1 : (int)Tcl_NumUtfChars(matchstr, ovector[2*i+1]);
+		} else {
+		    regexpPtr->matches[i].rm_so = (ovector[2*i] == PCRE2_UNSET) ? -1 : (int)ovector[2*i];
+		    regexpPtr->matches[i].rm_eo = (ovector[2*i+1] == PCRE2_UNSET) ? -1 : (int)ovector[2*i+1];
+		}
 	    }
 	}
 
 	/*
 	 * Store last offset to support Tcl_RegExpGetInfo translation.
 	 */
-	if (match == PCRE_ERROR_NOMATCH) {
+	if (match == PCRE2_ERROR_NOMATCH) {
 	    regexpPtr->details.rm_extend.rm_so = -1;
 	} else {
 	    regexpPtr->details.rm_extend.rm_so = offset;
@@ -550,18 +550,12 @@ Tcl_RegExpExecObj(
 	 * Check for errors.
 	 */
 
-	if (match == PCRE_ERROR_NOMATCH) {
+	if (match == PCRE2_ERROR_NOMATCH) {
 	    return 0;
-	} else if (match == 0) {
-	    if (interp != NULL) {
-		Tcl_AppendResult(interp,
-			"pcre_exec had insufficient capture space", NULL);
-	    }
-	    return -1;
-	} else if (match < -1) {
+	} else if (match < 0) {
 	    if (interp != NULL) {
 		char buf[32 + TCL_INTEGER_SPACE];
-		sprintf(buf, "pcre_exec returned error code %d", match);
+		sprintf(buf, "pcre2_match returned error code %d", match);
 		Tcl_AppendResult(interp, buf, NULL);
 	    }
 	    return -1;
@@ -651,7 +645,8 @@ Tcl_RegExpGetInfo(
     if (regexpPtr->flags & TCL_REG_PCRE) {
 #ifdef HAVE_PCRE
 	ThreadSpecificData *tsdPtr = TCL_TSD_INIT(&dataKey);
-	int i, last, *matches = (int *) regexpPtr->matches;
+	int i, last;
+	regmatch_t *matches = regexpPtr->matches;
 
 	/*
 	 * This works both to initialize and extend matches as necessary
@@ -664,8 +659,8 @@ Tcl_RegExpGetInfo(
 	}
 	last = regexpPtr->details.rm_extend.rm_so; /* last offset */
 	for (i = 0; i <= infoPtr->nsubs; i++) {
-	    tsdPtr->matches[i].start = matches[i*2] - last;
-	    tsdPtr->matches[i].end = matches[i*2+1] - last;
+	    tsdPtr->matches[i].start = matches[i].rm_so - last;
+	    tsdPtr->matches[i].end = matches[i].rm_eo - last;
 	}
 	infoPtr->matches = tsdPtr->matches;
 #else
@@ -1056,36 +1051,35 @@ CompileRegexp(
 
     if (flags & TCL_REG_PCRE) {
 #ifdef HAVE_PCRE
-	pcre *pcre;
+	pcre2_code *pcre;
 	char *p, *cstring = (char *) string;
-	const char *errstr;
-	int erroffset, rc, nsubs, pcrecflags;
+	int erroffset_code, nsubs, pcrecflags;
+	PCRE2_SIZE erroffset;
 
 	/*
 	 * Convert from Tcl classic to PCRE cflags
 	 */
 
-	/* XXX Should enable PCRE_UTF8 selectively on non-ByteArray Tcl_Obj */
-	pcrecflags = PCRE_NO_UTF8_CHECK | PCRE_DOLLAR_ENDONLY | PCRE_DOTALL;
+	pcrecflags = PCRE2_NO_UTF_CHECK | PCRE2_DOLLAR_ENDONLY | PCRE2_DOTALL;
 	for (i = 0, p = cstring; i < length; i++) {
 	    if (UCHAR(*p++) > 0x80) {
-		pcrecflags |= PCRE_UTF8;
+		pcrecflags |= PCRE2_UTF;
 		break;
 	    }
 	}
 	if (flags & TCL_REG_NOCASE) {
-	    pcrecflags |= PCRE_CASELESS;
+	    pcrecflags |= PCRE2_CASELESS;
 	}
 	if (flags & TCL_REG_EXPANDED) {
-	    pcrecflags |= PCRE_EXTENDED;
+	    pcrecflags |= PCRE2_EXTENDED;
 	}
 	/* TCL_REG_NLSTOP|TCL_REG_NLANCH == TCL_REG_NEWLINE */
 	if (flags & TCL_REG_NLSTOP) {
-	    pcrecflags &= ~(PCRE_DOTALL);
+	    pcrecflags &= ~(PCRE2_DOTALL);
 	}
 	if (flags & TCL_REG_NLANCH) {
-	    pcrecflags |= PCRE_MULTILINE;
-	    pcrecflags &= ~(PCRE_DOLLAR_ENDONLY);
+	    pcrecflags |= PCRE2_MULTILINE;
+	    pcrecflags &= ~(PCRE2_DOLLAR_ENDONLY);
 	}
 
 	if (cstring[length] != 0) {
@@ -1093,39 +1087,26 @@ CompileRegexp(
 	    memcpy(cstring, string, length);
 	    cstring[length] = 0;
 	}
-	pcre = pcre_compile(cstring, pcrecflags, &errstr, &erroffset, NULL);
+	pcre = pcre2_compile((PCRE2_SPTR)cstring, length, pcrecflags, &erroffset_code, &erroffset, NULL);
 	regexpPtr->pcre = pcre;
 	if (cstring != (char *) string) {
 	    ckfree(cstring);
 	}
 
 	if (pcre == NULL) {
+	    PCRE2_UCHAR errbuf[256];
+	    pcre2_get_error_message(erroffset_code, errbuf, sizeof(errbuf));
 	    ckfree((char *)regexpPtr);
 	    Tcl_AppendResult(interp,
-		    "couldn't compile pcre pattern: ", errstr, NULL);
+		    "couldn't compile pcre pattern: ", (char *)errbuf, NULL);
 	    return NULL;
 	}
 
-	regexpPtr->study = pcre_study(pcre, 0, &errstr);
-	if (errstr != NULL) {
-	    pcre_free(pcre);
-	    ckfree((char *)regexpPtr);
-	    Tcl_AppendResult(interp,
-		    "error studying pcre pattern: ", errstr, NULL);
-	    return NULL;
-	}
-
-	/*
-	 * Allocate enough space for all of the subexpressions, plus one extra
-	 * for the entire pattern.
-	 */
-
-	rc = pcre_fullinfo(pcre, NULL, PCRE_INFO_CAPTURECOUNT, &nsubs);
-	if (rc == 0) {
-	    regexpPtr->re.re_nsub = nsubs;
-	    regexpPtr->matches = (regmatch_t *)
-		ckalloc(sizeof(int) * (nsubs+1)*3);
-	}
+	pcre2_pattern_info(pcre, PCRE2_INFO_CAPTURECOUNT, &nsubs);
+	regexpPtr->re.re_nsub = nsubs;
+	regexpPtr->matches = (regmatch_t *)
+		ckalloc(sizeof(regmatch_t) * (nsubs+1));
+	regexpPtr->match_data = pcre2_match_data_create_from_pattern(pcre, NULL);
 #else
 	Tcl_AppendResult(interp,
 		"couldn't compile pcre pattern: pcre unavailabe", NULL);
@@ -1238,9 +1219,11 @@ FreeRegexp(
 {
 #ifdef HAVE_PCRE
     if (regexpPtr->flags & TCL_REG_PCRE) {
-	pcre_free(regexpPtr->pcre);
-	if (regexpPtr->study) {
-	    pcre_free(regexpPtr->study);
+	if (regexpPtr->pcre) {
+	    pcre2_code_free(regexpPtr->pcre);
+	}
+	if (regexpPtr->match_data) {
+	    pcre2_match_data_free(regexpPtr->match_data);
 	}
     } else
 #endif
@@ -1557,11 +1540,12 @@ TclRegexpPCRE(
     int offset)
 {
 #ifdef HAVE_PCRE
-    int i, match, eflags, stringLength, matchelems, *matches;
+    int i, match, eflags, stringLength;
     Tcl_Obj *objPtr, *resultPtr = NULL;
     const char *matchstr;
-    pcre *re;
-    pcre_extra *study;
+    pcre2_code *re;
+    pcre2_match_data *md;
+    PCRE2_SIZE *ovector;
     TclRegexp *regexpPtr = (TclRegexp *) regExpr;
 
     objPtr = objv[1];
@@ -1571,7 +1555,7 @@ TclRegexpPCRE(
 	matchstr = (const char*)Tcl_GetStringFromObj(objPtr, &stringLength);
     }
 
-    eflags = PCRE_NO_UTF8_CHECK;
+    eflags = PCRE2_NO_UTF_CHECK;
     if (offset > 0) {
 	/*
 	 * Translate offset into correct placement for utf-8 chars.
@@ -1583,7 +1567,7 @@ TclRegexpPCRE(
 	    /* XXX: probably needs length restriction */
 	    offset = Tcl_UtfAtIndex(matchstr, offset) - matchstr;
 	}
-	eflags |= PCRE_NOTBOL;
+	eflags |= PCRE2_NOTBOL;
     }
 
     objc -= 2;
@@ -1597,27 +1581,19 @@ TclRegexpPCRE(
      */
 
     re = regexpPtr->pcre;
-    study = regexpPtr->study;
-    matches = (int *) regexpPtr->matches;
-    matchelems = (int) (regexpPtr->re.re_nsub + 1) * 3;
+    md = regexpPtr->match_data;
     while (1) {
-	match = pcre_exec(re, study, matchstr, stringLength,
-		offset, eflags, matches, matchelems);
+	match = pcre2_match(re, (PCRE2_SPTR)matchstr, stringLength,
+		offset, eflags, md, NULL);
 
-	if (match < -1) {
+	if (match < 0 && match != PCRE2_ERROR_NOMATCH) {
 	    char buf[32 + TCL_INTEGER_SPACE];
-	    sprintf(buf, "pcre_exec returned error code %d", match);
+	    sprintf(buf, "pcre2_match returned error code %d", match);
 	    Tcl_AppendResult(interp, buf, NULL);
 	    return TCL_ERROR;
 	}
 
-	if (match == 0) {
-	    Tcl_AppendResult(interp,
-		    "pcre_exec had insufficient capture space", NULL);
-	    return TCL_ERROR;
-	}
-
-	if (match == PCRE_ERROR_NOMATCH) {
+	if (match == PCRE2_ERROR_NOMATCH) {
 	    /*
 	     * We want to set the value of the intepreter result only when
 	     * this is the first time through the loop.
@@ -1637,6 +1613,8 @@ TclRegexpPCRE(
 	    }
 	    break;
 	}
+
+	ovector = pcre2_get_ovector_pointer(md);
 
 	/*
 	 * If additional variable names have been specified, return index
@@ -1658,9 +1636,9 @@ TclRegexpPCRE(
 	    Tcl_Obj *newPtr;
 	    int start, end;
 
-	    if (i < match) {
-		start = matches[i*2];
-		end = matches[i*2 + 1];
+	    if (i < match && ovector[i*2] != PCRE2_UNSET) {
+		start = (int)ovector[i*2];
+		end = (int)ovector[i*2 + 1];
 	    } else {
 		start = -1;
 		end = -1;
@@ -1673,7 +1651,7 @@ TclRegexpPCRE(
 
 		newPtr = Tcl_NewListObj(2, objs);
 	    } else {
-		if (i < match) {
+		if (i < match && start >= 0) {
 		    newPtr = Tcl_NewStringObj(matchstr + start, end - start);
 		} else {
 		    newPtr = Tcl_NewObj();
@@ -1709,16 +1687,16 @@ TclRegexpPCRE(
 	 * when we match the NULL string at the end of the input string, we
 	 * will loop indefinately (because the length of the match is 0, so
 	 * offset never changes).
-	 * matches[1] is the match end point of the full RE match.
+	 * ovector[1] is the match end point of the full RE match.
 	 */
 
-	if (matches[0] == matches[1]) {
+	if (ovector[0] == ovector[1]) {
 	    offset++;
 	} else {
-	    offset = matches[1];
+	    offset = (int)ovector[1];
 	}
 	all++;
-	eflags |= PCRE_NOTBOL;
+	eflags |= PCRE2_NOTBOL;
 	if (offset >= stringLength) {
 	    break;
 	}

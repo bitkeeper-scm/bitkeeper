@@ -73,7 +73,9 @@ private	void	printHistogram(dstat *diffstats);
 int
 diff_main(int ac, char **av)
 {
-	int	rc, c, i, poff;
+	int	rc, c, i;
+	int	errorcode;
+	PCRE2_SIZE	poff;
 	int	verbose = 0, empty = 0, errors = 0, force = 0;
 	int	standalone = 0;
 	int	local = 0, whodel = 0;
@@ -82,7 +84,7 @@ diff_main(int ac, char **av)
 	FILE	*fout = stdout;
 	char	*name, *p;
 	char	*url = 0;
-	const	char *perr;
+	PCRE2_UCHAR	perr[256];
 	char	*Rev = 0, *boundaries = 0, *pattern = 0;
 	dstat	*diffstats = 0, *ds;
 	int	diffstat_only = 0;
@@ -190,12 +192,14 @@ diff_main(int ac, char **av)
 	if (dop.out_show_c_func && pattern) {
 		fprintf(stderr, "diffs: only one of -p or -F allowed\n");
 err:		FREE(pattern);
+		if (dop.pattern) pcre2_code_free(dop.pattern);
 		return (1);
 	}
 
 	if (pattern &&
-	    !(dop.pattern = pcre_compile(pattern, 0, &perr, &poff, 0))) {
-		fprintf(stderr, "diff: bad regexp '%s': %s\n", pattern, perr);
+	    !(dop.pattern = pcre2_compile((PCRE2_SPTR)pattern, PCRE2_ZERO_TERMINATED, 0, &errorcode, &poff, 0))) {
+		pcre2_get_error_message(errorcode, perr, sizeof(perr));
+		fprintf(stderr, "diff: bad regexp '%s': %s\n", pattern, (char *)perr);
 		goto err;
 	}
 
@@ -401,6 +405,7 @@ next:		if (s) {
 	}
 out:	if (sfileDone()) errors |= 4;
 	FREE(pattern);
+	if (dop.pattern) pcre2_code_free(dop.pattern);
 	return (errors);
 }
 

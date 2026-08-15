@@ -8,23 +8,28 @@ OUT_TAR="$1"
 shift
 PCRE_LIB=""
 PCRE_HDR=""
+PCRE_HDRS=()
 TOMMATH_FILES=()
 
 for arg in "$@"; do
     case "$arg" in
+        *tommath*|*bn_*|*bncore*)
+            if [ -f "$arg" ]; then
+                TOMMATH_FILES+=("$arg")
+            fi
+            ;;
         *.a)
             if [ -f "$arg" ]; then
                 PCRE_LIB="$(cd "$(dirname "$arg")" && pwd)/$(basename "$arg")"
             fi
             ;;
-        *pcre.h)
+        *.h)
             if [ -f "$arg" ]; then
-                PCRE_HDR="$(cd "$(dirname "$arg")" && pwd)/$(basename "$arg")"
-            fi
-            ;;
-        *tommath*|*bn_*|*bncore*)
-            if [ -f "$arg" ]; then
-                TOMMATH_FILES+=("$arg")
+                abs_h="$(cd "$(dirname "$arg")" && pwd)/$(basename "$arg")"
+                PCRE_HDRS+=("$abs_h")
+                if [ "$(basename "$arg")" = "pcre2.h" ] || [ "$(basename "$arg")" = "pcre.h" ]; then
+                    PCRE_HDR="$abs_h"
+                fi
             fi
             ;;
     esac
@@ -51,13 +56,18 @@ cd "$WORK"
 
 mkdir -p bin lib include share
 
-# 1. Setup PCRE from Bazel @pcre1
+# 1. Setup PCRE from Bazel @pcre2
 if [ -z "$PCRE_LIB" ] || [ -z "$PCRE_HDR" ]; then
     echo "Error: PCRE library and header must be provided to $0" >&2
     exit 1
 fi
 mkdir -p "$WORK/pcre_dist/include" "$WORK/pcre_dist/lib"
+for h in "${PCRE_HDRS[@]}"; do
+    cp -f "$h" "$WORK/pcre_dist/include/"
+done
+cp -f "$PCRE_HDR" "$WORK/pcre_dist/include/pcre2.h"
 cp -f "$PCRE_HDR" "$WORK/pcre_dist/include/pcre.h"
+cp -f "$PCRE_LIB" "$WORK/pcre_dist/lib/libpcre2.a"
 cp -f "$PCRE_LIB" "$WORK/pcre_dist/lib/libpcre.a"
 PCRE_PREFIX="$WORK/pcre_dist"
 PCRE_A="$WORK/pcre_dist/lib/libpcre.a"

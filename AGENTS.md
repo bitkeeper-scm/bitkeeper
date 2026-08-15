@@ -37,7 +37,7 @@ BitKeeper is a distributed revision control system implemented primarily in C wi
 - **Portability & Support Libc (`src/libc/`)**:
   Provides system abstractions including `fslayer` (virtual filesystem intercept layer), memory-mapped database/hash helpers (`mdbm`, `hash_nokey`), custom stdio helpers, and platform portability code.
 - **Third-Party Dependencies (`MODULE.bazel`, `third_party/`)**:
-  External libraries (`zlib`, `lz4`, `pcre1`, `tomcrypt`, `tommath`) are resolved by Bazel via the Bazel Central Registry and upstream archive rules in `MODULE.bazel` / `//third_party/...`.
+  External libraries (`zlib`, `lz4`, `pcre2`, `tomcrypt`, `tommath`) are resolved by Bazel via the Bazel Central Registry and upstream archive rules in `MODULE.bazel` / `//third_party/...`.
 
 ---
 

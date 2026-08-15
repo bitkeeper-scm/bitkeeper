@@ -355,7 +355,7 @@ cc_binary(
         ":configvars",
         ":kw2val_lookup",
         "//src/libc",
-        "@pcre1//:pcre1",
+        "@pcre2//:pcre2",
         "@tomcrypt//:tomcrypt",
         "@tommath//:tommath",
     ],

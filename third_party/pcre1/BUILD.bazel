@@ -1,3 +1,0 @@
-# Marks this directory as a Bazel package so the *.bazel BUILD
-# template file below can be referenced by label from MODULE.bazel.
-

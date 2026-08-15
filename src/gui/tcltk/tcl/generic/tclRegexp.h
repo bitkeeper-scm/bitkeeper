@@ -17,7 +17,8 @@
 #include "regex.h"
 
 #ifdef HAVE_PCRE
-#include <pcre.h>
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
 #endif
 
 /*
@@ -33,8 +34,8 @@ typedef struct TclRegexp {
     regex_t re;			/* Compiled re, includes number of
 				 * subexpressions. */
 #ifdef HAVE_PCRE
-    pcre *pcre;			/* PCRE compile re */
-    pcre_extra *study;		/* study of PCRE */
+    pcre2_code *pcre;			/* PCRE compile re */
+    pcre2_match_data *match_data;	/* match data for PCRE */
 #endif
     const char *string;		/* Last string passed to Tcl_RegExpExec. */
     Tcl_Obj *objPtr;		/* Last object passed to Tcl_RegExpExecObj. */

@@ -791,20 +791,29 @@ loadAuthors(char *file)
 	char	*t;
 	hash	*ret;
 	int	line = 0;
-	const char	*error;
-	int	off;
-	pcre	*re;
-	int	vec[9];
+	int	errorcode;
+	PCRE2_SIZE	off;
+	pcre2_code	*re;
+	pcre2_match_data *md;
+	PCRE2_SIZE	*vec;
 
-	re = pcre_compile(
-		"^\\s*(\\S+)\\s*=\\s*"
+	re = pcre2_compile(
+		(PCRE2_SPTR)"^\\s*(\\S+)\\s*=\\s*"
 		"(.*<[\\w0-9._%+-]+@[\\w0-9.-]+\\.\\w{2,}>)\\s*$",
-		0, &error, &off, 0);
-	if (error) fprintf(stderr, "%s: %s at %d\n", prog, error, off);
+		PCRE2_ZERO_TERMINATED,
+		0, &errorcode, &off, 0);
+	if (!re) {
+		PCRE2_UCHAR error[256];
+		pcre2_get_error_message(errorcode, error, sizeof(error));
+		fprintf(stderr, "%s: %s at %d\n", prog, (char *)error, (int)off);
+	}
 	assert(re);
+	md = pcre2_match_data_create_from_pattern(re, 0);
 
 	unless (f = fopen(file, "r")) {
 		perror(file);
+		pcre2_match_data_free(md);
+		pcre2_code_free(re);
 		return (0);
 	}
 
@@ -812,20 +821,21 @@ loadAuthors(char *file)
 	while ((t = fgetline(f))) {
 		++line;
 		if (!*t || (*t == '#')) continue;
-		if (pcre_exec(re, 0, t, strlen(t), 0, 0,
-		    vec, sizeof(vec)/sizeof(*vec)) < 0) {
+		if (pcre2_match(re, (PCRE2_SPTR)t, strlen(t), 0, 0, md, 0) < 0) {
 			fprintf(stderr, "%s: %s:%d: bad line: %s\n",
 			    prog, file, line, t);
 			hash_free(ret);
 			ret = 0;
 			break;
 		}
+		vec = pcre2_get_ovector_pointer(md);
 		hash_insert(ret,
 		    t+vec[2], vec[3]-vec[2],
 		    t+vec[4], vec[5]-vec[4]);
 	}
 	fclose(f);
-	pcre_free(re);
+	pcre2_match_data_free(md);
+	pcre2_code_free(re);
 	return (ret);
 }
 

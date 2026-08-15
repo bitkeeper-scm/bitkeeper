@@ -704,12 +704,13 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 	ser_t	d;
 	int	i;
 	char	**comments = 0;
-	const	char *perr;
-	int	poff;
+	int	errorcode;
+	PCRE2_SIZE	poff;
 	char	*cmts;
 	char	*p;
 	FILE	*f;
-	pcre	*re;
+	pcre2_code	*re;
+	pcre2_match_data *md;
 	char	skippat[] =
 	    "^Rename: .* ->|"
 	    "^Merge rename: .* ->|"
@@ -722,11 +723,14 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 	    "^auto-union\n$";
 
 	/* generate the list of delta comments we skip */
-	unless (re = pcre_compile(skippat, 0, &perr, &poff, 0)) {
+	unless (re = pcre2_compile((PCRE2_SPTR)skippat, PCRE2_ZERO_TERMINATED, 0, &errorcode, &poff, 0)) {
+		PCRE2_UCHAR perr[256];
+		pcre2_get_error_message(errorcode, perr, sizeof(perr));
 		fprintf(stderr, "%s: regex failed %s\npat = %s\n",
-		    me, perr, skippat);
+		    me, (char *)perr, skippat);
 		return (1);
 	}
+	md = pcre2_match_data_create_from_pattern(re, 0);
 	EACH (rmdeltas) {
 		d = rmdeltas[i];
 
@@ -739,7 +743,7 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 		 */
 		cmts = COMMENTS(s, d);
 		if ((strcnt(cmts, '\n') == 1) &&
-		    !pcre_exec(re, 0, cmts, strlen(cmts), 0, 0, 0, 0)) {
+		    (pcre2_match(re, (PCRE2_SPTR)cmts, strlen(cmts), 0, 0, md, 0) >= 0)) {
 			continue;
 		}
 
@@ -752,7 +756,8 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 		comments = addLine(comments, strdup(p));
 		free(p);
 	}
-	free(re);
+	pcre2_match_data_free(md);
+	pcre2_code_free(re);
 
 	if (comments) {
 		f = fmem();
