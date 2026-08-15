@@ -51,6 +51,7 @@ mkdir -p "$WORK/tommath"
 for f in "${TOMMATH_FILES[@]}"; do
     cp -f "$f" "$WORK/tommath/"
 done
+echo '#include "tclTomMathInt.h"' > "$WORK/tommath/tommath.h"
 
 cd "$WORK"
 

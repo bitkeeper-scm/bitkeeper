@@ -39,8 +39,8 @@ http_archive(
 
 http_archive(
     name = "tommath",
-    urls = ["https://github.com/libtom/libtommath/archive/refs/tags/v0.42.0.tar.gz"],
-    sha256 = "5246356ba18c1b6edf4a7bc836a3d223842b86914cdba6dd8c112bfc59e227c8",
-    strip_prefix = "libtommath-0.42.0",
+    urls = ["https://github.com/libtom/libtommath/archive/refs/tags/v1.2.0.tar.gz"],
+    sha256 = "f3c20ab5df600d8d89e054d096c116417197827d12732e678525667aa724e30f",
+    strip_prefix = "libtommath-1.2.0",
     build_file = "//third_party/tommath:BUILD.tommath.bazel",
 )
