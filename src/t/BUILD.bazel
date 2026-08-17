@@ -4,10 +4,17 @@ package(default_visibility = ["//visibility:public"])
 
 filegroup(
     name = "test_support",
-    srcs = glob(
-        ["*"],
-        exclude = ["BUILD.bazel"],
-    ),
+    srcs = [
+        "doit.sh",
+        "setup",
+	# the rest of these are only for certain tests. We just inlcude them for all.
+        "egrep-illumos",
+        "simple-interface.setup",
+        "strace-cnt.pl",
+        "synth.l",
+    ] + glob([
+        "strace.*",
+    ]),
 )
 
 TEST_DATA = [
@@ -42,7 +49,8 @@ ALL_TEST_FILES = glob(["t.*"])
 # It might be better to annotate the test files with attributes.
 # For details on that see [NOTES.test-annotation.md](NOTES.test-annotation.md).
 MEDIUM_TESTS = [
-    "t.a.progress-bar",
+    "t.a.progress-bar.nested",
+    "t.a.progress-bar.standalone",
     "t.a.simple-interface.component",
     "t.a.simple-interface.no-repo",
     "t.a.simple-interface.product",
@@ -54,7 +62,9 @@ MEDIUM_TESTS = [
     "t.nested-pull",
     "t.nested-pull-safe",
     "t.nested-push",
+    "t.nested-urllist",
     "t.partition",
+    "t.preference",
     "t.triggers"
 ]
 
@@ -63,7 +73,7 @@ MEDIUM_TESTS = [
         name = t.replace(".", "_"),
         srcs = ["test_runner.sh"],
         args = [t],
-        data = TEST_DATA,
+        data = TEST_DATA + [t],
         size = "medium" if t in MEDIUM_TESTS else "small",
         tags = ["exclusive"] if t in SERIAL_TESTS else [],
     )

@@ -44,7 +44,7 @@ echo $N Creating a git tree..........................................$NL
 cd "$HERE"
 mkdir git-repo
 cd git-repo
-git init $Q
+git init -b master $Q
 git config user.name bk
 git config user.email bk@bitkeeper.bk
 
@@ -511,7 +511,7 @@ echo OK
 
 echo $N Create-create conflict.......................................$NL
 cd "$HERE"
-git init $Q create-create.git
+git init $Q -b master create-create.git
 cd create-create.git
 git config user.name bk
 git config user.email bk@bitkeeper.bk
@@ -577,7 +577,7 @@ echo $N Test submodule commit........................................$NL
 cd "$HERE"
 mkdir git-sub
 cd git-sub
-git init $Q
+git init $Q -b master
 echo FILE > bfile
 git add bfile
 git commit $Q -m"added file"
