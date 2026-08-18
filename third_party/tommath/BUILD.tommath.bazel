@@ -9,6 +9,7 @@ cc_library(
     name = "tommath",
     srcs = glob(["*.c"]),
     hdrs = glob(["*.h"]),
+    copts = ["-O2"],
     includes = ["."],
     visibility = ["//visibility:public"],
 )

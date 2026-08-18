@@ -13,9 +13,11 @@
  */
 
 #include "tk.h"
+#undef ControlMask
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #undef WIN32_LEAN_AND_MEAN
+#define ControlMask (1<<2)
 #include <locale.h>
 #include <stdlib.h>
 #include <tchar.h>

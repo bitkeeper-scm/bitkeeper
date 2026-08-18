@@ -1,0 +1,15 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "winctl",
+    srcs = ["WinCtl.c"],
+    copts = ["-O2"],
+    linkopts = [
+        "-luser32",
+        "-lgdi32",
+        "-lkernel32",
+    ],
+    target_compatible_with = ["@platforms//os:windows"],
+)

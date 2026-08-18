@@ -106,6 +106,10 @@ bazel build //src:bk
 ```
 The compiled binary will be located at `bazel-bin/src/bk`.
 
+#### Windows Builds
+
+For instructions on cross-compiling BitKeeper for Windows from Linux, see [README-windows.md](README-windows.md).
+
 ## Packaging and Installation
 
 ### 1. Generating an Install Tarball

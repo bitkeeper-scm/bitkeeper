@@ -19,7 +19,7 @@
 #include "nested.h"
 #include "config.h"
 #ifdef WIN32
-#include "Winbase.h"
+#include <winbase.h>
 #endif
 
 bkdopts	Opts;	/* has to be declared here, other people use this code */

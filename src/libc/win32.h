@@ -77,7 +77,9 @@
 #define	bk_win32()	1
 #define	bk_macosx()	0
 #define	NOPROC
+#ifndef ELOOP
 #define ELOOP		40
+#endif
 
 /* this sets errno as a side-effect */
 #define	GetLastError()	bk_GetLastError()

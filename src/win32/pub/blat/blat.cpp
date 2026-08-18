@@ -4,7 +4,7 @@
 #include <ctype.h>
 #include <time.h>
 /* generic socket DLL support */
-#include "gensock\gensock.h"
+#include "GENSOCK/gensock.h"
 
 #ifdef WIN32
     #define __far far

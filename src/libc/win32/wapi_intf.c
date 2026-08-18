@@ -548,10 +548,10 @@ msync(caddr_t addr, size_t size, int mode)
 
 #define	BAD_HANDLE	((HANDLE)-1)
 int
-ftruncate(int fd, size_t len)
+ftruncate(int fd, off_t len)
 {
 	HANDLE h = (HANDLE) _get_osfhandle(fd);
-	size_t old_loc;
+	off_t old_loc;
 
 	if (h == BAD_HANDLE) {
 		errno = EBADF;
@@ -585,10 +585,11 @@ nt_sleep(int i)
 }
 
 
-void
-usleep(unsigned long i)
+int
+usleep(useconds_t i)
 {
 	Sleep(i/1000);
+	return (0);
 }
 
 

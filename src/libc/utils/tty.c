@@ -57,8 +57,8 @@ private	void	tty_cleanup(void);
 private	int	tty_active, rows, cols;
 
 #ifdef WIN32
-# include <CONIO.H>
-# include <WINDOWS.H>
+# include <conio.h>
+# include <windows.h>
 
 private int
 init(void)

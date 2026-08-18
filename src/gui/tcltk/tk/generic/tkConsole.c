@@ -85,6 +85,7 @@ static const Tcl_ChannelType consoleChannelType = {
 };
 
 #ifdef _WIN32
+#undef ControlMask
 #include <windows.h>
 
 /*

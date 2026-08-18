@@ -17,7 +17,8 @@
 #include "../sccs.h"
 
 #ifdef WIN32
-#include <Shlwapi.h>	/* brings in shlobj.h, which has CSIDL_APPDATA */
+#include <shlobj.h>
+#include <shlwapi.h>	/* brings in shlobj.h, which has CSIDL_APPDATA */
 	/*
 	 * according to this MS, the var below is defined as 0 in
 	 * /Program Files/Microsoft Visual Studio 8/VC/PlatformSDK/Include/

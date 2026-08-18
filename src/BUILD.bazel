@@ -348,15 +348,35 @@ cc_binary(
     srcs = _BK_SRCS + glob(["*.h"]) + [
         ":gen_cmd",
         ":gen_bkver",
-    ],
+    ] + select({
+        "@platforms//os:windows": ["//src/win32:gen_bkres"],
+        "//conditions:default": [],
+    }),
     includes = ["."],
     copts = select({
         "@platforms//os:macos": ["-DNOPROC"],
+        "@platforms//os:windows": [
+            "-DWIN32",
+            "-D_WIN32",
+            "-DWINVER=0x0500",
+            "-D_WIN32_WINNT=0x0500",
+            "-DPCRE2_STATIC",
+        ],
         "//conditions:default": [],
     }),
     defines = ["USE_TRACE"],
     linkopts = select({
         "@platforms//os:macos": ["-lresolv"],
+        "@platforms//os:windows": [
+            "-lws2_32",
+            "-ladvapi32",
+            "-luser32",
+            "-lkernel32",
+            "-lshell32",
+            "-lpsapi",
+            "-lole32",
+            "-luuid",
+        ],
         "//conditions:default": [],
     }),
     deps = [
@@ -366,6 +386,34 @@ cc_binary(
         "@pcre2//:pcre2",
         "@tomcrypt//:tomcrypt",
         "@tommath//:tommath",
+    ],
+)
+
+cc_binary(
+    name = "bkg",
+    srcs = [
+        "bkg.c",
+    ] + select({
+        "@platforms//os:windows": ["//src/win32:gen_bkres"],
+        "//conditions:default": [],
+    }),
+    includes = ["."],
+    copts = select({
+        "@platforms//os:windows": [
+            "-DWIN32",
+        ],
+        "//conditions:default": [],
+    }),
+    linkopts = select({
+        "@platforms//os:windows": [
+            "-mwindows",
+            "-luser32",
+            "-lkernel32",
+        ],
+        "//conditions:default": [],
+    }),
+    deps = [
+        "//src/libc",
     ],
 )
 
@@ -513,9 +561,99 @@ genrule(
         ":www",
         "//man:manpages",
         "//src/gui:gui_package",
-    ],
+    ] + select({
+        "@platforms//os:windows": [
+            ":bkg",
+            "//src/win32:icons",
+            "//src/win32:dlls",
+            "//src/win32:msys",
+            "//src/win32/svcmgr",
+            "//src/win32/pub/blat",
+            "//src/win32/pub/winctl",
+        ],
+        "//conditions:default": [],
+    }),
     outs = ["bitkeeper.tar.gz"],
-    cmd = """
+    cmd = select({
+        "@platforms//os:windows": """
+        set -e
+        dest=$$(mktemp -d)/bitkeeper
+        mkdir -p "$$dest/contrib" "$$dest/lscripts" "$$dest/www"
+
+        cp $(location :bk) "$$dest/"
+        for s in $(locations :scripts); do
+            cp "$$s" "$$dest/"
+            chmod +x "$$dest/$$(basename "$$s")"
+        done
+
+        for d in $(locations :data); do
+            cp "$$d" "$$dest/"
+        done
+
+        for l in $(locations :lscripts); do
+            cp "$$l" "$$dest/lscripts/"
+        done
+
+        for c in $(locations :contrib); do
+            cp "$$c" "$$dest/contrib/"
+        done
+
+        for w in $(locations :www); do
+            rpath=$${w#*src/www/}
+            dir=$$(dirname "$$rpath")
+            mkdir -p "$$dest/www/$$dir"
+            cp "$$w" "$$dest/www/$$rpath"
+        done
+
+        tar -C "$$dest" -xzf $(location //src/gui:gui_package)
+
+        mkdir -p "$$dest/man"
+        tar -C "$$dest/man" -xf $(location //man:manpages)
+
+        # Windows-specific components
+        # Ensure bk.exe and bkg.exe exist and bk (without .exe) is not present
+        if [ -f "$$dest/bk" ]; then
+            cp -f "$$dest/bk" "$$dest/bk.exe"
+            rm -f "$$dest/bk"
+        fi
+        if [ -f "$(location :bkg)" ]; then cp -f "$(location :bkg)" "$$dest/bkg.exe"; fi
+
+        # Copy MSYS runtime into gnu/
+        mkdir -p "$$dest/gnu"
+        for m in $(locations //src/win32:msys); do
+            if [[ "$$m" == *"msys_dist/"* ]]; then
+                mpath=$${m#*msys_dist/}
+                mdir=$$(dirname "$$mpath")
+                mkdir -p "$$dest/gnu/$$mdir"
+                cp -f "$$m" "$$dest/gnu/$$mpath"
+            elif [[ "$$m" == *"src/win32/msys/"* ]]; then
+                mpath=$${m#*src/win32/msys/}
+                mdir=$$(dirname "$$mpath")
+                mkdir -p "$$dest/gnu/$$mdir"
+                cp -f "$$m" "$$dest/gnu/$$mpath"
+            fi
+        done
+
+        # Copy svcmgr, blat, winctl
+        if [ -f "$(location //src/win32/svcmgr)" ]; then cp -f "$(location //src/win32/svcmgr)" "$$dest/svcmgr.exe"; fi
+        if [ -f "$(location //src/win32/pub/blat)" ]; then cp -f "$(location //src/win32/pub/blat)" "$$dest/blat.exe"; fi
+        if [ -f "$(location //src/win32/pub/winctl)" ]; then cp -f "$(location //src/win32/pub/winctl)" "$$dest/winctlw.exe"; fi
+
+        # Copy Icons and DLLs
+        for icon in $(locations //src/win32:icons); do
+            cp -f "$$icon" "$$dest/"
+        done
+        mkdir -p "$$dest/Icons"
+        for dll in $(locations //src/win32:dlls); do
+            case "$$dll" in
+                *.ico) cp -f "$$dll" "$$dest/Icons/" ;;
+                *) cp -f "$$dll" "$$dest/" ;;
+            esac
+        done
+
+        tar -C "$$dest/.." -czf "$@" bitkeeper
+    """,
+        "//conditions:default": """
         set -e
         dest=$$(mktemp -d)/bitkeeper
         mkdir -p "$$dest/contrib" "$$dest/lscripts" "$$dest/www"
@@ -552,6 +690,7 @@ genrule(
 
         tar -C "$$dest/.." -czf "$@" bitkeeper
     """,
+    }),
 )
 
 genrule(

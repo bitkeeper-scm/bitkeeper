@@ -201,6 +201,19 @@
   },
   "selectedYankedVersions": {},
   "moduleExtensions": {
+    "//toolchains/llvm_mingw:extension.bzl%llvm_mingw_extension": {
+      "general": {
+        "bzlTransitiveDigest": "dvu32JoSHXl/FSqa7jJeov35uVuZiR1QVXa7E712mDc=",
+        "usagesDigest": "eRKCbU6htHEkqFr/0o+Vc+AoFuwIbk5svhQIuE+mpBM=",
+        "recordedInputs": [],
+        "generatedRepoSpecs": {
+          "llvm_mingw_toolchain": {
+            "repoRuleId": "@@//toolchains/llvm_mingw:repo.bzl%llvm_mingw_toolchain_repo",
+            "attributes": {}
+          }
+        }
+      }
+    },
     "@@rules_kotlin+//src/main/starlark/core/repositories:bzlmod_setup.bzl%rules_kotlin_extensions": {
       "general": {
         "bzlTransitiveDigest": "+Kp6j204mBZ3mxlIDDR0gBoP45BZ4jYRhRAcB8sU0qc=",

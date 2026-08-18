@@ -19,10 +19,13 @@
 #define	_TIMES_H_
 /* unix times.h simulation, Andrew Chang 1998 */
 
+#ifndef _TIMEZONE_DEFINED
+#define _TIMEZONE_DEFINED
 struct timezone
 {
 	int not_used;
 };
+#endif
 
 extern void gettimeofday(struct timeval *, struct timezone *);
 #endif /* _TIMES_H_ */

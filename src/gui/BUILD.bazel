@@ -35,18 +35,37 @@ cc_headers(
 
 genrule(
     name = "tcltk",
-    srcs = [
-        "build_tcltk.sh",
-        ":tcltk_sources",
-        "@pcre2//:pcre2",
-        ":pcre2_headers",
-        "@tommath//:tommath_sources",
-    ],
+    srcs = select({
+        "@platforms//os:windows": [
+            "build_tcltk.sh",
+            ":tcltk_sources",
+            "@pcre2//:pcre2",
+            ":pcre2_headers",
+            "@tommath//:tommath_sources",
+            "@zlib_src//:zlib_files",
+            "@llvm_mingw_toolchain//:all_files",
+        ],
+        "//conditions:default": [
+            "build_tcltk.sh",
+            ":tcltk_sources",
+            "@pcre2//:pcre2",
+            ":pcre2_headers",
+            "@tommath//:tommath_sources",
+        ],
+    }),
     outs = ["tcltk.tar.gz"],
-    cmd = """
-        set -e
-        bash $(location build_tcltk.sh) "$@" $(locations @pcre2//:pcre2) $(locations :pcre2_headers) $(locations @tommath//:tommath_sources)
-    """,
+    cmd = select({
+        "@platforms//os:windows": """
+            set -e
+            tools_dir=$$(pwd)/$$(dirname "$$(echo "$(locations @llvm_mingw_toolchain//:all_files)" | tr ' ' '\\n' | grep 'bin/i686-w64-mingw32-clang$$' | head -n 1)")
+            bash $(location build_tcltk.sh) --windows --tools "$$tools_dir" "$@" \
+                $(locations @pcre2//:pcre2) $(locations :pcre2_headers) $(locations @tommath//:tommath_sources) $(locations @zlib_src//:zlib_files)
+        """,
+        "//conditions:default": """
+            set -e
+            bash $(location build_tcltk.sh) "$@" $(locations @pcre2//:pcre2) $(locations :pcre2_headers) $(locations @tommath//:tommath_sources)
+        """,
+    }),
 )
 
 genrule(

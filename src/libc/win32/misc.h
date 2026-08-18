@@ -42,7 +42,10 @@ extern char *getlogin(void);
 
 const char *nt_tmpdir(void);
 extern int  nt_is_full_path_name(char *);
-extern int ftruncate(int, size_t);
+#ifndef FTRUNCATE_DEFINED
+#define FTRUNCATE_DEFINED
+extern int ftruncate(int, off_t);
+#endif
 extern int getdomainname(char *buf, size_t len);
 extern pid_t _spawnvp_ex(int flag, const char *cmdname, char *const av[], int fix_quote);
 extern int mkstemp(char *template1);
@@ -52,7 +55,9 @@ extern void nt_sleep(int i);
 extern int fileBusy(char *fname);
 extern int _isExecutable(char *f);
 extern int kill(pid_t, int);
-extern void usleep(unsigned long);
+#if !defined(_UNISTD_H) && !defined(_INC_UNISTD)
+extern int usleep(useconds_t);
+#endif
 extern int sigcaught(int);
 extern int hasConsole(void);
 
