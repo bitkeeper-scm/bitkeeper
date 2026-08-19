@@ -49,7 +49,7 @@ genrule(
     tools = ["//src:bk"],
 )
 
-# man pages formatted and packaged with symlink aliases
+# man pages formatted and packaged
 genrule(
     name = "manpages",
     srcs = [
@@ -81,13 +81,9 @@ genrule(
 
         (
             cd "$$workdir/man1"
-            for f in *.1; do
-                soelim "$$f" > "../out/man1/$$f"
-            done
-            cd "$$workdir/out/man1"
             for f in bk-*.1; do
                 alias=$${f#bk-}
-                ln -sf "$$f" "$$alias"
+                soelim "$$f" > "../out/man1/$$alias"
             done
         )
         tar -C "$$workdir/out" -cf "$@" man1
