@@ -135,9 +135,13 @@ set demo_arrowInfo(y) 150
 set demo_arrowInfo(smallTips) {5 5 2}
 set demo_arrowInfo(count) 0
 if {[winfo depth $c] > 1} {
-    set demo_arrowInfo(bigLineStyle) "-fill SkyBlue1"
-    set demo_arrowInfo(boxStyle) "-fill {} -outline black -width 1"
-    set demo_arrowInfo(activeStyle) "-fill red -outline black -width 1"
+    if {[tk windowingsystem] eq "aqua"} {
+	set demo_arrowInfo(bigLineStyle) "-fill systemSelectedTextBackgroundColor"
+    } else {
+	set demo_arrowInfo(bigLineStyle) "-fill LightSeaGreen"
+    }
+    set demo_arrowInfo(boxStyle) "-fill {} -width 1"
+    set demo_arrowInfo(activeStyle) "-fill red -width 1"
 } else {
     # Main widget program sets variable tk_demoDirectory
     set demo_arrowInfo(bigLineStyle) "-fill black \
@@ -150,11 +154,11 @@ $c bind box <Enter> "$c itemconfigure current $demo_arrowInfo(activeStyle)"
 $c bind box <Leave> "$c itemconfigure current $demo_arrowInfo(boxStyle)"
 $c bind box <B1-Enter> " "
 $c bind box <B1-Leave> " "
-$c bind box1 <1> {set demo_arrowInfo(motionProc) arrowMove1}
-$c bind box2 <1> {set demo_arrowInfo(motionProc) arrowMove2}
-$c bind box3 <1> {set demo_arrowInfo(motionProc) arrowMove3}
+$c bind box1 <Button-1> {set demo_arrowInfo(motionProc) arrowMove1}
+$c bind box2 <Button-1> {set demo_arrowInfo(motionProc) arrowMove2}
+$c bind box3 <Button-1> {set demo_arrowInfo(motionProc) arrowMove3}
 $c bind box <B1-Motion> "\$demo_arrowInfo(motionProc) $c %x %y"
-bind $c <Any-ButtonRelease-1> "arrowSetup $c"
+bind $c <ButtonRelease-1> "arrowSetup $c"
 
 # arrowMove1 --
 # This procedure is called for each mouse motion event on box1 (the

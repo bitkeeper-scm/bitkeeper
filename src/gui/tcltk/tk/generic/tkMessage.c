@@ -7,7 +7,7 @@
  *
  * Copyright (c) 1990-1994 The Regents of the University of California.
  * Copyright (c) 1994-1997 Sun Microsystems, Inc.
- * Copyright (c) 1998-2000 by Ajuba Solutions.
+ * Copyright (c) 1998-2000 Ajuba Solutions.
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -219,7 +219,7 @@ Tk_MessageObjCmd(
     int objc,			/* Number of arguments. */
     Tcl_Obj *const objv[])	/* Argument strings. */
 {
-    register Message *msgPtr;
+    Message *msgPtr;
     Tk_OptionTable optionTable;
     Tk_Window tkwin;
 
@@ -256,11 +256,11 @@ Tk_MessageObjCmd(
 	    MessageCmdDeletedProc);
     msgPtr->optionTable = optionTable;
     msgPtr->relief = TK_RELIEF_FLAT;
-    msgPtr->textGC = None;
+    msgPtr->textGC = NULL;
     msgPtr->anchor = TK_ANCHOR_CENTER;
     msgPtr->aspect = 150;
     msgPtr->justify = TK_JUSTIFY_LEFT;
-    msgPtr->cursor = None;
+    msgPtr->cursor = NULL;
 
     Tk_SetClass(msgPtr->tkwin, "Message");
     Tk_SetClassProcs(msgPtr->tkwin, &messageClass, msgPtr);
@@ -306,7 +306,7 @@ MessageWidgetObjCmd(
     int objc,			/* Number of arguments. */
     Tcl_Obj *const objv[])	/* Argument strings. */
 {
-    register Message *msgPtr = clientData;
+    Message *msgPtr = clientData;
     static const char *const optionStrings[] = { "cget", "configure", NULL };
     enum options { MESSAGE_CGET, MESSAGE_CONFIGURE };
     int index;
@@ -384,7 +384,7 @@ static void
 DestroyMessage(
     char *memPtr)		/* Info about message widget. */
 {
-    register Message *msgPtr = (Message *) memPtr;
+    Message *msgPtr = (Message *) memPtr;
 
     msgPtr->flags |= MESSAGE_DELETED;
 
@@ -398,7 +398,7 @@ DestroyMessage(
      * Tk_FreeConfigOptions handle all the standard option-related stuff.
      */
 
-    if (msgPtr->textGC != None) {
+    if (msgPtr->textGC != NULL) {
 	Tk_FreeGC(msgPtr->display, msgPtr->textGC);
     }
     if (msgPtr->textLayout != NULL) {
@@ -437,7 +437,7 @@ DestroyMessage(
 static int
 ConfigureMessage(
     Tcl_Interp *interp,		/* Used for error reporting. */
-    register Message *msgPtr,	/* Information about widget; may or may not
+    Message *msgPtr,	/* Information about widget; may or may not
 				 * already have values for some fields. */
     int objc,			/* Number of valid entries in argv. */
     Tcl_Obj *const objv[],	/* Arguments. */
@@ -525,7 +525,7 @@ MessageWorldChanged(
     ClientData instanceData)	/* Information about widget. */
 {
     XGCValues gcValues;
-    GC gc = None;
+    GC gc = NULL;
     Tk_FontMetrics fm;
     Message *msgPtr = instanceData;
 
@@ -536,7 +536,7 @@ MessageWorldChanged(
     gcValues.font = Tk_FontId(msgPtr->tkfont);
     gcValues.foreground = msgPtr->fgColorPtr->pixel;
     gc = Tk_GetGC(msgPtr->tkwin, GCForeground | GCFont, &gcValues);
-    if (msgPtr->textGC != None) {
+    if (msgPtr->textGC != NULL) {
 	Tk_FreeGC(msgPtr->display, msgPtr->textGC);
     }
     msgPtr->textGC = gc;
@@ -582,7 +582,7 @@ MessageWorldChanged(
 
 static void
 ComputeMessageGeometry(
-    register Message *msgPtr)	/* Information about window. */
+    Message *msgPtr)	/* Information about window. */
 {
     int width, inc, height;
     int thisWidth, thisHeight, maxWidth;
@@ -666,8 +666,8 @@ static void
 DisplayMessage(
     ClientData clientData)	/* Information about window. */
 {
-    register Message *msgPtr = clientData;
-    register Tk_Window tkwin = msgPtr->tkwin;
+    Message *msgPtr = clientData;
+    Tk_Window tkwin = msgPtr->tkwin;
     int x, y;
     int borderWidth = msgPtr->highlightWidth;
 
@@ -835,7 +835,7 @@ MessageTextVarProc(
     const char *name2,		/* Second part of variable name. */
     int flags)			/* Information about what happened. */
 {
-    register Message *msgPtr = clientData;
+    Message *msgPtr = clientData;
     const char *value;
 
     /*
@@ -844,7 +844,27 @@ MessageTextVarProc(
      */
 
     if (flags & TCL_TRACE_UNSETS) {
-	if ((flags & TCL_TRACE_DESTROYED) && !(flags & TCL_INTERP_DESTROYED)) {
+        if (!Tcl_InterpDeleted(interp) && msgPtr->textVarName) {
+            ClientData probe = NULL;
+
+            do {
+                probe = Tcl_VarTraceInfo(interp,
+                        msgPtr->textVarName,
+                        TCL_GLOBAL_ONLY|TCL_TRACE_WRITES|TCL_TRACE_UNSETS,
+                        MessageTextVarProc, probe);
+                if (probe == (ClientData)msgPtr) {
+                    break;
+                }
+            } while (probe);
+            if (probe) {
+                /*
+                 * We were able to fetch the unset trace for our
+                 * textVarName, which means it is not unset and not
+                 * the cause of this unset trace. Instead some outdated
+                 * former variable must be, and we should ignore it.
+                 */
+                return NULL;
+            }
 	    Tcl_SetVar2(interp, msgPtr->textVarName, NULL, msgPtr->string,
 		    TCL_GLOBAL_ONLY);
 	    Tcl_TraceVar2(interp, msgPtr->textVarName, NULL,

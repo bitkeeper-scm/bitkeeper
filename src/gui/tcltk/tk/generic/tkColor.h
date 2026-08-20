@@ -3,7 +3,7 @@
  *
  *	Declarations of data types and functions used by the Tk color module.
  *
- * Copyright (c) 1996-1997 by Sun Microsystems, Inc.
+ * Copyright (c) 1996-1997 Sun Microsystems, Inc.
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -32,7 +32,7 @@ typedef struct TkColor {
 				 * COLOR_MAGIC. */
     GC gc;			/* Simple gc with this color as foreground
 				 * color and all other fields defaulted. May
-				 * be None. */
+				 * be NULL. */
     Screen *screen;		/* Screen where this color is valid. Used to
 				 * delete it, and to find its display. */
     Colormap colormap;		/* Colormap from which this entry was

@@ -5,7 +5,7 @@
  *
  * Copyright (c) 1991-1994 The Regents of the University of California.
  * Copyright (c) 1994-1995 Sun Microsystems, Inc.
- * Copyright (c) 1998 by Scriptics Corporation.
+ * Copyright (c) 1998 Scriptics Corporation.
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -206,7 +206,7 @@ typedef struct TkCanvas {
      * Miscellaneous information:
      */
 
-    Tk_Cursor cursor;		/* Current cursor for window, or None. */
+    Tk_Cursor cursor;		/* Current cursor for window, or NULL. */
     char *takeFocus;		/* Value of -takefocus option; not used in the
 				 * C code, but used by keyboard traversal
 				 * scripts. Malloc'ed, but may be NULL. */
@@ -241,7 +241,7 @@ typedef struct TkCanvas {
  *
  * REDRAW_PENDING -		1 means a DoWhenIdle handler has already been
  *				created to redraw some or all of the canvas.
- * REDRAW_BORDERS - 		1 means that the borders need to be redrawn
+ * REDRAW_BORDERS -		1 means that the borders need to be redrawn
  *				during the next redisplay operation.
  * REPICK_NEEDED -		1 means DisplayCanvas should pick a new
  *				current item before redrawing the canvas.
@@ -292,7 +292,7 @@ typedef struct TkCanvas {
 
 MODULE_SCOPE int	TkCanvPostscriptCmd(TkCanvas *canvasPtr,
 			    Tcl_Interp *interp, int argc, const char **argv);
-MODULE_SCOPE int 	TkCanvTranslatePath(TkCanvas *canvPtr,
+MODULE_SCOPE int	TkCanvTranslatePath(TkCanvas *canvPtr,
 			    int numVertex, double *coordPtr, int closed,
 			    XPoint *outPtr);
 /*

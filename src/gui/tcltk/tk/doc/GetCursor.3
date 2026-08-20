@@ -4,7 +4,7 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
+'\"
 .TH Tk_AllocCursorFromObj 3 8.1 Tk "Tk Library Procedures"
 .so man.macros
 .BS
@@ -15,23 +15,24 @@ Tk_AllocCursorFromObj, Tk_GetCursor, Tk_GetCursorFromObj, Tk_GetCursorFromData, 
 \fB#include <tk.h>\fR
 .sp
 Tk_Cursor
-\fBTk_AllocCursorFromObj(\fIinterp, tkwin, objPtr\fB)\fR
+\fBTk_AllocCursorFromObj\fR(\fIinterp, tkwin, objPtr\fR)
 .sp
 Tk_Cursor
-\fBTk_GetCursor(\fIinterp, tkwin, name\fB)\fR
+\fBTk_GetCursor\fR(\fIinterp, tkwin, name\fR)
 .sp
 Tk_Cursor
-\fBTk_GetCursorFromObj(\fItkwin, objPtr\fB)\fR
+\fBTk_GetCursorFromObj\fR(\fItkwin, objPtr\fR)
 .sp
 Tk_Cursor
-\fBTk_GetCursorFromData(\fIinterp, tkwin, source, mask, width, height, xHot, yHot, fg, bg\fB)\fR
+\fBTk_GetCursorFromData\fR(\fIinterp, tkwin, source, mask, width, height, xHot, yHot, fg, bg\fR)
 .sp
 const char *
-\fBTk_NameOfCursor(\fIdisplay, cursor\fB)\fR
+\fBTk_NameOfCursor\fR(\fIdisplay, cursor\fR)
 .sp
-\fBTk_FreeCursorFromObj(\fItkwin, objPtr\fB)\fR
+\fBTk_FreeCursorFromObj\fR(\fItkwin, objPtr\fR)
 .sp
-\fBTk_FreeCursor(\fIdisplay, cursor\fB)\fR
+\fBTk_FreeCursor\fR(\fIdisplay, cursor\fR)
+.fi
 .SH ARGUMENTS
 .AS "unsigned long" *pixelPtr
 .AP Tcl_Interp *interp in
@@ -41,7 +42,7 @@ Token for window in which the cursor will be used.
 .AP Tcl_Obj *objPtr in/out
 Description of cursor;  see below for possible values.  Internal rep will be
 modified to cache pointer to corresponding Tk_Cursor.
-.AP char *name in
+.AP "const char" *name in
 Same as \fIobjPtr\fR except description of cursor is passed as a string and
 resulting Tk_Cursor is not cached.
 .AP "const char" *source in
@@ -87,6 +88,7 @@ if \fIinterp\fR is not NULL.  \fIObjPtr\fR must contain a standard Tcl
 list with one of the following forms:
 .TP
 \fIname\fR\0[\fIfgColor\fR\0[\fIbgColor\fR]]
+.
 \fIName\fR is the name of a cursor in the standard X cursor cursor,
 i.e., any of the names defined in \fBcursorcursor.h\fR, without
 the \fBXC_\fR.  Some example values are \fBX_cursor\fR, \fBhand2\fR,
@@ -115,21 +117,24 @@ in preference to black and white cursors.
 .RE
 .TP
 \fB@\fIsourceName\0maskName\0fgColor\0bgColor\fR
+.
 In this form, \fIsourceName\fR and \fImaskName\fR are the names of
 files describing cursors for the cursor's source bits and mask.
 Each file must be in standard X11 cursor format.
-\fIFgColor\fR and \fIbgColor\fR 
+\fIFgColor\fR and \fIbgColor\fR
 indicate the colors to use for the
 cursor, in any of the forms acceptable to \fBTk_GetColor\fR.  This
 form of the command will not work on Macintosh or Windows computers.
 .TP
 \fB@\fIsourceName\0fgColor\fR
+.
 This form is similar to the one above, except that the source is
 used as mask also.  This means that the cursor's background is
 transparent.  This form of the command will not work on Macintosh
 or Windows computers.
 .TP
 \fB@\fIsourceName\fR
+.
 This form only works on Windows, and will load a Windows system
 cursor (\fB.ani\fR or \fB.cur\fR) from the file specified in
 \fIsourceName\fR.
@@ -196,7 +201,7 @@ argument that was passed to \fBTk_GetCursor\fR to create the
 cursor.  If \fIcursor\fR was created by a call to \fBTk_GetCursorFromData\fR,
 or by any other mechanism, then the return value is a hexadecimal string
 giving the X identifier for the cursor.
-Note:  the string returned by \fBTk_NameOfCursor\fR is
+Note that the string returned by \fBTk_NameOfCursor\fR is
 only guaranteed to persist until the next call to
 \fBTk_NameOfCursor\fR.  Also, this call is not portable except for
 cursors returned by \fBTk_GetCursor\fR.

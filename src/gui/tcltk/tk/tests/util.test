@@ -3,7 +3,7 @@
 #
 # Copyright (c) 1994 The Regents of the University of California.
 # Copyright (c) 1994 Sun Microsystems, Inc.
-# Copyright (c) 1998-1999 by Scriptics Corporation.
+# Copyright (c) 1998-1999 Scriptics Corporation.
 # All rights reserved.
 
 package require tcltest 2.2
@@ -39,22 +39,22 @@ test util-1.7 {Tk_GetScrollInfo procedure} -body {
     .l yview 0
     .l yview scroll 2 pages
     .l nearest 0
-} -result {6}
+} -result 6
 test util-1.8 {Tk_GetScrollInfo procedure} -body {
     .l yview 15
     .l yview scroll -2 pages
     .l nearest 0
-} -result {9}
+} -result 9
 test util-1.9 {Tk_GetScrollInfo procedure} -body {
     .l yview 0
     .l yview scroll 2 units
     .l nearest 0
-} -result {2}
+} -result 2
 test util-1.10 {Tk_GetScrollInfo procedure} -body {
     .l yview 15
     .l yview scroll -2 units
     .l nearest 0
-} -result {13}
+} -result 13
 test util-1.11 {Tk_GetScrollInfo procedure} -body {
     .l yview scroll 3 zips
 } -returnCodes error -result {bad argument "zips": must be units or pages}

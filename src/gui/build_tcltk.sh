@@ -177,17 +177,27 @@ else
     chmod +x "$WORK/bin/tclsh" 2>/dev/null || true
 
     # 4. Try building Unix Tk
+    # On macOS, Tk's unix build system supports building a native Aqua
+    # (Cocoa) Tk via --enable-aqua, which produces a normal "wish" binary
+    # that needs no X11/XQuartz.  Without this flag, Tk's configure falls
+    # back to looking for X11, which typically isn't installed on macOS,
+    # so the Tk build (and thus bkgui) silently fails to build.
+    TK_EXTRA_CONFIG_ARGS=""
+    if [ "$(uname)" = "Darwin" ]; then
+        TK_EXTRA_CONFIG_ARGS="--enable-aqua"
+    else
+        TK_EXTRA_CONFIG_ARGS="--disable-xss --enable-xft"
+    fi
     set +e
     (
         cd tk/unix
         ./configure \
             --with-tcl=../../tcl/unix \
             --enable-64bit \
-            --disable-xss \
-            --enable-xft \
             --disable-shared \
+            $TK_EXTRA_CONFIG_ARGS \
             CFLAGS="-g -O2 -Wno-incompatible-pointer-types -Wno-int-conversion" && \
-        make -j"$(nproc 2>/dev/null || echo 2)" prefix= exec_prefix= INSTALL_ROOT="$WORK" XLIBS="$PCRE_A" BK_TCL_LIB="$WORK/tcl/unix/libtcl8.6.a" install-binaries install-libraries
+        make -j"$(nproc 2>/dev/null || echo 2)" prefix= exec_prefix= INSTALL_ROOT="$WORK" PCRE_LDFLAGS="$PCRE_A" BK_TCL_LIB="$WORK/tcl/unix/libtcl8.6.a" install-binaries install-libraries
     )
     if [ -f "$WORK/bin/wish8.6" ]; then
         mv -f "$WORK/bin/wish8.6" "$WORK/bin/bkgui"
@@ -196,6 +206,40 @@ else
     fi
     chmod +x "$WORK/bin/bkgui" 2>/dev/null || true
     set -e
+    # Tk is allowed to fail to build on platforms without a usable
+    # X11/Aqua toolkit (hence "set +e" above), but don't let that failure
+    # be completely silent -- warn loudly so it's obvious in build logs
+    # that GUI tools (bkgui and friends) won't be available.
+    if [ ! -x "$WORK/bin/bkgui" ]; then
+        echo "WARNING: Tk build failed or did not produce bkgui;" \
+            "GUI tools will not be available in this package." >&2
+    fi
+
+    # 4b. Build the TkTable extension against the Tcl/Tk we just built,
+    # so that GUI tools using TkTable widgets (e.g. csettool, fm3tool)
+    # work out of the box.
+    if [ -x "$WORK/bin/bkgui" ] && [ -d "$WORK/tktable" ]; then
+        set +e
+        (
+            cd tktable
+            TKTABLE_EXTRA_ARGS=""
+            [ "$(uname)" = "Darwin" ] && TKTABLE_EXTRA_ARGS="LDFLAGS=-single_module"
+            ./configure \
+                --with-tcl=../tcl/unix \
+                --with-tk=../tk/unix \
+                --with-tclinclude=../tcl/generic \
+                --with-tkinclude=../tk/generic \
+                --disable-threads \
+                --enable-64bit \
+                CFLAGS="-g -O2 -Wno-incompatible-pointer-types -Wno-int-conversion" && \
+            make $TKTABLE_EXTRA_ARGS prefix= exec_prefix= DESTDIR="$WORK" install
+        )
+        set -e
+        if [ ! -d "$WORK/lib/Tktable2.10" ]; then
+            echo "WARNING: TkTable build failed;" \
+                "GUI tools needing TkTable widgets will be missing it." >&2
+        fi
+    fi
 fi
 
 # 5. Copy BWidget

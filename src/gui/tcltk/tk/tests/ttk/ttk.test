@@ -1,6 +1,7 @@
 
-package require Tk 8.5
-package require tcltest ; namespace import -force tcltest::*
+package require Tk
+package require tcltest 2.2
+namespace import -force tcltest::*
 loadTestedCommands
 
 proc skip args {}
@@ -28,10 +29,10 @@ proc selfdestruct {w args} {
 }
 test ttk-6.1 "Self-destructing checkbutton" -body {
     pack [ttk::checkbutton .sd -text "Self-destruction" -variable ::sd]
-    trace variable sd w [list selfdestruct .sd]
+    trace add variable sd write [list selfdestruct .sd]
     update
     .sd invoke
-} -returnCodes 1
+} -returnCodes error
 test ttk-6.2 "Checkbutton self-destructed" -body {
     winfo exists .sd
 } -result 0
@@ -40,7 +41,7 @@ test ttk-6.2 "Checkbutton self-destructed" -body {
 
 test ttk-6.4 "Destroy widget in configure" -setup {
     set OUCH ouch
-    trace variable OUCH r { kill.b }
+    trace add variable OUCH read { kill.b }
     proc kill.b {args} { destroy .b }
 } -cleanup {
     unset OUCH
@@ -86,7 +87,7 @@ test ttk-6.8 "Button command removes itself" -body {
 
 test ttk-6.9 "Bad font spec in styles" -setup {
     ttk::style theme create badfont -settings {
-    	ttk::style configure . -font {Helvetica 12 Bogus}
+	ttk::style configure . -font {Helvetica 12 Bogus}
     }
     ttk::style theme use badfont
 } -cleanup {
@@ -110,7 +111,7 @@ test ttk-construction-failure-1 "Excercise construction failure path" -setup {
 
 test ttk-construction-failure-2 "Destroy widget in constructor" -setup {
     set OUCH ouch
-    trace variable OUCH r { kill.b }
+    trace add variable OUCH read { kill.b }
     proc kill.b {args} { destroy .b }
 } -cleanup {
     unset OUCH
@@ -118,7 +119,7 @@ test ttk-construction-failure-2 "Destroy widget in constructor" -setup {
     list \
 	[catch { ttk::checkbutton .b -variable OUCH } msg] \
 	$msg \
-    	[winfo exists .b] \
+	[winfo exists .b] \
 	[info commands .b] \
 	;
 } -result [list 1 "widget has been destroyed" 0 {}]
@@ -145,7 +146,7 @@ test ttk-1.2 "Check style" -body {
 
 test ttk-1.3 "Set bad style" -body {
     .t configure -style "nosuchstyle"
-} -returnCodes 1 -result {Layout nosuchstyle not found}
+} -returnCodes error -result {Layout nosuchstyle not found}
 
 test ttk-1.4 "Original style preserved" -body {
     .t cget -style
@@ -157,10 +158,10 @@ proc checkstate {w} {
 	{!active disabled}
 	{active !disabled}
 	{active disabled}
-    	active
+	active
 	disabled
     } {
-    	lappend result [$w instate $statespec]
+	lappend result [$w instate $statespec]
     }
     set result
 }
@@ -206,10 +207,11 @@ test ttk-2.8 "bug 3223850: button state disabled during click" -setup {
     destroy .b
     set ttk28 {}
     pack [ttk::button .b -command {set ::ttk28 failed}]
-} -body { 
-    bind .b <ButtonPress-1> {after 0 {.b configure -state disabled}}
-    after 1 {event generate .b <ButtonPress-1>}
-    after 20 {event generate .b <ButtonRelease-1>}
+    update
+} -body {
+    bind .b <Button-1> {after 0 {.b configure -state disabled}}
+    after 1 {event generate .b <Button-1>}
+    after 50 {event generate .b <ButtonRelease-1>}
     set aid [after 100 {set ::ttk28 [.b instate {disabled !pressed}]}]
     vwait ::ttk28
     after cancel $aid
@@ -233,11 +235,11 @@ foreach wc $widgetClasses {
 # misc. error detection
 test ttk-3.0 "Bad option" -body {
     ttk::button .bad -badoption foo
-} -returnCodes 1 -result {unknown option "-badoption"} -match glob
+} -returnCodes error -result {unknown option "-badoption"} -match glob
 
 test ttk-3.1 "Make sure widget command not created" -body {
     .bad state disabled
-} -returnCodes 1 -result {invalid command name ".bad"} -match glob
+} -returnCodes error -result {invalid command name ".bad"} -match glob
 
 test ttk-3.2 "Propagate errors from variable traces" -body {
     set A 0
@@ -246,11 +248,11 @@ test ttk-3.2 "Propagate errors from variable traces" -body {
     .cb invoke
 } -cleanup {
     unset ::A ; destroy .cb
-} -returnCodes error -result {can't set "A": failure}
+} -returnCodes error -match glob -result {can*t set "A": failure}
 
 test ttk-3.3 "Constructor failure with cursor" -body {
     ttk::button .b -cursor bottom_right_corner -style BadStyle
-} -returnCodes 1 -result "Layout BadStyle not found"
+} -returnCodes error -result "Layout BadStyle not found"
 
 test ttk-3.4 "SF#2009213" -body {
     ttk::style configure TScale -sliderrelief {}
@@ -269,7 +271,7 @@ test ttk-3.4 "SF#2009213" -body {
 test ttk-4.0 "Setup" -body {
     catch { destroy .t }
     pack [ttk::label .t -text "Button 1"]
-    testConstraint fontOption [expr ![catch { set prevFont [.t cget -font] }]]
+    testConstraint fontOption [expr {![catch { set prevFont [.t cget -font] }]}]
     ok
 }
 
@@ -295,7 +297,7 @@ test ttk-4.4 "Bad resource specifications" -body {
     update;
     # As long as we haven't crashed, everything's OK
     ttk::style theme settings alt {
-    	ttk::style configure TButton -font TkDefaultFont
+	ttk::style configure TButton -font TkDefaultFont
     }
     ttk::style theme use default
     destroy .tb1
@@ -386,12 +388,12 @@ test ttk-8.4 "ImageChanged" -body {
 
 test ttk-9.1 "Traces on nonexistant namespaces" -body {
     ttk::checkbutton .tcb -variable foo::bar
-} -returnCodes 1 -result "*parent namespace doesn't exist*" -match glob
+} -returnCodes error -result "*parent namespace does*t exist" -match glob
 
 test ttk-9.2 "Traces on nonexistant namespaces II" -body {
     ttk::checkbutton .tcb -variable X
     .tcb configure -variable foo::bar
-} -returnCodes 1 -result "*parent namespace doesn't exist*" -match glob
+} -returnCodes error -result "*parent namespace does*t exist" -match glob
 
 test ttk-9.3 "Restore saved options on configure error" -body {
     .tcb cget -variable
@@ -438,6 +440,15 @@ test ttk-9.8 "-textvariable overrides -text" -body {
     .tl cget -text
 } -cleanup { destroy .tl } -result "Foo"
 
+test ttk-9.9 "default for -justify" -body {
+    ttk::label .tl
+    .tl cget -justify
+} -cleanup { destroy .tl } -result "left"
+test ttk-9.10 "default for -anchor" -body {
+    ttk::label .tl
+    .tl cget -anchor
+} -cleanup { destroy .tl } -result "w"
+
 #
 # Frame widget tests:
 #
@@ -456,7 +467,7 @@ test ttk-10.3 "Check class resource" -body {
 
 test ttk-10.4 "Try to modify class resource" -body {
     .f configure -class Bar
-} -returnCodes 1 -match glob -result "*read-only option*"
+} -returnCodes error -match glob -result "*read-only option*"
 
 test ttk-10.5 "Check class resource again" -body {
     .f cget -class
@@ -506,6 +517,19 @@ test ttk-12.2 "-cursor option" -body {
     .b cget -cursor
 } -result arrow
 
+test ttk-12.2.1 "-cursor option, widget doesn't overwrite it" -setup {
+    ttk::treeview .tr
+    pack .tr
+    update
+} -body {
+    .tr configure -cursor X_cursor
+    event generate .tr <Motion>
+    update
+    .tr cget -cursor
+} -cleanup {
+    destroy .tr
+} -result {X_cursor}
+
 test ttk-12.3 "-borderwidth frame option" -body {
     destroy .t
     toplevel .t
@@ -533,18 +557,18 @@ test ttk-12.4 "-borderwidth frame option" -body {
 
 test ttk-13.1 "Custom styles -- bad -style option" -body {
     ttk::button .tb1 -style badstyle
-} -returnCodes 1 -result "*badstyle not found*" -match glob
+} -returnCodes error -result "*badstyle not found*" -match glob
 
 test ttk-13.4 "Custom styles -- bad -style option" -body {
     ttk::button .tb1
     .tb1 configure -style badstyle
 } -cleanup {
     destroy .tb1
-} -returnCodes 1 -result "*badstyle not found*" -match glob
+} -returnCodes error -result "*badstyle not found*" -match glob
 
 test ttk-13.5 "Custom layouts -- missing element definition" -body {
     ttk::style layout badstyle {
-    	NoSuchElement
+	NoSuchElement
     }
     ttk::button .tb1 -style badstyle
 } -cleanup {
@@ -558,17 +582,17 @@ test ttk-13.5 "Custom layouts -- missing element definition" -body {
 
 test ttk-14.1 "-variable in nonexistant namespace" -body {
     ttk::checkbutton .tw -variable ::nsn::foo
-} -returnCodes 1 -result {can't trace *: parent namespace doesn't exist} \
+} -returnCodes error -result {can*t trace "::nsn::foo": parent namespace does*t exist} \
   -match glob -cleanup { destroy .tw }
 
 test ttk-14.2 "-textvariable in nonexistant namespace" -body {
     ttk::label .tw -textvariable ::nsn::foo
-} -returnCodes 1 -result {can't trace *: parent namespace doesn't exist} \
+} -returnCodes error -result {can*t trace "::nsn::foo": parent namespace does*t exist} \
   -match glob -cleanup { destroy .tw }
 
 test ttk-14.3 "-textvariable in nonexistant namespace" -body {
     ttk::entry .tw -textvariable ::nsn::foo
-} -returnCodes 1 -result {can't trace *: parent namespace doesn't exist} \
+} -returnCodes error -result {can*t trace "::nsn::foo": parent namespace does*t exist} \
   -match glob -cleanup { destroy .tw }
 
 test ttk-15.1 {Bug 3062331} -setup {
@@ -576,7 +600,7 @@ test ttk-15.1 {Bug 3062331} -setup {
 } -body {
     set Y {}
     ttk::button .b -textvariable Y
-    trace variable Y u "destroy .b; #"
+    trace add variable Y unset "destroy .b; #"
     unset Y
 } -cleanup {
     destroy .b
@@ -614,33 +638,33 @@ proc wrong#varargs {varpart args} {
 
 test ttk-ensemble-0 "style element create: insufficient args" -body {
      ttk::style
-} -returnCodes 1 -result \
+} -returnCodes error -result \
     [wrong#varargs arg ttk::style option]
 
 test ttk-ensemble-1 "style element create: insufficient args" -body {
      ttk::style element
-} -returnCodes 1 -result \
+} -returnCodes error -result \
     [wrong#varargs arg ttk::style element option]
 
 test ttk-ensemble-2 "style element create: insufficient args" -body {
      ttk::style element create
-} -returnCodes 1 -result \
+} -returnCodes error -result \
     [wrong#varargs {-option value} ttk::style element create name type]
 
 test ttk-ensemble-3 "style element create: insufficient args" -body {
      ttk::style element create plain.background
-} -returnCodes 1 -result \
+} -returnCodes error -result \
     [wrong#varargs {-option value} ttk::style element create name type]
 
 test ttk-ensemble-4 "style element create: insufficient args" -body {
      ttk::style element create plain.background from
-} -returnCodes 1 -result [wrong#args theme ?element?]
+} -returnCodes error -result [wrong#args theme ?element?]
 
 test ttk-ensemble-5 "style element create: valid" -body {
      ttk::style element create plain.background from default
 } -returnCodes 0 -result ""
 
-eval destroy [winfo children .]
+destroy {*}[winfo children .]
 
 tcltest::cleanupTests
 

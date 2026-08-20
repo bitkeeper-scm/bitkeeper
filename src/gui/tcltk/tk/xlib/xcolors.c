@@ -4,8 +4,8 @@
  *	This file contains the routines used to map from X color names to RGB
  *	and pixel values.
  *
- * Copyright (c) 1996 by Sun Microsystems, Inc.
- * Copyright (c) 2012 by Jan Nijtmans
+ * Copyright (c) 1996 Sun Microsystems, Inc.
+ * Copyright (c) 2012 Jan Nijtmans
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -344,6 +344,16 @@ XParseColor(
     if (spec[0] == '#') {
 	char *p;
 	Tcl_WideInt value = parseHex64bit(++spec, &p);
+
+	/*
+	 * If *p does not point to the end of the string, there were invalid
+	 * digits in the spec. Ergo, it is not a valid color string.
+	 * (Bug f0188aca9e)
+	 */
+
+	if (*p != '\0') {
+	    return 0;
+	}
 
 	switch ((int)(p-spec)) {
 	case 3:

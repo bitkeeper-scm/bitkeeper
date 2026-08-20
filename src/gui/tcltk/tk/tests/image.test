@@ -4,7 +4,7 @@
 #
 # Copyright (c) 1994 The Regents of the University of California.
 # Copyright (c) 1994 Sun Microsystems, Inc.
-# Copyright (c) 1998-1999 by Scriptics Corporation.
+# Copyright (c) 1998-1999 Scriptics Corporation.
 # All rights reserved.
 
 package require tcltest 2.2
@@ -33,27 +33,27 @@ test image-1.4 {Tk_ImageCmd procedure, "create" option} -body {
     image c bad_type
 } -returnCodes error -result {image type "bad_type" doesn't exist}
 test image-1.5 {Tk_ImageCmd procedure, "create" option} -constraints {
-    testImageType 
+    testImageType
 } -body {
     list [image create test myimage] [imageNames]
 } -cleanup {
     imageCleanup
 } -result {myimage myimage}
 test image-1.6 {Tk_ImageCmd procedure, "create" option} -constraints {
-    testImageType 
+    testImageType
 } -setup {
     imageCleanup
 } -body {
     scan [image create test] image%d first
     image create test myimage
     scan [image create test -variable x] image%d second
-    expr $second-$first
+    expr {$second-$first}
 } -cleanup {
     imageCleanup
-} -result {1}
+} -result 1
 
 test image-1.7 {Tk_ImageCmd procedure, "create" option} -constraints {
-    testImageType 
+    testImageType
 } -setup {
     imageCleanup
 } -body {
@@ -62,14 +62,24 @@ test image-1.7 {Tk_ImageCmd procedure, "create" option} -constraints {
     .c create image 100 150 -image myimage
     update
     set x {}
+    set timer [after 500 {lappend x "timed out"}]
     image create test myimage -variable x
+    update idletasks
     update
+    # On MacOS we need to wait for the test image display procedure to run.
+    while {"timed out" ni $x && [lindex $x end 1] ne "display"} {
+        vwait x
+    }
+    after cancel timer
+    if {[lindex $x end] eq "timed out"} {
+       return [lreplace $x end end]
+    }
     return $x
 } -cleanup {
     imageCleanup
-} -result {{myimage free} {myimage free} {myimage delete} {myimage get} {myimage get} {myimage display 0 0 30 15 30 30} {myimage display 0 0 30 15 30 130}}
+} -result {{myimage free} {myimage free} {myimage delete} {myimage get} {myimage get} {myimage display 0 0 30 15} {myimage display 0 0 30 15}}
 test image-1.8 {Tk_ImageCmd procedure, "create" option} -constraints {
-	testImageType 
+	testImageType
 } -setup {
     .c delete all
     imageCleanup
@@ -80,20 +90,22 @@ test image-1.8 {Tk_ImageCmd procedure, "create" option} -constraints {
     image delete myimage
     update
     set x {}
+    set timer [after 500 {lappend x "timed out"}]
     image create test myimage -variable x
-    update
+    vwait x
+    after cancel $timer
     return $x
 } -cleanup {
     .c delete all
     imageCleanup
-} -result {{myimage get} {myimage get} {myimage display 0 0 30 15 30 30} {myimage display 0 0 30 15 30 130}}
+} -result {{myimage get} {myimage get} {myimage display 0 0 30 15} {myimage display 0 0 30 15}}
 test image-1.9 {Tk_ImageCmd procedure, "create" option} -constraints {
-	testImageType 
+	testImageType
 } -body {
     image create test -badName foo
 } -returnCodes error -result {bad option name "-badName"}
 test image-1.10 {Tk_ImageCmd procedure, "create" option} -constraints {
-    testImageType 
+    testImageType
 } -body {
     catch {image create test -badName foo}
     imageNames
@@ -142,7 +154,7 @@ test image-2.1 {Tk_ImageCmd procedure, "delete" option} -body {
     image delete
 } -result {}
 test image-2.2 {Tk_ImageCmd procedure, "delete" option} -constraints {
-    testImageType 
+    testImageType
 } -setup {
     imageCleanup
     set result {}
@@ -156,7 +168,7 @@ test image-2.2 {Tk_ImageCmd procedure, "delete" option} -constraints {
     imageCleanup
 } -result {{img2 myimage} {}}
 test image-2.3 {Tk_ImageCmd procedure, "delete" option} -constraints {
-    testImageType 
+    testImageType
 } -setup {
     imageCleanup
 } -body {
@@ -167,7 +179,7 @@ test image-2.3 {Tk_ImageCmd procedure, "delete" option} -constraints {
     imageCleanup
 } -returnCodes error -result {image "gorp" doesn't exist}
 test image-2.4 {Tk_ImageCmd procedure, "delete" option} -constraints {
-    testImageType 
+    testImageType
 } -setup {
     imageCleanup
 } -body {
@@ -190,7 +202,7 @@ test image-3.3 {Tk_ImageCmd procedure, "height" option} -body {
     image height foo
 } -returnCodes error -result {image "foo" doesn't exist}
 test image-3.4 {Tk_ImageCmd procedure, "height" option} -constraints {
-    testImageType 
+    testImageType
 } -setup {
     imageCleanup
 } -body {
@@ -207,7 +219,7 @@ test image-4.1 {Tk_ImageCmd procedure, "names" option} -body {
     image names x
 } -returnCodes error -result {wrong # args: should be "image names"}
 test image-4.2 {Tk_ImageCmd procedure, "names" option} -constraints {
-    testImageType 
+    testImageType
 } -setup {
     catch {interp delete testinterp}
 } -body {
@@ -249,7 +261,7 @@ test image-5.3 {Tk_ImageCmd procedure, "type" option} -body {
 } -returnCodes error -result {image "foo" doesn't exist}
 
 test image-5.4 {Tk_ImageCmd procedure, "type" option} -constraints {
-    testImageType 
+    testImageType
 } -setup {
     imageCleanup
 } -body {
@@ -259,7 +271,7 @@ test image-5.4 {Tk_ImageCmd procedure, "type" option} -constraints {
     imageCleanup
 } -result {test}
 test image-5.5 {Tk_ImageCmd procedure, "type" option} -constraints {
-    testImageType 
+    testImageType
 } -setup {
     imageCleanup
 } -body {
@@ -271,7 +283,7 @@ test image-5.5 {Tk_ImageCmd procedure, "type" option} -constraints {
     imageCleanup
 } -returnCodes error -result {image "myimage" doesn't exist}
 test image-5.6 {Tk_ImageCmd procedure, "type" option} -constraints {
-    testOldImageType 
+    testOldImageType
 } -setup {
     imageCleanup
 } -body {
@@ -281,7 +293,7 @@ test image-5.6 {Tk_ImageCmd procedure, "type" option} -constraints {
     imageCleanup
 } -result {oldtest}
 test image-5.7 {Tk_ImageCmd procedure, "type" option} -constraints {
-    testOldImageType 
+    testOldImageType
 } -setup {
     .c delete all
     imageCleanup
@@ -299,11 +311,9 @@ test image-5.7 {Tk_ImageCmd procedure, "type" option} -constraints {
 test image-6.1 {Tk_ImageCmd procedure, "types" option} -body {
     image types x
 } -returnCodes error -result {wrong # args: should be "image types"}
-test image-6.2 {Tk_ImageCmd procedure, "types" option} -constraints {
-    testImageType 
-} -body {
+test image-6.2 {Tk_ImageCmd procedure, "types" option} -body {
     lsort [image types]
-} -result {bitmap oldtest photo test}
+} -match glob -result {bitmap*photo test}
 
 
 test image-7.1 {Tk_ImageCmd procedure, "width" option} -body {
@@ -316,7 +326,7 @@ test image-7.3 {Tk_ImageCmd procedure, "width" option} -body {
     image width foo
 } -returnCodes error -result {image "foo" doesn't exist}
 test image-7.4 {Tk_ImageCmd procedure, "width" option} -constraints {
-    testImageType 
+    testImageType
 } -setup {
     imageCleanup
 } -body {
@@ -330,7 +340,7 @@ test image-7.4 {Tk_ImageCmd procedure, "width" option} -constraints {
 
 
 test image-8.1 {Tk_ImageCmd procedure, "inuse" option} -constraints {
-    testImageType 
+    testImageType
 } -setup {
     imageCleanup
     set res {}
@@ -344,26 +354,35 @@ test image-8.1 {Tk_ImageCmd procedure, "inuse" option} -constraints {
     imageCleanup
     catch {destroy .b}
 } -result [list 0 1]
-    
 
 test image-9.1 {Tk_ImageChanged procedure} -constraints testImageType -setup {
     .c delete all
     imageCleanup
+    update
 } -body {
     image create test foo -variable x
     .c create image 50 50 -image foo
     update
     set x {}
+    set timer [after 500 {lappend x "timed out"}]
     foo changed 5 6 7 8 30 15
+    update idletasks
     update
+    # On MacOS we need to wait for the test image display procedure to run.
+    while {"timed out" ni $x && [lindex $x end 1] ne "display"} {
+        vwait x
+    }
+    after cancel $timer
     return $x
 } -cleanup {
     .c delete all
     imageCleanup
-} -result {{foo display 5 6 7 8 30 30}}
+} -result {{foo display 5 6 7 8}}
+
 test image-9.2 {Tk_ImageChanged procedure} -constraints testImageType -setup {
     .c delete all
     imageCleanup
+    update
 } -body {
     image create test foo -variable x
     .c create image 50 50 -image foo
@@ -371,13 +390,15 @@ test image-9.2 {Tk_ImageChanged procedure} -constraints testImageType -setup {
     update
     set x {}
     foo changed 5 6 7 8 30 15
-    update
+    set timer [after 500 {lappend x "timed out"}]
+    image create test myimage -variable x
+    vwait x
+    after cancel $timer
     return $x
 } -cleanup {
     .c delete all
     imageCleanup
-} -result {{foo display 5 6 25 9 30 30} {foo display 0 0 12 14 65 74}}
-
+} -result {{foo display 5 6 25 9} {foo display 0 0 12 14}}
 
 test image-10.1 {Tk_GetImage procedure} -setup {
     imageCleanup
@@ -411,13 +432,15 @@ test image-11.1 {Tk_FreeImage procedure} -constraints testImageType -setup {
     update
     set x {}
     .c delete i1
+    set timer [after 500 {lappend x "timed out"}]
     pack .c
-    update
+    vwait x
+    after cancel $timer
     list [imageNames] $x
 } -cleanup {
     .c delete all
     imageCleanup
-} -result {foo {{foo free} {foo display 0 0 30 15 103 121}}}
+} -result {foo {{foo free} {foo display 0 0 30 15}}}
 test image-11.2 {Tk_FreeImage procedure} -constraints testImageType -setup {
     .c delete all
     imageCleanup
@@ -613,7 +636,7 @@ test image-15.1 {deleting image does not make widgets forget about it} -setup {
     .c delete all
     imageCleanup
 } -result {10 10 20 20 foo {} {10 10 30 30} foo}
-    
+
 destroy .c
 imageFinish
 

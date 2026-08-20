@@ -4,7 +4,7 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
+'\"
 .TH listbox n 8.4 Tk "Tk Built-In Commands"
 .so man.macros
 .BS
@@ -17,9 +17,10 @@ listbox \- Create and manipulate 'listbox' item list widgets
 \-background	\-borderwidth	\-cursor
 \-disabledforeground	\-exportselection	\-font
 \-foreground	\-highlightbackground	\-highlightcolor
-\-highlightthickness	\-relief	\-selectbackground
-\-selectborderwidth	\-selectforeground	\-setgrid
-\-takefocus	\-xscrollcommand	\-yscrollcommand
+\-highlightthickness	\-justify	\-relief
+\-selectbackground	\-selectborderwidth	\-selectforeground
+\-setgrid	\-takefocus	\-xscrollcommand
+\-yscrollcommand
 .SE
 .SH "WIDGET-SPECIFIC OPTIONS"
 .OP \-activestyle activeStyle ActiveStyle
@@ -228,7 +229,7 @@ list.  Returns an empty string.
 \fIpathName \fBitemcget \fIindex option\fR
 .
 Returns the current value of the item configuration option given
-by \fIoption\fR. \fIOption\fR may have any of the values accepted 
+by \fIoption\fR. \fIOption\fR may have any of the values accepted
 by the \fBitemconfigure\fR command.
 .TP
 \fIpathName \fBitemconfigure \fIindex\fR ?\fIoption\fR? ?\fIvalue\fR? ?\fIoption value ...\fR?
@@ -248,7 +249,7 @@ are currently supported for items:
 .TP
 \fB\-background \fIcolor\fR
 .
-\fIColor\fR specifies the background color to use when displaying the 
+\fIColor\fR specifies the background color to use when displaying the
 item. It may have any of the forms accepted by \fBTk_GetColor\fR.
 .TP
 \fB\-foreground \fIcolor\fR
@@ -452,7 +453,7 @@ it and deselects any other selected item.
 In \fBbrowse\fR mode it is also possible to drag the selection
 with button 1.
 On button 1, the listbox will also take focus if it has a \fBnormal\fR
-state and \fB\-takefocus\fR is true.
+state.
 .PP
 If the selection mode is \fBmultiple\fR or \fBextended\fR,
 any number of elements may be selected at once, including discontiguous
@@ -468,9 +469,12 @@ Most people will probably want to use \fBbrowse\fR mode for
 single selections and \fBextended\fR mode for multiple selections;
 the other modes appear to be useful only in special situations.
 .PP
-Any time the selection changes in the listbox, the virtual event
-\fB<<ListboxSelect>>\fR will be generated.  It is easiest to bind
-to this event to be made aware of any changes to listbox selection.
+Any time the set of selected item(s) in the listbox is updated by the
+user through the keyboard or mouse, the virtual event
+\fB<<ListboxSelect>>\fR will be generated. This virtual event will not
+be generated when adjusting the selection with the \fIpathName
+\fBselection\fR  command. It is easiest to bind to this event to be
+made aware of any user changes to listbox selection.
 .PP
 In addition to the above behavior, the following additional behavior
 is defined by the default bindings:

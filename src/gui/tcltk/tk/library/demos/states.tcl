@@ -19,6 +19,17 @@ positionWindow $w
 label $w.msg -font $font -wraplength 4i -justify left -text "A listbox containing the 50 states is displayed below, along with a scrollbar.  You can scan the list either using the scrollbar or by scanning.  To scan, press button 2 in the widget and drag up or down."
 pack $w.msg -side top
 
+labelframe $w.justif -text Justification
+foreach c {Left Center Right} {
+    set lower [string tolower $c]
+    radiobutton $w.justif.$lower -text $c -variable just \
+        -relief flat -value $lower -anchor w \
+        -command "$w.frame.list configure -justify \$just" \
+        -tristatevalue "multi"
+    pack $w.justif.$lower -side left -pady 2 -fill x
+}
+pack $w.justif
+
 ## See Code / Dismiss buttons
 set btns [addSeeDismiss $w.buttons $w]
 pack $btns -side bottom -fill x

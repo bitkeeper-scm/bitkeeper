@@ -3,7 +3,7 @@
 #
 # Copyright (c) 1991-1993 The Regents of the University of California.
 # Copyright (c) 1994 Sun Microsystems, Inc.
-# Copyright (c) 1998-1999 by Scriptics Corporation.
+# Copyright (c) 1998-1999 Scriptics Corporation.
 # All rights reserved.
 
 package require tcltest 2.2
@@ -285,7 +285,7 @@ test option-12.6 {stack pushing/popping} -body {
 
 # Test the major priority levels (widgetDefault, etc.)
 
-# Configurations for tests 13.* 
+# Configurations for tests 13.*
 option clear
 option add $appName.op1.a 100 100
 option add $appName.op1.A interactive interactive
@@ -361,8 +361,8 @@ test option-14.12 {error conditions} -body {
 
 set option1 [file join [testsDirectory] option.file1]
 test option-15.1 {database files} -body {
-    option read non-existent
-} -returnCodes error -result {couldn't open "non-existent": no such file or directory}
+    list [catch {option read non-existent} msg] [string tolower $msg]
+} -result {1 {couldn't open "non-existent": no such file or directory}}
 test option-15.2 {database files} -body {
     option read $option1
     option get . x1 color
@@ -386,7 +386,7 @@ test option-15.6 {database files} -body {
 test option-15.7 {database files} -body {
     option read $option1
 	option get . x9 color
-} -result " \t\\A\n"
+} -result " \\\t\\A\n"
 test option-15.8 {database files} -body {
     option read $option1 widget foo
 } -returnCodes error -result {wrong # args: should be "option readfile fileName ?priority?"}
@@ -399,19 +399,39 @@ test option-15.10 {database files} -body {
     set option2 [file join [testsDirectory] option.file2]
     option read $option2
 } -returnCodes error -result {missing colon on line 2}
-
+set option3 [file join [testsDirectory] option.file3]
+option read $option3
+test option-15.11 {database files} {option get . {x 4} color} br\xf3wn
 
 test option-16.1 {ReadOptionFile} -body {
-    set option3 [makeFile {} option.file3]
-    set file [open $option3 w]
+    set option4 [makeFile {} option.file4]
+    set file [open $option4 w]
     fconfigure $file -translation crlf
     puts $file "*x7: true\n*x8: false"
     close $file
-    option read $option3 userDefault
+    option read $option4 userDefault
     list [option get . x7 color] [option get . x8 color]
 } -cleanup {
-    removeFile $option3
+    removeFile $option4
 } -result {true false}
+
+set opt162val {label {
+  foo bar
+}
+}
+set opt162list [split $opt162val \n]
+
+test option-16.2 {ticket 766ef52f3} -body {
+    set option5 [makeFile {} option.file5]
+    set file [open $option5 w]
+    fconfigure $file -translation crlf
+    puts $file "*notok: $opt162list"
+    close $file
+    option read $option5 userDefault
+    option get . notok notok
+} -cleanup {
+    removeFile $option5
+} -result $opt162list
 
 deleteWindows
 

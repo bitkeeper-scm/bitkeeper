@@ -1,15 +1,34 @@
-/*
- *	$XConsortium: X.h,v 1.66 88/09/06 15:55:56 jim Exp $
- */
-
 /* Definitions for the X window system likely to be used by applications */
 
 #ifndef X_H
 #define X_H
 
 /***********************************************************
-Copyright 1987 by Digital Equipment Corporation, Maynard, Massachusetts,
-and the Massachusetts Institute of Technology, Cambridge, Massachusetts.
+
+Copyright 1987, 1998  The Open Group
+
+Permission to use, copy, modify, distribute, and sell this software and its
+documentation for any purpose is hereby granted without fee, provided that
+the above copyright notice appear in all copies and that both that
+copyright notice and this permission notice appear in supporting
+documentation.
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+OPEN GROUP BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN
+AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Except as contained in this notice, the name of The Open Group shall not be
+used in advertising or otherwise to promote the sale, use or other dealings
+in this Software without prior written authorization from The Open Group.
+
+
+Copyright 1987 by Digital Equipment Corporation, Maynard, Massachusetts.
 
                         All Rights Reserved
 
@@ -17,7 +36,7 @@ Permission to use, copy, modify, and distribute this software and its
 documentation for any purpose and without fee is hereby granted,
 provided that the above copyright notice appear in all copies and that
 both that copyright notice and this permission notice appear in
-supporting documentation, and that the names of Digital or MIT not be
+supporting documentation, and that the name of Digital not be
 used in advertising or publicity pertaining to distribution of the
 software without specific, written prior permission.
 
@@ -30,6 +49,7 @@ ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
 SOFTWARE.
 
 ******************************************************************/
+
 #define X_PROTOCOL	11		/* current protocol version */
 #define X_PROTOCOL_REVISION 0		/* current minor version */
 
@@ -40,40 +60,80 @@ SOFTWARE.
 
 /* Resources */
 
-#ifdef _WIN64
-typedef __int64 XID;
-#else
+/*
+ * _XSERVER64 must ONLY be defined when compiling X server sources on
+ * systems where unsigned long is not 32 bits, must NOT be used in
+ * client or library code.
+ */
+#ifndef _XSERVER64
+#  ifndef _XTYPEDEF_XID
+#    define _XTYPEDEF_XID
+#    ifdef _WIN64
+#      ifdef _MSC_VER
+typedef unsigned __int64 XID;
+#      else
+typedef unsigned long long XID;
+#      endif
+#    else
 typedef unsigned long XID;
+#    endif
+#  endif
+#  ifndef _XTYPEDEF_MASK
+#    define _XTYPEDEF_MASK
+typedef unsigned long Mask;
+#  endif
+#  ifndef _XTYPEDEF_ATOM
+#    define _XTYPEDEF_ATOM
+typedef unsigned long Atom;		/* Also in Xdefs.h */
+#  endif
+typedef unsigned long VisualID;
+typedef unsigned long Time;
+#else
+#  include <X11/Xmd.h>
+#  ifndef _XTYPEDEF_XID
+#    define _XTYPEDEF_XID
+typedef CARD32 XID;
+#  endif
+#  ifndef _XTYPEDEF_MASK
+#    define _XTYPEDEF_MASK
+typedef CARD32 Mask;
+#  endif
+#  ifndef _XTYPEDEF_ATOM
+#    define _XTYPEDEF_ATOM
+typedef CARD32 Atom;
+#  endif
+typedef CARD32 VisualID;
+typedef CARD32 Time;
 #endif
 
 typedef XID Window;
 typedef XID Drawable;
+#ifndef _XTYPEDEF_FONT
+#  define _XTYPEDEF_FONT
 typedef XID Font;
+#endif
 typedef XID Pixmap;
 typedef XID Cursor;
 typedef XID Colormap;
 typedef XID GContext;
 typedef XID KeySym;
 
-typedef unsigned long Mask;
-
-typedef unsigned long Atom;
-
-typedef unsigned long VisualID;
-
-typedef unsigned long Time;
-
 typedef unsigned long KeyCode;	/* In order to use IME, the Macintosh needs
 				 * to pack 3 bytes into the keyCode field in
 				 * the XEvent.  In the real X.h, a KeyCode is
-				 * defined as a short, which wouldn't be big
-				 * enough. */
+				 * defined as an unsigned char, which wouldn't
+				 * be big enough. */
 
 /*****************************************************************
  * RESERVED RESOURCE AND CONSTANT DEFINITIONS
  *****************************************************************/
 
-#define None                 0L	/* universal null resource or null atom */
+#ifndef _WIN32
+#   define None              0L      /* See bug [9e31fd9449] and below */
+#else
+/* Perl-Tk expects None to be a macro. See ticket [593eb0227c] */
+#   define None              None    /* uses the enum below */
+#endif
 
 #define ParentRelative       1L	/* background pixmap in CreateWindow
 				    and ChangeWindowAttributes */
@@ -179,12 +239,22 @@ are reserved in the protocol for errors and replies. */
 
 #define ShiftMask		(1<<0)
 #define LockMask		(1<<1)
-#define ControlMask		(1<<2)
+#ifndef _WIN32
+#   define ControlMask		(1<<2) /* See bug [9e31fd9449] and below */
+#else
+/* Perl-Tk expects ControlMask to be a macro. See ticket [593eb0227c] */
+#   define ControlMask		ControlMask /* uses the enum below */
+#endif
 #define Mod1Mask		(1<<3)
 #define Mod2Mask		(1<<4)
 #define Mod3Mask		(1<<5)
 #define Mod4Mask		(1<<6)
 #define Mod5Mask		(1<<7)
+
+/* See bug [9e31fd9449], this way prevents conflicts with Win32 headers */
+#ifdef _WIN32
+enum { None = 0, ControlMask = (1<<2) };
+#endif
 
 /* modifier names.  Used to build a SetModifierMapping request or
    to read a GetModifierMapping request.  These correspond to the
@@ -254,9 +324,13 @@ are reserved in the protocol for errors and replies. */
 
 /* protocol families */
 
-#define FamilyInternet		0
+#define FamilyInternet		0	/* IPv4 */
 #define FamilyDECnet		1
 #define FamilyChaos		2
+#define FamilyInternet6		6	/* IPv6 */
+
+/* authentication families not tied to a specific protocol */
+#define FamilyServerInterpreted 5
 
 /* Property notification */
 

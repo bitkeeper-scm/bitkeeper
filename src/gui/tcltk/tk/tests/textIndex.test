@@ -3,21 +3,21 @@
 #
 # Copyright (c) 1994 The Regents of the University of California.
 # Copyright (c) 1994 Sun Microsystems, Inc.
-# Copyright (c) 1998-1999 by Scriptics Corporation.
+# Copyright (c) 1998-1999 Scriptics Corporation.
 # All rights reserved.
 
-package require tcltest 2.1
+package require tcltest 2.2
 eval tcltest::configure $argv
 tcltest::loadTestedCommands
 namespace import -force tcltest::test
 
 catch {destroy .t}
 text .t -font {Courier -12} -width 20 -height 10
-pack append . .t {top expand fill}
+pack .t -expand 1 -fill both
 update
 .t debug on
 wm geometry . {}
-  
+
 # The statements below reset the main window;  it's needed if the window
 # manager is mwm to make mwm forget about a previous minimum size setting.
 
@@ -74,7 +74,7 @@ test textIndex-1.9 {TkTextMakeByteIndex: shortcut for 0} {testtext} {
     testtext .t byteindex 3 80
 } {3.5 5}
 test textIndex-1.10 {TkTextMakeByteIndex: verify index is in range} {testtext} {
-    # for (segPtr = indexPtr->linePtr->segPtr; ; segPtr = segPtr->nextPtr) 
+    # for (segPtr = indexPtr->linePtr->segPtr; ; segPtr = segPtr->nextPtr)
     # one segment
 
     testtext .t byteindex 3 5
@@ -84,7 +84,7 @@ test textIndex-1.11 {TkTextMakeByteIndex: verify index is in range} {testtext} {
     #     index += segPtr->size
     # Multiple segments, make sure add segment size to index.
 
-    .t mark set foo 3.2 
+    .t mark set foo 3.2
     set x [testtext .t byteindex 3 7]
     .t mark unset foo
     set x
@@ -117,7 +117,7 @@ test textIndex-1.16 {TkTextMakeByteIndex: UTF-8 characters} {testtext} {
 } {5.18 20}
 test textIndex-1.17 {TkTextMakeByteIndex: prevent splitting UTF-8 character} \
 	{testtext} {
-    # ((byteIndex > index) && (segPtr->typePtr == &tkTextCharType)) 
+    # ((byteIndex > index) && (segPtr->typePtr == &tkTextCharType))
     # Wrong answer would be \xb9 (the 2nd byte of UTF rep of 0x4e4f).
 
     set x [testtext .t byteindex 5 2]
@@ -125,7 +125,7 @@ test textIndex-1.17 {TkTextMakeByteIndex: prevent splitting UTF-8 character} \
 } {{5.2 4} y}
 test textIndex-1.18 {TkTextMakeByteIndex: prevent splitting UTF-8 character} \
 	{testtext} {
-    # ((byteIndex > index) && (segPtr->typePtr == &tkTextCharType)) 
+    # ((byteIndex > index) && (segPtr->typePtr == &tkTextCharType))
     testtext .t byteindex 5 1
     .t get insert
 } "\u4e4f"
@@ -168,7 +168,7 @@ test textIndex-2.9 {TkTextMakeCharIndex: verify index is in range} {
     # for (segPtr = indexPtr->linePtr->segPtr; ; segPtr = segPtr->nextPtr)
     # Multiple segments, make sure add segment size to index.
 
-    .t mark set foo 3.2 
+    .t mark set foo 3.2
     set x [.t index 3.7]
     .t mark unset foo
     set x
@@ -268,7 +268,7 @@ test textIndex-4.8 {TkTextGetIndex, tags} {
     set result
 } {1.0 1.1}
 
-test textIndex-5.1 {TkTextGetIndex, "@"} {nonPortable fonts} {
+test textIndex-5.1 {TkTextGetIndex, "@"} {fonts} {
     .t index @12,9
 } 1.1
 test textIndex-5.2 {TkTextGetIndex, "@"} {fonts} {
@@ -439,7 +439,7 @@ test textIndex-12.5 {TkTextIndexForwChars: find index} {
 test textIndex-12.6 {TkTextIndexForwChars: find index} {
     # for ( ; segPtr != NULL; segPtr = segPtr->nextPtr)
     # border condition: segPtr == NULL -> beginning of next line
-    
+
     .t index {2.3 + 11 chars}
 } 3.0
 test textIndex-12.7 {TkTextIndexForwChars: find index} {
@@ -458,7 +458,7 @@ test textIndex-12.9 {TkTextIndexForwChars: find index} {
     .t image create 2.4 -image textimage
     set x [.t get {2.3 + 3 chars}]
     .t delete 2.4
-    set x    
+    set x
 } "f"
 test textIndex-12.10 {TkTextIndexForwChars: find index} {
     # dstPtr->byteIndex += segPtr->size - byteOffset
@@ -588,11 +588,11 @@ test textIndex-14.11 {TkTextIndexBackChars: move to previous segment} {
     set x
 } 2.9
 test textIndex-14.12 {TkTextIndexBackChars: move to previous line} {
-    # (lineIndex == 0) 
+    # (lineIndex == 0)
     .t index {1.5 - 10 chars}
 } 1.0
 test textIndex-14.13 {TkTextIndexBackChars: move to previous line} {
-    # not (lineIndex == 0) 
+    # not (lineIndex == 0)
     .t index {2.5 - 10 chars}
 } 1.2
 test textIndex-14.14 {TkTextIndexBackChars: move to previous line} {
@@ -714,7 +714,7 @@ test textIndex-18.1 {Object indices don't cache mark names} {
 } {3.4 3.0 1.0}
 
 frame .f -width 100 -height 20
-pack append . .f left
+pack .f -side left
 
 set fixedFont {Courier -12}
 set fixedHeight [font metrics $fixedFont -linespace]
@@ -724,7 +724,7 @@ set varFont {Times -14}
 set bigFont {Helvetica -24}
 destroy .t
 text .t -font $fixedFont -width 20 -height 10 -wrap char
-pack append . .t {top expand fill}
+pack .t -expand 1 -fill both
 .t tag configure big -font $bigFont
 .t debug on
 wm geometry . {}
@@ -754,6 +754,7 @@ set str [string repeat "hello " 20]
 .t insert end "$str one two three four five six seven height nine ten\n"
 .t insert end "$str one two three four five six seven height nine ten\n"
 .t insert end "$str one two three four five six seven height nine ten\n"
+update
 
 test textIndex-19.1 {Display lines} {
     .t index "2.7 displaylinestart"
@@ -803,8 +804,16 @@ test textIndex-19.12 {Display lines} {
     .t index "2.40 -1displaylines"
 } {2.20}
 
+test textIndex-19.12.1 {Display lines} {
+    .t index "2.50 - 100 displaylines"
+} {1.0}
+
+test textIndex-19.12.2 {Display lines} {
+    .t compare [.t index "2.50 + 100 displaylines"] == "end - 1 c"
+} 1
+
 test textIndex-19.13 {Display lines} {
-    destroy {*}[pack slaves .]
+    destroy {*}[pack content .]
     text .txt -height 1 -wrap word -yscroll ".sbar set" -width 400
     scrollbar .sbar -command ".txt yview"
     grid .txt .sbar -sticky news
@@ -825,6 +834,18 @@ test textIndex-19.13 {Display lines} {
     .txt index "2.0 - 2 display lines"
     destroy .txt .sbar
 } {}
+
+test textIndex-19.14 {Display lines with elided lines} {
+    catch {destroy .t}
+    pack [text .t]
+    for {set n 1} {$n <= 1000} {incr n} {
+	.t insert end "Line $n\n"
+    }
+    .t tag configure Elided -elide 1
+    .t tag add Elided 6.0 951.0
+    update
+    set res [.t index "951.0 + 1 displaylines"]
+} {952.0}
 
 proc text_test_word {startend chars start} {
     destroy .t
@@ -920,6 +941,16 @@ test textIndex-22.15 {text index display wordstart} {
     text .t
     .t index "1.0 display wordstart"  ; # used to crash
 } 1.0
+test textIndex-22.16 {text index wordstart, bug [57b821d2db]} {
+    catch {destroy .t}
+    text .t
+    .t insert 1.0 " 123 5 789012  LINE-1\n\n 123 5 789000 LINE-3\n\n0123 5 789012  LINE-5"
+    set res [.t index "1.1 wordstart"]
+    lappend res [.t index "5.0 wordstart"]
+    .t mark set insert 1.1
+    lappend res [.t index "insert wordstart"]
+    lappend res [.t index "5.1 wordstart"]
+} {1.1 5.0 1.1 5.0}
 
 test textIndex-23.1 {text paragraph start} {
     pack [text .t2]
@@ -955,6 +986,43 @@ test textIndex-25.1 {IndexCountBytesOrdered, bug [3f1f79abcf]} {
     focus -force .t2   ; # to see the cursor blink
     destroy .t2
 } {}
+
+test textIndex-26.1 {GetIndex restricts the returned index to -startline/-endline in peers, bug [34db75c0ac]} {
+    set res {}
+    pack [text .t2]
+    .t2 insert end "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\n"
+    pack [.t2 peer create .p2 -startline 2 -endline 3]
+    lappend res [.p2 index "end"]
+    lappend res [.p2 index "end lineend"]
+    lappend res [.p2 index "end display lineend"]
+    destroy .t2 .p2
+    set res
+} {2.0 2.0 2.0}
+test textIndex-26.2 {GetIndex errors out if mark, image, window, or tag is outside peer -startline/-endline, bug [34db75c0ac]} {
+    set res {}
+    pack [text .t2]
+    .t2 insert end "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\n"
+    pack [.t2 peer create .p2 -startline 2 -endline 3]
+    .p2 configure -startline 3 -endline {}
+    .t2 mark set mymark 1.0
+    catch {.p2 index mymark} msg
+    lappend res [.t2 index mymark] $msg
+    image create photo redsquare -width 5 -height 5
+    redsquare put red -to 0 0 4 4
+    .t2 image create 1.0 -image redsquare
+    catch {.p2 index redsquare} msg
+    lappend res [.t2 index redsquare] $msg
+    frame .f -width 10 -height 10 -bg blue
+    .t2 window create 1.2 -window .f
+    catch {.p2 index .f} msg
+    lappend res [.t2 index .f] $msg
+    .t2 tag add mytag 1.3
+    catch {.p2 index mytag.first} msg
+    lappend res [.t2 index mytag.first] $msg
+    destroy .t2 .p2
+    set res
+} {1.0 {bad text index "mymark"} 1.0 {bad text index "redsquare"} 1.2\
+   {bad text index ".f"} 1.3 {text doesn't contain any characters tagged with "mytag"}}
 
 # cleanup
 rename textimage {}

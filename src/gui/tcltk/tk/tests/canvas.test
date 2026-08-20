@@ -7,7 +7,7 @@
 # Copyright (c) 2008 Donal K. Fellows
 # All rights reserved.
 
-package require tcltest 2.1
+package require tcltest 2.2
 eval tcltest::configure $argv
 tcltest::loadTestedCommands
 imageInit
@@ -37,14 +37,14 @@ test canvas-1.4 {configuration options: bad value for "bg"} -body {
 test canvas-1.5 {configuration options: good value for "bd"} -body {
     .c configure -bd 4
     .c cget -bd
-} -result {4}
+} -result 4
 test canvas-1.6 {configuration options: bad value for "bd"} -body {
     .c configure -bd badValue
 } -returnCodes error -result {bad screen distance "badValue"}
 test canvas-1.7 {configuration options: good value for "borderwidth"} -body {
     .c configure -borderwidth 1.3
     .c cget -borderwidth
-} -result {1}
+} -result 1
 test canvas-1.8 {configuration options: bad value for "borderwidth"} -body {
     .c configure -borderwidth badValue
 } -returnCodes error -result {bad screen distance "badValue"}
@@ -58,7 +58,7 @@ test canvas-1.10 {configuration options: bad value for "closeenough"} -body {
 test canvas-1.11 {configuration options: good value for "confine"} -body {
     .c configure -confine true
     .c cget -confine
-} -result {1}
+} -result 1
 test canvas-1.12 {configuration options: bad value for "confine"} -body {
     .c configure -confine silly
 } -returnCodes error -result {expected boolean value but got "silly"}
@@ -72,7 +72,7 @@ test canvas-1.14 {configuration options: bad value for "cursor"} -body {
 test canvas-1.15 {configuration options: good value for "height"} -body {
     .c configure -height 2.1
     .c cget -height
-} -result {2}
+} -result 2
 test canvas-1.16 {configuration options: bad value for "height"} -body {
     .c configure -height x42
 } -returnCodes error -result {bad screen distance "x42"}
@@ -93,7 +93,7 @@ test canvas-1.20 {configuration options: bad value for "highlightcolor"} -body {
 test canvas-1.21 {configuration options: good value for "highlightthickness"} -body {
     .c configure -highlightthickness 18
     .c cget -highlightthickness
-} -result {18}
+} -result 18
 test canvas-1.22 {configuration options: bad value for "highlightthickness"} -body {
     .c configure -highlightthickness badValue
 } -returnCodes error -result {bad screen distance "badValue"}
@@ -107,38 +107,38 @@ test canvas-1.24 {configuration options: bad value for "insertbackground"} -body
 test canvas-1.25 {configuration options: good value for "insertborderwidth"} -body {
     .c configure -insertborderwidth 1.3
     .c cget -insertborderwidth
-} -result {1}
+} -result 1
 test canvas-1.26 {configuration options: bad value for "insertborderwidth"} -body {
     .c configure -insertborderwidth 2.6x
 } -returnCodes error -result {bad screen distance "2.6x"}
 test canvas-1.27 {configuration options: good value for "insertofftime"} -body {
     .c configure -insertofftime 100
     .c cget -insertofftime
-} -result {100}
+} -result 100
 test canvas-1.28 {configuration options: bad value for "insertofftime"} -body {
     .c configure -insertofftime 3.2
 } -returnCodes error -result {expected integer but got "3.2"}
 test canvas-1.29 {configuration options: good value for "insertontime"} -body {
     .c configure -insertontime 100
     .c cget -insertontime
-} -result {100}
+} -result 100
 test canvas-1.30 {configuration options: bad value for "insertontime"} -body {
     .c configure -insertontime 3.2
 } -returnCodes error -result {expected integer but got "3.2"}
 test canvas-1.31 {configuration options: good value for "insertwidth"} -body {
     .c configure -insertwidth 1.3
     .c cget -insertwidth
-} -result {1}
+} -result 1
 test canvas-1.32 {configuration options: bad value for "insertwidth"} -body {
     .c configure -insertwidth 6x
 } -returnCodes error -result {bad screen distance "6x"}
 test canvas-1.33 {configuration options: good value for "relief"} -body {
-    .c configure -relief groove
+    .c configure -relief g
     .c cget -relief
 } -result {groove}
 test canvas-1.34 {configuration options: bad value for "relief"} -body {
-    .c configure -relief 1.5
-} -returnCodes error -result {bad relief "1.5": must be flat, groove, raised, ridge, solid, or sunken}
+    .c configure -relief r
+} -returnCodes error -result {bad relief "r": must be flat, groove, raised, ridge, solid, or sunken}
 test canvas-1.35 {configuration options: good value for "selectbackground"} -body {
     .c configure -selectbackground #110022
     .c cget -selectbackground
@@ -149,7 +149,7 @@ test canvas-1.36 {configuration options: bad value for "selectbackground"} -body
 test canvas-1.37 {configuration options: good value for "selectborderwidth"} -body {
     .c configure -selectborderwidth 1.3
     .c cget -selectborderwidth
-} -result {1}
+} -result 1
 test canvas-1.38 {configuration options: bad value for "selectborderwidth"} -body {
     .c configure -selectborderwidth badValue
 } -returnCodes error -result {bad screen distance "badValue"}
@@ -167,7 +167,7 @@ test canvas-1.41 {configuration options: good value for "takefocus"} -body {
 test canvas-1.42 {configuration options: good value for "width"} -body {
     .c configure -width 402
     .c cget -width
-} -result {402}
+} -result 402
 test canvas-1.43 {configuration options: bad value for "width"} -body {
     .c configure -width xyz
 } -returnCodes error -result {bad screen distance "xyz"}
@@ -216,9 +216,7 @@ test canvas-2.3 {CanvasWidgetCmd, xview option} -body {
     update
     lappend x [.c xview]
 } -result {{0.0 0.3} {0.4 0.7}}
-test canvas-2.4 {CanvasWidgetCmd, xview option} -constraints nonPortable -body {
-    # This test gives slightly different results on platforms such as NetBSD.
-    # I don't know why...
+test canvas-2.4 {CanvasWidgetCmd, xview option} -body {
     .c configure -xscrollincrement 0 -yscrollincrement 5
     .c xview moveto 0.6
     update
@@ -354,9 +352,9 @@ test canvas-9.1 {canvas id creation and deletion} -setup {
     for {set i 0} {$i < $size} {incr i} {
 	set x [expr {-10 + 3*$i}]
 	for {set j 0; set y -10} {$j < 10} {incr j; incr y 3} {
-	    .c create rect ${x}c ${y}c [expr $x+2]c [expr $y+2]c \
+	    .c create rect ${x}c ${y}c [expr {$x+2}]c [expr {$y+2}]c \
 		    -outline black -fill blue -tags rect
-	    .c create text [expr $x+1]c [expr $y+1]c -text "$i,$j" \
+	    .c create text [expr {$x+1}]c [expr {$y+1}]c -text "$i,$j" \
 		    -anchor center -tags text
 	}
     }
@@ -532,15 +530,22 @@ test canvas-11.3 {canvas poly dchars, bug 3291543} {
     .c dchars 1 2 end
     .c coords 1
 } {}
+test canvas-11.4 {canvas line dchars crash with -arrows, bug 51ece3786f} {
+    # This would crash
+    destroy .c
+    canvas .c
+    .c create line 10 10 100 100 -arrow last
+    .c dchars 1 0 1
+} {}
 
 test canvas-12.1 {canvas mm obj, patch SF-403327, 102471} -setup {
     destroy .c
     pack [canvas .c]
 } -body {
-    set qx [expr {1.+1.}] 
-    # qx has type double and no string representation 
+    set qx [expr {1.+1.}]
+    # qx has type double and no string representation
     .c scale all $qx 0 1. 1.
-    # qx has now type MMRep and no string representation 
+    # qx has now type MMRep and no string representation
     list $qx [string length $qx]
 } -result {2.0 3}
 test canvas-12.2 {canvas mm obj, patch SF-403327, 102471} -setup {
@@ -549,9 +554,9 @@ test canvas-12.2 {canvas mm obj, patch SF-403327, 102471} -setup {
 } -body {
     set val 10
     incr val
-    # qx has type double and no string representation 
+    # qx has type double and no string representation
     .c scale all $val 0 1 1
-    # qx has now type MMRep and no string representation 
+    # qx has now type MMRep and no string representation
     incr val
 } -result 12
 
@@ -727,9 +732,25 @@ test canvas-15.19 "basic coords check: centimeters are larger than pixels" -setu
     destroy .c
     canvas .c
 } -body {
-    set id [.c create rect 0 0 1cm 1cm] 
+    set id [.c create rect 0 0 1c 1c]
     expr {[lindex [.c coords $id] 2]>1}
-} -result {1}
+} -result 1
+test canvas-15.20 {bug [237971ce]} -setup {
+    destroy .c
+    canvas .c
+} -body {
+    set id [.c create line {0 0 50 50 100 50}]
+    .c insert $id end {200 200}
+    .c coords $id
+} -result {0.0 0.0 50.0 50.0 100.0 50.0 200.0 200.0}
+test canvas-15.21 {bug [237971ce]} -setup {
+    destroy .c
+    canvas .c
+} -body {
+    set id [.c create poly {0 0 50 50 100 50}]
+    .c insert $id end {200 200}
+    .c coords $id
+} -result {0.0 0.0 50.0 50.0 100.0 50.0 200.0 200.0}
 destroy .c
 
 test canvas-16.1 {arc coords check} -setup {
@@ -949,6 +970,48 @@ test canvas-19.11 {rchars method - errors} -setup {
 } -cleanup {
     destroy .c
 } -returnCodes error -result {bad index "foo"}
+
+test canvas-20.1 {addtag/dtag - no shuffling of tag sequence} -setup {
+    canvas .c
+    .c create text 100 100 -text Hello
+} -body {
+    for {set i 1} {$i < 5} {incr i} {
+        .c addtag tag$i all
+    }
+    # [.c addtags] only adds tags that are not already present
+    .c addtag tag1 all   ; # no effect
+    set res [list [.c gettags 1]]
+    .c dtag 1 tag2
+    lappend res [.c gettags 1]
+} -cleanup {
+    destroy .c
+} -result {{tag1 tag2 tag3 tag4} {tag1 tag3 tag4}}
+test canvas-20.2 {tag deletion - multiple tags with same name, no shuffling} -setup {
+    canvas .c
+    .c create text 100 100 -text Hello
+} -body {
+    # [.c itemconfigure -tags] lets the user add duplicate tags
+    # this is not a problem although inconsistent with [.c addtags]
+    .c itemconfigure 1 -tags {tagA tagB tagA tagA tagC tagA}
+    set res [list [.c gettags 1]]
+    .c dtag 1 tagA
+    lappend res [.c gettags 1]
+} -cleanup {
+    destroy .c
+} -result {{tagA tagB tagA tagA tagC tagA} {tagB tagC}}
+test canvas-20.3 {tag deletion - all tags match} -setup {
+    canvas .c
+    .c create text 100 100 -text Hello
+} -body {
+    # [.c itemconfigure -tags] lets the user add duplicate tags
+    # this is not a problem although inconsistent with [.c addtags]
+    .c itemconfigure 1 -tags {tagA tagA tagA tagA tagA tagA}
+    set res [list [.c gettags 1]]
+    .c dtag 1 tagA
+    lappend res [.c gettags 1]
+} -cleanup {
+    destroy .c
+} -result {{tagA tagA tagA tagA tagA tagA} {}}
 
 # cleanup
 imageCleanup

@@ -39,7 +39,7 @@ typedef struct {
  * resource identifier.
  */
 
-static struct CursorName {
+static const struct CursorName {
     const char *name;
     LPCTSTR id;
 } cursorNames[] = {
@@ -71,7 +71,7 @@ static struct CursorName {
  * The default cursor is used whenever no other cursor has been specified.
  */
 
-#define TK_DEFAULT_CURSOR	IDC_ARROW
+#define TK_DEFAULT_CURSOR	(LPCWSTR)IDC_ARROW
 
 /*
  *----------------------------------------------------------------------
@@ -96,14 +96,14 @@ TkGetCursorByName(
     Tk_Uid string)		/* Description of cursor. See manual entry for
 				 * details on legal syntax. */
 {
-    struct CursorName *namePtr;
+    const struct CursorName *namePtr;
     TkWinCursor *cursorPtr;
     int argc;
     const char **argv = NULL;
 
     /*
      * All cursor names are valid lists of one element (for
-     * Unix-compatability), even unadorned system cursor names.
+     * Unix-compatibility), even unadorned system cursor names.
      */
 
     if (Tcl_SplitList(interp, string, &argc, &argv) != TCL_OK) {
@@ -145,7 +145,7 @@ TkGetCursorByName(
 
 	for (namePtr = cursorNames; namePtr->name != NULL; namePtr++) {
 	    if (strcmp(namePtr->name, argv[0]) == 0) {
-		cursorPtr->winCursor = LoadCursor(NULL, namePtr->id);
+		cursorPtr->winCursor = LoadCursorW(NULL, (LPCWSTR) namePtr->id);
 		break;
 	    }
 	}
@@ -253,7 +253,7 @@ TkpSetCursor(
     TkWinCursor *winCursor = (TkWinCursor *) cursor;
 
     if (winCursor == NULL || winCursor->winCursor == NULL) {
-	hcursor = LoadCursor(NULL, TK_DEFAULT_CURSOR);
+	hcursor = LoadCursorW(NULL, TK_DEFAULT_CURSOR);
     } else {
 	hcursor = winCursor->winCursor;
     }

@@ -6,7 +6,7 @@
 #	to call the internal Tcl procedures in xmfbox.tcl directly.
 #
 # Copyright (c) 1997 Sun Microsystems, Inc.
-# Copyright (c) 1998-1999 by Scriptics Corporation.
+# Copyright (c) 1998-1999 Scriptics Corporation.
 # Contributions from Don Porter, NIST, 2002.  (not subject to US copyright)
 # All rights reserved.
 

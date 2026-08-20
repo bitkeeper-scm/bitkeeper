@@ -98,7 +98,6 @@ static const Tk_OptionSpec optionSpecs[] = {
 
 static void		SquareDeletedProc(ClientData clientData);
 static int		SquareConfigure(Tcl_Interp *interp, Square *squarePtr);
-static void		SquareDestroy(void *memPtr);
 static void		SquareDisplay(ClientData clientData);
 static void		KeepInWindow(Square *squarePtr);
 static void		SquareObjEventProc(ClientData clientData,
@@ -169,7 +168,7 @@ SquareObjCmd(
     squarePtr->widgetCmd = Tcl_CreateObjCommand(interp,
 	    Tk_PathName(squarePtr->tkwin), SquareWidgetObjCmd, squarePtr,
 	    SquareDeletedProc);
-    squarePtr->gc = None;
+    squarePtr->gc = NULL;
     squarePtr->optionTable = optionTable;
 
     if (Tk_InitOptions(interp, (char *) squarePtr, optionTable, tkwin)
@@ -335,7 +334,7 @@ SquareConfigure(
     Tk_SetWindowBackground(squarePtr->tkwin,
 	    Tk_3DBorderColor(bgBorder)->pixel);
     Tcl_GetBooleanFromObj(NULL, squarePtr->doubleBufferPtr, &doubleBuffer);
-    if ((squarePtr->gc == None) && (doubleBuffer)) {
+    if ((squarePtr->gc == NULL) && doubleBuffer) {
 	XGCValues gcValues;
 	gcValues.function = GXcopy;
 	gcValues.graphics_exposures = False;
@@ -400,7 +399,7 @@ SquareObjEventProc(
 	if (squarePtr->tkwin != NULL) {
 	    Tk_FreeConfigOptions((char *) squarePtr, squarePtr->optionTable,
 		    squarePtr->tkwin);
-	    if (squarePtr->gc != None) {
+	    if (squarePtr->gc != NULL) {
 		Tk_FreeGC(squarePtr->display, squarePtr->gc);
 	    }
 	    squarePtr->tkwin = NULL;
@@ -410,7 +409,7 @@ SquareObjEventProc(
 	if (squarePtr->updatePending) {
 	    Tcl_CancelIdleCall(SquareDisplay, squarePtr);
 	}
-	Tcl_EventuallyFree(squarePtr, (Tcl_FreeProc *) SquareDestroy);
+	Tcl_EventuallyFree(squarePtr, TCL_DYNAMIC);
     }
 }
 
@@ -537,33 +536,6 @@ SquareDisplay(
 /*
  *----------------------------------------------------------------------
  *
- * SquareDestroy --
- *
- *	This procedure is invoked by Tcl_EventuallyFree or Tcl_Release to
- *	clean up the internal structure of a square at a safe time (when
- *	no-one is using it anymore).
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	Everything associated with the square is freed up.
- *
- *----------------------------------------------------------------------
- */
-
-static void
-SquareDestroy(
-    void *memPtr)		/* Info about square widget. */
-{
-    Square *squarePtr = memPtr;
-
-    ckfree(squarePtr);
-}
-
-/*
- *----------------------------------------------------------------------
- *
  * KeepInWindow --
  *
  *	Adjust the position of the square if necessary to keep it in the
@@ -581,7 +553,7 @@ SquareDestroy(
 
 static void
 KeepInWindow(
-    register Square *squarePtr)	/* Pointer to widget record. */
+    Square *squarePtr)	/* Pointer to widget record. */
 {
     int i, bd, relief;
     int borderWidth, size;

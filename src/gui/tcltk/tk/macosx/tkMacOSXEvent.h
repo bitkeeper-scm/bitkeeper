@@ -4,8 +4,8 @@
  *	Declarations of Macintosh specific functions for implementing the
  *	Mac OS X Notifier.
  *
- * Copyright 2001-2009, Apple Inc.
- * Copyright (c) 2005-2009 Daniel A. Steffen <das@users.sourceforge.net>
+ * Copyright © 2001-2009 Apple Inc.
+ * Copyright © 2005-2009 Daniel A. Steffen <das@users.sourceforge.net>
  *
  * See the file "license.terms" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -18,6 +18,8 @@
 #include "tkMacOSXInt.h"
 #endif
 
-MODULE_SCOPE void TkMacOSXFlushWindows(void);
+/*
+ * Currently nothing needs to be declared here.
+ */
 
 #endif

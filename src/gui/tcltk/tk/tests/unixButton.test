@@ -5,7 +5,7 @@
 #
 # Copyright (c) 1994 The Regents of the University of California.
 # Copyright (c) 1994-1997 Sun Microsystems, Inc.
-# Copyright (c) 1998-1999 by Scriptics Corporation.
+# Copyright (c) 1998-1999 Scriptics Corporation.
 # All rights reserved.
 
 package require tcltest 2.2
@@ -16,7 +16,7 @@ imageInit
 
 # Create entries in the option database to be sure that geometry options
 # like border width have predictable values.
- 
+
 option add *Label.borderWidth 2
 option add *Label.highlightThickness 0
 option add *Label.font {Helvetica -12 bold}
@@ -35,7 +35,15 @@ proc bogusTrace args {
     error "trace aborted"
 }
 
-
+if {[tk windowingsystem] eq "aqua"} {
+    set smallIndicator 20
+    set bigIndicator 20
+    set defaultBorder 10
+} else {
+    set smallIndicator 27
+    set bigIndicator 40
+    set defaultBorder 20
+}
 test unixbutton-1.1 {TkpComputeButtonGeometry procedure} -constraints {
     unix testImageType
 } -setup {
@@ -57,9 +65,12 @@ test unixbutton-1.1 {TkpComputeButtonGeometry procedure} -constraints {
 } -cleanup {
     deleteWindows
     image delete image1
-} -result {68 48 74 54 112 52 112 52}
+} -result [list 68 48 \
+                74 54 \
+	        [expr {72 + $bigIndicator}] 52 \
+	        [expr {72 + $bigIndicator}] 52]
 test unixbutton-1.2 {TkpComputeButtonGeometry procedure} -constraints {
-    unix 
+    unix
 } -setup {
     deleteWindows
 } -body {
@@ -75,9 +86,12 @@ test unixbutton-1.2 {TkpComputeButtonGeometry procedure} -constraints {
         [winfo reqwidth .b4] [winfo reqheight .b4]
 } -cleanup {
     deleteWindows
-} -result {23 33 29 39 54 37 54 37}
+} -result [list 23 33 \
+	        29 39 \
+	        [expr {27 + $smallIndicator}] 37 \
+	        [expr {27 + $smallIndicator}] 37]
 test unixbutton-1.3 {TkpComputeButtonGeometry procedure} -constraints {
-    unix 
+    unix
 } -setup {
     deleteWindows
 } -body {
@@ -178,7 +192,7 @@ test unixbutton-1.8 {TkpComputeButtonGeometry procedure} -constraints {
     deleteWindows
 } -result {62 30 56 24 58 22 62 22}
 test unixbutton-1.9 {TkpComputeButtonGeometry procedure} -constraints {
-    unix 
+    unix
 } -setup {
     deleteWindows
 } -body {
@@ -186,9 +200,9 @@ test unixbutton-1.9 {TkpComputeButtonGeometry procedure} -constraints {
     list [winfo reqwidth .b2] [winfo reqheight .b2]
 } -cleanup {
     deleteWindows
-} -result {37 47}
+} -result [list [expr {17 + $defaultBorder}] [expr {27 + $defaultBorder}]]
 test unixbutton-1.10 {TkpComputeButtonGeometry procedure} -constraints {
-    unix 
+    unix
 } -setup {
     deleteWindows
 } -body {
@@ -196,9 +210,9 @@ test unixbutton-1.10 {TkpComputeButtonGeometry procedure} -constraints {
     list [winfo reqwidth .b2] [winfo reqheight .b2]
 } -cleanup {
     deleteWindows
-} -result {37 47}
+} -result [list [expr {17 + $defaultBorder}] [expr {27 + $defaultBorder}]]
 test unixbutton-1.11 {TkpComputeButtonGeometry procedure} -constraints {
-    unix 
+    unix
 } -setup {
     deleteWindows
 } -body {
@@ -210,7 +224,7 @@ test unixbutton-1.11 {TkpComputeButtonGeometry procedure} -constraints {
 
 
 test unixbutton-2.1 {disabled coloring check, bug 669595} -constraints {
-    unix 
+    unix
 } -setup {
     deleteWindows
     catch {unset value}

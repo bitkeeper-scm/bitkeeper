@@ -4,8 +4,8 @@
  *	Declarations of types and functions used to implement the scale
  *	widget.
  *
- * Copyright (c) 1996 by Sun Microsystems, Inc.
- * Copyright (c) 1999-2000 by Scriptics Corporation.
+ * Copyright (c) 1996 Sun Microsystems, Inc.
+ * Copyright (c) 1999-2000 Scriptics Corporation.
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -73,8 +73,10 @@ typedef struct TkScale {
 				 * values. 0 means we get to choose the number
 				 * based on resolution and/or the range of the
 				 * scale. */
-    char format[10];		/* Sprintf conversion specifier computed from
+    char valueFormat[16];	/* Snprintf conversion specifier computed from
 				 * digits and other information. */
+    char tickFormat[16];	/* Snprintf conversion specifier computed from
+				 * tick interval. */
     double bigIncrement;	/* Amount to use for large increments to scale
 				 * value. (0 means we pick a value). */
     char *command;		/* Command prefix to use when invoking Tcl
@@ -151,7 +153,7 @@ typedef struct TkScale {
      */
 
     int fontHeight;		/* Height of scale font. */
-    Tk_Cursor cursor;		/* Current cursor for window, or None. */
+    Tk_Cursor cursor;		/* Current cursor for window, or NULL. */
     Tcl_Obj *takeFocusPtr;	/* Value of -takefocus option; not used in the
 				 * C code, but used by keyboard traversal
 				 * scripts. May be NULL. */
@@ -215,11 +217,20 @@ typedef struct TkScale {
 #define SPACING 2
 
 /*
+ * The tick values are all displayed with the same number of decimal places.
+ * This number of decimal places is such that the displayed values are all
+ * accurate to within the following proportion of a tick interval.
+ */
+
+#define TICK_VALUES_DISPLAY_ACCURACY 0.2
+
+/*
  * Declaration of procedures used in the implementation of the scale widget.
  */
 
 MODULE_SCOPE void	TkEventuallyRedrawScale(TkScale *scalePtr, int what);
-MODULE_SCOPE double	TkRoundToResolution(TkScale *scalePtr, double value);
+MODULE_SCOPE double	TkRoundValueToResolution(TkScale *scalePtr, double value);
+MODULE_SCOPE double	TkRoundIntervalToResolution(TkScale *scalePtr, double value);
 MODULE_SCOPE TkScale *	TkpCreateScale(Tk_Window tkwin);
 MODULE_SCOPE void	TkpDestroyScale(TkScale *scalePtr);
 MODULE_SCOPE void	TkpDisplayScale(ClientData clientData);

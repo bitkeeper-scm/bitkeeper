@@ -5,9 +5,7 @@
  *
  */
 
-#include <tk.h>
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
+#include "tkInt.h"
 #include "ttkTheme.h"
 
 #define DEFAULT_BORDERWIDTH "2"
@@ -21,6 +19,7 @@
 typedef struct {
     Tcl_Obj	*highlightColorObj;
     Tcl_Obj	*highlightThicknessObj;
+    Tcl_Obj	*defaultStateObj;
 } HighlightElement;
 
 static Ttk_ElementOptionSpec HighlightElementOptions[] = {
@@ -28,32 +27,51 @@ static Ttk_ElementOptionSpec HighlightElementOptions[] = {
 	Tk_Offset(HighlightElement,highlightColorObj), DEFAULT_BACKGROUND },
     { "-highlightthickness",TK_OPTION_PIXELS,
 	Tk_Offset(HighlightElement,highlightThicknessObj), "0" },
-    { NULL, 0, 0, NULL }
+    { "-default", TK_OPTION_ANY,
+	Tk_Offset(HighlightElement,defaultStateObj), "disabled" },
+    { NULL, TK_OPTION_BOOLEAN, 0, NULL }
 };
 
 static void HighlightElementSize(
-    void *clientData, void *elementRecord, Tk_Window tkwin,
-    int *widthPtr, int *heightPtr, Ttk_Padding *paddingPtr)
+    TCL_UNUSED(void *), /* clientData */
+    void *elementRecord,
+    Tk_Window tkwin,
+    TCL_UNUSED(int *), /* widthPtr */
+    TCL_UNUSED(int *), /* heightPtr */
+    Ttk_Padding *paddingPtr)
 {
-    HighlightElement *hl = elementRecord;
+    HighlightElement *hl = (HighlightElement *)elementRecord;
     int highlightThickness = 0;
 
-    Tcl_GetIntFromObj(NULL,hl->highlightThicknessObj,&highlightThickness);
+    Tk_GetPixelsFromObj(NULL, tkwin, hl->highlightThicknessObj, &highlightThickness);
     *paddingPtr = Ttk_UniformPadding((short)highlightThickness);
 }
 
 static void HighlightElementDraw(
-    void *clientData, void *elementRecord, Tk_Window tkwin,
-    Drawable d, Ttk_Box b, unsigned int state)
+    TCL_UNUSED(void *), /* clientData */
+    void *elementRecord,
+    Tk_Window tkwin,
+    Drawable d,
+    TCL_UNUSED(Ttk_Box),
+    TCL_UNUSED(Ttk_State))
 {
-    HighlightElement *hl = elementRecord;
+    HighlightElement *hl = (HighlightElement *)elementRecord;
     int highlightThickness = 0;
     XColor *highlightColor = Tk_GetColorFromObj(tkwin, hl->highlightColorObj);
+    int defaultState = TTK_BUTTON_DEFAULT_DISABLED;
 
-    Tcl_GetIntFromObj(NULL,hl->highlightThicknessObj,&highlightThickness);
+    Tk_GetPixelsFromObj(NULL, tkwin, hl->highlightThicknessObj,
+	&highlightThickness);
     if (highlightColor && highlightThickness > 0) {
-	GC gc = Tk_GCForColor(highlightColor, d);
-	Tk_DrawFocusHighlight(tkwin, gc, highlightThickness, d);
+	GC gc;
+	Ttk_GetButtonDefaultStateFromObj(NULL, hl->defaultStateObj,
+	    &defaultState);
+	gc = Tk_GCForColor(highlightColor, d);
+	if (defaultState == TTK_BUTTON_DEFAULT_NORMAL) {
+	    TkDrawInsetFocusHighlight(tkwin, gc, highlightThickness, d, 5);
+	} else {
+	    Tk_DrawFocusHighlight(tkwin, gc, highlightThickness, d);
+	}
     }
 }
 
@@ -68,7 +86,7 @@ static Ttk_ElementSpec HighlightElementSpec =
 
 /*------------------------------------------------------------------------
  * +++ Button Border element:
- * 
+ *
  * The Motif-style button border on X11 consists of (from outside-in):
  *
  * + focus indicator (controlled by -highlightcolor and -highlightthickness),
@@ -85,26 +103,30 @@ typedef struct {
 
 static Ttk_ElementOptionSpec ButtonBorderElementOptions[] =
 {
-    { "-background", TK_OPTION_BORDER, 
+    { "-background", TK_OPTION_BORDER,
 	Tk_Offset(ButtonBorderElement,borderObj), DEFAULT_BACKGROUND },
-    { "-borderwidth", TK_OPTION_PIXELS, 
+    { "-borderwidth", TK_OPTION_PIXELS,
 	Tk_Offset(ButtonBorderElement,borderWidthObj), DEFAULT_BORDERWIDTH },
-    { "-relief", TK_OPTION_RELIEF, 
+    { "-relief", TK_OPTION_RELIEF,
 	Tk_Offset(ButtonBorderElement,reliefObj), "flat" },
-    { "-default", TK_OPTION_ANY, 
+    { "-default", TK_OPTION_ANY,
 	Tk_Offset(ButtonBorderElement,defaultStateObj), "disabled" },
-    { NULL, 0, 0, NULL }
+    { NULL, TK_OPTION_BOOLEAN, 0, NULL }
 };
 
 static void ButtonBorderElementSize(
-    void *clientData, void *elementRecord, Tk_Window tkwin,
-    int *widthPtr, int *heightPtr, Ttk_Padding *paddingPtr)
+    TCL_UNUSED(void *), /* clientData */
+    void *elementRecord,
+    Tk_Window tkwin,
+    TCL_UNUSED(int *), /* widthPtr */
+    TCL_UNUSED(int *), /* heightPtr */
+    Ttk_Padding *paddingPtr)
 {
-    ButtonBorderElement *bd = elementRecord;
+    ButtonBorderElement *bd = (ButtonBorderElement *)elementRecord;
     int defaultState = TTK_BUTTON_DEFAULT_DISABLED;
     int borderWidth = 0;
 
-    Tcl_GetIntFromObj(NULL, bd->borderWidthObj, &borderWidth);
+    Tk_GetPixelsFromObj(NULL, tkwin, bd->borderWidthObj, &borderWidth);
     Ttk_GetButtonDefaultStateFromObj(NULL, bd->defaultStateObj, &defaultState);
 
     if (defaultState != TTK_BUTTON_DEFAULT_DISABLED) {
@@ -115,14 +137,18 @@ static void ButtonBorderElementSize(
 
 /*
  * (@@@ Note: ButtonBorderElement still still still buggy:
- * padding for default ring is drawn in the wrong color 
+ * padding for default ring is drawn in the wrong color
  * when the button is active.)
  */
 static void ButtonBorderElementDraw(
-    void *clientData, void *elementRecord, Tk_Window tkwin,
-    Drawable d, Ttk_Box b, unsigned int state)
+    TCL_UNUSED(void *), /* clientData */
+    void *elementRecord,
+    Tk_Window tkwin,
+    Drawable d,
+    Ttk_Box b,
+    TCL_UNUSED(Ttk_State))
 {
-    ButtonBorderElement *bd = elementRecord;
+    ButtonBorderElement *bd = (ButtonBorderElement *)elementRecord;
     Tk_3DBorder border = NULL;
     int borderWidth = 1, relief = TK_RELIEF_FLAT;
     int defaultState = TTK_BUTTON_DEFAULT_DISABLED;
@@ -132,7 +158,7 @@ static void ButtonBorderElementDraw(
      * Get option values.
      */
     border = Tk_Get3DBorderFromObj(tkwin, bd->borderObj);
-    Tcl_GetIntFromObj(NULL, bd->borderWidthObj, &borderWidth);
+    Tk_GetPixelsFromObj(NULL, tkwin, bd->borderWidthObj, &borderWidth);
     Tk_GetReliefFromObj(NULL, bd->reliefObj, &relief);
     Ttk_GetButtonDefaultStateFromObj(NULL, bd->defaultStateObj, &defaultState);
 
@@ -147,15 +173,15 @@ static void ButtonBorderElementDraw(
 	    inset += 5;
 	    break;
 	case TTK_BUTTON_DEFAULT_ACTIVE :
-            Tk_Draw3DRectangle(tkwin, d, border,
+	    Tk_Draw3DRectangle(tkwin, d, border,
 		b.x+inset, b.y+inset, b.width - 2*inset, b.height - 2*inset,
 		2, TK_RELIEF_FLAT);
-            inset += 2;
-            Tk_Draw3DRectangle(tkwin, d, border,
+	    inset += 2;
+	    Tk_Draw3DRectangle(tkwin, d, border,
 		b.x+inset, b.y+inset, b.width - 2*inset, b.height - 2*inset,
 		1, TK_RELIEF_SUNKEN);
 	    ++inset;
-            Tk_Draw3DRectangle(tkwin, d, border,
+	    Tk_Draw3DRectangle(tkwin, d, border,
 		b.x+inset, b.y+inset, b.width - 2*inset, b.height - 2*inset,
 		2, TK_RELIEF_FLAT);
 	    inset += 2;
@@ -206,14 +232,18 @@ static Ttk_ElementOptionSpec ArrowElementOptions[] =
     { "-borderwidth", TK_OPTION_PIXELS, Tk_Offset(ArrowElement,borderWidthObj),
     	DEFAULT_BORDERWIDTH },
     { "-relief", TK_OPTION_RELIEF, Tk_Offset(ArrowElement,reliefObj),"raised" },
-    { NULL, 0, 0, NULL }
+    { NULL, TK_OPTION_BOOLEAN, 0, NULL }
 };
 
 static void ArrowElementSize(
-    void *clientData, void *elementRecord, Tk_Window tkwin,
-    int *widthPtr, int *heightPtr, Ttk_Padding *paddingPtr)
+    TCL_UNUSED(void *), /* clientData */
+    void *elementRecord,
+    Tk_Window tkwin,
+    int *widthPtr,
+    int *heightPtr,
+    TCL_UNUSED(Ttk_Padding *))
 {
-    ArrowElement *arrow = elementRecord;
+    ArrowElement *arrow = (ArrowElement *)elementRecord;
     int size = 12;
 
     Tk_GetPixelsFromObj(NULL, tkwin, arrow->sizeObj, &size);
@@ -222,10 +252,11 @@ static void ArrowElementSize(
 
 static void ArrowElementDraw(
     void *clientData, void *elementRecord, Tk_Window tkwin,
-    Drawable d, Ttk_Box b, unsigned int state)
+    Drawable d, Ttk_Box b,
+    TCL_UNUSED(Ttk_State))
 {
     int direction = *(int *)clientData;
-    ArrowElement *arrow = elementRecord;
+    ArrowElement *arrow = (ArrowElement *)elementRecord;
     Tk_3DBorder border = Tk_Get3DBorderFromObj(tkwin, arrow->borderObj);
     int borderWidth = 2;
     int relief = TK_RELIEF_RAISED;
@@ -234,7 +265,6 @@ static void ArrowElementDraw(
 
     Tk_GetPixelsFromObj(NULL, tkwin, arrow->borderWidthObj, &borderWidth);
     Tk_GetReliefFromObj(NULL, arrow->reliefObj, &relief);
-
 
     /*
      * @@@ There are off-by-one pixel errors in the way these are drawn;
@@ -281,19 +311,19 @@ static Ttk_ElementSpec ArrowElementSpec =
 /*------------------------------------------------------------------------
  * +++ Sash element (for ttk::panedwindow)
  *
- * NOTES: 
+ * NOTES:
  *
  * panedwindows with -orient horizontal use vertical sashes, and vice versa.
  *
  * Interpretation of -sashrelief 'groove' and 'ridge' are
  * swapped wrt. the core panedwindow, which (I think) has them backwards.
  *
- * Default -sashrelief is sunken; the core panedwindow has default 
+ * Default -sashrelief is sunken; the core panedwindow has default
  * -sashrelief raised, but that looks wrong to me.
  */
 
 static Ttk_Orient SashClientData[] = {
-    TTK_ORIENT_HORIZONTAL, TTK_ORIENT_VERTICAL 
+    TTK_ORIENT_HORIZONTAL, TTK_ORIENT_VERTICAL
 };
 
 typedef struct {
@@ -306,26 +336,27 @@ typedef struct {
 } SashElement;
 
 static Ttk_ElementOptionSpec SashOptions[] = {
-    { "-background", TK_OPTION_BORDER, 
+    { "-background", TK_OPTION_BORDER,
 	Tk_Offset(SashElement,borderObj), DEFAULT_BACKGROUND },
-    { "-sashrelief", TK_OPTION_RELIEF, 
+    { "-sashrelief", TK_OPTION_RELIEF,
 	Tk_Offset(SashElement,sashReliefObj), "sunken" },
     { "-sashthickness", TK_OPTION_PIXELS,
 	Tk_Offset(SashElement,sashThicknessObj), "6" },
-    { "-sashpad", TK_OPTION_PIXELS, 
+    { "-sashpad", TK_OPTION_PIXELS,
 	Tk_Offset(SashElement,sashPadObj), "2" },
     { "-handlesize", TK_OPTION_PIXELS,
 	Tk_Offset(SashElement,handleSizeObj), "8" },
     { "-handlepad", TK_OPTION_PIXELS,
 	Tk_Offset(SashElement,handlePadObj), "8" },
-    { NULL, 0, 0, NULL }
+    { NULL, TK_OPTION_BOOLEAN, 0, NULL }
 };
 
 static void SashElementSize(
     void *clientData, void *elementRecord, Tk_Window tkwin,
-    int *widthPtr, int *heightPtr, Ttk_Padding *paddingPtr)
+    int *widthPtr, int *heightPtr,
+    TCL_UNUSED(Ttk_Padding *))
 {
-    SashElement *sash = elementRecord;
+    SashElement *sash = (SashElement *)elementRecord;
     int sashPad = 2, sashThickness = 6, handleSize = 8;
     int horizontal = *((Ttk_Orient*)clientData) == TTK_ORIENT_HORIZONTAL;
 
@@ -344,9 +375,10 @@ static void SashElementSize(
 
 static void SashElementDraw(
     void *clientData, void *elementRecord, Tk_Window tkwin,
-    Drawable d, Ttk_Box b, Ttk_State state)
+    Drawable d, Ttk_Box b,
+    TCL_UNUSED(Ttk_State))
 {
-    SashElement *sash = elementRecord;
+    SashElement *sash = (SashElement *)elementRecord;
     Tk_3DBorder border = Tk_Get3DBorderFromObj(tkwin, sash->borderObj);
     GC gc1,gc2;
     int relief = TK_RELIEF_RAISED;
@@ -367,10 +399,10 @@ static void SashElementDraw(
 	    gc1 = Tk_3DBorderGC(tkwin, border, TK_3D_DARK_GC);
 	    gc2 = Tk_3DBorderGC(tkwin, border, TK_3D_LIGHT_GC);
 	    break;
-	case TK_RELIEF_SOLID: 
+	case TK_RELIEF_SOLID:
 	    gc1 = gc2 = Tk_3DBorderGC(tkwin, border, TK_3D_DARK_GC);
 	    break;
-	case TK_RELIEF_FLAT: 
+	case TK_RELIEF_FLAT:
 	default:
 	    gc1 = gc2 = Tk_3DBorderGC(tkwin, border, TK_3D_FLAT_GC);
 	    break;
@@ -398,7 +430,7 @@ static void SashElementDraw(
 	    hb = Ttk_StickBox(b, handleSize, handleSize, TTK_STICK_N);
 	    hb.y += handlePad;
 	}
-	Tk_Fill3DRectangle(tkwin, d, border, 
+	Tk_Fill3DRectangle(tkwin, d, border,
 	    hb.x, hb.y, hb.width, hb.height, 1, TK_RELIEF_RAISED);
     }
 }
@@ -419,55 +451,83 @@ TTK_BEGIN_LAYOUT_TABLE(LayoutTable)
 
 TTK_LAYOUT("TButton",
     TTK_GROUP("Button.highlight", TTK_FILL_BOTH,
-        TTK_GROUP("Button.border", TTK_FILL_BOTH|TTK_BORDER,
+	TTK_GROUP("Button.border", TTK_FILL_BOTH|TTK_BORDER,
 	    TTK_GROUP("Button.padding", TTK_FILL_BOTH,
-	        TTK_NODE("Button.label", TTK_FILL_BOTH)))))
+		TTK_NODE("Button.label", TTK_FILL_BOTH)))))
 
 TTK_LAYOUT("TCheckbutton",
     TTK_GROUP("Checkbutton.highlight", TTK_FILL_BOTH,
-        TTK_GROUP("Checkbutton.border", TTK_FILL_BOTH,
+	TTK_GROUP("Checkbutton.border", TTK_FILL_BOTH,
 	    TTK_GROUP("Checkbutton.padding", TTK_FILL_BOTH,
-	        TTK_NODE("Checkbutton.indicator", TTK_PACK_LEFT)
-	        TTK_NODE("Checkbutton.label", TTK_PACK_LEFT|TTK_FILL_BOTH)))))
+		TTK_NODE("Checkbutton.indicator", TTK_PACK_LEFT)
+		TTK_NODE("Checkbutton.label", TTK_PACK_LEFT|TTK_FILL_BOTH)))))
 
 TTK_LAYOUT("TRadiobutton",
     TTK_GROUP("Radiobutton.highlight", TTK_FILL_BOTH,
-        TTK_GROUP("Radiobutton.border", TTK_FILL_BOTH,
+	TTK_GROUP("Radiobutton.border", TTK_FILL_BOTH,
 	    TTK_GROUP("Radiobutton.padding", TTK_FILL_BOTH,
-	        TTK_NODE("Radiobutton.indicator", TTK_PACK_LEFT)
-	        TTK_NODE("Radiobutton.label", TTK_PACK_LEFT|TTK_FILL_BOTH)))))
+		TTK_NODE("Radiobutton.indicator", TTK_PACK_LEFT)
+		TTK_NODE("Radiobutton.label", TTK_PACK_LEFT|TTK_FILL_BOTH)))))
 
 TTK_LAYOUT("TMenubutton",
     TTK_GROUP("Menubutton.highlight", TTK_FILL_BOTH,
-        TTK_GROUP("Menubutton.border", TTK_FILL_BOTH,
+	TTK_GROUP("Menubutton.border", TTK_FILL_BOTH,
 	    TTK_NODE("Menubutton.indicator", TTK_PACK_RIGHT)
-	    TTK_GROUP("Menubutton.padding", TTK_PACK_LEFT|TTK_EXPAND|TTK_FILL_X,
-	        TTK_NODE("Menubutton.label", 0)))))
+	    TTK_GROUP("Menubutton.padding", TTK_FILL_X,
+		TTK_NODE("Menubutton.label", 0)))))
 
 /* "classic" entry, includes highlight border */
 TTK_LAYOUT("TEntry",
     TTK_GROUP("Entry.highlight", TTK_FILL_BOTH,
-        TTK_GROUP("Entry.field", TTK_FILL_BOTH|TTK_BORDER,
+	TTK_GROUP("Entry.field", TTK_FILL_BOTH|TTK_BORDER,
 	    TTK_GROUP("Entry.padding", TTK_FILL_BOTH,
-	        TTK_NODE("Entry.textarea", TTK_FILL_BOTH)))))
+		TTK_NODE("Entry.textarea", TTK_FILL_BOTH)))))
 
-/* Notebook tabs -- omit focus ring */
-TTK_LAYOUT("Tab",
-    TTK_GROUP("Notebook.tab", TTK_FILL_BOTH,
-	TTK_GROUP("Notebook.padding", TTK_FILL_BOTH,
-	    TTK_NODE("Notebook.label", TTK_FILL_BOTH))))
+/* "classic" combobox, includes highlight border */
+TTK_LAYOUT("TCombobox",
+    TTK_GROUP("Combobox.highlight", TTK_FILL_BOTH,
+	TTK_GROUP("Combobox.field", TTK_FILL_BOTH,
+	    TTK_NODE("Combobox.downarrow", TTK_PACK_RIGHT|TTK_FILL_Y)
+	    TTK_GROUP("Combobox.padding", TTK_FILL_BOTH,
+		TTK_NODE("Combobox.textarea", TTK_FILL_BOTH)))))
+
+/* "classic" spinbox, includes highlight border */
+TTK_LAYOUT("TSpinbox",
+    TTK_GROUP("Spinbox.highlight", TTK_FILL_BOTH,
+	TTK_GROUP("Spinbox.field", TTK_FILL_BOTH|TTK_FILL_X,
+	    TTK_GROUP("null", TTK_PACK_RIGHT,
+		TTK_NODE("Spinbox.uparrow", TTK_PACK_TOP|TTK_STICK_E)
+		TTK_NODE("Spinbox.downarrow", TTK_PACK_BOTTOM|TTK_STICK_E))
+	    TTK_GROUP("Spinbox.padding", TTK_FILL_BOTH,
+		TTK_NODE("Spinbox.textarea", TTK_FILL_BOTH)))))
+
+/* "classic" scale, includes highlight border */
+TTK_LAYOUT("Vertical.TScale",
+    TTK_GROUP("Vertical.Scale.highlight", TTK_FILL_BOTH,
+	TTK_GROUP("Vertical.Scale.trough", TTK_FILL_BOTH,
+	    TTK_NODE("Vertical.Scale.slider", TTK_PACK_TOP))))
+
+TTK_LAYOUT("Horizontal.TScale",
+    TTK_GROUP("Horizontal.Scale.highlight", TTK_FILL_BOTH,
+	TTK_GROUP("Horizontal.Scale.trough", TTK_FILL_BOTH,
+	    TTK_NODE("Horizontal.Scale.slider", TTK_PACK_LEFT))))
+
+/* put highlight border around treeview */
+TTK_LAYOUT("Treeview",
+    TTK_GROUP("Treeview.highlight", TTK_FILL_BOTH,
+	TTK_GROUP("Treeview.field", TTK_FILL_BOTH|TTK_BORDER,
+	    TTK_GROUP("Treeview.padding", TTK_FILL_BOTH,
+		TTK_NODE("Treeview.treearea", TTK_FILL_BOTH)))))
 
 TTK_END_LAYOUT_TABLE
-
-/* POSSIBLY: include Scale layouts w/focus border
- */
 
 /*------------------------------------------------------------------------
  * TtkClassicTheme_Init --
  * 	Install classic theme.
  */
 
-MODULE_SCOPE int TtkClassicTheme_Init(Tcl_Interp *interp)
+MODULE_SCOPE int
+TtkClassicTheme_Init(Tcl_Interp *interp)
 {
     Ttk_Theme theme =  Ttk_CreateTheme(interp, "classic", NULL);
 
@@ -495,7 +555,7 @@ MODULE_SCOPE int TtkClassicTheme_Init(Tcl_Interp *interp)
     Ttk_RegisterElement(interp, theme, "arrow",
 	    &ArrowElementSpec, &ArrowElements[0]);
 
-    Ttk_RegisterElement(interp, theme, "hsash", 
+    Ttk_RegisterElement(interp, theme, "hsash",
 	    &SashElementSpec, &SashClientData[0]);
     Ttk_RegisterElement(interp, theme, "vsash",
 	    &SashElementSpec, &SashClientData[1]);

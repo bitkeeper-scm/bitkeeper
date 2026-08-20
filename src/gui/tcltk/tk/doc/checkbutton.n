@@ -4,7 +4,7 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
+'\"
 .TH checkbutton n 4.4 Tk "Tk Built-In Commands"
 .so man.macros
 .BS
@@ -52,7 +52,7 @@ and setting \fB\-indicatoron\fR to false and \fB\-overrelief\fR to
 the effect is achieved
 of having a flat button that raises on mouse-over and which is
 depressed when activated.  This is the behavior typically exhibited by
-the Bold, Italic, and Underline checkbuttons on the toolbar of a 
+the Bold, Italic, and Underline checkbuttons on the toolbar of a
 word-processor, for example.
 .OP \-offvalue offValue Value
 Specifies value to store in the button's associated variable whenever

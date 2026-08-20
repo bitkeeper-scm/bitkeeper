@@ -3,9 +3,9 @@
  *
  *	This file contains the basic Mac OS X Event handling routines.
  *
- * Copyright (c) 1995-1997 Sun Microsystems, Inc.
- * Copyright 2001-2009, Apple Inc.
- * Copyright (c) 2005-2009 Daniel A. Steffen <das@users.sourceforge.net>
+ * Copyright © 1995-1997 Sun Microsystems, Inc.
+ * Copyright © 2001-2009 Apple Inc.
+ * Copyright © 2005-2009 Daniel A. Steffen <das@users.sourceforge.net>
  *
  * See the file "license.terms" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -14,6 +14,7 @@
 #include "tkMacOSXPrivate.h"
 #include "tkMacOSXEvent.h"
 #include "tkMacOSXDebug.h"
+#include "tkMacOSXConstants.h"
 
 #pragma mark TKApplication(TKEvent)
 
@@ -26,7 +27,7 @@ enum {
 - (NSEvent *) tkProcessEvent: (NSEvent *) theEvent
 {
 #ifdef TK_MAC_DEBUG_EVENTS
-    TKLog(@"-[%@(%p) %s] %@", [self class], self, _cmd, theEvent);
+    TKLog(@"-[%@(%p) %s] %@", [self class], self, sel_getName(_cmd), theEvent);
 #endif
     NSEvent	    *processedEvent = theEvent;
     NSEventType	    type = [theEvent type];
@@ -88,7 +89,6 @@ enum {
 	}
     case NSCursorUpdate:
         break;
-#if MAC_OS_X_VERSION_MAX_ALLOWED >= 1060
     case NSEventTypeGesture:
     case NSEventTypeMagnify:
     case NSEventTypeRotate:
@@ -97,7 +97,6 @@ enum {
     case NSEventTypeEndGesture:
         break;
 #endif
-#endif
 
     default:
 	break; /* return theEvent */
@@ -105,44 +104,8 @@ enum {
     return processedEvent;
 }
 @end
-
 #pragma mark -
-
-/*
- *----------------------------------------------------------------------
- *
- * TkMacOSXFlushWindows --
- *
- *	This routine flushes all the visible windows of the application. It is
- *	called by XSync().
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	Flushes all visible Cocoa windows
- *
- *----------------------------------------------------------------------
- */
 
-MODULE_SCOPE void
-TkMacOSXFlushWindows(void)
-{
-    /* This can be called from outside the Appkit event loop,
-     * so it needs its own AutoreleasePool.
-     */
-    NSAutoreleasePool *pool = [NSAutoreleasePool new];
-    NSArray *macWindows = [NSApp orderedWindows];
-
-    for (NSWindow *w in macWindows) {
-	if (TkMacOSXGetXWindow(w)) {
-	    [w flushWindow];
-	}
-    }
-    [pool drain];
-}
-
-
 /*
  * Local Variables:
  * mode: objc

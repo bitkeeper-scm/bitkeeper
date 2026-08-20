@@ -3,7 +3,7 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
+'\"
 .TH Tk_CreateClientMessageHandler 3 "8.4" Tk "Tk Library Procedures"
 .so man.macros
 .BS
@@ -31,7 +31,7 @@ drop applications.
 The callback to \fIproc\fR will be made by \fBTk_HandleEvent\fR;
 this mechanism only works in programs that dispatch events
 through \fBTk_HandleEvent\fR (or through other Tk procedures that
-call \fBTk_HandleEvent\fR, such as \fBTk_DoOneEvent\fR or
+call \fBTk_HandleEvent\fR, such as \fBTcl_DoOneEvent\fR or
 \fBTk_MainLoop\fR).
 .PP
 \fIProc\fR should have arguments and result that match the

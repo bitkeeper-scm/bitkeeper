@@ -10,8 +10,7 @@
  * [style map].
  */
 
-#include <string.h>
-#include <tk.h>
+#include "tkInt.h"
 #include "ttkTheme.h"
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
@@ -25,6 +24,8 @@ struct TtkImageSpec {
     int 		mapCount;	/* #state-specific overrides */
     Ttk_StateSpec	*states;	/* array[mapCount] of states ... */
     Tk_Image		*images;	/* ... per-state images to use */
+    Tk_ImageChangedProc *imageChanged;
+    ClientData		imageChangedClientData;
 };
 
 /* NullImageChanged --
@@ -34,14 +35,40 @@ static void NullImageChanged(ClientData clientData,
     int x, int y, int width, int height, int imageWidth, int imageHeight)
 { /* No-op */ }
 
+/* ImageSpecImageChanged --
+ *     Image changes should trigger a repaint.
+ */
+static void ImageSpecImageChanged(ClientData clientData,
+    int x, int y, int width, int height, int imageWidth, int imageHeight)
+{
+    Ttk_ImageSpec *imageSpec = (Ttk_ImageSpec *)clientData;
+    if (imageSpec->imageChanged != NULL) {
+	imageSpec->imageChanged(imageSpec->imageChangedClientData,
+		x, y, width, height,
+		imageWidth, imageHeight);
+    }
+}
+
 /* TtkGetImageSpec --
  * 	Constructs a Ttk_ImageSpec * from a Tcl_Obj *.
  * 	Result must be released using TtkFreeImageSpec.
  *
- * TODO: Need a variant of this that takes a user-specified ImageChanged proc
  */
 Ttk_ImageSpec *
 TtkGetImageSpec(Tcl_Interp *interp, Tk_Window tkwin, Tcl_Obj *objPtr)
+{
+    return TtkGetImageSpecEx(interp, tkwin, objPtr, NULL, NULL);
+}
+
+/* TtkGetImageSpecEx --
+ * 	Constructs a Ttk_ImageSpec * from a Tcl_Obj *.
+ * 	Result must be released using TtkFreeImageSpec.
+ * 	imageChangedProc will be called when not NULL when
+ * 	the image changes to allow widgets to repaint.
+ */
+Ttk_ImageSpec *
+TtkGetImageSpecEx(Tcl_Interp *interp, Tk_Window tkwin, Tcl_Obj *objPtr,
+    Tk_ImageChangedProc *imageChangedProc, ClientData imageChangedClientData)
 {
     Ttk_ImageSpec *imageSpec = 0;
     int i = 0, n = 0, objc;
@@ -52,6 +79,8 @@ TtkGetImageSpec(Tcl_Interp *interp, Tk_Window tkwin, Tcl_Obj *objPtr)
     imageSpec->mapCount = 0;
     imageSpec->states = 0;
     imageSpec->images = 0;
+    imageSpec->imageChanged = imageChangedProc;
+    imageSpec->imageChangedClientData = imageChangedClientData;
 
     if (Tcl_ListObjGetElements(interp, objPtr, &objc, &objv) != TCL_OK) {
 	goto error;
@@ -74,7 +103,7 @@ TtkGetImageSpec(Tcl_Interp *interp, Tk_Window tkwin, Tcl_Obj *objPtr)
     /* Get base image:
     */
     imageSpec->baseImage = Tk_GetImage(
-	    interp, tkwin, Tcl_GetString(objv[0]), NullImageChanged, NULL);
+	    interp, tkwin, Tcl_GetString(objv[0]), ImageSpecImageChanged, imageSpec);
     if (!imageSpec->baseImage) {
     	goto error;
     }
@@ -127,7 +156,10 @@ void TtkFreeImageSpec(Ttk_ImageSpec *imageSpec)
 /* TtkSelectImage --
  * 	Return a state-specific image from an ImageSpec
  */
-Tk_Image TtkSelectImage(Ttk_ImageSpec *imageSpec, Ttk_State state)
+Tk_Image TtkSelectImage(
+    Ttk_ImageSpec *imageSpec,
+    TCL_UNUSED(Tk_Window),
+    Ttk_State state)
 {
     int i;
     for (i = 0; i < imageSpec->mapCount; ++i) {
@@ -220,7 +252,7 @@ static void Ttk_Tile(
 typedef struct {		/* ClientData for image elements */
     Ttk_ImageSpec *imageSpec;	/* Image(s) to use */
     int minWidth;		/* Minimum width; overrides image width */
-    int minHeight;		/* Minimum width; overrides image width */
+    int minHeight;		/* Minimum height; overrides image height */
     Ttk_Sticky sticky;		/* -stickiness specification */
     Ttk_Padding border;		/* Fixed border region */
     Ttk_Padding padding;	/* Internal padding */
@@ -278,10 +310,10 @@ static void ImageElementDraw(
 	}
     }
     if (!image) {
-	image = TtkSelectImage(imageData->imageSpec, state);
+	image = TtkSelectImage(imageData->imageSpec, tkwin, state);
     }
 #else
-    image = TtkSelectImage(imageData->imageSpec, state);
+    image = TtkSelectImage(imageData->imageSpec, tkwin, state);
 #endif
 
     if (!image) {
@@ -315,7 +347,7 @@ Ttk_CreateImageElement(
     const char *elementName,
     int objc, Tcl_Obj *const objv[])
 {
-    static const char *optionStrings[] =
+    static const char *const optionStrings[] =
 	 { "-border","-height","-padding","-sticky","-width",NULL };
     enum { O_BORDER, O_HEIGHT, O_PADDING, O_STICKY, O_WIDTH };
 
@@ -413,8 +445,8 @@ error:
     return TCL_ERROR;
 }
 
-MODULE_SCOPE
-void TtkImage_Init(Tcl_Interp *interp)
+MODULE_SCOPE void
+TtkImage_Init(Tcl_Interp *interp)
 {
     Ttk_RegisterElementFactory(interp, "image", Ttk_CreateImageElement, NULL);
 }

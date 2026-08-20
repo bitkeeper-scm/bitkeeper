@@ -4,7 +4,7 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
+'\"
 .TH grab n "" Tk "Tk Built-In Commands"
 .so man.macros
 .BS
@@ -60,6 +60,16 @@ are always sent to the grabbing application.
 The \fBfocus\fR command is still used to determine which window in the
 application receives the keyboard events.
 The keyboard grab is released when the grab is released.
+.PP
+On macOS a global grab affects all windows created by one Tk process.
+No window in that process other than the grab window can even be
+focused, hence no other window receives key or mouse events.  A local
+grab on macOS affects all windows created by one Tcl interpreter.  It
+is possible to focus any window belonging to the Tk process during a
+local grab but the grab window is the only window created by its
+interpreter which receives key or mouse events.  Windows belonging to the
+same process but created by different interpreters continue to receive
+key and mouse events normally.
 .PP
 Grabs apply to particular displays.  If an application has windows
 on multiple displays then it can establish a separate grab on each

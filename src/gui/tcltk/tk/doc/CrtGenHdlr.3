@@ -4,7 +4,7 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
+'\"
 .TH Tk_CreateGenericHandler 3 "" Tk "Tk Library Procedures"
 .so man.macros
 .BS
@@ -38,7 +38,7 @@ use with Tk, and so on.
 The callback to \fIproc\fR will be made by \fBTk_HandleEvent\fR;
 this mechanism only works in programs that dispatch events
 through \fBTk_HandleEvent\fR (or through other Tk procedures that
-call \fBTk_HandleEvent\fR, such as \fBTk_DoOneEvent\fR or
+call \fBTk_HandleEvent\fR, such as \fBTcl_DoOneEvent\fR or
 \fBTk_MainLoop\fR).
 .PP
 \fIProc\fR should have arguments and result that match the

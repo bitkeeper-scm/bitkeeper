@@ -3,7 +3,7 @@
  *
  *	This file contains the initializers for the Tk stub vectors.
  *
- * Copyright (c) 1998-1999 by Scriptics Corporation.
+ * Copyright (c) 1998-1999 Scriptics Corporation.
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -24,6 +24,7 @@
 #if defined(MAC_OSX_TK)
 /* we could have used _TKMACINT */
 #include "tkMacOSXInt.h"
+#include "tkMacOSXPrivate.h"
 #endif
 
 /* TODO: These ought to come in some other way */
@@ -38,6 +39,47 @@ MODULE_SCOPE const TkStubs tkStubs;
  */
 
 #undef Tk_MainEx
+#undef XVisualIDFromVisual
+#undef XSynchronize
+#undef XUngrabServer
+#undef XNoOp
+#undef XGrabServer
+#undef XFree
+#undef XFlush
+#undef Tk_FreeStyleFromObj
+#define TkUnusedStubEntry 0
+
+#define TkpCmapStressed_ TkpCmapStressed
+#define TkpSync_ TkpSync
+#define TkUnixContainerId_ TkUnixContainerId
+#define TkUnixDoOneXEvent_ TkUnixDoOneXEvent
+#define TkUnixSetMenubar_ TkUnixSetMenubar
+#define TkWmCleanup_ TkWmCleanup
+#define TkSendCleanup_ TkSendCleanup
+#define TkpTestsendCmd_ TkpTestsendCmd
+#define TkGenWMConfigureEvent_ TkGenWMConfigureEvent
+#define TkGenerateActivateEvents_ TkGenerateActivateEvents
+
+#if !defined(MAC_OSX_TK) && defined(MAC_OSX_TCL)
+#   undef TkpWillDrawWidget
+#   undef TkpRedrawWidget
+static int
+doNothing(void)
+{
+    /* dummy implementation, no need to do anything */
+    return 0;
+}
+#   define TkpWillDrawWidget ((int (*)(Tk_Window))(void *)doNothing)
+#   define TkpRedrawWidget ((void (*)(Tk_Window))(void *)doNothing)
+#endif
+
+#if defined(MAC_OSX_TK)
+#   define Tk_MacOSXGetNSWindowForDrawable TkMacOSXDrawable
+#   define Tk_MacOSXGetCGContextForDrawable GetCGContextForDrawable
+static void *GetCGContextForDrawable(Drawable d) {
+	return TkMacOSXGetCGContextForDrawable(d);
+}
+#endif
 
 #ifdef _WIN32
 
@@ -62,6 +104,9 @@ TkCreateXEventSource(void)
 #   define TkUnixContainerId 0
 #   define TkUnixDoOneXEvent 0
 #   define TkUnixSetMenubar 0
+#   define XCreateWindow 0
+#   define XOffsetRegion 0
+#   define XUnionRegion 0
 #   define TkWmCleanup (void (*)(TkDisplay *)) TkpSync
 #   define TkSendCleanup (void (*)(TkDisplay *)) TkpSync
 #   define TkpTestsendCmd 0
@@ -106,7 +151,7 @@ TkpPrintWindowId(
 				 * the hex representation of a pointer. */
     Window window)		/* Window to be printed into buffer. */
 {
-    sprintf(buf, "%#08lx", (unsigned long) (window));
+    snprintf(buf, TCL_INTEGER_SPACE, "0x%" TCL_Z_MODIFIER "x", (size_t)window);
 }
 
 int
@@ -131,29 +176,29 @@ TkRegion TkCreateRegion()
     return (TkRegion) XCreateRegion();
 }
 
-void TkDestroyRegion(TkRegion r)
+int TkDestroyRegion(TkRegion r)
 {
-    XDestroyRegion((Region)r);
+	return XDestroyRegion((Region)r);
 }
 
-void TkSetRegion(Display *d, GC g, TkRegion r)
+int TkSetRegion(Display *d, GC g, TkRegion r)
 {
-    XSetRegion(d, g, (Region)r);
+	return XSetRegion(d, g, (Region)r);
 }
 
-void TkUnionRectWithRegion(XRectangle *a, TkRegion b, TkRegion c)
+int TkUnionRectWithRegion(XRectangle *a, TkRegion b, TkRegion c)
 {
-    XUnionRectWithRegion(a, (Region) b, (Region) c);
+	return XUnionRectWithRegion(a, (Region) b, (Region) c);
 }
 
-void TkClipBox(TkRegion a, XRectangle *b)
+int TkClipBox(TkRegion a, XRectangle *b)
 {
-    XClipBox((Region) a, b);
+	return XClipBox((Region) a, b);
 }
 
-void TkIntersectRegion(TkRegion a, TkRegion b, TkRegion c)
+int TkIntersectRegion(TkRegion a, TkRegion b, TkRegion c)
 {
-    XIntersectRegion((Region) a, (Region) b, (Region) c);
+	return XIntersectRegion((Region) a, (Region) b, (Region) c);
 }
 
 int TkRectInRegion (TkRegion r, int a, int b, unsigned int c, unsigned int d)
@@ -161,9 +206,9 @@ int TkRectInRegion (TkRegion r, int a, int b, unsigned int c, unsigned int d)
     return XRectInRegion((Region) r, a, b, c, d);
 }
 
-void TkSubtractRegion (TkRegion a, TkRegion b, TkRegion c)
+int TkSubtractRegion (TkRegion a, TkRegion b, TkRegion c)
 {
-    XSubtractRegion((Region) a, (Region) b, (Region) c);
+    return XSubtractRegion((Region) a, (Region) b, (Region) c);
 }
 
 	/* TODO: To be implemented for Cygwin */
@@ -173,8 +218,8 @@ void TkSubtractRegion (TkRegion a, TkRegion b, TkRegion c)
 #	define Tk_PointerEvent 0
 #	define Tk_TranslateWinEvent 0
 #	define TkAlignImageData 0
-#	define TkGenerateActivateEvents 0
 #	define TkpGetMS 0
+#	define TkpGetCapture 0
 #	define TkPointerDeadWindow 0
 #	define TkpSetCapture 0
 #	define TkpSetCursor 0
@@ -216,14 +261,14 @@ void TkSubtractRegion (TkRegion a, TkRegion b, TkRegion c)
 #	undef TkUnionRectWithRegion
 #	undef TkSubtractRegion
 
-#	define TkClipBox (void (*) (TkRegion, XRectangle *)) XClipBox
+#	define TkClipBox (int (*) (TkRegion, XRectangle *)) XClipBox
 #	define TkCreateRegion (TkRegion (*) ()) XCreateRegion
-#	define TkDestroyRegion (void (*) (TkRegion)) XDestroyRegion
-#	define TkIntersectRegion (void (*) (TkRegion, TkRegion, TkRegion)) XIntersectRegion
+#	define TkDestroyRegion (int (*) (TkRegion)) XDestroyRegion
+#	define TkIntersectRegion (int (*) (TkRegion, TkRegion, TkRegion)) XIntersectRegion
 #	define TkRectInRegion (int (*) (TkRegion, int, int, unsigned int, unsigned int)) XRectInRegion
-#	define TkSetRegion (void (*) (Display *, GC, TkRegion)) XSetRegion
-#	define TkUnionRectWithRegion (void (*) (XRectangle *, TkRegion, TkRegion)) XUnionRectWithRegion
-#	define TkSubtractRegion (void (*) (TkRegion, TkRegion, TkRegion)) XSubtractRegion
+#	define TkSetRegion (int (*) (Display *, GC, TkRegion)) XSetRegion
+#	define TkUnionRectWithRegion (int (*) (XRectangle *, TkRegion, TkRegion)) XUnionRectWithRegion
+#	define TkSubtractRegion (int (*) (TkRegion, TkRegion, TkRegion)) XSubtractRegion
 #   endif
 #endif /* !_WIN32 */
 
@@ -233,6 +278,14 @@ void TkSubtractRegion (TkRegion a, TkRegion b, TkRegion c)
  * below should be made in the generic/tk.decls script.
  */
 
+#ifdef __GNUC__
+/*
+ * The rest of this file shouldn't warn about deprecated functions; they're
+ * there because we intend them to be so and know that this file is OK to
+ * touch those fields.
+ */
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 /* !BEGIN!: Do not edit below this line. */
 
 static const TkIntStubs tkIntStubs = {
@@ -366,7 +419,9 @@ static const TkIntStubs tkIntStubs = {
     0, /* 121 */
 #endif /* WIN */
 #ifdef MAC_OSX_TK /* AQUA */
+# if TCL_MAJOR_VERSION < 9
     0, /* 121 */ /* Dummy entry for stubs table backwards compatibility */
+# endif /* TCL_MAJOR_VERSION < 9 */
     TkpCreateNativeBitmap, /* 121 */
 #endif /* AQUA */
 #if !(defined(_WIN32) || defined(MAC_OSX_TK)) /* X11 */
@@ -376,7 +431,9 @@ static const TkIntStubs tkIntStubs = {
     0, /* 122 */
 #endif /* WIN */
 #ifdef MAC_OSX_TK /* AQUA */
+# if TCL_MAJOR_VERSION < 9
     0, /* 122 */ /* Dummy entry for stubs table backwards compatibility */
+# endif /* TCL_MAJOR_VERSION < 9 */
     TkpDefineNativeBitmaps, /* 122 */
 #endif /* AQUA */
     0, /* 123 */
@@ -387,7 +444,9 @@ static const TkIntStubs tkIntStubs = {
     0, /* 124 */
 #endif /* WIN */
 #ifdef MAC_OSX_TK /* AQUA */
+# if TCL_MAJOR_VERSION < 9
     0, /* 124 */ /* Dummy entry for stubs table backwards compatibility */
+# endif /* TCL_MAJOR_VERSION < 9 */
     TkpGetNativeAppBitmap, /* 124 */
 #endif /* AQUA */
     0, /* 125 */
@@ -450,6 +509,25 @@ static const TkIntStubs tkIntStubs = {
     TkUnderlineAngledTextLayout, /* 182 */
     TkIntersectAngledTextLayout, /* 183 */
     TkDrawAngledChars, /* 184 */
+#if !defined(_WIN32) && !defined(MAC_OSX_TCL) /* UNIX */
+    0, /* 185 */
+#endif /* UNIX */
+#if defined(_WIN32) /* WIN */
+    0, /* 185 */
+#endif /* WIN */
+#ifdef MAC_OSX_TCL /* MACOSX */
+    TkpRedrawWidget, /* 185 */
+#endif /* MACOSX */
+#if !defined(_WIN32) && !defined(MAC_OSX_TCL) /* UNIX */
+    0, /* 186 */
+#endif /* UNIX */
+#if defined(_WIN32) /* WIN */
+    0, /* 186 */
+#endif /* WIN */
+#ifdef MAC_OSX_TCL /* MACOSX */
+    TkpWillDrawWidget, /* 186 */
+#endif /* MACOSX */
+    TkUnusedStubEntry, /* 187 */
 };
 
 static const TkIntPlatStubs tkIntPlatStubs = {
@@ -502,11 +580,13 @@ static const TkIntPlatStubs tkIntPlatStubs = {
     TkWmCleanup, /* 43 */
     TkSendCleanup, /* 44 */
     TkpTestsendCmd, /* 45 */
+    0, /* 46 */
+    TkpGetCapture, /* 47 */
 #endif /* WIN */
 #ifdef MAC_OSX_TK /* AQUA */
     TkGenerateActivateEvents, /* 0 */
     0, /* 1 */
-    0, /* 2 */
+    TkGenerateActivateEvents_, /* 2 */
     TkPointerDeadWindow, /* 3 */
     TkpSetCapture, /* 4 */
     TkpSetCursor, /* 5 */
@@ -530,21 +610,21 @@ static const TkIntPlatStubs tkIntPlatStubs = {
     TkMacOSXMakeRealWindowExist, /* 23 */
     TkMacOSXMakeStippleMap, /* 24 */
     TkMacOSXMenuClick, /* 25 */
-    TkMacOSXRegisterOffScreenWindow, /* 26 */
+    0, /* 26 */
     TkMacOSXResizable, /* 27 */
     TkMacOSXSetHelpMenuItemCount, /* 28 */
     TkMacOSXSetScrollbarGrow, /* 29 */
     TkMacOSXSetUpClippingRgn, /* 30 */
     TkMacOSXSetUpGraphicsPort, /* 31 */
     TkMacOSXUpdateClipRgn, /* 32 */
-    TkMacOSXUnregisterMacWindow, /* 33 */
+    0, /* 33 */
     TkMacOSXUseMenuID, /* 34 */
     TkMacOSXVisableClipRgn, /* 35 */
     TkMacOSXWinBounds, /* 36 */
     TkMacOSXWindowOffset, /* 37 */
     TkSetMacColor, /* 38 */
     TkSetWMName, /* 39 */
-    TkSuspendClipboard, /* 40 */
+    0, /* 40 */
     TkMacOSXZoomToplevel, /* 41 */
     Tk_TopCoordsToWindow, /* 42 */
     TkMacOSXContainerId, /* 43 */
@@ -564,7 +644,7 @@ static const TkIntPlatStubs tkIntPlatStubs = {
 #if !(defined(_WIN32) || defined(__CYGWIN__) || defined(MAC_OSX_TK)) /* X11 */
     TkCreateXEventSource, /* 0 */
     0, /* 1 */
-    0, /* 2 */
+    TkGenerateActivateEvents, /* 2 */
     TkpCmapStressed, /* 3 */
     TkpSync, /* 4 */
     TkUnixContainerId, /* 5 */
@@ -576,6 +656,38 @@ static const TkIntPlatStubs tkIntPlatStubs = {
     0, /* 11 */
     TkpWmSetState, /* 12 */
     TkpTestsendCmd, /* 13 */
+    0, /* 14 */
+    0, /* 15 */
+    0, /* 16 */
+    0, /* 17 */
+    0, /* 18 */
+    0, /* 19 */
+    0, /* 20 */
+    0, /* 21 */
+    0, /* 22 */
+    0, /* 23 */
+    0, /* 24 */
+    0, /* 25 */
+    0, /* 26 */
+    0, /* 27 */
+    0, /* 28 */
+    0, /* 29 */
+    0, /* 30 */
+    0, /* 31 */
+    0, /* 32 */
+    0, /* 33 */
+    0, /* 34 */
+    0, /* 35 */
+    0, /* 36 */
+    0, /* 37 */
+    TkpCmapStressed_, /* 38 */
+    TkpSync_, /* 39 */
+    TkUnixContainerId_, /* 40 */
+    TkUnixDoOneXEvent_, /* 41 */
+    TkUnixSetMenubar_, /* 42 */
+    TkWmCleanup_, /* 43 */
+    TkSendCleanup_, /* 44 */
+    TkpTestsendCmd_, /* 45 */
 #endif /* X11 */
 };
 
@@ -664,7 +776,7 @@ static const TkIntXlibStubs tkIntXlibStubs = {
     XFilterEvent, /* 78 */
     XmbLookupString, /* 79 */
     TkPutImage, /* 80 */
-    0, /* 81 */
+    XSetClipRectangles, /* 81 */
     XParseColor, /* 82 */
     XCreateGC, /* 83 */
     XFreeGC, /* 84 */
@@ -698,6 +810,50 @@ static const TkIntXlibStubs tkIntXlibStubs = {
     XSynchronize, /* 112 */
     XSync, /* 113 */
     XVisualIDFromVisual, /* 114 */
+    0, /* 115 */
+    0, /* 116 */
+    0, /* 117 */
+    0, /* 118 */
+    0, /* 119 */
+    XOffsetRegion, /* 120 */
+    XUnionRegion, /* 121 */
+    XCreateWindow, /* 122 */
+    0, /* 123 */
+    0, /* 124 */
+    0, /* 125 */
+    0, /* 126 */
+    0, /* 127 */
+    0, /* 128 */
+    XLowerWindow, /* 129 */
+    XFillArcs, /* 130 */
+    XDrawArcs, /* 131 */
+    XDrawRectangles, /* 132 */
+    XDrawSegments, /* 133 */
+    XDrawPoint, /* 134 */
+    XDrawPoints, /* 135 */
+    XReparentWindow, /* 136 */
+    XPutImage, /* 137 */
+    0, /* 138 */
+    0, /* 139 */
+    0, /* 140 */
+    0, /* 141 */
+    0, /* 142 */
+    0, /* 143 */
+    0, /* 144 */
+    0, /* 145 */
+    0, /* 146 */
+    0, /* 147 */
+    0, /* 148 */
+    0, /* 149 */
+    0, /* 150 */
+    0, /* 151 */
+    0, /* 152 */
+    0, /* 153 */
+    0, /* 154 */
+    0, /* 155 */
+    0, /* 156 */
+    0, /* 157 */
+    TkUnusedStubEntry, /* 158 */
 #endif /* WIN */
 #ifdef MAC_OSX_TK /* AQUA */
     XSetDashes, /* 0 */
@@ -792,6 +948,73 @@ static const TkIntXlibStubs tkIntXlibStubs = {
     XQueryColors, /* 89 */
     XQueryTree, /* 90 */
     XSync, /* 91 */
+    0, /* 92 */
+    0, /* 93 */
+    0, /* 94 */
+    0, /* 95 */
+    0, /* 96 */
+    0, /* 97 */
+    0, /* 98 */
+    0, /* 99 */
+    0, /* 100 */
+    0, /* 101 */
+    0, /* 102 */
+    0, /* 103 */
+    0, /* 104 */
+    0, /* 105 */
+    XSetClipRectangles, /* 106 */
+    XFlush, /* 107 */
+    XGrabServer, /* 108 */
+    XUngrabServer, /* 109 */
+    XFree, /* 110 */
+    XNoOp, /* 111 */
+    XSynchronize, /* 112 */
+    0, /* 113 */
+    XVisualIDFromVisual, /* 114 */
+    0, /* 115 */
+    0, /* 116 */
+    0, /* 117 */
+    0, /* 118 */
+    0, /* 119 */
+    XOffsetRegion, /* 120 */
+    0, /* 121 */
+    0, /* 122 */
+    0, /* 123 */
+    0, /* 124 */
+    0, /* 125 */
+    0, /* 126 */
+    0, /* 127 */
+    0, /* 128 */
+    XLowerWindow, /* 129 */
+    0, /* 130 */
+    0, /* 131 */
+    0, /* 132 */
+    0, /* 133 */
+    0, /* 134 */
+    0, /* 135 */
+    0, /* 136 */
+    XPutImage, /* 137 */
+    0, /* 138 */
+    0, /* 139 */
+    0, /* 140 */
+    0, /* 141 */
+    0, /* 142 */
+    0, /* 143 */
+    XDestroyIC, /* 144 */
+    XCreatePixmapCursor, /* 145 */
+    XCreateGlyphCursor, /* 146 */
+    0, /* 147 */
+    0, /* 148 */
+    0, /* 149 */
+    0, /* 150 */
+    0, /* 151 */
+    0, /* 152 */
+    0, /* 153 */
+    0, /* 154 */
+    0, /* 155 */
+    0, /* 156 */
+    XkbKeycodeToKeysym, /* 157 */
+    TkUnusedStubEntry, /* 158 */
 #endif /* AQUA */
 };
 
@@ -818,6 +1041,12 @@ static const TkPlatStubs tkPlatStubs = {
     TkMacOSXGetRootControl, /* 8 */
     Tk_MacOSXSetupTkNotifier, /* 9 */
     Tk_MacOSXIsAppInFront, /* 10 */
+    Tk_MacOSXGetTkWindow, /* 11 */
+    Tk_MacOSXGetCGContextForDrawable, /* 12 */
+    Tk_MacOSXGetNSWindowForDrawable, /* 13 */
+    0, /* 14 */
+    0, /* 15 */
+    TkGenWMConfigureEvent_, /* 16 */
 #endif /* AQUA */
 };
 
@@ -1105,6 +1334,23 @@ const TkStubs tkStubs = {
     Tk_Interp, /* 271 */
     Tk_CreateOldImageType, /* 272 */
     Tk_CreateOldPhotoImageFormat, /* 273 */
+    0, /* 274 */
+    0, /* 275 */
+    0, /* 276 */
+    0, /* 277 */
+    0, /* 278 */
+    0, /* 279 */
+    0, /* 280 */
+    0, /* 281 */
+    0, /* 282 */
+    0, /* 283 */
+    0, /* 284 */
+    0, /* 285 */
+    0, /* 286 */
+    0, /* 287 */
+    0, /* 288 */
+    0, /* 289 */
+    TkUnusedStubEntry, /* 290 */
 };
 
 /* !END!: Do not edit above this line. */

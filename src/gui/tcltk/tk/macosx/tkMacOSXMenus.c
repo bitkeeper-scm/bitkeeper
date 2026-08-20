@@ -3,9 +3,9 @@
  *
  *	These calls set up the default menus for Tk.
  *
- * Copyright (c) 1995-1996 Sun Microsystems, Inc.
- * Copyright 2001-2009, Apple Inc.
- * Copyright (c) 2005-2009 Daniel A. Steffen <das@users.sourceforge.net>
+ * Copyright © 1995-1996 Sun Microsystems, Inc.
+ * Copyright © 2001-2009 Apple Inc.
+ * Copyright © 2005-2009 Daniel A. Steffen <das@users.sourceforge.net>
  *
  * See the file "license.terms" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -13,9 +13,11 @@
 
 #include "tkMacOSXPrivate.h"
 #include "tkMenu.h"
+#include "tkMacOSXConstants.h"
 
 static void		GenerateEditEvent(const char *name);
 static Tcl_Obj *	GetWidgetDemoPath(Tcl_Interp *interp);
+
 
 #pragma mark TKApplication(TKMenus)
 
@@ -68,9 +70,8 @@ static Tcl_Obj *	GetWidgetDemoPath(Tcl_Interp *interp);
 	    [NSMenuItem itemWithTitle:
 		    [NSString stringWithFormat:@"About %@", aboutName]
 		    action:@selector(orderFrontStandardAboutPanel:)] atIndex:0];
-
-    TKMenu *fileMenu = [TKMenu menuWithTitle:@"File" menuItems:
-	    [NSArray arrayWithObjects:
+    _defaultFileMenuItems =
+	    [[NSArray arrayWithObjects:
 	    [NSMenuItem itemWithTitle:
 		   [NSString stringWithFormat:@"Source%C", 0x2026]
 		   action:@selector(tkSource:)],
@@ -78,7 +79,10 @@ static Tcl_Obj *	GetWidgetDemoPath(Tcl_Interp *interp);
 		   action:@selector(tkDemo:)],
 	    [NSMenuItem itemWithTitle:@"Close" action:@selector(performClose:)
 		   target:nil keyEquivalent:@"w"],
-	    nil]];
+	    nil] retain];
+    _demoMenuItem = [_defaultFileMenuItems objectAtIndex:1];
+    TKMenu *fileMenu = [TKMenu menuWithTitle:@"File"
+	    menuItems: _defaultFileMenuItems];
     TKMenu *editMenu = [TKMenu menuWithTitle:@"Edit" menuItems:
 	    [NSArray arrayWithObjects:
 	    [NSMenuItem itemWithTitle:@"Undo" action:@selector(undo:)
@@ -96,29 +100,56 @@ static Tcl_Obj *	GetWidgetDemoPath(Tcl_Interp *interp);
 		   target:nil],
 	    nil]];
 
-    _defaultWindowsMenuItems = [[NSArray arrayWithObjects:
-	    [NSMenuItem itemWithTitle:@"Minimize"
-		   action:@selector(performMiniaturize:) target:nil
-		   keyEquivalent:@"m"],
-	    [NSMenuItem itemWithTitle:@"Zoom" action:@selector(performZoom:)
-		   target:nil],
-	    [NSMenuItem separatorItem],
+    _defaultWindowsMenuItems = [NSArray arrayWithObjects:
+    	    [NSMenuItem itemWithTitle:@"Minimize"
+    	    	   action:@selector(performMiniaturize:) target:nil
+    	    	   keyEquivalent:@"m"],
+    	    [NSMenuItem itemWithTitle:@"Zoom" action:@selector(performZoom:)
+    	    	   target:nil],
+	    nil];
+
+    /*
+     * On OS X 10.12 we get duplicate tab control items if we create them here.
+     */
+
+    if ([NSApp macOSVersion] > 101200) {
+	_defaultWindowsMenuItems = [_defaultWindowsMenuItems
+	     arrayByAddingObjectsFromArray:
+	     [NSArray arrayWithObjects:
+        	    [NSMenuItem separatorItem],
+    	            [NSMenuItem itemWithTitle:@"Show Previous Tab"
+		           action:@selector(selectPreviousTab:)
+		           target:nil
+			   keyEquivalent:@"\t"
+		           keyEquivalentModifierMask:
+		    	       NSControlKeyMask|NSShiftKeyMask],
+	            [NSMenuItem itemWithTitle:@"Show Next Tab"
+		           action:@selector(selectNextTab:)
+		           target:nil
+			   keyEquivalent:@"\t"
+		           keyEquivalentModifierMask:NSControlKeyMask],
+    	            [NSMenuItem itemWithTitle:@"Move Tab To New Window"
+    	    	           action:@selector(moveTabToNewWindow:)
+    	    	           target:nil],
+    	            [NSMenuItem itemWithTitle:@"Merge All Windows"
+    	    	           action:@selector(mergeAllWindows:)
+    	    	           target:nil],
+    	            [NSMenuItem separatorItem],
+	            nil]];
+    }
+    _defaultWindowsMenuItems = [_defaultWindowsMenuItems arrayByAddingObject:
 	    [NSMenuItem itemWithTitle:@"Bring All to Front"
-		   action:@selector(arrangeInFront:)],
-	    nil] retain];
-
+		   action:@selector(arrangeInFront:)]];
+    [_defaultWindowsMenuItems retain];
     TKMenu *windowsMenu = [TKMenu menuWithTitle:@"Window" menuItems:
-	    _defaultWindowsMenuItems];
-
+    				      _defaultWindowsMenuItems];
     _defaultHelpMenuItems = [[NSArray arrayWithObjects:
 	    [NSMenuItem itemWithTitle:
 		   [NSString stringWithFormat:@"%@ Help", applicationName]
 		   action:@selector(showHelp:) keyEquivalent:@"?"],
 	    nil] retain];
-
     TKMenu *helpMenu = [TKMenu menuWithTitle:@"Help" menuItems:
 	    _defaultHelpMenuItems];
-
     [self setServicesMenu:_servicesMenu];
     [self setWindowsMenu:windowsMenu];
     _defaultMainMenu = [[TKMenu menuWithTitle:@"" submenus:[NSArray
@@ -137,6 +168,7 @@ static Tcl_Obj *	GetWidgetDemoPath(Tcl_Interp *interp);
     [_defaultHelpMenuItems release];
     [_defaultWindowsMenuItems release];
     [_defaultApplicationMenuItems release];
+    [_defaultFileMenuItems release];
     [super dealloc];
 }
 
@@ -145,7 +177,6 @@ static Tcl_Obj *	GetWidgetDemoPath(Tcl_Interp *interp);
     SEL action = [anItem action];
 
     if (sel_isEqual(action, @selector(preferences:))) {
-
 	return (_eventInterp && Tcl_FindCommand(_eventInterp,
 		"::tk::mac::ShowPreferences", NULL, 0));
     } else if (sel_isEqual(action, @selector(tkDemo:))) {
@@ -170,7 +201,7 @@ static Tcl_Obj *	GetWidgetDemoPath(Tcl_Interp *interp);
 {
     if (!_eventInterp || !Tcl_FindCommand(_eventInterp, "tkAboutDialog",
 	    NULL, 0) || (GetCurrentEventKeyModifiers() & optionKey)) {
-	TkAboutDlg();
+	[super orderFrontStandardAboutPanel:nil];
     } else {
 	int code = Tcl_EvalEx(_eventInterp, "tkAboutDialog", -1,
 		TCL_EVAL_GLOBAL);
@@ -231,6 +262,7 @@ static Tcl_Obj *	GetWidgetDemoPath(Tcl_Interp *interp);
 	if (path) {
 	    Tcl_IncrRefCount(path);
 
+	    [_demoMenuItem setHidden:YES];
 	    int code = Tcl_FSEvalFileEx(_eventInterp, path, NULL);
 
 	    if (code != TCL_OK) {
@@ -298,7 +330,11 @@ GetWidgetDemoPath(
 				Tcl_NewStringObj("widget", 6) };
 
 	Tcl_IncrRefCount(libpath);
+	Tcl_IncrRefCount(demo[0]);
+	Tcl_IncrRefCount(demo[1]);
 	result = Tcl_FSJoinToPath(libpath, 2, demo);
+	Tcl_DecrRefCount(demo[1]);
+	Tcl_DecrRefCount(demo[0]);
 	Tcl_DecrRefCount(libpath);
     } else {
 	Tcl_ResetResult(interp);
@@ -375,33 +411,33 @@ static void
 GenerateEditEvent(
     const char *name)
 {
-    XVirtualEvent event;
+    union {XEvent general; XVirtualEvent virt;} event;
     int x, y;
     TkWindow *winPtr = TkMacOSXGetTkWindow([NSApp keyWindow]);
-    Tk_Window tkwin = (Tk_Window) winPtr;
+    Tk_Window tkwin;
 
-    if (tkwin == NULL) {
+    if (!winPtr) {
 	return;
     }
-    tkwin = (Tk_Window) winPtr->dispPtr->focusPtr;
-    if (tkwin == NULL) {
+    tkwin = (Tk_Window)winPtr->dispPtr->focusPtr;
+    if (!tkwin) {
 	return;
     }
-    bzero(&event, sizeof(XVirtualEvent));
-    event.type = VirtualEvent;
-    event.serial = LastKnownRequestProcessed(Tk_Display(tkwin));
-    event.send_event = false;
-    event.display = Tk_Display(tkwin);
-    event.event = Tk_WindowId(tkwin);
-    event.root = XRootWindow(Tk_Display(tkwin), 0);
-    event.subwindow = None;
-    event.time = TkpGetMS();
+    bzero(&event, sizeof(event));
+    event.virt.type = VirtualEvent;
+    event.virt.serial = LastKnownRequestProcessed(Tk_Display(tkwin));
+    event.virt.send_event = false;
+    event.virt.display = Tk_Display(tkwin);
+    event.virt.event = Tk_WindowId(tkwin);
+    event.virt.root = XRootWindow(Tk_Display(tkwin), 0);
+    event.virt.subwindow = None;
+    event.virt.time = TkpGetMS();
     XQueryPointer(NULL, winPtr->window, NULL, NULL,
-	    &event.x_root, &event.y_root, &x, &y, &event.state);
-    Tk_TopCoordsToWindow(tkwin, x, y, &event.x, &event.y);
-    event.same_screen = true;
-    event.name = Tk_GetUid(name);
-    Tk_QueueWindowEvent((XEvent *) &event, TCL_QUEUE_TAIL);
+	    &event.virt.x_root, &event.virt.y_root, &x, &y, &event.virt.state);
+    Tk_TopCoordsToWindow(tkwin, x, y, &event.virt.x, &event.virt.y);
+    event.virt.same_screen = true;
+    event.virt.name = Tk_GetUid(name);
+    Tk_QueueWindowEvent(&event.general, TCL_QUEUE_TAIL);
 }
 
 #pragma mark -

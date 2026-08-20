@@ -4,7 +4,7 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
+'\"
 .TH frame n 8.4 Tk "Tk Built-In Commands"
 .so man.macros
 .BS
@@ -99,21 +99,25 @@ The \fBframe\fR command creates a new Tcl command whose
 name is the same as the path name of the frame's window.  This
 command may be used to invoke various
 operations on the widget.  It has the following general form:
+.PP
 .CS
 \fIpathName option \fR?\fIarg arg ...\fR?
 .CE
+.PP
 \fIPathName\fR is the name of the command, which is the same as
 the frame widget's path name.  \fIOption\fR and the \fIarg\fRs
 determine the exact behavior of the command.  The following
 commands are possible for frame widgets:
 .TP
 \fIpathName \fBcget\fR \fIoption\fR
+.
 Returns the current value of the configuration option given
 by \fIoption\fR.
 \fIOption\fR may have any of the values accepted by the \fBframe\fR
 command.
 .TP
-\fIpathName \fBconfigure\fR ?\fIoption\fR? \fI?value option value ...\fR?
+\fIpathName \fBconfigure\fR ?\fIoption\fR? ?\fIvalue option value ...\fR?
+.
 Query or modify the configuration options of the widget.
 If no \fIoption\fR is specified, returns a list describing all of
 the available options for \fIpathName\fR (see \fBTk_ConfigureInfo\fR for

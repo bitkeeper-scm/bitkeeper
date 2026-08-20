@@ -4,7 +4,7 @@
 # built-in commands.  Sourcing this file runs the tests and
 # generates output for errors.  No output means no errors were found.
 #
-# Copyright (c) 1998-2000 by Ajuba Solutions.
+# Copyright (c) 1998-2000 Ajuba Solutions.
 # All rights reserved.
 
 package require tcltest 2.2
@@ -12,10 +12,14 @@ eval tcltest::configure $argv
 tcltest::loadTestedCommands
 namespace import -force tcltest::test
 
-# There's currently no way to test the actual grab effect, per se,
-# in an automated test.  Therefore, this test suite only covers the
-# interface to the grab command (ie, error messages, etc.)
+# The macOS test module includes the pressbutton command to simulate a
+# mouse button press event by injecting events into the NSApplication
+# event queue.  On other platforms there is currently no way to test
+# the actual grab effect, per se, in an automated test.  Therefore,
+# this test suite only covers the interface to the grab command (ie,
+# error messages, etc.) on platforms other than macOS.
 
+testConstraint pressbutton [llength [info commands pressbutton]]
 
 test grab-1.1 {Tk_GrabObjCmd} -body {
     grab
@@ -103,7 +107,7 @@ test grab-2.1 {Tk_GrabObjCmd, grab status gives correct status} -body {
     grab status .
 } -cleanup {
     grab release .
-} -result {none}
+} -result none
 test grab-2.2 {Tk_GrabObjCmd, grab status gives correct status} -body {
     set curr [grab current .]
     if { [string length $curr] > 0 } {
@@ -182,6 +186,32 @@ test grab-5.2 {Tk_GrabObjCmd, grab set} -body {
     grab release .
 } -result {. global}
 
+test grab-6.1 {local grab on child window} -constraints {
+    pressbutton
+} -body {
+    wm geometry . 100x200+200+100
+    set result {}
+    frame .f -background red -padx 10 -pady 10 -height 100 -width 80
+    bind . <Button-1> {lappend result "outside"}
+    bind .f <Button-1> {lappend result "inside"}
+    pack .f
+    update idletasks
+    pressbutton 250 150
+    update
+    lappend result ":"
+    pressbutton 250 250
+    update
+    lappend result ":"
+    grab set .f
+    pressbutton 250 150
+    update
+    lappend result ":"
+    pressbutton 250 250
+    update
+    return $result
+} -cleanup {
+    grab release .f
+} -result {inside outside : outside : inside outside :}
 
 cleanupTests
 return

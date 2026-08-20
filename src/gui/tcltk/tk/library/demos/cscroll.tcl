@@ -25,7 +25,7 @@ set btns [addSeeDismiss $w.buttons $w]
 pack $btns -side bottom -fill x
 
 frame $w.grid
-scrollbar $w.hscroll -orient horiz -command "$c xview"
+scrollbar $w.hscroll -orient horizontal -command "$c xview"
 scrollbar $w.vscroll -command "$c yview"
 canvas $c -relief sunken -borderwidth 2 -scrollregion {-11c -11c 50c 20c} \
 	-xscrollcommand "$w.hscroll set" \
@@ -47,29 +47,93 @@ for {set i 0} {$i < 20} {incr i} {
     set x [expr {-10 + 3*$i}]
     for {set j 0; set y -10} {$j < 10} {incr j; incr y 3} {
 	$c create rect ${x}c ${y}c [expr {$x+2}]c [expr {$y+2}]c \
-		-outline black -fill $bg -tags rect
+		-fill $bg -tags rect
 	$c create text [expr {$x+1}]c [expr {$y+1}]c -text "$i,$j" \
 	    -anchor center -tags text
     }
 }
 
-$c bind all <Any-Enter> "scrollEnter $c"
-$c bind all <Any-Leave> "scrollLeave $c"
-$c bind all <1> "scrollButton $c"
-bind $c <2> "$c scan mark %x %y"
-bind $c <B2-Motion> "$c scan dragto %x %y"
-if {[tk windowingsystem] eq "aqua"} {
+$c bind all <Enter> "scrollEnter $c"
+$c bind all <Leave> "scrollLeave $c"
+$c bind all <Button-1> "scrollButton $c"
+if {([tk windowingsystem] eq "aqua") && ![package vsatisfies [package provide Tk] 8.7-]} {
+    bind $c <Button-3> "$c scan mark %x %y"
+    bind $c <B3-Motion> "$c scan dragto %x %y"
     bind $c <MouseWheel> {
-        %W yview scroll [expr {- (%D)}] units
+	%W yview scroll [expr {-%D}] units
     }
     bind $c <Option-MouseWheel> {
-        %W yview scroll [expr {-10 * (%D)}] units
+	%W yview scroll [expr {-10*%D}] units
     }
     bind $c <Shift-MouseWheel> {
-        %W xview scroll [expr {- (%D)}] units
+	%W xview scroll [expr {-%D}] units
     }
     bind $c <Shift-Option-MouseWheel> {
-        %W xview scroll [expr {-10 * (%D)}] units
+	%W xview scroll [expr {-10*%D}] units
+    }
+} else {
+    bind $c <Button-2> "$c scan mark %x %y"
+    bind $c <B2-Motion> "$c scan dragto %x %y"
+    # We must make sure that positive and negative movements are rounded
+    # equally to integers, avoiding the problem that
+    #     (int)1/-30 = -1,
+    # but
+    #     (int)-1/-30 = 0
+    # The following code ensures equal +/- behaviour.
+    bind $c <MouseWheel> {
+	if {%D >= 0} {
+	    %W yview scroll [expr {%D/-30}] units
+	} else {
+	    %W yview scroll [expr {(%D-29)/-30}] units
+	}
+    }
+    bind $c <Option-MouseWheel> {
+	if {%D >= 0} {
+	    %W yview scroll [expr {%D/-12}] units
+	} else {
+	    %W yview scroll [expr {(%D-11)/-12}] units
+	}
+    }
+    bind $c <Shift-MouseWheel> {
+	if {%D >= 0} {
+	    %W xview scroll [expr {%D/-30}] units
+	} else {
+	    %W xview scroll [expr {(%D-29)/-30}] units
+	}
+    }
+    bind $c <Shift-Option-MouseWheel> {
+	if {%D >= 0} {
+	    %W xview scroll [expr {%D/-12}] units
+	} else {
+	    %W xview scroll [expr {(%D-11)/-12}] units
+	}
+    }
+}
+
+if {[tk windowingsystem] eq "x11" && ![package vsatisfies [package provide Tk] 8.7-]} {
+    # Support for mousewheels on Linux/Unix commonly comes through mapping
+    # the wheel to the extended buttons.  If you have a mousewheel, find
+    # Linux configuration info at:
+    #	https://linuxreviews.org/HOWTO_change_the_mouse_speed_in_X
+    bind $c <Button-4> {
+	if {!$tk_strictMotif} {
+	    %W yview scroll -5 units
+	}
+    }
+    bind $c <Shift-Button-4> {
+	if {!$tk_strictMotif} {
+	    %W xview scroll -5 units
+	}
+    }
+    bind $c <Button-5> {
+	if {!$tk_strictMotif} {
+	    %W yview scroll 5 units
+	}
+    }
+    bind $c <Shift-Button-5> {
+	if {!$tk_strictMotif} {
+	    %W xview scroll 5 units
+	}
     }
 }
 
@@ -81,10 +145,11 @@ proc scrollEnter canvas {
     }
     set oldFill [lindex [$canvas itemconfig $id -fill] 4]
     if {[winfo depth $canvas] > 1} {
-	$canvas itemconfigure $id -fill SeaGreen1
-    } else {
-	$canvas itemconfigure $id -fill black
-	$canvas itemconfigure [expr {$id+1}] -fill white
+	if {[tk windowingsystem] eq "aqua"} {
+	    $canvas itemconfigure $id -fill systemSelectedTextBackgroundColor
+	} else {
+	    $canvas itemconfigure $id -fill LightSeaGreen
+	}
     }
 }
 
@@ -95,11 +160,9 @@ proc scrollLeave canvas {
 	set id [expr {$id-1}]
     }
     $canvas itemconfigure $id -fill $oldFill
-    $canvas itemconfigure [expr {$id+1}] -fill black
 }
 
 proc scrollButton canvas {
-    global oldFill
     set id [$canvas find withtag current]
     if {[lsearch [$canvas gettags current] text] < 0} {
 	set id [expr {$id+1}]

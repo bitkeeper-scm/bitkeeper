@@ -34,7 +34,7 @@
  * TtkScrollbarUpdateRequired, which will invoke step (5) (@@@ Fix this)
  */
 
-#include <tkInt.h>
+#include "tkInt.h"
 #include "ttkTheme.h"
 #include "ttkWidget.h"
 
@@ -104,15 +104,18 @@ static int UpdateScrollbar(Tcl_Interp *interp, ScrollHandle h)
     Tcl_Release(corePtr);
 
     if (code != TCL_OK && !Tcl_InterpDeleted(interp)) {
-	/* Disable the -scrollcommand, add to stack trace:
+	/* Add error to stack trace.
+         * Also set the SCROLL_UPDATE_REQUIRED flag so that a later call to
+         * TtkScrolled has an effect. Indeed, the error in the -scrollcommand
+         * callback may later be gone, for instance the callback proc got
+         * defined in the meantime.
 	 */
-	ckfree(s->scrollCmd);
-	s->scrollCmd = 0;
 
 	Tcl_AddErrorInfo(interp, /* @@@ "horizontal" / "vertical" */
 		"\n    (scrolling command executed by ");
 	Tcl_AddErrorInfo(interp, Tk_PathName(h->corePtr->tkwin));
 	Tcl_AddErrorInfo(interp, ")");
+        TtkScrollbarUpdateRequired(h);
     }
     return code;
 }
@@ -181,6 +184,19 @@ void TtkScrollbarUpdateRequired(ScrollHandle h)
     h->flags |= SCROLL_UPDATE_REQUIRED;
 }
 
+/* TtkUpdateScrollInfo --
+ * 	Call the layoutProc to update the scroll info first, last, and total.
+ * 	Do it only if needed, that is when a redisplay is pending (which
+ * 	indicates scroll info are possibly out of date).
+ */
+
+void TtkUpdateScrollInfo(ScrollHandle h)
+{
+    if (h->corePtr->flags & REDISPLAY_PENDING) {
+        h->corePtr->widgetSpec->layoutProc(h->corePtr);
+    }
+}
+
 /* TtkScrollviewCommand --
  * 	Widget [xy]view command implementation.
  *
@@ -193,7 +209,10 @@ int TtkScrollviewCommand(
     Tcl_Interp *interp, int objc, Tcl_Obj *const objv[], ScrollHandle h)
 {
     Scrollable *s = h->scrollPtr;
-    int newFirst = s->first;
+    int newFirst;
+
+    TtkUpdateScrollInfo(h);
+    newFirst = s->first;
 
     if (objc == 2) {
 	Tcl_Obj *result[2];
@@ -210,8 +229,6 @@ int TtkScrollviewCommand(
 	int count;
 
 	switch (Tk_GetScrollInfoObj(interp, objc, objv, &fraction, &count)) {
-	    case TK_SCROLL_ERROR:
-		return TCL_ERROR;
 	    case TK_SCROLL_MOVETO:
 		newFirst = (int) ((fraction * s->total) + 0.5);
 		break;
@@ -223,17 +240,23 @@ int TtkScrollviewCommand(
 		newFirst = s->first + count * perPage;
 		break;
 	    }
+	    default:
+		return TCL_ERROR;
 	}
     }
 
-    TtkScrollTo(h, newFirst);
+    TtkScrollTo(h, newFirst, 0);
 
     return TCL_OK;
 }
 
-void TtkScrollTo(ScrollHandle h, int newFirst)
+void TtkScrollTo(ScrollHandle h, int newFirst, int updateScrollInfo)
 {
     Scrollable *s = h->scrollPtr;
+
+    if (updateScrollInfo) {
+        TtkUpdateScrollInfo(h);
+    }
 
     if (newFirst >= s->total)
 	newFirst = s->total - 1;

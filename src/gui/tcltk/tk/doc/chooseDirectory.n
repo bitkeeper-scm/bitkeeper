@@ -1,7 +1,7 @@
 '\"
-'\" Copyright (c) 1998-2000 by Scriptics Corporation.
+'\" Copyright (c) 1998-2000 Scriptics Corporation.
 '\" All rights reserved.
-'\" 
+'\"
 .TH tk_chooseDirectory n 8.3 Tk "Tk Built-In Commands"
 .so man.macros
 .BS
@@ -16,39 +16,62 @@ tk_chooseDirectory \- pops up a dialog box for the user to select a directory.
 The procedure \fBtk_chooseDirectory\fR pops up a dialog box for the
 user to select a directory. The following \fIoption\-value\fR pairs are
 possible as command line arguments:
+.\" OPTION: -command
 .TP
-\fB\-initialdir\fR \fIdirname\fR
+\fB\-command\fI string\fR
+.
+Specifies the prefix of a Tcl command to invoke when the user closes the
+dialog after having selected an item. This callback is not called if the
+user cancelled the dialog. The actual command consists of \fIstring\fR
+followed by a space and the value selected by the user in the dialog. This
+is only available on macOS.
+.\" OPTION: -initialdir
+.TP
+\fB\-initialdir\fI dirname\fR
+.
 Specifies that the directories in \fIdirectory\fR should be displayed
 when the dialog pops up. If this parameter is not specified,
-the initial directory defaults to the current working directory 
+the initial directory defaults to the current working directory
 on non-Windows systems and on Windows systems prior to Vista.
 On Vista and later systems, the initial directory defaults to the last
 user-selected directory for the application. If the
 parameter specifies a relative path, the return value will convert the
 relative path to an absolute path.
+.\" OPTION: -message
 .TP
-\fB\-mustexist\fR \fIboolean\fR
+\fB\-message\fI string\fR
+.
+Specifies a message to include in the client area of the dialog.
+This is only available on macOS.
+.\" OPTION: -mustexist
+.TP
+\fB\-mustexist\fI boolean\fR
+.
 Specifies whether the user may specify non-existent directories.  If
 this parameter is true, then the user may only select directories that
 already exist.  The default value is \fIfalse\fR.
+.\" OPTION: -parent
 .TP
-\fB\-parent\fR \fIwindow\fR
+\fB\-parent\fI window\fR
+.
 Makes \fIwindow\fR the logical parent of the dialog. The dialog
-is displayed on top of its parent window. On Mac OS X, this
+is displayed on top of its parent window. On macOS, this
 turns the file dialog into a sheet attached to the parent window.
+.\" OPTION: -title
 .TP
-\fB\-title\fR \fItitleString\fR
+\fB\-title\fI titleString\fR
+.
 Specifies a string to display as the title of the dialog box. If this
 option is not specified, then a default title will be displayed.
 .SH EXAMPLE
 .PP
 .CS
 set dir [\fBtk_chooseDirectory\fR \e
-        \-initialdir ~ \-title "Choose a directory"]
+        -initialdir ~ -title "Choose a directory"]
 if {$dir eq ""} {
-   label .l \-text "No directory selected"
+   label .l -text "No directory selected"
 } else {
-   label .l \-text "Selected $dir"
+   label .l -text "Selected $dir"
 }
 .CE
 .SH "SEE ALSO"

@@ -4,7 +4,7 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
+'\"
 .TH scrollbar n 4.1 Tk "Tk Built-In Commands"
 .so man.macros
 .BS
@@ -12,7 +12,7 @@
 .SH NAME
 scrollbar \- Create and manipulate 'scrollbar' scrolling control and indicator widgets
 .SH SYNOPSIS
-\fBscrollbar\fR \fIpathName \fR?\fIoptions\fR?
+\fBscrollbar\fI pathName \fR?\fIoptions\fR?
 .SO
 \-activebackground	\-highlightcolor	\-repeatdelay
 \-background	\-highlightthickness	\-repeatinterval
@@ -81,20 +81,15 @@ below for details.
 .PP
 A scrollbar displays five elements, which are referred to in the
 widget commands for the scrollbar:
-.TP 10
-\fBarrow1\fR
+.IP \fBarrow1\fR 10
 The top or left arrow in the scrollbar.
-.TP 10
-\fBtrough1\fR
+.IP \fBtrough1\fR 10
 The region between the slider and \fBarrow1\fR.
-.TP 10
-\fBslider\fR
+.IP \fBslider\fR 10
 The rectangle that indicates what is visible in the associated widget.
-.TP 10
-\fBtrough2\fR
+.IP \fBtrough2\fR 10
 The region between the slider and \fBarrow2\fR.
-.TP 10
-\fBarrow2\fR
+.IP \fBarrow2\fR 10
 The bottom or right arrow in the scrollbar.
 .SH "WIDGET COMMAND"
 .PP
@@ -103,11 +98,12 @@ name is \fIpathName\fR.  This
 command may be used to invoke various
 operations on the widget.  It has the following general form:
 .CS
-\fIpathName option \fR?\fIarg arg ...\fR?
+\fIpathName option \fR?\fIarg ...\fR?
 .CE
 \fIOption\fR and the \fIarg\fRs
 determine the exact behavior of the command.  The following
 commands are possible for scrollbar widgets:
+.\" METHOD: activate
 .TP
 \fIpathName \fBactivate \fR?\fIelement\fR?
 .
@@ -121,6 +117,7 @@ will be active.
 If \fIelement\fR is not specified, the command returns
 the name of the element that is currently active, or an empty string
 if no element is active.
+.\" METHOD: cget
 .TP
 \fIpathName \fBcget \fIoption\fR
 .
@@ -128,6 +125,7 @@ Returns the current value of the configuration option given
 by \fIoption\fR.
 \fIOption\fR may have any of the values accepted by the \fBscrollbar\fR
 command.
+.\" METHOD: configure
 .TP
 \fIpathName \fBconfigure\fR ?\fIoption\fR? ?\fIvalue option value ...\fR?
 .
@@ -143,6 +141,7 @@ modifies the given widget option(s) to have the given value(s);  in
 this case the command returns an empty string.
 \fIOption\fR may have any of the values accepted by the \fBscrollbar\fR
 command.
+.\" METHOD: delta
 .TP
 \fIpathName \fBdelta \fIdeltaX deltaY\fR
 .
@@ -155,6 +154,7 @@ ignored in this case).
 If the scrollbar is vertical, the result indicates how much the
 scrollbar setting must change to move the slider \fIdeltaY\fR pixels
 down.  The arguments and the result may be zero or negative.
+.\" METHOD: fraction
 .TP
 \fIpathName \fBfraction \fIx y\fR
 .
@@ -167,11 +167,13 @@ the middle, and so on.
 widget.
 If \fIx\fR and \fIy\fR refer to a point outside the trough, the closest
 point in the trough is used.
+.\" METHOD: get
 .TP
 \fIpathName \fBget\fR
 .
 Returns the scrollbar settings in the form of a list whose
 elements are the arguments to the most recent \fBset\fR widget command.
+.\" METHOD: identify
 .TP
 \fIpathName \fBidentify \fIx y\fR
 .
@@ -180,6 +182,7 @@ Returns the name of the element under the point given by \fIx\fR and
 not lie in any element of the scrollbar.
 \fIX\fR and \fIy\fR must be pixel coordinates relative to the scrollbar
 widget.
+.\" METHOD: set
 .TP
 \fIpathName \fBset \fIfirst last\fR
 .
@@ -203,7 +206,8 @@ generated from the scrollbar's \fB\-command\fR option.
 The command may take any of the following forms.
 In each case, \fIprefix\fR is the contents of the
 \fB\-command\fR option, which usually has a form like
-.QW \fB.t yview\fR .
+.QW "\fB.t yview\fR" .
+.\" METHOD: moveto
 .TP
 \fIprefix \fBmoveto \fIfraction\fR
 .
@@ -214,6 +218,7 @@ If \fIfraction\fR is 0 it refers to the beginning of the
 document.  1.0 refers to the end of the document, 0.333
 refers to a point one-third of the way through the document,
 and so on.
+.\" METHOD: scroll
 .TP
 \fIprefix \fBscroll \fInumber \fBunits\fR
 .
@@ -345,14 +350,14 @@ The End key adjusts the view to the bottom (right edge) of the document.
 Create a window with a scrollable \fBtext\fR widget:
 .CS
 toplevel .tl
-text .tl.t \-yscrollcommand {.tl.s set}
-\fBscrollbar\fR .tl.s \-command {.tl.t yview}
-grid .tl.t .tl.s \-sticky nsew
-grid columnconfigure .tl 0 \-weight 1
-grid rowconfigure .tl 0 \-weight 1
+text .tl.t -yscrollcommand {.tl.s set}
+\fBscrollbar\fR .tl.s -command {.tl.t yview}
+grid .tl.t .tl.s -sticky nsew
+grid columnconfigure .tl 0 -weight 1
+grid rowconfigure .tl 0 -weight 1
 .CE
 .SH "SEE ALSO"
-ttk:scrollbar(n)
+ttk::scrollbar(n)
 .SH KEYWORDS
 scrollbar, widget
 '\" Local Variables:

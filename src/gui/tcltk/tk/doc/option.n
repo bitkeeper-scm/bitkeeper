@@ -4,7 +4,7 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
+'\"
 .TH option n "" Tk "Tk Built-In Commands"
 .so man.macros
 .BS
@@ -58,6 +58,12 @@ X resource database such as \fB.Xdefaults\fR, and adds all the
 options specified in that file to the option database.  If \fIpriority\fR
 is specified, it indicates the priority level at which to enter the
 options;  \fIpriority\fR defaults to \fBinteractive\fR.
+.PP
+The file is read through a channel which is in "utf-8" encoding,
+invalid byte sequences are automatically converted to valid ones.
+This means that encodings like ISO 8859-1 or cp1252 with high
+probability will work as well, but this cannot be guaranteed.
+This cannot be changed, setting the [encoding system] has no effect.
 .PP
 The \fIpriority\fR arguments to the \fBoption\fR command are
 normally specified symbolically using one of the following values:

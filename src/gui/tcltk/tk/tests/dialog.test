@@ -36,7 +36,7 @@ test dialog-2.1 {tk_dialog operation} -setup {
     return $res
 } -cleanup {
     destroy .d
-} -result {0}
+} -result 0
 test dialog-2.2 {tk_dialog operation} -setup {
     proc HitReturn {w} {
         event generate $w <Enter>
@@ -51,7 +51,7 @@ test dialog-2.2 {tk_dialog operation} -setup {
     return $res
 } -cleanup {
     destroy .d
-} -result {1}
+} -result 1
 test dialog-2.3 {tk_dialog operation} -body {
     set x [after 5000 [list set tk::Priv(button) "no response"]]
     after 100 destroy .d
@@ -60,7 +60,7 @@ test dialog-2.3 {tk_dialog operation} -body {
     return $res
 } -cleanup {
     destroy .b
-} -result {-1}
+} -result -1
 
 cleanupTests
 return

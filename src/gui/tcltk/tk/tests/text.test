@@ -3,7 +3,7 @@
 #
 # Copyright (c) 1992-1994 The Regents of the University of California.
 # Copyright (c) 1994-1996 Sun Microsystems, Inc.
-# Copyright (c) 1998-1999 by Scriptics Corporation.
+# Copyright (c) 1998-1999 Scriptics Corporation.
 # All rights reserved.
 
 package require tcltest 2.2
@@ -28,7 +28,16 @@ test text-1.1 {configuration option: "autoseparators"} -setup {
     .t cget -autoseparators
 } -cleanup {
     destroy .t
-} -result {1}
+} -result 1
+test text-1.1b {configuration option: "autoseparators", default} -setup {
+    text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
+    pack .t
+    update
+} -body {
+    .t cget -autoseparators
+} -cleanup {
+    destroy .t
+} -result 1
 test text-1.2 {configuration option: "autoseparators"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -37,7 +46,7 @@ test text-1.2 {configuration option: "autoseparators"} -setup {
     .t configure -autoseparators nah
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.3 {configuration option: "background"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -56,7 +65,7 @@ test text-1.4 {configuration option: "background"} -setup {
     .t configure -background <gorp>
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.5 {configuration option: "bd"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -66,7 +75,7 @@ test text-1.5 {configuration option: "bd"} -setup {
     .t cget -bd
 } -cleanup {
     destroy .t
-} -result {4}
+} -result 4
 test text-1.6 {configuration option: "bd"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -75,7 +84,7 @@ test text-1.6 {configuration option: "bd"} -setup {
     .t configure -bd foo
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.7 {configuration option: "bg"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -94,7 +103,7 @@ test text-1.8 {configuration option: "bg"} -setup {
     .t configure -bg #xx
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.9 {configuration option: "blockcursor"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -104,7 +113,7 @@ test text-1.9 {configuration option: "blockcursor"} -setup {
     .t cget -blockcursor
 } -cleanup {
     destroy .t
-} -result {0}
+} -result 0
 test text-1.10 {configuration option: "blockcursor"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -113,7 +122,7 @@ test text-1.10 {configuration option: "blockcursor"} -setup {
     .t configure -blockcursor xx
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.11 {configuration option: "borderwidth"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -123,7 +132,7 @@ test text-1.11 {configuration option: "borderwidth"} -setup {
     .t cget -borderwidth
 } -cleanup {
     destroy .t
-} -result {7}
+} -result 7
 test text-1.12 {configuration option: "borderwidth"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -132,7 +141,7 @@ test text-1.12 {configuration option: "borderwidth"} -setup {
     .t configure -borderwidth ++
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.13 {configuration option: "cursor"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -151,7 +160,7 @@ test text-1.14 {configuration option: "cursor"} -setup {
     .t configure -cursor lousy
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.15 {configuration option: "exportselection"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -161,7 +170,7 @@ test text-1.15 {configuration option: "exportselection"} -setup {
     .t cget -exportselection
 } -cleanup {
     destroy .t
-} -result {0}
+} -result 0
 test text-1.16 {configuration option: "exportselection"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -170,7 +179,7 @@ test text-1.16 {configuration option: "exportselection"} -setup {
     .t configure -exportselection maybe
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.17 {configuration option: "fg"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -189,7 +198,7 @@ test text-1.18 {configuration option: "fg"} -setup {
     .t configure -fg stupid
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.19 {configuration option: "font"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -208,7 +217,7 @@ test text-1.20 {configuration option: "font"} -setup {
     .t configure -font {}
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.21 {configuration option: "foreground"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -227,7 +236,7 @@ test text-1.22 {configuration option: "foreground"} -setup {
     .t configure -foreground bogus
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.23 {configuration option: "height"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -237,7 +246,7 @@ test text-1.23 {configuration option: "height"} -setup {
     .t cget -height
 } -cleanup {
     destroy .t
-} -result {5}
+} -result 5
 test text-1.24 {configuration option: "height"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -246,7 +255,7 @@ test text-1.24 {configuration option: "height"} -setup {
     .t configure -height bad
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.25 {configuration option: "highlightbackground"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -265,7 +274,7 @@ test text-1.26 {configuration option: "highlightbackground"} -setup {
     .t configure -highlightbackground bogus
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.27 {configuration option: "highlightcolor"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -284,7 +293,7 @@ test text-1.28 {configuration option: "highlightcolor"} -setup {
     .t configure -highlightcolor bogus
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.29 {configuration option: "highlightthickness"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -294,7 +303,7 @@ test text-1.29 {configuration option: "highlightthickness"} -setup {
     .t cget -highlightthickness
 } -cleanup {
     destroy .t
-} -result {0}
+} -result 0
 test text-1.30 {configuration option: "highlightthickness"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -303,7 +312,7 @@ test text-1.30 {configuration option: "highlightthickness"} -setup {
     .t configure -highlightthickness bad
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.31 {configuration option: "inactiveselectbackground"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -322,7 +331,7 @@ test text-1.32 {configuration option: "inactiveselectbackground"} -setup {
     .t configure -inactiveselectbackground bogus
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.33 {configuration option: "insertbackground"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -341,7 +350,7 @@ test text-1.34 {configuration option: "insertbackground"} -setup {
     .t configure -insertbackground <bogus>
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.35 {configuration option: "insertborderwidth"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -351,7 +360,7 @@ test text-1.35 {configuration option: "insertborderwidth"} -setup {
     .t cget -insertborderwidth
 } -cleanup {
     destroy .t
-} -result {45}
+} -result 45
 test text-1.36 {configuration option: "insertborderwidth"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -360,7 +369,7 @@ test text-1.36 {configuration option: "insertborderwidth"} -setup {
     .t configure -insertborderwidth bogus
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.37 {configuration option: "insertofftime"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -370,7 +379,7 @@ test text-1.37 {configuration option: "insertofftime"} -setup {
     .t cget -insertofftime
 } -cleanup {
     destroy .t
-} -result {100}
+} -result 100
 test text-1.38 {configuration option: "insertofftime"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -379,7 +388,7 @@ test text-1.38 {configuration option: "insertofftime"} -setup {
     .t configure -insertofftime 2.4
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.39 {configuration option: "insertontime"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -389,7 +398,7 @@ test text-1.39 {configuration option: "insertontime"} -setup {
     .t cget -insertontime
 } -cleanup {
     destroy .t
-} -result {47}
+} -result 47
 test text-1.40 {configuration option: "insertontime"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -398,7 +407,7 @@ test text-1.40 {configuration option: "insertontime"} -setup {
     .t configure -insertontime e1
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.41 {configuration option: "insertwidth"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -408,7 +417,7 @@ test text-1.41 {configuration option: "insertwidth"} -setup {
     .t cget -insertwidth
 } -cleanup {
     destroy .t
-} -result {2}
+} -result 2
 test text-1.42 {configuration option: "insertwidth"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -417,7 +426,7 @@ test text-1.42 {configuration option: "insertwidth"} -setup {
     .t configure -insertwidth 47d
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.43 {configuration option: "maxundo"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -427,7 +436,16 @@ test text-1.43 {configuration option: "maxundo"} -setup {
     .t cget -maxundo
 } -cleanup {
     destroy .t
-} -result {5}
+} -result 5
+test text-1.43b {configuration option: "maxundo", default} -setup {
+    text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
+    pack .t
+    update
+} -body {
+    .t cget -maxundo
+} -cleanup {
+    destroy .t
+} -result 0
 test text-1.44 {configuration option: "maxundo"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -436,7 +454,7 @@ test text-1.44 {configuration option: "maxundo"} -setup {
     .t configure -maxundo noway
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.45 {configuration option: "padx"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -446,7 +464,7 @@ test text-1.45 {configuration option: "padx"} -setup {
     .t cget -padx
 } -cleanup {
     destroy .t
-} -result {3}
+} -result 3
 test text-1.46 {configuration option: "padx"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -455,7 +473,7 @@ test text-1.46 {configuration option: "padx"} -setup {
     .t configure -padx 2.4.
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.47 {configuration option: "pady"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -465,7 +483,7 @@ test text-1.47 {configuration option: "pady"} -setup {
     .t cget -pady
 } -cleanup {
     destroy .t
-} -result {82}
+} -result 82
 test text-1.48 {configuration option: "pady"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -474,7 +492,7 @@ test text-1.48 {configuration option: "pady"} -setup {
     .t configure -pady bogus
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.49 {configuration option: "relief"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -493,7 +511,7 @@ test text-1.50 {configuration option: "relief"} -setup {
     .t configure -relief bumpy
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.51 {configuration option: "selectbackground"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -512,7 +530,7 @@ test text-1.52 {configuration option: "selectbackground"} -setup {
     .t configure -selectbackground bogus
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.53 {configuration option: "selectborderwidth"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -522,7 +540,7 @@ test text-1.53 {configuration option: "selectborderwidth"} -setup {
     .t cget -selectborderwidth
 } -cleanup {
     destroy .t
-} -result {21}
+} -result 21
 test text-1.54 {configuration option: "selectborderwidth"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -531,7 +549,7 @@ test text-1.54 {configuration option: "selectborderwidth"} -setup {
     .t configure -selectborderwidth 3x
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.55 {configuration option: "selectforeground"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -550,7 +568,7 @@ test text-1.56 {configuration option: "selectforeground"} -setup {
     .t configure -selectforeground #12345
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.57 {configuration option: "spacing1"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -560,7 +578,7 @@ test text-1.57 {configuration option: "spacing1"} -setup {
     .t cget -spacing1
 } -cleanup {
     destroy .t
-} -result {20}
+} -result 20
 test text-1.58 {configuration option: "spacing1"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -569,7 +587,7 @@ test text-1.58 {configuration option: "spacing1"} -setup {
     .t configure -spacing1 1.3x
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.59 {configuration option: "spacing1"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -579,7 +597,7 @@ test text-1.59 {configuration option: "spacing1"} -setup {
     .t cget -spacing1
 } -cleanup {
     destroy .t
-} -result {0}
+} -result 0
 test text-1.60 {configuration option: "spacing1"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -588,7 +606,7 @@ test text-1.60 {configuration option: "spacing1"} -setup {
     .t configure -spacing1 bogus
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.61 {configuration option: "spacing2"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -598,7 +616,7 @@ test text-1.61 {configuration option: "spacing2"} -setup {
     .t cget -spacing2
 } -cleanup {
     destroy .t
-} -result {5}
+} -result 5
 test text-1.62 {configuration option: "spacing2"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -607,7 +625,7 @@ test text-1.62 {configuration option: "spacing2"} -setup {
     .t configure -spacing2 bogus
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.63 {configuration option: "spacing2"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -617,7 +635,7 @@ test text-1.63 {configuration option: "spacing2"} -setup {
     .t cget -spacing2
 } -cleanup {
     destroy .t
-} -result {0}
+} -result 0
 test text-1.64 {configuration option: "spacing2"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -626,7 +644,7 @@ test text-1.64 {configuration option: "spacing2"} -setup {
     .t configure -spacing2 bogus
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.65 {configuration option: "spacing3"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -636,7 +654,7 @@ test text-1.65 {configuration option: "spacing3"} -setup {
     .t cget -spacing3
 } -cleanup {
     destroy .t
-} -result {20}
+} -result 20
 test text-1.66 {configuration option: "spacing3"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -645,7 +663,7 @@ test text-1.66 {configuration option: "spacing3"} -setup {
     .t configure -spacing3 bogus
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.67 {configuration option: "spacing3"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -655,7 +673,7 @@ test text-1.67 {configuration option: "spacing3"} -setup {
     .t cget -spacing3
 } -cleanup {
     destroy .t
-} -result {0}
+} -result 0
 test text-1.68 {configuration option: "spacing3"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -664,7 +682,7 @@ test text-1.68 {configuration option: "spacing3"} -setup {
     .t configure -spacing3 bogus
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.69 {configuration option: "state"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -683,7 +701,7 @@ test text-1.70 {configuration option: "state"} -setup {
     .t configure -state foo
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.71 {configuration option: "tabs"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -702,7 +720,7 @@ test text-1.72 {configuration option: "tabs"} -setup {
     .t configure -tabs bad_tabs
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.73 {configuration option: "tabstyle"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -721,7 +739,7 @@ test text-1.74 {configuration option: "tabstyle"} -setup {
     .t configure -tabstyle garbage
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.75 {configuration option: "undo"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -731,7 +749,16 @@ test text-1.75 {configuration option: "undo"} -setup {
     .t cget -undo
 } -cleanup {
     destroy .t
-} -result {1}
+} -result 1
+test text-1.75b {configuration option: "undo", default} -setup {
+    text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
+    pack .t
+    update
+} -body {
+    .t cget -undo
+} -cleanup {
+    destroy .t
+} -result 0
 test text-1.76 {configuration option: "undo"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -740,7 +767,7 @@ test text-1.76 {configuration option: "undo"} -setup {
     .t configure -undo eh
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.77 {configuration option: "width"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -750,7 +777,7 @@ test text-1.77 {configuration option: "width"} -setup {
     .t cget -width
 } -cleanup {
     destroy .t
-} -result {73}
+} -result 73
 test text-1.78 {configuration option: "width"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -759,7 +786,7 @@ test text-1.78 {configuration option: "width"} -setup {
     .t configure -width 2.4
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.79 {configuration option: "wrap"} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -778,7 +805,7 @@ test text-1.80 {configuration option: "wrap"} -setup {
     .t configure -wrap bad_wrap
 } -cleanup {
     destroy .t
-} -match glob -returnCodes {error} -result {*}
+} -match glob -returnCodes error -result {*}
 test text-1.81 {text options} -setup {
     text .t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold}
     pack .t
@@ -852,15 +879,15 @@ test text-1.86 {configuration option: "insertunfocussed"} -setup {
 
 test text-2.1 {Tk_TextCmd procedure} -body {
     text
-} -returnCodes {error} -result {wrong # args: should be "text pathName ?-option value ...?"}
+} -returnCodes error -result {wrong # args: should be "text pathName ?-option value ...?"}
 test text-2.2 {Tk_TextCmd procedure} -body {
     text foobar
-} -returnCodes {error} -result {bad window path name "foobar"}
+} -returnCodes error -result {bad window path name "foobar"}
 test text-2.3 {Tk_TextCmd procedure} -body {
     text .t -gorp nofun
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {unknown option "-gorp"}
+} -returnCodes error -result {unknown option "-gorp"}
 test text-2.4 {Tk_TextCmd procedure} -body {
     catch {text .t -gorp nofun}
     winfo exists .t
@@ -883,7 +910,7 @@ test text-2.7 {Tk_TextCmd procedure} -constraints {
 } -body {
     catch {destroy .t}
     text .t
-    .t tag cget sel -relief 
+    .t tag cget sel -relief
 } -cleanup {
     destroy .t
 } -result {flat}
@@ -892,16 +919,16 @@ test text-2.8 {Tk_TextCmd procedure} -constraints {
 } -body {
     catch {destroy .t}
     text .t
-    .t tag cget sel -relief 
+    .t tag cget sel -relief
 } -cleanup {
     destroy .t
-} -result {solid}
+} -result {flat}
 test text-2.9 {Tk_TextCmd procedure} -constraints {
-    unix
+    unix notAqua
 } -body {
     catch {destroy .t}
     text .t
-    .t tag cget sel -relief 
+    .t tag cget sel -relief
 } -cleanup {
     destroy .t
 } -result {raised}
@@ -918,14 +945,14 @@ test text-3.1 {TextWidgetCmd procedure, basics} -setup {
     .t
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {wrong # args: should be ".t option ?arg ...?"}
+} -returnCodes error -result {wrong # args: should be ".t option ?arg ...?"}
 test text-3.2 {TextWidgetCmd procedure} -setup {
     text .t
 } -body {
     .t gorp 1.0 z 1.2
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad option "gorp": must be bbox, cget, compare, configure, count, debug, delete, dlineinfo, dump, edit, get, image, index, insert, mark, peer, replace, scan, search, see, tag, window, xview, or yview}
+} -returnCodes error -result {bad option "gorp": must be bbox, cget, compare, configure, count, debug, delete, dlineinfo, dump, edit, get, image, index, insert, mark, peer, pendingsync, replace, scan, search, see, sync, tag, window, xview, or yview}
 
 test text-4.1 {TextWidgetCmd procedure, "bbox" option} -setup {
     text .t
@@ -933,21 +960,21 @@ test text-4.1 {TextWidgetCmd procedure, "bbox" option} -setup {
     .t bbox
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {wrong # args: should be ".t bbox index"}
+} -returnCodes error -result {wrong # args: should be ".t bbox index"}
 test text-4.2 {TextWidgetCmd procedure, "bbox" option} -setup {
     text .t
 } -body {
     .t bbox a b
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {wrong # args: should be ".t bbox index"}
+} -returnCodes error -result {wrong # args: should be ".t bbox index"}
 test text-4.3 {TextWidgetCmd procedure, "bbox" option} -setup {
     text .t
 } -body {
     .t bbox bad_mark
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad text index "bad_mark"}
+} -returnCodes error -result {bad text index "bad_mark"}
 
 test text-5.1 {TextWidgetCmd procedure, "cget" option} -setup {
     text .t
@@ -955,21 +982,21 @@ test text-5.1 {TextWidgetCmd procedure, "cget" option} -setup {
     .t cget
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {wrong # args: should be ".t cget option"}
+} -returnCodes error -result {wrong # args: should be ".t cget option"}
 test text-5.2 {TextWidgetCmd procedure, "cget" option} -setup {
     text .t
 } -body {
     .t cget a b
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {wrong # args: should be ".t cget option"}
+} -returnCodes error -result {wrong # args: should be ".t cget option"}
 test text-5.3 {TextWidgetCmd procedure, "cget" option} -setup {
     text .t
 } -body {
     .t cget -gorp
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {unknown option "-gorp"}
+} -returnCodes error -result {unknown option "-gorp"}
 test text-5.4 {TextWidgetCmd procedure, "cget" option} -setup {
     text .t
 } -body {
@@ -977,7 +1004,7 @@ test text-5.4 {TextWidgetCmd procedure, "cget" option} -setup {
     .t cget -bd
 } -cleanup {
     destroy .t
-} -result {17}
+} -result 17
 
 
 test text-6.1 {TextWidgetCmd procedure, "compare" option} -setup {
@@ -986,28 +1013,28 @@ test text-6.1 {TextWidgetCmd procedure, "compare" option} -setup {
     .t compare a b
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {wrong # args: should be ".t compare index1 op index2"}
+} -returnCodes error -result {wrong # args: should be ".t compare index1 op index2"}
 test text-6.2 {TextWidgetCmd procedure, "compare" option} -setup {
     text .t
 } -body {
     .t compare a b c d
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {wrong # args: should be ".t compare index1 op index2"}
+} -returnCodes error -result {wrong # args: should be ".t compare index1 op index2"}
 test text-6.3 {TextWidgetCmd procedure, "compare" option} -setup {
     text .t
 } -body {
     .t compare @x == 1.0
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad text index "@x"}
+} -returnCodes error -result {bad text index "@x"}
 test text-6.4 {TextWidgetCmd procedure, "compare" option} -setup {
     text .t
 } -body {
     .t compare 1.0 < @y
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad text index "@y"}
+} -returnCodes error -result {bad text index "@y"}
 test text-6.5 {TextWidgetCmd procedure, "compare" option} -setup {
     text .t
 } -body {
@@ -1105,7 +1132,7 @@ Line 7"
     .t compare 1.0 <x 1.2
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad comparison operator "<x": must be <, <=, ==, >=, >, or !=}
+} -returnCodes error -result {bad comparison operator "<x": must be <, <=, ==, >=, >, or !=}
 test text-6.12 {TextWidgetCmd procedure, "compare" option} -setup {
     text .t
 } -body {
@@ -1119,7 +1146,7 @@ Line 7"
     .t compare 1.0 >> 1.2
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad comparison operator ">>": must be <, <=, ==, >=, >, or !=}
+} -returnCodes error -result {bad comparison operator ">>": must be <, <=, ==, >=, >, or !=}
 test text-6.13 {TextWidgetCmd procedure, "compare" option} -setup {
     text .t
 } -body {
@@ -1133,7 +1160,7 @@ Line 7"
     .t compare 1.0 z 1.2
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad comparison operator "z": must be <, <=, ==, >=, >, or !=}
+} -returnCodes error -result {bad comparison operator "z": must be <, <=, ==, >=, >, or !=}
 test text-6.14 {TextWidgetCmd procedure, "compare" option} -setup {
     text .t
 } -body {
@@ -1147,7 +1174,7 @@ Line 7"
     .t co 1.0 z 1.2
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {ambiguous option "co": must be bbox, cget, compare, configure, count, debug, delete, dlineinfo, dump, edit, get, image, index, insert, mark, peer, replace, scan, search, see, tag, window, xview, or yview}
+} -returnCodes error -result {ambiguous option "co": must be bbox, cget, compare, configure, count, debug, delete, dlineinfo, dump, edit, get, image, index, insert, mark, peer, pendingsync, replace, scan, search, see, sync, tag, window, xview, or yview}
 # "configure" option is already covered above
 
 test text-7.1 {TextWidgetCmd procedure, "debug" option} -setup {
@@ -1156,14 +1183,14 @@ test text-7.1 {TextWidgetCmd procedure, "debug" option} -setup {
     .t debug 0 1
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {wrong # args: should be ".t debug boolean"}
+} -returnCodes error -result {wrong # args: should be ".t debug boolean"}
 test text-7.2 {TextWidgetCmd procedure, "debug" option} -setup {
     text .t
 } -body {
     .t de 0 1
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {ambiguous option "de": must be bbox, cget, compare, configure, count, debug, delete, dlineinfo, dump, edit, get, image, index, insert, mark, peer, replace, scan, search, see, tag, window, xview, or yview}
+} -returnCodes error -result {ambiguous option "de": must be bbox, cget, compare, configure, count, debug, delete, dlineinfo, dump, edit, get, image, index, insert, mark, peer, pendingsync, replace, scan, search, see, sync, tag, window, xview, or yview}
 test text-7.3 {TextWidgetCmd procedure, "debug" option} -setup {
     text .t
 } -body {
@@ -1171,7 +1198,7 @@ test text-7.3 {TextWidgetCmd procedure, "debug" option} -setup {
     .t deb
 } -cleanup {
     destroy .t
-} -result {1}
+} -result 1
 test text-7.4 {TextWidgetCmd procedure, "debug" option} -setup {
     text .t
 } -body {
@@ -1179,7 +1206,7 @@ test text-7.4 {TextWidgetCmd procedure, "debug" option} -setup {
     .t debug
 } -cleanup {
     destroy .t
-} -result {0}
+} -result 0
 
 
 test text-8.1 {TextWidgetCmd procedure, "delete" option} -setup {
@@ -1188,21 +1215,21 @@ test text-8.1 {TextWidgetCmd procedure, "delete" option} -setup {
     .t delete
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {wrong # args: should be ".t delete index1 ?index2 ...?"}
+} -returnCodes error -result {wrong # args: should be ".t delete index1 ?index2 ...?"}
 test text-8.2 {TextWidgetCmd procedure, "delete" option} -setup {
     text .t
 } -body {
     .t delete a b c
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad text index "a"}
+} -returnCodes error -result {bad text index "a"}
 test text-8.3 {TextWidgetCmd procedure, "delete" option} -setup {
     text .t
 } -body {
     .t delete @x 2.2
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad text index "@x"}
+} -returnCodes error -result {bad text index "@x"}
 test text-8.4 {TextWidgetCmd procedure, "delete" option} -setup {
     text .t
 } -body {
@@ -1212,7 +1239,7 @@ abcdefghijklm
     .t delete 2.3 @y
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad text index "@y"}
+} -returnCodes error -result {bad text index "@y"}
 test text-8.5 {TextWidgetCmd procedure, "delete" option} -setup {
     text .t
 } -body {
@@ -1225,7 +1252,7 @@ bOy GIrl .#@? x_yz
 Line 7"
     .t configure -state disabled
     .t delete 2.3
-    .t g 2.0 2.end
+    .t get 2.0 2.end
 } -cleanup {
     destroy .t
 } -result {abcdefghijklm}
@@ -1269,7 +1296,7 @@ abcdefghijklm
     .t delete 2.1 2.3 foo
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad text index "foo"}
+} -returnCodes error -result {bad text index "foo"}
 test text-8.9 {TextWidgetCmd procedure, "delete" option} -setup {
     text .t
 } -body {
@@ -1387,7 +1414,7 @@ abcdefghijklm
     .t replace 1.3 2.3
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {wrong # args: should be ".t replace index1 index2 chars ?tagList chars tagList ...?"}
+} -returnCodes error -result {wrong # args: should be ".t replace index1 index2 chars ?tagList chars tagList ...?"}
 test text-8.19 {TextWidgetCmd procedure, "replace" option} -setup {
     text .t
 } -body {
@@ -1397,7 +1424,7 @@ abcdefghijklm
     .t replace 3.1 2.3 foo
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {index "2.3" before "3.1" in the text}
+} -returnCodes error -result {index "2.3" before "3.1" in the text}
 test text-8.20 {TextWidgetCmd procedure, "replace" option} -setup {
     text .t
 } -body {
@@ -1431,7 +1458,7 @@ Line 7"
     string equal [.t get 1.0 end-1c] $prevtext
 } -cleanup {
     destroy .t
-} -result {1}
+} -result 1
 test text-8.22 {TextWidgetCmd procedure, "replace" option with undo} -setup {
     text .t
     set res {}
@@ -1475,14 +1502,14 @@ Line 7"
     # Ensure that undo (even composite undo like 'replace')
     # works when the widget shows nothing useful.
     .t replace 2.1 2.3 foo
-    .t configure -start 1 -end 1
+    .t configure -startline 1 -endline 1
     .t edit undo
-    .t configure -start {} -end {}
+    .t configure -startline {} -endline {}
     .t configure -undo 0
     string equal [.t get 1.0 end-1c] $prevtext
 } -cleanup {
     destroy .t
-} -result {1}
+} -result 1
 test text-8.24 {TextWidgetCmd procedure, "replace" option with peers, undo} -setup {
     text .t
 } -body {
@@ -1501,15 +1528,15 @@ Line 7"
 # works when the the event took place in one peer, which
 # is then deleted, before the undo takes place in another peer.
     .tt replace 2.1 2.3 foo
-    .tt configure -start 1 -end 1
+    .tt configure -startline 1 -endline 1
     destroy .tt
     .t edit undo
-    .t configure -start {} -end {}
+    .t configure -startline {} -endline {}
     .t configure -undo 0
     string equal [.t get 1.0 end-1c] $prevtext
 } -cleanup {
     destroy .t
-} -result {1}
+} -result 1
 test text-8.25 {TextWidgetCmd procedure, "replace" option with peers, undo} -setup {
     text .t
 } -body {
@@ -1530,14 +1557,14 @@ Line 7"
 # which isn't showing everything.
     .tt replace 2.1 2.3 foo
     set res [.tt get 2.1 2.4]
-    .tt configure -start 1 -end 1
+    .tt configure -startline 1 -endline 1
     destroy .tt
-    .t configure -start 3 -end 4
+    .t configure -startline 3 -endline 4
 # msg will actually be set to a silently ignored error message here,
 # (that the .tt command doesn't exist), but that is not important.
     lappend res [catch {.t edit undo}]
     .t configure -undo 0
-    .t configure -start {} -end {}
+    .t configure -startline {} -endline {}
     lappend res [string equal [.t get 1.0 end-1c] $prevtext]
 } -cleanup {
     destroy .t
@@ -1550,6 +1577,25 @@ test text-8.26 {TextWidgetCmd procedure, "replace" option crash} -setup {
 } -cleanup {
     destroy .tt
 } -result {}
+test text-8.27 {TextWidgetCmd procedure, "replace" option crash} -setup {
+    text .tt
+} -body {
+    .tt insert 0.0 \na
+    for {set i 0} {$i < 2} {incr i} {
+        .tt replace 2.0 3.0 b
+    }
+} -cleanup {
+    destroy .tt
+} -result {}
+test text-8.28 {TextWidgetCmd procedure, "replace" option crash} -setup {
+    text .tt
+} -body {
+    .tt insert end "foo\n"
+    .tt tag add sel 1.0 end
+    .tt replace sel.first sel.last "bar"
+} -cleanup {
+    destroy .tt
+} -result {}
 
 
 test text-9.1 {TextWidgetCmd procedure, "get" option} -setup {
@@ -1558,28 +1604,28 @@ test text-9.1 {TextWidgetCmd procedure, "get" option} -setup {
     .t get
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {wrong # args: should be ".t get ?-displaychars? ?--? index1 ?index2 ...?"}
+} -returnCodes error -result {wrong # args: should be ".t get ?-displaychars? ?--? index1 ?index2 ...?"}
 test text-9.2 {TextWidgetCmd procedure, "get" option} -setup {
     text .t
 } -body {
     .t get a b c
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad text index "a"}
+} -returnCodes error -result {bad text index "a"}
 test text-9.3 {TextWidgetCmd procedure, "get" option} -setup {
     text .t
 } -body {
     .t get @q 3.1
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad text index "@q"}
+} -returnCodes error -result {bad text index "@q"}
 test text-9.4 {TextWidgetCmd procedure, "get" option} -setup {
     text .t
 } -body {
     .t get 3.1 @r
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad text index "@r"}
+} -returnCodes error -result {bad text index "@r"}
 test text-9.5 {TextWidgetCmd procedure, "get" option} -setup {
     text .t
 } -body {
@@ -1809,7 +1855,7 @@ Line 7"
     .t get 5.2 5.4 5.5 foo
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad text index "foo"}
+} -returnCodes error -result {bad text index "foo"}
 test text-9.21 {TextWidgetCmd procedure, "get" option} -setup {
     text .t
 } -body {
@@ -1989,7 +2035,7 @@ Line 7"
     .t tag configure elide -elide 1
     .t tag add elide 5.2 5.4
     .t window create 5.4
-    .t delete 5.4 
+    .t delete 5.4
     .t tag add elide 5.5 5.6
     .t get -displaychars 5.2 5.8
 } -cleanup {
@@ -2003,35 +2049,35 @@ test text-10.1 {TextWidgetCmd procedure, "count" option} -setup {
     .t count
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {wrong # args: should be ".t count ?-option value ...? index1 index2"}
+} -returnCodes error -result {wrong # args: should be ".t count ?-option value ...? index1 index2"}
 test text-10.2 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
     .t count blah 1.0 2.0
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad option "blah" must be -chars, -displaychars, -displayindices, -displaylines, -indices, -lines, -update, -xpixels, or -ypixels}
+} -returnCodes error -result {bad option "blah" must be -chars, -displaychars, -displayindices, -displaylines, -indices, -lines, -update, -xpixels, or -ypixels}
 test text-10.3 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
     .t count a b
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad text index "a"}
+} -returnCodes error -result {bad text index "a"}
 test text-10.4 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
     .t count @q 3.1
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad text index "@q"}
+} -returnCodes error -result {bad text index "@q"}
 test text-10.5 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
     .t count 3.1 @r
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad text index "@r"}
+} -returnCodes error -result {bad text index "@r"}
 test text-10.6 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
     .t insert 1.0 "Line 1
@@ -2045,7 +2091,7 @@ Line 7"
     .t count 5.7 5.3
 } -cleanup {
     destroy .t
-} -result {-4}
+} -result -4
 test text-10.7 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
     .t insert 1.0 "Line 1
@@ -2059,7 +2105,7 @@ Line 7"
     .t count 5.3 5.5
 } -cleanup {
     destroy .t
-} -result {2}
+} -result 2
 test text-10.8 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2073,7 +2119,7 @@ Line 7"
     .t count 5.3 end
 } -cleanup {
     destroy .t
-} -result {29}
+} -result 29
 test text-10.9 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
     .t insert 1.0 "Line 1
@@ -2087,7 +2133,7 @@ Line 7"
     .t count 5.2 5.7
 } -cleanup {
     destroy .t
-} -result {5}
+} -result 5
 test text-10.10 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
     .t insert 1.0 "Line 1
@@ -2101,7 +2147,7 @@ Line 7"
     .t count 5.2 5.3
 } -cleanup {
     destroy .t
-} -result {1}
+} -result 1
 test text-10.11 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
     .t insert 1.0 "Line 1
@@ -2115,7 +2161,7 @@ Line 7"
     .t count 5.2 5.4
 } -cleanup {
     destroy .t
-} -result {2}
+} -result 2
 test text-10.12 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
     .t insert 1.0 "Line 1
@@ -2129,7 +2175,7 @@ Line 7"
     .t count 5.2 foo
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad text index "foo"}
+} -returnCodes error -result {bad text index "foo"}
 test text-10.13 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2145,7 +2191,7 @@ Line 7"
     .t count -displayindices 2.0 3.0
 } -cleanup {
     destroy .t
-} -result {2}
+} -result 2
 test text-10.14 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2161,7 +2207,7 @@ Line 7"
     .t count -displayindices 2.2 3.0
 } -cleanup {
     destroy .t
-} -result {0}
+} -result 0
 test text-10.15 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2178,7 +2224,7 @@ Line 7"
     .t count -displayindices 2.0 4.2
 } -cleanup {
     destroy .t
-} -result {5}
+} -result 5
 test text-10.16 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2194,14 +2240,14 @@ Line 7"
 # Create one visible and one invisible window
     frame .t.w1
     frame .t.w2
-# Creating this window here means that the elidden text
+# Creating this window here means that the elided text
 # now starts at 2.3
     .t window create 2.1 -window .t.w1
     .t window create 3.1 -window .t.w2
     .t count -displayindices 2.0 3.0
 } -cleanup {
     destroy .t
-} -result {3}
+} -result 3
 test text-10.17 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2217,14 +2263,14 @@ Line 7"
 # Create one visible and one invisible window
     frame .t.w1
     frame .t.w2
-# Creating this window here means that the elidden text
+# Creating this window here means that the elided text
 # now starts at 2.3
     .t window create 2.1 -window .t.w1
     .t window create 3.1 -window .t.w2
     .t count -displayindices 2.2 3.0
 } -cleanup {
     destroy .t
-} -result {1}
+} -result 1
 test text-10.18 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2242,14 +2288,14 @@ Line 7"
     frame .t.w1
     frame .t.w2
     .t mark set a 2.2
-# Creating this window here means that the elidden text
+# Creating this window here means that the elided text
 # now starts at 2.3, but 'a' is automatically moved to 2.3
     .t window create 2.1 -window .t.w1
     .t window create 3.1 -window .t.w2
     .t count -displayindices a 3.0
 } -cleanup {
     destroy .t
-} -result {0}
+} -result 0
 test text-10.19 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2266,14 +2312,14 @@ Line 7"
 # Create one visible and one invisible window
     frame .t.w1
     frame .t.w2
-# Creating this window here means that the elidden text
+# Creating this window here means that the elided text
 # now starts at 2.3
     .t window create 2.1 -window .t.w1
     .t window create 3.1 -window .t.w2
     .t count -displayindices 2.0 4.2
 } -cleanup {
     destroy .t
-} -result {6}
+} -result 6
 test text-10.20 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2290,14 +2336,14 @@ Line 7"
 # Create one visible and one invisible window
     frame .t.w1
     frame .t.w2
-# Creating this window here means that the elidden text
+# Creating this window here means that the elided text
 # now starts at 2.3
     .t window create 2.1 -window .t.w1
     .t window create 3.1 -window .t.w2
     .t count -displaychars 2.0 3.0
 } -cleanup {
     destroy .t
-} -result {2}
+} -result 2
 test text-10.21 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2314,14 +2360,14 @@ Line 7"
 # Create one visible and one invisible window
     frame .t.w1
     frame .t.w2
-# Creating this window here means that the elidden text
+# Creating this window here means that the elided text
 # now starts at 2.3
     .t window create 2.1 -window .t.w1
     .t window create 3.1 -window .t.w2
     .t count -displaychars 2.2 3.0
 } -cleanup {
     destroy .t
-} -result {1}
+} -result 1
 test text-10.22 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2339,14 +2385,14 @@ Line 7"
 # Create one visible and one invisible window
     frame .t.w1
     frame .t.w2
-# Creating this window here means that the elidden text
+# Creating this window here means that the elided text
 # now starts at 2.3, but 'a' is automatically moved to 2.3
     .t window create 2.1 -window .t.w1
     .t window create 3.1 -window .t.w2
     .t count -displaychars a 3.0
 } -cleanup {
     destroy .t
-} -result {0}
+} -result 0
 test text-10.23 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2363,14 +2409,14 @@ Line 7"
 # Create one visible and one invisible window
     frame .t.w1
     frame .t.w2
-# Creating this window here means that the elidden text
+# Creating this window here means that the elided text
 # now starts at 2.3
     .t window create 2.1 -window .t.w1
     .t window create 3.1 -window .t.w2
     .t count -displaychars 2.0 4.2
 } -cleanup {
     destroy .t
-} -result {5}
+} -result 5
 test text-10.24 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2387,7 +2433,7 @@ Line 7"
 # Create one visible and one invisible window
     frame .t.w1
     frame .t.w2
-# Creating this window here means that the elidden text
+# Creating this window here means that the elided text
 # now starts at 2.3
     .t window create 2.1 -window .t.w1
     .t window create 3.1 -window .t.w2
@@ -2413,7 +2459,7 @@ Line 7"
 # Create one visible and one invisible window
     frame .t.w1
     frame .t.w2
-# Creating this window here means that the elidden text
+# Creating this window here means that the elided text
 # now starts at 2.3, but 'a' is automatically moved to 2.3
     .t window create 2.1 -window .t.w1
     .t window create 3.1 -window .t.w2
@@ -2437,7 +2483,7 @@ Line 7"
 # Create one visible and one invisible window
     frame .t.w1
     frame .t.w2
-# Creating this window here means that the elidden text
+# Creating this window here means that the elided text
 # now starts at 2.3
     .t window create 2.1 -window .t.w1
     .t window create 3.1 -window .t.w2
@@ -2445,7 +2491,7 @@ Line 7"
     .t count -indices 2.0 4.2
 } -cleanup {
     destroy .t
-} -result {21}
+} -result 21
 test text-10.27 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2462,7 +2508,7 @@ Line 7"
 # Create one visible and one invisible window
     frame .t.w1
     frame .t.w2
-# Creating this window here means that the elidden text
+# Creating this window here means that the elided text
 # now starts at 2.3
     .t window create 2.1 -window .t.w1
     .t window create 3.1 -window .t.w2
@@ -2470,7 +2516,7 @@ Line 7"
     .t count -chars 2.2 3.0
 } -cleanup {
     destroy .t
-} -result {10}
+} -result 10
 test text-10.28 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2488,14 +2534,14 @@ Line 7"
 # Create one visible and one invisible window
     frame .t.w1
     frame .t.w2
-# Creating this window here means that the elidden text
+# Creating this window here means that the elided text
 # now starts at 2.3, but 'a' is automatically moved to 2.3
     .t window create 2.1 -window .t.w1
     .t window create 3.1 -window .t.w2
     .t count -chars a 3.0
 } -cleanup {
     destroy .t
-} -result {9}
+} -result 9
 test text-10.29 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2512,7 +2558,7 @@ Line 7"
 # Create one visible and one invisible window
     frame .t.w1
     frame .t.w2
-# Creating this window here means that the elidden text
+# Creating this window here means that the elided text
 # now starts at 2.3
     .t window create 2.1 -window .t.w1
     .t window create 3.1 -window .t.w2
@@ -2520,7 +2566,7 @@ Line 7"
     .t count -chars 2.0 4.2
 } -cleanup {
     destroy .t
-} -result {19}
+} -result 19
 test text-10.30 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2530,7 +2576,7 @@ test text-10.30 {TextWidgetCmd procedure, "count" option} -setup {
     .t count -lines 1.0 end
 } -cleanup {
     destroy .t
-} -result {3}
+} -result 3
 test text-10.31 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2540,7 +2586,7 @@ test text-10.31 {TextWidgetCmd procedure, "count" option} -setup {
     .t count -lines end 1.0
 } -cleanup {
     destroy .t
-} -result {-3}
+} -result -3
 test text-10.32 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2550,7 +2596,7 @@ test text-10.32 {TextWidgetCmd procedure, "count" option} -setup {
     .t count -lines 1.0 2.0 3.0
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad option "1.0" must be -chars, -displaychars, -displayindices, -displaylines, -indices, -lines, -update, -xpixels, or -ypixels}
+} -returnCodes error -result {bad option "1.0" must be -chars, -displaychars, -displayindices, -displaylines, -indices, -lines, -update, -xpixels, or -ypixels}
 test text-10.33 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2560,7 +2606,7 @@ test text-10.33 {TextWidgetCmd procedure, "count" option} -setup {
     .t count -lines end end
 } -cleanup {
     destroy .t
-} -result {0}
+} -result 0
 test text-10.34 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2570,7 +2616,7 @@ test text-10.34 {TextWidgetCmd procedure, "count" option} -setup {
     .t count -lines 1.5 2.5
 } -cleanup {
     destroy .t
-} -result {1}
+} -result 1
 test text-10.35 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2580,7 +2626,7 @@ test text-10.35 {TextWidgetCmd procedure, "count" option} -setup {
     .t count -lines 2.5 "2.5 lineend"
 } -cleanup {
     destroy .t
-} -result {0}
+} -result 0
 test text-10.36 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2590,7 +2636,7 @@ test text-10.36 {TextWidgetCmd procedure, "count" option} -setup {
     .t count -lines 2.7 "1.0 lineend"
 } -cleanup {
     destroy .t
-} -result {-1}
+} -result -1
 test text-10.37 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
 } -body {
@@ -2601,10 +2647,10 @@ test text-10.37 {TextWidgetCmd procedure, "count" option} -setup {
     .t count -displaylines 1.0 end
 } -cleanup {
     destroy .t
-} -result {3}
+} -result 3
 test text-10.38 {TextWidgetCmd procedure, "count" option} -setup {
     text .t -font {Courier -12} -borderwidth 2 -highlightthickness 2
-    pack append . .t {top expand fill}
+    pack .t -expand 1 -fill both
 } -body {
     .t configure -width 20 -height 10
     update
@@ -2633,14 +2679,14 @@ test text-10.39 {TextWidgetCmd procedure, "count" option} -setup {
 } -cleanup {
     destroy .t
 } -result {2 6 1 5}
-test text-9.2.45 {TextWidgetCmd procedure, "count" option} -setup {
+test text-10.40 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
     pack .t
     update
     set res {}
 } -body {
     for {set i 1} {$i < 5} {incr i} {
-      .t insert end "Line $i+++Line $i---Line $i///Line $i - This is Line [format %c [expr 64+$i]]\n"
+      .t insert end "Line $i+++Line $i---Line $i///Line $i - This is Line [format %c [expr {64+$i}]]\n"
     }
     .t tag configure hidden -elide true
     .t tag add hidden 2.15 3.10
@@ -2648,8 +2694,8 @@ test text-9.2.45 {TextWidgetCmd procedure, "count" option} -setup {
     set res [.t count -displaylines 2.0 3.0]
 } -cleanup {
     destroy .t
-} -result {0}
-test text-9.2.46 {TextWidgetCmd procedure, "count" option} -setup {
+} -result 0
+test text-10.41 {TextWidgetCmd procedure, "count" option} -setup {
     toplevel .mytop
     pack [text .mytop.t -font TkFixedFont -bd 0 -padx 0 -wrap char]
     set spec [font measure TkFixedFont "Line 1+++Line 1---Li"]  ; # 20 chars
@@ -2662,7 +2708,7 @@ test text-9.2.46 {TextWidgetCmd procedure, "count" option} -setup {
     for {set i 1} {$i < 5} {incr i} {
       #                    0          1          2          3          4
       #                    012345 678901234 567890123 456789012 34567890123456789
-      .mytop.t insert end "Line $i+++Line $i---Line $i///Line $i - This is Line [format %c [expr 64+$i]]\n"
+      .mytop.t insert end "Line $i+++Line $i---Line $i///Line $i - This is Line [format %c [expr {64+$i}]]\n"
     }
     .mytop.t tag configure hidden -elide true
     .mytop.t tag add hidden 2.30 3.10
@@ -2671,7 +2717,7 @@ test text-9.2.46 {TextWidgetCmd procedure, "count" option} -setup {
 } -cleanup {
     destroy .mytop
 } -result {1 3}
-test text-9.2.47 {TextWidgetCmd procedure, "count" option} -setup {
+test text-10.42 {TextWidgetCmd procedure, "count" option} -setup {
     text .t
     pack .t
     update
@@ -2683,6 +2729,10 @@ test text-9.2.47 {TextWidgetCmd procedure, "count" option} -setup {
     .t tag configure hidden -elide true
     .t tag add hidden 5.7 11.0
     update
+    # next line to be fully sure that asynchronous line heights calculation is
+    # up-to-date otherwise this test may fail (depending on the computer
+    # performance), especially when the . toplevel has small height
+    .t sync
     set y1 [lindex [.t yview] 1]
     .t count -displaylines 5.0 11.0
     set y2 [lindex [.t yview] 1]
@@ -2696,7 +2746,7 @@ test text-9.2.47 {TextWidgetCmd procedure, "count" option} -setup {
 
 test text-11.1 {counting with tag priority eliding} -setup {
     text .t -font {Courier -12} -borderwidth 2 -highlightthickness 2
-    pack append . .t {top expand fill}
+    pack .t -expand 1 -fill both
 } -body {
     .t insert end "hello"
     .t configure -wrap none
@@ -2713,7 +2763,7 @@ test text-11.1 {counting with tag priority eliding} -setup {
 } -result {0 1 2 3 4 5 5 6}
 test text-11.2 {counting with tag priority eliding} -setup {
     text .t -font {Courier -12} -borderwidth 2 -highlightthickness 2
-    pack append . .t {top expand fill}
+    pack .t -expand 1 -fill both
 } -body {
     .t insert end "hello"
     .t tag configure elide1 -elide 0
@@ -2721,7 +2771,7 @@ test text-11.2 {counting with tag priority eliding} -setup {
     .t count -displaychars 1.0 1.5
 } -cleanup {
     destroy .t
-} -result {5}
+} -result 5
 test text-11.3 {counting with tag priority eliding} -setup {
     text .t -font {Courier -12} -borderwidth 2 -highlightthickness 2
 } -body {
@@ -2734,7 +2784,7 @@ test text-11.3 {counting with tag priority eliding} -setup {
     .t count -displaychars 1.0 1.5
 } -cleanup {
     destroy .t
-} -result {3}
+} -result 3
 test text-11.4 {counting with tag priority eliding}  -setup {
     text .t -font {Courier -12} -borderwidth 2 -highlightthickness 2
     set res {}
@@ -2825,7 +2875,7 @@ test text-11.7 {counting with tag priority eliding}  -setup {
 } -result {5 5}
 test text-11.8 {counting with tag priority eliding} -setup {
     text .t -font {Courier -12} -borderwidth 2 -highlightthickness 2
-    pack append . .t {top expand fill}
+    pack .t -expand 1 -fill both
     set res {}
 } -body {
     .t insert end "hello"
@@ -2851,7 +2901,7 @@ test text-11.8 {counting with tag priority eliding} -setup {
 } -result {0 0 0 0 3 2 1 1}
 test text-11.9 {counting with tag priority eliding} -setup {
     text .t -font {Courier -12} -borderwidth 2 -highlightthickness 2
-    pack append . .t {top expand fill}
+    pack .t -expand 1 -fill both
     set res {}
 } -body {
     .t tag configure WELCOME -elide 1
@@ -2867,7 +2917,7 @@ test text-11.9 {counting with tag priority eliding} -setup {
     lappend res [.t index "1.0 +1 indices"]
     lappend res [.t index "1.0 +1 display indices"]
     lappend res [.t index "1.0 +1 display chars"]
-    lappend res [.t index end] 
+    lappend res [.t index end]
     lappend res [.t index "end -1 indices"]
     lappend res [.t index "end -1 display indices"]
     lappend res [.t index "end -1 display chars"]
@@ -2878,6 +2928,207 @@ test text-11.9 {counting with tag priority eliding} -setup {
     destroy .t
 } -result {1 0 0 1 0 2.0 4.0 4.0 4.0 3.0 3.0 3.0 2.0 1.0 1.0}
 
+test text-11a.1 {TextWidgetCmd procedure, "pendingsync" option} -setup {
+    destroy .yt
+} -body {
+    text .yt
+    list [catch {.yt pendingsync mytext} msg] $msg
+} -cleanup {
+    destroy .yt
+} -result {1 {wrong # args: should be ".yt pendingsync"}}
+
+test text-11a.2 {TextWidgetCmd procedure, "pendingsync" option} -setup {
+    destroy .top.yt .top
+} -body {
+    toplevel .top
+    pack [text .top.yt]
+    update
+    set content {}
+    for {set i 1} {$i < 300} {incr i} {
+        append content [string repeat "$i " 15] \n
+    }
+    .top.yt insert 1.0 $content
+    # wait for end of line metrics calculation to get correct $fraction1
+    # as a reference
+    while {[.top.yt pendingsync]} {update}
+    .top.yt yview moveto 1
+    set fraction1 [lindex [.top.yt yview] 0]
+    set res [expr {$fraction1 > 0}]
+    .top.yt delete 1.0 end
+    .top.yt insert 1.0 $content
+    # ensure the test is relevant
+    lappend res [.top.yt pendingsync]
+    # asynchronously wait for completion of line metrics calculation
+    while {[.top.yt pendingsync]} {update}
+    .top.yt yview moveto $fraction1
+    set fraction2 [lindex [.top.yt yview] 0]
+    lappend res [expr {$fraction1 == $fraction2}]
+} -cleanup {
+    destroy .top.yt .top
+} -result {1 1 1}
+
+test text-11a.11 {TextWidgetCmd procedure, "sync" option} -setup {
+    destroy .yt
+} -body {
+    text .yt
+    list [catch {.yt sync mytext} msg] $msg
+} -cleanup {
+    destroy .yt
+} -result {1 {wrong # args: should be ".yt sync ?-command command?"}}
+test text-11a.12 {TextWidgetCmd procedure, "sync" option} -setup {
+    destroy .top.yt .top
+} -body {
+    toplevel .top
+    pack [text .top.yt]
+    update
+    set content {}
+    # Use long lines so the line metrics will need updating.
+    for {set i 1} {$i < 30} {incr i} {
+        append content [string repeat "$i " 200] \n
+    }
+    .top.yt insert 1.0 $content
+    # wait for end of line metrics calculation to get correct $fraction1
+    # as a reference
+    .top.yt sync
+    .top.yt yview moveto 1
+    set fraction1 [lindex [.top.yt yview] 0]
+    set res [expr {$fraction1 > 0}]
+    # first case: do not wait for completion of line metrics calculation
+    .top.yt delete 1.0 end
+    .top.yt insert 1.0 $content
+    .top.yt yview moveto $fraction1
+    set fraction2 [lindex [.top.yt yview] 0]
+    lappend res [expr {$fraction1 == $fraction2}]
+    # second case: wait for completion of line metrics calculation
+    .top.yt delete 1.0 end
+    .top.yt insert 1.0 $content
+    .top.yt sync
+    .top.yt yview moveto $fraction1
+    set fraction2 [lindex [.top.yt yview] 0]
+    lappend res [expr {$fraction1 == $fraction2}]
+} -cleanup {
+    destroy .top.yt .top
+} -result {1 0 1}
+
+test text-11a.21 {TextWidgetCmd procedure, "sync" option with -command} -setup {
+    destroy .yt
+} -body {
+    text .yt
+    list [catch {.yt sync -comx foo} msg] $msg
+} -cleanup {
+    destroy .yt
+} -result {1 {wrong option "-comx": should be "-command"}}
+test text-11a.22 {TextWidgetCmd procedure, "sync" option with -command} -setup {
+    destroy .top.yt .top
+} -body {
+    set res {}
+    set ::x 0
+    toplevel .top
+    pack [text .top.yt]
+    update
+    set content {}
+    for {set i 1} {$i < 30} {incr i} {
+        append content [string repeat "$i " 15] \n
+    }
+    .top.yt insert 1.0 $content
+    # first case: line metrics calculation still running when launching 'sync -command'
+    lappend res [.top.yt pendingsync]       ; # {1}
+    .top.yt sync -command [list set ::x 1]
+    lappend res $::x                        ; # {1 0}
+    # now finish line metrics calculations
+    while {[.top.yt pendingsync]} {update}
+    lappend res [.top.yt pendingsync] $::x  ; # {1 0 0 1}
+    # second case: line metrics calculation completed when launching 'sync -command'
+    .top.yt sync -command [list set ::x 2]
+    lappend res $::x                        ; # {1 0 0 1 1}
+    vwait ::x
+    lappend res $::x                        ; # {1 0 0 1 1 2}
+} -cleanup {
+    destroy .top.yt .top
+} -result {1 0 0 1 1 2}
+
+test text-11a.31 {"<<WidgetViewSync>>" event} -setup {
+    destroy .top.yt .top
+} -body {
+    toplevel .top
+    pack [text .top.yt]
+    update
+    set content {}
+    for {set i 1} {$i < 300} {incr i} {
+        append content [string repeat "$i " 15] \n
+    }
+    # Sync the widget and process <<WidgetViewSync>> events before binding.
+    .top.yt sync
+    update
+    bind .top.yt <<WidgetViewSync>> { if {%d} {set yud(%W) 1} }
+    .top.yt insert 1.0 $content
+    .top.yt yview moveto 1
+    set fraction1 [lindex [.top.yt yview] 0]
+    set res [expr {$fraction1 > 0}]
+    .top.yt delete 1.0 end
+    .top.yt insert 1.0 $content
+    # synchronously wait for completion of line metrics calculation
+    # and verify that the fractions agree.
+    set waited 0
+    if {[.top.yt pendingsync]} {set waited 1 ; vwait yud(.top.yt)}
+    lappend res $waited
+    .top.yt yview moveto $fraction1
+    set fraction2 [lindex [.top.yt yview] 0]
+    lappend res [expr {$fraction1 == $fraction2}]
+} -cleanup {
+    destroy .top.yt .top
+} -result {1 1 1}
+
+test text-11a.41 {"sync" "pendingsync" and <<WidgetViewSync>>} -setup {
+    destroy .top.yt .top
+} -body {
+    toplevel .top
+    pack [text .top.yt]
+    update
+    set content {}
+    for {set i 1} {$i < 300} {incr i} {
+        append content [string repeat "$i " 50] \n
+    }
+    # Sync the widget and process all <<WidgetViewSync>> events before binding.
+    .top.yt sync
+    update
+    bind .top.yt <<WidgetViewSync>> {lappend res Sync:%d}
+    set res {}
+    # The next line triggers <<WidgetViewSync>> with %d==0 i.e. out of sync.
+    .top.yt insert 1.0 $content
+    vwait res
+    # Verify that the line metrics are not up-to-date (pendingsync is 1).
+    lappend res "Pending:[.top.yt pendingsync]"
+    # Update all line metrics by calling the sync command.
+    .top.yt sync
+    # <<WidgetViewSync>> should fire with %d==1 i.e. back in sync.
+    vwait res
+    # At this time the line metrics should be up-to-date (pendingsync is 0).
+    lappend res "Pending:[.top.yt pendingsync]"
+    set res
+} -cleanup {
+    destroy .top.yt .top
+} -result {Sync:0 Pending:1 Sync:1 Pending:0}
+
+test text-11a.51 {<<WidgetViewSync>> calls TkSendVirtualEvent(),
+                  NOT Tk_HandleEvent().
+                  Bug [b362182e45704dd7bbd6aed91e48122035ea3d16]} -setup {
+    destroy .top.t .top
+} -body {
+    set res {}
+    toplevel .top
+    pack [text .top.t]
+    update
+    for {set i 1} {$i < 10000} {incr i} {
+        .top.t insert end "Hello world!\n"
+    }
+    bind .top.t <<WidgetViewSync>> {destroy .top.t}
+    .top.t tag add mytag 1.5 8000.8    ; # shall not crash
+    update
+    set res "Still doing fine!"
+} -cleanup {
+    destroy .top.t .top
+} -result {Still doing fine!}
 
 test text-12.1 {TextWidgetCmd procedure, "index" option} -setup {
     text .t
@@ -2885,28 +3136,28 @@ test text-12.1 {TextWidgetCmd procedure, "index" option} -setup {
     .t index
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {wrong # args: should be ".t index index"}
+} -returnCodes error -result {wrong # args: should be ".t index index"}
 test text-12.2 {TextWidgetCmd procedure, "index" option} -setup {
     text .t
 } -body {
     .t ind a b
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {wrong # args: should be ".t index index"}
+} -returnCodes error -result {wrong # args: should be ".t index index"}
 test text-12.3 {TextWidgetCmd procedure, "index" option} -setup {
     text .t
 } -body {
     .t in a b
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {ambiguous option "in": must be bbox, cget, compare, configure, count, debug, delete, dlineinfo, dump, edit, get, image, index, insert, mark, peer, replace, scan, search, see, tag, window, xview, or yview}
+} -returnCodes error -result {ambiguous option "in": must be bbox, cget, compare, configure, count, debug, delete, dlineinfo, dump, edit, get, image, index, insert, mark, peer, pendingsync, replace, scan, search, see, sync, tag, window, xview, or yview}
 test text-12.4 {TextWidgetCmd procedure, "index" option} -setup {
     text .t
 } -body {
     .t index @xyz
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad text index "@xyz"}
+} -returnCodes error -result {bad text index "@xyz"}
 test text-12.5 {TextWidgetCmd procedure, "index" option} -setup {
     [text .t] insert 1.0 "Line 1
 aefghijklm
@@ -2934,7 +3185,7 @@ Line 7"
     .t insert 1.2
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {wrong # args: should be ".t insert index chars ?tagList chars tagList ...?"}
+} -returnCodes error -result {wrong # args: should be ".t insert index chars ?tagList chars tagList ...?"}
 test text-13.2 {TextWidgetCmd procedure, "insert" option} -setup {
     text .t
 } -body {
@@ -3014,7 +3265,7 @@ test text-13.8 {TextWidgetCmd procedure, "insert" option} -setup {
     .t insert 1.0 "Sample text" "a \{b"
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {unmatched open brace in list}
+} -returnCodes error -result {unmatched open brace in list}
 test text-13.9 {TextWidgetCmd procedure, "insert" option} -setup {
     text .t
 } -body {
@@ -3041,7 +3292,7 @@ test text-14.1 {ConfigureText procedure} -setup {
     .t configure -state foobar
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad state "foobar": must be disabled or normal}
+} -returnCodes error -result {bad state "foobar": must be disabled or normal}
 test text-14.2 {ConfigureText procedure} -setup {
     text .t
 } -body {
@@ -3072,11 +3323,11 @@ test text-14.5 {ConfigureText procedure} -setup {
     .t configure -tabs {30 foo}
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad tab alignment "foo": must be left, right, center, or numeric} 
+} -returnCodes error -result {bad tab alignment "foo": must be left, right, center, or numeric}
 test text-14.6 {ConfigureText procedure} -setup {
     text .t
 } -body {
-    catch {.t configure -tabs {30 foo}} 
+    catch {.t configure -tabs {30 foo}}
     .t configure -tabs {10 20 30}
     return $errorInfo
 } -cleanup {
@@ -3095,12 +3346,12 @@ test text-14.7 {ConfigureText procedure} -setup {
     destroy .t
 } -result {}
 test text-14.8 {ConfigureText procedure} -setup {
-   text .t 
+   text .t
 } -body {
     .t configure -wrap bogus
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad wrap "bogus": must be char, none, or word}
+} -returnCodes error -result {bad wrap "bogus": must be char, none, or word}
 test text-14.9 {ConfigureText procedure} -setup {
     text .t -font {Courier -12} -borderwidth 2 -highlightthickness 2
 } -body {
@@ -3121,12 +3372,12 @@ test text-14.10 {ConfigureText procedure} -setup {
     destroy .t
 } -result {}
 test text-14.11 {ConfigureText procedure} -setup {
-    text .t 
+    text .t
 } -body {
     .t configure -selectborderwidth foo
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad screen distance "foo"}
+} -returnCodes error -result {bad screen distance "foo"}
 test text-14.12 {ConfigureText procedure} -body {
     text .t
     entry .t.e
@@ -3163,7 +3414,7 @@ test text-14.14 {ConfigureText procedure} -body {
     selection get
 } -cleanup {
     destroy .t .t2
-} -result {1234}
+} -result 1234
 test text-14.15 {ConfigureText procedure} -body {
     text .t
     entry .t.e
@@ -3177,7 +3428,7 @@ test text-14.15 {ConfigureText procedure} -body {
     selection get
 } -cleanup {
     destroy .t2 .t
-} -result {1234}
+} -result 1234
 test text-14.16 {ConfigureText procedure} -body {
     text .t
     entry .t.e
@@ -3206,13 +3457,13 @@ test text-14.17 {ConfigureText procedure} -body {
     return $result
 } -cleanup {
     destroy .t .t2
-} -result {1234}
+} -result 1234
 test text-14.18 {ConfigureText procedure} -constraints fonts -setup {
     toplevel .top
     text .top.t -font {Courier -12} -borderwidth 2 -highlightthickness 2
 } -body {
-    .top.t configure -width 20 -height 10 
-    pack append .top .top.t top
+    .top.t configure -width 20 -height 10
+    pack .top.t
     update
     set geom [wm geometry .top]
     set x [string range $geom 0 [string first + $geom]]
@@ -3223,31 +3474,38 @@ test text-14.18 {ConfigureText procedure} -constraints fonts -setup {
 # minimum size and it was interfering with the size requested by the -setgrid.
 # The "overrideredirect" gets rid of the titlebar so the toplevel can shrink
 # to the appropriate size.
+# On macOS, however, there is no way to make the window overlap the menubar.
+if {[tk windowingsystem] eq "aqua"} {
+    set minY [expr [menubarheight] + 1]
+} else {
+    set minY 0
+}
 test text-14.19 {ConfigureText procedure} -setup {
     toplevel .top
     text .top.t -font {Courier -12} -borderwidth 2 -highlightthickness 2
 } -body {
     .top.t configure -width 20 -height 10 -setgrid 1
     wm overrideredirect .top 1
-    pack append .top .top.t top
-    wm geometry .top +0+0
+    pack .top.t
+    wm geometry .top +0+$minY
     update
     wm geometry .top
 } -cleanup {
     destroy .top
-} -result {20x10+0+0}
+} -result "20x10+0+$minY"
 # This test was failing on Windows because the title bar on .t was a certain
 # minimum size and it was interfering with the size requested by the -setgrid.
 # The "overrideredirect" gets rid of the titlebar so the toplevel can shrink
 # to the appropriate size.
+# On macOS we again use minY as a workaround.
 test text-14.20 {ConfigureText procedure} -setup {
     toplevel .top
     text .top.t -font {Courier -12} -borderwidth 2 -highlightthickness 2
 } -body {
     .top.t configure -width 20 -height 10 -setgrid 1
     wm overrideredirect .top 1
-    pack append .top .top.t top
-    wm geometry .top +0+0
+    pack .top.t
+    wm geometry .top +0+$minY
     update
     set result [wm geometry .top]
     wm geometry .top 15x8
@@ -3258,7 +3516,7 @@ test text-14.20 {ConfigureText procedure} -setup {
     lappend result [wm geometry .top]
 } -cleanup {
     destroy .top
-} -result {20x10+0+0 15x8+0+0 15x8+0+0}
+} -result "20x10+0+$minY 15x8+0+$minY 15x8+0+$minY"
 
 
 test text-15.1 {TextWorldChanged procedure, spacing options} -constraints {
@@ -3300,7 +3558,7 @@ test text-17.1 {TextCmdDeletedProc procedure} -body {
 test text-17.2 {TextCmdDeletedProc procedure, disabling -setgrid} -constraints {
     fonts
 } -body {
-   toplevel .top 
+   toplevel .top
    text .top.t -borderwidth 2 -highlightthickness 2 -font {Courier -12 bold} \
     -setgrid 1 -width 20 -height 10
    pack .top.t
@@ -3421,13 +3679,13 @@ test text-19.2 {DeleteChars procedure} -body {
     .t delete foobar
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad text index "foobar"}
+} -returnCodes error -result {bad text index "foobar"}
 test text-19.3 {DeleteChars procedure} -body {
     text .t
     .t delete 1.0 lousy
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad text index "lousy"}
+} -returnCodes error -result {bad text index "lousy"}
 test text-19.4 {DeleteChars procedure} -body {
     text .t
     .t insert 1.0 "Line 1
@@ -3499,10 +3757,9 @@ Line 4"
     list [.t tag ranges sel] [.t get 1.0 end]
 } -cleanup {
     destroy .t
-} -result {{1.0 4.0} {Line 1
+} -result {{1.0 3.5} {Line 1
 abcde
 12345
-
 }}
 test text-19.9 {DeleteChars procedure} -body {
     text .t
@@ -3537,7 +3794,7 @@ Line 4
 test text-19.11 {DeleteChars procedure} -body {
     toplevel .top
     text .top.t -width 20 -height 5
-    pack append .top .top.t top
+    pack .top.t
     wm geometry .top +0+0
     .top.t insert 1.0 "abc\n123\nx\ny\nz\nq\nr\ns"
     update
@@ -3549,7 +3806,7 @@ test text-19.11 {DeleteChars procedure} -body {
 test text-19.12 {DeleteChars procedure} -body {
     toplevel .top
     text .top.t -width 20 -height 5
-    pack append .top .top.t top
+    pack .top.t
     wm geometry .top +0+0
     .top.t insert 1.0 "abc\n123\nx\ny\nz\nq\nr\ns"
     .top.t yview 3.0
@@ -3609,7 +3866,7 @@ test text-19.16 {DeleteChars procedure, updates affecting topIndex} -setup {
     wm geometry .top +0+0
     update
 } -body {
-    .top.t insert end "abc def\n01 2345 678 9101112\nLine 3\nLine 4\nLine 5\n6\n7\n8\n"
+    .top.t insert end "abc def\n01 2a345 678 9101112\nLine 3\nLine 4\nLine 5\n6\n7\n8\n"
     .top.t yview 2.4
     .top.t delete 2.5
     set x [.top.t index @0,0]
@@ -3622,7 +3879,7 @@ test text-19.16 {DeleteChars procedure, updates affecting topIndex} -setup {
 
 test text-20.1 {TextFetchSelection procedure} -setup {
     text .t -width 20 -height 10
-    pack append . .t {top expand fill}
+    pack .t -expand 1 -fill both
     update
 } -body {
     foreach i {a b c d e f g h i j k l m n o p q r s t u v w x y z} {
@@ -3637,7 +3894,7 @@ b.0b.1b.2b.3b.4
 c.0c}
 test text-20.2 {TextFetchSelection procedure} -setup {
     text .t -width 20 -height 10
-    pack append . .t {top expand fill}
+    pack .t -expand 1 -fill both
     update
 } -body {
     foreach i {a b c d e f g h i j k l m n o p q r s t u v w x y z} {
@@ -3657,7 +3914,7 @@ b.0b.1b.2b.3b.4
 c.0c}
 test text-20.3 {TextFetchSelection procedure}  -setup {
     text .t -width 20 -height 10
-    pack append . .t {top expand fill}
+    pack .t -expand 1 -fill both
     update
 } -body {
     foreach i {a b c d e f g h i j k l m n o p q r s t u v w x y z} {
@@ -3671,7 +3928,7 @@ test text-20.3 {TextFetchSelection procedure}  -setup {
 } -result {m}
 test text-20.4 {TextFetchSelection procedure}  -setup {
     text .t -width 20 -height 10
-    pack append . .t {top expand fill}
+    pack .t -expand 1 -fill both
     update
 } -body {
     foreach i {a b c d e f g h i j k l m n o p q r s t u v w x y z} {
@@ -3691,7 +3948,7 @@ test text-20.4 {TextFetchSelection procedure}  -setup {
 cj.0j.1j.2j.3j.4m}
 test text-20.5 {TextFetchSelection procedure, long selections} -setup {
     text .t -width 20 -height 10
-    pack append . .t {top expand fill}
+    pack .t -expand 1 -fill both
     update
     set x ""
 } -body {
@@ -3703,10 +3960,10 @@ test text-20.5 {TextFetchSelection procedure, long selections} -setup {
     expr {[selection get] eq "$x\n"}
 } -cleanup {
     destroy .t
-} -result {1}
+} -result 1
 
 
-test text-21.1 {TkTextLostSelection procedure} -constraints unix -setup {
+test text-21.1 {TkTextLostSelection procedure} -constraints {x11} -setup {
     text .t
     .t insert 1.0 "Line 1"
     entry .t.e
@@ -3721,7 +3978,7 @@ test text-21.1 {TkTextLostSelection procedure} -constraints unix -setup {
 } -cleanup {
     destroy .t .t2
 } -result {}
-test text-21.2 {TkTextLostSelection procedure} -constraints win -setup {
+test text-21.2 {TkTextLostSelection procedure} -constraints aquaOrWin32 -setup {
     text .t
     .t insert 1.0 "Line 1"
     entry .t.e
@@ -3815,7 +4072,7 @@ test text-22.8 {TextSearchCmd procedure, -count option} -body {
     .t search -count
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {no value given for "-count" option}
+} -returnCodes error -result {no value given for "-count" option}
 test text-22.9 {TextSearchCmd procedure, -nocase option} -body {
     text .t
     .t insert end "xxyz xyz x. the\nfoo -forward bar xxxxx BaR foo\nxyz xxyzx"
@@ -3843,7 +4100,7 @@ test text-22.12 {TextSearchCmd procedure, -nolinestop option} -body {
     .t search -nolinestop BaR 1.1
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {the "-nolinestop" option requires the "-regexp" option to be present}
+} -returnCodes error -result {the "-nolinestop" option requires the "-regexp" option to be present}
 test text-22.13 {TextSearchCmd procedure, -nolinestop option} -body {
     text .t
     .t insert end "xxyz xyz x. the\nfoo -forward bar xxxxx BaR foo\nxyz xxyzx"
@@ -3865,20 +4122,20 @@ test text-22.15 {TextSearchCmd procedure, argument parsing} -body {
     .t search abc
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {wrong # args: should be ".t search ?switches? pattern index ?stopIndex?"}
+} -returnCodes error -result {wrong # args: should be ".t search ?switches? pattern index ?stopIndex?"}
 test text-22.16 {TextSearchCmd procedure, argument parsing} -body {
     text .t
     .t insert end "xxyz xyz x. the\nfoo -forward bar xxxxx BaR foo\nxyz xxyzx"
     .t search abc d e f
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {wrong # args: should be ".t search ?switches? pattern index ?stopIndex?"}
+} -returnCodes error -result {wrong # args: should be ".t search ?switches? pattern index ?stopIndex?"}
 test text-22.17 {TextSearchCmd procedure, check index} -body {
     text .t
     .t search abc gorp
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad text index "gorp"}
+} -returnCodes error -result {bad text index "gorp"}
 test text-22.18 {TextSearchCmd procedure, startIndex == "end"} -body {
     text .t
     .t insert end "xxyz xyz x. the\nfoo -forward bar xxxxx BaR foo\nxyz xxyzx"
@@ -3899,7 +4156,7 @@ test text-22.20 {TextSearchCmd procedure, bad stopIndex} -body {
     .t search abc 1.0 lousy
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad text index "lousy"}
+} -returnCodes error -result {bad text index "lousy"}
 test text-22.21 {TextSearchCmd procedure, pattern case conversion} -body {
     text .t
     .t insert end "xxyz xyz x. the\nfoo -forward bar xxxxx BaR foo\nxyz xxyzx"
@@ -3913,7 +4170,7 @@ test text-22.22 {TextSearchCmd procedure, bad regular expression pattern} -body 
     .t search -regexp a( 1.0
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {couldn't compile regular expression pattern: parentheses () not balanced}
+} -returnCodes error -match glob -result {*t compile regular expression pattern: parentheses () not balanced}
 test text-22.23 {TextSearchCmd procedure, skip dummy last line} -body {
     text .t
     .t insert end "xxyz xyz x. the\nfoo -forward bar xxxxx BaR foo\nxyz xxyzx"
@@ -4217,7 +4474,7 @@ test text-22.56 {TextSearchCmd procedure, error setting variable} -body {
     .t search -count a(2) xyz 1.0
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {can't set "a(2)": variable isn't array}
+} -returnCodes error -match glob -result {can*t set "a(2)": variable is* array}
 test text-22.57 {TextSearchCmd procedure, wrap-around} -body {
     text .t
     .t insert end "xxyz xyz x. the\nfoo -forward bar xxxxx BaR foo\nxyz xxyzx"
@@ -4693,7 +4950,7 @@ test text-22.118 {TextSearchCmd, multiline matching end of window} -body {
 test text-22.119 {TextSearchCmd, multiline regexp matching} -body {
     pack [text .t]
     .t insert 1.0 {    Tcl_Obj *objPtr));
-static Tcl_Obj*         FSNormalizeAbsolutePath 
+static Tcl_Obj*         FSNormalizeAbsolutePath
 			    _ANSI_ARGS_((Tcl_Interp* interp, Tcl_Obj *pathPtr));}
     set markExpr "^(\[A-Za-z0-9~_\]+\[ \t\n\r\]*\\(|(\[^ \t\(#\n\r/@:\*\]\[^=\(\r\n\]*\[ \t\]+\\*?)?"
     append markExpr "(\[A-Za-z0-9~_\]+(<\[^>\]*>)?(::)?(\[A-Za-z0-9~_\]+::)*\[-A-Za-z0-9~_+ <>\|\\*/\]+|\[A-Za-z0-9~_\]+)"
@@ -4710,7 +4967,7 @@ test text-22.120 {TextSearchCmd, multiline regexp matching} -body {
     pack [text .t]
     .t insert 1.0 {static int		SetFsPathFromAny _ANSI_ARGS_((Tcl_Interp *interp,
 			    Tcl_Obj *objPtr));
-static Tcl_Obj*         FSNormalizeAbsolutePath 
+static Tcl_Obj*         FSNormalizeAbsolutePath
 			    _ANSI_ARGS_((Tcl_Interp* interp, Tcl_Obj *pathPtr));}
     set markExpr "^(\[A-Za-z0-9~_\]+\[ \t\n\r\]*\\(|(\[^ \t\(#\n\r/@:\*\]\[^=\(\r\n\]*\[ \t\]+\\*?)?"
     append markExpr "(\[A-Za-z0-9~_\]+(<\[^>\]*>)?(::)?(\[A-Za-z0-9~_\]+::)*\[-A-Za-z0-9~_+ <>\|\\*/\]+|\[A-Za-z0-9~_\]+)"
@@ -4724,7 +4981,7 @@ test text-22.121 {TextSearchCmd, multiline regexp matching} -body {
     .t insert 1.0 {
 static int		SetFsPathFromAny _ANSI_ARGS_((Tcl_Interp *interp,
 			    Tcl_Obj *objPtr));
-static Tcl_Obj*         FSNormalizeAbsolutePath 
+static Tcl_Obj*         FSNormalizeAbsolutePath
 			    _ANSI_ARGS_((Tcl_Interp* interp, Tcl_Obj *pathPtr));}
     set markExpr "^(\[A-Za-z0-9~_\]+\[ \t\n\r\]*\\(|(\[^ \t\(#\n\r/@:\*\]\[^=\(\r\n\]*\[ \t\]+\\*?)?"
     append markExpr "(\[A-Za-z0-9~_\]+(<\[^>\]*>)?(::)?(\[A-Za-z0-9~_\]+::)*\[-A-Za-z0-9~_+ <>\|\\*/\]+|\[A-Za-z0-9~_\]+)"
@@ -4809,11 +5066,11 @@ test text-22.132 {TextSearchCmd, multiline regexp matching} -body {
 
 void
 Tcl_SetObjLength(objPtr, length)
-    register Tcl_Obj *objPtr;	/* Pointer to object.  This object must
-                                * not currently be shared. */
-    register int length;	/* Number of bytes desired for string
+    Tcl_Obj *objPtr;		/* Pointer to object.  This object must
+				 * not currently be shared. */
+    int length;			/* Number of bytes desired for string
 				 * representation of object, not including
-                            * terminating null byte. */
+				 * terminating null byte. */
 \{
     char *new;
 }
@@ -5319,9 +5576,7 @@ test text-22.198 {TextSearchCmd, regexp search multi-line} -body {
 } -cleanup {
     destroy .t
 } -result {2.0 19}
-test text-22.199 {TextSearchCmd, regexp search multi-line} -constraints {
-    knownBug
-} -body {
+test text-22.199 {TextSearchCmd, regexp search multi-line} -body {
     pack [text .t]
     .t insert 1.0 "aaaa\nbbbb\ncccc\nbbbb\naaaa\n"
     set foo {}
@@ -5330,9 +5585,7 @@ test text-22.199 {TextSearchCmd, regexp search multi-line} -constraints {
 } -cleanup {
     destroy .t
 } -result {2.0 19}
-test text-22.200 {TextSearchCmd, regexp search multi-line} -constraints {
-    knownBug
-} -body {
+test text-22.200 {TextSearchCmd, regexp search multi-line} -body {
     pack [text .t]
     .t insert 1.0 "aaaa\nbbbb\ncccc\nbbbb\naaaa\n"
     set foo {}
@@ -5350,23 +5603,18 @@ test text-22.201 {TextSearchCmd, regexp search multi-line} -body {
 } -cleanup {
     destroy .t
 } -result {1.0 24}
-test text-22.202 {TextSearchCmd, regexp search multi-line} -constraints {
-    knownBug
-} -body {
+test text-22.202 {TextSearchCmd, regexp search multi-line} -body {
     pack [text .t]
     .t insert 1.0 "aaaa\nbbbb\nbbbb\nbbbb\nbbbb\n"
     list [.t search -regexp -backward -all -count foo \
-      -- {b+\n|a+\n(b+\n)+} end] $foo
+      -- {(b+\n|a+\n)(b+\n)+} end] $foo
 } -cleanup {
     destroy .t
 } -result {1.0 25}
-test text-22.203 {TextSearchCmd, regexp search multi-line} -constraints {
-    knownBug
-} -body {
+test text-22.203 {TextSearchCmd, regexp search multi-line} -body {
     pack [text .t]
     .t insert 1.0 "aaaa\nbbbb\nbbbb\nbbbb\nbbbb\n"
-    .t search -regexp -backward -- {b+\n|a+\n(b+\n)+} end
-# Should match at 1.0 for a true greedy match
+    .t search -regexp -backward -- {(b+\n|a+\n)(b+\n)+} end
 } -cleanup {
     destroy .t
 } -result {1.0}
@@ -5635,28 +5883,240 @@ test text-22.225 {TextSearchCmd, strict limits} -body {
 } -cleanup {
     destroy .t
 } -result {}
-
+test text-22.226 {TextSearchCmd, exact search for the empty string} -body {
+    text .t
+    set res [.t search -count C "" 1.0]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {1.0 0}
+test text-22.227 {TextSearchCmd, exact search for the empty string} -body {
+    text .t
+    .t insert end "Searching for the\nempty string!"
+    set res [.t search -count C "" 2.5]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {2.5 0}
+test text-22.228 {TextSearchCmd, exact search all empty strings} -body {
+    text .t
+    set res [.t search -count C -all "" 1.0]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {1.0 0}
+test text-22.229 {TextSearchCmd, exact search all empty strings} -body {
+    text .t
+    .t insert end "Searching for the\nempty string!"
+    set res [.t search -count C -all "" 2.5 2.8]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {2.5 2.6 2.7 {0 0 0}}
+test text-22.230 {TextSearchCmd, exact search all empty strings, with overlap} -body {
+    text .t
+    set res [.t search -count C -all -overlap "" 1.0]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {1.0 0}
+test text-22.231 {TextSearchCmd, exact search all empty strings, with overlap} -body {
+    text .t
+    .t insert end "Searching for the\nempty string!"
+    set res [.t search -count C -all -overlap "" 2.5 2.8]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {2.5 2.6 2.7 {0 0 0}}
+test text-22.232 {TextSearchCmd, regexp search for the empty string} -body {
+    text .t
+    set res [.t search -count C -regexp "" 1.0]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {1.0 0}
+test text-22.233 {TextSearchCmd, regexp search for the empty string} -body {
+    text .t
+    .t insert end "Searching for the\nempty string!"
+    set res [.t search -count C -regexp "" 2.5]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {2.5 0}
+test text-22.234 {TextSearchCmd, regexp search all empty strings} -body {
+    text .t
+    set res [.t search -count C -all -regexp "" 1.0]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {1.0 0}
+test text-22.235 {TextSearchCmd, regexp search all empty strings} -body {
+    text .t
+    .t insert end "Searching for the\nempty string!"
+    set res [.t search -count C -all -regexp "" 2.5 2.8]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {2.5 2.6 2.7 {0 0 0}}
+test text-22.236 {TextSearchCmd, regexp search all empty strings, with overlap} -body {
+    text .t
+    set res [.t search -count C -all -regexp -overlap "" 1.0]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {1.0 0}
+test text-22.237 {TextSearchCmd, regexp search all empty strings, with overlap} -body {
+    text .t
+    .t insert end "Searching for the\nempty string!"
+    set res [.t search -count C -all -regexp -overlap "" 2.5 2.8]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {2.5 2.6 2.7 {0 0 0}}
+test text-22.238 {TextSearchCmd, exact backwards search for the empty string} -body {
+    text .t
+    set res [.t search -count C -backwards "" 1.0]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {1.0 0}
+test text-22.239 {TextSearchCmd, exact backwards search for the empty string} -body {
+    text .t
+    .t insert end "Searching for the\nempty string!"
+    set res [.t search -count C -backwards "" 2.5]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {2.4 0}
+test text-22.240 {TextSearchCmd, exact backwards search all empty strings} -body {
+    text .t
+    set res [.t search -count C -backwards -all "" 1.0]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {1.0 0}
+test text-22.241 {TextSearchCmd, exact backwards search all empty strings} -body {
+    text .t
+    .t insert end "Searching for the\nempty string!"
+    set res [.t search -count C -backwards -all "" 2.5 2.0]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {2.4 2.3 2.2 2.1 2.0 {0 0 0 0 0}}
+test text-22.242 {TextSearchCmd, exact backwards search all empty strings, with overlap} -body {
+    text .t
+    set res [.t search -count C -backwards -all -overlap "" 1.0]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {1.0 0}
+test text-22.243 {TextSearchCmd, exact backwards search all empty strings, with overlap} -body {
+    text .t
+    .t insert end "Searching for the\nempty string!"
+    set res [.t search -count C -backwards -all -overlap "" 2.5 2.0]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {2.4 2.3 2.2 2.1 2.0 {0 0 0 0 0}}
+test text-22.244 {TextSearchCmd, regexp backwards search for the empty string} -body {
+    text .t
+    set res [.t search -count C -backwards -regexp "" 1.0]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {1.0 0}
+test text-22.245 {TextSearchCmd, regexpbackwards search for the empty string} -body {
+    text .t
+    .t insert end "Searching for the\nempty string!"
+    set res [.t search -count C -backwards -regexp "" 2.5]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {2.4 0}
+test text-22.246 {TextSearchCmd, regexp backwards search all empty strings} -body {
+    text .t
+    set res [.t search -count C -backwards -all -regexp "" 1.0]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {1.0 0}
+test text-22.247 {TextSearchCmd, regexp backwards search all empty strings} -body {
+    text .t
+    .t insert end "Searching for the\nempty string!"
+    set res [.t search -count C -backwards -all -regexp "" 2.5 2.0]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {2.4 2.3 2.2 2.1 2.0 {0 0 0 0 0}}
+test text-22.248 {TextSearchCmd, regexp backwards search all empty strings, with overlap} -body {
+    text .t
+    set res [.t search -count C -backwards -all -regexp -overlap "" 1.0]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {1.0 0}
+test text-22.249 {TextSearchCmd, regexp backwards search all empty strings, with overlap} -body {
+    text .t
+    .t insert end "Searching for the\nempty string!"
+    set res [.t search -count C -backwards -all -regexp -overlap "" 2.5 2.0]
+    lappend res $C
+} -cleanup {
+    destroy .t
+    unset -nocomplain res C
+} -result {2.4 2.3 2.2 2.1 2.0 {0 0 0 0 0}}
+test text-22.250 {TextSearchCmd, backwards search all matching at start of line} -body {
+    text .t
+    .t insert end "abc"
+    set res [.t search -backwards -all b end]      ; # works
+    lappend res [.t search -backwards a end]       ; # works
+    lappend res [.t search -backwards -all a end]  ; # used to hang
+} -cleanup {
+    destroy .t
+} -result {1.1 1.0 1.0}
 
 test text-23.1 {TkTextGetTabs procedure} -setup {
-    text .t -highlightthickness 0 -bd 0 -relief flat -padx 0 -width 100
+    text .t -highlightthickness 0 -bd 0 -relief flat -padx 0 -width 150
     pack .t
 } -body {
     .t insert end "1\t2\t3\t4\t55.5"
     .t configure -tabs "\{{}"
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {unmatched open brace in list}
+} -returnCodes error -result {unmatched open brace in list}
 test text-23.2 {TkTextGetTabs procedure} -setup {
-    text .t -highlightthickness 0 -bd 0 -relief flat -padx 0 -width 100
+    text .t -highlightthickness 0 -bd 0 -relief flat -padx 0 -width 150
     pack .t
 } -body {
     .t insert end "1\t2\t3\t4\t55.5"
     .t configure -tabs xyz
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad screen distance "xyz"}
+} -returnCodes error -result {bad screen distance "xyz"}
 test text-23.3 {TkTextGetTabs procedure} -setup {
-    text .t -highlightthickness 0 -bd 0 -relief flat -padx 0 -width 100
+    text .t -highlightthickness 0 -bd 0 -relief flat -padx 0 -width 150
     pack .t
 } -body {
     .t insert end "1\t2\t3\t4\t55.5"
@@ -5667,93 +6127,93 @@ test text-23.3 {TkTextGetTabs procedure} -setup {
     destroy .t
 } -result {100 200}
 test text-23.4 {TkTextGetTabs procedure} -setup {
-    text .t -highlightthickness 0 -bd 0 -relief flat -padx 0 -width 100
+    text .t -highlightthickness 0 -bd 0 -relief flat -padx 0 -width 150
     pack .t
 } -body {
     .t insert end "1\t2\t3\t4\t55.5"
     .t configure -tabs {100 right 200 left 300 center 400 numeric}
     update idletasks
-    list [expr [lindex [.t bbox 1.2] 0] + [lindex [.t bbox 1.2] 2]] \
+    list [expr {[lindex [.t bbox 1.2] 0] + [lindex [.t bbox 1.2] 2]}] \
 	    [lindex [.t bbox 1.4] 0] \
-	    [expr [lindex [.t bbox 1.6] 0] + [lindex [.t bbox 1.6] 2]/2] \
+	    [expr {[lindex [.t bbox 1.6] 0] + [lindex [.t bbox 1.6] 2]/2}] \
 	    [lindex [.t bbox 1.10] 0]
 } -cleanup {
     destroy .t
 } -result {100 200 300 400}
 test text-23.5 {TkTextGetTabs procedure} -setup {
-    text .t -highlightthickness 0 -bd 0 -relief flat -padx 0 -width 100
+    text .t -highlightthickness 0 -bd 0 -relief flat -padx 0 -width 150
     pack .t
 } -body {
     .t insert end "1\t2\t3\t4\t55.5"
     .t configure -tabs {105 r 205 l 305 c 405 n}
     update idletasks
-    list [expr [lindex [.t bbox 1.2] 0] + [lindex [.t bbox 1.2] 2]] \
+    list [expr {[lindex [.t bbox 1.2] 0] + [lindex [.t bbox 1.2] 2]}] \
 	    [lindex [.t bbox 1.4] 0] \
-	    [expr [lindex [.t bbox 1.6] 0] + [lindex [.t bbox 1.6] 2]/2] \
+	    [expr {[lindex [.t bbox 1.6] 0] + [lindex [.t bbox 1.6] 2]/2}] \
 	    [lindex [.t bbox 1.10] 0]
 } -cleanup {
     destroy .t
 } -result {105 205 305 405}
 test text-23.6 {TkTextGetTabs procedure} -setup {
-    text .t -highlightthickness 0 -bd 0 -relief flat -padx 0 -width 100
+    text .t -highlightthickness 0 -bd 0 -relief flat -padx 0 -width 150
     pack .t
 } -body {
     .t insert end "1\t2\t3\t4\t55.5"
     .t configure -tabs {100 left 200 lork}
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad tab alignment "lork": must be left, right, center, or numeric}
+} -returnCodes error -result {bad tab alignment "lork": must be left, right, center, or numeric}
 test text-23.7 {TkTextGetTabs procedure} -setup {
-    text .t -highlightthickness 0 -bd 0 -relief flat -padx 0 -width 100
+    text .t -highlightthickness 0 -bd 0 -relief flat -padx 0 -width 150
     pack .t
 } -body {
     .t insert end "1\t2\t3\t4\t55.5"
     .t configure -tabs {100 !44 200 lork}
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad screen distance "!44"}
+} -returnCodes error -result {bad screen distance "!44"}
 
 
 test text-24.1 {TextDumpCmd procedure, bad args} -body {
     pack [text .t]
     .t insert 1.0 "One Line"
-    .t mark set insert 1.0 
+    .t mark set insert 1.0
     .t dump
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {Usage: .t dump ?-all -image -text -mark -tag -window? ?-command script? index ?index2?}
+} -returnCodes error -result {Usage: .t dump ?-all -image -text -mark -tag -window? ?-command script? index ?index2?}
 test text-24.2 {TextDumpCmd procedure, bad args} -body {
     pack [text .t]
     .t insert 1.0 "One Line"
-    .t mark set insert 1.0 
+    .t mark set insert 1.0
     .t dump -all
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {Usage: .t dump ?-all -image -text -mark -tag -window? ?-command script? index ?index2?}
+} -returnCodes error -result {Usage: .t dump ?-all -image -text -mark -tag -window? ?-command script? index ?index2?}
 test text-24.3 {TextDumpCmd procedure, bad args} -body {
     pack [text .t]
     .t insert 1.0 "One Line"
-    .t mark set insert 1.0 
+    .t mark set insert 1.0
     .t dump -command
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {Usage: .t dump ?-all -image -text -mark -tag -window? ?-command script? index ?index2?}
+} -returnCodes error -result {Usage: .t dump ?-all -image -text -mark -tag -window? ?-command script? index ?index2?}
 test text-24.4 {TextDumpCmd procedure, bad args} -body {
     pack [text .t]
     .t insert 1.0 "One Line"
-    .t mark set insert 1.0 
+    .t mark set insert 1.0
     .t dump -bogus
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad option "-bogus": must be -all, -command, -image, -mark, -tag, -text, or -window}
+} -returnCodes error -result {bad option "-bogus": must be -all, -command, -image, -mark, -tag, -text, or -window}
 test text-24.5 {TextDumpCmd procedure, bad args} -body {
     pack [text .t]
     .t insert 1.0 "One Line"
-    .t mark set insert 1.0 
+    .t mark set insert 1.0
     .t dump bogus
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad text index "bogus"}
+} -returnCodes error -result {bad text index "bogus"}
 test text-24.6 {TextDumpCmd procedure, one index} -body {
     pack [text .t]
     .t insert 1.0 "One Line"
@@ -5786,7 +6246,7 @@ test text-24.9 {TextDumpCmd procedure, same indices} -body {
 test text-24.10 {TextDumpCmd procedure, negative range} -body {
     pack [text .t]
     .t insert 1.0 "One Line"
-    .t mark set insert 1.0 
+    .t mark set insert 1.0
     .t dump 1.5 1.0
 } -cleanup {
     destroy .t
@@ -5987,7 +6447,7 @@ test text-25.1 {text widget vs hidden commands} -body {
     destroy .t
     set x [list [winfo children .] [interp hidden]]
     expr {$x eq $y}
-} -result {1}
+} -result 1
 
 
 test text-26.1 {bug fix - 1642} -body {
@@ -6009,13 +6469,13 @@ test text-27.1 {TextEditCmd procedure, argument parsing} -body {
     .t edit
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {wrong # args: should be ".t edit option ?arg ...?"}
+} -returnCodes error -result {wrong # args: should be ".t edit option ?arg ...?"}
 test text-27.2 {TextEditCmd procedure, argument parsing} -body {
     pack [text .t]
     .t edit gorp
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {bad edit option "gorp": must be modified, redo, reset, separator, or undo}
+} -returnCodes error -result {bad edit option "gorp": must be canundo, canredo, modified, redo, reset, separator, or undo}
 test text-27.3 {TextEditUndo procedure, undoing changes} -body {
     text .t -undo 1
     pack .t
@@ -6080,7 +6540,7 @@ test text-27.8 {TextEditCmd procedure, modified flag} -body {
     .t edit modified
 } -cleanup {
     destroy .t
-} -result {1}
+} -result 1
 test text-27.9 {TextEditCmd procedure, reset modified flag} -body {
     text .t
     pack .t
@@ -6089,7 +6549,7 @@ test text-27.9 {TextEditCmd procedure, reset modified flag} -body {
     .t edit modified
 } -cleanup {
     destroy .t
-} -result {0}
+} -result 0
 test text-27.10 {TextEditCmd procedure, set modified flag} -body {
     text .t
     pack .t
@@ -6097,17 +6557,19 @@ test text-27.10 {TextEditCmd procedure, set modified flag} -body {
     .t edit modified
 } -cleanup {
     destroy .t
-} -result {1}
+} -result 1
 test text-27.11 {TextEditCmd procedure, set modified flag repeat} -setup {
     text .t
     pack .t
+# Make sure the Text is mapped before we start
+    update
     set ::retval {}
 } -body {
     bind .t <<Modified>> "lappend ::retval modified"
 # Shouldn't require [update idle] to trigger event [Bug 1809538]
     lappend ::retval [.t edit modified]
     .t edit modified 1
-    update idletasks
+    update
     lappend ::retval [.t edit modified]
     .t edit modified 1 ; # binding should only fire once [Bug 1799782]
     update idletasks
@@ -6122,6 +6584,7 @@ test text-27.12 {<<Modified>> virtual event} -body {
     bind .t <<Modified>> "set ::retval modified"
     update idletasks
     .t insert end "nothing special\n"
+    update
     return $::retval
 } -cleanup {
     destroy .t
@@ -6132,6 +6595,7 @@ test text-27.13 {<<Modified>> virtual event - insert before Modified} -body {
     bind .t <<Modified>> { set ::retval [.t get 1.0 end-1c] }
     update idletasks
     .t insert end "nothing special"
+    update
     return $::retval
 } -cleanup {
     destroy .t
@@ -6144,23 +6608,145 @@ test text-27.14 {<<Modified>> virtual event - delete before Modified} -body {
     .t insert end "nothing special"
     .t edit modified 0
     .t delete 1.0 1.2
+    update
     set ::retval
 } -cleanup {
     destroy .t
 } -result {thing special}
-test text-27.15 {<<Selection>> virtual event} -body {
+test text-27.14a {<<Modified>> virtual event - propagation to peers} -body {
+# Bug [fd3a4dc111], <<Modified>> event is not always sent to peers
+    set ::retval 0
+    text .t -undo 1
+    .t peer create .tt
+    pack .t .tt
+    bind .t <<Modified>> {incr ::retval}
+    bind .tt <<Modified>> {incr ::retval}
+    .t insert end "This increments ::retval once for each peer, i.e. twice."
+    .t edit modified 0  ; # shall increment twice as well, not just once
+    update
+    set ::retval
+} -cleanup {
+    destroy .t .tt
+} -result 4
+test text-27.15 {<<Selection>> virtual event on sel tagging} -body {
     set ::retval no_selection
-    pack [text .t -undo 1]
+    pack [text .t]
     bind .t <<Selection>> "set ::retval selection_changed"
     update idletasks
     .t insert end "nothing special\n"
     .t tag add sel 1.0 1.1
+    update
     set ::retval
 } -cleanup {
     destroy .t
 } -result {selection_changed}
+test text-27.15a {<<Selection>> virtual event on sel removal} -body {
+    set ::retval no_selection
+    pack [text .t]
+    .t insert end "nothing special\n"
+    .t tag add sel 1.0 1.1
+    bind .t <<Selection>> "set ::retval selection_changed"
+    update idletasks
+    .t tag remove 1.0 end
+    update
+    set ::retval
+} -cleanup {
+    destroy .t
+} -result {selection_changed}
+test text-27.15b {<<Selection>> virtual event on <<PasteSelection>> inside widget selection} -body {
+    pack [text .t]
+    .t insert end "There is a selection in this text widget,\n"
+    .t insert end "and it will be impacted by the <<PasteSelection>> event received.\n"
+    .t insert end "Therefore a <<Selection>> event must fire back."
+    .t tag add sel 1.0 1.28
+    bind .t <<Selection>> "set ::retval <<Selection>>_fired"
+    update
+    set ::retval no_<<Selection>>_event_fired
+    event generate .t <<PasteSelection>> -x 15 -y [lindex [.t dlineinfo 1.0] 1]
+    update
+    set ::retval
+} -cleanup {
+    destroy .t
+} -result {<<Selection>>_fired}
+test text-27.15c {No <<Selection>> virtual event on <<PasteSelection>> outside widget selection} -body {
+    pack [text .t]
+    .t insert end "There is a selection in this text widget,\n"
+    .t insert end "but it will not be impacted by the <<PasteSelection>> event received."
+    .t tag add sel 1.0 1.28
+    bind .t <<Selection>> "set ::retval <<Selection>>_fired"
+    update
+    set ::retval no_<<Selection>>_event_fired
+    event generate .t <<PasteSelection>> -x 15 -y [lindex [.t dlineinfo 2.0] 1]
+    update
+    set ::retval
+} -cleanup {
+    destroy .t
+} -result {no_<<Selection>>_event_fired}
+test text-27.15d {<<Selection>> virtual event on <Delete> with cursor inside selection} -body {
+    pack [text .t]
+    .t insert end "There is a selection in this text widget,\n"
+    .t insert end "and it will be impacted by the <Delete> event received.\n"
+    .t insert end "Therefore a <<Selection>> event must fire back."
+    .t tag add sel 1.0 1.28
+    bind .t <<Selection>> "set ::retval <<Selection>>_fired"
+    update
+    set ::retval no_<<Selection>>_event_fired
+    .t mark set insert 1.15
+    update idletasks
+    focus -force .t
+    event generate .t <Delete>
+    update
+    set ::retval
+} -cleanup {
+    destroy .t
+} -result {<<Selection>>_fired}
+test text-27.15e {No <<Selection>> virtual event on <Delete> with cursor outside selection} -body {
+    pack [text .t]
+    .t insert end "There is a selection in this text widget,\n"
+    .t insert end "but it will not be impacted by the <Delete> event received."
+    .t tag add sel 1.0 1.28
+    bind .t <<Selection>> "set ::retval <<Selection>>_fired"
+    update
+    set ::retval no_<<Selection>>_event_fired
+    .t mark set insert 2.15
+    focus .t
+    event generate .t <Delete>
+    update
+    set ::retval
+} -cleanup {
+    destroy .t
+} -result {no_<<Selection>>_event_fired}
+test text-27.15f {<<Selection>> virtual event on <<Cut>> with a widget selection} -body {
+    pack [text .t]
+    .t insert end "There is a selection in this text widget,\n"
+    .t insert end "and it will be impacted by the <<Cut>> event received.\n"
+    .t insert end "Therefore a <<Selection>> event must fire back."
+    .t tag add sel 1.0 1.28
+    bind .t <<Selection>> "set ::retval <<Selection>>_fired"
+    update
+    set ::retval no_<<Selection>>_event_fired
+    event generate .t <<Cut>>
+    update
+    set ::retval
+} -cleanup {
+    destroy .t
+} -result {<<Selection>>_fired}
+test text-27.15g {No <<Selection>> virtual event on <<Cut>> without widget selection} -body {
+    pack [text .t]
+    .t insert end "There is a selection in this text widget,\n"
+    .t insert end "and it will be impacted by the <<Cut>> event received.\n"
+    .t insert end "Therefore a <<Selection>> event must fire back."
+    bind .t <<Selection>> "set ::retval <<Selection>>_fired"
+    update
+    set ::retval no_<<Selection>>_event_fired
+    event generate .t <<Cut>>
+    update
+    set ::retval
+} -cleanup {
+    destroy .t
+} -result {no_<<Selection>>_event_fired}
 test text-27.16 {-maxundo configuration option} -body {
-    text .t -undo 1  -autoseparators 1 -maxundo 2
+    text .t -undo 1 -autoseparators 1 -maxundo 2
     pack .t
     .t insert end "line 1\n"
     .t delete 1.4 1.6
@@ -6172,6 +6758,36 @@ test text-27.16 {-maxundo configuration option} -body {
 } -cleanup {
     destroy .t
 } -result "line 1\n\n"
+test text-27.16a {undo configuration options with peers} -body {
+    text .t -undo 1 -autoseparators 0 -maxundo 100
+    .t peer create .tt
+    set res     [.t  cget -undo]
+    lappend res [.tt cget -undo]
+    lappend res [.t  cget -autoseparators]
+    lappend res [.tt cget -autoseparators]
+    lappend res [.t  cget -maxundo]
+    lappend res [.tt cget -maxundo]
+    .t insert end "The undo stack is common between peers"
+    lappend res [.t  edit canundo]
+    lappend res [.tt edit canundo]
+} -cleanup {
+    destroy .t .tt
+} -result {1 1 0 0 100 100 1 1}
+test text-27.16b {undo configuration options with peers, defaults} -body {
+    text .t
+    .t peer create .tt
+    set res     [.t  cget -undo]
+    lappend res [.tt cget -undo]
+    lappend res [.t  cget -autoseparators]
+    lappend res [.tt cget -autoseparators]
+    lappend res [.t  cget -maxundo]
+    lappend res [.tt cget -maxundo]
+    .t insert end "The undo stack is common between peers"
+    lappend res [.t  edit canundo]
+    lappend res [.tt edit canundo]
+} -cleanup {
+    destroy .t .tt
+} -result {0 0 1 1 0 0 0 0}
 test text-27.17 {bug fix 1536735 - undo with empty text} -body {
     text .t -undo 1
     set r [.t edit modified]
@@ -6194,21 +6810,21 @@ test text-27.18 {patch 1469210 - inserting after undo} -setup {
 } -cleanup {
     destroy .t
 } -result 1
-test text-25.19 {patch 1669632 (i) - undo after <Control-1>} -setup {
+test text-27.19 {patch 1669632 (i) - undo after <Control-Button-1>} -setup {
     destroy .t
 } -body {
     text .t -undo 1
     .t insert end foo\nbar
     .t edit reset
     .t insert 2.2 WORLD
-    event generate .t <Control-1> -x 1 -y 1
+    event generate .t <Control-Button-1> -x 1 -y 1
     .t insert insert HELLO
     .t edit undo
     .t get 2.2 2.7
 } -cleanup {
     destroy .t
 } -result WORLD
-test text-25.20 {patch 1669632 (iv) - undo after <<SelectNone>>} -setup {
+test text-27.20 {patch 1669632 (iv) - undo after <<SelectNone>>} -setup {
     destroy .top .top.t
 } -body {
     toplevel .top
@@ -6227,14 +6843,14 @@ test text-25.20 {patch 1669632 (iv) - undo after <<SelectNone>>} -setup {
 } -cleanup {
     destroy .top.t .top
 } -result HELLO
-test text-25.21 {patch 1669632 (vii) - <<Undo>> shall not remove separators} -setup {
+test text-27.21 {patch 1669632 (vii) - <<Undo>> shall not remove separators} -setup {
     destroy .t
 } -body {
     text .t -undo 1
     .t insert end "This is an example text"
     .t edit reset
     .t insert 1.5 "WORLD "
-    event generate .t <Control-1> -x 1 -y 1
+    event generate .t <Control-Button-1> -x 1 -y 1
     .t insert insert HELLO
     event generate .t <<Undo>>
     .t insert insert E
@@ -6243,7 +6859,7 @@ test text-25.21 {patch 1669632 (vii) - <<Undo>> shall not remove separators} -se
 } -cleanup {
     destroy .t
 } -result "This WORLD is an example text"
-test text-25.22 {patch 1669632 (v) - <<Clear>> is atomic} -setup {
+test text-27.22 {patch 1669632 (v) - <<Clear>> is atomic} -setup {
     destroy .t
 } -body {
     toplevel .top
@@ -6263,7 +6879,7 @@ test text-25.22 {patch 1669632 (v) - <<Clear>> is atomic} -setup {
 } -cleanup {
     destroy .top.t .top
 } -result "This A an example text"
- test text-25.23 {patch 1669632 (v) - <<Cut>> is atomic} -setup {
+ test text-27.23 {patch 1669632 (v) - <<Cut>> is atomic} -setup {
     destroy .t
 } -body {
     toplevel .top
@@ -6283,6 +6899,89 @@ test text-25.22 {patch 1669632 (v) - <<Clear>> is atomic} -setup {
 } -cleanup {
     destroy .top.t .top
 } -result "This A an example text"
+test text-27.24 {TextEditCmd procedure, canundo and canredo} -setup {
+    destroy .t
+    set res {}
+} -body {
+    text .t -undo false -autoseparators false
+    lappend res [.t edit canundo] [.t edit canredo]
+    .t configure -undo true
+    lappend res [.t edit canundo] [.t edit canredo]
+    .t insert end "DO\n"
+    .t edit separator
+    .t insert end "IT\n"
+    .t insert end "YOURSELF\n"
+    .t edit separator
+    lappend res [.t edit canundo] [.t edit canredo]
+    .t edit undo
+    lappend res [.t edit canundo] [.t edit canredo]
+    .t configure -undo false
+    lappend res [.t edit canundo] [.t edit canredo]
+    .t configure -undo true
+    lappend res [.t edit canundo] [.t edit canredo]
+    .t edit redo
+    lappend res [.t edit canundo] [.t edit canredo]
+} -cleanup {
+    destroy .t
+} -result {0 0 0 0 1 0 1 1 0 0 1 1 1 0}
+test text-27.25 {<<UndoStack>> virtual event} -setup {
+    destroy .t
+    set res {}
+    set nbUS 0
+} -body {
+    text .t -undo false -autoseparators false
+    bind .t <<UndoStack>> {incr nbUS}
+    update ; lappend res $nbUS
+    .t configure -undo true
+    update ; lappend res $nbUS
+    .t insert end "DO\n"
+    .t edit separator
+    .t insert end "IT\n"
+    .t insert end "YOURSELF\n"
+    .t edit separator
+    .t insert end "MAN\n"
+    .t edit separator
+    update ; lappend res $nbUS
+    .t edit undo
+    update ; lappend res $nbUS
+    .t edit redo
+    update ; lappend res $nbUS
+    .t edit undo
+    update ; lappend res $nbUS
+    .t edit undo
+    update ; lappend res $nbUS
+    .t edit undo
+    update ; lappend res $nbUS
+    .t edit redo
+    update ; lappend res $nbUS
+    .t edit redo
+    update ; lappend res $nbUS
+    .t edit redo
+    update ; lappend res $nbUS
+    .t edit undo
+    update ; lappend res $nbUS
+    .t edit undo
+    update ; lappend res $nbUS
+    .t edit reset
+    update ; lappend res $nbUS
+} -cleanup {
+    destroy .t
+} -result {0 0 1 2 3 4 4 5 6 6 7 8 8 9}
+test text-27.26 {bug ab839efc5f - .text edit undo inserts separators} -setup {
+    destroy .t
+} -body {
+    text .t -undo 1
+    .t insert 1.0 "1. 123 5 789012  LINE-1\n2.\n3. 123 5 789012  LINE-3\n"
+    .t tag add sel 3.0 3.end
+    .t delete sel.first sel.last
+    .t edit undo
+    .t tag add sel 3.0 3.end
+    .t delete sel.first sel.last
+    .t edit undo
+    .t get 3.0 3.end
+} -cleanup {
+    destroy .t
+} -result {3. 123 5 789012  LINE-3}
 
 test text-28.1 {bug fix - 624372, ControlUtfProc long lines} -body {
     pack [text .t -wrap none]
@@ -6294,16 +6993,16 @@ test text-28.1 {bug fix - 624372, ControlUtfProc long lines} -body {
 
 test text-29.1 {tabs - must be positive and must be increasing} -body {
     pack [text .t -wrap none]
-    .t configure -tabs {0}
+    .t configure -tabs 0
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {tab stop "0" is not at a positive distance}
+} -returnCodes error -result {tab stop "0" is not at a positive distance}
 test text-29.2 {tabs - must be positive and must be increasing} -body {
     pack [text .t -wrap none]
-    .t configure -tabs {-5}
+    .t configure -tabs -5
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {tab stop "-5" is not at a positive distance}
+} -returnCodes error -result {tab stop "-5" is not at a positive distance}
 test text-29.3 {tabs - must be positive and must be increasing} -constraints {
     knownBug
 } -body {
@@ -6313,7 +7012,7 @@ test text-29.3 {tabs - must be positive and must be increasing} -constraints {
     .t configure -tabs {10c 5c}
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {tabs must be monotonically increasing, but "5c" is smaller than or equal to the previous tab}
+} -returnCodes error -result {tabs must be monotonically increasing, but "5c" is smaller than or equal to the previous tab}
 test text-29.4 {tabs - must be positive and must be increasing} -body {
     pack [text .t -wrap none]
     .t insert end "a\tb\tc\td\te"
@@ -6323,7 +7022,7 @@ test text-29.4 {tabs - must be positive and must be increasing} -body {
     set result 1
 } -cleanup {
     destroy .t
-} -result {1}
+} -result 1
 
 
 test text-30.1 {repeated insert and scroll} -body {
@@ -6336,7 +7035,7 @@ test text-30.1 {repeated insert and scroll} -body {
     set result 1
 } -cleanup {
     destroy .t
-} -result {1}
+} -result 1
 test text-30.2 {repeated insert and scroll} -body {
     pack [text .t]
     for {set i 0} {$i < 30} {incr i} {
@@ -6347,7 +7046,7 @@ test text-30.2 {repeated insert and scroll} -body {
     set result 1
 } -cleanup {
     destroy .t
-} -result {1}
+} -result 1
 test text-30.3 {repeated insert and scroll} -body {
     pack [text .t]
     for {set i 0} {$i < 30} {incr i} {
@@ -6358,7 +7057,7 @@ test text-30.3 {repeated insert and scroll} -body {
     set result 1
 } -cleanup {
     destroy .t
-} -result {1}
+} -result 1
 test text-30.4 {repeated insert and scroll} -body {
     pack [text .t]
     for {set i 0} {$i < 30} {incr i} {
@@ -6369,7 +7068,7 @@ test text-30.4 {repeated insert and scroll} -body {
     set result 1
 } -cleanup {
     destroy .t
-} -result {1}
+} -result 1
 
 
 test text-31.1 {peer widgets} -body {
@@ -6414,7 +7113,7 @@ test text-31.4 {peer widgets} -body {
     for {set i 1} {$i < 20} {incr i} {
 	   .t insert end "Line $i\n"
     }
-    pack [.t peer create .top.t -start 5 -end 11]
+    pack [.t peer create .top.t -startline 5 -endline 11]
     update
     destroy .t .top
 } -result {}
@@ -6424,7 +7123,7 @@ test text-31.5 {peer widgets} -body {
     for {set i 1} {$i < 20} {incr i} {
 	   .t insert end "Line $i\n"
     }
-    pack [.t peer create .top.t -start 5 -end 11]
+    pack [.t peer create .top.t -startline 5 -endline 11]
     pack [.top.t peer create .top.t2]
     set res [list [.top.t index end] [.top.t2 index end]]
     update
@@ -6438,8 +7137,8 @@ test text-31.6 {peer widgets} -body {
     for {set i 1} {$i < 20} {incr i} {
 	   .t insert end "Line $i\n"
     }
-    pack [.t peer create .top.t -start 5 -end 11]
-    pack [.top.t peer create .top.t2 -start {} -end {}]
+    pack [.t peer create .top.t -startline 5 -endline 11]
+    pack [.top.t peer create .top.t2 -startline {} -endline {}]
     set res [list [.top.t index end] [.top.t2 index end]]
     update
     return $res
@@ -6452,21 +7151,21 @@ test text-31.7 {peer widgets} -body {
     for {set i 1} {$i < 20} {incr i} {
 	   .t insert end "Line $i\n"
     }
-    pack [.t peer create .top.t -start 5 -end 11]
+    pack [.t peer create .top.t -startline 5 -endline 11]
     update ; update
     set p1 [.top.t count -update -ypixels 1.0 end]
     set p2 [.t count -update -ypixels 5.0 11.0]
     expr {$p1 eq $p2}
 } -cleanup {
     destroy .t .top
-} -result {1}
+} -result 1
 test text-31.8 {peer widgets} -body {
     toplevel .top
     pack [text .t]
     for {set i 1} {$i < 20} {incr i} {
 	   .t insert end "Line $i\n"
     }
-    pack [.t peer create .top.t -start 5 -end 11]
+    pack [.t peer create .top.t -startline 5 -endline 11]
     update ; update
     .t delete 3.0 6.0
     .top.t index end
@@ -6479,7 +7178,7 @@ test text-31.9 {peer widgets} -body {
     for {set i 1} {$i < 20} {incr i} {
 	   .t insert end "Line $i\n"
     }
-    pack [.t peer create .top.t -start 5 -end 11]
+    pack [.t peer create .top.t -startline 5 -endline 11]
     update ; update
     .t delete 8.0 12.0
     .top.t index end
@@ -6492,7 +7191,7 @@ test text-31.10 {peer widgets} -body {
         for {set i 1} {$i < 20} {incr i} {
         .t insert end "Line $i\n"
     }
-    pack [.t peer create .top.t -start 5 -end 11]
+    pack [.t peer create .top.t -startline 5 -endline 11]
     update ; update
     .t delete 3.0 13.0
     .top.t index end
@@ -6508,7 +7207,7 @@ test text-31.11 {peer widgets} -setup {
     }
     .t tag add sel 1.0 end-1c
     lappend res [.t tag ranges sel]
-    .t configure -start 10 -end 20
+    .t configure -startline 10 -endline 20
     lappend res [.t tag ranges sel]
     return $res
 } -cleanup {
@@ -6523,7 +7222,7 @@ test text-31.12 {peer widgets} -setup {
     }
     .t tag add sel 1.0 end-1c
     lappend res [.t tag ranges sel]
-    .t configure -start 11
+    .t configure -startline 11
     lappend res [.t tag ranges sel]
     return $res
 } -cleanup {
@@ -6538,7 +7237,7 @@ test text-31.13 {peer widgets} -setup {
     }
     .t tag add sel 1.0 end-1c
     lappend res [.t tag ranges sel]
-    .t configure -end 90
+    .t configure -endline 90
     lappend res [.t tag ranges sel]
     destroy .t
     return $res
@@ -6552,9 +7251,9 @@ test text-31.14 {peer widgets} -setup {
     for {set i 1} {$i < 20} {incr i} {
 	   .t insert end "Line $i\n"
     }
-    .t tag add sel 1.0 3.0 5.0 7.0 9.0 11.0 13.0 15.0 17.0 19.0 
+    .t tag add sel 1.0 3.0 5.0 7.0 9.0 11.0 13.0 15.0 17.0 19.0
     lappend res [.t tag prevrange sel 1.0]
-    .t configure -start 6 -end 12
+    .t configure -startline 6 -endline 12
     lappend res [.t tag ranges sel]
     lappend res "next" [.t tag nextrange sel 4.0] \
       [.t tag nextrange sel 5.0] [.t tag nextrange sel 6.0] \
@@ -6573,8 +7272,8 @@ test text-31.15 {peer widgets} -setup {
     for {set i 1} {$i < 20} {incr i} {
 	   .t insert end "Line $i\n"
     }
-    .t tag add sel 1.0 3.0 9.0 11.0 13.0 15.0 17.0 19.0 
-    .t configure -start 6 -end 12
+    .t tag add sel 1.0 3.0 9.0 11.0 13.0 15.0 17.0 19.0
+    .t configure -startline 6 -endline 12
     lappend res [.t tag ranges sel]
     lappend res "next" [.t tag nextrange sel 4.0] \
       [.t tag nextrange sel 5.0] [.t tag nextrange sel 6.0] \
@@ -6593,8 +7292,8 @@ test text-31.16 {peer widgets} -setup {
     for {set i 1} {$i < 20} {incr i} {
 	.t insert end "Line $i\n"
     }
-    .t tag add sel 1.0 7.0 9.0 11.0 13.0 15.0 17.0 19.0 
-    .t configure -start 6 -end 12
+    .t tag add sel 1.0 7.0 9.0 11.0 13.0 15.0 17.0 19.0
+    .t configure -startline 6 -endline 12
     lappend res [.t tag ranges sel]
     lappend res "next" [.t tag nextrange sel 4.0] \
       [.t tag nextrange sel 5.0] [.t tag nextrange sel 6.0] \
@@ -6615,11 +7314,11 @@ test text-31.17 {peer widgets} -setup {
     }
     .t tag add sel 1.0 11.0
     lappend res [.t tag ranges sel]
-    lappend res [catch {.t configure -start 15 -end 10}]
+    lappend res [catch {.t configure -startline 15 -endline 10}]
     lappend res [.t tag ranges sel]
-    .t configure -start 6 -end 12
+    .t configure -startline 6 -endline 12
     lappend res [.t tag ranges sel]
-    .t configure -start {} -end {}
+    .t configure -startline {} -endline {}
     lappend res [.t tag ranges sel]
     return $res
 } -cleanup {
@@ -6638,7 +7337,7 @@ test text-31.18 {peer widgets} -setup {
     return $res
 } -cleanup {
     destroy .t
-} -result {1.0 11.0} 
+} -result {1.0 11.0}
 test text-31.19 {peer widgets} -body {
     pack [text .t]
     for {set i 1} {$i < 20} {incr i} {
@@ -6648,7 +7347,7 @@ test text-31.19 {peer widgets} -body {
     .t index sel.first
 } -cleanup {
     destroy .t
-} -returnCodes {error} -result {text doesn't contain any characters tagged with "sel"}
+} -returnCodes error -result {text doesn't contain any characters tagged with "sel"}
 
 
 test text-32.1 {line heights on creation} -setup {
@@ -6683,144 +7382,12 @@ test text-32.1 {line heights on creation} -setup {
     update
     set after [$w count -ypixels 1.0 2.0]
     destroy .g
-    expr {$before eq $after} 
+    expr {$before eq $after}
 } -cleanup {
     destroy .t
-} -result {1}
+} -result 1
 
-
-test text-33.1 {TextWidgetCmd procedure, "peer" option} -setup {
-    text .t
-} -body {
-    .t peer foo 1
-} -cleanup {
-    destroy .t
-} -returnCodes {error} -result {bad peer option "foo": must be create or names}
-test text-33.2 {TextWidgetCmd procedure, "peer" option} -setup {
-    text .t
-} -body {
-    .t peer names foo
-} -cleanup {
-    destroy .t
-} -returnCodes {error} -result {wrong # args: should be ".t peer names"}
-test text-33.3 {TextWidgetCmd procedure, "peer" option} -setup {
-    text .t
-} -body {
-    .t p names
-} -cleanup {
-    destroy .t
-} -returnCodes {ok} -result {}
-test text-33.4 {TextWidgetCmd procedure, "peer" option} -setup {
-    text .t
-} -body {
-    .t peer names
-} -cleanup {
-    destroy .t
-} -result {}
-test text-33.5 {TextWidgetCmd procedure, "peer" option} -setup {
-    text .t
-} -body {
-    .t peer create foo
-} -cleanup {
-    destroy .t
-} -returnCodes {error} -result {bad window path name "foo"}
-test text-33.6 {TextWidgetCmd procedure, "peer" option} -setup {
-    text .t
-    set res {}
-} -body {
-    .t peer create .t2
-    lappend res [.t peer names]
-    lappend res [.t2 peer names]
-    destroy .t2
-    lappend res [.t peer names]
-} -cleanup {
-    destroy .t
-} -result {.t2 .t {}}
-test text-33.7 {peer widget -start, -end} -body {
-    text .t
-    set res [.t configure -start 10 -end 5]
-    return $res
-} -cleanup {
-    destroy .t
-} -returnCodes {2} -result {}
-test text-33.8 {peer widget -start, -end} -body {
-    text .t
-    for {set i 1} {$i < 100} {incr i} {
-	   .t insert end "Line $i\n"
-    }
-    .t configure -start 10 -end 5
-} -cleanup {
-    destroy .t
-} -returnCodes {error} -result {-startline must be less than or equal to -endline}
-test text-33.9 {peer widget -start, -end} -body {
-    text .t
-    for {set i 1} {$i < 100} {incr i} {
-	.t insert end "Line $i\n"
-    }
-    .t configure -start 5 -end 10
-} -cleanup {
-    destroy .t
-} -returnCodes {ok} -result {}
-test text-33.10 {peer widget -start, -end} -body {
-    text .t
-    for {set i 1} {$i < 100} {incr i} {
-	   .t insert end "Line $i\n"
-    }
-    set res [.t index end]
-    lappend res [catch {.t configure -start 5 -end 10 -tab foo}]
-    lappend res [.t index end]
-    lappend res [catch {.t configure -tab foo -start 15 -end 20}]
-    lappend res [.t index end]
-    .t configure -start {} -end {}
-    lappend res [.t index end]
-    return $res
-} -cleanup {
-    destroy .t
-} -result {101.0 1 101.0 1 101.0 101.0}
-test text-33.11 {peer widget -start, -end} -body {
-    text .t
-    for {set i 1} {$i < 100} {incr i} {
-	   .t insert end "Line $i\n"
-    }
-    set res [.t index end]
-    lappend res [catch {.t configure -start 5 -end 15}]
-    lappend res [.t index end]
-    lappend res [catch {.t configure -start 10 -end 40}]
-    lappend res [.t index end]
-    .t configure -start {} -end {}
-    lappend res [.t index end]
-    return $res
-} -cleanup {
-    destroy .t
-} -result {101.0 0 11.0 0 31.0 101.0}
-
-test text-34.1 {peer widget -start, -end and selection} -setup {
-    text .t
-    set res {}
-} -body {
-    for {set i 1} {$i < 100} {incr i} {
-	   .t insert end "Line $i\n"
-    }
-    .t tag add sel 10.0 20.0
-    lappend res [.t tag ranges sel]
-    .t configure -start 5 -end 30
-    lappend res [.t tag ranges sel]
-    .t configure -start 5 -end 15
-    lappend res [.t tag ranges sel]
-    .t configure -start 15 -end 30
-    lappend res [.t tag ranges sel]
-    .t configure -start 15 -end 16
-    lappend res [.t tag ranges sel]
-    .t configure -start 25 -end 30
-    lappend res [.t tag ranges sel]
-    .t configure -start {} -end {}
-    lappend res [.t tag ranges sel]
-    return $res
-} -cleanup {
-    destroy .t
-} -result {{10.0 20.0} {6.0 16.0} {6.0 11.0} {1.0 6.0} {1.0 2.0} {} {10.0 20.0}}
-
-test text-32.2 {peer widget -start, -end and deletion (bug 1630262)} -setup {
+test text-32.2 {peer widget -start, -endline and deletion (bug 1630262)} -setup {
     destroy .t .pt
     set res {}
 } -body {
@@ -6848,9 +7415,9 @@ test text-32.2 {peer widget -start, -end and deletion (bug 1630262)} -setup {
     set res 1
 } -cleanup {
     destroy .pt
-} -result {1}
+} -result 1
 
-test text-32.3 {peer widget -start, -end and deletion (bug 1630262)} -setup {
+test text-32.3 {peer widget -start, -endline and deletion (bug 1630262)} -setup {
     destroy .t .pt
     set res {}
 } -body {
@@ -6866,12 +7433,12 @@ test text-32.3 {peer widget -start, -end and deletion (bug 1630262)} -setup {
     .pt delete 2.0 3.0
     # moreover -startline shall be correct
     # (was wrong before fixing bug 1630262)
-    lappend res [.t cget -start] [.pt cget -start]
+    lappend res [.t cget -start] [.pt cget -start] [.t get @0,0 "@0,0 lineend"]
 } -cleanup {
     destroy .pt
-} -result {4 3}
+} -result {4 3 {Line 5}}
 
-test text-32.4 {peer widget -start, -end and deletion (bug 1630262)} -setup {
+test text-32.4 {peer widget -start, -endline and deletion (bug 1630262)} -setup {
     destroy .t .pt
     set res {}
 } -body {
@@ -6914,9 +7481,140 @@ test text-32.4 {peer widget -start, -end and deletion (bug 1630262)} -setup {
     destroy .pt .t
 } -result {5 11 8 10 5 8 6 8 22 27 38 44 55 60 57 57}
 
+
+test text-33.1 {TextWidgetCmd procedure, "peer" option} -setup {
+    text .t
+} -body {
+    .t peer foo 1
+} -cleanup {
+    destroy .t
+} -returnCodes error -result {bad peer option "foo": must be create or names}
+test text-33.2 {TextWidgetCmd procedure, "peer" option} -setup {
+    text .t
+} -body {
+    .t peer names foo
+} -cleanup {
+    destroy .t
+} -returnCodes error -result {wrong # args: should be ".t peer names"}
+test text-33.3 {TextWidgetCmd procedure, "peer" option} -setup {
+    text .t
+} -body {
+    .t peer names
+} -cleanup {
+    destroy .t
+} -returnCodes {ok} -result {}
+test text-33.4 {TextWidgetCmd procedure, "peer" option} -setup {
+    text .t
+} -body {
+    .t peer names
+} -cleanup {
+    destroy .t
+} -result {}
+test text-33.5 {TextWidgetCmd procedure, "peer" option} -setup {
+    text .t
+} -body {
+    .t peer create foo
+} -cleanup {
+    destroy .t
+} -returnCodes error -result {bad window path name "foo"}
+test text-33.6 {TextWidgetCmd procedure, "peer" option} -setup {
+    text .t
+    set res {}
+} -body {
+    .t peer create .t2
+    lappend res [.t peer names]
+    lappend res [.t2 peer names]
+    destroy .t2
+    lappend res [.t peer names]
+} -cleanup {
+    destroy .t
+} -result {.t2 .t {}}
+test text-33.7 {peer widget -start, -end} -body {
+    text .t
+    set res [.t configure -startline 10 -endline 5]
+    return $res
+} -cleanup {
+    destroy .t
+} -returnCodes 2 -result {}
+test text-33.8 {peer widget -start, -end} -body {
+    text .t
+    for {set i 1} {$i < 100} {incr i} {
+	   .t insert end "Line $i\n"
+    }
+    .t configure -startline 10 -endline 5
+} -cleanup {
+    destroy .t
+} -returnCodes error -result {-startline must be less than or equal to -endline}
+test text-33.9 {peer widget -start, -end} -body {
+    text .t
+    for {set i 1} {$i < 100} {incr i} {
+	.t insert end "Line $i\n"
+    }
+    .t configure -startline 5 -endline 10
+} -cleanup {
+    destroy .t
+} -returnCodes {ok} -result {}
+test text-33.10 {peer widget -start, -end} -body {
+    text .t
+    for {set i 1} {$i < 100} {incr i} {
+	   .t insert end "Line $i\n"
+    }
+    set res [.t index end]
+    lappend res [catch {.t configure -startline 5 -endline 10 -tab foo}]
+    lappend res [.t index end]
+    lappend res [catch {.t configure -tab foo -startline 15 -endline 20}]
+    lappend res [.t index end]
+    .t configure -startline {} -endline {}
+    lappend res [.t index end]
+    return $res
+} -cleanup {
+    destroy .t
+} -result {101.0 1 101.0 1 101.0 101.0}
+test text-33.11 {peer widget -start, -end} -body {
+    text .t
+    for {set i 1} {$i < 100} {incr i} {
+	   .t insert end "Line $i\n"
+    }
+    set res [.t index end]
+    lappend res [catch {.t configure -startline 5 -endline 15}]
+    lappend res [.t index end]
+    lappend res [catch {.t configure -startline 10 -endline 40}]
+    lappend res [.t index end]
+    .t configure -startline {} -endline {}
+    lappend res [.t index end]
+    return $res
+} -cleanup {
+    destroy .t
+} -result {101.0 0 11.0 0 31.0 101.0}
+
+test text-34.1 {peer widget -start, -endline and selection} -setup {
+    text .t
+    set res {}
+} -body {
+    for {set i 1} {$i < 100} {incr i} {
+	   .t insert end "Line $i\n"
+    }
+    .t tag add sel 10.0 20.0
+    lappend res [.t tag ranges sel]
+    .t configure -startline 5 -endline 30
+    lappend res [.t tag ranges sel]
+    .t configure -startline 5 -endline 15
+    lappend res [.t tag ranges sel]
+    .t configure -startline 15 -endline 30
+    lappend res [.t tag ranges sel]
+    .t configure -startline 15 -endline 16
+    lappend res [.t tag ranges sel]
+    .t configure -startline 25 -endline 30
+    lappend res [.t tag ranges sel]
+    .t configure -startline {} -endline {}
+    lappend res [.t tag ranges sel]
+    return $res
+} -cleanup {
+    destroy .t
+} -result {{10.0 20.0} {6.0 16.0} {6.0 11.0} {1.0 6.0} {1.0 2.0} {} {10.0 20.0}}
+
 test text-35.1 {widget dump -command alters tags} -setup {
      proc Dumpy {key value index} {
-#puts "KK: $key, $value"
       .t tag add $value [list $index linestart] [list $index lineend]
     }
     text .t
@@ -6930,7 +7628,6 @@ test text-35.1 {widget dump -command alters tags} -setup {
 } -result {ok}
 test text-35.2 {widget dump -command makes massive changes} -setup {
     proc Dumpy {key value index} {
-#puts "KK: $key, $value"
       .t delete 1.0 end
     }
     text .t
@@ -6944,7 +7641,6 @@ test text-35.2 {widget dump -command makes massive changes} -setup {
 } -result {ok}
 test text-35.3 {widget dump -command destroys widget} -setup {
     proc Dumpy {key value index} {
-#puts "KK: $key, $value"
         destroy .t
     }
     text .t
@@ -6959,44 +7655,98 @@ test text-35.3 {widget dump -command destroys widget} -setup {
 
 
 test text-36.1 "bug #1777362: event handling with hyphenated windows" -setup {
-    proc bgerror {m} {set ::my_error $m}
+    set save [interp bgerror {}]
+    interp bgerror {} returnerror-36.1
+    proc returnerror-36.1 {m opts} {set ::my_error $m}
     set ::my_error {}
     pack [set w [text .t-1]]
 } -body {
     tkwait visibility $w
-    event generate $w <1>
-    event generate $w <1>
+    event generate $w <Button-1>
+    event generate $w <Button-1>
     update
     set ::my_error
 } -cleanup {
     destroy .t-1
+    rename returnerror-36.1 ""
+    interp bgerror {} $save
+    unset -nocomplain save ::my_error w
 } -result {}
 test text-36.2 "bug #1777362: event handling with hyphenated windows" -setup {
-    proc bgerror {m} {set ::my_error $m}
+    set save [interp bgerror {}]
+    interp bgerror {} returnerror-36.2
+    proc returnerror-36.2 {m opts} {set ::my_error $m}
     set ::my_error {}
     pack [set w [text .t+1]]
 } -body {
     tkwait visibility $w
-    event generate $w <1>
-    event generate $w <1>
+    event generate $w <Button-1>
+    event generate $w <Button-1>
     update
     set ::my_error
 } -cleanup {
     destroy $w
+    rename returnerror-36.2 ""
+    interp bgerror {} $save
+    unset -nocomplain save ::my_error w
 } -result {}
 test text-36.3 "bug #1777362: event handling with hyphenated windows" -setup {
-    proc bgerror {m} {set ::my_error $m}
+    set save [interp bgerror {}]
+    interp bgerror {} returnerror-36.3
+    proc returnerror-36.3 {m opts} {set ::my_error $m}
     set ::my_error {}
     pack [set w [text .t*1]]
 } -body {
     tkwait visibility $w
-    event generate $w <1>
-    event generate $w <1>
+    event generate $w <Button-1>
+    event generate $w <Button-1>
     update
     set ::my_error
 } -cleanup {
     destroy $w
+    rename returnerror-36.3 ""
+    interp bgerror {} $save
+    unset -nocomplain save ::my_error w
 } -result {}
+
+
+test text-37.1 "bug #dd9667635d: text anchor not set" -setup {
+    set save [interp bgerror {}]
+    interp bgerror {} returnerror-37.1
+    proc returnerror-37.1 {m opts} {set ::my_error $m}
+    destroy .t
+    set ::my_error {}
+    pack [text .t]
+} -body {
+    .t insert end "Hello world!"
+    .t tag add sel 1.0 end
+    # this line shall not trigger error:
+    #     bad text index "tk::anchorN"
+    event generate .t <<SelectPrevLine>>
+    update
+    set ::my_error
+} -cleanup {
+    destroy .t
+    rename returnerror-37.1 ""
+    interp bgerror {} $save
+    unset -nocomplain save ::my_error
+} -result {}
+
+
+test text-38.1 {Extending selection with mouse going outside the widget - Bug a9cf210a42} -setup {
+    pack [text .t -width 40 -height 10]
+    for {set n 1} {$n <= 5} {incr n} {
+        .t insert end "This is line $i of text\n"
+    }
+    update
+} -body {
+    event generate .t <Button-1> -x 50 -y 50
+    event generate .t <B1-Motion> -x 50 -y -50
+    .t index sel.first
+} -cleanup {
+    destroy .t
+} -result {1.0}
+
 
 # cleanup
 cleanupTests

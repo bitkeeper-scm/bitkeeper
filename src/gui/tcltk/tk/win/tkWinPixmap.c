@@ -40,9 +40,9 @@ Tk_GetPixmap(
     int planes;
     Screen *screen;
 
-    display->request++;
+    LastKnownRequestProcessed(display)++;
 
-    newTwdPtr = ckalloc(sizeof(TkWinDrawable));
+    newTwdPtr = (TkWinDrawable *)ckalloc(sizeof(TkWinDrawable));
     newTwdPtr->type = TWD_BITMAP;
     newTwdPtr->bitmap.depth = depth;
     twdPtr = (TkWinDrawable *) d;
@@ -56,9 +56,9 @@ Tk_GetPixmap(
     } else {
 	newTwdPtr->bitmap.colormap = twdPtr->bitmap.colormap;
     }
-    screen = &display->screens[0];
+    screen = ScreenOfDisplay(display, 0);
     planes = 1;
-    if (depth == screen->root_depth) {
+    if (depth == DefaultDepthOfScreen(screen)) {
 	planes = PTR2INT(screen->ext_data);
 	depth /= planes;
     }
@@ -100,13 +100,13 @@ Tk_GetPixmap(
 	    LPVOID lpMsgBuf;
 
 	    repeatError = 1;
-	    if (FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+	    if (FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER |
 		    FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_IGNORE_INSERTS,
 		    NULL, GetLastError(),
 		    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		    (LPSTR) &lpMsgBuf, 0, NULL)) {
-		MessageBoxA(NULL, (LPCSTR) lpMsgBuf,
-			"Tk_GetPixmap: Error from CreateDIBSection",
+		    (LPWSTR)&lpMsgBuf, 0, NULL)) {
+		MessageBoxW(NULL, (LPWSTR) lpMsgBuf,
+			L"Tk_GetPixmap: Error from CreateDIBSection",
 			MB_OK | MB_ICONINFORMATION);
 		LocalFree(lpMsgBuf);
 	    }
@@ -144,7 +144,7 @@ Tk_FreePixmap(
 {
     TkWinDrawable *twdPtr = (TkWinDrawable *) pixmap;
 
-    display->request++;
+    LastKnownRequestProcessed(display)++;
     if (twdPtr != NULL) {
 	DeleteObject(twdPtr->bitmap.handle);
 	ckfree(twdPtr);
@@ -197,15 +197,15 @@ TkSetPixmapColormap(
 
 int
 XGetGeometry(
-    Display *display,
+    TCL_UNUSED(Display *),
     Drawable d,
-    Window *root_return,
-    int *x_return,
-    int *y_return,
+    TCL_UNUSED(Window *),
+    TCL_UNUSED(int *),
+    TCL_UNUSED(int *),
     unsigned int *width_return,
     unsigned int *height_return,
-    unsigned int *border_width_return,
-    unsigned int *depth_return)
+    TCL_UNUSED(unsigned int *),
+    TCL_UNUSED(unsigned int *))
 {
     TkWinDrawable *twdPtr = (TkWinDrawable *)d;
 

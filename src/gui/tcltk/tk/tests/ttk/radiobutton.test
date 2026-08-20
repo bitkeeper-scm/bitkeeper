@@ -3,12 +3,13 @@
 #
 
 package require Tk
-package require tcltest ; namespace import -force tcltest::*
+package require tcltest 2.2
+namespace import -force tcltest::*
 loadTestedCommands
 
 test radiobutton-1.1 "Radiobutton check" -body {
     pack \
-    	[ttk::radiobutton .rb1 -text "One" -variable choice -value 1] \
+	[ttk::radiobutton .rb1 -text "One" -variable choice -value 1] \
 	[ttk::radiobutton .rb2 -text "Two" -variable choice -value 2] \
 	[ttk::radiobutton .rb3 -text "Three" -variable choice -value 3] \
 	;

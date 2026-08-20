@@ -22,7 +22,7 @@
  * the current thread.
  */
 
-typedef struct ThreadSpecificData {
+typedef struct {
     int initialized;
     Tcl_HashTable uidTable;
 } ThreadSpecificData;
@@ -471,6 +471,7 @@ Tk_NameOfJustify(
     case TK_JUSTIFY_LEFT: return "left";
     case TK_JUSTIFY_RIGHT: return "right";
     case TK_JUSTIFY_CENTER: return "center";
+    default: break;
     }
     return "unknown justification style";
 }
@@ -493,10 +494,10 @@ Tk_NameOfJustify(
 
 static void
 FreeUidThreadExitProc(
-    ClientData clientData)		/* Not used. */
+    TCL_UNUSED(void *))
 {
-    ThreadSpecificData *tsdPtr =
-            Tcl_GetThreadData(&dataKey, sizeof(ThreadSpecificData));
+    ThreadSpecificData *tsdPtr = (ThreadSpecificData *)
+	    Tcl_GetThreadData(&dataKey, sizeof(ThreadSpecificData));
 
     Tcl_DeleteHashTable(&tsdPtr->uidTable);
     tsdPtr->initialized = 0;
@@ -529,7 +530,7 @@ Tk_GetUid(
     const char *string)		/* String to convert. */
 {
     int dummy;
-    ThreadSpecificData *tsdPtr =
+    ThreadSpecificData *tsdPtr = (ThreadSpecificData *)
             Tcl_GetThreadData(&dataKey, sizeof(ThreadSpecificData));
     Tcl_HashTable *tablePtr = &tsdPtr->uidTable;
 
@@ -694,6 +695,11 @@ TkGetDoublePixels(
     char *end;
     double d;
 
+    if (!tkwin) {
+	Tcl_SetObjResult(interp, Tcl_ObjPrintf("bad screen"));
+	Tcl_SetErrorCode(interp, "TK", "VALUE", "FRACTIONAL_PIXELS", NULL);
+	return TCL_ERROR;
+    }
     d = strtod((char *) string, &end);
     if (end == string) {
 	goto error;

@@ -3,13 +3,16 @@
 #
 # Copyright (c) 1994 The Regents of the University of California.
 # Copyright (c) 1994-1997 Sun Microsystems, Inc.
-# Copyright (c) 1998-1999 by Scriptics Corporation.
+# Copyright (c) 1998-1999 Scriptics Corporation.
 # All rights reserved.
 
 package require tcltest 2.2
 namespace import ::tcltest::*
 tcltest::configure {*}$argv
 tcltest::loadTestedCommands
+
+testConstraint failsOnUbuntu [expr {![info exists ::env(CI)] || ![string match Linux $::tcl_platform(os)]}]
+testConstraint failsOnXQuarz [expr {$tcl_platform(os) ne "Darwin" || [tk windowingsystem] ne "x11" }]
 
 # eatColors --
 # Creates a toplevel window and allocates enough colors in it to
@@ -27,9 +30,9 @@ proc eatColors {w {options ""}} {
     pack $w.c
     for {set y 0} {$y < 8} {incr y} {
         for {set x 0} {$x < 40} {incr x} {
-            set color [format #%02x%02x%02x [expr $x*6] [expr $y*30] 0]
-            $w.c create rectangle [expr 10*$x] [expr 20*$y] \
-                [expr 10*$x + 10] [expr 20*$y + 20] -outline {} \
+            set color [format #%02x%02x%02x [expr {$x*6}] [expr {$y*30}] 0]
+            $w.c create rectangle [expr {10*$x}] [expr {20*$y}] \
+                [expr {10*$x + 10}] [expr {20*$y + 20}] -outline {} \
                 -fill $color
         }
     }
@@ -156,7 +159,7 @@ test winfo-4.6 {"winfo containing" command} -constraints {
     wm geom .t +0+0
     update
 
-    winfo containing [expr [winfo rootx .t.f]-1] [expr [winfo rooty .t.f]-1]
+    winfo containing [expr {[winfo rootx .t.f]-1}] [expr {[winfo rooty .t.f]-1}]
 } -cleanup {
     destroy .t
 } -result .t
@@ -169,12 +172,12 @@ test winfo-4.7 {"winfo containing" command} -setup {
     wm geom .t +0+0
     update
 
-    set x [winfo containing -display .t.f [expr [winfo rootx .t]+600] \
-        [expr [winfo rooty .t.f]+450]]
+    set x [winfo containing -display .t.f [expr {[winfo rootx .t]+600}] \
+        [expr {[winfo rooty .t.f]+450}]]
     expr {($x == ".") || ($x == "")}
 } -cleanup {
     destroy .t
-} -result {1}
+} -result 1
 
 
 test winfo-5.1 {"winfo interps" command} -body {
@@ -188,10 +191,10 @@ test winfo-5.3 {"winfo interps" command} -body {
 } -returnCodes error -result {bad window path name "geek"}
 test winfo-5.4 {"winfo interps" command} -constraints unix -body {
     expr {[lsearch -exact [winfo interps] [tk appname]] >= 0}
-} -result {1}
+} -result 1
 test winfo-5.5 {"winfo interps" command} -constraints unix -body {
     expr {[lsearch -exact [winfo interps -displayof .] [tk appname]] >= 0}
-} -result {1}
+} -result 1
 
 
 test winfo-6.1 {"winfo exists" command} -body {
@@ -202,10 +205,10 @@ test winfo-6.2 {"winfo exists" command} -body {
 } -returnCodes error -result {wrong # args: should be "winfo exists window"}
 test winfo-6.3 {"winfo exists" command} -body {
     winfo exists gorp
-} -result {0}
+} -result 0
 test winfo-6.4 {"winfo exists" command} -body {
     winfo exists .
-} -result {1}
+} -result 1
 test winfo-6.5 {"winfo exists" command} -setup {
     destroy .b
 } -body {
@@ -290,13 +293,13 @@ test winfo-9.2 {"winfo viewable" command} -body {
 } -returnCodes error -result {bad window path name "foo"}
 test winfo-9.3 {"winfo viewable" command} -body {
     winfo viewable .
-} -result {1}
-test winfo-9.4 {"winfo viewable" command} -body {
+} -result 1
+test winfo-9.4 {"winfo viewable" command} -constraints {failsOnUbuntu failsOnXQuarz} -body {
     wm iconify .
     winfo viewable .
 } -cleanup {
     wm deiconify .
-} -result {0}
+} -result 0
 test winfo-9.5 {"winfo viewable" command} -setup {
     deleteWindows
 } -body {
@@ -320,7 +323,7 @@ test winfo-9.6 {"winfo viewable" command} -setup {
 } -cleanup {
     deleteWindows
 } -result {0 0}
-test winfo-9.7 {"winfo viewable" command} -setup {
+test winfo-9.7 {"winfo viewable" command} -constraints {failsOnUbuntu failsOnXQuarz} -setup {
     deleteWindows
 } -body {
     frame .f1 -width 100 -height 100 -relief raised -bd 2
@@ -344,7 +347,7 @@ test winfo-10.2 {"winfo visualid" command} -body {
 } -returnCodes error -result {bad window path name "gorp"}
 test winfo-10.3 {"winfo visualid" command} -body {
     expr {2 + [winfo visualid .] - [winfo visualid .]}
-} -result {2}
+} -result 2
 
 
 test winfo-11.1 {"winfo visualid" command} -body {
@@ -358,14 +361,14 @@ test winfo-11.3 {"winfo visualid" command} -body {
 } -returnCodes error -result {wrong # args: should be "winfo visualsavailable window ?includeids?"}
 test winfo-11.4 {"winfo visualid" command} -body {
     llength [lindex [winfo visualsa .] 0]
-} -result {2}
+} -result 2
 test winfo-11.5 {"winfo visualid" command} -body {
     llength [lindex [winfo visualsa . includeids] 0]
-} -result {3}
+} -result 3
 test winfo-11.6 {"winfo visualid" command} -body {
     set x [lindex [lindex [winfo visualsa . includeids] 0] 2]
-    expr $x + 2 - $x
-} -result {2}
+    expr {$x + 2 - $x}
+} -result 2
 
 
 test winfo-12.1 {GetDisplayOf procedure} -body {
@@ -394,6 +397,13 @@ test winfo-13.1 {root coordinates of embedded toplevel} -setup {
     deleteWindows
 } -result {rootx 1 rooty 1}
 
+# Windows does not destroy the container when an embedded window is
+# destroyed.  Unix and macOS do destroy it.  See ticket [67384bce7d].
+if {[tk windowingsystem] eq "win32"} {
+   set result_13_2 {embedded 0 container 1}
+} else {
+   set result_13_2 {embedded 0 container 0}
+}
 test winfo-13.2 {destroying embedded toplevel} -setup {
     deleteWindows
 } -body {
@@ -409,7 +419,7 @@ test winfo-13.2 {destroying embedded toplevel} -setup {
     list embedded [winfo exists .emb.b] container [winfo exists .con]
 } -cleanup {
     deleteWindows
-} -result {embedded 0 container 1}
+} -result $result_13_2
 
 test winfo-13.3 {destroying container window} -setup {
     deleteWindows

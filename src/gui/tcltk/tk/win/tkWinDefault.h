@@ -59,6 +59,7 @@
 #define DEF_BUTTON_DEFAULT		"disabled"
 #define DEF_BUTTON_DISABLED_FG_COLOR	DISABLED
 #define DEF_BUTTON_DISABLED_FG_MONO	""
+#define DEF_LABEL_FG			NORMAL_FG
 #define DEF_BUTTON_FG			NORMAL_FG
 #define DEF_CHKRAD_FG			TEXT_FG
 #define DEF_BUTTON_FONT			"TkDefaultFont"
@@ -224,6 +225,7 @@
 #define DEF_LISTBOX_HIGHLIGHT_BG	NORMAL_BG
 #define DEF_LISTBOX_HIGHLIGHT		HIGHLIGHT
 #define DEF_LISTBOX_HIGHLIGHT_WIDTH	"1"
+#define DEF_LISTBOX_JUSTIFY		"left"
 #define DEF_LISTBOX_RELIEF		"sunken"
 #define DEF_LISTBOX_SCROLL_COMMAND	""
 #define DEF_LISTBOX_LIST_VARIABLE	""
@@ -246,7 +248,7 @@
 #define DEF_MENU_ENTRY_ACTIVE_FG	((char *) NULL)
 #define DEF_MENU_ENTRY_ACCELERATOR	((char *) NULL)
 #define DEF_MENU_ENTRY_BG		((char *) NULL)
-#define DEF_MENU_ENTRY_BITMAP		None
+#define DEF_MENU_ENTRY_BITMAP		NULL
 #define DEF_MENU_ENTRY_COLUMN_BREAK	"0"
 #define DEF_MENU_ENTRY_COMMAND		((char *) NULL)
 #define DEF_MENU_ENTRY_COMPOUND 	"none"
@@ -488,7 +490,7 @@
 #define DEF_TEXT_PADX			"1"
 #define DEF_TEXT_PADY			"1"
 #define DEF_TEXT_RELIEF			"sunken"
-#define DEF_TEXT_INACTIVE_SELECT_COLOR	NULL
+#define DEF_TEXT_INACTIVE_SELECT_BG_COLOR	NULL
 #define DEF_TEXT_SELECT_COLOR		SELECT_BG
 #define DEF_TEXT_SELECT_MONO		BLACK
 #define DEF_TEXT_SELECT_BD_COLOR	"0"
@@ -515,6 +517,14 @@
  */
 
 #define DEF_CANVTEXT_FONT		"TkDefaultFont"
+
+/*
+ * Defaults for canvas items
+ * (arcs, bitmaps, lines, polygons, rectangles, and ovals):
+ */
+
+#define DEF_CANVBMAP_FG			NORMAL_FG
+#define DEF_CANVITEM_OUTLINE		NORMAL_FG
 
 /*
  * Defaults for toplevels (most of the defaults for frames also apply

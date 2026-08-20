@@ -2,8 +2,9 @@
 # Tile package: entry widget tests
 #
 
-package require Tk 8.5
-package require tcltest ; namespace import -force tcltest::*
+package require Tk
+package require tcltest 2.2
+namespace import -force tcltest::*
 loadTestedCommands
 
 variable scrollInfo
@@ -71,24 +72,42 @@ test entry-2.1 "Create entry before scrollbar" -body {
     pack [ttk::entry .te -xscrollcommand [list .tsb set]] \
 	-expand true -fill both
     pack [ttk::scrollbar .tsb -orient horizontal -command [list .te xview]] \
-    	-expand false -fill x
+	-expand false -fill x
 }  -cleanup {destroy .te .tsb}
+
+test entry-2.1.1 "Create entry before scrollbar - scrollbar catches up" -body {
+    pack [ttk::entry .te -xscrollcommand [list .tsb set]] \
+	    -expand true -fill both
+    .te insert end [string repeat "abc" 50]
+    catch {update} ; # error triggers because the -xscrollcommand callback
+                     # errors out: invalid command name ".tsb"
+    focus -force .te ; # needed on some systems such as Ubuntu (see ticket [3c2a3a988f])
+    pack [ttk::scrollbar .tsb -orient horizontal -command [list .te xview]] \
+	    -expand false -fill x
+    update ; # no error
+    set res [expr [lindex [.tsb get] 1] < 1] ; # scrollbar did update
+} -result 1 -cleanup {destroy .te .tsb}
 
 test entry-2.2 "Initial scroll position" -body {
     ttk::entry .e -font fixed -width 5 -xscrollcommand scroll
     .e insert end "0123456789"
-    pack .e; update
+    pack .e;
+    set timeout [after 500 {set $scrollInfo "timeout"}]
+    vwait scrollInfo
     set scrollInfo
-} -result {0.0 0.5} -cleanup { destroy .e }
+} -cleanup {
+    destroy .e
+    after cancel $timeout
+} -result {0.0 0.5}
 # NOTE: result can vary depending on font.
 
 # Bounding box / scrolling tests.
 test entry-3.0 "Series 3 setup" -body {
     ttk::style theme use default
-    variable fixed fixed
+    variable fixed TkFixedFont
     variable cw [font measure $fixed a]
     variable ch [font metrics $fixed -linespace]
-    variable bd 2	;# border + padding
+    variable bd 3	;# border + padding + extra space for focus ring
     variable ux [font measure $fixed \u4e4e]
 
     pack [ttk::entry .e -font $fixed -width 20]
@@ -103,9 +122,36 @@ test entry-3.1 "bbox widget command" -body {
 test entry-3.2 "xview" -body {
     .e delete 0 end;
     .e insert end [string repeat "0" 40]
-    update idletasks
     set result [.e xview]
 } -result {0.0 0.5}
+
+test entry-3.3 "xview" -body {
+    .e delete 0 end;
+    .e insert end abcdefghijklmnopqrstuvwxyz
+    .e xview end
+    set result [.e index @0]
+} -result 7
+
+test entry-3.4 "xview" -body {
+    .e delete 0 end;
+    .e insert end abcdefghijklmnopqrstuvwxyz
+    .e xview moveto 1.0
+    set result [.e index @0]
+} -result 7
+
+test entry-3.5 "xview" -body {
+    .e delete 0 end;
+    .e insert end abcdefghijklmnopqrstuvwxyz
+    .e xview scroll 5 units
+    set result [.e index @0]
+} -result 5
+
+test entry-3.6 "xview" -body {
+    .e delete 0 end;
+    .e insert end [string repeat abcdefghijklmnopqrstuvwxyz 5]
+    .e xview scroll 2 pages
+    set result [.e index @0]
+} -result 40
 
 test entry-3.last "Series 3 cleanup" -body {
     destroy .e
@@ -192,7 +238,7 @@ test entry-6.1 {Update linked variable in write trace} -body {
     }
     catch {destroy .e}
     set x ""
-    trace variable x w override
+    trace add variable x write override
     ttk::entry .e -textvariable x
     .e insert 0 "Some text"
     set result [list $x [.e get]]
@@ -250,7 +296,7 @@ test entry-8.2 "Unset linked variable by deleting namespace" -body {
     namespace delete ::test
     .e insert end "baz"		;# <== error here
     list [.e cget -textvariable] [.e get] [set foo]
-} -returnCodes error -result "*parent namespace doesn't exist*" -match glob
+} -returnCodes error -result {can*t set "::test::foo": parent namespace does*t exist} -match glob
 # '-result [list ::test::foo "baz" "baz"]' would also be sensible,
 # but Tcl namespaces don't work that way.
 
@@ -262,7 +308,7 @@ test entry-8.2a "Followup to test 8.2" -body {
 test entry-9.1 "Index range invariants" -setup {
     # See bug#1721532 for discussion
     proc entry-9.1-trace {n1 n2 op} {
-    	set ::V NO!
+	set ::V NO!
     }
     variable V
     trace add variable V write entry-9.1-trace
@@ -279,5 +325,36 @@ test entry-9.1 "Index range invariants" -setup {
     unset V
     destroy .e
 }
+
+test entry-11.1 {Bug [2830360fff] - Don't loose invalid at focus events} -setup {
+    pack [ttk::entry .e]
+    update
+} -body {
+    .e state invalid
+    set res [.e state]
+    event generate .e <FocusOut>
+    lappend res [.e state]
+} -result {invalid invalid} -cleanup {
+    destroy .e
+}
+test entry-11.2 {Bug [2a32225cd1] - Navigation in a password made of several words} -setup {
+    destroy .e
+    pack [ttk::entry .e -show *]
+    update
+    set res {}
+} -body {
+    .e insert end "A sample password made of several words"
+    .e icursor end
+    event generate .e <<PrevWord>>  ; # shall move insert to index 0
+    .e delete insert end
+    lappend res [.e get]
+    .e insert end "A sample password made of several words"
+    .e icursor 2
+    event generate .e <<NextWord>>  ; # shall move insert to index end
+    .e delete 0 insert
+    lappend res [.e get]
+} -cleanup {
+    destroy .e
+} -result {{} {}}
 
 tcltest::cleanupTests

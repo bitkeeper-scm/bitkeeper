@@ -1,7 +1,7 @@
 '\"
 '\" Copyright (c) 1998-2000 by Scriptics Corporation.
 '\" All rights reserved.
-'\" 
+'\"
 .TH Tk_GetUserInactiveTime 3 8.5 Tk "Tk Library Procedures"
 .so man.macros
 .BS
@@ -14,7 +14,7 @@ Tk_GetUserInactiveTime, Tk_ResetUserInactiveTime \- discover user inactivity tim
 long
 \fBTk_GetUserInactiveTime(\fIdisplay\fB)\fR
 .sp
-\fBTk_GetUserInactiveTime(\fIdisplay\fB)\fR
+\fBTk_ResetUserInactiveTime(\fIdisplay\fB)\fR
 .SH ARGUMENTS
 .AS Display *display
 .AP Display *display in
@@ -26,8 +26,8 @@ reset.
 \fBTk_GetUserInactiveTime\fR returns the number of milliseconds that
 have passed since the last user interaction (usually via keyboard or
 mouse) with the respective display. On systems and displays that do not
-support querying the user inactiviy time, \fB\-1\fR is returned.
-\fBTk_GetUserInactiveTime\fR resets the user inactivity timer of the
+support querying the user inactivity time, \fB\-1\fR is returned.
+\fBTk_ResetUserInactiveTime\fR resets the user inactivity timer of the
 given display to zero.  On windowing systems that do not support
 multiple displays \fIdisplay\fR can be passed as \fBNULL\fR.
 .SH KEYWORDS

@@ -3,7 +3,7 @@
 #
 # Copyright (c) 1994 The Regents of the University of California.
 # Copyright (c) 1994 Sun Microsystems, Inc.
-# Copyright (c) 1998-1999 by Scriptics Corporation.
+# Copyright (c) 1998-1999 Scriptics Corporation.
 # All rights reserved.
 
 package require tcltest 2.2
@@ -13,7 +13,7 @@ tcltest::loadTestedCommands
 
 destroy .t
 text .t -width 20 -height 10
-pack append . .t {top expand fill}
+pack .t -expand 1 -fill both
 update
 .t debug on
 wm geometry . {}
@@ -27,7 +27,7 @@ Line 4
 bOy GIrl .#@? x_yz
 !@#$%
 Line 7"
-  
+
 # The statements below reset the main window; it's needed if the window
 # manager is mwm to make mwm forget about a previous minimum size setting.
 
@@ -52,7 +52,7 @@ test textMark-1.4 {TkTextMarkCmd - "gravity" option} -body {
 } -result {right 1.4}
 test textMark-1.5 {TkTextMarkCmd - "gravity" option} -body {
     .t mark set x 1.3
-    .t mark g x left
+    .t mark gr x left
     .t insert 1.3 x
     list [.t mark gravity x] [.t index x]
 } -result {left 1.3}
@@ -177,11 +177,22 @@ test textMark-6.4 {TkTextMarkNameToIndex, with mark outside -startline/-endline 
 } -result {1 {bad text index "mymark"} 1.0 1.0 1 {bad text index "mymark"} L 1 {bad text index "mymark"}}
 test textMark-6.5 {insert and current marks in an empty peer - bug 3487407} -body {
   .t mark set insert 1.0
-  .t configure -start 5 -end 5
+  .t configure -startline 5 -endline 5
   set res [.t index insert]
 } -cleanup {
   .t configure -startline {} -endline {}
 } -result {1.0}
+test textMark-6.6 {attempt to move the insert mark beyond peer -endline - bug 34db75c0ac} -body {
+  .t peer create .p -startline 1 -endline 2
+  pack .p
+  update
+  .p mark set insert 1.2
+  focus -force .p
+  event generate .p <<NextLine>>  ; # shall not error out
+  set res [.p index insert]
+} -cleanup {
+  destroy .p
+} -result {1.9}
 
 test textMark-7.1 {MarkFindNext - invalid mark name} -body {
     .t mark next bogus

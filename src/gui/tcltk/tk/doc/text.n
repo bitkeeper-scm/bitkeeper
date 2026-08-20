@@ -4,7 +4,7 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
+'\"
 .TH text n 8.5 Tk "Tk Built-In Commands"
 .so man.macros
 .BS
@@ -229,7 +229,8 @@ Indicates the end of the text (the character just after the last newline).
 .TP 12
 \fImark\fR
 .
-Indicates the character just after the mark whose name is \fImark\fR.
+Indicates the character just after the mark whose name is \fImark\fR (see
+\fBMARKS\fR for details).
 .TP 12
 \fItag\fB.first\fR
 .
@@ -486,6 +487,16 @@ much the line should be indented from the left edge of the window.
 option is only used when wrapping is enabled, and it only applies to the
 second and later display lines for a text line.
 .TP
+\fB\-lmargincolor \fIcolor\fR
+.
+\fIColor\fR specifies the background color to use in regions that do not
+contain characters because they are indented by \fB\-lmargin1\fR or
+\fB\-lmargin2\fR. It may have any of the forms accepted by
+\fBTk_GetColor\fR. If \fIcolor\fR has not been specified, or if it is
+specified as an empty string, then the color used is specified by the
+\fB-background\fR tag option (or, if this is also unspecified, by the
+\fB-background\fR widget option).
+.TP
 \fB\-offset \fIpixels\fR
 .
 \fIPixels\fR specifies an amount by which the text's baseline should be offset
@@ -499,6 +510,13 @@ distances.
 Specifies whether or not to draw a horizontal rule through the middle of
 characters. \fIBoolean\fR may have any of the forms accepted by
 \fBTcl_GetBoolean\fR.
+.TP
+\fB\-overstrikefg \fIcolor\fR
+.
+\fIColor\fR specifies the color to use when displaying the overstrike. It may
+have any of the forms accepted by \fBTk_GetColor\fR. If \fIcolor\fR has not
+been specified, or if it is specified as an empty string, then the color
+specified by the \fB\-foreground\fR tag option is used.
 .TP
 \fB\-relief \fIrelief\fR
 .
@@ -516,6 +534,29 @@ leave between the end of the line and the right edge of the window.
 option is only used when wrapping is enabled. If a text line wraps, the right
 margin for each line on the display is determined by the first non-elided
 character of that display line.
+.TP
+\fB\-rmargincolor \fIcolor\fR
+.
+\fIColor\fR specifies the background color to use in regions that do not
+contain characters because they are indented by \fB\-rmargin\fR. It may
+have any of the forms accepted by \fBTk_GetColor\fR. If \fIcolor\fR has not
+been specified, or if it is specified as an empty string, then the color
+used is specified by the \fB-background\fR tag option (or, if this is also
+unspecified, by the \fB-background\fR widget option).
+.TP
+\fB\-selectbackground \fIcolor\fR
+\fIColor\fR specifies the background color to use when displaying selected
+items. It may have any of the forms accepted by \fBTk_GetColor\fR. If
+\fIcolor\fR has not been specified, or if it is specified as an empty
+string, then the color specified by the \fB\-background\fR tag option is
+used.
+.TP
+\fB\-selectforeground \fIcolor\fR
+\fIColor\fR specifies the foreground color to use when displaying selected
+items. It may have any of the forms accepted by \fBTk_GetColor\fR. If
+\fIcolor\fR has not been specified, or if it is specified as an empty
+string, then the color specified by the \fB\-foreground\fR tag option is
+used.
 .TP
 \fB\-spacing1 \fIpixels\fR
 .
@@ -559,12 +600,21 @@ unspecified for the tag (the default).
 \fIBoolean\fR specifies whether or not to draw an underline underneath
 characters. It may have any of the forms accepted by \fBTcl_GetBoolean\fR.
 .TP
+\fB\-underlinefg \fIcolor\fR
+.
+\fIColor\fR specifies the color to use when displaying the underline. It may
+have any of the forms accepted by \fBTk_GetColor\fR. If \fIcolor\fR has not
+been specified, or if it is specified as an empty string, then the color
+specified by the \fB\-foreground\fR tag option is used.
+.TP
 \fB\-wrap \fImode\fR
 .
 \fIMode\fR specifies how to handle lines that are wider than the text's
-window. It has the same legal values as the \fB\-wrap\fR option for the text
-widget: \fBnone\fR, \fBchar\fR, or \fBword\fR. If this tag option is
-specified, it overrides the \fB\-wrap\fR option for the text widget.
+window. This option only applies to a display line if it applies to the
+first non-elided character on that display line. It has the same legal
+values as the \fB\-wrap\fR option for the text widget: \fBnone\fR,
+\fBchar\fR, or \fBword\fR. If this tag option is specified, it
+overrides the \fB\-wrap\fR option for the text widget.
 .PP
 If a character has several tags associated with it, and if their display
 options conflict, then the options of the highest priority tag are used. If a
@@ -798,6 +848,9 @@ characters in the text.
 .IP [4]
 Whenever the \fBsel\fR tag range changes a virtual event \fB<<Selection>>\fR
 is generated.
+It might also be generated when selection is affected but not actually changed.
+Further, multiple selection changes could happen before events can be processed
+leading to multiple events with the same visible selection.
 .PP
 The \fBsel\fR tag is automatically defined when a text widget is created, and
 it may not be deleted with the
@@ -851,6 +904,9 @@ option is true. You can insert separators programmatically as well. If a
 separator is already present at the top of the undo stack no other will be
 inserted. That means that two separators on the undo stack are always
 separated by at least one insert or delete action.
+.PP
+The \fB<<UndoStack>>\fR virtual event is generated every time the undo stack
+or the redo stack becomes empty or unempty.
 .PP
 The undo mechanism is also linked to the modified flag. This means that
 undoing or redoing changes can take a modified text widget back to the
@@ -917,6 +973,83 @@ affected.
 .PP
 See below for the \fIpathName \fBpeer\fR widget command that controls the
 creation of peer widgets.
+.SH "ASYNCHRONOUS UPDATE OF LINE HEIGHTS"
+.PP
+In order to maintain a responsive user-experience, the text widget calculates
+lines metrics (line heights in pixels) asynchronously. Because of this, some
+commands of the text widget may return wrong results if the asynchronous
+calculations are not finished at the time of calling. This applies to
+\fIpathName \fBcount -ypixels\fR and \fIpathName \fByview\fR.
+.PP
+Again for performance reasons, it would not be appropriate to let these
+commands always wait for the end of the update calculation each time they are
+called. In most use cases of these commands a more or less inaccurate result
+does not really matter compared to execution speed.
+.PP
+In case accurate result is needed (and if the text widget is managed by a
+geometry manager), one can resort to \fIpathName \fBsync\fR and \fIpathName
+\fBpendingsync\fR to control the synchronization of the view of text widgets.
+.PP
+The \fB<<WidgetViewSync>>\fR virtual event fires when the line heights of the
+text widget become obsolete (due to some editing command or configuration
+change), and again when the internal data of the text widget are back in sync
+with the widget view. The detail field (%d substitution) is either true (when
+the widget is in sync) or false (when it is not).
+.PP
+\fIpathName \fBsync\fR, \fIpathName \fBpendingsync\fR and
+\fB<<WidgetViewSync>>\fR apply to each text widget independently of its peers.
+.PP
+Examples of use:
+.CS
+## Example 1:
+# immediately complete line metrics at any cost (GUI unresponsive)
+$w sync
+$w yview moveto $fraction
+
+## Example 2:
+# synchronously wait for up-to-date line metrics (GUI responsive)
+# before executing the scheduled command, but don't block execution flow
+$w sync -command [list $w yview moveto $fraction]
+
+## Example 3:
+# init
+set yud($w) 0
+proc updateaction w {
+\&set ::yud($w) 1
+\&# any other update action here...
+}
+# runtime, synchronously wait for up-to-date line metrics (GUI responsive)
+$w sync -command [list updateaction $w]
+vwait yud($w)
+$w yview moveto $fraction
+
+## Example 4:
+# init
+set todo($w) {}
+proc updateaction w {
+\&foreach cmd $::todo($w) {uplevel #0 $cmd}
+\&set todo($w) {}
+}
+# runtime
+lappend todo($w) [list $w yview moveto $fraction]
+$w sync -command [list updateaction $w]
+
+## Example 5:
+# init
+set todo($w) {}
+bind $w <<WidgetViewSync>> {
+\&if {%d} {
+\&\&foreach cmd $todo(%W) {eval $cmd}
+\&\&set todo(%W) {}
+\&}
+}
+# runtime
+if {![$w pendingsync]} {
+\&$w yview moveto $fraction
+} else {
+\&lappend todo($w) [list $w yview moveto $fraction]
+}
+.CE
 .SH "WIDGET COMMAND"
 .PP
 The \fBtext\fR command creates a new Tcl command whose name is the same as the
@@ -953,7 +1086,7 @@ satisfied and 0 if it is not. \fIOp\fR must be one of the operators <, <=, ==,
 the same character, if \fIop\fR is < then 1 is returned if \fIindex1\fR refers
 to an earlier character in the text than \fIindex2\fR, and so on.
 .TP
-\fIpathName \fBconfigure\fR ?\fIoption\fR? \fI?value option value ...\fR?
+\fIpathName \fBconfigure\fR ?\fIoption\fR? ?\fIvalue option value ...\fR?
 .
 Query or modify the configuration options of the widget. If no \fIoption\fR is
 specified, returns a list describing all of the available options for
@@ -966,7 +1099,7 @@ command modifies the given widget option(s) to have the given value(s); in
 this case the command returns an empty string. \fIOption\fR may have any of
 the values accepted by the \fBtext\fR command.
 .TP
-\fIpathName \fBcount\fR \fI?options\fR? \fIindex1 index2\fR
+\fIpathName \fBcount\fR ?\fIoptions\fR? \fIindex1 index2\fR
 .
 Counts the number of relevant things between the two indices. If \fIindex1\fR
 is after \fIindex2\fR, the result will be a negative number (and this holds
@@ -981,7 +1114,9 @@ if the text widget is managed by a geometry manager), then all subsequent
 options ensure that any possible out of date information is recalculated.
 This currently only has any effect for the \fB\-ypixels\fR count (which, if
 \fB\-update\fR is not given, will use the text widget's current cached value
-for each line). The count options are interpreted as follows:
+for each line). This \fB\-update\fR option is obsoleted by \fIpathName
+\fBsync\fR, \fIpathName \fBpendingsync\fR and \fB<<WidgetViewSync>>\fR.  The
+count options are interpreted as follows:
 .RS
 .IP \fB\-chars\fR
 count all characters, whether elided or not. Do not count embedded windows or
@@ -1049,22 +1184,30 @@ test suite.
 .TP
 \fIpathName \fBdelete \fIindex1 \fR?\fIindex2 ...\fR?
 .
-Delete a range of characters from the text. If both \fIindex1\fR and
-\fIindex2\fR are specified, then delete all the characters starting with the
-one given by \fIindex1\fR and stopping just before \fIindex2\fR (i.e. the
-character at \fIindex2\fR is not deleted). If \fIindex2\fR does not specify a
-position later in the text than \fIindex1\fR then no characters are deleted.
-If \fIindex2\fR is not specified then the single character at \fIindex1\fR is
-deleted. It is not allowable to delete characters in a way that would leave
-the text without a newline as the last character. The command returns an empty
-string. If more indices are given, multiple ranges of text will be deleted.
-All indices are first checked for validity before any deletions are made. They
-are sorted and the text is removed from the last range to the first range so
-deleted text does not cause an undesired index shifting side-effects. If
-multiple ranges with the same start index are given, then the longest range is
-used. If overlapping ranges are given, then they will be merged into spans
-that do not cause deletion of text outside the given ranges due to text
-shifted during deletion.
+Delete a range of characters from the text.
+If both \fIindex1\fR and \fIindex2\fR are specified, then delete
+all the characters starting with the one given by \fIindex1\fR
+and stopping just before \fIindex2\fR (i.e. the character at
+\fIindex2\fR is not deleted).
+If \fIindex2\fR does not specify a position later in the text
+than \fIindex1\fR then no characters are deleted.
+If \fIindex2\fR is not specified then the single character at
+\fIindex1\fR is deleted.
+Attempts to delete characters in a way that would leave
+the text without a newline as the last character will be tweaked by the
+text widget to avoid this. In particular, deletion of complete lines of
+text up to the end of the text will also delete the newline character just
+before the deleted block so that it is replaced by the new final newline
+of the text widget.
+The command returns an empty string.
+If more indices are given, multiple ranges of text will be deleted.
+All indices are first checked for validity before any deletions are made.
+They are sorted and the text is removed from the last range to the
+first range so deleted text does not cause an undesired index shifting
+side-effects.  If multiple ranges with the same start index are given,
+then the longest range is used.  If overlapping ranges are given, then
+they will be merged into spans that do not cause deletion of text
+outside the given ranges due to text shifted during deletion.
 .TP
 \fIpathName \fBdlineinfo \fIindex\fR
 .
@@ -1150,6 +1293,16 @@ behavior of the command depends on the \fIoption\fR argument that follows the
 supported:
 .RS
 .TP
+\fIpathName \fBedit canredo\fR
+.
+Returns a boolean true if redo is possible, i.e. when the redo stack is not
+empty. Otherwise returns false.
+.TP
+\fIpathName \fBedit canundo\fR
+.
+Returns a boolean true if undo is possible, i.e. when the undo stack is not
+empty. Otherwise returns false.
+.TP
 \fIpathName \fBedit modified \fR?\fIboolean\fR?
 .
 If \fIboolean\fR is not specified, returns the modified flag of the widget.
@@ -1201,7 +1354,7 @@ are empty strings.
 \fIpathName \fBimage \fIoption \fR?\fIarg arg ...\fR?
 .
 This command is used to manipulate embedded images. The behavior of the
-command depends on the \fIoption\fR argument that follows the \fBtag\fR
+command depends on the \fIoption\fR argument that follows the \fBimage\fR
 argument. The following forms of the command are currently supported:
 .RS
 .TP
@@ -1344,13 +1497,16 @@ Returns a list of peers of this widget (this does not include the widget
 itself). The order within this list is undefined.
 .RE
 .TP
-\fIpathName \fBreplace \fIindex1 index2 chars\fR ?\fItagList chars tagList ...\fR?
-.
-Replaces the range of characters between \fIindex1\fR and \fIindex2\fR with
-the given characters and tags. See the section on \fIpathName \fBinsert\fR for
-an explanation of the handling of the \fItagList...\fR arguments, and the
-section on \fIpathName \fBdelete\fR for an explanation of the handling of the
-indices. If \fIindex2\fR corresponds to an index earlier in the text than
+\fIpathName \fBpendingsync\fR
+Returns 1 if the line heights calculations are not up-to-date, 0 otherwise.
+.TP
+\fIpathName \fBreplace\fR \fIindex1 index2 chars\fR ?\fItagList chars tagList ...\fR?
+Replaces the range of characters between \fIindex1\fR and \fIindex2\fR
+with the given characters and tags.  See the section on \fIpathName
+\fBinsert\fR for an explanation of the handling of the \fItagList...\fR
+arguments, and the section on \fIpathName
+\fBdelete\fR for an explanation of the handling of the indices.  If
+\fIindex2\fR corresponds to an index earlier in the text than
 \fIindex1\fR, an error will be generated.
 .RS
 .PP
@@ -1523,6 +1679,23 @@ the view just enough to make \fIindex\fR visible at the edge of the window.
 If \fIindex\fR is far out of view, then the command centers \fIindex\fR in the
 window.
 .TP
+\fIpathName \fBsync\fR ?\fB-command \fIcommand\fR?
+Controls the synchronization of the view of the text widget.
+.RS
+.TP
+\fIpathName \fBsync\fR
+Immediately brings the line metrics up-to-date by forcing computation of any
+outdated line heights. The command returns immediately if there is no such
+outdated line heights, otherwise it returns only at the end of the computation.
+The command returns an empty string.
+.TP
+\fIpathName \fBsync -command \fIcommand\fR
+Schedules \fIcommand\fR to be executed (by the event loop) exactly once as soon
+as all line heights are up-to-date. If there are no pending line metrics
+calculations, the scheduling is immediate. The command returns the empty
+string. \fBbgerror\fR is called on \fIcommand\fR failure.
+.RE
+.TP
 \fIpathName \fBtag \fIoption \fR?\fIarg arg ...\fR?
 .
 This command is used to manipulate tags. The exact behavior of the command
@@ -1563,15 +1736,17 @@ all the sequences for which bindings have been defined for \fItagName\fR.
 .PP
 The only events for which bindings may be specified are those related to the
 mouse and keyboard (such as \fBEnter\fR, \fBLeave\fR, \fBButtonPress\fR,
-\fBMotion\fR, and \fBKeyPress\fR) or virtual events. Event bindings for a text
-widget use the \fBcurrent\fR mark described under \fBMARKS\fR above. An
+\fBMotion\fR, and \fBKeyPress\fR) or virtual events. Mouse and keyboard event
+bindings for a text widget respectively use the \fBcurrent\fR and \fBinsert\fR
+marks described under \fBMARKS\fR above. An
 \fBEnter\fR event triggers for a tag when the tag first becomes present on the
 current character, and a \fBLeave\fR event triggers for a tag when it ceases
 to be present on the current character. \fBEnter\fR and \fBLeave\fR events can
 happen either because the \fBcurrent\fR mark moved or because the character at
 that position changed. Note that these events are different than \fBEnter\fR
-and \fBLeave\fR events for windows. Mouse and keyboard events are directed to
-the current character. If a virtual event is used in a binding, that binding
+and \fBLeave\fR events for windows. Mouse events are directed to the current
+character, while keyboard events are directed to the insert character.
+If a virtual event is used in a binding, that binding
 can trigger only if the virtual event is defined by an underlying
 mouse-related or keyboard-related event.
 .PP
@@ -1856,12 +2031,13 @@ integer. This command used to be used for scrolling, but now it is obsolete.
 .SH BINDINGS
 .PP
 Tk automatically creates class bindings for texts that give them the following
-default behavior. In the descriptions below,
+default behavior.
+In the descriptions below,
 .QW word
-is dependent on the value of the \fBtcl_wordchars\fR variable. See
-\fBtclvars\fR(n).
+is dependent on the value of
+the \fBtcl_wordchars\fR variable.  See \fBtclvars\fR(n).
 .IP [1]
-Clicking mouse button 1 positions the insertion cursor just before the
+Clicking mouse button 1 positions the insertion cursor at the closest edge of the
 character underneath the mouse cursor, sets the input focus to this widget,
 and clears any selection in the widget. Dragging with mouse button 1 strokes
 out a selection between the insertion cursor and the character under the
@@ -1888,10 +2064,11 @@ insertion cursor without affecting the selection.
 If any normal printing characters are typed, they are inserted at the point of
 the insertion cursor.
 .IP [7]
-The view in the widget can be adjusted by dragging with mouse button 2. If
-mouse button 2 is clicked without moving the mouse, the selection is copied
-into the text at the position of the mouse cursor. The Insert key also inserts
-the selection, but at the position of the insertion cursor.
+The view in the widget can be adjusted by dragging with the middle mouse
+button (button 2, or button 3 in TkAqua). If the middle mouse button is
+clicked without moving the mouse, the selection is copied into the text at the
+position of the mouse cursor. The Insert key also inserts the selection,
+but at the position of the insertion cursor.
 .IP [8]
 If the mouse is dragged out of the widget while button 1 is pressed, the entry
 will automatically scroll to make more text visible (if there is more text
@@ -1992,9 +2169,8 @@ the clipboard.
 Control-t reverses the order of the two characters to the right of the
 insertion cursor.
 .IP [32]
-Control-z (and Control-underscore on UNIX when \fBtk_strictMotif\fR is true)
-undoes the last edit action if the \fB\-undo\fR option is true. Does nothing
-otherwise.
+Control-z undoes the last edit action if the \fB\-undo\fR option is true.
+Does nothing otherwise.
 .IP [33]
 Control-Z (or Control-y on Windows) reapplies the last undone edit action if
 the \fB\-undo\fR option is true. Does nothing otherwise.

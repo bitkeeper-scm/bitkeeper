@@ -4,7 +4,7 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
+'\"
 .TH Tk_Alloc3DBorderFromObj 3 8.1 Tk "Tk Library Procedures"
 .so man.macros
 .BS
@@ -13,49 +13,43 @@ Tk_Alloc3DBorderFromObj, Tk_Get3DBorder, Tk_Get3DBorderFromObj, Tk_Draw3DRectang
 .SH SYNOPSIS
 .nf
 \fB#include <tk.h>\fR
+
+Tk_3DBorder
+\fBTk_Alloc3DBorderFromObj\fR(\fIinterp, tkwin, objPtr\fR)
 .sp
 Tk_3DBorder
-\fBTk_Alloc3DBorderFromObj(\fIinterp, tkwin, objPtr\fB)\fR
+\fBTk_Get3DBorder\fR(\fIinterp, tkwin, colorName\fR)
 .sp
 Tk_3DBorder
-\fBTk_Get3DBorder(\fIinterp, tkwin, colorName\fB)\fR
+\fBTk_Get3DBorderFromObj\fR(\fItkwin, objPtr\fR)
 .sp
-Tk_3DBorder
-\fBTk_Get3DBorderFromObj(\fItkwin, objPtr\fB)\fR
+\fBTk_Draw3DRectangle\fR(\fItkwin, drawable, border, x, y, width, height, borderWidth, relief\fR)
 .sp
-void
-\fBTk_Draw3DRectangle(\fItkwin, drawable, border, x, y, width, height, borderWidth, relief\fB)\fR
+\fBTk_Fill3DRectangle\fR(\fItkwin, drawable, border, x, y, width, height, borderWidth, relief\fR)
 .sp
-void
-\fBTk_Fill3DRectangle(\fItkwin, drawable, border, x, y, width, height, borderWidth, relief\fB)\fR
+\fBTk_Draw3DPolygon\fR(\fItkwin, drawable, border, pointPtr, numPoints, polyBorderWidth, leftRelief\fR)
 .sp
-void
-\fBTk_Draw3DPolygon(\fItkwin, drawable, border, pointPtr, numPoints, polyBorderWidth, leftRelief\fB)\fR
+\fBTk_Fill3DPolygon\fR(\fItkwin, drawable, border, pointPtr, numPoints, polyBorderWidth, leftRelief\fR)
 .sp
-void
-\fBTk_Fill3DPolygon(\fItkwin, drawable, border, pointPtr, numPoints, polyBorderWidth, leftRelief\fB)\fR
+\fBTk_3DVerticalBevel\fR(\fItkwin, drawable, border, x, y, width, height, leftBevel, relief\fR)
 .sp
-void
-\fBTk_3DVerticalBevel\fR(\fItkwin, drawable, border, x, y, width, height, leftBevel, relief\fB)\fR
+\fBTk_3DHorizontalBevel\fR(\fItkwin, drawable, border, x, y, width, height, leftIn, rightIn, topBevel, relief\fR)
 .sp
-void
-\fBTk_3DHorizontalBevel\fR(\fItkwin, drawable, border, x, y, width, height, leftIn, rightIn, topBevel, relief\fB)\fR
-.sp
-void
-\fBTk_SetBackgroundFromBorder(\fItkwin, border\fB)\fR
+\fBTk_SetBackgroundFromBorder\fR(\fItkwin, border\fR)
 .sp
 const char *
-\fBTk_NameOf3DBorder(\fIborder\fB)\fR
+\fBTk_NameOf3DBorder\fR(\fIborder\fR)
 .sp
 XColor *
-\fBTk_3DBorderColor(\fIborder\fB)\fR
+\fBTk_3DBorderColor\fR(\fIborder\fR)
 .sp
 GC *
-\fBTk_3DBorderGC(\fItkwin, border, which\fB)\fR
+\fBTk_3DBorderGC\fR(\fItkwin, border, which\fR)
 .sp
-\fBTk_Free3DBorderFromObj(\fItkwin, objPtr\fB)\fR
+\fBTk_Free3DBorderFromObj\fR(\fItkwin, objPtr\fR)
 .sp
-\fBTk_Free3DBorder(\fIborder\fB)\fR
+\fBTk_Free3DBorder\fR(\fIborder\fR)
+.fi
 .SH ARGUMENTS
 .AS "Tk_3DBorder" borderWidth
 .AP Tcl_Interp *interp in
@@ -67,7 +61,7 @@ must be the window for which the border was allocated).
 Pointer to value whose value describes color corresponding to
 background (flat areas).  Illuminated edges will be brighter than
 this and shadowed edges will be darker than this.
-.AP char *colorName in
+.AP "const char" *colorName in
 Same as \fIobjPtr\fR except value is supplied as a string rather
 than a value.
 .AP Drawable drawable in
@@ -192,8 +186,8 @@ which of several three-dimensional effects is desired:
 \fBTK_RELIEF_RAISED\fR means that the interior of the rectangle should
 appear raised relative to the exterior of the rectangle, and
 \fBTK_RELIEF_SUNKEN\fR means that the interior should appear depressed.
-\fBTK_RELIEF_GROOVE\fR and \fBTK_RELIEF_RIDGE\fR mean that there should appear to be
-a groove or ridge around the exterior of the rectangle.
+\fBTK_RELIEF_GROOVE\fR and \fBTK_RELIEF_RIDGE\fR mean that there should
+appear to be a groove or ridge around the exterior of the rectangle.
 .PP
 \fBTk_Fill3DRectangle\fR is somewhat like \fBTk_Draw3DRectangle\fR except
 that it first fills the rectangular area with the background color
@@ -291,4 +285,5 @@ There should be exactly one call to \fBTk_Free3DBorderFromObj\fR or
 \fBTk_Free3DBorder\fR for each call to \fBTk_Alloc3DBorderFromObj\fR
 or \fBTk_Get3DBorder\fR.
 .SH KEYWORDS
-3D, background, border, color, depressed, illumination, value, polygon, raised, shadow, three-dimensional effect
+3D, background, border, color, depressed, illumination, value, polygon,
+raised, shadow, three-dimensional effect

@@ -1740,7 +1740,12 @@ launch_wish(char *script, char **av)
 			path = aprintf(
 			    "%s/gui/bin/BitKeeper.app/Contents/MacOS/BitKeeper",
 			    bin);
-		} else {
+			unless (executable(path)) {
+				free(path);
+				path = 0;
+			}
+		}
+		unless (path) {
 			path = aprintf("%s/gui/bin/bkgui", bin);
 			if (executable(path)) {
 				safe_putenv("TCL_LIBRARY=%s/gui/lib/tcl8.6",

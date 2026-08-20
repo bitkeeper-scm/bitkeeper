@@ -4,7 +4,7 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
+'\"
 .TH event n 8.3 Tk "Tk Built-In Commands"
 .so man.macros
 .BS
@@ -172,7 +172,7 @@ one of \fBNotifyNormal\fR, \fBNotifyGrab\fR, \fBNotifyUngrab\fR, or
 \fBNotifyWhileGrabbed\fR.
 Valid for \fBEnter\fR, \fBLeave\fR, \fBFocusIn\fR, and
 \fBFocusOut\fR events.
-Corresponds to the \fB%m\fR substitution for binding scripts.  
+Corresponds to the \fB%m\fR substitution for binding scripts.
 .TP
 \fB\-override\fI boolean\fR
 \fIBoolean\fR must be a boolean value;  it specifies the
@@ -224,7 +224,7 @@ Corresponds to the \fB%#\fR substitution for binding scripts.
 For \fBKeyPress\fR, \fBKeyRelease\fR, \fBButtonPress\fR,
 \fBButtonRelease\fR, \fBEnter\fR, \fBLeave\fR, and \fBMotion\fR events
 it must be an integer value.
-For \fBVisibility\fR events it must be one of \fBVisibilityUnobscured\fR, 
+For \fBVisibility\fR events it must be one of \fBVisibilityUnobscured\fR,
 \fBVisibilityPartiallyObscured\fR, or \fBVisibilityFullyObscured\fR.
 This option overrides any modifiers such as \fBMeta\fR or \fBControl\fR
 specified in the base \fIevent\fR.
@@ -239,7 +239,8 @@ Similar to \fB%S\fR substitution for binding scripts.
 .TP
 \fB\-time\fI integer\fR
 \fIInteger\fR must be an integer value;  it specifies the \fItime\fR field
-for the event.
+for the event. Additonally the special value \fBcurrent\fR is allowed,
+this value will be substituted by the current event time.
 Valid for \fBKeyPress\fR, \fBKeyRelease\fR, \fBButtonPress\fR,
 \fBButtonRelease\fR, \fBEnter\fR, \fBLeave\fR, \fBMotion\fR,
 and \fBProperty\fR events.
@@ -302,9 +303,9 @@ If \fIWindow\fR is empty the coordinate is relative to the
 screen, and this option corresponds to the \fB%Y\fR substitution
 for binding scripts.
 .PP
-Any options that are not specified when generating an event are filled 
-with the value 0, except for \fIserial\fR, which is filled with the 
-next X event serial number.  
+Any options that are not specified when generating an event are filled
+with the value 0, except for \fIserial\fR, which is filled with the
+next X event serial number.
 .SH "PREDEFINED VIRTUAL EVENTS"
 .PP
 Tk defines the following virtual events for the purposes of
@@ -338,7 +339,18 @@ This is sent to a text widget when the selection in the widget is
 changed.
 .TP
 \fB<<ThemeChanged>>\fR
-This is sent to a text widget when the ttk (Tile) theme changed.
+This is sent to all widgets when the ttk theme changed. The ttk
+widgets listen to this event and redisplay themselves when it fires.
+The legacy widgets ignore this event.
+.TP
+\fB<<TkWorldChanged>>\fR
+.
+This event is sent to all widgets when a font is changed, for example,
+by the use of [font configure].  The user_data field (%d) will have the
+value "FontChanged".  For other system wide changes, this event will
+be sent to all widgets, and the user_data field will indicate the
+cause of the change.  NOTE: all tk and ttk widgets already handle this
+event internally.
 .TP
 \fB<<TraverseIn>>\fR
 This is sent to a widget when the focus enters the widget because of a
@@ -351,6 +363,16 @@ This is sent to a widget when the focus leaves the widget because of a
 user-driven
 .QW "tab to widget"
 action.
+.TP
+\fB<<UndoStack>>\fR
+This is sent to a text widget when its undo stack or redo stack becomes
+empty or unempty.
+.TP
+\fB<<WidgetViewSync>>\fR
+This is sent to a text widget when its internal data become obsolete,
+and again when these internal data are back in sync with the widget
+view. The detail field (%d substitution) is either true (when the
+widget is in sync) or false (when it is not).
 .PP
 Tk defines the following virtual events for the purposes of unifying
 bindings across multiple platforms. Users expect them to behave in the
@@ -540,13 +562,13 @@ will be invoked, because a physical event is considered
 more specific than a virtual event, all other things being equal.
 However, when the user types Meta-Control-y the
 \fB<<Paste>>\fR binding will be invoked, because the
-\fBMeta\fR modifier in the physical pattern associated with the 
+\fBMeta\fR modifier in the physical pattern associated with the
 virtual binding is more specific than the \fB<Control-y\fR> sequence for
 the physical event.
 .PP
 Bindings on a virtual event may be created before the virtual event exists.
 Indeed, the virtual event never actually needs to be defined, for instance,
-on platforms where the specific virtual event would meaningless or
+on platforms where the specific virtual event would be meaningless or
 ungeneratable.
 .PP
 When a definition of a virtual event changes at run time, all windows
@@ -560,7 +582,7 @@ bind Entry <Control-y> {}
 .PP
 the behavior will change such in two ways.  First, the shadowed
 \fB<<Paste>>\fR binding will emerge.
-Typing Control-y will no longer invoke the \fB<Control-y>\fR binding, 
+Typing Control-y will no longer invoke the \fB<Control-y>\fR binding,
 but instead invoke the virtual event \fB<<Paste>>\fR.  Second,
 pressing the F6 key will now also invoke the \fB<<Paste>>\fR binding.
 .SS "MOVING THE MOUSE POINTER"

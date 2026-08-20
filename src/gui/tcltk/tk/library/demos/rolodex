@@ -10,7 +10,7 @@ exec wish "$0" ${1+"$@"}
 
 package require Tk
 
-foreach i [winfo child .] {
+foreach i [winfo children .] {
     catch {destroy $i}
 }
 

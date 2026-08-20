@@ -4,7 +4,7 @@
  *	Declarations of types and functions used to implement the menubutton
  *	widget.
  *
- * Copyright (c) 1996-1997 by Sun Microsystems, Inc.
+ * Copyright (c) 1996-1997 Sun Microsystems, Inc.
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -165,12 +165,12 @@ typedef struct {
     				 * "right", and "flush". "flush" means that
     				 * the upper left corner of the menubutton is
     				 * where the menu pops up. "above" and "below"
-    				 * will attempt to pop the menu compleletly
+    				 * will attempt to pop the menu completely
     				 * above or below the menu respectively.
     				 * "left" and "right" will pop the menu left
     				 * or right, and the active item will be next
     				 * to the button. */
-    Tk_Cursor cursor;		/* Current cursor for window, or None. */
+    Tk_Cursor cursor;		/* Current cursor for window, or NULL. */
     char *takeFocus;		/* Value of -takefocus option; not used in the
 				 * C code, but used by keyboard traversal
 				 * scripts. Malloc'ed, but may be NULL. */
