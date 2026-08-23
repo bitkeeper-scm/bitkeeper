@@ -579,7 +579,7 @@ tags.each_key {|tag|
 	puts "Making release archive for #{tag}"
 	base = File.expand_path("#{RELEASEDIR}/prog-#{tag}")
 	file = base + ".tar.gz"
-	File.unlink(file) if File.exists? file
+	File.unlink(file) if File.exist? file
 
 	system("bk export -r#{tag} -tplain . \"#{base}\"") or raise
 	system("tar -C\"#{base}\" -czf \"#{file}\" .") or raise

@@ -65,7 +65,7 @@ almostUnique(void)
         u32     val;
 	char	*p;
 
-	if (p = getenv("BK_RANDOM")) {
+	if ((p = getenv("BK_RANDOM"))) {
 		/* get 20 bits worth */
 		sscanf(p, "%5x", &val);
 		val %= 100000;		/* low 5 digits */

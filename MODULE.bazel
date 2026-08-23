@@ -1,0 +1,71 @@
+"""BitKeeper Bazel module.
+
+All third-party libraries are built from upstream packages that Bazel
+fetches itself (either from the Bazel Central Registry, or -- for
+libraries not published there -- directly from the upstream project's
+release tarball). None of the copies vendored under src/ are used to
+build the project anymore.
+"""
+
+module(
+    name = "bitkeeper",
+    version = "0.1.0",
+)
+
+bazel_dep(name = "platforms", version = "1.1.0")
+bazel_dep(name = "rules_cc", version = "0.2.22")
+bazel_dep(name = "rules_shell", version = "0.6.1")
+bazel_dep(name = "zlib", version = "1.3.1.bcr.8")
+bazel_dep(name = "lz4", version = "1.10.0.bcr.1")
+bazel_dep(name = "pcre2", version = "10.45")
+bazel_dep(name = "gperf", version = "3.1.bcr.2")
+
+# ---------------------------------------------------------------------
+# Libraries that are not published to the Bazel Central Registry are
+# fetched straight from their upstream release tarballs and built with
+# BUILD files we provide under //third_party. This keeps the actual
+# library source out of this repository while still building it with
+# Bazel (not the copies historically vendored under src/tomcrypt and
+# src/tommath).
+# ---------------------------------------------------------------------
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "tomcrypt",
+    urls = ["https://github.com/libtom/libtomcrypt/archive/refs/tags/v1.18.2.tar.gz"],
+    sha256 = "d870fad1e31cb787c85161a8894abb9d7283c2a654a9d3d4c6d45a1eba59952c",
+    strip_prefix = "libtomcrypt-1.18.2",
+    build_file = "//third_party/tomcrypt:BUILD.tomcrypt.bazel",
+)
+
+http_archive(
+    name = "tommath",
+    urls = ["https://github.com/libtom/libtommath/archive/refs/tags/v1.2.0.tar.gz"],
+    sha256 = "f3c20ab5df600d8d89e054d096c116417197827d12732e678525667aa724e30f",
+    strip_prefix = "libtommath-1.2.0",
+    build_file = "//third_party/tommath:BUILD.tommath.bazel",
+)
+
+http_archive(
+    name = "zlib_src",
+    urls = ["https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz"],
+    sha256 = "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23",
+    strip_prefix = "zlib-1.3.1",
+    build_file_content = """
+filegroup(
+    name = "zlib_files",
+    srcs = glob(["*"]),
+    visibility = ["//visibility:public"],
+)
+""",
+)
+
+# ---------------------------------------------------------------------
+# Windows LLVM-MinGW Cross-Compilation Toolchain
+# ---------------------------------------------------------------------
+llvm_mingw_ext = use_extension("//toolchains/llvm_mingw:extension.bzl", "llvm_mingw_extension")
+use_repo(llvm_mingw_ext, "llvm_mingw_toolchain")
+
+register_toolchains("@llvm_mingw_toolchain//:llvm_mingw_cc_toolchain")
+
+

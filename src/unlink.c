@@ -53,7 +53,7 @@ sccs_keyunlink(char *key, MDBM *idDB, MDBM *dirs, u32 flags)
 	sccs_close(s);
 	ret = unlink(s->sfile) ? 4 : 0;
 	if (dirs) {
-		if (t = strrchr(s->sfile, '/')) {
+		if ((t = strrchr(s->sfile, '/'))) {
 			*t = 0;
 			mdbm_store_str(dirs, s->sfile, "", MDBM_INSERT);
 			*t = '/';

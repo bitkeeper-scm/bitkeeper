@@ -12,7 +12,10 @@
 
 #include "tkInt.h"
 #include "tkCanvas.h"
-#include <assert.h>
+
+#ifdef _WIN32
+#include "tkWinInt.h"
+#endif
 
 /*
  * Structures defined only in this file.
@@ -29,14 +32,15 @@ const Tk_SmoothMethod tkBezierSmoothMethod = {
     "true",
     TkMakeBezierCurve,
     (void (*) (Tcl_Interp *interp, Tk_Canvas canvas, double *coordPtr,
-	    int numPoints, int numSteps)) TkMakeBezierPostscript,
+	    int numPoints, int numSteps))(void *)TkMakeBezierPostscript,
 };
 static const Tk_SmoothMethod tkRawSmoothMethod = {
     "raw",
     TkMakeRawCurve,
     (void (*) (Tcl_Interp *interp, Tk_Canvas canvas, double *coordPtr,
-	    int numPoints, int numSteps)) TkMakeRawCurvePostscript,
+	    int numPoints, int numSteps))(void *)TkMakeRawCurvePostscript,
 };
+
 
 /*
  * Function forward-declarations.
@@ -332,7 +336,7 @@ Tk_CanvasSetOffset(
 				 * redisplaying the canvas. */
     Tk_TSOffset *offset)	/* Offset (may be NULL pointer)*/
 {
-    register TkCanvas *canvasPtr = Canvas(canvas);
+    TkCanvas *canvasPtr = Canvas(canvas);
     int flags = 0;
     int x = - canvasPtr->drawableXOrigin;
     int y = - canvasPtr->drawableYOrigin;
@@ -406,7 +410,7 @@ Tk_CanvasTagsParseProc(
     char *widgRec,		/* Pointer to record for item. */
     int offset)			/* Offset into item (ignored). */
 {
-    register Tk_Item *itemPtr = (Tk_Item *) widgRec;
+    Tk_Item *itemPtr = (Tk_Item *) widgRec;
     int argc, i;
     const char **argv;
     Tk_Uid *newPtr;
@@ -424,8 +428,8 @@ Tk_CanvasTagsParseProc(
      */
 
     if (itemPtr->tagSpace < argc) {
-	newPtr = ckalloc(argc * sizeof(Tk_Uid));
-	for (i = itemPtr->numTags-1; i >= 0; i--) {
+	newPtr = (Tk_Uid *)ckalloc(argc * sizeof(Tk_Uid));
+	for (i = itemPtr->numTags - 1; i >= 0; i--) {
 	    newPtr[i] = itemPtr->tagPtr[i];
 	}
 	if (itemPtr->tagPtr != itemPtr->staticTagSpace) {
@@ -474,7 +478,7 @@ Tk_CanvasTagsPrintProc(
 				 * information about how to reclaim storage
 				 * for return string. */
 {
-    register Tk_Item *itemPtr = (Tk_Item *) widgRec;
+    Tk_Item *itemPtr = (Tk_Item *) widgRec;
 
     if (itemPtr->numTags == 0) {
 	*freeProcPtr = NULL;
@@ -570,9 +574,9 @@ TkCanvasDashPrintProc(
     *freeProcPtr = TCL_DYNAMIC;
 
     p = (i > (int)sizeof(char *)) ? dash->pattern.pt : dash->pattern.array;
-    sprintf(buffer, "%d", *p++ & 0xff);
+    snprintf(buffer, 4 * i, "%d", *p++ & 0xff);
     while (--i) {
-	sprintf(buffer+strlen(buffer), " %d", *p++ & 0xff);
+	snprintf(buffer + strlen(buffer), 4 * i - strlen(buffer), " %d", *p++ & 0xff);
     }
     return buffer;
 }
@@ -733,7 +737,7 @@ TkSmoothParseProc(
     char *widgRec,		/* Pointer to record for item. */
     int offset)			/* Offset into item. */
 {
-    register const Tk_SmoothMethod **smoothPtr =
+    const Tk_SmoothMethod **smoothPtr =
 	    (const Tk_SmoothMethod **) (widgRec + offset);
     const Tk_SmoothMethod *smooth = NULL;
     int b;
@@ -756,7 +760,7 @@ TkSmoothParseProc(
     }
 
     /*
-     * Backward compatability hack.
+     * Backward compatibility hack.
      */
 
     if (strncmp(value, "bezier", length) == 0) {
@@ -826,7 +830,7 @@ TkSmoothPrintProc(
 				 * information about how to reclaim storage
 				 * for return string. */
 {
-    register const Tk_SmoothMethod *smoothPtr =
+    const Tk_SmoothMethod *smoothPtr =
 	    * (Tk_SmoothMethod **) (widgRec + offset);
 
     return smoothPtr ? smoothPtr->name : "0";
@@ -961,7 +965,7 @@ void
 Tk_CreateOutline(
     Tk_Outline *outline)	/* Outline structure to be filled in. */
 {
-    outline->gc = None;
+    outline->gc = NULL;
     outline->width = 1.0;
     outline->activeWidth = 0.0;
     outline->disabledWidth = 0.0;
@@ -1002,7 +1006,7 @@ Tk_DeleteOutline(
     Display *display,		/* Display containing window. */
     Tk_Outline *outline)
 {
-    if (outline->gc != None) {
+    if (outline->gc != NULL) {
 	Tk_FreeGC(display, outline->gc);
     }
     if ((unsigned) ABS(outline->dash.number) > sizeof(char *)) {
@@ -1136,7 +1140,9 @@ Tk_ConfigOutlineGC(
     if (mask && (dash->number != 0)) {
 	gcValues->line_style = LineOnOffDash;
 	gcValues->dash_offset = outline->offset;
-	if (dash->number > 0) {
+	if ((unsigned int)ABS(dash->number) > sizeof(char *)) {
+	    gcValues->dashes = dash->pattern.pt[0];
+	} else if (dash->number != 0) {
 	    gcValues->dashes = dash->pattern.array[0];
 	} else {
 	    gcValues->dashes = (char) (4 * width + 0.5);
@@ -1340,7 +1346,9 @@ Tk_ResetOutlineGC(
     if ((dash->number > 2) || (dash->number < -1) || (dash->number==2 &&
 	    (dash->pattern.array[0] != dash->pattern.array[1])) ||
 	    ((dash->number == -1) && (dash->pattern.array[0] != ','))) {
-    if (dash->number > 0) {
+	if ((unsigned int)ABS(dash->number) > sizeof(char *)) {
+	    dashList = dash->pattern.pt[0];
+	} else if (dash->number != 0) {
 	    dashList = dash->pattern.array[0];
 	} else {
 	    dashList = (char) (4 * width + 0.5);

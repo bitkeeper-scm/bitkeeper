@@ -288,7 +288,7 @@ in_no_proxy(char *host)
 	unless (list = getenv("no_proxy")) return (0);
 	p = list = strdup(list);
 	while (p) {
-		if (e = strchr(p, ',')) *e++ = 0;
+		if ((e = strchr(p, ','))) *e++ = 0;
 		if (*p && match_one(host, p, 1)) {
 			found = 1;
 			break;
@@ -512,7 +512,7 @@ http_fetch(remote *r, char *file)
 			}
 		}
 	}
-	if (f = streq(file, "-") ? stdout : fopen(file, "w")) {
+	if ((f = streq(file, "-") ? stdout : fopen(file, "w"))) {
 		if (binary && len) {
 			got = 0;
 			if (r->progressbar) {

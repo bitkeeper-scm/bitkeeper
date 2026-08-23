@@ -126,6 +126,7 @@ PutPixel(
 	 */
 
 	destPtr[3] = 0;
+	/* FALLTHRU */
     case 24:
 	/*
 	 * Pixel is triplet: 0xBBGGRR.
@@ -347,7 +348,7 @@ XGetImageZPixmap(
 
     size = sizeof(BITMAPINFO);
     if (depth <= 8) {
-	size += sizeof(unsigned short) * (1 << depth);
+	size += sizeof(unsigned short) << depth;
     }
     bmInfo = ckalloc(size);
 
@@ -584,7 +585,7 @@ XGetImage(
     XImage *imagePtr;
     HDC dc;
 
-    display->request++;
+    LastKnownRequestProcessed(display)++;
 
     if (twdPtr == NULL) {
 	/*
@@ -614,7 +615,7 @@ XGetImage(
 		width, height, 32, 0);
 	size = imagePtr->bytes_per_line * imagePtr->height;
 	imagePtr->data = ckalloc(size);
-	ZeroMemory(imagePtr->data, size);
+	memset(imagePtr->data, 0, size);
 
 	for (yy = 0; yy < height; yy++) {
 	    for (xx = 0; xx < width; xx++) {

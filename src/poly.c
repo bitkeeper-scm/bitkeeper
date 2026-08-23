@@ -78,17 +78,17 @@ poly_check(sccs *cset, ser_t d)
 	sccs_sdelta(cset, d, buf);
 	unless (next = hash_fetchStr(cpoly, buf)) return (0);
 
-	while (t = eachline(&next, &len)) {
+	while ((t = eachline(&next, &len))) {
 		if (*t == '\n') continue; /* blank lines ok */
 		memset(&cm, 0, sizeof(cm));
 		strncpy(buf, t, len); /* separator() needs \0 */
 		buf[len] = 0;
-		if (p = separator(buf)) *p++ = 0;
+		if ((p = separator(buf))) *p++ = 0;
 		assert(p);
 		cm.pkey = strdup(buf);
 		cm.oldtime = strtoul(p, &t, 10);
 		if (t && (*t == ' ')) {
-			if (p = separator(++t)) *p++ = 0;
+			if ((p = separator(++t))) *p++ = 0;
 			cm.ekey = strdup(t);
 			if (p) cm.emkey = strdup(p);
 		}
@@ -377,7 +377,7 @@ polyRemote(polymap *pm, char *rfile)
 		ret = 0;
 		goto err;
 	}
-	if (revs = res_getnames(s, 'r')) {
+	if ((revs = res_getnames(s, 'r'))) {
 		remote = revs->remote;
 		pm->merge = 1;
 	}
@@ -454,9 +454,9 @@ polyMerge(sccs *cset)
 		local = splitLine(lpoly->vptr, "\n", 0);
 		j = 1;
 		EACH(remote) {
-			if (rend = separator(remote[i])) *rend = 0;
+			if ((rend = separator(remote[i]))) *rend = 0;
 			EACH_START(j, local, j) {
-				if (lend = separator(local[j])) *lend = 0;
+				if ((lend = separator(local[j]))) *lend = 0;
 				cmp = keycmp(remote[i], local[j]);
 				if (lend) *lend = ' ';
 				if (cmp <= 0) {
@@ -514,7 +514,7 @@ polyAdd(sccs *cset, ser_t d, char *ckey, char *pkey, int side)
 	/* calculate the new line */
 	t = new;
 	t += sprintf(t, "%s", pkey);
-	if (lower = lowerBounds(cset, d, side)) {
+	if ((lower = lowerBounds(cset, d, side))) {
 		assert(nLines(lower) <= 3);
 		EACH(lower) {
 			if (i == 1) {
@@ -665,7 +665,7 @@ findPoly(sccs *s, ser_t local, ser_t remote, ser_t fake)
 	ser_t	*gcalist = 0, *list = 0, d;
 
 	walkrevs_setup(&wd, s, L(local), L(remote), WR_GCA);
-	while (d = walkrevs(&wd)) {
+	while ((d = walkrevs(&wd))) {
 		if (polyChk(s, d)) addArray(&gcalist, &d);
 	}
 	walkrevs_done(&wd);
@@ -686,7 +686,7 @@ findPoly(sccs *s, ser_t local, ser_t remote, ser_t fake)
 		 * from the point of view of the product: prune walk.
 		 */
 		walkrevs_setup(&wd, s, 0, gcalist, 0);
-		while (d = walkrevs(&wd)) {
+		while ((d = walkrevs(&wd))) {
 			unless (FLAGS(s, d) & D_CSET) continue;
 			unless (FLAGS(s, d) & (D_LOCAL|D_REMOTE)) {
 				walkrevs_prune(&wd, d);

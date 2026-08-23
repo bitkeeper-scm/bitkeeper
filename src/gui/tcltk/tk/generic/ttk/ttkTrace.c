@@ -3,11 +3,11 @@
  *
  * Simplified interface to Tcl_TraceVariable.
  *
- * PROBLEM: Can't distinguish "variable does not exist" (which is OK) 
+ * PROBLEM: Can't distinguish "variable does not exist" (which is OK)
  * from other errors (which are not).
  */
 
-#include <tk.h>
+#include "tkInt.h"
 #include "ttkTheme.h"
 #include "ttkWidget.h"
 
@@ -24,17 +24,17 @@ struct TtkTraceHandle_
  */
 static char *
 VarTraceProc(
-    ClientData clientData,	/* Widget record pointer */
+    void *clientData,	/* Widget record pointer */
     Tcl_Interp *interp, 	/* Interpreter containing variable. */
-    const char *name1,		/* (unused) */
-    const char *name2,		/* (unused) */
+    TCL_UNUSED(const char *),	/* name1 */
+    TCL_UNUSED(const char *),	/* name2 */
     int flags)			/* Information about what happened. */
 {
-    Ttk_TraceHandle *tracePtr = clientData;
+    Ttk_TraceHandle *tracePtr = (Ttk_TraceHandle *)clientData;
     const char *name, *value;
     Tcl_Obj *valuePtr;
 
-    if (flags & TCL_INTERP_DESTROYED) {
+    if (Tcl_InterpDeleted(interp)) {
 	return NULL;
     }
 
@@ -51,7 +51,7 @@ VarTraceProc(
 	 */
 	if (tracePtr->interp == NULL) {
 	    Tcl_DecrRefCount(tracePtr->varnameObj);
-	    ckfree((ClientData)tracePtr);
+	    ckfree(tracePtr);
 	    return NULL;
 	}
 	Tcl_TraceVar2(interp, name, NULL,
@@ -85,7 +85,7 @@ Ttk_TraceHandle *Ttk_TraceVariable(
     Ttk_TraceProc callback,
     void *clientData)
 {
-    Ttk_TraceHandle *h = ckalloc(sizeof(*h));
+    Ttk_TraceHandle *h = (Ttk_TraceHandle *)ckalloc(sizeof(*h));
     int status;
 
     h->interp = interp;
@@ -96,7 +96,7 @@ Ttk_TraceHandle *Ttk_TraceVariable(
 
     status = Tcl_TraceVar2(interp, Tcl_GetString(varnameObj),
 	    NULL, TCL_GLOBAL_ONLY|TCL_TRACE_WRITES|TCL_TRACE_UNSETS,
-	    VarTraceProc, (ClientData)h);
+	    VarTraceProc, h);
 
     if (status != TCL_OK) {
 	Tcl_DecrRefCount(h->varnameObj);
@@ -114,7 +114,7 @@ Ttk_TraceHandle *Ttk_TraceVariable(
 void Ttk_UntraceVariable(Ttk_TraceHandle *h)
 {
     if (h) {
-	ClientData cd = NULL;
+	void *cd = NULL;
 
 	/*
 	 * Workaround for Tcl Bug 3062331.  The trace design problem is
@@ -137,7 +137,7 @@ void Ttk_UntraceVariable(Ttk_TraceHandle *h)
 	 */
 	while ((cd = Tcl_VarTraceInfo(h->interp, Tcl_GetString(h->varnameObj),
 		TCL_GLOBAL_ONLY, VarTraceProc, cd)) != NULL) {
-	    if (cd == (ClientData) h) {
+	    if (cd == h) {
 		break;
 	    }
 	}
@@ -152,7 +152,7 @@ void Ttk_UntraceVariable(Ttk_TraceHandle *h)
 	}
 	Tcl_UntraceVar2(h->interp, Tcl_GetString(h->varnameObj),
 		NULL, TCL_GLOBAL_ONLY|TCL_TRACE_WRITES|TCL_TRACE_UNSETS,
-		VarTraceProc, (ClientData)h);
+		VarTraceProc, h);
 	Tcl_DecrRefCount(h->varnameObj);
 	ckfree(h);
     }

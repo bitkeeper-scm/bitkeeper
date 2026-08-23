@@ -74,8 +74,8 @@ static void		ImageChangedProc(ClientData clientData,
 			    int x, int y, int width, int height, int imgWidth,
 			    int imgHeight);
 static int		ImageCoords(Tcl_Interp *interp,
-			    Tk_Canvas canvas, Tk_Item *itemPtr, int argc,
-			    Tcl_Obj *const argv[]);
+			    Tk_Canvas canvas, Tk_Item *itemPtr, int objc,
+			    Tcl_Obj *const objv[]);
 static int		ImageToArea(Tk_Canvas canvas,
 			    Tk_Item *itemPtr, double *rectPtr);
 static double		ImageToPoint(Tk_Canvas canvas,
@@ -84,11 +84,11 @@ static int		ImageToPostscript(Tcl_Interp *interp,
 			    Tk_Canvas canvas, Tk_Item *itemPtr, int prepass);
 static void		ComputeImageBbox(Tk_Canvas canvas, ImageItem *imgPtr);
 static int		ConfigureImage(Tcl_Interp *interp,
-			    Tk_Canvas canvas, Tk_Item *itemPtr, int argc,
-			    Tcl_Obj *const argv[], int flags);
+			    Tk_Canvas canvas, Tk_Item *itemPtr, int objc,
+			    Tcl_Obj *const objv[], int flags);
 static int		CreateImage(Tcl_Interp *interp,
 			    Tk_Canvas canvas, struct Tk_Item *itemPtr,
-			    int argc, Tcl_Obj *const argv[]);
+			    int objc, Tcl_Obj *const objv[]);
 static void		DeleteImage(Tk_Canvas canvas,
 			    Tk_Item *itemPtr, Display *display);
 static void		DisplayImage(Tk_Canvas canvas,
@@ -253,7 +253,7 @@ ImageCoords(
 	if ((Tk_CanvasGetCoordFromObj(interp, canvas, objv[0],
 		    &imgPtr->x) != TCL_OK)
 		|| (Tk_CanvasGetCoordFromObj(interp, canvas, objv[1],
-  		    &imgPtr->y) != TCL_OK)) {
+		    &imgPtr->y) != TCL_OK)) {
 	    return TCL_ERROR;
 	}
 	ComputeImageBbox(canvas, imgPtr);
@@ -449,7 +449,7 @@ ComputeImageBbox(
     x = (int) (imgPtr->x + ((imgPtr->x >= 0) ? 0.5 : - 0.5));
     y = (int) (imgPtr->y + ((imgPtr->y >= 0) ? 0.5 : - 0.5));
 
-    if ((state == TK_STATE_HIDDEN) || (image == None)) {
+    if ((state == TK_STATE_HIDDEN) || (image == NULL)) {
 	imgPtr->header.x1 = imgPtr->header.x2 = x;
 	imgPtr->header.y1 = imgPtr->header.y2 = y;
 	return;
@@ -719,7 +719,7 @@ ImageToPostscript(
 	 * Image item without actual image specified.
 	 */
 
-        return TCL_OK;
+	return TCL_OK;
     }
     Tk_SizeOfImage(image, &width, &height);
 

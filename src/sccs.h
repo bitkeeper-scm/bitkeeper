@@ -19,8 +19,9 @@
 
 #include "system.h"
 #include "diff.h"
-#define	PCRE_STATIC		/* for win32 */
-#include "pcre.h"
+#define	PCRE2_CODE_UNIT_WIDTH 8
+#define	PCRE2_STATIC		/* for win32 */
+#include <pcre2.h>
 
 #define	mdbm_mem()	mdbm_open(NULL, 0, 0, GOOD_PSIZE)
 #define	EACH_KV(d)	for (kv = mdbm_first(d); \
@@ -562,14 +563,14 @@ typedef struct {
 
 /* Parent must exist for merge, so can terminate on first empty one */
 #define	EACH_PARENT(s, d, p, j)	\
-	for (j = 0; (p) = (j < 2) ? PARENTS(s, d, j) : 0; ++j)
+	for (j = 0; ((p) = (j < 2) ? PARENTS(s, d, j) : 0); ++j)
 
 #define	PARENTS(s, d, j)	(0 + (s)->slist1[d].parents[j])
 #define	PARENT(s, d)		PARENTS(s, d, 0)
 #define	MERGE(s, d)		PARENTS(s, d, 1)
 
 #define	EACH_PTAG(s, d, p, j)	\
-	for (j = 0; (p) = (j < 2) ? PTAGS(s, d, j) : 0; ++j)
+	for (j = 0; ((p) = (j < 2) ? PTAGS(s, d, j) : 0); ++j)
 
 #define	PTAGS(s, d, j)		(0 + (s)->slist2[d].ptags[j])
 #define	PTAG(s, d)		PTAGS(s, d, 0)
@@ -1072,7 +1073,7 @@ typedef struct {
 	u32	bin_files:1;		/* Binary files differ */
 	char	*out_define;		/* diff -D */
 	char	*header;		/* print before diffs  */
-	pcre	*pattern;		/* compiled pattern for diff -p */
+	pcre2_code	*pattern;		/* compiled pattern for diff -p */
 	int	context;		/* context for unified output
 					 * (-1 means 0) see delta comments */
 	u32	always_text:1;		/* treat all files as text */
@@ -1690,7 +1691,7 @@ u32	nokey_lookup(nokey *h, char *heap, char *key);
 void	nokey_insert(nokey *h, char *heap, u32 key);
 
 typedef struct {
-	pcre	*re;		/* handle to compiled regex */
+	pcre2_code	*re;		/* handle to compiled regex */
 	char    *pattern;	/* what we want to find */
 	u8      ignorecase:1;	/* duh */
 	u8	want_glob:1;	/* do a glob based search */

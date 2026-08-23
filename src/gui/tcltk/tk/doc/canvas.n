@@ -263,7 +263,7 @@ automatically decremented by one.
 A number less than 0 is treated as if it were zero, and a
 number greater than the length of the text item is treated
 as if it were equal to the length of the text item. For
-polygons, numbers less than 0 or greater then the length
+polygons, numbers less than 0 or greater than the length
 of the coordinate list will be adjusted by adding or subtracting
 the length until the result is between zero and the length,
 inclusive.
@@ -405,7 +405,7 @@ behaves as if the \fIstart\fR argument had not been specified.
 .
 Selects all the items completely enclosed within the rectangular
 region given by \fIx1\fR, \fIy1\fR, \fIx2\fR, and \fIy2\fR.
-\fIX1\fR must be no greater then \fIx2\fR and \fIy1\fR must be
+\fIX1\fR must be no greater than \fIx2\fR and \fIy1\fR must be
 no greater than \fIy2\fR.
 .TP
 \fBoverlapping\fR \fIx1\fR \fIy1\fR \fIx2\fR \fIy2\fR
@@ -413,7 +413,7 @@ no greater than \fIy2\fR.
 Selects all the items that overlap or are enclosed within the
 rectangular region given by \fIx1\fR, \fIy1\fR, \fIx2\fR,
 and \fIy2\fR.
-\fIX1\fR must be no greater then \fIx2\fR and \fIy1\fR must be
+\fIX1\fR must be no greater than \fIx2\fR and \fIy1\fR must be
 no greater than \fIy2\fR.
 .TP
 \fBwithtag \fItagOrId\fR
@@ -547,6 +547,15 @@ If coordinates are specified, then they replace the current
 coordinates for the named item.
 If \fItagOrId\fR refers to multiple items, then
 the first one in the display list is used.
+.RS
+.PP
+Note that for rectangles, ovals and arcs the returned list of coordinates
+has a fixed order, namely the left, top, right and bottom coordinates,
+which may not be the order originally given. Also the coordinates are always
+returned in screen units with no units (that is, in pixels). So if the
+original coordinates were specified for instance in centimeters or inches,
+the returned values will nevertheless be in pixels.
+.RE
 .TP
 \fIpathName \fBcreate \fItype x y \fR?\fIx y ...\fR? ?\fIoption value ...\fR?
 .TP
@@ -744,7 +753,8 @@ This command returns an empty string.
 \fIpathName \fBmoveto \fItagOrId xPos yPos\fR
 .VS 8.6
 Move the items given by \fItagOrId\fR in the canvas coordinate
-space so that the first coordinate pair of the bottommost item with
+space so that the first coordinate pair (the upper-left corner of the
+bounding box) of the first item (the lowest in the display list) with
 tag \fItagOrId\fR is located at
 position (\fIxPos\fR,\fIyPos\fR). \fIxPos\fR and \fIyPos\fR may be
 the empty string, in which case the corresponding coordinate
@@ -1113,7 +1123,7 @@ becomes visible; if it is positive then information farther to the right
 becomes visible.
 .RE
 .TP
-\fIpathName \fByview \fI?args\fR?
+\fIpathName \fByview ?\fIargs\fR?
 .
 This command is used to query and change the vertical position of the
 information displayed in the canvas's window.
@@ -1208,12 +1218,13 @@ in the \fBCOORDINATES\fR section above.
 \fB\-disabledfill \fIcolor\fR
 .
 Specifies the color to be used to fill item's area.
-in its normal, active, and disabled states,
+in its normal, active, and disabled states.
+The even-odd fill rule is used.
 \fIColor\fR may have any of the forms accepted by \fBTk_GetColor\fR.
-If \fIcolor\fR is an empty string (the default),
-then the item will not be filled.
 For the line item, it specifies the color of the line drawn.
 For the text item, it specifies the foreground color of the text.
+If \fIcolor\fR is an empty string (the default for all canvas items
+except line and text), then the item will not be filled.
 .TP
 \fB\-outline \fIcolor\fR
 .TP
@@ -1224,8 +1235,8 @@ For the text item, it specifies the foreground color of the text.
 This option specifies the color that should be used to draw the
 outline of the item in its normal, active and disabled states.
 \fIColor\fR may have any of the forms accepted by \fBTk_GetColor\fR.
-This option defaults to \fBblack\fR. If \fIcolor\fR is specified
-as an empty string then no outline is drawn for the item.
+If \fIcolor\fR is specified as an empty string then no outline is drawn
+for the item.
 .TP
 \fB\-offset \fIoffset\fR
 .
@@ -1433,8 +1444,7 @@ disabled states.
 Specifies the color to use for each of the bitmap's
 .QW 1
 valued pixels in its normal, active and disabled states.
-\fIColor\fR may have any of the forms accepted by \fBTk_GetColor\fR and
-defaults to \fBblack\fR.
+\fIColor\fR may have any of the forms accepted by \fBTk_GetColor\fR.
 .SS "IMAGE ITEMS"
 .PP
 Items of type \fBimage\fR are used to display images on a
@@ -1515,6 +1525,12 @@ ends of the line.
 \fBlast\fR (for an arrowhead at the last point of the line), or
 \fBboth\fR (for arrowheads at both ends).
 This option defaults to \fBnone\fR.
+When requested to draw an arrowhead, Tk internally adjusts the corresponding
+line end point so that the rendered line ends at the neck of the arrowhead
+rather than at its tip so that the line doesn't extend past the edge of the
+arrowhead. This may trigger a \fBLeave\fR event if the mouse is hovering this
+line end. Conversely, when removing an arrowhead Tk adjusts the corresponding
+line point the other way round, which may trigger an \fBEnter\fR event.
 .TP
 \fB\-arrowshape \fIshape\fR
 This option indicates how to draw arrowheads.
@@ -1681,7 +1697,7 @@ should also be drawn as a curve but where the list of coordinates is
 such that the first coordinate pair (and every third coordinate pair
 thereafter) is a knot point on a cubic Bezier curve, and the other
 coordinates are control points on the cubic Bezier curve. Straight
-line segments can be venerated within a curve by making control points
+line segments can be generated within a curve by making control points
 equal to their neighbouring knot points. If the last point is not the
 second point of a pair of control points, the point is repeated (one or two
 times) so that it also becomes the second point of a pair of control

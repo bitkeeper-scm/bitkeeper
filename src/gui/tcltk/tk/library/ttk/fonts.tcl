@@ -45,9 +45,6 @@
 #	There does not appear to be any recommendations for fixed-width fonts.
 #
 # X11:
-#	Need a way to tell if Xft is enabled or not.
-#	For now, assume patch #971980 applied.
-#
 #	"Classic" look used Helvetica bold for everything except
 #	for entry widgets, which use Helvetica medium.
 #	Most other toolkits use medium weight for all UI elements,
@@ -82,7 +79,7 @@ switch -- [tk windowingsystem] {
                 set F(family) "MS Sans Serif"
             }
         } else {
-            if {[lsearch -exact [font families] Tahoma] != -1} {
+            if {[lsearch -exact [font families] Tahoma] >= 0} {
                 set F(family) "Tahoma"
             } else {
                 set F(family) "MS Sans Serif"

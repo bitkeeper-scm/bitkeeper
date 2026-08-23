@@ -283,7 +283,7 @@ mergeInList(sccs *s, char *revs)
 	assert(!strchr(revs, '-'));	/* we know list is expanded already */
 	t = revs;
 	while (t && *t) {
-		if (p = strchr(t, ',')) *p = 0;
+		if ((p = strchr(t, ','))) *p = 0;
 		d = sccs_findrev(s, t);
 		if (d && MERGE(s, d)) {
 			fprintf(stderr,

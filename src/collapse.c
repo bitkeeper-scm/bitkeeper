@@ -234,7 +234,7 @@ fix_main(int ac,  char **av)
 		rc = do_cset(s, 0, nav); /* this frees s */
 	} else {
 		for (i = optind; av[i]; i++) {
-			if (rc = do_file(av[i], after)) break;
+			if ((rc = do_file(av[i], after))) break;
 		}
 	}
 out:	freeLines(nav, free);
@@ -300,7 +300,7 @@ do_cset(sccs *s, char *rev, char **nav)
 	csetfile = bktmp(0);
 	f = fopen(csetfile, "w");
 	walkrevs_setup(&wr, s, L(d), 0, 0);
-	while (d = walkrevs(&wr)) {
+	while ((d = walkrevs(&wr))) {
 		char    buf[MAXKEY];
 
 		sccs_md5delta(s, d, buf);
@@ -611,7 +611,7 @@ do_file(char *file, char *tiprev)
 		free(pathname);
 
 		/* make xflags match */
-		while (flagdiffs = (xflags ^ XFLAGS(s, tipd))) {
+		while ((flagdiffs = (xflags ^ XFLAGS(s, tipd)))) {
 			/* pick right most bit */
 			flagdiffs &= -flagdiffs;
 
@@ -704,12 +704,13 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 	ser_t	d;
 	int	i;
 	char	**comments = 0;
-	const	char *perr;
-	int	poff;
+	int	errorcode;
+	PCRE2_SIZE	poff;
 	char	*cmts;
 	char	*p;
 	FILE	*f;
-	pcre	*re;
+	pcre2_code	*re;
+	pcre2_match_data *md;
 	char	skippat[] =
 	    "^Rename: .* ->|"
 	    "^Merge rename: .* ->|"
@@ -722,11 +723,14 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 	    "^auto-union\n$";
 
 	/* generate the list of delta comments we skip */
-	unless (re = pcre_compile(skippat, 0, &perr, &poff, 0)) {
+	unless (re = pcre2_compile((PCRE2_SPTR)skippat, PCRE2_ZERO_TERMINATED, 0, &errorcode, &poff, 0)) {
+		PCRE2_UCHAR perr[256];
+		pcre2_get_error_message(errorcode, perr, sizeof(perr));
 		fprintf(stderr, "%s: regex failed %s\npat = %s\n",
-		    me, perr, skippat);
+		    me, (char *)perr, skippat);
 		return (1);
 	}
+	md = pcre2_match_data_create_from_pattern(re, 0);
 	EACH (rmdeltas) {
 		d = rmdeltas[i];
 
@@ -739,7 +743,7 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 		 */
 		cmts = COMMENTS(s, d);
 		if ((strcnt(cmts, '\n') == 1) &&
-		    !pcre_exec(re, 0, cmts, strlen(cmts), 0, 0, 0, 0)) {
+		    (pcre2_match(re, (PCRE2_SPTR)cmts, strlen(cmts), 0, 0, md, 0) >= 0)) {
 			continue;
 		}
 
@@ -747,12 +751,13 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 		chomp(p);
 		comments = addLine(comments, p);
 	}
-	if (p = xfile_fetch(s->gfile, 'c')) {
+	if ((p = xfile_fetch(s->gfile, 'c'))) {
 		chomp(p);
 		comments = addLine(comments, strdup(p));
 		free(p);
 	}
-	free(re);
+	pcre2_match_data_free(md);
+	pcre2_code_free(re);
 
 	if (comments) {
 		f = fmem();
@@ -764,7 +769,7 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 			free(comments[i]);
 		}
 		freeLines(comments, 0);
-		if (p = fmem_peek(f, 0)) {
+		if ((p = fmem_peek(f, 0))) {
 			xfile_store(s->gfile, 'c', p);
 		}
 		fclose(f);
@@ -819,7 +824,7 @@ fix_genlist(char *rev)
 		unless (p = separator(buf)) continue;
 		unless (hash_insert(h, buf, p-buf, 0, 0)) continue;
 		*p = 0;
-		if (p = key2path(buf, idDB, goneDB, 0)) {
+		if ((p = key2path(buf, idDB, goneDB, 0))) {
 			flist = addLine(flist, name2sccs(p));
 			free(p);
 		}
@@ -866,7 +871,7 @@ update_collapsed_file(char *newcsets)
 	char	buf[MAXLINE];
 
 	get(COLLAPSED, SILENT|GET_EDIT);
-	if (f = fopen(COLLAPSED, "r")) {
+	if ((f = fopen(COLLAPSED, "r"))) {
 		while (fnext(buf, f)) {
 			chomp(buf);
 			unless (*buf) continue;
@@ -874,7 +879,7 @@ update_collapsed_file(char *newcsets)
 		}
 		fclose(f);
 	}
-	if (f = fopen(newcsets, "r")) {
+	if ((f = fopen(newcsets, "r"))) {
 		while (fnext(buf, f)) {
 			chomp(buf);
 			csets = addLine(csets, strdup(buf));

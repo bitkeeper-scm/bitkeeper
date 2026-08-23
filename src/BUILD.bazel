@@ -1,0 +1,558 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "flags.l",
+    "slib.c",
+    "utils/extractor.c",
+])
+
+# cc_binary's `srcs` attribute rejects non-C/C++ extensions (unlike
+# cc_library's `hdrs`), but configvars.def is #include-d verbatim by
+# config.h, so it's exposed to //src:bk via this tiny header-only lib.
+cc_library(
+    name = "configvars",
+    hdrs = ["configvars.def"],
+    includes = ["."],
+)
+
+# kw2val_lookup.c is #include-d verbatim by slib.c (not compiled on its
+# own), so like configvars.def it's exposed via a header-only library
+# rather than cc_binary's srcs (which rejects non-C/C++ extensions).
+cc_library(
+    name = "kw2val_lookup",
+    hdrs = [":gen_kw2val"],
+    includes = ["."],
+)
+
+# The core "bk" command-line binary. Two small generated-source steps
+# (cmd.c/cmd.h and bkver.c) mirror what src/Makefile used to do with
+# `perl cmd.pl` and hand-written shell in the bkver.c rule.
+
+_BK_SRCS = [
+    "abort.c",
+    "adler32.c",
+    "admin.c",
+    "alias.c",
+    "annotate.c",
+    "attributes.c",
+    "bam.c",
+    "bisect.c",
+    "bk.c",
+    "bkd.c",
+    "bkd_bam.c",
+    "bkd_cd.c",
+    "bkd_changes.c",
+    "bkd_client.c",
+    "bkd_clone.c",
+    "bkd_cmdtab.c",
+    "bkd_findkey.c",
+    "bkd_http.c",
+    "bkd_id.c",
+    "bkd_kill.c",
+    "bkd_level.c",
+    "bkd_misc.c",
+    "bkd_nested.c",
+    "bkd_partition.c",
+    "bkd_pull.c",
+    "bkd_push.c",
+    "bkd_pwd.c",
+    "bkd_r2c.c",
+    "bkd_rclone.c",
+    "bkd_rootkey.c",
+    "bkd_status.c",
+    "bkd_synckeys.c",
+    "bkd_version.c",
+    "bkverinfo.c",
+    "cat.c",
+    "cfile.c",
+    "changes.c",
+    "check.c",
+    "checksum.c",
+    "clean.c",
+    "cleanpath.c",
+    "clone.c",
+    "cmdlog.c",
+    "collapse.c",
+    "comment.c",
+    "comments.c",
+    "commit.c",
+    "compress.c",
+    "comps.c",
+    "config.c",
+    "contrib/cat.c",
+    "contrib/test.c",
+    "converge.c",
+    "cp.c",
+    "crypto.c",
+    "cset.c",
+    "cset_inex.c",
+    "csetprune.c",
+    "csets.c",
+    "cweave.c",
+    "dataheap.c",
+    "dbfile.c",
+    "delta.c",
+    "diff.c",
+    "dspec.c",
+    "export.c",
+    "fast-export.c",
+    "fast-import.c",
+    "features.c",
+    "find.c",
+    "findcset.c",
+    "findmerge.c",
+    "fixtool.c",
+    "fsl.c",
+    "fslayer.c",
+    "g2bk.c",
+    "gca.c",
+    "get.c",
+    "gethelp.c",
+    "gethost.c",
+    "gettemp.c",
+    "getuser.c",
+    "gfiles.c",
+    "glob.c",
+    "gnupatch.c",
+    "graft.c",
+    "grep.c",
+    "hash_nokey.c",
+    "heapdump.c",
+    "help.c",
+    "here.c",
+    "here_check.c",
+    "hostme.c",
+    "http.c",
+    "idcache.c",
+    "info.c",
+    "isascii.c",
+    "key2path.c",
+    "key2rev.c",
+    "kill.c",
+    "kv.c",
+    "libcommit.c",
+    "libdiff.c",
+    "libgraph.c",
+    "librange.c",
+    "libsfiles.c",
+    "lines.c",
+    "localtm.c",
+    "lock.c",
+    "locking.c",
+    "mail.c",
+    "mailslot.c",
+    "merge.c",
+    "mklock.c",
+    "mtime.c",
+    "mv.c",
+    "names.c",
+    "ndiff.c",
+    "nested.c",
+    "newroot.c",
+    "opark.c",
+    "parent.c",
+    "park.c",
+    "partition.c",
+    "patch.c",
+    "pending.c",
+    "poly.c",
+    "populate.c",
+    "port/bkd_server.c",
+    "port/check_rsh.c",
+    "port/gethomedir.c",
+    "port/gethost.c",
+    "port/getinput.c",
+    "port/getrealname.c",
+    "port/getrusage.c",
+    "port/globalroot.c",
+    "port/gui.c",
+    "port/hostColonPath.c",
+    "port/http_proxy.c",
+    "port/mail.c",
+    "port/mnext.c",
+    "port/networkfs.c",
+    "port/notifier.c",
+    "port/ns_sock_host2ip.c",
+    "port/platforminit.c",
+    "port/sccs_getuser.c",
+    "port/sccs_lockfile.c",
+    "port/startmenu.c",
+    "port/svcinfo.c",
+    "port/uninstall.c",
+    "preference.c",
+    "progress.c",
+    "proj.c",
+    "prs.c",
+    "pull.c",
+    "push.c",
+    "pwd.c",
+    "randombits.c",
+    "randseed.c",
+    "range.c",
+    "rcheck.c",
+    "rclone.c",
+    "rcs2bk.c",
+    "rcsparse.c",
+    "receive.c",
+    "redblack.c",
+    "regex.c",
+    "registry.c",
+    "remap.c",
+    "remote.c",
+    "renumber.c",
+    "repo.c",
+    "repogca.c",
+    "repos.c",
+    "repostats.c",
+    "repotype.c",
+    "resolve.c",
+    "resolve_binaries.c",
+    "resolve_contents.c",
+    "resolve_create.c",
+    "resolve_filetypes.c",
+    "resolve_flags.c",
+    "resolve_generic.c",
+    "resolve_modes.c",
+    "resolve_renames.c",
+    "resolve_tags.c",
+    "restore.c",
+    "review.c",
+    "rm.c",
+    "rmdel.c",
+    "rmgone.c",
+    "root.c",
+    "rset.c",
+    "sane.c",
+    "scat.c",
+    "sccs.c",
+    "sccs2bk.c",
+    "sccs_mv.c",
+    "sccslog.c",
+    "search.c",
+    "sec2hms.c",
+    "send.c",
+    "sendbug.c",
+    "set.c",
+    "setup.c",
+    "sfio.c",
+    "shrink.c",
+    "sinfo.c",
+    "slib.c",
+    "smerge.c",
+    "sort.c",
+    "startmenu.c",
+    "stat.c",
+    "stattest.c",
+    "status.c",
+    "stripdel.c",
+    "synckeys.c",
+    "tagmerge.c",
+    "takepatch.c",
+    "tclsh.c",
+    "testcode.c",
+    "testdates.c",
+    "time.c",
+    "timestamp.c",
+    "touch.c",
+    "trigger.c",
+    "unbk.c",
+    "undo.c",
+    "undos.c",
+    "unedit.c",
+    "uninstall.c",
+    "unique.c",
+    "unlink.c",
+    "unlock.c",
+    "unpull.c",
+    "unrm.c",
+    "unwrap.c",
+    "upgrade.c",
+    "urlinfo.c",
+    "utils.c",
+    "uu.c",
+    "what.c",
+    "which.c",
+    "xfile.c",
+    "xflags.c",
+    "zone.c",
+]
+
+# cmd.c/cmd.h are generated by feeding all of bk's command names
+# (embedded in cmd.pl's own __DATA__ section, plus names scraped out of
+# bk.sh and bkd_*.c at "build" time) through gperf to build a perfect
+# hash lookup table. This mirrors the `cmd.c cmd.h: cmd.pl bk.sh
+# $(filter bkd_%,$(SRCS))` rule that used to live in src/Makefile.
+genrule(
+    name = "gen_cmd",
+    srcs = ["cmd.pl", "bk.sh"] + glob(["bkd_*.c"]),
+    outs = ["cmd.c", "cmd.h"],
+    cmd = """
+        set -e
+        gperf=$$(pwd)/$(location @gperf//:gperf)
+        workdir=$$(mktemp -d)
+        cp $(location cmd.pl) $(location bk.sh) "$$workdir/"
+        for f in $(SRCS); do
+            base=$$(basename "$$f")
+            case "$$base" in bkd_*.c) cp "$$f" "$$workdir/$$base" ;; esac
+        done
+        (cd "$$workdir" && GPERF="$$gperf" perl cmd.pl)
+        cp "$$workdir/cmd.c" "$(location cmd.c)"
+        cp "$$workdir/cmd.h" "$(location cmd.h)"
+    """,
+    tools = [
+        "cmd.pl",
+        "@gperf//:gperf",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+# bkver.c embeds the platform string (from utils/bk_version) and the
+# build timestamp/directory; it must be regenerated on every build,
+# mirroring the `bkver.c: utils/bk_version FORCE` rule in src/Makefile.
+genrule(
+    name = "gen_bkver",
+    srcs = ["utils/bk_version"],
+    outs = ["bkver.c"],
+    cmd = """
+        set -e
+        platform=$$(sh $(location utils/bk_version))
+        {
+            echo '#include "sccs.h"'
+            echo "char *bk_platform = \\"$$platform\\";"
+            echo "int test_release = 0;"
+            echo "time_t bk_build_timet = $$(date +%s);"
+            echo "char *bk_build_dir = \\"bazel-build\\";"
+        } > $@
+    """,
+)
+
+# kw2val_lookup.c is #include-d by slib.c; it's generated by scanning
+# slib.c's kw2val() switch statement and feeding the keywords through
+# gperf. Mirrors `kw2val_lookup.c: slib.c kw2val.pl` in src/Makefile.
+genrule(
+    name = "gen_kw2val",
+    srcs = ["slib.c", "kw2val.pl"],
+    outs = ["kw2val_lookup.c"],
+    cmd = """
+        set -e
+        gperf=$$(pwd)/$(location @gperf//:gperf)
+        workdir=$$(mktemp -d)
+        cp $(location slib.c) $(location kw2val.pl) "$$workdir/"
+        (cd "$$workdir" && GPERF="$$gperf" perl kw2val.pl slib.c)
+        cp "$$workdir/kw2val_lookup.c" "$@"
+    """,
+    tools = [
+        "kw2val.pl",
+        "@gperf//:gperf",
+    ],
+)
+
+cc_binary(
+    name = "bk",
+    srcs = _BK_SRCS + glob(["*.h"]) + [
+        ":gen_cmd",
+        ":gen_bkver",
+    ] + select({
+        "@platforms//os:windows": ["//src/win32:gen_bkres"],
+        "//conditions:default": [],
+    }),
+    includes = ["."],
+    copts = select({
+        "@platforms//os:macos": ["-DNOPROC"],
+        "@platforms//os:windows": [
+            "-DWIN32",
+            "-D_WIN32",
+            "-DWINVER=0x0500",
+            "-D_WIN32_WINNT=0x0500",
+            "-DPCRE2_STATIC",
+        ],
+        "//conditions:default": [],
+    }),
+    defines = ["USE_TRACE"],
+    linkopts = select({
+        "@platforms//os:macos": ["-lresolv"],
+        "@platforms//os:windows": [
+            "-lws2_32",
+            "-ladvapi32",
+            "-luser32",
+            "-lkernel32",
+            "-lshell32",
+            "-lpsapi",
+            "-lole32",
+            "-luuid",
+        ],
+        "//conditions:default": [],
+    }),
+    deps = [
+        ":configvars",
+        ":kw2val_lookup",
+        "//src/libc",
+        "@pcre2//:pcre2",
+        "@tomcrypt//:tomcrypt",
+        "@tommath//:tommath",
+    ],
+)
+
+cc_binary(
+    name = "bkg",
+    srcs = [
+        "bkg.c",
+    ] + select({
+        "@platforms//os:windows": ["//src/win32:gen_bkres"],
+        "//conditions:default": [],
+    }),
+    includes = ["."],
+    copts = select({
+        "@platforms//os:windows": [
+            "-DWIN32",
+        ],
+        "//conditions:default": [],
+    }),
+    linkopts = select({
+        "@platforms//os:windows": [
+            "-mwindows",
+            "-luser32",
+            "-lkernel32",
+        ],
+        "//conditions:default": [],
+    }),
+    deps = [
+        "//src/libc",
+    ],
+)
+
+# Runtime text files and metadata
+genrule(
+    name = "gen_bkmsg",
+    srcs = ["bkmsg.doc"],
+    outs = ["bkmsg.txt"],
+    cmd = "cp $< $@",
+)
+
+genrule(
+    name = "gen_version",
+    srcs = ["version.sh", "utils/bk_version"],
+    outs = ["version"],
+    cmd = """
+        set -e
+        bash $(location version.sh) > "$@"
+    """,
+)
+
+# Helper / wrapper shell scripts
+_WRAPPER_SCRIPTS = [
+    "uuwrap",
+    "unuuwrap",
+    "gzip_uuwrap",
+    "ungzip_uuwrap",
+    "b64wrap",
+    "unb64wrap",
+    "gzip_b64wrap",
+    "ungzip_b64wrap",
+]
+
+[
+    genrule(
+        name = "gen_" + s,
+        srcs = [s + ".sh"],
+        outs = [s],
+        cmd = "cp $< $@ && chmod +x $@",
+    )
+    for s in _WRAPPER_SCRIPTS
+]
+
+genrule(
+    name = "gen_bk_script",
+    srcs = select({
+        "@platforms//os:windows": ["port/win32_platform.sh", "bk.sh"],
+        "//conditions:default": ["port/unix_platform.sh", "bk.sh"],
+    }),
+    outs = ["bk.script"],
+    cmd = """
+        cat $(SRCS) > $@
+        chmod +x $@
+    """,
+)
+
+genrule(
+    name = "gen_import_script",
+    srcs = select({
+        "@platforms//os:windows": ["port/win32_platform.sh", "import.sh"],
+        "//conditions:default": ["port/unix_platform.sh", "import.sh"],
+    }),
+    outs = ["import"],
+    cmd = """
+        cat $(SRCS) > $@
+        chmod +x $@
+    """,
+)
+
+filegroup(
+    name = "dspecs",
+    srcs = glob(["dspec-*"]),
+)
+
+filegroup(
+    name = "platform_tcl",
+    srcs = select({
+        "@platforms//os:windows": ["port/win32_platform.tcl"],
+        "//conditions:default": ["port/unix_platform.tcl"],
+    }),
+)
+
+filegroup(
+    name = "installtool_tcl",
+    srcs = ["utils/installtool.tcl"],
+)
+
+filegroup(
+    name = "lscripts",
+    srcs = glob(["lscripts/*.l"]),
+)
+
+filegroup(
+    name = "contrib",
+    srcs = [
+        "contrib/git2bk.l",
+        "//src/gui:emacs",
+    ],
+)
+
+filegroup(
+    name = "www",
+    srcs = glob(["www/**"]),
+)
+
+filegroup(
+    name = "scripts",
+    srcs = [
+        ":gen_bk_script",
+        ":gen_import_script",
+    ] + [":gen_" + s for s in _WRAPPER_SCRIPTS],
+)
+
+filegroup(
+    name = "data",
+    srcs = [
+        ":gen_bkmsg",
+        ":gen_version",
+        "//man:bkhelp",
+        "//doc:bk_refcard",
+        "//:release_notes",
+        ":dspecs",
+    ],
+)
+
+cc_binary(
+    name = "sfio_unpack",
+    srcs = [
+        "sfio.h",
+        "utils/sfio_unpack.c",
+    ],
+    includes = ["."],
+    deps = [
+        "//src/libc",
+    ],
+)

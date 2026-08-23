@@ -4,7 +4,7 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
+'\"
 .TH Tk_ParseArgv 3 "" Tk "Tk Library Procedures"
 .so man.macros
 .BS
@@ -314,14 +314,14 @@ Boolean exec = FALSE;
 Tk_ArgvInfo argTable[] = {
     {"\-X", TK_ARGV_CONSTANT, (char *) 1, (char *) &debugFlag,
         "Turn on debugging printfs"},
-    {"\-N", TK_ARGV_INT, (char *) NULL, (char *) &numReps,
+    {"\-N", TK_ARGV_INT, NULL, (char *) &numReps,
         "Number of repetitions"},
-    {"\-of", TK_ARGV_STRING, (char *) NULL, (char *) &fileName,
+    {"\-of", TK_ARGV_STRING, NULL, (char *) &fileName,
         "Name of file for output"},
-    {"x", TK_ARGV_REST, (char *) NULL, (char *) &exec,
+    {"x", TK_ARGV_REST, NULL, (char *) &exec,
         "File to exec, followed by any arguments (must be last argument)."},
-    {(char *) NULL, TK_ARGV_END, (char *) NULL, (char *) NULL,
-        (char *) NULL}
+    {NULL, TK_ARGV_END, NULL, NULL,
+        NULL}
 };
 
 main(argc, argv)

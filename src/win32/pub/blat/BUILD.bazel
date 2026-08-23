@@ -1,0 +1,24 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "blat",
+    srcs = [
+        "blat.cpp",
+        "blatcgi.cpp",
+        "GENSOCK/gensock.cpp",
+        "GENSOCK/gensock.h",
+    ],
+    copts = [
+        "-O2",
+        "-DGENSOCK_STATIC_LINK",
+        "-Isrc/win32/pub/blat/GENSOCK",
+    ],
+    includes = ["GENSOCK"],
+    linkopts = [
+        "-lstdc++",
+        "-lws2_32",
+    ],
+    target_compatible_with = ["@platforms//os:windows"],
+)

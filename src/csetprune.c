@@ -600,7 +600,7 @@ fixupWeave(sccs *cset, weave **cweavep, char *addweave)
 		perror("fixupWeave");
 		goto err;
 	}
-	while (sortkey = fgetline(f)) {
+	while ((sortkey = fgetline(f))) {
 		line = strchr(sortkey, '\t');
 		assert(line);
 		*line++ = 0;
@@ -705,7 +705,7 @@ fixFiles(Opts *opts, char **deepnest)
 	EACH(opts->filelist) {
 		rk = strchr(opts->filelist[i], '|');
 		rk++;
-		if (s = sccs_keyinit(opts->refProj, rk, INIT_MUSTEXIST, idDB)) {
+		if ((s = sccs_keyinit(opts->refProj, rk, INIT_MUSTEXIST, idDB))) {
 			if (do_file(opts, s, deepnest) ||
 			    !(d = sccs_top(s)) ||
 			    (opts->refProj && fixPath(s, PATHNAME(s, d))) ||
@@ -745,7 +745,7 @@ whichComp(char *key, char **complist)
 	*end = 0;	/* terminate path */
 	/* go backwards through list to find first deep nest which applies */
 	EACH_REVERSE(complist) {
-		if (len = paths_overlap(path, complist[i])) {
+		if ((len = paths_overlap(path, complist[i]))) {
 			unless (path[len]) {
 				*end = '|';
 				fprintf(stderr,
@@ -795,9 +795,9 @@ newFileEnv(sccs *cset, char **user, char **host)
 	char	*p, *dtz;
 	ser_t	d;
 
-	if (p = getenv("BK_USER")) p = strdup(p);
+	if ((p = getenv("BK_USER"))) p = strdup(p);
 	*user = p;
-	if (p = getenv("BK_HOST")) p = strdup(p);
+	if ((p = getenv("BK_HOST"))) p = strdup(p);
 	*host = p;
 	d = sccs_findrev(cset, "1.1");
 	assert(d);
@@ -1417,10 +1417,10 @@ mkTagGraph(sccs *s)
 		PTAG_SET(s, d, 0);
 
 		/* go from real parent to tag parent (and also for merge) */
-		if (p = PARENT(s, d)) {
+		if ((p = PARENT(s, d))) {
 			unless (SYMGRAPH(s, p)) p = PTAG(s, p);
 		}
-		if (m = MERGE(s, d)) {
+		if ((m = MERGE(s, d))) {
 			unless (SYMGRAPH(s, m)) m = PTAG(s, m);
 		}
 
@@ -1944,7 +1944,7 @@ getKeys(char *file)
 		}
 	}
 	verbose((stderr, "Reading keys...\n"));
-	while (buf = fgetline(f)) {
+	while ((buf = fgetline(f))) {
 		if (!(flags & PRUNE_ALL) &&
 		    (strcnt(buf, '|') == 4) && keeper(buf)) {
 		    	/* ignore rk trying to prune BitKeeper/ or ChangeSet */
@@ -1987,7 +1987,7 @@ newname(char *delpath, char *comp, char *path, char **deep)
 		 * else if file contains deep, deleted (in other comp)
 		 */
 		EACH(deep) {
-			if (len = paths_overlap(newpath, deep[i])) {
+			if ((len = paths_overlap(newpath, deep[i]))) {
 				unless (newpath[len]) {
 					fprintf(stderr,
 					    "%s: path '%s' inside component "

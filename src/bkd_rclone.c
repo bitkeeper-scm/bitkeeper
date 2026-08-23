@@ -225,7 +225,7 @@ cmd_rclone_part2(int ac, char **av)
 		if (streq(opts.bam_url, ".")) {
 			bp_setBAMserver(path, ".", proj_repoID(0));
 		}
-	} else if (p = getenv("BK_BAM_SERVER_URL")) {
+	} else if ((p = getenv("BK_BAM_SERVER_URL"))) {
 		bp_setBAMserver(0, p, getenv("BK_BAM_SERVER_ID"));
 	}
 	free(path);
@@ -243,7 +243,7 @@ cmd_rclone_part2(int ac, char **av)
 	/* Arrange to have stderr go to stdout */
 	fflush(stdout);
 	fd2 = dup(2); dup2(1, 2);
-	if (rc = getsfio(jobs)) goto err;
+	if ((rc = getsfio(jobs))) goto err;
 	/* clone needs the remote HERE as RMT_HERE; rclone doesn't */
 	if (opts.product) unlink("BitKeeper/log/HERE");
 	if (opts.detach) unlink("BitKeeper/log/COMPONENT");

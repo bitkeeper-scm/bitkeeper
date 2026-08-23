@@ -64,7 +64,7 @@ get_main(int ac, char **av)
 		{ 0, 0 }
 	};
 
-	if (prog = strrchr(av[0], '/')) {
+	if ((prog = strrchr(av[0], '/'))) {
 		prog++;
 	} else {
 		prog = av[0];
@@ -418,7 +418,7 @@ next:		sccs_free(s);
 		/* If we already had an error don't let this turn that
 		 * into a non-error.
 		 */
-		if (c = bam(prog, (flags & SILENT), bp_files, ac_optend, av)) {
+		if ((c = bam(prog, (flags & SILENT), bp_files, ac_optend, av))) {
 		    	errors = c;
 	    	}
 	}

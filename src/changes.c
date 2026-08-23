@@ -446,7 +446,7 @@ changes_main(int ac, char **av)
 		}
 	}
 	if (opts.local) {
-		if (rc = doit_local(&nav, lurls)) goto out;
+		if ((rc = doit_local(&nav, lurls))) goto out;
 	}
 	if (opts.remote) {
 		char	*cpath = 0;
@@ -456,7 +456,7 @@ changes_main(int ac, char **av)
 			 * Ideally we want the remote path, but if we can't
 			 * get it then the local path will do.
 			 */
-			if (cpath=getenv("BKD_COMPONENT_PATH")){
+			if ((cpath=getenv("BKD_COMPONENT_PATH"))){
 				cpath = strdup(cpath);
 			} else {
 				cpath = proj_relpath(proj_product(0),
@@ -622,7 +622,7 @@ prepSearch(char *str)
 		opts.tsearch = 1;
 		opts.tagOnly = 1;
 		/* eat it */
-		while (*p = *(p+1)) p++;
+		while ((*p = *(p+1))) p++;
 	} else {
 		opts.doSearch = 1;
 	}
@@ -709,7 +709,7 @@ doit_local(char ***nav, char **urls)
 			}
 			fflush(stdout);
 		}
-		if (rc = _doit_local(*nav, urls[i])) goto done;
+		if ((rc = _doit_local(*nav, urls[i]))) goto done;
 		all++;
 	}
 	unless (opts.showdups) {
@@ -932,7 +932,7 @@ delta_sort(const void *a, const void *b)
 			return (cmp);
 		}
 		/* compare latest pathnames */
-		if (cmp = strcmp(d1->path, d2->path)) {
+		if ((cmp = strcmp(d1->path, d2->path))) {
 			return (cmp);
 		}
 		/*
@@ -1050,7 +1050,7 @@ loadcset(sccs *cset)
 	sccs_rdweaveInit(cset);
 	cset_firstPair(cset, cset->rstop);
 	last = 0;
-	while (d = cset_rdweavePair(cset, RWP_DSET, &rkoff, &dkoff)) {
+	while ((d = cset_rdweavePair(cset, RWP_DSET, &rkoff, &dkoff))) {
 		unless (dkoff) continue; /* last key */
 		if (d < cset->rstart) break;
 		rkey = HEAP(cset, rkoff);
@@ -1369,7 +1369,7 @@ cset(hash *state, sccs *sc, char *compKey, char *pkey, FILE *f, char *dspec)
 
 		/* get key list */
 		ser = e;
-		if (cs = hash_fetch(rstate->csetDB, &ser, sizeof(ser))) {
+		if ((cs = hash_fetch(rstate->csetDB, &ser, sizeof(ser)))) {
 			keys = cs->keylist;
 		} else {
 			keys = 0;
@@ -1540,9 +1540,9 @@ want(sccs *s, ser_t e)
 	if (opts.tagOnly) {
 		match = 0;
 		sym = 0;
-		while (sym =
+		while ((sym =
 		    sccs_walkTags(sym, s, e,
-			!(opts.tagDeletes || opts.all), opts.all)) {
+			!(opts.tagDeletes || opts.all), opts.all))) {
 			if (opts.tsearch &&
 			    !search_either(SYMNAME(s, sym), opts.search)) {
 				continue;
@@ -1555,7 +1555,7 @@ want(sccs *s, ser_t e)
 	if (opts.notusers) {
 		char	*u = delta_user(s, e);
 
-		if (p = strchr(u, '/')) *p = 0;
+		if ((p = strchr(u, '/'))) *p = 0;
 		match = 0;
 		EACH(opts.notusers) {
 			match |= streq(opts.notusers[i], u);
@@ -1566,7 +1566,7 @@ want(sccs *s, ser_t e)
 	if (opts.users) {
 		char	*u = delta_user(s, e);
 
-		if (p = strchr(u, '/')) *p = 0;
+		if ((p = strchr(u, '/'))) *p = 0;
 		match = 0;
 		EACH(opts.users) match |= streq(opts.users[i], u);
 		if (p) *p = '/';
@@ -1578,7 +1578,7 @@ want(sccs *s, ser_t e)
 	}
 	if (opts.doSearch) {
 		t = COMMENTS(s, e);
-		while (p = eachline(&t, &i)) {
+		while ((p = eachline(&t, &i))) {
 			old = p[i];
 			p[i] = 0;
 			if (search_either(p, opts.search)) {
@@ -1625,7 +1625,7 @@ send_part1_msg(remote *r, char **av)
 
 	if (opts.remote) {
 		probef = bktmp(0);
-		if (f = fopen(probef, "wb")) {
+		if ((f = fopen(probef, "wb"))) {
 			rc = probekey(s_cset, 0, SK_SYNCROOT, f);
 			fclose(f);
 			extra = size(probef);
@@ -1748,7 +1748,7 @@ changes_part1(remote *r, char **av, char *key_list)
 			return (0); /* protocol error */
 		}
 		assert(r->rf);
-		while (line = fgetline(r->rf)) {
+		while ((line = fgetline(r->rf))) {
 			if (streq("@END@", line)) break;
 
 			/*
@@ -1811,7 +1811,7 @@ changes_part2(remote *r, char **av, char *key_list, int ret)
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 
 	getline2(r, buf, sizeof(buf));
-	if (rc_lock = remote_lock_fail(buf, 0)) {
+	if ((rc_lock = remote_lock_fail(buf, 0))) {
 		rc = rc_lock;
 		goto done;
 	} else if (streq(buf, "@SERVER INFO@")) {
@@ -1827,7 +1827,7 @@ changes_part2(remote *r, char **av, char *key_list, int ret)
 		goto done;
 	}
 	assert(r->rf);
-	while (line = fgetline(r->rf)) {
+	while ((line = fgetline(r->rf))) {
 		if (streq("@END@", line)) break;
 		if (line[0] == BKD_DATA) {
 			if (writen(1, &line[1], strlen(line) - 1) < 0) break;

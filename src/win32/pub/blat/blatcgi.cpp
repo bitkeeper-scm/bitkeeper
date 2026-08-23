@@ -7,6 +7,10 @@
 #include <ctype.h>
 #include <time.h>
 
+#ifndef min
+#define min(a,b) (((a)<(b))?(a):(b))
+#endif
+
 #ifdef WIN32
 	#define __far far
 	#define huge far

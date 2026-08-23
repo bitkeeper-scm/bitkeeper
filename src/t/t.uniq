@@ -66,10 +66,10 @@ echo OK
 
 echo $N Check purge of old keys .....................................$NL
 echo foo >purge-tst1
-# a time_t of 123 gets pruned; 1577840461 does not
+# a time_t of 123 gets pruned; 2117152922 (year 2037) does not
 _BK_UNIQ_TIMET=123 bk new $Q purge-tst1 || fail
 echo foo >purge-tst2
-_BK_UNIQ_TIMET=1577840461 bk new $Q purge-tst2 || fail
+_BK_UNIQ_TIMET=2117152922 bk new $Q purge-tst2 || fail
 # force the key prune
 kill_uniq "$HERE/.bk/bk-keys-db"
 echo "get purge-tst" | bk info_shell --uniqdb | grep purge-tst >GOT

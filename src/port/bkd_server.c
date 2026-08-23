@@ -55,7 +55,7 @@ bkd_server(int ac, char **av)
 		nav[i++] = "bkd";
 		nav[i++] = "-D";
 		j = 1;
-		while (nav[i++] = av[j++]);
+		while ((nav[i++] = av[j++]));
 		assert(i < 100);
 		/*
 		 * On Linux I have see the child be a zombie once in while.
@@ -156,7 +156,7 @@ next:			--tries;
 	maxfd = (sock > killsock) ? sock : killsock;
 
 	/* bkd started ... */
-	if (p = getenv("_STARTSOCK")) {
+	if ((p = getenv("_STARTSOCK"))) {
 		if ((nsock = tcp_connect("127.0.0.1", atoi(p))) >= 0) {
 			closesocket(nsock);
 		}
@@ -228,7 +228,7 @@ argv_save(int ac, char **av, char **nav, int j)
 		 * skip all options which don't make sense for a short lived bkd
 		 */
 		if (strchr("acdeEgpPRtu", c)) continue;
-		if (p = strchr(bkd_getopt, c)) {
+		if ((p = strchr(bkd_getopt, c))) {
 			if ((p[1] == ':') || (p[1] == '|')) {
 				p = optarg ? optarg : "";
 			} else {

@@ -29,7 +29,7 @@
 
 #include "sccs.h"
 
-private	void	doit(FILE *f, pcre *re);
+private	void	doit(FILE *f, pcre2_code *re);
 private char	*getfile(char *buf);
 private void	done(char *file);
 
@@ -59,11 +59,12 @@ grep_main(int ac, char **av)
 	int	c;
 	char	*pat;
 	FILE	*f;
-	const	char *perr;
-	int	poff;
+	int	errorcode;
+	PCRE2_SIZE	poff;
+	PCRE2_UCHAR	perr[256];
 	char	*rev = 0, *range = 0, **cmd;
 	int	aflags = 0, args = 0;
-	pcre	*re = 0;
+	pcre2_code	*re = 0;
 	char	aopts[20];
 
 	opts.firstmatch = 1;
@@ -148,7 +149,7 @@ grep_main(int ac, char **av)
 		}
 		pat = s;
 	}
-	unless (re = pcre_compile(pat, 0, &perr, &poff, 0)) exit(2);
+	unless (re = pcre2_compile((PCRE2_SPTR)pat, PCRE2_ZERO_TERMINATED, 0, &errorcode, &poff, 0)) exit(2);
 	if (rev && range) {
 		fprintf(stderr, "grep: can't mix -r with -R\n");
 		exit(2);
@@ -211,7 +212,7 @@ grep_main(int ac, char **av)
 	putenv("BK_PRINT_EACH_NAME=YES");
 	f = popenvp(&cmd[1], "r");
 	doit(f, re);
-	free(re);
+	if (re) pcre2_code_free(re);
 	if (pclose(f)) exit(2);
 	exit(opts.found ? 0 : 1);
 }
@@ -271,16 +272,19 @@ realloc:
 }
 
 private void
-doit(FILE *f, pcre *re)
+doit(FILE *f, pcre2_code *re)
 {
 	char	*p, *file = strdup("?");
 	int	match, i, j, k, n;
 	int	first = 1, skip = 0, print = 0;
 	int	lastprinted = 0;
 	char	*buf = 0;
+	pcre2_match_data *md = 0;
+
+	if (re) md = pcre2_match_data_create_from_pattern(re, 0);
 
 	opts.line = 0;
-	while (buf = grep_getline(f)) {
+	while ((buf = grep_getline(f))) {
 		if ((buf[0] == '|') && (p = getfile(buf))) {
 			unless (first) done(file);
 			opts.line = first = skip = 0;
@@ -312,10 +316,10 @@ doit(FILE *f, pcre *re)
 		if (opts.nocase) {
 			for (i = 0; p[i]; i++) lower[i] = tolower(p[i]);
 			lower[i] = 0;
-			match = !pcre_exec(re, 0,
-			    lower, strlen(lower), 0, 0, 0, 0);
+			match = (pcre2_match(re,
+			    (PCRE2_SPTR)lower, strlen(lower), 0, 0, md, 0) >= 0);
 		} else {
-			match = !pcre_exec(re, 0, p, strlen(p), 0, 0, 0, 0);
+			match = (pcre2_match(re, (PCRE2_SPTR)p, strlen(p), 0, 0, md, 0) >= 0);
 		}
 		if (opts.invert) match = !match;
 		unless (match || print) continue;
@@ -325,7 +329,10 @@ doit(FILE *f, pcre *re)
 			print--;
 		}
 		opts.found = 1;
-		if (opts.quiet) return;
+		if (opts.quiet) {
+			if (md) pcre2_match_data_free(md);
+			return;
+		}
 		if (opts.list) {
 			unless (file) file = "(standard input)";
 			printf("%s\n", file);
@@ -365,6 +372,7 @@ doit(FILE *f, pcre *re)
 		lastprinted = opts.line;
 	}
 	done(file);
+	if (md) pcre2_match_data_free(md);
 }
 
 private void

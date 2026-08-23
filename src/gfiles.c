@@ -168,7 +168,7 @@ fastprint(char *file, char type, void *data)
 		unless (strneq(file, "BitKeeper/", 10)) ++fc->usr;
 	}
 	if (opts.gfile) {
-		if (p = strstr(file, "/SCCS/s.")) {
+		if ((p = strstr(file, "/SCCS/s."))) {
 			*++p = 0;
 			fputs(file, stdout);
 			*p = 'S';
@@ -696,7 +696,7 @@ file(char *f)
 		return;
 	}
 	strcpy(name, f);
-	if (s = rindex(name, '/')) s -= 4;      /* point it at start of SCCS/ */
+	if ((s = rindex(name, '/'))) s -= 4;      /* point it at start of SCCS/ */
 	unless (s >= name) s = 0;
 	/*
 	 * There are three possible condition
@@ -1054,7 +1054,7 @@ load_project(char *dir)
 			unless (newproj = proj_isResync(proj)) newproj = proj;
 			concat_path(tmp, proj_root(newproj), DFILE);
 			unless (opts.dfile = exists(tmp)) {
-				if (p = getenv("_BK_SLOW_WALK")) touch(p, 0666);
+				if ((p = getenv("_BK_SLOW_WALK"))) touch(p, 0666);
 			}
 		}
 	} else {
@@ -1183,12 +1183,12 @@ isIgnored(char *file)
 	if (match_globs(gfile, ignore, 0) ||		 /* pathname match */
 	    match_globs(basenm(gfile), ignorebase, 0) || /* basename match */
 	    lstat(file, &sbuf) ||			 /* gone? */
-	    !(sbuf.st_mode & S_IFREG|S_IFLNK)) {	 /* not reg file */
+	    !((sbuf.st_mode & S_IFREG)|S_IFLNK)) {	 /* not reg file */
 		return (1);
 	}
 	if (getenv("BK_IGNOREDIRS")) {
 		/* check if directory is ignored */
-		while (p = strrchr(gfile, '/')) {
+		while ((p = strrchr(gfile, '/'))) {
 			*p = 0;
 			if (match_globs(gfile, ignore, 0) ||
 			    match_globs(basenm(gfile), ignorebase, 0)) {
@@ -1312,7 +1312,7 @@ do_print(STATE buf, char *gfile, char *rev)
 	if (opts.glob) {
 		char	*p;
 
-		if (p = strrchr(gfile, '/')) {
+		if ((p = strrchr(gfile, '/'))) {
 			p++;
 		} else {
 			p = gfile;
@@ -1411,7 +1411,7 @@ sccsdir(char *dir, void *data)
 
 	if (opts.progress) uprogress();
 
-	if (t = sdir_getdir(proj, dir)) {
+	if ((t = sdir_getdir(proj, dir))) {
 		char	*sfile;
 
 		sDB = mdbm_mem();
@@ -1453,7 +1453,7 @@ sccsdir(char *dir, void *data)
 		gfile = &file[2];
 
 		state[TSTATE] = 's';
-		if (magicPfile = mdbm_fetch_str(gDB, gfile)) {
+		if ((magicPfile = mdbm_fetch_str(gDB, gfile))) {
 			state[GSTATE] = 'G';
 			flags = INIT_HASgFILE;
 			unless (*magicPfile) magicPfile = 0;
@@ -2038,7 +2038,7 @@ sfiles_local_main(int ac, char **av)
 		strcat(buf, arg);
 	}
 	f = popen(buf, "r");
-	while (t = fgetline(f)) {
+	while ((t = fgetline(f))) {
 		if (streq(basenm(t), "ChangeSet")) {
 			/* component is pending */
 			char	*cmd, *dir, *file;
@@ -2047,12 +2047,12 @@ sfiles_local_main(int ac, char **av)
 			cmd = aprintf("bk --cd='%s' rset %s -SHr@+..",
 			    dir, elide ? "--elide": "");
 			f1 = popen(cmd, "r");
-			while (t1 = fgetline(f1)) {
+			while ((t1 = fgetline(f1))) {
 				p = strchr(t1, '|');
 				*p = 0;
 				file = aprintf("%s/%s", dir, t1);
 				r = p + 1;
-				if (p = strstr(r, "..")) *p = 0;
+				if ((p = strstr(r, ".."))) *p = 0;
 				/* stomp any mods, or simple pending */
 				hash_storeStrStr(seen, file, r);
 				free(file);
@@ -2079,11 +2079,11 @@ sfiles_local_main(int ac, char **av)
 			strcat(buf, arg);
 		}
 		f = popen(buf, "r");
-		while (t = fgetline(f)) {
+		while ((t = fgetline(f))) {
 			p = strchr(t, '|');
 			*p = 0;
 			r = p + 1;
-			if (p = strstr(r, "..")) *p = 0;
+			if ((p = strstr(r, ".."))) *p = 0;
 			hash_storeStrStr(seen, t, r);
 		}
 		if (pclose(f)) {

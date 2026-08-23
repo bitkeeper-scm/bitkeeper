@@ -76,15 +76,15 @@ trace_init(char *p)
 	}
 	if (getenv("BK_TRACE_PIDS")) bk_trace |= TRACE_PIDS;
 	if (getenv("BK_DTRACE")) bk_trace &= ~(TRACE_PIDS|TRACE_TIMESTAMPS);
-	if (t = getenv("BK_TRACE_PROGS")) {
+	if ((t = getenv("BK_TRACE_PROGS"))) {
 		progs = splitLine(t, ":,", 0);
 		unless (match_globs(prog, progs, 0)) bk_trace = 0;
 		freeLines(progs, free);
 	}
 	trace_free();
-	if (t = getenv("BK_TRACE_FILES")) files = splitLine(t, ":,", 0);
-	if (t = getenv("BK_TRACE_FUNCS")) funcs = splitLine(t, ":,", 0);
-	if (t = getenv("BK_TRACE_BITS")) {
+	if ((t = getenv("BK_TRACE_FILES"))) files = splitLine(t, ":,", 0);
+	if ((t = getenv("BK_TRACE_FUNCS"))) funcs = splitLine(t, ":,", 0);
+	if ((t = getenv("BK_TRACE_BITS"))) {
 		b = splitLine(t, ":,", 0);
 #define	NEG(x) (neg ? (sel & ~(x)) : (sel | (x)))
 		EACH(b) {

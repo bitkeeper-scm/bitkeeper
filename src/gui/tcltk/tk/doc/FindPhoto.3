@@ -4,7 +4,7 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
+'\"
 '\" Author: Paul Mackerras (paulus@cs.anu.edu.au),
 '\"	    Department of Computer Science,
 '\"	    Australian National University.
@@ -99,6 +99,8 @@ being written to the photo image.
 particular photo image to the other procedures.  The parameter is the
 name of the image, that is, the name specified to the \fBimage create
 photo\fR command, or assigned by that command if no name was specified.
+If \fIimageName\fR does not exist or is not a photo image,
+\fBTk_FindPhoto\fR returns NULL.
 .PP
 \fBTk_PhotoPutBlock\fR is used to supply blocks of image data to be
 displayed.  The call affects an area of the image of size
@@ -128,14 +130,23 @@ The \fIpixelPtr\fR field points to the first pixel, that is, the
 top-left pixel in the block.
 The \fIwidth\fR and \fIheight\fR fields specify the dimensions of the
 block of pixels.  The \fIpixelSize\fR field specifies the address
-difference between two horizontally adjacent pixels.  Often it is 3
-or 4, but it can have any value.  The \fIpitch\fR field specifies the
+difference between two horizontally adjacent pixels.  It should be 4 for
+RGB and 2 for grayscale image data.  Other values are possible, if the
+offsets in the \fIoffset\fR array are adjusted accordingly (e.g. for
+red, green and blue data stored in different planes).  Using such a
+layout is strongly discouraged, though. Due to a bug, it might not work
+correctly if an alpha channel is provided. (see the \fBBUGS\fR section
+below). The \fIpitch\fR field specifies the
 address difference between two vertically adjacent pixels.  The
 \fIoffset\fR array contains the offsets from the address of a pixel
 to the addresses of the bytes containing the red, green, blue and alpha
-(transparency) components.  These are normally 0, 1, 2 and 3, but can
-have other values, e.g., for images that are stored as separate red,
-green and blue planes.
+(transparency) components.  If the offsets for red, green and blue are
+equal, the image is interpreted as grayscale. If they differ, RGB data
+is assumed. Normally the offsets will be 0, 1, 2, 3 for RGB data
+and 0, 0, 0, 1 for grayscale.  It is possible to provide image data
+without an alpha channel by setting the offset for alpha to a negative
+value and adjusting the \fIpixelSize\fR field accordingly. This use is
+discouraged, though (see the \fBBUGS\fR section below).
 .PP
 The \fIcompRule\fR parameter to \fBTk_PhotoPutBlock\fR specifies a
 compositing rule that says what to do with transparent pixels.  The
@@ -181,6 +192,18 @@ in the structure pointed to by the \fIblockPtr\fR parameter with values
 that describe the address and layout of the image data that the
 photo image has stored internally.  The values are valid
 until the image is destroyed or its size is changed.
+.PP
+It is possible to modify an image by writing directly to the data
+the \fIpixelPtr\fR field points to. The size of the image cannot be
+changed this way, though.
+Also, changes made by writing directly to \fIpixelPtr\fR will not be
+immediately visible, but only after a call to
+\fBTk_ImageChanged\fR or after an event that causes the interested
+widgets to redraw themselves.
+For these reasons usually it is preferable to make changes to
+a copy of the image data and write it back with
+\fBTk_PhotoPutBlock\fR or \fBTk_PhotoPutZoomedBlock\fR.
+.PP
 \fBTk_PhotoGetImage\fR returns 1 for compatibility with the
 corresponding procedure in the old photo widget.
 .PP
@@ -234,6 +257,24 @@ memory was available for an image, Tk would panic.  This behaviour is
 still supported if you compile your extension with the additional flag
 -DUSE_PANIC_ON_PHOTO_ALLOC_FAILURE.  Code linked using Stubs against
 older versions of Tk will continue to work.
+.SH BUGS
+The \fBTk_PhotoImageBlock\fR structure used to provide image data to
+\fBTk_PhotoPutBlock\fR promises great flexibility in the layout of the
+data (e.g. separate planes for the red, green, blue and alpha
+channels).  Unfortunately, the implementation fails to hold this
+promise.  The problem is that the \fIpixelSize\fR field is
+(incorrectly) used to determine whether the image has an alpha channel.
+Currently, if the offset for the alpha channel is greater than or equal to
+\fIpixelSize\fR, \fBtk_PhotoPutblock\fR assumes no alpha data is
+present and makes the image fully opaque.  This means that for layouts
+where the channels are separate (or any other exotic layout where
+\fIpixelSize\fR has to be smaller than the alpha offset), the alpha
+channel will not be read correctly.  In order to be on the safe side
+if this issue will be corrected in a future release, it is strongly
+recommended you always provide alpha data - even if the image has no
+transparency - and only use the "standard" layout with a
+\fIpixelSize\fR of 2 for grayscale and 4 for RGB data with
+\fIoffset\fRs of 0, 0, 0, 1 or 0, 1, 2, 3 respectively.
 .SH CREDITS
 .PP
 The code for the photo image type was developed by Paul Mackerras,

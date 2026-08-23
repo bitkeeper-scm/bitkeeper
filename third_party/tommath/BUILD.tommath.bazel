@@ -1,0 +1,21 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+# BUILD file for the upstream libtommath release tarball fetched by
+# MODULE.bazel (see MODULE.bazel for the http_archive() that uses this
+# file). This builds the real upstream sources directly with Bazel
+# instead of the copy that used to be vendored under src/tommath.
+
+cc_library(
+    name = "tommath",
+    srcs = glob(["*.c"]),
+    hdrs = glob(["*.h"]),
+    copts = ["-O2"],
+    includes = ["."],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "tommath_sources",
+    srcs = glob(["*.c", "*.h"]),
+    visibility = ["//visibility:public"],
+)

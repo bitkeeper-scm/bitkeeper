@@ -65,7 +65,7 @@ repostats_main(int ac, char **av)
 	dirs = histo_new();
 	buf[0] = 0;
 	cnt = 0;		/* dir count */
-	while (t = fgetline(f)) {
+	while ((t = fgetline(f))) {
 		if (streq(t, "ChangeSet") || ends_with(t, "/ChangeSet")) {
 			continue;
 		}
@@ -97,7 +97,7 @@ repostats_main(int ac, char **av)
 		csets = histo_new();
 		deleted = histo_new();
 		f = popen("bk comps -ch", "r");
-		while (t = fgetline(f)) {
+		while ((t = fgetline(f))) {
 			sprintf(buf, "%s/%s", t, CHANGESET);
 			s = sccs_init(buf, SILENT);
 			histo_data(csets, s->tip);
@@ -107,7 +107,7 @@ repostats_main(int ac, char **av)
 			cnt = 0;
 			del = 0;
 			f2 = popen(buf, "r");
-			while (t = fgetline(f2)) {
+			while ((t = fgetline(f2))) {
 				++cnt;
 				if (strneq(t+c, "BitKeeper/deleted/", 18)) ++del;
 			}

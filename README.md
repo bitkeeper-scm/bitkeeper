@@ -50,71 +50,139 @@ This includes:
 and used to include IRIX, AIX, HP-UX, etc.  Any Posix-like system is a
 pretty easy port.
 
+**Runtime Dependency Note:** `diff`, `diff3`, and `patch` on the user's `PATH` are assumed to be the GNU versions (e.g. GNU diffutils and GNU patch) for BitKeeper to work correctly. Commands such as `bk diff`, `bk merge`, and `bk patch` rely on GNU-specific behavior and options.
+
 ### Getting Sources for Bitkeeper
 
 ### Building BitKeeper
 
-BitKeeper requires the following prerequisites to build:
+BitKeeper is built using [Bazel](https://bazel.build/). Third-party dependencies and build tools (such as zlib, lz4, PCRE, gperf, libtomcrypt, and libtommath) are fetched and built automatically by Bazel.
 
-* GNU make
-* GNU gperf
-* GNU bison
-* some lex
-* GNU groff
-* X libraries for Tk
-* tomcrypt (*)
-* tommath (*)
-* pcre (*)
-* zlib (*)
-* lz4 (*)
+#### Prerequisites
 
-The requirement marked with (*) are optional, if not installed locally
-and BitKeeper is currently installed and we are building from a
-BitKeeper repository then local copies of these requirements will be
-automatically populated and included.
+- **Bazel** (or [Bazelisk](https://github.com/bazelbuild/bazelisk))
+- A C11 compiler (**GCC** or **Clang**)
+- **Perl**
+- **GNU groff** (for documentation generation)
 
-If you are building on a Debian based Linux then the following
-packages are required:
+On Debian/Ubuntu:
+```bash
+sudo apt-get install build-essential groff perl
+```
 
-  sudo apt-get install make gperf groff bison flex libxft2-dev libtommath-dev libtomcrypt-dev libpcre3-dev zlib1g-dev liblz4-dev
+On Fedora/RHEL:
+```bash
+sudo dnf install gcc gcc-c++ groff perl
+```
 
-For Fedora and related versions of Linux the following works:
+On macOS (via [Homebrew](https://brew.sh/)):
+```bash
+brew install bazelisk groff gpatch diffutils
+```
+macOS ships Clang, Perl, and BSD `soelim`/`patch`/`diff3`, but not GNU
+`groff`, which is required to generate man pages and built-in help
+text. Bazel genrule sandboxes use a minimal `PATH`
+(`/bin:/usr/bin:/usr/local/bin`) that does not include Homebrew's Apple
+Silicon prefix, so the `//man` build rules explicitly add
+`/opt/homebrew/bin` (and `/usr/local/bin` for Intel Macs) to `PATH`
+when invoking `groff`.
 
-  sudo yum install gcc make gperf bison flex groff pcre-devel libtomcrypt-devel libtommath-devel lz4-devel zlib-devel libXft-devel 
+Running the regression tests (`bazel test //src/t/...`) also requires
+GNU `patch` and GNU `diff3` (installed above as `gpatch` and via
+`diffutils`, since Homebrew keeps them out of `PATH` to avoid
+clobbering the system tools): `bk patch` and `bk merge` invoke the
+system `patch`/`diff3` by bare name, and Apple's bundled versions
+behave differently (fuzzy-match behavior in `patch`, and `-E`
+conflict-marker behavior in `diff3`), causing spurious test failures.
+`src/t/test_runner.sh` symlinks the Homebrew GNU versions into each
+test's isolated bin directory when found, so no global `PATH` changes
+are required.
 
-Build using the following sequence (we build on 12 core systems;
-hence the -j12 sprinkled here and there):
+#### Build Commands
 
-	cd src
-	make -j12 p		# 'p'roduction build
-	make image		# create install image (at src/utils)
-	./utils/bk-*.bin	# run installer created above
+Build the core `bk` binary:
+```bash
+bazel build //src:bk
+```
+The compiled binary will be located at `bazel-bin/src/bk`.
 
-(make *must* be GNU make)
+Build the portable BitKeeper application directory:
+```bash
+bazel build //:bitkeeper
+```
+This produces a fully self-contained, runnable BitKeeper installation in `bazel-bin/bitkeeper` (e.g. `./bazel-bin/bitkeeper/bk version`).
 
-If bk fails to locate your pre-installed libraries then edit the file
-src/conf.mk.local to provide the needed information.  If you want to
-share the config with others please label it like "# Macos with homebrew"
-and put the configs commented out in there and send us a patch.
+#### Windows Builds
 
-Building on Windows requires msys and is more involved. See the thread
-on the
-[forum](https://users.bitkeeper.org/t/howto-building-bitkeeper-on-windows/78)
-about Windows builds.
+For instructions on cross-compiling BitKeeper for Windows from Linux, see [README-windows.md](README-windows.md).
+
+## Packaging and Installation
+
+### 1. Creating the Self-Extracting Installer
+
+To build the standalone self-extracting installer executable with Bazel (use `-c opt` for optimized release builds):
+```bash
+bazel build -c opt //:image
+```
+The resulting installer binary will be at `bazel-bin/image` (or `bazel-bin/installer`).
+
+### 2. Installing on the Current Machine
+
+#### Option A: Using the Self-Extracting Installer
+Run the generated installer binary:
+```bash
+# Run interactively or install to default location:
+./bazel-bin/image
+
+# Or install directly to a specified directory (e.g., /opt/bitkeeper):
+sudo ./bazel-bin/image /opt/bitkeeper
+```
+
+#### Option B: Using the Portable App Directory Directly
+You can copy the assembled portable directory `bazel-bin/bitkeeper` directly to your destination and use `bk links` to set up symlinks in your `PATH`:
+
+**System-wide Installation (requires root/sudo):**
+```bash
+sudo cp -r bazel-bin/bitkeeper /opt/bitkeeper
+sudo /opt/bitkeeper/bk links /usr/local/bin
+```
+
+**User-local Installation (no root required):**
+```bash
+mkdir -p ~/bin
+cp -r bazel-bin/bitkeeper ~/bitkeeper
+~/bitkeeper/bk links ~/bin
+# Ensure ~/bin is in your PATH (e.g. export PATH="$HOME/bin:$PATH")
+```
+
+*(Note: GNU Make (`make -C src p`) is the legacy build system and is retained primarily for reference during ongoing build modernization.)*
 
 ## Testing BitKeeper
 
-An extensive regression suite is found in `src/t` and can be run using
-the doit script in that directory.  The test harness can be run in
-parallel using multiple cores like so:
+BitKeeper includes an extensive regression test suite. Tests can be executed through Bazel:
 
-	cd src
-	make p
-	cd t
-	./doit -j12
+Run all tests:
+```bash
+bazel test //src/t:...
+```
 
-Look [here](https://users.bitkeeper.org/t/running-regressions-on-a-clean-linux-machine/74)
-for help with getting regressions to pass cleanly.
+Run a specific test (dots in filenames are replaced with underscores, e.g. `t.basic` -> `t_basic`):
+```bash
+bazel test //src/t:t_basic
+```
+
+Run a test with failure output displayed in the terminal:
+```bash
+bazel test --test_output=errors //src/t:t_basic
+```
+
+Run a test with verbose output (`-v`) or shell tracing (`-x`):
+```bash
+bazel test //src/t:t_basic --test_arg=-v --test_output=all
+bazel test //src/t:t_basic --test_arg=-x --test_output=all
+```
+
+For more details on test execution, debugging flags, and test suite structure, see [src/t/README.md](src/t/README.md).
 
 ## Contributing to BitKeeper
 

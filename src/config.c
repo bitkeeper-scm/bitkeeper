@@ -170,7 +170,7 @@ config_str(project *p, int idx)
 	db = proj_config(p);
 	assert(db);
 	assert(cfg[idx].name);
-	if (val = mdbm_fetch_str(db, cfg[idx].name)) return (val);
+	if ((val = mdbm_fetch_str(db, cfg[idx].name))) return (val);
 	assert(!cfg[idx].defval || *cfg[idx].defval);	/* "" illegal */
 	return (cfg[idx].defval);
 }

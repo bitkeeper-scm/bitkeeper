@@ -282,7 +282,7 @@ dollar(FILE *out)
 		f = fmem();
 		kw2val(f, g.eachkey.dptr, g.eachkey.dsize, g.s, g.d);
 		save = nextln = fmem_close(f, 0);
-		while (g.eachval = eachline(&nextln, &len)) {
+		while ((g.eachval = eachline(&nextln, &len))) {
 			if (g.eachval) g.eachval[len] = 0;
 			g.p = bufptr;
 			stmtList(out);
@@ -317,7 +317,7 @@ dollar(FILE *out)
 		f = fmem();
 		kw2val(f, g.eachkey.dptr, g.eachkey.dsize, g.s, g.d);
 		save = nextln = fmem_close(f, 0);
-		if (g.eachval = eachline(&nextln, &len)) {
+		if ((g.eachval = eachline(&nextln, &len))) {
 			show_s(g.s, out, g.eachval, len);
 		}
 		FREE(save);

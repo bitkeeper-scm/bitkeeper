@@ -81,7 +81,7 @@ setup_main(int ac, char **av)
 			fprintf(stderr, "setup: can't mix -c and -p.\n");
 			exit(1);
 		}
-		if (flist = mkconfig(stdout, flist, verbose)) {
+		if ((flist = mkconfig(stdout, flist, verbose))) {
 			mdbm_close(flist);
 			flist = 0;
 		}
@@ -105,7 +105,7 @@ setup_main(int ac, char **av)
 		int	any = 0;
 
 		sprintf(buf, "bk --cd='%s' gfiles -d", package_path);
-		if (f = popen(buf, "r")) {
+		if ((f = popen(buf, "r"))) {
 			while (fread(buf, 1, sizeof(buf), f)) any = 1;
 			pclose(f); /* ignore errors */
 		}
@@ -195,7 +195,7 @@ setup_main(int ac, char **av)
 
 		f = fopen(config, "w");
 		assert(f);
-		if (flist = mkconfig(f, flist, 1)) {
+		if ((flist = mkconfig(f, flist, 1))) {
 			mdbm_close(flist);
 			flist = 0;
 		}
@@ -339,12 +339,12 @@ config_template(void)
 
 	if (dotbk) {
 		sprintf(path, "%s/config.template", dotbk);
-		if (f = fopen(path, "rt")) return (f);
+		if ((f = fopen(path, "rt"))) return (f);
 	}
 	sprintf(path, "%s/BitKeeper/etc/config.template", globalroot());
-	if (f = fopen(path, "rt")) return (f);
+	if ((f = fopen(path, "rt"))) return (f);
 	sprintf(path, "%s/etc/config.template", bin);
-	if (f = fopen(path, "rt")) return (f);
+	if ((f = fopen(path, "rt"))) return (f);
 	return (0);
 }
 
@@ -359,7 +359,7 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 	char	*def;
 	char	buf[1000], pattern[200];
 
-	if (in = config_template()) {
+	if ((in = config_template())) {
 		while (fnext(buf, in)) {
 			/*
 			 * XXX: parseConfigKV(buf, 1, *key, &p)

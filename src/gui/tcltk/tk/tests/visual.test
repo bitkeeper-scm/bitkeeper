@@ -4,7 +4,7 @@
 #
 # Copyright (c) 1994 The Regents of the University of California.
 # Copyright (c) 1994-1995 Sun Microsystems, Inc.
-# Copyright (c) 1998-1999 by Scriptics Corporation.
+# Copyright (c) 1998-1999 Scriptics Corporation.
 # All rights reserved.
 
 package require tcltest 2.2
@@ -29,9 +29,9 @@ proc eatColors {w} {
     pack $w.c
     for {set y 0} {$y < 8} {incr y} {
         for {set x 0} {$x < 40} {incr x} {
-            set color [format #%02x%02x%02x [expr $x*6] [expr $y*30] 0]
-            $w.c create rectangle [expr 10*$x] [expr 20*$y] \
-                [expr 10*$x + 10] [expr 20*$y + 20] -outline {} \
+            set color [format #%02x%02x%02x [expr {$x*6}] [expr {$y*30}] 0]
+            $w.c create rectangle [expr {10*$x}] [expr {20*$y}] \
+                [expr {10*$x + 10}] [expr {20*$y + 20}] -outline {} \
                 -fill $color
         }
     }
@@ -50,8 +50,8 @@ proc eatColors {w} {
 
 proc colorsFree {w {red 31} {green 245} {blue 192}} {
     set vals [winfo rgb $w [format #%02x%02x%02x $red $green $blue]]
-    expr ([lindex $vals 0]/256 == $red) && ([lindex $vals 1]/256 == $green) \
-        && ([lindex $vals 2]/256 == $blue)
+    expr {([lindex $vals 0]/256 == $red) && ([lindex $vals 1]/256 == $green)
+        && ([lindex $vals 2]/256 == $blue)}
 }
 
 # If more than one visual type is available for the screen, pick one
@@ -455,7 +455,7 @@ test visual-7.1 {Tk_GetColormap, "new"} -constraints {
     colorsFree .t2
 } -cleanup {
     deleteWindows
-} -result {0}
+} -result 0
 test visual-7.2 {Tk_GetColormap, "new"} -constraints {
     defaultPseudocolor8 nonPortable
 } -setup {
@@ -468,7 +468,7 @@ test visual-7.2 {Tk_GetColormap, "new"} -constraints {
     colorsFree .t2
 } -cleanup {
     deleteWindows
-} -result {1}
+} -result 1
 test visual-7.3 {Tk_GetColormap, copy from other window} -constraints {
     defaultPseudocolor8 nonPortable
 } -setup {
@@ -484,7 +484,7 @@ test visual-7.3 {Tk_GetColormap, copy from other window} -constraints {
     colorsFree .t2
 } -cleanup {
     deleteWindows
-} -result {1}
+} -result 1
 test visual-7.4 {Tk_GetColormap, copy from other window} -constraints {
     defaultPseudocolor8 nonPortable
 } -setup {
@@ -500,7 +500,7 @@ test visual-7.4 {Tk_GetColormap, copy from other window} -constraints {
     colorsFree .t2
 } -cleanup {
     deleteWindows
-} -result {0}
+} -result 0
 test visual-7.5 {Tk_GetColormap, copy from other window} -constraints {
     defaultPseudocolor8 nonPortable
 } -setup {

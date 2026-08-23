@@ -107,7 +107,7 @@ sccs_renumber(sccs *s, u32 flags)
 		assert(!s->defbranch);
 	} else {
 		/* Save current default branch */
-		if (d = sccs_top(s)) {
+		if ((d = sccs_top(s))) {
 			defserial = d; /* serial doesn't change */
 			if (s->defbranch) {
 				char	*ptr;
@@ -218,7 +218,7 @@ redo(sccs *s, ser_t d, u32 *nextbranch)
 	/*
 	 * If merge was on the trunk at time of merge, then complain
 	 */
-	if (m = MERGE(s, d)) {
+	if ((m = MERGE(s, d))) {
 		assert((p != m) && BITKEEPER(s));
 		if (sccs_needSwap(s, p, m, 1)) {
 			char	buf[MAXKEY];

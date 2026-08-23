@@ -97,7 +97,7 @@ havekeys_main(int ac, char **av)
 		} else {
 			key = buf;
 		}
-		if (dfile = bp_lookupkeys(0, key)) {
+		if ((dfile = bp_lookupkeys(0, key))) {
 			free(dfile);
 		} else {
 			/* not here */
@@ -158,8 +158,8 @@ havekeys_deltas(void)
 	 * Note: this is the reverse of 'bk havekeys -B'
 	 */
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
-	while (rootkey = fgetline(stdin)) {
-		if (key = separator(rootkey)) *key++ = 0;
+	while ((rootkey = fgetline(stdin))) {
+		if ((key = separator(rootkey))) *key++ = 0;
 
 		// I think Wayne just wants to parse out the path part
 		// This works because all components are in the idcache,
@@ -207,7 +207,7 @@ havekeys_deltas(void)
 	s = sccs_csetInit(SILENT|INIT_NOCKSUM);
 	EACH(pcsets) {
 		rootkey = pcsets[i];
-		if (key = separator(rootkey)) *key++ = 0;
+		if ((key = separator(rootkey))) *key++ = 0;
 
 		if (sccs_findKey(s, key)) {
 			/* found rootkey & deltakey */
@@ -222,7 +222,7 @@ havekeys_deltas(void)
 
 	if (ncsets) {
 		sccs_rdweaveInit(s);
-		while (t = sccs_nextdata(s)) {
+		while ((t = sccs_nextdata(s))) {
 			if (*t == '\001') continue;
 
 			/* find component deltas */
@@ -240,7 +240,7 @@ havekeys_deltas(void)
 		 */
 		EACH_HASH(ccsets) {
 			rootkey = ccsets->kptr;
-			if (key = separator(rootkey)) *key++ = 0;
+			if ((key = separator(rootkey))) *key++ = 0;
 			printf("%s\n", rootkey);
 			if (key) key[-1] = ' ';
 		}
@@ -287,7 +287,7 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 	} else {
 		fprintf(f, "bk -zo0 -Bstdin sfio -oqBl -\n");
 	}
-	if (rc = bp_sendkeys(f, range, &sfio, r->gzip)) {
+	if ((rc = bp_sendkeys(f, range, &sfio, r->gzip))) {
 		fclose(f);
 		goto done;
 	}
@@ -368,7 +368,7 @@ bp_sendkeys(FILE *fout, char *range, u64 *bytep, int gzip)
 	debug = ((p = getenv("_BK_BAM_DEBUG")) && *p);
 	*bytep = 0;
 	zout = fopen_zip(fout, "wh", gzip);
-	if (ret = bp_fetchData()) {
+	if ((ret = bp_fetchData())) {
 		/*
 		 * If we have a server then we want to recurse one level up
 		 * to the server because we don't need the data here, we just

@@ -540,7 +540,7 @@ mdbm_firstkey(MDBM *db)
 kvpair
 mdbm_next(MDBM *db)
 {
-	if ((db == NULL))
+	if (db == NULL)
 		return errno = EINVAL, nullkv;
 
 	if (_Mdbm_memdb(db)) {

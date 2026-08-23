@@ -194,10 +194,10 @@ range_findMerge(sccs *s, ser_t d1, ser_t d2, ser_t **mlist)
 	for (d = start; d <= TABLE(s); d++) {
 		if (TAG(s, d)) continue;
 		pcolor = mcolor = 0;
-		if (e = PARENT(s, d)) {
+		if ((e = PARENT(s, d))) {
 			pcolor = FLAGS(s, e) & (D_RED|D_BLUE);
 		}
-		if (e = MERGE(s, d)) {
+		if ((e = MERGE(s, d))) {
 			mcolor = FLAGS(s, e) & (D_RED|D_BLUE);
 		}
 		FLAGS(s, d) |= (pcolor|mcolor);
@@ -251,7 +251,7 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 
 	if (rargs->isdate) return (range_processDates(me, s, flags, rargs));
 
-	if (rev = sfileRev()) {
+	if ((rev = sfileRev())) {
 		if (rargs->rstop) {
 			verbose((stderr, "%s: too many revs for %s\n",
 				    me, s->gfile));
@@ -281,7 +281,7 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 		unless (rargs->rstart) return (0);
 		rev = 0;
 		if (flags & RANGE_RSTART2) {
-			if (rev = strchr(rargs->rstart, ',')) *rev = 0;
+			if ((rev = strchr(rargs->rstart, ','))) *rev = 0;
 		}
 		unless (s->rstart = getrev(me, s, flags, rargs->rstart)) {
 			if (rev) *rev = ',';
@@ -602,7 +602,7 @@ walkrevs_collect(sccs *s, ser_t *blue, ser_t *red, u32 flags)
 	ser_t	d, *list = 0;
 
 	walkrevs_setup(&wr, s, blue, red, flags);
-	while (d = walkrevs(&wr)) addArray(&list, &d);
+	while ((d = walkrevs(&wr))) addArray(&list, &d);
 	walkrevs_done(&wr);
 	return (list);
 }
@@ -625,7 +625,7 @@ range_walkrevs(sccs *s, ser_t *blue, ser_t *red,
 	ser_t	d;
 
 	walkrevs_setup(&wr, s, blue, red, flags);
-	while (d = walkrevs(&wr)) {
+	while ((d = walkrevs(&wr))) {
 		if (wr.flags & WR_EITHER) FLAGS(s, d) |= wr.color;
 		if (fcn) {
 			ret = fcn(s, d, token);
@@ -790,7 +790,7 @@ range_unrange(sccs *s, ser_t *left, ser_t *right, int all)
 	s->rstart = s->rstop = 0;
 
 	walkrevs_setup(&wr, s, 0, 0, WR_EITHER|WR_BOTH);
-	while (d = walkrevs(&wr)) {
+	while ((d = walkrevs(&wr))) {
 		// assert(wr.color & D_RED); /* true for range '..' */
 		// assert(wr.color != (D_RED|D_BLUE|D_GREEN); /* pruned */
 		green = wr.color & D_GREEN;

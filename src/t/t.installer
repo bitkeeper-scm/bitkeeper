@@ -28,7 +28,11 @@
 
 BK_INSTALLER=
 # Lazy way to get full path
-find "`bk bin`/utils" -name 'bk*win32-console-setup.exe' -o -name 'bk*.bin'| grep "`bk version -s`" > /tmp/bk$$
+if [ -d "`bk bin`/utils" ]; then
+	find "`bk bin`/utils" -name 'bk*win32-console-setup.exe' -o -name 'bk*.bin' 2>/dev/null | grep "`bk version -s`" > /tmp/bk$$ || touch /tmp/bk$$
+else
+	touch /tmp/bk$$
+fi
 test `wc -l < /tmp/bk$$` -gt 1 && {
 	echo You have too many bk images, skipping this test
 	cat /tmp/bk$$

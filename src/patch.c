@@ -155,7 +155,7 @@ stream_patch(int strip, FILE *f, FILE *fout, int co_only)
 	 * --- "a/\"quote"    1969-12-31 19:00:00.000000000 -0500
 	 * +++ "b/\"quote"    2016-06-14 09:42:23.306514641 -0400
 	 */
-	while (line = fgetln(f, &len)) {
+	while ((line = fgetln(f, &len))) {
 		if (((len > 7) && strneq(line, "Index: ", 7)) ||
 		    ((len > 5) && strneq(line, "diff ", 5)) ||
 		    ((len > 4) && strneq(line, "--- ", 4))) {

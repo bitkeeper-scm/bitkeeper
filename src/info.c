@@ -494,10 +494,11 @@ op(Opts *opts, int cmd, hash *h, char *regexp)
 {
 	int	n = 0;
 	hash	*h2 = hash_new(HASH_MEMHASH);
-	pcre	*re = 0;
+	pcre2_code	*re = 0;
+	pcre2_match_data *md = 0;
 	char	*date, *p;
-	const	char	*perr;
-	int	fudge, poff;
+	int	fudge, errorcode;
+	PCRE2_SIZE	poff;
 	char	buf[32];
 	time_t	t;
 
@@ -513,10 +514,11 @@ op(Opts *opts, int cmd, hash *h, char *regexp)
 	 */
 	if (regexp) {
 		assert(!h);
-		unless (re = pcre_compile(regexp, 0, &perr, &poff, 0)) {
+		unless (re = pcre2_compile((PCRE2_SPTR)regexp, PCRE2_ZERO_TERMINATED, 0, &errorcode, &poff, 0)) {
 			fprintf(opts->fout, "ERROR-bad regexp %s\n", regexp);
 			goto err;
 		}
+		md = pcre2_match_data_create_from_pattern(re, 0);
 		switch (cmd) {
 		    case INFO_DELETE:
 		    case INFO_GET:
@@ -527,15 +529,16 @@ op(Opts *opts, int cmd, hash *h, char *regexp)
 			    "ERROR-bad command %d with regexp %s\n",
 			    cmd, regexp);
 			hash_free(h2);
-			free(re);
+			pcre2_match_data_free(md);
+			pcre2_code_free(re);
 			return;
 		}
 		unless (cmd == INFO_COUNT) h = hash_new(HASH_MEMHASH);
 		EACH_HASH(opts->db) {
 			if (*(char *)opts->db->kptr == ' ') continue;
-			if (pcre_exec(re, 0,
-				opts->db->kptr, strlen(opts->db->kptr),
-				    0, 0, 0, 0)) continue;
+			if (pcre2_match(re,
+				(PCRE2_SPTR)opts->db->kptr, strlen(opts->db->kptr),
+				    0, 0, md, 0) < 0) continue;
 			if (cmd == INFO_COUNT) {
 				n++;
 			} else {
@@ -543,7 +546,8 @@ op(Opts *opts, int cmd, hash *h, char *regexp)
 					   "", 1);
 			}
 		}
-		free(re);
+		pcre2_match_data_free(md);
+		pcre2_code_free(re);
 	}
 
 	if (cmd == INFO_COUNT) {
@@ -738,7 +742,7 @@ uniqdb_lock_path(void)
 	char	*t;
 
 	/* Check BK_DOTBK to support parallel regressions. */
-	if (t = getenv("BK_DOTBK")) {
+	if ((t = getenv("BK_DOTBK"))) {
 		return (aprintf("%s/bk-keys/%s.lock", t, sccs_realhost()));
 	} else {
 		return (aprintf("%s/.uniq_keys_%s", TMP_PATH,
@@ -822,7 +826,7 @@ uniqdb_open(Opts *opts)
 	opts->db_backf = 0;
 
 	mkdirf(prim);
-	if (opts->db_primf = fopen(prim, "a")) {
+	if ((opts->db_primf = fopen(prim, "a"))) {
 		T_DEBUG("opened primary %s", prim);
 	} else if (back && (opts->db_backf = fopen(back, "a"))) {
 		T_DEBUG("opened backup %s", back);
@@ -939,13 +943,13 @@ uniqdb_read(Opts *opts)
 	free(s);
 
 	/* Possible backup uniqdb. */
-	if (s = uniqdb_backup_path()) {
+	if ((s = uniqdb_backup_path())) {
 		uniqdb_load_file(opts->db, s);
 		t2 = mtime(s);
 		free(s);
 	}
 
-	if (s = hash_fetchStr(opts->db, DB_MODTIME)) {
+	if ((s = hash_fetchStr(opts->db, DB_MODTIME))) {
 		t1 = (time_t)strtoul(s, 0, 16);
 		T_DEBUG("using DB_MODTIME %lx", t1);
 	} else {
@@ -974,7 +978,7 @@ uniqdb_write_rec(FILE *f, char *k, char *v)
 	 * since older bks expect lines like
 	 *     user@host|path|date time_t [syncRoot]
 	 */
-	if (syncroot = strchr(date+1, '|')) {
+	if ((syncroot = strchr(date+1, '|'))) {
 		*syncroot = 0;
 		T_DEBUG("writing %s %ld %s", k, t, syncroot+1);
 		fprintf(f, "%s %ld %s\n", k, t, syncroot+1);
@@ -1130,7 +1134,7 @@ uniq_drift(void)
 	char	*drift;
 
 	if (t != (time_t)-1) return (t);
-	if (drift = getenv("CLOCK_DRIFT")) {
+	if ((drift = getenv("CLOCK_DRIFT"))) {
 		t = atoi(drift);
 	} else {
 		t = CLOCK_DRIFT;
@@ -1201,7 +1205,7 @@ debug_sleep(char *env)
 	unsigned short	r = 0;
 	time_t		t;
 
-	if (s = getenv(env)) {
+	if ((s = getenv(env))) {
 		if (*s == 'r') {
 			rand_getBytes((void *)&r, 2);
 			t = (float)r/65536.0 * atoi(s+1);

@@ -89,7 +89,7 @@ match_one(char *string, char *glob, int ignorecase)
 			return (0);
 		    case '[':
 			g++;
-			if (invert = (*g == '^')) g++;
+			if ((invert = (*g == '^'))) g++;
 			unless (strchr(g, ']')) {
 				fprintf(stderr, "bad glob: %s\n", glob);
 				return (0);

@@ -15,6 +15,10 @@
 #include "tkInt.h"
 #include "tkColor.h"
 
+#ifdef _WIN32
+#include "tkWinInt.h"
+#endif
+
 /*
  * Structures of the following following type are used as keys for
  * colorValueTable (in TkDisplay).
@@ -31,7 +35,7 @@ typedef struct {
  * The structure below is used to allocate thread-local data.
  */
 
-typedef struct ThreadSpecificData {
+typedef struct {
     char rgbString[20];		/* */
 } ThreadSpecificData;
 static Tcl_ThreadDataKey dataKey;
@@ -128,7 +132,7 @@ Tk_AllocColorFromObj(
      */
 
     if (tkColPtr != NULL) {
-	TkColor *firstColorPtr = Tcl_GetHashValue(tkColPtr->hashPtr);
+	TkColor *firstColorPtr = (TkColor *)Tcl_GetHashValue(tkColPtr->hashPtr);
 
 	FreeColorObj(objPtr);
 	for (tkColPtr = firstColorPtr; tkColPtr != NULL;
@@ -203,7 +207,7 @@ Tk_GetColor(
 
     nameHashPtr = Tcl_CreateHashEntry(&dispPtr->colorNameTable, name, &isNew);
     if (!isNew) {
-	existingColPtr = Tcl_GetHashValue(nameHashPtr);
+	existingColPtr = (TkColor *)Tcl_GetHashValue(nameHashPtr);
 	for (tkColPtr = existingColPtr; tkColPtr != NULL;
 		tkColPtr = tkColPtr->nextPtr) {
 	    if ((tkColPtr->screen == Tk_Screen(tkwin))
@@ -245,7 +249,7 @@ Tk_GetColor(
      */
 
     tkColPtr->magic = COLOR_MAGIC;
-    tkColPtr->gc = None;
+    tkColPtr->gc = NULL;
     tkColPtr->screen = Tk_Screen(tkwin);
     tkColPtr->colormap = Tk_Colormap(tkwin);
     tkColPtr->visual = Tk_Visual(tkwin);
@@ -314,7 +318,7 @@ Tk_GetColorByValue(
     valueHashPtr = Tcl_CreateHashEntry(&dispPtr->colorValueTable,
 	    (char *) &valueKey, &isNew);
     if (!isNew) {
-	tkColPtr = Tcl_GetHashValue(valueHashPtr);
+	tkColPtr = (TkColor *)Tcl_GetHashValue(valueHashPtr);
 	tkColPtr->resourceRefCount++;
 	return &tkColPtr->color;
     }
@@ -326,7 +330,7 @@ Tk_GetColorByValue(
 
     tkColPtr = TkpGetColorByValue(tkwin, colorPtr);
     tkColPtr->magic = COLOR_MAGIC;
-    tkColPtr->gc = None;
+    tkColPtr->gc = NULL;
     tkColPtr->screen = Tk_Screen(tkwin);
     tkColPtr->colormap = valueKey.colormap;
     tkColPtr->visual = Tk_Visual(tkwin);
@@ -363,15 +367,15 @@ const char *
 Tk_NameOfColor(
     XColor *colorPtr)		/* Color whose name is desired. */
 {
-    register TkColor *tkColPtr = (TkColor *) colorPtr;
+    TkColor *tkColPtr = (TkColor *) colorPtr;
 
     if (tkColPtr->magic==COLOR_MAGIC && tkColPtr->type==TK_COLOR_BY_NAME) {
 	return tkColPtr->hashPtr->key.string;
     } else {
-	ThreadSpecificData *tsdPtr =
+	ThreadSpecificData *tsdPtr = (ThreadSpecificData *)
 		Tcl_GetThreadData(&dataKey, sizeof(ThreadSpecificData));
 
-	sprintf(tsdPtr->rgbString, "#%04x%04x%04x", colorPtr->red,
+	snprintf(tsdPtr->rgbString, sizeof(tsdPtr->rgbString), "#%04x%04x%04x", colorPtr->red,
 		colorPtr->green, colorPtr->blue);
 
 	/*
@@ -436,7 +440,7 @@ Tk_GCForColor(
 	Tcl_Panic("Tk_GCForColor called with bogus color");
     }
 
-    if (tkColPtr->gc == None) {
+    if (tkColPtr->gc == NULL) {
 	gcValues.foreground = tkColPtr->color.pixel;
 	tkColPtr->gc = XCreateGC(DisplayOfScreen(tkColPtr->screen), drawable,
 		GCForeground, &gcValues);
@@ -480,8 +484,7 @@ Tk_FreeColor(
 	Tcl_Panic("Tk_FreeColor called with bogus color");
     }
 
-    tkColPtr->resourceRefCount--;
-    if (tkColPtr->resourceRefCount > 0) {
+    if (tkColPtr->resourceRefCount-- > 1) {
 	return;
     }
 
@@ -491,13 +494,13 @@ Tk_FreeColor(
      * longer any objects referencing it.
      */
 
-    if (tkColPtr->gc != None) {
+    if (tkColPtr->gc != NULL) {
 	XFreeGC(DisplayOfScreen(screen), tkColPtr->gc);
-	tkColPtr->gc = None;
+	tkColPtr->gc = NULL;
     }
     TkpFreeColor(tkColPtr);
 
-    prevPtr = Tcl_GetHashValue(tkColPtr->hashPtr);
+    prevPtr = (TkColor *)Tcl_GetHashValue(tkColPtr->hashPtr);
     if (prevPtr == tkColPtr) {
 	if (tkColPtr->nextPtr == NULL) {
 	    Tcl_DeleteHashEntry(tkColPtr->hashPtr);
@@ -584,11 +587,10 @@ static void
 FreeColorObj(
     Tcl_Obj *objPtr)		/* The object we are releasing. */
 {
-    TkColor *tkColPtr = objPtr->internalRep.twoPtrValue.ptr1;
+    TkColor *tkColPtr = (TkColor *)objPtr->internalRep.twoPtrValue.ptr1;
 
     if (tkColPtr != NULL) {
-	tkColPtr->objRefCount--;
-	if ((tkColPtr->objRefCount == 0)
+	if ((tkColPtr->objRefCount-- <= 1)
 		&& (tkColPtr->resourceRefCount == 0)) {
 	    ckfree(tkColPtr);
 	}
@@ -619,7 +621,7 @@ DupColorObjProc(
     Tcl_Obj *srcObjPtr,		/* The object we are copying from. */
     Tcl_Obj *dupObjPtr)		/* The object we are copying to. */
 {
-    TkColor *tkColPtr = srcObjPtr->internalRep.twoPtrValue.ptr1;
+    TkColor *tkColPtr = (TkColor *)srcObjPtr->internalRep.twoPtrValue.ptr1;
 
     dupObjPtr->typePtr = srcObjPtr->typePtr;
     dupObjPtr->internalRep.twoPtrValue.ptr1 = tkColPtr;
@@ -669,7 +671,7 @@ Tk_GetColorFromObj(
      * map. If it is, we are done.
      */
 
-    tkColPtr = objPtr->internalRep.twoPtrValue.ptr1;
+    tkColPtr = (TkColor *)objPtr->internalRep.twoPtrValue.ptr1;
     if ((tkColPtr != NULL)
 	    && (tkColPtr->resourceRefCount > 0)
 	    && (Tk_Screen(tkwin) == tkColPtr->screen)
@@ -695,7 +697,7 @@ Tk_GetColorFromObj(
     if (hashPtr == NULL) {
 	goto error;
     }
-    for (tkColPtr = Tcl_GetHashValue(hashPtr);
+    for (tkColPtr = (TkColor *)Tcl_GetHashValue(hashPtr);
 	    (tkColPtr != NULL); tkColPtr = tkColPtr->nextPtr) {
 	if ((Tk_Screen(tkwin) == tkColPtr->screen)
 		&& (Tk_Colormap(tkwin) == tkColPtr->colormap)) {
@@ -811,7 +813,7 @@ TkDebugColor(
     resultPtr = Tcl_NewObj();
     hashPtr = Tcl_FindHashEntry(&dispPtr->colorNameTable, name);
     if (hashPtr != NULL) {
-	TkColor *tkColPtr = Tcl_GetHashValue(hashPtr);
+	TkColor *tkColPtr = (TkColor *)Tcl_GetHashValue(hashPtr);
 
 	if (tkColPtr == NULL) {
 	    Tcl_Panic("TkDebugColor found empty hash table entry");

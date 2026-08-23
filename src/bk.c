@@ -187,7 +187,7 @@ main(int volatile ac, char **av, char **env)
 
 	cmdlog_buffer[0] = 0;
 	cmdlog_flags = 0;
-	if (i = setjmp(exit_buf)) {
+	if ((i = setjmp(exit_buf))) {
 		ret = (i >= 1000) ? (i - 1000) : 1;
 		goto out;
 	}
@@ -364,7 +364,7 @@ baddir:						fprintf(stderr,
 				FILE *f = (c == 310) ? stdin : stdout;
 				if (streq(optarg, "line")) {
 					setvbuf(f, 0, _IOLBF, 0);
-				} else if (i = atoi(optarg)) {
+				} else if ((i = atoi(optarg))) {
 					setvbuf(f, 0, _IOFBF, i);
 				} else {
 					setvbuf(f, 0, _IONBF, 0);
@@ -685,7 +685,7 @@ bad_locking:				fprintf(stderr,
 				usage();
 			}
 		}
-		for (ac = 0; av[ac] = av[optind++]; ac++);
+		for (ac = 0; (av[ac] = av[optind++]); ac++);
 		if ((dashr || dashA) && !streq(prog, "gfiles")) {
 			if (dashr) {
 				sopts = unshiftLine(sopts, strdup("gfiles"));
@@ -863,7 +863,7 @@ cmd_run_parallel(int ac, char **av)
 		for (i = 0; i < opt_parallel; i++) {
 			if (FD_ISSET(fdin[i], &wr)) {
 				/* send new line to process */
-				if (p = fgetln(stdin, &len)) {
+				if ((p = fgetln(stdin, &len))) {
 					(void)writen(fdin[i], p, len);
 				} else {
 					/* done writing */
@@ -959,7 +959,7 @@ cmd_run(char *prog, int is_bk, int ac, char **av)
 	ctype = cmd ? cmd->type : 0;
 	unless (ctype) {
 		sprintf(cmd_path, "bk-%s", prog);
-		if (t = which(cmd_path)) {
+		if ((t = which(cmd_path))) {
 			/*
 			 * We found 'bk-prog' on the user's PATH so
 			 * act like that is a builtin bk command.
@@ -1246,8 +1246,8 @@ cmdlog_start(char **av, int bkd_cmd)
 		 * or when it's a remote command (indent() > 0)
 		 * because it is spawned by a bkd)
 		 */
-		if ((cmdlog_flags & CMD_REPOLOG) &&
-		    (indent() == 0) || strneq(av[0], "remote ", 7)) {
+		if (((cmdlog_flags & CMD_REPOLOG) &&
+		    (indent() == 0)) || strneq(av[0], "remote ", 7)) {
 			cmdlog_repolog = 1;
 		}
 		break;
@@ -1440,7 +1440,7 @@ cmdlog_lock(int flags)
 	}
 	if (do_lock && (cmdlog_flags & CMD_RDLOCK)) {
 		T_LOCK("RDLOCK in %s", proj_cwd());
-		if (i = repository_rdlock(proj)) {
+		if ((i = repository_rdlock(proj))) {
 			unless ((cmdlog_flags & CMD_BKD_CMD) ||
 			    !proj_root(proj)) {
 				if (proj_isEnsemble(proj)) {
@@ -1472,7 +1472,7 @@ cmdlog_lock(int flags)
 	if (do_lock &&
 	    (cmdlog_flags & (CMD_NESTED_RDLOCK | CMD_NESTED_WRLOCK)) &&
 	    proj_isEnsemble(proj)) {
-again:		if (nlid = getenv("_BK_NESTED_LOCK")) {
+again:		if ((nlid = getenv("_BK_NESTED_LOCK"))) {
 			T_NUM(TR_LOCK|TR_NESTED, "checking: %s", nlid);
 			unless (nested_mine(proj, nlid,
 				(cmdlog_flags & CMD_NESTED_WRLOCK))) {
@@ -1740,7 +1740,12 @@ launch_wish(char *script, char **av)
 			path = aprintf(
 			    "%s/gui/bin/BitKeeper.app/Contents/MacOS/BitKeeper",
 			    bin);
-		} else {
+			unless (executable(path)) {
+				free(path);
+				path = 0;
+			}
+		}
+		unless (path) {
 			path = aprintf("%s/gui/bin/bkgui", bin);
 			if (executable(path)) {
 				safe_putenv("TCL_LIBRARY=%s/gui/lib/tcl8.6",
@@ -1922,7 +1927,7 @@ callstack_pop(void)
 		}
 		return;
 	}
-	if (t = strrchr(p, ':')) {
+	if ((t = strrchr(p, ':'))) {
 		*t = 0;
 	} else {
 		p = "";

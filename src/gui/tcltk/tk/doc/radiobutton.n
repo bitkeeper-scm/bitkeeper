@@ -4,7 +4,7 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
+'\"
 .TH radiobutton n 4.4 Tk "Tk Built-In Commands"
 .so man.macros
 .BS
@@ -41,16 +41,6 @@ Specifies whether or not the indicator should be drawn.  Must be a
 proper boolean value.  If false, the \fB\-relief\fR option is
 ignored and the widget's relief is always sunken if the widget is
 selected and raised otherwise.
-.OP \-selectcolor selectColor Background
-Specifies a background color to use when the button is selected.
-If \fB\-indicatoron\fR is true then the color applies to the indicator.
-Under Windows, this color is used as the background for the indicator
-regardless of the select state.
-If \fB\-indicatoron\fR is false, this color is used as the background
-for the entire widget, in place of \fB\-background\fR or \fB\-activeBackground\fR,
-whenever the widget is selected.
-If specified as an empty string then no special color is used for
-displaying when the widget is selected.
 .OP \-offrelief offRelief OffRelief
 Specifies the relief for the checkbutton when the indicator is not drawn and
 the checkbutton is off.  The default value is
@@ -59,10 +49,10 @@ By setting this option to
 .QW flat
 and setting \fB\-indicatoron\fR to false and \fB\-overrelief\fR to
 .QW raised ,
-the effect is achieved 
+the effect is achieved
 of having a flat button that raises on mouse-over and which is
 depressed when activated.  This is the behavior typically exhibited by
-the Align-Left, Align-Right, and Center radiobuttons on the toolbar of a 
+the Align-Left, Align-Right, and Center radiobuttons on the toolbar of a
 word-processor, for example.
 .OP \-overrelief overRelief OverRelief
 Specifies an alternative relief for the radiobutton, to be used when the
@@ -71,6 +61,15 @@ toolbar buttons, by configuring \fB\-relief flat \-overrelief
 raised\fR.  If the value of this option is the empty string, then no
 alternative relief is used when the mouse cursor is over the radiobutton.
 The empty string is the default value.
+.OP \-selectcolor selectColor Background
+Specifies a background color to use when the button is selected.
+If \fBindicatorOn\fR is true then the color is used as the background for
+the indicator regardless of the select state.
+If \fB\-indicatoron\fR is false, this color is used as the background
+for the entire widget, in place of \fB\-background\fR or \fB\-activeBackground\fR,
+whenever the widget is selected.
+If specified as an empty string then no special color is used for
+displaying when the widget is selected.
 .OP \-selectimage selectImage SelectImage
 Specifies an image to display (in place of the \fB\-image\fR option)
 when the radiobutton is selected.

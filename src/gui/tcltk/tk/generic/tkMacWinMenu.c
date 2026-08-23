@@ -4,7 +4,7 @@
  *	This module implements the common elements of the Mac and Windows
  *	specific features of menus. This file is not used for UNIX.
  *
- * Copyright (c) 1996-1997 by Sun Microsystems, Inc.
+ * Copyright (c) 1996-1997 Sun Microsystems, Inc.
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -13,7 +13,7 @@
 #include "tkInt.h"
 #include "tkMenu.h"
 
-typedef struct ThreadSpecificData {
+typedef struct {
     int postCommandGeneration;
 } ThreadSpecificData;
 static Tcl_ThreadDataKey dataKey;
@@ -67,7 +67,7 @@ PreprocessMenu(
     do {
 	finished = 1;
 	for (index = 0; index < menuPtr->numEntries; index++) {
-	    register TkMenuEntry *entryPtr = menuPtr->entries[index];
+	    TkMenuEntry *entryPtr = menuPtr->entries[index];
 
 	    if ((entryPtr->type == CASCADE_ENTRY)
 		    && (entryPtr->namePtr != NULL)

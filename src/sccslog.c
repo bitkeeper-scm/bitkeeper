@@ -294,7 +294,7 @@ pdelta(sccs *s, ser_t d, FILE *f)
 	}
 	if (opts.changeset) {
 		t = COMMENTS(s, d);
-		while (p = eachline(&t, &len)) {
+		while ((p = eachline(&t, &len))) {
 			if (indent) fprintf(f, "%*s", indent, "");
 			if (HAS_PATHNAME(s, d)) {
 				fprintf(f, "%-8s\t", basenm(PATHNAME(s, d)));
@@ -316,7 +316,7 @@ pdelta(sccs *s, ser_t d, FILE *f)
 	fprintf(f, "%s %s", buf, USERHOST(s, d));
 	fprintf(f, " +%d -%d\n", ADDED(s, d), DELETED(s, d));
 	t = COMMENTS(s, d);
-	while (p = eachline(&t, &len)) {
+	while ((p = eachline(&t, &len))) {
 		if (indent) fprintf(f, "%*s", indent, "");
 		fprintf(f, "  %.*s\n", len, p);
 	}

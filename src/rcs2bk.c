@@ -340,7 +340,7 @@ newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags)
 		return (1);
 	}
 #else
-	if (pid = fork()) {
+	if ((pid = fork())) {
 		if (pid == -1) {
 			perror("fork");
 			exit(1);

@@ -34,8 +34,11 @@
 # is taken from the source.  The enumname can be different from
 # the keyword name (e.g., KW_UTC_FUDGE for keyword "UTC-FUDGE").
 
-$gperf = '/usr/local/bin/gperf';
-$gperf = 'gperf' unless -x $gperf;
+$gperf = $ENV{GPERF} if $ENV{GPERF};
+unless ($gperf) {
+    $gperf = '/usr/local/bin/gperf';
+    $gperf = 'gperf' unless -x $gperf;
+}
 
 $_ = `$gperf --version`;
 die "mk-cmd.pl: Requires gperf version >3\n" unless /^GNU gperf 3/;

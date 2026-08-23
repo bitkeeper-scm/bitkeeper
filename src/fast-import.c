@@ -225,7 +225,7 @@ fastimport_main(int ac, char **av)
 		}
 	}
 	if (opts.quiet && opts.verbose) usage();
-	if (dir = av[optind]) {
+	if ((dir = av[optind])) {
 		if (streq(dir, "-")) usage();
 		if (av[optind+1]) usage();
 
@@ -440,7 +440,7 @@ gitImport(opts *op)
 	sccs_free(op->cset);
 
 	unless (op->quiet) fprintf(stderr, "Rename sfiles...\n");
-	if (rc = system("bk -r names")) {
+	if ((rc = system("bk -r names"))) {
 		fprintf(stderr, "%s: 'bk -r names' failed\n", prog);
 	}
 
@@ -619,7 +619,7 @@ getCommit(opts *op, char *line)
 		line = fgetline(stdin);
 	}
 
-	while (gop = parseOp(op, line)) {
+	while ((gop = parseOp(op, line))) {
 		switch (gop->op) {
 		    case GMODIFY:
 		    case GDELETE:
@@ -946,7 +946,7 @@ parseWho(char *line, time_t *when, char **tz)
 	 *   Guoli Shu<Kerry.Shu@Sun.COM> <none@none> 1219106876 -0700
 	 * (git has the same code)
 	 */
-	if (q = strrchr(p, '>')) p = q+1;
+	if ((q = strrchr(p, '>'))) p = q+1;
 
 	/*
 	 * other bad lines:
@@ -1667,7 +1667,7 @@ newDelta(opts *op, finfo *fi, ser_t p, commit *cmt, gop *g)
 		    d, 0, 0, 0);
 		assert(!rc);
 	} else {
-		assert(g->op = GDELETE);
+		assert(g->op == GDELETE);
 
 		if (begins_with(PATHNAME(s, p), "BitKeeper/deleted/")) {
 			/* already deleted */

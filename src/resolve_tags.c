@@ -43,7 +43,7 @@ t_help(resolve *rs)
 	} else {
 		fprintf(stderr, "ChangeSet %s\n", REV(rs->s, t->local));
 		r = COMMENTS(rs->s, t->local);
-		while (p = eachline(&r, &len)) fprintf(stderr, "\t%.*s\n", len, p);
+		while ((p = eachline(&r, &len))) fprintf(stderr, "\t%.*s\n", len, p);
 	}
 	fprintf(stderr, "Remote: ");
 	if (DELETED_TAG(rs->s, t->mremote)) {
@@ -51,7 +51,7 @@ t_help(resolve *rs)
 	} else {
 		fprintf(stderr, "ChangeSet %s\n", REV(rs->s, t->remote));
 		r = COMMENTS(rs->s, t->remote);
-		while (p = eachline(&r, &len)) fprintf(stderr, "\t%.*s\n", len, p);
+		while ((p = eachline(&r, &len))) fprintf(stderr, "\t%.*s\n", len, p);
 	}
 	fprintf(stderr, "\n");
 	for (i = 0; rs->funcs[i].spec; i++) {

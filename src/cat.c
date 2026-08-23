@@ -112,7 +112,7 @@ annocat(char *file, int aflags, int pipe)
 	if (aflags & GET_USER) strcat(fake, "?\t");
 	if (aflags & GET_REVNUMS) strcat(fake, "?\t");
 	if (aflags & GET_SERIAL) strcat(fake, "?\t");
-	while (p = fgetline(f)) {
+	while ((p = fgetline(f))) {
 		if (name) {
 			fputs(name, stdout);
 			fputc('\t', stdout);

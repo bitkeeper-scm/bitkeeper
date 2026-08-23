@@ -67,8 +67,9 @@ ndiff_main(int ac, char **av)
 {
 	int	c, i;
 	char	*p, *pattern = 0;
-	const	char *perr;
-	int	poff;
+	int	errorcode;
+	PCRE2_SIZE	poff;
+	PCRE2_UCHAR	perr[256];
 	df_opt	opts;
 	longopt	lopts[] = {
 		{ "ignore-trailing-cr", 310 },
@@ -136,14 +137,15 @@ ndiff_main(int ac, char **av)
 	}
 
 	if (pattern &&
-	    !(opts.pattern = pcre_compile(pattern, 0, &perr, &poff, 0))) {
-		fprintf(stderr, "diff: bad regexp '%s': %s\n", pattern, perr);
+	    !(opts.pattern = pcre2_compile((PCRE2_SPTR)pattern, PCRE2_ZERO_TERMINATED, 0, &errorcode, &poff, 0))) {
+		pcre2_get_error_message(errorcode, perr, sizeof(perr));
+		fprintf(stderr, "diff: bad regexp '%s': %s\n", pattern, (char *)perr);
 		goto out;
 	}
 
 	rc = diff_files(av[optind], av[optind+1], &opts, "-");
 out:	if (opts.out_define) FREE(opts.out_define);
-	if (opts.pattern) free(opts.pattern);
+	if (opts.pattern) pcre2_code_free(opts.pattern);
 	if (pattern) FREE(pattern);
 	return (rc);
 }
@@ -151,8 +153,8 @@ out:	if (opts.out_define) FREE(opts.out_define);
 int
 diff_cleanOpts(df_opt *opts)
 {
-	const	char *perr;
-	int	poff;
+	int	errorcode;
+	PCRE2_SIZE	poff;
 
 	/*
 	 * Make sure we don't have conflicting output styles
@@ -168,8 +170,8 @@ diff_cleanOpts(df_opt *opts)
 	 * provide a default pattern if they didn't give us one.
 	 */
 	if (opts->out_show_c_func && !opts->pattern) {
-		opts->pattern = pcre_compile("^[[:alpha:]$_]",
-		    0, &perr, &poff, 0);
+		opts->pattern = pcre2_compile((PCRE2_SPTR)"^[[:alpha:]$_]",
+		    PCRE2_ZERO_TERMINATED, 0, &errorcode, &poff, 0);
 		assert(opts->pattern);
 	}
 
@@ -298,7 +300,8 @@ diff_mem(char *data[2], size_t len[2], df_opt *dop, FILE *fout)
 	df_hash	*dhash;
 	header	*fh;
 	filedf	fop = {{0}};
-	pcre	*re = 0;
+	pcre2_code	*re = 0;
+	pcre2_match_data *md = 0;
 	hunk	*h, *hlist = 0, range;
 
 	unless (diff_cleanOpts(dop)) return (2);
@@ -334,6 +337,7 @@ diff_mem(char *data[2], size_t len[2], df_opt *dop, FILE *fout)
 	}
 
 	re = dop->pattern;
+	if (re) md = pcre2_match_data_create_from_pattern(re, 0);
 
 	lno[DF_LEFT] = lno[DF_RIGHT] = 0;
 
@@ -354,8 +358,8 @@ diff_mem(char *data[2], size_t len[2], df_opt *dop, FILE *fout)
 				saveline(&fop.lines[i], i, s, e - s + 1);
 				++lno[i];
 				if (re && (i == 0)) {
-					unless (pcre_exec(re, 0, s, e - s + 1,
-						0, 0, 0, 0)) {
+					if (pcre2_match(re, (PCRE2_SPTR)s, e - s + 1,
+						0, 0, md, 0) >= 0) {
 						fh = addArray(&fop.fn_defs,0);
 						fh->lno = lno[DF_LEFT];
 						fh->s = strndup(s, e - s + 1);
@@ -436,6 +440,7 @@ diff_mem(char *data[2], size_t len[2], df_opt *dop, FILE *fout)
 out:	FREE(fop.lines[DF_LEFT]);
 	FREE(fop.lines[DF_RIGHT]);
 	FREE(hlist);
+	if (md) pcre2_match_data_free(md);
 	return (rc);
 }
 

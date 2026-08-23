@@ -318,12 +318,13 @@ L_OBJS	= Lscanner-pregen.$(OBJEXT) \
 	Lgetopt.$(OBJEXT)
 
 TOMMATH_OBJS = \
-	bncore.${OBJEXT} \
-	bn_reverse.${OBJEXT} \
-	bn_fast_s_mp_mul_digs.${OBJEXT} \
-	bn_fast_s_mp_sqr.${OBJEXT} \
+	bn_cutoffs.${OBJEXT} \
+	bn_deprecated.${OBJEXT} \
+	bn_mp_2expt.${OBJEXT} \
+	bn_mp_abs.${OBJEXT} \
 	bn_mp_add.${OBJEXT} \
 	bn_mp_add_d.${OBJEXT} \
+	bn_mp_addmod.${OBJEXT} \
 	bn_mp_and.${OBJEXT} \
 	bn_mp_clamp.${OBJEXT} \
 	bn_mp_clear.${OBJEXT} \
@@ -332,56 +333,148 @@ TOMMATH_OBJS = \
 	bn_mp_cmp_d.${OBJEXT} \
 	bn_mp_cmp_mag.${OBJEXT} \
 	bn_mp_cnt_lsb.${OBJEXT} \
+	bn_mp_complement.${OBJEXT} \
 	bn_mp_copy.${OBJEXT} \
 	bn_mp_count_bits.${OBJEXT} \
+	bn_mp_decr.${OBJEXT} \
 	bn_mp_div.${OBJEXT} \
-	bn_mp_div_d.${OBJEXT} \
 	bn_mp_div_2.${OBJEXT} \
 	bn_mp_div_2d.${OBJEXT} \
 	bn_mp_div_3.${OBJEXT} \
+	bn_mp_div_d.${OBJEXT} \
+	bn_mp_dr_is_modulus.${OBJEXT} \
+	bn_mp_dr_reduce.${OBJEXT} \
+	bn_mp_dr_setup.${OBJEXT} \
+	bn_mp_error_to_string.${OBJEXT} \
 	bn_mp_exch.${OBJEXT} \
-	bn_mp_expt_d.${OBJEXT} \
+	bn_mp_expt_u32.${OBJEXT} \
+	bn_mp_exptmod.${OBJEXT} \
+	bn_mp_exteuclid.${OBJEXT} \
+	bn_mp_fread.${OBJEXT} \
+	bn_mp_from_sbin.${OBJEXT} \
+	bn_mp_from_ubin.${OBJEXT} \
+	bn_mp_fwrite.${OBJEXT} \
+	bn_mp_gcd.${OBJEXT} \
+	bn_mp_get_double.${OBJEXT} \
+	bn_mp_get_i32.${OBJEXT} \
+	bn_mp_get_i64.${OBJEXT} \
+	bn_mp_get_l.${OBJEXT} \
+	bn_mp_get_ll.${OBJEXT} \
+	bn_mp_get_mag_u32.${OBJEXT} \
+	bn_mp_get_mag_u64.${OBJEXT} \
+	bn_mp_get_mag_ul.${OBJEXT} \
+	bn_mp_get_mag_ull.${OBJEXT} \
 	bn_mp_grow.${OBJEXT} \
+	bn_mp_incr.${OBJEXT} \
 	bn_mp_init.${OBJEXT} \
 	bn_mp_init_copy.${OBJEXT} \
+	bn_mp_init_i32.${OBJEXT} \
+	bn_mp_init_i64.${OBJEXT} \
+	bn_mp_init_l.${OBJEXT} \
+	bn_mp_init_ll.${OBJEXT} \
 	bn_mp_init_multi.${OBJEXT} \
 	bn_mp_init_set.${OBJEXT} \
-	bn_mp_init_set_int.${OBJEXT} \
 	bn_mp_init_size.${OBJEXT} \
-	bn_mp_karatsuba_mul.${OBJEXT} \
-	bn_mp_karatsuba_sqr.$(OBJEXT) \
+	bn_mp_init_u32.${OBJEXT} \
+	bn_mp_init_u64.${OBJEXT} \
+	bn_mp_init_ul.${OBJEXT} \
+	bn_mp_init_ull.${OBJEXT} \
+	bn_mp_invmod.${OBJEXT} \
+	bn_mp_is_square.${OBJEXT} \
+	bn_mp_iseven.${OBJEXT} \
+	bn_mp_isodd.${OBJEXT} \
+	bn_mp_kronecker.${OBJEXT} \
+	bn_mp_lcm.${OBJEXT} \
+	bn_mp_log_u32.${OBJEXT} \
 	bn_mp_lshd.${OBJEXT} \
 	bn_mp_mod.${OBJEXT} \
 	bn_mp_mod_2d.${OBJEXT} \
+	bn_mp_mod_d.${OBJEXT} \
+	bn_mp_montgomery_calc_normalization.${OBJEXT} \
+	bn_mp_montgomery_reduce.${OBJEXT} \
+	bn_mp_montgomery_setup.${OBJEXT} \
 	bn_mp_mul.${OBJEXT} \
 	bn_mp_mul_2.${OBJEXT} \
 	bn_mp_mul_2d.${OBJEXT} \
 	bn_mp_mul_d.${OBJEXT} \
+	bn_mp_mulmod.${OBJEXT} \
 	bn_mp_neg.${OBJEXT} \
 	bn_mp_or.${OBJEXT} \
+	bn_mp_pack.${OBJEXT} \
+	bn_mp_pack_count.${OBJEXT} \
+	bn_mp_prime_fermat.${OBJEXT} \
+	bn_mp_prime_frobenius_underwood.${OBJEXT} \
+	bn_mp_prime_is_prime.${OBJEXT} \
+	bn_mp_prime_miller_rabin.${OBJEXT} \
+	bn_mp_prime_next_prime.${OBJEXT} \
+	bn_mp_prime_rabin_miller_trials.${OBJEXT} \
+	bn_mp_prime_rand.${OBJEXT} \
+	bn_mp_prime_strong_lucas_selfridge.${OBJEXT} \
 	bn_mp_radix_size.${OBJEXT} \
 	bn_mp_radix_smap.${OBJEXT} \
+	bn_mp_rand.${OBJEXT} \
 	bn_mp_read_radix.${OBJEXT} \
+	bn_mp_reduce.${OBJEXT} \
+	bn_mp_reduce_2k.${OBJEXT} \
+	bn_mp_reduce_2k_l.${OBJEXT} \
+	bn_mp_reduce_2k_setup.${OBJEXT} \
+	bn_mp_reduce_2k_setup_l.${OBJEXT} \
+	bn_mp_reduce_is_2k.${OBJEXT} \
+	bn_mp_reduce_is_2k_l.${OBJEXT} \
+	bn_mp_reduce_setup.${OBJEXT} \
+	bn_mp_root_u32.${OBJEXT} \
 	bn_mp_rshd.${OBJEXT} \
+	bn_mp_sbin_size.${OBJEXT} \
 	bn_mp_set.${OBJEXT} \
-	bn_mp_set_int.${OBJEXT} \
+	bn_mp_set_double.${OBJEXT} \
+	bn_mp_set_i32.${OBJEXT} \
+	bn_mp_set_i64.${OBJEXT} \
+	bn_mp_set_l.${OBJEXT} \
+	bn_mp_set_ll.${OBJEXT} \
+	bn_mp_set_u32.${OBJEXT} \
+	bn_mp_set_u64.${OBJEXT} \
+	bn_mp_set_ul.${OBJEXT} \
+	bn_mp_set_ull.${OBJEXT} \
 	bn_mp_shrink.${OBJEXT} \
+	bn_mp_signed_rsh.${OBJEXT} \
 	bn_mp_sqr.${OBJEXT} \
+	bn_mp_sqrmod.${OBJEXT} \
 	bn_mp_sqrt.${OBJEXT} \
+	bn_mp_sqrtmod_prime.${OBJEXT} \
 	bn_mp_sub.${OBJEXT} \
 	bn_mp_sub_d.${OBJEXT} \
-	bn_mp_to_unsigned_bin.${OBJEXT} \
-	bn_mp_to_unsigned_bin_n.${OBJEXT} \
-	bn_mp_toom_mul.${OBJEXT} \
-	bn_mp_toom_sqr.${OBJEXT} \
-	bn_mp_toradix_n.${OBJEXT} \
-	bn_mp_unsigned_bin_size.${OBJEXT} \
+	bn_mp_submod.${OBJEXT} \
+	bn_mp_to_radix.${OBJEXT} \
+	bn_mp_to_sbin.${OBJEXT} \
+	bn_mp_to_ubin.${OBJEXT} \
+	bn_mp_ubin_size.${OBJEXT} \
+	bn_mp_unpack.${OBJEXT} \
 	bn_mp_xor.${OBJEXT} \
 	bn_mp_zero.${OBJEXT} \
+	bn_prime_tab.${OBJEXT} \
 	bn_s_mp_add.${OBJEXT} \
+	bn_s_mp_balance_mul.${OBJEXT} \
+	bn_s_mp_exptmod.${OBJEXT} \
+	bn_s_mp_exptmod_fast.${OBJEXT} \
+	bn_s_mp_get_bit.${OBJEXT} \
+	bn_s_mp_invmod_fast.${OBJEXT} \
+	bn_s_mp_invmod_slow.${OBJEXT} \
+	bn_s_mp_karatsuba_mul.${OBJEXT} \
+	bn_s_mp_karatsuba_sqr.${OBJEXT} \
+	bn_s_mp_montgomery_reduce_fast.${OBJEXT} \
 	bn_s_mp_mul_digs.${OBJEXT} \
+	bn_s_mp_mul_digs_fast.${OBJEXT} \
+	bn_s_mp_mul_high_digs.${OBJEXT} \
+	bn_s_mp_mul_high_digs_fast.${OBJEXT} \
+	bn_s_mp_prime_is_divisible.${OBJEXT} \
+	bn_s_mp_rand_jenkins.${OBJEXT} \
+	bn_s_mp_rand_platform.${OBJEXT} \
+	bn_s_mp_reverse.${OBJEXT} \
 	bn_s_mp_sqr.${OBJEXT} \
-	bn_s_mp_sub.${OBJEXT}
+	bn_s_mp_sqr_fast.${OBJEXT} \
+	bn_s_mp_sub.${OBJEXT} \
+	bn_s_mp_toom_mul.${OBJEXT} \
+	bn_s_mp_toom_sqr.${OBJEXT}
 
 
 L_HDRS	= \

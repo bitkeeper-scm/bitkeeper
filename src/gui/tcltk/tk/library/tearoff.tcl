@@ -31,15 +31,15 @@ proc ::tk::TearOffMenu {w {x 0} {y 0}} {
     # away when the toplevel goes away.
 
     if {$x == 0} {
-    	set x [winfo rootx $w]
+	set x [winfo rootx $w]
     }
     if {$y == 0} {
-    	set y [winfo rooty $w]
+	set y [winfo rooty $w]
 	if {[tk windowingsystem] eq "aqua"} {
 	    # Shift by height of tearoff entry minus height of window titlebar
 	    catch {incr y [expr {[$w yposition 1] - 16}]}
 	    # Avoid the native menu bar which sits on top of everything.
-	    if {$y < 22} { set y 22 }
+	    if {$y < 22} {set y 22}
 	}
     }
 
@@ -66,24 +66,24 @@ proc ::tk::TearOffMenu {w {x 0} {y 0}} {
 
     set parent [winfo parent $w]
     if {[$menu cget -title] ne ""} {
-    	wm title $menu [$menu cget -title]
+	wm title $menu [$menu cget -title]
     } else {
-    	switch -- [winfo class $parent] {
+	switch -- [winfo class $parent] {
 	    Menubutton {
-	    	wm title $menu [$parent cget -text]
+		wm title $menu [$parent cget -text]
 	    }
 	    Menu {
-	    	wm title $menu [$parent entrycget active -label]
+		wm title $menu [$parent entrycget active -label]
 	    }
 	}
     }
 
     if {[tk windowingsystem] eq "win32"} {
-        # [Bug 3181181]: Find the toplevel window for the menu
-        set parent [winfo toplevel $parent]
-        while {[winfo class $parent] eq "Menu"} {
-            set parent [winfo toplevel [winfo parent $parent]]
-        }
+	# [Bug 3181181]: Find the toplevel window for the menu
+	set parent [winfo toplevel $parent]
+	while {[winfo class $parent] eq "Menu"} {
+	    set parent [winfo toplevel [winfo parent $parent]]
+	}
 	wm transient $menu [winfo toplevel $parent]
 	wm attributes $menu -toolwindow 1
     }
@@ -134,47 +134,24 @@ proc ::tk::MenuDup {src dst type} {
 	lappend cmd [lindex $option 0] [lindex $option 4]
     }
     eval $cmd
+
+    # Copy the meny entries, if any
+
     set last [$src index last]
-    if {$last eq "none"} {
-	return
-    }
-    for {set i [$src cget -tearoff]} {$i <= $last} {incr i} {
-	set cmd [list $dst add [$src type $i]]
-	foreach option [$src entryconfigure $i]  {
-	    lappend cmd [lindex $option 0] [lindex $option 4]
+    if {$last ne "none"} {
+	for {set i [$src cget -tearoff]} {$i <= $last} {incr i} {
+	    set cmd [list $dst add [$src type $i]]
+	    foreach option [$src entryconfigure $i]  {
+		lappend cmd [lindex $option 0] [lindex $option 4]
+	    }
+	    eval $cmd
 	}
-	eval $cmd
     }
 
-    # Duplicate the binding tags and bindings from the source menu.
+    # Duplicate the binding tags from the source menu, replacing src with dst
 
     set tags [bindtags $src]
-    set srcLen [string length $src]
-
-    # Copy tags to x, replacing each substring of src with dst.
-
-    while {[set index [string first $src $tags]] != -1} {
-	append x [string range $tags 0 [expr {$index - 1}]]$dst
-	set tags [string range $tags [expr {$index + $srcLen}] end]
-    }
-    append x $tags
-
-    bindtags $dst $x
-
-    foreach event [bind $src] {
-	unset x
-	set script [bind $src $event]
-	set eventLen [string length $event]
-
-	# Copy script to x, replacing each substring of event with dst.
-
-	while {[set index [string first $event $script]] != -1} {
-	    append x [string range $script 0 [expr {$index - 1}]]
-	    append x $dst
-	    set script [string range $script [expr {$index + $eventLen}] end]
-	}
-	append x $script
-
-	bind $dst $event $x
-    }
+    set x [lsearch -exact $tags $src]
+    if {$x >= 0} {lset tags $x $dst}
+    bindtags $dst $tags
 }

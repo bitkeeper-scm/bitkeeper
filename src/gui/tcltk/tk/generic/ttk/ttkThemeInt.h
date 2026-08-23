@@ -39,4 +39,6 @@ MODULE_SCOPE Ttk_LayoutTemplate Ttk_FindLayoutTemplate(
 
 MODULE_SCOPE const char *Ttk_StyleName(Ttk_Style);
 
+MODULE_SCOPE int TtkBoxEqual(Ttk_Box, Ttk_Box);
+
 #endif /* _TTKTHEMEINT */

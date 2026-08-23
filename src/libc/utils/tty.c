@@ -57,8 +57,8 @@ private	void	tty_cleanup(void);
 private	int	tty_active, rows, cols;
 
 #ifdef WIN32
-# include <CONIO.H>
-# include <WINDOWS.H>
+# include <conio.h>
+# include <windows.h>
 
 private int
 init(void)
@@ -287,7 +287,7 @@ myisatty(int fd)
 	if (getenv("_BK_IN_BKD") && !getenv("_BK_BKD_IS_LOCAL")) return (0);
 
 	sprintf(buf, "BK_ISATTY%d", fd);
-	if (p = getenv(buf)) {
+	if ((p = getenv(buf))) {
 		ret = atoi(p);
 	} else if (getenv("BK_NOTTY")) {
 		ret = 0;

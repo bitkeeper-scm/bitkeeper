@@ -167,7 +167,7 @@ gitTZ(sccs *s, ser_t d)
 	if (HAS_ZONE(s, d)) {
 		tz = q = strdup(ZONE(s, d));
 		while (*q && (*q != ':')) q++;
-		if (*q == ':') for (; *q = *(q+1); q++) ;
+		if (*q == ':') for (; (*q = *(q+1)); q++) ;
 	} else {
 		tz = strdup("");
 	}
@@ -214,7 +214,7 @@ gitLine(opts *op, gitOp **oplist, char *comp_rk, char *rk,
 
 	hkey = aprintf("%s %s %s", comp_rk, rk, dk2);
 	unless (dk1) {
-		if (fip = hash_fetchStrMem(op->rkdk2fi, hkey)) {
+		if ((fip = hash_fetchStrMem(op->rkdk2fi, hkey))) {
 			dk1 = fip->dkParent;
 		}
 		unless (dk1) dk1 = "";
@@ -318,7 +318,7 @@ gitLineComp(opts *op, gitOp **oplist, char *rk, char *dk1, char *dk2)
 			exit(1);
 		}
 	} else {
-		if (d1 = PARENT(s, d2)) {
+		if ((d1 = PARENT(s, d2))) {
 			sccs_sdelta(s, d1, buf);
 			dk1 = buf;
 		}
@@ -350,7 +350,7 @@ gitLineComp(opts *op, gitOp **oplist, char *rk, char *dk1, char *dk2)
 	op->proj = s->proj;
 
 	prefix1 = 0;
-	if (path1 = key2path(dk1, 0, 0, 0)) {
+	if ((path1 = key2path(dk1, 0, 0, 0))) {
 		prefix1 = dirname(path1);
 	}
 	path2 = key2path(dk2, 0, 0, 0);
@@ -511,7 +511,7 @@ gitExport(opts *op)
 			/*
 			 * Untag the delta since it's already in git.
 			 */
-			if (d = sccs_findMD5(cset, md5)) {
+			if ((d = sccs_findMD5(cset, md5))) {
 				FLAGS(cset, d) &= ~D_SET;
 				numcsets++;
 			}
@@ -791,41 +791,51 @@ loadAuthors(char *file)
 	char	*t;
 	hash	*ret;
 	int	line = 0;
-	const char	*error;
-	int	off;
-	pcre	*re;
-	int	vec[9];
+	int	errorcode;
+	PCRE2_SIZE	off;
+	pcre2_code	*re;
+	pcre2_match_data *md;
+	PCRE2_SIZE	*vec;
 
-	re = pcre_compile(
-		"^\\s*(\\S+)\\s*=\\s*"
+	re = pcre2_compile(
+		(PCRE2_SPTR)"^\\s*(\\S+)\\s*=\\s*"
 		"(.*<[\\w0-9._%+-]+@[\\w0-9.-]+\\.\\w{2,}>)\\s*$",
-		0, &error, &off, 0);
-	if (error) fprintf(stderr, "%s: %s at %d\n", prog, error, off);
+		PCRE2_ZERO_TERMINATED,
+		0, &errorcode, &off, 0);
+	if (!re) {
+		PCRE2_UCHAR error[256];
+		pcre2_get_error_message(errorcode, error, sizeof(error));
+		fprintf(stderr, "%s: %s at %d\n", prog, (char *)error, (int)off);
+	}
 	assert(re);
+	md = pcre2_match_data_create_from_pattern(re, 0);
 
 	unless (f = fopen(file, "r")) {
 		perror(file);
+		pcre2_match_data_free(md);
+		pcre2_code_free(re);
 		return (0);
 	}
 
 	ret = hash_new(HASH_MEMHASH);
-	while (t = fgetline(f)) {
+	while ((t = fgetline(f))) {
 		++line;
 		if (!*t || (*t == '#')) continue;
-		if (pcre_exec(re, 0, t, strlen(t), 0, 0,
-		    vec, sizeof(vec)/sizeof(*vec)) < 0) {
+		if (pcre2_match(re, (PCRE2_SPTR)t, strlen(t), 0, 0, md, 0) < 0) {
 			fprintf(stderr, "%s: %s:%d: bad line: %s\n",
 			    prog, file, line, t);
 			hash_free(ret);
 			ret = 0;
 			break;
 		}
+		vec = pcre2_get_ovector_pointer(md);
 		hash_insert(ret,
 		    t+vec[2], vec[3]-vec[2],
 		    t+vec[4], vec[5]-vec[4]);
 	}
 	fclose(f);
-	pcre_free(re);
+	pcre2_match_data_free(md);
+	pcre2_code_free(re);
 	return (ret);
 }
 
@@ -876,7 +886,7 @@ uncolorAlreadyImported(opts *op, sccs *cset)
 	for (d = TABLE(cset); d >= TREE(cset); d--) {
 		if (TAG(cset, d)) continue;
 		t = COMMENTS(cset, d);
-		while (p = eachline(&t, &i)) {
+		while ((p = eachline(&t, &i))) {
 			char old = p[i];
 			p[i] = 0;
 			if (strneq(p, "GIT: ", 5)) {

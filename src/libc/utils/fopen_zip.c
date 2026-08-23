@@ -182,7 +182,7 @@ zWrite(void *cookie, const char *buf, int len)
 	zf->z.next_in = (char *)buf;
 	zf->z.avail_in = len;
 	do {
-		if (err = deflate(&zf->z, Z_NO_FLUSH)) {
+		if ((err = deflate(&zf->z, Z_NO_FLUSH))) {
 			fprintf(stderr, "zWrite: compression failure %d\n",
 			    err);
 			return (-1);

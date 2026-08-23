@@ -4,9 +4,7 @@
  * ttk::progressbar widget.
  */
 
-#include <math.h>
-#include <tk.h>
-
+#include "tkInt.h"
 #include "ttkTheme.h"
 #include "ttkWidget.h"
 
@@ -48,14 +46,14 @@ static Tk_OptionSpec ProgressbarOptionSpecs[] =
 {
     {TK_OPTION_STRING_TABLE, "-orient", "orient", "Orient",
 	"horizontal", Tk_Offset(Progressbar,progress.orientObj), -1,
-	0, (ClientData)ttkOrientStrings, STYLE_CHANGED },
+	0, ttkOrientStrings, STYLE_CHANGED },
     {TK_OPTION_PIXELS, "-length", "length", "Length",
         DEF_PROGRESSBAR_LENGTH, Tk_Offset(Progressbar,progress.lengthObj), -1,
 	0, 0, GEOMETRY_CHANGED },
     {TK_OPTION_STRING_TABLE, "-mode", "mode", "ProgressMode", "determinate",
 	Tk_Offset(Progressbar,progress.modeObj),
 	Tk_Offset(Progressbar,progress.mode),
-	0, (ClientData)ProgressbarModeStrings, 0 },
+	0, ProgressbarModeStrings, 0 },
     {TK_OPTION_DOUBLE, "-maximum", "maximum", "Maximum",
 	"100", Tk_Offset(Progressbar,progress.maximumObj), -1,
 	0, 0, 0 },
@@ -98,12 +96,11 @@ static int AnimationEnabled(Progressbar *pb)
  * 	Increments the -phase option, redisplays the widget,
  * 	and reschedules itself if animation still enabled.
  */
-static void AnimateProgressProc(ClientData clientData)
+static void AnimateProgressProc(void *clientData)
 {
-    Progressbar *pb = clientData;
+    Progressbar *pb = (Progressbar *)clientData;
 
     pb->progress.timer = 0;
-
     if (AnimationEnabled(pb)) {
 	int phase = 0;
 	Tcl_GetIntFromObj(NULL, pb->progress.phaseObj, &phase);
@@ -111,9 +108,11 @@ static void AnimateProgressProc(ClientData clientData)
 	/*
 	 * Update -phase:
 	 */
+
 	++phase;
-	if (pb->progress.maxPhase)
-	    phase %= pb->progress.maxPhase;
+	if (phase > pb->progress.maxPhase) {
+	    phase = 0;
+	}
 	Tcl_DecrRefCount(pb->progress.phaseObj);
 	pb->progress.phaseObj = Tcl_NewIntObj(phase);
 	Tcl_IncrRefCount(pb->progress.phaseObj);
@@ -121,9 +120,9 @@ static void AnimateProgressProc(ClientData clientData)
 	/*
 	 * Reschedule:
 	 */
+
 	pb->progress.timer = Tcl_CreateTimerHandler(
 	    pb->progress.period, AnimateProgressProc, clientData);
-
 	TtkRedisplayWidget(&pb->core);
     }
 }
@@ -137,7 +136,7 @@ static void CheckAnimation(Progressbar *pb)
     if (AnimationEnabled(pb)) {
 	if (pb->progress.timer == 0) {
 	    pb->progress.timer = Tcl_CreateTimerHandler(
-		pb->progress.period, AnimateProgressProc, (ClientData)pb);
+		pb->progress.period, AnimateProgressProc, pb);
 	}
     } else {
 	if (pb->progress.timer != 0) {
@@ -153,7 +152,7 @@ static void CheckAnimation(Progressbar *pb)
 
 static void VariableChanged(void *recordPtr, const char *value)
 {
-    Progressbar *pb = recordPtr;
+    Progressbar *pb = (Progressbar *)recordPtr;
     Tcl_Obj *newValue;
     double scratch;
 
@@ -186,16 +185,19 @@ static void VariableChanged(void *recordPtr, const char *value)
  * +++ Widget class methods:
  */
 
-static void ProgressbarInitialize(Tcl_Interp *interp, void *recordPtr)
+static void ProgressbarInitialize(
+    TCL_UNUSED(Tcl_Interp *),
+    void *recordPtr)
 {
-    Progressbar *pb = recordPtr;
+    Progressbar *pb = (Progressbar *)recordPtr;
+
     pb->progress.variableTrace = 0;
     pb->progress.timer = 0;
 }
 
 static void ProgressbarCleanup(void *recordPtr)
 {
-    Progressbar *pb = recordPtr;
+    Progressbar *pb = (Progressbar *)recordPtr;
     if (pb->progress.variableTrace)
 	Ttk_UntraceVariable(pb->progress.variableTrace);
     if (pb->progress.timer)
@@ -209,7 +211,7 @@ static void ProgressbarCleanup(void *recordPtr)
  */
 static int ProgressbarConfigure(Tcl_Interp *interp, void *recordPtr, int mask)
 {
-    Progressbar *pb = recordPtr;
+    Progressbar *pb = (Progressbar *)recordPtr;
     Tcl_Obj *varName = pb->progress.variableObj;
     Ttk_TraceHandle *vt = 0;
 
@@ -235,9 +237,11 @@ static int ProgressbarConfigure(Tcl_Interp *interp, void *recordPtr, int mask)
  * Post-configuration hook:
  */
 static int ProgressbarPostConfigure(
-    Tcl_Interp *interp, void *recordPtr, int mask)
+    TCL_UNUSED(Tcl_Interp *),
+    void *recordPtr,
+    TCL_UNUSED(int))
 {
-    Progressbar *pb = recordPtr;
+    Progressbar *pb = (Progressbar *)recordPtr;
     int status = TCL_OK;
 
     if (pb->progress.variableTrace) {
@@ -266,8 +270,9 @@ static int ProgressbarPostConfigure(
  */
 static int ProgressbarSize(void *recordPtr, int *widthPtr, int *heightPtr)
 {
-    Progressbar *pb = recordPtr;
-    int length = 100, orient = TTK_ORIENT_HORIZONTAL;
+    Progressbar *pb = (Progressbar *)recordPtr;
+    int length = 100;
+    int orient = TTK_ORIENT_HORIZONTAL;
 
     TtkWidgetSize(recordPtr, widthPtr, heightPtr);
 
@@ -334,7 +339,7 @@ static void ProgressbarIndeterminateLayout(
 
 static void ProgressbarDoLayout(void *recordPtr)
 {
-    Progressbar *pb = recordPtr;
+    Progressbar *pb = (Progressbar *)recordPtr;
     WidgetCore *corePtr = &pb->core;
     Ttk_Element pbar = Ttk_FindElement(corePtr->layout, "pbar");
     double value = 0.0, maximum = 100.0;
@@ -366,7 +371,7 @@ static void ProgressbarDoLayout(void *recordPtr)
 static Ttk_Layout ProgressbarGetLayout(
     Tcl_Interp *interp, Ttk_Theme theme, void *recordPtr)
 {
-    Progressbar *pb = recordPtr;
+    Progressbar *pb = (Progressbar *)recordPtr;
     Ttk_Layout layout = TtkWidgetGetOrientedLayout(
 	interp, theme, recordPtr, pb->progress.orientObj);
 
@@ -396,9 +401,9 @@ static Ttk_Layout ProgressbarGetLayout(
 static int ProgressbarStepCommand(
     void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
-    Progressbar *pb = recordPtr;
+    Progressbar *pb = (Progressbar *)recordPtr;
     double value = 0.0, stepAmount = 1.0;
-    Tcl_Obj *newValueObj; 
+    Tcl_Obj *newValueObj;
 
     if (objc == 3) {
 	if (Tcl_GetDoubleFromObj(interp, objv[2], &stepAmount) != TCL_OK) {
@@ -421,21 +426,23 @@ static int ProgressbarStepCommand(
     }
 
     newValueObj = Tcl_NewDoubleObj(value);
+    Tcl_IncrRefCount(newValueObj);
 
     TtkRedisplayWidget(&pb->core);
 
-    /* Update value by setting the linked -variable, if there is one: 
+    /* Update value by setting the linked -variable, if there is one:
      */
     if (pb->progress.variableTrace) {
-	return Tcl_ObjSetVar2(
-		    interp, pb->progress.variableObj, 0, newValueObj,
-		    TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG)
-	    ? TCL_OK : TCL_ERROR;
+	int result = Tcl_ObjSetVar2(
+		        interp, pb->progress.variableObj, 0, newValueObj,
+		        TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG)
+	        ? TCL_OK : TCL_ERROR;
+        Tcl_DecrRefCount(newValueObj);
+        return result;
     }
 
     /* Otherwise, change the -value directly:
      */
-    Tcl_IncrRefCount(newValueObj);
     Tcl_DecrRefCount(pb->progress.valueObj);
     pb->progress.valueObj = newValueObj;
     CheckAnimation(pb);
@@ -444,7 +451,7 @@ static int ProgressbarStepCommand(
 }
 
 /* $sb start|stop ?args? --
- * Change [$sb $cmd ...] to [ttk::progressbar::$cmd ...] 
+ * Change [$sb $cmd ...] to [ttk::progressbar::$cmd ...]
  * and pass to interpreter.
  */
 static int ProgressbarStartStopCommand(
@@ -458,7 +465,7 @@ static int ProgressbarStartStopCommand(
 
     prefix[0] = Tcl_NewStringObj(cmdName, -1);
     prefix[1] = objv[0];
-    Tcl_ListObjReplace(interp, cmd, 0,2, 2,prefix);
+    Tcl_ListObjReplace(interp, cmd, 0, 2, 2,prefix);
 
     Tcl_IncrRefCount(cmd);
     status = Tcl_EvalObjEx(interp, cmd, 0);
@@ -468,17 +475,23 @@ static int ProgressbarStartStopCommand(
 }
 
 static int ProgressbarStartCommand(
-    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
+    TCL_UNUSED(void *),
+    Tcl_Interp *interp,
+    int objc,
+    Tcl_Obj *const objv[])
 {
     return ProgressbarStartStopCommand(
-	interp, "::ttk::progressbar::start", objc, objv);
+	    interp, "::ttk::progressbar::start", objc, objv);
 }
 
 static int ProgressbarStopCommand(
-    void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
+    TCL_UNUSED(void *),
+    Tcl_Interp *interp,
+    int objc,
+    Tcl_Obj *const objv[])
 {
     return ProgressbarStartStopCommand(
-	interp, "::ttk::progressbar::stop", objc, objv);
+	    interp, "::ttk::progressbar::stop", objc, objv);
 }
 
 static const Ttk_Ensemble ProgressbarCommands[] = {
@@ -529,8 +542,8 @@ TTK_END_LAYOUT
  * Initialization:
  */
 
-MODULE_SCOPE
-void TtkProgressbar_Init(Tcl_Interp *interp)
+MODULE_SCOPE void
+TtkProgressbar_Init(Tcl_Interp *interp)
 {
     Ttk_Theme themePtr = Ttk_GetDefaultTheme(interp);
 

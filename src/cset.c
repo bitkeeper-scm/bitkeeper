@@ -295,7 +295,7 @@ cset_main(int ac, char **av)
 
 		cset->rstart = 0;
 		cset->rstop = 0;
-		while(buf = fgetline(stdin)) {
+		while((buf = fgetline(stdin))) {
 			if (copts.serial) {
 				d = atoi(buf);
 				assert((d > 0) && (d <= TABLE(cset)));
@@ -1006,7 +1006,7 @@ cset_mkList(sccs *cset)
 	weave	*item, *list = 0;
 
 	sccs_rdweaveInit(cset);
-	while (d = cset_rdweavePair(cset, RWP_DSET, &rkoff, &dkoff)) {
+	while ((d = cset_rdweavePair(cset, RWP_DSET, &rkoff, &dkoff))) {
 		unless (dkoff) continue; /* last key */
 		item = addArray(&list, 0);
 		item->ser = d;

@@ -59,7 +59,7 @@ urlinfo_load(nested *n, remote *base)
 			T_NESTED("%s: %s", c ? c->path : "?", url);
 
 			/* strip old timestamps */
-			if (t = strchr(url, '|')) *t = 0;
+			if ((t = strchr(url, '|'))) *t = 0;
 
 			/*
 			 * in clone when loading someone else's urllist we
@@ -348,7 +348,7 @@ urlinfo_setFromEnv(nested *n, char *url)
 	data->time = time(0);
 	data->gate = (getenv("BKD_GATE") ? 1 : 0);
 	FREE(data->repoID);
-	if (t = getenv("BKD_REPO_ID")) data->repoID = strdup(t);
+	if ((t = getenv("BKD_REPO_ID"))) data->repoID = strdup(t);
 	n->list_dirty = 1;
 
 	data = urlinfo_fetchAlloc(n, url);
@@ -528,8 +528,8 @@ urlinfo_probeURL(nested *n, char *url, FILE *out)
 		hash_free(data->pcomps);
 		data->pcomps = hash_new(HASH_MEMHASH);
 
-		while (t = fgetline(fout)) {
-			if (p = separator(t)) *p = 0;
+		while ((t = fgetline(fout))) {
+			if ((p = separator(t))) *p = 0;
 			unless (c = nested_findKey(n, t)) {
 				if (p) p[-1] = ' ';
 				fprintf(out, "failed\n");

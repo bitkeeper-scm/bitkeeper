@@ -13,6 +13,7 @@
 
 #include "tkInt.h"
 #include "tkCanvas.h"
+#include "default.h"
 
 /*
  * The structure below defines the record for each polygon item.
@@ -112,8 +113,9 @@ static const Tk_ConfigSpec configSpecs[] = {
     {TK_CONFIG_CUSTOM, "-disabledwidth", NULL, NULL,
 	"0.0", Tk_Offset(PolygonItem, outline.disabledWidth),
 	TK_CONFIG_DONT_SET_DEFAULT, &pixelOption},
+    /* Remark: Default for -fill should be NULL, see [2860519]. Will be fixed in Tk 8.7 */
     {TK_CONFIG_COLOR, "-fill", NULL, NULL,
-	"black", Tk_Offset(PolygonItem, fillColor), TK_CONFIG_NULL_OK, NULL},
+	DEF_CANVITEM_OUTLINE, Tk_Offset(PolygonItem, fillColor), TK_CONFIG_NULL_OK, NULL},
     {TK_CONFIG_JOIN_STYLE, "-joinstyle", NULL, NULL,
 	"round", Tk_Offset(PolygonItem, joinStyle), TK_CONFIG_DONT_SET_DEFAULT, NULL},
     {TK_CONFIG_CUSTOM, "-offset", NULL, NULL,
@@ -273,7 +275,7 @@ CreatePolygon(
     polyPtr->fillStipple = None;
     polyPtr->activeFillStipple = None;
     polyPtr->disabledFillStipple = None;
-    polyPtr->fillGC = None;
+    polyPtr->fillGC = NULL;
     polyPtr->smooth = NULL;
     polyPtr->splineSteps = 12;
     polyPtr->autoClosed = 0;
@@ -374,7 +376,7 @@ PolygonCoords(
 	 * another point to close the polygon.
 	 */
 
-	polyPtr->coordPtr = ckalloc(sizeof(double) * (objc+2));
+	polyPtr->coordPtr = (double *)ckalloc(sizeof(double) * (objc+2));
 	polyPtr->pointsAllocated = numPoints+1;
     }
     for (i = objc-1; i >= 0; i--) {
@@ -478,9 +480,9 @@ ConfigurePolygon(
 	mask |= GCCapStyle|GCJoinStyle;
 	newGC = Tk_GetGC(tkwin, mask, &gcValues);
     } else {
-	newGC = None;
+	newGC = NULL;
     }
-    if (polyPtr->outline.gc != None) {
+    if (polyPtr->outline.gc != NULL) {
 	Tk_FreeGC(Tk_Display(tkwin), polyPtr->outline.gc);
     }
     polyPtr->outline.gc = newGC;
@@ -504,7 +506,7 @@ ConfigurePolygon(
     }
 
     if (color == NULL) {
-	newGC = None;
+	newGC = NULL;
     } else {
 	gcValues.foreground = color->pixel;
 	mask = GCForeground;
@@ -518,13 +520,13 @@ ConfigurePolygon(
 	 * Mac OS X CG drawing needs access to the outline linewidth
 	 * even for fills (as linewidth controls antialiasing).
 	 */
-	gcValues.line_width = polyPtr->outline.gc != None ?
+	gcValues.line_width = polyPtr->outline.gc != NULL ?
 		polyPtr->outline.gc->line_width : 0;
 	mask |= GCLineWidth;
 #endif
 	newGC = Tk_GetGC(tkwin, mask, &gcValues);
     }
-    if (polyPtr->fillGC != None) {
+    if (polyPtr->fillGC != NULL) {
 	Tk_FreeGC(Tk_Display(tkwin), polyPtr->fillGC);
     }
     polyPtr->fillGC = newGC;
@@ -562,7 +564,7 @@ ConfigurePolygon(
 
 static void
 DeletePolygon(
-    Tk_Canvas canvas,		/* Info about overall canvas widget. */
+    TCL_UNUSED(Tk_Canvas),		/* Info about overall canvas widget. */
     Tk_Item *itemPtr,		/* Item that is being deleted. */
     Display *display)		/* Display containing window for canvas. */
 {
@@ -590,7 +592,7 @@ DeletePolygon(
     if (polyPtr->disabledFillStipple != None) {
 	Tk_FreeBitmap(display, polyPtr->disabledFillStipple);
     }
-    if (polyPtr->fillGC != None) {
+    if (polyPtr->fillGC != NULL) {
 	Tk_FreeGC(display, polyPtr->fillGC);
     }
 }
@@ -675,7 +677,7 @@ ComputePolygonBbox(
 	if (index < 0) {
 	    index += (polyPtr->numPoints - polyPtr->autoClosed) * 2;
 	}
- 	tsoffset->xoffset = (int) (polyPtr->coordPtr[index] + 0.5);
+	tsoffset->xoffset = (int) (polyPtr->coordPtr[index] + 0.5);
 	tsoffset->yoffset = (int) (polyPtr->coordPtr[index+1] + 0.5);
     } else {
 	if (tsoffset->flags & TK_OFFSET_LEFT) {
@@ -694,7 +696,7 @@ ComputePolygonBbox(
 	}
     }
 
-    if (polyPtr->outline.gc != None) {
+    if (polyPtr->outline.gc != NULL) {
 	tsoffset = &polyPtr->outline.tsoffset;
 	if (tsoffset) {
 	    if (tsoffset->flags & TK_OFFSET_INDEX) {
@@ -823,7 +825,7 @@ TkFillPolygon(
     if (numPoints <= MAX_STATIC_POINTS) {
 	pointPtr = staticPoints;
     } else {
-	pointPtr = ckalloc(numPoints * sizeof(XPoint));
+	pointPtr = (XPoint *)ckalloc(numPoints * sizeof(XPoint));
     }
 
     for (i=0, pPtr=pointPtr ; i<numPoints; i+=1, coordPtr+=2, pPtr++) {
@@ -836,11 +838,11 @@ TkFillPolygon(
      * allocated.
      */
 
-    if (gc != None && numPoints > 3) {
+    if (gc != NULL && numPoints > 3) {
 	XFillPolygon(display, drawable, gc, pointPtr, numPoints, Complex,
 		CoordModeOrigin);
     }
-    if (outlineGC != None) {
+    if (outlineGC != NULL) {
 	XDrawLines(display, drawable, outlineGC, pointPtr, numPoints,
 		CoordModeOrigin);
     }
@@ -872,18 +874,19 @@ DisplayPolygon(
     Tk_Item *itemPtr,		/* Item to be displayed. */
     Display *display,		/* Display on which to draw item. */
     Drawable drawable,		/* Pixmap or window in which to draw item. */
-    int x, int y, int width, int height)
-				/* Describes region of canvas that must be
-				 * redisplayed (not used). */
+    TCL_UNUSED(int),	/* Describes region of canvas that must be */
+    TCL_UNUSED(int),	/* redisplayed (not used). */
+    TCL_UNUSED(int),
+    TCL_UNUSED(int))
 {
     PolygonItem *polyPtr = (PolygonItem *) itemPtr;
     Tk_State state = itemPtr->state;
     Pixmap stipple = polyPtr->fillStipple;
     double linewidth = polyPtr->outline.width;
 
-    if (((polyPtr->fillGC == None) && (polyPtr->outline.gc == None)) ||
+    if (((polyPtr->fillGC == NULL) && (polyPtr->outline.gc == NULL)) ||
 	    (polyPtr->numPoints < 1) ||
-	    (polyPtr->numPoints < 3 && polyPtr->outline.gc == None)) {
+	    (polyPtr->numPoints < 3 && polyPtr->outline.gc == NULL)) {
 	return;
     }
 
@@ -911,7 +914,7 @@ DisplayPolygon(
      * reset the offset when done, since the GC is supposed to be read-only.
      */
 
-    if ((stipple != None) && (polyPtr->fillGC != None)) {
+    if ((stipple != None) && (polyPtr->fillGC != NULL)) {
 	Tk_TSOffset *tsoffset = &polyPtr->tsoffset;
 	int w = 0, h = 0;
 	int flags = tsoffset->flags;
@@ -969,15 +972,15 @@ DisplayPolygon(
 	if (numPoints <= MAX_STATIC_POINTS) {
 	    pointPtr = staticPoints;
 	} else {
-	    pointPtr = ckalloc(numPoints * sizeof(XPoint));
+	    pointPtr = (XPoint *)ckalloc(numPoints * sizeof(XPoint));
 	}
 	numPoints = polyPtr->smooth->coordProc(canvas, polyPtr->coordPtr,
 		polyPtr->numPoints, polyPtr->splineSteps, pointPtr, NULL);
-	if (polyPtr->fillGC != None) {
+	if (polyPtr->fillGC != NULL) {
 	    XFillPolygon(display, drawable, polyPtr->fillGC, pointPtr,
 		    numPoints, Complex, CoordModeOrigin);
 	}
-	if (polyPtr->outline.gc != None) {
+	if (polyPtr->outline.gc != NULL) {
 	    XDrawLines(display, drawable, polyPtr->outline.gc, pointPtr,
 		    numPoints, CoordModeOrigin);
 	}
@@ -986,7 +989,7 @@ DisplayPolygon(
 	}
     }
     Tk_ResetOutlineGC(canvas, itemPtr, &polyPtr->outline);
-    if ((stipple != None) && (polyPtr->fillGC != None)) {
+    if ((stipple != None) && (polyPtr->fillGC != NULL)) {
 	XSetTSOrigin(display, polyPtr->fillGC, 0, 0);
     }
 }
@@ -996,7 +999,7 @@ DisplayPolygon(
  *
  * PolygonInsert --
  *
- *	Insert coords into a polugon item at a given index.
+ *	Insert coords into a polygon item at a given index.
  *
  * Results:
  *	None.
@@ -1016,7 +1019,7 @@ PolygonInsert(
     Tcl_Obj *obj)		/* New coordinates to be inserted. */
 {
     PolygonItem *polyPtr = (PolygonItem *) itemPtr;
-    int length, objc, i;
+    int length, oriNumPoints, objc, nbInsPoints, i;
     Tcl_Obj **objv;
     double *newCoordPtr;
     Tk_State state = itemPtr->state;
@@ -1029,14 +1032,16 @@ PolygonInsert(
 	    || !objc || objc&1) {
 	return;
     }
+    oriNumPoints = polyPtr->numPoints - polyPtr->autoClosed;
     length = 2*(polyPtr->numPoints - polyPtr->autoClosed);
+    nbInsPoints = objc / 2;
     while (beforeThis > length) {
 	beforeThis -= length;
     }
     while (beforeThis < 0) {
 	beforeThis += length;
     }
-    newCoordPtr = ckalloc(sizeof(double) * (length + 2 + objc));
+    newCoordPtr = (double *)ckalloc(sizeof(double) * (length + 2 + objc));
     for (i=0; i<beforeThis; i++) {
 	newCoordPtr[i] = polyPtr->coordPtr[i];
     }
@@ -1087,9 +1092,11 @@ PolygonInsert(
 	 * the general canvas code not to redraw the whole object. If this
 	 * flag is not set, the canvas will do the redrawing, otherwise I have
 	 * to do it here.
+	 * Rationale for the optimization code can be found in Tk ticket
+	 * [5fb8145997].
 	 */
 
-    	double width;
+	double width;
 	int j;
 
 	itemPtr->redraw_flags |= TK_ITEM_DONT_REDRAW;
@@ -1103,42 +1110,76 @@ PolygonInsert(
 
 	itemPtr->x1 = itemPtr->x2 = (int) polyPtr->coordPtr[beforeThis];
 	itemPtr->y1 = itemPtr->y2 = (int) polyPtr->coordPtr[beforeThis+1];
+
 	beforeThis -= 2;
 	objc += 4;
+
 	if (polyPtr->smooth) {
-	    beforeThis -= 2;
-	    objc += 4;
+	    if (!strcmp(polyPtr->smooth->name, "true")) {
+		/*
+		 * Quadratic Bezier splines.
+		 */
+
+		beforeThis -= 2;
+		objc += 4;
+
+	    } else if (!strcmp(polyPtr->smooth->name, "raw")) {
+		/*
+		 * Cubic Bezier splines.
+		 */
+
+		if ((oriNumPoints % 3) || (nbInsPoints % 3)) {
+		    /*
+		     * No optimization for "degenerate" polygons or when inserting
+		     * something else than a multiple of 3 points.
+		     */
+
+		    itemPtr->redraw_flags &= ~TK_ITEM_DONT_REDRAW;
+		} else {
+		    beforeThis -= abs(beforeThis) % 6;
+		    objc += 4;
+		}
+
+	    } else {
+		/*
+		 * Custom smoothing method. No optimization is possible.
+		 */
+
+		itemPtr->redraw_flags &= ~TK_ITEM_DONT_REDRAW;
+	    }
 	}
 
-	/*
-	 * Be careful; beforeThis could now be negative
-	 */
+	if (itemPtr->redraw_flags & TK_ITEM_DONT_REDRAW) {
+	    /*
+	     * Be careful; beforeThis could now be negative
+	     */
 
-	for (i=beforeThis; i<beforeThis+objc; i+=2) {
-	    j = i;
-	    if (j < 0) {
-		j += length;
-	    } else if (j >= length) {
-		j -= length;
+	    for (i=beforeThis; i<beforeThis+objc; i+=2) {
+		j = i;
+		if (j < 0) {
+		    j += length;
+		} else if (j >= length) {
+		    j -= length;
+		}
+		TkIncludePoint(itemPtr, polyPtr->coordPtr+j);
 	    }
-	    TkIncludePoint(itemPtr, polyPtr->coordPtr+j);
+	    width = polyPtr->outline.width;
+	    if (Canvas(canvas)->currentItemPtr == itemPtr) {
+		if (polyPtr->outline.activeWidth > width) {
+		    width = polyPtr->outline.activeWidth;
+		}
+	    } else if (state == TK_STATE_DISABLED) {
+		if (polyPtr->outline.disabledWidth > 0.0) {
+		    width = polyPtr->outline.disabledWidth;
+		}
+	    }
+	    itemPtr->x1 -= (int) width;
+	    itemPtr->y1 -= (int) width;
+	    itemPtr->x2 += (int) width;
+	    itemPtr->y2 += (int) width;
+	    Tk_CanvasEventuallyRedraw(canvas,
+		    itemPtr->x1, itemPtr->y1, itemPtr->x2, itemPtr->y2);
 	}
-	width = polyPtr->outline.width;
-	if (Canvas(canvas)->currentItemPtr == itemPtr) {
-	    if (polyPtr->outline.activeWidth > width) {
-		width = polyPtr->outline.activeWidth;
-	    }
-	} else if (state == TK_STATE_DISABLED) {
-	    if (polyPtr->outline.disabledWidth > 0.0) {
-		width = polyPtr->outline.disabledWidth;
-	    }
-	}
-	itemPtr->x1 -= (int) width;
-	itemPtr->y1 -= (int) width;
-	itemPtr->x2 += (int) width;
-	itemPtr->y2 += (int) width;
-	Tk_CanvasEventuallyRedraw(canvas,
-		itemPtr->x1, itemPtr->y1, itemPtr->x2, itemPtr->y2);
     }
 
     ComputePolygonBbox(canvas, polyPtr);
@@ -1238,7 +1279,6 @@ PolygonDeleteCoords(
  *--------------------------------------------------------------
  */
 
-	/* ARGSUSED */
 static double
 PolygonToPoint(
     Tk_Canvas canvas,		/* Canvas containing item. */
@@ -1286,7 +1326,7 @@ PolygonToPoint(
 	if (numPoints <= MAX_STATIC_POINTS) {
 	    polyPoints = staticSpace;
 	} else {
-	    polyPoints = ckalloc(2 * numPoints * sizeof(double));
+	    polyPoints = (double *)ckalloc(2 * numPoints * sizeof(double));
 	}
 	numPoints = polyPtr->smooth->coordProc(canvas, polyPtr->coordPtr,
 		polyPtr->numPoints, polyPtr->splineSteps, NULL, polyPoints);
@@ -1299,7 +1339,7 @@ PolygonToPoint(
     if (bestDist <= 0.0) {
 	goto donepoint;
     }
-    if ((polyPtr->outline.gc != None) && (polyPtr->joinStyle == JoinRound)) {
+    if ((polyPtr->outline.gc != NULL) && (polyPtr->joinStyle == JoinRound)) {
 	dist = bestDist - radius;
 	if (dist <= 0.0) {
 	    bestDist = 0.0;
@@ -1309,7 +1349,7 @@ PolygonToPoint(
 	}
     }
 
-    if ((polyPtr->outline.gc == None) || (width <= 1)) {
+    if ((polyPtr->outline.gc == NULL) || (width <= 1)) {
 	goto donepoint;
     }
 
@@ -1428,7 +1468,6 @@ PolygonToPoint(
  *--------------------------------------------------------------
  */
 
-	/* ARGSUSED */
 static int
 PolygonToArea(
     Tk_Canvas canvas,		/* Canvas containing item. */
@@ -1495,7 +1534,7 @@ PolygonToArea(
 	if (numPoints <= MAX_STATIC_POINTS) {
 	    polyPoints = staticSpace;
 	} else {
-	    polyPoints = ckalloc(2 * numPoints * sizeof(double));
+	    polyPoints = (double *)ckalloc(2 * numPoints * sizeof(double));
 	}
 	numPoints = polyPtr->smooth->coordProc(canvas, polyPtr->coordPtr,
 		polyPtr->numPoints, polyPtr->splineSteps, NULL, polyPoints);
@@ -1515,7 +1554,7 @@ PolygonToArea(
 	goto donearea;
     }
 
-    if (polyPtr->outline.gc == None) {
+    if (polyPtr->outline.gc == NULL) {
 	goto donearea;
     }
 
@@ -1665,7 +1704,7 @@ ScalePolygon(
 static int
 GetPolygonIndex(
     Tcl_Interp *interp,		/* Used for error reporting. */
-    Tk_Canvas canvas,		/* Canvas containing item. */
+    TCL_UNUSED(Tk_Canvas),		/* Canvas containing item. */
     Tk_Item *itemPtr,		/* Item for which the index is being
 				 * specified. */
     Tcl_Obj *obj,		/* Specification of a particular coord in
@@ -1795,7 +1834,7 @@ PolygonToPostscript(
     Tcl_Interp *interp,		/* Leave Postscript or error message here. */
     Tk_Canvas canvas,		/* Information about overall canvas. */
     Tk_Item *itemPtr,		/* Item for which Postscript is wanted. */
-    int prepass)		/* 1 means this is a prepass to collect font
+    TCL_UNUSED(int))	/* 1 means this is a prepass to collect font
 				 * information; 0 means final Postscript is
 				 * being created. */
 {

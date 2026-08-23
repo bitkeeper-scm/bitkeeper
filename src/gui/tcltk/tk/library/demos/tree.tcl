@@ -39,6 +39,7 @@ proc populateTree {tree node} {
     set path [$tree set $node fullpath]
     $tree delete [$tree children $node]
     foreach f [lsort -dictionary [glob -nocomplain -dir $path *]] {
+	set f [file normalize $f]
 	set type [file type $f]
 	set id [$tree insert $node end -text [file tail $f] \
 		-values [list $f $type]]
@@ -75,7 +76,7 @@ ttk::scrollbar $w.vsb -orient vertical -command "$w.tree yview"
 ttk::scrollbar $w.hsb -orient horizontal -command "$w.tree xview"
 $w.tree heading \#0 -text "Directory Structure"
 $w.tree heading size -text "File Size"
-$w.tree column size -stretch 0 -width 70
+$w.tree column size -width 70
 populateRoots $w.tree
 bind $w.tree <<TreeviewOpen>> {populateTree %W [%W focus]}
 

@@ -29,7 +29,7 @@ sendbug_main(int ac,  char **av)
 	/* we want to default to GUI tools, and let -t or no DISPLAY override that */
 	putenv("BK_GUI=YES");
 	
-	if (name = strrchr(av[0], '/')) {
+	if ((name = strrchr(av[0], '/'))) {
 		name++;
 	} else {
 		name = av[0];

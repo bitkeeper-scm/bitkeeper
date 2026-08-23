@@ -102,8 +102,8 @@ parent_main(int ac,  char **av)
 			}
 		}
 		i = optind;
-		while (which =
-		    (av[i] && streq(av[i], "-")) ? fgetline(stdin) : av[i++]) {
+		while ((which =
+		    (av[i] && streq(av[i], "-")) ? fgetline(stdin) : av[i++])) {
 			unless (p = normalize(which, 1)) return (1);
 			puts(p);
 			free(p);

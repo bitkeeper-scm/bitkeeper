@@ -14,6 +14,7 @@
 
 #include "tclInt.h"
 #include "tommath.h"
+#include "tommath_private.h"
 
 MODULE_SCOPE const TclTomMathStubs tclTomMathStubs;
 
@@ -89,81 +90,42 @@ TclBN_revision(void)
 {
     return TCLTOMMATH_REVISION;
 }
-#if 0
-
-/*
- *----------------------------------------------------------------------
- *
- * TclBNAlloc --
- *
- *	Allocate memory for libtommath.
- *
- * Results:
- *	Returns a pointer to the allocated block.
- *
- * This procedure is a wrapper around Tcl_Alloc, needed because of a
- * mismatched type signature between Tcl_Alloc and malloc.
- *
- *----------------------------------------------------------------------
- */
-
-extern void *
+MODULE_SCOPE void *
 TclBNAlloc(
     size_t x)
 {
     return (void *) ckalloc((unsigned int) x);
 }
-
-/*
- *----------------------------------------------------------------------
- *
- * TclBNRealloc --
- *
- *	Change the size of an allocated block of memory in libtommath
- *
- * Results:
- *	Returns a pointer to the allocated block.
- *
- * This procedure is a wrapper around Tcl_Realloc, needed because of a
- * mismatched type signature between Tcl_Realloc and realloc.
- *
- *----------------------------------------------------------------------
- */
 
-void *
+MODULE_SCOPE void *
 TclBNRealloc(
     void *p,
+    size_t oldsize,
     size_t s)
 {
     return (void *) ckrealloc((char *) p, (unsigned int) s);
 }
-
-/*
- *----------------------------------------------------------------------
- *
- * TclBNFree --
- *
- *	Free allocated memory in libtommath.
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	Memory is freed.
- *
- * This function is simply a wrapper around Tcl_Free, needed in libtommath
- * because of a type mismatch between free and Tcl_Free.
- *
- *----------------------------------------------------------------------
- */
 
-extern void
-TclBNFree(
-    void *p)
+MODULE_SCOPE void *
+TclBNCalloc(
+    size_t n,
+    size_t s)
 {
-    ckree((char *) p);
+    size_t sz = n * s;
+    void *p = (void *) ckalloc((unsigned int) sz);
+    memset(p, 0, sz);
+    return p;
 }
-#endif
+
+MODULE_SCOPE void
+TclBNFree(
+    void *p,
+    size_t s)
+{
+    if (p) {
+        ckfree((char *) p);
+    }
+}
 
 /*
  *----------------------------------------------------------------------
@@ -308,3 +270,16 @@ TclBNInitBignumFromWideUInt(
  * fill-column: 78
  * End:
  */
+
+/*
+ * Legacy compatibility stubs for deprecated/removed tommath functions
+ */
+void
+TclBN_reverse(
+    unsigned char *s,
+    int len)
+{
+    if (len > 0) {
+        s_mp_reverse(s, (size_t)len);
+    }
+}

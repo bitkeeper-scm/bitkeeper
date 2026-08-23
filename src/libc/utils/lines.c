@@ -21,7 +21,7 @@
 #include "system.h"
 #include "lines.h"
 
-#define	setLLEN(s, len)	(*(u32 *)(s) = (*(u32 *)(s) & ~LMASK) | len)
+#define	setLLEN(s, len)	(*(u32 *)(s) = (*(u32 *)(s) & ~LMASK) | (len))
 
 /* size of array (saves LSIZ-1 items) */
 #define	LSIZ(s)				(1u << (*(u32 *)(s) >> LBITS))
@@ -162,7 +162,7 @@ _catArray(void **space, void *array, int size)
 	int	n1, n2;
 	void	*ret = 0;
 
-	if (n2 = nLines(array)) {
+	if ((n2 = nLines(array))) {
 		n1 = nLines(*space);
 		*space = _growArray_int(*space, n2, size);
 		ret = (u8 *)*space+(n1+1)*size;
@@ -413,7 +413,7 @@ prog2Lines(char **space, char *cmdline)
 	char	*p;
 
 	unless (cmdline && (f = popen(cmdline, "r"))) return (space);
-	while (p = fgetline(f)) {
+	while ((p = fgetline(f))) {
 		space = addLine(space, strdup(p));
 	}
 	pclose(f);
@@ -431,7 +431,7 @@ file2Lines(char **space, char *file)
 	char	*p;
 
 	unless (file && (f = fopen(file, "r"))) return (space);
-	while (p = fgetline(f)) {
+	while ((p = fgetline(f))) {
 		space = addLine(space, strdup(p));
 	}
 	fclose(f);

@@ -28,9 +28,12 @@
  * but this will be a transient effect.
  */
 
-#include <stdio.h>	/* for sprintf */
-#include <tk.h>
+#include "tkInt.h"
 #include "ttkTheme.h"
+
+#ifdef _WIN32
+#include "tkWinInt.h"
+#endif
 
 struct Ttk_ResourceCache_ {
     Tcl_Interp	  *interp;	/* Interpreter for error reporting */
@@ -210,7 +213,7 @@ void Ttk_RegisterNamedColor(
     char nameBuf[14];
     Tcl_Obj *colorNameObj;
 
-    sprintf(nameBuf, "#%04X%04X%04X",
+    snprintf(nameBuf, sizeof(nameBuf), "#%04X%04X%04X",
     	colorPtr->red, colorPtr->green, colorPtr->blue);
     colorNameObj = Tcl_NewStringObj(nameBuf, -1);
     Tcl_IncrRefCount(colorNameObj);
@@ -244,6 +247,16 @@ static Tcl_Obj *CheckNamedColor(Ttk_ResourceCache cache, Tcl_Obj *objPtr)
  * Template for allocation routines:
  */
 typedef void *(*Allocator)(Tcl_Interp *, Tk_Window, Tcl_Obj *);
+
+static void *AllocFont(Tcl_Interp *interp, Tk_Window tkwin, Tcl_Obj *objPtr) {
+	return Tk_AllocFontFromObj(interp, tkwin, objPtr);
+}
+static void *AllocColor(Tcl_Interp *interp, Tk_Window tkwin, Tcl_Obj *objPtr) {
+	return Tk_AllocColorFromObj(interp, tkwin, objPtr);
+}
+static void *AllocBorder(Tcl_Interp *interp, Tk_Window tkwin, Tcl_Obj *objPtr) {
+	return Tk_Alloc3DBorderFromObj(interp, tkwin, objPtr);
+}
 
 static Tcl_Obj *Ttk_Use(
     Tcl_Interp *interp,
@@ -283,7 +296,7 @@ Tcl_Obj *Ttk_UseFont(Ttk_ResourceCache cache, Tk_Window tkwin, Tcl_Obj *objPtr)
 {
     InitCacheWindow(cache, tkwin);
     return Ttk_Use(cache->interp,
-	&cache->fontTable,(Allocator)Tk_AllocFontFromObj, tkwin, objPtr);
+	&cache->fontTable, AllocFont, tkwin, objPtr);
 }
 
 /*
@@ -295,7 +308,7 @@ Tcl_Obj *Ttk_UseColor(Ttk_ResourceCache cache, Tk_Window tkwin, Tcl_Obj *objPtr)
     objPtr = CheckNamedColor(cache, objPtr);
     InitCacheWindow(cache, tkwin);
     return Ttk_Use(cache->interp,
-	&cache->colorTable,(Allocator)Tk_AllocColorFromObj, tkwin, objPtr);
+	&cache->colorTable, AllocColor, tkwin, objPtr);
 }
 
 /*
@@ -308,7 +321,7 @@ Tcl_Obj *Ttk_UseBorder(
     objPtr = CheckNamedColor(cache, objPtr);
     InitCacheWindow(cache, tkwin);
     return Ttk_Use(cache->interp,
-	&cache->borderTable,(Allocator)Tk_Alloc3DBorderFromObj, tkwin, objPtr);
+	&cache->borderTable, AllocBorder, tkwin, objPtr);
 }
 
 /* NullImageChanged --

@@ -4,7 +4,7 @@
  *	This file contains the platform specific color routines needed for X
  *	support.
  *
- * Copyright (c) 1996 by Sun Microsystems, Inc.
+ * Copyright (c) 1996 Sun Microsystems, Inc.
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -85,7 +85,7 @@ TkpFreeColor(
      */
 
     visual = tkColPtr->visual;
-    if ((visual->class != StaticGray) && (visual->class != StaticColor)
+    if ((visual->c_class != StaticGray) && (visual->c_class != StaticColor)
 	    && (tkColPtr->color.pixel != BlackPixelOfScreen(screen))
 	    && (tkColPtr->color.pixel != WhitePixelOfScreen(screen))) {
 	Tk_ErrorHandler handler;
@@ -136,17 +136,17 @@ TkpGetColor(
     if (*name != '#') {
 	XColor screen;
 
-	if (((*name - 'A') & 0xdf) < sizeof(tkWebColors)/sizeof(tkWebColors[0])) {
-	    if (!((name[0] - 'G') & 0xdf) && !((name[1] - 'R') & 0xdf)
-		    && !((name[2] - 'A') & 0xdb) && !((name[3] - 'Y') & 0xdf)
+	if (((*name - 'A') & 0xDF) < sizeof(tkWebColors)/sizeof(tkWebColors[0])) {
+	    if (!((name[0] - 'G') & 0xDF) && !((name[1] - 'R') & 0xDF)
+		    && !((name[2] - 'A') & 0xDB) && !((name[3] - 'Y') & 0xDF)
 		    && !name[4]) {
 		name = "#808080808080";
 		goto gotWebColor;
 	    } else {
-		const char *p = tkWebColors[((*name - 'A') & 0x1f)];
+		const char *p = tkWebColors[((*name - 'A') & 0x1F)];
 		if (p) {
 		    const char *q = name;
-		    while (!((*p - *(++q)) & 0xdf)) {
+		    while (!((*p - *(++q)) & 0xDF)) {
 			if (!*p++) {
 			    name = p;
 			    goto gotWebColor;
@@ -157,7 +157,7 @@ TkpGetColor(
 	}
 	if (strlen(name) > 99) {
 	/* Don't bother to parse this. [Bug 2809525]*/
-	return (TkColor *) NULL;
+	return NULL;
     } else if (XAllocNamedColor(display, colormap, name, &screen, &color) != 0) {
 	    DeleteStressedCmap(display, colormap);
 	} else {

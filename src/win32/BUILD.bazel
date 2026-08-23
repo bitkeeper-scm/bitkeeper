@@ -1,0 +1,40 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "msys",
+    srcs = glob(["msys/**"]),
+)
+
+filegroup(
+    name = "dlls",
+    srcs = glob([
+        "dll/scc/lib/*.dll",
+        "dll/shellx/lib/*.dll",
+        "dll/shellx/bin/*",
+        "dll/shellx/lib/Icons/*.ico",
+    ]),
+)
+
+filegroup(
+    name = "icons",
+    srcs = glob(["data/*.ico"]),
+)
+
+# Compile bk.rc resource into bkres.o
+genrule(
+    name = "gen_bkres",
+    srcs = [
+        "data/bk.rc",
+        "data/bk.ico",
+        "@llvm_mingw_toolchain//:all_files",
+    ],
+    outs = ["bkres.o"],
+    cmd = """
+        set -e
+        rc_in=$$(pwd)/$(location data/bk.rc)
+        out=$$(pwd)/$@
+        windres_wrapper=$$(pwd)/$$(echo "$(locations @llvm_mingw_toolchain//:all_files)" | tr ' ' '\\n' | grep 'wrappers/windres$$' | head -n 1)
+        (cd src && "$$windres_wrapper" -i "$$rc_in" -o "$$out")
+    """,
+    target_compatible_with = ["@platforms//os:windows"],
+)

@@ -194,7 +194,7 @@ getdir(char *dir)
 		return (0);
 	}
 	lines = allocLines(16);
-	while (e = readdir(d)) {
+	while ((e = readdir(d))) {
 		if (streq(e->d_name, ".") || streq(e->d_name, "..")) {
 			continue;
 		}

@@ -129,7 +129,7 @@ getRealName(char *path, MDBM *db, char *realname)
 	/*
 	 * Scan each component in the path from top to bottom
 	 */
-	while (p  = strchr(q, '/')) {
+	while ((p  = strchr(q, '/'))) {
 		*p = 0;
 		if (getRealBaseName(mypath, realname, db, name))  goto err;
 		if (first) {

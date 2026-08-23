@@ -5,34 +5,33 @@
  *
  */
 
-#include <string.h>
-
-#include <tk.h>
+#include "tkInt.h"
 #include "ttkTheme.h"
 
 /*
- * Table of state names.  Must be kept in sync with TTK_STATE_*
- * #defines in ttkTheme.h.
+ * Table of state names.
  */
-static const char *const stateNames[] =
-{
-    "active",		/* Mouse cursor is over widget or element */
-    "disabled",		/* Widget is disabled */
-    "focus",		/* Widget has keyboard focus */
-    "pressed",		/* Pressed or "armed" */
-    "selected",		/* "on", "true", "current", etc. */
-    "background",	/* Top-level window lost focus (Mac,Win "inactive") */
-    "alternate",	/* Widget-specific alternate display style */
-    "invalid",		/* Bad value */
-    "readonly",		/* Editing/modification disabled */
-    "hover",		/* Mouse cursor is over widget */
-    "reserved1",	/* Reserved for future extension */
-    "reserved2",	/* Reserved for future extension */
-    "reserved3",	/* Reserved for future extension */
-    "user3",		/* User-definable state */
-    "user2",		/* User-definable state */
-    "user1",		/* User-definable state */
-    NULL
+static const struct {
+    char name[12];
+    int value;
+} stateNames[] = {
+    {"active", TTK_STATE_ACTIVE},		/* Mouse cursor is over widget or element */
+    {"disabled", TTK_STATE_DISABLED},		/* Widget is disabled */
+    {"focus", TTK_STATE_FOCUS},		/* Widget has keyboard focus */
+    {"pressed", TTK_STATE_PRESSED},		/* Pressed or "armed" */
+    {"selected", TTK_STATE_SELECTED},		/* "on", "true", "current", etc. */
+    {"background", TTK_STATE_BACKGROUND},	/* Top-level window lost focus (Mac,Win "inactive") */
+    {"alternate", TTK_STATE_ALTERNATE},	/* Widget-specific alternate display style */
+    {"invalid", TTK_STATE_INVALID},		/* Bad value */
+    {"readonly", TTK_STATE_READONLY},		/* Editing/modification disabled */
+    {"hover", TTK_STATE_HOVER},		/* Mouse cursor is over widget */
+    {"user6", TTK_STATE_USER6},		/* User-definable state */
+    {"user5", TTK_STATE_USER5},		/* User-definable state */
+    {"user4", TTK_STATE_USER4},		/* User-definable state */
+    {"user3", TTK_STATE_USER3},		/* User-definable state */
+    {"user2", TTK_STATE_USER2},		/* User-definable state */
+    {"user1", TTK_STATE_USER1},		/* User-definable state */
+    {"", 0}
 };
 
 /*------------------------------------------------------------------------
@@ -47,8 +46,6 @@ static const char *const stateNames[] =
  */
 
 static int  StateSpecSetFromAny(Tcl_Interp *interp, Tcl_Obj *obj);
-/* static void StateSpecFreeIntRep(Tcl_Obj *); */
-#define StateSpecFreeIntRep 0		/* not needed */
 static void StateSpecDupIntRep(Tcl_Obj *, Tcl_Obj *);
 static void StateSpecUpdateString(Tcl_Obj *);
 
@@ -56,7 +53,7 @@ static
 struct Tcl_ObjType StateSpecObjType =
 {
     "StateSpec",
-    StateSpecFreeIntRep,
+    0,
     StateSpecDupIntRep,
     StateSpecUpdateString,
     StateSpecSetFromAny
@@ -91,12 +88,12 @@ static int StateSpecSetFromAny(Tcl_Interp *interp, Tcl_Obj *objPtr)
 	    on = 1;
 	}
 
-	for (j = 0; stateNames[j] != 0; ++j) {
-	    if (strcmp(stateName, stateNames[j]) == 0)
+	for (j = 0; stateNames[j].value; ++j) {
+	    if (strcmp(stateName, stateNames[j].name) == 0)
 		break;
 	}
 
-    	if (stateNames[j] == 0) {
+    	if (stateNames[j].value == 0) {
 	    if (interp) {
 		Tcl_SetObjResult(interp, Tcl_ObjPrintf(
 			"Invalid state name %s", stateName));
@@ -106,9 +103,9 @@ static int StateSpecSetFromAny(Tcl_Interp *interp, Tcl_Obj *objPtr)
 	}
 
 	if (on) {
-	    onbits |= (1<<j);
+	    onbits |= stateNames[j].value;
 	} else {
-	    offbits |= (1<<j);
+	    offbits |= stateNames[j].value;
 	}
     }
 
@@ -126,19 +123,21 @@ static int StateSpecSetFromAny(Tcl_Interp *interp, Tcl_Obj *objPtr)
 
 static void StateSpecUpdateString(Tcl_Obj *objPtr)
 {
-    unsigned int onbits = (objPtr->internalRep.longValue & 0xFFFF0000) >> 16;
+    unsigned int onbits = objPtr->internalRep.longValue >> 16;
     unsigned int offbits = objPtr->internalRep.longValue & 0x0000FFFF;
     unsigned int mask = onbits | offbits;
     Tcl_DString result;
-    int i, len;
+    int i;
+    int len;
 
     Tcl_DStringInit(&result);
 
-    for (i=0; stateNames[i] != NULL; ++i) {
-	if (mask & (1<<i)) {
-	    if (offbits & (1<<i))
+    for (i=0; stateNames[i].value; ++i) {
+	if (mask & stateNames[i].value) {
+	    if (offbits & stateNames[i].value) {
 		Tcl_DStringAppend(&result, "!", 1);
-	    Tcl_DStringAppend(&result, stateNames[i], -1);
+	    }
+	    Tcl_DStringAppend(&result, stateNames[i].name, -1);
 	    Tcl_DStringAppend(&result, " ", 1);
 	}
     }
@@ -146,14 +145,14 @@ static void StateSpecUpdateString(Tcl_Obj *objPtr)
     len = Tcl_DStringLength(&result);
     if (len) {
 	/* 'len' includes extra trailing ' ' */
-	objPtr->bytes = Tcl_Alloc((unsigned)len);
+	objPtr->bytes = (char *)ckalloc(len);
 	objPtr->length = len-1;
-	strncpy(objPtr->bytes, Tcl_DStringValue(&result), (size_t)len-1);
+	strncpy(objPtr->bytes, Tcl_DStringValue(&result), len-1);
 	objPtr->bytes[len-1] = '\0';
     } else {
 	/* empty string */
 	objPtr->length = 0;
-	objPtr->bytes = Tcl_Alloc(1);
+	objPtr->bytes = (char *)ckalloc(1);
 	*objPtr->bytes = '\0';
     }
 
@@ -182,7 +181,7 @@ int Ttk_GetStateSpecFromObj(
 	    return status;
     }
 
-    spec->onbits = (objPtr->internalRep.longValue & 0xFFFF0000) >> 16;
+    spec->onbits = objPtr->internalRep.longValue >> 16;
     spec->offbits = objPtr->internalRep.longValue & 0x0000FFFF;
     return TCL_OK;
 }
@@ -201,8 +200,8 @@ Tcl_Obj *Ttk_StateMapLookup(
     Ttk_State state)    	/* State to look up */
 {
     Tcl_Obj **specs;
-    int nSpecs;
-    int j, status;
+    int j, nSpecs;
+    int status;
 
     status = Tcl_ListObjGetElements(interp, map, &nSpecs, &specs);
     if (status != TCL_OK)
@@ -233,8 +232,8 @@ Ttk_StateMap Ttk_GetStateMapFromObj(
     Tcl_Obj *mapObj)		/* State map */
 {
     Tcl_Obj **specs;
-    int nSpecs;
-    int j, status;
+    int j, nSpecs;
+    int status;
 
     status = Tcl_ListObjGetElements(interp, mapObj, &nSpecs, &specs);
     if (status != TCL_OK)
@@ -262,7 +261,7 @@ Ttk_StateMap Ttk_GetStateMapFromObj(
  * Ttk_StateTableLooup --
  * 	Look up an index from a statically allocated state table.
  */
-int Ttk_StateTableLookup(Ttk_StateTable *map, unsigned int state)
+int Ttk_StateTableLookup(Ttk_StateTable *map, Ttk_State state)
 {
     while ((state & map->onBits) != map->onBits
 	    || (~state & map->offBits) != map->offBits)

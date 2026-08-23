@@ -118,7 +118,9 @@ proc ::tk::dialog::file::chooseDir:: {args} {
     foreach trace [trace info variable data(selectPath)] {
 	trace remove variable data(selectPath) [lindex $trace 0] [lindex $trace 1]
     }
-    $data(dirMenuBtn) configure -textvariable {}
+    if {[winfo exists $data(dirMenuBtn)]} {
+	$data(dirMenuBtn) configure -textvariable {}
+    }
 
     # Return value to user
     #

@@ -41,7 +41,7 @@ remote_parse(const char *url, u32 flags)
 	if (echo == -1) echo = getenv("BK_REMOTE_PARSE") != 0;
 
 	freeme = p = strdup(url);
-	if (params = strchr(p, '?')) *params++ = 0;
+	if ((params = strchr(p, '?'))) *params++ = 0;
 	if (strneq("bk://", p, 5)) {
 		r = url_parse(p + 5, BK_PORT);
 		if (r) {
@@ -57,9 +57,9 @@ remote_parse(const char *url, u32 flags)
 			    ? "/cgi-bin/web_bkd" : r->path;
 		}
 	} else if (strneq("rsh://", p, 6)) {
-		if (r = url_parse(p + 6, 0)) r->type = ADDR_RSH;
+		if ((r = url_parse(p + 6, 0))) r->type = ADDR_RSH;
 	} else if (strneq("ssh://", p, 6)) {
-		if (r = url_parse(p + 6, 0)) r->type = ADDR_SSH;;
+		if ((r = url_parse(p + 6, 0))) r->type = ADDR_SSH;;
 	} else {
 		if (strneq("file://", p, 7)) {
 			r = file_parse(p);
@@ -155,7 +155,7 @@ nfs_parse(char *p, int flags)
 	r = new(remote);
 	r->rfd = r->wfd = -1;
 	/* user@host:path */
-	if (s = strchr(p, '@')) {
+	if ((s = strchr(p, '@'))) {
 		*s = 0; r->user = strdup(p); p = s + 1; *s = '@';
 	}
 	/* just path, no host */
@@ -473,7 +473,7 @@ bkd(remote *r)
 		if (isLocalHost(r->host) || streq(r->host, sccs_realhost())) {
 			putenv("_BK_BKD_IS_LOCAL=1");
 		}
-		if (t = getenv("BK_RSH")) {
+		if ((t = getenv("BK_RSH"))) {
 			/*
 			 * Parse the command into words.
 			 */
@@ -548,7 +548,7 @@ bkd(remote *r)
 				 * new subshell.  This is mostly so regressions
 				 * don't pollute ~/.bk/repos
 				 */
-				if (t = getenv("BK_DOTBK")) {
+				if ((t = getenv("BK_DOTBK"))) {
 					cmd[++i] = freeme2 =
 					    aprintf("BK_DOTBK='%s'", t);
 				}

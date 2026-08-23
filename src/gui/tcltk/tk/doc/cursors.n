@@ -1,9 +1,9 @@
 '\"
-'\" Copyright (c) 1998-2000 by Scriptics Corporation.
+'\" Copyright (c) 1998-2000 Scriptics Corporation.
 '\" All rights reserved.
-'\" 
+'\"
 '\" Copyright (c) 2006-2007 Daniel A. Steffen <das@users.sourceforge.net>
-'\" 
+'\"
 .TH cursors n 8.3 Tk "Tk Built-In Commands"
 .so man.macros
 .BS
@@ -101,6 +101,7 @@ The \fBnone\fR cursor can be specified to eliminate the cursor.
 .SH "PORTABILITY ISSUES"
 .TP
 \fBWindows\fR
+.
 On Windows systems, the following cursors are mapped to native cursors:
 .RS
 .CS
@@ -130,8 +131,9 @@ wait
 .CE
 .RE
 .TP
-\fBMac OS X\fR
-On Mac OS X systems, the following cursors are mapped to native cursors:
+\fBmacOS\fR
+.
+On macOS, the following cursors are mapped to native cursors:
 .RS
 .CS
 arrow

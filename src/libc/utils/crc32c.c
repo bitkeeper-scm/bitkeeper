@@ -1194,22 +1194,22 @@ crc32c
 //
 
 private inline u64 _mm_crc32_u64(u64 crc, u64 value) {
-  asm("crc32q %[value], %[crc]\n" : [crc] "+r" (crc) : [value] "rm" (value));
+  __asm__("crc32q %[value], %[crc]\n" : [crc] "+r" (crc) : [value] "rm" (value));
   return crc;
 }
 
 private inline u32 _mm_crc32_u32(u32 crc, u32 value) {
-  asm("crc32l %[value], %[crc]\n" : [crc] "+r" (crc) : [value] "rm" (value));
+  __asm__("crc32l %[value], %[crc]\n" : [crc] "+r" (crc) : [value] "rm" (value));
   return crc;
 }
 
 private inline u32 _mm_crc32_u16(u32 crc, u16 value) {
-  asm("crc32w %[value], %[crc]\n" : [crc] "+r" (crc) : [value] "rm" (value));
+  __asm__("crc32w %[value], %[crc]\n" : [crc] "+r" (crc) : [value] "rm" (value));
   return crc;
 }
 
 private inline u32 _mm_crc32_u8(u32 crc, u8 value) {
-  asm("crc32b %[value], %[crc]\n" : [crc] "+r" (crc) : [value] "rm" (value));
+  __asm__("crc32b %[value], %[crc]\n" : [crc] "+r" (crc) : [value] "rm" (value));
   return crc;
 }
 
@@ -1250,7 +1250,7 @@ cpuid(u32 functionInput)
 #if defined(__PIC__) && !defined(__x86_64__)
 	// PIC: Need to save and restore ebx See:
 	// http://sam.zoy.org/blog/2007-04-13-shlib-with-non-pic-code-have-inline-assembly-and-pic-mix-well
-	asm("pushl %%ebx\n\t" /* save %ebx */
+	__asm__("pushl %%ebx\n\t" /* save %ebx */
             "cpuid\n\t"
             "movl %%ebx, %[ebx]\n\t" /* save what cpuid just put in %ebx */
             "popl %%ebx"
@@ -1258,7 +1258,7 @@ cpuid(u32 functionInput)
 	    : "a" (functionInput)
             : "cc");
 #else
-	asm("cpuid"
+	__asm__("cpuid"
 	    : "=a" (eax), "=b" (ebx), "=c" (ecx), "=d" (edx)
 	    : "a" (functionInput));
 #endif

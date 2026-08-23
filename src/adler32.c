@@ -147,7 +147,7 @@ end:			sprintf(buf, "# Patch checksum=%.8lx\n", sum);
 			/*
 			 * Pass through any other trailing data, (sfio)
 			 */
-			while (n = fread(buf, 1, sizeof(buf), stdin)) {
+			while ((n = fread(buf, 1, sizeof(buf), stdin))) {
 				fwrite(buf, 1, n, stdout);
 			}
 			save_byte_count(byte_count);

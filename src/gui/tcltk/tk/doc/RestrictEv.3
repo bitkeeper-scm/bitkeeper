@@ -4,7 +4,7 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
+'\"
 .TH Tk_RestrictEvents 3 "" Tk "Tk Library Procedures"
 .so man.macros
 .BS
@@ -30,7 +30,7 @@ Pointer to place to save argument to previous restrict procedure.
 .PP
 This procedure is useful in certain situations where applications
 are only prepared to receive certain X events.  After
-\fBTk_RestrictEvents\fR is called, \fBTk_DoOneEvent\fR (and
+\fBTk_RestrictEvents\fR is called, \fBTcl_DoOneEvent\fR (and
 hence \fBTk_MainLoop\fR) will filter X input events through
 \fIproc\fR.  \fIProc\fR indicates whether a
 given event is to be processed immediately, deferred until some
@@ -48,7 +48,7 @@ to \fBTk_RestrictEvents\fR; it may be used to provide \fIproc\fR with
 information it needs to filter events.  The \fIeventPtr\fR points to
 an event under consideration.  \fIProc\fR returns a restrict action
 (enumerated type \fBTk_RestrictAction\fR) that indicates what
-\fBTk_DoOneEvent\fR should do with the event.  If the return value is
+\fBTcl_DoOneEvent\fR should do with the event.  If the return value is
 \fBTK_PROCESS_EVENT\fR, then the event will be handled immediately.
 If the return value is \fBTK_DEFER_EVENT\fR, then the event will be
 left on the event queue for later processing.  If the return value is
@@ -74,6 +74,6 @@ solution in these situations is to call \fBXNextEvent\fR or
 \fBXWindowEvent\fR, but these procedures cannot be used because
 Tk keeps its own event queue that is separate from the X event
 queue.  Instead, call \fBTk_RestrictEvents\fR to set up a filter,
-then call \fBTk_DoOneEvent\fR to retrieve the desired event(s).
+then call \fBTcl_DoOneEvent\fR to retrieve the desired event(s).
 .SH KEYWORDS
 delay, event, filter, restriction

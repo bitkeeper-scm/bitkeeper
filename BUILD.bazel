@@ -1,0 +1,112 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+load("//:pkg.bzl", "bitkeeper_directory")
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "RELEASE-NOTES.md",
+])
+
+filegroup(
+    name = "release_notes",
+    srcs = ["RELEASE-NOTES.md"],
+)
+
+bitkeeper_directory(
+    name = "bitkeeper",
+    bk = "//src:bk",
+    bkg = select({
+        "@platforms//os:windows": "//src:bkg",
+        "//conditions:default": None,
+    }),
+    scripts = ["//src:scripts"],
+    data = ["//src:data"],
+    lscripts = ["//src:lscripts"],
+    contrib = ["//src:contrib"],
+    www = ["//src:www"],
+    gui = "//src/gui:gui_package",
+    man = "//man:manpages",
+    msys = select({
+        "@platforms//os:windows": ["//src/win32:msys"],
+        "//conditions:default": [],
+    }),
+    svcmgr = select({
+        "@platforms//os:windows": "//src/win32/svcmgr",
+        "//conditions:default": None,
+    }),
+    blat = select({
+        "@platforms//os:windows": "//src/win32/pub/blat",
+        "//conditions:default": None,
+    }),
+    winctl = select({
+        "@platforms//os:windows": "//src/win32/pub/winctl",
+        "//conditions:default": None,
+    }),
+    icons = select({
+        "@platforms//os:windows": ["//src/win32:icons"],
+        "//conditions:default": [],
+    }),
+    dlls = select({
+        "@platforms//os:windows": ["//src/win32:dlls"],
+        "//conditions:default": [],
+    }),
+)
+
+genrule(
+    name = "gen_installer_data",
+    srcs = [
+        "//src:bk",
+        ":bitkeeper",
+        "//src:sfio_unpack",
+    ],
+    outs = ["_data.c"],
+    cmd = """
+        set -e
+        bk_bin=$$(pwd)/$(location //src:bk)
+        sfio_unpack=$$(pwd)/$(location //src:sfio_unpack)
+        bk_dir=$$(pwd)/$(location :bitkeeper)
+        workdir=$$(mktemp -d)
+        (cd "$$(dirname "$$bk_dir")" && find bitkeeper -type f -o -type l | "$$bk_bin" sfio -mqo) | gzip -9 > "$$workdir/sfioball.zz"
+        gzip -c "$$sfio_unpack" > "$$workdir/sfio.zz"
+        python3 -c '
+import sys
+with open(sys.argv[1], "rb") as f:
+    sfio_data = f.read()
+with open(sys.argv[2], "rb") as f:
+    data_data = f.read()
+with open(sys.argv[3], "w") as f:
+    f.write(f"unsigned int sfio_size = {len(sfio_data)};\\n")
+    f.write(f"unsigned char sfio_data[{len(sfio_data)}] = {{\\n")
+    for i in range(0, len(sfio_data), 32):
+        f.write(",".join(str(b) for b in sfio_data[i:i+32]) + ",\\n")
+    f.write("};\\n")
+    f.write(f"unsigned int data_size = {len(data_data)};\\n")
+    f.write(f"unsigned char data_data[{len(data_data)}] = {{\\n")
+    for i in range(0, len(data_data), 32):
+        f.write(",".join(str(b) for b in data_data[i:i+32]) + ",\\n")
+    f.write("};\\n")
+' "$$workdir/sfio.zz" "$$workdir/sfioball.zz" "$@"
+        rm -rf "$$workdir"
+    """,
+)
+
+# Self-extracting installer image executable
+cc_binary(
+    name = "image",
+    srcs = [
+        "//src:utils/extractor.c",
+        ":gen_installer_data",
+    ],
+    copts = ["-Isrc"],
+    deps = [
+        "//src/libc",
+    ],
+)
+
+alias(
+    name = "installer",
+    actual = ":image",
+)
+
+
+

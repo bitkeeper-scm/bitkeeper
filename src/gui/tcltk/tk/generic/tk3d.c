@@ -90,7 +90,7 @@ Tk_Alloc3DBorderFromObj(
     if (objPtr->typePtr != &tkBorderObjType) {
 	InitBorderObj(objPtr);
     }
-    borderPtr = objPtr->internalRep.twoPtrValue.ptr1;
+    borderPtr = (TkBorder *)objPtr->internalRep.twoPtrValue.ptr1;
 
     /*
      * If the object currently points to a TkBorder, see if it's the one we
@@ -127,7 +127,7 @@ Tk_Alloc3DBorderFromObj(
      */
 
     if (borderPtr != NULL) {
-	TkBorder *firstBorderPtr = Tcl_GetHashValue(borderPtr->hashPtr);
+	TkBorder *firstBorderPtr = (TkBorder *)Tcl_GetHashValue(borderPtr->hashPtr);
 
 	FreeBorderObj(objPtr);
 	for (borderPtr = firstBorderPtr ; borderPtr != NULL;
@@ -200,7 +200,7 @@ Tk_Get3DBorder(
 
     hashPtr = Tcl_CreateHashEntry(&dispPtr->borderTable, colorName, &isNew);
     if (!isNew) {
-	existingBorderPtr = Tcl_GetHashValue(hashPtr);
+	existingBorderPtr = (TkBorder *)Tcl_GetHashValue(hashPtr);
 	for (borderPtr = existingBorderPtr; borderPtr != NULL;
 		borderPtr = borderPtr->nextPtr) {
 	    if ((Tk_Screen(tkwin) == borderPtr->screen)
@@ -236,9 +236,9 @@ Tk_Get3DBorder(
     borderPtr->darkColorPtr = NULL;
     borderPtr->lightColorPtr = NULL;
     borderPtr->shadow = None;
-    borderPtr->bgGC = None;
-    borderPtr->darkGC = None;
-    borderPtr->lightGC = None;
+    borderPtr->bgGC = NULL;
+    borderPtr->darkGC = NULL;
+    borderPtr->lightGC = NULL;
     borderPtr->hashPtr = hashPtr;
     borderPtr->nextPtr = existingBorderPtr;
     Tcl_SetHashValue(hashPtr, borderPtr);
@@ -374,7 +374,7 @@ Tk_3DBorderGC(
 {
     TkBorder * borderPtr = (TkBorder *) border;
 
-    if ((borderPtr->lightGC == None) && (which != TK_3D_FLAT_GC)) {
+    if ((borderPtr->lightGC == NULL) && (which != TK_3D_FLAT_GC)) {
 	TkpGetShadows(borderPtr, tkwin);
     }
     if (which == TK_3D_FLAT_GC) {
@@ -391,7 +391,7 @@ Tk_3DBorderGC(
      * compilers happy.
      */
 
-    return (GC) None;
+    return NULL;
 }
 
 /*
@@ -420,12 +420,11 @@ Tk_Free3DBorder(
     Display *display = DisplayOfScreen(borderPtr->screen);
     TkBorder *prevPtr;
 
-    borderPtr->resourceRefCount--;
-    if (borderPtr->resourceRefCount > 0) {
+    if (borderPtr->resourceRefCount-- > 1) {
 	return;
     }
 
-    prevPtr = Tcl_GetHashValue(borderPtr->hashPtr);
+    prevPtr = (TkBorder *)Tcl_GetHashValue(borderPtr->hashPtr);
     TkpFreeBorder(borderPtr);
     if (borderPtr->bgColorPtr != NULL) {
 	Tk_FreeColor(borderPtr->bgColorPtr);
@@ -439,13 +438,13 @@ Tk_Free3DBorder(
     if (borderPtr->shadow != None) {
 	Tk_FreeBitmap(display, borderPtr->shadow);
     }
-    if (borderPtr->bgGC != None) {
+    if (borderPtr->bgGC != NULL) {
 	Tk_FreeGC(display, borderPtr->bgGC);
     }
-    if (borderPtr->darkGC != None) {
+    if (borderPtr->darkGC != NULL) {
 	Tk_FreeGC(display, borderPtr->darkGC);
     }
-    if (borderPtr->lightGC != None) {
+    if (borderPtr->lightGC != NULL) {
 	Tk_FreeGC(display, borderPtr->lightGC);
     }
     if (prevPtr == borderPtr) {
@@ -527,7 +526,7 @@ static void
 FreeBorderObj(
     Tcl_Obj *objPtr)		/* The object we are releasing. */
 {
-    TkBorder *borderPtr = objPtr->internalRep.twoPtrValue.ptr1;
+    TkBorder *borderPtr = (TkBorder *)objPtr->internalRep.twoPtrValue.ptr1;
 
     if (borderPtr != NULL) {
 	borderPtr->objRefCount--;
@@ -562,7 +561,7 @@ DupBorderObjProc(
     Tcl_Obj *srcObjPtr,		/* The object we are copying from. */
     Tcl_Obj *dupObjPtr)		/* The object we are copying to. */
 {
-    TkBorder *borderPtr = srcObjPtr->internalRep.twoPtrValue.ptr1;
+    TkBorder *borderPtr = (TkBorder *)srcObjPtr->internalRep.twoPtrValue.ptr1;
 
     dupObjPtr->typePtr = srcObjPtr->typePtr;
     dupObjPtr->internalRep.twoPtrValue.ptr1 = borderPtr;
@@ -594,7 +593,7 @@ Tk_SetBackgroundFromBorder(
     Tk_Window tkwin,		/* Window whose background is to be set. */
     Tk_3DBorder border)		/* Token for border. */
 {
-    register TkBorder *borderPtr = (TkBorder *) border;
+    TkBorder *borderPtr = (TkBorder *) border;
 
     Tk_SetWindowBackground(tkwin, borderPtr->bgColorPtr->pixel);
 }
@@ -638,8 +637,7 @@ Tk_GetReliefFromObj(
  *
  * Results:
  *	A standard Tcl return value. If all goes well then *reliefPtr is
- *	filled in with one of the values TK_RELIEF_RAISED, TK_RELIEF_FLAT, or
- *	TK_RELIEF_SUNKEN.
+ *	filled in with one of the values TK_RELIEF_*
  *
  * Side effects:
  *	None.
@@ -655,29 +653,37 @@ Tk_GetRelief(
 {
     char c;
     size_t length;
+    int relief;
 
     c = name[0];
     length = strlen(name);
     if ((c == 'f') && (strncmp(name, "flat", length) == 0)) {
-	*reliefPtr = TK_RELIEF_FLAT;
-    } else if ((c == 'g') && (strncmp(name, "groove", length) == 0)
-	    && (length >= 2)) {
-	*reliefPtr = TK_RELIEF_GROOVE;
+	relief = TK_RELIEF_FLAT;
+    } else if ((c == 'g') && (strncmp(name, "groove", length) == 0)) {
+	relief = TK_RELIEF_GROOVE;
     } else if ((c == 'r') && (strncmp(name, "raised", length) == 0)
 	    && (length >= 2)) {
-	*reliefPtr = TK_RELIEF_RAISED;
-    } else if ((c == 'r') && (strncmp(name, "ridge", length) == 0)) {
-	*reliefPtr = TK_RELIEF_RIDGE;
-    } else if ((c == 's') && (strncmp(name, "solid", length) == 0)) {
-	*reliefPtr = TK_RELIEF_SOLID;
-    } else if ((c == 's') && (strncmp(name, "sunken", length) == 0)) {
-	*reliefPtr = TK_RELIEF_SUNKEN;
+	relief = TK_RELIEF_RAISED;
+    } else if ((c == 'r') && (strncmp(name, "ridge", length) == 0)
+	    && (length >= 2)) {
+	relief = TK_RELIEF_RIDGE;
+    } else if ((c == 's') && (strncmp(name, "solid", length) == 0)
+	    && (length >= 2)) {
+	relief = TK_RELIEF_SOLID;
+    } else if ((c == 's') && (strncmp(name, "sunken", length) == 0)
+	    && (length >= 2)) {
+	relief = TK_RELIEF_SUNKEN;
     } else {
-	Tcl_SetObjResult(interp,
-		Tcl_ObjPrintf("bad relief \"%.50s\": must be %s",
-		name, "flat, groove, raised, ridge, solid, or sunken"));
-	Tcl_SetErrorCode(interp, "TK", "VALUE", "RELIEF", NULL);
+	if (interp) {
+	    Tcl_SetObjResult(interp,
+		    Tcl_ObjPrintf("bad relief \"%.50s\": must be %s",
+		    name, "flat, groove, raised, ridge, solid, or sunken"));
+	    Tcl_SetErrorCode(interp, "TK", "VALUE", "RELIEF", NULL);
+	}
 	return TCL_ERROR;
+    }
+    if (reliefPtr) {
+	*reliefPtr = relief;
     }
     return TCL_OK;
 }
@@ -759,13 +765,13 @@ Tk_Draw3DPolygon(
 {
     XPoint poly[4], b1, b2, newB1, newB2;
     XPoint perp, c, shift1, shift2;	/* Used for handling parallel lines. */
-    register XPoint *p1Ptr, *p2Ptr;
+    XPoint *p1Ptr, *p2Ptr;
     TkBorder *borderPtr = (TkBorder *) border;
     GC gc;
     int i, lightOnLeft, dx, dy, parallel, pointsSeen;
     Display *display = Tk_Display(tkwin);
 
-    if (borderPtr->lightGC == None) {
+    if (borderPtr->lightGC == NULL) {
 	TkpGetShadows(borderPtr, tkwin);
     }
 
@@ -956,7 +962,7 @@ Tk_Fill3DRectangle(
     int relief)			/* Indicates 3D effect: TK_RELIEF_FLAT,
 				 * TK_RELIEF_RAISED, or TK_RELIEF_SUNKEN. */
 {
-    register TkBorder *borderPtr = (TkBorder *) border;
+    TkBorder *borderPtr = (TkBorder *) border;
     int doubleBorder;
 
     /*
@@ -1027,7 +1033,7 @@ Tk_Fill3DPolygon(
 				 * TK_RELIEF_FLAT, TK_RELIEF_RAISED, or
 				 * TK_RELIEF_SUNKEN. */
 {
-    register TkBorder *borderPtr = (TkBorder *) border;
+    TkBorder *borderPtr = (TkBorder *) border;
 
     XFillPolygon(Tk_Display(tkwin), drawable, borderPtr->bgGC,
 	    pointPtr, numPoints, Complex, CoordModeOrigin);
@@ -1253,7 +1259,7 @@ Tk_Get3DBorderFromObj(
      * cached in the internal representation of the Tcl_Obj. Check it out...
      */
 
-    borderPtr = objPtr->internalRep.twoPtrValue.ptr1;
+    borderPtr = (TkBorder *)objPtr->internalRep.twoPtrValue.ptr1;
     if ((borderPtr != NULL)
 	    && (borderPtr->resourceRefCount > 0)
 	    && (Tk_Screen(tkwin) == borderPtr->screen)
@@ -1281,7 +1287,7 @@ Tk_Get3DBorderFromObj(
     if (hashPtr == NULL) {
 	goto error;
     }
-    for (borderPtr = Tcl_GetHashValue(hashPtr); borderPtr != NULL;
+    for (borderPtr = (TkBorder *)Tcl_GetHashValue(hashPtr); borderPtr != NULL;
 	    borderPtr = borderPtr->nextPtr) {
 	if ((Tk_Screen(tkwin) == borderPtr->screen)
 		&& (Tk_Colormap(tkwin) == borderPtr->colormap)) {
@@ -1315,7 +1321,7 @@ Tk_Get3DBorderFromObj(
  *
  * Side effects:
  *	If no error occurs, a blank internal format for a border value is
- *	intialized. The final form cannot be done without a Tk_Window.
+ *	initialized. The final form cannot be done without a Tk_Window.
  *
  *----------------------------------------------------------------------
  */
@@ -1371,7 +1377,7 @@ TkDebugBorder(
     resultPtr = Tcl_NewObj();
     hashPtr = Tcl_FindHashEntry(&dispPtr->borderTable, name);
     if (hashPtr != NULL) {
-	TkBorder *borderPtr = Tcl_GetHashValue(hashPtr);
+	TkBorder *borderPtr = (TkBorder *)Tcl_GetHashValue(hashPtr);
 
 	if (borderPtr == NULL) {
 	    Tcl_Panic("TkDebugBorder found empty hash table entry");

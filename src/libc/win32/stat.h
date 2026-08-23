@@ -21,14 +21,26 @@
 #define	S_IFLNK 0120000  /* nt does not have sym link, but we need this for portability */
 #define	S_ISLNK(st_mode) ((st_mode & S_IFMT) == S_IFLNK)
 
+#ifndef S_IRGRP
 #define S_IRGRP 0040
+#endif
+#ifndef S_IROTH
 #define S_IROTH 0004
+#endif
 
+#ifndef S_IWGRP
 #define S_IWGRP 0020
+#endif
+#ifndef S_IWOTH
 #define S_IWOTH 0002
+#endif
 
+#ifndef S_IXGRP
 #define	S_IXGRP 0010
+#endif
+#ifndef S_IXOTH
 #define	S_IXOTH 0001
+#endif
 
 
 #endif /* _BK_STAT_H_ */

@@ -128,7 +128,7 @@ sccs_addUniqStr(sccs *s, char *str)
 	unless (s->heap.buf) data_append(&s->heap, "", 1);
 
 	/* look in uniq1hash first */
-	if (off = findUniq1Str(s, str)) return (off);
+	if ((off = findUniq1Str(s, str))) return (off);
 
 	unless (s->uniq2) s->uniq2 = nokey_newAlloc();
 	unless (s->uniq2deltas) {
@@ -225,7 +225,7 @@ sccs_hasRootkey(sccs *s, char *key)
 	u32	ret;
 
 	/* look in uniqhash first */
-	if (ret = findUniq1Str(s, key)) return (ret);
+	if ((ret = findUniq1Str(s, key))) return (ret);
 
 	unless (s->uniq2keys) loadRootkeys(s);
 	return (nokey_lookup(s->uniq2, HEAP(s, 0), key));
@@ -242,7 +242,7 @@ sccs_addUniqRootkey(sccs *s, char *key)
 {
 	u32	off, le32;
 
-	if (off = findUniq1Str(s, key)) return (off);
+	if ((off = findUniq1Str(s, key))) return (off);
 	unless (s->uniq2keys) loadRootkeys(s);
 
 	unless (off = nokey_lookup(s->uniq2, HEAP(s, 0), key)) {
@@ -303,7 +303,7 @@ weave_cvt(sccs *s)
 	for (d = TABLE(s); d >= TREE(s); d--) {
 		unless (off = WEAVE_INDEX(s, d)) continue;
 		WEAVE_SET(s, d, s->heap.len);
-		while (off = RKDKOFF(s, off, rkoff, dkoff)) {
+		while ((off = RKDKOFF(s, off, rkoff, dkoff))) {
 			unless (dkoff) continue; /* skip last key marker */
 			if (BWEAVE2_OUT(s)) {
 				/* point rk at nextkey */
@@ -352,7 +352,7 @@ weave_set(sccs *s, ser_t d, char **keys)
 		dkey = keys[++i];
 		++added;
 		rkoff = sccs_addUniqRootkey(s, rkey);
-		if (mark = (*dkey == '|')) ++dkey;
+		if ((mark = (*dkey == '|'))) ++dkey;
 		if (BWEAVE2(s)) {
 			rkoff = htole32(rkoff - 4);
 			data_append(&w, &rkoff, 4);
@@ -400,7 +400,7 @@ weave_updateMarker(sccs *s, ser_t d, u32 rk, int add)
 	unless (BWEAVE3(s)) return;
 
 	woff = WEAVE_INDEX(s, d);
-	while (woff = RKDKOFF(s, woff, rkoff, dkoff)) {
+	while ((woff = RKDKOFF(s, woff, rkoff, dkoff))) {
 		le32 = htole32(rkoff);
 		data_append(&w, &le32, 4);
 		le32 = htole32(dkoff);
@@ -798,7 +798,7 @@ datamap(char *name, void *addr, size_t len,
 	if (getenv("_BK_NO_PAGING")) paging = 0;
 	/* NOTE: set swapsz even if not paging: it is used in bin_sortHeap() */
 	unless (swapsz) {
-		if (p = getenv("_BK_PAGING_PAGESZ")) {
+		if ((p = getenv("_BK_PAGING_PAGESZ"))) {
 			swapsz = strtoul(p, &p, 10);
 			switch(*p) {
 			    case 'k': case 'K':
@@ -1109,10 +1109,10 @@ bin_heapRepack(sccs *s)
 	}
 
 #define FIELD(x) \
-	if (old = s->slist2[d].x) \
+	if ((old = s->slist2[d].x)) \
 	    s->slist2[d].x = sccs_addStr(s, OLDHEAP(old))
 #define UFIELD(x) \
-	if (old = s->slist2[d].x) \
+	if ((old = s->slist2[d].x)) \
 	    s->slist2[d].x = sccs_addUniqStr(s, OLDHEAP(old))
 
 	/* put one paging block of deltas together (about 500) */
@@ -1164,7 +1164,7 @@ bin_heapRepack(sccs *s)
 			char	**w = 0;
 
 			unless (off = WEAVE_INDEX(s, d)) continue;
-			while (rkoff = OLDKOFF(off)) {
+			while ((rkoff = OLDKOFF(off))) {
 				rkoff += 4;
 				w = addLine(w, OLDHEAP(rkoff));
 				w = addLine(w, (t = OLDHEAP(off + 4)));
@@ -1186,7 +1186,7 @@ bin_heapRepack(sccs *s)
 		 */
 		for (d = TREE(s); d <= TABLE(s); d++) {
 			unless (off = WEAVE_INDEX(s, d)) continue;
-			while (rkoff = OLDKOFF(off)) {
+			while ((rkoff = OLDKOFF(off))) {
 				if (((p.oldestdk = OLDKOFF(off+4)) != 0) &&
 				    hash_insert(rkh, &rkoff, sizeof(rkoff),
 					&p, sizeof(p))) {
@@ -1214,7 +1214,7 @@ bin_heapRepack(sccs *s)
 		for (d = TABLE(s); d >= TREE(s); d--) {
 			unless (off = WEAVE_INDEX(s, d)) continue;
 			WEAVE_SET(s, d, 4*nLines(weave)+1);
-			while (rkoff = OLDKOFF(off)) {
+			while ((rkoff = OLDKOFF(off))) {
 				dkoff = OLDKOFF(off+4);
 				unless (dkoff) {/* skip old last key marker */
 					off += 8;
@@ -1283,7 +1283,7 @@ bin_heapRepack(sccs *s)
 
 		/* update offset to weave */
 		for (d = TABLE(s); d >= TREE(s); d--) {
-			if (off = WEAVE_INDEX(s, d)) {
+			if ((off = WEAVE_INDEX(s, d))) {
 				WEAVE_SET(s, d, off + s->heap.len-1);
 			}
 		}
@@ -1321,7 +1321,7 @@ bin_heapRepack(sccs *s)
 	 * XXX i could skip this section if the number of keys is small
 	 *     it would save space in small files
 	 */
-	if (i = ((s->heap.len + 3) & ~3) - s->heap.len) {
+	if ((i = ((s->heap.len + 3) & ~3) - s->heap.len)) {
 		/* next 4-byte boundry, not needed but helps perf */
 		memset(HEAP(s, s->heap.len), 0, i);
 		s->heap.len += i;

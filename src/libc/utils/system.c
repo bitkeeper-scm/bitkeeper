@@ -363,11 +363,11 @@ shell(void)
 	 * Search for BK_LIMITPATH
 	 */
 #ifndef	WIN32
-	if (sh = getenv("BK_SHELL")) return (sh);
-	if (sh = which("bash")) return (sh);
-	if (sh = which("ksh")) return (sh);
+	if ((sh = getenv("BK_SHELL"))) return (sh);
+	if ((sh = which("bash"))) return (sh);
+	if ((sh = which("ksh"))) return (sh);
 #endif
-	if (sh = which("sh")) return (sh);
+	if ((sh = which("sh"))) return (sh);
 	assert("No shell" == 0);
 	return (0);	/* Windows warns otherwise */
 }
@@ -379,7 +379,7 @@ popensystem_main(int ac, char **av)
 {
 	FILE	*f;
 	int	status;
-	char	cmd[200];
+	char	cmd[MAXPATH*4];
 
 	sprintf(cmd, "'%s' -c 'exit 5' | '%s' -c 'exit 6'", shell(), shell());
 	f = safe_popen(cmd, "r");
@@ -429,7 +429,7 @@ backtick(char *cmd, int *status)
 	char	*line;
 
 	unless (f = popen(cmd, "r")) return (0);
-	while (line = fgetline(f)) output = addLine(output, strdup(line));
+	while ((line = fgetline(f))) output = addLine(output, strdup(line));
 	if (status) {
 		*status = pclose(f);
 	} else {

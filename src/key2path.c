@@ -82,8 +82,8 @@ key2path(char *key, MDBM *idDB, MDBM *gone, MDBM **m2k)
 		unless (m2k && *m2k) return (0);
 		unless (key = mdbm_fetch_str(*m2k, key)) return (0);
 	}
-	if (path = mdbm_fetch_str(idDB, key)) return (strdup(path));
-	if (t = mdbm_fetch_str(gone, key)) check = 1;
+	if ((path = mdbm_fetch_str(idDB, key))) return (strdup(path));
+	if ((t = mdbm_fetch_str(gone, key))) check = 1;
 	path = strchr(key, '|');
 	assert(path);
 	path++;

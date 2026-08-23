@@ -20,7 +20,7 @@ function do_export () {
 	repo_git=$2
 	standalone=${3:+-S}
 	rm -rf "$repo_git"
-	git init -q "$repo_git"
+	git init -b master -q "$repo_git"
 	(cd "$repo_bk" ; bk fast-export -A"$HERE"/authors $standalone --bk-regressions) > "$HERE/EXPORT"
 	(cd "$repo_git" ; git fast-import) < "$HERE/EXPORT" > "$HERE/GOT" 2>&1 || \
 	    fail -f "$HERE/GOT" export failed. See "$HERE/EXPORT".
@@ -397,6 +397,6 @@ echo OK
 
 echo $N Test quiet mode..............................................$NL
 cd "$HERE"
-git init -q junk
+git init -b master -q junk
 (cd project; bk fast-export --quiet --quiet) | (cd junk ; git fast-import --quiet)
 echo OK

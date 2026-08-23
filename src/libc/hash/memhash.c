@@ -209,7 +209,7 @@ memhash_store(hash *_h, void *kptr, int klen, void *dptr, int dlen)
 	void	*ret = 0;
 
 	nn = find_nodep(h, kptr, klen);
-	if (n = *nn) {
+	if ((n = *nn)) {
 		if (dlen > n->dlen) {
 			*nn = n->next;
 			--h->nodes;
@@ -241,7 +241,7 @@ memhash_delete(hash *_h, void *kptr, int klen)
 	node	*n, **nn;
 
 	nn = find_nodep(h, kptr, klen);
-	if (n = *nn) {
+	if ((n = *nn)) {
 		*nn = n->next;
 		free(n);
 		assert(h->nodes > 0);
@@ -280,7 +280,7 @@ memhash_next(hash *_h)
 			n = h->arr[i];
 		}
 	}
-	if (h->lastnode = n) {
+	if ((h->lastnode = n)) {
 		h->hdr.kptr = n->key;
 		h->hdr.klen = n->klen;
 		h->hdr.vptr = &n->key[DOFF(n->klen, n->dlen)];

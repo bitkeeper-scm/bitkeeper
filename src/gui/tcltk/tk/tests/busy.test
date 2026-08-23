@@ -4,9 +4,9 @@
 # commands. Sourcing this file runs the tests and generates output for errors.
 # No output means no errors were found.
 #
-# Copyright (c) 1998-2000 by Jos Decoster. All rights reserved.
+# Copyright (c) 1998-2000 Jos Decoster. All rights reserved.
 
-package require tcltest 2.1
+package require tcltest 2.2
 tcltest::configure {*}$argv
 tcltest::loadTestedCommands
 namespace import -force tcltest::test
@@ -77,7 +77,7 @@ test busy-2.8 {tk busy hold non existing window} -body {
 test busy-2.9 {tk busy hold (shortcut) non existing window} -body {
     tk busy .f
     update
-} -returnCodes {error} -result {bad window path name ".f"}
+} -returnCodes error -result {bad window path name ".f"}
 test busy-2.10 {tk busy hold root window with cursor} -body {
     tk busy hold . -cursor arrow
     update
@@ -93,25 +93,25 @@ test busy-2.11 {tk busy hold (shortcut) root window, cursor} -body {
 test busy-2.12 {tk busy hold root window, invalid cursor} -body {
     tk busy hold . -cursor nonExistingCursor
     update
-} -constraints tempNotMac -returnCodes error -cleanup {
+} -returnCodes error -cleanup {
     tk busy forget .
 } -result {bad cursor spec "nonExistingCursor"}
 test busy-2.13 {tk busy hold (shortcut) root window, invalid cursor} -body {
     tk busy . -cursor nonExistingCursor
     update
-} -constraints tempNotMac -returnCodes error -cleanup {
+} -returnCodes error -cleanup {
     tk busy forget .
 } -result {bad cursor spec "nonExistingCursor"}
 test busy-2.14 {tk busy hold root window, invalid option} -body {
     tk busy hold . -invalidOption 1
     update
-} -constraints tempNotMac -returnCodes error -cleanup {
+} -returnCodes error -cleanup {
     tk busy forget .
 } -result {unknown option "-invalidOption"}
 test busy-2.15 {tk busy hold (shortcut) root window, invalid option} -body {
     tk busy . -invalidOption 1
     update
-} -constraints tempNotMac -returnCodes error -cleanup {
+} -returnCodes error -cleanup {
     tk busy forget .
 } -result {unknown option "-invalidOption"}
 
@@ -170,7 +170,7 @@ test busy-3.7 {tk busy cget unix} -setup {
 } -cleanup {
     tk busy forget .f
     destroy .f
-} -result {hand1} -constraints tempNotMac
+} -result {hand1}
 
 test busy-4.1 {tk busy configure no window} -returnCodes error -body {
     tk busy configure
@@ -210,7 +210,7 @@ test busy-4.4-win {tk busy configure} -constraints {win} -setup {
     destroy .f
 } -result {{-cursor cursor Cursor wait wait}}
 
-test busy-4.5 {tk busy configure} -constraints {nonwin tempNotMac} -setup {
+test busy-4.5 {tk busy configure} -constraints {nonwin} -setup {
     pack [frame .f]
     tk busy hold .f -cursor hand2
     update
@@ -266,7 +266,7 @@ test busy-4.7-win {tk busy configure valid option} -constraints {win} -setup {
 } -result {-cursor cursor Cursor wait wait}
 
 test busy-4.8 {tk busy configure valid option} -constraints {
-    nonwin tempNotMac
+    nonwin
 } -setup {
     pack [frame .f]
     tk busy hold .f -cursor circle
@@ -299,7 +299,7 @@ test busy-4.9 {tk busy configure valid option with value} -setup {
 } -cleanup {
     tk busy forget .f
     destroy .f
-} -result {pencil} -constraints tempNotMac
+} -result {pencil}
 
 test busy-4.10 {tk busy configure valid option with invalid value} -setup {
     pack [frame .f]
@@ -307,7 +307,7 @@ test busy-4.10 {tk busy configure valid option with invalid value} -setup {
     update
 } -body {
     tk busy configure .f -cursor nonExistingCursor
-} -constraints tempNotMac -returnCodes error -cleanup {
+} -returnCodes error -cleanup {
     tk busy forget .f
     destroy .f
 } -result {bad cursor spec "nonExistingCursor"}
@@ -342,14 +342,14 @@ test busy-6.1 {tk busy status} -returnCodes error -body {
 } -result {wrong # args: should be "tk busy status window"}
 test busy-6.2 {tk busy status non existing window} -body {
     tk busy status .f
-} -result {0}
+} -result 0
 test busy-6.3 {tk busy status non busy window} -setup {
     pack [frame .f]
 } -body {
     tk busy status .f
 } -cleanup {
     destroy .f
-} -result {0}
+} -result 0
 test busy-6.4 {tk busy status busy window} -setup {
     pack [frame .f]
     tk busy hold .f
@@ -359,7 +359,7 @@ test busy-6.4 {tk busy status busy window} -setup {
 } -cleanup {
     tk busy forget .f
     destroy .f
-} -result {1}
+} -result 1
 test busy-6.5 {tk busy status forgotten busy window} -setup {
     pack [frame .f]
     tk busy hold .f
@@ -369,7 +369,7 @@ test busy-6.5 {tk busy status forgotten busy window} -setup {
     tk busy status .f
 } -cleanup {
     destroy .f
-} -result {0}
+} -result 0
 
 test busy-7.1 {tk busy current no busy} -body {
     tk busy current

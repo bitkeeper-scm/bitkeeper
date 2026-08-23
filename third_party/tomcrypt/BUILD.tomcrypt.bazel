@@ -1,0 +1,37 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+# BUILD file for the upstream libtomcrypt release tarball fetched by
+# MODULE.bazel (see MODULE.bazel for the http_archive() that uses this
+# file). This builds the real upstream sources with Bazel directly
+# instead of using libtomcrypt's own make-based build system, and
+# instead of the copy that used to be vendored under src/tomcrypt.
+#
+# BitKeeper configures libtomcrypt to use libtommath as its bignum
+# backend (LTM_DESC), matching the flags the vendored src/tomcrypt/
+# Makefile used to pass (-DLTC_SOURCE -DLTC_NO_ROLC -DLTM_DESC).
+
+_TEXTUAL_INCLUDES = [
+    "src/ciphers/aes/aes_tab.c",
+    "src/ciphers/safer/safer_tab.c",
+    "src/ciphers/twofish/twofish_tab.c",
+    "src/hashes/whirl/whirltab.c",
+    "src/stream/sober128/sober128tab.c",
+]
+
+cc_library(
+    name = "tomcrypt",
+    srcs = glob(
+        ["src/**/*.c"],
+        exclude = _TEXTUAL_INCLUDES,
+    ),
+    hdrs = glob(["src/headers/*.h"]),
+    textual_hdrs = _TEXTUAL_INCLUDES,
+    includes = ["src/headers"],
+    defines = [
+        "LTC_SOURCE",
+        "LTC_NO_ROLC",
+        "LTM_DESC",
+    ],
+    deps = ["@tommath"],
+    visibility = ["//visibility:public"],
+)

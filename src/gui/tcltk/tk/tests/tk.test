@@ -2,7 +2,7 @@
 # It is organized in the standard fashion for Tcl tests.
 #
 # Copyright (c) 1997 Sun Microsystems, Inc.
-# Copyright (c) 1998-1999 by Scriptics Corporation.
+# Copyright (c) 1998-1999 Scriptics Corporation.
 # Copyright (c) 2002 ActiveState Corporation.
 
 package require tcltest 2.2
@@ -28,7 +28,7 @@ test tk-2.2 {tk command: appname} -body {
 test tk-2.3 {tk command: appname} -constraints unix -body {
     tk appname bazfoogarply
     expr {[lsearch -exact [winfo interps] [tk appname]] >= 0}
-} -result {1}
+} -result 1
 test tk-2.4 {tk command: appname} -body {
     tk appname [tk appname]
 } -result [tk appname]
@@ -64,21 +64,21 @@ test tk-3.7 {tk command: scaling: set new} -body {
 test tk-3.8 {tk command: scaling: negative} -body {
     tk scaling -1
     expr {[tk scaling] > 0}
-} -result {1}
+} -result 1
 test tk-3.9 {tk command: scaling: too big} -body {
     tk scaling 1000000
     expr {[tk scaling] < 10000}
-} -result {1}
+} -result 1
 test tk-3.10 {tk command: scaling: widthmm} -body {
     tk scaling 1.25
     expr {int((25.4*[winfo screenwidth .])/(72*1.25) + 0.5) \
         - [winfo screenmmwidth .]}
-} -result {0}
+} -result 0
 test tk-3.11 {tk command: scaling: heightmm} -body {
     tk scaling 1.25
     expr {int((25.4*[winfo screenheight .])/(72*1.25) + 0.5) \
         - [winfo screenmmheight .]}
-} -result {0}
+} -result 0
 tk scaling $scaling
 
 # Value stored to restore default settings after 4.* tests
@@ -137,7 +137,7 @@ test tk-5.5 {tk caret} -body {
 } -result {-height 12 -x 10 -y 11}
 test tk-5.6 {tk caret} -body {
     tk caret . -x 20 -y 25 -h 30; tk caret . -hei
-} -result {30}
+} -result 30
 
 # tk inactive
 test tk-6.1 {tk inactive} -body {
@@ -157,7 +157,7 @@ test tk-6.5 {tk inactive} -body {
     update
     after 100
     set i [tk inactive]
-    expr {$i == -1 || ( $i > 90 && $i < 200 )}
+    expr {$i < 0 || ( $i > 90 && $i < 300 )}
 } -result 1
 
 test tk-7.1 {tk inactive in a safe interpreter} -body {

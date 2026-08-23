@@ -439,7 +439,7 @@ uninstall(char *path, int upgrade)
 		/* figure out if we're in a bundle or not */
 		char	*bundle = fullname(bin, 0);
 
-		if (p = strstr(bundle, "BitKeeper.app")) {
+		if ((p = strstr(bundle, "BitKeeper.app"))) {
 			/* we know the app name, we want the dir where
 			 * it goes */
 			*(p+13) = 0; /* NULL at end of BitKeeper.app */

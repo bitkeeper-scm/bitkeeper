@@ -4,7 +4,7 @@
  *	This file implements the Windows specific portion of the scrollbar
  *	widget.
  *
- * Copyright (c) 1996 by Sun Microsystems, Inc.
+ * Copyright (c) 1996 Sun Microsystems, Inc.
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -82,7 +82,7 @@ const Tk_ClassProcs tkpScrollbarProcs = {
 static void
 WinScrollbarEventProc(ClientData clientData, XEvent *eventPtr)
 {
-    WinScrollbar *scrollPtr = clientData;
+    WinScrollbar *scrollPtr = (WinScrollbar *)clientData;
 
     if (eventPtr->type == ButtonPress) {
 	ModalLoop(scrollPtr, eventPtr);
@@ -121,7 +121,7 @@ TkpCreateScrollbar(
 	Tcl_MutexUnlock(&winScrlbrMutex);
     }
 
-    scrollPtr = ckalloc(sizeof(WinScrollbar));
+    scrollPtr = (WinScrollbar *)ckalloc(sizeof(WinScrollbar));
     scrollPtr->winFlags = 0;
     scrollPtr->hwnd = NULL;
 
@@ -217,13 +217,13 @@ CreateProc(
 
     if (scrollPtr->info.vertical) {
 	style = WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS
-		| SBS_VERT | SBS_RIGHTALIGN;
+		| SBS_VERT;
     } else {
 	style = WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS
-		| SBS_HORZ | SBS_BOTTOMALIGN;
+		| SBS_HORZ;
     }
 
-    scrollPtr->hwnd = CreateWindow(TEXT("SCROLLBAR"), NULL, style,
+    scrollPtr->hwnd = CreateWindowW(L"SCROLLBAR", NULL, style,
 	    Tk_X(tkwin), Tk_Y(tkwin), Tk_Width(tkwin), Tk_Height(tkwin),
 	    parent, NULL, Tk_GetHINSTANCE(), NULL);
 
@@ -245,7 +245,7 @@ CreateProc(
     }
 
     scrollPtr->lastVertical = scrollPtr->info.vertical;
-    scrollPtr->oldProc = (WNDPROC)SetWindowLongPtr(scrollPtr->hwnd,
+    scrollPtr->oldProc = (WNDPROC)SetWindowLongPtrW(scrollPtr->hwnd,
 	    GWLP_WNDPROC, (LONG_PTR) ScrollbarProc);
     window = Tk_AttachHWND(tkwin, scrollPtr->hwnd);
 
@@ -275,7 +275,7 @@ void
 TkpDisplayScrollbar(
     ClientData clientData)	/* Information about window. */
 {
-    WinScrollbar *scrollPtr = (WinScrollbar *) clientData;
+    WinScrollbar *scrollPtr = (WinScrollbar *)clientData;
     Tk_Window tkwin = scrollPtr->info.tkwin;
 
     scrollPtr->info.flags &= ~REDRAW_PENDING;
@@ -291,11 +291,11 @@ TkpDisplayScrollbar(
     if (scrollPtr->lastVertical != scrollPtr->info.vertical) {
 	HWND hwnd = Tk_GetHWND(Tk_WindowId(tkwin));
 
-	SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR) scrollPtr->oldProc);
+	SetWindowLongPtrW(hwnd, GWLP_WNDPROC, (LONG_PTR) scrollPtr->oldProc);
 	DestroyWindow(hwnd);
 
 	CreateProc(tkwin, Tk_WindowId(Tk_Parent(tkwin)),
-		(ClientData) scrollPtr);
+		scrollPtr);
     } else {
 	UpdateScrollbar(scrollPtr);
     }
@@ -325,7 +325,7 @@ TkpDestroyScrollbar(
     HWND hwnd = winScrollPtr->hwnd;
 
     if (hwnd) {
-	SetWindowLongPtr(hwnd, GWLP_WNDPROC, (INT_PTR) winScrollPtr->oldProc);
+	SetWindowLongPtrW(hwnd, GWLP_WNDPROC, (INT_PTR) winScrollPtr->oldProc);
 	if (winScrollPtr->winFlags & IN_MODAL_LOOP) {
 	    ((TkWindow *)scrollPtr->tkwin)->flags |= TK_DONT_DESTROY_WINDOW;
 	    SetParent(hwnd, NULL);
@@ -360,7 +360,7 @@ UpdateScrollbarMetrics(void)
     vArrowHeight = GetSystemMetrics(SM_CYVSCROLL);
     vThumb = GetSystemMetrics(SM_CYVTHUMB);
 
-    sprintf(tkDefScrollbarWidth, "%d", arrowWidth);
+    snprintf(tkDefScrollbarWidth, sizeof(tkDefScrollbarWidth), "%d", arrowWidth);
 }
 
 /*
@@ -383,7 +383,7 @@ UpdateScrollbarMetrics(void)
 
 void
 TkpComputeScrollbarGeometry(
-    register TkScrollbar *scrollPtr)
+    TkScrollbar *scrollPtr)
 				/* Scrollbar whose geometry may have
 				 * changed. */
 {
@@ -568,7 +568,7 @@ ScrollbarProc(
 	    return result;
 	}
     }
-    return CallWindowProc(scrollPtr->oldProc, hwnd, message, wParam, lParam);
+    return CallWindowProcW(scrollPtr->oldProc, hwnd, message, wParam, lParam);
 }
 
 /*
@@ -591,7 +591,7 @@ ScrollbarProc(
 
 void
 TkpConfigureScrollbar(
-    register TkScrollbar *scrollPtr)
+    TCL_UNUSED(TkScrollbar *))
 				/* Information about widget; may or may not
 				 * already have values for some fields. */
 {
@@ -617,7 +617,7 @@ ModalLoop(
     int oldMode;
 
     if (scrollPtr->hwnd) {
-	Tcl_Preserve((ClientData)scrollPtr);
+	Tcl_Preserve(scrollPtr);
 	scrollPtr->winFlags |= IN_MODAL_LOOP;
 	oldMode = Tcl_SetServiceMode(TCL_SERVICE_ALL);
 	TkWinResendEvent(scrollPtr->oldProc, scrollPtr->hwnd, eventPtr);
@@ -626,7 +626,7 @@ ModalLoop(
 	if (scrollPtr->hwnd && scrollPtr->winFlags & ALREADY_DEAD) {
 	    DestroyWindow(scrollPtr->hwnd);
 	}
-	Tcl_Release((ClientData)scrollPtr);
+	Tcl_Release(scrollPtr);
     }
 }
 
@@ -650,7 +650,7 @@ ModalLoop(
 
 int
 TkpScrollbarPosition(
-    register TkScrollbar *scrollPtr,
+    TkScrollbar *scrollPtr,
 				/* Scrollbar widget record. */
     int x, int y)		/* Coordinates within scrollPtr's window. */
 {

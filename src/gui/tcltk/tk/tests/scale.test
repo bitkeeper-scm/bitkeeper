@@ -3,7 +3,7 @@
 #
 # Copyright (c) 1994 The Regents of the University of California.
 # Copyright (c) 1994-1996 Sun Microsystems, Inc.
-# Copyright (c) 1998-1999 by Scriptics Corporation.
+# Copyright (c) 1998-1999 Scriptics Corporation.
 # All rights reserved.
 
 package require tcltest 2.2
@@ -46,7 +46,7 @@ test scale-1.5 {configuration options} -body {
     .s cget -bd
 } -cleanup {
     .s configure -bd [lindex [.s configure -bd] 3]
-} -result {4}
+} -result 4
 test scale-1.6 {configuration options} -body {
         .s configure -bd badValue
 } -returnCodes error -result {bad screen distance "badValue"}
@@ -73,7 +73,7 @@ test scale-1.11 {configuration options} -body {
     .s cget -borderwidth
 } -cleanup {
     .s configure -borderwidth [lindex [.s configure -borderwidth] 3]
-} -result {1}
+} -result 1
 test scale-1.12 {configuration options} -body {
         .s configure -borderwidth badValue
 } -returnCodes error -result {bad screen distance "badValue"}
@@ -97,7 +97,7 @@ test scale-1.17 {configuration options} -body {
     .s cget -digits
 } -cleanup {
     .s configure -digits [lindex [.s configure -digits] 3]
-} -result {5}
+} -result 5
 test scale-1.18 {configuration options} -body {
         .s configure -digits badValue
 } -returnCodes error -result {expected integer but got "badValue"}
@@ -157,7 +157,7 @@ test scale-1.31 {configuration options} -body {
     .s cget -highlightthickness
 } -cleanup {
     .s configure -highlightthickness [lindex [.s configure -highlightthickness] 3]
-} -result {2}
+} -result 2
 test scale-1.32 {configuration options} -body {
         .s configure -highlightthickness badValue
 } -returnCodes error -result {bad screen distance "badValue"}
@@ -172,7 +172,7 @@ test scale-1.35 {configuration options} -body {
     .s cget -length
 } -cleanup {
     .s configure -length [lindex [.s configure -length] 3]
-} -result {130}
+} -result 130
 test scale-1.36 {configuration options} -body {
         .s configure -length badValue
 } -returnCodes error -result {bad screen distance "badValue"}
@@ -205,7 +205,7 @@ test scale-1.43 {configuration options} -body {
     .s cget -repeatdelay
 } -cleanup {
     .s configure -repeatdelay [lindex [.s configure -repeatdelay] 3]
-} -result {14}
+} -result 14
 test scale-1.44 {configuration options} -body {
         .s configure -repeatdelay bogus
 } -returnCodes error -result {expected integer but got "bogus"}
@@ -214,7 +214,7 @@ test scale-1.45 {configuration options} -body {
     .s cget -repeatinterval
 } -cleanup {
     .s configure -repeatinterval [lindex [.s configure -repeatinterval] 3]
-} -result {14}
+} -result 14
 test scale-1.46 {configuration options} -body {
         .s configure -repeatinterval bogus
 } -returnCodes error -result {expected integer but got "bogus"}
@@ -232,7 +232,7 @@ test scale-1.49 {configuration options} -body {
     .s cget -showvalue
 } -cleanup {
     .s configure -showvalue [lindex [.s configure -showvalue] 3]
-} -result {0}
+} -result 0
 test scale-1.50 {configuration options} -body {
         .s configure -showvalue badValue
 } -returnCodes error -result {expected boolean value but got "badValue"}
@@ -241,7 +241,7 @@ test scale-1.51 {configuration options} -body {
     .s cget -sliderlength
 } -cleanup {
     .s configure -sliderlength [lindex [.s configure -sliderlength] 3]
-} -result {86}
+} -result 86
 test scale-1.52 {configuration options} -body {
         .s configure -sliderlength badValue
 } -returnCodes error -result {bad screen distance "badValue"}
@@ -313,7 +313,7 @@ test scale-1.69 {configuration options} -body {
     .s cget -width
 } -cleanup {
     .s configure -width [lindex [.s configure -width] 3]
-} -result {32}
+} -result 32
 test scale-1.70 {configuration options} -body {
         .s configure -width badValue
 } -returnCodes error -result {bad screen distance "badValue"}
@@ -324,18 +324,18 @@ test scale-2.1 {Tk_ScaleCmd procedure} -body {
     scale
 } -returnCodes error -result {wrong # args: should be "scale pathName ?-option value ...?"}
 test scale-2.2 {Tk_ScaleCmd procedure} -body {
-    scale foo 
+    scale foo
 } -returnCodes error -result {bad window path name "foo"}
 test scale-2.3 {Tk_ScaleCmd procedure} -body {
     catch {scale foo}
-    winfo child .
+    winfo children .
 } -result {}
 test scale-2.4 {Tk_ScaleCmd procedure} -body {
     scale .s -gorp dumb
 } -returnCodes error -result {unknown option "-gorp"}
 test scale-2.5 {Tk_ScaleCmd procedure} -body {
     catch {scale .s -gorp dumb}
-    winfo child .
+    winfo children .
 } -result {}
 
 
@@ -359,7 +359,7 @@ test scale-3.4 {ScaleWidgetCmd procedure, cget option} -body {
 test scale-3.5 {ScaleWidgetCmd procedure, cget option} -body {
     .s configure -highlightthickness 2
     .s cget -highlightthickness
-} -result {2}
+} -result 2
 test scale-3.6 {ScaleWidgetCmd procedure, configure option} -body {
     list [llength [.s configure]] [lindex [.s configure] 6]
 } -result {33 {-command command Command {} {}}}
@@ -466,7 +466,7 @@ test scale-3.28 {ScaleWidgetCmd procedure, set option} -body {
     .s set 181
     .s configure -state normal
     .s get
-} -result {118}
+} -result 118
 test scale-3.29 {ScaleWidgetCmd procedure} -body {
     .s dumb
 } -returnCodes error -result {bad option "dumb": must be cget, configure, coords, get, identify, or set}
@@ -588,27 +588,27 @@ test scale-6.1 {ComputeFormat procedure} -body {
     .s configure -from 10 -to 100 -resolution 10
     .s set 49.3
     .s get
-} -result {50}
+} -result 50
 test scale-6.2 {ComputeFormat procedure} -body {
     .s configure -from 100 -to 1000 -resolution 100
     .s set 493
     .s get
-} -result {500}
+} -result 500
 test scale-6.3 {ComputeFormat procedure} -body {
     .s configure -from 1000 -to 10000 -resolution 1000
     .s set 4930
     .s get
-} -result {5000}
+} -result 5000
 test scale-6.4 {ComputeFormat procedure} -body {
     .s configure -from 10000 -to 100000 -resolution 10000
     .s set 49000
     .s get
-} -result {50000}
+} -result 50000
 test scale-6.5 {ComputeFormat procedure} -body {
     .s configure -from 100000 -to 1000000 -resolution 100000
     .s set 493000
     .s get
-} -result {500000}
+} -result 500000
 test scale-6.6 {ComputeFormat procedure} -constraints {
 	nonPortable
 } -body {
@@ -617,7 +617,7 @@ test scale-6.6 {ComputeFormat procedure} -constraints {
     .s configure -from 1000000 -to 10000000 -resolution 1000000
     .s set 4930000
     .s get
-} -result {5000000}
+} -result 5000000
 test scale-6.7 {ComputeFormat procedure} -body {
     .s configure -from 1000000000 -to 10000000000 -resolution 1000000000
     .s set 4930000000
@@ -652,7 +652,7 @@ test scale-6.13 {ComputeFormat procedure} -body {
     .s configure -from .000001 -to .00001 -resolution .000001
     .s set .000006
     expr {[.s get] == 6.0e-06}
-} -result {1}
+} -result 1
 test scale-6.14 {ComputeFormat procedure} -body {
     .s configure -to .00001 -from .0001 -resolution .00001
     .s set .00006
@@ -662,17 +662,17 @@ test scale-6.15 {ComputeFormat procedure} -body {
     .s configure -to .000001 -from .00001 -resolution .000001
     .s set .000006
     expr {[.s get] == 6.0e-06}
-} -result {1}
+} -result 1
 test scale-6.16 {ComputeFormat procedure} -body {
     .s configure -from .00001 -to .0001 -resolution .00001 -digits 1
     .s set .00006
     expr {[.s get] == 6e-05}
-} -result {1}
+} -result 1
 test scale-6.17 {ComputeFormat procedure} -body {
     .s configure -from 10000000 -to 100000000 -resolution 10000000 -digits 3
     .s set 49300000
     .s get
-} -result {50000000}
+} -result 50000000
 test scale-6.18 {ComputeFormat procedure} -body {
     .s configure -length 200 -from 0 -to 10 -resolution 0 -digits 0
     .s set .111111111
@@ -1091,7 +1091,7 @@ test scale-13.6 {SetScaleValue procedure} -body {
 
     .s set 50
     update
-    trace variable y w varTrace
+    trace add variable y write varTrace
     set traceInfo empty
     set x untouched
     .s set 50
@@ -1104,84 +1104,119 @@ test scale-13.6 {SetScaleValue procedure} -body {
 destroy .s
 pack [scale .s]
 update
-test scale-14.1 {RoundToResolution procedure} -body {
+test scale-14.1 {RoundValueToResolution procedure} -body {
     .s configure -from 0 -to 100 -sliderlength 10 -length 114 -bd 2 \
         -orient horizontal -resolution 4.0
     update
     .s get 84 152
 } -result 72
-test scale-14.2 {RoundToResolution procedure} -body {
+test scale-14.2 {RoundValueToResolution procedure} -body {
     .s configure -from 0 -to 100 -sliderlength 10 -length 114 -bd 2 \
         -orient horizontal -resolution 4.0
     update
     .s get 86 152
 } -result 76
 
-test scale-14.3 {RoundToResolution procedure} -body {
+test scale-14.3 {RoundValueToResolution procedure} -body {
     .s configure -from 100 -to 0 -sliderlength 10 -length 114 -bd 2 \
         -orient horizontal -resolution 4.0
     update
     .s get 84 152
 } -result 28
-test scale-14.4 {RoundToResolution procedure} -body {
+test scale-14.4 {RoundValueToResolution procedure} -body {
     .s configure -from 100 -to 0 -sliderlength 10 -length 114 -bd 2 \
         -orient horizontal -resolution 4.0
     update
     .s get 86 152
 } -result 24
 
-test scale-14.5 {RoundToResolution procedure} -body {
+test scale-14.5 {RoundValueToResolution procedure} -body {
     .s configure -from -100 -to 0 -sliderlength 10 -length 114 -bd 2 \
         -orient horizontal -resolution 4.0
     update
     .s get 84 152
-} -result {-28}
-test scale-14.6 {RoundToResolution procedure} -body {
+} -result -28
+test scale-14.6 {RoundValueToResolution procedure} -body {
     .s configure -from -100 -to 0 -sliderlength 10 -length 114 -bd 2 \
         -orient horizontal -resolution 4.0
     update
     .s get 86 152
-} -result {-24}
+} -result -24
 
-test scale-14.7 {RoundToResolution procedure} -body {
+test scale-14.7 {RoundValueToResolution procedure} -body {
     .s configure -from 0 -to -100 -sliderlength 10 -length 114 -bd 2 \
         -orient horizontal -resolution 4.0
     update
     .s get 84 152
-} -result {-72}
-test scale-14.8 {RoundToResolution procedure} -body {
+} -result -72
+test scale-14.8 {RoundValueToResolution procedure} -body {
     .s configure -from 0 -to -100 -sliderlength 10 -length 114 -bd 2 \
         -orient horizontal -resolution 4.0
     update
     .s get 86 152
-} -result {-76}
+} -result -76
 
-test scale-14.9 {RoundToResolution procedure} -body {
+test scale-14.9 {RoundValueToResolution procedure} -body {
     .s configure -from 0 -to 2.25  -sliderlength 10 -length 114 -bd 2 \
         -orient horizontal -resolution 0
     update
     .s get 84 152
 } -result {1.64}
-test scale-14.10 {RoundToResolution procedure} -body {
+test scale-14.10 {RoundValueToResolution procedure} -body {
     .s configure -from 0 -to 2.25  -sliderlength 10 -length 114 -bd 2 \
         -orient horizontal -resolution 0
     update
     .s get 86 152
 } -result {1.69}
 
-test scale-14.11 {RoundToResolution procedure} -body {
+test scale-14.11 {RoundValueToResolution procedure} -body {
     .s configure -from 0 -to 225 -sliderlength 10 -length 114 -bd 2 \
         -orient horizontal -resolution 0 -digits 5
     update
     .s get 84 152
 } -result {164.25}
-test scale-14.12 {RoundToResolution procedure} -body {
+test scale-14.12 {RoundValueToResolution procedure} -body {
     .s configure -from 0 -to 225 -sliderlength 10 -length 114 -bd 2 \
         -orient horizontal -resolution 0 -digits 5
     update
     .s get 86 152
 } -result {168.75}
 destroy .s
+
+test scale-14.13 {RoundValueToResolution procedure, round-off errors} -setup {
+    # see [220665ffff], and duplicates [220265ffff] and [779559ffff]
+    set x NotSet
+    pack [scale .s -orient horizontal -resolution .1 -from -180 -to 180 -command "set x"]
+    update
+} -body {
+    .s configure -background red
+    update
+    set x
+} -cleanup {
+    destroy .s
+} -result {NotSet}
+
+test scale-14a.1 {RoundValueToResolution, RoundIntervalToResolution procedures} -setup {
+    pack [scale .s -orient horizontal]
+    update
+} -body {
+    .s configure -length 400 -bd 0 -from 1 -to 9 -resolution 2 -tickinterval 1
+    update
+    .s get 200 0
+} -cleanup {
+    destroy .s
+} -result 5
+test scale-14a.2 {RoundValueToResolution, RoundIntervalToResolution procedures} -setup {
+    pack [scale .s -orient horizontal]
+    update
+} -body {
+    .s configure -length 400 -bd 0 -from -1.5 -to 1.5 -resolution 1 \
+            -tickinterval 1 -digits 2
+    update
+    .s get 250 0
+} -cleanup {
+    destroy .s
+} -result {0.5}
 
 
 test scale-15.1 {ScaleVarProc procedure} -setup {
@@ -1191,7 +1226,7 @@ test scale-15.1 {ScaleVarProc procedure} -setup {
     scale .s -from 0 -to -200 -variable y -orient horizontal -length 150
     pack .s
     return $y
-} -result {-130}
+} -result -130
 test scale-15.2 {ScaleVarProc procedure} -setup {
     deleteWindows
 } -body {
@@ -1200,7 +1235,7 @@ test scale-15.2 {ScaleVarProc procedure} -setup {
     pack .s
     set y -87
     .s get
-} -result {-87}
+} -result -87
 test scale-15.3 {ScaleVarProc procedure} -setup {
     deleteWindows
 } -body {
@@ -1221,7 +1256,7 @@ test scale-15.4 {ScaleVarProc procedure} -setup {
     .s get
 } -cleanup {
     deleteWindows
-} -result {-130}
+} -result -130
 test scale-15.5 {ScaleVarProc procedure} -setup {
     deleteWindows
 } -body {
@@ -1309,7 +1344,7 @@ test scale-17.1 {bug fix 1786} -setup {
     return $x
 } -cleanup {
     deleteWindows
-} -result {100}
+} -result 100
 
 
 test scale-18.1 {DestroyScale, -cursor option [Bug: 3897]} -setup {
@@ -1361,6 +1396,25 @@ test scale-18.3 {Scale button 2 events [Bug 787065]} -setup {
     destroy .s
 } -result {0 {}}
 
+test scale-18.4 {Bug [415415ffff] - Long callback: One click -> Several steps} -setup {
+    catch {destroy .s}
+    scale .s -from 0 -to 5 -resolution 1 -variable x1 -orient horizontal -length 100 \
+            -command longCmd -repeatdelay 300
+    pack .s
+    update
+    proc longCmd {unused} {
+      after 500  ; # larger than -repeatdelay
+    }
+} -body {
+    foreach {x y} [.s coord 50] {}
+    event generate .s <Button-1> -x $x -y $y
+    update
+    event generate .s <ButtonRelease-1> -x $x -y $y
+    update
+    set x1
+} -cleanup {
+    destroy .s
+} -result {1}
 
 test scale-19 {Bug [3529885fff] - Click in through goes in wrong direction} \
     -setup {
@@ -1395,6 +1449,173 @@ test scale-19 {Bug [3529885fff] - Click in through goes in wrong direction} \
         destroy .s1 .s2 .s3 .s4
     } \
     -result {1.0 1.0 1.0 1.0}
+
+test scale-20.1 {Bug [2262543fff] - Scale widget unexpectedly fires command callback, case 1} -setup {
+    catch {destroy .s}
+    set res {}
+    set commandedVar -1
+} -body {
+    scale .s -from 1 -to 50 -command {set commandedVar}
+    pack .s
+    update  ; # -command callback shall NOT fire
+    set res [list [.s get] $commandedVar]
+} -cleanup {
+    destroy .s
+} -result {1 -1}
+test scale-20.2 {Bug [2262543fff] - Scale widget unexpectedly fires command callback, case 2} -setup {
+    catch {destroy .s}
+    set res {}
+    set commandedVar -1
+    set scaleVar 7
+} -body {
+    scale .s -from 1 -to 50 -variable scaleVar -command {set commandedVar}
+    pack .s
+    update  ; # -command callback shall NOT fire
+    set res [list [.s get] $commandedVar]
+} -cleanup {
+    destroy .s
+} -result {7 -1}
+test scale-20.3 {Bug [2262543fff] - Scale widget unexpectedly fires command callback, case 3} -setup {
+    catch {destroy .s}
+    set res {}
+    set commandedVar -1
+} -body {
+    scale .s -from 1 -to 50
+    .s set 10
+    .s configure -command {set commandedVar}
+    pack .s
+    update  ; # -command callback shall NOT fire
+    set res [list [.s get] $commandedVar]
+} -cleanup {
+    destroy .s
+} -result {10 -1}
+test scale-20.4 {Bug [2262543fff] - Scale widget unexpectedly fires command callback, case 4} -setup {
+    catch {destroy .s}
+    set res {}
+} -body {
+    scale .s -from 1 -to 50 -command {set commandedVar}
+    pack .s
+    update idletasks
+    .s set 10
+    set timeout [after 500 {set $commandedVar "timeout"}]
+    set commandedVar -1
+    vwait commandedVar  ; # -command callback shall fire
+    set res [list [.s get] $commandedVar]
+} -cleanup {
+    after cancel $timeout
+    destroy .s
+} -result {10 10}
+test scale-20.5 {Bug [2262543fff] - Scale widget unexpectedly fires command callback, case 5} -setup {
+    catch {destroy .s}
+    set res {}
+    set commandedVar -1
+} -body {
+    scale .s -from 1 -to 50
+    pack .s
+    update idletasks
+    .s set 10
+    .s configure -command {set commandedVar}
+    update  ; # -command callback shall NOT fire
+    set res [list [.s get] $commandedVar]
+} -cleanup {
+    destroy .s
+} -result {10 -1}
+test scale-20.6 {Bug [2262543fff] - Scale widget unexpectedly fires command callback, case 6} -setup {
+    catch {destroy .s}
+    set res {}
+    set commandedVar -1
+} -body {
+    scale .s -from 1 -to 50
+    pack .s
+    update idletasks
+    .s configure -command {set commandedVar}
+    .s set 10
+    set timeout [after 500 {set $commandedVar "timeout"}]
+    vwait commandedVar  ; # -command callback shall fire
+    set res [list [.s get] $commandedVar]
+} -cleanup {
+    destroy .s
+    after cancel $timeout
+} -result {10 10}
+test scale-20.7 {Bug [2262543fff] - Scale widget unexpectedly fires command callback, case 7} -setup {
+    catch {destroy .s}
+    set res {}
+    set commandedVar -1
+} -body {
+    scale .s -from 1 -to 50 -command {set commandedVar}
+    pack .s
+    update idletasks
+    .s set 10
+    set timeout [after 500 {set $commandedVar "timeout"}]
+    vwait commandedVar  ; # -command callback shall fire
+    set res [list [.s get] $commandedVar]
+} -cleanup {
+    destroy .s
+    after cancel $timeout
+} -result {10 10}
+test scale-20.8 {Bug [2262543fff] - Scale widget unexpectedly fires command callback, case 8} -setup {
+    catch {destroy .s}
+    set res {}
+    set commandedVar -1
+    set scaleVar 7
+} -body {
+    scale .s -from 1 -to 50 -variable scaleVar -command {set commandedVar}
+    pack .s
+    update idletasks
+    .s set 10
+    set timeout [after 500 {set $commandedVar "timeout"}]
+    vwait commandedVar  ; # -command callback shall fire
+    set res [list [.s get] $commandedVar]
+} -cleanup {
+    destroy .s
+    after cancel $timeout
+} -result {10 10}
+
+test scale-21.1 {Bug [55b95f578a] - Associating variable with bignum value with scale crashes it} -setup {
+    catch {destroy .s}
+} -body {
+    pack [scale .s]
+    set foo 5.79e99
+    # non-regression test for bug [55b95f578a] - shall just not crash
+    .s configure -variable foo
+} -cleanup {
+    destroy .s
+} -result {}
+test scale-21.2 {Bug [55b95f578a] again - Bignum value for -from/-to with scale crashes it} -setup {
+    catch {destroy .s}
+} -body {
+    pack [scale .s]
+    # non-regression test for bug [55b95f578a] - shall just not crash
+    .s configure -from -6.8e99 -to 8.8e99
+} -cleanup {
+    destroy .s
+} -result {}
+
+test scale-22.1 {Bug [5d991b822e]} {
+    # Want this not to crash
+    set var INIT
+    scale .b -variable var
+    trace add variable var unset {apply {args {
+        .b configure -variable {}
+    }}}
+    pack .b
+    bind .b <Configure> {unset var}
+    update
+    destroy .b
+} {}
+test scale-22.2 {Bug [5d991b822e]} {
+    # Want this not to leak traces
+    set var INIT
+    scale .b -variable var
+    trace add variable var unset {apply {args {
+        .b configure -variable new
+    }}}
+    pack .b
+    bind .b <Configure> {unset -nocomplain var}
+    update
+    destroy .b
+    unset new
+} {}
 
 option clear
 

@@ -6,8 +6,7 @@
  *
  */
 
-#include <tcl.h>
-#include <tkInt.h>
+#include "tkInt.h"
 #include "ttkTheme.h"
 
 /*----------------------------------------------------------------------
@@ -31,7 +30,7 @@ typedef struct {
     Tcl_Obj	*anchorObj;
     Tcl_Obj	*justifyObj;
     Tcl_Obj	*wrapLengthObj;
-    Tcl_Obj     *embossedObj;
+    Tcl_Obj	*embossedObj;
 
     /*
      * Computed resources:
@@ -66,7 +65,7 @@ static Ttk_ElementOptionSpec TextElementOptions[] = {
 	Tk_Offset(TextElement,wrapLengthObj), "0" },
     { "-embossed", TK_OPTION_INT,
 	Tk_Offset(TextElement,embossedObj), "0"},
-    { NULL, 0, 0, NULL }
+    { NULL, TK_OPTION_BOOLEAN, 0, NULL }
 };
 
 static int TextSetup(TextElement *text, Tk_Window tkwin)
@@ -139,16 +138,16 @@ static void TextDraw(TextElement *text, Tk_Window tkwin, Drawable d, Ttk_Box b)
     gcValues.foreground = WhitePixelOfScreen(Tk_Screen(tkwin));
     gc2 = Tk_GetGC(tkwin, GCFont | GCForeground, &gcValues);
 
-    /* 
+    /*
      * Place text according to -anchor:
      */
     Tk_GetAnchorFromObj(NULL, text->anchorObj, &anchor);
     b = Ttk_AnchorBox(b, text->width, text->height, anchor);
 
     /*
-     * Clip text if it's too wide:
+     * Clip text if it's too wide or too high:
      */
-    if (b.width < text->width) {
+    if (b.width < text->width || b.height < text->height) {
 	XRectangle rect;
 
 	clipRegion = TkCreateRegion();
@@ -183,7 +182,7 @@ static void TextDraw(TextElement *text, Tk_Window tkwin, Drawable d, Ttk_Box b)
 
     if (clipRegion != NULL) {
 #ifdef HAVE_XFT
-	TkUnixSetXftClipRegion(None);
+	TkUnixSetXftClipRegion(NULL);
 #endif
 	XSetClipMask(Tk_Display(tkwin), gc1, None);
 	XSetClipMask(Tk_Display(tkwin), gc2, None);
@@ -194,10 +193,14 @@ static void TextDraw(TextElement *text, Tk_Window tkwin, Drawable d, Ttk_Box b)
 }
 
 static void TextElementSize(
-    void *clientData, void *elementRecord, Tk_Window tkwin,
-    int *widthPtr, int *heightPtr, Ttk_Padding *paddingPtr)
+    TCL_UNUSED(void *), /* clientData */
+    void *elementRecord,
+    Tk_Window tkwin,
+    int *widthPtr,
+    int *heightPtr,
+    TCL_UNUSED(Ttk_Padding *))
 {
-    TextElement *text = elementRecord;
+    TextElement *text = (TextElement *)elementRecord;
 
     if (!TextSetup(text, tkwin))
 	return;
@@ -211,10 +214,15 @@ static void TextElementSize(
 }
 
 static void TextElementDraw(
-    void *clientData, void *elementRecord, Tk_Window tkwin,
-    Drawable d, Ttk_Box b, Ttk_State state)
+    TCL_UNUSED(void *), /* clientData */
+    void *elementRecord,
+    Tk_Window tkwin,
+    Drawable d,
+    Ttk_Box b,
+    TCL_UNUSED(Ttk_State))
 {
-    TextElement *text = elementRecord;
+    TextElement *text = (TextElement *)elementRecord;
+
     if (TextSetup(text, tkwin)) {
 	TextDraw(text, tkwin, d, b);
 	TextCleanup(text);
@@ -254,7 +262,7 @@ static Ttk_ElementOptionSpec ImageElementOptions[] = {
 	Tk_Offset(ImageElement,stippleObj), "gray50" },
     { "-background", TK_OPTION_COLOR,
 	Tk_Offset(ImageElement,backgroundObj), DEFAULT_BACKGROUND },
-    { NULL, 0, 0, NULL }
+    { NULL, TK_OPTION_BOOLEAN, 0, NULL }
 };
 
 /*
@@ -278,7 +286,7 @@ static int ImageSetup(
     if (!image->imageSpec) {
 	return 0;
     }
-    image->tkimg = TtkSelectImage(image->imageSpec, state);
+    image->tkimg = TtkSelectImage(image->imageSpec, tkwin, state);
     if (!image->tkimg) {
 	TtkFreeImageSpec(image->imageSpec);
 	return 0;
@@ -342,17 +350,17 @@ static void ImageDraw(
 
     Tk_RedrawImage(image->tkimg, 0,0, width, height, d, b.x, b.y);
 
-    /* If we're disabled there's no state-specific 'disabled' image, 
+    /* If we're disabled there's no state-specific 'disabled' image,
      * stipple the image.
      * @@@ Possibly: Don't do disabled-stippling at all;
      * @@@ it's ugly and out of fashion.
-     * Do not stipple at all under Aqua, just draw the image: it shows up 
+     * Do not stipple at all under Aqua, just draw the image: it shows up
      * as a white rectangle otherwise.
      */
 
-    
+
     if (state & TTK_STATE_DISABLED) {
-	if (TtkSelectImage(image->imageSpec, 0ul) == image->tkimg) {
+	if (TtkSelectImage(image->imageSpec, tkwin, 0ul) == image->tkimg) {
 #ifndef MAC_OSX_TK
 	    StippleOver(image, tkwin, d, b.x,b.y);
 #endif
@@ -361,10 +369,14 @@ static void ImageDraw(
 }
 
 static void ImageElementSize(
-    void *clientData, void *elementRecord, Tk_Window tkwin,
-    int *widthPtr, int *heightPtr, Ttk_Padding *paddingPtr)
+    TCL_UNUSED(void *), /* clientData */
+    void *elementRecord,
+    Tk_Window tkwin,
+    int *widthPtr,
+    int *heightPtr,
+    TCL_UNUSED(Ttk_Padding *))
 {
-    ImageElement *image = elementRecord;
+    ImageElement *image = (ImageElement *)elementRecord;
 
     if (ImageSetup(image, tkwin, 0)) {
 	*widthPtr = image->width;
@@ -374,10 +386,14 @@ static void ImageElementSize(
 }
 
 static void ImageElementDraw(
-    void *clientData, void *elementRecord, Tk_Window tkwin,
-    Drawable d, Ttk_Box b, Ttk_State state)
+    TCL_UNUSED(void *), /* clientData */
+    void *elementRecord,
+    Tk_Window tkwin,
+    Drawable d,
+    Ttk_Box b,
+    Ttk_State state)
 {
-    ImageElement *image = elementRecord;
+    ImageElement *image = (ImageElement *)elementRecord;
 
     if (ImageSetup(image, tkwin, state)) {
 	ImageDraw(image, tkwin, d, b, state);
@@ -478,7 +494,7 @@ static Ttk_ElementOptionSpec LabelElementOptions[] = {
 	Tk_Offset(LabelElement,image.stippleObj), "gray50" },
     { "-background", TK_OPTION_COLOR,
 	Tk_Offset(LabelElement,image.backgroundObj), DEFAULT_BACKGROUND },
-    { NULL, 0, 0, NULL }
+    { NULL, TK_OPTION_BOOLEAN, 0, NULL }
 };
 
 /*
@@ -489,14 +505,14 @@ static Ttk_ElementOptionSpec LabelElementOptions[] = {
  */
 
 #undef  MAX
-#define MAX(a,b) ((a) > (b) ? a : b);
+#define MAX(a,b) ((a) > (b) ? (a) : (b));
 static void LabelSetup(
     LabelElement *c, Tk_Window tkwin, Ttk_State state)
 {
     Ttk_Compound *compoundPtr = &c->compound;
 
-    Tk_GetPixelsFromObj(NULL,tkwin,c->spaceObj,&c->space);
-    Ttk_GetCompoundFromObj(NULL,c->compoundObj,(int*)compoundPtr);
+    Tk_GetPixelsFromObj(NULL, tkwin, c->spaceObj, &c->space);
+    Ttk_GetCompoundFromObj(NULL, c->compoundObj, (int *)compoundPtr);
 
     /*
      * Deal with TTK_COMPOUND_NONE.
@@ -562,10 +578,14 @@ static void LabelCleanup(LabelElement *c)
 }
 
 static void LabelElementSize(
-    void *clientData, void *elementRecord, Tk_Window tkwin,
-    int *widthPtr, int *heightPtr, Ttk_Padding *paddingPtr)
+    TCL_UNUSED(void *), /* clientData */
+    void *elementRecord,
+    Tk_Window tkwin,
+    int *widthPtr,
+    int *heightPtr,
+    TCL_UNUSED(Ttk_Padding *))
 {
-    LabelElement *label = elementRecord;
+    LabelElement *label = (LabelElement *)elementRecord;
     int textReqWidth = 0;
 
     LabelSetup(label, tkwin, 0);
@@ -577,7 +597,7 @@ static void LabelElementSize(
     if (label->compound != TTK_COMPOUND_IMAGE)
 	textReqWidth = TextReqWidth(&label->text);
 
-    switch (label->compound) 
+    switch (label->compound)
     {
 	case TTK_COMPOUND_TEXT:
 	    *widthPtr = textReqWidth;
@@ -588,11 +608,11 @@ static void LabelElementSize(
 	case TTK_COMPOUND_TOP:
 	case TTK_COMPOUND_BOTTOM:
 	case TTK_COMPOUND_CENTER:
-	    *widthPtr = MAX(label->image.width, textReqWidth); 
+	    *widthPtr = MAX(label->image.width, textReqWidth);
 	    break;
 	case TTK_COMPOUND_LEFT:
 	case TTK_COMPOUND_RIGHT:
-	    *widthPtr = label->image.width + textReqWidth + label->space; 
+	    *widthPtr = label->image.width + textReqWidth + label->space;
 	    break;
 	case TTK_COMPOUND_NONE:
 	    break; /* Can't happen */
@@ -619,10 +639,14 @@ static void DrawCompound(
 }
 
 static void LabelElementDraw(
-    void *clientData, void *elementRecord, Tk_Window tkwin,
-    Drawable d, Ttk_Box b, Ttk_State state)
+    TCL_UNUSED(void *), /* clientData */
+    void *elementRecord,
+    Tk_Window tkwin,
+    Drawable d,
+    Ttk_Box b,
+    Ttk_State state)
 {
-    LabelElement *l = elementRecord;
+    LabelElement *l = (LabelElement *)elementRecord;
     Tk_Anchor anchor = TK_ANCHOR_CENTER;
 
     LabelSetup(l, tkwin, state);
@@ -686,8 +710,8 @@ static Ttk_ElementSpec LabelElementSpec = {
  * +++ Initialization.
  */
 
-MODULE_SCOPE
-void TtkLabel_Init(Tcl_Interp *interp)
+MODULE_SCOPE void
+TtkLabel_Init(Tcl_Interp *interp)
 {
     Ttk_Theme theme =  Ttk_GetDefaultTheme(interp);
 

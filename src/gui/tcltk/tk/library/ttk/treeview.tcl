@@ -28,25 +28,25 @@ namespace eval ttk::treeview {
 bind Treeview	<Motion> 		{ ttk::treeview::Motion %W %x %y }
 bind Treeview	<B1-Leave>		{ #nothing }
 bind Treeview	<Leave>			{ ttk::treeview::ActivateHeading {} {}}
-bind Treeview	<ButtonPress-1> 	{ ttk::treeview::Press %W %x %y }
-bind Treeview	<Double-ButtonPress-1> 	{ ttk::treeview::DoubleClick %W %x %y }
+bind Treeview	<Button-1> 		{ ttk::treeview::Press %W %x %y }
+bind Treeview	<Double-Button-1> 	{ ttk::treeview::DoubleClick %W %x %y }
 bind Treeview	<ButtonRelease-1> 	{ ttk::treeview::Release %W %x %y }
 bind Treeview	<B1-Motion> 		{ ttk::treeview::Drag %W %x %y }
-bind Treeview 	<KeyPress-Up>    	{ ttk::treeview::Keynav %W up }
-bind Treeview 	<KeyPress-Down>  	{ ttk::treeview::Keynav %W down }
-bind Treeview 	<KeyPress-Right> 	{ ttk::treeview::Keynav %W right }
-bind Treeview 	<KeyPress-Left>  	{ ttk::treeview::Keynav %W left }
-bind Treeview	<KeyPress-Prior>	{ %W yview scroll -1 pages }
-bind Treeview	<KeyPress-Next> 	{ %W yview scroll  1 pages }
-bind Treeview	<KeyPress-Return>	{ ttk::treeview::ToggleFocus %W }
-bind Treeview	<KeyPress-space>	{ ttk::treeview::ToggleFocus %W }
+bind Treeview 	<Up>    		{ ttk::treeview::Keynav %W up }
+bind Treeview 	<Down>  		{ ttk::treeview::Keynav %W down }
+bind Treeview 	<Right> 		{ ttk::treeview::Keynav %W right }
+bind Treeview 	<Left>  		{ ttk::treeview::Keynav %W left }
+bind Treeview	<Prior>			{ %W yview scroll -1 pages }
+bind Treeview	<Next> 			{ %W yview scroll  1 pages }
+bind Treeview	<Return>		{ ttk::treeview::ToggleFocus %W }
+bind Treeview	<space>			{ ttk::treeview::ToggleFocus %W }
 
-bind Treeview	<Shift-ButtonPress-1> \
+bind Treeview	<Shift-Button-1> \
 		{ ttk::treeview::Select %W %x %y extend }
 bind Treeview	<<ToggleSelection>> \
 		{ ttk::treeview::Select %W %x %y toggle }
 
-ttk::copyBindings TtkScrollable Treeview 
+ttk::copyBindings TtkScrollable Treeview
 
 ### Binding procedures.
 #
@@ -102,7 +102,11 @@ proc ttk::treeview::Keynav {w dir} {
 #	Sets cursor, active element ...
 #
 proc ttk::treeview::Motion {w x y} {
-    set cursor {}
+    variable State
+
+    ttk::saveCursor $w State(userConfCursor) [ttk::cursor hresize]
+
+    set cursor $State(userConfCursor)
     set activeHeading {}
 
     switch -- [$w identify region $x $y] {
@@ -120,8 +124,18 @@ proc ttk::treeview::ActivateHeading {w heading} {
     variable State
 
     if {$w != $State(activeWidget) || $heading != $State(activeHeading)} {
-	if {$State(activeHeading) != {}} {
-	    $State(activeWidget) heading $State(activeHeading) state !active
+	if {[winfo exists $State(activeWidget)] && $State(activeHeading) != {}} {
+	    # It may happen that $State(activeHeading) no longer corresponds
+	    # to an existing display column. This happens for instance when
+	    # changing -displaycolumns in a bound script when this change
+	    # triggers a <Leave> event. A proc checking if the display column
+	    # $State(activeHeading) is really still present or not could be
+	    # written but it would need to check several special cases:
+	    #   a. -displaycolumns "#all" or being an explicit columns list
+	    #   b. column #0 display is not governed by the -displaycolumn
+	    #      list but by the value of the -show option
+	    # --> Let's rather catch the following line.
+	    catch {$State(activeWidget) heading $State(activeHeading) state !active}
 	}
 	if {$heading != {}} {
 	    $w heading $heading state active
@@ -141,7 +155,7 @@ proc ttk::treeview::Select {w x y op} {
     }
 }
 
-## DoubleClick -- Double-ButtonPress-1 binding.
+## DoubleClick -- Double-Button-1 binding.
 #
 proc ttk::treeview::DoubleClick {w x y} {
     if {[set row [$w identify row $x $y]] ne ""} {
@@ -151,7 +165,7 @@ proc ttk::treeview::DoubleClick {w x y} {
     }
 }
 
-## Press -- ButtonPress binding.
+## Press -- Button binding.
 #
 proc ttk::treeview::Press {w x y} {
     focus $w
@@ -205,7 +219,7 @@ proc ttk::treeview::resize.drag {w x} {
 }
 
 proc ttk::treeview::resize.release {w x} {
-    # no-op
+    $w drop
 }
 
 ### Heading activation.
@@ -251,9 +265,9 @@ proc ttk::treeview::SelectOp {w item op} {
 
 ## -selectmode none:
 #
-proc ttk::treeview::select.choose.none {w item} { $w focus $item }
-proc ttk::treeview::select.toggle.none {w item} { $w focus $item }
-proc ttk::treeview::select.extend.none {w item} { $w focus $item }
+proc ttk::treeview::select.choose.none {w item} { $w focus $item; $w see $item }
+proc ttk::treeview::select.toggle.none {w item} { $w focus $item; $w see $item }
+proc ttk::treeview::select.extend.none {w item} { $w focus $item; $w see $item }
 
 ## -selectmode browse:
 #
@@ -336,6 +350,12 @@ proc ttk::treeview::CloseItem {w item} {
 ## Toggle -- toggle opened/closed state of item
 #
 proc ttk::treeview::Toggle {w item} {
+    # don't allow toggling on indicators that
+    # are not present in front of leaf items
+    if {[$w children $item] == {}} {
+        return
+    }
+    # not a leaf, toggle!
     if {[$w item $item -open]} {
 	CloseItem $w $item
     } else {

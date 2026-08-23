@@ -4,7 +4,7 @@
 #
 # Copyright (c) 1994 The Regents of the University of California.
 # Copyright (c) 1994 Sun Microsystems, Inc.
-# Copyright (c) 1998-1999 by Scriptics Corporation.
+# Copyright (c) 1998-1999 Scriptics Corporation.
 # All rights reserved.
 
 proc getsize w {
@@ -270,7 +270,7 @@ test geometry-4.10 {Tk_MaintainGeometry and Tk_UnmaintainGeometry} -setup {
     wm geometry .t +0+0
     tkwait visibility .t
     update
-    pack [frame .t.f] 
+    pack [frame .t.f]
     button .t.quit -text Quit -command exit
     pack .t.quit -in .t.f
     wm iconify .t
@@ -282,7 +282,7 @@ test geometry-4.10 {Tk_MaintainGeometry and Tk_UnmaintainGeometry} -setup {
     winfo ismapped .t.quit
 } -cleanup {
     destroy .t
-} -result {1}
+} -result 1
 
 
 # cleanup

@@ -163,7 +163,7 @@ sameFiles(char *file1, char *file2)
 		rc = 1;
 		goto out;
 	}
-	while (len = fread(buf1, 1, sizeof(buf1), f1)) {
+	while ((len = fread(buf1, 1, sizeof(buf1), f1))) {
 		unless (len == fread(buf2, 1, sizeof(buf2), f2)) goto out;
 		if (memcmp(buf1, buf2, len)) goto out;
 	}

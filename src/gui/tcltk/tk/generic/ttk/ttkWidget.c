@@ -4,14 +4,9 @@
  * Core widget utilities.
  */
 
-#include <string.h>
-#include <tk.h>
+#include "tkInt.h"
 #include "ttkTheme.h"
 #include "ttkWidget.h"
-
-#ifdef MAC_OSX_TK
-#define TK_NO_DOUBLE_BUFFERING 1
-#endif
 
 /*------------------------------------------------------------------------
  * +++ Internal helper routines.
@@ -120,6 +115,19 @@ void TtkRedisplayWidget(WidgetCore *corePtr)
     }
 }
 
+/*
+ * WidgetWorldChanged --
+ * 	Default Tk_ClassWorldChangedProc() for widgets.
+ * 	Invoked whenever fonts or other system resources are changed;
+ * 	recomputes geometry.
+ */
+static void WidgetWorldChanged(ClientData clientData)
+{
+    WidgetCore *corePtr = clientData;
+    SizeChanged(corePtr);
+    TtkRedisplayWidget(corePtr);
+}
+
 /* TtkResizeWidget --
  * 	Recompute widget size, schedule geometry propagation and redisplay.
  */
@@ -129,8 +137,7 @@ void TtkResizeWidget(WidgetCore *corePtr)
 	return;
     }
 
-    SizeChanged(corePtr);
-    TtkRedisplayWidget(corePtr);
+    WidgetWorldChanged(corePtr);
 }
 
 /* TtkWidgetChangeState --
@@ -194,15 +201,6 @@ WidgetInstanceObjCmdDeleted(ClientData clientData)
 	Tk_DestroyWindow(corePtr->tkwin);
 }
 
-/* FreeWidget --
- *	 Final cleanup for widget; called via Tcl_EventuallyFree().
- */
-static void
-FreeWidget(void *memPtr)
-{
-    ckfree(memPtr);
-}
-
 /* DestroyWidget --
  * 	Main widget destructor; called from <DestroyNotify> event handler.
  */
@@ -231,7 +229,7 @@ DestroyWidget(WidgetCore *corePtr)
 	/* NB: this can reenter the interpreter via a command traces */
 	Tcl_DeleteCommandFromToken(corePtr->interp, cmd);
     }
-    Tcl_EventuallyFree(corePtr, (Tcl_FreeProc *) FreeWidget);
+    Tcl_EventuallyFree(corePtr, TCL_DYNAMIC);
 }
 
 /*
@@ -244,8 +242,6 @@ DestroyWidget(WidgetCore *corePtr)
  *	For Destroy events, handle the cleanup process.
  *
  *	For Focus events, set/clear the focus bit in the state field.
- *	It turns out this is impossible to do correctly in a binding script,
- *	because Tk filters out focus events with detail == NotifyInferior.
  *
  *	For Deactivate/Activate pseudo-events, set/clear the background state
  *	flag.
@@ -263,7 +259,7 @@ static const unsigned CoreEventMask
 
 static void CoreEventProc(ClientData clientData, XEvent *eventPtr)
 {
-    WidgetCore *corePtr = clientData;
+    WidgetCore *corePtr = (WidgetCore *)clientData;
 
     switch (eventPtr->type)
     {
@@ -310,36 +306,25 @@ static void CoreEventProc(ClientData clientData, XEvent *eventPtr)
 	    corePtr->state |= TTK_STATE_HOVER;
 	    TtkRedisplayWidget(corePtr);
 	    break;
-	case VirtualEvent:
-	    if (!strcmp("ThemeChanged", ((XVirtualEvent *)(eventPtr))->name)) {
+	case VirtualEvent: {
+	    const char *name = ((XVirtualEvent *)eventPtr)->name;
+	    if ((name != NULL) && !strcmp("ThemeChanged", name)) {
 		(void)UpdateLayout(corePtr->interp, corePtr);
-		SizeChanged(corePtr);
-		TtkRedisplayWidget(corePtr);
+		WidgetWorldChanged(corePtr);
 	    }
+	    break;
+	}
 	default:
 	    /* can't happen... */
 	    break;
     }
 }
 
-/*
- * WidgetWorldChanged --
- * 	Default Tk_ClassWorldChangedProc() for widgets.
- * 	Invoked whenever fonts or other system resources are changed;
- * 	recomputes geometry.
- */
-static void WidgetWorldChanged(ClientData clientData)
-{
-    WidgetCore *corePtr = clientData;
-    SizeChanged(corePtr);
-    TtkRedisplayWidget(corePtr);
-}
-
 static Tk_ClassProcs widgetClassProcs = {
     sizeof(Tk_ClassProcs),	/* size */
-    WidgetWorldChanged,	/* worldChangedProc */
-    NULL,					/* createProc */
-    NULL					/* modalProc */
+    WidgetWorldChanged,		/* worldChangedProc */
+    NULL,			/* createProc */
+    NULL			/* modalProc */
 };
 
 /*
@@ -757,7 +742,7 @@ int TtkWidgetIdentifyCommand(
 {
     WidgetCore *corePtr = recordPtr;
     Ttk_Element element;
-    static const char *whatTable[] = { "element", NULL };
+    static const char *const whatTable[] = { "element", NULL };
     int x, y, what;
 
     if (objc < 4 || objc > 5) {
@@ -773,9 +758,8 @@ int TtkWidgetIdentifyCommand(
 	}
     }
 
-    if (   Tcl_GetIntFromObj(interp, objv[objc-2], &x) != TCL_OK
-	|| Tcl_GetIntFromObj(interp, objv[objc-1], &y) != TCL_OK
-    ) {
+    if (Tcl_GetIntFromObj(interp, objv[objc-2], &x) != TCL_OK
+	    || Tcl_GetIntFromObj(interp, objv[objc-1], &y) != TCL_OK) {
 	return TCL_ERROR;
     }
 

@@ -3,7 +3,7 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
+'\"
 .TH ttk::notebook n 8.5 Tk "Tk Themed Widget"
 .so man.macros
 .BS
@@ -18,9 +18,9 @@ ttk::notebook \- Multi-paned container widget
 .fi
 .BE
 .SH DESCRIPTION
-A \fBttk::notebook\fR widget manages a collection of windows 
+A \fBttk::notebook\fR widget manages a collection of windows
 and displays a single one at a time.
-Each slave window is associated with a \fItab\fR,
+Each content window is associated with a \fItab\fR,
 which the user may select to change the currently-displayed window.
 .SO ttk_widget
 \-class	\-cursor	\-takefocus
@@ -28,36 +28,39 @@ which the user may select to change the currently-displayed window.
 .SE
 .SH "WIDGET-SPECIFIC OPTIONS"
 .OP \-height height Height
-If present and greater than zero, 
+If present and greater than zero,
 specifies the desired height of the pane area
 (not including internal padding or tabs).
 Otherwise, the maximum height of all panes is used.
 .OP \-padding padding Padding
 Specifies the amount of extra space to add around the outside
 of the notebook.
-The padding is a list of up to four length specifications 
+The padding is a list of up to four length specifications
 \fIleft top right bottom\fR.
-If fewer than four elements are specified, 
+If fewer than four elements are specified,
 \fIbottom\fR defaults to \fItop\fR,
-\fIright\fR defaults to \fIleft\fR, and 
+\fIright\fR defaults to \fIleft\fR, and
 \fItop\fR defaults to \fIleft\fR.
+In other words, a list of three numbers specify the left, vertical, and right padding;
+a list of two numbers specify the horizontal and the vertical padding;
+a single number specifies the same padding all the way around the widget.
 .OP \-width width Width
-If present and greater than zero, 
+If present and greater than zero,
 specifies the desired width of the pane area
 (not including internal padding).
 Otherwise, the maximum width of all panes is used.
 .SH "TAB OPTIONS"
 The following options may be specified for individual notebook panes:
 .OP \-state state State
-Either \fBnormal\fR, \fBdisabled\fR or \fBhidden\fR.  
+Either \fBnormal\fR, \fBdisabled\fR or \fBhidden\fR.
 If \fBdisabled\fR, then the tab is not selectable.
 If \fBhidden\fR, then the tab is not shown.
 .OP \-sticky sticky Sticky
-Specifies how the slave window is positioned within the pane area.
+Specifies how the content window is positioned within the pane area.
 Value is a string containing zero or more of the characters
 \fBn, s, e,\fR or \fBw\fR.
-Each letter refers to a side (north, south, east, or west) 
-that the slave window will
+Each letter refers to a side (north, south, east, or west)
+that the content window will
 .QW stick
 to, as per the \fBgrid\fR geometry manager.
 .OP \-padding padding Padding
@@ -73,7 +76,7 @@ Specifies how to display the image relative to the text,
 in the case both \fB\-text\fR and \fB\-image\fR are present.
 See \fIlabel(n)\fR for legal values.
 .OP \-underline underline Underline
-Specifies the integer index (0-based) of a character to underline 
+Specifies the integer index (0-based) of a character to underline
 in the text string.
 The underlined character is used for mnemonic activation
 if \fBttk::notebook::enableTraversal\fR is called.
@@ -83,11 +86,11 @@ any of the following forms:
 .IP \(bu
 An integer between zero and the number of tabs;
 .IP \(bu
-The name of a slave window;
+The name of a content window;
 .IP \(bu
 A positional specification of the form
 .QW @\fIx\fR,\fIy\fR ,
-which identifies the tab 
+which identifies the tab
 .IP \(bu
 The literal string
 .QW \fBcurrent\fR ,
@@ -95,7 +98,7 @@ which identifies the currently-selected tab; or:
 .IP \(bu
 The literal string
 .QW \fBend\fR ,
-which returns the number of tabs 
+which returns the number of tabs
 (only valid for
 .QW "\fIpathname \fBindex\fR" ).
 .SH "WIDGET COMMAND"
@@ -142,9 +145,9 @@ or the total number of tabs if \fItabid\fR is the string
 .TP
 \fIpathname \fBinsert \fIpos subwindow options...\fR
 Inserts a pane at the specified position.
-\fIpos\fR is either the string \fBend\fR, an integer index, 
+\fIpos\fR is either the string \fBend\fR, an integer index,
 or the name of a managed subwindow.
-If \fIsubwindow\fR is already managed by the notebook, 
+If \fIsubwindow\fR is already managed by the notebook,
 moves it to the specified position.
 See \fBTAB OPTIONS\fR for the list of available options.
 .TP
@@ -153,7 +156,7 @@ See \fIttk::widget(n)\fR.
 .TP
 \fIpathname \fBselect\fR ?\fItabid\fR?
 Selects the specified tab.
-The associated slave window will be displayed,
+The associated content window will be displayed,
 and the previously-selected window (if different) is unmapped.
 If \fItabid\fR is omitted, returns the widget name of the
 currently selected pane.
@@ -171,7 +174,8 @@ Otherwise, sets the \fI\-option\fRs to the corresponding \fIvalue\fRs.
 See \fBTAB OPTIONS\fR for the available options.
 .TP
 \fIpathname \fBtabs\fR
-Returns the list of windows managed by the notebook.
+Returns the list of windows managed by the notebook, in the index order of
+their associated tabs.
 .SH "KEYBOARD TRAVERSAL"
 To enable keyboard traversal for a toplevel window
 containing a notebook widget \fI$nb\fR, call:
@@ -190,7 +194,7 @@ containing the notebook as follows:
 of any tab, will select that tab.
 .PP
 Multiple notebooks in a single toplevel may be enabled for traversal,
-including nested notebooks.  
+including nested notebooks.
 However, notebook traversal only works properly if all panes
 are direct children of the notebook.
 .SH "VIRTUAL EVENTS"
@@ -204,6 +208,100 @@ pack [\fBttk::notebook\fR .nb]
 \&.nb select .nb.f2
 ttk::notebook::enableTraversal .nb
 .CE
+.SH "STYLING OPTIONS"
+.PP
+The class name for a \fBttk::notebook\fP is \fBTNotebook\fP.  The tab has
+a class name of \fBTNotebook.Tab\fP
+.PP
+Dynamic states: \fBactive\fP, \fBdisabled\fP, \fBselected\fP.
+.PP
+\fBTNotebook\fP styling options configurable with \fBttk::style\fP
+are:
+.PP
+\fB\-background\fP \fIcolor\fP
+.br
+\fB\-bordercolor\fP \fIcolor\fP
+.br
+\fB\-darkcolor\fP \fIcolor\fP
+.br
+\fB\-foreground\fP \fIcolor\fP
+.br
+\fB\-lightcolor\fP \fIcolor\fP
+.br
+\fB\-padding\fP \fIpadding\fP
+.br
+\fB\-tabmargins\fP \fIpadding\fP
+.br
+\fB\-tabposition\fP \fIposition\fP
+.RS
+Specifies the position of the tab row or column as a string of length
+1 or 2.  The first character indicates the side as \fBn\fP, \fBs\fP,
+\fBw\fP, or \fBe\fP, while the second character (if present) is the
+sticky bit (specified as \fBw\fP, \fBe\fP, \fBn\fP, or \fBs\fP) within
+the tab position.  The default position is \fBn\fP for the \fBaqua\fP
+theme and \fBnw\fP for all the other built-in themes.
+.RE
+.br
+.PP
+\fBTNotebook.Tab\fP styling options configurable with \fBttk::style\fP
+are:
+.PP
+\fB\-background\fP \fIcolor\fP
+.br
+\fB\-bordercolor\fP \fIcolor\fP
+.br
+\fB\-compound\fP \fIcompound\fP
+.br
+\fB\-expand\fP \fIpadding\fP
+.RS
+Defines how much the tab grows in size.  Usually used with the
+\fBselected\fP dynamic state.  \fB\-tabmargins\fP should be
+set appropriately so that there is room for the tab growth.
+For example, the Ttk library file \fBvistaTheme.tcl\fP contains
+the lines
+.CS
+ttk::style configure TNotebook -tabmargins {2 2 2 0}
+ttk::style map TNotebook.Tab -expand {selected {2 2 2 2}}
+.CE
+which are valid for the default value \fBnw\fP of the \fB\-tabposition\fP
+style option.  For a \fBttk::notebook\fP style \fBnbStyle\fP defined by
+.CS
+set nbStyle SW.TNotebook
+ttk::style configure $nbStyle -tabposition sw
+.CE
+you will have to adapt the above settings as follows:
+.CS
+ttk::style configure $nbStyle -tabmargins {2 0 2 2}
+ttk::style map $nbStyle.Tab -expand {selected {2 2 2 2}}
+.CE
+The easiest way to do this is to invoke the library procedure
+\fBttk::configureNotebookStyle\fP with \fB$nbStyle\fP as argument, after
+setting the style's \fB\-tabposition\fP option.
+.RE
+\fB\-font\fP \fIfont\fP
+.br
+\fB\-foreground\fP \fIcolor\fP
+.br
+\fB\-padding\fP \fIpadding\fP
+.RS
+Some themes use a different \fIpadding\fP for the selected tab.  For example,
+the Ttk library file \fBclamTheme.tcl\fP contains the lines
+.CS
+ttk::style configure TNotebook.Tab -padding {6 2 6 2}
+ttk::style map TNotebook.Tab -padding {selected {6 4 6 2}}
+.CE
+which are valid for the default value \fBnw\fP of the \fB\-tabposition\fP
+style option.  For a \fBttk::notebook\fP style having a different tab position
+you will have to adapt the above settings accordingly.  Again, the easiest way
+to do this is to invoke the library procedure \fBttk::configureNotebookStyle\fP
+with the style name as argument, after setting the style's \fB\-tabposition\fP
+option.
+.RE
+.PP
+Some options are only available for specific themes.
+.PP
+See the \fBttk::style\fP manual page for information on how to configure
+ttk styles.
 .SH "SEE ALSO"
 ttk::widget(n), grid(n)
 .SH "KEYWORDS"

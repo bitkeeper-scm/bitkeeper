@@ -32,7 +32,7 @@ resolve_init(opts *opts, sccs *s)
 	rs->s = s;
 	sccs_sdelta(rs->s, sccs_ino(rs->s), buf);
 	rs->key = strdup(buf);
-	if (rs->snames = res_getnames(rs->s, 'm')) {
+	if ((rs->snames = res_getnames(rs->s, 'm'))) {
 		rs->gnames	   = new(names);
 		rs->gnames->local  = sccs2name(rs->snames->local);
 		rs->gnames->gca    = sccs2name(rs->snames->gca);
@@ -175,7 +175,7 @@ again:		/* 100 tries for the same file means we're hosed.  */
 			fprintf(stderr,
 			    "[%s] Calling %s on %s\n", buf, rf[i].name, name);
 		}
-		if (ret = rf[i].func(rs)) {
+		if ((ret = rf[i].func(rs))) {
 			if (rs->opts->debug) {
 				fprintf(stderr,
 				    "%s returns %d\n", rf[i].name, ret);

@@ -4,9 +4,7 @@
  * ttk::scale widget.
  */
 
-#include <tk.h>
-#include <string.h>
-#include <stdio.h>
+#include "tkInt.h"
 #include "ttkTheme.h"
 #include "ttkWidget.h"
 
@@ -14,6 +12,10 @@
 
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
+
+/* Bit fields for OptionSpec mask field:
+ */
+#define STATE_CHANGED	 	(0x100)		/* -state option changed */
 
 /*
  * Scale widget record
@@ -35,6 +37,11 @@ typedef struct
     /* internal state */
     Ttk_TraceHandle *variableTrace;
 
+    /*
+     * Compatibility/legacy options:
+     */
+    Tcl_Obj *stateObj;
+
 } ScalePart;
 
 typedef struct
@@ -46,15 +53,15 @@ typedef struct
 static Tk_OptionSpec ScaleOptionSpecs[] =
 {
     {TK_OPTION_STRING, "-command", "command", "Command", "",
-	Tk_Offset(Scale,scale.commandObj), -1, 
+	Tk_Offset(Scale,scale.commandObj), -1,
 	TK_OPTION_NULL_OK,0,0},
     {TK_OPTION_STRING, "-variable", "variable", "Variable", "",
-	Tk_Offset(Scale,scale.variableObj), -1, 
-	0,0,0},
+	Tk_Offset(Scale,scale.variableObj), -1,
+	0, 0, 0},
     {TK_OPTION_STRING_TABLE, "-orient", "orient", "Orient", "horizontal",
 	Tk_Offset(Scale,scale.orientObj),
-	Tk_Offset(Scale,scale.orient), 0, 
-	(ClientData)ttkOrientStrings, STYLE_CHANGED },
+	Tk_Offset(Scale,scale.orient),
+	0, ttkOrientStrings, STYLE_CHANGED },
 
     {TK_OPTION_DOUBLE, "-from", "from", "From", "0",
 	Tk_Offset(Scale,scale.fromObj), -1, 0, 0, 0},
@@ -63,8 +70,12 @@ static Tk_OptionSpec ScaleOptionSpecs[] =
     {TK_OPTION_DOUBLE, "-value", "value", "Value", "0",
 	Tk_Offset(Scale,scale.valueObj), -1, 0, 0, 0},
     {TK_OPTION_PIXELS, "-length", "length", "Length",
-	DEF_SCALE_LENGTH, Tk_Offset(Scale,scale.lengthObj), -1, 0, 0, 
+	DEF_SCALE_LENGTH, Tk_Offset(Scale,scale.lengthObj), -1, 0, 0,
     	GEOMETRY_CHANGED},
+
+    {TK_OPTION_STRING, "-state", "state", "State",
+	"normal", Tk_Offset(Scale,scale.stateObj), -1,
+        0, 0, STATE_CHANGED},
 
     WIDGET_TAKEFOCUS_TRUE,
     WIDGET_INHERIT_OPTIONS(ttkCoreOptionSpecs)
@@ -76,12 +87,12 @@ static double PointToValue(Scale *scalePtr, int x, int y);
 /* ScaleVariableChanged --
  * 	Variable trace procedure for scale -variable;
  * 	Updates the scale's value.
- * 	If the linked variable is not a valid double, 
+ * 	If the linked variable is not a valid double,
  * 	sets the 'invalid' state.
  */
 static void ScaleVariableChanged(void *recordPtr, const char *value)
 {
-    Scale *scale = recordPtr;
+    Scale *scale = (Scale *)recordPtr;
     double v;
 
     if (value == NULL || Tcl_GetDouble(0, value, &v) != TCL_OK) {
@@ -99,15 +110,18 @@ static void ScaleVariableChanged(void *recordPtr, const char *value)
 /* ScaleInitialize --
  * 	Scale widget initialization hook.
  */
-static void ScaleInitialize(Tcl_Interp *interp, void *recordPtr)
+static void ScaleInitialize(
+    TCL_UNUSED(Tcl_Interp *),
+    void *recordPtr)
 {
-    Scale *scalePtr = recordPtr;
+    Scale *scalePtr = (Scale *)recordPtr;
+
     TtkTrackElementState(&scalePtr->core);
 }
 
 static void ScaleCleanup(void *recordPtr)
 {
-    Scale *scale = recordPtr;
+    Scale *scale = (Scale *)recordPtr;
 
     if (scale->scale.variableTrace) {
 	Ttk_UntraceVariable(scale->scale.variableTrace);
@@ -120,7 +134,7 @@ static void ScaleCleanup(void *recordPtr)
  */
 static int ScaleConfigure(Tcl_Interp *interp, void *recordPtr, int mask)
 {
-    Scale *scale = recordPtr;
+    Scale *scale = (Scale *)recordPtr;
     Tcl_Obj *varName = scale->scale.variableObj;
     Ttk_TraceHandle *vt = 0;
 
@@ -139,6 +153,10 @@ static int ScaleConfigure(Tcl_Interp *interp, void *recordPtr, int mask)
     }
     scale->scale.variableTrace = vt;
 
+    if (mask & STATE_CHANGED) {
+	TtkCheckStateOption(&scale->core, scale->scale.stateObj);
+    }
+
     return TCL_OK;
 }
 
@@ -146,9 +164,11 @@ static int ScaleConfigure(Tcl_Interp *interp, void *recordPtr, int mask)
  * 	Post-configuration hook.
  */
 static int ScalePostConfigure(
-    Tcl_Interp *interp, void *recordPtr, int mask)
+    TCL_UNUSED(Tcl_Interp *),
+    void *recordPtr,
+    TCL_UNUSED(int))
 {
-    Scale *scale = recordPtr;
+    Scale *scale = (Scale *)recordPtr;
     int status = TCL_OK;
 
     if (scale->scale.variableTrace) {
@@ -172,10 +192,10 @@ static int ScalePostConfigure(
 /* ScaleGetLayout --
  *	getLayout hook.
  */
-static Ttk_Layout 
+static Ttk_Layout
 ScaleGetLayout(Tcl_Interp *interp, Ttk_Theme theme, void *recordPtr)
 {
-    Scale *scalePtr = recordPtr;
+    Scale *scalePtr = (Scale *)recordPtr;
     return TtkWidgetGetOrientedLayout(
 	interp, theme, recordPtr, scalePtr->scale.orientObj);
 }
@@ -236,14 +256,14 @@ static double ScaleFraction(Scale *scalePtr, double value)
 }
 
 /* $scale get ?x y? --
- * 	Returns the current value of the scale widget, or if $x and 
+ * 	Returns the current value of the scale widget, or if $x and
  * 	$y are specified, the value represented by point @x,y.
  */
 static int
 ScaleGetCommand(
     void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
-    Scale *scalePtr = recordPtr;
+    Scale *scalePtr = (Scale *)recordPtr;
     int x, y, r = TCL_OK;
     double value = 0;
 
@@ -271,7 +291,7 @@ static int
 ScaleSetCommand(
     void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
-    Scale *scalePtr = recordPtr;
+    Scale *scalePtr = (Scale *)recordPtr;
     double from = 0.0, to = 1.0, value;
     int result = TCL_OK;
 
@@ -339,7 +359,7 @@ static int
 ScaleCoordsCommand(
     void *recordPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
-    Scale *scalePtr = recordPtr;
+    Scale *scalePtr = (Scale *)recordPtr;
     double value;
     int r = TCL_OK;
 
@@ -366,7 +386,7 @@ ScaleCoordsCommand(
 
 static void ScaleDoLayout(void *clientData)
 {
-    WidgetCore *corePtr = clientData;
+    WidgetCore *corePtr = (WidgetCore *)clientData;
     Ttk_Element slider = Ttk_FindElement(corePtr->layout, "slider");
 
     Ttk_PlaceLayout(corePtr->layout,corePtr->state,Ttk_WinBox(corePtr->tkwin));
@@ -374,7 +394,7 @@ static void ScaleDoLayout(void *clientData)
     /* Adjust the slider position:
      */
     if (slider) {
-	Scale *scalePtr = clientData;
+	Scale *scalePtr = (Scale *)clientData;
 	Ttk_Box troughBox = TroughBox(scalePtr);
 	Ttk_Box sliderBox = Ttk_ElementParcel(slider);
 	double value = 0.0;
@@ -401,8 +421,8 @@ static void ScaleDoLayout(void *clientData)
  */
 static int ScaleSize(void *clientData, int *widthPtr, int *heightPtr)
 {
-    WidgetCore *corePtr = clientData;
-    Scale *scalePtr = clientData;
+    WidgetCore *corePtr = (WidgetCore *)clientData;
+    Scale *scalePtr = (Scale *)clientData;
     int length;
 
     Ttk_LayoutSize(corePtr->layout, corePtr->state, widthPtr, heightPtr);
@@ -490,20 +510,25 @@ static WidgetSpec ScaleWidgetSpec =
 };
 
 TTK_BEGIN_LAYOUT(VerticalScaleLayout)
-    TTK_GROUP("Vertical.Scale.trough", TTK_FILL_BOTH,
-	TTK_NODE("Vertical.Scale.slider", TTK_PACK_TOP) )
+    TTK_GROUP("Vertical.Scale.focus", TTK_FILL_BOTH,
+	TTK_GROUP("Vertical.Scale.padding", TTK_FILL_BOTH,
+	    TTK_GROUP("Vertical.Scale.trough", TTK_FILL_BOTH,
+		TTK_NODE("Vertical.Scale.slider", TTK_PACK_TOP))))
 TTK_END_LAYOUT
 
 TTK_BEGIN_LAYOUT(HorizontalScaleLayout)
-    TTK_GROUP("Horizontal.Scale.trough", TTK_FILL_BOTH,
-	TTK_NODE("Horizontal.Scale.slider", TTK_PACK_LEFT) )
+    TTK_GROUP("Horizontal.Scale.focus", TTK_FILL_BOTH,
+	TTK_GROUP("Horizontal.Scale.padding", TTK_FILL_BOTH,
+	    TTK_GROUP("Horizontal.Scale.trough", TTK_FILL_BOTH,
+		TTK_NODE("Horizontal.Scale.slider", TTK_PACK_LEFT))))
 TTK_END_LAYOUT
 
 /*
  * Initialization.
  */
-MODULE_SCOPE
-void TtkScale_Init(Tcl_Interp *interp)
+
+MODULE_SCOPE void
+TtkScale_Init(Tcl_Interp *interp)
 {
     Ttk_Theme theme = Ttk_GetDefaultTheme(interp);
 

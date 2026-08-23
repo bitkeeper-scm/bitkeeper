@@ -4,6 +4,14 @@
 .if !d bk-macros \{\
 .ds bk-macros 1
 .so man.tmac
+.\" devascii only has R, I, B, BI fonts (no constant-width variants);
+.\" translate the constant-width font names to their closest ascii
+.\" equivalents so nroff/ascii output doesn't warn about missing fonts.
+.if n \{\
+.	ftr CW R
+.	ftr CB B
+.	ftr CI I
+.\}
 .rn TP GROFF_TP
 .de TP
 .	ie '\\$1'' .GROFF_TP 4

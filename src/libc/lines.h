@@ -55,10 +55,7 @@
 /* length of array (use nLines() in code) */
 #define	_LLEN(s)			(*(u32 *)(s) & LMASK)
 
-#define L(d) ({							\
-	typeof(d) _d = d;						\
-	(_d) ? (typeof(_d) []){(typeof(_d))1, (typeof(_d))_d} : 0;	\
-})
+#define L(d) ((d) ? (__typeof__(d) []){1, (d)} : 0)
 
 #define	EACH_START(x, s, i)				\
 	if ((i = (x)), (s)) for (; (i) <= _LLEN(s); i++)
@@ -134,24 +131,24 @@ int	parallelLines(char **a, char **b,
 
 /* TYPE *growArray(TYPE **space, int n) */
 #define	growArray(space, n)					\
-	({ typeof(*space) _ret;					\
+	({ __typeof__(*space) _ret;					\
 	   _ret = _growArray((void **)space, n, sizeof(*_ret));	\
 	   _ret; })
 
 /* TYPE *addArray(TYPE **space, TYPE *new) */
 #define	addArray(space, x)				\
-	({ typeof(*space) _arg = (x), _ret;			\
+	({ __typeof__(*space) _arg = (x), _ret;			\
 	   _ret = _addArray((void **)space, _arg, sizeof(*_ret));	\
 	   _ret; })
 
 /* void addArrayV(TYPE **space, TYPE new) */
 #define	addArrayV(space, x)				\
-	(void)({ typeof(**space) _arg = (x);			\
+	(void)({ __typeof__(**space) _arg = (x);			\
 		 _addArray((void **)space, &_arg, sizeof(_arg)); })
 
 /* TYPE *insertArrayN(TYPE **space, int n, TYPE *x) */
 #define	insertArrayN(space, n, x)			\
-	({ typeof(*space) _arg = (x), _ret;			\
+	({ __typeof__(*space) _arg = (x), _ret;			\
 	   _ret = _insertArrayN((void **)space, n, _arg,  sizeof(*_ret)); \
 	   _ret; })
 
@@ -170,7 +167,7 @@ int	parallelLines(char **a, char **b,
 /* TYPE popArray(TYPE *space); */
 #define	popArray(space)				\
 	({ int i = nLines(space);		\
-	   typeof(*space) _ret;			\
+	   __typeof__(*space) _ret;			\
 	   if (i) {				\
 		   _ret = space[i];		\
 		   removeArrayN(space, i);	\

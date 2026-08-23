@@ -4,7 +4,7 @@
 # standard fashion for Tcl tests.
 #
 # Copyright (c) 1995 Sun Microsystems, Inc.
-# Copyright (c) 1998-1999 by Scriptics Corporation.
+# Copyright (c) 1998-1999 Scriptics Corporation.
 # All rights reserved.
 
 package require tcltest 2.2
@@ -402,7 +402,7 @@ test focusTcl-5.4 {tkFocusOK procedure, -takefocus ""} -body {
 test focusTcl-5.5 {tkFocusOK procedure, -takefocus "", not mapped} -body {
     setup1 .
     .b.x configure -takefocus ""
-    pack unpack .b.x
+    pack forget .b.x
     update
     tk_focusNext .b
 } -cleanup {
@@ -413,7 +413,7 @@ test focusTcl-5.6 {tkFocusOK procedure, -takefocus "", not mapped} -body {
     foreach w {.b.x .b.y .b.z} {
         $w configure -takefocus ""
     }
-    pack unpack .b
+    pack forget .b
     update
     tk_focusNext .b
 } -cleanup {
@@ -422,7 +422,7 @@ test focusTcl-5.6 {tkFocusOK procedure, -takefocus "", not mapped} -body {
 test focusTcl-5.7 {tkFocusOK procedure, -takefocus "", not mapped} -body {
     setup1 .
     .b.y configure -takefocus 1
-    pack unpack .b.y
+    pack forget .b.y
     update
     tk_focusNext .b.x
 } -cleanup {
@@ -432,7 +432,7 @@ test focusTcl-5.8 {tkFocusOK procedure, -takefocus "", not mapped} -body {
     proc always args {return 1}
     setup1 .
     .b.y configure -takefocus always
-    pack unpack .b.y
+    pack forget .b.y
     update
     tk_focusNext .b.x
 } -cleanup {

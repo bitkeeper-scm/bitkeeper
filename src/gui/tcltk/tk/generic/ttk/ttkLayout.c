@@ -6,12 +6,11 @@
  * Copyright (c) 2003 Joe English.  Freely redistributable.
  */
 
-#include <string.h>
-#include <tk.h>
+#include "tkInt.h"
 #include "ttkThemeInt.h"
 
-#define MAX(a,b) (a > b ? a : b)
-#define MIN(a,b) (a < b ? a : b)
+#define MAX(a,b) ((a) > (b) ? (a) : (b))
+#define MIN(a,b) ((a) < (b) ? (a) : (b))
 
 /*------------------------------------------------------------------------
  * +++ Ttk_Box and Ttk_Padding utilities:
@@ -30,6 +29,13 @@ Ttk_BoxContains(Ttk_Box box, int x, int y)
 {
     return box.x <= x && x < box.x + box.width
 	&& box.y <= y && y < box.y + box.height;
+}
+
+int
+TtkBoxEqual(Ttk_Box box1, Ttk_Box box2)
+{
+    return box1.x == box2.x && box1.y == box2.y
+	&& box1.width == box2.width && box1.height == box2.height;
 }
 
 Tcl_Obj *
@@ -251,6 +257,7 @@ Ttk_Box Ttk_PlaceBox(
  * Ttk_PositionBox --
  * 	Pack and stick a box according to PositionSpec flags.
  */
+
 MODULE_SCOPE Ttk_Box
 Ttk_PositionBox(Ttk_Box *cavity, int width, int height, Ttk_PositionSpec flags)
 {
@@ -604,13 +611,13 @@ Ttk_InstantiateLayout(Ttk_Theme theme, Ttk_TemplateNode *op)
  */
 
 /* NB: This must match bit definitions TTK_PACK_LEFT etc. */
-static const char *packSideStrings[] =
+static const char *const packSideStrings[] =
     { "left", "right", "top", "bottom", NULL };
 
 Ttk_LayoutTemplate Ttk_ParseLayoutTemplate(Tcl_Interp *interp, Tcl_Obj *objPtr)
 {
     enum {  OP_SIDE, OP_STICKY, OP_EXPAND, OP_BORDER, OP_UNIT, OP_CHILDREN };
-    static const char *optStrings[] = {
+    static const char *const optStrings[] = {
 	"-side", "-sticky", "-expand", "-border", "-unit", "-children", 0 };
 
     int i = 0, objc;
@@ -702,6 +709,8 @@ Ttk_LayoutTemplate Ttk_ParseLayoutTemplate(Tcl_Interp *interp, Tcl_Obj *objPtr)
 	if (childSpec) {
 	    tail->child = Ttk_ParseLayoutTemplate(interp, childSpec);
 	    if (!tail->child) {
+                Tcl_SetObjResult(interp, Tcl_ObjPrintf("Invalid -children value"));
+                Tcl_SetErrorCode(interp, "TTK", "VALUE", "CHILDREN", NULL);
 		goto error;
 	    }
 	}
@@ -808,7 +817,7 @@ Tcl_Obj *Ttk_UnparseLayoutTemplate(Ttk_TemplateNode *node)
 	APPENDSTR("-sticky");
 	APPENDOBJ(Ttk_NewStickyObj(flags & _TTK_MASK_STICK));
 
-	/* @@@ Check again: are these necessary? */
+	/* @@@ Check again: are these necessary? Can't see any effect! */
 	if (flags & TTK_BORDER)	{ APPENDSTR("-border"); APPENDSTR("1"); }
 	if (flags & TTK_UNIT) 	{ APPENDSTR("-unit"); APPENDSTR("1"); }
 

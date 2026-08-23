@@ -65,7 +65,7 @@ proc tristate_check {n1 n2 op} {
     set in_check 0
 }
 
-trace variable wipers w tristate_check
-trace variable brakes w tristate_check
-trace variable sober  w tristate_check
-trace variable safety w tristate_check
+trace add variable wipers write tristate_check
+trace add variable brakes write tristate_check
+trace add variable sober  write tristate_check
+trace add variable safety write tristate_check

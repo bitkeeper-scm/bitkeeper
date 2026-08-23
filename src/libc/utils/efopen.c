@@ -46,7 +46,7 @@ efprintf(char *env, char *fmt, ...)
 	FILE	*f;
 
 	va_start(ap, fmt);
-	if (f = efopen(env)) {
+	if ((f = efopen(env))) {
 		ret = vfprintf(f, fmt, ap);
 		fclose(f);
 	}

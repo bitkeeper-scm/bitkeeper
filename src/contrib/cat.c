@@ -100,8 +100,8 @@ scanfiles(char *argv[], int cooked)
 		if (path == NULL || strcmp(path, "-") == 0) {
 			filename = "stdin";
 			fd = 0;
-		} else if (type = is_xfile(path)) {
-			if (t = xfile_fetch(path, type)) {
+		} else if ((type = is_xfile(path))) {
+			if ((t = xfile_fetch(path, type))) {
 				fputs(t, stdout);
 				free(t);
 			} else {

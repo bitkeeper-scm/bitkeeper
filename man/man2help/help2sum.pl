@@ -90,7 +90,7 @@ sub summary
 		print F "help://command\n";
 		print F "help://commands\n";
 	}
-	open(G, "groff -rhelpdoc=1 -I.. -P-u -P-b -Tascii < $section.roff |");
+	open(G, "soelim -I . -I .. < $section.roff | groff -rhelpdoc=1 -P-u -P-b -Tascii |");
 	$nl = 0;
 	while (<G>) {
 		if (/^$/) {

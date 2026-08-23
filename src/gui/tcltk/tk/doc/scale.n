@@ -4,7 +4,7 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
+'\"
 .TH scale n 4.1 Tk "Tk Built-In Commands"
 .so man.macros
 .BS
@@ -55,7 +55,7 @@ it is the scale's width.
 .OP \-resolution resolution Resolution
 A real value specifying the resolution for the scale.
 If this value is greater than zero then the scale's value will always be
-rounded to an even multiple of this value, as will tick marks and
+rounded to an even multiple of this value, as will
 the endpoints of the scale.  If the value is less than zero then no
 rounding occurs.  Defaults to 1 (i.e., the value will be integral).
 .OP \-showvalue showValue ShowValue
@@ -78,7 +78,7 @@ specified by the \fB\-activebackground\fR option.
 .OP \-tickinterval tickInterval TickInterval
 Must be a real value.
 Determines the spacing between numerical
-tick marks displayed below or to the left of the slider.
+tick marks displayed below or to the left of the slider. The values will all be displayed with the same number of decimal places, which will be enough to ensure they are all accurate to within 20% of a tick interval.
 If 0, no tick marks will be displayed.
 .OP \-to to To
 Specifies a real value corresponding
@@ -91,10 +91,10 @@ value.
 Whenever the scale is manipulated interactively, the variable
 will be modified to reflect the scale's new value.
 .OP \-width width Width
-Specifies the desired narrow dimension of the trough in screen units
+Specifies the desired narrow dimension of the scale in screen units
 (i.e. any of the forms acceptable to \fBTk_GetPixels\fR).
-For vertical scales this is the trough's width;  for horizontal scales
-this is the trough's height.
+For vertical scales this is the scale's width;  for horizontal scales
+this is the scale's height.
 .BE
 .SH DESCRIPTION
 .PP
@@ -209,7 +209,7 @@ the horizontal behavior is described in parentheses.
 .IP [1]
 If button 1 is pressed in the trough, the scale's value will
 be incremented or decremented by the value of the \fB\-resolution\fR
-option so that the slider moves in the direction of the cursor. 
+option so that the slider moves in the direction of the cursor.
 If the button is held down, the action auto-repeats.
 .IP [2]
 If button 1 is pressed over the slider, the slider can be dragged

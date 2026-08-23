@@ -135,7 +135,7 @@ progress_startCommon(ticker *t, int style, u64 max)
 	t->max = max ? max : 1;
 	t->always = (getenv("_BK_PROGRESS_ALWAYS") != 0);
 	t->debug  = (getenv("_BK_PROGRESS_DEBUG") != 0);
-	if (s = getenv("_BK_PROGRESS_INHERIT")) {
+	if ((s = getenv("_BK_PROGRESS_INHERIT"))) {
 		t->style = max ? PROGRESS_BAR : PROGRESS_BAR_I;
 		q = strchr(s, ',');
 		if (t->name) free(t->name);
@@ -362,7 +362,7 @@ progress_end(u32 style, char *msg, u32 action)
 	progress_pauseDelayed();
 	if (action == PROGRESS_SUM) {
 		p = aprintf("%s/BitKeeper/log/progress-sum", proj_root(0));
-		if (m = loadfile(p, 0)) {
+		if ((m = loadfile(p, 0))) {
 			chomp(m);
 			unlink(p);
 		}

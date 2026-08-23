@@ -83,9 +83,9 @@ proc ::tk::MotifFDialog_Create {dataName type argList} {
     MotifFDialog_Config $dataName $type $argList
 
     if {$data(-parent) eq "."} {
-        set w .$dataName
+	set w .$dataName
     } else {
-        set w $data(-parent).$dataName
+	set w $data(-parent).$dataName
     }
 
     # (re)create the dialog box if necessary
@@ -156,7 +156,7 @@ proc ::tk::MotifFDialog_FileTypes {w} {
     # The filetypes radiobuttons
     # set data(fileType) $data(-defaulttype)
     # Default type to first entry
-    set initialTypeName [lindex $data(-filetypes) 0 0]
+    set initialTypeName [lindex $data(origfiletypes) 0 0]
     if {$data(-typevariable) ne ""} {
 	upvar #0 $data(-typevariable) typeVariable
 	if {[info exists typeVariable]} {
@@ -165,7 +165,7 @@ proc ::tk::MotifFDialog_FileTypes {w} {
     }
     set ix 0
     set data(fileType) 0
-    foreach fltr $data(-filetypes) {
+    foreach fltr $data(origfiletypes) {
 	set fname [lindex $fltr 0]
 	if {[string first $initialTypeName $fname] == 0} {
 	    set data(fileType) $ix
@@ -185,7 +185,7 @@ proc ::tk::MotifFDialog_FileTypes {w} {
     set cnt 0
     if {$data(-filetypes) ne {}} {
 	foreach type $data(-filetypes) {
-	    set title  [lindex [lindex $type 0] 0]
+	    set title  [lindex $type 0]
 	    set filter [lindex $type 1]
 	    radiobutton $f.b$cnt \
 		-text $title \
@@ -299,6 +299,7 @@ proc ::tk::MotifFDialog_Config {dataName type argList} {
     #    file dialog, but we check for validity of the value to make sure
     #    the application code also runs fine with the TK file dialog.
     #
+    set data(origfiletypes) $data(-filetypes)
     set data(-filetypes) [::tk::FDGetFileTypes $data(-filetypes)]
 
     if {![info exists data(filter)]} {
@@ -548,7 +549,7 @@ proc ::tk::MotifFDialog_Update {w} {
 
     $data(fEnt) delete 0 end
     $data(fEnt) insert 0 \
-            [::tk::dialog::file::JoinFile $data(selectPath) $data(filter)]
+	    [::tk::dialog::file::JoinFile $data(selectPath) $data(filter)]
     $data(sEnt) delete 0 end
     $data(sEnt) insert 0 [::tk::dialog::file::JoinFile $data(selectPath) \
 	    $data(selectFile)]
@@ -596,15 +597,15 @@ proc ::tk::MotifFDialog_LoadFiles {w} {
 	if {[file isdir ./$f]} {
 	    lappend dlist $f
 	} else {
-            foreach pat $data(filter) {
-                if {[string match $pat $f]} {
+	    foreach pat $data(filter) {
+		if {[string match $pat $f]} {
 		    if {[string match .* $f]} {
 			incr top
 		    }
 		    lappend flist $f
-                    break
+		    break
 		}
-            }
+	    }
 	}
     }
     eval [list $data(dList) insert end] [lsort -dictionary $dlist]
@@ -870,7 +871,7 @@ proc ::tk::MotifFDialog_ActivateSEnt {w} {
     if {[info exists data(-typevariable)] && $data(-typevariable) ne ""
 	    && [info exists data(-filetypes)] && $data(-filetypes) ne ""} {
 	upvar #0 $data(-typevariable) typeVariable
-	set typeVariable [lindex $data(-filetypes) $data(fileType) 0]
+	set typeVariable [lindex $data(origfiletypes) $data(fileType) 0]
     }
 
     if {$data(-multiple) != 0} {
@@ -906,9 +907,9 @@ proc ::tk::MotifFDialog_CancelCmd {w} {
 }
 
 proc ::tk::ListBoxKeyAccel_Set {w} {
-    bind Listbox <Any-KeyPress> ""
+    bind Listbox <Any-Key> ""
     bind $w <Destroy> [list tk::ListBoxKeyAccel_Unset $w]
-    bind $w <Any-KeyPress> [list tk::ListBoxKeyAccel_Key $w %A]
+    bind $w <Any-Key> [list tk::ListBoxKeyAccel_Key $w %A]
 }
 
 proc ::tk::ListBoxKeyAccel_Unset {w} {

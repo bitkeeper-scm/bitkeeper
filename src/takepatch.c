@@ -242,7 +242,7 @@ doit:	if (opts->newProject) {
 	/*
 	 * Find a file and go do it.
 	 */
-	while (buf = fgetline(opts->p)) {
+	while ((buf = fgetline(opts->p))) {
 		++opts->line;
 		unless (strncmp(buf, "== ", 3) == 0) {
 			if (opts->echo > 7) {
@@ -261,7 +261,7 @@ doit:	if (opts->newProject) {
 				    error < 0 ? "FAILED" : "OK");
 				tick = 0;
 			}
-			if (rc = sfio(opts->p, (int)(opts->N - files))) {
+			if ((rc = sfio(opts->p, (int)(opts->N - files)))) {
 				error = -1;
 			}
 			break;
@@ -295,7 +295,7 @@ doit:	if (opts->newProject) {
 		remote += rc;
 	}
 	if (opts->parallel > 0) {
-		if (rc = stopNway(opts->parallel, &opts->conflicts, &remote)) {
+		if ((rc = stopNway(opts->parallel, &opts->conflicts, &remote))) {
 			error = rc;
 		}
 	}
@@ -322,8 +322,8 @@ doit:	if (opts->newProject) {
 	}
 	if (opts->echo || opts->pbars) {
 		files = 0;
-		if (f = popen("bk gfiles RESYNC", "r")) {
-			while (t = fgetline(f)) ++files;
+		if ((f = popen("bk gfiles RESYNC", "r"))) {
+			while ((t = fgetline(f))) ++files;
 			pclose(f);
 		}
 		if (opts->pbars) {
@@ -507,7 +507,7 @@ extractPatch(char *name, FILE *p)
 
 		newFile = 1;
 		perfile = fmem();
-		while (t = fgetline(p)) {
+		while ((t = fgetline(p))) {
 			fputs(t, perfile);
 			fputc('\n', perfile);
 			unless (*t) break;
@@ -778,7 +778,7 @@ delta1:	while ((b = fgetline(f)) && *b) {
 		p->resyncFile = strdup(buf);
 		p->order = DATE(scratch, d);
 		c = opts->line;
-		while (b = fgetln(f, &len)) {
+		while ((b = fgetln(f, &len))) {
 			if (len && (b[len-1] == '\n')) --len;
 			b[len] = 0;
 			unless (len) break;
@@ -948,7 +948,7 @@ applyCsetPatch(sccs *s, int *nfound, int newFile)
 		sccs_writeHere(s, p->resyncFile);
 	}
 	/* serial is not stable */
-	if (top = sccs_top(s)) {
+	if ((top = sccs_top(s))) {
 		sccs_sdelta(s, top, buf);
 		topkey = strdup(buf);
 		top = 0;
@@ -991,7 +991,7 @@ applyCsetPatch(sccs *s, int *nfound, int newFile)
 			}
 		}
 		/* passing in d = parent, setting d = new or existing */
-		if (d = cset_insert(s, iF, dF, d, opts->fast)) {
+		if ((d = cset_insert(s, iF, dF, d, opts->fast))) {
 			if (d == D_INVALID) cleanup(CLEAN_RESYNC|CLEAN_PENDING);
 			(*nfound)++;
 			p->serial = d;
@@ -1112,7 +1112,7 @@ applyCsetPatch(sccs *s, int *nfound, int newFile)
 
 	unless (CSET(s)) goto markup;
 
-	if (cdb = loadCollapsed()) {
+	if ((cdb = loadCollapsed())) {
 		for (p = opts->patchList; p; p = p->next) {
 			d = p->serial;
 			unless (d && (FLAGS(s, d) & D_REMOTE)) continue;
@@ -1142,7 +1142,7 @@ applyCsetPatch(sccs *s, int *nfound, int newFile)
 
 			unless (p->diffMem) continue;
 			rewind(p->diffMem);
-			while (t = fgetline(p->diffMem)) {
+			while ((t = fgetline(p->diffMem))) {
 				unless (*t == '>') continue;
 				++t;		      /* skip '>' */
 				unless (opts->fast) ++t;    /* skip space */
@@ -1976,7 +1976,7 @@ init(char *inputFile)
 		perror("funopen patch");
 		exit(1);
 	}
-	while (t = fgetline(f)) {
+	while ((t = fgetline(f))) {
 		if (strneq(t, PATCH_CURRENT, strsz(PATCH_CURRENT)-1) ||
 		    (opts->fast = strneq(t, PATCH_FAST, strsz(PATCH_FAST)-1))) {
 			break;
@@ -2082,14 +2082,14 @@ parseFeatures(char *next)
 
 	/* copy upto newline */
 	t = buf;
-	while (*t++ = *next++) {
+	while ((*t++ = *next++)) {
 		if (*next == '\n') {
 			*t = 0;
 			break;
 		}
 	}
 	next = buf;
-	while (t = strsep(&next, ", \n")) {
+	while ((t = strsep(&next, ", \n"))) {
 		unless (*t) continue;
 		for (i = 0;; i++) {
 			unless (features[i].name) {
@@ -2260,7 +2260,7 @@ err:
 
 	/* Per file block */
 	if ((len > 10) && strneq(line, "New file: ", 10)) {
-		while(line = fgetln(in, &len)) {
+		while((line = fgetln(in, &len))) {
 			assert(len);
 			unless (len == fwrite(line, 1, len, out)) goto err;
 			sent += len;
@@ -2270,7 +2270,7 @@ err:
 	}
 
 	/* delta meta data block */
-	while(line = fgetln(in, &len)) {
+	while((line = fgetln(in, &len))) {
 		assert(len);
 		unless (len == fwrite(line, 1, len, out)) goto err;
 		sent += len;
@@ -2279,7 +2279,7 @@ err:
 	unless (len) goto err;
 
 	/* delta data block */
-	while(line = fgetln(in, &len)) {
+	while((line = fgetln(in, &len))) {
 		assert(len);
 		unless (len == fwrite(line, 1, len, out)) goto err;
 		sent += len;

@@ -1,0 +1,114 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "tcltk_sources",
+    srcs = glob(["tcltk/**"]),
+)
+
+filegroup(
+    name = "gui_sources",
+    srcs = glob([
+        "*.tcl",
+        "*.l",
+    ]),
+)
+
+filegroup(
+    name = "emacs",
+    srcs = ["ide/emacs/vc-bk.el"],
+)
+
+filegroup(
+    name = "images",
+    srcs = glob(["imgsrc/**"]),
+)
+
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load(":headers.bzl", "cc_headers")
+
+cc_headers(
+    name = "pcre2_headers",
+    dep = "@pcre2//:pcre2",
+)
+
+genrule(
+    name = "tcltk",
+    srcs = select({
+        "@platforms//os:windows": [
+            "build_tcltk.sh",
+            ":tcltk_sources",
+            "@pcre2//:pcre2",
+            ":pcre2_headers",
+            "@tommath//:tommath_sources",
+            "@zlib_src//:zlib_files",
+            "@llvm_mingw_toolchain//:all_files",
+        ],
+        "//conditions:default": [
+            "build_tcltk.sh",
+            ":tcltk_sources",
+            "@pcre2//:pcre2",
+            ":pcre2_headers",
+            "@tommath//:tommath_sources",
+        ],
+    }),
+    outs = ["tcltk.tar.gz"],
+    cmd = select({
+        "@platforms//os:windows": """
+            set -e
+            tools_dir=$$(pwd)/$$(dirname "$$(echo "$(locations @llvm_mingw_toolchain//:all_files)" | tr ' ' '\\n' | grep 'bin/i686-w64-mingw32-clang$$' | head -n 1)")
+            bash $(location build_tcltk.sh) --windows --tools "$$tools_dir" "$@" \
+                $(locations @pcre2//:pcre2) $(locations :pcre2_headers) $(locations @tommath//:tommath_sources) $(locations @zlib_src//:zlib_files)
+        """,
+        "//conditions:default": """
+            set -e
+            bash $(location build_tcltk.sh) "$@" $(locations @pcre2//:pcre2) $(locations :pcre2_headers) $(locations @tommath//:tommath_sources)
+        """,
+    }),
+)
+
+genrule(
+    name = "guis",
+    srcs = [
+        "gen_guis.sh",
+        ":gui_sources",
+        ":images",
+        "//src:platform_tcl",
+        "//src:installtool_tcl",
+    ],
+    outs = ["guis.tar.gz"],
+    cmd = """
+        set -e
+        workdir=$$(mktemp -d)
+        bash $(location gen_guis.sh) $(location //src:platform_tcl) $(location //src:installtool_tcl) "" "$$workdir"
+        tar -czf "$@" -C "$$workdir" .
+    """,
+)
+
+genrule(
+    name = "gui_package",
+    srcs = [
+        ":tcltk",
+        ":guis",
+        ":images",
+    ],
+    outs = ["gui.tar.gz"],
+    cmd = """
+        set -e
+        dest=$$(mktemp -d)/gui
+        mkdir -p "$$dest/bin" "$$dest/lib" "$$dest/images"
+
+        tar -xzf $(location :tcltk) -C "$$dest"
+        tar -xzf $(location :guis) -C "$$dest/lib"
+
+        for img in $(locations :images); do
+            rpath=$${img#*src/gui/imgsrc/}
+            dir=$$(dirname "$$rpath")
+            mkdir -p "$$dest/images/$$dir"
+            cp "$$img" "$$dest/images/$$rpath"
+        done
+
+        tar -czf "$@" -C "$$dest/.." gui
+    """,
+)

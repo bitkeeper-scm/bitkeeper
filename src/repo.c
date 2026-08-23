@@ -112,15 +112,15 @@ repo_nfiles(project *p, filecnt *fc)
 	    (h = hash_fromFile(0,
 		proj_fullpath(prod, "BitKeeper/log/NFILES_PRODUCT")))) {
 
-		if (numstr = hash_fetchStr(h, rk)) {
+		if ((numstr = hash_fetchStr(h, rk))) {
 			nums = splitLine(numstr, "\r\n", 0);
 			fc->tot = atoi(nums[1]);
 			fc->usr = atoi(nums[2]);
 			freeLines(nums, free);
 		}
 		hash_free(h);
-	} else if (h = hash_fromFile(0,
-		proj_fullpath(p, "BitKeeper/log/NFILES"))) {
+	} else if ((h = hash_fromFile(0,
+		proj_fullpath(p, "BitKeeper/log/NFILES")))) {
 
 		fc->tot = hash_fetchStrNum(h, TOTFILES);
 		fc->usr = hash_fetchStrNum(h, USRFILES);
@@ -175,7 +175,7 @@ repo_nfilesUpdate(filecnt *nf)
 	proj_cd2product();
 	n = strdup(proj_fullpath(0, "BitKeeper/log/NFILES_PRODUCT"));
 	h = hash_fromFile(hash_new(HASH_MEMHASH), n);
-	if (s = hash_fetchStr(h, rk)) {
+	if ((s = hash_fetchStr(h, rk))) {
 		nums = splitLine(s, "\r\n", 0);
 		if ((atoi(nums[1]) == nf->tot) && (atoi(nums[2]) == nf->usr)) {
 			freeLines(nums, free);
@@ -250,7 +250,7 @@ nfiles(Opts *opts)
 			 *  NFILES)
 			 */
 			if (opts->cache_only) return (-1);
-			if (p = proj_init(c->path)) {
+			if ((p = proj_init(c->path))) {
 				total += repo_nfiles(p, 0);
 				proj_free(p);
 			}

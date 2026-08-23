@@ -64,7 +64,7 @@ set outline black
 }
 .t.c bind arc <Any-Leave> {.t.c itemconf current -fill $prevFill -outline $prevOutline}
 
-bind .t.c <1> {markarea %x %y}
+bind .t.c <Button-1> {markarea %x %y}
 bind .t.c <B1-Motion> {strokearea %x %y}
 
 proc markarea {x y} {
@@ -93,13 +93,13 @@ bind .t.c <3> {puts stdout "%x %y"}
 
 # The code below allows the circle to be move by shift-dragging.
 
-bind .t.c <Shift-1> {
+bind .t.c <Shift-Button-1> {
     set curx %x
     set cury %y
 }
 
 bind .t.c <Shift-B1-Motion> {
-    .t.c move circle [expr %x-$curx] [expr %y-$cury]
+    .t.c move circle [expr {%x-$curx}] [expr {%y-$cury}]
     set curx %x
     set cury %y
 }
@@ -127,7 +127,7 @@ bind .t.c a {
 	}
 	incr i $delta
 	c -start $i
-	c -extent [expr 360-2*$i]
+	c -extent [expr {360-2*$i}]
 	after 20
 	update
     }

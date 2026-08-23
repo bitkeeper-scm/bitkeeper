@@ -16,7 +16,7 @@
 #   include <X11/extensions/scrnsaver.h>
 #   ifdef __APPLE__
 /* Support for weak-linked libXss. */
-#	define HaveXSSLibrary()	(XScreenSaverQueryInfo != NULL)
+#	define HaveXSSLibrary()	(&XScreenSaverQueryInfo != NULL)
 #   else
 /* Other platforms always link libXss. */
 #	define HaveXSSLibrary()	(1)
@@ -116,6 +116,34 @@ Tk_UpdatePointer(
 /*
  *----------------------------------------------------------------------
  *
+ * TkpCopyRegion --
+ *
+ *	Makes the destination region a copy of the source region.
+ *	Currently unused on X11.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+extern int XUnionRegion(Region srca, Region srcb, Region dr_return);
+
+void
+TkpCopyRegion(
+    TkRegion dst,
+    TkRegion src)
+{
+    /* XUnionRegion() in Xlib is optimized to detect copying */
+    XUnionRegion((Region)src, (Region)src, (Region)dst);
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
  * TkpBuildRegionFromAlphaData --
  *
  *	Set up a rectangle of the given region based on the supplied alpha
@@ -199,8 +227,12 @@ TkpBuildRegionFromAlphaData(
 
 long
 Tk_GetUserInactiveTime(
-    Display *dpy)		/* The display for which to query the inactive
+ #ifdef HAVE_XSS
+   Display *dpy)		/* The display for which to query the inactive
 				 * time. */
+#else
+  TCL_UNUSED(Display *))
+#endif /* HAVE_XSS */
 {
     long inactiveTime = -1;
 #ifdef HAVE_XSS

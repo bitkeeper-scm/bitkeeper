@@ -34,15 +34,15 @@ TK_LIB_FILE='@TK_LIB_FILE@'
 # Additional libraries to use when linking Tk.
 TK_LIBS='@LIBS@ @LIBS_GUI@'
 
-# Top-level directory in which Tcl's platform-independent files are
+# Top-level directory in which Tk's platform-independent files are
 # installed.
 TK_PREFIX='@prefix@'
 
-# Top-level directory in which Tcl's platform-specific files (e.g.
+# Top-level directory in which Tk's platform-specific files (e.g.
 # executables) are installed.
 TK_EXEC_PREFIX='@exec_prefix@'
 
-# -l flag to pass to the linker to pick up the Tcl library
+# -l flag to pass to the linker to pick up the Tk library
 TK_LIB_FLAG='@TK_LIB_FLAG@'
 
 # String to pass to linker to pick up the Tk library from its

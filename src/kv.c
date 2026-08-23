@@ -39,7 +39,7 @@ getkv_main(int ac, char **av)
 		fprintf(stderr, "%s: unable to open %s\n", prog, file);
 		return (1);
 	}
-	if (h = hash_fromStream(0, f)) {
+	if ((h = hash_fromStream(0, f))) {
 		unless (key) {
 			EACH_HASH(h) puts(h->kptr);
 			ret = 0;

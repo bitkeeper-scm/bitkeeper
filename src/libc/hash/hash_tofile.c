@@ -41,7 +41,7 @@ hash_toFile(hash *h, char *path)
 	FILE	*f;
 	int	rc = -1;
 
-	if (f = fopen(path, "w")) {
+	if ((f = fopen(path, "w"))) {
 		rc = hash_toStream(h, f);
 		fclose(f);
 	}
@@ -101,7 +101,7 @@ hash_fromFile(hash *h, char *path)
 {
 	FILE	*f;
 
-	if (f = fopen(path, "r")) {
+	if ((f = fopen(path, "r"))) {
 		h = hash_fromStream(h, f);
 		fclose(f);
 	}
@@ -122,7 +122,7 @@ hash_fromStream(hash *h, FILE *f)
 	hashpl	state = {0};
 
 	assert(f);
-	while (line = fgetline(f)) {
+	while ((line = fgetline(f))) {
 		unless (h) h = hash_new(HASH_MEMHASH);
 		if (hash_parseLine(line, h, &state) == 1) break;
 	}

@@ -14,7 +14,7 @@
 # tk::Priv elements used in this file:
 #
 # afterId -		Token returned by "after" for autoscanning.
-# listboxPrev -		The last element to be selected or deselected
+# listboxPrev -	The last element to be selected or deselected
 #			during a selection operation.
 # listboxSelection -	All of the items that were selected before the
 #			current selection operation (such as a mouse
@@ -118,7 +118,7 @@ bind Listbox <Control-Home> {
     %W see 0
     %W selection clear 0 end
     %W selection set 0
-    event generate %W <<ListboxSelect>>
+    tk::FireListboxSelectEvent %W
 }
 bind Listbox <Control-Shift-Home> {
     tk::ListboxDataExtend %W 0
@@ -128,7 +128,7 @@ bind Listbox <Control-End> {
     %W see end
     %W selection clear 0 end
     %W selection set end
-    event generate %W <<ListboxSelect>>
+    tk::FireListboxSelectEvent %W
 }
 bind Listbox <Control-Shift-End> {
     tk::ListboxDataExtend %W [%W index end]
@@ -163,7 +163,7 @@ bind Listbox <<SelectAll>> {
 bind Listbox <<SelectNone>> {
     if {[%W cget -selectmode] ne "browse"} {
 	%W selection clear 0 end
-	event generate %W <<ListboxSelect>>
+        tk::FireListboxSelectEvent %W
     }
 }
 
@@ -182,31 +182,39 @@ bind Listbox <B2-Motion> {
 
 if {[tk windowingsystem] eq "aqua"} {
     bind Listbox <MouseWheel> {
-        %W yview scroll [expr {- (%D)}] units
+        %W yview scroll [expr {-(%D)}] units
     }
     bind Listbox <Option-MouseWheel> {
         %W yview scroll [expr {-10 * (%D)}] units
     }
     bind Listbox <Shift-MouseWheel> {
-        %W xview scroll [expr {- (%D)}] units
+        %W xview scroll [expr {-(%D)}] units
     }
     bind Listbox <Shift-Option-MouseWheel> {
         %W xview scroll [expr {-10 * (%D)}] units
     }
 } else {
     bind Listbox <MouseWheel> {
-        %W yview scroll [expr {- (%D / 120) * 4}] units
+	if {%D >= 0} {
+	    %W yview scroll [expr {-%D/30}] units
+	} else {
+	    %W yview scroll [expr {(29-%D)/30}] units
+	}
     }
     bind Listbox <Shift-MouseWheel> {
-        %W xview scroll [expr {- (%D / 120) * 4}] units
+	if {%D >= 0} {
+	    %W xview scroll [expr {-%D/30}] units
+	} else {
+	    %W xview scroll [expr {(29-%D)/30}] units
+	}
     }
 }
 
-if {"x11" eq [tk windowingsystem]} {
+if {[tk windowingsystem] eq "x11"} {
     # Support for mousewheels on Linux/Unix commonly comes through mapping
     # the wheel to the extended buttons.  If you have a mousewheel, find
     # Linux configuration info at:
-    #	http://www.inria.fr/koala/colas/mouse-wheel-scroll/
+    #	https://linuxreviews.org/HOWTO_change_the_mouse_speed_in_X
     bind Listbox <4> {
 	if {!$tk_strictMotif} {
 	    %W yview scroll -5 units
@@ -256,7 +264,7 @@ proc ::tk::ListboxBeginSelect {w el {focus 1}} {
 	set Priv(listboxSelection) {}
 	set Priv(listboxPrev) $el
     }
-    event generate $w <<ListboxSelect>>
+    tk::FireListboxSelectEvent $w
     # check existence as ListboxSelect may destroy us
     if {$focus && [winfo exists $w] && [$w cget -state] eq "normal"} {
 	focus $w
@@ -284,11 +292,11 @@ proc ::tk::ListboxMotion {w el} {
 	    $w selection clear 0 end
 	    $w selection set $el
 	    set Priv(listboxPrev) $el
-	    event generate $w <<ListboxSelect>>
+	    tk::FireListboxSelectEvent $w
 	}
 	extended {
 	    set i $Priv(listboxPrev)
-	    if {$i eq ""} {
+	    if {$i < 0} {
 		set i $el
 		$w selection set $el
 	    }
@@ -303,19 +311,19 @@ proc ::tk::ListboxMotion {w el} {
 		set Priv(listboxSelection) [$w curselection]
 	    }
 	    while {($i < $el) && ($i < $anchor)} {
-		if {[lsearch $Priv(listboxSelection) $i] >= 0} {
+		if {$i in $Priv(listboxSelection)} {
 		    $w selection set $i
 		}
 		incr i
 	    }
 	    while {($i > $el) && ($i > $anchor)} {
-		if {[lsearch $Priv(listboxSelection) $i] >= 0} {
+		if {$i in $Priv(listboxSelection)} {
 		    $w selection set $i
 		}
 		incr i -1
 	    }
 	    set Priv(listboxPrev) $el
-	    event generate $w <<ListboxSelect>>
+	    tk::FireListboxSelectEvent $w
 	}
     }
 }
@@ -366,7 +374,7 @@ proc ::tk::ListboxBeginToggle {w el} {
 	} else {
 	    $w selection set $el
 	}
-	event generate $w <<ListboxSelect>>
+	tk::FireListboxSelectEvent $w
     }
 }
 
@@ -418,7 +426,7 @@ proc ::tk::ListboxUpDown {w amount} {
 	browse {
 	    $w selection clear 0 end
 	    $w selection set active
-	    event generate $w <<ListboxSelect>>
+	    tk::FireListboxSelectEvent $w
 	}
 	extended {
 	    $w selection clear 0 end
@@ -426,7 +434,7 @@ proc ::tk::ListboxUpDown {w amount} {
 	    $w selection anchor active
 	    set Priv(listboxPrev) [$w index active]
 	    set Priv(listboxSelection) {}
-	    event generate $w <<ListboxSelect>>
+	    tk::FireListboxSelectEvent $w
 	}
     }
 }
@@ -509,12 +517,12 @@ proc ::tk::ListboxCancel w {
     }
     $w selection clear $first $last
     while {$first <= $last} {
-	if {[lsearch $Priv(listboxSelection) $first] >= 0} {
+	if {$first in $Priv(listboxSelection)} {
 	    $w selection set $first
 	}
 	incr first
     }
-    event generate $w <<ListboxSelect>>
+    tk::FireListboxSelectEvent $w
 }
 
 # ::tk::ListboxSelectAll
@@ -534,5 +542,19 @@ proc ::tk::ListboxSelectAll w {
     } else {
 	$w selection set 0 end
     }
-    event generate $w <<ListboxSelect>>
+    tk::FireListboxSelectEvent $w
+}
+
+# ::tk::FireListboxSelectEvent
+#
+# Fire the <<ListboxSelect>> event if the listbox is not in disabled
+# state.
+#
+# Arguments:
+# w -		The listbox widget.
+
+proc ::tk::FireListboxSelectEvent w {
+    if {[$w cget -state] eq "normal"} {
+        event generate $w <<ListboxSelect>>
+    }
 }

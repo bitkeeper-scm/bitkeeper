@@ -3,7 +3,8 @@
 #
 
 package require Tk
-package require tcltest ; namespace import -force tcltest::*
+package require tcltest 2.2
+namespace import -force tcltest::*
 loadTestedCommands
 
 test checkbutton-1.1 "Checkbutton check" -body {
@@ -44,5 +45,30 @@ test checkbutton-1.6 "Checkbutton default variable" -body {
     .cb invoke
     lappend result [info exists .cb] [set .cb] [.cb state]
 } -result [list .cb 0 alternate   1 on selected  1 off {}]
+
+# Bug [109865fa01]
+test checkbutton-1.7 "Button destroyed by click" -body {
+    proc destroy_button {} {
+        destroy .top
+    }
+    toplevel .top
+    ttk::menubutton .top.mb -text Button -style TLabel
+    bind .top.mb <ButtonRelease-1> destroy_button
+    pack .top.mb
+    focus -force .top.mb
+    update
+    event generate .top.mb <1>
+    event generate .top.mb <ButtonRelease-1>
+    update  ; # shall not trigger error  invalid command name ".top.b"
+} -result {}
+
+# Bug [fa8de77936]
+test checkbutton-1.8 "Empty -variable" -body {
+    # shall simply not crash
+    ttk::checkbutton .cbev -variable {}
+    .cbev invoke
+} -cleanup {
+    destroy .cbev
+} -result {}
 
 tcltest::cleanupTests

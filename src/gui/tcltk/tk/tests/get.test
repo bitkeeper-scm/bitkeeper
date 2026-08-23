@@ -3,7 +3,7 @@
 # white-box tests.
 #
 # Copyright (c) 1998 Sun Microsystems, Inc.
-# Copyright (c) 1998-1999 by Scriptics Corporation.
+# Copyright (c) 1998-1999 Scriptics Corporation.
 # All rights reserved.
 
 package require tcltest 2.2
@@ -97,7 +97,7 @@ test get-1.11 {Tk_GetAnchorFromObj - error} -setup {
     .b configure -anchor unknown
 } -cleanup {
     destroy .b
-} -returnCodes {error} -result {bad anchor "unknown": must be n, ne, e, se, s, sw, w, nw, or center}
+} -returnCodes error -result {bad anchor "unknown": must be n, ne, e, se, s, sw, w, nw, or center}
 
 
 test get-2.1 {Tk_GetJustifyFromObj} -setup {
@@ -130,7 +130,7 @@ test get-2.4 {Tk_GetJustifyFromObj - error} -setup {
     .b configure -justify stupid
 } -cleanup {
     destroy .b
-} -returnCodes {error} -result {bad justification "stupid": must be left, right, or center}
+} -returnCodes error -result {bad justification "stupid": must be left, right, or center}
 
 # cleanup
 cleanupTests

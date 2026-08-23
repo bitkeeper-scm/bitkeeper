@@ -194,7 +194,7 @@ getRandom(char *rootkey)
 	assert(rand);
 	rand++;
 	/* skip over bam markers (note rr -- goto last) */
-	if (p = strrchr(rand, ':')) rand = p + 1;
+	if ((p = strrchr(rand, ':'))) rand = p + 1;
 
 	return (rand);
 }

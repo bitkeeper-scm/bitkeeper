@@ -1,0 +1,38 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+# svcmgr utility
+genrule(
+    name = "gen_usage_h",
+    srcs = ["usage.txt"],
+    outs = ["usage.h"],
+    cmd = """
+        echo '"\\' > $@
+        perl -n -p -e 's/\\\\/\\\\\\\\/g;s/$$/\\\\n\\\\/' < $(location usage.txt) >> $@
+        echo '"' >> $@
+    """,
+)
+
+cc_binary(
+    name = "svcmgr",
+    srcs = [
+        "svcmgr.c",
+        ":gen_usage_h",
+    ],
+    copts = [
+        "-Os",
+        "-O2",
+        "-DUNICODE=1",
+        "-fomit-frame-pointer",
+        "-Wno-parentheses",
+        "-Wno-strict-aliasing",
+        "-Dwchar_t=short",
+    ],
+    includes = ["."],
+    linkopts = [
+        "-ladvapi32",
+        "-luser32",
+    ],
+    target_compatible_with = ["@platforms//os:windows"],
+)

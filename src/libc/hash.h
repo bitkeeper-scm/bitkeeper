@@ -326,7 +326,7 @@ hash_fetchStrPtr(hash *h, char *key)
 		errno = EINVAL;
 		return (0);
 	}
-	if (data = h->ops->fetch(h, key, strlen(key) + 1)) {
+	if ((data = h->ops->fetch(h, key, strlen(key) + 1))) {
 		return (*data);
 	} else {
 		/*

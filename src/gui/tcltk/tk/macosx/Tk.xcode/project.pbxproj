@@ -596,7 +596,6 @@
 		F9FD32030CC1ADB70073837D /* tkUnixMenu.c in Sources */ = {isa = PBXBuildFile; fileRef = F966BC8808F27A3D005CB29B /* tkUnixMenu.c */; };
 		F9FD32040CC1ADB70073837D /* tkUnixConfig.c in Sources */ = {isa = PBXBuildFile; fileRef = F966BC7C08F27A3D005CB29B /* tkUnixConfig.c */; };
 		F9FD32050CC1ADB70073837D /* tkUnixDraw.c in Sources */ = {isa = PBXBuildFile; fileRef = F966BC8008F27A3D005CB29B /* tkUnixDraw.c */; };
-		F9FD32060CC1ADB70073837D /* tkUnixDialog.c in Sources */ = {isa = PBXBuildFile; fileRef = F966BC7F08F27A3D005CB29B /* tkUnixDialog.c */; };
 		F9FD32070CC1ADB70073837D /* tkUnixSelect.c in Sources */ = {isa = PBXBuildFile; fileRef = F966BC8E08F27A3D005CB29B /* tkUnixSelect.c */; };
 		F9FD32080CC1ADB70073837D /* tkUnixEvent.c in Sources */ = {isa = PBXBuildFile; fileRef = F966BC8208F27A3D005CB29B /* tkUnixEvent.c */; };
 		F9FD32090CC1ADB70073837D /* tkUnixColor.c in Sources */ = {isa = PBXBuildFile; fileRef = F966BC7B08F27A3D005CB29B /* tkUnixColor.c */; };
@@ -1189,7 +1188,6 @@
 		F966BC7C08F27A3D005CB29B /* tkUnixConfig.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = tkUnixConfig.c; sourceTree = "<group>"; };
 		F966BC7D08F27A3D005CB29B /* tkUnixCursor.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = tkUnixCursor.c; sourceTree = "<group>"; };
 		F966BC7E08F27A3D005CB29B /* tkUnixDefault.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = tkUnixDefault.h; sourceTree = "<group>"; };
-		F966BC7F08F27A3D005CB29B /* tkUnixDialog.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = tkUnixDialog.c; sourceTree = "<group>"; };
 		F966BC8008F27A3D005CB29B /* tkUnixDraw.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = tkUnixDraw.c; sourceTree = "<group>"; };
 		F966BC8108F27A3D005CB29B /* tkUnixEmbed.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = tkUnixEmbed.c; sourceTree = "<group>"; };
 		F966BC8208F27A3D005CB29B /* tkUnixEvent.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = tkUnixEvent.c; sourceTree = "<group>"; };
@@ -1212,7 +1210,6 @@
 		F966BC9508F27A3D005CB29B /* buildall.vc.bat */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = buildall.vc.bat; sourceTree = "<group>"; };
 		F966BC9608F27A3E005CB29B /* configure */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = configure; sourceTree = "<group>"; };
 		F966BC9708F27A3E005CB29B /* configure.in */ = {isa = PBXFileReference; explicitFileType = text.script.sh; fileEncoding = 4; path = configure.in; sourceTree = "<group>"; };
-		F966BC9808F27A3E005CB29B /* makefile.bc */ = {isa = PBXFileReference; explicitFileType = sourcecode.make; fileEncoding = 4; path = makefile.bc; sourceTree = "<group>"; };
 		F966BC9908F27A3E005CB29B /* Makefile.in */ = {isa = PBXFileReference; explicitFileType = sourcecode.make; fileEncoding = 4; path = Makefile.in; sourceTree = "<group>"; };
 		F966BC9A08F27A3E005CB29B /* makefile.vc */ = {isa = PBXFileReference; explicitFileType = sourcecode.make; fileEncoding = 4; path = makefile.vc; sourceTree = "<group>"; };
 		F966BC9B08F27A3E005CB29B /* mkd.bat */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = mkd.bat; sourceTree = "<group>"; };
@@ -1412,7 +1409,7 @@
 		F96D3E1F08F272A5004A47F5 /* CrtInterp.3 */ = {isa = PBXFileReference; explicitFileType = text.man; fileEncoding = 4; path = CrtInterp.3; sourceTree = "<group>"; };
 		F96D3E2008F272A5004A47F5 /* CrtMathFnc.3 */ = {isa = PBXFileReference; explicitFileType = text.man; fileEncoding = 4; path = CrtMathFnc.3; sourceTree = "<group>"; };
 		F96D3E2108F272A5004A47F5 /* CrtObjCmd.3 */ = {isa = PBXFileReference; explicitFileType = text.man; fileEncoding = 4; path = CrtObjCmd.3; sourceTree = "<group>"; };
-		F96D3E2208F272A5004A47F5 /* CrtSlave.3 */ = {isa = PBXFileReference; explicitFileType = text.man; fileEncoding = 4; path = CrtSlave.3; sourceTree = "<group>"; };
+		F96D3E2208F272A5004A47F5 /* CrtAlias.3 */ = {isa = PBXFileReference; explicitFileType = text.man; fileEncoding = 4; path = CrtAlias.3; sourceTree = "<group>"; };
 		F96D3E2308F272A5004A47F5 /* CrtTimerHdlr.3 */ = {isa = PBXFileReference; explicitFileType = text.man; fileEncoding = 4; path = CrtTimerHdlr.3; sourceTree = "<group>"; };
 		F96D3E2408F272A5004A47F5 /* CrtTrace.3 */ = {isa = PBXFileReference; explicitFileType = text.man; fileEncoding = 4; path = CrtTrace.3; sourceTree = "<group>"; };
 		F96D3E2508F272A5004A47F5 /* dde.n */ = {isa = PBXFileReference; explicitFileType = text.man; fileEncoding = 4; path = dde.n; sourceTree = "<group>"; };
@@ -1984,10 +1981,8 @@
 		F96D447008F272BA004A47F5 /* aclocal.m4 */ = {isa = PBXFileReference; explicitFileType = text.script.sh; fileEncoding = 4; path = aclocal.m4; sourceTree = "<group>"; };
 		F96D447108F272BA004A47F5 /* buildall.vc.bat */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = buildall.vc.bat; sourceTree = "<group>"; };
 		F96D447208F272BA004A47F5 /* cat.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = cat.c; sourceTree = "<group>"; };
-		F96D447308F272BA004A47F5 /* coffbase.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = coffbase.txt; sourceTree = "<group>"; };
 		F96D447408F272BA004A47F5 /* configure */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = configure; sourceTree = "<group>"; };
 		F96D447508F272BA004A47F5 /* configure.in */ = {isa = PBXFileReference; explicitFileType = text.script.sh; fileEncoding = 4; path = configure.in; sourceTree = "<group>"; };
-		F96D447608F272BA004A47F5 /* makefile.bc */ = {isa = PBXFileReference; explicitFileType = sourcecode.make; fileEncoding = 4; path = makefile.bc; sourceTree = "<group>"; };
 		F96D447708F272BA004A47F5 /* Makefile.in */ = {isa = PBXFileReference; explicitFileType = sourcecode.make; fileEncoding = 4; path = Makefile.in; sourceTree = "<group>"; };
 		F96D447808F272BA004A47F5 /* makefile.vc */ = {isa = PBXFileReference; explicitFileType = sourcecode.make; fileEncoding = 4; path = makefile.vc; sourceTree = "<group>"; };
 		F96D447908F272BA004A47F5 /* nmakehlp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = nmakehlp.c; sourceTree = "<group>"; };
@@ -2761,7 +2756,6 @@
 				F966BC7C08F27A3D005CB29B /* tkUnixConfig.c */,
 				F966BC7D08F27A3D005CB29B /* tkUnixCursor.c */,
 				F966BC7E08F27A3D005CB29B /* tkUnixDefault.h */,
-				F966BC7F08F27A3D005CB29B /* tkUnixDialog.c */,
 				F966BC8008F27A3D005CB29B /* tkUnixDraw.c */,
 				F966BC8108F27A3D005CB29B /* tkUnixEmbed.c */,
 				F966BC8208F27A3D005CB29B /* tkUnixEvent.c */,
@@ -2791,7 +2785,6 @@
 				F966BC9508F27A3D005CB29B /* buildall.vc.bat */,
 				F966BC9608F27A3E005CB29B /* configure */,
 				F966BC9708F27A3E005CB29B /* configure.in */,
-				F966BC9808F27A3E005CB29B /* makefile.bc */,
 				F966BC9908F27A3E005CB29B /* Makefile.in */,
 				F966BC9A08F27A3E005CB29B /* makefile.vc */,
 				F966BC9B08F27A3E005CB29B /* mkd.bat */,
@@ -3082,7 +3075,7 @@
 				F96D3E1F08F272A5004A47F5 /* CrtInterp.3 */,
 				F96D3E2008F272A5004A47F5 /* CrtMathFnc.3 */,
 				F96D3E2108F272A5004A47F5 /* CrtObjCmd.3 */,
-				F96D3E2208F272A5004A47F5 /* CrtSlave.3 */,
+				F96D3E2208F272A5004A47F5 /* CrtAlias.3 */,
 				F96D3E2308F272A5004A47F5 /* CrtTimerHdlr.3 */,
 				F96D3E2408F272A5004A47F5 /* CrtTrace.3 */,
 				F96D3E2508F272A5004A47F5 /* dde.n */,
@@ -3819,10 +3812,8 @@
 				F96D447008F272BA004A47F5 /* aclocal.m4 */,
 				F96D447108F272BA004A47F5 /* buildall.vc.bat */,
 				F96D447208F272BA004A47F5 /* cat.c */,
-				F96D447308F272BA004A47F5 /* coffbase.txt */,
 				F96D447408F272BA004A47F5 /* configure */,
 				F96D447508F272BA004A47F5 /* configure.in */,
-				F96D447608F272BA004A47F5 /* makefile.bc */,
 				F96D447708F272BA004A47F5 /* Makefile.in */,
 				F96D447808F272BA004A47F5 /* makefile.vc */,
 				F96D447908F272BA004A47F5 /* nmakehlp.c */,
@@ -4650,7 +4641,6 @@
 				F9FD32090CC1ADB70073837D /* tkUnixColor.c in Sources */,
 				F9FD32040CC1ADB70073837D /* tkUnixConfig.c in Sources */,
 				F9FD31F80CC1ADB70073837D /* tkUnixCursor.c in Sources */,
-				F9FD32060CC1ADB70073837D /* tkUnixDialog.c in Sources */,
 				F9FD32050CC1ADB70073837D /* tkUnixDraw.c in Sources */,
 				F9FD31FD0CC1ADB70073837D /* tkUnixEmbed.c in Sources */,
 				F9FD32080CC1ADB70073837D /* tkUnixEvent.c in Sources */,

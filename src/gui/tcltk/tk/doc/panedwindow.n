@@ -4,7 +4,7 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
+'\"
 .TH panedwindow n 8.4 Tk "Tk Built-In Commands"
 .so man.macros
 .BS
@@ -29,6 +29,17 @@ drawn as squares.  May be any value accepted by \fBTk_GetPixels\fR.
 Specifies a desired height for the overall panedwindow widget. May be any
 value accepted by \fBTk_GetPixels\fR. If an empty string, the widget will be
 made high enough to allow all contained widgets to have their natural height.
+.OP \-opaqueresize opaqueResize OpaqueResize
+Specifies whether panes should be resized as a sash is moved (true),
+or if resizing should be deferred until the sash is placed (false).
+In the latter case, a
+.QW ghost
+version of the sash is displayed during the resizing to show where the
+panes will be resized to when releasing the mouse button. This
+.QW ghost
+version of the sash is the proxy. It's rendering can be configured
+using the \fB-proxybackground\fR, \fB-proxyborderwidth\fR and
+\fB-proxyrelief\fR options.
 .OP \-proxybackground proxyBackground ProxyBackground
 Background color to use when drawing the proxy. If an empty string, the
 value of the \fB-background\fR option will be used.
@@ -39,9 +50,6 @@ Specifies the borderwidth of the proxy. May be any value accepted by
 Relief to use when drawing the proxy. May be any of the standard Tk
 relief values. If an empty string, the value of the \fB-sashrelief\fR
 option will be used.
-.OP \-opaqueresize opaqueResize OpaqueResize
-Specifies whether panes should be resized as a sash is moved (true),
-or if resizing should be deferred until the sash is placed (false).
 .OP \-sashcursor sashCursor SashCursor
 Mouse cursor to use when over a sash.  If null,
 \fBsb_h_double_arrow\fR will be used for horizontal panedwindows, and
@@ -133,56 +141,6 @@ index of the sash or handle, and a word indicating whether it is over
 a sash or a handle, such as {0 sash} or {2 handle}.  If the point is
 over any other part of the panedwindow, the result is an empty list.
 .TP
-\fIpathName \fBproxy \fR?\fIargs\fR?
-.
-This command is used to query and change the position of the sash
-proxy, used for rubberband-style pane resizing. It can take any of
-the following forms:
-.RS
-.TP
-\fIpathName \fBproxy coord\fR
-.
-Return a list containing the x and y coordinates of the most recent
-proxy location.
-.TP
-\fIpathName \fBproxy forget\fR
-.
-Remove the proxy from the display.
-.TP
-\fIpathName \fBproxy place \fIx y\fR
-.
-Place the proxy at the given \fIx\fR and \fIy\fR coordinates.  
-.RE
-.TP
-\fIpathName \fBsash \fR?\fIargs\fR?
-This command is used to query and change the position of sashes in the
-panedwindow.  It can take any of the following forms:
-.RS
-.TP
-\fIpathName \fBsash coord \fIindex\fR
-.
-Return the current x and y coordinate pair for the sash given by
-\fIindex\fR.  \fIIndex\fR must be an integer between 0 and 1 less than
-the number of panes in the panedwindow.  The coordinates given are
-those of the top left corner of the region containing the sash.
-.TP
-\fIpathName \fBsash dragto \fIindex x y\fR
-.
-This command computes the difference between the given coordinates and the
-coordinates given to the last \fBsash mark\fR command for the given
-sash.  It then moves that sash the computed difference.  The return
-value is the empty string.
-.TP
-\fIpathName \fBsash mark \fIindex x y\fR
-.
-Records \fIx\fR and \fIy\fR for the sash given by \fIindex\fR; used in
-conjunction with later \fBsash dragto\fR commands to move the sash.
-.TP
-\fIpathName \fBsash place \fIindex x y\fR
-.
-Place the sash given by \fIindex\fR at the given coordinates.
-.RE
-.TP
 \fIpathName \fBpanecget \fIwindow option\fR
 .
 Query a management option for \fIwindow\fR.  \fIOption\fR may be any
@@ -239,13 +197,13 @@ dimension for vertical panedwindows.  May be any value accepted by
 \fB\-padx \fIn\fR
 .
 Specifies a non-negative value indicating how much extra space to
-leave on each side of the window in the X-direction.  The value may 
+leave on each side of the window in the X-direction.  The value may
 have any of the forms accepted by \fBTk_GetPixels\fR.
 .TP
 \fB\-pady \fIn\fR
 .
 Specifies a non-negative value indicating how much extra space to
-leave on each side of the window in the Y-direction.  The value may 
+leave on each side of the window in the Y-direction.  The value may
 have any of the forms accepted by \fBTk_GetPixels\fR.
 .TP
 \fB\-sticky \fIstyle\fR
@@ -310,6 +268,56 @@ panedwindow.  \fISize\fR may be any value accepted by \fBTk_GetPixels\fR.
 \fIpathName \fBpanes\fR
 .
 Returns an ordered list of the widgets managed by \fIpathName\fR.
+.TP
+\fIpathName \fBproxy \fR?\fIargs\fR?
+.
+This command is used to query and change the position of the sash
+proxy, used for rubberband-style pane resizing. It can take any of
+the following forms:
+.RS
+.TP
+\fIpathName \fBproxy coord\fR
+.
+Return a list containing the x and y coordinates of the most recent
+proxy location.
+.TP
+\fIpathName \fBproxy forget\fR
+.
+Remove the proxy from the display.
+.TP
+\fIpathName \fBproxy place \fIx y\fR
+.
+Place the proxy at the given \fIx\fR and \fIy\fR coordinates.
+.RE
+.TP
+\fIpathName \fBsash \fR?\fIargs\fR?
+This command is used to query and change the position of sashes in the
+panedwindow.  It can take any of the following forms:
+.RS
+.TP
+\fIpathName \fBsash coord \fIindex\fR
+.
+Return the current x and y coordinate pair for the sash given by
+\fIindex\fR.  \fIIndex\fR must be an integer between 0 and 1 less than
+the number of panes in the panedwindow.  The coordinates given are
+those of the top left corner of the region containing the sash.
+.TP
+\fIpathName \fBsash dragto \fIindex x y\fR
+.
+This command computes the difference between the given coordinates and the
+coordinates given to the last \fBsash mark\fR command for the given
+sash.  It then moves that sash the computed difference.  The return
+value is the empty string.
+.TP
+\fIpathName \fBsash mark \fIindex x y\fR
+.
+Records \fIx\fR and \fIy\fR for the sash given by \fIindex\fR; used in
+conjunction with later \fBsash dragto\fR commands to move the sash.
+.TP
+\fIpathName \fBsash place \fIindex x y\fR
+.
+Place the sash given by \fIindex\fR at the given coordinates.
+.RE
 .SH "RESIZING PANES"
 .PP
 A pane is resized by grabbing the sash (or sash handle if present) and
@@ -322,8 +330,8 @@ When a pane is resized from outside (e.g. it is packed to expand and
 fill, and the containing toplevel is resized), space is added to the final
 (rightmost or bottommost) pane in the window.
 .PP
-Unlike slave windows managed by e.g. pack or grid, the panes managed by a
-panedwindow do not change width or height to accomodate changes in the
+Unlike child windows managed by e.g. pack or grid, the panes managed by a
+panedwindow do not change width or height to accommodate changes in the
 requested widths or heights of the panes, once these have become mapped.
 Therefore it may be advisable, particularly when creating layouts
 interactively, to not add a pane to the panedwindow widget until after the

@@ -5,7 +5,7 @@
 #
 # Copyright (c) 1994 The Regents of the University of California.
 # Copyright (c) 1994-1997 Sun Microsystems, Inc.
-# Copyright (c) 1998-1999 by Scriptics Corporation.
+# Copyright (c) 1998-1999 Scriptics Corporation.
 # All rights reserved.
 
 package require tcltest 2.2
@@ -22,8 +22,10 @@ option clear
 # ----------------------------------------------------------------------
 
 test winbutton-1.1 {TkpComputeButtonGeometry procedure} -constraints {
-    testImageType win
+    testImageType win nonPortable
 } -setup {
+    # nonPortable because of [3e3e25f483]: on Win7 first started with a high DPI screen
+    # the smallest size (i.e. 8) is not available for "MS Sans Serif" font
     deleteWindows
 } -body {
     image create test image1
@@ -47,7 +49,11 @@ test winbutton-1.1 {TkpComputeButtonGeometry procedure} -constraints {
     image delete image1
 } -result {68 48 70 50 90 52 90 52}
 
-test winbutton-1.2 {TkpComputeButtonGeometry procedure} -constraints win -setup {
+test winbutton-1.2 {TkpComputeButtonGeometry procedure} -constraints {
+    win nonPortable
+} -setup {
+    # nonPortable because of [3e3e25f483]: on Win7 first started with a high DPI screen
+    # the smallest size (i.e. 8) is not available for "MS Sans Serif" font
     deleteWindows
 } -body {
     label .b1 -bitmap question -bd 3 -padx 0 -pady 2

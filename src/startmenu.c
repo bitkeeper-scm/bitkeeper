@@ -84,7 +84,7 @@ usage:
 		return (startmenu_list(opts.user, av[optind]));
 	}
 	if (opts.pwd) {
-		if (target = bkmenupath(opts.user, 0, 0)) puts(target);
+		if ((target = bkmenupath(opts.user, 0, 0))) puts(target);
 		free(target);
 		return (target != 0);
 	}

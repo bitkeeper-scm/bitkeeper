@@ -37,7 +37,7 @@ str_subst(char *str, char *search, char *replace, char *output)
 	if (str == output) assert(slen >= rlen);
 	s = str;
 	t = output;
-	while (p = strstr(s, search)) {
+	while ((p = strstr(s, search))) {
 		/* copy leading text */
 		n = p - s;
 		while (n--) *t++ = *s++;

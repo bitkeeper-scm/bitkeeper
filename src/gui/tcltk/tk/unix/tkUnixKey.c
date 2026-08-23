@@ -4,7 +4,7 @@
  *	This file contains routines for dealing with international keyboard
  *	input.
  *
- * Copyright (c) 1997 by Sun Microsystems, Inc.
+ * Copyright (c) 1997 Sun Microsystems, Inc.
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -12,11 +12,19 @@
 
 #include "tkInt.h"
 
+#ifdef __GNUC__
+/*
+ * We know that XKeycodeToKeysym is deprecated, nothing we can do about it.
+ */
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 /*
 ** Bug [3607830]: Before using Xkb, it must be initialized.  TkpOpenDisplay
 **                does this and sets the USE_XKB flag if xkb is supported.
 **                (should this be function ptr?)
 */
+
 #ifdef HAVE_XKBKEYCODETOKEYSYM
 #  include <X11/XKBlib.h>
 #else
@@ -125,10 +133,20 @@ TkpGetString(
 	return Tcl_DStringValue(dsPtr);
     }
 
+    /*
+     * Only do this for KeyPress events, otherwise
+     * further Xlib function behavior might be undefined.
+     */
+
+    if (eventPtr->type != KeyPress) {
+	len = 0;
+	Tcl_DStringSetLength(dsPtr, len);
+	goto done;
+    }
+
 #ifdef TK_USE_INPUT_METHODS
     if ((winPtr->dispPtr->flags & TK_DISPLAY_USE_IM)
-	    && (winPtr->inputContext != NULL)
-	    && (eventPtr->type == KeyPress)) {
+	    && (winPtr->inputContext != NULL)) {
 	Status status;
 
 #if X_HAVE_UTF8_STRING
@@ -183,8 +201,7 @@ TkpGetString(
     {
 	/*
 	 * Fall back to convert a keyboard event to a UTF-8 string using
-	 * XLookupString. This is used when input methods are turned off and
-	 * for KeyRelease events.
+	 * XLookupString. This is used when input methods are turned off.
 	 *
 	 * Note: XLookupString() normally returns a single ISO Latin 1 or
 	 * ASCII control character.
@@ -197,7 +214,7 @@ TkpGetString(
 	Tcl_DStringValue(&buf)[len] = '\0';
 
 	if (len == 1) {
-	    len = Tcl_UniCharToUtf((unsigned char) Tcl_DStringValue(&buf)[0],
+	    len = TkUniCharToUtf((unsigned char) Tcl_DStringValue(&buf)[0],
 		    Tcl_DStringValue(dsPtr));
 	    Tcl_DStringSetLength(dsPtr, len);
 	} else {
@@ -217,6 +234,7 @@ TkpGetString(
      * from having to reenter the XIM engine. [Bug 1373712]
      */
 
+done:
     kePtr->charValuePtr = ckalloc(len + 1);
     kePtr->charValueLen = len;
     memcpy(kePtr->charValuePtr, Tcl_DStringValue(dsPtr), (unsigned) len + 1);
@@ -236,7 +254,7 @@ TkpSetKeycodeAndState(
     XEvent *eventPtr)
 {
     TkDisplay *dispPtr = ((TkWindow *) tkwin)->dispPtr;
-    int state;
+    int state, mincode, maxcode;
     KeyCode keycode;
 
     if (keySym == NoSymbol) {
@@ -258,6 +276,21 @@ TkpSetKeycodeAndState(
 	    }
 	}
     }
+
+    /*
+     * Filter keycodes out of range, otherwise further Xlib function
+     * behavior might be undefined, in particular XIM could cause crashes.
+     */
+
+    mincode = 0;
+    maxcode = -1;
+    XDisplayKeycodes(dispPtr->display, &mincode, &maxcode);
+    if (keycode < (KeyCode)mincode) {
+	keycode = mincode;
+    } else if (keycode > (KeyCode)maxcode) {
+	keycode = maxcode;
+    }
+
     eventPtr->xkey.keycode = keycode;
 }
 
@@ -280,6 +313,10 @@ TkpSetKeycodeAndState(
  *----------------------------------------------------------------------
  */
 
+#ifdef __GNUC__
+#   pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 KeySym
 TkpGetKeySym(
     TkDisplay *dispPtr,		/* Display in which to map keycode. */
@@ -288,6 +325,14 @@ TkpGetKeySym(
     KeySym sym;
     int index;
     TkKeyEvent* kePtr = (TkKeyEvent*) eventPtr;
+
+    /*
+     * X11 keycodes always lie in the inclusive range [8,255].
+     */
+
+    if (eventPtr->xkey.keycode > 0xff) {
+        return NoSymbol;
+    }
 
     /*
      * Refresh the mapping information if it's stale. This must happen before
@@ -336,6 +381,7 @@ TkpGetKeySym(
 	    && (eventPtr->xkey.state & LockMask))) {
 	index += 1;
     }
+
     sym = TkKeycodeToKeysym(dispPtr, eventPtr->xkey.keycode, 0,
 	    index);
 
@@ -345,11 +391,15 @@ TkpGetKeySym(
      * alphabetic, then switch back to the unshifted keysym.
      */
 
+#ifndef XK_Oslash
+    /* XK_Oslash is the official name, but might not be present in older X11 headers */
+#   define XK_Oslash XK_Ooblique
+#endif
     if ((index & 1) && !(eventPtr->xkey.state & ShiftMask)
 	    && (dispPtr->lockUsage == LU_CAPS)) {
 	if (!(((sym >= XK_A) && (sym <= XK_Z))
 		|| ((sym >= XK_Agrave) && (sym <= XK_Odiaeresis))
-		|| ((sym >= XK_Ooblique) && (sym <= XK_Thorn)))) {
+		|| ((sym >= XK_Oslash) && (sym <= XK_Thorn)))) {
 	    index &= ~1;
 	    sym = TkKeycodeToKeysym(dispPtr, eventPtr->xkey.keycode,
 		    0, index);
@@ -439,6 +489,7 @@ TkpInitKeymapInfo(
 	    continue;
 	}
 	keysym = TkKeycodeToKeysym(dispPtr, *codePtr, 0, 0);
+
 	if (keysym == XK_Mode_switch) {
 	    dispPtr->modeModMask |= ShiftMask << (i/modMapPtr->max_keypermod);
 	}

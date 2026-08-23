@@ -60,7 +60,7 @@ field_sort(const void *a, const void *b)
 		nb += strcspn(nb, " \t");
 		nb += strspn(nb, " \t");
 	}
-	if (i = sortfcn(&na, &nb)) return (i);
+	if ((i = sortfcn(&na, &nb))) return (i);
 	return (string_sort(a, b));
 }
 

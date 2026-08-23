@@ -224,7 +224,7 @@ resolve_main(int ac, char **av)
 	opts.complist = nested_complist(0, 0);
 	putenv("_BK_MV_OK=1");
 
-	if (c = setjmp(cleanup_jmp)) {
+	if ((c = setjmp(cleanup_jmp))) {
 		c = (c >= 1000 ? c-1000 : 1);
 		goto err;
 	}
@@ -739,7 +739,7 @@ nameOK(opts *opts, sccs *s)
 		// 3 == "../" at start
 		char	*gfile = sccs2name(realname+3);
 
-		if (i = comp_overlap(opts->complist, gfile)) {
+		if ((i = comp_overlap(opts->complist, gfile))) {
 			if (opts->debug) {
 				fprintf(stderr,
 				    "nameOK(%s) => comp conflict with %s\n",
@@ -993,7 +993,7 @@ res_getnames(sccs *sc, int type)
 		*s++ = 0;
 		unless (names->gca = strdup(t)) goto out;
 		t = s;
-		if (s = strchr(t, ' ')) {
+		if ((s = strchr(t, ' '))) {
 			*s = 0;
 		} else {
 			chop(t);
@@ -1044,7 +1044,7 @@ create(resolve *rs)
 	/* 
 	 * See if this name is taken in the repository.
 	 */
-again:	if (how = slotTaken(rs, rs->dname, 0)) {
+again:	if ((how = slotTaken(rs, rs->dname, 0))) {
 		if (!opts->noconflicts &&
 		    (how == GFILE_CONFLICT) && (ret = gc_sameFiles(rs))) {
 			if (ret == EAGAIN) goto again;
@@ -1177,7 +1177,7 @@ again:
 	 */
 	if (rs->d) {
 		to = rs->dname;
-		if (how = slotTaken(rs, to, 0)) to = 0;
+		if ((how = slotTaken(rs, to, 0))) to = 0;
 	}
 	if (to) {
 		sccs_close(rs->s); /* for win32 */
@@ -1251,7 +1251,7 @@ move_remote(resolve *rs, char *sfile)
 	}
 
 	sccs_close(rs->s);
-	if (ret = sfile_move(rs->s->proj, rs->s->sfile, sfile)) return (ret);
+	if ((ret = sfile_move(rs->s->proj, rs->s->sfile, sfile))) return (ret);
 	sccs_writeHere(rs->s, sfile);
 	xfile_delete(sfile, 'm');
 	if (rs->opts->resolveNames) rs->opts->renames2++;
@@ -1567,7 +1567,7 @@ findDirConflict(char *file, char type, void *token)
 	char	buf[MAXKEY];
 
 	if (type == 'd') return (0);
-	if (t = strstr(file, "/SCCS/")) {
+	if ((t = strstr(file, "/SCCS/"))) {
 		if (strneq(t+6, "s.", 2)) {
 			sccs	*local = sccs_init(file, INIT_NOCKSUM);
 
@@ -1701,7 +1701,7 @@ slotTaken(resolve *rs, char *slot, char **why)
 	} else {
 		char	*gfile = sccs2name(slot);
 
-		if (i = comp_overlap(opts->complist, gfile)) {
+		if ((i = comp_overlap(opts->complist, gfile))) {
 			if (opts->debug) {
 				fprintf(stderr,
 				    "%s is a new component\n",
@@ -1890,7 +1890,7 @@ err:		unless (opts->autoOnly) {
 			pf = aprintf("%s/" RESYNC2ROOT
 			    "/BitKeeper/log/progress-sum",
 			    proj_root(0));
-			if (str1 = loadfile(pf, 0)) {
+			if ((str1 = loadfile(pf, 0))) {
 				chomp(str1);
 				str2 = aprintf("%s (%d conflict%s)",
 				    str1, opts->hadConflicts,
@@ -1966,7 +1966,7 @@ err:		unless (opts->autoOnly) {
 	 * or commit.
 	 */
 	if (opts->partial) goto nocommit;
-	if (mustCommit = xfile_exists(CHANGESET, 'r')) {
+	if ((mustCommit = xfile_exists(CHANGESET, 'r'))) {
 		sccs	*s;
 		resolve	*rs;
 		char	*t;
@@ -2761,7 +2761,7 @@ pass4_apply(opts *opts)
 	} else {
 		cmd = "apply";
 	}
-	if (ret = trigger(cmd,  "pre")) {
+	if ((ret = trigger(cmd,  "pre"))) {
 		switch (ret) {
 		    case 3: flags = CLEAN_MVRESYNC; break;
 		    case 2: flags = CLEAN_ABORT; break;
@@ -2816,7 +2816,7 @@ pass4_apply(opts *opts)
 
 		sccs_sdelta(r, sccs_ino(r), key);
 		sccs_free(r);
-		if (l = sccs_keyinit(0, key, INIT_NOCKSUM, opts->idDB)) {
+		if ((l = sccs_keyinit(0, key, INIT_NOCKSUM, opts->idDB))) {
 			proj_saveCO(l);
 			/*
 			 * This should not happen, the repository is locked.
@@ -3017,7 +3017,7 @@ writeCheck(sccs *s, MDBM *db)
 	t = s->sfile;
 	if (strneq(t, "RESYNC/", 7)) t += 7;
 	strcpy(path, t);	/* RESYNC/SCCS want SCCS */
-	if (t = strrchr(path, '/')) *t = 0;
+	if ((t = strrchr(path, '/'))) *t = 0;
 	while (1) {
 		t = strrchr(path, '/');
 		if (mdbm_store_str(db, path, "", MDBM_INSERT)) return (0);
@@ -3030,7 +3030,7 @@ writeCheck(sccs *s, MDBM *db)
 					return (1);
 				}
 				/* Must check parent of SCCS dir */
-				unless (t && streq(t, "/SCCS") ||
+				unless ((t && streq(t, "/SCCS")) ||
 					streq(path, "SCCS")) {
 					return (0);
 				}
@@ -3190,8 +3190,8 @@ resolve_cleanup(opts *opts, int what)
 		if (xfile_exists(ROOT2RESYNC "/" CHANGESET, 'p')) {
 			assert(!exists("RESYNC/ChangeSet"));
 			xfile_delete(ROOT2RESYNC "/" CHANGESET, 'p');
-			if (t = xfile_fetch(ROOT2RESYNC
-				"/BitKeeper/tmp/ChangeSet", 'r')) {
+			if ((t = xfile_fetch(ROOT2RESYNC
+				"/BitKeeper/tmp/ChangeSet", 'r'))) {
 				xfile_store(ROOT2RESYNC "/" CHANGESET, 'r', t);
 				free(t);
 				xfile_delete(ROOT2RESYNC
@@ -3240,7 +3240,7 @@ resolve_cleanup(opts *opts, int what)
 			sccs	*cset = sccs_csetInit(0);
 
 			bin_heapRepack(cset);
-			if (rc = sccs_newchksum(cset)) {
+			if ((rc = sccs_newchksum(cset))) {
 				perror(cset->fullsfile);
 			}
 			sccs_free(cset);
@@ -3284,7 +3284,7 @@ resolvewalk(char *file, char type, void *data)
 	unless (p = strrchr(file, '/')) return (0);
 	unless (strneq(file, "./", 2)) return (0);
 	file += 2;
-	assert(p[1] = 's');
+	assert(p[1] == 's');
 	if (opts->partial && streq(file, "SCCS/s.ChangeSet")) return (0);
 	if (opts->automerge && xfile_exists(file, 'm')) return (0);
 	unless (ci->pfiles_only || xfile_exists(file, 'r')) return (0);

@@ -381,7 +381,7 @@ sfio_out(void)
 			continue;
 		}
 		if (opts->bp_tuple && strchr(buf, '|')) {
-			if (n = out_bptuple(buf, &byte_count)) {
+			if ((n = out_bptuple(buf, &byte_count))) {
 				send_eof(n);
 				return (n);
 			}
@@ -447,7 +447,7 @@ sfio_out(void)
 			continue;
 		}
 		if (xfile) {
-			if (n = out_xfile(buf, xfile, &byte_count)) {
+			if ((n = out_xfile(buf, xfile, &byte_count))) {
 				send_eof(n);
 				return (n);
 			}
@@ -459,12 +459,12 @@ sfio_out(void)
 				stat(buf, &sb);
 				goto reg;
 			}
-			if (n = out_symlink(buf, &sb, &byte_count)) {
+			if ((n = out_symlink(buf, &sb, &byte_count))) {
 				send_eof(n);
 				return (n);
 			}
 		} else if (S_ISREG(sb.st_mode)) {
-reg:			if (n = out_file(buf, &sb, &byte_count, 0, 0)) {
+reg:			if ((n = out_file(buf, &sb, &byte_count, 0, 0))) {
 				send_eof(n);
 				return (n);
 			}
@@ -814,7 +814,7 @@ sfio_in(int extract, int justone)
 		    buf, SFIO_VERS(opts->doModes));
 		return (1);
 	}
-	if (p = getenv("_BK_SFIO_FAIL")) fail = atoi(p);
+	if ((p = getenv("_BK_SFIO_FAIL"))) fail = atoi(p);
 	for (;;) {
 		n = fread(buf, 1, 4, stdin);
 		if (n == 0) {
@@ -1553,7 +1553,7 @@ header:
 	save_byte_count(byte_count);
 out:
 	for (i = 0; i < n; i++) {
-		if (cur = pclose(f[i])) {
+		if ((cur = pclose(f[i]))) {
 			rc = WIFEXITED(cur) ? WEXITSTATUS(cur) : 17;
 			fprintf(stderr, "process %d exited %d\n", i, rc);
 		}

@@ -290,7 +290,7 @@ TclCreateSocketAddress(
 /*
  * Work around an omission in earlier versions of MinGW.
  */
-#ifdef __MINGW32__
+#if defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR)
 char* WSAAPI
 gai_strerrorA(int ecode)
 {

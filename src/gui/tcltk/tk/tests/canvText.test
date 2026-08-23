@@ -3,7 +3,7 @@
 # fashion for Tcl tests.
 #
 # Copyright (c) 1996-1997 Sun Microsystems, Inc.
-# Copyright (c) 1998-1999 by Scriptics Corporation.
+# Copyright (c) 1998-1999 Scriptics Corporation.
 # All rights reserved.
 
 package require tcltest 2.2
@@ -55,8 +55,8 @@ test canvText-1.10 {configuration options: good value for "stipple"} -body {
     list [lindex [.c itemconfigure test -stipple] 4] [.c itemcget test -stipple]
 } -result {gray50 gray50}
 test canvasText-1.11 {configuration options: bad value for "stipple"} -body {
-    .c itemconfigure test -stipple xyz
-} -returnCodes error -result {bitmap "xyz" not defined}
+    .c itemconfigure test -stipple abcxyz
+} -returnCodes error -result {bitmap "abcxyz" not defined}
 test canvText-1.12 {configuration options: good value for "underline"} -body {
     .c itemconfigure test -underline 0
     list [lindex [.c itemconfigure test -underline] 4] [.c itemcget test -underline]
@@ -95,22 +95,22 @@ test canvasText-1.19 {configuration options: bounding of "angle"} -body {
 
 test canvText-2.1 {CreateText procedure: args} -body {
     .c create text
-} -returnCodes {error} -result {wrong # args: should be ".c create text coords ?arg ...?"}
+} -returnCodes error -result {wrong # args: should be ".c create text coords ?arg ...?"}
 test canvText-2.2 {CreateText procedure: args} -body {
     .c create text xyz 0
 } -cleanup {
     .c delete all
-} -returnCodes {error} -result {bad screen distance "xyz"}
+} -returnCodes error -result {bad screen distance "xyz"}
 test canvText-2.3 {CreateText procedure: args} -body {
     .c create text 0 xyz
 } -cleanup {
     .c delete all
-} -returnCodes {error} -result {bad screen distance "xyz"}
+} -returnCodes error -result {bad screen distance "xyz"}
 test canvText-2.4 {CreateText procedure: args} -body {
     .c create text 0 0 -xyz xyz
 } -cleanup {
     .c delete all
-} -returnCodes {error} -result {unknown option "-xyz"}
+} -returnCodes error -result {unknown option "-xyz"}
 test canvText-2.5 {CreateText procedure} -body {
     .c create text 0 0 -tags x
     .c coords x
@@ -133,14 +133,14 @@ test canvText-3.2 {TextCoords procedure} -setup {
     .c coords test xyz 0
 } -cleanup {
     .c delete test
-} -returnCodes {error} -result {bad screen distance "xyz"}
+} -returnCodes error -result {bad screen distance "xyz"}
 test canvText-3.3 {TextCoords procedure} -setup {
     .c create text 20 20 -tag test
 } -body {
     .c coords test 0 xyz
 } -cleanup {
     .c delete test
-} -returnCodes {error} -result {bad screen distance "xyz"}
+} -returnCodes error -result {bad screen distance "xyz"}
 test canvText-3.4 {TextCoords procedure} -setup {
     .c create text 20 20 -tag test
 } -body {
@@ -159,14 +159,14 @@ test canvText-3.5 {TextCoords procedure} -setup {
     .c coords test 10
 } -cleanup {
     .c delete test
-} -returnCodes {error} -result {wrong # coordinates: expected 2, got 1}
+} -returnCodes error -result {wrong # coordinates: expected 2, got 1}
 test canvText-3.6 {TextCoords procedure} -setup {
     .c create text 20 20 -tag test
 } -body {
     .c coords test 10 10 10
 } -cleanup {
     .c delete test
-} -returnCodes {error} -result {wrong # coordinates: expected 0 or 2, got 3}
+} -returnCodes error -result {wrong # coordinates: expected 0 or 2, got 3}
 
 
 test canvText-4.1 {ConfigureText procedure} -setup {
@@ -175,7 +175,7 @@ test canvText-4.1 {ConfigureText procedure} -setup {
     .c itemconfig test -fill xyz
 } -cleanup {
     .c delete test
-} -returnCodes {error} -result {unknown color name "xyz"}
+} -returnCodes error -result {unknown color name "xyz"}
 test canvText-4.2 {ConfigureText procedure} -setup {
     .c create text 20 20 -tag test
 } -body {
@@ -250,7 +250,7 @@ test canvText-4.6 {ConfigureText procedure: adjust cursor} -setup {
     .c index test insert
 } -cleanup {
 	.c delete test
-} -result {4}
+} -result 4
 
 
 test canvText-5.1 {ConfigureText procedure: adjust cursor} -body {
@@ -269,7 +269,7 @@ test canvText-6.1 {ComputeTextBbox procedure} -constraints fonts -setup {
     .c create text 0 0 -tag test
     .c itemconfig test -font $font -text 0
     expr {[.c itemconfig test -anchor n; .c bbox test] \
-	      eq "[expr -$ax/2-1] 0 [expr $ax/2+1] $ay"}
+	      eq "[expr {-$ax/2-1}] 0 [expr {$ax/2+1}] $ay"}
 } -cleanup {
     .c delete test
 } -result 1
@@ -282,7 +282,7 @@ test canvText-6.2 {ComputeTextBbox procedure} -constraints fonts -setup {
     .c create text 0 0 -tag test
     .c itemconfig test -font $font -text 0
     expr {[.c itemconfig test -anchor nw; .c bbox test] \
-	      eq "-1 0 [expr $ax+1] $ay"}
+	      eq "-1 0 [expr {$ax+1}] $ay"}
 } -cleanup {
     .c delete test
 } -result 1
@@ -573,7 +573,7 @@ test canvText-8.8 {TextInsert procedure: inserting before cursor} -setup {
     .c icursor test 3
     .c insert test 2 "xyz"
     .c index test insert
-} -result {6}
+} -result 6
 test canvText-8.9 {TextInsert procedure: inserting after cursor} -setup {
     .c create text 20 20 -tag test
     focus .c
@@ -583,7 +583,7 @@ test canvText-8.9 {TextInsert procedure: inserting after cursor} -setup {
     .c icursor test 3
     .c insert test 4 "xyz"
     .c index test insert
-} -result {3}
+} -result 3
 
 # Item used in 9.* tests
 .c create text 20 20 -tag test
@@ -636,7 +636,7 @@ test canvText-9.8 {TextInsert procedure: selectFirst > selectLast: deselect} -bo
     .c select to test 8
     .c dchars test 3 10
     .c index test sel.first
-} -returnCodes {error} -result {selection isn't in item}
+} -returnCodes error -result {selection isn't in item}
 test canvText-9.9 {TextInsert procedure: selectFirst <= selectLast} -body {
     .c itemconfig test -text "abcdefghijk"
     .c select from test 4
@@ -673,19 +673,19 @@ test canvText-9.13 {TextInsert procedure: move cursor} -body {
     .c icursor test 6
     .c dchars test 2 4
     .c index test insert
-} -result {3}
+} -result 3
 test canvText-9.14 {TextInsert procedure: keep cursor >= first} -body {
     .c itemconfig test -text "abcdefghijk"
     .c icursor test 6
     .c dchars test 2 10
     .c index test insert
-} -result {2}
+} -result 2
 test canvText-9.15 {TextInsert procedure: cursor doesn't move} -body {
     .c itemconfig test -text "abcdefghijk"
     .c icursor test 5
     .c dchars test 7 9
     .c index test insert
-} -result {5}
+} -result 5
 .c delete test
 
 
@@ -695,7 +695,7 @@ test canvText-10.1 {TextToPoint procedure} -body {
     .c index test @0,0
 } -cleanup {
 	.c delete test
-} -result {0}
+} -result 0
 
 
 test canvText-11.1 {TextToArea procedure} -setup {
@@ -766,7 +766,7 @@ test canvText-14.2 {GetTextIndex procedure: select error} -setup {
     .c index test sel.first
 } -cleanup {
     .c delete test
-} -returnCodes {error} -result {selection isn't in item}
+} -returnCodes error -result {selection isn't in item}
 test canvText-14.3 {GetTextIndex procedure: select error} -setup {
     .c create text 0 0 -tag test
     focus .c
@@ -776,7 +776,7 @@ test canvText-14.3 {GetTextIndex procedure: select error} -setup {
     .c index test sel.last
 } -cleanup {
     .c delete test
-} -returnCodes {error} -result {selection isn't in item}
+} -returnCodes error -result {selection isn't in item}
 test canvText-14.4 {GetTextIndex procedure: select error} -setup {
     .c create text 0 0 -tag test
     focus .c
@@ -786,7 +786,7 @@ test canvText-14.4 {GetTextIndex procedure: select error} -setup {
     .c index test sel.
 } -cleanup {
     .c delete test
-} -returnCodes {error} -result {bad index "sel."}
+} -returnCodes error -result {bad index "sel."}
 test canvText-14.5 {GetTextIndex procedure: bad int or unknown index} -setup {
     .c create text 0 0 -tag test
     focus .c
@@ -795,7 +795,7 @@ test canvText-14.5 {GetTextIndex procedure: bad int or unknown index} -setup {
     .c index test xyz
 } -cleanup {
     .c delete test
-} -returnCodes {error} -result {bad index "xyz"}
+} -returnCodes error -result {bad index "xyz"}
 test canvText-14.6 {select clear errors} -setup {
     .c create text 0 0 -tag test
 } -body {
@@ -803,6 +803,25 @@ test canvText-14.6 {select clear errors} -setup {
 } -cleanup {
     .c delete test
 } -returnCodes error -result "wrong \# args: should be \".c select clear\""
+test canvText-14.7 {GetTextIndex procedure: pixel index with non-default scrollregion} -setup {
+    canvas .cc
+    .cc create text 50 80 -tag test -text Hello -anchor nw -font "Arial 30"
+    foreach {xmin ymin xmax ymax} [.cc bbox test] {}
+} -body {
+    # default -scrollregion
+    set res [.cc index test @$xmin,$ymin]
+    lappend res [.cc index test @$xmax,$ymax]
+    # -scrollregion with positive upper left corner
+    .cc configure -scrollregion {50 50 700 900}
+    lappend res [.cc index test @$xmin,$ymin]
+    lappend res [.cc index test @$xmax,$ymax]
+    # -scrollregion with negative upper left corner
+    .cc configure -scrollregion {-100 -100 700 900}
+    lappend res [.cc index test @$xmin,$ymin]
+    lappend res [.cc index test @$xmax,$ymax]
+} -cleanup {
+    destroy .cc
+} -result {0 5 0 5 0 5}
 
 test canvText-15.1 {SetTextCursor procedure} -setup {
     .c create text 0 0 -tag test
@@ -815,7 +834,7 @@ test canvText-15.1 {SetTextCursor procedure} -setup {
     .c index test insert
 } -cleanup {
     .c delete test
-} -result {3}
+} -result 3
 
 test canvText-16.1 {GetSelText procedure} -setup {
     .c create text 0 0 -tag test
@@ -928,8 +947,14 @@ test canvText-20.1 {angled text bounding box} -setup {
 	lassign $bbox a b c d
 	list $b $a $d $c
     }
+    proc almosteq {b1 b2} {
+        # check whether the two boxes are equal, with 1 unit tolerance on each x y w h
+        lassign $b1 a b c d
+        lassign $b2 e f g h
+        expr {($e-$a)<=1 && ($f-$b)<=1 && ($g-$c)<=1 && ($h-$d)<=1}
+    }
 } -body {
-    .c create text 2 2 -tag t -anchor center -text 0 -font {Helvetica 24}
+    .c create text 2 2 -tag t -anchor center -text 0 -font {TkDefaultFont 24}
     set bb0 [.c bbox t]
     .c itemconf t -angle 90
     set bb1 [.c bbox t]
@@ -937,13 +962,28 @@ test canvText-20.1 {angled text bounding box} -setup {
     set bb2 [.c bbox t]
     .c itemconf t -angle 270
     set bb3 [.c bbox t]
-    list [expr {$bb0 eq $bb2 ? "ok" : "$bb0,$bb2"}] \
-	[expr {$bb1 eq $bb3 ? "ok" : "$bb1,$bb3"}] \
-	[expr {$bb0 eq [transpose $bb1] ? "ok" : "$bb0,$bb1"}] \
+    # bboxes should be the same, possibly with a small (platform-specific) rounding difference
+    list [expr {[almosteq $bb0 $bb2] ? "ok" : "$bb0,$bb2"}] \
+	[expr {[almosteq $bb1 $bb3] ? "ok" : "$bb1,$bb3"}] \
+	[expr {[almosteq $bb0 [transpose $bb1]] ? "ok" : "$bb0,$bb1"}]
 } -cleanup {
     destroy .c
     rename transpose {}
 } -result {ok ok ok}
+
+test canvText-20.2 {crash on angled text selection (X11, without xft) - bug 2712f43f6e} -setup {
+    destroy .c
+    canvas .c -background bisque -selectforeground green2
+    grid .c
+    set id [.c create text 50 150 -anchor w -text "Angled text" \
+	    -angle 30 -font {Helvetica 32} -fill darkblue]
+} -body {
+    .c select clear
+    .c select from $id 0
+    .c select to $id 8 ; update    ;  # used to crash on X11 (--disable-xft build only)
+} -cleanup {
+    destroy .c
+} -result {}
 
 # cleanup
 cleanupTests

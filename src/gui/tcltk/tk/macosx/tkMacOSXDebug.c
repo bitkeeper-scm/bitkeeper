@@ -4,8 +4,8 @@
  *	Implementation of Macintosh specific functions for debugging MacOS
  *	events, regions, etc...
  *
- * Copyright 2001-2009, Apple Inc.
- * Copyright (c) 2006-2009 Daniel A. Steffen <das@users.sourceforge.net>
+ * Copyright © 2001-2009 Apple Inc.
+ * Copyright © 2006-2009 Daniel A. Steffen <das@users.sourceforge.net>
  *
  * See the file "license.terms" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -64,7 +64,7 @@ TkMacOSXGetNamedDebugSymbol(
 	for (i = 0; i < n; i++) {
 	    if (module && *module) {
 		/* Find image with given module name */
-		char *name;
+		const char *name;
 		const char *path = _dyld_get_image_name(i);
 
 		if (!path) {

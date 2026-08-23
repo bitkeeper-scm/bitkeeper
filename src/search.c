@@ -19,10 +19,11 @@
 search
 search_parse(char *str)
 {
-	int	poff;
+	int	errorcode;
+	PCRE2_SIZE	poff;
 	char	*p;
 	search  s;
-	const	char *perr;
+	PCRE2_UCHAR	perr[256];
 
 	bzero(&s, sizeof (s));
 	p = strrchr(str, '/');
@@ -48,9 +49,10 @@ search_parse(char *str)
 	str = s.pattern = strdup(str);
 	if (s.want_glob) return (s);
 	s.want_re = 1;
-	if (s.ignorecase) for (p = str; *p = tolower(*p); p++);
-	unless (s.re = pcre_compile(str, 0, &perr, &poff, 0)) {
-		fprintf(stderr, "search: bad regex \"%s\"\n", perr);
+	if (s.ignorecase) for (p = str; (*p = tolower(*p)); p++);
+	unless (s.re = pcre2_compile((PCRE2_SPTR)str, PCRE2_ZERO_TERMINATED, 0, &errorcode, &poff, 0)) {
+		pcre2_get_error_message(errorcode, perr, sizeof(perr));
+		fprintf(stderr, "search: bad regex \"%s\"\n", (char *)perr);
 		free(str);
 		s.pattern = 0;
 		return (s);
@@ -80,23 +82,29 @@ search_glob(char *str, search s)
 int
 search_regex(char *str, search s)
 {
+	pcre2_match_data *md;
+	int	ret;
+
 	unless (s.pattern && s.want_re) return (0);
+	md = pcre2_match_data_create_from_pattern(s.re, 0);
 	if (s.ignorecase) {
 		char	*p;
-		int	ret;
 
 		str = strdup(str);
-		for (p = str; *p = tolower(*p); p++);
-		ret = !pcre_exec(s.re, 0, str, strlen(str), 0, 0, 0, 0);
+		for (p = str; (*p = tolower(*p)); p++);
+		ret = (pcre2_match(s.re, (PCRE2_SPTR)str, strlen(str), 0, 0, md, 0) >= 0);
 		free(str);
+		pcre2_match_data_free(md);
 		return (ret);
 	}
-	return (!pcre_exec(s.re, 0, str, strlen(str), 0, 0, 0, 0));
+	ret = (pcre2_match(s.re, (PCRE2_SPTR)str, strlen(str), 0, 0, md, 0) >= 0);
+	pcre2_match_data_free(md);
+	return (ret);
 }
 
 void
 search_free(search search)
 {
-	free(search.re);
+	if (search.re) pcre2_code_free(search.re);
 	search.re = 0;
 }

@@ -38,7 +38,7 @@ gethost_main(int ac, char **av)
 	}
 	unless (host && *host) return (1);
 	if (ip) {
-		if (address = hostaddr(host)) {
+		if ((address = hostaddr(host))) {
 			printf("%s\n", address);
 		} else {
 			perror(host);

@@ -4,7 +4,7 @@
 #
 # Copyright (c) 1991-1994 The Regents of the University of California.
 # Copyright (c) 1994 Sun Microsystems, Inc.
-# Copyright (c) 1998-1999 by Scriptics Corporation.
+# Copyright (c) 1998-1999 Scriptics Corporation.
 # All rights reserved.
 
 package require tcltest 2.2
@@ -402,7 +402,7 @@ test oldpack-7.2 {multiple expanded windows} -body {
         [winfo geometry .pack.red]
 } -result {70x20+30+77 40x40+45+30 10x20+60+3}
 test oldpack-7.3 {multiple expanded windows} -body {
-    foreach i [winfo child .pack] {
+    foreach i [winfo children .pack] {
     pack unpack $i
     }
     pack append .pack .pack.green {left e fill} .pack.red {left expand fill} \
@@ -412,7 +412,7 @@ test oldpack-7.3 {multiple expanded windows} -body {
         [winfo geometry .pack.blue]
 } -result {40x100+0+0 20x100+40+0 40x40+60+0}
 test oldpack-7.4 {multiple expanded windows} -body {
-    foreach i [winfo child .pack] {
+    foreach i [winfo children .pack] {
     pack unpack $i
     }
     pack append .pack .pack.red {top expand} .pack.violet {top expand} \
@@ -422,7 +422,7 @@ test oldpack-7.4 {multiple expanded windows} -body {
         [winfo geometry .pack.blue]
 } -result {10x20+45+5 80x20+10+35 40x40+60+60}
 test oldpack-7.5 {multiple expanded windows} -body {
-    foreach i [winfo child .pack] {
+    foreach i [winfo children .pack] {
     pack unpack $i
     }
     pack append .pack .pack.green {right frame s} .pack.red {top expand}
@@ -430,7 +430,7 @@ test oldpack-7.5 {multiple expanded windows} -body {
     list [winfo geometry .pack.green] [winfo geometry .pack.red]
 } -result {30x40+70+60 10x20+30+40}
 test oldpack-7.6 {multiple expanded windows} -body {
-    foreach i [winfo child .pack] {
+    foreach i [winfo children .pack] {
     pack unpack $i
     }
     pack append .pack .pack.violet {bottom frame e} .pack.red {right expand}
@@ -452,10 +452,10 @@ test oldpack-8.2 {syntax errors} -body {
 } -returnCodes error -result {wrong # args: should be "pack option arg ?arg ...?"}
 test oldpack-8.3 {syntax errors} -body {
     pack gorp foo
-} -returnCodes error -result {bad option "gorp": must be configure, forget, info, propagate, or slaves}
+} -returnCodes error -result {bad option "gorp": must be configure, content, forget, info, propagate, or slaves}
 test oldpack-8.4 {syntax errors} -body {
     pack a .pack
-} -returnCodes error -result {bad option "a": must be configure, forget, info, propagate, or slaves}
+} -returnCodes error -result {bad option "a": must be configure, content, forget, info, propagate, or slaves}
 test oldpack-8.5 {syntax errors} -body {
     pack after foobar
 } -returnCodes error -result {bad window path name "foobar"}
@@ -527,20 +527,20 @@ test oldpack-9.1 {information output} -body {
     pack append .pack .pack.blue {top fillx frame n} \
     .pack.red {bottom filly frame s} .pack.green {left fill frame w} \
     .pack.violet {right expand frame e}
-    list [pack slaves .pack] [pack info .pack.blue] [pack info .pack.red] \
+    list [pack content .pack] [pack info .pack.blue] [pack info .pack.red] \
         [pack info .pack.green] [pack info .pack.violet]
 } -result {{.pack.blue .pack.red .pack.green .pack.violet} {-in .pack -anchor n -expand 0 -fill x -ipadx 0 -ipady 0 -padx 0 -pady 0 -side top} {-in .pack -anchor s -expand 0 -fill y -ipadx 0 -ipady 0 -padx 0 -pady 0 -side bottom} {-in .pack -anchor w -expand 0 -fill both -ipadx 0 -ipady 0 -padx 0 -pady 0 -side left} {-in .pack -anchor e -expand 1 -fill none -ipadx 0 -ipady 0 -padx 0 -pady 0 -side right}}
 test oldpack-9.2 {information output} -body {
     pack append .pack .pack.blue {padx 10 frame nw} \
     .pack.red {pady 20 frame ne} .pack.green {frame se} \
     .pack.violet {frame sw}
-    list [pack slaves .pack] [pack info .pack.blue] [pack info .pack.red] \
+    list [pack content .pack] [pack info .pack.blue] [pack info .pack.red] \
         [pack info .pack.green] [pack info .pack.violet]
 } -result {{.pack.blue .pack.red .pack.green .pack.violet} {-in .pack -anchor nw -expand 0 -fill none -ipadx 0 -ipady 0 -padx 5 -pady 0 -side top} {-in .pack -anchor ne -expand 0 -fill none -ipadx 0 -ipady 0 -padx 0 -pady 10 -side top} {-in .pack -anchor se -expand 0 -fill none -ipadx 0 -ipady 0 -padx 0 -pady 0 -side top} {-in .pack -anchor sw -expand 0 -fill none -ipadx 0 -ipady 0 -padx 0 -pady 0 -side top}}
 test oldpack-9.3 {information output} -body {
     pack append .pack .pack.blue {frame center} .pack.red {frame center} \
     .pack.green {frame c} .pack.violet {frame c}
-    list [pack slaves .pack] [pack info .pack.blue] [pack info .pack.red] \
+    list [pack content .pack] [pack info .pack.blue] [pack info .pack.red] \
         [pack info .pack.green] [pack info .pack.violet]
 } -result {{.pack.blue .pack.red .pack.green .pack.violet} {-in .pack -anchor center -expand 0 -fill none -ipadx 0 -ipady 0 -padx 0 -pady 0 -side top} {-in .pack -anchor center -expand 0 -fill none -ipadx 0 -ipady 0 -padx 0 -pady 0 -side top} {-in .pack -anchor center -expand 0 -fill none -ipadx 0 -ipady 0 -padx 0 -pady 0 -side top} {-in .pack -anchor center -expand 0 -fill none -ipadx 0 -ipady 0 -padx 0 -pady 0 -side top}}
 

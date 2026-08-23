@@ -4,7 +4,7 @@
 '\"
 '\" See the file "license.terms" for information on usage and redistribution
 '\" of this file, and for a DISCLAIMER OF ALL WARRANTIES.
-'\" 
+'\"
 .TH raise n 3.3 Tk "Tk Built-In Commands"
 .so man.macros
 .BS
@@ -31,6 +31,9 @@ this could end up either raising or lowering \fIwindow\fR.
 All \fBtoplevel\fR windows may be restacked with respect to each
 other, whatever their relative path names, but the window manager is
 not obligated to strictly honor requests to restack.
+.PP
+On macOS raising an iconified \fBtoplevel\fR window causes it to be
+deiconified.
 .SH EXAMPLE
 .PP
 Make a button appear to be in a sibling frame that was created after

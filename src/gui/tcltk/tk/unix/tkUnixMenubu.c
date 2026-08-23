@@ -4,7 +4,7 @@
  *	This file implements the Unix specific portion of the menubutton
  *	widget.
  *
- * Copyright (c) 1996-1997 by Sun Microsystems, Inc.
+ * Copyright (c) 1996-1997 Sun Microsystems, Inc.
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -25,16 +25,16 @@
  *	Returns a newly allocated TkMenuButton structure.
  *
  * Side effects:
- *	Registers an event handler for the widget.
+ *	None
  *
  *----------------------------------------------------------------------
  */
 
 TkMenuButton *
 TkpCreateMenuButton(
-    Tk_Window tkwin)
+    TCL_UNUSED(Tk_Window))
 {
-    return ckalloc(sizeof(TkMenuButton));
+    return (TkMenuButton *)ckalloc(sizeof(TkMenuButton));
 }
 
 /*
@@ -58,14 +58,14 @@ void
 TkpDisplayMenuButton(
     ClientData clientData)	/* Information about widget. */
 {
-    register TkMenuButton *mbPtr = (TkMenuButton *) clientData;
+    TkMenuButton *mbPtr = (TkMenuButton *)clientData;
     GC gc;
     Tk_3DBorder border;
     Pixmap pixmap;
     int x = 0;			/* Initialization needed only to stop compiler
 				 * warning. */
     int y = 0;
-    register Tk_Window tkwin = mbPtr->tkwin;
+    Tk_Window tkwin = mbPtr->tkwin;
     int fullWidth, fullHeight;
     int textXOffset, textYOffset;
     int imageWidth, imageHeight;
@@ -92,7 +92,7 @@ TkpDisplayMenuButton(
 	border = mbPtr->normalBorder;
     }
 
-    if (mbPtr->image != None) {
+    if (mbPtr->image != NULL) {
 	Tk_SizeOfImage(mbPtr->image, &width, &height);
 	haveImage = 1;
     } else if (mbPtr->bitmap != None) {
@@ -280,8 +280,6 @@ TkpDisplayMenuButton(
 		mbPtr->borderWidth, mbPtr->relief);
     }
     if (mbPtr->highlightWidth != 0) {
-	GC gc;
-
 	if (mbPtr->flags & GOT_FOCUS) {
 	    gc = Tk_GCForColor(mbPtr->highlightColorPtr, pixmap);
 	} else {
@@ -358,7 +356,7 @@ TkpComputeMenuButtonGeometry(
     txtHeight = 0;
     avgWidth = 0;
 
-    if (mbPtr->image != None) {
+    if (mbPtr->image != NULL) {
 	Tk_SizeOfImage(mbPtr->image, &width, &height);
 	haveImage = 1;
     } else if (mbPtr->bitmap != None) {

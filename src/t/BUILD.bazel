@@ -1,0 +1,73 @@
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "test_support",
+    srcs = [
+        "doit.sh",
+        "setup",
+	# the rest of these are only for certain tests. We just inlcude them for all.
+        "egrep-illumos",
+        "simple-interface.setup",
+        "strace-cnt.pl",
+        "synth.l",
+    ] + glob([
+        "strace.*",
+    ]),
+)
+
+TEST_DATA = [
+    ":test_support",
+    "//:bitkeeper",
+    "//src:flags.l",
+    "//src:gen_cmd",
+    "//src:slib.c",
+    "//src/libc:mtst",
+]
+
+
+# Serial tests as identified by src/t/Makefile
+SERIAL_TESTS = [
+    "t.bkd-svc",
+    "t.installer",
+    "t.proxy-win32",
+    "t.uniq",
+]
+
+ALL_TEST_FILES = glob(["t.*"])
+
+# Tests that require medium size (>100MB RAM or 30-300s runtime)
+# It might be better to annotate the test files with attributes.
+# For details on that see [NOTES.test-annotation.md](NOTES.test-annotation.md).
+MEDIUM_TESTS = [
+    "t.a.progress-bar.nested",
+    "t.a.progress-bar.standalone",
+    "t.a.simple-interface.component",
+    "t.a.simple-interface.no-repo",
+    "t.a.simple-interface.product",
+    "t.a.simple-interface.repo",
+    "t.nested-abort",
+    "t.nested-locking",
+    "t.nested-poly",
+    "t.nested-populate",
+    "t.nested-pull",
+    "t.nested-pull-safe",
+    "t.nested-push",
+    "t.nested-urllist",
+    "t.partition",
+    "t.preference",
+    "t.triggers"
+]
+
+[
+    sh_test(
+        name = t.replace(".", "_"),
+        srcs = ["test_runner.sh"],
+        args = [t],
+        data = TEST_DATA + [t],
+        size = "medium" if t in MEDIUM_TESTS else "small",
+        tags = ["exclusive"] if t in SERIAL_TESTS else [],
+    )
+    for t in ALL_TEST_FILES
+]

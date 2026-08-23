@@ -3,13 +3,18 @@
 # fashion for Tcl tests.
 #
 # Copyright (c) 1994 Sun Microsystems, Inc.
-# Copyright (c) 1998-1999 by Scriptics Corporation.
+# Copyright (c) 1998-1999 Scriptics Corporation.
 # All rights reserved.
 
 #
 # Note: Multiple display clipboard handling will only be tested if the
 # environment variable TK_ALT_DISPLAY is set to an alternate display.
 #
+
+#################################################################
+# Note that some of these tests may fail if another application #
+# is grabbing the clipboard (e.g. an X server, or a VNC viewer) #
+#################################################################
 
 package require tcltest 2.2
 namespace import ::tcltest::*
@@ -161,8 +166,7 @@ test clipboard-4.3 {ClipboardLostSel procedure} -setup {
     clipboard append "Test"
     clipboard append -t TEST "Test2"
     selection clear -s CLIPBOARD
-    catch {clipboard get}
-	clipboard get -t TEST
+    clipboard get -t TEST
 } -cleanup {
     clipboard clear
 }  -returnCodes error -result {CLIPBOARD selection doesn't exist or form "TEST" not defined}
@@ -176,7 +180,7 @@ test clipboard-4.4 {ClipboardLostSel procedure} -setup {
     clipboard get
 } -cleanup {
     clipboard clear
-}  -returnCodes error -result {CLIPBOARD selection doesn't exist or form "STRING" not defined} 
+}  -returnCodes error -result {CLIPBOARD selection doesn't exist or form "STRING" not defined}
 test clipboard-4.5 {ClipboardLostSel procedure} -setup {
     clipboard clear
 } -body {
@@ -184,8 +188,7 @@ test clipboard-4.5 {ClipboardLostSel procedure} -setup {
     clipboard append -t TEST "Test2"
     clipboard append "Test3"
     selection clear -s CLIPBOARD
-    catch {clipboard get}
-	clipboard get -t TEST
+    clipboard get -t TEST
 } -cleanup {
     clipboard clear
 }  -returnCodes error -result {CLIPBOARD selection doesn't exist or form "TEST" not defined}
@@ -230,7 +233,7 @@ test clipboard-6.1 {Tk_ClipboardAppend procedure} -setup {
 } -cleanup {
     clipboard clear
 }  -returnCodes ok -result {first chunk second chunk}
-test clipboard-6.2 {Tk_ClipboardAppend procedure} -constraints unix -setup {
+test clipboard-6.2 {Tk_ClipboardAppend procedure} -constraints x11 -setup {
     clipboard clear
 } -body {
     setupbg

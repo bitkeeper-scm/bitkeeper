@@ -3,9 +3,9 @@
  *
  *	Declarations of Macintosh specific shared variables and procedures.
  *
- * Copyright (c) 1995-1997 Sun Microsystems, Inc.
- * Copyright 2001-2009, Apple Inc.
- * Copyright (c) 2005-2009 Daniel A. Steffen <das@users.sourceforge.net>
+ * Copyright © 1995-1997 Sun Microsystems, Inc.
+ * Copyright © 2001-2009 Apple Inc.
+ * Copyright © 2005-2009 Daniel A. Steffen <das@users.sourceforge.net>
  *
  * See the file "license.terms" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -71,6 +71,7 @@ struct TkWindowPrivate {
 				 * gone. */
     struct TkWindowPrivate *toplevel;
 				/* Pointer to the toplevel datastruct. */
+    CGFloat fillRGBA[4];        /* Background used by the ttk FillElement */
     int flags;			/* Various state see defines below. */
 };
 typedef struct TkWindowPrivate MacDrawable;
@@ -83,10 +84,11 @@ typedef struct TkWindowPrivate MacDrawable;
 #define TK_CLIP_INVALID		0x02
 #define TK_HOST_EXISTS		0x04
 #define TK_DRAWN_UNDER_MENU	0x08
-#define TK_FOCUSED_VIEW		0x10
-#define TK_IS_PIXMAP		0x20
-#define TK_IS_BW_PIXMAP		0x40
-#define TK_DO_NOT_DRAW          0x80
+#define TK_IS_PIXMAP		0x10
+#define TK_IS_BW_PIXMAP		0x20
+#define TK_DO_NOT_DRAW          0x40
+#define TTK_HAS_CONTRASTING_BG  0x80
+
 /*
  * I am reserving TK_EMBEDDED = 0x100 in the MacDrawable flags
  * This is defined in tk.h. We need to duplicate the TK_EMBEDDED flag in the
@@ -113,21 +115,6 @@ typedef struct {
 } TkMacOSXEmbedHandler;
 
 MODULE_SCOPE TkMacOSXEmbedHandler *tkMacOSXEmbedHandler;
-
-/*
- * GC CGColorRef cache for tkMacOSXColor.c
- */
-
-typedef struct {
-    unsigned long cachedForeground;
-    CGColorRef cachedForegroundColor;
-    unsigned long cachedBackground;
-    CGColorRef cachedBackgroundColor;
-} TkpGCCache;
-
-MODULE_SCOPE TkpGCCache *TkpGetGCCache(GC gc);
-MODULE_SCOPE void TkpInitGCCache(GC gc);
-MODULE_SCOPE void TkpFreeGCCache(GC gc);
 
 /*
  * Undef compatibility platform types defined above.
@@ -178,7 +165,7 @@ MODULE_SCOPE void TkpFreeGCCache(GC gc);
 #define TK_MACOSX_HANDLE_EVENT_IMMEDIATELY 1024
 
 /*
- * Defines for tkTextDisp.c
+ * Defines for tkTextDisp.c and tkFont.c
  */
 
 #define TK_LAYOUT_WITH_BASE_CHUNKS	1
@@ -189,15 +176,10 @@ MODULE_SCOPE void TkpFreeGCCache(GC gc);
  */
 
 MODULE_SCOPE void TkMacOSXDefaultStartupScript(void);
-#if 0
-MODULE_SCOPE int XSetClipRectangles(Display *d, GC gc, int clip_x_origin,
-	int clip_y_origin, XRectangle* rectangles, int n, int ordering);
-#endif
 MODULE_SCOPE void TkpClipDrawableToRect(Display *display, Drawable d, int x,
 	int y, int width, int height);
-MODULE_SCOPE void TkpRetainRegion(TkRegion r);
-MODULE_SCOPE void TkpReleaseRegion(TkRegion r);
-MODULE_SCOPE void TkpShiftButton(NSButton *button, NSPoint delta);
+MODULE_SCOPE Bool TkTestLogDisplay(Drawable drawable);
+
 /*
  * Include the stubbed internal platform-specific API.
  */
@@ -205,3 +187,12 @@ MODULE_SCOPE void TkpShiftButton(NSButton *button, NSPoint delta);
 #include "tkIntPlatDecls.h"
 
 #endif /* _TKMACINT */
+
+/*
+ * Local Variables:
+ * mode: objc
+ * c-basic-offset: 4
+ * fill-column: 79
+ * coding: utf-8
+ * End:
+ */

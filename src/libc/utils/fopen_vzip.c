@@ -114,7 +114,7 @@ fopen_vzip(FILE *fin, char *mode)
 	fz->fin = fin;
 	if (streq(mode, "w")) {
 		fz->write = 1;
-		if (t = getenv("_BK_VZIP_FMT")) {
+		if ((t = getenv("_BK_VZIP_FMT"))) {
 			assert(strlen(t) == 3);
 			sprintf(fmt, "%s\n", t);
 		} else {

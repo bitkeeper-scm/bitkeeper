@@ -135,7 +135,7 @@ cmd_cd(int ac, char **av)
 	 * The path part gets you to the product, the rootkey which is
 	 * postfixed, tells you to go to that component.
 	 */
-	if (rootkey = strchr(p, '|')) *rootkey++ = 0;
+	if ((rootkey = strchr(p, '|'))) *rootkey++ = 0;
 	if (*p && unsafe_cd(p)) {
 		send_cderror(p);
 		return (1);

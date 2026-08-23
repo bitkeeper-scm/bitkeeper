@@ -93,7 +93,7 @@ key2rmName(char *rootkey)
 	rand = strchr(path, '|');
 	*rand++ = 0;			/* at utc */
 	rand = strchr(rand, '|') + 1;	/* at sum (shortkeys stay here) */
-	if (t = strchr(rand, '|')) {
+	if ((t = strchr(rand, '|'))) {
 		rand = t + 1;		/* at rand */
 	}
 	bn = basenm(path);
@@ -111,7 +111,7 @@ key2rmName(char *rootkey)
 	}
 	/* random =~ s/:/-/g;  fix win32 BAM keys with : in them */
 	t = rand;
-	while (t = strchr(t, ':')) *t++ = '-';
+	while ((t = strchr(t, ':'))) *t++ = '-';
 
 	sprintf(buf, "%s~%s", bn, rand);
 	path = file_fanout(buf);
@@ -146,14 +146,14 @@ sccs_rmName(sccs *s)
 		if (parent) {
 			sprintf(path, "%s/%s%s",
 			    proj_root(parent), sfile, suffix);
-			if (s2 = sccs_init(path, INIT_MUSTEXIST|INIT_NOCKSUM)) {
+			if ((s2 = sccs_init(path, INIT_MUSTEXIST|INIT_NOCKSUM))) {
 				sccs_sdelta(s2, sccs_ino(s2), newkey);
 				sccs_free(s2);
 				unless (streq(rootkey, newkey)) continue;
 			}
 		}
 		sprintf(path, "%s/%s%s", proj_root(s->proj), sfile, suffix);
-		if (s2 = sccs_init(path, INIT_MUSTEXIST|INIT_NOCKSUM)) {
+		if ((s2 = sccs_init(path, INIT_MUSTEXIST|INIT_NOCKSUM))) {
 			sccs_sdelta(s2, sccs_ino(s2), newkey);
 			sccs_free(s2);
 			unless (streq(rootkey, newkey)) continue;

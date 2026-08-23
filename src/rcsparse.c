@@ -663,7 +663,7 @@ rcs_defbranch(const RCS *rcs)
 	char	buf[1000];
 
 	unless (rcs->defbranch) return (rcs->tree);
-	if (d = rcs_findit(rcs, rcs->defbranch)) return (d);
+	if ((d = rcs_findit(rcs, rcs->defbranch))) return (d);
 	sprintf(buf, "%s.1", rcs->defbranch);
 	unless (d = rcs_findit(rcs, buf)) {
 		fprintf(stderr, "Can't find defbranch %s\n", rcs->defbranch);
@@ -847,7 +847,7 @@ select_branch(RCS *rcs, char *cvsbranch)
 		 * the previous branch first, so we can use the kid
 		 * pointers to find this branch.
 		 */
-		if (p = strchr(cvsbranch, ',')) select_branch(rcs, p+1);
+		if ((p = strchr(cvsbranch, ','))) select_branch(rcs, p+1);
 
 		/* first time of first non-deleted delta on trunk */
 		d = rcs->tree;
@@ -867,7 +867,7 @@ select_branch(RCS *rcs, char *cvsbranch)
 			 * skipped.
 			 */
 			branchname = strdup(branches[i]);
-			if (p = strchr(branchname, ':')) *p++ = 0;
+			if ((p = strchr(branchname, ':'))) *p++ = 0;
 			if ((s = rcs_findsym(rcs, branchname))) break;
 
 			if (p) {
@@ -1295,7 +1295,7 @@ err:		perror("EOF in delta?");
 
 	rcsdebug((stderr, "DELTA_END %.10s\n", mwhere(m)));
 
-	if (d->next = rcs->table) rcs->table->prev = d;
+	if ((d->next = rcs->table)) rcs->table->prev = d;
 	rcs->table = d;
 
 	return (1);

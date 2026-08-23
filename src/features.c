@@ -83,7 +83,7 @@ features_main(int ac, char **av)
 	}
 	unless (av[optind]) {
 		bk_nested2root(1);
-		if (here = features_fromBits(features_bits(0))) {
+		if ((here = features_fromBits(features_bits(0)))) {
 			if (strlen(here) > 0) printf("%s\n", here);
 			free(here);
 			return (0);
@@ -125,7 +125,7 @@ has_feature(char *bk, int f)
 	assert(!(f & (f - 1))); // is pow2
 
 	sprintf(var, "%s_FEATURES", bk);
-	if (p = getenv(var)) {
+	if ((p = getenv(var))) {
 		/* unknown features don't matter */
 		p = strdup(p);
 		bits = features_toBits(p, p);
@@ -171,8 +171,8 @@ features_setMask(project *p, u32 bits, u32 mask)
 	char	ftmp[MAXPATH];
 
 	unless (p || (freep = p = proj_init("."))) return;
-	if (p2 = proj_product(p)) p = p2;
-	if (p2 = proj_isResync(p)) p = p2;
+	if ((p2 = proj_product(p))) p = p2;
+	if ((p2 = proj_isResync(p))) p = p2;
 
 	obits = features_bits(p);
 	nbits = (obits & ~mask) | bits;
@@ -270,7 +270,7 @@ features_bkdCheck(int bkd, int no_repo)
 	sprintf(buf, "%s_FEATURES", bkd ? "BK" : "BKD");
 
 	/* unknown features don't matter */
-	if (t = getenv(buf)) rmt_features = features_toBits(t, 0);
+	if ((t = getenv(buf))) rmt_features = features_toBits(t, 0);
 
 	/* Make existing nested bk's appear to understand remap. */
 	if (rmt_features & FEAT_SAMv3) rmt_features |= FEAT_REMAP;
@@ -335,15 +335,15 @@ features_bits(project *p)
 
 	unless (p || (freep = p = proj_init("."))) return (0);
 
-	if (p2 = proj_product(p)) p = p2;
-	if (p2 = proj_isResync(p)) p = p2;
+	if ((p2 = proj_product(p))) p = p2;
+	if ((p2 = proj_isResync(p))) p = p2;
 
 	pf = proj_features(p);
-	if (ret = pf->bits) {
+	if ((ret = pf->bits)) {
 		if (freep) proj_free(freep);
 		return (ret);
 	}
-	if (here = loadfile(proj_fullpath(p, "BitKeeper/log/features"), 0)) {
+	if ((here = loadfile(proj_fullpath(p, "BitKeeper/log/features"), 0))) {
 		ret = pf->bits = features_toBits(here, here);
 		if (*here) {
 			getMsg("repo_feature", here, '=', stderr);
@@ -424,7 +424,7 @@ features_toBits(char *features, char *bad)
 	}
 	list = splitLine(features, " ,\r\n", 0);
 	EACH(list) {
-		if (j = hash_fetchStrU32(namemap, list[i])) {
+		if ((j = hash_fetchStrU32(namemap, list[i]))) {
 			ret |= j;
 		} else if (bad) {
 			missing = addLine(missing, list[i]);

@@ -9,7 +9,7 @@
 switch -- [tk windowingsystem] {
     x11 -
     win32 {
-	option add *TSizegrip.cursor [ttk::cursor seresize]
+	option add *TSizegrip.cursor [ttk::cursor seresize] widgetDefault
     }
     aqua {
     	# Aqua sizegrips use default Arrow cursor.
@@ -32,7 +32,7 @@ namespace eval ttk::sizegrip {
     }
 }
 
-bind TSizegrip <ButtonPress-1> 		{ ttk::sizegrip::Press	%W %X %Y }
+bind TSizegrip <Button-1> 		{ ttk::sizegrip::Press	%W %X %Y }
 bind TSizegrip <B1-Motion> 		{ ttk::sizegrip::Drag 	%W %X %Y }
 bind TSizegrip <ButtonRelease-1> 	{ ttk::sizegrip::Release %W %X %Y }
 
@@ -54,7 +54,7 @@ proc ttk::sizegrip::Press {W X Y} {
     #   just bail out -- there's no way to handle this cleanly.
     #
     if {[scan [wm geometry $top] "%dx%d+%d+%d" width height x y] != 4} {
-	return;
+	return
     }
 
     # Account for gridded geometry:

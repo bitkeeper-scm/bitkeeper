@@ -144,7 +144,7 @@ caches(char *file, char type, void *data)
 		sccs_sdelta(sc, ino, buf);
 		save(sc, idDB, buf);
 		unless (sc->grafted) break;
-		while (ino = sccs_prev(sc, ino)) {
+		while ((ino = sccs_prev(sc, ino))) {
 			if (HAS_RANDOM(sc, ino)) break;
 		}
 	} while (ino);

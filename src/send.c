@@ -75,7 +75,7 @@ getNewRevs(char *to, char *rev, char *url)
 	pclose(f);
 
 	/* remove the list of keys that have already been sent. */
-	if (f = fopen(x_sendlog, "r")) {
+	if ((f = fopen(x_sendlog, "r"))) {
 		while (fnext(buf, f)) {
 			chomp(buf);
 			mdbm_delete_str(keys, buf);
@@ -234,7 +234,7 @@ send_main(int ac,  char **av)
 	} else {
 		cmd = aprintf("bk makepatch -CB %s %s %s %s %s",
 			      dflag, qflag, revArgs, wrapperArgs, out);
-		if (rc = system(cmd) ? 1 : 0)  goto out;
+		if ((rc = system(cmd) ? 1 : 0))  goto out;
 	}
 
 	/*
@@ -286,7 +286,7 @@ sendNested(char *revArgs, char *dflag, char *wrapperArgs, char *out)
 		return (1);
 	}
 	free(cmd);
-	while (p = fgetline(f)) {
+	while ((p = fgetline(f))) {
 		if (begins_with(p, "BitKeeper/etc/aliases|")) {
 			fprintf(stderr, "%s: not yet supported: "
 			    "changes in BitKeeper/etc/aliases\n",
@@ -294,7 +294,7 @@ sendNested(char *revArgs, char *dflag, char *wrapperArgs, char *out)
 			pclose(f);
 			goto out;
 		}
-		if (t = strchr(p, '|')) *t = 0;
+		if ((t = strchr(p, '|'))) *t = 0;
 		unless (ends_with(p, "/ChangeSet")) continue;
 		*t = '|';
 		comps = addLine(comps, strdup(p));

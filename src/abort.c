@@ -137,7 +137,7 @@ abort_patch(options *opts)
 
 	/* One of our regressions makes an empty BitKeeper/tmp/patch */
 	pendingFile[0] = 0;
-	if (f = fopen(buf, "r")) {
+	if ((f = fopen(buf, "r"))) {
 		if (fnext(pendingFile, f)) chop(pendingFile);
 		fclose(f);
 	} else {
@@ -317,7 +317,7 @@ abortComponents(options *opts, int *which, int *num)
 				tick = progress_start(PROGRESS_BAR, 1000);
 			}
 			T_NESTED("rmcomp(%s)\n", c->path);
-			if (e = nested_rmcomp(n, c)) {
+			if ((e = nested_rmcomp(n, c))) {
 				fprintf(stderr, "failed rmcomp in %s\n", c->path);
 				error("failed to remove %s\n", c->path);
 				errors++;

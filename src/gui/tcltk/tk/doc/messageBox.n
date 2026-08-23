@@ -24,6 +24,12 @@ buttons. Then it returns the symbolic name of the selected button.
 .PP
 The following option-value pairs are supported:
 .TP
+\fB\-command\fR \fIstring\fR
+Specifies the prefix of a Tcl command to invoke when the user closes the
+dialog. The actual command consists of \fIstring\fR followed by a space
+and the name of the button clicked by the user to close the dialog. This
+is only available on macOS.
+.TP
 \fB\-default\fR \fIname\fR
 .
 \fIName\fR gives the symbolic name of the default button for
@@ -60,9 +66,8 @@ box is displayed on top of its parent window.
 .TP
 \fB\-title\fR \fItitleString\fR
 .
-Specifies a string to display as the title of the message box. This option
-is ignored on Mac OS X, where platform guidelines forbid the use of a title
-on this kind of dialog.
+Specifies a string to display as the title of the message box. The
+default value is an empty string.
 .TP
 \fB\-type\fR \fIpredefinedType\fR
 .
@@ -77,7 +82,7 @@ Displays three buttons whose symbolic names are \fBabort\fR,
 .TP 18
 \fBok\fR
 .
-Displays one button whose symbolic name is \fBok\fR.
+Displays one button whose symbolic name is \fBok\fR. This is the default.
 .TP 18
 \fBokcancel\fR
 .

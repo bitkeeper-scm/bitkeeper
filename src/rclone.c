@@ -312,8 +312,8 @@ rclone(char **av, remote *r, char **envVar)
 	}
 	sprintf(revs, "..%s", opts.rev ? opts.rev : "+");
 	safe_putenv("BK_CSETS=%s", revs);
-	if (rc = trigger(av[0], "pre"))  goto done;
-	if (rc = rclone_part1(r, envVar))  goto done;
+	if ((rc = trigger(av[0], "pre")))  goto done;
+	if ((rc = rclone_part1(r, envVar)))  goto done;
 	if (bp_hasBAM()) bp_keys = bktmp(0);
 	rc = rclone_part2(av, r, envVar, bp_keys);
 	if (bp_keys) {
@@ -371,7 +371,7 @@ rclone_part1(remote *r, char **envVar)
 		if (getTriggerInfoBlock(r, opts.quiet)) return (-1);
 	}
 	if (strneq(buf, "ERROR-BAM server URL \"", 22)) {
-		if (p = strchr(buf + 22, '"')) *p = 0;
+		if ((p = strchr(buf + 22, '"'))) *p = 0;
 		p = remote_unparse(r);
 		fprintf(stderr,
 		    "%s: unable to contact BAM server '%s'\n",
@@ -387,7 +387,7 @@ rclone_part1(remote *r, char **envVar)
 		return (-1);
 	}
 	if (r->type == ADDR_HTTP) disconnect(r);
-	if (rc = bp_updateServer(getenv("BK_CSETS"), 0, !opts.verbose)) {
+	if ((rc = bp_updateServer(getenv("BK_CSETS"), 0, !opts.verbose))) {
 		fprintf(stderr, "Unable to update BAM server %s (%s)\n",
 		    bp_serverURL(buf),
 		    (rc == 2) ? "can't get lock" : "unknown reason");
@@ -475,7 +475,7 @@ rclone_part2(char **av, remote *r, char **envVar, char *bp_keys)
 
 	/* optional bad exit status */
 	if (buf[0] == BKD_RC) {
-		if (rc = atoi(&buf[1])) {
+		if ((rc = atoi(&buf[1]))) {
 			rc = 1;
 			goto done;
 		}
@@ -687,7 +687,7 @@ rclone_part3(char **av, remote *r, char **envVar, char *bp_keys)
 		goto done;
 	}
 
-	if (rc = send_BAM_msg(r, bp_keys, envVar, opts.bpsz)) goto done;
+	if ((rc = send_BAM_msg(r, bp_keys, envVar, opts.bpsz))) goto done;
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	getline2(r, buf, sizeof(buf));
 	if (remote_lock_fail(buf, opts.verbose)) {

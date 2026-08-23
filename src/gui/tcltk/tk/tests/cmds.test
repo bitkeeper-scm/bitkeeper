@@ -2,7 +2,7 @@
 # tkCmds.c.  It is organized in the standard fashion for Tcl tests.
 #
 # Copyright (c) 1996 Sun Microsystems, Inc.
-# Copyright (c) 1998-1999 by Scriptics Corporation.
+# Copyright (c) 1998-1999 Scriptics Corporation.
 # All rights reserved.
 
 package require tcltest 2.2
@@ -14,13 +14,13 @@ update
 
 test cmds-1.1 {tkwait visibility, argument errors} -body {
     tkwait visibility
-} -returnCodes {error} -result {wrong # args: should be "tkwait variable|visibility|window name"}
+} -returnCodes error -result {wrong # args: should be "tkwait variable|visibility|window name"}
 test cmds-1.2 {tkwait visibility, argument errors} -body {
     tkwait visibility foo bar
-} -returnCodes {error} -result {wrong # args: should be "tkwait variable|visibility|window name"}
+} -returnCodes error -result {wrong # args: should be "tkwait variable|visibility|window name"}
 test cmds-1.3 {tkwait visibility, argument errors} -body {
     tkwait visibility bad_window
-} -returnCodes {error} -result {bad window path name "bad_window"}
+} -returnCodes error -result {bad window path name "bad_window"}
 test cmds-1.4 {tkwait visibility, waiting for window to be mapped} -setup {
     button .b -text "Test"
     set x init
@@ -39,7 +39,7 @@ test cmds-1.5 {tkwait visibility, window gets deleted} -setup {
 } -body {
     after 100 {set x deleted; destroy .f}
     tkwait visibility .f.b
-} -returnCodes {error} -result {window ".f.b" was deleted before its visibility changed} 
+} -returnCodes error -result {window ".f.b" was deleted before its visibility changed}
 test cmds-1.6 {tkwait visibility, window gets deleted} -setup {
     frame .f
     button .f.b -text "Test"

@@ -4,7 +4,7 @@
  *	This file provides functions that implement the "send" command,
  *	allowing commands to be passed from interpreter to interpreter.
  *
- * Copyright (c) 1997 by Sun Microsystems, Inc.
+ * Copyright (c) 1997 Sun Microsystems, Inc.
  * Copyright (c) 2003 Pat Thoyts <patthoyts@users.sourceforge.net>
  *
  * See the file "license.terms" for information on usage and redistribution of
@@ -13,6 +13,7 @@
 
 #include "tkInt.h"
 #include "tkWinSendCom.h"
+#include "tkWinInt.h"
 
 /*
  * Should be defined in WTypes.h but mingw 1.0 is missing them.
@@ -121,6 +122,8 @@ Tk_SetAppName(
 				 * be globally unique. */
 {
 #ifndef TK_SEND_ENABLED_ON_WINDOWS
+    (void)tkwin;
+
     /*
      * Temporarily disabled for bug #858822
      */
@@ -150,7 +153,7 @@ Tk_SetAppName(
 	    return "";
 	}
 	tsdPtr->initialized = 1;
-	TRACE("Initialized COM library for interp 0x%08X\n", (long)interp);
+	TRACE("Initialized COM library for interp 0x%" TCL_Z_MODIFIER "x\n", (size_t)interp);
     }
 
     /*
@@ -163,7 +166,7 @@ Tk_SetAppName(
     if (riPtr == NULL) {
 	LPUNKNOWN *objPtr;
 
-	riPtr = ckalloc(sizeof(RegisteredInterp));
+	riPtr = (RegisteredInterp *)ckalloc(sizeof(RegisteredInterp));
 	memset(riPtr, 0, sizeof(RegisteredInterp));
 	riPtr->interp = interp;
 
@@ -213,6 +216,8 @@ TkGetInterpNames(
 				 * lookup. */
 {
 #ifndef TK_SEND_ENABLED_ON_WINDOWS
+    (void)interp;
+    (void)tkwin;
     /*
      * Temporarily disabled for bug #858822
      */
@@ -252,8 +257,15 @@ TkGetInterpNames(
 			    LPOLESTR p = olestr + wcslen(oleszStub);
 
 			    if (*p) {
+				Tcl_DString ds;
+
+				Tcl_DStringInit(&ds);
+				Tcl_WCharToUtfDString(p + 1, wcslen(p + 1), &ds);
 				result = Tcl_ListObjAppendElement(interp,
-					objList, Tcl_NewUnicodeObj(p + 1, -1));
+					objList,
+					Tcl_NewStringObj(Tcl_DStringValue(&ds),
+						Tcl_DStringLength(&ds)));
+				Tcl_DStringFree(&ds);
 			    }
 			}
 
@@ -332,7 +344,7 @@ Tk_SendObjCmd(
      */
 
     for (i = 1; i < objc; i++) {
-	if (Tcl_GetIndexFromObjStruct(interp, objv[i], sendOptions,
+	if (Tcl_GetIndexFromObjStruct(NULL, objv[i], sendOptions,
 		sizeof(char *), "option", 0, &optind) != TCL_OK) {
 	    break;
 	}
@@ -614,7 +626,7 @@ BuildMoniker(
 	Tcl_DString dString;
 
 	Tcl_DStringInit(&dString);
-	Tcl_UtfToUniCharDString(name, -1, &dString);
+	Tcl_UtfToWCharDString(name, -1, &dString);
 	hr = CreateFileMoniker((LPOLESTR)Tcl_DStringValue(&dString), &pmkItem);
 	Tcl_DStringFree(&dString);
 	if (SUCCEEDED(hr)) {
@@ -669,10 +681,10 @@ RegisterInterp(
 		    Tcl_DStringAppend(&dString, name, -1);
 		    Tcl_DStringAppend(&dString, " #", 2);
 		    offset = Tcl_DStringLength(&dString);
-		    Tcl_DStringSetLength(&dString, offset+TCL_INTEGER_SPACE);
+		    Tcl_DStringSetLength(&dString, offset + TCL_INTEGER_SPACE);
 		    actualName = Tcl_DStringValue(&dString);
 		}
-		sprintf(Tcl_DStringValue(&dString) + offset, "%d", i);
+		snprintf(Tcl_DStringValue(&dString) + offset, TCL_INTEGER_SPACE, "%d", i);
 	    }
 
 	    hr = BuildMoniker(actualName, &pmk);
@@ -728,8 +740,7 @@ Send(
 				 * object. */
     Tcl_Interp *interp,		/* The local interpreter. */
     int async,			/* Flag for the calling style. */
-    ClientData clientData,	/* The RegisteredInterp structure for this
-				 * interp. */
+    TCL_UNUSED(void *),
     int objc,			/* Number of arguments to be sent. */
     Tcl_Obj *const objv[])	/* The arguments to be sent. */
 {
@@ -740,6 +751,8 @@ Send(
     HRESULT hr = S_OK, ehr = S_OK;
     Tcl_Obj *cmd = NULL;
     DISPID dispid;
+    Tcl_DString ds;
+    const char *src;
 
     cmd = Tcl_ConcatObj(objc, objv);
 
@@ -753,7 +766,10 @@ Send(
     memset(&ei, 0, sizeof(ei));
 
     vCmd.vt = VT_BSTR;
-    vCmd.bstrVal = SysAllocString(Tcl_GetUnicode(cmd));
+    src = Tcl_GetString(cmd);
+    Tcl_DStringInit(&ds);
+    vCmd.bstrVal = SysAllocString(Tcl_UtfToWCharDString(src, cmd->length, &ds));
+    Tcl_DStringFree(&ds);
 
     dp.cArgs = 1;
     dp.rgvarg = &vCmd;
@@ -774,7 +790,9 @@ Send(
 
     ehr = VariantChangeType(&vResult, &vResult, 0, VT_BSTR);
     if (SUCCEEDED(ehr)) {
-	Tcl_SetObjResult(interp, Tcl_NewUnicodeObj(vResult.bstrVal, -1));
+	Tcl_DStringInit(&ds);
+	Tcl_WCharToUtfDString(vResult.bstrVal, SysStringLen(vResult.bstrVal), &ds);
+	Tcl_DStringResult(interp, &ds);
     }
 
     /*
@@ -786,7 +804,11 @@ Send(
     if (hr == DISP_E_EXCEPTION && ei.bstrSource != NULL) {
 	Tcl_Obj *opError, *opErrorCode, *opErrorInfo;
 
-	opError = Tcl_NewUnicodeObj(ei.bstrSource, -1);
+	Tcl_DStringInit(&ds);
+	Tcl_WCharToUtfDString(ei.bstrSource, SysStringLen(ei.bstrSource), &ds);
+	opError = Tcl_NewStringObj(Tcl_DStringValue(&ds),
+		Tcl_DStringLength(&ds));
+	Tcl_DStringFree(&ds);
 	Tcl_ListObjIndex(interp, opError, 0, &opErrorCode);
 	Tcl_SetObjErrorCode(interp, opErrorCode);
 	Tcl_ListObjIndex(interp, opError, 1, &opErrorInfo);
@@ -833,6 +855,8 @@ TkWinSend_SetExcepInfo(
     ICreateErrorInfo *pCEI;
     IErrorInfo *pEI, **ppEI = &pEI;
     HRESULT hr;
+    Tcl_DString ds;
+    const char *src;
 
     if (!pExcepInfo) {
 	return;
@@ -851,8 +875,16 @@ TkWinSend_SetExcepInfo(
     Tcl_ListObjAppendElement(interp, opErrorCode, opErrorInfo);
     /* TODO: Handle failure to append */
 
-    pExcepInfo->bstrDescription = SysAllocString(Tcl_GetUnicode(opError));
-    pExcepInfo->bstrSource = SysAllocString(Tcl_GetUnicode(opErrorCode));
+    src = Tcl_GetString(opError);
+    Tcl_DStringInit(&ds);
+    pExcepInfo->bstrDescription =
+	    SysAllocString(Tcl_UtfToWCharDString(src, opError->length, &ds));
+    Tcl_DStringFree(&ds);
+    src = Tcl_GetString(opErrorCode);
+    Tcl_DStringInit(&ds);
+    pExcepInfo->bstrSource =
+	    SysAllocString(Tcl_UtfToWCharDString(src, opErrorCode->length, &ds));
+    Tcl_DStringFree(&ds);
     Tcl_DecrRefCount(opErrorCode);
     pExcepInfo->scode = E_FAIL;
 
@@ -898,7 +930,7 @@ TkWinSend_QueueCommand(
 
     TRACE("SendQueueCommand()\n");
 
-    evPtr = ckalloc(sizeof(SendEvent));
+    evPtr = (SendEvent *)ckalloc(sizeof(SendEvent));
     evPtr->header.proc = SendEventProc;
     evPtr->header.nextPtr = NULL;
     evPtr->interp = interp;
@@ -937,7 +969,7 @@ TkWinSend_QueueCommand(
 static int
 SendEventProc(
     Tcl_Event *eventPtr,
-    int flags)
+    TCL_UNUSED(int))
 {
     SendEvent *evPtr = (SendEvent *)eventPtr;
 

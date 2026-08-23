@@ -2,13 +2,13 @@
 #
 # Copyright (c) 2008 Pat Thoyts
 
-package require tcltest 2.1
+package require tcltest 2.2
 eval tcltest::configure $argv
 tcltest::loadTestedCommands
 
 # the following helper functions are related to the functions used
 # in winDialog.test where they are used to send messages to the win32
-# dialog (hence the wierdness).
+# dialog (hence the weirdness).
 
 proc start {cmd} {
     set ::tk_dialog {}
@@ -79,7 +79,7 @@ test fontchooser-1.7 {tk fontchooser: usage} -returnCodes error -body {
 
 test fontchooser-1.8 {tk fontchooser: usage} -returnCodes ok -body {
     tk fontchooser configure -visible
-} -result {0}
+} -result 0
 
 test fontchooser-1.9 {tk fontchooser: usage} -returnCodes error -body {
     tk fontchooser configure -visible 1
@@ -155,7 +155,7 @@ test fontchooser-4.1 {fontchooser -font} -constraints scriptImpl -body {
         Click ok
     }
     expr {$::testfont ne {}}
-} -result {1}
+} -result 1
 
 test fontchooser-4.2 {fontchooser -font} -constraints scriptImpl -body {
     start {
@@ -166,7 +166,7 @@ test fontchooser-4.2 {fontchooser -font} -constraints scriptImpl -body {
         Click ok
     }
     expr {$::testfont ne {}}
-} -result {1}
+} -result 1
 
 test fontchooser-4.3 {fontchooser -font} -constraints scriptImpl -body {
     start {
@@ -177,9 +177,9 @@ test fontchooser-4.3 {fontchooser -font} -constraints scriptImpl -body {
         Click ok
     }
     expr {$::testfont ne {}}
-} -result {1}
+} -result 1
 
-test fontchooser-4.4 {fontchooser -font} -constraints scriptImpl -body {
+test fontchooser-4.4 {fontchooser -font} -constraints {scriptImpl haveTimes14BoldFont} -body {
     start {
         tk::fontchooser::Configure -command ApplyFont -font {times 14 bold}
         tk::fontchooser::Show
@@ -189,6 +189,12 @@ test fontchooser-4.4 {fontchooser -font} -constraints scriptImpl -body {
     }
     lrange $::testfont 1 end
 } -result {14 bold}
+
+test fontchooser-5.1 {fontchooser multiple configure} -constraints {scriptImpl} -body {
+    tk fontchooser configure -title TestTitle -command foo
+    tk fontchooser configure -command bar
+    tk fontchooser configure -title
+} -result {TestTitle}
 
 # -------------------------------------------------------------------------
 

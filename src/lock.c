@@ -336,7 +336,7 @@ lock_main(int ac, char **av)
 		exit(0);
 	    case 'L':	/* wait for the file|repository to become locked */
 		while ((file && !exists(file)) ||
-		    (!file && !repository_locked(0)) && !caught) {
+		    ((!file && !repository_locked(0)) && !caught)) {
 			usleep(uslp);
 			if (uslp < 1000000) uslp <<= 1;
 		}
@@ -353,7 +353,7 @@ lock_main(int ac, char **av)
 
 	    case 'U':	/* wait for the file|repository to become unlocked */
 		while ((file && exists(file)) ||
-		    (!file && repository_locked(0)) && !caught) {
+		    ((!file && repository_locked(0)) && !caught)) {
 			usleep(uslp);
 			if (uslp < 1000000) uslp <<= 1;
 		}

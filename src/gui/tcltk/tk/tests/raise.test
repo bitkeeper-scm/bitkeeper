@@ -5,7 +5,7 @@
 #
 # Copyright (c) 1993-1994 The Regents of the University of California.
 # Copyright (c) 1994 Sun Microsystems, Inc.
-# Copyright (c) 1998-1999 by Scriptics Corporation.
+# Copyright (c) 1998-1999 Scriptics Corporation.
 # All rights reserved.
 
 package require tcltest 2.2
@@ -17,9 +17,8 @@ namespace import -force tcltest::test
 # make it easy to detect differences in order.
 
 proc raise_setup {} {
-    foreach i [winfo child .raise] {
-	        destroy $i
-        }
+    destroy {*}[winfo children .raise]
+    update idletasks
     foreach i {a b c d e} {
 	    label .raise.$i -text $i -relief raised -bd 2
     }
@@ -131,7 +130,7 @@ test raise-3.1 {raise internal windows after creation} -body {
     raise_getOrder
 } -result {a d d a c e e e}
 test raise-3.2 {raise internal windows after creation} -constraints {
-	testmakeexist 
+	testmakeexist
 } -body {
     raise_setup
     testmakeexist .raise.a .raise.b
@@ -140,7 +139,7 @@ test raise-3.2 {raise internal windows after creation} -constraints {
     raise_getOrder
 } -result {d d d a c e e e}
 test raise-3.3 {raise internal windows after creation} -constraints {
-	testmakeexist 
+	testmakeexist
 } -body {
     raise_setup
     testmakeexist .raise.a .raise.d
@@ -149,7 +148,7 @@ test raise-3.3 {raise internal windows after creation} -constraints {
     raise_getOrder
 } -result {d d d a c e e e}
 test raise-3.4 {raise internal windows after creation} -constraints {
-	testmakeexist 
+	testmakeexist
 } -body {
     raise_setup
     testmakeexist .raise.a .raise.c .raise.d

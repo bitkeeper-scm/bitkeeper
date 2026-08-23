@@ -4,7 +4,7 @@
  *	Stub object that will be statically linked into extensions that want
  *	to access Tk.
  *
- * Copyright (c) 1998-1999 by Scriptics Corporation.
+ * Copyright (c) 1998-1999 Scriptics Corporation.
  * Copyright (c) 1998 Paul Duffin.
  *
  * See the file "license.terms" for information on usage and redistribution of
@@ -80,7 +80,7 @@ Tk_InitStubs(
     ClientData clientData = NULL;
     const char *actualVersion = tclStubsPtr->tcl_PkgRequireEx(interp,
 	    packageName, version, 0, &clientData);
-    const TkStubs *stubsPtr = clientData;
+    const TkStubs *stubsPtr = (const TkStubs *)clientData;
 
     if (actualVersion == NULL) {
 	return NULL;

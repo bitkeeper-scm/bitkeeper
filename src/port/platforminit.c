@@ -143,7 +143,7 @@ platformInit(char **av)
 		 * Partially specified paths are respected
 		 */
 		verbose((stderr, "av[0]='%s'\n", av[0]));
-		if (t = strchr(av[0], '/')) {
+		if ((t = strchr(av[0], '/'))) {
 			verbose((stderr, "PARTIAL '%s'\n", av[0]));
 			strcpy(buf, av[0]);
 #ifdef	WIN32
@@ -174,7 +174,7 @@ platformInit(char **av)
 			s = p;
 			verbose((stderr, "SEARCH '%s'\n", s));
 			while (1) {
-				if (t = strchr(s, PATH_DELIM)) *t = 0;
+				if ((t = strchr(s, PATH_DELIM))) *t = 0;
 				if (s[0] == '~') got_tilda = 1;
 				sprintf(buf, "%s/%s", s, av[0]);
 				if (t) *t = PATH_DELIM;
@@ -250,7 +250,7 @@ platformInit(char **av)
 	 * The regressions set this variable when they want to
 	 * limit which programs can be run from within bk.
 	 */
-	if (t = getenv("BK_LIMITPATH")) {
+	if ((t = getenv("BK_LIMITPATH"))) {
 		strcpy(buf2, t);
 		p = buf2;
 	}
@@ -316,9 +316,9 @@ platformextra(void)
 	char	buf[256];
 
 #if	defined(__APPLE__)
-	if (fp = popen("/usr/bin/sw_vers -productVersion", "r")) {
+	if ((fp = popen("/usr/bin/sw_vers -productVersion", "r"))) {
 #else
-	if (fp = popen("uname -r", "r")) {
+	if ((fp = popen("uname -r", "r"))) {
 #endif
 		if (fnext(buf, fp)) {
 			chomp(buf);
@@ -339,7 +339,7 @@ platform(void)
 
 	if (p) return (p);
 
-	if (extra = platformextra()) {
+	if ((extra = platformextra())) {
 		p = aprintf("%s,%s",  bk_platform, extra);
 		free(extra);
 	} else {

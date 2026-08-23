@@ -42,7 +42,7 @@ uniq_adjust(sccs *s, ser_t d)
 	fprintf(fout, "insert-key\n@");
 	sccs_shortKey(s, d, key);
 	if (CSET(s)) {
-		if (p1 = strstr(key, "/ChangeSet|")) {
+		if ((p1 = strstr(key, "/ChangeSet|"))) {
 			/* strip pathname */
 			p2 = strchr(key, '|');
 			assert(p2);
@@ -59,7 +59,7 @@ uniq_adjust(sccs *s, ser_t d)
 		fputs(p2, fout);
 	}
 	if (DATE(s, d) > now) now = DATE(s, d);
-	if (t = getenv("_BK_UNIQ_TIMET")) now = atoi(t);  // for test & debug
+	if ((t = getenv("_BK_UNIQ_TIMET"))) now = atoi(t);  // for test & debug
 	fprintf(fout, "\n%lx\n@\n", now);
 	msg = fmem_close(fout, &msglen);
 
@@ -85,7 +85,7 @@ again:	resplen = sizeof(resp);
 
 	if ((t = fgetline(fin)) && strneq(t, "OK", 2)) {
 		T_DEBUG("got %s", t);
-		if (fudge = atoi(t+3)) {
+		if ((fudge = atoi(t+3))) {
 			DATE_SET(s, d, DATE(s, d)+fudge);
 			DATE_FUDGE_SET(s, d, DATE_FUDGE(s, d)+fudge);
 		}
@@ -202,7 +202,7 @@ startUniqDaemon(void)
 	if ((nsock = tcp_accept(startsock)) >= 0) {
 		fin = fdopen(nsock, "r");
 		setlinebuf(fin);
-		while (s = fgetline(fin)) {
+		while ((s = fgetline(fin))) {
 			T_DEBUG("startsock: %s", s);
 			if (strneq(s, "OK", 2)) {
 				ret = 0;
@@ -244,7 +244,7 @@ again:	T_DEBUG("retry %d", reopens);
 	 * Last-ditch effort at getting debug info: if we're starting to
 	 * retry a lot, turn on tracing.
 	 */
-	if (t = getenv("_BK_UNIQ_TRACE_THRESH")) {
+	if ((t = getenv("_BK_UNIQ_TRACE_THRESH"))) {
 		thresh = atoi(t);
 		if ((reopens >= thresh) && !getenv("BK_TRACE") && !debug_trace){
 			safe_putenv("BK_TRACE=/tmp/uniqdb.log");
@@ -316,9 +316,9 @@ uniq_dbdir(void)
 {
 	char	*ret, *s;
 
-	if (s = getenv("_BK_UNIQ_DIR")) {
+	if ((s = getenv("_BK_UNIQ_DIR"))) {
 		ret = strdup(s);
-	} else if (s = config_str(0, CONFIG_UNIQDB)) {
+	} else if ((s = config_str(0, CONFIG_UNIQDB))) {
 		ret = aprintf("%s/%s",
 		    s, sccs_realhost());
 	} else if (writable("/netbatch")) {

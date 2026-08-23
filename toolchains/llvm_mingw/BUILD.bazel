@@ -1,0 +1,8 @@
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "BUILD.toolchain.tpl",
+    "cc_toolchain_config.bzl",
+    "extension.bzl",
+    "repo.bzl",
+])

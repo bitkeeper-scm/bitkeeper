@@ -15,15 +15,13 @@ namespace eval ttk::panedwindow {
 
 ## Bindings:
 #
-bind TPanedwindow <ButtonPress-1> 	{ ttk::panedwindow::Press %W %x %y }
+bind TPanedwindow <Button-1> 		{ ttk::panedwindow::Press %W %x %y }
 bind TPanedwindow <B1-Motion>		{ ttk::panedwindow::Drag %W %x %y }
 bind TPanedwindow <ButtonRelease-1> 	{ ttk::panedwindow::Release %W %x %y }
 
 bind TPanedwindow <Motion> 		{ ttk::panedwindow::SetCursor %W %x %y }
 bind TPanedwindow <Enter> 		{ ttk::panedwindow::SetCursor %W %x %y }
 bind TPanedwindow <Leave> 		{ ttk::panedwindow::ResetCursor %W }
-# See <<NOTE-PW-LEAVE-NOTIFYINFERIOR>>
-bind TPanedwindow <<EnteredChild>>	{ ttk::panedwindow::ResetCursor %W }
 
 ## Sash movement:
 #
@@ -45,9 +43,9 @@ proc ttk::panedwindow::Press {w x y} {
 proc ttk::panedwindow::Drag {w x y} {
     variable State
     if {!$State(pressed)} { return }
-    switch -- [$w cget -orient] {
-    	horizontal 	{ set delta [expr {$x - $State(pressX)}] }
-    	vertical 	{ set delta [expr {$y - $State(pressY)}] }
+    switch -glob -- [$w cget -orient] {
+    	h*  { set delta [expr {$x - $State(pressX)}] }
+    	v*  { set delta [expr {$y - $State(pressY)}] }
     }
     $w sashpos $State(sash) [expr {$State(sashPos) + $delta}]
 }
@@ -62,18 +60,27 @@ proc ttk::panedwindow::Release {w x y} {
 #
 proc ttk::panedwindow::ResetCursor {w} {
     variable State
+
+    ttk::saveCursor $w State(userConfCursor) \
+            [list [ttk::cursor hresize] [ttk::cursor vresize]]
+
     if {!$State(pressed)} {
-	ttk::setCursor $w {}
+	ttk::setCursor $w $State(userConfCursor)
     }
 }
 
 proc ttk::panedwindow::SetCursor {w x y} {
-    set cursor ""
+    variable State
+
+    ttk::saveCursor $w State(userConfCursor) \
+            [list [ttk::cursor hresize] [ttk::cursor vresize]]
+
+    set cursor $State(userConfCursor)
     if {[llength [$w identify $x $y]]} {
     	# Assume we're over a sash.
-	switch -- [$w cget -orient] {
-	    horizontal 	{ set cursor hresize }
-	    vertical 	{ set cursor vresize }
+	switch -glob -- [$w cget -orient] {
+	    h*  { set cursor hresize }
+	    v*  { set cursor vresize }
 	}
     }
     ttk::setCursor $w $cursor

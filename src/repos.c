@@ -128,8 +128,8 @@ getData(int *modsp)
 
 	pathlog = reposPath("path.log");
 
-	if (f = fopen(pathlog, "r")) {
-		while (t = fgetline(f)) {
+	if ((f = fopen(pathlog, "r"))) {
+		while ((t = fgetline(f))) {
 			if ((p = strchr(t, '|')) &&
 			    (strcnt(p, '|') >= FIELDS)) {
 				/* |atime|mtime|md5rootkey... */
@@ -250,16 +250,16 @@ repos_update(project *proj)
 	data = getRepoData(path);
 
 	pathlog = reposPath("path.log");
-	if (f = fopen(pathlog, "r")) {
+	if ((f = fopen(pathlog, "r"))) {
 		/*
 		 * read existing path.log file
 		 * keep track of the number of uniq lines and remember
 		 * the last line of this pathname
 		 */
 		h = hash_new(HASH_MEMHASH);
-		while (t = fgetline(f)) {
+		while ((t = fgetline(f))) {
 			++lines;
-			if (p = strchr(t, '|')) *p = 0;
+			if ((p = strchr(t, '|'))) *p = 0;
 			unless (hash_fetchStrStr(h, t)) ++uniq;
 			hash_storeStrStr(h, t, p ? p+1 : "");
 		}
@@ -280,7 +280,7 @@ repos_update(project *proj)
 		 * Not too much junk in file so just append new line
 		 * to the end
 		 */
-		if (f = fopen(pathlog, "a")) {
+		if ((f = fopen(pathlog, "a"))) {
 			fprintf(f, "%s|%s\n", path, data);
 			fclose(f);
 		}
@@ -288,7 +288,7 @@ repos_update(project *proj)
 		/*
 		 * Need to remove junk
 		 */
-		if (f = fopen(pathlog, "w")) {
+		if ((f = fopen(pathlog, "w"))) {
 			hash_storeStrStr(h, path, data);
 			EACH_HASH(h) {
 				t = h->kptr;

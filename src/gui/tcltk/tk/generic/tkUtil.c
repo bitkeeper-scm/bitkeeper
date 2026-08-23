@@ -13,6 +13,10 @@
 
 #include "tkInt.h"
 
+#ifdef _WIN32
+#include "tkWinInt.h"
+#endif
+
 /*
  * The structure below defines the implementation of the "statekey" Tcl
  * object, used for quickly finding a mapping in a TkStateMap.
@@ -57,8 +61,7 @@ TkStateParseProc(
     int flags = PTR2INT(clientData);
     size_t length;
     Tcl_Obj *msgObj;
-
-    register Tk_State *statePtr = (Tk_State *) (widgRec + offset);
+    Tk_State *statePtr = (Tk_State *) (widgRec + offset);
 
     if (value == NULL || *value == 0) {
 	*statePtr = TK_STATE_NULL;
@@ -134,7 +137,7 @@ TkStatePrintProc(
 				 * information about how to reclaim storage
 				 * for return string. */
 {
-    register Tk_State *statePtr = (Tk_State *) (widgRec + offset);
+    Tk_State *statePtr = (Tk_State *) (widgRec + offset);
 
     switch (*statePtr) {
     case TK_STATE_NORMAL:
@@ -179,8 +182,7 @@ TkOrientParseProc(
 {
     int c;
     size_t length;
-
-    register int *orientPtr = (int *) (widgRec + offset);
+    int *orientPtr = (int *) (widgRec + offset);
 
     if (value == NULL || *value == 0) {
 	*orientPtr = 0;
@@ -237,7 +239,7 @@ TkOrientPrintProc(
 				 * information about how to reclaim storage
 				 * for return string. */
 {
-    register int *statePtr = (int *) (widgRec + offset);
+    int *statePtr = (int *) (widgRec + offset);
 
     if (*statePtr) {
 	return "vertical";
@@ -299,6 +301,7 @@ TkOffsetParseProc(
 	    tsoffset.flags = INT_MAX;
 	    goto goodTSOffset;
 	}
+	break;
     case 'w':
 	if (value[1] != '\0') {goto badTSOffset;}
 	tsoffset.flags = TK_OFFSET_LEFT|TK_OFFSET_MIDDLE;
@@ -423,8 +426,8 @@ TkOffsetPrintProc(
 	if (offsetPtr->flags >= INT_MAX) {
 	    return "end";
 	}
-	p = ckalloc(32);
-	sprintf(p, "%d", offsetPtr->flags & ~TK_OFFSET_INDEX);
+	p = (char *)ckalloc(32);
+	snprintf(p, 32, "%d", offsetPtr->flags & ~TK_OFFSET_INDEX);
 	*freeProcPtr = TCL_DYNAMIC;
 	return p;
     }
@@ -453,11 +456,11 @@ TkOffsetPrintProc(
 	    return "se";
 	}
     }
-    q = p = ckalloc(32);
+    q = p = (char *)ckalloc(32);
     if (offsetPtr->flags & TK_OFFSET_RELATIVE) {
 	*q++ = '#';
     }
-    sprintf(q, "%d,%d", offsetPtr->xoffset, offsetPtr->yoffset);
+    snprintf(q, 32, "%d,%d", offsetPtr->xoffset, offsetPtr->yoffset);
     *freeProcPtr = TCL_DYNAMIC;
     return p;
 }
@@ -518,7 +521,7 @@ TkPixelPrintProc(
     Tcl_FreeProc **freeProcPtr)	/* not used */
 {
     double *doublePtr = (double *) (widgRec + offset);
-    char *p = ckalloc(24);
+    char *p = (char *)ckalloc(24);
 
     Tcl_PrintDouble(NULL, *doublePtr, p);
     *freeProcPtr = TCL_DYNAMIC;
@@ -612,6 +615,70 @@ Tk_DrawFocusHighlight(
 				 * for double buffering). */
 {
     TkDrawInsetFocusHighlight(tkwin, gc, width, drawable, 0);
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TkDrawDottedRect --
+ *
+ *	This function draws a dotted rectangle, used as focus ring of Ttk
+ *	widgets and for rendering the active element of a listbox.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	A dotted rectangle is drawn in the specified Drawable.  On the
+ *	windowing systems x11 and aqua the GC components line_style,
+ *	line_width, dashes, and dash_offset are modified as needed.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TkDrawDottedRect(
+    Display *disp,		/* Display containing the dotted rectangle. */
+    Drawable d,			/* Where to draw the rectangle (typically a
+				 * pixmap for double buffering). */
+    GC gc,			/* Graphics context to use for drawing the
+				 * rectangle. */
+    int x, int y,		/* Coordinates of the top-left corner. */
+    int width, int height)	/* Width & height, _including the border_. */
+{
+#ifdef _WIN32
+    TkWinDrawDottedRect(disp, d, gc->foreground, x, y, width, height);
+
+#else
+    XGCValues gcValues;
+    int widthMod2 = width % 2, heightMod2 = height % 2;
+    int x2 = x + width - 1, y2 = y + height - 1;
+
+    gcValues.line_style = LineOnOffDash;
+    gcValues.line_width = 1;
+    gcValues.dashes = 1;
+#ifdef MAC_OSX_TK
+    gcValues.dash_offset = 1;
+#else
+    gcValues.dash_offset = 0;
+#endif
+    XChangeGC(disp, gc, GCLineStyle | GCLineWidth | GCDashList | GCDashOffset,
+	    &gcValues);
+
+    if (widthMod2 == 0 && heightMod2 == 0) {
+	XDrawLine(disp, d, gc, x+1, y,  x2-1, y);	/* N */
+	XDrawLine(disp, d, gc, x+2, y2, x2,   y2);	/* S */
+	XDrawLine(disp, d, gc, x,  y+2, x,  y2);	/* W */
+	XDrawLine(disp, d, gc, x2, y+1, x2, y2-1);	/* E */
+    } else {
+	int dx = 1 - widthMod2, dy = 1 - heightMod2;
+
+	XDrawLine(disp, d, gc, x+1, y,  x2-dx, y);	/* N */
+	XDrawLine(disp, d, gc, x+1, y2, x2-dx, y2);	/* S */
+	XDrawLine(disp, d, gc, x,  y+1, x,  y2-dy);	/* W */
+	XDrawLine(disp, d, gc, x2, y+1, x2, y2-dy);	/* E */
+    }
+#endif
 }
 
 /*
@@ -733,7 +800,7 @@ Tk_GetScrollInfoObj(
     size_t length = objv[2]->length;
 
 #define ArgPfxEq(str) \
-	((arg[0] == str[0]) && !strncmp(arg, str, (unsigned)length))
+	((arg[0] == str[0]) && !strncmp(arg, str, length))
 
     if (ArgPfxEq("moveto")) {
 	if (objc != 4) {
@@ -1087,7 +1154,7 @@ TkBackgroundEvalObjv(
 Tcl_Command
 TkMakeEnsemble(
     Tcl_Interp *interp,
-    const char *namespace,
+    const char *namesp,
     const char *name,
     ClientData clientData,
     const TkEnsemble map[])
@@ -1104,11 +1171,11 @@ TkMakeEnsemble(
 
     Tcl_DStringInit(&ds);
 
-    namespacePtr = Tcl_FindNamespace(interp, namespace, NULL, 0);
+    namespacePtr = Tcl_FindNamespace(interp, namesp, NULL, 0);
     if (namespacePtr == NULL) {
-	namespacePtr = Tcl_CreateNamespace(interp, namespace, NULL, NULL);
+	namespacePtr = Tcl_CreateNamespace(interp, namesp, NULL, NULL);
 	if (namespacePtr == NULL) {
-	    Tcl_Panic("failed to create namespace \"%s\"", namespace);
+	    Tcl_Panic("failed to create namespace \"%s\"", namesp);
 	}
     }
 
@@ -1124,15 +1191,15 @@ TkMakeEnsemble(
     }
 
     Tcl_DStringSetLength(&ds, 0);
-    Tcl_DStringAppend(&ds, namespace, -1);
-    if (!(strlen(namespace) == 2 && namespace[1] == ':')) {
+    Tcl_DStringAppend(&ds, namesp, -1);
+    if (!(strlen(namesp) == 2 && namesp[1] == ':')) {
 	Tcl_DStringAppend(&ds, "::", -1);
     }
     Tcl_DStringAppend(&ds, name, -1);
 
     dictObj = Tcl_NewObj();
     for (i = 0; map[i].name != NULL ; ++i) {
-	Tcl_Obj *nameObj, *fqdnObj;
+	Tcl_Obj *fqdnObj;
 
 	nameObj = Tcl_NewStringObj(map[i].name, -1);
 	fqdnObj = Tcl_NewStringObj(Tcl_DStringValue(&ds),
@@ -1162,7 +1229,8 @@ TkMakeEnsemble(
  * TkSendVirtualEvent --
  *
  * 	Send a virtual event notification to the specified target window.
- * 	Equivalent to "event generate $target <<$eventName>>"
+ * 	Equivalent to:
+ * 	    "event generate $target <<$eventName>> -data $detail"
  *
  * 	Note that we use Tk_QueueWindowEvent, not Tk_HandleEvent, so this
  * 	routine does not reenter the interpreter.
@@ -1173,9 +1241,10 @@ TkMakeEnsemble(
 void
 TkSendVirtualEvent(
     Tk_Window target,
-    const char *eventName)
+    const char *eventName,
+    Tcl_Obj *detail)
 {
-    union {XEvent general; XVirtualEvent virtual;} event;
+    union {XEvent general; XVirtualEvent virt;} event;
 
     memset(&event, 0, sizeof(event));
     event.general.xany.type = VirtualEvent;
@@ -1183,10 +1252,155 @@ TkSendVirtualEvent(
     event.general.xany.send_event = False;
     event.general.xany.window = Tk_WindowId(target);
     event.general.xany.display = Tk_Display(target);
-    event.virtual.name = Tk_GetUid(eventName);
+    event.virt.name = Tk_GetUid(eventName);
+    event.virt.user_data = detail;
+    if (detail) Tcl_IncrRefCount(detail); // Event code will DecrRefCount
 
     Tk_QueueWindowEvent(&event.general, TCL_QUEUE_TAIL);
 }
+
+/* Tcl 8.6 has a different definition of Tcl_UniChar than other Tcl versions for TCL_UTF_MAX > 3 */
+#if TCL_UTF_MAX <= (3 + (TCL_MAJOR_VERSION == 8 && TCL_MINOR_VERSION == 6))
+/*
+ *---------------------------------------------------------------------------
+ *
+ * TkUtfToUniChar --
+ *
+ *	Almost the same as Tcl_UtfToUniChar but using int instead of Tcl_UniChar.
+ *	This function is capable of collapsing a upper/lower surrogate pair to a
+ *	single unicode character. So, up to 6 bytes might be consumed.
+ *
+ * Results:
+ *	*chPtr is filled with the Tcl_UniChar, and the return value is the
+ *	number of bytes from the UTF-8 string that were consumed.
+ *
+ * Side effects:
+ *	None.
+ *
+ *---------------------------------------------------------------------------
+ */
+
+int
+TkUtfToUniChar(
+    const char *src,	/* The UTF-8 string. */
+    int *chPtr)		/* Filled with the Unicode value represented by
+			 * the UTF-8 string. */
+{
+    Tcl_UniChar uniChar = 0;
+
+    int len = Tcl_UtfToUniChar(src, &uniChar);
+    if ((uniChar & 0xFC00) == 0xD800) {
+	Tcl_UniChar low = uniChar;
+	/* This can only happen if sizeof(Tcl_UniChar)== 2 and src points
+	 * to a character > U+FFFF  */
+	size_t len2 = Tcl_UtfToUniChar(src+len, &low);
+	if ((low & 0xFC00) == 0xDC00) {
+	    *chPtr = (((uniChar & 0x3FF) << 10) | (low & 0x3FF)) + 0x10000;
+	    return len + len2;
+	}
+    }
+    *chPtr = uniChar;
+    return len;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * TkUniCharToUtf --
+ *
+ *	Almost the same as Tcl_UniCharToUtf but producing 2 x 3-byte UTF-8
+ *	sequences for out-of-bmp characters when TCL_UTF_MAX==3.
+ *	So, up to 6 bytes might be produced.
+ *
+ * Results:
+ *	*buf is filled with the UTF-8 string, and the return value is the
+ *	number of bytes produced.
+ *
+ * Side effects:
+ *	None.
+ *
+ *---------------------------------------------------------------------------
+ */
+
+int TkUniCharToUtf(int ch, char *buf)
+{
+    if ((unsigned)(ch - 0x10000) <= 0xFFFFF) {
+	/* Spit out a 4-byte UTF-8 character or 2 x 3-byte UTF-8 characters, depending on Tcl
+	 * version and/or TCL_UTF_MAX build value */
+	int len = Tcl_UniCharToUtf(0xD800 | ((ch - 0x10000) >> 10), buf);
+	return len + Tcl_UniCharToUtf(0xDC00 | (ch & 0x7FF), buf + len);
+    }
+    return Tcl_UniCharToUtf(ch, buf);
+}
+/*
+ *---------------------------------------------------------------------------
+ *
+ * TkUtfPrev --
+ *
+ *	Almost the same as Tcl_UtfPrev.
+ *	This function is capable of jumping over a upper/lower surrogate pair.
+ *	So, might jump back up to 6 bytes.
+ *
+ * Results:
+ *	pointer to the first byte of the current UTF-8 character. A surrogate
+ *	pair is also handled as being a single entity.
+ *
+ * Side effects:
+ *	None.
+ *
+ *---------------------------------------------------------------------------
+ */
+
+const char *
+TkUtfPrev(
+    const char *src,	/* The UTF-8 string. */
+    const char *start)		/* Start position of string */
+{
+    const char *p = Tcl_UtfPrev(src, start);
+    const char *first = Tcl_UtfPrev(p, start);
+    int ch;
+
+#if TCL_UTF_MAX == 3
+    if ((src - start > 3) && ((src[-1] & 0xC0) == 0x80) && ((src[-2] & 0xC0) == 0x80)
+	    && ((src[-3] & 0xC0) == 0x80) && (UCHAR(src[-4]) >= 0xF0)) {
+	return src - 4;
+    }
+#endif
+
+    return (first + TkUtfToUniChar(first, &ch) >= src) ? first : p ;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * TkUtfAtIndex --
+ *
+ *	Returns a pointer to the specified character (not byte) position in
+ *	a CESU-8 string.  This will never point at a low surrogate.
+ *
+ * Results:
+ *	As above.
+ *
+ * Side effects:
+ *	None.
+ *
+ *---------------------------------------------------------------------------
+ */
+
+const char *
+TkUtfAtIndex(
+    const char *src,	/* The UTF-8 string. */
+    int index)		/* The position of the desired character. */
+{
+    int ch;
+    const char *p = Tcl_UtfAtIndex(src, index);
+    if ((p > src) && (UCHAR(p[-1]) >= 0xF0)) {
+	--p;
+	return p + TkUtfToUniChar(p, &ch);
+    }
+    return p;
+}
+#endif
 /*
  * Local Variables:
  * mode: c

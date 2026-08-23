@@ -27,7 +27,7 @@ mail_main(int ac, char **av)
 	char	**to = 0;
 	int	ret;
 
-	if (name = strrchr(av[0], '/')) {
+	if ((name = strrchr(av[0], '/'))) {
 		name++;
 	} else {
 		name = av[0];
@@ -68,7 +68,7 @@ bkmail(char *url, char **to, char *subject, char *file)
 		if (streq(file, "-")) {
 			file = tmpf = bktmp(0);
 			f = fopen(file, "w");
-			while (len = fread(buf, 1, sizeof(buf), stdin)) {
+			while ((len = fread(buf, 1, sizeof(buf), stdin))) {
 				fwrite(buf, 1, len, f);
 			}
 			fclose(f);
@@ -107,7 +107,7 @@ bkmail(char *url, char **to, char *subject, char *file)
 	} else {
 		fin = fopen(file, "r");
 	}
-	while (len = fread(buf, 1, sizeof(buf), fin)) fwrite(buf, 1, len, f);
+	while ((len = fread(buf, 1, sizeof(buf), fin))) fwrite(buf, 1, len, f);
 	if (fin != stdin) fclose(fin);
 	fprintf(f, "\n.\n");
 	fclose(f);

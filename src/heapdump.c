@@ -87,7 +87,7 @@ heapdump_main(int ac, char **av)
 		sccs_rdweaveInit(s);
 		if (CSET(s)) {
 			lastd = 0;
-			while (d = cset_rdweavePair(s, 0, &rkoff, &dkoff)) {
+			while ((d = cset_rdweavePair(s, 0, &rkoff, &dkoff))) {
 				if (d != lastd) {
 					if (lastd) printf("^AE %d\n", lastd);
 					printf("^AI %d\n", d);
@@ -98,7 +98,7 @@ heapdump_main(int ac, char **av)
 			}
 			if (lastd) printf("^AE %d\n", lastd);
 		} else {
-			while (t = sccs_nextdata(s)) {
+			while ((t = sccs_nextdata(s))) {
 				if (*t == '\001') {
 					printf("^A");
 					++t;
@@ -258,7 +258,7 @@ dumpStats(sccs *s)
 		assert(CSET(s));
 		printf("heap1: %s->%s\n",
 		    psize(size(sccs_Xfile(s, '1'))), psize(s->heapsz1));
-		if (i = size(sccs_Xfile(s, '2'))) {
+		if ((i = size(sccs_Xfile(s, '2')))) {
 			printf("heap2: %s->%s\n",
 			    psize(i), psize(s->heap_loadsz - s->heapsz1));
 		}
@@ -273,7 +273,7 @@ dumpStats(sccs *s)
 			unless (off = *(&CLUDES_INDEX(s, d) + i)) continue;
 			if ((i == N_WEAVE) && CSET(s)) {
 				/* encoded cset weave */
-				while (off = RKDKOFF(s, off, rkoff, dkoff)) {
+				while ((off = RKDKOFF(s, off, rkoff, dkoff))) {
 					if (dkoff) {
 						htotal[N_DELTAKEYS] +=
 						    strlen(HEAP(s, dkoff))+1;
@@ -329,7 +329,7 @@ dumpStats(sccs *s)
 		    cnt, (double)len/cnt);
 		tsize -= len;
 	}
-	if (t = hash_fetchStr(s->heapmeta, "HASHBITS")) {
+	if ((t = hash_fetchStr(s->heapmeta, "HASHBITS"))) {
 		len = sizeof(u32) * (1 << atoi(t));
 		printf("%10s: %7s %4.1f%%\n",
 		    "uniqhash", psize(len),  (100.0 * len) / s->heap.len);
@@ -351,7 +351,7 @@ dumpStats(sccs *s)
 	tsize = 0;
 	unless (CSET(s)) {
 		sccs_rdweaveInit(s);
-		while (t = sccs_nextdata(s)) {
+		while ((t = sccs_nextdata(s))) {
 			tsize += strlen(t)+1;
 		}
 		sccs_rdweaveDone(s);
@@ -379,7 +379,7 @@ dumpEof(sccs *s)
 	if (!s || !CSET(s)) return;
 
 	sccs_rdweaveInit(s);
-	while (d = cset_rdweavePair(s, 0, &rkoff, &dkoff)) {
+	while ((d = cset_rdweavePair(s, 0, &rkoff, &dkoff))) {
 		if (dkoff) {
 			prev = dkoff;
 			continue;

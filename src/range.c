@@ -160,7 +160,7 @@ unrange(int standalone, int ac, char **av)
 			goto err;
 		}
 	}
-	while (p = fgetline(f)) {
+	while ((p = fgetline(f))) {
 		unless (d = sccs_findrev(s, p)) {
 			fprintf(stderr, "%s: can't find %s\n", prog, p);
 			goto err;

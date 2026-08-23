@@ -23,7 +23,6 @@ TK_DEFS='@DEFS@'
 # Flag, 1: we built a shared lib, 0 we didn't
 TK_SHARED_BUILD=@TK_SHARED_BUILD@
 
-
 # TK_DBGX used to be used to distinguish debug vs. non-debug builds.
 # This was a righteous pain so the core doesn't do that any more.
 TK_DBGX=
