@@ -30,14 +30,14 @@ bazel build --platforms=//platforms:windows_x86_32 //src:bk
 ```
 The output binary will be located at `bazel-bin/src/bk.exe`.
 
-#### 2. Build the Complete Windows Release Package (`bitkeeper.tar.gz`)
-To build the complete Windows release archive containing all executables, MSYS runtime, DLLs, and GUI components:
+#### 2. Build the Portable Windows Release Directory
+To build the complete Windows portable directory containing all executables, MSYS runtime, DLLs, and GUI components:
 ```bash
-bazel build --platforms=//platforms:windows_x86_32 //src:install_image
+bazel build --platforms=//platforms:windows_x86_32 //:bitkeeper
 ```
-The resulting tarball will be located at:
+The resulting portable directory will be located at:
 ```
-bazel-bin/src/bitkeeper.tar.gz
+bazel-bin/bitkeeper
 ```
 
 ---

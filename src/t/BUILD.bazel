@@ -19,21 +19,13 @@ filegroup(
 
 TEST_DATA = [
     ":test_support",
-    "//:release_notes",
-    "//doc:bk_refcard",
-    "//man:bkhelp",
-    "//src:bk",
-    "//src:contrib",
-    "//src:data",
-    "//src:dspecs",
+    "//:bitkeeper",
+    "//src:flags.l",
     "//src:gen_cmd",
-    "//src:lscripts",
-    "//src:scripts",
     "//src:slib.c",
-    "//src:www",
-    "//src/gui:gui_package",
     "//src/libc:mtst",
 ]
+
 
 # Serial tests as identified by src/t/Makefile
 SERIAL_TESTS = [

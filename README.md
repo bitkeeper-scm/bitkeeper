@@ -106,55 +106,51 @@ bazel build //src:bk
 ```
 The compiled binary will be located at `bazel-bin/src/bk`.
 
+Build the portable BitKeeper application directory:
+```bash
+bazel build //:bitkeeper
+```
+This produces a fully self-contained, runnable BitKeeper installation in `bazel-bin/bitkeeper` (e.g. `./bazel-bin/bitkeeper/bk version`).
+
 #### Windows Builds
 
 For instructions on cross-compiling BitKeeper for Windows from Linux, see [README-windows.md](README-windows.md).
 
 ## Packaging and Installation
 
-### 1. Generating an Install Tarball
+### 1. Creating the Self-Extracting Installer
 
-To build the full installation package (tarball) with Bazel (use `-c opt` for optimized release builds):
+To build the standalone self-extracting installer executable with Bazel (use `-c opt` for optimized release builds):
 ```bash
-bazel build -c opt //src:install_image
+bazel build -c opt //:image
 ```
-The resulting tarball will be at `bazel-bin/src/bitkeeper.tar.gz`.
+The resulting installer binary will be at `bazel-bin/image` (or `bazel-bin/installer`).
 
-### 2. Creating the Self-Extracting Installer
-
-To build the standalone self-extracting installer executable with Bazel:
-```bash
-bazel build -c opt //src:image
-```
-The resulting installer binary will be at `bazel-bin/src/image` (or `bazel-bin/src/installer`).
-
-### 3. Installing on the Current Machine
+### 2. Installing on the Current Machine
 
 #### Option A: Using the Self-Extracting Installer
 Run the generated installer binary:
 ```bash
 # Run interactively or install to default location:
-./bazel-bin/src/image
+./bazel-bin/image
 
 # Or install directly to a specified directory (e.g., /opt/bitkeeper):
-sudo ./bazel-bin/src/image /opt/bitkeeper
+sudo ./bazel-bin/image /opt/bitkeeper
 ```
 
-#### Option B: Using the Install Tarball
-Extract `bitkeeper.tar.gz` to your desired destination and use `bk links` to set up symlinks in your `PATH`:
+#### Option B: Using the Portable App Directory Directly
+You can copy the assembled portable directory `bazel-bin/bitkeeper` directly to your destination and use `bk links` to set up symlinks in your `PATH`:
 
 **System-wide Installation (requires root/sudo):**
 ```bash
-sudo mkdir -p /opt/bitkeeper
-sudo tar -xzf bazel-bin/src/bitkeeper.tar.gz -C /opt/bitkeeper --strip-components=1
+sudo cp -r bazel-bin/bitkeeper /opt/bitkeeper
 sudo /opt/bitkeeper/bk links /usr/local/bin
 ```
 
 **User-local Installation (no root required):**
 ```bash
-mkdir -p ~/bitkeeper
-tar -xzf bazel-bin/src/bitkeeper.tar.gz -C ~/bitkeeper --strip-components=1
 mkdir -p ~/bin
+cp -r bazel-bin/bitkeeper ~/bitkeeper
 ~/bitkeeper/bk links ~/bin
 # Ensure ~/bin is in your PATH (e.g. export PATH="$HOME/bin:$PATH")
 ```

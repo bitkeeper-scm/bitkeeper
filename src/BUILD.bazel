@@ -2,6 +2,12 @@ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 
 package(default_visibility = ["//visibility:public"])
 
+exports_files([
+    "flags.l",
+    "slib.c",
+    "utils/extractor.c",
+])
+
 # cc_binary's `srcs` attribute rejects non-C/C++ extensions (unlike
 # cc_library's `hdrs`), but configvars.def is #include-d verbatim by
 # config.h, so it's exposed to //src:bk via this tiny header-only lib.
@@ -503,7 +509,7 @@ filegroup(
 
 filegroup(
     name = "lscripts",
-    srcs = glob(["lscripts/*.l"]) + ["flags.l"],
+    srcs = glob(["lscripts/*.l"]),
 )
 
 filegroup(
@@ -549,203 +555,4 @@ cc_binary(
     deps = [
         "//src/libc",
     ],
-)
-genrule(
-    name = "install_image",
-    srcs = [
-        ":bk",
-        ":scripts",
-        ":data",
-        ":lscripts",
-        ":contrib",
-        ":www",
-        "//man:manpages",
-        "//src/gui:gui_package",
-    ] + select({
-        "@platforms//os:windows": [
-            ":bkg",
-            "//src/win32:icons",
-            "//src/win32:dlls",
-            "//src/win32:msys",
-            "//src/win32/svcmgr",
-            "//src/win32/pub/blat",
-            "//src/win32/pub/winctl",
-        ],
-        "//conditions:default": [],
-    }),
-    outs = ["bitkeeper.tar.gz"],
-    cmd = select({
-        "@platforms//os:windows": """
-        set -e
-        dest=$$(mktemp -d)/bitkeeper
-        mkdir -p "$$dest/contrib" "$$dest/lscripts" "$$dest/www"
-
-        cp $(location :bk) "$$dest/"
-        for s in $(locations :scripts); do
-            cp "$$s" "$$dest/"
-            chmod +x "$$dest/$$(basename "$$s")"
-        done
-
-        for d in $(locations :data); do
-            cp "$$d" "$$dest/"
-        done
-
-        for l in $(locations :lscripts); do
-            cp "$$l" "$$dest/lscripts/"
-        done
-
-        for c in $(locations :contrib); do
-            cp "$$c" "$$dest/contrib/"
-        done
-
-        for w in $(locations :www); do
-            rpath=$${w#*src/www/}
-            dir=$$(dirname "$$rpath")
-            mkdir -p "$$dest/www/$$dir"
-            cp "$$w" "$$dest/www/$$rpath"
-        done
-
-        tar -C "$$dest" -xzf $(location //src/gui:gui_package)
-
-        mkdir -p "$$dest/man"
-        tar -C "$$dest/man" -xf $(location //man:manpages)
-
-        # Windows-specific components
-        # Ensure bk.exe and bkg.exe exist and bk (without .exe) is not present
-        if [ -f "$$dest/bk" ]; then
-            cp -f "$$dest/bk" "$$dest/bk.exe"
-            rm -f "$$dest/bk"
-        fi
-        if [ -f "$(location :bkg)" ]; then cp -f "$(location :bkg)" "$$dest/bkg.exe"; fi
-
-        # Copy MSYS runtime into gnu/
-        mkdir -p "$$dest/gnu"
-        for m in $(locations //src/win32:msys); do
-            if [[ "$$m" == *"msys_dist/"* ]]; then
-                mpath=$${m#*msys_dist/}
-                mdir=$$(dirname "$$mpath")
-                mkdir -p "$$dest/gnu/$$mdir"
-                cp -f "$$m" "$$dest/gnu/$$mpath"
-            elif [[ "$$m" == *"src/win32/msys/"* ]]; then
-                mpath=$${m#*src/win32/msys/}
-                mdir=$$(dirname "$$mpath")
-                mkdir -p "$$dest/gnu/$$mdir"
-                cp -f "$$m" "$$dest/gnu/$$mpath"
-            fi
-        done
-
-        # Copy svcmgr, blat, winctl
-        if [ -f "$(location //src/win32/svcmgr)" ]; then cp -f "$(location //src/win32/svcmgr)" "$$dest/svcmgr.exe"; fi
-        if [ -f "$(location //src/win32/pub/blat)" ]; then cp -f "$(location //src/win32/pub/blat)" "$$dest/blat.exe"; fi
-        if [ -f "$(location //src/win32/pub/winctl)" ]; then cp -f "$(location //src/win32/pub/winctl)" "$$dest/winctlw.exe"; fi
-
-        # Copy Icons and DLLs
-        for icon in $(locations //src/win32:icons); do
-            cp -f "$$icon" "$$dest/"
-        done
-        mkdir -p "$$dest/Icons"
-        for dll in $(locations //src/win32:dlls); do
-            case "$$dll" in
-                *.ico) cp -f "$$dll" "$$dest/Icons/" ;;
-                *) cp -f "$$dll" "$$dest/" ;;
-            esac
-        done
-
-        tar -C "$$dest/.." -czf "$@" bitkeeper
-    """,
-        "//conditions:default": """
-        set -e
-        dest=$$(mktemp -d)/bitkeeper
-        mkdir -p "$$dest/contrib" "$$dest/lscripts" "$$dest/www"
-
-        cp $(location :bk) "$$dest/"
-        for s in $(locations :scripts); do
-            cp "$$s" "$$dest/"
-            chmod +x "$$dest/$$(basename "$$s")"
-        done
-
-        for d in $(locations :data); do
-            cp "$$d" "$$dest/"
-        done
-
-        for l in $(locations :lscripts); do
-            cp "$$l" "$$dest/lscripts/"
-        done
-
-        for c in $(locations :contrib); do
-            cp "$$c" "$$dest/contrib/"
-        done
-
-        for w in $(locations :www); do
-            rpath=$${w#*src/www/}
-            dir=$$(dirname "$$rpath")
-            mkdir -p "$$dest/www/$$dir"
-            cp "$$w" "$$dest/www/$$rpath"
-        done
-
-        tar -C "$$dest" -xzf $(location //src/gui:gui_package)
-
-        mkdir -p "$$dest/man"
-        tar -C "$$dest/man" -xf $(location //man:manpages)
-
-        tar -C "$$dest/.." -czf "$@" bitkeeper
-    """,
-    }),
-)
-
-genrule(
-    name = "gen_installer_data",
-    srcs = [
-        ":bk",
-        ":install_image",
-        ":sfio_unpack",
-    ],
-    outs = ["_data.c"],
-    cmd = """
-        set -e
-        bk_bin=$$(pwd)/$(location :bk)
-        sfio_unpack=$$(pwd)/$(location :sfio_unpack)
-        install_image=$$(pwd)/$(location :install_image)
-        workdir=$$(mktemp -d)
-        tar -xzf "$$install_image" -C "$$workdir"
-        (cd "$$workdir" && find bitkeeper -type f -o -type l | "$$bk_bin" sfio -mqo) | gzip -9 > "$$workdir/sfioball.zz"
-        gzip -c "$$sfio_unpack" > "$$workdir/sfio.zz"
-        python3 -c '
-import sys
-with open(sys.argv[1], "rb") as f:
-    sfio_data = f.read()
-with open(sys.argv[2], "rb") as f:
-    data_data = f.read()
-with open(sys.argv[3], "w") as f:
-    f.write(f"unsigned int sfio_size = {len(sfio_data)};\\n")
-    f.write(f"unsigned char sfio_data[{len(sfio_data)}] = {{\\n")
-    for i in range(0, len(sfio_data), 32):
-        f.write(",".join(str(b) for b in sfio_data[i:i+32]) + ",\\n")
-    f.write("};\\n")
-    f.write(f"unsigned int data_size = {len(data_data)};\\n")
-    f.write(f"unsigned char data_data[{len(data_data)}] = {{\\n")
-    for i in range(0, len(data_data), 32):
-        f.write(",".join(str(b) for b in data_data[i:i+32]) + ",\\n")
-    f.write("};\\n")
-' "$$workdir/sfio.zz" "$$workdir/sfioball.zz" "$@"
-        rm -rf "$$workdir"
-    """,
-)
-
-# Self-extracting installer image executable
-cc_binary(
-    name = "image",
-    srcs = [
-        "utils/extractor.c",
-        ":gen_installer_data",
-    ],
-    includes = ["."],
-    deps = [
-        "//src/libc",
-    ],
-)
-
-alias(
-    name = "installer",
-    actual = ":image",
 )
